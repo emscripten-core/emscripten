@@ -340,6 +340,9 @@ def get_binaryen_passes():
   if not feature_matrix.caniuse(feature_matrix.Feature.SIGN_EXT):
     logger.debug('lowering sign-ext feature due to incompatible target browser engines')
     passes += ['--signext-lowering']
+  # nontrapping-fp is enabled by default in llvm. Lower it away if requested.
+  if not feature_matrix.caniuse(feature_matrix.Feature.NON_TRAPPING_FPTOINT):
+    passes += ['--llvm-nontrapping-fptoint-lowering']
   if optimizing:
     passes += ['--post-emscripten']
     if settings.SIDE_MODULE:
@@ -2427,7 +2430,7 @@ export default %(maybe_async)s function init(moduleArg = {}) {
   if settings.MINIMAL_RUNTIME and not settings.PTHREADS:
     # Single threaded MINIMAL_RUNTIME programs do not need access to
     # document.currentScript, so a simple export declaration is enough.
-    src = f'/** @nocollapse */ var {settings.EXPORT_NAME} = {wrapper_function};'
+    src = f'var {settings.EXPORT_NAME} = {wrapper_function};'
   else:
     script_url_node = ''
     # When MODULARIZE this JS may be executed later,

@@ -425,11 +425,6 @@ class other(RunnerCore):
                             '-sENVIRONMENT=node', '-sEXPORT_ES6', '-sUSE_ES6_IMPORT_META=0'])
     self.assertContained('EXPORT_ES6 and ENVIRONMENT=*node* requires USE_ES6_IMPORT_META to be set', err)
 
-  def test_export_es6_allows_export_in_post_js(self):
-    self.run_process([EMCC, test_file('hello_world.c'), '-O3', '-sEXPORT_ES6', '--post-js', test_file('export_module.js')])
-    src = read_file('a.out.js')
-    self.assertContained('export{doNothing};', src)
-
   @parameterized({
     '': (False,),
     'package_json': (True,),
@@ -10461,7 +10456,7 @@ int main() {
 
     compile(['-c'])
     verify_features_sec('bulk-memory', False)
-    verify_features_sec('nontrapping-fptoint', False)
+    verify_features_sec('nontrapping-fptoint', True)
     verify_features_sec('sign-ext', True)
     verify_features_sec('mutable-globals', True)
     verify_features_sec('multivalue', True)
@@ -10482,8 +10477,8 @@ int main() {
     compile(['-sMIN_FIREFOX_VERSION=61', '-msign-ext'])
     verify_features_sec_linked('sign-ext', True)
 
-    compile(['-mnontrapping-fptoint', '-c'])
-    verify_features_sec('nontrapping-fptoint', True)
+    compile(['-mno-nontrapping-fptoint'])
+    verify_features_sec_linked('nontrapping-fptoint', False)
 
     # Setting this SAFARI_VERSION should enable bulk memory because it links in emscripten_memcpy_bulkmem
     # However it does not enable nontrapping-fptoint yet because it has no effect at compile time and
@@ -10493,7 +10488,7 @@ int main() {
     verify_features_sec_linked('mutable-globals', True)
     verify_features_sec_linked('multivalue', True)
     verify_features_sec_linked('bulk-memory', True)
-    verify_features_sec_linked('nontrapping-fptoint', False)
+    verify_features_sec_linked('nontrapping-fptoint', True)
 
     compile(['-sMIN_SAFARI_VERSION=150000', '-mno-bulk-memory'])
     # -mno-bulk-memory at link time overrides MIN_SAFARI_VERSION

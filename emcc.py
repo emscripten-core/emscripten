@@ -392,8 +392,6 @@ def get_clang_flags(user_args):
     if not settings.BULK_MEMORY:
       flags.append('-mno-bulk-memory')
       flags.append('-mno-bulk-memory-opt')
-  if '-mnontrapping-fptoint' not in user_args and '-mno-nontrapping-fptoint' not in user_args:
-    flags.append('-mno-nontrapping-fptoint')
 
   if settings.RELOCATABLE and '-fPIC' not in user_args:
     flags.append('-fPIC')
@@ -1435,6 +1433,12 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
                                     override=True)
     elif arg == '-mno-sign-ext':
       feature_matrix.disable_feature(feature_matrix.Feature.SIGN_EXT)
+    elif arg == '-mnontrappting-fptoint':
+      feature_matrix.enable_feature(feature_matrix.Feature.NON_TRAPPING_FPTOINT,
+                                    '-mnontrapping-fptoint',
+                                    override=True)
+    elif arg == '-mno-nontrapping-fptoint':
+      feature_matrix.disable_feature(feature_matrix.Feature.NON_TRAPPING_FPTOINT)
     elif arg == '-fexceptions':
       # TODO Currently -fexceptions only means Emscripten EH. Switch to wasm
       # exception handling by default when -fexceptions is given when wasm

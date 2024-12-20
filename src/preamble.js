@@ -921,7 +921,7 @@ function getWasmImports() {
 
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
-{{{ asyncIf(WASM_ASYNC_COMPILATION) }}} function createWasm() {
+{{{ asyncIf(WASM_ASYNC_COMPILATION) }}}function createWasm() {
   // Load the wasm module and create an instance of using native support in the JS engine.
   // handle a generated wasm instance, receiving its exports and
   // performing other necessary setup
