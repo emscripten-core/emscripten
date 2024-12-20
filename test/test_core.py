@@ -19,7 +19,7 @@ if __name__ == '__main__':
 
 from tools.shared import PIPE
 from tools.shared import EMCC, EMAR, FILE_PACKAGER
-from tools.utils import WINDOWS, MACOS, write_file, delete_file
+from tools.utils import WINDOWS, MACOS, LINUX, write_file, delete_file
 from tools import shared, building, config, utils, webassembly
 import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
@@ -5546,8 +5546,8 @@ got: 10
   @also_with_nodefs_both
   @crossplatform
   def test_fcntl_open(self):
-    if '-DNODERAWFS' in self.emcc_args and WINDOWS:
-      self.skipTest('currently failing under windows and noderawfs')
+    if '-DNODERAWFS' in self.emcc_args and not LINUX:
+      self.skipTest('noderawfs fails here under non-linux')
     self.do_run_in_out_file_test('fcntl/test_fcntl_open.c')
 
   @also_with_wasm_bigint
