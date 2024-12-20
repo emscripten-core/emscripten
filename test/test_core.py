@@ -5547,7 +5547,7 @@ got: 10
   @crossplatform
   def test_fcntl_open(self):
     if '-DNODERAWFS' in self.emcc_args and not LINUX:
-      self.skipTest('currently failing under windows and noderawfs')
+      self.skipTest('noderawfs fails here under non-linux')
     self.do_run_in_out_file_test('fcntl/test_fcntl_open.c')
 
   @also_with_wasm_bigint
