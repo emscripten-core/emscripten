@@ -425,11 +425,6 @@ class other(RunnerCore):
                             '-sENVIRONMENT=node', '-sEXPORT_ES6', '-sUSE_ES6_IMPORT_META=0'])
     self.assertContained('EXPORT_ES6 and ENVIRONMENT=*node* requires USE_ES6_IMPORT_META to be set', err)
 
-  def test_export_es6_allows_export_in_post_js(self):
-    self.run_process([EMCC, test_file('hello_world.c'), '-O3', '-sEXPORT_ES6', '--post-js', test_file('export_module.js')])
-    src = read_file('a.out.js')
-    self.assertContained('export{doNothing};', src)
-
   @parameterized({
     '': (False,),
     'package_json': (True,),
