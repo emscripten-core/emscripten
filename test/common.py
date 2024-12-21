@@ -37,7 +37,7 @@ from tools.shared import EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
 from tools.shared import get_canonical_temp_dir, path_from_root
 from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_binary, exit_with_error
 from tools.settings import COMPILE_TIME_SETTINGS
-from tools import shared, line_endings, building, config, utils
+from tools import shared, feature_matrix, line_endings, building, config, utils
 
 logger = logging.getLogger('common')
 
@@ -742,27 +742,16 @@ def make_executable(name):
 
 
 def make_dir_writeable(dirname):
-  # Ensure all files are readable and writable by the current user.
-  permission_bits = stat.S_IWRITE | stat.S_IREAD
-
-  def is_writable(path):
-    return (os.stat(path).st_mode & permission_bits) != permission_bits
-
-  def make_writable(path):
-    new_mode = os.stat(path).st_mode | permission_bits
-    os.chmod(path, new_mode)
-
   # Some tests make files and subdirectories read-only, so rmtree/unlink will not delete
   # them. Force-make everything writable in the subdirectory to make it
   # removable and re-attempt.
-  if not is_writable(dirname):
-    make_writable(dirname)
+  os.chmod(dirname, 0o777)
 
   for directory, subdirs, files in os.walk(dirname):
     for item in files + subdirs:
       i = os.path.join(directory, item)
       if not os.path.islink(i):
-        make_writable(i)
+        os.chmod(i, 0o777)
 
 
 def force_delete_dir(dirname):
@@ -1164,6 +1153,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       if node_version < emcc_min_node_version:
         self.emcc_args += building.get_emcc_node_flags(node_version)
         self.emcc_args.append('-Wno-transpile')
+      if node_version[0] < feature_matrix.min_browser_versions[feature_matrix.Feature.JS_BIGINT_INTEGRATION]['node'] / 10000:
+        self.emcc_args.append('-sWASM_BIGINT=0')
 
     self.v8_args = ['--wasm-staging']
     self.env = {}

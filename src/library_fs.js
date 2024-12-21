@@ -182,7 +182,7 @@ FS.staticInit();
       // limit max consecutive symlinks to 40 (SYMLOOP_MAX).
       linkloop: for (var nlinks = 0; nlinks < 40; nlinks++) {
         // split the absolute path
-        var parts = path.split('/').filter((p) => !!p && (p !== '.'));
+        var parts = path.split('/').filter((p) => !!p);
 
         // start at the root
         var current = FS.root;
@@ -193,6 +193,10 @@ FS.staticInit();
           if (islast && opts.parent) {
             // stop resolving
             break;
+          }
+
+          if (parts[i] === '.') {
+            continue;
           }
 
           if (parts[i] === '..') {
@@ -422,8 +426,8 @@ FS.staticInit();
       if (FS.isLink(node.mode)) {
         return {{{ cDefs.ELOOP }}};
       } else if (FS.isDir(node.mode)) {
-        if (FS.flagsToPermissionString(flags) !== 'r' || // opening for write
-            (flags & {{{ cDefs.O_TRUNC }}})) { // TODO: check for O_SEARCH? (== search for dir only)
+        if (FS.flagsToPermissionString(flags) !== 'r' // opening for write
+            || (flags & ({{{ cDefs.O_TRUNC }}} | {{{ cDefs.O_CREAT }}}))) { // TODO: check for O_SEARCH? (== search for dir only)
           return {{{ cDefs.EISDIR }}};
         }
       }
@@ -665,8 +669,11 @@ FS.staticInit();
       var lookup = FS.lookupPath(path, { parent: true });
       var parent = lookup.node;
       var name = PATH.basename(path);
-      if (!name || name === '.' || name === '..') {
+      if (!name) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+      }
+      if (name === '.' || name === '..') {
+        throw new FS.ErrnoError({{{ cDefs.EEXIST }}});
       }
       var errCode = FS.mayCreate(parent, name);
       if (errCode) {
@@ -1053,9 +1060,11 @@ FS.staticInit();
         mode = 0;
       }
       var node;
+      var isDirPath;
       if (typeof path == 'object') {
         node = path;
       } else {
+        isDirPath = path.endsWith("/");
         // noent_okay makes it so that if the final component of the path
         // doesn't exist, lookupPath returns `node: undefined`. `path` will be
         // updated to point to the target of all symlinks.
@@ -1074,9 +1083,14 @@ FS.staticInit();
           if ((flags & {{{ cDefs.O_EXCL }}})) {
             throw new FS.ErrnoError({{{ cDefs.EEXIST }}});
           }
+        } else if (isDirPath) {
+          throw new FS.ErrnoError({{{ cDefs.EISDIR }}});
         } else {
           // node doesn't exist, try to create it
-          node = FS.mknod(path, mode, 0);
+          // Ignore the permission bits here to ensure we can `open` this new
+          // file below. We use chmod below the apply the permissions once the
+          // file is open.
+          node = FS.mknod(path, mode | 0o777, 0);
           created = true;
         }
       }
@@ -1125,6 +1139,9 @@ FS.staticInit();
       // call the new stream's open function
       if (stream.stream_ops.open) {
         stream.stream_ops.open(stream);
+      }
+      if (created) {
+        FS.chmod(node, mode & 0o777);
       }
 #if expectToReceiveOnModule('logReadFiles')
       if (Module['logReadFiles'] && !(flags & {{{ cDefs.O_WRONLY}}})) {

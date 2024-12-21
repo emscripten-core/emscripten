@@ -2189,7 +2189,7 @@ legalize i64s into pairs of i32s, as the wasm VM will use a BigInt where an
 i64 is used. If WASM_BIGINT is present, the default minimum supported browser
 versions will be increased to the min version that supports BigInt.
 
-Default value: false
+Default value: true
 
 .. _emit_producers_section:
 

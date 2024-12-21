@@ -66,7 +66,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
   // notified about them.
   self.onunhandledrejection = (e) => { throw e.reason || e; };
 
-  {{{ asyncIf(ASYNCIFY == 2) }}} function handleMessage(e) {
+  {{{ asyncIf(ASYNCIFY == 2) }}}function handleMessage(e) {
     try {
       var msgData = e['data'];
       //dbg('msgData: ' + Object.keys(msgData));
@@ -177,7 +177,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
         }
 
         try {
-          {{{ awaitIf(ASYNCIFY == 2) }}} invokeEntryPoint(msgData.start_routine, msgData.arg);
+          {{{ awaitIf(ASYNCIFY == 2) }}}invokeEntryPoint(msgData.start_routine, msgData.arg);
         } catch(ex) {
           if (ex != 'unwind') {
             // The pthread "crashed".  Do not call `_emscripten_thread_exit` (which

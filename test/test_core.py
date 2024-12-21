@@ -19,7 +19,7 @@ if __name__ == '__main__':
 
 from tools.shared import PIPE
 from tools.shared import EMCC, EMAR, FILE_PACKAGER
-from tools.utils import WINDOWS, MACOS, write_file, delete_file
+from tools.utils import WINDOWS, MACOS, LINUX, write_file, delete_file
 from tools import shared, building, config, utils, webassembly
 import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
@@ -1934,12 +1934,10 @@ int main(int argc, char **argv) {
     self.do_core_test('test_em_js.cpp', force_c=force_c)
     self.assertContained("no args returning int", read_file('test_em_js.js'))
 
-  @no_wasm2js('WASM_BIGINT is not compatible with wasm2js')
+  @no_wasm2js('test depends on WASM_BIGINT which is not compatible with wasm2js')
   def test_em_js_i64(self):
-    err = self.expect_fail([EMCC, '-Werror', test_file('core/test_em_js_i64.c')])
+    err = self.expect_fail([EMCC, '-Werror', '-sWASM_BIGINT=0', test_file('core/test_em_js_i64.c')])
     self.assertContained('emcc: error: using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `foo`', err)
-
-    self.set_setting('WASM_BIGINT')
     self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_core_test('test_em_js_i64.c')
 
@@ -5545,7 +5543,11 @@ got: 10
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('fcntl/test_fcntl.c')
 
+  @also_with_nodefs_both
+  @crossplatform
   def test_fcntl_open(self):
+    if '-DNODERAWFS' in self.emcc_args and not LINUX:
+      self.skipTest('noderawfs fails here under non-linux')
     self.do_run_in_out_file_test('fcntl/test_fcntl_open.c')
 
   @also_with_wasm_bigint
@@ -5756,9 +5758,11 @@ got: 10
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @crossplatform
-  @also_with_noderawfs
+  @also_with_nodefs_both
   def test_fs_enotdir(self):
-    self.do_run_in_out_file_test('fs/test_enotdir.c')
+    if MACOS and '-DNODERAWFS' in self.emcc_args:
+      self.skipTest('BSD libc sets a different errno')
+    self.do_runf('fs/test_fs_enotdir.c', 'success')
 
   @also_with_noderawfs
   def test_fs_append(self):
@@ -5857,6 +5861,25 @@ Module.onRuntimeInitialized = () => {
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
     self.do_runf('fs/test_fs_rename_on_existing.c', 'success')
+
+  @also_with_nodefs_both
+  @no_windows('stat ino values dont match on windows')
+  @crossplatform
+  def test_fs_readdir_ino_matches_stat_ino(self):
+    self.do_runf('fs/test_fs_readdir_ino_matches_stat_ino.c', 'success')
+
+  @also_with_nodefs_both
+  @crossplatform
+  def test_fs_open_no_permissions(self):
+    if ('-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args) and WINDOWS:
+      self.skipTest('fs_open_no_permissions fails on windows')
+    self.do_runf('fs/test_fs_open_no_permissions.c', 'success')
+
+  @also_with_nodefs_both
+  @crossplatform
+  @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
+  def test_fs_mkdir_dotdot(self):
+    self.do_runf('fs/test_fs_mkdir_dotdot.c', 'success')
 
   def test_sigalrm(self):
     self.do_runf('test_sigalrm.c', 'Received alarm!')
@@ -6921,7 +6944,7 @@ void* operator new(size_t size) {
   def test_dyncall_specific(self, *args):
     if self.get_setting('MEMORY64'):
       self.skipTest('not compatible with MEMORY64')
-    if self.get_setting('WASM_BIGINT'):
+    if self.get_setting('WASM_BIGINT') != 0 and not self.is_wasm2js():
       # define DYNCALLS because this test does test calling them directly, and
       # in WASM_BIGINT mode we do not enable them by default (since we can do
       # more without them - we don't need to legalize)
