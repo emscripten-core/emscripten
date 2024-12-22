@@ -24,37 +24,11 @@ addToLibrary({
   // Write a RFC4122 version 4 compliant UUID largely based on the method found in
   // http://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid-in-javascript
   // tweaked slightly in order to use the 'compact' UUID form used by libuuid.
-  uuid_generate__deps: ['$writeArrayToMemory'],
+  uuid_generate__deps: ['$writeArrayToMemory', '$randomFill'],
   uuid_generate: (out) => {
     // void uuid_generate(uuid_t out);
-    var uuid = null;
-
-    if (ENVIRONMENT_IS_NODE) {
-#if ENVIRONMENT_MAY_BE_NODE
-      // If Node.js try to use crypto.randomBytes
-      try {
-        var rb = require('crypto')['randomBytes'];
-        uuid = rb(16);
-      } catch(e) {}
-#endif // ENVIRONMENT_MAY_BE_NODE
-    } else if (ENVIRONMENT_IS_WEB &&
-               typeof window.crypto != 'undefined' &&
-               typeof window.crypto.getRandomValues != 'undefined') {
-      // If crypto.getRandomValues is available try to use it.
-      uuid = new Uint8Array(16);
-      window.crypto.getRandomValues(uuid);
-    }
-
-    // Fall back to Math.random if a higher quality random number generator is not available.
-    if (!uuid) {
-      uuid = new Array(16);
-      var d = new Date().getTime();
-      for (var i = 0; i < 16; i++) {
-        var r = ((d + Math.random() * 256) % 256)|0;
-        d = (d / 256)|0;
-        uuid[i] = r;
-      }
-    }
+    var uuid = new Uint8Array(16);
+    randomFill(uuid);
 
     // Makes uuid compliant to RFC-4122
     uuid[6] = (uuid[6] & 0x0F) | 0x40; // uuid version

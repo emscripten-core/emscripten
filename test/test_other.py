@@ -15243,10 +15243,10 @@ addToLibrary({
 
     js_out = read_file('test_uuid.js')
 
-    # Check that test.js compiled with --closure 1 contains ").randomBytes" and
-    # "window.crypto.getRandomValues"
-    self.assertContained(").randomBytes", js_out)
-    self.assertContained("window.crypto.getRandomValues", js_out)
+    # Check that test.js compiled with --closure 1 contains ".randomBytes(" and
+    # ".getRandomValues("
+    self.assertContained(".randomBytes(", js_out)
+    self.assertContained(".getRandomValues(", js_out)
 
   def test_wasm64_no_asan(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMEMORY64', '-fsanitize=address'])
