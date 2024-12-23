@@ -1932,6 +1932,8 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms, base_
 
   settings.TARGET_JS_NAME = os.path.basename(state.js_target)
 
+  phase_wasm_bindgen(in_wasm, in_wasm)
+
   metadata = phase_emscript(in_wasm, wasm_target, js_syms, base_metadata)
 
   if settings.EMBIND_AOT:
@@ -1948,6 +1950,10 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms, base_
   # If we are not emitting any JS then we are all done now
   if options.oformat != OFormat.WASM:
     phase_final_emitting(options, state, target, wasm_target)
+
+
+def phase_wasm_bindgen(in_wasm, wasm_target):
+  building.run_wasm_bindgen(in_wasm, wasm_target)
 
 
 @ToolchainProfiler.profile_block('emscript')

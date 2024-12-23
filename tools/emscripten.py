@@ -578,10 +578,11 @@ def finalize_wasm(infile, outfile, js_syms):
   if not need_name_section:
     strip_sections += ['name']
 
-  if strip_sections or not settings.GENERATE_DWARF:
-    building.save_intermediate(outfile, 'strip.wasm')
-    building.strip(infile, outfile, debug=not settings.GENERATE_DWARF,
-                   sections=strip_sections)
+  # TODO(walkingeyerobot): make this work. it appears to not like the wasm file from wasm-bindgen
+  #if strip_sections or not settings.GENERATE_DWARF:
+  #  building.save_intermediate(outfile, 'strip.wasm')
+  #  building.strip(infile, outfile, debug=not settings.GENERATE_DWARF,
+  #                 sections=strip_sections)
 
   metadata = get_metadata(outfile, outfile, modify_wasm, args)
 
@@ -951,7 +952,7 @@ def make_export_wrappers(function_exports):
     else:
       wrapper += f"wasmExports['{name}']"
 
-    wrappers.append(wrapper)
+    # TODO(walkingeyerobot): if the export is from rust, it should probably be excluded here and dealt with elsewhere.
   return wrappers
 
 

@@ -908,6 +908,7 @@ function getWasmImports() {
 #else // MINIFY_WASM_IMPORTED_MODULES
     'env': wasmImports,
     '{{{ WASI_MODULE_NAME }}}': wasmImports,
+    'wbg': wasmImports,
 #endif // MINIFY_WASM_IMPORTED_MODULES
 #if SPLIT_MODULE
     'placeholder': new Proxy({}, splitModuleProxyHandler),
