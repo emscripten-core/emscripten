@@ -953,6 +953,7 @@ def make_export_wrappers(function_exports):
       wrapper += f"wasmExports['{name}']"
 
     # TODO(walkingeyerobot): if the export is from rust, it should probably be excluded here and dealt with elsewhere.
+    wrappers.append(wrapper)
   return wrappers
 
 
