@@ -2186,6 +2186,10 @@ var LEGACY_RUNTIME = false;
 // [link]
 var SIGNATURE_CONVERSIONS = [];
 
+// Run wasm-bindgen and integrate the rust-exported symbols into the rest of Emscripten's JS output.
+// [link]
+var WASM_BINDGEN = 0;
+
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]
 // For removed settings (which now effectively have a fixed value and can no

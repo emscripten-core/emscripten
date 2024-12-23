@@ -1932,7 +1932,8 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms, base_
 
   settings.TARGET_JS_NAME = os.path.basename(state.js_target)
 
-  phase_wasm_bindgen(in_wasm, in_wasm)
+  if settings.WASM_BINDGEN:
+    phase_wasm_bindgen(in_wasm, in_wasm)
 
   metadata = phase_emscript(in_wasm, wasm_target, js_syms, base_metadata)
 
