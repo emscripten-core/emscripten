@@ -2307,6 +2307,7 @@ var LibraryHTML5 = {
       targetCanvasPtr = stringToNewUTF8(targetCanvas);
     }
     __emscripten_set_offscreencanvas_size_on_thread(targetThread, targetCanvasPtr, width, height);
+    _free(targetCanvasPtr);
   },
 #endif
 
