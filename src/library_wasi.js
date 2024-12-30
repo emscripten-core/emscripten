@@ -586,9 +586,8 @@ var WasiLibrary = {
           return (view) => crypto_module['randomFillSync'](view);
         }
         // very old nodejs with the original crypto API
-        var randomBytes = crypto_module['randomBytes'];
         return (view) => (
-          view.set(randomBytes(view.byteLength)),
+          view.set(crypto_module['randomBytes'](view.byteLength)),
           // Return the original view to match modern native implementations.
           view
         );
