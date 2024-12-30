@@ -561,53 +561,35 @@ var WasiLibrary = {
   // random.h
 
   $initRandomFill: () => {
-    if (typeof crypto == 'object' && typeof crypto['getRandomValues'] == 'function') {
-      // for modern web browsers
+    if (typeof crypto == 'object' && typeof crypto.getRandomValues == 'function') {
 #if SHARED_MEMORY
       // like with most Web APIs, we can't use Web Crypto API directly on shared memory,
       // so we need to create an intermediate buffer and copy it to the destination
-      return (view) => (
-        view.set(crypto.getRandomValues(new Uint8Array(view.byteLength))),
-        // Return the original view to match modern native implementations.
-        view
-      );
+      return (view) => view.set(crypto.getRandomValues(new Uint8Array(view.byteLength)));
 #else
       return (view) => crypto.getRandomValues(view);
 #endif
-    } else
+    }
+
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
-      // for nodejs with or without crypto support included
-      try {
-        var crypto_module = require('crypto');
-        var randomFillSync = crypto_module['randomFillSync'];
-        if (randomFillSync) {
-          // nodejs with LTS crypto support
-          return (view) => crypto_module['randomFillSync'](view);
-        }
-        // very old nodejs with the original crypto API
-        return (view) => (
-          view.set(crypto_module['randomBytes'](view.byteLength)),
-          // Return the original view to match modern native implementations.
-          view
-        );
-      } catch (e) {
-        // nodejs doesn't have crypto support
-      }
+      return (view) => require('crypto').randomFillSync(view);
     }
 #endif // ENVIRONMENT_MAY_BE_NODE
-    // we couldn't find a proper implementation, as Math.random() is not suitable for /dev/random, see emscripten-core/emscripten/pull/7096
+
+    // we couldn't find a proper implementation, as Math.random() is not
+    // suitable for /dev/random, see emscripten-core/emscripten/pull/7096
 #if ASSERTIONS
-    abort('no cryptographic support found for randomDevice. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: (array) => { for (var i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };');
+    abort('no cryptographic support found for random function. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: (array) => { for (var i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };');
 #else
-    abort('initRandomDevice');
+    abort();
 #endif
   },
 
   $randomFill__deps: ['$initRandomFill'],
   $randomFill: (view) => {
     // Lazily init on the first invocation.
-    return (randomFill = initRandomFill())(view);
+    (randomFill = initRandomFill())(view);
   },
 
   random_get__proxy: 'none',

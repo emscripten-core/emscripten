@@ -15235,18 +15235,14 @@ addToLibrary({
   def test_uuid(self):
     # We run this test in Node/SPIDERMONKEY and browser environments because we
     # try to make use of high quality crypto random number generators such as
-    # crypto.getRandomValues or randomBytes (if available).
-
-    # Use closure compiler so we can check that require('crypto').randomBytes and
-    # window.crypto.getRandomValues doesn't get minified out.
+    # `getRandomValues` or `randomFillSync`.
     self.do_runf('test_uuid.c', emcc_args=['-O2', '--closure=1', '-luuid'])
 
+    # Check that test.js compiled with --closure 1 contains `randomFillSync` and
+    # `getRandomValues`
     js_out = read_file('test_uuid.js')
-
-    # Check that test.js compiled with --closure 1 contains ".randomBytes(" and
-    # ".getRandomValues("
-    self.assertContained(".randomBytes(", js_out)
-    self.assertContained(".getRandomValues(", js_out)
+    self.assertContained('.randomFillSync(', js_out)
+    self.assertContained('.getRandomValues(', js_out)
 
   def test_wasm64_no_asan(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMEMORY64', '-fsanitize=address'])
