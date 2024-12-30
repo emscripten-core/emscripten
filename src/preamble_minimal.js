@@ -89,7 +89,6 @@ var runtimeExited = false;
 var runtimeInitialized = false;
 #endif
 
-#include "runtime_math.js"
 #include "memoryprofiler.js"
 #include "runtime_exceptions.js"
 #include "runtime_debug.js"
