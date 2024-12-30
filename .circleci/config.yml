@@ -1023,7 +1023,8 @@ workflows:
       - test-sockets-chrome:
           requires:
             - build-linux
-      - test-jsc
+      # https://github.com/GoogleChromeLabs/jsvu/issues/156
+      #- test-jsc
       - test-spidermonkey
       - test-node-compat
       - test-windows
