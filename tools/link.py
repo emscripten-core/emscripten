@@ -700,9 +700,6 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
     options.post_js.append(utils.path_from_root('src/threadprofiler.js'))
     settings.REQUIRED_EXPORTS.append('emscripten_main_runtime_thread_id')
 
-  options.extern_pre_js = read_js_files(options.extern_pre_js)
-  options.extern_post_js = read_js_files(options.extern_post_js)
-
   # TODO: support source maps with js_transform
   if options.js_transform and settings.GENERATE_SOURCE_MAP:
     logger.warning('disabling source maps because a js transform is being done')
@@ -2158,13 +2155,15 @@ def phase_final_emitting(options, state, target, wasm_target):
 
   # Apply pre and postjs files
   if options.extern_pre_js or options.extern_post_js:
+    extern_pre_js = read_js_files(options.extern_pre_js)
+    extern_post_js = read_js_files(options.extern_post_js)
     logger.debug('applying extern pre/postjses')
     src = read_file(final_js)
     final_js += '.epp.js'
     with open(final_js, 'w', encoding='utf-8') as f:
-      f.write(options.extern_pre_js)
+      f.write(extern_pre_js)
       f.write(src)
-      f.write(options.extern_post_js)
+      f.write(extern_post_js)
     save_intermediate('extern-pre-post')
 
   js_manipulation.handle_license(final_js)
