@@ -8,6 +8,10 @@
 #include "runtime_safe_heap.js"
 #endif
 
+#if SHARED_MEMORY && ALLOW_MEMORY_GROWTH
+#include "growableHeap.js"
+#endif
+
 #if USE_ASAN
 #include "runtime_asan.js"
 #endif

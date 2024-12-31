@@ -1251,6 +1251,12 @@ function littleEndianHeap(ast) {
 // in each access), see #8365.
 function growableHeap(ast) {
   recursiveWalk(ast, {
+    FunctionDeclaration(node, c) {
+      // Do not recurse into to GROWABLE_HEAP_ helper functions themselves.
+      if (!(node.id.type === 'Identifier' && node.id.name.startsWith('GROWABLE_HEAP_'))) {
+        c(node.body);
+      }
+    },
     AssignmentExpression: (node) => {
       if (node.left.type === 'Identifier' && isEmscriptenHEAP(node.left.name)) {
         // Don't transform initial setup of the arrays.
