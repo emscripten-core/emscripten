@@ -44,18 +44,6 @@ if (typeof WebAssembly != 'object') {
 }
 #endif
 
-#if SAFE_HEAP
-#include "runtime_safe_heap.js"
-#endif
-
-#if SHARED_MEMORY && ALLOW_MEMORY_GROWTH
-#include "growableHeap.js"
-#endif
-
-#if USE_ASAN
-#include "runtime_asan.js"
-#endif
-
 #if SUPPORT_BASE64_EMBEDDING || FORCE_FILESYSTEM
 #include "base64Utils.js"
 #endif
@@ -150,11 +138,15 @@ var HEAP,
 var HEAP_DATA_VIEW;
 #endif
 
-#include "runtime_shared.js"
+var runtimeInitialized = false;
 
-#if PTHREADS
-#include "runtime_pthread.js"
+#if EXIT_RUNTIME
+var runtimeExited = false;
 #endif
+
+#include "URIUtils.js"
+
+#include "runtime_shared.js"
 
 #if ASSERTIONS
 assert(!Module['STACK_SIZE'], 'STACK_SIZE can no longer be set at runtime.  Use -sSTACK_SIZE at link time')
@@ -174,8 +166,6 @@ assert(!Module['wasmMemory'], 'Use of `wasmMemory` detected.  Use -sIMPORTED_MEM
 assert(!Module['INITIAL_MEMORY'], 'Detected runtime INITIAL_MEMORY setting.  Use -sIMPORTED_MEMORY to define wasmMemory dynamically');
 #endif // !IMPORTED_MEMORY && ASSERTIONS
 
-#include "runtime_stack_check.js"
-
 var __ATPRERUN__  = []; // functions called before the runtime is initialized
 var __ATINIT__    = []; // functions called during startup
 #if HAS_MAIN
@@ -186,12 +176,6 @@ var __ATPOSTRUN__ = []; // functions called after the main() is called
 
 #if RELOCATABLE
 var __RELOC_FUNCS__ = [];
-#endif
-
-var runtimeInitialized = false;
-
-#if EXIT_RUNTIME
-var runtimeExited = false;
 #endif
 
 function preRun() {
@@ -483,8 +467,6 @@ function abort(what) {
   throw e;
 }
 
-#include "memoryprofiler.js"
-
 #if ASSERTIONS && !('$FS' in addedLibraryItems)
 // show errors on likely calls to FS when it was not included
 var FS = {
@@ -506,8 +488,6 @@ Module['FS_createDataFile'] = FS.createDataFile;
 Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
 #endif
 
-#include "URIUtils.js"
-
 #if ASSERTIONS
 function createExportWrapper(name, nargs) {
   return (...args) => {
@@ -523,8 +503,6 @@ function createExportWrapper(name, nargs) {
   };
 }
 #endif
-
-#include "runtime_exceptions.js"
 
 #if ABORT_ON_WASM_EXCEPTIONS
 // `abortWrapperDepth` counts the recursion level of the wrapper function so
@@ -674,16 +652,6 @@ async function getWasmBinary(binaryFile) {
   // Otherwise, getBinarySync should be able to get it synchronously
   return getBinarySync(binaryFile);
 }
-
-#if LOAD_SOURCE_MAP
-var wasmSourceMap;
-#include "source_map_support.js"
-#endif
-
-#if USE_OFFSET_CONVERTER
-var wasmOffsetConverter;
-#include "wasm_offset_converter.js"
-#endif
 
 #if SPLIT_MODULE
 {{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync',  true) }}}
@@ -1126,8 +1094,6 @@ function getWasmImports() {
 var tempDouble;
 var tempI64;
 #endif
-
-#include "runtime_debug.js"
 
 #if RETAIN_COMPILER_SETTINGS
 var compilerSettings = {{{ JSON.stringify(makeRetainedCompilerSettings()) }}} ;
