@@ -3,7 +3,7 @@
 #include "emscripten_internal.h"
 
 typedef struct set_cavas_size_t {
-  const char* target;
+  char* target;
   int width;
   int height;
 } set_cavas_size_t;
@@ -19,7 +19,7 @@ static void do_set_size(void* arg) {
 // - DO NOT call this function with a string literal
 // - DO NOT free the memory after calling this function
 void _emscripten_set_offscreencanvas_size_on_thread(pthread_t t,
-                                                    const char* target,
+                                                    char* target,
                                                     int width,
                                                     int height) {
   set_cavas_size_t* arg = malloc(sizeof(set_cavas_size_t));
