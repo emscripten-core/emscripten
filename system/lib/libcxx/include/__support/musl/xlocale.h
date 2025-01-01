@@ -46,6 +46,14 @@ inline _LIBCPP_HIDE_FROM_ABI_C long double wcstold_l(const wchar_t* __nptr, wcha
   return ::wcstold(__nptr, __endptr);
 }
 
+inline _LIBCPP_HIDE_FROM_ABI_C double wcstod_l(const wchar_t* __nptr, wchar_t** __endptr, locale_t) {
+  return ::wcstod(__nptr, __endptr);
+}
+
+inline _LIBCPP_HIDE_FROM_ABI_C float wcstof_l(const wchar_t* __nptr, wchar_t** __endptr, locale_t) {
+  return ::wcstof(__nptr, __endptr);
+}
+
 #ifdef __cplusplus
 }
 #endif
