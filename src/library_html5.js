@@ -2297,8 +2297,6 @@ var LibraryHTML5 = {
   },
 
 #if OFFSCREENCANVAS_SUPPORT
-  _emscripten_set_offscreencanvas_size: 'emscripten_set_canvas_element_size',
-
   $setOffscreenCanvasSizeOnTargetThread__deps: ['$stringToNewUTF8', '_emscripten_set_offscreencanvas_size_on_thread'],
   $setOffscreenCanvasSizeOnTargetThread: (targetThread, targetCanvas, width, height) => {
     targetCanvas = targetCanvas ? UTF8ToString(targetCanvas) : '';
@@ -2411,15 +2409,6 @@ var LibraryHTML5 = {
     if (!canvas) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
     {{{ makeSetValue('width', '0', 'canvas.width', 'i32') }}};
     {{{ makeSetValue('height', '0', 'canvas.height', 'i32') }}};
-  },
-#endif
-
-#if !PTHREADS || !OFFSCREENCANVAS_SUPPORT
-  _emscripten_set_offscreencanvas_size: (target, width, height) => {
-#if ASSERTIONS
-    err('emscripten_set_offscreencanvas_size: Build with -sOFFSCREENCANVAS_SUPPORT=1 to enable transferring canvases to pthreads.');
-#endif
-    return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
   },
 #endif
 
