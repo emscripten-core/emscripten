@@ -97,6 +97,7 @@ When developing SIMD code to use WebAssembly SIMD, implementors should be aware 
 .. list-table:: WebAssembly SIMD instructions with performance implications
    :widths: 10 10 30
    :header-rows: 1
+   :class: wrap-table-content
 
    * - WebAssembly SIMD instruction
      - Arch
@@ -176,6 +177,7 @@ In addition to consulting the tables below, you can turn on diagnostics for slow
 .. list-table:: x86 SSE intrinsics available via #include <xmmintrin.h> and -msse
    :widths: 20 30
    :header-rows: 1
+   :class: wrap-table-content
 
    * - Intrinsic name
      - WebAssembly SIMD support
@@ -410,6 +412,7 @@ The following table highlights the availability and expected performance of diff
 .. list-table:: x86 SSE2 intrinsics available via #include <emmintrin.h> and -msse2
    :widths: 20 30
    :header-rows: 1
+   :class: wrap-table-content
 
    * - Intrinsic name
      - WebAssembly SIMD support
@@ -862,6 +865,7 @@ The following table highlights the availability and expected performance of diff
 .. list-table:: x86 SSE3 intrinsics available via #include <pmmintrin.h> and -msse3
    :widths: 20 30
    :header-rows: 1
+   :class: wrap-table-content
 
    * - Intrinsic name
      - WebAssembly SIMD support
@@ -901,6 +905,7 @@ The following table highlights the availability and expected performance of diff
 .. list-table:: x86 SSSE3 intrinsics available via #include <tmmintrin.h> and -mssse3
    :widths: 20 30
    :header-rows: 1
+   :class: wrap-table-content
 
    * - Intrinsic name
      - WebAssembly SIMD support
@@ -947,6 +952,7 @@ The following table highlights the availability and expected performance of diff
 .. list-table:: x86 SSE4.1 intrinsics available via #include <smmintrin.h> and -msse4.1
    :widths: 20 30
    :header-rows: 1
+   :class: wrap-table-content
 
    * - Intrinsic name
      - WebAssembly SIMD support
@@ -1051,9 +1057,9 @@ The following table highlights the availability and expected performance of diff
    * - _mm_packus_epi32
      - ✅ wasm_u16x8_narrow_i32x4
    * - _mm_round_pd
-     - ✅ wasm_f64x2_ceil/wasm_f64x2_floor/wasm_f64x2_nearest/wasm_f64x2_trunc
+     - ✅ wasm_f64x2_ceil, wasm_f64x2_floor, wasm_f64x2_nearest, wasm_f64x2_trunc
    * - _mm_round_ps
-     - ✅ wasm_f32x4_ceil/wasm_f32x4_floor/wasm_f32x4_nearest/wasm_f32x4_trunc
+     - ✅ wasm_f32x4_ceil, wasm_f32x4_floor, wasm_f32x4_nearest, wasm_f32x4_trunc
    * - _mm_round_sd
      - ⚠️ emulated with a shuffle
    * - _mm_round_ss
@@ -1094,6 +1100,7 @@ The following table highlights the availability and expected performance of diff
 .. list-table:: x86 AVX intrinsics available via #include <immintrin.h> and -mavx
    :widths: 20 30
    :header-rows: 1
+   :class: wrap-table-content
 
    * - Intrinsic name
      - WebAssembly SIMD support
@@ -1175,6 +1182,7 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
 .. list-table:: NEON Intrinsics
    :widths: 20 30
    :header-rows: 1
+   :class: wrap-table-content
 
    * - Intrinsic name
      - Wasm SIMD Support

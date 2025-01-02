@@ -340,6 +340,9 @@ def get_binaryen_passes():
   if not feature_matrix.caniuse(feature_matrix.Feature.SIGN_EXT):
     logger.debug('lowering sign-ext feature due to incompatible target browser engines')
     passes += ['--signext-lowering']
+  # nontrapping-fp is enabled by default in llvm. Lower it away if requested.
+  if not feature_matrix.caniuse(feature_matrix.Feature.NON_TRAPPING_FPTOINT):
+    passes += ['--llvm-nontrapping-fptoint-lowering']
   if optimizing:
     passes += ['--post-emscripten']
     if settings.SIDE_MODULE:
@@ -697,9 +700,6 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
     options.post_js.append(utils.path_from_root('src/threadprofiler.js'))
     settings.REQUIRED_EXPORTS.append('emscripten_main_runtime_thread_id')
 
-  options.extern_pre_js = read_js_files(options.extern_pre_js)
-  options.extern_post_js = read_js_files(options.extern_post_js)
-
   # TODO: support source maps with js_transform
   if options.js_transform and settings.GENERATE_SOURCE_MAP:
     logger.warning('disabling source maps because a js transform is being done')
@@ -795,9 +795,19 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
     # to js.
     settings.WASM = 1
     settings.WASM2JS = 1
+    # Wasm bigint doesn't make sense with wasm2js, since it controls how the
+    # wasm and JS interact.
+    if user_settings.get('WASM_BIGINT') and settings.WASM_BIGINT:
+      exit_with_error('WASM_BIGINT=1 is not compatible with WASM=0 (wasm2js)')
+    settings.WASM_BIGINT = 0
+    feature_matrix.disable_feature(feature_matrix.Feature.JS_BIGINT_INTEGRATION)
   if settings.WASM == 2:
     # Requesting both Wasm and Wasm2JS support
     settings.WASM2JS = 1
+    if user_settings.get('WASM_BIGINT') and settings.WASM_BIGINT:
+      exit_with_error('WASM_BIGINT=1 is not compatible with WASM=2 (wasm2js)')
+    settings.WASM_BIGINT = 0
+    feature_matrix.disable_feature(feature_matrix.Feature.JS_BIGINT_INTEGRATION)
 
   if options.oformat == OFormat.WASM and not settings.SIDE_MODULE:
     # if the output is just a wasm file, it will normally be a standalone one,
@@ -1144,9 +1154,6 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
     if settings.MINIMAL_RUNTIME and options.oformat == OFormat.HTML and not settings.PTHREADS:
       settings.USE_READY_PROMISE = 0
 
-  if settings.WASM2JS and settings.LEGACY_VM_SUPPORT:
-    settings.POLYFILL_OLD_MATH_FUNCTIONS = 1
-
   check_browser_versions()
 
   if settings.MIN_NODE_VERSION >= 150000:
@@ -1188,10 +1195,6 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
   if not settings.DISABLE_EXCEPTION_CATCHING and settings.EXCEPTION_STACK_TRACES and not supports_es6_classes:
     diagnostics.warning('transpile', '-sEXCEPTION_STACK_TRACES requires an engine that support ES6 classes.')
     settings.EXCEPTION_STACK_TRACES = 0
-
-  # Silently drop any individual backwards compatibility emulation flags that are known never to occur on browsers that support WebAssembly.
-  if not settings.WASM2JS:
-    settings.POLYFILL_OLD_MATH_FUNCTIONS = 0
 
   if settings.STB_IMAGE:
     state.append_link_flag('-lstb_image')
@@ -1391,6 +1394,7 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
   settings.SUPPORTS_PROMISE_ANY = feature_matrix.caniuse(feature_matrix.Feature.PROMISE_ANY)
   if not settings.BULK_MEMORY:
     settings.BULK_MEMORY = feature_matrix.caniuse(feature_matrix.Feature.BULK_MEMORY)
+  default_setting('WASM_BIGINT', feature_matrix.caniuse(feature_matrix.Feature.JS_BIGINT_INTEGRATION))
 
   if settings.AUDIO_WORKLET:
     if settings.AUDIO_WORKLET == 1:
@@ -2144,13 +2148,15 @@ def phase_final_emitting(options, state, target, wasm_target):
 
   # Apply pre and postjs files
   if options.extern_pre_js or options.extern_post_js:
+    extern_pre_js = read_js_files(options.extern_pre_js)
+    extern_post_js = read_js_files(options.extern_post_js)
     logger.debug('applying extern pre/postjses')
     src = read_file(final_js)
     final_js += '.epp.js'
     with open(final_js, 'w', encoding='utf-8') as f:
-      f.write(options.extern_pre_js)
+      f.write(extern_pre_js)
       f.write(src)
-      f.write(options.extern_post_js)
+      f.write(extern_post_js)
     save_intermediate('extern-pre-post')
 
   js_manipulation.handle_license(final_js)
@@ -2377,48 +2383,46 @@ def node_pthread_detection():
 def modularize():
   global final_js
   logger.debug(f'Modularizing, assigning to var {settings.EXPORT_NAME}')
-  src = read_file(final_js)
+  generated_js = read_file(final_js)
 
   # When targetting node and ES6 we use `await import ..` in the generated code
   # so the outer function needs to be marked as async.
-  async_emit = ''
-  if settings.EXPORT_ES6 and settings.ENVIRONMENT_MAY_BE_NODE:
-    async_emit = 'async '
-
-  # TODO: Remove when https://bugs.webkit.org/show_bug.cgi?id=223533 is resolved.
-  if async_emit != '' and settings.EXPORT_NAME == 'config':
-    diagnostics.warning('emcc', 'EXPORT_NAME should not be named "config" when targeting Safari')
+  if settings.WASM_ASYNC_COMPILATION or (settings.EXPORT_ES6 and settings.ENVIRONMENT_MAY_BE_NODE):
+    maybe_async = 'async '
+  else:
+    maybe_async = ''
 
   if settings.MODULARIZE == 'instance':
-    src = '''
-export default async function init(moduleArg = {}) {
+    wrapper_function = '''
+export default %(maybe_async)s function init(moduleArg = {}) {
   var moduleRtn;
 
-%(src)s
-
-  return await moduleRtn;
-}
-''' % {
-      'src': src,
-    }
-  else:
-    src = '''
-%(maybe_async)sfunction(moduleArg = {}) {
-  var moduleRtn;
-
-%(src)s
+%(generated_js)s
 
   return moduleRtn;
 }
 ''' % {
-      'maybe_async': async_emit,
-      'src': src,
+      'generated_js': generated_js,
+      'maybe_async': maybe_async,
+    }
+  else:
+    wrapper_function = '''
+%(maybe_async)sfunction(moduleArg = {}) {
+  var moduleRtn;
+
+%(generated_js)s
+
+  return moduleRtn;
+}
+''' % {
+      'maybe_async': maybe_async,
+      'generated_js': generated_js
     }
 
   if settings.MINIMAL_RUNTIME and not settings.PTHREADS:
     # Single threaded MINIMAL_RUNTIME programs do not need access to
     # document.currentScript, so a simple export declaration is enough.
-    src = '/** @nocollapse */ var %s = %s' % (settings.EXPORT_NAME, src)
+    src = f'var {settings.EXPORT_NAME} = {wrapper_function};'
   else:
     script_url_node = ''
     # When MODULARIZE this JS may be executed later,
@@ -2436,25 +2440,38 @@ export default async function init(moduleArg = {}) {
       src = '''\
   var _scriptName = %(script_url)s;
   %(script_url_node)s
-  %(src)s
+  %(wrapper_function)s
 ''' % {
         'script_url': script_url,
         'script_url_node': script_url_node,
-        'src': src,
+        'wrapper_function': wrapper_function,
       }
     else:
       src = '''\
 var %(EXPORT_NAME)s = (() => {
   var _scriptName = %(script_url)s;
   %(script_url_node)s
-  return (%(src)s);
+  return (%(wrapper_function)s);
 })();
 ''' % {
         'EXPORT_NAME': settings.EXPORT_NAME,
         'script_url': script_url,
         'script_url_node': script_url_node,
-        'src': src,
+        'wrapper_function': wrapper_function,
       }
+
+  if settings.ASSERTIONS and settings.MODULARIZE != 'instance':
+    src += '''\
+(() => {
+  // Create a small, never-async wrapper around %(EXPORT_NAME)s which
+  // checks for callers incorrectly using it with `new`.
+  var real_%(EXPORT_NAME)s = %(EXPORT_NAME)s;
+  %(EXPORT_NAME)s = function(arg) {
+    if (new.target) throw new Error("%(EXPORT_NAME)s() should not be called with `new %(EXPORT_NAME)s()`");
+    return real_%(EXPORT_NAME)s(arg);
+  }
+})();
+''' % {'EXPORT_NAME': settings.EXPORT_NAME}
 
   # Given the async nature of how the Module function and Module object
   # come into existence in AudioWorkletGlobalScope, store the Module

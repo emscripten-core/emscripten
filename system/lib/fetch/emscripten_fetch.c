@@ -233,10 +233,6 @@ void emscripten_fetch_free_unpacked_response_headers(char **unpackedHeaders) {
   }
 }
 
-void emscripten_fetch_free(unsigned int id) {
-  return _emscripten_fetch_free(id);
-}
-
 static void fetch_free(emscripten_fetch_t* fetch) {
   emscripten_fetch_free(fetch->id);
   fetch->id = 0;

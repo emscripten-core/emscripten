@@ -78,7 +78,7 @@ void test() {
       if ((flags & O_CREAT) && (flags & O_EXCL)) {
         assert(!success);
         assert(errno == EEXIST);
-      } else if ((flags & O_TRUNC) || i != 0 /*mode != O_RDONLY*/) {
+      } else if ((flags & O_TRUNC) || i != 0 /*mode != O_RDONLY*/ || (flags & O_CREAT)) {
         assert(!success);
         assert(errno == EISDIR);
       } else {

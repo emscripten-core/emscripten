@@ -293,7 +293,7 @@ def main():
         if USE_NINJA:
           library.generate(deterministic_paths=True)
         else:
-          library.build(deterministic_paths=True)
+          library.build()
     elif what == 'sysroot':
       if do_clear:
         cache.erase_file('sysroot_install.stamp')
