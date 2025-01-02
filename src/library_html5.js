@@ -2414,15 +2414,6 @@ var LibraryHTML5 = {
   },
 #endif
 
-#if !PTHREADS || !OFFSCREENCANVAS_SUPPORT
-  _emscripten_set_offscreencanvas_size: (target, width, height) => {
-#if ASSERTIONS
-    err('emscripten_set_offscreencanvas_size: Build with -sOFFSCREENCANVAS_SUPPORT=1 to enable transferring canvases to pthreads.');
-#endif
-    return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
-  },
-#endif
-
   // JavaScript-friendly API, returns pair [width, height]
   $getCanvasElementSize__deps: ['emscripten_get_canvas_element_size', '$stackSave', '$stackRestore', '$stringToUTF8OnStack'],
   $getCanvasElementSize: (target) => {
