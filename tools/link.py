@@ -2507,7 +2507,7 @@ var %(EXPORT_NAME)s = (() => {
       src += 'export {' + ', '.join(exports) + '};\n'
     else:
       src += 'export default %s;\n' % settings.EXPORT_NAME
-  elif not settings.MINIMAL_RUNTIME:
+  else:
     src += '''\
 if (typeof exports === 'object' && typeof module === 'object') {
   module.exports = %(EXPORT_NAME)s;
