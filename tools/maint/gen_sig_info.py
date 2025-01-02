@@ -166,10 +166,16 @@ wasi_symbols = {
 
 
 def ignore_symbol(s, cxx):
+  # We need to ignore certain symbols here. Specifically, any symbol that is not
+  # pre-declared in a C/C++ header need to be ignored, otherwise the generated
+  # file will fail to compile.
   if s.startswith('$'):
     return True
   if s in {'SDL_GetKeyState'}:
     return True
+  # Symbols that start with `emscripten_gl` or `emscripten_alc` are auto-generated
+  # wrappers around GL and OpenGL symbols.  Since they inherit their signature they
+  # don't need to be auto-generated.
   if s.startswith('emscripten_gl') or s.startswith('emscripten_alc'):
     return True
   if s.startswith('gl') and any(s.endswith(x) for x in ('NV', 'EXT', 'WEBGL', 'ARB', 'ANGLE')):
