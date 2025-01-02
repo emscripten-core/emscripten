@@ -3,7 +3,7 @@
 #include "emscripten_internal.h"
 
 typedef struct set_cavas_size_t {
-  char* target;
+  const char* target;
   int width;
   int height;
 } set_cavas_size_t;
@@ -11,15 +11,13 @@ typedef struct set_cavas_size_t {
 static void do_set_size(void* arg) {
   set_cavas_size_t* args = (set_cavas_size_t*)arg;
   _emscripten_set_offscreencanvas_size(args->target, args->width, args->height);
-  free(args->target);
+  free((char *) args->target);
   free(arg);
 }
 
-// Warning: this function takes ownership of the "target" parameter
-// - DO NOT call this function with a string literal
-// - DO NOT free the memory after calling this function
+// This function takes ownership of the "target" string.
 void _emscripten_set_offscreencanvas_size_on_thread(pthread_t t,
-                                                    char* target,
+                                                    const char* target,
                                                     int width,
                                                     int height) {
   set_cavas_size_t* arg = malloc(sizeof(set_cavas_size_t));
