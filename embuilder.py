@@ -291,7 +291,7 @@ def main():
         library.erase()
       if do_build:
         if USE_NINJA:
-          library.generate(deterministic_paths=True)
+          library.generate()
         else:
           library.build()
     elif what == 'sysroot':
