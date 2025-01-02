@@ -554,7 +554,14 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
   CLOSURE_EXTERNS = [path_from_root('src/closure-externs/closure-externs.js')]
 
   if settings.MODULARIZE:
-    CLOSURE_EXTERNS += [path_from_root('src/closure-externs/modularize-externs.js')]
+    temp = shared.get_temp_files().get('.js', prefix='emcc_closure_externs_').name
+    utils.write_file(temp, f'''
+/**
+ * @suppress {{duplicate}}
+ */
+var {settings.EXPORT_NAME};
+''')
+    CLOSURE_EXTERNS += [temp]
 
   if settings.USE_WEBGPU:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/webgpu-externs.js')]

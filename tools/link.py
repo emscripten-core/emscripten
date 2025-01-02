@@ -2084,7 +2084,8 @@ def fix_es6_import_statements(js_file):
   src = read_file(js_file)
   write_file(js_file, src
              .replace('EMSCRIPTEN$IMPORT$META', 'import.meta')
-             .replace('EMSCRIPTEN$AWAIT$IMPORT', 'await import'))
+             .replace('EMSCRIPTEN$AWAIT$IMPORT', 'await import')
+             .replace('EMSCRIPTEN$EXPORT$DEFAULT =', 'export default'))
   save_intermediate('es6-module')
 
 
@@ -2121,9 +2122,7 @@ def phase_final_emitting(options, state, target, wasm_target):
   if settings.AUDIO_WORKLET == 1:
     create_worker_file('src/audio_worklet.js', target_dir, settings.AUDIO_WORKLET_FILE, options)
 
-  if settings.MODULARIZE:
-    modularize()
-  elif settings.USE_CLOSURE_COMPILER:
+  if not settings.MODULARIZE and settings.USE_CLOSURE_COMPILER:
     module_export_name_substitution()
 
   # Run a final optimization pass to clean up items that were not possible to
@@ -2369,165 +2368,6 @@ def phase_binaryen(target, options, wasm_target):
       js = do_replace(js, '<<< WASM_BINARY_FILE >>>', get_subresource_location(wasm_target))
     delete_file(wasm_target)
     write_file(final_js, js)
-
-
-def node_pthread_detection():
-  # Under node we detect that we are running in a pthread by checking the
-  # workerData property.
-  if settings.EXPORT_ES6:
-    return "(await import('worker_threads')).workerData === 'em-pthread';\n"
-  else:
-    return "require('worker_threads').workerData === 'em-pthread'\n"
-
-
-def modularize():
-  global final_js
-  logger.debug(f'Modularizing, assigning to var {settings.EXPORT_NAME}')
-  generated_js = read_file(final_js)
-
-  # When targetting node and ES6 we use `await import ..` in the generated code
-  # so the outer function needs to be marked as async.
-  if settings.WASM_ASYNC_COMPILATION or (settings.EXPORT_ES6 and settings.ENVIRONMENT_MAY_BE_NODE):
-    maybe_async = 'async '
-  else:
-    maybe_async = ''
-
-  if settings.MODULARIZE == 'instance':
-    wrapper_function = '''
-export default %(maybe_async)s function init(moduleArg = {}) {
-  var moduleRtn;
-
-%(generated_js)s
-
-  return moduleRtn;
-}
-''' % {
-      'generated_js': generated_js,
-      'maybe_async': maybe_async,
-    }
-  else:
-    wrapper_function = '''
-%(maybe_async)sfunction(moduleArg = {}) {
-  var moduleRtn;
-
-%(generated_js)s
-
-  return moduleRtn;
-}
-''' % {
-      'maybe_async': maybe_async,
-      'generated_js': generated_js
-    }
-
-  if settings.MINIMAL_RUNTIME and not settings.PTHREADS:
-    # Single threaded MINIMAL_RUNTIME programs do not need access to
-    # document.currentScript, so a simple export declaration is enough.
-    src = f'var {settings.EXPORT_NAME} = {wrapper_function};'
-  else:
-    script_url_node = ''
-    # When MODULARIZE this JS may be executed later,
-    # after document.currentScript is gone, so we save it.
-    # In EXPORT_ES6 + PTHREADS the 'thread' is actually an ES6 module
-    # webworker running in strict mode, so doesn't have access to 'document'.
-    # In this case use 'import.meta' instead.
-    if settings.EXPORT_ES6 and settings.USE_ES6_IMPORT_META:
-      script_url = 'import.meta.url'
-    else:
-      script_url = "typeof document != 'undefined' ? document.currentScript?.src : undefined"
-      if settings.ENVIRONMENT_MAY_BE_NODE:
-        script_url_node = "if (typeof __filename != 'undefined') _scriptName = _scriptName || __filename;"
-    if settings.MODULARIZE == 'instance':
-      src = '''\
-  var _scriptName = %(script_url)s;
-  %(script_url_node)s
-  %(wrapper_function)s
-''' % {
-        'script_url': script_url,
-        'script_url_node': script_url_node,
-        'wrapper_function': wrapper_function,
-      }
-    else:
-      src = '''\
-var %(EXPORT_NAME)s = (() => {
-  var _scriptName = %(script_url)s;
-  %(script_url_node)s
-  return (%(wrapper_function)s);
-})();
-''' % {
-        'EXPORT_NAME': settings.EXPORT_NAME,
-        'script_url': script_url,
-        'script_url_node': script_url_node,
-        'wrapper_function': wrapper_function,
-      }
-
-  if settings.ASSERTIONS and settings.MODULARIZE != 'instance':
-    src += '''\
-(() => {
-  // Create a small, never-async wrapper around %(EXPORT_NAME)s which
-  // checks for callers incorrectly using it with `new`.
-  var real_%(EXPORT_NAME)s = %(EXPORT_NAME)s;
-  %(EXPORT_NAME)s = function(arg) {
-    if (new.target) throw new Error("%(EXPORT_NAME)s() should not be called with `new %(EXPORT_NAME)s()`");
-    return real_%(EXPORT_NAME)s(arg);
-  }
-})();
-''' % {'EXPORT_NAME': settings.EXPORT_NAME}
-
-  # Given the async nature of how the Module function and Module object
-  # come into existence in AudioWorkletGlobalScope, store the Module
-  # function under a different variable name so that AudioWorkletGlobalScope
-  # will be able to reference it without aliasing/conflicting with the
-  # Module variable name. This should happen even in MINIMAL_RUNTIME builds
-  # for MODULARIZE and EXPORT_ES6 to work correctly.
-  if settings.AUDIO_WORKLET:
-    src += f'globalThis.AudioWorkletModule = {settings.EXPORT_NAME};\n'
-
-  # Export using a UMD style export, or ES6 exports if selected
-  if settings.EXPORT_ES6:
-    if settings.MODULARIZE == 'instance':
-      exports = settings.EXPORTED_FUNCTIONS + settings.EXPORTED_RUNTIME_METHODS
-      # Declare a top level var for each export so that code in the init function
-      # can assign to it and update the live module bindings.
-      src += 'var ' + ', '.join(['__exp_' + export for export in exports]) + ';\n'
-      # Export the functions with their original name.
-      exports = ['__exp_' + export + ' as ' + export for export in exports]
-      src += 'export {' + ', '.join(exports) + '};\n'
-    else:
-      src += 'export default %s;\n' % settings.EXPORT_NAME
-  else:
-    src += '''\
-if (typeof exports === 'object' && typeof module === 'object') {
-  module.exports = %(EXPORT_NAME)s;
-  // This default export looks redundant, but it allows TS to import this
-  // commonjs style module.
-  module.exports.default = %(EXPORT_NAME)s;
-} else if (typeof define === 'function' && define['amd'])
-  define([], () => %(EXPORT_NAME)s);
-''' % {'EXPORT_NAME': settings.EXPORT_NAME}
-
-  if settings.PTHREADS:
-    # Create code for detecting if we are running in a pthread.
-    # Normally this detection is done when the module is itself run but
-    # when running in MODULARIZE mode we need use this to know if we should
-    # run the module constructor on startup (true only for pthreads).
-    if settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WORKER:
-      src += "var isPthread = globalThis.self?.name?.startsWith('em-pthread');\n"
-      # In order to support both web and node we also need to detect node here.
-      if settings.ENVIRONMENT_MAY_BE_NODE:
-        src += "var isNode = typeof globalThis.process?.versions?.node == 'string';\n"
-        src += f'if (isNode) isPthread = {node_pthread_detection()}\n'
-    elif settings.ENVIRONMENT_MAY_BE_NODE:
-      src += f'var isPthread = {node_pthread_detection()}\n'
-    src += '// When running as a pthread, construct a new instance on startup\n'
-    if settings.MODULARIZE == 'instance':
-      src += 'isPthread && init();\n'
-    else:
-      src += 'isPthread && %s();\n' % settings.EXPORT_NAME
-
-  final_js += '.modular.js'
-  write_file(final_js, src)
-  shared.get_temp_files().note(final_js)
-  save_intermediate('modularized')
 
 
 def module_export_name_substitution():

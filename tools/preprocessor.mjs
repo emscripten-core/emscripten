@@ -31,7 +31,7 @@ loadSettingsFile(settingsFile);
 const parseTools = await import('../src/parseTools.mjs');
 await import('../src/modules.mjs');
 
-let output = parseTools.preprocess(inputFile);
+let output = parseTools.preprocess(inputFile, /*closureFriendly=*/ false);
 if (expandMacros) {
   output = parseTools.processMacros(output, inputFile);
 }
