@@ -137,7 +137,7 @@ struct emscripten_fetch_t;
 void emscripten_start_fetch(struct emscripten_fetch_t* fetch);
 size_t _emscripten_fetch_get_response_headers_length(int32_t fetchID);
 size_t _emscripten_fetch_get_response_headers(int32_t fetchID, char *dst, size_t dstSizeBytes);
-void _emscripten_fetch_free(unsigned int);
+void emscripten_fetch_free(unsigned int);
 
 EMSCRIPTEN_RESULT _emscripten_set_offscreencanvas_size(const char *target, int width, int height);
 
