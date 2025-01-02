@@ -4908,20 +4908,6 @@ int main() {
     output = self.run_js('a.out.js')
     self.assertContained('|5|', output)
 
-  def test_LEGACY_VM_SUPPORT(self):
-    # when modern features are lacking, we can polyfill them or at least warn
-    create_file('pre.js', 'Math.imul = undefined;')
-
-    def test(expected, opts):
-      print(opts)
-      self.run_process([EMCC, test_file('hello_world.c'), '--pre-js', 'pre.js'] + opts)
-      self.assertContained(expected, self.run_js('a.out.js', assert_returncode=0 if opts else NON_ZERO))
-
-    # when legacy is needed, we show an error indicating so
-    test('build with LEGACY_VM_SUPPORT', [])
-    # legacy + disabling wasm works
-    test('hello, world!', ['-sLEGACY_VM_SUPPORT', '-sWASM=0'])
-
   @crossplatform
   def test_on_abort(self):
     expected_output = 'Module.onAbort was called'
@@ -15235,18 +15221,14 @@ addToLibrary({
   def test_uuid(self):
     # We run this test in Node/SPIDERMONKEY and browser environments because we
     # try to make use of high quality crypto random number generators such as
-    # crypto.getRandomValues or randomBytes (if available).
-
-    # Use closure compiler so we can check that require('crypto').randomBytes and
-    # window.crypto.getRandomValues doesn't get minified out.
+    # `getRandomValues` or `randomFillSync`.
     self.do_runf('test_uuid.c', emcc_args=['-O2', '--closure=1', '-luuid'])
 
+    # Check that test.js compiled with --closure 1 contains `randomFillSync` and
+    # `getRandomValues`
     js_out = read_file('test_uuid.js')
-
-    # Check that test.js compiled with --closure 1 contains ").randomBytes" and
-    # "window.crypto.getRandomValues"
-    self.assertContained(").randomBytes", js_out)
-    self.assertContained("window.crypto.getRandomValues", js_out)
+    self.assertContained('.randomFillSync(', js_out)
+    self.assertContained('.getRandomValues(', js_out)
 
   def test_wasm64_no_asan(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMEMORY64', '-fsanitize=address'])

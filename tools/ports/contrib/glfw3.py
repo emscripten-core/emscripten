@@ -6,8 +6,8 @@
 import os
 from typing import Union, Dict
 
-TAG = '3.4.0.20241221'
-HASH = 'e977fcab4747085fead33ab365ece02d6185564401f4904583095e45d3599d2be9315398f8b414b0da8ee954964a1649d2932d378fc8bf96caa986b43b3ae5e7'
+TAG = '3.4.0.20241230'
+HASH = '917df0d23e425d71b189294481fe369dc50baa28493c8f4d6590c9d99b4d880ddeb1064d1481ef1586bee1504898d5b0d0a2f9b4e77c7ac384237af238e1a7a6'
 
 # contrib port information (required)
 URL = 'https://github.com/pongasoft/emscripten-glfw'

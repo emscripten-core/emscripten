@@ -10,7 +10,7 @@ executors:
   linux-python:
     docker:
       - image: cimg/python:3.10.7
-  bionic:
+  focal:
     docker:
       - image: emscripten/emscripten-ci:focal
     environment:
@@ -247,7 +247,7 @@ commands:
           # detect flakyness.
           condition: ${CIRCLE_PULL_REQUEST}
           steps:
-            set-retry-flaky-tests
+            - set-retry-flaky-tests
       - run:
           name: run tests (<< parameters.title >>)
           command: |
@@ -411,7 +411,7 @@ commands:
 
 jobs:
   build-docs:
-    executor: bionic
+    executor: focal
     steps:
       - checkout
       - pip-install
@@ -420,7 +420,7 @@ jobs:
       - run: tools/maint/check_emcc_help_text.py
       - run: make -C site html
   ruff:
-    executor: bionic
+    executor: focal
     steps:
       - checkout
       - pip-install
@@ -428,7 +428,7 @@ jobs:
       # TODO (cclauss): When ruff supports rule E303 without --preview, remove following line
       - run: ruff check --preview --select=E303
   mypy:
-    executor: bionic
+    executor: focal
     steps:
       - checkout
       - pip-install
@@ -442,13 +442,13 @@ jobs:
           npm run lint
           npm run check
   test-sanity:
-    executor: bionic
+    executor: focal
     steps:
       - run-tests-linux:
           frozen_cache: false
           test_targets: "sanity"
   build-linux:
-    executor: bionic
+    executor: focal
     # xlarge has 4x the cores of the default medium, costs 4x as much, and runs
     # in about 1/2 the time, so it is not cost-effective (overall it is 2x the
     # cost for the same work), but given this blocks almost all the other jobs
@@ -488,19 +488,19 @@ jobs:
       - persist
   # Perhaps we don't need to run this suite with every commit. Consider moving this to FYI bot.
   test-posixtest:
-    executor: bionic
+    executor: focal
     steps:
       - run-tests-linux:
           test_targets: "posixtest"
   test-core0:
-    executor: bionic
+    executor: focal
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
     steps:
       - run-tests-linux:
           test_targets: "core0"
   test-core2:
-    executor: bionic
+    executor: focal
     environment:
       EMTEST_BROWSER: "node"
       EMTEST_SKIP_NODE_CANARY: "1"
@@ -543,7 +543,7 @@ jobs:
             corez.test_dylink_syslibs_all"
       - upload-test-results
   test-core3:
-    executor: bionic
+    executor: focal
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
     steps:
@@ -623,7 +623,7 @@ jobs:
   test-wasm2js1:
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
-    executor: bionic
+    executor: focal
     steps:
       - run-tests-linux:
           test_targets: "wasm2js1"
@@ -796,7 +796,7 @@ jobs:
             core2.test_pthread_unhandledrejection"
       - upload-test-results
   test-other:
-    executor: bionic
+    executor: focal
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
       EMTEST_SKIP_RUST: "1"
@@ -810,7 +810,7 @@ jobs:
           # headers on emsdk-bundled clang
           test_targets: "other skip:other.test_native_link_error_message"
   test-browser-chrome:
-    executor: bionic
+    executor: focal
     environment:
       EMTEST_LACKS_WEBGPU: "1"
     steps:
@@ -821,7 +821,7 @@ jobs:
             browser skip:browser.test_4gb_fail
             "
   test-browser-chrome-wasm64:
-    executor: bionic
+    executor: focal
     environment:
       EMTEST_LACKS_WEBGPU: "1"
     steps:
@@ -836,7 +836,7 @@ jobs:
             skip:browser64.test_4gb_fail
             skip:browser64.test_4gb"
   test-browser-chrome-2gb:
-    executor: bionic
+    executor: focal
     environment:
       EMTEST_LACKS_WEBGPU: "1"
     steps:
@@ -844,7 +844,7 @@ jobs:
           title: "browser_2gb"
           test_targets: "browser_2gb"
   test-browser-chrome-wasm64-4gb:
-    executor: bionic
+    executor: focal
     environment:
       EMTEST_LACKS_WEBGPU: "1"
       EMTEST_SKIP_NODE_CANARY: "1"
@@ -853,7 +853,7 @@ jobs:
           title: "browser64_4gb"
           test_targets: "browser64_4gb"
   test-browser-firefox:
-    executor: bionic
+    executor: focal
     steps:
       - prepare-for-tests
       - run-tests-firefox:
@@ -876,7 +876,7 @@ jobs:
             skip:browser.test_glut_glutget
             "
   test-browser-firefox-wasm64:
-    executor: bionic
+    executor: focal
     steps:
       - checkout
       - run:
@@ -893,12 +893,12 @@ jobs:
   # TODO(sbc): Re-enable once we figure out why the emrun tests are
   # locking up.
   #test-browser-chrome-emrun:
-  #  executor: bionic
+  #  executor: focal
   #  steps:
   #    - run-tests-chrome:
   #        test_targets: "emrun"
   test-sockets-chrome:
-    executor: bionic
+    executor: focal
     steps:
       - test-sockets-chrome
   # windows and mac do not have separate build and test jobs, as they only run
@@ -1023,7 +1023,8 @@ workflows:
       - test-sockets-chrome:
           requires:
             - build-linux
-      - test-jsc
+      # https://github.com/GoogleChromeLabs/jsvu/issues/156
+      #- test-jsc
       - test-spidermonkey
       - test-node-compat
       - test-windows

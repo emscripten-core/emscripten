@@ -700,9 +700,6 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
     options.post_js.append(utils.path_from_root('src/threadprofiler.js'))
     settings.REQUIRED_EXPORTS.append('emscripten_main_runtime_thread_id')
 
-  options.extern_pre_js = read_js_files(options.extern_pre_js)
-  options.extern_post_js = read_js_files(options.extern_post_js)
-
   # TODO: support source maps with js_transform
   if options.js_transform and settings.GENERATE_SOURCE_MAP:
     logger.warning('disabling source maps because a js transform is being done')
@@ -1157,9 +1154,6 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
     if settings.MINIMAL_RUNTIME and options.oformat == OFormat.HTML and not settings.PTHREADS:
       settings.USE_READY_PROMISE = 0
 
-  if settings.WASM2JS and settings.LEGACY_VM_SUPPORT:
-    settings.POLYFILL_OLD_MATH_FUNCTIONS = 1
-
   check_browser_versions()
 
   if settings.MIN_NODE_VERSION >= 150000:
@@ -1201,10 +1195,6 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
   if not settings.DISABLE_EXCEPTION_CATCHING and settings.EXCEPTION_STACK_TRACES and not supports_es6_classes:
     diagnostics.warning('transpile', '-sEXCEPTION_STACK_TRACES requires an engine that support ES6 classes.')
     settings.EXCEPTION_STACK_TRACES = 0
-
-  # Silently drop any individual backwards compatibility emulation flags that are known never to occur on browsers that support WebAssembly.
-  if not settings.WASM2JS:
-    settings.POLYFILL_OLD_MATH_FUNCTIONS = 0
 
   if settings.STB_IMAGE:
     state.append_link_flag('-lstb_image')
@@ -2158,13 +2148,15 @@ def phase_final_emitting(options, state, target, wasm_target):
 
   # Apply pre and postjs files
   if options.extern_pre_js or options.extern_post_js:
+    extern_pre_js = read_js_files(options.extern_pre_js)
+    extern_post_js = read_js_files(options.extern_post_js)
     logger.debug('applying extern pre/postjses')
     src = read_file(final_js)
     final_js += '.epp.js'
     with open(final_js, 'w', encoding='utf-8') as f:
-      f.write(options.extern_pre_js)
+      f.write(extern_pre_js)
       f.write(src)
-      f.write(options.extern_post_js)
+      f.write(extern_post_js)
     save_intermediate('extern-pre-post')
 
   js_manipulation.handle_license(final_js)
