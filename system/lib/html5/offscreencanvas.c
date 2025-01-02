@@ -10,7 +10,7 @@ typedef struct set_cavas_size_t {
 
 static void do_set_size(void* arg) {
   set_cavas_size_t* args = (set_cavas_size_t*)arg;
-  _emscripten_set_offscreencanvas_size(args->target, args->width, args->height);
+  emscripten_set_canvas_element_size(args->target, args->width, args->height);
   free((char *) args->target);
   free(arg);
 }
