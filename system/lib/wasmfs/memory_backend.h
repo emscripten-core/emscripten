@@ -3,10 +3,8 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-// This file defines the memory file class of the new file system.
-// This should be the only backend file type defined in a header since it is the
-// default type. Current Status: Work in Progress. See
-// https://github.com/emscripten-core/emscripten/issues/15041.
+// This file defines the memory file class. This should be the only backend file
+// type defined in a header since it is the default type.
 
 #pragma once
 
