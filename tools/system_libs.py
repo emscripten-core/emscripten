@@ -422,17 +422,15 @@ class Library:
   def get_path(self, absolute=False):
     return cache.get_lib_name(self.get_filename(), absolute=absolute)
 
-  def build(self, deterministic_paths=False):
+  def build(self):
     """
     Gets the cached path of this library.
 
     This will trigger a build if this library is not in the cache.
     """
-    self.deterministic_paths = deterministic_paths
     return cache.get(self.get_path(), self.do_build, force=USE_NINJA == 2, quiet=USE_NINJA)
 
   def generate(self):
-    self.deterministic_paths = False
     return cache.get(self.get_path(), self.do_generate, force=USE_NINJA == 2, quiet=USE_NINJA,
                      deferred=True)
 
@@ -600,12 +598,11 @@ class Library:
     if self.includes:
       cflags += ['-I' + utils.path_from_root(i) for i in self._inherit_list('includes')]
 
-    if self.deterministic_paths:
-      source_dir = utils.path_from_root()
-      relative_source_dir = os.path.relpath(source_dir, self.build_dir)
-      cflags += [f'-ffile-prefix-map={relative_source_dir}={DETERMINISITIC_PREFIX}']
-      cflags += [f'-ffile-prefix-map={source_dir}={DETERMINISITIC_PREFIX}',
-                 f'-fdebug-compilation-dir={DETERMINISITIC_PREFIX}']
+    source_dir = utils.path_from_root()
+    relative_source_dir = os.path.relpath(source_dir, self.build_dir)
+    cflags += [f'-ffile-prefix-map={source_dir}={DETERMINISITIC_PREFIX}',
+               f'-ffile-prefix-map={relative_source_dir}={DETERMINISITIC_PREFIX}',
+               f'-fdebug-compilation-dir={DETERMINISITIC_PREFIX}']
     return cflags
 
   def get_base_name_prefix(self):
