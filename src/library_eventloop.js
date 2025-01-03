@@ -123,7 +123,13 @@ LibraryJSEventLoop = {
   emscripten_set_timeout: (cb, msecs, userData) =>
     safeSetTimeout(() => {{{ makeDynCall('vp', 'cb') }}}(userData), msecs),
 
+#if AUDIO_WORKLET
+  // Use a wrapper function here since simply aliasing `clearTimeout` would
+  // cause the module to fail to load in the audio worklet context.
+  emscripten_clear_timeout: (id) => clearTimeout(id),
+#else
   emscripten_clear_timeout: 'clearTimeout',
+#endif
 
   emscripten_set_timeout_loop__deps: ['$callUserCallback', 'emscripten_get_now'],
   emscripten_set_timeout_loop: (cb, msecs, userData) => {
