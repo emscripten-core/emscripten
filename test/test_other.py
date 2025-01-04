@@ -770,25 +770,22 @@ f.close()
     self.assertContained('disabling source maps because a js transform is being done', err)
     self.assertIn('transformed!', read_file('a.out.js'))
 
+  @also_with_wasm2js
   @parameterized({
-    '': [[]],
-    'O1': [['-O1']],
-    'O2': [['-O2']],
-    'O3': [['-O3']],
+    '': ([],),
+    'O1': (['-O1'],),
+    'O2': (['-O2'],),
+    'O3': (['-O3'],),
   })
   def test_emcc_asm_v_wasm(self, opts):
-    for mode in ([], ['-sWASM=0']):
-      self.clear()
-      wasm = '=0' not in str(mode)
-      print('  mode', mode, 'wasm?', wasm)
-      self.run_process([EMCC, test_file('hello_world.c'), '-sENVIRONMENT=node,shell'] + opts + mode)
-      self.assertExists('a.out.js')
-      if wasm:
-        self.assertExists('a.out.wasm')
-      for engine in config.JS_ENGINES:
-        print('    engine', engine)
-        out = self.run_js('a.out.js', engine=engine)
-        self.assertContained('hello, world!', out)
+    self.run_process([EMCC, test_file('hello_world.c'), '-sENVIRONMENT=node,shell'] + opts + self.get_emcc_args())
+    self.assertExists('a.out.js')
+    if self.is_wasm():
+      self.assertExists('a.out.wasm')
+    for engine in config.JS_ENGINES:
+      print('    engine', engine)
+      out = self.run_js('a.out.js', engine=engine)
+      self.assertContained('hello, world!', out)
 
   @crossplatform
   def test_emcc_cflags(self):
@@ -4979,11 +4976,15 @@ int main() {
 
   @also_with_wasm2js
   @parameterized({
+    '': (1,),
+    'disabled': (0,),
+  })
+  @parameterized({
     '': ([],),
     '01': (['-O1', '-g2'],),
     'O2': (['-O2', '-g2', '-flto'],),
   })
-  def test_no_exit_runtime(self, opts):
+  def test_exit_runtime(self, do_exit, opts):
     create_file('code.cpp', r'''
 #include <stdio.h>
 
@@ -5008,27 +5009,23 @@ int main(int argc, char **argv) {
 }
     ''')
 
-    for no_exit in (1, 0):
-      print(no_exit)
-      cmd = [EMXX] + opts + ['code.cpp', '-sEXIT_RUNTIME=' + str(1 - no_exit)] + self.get_emcc_args()
-      if self.is_wasm():
-        cmd += ['--profiling-funcs'] # for function names
-      self.run_process(cmd)
-      output = self.run_js('a.out.js')
-      src = read_file('a.out.js')
-      if self.is_wasm():
-        src += '\n' + self.get_wasm_text('a.out.wasm')
-      exit = 1 - no_exit
-      print('  exit:', exit)
-      self.assertContained('coming around', output)
-      self.assertContainedIf('going away', output, exit)
-      # The wasm backend uses atexit to register destructors when
-      # constructors are called  There is currently no way to exclude
-      # these destructors from the wasm binary.
-      # TODO(sbc): Re-enabled these assertions once the wasm backend
-      # is able to eliminate these.
-      # assert ('atexit(' in src) == exit, 'atexit should not appear in src when EXIT_RUNTIME=0'
-      # assert ('_ZN5WasteILi2EED' in src) == exit, 'destructors should not appear if no exit:\n' + src
+    cmd = [EMXX, 'code.cpp', f'-sEXIT_RUNTIME={do_exit}'] + opts + self.get_emcc_args()
+    if self.is_wasm():
+      cmd += ['--profiling-funcs'] # for function names
+    self.run_process(cmd)
+    output = self.run_js('a.out.js')
+    src = read_file('a.out.js')
+    if self.is_wasm():
+      src += '\n' + self.get_wasm_text('a.out.wasm')
+    self.assertContained('coming around', output)
+    self.assertContainedIf('going away', output, do_exit)
+    # The wasm backend uses atexit to register destructors when
+    # constructors are called  There is currently no way to exclude
+    # these destructors from the wasm binary.
+    # TODO(sbc): Re-enabled these assertions once the wasm backend
+    # is able to eliminate these.
+    # assert ('atexit(' in src) == exit, 'atexit should not appear in src when EXIT_RUNTIME=0'
+    # assert ('_ZN5WasteILi2EED' in src) == exit, 'destructors should not appear if no exit:\n' + src
 
   def test_no_exit_runtime_warnings_flush(self):
     # check we warn if there is unflushed info
@@ -5397,12 +5394,17 @@ EM_ASM({ _middle() });
     building.is_wasm('hello_world2.o')
 
   @parameterized({
+    '': ([],),
+    'O1': (['-O2'],),
+    'O2': (['-O2'],),
+  })
+  @parameterized({
     '': (True, False),
     'safe_heap': (True, True),
     'wasm2js': (False, False),
     'wasm2js_safe_heap': (False, True),
   })
-  def test_bad_function_pointer_cast(self, wasm, safe):
+  def test_bad_function_pointer_cast(self, opts, wasm, safe):
     create_file('src.cpp', r'''
 #include <stdio.h>
 
@@ -5420,32 +5422,31 @@ int main() {
 }
 ''')
 
-    for opts in (0, 1, 2):
-      for emulate_casts in (0, 1):
-        for relocatable in (0, 1):
-          # wasm2js is not compatible with relocatable mode
-          if not wasm and relocatable:
-            continue
-          cmd = [EMXX, 'src.cpp', '-O' + str(opts)]
-          if not wasm:
-            cmd += ['-sWASM=0']
-          if safe:
-            cmd += ['-sSAFE_HEAP']
-          if emulate_casts:
-            cmd += ['-sEMULATE_FUNCTION_POINTER_CASTS']
-          if relocatable:
-            cmd += ['-sRELOCATABLE'] # disables asm-optimized safe heap
-          print(cmd)
-          self.run_process(cmd)
-          returncode = 0 if emulate_casts or not wasm else NON_ZERO
-          output = self.run_js('a.out.js', assert_returncode=returncode)
-          if emulate_casts or wasm == 0:
-            # success!
-            self.assertContained('Hello, world.', output)
-          else:
-            # otherwise, the error depends on the mode we are in
-            # wasm trap raised by the vm
-            self.assertContained('function signature mismatch', output)
+    for emulate_casts in (0, 1):
+      for relocatable in (0, 1):
+        # wasm2js is not compatible with relocatable mode
+        if not wasm and relocatable:
+          continue
+        cmd = [EMXX, 'src.cpp'] + opts
+        if not wasm:
+          cmd += ['-sWASM=0']
+        if safe:
+          cmd += ['-sSAFE_HEAP']
+        if emulate_casts:
+          cmd += ['-sEMULATE_FUNCTION_POINTER_CASTS']
+        if relocatable:
+          cmd += ['-sRELOCATABLE'] # disables asm-optimized safe heap
+        print(cmd)
+        self.run_process(cmd)
+        returncode = 0 if emulate_casts or not wasm else NON_ZERO
+        output = self.run_js('a.out.js', assert_returncode=returncode)
+        if emulate_casts or wasm == 0:
+          # success!
+          self.assertContained('Hello, world.', output)
+        else:
+          # otherwise, the error depends on the mode we are in
+          # wasm trap raised by the vm
+          self.assertContained('function signature mismatch', output)
 
   def test_bad_export(self):
     for m in ('', ' '):
@@ -6572,22 +6573,22 @@ This locale is not the C locale.
     test(['-o', 'c.html'], True)
     test(['-c'], False)
 
-  def test_dash_g_object(self):
-    def test(opts):
-      print(opts)
-      self.run_process([EMCC, '-c', test_file('hello_world.c'), '-o', 'a_.o'] + opts)
-      sizes = {'_': os.path.getsize('a_.o')}
-      self.run_process([EMCC, '-c', test_file('hello_world.c'), '-g', '-o', 'ag.o'] + opts)
-      sizes['g'] = os.path.getsize('ag.o')
-      for i in range(5):
-        self.run_process([EMCC, '-c', test_file('hello_world.c'), '-g' + str(i), '-o', 'a' + str(i) + '.o'] + opts)
-        sizes[i] = os.path.getsize('a' + str(i) + '.o')
-      print('  ', sizes)
-      assert sizes['_'] == sizes[0] == sizes[1] == sizes[2], 'no debug means no llvm debug info ' + str(sizes)
-      assert sizes['g'] == sizes[3] == sizes[4], '-g or -gsource-map means llvm debug info ' + str(sizes)
-      assert sizes['_'] < sizes['g'], 'llvm debug info has positive size ' + str(sizes)
-    test([])
-    test(['-O1'])
+  @parameterized({
+    '': ([],),
+    'O1': (['-O1'],),
+  })
+  def test_dash_g_object(self, opts):
+    self.run_process([EMCC, '-c', test_file('hello_world.c'), '-o', 'a_.o'] + opts)
+    sizes = {'_': os.path.getsize('a_.o')}
+    self.run_process([EMCC, '-c', test_file('hello_world.c'), '-g', '-o', 'ag.o'] + opts)
+    sizes['g'] = os.path.getsize('ag.o')
+    for i in range(5):
+      self.run_process([EMCC, '-c', test_file('hello_world.c'), '-g' + str(i), '-o', 'a' + str(i) + '.o'] + opts)
+      sizes[i] = os.path.getsize('a' + str(i) + '.o')
+    print('  ', sizes)
+    assert sizes['_'] == sizes[0] == sizes[1] == sizes[2], 'no debug means no llvm debug info ' + str(sizes)
+    assert sizes['g'] == sizes[3] == sizes[4], '-g or -gsource-map means llvm debug info ' + str(sizes)
+    assert sizes['_'] < sizes['g'], 'llvm debug info has positive size ' + str(sizes)
 
   def test_no_filesystem(self):
     FS_MARKER = 'var FS'
@@ -7014,11 +7015,11 @@ int main() {
     if not wasm:
       self.assertContained('Warning: Enlarging memory arrays, this is not fast! 16777216,1468137472\n', output)
 
+  @also_with_wasm2js
   @parameterized({
     '': (False,),
     'growth': (True,),
   })
-  @also_with_wasm2js
   def test_failing_alloc(self, growth):
     # Force memory growth to fail at runtime
     self.add_pre_run('growMemory = (size) => false;')
@@ -9477,55 +9478,54 @@ int main() {
             self.run_process([EMCC, 'a.c', 'b.c'] + std + cflags)
 
   @is_slow_test
+  @also_with_wasm2js
+  @parameterized({
+    '': (False, False,),
+    'debug': (True, False,),
+    'closure': (False, True,),
+  })
   @parameterized({
     '': (True,),
     'disabled': (False,),
   })
-  @also_with_wasm2js
-  def test_single_file(self, single_file_enabled):
-    for (debug_enabled,
-         closure_enabled) in itertools.product([True, False], repeat=2):
-      # skip unhelpful option combinations
-      if closure_enabled and debug_enabled:
-        continue
+  def test_single_file(self, debug_enabled, closure_enabled, single_file_enabled):
+    cmd = [EMCC, test_file('hello_world.c')] + self.get_emcc_args()
 
-      cmd = [EMCC, test_file('hello_world.c')] + self.get_emcc_args()
+    if single_file_enabled:
+      expect_wasm = False
+      cmd += ['-sSINGLE_FILE']
+    else:
+      expect_wasm = self.is_wasm()
 
-      if single_file_enabled:
-        expect_wasm = False
-        cmd += ['-sSINGLE_FILE']
+    if debug_enabled:
+      cmd += ['-g']
+    if closure_enabled:
+      cmd += ['--closure=1', '-Wno-closure']
+
+    self.clear()
+
+    def do_test(cmd):
+      print(' '.join(cmd))
+      self.run_process(cmd)
+      print(os.listdir('.'))
+      if expect_wasm:
+        self.assertExists('a.out.wasm')
       else:
-        expect_wasm = self.is_wasm()
+        self.assertNotExists('a.out.wasm')
+      self.assertNotExists('a.out.wat')
+      self.assertContained('hello, world!', self.run_js('a.out.js'))
 
-      if debug_enabled:
-        cmd += ['-g']
-      if closure_enabled:
-        cmd += ['--closure=1', '-Wno-closure']
+    do_test(cmd)
 
-      self.clear()
+    # additional combinations that are not part of the big product()
 
-      def do_test(cmd):
-        print(' '.join(cmd))
-        self.run_process(cmd)
-        print(os.listdir('.'))
-        if expect_wasm:
-          self.assertExists('a.out.wasm')
-        else:
-          self.assertNotExists('a.out.wasm')
-        self.assertNotExists('a.out.wat')
-        self.assertContained('hello, world!', self.run_js('a.out.js'))
-
-      do_test(cmd)
-
-      # additional combinations that are not part of the big product()
-
-      if debug_enabled:
-        separate_dwarf_cmd = cmd + ['-gseparate-dwarf']
-        if self.is_wasm2js():
-          self.expect_fail(separate_dwarf_cmd)
-        else:
-          do_test(separate_dwarf_cmd)
-          self.assertExists('a.out.wasm.debug.wasm')
+    if debug_enabled:
+      separate_dwarf_cmd = cmd + ['-gseparate-dwarf']
+      if self.is_wasm2js():
+        self.expect_fail(separate_dwarf_cmd)
+      else:
+        do_test(separate_dwarf_cmd)
+        self.assertExists('a.out.wasm.debug.wasm')
 
   @requires_v8
   def test_single_file_shell(self):

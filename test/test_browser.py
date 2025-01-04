@@ -2628,10 +2628,13 @@ Module["preRun"] = () => {
     self.btest_exit('html5_special_event_targets.cpp', args=['-lGL'])
 
   @requires_graphics_hardware
-  def test_html5_webgl_destroy_context(self):
-    for opts in ([], ['-O2', '-g1'], ['-sFULL_ES2']):
-      print(opts)
-      self.btest_exit('webgl_destroy_context.cpp', args=opts + ['--shell-file', test_file('browser/webgl_destroy_context_shell.html'), '-lGL'])
+  @parameterized({
+    '': ([],),
+    'O2': (['-O2', '-g1'],),
+    'full_es2': (['-sFULL_ES2'],),
+  })
+  def test_html5_webgl_destroy_context(self, args):
+    self.btest_exit('webgl_destroy_context.cpp', args=args + ['--shell-file', test_file('browser/webgl_destroy_context_shell.html'), '-lGL'])
 
   @requires_graphics_hardware
   def test_webgl_context_params(self):
@@ -2639,10 +2642,12 @@ Module["preRun"] = () => {
 
   # Test for PR#5373 (https://github.com/emscripten-core/emscripten/pull/5373)
   @requires_graphics_hardware
-  def test_webgl_shader_source_length(self):
-    for opts in ([], ['-sFULL_ES2']):
-      print(opts)
-      self.btest_exit('webgl_shader_source_length.cpp', args=opts + ['-lGL'])
+  @parameterized({
+    '': ([],),
+    'full_es2': (['-sFULL_ES2'],),
+  })
+  def test_webgl_shader_source_length(self, args):
+    self.btest_exit('webgl_shader_source_length.cpp', args=args + ['-lGL'])
 
   # Tests calling glGetString(GL_UNMASKED_VENDOR_WEBGL).
   @requires_graphics_hardware
@@ -2856,10 +2861,13 @@ Module["preRun"] = () => {
     'no_gl': (['-DCLIENT_API=GLFW_NO_API'],),
     'gl_es': (['-DCLIENT_API=GLFW_OPENGL_ES_API', '-sGL_ENABLE_GET_PROC_ADDRESS'],)
   })
-  def test_glfw3(self, args):
-    for opts in ([], ['-sLEGACY_GL_EMULATION'], ['-Os', '--closure=1']):
-      print(opts)
-      self.btest('test_glfw3.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'] + args + opts, expected='1')
+  @parameterized({
+    '': ([],),
+    'legacy': (['-sLEGACY_GL_EMULATION'],),
+    'closure': (['-Os', '--closure=1'],),
+  })
+  def test_glfw3(self, args, opts):
+    self.btest('test_glfw3.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'] + args + opts, expected='1')
 
   @parameterized({
     '': (['-sUSE_GLFW=2', '-DUSE_GLFW=2'],),
@@ -3303,43 +3311,42 @@ Module["preRun"] = () => {
     self.btest_exit('browser_test_hello_world.c', args=['-sEXPORT_NAME=Foo', '-sMINIMAL_RUNTIME'])
 
   @parameterized({
+    # defaults
+    '': ([], '''
+       let promise = Module();
+       if (!promise instanceof Promise) throw new Error('Return value should be a promise');
+    '''),
+    # use EXPORT_NAME
+    'export_name': (['-sEXPORT_NAME="HelloWorld"'], '''
+       if (typeof Module !== "undefined") throw "what?!"; // do not pollute the global scope, we are modularized!
+       HelloWorld.noInitialRun = true; // errorneous module capture will load this and cause timeout
+       let promise = HelloWorld();
+       if (!promise instanceof Promise) throw new Error('Return value should be a promise');
+    '''),
+    # pass in a Module option (which prevents main(), which we then invoke ourselves)
+    'no_main': (['-sEXPORT_NAME="HelloWorld"'], '''
+       HelloWorld({ noInitialRun: true }).then(hello => {
+         hello._main();
+       });
+    '''),
+  })
+  @parameterized({
     '': ([],),
     'O1': (['-O1'],),
     'O2': (['-O2'],),
     'profiling': (['-O2', '-profiling'],),
     'closure': (['-O2', '--closure=1'],),
   })
-  def test_modularize(self, opts):
-    for args, code in [
-      # defaults
-      ([], '''
-        let promise = Module();
-        if (!promise instanceof Promise) throw new Error('Return value should be a promise');
-      '''),
-      # use EXPORT_NAME
-      (['-sEXPORT_NAME="HelloWorld"'], '''
-        if (typeof Module !== "undefined") throw "what?!"; // do not pollute the global scope, we are modularized!
-        HelloWorld.noInitialRun = true; // errorneous module capture will load this and cause timeout
-        let promise = HelloWorld();
-        if (!promise instanceof Promise) throw new Error('Return value should be a promise');
-      '''),
-      # pass in a Module option (which prevents main(), which we then invoke ourselves)
-      (['-sEXPORT_NAME="HelloWorld"'], '''
-        HelloWorld({ noInitialRun: true }).then(hello => {
-          hello._main();
-        });
-      '''),
-    ]:
-      print('test on', opts, args, code)
-      # this test is synchronous, so avoid async startup due to wasm features
-      self.compile_btest('browser_test_hello_world.c', ['-sMODULARIZE', '-sSINGLE_FILE'] + args + opts)
-      create_file('a.html', '''
-        <script src="a.out.js"></script>
-        <script>
-          %s
-        </script>
-      ''' % code)
-      self.run_browser('a.html', '/report_result?0')
+  def test_modularize(self, args, code, opts):
+    # this test is synchronous, so avoid async startup due to wasm features
+    self.compile_btest('browser_test_hello_world.c', ['-sMODULARIZE', '-sSINGLE_FILE'] + args + opts)
+    create_file('a.html', '''
+      <script src="a.out.js"></script>
+      <script>
+        %s
+      </script>
+    ''' % code)
+    self.run_browser('a.html', '/report_result?0')
 
   def test_modularize_network_error(self):
     self.compile_btest('browser_test_hello_world.c', ['-sMODULARIZE', '-sEXPORT_NAME=createModule'], reporting=Reporting.NONE)
@@ -3383,39 +3390,45 @@ Module["preRun"] = () => {
   # when compiling with the --preload-file option
   @requires_wasm2js
   @also_with_wasmfs
-  def test_modularize_and_preload_files(self):
+  @parameterized({
+    '': ([],),
+    'O1': (['-O1'],),
+    'O2_profiling': (['-O2', '--profiling'],),
+    'O2_closure': (['-O2', '--closure=1'],),
+  })
+  def test_modularize_and_preload_files(self, args):
     self.set_setting('EXIT_RUNTIME')
     # TODO(sbc): Fix closure warnings with MODULARIZE + WASM=0
     self.ldflags.append('-Wno-error=closure')
     # amount of memory different from the default one that will be allocated for the emscripten heap
     totalMemory = 33554432
-    for opts in ([], ['-O1'], ['-O2', '-profiling'], ['-O2'], ['-O2', '--closure=1']):
-      # the main function simply checks that the amount of allocated heap memory is correct
-      create_file('test.c', r'''
-        #include <stdio.h>
-        #include <emscripten.h>
-        int main() {
-          EM_ASM({
-            // use eval here in order for the test with closure compiler enabled to succeed
-            var totalMemory = Module['INITIAL_MEMORY'];
-            assert(totalMemory === %d, 'bad memory size');
-          });
-          return 0;
-        }
-      ''' % totalMemory)
-      # generate a dummy file
-      create_file('dummy_file', 'dummy')
-      # compile the code with the modularize feature and the preload-file option enabled
-      # no wasm, since this tests customizing total memory at runtime
-      self.compile_btest('test.c', ['-sWASM=0', '-sIMPORTED_MEMORY', '-sMODULARIZE', '-sEXPORT_NAME="Foo"', '--preload-file', 'dummy_file'] + opts, reporting=Reporting.JS_ONLY)
-      create_file('a.html', '''
-        <script src="a.out.js"></script>
-        <script>
-          // instantiate the Foo module with custom INITIAL_MEMORY value
-          var foo = Foo({ INITIAL_MEMORY: %d });
-        </script>
-      ''' % totalMemory)
-      self.run_browser('a.html', '/report_result?exit:0')
+
+    # the main function simply checks that the amount of allocated heap memory is correct
+    create_file('test.c', r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+      int main() {
+        EM_ASM({
+          // use eval here in order for the test with closure compiler enabled to succeed
+          var totalMemory = Module['INITIAL_MEMORY'];
+          assert(totalMemory === %d, 'bad memory size');
+        });
+        return 0;
+      }
+    ''' % totalMemory)
+    # generate a dummy file
+    create_file('dummy_file', 'dummy')
+    # compile the code with the modularize feature and the preload-file option enabled
+    # no wasm, since this tests customizing total memory at runtime
+    self.compile_btest('test.c', ['-sWASM=0', '-sIMPORTED_MEMORY', '-sMODULARIZE', '-sEXPORT_NAME="Foo"', '--preload-file', 'dummy_file'] + args, reporting=Reporting.JS_ONLY)
+    create_file('a.html', '''
+      <script src="a.out.js"></script>
+      <script>
+        // instantiate the Foo module with custom INITIAL_MEMORY value
+        var foo = Foo({ INITIAL_MEMORY: %d });
+      </script>
+    ''' % totalMemory)
+    self.run_browser('a.html', '/report_result?exit:0')
 
   @parameterized({
     '': ([],),
@@ -3657,13 +3670,13 @@ Module["preRun"] = () => {
     self.btest_exit('pthread/test_pthread_64bit_atomics.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test 64-bit C++11 atomics.
+  @also_with_threads
   @parameterized({
     '': ([],),
     'O3': (['-O3'],)
   })
   def test_pthread_64bit_cxx11_atomics(self, opt):
-    for pthreads in ([], ['-pthread']):
-      self.btest_exit('pthread/test_pthread_64bit_cxx11_atomics.cpp', args=opt + pthreads)
+    self.btest_exit('pthread/test_pthread_64bit_cxx11_atomics.cpp', args=opt)
 
   # Test c++ std::thread::hardware_concurrency()
   def test_pthread_hardware_concurrency(self):
@@ -3734,9 +3747,12 @@ Module["preRun"] = () => {
 
   # Test the __sync_lock_test_and_set and __sync_lock_release primitives.
   @also_with_wasm2js
-  def test_pthread_gcc_spinlock(self):
-    for arg in ([], ['-DUSE_EMSCRIPTEN_INTRINSICS']):
-      self.btest_exit('pthread/test_pthread_gcc_spinlock.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + arg)
+  @parameterized({
+    '': ([],),
+    'em_instrinsics': (['-DUSE_EMSCRIPTEN_INTRINSICS'],),
+  })
+  def test_pthread_gcc_spinlock(self, args):
+    self.btest_exit('pthread/test_pthread_gcc_spinlock.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + args)
 
   @parameterized({
     '': ([],),
@@ -3769,9 +3785,12 @@ Module["preRun"] = () => {
     self.btest_exit('pthread/test_pthread_proxy_to_pthread.c', args=['-O3', '-pthread', '-sPROXY_TO_PTHREAD'])
 
   # Test that a pthread can spawn another pthread of its own.
-  def test_pthread_create_pthread(self):
-    for modularize in ([], ['-sMODULARIZE', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')]):
-      self.btest_exit('pthread/test_pthread_create_pthread.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=2'] + modularize)
+  @parameterized({
+    '': ([],),
+    'modularize': (['-sMODULARIZE', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')],)
+  })
+  def test_pthread_create_pthread(self, args):
+    self.btest_exit('pthread/test_pthread_create_pthread.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=2'] + args)
 
   # Test another case of pthreads spawning pthreads, but this time the callers immediately join on the threads they created.
   def test_pthread_nested_spawns(self):
@@ -3906,13 +3925,13 @@ Module["preRun"] = () => {
 
   # Test that -sABORTING_MALLOC=0 works in both pthreads and non-pthreads
   # builds. (sbrk fails gracefully)
+  @also_with_threads
   @parameterized({
     '': ([],),
-    'mt': (['-pthread'],),
+    'O2': (['-O2'],),
   })
   def test_pthread_gauge_available_memory(self, args):
-    for opts in ([], ['-O2']):
-      self.btest('gauge_available_memory.cpp', expected='1', args=['-sABORTING_MALLOC=0'] + args + opts)
+    self.btest('gauge_available_memory.cpp', expected='1', args=['-sABORTING_MALLOC=0'] + args)
 
   # Test that the proxying operations of user code from pthreads to main thread
   # work
@@ -3944,9 +3963,12 @@ Module["preRun"] = () => {
 
   # Tests that spawning a new thread does not cause a reinitialization of the
   # global data section of the application memory area.
-  def test_pthread_global_data_initialization(self):
-    for args in (['-sMODULARIZE', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')], ['-O3']):
-      self.btest_exit('pthread/test_pthread_global_data_initialization.c', args=args + ['-pthread', '-sPROXY_TO_PTHREAD', '-sPTHREAD_POOL_SIZE'])
+  @parameterized({
+    '': (['-O3'],),
+    'modularize': (['-sMODULARIZE', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')],)
+  })
+  def test_pthread_global_data_initialization(self, args):
+    self.btest_exit('pthread/test_pthread_global_data_initialization.c', args=args + ['-pthread', '-sPROXY_TO_PTHREAD', '-sPTHREAD_POOL_SIZE'])
 
   @requires_wasm2js
   def test_pthread_global_data_initialization_in_sync_compilation_mode(self):
@@ -4079,12 +4101,15 @@ Module["preRun"] = () => {
   def test_custom_messages_proxy(self):
     self.btest('custom_messages_proxy.c', expected='1', args=['--proxy-to-worker', '--shell-file', test_file('custom_messages_proxy_shell.html'), '--post-js', test_file('custom_messages_proxy_postjs.js')])
 
-  def test_vanilla_html_when_proxying(self):
-    for opts in (0, 1, 2):
-      print(opts)
-      self.compile_btest('browser_test_hello_world.c', ['-o', 'test.js', '-O' + str(opts), '--proxy-to-worker'])
-      create_file('test.html', '<script src="test.js"></script>')
-      self.run_browser('test.html', '/report_result?0')
+  @parameterized({
+    '': ([],),
+    'O1': (['-O1'],),
+    'O2': (['-O2'],),
+  })
+  def test_vanilla_html_when_proxying(self, args):
+    self.compile_btest('browser_test_hello_world.c', ['-o', 'test.js', '--proxy-to-worker'] + args)
+    create_file('test.html', '<script src="test.js"></script>')
+    self.run_browser('test.html', '/report_result?0')
 
   @parameterized({
     '': ([], 1),
@@ -4262,17 +4287,23 @@ Module["preRun"] = () => {
   # If testing on Mac, you also need --use-cmd-decoder=passthrough to get this extension.
   # Also there is a known bug with Mac Intel baseInstance which can fail producing the expected image result.
   @requires_graphics_hardware
-  def test_webgl_draw_base_vertex_base_instance(self):
-    for multiDraw in (0, 1):
-      for drawElements in (0, 1):
-        self.reftest('webgl_draw_base_vertex_base_instance_test.c', 'webgl_draw_instanced_base_vertex_base_instance.png',
-                     args=['-lGL',
-                           '-sMAX_WEBGL_VERSION=2',
-                           '-sOFFSCREEN_FRAMEBUFFER',
-                           '-DMULTI_DRAW=' + str(multiDraw),
-                           '-DDRAW_ELEMENTS=' + str(drawElements),
-                           '-DEXPLICIT_SWAP=1',
-                           '-DWEBGL_CONTEXT_VERSION=2'])
+  @parameterized({
+    '': (0,),
+    'multidraw': (1,),
+  })
+  @parameterized({
+    '': (0,),
+    'drawelements': (1,),
+  })
+  def test_webgl_draw_base_vertex_base_instance(self, multi_draw, draw_elements):
+    self.reftest('webgl_draw_base_vertex_base_instance_test.c', 'webgl_draw_instanced_base_vertex_base_instance.png',
+                 args=['-lGL',
+                       '-sMAX_WEBGL_VERSION=2',
+                       '-sOFFSCREEN_FRAMEBUFFER',
+                       '-DMULTI_DRAW=' + str(multi_draw),
+                       '-DDRAW_ELEMENTS=' + str(draw_elements),
+                       '-DEXPLICIT_SWAP=1',
+                       '-DWEBGL_CONTEXT_VERSION=2'])
 
   @requires_graphics_hardware
   def test_webgl_sample_query(self):
@@ -4805,31 +4836,30 @@ Module["preRun"] = () => {
   # also also we eval the initial code, so currentScript is not present. That prevents us
   # from finding the file in a subdir, but here we at least check we do not regress compared to the
   # normal case of finding in the current dir.
-  def test_browser_modularize_no_current_script(self):
-    # test both modularize (and creating an instance) and modularize-instance
-    # (which creates by itself)
-    for path, args, creation in [
-      ([], ['-sMODULARIZE'], 'Module();'),
-      (['subdir'], ['-sMODULARIZE'], 'Module();'),
-    ]:
-      print(path, args, creation)
-      filesystem_path = os.path.join('.', *path)
-      ensure_dir(filesystem_path)
-      # compile the code with the modularize feature and the preload-file option enabled
-      self.compile_btest('browser_test_hello_world.c', ['-o', 'test.js'] + args)
-      shutil.move('test.js', Path(filesystem_path, 'test.js'))
-      shutil.move('test.wasm', Path(filesystem_path, 'test.wasm'))
-      create_file(Path(filesystem_path, 'test.html'), '''
-        <script>
-          setTimeout(async () => {
-            let response = await fetch('test.js');
-            let text = await response.text();
-            eval(text);
-            %s
-          }, 1);
-        </script>
-      ''' % creation)
-      self.run_browser('/'.join(path + ['test.html']), '/report_result?0')
+  # test both modularize (and creating an instance) and modularize-instance
+  # (which creates by itself)
+  @parameterized({
+    '': ([], ['-sMODULARIZE'], 'Module();'),
+    'subdir': (['subdir'], ['-sMODULARIZE'], 'Module();'),
+  })
+  def test_browser_modularize_no_current_script(self, path, args, creation):
+    filesystem_path = os.path.join('.', *path)
+    ensure_dir(filesystem_path)
+    # compile the code with the modularize feature and the preload-file option enabled
+    self.compile_btest('browser_test_hello_world.c', ['-o', 'test.js'] + args)
+    shutil.move('test.js', Path(filesystem_path, 'test.js'))
+    shutil.move('test.wasm', Path(filesystem_path, 'test.wasm'))
+    create_file(Path(filesystem_path, 'test.html'), '''
+      <script>
+        setTimeout(async () => {
+          let response = await fetch('test.js');
+          let text = await response.text();
+          eval(text);
+          %s
+        }, 1);
+      </script>
+    ''' % creation)
+    self.run_browser('/'.join(path + ['test.html']), '/report_result?0')
 
   def test_emscripten_request_animation_frame(self):
     self.btest_exit('emscripten_request_animation_frame.c')
