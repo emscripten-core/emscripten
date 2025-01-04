@@ -42,14 +42,22 @@ logger = logging.getLogger('emscripten')
 # let us sanitize memory access from the JS side, by calling into C where
 # it has been instrumented.
 ASAN_C_HELPERS = [
-  '_asan_c_load_1', '_asan_c_load_1u',
-  '_asan_c_load_2', '_asan_c_load_2u',
-  '_asan_c_load_4', '_asan_c_load_4u',
-  '_asan_c_load_f', '_asan_c_load_d',
-  '_asan_c_store_1', '_asan_c_store_1u',
-  '_asan_c_store_2', '_asan_c_store_2u',
-  '_asan_c_store_4', '_asan_c_store_4u',
-  '_asan_c_store_f', '_asan_c_store_d',
+  '_asan_c_load_1',
+  '_asan_c_load_1u',
+  '_asan_c_load_2',
+  '_asan_c_load_2u',
+  '_asan_c_load_4',
+  '_asan_c_load_4u',
+  '_asan_c_load_f',
+  '_asan_c_load_d',
+  '_asan_c_store_1',
+  '_asan_c_store_1u',
+  '_asan_c_store_2',
+  '_asan_c_store_2u',
+  '_asan_c_store_4',
+  '_asan_c_store_4u',
+  '_asan_c_store_f',
+  '_asan_c_store_d',
 ]
 
 
@@ -99,15 +107,19 @@ def maybe_disable_filesystem(imports):
     # check if the only filesystem syscalls are in: close, ioctl, llseek, write
     # (without open, etc.. nothing substantial can be done, so we can disable
     # extra filesystem support in that case)
-    if syscalls.issubset({
-      '__syscall_ioctl',
-      'fd_seek',
-      'fd_write',
-      'fd_close',
-      'fd_fdstat_get',
-    }):
+    if syscalls.issubset(
+      {
+        '__syscall_ioctl',
+        'fd_seek',
+        'fd_write',
+        'fd_close',
+        'fd_fdstat_get',
+      }
+    ):
       if DEBUG:
-        logger.debug('very limited syscalls (%s) so disabling full filesystem support', ', '.join(str(s) for s in syscalls))
+        logger.debug(
+          'very limited syscalls (%s) so disabling full filesystem support', ', '.join(str(s) for s in syscalls)
+        )
       settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
 
 
@@ -154,7 +166,13 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
   if settings.MEMORY64:
     assert '--enable-memory64' in settings.BINARYEN_FEATURES
 
-  settings.HAS_MAIN = bool(settings.MAIN_MODULE) or settings.PROXY_TO_PTHREAD or settings.STANDALONE_WASM or 'main' in settings.WASM_EXPORTS or '__main_argc_argv' in settings.WASM_EXPORTS
+  settings.HAS_MAIN = (
+    bool(settings.MAIN_MODULE)
+    or settings.PROXY_TO_PTHREAD
+    or settings.STANDALONE_WASM
+    or 'main' in settings.WASM_EXPORTS
+    or '__main_argc_argv' in settings.WASM_EXPORTS
+  )
   if settings.HAS_MAIN and not settings.MINIMAL_RUNTIME:
     # Dependencies of `callMain`
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$exitJS', '$handleException']
@@ -203,9 +221,15 @@ def compile_javascript(symbols_only=False):
     args = [settings_file]
     if symbols_only:
       args += ['--symbols-only']
-    out = shared.run_js_tool(path_from_root('src/compiler.mjs'),
-                             args, stdout=subprocess.PIPE, stderr=stderr_file,
-                             cwd=path_from_root('src'), env=env, encoding='utf-8')
+    out = shared.run_js_tool(
+      path_from_root('src/compiler.mjs'),
+      args,
+      stdout=subprocess.PIPE,
+      stderr=stderr_file,
+      cwd=path_from_root('src'),
+      env=env,
+      encoding='utf-8',
+    )
   if symbols_only:
     glue = None
     forwarded_data = out
@@ -355,7 +379,13 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
         assert imp.kind == webassembly.ExternType.FUNC
         signature = types[imp.type]
         if len(signature.params) != len(c_sig):
-          diagnostics.warning('em-js-i64', 'using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `%s` (%s, %s)', em_js_func, c_sig, signature.params)
+          diagnostics.warning(
+            'em-js-i64',
+            'using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `%s` (%s, %s)',
+            em_js_func,
+            c_sig,
+            signature.params,
+          )
 
   asm_consts = create_asm_consts(metadata)
   em_js_funcs = create_em_js(metadata)
@@ -389,7 +419,9 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     dylink_sec = webassembly.parse_dylink_section(in_wasm)
     static_bump = align_memory(dylink_sec.mem_size)
     set_memory(static_bump)
-    logger.debug('stack_low: %d, stack_high: %d, heap_base: %d', settings.STACK_LOW, settings.STACK_HIGH, settings.HEAP_BASE)
+    logger.debug(
+      'stack_low: %d, stack_high: %d, heap_base: %d', settings.STACK_LOW, settings.STACK_HIGH, settings.HEAP_BASE
+    )
 
     # When building relocatable output (e.g. MAIN_MODULE) the reported table
     # size does not include the reserved slot at zero for the null pointer.
@@ -435,9 +467,7 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
   if em_js_funcs:
     extra_code += '\n'.join(em_js_funcs) + '\n'
   if extra_code:
-    pre = pre.replace(
-      '// === Body ===\n',
-      '// === Body ===\n\n' + extra_code + '\n')
+    pre = pre.replace('// === Body ===\n', '// === Body ===\n\n' + extra_code + '\n')
 
   if base_metadata:
     function_exports = base_metadata.function_exports
@@ -483,10 +513,7 @@ def get_metadata(infile, outfile, modify_wasm, args):
   if modify_wasm:
     # In some cases we still need to modify the wasm file
     # using wasm-emscripten-finalize.
-    building.run_binaryen_command('wasm-emscripten-finalize',
-                                  infile=infile,
-                                  outfile=outfile,
-                                  args=args)
+    building.run_binaryen_command('wasm-emscripten-finalize', infile=infile, outfile=outfile, args=args)
     # When we do this we can generate new imports, so
     # re-read parts of the metadata post-finalize
     extract_metadata.update_metadata(outfile, metadata)
@@ -507,7 +534,15 @@ def finalize_wasm(infile, outfile, js_syms):
     # wasm2js requires full legalization (and will do extra wasm binary
     # later processing later anyhow)
     modify_wasm = True
-  if settings.DEBUG_LEVEL >= 2 or settings.ASYNCIFY_ADD or settings.ASYNCIFY_ADVISE or settings.ASYNCIFY_ONLY or settings.ASYNCIFY_REMOVE or settings.EMIT_SYMBOL_MAP or settings.EMIT_NAME_SECTION:
+  if (
+    settings.DEBUG_LEVEL >= 2
+    or settings.ASYNCIFY_ADD
+    or settings.ASYNCIFY_ADVISE
+    or settings.ASYNCIFY_ONLY
+    or settings.ASYNCIFY_REMOVE
+    or settings.EMIT_SYMBOL_MAP
+    or settings.EMIT_NAME_SECTION
+  ):
     need_name_section = True
     args.append('-g')
   if settings.WASM_BIGINT:
@@ -562,12 +597,8 @@ def finalize_wasm(infile, outfile, js_syms):
 
       # Create a file with the contents of the sourceMappingURL section
       with shared.get_temp_files().get_file('.bin') as url_file:
-        utils.write_binary(url_file,
-                           leb128.u.encode(len(base_url)) + base_url.encode('utf-8'))
-        cmd = [shared.LLVM_OBJCOPY,
-               '--add-section',
-               'sourceMappingURL=' + url_file,
-               infile]
+        utils.write_binary(url_file, leb128.u.encode(len(base_url)) + base_url.encode('utf-8'))
+        cmd = [shared.LLVM_OBJCOPY, '--add-section', 'sourceMappingURL=' + url_file, infile]
         shared.check_call(cmd)
 
   # For sections we no longer need, strip now to speed subsequent passes.
@@ -580,8 +611,7 @@ def finalize_wasm(infile, outfile, js_syms):
 
   if strip_sections or not settings.GENERATE_DWARF:
     building.save_intermediate(outfile, 'strip.wasm')
-    building.strip(infile, outfile, debug=not settings.GENERATE_DWARF,
-                   sections=strip_sections)
+    building.strip(infile, outfile, debug=not settings.GENERATE_DWARF, sections=strip_sections)
 
   metadata = get_metadata(outfile, outfile, modify_wasm, args)
 
@@ -613,7 +643,10 @@ def finalize_wasm(infile, outfile, js_syms):
       # ignore the export and run as if there was no main function since that
       # is defined is behaviour for programs that don't include `_main` in
       # EXPORTED_FUNCTIONS.
-      diagnostics.warning('unused-main', '`main` is defined in the input files, but `_main` is not in `EXPORTED_FUNCTIONS`. Add it to this list if you want `main` to run.')
+      diagnostics.warning(
+        'unused-main',
+        '`main` is defined in the input files, but `_main` is not in `EXPORTED_FUNCTIONS`. Add it to this list if you want `main` to run.',
+      )
       if 'main' in metadata.all_exports:
         metadata.all_exports.remove('main')
       else:
@@ -659,11 +692,15 @@ def create_tsd_exported_runtime_methods(metadata):
     tsc = [tsc]
   else:
     tsc = shared.get_npm_cmd('tsc')
-  cmd = tsc + ['--outFile', tsc_output_file,
-               '--skipLibCheck', # Avoid checking any of the user's types e.g. node_modules/@types.
-               '--declaration',
-               '--emitDeclarationOnly',
-               '--allowJs', js_doc_file]
+  cmd = tsc + [
+    '--outFile',
+    tsc_output_file,
+    '--skipLibCheck',  # Avoid checking any of the user's types e.g. node_modules/@types.
+    '--declaration',
+    '--emitDeclarationOnly',
+    '--allowJs',
+    js_doc_file,
+  ]
   shared.check_call(cmd, cwd=path_from_root())
   return utils.read_file(tsc_output_file)
 
@@ -738,7 +775,7 @@ def type_to_sig(type):
     webassembly.Type.F32: 'f',
     webassembly.Type.F64: 'd',
     webassembly.Type.EXTERNREF: 'e',
-    webassembly.Type.VOID: 'v'
+    webassembly.Type.VOID: 'v',
   }[type]
 
 
@@ -749,7 +786,7 @@ def type_to_ts_type(type):
     webassembly.Type.F32: 'number',
     webassembly.Type.F64: 'number',
     webassembly.Type.EXTERNREF: 'any',
-    webassembly.Type.VOID: 'void'
+    webassembly.Type.VOID: 'void',
   }[type]
 
 
@@ -975,7 +1012,11 @@ def create_receiving(function_exports):
 
     for s in exports_that_are_not_initializers:
       mangled = asmjs_mangle(s)
-      dynCallAssignment = ('dynCalls["' + s.replace('dynCall_', '') + '"] = ') if generate_dyncall_assignment and mangled.startswith('dynCall_') else ''
+      dynCallAssignment = (
+        ('dynCalls["' + s.replace('dynCall_', '') + '"] = ')
+        if generate_dyncall_assignment and mangled.startswith('dynCall_')
+        else ''
+      )
       should_export = settings.EXPORT_ALL or (settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS)
       export_assignment = ''
       if settings.MODULARIZE and should_export:
@@ -997,12 +1038,15 @@ def create_module(receiving, metadata, global_exports, library_symbols):
   sending = create_sending(metadata, library_symbols)
   if settings.PTHREADS:
     sending = textwrap.indent(sending, '  ').strip()
-    module.append('''\
+    module.append(
+      '''\
 var wasmImports;
 function assignWasmImports() {
   wasmImports = %s;
 }
-''' % sending)
+'''
+      % sending
+    )
   else:
     module.append('var wasmImports = %s;\n' % sending)
 

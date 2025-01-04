@@ -33,9 +33,19 @@ def parse_args():
   parser = argparse.ArgumentParser(prog='wasm-sourcemap.py', description=__doc__)
   parser.add_argument('wasm', help='wasm file')
   parser.add_argument('-o', '--output', help='output source map')
-  parser.add_argument('-p', '--prefix', nargs='*', help='replace source debug filename prefix for source map', default=[])
-  parser.add_argument('-s', '--sources', action='store_true', help='read and embed source files from file system into source map')
-  parser.add_argument('-l', '--load-prefix', nargs='*', help='replace source debug filename prefix for reading sources from file system (see also --sources)', default=[])
+  parser.add_argument(
+    '-p', '--prefix', nargs='*', help='replace source debug filename prefix for source map', default=[]
+  )
+  parser.add_argument(
+    '-s', '--sources', action='store_true', help='read and embed source files from file system into source map'
+  )
+  parser.add_argument(
+    '-l',
+    '--load-prefix',
+    nargs='*',
+    help='replace source debug filename prefix for reading sources from file system (see also --sources)',
+    default=[],
+  )
   parser.add_argument('-w', nargs='?', help='set output wasm file')
   parser.add_argument('-x', '--strip', action='store_true', help='removes debug and linking sections')
   parser.add_argument('-u', '--source-map-url', nargs='?', help='specifies sourceMappingURL section contest')
@@ -97,11 +107,11 @@ def encode_vlq(n):
 def read_var_uint(wasm, pos):
   n = 0
   shift = 0
-  b = ord(wasm[pos:pos + 1])
+  b = ord(wasm[pos : pos + 1])
   pos = pos + 1
   while b >= 128:
     n = n | ((b - 128) << shift)
-    b = ord(wasm[pos:pos + 1])
+    b = ord(wasm[pos : pos + 1])
     pos = pos + 1
     shift += 7
   return n + (b << shift), pos
@@ -121,7 +131,12 @@ def strip_debug_sections(wasm):
       name_len, name_pos = read_var_uint(wasm, section_body)
       name_end = name_pos + name_len
       name = wasm[name_pos:name_end]
-      if name == "linking" or name == "sourceMappingURL" or name.startswith("reloc..debug_") or name.startswith(".debug_"):
+      if (
+        name == "linking"
+        or name == "sourceMappingURL"
+        or name.startswith("reloc..debug_")
+        or name.startswith(".debug_")
+      ):
         continue  # skip debug related sections
     stripped = stripped + wasm[section_start:pos]
 
@@ -140,7 +155,9 @@ def encode_uint_var(n):
 def append_source_mapping(wasm, url):
   logger.debug('Append sourceMappingURL section')
   section_name = "sourceMappingURL"
-  section_content = encode_uint_var(len(section_name)) + section_name.encode() + encode_uint_var(len(url)) + url.encode()
+  section_content = (
+    encode_uint_var(len(section_name)) + section_name.encode() + encode_uint_var(len(url)) + url.encode()
+  )
   return wasm + encode_uint_var(0) + encode_uint_var(len(section_content)) + section_content
 
 
@@ -168,10 +185,10 @@ def remove_dead_entries(entries):
     fn_start = entries[block_start]['address']
     # Calculate the LEB encoded function size (including size field)
     fn_size_length = floor(log(entries[cur_entry]['address'] - fn_start + 1, 128)) + 1
-    min_live_offset = 1 + fn_size_length # 1 byte is for code section entries
+    min_live_offset = 1 + fn_size_length  # 1 byte is for code section entries
     if fn_start < min_live_offset:
       # Remove dead code debug info block.
-      del entries[block_start:cur_entry + 1]
+      del entries[block_start : cur_entry + 1]
       cur_entry = block_start
       continue
     cur_entry += 1
@@ -241,7 +258,13 @@ def read_dwarf_entries(wasm, options):
       files[file.group(1)] = file_path
 
     for line in re.finditer(r"\n0x([0-9a-f]+)\s+(\d+)\s+(\d+)\s+(\d+)(.*?end_sequence)?", line_chunk):
-      entry = {'address': int(line.group(1), 16), 'line': int(line.group(2)), 'column': int(line.group(3)), 'file': files[line.group(4)], 'eos': line.group(5) is not None}
+      entry = {
+        'address': int(line.group(1), 16),
+        'line': int(line.group(2)),
+        'column': int(line.group(3)),
+        'file': files[line.group(4)],
+        'eos': line.group(5) is not None,
+      }
       if not entry['eos']:
         entries.append(entry)
       else:
@@ -311,16 +334,20 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources, bas
     source_id_delta = source_id - last_source_id
     line_delta = line - last_line
     column_delta = column - last_column
-    mappings.append(encode_vlq(address_delta) + encode_vlq(source_id_delta) + encode_vlq(line_delta) + encode_vlq(column_delta))
+    mappings.append(
+      encode_vlq(address_delta) + encode_vlq(source_id_delta) + encode_vlq(line_delta) + encode_vlq(column_delta)
+    )
     last_address = address
     last_source_id = source_id
     last_line = line
     last_column = column
-  return {'version': 3,
-          'sources': sources,
-          'sourcesContent': sources_content,
-          'names': [],
-          'mappings': ','.join(mappings)}
+  return {
+    'version': 3,
+    'sources': sources,
+    'sourcesContent': sources_content,
+    'names': [],
+    'mappings': ','.join(mappings),
+  }
 
 
 def main():

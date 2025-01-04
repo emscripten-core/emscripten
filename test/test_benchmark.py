@@ -56,7 +56,7 @@ LLVM_FEATURE_FLAGS = ['-mnontrapping-fptoint']
 EMTEST_BENCHMARKERS = os.getenv('EMTEST_BENCHMARKERS', 'clang,v8,v8-lto,v8-ctors')
 
 
-class Benchmarker():
+class Benchmarker:
   # Whether to record statistics. Set by SizeBenchmarker.
   record_stats = False
 
@@ -78,7 +78,7 @@ class Benchmarker():
       if expected_output is not None and expected_output not in output:
         raise ValueError('Incorrect benchmark output:\n' + output)
 
-      if not output_parser or args == ['0']: # if arg is 0, we are not running code, and have no output to parse
+      if not output_parser or args == ['0']:  # if arg is 0, we are not running code, and have no output to parse
         curr = time.time() - start
       else:
         try:
@@ -101,11 +101,15 @@ class Benchmarker():
       sorted_times = sorted(self.times)
       count = len(sorted_times)
       if count % 2 == 0:
-        median = sum(sorted_times[count // 2 - 1:count // 2 + 1]) / 2
+        median = sum(sorted_times[count // 2 - 1 : count // 2 + 1]) / 2
       else:
         median = sorted_times[count // 2]
 
-      print('   %10s: mean: %4.3f (+-%4.3f) secs  median: %4.3f  range: %4.3f-%4.3f  (noise: %4.3f%%)  (%d runs)' % (self.name, mean, std, median, min(self.times), max(self.times), 100 * std / mean, self.reps), end=' ')
+      print(
+        '   %10s: mean: %4.3f (+-%4.3f) secs  median: %4.3f  range: %4.3f-%4.3f  (noise: %4.3f%%)  (%d runs)'
+        % (self.name, mean, std, median, min(self.times), max(self.times), 100 * std / mean, self.reps),
+        end=' ',
+      )
 
       if baseline:
         mean_baseline = sum(baseline.times) / len(baseline.times)
@@ -119,14 +123,18 @@ class Benchmarker():
     recorded_stats = []
 
     def add_stat(name, size, gzip_size):
-      recorded_stats.append({
-        'value': name,
-        'measurement': size,
-      })
-      recorded_stats.append({
-        'value': name + ' (gzipped)',
-        'measurement': gzip_size,
-      })
+      recorded_stats.append(
+        {
+          'value': name,
+          'measurement': size,
+        }
+      )
+      recorded_stats.append(
+        {
+          'value': name + ' (gzipped)',
+          'measurement': gzip_size,
+        }
+      )
 
     total_size = 0
     total_gzip_size = 0
@@ -160,7 +168,9 @@ class NativeBenchmarker(Benchmarker):
     self.cxx = cxx
     self.args = args or [OPTIMIZATIONS]
 
-  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
+  def build(
+    self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser
+  ):
     native_args = native_args or []
     shared_args = shared_args or []
     self.parent = parent
@@ -170,11 +180,14 @@ class NativeBenchmarker(Benchmarker):
       native_args = native_args + lib_builder(self.name, native=True, env_init=env)
     if not native_exec:
       compiler = self.cxx if filename.endswith('cpp') else self.cc
-      cmd = compiler + [
-        '-fno-math-errno',
-        filename,
-        '-o', filename + '.native'
-      ] + self.args + shared_args + native_args + clang_native.get_clang_native_args()
+      cmd = (
+        compiler
+        + ['-fno-math-errno', filename, '-o', filename + '.native']
+        + self.args
+        + shared_args
+        + native_args
+        + clang_native.get_clang_native_args()
+      )
       # print(cmd)
       run_process(cmd, env=clang_native.get_clang_native_env())
     else:
@@ -196,11 +209,9 @@ class NativeBenchmarker(Benchmarker):
 
 
 def run_binaryen_opts(filename, opts):
-  run_process([
-    os.path.join(building.get_binaryen_bin(), 'wasm-opt', '--all-features'),
-    filename,
-    '-o', filename
-  ] + opts)
+  run_process(
+    [os.path.join(building.get_binaryen_bin(), 'wasm-opt', '--all-features'), filename, '-o', filename] + opts
+  )
 
 
 class EmscriptenBenchmarker(Benchmarker):
@@ -213,7 +224,9 @@ class EmscriptenBenchmarker(Benchmarker):
       self.env.update(env)
     self.binaryen_opts = binaryen_opts or []
 
-  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
+  def build(
+    self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser
+  ):
     emcc_args = emcc_args or []
     self.filename = filename
     llvm_root = self.env.get('LLVM') or config.LLVM_ROOT
@@ -226,15 +239,24 @@ class EmscriptenBenchmarker(Benchmarker):
       # This shouldn't be 'emcc_args += ...', because emcc_args is passed in as
       # a parameter and changes will be visible to the caller.
       emcc_args = emcc_args + lib_builder('js_' + llvm_root, native=False, env_init=env_init)
-    final = os.path.dirname(filename) + os.path.sep + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
+    final = (
+      os.path.dirname(filename)
+      + os.path.sep
+      + self.name
+      + ('_' if self.name else '')
+      + os.path.basename(filename)
+      + '.js'
+    )
     final = final.replace('.cpp', '')
     utils.delete_file(final)
     cmd = [
-      EMCC, filename,
+      EMCC,
+      filename,
       OPTIMIZATIONS,
       '-sINITIAL_MEMORY=256MB',
       '-sENVIRONMENT=node,shell',
-      '-o', final
+      '-o',
+      final,
     ] + LLVM_FEATURE_FLAGS
     if shared_args:
       cmd += shared_args
@@ -294,7 +316,9 @@ class CheerpBenchmarker(Benchmarker):
     self.args = args or [OPTIMIZATIONS]
     self.binaryen_opts = binaryen_opts or []
 
-  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
+  def build(
+    self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser
+  ):
     cheerp_args = [
       '-fno-math-errno',
     ]
@@ -303,20 +327,31 @@ class CheerpBenchmarker(Benchmarker):
     if lib_builder:
       # build as "native" (so no emcc env stuff), but with all the cheerp stuff
       # set in the env
-      cheerp_args = cheerp_args + lib_builder(self.name, native=True, env_init={
-        'CC': CHEERP_BIN + 'clang',
-        'CXX': CHEERP_BIN + 'clang++',
-        'AR': CHEERP_BIN + '../libexec/cheerp-unknown-none-ar',
-        'LD': CHEERP_BIN + 'clang',
-        'NM': CHEERP_BIN + 'llvm-nm',
-        'LDSHARED': CHEERP_BIN + 'clang',
-        'RANLIB': CHEERP_BIN + '../libexec/cheerp-unknown-none-ranlib',
-        'CXXFLAGS': "-Wno-c++11-narrowing",
-        'CHEERP_PREFIX': CHEERP_BIN + '../',
-      })
+      cheerp_args = cheerp_args + lib_builder(
+        self.name,
+        native=True,
+        env_init={
+          'CC': CHEERP_BIN + 'clang',
+          'CXX': CHEERP_BIN + 'clang++',
+          'AR': CHEERP_BIN + '../libexec/cheerp-unknown-none-ar',
+          'LD': CHEERP_BIN + 'clang',
+          'NM': CHEERP_BIN + 'llvm-nm',
+          'LDSHARED': CHEERP_BIN + 'clang',
+          'RANLIB': CHEERP_BIN + '../libexec/cheerp-unknown-none-ranlib',
+          'CXXFLAGS': "-Wno-c++11-narrowing",
+          'CHEERP_PREFIX': CHEERP_BIN + '../',
+        },
+      )
     if PROFILING:
-      cheerp_args += ['-cheerp-pretty-code'] # get function names, like emcc --profiling
-    final = os.path.dirname(filename) + os.path.sep + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
+      cheerp_args += ['-cheerp-pretty-code']  # get function names, like emcc --profiling
+    final = (
+      os.path.dirname(filename)
+      + os.path.sep
+      + self.name
+      + ('_' if self.name else '')
+      + os.path.basename(filename)
+      + '.js'
+    )
     final = final.replace('.cpp', '')
     utils.delete_file(final)
     dirs_to_delete = []
@@ -327,12 +362,18 @@ class CheerpBenchmarker(Benchmarker):
         compiler = CHEERP_BIN + '/clang'
       else:
         compiler = CHEERP_BIN + '/clang++'
-      cmd = [compiler] + cheerp_args + [
-        '-cheerp-linear-heap-size=256',
-        '-cheerp-secondary-output-file=' + final.replace('.js', '.wasm'),
-        filename,
-        '-o', final
-      ] + shared_args
+      cmd = (
+        [compiler]
+        + cheerp_args
+        + [
+          '-cheerp-linear-heap-size=256',
+          '-cheerp-secondary-output-file=' + final.replace('.js', '.wasm'),
+          filename,
+          '-o',
+          final,
+        ]
+        + shared_args
+      )
       # print(' '.join(cmd))
       run_process(cmd, stdout=PIPE, stderr=PIPE)
       self.filename = final
@@ -360,7 +401,7 @@ aot_v8 = (config.V8_ENGINE if config.V8_ENGINE else []) + ['--no-liftoff']
 
 named_benchmarkers = {
   'clang': NativeBenchmarker('clang', [CLANG_CC], [CLANG_CXX]),
-  'gcc': NativeBenchmarker('gcc',   ['gcc', '-no-pie'],  ['g++', '-no-pie']),
+  'gcc': NativeBenchmarker('gcc', ['gcc', '-no-pie'], ['g++', '-no-pie']),
   'size': SizeBenchmarker('size'),
   'v8': EmscriptenBenchmarker('v8', aot_v8),
   'v8-lto': EmscriptenBenchmarker('v8-lto', aot_v8, ['-flto']),
@@ -371,7 +412,7 @@ named_benchmarkers = {
   'cherp-v8': CheerpBenchmarker('cheerp-v8-wasm', aot_v8),
   # TODO: ensure no baseline compiler is used, see v8
   'sm': EmscriptenBenchmarker('sm', config.SPIDERMONKEY_ENGINE),
-  'cherp-sm': CheerpBenchmarker('cheerp-sm-wasm', config.SPIDERMONKEY_ENGINE)
+  'cherp-sm': CheerpBenchmarker('cheerp-sm-wasm', config.SPIDERMONKEY_ENGINE),
 }
 
 for name in EMTEST_BENCHMARKERS.split(','):
@@ -382,7 +423,7 @@ for name in EMTEST_BENCHMARKERS.split(','):
 
 class benchmark(common.RunnerCore):
   save_dir = True
-  stats = [] # type: ignore
+  stats = []  # type: ignore
 
   @classmethod
   def setUpClass(cls):
@@ -398,7 +439,10 @@ class benchmark(common.RunnerCore):
       pass
     try:
       with common.chdir(os.path.expanduser('~/Dev/mozilla-central')):
-        fingerprint.append('sm: ' + [line for line in run_process(['hg', 'tip'], stdout=PIPE).stdout.splitlines() if 'changeset' in line][0])
+        fingerprint.append(
+          'sm: '
+          + [line for line in run_process(['hg', 'tip'], stdout=PIPE).stdout.splitlines() if 'changeset' in line][0]
+        )
     except Exception:
       pass
     fingerprint.append('llvm: ' + config.LLVM_ROOT)
@@ -408,11 +452,7 @@ class benchmark(common.RunnerCore):
   def tearDownClass(cls):
     super().tearDownClass()
     if cls.stats:
-      output = {
-        'version': 1,
-        'git_hash': '',
-        'results': cls.stats
-      }
+      output = {'version': 1, 'git_hash': '', 'results': cls.stats}
       utils.write_file('stats.json', json.dumps(output, indent=2) + '\n')
 
   # avoid depending on argument reception from the commandline
@@ -422,21 +462,36 @@ class benchmark(common.RunnerCore):
     main_pattern = 'int main(int argc, char **argv)'
     assert main_pattern in code
     code = code.replace(main_pattern, 'int benchmark_main(int argc, char **argv)')
-    code += '''
+    code += (
+      '''
       int main() {
         int newArgc = 2;
         char* newArgv[] = { (char*)"./program.exe", (char*)"%s" };
         int ret = benchmark_main(newArgc, newArgv);
         return ret;
       }
-    ''' % DEFAULT_ARG
+    '''
+      % DEFAULT_ARG
+    )
     return code
 
-  def do_benchmark(self, name, src, expected_output='FAIL', args=None,
-                   emcc_args=None, native_args=None, shared_args=None,
-                   force_c=False, reps=TEST_REPS, native_exec=None,
-                   output_parser=None, args_processor=None, lib_builder=None,
-                   skip_native=False):
+  def do_benchmark(
+    self,
+    name,
+    src,
+    expected_output='FAIL',
+    args=None,
+    emcc_args=None,
+    native_args=None,
+    shared_args=None,
+    force_c=False,
+    reps=TEST_REPS,
+    native_exec=None,
+    output_parser=None,
+    args_processor=None,
+    lib_builder=None,
+    skip_native=False,
+  ):
     if not benchmarkers:
       raise Exception('error, no benchmarkers')
 
@@ -459,22 +514,24 @@ class benchmark(common.RunnerCore):
         reps = 0
       baseline = b
       print('Running benchmarker: %s: %s' % (b.__class__.__name__, b.name))
-      b.build(self, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser=output_parser is not None)
+      b.build(
+        self,
+        filename,
+        args,
+        shared_args,
+        emcc_args,
+        native_args,
+        native_exec,
+        lib_builder,
+        has_output_parser=output_parser is not None,
+      )
       b.bench(args, output_parser, reps, expected_output)
       recorded_stats = b.display(baseline)
       if recorded_stats:
         self.add_stats(name, recorded_stats)
 
   def add_stats(self, name, stats):
-    self.stats.append({
-      'key': {
-        'test': name,
-        'units': 'bytes'
-      },
-      'measurements': {
-        'stats': stats
-      }
-    })
+    self.stats.append({'key': {'test': name, 'units': 'bytes'}, 'measurements': {'stats': stats}})
 
   def test_primes(self, check=True):
     src = r'''
@@ -516,7 +573,12 @@ class benchmark(common.RunnerCore):
         return 0;
       }
     '''
-    self.do_benchmark('primes' if check else 'primes-nocheck', src, 'lastprime:' if check else '', shared_args=['-DCHECK'] if check else [])
+    self.do_benchmark(
+      'primes' if check else 'primes-nocheck',
+      src,
+      'lastprime:' if check else '',
+      shared_args=['-DCHECK'] if check else [],
+    )
 
   # Also interesting to test it without the printfs which allow checking the output. Without
   # printf, code size is dominated by the runtime itself (the compiled code is just a few lines).
@@ -750,7 +812,7 @@ class benchmark(common.RunnerCore):
           case 5: n = 12; break;
           default: printf("error: %d\\n", arg); return -1;
         }
-      '''
+      ''',
     )
     assert 'switch(arg)' in src
     self.do_benchmark('fannkuch', src, 'Pfannkuchen(')
@@ -824,7 +886,9 @@ class benchmark(common.RunnerCore):
 
   def fasta(self, name, double_rep):
     src = read_file(test_file('fasta.cpp')).replace('double', double_rep)
-    src = src.replace('   const size_t n = ( argc > 1 ) ? atoi( argv[1] ) : 512;', '''
+    src = src.replace(
+      '   const size_t n = ( argc > 1 ) ? atoi( argv[1] ) : 512;',
+      '''
       int n;
       int arg = argc > 1 ? argv[1][0] - '0' : 3;
       switch(arg) {
@@ -836,7 +900,8 @@ class benchmark(common.RunnerCore):
         case 5: n = 19000000*10; break;
         default: printf("error: %d\\n", arg); return -1;
       }
-    ''')
+    ''',
+    )
     assert 'switch(arg)' in src
     self.do_benchmark('fasta', src, '')
 
@@ -854,8 +919,7 @@ class benchmark(common.RunnerCore):
   def test_havlak(self):
     src = read_file(test_file('havlak.cpp'))
     # This runs many recursive calls (DFS) and thus needs a larger stack
-    self.do_benchmark('havlak', src, 'Found', shared_args=['-std=c++11'],
-                      emcc_args=['-sSTACK_SIZE=1MB'])
+    self.do_benchmark('havlak', src, 'Found', shared_args=['-std=c++11'], emcc_args=['-sSTACK_SIZE=1MB'])
 
   def test_base64(self):
     src = read_file(test_file('base64.c'))
@@ -870,111 +934,216 @@ class benchmark(common.RunnerCore):
     def output_parser(output):
       mflops = re.search(r'Unrolled Double  Precision ([\d\.]+) Mflops', output).group(1)
       return 10000.0 / float(mflops)
-    self.do_benchmark('linpack_double', read_file(test_file('benchmark/linpack2.c')), '''Unrolled Double  Precision''', force_c=True, output_parser=output_parser)
+
+    self.do_benchmark(
+      'linpack_double',
+      read_file(test_file('benchmark/linpack2.c')),
+      '''Unrolled Double  Precision''',
+      force_c=True,
+      output_parser=output_parser,
+    )
 
   # Benchmarks the synthetic performance of calling native functions.
   @non_core
   def test_native_functions(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('native_functions', read_file(test_file('benchmark/benchmark_ffis.cpp')), 'Total time:',
-                      output_parser=output_parser,
-                      # Not minimal because this uses functions in library_browsers.js
-                      emcc_args=['-sMINIMAL_RUNTIME=0'],
-                      shared_args=['-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')])
+
+    self.do_benchmark(
+      'native_functions',
+      read_file(test_file('benchmark/benchmark_ffis.cpp')),
+      'Total time:',
+      output_parser=output_parser,
+      # Not minimal because this uses functions in library_browsers.js
+      emcc_args=['-sMINIMAL_RUNTIME=0'],
+      shared_args=['-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')],
+    )
 
   # Benchmarks the synthetic performance of calling function pointers.
   @non_core
   def test_native_function_pointers(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('native_functions', read_file(test_file('benchmark/benchmark_ffis.cpp')), 'Total time:',
-                      output_parser=output_parser,
-                      # Not minimal because this uses functions in library_browsers.js
-                      emcc_args=['-sMINIMAL_RUNTIME=0'],
-                      shared_args=['-DBENCHMARK_FUNCTION_POINTER=1', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')])
+
+    self.do_benchmark(
+      'native_functions',
+      read_file(test_file('benchmark/benchmark_ffis.cpp')),
+      'Total time:',
+      output_parser=output_parser,
+      # Not minimal because this uses functions in library_browsers.js
+      emcc_args=['-sMINIMAL_RUNTIME=0'],
+      shared_args=['-DBENCHMARK_FUNCTION_POINTER=1', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')],
+    )
 
   # Benchmarks the synthetic performance of calling "foreign" JavaScript functions.
   @non_core
   def test_foreign_functions(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('foreign_functions', read_file(test_file('benchmark/benchmark_ffis.cpp')), 'Total time:',
-                      output_parser=output_parser,
-                      # Not minimal because this uses functions in library_browsers.js
-                      emcc_args=['--js-library', test_file('benchmark/benchmark_ffis.js'), '-sMINIMAL_RUNTIME=0'],
-                      shared_args=['-DBENCHMARK_FOREIGN_FUNCTION=1', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')])
+
+    self.do_benchmark(
+      'foreign_functions',
+      read_file(test_file('benchmark/benchmark_ffis.cpp')),
+      'Total time:',
+      output_parser=output_parser,
+      # Not minimal because this uses functions in library_browsers.js
+      emcc_args=['--js-library', test_file('benchmark/benchmark_ffis.js'), '-sMINIMAL_RUNTIME=0'],
+      shared_args=['-DBENCHMARK_FOREIGN_FUNCTION=1', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')],
+    )
 
   @non_core
   def test_memcpy_128b(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('memcpy_128b', read_file(test_file('benchmark/benchmark_memcpy.cpp')), 'Total time:', output_parser=output_parser, shared_args=['-DMAX_COPY=128', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')])
+
+    self.do_benchmark(
+      'memcpy_128b',
+      read_file(test_file('benchmark/benchmark_memcpy.cpp')),
+      'Total time:',
+      output_parser=output_parser,
+      shared_args=['-DMAX_COPY=128', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')],
+    )
 
   @non_core
   def test_memcpy_4k(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('memcpy_4k', read_file(test_file('benchmark/benchmark_memcpy.cpp')), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=128', '-DMAX_COPY=4096', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')])
+
+    self.do_benchmark(
+      'memcpy_4k',
+      read_file(test_file('benchmark/benchmark_memcpy.cpp')),
+      'Total time:',
+      output_parser=output_parser,
+      shared_args=['-DMIN_COPY=128', '-DMAX_COPY=4096', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')],
+    )
 
   @non_core
   def test_memcpy_16k(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('memcpy_16k', read_file(test_file('benchmark/benchmark_memcpy.cpp')), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=4096', '-DMAX_COPY=16384', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')])
+
+    self.do_benchmark(
+      'memcpy_16k',
+      read_file(test_file('benchmark/benchmark_memcpy.cpp')),
+      'Total time:',
+      output_parser=output_parser,
+      shared_args=['-DMIN_COPY=4096', '-DMAX_COPY=16384', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')],
+    )
 
   @non_core
   def test_memcpy_1mb(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('memcpy_1mb', read_file(test_file('benchmark/benchmark_memcpy.cpp')), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=16384', '-DMAX_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')])
+
+    self.do_benchmark(
+      'memcpy_1mb',
+      read_file(test_file('benchmark/benchmark_memcpy.cpp')),
+      'Total time:',
+      output_parser=output_parser,
+      shared_args=['-DMIN_COPY=16384', '-DMAX_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')],
+    )
 
   @non_core
   def test_memcpy_16mb(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('memcpy_16mb', read_file(test_file('benchmark/benchmark_memcpy.cpp')), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')])
+
+    self.do_benchmark(
+      'memcpy_16mb',
+      read_file(test_file('benchmark/benchmark_memcpy.cpp')),
+      'Total time:',
+      output_parser=output_parser,
+      shared_args=['-DMIN_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')],
+    )
 
   @non_core
   def test_memset_128b(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('memset_128b', read_file(test_file('benchmark/benchmark_memset.cpp')), 'Total time:', output_parser=output_parser, shared_args=['-DMAX_COPY=128', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')])
+
+    self.do_benchmark(
+      'memset_128b',
+      read_file(test_file('benchmark/benchmark_memset.cpp')),
+      'Total time:',
+      output_parser=output_parser,
+      shared_args=['-DMAX_COPY=128', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')],
+    )
 
   @non_core
   def test_memset_4k(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('memset_4k', read_file(test_file('benchmark/benchmark_memset.cpp')), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=128', '-DMAX_COPY=4096', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')])
+
+    self.do_benchmark(
+      'memset_4k',
+      read_file(test_file('benchmark/benchmark_memset.cpp')),
+      'Total time:',
+      output_parser=output_parser,
+      shared_args=['-DMIN_COPY=128', '-DMAX_COPY=4096', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')],
+    )
 
   @non_core
   def test_memset_16k(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('memset_16k', read_file(test_file('benchmark/benchmark_memset.cpp')), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=4096', '-DMAX_COPY=16384', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')])
+
+    self.do_benchmark(
+      'memset_16k',
+      read_file(test_file('benchmark/benchmark_memset.cpp')),
+      'Total time:',
+      output_parser=output_parser,
+      shared_args=['-DMIN_COPY=4096', '-DMAX_COPY=16384', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')],
+    )
 
   @non_core
   def test_memset_1mb(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('memset_1mb', read_file(test_file('benchmark/benchmark_memset.cpp')), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=16384', '-DMAX_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')])
+
+    self.do_benchmark(
+      'memset_1mb',
+      read_file(test_file('benchmark/benchmark_memset.cpp')),
+      'Total time:',
+      output_parser=output_parser,
+      shared_args=['-DMIN_COPY=16384', '-DMAX_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')],
+    )
 
   @non_core
   def test_memset_16mb(self):
     def output_parser(output):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
-    self.do_benchmark('memset_16mb', read_file(test_file('benchmark/benchmark_memset.cpp')), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')])
+
+    self.do_benchmark(
+      'memset_16mb',
+      read_file(test_file('benchmark/benchmark_memset.cpp')),
+      'Total time:',
+      output_parser=output_parser,
+      shared_args=['-DMIN_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')],
+    )
 
   def test_malloc_multithreading(self):
     # Multithreaded malloc test. For emcc we use mimalloc here.
     src = read_file(test_file('other/test_malloc_multithreading.cpp'))
     # TODO measure with different numbers of cores and not fixed 4
-    self.do_benchmark('malloc_multithreading', src, 'Done.', shared_args=['-DWORKERS=4', '-pthread'], emcc_args=['-sEXIT_RUNTIME', '-sMALLOC=mimalloc'])
+    self.do_benchmark(
+      'malloc_multithreading',
+      src,
+      'Done.',
+      shared_args=['-DWORKERS=4', '-pthread'],
+      emcc_args=['-sEXIT_RUNTIME', '-sMALLOC=mimalloc'],
+    )
 
   def test_matrix_multiply(self):
     def output_parser(output):
       return float(re.search(r'Total elapsed: ([\d\.]+)', output).group(1))
-    self.do_benchmark('matrix_multiply', read_file(test_file('matrix_multiply.cpp')), 'Total elapsed:', output_parser=output_parser, shared_args=['-I' + test_file('benchmark')])
+
+    self.do_benchmark(
+      'matrix_multiply',
+      read_file(test_file('matrix_multiply.cpp')),
+      'Total elapsed:',
+      output_parser=output_parser,
+      shared_args=['-I' + test_file('benchmark')],
+    )
 
   def lua(self, benchmark, expected, output_parser=None, args_processor=None):
     self.emcc_args.remove('-Werror')
@@ -983,13 +1152,34 @@ class benchmark(common.RunnerCore):
     def lib_builder(name, native, env_init):
       # We force recomputation for the native benchmarker because this benchmark
       # uses native_exec=True, so we need to copy the native executable
-      return self.get_library(os.path.join('third_party', 'lua_native' if native else 'lua'), [os.path.join('src', 'lua.o'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=native, cache_name_extra=name, env_init=env_init, force_rebuild=native)
+      return self.get_library(
+        os.path.join('third_party', 'lua_native' if native else 'lua'),
+        [os.path.join('src', 'lua.o'), os.path.join('src', 'liblua.a')],
+        make=['make', 'generic'],
+        configure=None,
+        native=native,
+        cache_name_extra=name,
+        env_init=env_init,
+        force_rebuild=native,
+      )
 
-    self.do_benchmark('lua_' + benchmark, '', expected,
-                      force_c=True, args=[benchmark + '.lua', DEFAULT_ARG],
-                      emcc_args=['--embed-file', benchmark + '.lua', '-sFORCE_FILESYSTEM', '-sMINIMAL_RUNTIME=0'], # not minimal because of files
-                      lib_builder=lib_builder, native_exec=os.path.join('building', 'third_party', 'lua_native', 'src', 'lua'),
-                      output_parser=output_parser, args_processor=args_processor)
+    self.do_benchmark(
+      'lua_' + benchmark,
+      '',
+      expected,
+      force_c=True,
+      args=[benchmark + '.lua', DEFAULT_ARG],
+      emcc_args=[
+        '--embed-file',
+        benchmark + '.lua',
+        '-sFORCE_FILESYSTEM',
+        '-sMINIMAL_RUNTIME=0',
+      ],  # not minimal because of files
+      lib_builder=lib_builder,
+      native_exec=os.path.join('building', 'third_party', 'lua_native', 'src', 'lua'),
+      output_parser=output_parser,
+      args_processor=args_processor,
+    )
 
   def test_zzz_lua_scimark(self):
     def output_parser(output):
@@ -1006,30 +1196,62 @@ class benchmark(common.RunnerCore):
     src = read_file(test_file('benchmark/test_zlib_benchmark.c'))
 
     def lib_builder(name, native, env_init):
-      return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'), make_args=['libz.a'], native=native, cache_name_extra=name, env_init=env_init)
+      return self.get_library(
+        os.path.join('third_party', 'zlib'),
+        os.path.join('libz.a'),
+        make_args=['libz.a'],
+        native=native,
+        cache_name_extra=name,
+        env_init=env_init,
+      )
 
-    self.do_benchmark('zlib', src, 'ok.',
-                      force_c=True, shared_args=['-I' + test_file('third_party/zlib')], lib_builder=lib_builder)
+    self.do_benchmark(
+      'zlib', src, 'ok.', force_c=True, shared_args=['-I' + test_file('third_party/zlib')], lib_builder=lib_builder
+    )
 
   def test_zzz_coremark(self):
     src = read_file(test_file('third_party/coremark/core_main.c'))
 
     def lib_builder(name, native, env_init):
-      return self.get_library('third_party/coremark', [os.path.join('coremark.a')], configure=None, native=native, cache_name_extra=name, env_init=env_init)
+      return self.get_library(
+        'third_party/coremark',
+        [os.path.join('coremark.a')],
+        configure=None,
+        native=native,
+        cache_name_extra=name,
+        env_init=env_init,
+      )
 
     def output_parser(output):
       iters_sec = re.search(r'Iterations/Sec   : ([\d\.]+)', output).group(1)
       return 100000.0 / float(iters_sec)
 
-    self.do_benchmark('coremark', src, 'Correct operation validated.', shared_args=['-I' + test_file('third_party/coremark')], lib_builder=lib_builder, output_parser=output_parser, force_c=True)
+    self.do_benchmark(
+      'coremark',
+      src,
+      'Correct operation validated.',
+      shared_args=['-I' + test_file('third_party/coremark')],
+      lib_builder=lib_builder,
+      output_parser=output_parser,
+      force_c=True,
+    )
 
   def test_zzz_box2d(self):
     src = read_file(test_file('benchmark/test_box2d_benchmark.cpp'))
 
     def lib_builder(name, native, env_init):
-      return self.get_library(os.path.join('third_party', 'box2d'), ['box2d.a'], configure=None, native=native, cache_name_extra=name, env_init=env_init)
+      return self.get_library(
+        os.path.join('third_party', 'box2d'),
+        ['box2d.a'],
+        configure=None,
+        native=native,
+        cache_name_extra=name,
+        env_init=env_init,
+      )
 
-    self.do_benchmark('box2d', src, 'frame averages', shared_args=['-I' + test_file('third_party/box2d')], lib_builder=lib_builder)
+    self.do_benchmark(
+      'box2d', src, 'frame averages', shared_args=['-I' + test_file('third_party/box2d')], lib_builder=lib_builder
+    )
 
   def test_zzz_bullet(self):
     self.emcc_args.remove('-Werror')
@@ -1038,40 +1260,64 @@ class benchmark(common.RunnerCore):
     src += read_file(test_file('third_party/bullet/Demos/Benchmarks/main.cpp'))
 
     def lib_builder(name, native, env_init):
-      return self.get_library(str(Path('third_party/bullet')),
-                              [Path('src/.libs/libBulletDynamics.a'),
-                               Path('src/.libs/libBulletCollision.a'),
-                               Path('src/.libs/libLinearMath.a')],
-                              # The --host parameter is needed for 2 reasons:
-                              # 1) bullet in it's configure.ac tries to do platform detection and will fail on unknown platforms
-                              # 2) configure will try to compile and run a test file to check if the C compiler is sane. As Cheerp
-                              #    will generate a wasm file (which cannot be run), configure will fail. Passing `--host` enables
-                              #    cross compile mode, which lets configure complete happily.
-                              configure_args=['--disable-demos', '--disable-dependency-tracking', '--host=i686-unknown-linux'], native=native, cache_name_extra=name, env_init=env_init)
+      return self.get_library(
+        str(Path('third_party/bullet')),
+        [
+          Path('src/.libs/libBulletDynamics.a'),
+          Path('src/.libs/libBulletCollision.a'),
+          Path('src/.libs/libLinearMath.a'),
+        ],
+        # The --host parameter is needed for 2 reasons:
+        # 1) bullet in it's configure.ac tries to do platform detection and will fail on unknown platforms
+        # 2) configure will try to compile and run a test file to check if the C compiler is sane. As Cheerp
+        #    will generate a wasm file (which cannot be run), configure will fail. Passing `--host` enables
+        #    cross compile mode, which lets configure complete happily.
+        configure_args=['--disable-demos', '--disable-dependency-tracking', '--host=i686-unknown-linux'],
+        native=native,
+        cache_name_extra=name,
+        env_init=env_init,
+      )
 
-    self.do_benchmark('bullet', src, '\nok.\n',
-                      shared_args=['-I' + test_file('third_party/bullet/src'), '-I' + test_file('third_party/bullet/Demos/Benchmarks')],
-                      lib_builder=lib_builder)
+    self.do_benchmark(
+      'bullet',
+      src,
+      '\nok.\n',
+      shared_args=['-I' + test_file('third_party/bullet/src'), '-I' + test_file('third_party/bullet/Demos/Benchmarks')],
+      lib_builder=lib_builder,
+    )
 
   def test_zzz_lzma(self):
     src = read_file(test_file('benchmark/test_lzma_benchmark.c'))
 
     def lib_builder(name, native, env_init):
-      return self.get_library(os.path.join('third_party', 'lzma'), [os.path.join('lzma.a')], configure=None, native=native, cache_name_extra=name, env_init=env_init)
+      return self.get_library(
+        os.path.join('third_party', 'lzma'),
+        [os.path.join('lzma.a')],
+        configure=None,
+        native=native,
+        cache_name_extra=name,
+        env_init=env_init,
+      )
 
     self.do_benchmark('lzma', src, 'ok.', shared_args=['-I' + test_file('third_party/lzma')], lib_builder=lib_builder)
 
   def test_zzz_sqlite(self):
     src = read_file(test_file('third_party/sqlite/sqlite3.c')) + read_file(test_file('sqlite/speedtest1.c'))
-    self.do_benchmark('sqlite', src, 'TOTAL...',
-                      native_args=['-ldl', '-pthread'],
-                      shared_args=['-I' + test_file('third_party/sqlite')],
-                      # not minimal because of files
-                      emcc_args=['-sFILESYSTEM', '-sMINIMAL_RUNTIME=0'],
-                      force_c=True)
+    self.do_benchmark(
+      'sqlite',
+      src,
+      'TOTAL...',
+      native_args=['-ldl', '-pthread'],
+      shared_args=['-I' + test_file('third_party/sqlite')],
+      # not minimal because of files
+      emcc_args=['-sFILESYSTEM', '-sMINIMAL_RUNTIME=0'],
+      force_c=True,
+    )
 
   def test_zzz_poppler(self):
-    utils.write_file('pre.js', '''
+    utils.write_file(
+      'pre.js',
+      '''
       var benchmarkArgument = %s;
       var benchmarkArgumentToPageCount = {
         '0': 0,
@@ -1107,17 +1353,27 @@ class benchmark(common.RunnerCore):
           out(files.length + ' files emitted, total output size: ' + totalSize + ', hashed printout: ' + hash);
         };
       }
-    ''' % DEFAULT_ARG)
+    '''
+      % DEFAULT_ARG,
+    )
 
     def lib_builder(name, native, env_init):
       return self.get_poppler_library(env_init=env_init)
 
     # TODO: Fix poppler native build and remove skip_native=True
-    self.do_benchmark('poppler', '', 'hashed printout',
-                      shared_args=['-I' + test_file('poppler/include'),
-                                   '-I' + test_file('freetype/include')],
-                      emcc_args=['-sFILESYSTEM', '--pre-js=pre.js', '--embed-file',
-                                 test_file('poppler/emscripten_html5.pdf') + '@input.pdf',
-                                 '-sERROR_ON_UNDEFINED_SYMBOLS=0',
-                                 '-sMINIMAL_RUNTIME=0'], # not minimal because of files
-                      lib_builder=lib_builder, skip_native=True)
+    self.do_benchmark(
+      'poppler',
+      '',
+      'hashed printout',
+      shared_args=['-I' + test_file('poppler/include'), '-I' + test_file('freetype/include')],
+      emcc_args=[
+        '-sFILESYSTEM',
+        '--pre-js=pre.js',
+        '--embed-file',
+        test_file('poppler/emscripten_html5.pdf') + '@input.pdf',
+        '-sERROR_ON_UNDEFINED_SYMBOLS=0',
+        '-sMINIMAL_RUNTIME=0',
+      ],  # not minimal because of files
+      lib_builder=lib_builder,
+      skip_native=True,
+    )

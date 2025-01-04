@@ -30,18 +30,18 @@ def clean_processes(processes):
     if getattr(p, 'exitcode', None) is None and getattr(p, 'returncode', None) is None:
       # ask nicely (to try and catch the children)
       try:
-        p.terminate() # SIGTERM
+        p.terminate()  # SIGTERM
       except OSError:
         pass
       time.sleep(1)
       # send a forcible kill immediately afterwards. If the process did not die before, this should clean it.
       try:
-        p.terminate() # SIGKILL
+        p.terminate()  # SIGKILL
       except OSError:
         pass
 
 
-class WebsockifyServerHarness():
+class WebsockifyServerHarness:
   def __init__(self, filename, args, listen_port, do_server_check=True):
     self.processes = []
     self.filename = filename
@@ -55,7 +55,11 @@ class WebsockifyServerHarness():
     # NOTE empty filename support is a hack to support
     # the current test_enet
     if self.filename:
-      cmd = [CLANG_CC, test_file(self.filename), '-o', 'server', '-DSOCKK=%d' % self.target_port] + clang_native.get_clang_native_args() + self.args
+      cmd = (
+        [CLANG_CC, test_file(self.filename), '-o', 'server', '-DSOCKK=%d' % self.target_port]
+        + clang_native.get_clang_native_args()
+        + self.args
+      )
       print(cmd)
       run_process(cmd, env=clang_native.get_clang_native_env())
       process = Popen([os.path.abspath('server')])
@@ -68,7 +72,14 @@ class WebsockifyServerHarness():
     # source_is_ipv6=True here signals to websockify that it should prefer ipv6 address when
     # resolving host names.  This matches what the node `ws` module does and means that `localhost`
     # resolves to `::1` on IPv6 systems.
-    wsp = websockify.WebSocketProxy(verbose=True, source_is_ipv6=True, listen_port=self.listen_port, target_host="127.0.0.1", target_port=self.target_port, run_once=True)
+    wsp = websockify.WebSocketProxy(
+      verbose=True,
+      source_is_ipv6=True,
+      listen_port=self.listen_port,
+      target_host="127.0.0.1",
+      target_port=self.target_port,
+      run_once=True,
+    )
     self.websockify = multiprocessing.Process(target=wsp.start_server)
     self.websockify.start()
     self.processes.append(self.websockify)
@@ -76,8 +87,8 @@ class WebsockifyServerHarness():
     for _ in range(10):
       try:
         if self.do_server_check:
-            server_sock = socket.create_connection(('localhost', self.target_port), timeout=1)
-            server_sock.close()
+          server_sock = socket.create_connection(('localhost', self.target_port), timeout=1)
+          server_sock.close()
         proxy_sock = socket.create_connection(('localhost', self.listen_port), timeout=1)
         proxy_sock.close()
         break
@@ -100,7 +111,7 @@ class WebsockifyServerHarness():
     clean_processes(self.processes)
 
 
-class CompiledServerHarness():
+class CompiledServerHarness:
   def __init__(self, filename, args, listen_port):
     self.processes = []
     self.filename = filename
@@ -117,7 +128,9 @@ class CompiledServerHarness():
       npm_checked = True
 
     # compile the server
-    proc = run_process([EMCC, '-Werror', test_file(self.filename), '-o', 'server.js', '-DSOCKK=%d' % self.listen_port] + self.args)
+    proc = run_process(
+      [EMCC, '-Werror', test_file(self.filename), '-o', 'server.js', '-DSOCKK=%d' % self.listen_port] + self.args
+    )
     print('Socket server build: out:', proc.stdout or '', '/ err:', proc.stderr or '')
 
     process = Popen(config.NODE_JS + ['server.js'])
@@ -133,7 +146,7 @@ class CompiledServerHarness():
 
 
 # Executes a native executable server process
-class BackgroundServerProcess():
+class BackgroundServerProcess:
   def __init__(self, args):
     self.processes = []
     self.args = args
@@ -177,13 +190,15 @@ class sockets(BrowserCore):
   # WebsockifyServerHarness uses two port numbers, x and x-1, so increment it by two.
   # CompiledServerHarness only uses one. Start with 49160 & 49159 as the first server port
   # addresses. If adding new tests, increment the used port addresses below.
-  @parameterized({
-    'websockify': [WebsockifyServerHarness, 49160, ['-DTEST_DGRAM=0']],
-    'tcp': [CompiledServerHarness, 49161, ['-DTEST_DGRAM=0']],
-    'udp': [CompiledServerHarness, 49162, ['-DTEST_DGRAM=1']],
-    # The following forces non-NULL addr and addlen parameters for the accept call
-    'accept_addr': [CompiledServerHarness, 49163, ['-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1']],
-  })
+  @parameterized(
+    {
+      'websockify': [WebsockifyServerHarness, 49160, ['-DTEST_DGRAM=0']],
+      'tcp': [CompiledServerHarness, 49161, ['-DTEST_DGRAM=0']],
+      'udp': [CompiledServerHarness, 49162, ['-DTEST_DGRAM=1']],
+      # The following forces non-NULL addr and addlen parameters for the accept call
+      'accept_addr': [CompiledServerHarness, 49163, ['-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1']],
+    }
+  )
   def test_sockets_echo(self, harness_class, port, args):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
       self.skipTest('requires native clang')
@@ -193,19 +208,26 @@ class sockets(BrowserCore):
 
   def test_sockets_echo_pthreads(self):
     with CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 49161) as harness:
-      self.btest_exit('sockets/test_sockets_echo_client.c', args=['-pthread', '-sPROXY_TO_PTHREAD', '-DSOCKK=%d' % harness.listen_port])
+      self.btest_exit(
+        'sockets/test_sockets_echo_client.c',
+        args=['-pthread', '-sPROXY_TO_PTHREAD', '-DSOCKK=%d' % harness.listen_port],
+      )
 
   def test_sdl2_sockets_echo(self):
     with CompiledServerHarness('sockets/sdl2_net_server.c', ['-sUSE_SDL=2', '-sUSE_SDL_NET=2'], 49164) as harness:
-      self.btest_exit('sockets/sdl2_net_client.c', args=['-sUSE_SDL=2', '-sUSE_SDL_NET=2', '-DSOCKK=%d' % harness.listen_port])
+      self.btest_exit(
+        'sockets/sdl2_net_client.c', args=['-sUSE_SDL=2', '-sUSE_SDL_NET=2', '-DSOCKK=%d' % harness.listen_port]
+      )
 
-  @parameterized({
-    'websockify': [WebsockifyServerHarness, 49166, ['-DTEST_DGRAM=0']],
-    'tcp': [CompiledServerHarness, 49167, ['-DTEST_DGRAM=0']],
-    'udp': [CompiledServerHarness, 49168, ['-DTEST_DGRAM=1']],
-    # The following forces non-NULL addr and addlen parameters for the accept call
-    'accept_addr': [CompiledServerHarness, 49169, ['-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1']],
-  })
+  @parameterized(
+    {
+      'websockify': [WebsockifyServerHarness, 49166, ['-DTEST_DGRAM=0']],
+      'tcp': [CompiledServerHarness, 49167, ['-DTEST_DGRAM=0']],
+      'udp': [CompiledServerHarness, 49168, ['-DTEST_DGRAM=1']],
+      # The following forces non-NULL addr and addlen parameters for the accept call
+      'accept_addr': [CompiledServerHarness, 49169, ['-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1']],
+    }
+  )
   def test_sockets_async_echo(self, harness_class, port, args):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
       self.skipTest('requires native clang')
@@ -219,11 +241,13 @@ class sockets(BrowserCore):
     # getsockopt
     self.btest_exit('sockets/test_sockets_echo_client.c', args=['-DSOCKK=49169', '-DTEST_ASYNC=1'])
 
-  @parameterized({
-    'websockify': [WebsockifyServerHarness, 49171, ['-DTEST_DGRAM=0']],
-    'tcp': [CompiledServerHarness, 49172, ['-DTEST_DGRAM=0']],
-    'udp': [CompiledServerHarness, 49173, ['-DTEST_DGRAM=1']],
-  })
+  @parameterized(
+    {
+      'websockify': [WebsockifyServerHarness, 49171, ['-DTEST_DGRAM=0']],
+      'tcp': [CompiledServerHarness, 49172, ['-DTEST_DGRAM=0']],
+      'udp': [CompiledServerHarness, 49173, ['-DTEST_DGRAM=1']],
+    }
+  )
   def test_sockets_echo_bigdata(self, harness_class, port, args):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
       self.skipTest('requires native clang')
@@ -236,7 +260,9 @@ class sockets(BrowserCore):
 
     # re-write the client test with this literal (it's too big to pass via command line)
     src = read_file(test_file('sockets/test_sockets_echo_client.c'))
-    create_file('test_sockets_echo_bigdata.c', src.replace('#define MESSAGE "pingtothepong"', '#define MESSAGE "%s"' % message))
+    create_file(
+      'test_sockets_echo_bigdata.c', src.replace('#define MESSAGE "pingtothepong"', '#define MESSAGE "%s"' % message)
+    )
 
     with harness_class(test_file('sockets/test_sockets_echo_server.c'), args, port) as harness:
       self.btest_exit('test_sockets_echo_bigdata.c', args=[sockets_include, '-DSOCKK=%d' % harness.listen_port] + args)
@@ -245,16 +271,20 @@ class sockets(BrowserCore):
   def test_sockets_partial(self):
     for harness in [
       WebsockifyServerHarness(test_file('sockets/test_sockets_partial_server.c'), [], 49180),
-      CompiledServerHarness(test_file('sockets/test_sockets_partial_server.c'), [], 49181)
+      CompiledServerHarness(test_file('sockets/test_sockets_partial_server.c'), [], 49181),
     ]:
       with harness:
-        self.btest_exit('sockets/test_sockets_partial_client.c', assert_returncode=165, args=['-DSOCKK=%d' % harness.listen_port])
+        self.btest_exit(
+          'sockets/test_sockets_partial_client.c', assert_returncode=165, args=['-DSOCKK=%d' % harness.listen_port]
+        )
 
   @no_windows('This test is Unix-specific.')
   def test_sockets_select_server_down(self):
     for harness in [
-      WebsockifyServerHarness(test_file('sockets/test_sockets_select_server_down_server.c'), [], 49190, do_server_check=False),
-      CompiledServerHarness(test_file('sockets/test_sockets_select_server_down_server.c'), [], 49191)
+      WebsockifyServerHarness(
+        test_file('sockets/test_sockets_select_server_down_server.c'), [], 49190, do_server_check=False
+      ),
+      CompiledServerHarness(test_file('sockets/test_sockets_select_server_down_server.c'), [], 49191),
     ]:
       with harness:
         self.btest_exit('sockets/test_sockets_select_server_down_client.c', args=['-DSOCKK=%d' % harness.listen_port])
@@ -263,10 +293,12 @@ class sockets(BrowserCore):
   def test_sockets_select_server_closes_connection_rw(self):
     for harness in [
       WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DCLOSE_CLIENT_AFTER_ECHO'], 49200),
-      CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DCLOSE_CLIENT_AFTER_ECHO'], 49201)
+      CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DCLOSE_CLIENT_AFTER_ECHO'], 49201),
     ]:
       with harness:
-        self.btest_exit('sockets/test_sockets_select_server_closes_connection_client_rw.c', args=['-DSOCKK=%d' % harness.listen_port])
+        self.btest_exit(
+          'sockets/test_sockets_select_server_closes_connection_client_rw.c', args=['-DSOCKK=%d' % harness.listen_port]
+        )
 
   @no_windows('This test uses Unix-specific build architecture.')
   def test_enet(self):
@@ -281,12 +313,14 @@ class sockets(BrowserCore):
       self.btest_exit('sockets/test_enet_client.c', args=enet + ['-DSOCKK=%d' % harness.listen_port])
 
   @crossplatform
-  @parameterized({
-    'native': [WebsockifyServerHarness, 59160, ['-DTEST_DGRAM=0']],
-    'tcp': [CompiledServerHarness, 59162, ['-DTEST_DGRAM=0']],
-    'udp': [CompiledServerHarness, 59164, ['-DTEST_DGRAM=1']],
-    'pthread': [CompiledServerHarness, 59166, ['-pthread', '-sPROXY_TO_PTHREAD']],
-  })
+  @parameterized(
+    {
+      'native': [WebsockifyServerHarness, 59160, ['-DTEST_DGRAM=0']],
+      'tcp': [CompiledServerHarness, 59162, ['-DTEST_DGRAM=0']],
+      'udp': [CompiledServerHarness, 59164, ['-DTEST_DGRAM=1']],
+      'pthread': [CompiledServerHarness, 59166, ['-pthread', '-sPROXY_TO_PTHREAD']],
+    }
+  )
   def test_nodejs_sockets_echo(self, harness_class, port, args):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
       self.skipTest('requires native clang')
@@ -294,10 +328,17 @@ class sockets(BrowserCore):
     # Basic test of node client against both a Websockified and compiled echo server.
     with harness_class(test_file('sockets/test_sockets_echo_server.c'), args, port) as harness:
       expected = 'do_msg_read: read 14 bytes'
-      self.do_runf('sockets/test_sockets_echo_client.c', expected, emcc_args=['-DSOCKK=%d' % harness.listen_port] + args)
+      self.do_runf(
+        'sockets/test_sockets_echo_client.c', expected, emcc_args=['-DSOCKK=%d' % harness.listen_port] + args
+      )
 
   def test_nodejs_sockets_connect_failure(self):
-    self.do_runf('sockets/test_sockets_echo_client.c', 'connect failed: Connection refused', emcc_args=['-DSOCKK=666'], assert_returncode=NON_ZERO)
+    self.do_runf(
+      'sockets/test_sockets_echo_client.c',
+      'connect failed: Connection refused',
+      emcc_args=['-DSOCKK=666'],
+      assert_returncode=NON_ZERO,
+    )
 
   @requires_native_clang
   def test_nodejs_sockets_echo_subprotocol(self):
@@ -305,27 +346,54 @@ class sockets(BrowserCore):
     # server because as long as the subprotocol list contains binary it will configure itself to accept binary
     # This test also checks that the connect url contains the correct subprotocols.
     with WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 59168):
-      self.run_process([EMCC, '-Werror', test_file('sockets/test_sockets_echo_client.c'), '-o', 'client.js', '-sSOCKET_DEBUG', '-sWEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59168'])
+      self.run_process(
+        [
+          EMCC,
+          '-Werror',
+          test_file('sockets/test_sockets_echo_client.c'),
+          '-o',
+          'client.js',
+          '-sSOCKET_DEBUG',
+          '-sWEBSOCKET_SUBPROTOCOL="base64, binary"',
+          '-DSOCKK=59168',
+        ]
+      )
 
       out = self.run_js('client.js')
       self.assertContained('do_msg_read: read 14 bytes', out)
-      self.assertContained(['connect: ws://127.0.0.1:59168, base64,binary', 'connect: ws://127.0.0.1:59168/, base64,binary'], out)
+      self.assertContained(
+        ['connect: ws://127.0.0.1:59168, base64,binary', 'connect: ws://127.0.0.1:59168/, base64,binary'], out
+      )
 
   @requires_native_clang
   def test_nodejs_sockets_echo_subprotocol_runtime(self):
     # Test against a Websockified server with runtime WebSocket configuration. We specify both url and subprotocol.
     # In this test we have *deliberately* used the wrong port '-DSOCKK=12345' to configure the echo_client.c, so
     # the connection would fail without us specifying a valid WebSocket URL in the configuration.
-    create_file('websocket_pre.js', '''
+    create_file(
+      'websocket_pre.js',
+      '''
       var Module = {
         websocket: {
           url: 'ws://localhost:59168/testA/testB',
           subprotocol: 'text, base64, binary',
         }
       };
-    ''')
+    ''',
+    )
     with WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 59168):
-      self.run_process([EMCC, '-Werror', test_file('sockets/test_sockets_echo_client.c'), '-o', 'client.js', '--pre-js=websocket_pre.js', '-sSOCKET_DEBUG', '-DSOCKK=12345'])
+      self.run_process(
+        [
+          EMCC,
+          '-Werror',
+          test_file('sockets/test_sockets_echo_client.c'),
+          '-o',
+          'client.js',
+          '--pre-js=websocket_pre.js',
+          '-sSOCKET_DEBUG',
+          '-DSOCKK=12345',
+        ]
+      )
 
       out = self.run_js('client.js')
       self.assertContained('do_msg_read: read 14 bytes', out)
@@ -334,13 +402,17 @@ class sockets(BrowserCore):
   # Test Emscripten WebSockets API to send and receive text and binary messages against an echo server.
   # N.B. running this test requires 'npm install ws' in Emscripten root directory
   # NOTE: Shared buffer is not allowed for websocket sending.
-  @parameterized({
-    '': [[]],
-    'shared': [['-sSHARED_MEMORY']],
-  })
+  @parameterized(
+    {
+      '': [[]],
+      'shared': [['-sSHARED_MEMORY']],
+    }
+  )
   def test_websocket_send(self, args):
     with NodeJsWebSocketEchoServerProcess():
-      self.btest_exit('websocket/test_websocket_send.c', args=['-lwebsocket', '-sNO_EXIT_RUNTIME', '-sWEBSOCKET_DEBUG'] + args)
+      self.btest_exit(
+        'websocket/test_websocket_send.c', args=['-lwebsocket', '-sNO_EXIT_RUNTIME', '-sWEBSOCKET_DEBUG'] + args
+      )
 
   # Test that native POSIX sockets API can be used by proxying calls to an intermediate WebSockets
   # -> POSIX sockets bridge server
@@ -348,7 +420,9 @@ class sockets(BrowserCore):
     # Build the websocket bridge server
     self.run_process(['cmake', path_from_root('tools/websocket_to_posix_proxy')])
     self.run_process(['cmake', '--build', '.'])
-    if os.name == 'nt': # This is not quite exact, instead of "isWindows()" this should be "If CMake defaults to building with Visual Studio", but there is no good check for that, so assume Windows==VS.
+    if (
+      os.name == 'nt'
+    ):  # This is not quite exact, instead of "isWindows()" this should be "If CMake defaults to building with Visual Studio", but there is no good check for that, so assume Windows==VS.
       proxy_server = self.in_dir('Debug', 'websocket_to_posix_proxy.exe')
     else:
       proxy_server = self.in_dir('websocket_to_posix_proxy')
@@ -356,7 +430,9 @@ class sockets(BrowserCore):
     with BackgroundServerProcess([proxy_server, '8080']):
       with PythonTcpEchoServerProcess('7777'):
         # Build and run the TCP echo client program with Emscripten
-        self.btest_exit('websocket/tcp_echo_client.c', args=['-lwebsocket', '-sPROXY_POSIX_SOCKETS', '-pthread', '-sPROXY_TO_PTHREAD'])
+        self.btest_exit(
+          'websocket/tcp_echo_client.c', args=['-lwebsocket', '-sPROXY_POSIX_SOCKETS', '-pthread', '-sPROXY_TO_PTHREAD']
+        )
 
   # Test that calling send() right after a socket connect() works.
   def test_sockets_send_while_connecting(self):

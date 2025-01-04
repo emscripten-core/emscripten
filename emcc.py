@@ -56,6 +56,7 @@ logger = logging.getLogger('emcc')
 # run already.
 if os.path.exists(utils.path_from_root('.git')) and os.path.exists(utils.path_from_root('bootstrap.py')):
   import bootstrap
+
   bootstrap.check()
 
 # endings = dot + a suffix, compare against result of shared.suffix()
@@ -65,7 +66,7 @@ OBJC_ENDINGS = ['.m', '.mi']
 PREPROCESSED_ENDINGS = ['.i', '.ii']
 OBJCXX_ENDINGS = ['.mm', '.mii']
 SPECIAL_ENDINGLESS_FILENAMES = [os.devnull]
-C_ENDINGS += SPECIAL_ENDINGLESS_FILENAMES # consider the special endingless filenames like /dev/null to be C
+C_ENDINGS += SPECIAL_ENDINGLESS_FILENAMES  # consider the special endingless filenames like /dev/null to be C
 
 SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + ['.bc', '.ll', '.S']
 ASSEMBLY_ENDINGS = ['.s']
@@ -73,20 +74,34 @@ HEADER_ENDINGS = ['.h', '.hxx', '.hpp', '.hh', '.H', '.HXX', '.HPP', '.HH']
 
 # These symbol names are allowed in INCOMING_MODULE_JS_API but are not part of the
 # default set.
-EXTRA_INCOMING_JS_API = [
-  'fetchSettings'
-]
+EXTRA_INCOMING_JS_API = ['fetchSettings']
 
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
 LINK_ONLY_FLAGS = {
-    '--bind', '--closure', '--cpuprofiler', '--embed-file',
-    '--emit-symbol-map', '--emrun', '--exclude-file', '--extern-post-js',
-    '--extern-pre-js', '--ignore-dynamic-linking', '--js-library',
-    '--js-transform', '--oformat', '--output_eol',
-    '--post-js', '--pre-js', '--preload-file', '--profiling-funcs',
-    '--proxy-to-worker', '--shell-file', '--source-map-base',
-    '--threadprofiler', '--use-preload-plugins'
+  '--bind',
+  '--closure',
+  '--cpuprofiler',
+  '--embed-file',
+  '--emit-symbol-map',
+  '--emrun',
+  '--exclude-file',
+  '--extern-post-js',
+  '--extern-pre-js',
+  '--ignore-dynamic-linking',
+  '--js-library',
+  '--js-transform',
+  '--oformat',
+  '--output_eol',
+  '--post-js',
+  '--pre-js',
+  '--preload-file',
+  '--profiling-funcs',
+  '--proxy-to-worker',
+  '--shell-file',
+  '--source-map-base',
+  '--threadprofiler',
+  '--use-preload-plugins',
 }
 
 
@@ -144,10 +159,10 @@ class EmccOptions:
     self.use_closure_compiler = None
     self.closure_args = []
     self.js_transform = None
-    self.pre_js = [] # before all js
-    self.post_js = [] # after all js
-    self.extern_pre_js = [] # before all js, external to optimized code
-    self.extern_post_js = [] # after all js, external to optimized code
+    self.pre_js = []  # before all js
+    self.post_js = []  # after all js
+    self.extern_pre_js = []  # before all js, external to optimized code
+    self.extern_post_js = []  # after all js, external to optimized code
     self.preload_files = []
     self.embed_files = []
     self.exclude_files = []
@@ -218,13 +233,36 @@ def create_reproduce_file(name, args):
           if ignore:
             continue
 
-          if arg in ('-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
-                     '-Xpreprocessor', '-include', '-imacros', '-idirafter',
-                     '-iprefix', '-iwithprefix', '-iwithprefixbefore',
-                     '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
-                     '-install_name', '-compatibility_version',
-                     '-current_version', '-I', '-L', '-include-pch',
-                     '-Xlinker', '-Xclang'):
+          if arg in (
+            '-MT',
+            '-MF',
+            '-MJ',
+            '-MQ',
+            '-D',
+            '-U',
+            '-o',
+            '-x',
+            '-Xpreprocessor',
+            '-include',
+            '-imacros',
+            '-idirafter',
+            '-iprefix',
+            '-iwithprefix',
+            '-iwithprefixbefore',
+            '-isysroot',
+            '-imultilib',
+            '-A',
+            '-isystem',
+            '-iquote',
+            '-install_name',
+            '-compatibility_version',
+            '-current_version',
+            '-I',
+            '-L',
+            '-include-pch',
+            '-Xlinker',
+            '-Xclang',
+          ):
             ignore_next = True
 
           if arg == '-o':
@@ -244,7 +282,7 @@ def expand_byte_size_suffixes(value):
   value, suffix = match.groups()
   value = int(value)
   if suffix:
-    size_suffixes = {suffix: 1024 ** i for i, suffix in enumerate(['b', 'kb', 'mb', 'gb', 'tb'])}
+    size_suffixes = {suffix: 1024**i for i, suffix in enumerate(['b', 'kb', 'mb', 'gb', 'tb'])}
     value *= size_suffixes[suffix.lower()]
   return value
 
@@ -462,7 +500,11 @@ def get_cflags(user_args, is_cxx):
 
   if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER) or array_contains_any_of(user_args, SIMD_NEON_FLAGS):
     if '-msimd128' not in user_args and '-mrelaxed-simd' not in user_args:
-      exit_with_error('passing any of ' + ', '.join(SIMD_INTEL_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128 (or -mrelaxed-simd)!')
+      exit_with_error(
+        'passing any of '
+        + ', '.join(SIMD_INTEL_FEATURE_TOWER + SIMD_NEON_FLAGS)
+        + ' flags also requires passing -msimd128 (or -mrelaxed-simd)!'
+      )
     cflags += ['-D__SSE__=1']
 
   if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[1:]):
@@ -578,7 +620,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 ''')
     return 0
 
-  if '-dumpversion' in args: # gcc's doc states "Print the compiler version [...] and don't do anything else."
+  if '-dumpversion' in args:  # gcc's doc states "Print the compiler version [...] and don't do anything else."
     print(utils.EMSCRIPTEN_VERSION)
     return 0
 
@@ -599,16 +641,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if not lines:
         exit_with_error(f'unable to parse output of `{cmd}`:\n{proc.stderr}')
       parts = shlex.split(lines[0].replace('\\', '\\\\'))
-      parts = [x for x in parts if x not in ['-c', '-o', '-v', '-emit-llvm'] and input_file not in x and temp_target not in x]
+      parts = [
+        x for x in parts if x not in ['-c', '-o', '-v', '-emit-llvm'] and input_file not in x and temp_target not in x
+      ]
       print(shared.shlex_join(parts[1:]))
     return 0
 
   if 'EMMAKEN_NO_SDK' in os.environ:
-    exit_with_error('EMMAKEN_NO_SDK is no longer supported.  The standard -nostdlib and -nostdinc flags should be used instead')
+    exit_with_error(
+      'EMMAKEN_NO_SDK is no longer supported.  The standard -nostdlib and -nostdinc flags should be used instead'
+    )
 
   if 'EMMAKEN_COMPILER' in os.environ:
-    exit_with_error('`EMMAKEN_COMPILER` is no longer supported.\n' +
-                    'Please use the `LLVM_ROOT` and/or `COMPILER_WRAPPER` config settings instead')
+    exit_with_error(
+      '`EMMAKEN_COMPILER` is no longer supported.\n'
+      + 'Please use the `LLVM_ROOT` and/or `COMPILER_WRAPPER` config settings instead'
+    )
 
   if 'EMMAKEN_CFLAGS' in os.environ:
     exit_with_error('`EMMAKEN_CFLAGS` is no longer supported, please use `EMCC_CFLAGS` instead')
@@ -660,6 +708,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       exit_with_error('--post-link requires a single input file')
     # Delay import of link.py to avoid processing this file when only compiling
     from tools import link
+
     link.run_post_link(input_files[0][1], options, state)
     return 0
 
@@ -669,6 +718,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if state.mode == Mode.COMPILE_AND_LINK:
     # Delay import of link.py to avoid processing this file when only compiling
     from tools import link
+
     return link.run(linker_inputs, options, state)
   else:
     logger.debug('stopping after compile phase')
@@ -739,8 +789,7 @@ def phase_parse_arguments(state):
 
 @ToolchainProfiler.profile_block('setup')
 def phase_setup(options, state, newargs):
-  """Second phase: configure and setup the compiler based on the specified settings and arguments.
-  """
+  """Second phase: configure and setup the compiler based on the specified settings and arguments."""
 
   if settings.RUNTIME_LINKED_LIBS:
     newargs += settings.RUNTIME_LINKED_LIBS
@@ -765,14 +814,39 @@ def phase_setup(options, state, newargs):
       continue
 
     arg = newargs[i]
-    if arg in {'-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
-               '-Xpreprocessor', '-include', '-imacros', '-idirafter',
-               '-iprefix', '-iwithprefix', '-iwithprefixbefore',
-               '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
-               '-install_name', '-compatibility_version',
-               '-current_version', '-I', '-L', '-include-pch',
-               '-undefined', '-target',
-               '-Xlinker', '-Xclang', '-z'}:
+    if arg in {
+      '-MT',
+      '-MF',
+      '-MJ',
+      '-MQ',
+      '-D',
+      '-U',
+      '-o',
+      '-x',
+      '-Xpreprocessor',
+      '-include',
+      '-imacros',
+      '-idirafter',
+      '-iprefix',
+      '-iwithprefix',
+      '-iwithprefixbefore',
+      '-isysroot',
+      '-imultilib',
+      '-A',
+      '-isystem',
+      '-iquote',
+      '-install_name',
+      '-compatibility_version',
+      '-current_version',
+      '-I',
+      '-L',
+      '-include-pch',
+      '-undefined',
+      '-target',
+      '-Xlinker',
+      '-Xclang',
+      '-z',
+    }:
       skip = True
 
     if not arg.startswith('-'):
@@ -782,7 +856,11 @@ def phase_setup(options, state, newargs):
       # python before 3.8:
       # https://bugs.python.org/issue1311
       if not os.path.exists(arg) and arg != os.devnull:
-        exit_with_error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)', arg, arg)
+        exit_with_error(
+          '%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)',
+          arg,
+          arg,
+        )
       file_suffix = get_file_suffix(arg)
       if file_suffix in HEADER_ENDINGS:
         has_header_inputs = True
@@ -833,14 +911,10 @@ def phase_setup(options, state, newargs):
   if state.mode in (Mode.COMPILE_ONLY, Mode.PREPROCESS_ONLY):
     for key in user_settings:
       if key not in COMPILE_TIME_SETTINGS:
-        diagnostics.warning(
-            'unused-command-line-argument',
-            "linker setting ignored during compilation: '%s'" % key)
+        diagnostics.warning('unused-command-line-argument', "linker setting ignored during compilation: '%s'" % key)
     for arg in state.orig_args:
       if arg in LINK_ONLY_FLAGS:
-        diagnostics.warning(
-            'unused-command-line-argument',
-            "linker flag ignored during compilation: '%s'" % arg)
+        diagnostics.warning('unused-command-line-argument', "linker flag ignored during compilation: '%s'" % arg)
 
   if settings.MAIN_MODULE or settings.SIDE_MODULE:
     settings.RELOCATABLE = 1
@@ -860,7 +934,9 @@ def phase_setup(options, state, newargs):
     # on the command line.  This is no longer valid so report either an error or a warning (for
     # backwards compat with the old `DISABLE_EXCEPTION_CATCHING=2`
     if user_settings['DISABLE_EXCEPTION_CATCHING'] in ('0', '2'):
-      diagnostics.warning('deprecated', 'DISABLE_EXCEPTION_CATCHING=X is no longer needed when specifying EXCEPTION_CATCHING_ALLOWED')
+      diagnostics.warning(
+        'deprecated', 'DISABLE_EXCEPTION_CATCHING=X is no longer needed when specifying EXCEPTION_CATCHING_ALLOWED'
+      )
     else:
       exit_with_error('DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED are mutually exclusive')
 
@@ -875,18 +951,26 @@ def phase_setup(options, state, newargs):
     # -fwasm-exceptions takes care of enabling them, so users aren't supposed to
     # pass them explicitly, regardless of their values
     if 'DISABLE_EXCEPTION_CATCHING' in user_settings or 'DISABLE_EXCEPTION_THROWING' in user_settings:
-      diagnostics.warning('emcc', 'you no longer need to pass DISABLE_EXCEPTION_CATCHING or DISABLE_EXCEPTION_THROWING when using Wasm exceptions')
+      diagnostics.warning(
+        'emcc',
+        'you no longer need to pass DISABLE_EXCEPTION_CATCHING or DISABLE_EXCEPTION_THROWING when using Wasm exceptions',
+      )
     settings.DISABLE_EXCEPTION_CATCHING = 1
     settings.DISABLE_EXCEPTION_THROWING = 1
 
     if user_settings.get('ASYNCIFY') == '1':
-      diagnostics.warning('emcc', 'ASYNCIFY=1 is not compatible with -fwasm-exceptions. Parts of the program that mix ASYNCIFY and exceptions will not compile.')
+      diagnostics.warning(
+        'emcc',
+        'ASYNCIFY=1 is not compatible with -fwasm-exceptions. Parts of the program that mix ASYNCIFY and exceptions will not compile.',
+      )
 
     if user_settings.get('SUPPORT_LONGJMP') == 'emscripten':
       exit_with_error('SUPPORT_LONGJMP=emscripten is not compatible with -fwasm-exceptions')
 
   if settings.DISABLE_EXCEPTION_THROWING and not settings.DISABLE_EXCEPTION_CATCHING:
-    exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
+    exit_with_error(
+      "DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions"
+    )
 
   if options.target.startswith('wasm64'):
     default_setting('MEMORY64', 1)
@@ -1032,7 +1116,10 @@ def phase_compile_inputs(options, state, newargs, input_files):
     if options.output_file:
       cmd += ['-o', options.output_file]
       if get_file_suffix(options.output_file) == '.bc' and not settings.LTO and '-emit-llvm' not in state.orig_args:
-        diagnostics.warning('emcc', '.bc output file suffix used without -flto or -emit-llvm.  Consider using .o extension since emcc will output an object file, not a bitcode file')
+        diagnostics.warning(
+          'emcc',
+          '.bc output file suffix used without -flto or -emit-llvm.  Consider using .o extension since emcc will output an object file, not a bitcode file',
+        )
     shared.exec_process(cmd)
     assert False, 'exec_process does not return'
 
@@ -1109,8 +1196,8 @@ def version_string():
   revision_suffix = ''
   if os.path.exists(utils.path_from_root('.git')):
     git_rev = run_process(
-      ['git', 'rev-parse', 'HEAD'],
-      stdout=PIPE, stderr=PIPE, cwd=utils.path_from_root()).stdout.strip()
+      ['git', 'rev-parse', 'HEAD'], stdout=PIPE, stderr=PIPE, cwd=utils.path_from_root()
+    ).stdout.strip()
     revision_suffix = ' (%s)' % git_rev
   elif os.path.exists(utils.path_from_root('emscripten-revision.txt')):
     rev = read_file(utils.path_from_root('emscripten-revision.txt')).strip()
@@ -1331,7 +1418,9 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif check_flag('--use-preload-cache'):
       options.use_preload_cache = True
     elif check_flag('--no-heap-copy'):
-      diagnostics.warning('legacy-settings', 'ignoring legacy flag --no-heap-copy (that is the only mode supported now)')
+      diagnostics.warning(
+        'legacy-settings', 'ignoring legacy flag --no-heap-copy (that is the only mode supported now)'
+      )
     elif check_flag('--use-preload-plugins'):
       options.use_preload_plugins = True
     elif check_flag('--ignore-dynamic-linking'):
@@ -1354,7 +1443,10 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif check_arg('--js-library'):
       settings.JS_LIBRARIES.append((i + 1, os.path.abspath(consume_arg_file())))
     elif check_flag('--remove-duplicates'):
-      diagnostics.warning('legacy-settings', '--remove-duplicates is deprecated as it is no longer needed. If you cannot link without it, file a bug with a testcase')
+      diagnostics.warning(
+        'legacy-settings',
+        '--remove-duplicates is deprecated as it is no longer needed. If you cannot link without it, file a bug with a testcase',
+      )
     elif check_flag('--jcache'):
       logger.error('jcache is no longer supported')
     elif check_arg('--cache'):
@@ -1366,13 +1458,13 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif check_flag('--clear-cache'):
       logger.info('clearing cache as requested by --clear-cache: `%s`', cache.cachedir)
       cache.erase()
-      shared.perform_sanity_checks() # this is a good time for a sanity check
+      shared.perform_sanity_checks()  # this is a good time for a sanity check
       should_exit = True
     elif check_flag('--clear-ports'):
       logger.info('clearing ports and cache as requested by --clear-ports')
       ports.clear()
       cache.erase()
-      shared.perform_sanity_checks() # this is a good time for a sanity check
+      shared.perform_sanity_checks()  # this is a good time for a sanity check
       should_exit = True
     elif check_flag('--check'):
       print(version_string(), file=sys.stderr)
@@ -1397,10 +1489,12 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
         # that are e.g. x86 specific and non-portable. The emscripten bundled
         # headers are modified to be portable, local system ones are generally not.
         diagnostics.warning(
-            'absolute-paths', f'-I or -L of an absolute path "{arg}" '
-            'encountered. If this is to a local system header/library, it may '
-            'cause problems (local system files make sense for compiling natively '
-            'on your system, but not necessarily to JavaScript).')
+          'absolute-paths',
+          f'-I or -L of an absolute path "{arg}" '
+          'encountered. If this is to a local system header/library, it may '
+          'cause problems (local system files make sense for compiling natively '
+          'on your system, but not necessarily to JavaScript).',
+        )
     elif check_flag('--emrun'):
       options.emrun = True
     elif check_flag('--cpuprofiler'):
@@ -1413,22 +1507,16 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       settings.WASM_EXCEPTIONS = 0
     elif arg == '-mbulk-memory':
       settings.BULK_MEMORY = 1
-      feature_matrix.enable_feature(feature_matrix.Feature.BULK_MEMORY,
-                                    '-mbulk-memory',
-                                    override=True)
+      feature_matrix.enable_feature(feature_matrix.Feature.BULK_MEMORY, '-mbulk-memory', override=True)
     elif arg == '-mno-bulk-memory':
       settings.BULK_MEMORY = 0
       feature_matrix.disable_feature(feature_matrix.Feature.BULK_MEMORY)
     elif arg == '-msign-ext':
-      feature_matrix.enable_feature(feature_matrix.Feature.SIGN_EXT,
-                                    '-msign-ext',
-                                    override=True)
+      feature_matrix.enable_feature(feature_matrix.Feature.SIGN_EXT, '-msign-ext', override=True)
     elif arg == '-mno-sign-ext':
       feature_matrix.disable_feature(feature_matrix.Feature.SIGN_EXT)
     elif arg == '-mnontrappting-fptoint':
-      feature_matrix.enable_feature(feature_matrix.Feature.NON_TRAPPING_FPTOINT,
-                                    '-mnontrapping-fptoint',
-                                    override=True)
+      feature_matrix.enable_feature(feature_matrix.Feature.NON_TRAPPING_FPTOINT, '-mnontrapping-fptoint', override=True)
     elif arg == '-mno-nontrapping-fptoint':
       feature_matrix.disable_feature(feature_matrix.Feature.NON_TRAPPING_FPTOINT)
     elif arg == '-fexceptions':
@@ -1478,7 +1566,9 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       else:
         value = '1'
       if key in settings.keys():
-        exit_with_error(f'{arg}: cannot change built-in settings values with a -jsD directive. Pass -s{key}={value} instead!')
+        exit_with_error(
+          f'{arg}: cannot change built-in settings values with a -jsD directive. Pass -s{key}={value} instead!'
+        )
       user_js_defines += [(key, value)]
       newargs[i] = ''
     elif check_flag('-shared'):
@@ -1493,7 +1583,9 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif check_arg('-target') or check_arg('--target'):
       options.target = consume_arg()
       if options.target not in ('wasm32', 'wasm64', 'wasm64-unknown-emscripten', 'wasm32-unknown-emscripten'):
-        exit_with_error(f'unsupported target: {options.target} (emcc only supports wasm64-unknown-emscripten and wasm32-unknown-emscripten)')
+        exit_with_error(
+          f'unsupported target: {options.target} (emcc only supports wasm64-unknown-emscripten and wasm32-unknown-emscripten)'
+        )
     elif check_arg('--use-port'):
       ports.handle_use_port_arg(settings, consume_arg())
     elif arg == '-mllvm':
@@ -1547,7 +1639,9 @@ def parse_value(text, expected_type):
     if first == "'" or first == '"':
       text = text.rstrip()
       if text[-1] != text[0] or len(text) < 2:
-         raise ValueError(f'unclosed quoted string. expected final character to be "{text[0]}" and length to be greater than 1 in "{text[0]}"')
+        raise ValueError(
+          f'unclosed quoted string. expected final character to be "{text[0]}" and length to be greater than 1 in "{text[0]}"'
+        )
       return text[1:-1]
     return text
 
@@ -1557,7 +1651,7 @@ def parse_value(text, expected_type):
     result = []
     index = 0
     while True:
-      current = values[index].lstrip() # Cannot safely rstrip for cases like: "HERE-> ,"
+      current = values[index].lstrip()  # Cannot safely rstrip for cases like: "HERE-> ,"
       if not len(current):
         raise ValueError('empty value in string list')
       first = current[0]
@@ -1565,7 +1659,7 @@ def parse_value(text, expected_type):
         result.append(current.rstrip())
       else:
         start = index
-        while True: # Continue until closing quote found
+        while True:  # Continue until closing quote found
           if index >= len(values):
             raise ValueError(f"unclosed quoted string. expected final character to be '{first}' in '{values[start]}'")
           new = values[index].rstrip()
@@ -1635,7 +1729,9 @@ def validate_arg_level(level_string, max_level, err_msg, clamp=False):
     exit_with_error(err_msg)
   if clamp:
     if level > max_level:
-      logger.warning("optimization level '-O" + level_string + "' is not supported; using '-O" + str(max_level) + "' instead")
+      logger.warning(
+        "optimization level '-O" + level_string + "' is not supported; using '-O" + str(max_level) + "' instead"
+      )
       level = max_level
   if not 0 <= level <= max_level:
     exit_with_error(err_msg)

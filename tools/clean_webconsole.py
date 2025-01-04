@@ -3,8 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Removes timestamp and line info from a webgl log
-"""
+"""Removes timestamp and line info from a webgl log"""
 
 import os
 import re
@@ -23,9 +22,9 @@ def nice(x):
 
 
 repdata = (
-  Path(path_from_root('system/include/GL/gl.h')).read_text().splitlines(keepends=True) +
-  ['\n'] +
-  Path(path_from_root('system/include/GL/glext.h')).read_text().splitlines(keepends=True)
+  Path(path_from_root('system/include/GL/gl.h')).read_text().splitlines(keepends=True)
+  + ['\n']
+  + Path(path_from_root('system/include/GL/glext.h')).read_text().splitlines(keepends=True)
 )
 reps = {}
 for rep in repdata:
@@ -40,5 +39,9 @@ for line in lines:
   if line.startswith('['):
     line = line[15:]
   line = line.split(' @ ')[0]
-  line = re.sub(r'(0x[\dabcdef]+)', lambda hexx: reps[nice(hexx.group(0))] if nice(hexx.group(0)) in reps else nice(hexx.group(0)), line)
+  line = re.sub(
+    r'(0x[\dabcdef]+)',
+    lambda hexx: reps[nice(hexx.group(0))] if nice(hexx.group(0)) in reps else nice(hexx.group(0)),
+    line,
+  )
   print(line)

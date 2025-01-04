@@ -64,10 +64,23 @@ def process_changed_file(filename):
 
 def main(argv):
   parser = argparse.ArgumentParser()
-  parser.add_argument('-s', '--skip-tests', action='store_true', help="Don't actually run the tests, just analyze the existing results")
+  parser.add_argument(
+    '-s', '--skip-tests', action='store_true', help="Don't actually run the tests, just analyze the existing results"
+  )
   parser.add_argument('-b', '--new-branch', action='store_true', help='Create a new branch containing the updates')
-  parser.add_argument('-c', '--clear-cache', action='store_true', help='Clear the cache before rebaselining (useful when working with llvm changes)')
-  parser.add_argument('-n', '--check-only', dest='check_only', action='store_true', help='Return non-zero if test expectations are out of date, and skip creating a git commit')
+  parser.add_argument(
+    '-c',
+    '--clear-cache',
+    action='store_true',
+    help='Clear the cache before rebaselining (useful when working with llvm changes)',
+  )
+  parser.add_argument(
+    '-n',
+    '--check-only',
+    dest='check_only',
+    action='store_true',
+    help='Return non-zero if test expectations are out of date, and skip creating a git commit',
+  )
   args = parser.parse_args()
 
   if args.clear_cache:
@@ -114,7 +127,9 @@ running the tests with `--rebaseline`:
   for file in filenames:
     message += process_changed_file(file)
 
-  message += f'\nAverage change: {statistics.mean(all_deltas):+.2f}% ({min(all_deltas):+.2f}% - {max(all_deltas):+.2f}%)\n'
+  message += (
+    f'\nAverage change: {statistics.mean(all_deltas):+.2f}% ({min(all_deltas):+.2f}% - {max(all_deltas):+.2f}%)\n'
+  )
 
   message += '```\n'
 

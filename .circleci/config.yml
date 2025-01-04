@@ -427,6 +427,7 @@ jobs:
       - run: ruff check
       # TODO (cclauss): When ruff supports rule E303 without --preview, remove following line
       - run: ruff check --preview --select=E303
+      - run: ruff format
   mypy:
     executor: focal
     steps:

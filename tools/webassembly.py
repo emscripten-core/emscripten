@@ -3,8 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Utilities for manipulating WebAssembly binaries from python.
-"""
+"""Utilities for manipulating WebAssembly binaries from python."""
 
 from collections import namedtuple
 from enum import IntEnum
@@ -33,9 +32,9 @@ LIMITS_HAS_MAX = 0x1
 
 SEG_PASSIVE = 0x1
 
-PREFIX_MATH = 0xfc
-PREFIX_THREADS = 0xfe
-PREFIX_SIMD = 0xfd
+PREFIX_MATH = 0xFC
+PREFIX_THREADS = 0xFE
+PREFIX_SIMD = 0xFD
 
 SYMBOL_BINDING_MASK = 0x3
 SYMBOL_BINDING_GLOBAL = 0x0
@@ -56,7 +55,6 @@ def read_sleb(iobuf):
 
 
 def memoize(method):
-
   @wraps(method)
   def wrapper(self, *args, **kwargs):
     assert not kwargs
@@ -69,7 +67,6 @@ def memoize(method):
 
 
 def once(method):
-
   @wraps(method)
   def helper(self, *args, **kwargs):
     key = method
@@ -80,46 +77,46 @@ def once(method):
 
 
 class Type(IntEnum):
-  I32 = 0x7f # -0x1
-  I64 = 0x7e # -0x2
-  F32 = 0x7d # -0x3
-  F64 = 0x7c # -0x4
-  V128 = 0x7b # -0x5
-  FUNCREF = 0x70 # -0x10
-  EXTERNREF = 0x6f # -0x11
-  VOID = 0x40 # -0x40
+  I32 = 0x7F  # -0x1
+  I64 = 0x7E  # -0x2
+  F32 = 0x7D  # -0x3
+  F64 = 0x7C  # -0x4
+  V128 = 0x7B  # -0x5
+  FUNCREF = 0x70  # -0x10
+  EXTERNREF = 0x6F  # -0x11
+  VOID = 0x40  # -0x40
 
 
 class OpCode(IntEnum):
   NOP = 0x01
   BLOCK = 0x02
-  END = 0x0b
-  BR = 0x0c
-  BR_TABLE = 0x0e
+  END = 0x0B
+  BR = 0x0C
+  BR_TABLE = 0x0E
   CALL = 0x10
-  DROP = 0x1a
+  DROP = 0x1A
   LOCAL_GET = 0x20
   LOCAL_SET = 0x21
   LOCAL_TEE = 0x22
   GLOBAL_GET = 0x23
   GLOBAL_SET = 0x24
-  RETURN = 0x0f
+  RETURN = 0x0F
   I32_CONST = 0x41
   I64_CONST = 0x42
   F32_CONST = 0x43
   F64_CONST = 0x44
-  I32_ADD = 0x6a
-  I64_ADD = 0x7c
-  REF_NULL = 0xd0
-  ATOMIC_PREFIX = 0xfe
-  MEMORY_PREFIX = 0xfc
+  I32_ADD = 0x6A
+  I64_ADD = 0x7C
+  REF_NULL = 0xD0
+  ATOMIC_PREFIX = 0xFE
+  MEMORY_PREFIX = 0xFC
 
 
 class MemoryOpCode(IntEnum):
   MEMORY_INIT = 0x08
   MEMORY_DROP = 0x09
-  MEMORY_COPY = 0x0a
-  MEMORY_FILL = 0x0b
+  MEMORY_COPY = 0x0A
+  MEMORY_FILL = 0x0B
 
 
 class AtomicOpCode(IntEnum):
@@ -163,8 +160,8 @@ class DylinkType(IntEnum):
 
 
 class TargetFeaturePrefix(IntEnum):
-  USED = 0x2b
-  DISALLOWED = 0x2d
+  USED = 0x2B
+  DISALLOWED = 0x2D
 
 
 class InvalidWasmError(BaseException):
@@ -176,7 +173,9 @@ Limits = namedtuple('Limits', ['flags', 'initial', 'maximum'])
 Import = namedtuple('Import', ['kind', 'module', 'field', 'type'])
 Export = namedtuple('Export', ['name', 'kind', 'index'])
 Global = namedtuple('Global', ['type', 'mutable', 'init'])
-Dylink = namedtuple('Dylink', ['mem_size', 'mem_align', 'table_size', 'table_align', 'needed', 'export_info', 'import_info'])
+Dylink = namedtuple(
+  'Dylink', ['mem_size', 'mem_align', 'table_size', 'table_align', 'needed', 'export_info', 'import_info']
+)
 Table = namedtuple('Table', ['elem_type', 'limits'])
 FunctionBody = namedtuple('FunctionBody', ['offset', 'size'])
 DataSegment = namedtuple('DataSegment', ['flags', 'init', 'offset', 'size'])
@@ -186,8 +185,9 @@ FuncType = namedtuple('FuncType', ['params', 'returns'])
 class Module:
   """Extremely minimal wasm module reader.  Currently only used
   for parsing the dylink section."""
+
   def __init__(self, filename):
-    self.buf = None # Set this before FS calls below in case they throw.
+    self.buf = None  # Set this before FS calls below in case they throw.
     self.filename = filename
     self.size = os.path.getsize(filename)
     self.buf = open(filename, 'rb')
@@ -486,7 +486,7 @@ class Module:
     num_segments = self.read_uleb()
     for _ in range(num_segments):
       flags = self.read_uleb()
-      if (flags & SEG_PASSIVE):
+      if flags & SEG_PASSIVE:
         init = None
       else:
         init = self.read_init()
@@ -564,7 +564,7 @@ class Module:
     self.seek(section.offset)
     assert self.read_string() == 'target_features'
     features = {}
-    self.read_byte() # ignore feature count
+    self.read_byte()  # ignore feature count
     while self.tell() < section.offset + section.size:
       prefix = TargetFeaturePrefix(self.read_byte())
       feature = self.read_string()

@@ -100,7 +100,11 @@ diagnostics.add_warning('closure', enabled=False)
 # TODO(sbc): Investigate switching to shlex.quote
 def shlex_quote(arg):
   arg = os.fspath(arg)
-  if ' ' in arg and (not (arg.startswith('"') and arg.endswith('"'))) and (not (arg.startswith("'") and arg.endswith("'"))):
+  if (
+    ' ' in arg
+    and (not (arg.startswith('"') and arg.endswith('"')))
+    and (not (arg.startswith("'") and arg.endswith("'")))
+  ):
     return '"' + arg.replace('"', '\\"') + '"'
 
   return arg
@@ -154,10 +158,7 @@ def cap_max_workers_in_pool(max_workers):
   return max_workers
 
 
-def run_multiple_processes(commands,
-                           env=None,
-                           route_stdout_to_temp_files_suffix=None,
-                           cwd=None):
+def run_multiple_processes(commands, env=None, route_stdout_to_temp_files_suffix=None, cwd=None):
   """Runs multiple subprocess commands.
 
   route_stdout_to_temp_files_suffix : string
@@ -220,7 +221,10 @@ def run_multiple_processes(commands,
       idx = get_finished_process()
       finished_process = processes.pop(idx)
       if finished_process.returncode != 0:
-        exit_with_error('subprocess %d/%d failed (%s)! (cmdline: %s)' % (idx + 1, len(commands), returncode_to_str(finished_process.returncode), shlex_join(commands[idx])))
+        exit_with_error(
+          'subprocess %d/%d failed (%s)! (cmdline: %s)'
+          % (idx + 1, len(commands), returncode_to_str(finished_process.returncode), shlex_join(commands[idx]))
+        )
       num_completed += 1
 
   if route_stdout_to_temp_files_suffix:
@@ -269,7 +273,9 @@ def get_npm_cmd(name):
   else:
     cmd = config.NODE_JS + [path_from_root('node_modules/.bin', name)]
   if not os.path.exists(cmd[-1]):
-    exit_with_error(f'{name} was not found! Please run "npm install" in Emscripten root directory to set up npm dependencies')
+    exit_with_error(
+      f'{name} was not found! Please run "npm install" in Emscripten root directory to set up npm dependencies'
+    )
   return cmd
 
 
@@ -308,7 +314,13 @@ def check_llvm_version():
   if 'BUILDBOT_BUILDNUMBER' in os.environ:
     if actual.startswith('%d.' % (EXPECTED_LLVM_VERSION + 1)):
       return True
-  diagnostics.warning('version-check', 'LLVM version for clang executable "%s" appears incorrect (seeing "%s", expected "%s")', CLANG_CC, actual, EXPECTED_LLVM_VERSION)
+  diagnostics.warning(
+    'version-check',
+    'LLVM version for clang executable "%s" appears incorrect (seeing "%s", expected "%s")',
+    CLANG_CC,
+    actual,
+    EXPECTED_LLVM_VERSION,
+  )
   return False
 
 
@@ -418,7 +430,12 @@ def check_node():
   try:
     run_process(config.NODE_JS + ['-e', 'console.log("hello")'], stdout=PIPE)
   except Exception as e:
-    exit_with_error('the configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.EM_CONFIG, str(e))
+    exit_with_error(
+      'the configured node executable (%s) does not seem to work, check the paths in %s (%s)',
+      config.NODE_JS,
+      config.EM_CONFIG,
+      str(e),
+    )
 
 
 def generate_sanity():
@@ -498,7 +515,7 @@ def check_sanity(force=False):
       # when force is set.
       if force:
         perform_sanity_checks()
-      return True # all is well
+      return True  # all is well
     return False
 
   if sanity_is_correct():
@@ -574,11 +591,13 @@ def get_emscripten_temp_dir():
     EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=TEMP_DIR)
 
     if not DEBUG_SAVE:
+
       def prepare_to_clean_temp(d):
         def clean_temp():
           utils.delete_dir(d)
 
         atexit.register(clean_temp)
+
       # this global var might change later
       prepare_to_clean_temp(EMSCRIPTEN_TEMP_DIR)
   return EMSCRIPTEN_TEMP_DIR
@@ -607,7 +626,9 @@ def setup_temp_dirs():
     try:
       safe_ensure_dirs(EMSCRIPTEN_TEMP_DIR)
     except Exception as e:
-      exit_with_error(str(e) + f'Could not create canonical temp dir. Check definition of TEMP_DIR in {config.EM_CONFIG}')
+      exit_with_error(
+        str(e) + f'Could not create canonical temp dir. Check definition of TEMP_DIR in {config.EM_CONFIG}'
+      )
 
     # Since the canonical temp directory is, by definition, the same
     # between all processes that run in DEBUG mode we need to use a multi

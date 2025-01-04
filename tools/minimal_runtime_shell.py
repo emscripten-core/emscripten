@@ -29,7 +29,12 @@ def generate_minimal_runtime_load_statement(target_basename):
   # Expand {{{ DOWNLOAD_WASM }}} block from here (if we added #define support, this could be done in
   # the template directly)
   if settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION:
-    if settings.MIN_SAFARI_VERSION != feature_matrix.UNSUPPORTED or settings.ENVIRONMENT_MAY_BE_NODE or settings.MIN_FIREFOX_VERSION < 58 or settings.MIN_CHROME_VERSION < 61:
+    if (
+      settings.MIN_SAFARI_VERSION != feature_matrix.UNSUPPORTED
+      or settings.ENVIRONMENT_MAY_BE_NODE
+      or settings.MIN_FIREFOX_VERSION < 58
+      or settings.MIN_CHROME_VERSION < 61
+    ):
       # Firefox 52 added Wasm support, but only Firefox 58 added compileStreaming.
       # Chrome 57 added Wasm support, but only Chrome 61 added compileStreaming.
       # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/compileStreaming
@@ -41,7 +46,12 @@ def generate_minimal_runtime_load_statement(target_basename):
   elif settings.MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION:
     # Same compatibility story as above for
     # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
-    if settings.MIN_SAFARI_VERSION != feature_matrix.UNSUPPORTED or settings.ENVIRONMENT_MAY_BE_NODE or settings.MIN_FIREFOX_VERSION < 58 or settings.MIN_CHROME_VERSION < 61:
+    if (
+      settings.MIN_SAFARI_VERSION != feature_matrix.UNSUPPORTED
+      or settings.ENVIRONMENT_MAY_BE_NODE
+      or settings.MIN_FIREFOX_VERSION < 58
+      or settings.MIN_CHROME_VERSION < 61
+    ):
       download_wasm = f"!WebAssembly.instantiateStreaming && binary('{target_basename}.wasm')"
     else:
       # WebAssembly.instantiateStreaming() is unconditionally supported, so we do not download wasm
@@ -65,12 +75,17 @@ def generate_minimal_runtime_load_statement(target_basename):
   # Download wasm_worker file
   if settings.WASM_WORKERS:
     if settings.MODULARIZE:
-      if settings.WASM_WORKERS == 1: # '$wb': Wasm Worker Blob
-        modularize_imports += ["$wb: URL.createObjectURL(new Blob([r[%d]], { type: 'application/javascript' }))" % len(files_to_load)]
+      if settings.WASM_WORKERS == 1:  # '$wb': Wasm Worker Blob
+        modularize_imports += [
+          "$wb: URL.createObjectURL(new Blob([r[%d]], { type: 'application/javascript' }))" % len(files_to_load)
+        ]
       modularize_imports += ['js: js']
     else:
       if settings.WASM_WORKERS == 1:
-        then_statements += ["%s.$wb = URL.createObjectURL(new Blob([r[%d]], { type: 'application/javascript' }));" % (settings.EXPORT_NAME, len(files_to_load))]
+        then_statements += [
+          "%s.$wb = URL.createObjectURL(new Blob([r[%d]], { type: 'application/javascript' }));"
+          % (settings.EXPORT_NAME, len(files_to_load))
+        ]
 
     if download_wasm and settings.WASM_WORKERS == 1:
       files_to_load += [f"binary('{target_basename}.ww.js')"]
@@ -87,23 +102,29 @@ def generate_minimal_runtime_load_statement(target_basename):
   if settings.MODULARIZE:
     modularize_imports = ',\n  '.join(modularize_imports)
     if settings.WASM_WORKERS:
-      then_statements += ['''\
+      then_statements += [
+        '''\
   // Detour the JS code to a separate variable to avoid instantiating with 'r' array as "this"
   // directly to avoid strict ECMAScript/Firefox GC problems that cause a leak, see
   // https://bugzilla.mozilla.org/show_bug.cgi?id=1540101
   var js = URL.createObjectURL(new Blob([r[0]], { type: \'application/javascript\' }));
   script(js).then((c) => c({
   %s
-  }));''' % modularize_imports]
+  }));'''
+        % modularize_imports
+      ]
     else:
-      then_statements += ['''\
+      then_statements += [
+        '''\
   // Detour the JS code to a separate variable to avoid instantiating with 'r' array as "this"
   // directly to avoid strict ECMAScript/Firefox GC problems that cause a leak, see
   // https://bugzilla.mozilla.org/show_bug.cgi?id=1540101
   var js = r[0];
   js({
   %s
-  });''' % modularize_imports]
+  });'''
+        % modularize_imports
+      ]
 
   binary_xhr = '  var binary = (url) => fetch(url).then((rsp) => rsp.arrayBuffer());'
 
@@ -166,8 +187,10 @@ def generate_minimal_runtime_load_statement(target_basename):
 
     files_to_load[0] = f"binary('{target_basename}.js')"
     if not settings.MODULARIZE:
-      then_statements += ["var url = %sURL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));" % save_js,
-                          script_load]
+      then_statements += [
+        "var url = %sURL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));" % save_js,
+        script_load,
+      ]
 
   # Add in binary() XHR loader if used:
   if any("binary(" in s for s in files_to_load + then_statements):
@@ -190,7 +213,9 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename):
     # No extra files needed to download in a SINGLE_FILE build.
     shell = shell.replace('{{{ DOWNLOAD_JS_AND_WASM_FILES }}}', '')
   else:
-    shell = shell.replace('{{{ DOWNLOAD_JS_AND_WASM_FILES }}}', generate_minimal_runtime_load_statement(target_basename))
+    shell = shell.replace(
+      '{{{ DOWNLOAD_JS_AND_WASM_FILES }}}', generate_minimal_runtime_load_statement(target_basename)
+    )
 
   temp_files = shared.get_temp_files()
   with temp_files.get_file(suffix='.js') as shell_temp:
@@ -198,7 +223,11 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename):
     shell = shared.read_and_preprocess(shell_temp)
 
   if re.search(r'{{{\s*SCRIPT\s*}}}', shell):
-    shared.exit_with_error('--shell-file "' + options.shell_path + '": MINIMAL_RUNTIME uses a different kind of HTML page shell file than the traditional runtime! Please see $EMSCRIPTEN/src/shell_minimal_runtime.html for a template to use as a basis.')
+    shared.exit_with_error(
+      '--shell-file "'
+      + options.shell_path
+      + '": MINIMAL_RUNTIME uses a different kind of HTML page shell file than the traditional runtime! Please see $EMSCRIPTEN/src/shell_minimal_runtime.html for a template to use as a basis.'
+    )
 
   shell = shell.replace('{{{ TARGET_BASENAME }}}', target_basename)
   shell = shell.replace('{{{ EXPORT_NAME }}}', settings.EXPORT_NAME)

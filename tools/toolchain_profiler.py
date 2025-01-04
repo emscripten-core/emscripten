@@ -121,7 +121,7 @@ if EMPROFILE == 1:
     # Provide a running counter towards negative numbers for PIDs for which we
     # don't know what the actual process ID is
     imaginary_pid_ = 0
-    profiler_logs_path = None # Log file not opened yet
+    profiler_logs_path = None  # Log file not opened yet
 
     block_stack = []
 
@@ -144,7 +144,9 @@ if EMPROFILE == 1:
       # the parent->child process spawns for the subprocessing pools. Therefore
       # any profiling events that the subprocess children generate are virtually
       # treated as if they were performed by the parent PID.
-      return open(os.path.join(ToolchainProfiler.profiler_logs_path, 'toolchain_profiler.pid_' + str(os.getpid()) + '.json'), 'a')
+      return open(
+        os.path.join(ToolchainProfiler.profiler_logs_path, 'toolchain_profiler.pid_' + str(os.getpid()) + '.json'), 'a'
+      )
 
     @staticmethod
     def escape_string(arg):
@@ -171,7 +173,17 @@ if EMPROFILE == 1:
 
       if write_log_entry:
         with ToolchainProfiler.log_access() as f:
-          f.write('[\n{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"start","time":' + ToolchainProfiler.timestamp() + ',"cmdLine":["' + '","'.join(ToolchainProfiler.escape_args(sys.argv)) + '"]}')
+          f.write(
+            '[\n{"pid":'
+            + ToolchainProfiler.mypid_str
+            + ',"subprocessPid":'
+            + str(os.getpid())
+            + ',"op":"start","time":'
+            + ToolchainProfiler.timestamp()
+            + ',"cmdLine":["'
+            + '","'.join(ToolchainProfiler.escape_args(sys.argv))
+            + '"]}'
+          )
 
     @staticmethod
     def record_process_exit():
@@ -184,29 +196,83 @@ if EMPROFILE == 1:
         returncode = process_returncode
         if returncode is None:
           returncode = '"MISSING EXIT CODE"'
-        f.write(',\n{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"exit","time":' + ToolchainProfiler.timestamp() + ',"returncode":' + str(returncode) + '}\n]\n')
+        f.write(
+          ',\n{"pid":'
+          + ToolchainProfiler.mypid_str
+          + ',"subprocessPid":'
+          + str(os.getpid())
+          + ',"op":"exit","time":'
+          + ToolchainProfiler.timestamp()
+          + ',"returncode":'
+          + str(returncode)
+          + '}\n]\n'
+        )
 
     @staticmethod
     def record_subprocess_spawn(process_pid, process_cmdline):
       expanded_cmdline = response_file.substitute_response_files(process_cmdline)
 
       with ToolchainProfiler.log_access() as f:
-        f.write(',\n{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"spawn","targetPid":' + str(process_pid) + ',"time":' + ToolchainProfiler.timestamp() + ',"cmdLine":["' + '","'.join(ToolchainProfiler.escape_args(expanded_cmdline)) + '"]}')
+        f.write(
+          ',\n{"pid":'
+          + ToolchainProfiler.mypid_str
+          + ',"subprocessPid":'
+          + str(os.getpid())
+          + ',"op":"spawn","targetPid":'
+          + str(process_pid)
+          + ',"time":'
+          + ToolchainProfiler.timestamp()
+          + ',"cmdLine":["'
+          + '","'.join(ToolchainProfiler.escape_args(expanded_cmdline))
+          + '"]}'
+        )
 
     @staticmethod
     def record_subprocess_wait(process_pid):
       with ToolchainProfiler.log_access() as f:
-        f.write(',\n{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"wait","targetPid":' + str(process_pid) + ',"time":' + ToolchainProfiler.timestamp() + '}')
+        f.write(
+          ',\n{"pid":'
+          + ToolchainProfiler.mypid_str
+          + ',"subprocessPid":'
+          + str(os.getpid())
+          + ',"op":"wait","targetPid":'
+          + str(process_pid)
+          + ',"time":'
+          + ToolchainProfiler.timestamp()
+          + '}'
+        )
 
     @staticmethod
     def record_subprocess_finish(process_pid, returncode):
       with ToolchainProfiler.log_access() as f:
-        f.write(',\n{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"finish","targetPid":' + str(process_pid) + ',"time":' + ToolchainProfiler.timestamp() + ',"returncode":' + str(returncode) + '}')
+        f.write(
+          ',\n{"pid":'
+          + ToolchainProfiler.mypid_str
+          + ',"subprocessPid":'
+          + str(os.getpid())
+          + ',"op":"finish","targetPid":'
+          + str(process_pid)
+          + ',"time":'
+          + ToolchainProfiler.timestamp()
+          + ',"returncode":'
+          + str(returncode)
+          + '}'
+        )
 
     @staticmethod
     def enter_block(block_name):
       with ToolchainProfiler.log_access() as f:
-        f.write(',\n{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"enterBlock","name":"' + block_name + '","time":' + ToolchainProfiler.timestamp() + '}')
+        f.write(
+          ',\n{"pid":'
+          + ToolchainProfiler.mypid_str
+          + ',"subprocessPid":'
+          + str(os.getpid())
+          + ',"op":"enterBlock","name":"'
+          + block_name
+          + '","time":'
+          + ToolchainProfiler.timestamp()
+          + '}'
+        )
 
       ToolchainProfiler.block_stack.append(block_name)
 
@@ -222,7 +288,17 @@ if EMPROFILE == 1:
     def exit_block(block_name):
       if ToolchainProfiler.remove_last_occurrence_if_exists(ToolchainProfiler.block_stack, block_name):
         with ToolchainProfiler.log_access() as f:
-          f.write(',\n{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"exitBlock","name":"' + block_name + '","time":' + ToolchainProfiler.timestamp() + '}')
+          f.write(
+            ',\n{"pid":'
+            + ToolchainProfiler.mypid_str
+            + ',"subprocessPid":'
+            + str(os.getpid())
+            + ',"op":"exitBlock","name":"'
+            + block_name
+            + '","time":'
+            + ToolchainProfiler.timestamp()
+            + '}'
+          )
 
     @staticmethod
     def exit_all_blocks():
@@ -255,6 +331,7 @@ if EMPROFILE == 1:
 
   ToolchainProfiler.record_process_start()
 else:
+
   class ToolchainProfiler:
     @staticmethod
     def enter_block(block_name):

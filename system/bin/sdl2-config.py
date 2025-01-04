@@ -10,4 +10,3 @@ if '--cflags' in args or '--libs' in args:
   print('-sUSE_SDL=2')
 elif '--version' in args:
   print('2.0.10')
-

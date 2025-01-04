@@ -11,6 +11,12 @@ exclude = [
   "./tools/scons/",
   ".git",
 ]
+format.exclude = [
+  "./test/test_browser.py",
+]
+format.quote-style = "preserve"
+indent-width = 2
+line-length = 120
 
 lint.select = [
   "ARG",

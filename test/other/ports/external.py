@@ -18,12 +18,7 @@ OPTIONS = {
 }
 
 # user options (from --use-port)
-opts: Dict[str, Optional[str]] = {
-  'value1': None,
-  'value2': None,
-  'value3': "v3",
-  'dependency': None
-}
+opts: Dict[str, Optional[str]] = {'value1': None, 'value2': None, 'value3': "v3", 'dependency': None}
 
 deps = ['sdl2_image:formats=jpg']
 

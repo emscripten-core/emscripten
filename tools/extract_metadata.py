@@ -96,7 +96,14 @@ def parse_function_for_memory_inits(module, func_index, offset_map):
       module.read_type()
     elif opcode in (OpCode.I32_CONST, OpCode.I64_CONST):
       const_values.append(module.read_sleb())
-    elif opcode in (OpCode.GLOBAL_SET, OpCode.BR, OpCode.GLOBAL_GET, OpCode.LOCAL_SET, OpCode.LOCAL_GET, OpCode.LOCAL_TEE):
+    elif opcode in (
+      OpCode.GLOBAL_SET,
+      OpCode.BR,
+      OpCode.GLOBAL_GET,
+      OpCode.LOCAL_SET,
+      OpCode.LOCAL_GET,
+      OpCode.LOCAL_TEE,
+    ):
       module.read_uleb()
     elif opcode == OpCode.CALL:
       call_targets.append(module.read_uleb())
@@ -110,17 +117,21 @@ def parse_function_for_memory_inits(module, func_index, offset_map):
         memory = module.read_uleb()
         assert memory == 0
       elif opcode == MemoryOpCode.MEMORY_FILL:
-        memory = module.read_uleb() # noqa
+        memory = module.read_uleb()  # noqa
         assert memory == 0
       elif opcode == MemoryOpCode.MEMORY_DROP:
-        segment = module.read_uleb() # noqa
+        segment = module.read_uleb()  # noqa
       else:
         assert False, "unknown: %s" % opcode
     elif opcode == OpCode.ATOMIC_PREFIX:
       opcode = AtomicOpCode(module.read_byte())
-      if opcode in (AtomicOpCode.ATOMIC_I32_RMW_CMPXCHG, AtomicOpCode.ATOMIC_I32_STORE,
-                    AtomicOpCode.ATOMIC_NOTIFY, AtomicOpCode.ATOMIC_WAIT32,
-                    AtomicOpCode.ATOMIC_WAIT64):
+      if opcode in (
+        AtomicOpCode.ATOMIC_I32_RMW_CMPXCHG,
+        AtomicOpCode.ATOMIC_I32_STORE,
+        AtomicOpCode.ATOMIC_NOTIFY,
+        AtomicOpCode.ATOMIC_WAIT32,
+        AtomicOpCode.ATOMIC_WAIT64,
+      ):
         module.read_uleb()
         module.read_uleb()
       else:
@@ -128,8 +139,8 @@ def parse_function_for_memory_inits(module, func_index, offset_map):
     elif opcode == OpCode.BR_TABLE:
       count = module.read_uleb()
       for _ in range(count):
-        depth = module.read_uleb() # noqa
-      default = module.read_uleb() # noqa
+        depth = module.read_uleb()  # noqa
+      default = module.read_uleb()  # noqa
     else:
       assert False, "unknown: %s" % opcode
 
@@ -151,7 +162,7 @@ def get_passive_segment_offsets(module):
 
 def to_unsigned(val):
   if val < 0:
-    return val & ((2 ** 32) - 1)
+    return val & ((2**32) - 1)
   else:
     return val
 

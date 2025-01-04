@@ -3,8 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Permanent cache for system libraries and ports.
-"""
+"""Permanent cache for system libraries and ports."""
 
 import contextlib
 import logging
@@ -35,15 +34,21 @@ def acquire_cache_lock(reason):
     raise Exception('Attempt to lock the cache but FROZEN_CACHE is set')
 
   if not is_writable(cachedir):
-    utils.exit_with_error(f'cache directory "{cachedir}" is not writable while accessing cache for: {reason} (see https://emscripten.org/docs/tools_reference/emcc.html for info on setting the cache directory)')
+    utils.exit_with_error(
+      f'cache directory "{cachedir}" is not writable while accessing cache for: {reason} (see https://emscripten.org/docs/tools_reference/emcc.html for info on setting the cache directory)'
+    )
 
   if acquired_count == 0:
     logger.debug(f'PID {os.getpid()} acquiring multiprocess file lock to Emscripten cache at {cachedir}')
-    assert 'EM_CACHE_IS_LOCKED' not in os.environ, f'attempt to lock the cache while a parent process is holding the lock ({reason})'
+    assert (
+      'EM_CACHE_IS_LOCKED' not in os.environ
+    ), f'attempt to lock the cache while a parent process is holding the lock ({reason})'
     try:
       cachelock.acquire(60)
     except filelock.Timeout:
-      logger.warning(f'Accessing the Emscripten cache at "{cachedir}" (for "{reason}") is taking a long time, another process should be writing to it. If there are none and you suspect this process has deadlocked, try deleting the lock file "{cachelock_name}" and try again. If this occurs deterministically, consider filing a bug.')
+      logger.warning(
+        f'Accessing the Emscripten cache at "{cachedir}" (for "{reason}") is taking a long time, another process should be writing to it. If there are none and you suspect this process has deadlocked, try deleting the lock file "{cachelock_name}" and try again. If this occurs deterministically, consider filing a bug.'
+      )
       cachelock.acquire()
 
     os.environ['EM_CACHE_IS_LOCKED'] = '1'
@@ -78,7 +83,9 @@ def ensure():
     try:
       utils.safe_ensure_dirs(cachedir)
     except Exception as e:
-      utils.exit_with_error(f'unable to create cache directory "{cachedir}": {e} (see https://emscripten.org/docs/tools_reference/emcc.html for info on setting the cache directory)')
+      utils.exit_with_error(
+        f'unable to create cache directory "{cachedir}": {e} (see https://emscripten.org/docs/tools_reference/emcc.html for info on setting the cache directory)'
+      )
 
 
 def erase():

@@ -30,95 +30,95 @@ from tools.system_libs import USE_NINJA
 
 # Minimal subset of targets used by CI systems to build enough to be useful
 MINIMAL_TASKS = [
-    'libcompiler_rt',
-    'libcompiler_rt-wasm-sjlj',
-    'libcompiler_rt-ww',
-    'libc',
-    'libc-debug',
-    'libc-ww-debug',
-    'libc_optz',
-    'libc_optz-debug',
-    'libc++abi',
-    'libc++abi-except',
-    'libc++abi-noexcept',
-    'libc++abi-debug',
-    'libc++abi-debug-except',
-    'libc++abi-debug-noexcept',
-    'libc++abi-debug-ww-noexcept',
-    'libc++',
-    'libc++-except',
-    'libc++-noexcept',
-    'libc++-ww-noexcept',
-    'libal',
-    'libdlmalloc',
-    'libdlmalloc-tracing',
-    'libdlmalloc-debug',
-    'libdlmalloc-ww',
-    'libembind',
-    'libembind-rtti',
-    'libemmalloc',
-    'libemmalloc-debug',
-    'libemmalloc-memvalidate',
-    'libemmalloc-verbose',
-    'libemmalloc-memvalidate-verbose',
-    'libmimalloc',
-    'libmimalloc-mt',
-    'libGL',
-    'libGL-getprocaddr',
-    'libGL-emu-getprocaddr',
-    'libGL-emu-webgl2-ofb-getprocaddr',
-    'libGL-webgl2-ofb-getprocaddr',
-    'libGL-ww-getprocaddr',
-    'libhtml5',
-    'libsockets',
-    'libsockets-ww',
-    'libstubs',
-    'libstubs-debug',
-    'libstandalonewasm-nocatch',
-    'crt1',
-    'crt1_proxy_main',
-    'crtbegin',
-    'libunwind-except',
-    'libnoexit',
-    'sqlite3',
-    'sqlite3-mt',
-    'libwebgpu',
-    'libwebgpu_cpp',
+  'libcompiler_rt',
+  'libcompiler_rt-wasm-sjlj',
+  'libcompiler_rt-ww',
+  'libc',
+  'libc-debug',
+  'libc-ww-debug',
+  'libc_optz',
+  'libc_optz-debug',
+  'libc++abi',
+  'libc++abi-except',
+  'libc++abi-noexcept',
+  'libc++abi-debug',
+  'libc++abi-debug-except',
+  'libc++abi-debug-noexcept',
+  'libc++abi-debug-ww-noexcept',
+  'libc++',
+  'libc++-except',
+  'libc++-noexcept',
+  'libc++-ww-noexcept',
+  'libal',
+  'libdlmalloc',
+  'libdlmalloc-tracing',
+  'libdlmalloc-debug',
+  'libdlmalloc-ww',
+  'libembind',
+  'libembind-rtti',
+  'libemmalloc',
+  'libemmalloc-debug',
+  'libemmalloc-memvalidate',
+  'libemmalloc-verbose',
+  'libemmalloc-memvalidate-verbose',
+  'libmimalloc',
+  'libmimalloc-mt',
+  'libGL',
+  'libGL-getprocaddr',
+  'libGL-emu-getprocaddr',
+  'libGL-emu-webgl2-ofb-getprocaddr',
+  'libGL-webgl2-ofb-getprocaddr',
+  'libGL-ww-getprocaddr',
+  'libhtml5',
+  'libsockets',
+  'libsockets-ww',
+  'libstubs',
+  'libstubs-debug',
+  'libstandalonewasm-nocatch',
+  'crt1',
+  'crt1_proxy_main',
+  'crtbegin',
+  'libunwind-except',
+  'libnoexit',
+  'sqlite3',
+  'sqlite3-mt',
+  'libwebgpu',
+  'libwebgpu_cpp',
 ]
 
 # Additional tasks on top of MINIMAL_TASKS that are necessary for PIC testing on
 # CI (which has slightly more tests than other modes that want to use MINIMAL)
 MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
-    'libcompiler_rt-mt',
-    'libc-mt',
-    'libc-mt-debug',
-    'libc_optz-mt',
-    'libc_optz-mt-debug',
-    'libc++abi-mt',
-    'libc++abi-mt-noexcept',
-    'libc++abi-debug-mt',
-    'libc++abi-debug-mt-noexcept',
-    'libc++-mt',
-    'libc++-mt-noexcept',
-    'libdlmalloc-mt',
-    'libGL-emu',
-    'libGL-emu-webgl2-getprocaddr',
-    'libGL-mt-getprocaddr',
-    'libGL-mt-emu',
-    'libGL-mt-emu-webgl2-getprocaddr',
-    'libGL-mt-emu-webgl2-ofb-getprocaddr',
-    'libsockets_proxy',
-    'libsockets-mt',
-    'crtbegin',
-    'libsanitizer_common_rt',
-    'libubsan_rt',
-    'libwasm_workers-debug-stub',
-    'libfetch',
-    'libfetch-mt',
-    'libwasmfs',
-    'libwasmfs-debug',
-    'libwasmfs_no_fs',
-    'giflib',
+  'libcompiler_rt-mt',
+  'libc-mt',
+  'libc-mt-debug',
+  'libc_optz-mt',
+  'libc_optz-mt-debug',
+  'libc++abi-mt',
+  'libc++abi-mt-noexcept',
+  'libc++abi-debug-mt',
+  'libc++abi-debug-mt-noexcept',
+  'libc++-mt',
+  'libc++-mt-noexcept',
+  'libdlmalloc-mt',
+  'libGL-emu',
+  'libGL-emu-webgl2-getprocaddr',
+  'libGL-mt-getprocaddr',
+  'libGL-mt-emu',
+  'libGL-mt-emu-webgl2-getprocaddr',
+  'libGL-mt-emu-webgl2-ofb-getprocaddr',
+  'libsockets_proxy',
+  'libsockets-mt',
+  'crtbegin',
+  'libsanitizer_common_rt',
+  'libubsan_rt',
+  'libwasm_workers-debug-stub',
+  'libfetch',
+  'libfetch-mt',
+  'libwasmfs',
+  'libwasmfs-debug',
+  'libwasmfs_no_fs',
+  'giflib',
 ]
 
 PORTS = sorted(list(ports.ports_by_name.keys()) + list(ports.port_variants.keys()))
@@ -186,19 +186,17 @@ def handle_port_error(target, message):
 def main():
   all_build_start_time = time.time()
 
-  parser = argparse.ArgumentParser(description=__doc__,
-                                   formatter_class=argparse.RawDescriptionHelpFormatter,
-                                   epilog=get_help())
+  parser = argparse.ArgumentParser(
+    description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter, epilog=get_help()
+  )
   parser.add_argument('--lto', action='store_const', const='full', help='build bitcode object for LTO')
-  parser.add_argument('--lto=thin', dest='lto', action='store_const', const='thin', help='build bitcode object for ThinLTO')
-  parser.add_argument('--pic', action='store_true',
-                      help='build relocatable objects for suitable for dynamic linking')
-  parser.add_argument('--force', action='store_true',
-                      help='force rebuild of target (by removing it first)')
-  parser.add_argument('--verbose', action='store_true',
-                      help='show build commands')
-  parser.add_argument('--wasm64', action='store_true',
-                      help='use wasm64 architecture')
+  parser.add_argument(
+    '--lto=thin', dest='lto', action='store_const', const='thin', help='build bitcode object for ThinLTO'
+  )
+  parser.add_argument('--pic', action='store_true', help='build relocatable objects for suitable for dynamic linking')
+  parser.add_argument('--force', action='store_true', help='force rebuild of target (by removing it first)')
+  parser.add_argument('--verbose', action='store_true', help='show build commands')
+  parser.add_argument('--wasm64', action='store_true', help='use wasm64 architecture')
   parser.add_argument('operation', choices=['build', 'clear', 'rebuild'])
   parser.add_argument('targets', nargs='*', help='see below')
   args = parser.parse_args()
@@ -239,7 +237,7 @@ def main():
 
   # process tasks
   auto_tasks = False
-  task_targets = dict.fromkeys(args.targets) # use dict to keep targets order
+  task_targets = dict.fromkeys(args.targets)  # use dict to keep targets order
 
   # substitute
   predefined_tasks = {
@@ -314,14 +312,28 @@ def main():
       return 1
 
     time_taken = time.time() - start_time
-    logger.info('...success. Took %s(%.2fs)' % (('%02d:%02d mins ' % (time_taken // 60, time_taken % 60) if time_taken >= 60 else ''), time_taken))
+    logger.info(
+      '...success. Took %s(%.2fs)'
+      % (('%02d:%02d mins ' % (time_taken // 60, time_taken % 60) if time_taken >= 60 else ''), time_taken)
+    )
 
   if USE_NINJA and args.operation != 'clear':
     system_libs.build_deferred()
 
   if len(tasks) > 1 or USE_NINJA:
     all_build_time_taken = time.time() - all_build_start_time
-    logger.info('Built %d targets in %s(%.2fs)' % (len(tasks), ('%02d:%02d mins ' % (all_build_time_taken // 60, all_build_time_taken % 60) if all_build_time_taken >= 60 else ''), all_build_time_taken))
+    logger.info(
+      'Built %d targets in %s(%.2fs)'
+      % (
+        len(tasks),
+        (
+          '%02d:%02d mins ' % (all_build_time_taken // 60, all_build_time_taken % 60)
+          if all_build_time_taken >= 60
+          else ''
+        ),
+        all_build_time_taken,
+      )
+    )
 
   return 0
 

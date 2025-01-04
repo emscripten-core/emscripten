@@ -46,13 +46,13 @@ c_license_base = '''\
 '''
 
 exclude_filenames = [
-    'system/include/',
-    'system/lib/libc/musl/',
-    'system/lib/html5/dom_pk_codes.c',
-    'system/lib/dlmalloc.c',
-    'third_party/',
-    'test/optimizer/',
-    'site/source/_themes/',
+  'system/include/',
+  'system/lib/libc/musl/',
+  'system/lib/html5/dom_pk_codes.c',
+  'system/lib/dlmalloc.c',
+  'third_party/',
+  'test/optimizer/',
+  'site/source/_themes/',
 ]
 
 exclude_contents = ['Copyright', 'LICENSE.TXT', 'PUBLIC DOMAIN']
@@ -86,13 +86,13 @@ def process_file(filename):
       if not contents.startswith('\n'):
         f.write('\n')
     elif ext in ('.cpp', '.js'):
-        if contents.startswith('/*\n'):
-          contents = contents[3:]
-          f.write(c_license_base % year)
-        else:
-          f.write(cpp_license % year)
-          if not contents.startswith('\n'):
-            f.write('\n')
+      if contents.startswith('/*\n'):
+        contents = contents[3:]
+        f.write(c_license_base % year)
+      else:
+        f.write(cpp_license % year)
+        if not contents.startswith('\n'):
+          f.write('\n')
     else:
       assert False
     f.write(contents)

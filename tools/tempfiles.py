@@ -33,15 +33,17 @@ class TempFiles:
       'with TempFiles.get_file(..) as filename:'.
     The file will be deleted immediately once the 'with' block is exited.
     """
+
     class TempFileObject:
       def __enter__(self_):
         self_.file = tempfile.NamedTemporaryFile(dir=self.tmpdir, suffix=suffix, delete=False)
-        self_.file.close() # NamedTemporaryFile passes out open file handles, but callers prefer filenames (and open their own handles manually if needed)
+        self_.file.close()  # NamedTemporaryFile passes out open file handles, but callers prefer filenames (and open their own handles manually if needed)
         return self_.file.name
 
       def __exit__(self_, _type, _value, _traceback):
         if not self.save_debug_files:
           utils.delete_file(self_.file.name)
+
     return TempFileObject()
 
   def get_dir(self):

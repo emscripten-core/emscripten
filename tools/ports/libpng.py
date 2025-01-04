@@ -31,7 +31,9 @@ def get_lib_name(settings):
 
 def get(ports, settings, shared):
   # This is an emscripten-hosted mirror of the libpng repo from Sourceforge.
-  ports.fetch_project('libpng', f'https://storage.googleapis.com/webassembly/emscripten-ports/libpng-{TAG}.tar.gz', sha512hash=HASH)
+  ports.fetch_project(
+    'libpng', f'https://storage.googleapis.com/webassembly/emscripten-ports/libpng-{TAG}.tar.gz', sha512hash=HASH
+  )
 
   def create(final):
     source_path = ports.get_dir('libpng', 'libpng-' + TAG)
@@ -44,7 +46,9 @@ def get(ports, settings, shared):
     if settings.SUPPORT_LONGJMP == 'wasm':
       flags.append('-sSUPPORT_LONGJMP=wasm')
 
-    ports.build_port(source_path, final, 'libpng', flags=flags, exclude_files=['pngtest'], exclude_dirs=['scripts', 'contrib'])
+    ports.build_port(
+      source_path, final, 'libpng', flags=flags, exclude_files=['pngtest'], exclude_dirs=['scripts', 'contrib']
+    )
 
   return [shared.cache.get_lib(get_lib_name(settings), create, what='port')]
 

@@ -73,32 +73,32 @@ from tools import shared
 from tools import system_libs
 from tools import utils
 
-QUIET = (__name__ != '__main__')
+QUIET = __name__ != '__main__'
 DEBUG = False
 
 CFLAGS = [
-    # Avoid parsing problems due to gcc specific syntax.
-    '-D_GNU_SOURCE',
+  # Avoid parsing problems due to gcc specific syntax.
+  '-D_GNU_SOURCE',
 ]
 
 INTERNAL_CFLAGS = [
-    '-I' + utils.path_from_root('system/lib/libc/musl/src/internal'),
-    '-I' + utils.path_from_root('system/lib/libc/musl/src/include'),
-    '-I' + utils.path_from_root('system/lib/pthread/'),
+  '-I' + utils.path_from_root('system/lib/libc/musl/src/internal'),
+  '-I' + utils.path_from_root('system/lib/libc/musl/src/include'),
+  '-I' + utils.path_from_root('system/lib/pthread/'),
 ]
 
 CXXFLAGS = [
-    '-I' + utils.path_from_root('system/lib/libcxxabi/src'),
-    '-D__EMSCRIPTEN_EXCEPTIONS__',
-    '-I' + utils.path_from_root('system/lib/wasmfs/'),
-    '-std=c++17',
+  '-I' + utils.path_from_root('system/lib/libcxxabi/src'),
+  '-D__EMSCRIPTEN_EXCEPTIONS__',
+  '-I' + utils.path_from_root('system/lib/wasmfs/'),
+  '-std=c++17',
 ]
 
 DEFAULT_JSON_FILES = [
-    utils.path_from_root('src/struct_info.json'),
-    utils.path_from_root('src/struct_info_internal.json'),
-    utils.path_from_root('src/struct_info_cxx.json'),
-    utils.path_from_root('src/struct_info_webgpu.json'),
+  utils.path_from_root('src/struct_info.json'),
+  utils.path_from_root('src/struct_info_internal.json'),
+  utils.path_from_root('src/struct_info_cxx.json'),
+  utils.path_from_root('src/struct_info_webgpu.json'),
 ]
 
 
@@ -250,16 +250,25 @@ def generate_cmd(js_file_path, src_file_path, cflags):
   node_flags = building.get_emcc_node_flags(shared.check_node_version())
 
   # -O1+ produces calls to iprintf, which libcompiler_rt doesn't support
-  cmd = [compiler] + cflags + ['-o', js_file_path, src_file_path,
-                               '-O0',
-                               '-Werror',
-                               '-Wno-format',
-                               '-nolibc',
-                               '-sBOOTSTRAPPING_STRUCT_INFO',
-                               '-sINCOMING_MODULE_JS_API=',
-                               '-sSTRICT',
-                               '-sSUPPORT_LONGJMP=0',
-                               '-sASSERTIONS=0'] + node_flags
+  cmd = (
+    [compiler]
+    + cflags
+    + [
+      '-o',
+      js_file_path,
+      src_file_path,
+      '-O0',
+      '-Werror',
+      '-Wno-format',
+      '-nolibc',
+      '-sBOOTSTRAPPING_STRUCT_INFO',
+      '-sINCOMING_MODULE_JS_API=',
+      '-sSTRICT',
+      '-sSUPPORT_LONGJMP=0',
+      '-sASSERTIONS=0',
+    ]
+    + node_flags
+  )
 
   # Default behavior for emcc is to warn for binaryen version check mismatches
   # so we should try to match that behavior.
@@ -350,7 +359,9 @@ def parse_json(path):
     header = {'name': item['file'], 'structs': {}, 'defines': {}}
     for name, data in item.get('structs', {}).items():
       if name in header['structs']:
-        show('WARN: Description of struct "' + name + '" in file "' + item['file'] + '" replaces an existing description!')
+        show(
+          'WARN: Description of struct "' + name + '" in file "' + item['file'] + '" replaces an existing description!'
+        )
 
       header['structs'][name] = data
 
@@ -360,7 +371,13 @@ def parse_json(path):
         part = ['i', part]
 
       if part[1] in header['defines']:
-        show('WARN: Description of define "' + part[1] + '" in file "' + item['file'] + '" replaces an existing description!')
+        show(
+          'WARN: Description of define "'
+          + part[1]
+          + '" in file "'
+          + item['file']
+          + '" replaces an existing description!'
+        )
 
       header['defines'][part[1]] = part[0]
 
@@ -379,21 +396,32 @@ def main(args):
   global QUIET
 
   parser = argparse.ArgumentParser(description='Generate JSON infos for structs.')
-  parser.add_argument('json', nargs='*',
-                      help='JSON file with a list of structs and their fields (defaults to src/struct_info.json)',
-                      default=DEFAULT_JSON_FILES)
-  parser.add_argument('-q', dest='quiet', action='store_true', default=False,
-                      help='Don\'t output anything besides error messages.')
-  parser.add_argument('-o', dest='output', metavar='path', default=None,
-                      help='Path to the JSON file that will be written. If omitted, the default location under `src` will be used.')
-  parser.add_argument('-I', dest='includes', metavar='dir', action='append', default=[],
-                      help='Add directory to include search path')
-  parser.add_argument('-D', dest='defines', metavar='define', action='append', default=[],
-                      help='Pass a define to the preprocessor')
-  parser.add_argument('-U', dest='undefines', metavar='undefine', action='append', default=[],
-                      help='Pass an undefine to the preprocessor')
-  parser.add_argument('--wasm64', action='store_true',
-                      help='use wasm64 architecture')
+  parser.add_argument(
+    'json',
+    nargs='*',
+    help='JSON file with a list of structs and their fields (defaults to src/struct_info.json)',
+    default=DEFAULT_JSON_FILES,
+  )
+  parser.add_argument(
+    '-q', dest='quiet', action='store_true', default=False, help='Don\'t output anything besides error messages.'
+  )
+  parser.add_argument(
+    '-o',
+    dest='output',
+    metavar='path',
+    default=None,
+    help='Path to the JSON file that will be written. If omitted, the default location under `src` will be used.',
+  )
+  parser.add_argument(
+    '-I', dest='includes', metavar='dir', action='append', default=[], help='Add directory to include search path'
+  )
+  parser.add_argument(
+    '-D', dest='defines', metavar='define', action='append', default=[], help='Pass a define to the preprocessor'
+  )
+  parser.add_argument(
+    '-U', dest='undefines', metavar='undefine', action='append', default=[], help='Pass an undefine to the preprocessor'
+  )
+  parser.add_argument('--wasm64', action='store_true', help='use wasm64 architecture')
   args = parser.parse_args(args)
 
   QUIET = args.quiet

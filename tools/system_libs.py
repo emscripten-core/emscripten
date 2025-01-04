@@ -26,13 +26,35 @@ from .utils import read_file
 logger = logging.getLogger('system_libs')
 
 # Files that are part of libsockets.a and so should be excluded from libc.a
-LIBC_SOCKETS = ['socket.c', 'socketpair.c', 'shutdown.c', 'bind.c', 'connect.c',
-                'listen.c', 'accept.c', 'getsockname.c', 'getpeername.c', 'send.c',
-                'recv.c', 'sendto.c', 'recvfrom.c', 'sendmsg.c', 'recvmsg.c',
-                'getsockopt.c', 'setsockopt.c', 'freeaddrinfo.c',
-                'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
-                'gethostbyname_r.c', 'gethostbyname2.c', 'gethostbyname2_r.c',
-                'in6addr_any.c', 'in6addr_loopback.c', 'accept4.c']
+LIBC_SOCKETS = [
+  'socket.c',
+  'socketpair.c',
+  'shutdown.c',
+  'bind.c',
+  'connect.c',
+  'listen.c',
+  'accept.c',
+  'getsockname.c',
+  'getpeername.c',
+  'send.c',
+  'recv.c',
+  'sendto.c',
+  'recvfrom.c',
+  'sendmsg.c',
+  'recvmsg.c',
+  'getsockopt.c',
+  'setsockopt.c',
+  'freeaddrinfo.c',
+  'gethostbyaddr.c',
+  'gethostbyaddr_r.c',
+  'gethostbyname.c',
+  'gethostbyname_r.c',
+  'gethostbyname2.c',
+  'gethostbyname2_r.c',
+  'in6addr_any.c',
+  'in6addr_loopback.c',
+  'accept4.c',
+]
 
 # Experimental: Setting EMCC_USE_NINJA will cause system libraries to get built with ninja rather
 # than simple subprocesses.  The primary benefit here is that we get accurate dependency tracking.
@@ -79,12 +101,16 @@ def clean_env():
   # At least one port also uses autoconf (harfbuzz) so we also need to clear
   # CFLAGS/LDFLAGS which we don't want to effect the inner call to configure.
   safe_env = os.environ.copy()
-  for opt in ['CFLAGS', 'CXXFLAGS', 'LDFLAGS',
-              'EMCC_CFLAGS',
-              'EMCC_AUTODEBUG',
-              'EMCC_FORCE_STDLIBS',
-              'EMCC_ONLY_FORCED_STDLIBS',
-              'EMMAKEN_JUST_CONFIGURE']:
+  for opt in [
+    'CFLAGS',
+    'CXXFLAGS',
+    'LDFLAGS',
+    'EMCC_CFLAGS',
+    'EMCC_AUTODEBUG',
+    'EMCC_FORCE_STDLIBS',
+    'EMCC_ONLY_FORCED_STDLIBS',
+    'EMMAKEN_JUST_CONFIGURE',
+  ]:
     if opt in safe_env:
       del safe_env[opt]
   return safe_env
@@ -431,8 +457,7 @@ class Library:
     return cache.get(self.get_path(), self.do_build, force=USE_NINJA == 2, quiet=USE_NINJA)
 
   def generate(self):
-    return cache.get(self.get_path(), self.do_generate, force=USE_NINJA == 2, quiet=USE_NINJA,
-                     deferred=True)
+    return cache.get(self.get_path(), self.do_generate, force=USE_NINJA == 2, quiet=USE_NINJA, deferred=True)
 
   def get_link_flag(self):
     """
@@ -475,7 +500,9 @@ class Library:
     asflags = get_base_cflags(preprocess=False)
     input_files = self.get_files()
     ninja_file = os.path.join(build_dir, 'build.ninja')
-    create_ninja_file(input_files, ninja_file, libname, cflags, asflags=asflags, customize_build_flags=self.customize_build_cmd)
+    create_ninja_file(
+      input_files, ninja_file, libname, cflags, asflags=asflags, customize_build_flags=self.customize_build_cmd
+    )
 
   def build_objects(self, build_dir):
     """
@@ -543,7 +570,7 @@ class Library:
       for cmd, srcs in batches.items():
         cmd = list(cmd)
         for i in range(0, len(srcs), chunk_size):
-          chunk_srcs = srcs[i:i + chunk_size]
+          chunk_srcs = srcs[i : i + chunk_size]
           commands.append(building.get_command_with_possible_response_file(cmd + chunk_srcs))
 
     run_build_commands(commands, num_inputs=len(objects), build_dir=build_dir)
@@ -600,9 +627,11 @@ class Library:
 
     source_dir = utils.path_from_root()
     relative_source_dir = os.path.relpath(source_dir, self.build_dir)
-    cflags += [f'-ffile-prefix-map={source_dir}={DETERMINISITIC_PREFIX}',
-               f'-ffile-prefix-map={relative_source_dir}={DETERMINISITIC_PREFIX}',
-               f'-fdebug-compilation-dir={DETERMINISITIC_PREFIX}']
+    cflags += [
+      f'-ffile-prefix-map={source_dir}={DETERMINISITIC_PREFIX}',
+      f'-ffile-prefix-map={relative_source_dir}={DETERMINISITIC_PREFIX}',
+      f'-fdebug-compilation-dir={DETERMINISITIC_PREFIX}',
+    ]
     return cflags
 
   def get_base_name_prefix(self):
@@ -653,8 +682,7 @@ class Library:
     the behaviour.
     """
     vary_on = cls.vary_on()
-    return [dict(zip(vary_on, toggles)) for toggles in
-            itertools.product([False, True], repeat=len(vary_on))]
+    return [dict(zip(vary_on, toggles)) for toggles in itertools.product([False, True], repeat=len(vary_on))]
 
   @classmethod
   def get_default_variation(cls, **kwargs):
@@ -739,9 +767,7 @@ class MTLibrary(Library):
   @classmethod
   def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
-      is_mt=settings.PTHREADS,
-      is_ww=settings.SHARED_MEMORY and not settings.PTHREADS,
-      **kwargs
+      is_mt=settings.PTHREADS, is_ww=settings.SHARED_MEMORY and not settings.PTHREADS, **kwargs
     )
 
   @classmethod
@@ -791,6 +817,7 @@ class Exceptions(IntEnum):
     is meant to be fast. You need to use a VM that has the EH support to use
     this. This is not fully working yet and still experimental.
   """
+
   NONE = auto()
   EMSCRIPTEN = auto()
   WASM = auto()
@@ -824,9 +851,11 @@ class NoExceptLibrary(Library):
   @classmethod
   def variations(cls, **kwargs):  # noqa
     combos = super().variations()
-    return ([dict(eh_mode=Exceptions.NONE, **combo) for combo in combos] +
-            [dict(eh_mode=Exceptions.EMSCRIPTEN, **combo) for combo in combos] +
-            [dict(eh_mode=Exceptions.WASM, **combo) for combo in combos])
+    return (
+      [dict(eh_mode=Exceptions.NONE, **combo) for combo in combos]
+      + [dict(eh_mode=Exceptions.EMSCRIPTEN, **combo) for combo in combos]
+      + [dict(eh_mode=Exceptions.WASM, **combo) for combo in combos]
+    )
 
   @classmethod
   def get_default_variation(cls, **kwargs):
@@ -850,9 +879,7 @@ class SjLjLibrary(Library):
     if self.is_wasm:
       # DISABLE_EXCEPTION_THROWING=0 is the default, which is for Emscripten
       # EH/SjLj, so we should reverse it.
-      cflags += ['-sSUPPORT_LONGJMP=wasm',
-                 '-sDISABLE_EXCEPTION_THROWING',
-                 '-D__USING_WASM_SJLJ__']
+      cflags += ['-sSUPPORT_LONGJMP=wasm', '-sDISABLE_EXCEPTION_THROWING', '-D__USING_WASM_SJLJ__']
     return cflags
 
   def get_base_name(self):
@@ -953,15 +980,16 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
   ]
   src_files = glob_in_path(src_dir, '*.c', excludes=excludes)
   src_files += files_in_path(
-      path='system/lib/compiler-rt',
-      filenames=[
-        'stack_ops.S',
-        'stack_limits.S',
-        'emscripten_setjmp.c',
-        'emscripten_exception_builtins.c',
-        'emscripten_tempret.s',
-        '__trap.c',
-      ])
+    path='system/lib/compiler-rt',
+    filenames=[
+      'stack_ops.S',
+      'stack_limits.S',
+      'emscripten_setjmp.c',
+      'emscripten_exception_builtins.c',
+      'emscripten_tempret.s',
+      '__trap.c',
+    ],
+  )
 
 
 class libnoexit(Library):
@@ -970,10 +998,7 @@ class libnoexit(Library):
   src_files = ['atexit_dummy.c']
 
 
-class libc(MuslInternalLibrary,
-           DebugLibrary,
-           AsanInstrumentedLibrary,
-           MTLibrary):
+class libc(MuslInternalLibrary, DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
   name = 'libc'
 
   # Without -fno-builtin, LLVM can optimize away or convert calls to library
@@ -986,18 +1011,20 @@ class libc(MuslInternalLibrary,
   cflags = ['-Os', '-fno-inline-functions', '-fno-builtin']
 
   # Disable certain warnings for code patterns that are contained in upstream musl
-  cflags += ['-Wno-ignored-attributes',
-             # tre.h defines NDEBUG internally itself
-             '-Wno-macro-redefined',
-             '-Wno-shift-op-parentheses',
-             '-Wno-string-plus-int',
-             '-Wno-missing-braces',
-             '-Wno-logical-op-parentheses',
-             '-Wno-bitwise-op-parentheses',
-             '-Wno-unused-but-set-variable',
-             '-Wno-unused-variable',
-             '-Wno-unused-label',
-             '-Wno-pointer-sign']
+  cflags += [
+    '-Wno-ignored-attributes',
+    # tre.h defines NDEBUG internally itself
+    '-Wno-macro-redefined',
+    '-Wno-shift-op-parentheses',
+    '-Wno-string-plus-int',
+    '-Wno-missing-braces',
+    '-Wno-logical-op-parentheses',
+    '-Wno-bitwise-op-parentheses',
+    '-Wno-unused-but-set-variable',
+    '-Wno-unused-variable',
+    '-Wno-unused-label',
+    '-Wno-pointer-sign',
+  ]
 
   def __init__(self, **kwargs):
     self.non_lto_files = self.get_libcall_files()
@@ -1018,39 +1045,69 @@ class libc(MuslInternalLibrary,
     # functions - fmin uses signbit, for example, so signbit must be here (so if
     # fmin is added by codegen, it will have all it needs).
     math_files = [
-      'fmin.c', 'fminf.c', 'fminl.c',
-      'fmax.c', 'fmaxf.c', 'fmaxl.c',
-      'fmod.c', 'fmodf.c', 'fmodl.c',
-      'logf.c', 'logf_data.c',
-      'log2f.c', 'log2f_data.c',
-      'log10.c', 'log10f.c',
-      'exp.c', 'exp_data.c',
+      'fmin.c',
+      'fminf.c',
+      'fminl.c',
+      'fmax.c',
+      'fmaxf.c',
+      'fmaxl.c',
+      'fmod.c',
+      'fmodf.c',
+      'fmodl.c',
+      'logf.c',
+      'logf_data.c',
+      'log2f.c',
+      'log2f_data.c',
+      'log10.c',
+      'log10f.c',
+      'exp.c',
+      'exp_data.c',
       'exp2.c',
-      'exp2f.c', 'exp2f_data.c',
-      'exp10.c', 'exp10f.c',
-      'ldexp.c', 'ldexpf.c', 'ldexpl.c',
-      'scalbn.c', '__fpclassifyl.c',
-      '__signbitl.c', '__signbitf.c', '__signbit.c',
-      '__math_divzero.c', '__math_divzerof.c',
-      '__math_oflow.c', '__math_oflowf.c',
-      '__math_uflow.c', '__math_uflowf.c',
-      '__math_invalid.c', '__math_invalidf.c', '__math_invalidl.c',
-      'pow.c', 'pow_data.c', 'log.c', 'log_data.c', 'log2.c', 'log2_data.c',
+      'exp2f.c',
+      'exp2f_data.c',
+      'exp10.c',
+      'exp10f.c',
+      'ldexp.c',
+      'ldexpf.c',
+      'ldexpl.c',
+      'scalbn.c',
+      '__fpclassifyl.c',
+      '__signbitl.c',
+      '__signbitf.c',
+      '__signbit.c',
+      '__math_divzero.c',
+      '__math_divzerof.c',
+      '__math_oflow.c',
+      '__math_oflowf.c',
+      '__math_uflow.c',
+      '__math_uflowf.c',
+      '__math_invalid.c',
+      '__math_invalidf.c',
+      '__math_invalidl.c',
+      'pow.c',
+      'pow_data.c',
+      'log.c',
+      'log_data.c',
+      'log2.c',
+      'log2_data.c',
       'scalbnf.c',
     ]
     math_files = files_in_path(path='system/lib/libc/musl/src/math', filenames=math_files)
 
-    exit_files = files_in_path(
-        path='system/lib/libc/musl/src/exit',
-        filenames=['atexit.c'])
+    exit_files = files_in_path(path='system/lib/libc/musl/src/exit', filenames=['atexit.c'])
 
     other_files = files_in_path(
       path='system/lib/libc',
-      filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
-                 'emscripten_memcpy_bulkmem.S', 'emscripten_memset_bulkmem.S',
-                 'emscripten_scan_stack.c',
-                 'emscripten_get_heap_size.c',  # needed by malloc
-                 'emscripten_memmove.c'])
+      filenames=[
+        'emscripten_memcpy.c',
+        'emscripten_memset.c',
+        'emscripten_memcpy_bulkmem.S',
+        'emscripten_memset_bulkmem.S',
+        'emscripten_scan_stack.c',
+        'emscripten_get_heap_size.c',  # needed by malloc
+        'emscripten_memmove.c',
+      ],
+    )
     # Calls to iprintf can be generated during codegen. Ideally we wouldn't
     # compile these with -O2 like we do the rest of compiler-rt since its
     # probably not performance sensitive.  However we don't currently have
@@ -1058,21 +1115,27 @@ class libc(MuslInternalLibrary,
     # move all this stuff back into libc once we it LTO compatible.
     iprintf_files = files_in_path(
       path='system/lib/libc/musl/src/stdio',
-      filenames=['__towrite.c', '__overflow.c', 'fwrite.c', 'fputs.c',
-                 'getc.c',
-                 'fputc.c',
-                 'fgets.c',
-                 'putc.c', 'putc_unlocked.c',
-                 'putchar.c', 'putchar_unlocked.c',
-                 'printf.c', 'puts.c', '__lockfile.c'])
-    iprintf_files += files_in_path(
-      path='system/lib/libc/musl/src/string',
-      filenames=['strlen.c'])
+      filenames=[
+        '__towrite.c',
+        '__overflow.c',
+        'fwrite.c',
+        'fputs.c',
+        'getc.c',
+        'fputc.c',
+        'fgets.c',
+        'putc.c',
+        'putc_unlocked.c',
+        'putchar.c',
+        'putchar_unlocked.c',
+        'printf.c',
+        'puts.c',
+        '__lockfile.c',
+      ],
+    )
+    iprintf_files += files_in_path(path='system/lib/libc/musl/src/string', filenames=['strlen.c'])
 
     # Transitively required by many system call imports
-    errno_files = files_in_path(
-      path='system/lib/libc/musl/src/errno',
-      filenames=['__errno_location.c', 'strerror.c'])
+    errno_files = files_in_path(path='system/lib/libc/musl/src/errno', filenames=['__errno_location.c', 'strerror.c'])
 
     return math_files + exit_files + other_files + iprintf_files + errno_files
 
@@ -1082,26 +1145,54 @@ class libc(MuslInternalLibrary,
 
     # musl modules
     ignore = [
-        'ipc', 'passwd', 'signal', 'sched', 'time', 'linux',
-        'aio', 'exit', 'legacy', 'mq', 'setjmp',
-        'ldso', 'malloc'
+      'ipc',
+      'passwd',
+      'signal',
+      'sched',
+      'time',
+      'linux',
+      'aio',
+      'exit',
+      'legacy',
+      'mq',
+      'setjmp',
+      'ldso',
+      'malloc',
     ]
 
     # individual files
     ignore += [
-        'memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c',
-        'res_query.c', 'res_querydomain.c',
-        'proto.c',
-        'ppoll.c',
-        'syscall.c', 'popen.c', 'pclose.c',
-        'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
-        'getauxval.c',
-        'lookup_name.c',
-        # 'process' exclusion
-        'fork.c', 'vfork.c', 'posix_spawn.c', 'posix_spawnp.c', 'execve.c', 'waitid.c', 'system.c',
-        '_Fork.c',
-        # 'env' exclusion
-        '__reset_tls.c', '__init_tls.c', '__libc_start_main.c',
+      'memcpy.c',
+      'memset.c',
+      'memmove.c',
+      'getaddrinfo.c',
+      'getnameinfo.c',
+      'res_query.c',
+      'res_querydomain.c',
+      'proto.c',
+      'ppoll.c',
+      'syscall.c',
+      'popen.c',
+      'pclose.c',
+      'getgrouplist.c',
+      'initgroups.c',
+      'wordexp.c',
+      'timer_create.c',
+      'getauxval.c',
+      'lookup_name.c',
+      # 'process' exclusion
+      'fork.c',
+      'vfork.c',
+      'posix_spawn.c',
+      'posix_spawnp.c',
+      'execve.c',
+      'waitid.c',
+      'system.c',
+      '_Fork.c',
+      # 'env' exclusion
+      '__reset_tls.c',
+      '__init_tls.c',
+      '__libc_start_main.c',
     ]
 
     ignore += LIBC_SOCKETS
@@ -1110,12 +1201,16 @@ class libc(MuslInternalLibrary,
       ignore += [
         'clone.c',
         'pthread_create.c',
-        'pthread_kill.c', 'pthread_sigmask.c',
-        '__set_thread_area.c', 'synccall.c',
-        '__syscall_cp.c', '__tls_get_addr.c',
+        'pthread_kill.c',
+        'pthread_sigmask.c',
+        '__set_thread_area.c',
+        'synccall.c',
+        '__syscall_cp.c',
+        '__tls_get_addr.c',
         '__unmapself.c',
         # Empty files, simply ignore them.
-        'syscall_cp.c', 'tls.c',
+        'syscall_cp.c',
+        'tls.c',
         # TODO: Support these. See #12216.
         'pthread_setname_np.c',
         'pthread_getname_np.c',
@@ -1135,7 +1230,8 @@ class libc(MuslInternalLibrary,
           'emscripten_futex_wait.c',
           'emscripten_futex_wake.c',
           'emscripten_yield.c',
-        ])
+        ],
+      )
     else:
       ignore += ['thread']
       libc_files += files_in_path(
@@ -1182,19 +1278,19 @@ class libc(MuslInternalLibrary,
           'thrd_join.c',
           'thrd_sleep.c',
           'thrd_yield.c',
-        ])
+        ],
+      )
       libc_files += files_in_path(
         path='system/lib/pthread',
         filenames=[
           'library_pthread_stub.c',
           'pthread_self_stub.c',
           'proxying_stub.c',
-        ])
+        ],
+      )
 
     # These files are in libc directories, but only built in libc_optz.
-    ignore += [
-      'pow_small.c', 'log_small.c', 'log2_small.c'
-    ]
+    ignore += ['pow_small.c', 'log_small.c', 'log2_small.c']
 
     ignore = set(ignore)
     for dirpath, dirnames, filenames in os.walk(musl_srcdir):
@@ -1209,108 +1305,109 @@ class libc(MuslInternalLibrary,
 
     # Allowed files from ignored modules
     libc_files += files_in_path(
-        path='system/lib/libc/musl/src/time',
-        filenames=[
-          'clock_settime.c',
-          'asctime_r.c',
-          'asctime.c',
-          'ctime.c',
-          'difftime.c',
-          'ftime.c',
-          'gmtime.c',
-          'localtime.c',
-          'nanosleep.c',
-          'clock.c',
-          'clock_nanosleep.c',
-          'clock_getres.c',
-          'clock_gettime.c',
-          'ctime_r.c',
-          'timespec_get.c',
-          'utime.c',
-          '__map_file.c',
-          'strftime.c',
-          '__tz.c',
-          '__tm_to_secs.c',
-          '__year_to_secs.c',
-          '__month_to_secs.c',
-          'wcsftime.c',
-        ])
+      path='system/lib/libc/musl/src/time',
+      filenames=[
+        'clock_settime.c',
+        'asctime_r.c',
+        'asctime.c',
+        'ctime.c',
+        'difftime.c',
+        'ftime.c',
+        'gmtime.c',
+        'localtime.c',
+        'nanosleep.c',
+        'clock.c',
+        'clock_nanosleep.c',
+        'clock_getres.c',
+        'clock_gettime.c',
+        'ctime_r.c',
+        'timespec_get.c',
+        'utime.c',
+        '__map_file.c',
+        'strftime.c',
+        '__tz.c',
+        '__tm_to_secs.c',
+        '__year_to_secs.c',
+        '__month_to_secs.c',
+        'wcsftime.c',
+      ],
+    )
 
     libc_files += files_in_path(
-        path='system/lib/libc/musl/src/legacy',
-        filenames=['getpagesize.c', 'err.c', 'euidaccess.c'])
+      path='system/lib/libc/musl/src/legacy', filenames=['getpagesize.c', 'err.c', 'euidaccess.c']
+    )
 
     libc_files += files_in_path(
-        path='system/lib/libc/musl/src/linux',
-        filenames=['getdents.c', 'gettid.c', 'utimes.c', 'statx.c', 'wait4.c', 'wait3.c'])
+      path='system/lib/libc/musl/src/linux',
+      filenames=['getdents.c', 'gettid.c', 'utimes.c', 'statx.c', 'wait4.c', 'wait3.c'],
+    )
+
+    libc_files += files_in_path(path='system/lib/libc/musl/src/sched', filenames=['sched_yield.c'])
 
     libc_files += files_in_path(
-        path='system/lib/libc/musl/src/sched',
-        filenames=['sched_yield.c'])
+      path='system/lib/libc/musl/src/exit',
+      filenames=['abort.c', '_Exit.c', 'atexit.c', 'at_quick_exit.c', 'quick_exit.c'],
+    )
 
     libc_files += files_in_path(
-        path='system/lib/libc/musl/src/exit',
-        filenames=['abort.c', '_Exit.c', 'atexit.c', 'at_quick_exit.c', 'quick_exit.c'])
+      path='system/lib/libc/musl/src/ldso', filenames=['dladdr.c', 'dlerror.c', 'dlsym.c', 'dlclose.c']
+    )
 
     libc_files += files_in_path(
-        path='system/lib/libc/musl/src/ldso',
-        filenames=['dladdr.c', 'dlerror.c', 'dlsym.c', 'dlclose.c'])
+      path='system/lib/libc/musl/src/signal',
+      filenames=[
+        'block.c',
+        'getitimer.c',
+        'killpg.c',
+        'setitimer.c',
+        'sigorset.c',
+        'sigandset.c',
+        'sigaddset.c',
+        'sigdelset.c',
+        'sigemptyset.c',
+        'sigisemptyset.c',
+        'sigfillset.c',
+        'sigismember.c',
+        'siginterrupt.c',
+        'signal.c',
+        'sigprocmask.c',
+        'sigrtmax.c',
+        'sigrtmin.c',
+        'sigwait.c',
+        'sigwaitinfo.c',
+      ],
+    )
 
     libc_files += files_in_path(
-        path='system/lib/libc/musl/src/signal',
-        filenames=[
-          'block.c',
-          'getitimer.c',
-          'killpg.c',
-          'setitimer.c',
-          'sigorset.c',
-          'sigandset.c',
-          'sigaddset.c',
-          'sigdelset.c',
-          'sigemptyset.c',
-          'sigisemptyset.c',
-          'sigfillset.c',
-          'sigismember.c',
-          'siginterrupt.c',
-          'signal.c',
-          'sigprocmask.c',
-          'sigrtmax.c',
-          'sigrtmin.c',
-          'sigwait.c',
-          'sigwaitinfo.c',
-        ])
-
-    libc_files += files_in_path(
-        path='system/lib/libc',
-        filenames=[
-          'emscripten_console.c',
-          'emscripten_fiber.c',
-          'emscripten_get_heap_size.c',
-          'emscripten_memcpy.c',
-          'emscripten_memmove.c',
-          'emscripten_memset.c',
-          'emscripten_memcpy_bulkmem.S',
-          'emscripten_memset_bulkmem.S',
-          'emscripten_mmap.c',
-          'emscripten_scan_stack.c',
-          'emscripten_time.c',
-          'mktime.c',
-          'kill.c',
-          'lookup_name.c',
-          'pthread_sigmask.c',
-          'raise.c',
-          'sigaction.c',
-          'sigtimedwait.c',
-          'wasi-helpers.c',
-          'system.c',
-        ])
+      path='system/lib/libc',
+      filenames=[
+        'emscripten_console.c',
+        'emscripten_fiber.c',
+        'emscripten_get_heap_size.c',
+        'emscripten_memcpy.c',
+        'emscripten_memmove.c',
+        'emscripten_memset.c',
+        'emscripten_memcpy_bulkmem.S',
+        'emscripten_memset_bulkmem.S',
+        'emscripten_mmap.c',
+        'emscripten_scan_stack.c',
+        'emscripten_time.c',
+        'mktime.c',
+        'kill.c',
+        'lookup_name.c',
+        'pthread_sigmask.c',
+        'raise.c',
+        'sigaction.c',
+        'sigtimedwait.c',
+        'wasi-helpers.c',
+        'system.c',
+      ],
+    )
 
     if settings.RELOCATABLE:
       libc_files += files_in_path(path='system/lib/libc', filenames=['dynlink.c'])
 
-    libc_files += files_in_path(
-        path='system/lib/pthread',
-        filenames=['thread_profiler.c'])
+    libc_files += files_in_path(path='system/lib/pthread', filenames=['thread_profiler.c'])
 
     libc_files += glob_in_path('system/lib/libc/compat', '*.c')
 
@@ -1353,14 +1450,13 @@ class libc_optz(libc):
 
     # some files also appear in libc, and a #define affects them
     mem_files = files_in_path(
-      path='system/lib/libc',
-      filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
-                 'emscripten_memmove.c'])
+      path='system/lib/libc', filenames=['emscripten_memcpy.c', 'emscripten_memset.c', 'emscripten_memmove.c']
+    )
 
     # some functions have separate files
     math_files = files_in_path(
-      path='system/lib/libc/musl/src/math',
-      filenames=['pow_small.c', 'log_small.c', 'log2_small.c'])
+      path='system/lib/libc/musl/src/math', filenames=['pow_small.c', 'log_small.c', 'log2_small.c']
+    )
 
     return mem_files + math_files
 
@@ -1368,9 +1464,7 @@ class libc_optz(libc):
     libcall_files = self.get_libcall_files()
 
     # some files also appear in libc, and a #define affects them
-    mem_files = files_in_path(
-      path='system/lib/libc/musl/src/string',
-      filenames=['memcmp.c'])
+    mem_files = files_in_path(path='system/lib/libc/musl/src/string', filenames=['memcmp.c'])
 
     return libcall_files + mem_files
 
@@ -1388,8 +1482,12 @@ class libc_optz(libc):
     # EMCC_FORCE_STDLIBS can have a similar effect of forcing all libraries.
     # In both cases, the build is not one that is hyper-focused on code size,
     # and so optz is not that important.
-    return super(libc_optz, self).can_use() and settings.SHRINK_LEVEL >= 2 and \
-        not settings.LINKABLE and not os.environ.get('EMCC_FORCE_STDLIBS')
+    return (
+      super(libc_optz, self).can_use()
+      and settings.SHRINK_LEVEL >= 2
+      and not settings.LINKABLE
+      and not os.environ.get('EMCC_FORCE_STDLIBS')
+    )
 
 
 class libprintf_long_double(libc):
@@ -1397,9 +1495,7 @@ class libprintf_long_double(libc):
   cflags = ['-DEMSCRIPTEN_PRINTF_LONG_DOUBLE']
 
   def get_files(self):
-    return files_in_path(
-        path='system/lib/libc/musl/src/stdio',
-        filenames=['vfprintf.c'])
+    return files_in_path(path='system/lib/libc/musl/src/stdio', filenames=['vfprintf.c'])
 
   def can_use(self):
     return super(libprintf_long_double, self).can_use() and settings.PRINTF_LONG_DOUBLE
@@ -1449,22 +1545,17 @@ class libwasm_workers(DebugLibrary):
   def get_files(self):
     files = []
     if self.is_stub:
-      files = [
-        'library_wasm_worker_stub.c'
-      ]
+      files = ['library_wasm_worker_stub.c']
     else:
       files = [
         'library_wasm_worker.c',
         'wasm_worker_initialize.S',
       ]
-    return files_in_path(
-        path='system/lib/wasm_worker',
-        filenames=files)
+    return files_in_path(path='system/lib/wasm_worker', filenames=files)
 
   def can_use(self):
     # see src/library_wasm_worker.js
-    return super().can_use() and not settings.SINGLE_FILE \
-      and not settings.RELOCATABLE and not settings.PROXY_TO_WORKER
+    return super().can_use() and not settings.SINGLE_FILE and not settings.RELOCATABLE and not settings.PROXY_TO_WORKER
 
 
 class libsockets(MuslInternalLibrary, MTLibrary):
@@ -1473,9 +1564,7 @@ class libsockets(MuslInternalLibrary, MTLibrary):
   cflags = ['-Os', '-fno-inline-functions', '-fno-builtin', '-Wno-shift-op-parentheses']
 
   def get_files(self):
-    return files_in_path(
-      path='system/lib/libc/musl/src/network',
-      filenames=LIBC_SOCKETS)
+    return files_in_path(path='system/lib/libc/musl/src/network', filenames=LIBC_SOCKETS)
 
   def can_use(self):
     return super(libsockets, self).can_use() and not settings.PROXY_POSIX_SOCKETS
@@ -1553,13 +1642,13 @@ class crtbegin(MuslInternalLibrary):
 class libcxxabi(NoExceptLibrary, MTLibrary, DebugLibrary):
   name = 'libc++abi'
   cflags = [
-      '-Oz',
-      '-fno-inline-functions',
-      '-D_LIBCPP_BUILDING_LIBRARY',
-      '-D_LIBCXXABI_BUILDING_LIBRARY',
-      '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',
-      '-std=c++23',
-    ]
+    '-Oz',
+    '-fno-inline-functions',
+    '-D_LIBCPP_BUILDING_LIBRARY',
+    '-D_LIBCXXABI_BUILDING_LIBRARY',
+    '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',
+    '-std=c++23',
+  ]
   includes = ['system/lib/libcxx/src']
 
   def __init__(self, **kwargs):
@@ -1609,17 +1698,11 @@ class libcxxabi(NoExceptLibrary, MTLibrary, DebugLibrary):
     elif self.eh_mode == Exceptions.EMSCRIPTEN:
       filenames += ['cxa_exception_emscripten.cpp']
     elif self.eh_mode == Exceptions.WASM:
-      filenames += [
-        'cxa_exception_storage.cpp',
-        'cxa_exception.cpp',
-        'cxa_personality.cpp'
-      ]
+      filenames += ['cxa_exception_storage.cpp', 'cxa_exception.cpp', 'cxa_personality.cpp']
     else:
       assert False
 
-    return files_in_path(
-        path='system/lib/libcxxabi/src',
-        filenames=filenames)
+    return files_in_path(path='system/lib/libcxxabi/src', filenames=filenames)
 
 
 class libcxx(NoExceptLibrary, MTLibrary):
@@ -1711,8 +1794,19 @@ class libmalloc(MTLibrary):
 
   def __init__(self, **kwargs):
     self.malloc = kwargs.pop('malloc')
-    if self.malloc not in ('dlmalloc', 'emmalloc', 'emmalloc-debug', 'emmalloc-memvalidate', 'emmalloc-verbose', 'emmalloc-memvalidate-verbose', 'mimalloc', 'none'):
-      raise Exception('malloc must be one of "emmalloc[-debug|-memvalidate][-verbose]", "mimalloc", "dlmalloc" or "none", see settings.js')
+    if self.malloc not in (
+      'dlmalloc',
+      'emmalloc',
+      'emmalloc-debug',
+      'emmalloc-memvalidate',
+      'emmalloc-verbose',
+      'emmalloc-memvalidate-verbose',
+      'mimalloc',
+      'none',
+    ):
+      raise Exception(
+        'malloc must be one of "emmalloc[-debug|-memvalidate][-verbose]", "mimalloc", "dlmalloc" or "none", see settings.js'
+      )
 
     self.is_tracing = kwargs.pop('is_tracing')
     self.memvalidate = kwargs.pop('memvalidate')
@@ -1723,9 +1817,13 @@ class libmalloc(MTLibrary):
 
   def get_files(self):
     malloc_base = self.malloc.replace('-memvalidate', '').replace('-verbose', '').replace('-debug', '')
-    malloc = utils.path_from_root('system/lib', {
-      'dlmalloc': 'dlmalloc.c', 'emmalloc': 'emmalloc.c',
-    }[malloc_base])
+    malloc = utils.path_from_root(
+      'system/lib',
+      {
+        'dlmalloc': 'dlmalloc.c',
+        'emmalloc': 'emmalloc.c',
+      }[malloc_base],
+    )
     # Include sbrk.c in libc, it uses tracing and libc itself doesn't have a tracing variant.
     sbrk = utils.path_from_root('system/lib/libc/sbrk.c')
     return [malloc, sbrk]
@@ -1770,17 +1868,27 @@ class libmalloc(MTLibrary):
       is_tracing=settings.EMSCRIPTEN_TRACING,
       memvalidate='memvalidate' in settings.MALLOC,
       verbose='verbose' in settings.MALLOC,
-      **kwargs
+      **kwargs,
     )
 
   @classmethod
   def variations(cls):
     combos = super().variations()
-    return ([dict(malloc='dlmalloc', **combo) for combo in combos if not combo['memvalidate'] and not combo['verbose']] +
-            [dict(malloc='emmalloc', **combo) for combo in combos if not combo['memvalidate'] and not combo['verbose']] +
-            [dict(malloc='emmalloc-memvalidate-verbose', **combo) for combo in combos if combo['memvalidate'] and combo['verbose']] +
-            [dict(malloc='emmalloc-memvalidate', **combo) for combo in combos if combo['memvalidate'] and not combo['verbose']] +
-            [dict(malloc='emmalloc-verbose', **combo) for combo in combos if combo['verbose'] and not combo['memvalidate']])
+    return (
+      [dict(malloc='dlmalloc', **combo) for combo in combos if not combo['memvalidate'] and not combo['verbose']]
+      + [dict(malloc='emmalloc', **combo) for combo in combos if not combo['memvalidate'] and not combo['verbose']]
+      + [
+        dict(malloc='emmalloc-memvalidate-verbose', **combo)
+        for combo in combos
+        if combo['memvalidate'] and combo['verbose']
+      ]
+      + [
+        dict(malloc='emmalloc-memvalidate', **combo)
+        for combo in combos
+        if combo['memvalidate'] and not combo['verbose']
+      ]
+      + [dict(malloc='emmalloc-verbose', **combo) for combo in combos if combo['verbose'] and not combo['memvalidate']]
+    )
 
 
 class libmimalloc(MTLibrary):
@@ -1818,7 +1926,7 @@ class libmimalloc(MTLibrary):
     path='system/lib/mimalloc/src',
     glob_pattern='*.c',
     # mimalloc includes some files at the source level, so exclude them here.
-    excludes=['alloc-override.c', 'free.c', 'page-queue.c', 'static.c']
+    excludes=['alloc-override.c', 'free.c', 'page-queue.c', 'static.c'],
   )
   src_files += [utils.path_from_root('system/lib/mimalloc/src/prim/prim.c')]
   src_files += [utils.path_from_root('system/lib/emmalloc.c')]
@@ -1892,7 +2000,7 @@ class libGL(MTLibrary):
       is_ofb=settings.OFFSCREEN_FRAMEBUFFER,
       is_full_es3=settings.FULL_ES3,
       is_enable_get_proc_address=settings.GL_ENABLE_GET_PROC_ADDRESS,
-      **kwargs
+      **kwargs,
     )
 
 
@@ -1995,24 +2103,30 @@ class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
 
   def get_files(self):
     backends = files_in_path(
-        path='system/lib/wasmfs/backends',
-        filenames=['fetch_backend.cpp',
-                   'ignore_case_backend.cpp',
-                   'js_file_backend.cpp',
-                   'memory_backend.cpp',
-                   'node_backend.cpp',
-                   'opfs_backend.cpp'])
+      path='system/lib/wasmfs/backends',
+      filenames=[
+        'fetch_backend.cpp',
+        'ignore_case_backend.cpp',
+        'js_file_backend.cpp',
+        'memory_backend.cpp',
+        'node_backend.cpp',
+        'opfs_backend.cpp',
+      ],
+    )
     return backends + files_in_path(
-        path='system/lib/wasmfs',
-        filenames=['file.cpp',
-                   'file_table.cpp',
-                   'js_api.cpp',
-                   'emscripten.cpp',
-                   'paths.cpp',
-                   'special_files.cpp',
-                   'support.cpp',
-                   'syscalls.cpp',
-                   'wasmfs.cpp'])
+      path='system/lib/wasmfs',
+      filenames=[
+        'file.cpp',
+        'file_table.cpp',
+        'js_api.cpp',
+        'emscripten.cpp',
+        'paths.cpp',
+        'special_files.cpp',
+        'support.cpp',
+        'syscalls.cpp',
+        'wasmfs.cpp',
+      ],
+    )
 
   def can_use(self):
     return settings.WASMFS
@@ -2040,9 +2154,7 @@ class libwasmfs_noderawfs(Library):
   includes = ['system/lib/wasmfs']
 
   def get_files(self):
-    return files_in_path(
-        path='system/lib/wasmfs/backends',
-        filenames=['noderawfs_root.cpp'])
+    return files_in_path(path='system/lib/wasmfs/backends', filenames=['noderawfs_root.cpp'])
 
   def can_use(self):
     return settings.WASMFS and settings.NODERAWFS
@@ -2076,9 +2188,7 @@ class libubsan_minimal_rt(CompilerRTLibrary, MTLibrary):
 class libsanitizer_common_rt(CompilerRTLibrary, MTLibrary):
   name = 'libsanitizer_common_rt'
   # TODO(sbc): We should not need musl-internal headers here.
-  includes = ['system/lib/libc/musl/src/internal',
-              'system/lib/compiler-rt/lib',
-              'system/lib/libc']
+  includes = ['system/lib/libc/musl/src/internal', 'system/lib/compiler-rt/lib', 'system/lib/libc']
   never_force = True
   cflags = [
     '-D_LARGEFILE64_SOURCE',
@@ -2122,8 +2232,7 @@ class liblsan_rt(SanitizerLibrary):
 
   includes = ['system/lib/libc']
   src_dir = 'system/lib/compiler-rt/lib/lsan'
-  src_glob_exclude = ['lsan_common.cpp', 'lsan_common_mac.cpp', 'lsan_common_linux.cpp',
-                      'lsan_common_emscripten.cpp']
+  src_glob_exclude = ['lsan_common.cpp', 'lsan_common_mac.cpp', 'lsan_common_linux.cpp', 'lsan_common_emscripten.cpp']
 
 
 class libasan_rt(SanitizerLibrary):
@@ -2193,32 +2302,31 @@ class libstandalonewasm(MuslInternalLibrary):
       is_mem_grow=settings.ALLOW_MEMORY_GROWTH,
       is_pure=settings.PURE_WASI,
       nocatch=settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS,
-      **kwargs
+      **kwargs,
     )
 
   def get_files(self):
     files = files_in_path(
-        path='system/lib/standalone',
-        filenames=['standalone.c',
-                   'standalone_wasm_stdio.c',
-                   '__main_void.c'])
+      path='system/lib/standalone', filenames=['standalone.c', 'standalone_wasm_stdio.c', '__main_void.c']
+    )
     # It is more efficient to use JS methods for time, normally.
     files += files_in_path(
-        path='system/lib/libc/musl/src/time',
-        filenames=['__secs_to_tm.c',
-                   '__tz.c',
-                   'gettimeofday.c',
-                   'localtime_r.c',
-                   'gmtime_r.c',
-                   'mktime.c',
-                   'strptime.c',
-                   'timegm.c',
-                   'time.c'])
+      path='system/lib/libc/musl/src/time',
+      filenames=[
+        '__secs_to_tm.c',
+        '__tz.c',
+        'gettimeofday.c',
+        'localtime_r.c',
+        'gmtime_r.c',
+        'mktime.c',
+        'strptime.c',
+        'timegm.c',
+        'time.c',
+      ],
+    )
     # It is more efficient to use JS for __assert_fail, as it avoids always
     # including fprintf etc.
-    files += files_in_path(
-        path='system/lib/libc/musl/src/exit',
-        filenames=['assert.c', 'exit.c'])
+    files += files_in_path(path='system/lib/libc/musl/src/exit', filenames=['assert.c', 'exit.c'])
     return files
 
   def can_use(self):
@@ -2266,7 +2374,9 @@ def get_libs_to_link(args):
   if only_forced:
     # One of the purposes EMCC_ONLY_FORCED_STDLIBS was to skip the scanning
     # of the input files for reverse dependencies.
-    diagnostics.warning('deprecated', 'EMCC_ONLY_FORCED_STDLIBS is deprecated.  Use `-nostdlib` to avoid linking standard libraries')
+    diagnostics.warning(
+      'deprecated', 'EMCC_ONLY_FORCED_STDLIBS is deprecated.  Use `-nostdlib` to avoid linking standard libraries'
+    )
   if force == '1':
     force_include = [name for name, lib in system_libs_map.items() if not lib.never_force]
   elif force is not None:
@@ -2356,8 +2466,7 @@ def get_libs_to_link(args):
   if settings.PRINTF_LONG_DOUBLE:
     add_library('libprintf_long_double')
   # See comment in libc_optz itself
-  if settings.SHRINK_LEVEL >= 2 and not settings.LINKABLE and \
-     not os.environ.get('EMCC_FORCE_STDLIBS'):
+  if settings.SHRINK_LEVEL >= 2 and not settings.LINKABLE and not os.environ.get('EMCC_FORCE_STDLIBS'):
     add_library('libc_optz')
   if settings.STANDALONE_WASM:
     add_library('libstandalonewasm')
@@ -2389,9 +2498,7 @@ def get_libs_to_link(args):
     if settings.LINK_AS_CXX:
       add_library('libwebgpu_cpp')
 
-  if settings.WASM_WORKERS and (not settings.SINGLE_FILE and
-                                not settings.RELOCATABLE and
-                                not settings.PROXY_TO_WORKER):
+  if settings.WASM_WORKERS and (not settings.SINGLE_FILE and not settings.RELOCATABLE and not settings.PROXY_TO_WORKER):
     # When we include libwasm_workers we use `--whole-archive` to ensure
     # that the static constructor (`emscripten_wasm_worker_main_thread_initialize`)
     # is run.
@@ -2413,7 +2520,6 @@ def get_libs_to_link(args):
 
 
 def calculate(args):
-
   libs_to_link = get_libs_to_link(args)
 
   # When LINKABLE is set the entire link command line is wrapped in --whole-archive by
@@ -2489,12 +2595,15 @@ def install_system_headers(stamp):
 
   # Create a version header based on the emscripten-version.txt
   version_file = cache.get_include_dir('emscripten/version.h')
-  utils.write_file(version_file, textwrap.dedent(f'''\
+  utils.write_file(
+    version_file,
+    textwrap.dedent(f'''\
   /* Automatically generated by tools/system_libs.py */
   #define __EMSCRIPTEN_major__ {utils.EMSCRIPTEN_VERSION_MAJOR}
   #define __EMSCRIPTEN_minor__ {utils.EMSCRIPTEN_VERSION_MINOR}
   #define __EMSCRIPTEN_tiny__ {utils.EMSCRIPTEN_VERSION_TINY}
-  '''))
+  '''),
+  )
 
   # Create a stamp file that signal that the headers have been installed
   # Removing this file, or running `emcc --clear-cache` or running

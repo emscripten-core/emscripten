@@ -77,11 +77,7 @@ def get(ports, settings, shared):
 
     build_dir = ports.clear_project_build('sdl2_mixer')
     include_path = os.path.join(source_path, 'include')
-    includes = [
-      include_path,
-      os.path.join(source_path, 'src'),
-      os.path.join(source_path, 'src', 'codecs')
-    ]
+    includes = [include_path, os.path.join(source_path, 'src'), os.path.join(source_path, 'src', 'codecs')]
     ports.build_port(
       source_path,
       final,

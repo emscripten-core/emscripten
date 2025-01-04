@@ -11,23 +11,36 @@ HASH = '2175d11a90211871f2289c8d57b31fe830e4b46af7361925c2c30cd521c1c677d2ee244f
 
 deps = ['sdl2']
 variants = {
-  'sdl2_image-jpg':    {'SDL2_IMAGE_FORMATS': ["jpg"]},
-  'sdl2_image-png':    {'SDL2_IMAGE_FORMATS': ["png"]},
+  'sdl2_image-jpg': {'SDL2_IMAGE_FORMATS': ["jpg"]},
+  'sdl2_image-png': {'SDL2_IMAGE_FORMATS': ["png"]},
   'sdl2_image-jpg-mt': {'SDL2_IMAGE_FORMATS': ["jpg"], 'PTHREADS': 1},
   'sdl2_image-png-mt': {'SDL2_IMAGE_FORMATS': ["png"], 'PTHREADS': 1},
 }
 
-OPTIONS = {
-  'formats': 'A comma separated list of formats (ex: --use-port=sdl2_image:formats=png,jpg)'
-}
+OPTIONS = {'formats': 'A comma separated list of formats (ex: --use-port=sdl2_image:formats=png,jpg)'}
 
-SUPPORTED_FORMATS = {'avif', 'bmp', 'gif', 'jpg', 'jxl', 'lbm', 'pcx', 'png',
-                     'pnm', 'qoi', 'svg', 'tga', 'tif', 'webp', 'xcf', 'xpm', 'xv'}
+SUPPORTED_FORMATS = {
+  'avif',
+  'bmp',
+  'gif',
+  'jpg',
+  'jxl',
+  'lbm',
+  'pcx',
+  'png',
+  'pnm',
+  'qoi',
+  'svg',
+  'tga',
+  'tif',
+  'webp',
+  'xcf',
+  'xpm',
+  'xv',
+}
 
 # user options (from --use-port)
-opts: Dict[str, Set] = {
-  'formats': set()
-}
+opts: Dict[str, Set] = {'formats': set()}
 
 
 def needed(settings):
@@ -52,7 +65,9 @@ def get_lib_name(settings):
 def get(ports, settings, shared):
   sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
   assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_image'
-  ports.fetch_project('sdl2_image', f'https://github.com/libsdl-org/SDL_image/archive/refs/tags/{TAG}.zip', sha512hash=HASH)
+  ports.fetch_project(
+    'sdl2_image', f'https://github.com/libsdl-org/SDL_image/archive/refs/tags/{TAG}.zip', sha512hash=HASH
+  )
   libname = get_lib_name(settings)
 
   def create(final):

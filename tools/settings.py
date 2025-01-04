@@ -14,101 +14,98 @@ from . import diagnostics
 
 # Subset of settings that take a memory size (i.e. 1Gb, 64kb etc)
 MEM_SIZE_SETTINGS = {
-    'GLOBAL_BASE',
-    'STACK_SIZE',
-    'TOTAL_STACK',
-    'INITIAL_HEAP',
-    'INITIAL_MEMORY',
-    'MEMORY_GROWTH_LINEAR_STEP',
-    'MEMORY_GROWTH_GEOMETRIC_CAP',
-    'GL_MAX_TEMP_BUFFER_SIZE',
-    'MAXIMUM_MEMORY',
-    'DEFAULT_PTHREAD_STACK_SIZE'
+  'GLOBAL_BASE',
+  'STACK_SIZE',
+  'TOTAL_STACK',
+  'INITIAL_HEAP',
+  'INITIAL_MEMORY',
+  'MEMORY_GROWTH_LINEAR_STEP',
+  'MEMORY_GROWTH_GEOMETRIC_CAP',
+  'GL_MAX_TEMP_BUFFER_SIZE',
+  'MAXIMUM_MEMORY',
+  'DEFAULT_PTHREAD_STACK_SIZE',
 }
 
 PORTS_SETTINGS = {
-    # All port-related settings are valid at compile time
-    'USE_SDL',
-    'USE_LIBPNG',
-    'USE_BULLET',
-    'USE_ZLIB',
-    'USE_BZIP2',
-    'USE_VORBIS',
-    'USE_COCOS2D',
-    'USE_ICU',
-    'USE_MODPLUG',
-    'USE_SDL_MIXER',
-    'USE_SDL_IMAGE',
-    'USE_SDL_TTF',
-    'USE_SDL_NET',
-    'USE_SDL_GFX',
-    'USE_LIBJPEG',
-    'USE_OGG',
-    'USE_REGAL',
-    'USE_BOOST_HEADERS',
-    'USE_HARFBUZZ',
-    'USE_MPG123',
-    'USE_GIFLIB',
-    'USE_FREETYPE',
-    'SDL2_MIXER_FORMATS',
-    'SDL2_IMAGE_FORMATS',
-    'USE_SQLITE3',
+  # All port-related settings are valid at compile time
+  'USE_SDL',
+  'USE_LIBPNG',
+  'USE_BULLET',
+  'USE_ZLIB',
+  'USE_BZIP2',
+  'USE_VORBIS',
+  'USE_COCOS2D',
+  'USE_ICU',
+  'USE_MODPLUG',
+  'USE_SDL_MIXER',
+  'USE_SDL_IMAGE',
+  'USE_SDL_TTF',
+  'USE_SDL_NET',
+  'USE_SDL_GFX',
+  'USE_LIBJPEG',
+  'USE_OGG',
+  'USE_REGAL',
+  'USE_BOOST_HEADERS',
+  'USE_HARFBUZZ',
+  'USE_MPG123',
+  'USE_GIFLIB',
+  'USE_FREETYPE',
+  'SDL2_MIXER_FORMATS',
+  'SDL2_IMAGE_FORMATS',
+  'USE_SQLITE3',
 }
 
 # Subset of settings that apply only when generating JS
 JS_ONLY_SETTINGS = {
-    'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE',
-    'INCLUDE_FULL_LIBRARY',
-    'PROXY_TO_WORKER',
-    'PROXY_TO_WORKER_FILENAME',
-    'BUILD_AS_WORKER',
-    'STRICT_JS',
-    'SMALL_XHR_CHUNKS',
-    'HEADLESS',
-    'MODULARIZE',
-    'EXPORT_ES6',
-    'USE_ES6_IMPORT_META',
-    'EXPORT_NAME',
-    'DYNAMIC_EXECUTION',
-    'PTHREAD_POOL_SIZE',
-    'PTHREAD_POOL_SIZE_STRICT',
-    'PTHREAD_POOL_DELAY_LOAD',
-    'DEFAULT_PTHREAD_STACK_SIZE',
+  'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE',
+  'INCLUDE_FULL_LIBRARY',
+  'PROXY_TO_WORKER',
+  'PROXY_TO_WORKER_FILENAME',
+  'BUILD_AS_WORKER',
+  'STRICT_JS',
+  'SMALL_XHR_CHUNKS',
+  'HEADLESS',
+  'MODULARIZE',
+  'EXPORT_ES6',
+  'USE_ES6_IMPORT_META',
+  'EXPORT_NAME',
+  'DYNAMIC_EXECUTION',
+  'PTHREAD_POOL_SIZE',
+  'PTHREAD_POOL_SIZE_STRICT',
+  'PTHREAD_POOL_DELAY_LOAD',
+  'DEFAULT_PTHREAD_STACK_SIZE',
 }
 
 # Subset of settings that apply at compile time.
 # (Keep in sync with [compile] comments in settings.js)
 COMPILE_TIME_SETTINGS = {
-    'MEMORY64',
-    'INLINING_LIMIT',
-    'DISABLE_EXCEPTION_CATCHING',
-    'DISABLE_EXCEPTION_THROWING',
-    'MAIN_MODULE',
-    'SIDE_MODULE',
-    'RELOCATABLE',
-    'LINKABLE',
-    'STRICT',
-    'EMSCRIPTEN_TRACING',
-    'PTHREADS',
-    'USE_PTHREADS', # legacy name of PTHREADS setting
-    'SHARED_MEMORY',
-    'SUPPORT_LONGJMP',
-    'WASM_OBJECT_FILES',
-    'WASM_WORKERS',
-    'BULK_MEMORY',
-
-    # Internal settings used during compilation
-    'EXCEPTION_CATCHING_ALLOWED',
-    'WASM_EXCEPTIONS',
-    'LTO',
-    'OPT_LEVEL',
-    'DEBUG_LEVEL',
-
-    # Affects ports
-    'GL_ENABLE_GET_PROC_ADDRESS', # NOTE: if SDL2 is updated to not rely on eglGetProcAddress(), this can be removed
-
-    # This is legacy setting that we happen to handle very early on
-    'RUNTIME_LINKED_LIBS',
+  'MEMORY64',
+  'INLINING_LIMIT',
+  'DISABLE_EXCEPTION_CATCHING',
+  'DISABLE_EXCEPTION_THROWING',
+  'MAIN_MODULE',
+  'SIDE_MODULE',
+  'RELOCATABLE',
+  'LINKABLE',
+  'STRICT',
+  'EMSCRIPTEN_TRACING',
+  'PTHREADS',
+  'USE_PTHREADS',  # legacy name of PTHREADS setting
+  'SHARED_MEMORY',
+  'SUPPORT_LONGJMP',
+  'WASM_OBJECT_FILES',
+  'WASM_WORKERS',
+  'BULK_MEMORY',
+  # Internal settings used during compilation
+  'EXCEPTION_CATCHING_ALLOWED',
+  'WASM_EXCEPTIONS',
+  'LTO',
+  'OPT_LEVEL',
+  'DEBUG_LEVEL',
+  # Affects ports
+  'GL_ENABLE_GET_PROC_ADDRESS',  # NOTE: if SDL2 is updated to not rely on eglGetProcAddress(), this can be removed
+  # This is legacy setting that we happen to handle very early on
+  'RUNTIME_LINKED_LIBS',
 }.union(PORTS_SETTINGS)
 
 # Unlike `LEGACY_SETTINGS`, deprecated settings can still be used
@@ -117,19 +114,19 @@ COMPILE_TIME_SETTINGS = {
 # At some point in the future, once folks have stopped using these
 # settings we can move them to `LEGACY_SETTINGS`.
 DEPRECATED_SETTINGS = {
-    'SUPPORT_ERRNO': 'emscripten no longer uses the setErrNo library function',
-    'EXTRA_EXPORTED_RUNTIME_METHODS': 'please use EXPORTED_RUNTIME_METHODS instead',
-    'DEMANGLE_SUPPORT': 'mangled names no longer appear in stack traces',
-    'RUNTIME_LINKED_LIBS': 'you can simply list the libraries directly on the commandline now',
-    'CLOSURE_WARNINGS': 'use -Wclosure instead',
-    'LEGALIZE_JS_FFI': 'to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`',
-    'ASYNCIFY_EXPORTS': 'please use JSPI_EXPORTS instead'
+  'SUPPORT_ERRNO': 'emscripten no longer uses the setErrNo library function',
+  'EXTRA_EXPORTED_RUNTIME_METHODS': 'please use EXPORTED_RUNTIME_METHODS instead',
+  'DEMANGLE_SUPPORT': 'mangled names no longer appear in stack traces',
+  'RUNTIME_LINKED_LIBS': 'you can simply list the libraries directly on the commandline now',
+  'CLOSURE_WARNINGS': 'use -Wclosure instead',
+  'LEGALIZE_JS_FFI': 'to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`',
+  'ASYNCIFY_EXPORTS': 'please use JSPI_EXPORTS instead',
 }
 
 # Settings that don't need to be externalized when serializing to json because they
 # are not used by the JS compiler.
 INTERNAL_SETTINGS = {
-    'SIDE_MODULE_IMPORTS',
+  'SIDE_MODULE_IMPORTS',
 }
 
 user_settings: Dict[str, str] = {}
@@ -204,7 +201,7 @@ class SettingsManager:
   def dict(self):
     return self.attrs
 
-  def external_dict(self, skip_keys={}): # noqa
+  def external_dict(self, skip_keys={}):  # noqa
     external_settings = {k: v for k, v in self.dict().items() if k not in INTERNAL_SETTINGS and k not in skip_keys}
     # Only the names of the legacy settings are used by the JS compiler
     # so we can reduce the size of serialized json by simplifying this
@@ -222,7 +219,9 @@ class SettingsManager:
 
   def __getattr__(self, attr):
     if self.allowed_settings:
-      assert attr in self.allowed_settings, f"internal error: attempt to read setting '{attr}' while in limited settings mode"
+      assert (
+        attr in self.allowed_settings
+      ), f"internal error: attempt to read setting '{attr}' while in limited settings mode"
 
     if attr in self.attrs:
       return self.attrs[attr]
@@ -231,7 +230,9 @@ class SettingsManager:
 
   def __setattr__(self, name, value):
     if self.allowed_settings:
-      assert name in self.allowed_settings, f"internal error: attempt to write setting '{name}' while in limited settings mode"
+      assert (
+        name in self.allowed_settings
+      ), f"internal error: attempt to write setting '{name}' while in limited settings mode"
 
     if name == 'STRICT' and value:
       for a in self.legacy_settings:
