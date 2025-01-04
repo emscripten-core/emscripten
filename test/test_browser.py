@@ -3420,7 +3420,7 @@ Module["preRun"] = () => {
     create_file('dummy_file', 'dummy')
     # compile the code with the modularize feature and the preload-file option enabled
     # no wasm, since this tests customizing total memory at runtime
-    self.compile_btest('test.c', ['-sWASM=0', '-sIMPORTED_MEMORY', '-sMODULARIZE', '-sEXPORT_NAME="Foo"', '--preload-file', 'dummy_file'] + args, reporting=Reporting.JS_ONLY)
+    self.compile_btest('test.c', ['-sWASM=0', '-sIMPORTED_MEMORY', '-sMODULARIZE', '-sEXPORT_NAME=Foo', '--preload-file', 'dummy_file'] + args, reporting=Reporting.JS_ONLY)
     create_file('a.html', '''
       <script src="a.out.js"></script>
       <script>
@@ -3680,7 +3680,7 @@ Module["preRun"] = () => {
 
   # Test c++ std::thread::hardware_concurrency()
   def test_pthread_hardware_concurrency(self):
-    self.btest_exit('pthread/test_pthread_hardware_concurrency.cpp', args=['-O2', '-pthread', '-sPTHREAD_POOL_SIZE="navigator.hardwareConcurrency"'])
+    self.btest_exit('pthread/test_pthread_hardware_concurrency.cpp', args=['-O2', '-pthread', '-sPTHREAD_POOL_SIZE=navigator.hardwareConcurrency'])
 
   # Test that we error if not ALLOW_BLOCKING_ON_MAIN_THREAD
   def test_pthread_main_thread_blocking_wait(self):
