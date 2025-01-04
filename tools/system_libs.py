@@ -422,17 +422,15 @@ class Library:
   def get_path(self, absolute=False):
     return cache.get_lib_name(self.get_filename(), absolute=absolute)
 
-  def build(self, deterministic_paths=False):
+  def build(self):
     """
     Gets the cached path of this library.
 
     This will trigger a build if this library is not in the cache.
     """
-    self.deterministic_paths = deterministic_paths
     return cache.get(self.get_path(), self.do_build, force=USE_NINJA == 2, quiet=USE_NINJA)
 
   def generate(self):
-    self.deterministic_paths = False
     return cache.get(self.get_path(), self.do_generate, force=USE_NINJA == 2, quiet=USE_NINJA,
                      deferred=True)
 
@@ -471,14 +469,9 @@ class Library:
   def generate_ninja(self, build_dir, libname):
     ensure_sysroot()
     utils.safe_ensure_dirs(build_dir)
+    self.build_dir = build_dir
 
     cflags = self.get_cflags()
-    if self.deterministic_paths:
-      source_dir = utils.path_from_root()
-      relative_source_dir = os.path.relpath(source_dir, build_dir)
-      cflags += [f'-ffile-prefix-map={source_dir}={DETERMINISITIC_PREFIX}',
-                 f'-ffile-prefix-map={relative_source_dir}={DETERMINISITIC_PREFIX}',
-                 f'-fdebug-compilation-dir={DETERMINISITIC_PREFIX}']
     asflags = get_base_cflags(preprocess=False)
     input_files = self.get_files()
     ninja_file = os.path.join(build_dir, 'build.ninja')
@@ -492,17 +485,11 @@ class Library:
     with the `cflags` returned by `self.get_cflags()`.
     """
     batch_inputs = int(os.environ.get('EMCC_BATCH_BUILD', '1'))
+    self.build_dir = build_dir
     batches = {}
     commands = []
     objects = set()
     cflags = self.get_cflags()
-    if self.deterministic_paths:
-      source_dir = utils.path_from_root()
-      if batch_inputs:
-        relative_source_dir = os.path.relpath(source_dir, build_dir)
-        cflags += [f'-ffile-prefix-map={relative_source_dir}={DETERMINISITIC_PREFIX}']
-      cflags += [f'-ffile-prefix-map={source_dir}={DETERMINISITIC_PREFIX}',
-                 f'-fdebug-compilation-dir={DETERMINISITIC_PREFIX}']
     case_insensitive = is_case_insensitive(build_dir)
     for src in self.get_files():
       ext = shared.suffix(src)
@@ -611,6 +598,11 @@ class Library:
     if self.includes:
       cflags += ['-I' + utils.path_from_root(i) for i in self._inherit_list('includes')]
 
+    source_dir = utils.path_from_root()
+    relative_source_dir = os.path.relpath(source_dir, self.build_dir)
+    cflags += [f'-ffile-prefix-map={source_dir}={DETERMINISITIC_PREFIX}',
+               f'-ffile-prefix-map={relative_source_dir}={DETERMINISITIC_PREFIX}',
+               f'-fdebug-compilation-dir={DETERMINISITIC_PREFIX}']
     return cflags
 
   def get_base_name_prefix(self):
@@ -1566,7 +1558,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary, DebugLibrary):
       '-D_LIBCPP_BUILDING_LIBRARY',
       '-D_LIBCXXABI_BUILDING_LIBRARY',
       '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',
-      '-std=c++20',
+      '-std=c++23',
     ]
   includes = ['system/lib/libcxx/src']
 
@@ -1643,7 +1635,7 @@ class libcxx(NoExceptLibrary, MTLibrary):
     # by `filesystem/directory_iterator.cpp`: https://reviews.llvm.org/D119670
     '-Wno-unqualified-std-cast-call',
     '-Wno-unknown-warning-option',
-    '-std=c++20',
+    '-std=c++23',
   ]
 
   includes = ['system/lib/libcxx/src']
@@ -1654,14 +1646,17 @@ class libcxx(NoExceptLibrary, MTLibrary):
     'xlocale_zos.cpp',
     'mbsnrtowcs.cpp',
     'wcsnrtombs.cpp',
+    'int128_builtins.cpp',
+    'libdispatch.cpp',
+    # Win32-specific files
     'locale_win32.cpp',
     'thread_win32.cpp',
     'support.cpp',
-    'int128_builtins.cpp',
-    'libdispatch.cpp',
+    'compiler_rt_shims.cpp',
     # Emscripten does not have C++20's time zone support which requires access
     # to IANA Time Zone Database. TODO Implement this using JS timezone
-    'tz.cpp',
+    'time_zone.cpp',
+    'tzdb.cpp',
     'tzdb_list.cpp',
   ]
 

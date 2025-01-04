@@ -18,6 +18,7 @@
 #include <cstdint> // uintptr_t
 #include <vector>
 #include <type_traits>
+#include <pthread.h>
 #if __cplusplus >= 202002L
 #include <coroutine>
 #include <variant>

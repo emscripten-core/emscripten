@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.1.75 (in development)
 -----------------------
+- compiler-rt, libcxx, and libcxxabi were updated to LLVM 19.1.4. (#22937 and
+  #22994)
 - The Wasm nontrapping-fptoint feature has been enabled by default. clang will
   generate nontrapping (saturating) float-to-int conversion instructions for
   C typecasts. This should have no effect on programs that do not have
@@ -47,6 +49,9 @@ See docs/process.md for more on how version tagging works.
   `--post-js` files will now be delayed until after module creation and after
   `main` runs.  This matches the existing behaviour when using sync instantation
   (`-sWASM_ASYNC_COMPILATION=0`) but is an observable difference. (#23157)
+- The `POLYFILL_OLD_MATH_FUNCTIONS` setting was removed.  The browser versions
+  that require these polyfills are no longer supported by emscripten so the
+  polyfills should never be needed. (#23262)
 
 3.1.74 - 12/14/24
 -----------------
@@ -67,7 +72,7 @@ See docs/process.md for more on how version tagging works.
 
 3.1.73 - 11/28/24
 -----------------
-- libunwind was updated to LLVM 19.1.4. (#22394)
+- libunwind was updated to LLVM 19.1.4. (#22934)
 - mimalloc was updated to 2.1.7. (#21548)
 
 3.1.72 - 11/19/24
