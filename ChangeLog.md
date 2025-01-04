@@ -18,8 +18,8 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.75 (in development)
------------------------
+4.0.0 (in development)
+----------------------
 - compiler-rt, libcxx, and libcxxabi were updated to LLVM 19.1.4. (#22937 and
   #22994)
 - The Wasm nontrapping-fptoint feature has been enabled by default. clang will
