@@ -3694,8 +3694,6 @@ Module["preRun"] = () => {
     self.btest_exit('pthread/main_thread_join.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE', '-sPROXY_TO_PTHREAD', '-sALLOW_BLOCKING_ON_MAIN_THREAD=0'])
 
   # Test the old GCC atomic __sync_fetch_and_op builtin operations.
-  @no_2gb('https://github.com/emscripten-core/emscripten/issues/21318')
-  @no_4gb('https://github.com/emscripten-core/emscripten/issues/21318')
   @parameterized({
     '': (['-g'],),
     'O1': (['-O1', '-g'],),
@@ -3709,8 +3707,6 @@ Module["preRun"] = () => {
 
   # 64 bit version of the above test.
   @also_with_wasm2js
-  @no_2gb('https://github.com/emscripten-core/emscripten/issues/21318')
-  @no_4gb('https://github.com/emscripten-core/emscripten/issues/21318')
   def test_pthread_gcc_64bit_atomic_fetch_and_op(self):
     if self.is_wasm2js():
       self.skipTest('https://github.com/WebAssembly/binaryen/issues/4358')
@@ -3719,16 +3715,12 @@ Module["preRun"] = () => {
 
   # Test the old GCC atomic __sync_op_and_fetch builtin operations.
   @also_with_wasm2js
-  @no_2gb('https://github.com/emscripten-core/emscripten/issues/21318')
-  @no_4gb('https://github.com/emscripten-core/emscripten/issues/21318')
   def test_pthread_gcc_atomic_op_and_fetch(self):
     self.emcc_args += ['-Wno-sync-fetch-and-nand-semantics-changed']
     self.btest_exit('pthread/test_pthread_gcc_atomic_op_and_fetch.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # 64 bit version of the above test.
   @also_with_wasm2js
-  @no_2gb('https://github.com/emscripten-core/emscripten/issues/21318')
-  @no_4gb('https://github.com/emscripten-core/emscripten/issues/21318')
   def test_pthread_gcc_64bit_atomic_op_and_fetch(self):
     if self.is_wasm2js():
       self.skipTest('https://github.com/WebAssembly/binaryen/issues/4358')
