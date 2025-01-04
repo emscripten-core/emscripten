@@ -5,7 +5,7 @@
  */
 
 #if MODULARIZE
-var Module = moduleArg;
+#include "preamble_modularize.js"
 #elif USE_CLOSURE_COMPILER
 /** @type{Object} */
 var Module;

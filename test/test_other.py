@@ -449,6 +449,7 @@ class other(RunnerCore):
   @parameterized({
     '': ([],),
     'pthreads': (['-pthread'],),
+    'closure': (['-O2', '--closure=1'],),
   })
   def test_modularize_instance(self, args):
     create_file('library.js', '''\

@@ -899,8 +899,7 @@ def can_use_await():
   # function.
   # However, because closure does not see this (it runs only on the inner code),
   # it sees this as a top-level-await, which it does not yet support.
-  # FIXME(https://github.com/emscripten-core/emscripten/issues/23158)
-  return settings.MODULARIZE and not settings.USE_CLOSURE_COMPILER
+  return settings.MODULARIZE
 
 
 def make_export_wrappers(function_exports):

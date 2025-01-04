@@ -42,16 +42,17 @@ export function processMacros(text, filename) {
 // Simple #if/else/endif preprocessing for a file. Checks if the
 // ident checked is true in our global.
 // Also handles #include x.js (similar to C #include <file>)
-export function preprocess(filename) {
+export function preprocess(filename, closureFriendly = true) {
   let text = read(filename);
-  if (EXPORT_ES6 && USE_ES6_IMPORT_META) {
+  if (closureFriendly && EXPORT_ES6 && USE_ES6_IMPORT_META) {
     // `eval`, Terser and Closure don't support module syntax; to allow it,
     // we need to temporarily replace `import.meta` and `await import` usages
     // with placeholders during preprocess phase, and back after all the other ops.
     // See also: `phase_final_emitting` in emcc.py.
     text = text
       .replace(/\bimport\.meta\b/g, 'EMSCRIPTEN$IMPORT$META')
-      .replace(/\bawait import\b/g, 'EMSCRIPTEN$AWAIT$IMPORT');
+      .replace(/\bawait import\b/g, 'EMSCRIPTEN$AWAIT$IMPORT')
+      .replace(/\bexport default\b/g, 'EMSCRIPTEN$EXPORT$DEFAULT =');
   }
   // Remove windows line endings, if any
   text = text.replace(/\r\n/g, '\n');
@@ -1069,6 +1070,31 @@ function ENVIRONMENT_IS_WORKER_THREAD() {
   return '(' + envs.join('||') + ')';
 }
 
+function nodePthreadDetection() {
+  // Under node we detect that we are running in a pthread by checking the
+  // workerData property.
+  if (EXPORT_ES6) {
+    return "(await import('worker_threads')).workerData === 'em-pthread'";
+  } else {
+    return "require('worker_threads').workerData === 'em-pthread'";
+  }
+}
+
+function declareInstanceExports() {
+  const allExports = Array.from(EXPORTED_FUNCTIONS.keys()).concat(
+    Array.from(EXPORTED_RUNTIME_METHODS.keys()),
+  );
+  const mangledExports = allExports.map((e) => `__exp_${e}`);
+  const mangledExportsAs = allExports.map((e) => `__exp_${e} as ${e}`);
+  // Declare a top level var for each export so that code in the init function
+  // can assign to it and update the live module bindings.
+  if (allExports.length == 0) return '';
+  let rtn = 'var ' + mangledExports.join(', ') + ';\n';
+  // Export the functions with their original name.
+  rtn += 'export {' + mangledExportsAs.join(', ') + '};\n';
+  return rtn;
+}
+
 addToCompileTimeContext({
   ATEXITS,
   ATINITS,
@@ -1134,4 +1160,6 @@ addToCompileTimeContext({
   storeException,
   to64,
   toIndexType,
+  nodePthreadDetection,
+  declareInstanceExports,
 });
