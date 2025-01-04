@@ -18,14 +18,10 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.75 (in development)
------------------------
-- compiler-rt, libcxx, libcxxabi, and libunwind were updated to LLVM 19.1.6.
-  (#22937, #22994, and #23294)
 4.0.0 (in development)
 ----------------------
-- compiler-rt, libcxx, and libcxxabi were updated to LLVM 19.1.4. (#22937 and
-  #22994)
+- compiler-rt, libcxx, libcxxabi, and libunwind were updated to LLVM 19.1.6.
+  (#22937, #22994, and #23294)
 - The Wasm nontrapping-fptoint feature has been enabled by default. clang will
   generate nontrapping (saturating) float-to-int conversion instructions for
   C typecasts. This should have no effect on programs that do not have
