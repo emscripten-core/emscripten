@@ -88,15 +88,6 @@ LINK_ONLY_FLAGS = {
     '--proxy-to-worker', '--shell-file', '--source-map-base',
     '--threadprofiler', '--use-preload-plugins'
 }
-CLANG_FLAGS_WITH_ARGS = {
-    '-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
-    '-Xpreprocessor', '-include', '-imacros', '-idirafter',
-    '-iprefix', '-iwithprefix', '-iwithprefixbefore',
-    '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
-    '-install_name', '-compatibility_version', '-mllvm',
-    '-current_version', '-I', '-L', '-include-pch',
-    '-undefined', '-target', '-Xlinker', '-Xclang', '-z'
-}
 
 
 @unique
@@ -138,7 +129,6 @@ class EmccState:
 class EmccOptions:
   def __init__(self):
     self.target = ''
-    self.output_file = None
     self.no_minify = False
     self.post_link = False
     self.save_temps = False
@@ -229,7 +219,7 @@ def create_reproduce_file(name, args):
           if ignore:
             continue
 
-          if arg in CLANG_FLAGS_WITH_ARGS:
+          if arg in shared.CLANG_FLAGS_WITH_ARGS:
             ignore_next = True
 
           if arg == '-o':
@@ -707,11 +697,13 @@ def phase_parse_arguments(state):
     settings.WARN_DEPRECATED = 0
 
   for i in range(len(newargs)):
-    if newargs[i] in ('-l', '-L', '-I', '-z', '--js-library'):
+    if newargs[i] in ('-l', '-L', '-I', '-z', '-o', '--js-library'):
       # Scan for flags that can be written as either one or two arguments
       # and normalize them to the single argument form.
       if newargs[i] == '--js-library':
         newargs[i] += '='
+      if len(newargs) <= i + 1:
+        exit_with_error(f"option '{newargs[i]}' requires an argument")
       newargs[i] += newargs[i + 1]
       newargs[i + 1] = ''
 
@@ -772,7 +764,7 @@ def phase_setup(options, state, newargs):
       continue
 
     arg = newargs[i]
-    if arg in CLANG_FLAGS_WITH_ARGS:
+    if arg in shared.CLANG_FLAGS_WITH_ARGS:
       skip = True
 
     if not arg.startswith('-'):
@@ -986,8 +978,6 @@ def phase_compile_inputs(options, state, newargs, input_files):
   if state.mode == Mode.PREPROCESS_ONLY:
     inputs = [i[1] for i in input_files]
     cmd = get_clang_command() + inputs
-    if options.output_file:
-      cmd += ['-o', options.output_file]
     # Do not compile, but just output the result from preprocessing stage or
     # output the dependency rule. Warning: clang and gcc behave differently
     # with -MF! (clang seems to not recognize it)
@@ -1002,8 +992,6 @@ def phase_compile_inputs(options, state, newargs, input_files):
       if shared.suffix(header) not in HEADER_ENDINGS:
         exit_with_error(f'cannot mix precompiled headers with non-header inputs: {inputs} : {header}')
     cmd = get_clang_command() + inputs
-    if options.output_file:
-      cmd += ['-o', options.output_file]
     logger.debug(f"running (for precompiled headers): {cmd[0]} {' '.join(cmd[1:])}")
     shared.exec_process(cmd)
     assert False, 'exec_process does not return'
@@ -1014,10 +1002,6 @@ def phase_compile_inputs(options, state, newargs, input_files):
       cmd = get_clang_command_asm() + inputs
     else:
       cmd = get_clang_command() + inputs
-    if options.output_file:
-      cmd += ['-o', options.output_file]
-      if get_file_suffix(options.output_file) == '.bc' and not settings.LTO and '-emit-llvm' not in state.orig_args:
-        diagnostics.warning('emcc', '.bc output file suffix used without -flto or -emit-llvm.  Consider using .o extension since emcc will output an object file, not a bitcode file')
     shared.exec_process(cmd)
     assert False, 'exec_process does not return'
 
@@ -1130,7 +1114,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     arg = newargs[i]
     arg_value = None
 
-    if arg in CLANG_FLAGS_WITH_ARGS:
+    if arg in shared.CLANG_FLAGS_WITH_ARGS:
       # Ignore the next argument rather than trying to parse it.  This is needed
       # because that next arg could, for example, start with `-o` and we don't want
       # to confuse that with a normal `-o` flag.
@@ -1151,7 +1135,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
         return True
       if arg == name:
         if len(newargs) <= i + 1:
-          exit_with_error("option '%s' requires an argument" % arg)
+          exit_with_error(f"option '{arg}' requires an argument")
         arg_value = newargs[i + 1]
         newargs[i] = ''
         newargs[i + 1] = ''
@@ -1473,10 +1457,6 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       options.shared = True
     elif check_flag('-r'):
       options.relocatable = True
-    elif check_arg('-o'):
-      options.output_file = consume_arg()
-    elif arg.startswith('-o'):
-      options.output_file = removeprefix(arg, '-o')
       newargs[i] = ''
     elif check_arg('-target') or check_arg('--target'):
       options.target = consume_arg()

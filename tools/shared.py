@@ -826,6 +826,15 @@ WASM_SOURCEMAP = bat_suffix(path_from_root('tools/wasm-sourcemap'))
 # linked to directly on the command line.
 DYNAMICLIB_ENDINGS = ['.dylib', '.so']
 STATICLIB_ENDINGS = ['.a']
+CLANG_FLAGS_WITH_ARGS = {
+  '-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
+  '-Xpreprocessor', '-include', '-imacros', '-idirafter',
+  '-iprefix', '-iwithprefix', '-iwithprefixbefore',
+  '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
+  '-install_name', '-compatibility_version', '-mllvm',
+  '-current_version', '-I', '-L', '-include-pch',
+  '-undefined', '-target', '-Xlinker', '-Xclang', '-z'
+}
 
 run_via_emxx = False
 

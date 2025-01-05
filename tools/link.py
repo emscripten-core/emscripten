@@ -707,9 +707,31 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
     logger.warning('disabling source maps because a js transform is being done')
     settings.GENERATE_SOURCE_MAP = 0
 
-  # options.output_file is the user-specified one, target is what we will generate
-  if options.output_file:
-    target = options.output_file
+  # Find target name via `-o` flag
+  # TODO(sbc): Move all linker flag parsing here.
+  target = None
+  skip_next = False
+  target_next = False
+  for arg in state.orig_args:
+    if target_next:
+      target_next = False
+      target = arg
+      continue
+    if skip_next:
+      skip_next = False
+      continue
+    if arg == '-o':
+      target_next = True
+      continue
+    if arg.startswith('-o'):
+      target = arg[2:]
+    if arg in shared.CLANG_FLAGS_WITH_ARGS:
+      skip_next = True
+
+  if target:
+    if target.startswith('-'):
+      exit_with_error(f'invalid output filename: `{target}`')
+
     # check for the existence of the output directory now, to avoid having
     # to do so repeatedly when each of the various output files (.mem, .wasm,
     # etc) are written. This gives a more useful error message than the
@@ -3114,9 +3136,6 @@ def run(linker_inputs, options, state):
 
   if not linker_inputs and not state.link_flags:
     exit_with_error('no input files')
-
-  if options.output_file and options.output_file.startswith('-'):
-    exit_with_error(f'invalid output filename: `{options.output_file}`')
 
   target, wasm_target = phase_linker_setup(options, state)
 

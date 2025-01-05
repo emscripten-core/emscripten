@@ -557,10 +557,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       self.run_process([compiler, target, '-o', target + '.js'])
       self.assertContained('hello, world!', self.run_js(target + '.js'))
 
-  def test_bc_output_warning(self):
-    err = self.run_process([EMCC, '-c', test_file('hello_world.c'), '-o', 'out.bc'], stderr=PIPE).stderr
-    self.assertContained('emcc: warning: .bc output file suffix used without -flto or -emit-llvm', err)
-
   def test_bc_as_archive(self):
     self.run_process([EMCC, '-c', test_file('hello_world.c'), '-flto', '-o', 'out.a'])
     self.run_process([EMCC, 'out.a'])
