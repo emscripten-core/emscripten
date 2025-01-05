@@ -1918,11 +1918,11 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms, base_
   settings.TARGET_BASENAME = unsuffixed_basename(target)
 
   if options.oformat in (OFormat.JS, OFormat.MJS):
-    state.js_target = target
+    js_target = target
   else:
-    state.js_target = get_secondary_target(target, '.js')
+    js_target = get_secondary_target(target, '.js')
 
-  settings.TARGET_JS_NAME = os.path.basename(state.js_target)
+  settings.TARGET_JS_NAME = os.path.basename(js_target)
 
   metadata = phase_emscript(in_wasm, wasm_target, js_syms, base_metadata)
 
@@ -1930,7 +1930,7 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms, base_
     phase_embind_aot(wasm_target, js_syms, linker_inputs)
 
   if options.emit_tsd:
-    phase_emit_tsd(options, wasm_target, state.js_target, js_syms, metadata, linker_inputs)
+    phase_emit_tsd(options, wasm_target, js_target, js_syms, metadata, linker_inputs)
 
   if options.js_transform:
     phase_source_transforms(options)
@@ -1939,7 +1939,7 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms, base_
 
   # If we are not emitting any JS then we are all done now
   if options.oformat != OFormat.WASM:
-    phase_final_emitting(options, state, target, wasm_target)
+    phase_final_emitting(options, state, target, js_target, wasm_target)
 
 
 @ToolchainProfiler.profile_block('emscript')
@@ -2107,7 +2107,7 @@ def create_worker_file(input_file, target_dir, output_file, options):
 
 
 @ToolchainProfiler.profile_block('final emitting')
-def phase_final_emitting(options, state, target, wasm_target):
+def phase_final_emitting(options, state, target, js_target, wasm_target):
   global final_js
 
   if shared.SKIP_SUBPROCS:
@@ -2162,8 +2162,6 @@ def phase_final_emitting(options, state, target, wasm_target):
     save_intermediate('extern-pre-post')
 
   js_manipulation.handle_license(final_js)
-
-  js_target = state.js_target
 
   # The JS is now final. Move it to its final location
   move_file(final_js, js_target)
