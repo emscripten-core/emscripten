@@ -5844,8 +5844,8 @@ Module.onRuntimeInitialized = () => {
 
   @crossplatform
   @also_with_nodefs_both
-  def test_fs_stat_unnamed_file_descriptor(self, args):
-    nodefs = '-DNODEFS' in args or '-DNODERAWFS' in args
+  def test_fs_stat_unnamed_file_descriptor(self):
+    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
     if self.get_setting('WASMFS'):
       if nodefs:
         self.skipTest('NODEFS in WasmFS')
