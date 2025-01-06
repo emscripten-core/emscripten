@@ -91,7 +91,7 @@ addToLibrary({
       },
       setattr(node, attr) {
         for (const key of ["mode", "atime", "mtime", "ctime"]) {
-          if (attr[key]) {
+          if (typeof attr[key] === 'number') {
             node[key] = attr[key];
           }
         }

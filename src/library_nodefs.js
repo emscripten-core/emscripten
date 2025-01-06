@@ -167,8 +167,13 @@ addToLibrary({
             node.mode = attr.mode;
           }
           if (typeof (attr.atime ?? attr.mtime) === "number") {
-            var atime = attr.atime && new Date(attr.atime);
-            var mtime = attr.mtime && new Date(attr.mtime);
+            // Unfortunately, we have to stat the current value if we don't want
+            // to change it. On top of that, since the times don't round trip
+            // this will only keep the value nearly unchanged not exactly
+            // unchanged. See:
+            // https://github.com/nodejs/node/issues/56492
+            var atime = new Date(attr.atime ?? fs.lstatSync(NODEFS.realPath(node)).atime);
+            var mtime = new Date(attr.mtime ?? fs.lstatSync(NODEFS.realPath(node)).mtime);
             fs.utimesSync(path, atime, mtime);
           }
           if (attr.size !== undefined) {
