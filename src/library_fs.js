@@ -1449,7 +1449,8 @@ FS.staticInit();
       var randomBuffer = new Uint8Array(1024), randomLeft = 0;
       var randomByte = () => {
         if (randomLeft === 0) {
-          randomLeft = randomFill(randomBuffer).byteLength;
+          randomFill(randomBuffer);
+          randomLeft = randomBuffer.byteLength;
         }
         return randomBuffer[--randomLeft];
       };

@@ -23,7 +23,7 @@ A high level overview of the way File Systems work in Emscripten-ported code is 
 New File System: WasmFS
 =======================
 
-.. note:: Current Status: Work in Progress
+.. note:: Current Status: Stable, but not yet feature-complete with the old FS.
 
 WasmFS is a high-performance, fully-multithreaded, WebAssembly-based file system layer for Emscripten that will replace the existing JavaScript version.
 

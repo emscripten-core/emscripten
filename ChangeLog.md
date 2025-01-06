@@ -18,8 +18,18 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.75 (in development)
------------------------
+4.0.0 (in development)
+----------------------
+- compiler-rt, libcxx, libcxxabi, and libunwind were updated to LLVM 19.1.6.
+  (#22937, #22994, and #23294)
+- The Wasm nontrapping-fptoint feature has been enabled by default. clang will
+  generate nontrapping (saturating) float-to-int conversion instructions for
+  C typecasts. This should have no effect on programs that do not have
+  undefined behavior but if the casted floating-point value is outside the range
+  of the target integer type, the result will be a number of the max or min value
+  instead of a trap. This also results in a small code size improvement because
+  of details of the LLVM IR semantics. This feature can be disabled in clang with
+  the -mno-nontrapping-fptoint flag. (#23007)
 - The `WASM_BIGINT` feature has been enabled by default. This has the effect that
   Wasm i64 values are passed and returned between Wasm and JS as BigInt values
   rather than being split by Binaryen into pairs of Numbers. (#22993)
@@ -39,6 +49,9 @@ See docs/process.md for more on how version tagging works.
   `--post-js` files will now be delayed until after module creation and after
   `main` runs.  This matches the existing behaviour when using sync instantation
   (`-sWASM_ASYNC_COMPILATION=0`) but is an observable difference. (#23157)
+- The `POLYFILL_OLD_MATH_FUNCTIONS` setting was removed.  The browser versions
+  that require these polyfills are no longer supported by emscripten so the
+  polyfills should never be needed. (#23262)
 
 3.1.74 - 12/14/24
 -----------------
@@ -59,7 +72,7 @@ See docs/process.md for more on how version tagging works.
 
 3.1.73 - 11/28/24
 -----------------
-- libunwind was updated to LLVM 19.1.4. (#22394)
+- libunwind was updated to LLVM 19.1.4. (#22934)
 - mimalloc was updated to 2.1.7. (#21548)
 
 3.1.72 - 11/19/24

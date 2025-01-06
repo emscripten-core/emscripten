@@ -40,6 +40,7 @@ var SyscallsLibrary = {
       }
       return dir + '/' + path;
     },
+
     writeStat(buf, stat) {
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_dev, 'stat.dev', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_mode, 'stat.mode', 'i32') }}};

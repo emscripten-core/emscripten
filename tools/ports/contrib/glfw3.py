@@ -6,8 +6,8 @@
 import os
 from typing import Union, Dict
 
-TAG = '3.4.0.20241004'
-HASH = 'd2745e9f621090b6f78e1c8122d1e6a2e7e774d27799f14945ddcfd543aedeac0e6acdecf42fe74f9ecdbc25aa3599372798ecfc55ddd941661e0628c494cda6'
+TAG = '3.4.0.20241230'
+HASH = '917df0d23e425d71b189294481fe369dc50baa28493c8f4d6590c9d99b4d880ddeb1064d1481ef1586bee1504898d5b0d0a2f9b4e77c7ac384237af238e1a7a6'
 
 # contrib port information (required)
 URL = 'https://github.com/pongasoft/emscripten-glfw'
@@ -44,6 +44,7 @@ def get_lib_name(settings):
           ('-nw' if opts['disableWarning'] else '') +
           ('-nj' if opts['disableJoystick'] else '') +
           ('-sw' if opts['disableMultiWindow'] else '') +
+          ('-mt' if settings.PTHREADS else '') +
           '.a')
 
 
@@ -70,6 +71,9 @@ def get(ports, settings, shared):
 
     if opts['disableMultiWindow']:
       flags += ['-DEMSCRIPTEN_GLFW3_DISABLE_MULTI_WINDOW_SUPPORT']
+
+    if settings.PTHREADS:
+      flags += ['-pthread']
 
     ports.build_port(source_path, final, port_name, includes=source_include_paths, flags=flags)
 

@@ -137,3 +137,5 @@ path.isAbsolute;
  * @type {Object.<string,*>}
  */
 path.posix;
+
+crypto.randomFillSync;
