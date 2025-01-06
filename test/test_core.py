@@ -5544,9 +5544,11 @@ got: 10
     self.do_run_in_out_file_test('fcntl/test_fcntl.c')
 
   @crossplatform
-  @no_windows('Stat mode behavior does not match on Windows')
   @also_with_nodefs_both
   def test_fcntl_open(self):
+    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
+    if nodefs and WINDOWS:
+      self.skipTest('Stat mode behavior does not match on Windows')
     self.do_run_in_out_file_test('fcntl/test_fcntl_open.c')
 
   @also_with_wasm_bigint
