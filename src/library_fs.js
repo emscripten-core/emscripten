@@ -952,7 +952,7 @@ FS.staticInit();
     stat(path, dontFollow) {
       var lookup = FS.lookupPath(path, { follow: !dontFollow });
       var node = lookup.node;
-      FS.doNodeOp(node, "getattr", {{{ cDefs.EPERM }}});
+      return FS.doNodeOp(node, "getattr", {{{ cDefs.EPERM }}});
     },
     lstat(path) {
       return FS.stat(path, true);
