@@ -10422,7 +10422,10 @@ int main() {
     self.verify_custom_sec_existence('a.out.wasm', 'target_features', False)
 
   def test_wasm_features(self):
-    # Test that wasm features are explicitly enabled or disabled based on target engine version
+    # Test that wasm features are explicitly enabled or disabled based on
+    # target engine version. Here we are reading the features section and
+    # trusting that LLVM and/or Binaryen faithfully represent what features
+    #  are used
     def verify_features_sec(feature, expect_in, linked=False):
       with webassembly.Module('a.out.wasm' if linked else 'hello_world.o') as module:
         features = module.get_target_features()
@@ -10441,7 +10444,7 @@ int main() {
       self.run_process([EMCC, test_file('hello_world.c')] + flags)
 
     compile(['-c'])
-    verify_features_sec('bulk-memory', False)
+    verify_features_sec('bulk-memory', True)
     verify_features_sec('nontrapping-fptoint', True)
     verify_features_sec('sign-ext', True)
     verify_features_sec('mutable-globals', True)
@@ -10451,34 +10454,34 @@ int main() {
     # Disable a feature
     compile(['-mno-sign-ext', '-c'])
     verify_features_sec('sign-ext', False)
-    # Disabling overrides default browser versions
-    compile(['-mno-sign-ext'])
-    verify_features_sec_linked('sign-ext', False)
-    # Disabling overrides manual browser versions
-    compile(['-sMIN_SAFARI_VERSION=150000', '-mno-sign-ext'])
     # Disable via browser selection
     compile(['-sMIN_FIREFOX_VERSION=61'])
     verify_features_sec_linked('sign-ext', False)
-    # Manual enable overrides browser version
+    # Flag disabling overrides default browser versions
+    compile(['-mno-sign-ext'])
+    verify_features_sec_linked('sign-ext', False)
+    # Flag disabling overrides explicit browser version
+    compile(['-sMIN_SAFARI_VERSION=150000', '-mno-sign-ext'])
+    verify_features_sec_linked('sign-ext', False)
+    # Flag enabling overrides explicit browser version
     compile(['-sMIN_FIREFOX_VERSION=61', '-msign-ext'])
     verify_features_sec_linked('sign-ext', True)
+    # Flag disabling overrides explicit version for bulk memory
+    compile(['-sMIN_SAFARI_VERSION=150000', '-mno-bulk-memory'])
+    verify_features_sec_linked('bulk-memory-opt', False)
 
-    compile(['-mno-nontrapping-fptoint'])
+    # TODO(https://github.com/emscripten-core/emscripten/issues/23184) set this back to 14.1
+    # Also the section below can be deleted/updated once the default is 15.1
+    compile(['-sMIN_SAFARI_VERSION=140000'])
+    verify_features_sec_linked('bulk-memory-opt', False)
     verify_features_sec_linked('nontrapping-fptoint', False)
 
-    # Setting this SAFARI_VERSION should enable bulk memory because it links in emscripten_memcpy_bulkmem
-    # However it does not enable nontrapping-fptoint yet because it has no effect at compile time and
-    # no libraries include nontrapping yet.
     compile(['-sMIN_SAFARI_VERSION=150000'])
     verify_features_sec_linked('sign-ext', True)
     verify_features_sec_linked('mutable-globals', True)
     verify_features_sec_linked('multivalue', True)
-    verify_features_sec_linked('bulk-memory', True)
+    verify_features_sec_linked('bulk-memory-opt', True)
     verify_features_sec_linked('nontrapping-fptoint', True)
-
-    compile(['-sMIN_SAFARI_VERSION=150000', '-mno-bulk-memory'])
-    # -mno-bulk-memory at link time overrides MIN_SAFARI_VERSION
-    verify_features_sec_linked('bulk-memory', False)
 
   def test_js_preprocess(self):
     # Use stderr rather than stdout here because stdout is redirected to the output JS file itself.
@@ -13359,7 +13362,7 @@ kill -9 $$
 
   def test_standard_library_mapping(self):
     # Test the `-l` flags on the command line get mapped the correct libraries variant
-    libs = ['-lc', '-lbulkmemory', '-lcompiler_rt', '-lmalloc']
+    libs = ['-lc', '-lcompiler_rt', '-lmalloc']
     err = self.run_process([EMCC, test_file('hello_world.c'), '-pthread', '-nodefaultlibs', '-v'] + libs, stderr=PIPE).stderr
 
     # Check that the linker was run with `-mt` variants because `-pthread` was passed.
@@ -14690,34 +14693,6 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.set_setting('DEFAULT_TO_CXX')
     self.do_runf(test_file('core/test_longjmp.c'), emcc_args=self.get_emcc_args())
 
-  def test_memops_bulk_memory(self):
-    self.emcc_args += ['--profiling-funcs', '-fno-builtin']
-
-    def run(args, expect_bulk_mem):
-      self.do_runf('other/test_memops_bulk_memory.c', emcc_args=args)
-      funcs = self.parse_wasm('test_memops_bulk_memory.wasm')[2]
-      js = read_file('test_memops_bulk_memory.js')
-      if expect_bulk_mem:
-        self.assertNotContained('_emscripten_memcpy_js', js)
-        self.assertIn('$_emscripten_memcpy_bulkmem', funcs)
-      else:
-        self.assertContained('_emscripten_memcpy_js', js)
-        self.assertNotIn('$_emscripten_memcpy_bulkmem', funcs)
-
-    # By default we expect to find `_emscripten_memcpy_js` in the generaed JS
-    # and not to find the `emscripten_memcpy_bulkmem` function on the wasm
-    # side.
-    run([], expect_bulk_mem=False)
-
-    # With bulk memory enabled we expect *not* to find it.
-    run(['-mbulk-memory'], expect_bulk_mem=True)
-
-    run(['-mbulk-memory', '-mno-bulk-memory'], expect_bulk_mem=False)
-
-    # -pthread implicitly enables bulk memory too.
-    self.setup_node_pthreads()
-    run(['-pthread'], expect_bulk_mem=True)
-
   def test_memory_init_file_unsupported(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--memory-init-file=1'])
     self.assertContained('error: --memory-init-file is no longer supported', err)
@@ -14909,7 +14884,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
   @node_pthreads
   def test_standalone_whole_archive(self):
-    self.emcc_args += ['-sSTANDALONE_WASM', '-pthread', '-Wl,--whole-archive', '-lbulkmemory', '-lstandalonewasm', '-Wl,--no-whole-archive']
+    self.emcc_args += ['-sSTANDALONE_WASM', '-pthread', '-Wl,--whole-archive', '-lstandalonewasm', '-Wl,--no-whole-archive']
     self.do_runf('hello_world.c')
 
   @parameterized({

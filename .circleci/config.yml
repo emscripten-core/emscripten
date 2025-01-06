@@ -240,6 +240,10 @@ commands:
         description: "Name of given test suite"
         type: string
         default: ""
+      extra-cflags:
+        description: "Extra EMCC_CFLAGS"
+        type: string
+        default: ""
     steps:
       - when:
           # We only set EMTEST_RETRY_FLAKY on pull requests.  When we run
@@ -250,6 +254,8 @@ commands:
             - set-retry-flaky-tests
       - run:
           name: run tests (<< parameters.title >>)
+          environment:
+            EMCC_CFLAGS: << parameters.extra-cflags >>
           command: |
             env
             ./test/runner << parameters.test_targets >>
@@ -765,6 +771,7 @@ jobs:
           node_version: "10.19.0"
       - run-tests:
           title: "node (oldest / 10.19.0)"
+          extra-cflags: "-sMIN_NODE_VERSION=101900"
           test_targets: "
             other.test_gen_struct_info
             other.test_native_call_before_init

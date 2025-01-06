@@ -342,7 +342,11 @@ def get_binaryen_passes():
     passes += ['--signext-lowering']
   # nontrapping-fp is enabled by default in llvm. Lower it away if requested.
   if not feature_matrix.caniuse(feature_matrix.Feature.NON_TRAPPING_FPTOINT):
+    logger.debug('lowering nontrapping-fp feature due to incompatible target browser engines')
     passes += ['--llvm-nontrapping-fptoint-lowering']
+  if not feature_matrix.caniuse(feature_matrix.Feature.BULK_MEMORY):
+    logger.debug('lowering bulk-memory feature due to incompatible target browser engines')
+    passes += ['--llvm-memory-copy-fill-lowering']
   if optimizing:
     passes += ['--post-emscripten']
     if settings.SIDE_MODULE:
