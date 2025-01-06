@@ -34,8 +34,7 @@ var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {
 #endif // USE_CLOSURE_COMPILER
 
 #if POLYFILL
-#if WASM_BIGINT && MIN_SAFARI_VERSION < 140100
-// TODO(https://github.com/emscripten-core/emscripten/issues/23184): Fix this back to 150000
+#if WASM_BIGINT && MIN_SAFARI_VERSION < 150000
 // See https://caniuse.com/mdn-javascript_builtins_bigint64array
 #include "polyfill/bigint64array.js"
 #endif

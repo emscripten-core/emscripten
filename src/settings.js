@@ -1913,7 +1913,7 @@ var MIN_FIREFOX_VERSION = 79;
 // Minimum supported value is 101000 which was released in 2016-09 (see
 // feature_matrix.py).
 // [link]
-var MIN_SAFARI_VERSION = 140100;
+var MIN_SAFARI_VERSION = 150000;
 
 // Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=58 to
 // drop support for Chrome 57 and older.
