@@ -2371,7 +2371,7 @@ def get_libs_to_link(args):
       add_library('libmimalloc')
       if settings.USE_ASAN:
         # See https://github.com/emscripten-core/emscripten/issues/23288#issuecomment-2571648258
-        shared.exit_with_error('mimalloc should not be used with asan')
+        shared.exit_with_error('mimalloc is not compatible with with -fsanitize=address')
     elif settings.MALLOC != 'none':
       add_library('libmalloc')
   add_library('libcompiler_rt')
