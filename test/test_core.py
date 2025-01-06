@@ -5525,9 +5525,10 @@ got: 10
   @crossplatform
   @with_all_fs
   def test_stat_chmod(self):
-    if self.get_setting('NODERAWFS') and WINDOWS:
+    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
+    if nodefs and WINDOWS:
       self.skipTest('mode bits work differently on windows')
-    if self.get_setting('WASMFS') and self.get_setting('NODERAWFS'):
+    if nodefs and self.get_setting('WASMFS'):
       self.skipTest('test requires symlink creation which currently missing from wasmfs+noderawfs')
     self.do_runf('stat/test_chmod.c', 'success')
 
