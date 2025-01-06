@@ -636,7 +636,7 @@ def check_browser_versions():
 
 
 @ToolchainProfiler.profile_block('linker_setup')
-def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
+def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
   """Future modifications should consider refactoring to reduce complexity.
 
   * The McCabe cyclomatiic complexity is currently 251 vs 10 recommended.
@@ -898,7 +898,7 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
     # PURE_WASI, or when we are linking without standard libraries because
     # STACK_OVERFLOW_CHECK depends on emscripten_stack_get_end which is defined
     # in libcompiler-rt.
-    if not settings.PURE_WASI and '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
+    if not settings.PURE_WASI and '-nostdlib' not in state.orig_args and '-nodefaultlibs' not in state.orig_args:
       default_setting('STACK_OVERFLOW_CHECK', max(settings.ASSERTIONS, settings.STACK_OVERFLOW_CHECK))
 
   # For users that opt out of WARN_ON_UNDEFINED_SYMBOLS we assume they also
@@ -1537,7 +1537,7 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
 
   sanitize = set()
 
-  for arg in newargs:
+  for arg in state.orig_args:
     if arg.startswith('-fsanitize='):
       sanitize.update(arg.split('=', 1)[1].split(','))
     elif arg.startswith('-fno-sanitize='):
@@ -1576,7 +1576,7 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$UTF8ArrayToString')
 
   if sanitize & UBSAN_SANITIZERS:
-    if '-fsanitize-minimal-runtime' in newargs:
+    if '-fsanitize-minimal-runtime' in state.orig_args:
       settings.UBSAN_RUNTIME = 1
     else:
       settings.UBSAN_RUNTIME = 2
@@ -1791,7 +1791,7 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
   settings.EMSCRIPTEN_VERSION = utils.EMSCRIPTEN_VERSION
   settings.SOURCE_MAP_BASE = options.source_map_base or ''
 
-  settings.LINK_AS_CXX = (shared.run_via_emxx or settings.DEFAULT_TO_CXX) and '-nostdlib++' not in newargs
+  settings.LINK_AS_CXX = (shared.run_via_emxx or settings.DEFAULT_TO_CXX) and '-nostdlib++' not in state.orig_args
 
   # WASMFS itself is written in C++, and needs C++ standard libraries
   if settings.WASMFS:
@@ -1866,13 +1866,13 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
 
 
 @ToolchainProfiler.profile_block('calculate system libraries')
-def phase_calculate_system_libraries(linker_arguments, newargs):
+def phase_calculate_system_libraries(state, linker_arguments):
   extra_files_to_link = []
   # Link in ports and system libraries, if necessary
   if not settings.SIDE_MODULE:
     # Ports are always linked into the main module, never the side module.
     extra_files_to_link += ports.get_libs(settings)
-  extra_files_to_link += system_libs.calculate(newargs)
+  extra_files_to_link += system_libs.calculate(state.orig_args)
   linker_arguments.extend(extra_files_to_link)
 
 
@@ -3109,14 +3109,14 @@ def phase_calculate_linker_inputs(options, state, linker_inputs):
   return linker_args
 
 
-def run_post_link(wasm_input, options, state, newargs):
+def run_post_link(wasm_input, options, state):
   settings.limit_settings(None)
-  target, wasm_target = phase_linker_setup(options, state, newargs)
+  target, wasm_target = phase_linker_setup(options, state )
   process_libraries(state, [])
   phase_post_link(options, state, wasm_input, wasm_target, target, {})
 
 
-def run(linker_inputs, options, state, newargs):
+def run(linker_inputs, options, state):
   # We have now passed the compile phase, allow reading/writing of all settings.
   settings.limit_settings(None)
 
@@ -3126,7 +3126,7 @@ def run(linker_inputs, options, state, newargs):
   if options.output_file and options.output_file.startswith('-'):
     exit_with_error(f'invalid output filename: `{options.output_file}`')
 
-  target, wasm_target = phase_linker_setup(options, state, newargs)
+  target, wasm_target = phase_linker_setup(options, state)
 
   # Link object files using wasm-ld or llvm-link (for bitcode linking)
   linker_arguments = phase_calculate_linker_inputs(options, state, linker_inputs)
@@ -3141,7 +3141,7 @@ def run(linker_inputs, options, state, newargs):
     logger.debug('stopping after linking to object file')
     return 0
 
-  phase_calculate_system_libraries(linker_arguments, newargs)
+  phase_calculate_system_libraries(state, linker_arguments)
 
   js_syms = {}
   if (not settings.SIDE_MODULE or settings.ASYNCIFY) and not shared.SKIP_SUBPROCS:

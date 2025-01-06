@@ -660,7 +660,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       exit_with_error('--post-link requires a single input file')
     # Delay import of link.py to avoid processing this file when only compiling
     from tools import link
-    link.run_post_link(input_files[0][1], options, state, newargs)
+    link.run_post_link(input_files[0][1], options, state)
     return 0
 
   ## Compile source code to object files
@@ -669,7 +669,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if state.mode == Mode.COMPILE_AND_LINK:
     # Delay import of link.py to avoid processing this file when only compiling
     from tools import link
-    return link.run(linker_inputs, options, state, newargs)
+    return link.run(linker_inputs, options, state)
   else:
     logger.debug('stopping after compile phase')
     return 0
