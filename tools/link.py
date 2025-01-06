@@ -2805,7 +2805,7 @@ def map_to_js_libs(library_name):
   return None
 
 
-def process_libraries(state, linker_inputs):
+def process_libraries(state):
   new_flags = []
   libraries = []
   suffixes = STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS
@@ -2843,7 +2843,7 @@ def process_libraries(state, linker_inputs):
         break
 
     if path:
-      linker_inputs.append((i, path))
+      new_flags.append((i, path))
       continue
 
     new_flags.append((i, flag))
@@ -3087,7 +3087,7 @@ def phase_calculate_linker_inputs(options, state, linker_inputs):
   state.link_flags = filter_link_flags(state.link_flags, using_lld)
 
   # Decide what we will link
-  process_libraries(state, linker_inputs)
+  process_libraries(state)
 
   # Interleave the linker inputs with the linker flags while maintainging their
   # relative order on the command line (both of these list are pairs, with the
@@ -3111,8 +3111,8 @@ def phase_calculate_linker_inputs(options, state, linker_inputs):
 
 def run_post_link(wasm_input, options, state):
   settings.limit_settings(None)
-  target, wasm_target = phase_linker_setup(options, state )
-  process_libraries(state, [])
+  target, wasm_target = phase_linker_setup(options, state)
+  process_libraries(state)
   phase_post_link(options, state, wasm_input, wasm_target, target, {})
 
 
