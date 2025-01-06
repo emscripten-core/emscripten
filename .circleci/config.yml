@@ -796,6 +796,54 @@ jobs:
             core2.test_exceptions_wasm
             core2.test_pthread_unhandledrejection"
       - upload-test-results
+  test-llvm-stable:
+    executor: focal
+    environment:
+      LANG: "C.UTF-8"
+      EMTEST_SKIP_V8: "1"
+    steps:
+      - run:
+          name: install llvm
+          command: |
+            echo "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-19 main" >> /etc/apt/sources.list
+            wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
+            apt-get update
+            apt-get install -q -y clang-19 lld-19
+      - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
+      - pip-install
+      - install-emsdk
+      - install-rust
+      - run:
+          name: configure LLVM
+          command: echo "LLVM_ROOT='/usr/lib/llvm-19/bin'" >> ~/emsdk/.emscripten
+      - run: apt-get install -q -y ninja-build scons ccache
+      - run-tests:
+          extra-cflags: "-Wno-experimental"
+          # Would it make sense use a `@no_llvm_stable` decorator instead of
+          # listed in these here?
+          test_targets: "--skip-slow
+            core2.test_hello_world
+            other
+            skip:other.test_*code_size*
+            skip:other.test_*codesize*
+            skip:other.test_*memory64*
+            skip:other.test_*wasm64*
+            skip:other.test_fp16*
+            skip:other.test_wasm_worker*
+            skip:other.test_shared_memory*
+            skip:other.test_gen_struct_info*
+            skip:other.test_wasm_features
+            skip:other.test_post_link
+            skip:other.test_reproduce
+            skip:other.test_dylink_pthread_warning
+            skip:other.test_argument_missing
+            skip:other.test_embind_tsgen_worker_env
+            skip:other.test_explicit_target
+            skip:other.test_unistd_seek_wasmfs
+            "
   test-other:
     executor: focal
     environment:
@@ -1029,3 +1077,4 @@ workflows:
       - test-node-compat
       - test-windows
       - test-mac-arm64
+      - test-llvm-stable

@@ -60,6 +60,7 @@ SKIP_SUBPROCS = False
 # This version currently matches the node version that we ship with emsdk
 # which means that we can say for sure that this version is well supported.
 MINIMUM_NODE_VERSION = (16, 20, 0)
+EXPECTED_LLVM_STABLE_VERSION = 19
 EXPECTED_LLVM_VERSION = 20
 
 # These get set by setup_temp_dirs
@@ -298,9 +299,18 @@ def get_clang_version():
   return m and m.group(1)
 
 
+def is_llvm_stable():
+  if SKIP_SUBPROCS:
+    return False
+  return get_clang_version().startswith('%d.' % EXPECTED_LLVM_STABLE_VERSION)
+
+
 def check_llvm_version():
+  if is_llvm_stable():
+    diagnostics.warning('experimental', f'Use of emscripten with LLVM stable (v{EXPECTED_LLVM_STABLE_VERSION}) is currently experimental, not all features are supported')
   actual = get_clang_version()
-  if actual.startswith('%d.' % EXPECTED_LLVM_VERSION):
+  expected = [EXPECTED_LLVM_VERSION, EXPECTED_LLVM_STABLE_VERSION]
+  if any(actual.startswith('%d.' % e) for e in expected):
     return True
   # When running in CI environment we also silently allow the next major
   # version of LLVM here so that new versions of LLVM can be rolled in
@@ -308,7 +318,7 @@ def check_llvm_version():
   if 'BUILDBOT_BUILDNUMBER' in os.environ:
     if actual.startswith('%d.' % (EXPECTED_LLVM_VERSION + 1)):
       return True
-  diagnostics.warning('version-check', 'LLVM version for clang executable "%s" appears incorrect (seeing "%s", expected "%s")', CLANG_CC, actual, EXPECTED_LLVM_VERSION)
+  diagnostics.warning('version-check', f'LLVM version for clang executable "{CLANG_CC}" appears incorrect (seeing "{actual}", expected "{EXPECTED_LLVM_VERSION}" or "{EXPECTED_LLVM_STABLE_VERSION}")')
   return False
 
 
