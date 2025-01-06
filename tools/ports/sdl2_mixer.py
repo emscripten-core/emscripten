@@ -10,9 +10,9 @@ HASH = '494ccd74540f74e717f7e4f1dc7f96398c0f4b1883ab00c4a76b0c7239bd2c185cb4358a
 
 deps = ['sdl2']
 variants = {
-  'sdl2_mixer-mp3': {'SDL2_MIXER_FORMATS': ["mp3"]},
+  'sdl2_mixer-mp3': {'SDL2_MIXER_FORMATS': ['mp3']},
   'sdl2_mixer-none': {'SDL2_MIXER_FORMATS': []},
-  'sdl2_mixer-mp3-mt': {'SDL2_MIXER_FORMATS': ["mp3"], 'PTHREADS': 1},
+  'sdl2_mixer-mp3-mt': {'SDL2_MIXER_FORMATS': ['mp3'], 'PTHREADS': 1},
   'sdl2_mixer-none-mt': {'SDL2_MIXER_FORMATS': [], 'PTHREADS': 1},
 }
 
