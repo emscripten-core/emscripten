@@ -964,13 +964,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       version = shared.get_node_version(nodejs)
       if version >= (23, 0, 0):
         self.js_engines = [nodejs]
-        self.node_args += shared.node_memory64_flags()
         return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
       self.emcc_args.append('-sENVIRONMENT=shell')
       self.js_engines = [config.V8_ENGINE]
-      self.v8_args.append('--experimental-wasm-memory64')
       return
 
     if 'EMTEST_SKIP_WASM64' in os.environ:
