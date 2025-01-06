@@ -342,7 +342,11 @@ def get_binaryen_passes():
     passes += ['--signext-lowering']
   # nontrapping-fp is enabled by default in llvm. Lower it away if requested.
   if not feature_matrix.caniuse(feature_matrix.Feature.NON_TRAPPING_FPTOINT):
+    logger.debug('lowering nontrapping-fp feature due to incompatible target browser engines')
     passes += ['--llvm-nontrapping-fptoint-lowering']
+  if not feature_matrix.caniuse(feature_matrix.Feature.BULK_MEMORY):
+    logger.debug('lowering bulk-memory feature due to incompatible target browser engines')
+    passes += ['--llvm-memory-copy-fill-lowering']
   if optimizing:
     passes += ['--post-emscripten']
     if settings.SIDE_MODULE:
@@ -449,9 +453,7 @@ def get_binaryen_passes():
 def make_js_executable(script):
   src = read_file(script)
   cmd = config.NODE_JS
-  if settings.MEMORY64 == 1:
-    cmd += shared.node_memory64_flags()
-  elif settings.WASM_BIGINT:
+  if settings.WASM_BIGINT:
     cmd += shared.node_bigint_flags(config.NODE_JS)
   if len(cmd) > 1 or not os.path.isabs(cmd[0]):
     # Using -S (--split-string) here means that arguments to the executable are
@@ -1499,7 +1501,8 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
   if settings.WASM_BIGINT:
     settings.LEGALIZE_JS_FFI = 0
 
-  if settings.SINGLE_FILE:
+  if settings.SINGLE_FILE and settings.GENERATE_SOURCE_MAP:
+    diagnostics.warning('emcc', 'SINGLE_FILE disables source map support (which requires a .map file)')
     settings.GENERATE_SOURCE_MAP = 0
 
   if settings.EVAL_CTORS:
