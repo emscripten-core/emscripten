@@ -2001,7 +2001,7 @@ def run_embind_gen(wasm_target, js_syms, extra_settings, linker_inputs):
   setup_environment_settings()
   # Use a separate Wasm file so the JS does not need to be modified after emscripten.emscript.
   settings.SINGLE_FILE = False
-  if settings.JSPI:
+  if settings.ASYNCIFY == 2:
     # JSPI is not needed to generate the definitions.
     # TODO: when the emsdk node version supports JSPI, it probably makes more sense
     # to enable it in node than disabling the setting here.
