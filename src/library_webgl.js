@@ -138,31 +138,27 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   emscripten_webgl_enable_WEBGL_draw_buffers: (ctx) => webgl_enable_WEBGL_draw_buffers(GL.contexts[ctx].GLctx),
 #endif
 
-  $webgl_enable_WEBGL_multi_draw: (ctx) => {
+  $webgl_enable_WEBGL_multi_draw: (ctx) =>
     // Closure is expected to be allowed to minify the '.multiDrawWebgl' property, so not accessing it quoted.
-    return !!(ctx.multiDrawWebgl = ctx.getExtension('WEBGL_multi_draw'));
-  },
+    !!(ctx.multiDrawWebgl = ctx.getExtension('WEBGL_multi_draw')),
 
   emscripten_webgl_enable_WEBGL_multi_draw__deps: ['$webgl_enable_WEBGL_multi_draw'],
   emscripten_webgl_enable_WEBGL_multi_draw: (ctx) => webgl_enable_WEBGL_multi_draw(GL.contexts[ctx].GLctx),
 
-  $webgl_enable_EXT_polygon_offset_clamp: (ctx) => {
-    return !!(ctx.extPolygonOffsetClamp = ctx.getExtension('EXT_polygon_offset_clamp'));
-  },
+  $webgl_enable_EXT_polygon_offset_clamp: (ctx) =>
+    !!(ctx.extPolygonOffsetClamp = ctx.getExtension('EXT_polygon_offset_clamp')),
 
   emscripten_webgl_enable_EXT_polygon_offset_clamp__deps: ['$webgl_enable_EXT_polygon_offset_clamp'],
   emscripten_webgl_enable_EXT_polygon_offset_clamp: (ctx) => webgl_enable_EXT_polygon_offset_clamp(GL.contexts[ctx].GLctx),
 
-  $webgl_enable_EXT_clip_control: (ctx) => {
-    return !!(ctx.extClipControl = ctx.getExtension('EXT_clip_control'));
-  },
+  $webgl_enable_EXT_clip_control: (ctx) =>
+    !!(ctx.extClipControl = ctx.getExtension('EXT_clip_control')),
 
   emscripten_webgl_enable_EXT_clip_control__deps: ['$webgl_enable_EXT_clip_control'],
   emscripten_webgl_enable_EXT_clip_control: (ctx) => webgl_enable_EXT_clip_control(GL.contexts[ctx].GLctx),
 
-  $webgl_enable_WEBGL_polygon_mode: (ctx) => {
-    return !!(ctx.webglPolygonMode = ctx.getExtension('WEBGL_polygon_mode'));
-  },
+  $webgl_enable_WEBGL_polygon_mode: (ctx) =>
+    !!(ctx.webglPolygonMode = ctx.getExtension('WEBGL_polygon_mode')),
 
   emscripten_webgl_enable_WEBGL_polygon_mode__deps: ['$webgl_enable_WEBGL_polygon_mode'],
   emscripten_webgl_enable_WEBGL_polygon_mode: (ctx) => webgl_enable_WEBGL_polygon_mode(GL.contexts[ctx].GLctx),
@@ -944,7 +940,6 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       gl.uniform1i(gl.getUniformLocation(blitProgram, "sampler"), 0);
       gl.useProgram(null);
 
-      context.defaultVao = undefined;
       if (gl.createVertexArray) {
         context.defaultVao = gl.createVertexArray();
         gl.bindVertexArray(context.defaultVao);
@@ -1024,17 +1019,13 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
           gl.drawArrays(5/*GL_TRIANGLE_STRIP*/, 0, 4);
         }
 
-#if !OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH
         if (context.defaultVao) {
           // WebGL 2 or OES_vertex_array_object
           var prevVAO = gl.getParameter(0x85B5 /*GL_VERTEX_ARRAY_BINDING*/);
           gl.bindVertexArray(context.defaultVao);
           draw();
           gl.bindVertexArray(prevVAO);
-        }
-        else
-#endif
-        {
+        } else {
           var prevVertexAttribPointer = {
             buffer: gl.getVertexAttrib(context.blitPosLoc, 0x889F /*GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING*/),
             size: gl.getVertexAttrib(context.blitPosLoc, 0x8623 /*GL_VERTEX_ATTRIB_ARRAY_SIZE*/),
@@ -1174,7 +1165,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       // Active Emscripten GL layer context object.
       GL.currentContext = GL.contexts[contextHandle];
       // Active WebGL context object.
-      Module.ctx = GLctx = GL.currentContext?.GLctx;
+      Module['ctx'] = GLctx = GL.currentContext?.GLctx;
       return !(contextHandle && !GLctx);
     },
 
@@ -1273,7 +1264,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
   $webglGetExtensions__internal: true,
   $webglGetExtensions__deps: ['$getEmscriptenSupportedExtensions'],
-  $webglGetExtensions() {
+  $webglGetExtensions: () => {
     var exts = getEmscriptenSupportedExtensions(GLctx);
 #if GL_EXTENSIONS_IN_PREFIXED_FORMAT
     exts = exts.concat(exts.map((e) => "GL_" + e));
@@ -3050,9 +3041,8 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     GLctx.vertexAttrib4f(index, HEAPF32[v>>2], HEAPF32[v+4>>2], HEAPF32[v+8>>2], HEAPF32[v+12>>2]);
   },
 
-  glGetAttribLocation: (program, name) => {
-    return GLctx.getAttribLocation(GL.programs[program], UTF8ToString(name));
-  },
+  glGetAttribLocation: (program, name) =>
+    GLctx.getAttribLocation(GL.programs[program], UTF8ToString(name)),
 
   $__glGetActiveAttribOrUniform__deps: ['$stringToUTF8'],
   $__glGetActiveAttribOrUniform: (funcName, program, index, bufSize, length, size, type, name) => {
@@ -3071,14 +3061,12 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   },
 
   glGetActiveAttrib__deps: ['$__glGetActiveAttribOrUniform'],
-  glGetActiveAttrib: (program, index, bufSize, length, size, type, name) => {
-    __glGetActiveAttribOrUniform('getActiveAttrib', program, index, bufSize, length, size, type, name);
-  },
+  glGetActiveAttrib: (program, index, bufSize, length, size, type, name) =>
+    __glGetActiveAttribOrUniform('getActiveAttrib', program, index, bufSize, length, size, type, name),
 
   glGetActiveUniform__deps: ['$__glGetActiveAttribOrUniform'],
-  glGetActiveUniform: (program, index, bufSize, length, size, type, name) => {
-    __glGetActiveAttribOrUniform('getActiveUniform', program, index, bufSize, length, size, type, name);
-  },
+  glGetActiveUniform: (program, index, bufSize, length, size, type, name) =>
+    __glGetActiveAttribOrUniform('getActiveUniform', program, index, bufSize, length, size, type, name),
 
   glCreateShader: (shaderType) => {
     var id = GL.getNewId(GL.shaders);

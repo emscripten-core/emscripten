@@ -58,6 +58,9 @@ var LibraryHTML5 = {
     currentEventHandler: null,
 #endif
 */
+    memcpy(target, src, size) {
+      HEAP8.set(HEAP8.subarray(src, src + size), target);
+    },
 
     removeAllEventListeners() {
       while (JSEvents.eventHandlers.length) {
@@ -329,11 +332,12 @@ var LibraryHTML5 = {
     return cString > 2 ? UTF8ToString(cString) : cString;
   },
 
+  // Find a DOM element with the given ID, or null if none is found.
   $findEventTarget__deps: ['$maybeCStringToJsString', '$specialHTMLTargets'],
   $findEventTarget: (target) => {
     target = maybeCStringToJsString(target);
 #if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE
-    var domElement = specialHTMLTargets[target] || (typeof document != 'undefined' ? document.querySelector(target) : undefined);
+    var domElement = specialHTMLTargets[target] || (typeof document != 'undefined' ? document.querySelector(target) : null);
 #else
     var domElement = specialHTMLTargets[target] || document.querySelector(target);
 #endif
@@ -372,28 +376,28 @@ var LibraryHTML5 = {
 #endif
 
 #else
-  // Find a DOM element with the given ID.
+  // Find a DOM element with the given ID, or null if none is found.
   $findEventTarget__deps: ['$specialHTMLTargets'],
   $findEventTarget: (target) => {
 #if ASSERTIONS
     warnOnce('Rules for selecting event targets in HTML5 API are changing: instead of using document.getElementById() that only can refer to elements by their DOM ID, new event target selection mechanism uses the more flexible function document.querySelector() that can look up element names, classes, and complex CSS selectors. Build with -sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR to change to the new lookup rules. See https://github.com/emscripten-core/emscripten/pull/7977 for more details.');
 #endif
-    try {
-      // The sensible "default" target varies between events, but use window as the default
-      // since DOM events mostly can default to that. Specific callback registrations
-      // override their own defaults.
-      if (!target) return window;
-      if (typeof target == "number") target = specialHTMLTargets[target] || UTF8ToString(target);
-      if (target === '#window') return window;
-      else if (target === '#document') return document;
-      else if (target === '#screen') return screen;
-      else if (target === '#canvas') return Module['canvas'];
-      return (typeof target == 'string') ? document.getElementById(target) : target;
-    } catch(e) {
-      // In Web Workers, some objects above, such as '#document' do not exist. Gracefully
-      // return null for them.
-      return null;
-    }
+    // The sensible "default" target varies between events, but use window as the default
+    // since DOM events mostly can default to that. Specific callback registrations
+    // override their own defaults.
+    if (!target) return window;
+    if (typeof target == "number") target = specialHTMLTargets[target] || UTF8ToString(target);
+    if (target === '#window') return window;
+    else if (target === '#document') return document;
+    else if (target === '#screen') return screen;
+    else if (target === '#canvas') return Module['canvas'];
+    else if (typeof target == 'string')
+#if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE
+      return (typeof document != 'undefined') ? document.getElementById(target) : null;
+#else
+      return document.getElementById(target);
+#endif
+    return target;
   },
 
   // Like findEventTarget, but looks for OffscreenCanvas elements first
@@ -594,7 +598,7 @@ var LibraryHTML5 = {
     // HTML5 does not really have a polling API for mouse events, so implement one manually by
     // returning the data from the most recently received event. This requires that user has registered
     // at least some no-op function as an event handler to any of the mouse function.
-    HEAP8.set(HEAP8.subarray(JSEvents.mouseEvent, JSEvents.mouseEvent + {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}}), mouseState);
+    JSEvents.memcpy(mouseState, JSEvents.mouseEvent, {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}});
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
@@ -852,7 +856,7 @@ var LibraryHTML5 = {
     // HTML5 does not really have a polling API for device orientation events, so implement one manually by
     // returning the data from the most recently received event. This requires that user has registered
     // at least some no-op function as an event handler.
-    HEAP32.set(HEAP32.subarray(JSEvents.deviceOrientationEvent, {{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}}), orientationState);
+    JSEvents.memcpy(orientationState, JSEvents.deviceOrientationEvent, {{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}});
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
@@ -911,9 +915,8 @@ var LibraryHTML5 = {
 
   emscripten_set_devicemotion_callback_on_thread__proxy: 'sync',
   emscripten_set_devicemotion_callback_on_thread__deps: ['$registerDeviceMotionEventCallback'],
-  emscripten_set_devicemotion_callback_on_thread: (userData, useCapture, callbackfunc, targetThread) => {
-    return registerDeviceMotionEventCallback({{{ cDefs.EMSCRIPTEN_EVENT_TARGET_WINDOW }}}, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_DEVICEMOTION }}}, "devicemotion", targetThread);
-  },
+  emscripten_set_devicemotion_callback_on_thread: (userData, useCapture, callbackfunc, targetThread) =>
+    registerDeviceMotionEventCallback({{{ cDefs.EMSCRIPTEN_EVENT_TARGET_WINDOW }}}, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_DEVICEMOTION }}}, "devicemotion", targetThread),
 
   emscripten_get_devicemotion_status__proxy: 'sync',
   emscripten_get_devicemotion_status__deps: ['$JSEvents'],
@@ -922,7 +925,7 @@ var LibraryHTML5 = {
     // HTML5 does not really have a polling API for device motion events, so implement one manually by
     // returning the data from the most recently received event. This requires that user has registered
     // at least some no-op function as an event handler.
-    HEAP32.set(HEAP32.subarray(JSEvents.deviceMotionEvent, {{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}}), motionState);
+    JSEvents.memcpy(motionState, JSEvents.deviceMotionEvent, {{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}});
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
@@ -2294,8 +2297,6 @@ var LibraryHTML5 = {
   },
 
 #if OFFSCREENCANVAS_SUPPORT
-  _emscripten_set_offscreencanvas_size: 'emscripten_set_canvas_element_size',
-
   $setOffscreenCanvasSizeOnTargetThread__deps: ['$stringToNewUTF8', '_emscripten_set_offscreencanvas_size_on_thread'],
   $setOffscreenCanvasSizeOnTargetThread: (targetThread, targetCanvas, width, height) => {
     targetCanvas = targetCanvas ? UTF8ToString(targetCanvas) : '';
@@ -2411,15 +2412,6 @@ var LibraryHTML5 = {
   },
 #endif
 
-#if !PTHREADS || !OFFSCREENCANVAS_SUPPORT
-  _emscripten_set_offscreencanvas_size: (target, width, height) => {
-#if ASSERTIONS
-    err('emscripten_set_offscreencanvas_size: Build with -sOFFSCREENCANVAS_SUPPORT=1 to enable transferring canvases to pthreads.');
-#endif
-    return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
-  },
-#endif
-
   // JavaScript-friendly API, returns pair [width, height]
   $getCanvasElementSize__deps: ['emscripten_get_canvas_element_size', '$stackSave', '$stackRestore', '$stringToUTF8OnStack'],
   $getCanvasElementSize: (target) => {
@@ -2483,10 +2475,6 @@ var LibraryHTML5 = {
     }
     return requestAnimationFrame(tick);
   },
-
-  emscripten_date_now: () => Date.now(),
-
-  emscripten_performance_now: () => {{{ getPerformanceNow() }}}(),
 
   emscripten_get_device_pixel_ratio__proxy: 'sync',
   emscripten_get_device_pixel_ratio: () => {

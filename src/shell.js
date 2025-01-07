@@ -23,12 +23,9 @@
 #if MODULARIZE
 var Module = moduleArg;
 #elif USE_CLOSURE_COMPILER
+/** @type{Object} */
+var Module;
 // if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with a string
-var /** @type {{
-  canvas: HTMLCanvasElement,
-  ctx: Object,
-}}
- */ Module;
 if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
 #elif AUDIO_WORKLET
 var Module = globalThis.Module || (typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {});
@@ -37,27 +34,9 @@ var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {
 #endif // USE_CLOSURE_COMPILER
 
 #if POLYFILL
-#if ((MAYBE_WASM2JS && WASM != 2) || MODULARIZE) && (MIN_CHROME_VERSION < 33 || MIN_FIREFOX_VERSION < 29 || MIN_SAFARI_VERSION < 80000)
-// Include a Promise polyfill for legacy browsers. This is needed either for
-// wasm2js, where we polyfill the wasm API which needs Promises, or when using
-// modularize which creates a Promise for when the module is ready.
-// See https://caniuse.com/#feat=promises
-#include "polyfill/promise.js"
-#endif
-
-#if MIN_CHROME_VERSION < 45 || MIN_FIREFOX_VERSION < 34 || MIN_SAFARI_VERSION < 90000
-// See https://caniuse.com/mdn-javascript_builtins_object_assign
-#include "polyfill/objassign.js"
-#endif
-
 #if WASM_BIGINT && MIN_SAFARI_VERSION < 150000
 // See https://caniuse.com/mdn-javascript_builtins_bigint64array
 #include "polyfill/bigint64array.js"
-#endif
-
-#if MIN_CHROME_VERSION < 40 || MIN_FIREFOX_VERSION < 39 || MIN_SAFARI_VERSION < 103000
-// See https://caniuse.com/fetch
-#include "polyfill/fetch.js"
 #endif
 #endif // POLYFILL
 
@@ -68,9 +47,6 @@ var readyPromise = new Promise((resolve, reject) => {
   readyPromiseResolve = resolve;
   readyPromiseReject = reject;
 });
-#if ASSERTIONS
-{{{ addReadyPromiseAssertions() }}}
-#endif
 #endif
 
 // Determine the runtime environment we are in. You can customize this by
@@ -124,18 +100,12 @@ if (ENVIRONMENT_IS_PTHREAD) {
 
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
-  // `require()` is no-op in an ESM module, use `createRequire()` to construct
-  // the require()` function.  This is only necessary for multi-environment
-  // builds, `-sENVIRONMENT=node` emits a static import declaration instead.
-  // TODO: Swap all `require()`'s with `import()`'s?
-#if EXPORT_ES6 && ENVIRONMENT_MAY_BE_WEB
+#if EXPORT_ES6
+  // When building an ES module `require` is not normally available.
+  // We need to use `createRequire()` to construct the require()` function.
   const { createRequire } = await import('module');
-  let dirname = import.meta.url;
-  if (dirname.startsWith("data:")) {
-    dirname = '/';
-  }
   /** @suppress{duplicate} */
-  var require = createRequire(dirname);
+  var require = createRequire('/');
 #endif
 
 #if PTHREADS || WASM_WORKERS
@@ -311,16 +281,12 @@ if (ENVIRONMENT_IS_SHELL) {
     return data;
   };
 
-  readAsync = (f) => {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => resolve(readBinary(f)));
-    });
-  };
+  readAsync = async (f) => readBinary(f);
 
   globalThis.clearTimeout ??= (id) => {};
 
   // spidermonkey lacks setTimeout but we use it above in readAsync.
-  globalThis.setTimeout ??= (f) => (typeof f == 'function') ? f() : abort();
+  globalThis.setTimeout ??= (f) => f();
 
   // v8 uses `arguments_` whereas spidermonkey uses `scriptArgs`
   arguments_ = globalThis.arguments || globalThis.scriptArgs;

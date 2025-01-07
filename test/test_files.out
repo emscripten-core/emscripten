@@ -12,4 +12,5 @@ seeked=ata.
 seeked=ta.
 fscanfed: 10 - hello
 5 bytes to dev/null: 5
+seek /dev/null: 0
 ok.

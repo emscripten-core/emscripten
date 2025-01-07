@@ -10,7 +10,6 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <termios.h>
 #include <unistd.h>
@@ -26,43 +25,37 @@ static void create_file(const char *path, const char *buffer, int mode) {
 }
 
 void setup() {
-	create_file("test.txt", "abcdefg", 0666);
-}
-
-void cleanup() {
-	unlink("test.txt");
+  create_file("test.txt", "abcdefg", 0666);
 }
 
 void test() {
-	struct termios tc;
-	int ret;
-	int fd;
+  struct termios tc;
+  int ret;
+  int fd;
 
-	fd = open("test.txt", O_RDONLY);
+  fd = open("test.txt", O_RDONLY);
 
-	ret = tcgetattr(fd, &tc);
-	assert(ret == -1);
-	assert(errno = ENOTTY);
+  ret = tcgetattr(fd, &tc);
+  assert(ret == -1);
+  assert(errno == ENOTTY);
 
-	ret = tcgetattr(STDIN_FILENO, &tc);
-	assert(!ret);
+  ret = tcgetattr(STDIN_FILENO, &tc);
+  assert(!ret);
 
-	ret = tcsetattr(fd, 0, &tc);
-	assert(ret == -1);
-	assert(errno = ENOTTY);
+  ret = tcsetattr(fd, 0, &tc);
+  assert(ret == -1);
+  assert(errno == ENOTTY);
 
-	ret = tcsetattr(STDIN_FILENO, 0, &tc);
-	assert(!ret);
+  ret = tcsetattr(STDIN_FILENO, 0, &tc);
+  assert(!ret);
 
-	close(fd);
+  close(fd);
 
-	puts("success");
+  puts("success");
 }
 
 int main() {
-  atexit(cleanup);
-  signal(SIGABRT, cleanup);
   setup();
   test();
-  return EXIT_SUCCESS;
+  return 0;
 }

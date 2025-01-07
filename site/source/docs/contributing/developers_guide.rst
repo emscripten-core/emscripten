@@ -79,7 +79,7 @@ The :ref:`Emscripten Compiler Frontend (emcc) <emccdoc>` is a python script that
 - **emcc** calls :term:`Clang` to compile C++ and ``wasm-ld`` to link it. It
   builds and integrates with the Emscripten system libraries, both the
   compiled ones and the ones implemented in JS.
-- **emcc** then calls `emscripten.py <https://github.com/emscripten-core/emscripten/blob/main/emscripten.py>`_
+- **emcc** then calls `emscripten.py <https://github.com/emscripten-core/emscripten/blob/main/tools/emscripten.py>`_
   which performs the final transformation to Wasm (including invoking
   **wasm-emscripten-finalize** from Binaryen) and calls the JS compiler
   (see ``src/compiler.mjs`` and related files) which emits the JS.

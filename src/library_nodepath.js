@@ -12,14 +12,14 @@
 // operations. Hence, using `nodePath` should be safe here.
 
 addToLibrary({
-  $PATH: {
-    isAbs: (path) => nodePath['isAbsolute'](path),
-    normalize: (path) => nodePath['normalize'](path),
-    dirname: (path) => nodePath['dirname'](path),
-    basename: (path) => nodePath['basename'](path),
-    join: (...args) => nodePath['join'](...args),
-    join2: (l, r) => nodePath['join'](l, r),
-  },
+  $PATH: `{
+    isAbs: nodePath.isAbsolute,
+    normalize: nodePath.normalize,
+    dirname: nodePath.dirname,
+    basename: nodePath.basename,
+    join: nodePath.join,
+    join2: nodePath.join,
+  }`,
   // The FS-using parts are split out into a separate object, so simple path
   // usage does not require the FS.
   $PATH_FS__deps: ['$FS'],
@@ -27,8 +27,8 @@ addToLibrary({
   $PATH_FS: {
     resolve: (...paths) => {
       paths.unshift(FS.cwd());
-      return nodePath['posix']['resolve'](...paths);
+      return nodePath.posix.resolve(...paths);
     },
-    relative: (from, to) => nodePath['posix']['relative'](from || FS.cwd(), to || FS.cwd()),
+    relative: (from, to) => nodePath.posix.relative(from || FS.cwd(), to || FS.cwd()),
   }
 });

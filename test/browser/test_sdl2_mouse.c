@@ -90,11 +90,11 @@ int main() {
   int absolute = false;
 #endif
 
-  EM_ASM(simulateMouseEvent(10, 20, -1, $0), absolute); // move from 0,0 to 10,20
-  EM_ASM(simulateMouseEvent(10, 20, 0, $0), absolute); // click
-  EM_ASM(simulateMouseEvent(10, 20, 0, $0), absolute); // click some more, but this one should be ignored through PeepEvent
-  EM_ASM(simulateMouseEvent(30, 70, -1, $0), absolute); // move some more
-  EM_ASM(simulateMouseEvent(30, 70, 1, $0), absolute); // trigger the end
+  EM_ASM(simulateMouseMove(10, 20, $0), absolute); // move from 0,0 to 10,20
+  EM_ASM(simulateMouseClick(10, 20, 0, $0), absolute); // click
+  EM_ASM(simulateMouseClick(10, 20, 0, $0), absolute); // click some more, but this one should be ignored through PeepEvent
+  EM_ASM(simulateMouseMove(30, 70, $0), absolute); // move some more
+  EM_ASM(simulateMouseClick(30, 70, 1, $0), absolute); // trigger the end
 
   emscripten_set_main_loop(one, 0, 0);
 }

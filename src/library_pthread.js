@@ -1053,7 +1053,7 @@ var LibraryPThread = {
   },
 
   $establishStackSpace__internal: true,
-  $establishStackSpace__deps: ['$stackRestore'],
+  $establishStackSpace__deps: ['$stackRestore', 'emscripten_stack_set_limits'],
   $establishStackSpace: (pthread_ptr) => {
 #if ALLOW_MEMORY_GROWTH
     // If memory growth is enabled, the memory views may have gotten out of date,
@@ -1096,7 +1096,7 @@ var LibraryPThread = {
     '$runtimeKeepaliveCounter',
 #endif
   ],
-  $invokeEntryPoint: (ptr, arg) => {
+  $invokeEntryPoint: {{{ asyncIf(ASYNCIFY == 2) }}}(ptr, arg) => {
 #if PTHREADS_DEBUG
     dbg(`invokeEntryPoint: ${ptrToString(ptr)}`);
 #endif
@@ -1132,7 +1132,9 @@ var LibraryPThread = {
     // *ThreadMain(void *arg) form, or try linking with the Emscripten linker
     // flag -sEMULATE_FUNCTION_POINTER_CASTS to add in emulation for this x86
     // ABI extension.
-    var result = {{{ makeDynCall('pp', 'ptr') }}}(arg);
+
+    var result = {{{ makeDynCall('pp', 'ptr', ASYNCIFY == 2) }}}(arg);
+
 #if STACK_OVERFLOW_CHECK
     checkStackCookie();
 #endif
@@ -1151,10 +1153,9 @@ var LibraryPThread = {
 #endif
     }
 #if ASYNCIFY == 2
-    Promise.resolve(result).then(finish);
-#else
-    finish(result);
+    result = await result;
 #endif
+    finish(result);
   },
 
 #if MAIN_MODULE

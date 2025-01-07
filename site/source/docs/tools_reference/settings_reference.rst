@@ -1947,6 +1947,22 @@ factory function, you can use --extern-pre-js or --extern-post-js. While
 intended usage is to add code that is optimized with the rest of the emitted
 code, allowing better dead code elimination and minification.
 
+Experimental Feature - Instance ES Modules:
+
+Note this feature is still under active development and is subject to change!
+
+To enable this feature use -sMODULARIZE=instance. Enabling this mode will
+produce an ES module that is a singleton with ES module exports. The
+module will export a default value that is an async init function and will
+also export named values that correspond to the Wasm exports and runtime
+exports. The init function must be called before any of the exports can be
+used. An example of using the module is below.
+
+  import init, { foo, bar } from "./my_module.mjs"
+  await init(optionalArguments);
+  foo();
+  bar();
+
 Default value: false
 
 .. _export_es6:
@@ -2170,10 +2186,9 @@ WASM_BIGINT
 
 WebAssembly integration with JavaScript BigInt. When enabled we don't need to
 legalize i64s into pairs of i32s, as the wasm VM will use a BigInt where an
-i64 is used. If WASM_BIGINT is present, the default minimum supported browser
-versions will be increased to the min version that supports BigInt.
+i64 is used.
 
-Default value: false
+Default value: true
 
 .. _emit_producers_section:
 
@@ -2889,7 +2904,8 @@ are desired to work. Pass -sMIN_FIREFOX_VERSION=majorVersion to drop support
 for Firefox versions older than < majorVersion.
 Firefox 79 was released on 2020-07-28.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 34 which was released on 2014-12-01.
+Minimum supported value is 40 which was released on 2015-09-11 (see
+feature_matrix.py)
 
 Default value: 79
 
@@ -2908,9 +2924,10 @@ NOTE: Emscripten is unable to produce code that would work in iOS 9.3.5 and
 older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
 see https://github.com/emscripten-core/emscripten/pull/7191.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 90000 which was released in 2015.
+Minimum supported value is 101000 which was released in 2016-09 (see
+feature_matrix.py).
 
-Default value: 140100
+Default value: 150000
 
 .. _min_chrome_version:
 
@@ -2923,7 +2940,8 @@ This setting also applies to modern Chromium-based Edge, which shares version
 numbers with Chrome.
 Chrome 85 was released on 2020-08-25.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 32, which was released on 2014-01-04.
+Minimum supported value is 45, which was released on 2015-09-01 (see
+feature_matrix.py).
 
 Default value: 85
 
@@ -2936,7 +2954,8 @@ Specifies minimum node version to target for the generated code.  This is
 distinct from the minimum version required run the emscripten compiler.
 This version aligns with the current Ubuuntu TLS 20.04 (Focal).
 Version is encoded in MMmmVV, e.g. 181401 denotes Node 18.14.01.
-Minimum supported value is 101900, which was released 2020-02-05.
+Minimum supported value is 101900, which was released 2020-02-05 (see
+feature_matrix.py).
 
 Default value: 160000
 
@@ -3297,7 +3316,9 @@ Default value: true
 RUNTIME_DEBUG
 =============
 
-If true, add tracing to core runtime functions.
+If non-zero, add tracing to core runtime functions.  Can be set to 2 for
+extra tracing (for example, tracing that occurs on each turn of the event
+loop or each user callback, which can flood the console).
 This setting is enabled by default if any of the following debugging settings
 are enabled:
 - PTHREADS_DEBUG
@@ -3311,7 +3332,7 @@ are enabled:
 - SOCKET_DEBUG
 - FETCH_DEBUG
 
-Default value: false
+Default value: 0
 
 .. _legacy_runtime:
 

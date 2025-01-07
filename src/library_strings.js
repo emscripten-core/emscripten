@@ -383,9 +383,7 @@ addToLibrary({
 
   // Returns the number of bytes the given Javascript string takes if encoded as
   // a UTF16 byte array, EXCLUDING the null terminator byte.
-  $lengthBytesUTF16: (str) => {
-    return str.length*2;
-  },
+  $lengthBytesUTF16: (str) => str.length*2,
 
   $UTF32ToString: (ptr, maxBytesToRead) => {
 #if ASSERTIONS

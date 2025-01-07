@@ -12,6 +12,11 @@ extern "C" {
 #define emscripten_wasm_worker_t int
 #define EMSCRIPTEN_WASM_WORKER_ID_PARENT 0
 
+// Similar to emscripten_async_wait_callback_t but with a volatile first
+// argument.
+typedef void (*emscripten_async_wait_volatile_callback_t)(volatile void* address, uint32_t value, ATOMICS_WAIT_RESULT_T waitResult, void* userData);
+
+
 // Creates a new Worker() that is attached to executing this
 // WebAssembly.Instance and WebAssembly.Memory.
 //
@@ -184,7 +189,7 @@ void emscripten_lock_busyspin_waitinf_acquire(emscripten_lock_t *lock __attribut
 //       use this API in Worker, you cannot utilise an infinite loop programming
 //       model.
 void emscripten_lock_async_acquire(emscripten_lock_t *lock __attribute__((nonnull)),
-                                   void (*asyncWaitFinished)(volatile void *address, uint32_t value, ATOMICS_WAIT_RESULT_T waitResult, void *userData) __attribute__((nonnull)),
+                                   emscripten_async_wait_volatile_callback_t asyncWaitFinished __attribute__((nonnull)),
                                    void *userData,
                                    double maxWaitMilliseconds);
 
@@ -218,7 +223,7 @@ int emscripten_semaphore_try_acquire(emscripten_semaphore_t *sem __attribute__((
 // acquired. If you use this API in Worker, you cannot run an infinite loop.
 void emscripten_semaphore_async_acquire(emscripten_semaphore_t *sem __attribute__((nonnull)),
                                         int num,
-                                        void (*asyncWaitFinished)(volatile void *address, uint32_t idx, ATOMICS_WAIT_RESULT_T result, void *userData) __attribute__((nonnull)),
+                                        emscripten_async_wait_volatile_callback_t asyncWaitFinished __attribute__((nonnull)),
                                         void *userData,
                                         double maxWaitMilliseconds);
 
@@ -269,10 +274,10 @@ bool emscripten_condvar_wait(emscripten_condvar_t *condvar __attribute__((nonnul
 
 // Asynchronously wait for the given condition variable to signal.
 ATOMICS_WAIT_TOKEN_T emscripten_condvar_wait_async(emscripten_condvar_t *condvar __attribute__((nonnull)),
-                                                  emscripten_lock_t *lock __attribute__((nonnull)),
-                                                  void (*asyncWaitFinished)(int32_t *address, uint32_t value, ATOMICS_WAIT_RESULT_T waitResult, void *userData) __attribute__((nonnull)),
-                                                  void *userData,
-                                                  double maxWaitMilliseconds);
+                                                   emscripten_lock_t *lock __attribute__((nonnull)),
+                                                   emscripten_async_wait_callback_t asyncWaitFinished __attribute__((nonnull)),
+                                                   void *userData,
+                                                   double maxWaitMilliseconds);
 
 // Signals the given number of waiters on the specified condition variable.
 // Pass numWaitersToSignal == EMSCRIPTEN_NOTIFY_ALL_WAITERS to wake all waiters

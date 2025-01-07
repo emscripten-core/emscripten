@@ -205,8 +205,8 @@ def gen_inspect_code(path, struct, code):
 
 def generate_c_code(headers):
   code = ['#include <stdio.h>', '#include <stddef.h>']
-  for header in headers:
-    code.append('#include "' + header['name'] + '"')
+
+  code.extend(f'''#include "{header['name']}"''' for header in headers)
 
   code.append('int main() {')
   c_descent('structs', code)
@@ -220,13 +220,13 @@ def generate_c_code(headers):
     for name, type_ in header['defines'].items():
       # Add the necessary python type, if missing.
       if '%' not in type_:
-        if type_[-1] in ('d', 'i', 'u'):
+        if type_[-1] in {'d', 'i', 'u'}:
           # integer
           type_ = 'i%' + type_
-        elif type_[-1] in ('f', 'F', 'e', 'E', 'g', 'G'):
+        elif type_[-1] in {'f', 'F', 'e', 'E', 'g', 'G'}:
           # float
           type_ = 'f%' + type_
-        elif type_[-1] in ('x', 'X', 'a', 'A', 'c', 's'):
+        elif type_[-1] in {'x', 'X', 'a', 'A', 'c', 's'}:
           # hexadecimal or string
           type_ = 's%' + type_
 
@@ -343,7 +343,7 @@ def parse_json(path):
     data = [data]
 
   for item in data:
-    for key in item.keys():
+    for key in item:
       if key not in ['file', 'defines', 'structs']:
         raise 'Unexpected key in json file: %s' % key
 

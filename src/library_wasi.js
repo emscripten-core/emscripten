@@ -136,12 +136,7 @@ var WasiLibrary = {
   },
 #endif
 
-  $checkWasiClock: (clock_id) => {
-    return clock_id == {{{ cDefs.__WASI_CLOCKID_REALTIME }}} ||
-           clock_id == {{{ cDefs.__WASI_CLOCKID_MONOTONIC }}} ||
-           clock_id == {{{ cDefs.__WASI_CLOCKID_PROCESS_CPUTIME_ID }}} ||
-           clock_id == {{{ cDefs.__WASI_CLOCKID_THREAD_CPUTIME_ID }}};
-  },
+  $checkWasiClock: (clock_id) => clock_id >= {{{ cDefs.__WASI_CLOCKID_REALTIME }}} && clock_id <= {{{ cDefs.__WASI_CLOCKID_THREAD_CPUTIME_ID }}},
 
   // TODO: the i64 in the API here must be legalized for this JS code to run,
   // but the wasm file can't be legalized in standalone mode, which is where
@@ -149,7 +144,8 @@ var WasiLibrary = {
   // either wait for BigInt support or to legalize on the client.
   clock_time_get__i53abi: true,
   clock_time_get__nothrow: true,
-  clock_time_get__deps: ['emscripten_get_now', '$nowIsMonotonic', '$checkWasiClock'],
+  clock_time_get__proxy: 'none',
+  clock_time_get__deps: ['emscripten_get_now', 'emscripten_date_now', '$nowIsMonotonic', '$checkWasiClock'],
   clock_time_get: (clk_id, ignored_precision, ptime) => {
     if (!checkWasiClock(clk_id)) {
       return {{{ cDefs.EINVAL }}};
@@ -157,7 +153,7 @@ var WasiLibrary = {
     var now;
     // all wasi clocks but realtime are monotonic
     if (clk_id === {{{ cDefs.__WASI_CLOCKID_REALTIME }}}) {
-      now = Date.now();
+      now = _emscripten_date_now();
     } else if (nowIsMonotonic) {
       now = _emscripten_get_now();
     } else {
@@ -165,12 +161,12 @@ var WasiLibrary = {
     }
     // "now" is in ms, and wasi times are in ns.
     var nsec = Math.round(now * 1000 * 1000);
-    {{{ makeSetValue('ptime', 0, 'nsec >>> 0', 'i32') }}};
-    {{{ makeSetValue('ptime', 4, '(nsec / Math.pow(2, 32)) >>> 0', 'i32') }}};
+    {{{ makeSetValue('ptime', 0, 'nsec', 'i64') }}};
     return 0;
   },
 
   clock_res_get__nothrow: true,
+  clock_res_get__proxy: 'none',
   clock_res_get__deps: ['emscripten_get_now', 'emscripten_get_now_res', '$nowIsMonotonic', '$checkWasiClock'],
   clock_res_get: (clk_id, pres) => {
     if (!checkWasiClock(clk_id)) {
@@ -185,8 +181,7 @@ var WasiLibrary = {
     } else {
       return {{{ cDefs.ENOSYS }}};
     }
-    {{{ makeSetValue('pres', 0, 'nsec >>> 0', 'i32') }}};
-    {{{ makeSetValue('pres', 4, '(nsec / Math.pow(2, 32)) >>> 0', 'i32') }}};
+    {{{ makeSetValue('pres', 0, 'nsec', 'i64') }}};
     return 0;
   },
 
@@ -566,54 +561,27 @@ var WasiLibrary = {
   // random.h
 
   $initRandomFill: () => {
-    if (typeof crypto == 'object' && typeof crypto['getRandomValues'] == 'function') {
-      // for modern web browsers
-#if SHARED_MEMORY
-      // like with most Web APIs, we can't use Web Crypto API directly on shared memory,
-      // so we need to create an intermediate buffer and copy it to the destination
-      return (view) => (
-        view.set(crypto.getRandomValues(new Uint8Array(view.byteLength))),
-        // Return the original view to match modern native implementations.
-        view
-      );
-#else
-      return (view) => crypto.getRandomValues(view);
-#endif
-    } else
-#if ENVIRONMENT_MAY_BE_NODE
+#if ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 190000
+    // This block is not needed on v19+ since crypto.getRandomValues is builtin
     if (ENVIRONMENT_IS_NODE) {
-      // for nodejs with or without crypto support included
-      try {
-        var crypto_module = require('crypto');
-        var randomFillSync = crypto_module['randomFillSync'];
-        if (randomFillSync) {
-          // nodejs with LTS crypto support
-          return (view) => crypto_module['randomFillSync'](view);
-        }
-        // very old nodejs with the original crypto API
-        var randomBytes = crypto_module['randomBytes'];
-        return (view) => (
-          view.set(randomBytes(view.byteLength)),
-          // Return the original view to match modern native implementations.
-          view
-        );
-      } catch (e) {
-        // nodejs doesn't have crypto support
-      }
+      var nodeCrypto = require('crypto');
+      return (view) => nodeCrypto.randomFillSync(view);
     }
 #endif // ENVIRONMENT_MAY_BE_NODE
-    // we couldn't find a proper implementation, as Math.random() is not suitable for /dev/random, see emscripten-core/emscripten/pull/7096
-#if ASSERTIONS
-    abort('no cryptographic support found for randomDevice. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: (array) => { for (var i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };');
+
+#if SHARED_MEMORY
+    // like with most Web APIs, we can't use Web Crypto API directly on shared memory,
+    // so we need to create an intermediate buffer and copy it to the destination
+    return (view) => view.set(crypto.getRandomValues(new Uint8Array(view.byteLength)));
 #else
-    abort('initRandomDevice');
+    return (view) => crypto.getRandomValues(view);
 #endif
   },
 
   $randomFill__deps: ['$initRandomFill'],
   $randomFill: (view) => {
     // Lazily init on the first invocation.
-    return (randomFill = initRandomFill())(view);
+    (randomFill = initRandomFill())(view);
   },
 
   random_get__proxy: 'none',

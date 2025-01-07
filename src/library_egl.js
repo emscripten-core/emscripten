@@ -146,15 +146,13 @@ var LibraryEGL = {
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigs(EGLDisplay dpy, EGLConfig *configs, EGLint config_size, EGLint *num_config);
   eglGetConfigs__proxy: 'sync',
-  eglGetConfigs: (display, configs, config_size, numConfigs) => {
-    return EGL.chooseConfig(display, 0, configs, config_size, numConfigs);
-  },
+  eglGetConfigs: (display, configs, config_size, numConfigs) =>
+    EGL.chooseConfig(display, 0, configs, config_size, numConfigs),
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglChooseConfig(EGLDisplay dpy, const EGLint *attrib_list, EGLConfig *configs, EGLint config_size, EGLint *num_config);
   eglChooseConfig__proxy: 'sync',
-  eglChooseConfig: (display, attrib_list, configs, config_size, numConfigs) => {
-    return EGL.chooseConfig(display, attrib_list, configs, config_size, numConfigs);
-  },
+  eglChooseConfig: (display, attrib_list, configs, config_size, numConfigs) =>
+    EGL.chooseConfig(display, attrib_list, configs, config_size, numConfigs),
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigAttrib(EGLDisplay dpy, EGLConfig config, EGLint attribute, EGLint *value);
   eglGetConfigAttrib__proxy: 'sync',
@@ -634,6 +632,7 @@ var LibraryEGL = {
   eglGetCurrentDisplay: () => EGL.currentContext ? {{{ eglDefaultDisplay }}} : 0,
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surface);
+  eglSwapBuffers__deps: ['$GLctx'],
   eglSwapBuffers__proxy: 'sync',
   eglSwapBuffers: (dpy, surface) => {
 #if PROXY_TO_WORKER
@@ -642,9 +641,9 @@ var LibraryEGL = {
 
     if (!EGL.defaultDisplayInitialized) {
       EGL.setErrorCode(0x3001 /* EGL_NOT_INITIALIZED */);
-    } else if (!Module.ctx) {
+    } else if (!GLctx) {
       EGL.setErrorCode(0x3002 /* EGL_BAD_ACCESS */);
-    } else if (Module.ctx.isContextLost()) {
+    } else if (GLctx.isContextLost()) {
       EGL.setErrorCode(0x300E /* EGL_CONTEXT_LOST */);
     } else {
       // According to documentation this does an implicit flush.

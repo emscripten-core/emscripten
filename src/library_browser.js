@@ -26,8 +26,7 @@ var LibraryBrowser = {
     Module["setCanvasSize"] = Browser.setCanvasSize;
     Module["getUserMedia"] = Browser.getUserMedia;
     Module["createContext"] = Browser.createContext;
-    var preloadedImages = {};
-    var preloadedAudios = {};`,
+  `,
 
   $Browser: {
     useWebGL: false,
@@ -35,6 +34,8 @@ var LibraryBrowser = {
     pointerLock: false,
     moduleContextCreatedCallbacks: [],
     workers: [],
+    preloadedImages: {},
+    preloadedAudios: {},
 
     init() {
       if (Browser.initted) return;
@@ -73,7 +74,7 @@ var LibraryBrowser = {
           canvas.height = img.height;
           var ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0);
-          preloadedImages[name] = canvas;
+          Browser.preloadedImages[name] = canvas;
           URL.revokeObjectURL(url);
           onload?.(byteArray);
         };
@@ -94,13 +95,13 @@ var LibraryBrowser = {
         function finish(audio) {
           if (done) return;
           done = true;
-          preloadedAudios[name] = audio;
+          Browser.preloadedAudios[name] = audio;
           onload?.(byteArray);
         }
         function fail() {
           if (done) return;
           done = true;
-          preloadedAudios[name] = new Audio(); // empty shim
+          Browser.preloadedAudios[name] = new Audio(); // empty shim
           onerror?.();
         }
         var b = new Blob([byteArray], { type: Browser.getMimetype(name) });
@@ -191,7 +192,7 @@ var LibraryBrowser = {
     },
 
     createContext(/** @type {HTMLCanvasElement} */ canvas, useWebGL, setInModule, webGLContextAttributes) {
-      if (useWebGL && Module.ctx && canvas == Module.canvas) return Module.ctx; // no need to recreate GL context if it's already been created for this canvas.
+      if (useWebGL && Module['ctx'] && canvas == Module['canvas']) return Module['ctx']; // no need to recreate GL context if it's already been created for this canvas.
 
       var ctx;
       var contextHandle;
@@ -234,7 +235,7 @@ var LibraryBrowser = {
 #if ASSERTIONS
         if (!useWebGL) assert(typeof GLctx == 'undefined', 'cannot set in module if GLctx is used, but we are a non-GL context that would replace it');
 #endif
-        Module.ctx = ctx;
+        Module['ctx'] = ctx;
         if (useWebGL) GL.makeContextCurrent(contextHandle);
         Browser.useWebGL = useWebGL;
         Browser.moduleContextCreatedCallbacks.forEach((callback) => callback());
@@ -651,7 +652,7 @@ var LibraryBrowser = {
 
   // TODO: currently not callable from a pthread, but immediately calls onerror() if not on main thread.
   emscripten_async_load_script__deps: ['$UTF8ToString'],
-  emscripten_async_load_script: (url, onload, onerror) => {
+  emscripten_async_load_script: async (url, onload, onerror) => {
     url = UTF8ToString(url);
 #if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
@@ -686,10 +687,13 @@ var LibraryBrowser = {
 
 #if ENVIRONMENT_MAY_BE_NODE && DYNAMIC_EXECUTION
     if (ENVIRONMENT_IS_NODE) {
-      readAsync(url, false).then((data) => {
+      try {
+        var data = await readAsync(url, false);
         eval(data);
         loadDone();
-      }, loadError);
+      } catch {
+        loadError();
+      }
       return;
     }
 #endif
@@ -699,34 +703,6 @@ var LibraryBrowser = {
     script.onerror = loadError;
     script.src = url;
     document.body.appendChild(script);
-  },
-
-  $safeRequestAnimationFrame__deps: ['$MainLoop'],
-  $safeRequestAnimationFrame: (func) => {
-    {{{ runtimeKeepalivePush() }}}
-    return MainLoop.requestAnimationFrame(() => {
-      {{{ runtimeKeepalivePop() }}}
-      callUserCallback(func);
-    });
-  },
-
-  // Runs natively in pthread, no __proxy needed.
-  emscripten_async_call__deps: ['$safeSetTimeout', '$safeRequestAnimationFrame'],
-  emscripten_async_call: (func, arg, millis) => {
-    function wrapper() {
-      {{{ makeDynCall('vp', 'func') }}}(arg);
-    }
-
-    if (millis >= 0
-#if ENVIRONMENT_MAY_BE_NODE
-      // node does not support requestAnimationFrame
-      || ENVIRONMENT_IS_NODE
-#endif
-    ) {
-      safeSetTimeout(wrapper, millis);
-    } else {
-      safeRequestAnimationFrame(wrapper);
-    }
   },
 
   emscripten_get_window_title__proxy: 'sync',
@@ -765,9 +741,7 @@ var LibraryBrowser = {
   },
 
   emscripten_set_canvas_size__proxy: 'sync',
-  emscripten_set_canvas_size: (width, height) => {
-    Browser.setCanvasSize(width, height);
-  },
+  emscripten_set_canvas_size: (width, height) => Browser.setCanvasSize(width, height),
 
   emscripten_get_canvas_size__proxy: 'sync',
   emscripten_get_canvas_size: (width, height, isFullscreen) => {
@@ -909,7 +883,7 @@ var LibraryBrowser = {
   $getPreloadedImageData: (path, w, h) => {
     path = PATH_FS.resolve(path);
 
-    var canvas = /** @type {HTMLCanvasElement} */(preloadedImages[path]);
+    var canvas = /** @type {HTMLCanvasElement} */(Browser.preloadedImages[path]);
     if (!canvas) return 0;
 
     var ctx = canvas.getContext("2d");
