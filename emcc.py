@@ -88,6 +88,15 @@ LINK_ONLY_FLAGS = {
     '--proxy-to-worker', '--shell-file', '--source-map-base',
     '--threadprofiler', '--use-preload-plugins'
 }
+CLANG_FLAGS_WITH_ARGS = {
+    '-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
+    '-Xpreprocessor', '-include', '-imacros', '-idirafter',
+    '-iprefix', '-iwithprefix', '-iwithprefixbefore',
+    '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
+    '-install_name', '-compatibility_version', '-mllvm',
+    '-current_version', '-I', '-L', '-include-pch',
+    '-undefined', '-target', '-Xlinker', '-Xclang', '-z'
+}
 
 
 @unique
@@ -218,13 +227,7 @@ def create_reproduce_file(name, args):
           if ignore:
             continue
 
-          if arg in ('-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
-                     '-Xpreprocessor', '-include', '-imacros', '-idirafter',
-                     '-iprefix', '-iwithprefix', '-iwithprefixbefore',
-                     '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
-                     '-install_name', '-compatibility_version',
-                     '-current_version', '-I', '-L', '-include-pch',
-                     '-Xlinker', '-Xclang'):
+          if arg in CLANG_FLAGS_WITH_ARGS:
             ignore_next = True
 
           if arg == '-o':
@@ -765,14 +768,7 @@ def phase_setup(options, state, newargs):
       continue
 
     arg = newargs[i]
-    if arg in {'-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
-               '-Xpreprocessor', '-include', '-imacros', '-idirafter',
-               '-iprefix', '-iwithprefix', '-iwithprefixbefore',
-               '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
-               '-install_name', '-compatibility_version',
-               '-current_version', '-I', '-L', '-include-pch',
-               '-undefined', '-target',
-               '-Xlinker', '-Xclang', '-z'}:
+    if arg in CLANG_FLAGS_WITH_ARGS:
       skip = True
 
     if not arg.startswith('-'):
