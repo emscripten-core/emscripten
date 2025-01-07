@@ -2928,7 +2928,7 @@ MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 Minimum supported value is 101000 which was released in 2016-09 (see
 feature_matrix.py).
 
-Default value: 140100
+Default value: 150000
 
 .. _min_chrome_version:
 
