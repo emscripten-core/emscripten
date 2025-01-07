@@ -9,8 +9,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-extern "C" {
-
 EM_JS(void, log_started, (), {
   out("foo_start");
 })
@@ -32,8 +30,6 @@ void foo_end(int n) {
   if (n > 20000) foo_end(n - 2);
   if (n > 30000) foo_end(n - 5);
 }
-
-} // extern "C"
 
 int main(int argc, char** argv) {
   int x = atoi(argv[1]);

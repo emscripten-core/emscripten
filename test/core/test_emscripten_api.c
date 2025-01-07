@@ -8,9 +8,7 @@
 #include <stdio.h>
 #include "emscripten.h"
 
-extern "C" {
 void save_me_aimee() { printf("mann\n"); }
-}
 
 int main() {
   // EMSCRIPTEN_COMMENT("hello from the source");
