@@ -379,7 +379,15 @@ class other(RunnerCore):
                       test_file('hello_world.c')] + args)
     src = read_file('subdir/hello_world.mjs')
     self.assertContained("new URL('hello_world.wasm', import.meta.url)", src)
-    self.assertContained(r"new Worker\(new URL\('hello_world.mjs', import.meta.url\), {[\s\r\n]+workerData: 'em-pthread'[\s\r\n]+}\)", src, regex=True)
+    self.assertContained("""new Worker(new URL('hello_world.mjs', import.meta.url), {
+            'type': 'module',
+            // This is the way that we signal to the node worker that it is hosting
+            // a pthread.
+            'workerData': 'em-pthread',
+            // This is the way that we signal to the Web Worker that it is hosting
+            // a pthread.
+            'name': 'em-pthread',
+        })""", src)
     self.assertContained('export default Module;', src)
     self.assertContained('hello, world!', self.run_js('subdir/hello_world.mjs'))
 
@@ -390,7 +398,15 @@ class other(RunnerCore):
                       test_file('hello_world.c'), '-sSINGLE_FILE'])
     src = read_file('hello_world.mjs')
     self.assertNotContained("new URL('data:", src)
-    self.assertContained(r"new Worker\(new URL\('hello_world.mjs', import.meta.url\), {[\s\r\n]+workerData: 'em-pthread'[\s\r\n]+}\)", src, regex=True)
+    self.assertContained("""new Worker(new URL('hello_world.mjs', import.meta.url), {
+            'type': 'module',
+            // This is the way that we signal to the node worker that it is hosting
+            // a pthread.
+            'workerData': 'em-pthread',
+            // This is the way that we signal to the Web Worker that it is hosting
+            // a pthread.
+            'name': 'em-pthread',
+        })""", src)
     self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
   def test_emcc_output_mjs_closure(self):
