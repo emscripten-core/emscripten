@@ -15217,7 +15217,7 @@ addToLibrary({
   def test_mimalloc_no_asan(self):
     # See https://github.com/emscripten-core/emscripten/issues/23288#issuecomment-2571648258
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMALLOC=mimalloc', '-fsanitize=address'])
-    self.assertContained('error: mimalloc is not compatible with with -fsanitize=address', err)
+    self.assertContained('error: mimalloc is not compatible with -fsanitize=address', err)
 
   @crossplatform
   def test_js_preprocess_pre_post(self):
