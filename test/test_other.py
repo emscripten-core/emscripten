@@ -14416,7 +14416,8 @@ int main() {
 
   @crossplatform
   def test_reproduce(self):
-    self.run_process([EMCC, '-sASSERTIONS=1', '--reproduce=foo.tar', test_file('hello_world.c')])
+    ensure_dir('tmp')
+    self.run_process([EMCC, '-sASSERTIONS=1', '--reproduce=foo.tar', '-otmp/out.js', test_file('hello_world.c')])
     self.assertExists('foo.tar')
     names = []
     root = os.path.splitdrive(path_from_root())[1][1:]
@@ -14436,6 +14437,8 @@ foo/version.txt
     self.assertTextDataIdentical(expected, names)
     expected = '''\
 -sASSERTIONS=1
+-o
+out.js
 <root>/test/hello_world.c
 '''
     response = read_file('foo/response.txt')
