@@ -304,8 +304,6 @@ Assumes WASM_BIGINT.
 
 .. note:: Applicable during both linking and compilation
 
-.. note:: This is an experimental setting
-
 Default value: 0
 
 .. _initial_table:
