@@ -31,18 +31,6 @@ globalThis.MAX_PTR = (2 ** 32) - 1
 #endif
 }}}
 
-{{{
-#if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
-#if ASSERTIONS
-// Configure Vite Ignore Comment so Vite can compile non-static worker options.
-// Vite will always interpret the worker type as classic.
-globalThis.VITE_IGNORE_COMMENT = '/* @vite-ignore */';
-#else
-globalThis.VITE_IGNORE_COMMENT = '';
-#endif
-#endif
-}}}
-
 var LibraryPThread = {
   $PThread__postset: 'PThread.init();',
   $PThread__deps: ['_emscripten_thread_init',
@@ -419,7 +407,7 @@ var LibraryPThread = {
             createScriptURL: (ignored) => new URL("{{{ TARGET_JS_NAME }}}", import.meta.url)
           }
         );
-        worker = new Worker(p.createScriptURL('ignored'), {{{VITE_IGNORE_COMMENT}}}{
+        worker = new Worker(p.createScriptURL('ignored'), {
 #if EXPORT_ES6
             'type': 'module',
 #endif
@@ -444,7 +432,7 @@ var LibraryPThread = {
       // instead of just using new URL(import.meta.url) because bundler's only recognize
       // the first case in their bundling step. The latter ends up producing an invalid
       // URL to import from the server (e.g., for webpack the file:// path).
-      worker = new Worker(new URL('{{{ TARGET_JS_NAME }}}', import.meta.url), {{{VITE_IGNORE_COMMENT}}}{
+      worker = new Worker(new URL('{{{ TARGET_JS_NAME }}}', import.meta.url), {
 #if EXPORT_ES6
           'type': 'module',
 #endif
@@ -482,7 +470,7 @@ var LibraryPThread = {
       // Use Trusted Types compatible wrappers.
       if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
         var p = trustedTypes.createPolicy('emscripten#workerPolicy2', { createScriptURL: (ignored) => pthreadMainJs });
-        worker = new Worker(p.createScriptURL('ignored'), {{{VITE_IGNORE_COMMENT}}}{
+        worker = new Worker(p.createScriptURL('ignored'), {
 #if EXPORT_ES6
             'type': 'module',
 #endif
@@ -503,7 +491,7 @@ var LibraryPThread = {
         });
       } else
 #endif
-      worker = new Worker(pthreadMainJs, {{{VITE_IGNORE_COMMENT}}}{
+      worker = new Worker(pthreadMainJs, {
 #if EXPORT_ES6
           'type': 'module',
 #endif
