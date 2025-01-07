@@ -96,7 +96,7 @@ int __pthread_create_js(struct __pthread *thread, const pthread_attr_t *attr, vo
 int _emscripten_default_pthread_stack_size();
 void __set_thread_state(pthread_t ptr, int is_main, int is_runtime, int can_block);
 
-double _emscripten_receive_on_main_thread_js(int funcIndex, void* emAsmAddr, pthread_t callingThread, int numCallArgs, double* args);
+double _emscripten_receive_on_main_thread_js(int funcIndex, void* emAsmAddr, pthread_t callingThread, int numCallArgs, double* args, void *ctx);
 
 // Return non-zero if the calling thread supports Atomic.wait (For example
 // if called from the main browser thread, this function will return zero
