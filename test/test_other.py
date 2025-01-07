@@ -8019,10 +8019,10 @@ addToLibrary({
         printf("double-freed\n");
       }
     ''')
-    self.run_process([EMCC, 'src.c'])
+    self.run_process([EMCC, 'src.c', '-O2'])
     self.assertContained('double-freed', self.run_js('a.out.js'))
     # in debug mode, the double-free is caught
-    self.run_process([EMCC, 'src.c', '-sASSERTIONS=2'])
+    self.run_process([EMCC, 'src.c', '-O0'])
     out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
     self.assertContained('native code called abort()', out)
 
@@ -13405,7 +13405,7 @@ kill -9 $$
 
     # Check that the linker was run with `-mt` variants because `-pthread` was passed.
     self.assertContained(' -lc-mt-debug ', err)
-    self.assertContained(' -ldlmalloc-mt ', err)
+    self.assertContained(' -ldlmalloc-mt-debug ', err)
     self.assertContained(' -lcompiler_rt-mt ', err)
 
   def test_explicit_gl_linking(self):
