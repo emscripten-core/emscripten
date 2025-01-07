@@ -15,4 +15,5 @@ class posixtest_browser(BrowserCore):
 
   This class get populated dynamically below.
   """
+
   pass

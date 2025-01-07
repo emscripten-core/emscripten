@@ -24,16 +24,12 @@ class posixtest(RunnerCore):
 
   This class get populated dynamically below.
   """
+
   pass
 
 
 def filter_tests(all_tests):
-  prefixes = [
-    'pthread_',
-    'strftime',
-    'asctime',
-    'gmtime'
-  ]
+  prefixes = ['pthread_', 'strftime', 'asctime', 'gmtime']
 
   def enable_test(t):
     return any(t.startswith(p) for p in prefixes)
@@ -155,20 +151,21 @@ expect_fail = {
 
 
 def make_test(name, testfile, browser):
-
   @node_pthreads
   def f(self):
     if name in disabled:
       self.skipTest(disabled[name])
-    args = ['-I' + os.path.join(testsuite_root, 'include'),
-            '-Werror',
-            '-Wno-format-security',
-            '-Wno-int-conversion',
-            '-Wno-format',
-            '-pthread',
-            '-sEXIT_RUNTIME',
-            '-sTOTAL_MEMORY=256mb',
-            '-sPTHREAD_POOL_SIZE=40']
+    args = [
+      '-I' + os.path.join(testsuite_root, 'include'),
+      '-Werror',
+      '-Wno-format-security',
+      '-Wno-int-conversion',
+      '-Wno-format',
+      '-pthread',
+      '-sEXIT_RUNTIME',
+      '-sTOTAL_MEMORY=256mb',
+      '-sPTHREAD_POOL_SIZE=40',
+    ]
     if browser:
       self.btest_exit(testfile, args=args)
     else:

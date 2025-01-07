@@ -3,8 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Runs a build command many times to search for any nondeterminism.
-"""
+"""Runs a build command many times to search for any nondeterminism."""
 
 import os
 import random
@@ -49,7 +48,7 @@ i = 0
 while 1:
   print(i)
   i += 1
-  time.sleep(random.random() / (10 * 5)) # add some timing nondeterminism here, not that we need it, but whatever
+  time.sleep(random.random() / (10 * 5))  # add some timing nondeterminism here, not that we need it, but whatever
   curr = run()
   if first != curr:
     print('NONDETERMINISM!!!1')

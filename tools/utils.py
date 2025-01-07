@@ -43,7 +43,7 @@ def safe_ensure_dirs(dirname):
 # TODO(sbc): Replace with str.removeprefix once we update to python3.9
 def removeprefix(string, prefix):
   if string.startswith(prefix):
-    return string[len(prefix):]
+    return string[len(prefix) :]
   return string
 
 

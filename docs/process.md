@@ -55,8 +55,9 @@ pre-processor.  See [`.clang-format`][clang-format] for more details.
 ### Python Code
 
 We generally follow the pep8 standard with the major exception that we use 2
-spaces for indentation.  `ruff` is run on all PRs to ensure that Python code
-conforms to this style.  See [`pyproject.toml`][pyproject.toml] for more details.
+spaces for indentation.  `ruff check` and `ruff format` are run on all PRs to
+ensure that Python code conforms to this style.  See
+[`pyproject.toml`][pyproject.toml] for more details.
 
 #### Static Type Checking
 

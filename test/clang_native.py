@@ -15,15 +15,15 @@ logger = logging.getLogger('clang_native')
 
 def get_native_triple():
   arch = {
-      'aarch64': 'arm64',
-      'arm64': 'arm64',
-      'x86_64': 'x86_64',
-      'AMD64': 'x86_64',
+    'aarch64': 'arm64',
+    'arm64': 'arm64',
+    'x86_64': 'x86_64',
+    'AMD64': 'x86_64',
   }[platform.machine()]
   OS = {
-      'linux': 'linux',
-      'darwin': 'darwin',
-      'win32': 'windows-msvc',
+    'linux': 'linux',
+    'darwin': 'darwin',
+    'win32': 'windows-msvc',
   }[sys.platform]
   return f'{arch}-{OS}'
 
@@ -78,7 +78,11 @@ def get_clang_native_env():
     else:
       visual_studio_path = 'C:\\Program Files (x86)\\Microsoft Visual Studio 14.0'
     if not os.path.isdir(visual_studio_path):
-      raise Exception('Visual Studio 2015 was not found in "' + visual_studio_path + '"! Run in Visual Studio X64 command prompt to avoid the need to autoguess this location (or set VSINSTALLDIR env var).')
+      raise Exception(
+        'Visual Studio 2015 was not found in "'
+        + visual_studio_path
+        + '"! Run in Visual Studio X64 command prompt to avoid the need to autoguess this location (or set VSINSTALLDIR env var).'
+      )
 
     # Guess where Program Files (x86) is located
     if 'ProgramFiles(x86)' in env:
@@ -98,19 +102,31 @@ def get_clang_native_env():
     else:
       windows8_sdk_dir = os.path.join(prog_files_x86, 'Windows Kits', '8.1')
     if not os.path.isdir(windows8_sdk_dir):
-      raise Exception('Windows 8.1 SDK was not found in "' + windows8_sdk_dir + '"! Run in Visual Studio command prompt to avoid the need to autoguess this location (or set WindowsSdkDir env var).')
+      raise Exception(
+        'Windows 8.1 SDK was not found in "'
+        + windows8_sdk_dir
+        + '"! Run in Visual Studio command prompt to avoid the need to autoguess this location (or set WindowsSdkDir env var).'
+      )
 
     # Guess where Windows 10 SDK is located
     if os.path.isdir(os.path.join(prog_files_x86, 'Windows Kits', '10')):
       windows10_sdk_dir = os.path.join(prog_files_x86, 'Windows Kits', '10')
     if not os.path.isdir(windows10_sdk_dir):
-      raise Exception('Windows 10 SDK was not found in "' + windows10_sdk_dir + '"! Run in Visual Studio command prompt to avoid the need to autoguess this location.')
+      raise Exception(
+        'Windows 10 SDK was not found in "'
+        + windows10_sdk_dir
+        + '"! Run in Visual Studio command prompt to avoid the need to autoguess this location.'
+      )
 
     env.setdefault('VSINSTALLDIR', visual_studio_path)
     env.setdefault('VCINSTALLDIR', os.path.join(visual_studio_path, 'VC'))
 
     windows10sdk_kits_include_dir = os.path.join(windows10_sdk_dir, 'Include')
-    windows10sdk_kit_version_name = [x for x in os.listdir(windows10sdk_kits_include_dir) if os.path.isdir(os.path.join(windows10sdk_kits_include_dir, x))][0] # e.g. "10.0.10150.0" or "10.0.10240.0"
+    windows10sdk_kit_version_name = [
+      x
+      for x in os.listdir(windows10sdk_kits_include_dir)
+      if os.path.isdir(os.path.join(windows10sdk_kits_include_dir, x))
+    ][0]  # e.g. "10.0.10150.0" or "10.0.10240.0"
 
     def append_item(key, item):
       if key not in env or len(env[key].strip()) == 0:

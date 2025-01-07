@@ -21,7 +21,9 @@ def get(ports, settings, shared):
   ports.fetch_project('cocos2d', f'https://github.com/emscripten-ports/Cocos2d/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
-    diagnostics.warning('experimental', 'cocos2d: library is experimental, do not expect that it will work out of the box')
+    diagnostics.warning(
+      'experimental', 'cocos2d: library is experimental, do not expect that it will work out of the box'
+    )
 
     cocos2d_src = ports.get_dir('cocos2d')
     cocos2d_root = os.path.join(cocos2d_src, 'Cocos2d-' + TAG)
@@ -35,7 +37,7 @@ def get(ports, settings, shared):
       '-DCC_ENABLE_CHIPMUNK_INTEGRATION',
       '-DCC_KEYBOARD_SUPPORT',
       '-DGL_ES=1',
-      '-DNDEBUG', # '-DCOCOS2D_DEBUG=1' 1 - error/warn, 2 - verbose
+      '-DNDEBUG',  # '-DCOCOS2D_DEBUG=1' 1 - error/warn, 2 - verbose
       # Cocos2d source code hasn't switched to __EMSCRIPTEN__.
       # See https://github.com/emscripten-ports/Cocos2d/pull/3
       '-DEMSCRIPTEN',
@@ -48,11 +50,7 @@ def get(ports, settings, shared):
       target = os.path.join('cocos2d', os.path.relpath(dirname, cocos2d_root))
       ports.install_header_dir(dirname, target=target)
 
-    ports.build_port(cocos2d_src, final, 'cocos2d',
-                     flags=flags,
-                     cxxflags=['-std=c++14'],
-                     includes=includes,
-                     srcs=srcs)
+    ports.build_port(cocos2d_src, final, 'cocos2d', flags=flags, cxxflags=['-std=c++14'], includes=includes, srcs=srcs)
 
   return [shared.cache.get_lib('libcocos2d.a', create, what='port')]
 
@@ -106,34 +104,36 @@ def make_source_list(cocos2d_root, cocos2dx_root):
   add_makefile(os.path.join(cocos2dx_root, 'platform', 'third_party', 'Makefile'))
   # misc
   sources.append(os.path.join(cocos2d_root, 'CocosDenshion', 'emscripten', 'SimpleAudioEngine.cpp'))
-  sources.append(os.path.join(cocos2dx_root, 'CCDeprecated.cpp')) # subset of cocos2d v2
+  sources.append(os.path.join(cocos2dx_root, 'CCDeprecated.cpp'))  # subset of cocos2d v2
   return sources
 
 
 def make_includes(root):
-  return [os.path.join(root, 'CocosDenshion', 'include'),
-          os.path.join(root, 'extensions'),
-          os.path.join(root, 'extensions', 'AssetsManager'),
-          os.path.join(root, 'extensions', 'CCArmature'),
-          os.path.join(root, 'extensions', 'CCBReader'),
-          os.path.join(root, 'extensions', 'GUI', 'CCControlExtension'),
-          os.path.join(root, 'extensions', 'GUI', 'CCEditBox'),
-          os.path.join(root, 'extensions', 'GUI', 'CCScrollView'),
-          os.path.join(root, 'extensions', 'network'),
-          os.path.join(root, 'extensions', 'Components'),
-          os.path.join(root, 'extensions', 'LocalStorage'),
-          os.path.join(root, 'extensions', 'physics_nodes'),
-          os.path.join(root, 'extensions', 'spine'),
-          os.path.join(root, 'external'),
-          os.path.join(root, 'external', 'chipmunk', 'include', 'chipmunk'),
-          os.path.join(root, 'cocos2dx'),
-          os.path.join(root, 'cocos2dx', 'cocoa'),
-          os.path.join(root, 'cocos2dx', 'include'),
-          os.path.join(root, 'cocos2dx', 'kazmath', 'include'),
-          os.path.join(root, 'cocos2dx', 'platform'),
-          os.path.join(root, 'cocos2dx', 'platform', 'emscripten'),
-          os.path.join(root, 'cocos2dx', 'platform', 'third_party', 'linux', 'libfreetype2'),
-          os.path.join(root, 'cocos2dx', 'platform', 'third_party', 'common', 'etc'),
-          os.path.join(root, 'cocos2dx', 'platform', 'third_party', 'emscripten', 'libtiff', 'include'),
-          os.path.join(root, 'cocos2dx', 'platform', 'third_party', 'emscripten', 'libjpeg'),
-          os.path.join(root, 'cocos2dx', 'platform', 'third_party', 'emscripten', 'libwebp')]
+  return [
+    os.path.join(root, 'CocosDenshion', 'include'),
+    os.path.join(root, 'extensions'),
+    os.path.join(root, 'extensions', 'AssetsManager'),
+    os.path.join(root, 'extensions', 'CCArmature'),
+    os.path.join(root, 'extensions', 'CCBReader'),
+    os.path.join(root, 'extensions', 'GUI', 'CCControlExtension'),
+    os.path.join(root, 'extensions', 'GUI', 'CCEditBox'),
+    os.path.join(root, 'extensions', 'GUI', 'CCScrollView'),
+    os.path.join(root, 'extensions', 'network'),
+    os.path.join(root, 'extensions', 'Components'),
+    os.path.join(root, 'extensions', 'LocalStorage'),
+    os.path.join(root, 'extensions', 'physics_nodes'),
+    os.path.join(root, 'extensions', 'spine'),
+    os.path.join(root, 'external'),
+    os.path.join(root, 'external', 'chipmunk', 'include', 'chipmunk'),
+    os.path.join(root, 'cocos2dx'),
+    os.path.join(root, 'cocos2dx', 'cocoa'),
+    os.path.join(root, 'cocos2dx', 'include'),
+    os.path.join(root, 'cocos2dx', 'kazmath', 'include'),
+    os.path.join(root, 'cocos2dx', 'platform'),
+    os.path.join(root, 'cocos2dx', 'platform', 'emscripten'),
+    os.path.join(root, 'cocos2dx', 'platform', 'third_party', 'linux', 'libfreetype2'),
+    os.path.join(root, 'cocos2dx', 'platform', 'third_party', 'common', 'etc'),
+    os.path.join(root, 'cocos2dx', 'platform', 'third_party', 'emscripten', 'libtiff', 'include'),
+    os.path.join(root, 'cocos2dx', 'platform', 'third_party', 'emscripten', 'libjpeg'),
+    os.path.join(root, 'cocos2dx', 'platform', 'third_party', 'emscripten', 'libwebp'),
+  ]

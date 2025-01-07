@@ -55,7 +55,10 @@ def create_profiling_graph(outfile):
       print('Failed to parse JSON file "' + f + '"!', file=sys.stderr)
       return 1
   if len(all_results) == 0:
-    print(f'No profiler logs were found in path: ${profiler_logs_path}.\nTry setting the environment variable EMPROFILE=1 and run some emcc commands, then re-run "emprofile.py --graph".', file=sys.stderr)
+    print(
+      f'No profiler logs were found in path: ${profiler_logs_path}.\nTry setting the environment variable EMPROFILE=1 and run some emcc commands, then re-run "emprofile.py --graph".',
+      file=sys.stderr,
+    )
     return 1
 
   all_results.sort(key=lambda x: x['time'])
@@ -63,7 +66,11 @@ def create_profiling_graph(outfile):
   emprofile_json_data = json.dumps(all_results, indent=2)
 
   html_file = outfile + '.html'
-  html_contents = Path(os.path.dirname(os.path.realpath(__file__)), 'toolchain_profiler.results_template.html').read_text().replace('{{{ emprofile_json_data }}}', emprofile_json_data)
+  html_contents = (
+    Path(os.path.dirname(os.path.realpath(__file__)), 'toolchain_profiler.results_template.html')
+    .read_text()
+    .replace('{{{ emprofile_json_data }}}', emprofile_json_data)
+  )
   Path(html_file).write_text(html_contents)
   print(f'Wrote "{html_file}"')
   return 0

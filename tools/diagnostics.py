@@ -3,8 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Simple color-enabled diagnositics reporting functions.
-"""
+"""Simple color-enabled diagnositics reporting functions."""
 
 import ctypes
 import logging
@@ -35,13 +34,13 @@ WHITE = 7
 
 # color for use for each diagnostic level
 level_colors = {
-    WARN: MAGENTA,
-    ERROR: RED,
+  WARN: MAGENTA,
+  ERROR: RED,
 }
 
 level_prefixes = {
-    WARN: 'warning: ',
-    ERROR: 'error: ',
+  WARN: 'warning: ',
+  ERROR: 'error: ',
 }
 
 # Constants from the Windows API
@@ -51,14 +50,14 @@ STD_OUTPUT_HANDLE = -11
 def output_color_windows(color):
   # TODO(sbc): This code is duplicated in colored_logger.py.  Refactor.
   # wincon.h
-  FOREGROUND_BLACK     = 0x0000 # noqa
-  FOREGROUND_BLUE      = 0x0001 # noqa
-  FOREGROUND_GREEN     = 0x0002 # noqa
-  FOREGROUND_CYAN      = 0x0003 # noqa
-  FOREGROUND_RED       = 0x0004 # noqa
-  FOREGROUND_MAGENTA   = 0x0005 # noqa
-  FOREGROUND_YELLOW    = 0x0006 # noqa
-  FOREGROUND_GREY      = 0x0007 # noqa
+  FOREGROUND_BLACK = 0x0000  # noqa
+  FOREGROUND_BLUE = 0x0001  # noqa
+  FOREGROUND_GREEN = 0x0002  # noqa
+  FOREGROUND_CYAN = 0x0003  # noqa
+  FOREGROUND_RED = 0x0004  # noqa
+  FOREGROUND_MAGENTA = 0x0005  # noqa
+  FOREGROUND_YELLOW = 0x0006  # noqa
+  FOREGROUND_GREY = 0x0007  # noqa
 
   color_map = {
     RED: FOREGROUND_RED,
@@ -67,7 +66,7 @@ def output_color_windows(color):
     BLUE: FOREGROUND_BLUE,
     MAGENTA: FOREGROUND_MAGENTA,
     CYAN: FOREGROUND_CYAN,
-    WHITE: FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED
+    WHITE: FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED,
   }
 
   sys.stderr.flush()
@@ -80,16 +79,10 @@ def get_color_windows():
   WORD = ctypes.c_ushort
 
   class COORD(ctypes.Structure):
-    _fields_ = [
-      ("X", SHORT),
-      ("Y", SHORT)]
+    _fields_ = [("X", SHORT), ("Y", SHORT)]
 
   class SMALL_RECT(ctypes.Structure):
-    _fields_ = [
-      ("Left", SHORT),
-      ("Top", SHORT),
-      ("Right", SHORT),
-      ("Bottom", SHORT)]
+    _fields_ = [("Left", SHORT), ("Top", SHORT), ("Right", SHORT), ("Bottom", SHORT)]
 
   class CONSOLE_SCREEN_BUFFER_INFO(ctypes.Structure):
     _fields_ = [
@@ -97,7 +90,8 @@ def get_color_windows():
       ("dwCursorPosition", COORD),
       ("wAttributes", WORD),
       ("srWindow", SMALL_RECT),
-      ("dwMaximumWindowSize", COORD)]
+      ("dwMaximumWindowSize", COORD),
+    ]
 
   hdl = ctypes.windll.kernel32.GetStdHandle(STD_OUTPUT_HANDLE)
   csbi = CONSOLE_SCREEN_BUFFER_INFO()

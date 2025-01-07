@@ -20,8 +20,13 @@ def get(ports, settings, shared):
 
     # build
     srcs = [
-      'blocksort.c', 'compress.c', 'decompress.c', 'huffman.c',
-      'randtable.c', 'bzlib.c', 'crctable.c',
+      'blocksort.c',
+      'compress.c',
+      'decompress.c',
+      'huffman.c',
+      'randtable.c',
+      'bzlib.c',
+      'crctable.c',
     ]
     ports.build_port(source_path, final, 'bzip2', srcs=srcs)
 

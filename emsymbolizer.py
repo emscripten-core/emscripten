@@ -22,8 +22,7 @@ import sys
 from tools import shared
 from tools import webassembly
 
-LLVM_SYMBOLIZER = os.path.expanduser(
-    shared.build_llvm_tool_path(shared.exe_suffix('llvm-symbolizer')))
+LLVM_SYMBOLIZER = os.path.expanduser(shared.build_llvm_tool_path(shared.exe_suffix('llvm-symbolizer')))
 
 
 class Error(BaseException):
@@ -68,8 +67,7 @@ def symbolize_address_symbolizer(module, address, is_dwarf):
     vma_adjust = get_codesec_offset(module)
   else:
     vma_adjust = 0
-  cmd = [LLVM_SYMBOLIZER, '-e', module.filename, f'--adjust-vma={vma_adjust}',
-         str(address)]
+  cmd = [LLVM_SYMBOLIZER, '-e', module.filename, f'--adjust-vma={vma_adjust}', str(address)]
   out = shared.run_process(cmd, stdout=subprocess.PIPE).stdout.strip()
   out_lines = out.splitlines()
 
@@ -184,11 +182,7 @@ class WasmSourceMap(object):
     nearest = self.find_offset(offset)
     assert nearest in self.mappings, 'Sourcemap has an offset with no mapping'
     info = self.mappings[nearest]
-    return LocationInfo(
-        self.sources[info.source] if info.source is not None else None,
-        info.line,
-        info.column
-      )
+    return LocationInfo(self.sources[info.source] if info.source is not None else None, info.line, info.column)
 
 
 def symbolize_address_sourcemap(module, address, force_file):
@@ -223,36 +217,32 @@ def main(args):
     if args.addrtype == 'code':
       address += get_codesec_offset(module)
 
-    if ((has_debug_line_section(module) and not args.source) or
-       'dwarf' in args.source):
+    if (has_debug_line_section(module) and not args.source) or 'dwarf' in args.source:
       symbolize_address_symbolizer(module, address, is_dwarf=True)
-    elif ((get_sourceMappingURL_section(module) and not args.source) or
-          'sourcemap' in args.source):
+    elif (get_sourceMappingURL_section(module) and not args.source) or 'sourcemap' in args.source:
       symbolize_address_sourcemap(module, address, args.file)
-    elif ((has_name_section(module) and not args.source) or
-          'names' in args.source):
+    elif (has_name_section(module) and not args.source) or 'names' in args.source:
       symbolize_address_symbolizer(module, address, is_dwarf=False)
-    elif ((has_linking_section(module) and not args.source) or
-          'symtab' in args.source):
+    elif (has_linking_section(module) and not args.source) or 'symtab' in args.source:
       symbolize_address_symbolizer(module, address, is_dwarf=False)
     else:
-      raise Error('No .debug_line or sourceMappingURL section found in '
-                  f'{module.filename}.'
-                  " I don't know how to symbolize this file yet")
+      raise Error(
+        'No .debug_line or sourceMappingURL section found in '
+        f'{module.filename}.'
+        " I don't know how to symbolize this file yet"
+      )
 
 
 def get_args():
   parser = argparse.ArgumentParser()
-  parser.add_argument('-s', '--source', choices=['dwarf', 'sourcemap',
-                                                 'names', 'symtab'],
-                      help='Force debug info source type', default=())
-  parser.add_argument('-f', '--file', action='store',
-                      help='Force debug info source file')
-  parser.add_argument('-t', '--addrtype', choices=['code', 'file'],
-                      default='file',
-                      help='Address type (code section or file offset)')
-  parser.add_argument('-v', '--verbose', action='store_true',
-                      help='Print verbose info for debugging this script')
+  parser.add_argument(
+    '-s', '--source', choices=['dwarf', 'sourcemap', 'names', 'symtab'], help='Force debug info source type', default=()
+  )
+  parser.add_argument('-f', '--file', action='store', help='Force debug info source file')
+  parser.add_argument(
+    '-t', '--addrtype', choices=['code', 'file'], default='file', help='Address type (code section or file offset)'
+  )
+  parser.add_argument('-v', '--verbose', action='store_true', help='Print verbose info for debugging this script')
   parser.add_argument('wasm_file', help='Wasm file')
   parser.add_argument('address', help='Address to lookup')
   args = parser.parse_args()

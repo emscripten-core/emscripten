@@ -146,17 +146,16 @@ def enable_feature(feature, reason, override=False):
           # enabling other features requiring 15.0.
           continue
         diagnostics.warning(
-            'compatibility',
-            f'{name}={user_settings[name]} is not compatible with {reason} '
-            f'({min_version} or above required)')
+          'compatibility',
+          f'{name}={user_settings[name]} is not compatible with {reason} ' f'({min_version} or above required)',
+        )
       else:
         # If no conflict, bump the minimum version to accommodate the feature.
         setattr(settings, name, min_version)
 
 
 def disable_feature(feature):
-  """Allow the user to disable a feature that would otherwise be on by default.
-  """
+  """Allow the user to disable a feature that would otherwise be on by default."""
   disable_override_features.add(feature)
 
 

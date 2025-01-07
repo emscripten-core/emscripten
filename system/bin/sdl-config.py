@@ -11,4 +11,3 @@ if args[0] == '--cflags':
   print('')
 elif '--version' in args:
   print('1.3.0')
-

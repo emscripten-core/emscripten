@@ -12,15 +12,32 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('giflib', f'https://storage.googleapis.com/webassembly/emscripten-ports/giflib-{VERSION}.tar.gz', sha512hash=HASH)
+  ports.fetch_project(
+    'giflib', f'https://storage.googleapis.com/webassembly/emscripten-ports/giflib-{VERSION}.tar.gz', sha512hash=HASH
+  )
 
   def create(final):
     source_path = ports.get_dir('giflib', f'giflib-{VERSION}')
     ports.install_headers(source_path)
     exclude_files = [
-      'giffix.c', 'gifecho.c', 'giffilter.c', 'gifcolor.c', 'gifecho.c', 'gifinto.c',
-      'gifsponge.c', 'gif2rgb.c', 'gifbg.c', 'gifbuild.c', 'gifclrmp.c', 'gifhisto.c',
-      'gifbuild.c', 'gifclrmp.c', 'gifhisto.c', 'giftext.c', 'giftool.c', 'gifwedge.c',
+      'giffix.c',
+      'gifecho.c',
+      'giffilter.c',
+      'gifcolor.c',
+      'gifecho.c',
+      'gifinto.c',
+      'gifsponge.c',
+      'gif2rgb.c',
+      'gifbg.c',
+      'gifbuild.c',
+      'gifclrmp.c',
+      'gifhisto.c',
+      'gifbuild.c',
+      'gifclrmp.c',
+      'gifhisto.c',
+      'giftext.c',
+      'giftool.c',
+      'gifwedge.c',
     ]
     ports.build_port(source_path, final, 'giflib', exclude_files=exclude_files)
 

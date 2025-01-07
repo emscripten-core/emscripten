@@ -25,8 +25,7 @@ def main(argv):
 
   utils.set_version_globals()
 
-  release_version = [utils.EMSCRIPTEN_VERSION_MAJOR, utils.EMSCRIPTEN_VERSION_MINOR,
-                     utils.EMSCRIPTEN_VERSION_TINY]
+  release_version = [utils.EMSCRIPTEN_VERSION_MAJOR, utils.EMSCRIPTEN_VERSION_MINOR, utils.EMSCRIPTEN_VERSION_TINY]
   new_dev_version = list(release_version)
   new_dev_version[2] += 1
 
@@ -60,10 +59,10 @@ def main(argv):
 
   branch_name = 'version_' + release_version
 
-  if is_github_runner: # For GitHub Actions workflows
+  if is_github_runner:  # For GitHub Actions workflows
     with open(os.environ['GITHUB_ENV'], 'a') as f:
       f.write(f'RELEASE_VERSION={release_version}')
-  else: # Local use
+  else:  # Local use
     # Create a new git branch
     subprocess.check_call(['git', 'checkout', '-b', branch_name, 'upstream/main'], cwd=root_dir)
 

@@ -14,9 +14,11 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('boost_headers',
-                      f'https://github.com/emscripten-ports/boost/releases/download/boost-{TAG}/boost-headers-{TAG}.zip',
-                      sha512hash=HASH)
+  ports.fetch_project(
+    'boost_headers',
+    f'https://github.com/emscripten-ports/boost/releases/download/boost-{TAG}/boost-headers-{TAG}.zip',
+    sha512hash=HASH,
+  )
 
   def create(final):
     # includes

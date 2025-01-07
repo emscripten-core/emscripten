@@ -17,7 +17,9 @@ import shutil
 import subprocess
 import sys
 
-EXCLUDES = [os.path.normpath(x) for x in '''
+EXCLUDES = [
+  os.path.normpath(x)
+  for x in '''
 test/third_party
 tools/maint
 site
@@ -27,7 +29,8 @@ Makefile
 cache
 cache.lock
 bootstrap.py
-'''.split()]
+'''.split()
+]
 
 EXCLUDE_PATTERNS = '''
 *.pyc
@@ -85,8 +88,9 @@ def copy_emscripten(target):
 
 def main():
   parser = argparse.ArgumentParser(description=__doc__)
-  parser.add_argument('-v', '--verbose', action='store_true', help='verbose',
-                      default=int(os.environ.get('EMCC_DEBUG', '0')))
+  parser.add_argument(
+    '-v', '--verbose', action='store_true', help='verbose', default=int(os.environ.get('EMCC_DEBUG', '0'))
+  )
   parser.add_argument('target', help='target directory')
   args = parser.parse_args()
   target = os.path.abspath(args.target)

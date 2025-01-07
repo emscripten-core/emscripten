@@ -150,8 +150,14 @@ for parent, _, files in os.walk(out_dir):
       print('   ', fullname)
       with open(fullname) as fh:
         js = fh.read()
-      js = re.sub(r'document\.on(\w+) ?= ?([\w.$]+)', lambda m: 'Recorder.onEvent("' + m.group(1) + '", ' + m.group(2) + ')', js)
-      js = re.sub(r'''([\w.'"\[\]]+)\.addEventListener\(([\w,. $]+)\)''', lambda m: 'Recorder.addListener(' + m.group(1) + ', ' + m.group(2) + ')', js)
+      js = re.sub(
+        r'document\.on(\w+) ?= ?([\w.$]+)', lambda m: 'Recorder.onEvent("' + m.group(1) + '", ' + m.group(2) + ')', js
+      )
+      js = re.sub(
+        r'''([\w.'"\[\]]+)\.addEventListener\(([\w,. $]+)\)''',
+        lambda m: 'Recorder.addListener(' + m.group(1) + ', ' + m.group(2) + ')',
+        js,
+      )
       Path(fullname).write_text(js)
 
 # Add our boilerplate
@@ -160,11 +166,15 @@ print('add boilerplate...')
 
 with open(os.path.join(out_dir, first_js), 'w') as fh1:
   fh1.write(
-    (Path(os.path.dirname(os.path.dirname(__file__)), 'src', 'headless.js').read_text() % (
-      window_location, window_location.split('?')[-1], on_idle or 'null', dirs_to_drop
-    ) if shell else '') +
-    Path(os.path.dirname(__file__), 'reproduceriter.js').read_text() +
-    Path(in_dir, first_js).read_text() + ('\nwindow.runEventLoop();\n' if shell else '')
+    (
+      Path(os.path.dirname(os.path.dirname(__file__)), 'src', 'headless.js').read_text()
+      % (window_location, window_location.split('?')[-1], on_idle or 'null', dirs_to_drop)
+      if shell
+      else ''
+    )
+    + Path(os.path.dirname(__file__), 'reproduceriter.js').read_text()
+    + Path(in_dir, first_js).read_text()
+    + ('\nwindow.runEventLoop();\n' if shell else '')
   )
 
 print('done!')

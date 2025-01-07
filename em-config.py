@@ -20,9 +20,7 @@ from tools import config
 
 
 def main():
-  if len(sys.argv) != 2 or \
-    not re.match(r"^[\w\W_][\w\W_\d]*$", sys.argv[1]) or \
-    not hasattr(config, sys.argv[1]):
+  if len(sys.argv) != 2 or not re.match(r"^[\w\W_][\w\W_\d]*$", sys.argv[1]) or not hasattr(config, sys.argv[1]):
     print('Usage: em-config VAR_NAME', file=sys.stderr)
     sys.exit(1)
 

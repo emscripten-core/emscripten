@@ -18,7 +18,7 @@ VALID_OPTION_VALUES = {
   'disableWarning': ['true', 'false'],
   'disableJoystick': ['true', 'false'],
   'disableMultiWindow': ['true', 'false'],
-  'optimizationLevel': ['0', '1', '2', '3', 'g', 's', 'z']  # all -OX possibilities
+  'optimizationLevel': ['0', '1', '2', '3', 'g', 's', 'z'],  # all -OX possibilities
 }
 
 OPTIONS = {
@@ -33,26 +33,30 @@ opts: Dict[str, Union[str, bool]] = {
   'disableWarning': False,
   'disableJoystick': False,
   'disableMultiWindow': False,
-  'optimizationLevel': '2'
+  'optimizationLevel': '2',
 }
 
 port_name = 'contrib.glfw3'
 
 
 def get_lib_name(settings):
-  return (f'lib_{port_name}-O{opts["optimizationLevel"]}' +
-          ('-nw' if opts['disableWarning'] else '') +
-          ('-nj' if opts['disableJoystick'] else '') +
-          ('-sw' if opts['disableMultiWindow'] else '') +
-          ('-mt' if settings.PTHREADS else '') +
-          '.a')
+  return (
+    f'lib_{port_name}-O{opts["optimizationLevel"]}'
+    + ('-nw' if opts['disableWarning'] else '')
+    + ('-nj' if opts['disableJoystick'] else '')
+    + ('-sw' if opts['disableMultiWindow'] else '')
+    + ('-mt' if settings.PTHREADS else '')
+    + '.a'
+  )
 
 
 def get(ports, settings, shared):
   # get the port
-  ports.fetch_project(port_name,
-                      f'https://github.com/pongasoft/emscripten-glfw/releases/download/v{TAG}/emscripten-glfw3-{TAG}.zip',
-                      sha512hash=HASH)
+  ports.fetch_project(
+    port_name,
+    f'https://github.com/pongasoft/emscripten-glfw/releases/download/v{TAG}/emscripten-glfw3-{TAG}.zip',
+    sha512hash=HASH,
+  )
 
   def create(final):
     root_path = os.path.join(ports.get_dir(), port_name)

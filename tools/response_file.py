@@ -25,7 +25,7 @@ def create_response_file(args, directory, suffix='.rsp.utf-8'):
   response_fd, response_filename = tempfile.mkstemp(prefix='emscripten_', suffix=suffix, dir=directory, text=True)
 
   # Backslashes and other special chars need to be escaped in the response file.
-  escape_chars = ['\\', '\"']
+  escape_chars = ['\\', '"']
   # When calling llvm-ar on Linux and macOS, single quote characters ' should be escaped.
   if not WINDOWS:
     escape_chars += ['\'']
@@ -60,6 +60,7 @@ def create_response_file(args, directory, suffix='.rsp.utf-8'):
   # Register the created .rsp file to be automatically cleaned up once this
   # process finishes, so that caller does not have to remember to do it.
   from . import shared
+
   shared.get_temp_files().note(response_filename)
 
   return response_filename
@@ -84,7 +85,12 @@ def read_response_file(response_filename):
   # Guess encoding based on the file suffix
   components = os.path.basename(response_filename).split('.')
   encoding_suffix = components[-1].lower()
-  if len(components) > 1 and (encoding_suffix.startswith('utf') or encoding_suffix.startswith('cp') or encoding_suffix.startswith('iso') or encoding_suffix in ['ascii', 'latin-1']):
+  if len(components) > 1 and (
+    encoding_suffix.startswith('utf')
+    or encoding_suffix.startswith('cp')
+    or encoding_suffix.startswith('iso')
+    or encoding_suffix in ['ascii', 'latin-1']
+  ):
     guessed_encoding = encoding_suffix
   else:
     # On windows, recent version of CMake emit rsp files containing
@@ -96,9 +102,14 @@ def read_response_file(response_filename):
     # First try with the guessed encoding
     with open(response_filename, encoding=guessed_encoding) as f:
       args = f.read()
-  except (ValueError, LookupError): # UnicodeDecodeError is a subclass of ValueError, and Python raises either a ValueError or a UnicodeDecodeError on decode errors. LookupError is raised if guessed encoding is not an encoding.
+  except (
+    ValueError,
+    LookupError,
+  ):  # UnicodeDecodeError is a subclass of ValueError, and Python raises either a ValueError or a UnicodeDecodeError on decode errors. LookupError is raised if guessed encoding is not an encoding.
     if DEBUG:
-      logging.warning(f'Failed to parse response file {response_filename} with guessed encoding "{guessed_encoding}". Trying default system encoding...')
+      logging.warning(
+        f'Failed to parse response file {response_filename} with guessed encoding "{guessed_encoding}". Trying default system encoding...'
+      )
     # If that fails, try with the Python default locale.getpreferredencoding()
     with open(response_filename) as f:
       args = f.read()

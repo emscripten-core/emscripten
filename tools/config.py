@@ -87,7 +87,9 @@ def set_config_from_tool_location(config_key, tool_binary, f):
     path = shutil.which(tool_binary)
     if not path:
       if not os.path.isfile(EM_CONFIG):
-        diagnostics.warn('config file not found: %s.  You can create one by hand or run `emcc --generate-config`', EM_CONFIG)
+        diagnostics.warn(
+          'config file not found: %s.  You can create one by hand or run `emcc --generate-config`', EM_CONFIG
+        )
       exit_with_error('%s not set in config (%s), and `%s` not found in PATH', config_key, EM_CONFIG, tool_binary)
     globals()[config_key] = f(path)
   elif not val:
@@ -182,7 +184,7 @@ def generate_config(path):
   # The full string is replaced so that the template stays valid Python.
 
   config_data = utils.read_file(path_from_root('tools/config_template.py'))
-  config_data = config_data.splitlines()[3:] # remove the initial comment
+  config_data = config_data.splitlines()[3:]  # remove the initial comment
   config_data = '\n'.join(config_data) + '\n'
   # autodetect some default paths
   llvm_root = os.path.dirname(shutil.which('wasm-ld') or '/usr/bin/wasm-ld')
@@ -197,7 +199,8 @@ def generate_config(path):
   # write
   utils.write_file(path, config_data)
 
-  print('''\
+  print(
+    '''\
 An Emscripten settings file has been generated at:
 
   %s
@@ -209,7 +212,10 @@ It contains our best guesses for the important paths, which are:
   NODE_JS         = %s
 
 Please edit the file if any of those are incorrect.\
-''' % (path, llvm_root, binaryen_root, node), file=sys.stderr)
+'''
+    % (path, llvm_root, binaryen_root, node),
+    file=sys.stderr,
+  )
 
 
 def find_config_file():

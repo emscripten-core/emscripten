@@ -7,6 +7,7 @@ these steps and is able to run just the steps that are needed based
 on the timestamps of various input files (kind of like a dumb version
 of a Makefile).
 """
+
 import argparse
 import os
 import shutil
@@ -21,13 +22,16 @@ from tools import shared, utils
 
 actions = [
   ('npm packages', ['package.json'], [shutil.which('npm'), 'ci']),
-  ('create entry points', [
-     'tools/maint/create_entry_points.py',
-     'tools/maint/run_python.bat',
-     'tools/maint/run_python.sh',
-     'tools/maint/run_python.ps1',
-   ],
-   [sys.executable, 'tools/maint/create_entry_points.py']),
+  (
+    'create entry points',
+    [
+      'tools/maint/create_entry_points.py',
+      'tools/maint/run_python.bat',
+      'tools/maint/run_python.sh',
+      'tools/maint/run_python.ps1',
+    ],
+    [sys.executable, 'tools/maint/create_entry_points.py'],
+  ),
   ('git submodules', ['test/third_party/posixtestsuite/'], [shutil.which('git'), 'submodule', 'update', '--init']),
 ]
 
@@ -57,7 +61,9 @@ def main(args):
   parser = argparse.ArgumentParser(description=__doc__)
   parser.add_argument('-v', '--verbose', action='store_true', help='verbose', default=False)
   parser.add_argument('-n', '--dry-run', action='store_true', help='dry run', default=False)
-  parser.add_argument('-i', '--install-post-checkout', action='store_true', help='install post checkout script', default=False)
+  parser.add_argument(
+    '-i', '--install-post-checkout', action='store_true', help='install post checkout script', default=False
+  )
   args = parser.parse_args()
 
   if args.install_post_checkout:

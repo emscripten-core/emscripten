@@ -36,7 +36,7 @@ import sys
 import uuid
 from glob import glob
 
-import coverage.cmdline # type: ignore
+import coverage.cmdline  # type: ignore
 import contextlib
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))

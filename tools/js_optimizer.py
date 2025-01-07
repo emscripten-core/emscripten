@@ -25,7 +25,9 @@ temp_files = shared.get_temp_files()
 ACORN_OPTIMIZER = path_from_root('tools/acorn-optimizer.mjs')
 
 NUM_CHUNKS_PER_CORE = 3
-MIN_CHUNK_SIZE = int(os.environ.get('EMCC_JSOPT_MIN_CHUNK_SIZE') or 512 * 1024) # configuring this is just for debugging purposes
+MIN_CHUNK_SIZE = int(
+  os.environ.get('EMCC_JSOPT_MIN_CHUNK_SIZE') or 512 * 1024
+)  # configuring this is just for debugging purposes
 MAX_CHUNK_SIZE = int(os.environ.get('EMCC_JSOPT_MAX_CHUNK_SIZE') or 5 * 1024 * 1024)
 
 WINDOWS = sys.platform.startswith('win')
@@ -80,7 +82,7 @@ class Minifier:
     # to minify all global names, we receive a dictionary back, which is then
     # used by the function processors
 
-    shell = shell.replace('0.0', '13371337') # avoid optimizer doing 0.0 => 0
+    shell = shell.replace('0.0', '13371337')  # avoid optimizer doing 0.0 => 0
 
     # Find all globals in the JS functions code
 
@@ -114,9 +116,7 @@ class Minifier:
     return code.replace('13371337', '0.0')
 
   def serialize(self):
-    return {
-      'globals': self.globs
-    }
+    return {'globals': self.globs}
 
 
 start_funcs_marker = '// EMSCRIPTEN_START_FUNCS\n'
@@ -145,7 +145,7 @@ def chunkify(funcs, chunk_size):
   if curr:
     chunks.append(curr)
     curr = None
-  return [''.join(func[1] for func in chunk) for chunk in chunks] # remove function names
+  return [''.join(func[1] for func in chunk) for chunk in chunks]  # remove function names
 
 
 @ToolchainProfiler.profile_block('js_optimizer.run_on_file')
@@ -156,14 +156,17 @@ def run_on_file(filename, passes, extra_info=None):
 
     js = utils.read_file(filename)
     if os.linesep != '\n':
-      js = js.replace(os.linesep, '\n') # we assume \n in the splitting code
+      js = js.replace(os.linesep, '\n')  # we assume \n in the splitting code
 
     # Find markers
     start_funcs = js.find(start_funcs_marker)
     end_funcs = js.rfind(end_funcs_marker)
 
     if start_funcs < 0 or end_funcs < start_funcs:
-      shared.exit_with_error('invalid input file. Did not contain appropriate markers. (start_funcs: %s, end_funcs: %s' % (start_funcs, end_funcs))
+      shared.exit_with_error(
+        'invalid input file. Did not contain appropriate markers. (start_funcs: %s, end_funcs: %s'
+        % (start_funcs, end_funcs)
+      )
 
     minify_globals = 'minifyNames' in passes
     if minify_globals:
@@ -174,17 +177,17 @@ def run_on_file(filename, passes, extra_info=None):
 
     closure = 'closure' in passes
     if closure:
-      passes = [p for p in passes if p != 'closure'] # we will do it manually
+      passes = [p for p in passes if p != 'closure']  # we will do it manually
 
     cleanup = 'cleanup' in passes
     if cleanup:
-      passes = [p for p in passes if p != 'cleanup'] # we will do it manually
+      passes = [p for p in passes if p != 'cleanup']  # we will do it manually
 
   if not minify_globals:
     with ToolchainProfiler.profile_block('js_optimizer.no_minify_globals'):
-      pre = js[:start_funcs + len(start_funcs_marker)]
-      post = js[end_funcs + len(end_funcs_marker):]
-      js = js[start_funcs + len(start_funcs_marker):end_funcs]
+      pre = js[: start_funcs + len(start_funcs_marker)]
+      post = js[end_funcs + len(end_funcs_marker) :]
+      js = js[start_funcs + len(start_funcs_marker) : end_funcs]
       # can have Module[..] and inlining prevention code, push those to post
       finals = []
 
@@ -200,12 +203,16 @@ def run_on_file(filename, passes, extra_info=None):
   else:
     with ToolchainProfiler.profile_block('js_optimizer.minify_globals'):
       # We need to split out the asm shell as well, for minification
-      pre = js[:start_asm + len(start_asm_marker)]
+      pre = js[: start_asm + len(start_asm_marker)]
       post = js[end_asm:]
-      asm_shell = js[start_asm + len(start_asm_marker):start_funcs + len(start_funcs_marker)] + '''
+      asm_shell = (
+        js[start_asm + len(start_asm_marker) : start_funcs + len(start_funcs_marker)]
+        + '''
 EMSCRIPTEN_FUNCS();
-''' + js[end_funcs + len(end_funcs_marker):end_asm + len(end_asm_marker)]
-      js = js[start_funcs + len(start_funcs_marker):end_funcs]
+'''
+        + js[end_funcs + len(end_funcs_marker) : end_asm + len(end_asm_marker)]
+      )
+      js = js[start_funcs + len(start_funcs_marker) : end_funcs]
 
       # we assume there is a maximum of one new name per line
       minifier = Minifier(js)
@@ -220,7 +227,9 @@ EMSCRIPTEN_FUNCS();
         return True
 
       passes = [p for p in passes if check_symbol_mapping(p)]
-      asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, '--minify-whitespace' in passes).split('EMSCRIPTEN_FUNCS();')
+      asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, '--minify-whitespace' in passes).split(
+        'EMSCRIPTEN_FUNCS();'
+      )
       asm_shell_post = asm_shell_post.replace('});', '})')
       pre += asm_shell_pre + '\n' + start_funcs_marker
       post = end_funcs_marker + asm_shell_post + post
@@ -253,7 +262,17 @@ EMSCRIPTEN_FUNCS();
       lengths = [len(c) for c in chunks]
       if not lengths:
         lengths = [0]
-      print('chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(lengths), '-', min(lengths), file=sys.stderr)
+      print(
+        'chunkification: num funcs:',
+        len(funcs),
+        'actual num chunks:',
+        len(chunks),
+        'chunk size range:',
+        max(lengths),
+        '-',
+        min(lengths),
+        file=sys.stderr,
+      )
     funcs = None
 
     serialized_extra_info = ''
@@ -263,10 +282,12 @@ EMSCRIPTEN_FUNCS();
     elif extra_info:
       serialized_extra_info += '// EXTRA_INFO:' + json.dumps(extra_info)
     with ToolchainProfiler.profile_block('js_optimizer.write_chunks'):
+
       def write_chunk(chunk, i):
         temp_file = temp_files.get('.jsfunc_%d.js' % i).name
         utils.write_file(temp_file, chunk + serialized_extra_info)
         return temp_file
+
       filenames = [write_chunk(chunk, i) for i, chunk in enumerate(chunks)]
 
   with ToolchainProfiler.profile_block('run_optimizer'):
@@ -314,11 +335,17 @@ EMSCRIPTEN_FUNCS();
       USELESS_CODE_COMMENT_BODY = 'uselessCode'
       brace = pre_2.find('{') + 1
       has_useless_code_comment = False
-      if pre_2[brace:brace + len(USELESS_CODE_COMMENT_BODY)] == USELESS_CODE_COMMENT_BODY:
+      if pre_2[brace : brace + len(USELESS_CODE_COMMENT_BODY)] == USELESS_CODE_COMMENT_BODY:
         brace = pre_2.find('{', brace) + 1
         has_useless_code_comment = True
-      pre = coutput[:start] + '(' + (USELESS_CODE_COMMENT if has_useless_code_comment else '') + 'function(global,env,buffer) {\n' + pre_2[brace:]
-      post = post_1 + end_asm + coutput[end + 1:]
+      pre = (
+        coutput[:start]
+        + '('
+        + (USELESS_CODE_COMMENT if has_useless_code_comment else '')
+        + 'function(global,env,buffer) {\n'
+        + pre_2[brace:]
+      )
+      post = post_1 + end_asm + coutput[end + 1 :]
 
   filename += '.jo.js'
   temp_files.note(filename)

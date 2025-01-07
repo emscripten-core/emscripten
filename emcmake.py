@@ -18,12 +18,15 @@ from subprocess import CalledProcessError
 #
 def run():
   if len(sys.argv) < 2 or sys.argv[1] in ('--version', '--help'):
-    print('''\
+    print(
+      '''\
 emcmake is a helper for cmake, setting various environment
 variables so that emcc etc. are used. Typical usage:
 
   emcmake cmake [FLAGS]
-''', file=sys.stderr)
+''',
+      file=sys.stderr,
+    )
     return 1
 
   args = sys.argv[1:]
@@ -53,7 +56,10 @@ variables so that emcc etc. are used. Typical usage:
     elif shutil.which('ninja'):
       args += ['-G', 'Ninja']
     else:
-      print('emcmake: no compatible cmake generator found; Please install ninja or mingw32-make, or specify a generator explicitly using -G', file=sys.stderr)
+      print(
+        'emcmake: no compatible cmake generator found; Please install ninja or mingw32-make, or specify a generator explicitly using -G',
+        file=sys.stderr,
+      )
       return 1
 
   print('configure: ' + shared.shlex_join(args), file=sys.stderr)

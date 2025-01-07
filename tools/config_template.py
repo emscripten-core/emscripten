@@ -12,12 +12,12 @@
 # is not valid, but LLVM='c:\\llvm\\' and LLVM='c:/llvm/'
 # are.
 
-LLVM_ROOT = '{{{ LLVM_ROOT }}}' # directory
-BINARYEN_ROOT = '{{{ BINARYEN_ROOT }}}' # directory
+LLVM_ROOT = '{{{ LLVM_ROOT }}}'  # directory
+BINARYEN_ROOT = '{{{ BINARYEN_ROOT }}}'  # directory
 
 # Location of the node binary to use for running the JS parts of the compiler.
 # This engine must exist, or nothing can be compiled.
-NODE_JS = '{{{ NODE }}}' # executable
+NODE_JS = '{{{ NODE }}}'  # executable
 
 ################################################################################
 #

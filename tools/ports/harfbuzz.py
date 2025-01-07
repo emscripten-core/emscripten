@@ -79,7 +79,11 @@ def get_lib_name(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('harfbuzz', f'https://github.com/harfbuzz/harfbuzz/releases/download/{VERSION}/harfbuzz-{VERSION}.tar.xz', sha512hash=HASH)
+  ports.fetch_project(
+    'harfbuzz',
+    f'https://github.com/harfbuzz/harfbuzz/releases/download/{VERSION}/harfbuzz-{VERSION}.tar.xz',
+    sha512hash=HASH,
+  )
 
   def create(final):
     source_path = ports.get_dir('harfbuzz', 'harfbuzz-' + VERSION)

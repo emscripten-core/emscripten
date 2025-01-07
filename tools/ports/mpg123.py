@@ -610,7 +610,7 @@ config_h = r'''/* src/config.h.  Generated from config.h.in by configure.  */
 
 /* Define to `unsigned long' if <sys/types.h> does not define. */
 /* #undef uintptr_t */
-''' # noqa: W291,E101,W191
+'''  # noqa: W291,E101,W191
 
 mpg123_h = r'''/*
 	libmpg123: MPEG Audio Decoder library (version 1.26.2)
@@ -2309,4 +2309,4 @@ MPG123_EXPORT int mpg123_replace_reader_handle( mpg123_handle *mh
 #endif
 
 #endif
-''' # noqa: W291,E101,W191
+'''  # noqa: W291,E101,W191

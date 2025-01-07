@@ -142,8 +142,7 @@ def maybe_copy(src, dest):
 
 
 class Ports:
-  """emscripten-ports library management (https://github.com/emscripten-ports).
-  """
+  """emscripten-ports library management (https://github.com/emscripten-ports)."""
 
   @staticmethod
   def get_include_dir(*parts):
@@ -175,7 +174,9 @@ class Ports:
       maybe_copy(f, os.path.join(dest, os.path.basename(f)))
 
   @staticmethod
-  def build_port(src_dir, output_path, port_name, includes=[], flags=[], cxxflags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # noqa
+  def build_port(
+    src_dir, output_path, port_name, includes=[], flags=[], cxxflags=[], exclude_files=[], exclude_dirs=[], srcs=[]
+  ):  # noqa
     build_dir = os.path.join(Ports.get_build_dir(), port_name)
     if srcs:
       srcs = [os.path.join(src_dir, s) for s in srcs]
@@ -242,7 +243,7 @@ class Ports:
     # To compute the sha512 hash, run `curl URL | sha512sum`.
     fullname = Ports.get_dir(name)
 
-    if name not in Ports.name_cache: # only mention each port once in log
+    if name not in Ports.name_cache:  # only mention each port once in log
       logger.debug(f'including port: {name}')
       logger.debug(f'    (at {fullname})')
       Ports.name_cache.add(name)
@@ -270,7 +271,9 @@ class Ports:
           if not port:
             utils.exit_with_error('%s is not a known port' % name)
           if not hasattr(port, 'SUBDIR'):
-            utils.exit_with_error(f'port {name} lacks .SUBDIR attribute, which we need in order to override it locally, please update it')
+            utils.exit_with_error(
+              f'port {name} lacks .SUBDIR attribute, which we need in order to override it locally, please update it'
+            )
           subdir = port.SUBDIR
           target = os.path.join(fullname, subdir)
 
@@ -313,8 +316,9 @@ class Ports:
       if sha512hash:
         actual_hash = hashlib.sha512(data).hexdigest()
         if actual_hash != sha512hash:
-          utils.exit_with_error(f'Unexpected hash: {actual_hash}\n'
-                                'If you are updating the port, please update the hash.')
+          utils.exit_with_error(
+            f'Unexpected hash: {actual_hash}\n' 'If you are updating the port, please update the hash.'
+          )
       utils.write_binary(fullpath, data)
 
     marker = os.path.join(fullname, '.emscripten_url')
@@ -368,6 +372,7 @@ class Ports:
 
 class OrderedSet:
   """Partial implementation of OrderedSet.  Just enough for what we need here."""
+
   def __init__(self, items):
     self.dict = {}
     for i in items:
@@ -494,15 +499,17 @@ def split_port_options(arg):
   # Ignore ':' in first or second char of string since we could be dealing with a windows drive separator
   pos = arg.find(':', 2)
   if pos != -1:
-    return arg[:pos], arg[pos + 1:]
+    return arg[:pos], arg[pos + 1 :]
   else:
     return arg, None
 
 
 def handle_use_port_arg(settings, arg, error_handler=None):
   if not error_handler:
+
     def error_handler(message):
       handle_use_port_error(arg, message)
+
   name, options = split_port_options(arg)
   if name.endswith('.py'):
     port_file_path = name
@@ -558,7 +565,7 @@ def get_libs(settings):
   return ret
 
 
-def add_cflags(args, settings): # noqa: U100
+def add_cflags(args, settings):  # noqa: U100
   """Called during compile phase add any compiler flags (e.g -Ifoo) needed
   by the selected ports.  Can also add/change settings.
 

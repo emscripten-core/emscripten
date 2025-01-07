@@ -80,7 +80,9 @@ def main():
       if entry_point in entry_remap:
         sh_data = sh_data.replace('$0', '$(dirname $0)/' + entry_remap[entry_point])
         bat_data = bat_data.replace('%~n0', entry_remap[entry_point].replace('/', '\\'))
-        ps1_data = ps1_data.replace(r"$MyInvocation.MyCommand.Path -replace '\.ps1$', '.py'", fr'"$PSScriptRoot/{entry_remap[entry_point]}.py"')
+        ps1_data = ps1_data.replace(
+          r"$MyInvocation.MyCommand.Path -replace '\.ps1$', '.py'", rf'"$PSScriptRoot/{entry_remap[entry_point]}.py"'
+        )
 
       out_sh_file = os.path.join(__rootdir__, entry_point)
       with open(out_sh_file, 'w') as f:

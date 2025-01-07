@@ -37,10 +37,7 @@ def get(ports, settings, shared):
       for dir in dirs:
         includes.append(os.path.join(base, dir))
 
-    flags = [
-      '-Wno-single-bit-bitfield-constant-conversion',
-      '-std=gnu++14'
-    ]
+    flags = ['-Wno-single-bit-bitfield-constant-conversion', '-std=gnu++14']
 
     ports.build_port(src_path, final, 'bullet', includes=includes, flags=flags, exclude_dirs=['MiniCL'])
 

@@ -135,7 +135,7 @@ def get_all_tests(modules):
 
 
 def get_crossplatform_tests(modules):
-  suites = ['core0', 'other', 'sanity'] # We don't need all versions of every test
+  suites = ['core0', 'other', 'sanity']  # We don't need all versions of every test
   crossplatform_tests = []
   # Walk over the test suites and find the test functions with the
   # is_crossplatform_test attribute applied by @crossplatform decorator
@@ -248,15 +248,18 @@ def print_random_test_statistics(num_tests):
   std = 0.5 / math.sqrt(num_tests)
   expected = 100.0 * (1.0 - std)
   print()
-  print('running those %d randomly-selected tests. if they all pass, then there is a '
-        'greater than 95%% chance that at least %.2f%% of the test suite will pass'
-        % (num_tests, expected))
+  print(
+    'running those %d randomly-selected tests. if they all pass, then there is a '
+    'greater than 95%% chance that at least %.2f%% of the test suite will pass' % (num_tests, expected)
+  )
   print()
 
   def show():
-    print('if all tests passed then there is a greater than 95%% chance that at least '
-          '%.2f%% of the test suite will pass'
-          % (expected))
+    print(
+      'if all tests passed then there is a greater than 95%% chance that at least '
+      '%.2f%% of the test suite will pass' % (expected)
+    )
+
   atexit.register(show)
 
 
@@ -314,6 +317,7 @@ def flattened_tests(loaded_tests):
     tests.extend(subsuite)
   return tests
 
+
 def suite_for_module(module, tests):
   suite_supported = module.__name__ in ('test_core', 'test_other', 'test_posixtest')
   if not common.EMTEST_SAVE_DIR and not shared.DEBUG:
@@ -338,9 +342,9 @@ def run_tests(options, suites):
     os.makedirs('out', exist_ok=True)
     # output fd must remain open until after testRunner.run() below
     output = open('out/test-results.xml', 'wb')
-    import xmlrunner # type: ignore
-    testRunner = xmlrunner.XMLTestRunner(output=output, verbosity=2,
-                                         failfast=options.failfast)
+    import xmlrunner  # type: ignore
+
+    testRunner = xmlrunner.XMLTestRunner(output=output, verbosity=2, failfast=options.failfast)
     print('Writing XML test output to ' + os.path.abspath(output.name))
   else:
     testRunner = unittest.TextTestRunner(verbosity=2, failfast=options.failfast)
@@ -348,8 +352,13 @@ def run_tests(options, suites):
   for mod_name, suite in suites:
     print('Running %s: (%s tests)' % (mod_name, suite.countTestCases()))
     res = testRunner.run(suite)
-    msg = ('%s: %s run, %s errors, %s failures, %s skipped' %
-           (mod_name, res.testsRun, len(res.errors), len(res.failures), len(res.skipped)))
+    msg = '%s: %s run, %s errors, %s failures, %s skipped' % (
+      mod_name,
+      res.testsRun,
+      len(res.errors),
+      len(res.failures),
+      len(res.skipped),
+    )
     num_failures += len(res.errors) + len(res.failures) + len(res.unexpectedSuccesses)
     resultMessages.append(msg)
 
@@ -365,32 +374,41 @@ def run_tests(options, suites):
 
 def parse_args(args):
   parser = argparse.ArgumentParser(prog='runner.py', description=__doc__)
-  parser.add_argument('--save-dir', action='store_true',
-                      help='Save the temporary directory used during for each '
-                           'test.  Implies --cores=1.  Defaults to true when running a single test')
-  parser.add_argument('--no-clean', action='store_true',
-                      help='Do not clean the temporary directory before each test run')
+  parser.add_argument(
+    '--save-dir',
+    action='store_true',
+    help='Save the temporary directory used during for each '
+    'test.  Implies --cores=1.  Defaults to true when running a single test',
+  )
+  parser.add_argument(
+    '--no-clean', action='store_true', help='Do not clean the temporary directory before each test run'
+  )
   parser.add_argument('--verbose', '-v', action='store_true')
   parser.add_argument('--all-engines', action='store_true')
   parser.add_argument('--detect-leaks', action='store_true')
   parser.add_argument('--skip-slow', action='store_true', help='Skip tests marked as slow')
-  parser.add_argument('--cores', '-j',
-                      help='Set the number tests to run in parallel.  Defaults '
-                           'to the number of CPU cores.', default=None)
-  parser.add_argument('--rebaseline', action='store_true',
-                      help='Automatically update test expectations for tests that support it.')
-  parser.add_argument('--browser',
-                      help='Command to launch web browser in which to run browser tests.')
+  parser.add_argument(
+    '--cores',
+    '-j',
+    help='Set the number tests to run in parallel.  Defaults ' 'to the number of CPU cores.',
+    default=None,
+  )
+  parser.add_argument(
+    '--rebaseline', action='store_true', help='Automatically update test expectations for tests that support it.'
+  )
+  parser.add_argument('--browser', help='Command to launch web browser in which to run browser tests.')
   parser.add_argument('tests', nargs='*')
   parser.add_argument('--failfast', action='store_true')
   parser.add_argument('--start-at', metavar='NAME', help='Skip all tests up until <NAME>')
-  parser.add_argument('--continue', dest='_continue', action='store_true',
-                      help='Resume from the last run test.'
-                           'Useful when combined with --failfast')
+  parser.add_argument(
+    '--continue',
+    dest='_continue',
+    action='store_true',
+    help='Resume from the last run test.' 'Useful when combined with --failfast',
+  )
   parser.add_argument('--force64', action='store_true')
   parser.add_argument('--crossplatform-only', action='store_true')
-  parser.add_argument('--repeat', type=int, default=1,
-                      help='Repeat each test N times (default: 1).')
+  parser.add_argument('--repeat', type=int, default=1, help='Repeat each test N times (default: 1).')
   return parser.parse_args()
 
 

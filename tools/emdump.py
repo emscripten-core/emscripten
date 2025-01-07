@@ -6,8 +6,7 @@
 
 # -*- Mode: python -*-
 
-"""emdump.py prints out statistics about compiled code sizes
-"""
+"""emdump.py prints out statistics about compiled code sizes"""
 
 import argparse
 import os
@@ -58,9 +57,9 @@ def idx_to_line_col(s, i):
 def parse_parens(s):
   brace_map = {}
 
-  parens = [] # ()
-  brackets = [] # []
-  braces = [] # {}
+  parens = []  # ()
+  brackets = []  # []
+  braces = []  # {}
 
   i = 0
   end = len(s)
@@ -83,7 +82,9 @@ def parse_parens(s):
       # prev = i
       i = find_unescaped_end(s, "'", i, end)
       # print(idx_to_line_col(s, prev) + ' is a \'\' string, skipping to ' + idx_to_line_col(s, i))
-    elif ch == '^': # Ignore parens/brackets/braces if the previous character was a '^'. This is a bit of a heuristic, '^)' occur commonly in Emscripten generated regexes
+    elif (
+      ch == '^'
+    ):  # Ignore parens/brackets/braces if the previous character was a '^'. This is a bit of a heuristic, '^)' occur commonly in Emscripten generated regexes
       i += 1
     elif ch == '(':
       if rcount(s, '\\', i - 1) % 2 == 0:
@@ -122,7 +123,9 @@ def parse_parens(s):
 # Valid characters in Emscripten outputted JS content (in reality valid character set is much more complex, but do not need that here)
 def is_javascript_symbol_char(ch):
   i = ord(ch)
-  return (i >= 97 and i <= 122) or (i >= 65 and i <= 90) or (i >= 48 and i <= 57) or i == 36 or i == 95 # a-z, A-Z, 0-9, $, _
+  return (
+    (i >= 97 and i <= 122) or (i >= 65 and i <= 90) or (i >= 48 and i <= 57) or i == 36 or i == 95
+  )  # a-z, A-Z, 0-9, $, _
 
 
 def cxxfilt():
@@ -167,13 +170,15 @@ def merge_entry_to_existing(existing_data, new_entry, total_source_set_size):
     existing_data[name] = {
       'lines': ex['lines'] + new_entry['lines'],
       'bytes': ex['bytes'] + new_entry['bytes'],
-      'demangled_name': ex['demangled_name'] if 'demangled_name' in ex else (new_entry['demangled_name'] if 'demangled_name' in new_entry else new_entry['minified_name']),
+      'demangled_name': ex['demangled_name']
+      if 'demangled_name' in ex
+      else (new_entry['demangled_name'] if 'demangled_name' in new_entry else new_entry['minified_name']),
       'minified_name': ex['minified_name'],
       'unminified_name': ex['unminified_name'],
       'function_parameters': ex['function_parameters'],
       'type': ex['type'],
       'percentage': (ex['bytes'] + new_entry['bytes']) * 100.0 / total_source_set_size,
-      'num_times_occurs': num_times_occurs_1 + num_times_occurs_2
+      'num_times_occurs': num_times_occurs_1 + num_times_occurs_2,
     }
   else:
     existing_data[name] = new_entry
@@ -196,9 +201,11 @@ def analyze_javascript_file_contents(filename, file_contents, total_source_set_s
   parse_pos = 0
   prev_end_pos = 0
   file_len = len(file_contents)
-  func_regex = re.compile(r'function\s+([\w$]+)\s*\(([\w\s$,]*?)\)\s*{') # Search for "function foo (param1, param2, ..., paranN) {"
-  var_block_regex = re.compile(r'var\s+(\w+)\s*=\s*([{\[\(])') # Search for "var foo = {"
-  var_regex = re.compile(r'var\s+([\w]+)\s*=\s*[\w\s,]*?;') # Search for "var foo = .... ;"
+  func_regex = re.compile(
+    r'function\s+([\w$]+)\s*\(([\w\s$,]*?)\)\s*{'
+  )  # Search for "function foo (param1, param2, ..., paranN) {"
+  var_block_regex = re.compile(r'var\s+(\w+)\s*=\s*([{\[\(])')  # Search for "var foo = {"
+  var_regex = re.compile(r'var\s+([\w]+)\s*=\s*[\w\s,]*?;')  # Search for "var foo = .... ;"
   unaccounted_bytes = 0
   unaccounted_lines = 0
 
@@ -253,13 +260,15 @@ def analyze_javascript_file_contents(filename, file_contents, total_source_set_s
       # find starting and ending braces { } for the function
       start_brace = file_contents.find('{', func_pos)
       if start_brace < 0:
-        break # Must be at the end of file
+        break  # Must be at the end of file
       if start_brace not in brace_map:
-        print('Warning: ' + idx_to_line_col(file_contents, start_brace) + ' cannot parse function start brace, skipping.')
+        print(
+          'Warning: ' + idx_to_line_col(file_contents, start_brace) + ' cannot parse function start brace, skipping.'
+        )
         continue
       end_brace = brace_map[start_brace]
       if end_brace < 0:
-        break # Must be at the end of file
+        break  # Must be at the end of file
 
       num_bytes = end_brace + 1 - func_pos
       num_lines = file_contents.count('\n', func_pos, end_brace) + 1
@@ -279,21 +288,23 @@ def analyze_javascript_file_contents(filename, file_contents, total_source_set_s
         'unminified_name': unminified_name,
         'function_parameters': function_parameters,
         'type': function_type,
-        'percentage': num_bytes * 100.0 / total_source_set_size
+        'percentage': num_bytes * 100.0 / total_source_set_size,
       }
-    else: # This is a variable
+    else:  # This is a variable
       var_block_match = var_block_regex.match(file_contents[var_pos:])
       if var_block_match:
         # find starting and ending braces { } for the var
         start_brace = file_contents.find(var_block_match.group(2), var_pos)
         if start_brace < 0:
-          break # Must be at the end of file
+          break  # Must be at the end of file
         if start_brace not in brace_map:
-          print('Warning: ' + idx_to_line_col(file_contents, start_brace) + ' cannot parse variable start brace, skipping.')
+          print(
+            'Warning: ' + idx_to_line_col(file_contents, start_brace) + ' cannot parse variable start brace, skipping.'
+          )
           continue
         end_brace = brace_map[start_brace]
         if end_brace < 0:
-          break # Must be at the end of file
+          break  # Must be at the end of file
         minified_name = var_block_match.group(1)
       else:
         start_brace = var_pos
@@ -305,7 +316,12 @@ def analyze_javascript_file_contents(filename, file_contents, total_source_set_s
 
       # Special case ignore the 'var wasmExports = (function(global, env, buffer) { 'use asm'; ... }; ' variable that contains all the asm.js code.
       # Ignoring this variable lets all the asm.js code be trated as functions in this parser, instead of assigning them to the asm variable.
-      if file_contents[start_brace] == '(' and ("'use asm'" in file_contents[var_pos:end_brace] or '"use asm"' in file_contents[var_pos:end_brace] or "'almost asm'" in file_contents[var_pos:end_brace] or '"almost asm"' in file_contents[var_pos:end_brace]):
+      if file_contents[start_brace] == '(' and (
+        "'use asm'" in file_contents[var_pos:end_brace]
+        or '"use asm"' in file_contents[var_pos:end_brace]
+        or "'almost asm'" in file_contents[var_pos:end_brace]
+        or '"almost asm"' in file_contents[var_pos:end_brace]
+      ):
         continue
 
       num_bytes = end_brace + 1 - var_pos
@@ -325,12 +341,12 @@ def analyze_javascript_file_contents(filename, file_contents, total_source_set_s
         'unminified_name': unminified_name,
         'function_parameters': '',
         'type': var_type,
-        'percentage': num_bytes * 100.0 / total_source_set_size
+        'percentage': num_bytes * 100.0 / total_source_set_size,
       }
 
   if options.list_unaccounted:
     if diffing_two_data_sets:
-      unaccounted_name = '$unaccounted_js_content' # If diffing two data sets, must make the names of the unaccounted content blocks be comparable
+      unaccounted_name = '$unaccounted_js_content'  # If diffing two data sets, must make the names of the unaccounted content blocks be comparable
     else:
       unaccounted_name = '$unaccounted_js_content_in("' + os.path.basename(filename) + '")'
     unaccounted_entry = {
@@ -340,7 +356,7 @@ def analyze_javascript_file_contents(filename, file_contents, total_source_set_s
       'unminified_name': unaccounted_name,
       'function_parameters': '',
       'type': '[UNKN]',
-      'percentage': unaccounted_bytes * 100.0 / total_source_set_size
+      'percentage': unaccounted_bytes * 100.0 / total_source_set_size,
     }
     merge_entry_to_existing(data, unaccounted_entry, total_source_set_size)
 
@@ -377,7 +393,9 @@ def analyze_html_file(filename, total_source_set_size, symbol_map=None):
     if script_pos > parse_pos:
       unaccounted_bytes += script_pos - parse_pos
       unaccounted_lines += file_contents.count('\n', parse_pos, script_pos) + 1
-    data_set = analyze_javascript_file_contents(filename, file_contents[script_pos:script_end_pos], total_source_set_size, symbol_map)
+    data_set = analyze_javascript_file_contents(
+      filename, file_contents[script_pos:script_end_pos], total_source_set_size, symbol_map
+    )
     merge_to_data_set(data, data_set, total_source_set_size)
     parse_pos = script_end_pos
 
@@ -387,7 +405,7 @@ def analyze_html_file(filename, total_source_set_size, symbol_map=None):
 
   if options.list_unaccounted and unaccounted_bytes > 0:
     if diffing_two_data_sets:
-      unaccounted_name = '$unaccounted_html_content' # If diffing two data sets, must make the names of the unaccounted content blocks be comparable
+      unaccounted_name = '$unaccounted_html_content'  # If diffing two data sets, must make the names of the unaccounted content blocks be comparable
     else:
       unaccounted_name = '$unaccounted_html_content_in("' + os.path.basename(filename) + '")'
     unaccounted_entry = {
@@ -397,7 +415,7 @@ def analyze_html_file(filename, total_source_set_size, symbol_map=None):
       'unminified_name': unaccounted_name,
       'function_parameters': '',
       'type': 'HTML',
-      'percentage': unaccounted_bytes * 100.0 / total_source_set_size
+      'percentage': unaccounted_bytes * 100.0 / total_source_set_size,
     }
     merge_entry_to_existing(data, unaccounted_entry, total_source_set_size)
 
@@ -424,8 +442,14 @@ def common_compare(data1, data2):
     commonbytediff += d2['bytes'] - d1['bytes']
   linesword = 'more' if commonlinediff >= 0 else 'less'
   bytesword = 'more' if commonbytediff >= 0 else 'less'
-  print('set 2 has {} lines {} than set 1 in {} common functions'.format(abs(commonlinediff), linesword, len(commonfns)))
-  print('set 2 has {} bytes {} than set 1 in {} common functions'.format(str(abs(commonbytediff)), bytesword, len(commonfns)))
+  print(
+    'set 2 has {} lines {} than set 1 in {} common functions'.format(abs(commonlinediff), linesword, len(commonfns))
+  )
+  print(
+    'set 2 has {} bytes {} than set 1 in {} common functions'.format(
+      str(abs(commonbytediff)), bytesword, len(commonfns)
+    )
+  )
 
 
 def uniq_compare(data1, data2):
@@ -452,7 +476,11 @@ def uniq_compare(data1, data2):
   countword = 'more' if uniqcountdiff >= 0 else 'less'
   linesword = 'more' if uniqlinediff >= 0 else 'less'
   bytesword = 'more' if uniqbytediff >= 0 else 'less'
-  print('set 2 has {} functions {} than set 1 overall (unique: {} vs {})'.format(abs(uniqcountdiff), countword, len(uniqfns2), len(uniqfns1)))
+  print(
+    'set 2 has {} functions {} than set 1 overall (unique: {} vs {})'.format(
+      abs(uniqcountdiff), countword, len(uniqfns2), len(uniqfns1)
+    )
+  )
   print('set 2 has {} lines {} than set 1 overall in unique functions'.format(abs(uniqlinediff), linesword))
   print('set 2 has {} bytes {} than set 1 overall in unique functions'.format(str(abs(uniqbytediff)), bytesword))
 
@@ -469,9 +497,13 @@ def simplify_cxx_name(name):
     DEM_RE.append(lambda s: string_m.sub(r'std::string', s))
     vec_m = re.compile(r'std::__2::vector<([^,]+), std::__2::allocator<\1\s*> >')
     DEM_RE.append(lambda s: vec_m.sub(r'std::vector<\1>', s))
-    unordered_map_m = re.compile(r'std::__2::unordered_map<([^,]+), ([^,]+), std::__2::hash<\1\s*>, std::__2::equal_to<\1\s*>, std::__2::allocator<std::__2::pair<\1 const, \2> > >')
+    unordered_map_m = re.compile(
+      r'std::__2::unordered_map<([^,]+), ([^,]+), std::__2::hash<\1\s*>, std::__2::equal_to<\1\s*>, std::__2::allocator<std::__2::pair<\1 const, \2> > >'
+    )
     DEM_RE.append(lambda s: unordered_map_m.sub(r'std::unordered_map<\1, \2>', s))
-    sort_m = re.compile(r'std::__2::__sort<std::__2::__less<([^,]+), \1\s*>&, \1\*>\(\1\*, \1\*, std::__2::__less<\1, \1\s*>&\)')
+    sort_m = re.compile(
+      r'std::__2::__sort<std::__2::__less<([^,]+), \1\s*>&, \1\*>\(\1\*, \1\*, std::__2::__less<\1, \1\s*>&\)'
+    )
     DEM_RE.append(lambda s: sort_m.sub(r'std::sort(\1*, \1*)', s))
     DEM_RE.append(lambda s: s.replace('std::__2::', 'std::'))
 
@@ -483,7 +515,7 @@ def simplify_cxx_name(name):
 # 'foo(int, float)' -> 'foo'
 def function_args_removed(s):
   if '(' in s:
-    return s[:s.find('(')]
+    return s[: s.find('(')]
   else:
     return s
 
@@ -491,7 +523,7 @@ def function_args_removed(s):
 # 'foo(int, float)' -> 'int, float)'
 def function_args_part(s):
   if '(' in s:
-    return s[s.find('(') + 1:]
+    return s[s.find('(') + 1 :]
   else:
     return ''
 
@@ -503,6 +535,7 @@ def sort_key_py2(key_value):
 # Apparently for python 3, one will use the following, but currently untested
 # def sort_key_py3(key, value):
 #   return value[options.sort]
+
 
 def print_symbol_info(data, total_source_set_size):
   data = list(data.items())
@@ -566,7 +599,7 @@ def print_symbol_info(data, total_source_set_size):
     i = 0
     while i + 1 < len(print_name):
       if print_name[i] == print_name[i + 1]:
-        print_name = print_name[:i] + print_name[i + 1:]
+        print_name = print_name[:i] + print_name[i + 1 :]
         continue
       n1 = function_args_removed(print_name[i])
       n2 = function_args_removed(print_name[i + 1])
@@ -574,22 +607,33 @@ def print_symbol_info(data, total_source_set_size):
       args2 = function_args_part(print_name[i + 1])
       if n1 == n2 and (not args1 or not args2):
         if not args1:
-          print_name = print_name[:i] + print_name[i + 1:]
+          print_name = print_name[:i] + print_name[i + 1 :]
         else:
-          print_name = print_name[:i + 1] + print_name[i + 2:]
+          print_name = print_name[: i + 1] + print_name[i + 2 :]
         continue
       i += 1
 
     print_name = ' ; '.join(print_name)
     if 'num_times_occurs' in e:
       print_name = '[' + str(e['num_times_occurs']) + ' times] ' + print_name
-    delta_string = ' %+8d (%+6.2f%%)' % (e['bytes'] - e['prev_bytes'], e['percentage'] - e['prev_percentage']) if diffing_two_data_sets else ''
-    print('%6d lines %7s (%5.2f%%) %s: %8s %s' % (e['lines'], str(e['bytes']), e['percentage'], delta_string, e['type'], print_name))
+    delta_string = (
+      ' %+8d (%+6.2f%%)' % (e['bytes'] - e['prev_bytes'], e['percentage'] - e['prev_percentage'])
+      if diffing_two_data_sets
+      else ''
+    )
+    print(
+      '%6d lines %7s (%5.2f%%) %s: %8s %s'
+      % (e['lines'], str(e['bytes']), e['percentage'], delta_string, e['type'], print_name)
+    )
 
     total_size += e['bytes']
 
   if total_size < total_source_set_size:
-    print('Total size of printed functions: ' + str(total_size) + ' bytes. (%.2f%% of all symbols)' % (total_size * 100.0 / total_source_set_size))
+    print(
+      'Total size of printed functions: '
+      + str(total_size)
+      + ' bytes. (%.2f%% of all symbols)' % (total_size * 100.0 / total_source_set_size)
+    )
   else:
     print('Total size of printed functions: ' + str(total_size) + ' bytes.')
 
@@ -746,68 +790,148 @@ def main():
   usage_str = "emdump.py prints out statistics about compiled code sizes.\npython emdump.py --file a.js [--file2 b.js]"
   parser = argparse.ArgumentParser(usage=usage_str)
 
-  parser.add_argument('--file', dest='file', default=[], nargs='*',
-                      help='Specifies the compiled JavaScript build file to analyze.')
+  parser.add_argument(
+    '--file', dest='file', default=[], nargs='*', help='Specifies the compiled JavaScript build file to analyze.'
+  )
 
-  parser.add_argument('--file1', dest='file1', default=[], nargs='*',
-                      help='Specifies the compiled JavaScript build file to analyze.')
+  parser.add_argument(
+    '--file1', dest='file1', default=[], nargs='*', help='Specifies the compiled JavaScript build file to analyze.'
+  )
 
-  parser.add_argument('--symbol-map', dest='symbol_map', default='',
-                      help='Specifies a filename to the symbol map file that can be used to unminify function and variable names.')
+  parser.add_argument(
+    '--symbol-map',
+    dest='symbol_map',
+    default='',
+    help='Specifies a filename to the symbol map file that can be used to unminify function and variable names.',
+  )
 
-  parser.add_argument('--file2', dest='file2', default=[], nargs='*',
-                      help='Specifies a second compiled JavaScript build file to analyze.')
+  parser.add_argument(
+    '--file2', dest='file2', default=[], nargs='*', help='Specifies a second compiled JavaScript build file to analyze.'
+  )
 
-  parser.add_argument('--symbol-map2', dest='symbol_map2', default='',
-                      help='Specifies a filename to a second symbol map file that will be used to unminify function and variable names of file2.')
+  parser.add_argument(
+    '--symbol-map2',
+    dest='symbol_map2',
+    default='',
+    help='Specifies a filename to a second symbol map file that will be used to unminify function and variable names of file2.',
+  )
 
-  parser.add_argument('--list-unaccounted', dest='list_unaccounted', type=int, default=1,
-                      help='Pass --list-unaccounted=0 to skip listing a summary entry of unaccounted content')
+  parser.add_argument(
+    '--list-unaccounted',
+    dest='list_unaccounted',
+    type=int,
+    default=1,
+    help='Pass --list-unaccounted=0 to skip listing a summary entry of unaccounted content',
+  )
 
-  parser.add_argument('--dump-unaccounted-larger-than', dest='dump_unaccounted_larger_than', type=int, default=-1,
-                      help='If an integer value >= 0 is specified, all unaccounted strings of content longer than the given value will be printed out to the console.\n(Note that it is common to have several unaccounted blocks, this is provided for curiosity/debugging/optimization ideas)')
+  parser.add_argument(
+    '--dump-unaccounted-larger-than',
+    dest='dump_unaccounted_larger_than',
+    type=int,
+    default=-1,
+    help='If an integer value >= 0 is specified, all unaccounted strings of content longer than the given value will be printed out to the console.\n(Note that it is common to have several unaccounted blocks, this is provided for curiosity/debugging/optimization ideas)',
+  )
 
-  parser.add_argument('--only-unique-1', dest='only_unique_1', action='store_true', default=False,
-                      help='If two data sets are specified, prints out only the symbols that are present in set 1, but not in set 2')
+  parser.add_argument(
+    '--only-unique-1',
+    dest='only_unique_1',
+    action='store_true',
+    default=False,
+    help='If two data sets are specified, prints out only the symbols that are present in set 1, but not in set 2',
+  )
 
-  parser.add_argument('--only-unique-2', dest='only_unique_2', action='store_true', default=False,
-                      help='If two data sets are specified, prints out only the symbols that are present in set 2, but not in set 1')
+  parser.add_argument(
+    '--only-unique-2',
+    dest='only_unique_2',
+    action='store_true',
+    default=False,
+    help='If two data sets are specified, prints out only the symbols that are present in set 2, but not in set 1',
+  )
 
-  parser.add_argument('--only-common', dest='only_common', action='store_true', default=False,
-                      help='If two data sets are specified, prints out only the symbols that are common to both data sets')
+  parser.add_argument(
+    '--only-common',
+    dest='only_common',
+    action='store_true',
+    default=False,
+    help='If two data sets are specified, prints out only the symbols that are common to both data sets',
+  )
 
-  parser.add_argument('--only-changes', dest='only_changes', action='store_true', default=False,
-                      help='If two data sets are specified, prints out only the symbols that have changed size or are added/removed')
+  parser.add_argument(
+    '--only-changes',
+    dest='only_changes',
+    action='store_true',
+    default=False,
+    help='If two data sets are specified, prints out only the symbols that have changed size or are added/removed',
+  )
 
-  parser.add_argument('--only-summarize', dest='only_summarize', action='store_true', default=False,
-                      help='If specified, detailed information about each symbol is not printed, but only summary data is shown.')
+  parser.add_argument(
+    '--only-summarize',
+    dest='only_summarize',
+    action='store_true',
+    default=False,
+    help='If specified, detailed information about each symbol is not printed, but only summary data is shown.',
+  )
 
-  parser.add_argument('--filter-name', dest='filter_name', default='',
-                      help='Only prints out information about symbols that contain the given filter substring in their demangled names. The filtering is always performed in lower case.')
+  parser.add_argument(
+    '--filter-name',
+    dest='filter_name',
+    default='',
+    help='Only prints out information about symbols that contain the given filter substring in their demangled names. The filtering is always performed in lower case.',
+  )
 
-  parser.add_argument('--filter-size', dest='filter_size', type=int, default=0,
-                      help='Only prints out information about symbols that are (or were) larger than the given amount of bytes.')
+  parser.add_argument(
+    '--filter-size',
+    dest='filter_size',
+    type=int,
+    default=0,
+    help='Only prints out information about symbols that are (or were) larger than the given amount of bytes.',
+  )
 
-  parser.add_argument('--sort', dest='sort', default='bytes',
-                      help='Specifies the data column to sort output by. Possible values are: lines, bytes, delta, abs_delta, type, minified, unminified, demangled')
+  parser.add_argument(
+    '--sort',
+    dest='sort',
+    default='bytes',
+    help='Specifies the data column to sort output by. Possible values are: lines, bytes, delta, abs_delta, type, minified, unminified, demangled',
+  )
 
-  parser.add_argument('--print-format', dest='print_format', default='DM',
-                      help='Specifies the naming format for the symbols. Possible options are one of: m, u, d, du, dm, um, dum. Here "m" denotes minified, "u" denotes unminified, and "d" denotes demangled. Specify any combination of the characters in upper case to print out function parameters.\nDefault: DM.')
+  parser.add_argument(
+    '--print-format',
+    dest='print_format',
+    default='DM',
+    help='Specifies the naming format for the symbols. Possible options are one of: m, u, d, du, dm, um, dum. Here "m" denotes minified, "u" denotes unminified, and "d" denotes demangled. Specify any combination of the characters in upper case to print out function parameters.\nDefault: DM.',
+  )
 
-  parser.add_argument('--sort-ascending', dest='sort_ascending', action='store_true', default=False,
-                      help='If true, reverses the sorting order to be ascending instead of default descending.')
+  parser.add_argument(
+    '--sort-ascending',
+    dest='sort_ascending',
+    action='store_true',
+    default=False,
+    help='If true, reverses the sorting order to be ascending instead of default descending.',
+  )
 
-  parser.add_argument('--simplify-cxx', dest='simplify_cxx', action='store_true', default=False,
-                      help='Simplify C++ STL types as much as possible in the output')
+  parser.add_argument(
+    '--simplify-cxx',
+    dest='simplify_cxx',
+    action='store_true',
+    default=False,
+    help='Simplify C++ STL types as much as possible in the output',
+  )
 
-  parser.add_argument('--group-templates', dest='group_templates', action='store_true', default=False,
-                      help='Group/collapse all C++ templates with Foo<asdf> and Foo<qwer> to generic Foo<T>')
+  parser.add_argument(
+    '--group-templates',
+    dest='group_templates',
+    action='store_true',
+    default=False,
+    help='Group/collapse all C++ templates with Foo<asdf> and Foo<qwer> to generic Foo<T>',
+  )
 
   options = parser.parse_args()
   options.file = options.file + options.file1
 
   if not options.file:
-    print('Specify a set of JavaScript build output files to analyze with --file file1.js file2.js ... fileN.js.\nRun python emdump.py --help to see all options.')
+    print(
+      'Specify a set of JavaScript build output files to analyze with --file file1.js file2.js ... fileN.js.\nRun python emdump.py --help to see all options.'
+    )
     return 1
 
   options.filter_name = options.filter_name.lower()
@@ -815,15 +939,21 @@ def main():
   diffing_two_data_sets = len(options.file2) > 0
   if not diffing_two_data_sets:
     if options.only_unique_1:
-      print('Error: Must specify two data sets with --file a.js b.js c.js --file2 d.js e.js f.js to diff in order to use --only-unique-symbols-in-set-1 option!')
+      print(
+        'Error: Must specify two data sets with --file a.js b.js c.js --file2 d.js e.js f.js to diff in order to use --only-unique-symbols-in-set-1 option!'
+      )
       sys.exit(1)
 
     if options.only_unique_2:
-      print('Error: Must specify two data sets with --file a.js b.js c.js --file2 d.js e.js f.js to diff in order to use --only-unique-symbols-in-set-2 option!')
+      print(
+        'Error: Must specify two data sets with --file a.js b.js c.js --file2 d.js e.js f.js to diff in order to use --only-unique-symbols-in-set-2 option!'
+      )
       sys.exit(1)
 
     if options.only_common:
-      print('Error: Must specify two data sets with --file a.js b.js c.js --file2 d.js e.js f.js to diff in order to use --only-common-symbols option!')
+      print(
+        'Error: Must specify two data sets with --file a.js b.js c.js --file2 d.js e.js f.js to diff in order to use --only-common-symbols option!'
+      )
       sys.exit(1)
 
   # Validate column sorting input:
@@ -839,7 +969,10 @@ def main():
     options.sort = 'demangled_name'
 
   if 'delta' in options.sort and not diffing_two_data_sets:
-    print('Error: Must specify two data sets with --file a.js b.js c.js --file2 d.js e.js f.js to diff in order to use --sort=' + options.sort)
+    print(
+      'Error: Must specify two data sets with --file a.js b.js c.js --file2 d.js e.js f.js to diff in order to use --sort='
+      + options.sort
+    )
     sys.exit(1)
 
   # Autoguess .symbols file location based on default Emscripten build output, to save the need to type it out in the common case
@@ -873,7 +1006,10 @@ def main():
     if not options.only_summarize:
       print_symbol_info(diffed_data, set2_size)
       print('')
-    print('set 2 is %d bytes, which is %+.2f%% %s than set 1 size (%d bytes)' % (set2_size, (set2_size - set1_size) * 100.0 / set2_size, 'more' if set2_size > set1_size else 'less', set1_size))
+    print(
+      'set 2 is %d bytes, which is %+.2f%% %s than set 1 size (%d bytes)'
+      % (set2_size, (set2_size - set1_size) * 100.0 / set2_size, 'more' if set2_size > set1_size else 'less', set1_size)
+    )
     uniq_compare(data1, data2)
     common_compare(data1, data2)
   else:

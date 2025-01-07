@@ -3,7 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-TAG = 'release-2.20.2' # Latest as of 21 February 2023
+TAG = 'release-2.20.2'  # Latest as of 21 February 2023
 HASH = '8a625d29bef2ab7cbfe2143136a303c0fdb066ecd802d6c725de1b73ad8b056908cb524fe58f38eaee9f105471d2af50bbcb17911d46506dbcf573db218b3685'
 
 deps = ['freetype', 'sdl2', 'harfbuzz']

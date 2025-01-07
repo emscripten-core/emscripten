@@ -44,8 +44,8 @@ def main():
 
   try:
     neon_h_buf = subprocess.check_output(
-        [path.join(simde_dir, "amalgamate.py"), path.join(simde_dir, "simde", "arm", "neon.h")],
-        text=True)
+      [path.join(simde_dir, "amalgamate.py"), path.join(simde_dir, "simde", "arm", "neon.h")], text=True
+    )
   except subprocess.CalledProcessError as e:
     print("amalgamate.py returned error: " + str(e))
     return 1
@@ -67,7 +67,9 @@ def main():
   try:
     insert_location = neon_h_buf.index(line_to_prefix)
   except ValueError:
-    print(f"Error looking for place to insert {line_to_insert[:-1]!r}. Please update 'line_to_prefix' in simde_update.py.")
+    print(
+      f"Error looking for place to insert {line_to_insert[:-1]!r}. Please update 'line_to_prefix' in simde_update.py."
+    )
     return 1
   neon_h_buf = neon_h_buf[:insert_location] + line_to_insert + neon_h_buf[insert_location:]
 

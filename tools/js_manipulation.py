@@ -41,18 +41,24 @@ def add_files_pre_js(pre_js_list, files_pre_js):
   # enabled
   pre = shared.get_temp_files().get('.js').name
   post = shared.get_temp_files().get('.js').name
-  utils.write_file(pre, '''
+  utils.write_file(
+    pre,
+    '''
     // All the pre-js content up to here must remain later on, we need to run
     // it.
     if (Module['$ww'] || (typeof ENVIRONMENT_IS_PTHREAD != 'undefined' && ENVIRONMENT_IS_PTHREAD)) Module['preRun'] = [];
     var necessaryPreJSTasks = Module['preRun'].slice();
-  ''')
-  utils.write_file(post, '''
+  ''',
+  )
+  utils.write_file(
+    post,
+    '''
     if (!Module['preRun']) throw 'Module.preRun should exist because file support used it; did a pre-js delete it?';
     necessaryPreJSTasks.forEach((task) => {
       if (Module['preRun'].indexOf(task) < 0) throw 'All preRun tasks that exist before user pre-js code should remain after; did you replace Module or modify Module.preRun?';
     });
-  ''')
+  ''',
+  )
 
   pre_js_list.insert(1, pre)
   pre_js_list.append(post)
@@ -125,7 +131,7 @@ def make_dynCall(sig, args):
 
 
 def make_invoke(sig):
-  legal_sig = legalize_sig(sig) # TODO: do this in extcall, jscall?
+  legal_sig = legalize_sig(sig)  # TODO: do this in extcall, jscall?
   args = ['index'] + ['a' + str(i) for i in range(1, len(legal_sig))]
   ret = 'return ' if sig[0] != 'v' else ''
   # For function that needs to return a genuine i64 (i.e. if legal_sig[0] is 'j')
