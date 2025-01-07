@@ -1598,6 +1598,7 @@ addToLibrary({
    /**
     * @param {number=} asyncAwait Optionally, when set, expect func to return a Promise
     * and await for it to resolve.
+    * @suppress {checkTypes}
     */`,
   $runMainThreadEmAsm__deps: ['$readEmAsmArgs',
 #if PTHREADS
