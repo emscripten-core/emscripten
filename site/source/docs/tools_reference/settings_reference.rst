@@ -2186,8 +2186,7 @@ WASM_BIGINT
 
 WebAssembly integration with JavaScript BigInt. When enabled we don't need to
 legalize i64s into pairs of i32s, as the wasm VM will use a BigInt where an
-i64 is used. If WASM_BIGINT is present, the default minimum supported browser
-versions will be increased to the min version that supports BigInt.
+i64 is used.
 
 Default value: true
 
@@ -2928,7 +2927,7 @@ MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 Minimum supported value is 101000 which was released in 2016-09 (see
 feature_matrix.py).
 
-Default value: 140100
+Default value: 150000
 
 .. _min_chrome_version:
 
