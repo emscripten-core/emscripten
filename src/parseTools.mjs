@@ -132,7 +132,9 @@ export function preprocess(filename) {
             }
           }
         } else if (first === '#else') {
-          assert(showStack.length > 0);
+          if (showStack.length == 0) {
+            error(`${filename}:${i + 1}: #else without matching #if`);
+          }
           const curr = showStack.pop();
           if (curr == IGNORE) {
             showStack.push(SHOW);
@@ -140,7 +142,9 @@ export function preprocess(filename) {
             showStack.push(IGNORE);
           }
         } else if (first === '#endif') {
-          assert(showStack.length > 0);
+          if (showStack.length == 0) {
+            error(`${filename}:${i + 1}: #endif without matching #if`);
+          }
           showStack.pop();
         } else if (first === '#warning') {
           if (showCurrentLine()) {
@@ -593,11 +597,12 @@ function charCode(char) {
   return char.charCodeAt(0);
 }
 
-function makeDynCall(sig, funcPtr) {
+function makeDynCall(sig, funcPtr, promising = false) {
   assert(
     !sig.includes('j'),
     'Cannot specify 64-bit signatures ("j" in signature string) with makeDynCall!',
   );
+  assert(!(DYNCALLS && promising), 'DYNCALLS cannot be used with JSPI.');
 
   let args = [];
   for (let i = 1; i < sig.length; ++i) {
@@ -668,10 +673,15 @@ Please update to new syntax.`);
     return `(() => ${dyncall}(${funcPtr}))`;
   }
 
-  if (needArgConversion) {
-    return `((${args}) => getWasmTableEntry(${funcPtr}).call(null, ${callArgs}))`;
+  let getWasmTableEntry = `getWasmTableEntry(${funcPtr})`;
+  if (promising) {
+    getWasmTableEntry = `WebAssembly.promising(${getWasmTableEntry})`;
   }
-  return `getWasmTableEntry(${funcPtr})`;
+
+  if (needArgConversion) {
+    return `((${args}) => ${getWasmTableEntry}.call(null, ${callArgs}))`;
+  }
+  return getWasmTableEntry;
 }
 
 function makeEval(code) {
@@ -775,24 +785,16 @@ export function modifyJSFunction(text, func) {
 }
 
 export function runIfMainThread(text) {
-  if (WASM_WORKERS && PTHREADS) {
-    return `if (!ENVIRONMENT_IS_WASM_WORKER && !ENVIRONMENT_IS_PTHREAD) { ${text} }`;
-  } else if (WASM_WORKERS) {
-    return `if (!ENVIRONMENT_IS_WASM_WORKER) { ${text} }`;
-  } else if (PTHREADS) {
-    return `if (!ENVIRONMENT_IS_PTHREAD) { ${text} }`;
+  if (WASM_WORKERS || PTHREADS) {
+    return `if (${ENVIRONMENT_IS_MAIN_THREAD()}) { ${text} }`;
   } else {
     return text;
   }
 }
 
 function runIfWorkerThread(text) {
-  if (WASM_WORKERS && PTHREADS) {
-    return `if (ENVIRONMENT_IS_WASM_WORKER || ENVIRONMENT_IS_PTHREAD) { ${text} }`;
-  } else if (WASM_WORKERS) {
-    return `if (ENVIRONMENT_IS_WASM_WORKER) { ${text} }`;
-  } else if (PTHREADS) {
-    return `if (ENVIRONMENT_IS_PTHREAD) { ${text} }`;
+  if (WASM_WORKERS || PTHREADS) {
+    return `if (${ENVIRONMENT_IS_WORKER_THREAD()}) { ${text} }`;
   } else {
     return '';
   }
@@ -862,8 +864,7 @@ function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert)
     if (defaultValue) {
       ret += ` = Module['${moduleName}'] || ${defaultValue};`;
     } else {
-      ret += `; ${makeModuleReceive(localName, moduleName)}`;
-      return ret;
+      ret += ` = Module['${moduleName}'];`;
     }
   }
   if (!noAssert) {
@@ -946,18 +947,23 @@ function receiveI64ParamAsI53Unchecked(name) {
   return `var ${name} = convertI32PairToI53(${name}_low, ${name}_high);`;
 }
 
-// Any function called from wasm64 may have bigint args, this function takes
-// a list of variable names to convert to number.
+// Convert a pointer value under wasm64 from BigInt (used at local level API
+// level) to Number (used in JS library code).  No-op under wasm32.
 function from64(x) {
-  if (!MEMORY64) {
-    return '';
-  }
-  if (Array.isArray(x)) {
-    let ret = '';
-    for (e of x) ret += from64(e);
-    return ret;
-  }
+  if (!MEMORY64) return '';
   return `${x} = Number(${x});`;
+}
+
+// Like from64 above but generate an expression instead of an assignment
+// statement.
+function from64Expr(x, assign = true) {
+  if (!MEMORY64) return x;
+  return `Number(${x})`;
+}
+
+function toIndexType(x) {
+  if (MEMORY64 == 1) return `BigInt(${x})`;
+  return x;
 }
 
 function to64(x) {
@@ -965,40 +971,12 @@ function to64(x) {
   return `BigInt(${x})`;
 }
 
-// Add assertions to catch common errors when using the Promise object we
-// return from MODULARIZE Module() invocations.
-function addReadyPromiseAssertions() {
-  // Warn on someone doing
-  //
-  //  var instance = Module();
-  //  ...
-  //  instance._main();
-  const properties = Array.from(EXPORTED_FUNCTIONS.values());
-  // Also warn on onRuntimeInitialized which might be a common pattern with
-  // older MODULARIZE-using codebases.
-  properties.push('onRuntimeInitialized');
-  const warningEnding =
-    ' on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js';
-  const res = JSON.stringify(properties);
-  return (
-    res +
-    `.forEach((prop) => {
-  if (!Object.getOwnPropertyDescriptor(readyPromise, prop)) {
-    Object.defineProperty(readyPromise, prop, {
-      get: () => abort('You are getting ' + prop + '${warningEnding}'),
-      set: () => abort('You are setting ' + prop + '${warningEnding}'),
-    });
-  }
-});`
-  );
-}
-
 function asyncIf(condition) {
-  return condition ? 'async' : '';
+  return condition ? 'async ' : '';
 }
 
 function awaitIf(condition) {
-  return condition ? 'await' : '';
+  return condition ? 'await ' : '';
 }
 
 // Adds a call to runtimeKeepalivePush, if needed by the current build
@@ -1034,9 +1012,11 @@ function getUnsharedTextDecoderView(heap, start, end) {
   // then unconditionally do a .slice() for smallest code size.
   if (SHRINK_LEVEL == 2 || heap == 'HEAPU8') return shared;
 
-  // Otherwise, generate a runtime type check: must do a .slice() if looking at a SAB,
-  // or can use .subarray() otherwise.
-  return `${heap}.buffer instanceof SharedArrayBuffer ? ${shared} : ${unshared}`;
+  // Otherwise, generate a runtime type check: must do a .slice() if looking at
+  // a SAB, or can use .subarray() otherwise.  Note: We compare with
+  // `ArrayBuffer` here to avoid referencing `SharedArrayBuffer` which could be
+  // undefined.
+  return `${heap}.buffer instanceof ArrayBuffer ? ${unshared} : ${shared}`;
 }
 
 function getEntryFunction() {
@@ -1077,6 +1057,18 @@ function implicitSelf() {
   return ENVIRONMENT.includes('node') ? 'self.' : '';
 }
 
+function ENVIRONMENT_IS_MAIN_THREAD() {
+  return `(!${ENVIRONMENT_IS_WORKER_THREAD()})`;
+}
+
+function ENVIRONMENT_IS_WORKER_THREAD() {
+  assert(PTHREADS || WASM_WORKERS);
+  var envs = [];
+  if (PTHREADS) envs.push('ENVIRONMENT_IS_PTHREAD');
+  if (WASM_WORKERS) envs.push('ENVIRONMENT_IS_WASM_WORKER');
+  return '(' + envs.join('||') + ')';
+}
+
 addToCompileTimeContext({
   ATEXITS,
   ATINITS,
@@ -1094,9 +1086,10 @@ addToCompileTimeContext({
   STACK_ALIGN,
   TARGET_NOT_SUPPORTED,
   WASM_PAGE_SIZE,
+  ENVIRONMENT_IS_MAIN_THREAD,
+  ENVIRONMENT_IS_WORKER_THREAD,
   addAtExit,
   addAtInit,
-  addReadyPromiseAssertions,
   asyncIf,
   awaitIf,
   buildStringArray,
@@ -1105,6 +1098,7 @@ addToCompileTimeContext({
   expectToReceiveOnModule,
   formattedMinNodeVersion,
   from64,
+  from64Expr,
   getEntryFunction,
   getHeapForType,
   getHeapOffset,
@@ -1139,4 +1133,5 @@ addToCompileTimeContext({
   splitI64,
   storeException,
   to64,
+  toIndexType,
 });

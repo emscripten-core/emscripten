@@ -140,7 +140,7 @@ def encode_uint_var(n):
 def append_source_mapping(wasm, url):
   logger.debug('Append sourceMappingURL section')
   section_name = "sourceMappingURL"
-  section_content = encode_uint_var(len(section_name)) + section_name + encode_uint_var(len(url)) + url
+  section_content = encode_uint_var(len(section_name)) + section_name.encode() + encode_uint_var(len(url)) + url.encode()
   return wasm + encode_uint_var(0) + encode_uint_var(len(section_content)) + section_content
 
 
@@ -317,9 +317,9 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources, bas
     last_line = line
     last_column = column
   return {'version': 3,
-          'names': [],
           'sources': sources,
           'sourcesContent': sources_content,
+          'names': [],
           'mappings': ','.join(mappings)}
 
 

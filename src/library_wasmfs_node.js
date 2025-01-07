@@ -78,15 +78,14 @@ addToLibrary({
         let sp = stackSave();
         let name = stringToUTF8OnStack(entry.name);
         let type;
-        // TODO: Figure out how to use `cDefine` here.
         if (entry.isFile()) {
-          type = 1;
+          type = {{{ cDefine('File::DataFileKind') }}};
         } else if (entry.isDirectory()) {
-          type = 2;
+          type = {{{ cDefine('File::DirectoryKind') }}};
         } else if (entry.isSymbolicLink()) {
-          type = 3;
+          type = {{{ cDefine('File::SymlinkKind') }}};
         } else {
-          type = 0;
+          type = {{{ cDefine('File::UnknownKind') }}};
         }
         __wasmfs_node_record_dirent(vec, name, type);
         stackRestore(sp);

@@ -41,6 +41,13 @@ void emscripten_console_warnf(const char* fmt, ...) {
   va_end(ap);
 }
 
+void emscripten_console_tracef(const char* fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  vlogf(fmt, ap, &emscripten_console_trace);
+  va_end(ap);
+}
+
 void emscripten_outf(const char* fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
@@ -60,6 +67,13 @@ void emscripten_dbgf(const char* fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
   vlogf(fmt, ap, &emscripten_dbg);
+  va_end(ap);
+}
+
+void emscripten_dbg_backtracef(const char* fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  vlogf(fmt, ap, &emscripten_dbg_backtrace);
   va_end(ap);
 }
 #endif

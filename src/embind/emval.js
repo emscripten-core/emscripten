@@ -347,7 +347,7 @@ var LibraryEmVal = {
       var offset = 0;
       for (var i = 0; i < argCount; ++i) {
         argN[i] = types[i]['readValueFromPointer'](args + offset);
-        offset += types[i]['argPackAdvance'];
+        offset += types[i].argPackAdvance;
       }
       var rv = kind === /* CONSTRUCTOR */ 1 ? reflectConstruct(func, argN) : func.apply(obj, argN);
       return emval_returnValue(retType, destructorsRef, rv);
@@ -369,7 +369,7 @@ var LibraryEmVal = {
       args.push(types[i]);
       functionBody +=
         `  var arg${i} = argType${i}.readValueFromPointer(args${offset ? "+" + offset : ""});\n`;
-      offset += types[i]['argPackAdvance'];
+      offset += types[i].argPackAdvance;
     }
     var invoker = kind === /* CONSTRUCTOR */ 1 ? 'new func' : 'func.call';
     functionBody +=
@@ -447,9 +447,9 @@ var LibraryEmVal = {
   _emval_await__deps: ['$Emval', '$Asyncify'],
   _emval_await__async: true,
   _emval_await: (promise) => {
-    return Asyncify.handleAsync(() => {
-      promise = Emval.toValue(promise);
-      return promise.then(Emval.toHandle);
+    return Asyncify.handleAsync(async () => {
+      var value = await Emval.toValue(promise);
+      return Emval.toHandle(value);
     });
   },
 #endif
@@ -468,10 +468,9 @@ var LibraryEmVal = {
   },
 
   _emval_coro_suspend__deps: ['$Emval', '_emval_coro_resume'],
-  _emval_coro_suspend: (promiseHandle, awaiterPtr) => {
-    Emval.toValue(promiseHandle).then(result => {
-      __emval_coro_resume(awaiterPtr, Emval.toHandle(result));
-    });
+  _emval_coro_suspend: async (promiseHandle, awaiterPtr) => {
+    var result = await Emval.toValue(promiseHandle);
+    __emval_coro_resume(awaiterPtr, Emval.toHandle(result));
   },
 
   _emval_coro_make_promise__deps: ['$Emval', '__cxa_rethrow'],

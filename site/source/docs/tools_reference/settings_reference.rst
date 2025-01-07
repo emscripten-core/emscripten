@@ -53,7 +53,7 @@ CHECK_NULL_WRITES
 When STACK_OVERFLOW_CHECK is enabled we also check writes to address zero.
 This can help detect NULL pointer usage.  If you want to skip this extra
 check (for example, if you want reads from the address zero to always return
-zero) you can disabled this here.  This setting has no effect when
+zero) you can disable this here.  This setting has no effect when
 STACK_OVERFLOW_CHECK is disabled.
 
 Default value: true
@@ -350,7 +350,7 @@ Default value: 1024
 TABLE_BASE
 ==========
 
-Where where table slots (function addresses) are allocated.
+Where table slots (function addresses) are allocated.
 This must be at least 1 to reserve the zero slot for the null pointer.
 
 Default value: 1
@@ -462,10 +462,9 @@ EMULATE_FUNCTION_POINTER_CASTS
 
 Allows function pointers to be cast, wraps each call of an incorrect type
 with a runtime correction.  This adds overhead and should not be used
-normally.  It also forces ALIASING_FUNCTION_POINTERS to 0.  Aside from making
-calls not fail, this tries to convert values as best it can.
-We use 64 bits (i64) to represent values, as if we wrote the sent value to
-memory and loaded the received type from the same memory (using
+normally.  Aside from making calls not fail, this tries to convert values as
+best it can.  We use 64 bits (i64) to represent values, as if we wrote the
+sent value to memory and loaded the received type from the same memory (using
 truncs/extends/ reinterprets). This means that when types do not match the
 emulated values may not match (this is true of native too, for that matter -
 this is all undefined behavior). This approaches appears good enough to
@@ -1167,8 +1166,6 @@ Emit instructions for the new Wasm exception handling proposal with exnref,
 which was adopted on Oct 2023. The implementation of the new proposal is
 still in progress and this feature is currently experimental.
 
-.. note:: Applicable during both linking and compilation
-
 Default value: false
 
 .. _nodejs_catch_exit:
@@ -1185,7 +1182,7 @@ catch and handle ExitStatus exceptions.  However, this means all other
 uncaught exceptions are also caught and re-thrown, which is not always
 desirable.
 
-Default value: true
+Default value: false
 
 .. _nodejs_catch_rejection:
 
@@ -1950,6 +1947,22 @@ factory function, you can use --extern-pre-js or --extern-post-js. While
 intended usage is to add code that is optimized with the rest of the emitted
 code, allowing better dead code elimination and minification.
 
+Experimental Feature - Instance ES Modules:
+
+Note this feature is still under active development and is subject to change!
+
+To enable this feature use -sMODULARIZE=instance. Enabling this mode will
+produce an ES module that is a singleton with ES module exports. The
+module will export a default value that is an async init function and will
+also export named values that correspond to the Wasm exports and runtime
+exports. The init function must be called before any of the exports can be
+used. An example of using the module is below.
+
+  import init, { foo, bar } from "./my_module.mjs"
+  await init(optionalArguments);
+  foo();
+  bar();
+
 Default value: false
 
 .. _export_es6:
@@ -2176,7 +2189,7 @@ legalize i64s into pairs of i32s, as the wasm VM will use a BigInt where an
 i64 is used. If WASM_BIGINT is present, the default minimum supported browser
 versions will be increased to the min version that supports BigInt.
 
-Default value: false
+Default value: true
 
 .. _emit_producers_section:
 
@@ -2526,9 +2539,13 @@ Default value: false
 WASM_WORKERS
 ============
 
-If true, enables support for Wasm Workers. Wasm Workers enable applications
+If 1, enables support for Wasm Workers. Wasm Workers enable applications
 to create threads using a lightweight web-specific API that builds on top
-of Wasm SharedArrayBuffer + Atomics API.
+of Wasm SharedArrayBuffer + Atomics API. When enabled, a new build output
+file a.ww.js will be generated to bootstrap the Wasm Worker JS contexts.
+If 2, enables support for Wasm Workers, but without using a separate a.ww.js
+file on the side. This can simplify deployment of builds, but will have a
+downside that the generated build will no longer be csp-eval compliant.
 [compile+link] - affects user code at compile and system libraries at link.
 
 Default value: 0
@@ -2888,7 +2905,8 @@ are desired to work. Pass -sMIN_FIREFOX_VERSION=majorVersion to drop support
 for Firefox versions older than < majorVersion.
 Firefox 79 was released on 2020-07-28.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 34 which was released on 2014-12-01.
+Minimum supported value is 40 which was released on 2015-09-11 (see
+feature_matrix.py)
 
 Default value: 79
 
@@ -2907,7 +2925,8 @@ NOTE: Emscripten is unable to produce code that would work in iOS 9.3.5 and
 older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
 see https://github.com/emscripten-core/emscripten/pull/7191.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 90000 which was released in 2015.
+Minimum supported value is 101000 which was released in 2016-09 (see
+feature_matrix.py).
 
 Default value: 140100
 
@@ -2922,7 +2941,8 @@ This setting also applies to modern Chromium-based Edge, which shares version
 numbers with Chrome.
 Chrome 85 was released on 2020-08-25.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 32, which was released on 2014-01-04.
+Minimum supported value is 45, which was released on 2015-09-01 (see
+feature_matrix.py).
 
 Default value: 85
 
@@ -2935,7 +2955,8 @@ Specifies minimum node version to target for the generated code.  This is
 distinct from the minimum version required run the emscripten compiler.
 This version aligns with the current Ubuuntu TLS 20.04 (Focal).
 Version is encoded in MMmmVV, e.g. 181401 denotes Node 18.14.01.
-Minimum supported value is 101900, which was released 2020-02-05.
+Minimum supported value is 101900, which was released 2020-02-05 (see
+feature_matrix.py).
 
 Default value: 160000
 
@@ -3054,11 +3075,10 @@ Certain browser DOM API operations, such as requesting fullscreen mode
 transition or pointer lock require that the request originates from within
 an user initiated event, such as mouse click or keyboard press. Refactoring
 an application to follow this kind of program structure can be difficult, so
-HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=1 flag allows transparent
-emulation of this by deferring synchronous fullscreen mode and pointer lock
-requests until a suitable event callback is generated. Set this to 0
-to disable support for deferring to save code space if your application does
-not need support for deferred calls.
+HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS allows transparent emulation
+of this by deferring such requests until a suitable event callback is
+generated. Set this to 0 to disable support for deferring to on save code
+size if your application does not need support for deferred calls.
 
 Default value: true
 
@@ -3297,7 +3317,9 @@ Default value: true
 RUNTIME_DEBUG
 =============
 
-If true, add tracing to core runtime functions.
+If non-zero, add tracing to core runtime functions.  Can be set to 2 for
+extra tracing (for example, tracing that occurs on each turn of the event
+loop or each user callback, which can flood the console).
 This setting is enabled by default if any of the following debugging settings
 are enabled:
 - PTHREADS_DEBUG
@@ -3311,7 +3333,7 @@ are enabled:
 - SOCKET_DEBUG
 - FETCH_DEBUG
 
-Default value: false
+Default value: 0
 
 .. _legacy_runtime:
 

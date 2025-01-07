@@ -28,13 +28,14 @@ from tools.settings import settings
 from tools.system_libs import USE_NINJA
 
 
-# Minimal subset of targets used by CI systems to build enough to useful
+# Minimal subset of targets used by CI systems to build enough to be useful
 MINIMAL_TASKS = [
-    'libbulkmemory',
     'libcompiler_rt',
     'libcompiler_rt-wasm-sjlj',
+    'libcompiler_rt-ww',
     'libc',
     'libc-debug',
+    'libc-ww-debug',
     'libc_optz',
     'libc_optz-debug',
     'libc++abi',
@@ -43,13 +44,16 @@ MINIMAL_TASKS = [
     'libc++abi-debug',
     'libc++abi-debug-except',
     'libc++abi-debug-noexcept',
+    'libc++abi-debug-ww-noexcept',
     'libc++',
     'libc++-except',
     'libc++-noexcept',
+    'libc++-ww-noexcept',
     'libal',
     'libdlmalloc',
     'libdlmalloc-tracing',
     'libdlmalloc-debug',
+    'libdlmalloc-ww',
     'libembind',
     'libembind-rtti',
     'libemmalloc',
@@ -61,8 +65,13 @@ MINIMAL_TASKS = [
     'libmimalloc-mt',
     'libGL',
     'libGL-getprocaddr',
+    'libGL-emu-getprocaddr',
+    'libGL-emu-webgl2-ofb-getprocaddr',
+    'libGL-webgl2-ofb-getprocaddr',
+    'libGL-ww-getprocaddr',
     'libhtml5',
     'libsockets',
+    'libsockets-ww',
     'libstubs',
     'libstubs-debug',
     'libstandalonewasm-nocatch',
@@ -103,7 +112,7 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'crtbegin',
     'libsanitizer_common_rt',
     'libubsan_rt',
-    'libwasm_workers_stub-debug',
+    'libwasm_workers-debug-stub',
     'libfetch',
     'libfetch-mt',
     'libwasmfs',
@@ -283,7 +292,7 @@ def main():
         if USE_NINJA:
           library.generate()
         else:
-          library.build(deterministic_paths=True)
+          library.build()
     elif what == 'sysroot':
       if do_clear:
         cache.erase_file('sysroot_install.stamp')

@@ -29,8 +29,8 @@ _Thread_local int testTlsVariable = 1;
 int lastTlsVariableValueInAudioThread = 1;
 #endif
 
-// This function will be called for every fixed 128 samples of audio to be processed.
-EM_BOOL ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs, AudioSampleFrame *outputs, int numParams, const AudioParamFrame *params, void *userData) {
+// This function will be called for every fixed-size buffer of audio samples to be processed.
+bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs, AudioSampleFrame *outputs, int numParams, const AudioParamFrame *params, void *userData) {
 #ifdef REPORT_RESULT
   assert(testTlsVariable == lastTlsVariableValueInAudioThread);
   ++testTlsVariable;
@@ -40,27 +40,23 @@ EM_BOOL ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutpu
 
   // Produce noise in all output channels.
   for(int i = 0; i < numOutputs; ++i)
-    for(int j = 0; j < 128*outputs[i].numberOfChannels; ++j)
+    for(int j = 0; j < outputs[i].samplesPerChannel*outputs[i].numberOfChannels; ++j)
       outputs[i].data[j] = (rand() / (float)RAND_MAX * 2.0f - 1.0f) * 0.3f;
 
-  // We generated audio and want to keep this processor going. Return EM_FALSE here to shut down.
-  return EM_TRUE;
+  // We generated audio and want to keep this processor going. Return false here to shut down.
+  return true;
 }
 
-EM_JS(void, InitHtmlUi, (EMSCRIPTEN_WEBAUDIO_T audioContext, EMSCRIPTEN_AUDIO_WORKLET_NODE_T audioWorkletNode), {
-  audioContext = emscriptenGetAudioObject(audioContext);
-  audioWorkletNode = emscriptenGetAudioObject(audioWorkletNode);
-
+EM_JS(void, InitHtmlUi, (EMSCRIPTEN_WEBAUDIO_T audioContext), {
   // Add a button on the page to toggle playback as a response to user click.
   let startButton = document.createElement('button');
   startButton.innerHTML = 'Toggle playback';
   document.body.appendChild(startButton);
 
+  audioContext = emscriptenGetAudioObject(audioContext);
   startButton.onclick = () => {
     if (audioContext.state != 'running') {
       audioContext.resume();
-      // Connect the audio worklet node to the graph.
-      audioWorkletNode.connect(audioContext.destination);
     } else {
       audioContext.suspend();
     }
@@ -68,21 +64,21 @@ EM_JS(void, InitHtmlUi, (EMSCRIPTEN_WEBAUDIO_T audioContext, EMSCRIPTEN_AUDIO_WO
 });
 
 #ifdef REPORT_RESULT
-EM_BOOL main_thread_tls_access(double time, void *userData) {
+bool main_thread_tls_access(double time, void *userData) {
   // Try to mess the TLS variable on the main thread, with the expectation that
   // it should not change the TLS value on the AudioWorklet thread.
   testTlsVariable = (int)time;
   if (lastTlsVariableValueInAudioThread >= 100) {
     REPORT_RESULT(0);
-    return EM_FALSE;
+    return false;
   }
-  return EM_TRUE;
+  return true;
 }
 #endif
 
 // This callback will fire after the Audio Worklet Processor has finished being
 // added to the Worklet global scope.
-void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOOL success, void *userData) {
+void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData) {
   if (!success) return;
 
   // Specify the input and output node configurations for the Wasm Audio
@@ -98,18 +94,20 @@ void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOOL su
 
   // Instantiate the noise-generator Audio Worklet Processor.
   EMSCRIPTEN_AUDIO_WORKLET_NODE_T wasmAudioWorklet = emscripten_create_wasm_audio_worklet_node(audioContext, "noise-generator", &options, &ProcessAudio, 0);
+  // Connect the audio worklet node to the graph.
+  emscripten_audio_node_connect(wasmAudioWorklet, audioContext, 0, 0);
 
 #ifdef REPORT_RESULT
   emscripten_set_timeout_loop(main_thread_tls_access, 10, 0);
 #endif
 
-  InitHtmlUi(audioContext, wasmAudioWorklet);
+  InitHtmlUi(audioContext);
 }
 
 // This callback will fire when the Wasm Module has been shared to the
 // AudioWorklet global scope, and is now ready to begin adding Audio Worklet
 // Processors.
-void WebAudioWorkletThreadInitialized(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOOL success, void *userData) {
+void WebAudioWorkletThreadInitialized(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData) {
   if (!success) return;
 
   WebAudioWorkletProcessorCreateOptions opts = {
@@ -126,8 +124,6 @@ void WebAudioWorkletThreadInitialized(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOO
 uint8_t wasmAudioWorkletStack[4096];
 
 int main() {
-  srand(time(NULL));
-
   assert(!emscripten_current_thread_is_audio_worklet());
 
   // Create an audio context

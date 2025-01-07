@@ -1,5 +1,6 @@
 __THREW__
 ___environ
+__daylight
 __environ
 __optpos
 __optreset
@@ -8,7 +9,10 @@ __progname_full
 __sig_actions
 __sig_pending
 __signgam
+__stack_chk_guard
 __threwValue
+__timezone
+__tzname
 _environ
 _ns_flagdata
 daylight

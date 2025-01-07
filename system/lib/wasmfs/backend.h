@@ -4,9 +4,6 @@
 // found in the LICENSE file.
 
 // This file defines the modular backend abstract class.
-// Other file system backends can use this to interface with the new file
-// system. Current Status: Work in Progress. See
-// https://github.com/emscripten-core/emscripten/issues/15041.
 
 #pragma once
 

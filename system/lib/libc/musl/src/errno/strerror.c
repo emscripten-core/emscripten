@@ -36,12 +36,24 @@ char *__strerror_l(int e, locale_t loc)
 #endif
 	if (e >= sizeof errmsgidx / sizeof *errmsgidx) e = 0;
 	s = (char *)&errmsgstr + errmsgidx[e];
+#ifdef __EMSCRIPTEN__
+	// strerror is a (debug) dependency of many emscripten syscalls which mean it
+	// must be excluded from LTO, along with all of its dependencies.
+	// In order to limit the transitive dependencies we disable localization of
+	// rrno messages here.
+	return (char *)s;
+#else
 	return (char *)LCTRANS(s, LC_MESSAGES, loc);
+#endif
 }
 
 char *strerror(int e)
 {
+#ifdef __EMSCRIPTEN__
+	return __strerror_l(e, NULL);
+#else
 	return __strerror_l(e, CURRENT_LOCALE);
+#endif
 }
 
 weak_alias(__strerror_l, strerror_l);

@@ -19,7 +19,7 @@ var LibraryExceptions = {};
   '__cxa_rethrow_primary_exception',
   '__cxa_find_matching_catch',
   '__resumeException',
-].forEach(function(name) {
+].forEach((name) => {
   LibraryExceptions[name] = function() { abort(); };
 #if !INCLUDE_FULL_LIBRARY
   // This method of link-time error generation is not compatible with INCLUDE_FULL_LIBRARY

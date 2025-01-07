@@ -14,6 +14,6 @@ int main(int argc, char* argv[]) {
   printf("%d ", -one * 0);
   printf("%g ", 0.0 * one);
   printf("%g ", 0.0 * -one);
-  printf("%g", -one * 0.0);
+  printf("%g\n", -one * 0.0);
   return 0;
 }

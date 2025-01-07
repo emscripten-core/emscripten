@@ -6,13 +6,13 @@ orbs:
 executors:
   linux-node:
     docker:
-      - image: circleci/node:stretch
+      - image: cimg/node:18.20.3
   linux-python:
     docker:
       - image: cimg/python:3.10.7
-  bionic:
+  focal:
     docker:
-      - image: emscripten/emscripten-ci
+      - image: emscripten/emscripten-ci:focal
     environment:
       LANG: "C.UTF-8"
       EMCC_CORES: "4"
@@ -20,12 +20,6 @@ executors:
       EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
       EMTEST_BUILD_VERBOSE: "2"
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
-  mac:
-    environment:
-      EMSDK_NOTTY: "1"
-    macos:
-      xcode: "13.4.1"
-    resource_class: macos.x86.medium.gen2
   mac-arm64:
     environment:
       EMSDK_NOTTY: "1"
@@ -41,7 +35,7 @@ commands:
           name: download chrome
           command: |
             # TODO: Make these part of the base image
-            apt-get install libu2f-udev libvulkan1
+            apt-get install -q -y libu2f-udev libvulkan1 xdg-utils
             # wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
             # If that download link breaks, temporarily use this URL instead:
             # wget -O ~/chrome.deb https://storage.googleapis.com/webassembly/chrome/google-chrome-stable_current_amd64.deb
@@ -61,10 +55,6 @@ commands:
     description: "bootstrap"
     steps:
       - run: ./bootstrap
-  npm-install:
-    description: "npm ci"
-    steps:
-      - run: npm ci
   pip-install:
     description: "pip install"
     parameters:
@@ -76,6 +66,15 @@ commands:
       - run:
           name: pip install
           command: << parameters.python >> -m pip install -r requirements-dev.txt
+  install-rust:
+    steps:
+      - run:
+          name: install rust
+          command: |
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+            export PATH=${HOME}/.cargo/bin:${PATH}
+            rustup target add wasm32-unknown-emscripten
+            echo "export PATH=\"\$HOME/.cargo/bin:\$PATH\"" >> $BASH_ENV
   install-node-version:
     description: "install a specific version of node"
     parameters:
@@ -112,7 +111,7 @@ commands:
     description: "install canary version of node"
     steps:
       - install-node-version:
-         node_version: "22.0.0-v8-canary20240423a2eb2005bd"
+         node_version: "24.0.0-v8-canary202501036428a2737e"
          canary: true
   install-v8:
     description: "install v8 using jsvu"
@@ -161,7 +160,6 @@ commands:
             cat ~/emsdk/.emscripten
       - emsdk-env
       - bootstrap
-      - npm-install
   build-libs:
     description: "Build all libraries"
     steps:
@@ -170,7 +168,7 @@ commands:
           command: |
             ./emcc --clear-cache
       - pip-install
-      - run: apt-get install ninja-build
+      - run: apt-get install -q -y ninja-build
       - run:
           name: embuilder build ALL
           command: |
@@ -220,7 +218,6 @@ commands:
           command: git submodule update --init
       - emsdk-env
       - bootstrap
-      - npm-install
       - pip-install
   upload-test-results:
     description: "Upload test results"
@@ -237,6 +234,10 @@ commands:
         description: "Name of given test suite"
         type: string
         default: ""
+      extra-cflags:
+        description: "Extra EMCC_CFLAGS"
+        type: string
+        default: ""
     steps:
       - when:
           # We only set EMTEST_RETRY_FLAKY on pull requests.  When we run
@@ -244,9 +245,11 @@ commands:
           # detect flakyness.
           condition: ${CIRCLE_PULL_REQUEST}
           steps:
-            set-retry-flaky-tests
+            - set-retry-flaky-tests
       - run:
           name: run tests (<< parameters.title >>)
+          environment:
+            EMCC_CFLAGS: << parameters.extra-cflags >>
           command: |
             env
             ./test/runner << parameters.test_targets >>
@@ -309,7 +312,7 @@ commands:
             # this flag for now: https://crbug.com/638180
             CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile --enable-experimental-web-platform-features"
             CHROME_FLAGS_HEADLESS: "--headless=new --remote-debugging-port=1234"
-            CHROME_FLAGS_WASM: "--enable-experimental-webassembly-features --js-flags=\"--experimental-wasm-memory64 --experimental-wasm-stack-switching --experimental-wasm-type-reflection\""
+            CHROME_FLAGS_WASM: "--enable-experimental-webassembly-features --js-flags=\"--experimental-wasm-stack-switching --experimental-wasm-type-reflection\""
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
           command: |
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
@@ -326,10 +329,8 @@ commands:
           environment:
             HOMEBREW_NO_AUTO_UPDATE: "1"
           command: |
-            brew list cmake || brew install cmake
-            brew list ninja || brew install ninja
-            brew list python3 || brew install python3
-            brew list pkg-config || brew install pkg-config
+            brew update
+            brew install cmake ninja python3 pkg-config
       - checkout
       - run:
           name: submodule update
@@ -345,7 +346,6 @@ commands:
         type: string
         default: ""
     steps:
-      - prepare-for-tests
       - run:
           name: download firefox
           command: |
@@ -402,7 +402,7 @@ commands:
             # this flag for now: https://crbug.com/638180
             CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile"
             CHROME_FLAGS_HEADLESS: "--headless=new --remote-debugging-port=1234"
-            CHROME_FLAGS_WASM: "--enable-experimental-webassembly-features --js-flags=\"--experimental-wasm-memory64\""
+            CHROME_FLAGS_WASM: "--enable-experimental-webassembly-features"
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
           command: |
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
@@ -411,7 +411,7 @@ commands:
 
 jobs:
   build-docs:
-    executor: bionic
+    executor: focal
     steps:
       - checkout
       - pip-install
@@ -419,14 +419,16 @@ jobs:
       - run: make -C site text
       - run: tools/maint/check_emcc_help_text.py
       - run: make -C site html
-  flake8:
-    executor: bionic
+  ruff:
+    executor: focal
     steps:
       - checkout
       - pip-install
-      - run: python3 -m flake8 --show-source --statistics
+      - run: ruff check
+      # TODO (cclauss): When ruff supports rule E303 without --preview, remove following line
+      - run: ruff check --preview --select=E303
   mypy:
-    executor: bionic
+    executor: focal
     steps:
       - checkout
       - pip-install
@@ -435,18 +437,18 @@ jobs:
     executor: linux-node
     steps:
       - checkout
-      - npm-install
+      - run: npm ci
       - run: |
           npm run lint
           npm run check
   test-sanity:
-    executor: bionic
+    executor: focal
     steps:
       - run-tests-linux:
           frozen_cache: false
           test_targets: "sanity"
   build-linux:
-    executor: bionic
+    executor: focal
     # xlarge has 4x the cores of the default medium, costs 4x as much, and runs
     # in about 1/2 the time, so it is not cost-effective (overall it is 2x the
     # cost for the same work), but given this blocks almost all the other jobs
@@ -486,19 +488,19 @@ jobs:
       - persist
   # Perhaps we don't need to run this suite with every commit. Consider moving this to FYI bot.
   test-posixtest:
-    executor: bionic
+    executor: focal
     steps:
       - run-tests-linux:
           test_targets: "posixtest"
   test-core0:
-    executor: bionic
+    executor: focal
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
     steps:
       - run-tests-linux:
           test_targets: "core0"
   test-core2:
-    executor: bionic
+    executor: focal
     environment:
       EMTEST_BROWSER: "node"
       EMTEST_SKIP_NODE_CANARY: "1"
@@ -524,10 +526,12 @@ jobs:
             asan.test_externref_emjs_dynlink
             asan.test_asyncify_longjmp
             asan.test_pthread_run_on_main_thread
+            lsan.test_dylink_dso_needed
             lsan.test_stdio_locking
             lsan.test_dlfcn_basic
             lsan.test_pthread_create
-            lsan.test_pthread_exit_main_stub"
+            lsan.test_pthread_exit_main_stub
+            ubsan.test_externref_emjs_dynlink"
       - freeze-cache
       - run-tests:
           # also run a single test of EMTEST_BROWSER=node.
@@ -539,7 +543,7 @@ jobs:
             corez.test_dylink_syslibs_all"
       - upload-test-results
   test-core3:
-    executor: bionic
+    executor: focal
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
     steps:
@@ -551,6 +555,7 @@ jobs:
           test_targets: "
             lto2.test_dylink_syslibs_all
             lto2.test_float_builtins
+            lto2.test_avx_nontrapping
             lto0.test_exceptions_allowed_uncaught
             lto0.test_longjmp_standalone_standalone
             lto0.test_embind_i64_val
@@ -618,21 +623,10 @@ jobs:
   test-wasm2js1:
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
-    executor: bionic
+    executor: focal
     steps:
       - run-tests-linux:
           test_targets: "wasm2js1"
-  test-wasm64l:
-    environment:
-      EMTEST_SKIP_NODE_CANARY: "1"
-    executor: bionic
-    steps:
-      - run-tests-linux:
-          frozen_cache: false
-          # On older versions of node wasm64l.test_bigswitch uses a lot (~3.5Gb)
-          # of memory, so skip it here, but run it in test-wasm64 instead which
-          # has node canary installed.
-          test_targets: "wasm64l skip:wasm64l.test_bigswitch"
   test-wasm64:
     # We don't use `bionic` here since its tool old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
@@ -644,13 +638,22 @@ jobs:
       - run: rm -rf $HOME/.jsvu
       - install-v8
       - install-node-canary
+      # When running wasm64 tests we need to make sure we use the testing
+      # version of node (node canary) when running the compiler output (e.g.
+      # in configure tests.
+      - run:
+          name: configure node canary
+          command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
       - run-tests:
           title: "wasm64"
           test_targets: "
             wasm64
             core_2gb.test_*em_asm*
             core_2gb.test_*embind*
+            wasm64l.test_hello_world
             wasm64l.test_bigswitch
+            wasm64l.test_module_wasm_memory
+            wasm64l.test_longjmp2_emscripten
             other.test_memory64_proxies
             other.test_failing_growth_wasm64"
       - upload-test-results
@@ -669,6 +672,12 @@ jobs:
       - run: rm -rf $HOME/.jsvu
       - install-v8
       - install-node-canary
+      # When running wasm64 tests we need to make sure we use the testing
+      # version of node (node canary) when running the compiler output (e.g.
+      # in configure tests.
+      - run:
+          name: configure node canary
+          command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
       - run-tests:
           title: "wasm64_4gb"
           test_targets: "wasm64_4gb"
@@ -756,6 +765,7 @@ jobs:
           node_version: "10.19.0"
       - run-tests:
           title: "node (oldest / 10.19.0)"
+          extra-cflags: "-sMIN_NODE_VERSION=101900"
           test_targets: "
             other.test_gen_struct_info
             other.test_native_call_before_init
@@ -787,17 +797,21 @@ jobs:
             core2.test_pthread_unhandledrejection"
       - upload-test-results
   test-other:
-    executor: bionic
+    executor: focal
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_RUST: "1"
+      EMTEST_SKIP_WASM64: "1"
+      EMTEST_SKIP_NEW_CMAKE: "1"
     steps:
-      - run: apt-get install ninja-build scons
+      - install-rust
+      - run: apt-get install -q -y ninja-build scons ccache
       - run-tests-linux:
           # some native-dependent tests fail because of the lack of native
           # headers on emsdk-bundled clang
           test_targets: "other skip:other.test_native_link_error_message"
   test-browser-chrome:
-    executor: bionic
+    executor: focal
     environment:
       EMTEST_LACKS_WEBGPU: "1"
     steps:
@@ -808,15 +822,22 @@ jobs:
             browser skip:browser.test_4gb_fail
             "
   test-browser-chrome-wasm64:
-    executor: bionic
+    executor: focal
     environment:
       EMTEST_LACKS_WEBGPU: "1"
     steps:
       - run-tests-chrome:
           title: "browser64"
-          test_targets: "browser64"
+          # Skip tests that depend on running the output in node
+          # (This bot doesn't have node canary installed which is required to
+          # run wasm64 output).
+          test_targets: "browser64
+            skip:browser64.test_hello_world_worker*
+            skip:browser64.test_2gb_fail
+            skip:browser64.test_4gb_fail
+            skip:browser64.test_4gb"
   test-browser-chrome-2gb:
-    executor: bionic
+    executor: focal
     environment:
       EMTEST_LACKS_WEBGPU: "1"
     steps:
@@ -824,7 +845,7 @@ jobs:
           title: "browser_2gb"
           test_targets: "browser_2gb"
   test-browser-chrome-wasm64-4gb:
-    executor: bionic
+    executor: focal
     environment:
       EMTEST_LACKS_WEBGPU: "1"
       EMTEST_SKIP_NODE_CANARY: "1"
@@ -833,8 +854,9 @@ jobs:
           title: "browser64_4gb"
           test_targets: "browser64_4gb"
   test-browser-firefox:
-    executor: bionic
+    executor: focal
     steps:
+      - prepare-for-tests
       - run-tests-firefox:
           title: "browser"
           # browser.test_sdl2_mouse and/or SDL2 should be fixed. The case happens
@@ -846,16 +868,38 @@ jobs:
           # browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
           # are crashing Firefox (bugzil.la/1281796). The former case is
           # further blocked by issue #6897.
-          test_targets: "browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget"
+          test_targets: "
+            browser
+            skip:browser.test_sdl2_mouse
+            skip:browser.test_html5_webgl_create_context
+            skip:browser.test_webgl_offscreen_canvas_in_pthread
+            skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
+            skip:browser.test_glut_glutget
+            "
+  test-browser-firefox-wasm64:
+    executor: focal
+    steps:
+      - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
+      - pip-install
+      - install-emsdk
+      - run-tests-firefox:
+          title: "browser64"
+          test_targets: "
+            browser64.test_sdl_image
+            browser64.test_dylink_many
+            "
   # TODO(sbc): Re-enable once we figure out why the emrun tests are
   # locking up.
   #test-browser-chrome-emrun:
-  #  executor: bionic
+  #  executor: focal
   #  steps:
   #    - run-tests-chrome:
   #        test_targets: "emrun"
   test-sockets-chrome:
-    executor: bionic
+    executor: focal
     steps:
       - test-sockets-chrome
   # windows and mac do not have separate build and test jobs, as they only run
@@ -876,6 +920,7 @@ jobs:
       EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SIMD: "1"
       EMTEST_SKIP_SCONS: "1"
+      EMTEST_SKIP_RUST: "1"
       EMTEST_SKIP_NODE_CANARY: "1"
       EMTEST_BROWSER: "0"
     steps:
@@ -902,38 +947,6 @@ jobs:
           test_targets: "sockets.test_nodejs_sockets_echo*"
       - upload-test-results
 
-  test-mac:
-    executor: mac
-    environment:
-      # We don't install d8 or modern node on the mac runner so we skip any
-      # tests that depend on those.
-      EMTEST_SKIP_V8: "1"
-      EMTEST_SKIP_EH: "1"
-      EMTEST_SKIP_WASM64: "1"
-      EMTEST_SKIP_SCONS: "1"
-      EMCC_SKIP_SANITY_CHECK: "1"
-      # test_sse1 (the only @crossplatform native clang test) currently fails
-      # on the macOS bots).
-      EMTEST_LACKS_NATIVE_CLANG: "1"
-      EMTEST_SKIP_NODE_CANARY: "1"
-    steps:
-      - setup-macos
-      - attach_workspace:
-          at: ~/
-      - run:
-          name: Remove Linux binaries
-          command: |
-            rm -rf ~/emsdk ~/vms ~/.jsvu
-      # note we do *not* build all libraries and freeze the cache; as we run
-      # only limited tests here, it's more efficient to build on demand
-      - install-emsdk
-      - pip-install:
-          python: "$EMSDK_PYTHON"
-      - run-tests:
-          title: "crossplatform tests"
-          test_targets: "--crossplatform-only"
-      - upload-test-results
-
   test-mac-arm64:
     executor: mac-arm64
     environment:
@@ -943,6 +956,7 @@ jobs:
       EMTEST_SKIP_EH: "1"
       EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SCONS: "1"
+      EMTEST_SKIP_RUST: "1"
       # Some native clang tests assume x86 clang (e.g. -sse2)
       EMTEST_LACKS_NATIVE_CLANG: "1"
       EMCC_SKIP_SANITY_CHECK: "1"
@@ -959,7 +973,7 @@ jobs:
 workflows:
   build-test:
     jobs:
-      - flake8
+      - ruff
       - mypy
       - eslint
       - build-docs
@@ -985,9 +999,6 @@ workflows:
       - test-wasm64-4gb:
           requires:
             - build-linux
-      - test-wasm64l:
-          requires:
-            - build-linux
       - test-wasm2js1:
           requires:
             - build-linux
@@ -1009,6 +1020,7 @@ workflows:
       - test-browser-firefox:
           requires:
             - build-linux
+      - test-browser-firefox-wasm64
       - test-sockets-chrome:
           requires:
             - build-linux
@@ -1017,9 +1029,3 @@ workflows:
       - test-node-compat
       - test-windows
       - test-mac-arm64
-      - test-mac:
-          # The mac tester also uses the libraries built on the linux builder to
-          # save total build time (this is fine because the libraries are wasm
-          # and do not depend on the underlying build platform)
-          requires:
-            - build-linux

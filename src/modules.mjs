@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-import * as path from 'path';
+import * as path from 'node:path';
 
 import {
   isDecorator,
@@ -57,7 +57,6 @@ export const LibraryManager = {
       'library_html5.js',
       'library_stack_trace.js',
       'library_wasi.js',
-      'library_makeDynCall.js',
       'library_eventloop.js',
       'library_promise.js',
     ];
@@ -73,6 +72,10 @@ export const LibraryManager = {
     if (!MINIMAL_RUNTIME) {
       libraries.push('library_browser.js');
       libraries.push('library_wget.js');
+    }
+
+    if (!STANDALONE_WASM) {
+      libraries.push('library_time.js');
     }
 
     if (EMSCRIPTEN_TRACING) {
@@ -94,23 +97,23 @@ export const LibraryManager = {
     if (FILESYSTEM) {
       libraries.push('library_fs_shared.js');
       if (WASMFS) {
-        libraries = libraries.concat([
+        libraries.push(
           'library_wasmfs.js',
           'library_wasmfs_js_file.js',
           'library_wasmfs_jsimpl.js',
           'library_wasmfs_fetch.js',
           'library_wasmfs_node.js',
           'library_wasmfs_opfs.js',
-        ]);
+        );
       } else {
         // Core filesystem libraries (always linked against, unless -sFILESYSTEM=0 is specified)
-        libraries = libraries.concat([
+        libraries.push(
           'library_fs.js',
           'library_memfs.js',
           'library_tty.js',
           'library_pipefs.js', // ok to include it by default since it's only used if the syscall is used
           'library_sockfs.js', // ok to include it by default since it's only used if the syscall is used
-        ]);
+        );
 
         if (NODERAWFS) {
           // NODERAWFS requires NODEFS
@@ -126,7 +129,7 @@ export const LibraryManager = {
 
     // Additional JS libraries (without AUTO_JS_LIBRARIES, link to these explicitly via -lxxx.js)
     if (AUTO_JS_LIBRARIES) {
-      libraries = libraries.concat([
+      libraries.push(
         'library_webgl.js',
         'library_html5_webgl.js',
         'library_openal.js',
@@ -137,7 +140,7 @@ export const LibraryManager = {
         'library_glew.js',
         'library_idbstore.js',
         'library_async.js',
-      ]);
+      );
       if (USE_SDL != 2) {
         libraries.push('library_sdl.js');
       }
@@ -206,7 +209,7 @@ export const LibraryManager = {
     // These must be added last after all Emscripten-provided system libraries
     // above, so that users can override built-in JS library symbols in their
     // own code.
-    libraries = libraries.concat(JS_LIBRARIES);
+    libraries.push(...JS_LIBRARIES);
 
     // Deduplicate libraries to avoid processing any library file multiple times
     libraries = libraries.filter((item, pos) => libraries.indexOf(item) == pos);
@@ -285,15 +288,23 @@ function addToLibrary(obj, options = null) {
 let structs = {};
 let defines = {};
 
+/**
+ * Read JSON file containing struct and macro/define information
+ * that can then be used in JavaScript via macros.
+ */
+function loadStructInfo(filename) {
+  const temp = JSON.parse(read(filename));
+  Object.assign(structs, temp.structs);
+  Object.assign(defines, temp.defines);
+}
+
 if (!BOOTSTRAPPING_STRUCT_INFO) {
-  let structInfoFile = 'generated_struct_info32.json';
-  if (MEMORY64) {
-    structInfoFile = 'generated_struct_info64.json';
-  }
   // Load struct and define information.
-  const temp = JSON.parse(read(structInfoFile));
-  structs = temp.structs;
-  defines = temp.defines;
+  if (MEMORY64) {
+    loadStructInfo('struct_info_generated_wasm64.json');
+  } else {
+    loadStructInfo('struct_info_generated.json');
+  }
 }
 
 // Use proxy objects for C_DEFINES and C_STRUCTS so that we can give useful
@@ -373,6 +384,9 @@ function exportRuntime() {
     // If requested to be exported, export it.  HEAP objects are exported
     // separately in updateMemoryViews
     if (EXPORTED_RUNTIME_METHODS.has(name) && !name.startsWith('HEAP')) {
+      if (MODULARIZE === 'instance') {
+        return `__exp_${name} = ${name};`;
+      }
       return `Module['${name}'] = ${name};`;
     }
   }
@@ -407,7 +421,7 @@ function exportRuntime() {
   ];
 
   if (PTHREADS && ALLOW_MEMORY_GROWTH) {
-    runtimeElements = runtimeElements.concat([
+    runtimeElements.push(
       'GROWABLE_HEAP_I8',
       'GROWABLE_HEAP_U8',
       'GROWABLE_HEAP_I16',
@@ -416,7 +430,7 @@ function exportRuntime() {
       'GROWABLE_HEAP_U32',
       'GROWABLE_HEAP_F32',
       'GROWABLE_HEAP_F64',
-    ]);
+    );
   }
   if (USE_OFFSET_CONVERTER) {
     runtimeElements.push('WasmOffsetConverter');
@@ -510,6 +524,7 @@ function exportRuntime() {
 
 addToCompileTimeContext({
   exportRuntime,
+  loadStructInfo,
   LibraryManager,
   librarySymbols,
   addToLibrary,

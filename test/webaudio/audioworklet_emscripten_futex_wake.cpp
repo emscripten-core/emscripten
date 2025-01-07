@@ -13,7 +13,7 @@
 int futexLocation = 0;
 int testSuccess = 0;
 
-EM_BOOL ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs, AudioSampleFrame *outputs, int numParams, const AudioParamFrame *params, void *userData) {
+bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs, AudioSampleFrame *outputs, int numParams, const AudioParamFrame *params, void *userData) {
   int supportsAtomicWait = _emscripten_thread_supports_atomics_wait();
   printf("supportsAtomicWait: %d\n", supportsAtomicWait);
   assert(!supportsAtomicWait);
@@ -23,41 +23,40 @@ EM_BOOL ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutpu
   emscripten_futex_wait(&futexLocation, 1, /*maxWaitMs=*/2);
   testSuccess = 1;
 
-  return EM_FALSE;
+  return false;
 }
 
-EM_JS(void, InitHtmlUi, (EMSCRIPTEN_WEBAUDIO_T audioContext, EMSCRIPTEN_AUDIO_WORKLET_NODE_T audioWorkletNode), {
-  audioContext = emscriptenGetAudioObject(audioContext);
-  audioWorkletNode = emscriptenGetAudioObject(audioWorkletNode);
+EM_JS(void, InitHtmlUi, (EMSCRIPTEN_WEBAUDIO_T audioContext), {
   let startButton = document.createElement('button');
   startButton.innerHTML = 'Start playback';
   document.body.appendChild(startButton);
 
+  audioContext = emscriptenGetAudioObject(audioContext);
   startButton.onclick = () => {
-    audioWorkletNode.connect(audioContext.destination);
     audioContext.resume();
   };
 });
 
-EM_BOOL PollTestSuccess(double, void *) {
+bool PollTestSuccess(double, void *) {
   if (testSuccess) {
     printf("Test success!\n");
 #ifdef REPORT_RESULT
     REPORT_RESULT(0);
 #endif
-    return EM_FALSE;
+    return false;
   }
-  return EM_TRUE;
+  return true;
 }
 
-void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOOL success, void *userData) {
+void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData) {
   int outputChannelCounts[1] = { 1 };
   EmscriptenAudioWorkletNodeCreateOptions options = { .numberOfInputs = 0, .numberOfOutputs = 1, .outputChannelCounts = outputChannelCounts };
   EMSCRIPTEN_AUDIO_WORKLET_NODE_T wasmAudioWorklet = emscripten_create_wasm_audio_worklet_node(audioContext, "noise-generator", &options, &ProcessAudio, 0);
-  InitHtmlUi(audioContext, wasmAudioWorklet);
+  emscripten_audio_node_connect(wasmAudioWorklet, audioContext, 0, 0);
+  InitHtmlUi(audioContext);
 }
 
-void WebAudioWorkletThreadInitialized(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOOL success, void *userData) {
+void WebAudioWorkletThreadInitialized(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData) {
   WebAudioWorkletProcessorCreateOptions opts = { .name = "noise-generator" };
   emscripten_create_wasm_audio_worklet_processor_async(audioContext, &opts, AudioWorkletProcessorCreated, 0);
 }

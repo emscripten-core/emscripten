@@ -55,14 +55,25 @@ int main(int argc, char *argv[])
     glBindTexture( GL_TEXTURE_2D, texture );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
-    GLubyte textureData[16*16*4];
+#if USE_UNPACK_ROW_LENGTH
+#define ROW_SIZE 20
+#else
+#define ROW_SIZE 16
+#endif
+    GLubyte textureData[16*ROW_SIZE*4] = {0};
     for (int x = 0; x < 16; x++) {
       for (int y = 0; y < 16; y++) {
-        *((int*)&textureData[(x*16 + y) * 4]) = x*16 + ((y*16) << 8);
+        *((int*)&textureData[(x*ROW_SIZE + y) * 4]) = x*16 + ((y*16) << 8);
       }
     }
+#if USE_UNPACK_ROW_LENGTH
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, ROW_SIZE);
+#endif
     glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, 16, 16, 0, 
                   GL_RGBA, GL_UNSIGNED_BYTE, textureData );
+#if USE_UNPACK_ROW_LENGTH
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+#endif
 
     // Create a second texture
 
@@ -300,11 +311,18 @@ int main(int argc, char *argv[])
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, (void*)12);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, (void*) 0);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, (void*)24);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, (void*)36);
 
     glBindVertexArray(0);
 
     glDeleteVertexArrays(1, &vao);
+
+    // Validate glDrawElements when a client side vertex array is used.
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 32, arrayData);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 32, arrayData + 16);
+    glEnableVertexAttribArray(1);
+
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, elementData + 18);
 
     // END
 

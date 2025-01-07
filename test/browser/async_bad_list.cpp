@@ -9,7 +9,7 @@
 int main() {
   int x = EM_ASM_INT({
     window.disableErrorReporting = true;
-    window.onerror = function(e) {
+    window.onerror = async (e) => {
       var message = e.toString();
       var success = message.indexOf("unreachable") >= 0 || // firefox
                     message.indexOf("Script error.") >= 0; // chrome
@@ -17,12 +17,8 @@ int main() {
         Module.reported = true;
         console.log("reporting success");
         // manually REPORT_RESULT; we shouldn't call back into native code at this point
-        var xhr = new XMLHttpRequest();
-        xhr.open("GET", "http://localhost:8888/report_result?0");
-        xhr.onload = xhr.onerror = function() {
-          window.close();
-        };
-        xhr.send();
+        await fetch("http://localhost:8888/report_result?0");
+        window.close();
       }
     };
     return 0;

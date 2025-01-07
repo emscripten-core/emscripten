@@ -3,8 +3,13 @@
 #include <emscripten/websocket.h>
 #include <assert.h>
 
-EM_BOOL WebSocketOpen(int eventType, const EmscriptenWebSocketOpenEvent *e, void *userData) {
-  printf("open(eventType=%d, userData=%p)\n", eventType, userData);
+// This test performs that same server communications using two different
+// sockets. This verifies that multiple sockets are supported simultaneously.
+EMSCRIPTEN_WEBSOCKET_T sock1;
+EMSCRIPTEN_WEBSOCKET_T sock2;
+
+bool WebSocketOpen(int eventType, const EmscriptenWebSocketOpenEvent *e, void *userData) {
+  printf("open(socket=%d, eventType=%d, userData=%p)\n", e->socket, eventType, userData);
 
   emscripten_websocket_send_utf8_text(e->socket, "hello on the other side");
 
@@ -14,27 +19,40 @@ EM_BOOL WebSocketOpen(int eventType, const EmscriptenWebSocketOpenEvent *e, void
   return 0;
 }
 
-EM_BOOL WebSocketClose(int eventType, const EmscriptenWebSocketCloseEvent *e, void *userData) {
-  printf("close(eventType=%d, wasClean=%d, code=%d, reason=%s, userData=%p)\n", eventType, e->wasClean, e->code, e->reason, userData);
+bool WebSocketClose(int eventType, const EmscriptenWebSocketCloseEvent *e, void *userData) {
+  printf("close(socket=%d, eventType=%d, wasClean=%d, code=%d, reason=%s, userData=%p)\n", e->socket, eventType, e->wasClean, e->code, e->reason, userData);
+  assert(e->wasClean == 1);
+  assert(e->code == 1005 /* No Status Rcvd */);
+  emscripten_websocket_delete(e->socket);
+  if (e->socket == sock1) {
+    sock1 = 0;
+  } else if (e->socket == sock2) {
+    sock2 = 0;
+  }
+  // Once both sockets have been closed we are done.
+  if (!sock1 && !sock2) {
+    emscripten_force_exit(0);
+  }
   return 0;
 }
 
-EM_BOOL WebSocketError(int eventType, const EmscriptenWebSocketErrorEvent *e, void *userData) {
-  printf("error(eventType=%d, userData=%p)\n", eventType, userData);
+bool WebSocketError(int eventType, const EmscriptenWebSocketErrorEvent *e, void *userData) {
+  printf("error(socket=%d, eventType=%d, userData=%p)\n", e->socket, eventType, userData);
   return 0;
 }
 
-EM_BOOL WebSocketMessage(int eventType, const EmscriptenWebSocketMessageEvent *e, void *userData) {
-  printf("message(eventType=%d, userData=%p data=%p, numBytes=%d, isText=%d)\n", eventType, userData, e->data, e->numBytes, e->isText);
+bool WebSocketMessage(int eventType, const EmscriptenWebSocketMessageEvent *e, void *userData) {
+  printf("message(socket=%d, eventType=%d, userData=%p data=%p, numBytes=%d, isText=%d)\n", e->socket, eventType, userData, e->data, e->numBytes, e->isText);
   static int text_received = 0;
+  assert(e->socket == sock1 || e->socket == sock2);
   if (e->isText) {
     printf("text data: \"%s\"\n", e->data);
     assert(strcmp((const char*)e->data, "hello on the other side") == 0);
-    text_received = 1;
+    text_received++;
     return 0;
   }
 
-  // We expect to receive the text message beofre the binary one
+  // We expect to receive the text message before the binary one
   assert(text_received);
   printf("binary data:");
   for (int i = 0; i < e->numBytes; ++i) {
@@ -42,16 +60,11 @@ EM_BOOL WebSocketMessage(int eventType, const EmscriptenWebSocketMessageEvent *e
     assert(e->data[i] == i);
   }
   printf("\n");
-
   emscripten_websocket_close(e->socket, 0, 0);
-  emscripten_websocket_delete(e->socket);
-  emscripten_force_exit(0);
   return 0;
 }
 
-int main() {
-  assert(emscripten_websocket_is_supported());
-
+EMSCRIPTEN_WEBSOCKET_T create_socket() {
   EmscriptenWebSocketCreateAttributes attr;
   emscripten_websocket_init_create_attributes(&attr);
 
@@ -106,6 +119,13 @@ int main() {
   emscripten_websocket_set_onclose_callback(socket, (void*)0x43, WebSocketClose);
   emscripten_websocket_set_onerror_callback(socket, (void*)0x44, WebSocketError);
   emscripten_websocket_set_onmessage_callback(socket, (void*)0x45, WebSocketMessage);
+  return socket;
+}
+
+int main() {
+  assert(emscripten_websocket_is_supported());
+  sock1 = create_socket();
+  sock2 = create_socket();
   emscripten_exit_with_live_runtime();
   return 0;
 }

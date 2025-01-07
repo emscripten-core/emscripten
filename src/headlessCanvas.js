@@ -600,9 +600,7 @@ function headlessCanvas() {
     },
     requestPointerLock: function() {
       document.pointerLockElement = document.getElementById('canvas');
-      window.setTimeout(function() {
-        document.callEventListeners('pointerlockchange');
-      });
+      window.setTimeout(() => document.callEventListeners('pointerlockchange'));
     },
     exitPointerLock: function(){},
     style: {
@@ -614,9 +612,7 @@ function headlessCanvas() {
     removeEventListener: function(){},
     requestFullscreen: function() {
       document.fullscreenElement = document.getElementById('canvas');
-      window.setTimeout(function() {
-        document.callEventListeners('fullscreenchange');
-      });
+      window.setTimeout(() => document.callEventListeners('fullscreenchange'));
     },
     offsetTop: 0,
     offsetLeft: 0,

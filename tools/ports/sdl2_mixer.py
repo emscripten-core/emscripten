@@ -10,8 +10,10 @@ HASH = '494ccd74540f74e717f7e4f1dc7f96398c0f4b1883ab00c4a76b0c7239bd2c185cb4358a
 
 deps = ['sdl2']
 variants = {
-  'sdl2_mixer_mp3': {'SDL2_MIXER_FORMATS': ["mp3"]},
-  'sdl2_mixer_none': {'SDL2_MIXER_FORMATS': []},
+  'sdl2_mixer-mp3': {'SDL2_MIXER_FORMATS': ['mp3']},
+  'sdl2_mixer-none': {'SDL2_MIXER_FORMATS': []},
+  'sdl2_mixer-mp3-mt': {'SDL2_MIXER_FORMATS': ['mp3'], 'PTHREADS': 1},
+  'sdl2_mixer-none-mt': {'SDL2_MIXER_FORMATS': [], 'PTHREADS': 1},
 }
 
 
@@ -25,7 +27,9 @@ def get_lib_name(settings):
 
   libname = 'libSDL2_mixer'
   if formats != '':
-    libname += '_' + formats
+    libname += '-' + formats
+  if settings.PTHREADS:
+    libname += '-mt'
   libname += '.a'
 
   return libname
@@ -38,7 +42,7 @@ def get(ports, settings, shared):
   libname = get_lib_name(settings)
 
   def create(final):
-    source_path = os.path.join(ports.get_dir(), 'sdl2_mixer', 'SDL_mixer-' + TAG)
+    source_path = ports.get_dir('sdl2_mixer', 'SDL_mixer-' + TAG)
     flags = [
       '-sUSE_SDL=2',
       '-O2',
@@ -67,6 +71,9 @@ def get(ports, settings, shared):
       flags += [
         '-DMUSIC_MID_TIMIDITY',
       ]
+
+    if settings.PTHREADS:
+      flags.append('-pthread')
 
     build_dir = ports.clear_project_build('sdl2_mixer')
     include_path = os.path.join(source_path, 'include')

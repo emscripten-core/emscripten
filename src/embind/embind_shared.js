@@ -59,18 +59,16 @@ var LibraryEmbindShared = {
     '$awaitingDependencies', '$registeredTypes',
     '$typeDependencies', '$throwInternalError'],
   $whenDependentTypesAreResolved: (myTypes, dependentTypes, getTypeConverters) => {
-    myTypes.forEach(function(type) {
-        typeDependencies[type] = dependentTypes;
-    });
+    myTypes.forEach((type) => typeDependencies[type] = dependentTypes);
 
     function onComplete(typeConverters) {
-        var myTypeConverters = getTypeConverters(typeConverters);
-        if (myTypeConverters.length !== myTypes.length) {
-            throwInternalError('Mismatched type converter count');
-        }
-        for (var i = 0; i < myTypes.length; ++i) {
-            registerType(myTypes[i], myTypeConverters[i]);
-        }
+      var myTypeConverters = getTypeConverters(typeConverters);
+      if (myTypeConverters.length !== myTypes.length) {
+        throwInternalError('Mismatched type converter count');
+      }
+      for (var i = 0; i < myTypes.length; ++i) {
+        registerType(myTypes[i], myTypeConverters[i]);
+      }
     }
 
     var typeConverters = new Array(dependentTypes.length);
@@ -206,22 +204,49 @@ var LibraryEmbindShared = {
     return signature.join('');
   },
 
-  $createJsInvoker__deps: ['$usesDestructorStack'],
+  $checkArgCount(numArgs, minArgs, maxArgs, humanName, throwBindingError) {
+    if (numArgs < minArgs || numArgs > maxArgs) {
+      var argCountMessage = minArgs == maxArgs ? minArgs : `${minArgs} to ${maxArgs}`;
+      throwBindingError(`function ${humanName} called with ${numArgs} arguments, expected ${argCountMessage}`);
+    }
+  },
+
+  $getRequiredArgCount(argTypes) {
+    var requiredArgCount = argTypes.length - 2;
+    for (var i = argTypes.length - 1; i >= 2; --i) {
+      if (!argTypes[i].optional) {
+        break;
+      }
+      requiredArgCount--;
+    }
+    return requiredArgCount;
+  },
+
+  $createJsInvoker__deps: ['$usesDestructorStack',
+#if ASSERTIONS
+    '$checkArgCount',
+#endif
+  ],
   $createJsInvoker(argTypes, isClassMethodFunc, returns, isAsync) {
     var needsDestructorStack = usesDestructorStack(argTypes);
-    var argCount = argTypes.length;
-    var argsList = "";
-    var argsListWired = "";
-    for (var i = 0; i < argCount - 2; ++i) {
-      argsList += (i!==0?", ":"")+"arg"+i;
-      argsListWired += (i!==0?", ":"")+"arg"+i+"Wired";
+    var argCount = argTypes.length - 2;
+    var argsList = [];
+    var argsListWired = ['fn'];
+    if (isClassMethodFunc) {
+      argsListWired.push('thisWired');
     }
+    for (var i = 0; i < argCount; ++i) {
+      argsList.push(`arg${i}`)
+      argsListWired.push(`arg${i}Wired`)
+    }
+    argsList = argsList.join(',')
+    argsListWired = argsListWired.join(',')
 
-    var invokerFnBody = `
-      return function (${argsList}) {
-      if (arguments.length !== ${argCount - 2}) {
-        throwBindingError('function ' + humanName + ' called with ' + arguments.length + ' arguments, expected ${argCount - 2}');
-      }`;
+    var invokerFnBody = `return function (${argsList}) {\n`;
+
+#if ASSERTIONS
+    invokerFnBody += "checkArgCount(arguments.length, minArgs, maxArgs, humanName, throwBindingError);\n";
+#endif
 
 #if EMSCRIPTEN_TRACING
     invokerFnBody += `Module.emscripten_trace_enter_context('embind::' + humanName );\n`;
@@ -239,20 +264,15 @@ var LibraryEmbindShared = {
 #endif
 
     if (isClassMethodFunc) {
-      invokerFnBody += "var thisWired = classParam['toWireType']("+dtorStack+", this);\n";
+      invokerFnBody += `var thisWired = classParam['toWireType'](${dtorStack}, this);\n`;
     }
 
-    for (var i = 0; i < argCount - 2; ++i) {
-      invokerFnBody += "var arg"+i+"Wired = argType"+i+"['toWireType']("+dtorStack+", arg"+i+");\n";
-      args1.push("argType"+i);
+    for (var i = 0; i < argCount; ++i) {
+      invokerFnBody += `var arg${i}Wired = argType${i}['toWireType'](${dtorStack}, arg${i});\n`;
+      args1.push(`argType${i}`);
     }
 
-    if (isClassMethodFunc) {
-      argsListWired = "thisWired" + (argsListWired.length > 0 ? ", " : "") + argsListWired;
-    }
-
-    invokerFnBody +=
-        (returns || isAsync ? "var rv = ":"") + "invoker(fn"+(argsListWired.length>0?", ":"")+argsListWired+");\n";
+    invokerFnBody += (returns || isAsync ? "var rv = ":"") + `invoker(${argsListWired});\n`;
 
     var returnVal = returns ? "rv" : "";
 #if ASYNCIFY == 1
@@ -297,6 +317,7 @@ var LibraryEmbindShared = {
     invokerFnBody += "}\n";
 
 #if ASSERTIONS
+    args1.push('checkArgCount', 'minArgs', 'maxArgs');
     invokerFnBody = `if (arguments.length !== ${args1.length}){ throw new Error(humanName + "Expected ${args1.length} closure arguments " + arguments.length + " given."); }\n${invokerFnBody}`;
 #endif
     return [args1, invokerFnBody];

@@ -78,11 +78,10 @@ void assertAllCountsZero() {
 struct ValueHolder {
   ValueHolder() {};
   Value value;
+  Value* valuePtr;
+
   Value* getPtr() {
     return &value;
-  }
-  Value* getNewPtr() {
-    return new Value();
   }
   Value getValue() {
     return value;
@@ -90,14 +89,33 @@ struct ValueHolder {
   Value& getRef() {
     return value;
   }
+
+  void set(Value v) {
+    value = v;
+  }
+  Value get() const {
+    return value;
+  }
+  void initializePtr() {
+    valuePtr = new Value();
+  }
+  Value* getNewPtr() const {
+    return new Value();
+  }
+  const Value* getNewPtrConst() const {
+    return new Value();
+  }
+  void setPtr(Value* v) {
+    valuePtr = v;
+  }
   static Value* staticGetPtr() {
     static Value v;
     return &v;
   }
 };
 
-Value* value_holder(ValueHolder& target) {
-  return target.getNewPtr();
+const Value* value_holder(const ValueHolder& target) {
+  return target.getNewPtrConst();
 }
 
 Value* _valuePtr;
@@ -229,6 +247,55 @@ int main() {
     value = Module.ValueHolder.staticGetPtrReference();
     Module.assertDefault(1);
     Module.assertAllCountsZero();
+
+    ////////////////////////////////////////
+    // Test RVP with class properties.
+    ////////////////////////////////////////
+    var valueHolder = new Module.ValueHolder();
+    Module.resetCounters();
+    console.log("valueHolder.valueDefault");
+    var originalValueProp = valueHolder.valueReference;
+    var valueProp = valueHolder.valueDefault;
+    valueProp.setName("copy");
+    assert(originalValueProp.getName() === "initial");
+    valueProp.delete();
+    Module.assertCopy(1);
+    Module.assertDestructed(1);
+    Module.assertAllCountsZero();
+
+    console.log("valueHolder.valueReference");
+    valueProp = valueHolder.valueReference;
+    // Check that both references are updated.
+    valueProp.setName("reference");
+    valueProp = valueHolder.valueReference;
+    assert(valueProp.getName() === "reference");
+    Module.assertAllCountsZero();
+
+    console.log("valueHolder.valueTakeOwnership");
+    var originalValueProp = valueHolder.valueReference;
+    valueProp = valueHolder.valueTakeOwnership;
+    valueProp.setName("move");
+    assert(originalValueProp.getName() === "");
+    valueProp.delete();
+    Module.assertMove(1);
+    Module.assertDestructed(1);
+    Module.assertAllCountsZero();
+
+    console.log("valueHolder.valuePtrReference");
+    valueHolder.initializeValuePtr();
+    valueProp = valueHolder.valuePtrReference;
+    Module.assertDefault(1);
+    Module.assertAllCountsZero();
+
+    console.log("valueHolder.valuePtrTakeOwnership");
+    valueHolder.initializeValuePtr();
+    valueProp = valueHolder.valuePtrTakeOwnership;
+    valueProp.delete();
+    Module.assertDefault(1);
+    Module.assertDestructed(1);
+    Module.assertAllCountsZero();
+
+    valueHolder.delete();
   );
 }
 
@@ -264,7 +331,27 @@ EMSCRIPTEN_BINDINGS(xxx) {
     .constructor<>()
     .function("getPtrTakeOwnership", &ValueHolder::getNewPtr, return_value_policy::take_ownership())
     .function("getPtrReference", &ValueHolder::getPtr, return_value_policy::reference())
-    .function("getPtrWithStdFunctionTakeOwnership", std::function<Value*(ValueHolder&)>(&value_holder), return_value_policy::take_ownership())
-    .class_function("staticGetPtrReference", &ValueHolder::staticGetPtr, return_value_policy::reference());
+    .function("getPtrWithStdFunctionTakeOwnership", std::function<const Value*(const ValueHolder&)>(&value_holder), return_value_policy::take_ownership())
+    .class_function("staticGetPtrReference", &ValueHolder::staticGetPtr, return_value_policy::reference())
+    .function("initializeValuePtr", &ValueHolder::initializePtr)
+
+    // Test the code path for properties directly bound to a member.
+    .property("valueDefault", &ValueHolder::value)
+    .property("valueReference", &ValueHolder::value, return_value_policy::reference())
+    .property("valueTakeOwnership", &ValueHolder::value, return_value_policy::take_ownership())
+
+    // Test binding raw pointers with the various methods.
+    .property("valuePtrReference", &ValueHolder::valuePtr, return_value_policy::reference())
+    .property("valuePtrTakeOwnership", &ValueHolder::valuePtr, return_value_policy::take_ownership())
+
+    // Check that compiling with getter and setter methods works as expected.
+    // These are only tested for compilation since they use the same underlying
+    // mechanisms as the other property bindings.
+    // Getter only.
+    .property("getterValue", &ValueHolder::get, return_value_policy::reference())
+    // Getter and setter.
+    .property("getterSetterValue", &ValueHolder::get, &ValueHolder::set, return_value_policy::reference())
+    // std::function getter.
+    .property("getterPtrWithStdFunctionReference", std::function<const Value*(const ValueHolder&)>(&value_holder), return_value_policy::reference())
     ;
 }

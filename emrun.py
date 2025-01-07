@@ -704,6 +704,8 @@ class HTTPHandler(SimpleHTTPRequestHandler):
         if not emrun_options.serve_after_exit:
           page_exit_code = int(data[6:])
           logv('Web page has quit with a call to exit() with return code ' + str(page_exit_code) + '. Shutting down web server. Pass --serve-after-exit to keep serving even after the page terminates with exit().')
+          # Set server socket to nonblocking on shutdown to avoid sporadic deadlocks
+          self.server.socket.setblocking(False)
           self.server.shutdown()
           return
       else:
@@ -1573,12 +1575,23 @@ def parse_args(args):
     if a == '--':
       break
     if a.startswith('--') and '_' in a:
-      args[i] = a.replace('_', '-')
+      # Only replace '_' in that argument name, not that its value
+      parts = a.split('=')
+      parts[0] = parts[0].replace('_', '-')
+      args[i] = '='.join(parts)
 
   return parser.parse_args(args)
 
 
-def run(args):
+def run(args):  # noqa: C901, PLR0912, PLR0915
+  """Future modifications should consider refactoring to reduce complexity.
+
+  * The McCabe cyclomatiic complexity is currently 74 vs 10 recommended.
+  * There are currently 86 branches vs 12 recommended.
+  * There are currently 202 statements vs 50 recommended.
+
+  To revalidate these numbers, run `ruff check --select=C901,PLR091`.
+  """
   global browser_process, browser_exe, processname_killed_atexit, emrun_options, emrun_not_enabled_nag_printed
 
   options = emrun_options = parse_args(args)

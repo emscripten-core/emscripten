@@ -5,13 +5,11 @@
  */
 
 var LibraryStackTrace = {
-  $jsStackTrace: function() {
-    return new Error().stack.toString();
-  },
+  $jsStackTrace: () => new Error().stack.toString(),
 
   $getCallstack__deps: ['$jsStackTrace', '$warnOnce'],
   $getCallstack__docs: '/** @param {number=} flags */',
-  $getCallstack: function(flags) {
+  $getCallstack: (flags) => {
     var callstack = jsStackTrace();
 
     // Find the symbols in the callstack that corresponds to the functions that
@@ -58,8 +56,7 @@ var LibraryStackTrace = {
         lineno = parts[3];
         column = parts[4];
       } else {
-        parts = newFirefoxRe.exec(line);
-        if (!parts) parts = firefoxRe.exec(line);
+        parts = newFirefoxRe.exec(line) || firefoxRe.exec(line);
         if (parts && parts.length >= 4) {
           symbolName = parts[1];
           file = parts[2];
@@ -100,7 +97,7 @@ var LibraryStackTrace = {
   },
 
   emscripten_get_callstack__deps: ['$getCallstack', '$lengthBytesUTF8', '$stringToUTF8'],
-  emscripten_get_callstack: function(flags, str, maxbytes) {
+  emscripten_get_callstack: (flags, str, maxbytes) => {
     var callstack = getCallstack(flags);
     // User can query the required amount of bytes to hold the callstack.
     if (!str || maxbytes <= 0) {
@@ -206,7 +203,7 @@ var LibraryStackTrace = {
   // must be able to unwind from a PC value that may no longer be on the
   // execution stack, and so we are forced to cache the entire call stack.
   emscripten_stack_snapshot__deps: ['$convertFrameToPC', '$UNWIND_CACHE', '$saveInUnwindCache', '$jsStackTrace'],
-  emscripten_stack_snapshot: function() {
+  emscripten_stack_snapshot: () => {
     var callstack = jsStackTrace().split('\n');
     if (callstack[0] == 'Error') {
       callstack.shift();

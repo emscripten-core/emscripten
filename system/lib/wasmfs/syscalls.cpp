@@ -2,9 +2,8 @@
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
-// syscalls.cpp will implement the syscalls of the new file system replacing the
-// old JS version. Current Status: Work in Progress. See
-// https://github.com/emscripten-core/emscripten/issues/15041.
+
+// Syscall implementations.
 
 #define _LARGEFILE64_SOURCE // For F_GETLK64 etc
 
@@ -159,7 +158,7 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     // The write was successful.
     bytesWritten += result;
     if (result < len) {
-      // The read was short, so stop here.
+      // The write was short, so stop here.
       break;
     }
   }
@@ -353,10 +352,6 @@ static timespec ms_to_timespec(double ms) {
   return ts;
 }
 
-static double timespec_to_ms(timespec ts) {
-  return double(ts.tv_sec) * 1000 + double(ts.tv_nsec) / (1000 * 1000);
-}
-
 int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
   // Only accept valid flags.
   if (flags & ~(AT_EMPTY_PATH | AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW)) {
@@ -524,7 +519,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
     return -EEXIST;
   }
 
-  if (child->is<Directory>() && accessMode != O_RDONLY) {
+  if (child->is<Directory>() && (accessMode != O_RDONLY || (flags & O_CREAT))) {
     return -EISDIR;
   }
 
@@ -1099,10 +1094,6 @@ int __syscall_symlinkat(intptr_t target, int newdirfd, intptr_t linkpath) {
   return 0;
 }
 
-int __syscall_symlink(intptr_t target, intptr_t linkpath) {
-  return __syscall_symlinkat(target, AT_FDCWD, linkpath);
-}
-
 // TODO: Test this with non-AT_FDCWD values.
 int __syscall_readlinkat(int dirfd,
                          intptr_t path,
@@ -1121,6 +1112,16 @@ int __syscall_readlinkat(int dirfd,
   auto bytes = std::min((size_t)bufsize, target.size());
   memcpy((char*)buf, target.c_str(), bytes);
   return bytes;
+}
+
+static double timespec_to_ms(timespec ts) {
+  if (ts.tv_nsec == UTIME_OMIT) {
+    return INFINITY;
+  }
+  if (ts.tv_nsec == UTIME_NOW) {
+    return emscripten_date_now();
+  }
+  return double(ts.tv_sec) * 1000 + double(ts.tv_nsec) / (1000 * 1000);
 }
 
 // TODO: Test this with non-AT_FDCWD values.
@@ -1148,7 +1149,7 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
   // TODO: Check for write access to the file (see man page for specifics).
   double aTime, mTime;
 
-  if (times == NULL) {
+  if (times == nullptr) {
     aTime = mTime = emscripten_date_now();
   } else {
     aTime = timespec_to_ms(times[0]);
@@ -1156,8 +1157,12 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
   }
 
   auto locked = parsed.getFile()->locked();
-  locked.setATime(aTime);
-  locked.setMTime(mTime);
+  if (aTime != INFINITY) {
+    locked.setATime(aTime);
+  }
+  if (mTime != INFINITY) {
+    locked.setMTime(mTime);
+  }
 
   return 0;
 }
@@ -1577,6 +1582,10 @@ int _mmap_js(size_t length,
   // PROT_READ or PROT_WRITE).
   if ((prot & PROT_EXEC)) {
     return -EPERM;
+  }
+
+  if (!length) {
+    return -EINVAL;
   }
 
   // One of MAP_PRIVATE, MAP_SHARED, or MAP_SHARED_VALIDATE must be used.

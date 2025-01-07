@@ -27,22 +27,22 @@ typedef int EM_WEBGL_POWER_PREFERENCE;
 #define EM_WEBGL_POWER_PREFERENCE_HIGH_PERFORMANCE 2
 
 typedef struct EmscriptenWebGLContextAttributes {
-  EM_BOOL alpha;
-  EM_BOOL depth;
-  EM_BOOL stencil;
-  EM_BOOL antialias;
-  EM_BOOL premultipliedAlpha;
-  EM_BOOL preserveDrawingBuffer;
+  bool alpha;
+  bool depth;
+  bool stencil;
+  bool antialias;
+  bool premultipliedAlpha;
+  bool preserveDrawingBuffer;
   EM_WEBGL_POWER_PREFERENCE powerPreference;
-  EM_BOOL failIfMajorPerformanceCaveat;
+  bool failIfMajorPerformanceCaveat;
 
   int majorVersion;
   int minorVersion;
 
-  EM_BOOL enableExtensionsByDefault;
-  EM_BOOL explicitSwapControl;
+  bool enableExtensionsByDefault;
+  bool explicitSwapControl;
   EMSCRIPTEN_WEBGL_CONTEXT_PROXY_MODE proxyContextToMainThread;
-  EM_BOOL renderViaOffscreenBackBuffer;
+  bool renderViaOffscreenBackBuffer;
 } EmscriptenWebGLContextAttributes;
 
 void emscripten_webgl_init_context_attributes(EmscriptenWebGLContextAttributes *attributes __attribute__((nonnull)));
@@ -59,29 +59,35 @@ EMSCRIPTEN_RESULT emscripten_webgl_get_context_attributes(EMSCRIPTEN_WEBGL_CONTE
 
 EMSCRIPTEN_RESULT emscripten_webgl_destroy_context(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 
-EM_BOOL emscripten_webgl_enable_extension(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context, const char *extension __attribute__((nonnull)));
+bool emscripten_webgl_enable_extension(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context, const char *extension __attribute__((nonnull)));
 
-EM_BOOL emscripten_webgl_enable_ANGLE_instanced_arrays(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
+bool emscripten_webgl_enable_ANGLE_instanced_arrays(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 
-EM_BOOL emscripten_webgl_enable_OES_vertex_array_object(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
+bool emscripten_webgl_enable_OES_vertex_array_object(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 
-EM_BOOL emscripten_webgl_enable_WEBGL_draw_buffers(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
+bool emscripten_webgl_enable_WEBGL_draw_buffers(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 
-EM_BOOL emscripten_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
+bool emscripten_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 
-EM_BOOL emscripten_webgl_enable_WEBGL_multi_draw(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
+bool emscripten_webgl_enable_WEBGL_multi_draw(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 
-EM_BOOL emscripten_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
+bool emscripten_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 
-typedef EM_BOOL (*em_webgl_context_callback)(int eventType, const void *reserved, void *userData);
-EMSCRIPTEN_RESULT emscripten_set_webglcontextlost_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_webgl_context_callback callback, pthread_t targetThread);
-EMSCRIPTEN_RESULT emscripten_set_webglcontextrestored_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_webgl_context_callback callback, pthread_t targetThread);
+bool emscripten_webgl_enable_EXT_polygon_offset_clamp(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 
-EM_BOOL emscripten_is_webgl_context_lost(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
+bool emscripten_webgl_enable_EXT_clip_control(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
+
+bool emscripten_webgl_enable_WEBGL_polygon_mode(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
+
+typedef bool (*em_webgl_context_callback)(int eventType, const void *reserved, void *userData);
+EMSCRIPTEN_RESULT emscripten_set_webglcontextlost_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, bool useCapture, em_webgl_context_callback callback, pthread_t targetThread);
+EMSCRIPTEN_RESULT emscripten_set_webglcontextrestored_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, bool useCapture, em_webgl_context_callback callback, pthread_t targetThread);
+
+bool emscripten_is_webgl_context_lost(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 
 EMSCRIPTEN_RESULT emscripten_webgl_commit_frame(void);
 
-EM_BOOL emscripten_supports_offscreencanvas(void);
+bool emscripten_supports_offscreencanvas(void);
 
 // Returns function pointers to WebGL 1 functions. Please avoid using this function ever - all WebGL1/GLES2 functions, even those for WebGL1 extensions, are available to user code via static linking. Calling GL functions
 // via function pointers obtained here is slow, and using this function can greatly increase resulting compiled program size. This functionality is available only for easier program code porting purposes, but be aware

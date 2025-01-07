@@ -119,17 +119,15 @@ int main()
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
 #if TEST_EXPLICIT_CONTEXT_SWAP
-  attr.explicitSwapControl = EM_TRUE;
+  attr.explicitSwapControl = true;
 #endif
   ctx = emscripten_webgl_create_context("#canvas", &attr);
   printf("Created context with handle %#lx\n", ctx);
   if (!ctx) {
     if (!emscripten_supports_offscreencanvas()) {
       EM_ASM({
-        xhr = new XMLHttpRequest();
-        xhr.open('GET', 'http://localhost:8888/report_result?skipped:%20OffscreenCanvas%20is%20not%20supported!');
-        xhr.send();
-        setTimeout(function() { window.close() }, 2000);
+        fetch("http://localhost:8888/report_result?skipped:%20OffscreenCanvas%20is%20not%20supported!")
+        .then(() => window.close());
       });
     }
     return 0;

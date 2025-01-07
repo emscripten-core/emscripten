@@ -12,8 +12,7 @@
 // Compute rudimentary checksum of data
 uint32_t checksum = 0;
 
-int main()
-{
+int main() {
   emscripten_fetch_attr_t attr;
   emscripten_fetch_attr_init(&attr);
   strcpy(attr.requestMethod, "GET");

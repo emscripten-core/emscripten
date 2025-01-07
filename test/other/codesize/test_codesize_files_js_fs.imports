@@ -1,0 +1,4 @@
+a (fd_write)
+b (fd_read)
+c (fd_close)
+d (__syscall_openat)

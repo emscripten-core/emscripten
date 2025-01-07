@@ -229,7 +229,7 @@ _EM_INLINE int64_t emscripten_atomic_notify(void *addr __attribute__((nonnull)),
 
 // Represents a pending 'Atomics.waitAsync' wait operation.
 #define ATOMICS_WAIT_TOKEN_T int32_t
-
+typedef void (*emscripten_async_wait_callback_t)(int32_t* address, uint32_t value, ATOMICS_WAIT_RESULT_T waitResult, void* userData);
 #define EMSCRIPTEN_IS_VALID_WAIT_TOKEN(token) ((token) <= 0)
 
 // Issues the JavaScript 'Atomics.waitAsync' instruction:
@@ -252,9 +252,9 @@ _EM_INLINE int64_t emscripten_atomic_notify(void *addr __attribute__((nonnull)),
 //    emscripten_atomic_cancel_wait_async() to unregister an asynchronous wait.
 //    You can use the macro EMSCRIPTEN_IS_VALID_WAIT_TOKEN(retval) to check if
 //    this function returned a valid wait token.
-ATOMICS_WAIT_TOKEN_T emscripten_atomic_wait_async(void *addr __attribute__((nonnull)),
+ATOMICS_WAIT_TOKEN_T emscripten_atomic_wait_async(volatile void *addr __attribute__((nonnull)),
                                                   uint32_t value,
-                                                  void (*asyncWaitFinished)(int32_t *addr, uint32_t value, ATOMICS_WAIT_RESULT_T waitResult, void *userData) __attribute__((nonnull)),
+                                                  emscripten_async_wait_callback_t asyncWaitFinished __attribute__((nonnull)),
                                                   void *userData,
                                                   double maxWaitMilliseconds);
 

@@ -87,7 +87,7 @@ attributes:
   }
 
 For a full example, see the file
-``test/fetch/example_async_xhr_to_memory_via_indexeddb.c``.
+``test/fetch/test_fetch_persist.c``.
 
 Persisting data bytes from memory
 ---------------------------------
@@ -200,55 +200,8 @@ emscripten_fetch() returns.
   - ``--proxy-to-worker`` + ``-pthread``: Synchronous Synchronous Fetch operations
     are available both on the main thread and pthreads.
 
-Waitable Fetches
-================
-
-Emscripten Fetch operations can also run in a third mode, called a *waitable*
-fetch. Waitable fetches start off as asynchronous, but at any point after the
-fetch has started, the calling thread can issue a wait operation to either wait
-for the completion of the fetch, or to just poll whether the fetch operation has
-yet completed. The following code sample illustrates how this works.
-
-.. code-block:: cpp
-
-  int main() {
-    emscripten_fetch_attr_t attr;
-    emscripten_fetch_attr_init(&attr);
-    strcpy(attr.requestMethod, "GET");
-    attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY | EMSCRIPTEN_FETCH_WAITABLE;
-    emscripten_fetch_t *fetch = emscripten_fetch(&attr, "file.dat"); // Starts as asynchronous.
-
-    EMSCRIPTEN_RESULT ret = EMSCRIPTEN_RESULT_TIMED_OUT;
-    while(ret == EMSCRIPTEN_RESULT_TIMED_OUT) {
-      /* possibly do some other work; */
-      ret = emscripten_fetch_wait(fetch, 0/*milliseconds to wait, 0 to just poll, INFINITY=wait until completion*/);
-    }
-    // The operation has finished, safe to examine the fields of the 'fetch' pointer now.
-
-    if (fetch->status == 200) {
-      printf("Finished downloading %llu bytes from URL %s.\n", fetch->numBytes, fetch->url);
-      // The data is now available at fetch->data[0] through fetch->data[fetch->numBytes-1];
-    } else {
-      printf("Downloading %s failed, HTTP failure status code: %d.\n", fetch->url, fetch->status);
-    }
-    emscripten_fetch_close(fetch);
-  }
-
-Waitable fetches allow interleaving multiple tasks in one thread so that the
-issuing thread can perform some other work until the fetch completes.
-
-.. note::
-
-  Waitable fetches are available only in certain build modes:
-
-  - **No flags** or ``--proxy-to-worker``: Waitable fetches are not available.
-  - ``-pthread``: Waitable fetches are available on pthreads, but not
-    on the main thread.
-  - ``--proxy-to-worker`` + ``-pthread``: Waitable fetches are
-    available on all threads.
-
 Tracking Progress
-====================
+=================
 
 For robust fetch management, there are several fields available to track the
 status of an XHR.

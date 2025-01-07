@@ -8,13 +8,13 @@
 addToLibrary({
   $LZ4__deps: ['$FS', '$preloadPlugins'],
   $LZ4: {
-    DIR_MODE: {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */,
-    FILE_MODE: {{{ cDefs.S_IFREG }}} | 511 /* 0777 */,
+    DIR_MODE: {{{ cDefs.S_IFDIR | 0o777 }}},
+    FILE_MODE: {{{ cDefs.S_IFREG | 0o777 }}},
     CHUNK_SIZE: -1,
     codec: null,
     init() {
       if (LZ4.codec) return;
-      LZ4.codec = (function() {
+      LZ4.codec = (() => {
         {{{ read('../third_party/mini-lz4.js') }}};
         return MiniLZ4;
       })();
@@ -22,8 +22,7 @@ addToLibrary({
     },
     loadPackage(pack, preloadPlugin) {
       LZ4.init();
-      var compressedData = pack['compressedData'];
-      if (!compressedData) compressedData = LZ4.codec.compressPackage(pack['data']);
+      var compressedData = pack['compressedData'] || LZ4.codec.compressPackage(pack['data']);
       assert(compressedData['cachedIndexes'].length === compressedData['cachedChunks'].length);
       for (var i = 0; i < compressedData['cachedIndexes'].length; i++) {
         compressedData['cachedIndexes'][i] = -1;
@@ -71,7 +70,7 @@ addToLibrary({
       node.mode = mode;
       node.node_ops = LZ4.node_ops;
       node.stream_ops = LZ4.stream_ops;
-      node.timestamp = (mtime || new Date).getTime();
+      this.atime = this.mtime = this.ctime = (mtime || new Date).getTime();
       assert(LZ4.FILE_MODE !== LZ4.DIR_MODE);
       if (mode === LZ4.FILE_MODE) {
         node.size = contents.end - contents.start;
@@ -96,19 +95,18 @@ addToLibrary({
           gid: 0,
           rdev: 0,
           size: node.size,
-          atime: new Date(node.timestamp),
-          mtime: new Date(node.timestamp),
-          ctime: new Date(node.timestamp),
+          atime: new Date(node.atime),
+          mtime: new Date(node.mtime),
+          ctime: new Date(node.ctime),
           blksize: 4096,
           blocks: Math.ceil(node.size / 4096),
         };
       },
       setattr(node, attr) {
-        if (attr.mode !== undefined) {
-          node.mode = attr.mode;
-        }
-        if (attr.timestamp !== undefined) {
-          node.timestamp = attr.timestamp;
+        for (const key of ['mode', 'atime', 'mtime', 'ctime']) {
+          if (attr[key]) {
+            node[key] = attr[key];
+          }
         }
       },
       lookup(parent, name) {

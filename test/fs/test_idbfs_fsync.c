@@ -15,8 +15,7 @@
 
 int result = 1;
 
-void success()
-{
+EMSCRIPTEN_KEEPALIVE void success() {
   REPORT_RESULT(result);
 }
 

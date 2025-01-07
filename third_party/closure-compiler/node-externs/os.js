@@ -33,7 +33,7 @@ var os = {};
  * @return {string}
  * @nosideeffects
  */
-os.tmdDir = function() {};
+os.tmpdir = function() {};
 
 /**
  * @return {string}

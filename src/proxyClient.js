@@ -16,9 +16,25 @@
 #endif
 
 #if ENVIRONMENT_MAY_BE_NODE
-var ENVIRONMENT_IS_NODE = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string';
+var ENVIRONMENT_IS_NODE = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string' && process.type != 'renderer';
 if (ENVIRONMENT_IS_NODE) {
-  global.Worker = require('worker_threads').Worker;
+  var NodeWorker = require('worker_threads').Worker;
+  global.Worker = function(url, options) {
+    // Special handling for `data:` URL argument, to match the behaviour
+    // of the Web API.
+    if (typeof url == 'string' && url.startsWith('data:')) {
+#if EXPORT_ES6
+      // worker_threads always assume data URLs are ES6 modules
+      url = new URL(url);
+#else
+      // For class modules we decode the data URL and use `eval: true`.
+      url = Buffer.from(url.split(",")[1], 'base64').toString();
+      options ||= {}
+      options.eval = true;
+#endif
+    }
+    return new NodeWorker(url, options);
+  }
   var Module = Module || {}
 } else
 #endif
@@ -87,7 +103,7 @@ function renderFrame() {
       dst[i] = renderFrameData[i];
     }
   }
-  Module.ctx.putImageData(Module.canvasData, 0, 0);
+  Module['ctx'].putImageData(Module.canvasData, 0, 0);
   renderFrameData = null;
 }
 
@@ -98,7 +114,7 @@ if (typeof window != 'undefined') {
 }
 
 /*
-(function() {
+(() => {
   var trueRAF = window.requestAnimationFrame;
   var tracker = new FPSTracker('client');
   window.requestAnimationFrame = (func) => {
@@ -120,23 +136,12 @@ if (typeof window != 'undefined') {
 
 var frameId = 0;
 
-// Temporarily handling this at run-time pending Python preprocessor support
-
-var SUPPORT_BASE64_EMBEDDING;
-
 // Worker
 
 var filename;
 filename ||= '<<< filename >>>';
 
-var workerURL = filename;
-if (SUPPORT_BASE64_EMBEDDING) {
-  var fileBytes = tryParseAsDataURI(filename);
-  if (fileBytes) {
-    workerURL = URL.createObjectURL(new Blob([fileBytes], {type: 'application/javascript'}));
-  }
-}
-var worker = new Worker(workerURL);
+var worker = new Worker(filename);
 
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
@@ -148,9 +153,9 @@ WebGLClient.prefetch();
 setTimeout(() => {
   worker.postMessage({
     target: 'worker-init',
-    width: Module.canvas.width,
-    height: Module.canvas.height,
-    boundingClientRect: cloneObject(Module.canvas.getBoundingClientRect()),
+    width: Module['canvas'].width,
+    height: Module['canvas'].height,
+    boundingClientRect: cloneObject(Module['canvas'].getBoundingClientRect()),
     URL: document.URL,
     currentScriptUrl: filename,
     preMain: true });
@@ -166,7 +171,6 @@ worker.onmessage = (event) => {
   if (!workerResponded) {
     workerResponded = true;
     Module.setStatus?.('');
-    if (SUPPORT_BASE64_EMBEDDING && workerURL !== filename) URL.revokeObjectURL(workerURL);
   }
 
   var data = event.data;
@@ -186,18 +190,18 @@ worker.onmessage = (event) => {
     case 'canvas': {
       switch (data.op) {
         case 'getContext': {
-          Module.ctx = Module.canvas.getContext(data.type, data.attributes);
+          Module['ctx'] = Module['canvas'].getContext(data.type, data.attributes);
           if (data.type !== '2d') {
-            // possible GL_DEBUG entry point: Module.ctx = wrapDebugGL(Module.ctx);
+            // possible GL_DEBUG entry point: Module['ctx'] = wrapDebugGL(Module['ctx']);
             Module.glClient = new WebGLClient();
           }
           break;
         }
         case 'resize': {
-          Module.canvas.width = data.width;
-          Module.canvas.height = data.height;
-          if (Module.ctx?.getImageData) Module.canvasData = Module.ctx.getImageData(0, 0, data.width, data.height);
-          worker.postMessage({ target: 'canvas', boundingClientRect: cloneObject(Module.canvas.getBoundingClientRect()) });
+          Module['canvas'].width = data.width;
+          Module['canvas'].height = data.height;
+          if (Module['ctx']?.getImageData) Module.canvasData = Module['ctx'].getImageData(0, 0, data.width, data.height);
+          worker.postMessage({ target: 'canvas', boundingClientRect: cloneObject(Module['canvas'].getBoundingClientRect()) });
           break;
         }
         case 'render': {
@@ -212,7 +216,7 @@ worker.onmessage = (event) => {
           break;
         }
         case 'setObjectProperty': {
-          Module.canvas[data.object][data.property] = data.value;
+          Module['canvas'][data.object][data.property] = data.value;
           break;
         }
         default: throw 'eh?';
@@ -309,7 +313,7 @@ if (!ENVIRONMENT_IS_NODE) {
 // Only prevent default on backspace/tab because we don't want unexpected navigation.
 // Do not prevent default on the rest as we need the keypress event.
 function shouldPreventDefault(event) {
-  if (event.type === 'keydown' && event.keyCode !== 8 /* backspace */ && event.keyCode !== 9 /* tab */) {
+  if (event.type === 'keydown' && event.key != 'Backspace' && event.key != 'Tab') {
     return false; // keypress, back navigation
   } else {
     return true; // NO keypress, NO back navigation
@@ -334,7 +338,7 @@ function shouldPreventDefault(event) {
 });
 
 ['mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'mouseout'].forEach((event) => {
-  Module.canvas.addEventListener(event, (event) => {
+  Module['canvas'].addEventListener(event, (event) => {
     worker.postMessage({ target: 'canvas', event: cloneObject(event) });
     event.preventDefault();
   }, true);

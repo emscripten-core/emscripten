@@ -1,0 +1,14 @@
+__cxa_can_catch
+__cxa_decrement_exception_refcount
+__cxa_free_exception
+__cxa_get_exception_ptr
+__cxa_increment_exception_refcount
+__indirect_function_table
+__wasm_call_ctors
+_emscripten_stack_alloc
+_emscripten_stack_restore
+_emscripten_tempret_set
+emscripten_stack_get_current
+main
+memory
+setThrew

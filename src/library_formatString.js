@@ -308,9 +308,7 @@ addToLibrary({
 
             // Insert the result into the buffer.
             argText = prefix + argText;
-            argText.split('').forEach(function(chr) {
-              ret.push(chr.charCodeAt(0));
-            });
+            argText.split('').forEach((chr) => ret.push(chr.charCodeAt(0)));
             break;
           }
           case 'f': case 'F': case 'e': case 'E': case 'g': case 'G': {
@@ -401,9 +399,7 @@ addToLibrary({
             if (next < {{{ charCode('a') }}}) argText = argText.toUpperCase();
 
             // Insert the result into the buffer.
-            argText.split('').forEach(function(chr) {
-              ret.push(chr.charCodeAt(0));
-            });
+            argText.split('').forEach((chr) => ret.push(chr.charCodeAt(0)));
             break;
           }
           case 's': {

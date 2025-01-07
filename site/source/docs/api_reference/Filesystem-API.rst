@@ -23,7 +23,7 @@ A high level overview of the way File Systems work in Emscripten-ported code is 
 New File System: WasmFS
 =======================
 
-.. note:: Current Status: Work in Progress
+.. note:: Current Status: Stable, but not yet feature-complete with the old FS.
 
 WasmFS is a high-performance, fully-multithreaded, WebAssembly-based file system layer for Emscripten that will replace the existing JavaScript version.
 
@@ -112,6 +112,8 @@ IDBFS
 The *IDBFS* file system implements the :js:func:`FS.syncfs` interface, which when called will persist any operations to an ``IndexedDB`` instance.
 
 This is provided to overcome the limitation that browsers do not offer synchronous APIs for persistent storage, and so (by default) all writes exist only temporarily in-memory.
+
+If the mount option `autoPersist: true` is passed when mounting IDBFS, then whenever any changes are made to the IDBFS directory tree, they will be automatically persisted to the IndexedDB backend. This lets users avoid needing to manually call `FS.syncfs` to persist changes to the IDBFS mounted directory tree.
 
 .. _filesystem-api-workerfs:
 

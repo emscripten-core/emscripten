@@ -1,26 +1,29 @@
 {
   "private": true,
   "devDependencies": {
-    "es-check": "^7.1.1",
-    "eslint": "^8.56.0",
+    "@eslint/eslintrc": "^3.2.0",
+    "@eslint/js": "^9.17.0",
+    "es-check": "^7.2.1",
+    "eslint": "^9.17.0",
     "eslint-config-prettier": "^9.1.0",
-    "prettier": "^3.1.1",
+    "globals": "^15.14.0",
+    "prettier": "^3.4.2",
     "source-map": "0.7.4",
-    "typescript": "^5.4.2",
-    "webpack": "^5.89.0",
-    "webpack-cli": "^5.1.4",
-    "ws": "^8.16.0"
+    "typescript": "^5.7.2",
+    "webpack": "^5.97.1",
+    "webpack-cli": "^6.0.1",
+    "ws": "^8.18.0"
   },
   "dependencies": {
-    "@babel/cli": "^7.23.4",
-    "@babel/core": "^7.23.7",
-    "@babel/preset-env": "^7.23.8",
-    "acorn": "^8.11.3",
-    "google-closure-compiler": "20230802.0.0",
+    "@babel/cli": "^7.26.4",
+    "@babel/core": "^7.26.0",
+    "@babel/preset-env": "^7.26.0",
+    "acorn": "^8.14.0",
+    "google-closure-compiler": "20240317.0.0",
     "html-minifier-terser": "7.2.0"
   },
   "scripts": {
-    "lint": "eslint --ext .js --ext .mjs .",
+    "lint": "eslint .",
     "fmt": "prettier --write src/*.mjs tools/*.mjs",
     "check": "prettier --check src/*.mjs tools/*.mjs"
   }

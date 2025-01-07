@@ -3,9 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import os
-
-# sqlite amalgamation download URL uses relase year and tag
+# sqlite amalgamation download URL uses release year and tag
 # 2022  and (3, 38, 5) -> '/2022/sqlite-amalgamation-3380500.zip'
 VERSION = (3, 39, 0)
 VERSION_YEAR = 2022
@@ -28,7 +26,7 @@ def get(ports, settings, shared):
   ports.fetch_project('sqlite3', f'https://www.sqlite.org/{VERSION_YEAR}/{release}.zip', sha512hash=HASH)
 
   def create(final):
-    source_path = os.path.join(ports.get_dir(), 'sqlite3', release)
+    source_path = ports.get_dir('sqlite3', release)
 
     ports.install_headers(source_path)
 

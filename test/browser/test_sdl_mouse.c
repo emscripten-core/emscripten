@@ -70,11 +70,17 @@ int main() {
   SDL_Rect rect = { 0, 0, 600, 450 };
   SDL_FillRect(screen, &rect, 0x2244ffff);
 
-  emscripten_run_script("simulateMouseEvent(10, 20, -1)"); // move from 0,0 to 10,20
-  emscripten_run_script("simulateMouseEvent(10, 20, 0)"); // click
-  emscripten_run_script("simulateMouseEvent(10, 20, 0)"); // click some more, but this one should be ignored through PeepEvent
-  emscripten_run_script("simulateMouseEvent(30, 77, -1)"); // move some more
-  emscripten_run_script("simulateMouseEvent(30, 77, 1)"); // trigger the end
+#ifdef TEST_SDL_MOUSE_OFFSETS
+  int absolute = true;
+#else
+  int absolute = false;
+#endif
+
+  EM_ASM(simulateMouseMove(10, 20, $0), absolute); // move from 0,0 to 10,20
+  EM_ASM(simulateMouseClick(10, 20, 0, $0), absolute); // click
+  EM_ASM(simulateMouseClick(10, 20, 0, $0), absolute); // click some more, but this one should be ignored through PeepEvent
+  EM_ASM(simulateMouseMove(30, 77, $0), absolute); // move some more
+  EM_ASM(simulateMouseClick(30, 77, 1, $0), absolute); // trigger the end
 
   emscripten_set_main_loop(one, 0, 0);
 }

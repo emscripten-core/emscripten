@@ -1,0 +1,4 @@
+p (memory)
+q (__wasm_call_ctors)
+r (main)
+s (__indirect_function_table)

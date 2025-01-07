@@ -1,0 +1,58 @@
+stime: -1
+tzname[0] set: 1
+sec: 43
+min: 22
+hour: 3
+day: 25
+mon: 11
+year: 102
+wday: 3
+yday: 358
+dst: 0
+off: 0
+old year still: 102
+new year: 70
+old year still: 102
+new year: 70
+localtime found DST data (summer): yes
+localtime found DST data (winter): yes
+localtime matches daylight: yes
+localtime gmtoff matches DST: yes
+localtime tm_zone matches tzname (winter): yes
+localtime tm_zone matches tzname (summer): yes
+localtime equals std: true
+mktime updates parameter to be in range: 1
+mktime parameter is equivalent to localtime return: 1
+mktime guesses DST (winter): 1
+mktime guesses DST (summer): 1
+time: 1
+difftime+: 268848637.000000
+difftime-: -268848637.000000
+1854 days: 365
+2000 days: 366
+2001 days: 365
+2004 days: 366
+asctime: Wed Dec 25 03:22:43 2002
+winter asctime: Wed Dec 25 03:22:43 2002
+summer asctime_r: Mon Jul  1 13:02:05 2002
+winter asctime again: Wed Dec 25 03:22:43 2002
+winter month again: 11
+ctime matched: 1
+clock(start): 1
+clock(end): 1
+timespec_get test 0: 1
+timespec_get test 1: 1
+timespec_get test 2: 1
+timespec_get test 3: 1
+timespec_get test 4: 1
+timespec_get test 5: 1
+timespec_get test 6: 1
+time: 0, gmtime: 1970-01-01 00:00:00
+time: 2147483647, gmtime: 2038-01-19 03:14:07
+time: 2147483648, gmtime: 2038-01-19 03:14:08
+time: -2147483648, gmtime: 1901-12-13 20:45:52
+time: -2147483649, gmtime: 1901-12-13 20:45:51
+time: 253402300799, gmtime: 9999-12-31 23:59:59
+time: -62135596800, gmtime: 0001-01-01 00:00:00
+time: 2211764645, gmtime: 2040-02-02 03:04:05
+success

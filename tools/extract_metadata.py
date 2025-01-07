@@ -179,7 +179,7 @@ def find_segment_with_address(module, address):
 
 def data_to_string(data):
   data = data.decode('utf8')
-  # We have at least one test (test/utf8.cpp) that uses a double
+  # We have at least one test (test/core/test_utf8.c) that uses a double
   # backslash in the C++ source code, in order to represent a single backslash.
   # This is because these strings historically were written and read back via
   # JSON and a single slash is interpreted as an escape char there.

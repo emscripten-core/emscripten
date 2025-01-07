@@ -27,6 +27,7 @@ import logging
 import os
 import re
 import shlex
+import shutil
 import sys
 import time
 import tarfile
@@ -45,6 +46,7 @@ from tools import config
 from tools import cache
 from tools.settings import default_setting, user_settings, settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
 from tools.utils import read_file, removeprefix
+from tools import feature_matrix
 
 logger = logging.getLogger('emcc')
 
@@ -133,6 +135,7 @@ class EmccOptions:
     self.output_file = None
     self.no_minify = False
     self.post_link = False
+    self.save_temps = False
     self.executable = False
     self.compiler_wrapper = None
     self.oformat = None
@@ -373,6 +376,15 @@ def get_clang_flags(user_args):
   if settings.INLINING_LIMIT:
     flags.append('-fno-inline-functions')
 
+  if settings.PTHREADS:
+    if '-pthread' not in user_args:
+      flags.append('-pthread')
+  elif settings.SHARED_MEMORY:
+    if '-matomics' not in user_args:
+      flags.append('-matomics')
+    if '-mbulk-memory' not in user_args:
+      flags.append('-mbulk-memory')
+
   if settings.RELOCATABLE and '-fPIC' not in user_args:
     flags.append('-fPIC')
 
@@ -567,7 +579,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     return 0
 
   if '-dumpversion' in args: # gcc's doc states "Print the compiler version [...] and don't do anything else."
-    print(shared.EMSCRIPTEN_VERSION)
+    print(utils.EMSCRIPTEN_VERSION)
     return 0
 
   if '--cflags' in args:
@@ -619,6 +631,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     print(f'libraries: ={cache.get_lib_dir(absolute=True)}')
     return 0
 
+  if '-print-resource-dir' in newargs:
+    shared.check_call([clang] + newargs)
+    return 0
+
   if '-print-libgcc-file-name' in newargs or '--print-libgcc-file-name' in newargs:
     settings.limit_settings(None)
     compiler_rt = system_libs.Library.get_usable_variations()['libcompiler_rt']
@@ -644,7 +660,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       exit_with_error('--post-link requires a single input file')
     # Delay import of link.py to avoid processing this file when only compiling
     from tools import link
-    link.run_post_link(input_files[0][1], options, state, newargs)
+    link.run_post_link(input_files[0][1], options, state)
     return 0
 
   ## Compile source code to object files
@@ -653,7 +669,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if state.mode == Mode.COMPILE_AND_LINK:
     # Delay import of link.py to avoid processing this file when only compiling
     from tools import link
-    return link.run(linker_inputs, options, state, newargs)
+    return link.run(linker_inputs, options, state)
   else:
     logger.debug('stopping after compile phase')
     return 0
@@ -836,14 +852,6 @@ def phase_setup(options, state, newargs):
   if settings.PTHREADS or settings.WASM_WORKERS:
     settings.SHARED_MEMORY = 1
 
-  if settings.PTHREADS and '-pthread' not in newargs:
-    newargs += ['-pthread']
-  elif settings.SHARED_MEMORY:
-    if '-matomics' not in newargs:
-      newargs += ['-matomics']
-    if '-mbulk-memory' not in newargs:
-      newargs += ['-mbulk-memory']
-
   if settings.SHARED_MEMORY:
     settings.BULK_MEMORY = 1
 
@@ -883,10 +891,8 @@ def phase_setup(options, state, newargs):
   if options.target.startswith('wasm64'):
     default_setting('MEMORY64', 1)
 
-  if settings.MEMORY64:
-    if options.target.startswith('wasm32'):
-      exit_with_error('wasm32 target is not compatible with -sMEMORY64')
-    diagnostics.warning('experimental', '-sMEMORY64 is still experimental. Many features may not work.')
+  if settings.MEMORY64 and options.target.startswith('wasm32'):
+    exit_with_error('wasm32 target is not compatible with -sMEMORY64')
 
   # Wasm SjLj cannot be used with Emscripten EH
   if settings.SUPPORT_LONGJMP == 'wasm':
@@ -929,6 +935,28 @@ def get_clang_output_extension(state):
     return '.s'
   else:
     return '.o'
+
+
+def filter_out_link_flags(args):
+  rtn = []
+
+  def is_link_flag(flag):
+    if flag in ('-nostdlib', '-nostartfiles', '-nolibc', '-nodefaultlibs', '-s'):
+      return True
+    return flag.startswith(('-l', '-L', '-Wl,', '-z'))
+
+  skip = False
+  for arg in args:
+    if skip:
+      skip = False
+      continue
+    if is_link_flag(arg):
+      continue
+    if arg == '-Xlinker':
+      skip = True
+      continue
+    rtn.append(arg)
+  return rtn
 
 
 @ToolchainProfiler.profile_block('compile inputs')
@@ -980,18 +1008,20 @@ def phase_compile_inputs(options, state, newargs, input_files):
     # with -MF! (clang seems to not recognize it)
     logger.debug(('just preprocessor ' if state.has_dash_E else 'just dependencies: ') + ' '.join(cmd))
     shared.exec_process(cmd)
+    assert False, 'exec_process does not return'
 
   # Precompiled headers support
   if state.mode == Mode.PCH:
     inputs = [i[1] for i in input_files]
     for header in inputs:
-      if not shared.suffix(header) in HEADER_ENDINGS:
+      if shared.suffix(header) not in HEADER_ENDINGS:
         exit_with_error(f'cannot mix precompiled headers with non-header inputs: {inputs} : {header}')
     cmd = get_clang_command() + inputs
     if options.output_file:
       cmd += ['-o', options.output_file]
     logger.debug(f"running (for precompiled headers): {cmd[0]} {' '.join(cmd[1:])}")
     shared.exec_process(cmd)
+    assert False, 'exec_process does not return'
 
   if state.mode == Mode.COMPILE_ONLY:
     inputs = [i[1] for i in input_files]
@@ -1004,16 +1034,11 @@ def phase_compile_inputs(options, state, newargs, input_files):
       if get_file_suffix(options.output_file) == '.bc' and not settings.LTO and '-emit-llvm' not in state.orig_args:
         diagnostics.warning('emcc', '.bc output file suffix used without -flto or -emit-llvm.  Consider using .o extension since emcc will output an object file, not a bitcode file')
     shared.exec_process(cmd)
+    assert False, 'exec_process does not return'
 
   # In COMPILE_AND_LINK we need to compile source files too, but we also need to
   # filter out the link flags
-
-  def is_link_flag(flag):
-    if flag in ('-nostdlib', '-nostartfiles', '-nolibc', '-nodefaultlibs', '-s'):
-      return True
-    return flag.startswith(('-l', '-L', '-Wl,', '-z'))
-
-  compile_args = [a for a in compile_args if a and not is_link_flag(a)]
+  compile_args = filter_out_link_flags(compile_args)
   linker_inputs = []
   seen_names = {}
 
@@ -1050,8 +1075,10 @@ def phase_compile_inputs(options, state, newargs, input_files):
       cmd += ['-Xclang', '-split-dwarf-file', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
       cmd += ['-Xclang', '-split-dwarf-output', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
     shared.check_call(cmd)
-    if output_file not in ('-', os.devnull) and not shared.SKIP_SUBPROCS:
+    if not shared.SKIP_SUBPROCS:
       assert os.path.exists(output_file)
+      if options.save_temps:
+        shutil.copyfile(output_file, shared.unsuffixed_basename(input_file) + '.o')
 
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   for i, input_file in input_files:
@@ -1088,10 +1115,18 @@ def version_string():
   elif os.path.exists(utils.path_from_root('emscripten-revision.txt')):
     rev = read_file(utils.path_from_root('emscripten-revision.txt')).strip()
     revision_suffix = ' (%s)' % rev
-  return f'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) {shared.EMSCRIPTEN_VERSION}{revision_suffix}'
+  return f'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) {utils.EMSCRIPTEN_VERSION}{revision_suffix}'
 
 
-def parse_args(newargs):
+def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
+  """Future modifications should consider refactoring to reduce complexity.
+
+  * The McCabe cyclomatiic complexity is currently 117 vs 10 recommended.
+  * There are currently 115 branches vs 12 recommended.
+  * There are currently 302 statements vs 50 recommended.
+
+  To revalidate these numbers, run `ruff check --select=C901,PLR091`.
+  """
   options = EmccOptions()
   settings_changes = []
   user_js_defines = []
@@ -1180,6 +1215,8 @@ def parse_args(newargs):
         settings.LTO = 'full'
     elif arg == "-fno-lto":
       settings.LTO = 0
+    elif arg == "--save-temps":
+      options.save_temps = True
     elif check_arg('--llvm-lto'):
       logger.warning('--llvm-lto ignored when using llvm backend')
       consume_arg()
@@ -1221,6 +1258,13 @@ def parse_args(newargs):
       if is_int(requested_level):
         # the -gX value is the debug level (-g1, -g2, etc.)
         settings.DEBUG_LEVEL = validate_arg_level(requested_level, 4, 'invalid debug level: ' + arg)
+        if settings.DEBUG_LEVEL == 0:
+          # Set these explicitly so -g0 overrides previous -g on the cmdline
+          settings.GENERATE_DWARF = 0
+          settings.GENERATE_SOURCE_MAP = 0
+          settings.EMIT_NAME_SECTION = 0
+        elif settings.DEBUG_LEVEL > 1:
+          settings.EMIT_NAME_SECTION = 1
         # if we don't need to preserve LLVM debug info, do not keep this flag
         # for clang
         if settings.DEBUG_LEVEL < 3:
@@ -1251,17 +1295,20 @@ def parse_args(newargs):
           settings.GENERATE_DWARF = 1
         elif requested_level == 'source-map':
           settings.GENERATE_SOURCE_MAP = 1
+          settings.EMIT_NAME_SECTION = 1
           newargs[i] = '-g'
         else:
           # Other non-integer levels (e.g. -gline-tables-only or -gdwarf-5) are
           # usually clang flags that emit DWARF. So we pass them through to
           # clang and make the emscripten code treat it like any other DWARF.
           settings.GENERATE_DWARF = 1
+          settings.EMIT_NAME_SECTION = 1
         # In all cases set the emscripten debug level to 3 so that we do not
         # strip during link (during compile, this does not make a difference).
         settings.DEBUG_LEVEL = 3
     elif check_flag('-profiling') or check_flag('--profiling'):
       settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 2)
+      settings.EMIT_NAME_SECTION = 1
     elif check_flag('-profiling-funcs') or check_flag('--profiling-funcs'):
       settings.EMIT_NAME_SECTION = 1
     elif newargs[i] == '--tracing' or newargs[i] == '--memoryprofiler':
@@ -1273,6 +1320,8 @@ def parse_args(newargs):
     elif check_flag('--emit-symbol-map'):
       options.emit_symbol_map = True
       settings.EMIT_SYMBOL_MAP = 1
+    elif check_arg('--emit-minification-map'):
+      settings.MINIFICATION_MAP = consume_arg()
     elif check_arg('--embed-file'):
       options.embed_files.append(consume_arg())
     elif check_arg('--preload-file'):
@@ -1364,8 +1413,24 @@ def parse_args(newargs):
       settings.WASM_EXCEPTIONS = 0
     elif arg == '-mbulk-memory':
       settings.BULK_MEMORY = 1
+      feature_matrix.enable_feature(feature_matrix.Feature.BULK_MEMORY,
+                                    '-mbulk-memory',
+                                    override=True)
     elif arg == '-mno-bulk-memory':
       settings.BULK_MEMORY = 0
+      feature_matrix.disable_feature(feature_matrix.Feature.BULK_MEMORY)
+    elif arg == '-msign-ext':
+      feature_matrix.enable_feature(feature_matrix.Feature.SIGN_EXT,
+                                    '-msign-ext',
+                                    override=True)
+    elif arg == '-mno-sign-ext':
+      feature_matrix.disable_feature(feature_matrix.Feature.SIGN_EXT)
+    elif arg == '-mnontrappting-fptoint':
+      feature_matrix.enable_feature(feature_matrix.Feature.NON_TRAPPING_FPTOINT,
+                                    '-mnontrapping-fptoint',
+                                    override=True)
+    elif arg == '-mno-nontrapping-fptoint':
+      feature_matrix.disable_feature(feature_matrix.Feature.NON_TRAPPING_FPTOINT)
     elif arg == '-fexceptions':
       # TODO Currently -fexceptions only means Emscripten EH. Switch to wasm
       # exception handling by default when -fexceptions is given when wasm

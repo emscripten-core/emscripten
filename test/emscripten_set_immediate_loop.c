@@ -10,7 +10,7 @@ void testDone(void *userData) {
   exit(0);
 }
 
-EM_BOOL tick(void *userData) {
+bool tick(void *userData) {
   assert((long)userData == 1);
   ++funcExecuted;
   if (funcExecuted == 10) {

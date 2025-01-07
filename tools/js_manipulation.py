@@ -49,7 +49,7 @@ def add_files_pre_js(pre_js_list, files_pre_js):
   ''')
   utils.write_file(post, '''
     if (!Module['preRun']) throw 'Module.preRun should exist because file support used it; did a pre-js delete it?';
-    necessaryPreJSTasks.forEach(function(task) {
+    necessaryPreJSTasks.forEach((task) => {
       if (Module['preRun'].indexOf(task) < 0) throw 'All preRun tasks that exist before user pre-js code should remain after; did you replace Module or modify Module.preRun?';
     });
   ''')
@@ -182,7 +182,7 @@ def make_wasm64_wrapper(sig):
   # are certain places we need to avoid strict mode still.
   # e.g. emscripten_get_callstack (getCallstack) which uses the `arguments`
   # global.
-  return f'  var makeWrapper_{sig} = (f) => function ({args_in}) {{ return {result} }};\n'
+  return f'  var makeWrapper_{sig} = (f) => ({args_in}) => {result};\n'
 
 
 def make_unsign_pointer_wrapper(sig):

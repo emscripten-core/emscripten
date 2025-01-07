@@ -56,11 +56,11 @@ int main(int argc, char *argv[])
   SDL_Window *window;
   SDL_CreateWindow("window", 0, 0, 600, 450, 0);
 
-  emscripten_run_script("keydown(37, 'ArrowLeft');"); // left
+  emscripten_run_script("simulateKeyDown(37, 'ArrowLeft');"); // left
   loop1();
-  emscripten_run_script("keydown(39, 'ArrowRight');"); // right
+  emscripten_run_script("simulateKeyDown(39, 'ArrowRight');"); // right
   loop2();
-  emscripten_run_script("keydown(65, 'KeyA');"); // A
+  emscripten_run_script("simulateKeyDown(65, 'KeyA');"); // A
   alphakey();
   return 0;
 }

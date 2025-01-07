@@ -1,4 +1,4 @@
-var d = Module, g, h, k = new TextDecoder("utf8"), l;
+var d = Module, g, h, k = new TextDecoder, l;
 
 function e(b) {
     this.exports = function(r) {
@@ -15,6 +15,7 @@ function e(b) {
             for (var v, p = 0, t = a, w = f.length, y = a + (3 * w >> 2) - ("=" == f[w - 2]) - ("=" == f[w - 1]); p < w; p += 4) a = m[f.charCodeAt(p + 1)], 
             v = m[f.charCodeAt(p + 2)], c[t++] = m[f.charCodeAt(p)] << 2 | a >> 4, t < y && (c[t++] = a << 4 | v >> 2), 
             t < y && (c[t++] = v << 6 | m[f.charCodeAt(p + 3)]);
+            return c;
         }
         for (var q, m = new Uint8Array(123), n = 25; 0 <= n; --n) m[48 + n] = 52 + n, m[65 + n] = n, 
         m[97 + n] = 26 + n;

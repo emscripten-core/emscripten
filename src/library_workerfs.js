@@ -7,12 +7,12 @@
 addToLibrary({
   $WORKERFS__deps: ['$FS'],
   $WORKERFS: {
-    DIR_MODE: {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */,
-    FILE_MODE: {{{ cDefs.S_IFREG }}} | 511 /* 0777 */,
+    DIR_MODE: {{{ cDefs.S_IFDIR | 0o777 }}},
+    FILE_MODE: {{{ cDefs.S_IFREG | 0o777 }}},
     reader: null,
     mount(mount) {
       assert(ENVIRONMENT_IS_WORKER);
-      if (!WORKERFS.reader) WORKERFS.reader = new FileReaderSync();
+      WORKERFS.reader ??= new FileReaderSync();
       var root = WORKERFS.createNode(null, '/', WORKERFS.DIR_MODE, 0);
       var createdParents = {};
       function ensureParent(path) {
@@ -41,11 +41,11 @@ addToLibrary({
       Array.prototype.forEach.call(mount.opts["files"] || [], function(file) {
         WORKERFS.createNode(ensureParent(file.name), base(file.name), WORKERFS.FILE_MODE, 0, file, file.lastModifiedDate);
       });
-      (mount.opts["blobs"] || []).forEach(function(obj) {
+      (mount.opts["blobs"] || []).forEach((obj) => {
         WORKERFS.createNode(ensureParent(obj["name"]), base(obj["name"]), WORKERFS.FILE_MODE, 0, obj["data"]);
       });
-      (mount.opts["packages"] || []).forEach(function(pack) {
-        pack['metadata'].files.forEach(function(file) {
+      (mount.opts["packages"] || []).forEach((pack) => {
+        pack['metadata'].files.forEach((file) => {
           var name = file.filename.substr(1); // remove initial slash
           WORKERFS.createNode(ensureParent(name), base(name), WORKERFS.FILE_MODE, 0, pack['blob'].slice(file.start, file.end));
         });
@@ -57,7 +57,7 @@ addToLibrary({
       node.mode = mode;
       node.node_ops = WORKERFS.node_ops;
       node.stream_ops = WORKERFS.stream_ops;
-      node.timestamp = (mtime || new Date).getTime();
+      node.atime = node.mtime = node.ctime = (mtime || new Date).getTime();
       assert(WORKERFS.FILE_MODE !== WORKERFS.DIR_MODE);
       if (mode === WORKERFS.FILE_MODE) {
         node.size = contents.size;
@@ -82,19 +82,18 @@ addToLibrary({
           gid: 0,
           rdev: 0,
           size: node.size,
-          atime: new Date(node.timestamp),
-          mtime: new Date(node.timestamp),
-          ctime: new Date(node.timestamp),
+          atime: new Date(node.atime),
+          mtime: new Date(node.mtime),
+          ctime: new Date(node.ctime),
           blksize: 4096,
           blocks: Math.ceil(node.size / 4096),
         };
       },
       setattr(node, attr) {
-        if (attr.mode !== undefined) {
-          node.mode = attr.mode;
-        }
-        if (attr.timestamp !== undefined) {
-          node.timestamp = attr.timestamp;
+        for (const key of ["mode", "atime", "mtime", "ctime"]) {
+          if (attr[key]) {
+            node[key] = attr[key];
+          }
         }
       },
       lookup(parent, name) {

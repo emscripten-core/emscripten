@@ -12,19 +12,21 @@ import sys
 script_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(os.path.dirname(script_dir))
 
-sys.path.append(root_dir)
-from tools import shared, utils
+sys.path.insert(0, root_dir)
+from tools import utils
 
 
-def main():
+def main(argv):
   if subprocess.check_output(['git', 'status', '-uno', '--porcelain'], cwd=root_dir).strip():
     print('tree is not clean')
     return 1
 
-  shared.set_version_globals()
+  is_github_runner = len(argv) > 1 and argv[1] == '--action'
 
-  release_version = [shared.EMSCRIPTEN_VERSION_MAJOR, shared.EMSCRIPTEN_VERSION_MINOR,
-                     shared.EMSCRIPTEN_VERSION_TINY]
+  utils.set_version_globals()
+
+  release_version = [utils.EMSCRIPTEN_VERSION_MAJOR, utils.EMSCRIPTEN_VERSION_MINOR,
+                     utils.EMSCRIPTEN_VERSION_TINY]
   new_dev_version = list(release_version)
   new_dev_version[2] += 1
 
@@ -58,20 +60,24 @@ def main():
 
   branch_name = 'version_' + release_version
 
-  # Create a new git branch
-  subprocess.check_call(['git', 'checkout', '-b', branch_name, 'upstream/main'], cwd=root_dir)
+  if is_github_runner: # For GitHub Actions workflows
+    with open(os.environ['GITHUB_ENV'], 'a') as f:
+      f.write(f'RELEASE_VERSION={release_version}')
+  else: # Local use
+    # Create a new git branch
+    subprocess.check_call(['git', 'checkout', '-b', branch_name, 'upstream/main'], cwd=root_dir)
 
-  # Create auto-generated changes to the new git branch
-  subprocess.check_call(['git', 'add', '-u', '.'], cwd=root_dir)
-  subprocess.check_call(['git', 'commit', '-m', f'Mark {release_version} as released'], cwd=root_dir)
-  print('New release created in branch: `%s`' % branch_name)
+    # Create auto-generated changes to the new git branch
+    subprocess.check_call(['git', 'add', '-u', '.'], cwd=root_dir)
+    subprocess.check_call(['git', 'commit', '-m', f'Mark {release_version} as released'], cwd=root_dir)
+    print('New release created in branch: `%s`' % branch_name)
 
-  # Push new branch to upstream
-  subprocess.check_call(['git', 'push', 'upstream', branch_name], cwd=root_dir)
+    # Push new branch to upstream
+    subprocess.check_call(['git', 'push', 'upstream', branch_name], cwd=root_dir)
 
   # TODO(sbc): Maybe create the tag too
   return 0
 
 
 if __name__ == '__main__':
-  sys.exit(main())
+  sys.exit(main(sys.argv))

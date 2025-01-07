@@ -121,10 +121,10 @@ window.scrollX = window.scrollY = 0; // TODO: proxy these
 
 window.WebGLRenderingContext = WebGLWorker;
 
-window.requestAnimationFrame = (function() {
+window.requestAnimationFrame = (() => {
   // similar to Browser.requestAnimationFrame
   var nextRAF = 0;
-  return function(func) {
+  return (func) => {
     // try to keep 60fps between calls to here
     var now = Date.now();
     if (nextRAF === 0) {
@@ -261,14 +261,14 @@ document.createElement = (what) => {
 
 document.getElementById = (id) => {
   if (id === 'canvas' || id === 'application-canvas') {
-    return Module.canvas;
+    return Module['canvas'];
   }
   throw 'document.getElementById failed on ' + id;
 };
 
 document.querySelector = (id) => {
   if (id === '#canvas' || id === '#application-canvas' || id === 'canvas' || id === 'application-canvas') {
-    return Module.canvas;
+    return Module['canvas'];
   }
   throw 'document.querySelector failed on ' + id;
 };
@@ -324,7 +324,7 @@ var screen = {
   height: 0
 };
 
-Module.canvas = document.createElement('canvas');
+Module['canvas'] = document.createElement('canvas');
 
 Module.setStatus = () => {};
 
@@ -412,9 +412,9 @@ function onMessageFromMainEmscriptenThread(message) {
     }
     case 'canvas': {
       if (message.data.event) {
-        Module.canvas.fireEvent(message.data.event);
+        Module['canvas'].fireEvent(message.data.event);
       } else if (message.data.boundingClientRect) {
-        Module.canvas.boundingClientRect = message.data.boundingClientRect;
+        Module['canvas'].boundingClientRect = message.data.boundingClientRect;
       } else throw 'ey?';
       break;
     }
@@ -451,10 +451,10 @@ function onMessageFromMainEmscriptenThread(message) {
       break;
     }
     case 'worker-init': {
-      Module.canvas = document.createElement('canvas');
-      screen.width = Module.canvas.width_ = message.data.width;
-      screen.height = Module.canvas.height_ = message.data.height;
-      Module.canvas.boundingClientRect = message.data.boundingClientRect;
+      Module['canvas'] = document.createElement('canvas');
+      screen.width = Module['canvas'].width_ = message.data.width;
+      screen.height = Module['canvas'].height_ = message.data.height;
+      Module['canvas'].boundingClientRect = message.data.boundingClientRect;
 #if ENVIRONMENT_MAY_BE_NODE
       if (ENVIRONMENT_IS_NODE)
 #endif
@@ -475,7 +475,7 @@ function onMessageFromMainEmscriptenThread(message) {
       break;
     }
     case 'setimmediate': {
-      if (Module['setImmediates']) Module['setImmediates'].shift()();
+      Module['setImmediates']?.shift()();
       break;
     }
     default: throw 'wha? ' + message.data.target;

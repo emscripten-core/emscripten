@@ -20,12 +20,9 @@ var LibraryExceptions = {
   // reference counter) is not protected from that. Also protection is not enough, separate state
   // should be allocated. libcxxabi has concept of dependent exception which is used for that
   // purpose, it references the primary exception.
-  $ExceptionInfo__deps: [
-    '__cxa_is_pointer_type',
 #if EXCEPTION_DEBUG
-    '$ptrToString'
+  $ExceptionInfo__deps: ['$ptrToString'],
 #endif
-  ],
   $ExceptionInfo: class {
     // excPtr - Thrown object pointer to wrap. Metadata pointer is calculated from it.
     constructor(excPtr) {
@@ -84,22 +81,6 @@ var LibraryExceptions = {
     get_adjusted_ptr() {
       return {{{ makeGetValue('this.ptr', C_STRUCTS.__cxa_exception.adjustedPtr, '*') }}};
     }
-
-    // Get pointer which is expected to be received by catch clause in C++ code. It may be adjusted
-    // when the pointer is casted to some of the exception object base classes (e.g. when virtual
-    // inheritance is used). When a pointer is thrown this method should return the thrown pointer
-    // itself.
-    get_exception_ptr() {
-      // Work around a fastcomp bug, this code is still included for some reason in a build without
-      // exceptions support.
-      var isPointer = ___cxa_is_pointer_type(this.get_type());
-      if (isPointer) {
-        return {{{ makeGetValue('this.excPtr', '0', '*') }}};
-      }
-      var adjusted = this.get_adjusted_ptr();
-      if (adjusted !== 0) return adjusted;
-      return this.excPtr;
-    }
   },
 
   // Here, we throw an exception after recording a couple of values that we need to remember
@@ -145,6 +126,7 @@ var LibraryExceptions = {
   llvm_eh_typeid_for: (type) => type,
 
   __cxa_begin_catch__deps: ['$exceptionCaught', '__cxa_increment_exception_refcount',
+                            '__cxa_get_exception_ptr',
                             '$uncaughtExceptionCount'],
   __cxa_begin_catch: (ptr) => {
     var info = new ExceptionInfo(ptr);
@@ -157,8 +139,8 @@ var LibraryExceptions = {
 #if EXCEPTION_DEBUG
     dbg('__cxa_begin_catch ' + [ptrToString(ptr), 'stack', exceptionCaught]);
 #endif
-    ___cxa_increment_exception_refcount(info.excPtr);
-    return info.get_exception_ptr();
+    ___cxa_increment_exception_refcount(ptr);
+    return ___cxa_get_exception_ptr(ptr);
   },
 
   // We're done with a catch. Now, we can run the destructor if there is one
@@ -180,15 +162,6 @@ var LibraryExceptions = {
 #endif
     ___cxa_decrement_exception_refcount(info.excPtr);
     exceptionLast = 0; // XXX in decRef?
-  },
-
-  __cxa_get_exception_ptr__deps: ['$ExceptionInfo'],
-  __cxa_get_exception_ptr: (ptr) => {
-    var rtn = new ExceptionInfo(ptr).get_exception_ptr();
-#if EXCEPTION_DEBUG
-    dbg('__cxa_get_exception_ptr ' + ptrToString(ptr) + ' -> ' + ptrToString(rtn));
-#endif
-    return rtn;
   },
 
   __cxa_uncaught_exceptions__deps: ['$uncaughtExceptionCount'],
@@ -254,9 +227,7 @@ var LibraryExceptions = {
     // Due to inheritance, those types may not precisely match the
     // type of the thrown object. Find one which matches, and
     // return the type of the catch block which should be called.
-    for (var arg in args) {
-      var caughtType = args[arg];
-
+    for (var caughtType of args) {
       if (caughtType === 0 || caughtType === thrownType) {
         // Catch all clause matched or exactly the same type is caught
         break;

@@ -23,7 +23,7 @@ import subprocess
 script_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(os.path.dirname(script_dir))
 
-sys.path.append(root_dir)
+sys.path.insert(0, root_dir)
 
 from tools.utils import path_from_root, read_file, safe_ensure_dirs
 
@@ -80,7 +80,7 @@ def write_file(f):
   current_comment = []
   current_tags = []
   for line in read_file(path_from_root('src/settings.js')).splitlines():
-    if 'Internal, used for testing only, from here' in line:
+    if 'LEGACY_SETTINGS' in line:
       break
     if not line:
       current_comment = []

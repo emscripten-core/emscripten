@@ -45,8 +45,7 @@ emscripten_fetch_queue* _emscripten_get_fetch_queue() {
   if (!g_queue.queuedOperations) {
     g_queue.queueSize = 64;
     g_queue.numQueuedItems = 0;
-    g_queue.queuedOperations =
-      (emscripten_fetch_t**)malloc(sizeof(emscripten_fetch_t*) * g_queue.queueSize);
+    g_queue.queuedOperations = malloc(sizeof(emscripten_fetch_t*) * g_queue.queueSize);
   }
   return &g_queue;
 }
@@ -54,7 +53,7 @@ emscripten_fetch_queue* _emscripten_get_fetch_queue() {
 void emscripten_proxy_fetch(emscripten_fetch_t* fetch) {
   // TODO: mutex lock
   emscripten_fetch_queue* queue = _emscripten_get_fetch_queue();
-  //	TODO handle case when queue->numQueuedItems >= queue->queueSize
+  // TODO handle case when queue->numQueuedItems >= queue->queueSize
   queue->queuedOperations[queue->numQueuedItems++] = fetch;
 #ifdef FETCH_DEBUG
   emscripten_dbgf("Queued fetch to fetch-worker to process. There are "
@@ -118,8 +117,9 @@ emscripten_fetch_t* emscripten_fetch(emscripten_fetch_attr_t* fetch_attr, const 
 
   if (fetch_attr->requestHeaders) {
     size_t headersCount = 0;
-    while (fetch_attr->requestHeaders[headersCount])
+    while (fetch_attr->requestHeaders[headersCount]) {
       ++headersCount;
+    }
     const char** headers = (const char**)malloc((headersCount + 1) * sizeof(const char*));
     if (!headers) {
       fetch_free(fetch);
@@ -147,64 +147,20 @@ emscripten_fetch_t* emscripten_fetch(emscripten_fetch_attr_t* fetch_attr, const 
 }
 
 EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t* fetch, double timeoutMsecs) {
-#if __EMSCRIPTEN_PTHREADS__
-  if (!fetch)
-    return EMSCRIPTEN_RESULT_INVALID_PARAM;
-  uint32_t proxyState = fetch->__proxyState;
-  if (proxyState == 2)
-    return EMSCRIPTEN_RESULT_SUCCESS; // already finished.
-  if (proxyState != 1)
-    return EMSCRIPTEN_RESULT_INVALID_PARAM; // the fetch should be ongoing?
-#ifdef FETCH_DEBUG
-  emscripten_dbg("fetch: emscripten_fetch_wait..");
-#endif
-  if (timeoutMsecs <= 0)
-    return EMSCRIPTEN_RESULT_TIMED_OUT;
-  while (proxyState == 1 /*sent to proxy worker*/) {
-    if (!emscripten_is_main_browser_thread()) {
-      int ret = emscripten_futex_wait(&fetch->__proxyState, proxyState, timeoutMsecs);
-      if (ret == -ETIMEDOUT)
-        return EMSCRIPTEN_RESULT_TIMED_OUT;
-      proxyState = fetch->__proxyState;
-    } else {
-      emscripten_err("fetch: emscripten_fetch_wait failed: main thread cannot block to wait for long periods of time! Migrate the application to run in a worker to perform synchronous file IO, or switch to using asynchronous IO.");
-      return EMSCRIPTEN_RESULT_FAILED;
-    }
-  }
-#ifdef FETCH_DEBUG
-  emscripten_dbg("fetch: emscripten_fetch_wait done..");
-#endif
-
-  if (proxyState == 2)
-    return EMSCRIPTEN_RESULT_SUCCESS;
-  else
-    return EMSCRIPTEN_RESULT_FAILED;
-#else
-  if (fetch->readyState >= STATE_DONE)
-    return EMSCRIPTEN_RESULT_SUCCESS; // already finished.
-  if (timeoutMsecs == 0)
-    return EMSCRIPTEN_RESULT_TIMED_OUT /*Main thread testing completion with sleep=0msecs*/;
-  else {
-#ifdef FETCH_DEBUG
-    emscripten_err("fetch: emscripten_fetch_wait() cannot stop to wait when building without pthreads!");
-#endif
-    return EMSCRIPTEN_RESULT_FAILED /*Main thread cannot block to wait*/;
-  }
-#endif
+  return EMSCRIPTEN_RESULT_FAILED;
 }
 
 EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t* fetch) {
-  if (!fetch)
+  if (!fetch) {
     return EMSCRIPTEN_RESULT_SUCCESS; // Closing null pointer is ok, same as with free().
+  }
 
-#if __EMSCRIPTEN_PTHREADS__
-  fetch->__proxyState = 0;
-#endif
   // This function frees the fetch pointer so that it is invalid to access it anymore.
   // Use a few key fields as an integrity check that we are being passed a good pointer to a valid
   // fetch structure, which has not been yet closed. (double close is an error)
-  if (fetch->id == 0 || fetch->readyState > STATE_MAX)
+  if (fetch->id == 0 || fetch->readyState > STATE_MAX) {
     return EMSCRIPTEN_RESULT_INVALID_PARAM;
+  }
 
   // This fetch is aborted. Call the error handler if the fetch was still in progress and was
   // canceled in flight.
@@ -219,13 +175,17 @@ EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t* fetch) {
 }
 
 size_t emscripten_fetch_get_response_headers_length(emscripten_fetch_t *fetch) {
-  if (!fetch || fetch->readyState < STATE_HEADERS_RECEIVED) return 0;
+  if (!fetch || fetch->readyState < STATE_HEADERS_RECEIVED) {
+    return 0;
+  }
 
   return (size_t)_emscripten_fetch_get_response_headers_length(fetch->id);
 }
 
 size_t emscripten_fetch_get_response_headers(emscripten_fetch_t *fetch, char *dst, size_t dstSizeBytes) {
-  if (!fetch || fetch->readyState < STATE_HEADERS_RECEIVED) return 0;
+  if (!fetch || fetch->readyState < STATE_HEADERS_RECEIVED) {
+    return 0;
+  }
 
   return (size_t)_emscripten_fetch_get_response_headers(fetch->id, dst, dstSizeBytes);
 }
@@ -233,8 +193,7 @@ size_t emscripten_fetch_get_response_headers(emscripten_fetch_t *fetch, char *ds
 char **emscripten_fetch_unpack_response_headers(const char *headersString) {
   // Get size of output array and allocate.
   size_t numHeaders = 0;
-  for (const char *pos = strchr(headersString, '\n'); pos; pos = strchr(pos + 1, '\n'))
-  {
+  for (const char *pos = strchr(headersString, '\n'); pos; pos = strchr(pos + 1, '\n')) {
     numHeaders++;
   }
   char **unpackedHeaders = (char**)malloc(sizeof(char*) * ((numHeaders * 2) + 1));
@@ -243,8 +202,7 @@ char **emscripten_fetch_unpack_response_headers(const char *headersString) {
   // Allocate each header.
   const char *rowStart = headersString;
   const char *rowEnd = strchr(rowStart, '\n');
-  for (size_t headerNum = 0; rowEnd; headerNum += 2)
-  {
+  for (size_t headerNum = 0; rowEnd; headerNum += 2) {
     const char *split = strchr(rowStart, ':');
     size_t headerSize = (size_t)split - (size_t)rowStart;
     char* header = (char*)malloc(headerSize + 1);
@@ -267,16 +225,12 @@ char **emscripten_fetch_unpack_response_headers(const char *headersString) {
 }
 
 void emscripten_fetch_free_unpacked_response_headers(char **unpackedHeaders) {
-  if (unpackedHeaders)
-  {
-    for (size_t i = 0; unpackedHeaders[i]; ++i)
+  if (unpackedHeaders) {
+    for (size_t i = 0; unpackedHeaders[i]; ++i) {
       free((void*)unpackedHeaders[i]);
+    }
     free((void*)unpackedHeaders);
   }
-}
-
-void emscripten_fetch_free(unsigned int id) {
-  return _emscripten_fetch_free(id);
 }
 
 static void fetch_free(emscripten_fetch_t* fetch) {
@@ -288,8 +242,9 @@ static void fetch_free(emscripten_fetch_t* fetch) {
   free((void*)fetch->__attributes.userName);
   free((void*)fetch->__attributes.password);
   if (fetch->__attributes.requestHeaders) {
-    for (size_t i = 0; fetch->__attributes.requestHeaders[i]; ++i)
+    for (size_t i = 0; fetch->__attributes.requestHeaders[i]; ++i) {
       free((void*)fetch->__attributes.requestHeaders[i]);
+    }
     free((void*)fetch->__attributes.requestHeaders);
   }
   free((void*)fetch->__attributes.overriddenMimeType);

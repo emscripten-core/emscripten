@@ -349,7 +349,7 @@ Guide material for the following APIs can be found in :ref:`emscripten-runtime-e
 Functions
 ---------
 
-.. c:function:: void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_infinite_loop)
+.. c:function:: void emscripten_set_main_loop(em_callback_func func, int fps, bool simulate_infinite_loop)
 
   Set a C function as the main event loop for the calling thread.
 
@@ -373,10 +373,10 @@ Functions
 
   :param em_callback_func func: C function to set as main event loop for the calling thread.
   :param int fps: Number of frames per second that the JavaScript will call the function. Setting ``int <=0`` (recommended) uses the browser’s ``requestAnimationFrame`` mechanism to call the function.
-  :param int simulate_infinite_loop: If true, this function will throw an exception in order to stop execution of the caller.
+  :param bool simulate_infinite_loop: If true, this function will throw an exception in order to stop execution of the caller.
 
 
-.. c:function:: void emscripten_set_main_loop_arg(em_arg_callback_func func, void *arg, int fps, int simulate_infinite_loop)
+.. c:function:: void emscripten_set_main_loop_arg(em_arg_callback_func func, void *arg, int fps, bool simulate_infinite_loop)
 
   Set a C function as the main event loop for the calling thread, passing it user-defined data.
 
@@ -385,7 +385,7 @@ Functions
   :param em_arg_callback_func func: C function to set as main event loop. The function signature must have a ``void*`` parameter for passing the ``arg`` value.
   :param void* arg: User-defined data passed to the main loop function, untouched by the API itself.
   :param int fps: Number of frames per second at which the JavaScript will call the function. Setting ``int <=0`` (recommended) uses the browser’s ``requestAnimationFrame`` mechanism to call the function.
-  :param int simulate_infinite_loop: If true, this function will throw an exception in order to stop execution of the caller.
+  :param bool simulate_infinite_loop: If true, this function will throw an exception in order to stop execution of the caller.
 
 
 .. c:function:: void emscripten_push_main_loop_blocker(em_arg_callback_func func, void *arg)

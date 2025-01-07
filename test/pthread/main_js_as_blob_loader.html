@@ -64,7 +64,7 @@
       <input type="button" value="Fullscreen" onclick="Module.requestFullscreen(document.getElementById('pointerLock').checked, 
                                                                                 document.getElementById('resize').checked)">
     </div>
-    
+
     <hr/>
     <textarea class="emscripten" id="output" rows="8"></textarea>
     <hr>
@@ -146,27 +146,19 @@
         };
       };
     </script>
-    
+
     <script>
 
-function download(url, responseType) {
-  return new Promise(function(resolve, reject) {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
-    xhr.responseType = 'blob';
-    xhr.onload = function() {
-      resolve(xhr.response);
-    };
-    xhr.send(null);
-  });
+function download(url) {
+  return fetch(url).then((rsp) => rsp.blob());
 }
 
 function addToDom(scriptCodeBlob) {
-  return new Promise(function(resolve, reject) {
+  return new Promise((resolve, reject) => {
     var script = document.createElement('script');
     var objectUrl = URL.createObjectURL(scriptCodeBlob);
     script.src = objectUrl;
-    script.onload = function() {
+    script.onload = () => {
       Module['mainScriptUrlOrBlob'] = scriptCodeBlob;
       URL.revokeObjectURL(objectUrl);
       resolve();

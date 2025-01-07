@@ -265,3 +265,7 @@ var WARN_DEPRECATED = true;
 // We currently set this to false for certain browser when large memory sizes
 // (2gb+ or 4gb+) are used
 var WEBGL_USE_GARBAGE_FREE_APIS = false;
+
+var INCLUDE_WEBGL1_FALLBACK = true;
+
+var MINIFICATION_MAP = '';

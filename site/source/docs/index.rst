@@ -30,7 +30,7 @@ This comprehensive documentation set contains everything you need to know to use
 **Reference:**
 
 - :ref:`api-reference-index` is a reference for the Emscripten toolchain.
-- :ref:`settings-reference` is a reference of all the Emscripten compiler serttings.
+- :ref:`settings-reference` is a reference of all the Emscripten compiler settings.
 - :ref:`tools-reference` is a reference for the Emscripten integration APIs.
 - :ref:`Sanitizers` shows how to debug with sanitizers.
 - :ref:`Module-Splitting` is a guide to splitting modules and deferring the

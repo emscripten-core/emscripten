@@ -64,25 +64,20 @@ int main() {
       ccall('finish');
     }
 
-    var meta_xhr = new XMLHttpRequest();
-    meta_xhr.open("GET", "files.js.metadata", true);
-    meta_xhr.responseType = "text";
-    meta_xhr.onload = function() {
-      out('got metadata');
-      meta = meta_xhr.response;
-      maybeReady();
-    };
-    meta_xhr.send();
+    fetch("files.js.metadata")
+      .then((rsp) => rsp.text())
+      .then((text) => {
+        out('got metadata');
+        meta = text;
+        maybeReady();
+      });
 
-    var data_xhr = new XMLHttpRequest();
-    data_xhr.open("GET", "files.data", true);
-    data_xhr.responseType = "blob";
-    data_xhr.onload = function() {
-      out('got data');
-      blob = data_xhr.response;
-      maybeReady();
-    };
-    data_xhr.send();
+    fetch("files.data")
+      .then((rsp) => rsp.blob())
+      .then((data) => {
+        blob = data;
+        maybeReady();
+      });
   ));
 
   emscripten_exit_with_live_runtime();

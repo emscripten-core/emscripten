@@ -21,13 +21,13 @@ void finish(void*) {
   report_result(0);
 }
 
-EM_BOOL context_lost(int eventType, const void *reserved, void *userData) {
+bool context_lost(int eventType, const void *reserved, void *userData) {
   printf("C code received a signal for WebGL context lost! This should not happen!\n");
   report_result(1);
   return 0;
 }
 
-EM_BOOL context_restored(int eventType, const void *reserved, void *userData) {
+bool context_restored(int eventType, const void *reserved, void *userData) {
   printf("C code received a signal for WebGL context restored! This should not happen!\n");
   report_result(1);
   return 0;

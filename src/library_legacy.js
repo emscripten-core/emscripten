@@ -122,7 +122,7 @@ legacyFuncs = {
 #endif
 
   $stackTrace__deps: ['$jsStackTrace'],
-  $stackTrace: function() {
+  $stackTrace: () => {
     var js = jsStackTrace();
     if (Module['extraStackTrace']) js += '\n' + Module['extraStackTrace']();
     return js;

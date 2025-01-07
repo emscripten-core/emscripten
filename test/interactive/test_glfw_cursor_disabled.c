@@ -49,7 +49,7 @@ void render() {
 
 
 #ifdef __EMSCRIPTEN__
-EM_BOOL on_pointerlockchange(int eventType, const EmscriptenPointerlockChangeEvent *event, void *userData) {
+bool on_pointerlockchange(int eventType, const EmscriptenPointerlockChangeEvent *event, void *userData) {
     printf("pointerlockchange, isActive=%d\n", event->isActive);
     pointerlock_isActive = event->isActive;
     return 0;

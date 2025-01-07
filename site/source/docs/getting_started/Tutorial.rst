@@ -128,15 +128,15 @@ displaying the output of the ``printf()`` calls in the native code.
 
 The HTML output isn't limited just to just displaying text. You can also use the
 SDL API to show a colored cube in a ``<canvas>`` element (on browsers that
-support it). For an example, build the `hello_world_sdl.cpp
-<https://github.com/emscripten-core/emscripten/blob/main/test/hello_world_sdl.cpp>`_
+support it). For an example, build the `hello_world_sdl.c
+<https://github.com/emscripten-core/emscripten/blob/main/test/hello_world_sdl.c>`_
 test code and then refresh the browser: ::
 
-    ./emcc test/hello_world_sdl.cpp -o hello.html
+    ./emcc test/hello_world_sdl.c -o hello.html
 
 The source code for the second example is given below:
 
-.. include:: ../../../../test/hello_world_sdl.cpp
+.. include:: ../../../../test/hello_world_sdl.c
    :literal:
 
 

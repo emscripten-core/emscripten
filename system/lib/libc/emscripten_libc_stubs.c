@@ -4,8 +4,8 @@
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
  *
- * Fake/stub implemenations of libc functions.
- * See emscripten_syscall_stubs.c for fake/stub implemenations of syscalls.
+ * Fake/stub implementations of libc functions.
+ * See emscripten_syscall_stubs.c for fake/stub implementations of syscalls.
  */
 
 #include <errno.h>
