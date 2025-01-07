@@ -1034,6 +1034,8 @@ def phase_compile_inputs(options, state, newargs, input_files):
 
   # In COMPILE_AND_LINK we need to compile source files too, but we also need to
   # filter out the link flags
+  assert state.mode == Mode.COMPILE_AND_LINK
+  assert not state.has_dash_c
   compile_args = filter_out_link_flags(compile_args)
   linker_inputs = []
   seen_names = {}
@@ -1058,10 +1060,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
       cmd = get_clang_command()
       if get_file_suffix(input_file) in ['.pcm']:
         cmd = [c for c in cmd if not c.startswith('-fprebuilt-module-path=')]
-    cmd += [input_file]
-    if not state.has_dash_c:
-      cmd += ['-c']
-    cmd += ['-o', output_file]
+    cmd += ['-c', input_file, '-o', output_file]
     if state.mode == Mode.COMPILE_AND_LINK and '-gsplit-dwarf' in newargs:
       # When running in COMPILE_AND_LINK mode we compile to temporary location
       # but we want the `.dwo` file to be generated in the current working directory,
