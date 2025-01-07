@@ -138,7 +138,7 @@ addToLibrary({
         }
         return {
           dev: stat.dev,
-          ino: stat.ino,
+          ino: node.id,
           mode: stat.mode,
           nlink: stat.nlink,
           uid: stat.uid,

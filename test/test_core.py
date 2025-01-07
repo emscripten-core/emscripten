@@ -19,7 +19,7 @@ if __name__ == '__main__':
 
 from tools.shared import PIPE
 from tools.shared import EMCC, EMAR, FILE_PACKAGER
-from tools.utils import WINDOWS, MACOS, write_file, delete_file
+from tools.utils import WINDOWS, MACOS, LINUX, write_file, delete_file
 from tools import shared, building, config, utils, webassembly
 import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
@@ -27,7 +27,7 @@ from common import skip_if, no_windows, no_mac, is_slow_test, parameterized, par
 from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_with_wasm_bigint
 from common import read_file, read_binary, requires_v8, requires_node, requires_wasm2js, requires_node_canary
 from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime
-from common import also_with_noderawfs, also_with_wasmfs
+from common import with_all_fs, also_with_nodefs, also_with_nodefs_both, also_with_noderawfs, also_with_wasmfs
 from common import with_all_eh_sjlj, with_all_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64, requires_wasm_exnref
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
 import clang_native
@@ -154,23 +154,6 @@ def only_wasm2js(note=''):
 
   def decorated(f):
     return skip_if(f, 'is_wasm2js', note, negate=True)
-  return decorated
-
-
-# Similar to also_with_wasmfs, but also enables the full JS API
-def also_with_wasmfs_js(func):
-  assert callable(func)
-
-  @wraps(func)
-  def decorated(self):
-    func(self)
-    print('wasmfs')
-    if self.get_setting('STANDALONE_WASM'):
-      self.skipTest("test currently cannot run both with WASMFS and STANDALONE_WASM")
-    self.set_setting('WASMFS')
-    self.set_setting('FORCE_FILESYSTEM')
-    self.emcc_args = self.emcc_args.copy() + ['-DWASMFS']
-    func(self)
   return decorated
 
 
@@ -1951,12 +1934,10 @@ int main(int argc, char **argv) {
     self.do_core_test('test_em_js.cpp', force_c=force_c)
     self.assertContained("no args returning int", read_file('test_em_js.js'))
 
-  @no_wasm2js('WASM_BIGINT is not compatible with wasm2js')
+  @no_wasm2js('test depends on WASM_BIGINT which is not compatible with wasm2js')
   def test_em_js_i64(self):
-    err = self.expect_fail([EMCC, '-Werror', test_file('core/test_em_js_i64.c')])
+    err = self.expect_fail([EMCC, '-Werror', '-sWASM_BIGINT=0', test_file('core/test_em_js_i64.c')])
     self.assertContained('emcc: error: using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `foo`', err)
-
-    self.set_setting('WASM_BIGINT')
     self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_core_test('test_em_js_i64.c')
 
@@ -2073,7 +2054,7 @@ int main(int argc, char **argv) {
       self.skipTest('wasm memory specific test')
 
     # check that memory growth does not exceed the wasm mem max limit and is exactly or one step below the wasm mem max
-    self.emcc_args += ['-sALLOW_MEMORY_GROWTH', '-sSTACK_SIZE=1Mb', '-sINITIAL_MEMORY=64Mb', '-sMAXIMUM_MEMORY=130Mb', '-sMEMORY_GROWTH_LINEAR_STEP=1Mb']
+    self.emcc_args += ['-sALLOW_MEMORY_GROWTH', '-sSTACK_SIZE=1Mb', '-sINITIAL_MEMORY=32Mb', '-sMAXIMUM_MEMORY=64Mb', '-sMEMORY_GROWTH_LINEAR_STEP=1Mb']
     self.do_core_test('test_memorygrowth_linear_step.c')
 
   @no_ubsan('UBSan seems to effect the precise memory usage')
@@ -4920,7 +4901,7 @@ res64 - external 64\n''', header='''\
   @requires_node
   def test_dylink_load_compiled_side_module(self):
     self.set_setting('FORCE_FILESYSTEM')
-    self.emcc_args.append('-lnodefs.js')
+    self.setup_nodefs_test()
     if not self.has_changed_setting('INITIAL_MEMORY'):
       self.set_setting('INITIAL_MEMORY', '64mb')
     # This test loads the module at runtime with loadWebAssemblyModule so we
@@ -4934,9 +4915,7 @@ res64 - external 64\n''', header='''\
       extern int sidef();
       int main() {
         EM_ASM({
-          FS.mkdir('/working');
-          FS.mount(NODEFS, { root: '.' }, '/working');
-          var libData = FS.readFile('/working/liblib.so', {encoding: 'binary'});
+          var libData = FS.readFile('liblib.so', {encoding: 'binary'});
           if (!(libData instanceof Uint8Array)) {
             libData = new Uint8Array(libData);
           }
@@ -4950,8 +4929,7 @@ res64 - external 64\n''', header='''\
                      side=r'''
       #include <stdio.h>
       int sidef() { return 10; }
-    ''',
-                     expected=['sidef: 10'])
+    ''', expected=['sidef: 10'])
 
   @needs_dylink
   def test_dylink_dso_needed(self):
@@ -5409,16 +5387,9 @@ got: 10
   def test_fwrite_0(self):
     self.do_core_test('test_fwrite_0.c')
 
-  @parameterized({
-    '': (['MEMFS']),
-    'nodefs': (['NODEFS'])
-  })
-  def test_fgetc_ungetc(self, fs):
+  @also_with_nodefs_both
+  def test_fgetc_ungetc(self):
     print('TODO: update this test once the musl ungetc-on-EOF-stream bug is fixed upstream and reaches us')
-    self.emcc_args += ['-D' + fs]
-    if fs == 'NODEFS':
-      self.require_node()
-      self.emcc_args += ['-lnodefs.js']
     self.do_runf('stdio/test_fgetc_ungetc.c', 'success')
 
   def test_fgetc_unsigned(self):
@@ -5572,7 +5543,11 @@ got: 10
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('fcntl/test_fcntl.c')
 
+  @also_with_nodefs_both
+  @crossplatform
   def test_fcntl_open(self):
+    if '-DNODERAWFS' in self.emcc_args and not LINUX:
+      self.skipTest('noderawfs fails here under non-linux')
     self.do_run_in_out_file_test('fcntl/test_fcntl_open.c')
 
   @also_with_wasm_bigint
@@ -5680,7 +5655,8 @@ got: 10
   @is_slow_test
   @requires_node
   def test_fs_nodefs_rw(self):
-    self.emcc_args += ['-lnodefs.js']
+    if not self.get_setting('NODERAWFS'):
+      self.setup_nodefs_test()
     self.set_setting('SYSCALL_DEBUG')
     self.do_runf('fs/test_nodefs_rw.c', 'success')
     if self.maybe_closure():
@@ -5691,7 +5667,8 @@ got: 10
   def test_fs_nodefs_cloexec(self):
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-    self.emcc_args += ['-lnodefs.js']
+    if not self.get_setting('NODERAWFS'):
+      self.setup_nodefs_test()
     self.do_runf('fs/test_nodefs_cloexec.c', 'success')
 
   @also_with_noderawfs
@@ -5699,7 +5676,8 @@ got: 10
   def test_fs_nodefs_dup(self):
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-    self.emcc_args += ['-lnodefs.js']
+    if not self.get_setting('NODERAWFS'):
+      self.setup_nodefs_test()
     self.do_runf('fs/test_nodefs_dup.c', 'success')
 
   @requires_node
@@ -5758,7 +5736,7 @@ got: 10
     self.do_run_in_out_file_test('fs/test_trackingdelegate.c')
 
   @also_with_noderawfs
-  @also_with_wasmfs_js
+  @also_with_wasmfs
   def test_fs_writeFile(self):
     if self.get_setting('WASMFS'):
       self.set_setting("FORCE_FILESYSTEM")
@@ -5780,30 +5758,21 @@ got: 10
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @crossplatform
-  @also_with_noderawfs
+  @also_with_nodefs_both
   def test_fs_enotdir(self):
-    self.do_run_in_out_file_test('fs/test_enotdir.c')
+    if MACOS and '-DNODERAWFS' in self.emcc_args:
+      self.skipTest('BSD libc sets a different errno')
+    self.do_runf('fs/test_fs_enotdir.c', 'success')
 
   @also_with_noderawfs
   def test_fs_append(self):
     self.do_runf('fs/test_append.c', 'success')
 
-  @parameterized({
-    'memfs': ['MEMFS'],
-    'nodefs': ['NODEFS'],
-    'noderaswfs': ['NODERAWFS'],
-    'wasmfs': ['WASMFS']
-  })
-  def test_fs_mmap(self, fs):
-    if fs == 'NODEFS':
-      self.require_node()
-      self.emcc_args += ['-lnodefs.js']
-    if fs == 'NODERAWFS':
-      self.require_node()
-      self.emcc_args += ['-lnodefs.js', '-lnoderawfs.js']
-    if fs == 'WASMFS':
-      self.emcc_args += ['-sWASMFS', '-sFORCE_FILESYSTEM']
-    self.do_run_in_out_file_test('fs/test_mmap.c', emcc_args=['-D' + fs])
+  @with_all_fs
+  def test_fs_mmap(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
+    self.do_run_in_out_file_test('fs/test_mmap.c')
 
   @no_wasmfs('wasmfs will (?) need a non-JS mechanism to ignore permissions during startup')
   @parameterized({
@@ -5875,35 +5844,46 @@ Module.onRuntimeInitialized = () => {
 
   @requires_node
   @crossplatform
-  @parameterized({
-    '': ([],),
-    'nodefs': (['-DNODEFS', '-lnodefs.js'],),
-    'noderawfs': (['-sNODERAWFS'],),
-  })
-  def test_fs_symlink_resolution(self, args):
-    nodefs = '-DNODEFS' in args or '-sNODERAWFS' in args
-    if nodefs and WINDOWS:
-      self.skipTest('No symlinks on Windows')
+  @with_all_fs
+  def test_fs_symlink_resolution(self):
+    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
     if self.get_setting('WASMFS'):
-      if nodefs:
+      self.set_setting('FORCE_FILESYSTEM')
+    if nodefs:
+      if WINDOWS:
+        self.skipTest('No symlinks on Windows')
+      if self.get_setting('WASMFS'):
         self.skipTest('NODEFS in WasmFS')
-      self.set_setting('FORCE_FILESYSTEM')
-    self.do_runf('fs/test_fs_symlink_resolution.c', 'success', emcc_args=args)
+    self.do_runf('fs/test_fs_symlink_resolution.c', 'success')
 
-  @parameterized({
-    '': ([],),
-    'nodefs': (['-DNODEFS', '-lnodefs.js'],),
-    'noderawfs': (['-sNODERAWFS'],)
-  })
-  def test_fs_rename_on_existing(self, args):
+  @with_all_fs
+  def test_fs_rename_on_existing(self):
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-    self.do_runf('fs/test_fs_rename_on_existing.c', 'success', emcc_args=args)
+    self.do_runf('fs/test_fs_rename_on_existing.c', 'success')
+
+  @also_with_nodefs_both
+  @no_windows('stat ino values dont match on windows')
+  @crossplatform
+  def test_fs_readdir_ino_matches_stat_ino(self):
+    self.do_runf('fs/test_fs_readdir_ino_matches_stat_ino.c', 'success')
+
+  @also_with_nodefs_both
+  @crossplatform
+  def test_fs_open_no_permissions(self):
+    if ('-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args) and WINDOWS:
+      self.skipTest('fs_open_no_permissions fails on windows')
+    self.do_runf('fs/test_fs_open_no_permissions.c', 'success')
+
+  @also_with_nodefs_both
+  @crossplatform
+  @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
+  def test_fs_mkdir_dotdot(self):
+    self.do_runf('fs/test_fs_mkdir_dotdot.c', 'success')
 
   def test_sigalrm(self):
     self.do_runf('test_sigalrm.c', 'Received alarm!')
-    self.set_setting('EXIT_RUNTIME')
-    self.do_runf('test_sigalrm.c', 'Received alarm!')
+    self.do_runf('test_sigalrm.c', 'Received alarm!', emcc_args=['-sEXIT_RUNTIME'])
 
   def test_signals(self):
     self.do_core_test('test_signals.c')
@@ -5924,27 +5904,21 @@ Module.onRuntimeInitialized = () => {
       assert_returncode=exit_code
     )
 
-  @requires_node
   @crossplatform
-  @parameterized({
-    '': (['-DMEMFS'],),
-    'nodefs': (['-DNODEFS', '-lnodefs.js'],),
-    'noderawfs': (['-DNODERAWFS', '-sNODERAWFS'],)
-  })
-  def test_unistd_access(self, args):
-    self.emcc_args += args
-    nodefs = '-DNODEFS' in args or '-DNODERAWFS' in args
+  @with_all_fs
+  def test_unistd_access(self):
+    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
     if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
       if nodefs:
         self.skipTest('NODEFS in WasmFS')
-      self.emcc_args += ['-sFORCE_FILESYSTEM']
     # On windows we have slighly different output because we the same
     # level of permissions are not available. For example, on windows
     # its not possible have a file that is not readable, but writable.
     # We also report all files as executable since there is no x bit
     # recorded there.
     # See https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/chmod-wchmod?view=msvc-170#remarks
-    if WINDOWS and '-DNODERAWFS' in args:
+    if WINDOWS and '-DNODERAWFS' in self.emcc_args:
       out_suffix = '.win'
     else:
       out_suffix = ''
@@ -5970,28 +5944,15 @@ Module.onRuntimeInitialized = () => {
   def test_unistd_dup(self):
     self.do_run_in_out_file_test('unistd/dup.c')
 
-  @parameterized({
-    '': (['MEMFS']),
-    'nodefs': (['NODEFS'])
-  })
-  def test_unistd_truncate(self, fs):
-    orig_compiler_opts = self.emcc_args.copy()
-    self.emcc_args = orig_compiler_opts + ['-D' + fs]
+  @with_all_fs
+  def test_unistd_truncate(self):
+    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
     if self.get_setting('WASMFS'):
-      if fs == 'NODEFS':
+      self.set_setting('FORCE_FILESYSTEM')
+      if nodefs:
         self.skipTest('TODO: NODEFS in WasmFS')
-      self.emcc_args += ['-sFORCE_FILESYSTEM']
-    if fs == 'NODEFS':
-      self.emcc_args += ['-lnodefs.js']
-      self.require_node()
-    self.do_run_in_out_file_test('unistd/truncate.c')
-
-  @no_windows("Windows throws EPERM rather than EACCES or EINVAL")
-  @unittest.skipIf(WINDOWS or os.geteuid() == 0, "Root access invalidates this test by being able to write on readonly files")
-  @requires_node
-  def test_unistd_truncate_noderawfs(self):
-    self.set_setting('NODERAWFS')
-    self.maybe_closure()
+    if WINDOWS or os.geteuid() == 0:
+      self.skipTest('Root access invalidates this test by being able to write on readonly files')
     self.do_run_in_out_file_test('unistd/truncate.c')
 
   @also_with_standalone_wasm()
@@ -6019,22 +5980,15 @@ Module.onRuntimeInitialized = () => {
     self.do_runf(filename, str(expected) + ', errno: 0')
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
-  @parameterized({
-    '': (['MEMFS']),
-    'nodefs': (['NODEFS']),
-    'noderawfs': (['NODERAWFS']),
-  })
-  def test_unistd_unlink(self, fs):
-    if fs in ('NODEFS', 'NODERAWFS'):
-      self.require_node()
-      if self.get_setting('WASMFS'):
-        self.skipTest('NODEFS in WasmFS')
+  @with_all_fs
+  def test_unistd_unlink(self):
+    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
+    if self.get_setting('WASMFS') and nodefs:
+      self.skipTest('NODEFS in WasmFS')
 
-    self.emcc_args += ['-D' + fs]
     # symlinks on node.js on non-linux behave differently (e.g. on Windows they require administrative privileges)
     # so skip testing those bits on that combination.
-    if fs == 'NODEFS':
-      self.emcc_args += ['-lnodefs.js']
+    if '-DNODEFS' in self.emcc_args:
       if WINDOWS:
         self.emcc_args += ['-DNO_SYMLINK=1']
       if MACOS:
@@ -6042,33 +5996,27 @@ Module.onRuntimeInitialized = () => {
 
     # Several differences/bugs on non-linux including https://github.com/nodejs/node/issues/18014
     # TODO: NODERAWFS in WasmFS
-    if fs == 'NODERAWFS':
-      self.set_setting('NODERAWFS')
+    if '-DNODERAWFS' in self.emcc_args and os.geteuid() == 0:
       # 0 if root user
-      if os.geteuid() == 0:
-        self.emcc_args += ['-DSKIP_ACCESS_TESTS']
+      self.emcc_args += ['-DSKIP_ACCESS_TESTS']
 
     self.do_runf('unistd/unlink.c', 'success')
 
-  @parameterized({
-    '': ([], False),
-    'nodefs': (['-DNODEFS', '-lnodefs.js'], True)
-  })
-  def test_unistd_links(self, args, nodefs):
-    if nodefs:
-      self.require_node()
-      if WINDOWS:
-        self.skipTest('Skipping NODEFS part of this test for test_unistd_links on Windows, since it would require administrative privileges.')
-        # Also, other detected discrepancies if you do end up running this test on NODEFS:
-        # test expects /, but Windows gives \ as path slashes.
-        # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
+  @also_with_nodefs
+  def test_unistd_links(self):
+    nodefs = '-DNODEFS' in self.emcc_args
+    if nodefs and WINDOWS:
+      self.skipTest('Skipping NODEFS part of this test for test_unistd_links on Windows, since it would require administrative privileges.')
+      # Also, other detected discrepancies if you do end up running this test on NODEFS:
+      # test expects /, but Windows gives \ as path slashes.
+      # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
 
     if self.get_setting('WASMFS'):
       if nodefs:
         self.skipTest('TODO: wasmfs+node')
       self.emcc_args += ['-sFORCE_FILESYSTEM']
 
-    self.do_run_in_out_file_test('unistd/links.c', emcc_args=args)
+    self.do_run_in_out_file_test('unistd/links.c')
 
   @also_with_noderawfs
   def test_unistd_write_broken_link(self):
@@ -6084,31 +6032,17 @@ Module.onRuntimeInitialized = () => {
     self.do_run_in_out_file_test('unistd/symlink_on_nodefs.c')
 
   @also_with_wasm_bigint
+  @also_with_nodefs
   def test_unistd_io(self):
-    orig_compiler_opts = self.emcc_args.copy()
-    for fs in ('MEMFS', 'NODEFS'):
-      self.clear()
-      self.emcc_args = orig_compiler_opts + ['-D' + fs]
-      if fs == 'NODEFS':
-        self.emcc_args += ['-lnodefs.js']
-        self.require_node()
-      if self.get_setting('WASMFS'):
-        if fs == 'NODEFS':
-          # TODO: NODEFS in WasmFS
-          continue
-        self.emcc_args += ['-sFORCE_FILESYSTEM']
-      self.do_run_in_out_file_test('unistd/io.c')
+    if self.get_setting('WASMFS'):
+      if '-DNODEFS' in self.emcc_args:
+        self.skipTest('NODEFS in WasmFS')
+      self.set_setting('FORCE_FILESYSTEM')
+    self.do_run_in_out_file_test('unistd/io.c')
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
-  @parameterized({
-    '': (['MEMFS']),
-    'nodefs': (['NODEFS']),
-  })
-  def test_unistd_misc(self, fs):
-    self.emcc_args += ['-D' + fs]
-    if fs == 'NODEFS':
-      self.require_node()
-      self.emcc_args += ['-lnodefs.js']
+  @also_with_nodefs
+  def test_unistd_misc(self):
     self.do_run_in_out_file_test('unistd/misc.c', interleaved_output=False)
 
   @also_with_standalone_wasm()
@@ -7010,7 +6944,7 @@ void* operator new(size_t size) {
   def test_dyncall_specific(self, *args):
     if self.get_setting('MEMORY64'):
       self.skipTest('not compatible with MEMORY64')
-    if self.get_setting('WASM_BIGINT'):
+    if self.get_setting('WASM_BIGINT') != 0 and not self.is_wasm2js():
       # define DYNCALLS because this test does test calling them directly, and
       # in WASM_BIGINT mode we do not enable them by default (since we can do
       # more without them - we don't need to legalize)
@@ -7873,7 +7807,7 @@ void* operator new(size_t size) {
 
     # Get the wat, printing with -g which has binary offsets
     wat = self.run_process([Path(building.get_binaryen_bin(), 'wasm-opt'),
-                           wasm_filename, '-g', '--print'], stdout=PIPE).stdout
+                           wasm_filename, '-g', '--print', '-all'], stdout=PIPE).stdout
 
     # We expect to see a pattern like this in optimized builds (there isn't
     # much that can change with such calls to JS (they can't be reordered or

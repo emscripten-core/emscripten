@@ -47,31 +47,37 @@ min_browser_versions = {
     'chrome': 75,
     'firefox': 65,
     'safari': 150000,
+    'node': 130000,
   },
   Feature.SIGN_EXT: {
     'chrome': 74,
     'firefox': 62,
     'safari': 140100,
+    'node': 120000,
   },
   Feature.BULK_MEMORY: {
     'chrome': 75,
     'firefox': 79,
     'safari': 150000,
+    'node': 130000,
   },
   Feature.MUTABLE_GLOBALS: {
     'chrome': 74,
     'firefox': 61,
     'safari': 120000,
+    'node': 120000,
   },
   Feature.JS_BIGINT_INTEGRATION: {
     'chrome': 67,
     'firefox': 68,
     'safari': 150000,
+    'node': 130000,
   },
   Feature.THREADS: {
     'chrome': 74,
     'firefox': 79,
     'safari': 140100,
+    'node': 160400,
   },
   Feature.GLOBALTHIS: {
     'chrome': 71,
@@ -132,12 +138,19 @@ def enable_feature(feature, reason, override=False):
     if settings[name] < min_version:
       if name in user_settings:
         # If the user explicitly chose an older version we issue a warning.
+        if name == 'MIN_SAFARI_VERSION' and reason == 'pthreads':
+          # But as a special case, don't warn when forcing on bulk memory on Safari.
+          # This is because Safari implemented part of bulk memory along with threads in 14.1,
+          # but not all of it. So bulk-mem is listed as supported in 15.0. So we want to
+          # continue enabling bulk memory via pthreads without a warning in 14.1, but without
+          # enabling other features requiring 15.0.
+          continue
         diagnostics.warning(
             'compatibility',
             f'{name}={user_settings[name]} is not compatible with {reason} '
             f'({min_version} or above required)')
       else:
-        # Otherwise we bump the minimum version to accommodate the feature.
+        # If no conflict, bump the minimum version to accommodate the feature.
         setattr(settings, name, min_version)
 
 
@@ -151,11 +164,15 @@ def disable_feature(feature):
 # a user requests a feature that we know is only supported in browsers
 # from a specific version and above, we can assume that browser version.
 def apply_min_browser_versions():
-  if settings.WASM_BIGINT:
+  if settings.WASM_BIGINT and 'WASM_BIGINT' in user_settings:
+    # WASM_BIGINT is enabled by default, don't use it to enable other features
+    # unless the user explicitly enabled it.
     enable_feature(Feature.JS_BIGINT_INTEGRATION, 'WASM_BIGINT')
   if settings.PTHREADS:
     enable_feature(Feature.THREADS, 'pthreads')
     enable_feature(Feature.BULK_MEMORY, 'pthreads')
+  elif settings.WASM_WORKERS or settings.SHARED_MEMORY:
+    enable_feature(Feature.BULK_MEMORY, 'shared-mem')
   if settings.AUDIO_WORKLET:
     enable_feature(Feature.GLOBALTHIS, 'AUDIO_WORKLET')
   if settings.MEMORY64 == 1:

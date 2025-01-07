@@ -394,10 +394,6 @@ def node_reference_types_flags(nodejs):
     return []
 
 
-def node_memory64_flags():
-  return ['--experimental-wasm-memory64']
-
-
 def node_exception_flags(nodejs):
   node_version = get_node_version(nodejs)
   # Exception handling was enabled by default in node v17.
@@ -638,10 +634,6 @@ def get_temp_files():
   else:
     # Otherwise use the system tempdir and try to clean up after ourselves.
     return tempfiles.TempFiles(TEMP_DIR, save_debug_files=False)
-
-
-def target_environment_may_be(environment):
-  return not settings.ENVIRONMENT or environment in settings.ENVIRONMENT.split(',')
 
 
 def print_compiler_stage(cmd):

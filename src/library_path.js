@@ -63,15 +63,9 @@ addToLibrary({
       }
       return root + dir;
     },
-    basename: (path) => {
-      // EMSCRIPTEN return '/'' for '/', not an empty string
-      if (path === '/') return '/';
-      path = PATH.normalize(path);
-      path = path.replace(/\/$/, "");
-      var lastSlash = path.lastIndexOf('/');
-      if (lastSlash === -1) return path;
-      return path.substr(lastSlash+1);
-    },
+    // This differs from node's path.basename in that it returns '/' for '/'
+    // rather than the empty string.
+    basename: (path) => path && path.match(/([^\/]+|\/)\/*$/)[1],
     join: (...paths) => PATH.normalize(paths.join('/')),
     join2: (l, r) => PATH.normalize(l + '/' + r),
   },

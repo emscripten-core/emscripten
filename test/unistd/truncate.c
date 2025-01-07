@@ -11,23 +11,8 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <string.h>
-#ifdef __EMSCRIPTEN__
-#include <emscripten.h>
-#endif
 
 void setup() {
-#ifdef __EMSCRIPTEN__
-  EM_ASM(
-    FS.mkdir('working');
-#if NODEFS
-    FS.mount(NODEFS, { root: '.' }, 'working');
-#endif
-    FS.chdir('working');
-    FS.writeFile('towrite', 'abcdef');
-    FS.writeFile('toread', 'abcdef');
-    FS.chmod('toread', 0o444);
-  );
-#else
   FILE* f = fopen("towrite", "w");
   fwrite("abcdef", 6, 1, f);
   fclose(f);
@@ -36,7 +21,6 @@ void setup() {
   fclose(f);
 
   chmod("toread", 0444);
-#endif
 }
 
 int main() {
@@ -118,15 +102,5 @@ int main() {
   memset(&s, 0, sizeof s);
   errno = 0;
 
-#ifdef __EMSCRIPTEN__
-  // Restore full permissions on all created files so that python test runner rmtree
-  // won't have problems on deleting the files. On Windows, calling shutil.rmtree()
-  // will fail if any of the files are read-only.
-  EM_ASM(
-    FS.chmod('toread', 0o777);
-  );
-#else
-  chmod("toread", 0777);
-#endif
   return 0;
 }

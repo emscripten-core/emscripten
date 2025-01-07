@@ -41,8 +41,7 @@ var SyscallsLibrary = {
       return dir + '/' + path;
     },
 
-    doStat(func, path, buf) {
-      var stat = func(path);
+    writeStat(buf, stat) {
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_dev, 'stat.dev', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_mode, 'stat.mode', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_nlink, 'stat.nlink', SIZE_TYPE) }}};
@@ -672,15 +671,15 @@ var SyscallsLibrary = {
   },
   __syscall_stat64: (path, buf) => {
     path = SYSCALLS.getStr(path);
-    return SYSCALLS.doStat(FS.stat, path, buf);
+    return SYSCALLS.writeStat(buf, FS.stat(path));
   },
   __syscall_lstat64: (path, buf) => {
     path = SYSCALLS.getStr(path);
-    return SYSCALLS.doStat(FS.lstat, path, buf);
+    return SYSCALLS.writeStat(buf, FS.lstat(path));
   },
   __syscall_fstat64: (fd, buf) => {
     var stream = SYSCALLS.getStreamFromFD(fd);
-    return SYSCALLS.doStat(FS.stat, stream.path, buf);
+    return SYSCALLS.writeStat(buf, FS.stat(stream.path));
   },
   __syscall_fchown32: (fd, owner, group) => {
     FS.fchown(fd, owner, group);
@@ -872,7 +871,7 @@ var SyscallsLibrary = {
     assert(!flags, `unknown flags in __syscall_newfstatat: ${flags}`);
 #endif
     path = SYSCALLS.calculateAt(dirfd, path, allowEmpty);
-    return SYSCALLS.doStat(nofollow ? FS.lstat : FS.stat, path, buf);
+    return SYSCALLS.writeStat(buf, nofollow ? FS.lstat(path) : FS.stat(path));
   },
   __syscall_unlinkat: (dirfd, path, flags) => {
     path = SYSCALLS.getStr(path);

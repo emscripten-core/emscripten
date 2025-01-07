@@ -39,7 +39,7 @@ logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
-EXPECTED_BINARYEN_VERSION = 119
+EXPECTED_BINARYEN_VERSION = 121
 
 _is_ar_cache: Dict[str, bool] = {}
 # the exports the user requested
@@ -572,7 +572,7 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
     CLOSURE_EXTERNS += [exports_file.name]
 
   # Node.js specific externs
-  if shared.target_environment_may_be('node'):
+  if settings.ENVIRONMENT_MAY_BE_NODE:
     NODE_EXTERNS_BASE = path_from_root('third_party/closure-compiler/node-externs')
     NODE_EXTERNS = os.listdir(NODE_EXTERNS_BASE)
     NODE_EXTERNS = [os.path.join(NODE_EXTERNS_BASE, name) for name in NODE_EXTERNS
@@ -580,13 +580,13 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/node-externs.js')] + NODE_EXTERNS
 
   # V8/SpiderMonkey shell specific externs
-  if shared.target_environment_may_be('shell'):
+  if settings.ENVIRONMENT_MAY_BE_SHELL:
     V8_EXTERNS = [path_from_root('src/closure-externs/v8-externs.js')]
     SPIDERMONKEY_EXTERNS = [path_from_root('src/closure-externs/spidermonkey-externs.js')]
     CLOSURE_EXTERNS += V8_EXTERNS + SPIDERMONKEY_EXTERNS
 
   # Web environment specific externs
-  if shared.target_environment_may_be('web') or shared.target_environment_may_be('worker'):
+  if settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WORKER:
     BROWSER_EXTERNS_BASE = path_from_root('src/closure-externs/browser-externs')
     if os.path.isdir(BROWSER_EXTERNS_BASE):
       BROWSER_EXTERNS = os.listdir(BROWSER_EXTERNS_BASE)
@@ -1055,12 +1055,7 @@ def little_endian_heap(js_file):
 
 def apply_wasm_memory_growth(js_file):
   logger.debug('supporting wasm memory growth with pthreads')
-  fixed = acorn_optimizer(js_file, ['growableHeap'])
-  ret = js_file + '.pgrow.js'
-  fixed = utils.read_file(fixed)
-  support_code = utils.read_file(path_from_root('src/growableHeap.js'))
-  utils.write_file(ret, support_code + '\n' + fixed)
-  return ret
+  return acorn_optimizer(js_file, ['growableHeap'])
 
 
 def use_unsigned_pointers_in_js(js_file):

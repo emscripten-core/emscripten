@@ -501,12 +501,14 @@ def finalize_wasm(infile, outfile, js_syms):
 
   # if we don't need to modify the wasm, don't tell finalize to emit a wasm file
   modify_wasm = False
+  need_name_section = False
 
   if settings.WASM2JS:
     # wasm2js requires full legalization (and will do extra wasm binary
     # later processing later anyhow)
     modify_wasm = True
   if settings.DEBUG_LEVEL >= 2 or settings.ASYNCIFY_ADD or settings.ASYNCIFY_ADVISE or settings.ASYNCIFY_ONLY or settings.ASYNCIFY_REMOVE or settings.EMIT_SYMBOL_MAP or settings.EMIT_NAME_SECTION:
+    need_name_section = True
     args.append('-g')
   if settings.WASM_BIGINT:
     args.append('--bigint')
@@ -568,12 +570,18 @@ def finalize_wasm(infile, outfile, js_syms):
                infile]
         shared.check_call(cmd)
 
-  if not settings.GENERATE_DWARF or not settings.EMIT_PRODUCERS_SECTION:
-    # For sections we no longer need, strip now to speed subsequent passes
+  # For sections we no longer need, strip now to speed subsequent passes.
+  # If Binaryen is not needed, this is also our last chance to strip.
+  strip_sections = []
+  if not settings.EMIT_PRODUCERS_SECTION:
+    strip_sections += ['producers']
+  if not need_name_section:
+    strip_sections += ['name']
+
+  if strip_sections or not settings.GENERATE_DWARF:
     building.save_intermediate(outfile, 'strip.wasm')
-    sections = ['producers'] if not settings.EMIT_PRODUCERS_SECTION else []
     building.strip(infile, outfile, debug=not settings.GENERATE_DWARF,
-                   sections=sections)
+                   sections=strip_sections)
 
   metadata = get_metadata(outfile, outfile, modify_wasm, args)
 
@@ -885,6 +893,16 @@ def create_sending(metadata, library_symbols):
   return '{\n  ' + ',\n  '.join(elems) + '\n}'
 
 
+def can_use_await():
+  # In MODULARIZE mode we can use `await` since the factory function itself
+  # is marked as `async` and the generated code all lives inside that factory
+  # function.
+  # However, because closure does not see this (it runs only on the inner code),
+  # it sees this as a top-level-await, which it does not yet support.
+  # FIXME(https://github.com/emscripten-core/emscripten/issues/23158)
+  return settings.MODULARIZE and not settings.USE_CLOSURE_COMPILER
+
+
 def make_export_wrappers(function_exports):
   assert not settings.MINIMAL_RUNTIME
 
@@ -924,7 +942,7 @@ def make_export_wrappers(function_exports):
       # With assertions enabled we create a wrapper that are calls get routed through, for
       # the lifetime of the program.
       wrapper += f"createExportWrapper('{name}', {nargs});"
-    elif settings.WASM_ASYNC_COMPILATION or settings.PTHREADS:
+    elif (settings.WASM_ASYNC_COMPILATION and not can_use_await()) or settings.PTHREADS:
       # With WASM_ASYNC_COMPILATION wrapper will replace the global var and Module var on
       # first use.
       args = [f'a{i}' for i in range(nargs)]
@@ -990,7 +1008,11 @@ function assignWasmImports() {
 
   if not settings.MINIMAL_RUNTIME:
     if settings.WASM_ASYNC_COMPILATION:
-      module.append("var wasmExports;\ncreateWasm();\n")
+      if can_use_await():
+        # In modularize mode the generated code is within a factory function.
+        module.append("var wasmExports = await createWasm();\n")
+      else:
+        module.append("var wasmExports;\ncreateWasm();\n")
     else:
       module.append("var wasmExports = createWasm();\n")
 
@@ -1058,6 +1080,9 @@ def create_pointer_conversion_wrappers(metadata):
     '__cxa_get_exception_ptr': 'pp',
     '_wasmfs_write_file': '_ppp',
     '_wasmfs_mknod': '_p__',
+    '_wasmfs_symlink': '_pp',
+    '_wasmfs_chmod': '_p_',
+    '_wasmfs_lchmod': '_p_',
     '_wasmfs_get_cwd': 'p_',
     '_wasmfs_identify': '_p',
     '_wasmfs_read_file': 'pp',

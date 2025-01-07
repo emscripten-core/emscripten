@@ -37,7 +37,7 @@ from tools.shared import EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
 from tools.shared import get_canonical_temp_dir, path_from_root
 from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_binary, exit_with_error
 from tools.settings import COMPILE_TIME_SETTINGS
-from tools import shared, line_endings, building, config, utils
+from tools import shared, feature_matrix, line_endings, building, config, utils
 
 logger = logging.getLogger('common')
 
@@ -379,12 +379,75 @@ def also_with_wasmfs(f):
     if DEBUG:
       print('parameterize:wasmfs=%d' % wasmfs)
     if wasmfs:
-      self.set_setting('WASMFS')
-      self.emcc_args.append('-DWASMFS')
+      self.setup_wasmfs_test()
+    else:
+      self.emcc_args += ['-DMEMFS']
     f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'wasmfs': (True,)})
+  return metafunc
+
+
+def also_with_nodefs(func):
+  @wraps(func)
+  def metafunc(self, fs, *args, **kwargs):
+    if DEBUG:
+      print('parameterize:fs=%s' % (fs))
+    if fs == 'nodefs':
+      self.setup_nodefs_test()
+    else:
+      self.emcc_args += ['-DMEMFS']
+      assert fs is None
+    func(self, *args, **kwargs)
+
+  parameterize(metafunc, {'': (None,),
+                          'nodefs': ('nodefs',)})
+  return metafunc
+
+
+def also_with_nodefs_both(func):
+  @wraps(func)
+  def metafunc(self, fs, *args, **kwargs):
+    if DEBUG:
+      print('parameterize:fs=%s' % (fs))
+    if fs == 'nodefs':
+      self.setup_nodefs_test()
+    elif fs == 'rawfs':
+      self.setup_noderawfs_test()
+    else:
+      self.emcc_args += ['-DMEMFS']
+      assert fs is None
+    func(self, *args, **kwargs)
+
+  parameterize(metafunc, {'': (None,),
+                          'nodefs': ('nodefs',),
+                          'rawfs': ('rawfs',)})
+  return metafunc
+
+
+def with_all_fs(func):
+  @wraps(func)
+  def metafunc(self, fs, *args, **kwargs):
+    if DEBUG:
+      print('parameterize:fs=%s' % (fs))
+    if fs == 'nodefs':
+      self.setup_nodefs_test()
+    elif fs == 'rawfs':
+      self.setup_noderawfs_test()
+    elif fs == 'wasmfs':
+      self.setup_wasmfs_test()
+    else:
+      self.emcc_args += ['-DMEMFS']
+      assert fs is None
+    func(self, *args, **kwargs)
+
+  # TODO(sbc): rather than treat WASMFS as orthogonal we should
+  # probably make it combinatorial with nodefs and noderawfs.
+  parameterize(metafunc, {'': (None,),
+                          'nodefs': ('nodefs',),
+                          'rawfs': ('rawfs',),
+                          'wasmfs': ('wasmfs',)})
   return metafunc
 
 
@@ -396,9 +459,9 @@ def also_with_noderawfs(func):
     if DEBUG:
       print('parameterize:rawfs=%d' % rawfs)
     if rawfs:
-      self.require_node()
-      self.emcc_args += ['-DNODERAWFS']
-      self.set_setting('NODERAWFS')
+      self.setup_noderawfs_test()
+    else:
+      self.emcc_args += ['-DMEMFS']
     func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
@@ -679,27 +742,16 @@ def make_executable(name):
 
 
 def make_dir_writeable(dirname):
-  # Ensure all files are readable and writable by the current user.
-  permission_bits = stat.S_IWRITE | stat.S_IREAD
-
-  def is_writable(path):
-    return (os.stat(path).st_mode & permission_bits) != permission_bits
-
-  def make_writable(path):
-    new_mode = os.stat(path).st_mode | permission_bits
-    os.chmod(path, new_mode)
-
   # Some tests make files and subdirectories read-only, so rmtree/unlink will not delete
   # them. Force-make everything writable in the subdirectory to make it
   # removable and re-attempt.
-  if not is_writable(dirname):
-    make_writable(dirname)
+  os.chmod(dirname, 0o777)
 
   for directory, subdirs, files in os.walk(dirname):
     for item in files + subdirs:
       i = os.path.join(directory, item)
       if not os.path.islink(i):
-        make_writable(i)
+        os.chmod(i, 0o777)
 
 
 def force_delete_dir(dirname):
@@ -910,21 +962,19 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     nodejs = self.get_nodejs()
     if nodejs:
       version = shared.get_node_version(nodejs)
-      if version >= (23, 0, 0):
+      if version >= (24, 0, 0):
         self.js_engines = [nodejs]
-        self.node_args += shared.node_memory64_flags()
         return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
       self.emcc_args.append('-sENVIRONMENT=shell')
       self.js_engines = [config.V8_ENGINE]
-      self.v8_args.append('--experimental-wasm-memory64')
       return
 
     if 'EMTEST_SKIP_WASM64' in os.environ:
-      self.skipTest('test requires node >= 23 or d8 (and EMTEST_SKIP_WASM64 is set)')
+      self.skipTest('test requires node >= 24 or d8 (and EMTEST_SKIP_WASM64 is set)')
     else:
-      self.fail('either d8 or node >= 23 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
+      self.fail('either d8 or node >= 24 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
 
   def require_simd(self):
     if self.is_browser_test():
@@ -1023,6 +1073,22 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.is_2gb() or self.is_4gb():
       self.skipTest('wasm2js does not support over 2gb of memory')
 
+  def setup_nodefs_test(self):
+    self.require_node()
+    if self.get_setting('WASMFS'):
+      # without this the JS setup code in setup_nodefs.js doesn't work
+      self.set_setting('FORCE_FILESYSTEM')
+    self.emcc_args += ['-DNODEFS', '-lnodefs.js', '--pre-js', test_file('setup_nodefs.js')]
+
+  def setup_noderawfs_test(self):
+    self.require_node()
+    self.emcc_args += ['-DNODERAWFS']
+    self.set_setting('NODERAWFS')
+
+  def setup_wasmfs_test(self):
+    self.set_setting('WASMFS')
+    self.emcc_args += ['-DWASMFS']
+
   def setup_node_pthreads(self):
     self.require_node()
     self.emcc_args += ['-Wno-pthreads-mem-growth', '-pthread']
@@ -1049,7 +1115,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.js_engines = config.JS_ENGINES.copy()
     self.settings_mods = {}
     self.skip_exec = None
-    self.proxied = False
     self.emcc_args = ['-Wclosure', '-Werror', '-Wno-limited-postlink-optimizations']
     # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
     # For historical reasons emcc compiles and links as C++ by default.
@@ -1085,6 +1150,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       if node_version < emcc_min_node_version:
         self.emcc_args += building.get_emcc_node_flags(node_version)
         self.emcc_args.append('-Wno-transpile')
+      if node_version[0] < feature_matrix.min_browser_versions[feature_matrix.Feature.JS_BIGINT_INTEGRATION]['node'] / 10000:
+        self.emcc_args.append('-sWASM_BIGINT=0')
 
     self.v8_args = ['--wasm-staging']
     self.env = {}
@@ -1216,7 +1283,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   #                  libraries, for example
   def get_emcc_args(self, main_file=False, compile_only=False, asm_only=False):
     def is_ldflag(f):
-      return any(f.startswith(s) for s in ['-sEXPORT_ES6', '-sPROXY_TO_PTHREAD', '-sENVIRONMENT=', '--pre-js=', '--post-js=', '-sPTHREAD_POOL_SIZE='])
+      return any(f.startswith(s) for s in ['-sEXPORT_ES6', '--proxy-to-worker', '-sGL_TESTING', '-sPROXY_TO_WORKER', '-sPROXY_TO_PTHREAD', '-sENVIRONMENT=', '--pre-js=', '--post-js=', '-sPTHREAD_POOL_SIZE='])
 
     args = self.serialize_settings(compile_only or asm_only) + self.emcc_args
     if asm_only:
@@ -1537,6 +1604,16 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.assertEqual(read_binary(file1),
                      read_binary(file2))
 
+  def check_expected_size_in_file(self, desc, filename, size):
+    if EMTEST_REBASELINE:
+      create_file(filename, f'{size}\n', absolute=True)
+    size_slack = 0.05
+    expected_size = int(read_file(filename).strip())
+    delta = size - expected_size
+    ratio = abs(delta) / float(expected_size)
+    print('  seen %s size: %d (expected: %d) (delta: %d), ratio to expected: %f' % (desc, size, expected_size, delta, ratio))
+    self.assertLess(ratio, size_slack)
+
   library_cache: Dict[str, Tuple[str, object]] = {}
 
   def get_build_dir(self):
@@ -1612,7 +1689,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         self.fail(f'subprocess exited with non-zero return code({e.returncode}): `{shared.shlex_join(cmd)}`')
 
   def emcc(self, filename, args=[], output_filename=None, **kwargs):  # noqa
-    cmd = [compiler_for(filename), filename] + self.get_emcc_args(compile_only='-c' in args) + args
+    compile_only = '-c' in args or '-sSIDE_MODULE' in args
+    cmd = [compiler_for(filename), filename] + self.get_emcc_args(compile_only=compile_only) + args
     if output_filename:
       cmd += ['-o', output_filename]
     self.run_process(cmd, **kwargs)
@@ -2246,11 +2324,6 @@ class BrowserCore(RunnerCore):
       args = []
     args = args.copy()
     filename = find_browser_test_file(filename)
-
-    # Run via --proxy-to-worker.  This gets set by the @also_with_proxying.
-    if self.proxied:
-      args += ['--proxy-to-worker', '-sGL_TESTING']
-
     outfile = output_basename + '.html'
     args += ['-o', outfile]
     # print('all args:', args)

@@ -47,9 +47,6 @@ var readyPromise = new Promise((resolve, reject) => {
   readyPromiseResolve = resolve;
   readyPromiseReject = reject;
 });
-#if ASSERTIONS
-{{{ addReadyPromiseAssertions() }}}
-#endif
 #endif
 
 // Determine the runtime environment we are in. You can customize this by
@@ -103,18 +100,12 @@ if (ENVIRONMENT_IS_PTHREAD) {
 
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
-  // `require()` is no-op in an ESM module, use `createRequire()` to construct
-  // the require()` function.  This is only necessary for multi-environment
-  // builds, `-sENVIRONMENT=node` emits a static import declaration instead.
-  // TODO: Swap all `require()`'s with `import()`'s?
-#if EXPORT_ES6 && ENVIRONMENT_MAY_BE_WEB
+#if EXPORT_ES6
+  // When building an ES module `require` is not normally available.
+  // We need to use `createRequire()` to construct the require()` function.
   const { createRequire } = await import('module');
-  let dirname = import.meta.url;
-  if (dirname.startsWith("data:")) {
-    dirname = '/';
-  }
   /** @suppress{duplicate} */
-  var require = createRequire(dirname);
+  var require = createRequire('/');
 #endif
 
 #if PTHREADS || WASM_WORKERS

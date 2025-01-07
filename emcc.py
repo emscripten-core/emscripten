@@ -88,6 +88,15 @@ LINK_ONLY_FLAGS = {
     '--proxy-to-worker', '--shell-file', '--source-map-base',
     '--threadprofiler', '--use-preload-plugins'
 }
+CLANG_FLAGS_WITH_ARGS = {
+    '-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
+    '-Xpreprocessor', '-include', '-imacros', '-idirafter',
+    '-iprefix', '-iwithprefix', '-iwithprefixbefore',
+    '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
+    '-install_name', '-compatibility_version', '-mllvm',
+    '-current_version', '-I', '-L', '-include-pch',
+    '-undefined', '-target', '-Xlinker', '-Xclang', '-z'
+}
 
 
 @unique
@@ -218,13 +227,7 @@ def create_reproduce_file(name, args):
           if ignore:
             continue
 
-          if arg in ('-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
-                     '-Xpreprocessor', '-include', '-imacros', '-idirafter',
-                     '-iprefix', '-iwithprefix', '-iwithprefixbefore',
-                     '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
-                     '-install_name', '-compatibility_version',
-                     '-current_version', '-I', '-L', '-include-pch',
-                     '-Xlinker', '-Xclang'):
+          if arg in CLANG_FLAGS_WITH_ARGS:
             ignore_next = True
 
           if arg == '-o':
@@ -384,16 +387,6 @@ def get_clang_flags(user_args):
       flags.append('-matomics')
     if '-mbulk-memory' not in user_args:
       flags.append('-mbulk-memory')
-
-  # In emscripten we currently disable bulk memory by default.
-  # This should be removed/updated when we als update the default browser targets.
-  if '-mbulk-memory' not in user_args and '-mno-bulk-memory' not in user_args:
-    # Bulk memory may be enabled via threads or directly via -s.
-    if not settings.BULK_MEMORY:
-      flags.append('-mno-bulk-memory')
-      flags.append('-mno-bulk-memory-opt')
-  if '-mnontrapping-fptoint' not in user_args and '-mno-nontrapping-fptoint' not in user_args:
-    flags.append('-mno-nontrapping-fptoint')
 
   if settings.RELOCATABLE and '-fPIC' not in user_args:
     flags.append('-fPIC')
@@ -670,7 +663,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       exit_with_error('--post-link requires a single input file')
     # Delay import of link.py to avoid processing this file when only compiling
     from tools import link
-    link.run_post_link(input_files[0][1], options, state, newargs)
+    link.run_post_link(input_files[0][1], options, state)
     return 0
 
   ## Compile source code to object files
@@ -679,7 +672,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if state.mode == Mode.COMPILE_AND_LINK:
     # Delay import of link.py to avoid processing this file when only compiling
     from tools import link
-    return link.run(linker_inputs, options, state, newargs)
+    return link.run(linker_inputs, options, state)
   else:
     logger.debug('stopping after compile phase')
     return 0
@@ -775,14 +768,7 @@ def phase_setup(options, state, newargs):
       continue
 
     arg = newargs[i]
-    if arg in {'-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
-               '-Xpreprocessor', '-include', '-imacros', '-idirafter',
-               '-iprefix', '-iwithprefix', '-iwithprefixbefore',
-               '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
-               '-install_name', '-compatibility_version',
-               '-current_version', '-I', '-L', '-include-pch',
-               '-undefined', '-target',
-               '-Xlinker', '-Xclang', '-z'}:
+    if arg in CLANG_FLAGS_WITH_ARGS:
       skip = True
 
     if not arg.startswith('-'):
@@ -1048,6 +1034,8 @@ def phase_compile_inputs(options, state, newargs, input_files):
 
   # In COMPILE_AND_LINK we need to compile source files too, but we also need to
   # filter out the link flags
+  assert state.mode == Mode.COMPILE_AND_LINK
+  assert not state.has_dash_c
   compile_args = filter_out_link_flags(compile_args)
   linker_inputs = []
   seen_names = {}
@@ -1072,10 +1060,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
       cmd = get_clang_command()
       if get_file_suffix(input_file) in ['.pcm']:
         cmd = [c for c in cmd if not c.startswith('-fprebuilt-module-path=')]
-    cmd += [input_file]
-    if not state.has_dash_c:
-      cmd += ['-c']
-    cmd += ['-o', output_file]
+    cmd += ['-c', input_file, '-o', output_file]
     if state.mode == Mode.COMPILE_AND_LINK and '-gsplit-dwarf' in newargs:
       # When running in COMPILE_AND_LINK mode we compile to temporary location
       # but we want the `.dwo` file to be generated in the current working directory,
@@ -1268,6 +1253,13 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       if is_int(requested_level):
         # the -gX value is the debug level (-g1, -g2, etc.)
         settings.DEBUG_LEVEL = validate_arg_level(requested_level, 4, 'invalid debug level: ' + arg)
+        if settings.DEBUG_LEVEL == 0:
+          # Set these explicitly so -g0 overrides previous -g on the cmdline
+          settings.GENERATE_DWARF = 0
+          settings.GENERATE_SOURCE_MAP = 0
+          settings.EMIT_NAME_SECTION = 0
+        elif settings.DEBUG_LEVEL > 1:
+          settings.EMIT_NAME_SECTION = 1
         # if we don't need to preserve LLVM debug info, do not keep this flag
         # for clang
         if settings.DEBUG_LEVEL < 3:
@@ -1298,17 +1290,20 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
           settings.GENERATE_DWARF = 1
         elif requested_level == 'source-map':
           settings.GENERATE_SOURCE_MAP = 1
+          settings.EMIT_NAME_SECTION = 1
           newargs[i] = '-g'
         else:
           # Other non-integer levels (e.g. -gline-tables-only or -gdwarf-5) are
           # usually clang flags that emit DWARF. So we pass them through to
           # clang and make the emscripten code treat it like any other DWARF.
           settings.GENERATE_DWARF = 1
+          settings.EMIT_NAME_SECTION = 1
         # In all cases set the emscripten debug level to 3 so that we do not
         # strip during link (during compile, this does not make a difference).
         settings.DEBUG_LEVEL = 3
     elif check_flag('-profiling') or check_flag('--profiling'):
       settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 2)
+      settings.EMIT_NAME_SECTION = 1
     elif check_flag('-profiling-funcs') or check_flag('--profiling-funcs'):
       settings.EMIT_NAME_SECTION = 1
     elif newargs[i] == '--tracing' or newargs[i] == '--memoryprofiler':
@@ -1425,6 +1420,12 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
                                     override=True)
     elif arg == '-mno-sign-ext':
       feature_matrix.disable_feature(feature_matrix.Feature.SIGN_EXT)
+    elif arg == '-mnontrappting-fptoint':
+      feature_matrix.enable_feature(feature_matrix.Feature.NON_TRAPPING_FPTOINT,
+                                    '-mnontrapping-fptoint',
+                                    override=True)
+    elif arg == '-mno-nontrapping-fptoint':
+      feature_matrix.disable_feature(feature_matrix.Feature.NON_TRAPPING_FPTOINT)
     elif arg == '-fexceptions':
       # TODO Currently -fexceptions only means Emscripten EH. Switch to wasm
       # exception handling by default when -fexceptions is given when wasm
