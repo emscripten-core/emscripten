@@ -203,7 +203,7 @@ def create_reproduce_file(name, args):
           if arg.startswith('--reproduce='):
             continue
 
-          if arg.startswith('-o='):
+          if len(arg) > 2 and arg.startswith('-o'):
             rsp.write('-o\n')
             arg = arg[3:]
             output_arg = True
