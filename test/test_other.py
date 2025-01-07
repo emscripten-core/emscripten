@@ -6740,7 +6740,7 @@ int main(void) {
     create_file('run.js', 'var m = require("./a.out.js"); m();')
     output = self.run_js('run.js')
     self.assertEqual(output, 'hello, world!\n')
-    self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE', '-sEXPORT_NAME="NotModule"', '-sASSERTIONS=0'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE', '-sEXPORT_NAME=NotModule', '-sASSERTIONS=0'])
     self.assertContained('module.exports = NotModule;', read_file('a.out.js'))
     output = self.run_js('run.js')
     self.assertEqual(output, 'hello, world!\n')
@@ -6829,7 +6829,7 @@ m();
     output = self.run_js('run_module.js')
     self.assertContained('hello, world!\n', output)
 
-    self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE', '-sEXPORT_NAME="NotModule"', '-sASSERTIONS=0'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE', '-sEXPORT_NAME=NotModule', '-sASSERTIONS=0'])
     src = 'var module = 0; ' + read_file('a.out.js')
     create_file('a.out.js', src)
     self.assertContained("define([], () => NotModule);", src)
@@ -8692,7 +8692,7 @@ int main() {
 
     build([])
     base_size = os.path.getsize('a.out.wasm')
-    out = build(['-sBINARYEN_EXTRA_PASSES="--metrics"'])
+    out = build(['-sBINARYEN_EXTRA_PASSES=--metrics'])
     # and --metrics output appears
     self.assertContained('[funcs]', out)
     # adding --metrics should not affect code size
@@ -9540,6 +9540,11 @@ int main() {
     self.do_runf('hello_world.c', emcc_args=['-sSINGLE_FILE'])
     self.assertExists('hello_world.js')
     self.assertFileContents('hello_world.wasm', 'not wasm')
+
+  def test_single_file_disables_source_map(self):
+    cmd = [EMCC, test_file('hello_world.c'), '-sSINGLE_FILE', '-gsource-map']
+    stderr = self.run_process(cmd, stderr=PIPE).stderr
+    self.assertContained('warning: SINGLE_FILE disables source map support', stderr)
 
   def test_wasm2js_no_clobber_wasm(self):
     create_file('hello_world.wasm', 'not wasm')

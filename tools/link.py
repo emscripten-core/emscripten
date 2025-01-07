@@ -636,7 +636,7 @@ def check_browser_versions():
 
 
 @ToolchainProfiler.profile_block('linker_setup')
-def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
+def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
   """Future modifications should consider refactoring to reduce complexity.
 
   * The McCabe cyclomatiic complexity is currently 251 vs 10 recommended.
@@ -898,7 +898,7 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
     # PURE_WASI, or when we are linking without standard libraries because
     # STACK_OVERFLOW_CHECK depends on emscripten_stack_get_end which is defined
     # in libcompiler-rt.
-    if not settings.PURE_WASI and '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
+    if not settings.PURE_WASI and '-nostdlib' not in state.orig_args and '-nodefaultlibs' not in state.orig_args:
       default_setting('STACK_OVERFLOW_CHECK', max(settings.ASSERTIONS, settings.STACK_OVERFLOW_CHECK))
 
   # For users that opt out of WARN_ON_UNDEFINED_SYMBOLS we assume they also
@@ -1501,7 +1501,8 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
   if settings.WASM_BIGINT:
     settings.LEGALIZE_JS_FFI = 0
 
-  if settings.SINGLE_FILE:
+  if settings.SINGLE_FILE and settings.GENERATE_SOURCE_MAP:
+    diagnostics.warning('emcc', 'SINGLE_FILE disables source map support (which requires a .map file)')
     settings.GENERATE_SOURCE_MAP = 0
 
   if settings.EVAL_CTORS:
@@ -1536,7 +1537,7 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
 
   sanitize = set()
 
-  for arg in newargs:
+  for arg in state.orig_args:
     if arg.startswith('-fsanitize='):
       sanitize.update(arg.split('=', 1)[1].split(','))
     elif arg.startswith('-fno-sanitize='):
@@ -1575,7 +1576,7 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$UTF8ArrayToString')
 
   if sanitize & UBSAN_SANITIZERS:
-    if '-fsanitize-minimal-runtime' in newargs:
+    if '-fsanitize-minimal-runtime' in state.orig_args:
       settings.UBSAN_RUNTIME = 1
     else:
       settings.UBSAN_RUNTIME = 2
@@ -1790,7 +1791,7 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
   settings.EMSCRIPTEN_VERSION = utils.EMSCRIPTEN_VERSION
   settings.SOURCE_MAP_BASE = options.source_map_base or ''
 
-  settings.LINK_AS_CXX = (shared.run_via_emxx or settings.DEFAULT_TO_CXX) and '-nostdlib++' not in newargs
+  settings.LINK_AS_CXX = (shared.run_via_emxx or settings.DEFAULT_TO_CXX) and '-nostdlib++' not in state.orig_args
 
   # WASMFS itself is written in C++, and needs C++ standard libraries
   if settings.WASMFS:
@@ -1865,13 +1866,13 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
 
 
 @ToolchainProfiler.profile_block('calculate system libraries')
-def phase_calculate_system_libraries(linker_arguments, newargs):
+def phase_calculate_system_libraries(state, linker_arguments):
   extra_files_to_link = []
   # Link in ports and system libraries, if necessary
   if not settings.SIDE_MODULE:
     # Ports are always linked into the main module, never the side module.
     extra_files_to_link += ports.get_libs(settings)
-  extra_files_to_link += system_libs.calculate(newargs)
+  extra_files_to_link += system_libs.calculate(state.orig_args)
   linker_arguments.extend(extra_files_to_link)
 
 
@@ -1918,11 +1919,11 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms, base_
   settings.TARGET_BASENAME = unsuffixed_basename(target)
 
   if options.oformat in (OFormat.JS, OFormat.MJS):
-    state.js_target = target
+    js_target = target
   else:
-    state.js_target = get_secondary_target(target, '.js')
+    js_target = get_secondary_target(target, '.js')
 
-  settings.TARGET_JS_NAME = os.path.basename(state.js_target)
+  settings.TARGET_JS_NAME = os.path.basename(js_target)
 
   metadata = phase_emscript(in_wasm, wasm_target, js_syms, base_metadata)
 
@@ -1930,7 +1931,7 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms, base_
     phase_embind_aot(wasm_target, js_syms, linker_inputs)
 
   if options.emit_tsd:
-    phase_emit_tsd(options, wasm_target, state.js_target, js_syms, metadata, linker_inputs)
+    phase_emit_tsd(options, wasm_target, js_target, js_syms, metadata, linker_inputs)
 
   if options.js_transform:
     phase_source_transforms(options)
@@ -1939,7 +1940,7 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms, base_
 
   # If we are not emitting any JS then we are all done now
   if options.oformat != OFormat.WASM:
-    phase_final_emitting(options, state, target, wasm_target)
+    phase_final_emitting(options, state, target, js_target, wasm_target)
 
 
 @ToolchainProfiler.profile_block('emscript')
@@ -2107,7 +2108,7 @@ def create_worker_file(input_file, target_dir, output_file, options):
 
 
 @ToolchainProfiler.profile_block('final emitting')
-def phase_final_emitting(options, state, target, wasm_target):
+def phase_final_emitting(options, state, target, js_target, wasm_target):
   global final_js
 
   if shared.SKIP_SUBPROCS:
@@ -2162,8 +2163,6 @@ def phase_final_emitting(options, state, target, wasm_target):
     save_intermediate('extern-pre-post')
 
   js_manipulation.handle_license(final_js)
-
-  js_target = state.js_target
 
   # The JS is now final. Move it to its final location
   move_file(final_js, js_target)
@@ -2806,7 +2805,7 @@ def map_to_js_libs(library_name):
   return None
 
 
-def process_libraries(state, linker_inputs):
+def process_libraries(state):
   new_flags = []
   libraries = []
   suffixes = STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS
@@ -2844,7 +2843,7 @@ def process_libraries(state, linker_inputs):
         break
 
     if path:
-      linker_inputs.append((i, path))
+      new_flags.append((i, path))
       continue
 
     new_flags.append((i, flag))
@@ -3088,7 +3087,7 @@ def phase_calculate_linker_inputs(options, state, linker_inputs):
   state.link_flags = filter_link_flags(state.link_flags, using_lld)
 
   # Decide what we will link
-  process_libraries(state, linker_inputs)
+  process_libraries(state)
 
   # Interleave the linker inputs with the linker flags while maintainging their
   # relative order on the command line (both of these list are pairs, with the
@@ -3110,14 +3109,14 @@ def phase_calculate_linker_inputs(options, state, linker_inputs):
   return linker_args
 
 
-def run_post_link(wasm_input, options, state, newargs):
+def run_post_link(wasm_input, options, state):
   settings.limit_settings(None)
-  target, wasm_target = phase_linker_setup(options, state, newargs)
-  process_libraries(state, [])
+  target, wasm_target = phase_linker_setup(options, state)
+  process_libraries(state)
   phase_post_link(options, state, wasm_input, wasm_target, target, {})
 
 
-def run(linker_inputs, options, state, newargs):
+def run(linker_inputs, options, state):
   # We have now passed the compile phase, allow reading/writing of all settings.
   settings.limit_settings(None)
 
@@ -3127,7 +3126,7 @@ def run(linker_inputs, options, state, newargs):
   if options.output_file and options.output_file.startswith('-'):
     exit_with_error(f'invalid output filename: `{options.output_file}`')
 
-  target, wasm_target = phase_linker_setup(options, state, newargs)
+  target, wasm_target = phase_linker_setup(options, state)
 
   # Link object files using wasm-ld or llvm-link (for bitcode linking)
   linker_arguments = phase_calculate_linker_inputs(options, state, linker_inputs)
@@ -3142,7 +3141,7 @@ def run(linker_inputs, options, state, newargs):
     logger.debug('stopping after linking to object file')
     return 0
 
-  phase_calculate_system_libraries(linker_arguments, newargs)
+  phase_calculate_system_libraries(state, linker_arguments)
 
   js_syms = {}
   if (not settings.SIDE_MODULE or settings.ASYNCIFY) and not shared.SKIP_SUBPROCS:

@@ -105,7 +105,8 @@ def also_with_proxying(f):
   def metafunc(self, proxied, *args, **kwargs):
     if DEBUG:
       print('parameterize:proxied=%d' % proxied)
-    self.proxied = proxied
+    if proxied:
+      self.proxy_to_worker()
     f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
@@ -118,7 +119,7 @@ def proxied(f):
 
   @wraps(f)
   def decorated(self, *args, **kwargs):
-    self.proxied = True
+    self.proxy_to_worker()
     return f(self, *args, **kwargs)
 
   return decorated
@@ -243,6 +244,9 @@ class browser(BrowserCore):
       '-Wno-int-conversion',
     ]
 
+  def proxy_to_worker(self):
+    self.emcc_args += ['--proxy-to-worker', '-sGL_TESTING']
+
   def require_jspi(self):
     if not is_chrome():
       self.skipTest(f'Current browser ({EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
@@ -283,7 +287,7 @@ window.close = () => {
     assert 'expected' not in kwargs
     expected = [str(i) for i in range(0, reference_slack + 1)]
     self.make_reftest(reference)
-    if self.proxied:
+    if '--proxy-to-worker' in self.emcc_args:
       assert 'post_build' not in kwargs
       kwargs['post_build'] = self.post_manual_reftest
       create_file('fakereftest.js', 'var reftestUnblock = () => {}; var reftestBlock = () => {};')
@@ -2032,7 +2036,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
   })
   @requires_graphics_hardware
   def test_cubegeom(self, args):
-    if self.proxied and args:
+    if '--proxy-to-worker' in self.emcc_args and args:
       # proxy only in the simple, normal case (we can't trace GL calls when proxied)
       self.skipTest('tracing + proxying not supported')
     self.reftest('third_party/cubegeom/cubegeom.c', 'third_party/cubegeom/cubegeom.png', args=['-O2', '-g', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'] + args)
@@ -3003,7 +3007,7 @@ Module["preRun"] = () => {
   @requires_graphics_hardware
   @also_with_proxying
   def test_sdl2_glshader(self):
-    if not self.proxied:
+    if '--proxy-to-worker' not in self.emcc_args:
       # closure build current fails on proxying
       self.emcc_args += ['--closure=1', '-g1']
     self.reftest('test_sdl2_glshader.c', 'test_sdl_glshader.png', args=['-sUSE_SDL=2', '-sLEGACY_GL_EMULATION'])
@@ -3420,7 +3424,7 @@ Module["preRun"] = () => {
     create_file('dummy_file', 'dummy')
     # compile the code with the modularize feature and the preload-file option enabled
     # no wasm, since this tests customizing total memory at runtime
-    self.compile_btest('test.c', ['-sWASM=0', '-sIMPORTED_MEMORY', '-sMODULARIZE', '-sEXPORT_NAME="Foo"', '--preload-file', 'dummy_file'] + args, reporting=Reporting.JS_ONLY)
+    self.compile_btest('test.c', ['-sWASM=0', '-sIMPORTED_MEMORY', '-sMODULARIZE', '-sEXPORT_NAME=Foo', '--preload-file', 'dummy_file'] + args, reporting=Reporting.JS_ONLY)
     create_file('a.html', '''
       <script src="a.out.js"></script>
       <script>
@@ -3443,11 +3447,8 @@ Module["preRun"] = () => {
     self.btest('webidl/test.cpp', '1', args=['--post-js', 'glue.js', '-I.', '-DBROWSER'] + args)
 
   @no_wasm64('https://github.com/llvm/llvm-project/issues/98778')
-  @parameterized({
-    '': ([],),
-    'proxy_to_worker': (['--proxy-to-worker'],),
-  })
-  def test_dylink(self, args):
+  @also_with_proxying
+  def test_dylink(self):
     create_file('main.c', r'''
       #include <assert.h>
       #include <stdio.h>
@@ -3468,7 +3469,7 @@ Module["preRun"] = () => {
       }
     ''')
     self.emcc('side.c', ['-sSIDE_MODULE', '-O2', '-o', 'side.wasm'])
-    self.btest_exit('main.c', args=['-sMAIN_MODULE=2', '-O2', 'side.wasm'] + args)
+    self.btest_exit('main.c', args=['-sMAIN_MODULE=2', '-O2', 'side.wasm'])
 
   def test_dlopen_async(self):
     create_file('side.c', 'int foo = 42;\n')
@@ -3680,7 +3681,7 @@ Module["preRun"] = () => {
 
   # Test c++ std::thread::hardware_concurrency()
   def test_pthread_hardware_concurrency(self):
-    self.btest_exit('pthread/test_pthread_hardware_concurrency.cpp', args=['-O2', '-pthread', '-sPTHREAD_POOL_SIZE="navigator.hardwareConcurrency"'])
+    self.btest_exit('pthread/test_pthread_hardware_concurrency.cpp', args=['-O2', '-pthread', '-sPTHREAD_POOL_SIZE=navigator.hardwareConcurrency'])
 
   # Test that we error if not ALLOW_BLOCKING_ON_MAIN_THREAD
   def test_pthread_main_thread_blocking_wait(self):
