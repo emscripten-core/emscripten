@@ -248,7 +248,6 @@ var MEMORY_GROWTH_LINEAR_STEP = -1;
 // using i64 pointers).
 // Assumes WASM_BIGINT.
 // [compile+link]
-// [experimental]
 var MEMORY64 = 0;
 
 // Sets the initial size of the table when MAIN_MODULE or SIDE_MODULE is use
