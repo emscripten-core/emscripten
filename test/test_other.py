@@ -3527,6 +3527,13 @@ More info: https://emscripten.org
                      self.get_emcc_args())
     self.assertFileContents(test_file('other/embind_tsgen_memory64.d.ts'), read_file('embind_tsgen_memory64.d.ts'))
 
+  @requires_jspi
+  def test_embind_tsgen_jspi(self):
+    self.run_process([EMXX, test_file('other/embind_tsgen_jspi.cpp'),
+                      '-lembind', '--emit-tsd', 'embind_tsgen_jspi.d.ts', '-sJSPI'] +
+                     self.get_emcc_args())
+    self.assertFileContents(test_file('other/embind_tsgen_jspi.d.ts'), read_file('embind_tsgen_jspi.d.ts'))
+
   @parameterized({
     '': [0],
     'wasm_exnref': [1]
