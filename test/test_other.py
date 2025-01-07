@@ -10482,6 +10482,12 @@ int main() {
     compile(['-sMIN_SAFARI_VERSION=150000', '-mno-bulk-memory'])
     verify_features_sec_linked('bulk-memory-opt', False)
 
+    # Bigint ovrride does not cause other features to enable
+    compile(['-sMIN_SAFARI_VERSION=140100', '-sWASM_BIGINT=1'])
+    verify_features_sec_linked('bulk-memory-opt', False)
+
+    compile(['-sMIN_SAFARI_VERSION=140100', '-mbulk-memory'])
+    verify_features_sec_linked('nontrapping-fptoint', False)
 
   def test_js_preprocess(self):
     # Use stderr rather than stdout here because stdout is redirected to the output JS file itself.
