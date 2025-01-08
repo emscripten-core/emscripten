@@ -5850,7 +5850,7 @@ Module.onRuntimeInitialized = () => {
       if nodefs:
         self.skipTest('NODEFS in WasmFS')
       self.set_setting('FORCE_FILESYSTEM')
-    self.do_runf('fs/test_stat_unnamed_file_descriptor.c', 'success', emcc_args=args)
+    self.do_runf('fs/test_stat_unnamed_file_descriptor.c', 'success')
 
   @requires_node
   @crossplatform
