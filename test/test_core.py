@@ -825,16 +825,16 @@ base align: 0, 0, 0, 0'''])
     self.set_setting('MALLOC', 'emmalloc')
     self.emcc_args += ['-sINITIAL_MEMORY=128MB', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=2147418112']
 
-    self.do_core_test('test_emmalloc_trim.cpp')
+    self.do_core_test('test_emmalloc_trim.c')
 
   # Test case against https://github.com/emscripten-core/emscripten/issues/10363
   def test_emmalloc_memalign_corruption(self, *args):
     self.set_setting('MALLOC', 'emmalloc')
-    self.do_core_test('emmalloc_memalign_corruption.cpp')
+    self.do_core_test('test_emmalloc_memalign_corruption.c')
 
   @also_with_standalone_wasm()
   def test_assert(self):
-    self.do_core_test('test_assert.cpp', assert_returncode=NON_ZERO)
+    self.do_core_test('test_assert.c', assert_returncode=NON_ZERO)
 
   @crossplatform
   @also_with_standalone_wasm(impure=True)
@@ -1719,7 +1719,7 @@ int main() {
 
   def test_emscripten_api(self):
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_save_me_aimee'])
-    self.do_core_test('test_emscripten_api.cpp')
+    self.do_core_test('test_emscripten_api.c')
 
     # Sanitizers are not compatible with LINKABLE (dynamic linking.
     if not is_sanitizing(self.emcc_args) and not self.is_wasm64():
@@ -1727,7 +1727,7 @@ int main() {
       self.clear_setting('EXPORTED_FUNCTIONS')
       self.set_setting('EXPORT_ALL')
       self.set_setting('LINKABLE')
-      self.do_core_test('test_emscripten_api.cpp')
+      self.do_core_test('test_emscripten_api.c')
 
   def test_emscripten_run_script_string_int(self):
     src = r'''
@@ -8267,8 +8267,8 @@ Module.onRuntimeInitialized = () => {
   @no_asan('asyncify stack operations confuse asan')
   @no_wasm2js('TODO: lazy loading in wasm2js')
   @parameterized({
+    '': (False,),
     'conditional': (True,),
-    'unconditional': (False,),
   })
   def test_emscripten_lazy_load_code(self, conditional):
     if self.get_setting('STACK_OVERFLOW_CHECK'):
@@ -8279,7 +8279,7 @@ Module.onRuntimeInitialized = () => {
     self.emcc_args += ['--profiling-funcs'] # so that we can find the functions for the changes below
     if conditional:
       self.emcc_args += ['-DCONDITIONAL']
-    self.do_core_test('emscripten_lazy_load_code.cpp', args=['0'])
+    self.do_core_test('emscripten_lazy_load_code.c', args=['0'])
 
     first_size = os.path.getsize('emscripten_lazy_load_code.wasm')
     second_size = os.path.getsize('emscripten_lazy_load_code.wasm.lazy.wasm')
@@ -8909,10 +8909,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'vector': ('test_asan_vector.cpp', [
       'AddressSanitizer: container-overflow on address'
     ]),
-    # some coverage for mimalloc as well
-    'use_after_free_c_mimalloc': ('test_asan_use_after_free.c', [
-      'AddressSanitizer: heap-use-after-free on address',
-    ], ['-sMALLOC=mimalloc']),
   })
   def test_asan(self, name, expected_output, cflags=None):
     if '-Oz' in self.emcc_args:

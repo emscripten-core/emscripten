@@ -140,7 +140,7 @@ var AUDIO_WORKLET_FILE = '';
 // Base URL the source mapfile, if relevant
 var SOURCE_MAP_BASE = '';
 
-// If set to 1, src/base64Utils.js will be included in the bundle.
+// If set to 1 then base64 decoding functions will be included in the bundle.
 // This is set internally when needed (SINGLE_FILE)
 var SUPPORT_BASE64_EMBEDDING = false;
 

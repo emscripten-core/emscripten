@@ -3527,6 +3527,13 @@ More info: https://emscripten.org
                      self.get_emcc_args())
     self.assertFileContents(test_file('other/embind_tsgen_memory64.d.ts'), read_file('embind_tsgen_memory64.d.ts'))
 
+  @requires_jspi
+  def test_embind_tsgen_jspi(self):
+    self.run_process([EMXX, test_file('other/embind_tsgen_jspi.cpp'),
+                      '-lembind', '--emit-tsd', 'embind_tsgen_jspi.d.ts', '-sJSPI'] +
+                     self.get_emcc_args())
+    self.assertFileContents(test_file('other/embind_tsgen_jspi.d.ts'), read_file('embind_tsgen_jspi.d.ts'))
+
   @parameterized({
     '': [0],
     'wasm_exnref': [1]
@@ -10448,6 +10455,7 @@ int main() {
     def compile(flags):
       self.run_process([EMCC, test_file('hello_world.c')] + flags)
 
+    # Default features, unlinked and linked
     compile(['-c'])
     verify_features_sec('bulk-memory', True)
     verify_features_sec('nontrapping-fptoint', True)
@@ -10456,17 +10464,28 @@ int main() {
     verify_features_sec('multivalue', True)
     verify_features_sec('reference-types', True)
 
+    compile([])
+    verify_features_sec_linked('sign-ext', True)
+    verify_features_sec_linked('mutable-globals', True)
+    verify_features_sec_linked('multivalue', True)
+    verify_features_sec_linked('bulk-memory-opt', True)
+    verify_features_sec_linked('nontrapping-fptoint', True)
+    verify_features_sec_linked('reference-types', True)
+
     # Disable a feature
     compile(['-mno-sign-ext', '-c'])
     verify_features_sec('sign-ext', False)
     # Disable via browser selection
     compile(['-sMIN_FIREFOX_VERSION=61'])
     verify_features_sec_linked('sign-ext', False)
+    compile(['-sMIN_SAFARI_VERSION=140100'])
+    verify_features_sec_linked('bulk-memory-opt', False)
+    verify_features_sec_linked('nontrapping-fptoint', False)
     # Flag disabling overrides default browser versions
     compile(['-mno-sign-ext'])
     verify_features_sec_linked('sign-ext', False)
     # Flag disabling overrides explicit browser version
-    compile(['-sMIN_SAFARI_VERSION=150000', '-mno-sign-ext'])
+    compile(['-sMIN_SAFARI_VERSION=160000', '-mno-sign-ext'])
     verify_features_sec_linked('sign-ext', False)
     # Flag enabling overrides explicit browser version
     compile(['-sMIN_FIREFOX_VERSION=61', '-msign-ext'])
@@ -10475,18 +10494,12 @@ int main() {
     compile(['-sMIN_SAFARI_VERSION=150000', '-mno-bulk-memory'])
     verify_features_sec_linked('bulk-memory-opt', False)
 
-    # TODO(https://github.com/emscripten-core/emscripten/issues/23184) set this back to 14.1
-    # Also the section below can be deleted/updated once the default is 15.1
-    compile(['-sMIN_SAFARI_VERSION=140000'])
+    # Bigint ovrride does not cause other features to enable
+    compile(['-sMIN_SAFARI_VERSION=140100', '-sWASM_BIGINT=1'])
     verify_features_sec_linked('bulk-memory-opt', False)
-    verify_features_sec_linked('nontrapping-fptoint', False)
 
-    compile(['-sMIN_SAFARI_VERSION=150000'])
-    verify_features_sec_linked('sign-ext', True)
-    verify_features_sec_linked('mutable-globals', True)
-    verify_features_sec_linked('multivalue', True)
-    verify_features_sec_linked('bulk-memory-opt', True)
-    verify_features_sec_linked('nontrapping-fptoint', True)
+    compile(['-sMIN_SAFARI_VERSION=140100', '-mbulk-memory'])
+    verify_features_sec_linked('nontrapping-fptoint', False)
 
   def test_js_preprocess(self):
     # Use stderr rather than stdout here because stdout is redirected to the output JS file itself.
@@ -10770,7 +10783,7 @@ _d
     self.assertContained('[asyncify] i can', out)
 
   def test_asyncify_stack_overflow(self):
-    self.emcc_args = ['-sASYNCIFY', '-sASYNCIFY_STACK_SIZE=4']
+    self.emcc_args = ['-sASYNCIFY', '-sASYNCIFY_STACK_SIZE=4', '-sASYNCIFY_DEBUG=2']
 
     # The unreachable error on small stack sizes is not super-helpful. Try at
     # least to hint at increasing the stack size.
@@ -12365,8 +12378,7 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     # plain -O0
     legalization_message = 'to disable int64 legalization (which requires changes after link) use -sWASM_BIGINT'
     fail(['-sWASM_BIGINT=0'], legalization_message)
-    # TODO(https://github.com/emscripten-core/emscripten/issues/23184): change this back to 140100 after 15 is default
-    fail(['-sMIN_SAFARI_VERSION=140000'], legalization_message)
+    fail(['-sMIN_SAFARI_VERSION=140100'], legalization_message)
     # optimized builds even without legalization
     optimization_message = '-O2+ optimizations always require changes, build with -O0 or -O1 instead'
     fail(['-O2'], optimization_message)
@@ -14411,7 +14423,8 @@ int main() {
 
   @crossplatform
   def test_reproduce(self):
-    self.run_process([EMCC, '-sASSERTIONS=1', '--reproduce=foo.tar', test_file('hello_world.c')])
+    ensure_dir('tmp')
+    self.run_process([EMCC, '-sASSERTIONS=1', '--reproduce=foo.tar', '-otmp/out.js', test_file('hello_world.c')])
     self.assertExists('foo.tar')
     names = []
     root = os.path.splitdrive(path_from_root())[1][1:]
@@ -14431,6 +14444,8 @@ foo/version.txt
     self.assertTextDataIdentical(expected, names)
     expected = '''\
 -sASSERTIONS=1
+-o
+out.js
 <root>/test/hello_world.c
 '''
     response = read_file('foo/response.txt')
@@ -14440,8 +14455,7 @@ foo/version.txt
 
   def test_min_browser_version(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-sWASM_BIGINT', '-sMIN_SAFARI_VERSION=120000'])
-    # TODO(https://github.com/emscripten-core/emscripten/issues/23184): fix back to 15000 once Safari 15 is default
-    self.assertContained('emcc: error: MIN_SAFARI_VERSION=120000 is not compatible with WASM_BIGINT (140100 or above required)', err)
+    self.assertContained('emcc: error: MIN_SAFARI_VERSION=120000 is not compatible with WASM_BIGINT (150000 or above required)', err)
 
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-pthread', '-sMIN_CHROME_VERSION=73'])
     self.assertContained('emcc: error: MIN_CHROME_VERSION=73 is not compatible with pthreads (74 or above required)', err)
@@ -15213,6 +15227,11 @@ addToLibrary({
   def test_wasm64_no_asan(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMEMORY64', '-fsanitize=address'])
     self.assertContained('error: MEMORY64 does not yet work with ASAN', err)
+
+  def test_mimalloc_no_asan(self):
+    # See https://github.com/emscripten-core/emscripten/issues/23288#issuecomment-2571648258
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMALLOC=mimalloc', '-fsanitize=address'])
+    self.assertContained('error: mimalloc is not compatible with -fsanitize=address', err)
 
   @crossplatform
   def test_js_preprocess_pre_post(self):

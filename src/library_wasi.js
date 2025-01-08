@@ -561,28 +561,20 @@ var WasiLibrary = {
   // random.h
 
   $initRandomFill: () => {
-    if (typeof crypto == 'object' && typeof crypto.getRandomValues == 'function') {
-#if SHARED_MEMORY
-      // like with most Web APIs, we can't use Web Crypto API directly on shared memory,
-      // so we need to create an intermediate buffer and copy it to the destination
-      return (view) => view.set(crypto.getRandomValues(new Uint8Array(view.byteLength)));
-#else
-      return (view) => crypto.getRandomValues(view);
-#endif
-    }
-
-#if ENVIRONMENT_MAY_BE_NODE
+#if ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 190000
+    // This block is not needed on v19+ since crypto.getRandomValues is builtin
     if (ENVIRONMENT_IS_NODE) {
-      return (view) => require('crypto').randomFillSync(view);
+      var nodeCrypto = require('crypto');
+      return (view) => nodeCrypto.randomFillSync(view);
     }
 #endif // ENVIRONMENT_MAY_BE_NODE
 
-    // we couldn't find a proper implementation, as Math.random() is not
-    // suitable for /dev/random, see emscripten-core/emscripten/pull/7096
-#if ASSERTIONS
-    abort('no cryptographic support found for random function. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: (array) => { for (var i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };');
+#if SHARED_MEMORY
+    // like with most Web APIs, we can't use Web Crypto API directly on shared memory,
+    // so we need to create an intermediate buffer and copy it to the destination
+    return (view) => view.set(crypto.getRandomValues(new Uint8Array(view.byteLength)));
 #else
-    abort();
+    return (view) => crypto.getRandomValues(view);
 #endif
   },
 

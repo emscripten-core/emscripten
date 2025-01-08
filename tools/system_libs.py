@@ -852,7 +852,7 @@ class SjLjLibrary(Library):
       # EH/SjLj, so we should reverse it.
       cflags += ['-sSUPPORT_LONGJMP=wasm',
                  '-sDISABLE_EXCEPTION_THROWING',
-                 '-D__USING_WASM_SJLJ__']
+                 '-D__WASM_SJLJ__']
     return cflags
 
   def get_base_name(self):
@@ -2369,6 +2369,9 @@ def get_libs_to_link(args):
     add_library('libc')
     if settings.MALLOC == 'mimalloc':
       add_library('libmimalloc')
+      if settings.USE_ASAN:
+        # See https://github.com/emscripten-core/emscripten/issues/23288#issuecomment-2571648258
+        shared.exit_with_error('mimalloc is not compatible with -fsanitize=address')
     elif settings.MALLOC != 'none':
       add_library('libmalloc')
   add_library('libcompiler_rt')

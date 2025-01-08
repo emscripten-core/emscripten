@@ -445,11 +445,6 @@ function exportRuntime() {
     runtimeElements.push('checkStackCookie');
   }
 
-  if (SUPPORT_BASE64_EMBEDDING) {
-    runtimeElements.push('intArrayFromBase64');
-    runtimeElements.push('tryParseAsDataURI');
-  }
-
   if (RETAIN_COMPILER_SETTINGS) {
     runtimeElements.push('getCompilerSetting');
   }

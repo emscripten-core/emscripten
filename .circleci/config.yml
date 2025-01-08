@@ -55,10 +55,6 @@ commands:
     description: "bootstrap"
     steps:
       - run: ./bootstrap
-  npm-install:
-    description: "npm ci"
-    steps:
-      - run: npm ci
   pip-install:
     description: "pip install"
     parameters:
@@ -164,7 +160,6 @@ commands:
             cat ~/emsdk/.emscripten
       - emsdk-env
       - bootstrap
-      - npm-install
   build-libs:
     description: "Build all libraries"
     steps:
@@ -223,7 +218,6 @@ commands:
           command: git submodule update --init
       - emsdk-env
       - bootstrap
-      - npm-install
       - pip-install
   upload-test-results:
     description: "Upload test results"
@@ -443,7 +437,7 @@ jobs:
     executor: linux-node
     steps:
       - checkout
-      - npm-install
+      - run: npm ci
       - run: |
           npm run lint
           npm run check
