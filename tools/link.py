@@ -36,7 +36,7 @@ from . import extract_metadata
 from .utils import read_file, write_file, delete_file
 from .utils import removeprefix, exit_with_error
 from .shared import in_temp, safe_copy, do_replace, OFormat
-from .shared import DEBUG, WINDOWS, DYNAMICLIB_ENDINGS, STATICLIB_ENDINGS
+from .shared import DEBUG, WINDOWS, DYNAMICLIB_ENDINGS
 from .shared import unsuffixed, unsuffixed_basename, get_file_suffix
 from .settings import settings, default_setting, user_settings, JS_ONLY_SETTINGS, DEPRECATED_SETTINGS
 from .minimal_runtime_shell import generate_minimal_runtime_html
@@ -2812,7 +2812,6 @@ def map_to_js_libs(library_name):
 
 def process_libraries(state):
   new_flags = []
-  suffixes = STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS
   system_libs_map = system_libs.Library.get_usable_variations()
 
   # Process `-l` and `--js-library` flags
@@ -2843,16 +2842,23 @@ def process_libraries(state):
     if js_libs is not None:
       continue
 
-    path = None
-    for suff in suffixes:
-      name = 'lib' + lib + suff
-      path = find_library(name, state.lib_dirs)
-      if path:
-        break
+    if not settings.RELOCATABLE:
+      # Normally we can rely on the native linker to expand `-l` args.
+      # However, emscripten also supports `.so` files that are actually just
+      # regular object file.  This means we need to support `.so` files even
+      # when statically linking.  The native linker (wasm-ld) will otherwise
+      # ignore .so files in this mode.
+      found_dylib = False
+      for ext in DYNAMICLIB_ENDINGS:
+        name = 'lib' + lib + ext
+        path = find_library(name, state.lib_dirs)
+        if path:
+          found_dylib = True
+          new_flags.append((i, path))
+          break
 
-    if path:
-      new_flags.append((i, path))
-      continue
+      if found_dylib:
+        continue
 
     new_flags.append((i, flag))
 
