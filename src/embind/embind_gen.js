@@ -83,7 +83,11 @@ var LibraryEmbind = {
       if (this.isNonnullReturn && this.returnType instanceof PointerDefinition) {
         returnType = this.returnType.classType;
       }
-      out.push(`): ${nameMap(returnType, true)}`);
+      returnType = nameMap(returnType, true);
+      if (this.isAsync) {
+        returnType = `Promise<${returnType}>`;
+      }
+      out.push(`): ${returnType}`);
     }
 
     printFunction(nameMap, out) {
