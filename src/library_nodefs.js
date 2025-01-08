@@ -172,8 +172,9 @@ addToLibrary({
             // this will only keep the value nearly unchanged not exactly
             // unchanged. See:
             // https://github.com/nodejs/node/issues/56492
-            var atime = new Date(attr.atime ?? fs.lstatSync(NODEFS.realPath(node)).atime);
-            var mtime = new Date(attr.mtime ?? fs.lstatSync(NODEFS.realPath(node)).mtime);
+            var stat = () => fs.lstatSync(NODEFS.realPath(node));
+            var atime = new Date(attr.atime ?? stat().atime);
+            var mtime = new Date(attr.mtime ?? stat().mtime);
             fs.utimesSync(path, atime, mtime);
           }
           if (attr.size !== undefined) {
