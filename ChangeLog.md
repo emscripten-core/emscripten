@@ -23,6 +23,8 @@ See docs/process.md for more on how version tagging works.
 - The minimum version of node required to run emscripten was bumped from v16.20
   to v18.  Version 4.0 was mistakenly shipped with a change that required v20,
   but that was reverted. (#23410)
+- Taking a refernce to an exported function before the Wasm module is loaded,
+  and then calling its later, is no longer supported. (#23411)
 
 4.0.0 - 01/14/25
 ----------------

@@ -180,10 +180,10 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
     wasmOffsetConverter = new WasmOffsetConverter(Module['wasm'], output.module);
 #endif
 
-#if !DECLARE_ASM_MODULE_EXPORTS
-  exportWasmSymbols(wasmExports);
-#else
+#if DECLARE_ASM_MODULE_EXPORTS
   assignWasmExports(wasmExports);
+#else
+  exportWasmSymbols(wasmExports);
 #endif
 #if '$wasmTable' in addedLibraryItems
   wasmTable = wasmExports['__indirect_function_table'];
