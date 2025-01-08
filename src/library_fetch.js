@@ -14,7 +14,7 @@ var LibraryFetch = {
   _emscripten_fetch_get_response_headers_length: fetchGetResponseHeadersLength,
   _emscripten_fetch_get_response_headers__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   _emscripten_fetch_get_response_headers: fetchGetResponseHeaders,
-  _emscripten_fetch_free: fetchFree,
+  emscripten_fetch_free: fetchFree,
 
 #if FETCH_SUPPORT_INDEXEDDB
   $fetchDeleteCachedData: fetchDeleteCachedData,

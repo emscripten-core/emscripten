@@ -58,5 +58,6 @@ int main() {
   assert(a_ino == sta.st_ino);
   assert(b_ino == stb.st_ino);
   printf("success\n");
+  closedir(dirp);
   return 0;
 }

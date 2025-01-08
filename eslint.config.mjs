@@ -48,7 +48,6 @@ export default [{
     'src/settings_internal.js',
     'src/arrayUtils.js',
     'src/deterministic.js',
-    'src/base64Utils.js',
     'src/base64Decode.js',
     'src/proxyWorker.js',
     'src/proxyClient.js',
