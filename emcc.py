@@ -705,9 +705,11 @@ def phase_parse_arguments(state):
     settings.WARN_DEPRECATED = 0
 
   for i in range(len(newargs)):
-    if newargs[i] in ('-l', '-L', '-I', '-z'):
+    if newargs[i] in ('-l', '-L', '-I', '-z', '--js-library'):
       # Scan for flags that can be written as either one or two arguments
       # and normalize them to the single argument form.
+      if newargs[i] == '--js-library':
+        newargs[i] += '='
       newargs[i] += newargs[i + 1]
       newargs[i + 1] = ''
 
@@ -791,6 +793,8 @@ def phase_setup(options, state, newargs):
       state.add_link_flag(i, newargs[i])
       state.add_link_flag(i + 1, newargs[i + 1])
     elif arg.startswith('-z'):
+      state.add_link_flag(i, newargs[i])
+    elif arg.startswith('--js-library='):
       state.add_link_flag(i, newargs[i])
     elif arg.startswith('-Wl,'):
       # Multiple comma separated link flags can be specified. Create fake
@@ -939,7 +943,7 @@ def filter_out_link_flags(args):
   def is_link_flag(flag):
     if flag in ('-nostdlib', '-nostartfiles', '-nolibc', '-nodefaultlibs', '-s'):
       return True
-    return flag.startswith(('-l', '-L', '-Wl,', '-z'))
+    return flag.startswith(('-l', '-L', '-Wl,', '-z', '--js-library'))
 
   skip = False
   for arg in args:
@@ -1311,7 +1315,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
         options.memory_profiler = True
       newargs[i] = ''
       settings_changes.append('EMSCRIPTEN_TRACING=1')
-      settings.JS_LIBRARIES.append((0, 'library_trace.js'))
+      settings.JS_LIBRARIES.append('library_trace.js')
     elif check_flag('--emit-symbol-map'):
       options.emit_symbol_map = True
       settings.EMIT_SYMBOL_MAP = 1
@@ -1346,8 +1350,6 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       options.emit_tsd = consume_arg()
     elif check_flag('--no-entry'):
       options.no_entry = True
-    elif check_arg('--js-library'):
-      settings.JS_LIBRARIES.append((i + 1, os.path.abspath(consume_arg_file())))
     elif check_flag('--remove-duplicates'):
       diagnostics.warning('legacy-settings', '--remove-duplicates is deprecated as it is no longer needed. If you cannot link without it, file a bug with a testcase')
     elif check_flag('--jcache'):
