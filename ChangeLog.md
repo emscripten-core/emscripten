@@ -58,6 +58,9 @@ See docs/process.md for more on how version tagging works.
 - The `POLYFILL_OLD_MATH_FUNCTIONS` setting was removed.  The browser versions
   that require these polyfills are no longer supported by emscripten so the
   polyfills should never be needed. (#23262)
+- Initial support was added for running emscripten with LLVM stable (currently
+  v19). This is currently experimental. (#23311)
+
 
 3.1.74 - 12/14/24
 -----------------

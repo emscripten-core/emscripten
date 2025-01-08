@@ -388,6 +388,14 @@ def get_clang_flags(user_args):
     if '-mbulk-memory' not in user_args:
       flags.append('-mbulk-memory')
 
+  if shared.is_llvm_stable():
+    # LLVM 19 doesn't enable these features by default, but we want
+    # them on-by-default, like they are on LLVM tot.
+    if '-mbulk-memory' not in user_args:
+      flags.append('-mbulk-memory')
+    if '-mnontrapping-fptoint' not in user_args:
+      flags.append('-mnontrapping-fptoint')
+
   if settings.RELOCATABLE and '-fPIC' not in user_args:
     flags.append('-fPIC')
 
