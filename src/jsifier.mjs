@@ -585,7 +585,7 @@ function(${args}) {
           return dep();
         }
         // $noExitRuntime is special since there are conditional usages of it
-        // in library.js and library_pthread.js.  These happen before deps are
+        // in libcore.js and libpthread.js.  These happen before deps are
         // processed so depending on it via `__deps` doesn't work.
         if (dep === '$noExitRuntime') {
           error(

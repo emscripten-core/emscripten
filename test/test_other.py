@@ -4857,7 +4857,7 @@ extraLibraryFuncs.push('jsfunc');
   def test_jslib_bad_config(self):
     create_file('lib.js', '''
       addToLibrary({
-       foo__sig: 'ii',
+        foo__sig: 'ii',
       });
       ''')
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library=lib.js'])
@@ -4942,6 +4942,24 @@ extraLibraryFuncs.push('jsfunc');
     create_file('post.js', '#preprocess\n#error This is an error')
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--post-js', 'post.js'])
     self.assertContained('post.js:2: #error This is an error', err)
+
+  def test_jslib_has_library(self):
+    create_file('libfoo.js', '''
+    // libwasi.js should be included.
+    #if !LibraryManager.has('libwasi.js')
+    #error "oops 1"
+    #endif
+
+    // Checking for the legacy name should also work
+    #if !LibraryManager.has('library_wasi.js')
+    #error "oops 2"
+    #endif
+
+    #if LibraryManager.has('libbar.js')
+    #error "oops 3"
+    #endif
+    ''')
+    self.do_runf(test_file('hello_world.c'), emcc_args=['-L', '-lfoo.js'])
 
   def test_EMCC_BUILD_DIR(self):
     # EMCC_BUILD_DIR env var contains the dir we were building in, when running the js compiler (e.g. when
@@ -11445,7 +11463,7 @@ int main () {
   # Tests the library_c_preprocessor.js functionality.
   @crossplatform
   def test_c_preprocessor(self):
-    self.do_runf('test_c_preprocessor.c', emcc_args=['--js-library', path_from_root('src/library_c_preprocessor.js')])
+    self.do_runf('test_c_preprocessor.c', emcc_args=['--js-library', path_from_root('src/lib/libc_preprocessor.js')])
 
   # Test that legacy settings that have been fixed to a specific value and their value can no longer be changed,
   def test_legacy_settings_forbidden_to_change(self):
@@ -13159,7 +13177,7 @@ exec "$@"
     # function is added or its signature changed.  However it's easy to
     # rebaseline with --rebaseline.
     self.run_process([PYTHON, path_from_root('tools/maint/gen_sig_info.py'), '-o', 'out.js'])
-    self.assertFileContents(path_from_root('src/library_sigs.js'), read_file('out.js'))
+    self.assertFileContents(path_from_root('src/lib/libsigs.js'), read_file('out.js'))
 
   def test_gen_struct_info_env(self):
     # gen_struct_info.py builds C code in a very specific and low level way.  We don't want
