@@ -1579,8 +1579,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if not any(v in string for v in values):
       diff = difflib.unified_diff(values[0].split('\n'), string.split('\n'), fromfile='expected', tofile='actual')
       diff = ''.join(a.rstrip() + '\n' for a in diff)
+      debug_string = string
+      if not values[0].startswith('new Worker(new URL('):
+        debug_string = limit_size(string)
       self.fail("Expected to find '%s' in '%s', diff:\n\n%s\n%s" % (
-        limit_size(values[0]), limit_size(string), limit_size(diff),
+        limit_size(values[0]), debug_string, limit_size(diff),
         additional_info
       ))
 
