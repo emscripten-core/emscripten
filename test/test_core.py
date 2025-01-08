@@ -5873,13 +5873,6 @@ Module.onRuntimeInitialized = () => {
     self.do_runf('fs/test_fs_readdir_ino_matches_stat_ino.c', 'success')
 
   @also_with_nodefs_both
-<<<<<<< HEAD
-||||||| aead0b05f
-  def test_fs_open_no_permissions(self):
-    self.do_runf('fs/test_fs_open_no_permissions.c', 'success')
-
-  @also_with_nodefs_both
-=======
   @crossplatform
   def test_fs_open_no_permissions(self):
     if ('-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args) and WINDOWS:
@@ -5887,7 +5880,6 @@ Module.onRuntimeInitialized = () => {
     self.do_runf('fs/test_fs_open_no_permissions.c', 'success')
 
   @also_with_nodefs_both
->>>>>>> main
   @crossplatform
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_fs_mkdir_dotdot(self):
