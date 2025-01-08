@@ -852,7 +852,7 @@ class SjLjLibrary(Library):
       # EH/SjLj, so we should reverse it.
       cflags += ['-sSUPPORT_LONGJMP=wasm',
                  '-sDISABLE_EXCEPTION_THROWING',
-                 '-D__USING_WASM_SJLJ__']
+                 '-D__WASM_SJLJ__']
     return cflags
 
   def get_base_name(self):
