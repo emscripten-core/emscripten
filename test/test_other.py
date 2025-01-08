@@ -400,9 +400,6 @@ class other(RunnerCore):
     self.assertNotContained("new URL('data:", src)
     self.assertContained("""new Worker(new URL('hello_world.mjs', import.meta.url), {
             'type': 'module',
-            // This is the way that we signal to the node worker that it is hosting
-            // a pthread.
-            'workerData': 'em-pthread',
             // This is the way that we signal to the Web Worker that it is hosting
             // a pthread.
             'name': 'em-pthread',
