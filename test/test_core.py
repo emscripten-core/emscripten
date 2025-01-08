@@ -821,6 +821,7 @@ base align: 0, 0, 0, 0'''])
   @no_4gb('output is sensitive to absolute data layout')
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
+  @disabled('https://github.com/emscripten-core/emscripten/issues/23343')
   def test_emmalloc_trim(self):
     self.set_setting('MALLOC', 'emmalloc')
     self.emcc_args += ['-sINITIAL_MEMORY=128MB', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=2147418112']
