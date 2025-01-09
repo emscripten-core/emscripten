@@ -498,7 +498,7 @@ FS.staticInit();
         return set(node, attr);
       }
       throw new FS.ErrnoError({{{ cDefs.EPERM }}});
-    }
+    },
 
     //
     // devices
