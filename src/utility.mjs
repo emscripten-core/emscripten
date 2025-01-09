@@ -200,11 +200,6 @@ export function mergeInto(obj, other, options = null) {
   return Object.assign(obj, other);
 }
 
-export function isNumber(x) {
-  // XXX this does not handle 0xabc123 etc. We should likely also do x == parseInt(x) (which handles that), and remove hack |// handle 0x... as well|
-  return x == parseFloat(x) || (typeof x == 'string' && x.match(/^-?\d+$/)) || x == 'NaN';
-}
-
 // Symbols that start with '$' are not exported to the wasm module.
 // They are intended to be called exclusively by JS code.
 export function isJsOnlySymbol(symbol) {
