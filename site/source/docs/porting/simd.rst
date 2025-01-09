@@ -1,4 +1,4 @@
-.. Porting SIMD code:
+.. _Porting SIMD code:
 
 .. role:: raw-html(raw)
     :format: html

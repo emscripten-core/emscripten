@@ -5524,10 +5524,10 @@ got: 10
     self.do_runf('stat/test_fstatat.c', 'success')
 
   @crossplatform
-  @also_with_wasmfs
-  @also_with_noderawfs
+  @with_all_fs
   def test_stat_chmod(self):
-    if self.get_setting('NODERAWFS') and WINDOWS:
+    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
+    if nodefs and WINDOWS:
       self.skipTest('mode bits work differently on windows')
     if self.get_setting('WASMFS') and self.get_setting('NODERAWFS'):
       self.skipTest('test requires symlink creation which currently missing from wasmfs+noderawfs')
@@ -5544,9 +5544,13 @@ got: 10
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('fcntl/test_fcntl.c')
 
+  @crossplatform
   @also_with_nodefs_both
   @crossplatform
   def test_fcntl_open(self):
+    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
+    if nodefs and WINDOWS:
+      self.skipTest('Stat mode behavior does not match on Windows')
     if '-DNODERAWFS' in self.emcc_args and not LINUX:
       self.skipTest('noderawfs fails here under non-linux')
     self.do_run_in_out_file_test('fcntl/test_fcntl_open.c')
@@ -5878,13 +5882,6 @@ Module.onRuntimeInitialized = () => {
   @crossplatform
   def test_fs_readdir_ino_matches_stat_ino(self):
     self.do_runf('fs/test_fs_readdir_ino_matches_stat_ino.c', 'success')
-
-  @also_with_nodefs_both
-  @crossplatform
-  def test_fs_open_no_permissions(self):
-    if ('-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args) and WINDOWS:
-      self.skipTest('fs_open_no_permissions fails on windows')
-    self.do_runf('fs/test_fs_open_no_permissions.c', 'success')
 
   @also_with_nodefs_both
   @crossplatform

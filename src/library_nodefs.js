@@ -190,6 +190,9 @@ addToLibrary({
       },
       setattr(node, attr) {
         var path = NODEFS.realPath(node);
+        if (attr.mode != null && attr.dontFollow) {
+          throw new FS.ErrnoError({{{ cDefs.ENOSYS }}});
+        }
         NODEFS.setattr(path, node, attr, fs.chmodSync, fs.utimesSync, fs.truncateSync, fs.lstatSync);
       },
       lookup(parent, name) {

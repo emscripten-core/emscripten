@@ -982,7 +982,8 @@ FS.staticInit();
       }
       node.node_ops.setattr(node, {
         mode: (mode & {{{ cDefs.S_IALLUGO }}}) | (node.mode & ~{{{ cDefs.S_IALLUGO }}}),
-        ctime: Date.now()
+        ctime: Date.now(),
+        dontFollow
       });
     },
     lchmod(path, mode) {
@@ -1014,7 +1015,8 @@ FS.staticInit();
         throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       }
       node.node_ops.setattr(node, {
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        dontFollow
         // we ignore the uid / gid for now
       });
     },
