@@ -481,11 +481,11 @@ FS.staticInit();
     },
     streamGetAttr(stream) {
       var node = stream.node;
-      var get;
-      if (get = stream.stream_ops.getattr) {
-        return get(stream);
-      } else if (get = node.node_ops.getattr) {
-        return get(node);
+      var res;
+      if (res = stream.stream_ops?.getattr?.(stream)) {
+        return res;
+      } else if (res = node.node_ops?.getattr?.(node)) {
+        return res;
       }
       throw new FS.ErrnoError({{{ cDefs.EPERM }}});
     },
