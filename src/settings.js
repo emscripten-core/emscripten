@@ -248,7 +248,6 @@ var MEMORY_GROWTH_LINEAR_STEP = -1;
 // using i64 pointers).
 // Assumes WASM_BIGINT.
 // [compile+link]
-// [experimental]
 var MEMORY64 = 0;
 
 // Sets the initial size of the table when MAIN_MODULE or SIDE_MODULE is use
@@ -954,7 +953,7 @@ var JSPI_EXPORTS = [];
 // work. The imported function should return a ``Promise`` when doing
 // asynchronous work.
 //
-// Note when using ``--js-library``, the function can be marked with
+// Note when using JS library files, the function can be marked with
 // ``<function_name>_async:: true`` in the library instead of this setting.
 // [link]
 var JSPI_IMPORTS = [];
@@ -1495,8 +1494,7 @@ var DYNCALLS = false;
 
 // WebAssembly integration with JavaScript BigInt. When enabled we don't need to
 // legalize i64s into pairs of i32s, as the wasm VM will use a BigInt where an
-// i64 is used. If WASM_BIGINT is present, the default minimum supported browser
-// versions will be increased to the min version that supports BigInt.
+// i64 is used.
 // [link]
 var WASM_BIGINT = true;
 
@@ -1913,7 +1911,7 @@ var MIN_FIREFOX_VERSION = 79;
 // Minimum supported value is 101000 which was released in 2016-09 (see
 // feature_matrix.py).
 // [link]
-var MIN_SAFARI_VERSION = 140100;
+var MIN_SAFARI_VERSION = 150000;
 
 // Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=58 to
 // drop support for Chrome 57 and older.

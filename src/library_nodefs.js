@@ -155,7 +155,7 @@ addToLibrary({
     // For stream getatrr:
     //  - arg is a native file descriptor
     //  - chmod, utimes, truncate are fs.fchmodSync, fs.futimesSync, fs.ftruncateSync
-    setattr(arg, node, attr, chmod, utimes, truncate) {
+    setattr(arg, node, attr, chmod, utimes, truncate, stat) {
       NODEFS.tryFSOperation(() => {
         if (attr.mode !== undefined) {
           var mode = attr.mode;
@@ -168,9 +168,14 @@ addToLibrary({
           // update the common node structure mode as well
           node.mode = attr.mode;
         }
-        if (attr.atime || attr.mtime) {
-          var atime = attr.atime && new Date(attr.atime);
-          var mtime = attr.mtime && new Date(attr.mtime);
+        if (typeof (attr.atime ?? attr.mtime) === "number") {
+          // Unfortunately, we have to stat the current value if we don't want
+          // to change it. On top of that, since the times don't round trip
+          // this will only keep the value nearly unchanged not exactly
+          // unchanged. See:
+          // https://github.com/nodejs/node/issues/56492
+          var atime = new Date(attr.atime ?? stat(arg).atime);
+          var mtime = new Date(attr.mtime ?? stat(arg).mtime);
           utimes(arg, atime, mtime);
         }
         if (attr.size !== undefined) {
@@ -185,7 +190,7 @@ addToLibrary({
       },
       setattr(node, attr) {
         var path = NODEFS.realPath(node);
-        NODEFS.setattr(path, node, attr, fs.chmodSync, fs.utimesSync, fs.truncateSync);
+        NODEFS.setattr(path, node, attr, fs.chmodSync, fs.utimesSync, fs.truncateSync, fs.lstatSync);
       },
       lookup(parent, name) {
         var path = PATH.join2(NODEFS.realPath(parent), name);
@@ -247,7 +252,7 @@ addToLibrary({
         return NODEFS.getattr(() => fs.fstatSync(stream.nfd), stream.node);
       },
       setattr(stream, attr) {
-        NODEFS.setattr(stream.nfd, stream.node, attr, fs.fchmodSync, fs.futimesSync, fs.ftruncateSync);
+        NODEFS.setattr(stream.nfd, stream.node, attr, fs.fchmodSync, fs.futimesSync, fs.ftruncateSync, fs.fstatSync);
       },
       open(stream) {
         var path = NODEFS.realPath(stream.node);

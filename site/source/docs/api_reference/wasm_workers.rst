@@ -402,4 +402,4 @@ The following build options are not supported at the moment with Wasm Workers:
 Example Code
 ============
 
-See the directory ``test/wasm_workers/`` for code examples on different Wasm Workers API functionality.
+See the directory ``test/wasm_worker/`` for code examples on different Wasm Workers API functionality.

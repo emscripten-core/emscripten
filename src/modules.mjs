@@ -205,7 +205,7 @@ export const LibraryManager = {
       libraries.push('library_little_endian_heap.js');
     }
 
-    // Add all user specified --js-library files to the link.
+    // Add all user specified JS library files to the link.
     // These must be added last after all Emscripten-provided system libraries
     // above, so that users can override built-in JS library symbols in their
     // own code.
@@ -443,11 +443,6 @@ function exportRuntime() {
   if (STACK_OVERFLOW_CHECK) {
     runtimeElements.push('writeStackCookie');
     runtimeElements.push('checkStackCookie');
-  }
-
-  if (SUPPORT_BASE64_EMBEDDING) {
-    runtimeElements.push('intArrayFromBase64');
-    runtimeElements.push('tryParseAsDataURI');
   }
 
   if (RETAIN_COMPILER_SETTINGS) {
