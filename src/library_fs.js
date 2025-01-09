@@ -433,12 +433,11 @@ FS.staticInit();
       }
       return FS.nodePermissions(node, FS.flagsToPermissionString(flags));
     },
-    doNodeOp(node, op, err, ...args) {
-      var fn = node.node_ops[op];
-      if (!fn) {
+    checkExists(op, err) {
+      if (!op) {
         throw new FS.ErrnoError(err);
       }
-      return fn(node, ...args);
+      return op;
     },
 
     //
@@ -902,7 +901,8 @@ FS.staticInit();
     readdir(path) {
       var lookup = FS.lookupPath(path, { follow: true });
       var node = lookup.node;
-      return FS.doNodeOp(node, "readdir", {{{ cDefs.ENOTDIR }}});
+      var readdir = FS.checkExists(node.node_ops.readdir, {{{ cDefs.ENOTDIR }}});
+      return readdir(node);
     },
     unlink(path) {
       var lookup = FS.lookupPath(path, { parent: true });
@@ -952,7 +952,8 @@ FS.staticInit();
     stat(path, dontFollow) {
       var lookup = FS.lookupPath(path, { follow: !dontFollow });
       var node = lookup.node;
-      return FS.doNodeOp(node, "getattr", {{{ cDefs.EPERM }}});
+      var getattr = FS.checkExists(node.node_ops.getattr, {{{ cDefs.EPERM }}});
+      return getattr(node);
     },
     lstat(path) {
       return FS.stat(path, true);
@@ -965,7 +966,8 @@ FS.staticInit();
       } else {
         node = path;
       }
-      FS.doNodeOp(node, "setattr", {{{ cDefs.EPERM }}}, {
+      var setattr = FS.checkExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
+      setattr(node, {
         mode: (mode & {{{ cDefs.S_IALLUGO }}}) | (node.mode & ~{{{ cDefs.S_IALLUGO }}}),
         ctime: Date.now()
       });
@@ -985,7 +987,8 @@ FS.staticInit();
       } else {
         node = path;
       }
-      FS.doNodeOp(node, "setattr", {{{ cDefs.EPERM }}}, {
+      var setattr = checkExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
+      setattr(node, {
         timestamp: Date.now()
         // we ignore the uid / gid for now
       });
@@ -1018,7 +1021,8 @@ FS.staticInit();
       if (errCode) {
         throw new FS.ErrnoError(errCode);
       }
-      FS.doNodeOp(node, "setattr", {{{ cDefs.EPERM }}}, {
+      var setattr = checkExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
+      setattr(node, {
         size: len,
         timestamp: Date.now()
       });
@@ -1033,7 +1037,8 @@ FS.staticInit();
     utime(path, atime, mtime) {
       var lookup = FS.lookupPath(path, { follow: true });
       var node = lookup.node;
-      FS.doNodeOp(node, "setattr", {{{ cDefs.EPERM }}}, {
+      var setattr = checkExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
+      setattr(node, {
         atime: atime,
         mtime: mtime
       });
