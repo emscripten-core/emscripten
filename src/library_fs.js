@@ -1004,7 +1004,7 @@ FS.staticInit();
     fchmod(fd, mode) {
       var stream = FS.getStreamChecked(fd);
       FS.streamSetAttr(stream, {
-        mode: (mode & {{{ cDefs.S_IALLUGO }}}) | (node.mode & ~{{{ cDefs.S_IALLUGO }}}),
+        mode: (mode & {{{ cDefs.S_IALLUGO }}}) | (stream.node.mode & ~{{{ cDefs.S_IALLUGO }}}),
         ctime: Date.now()
       });
       throw new FS.ErrnoError({{{ cDefs.EPERM }}});
@@ -1034,7 +1034,7 @@ FS.staticInit();
       FS.streamSetAttr(stream, {
         timestamp: Date.now()
         // we ignore the uid / gid for now
-      };);
+      });
     },
     truncateCommon(node, stream, len) {
       if (FS.isDir(node.mode)) {
