@@ -5,7 +5,6 @@
 #include "stdio.h"
 
 int main() {
-  setup();
   int fd = open("file.txt", O_RDWR | O_CREAT, 0666);
   unlink("file.txt");
   int res;
