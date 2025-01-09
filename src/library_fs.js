@@ -1035,7 +1035,7 @@ FS.staticInit();
         // we ignore the uid / gid for now
       });
     },
-    truncateCommon(node, stream, len) {
+    truncateChecks(node) {
       if (FS.isDir(node.mode)) {
         throw new FS.ErrnoError({{{ cDefs.EISDIR }}});
       }
@@ -1046,10 +1046,6 @@ FS.staticInit();
       if (errCode) {
         throw new FS.ErrnoError(errCode);
       }
-      FS.streamSetAttr(stream, {
-        size: len,
-        timestamp: Date.now()
-      });
     },
     truncate(path, len) {
       if (len < 0) {
@@ -1062,14 +1058,21 @@ FS.staticInit();
       } else {
         node = path;
       }
-      FS.truncateCommon(node, undefined, len, false);
+      node.node_ops.setattr(node, {
+        size: len,
+        timestamp: Date.now()
+      });
     },
     ftruncate(fd, len) {
       var stream = FS.getStreamChecked(fd);
       if (len < 0 || (stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_RDONLY}}}) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
-      FS.truncateCommon(stream.node, stream, len);
+      FS.truncateChecks(stream.node);
+      FS.streamSetAttr(stream, {
+        size: len,
+        timestamp: Date.now()
+      });
     },
     utime(path, atime, mtime) {
       var lookup = FS.lookupPath(path, { follow: true });
