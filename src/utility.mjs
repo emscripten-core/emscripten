@@ -7,7 +7,6 @@
 // General JS utilities - things that might be useful in any JS project.
 // Nothing specific to Emscripten appears here.
 
-import * as url from 'node:url';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import * as vm from 'node:vm';
@@ -240,11 +239,9 @@ export function read(filename) {
   return fs.readFileSync(absolute).toString();
 }
 
-export function find(filename) {
-  const dirname = url.fileURLToPath(new URL('.', import.meta.url));
-  const prefixes = [process.cwd(), path.join(dirname, '..', 'src')];
-  for (let i = 0; i < prefixes.length; ++i) {
-    const combined = path.join(prefixes[i], filename);
+function find(filename) {
+  for (const prefix of [process.cwd(), import.meta.dirname]) {
+    const combined = path.join(prefix, filename);
     if (fs.existsSync(combined)) {
       return combined;
     }
