@@ -31,7 +31,7 @@ See docs/process.md for more on how version tagging works.
     of the target integer type, the result will be a number of the max or min value
     instead of a trap. This also results in a small code size improvement because
     of details of the LLVM IR semantics. This feature can be disabled in clang with
-    the -mno-nontrapping-fptoint flag. (#23007)
+    the `-mno-nontrapping-fptoint` flag. (#23007)
   - The `WASM_BIGINT` feature is enabled by default. This has the effect that
     Wasm i64 values are passed and returned between Wasm and JS as BigInt values
     rather than being split by Binaryen into pairs of Numbers. (#22993)
