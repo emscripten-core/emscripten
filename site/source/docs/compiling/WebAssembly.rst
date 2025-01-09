@@ -96,47 +96,53 @@ You may also see additional files generated, like a ``.data`` file if you are pr
 WebAssembly feature extensions
 ==============================
 
-Since its original launch, WebAssembly has been expanded with various feature extensions, which have been implmented
-in browsers. A list of features (including already-shipped and in-progress) and details about browser versions
-that support them can be found on `webassembly.org <https://webassembly.org/features/>`_.
+Since its original launch, WebAssembly has been expanded with various feature
+extensions, which have been implmented in browsers. A list of features
+(including already-shipped and in-progress) and details about browser versions
+that support them can be found on
+`webassembly.org <https://webassembly.org/features/>`_.
 
-Several of these features can be used by Emscripten (or are by default) and can be enabled or disabled individually
-(using either Clang or emscripten flags) or by selecting which version of browsers Emscripten should target.
+Several of these features can be used by Emscripten (or are by default) and can
+be enabled or disabled individually (using either Clang or emscripten flags)
+or by selecting which version of browsers Emscripten should target.
 
 Examples:
 
-* Exception handling (see `C++ Exceptions Support <https://emscripten.org/docs/porting/exceptions.html>` for details).
-* SIMD (see <https://emscripten.org/docs/porting/simd.html> for details).
-* Nontrapping float-to-int conversion (enabled by default, use ``-mno-nontrapping-fptoint`` to disable).
+* Exception handling (see :ref:`exceptions` for details).
+* SIMD (see :ref:`Porting SIMD code` for details).
+* Nontrapping float-to-int conversion (enabled by default, use
+  ``-mno-nontrapping-fptoint`` to disable).
   Clang will generate nontrapping (saturating) float-to-int conversion instructions for
   C typecasts. This should have no effect on programs that do not have
   undefined behavior but if the casted floating-point value is outside the range
   of the target integer type, the result will be a number of the max or min value
   instead of a trap. This also results in a small code size improvement because
   of details of the LLVM IR semantics.
-* Bulk memory operations (enabled by default, use ``-mno-bulk-memory-opt`` to disable).
-  ``memory.copy`` and ``memory.fill`` instructions are used in the implementation of C ``memcpy`` and
-  ``memset``, and Clang may generate them elsewhere.
+* Bulk memory operations (enabled by default, use
+  ``-mno-bulk-memory-opt -mno-bulk-memory`` to disable). ``memory.copy``
+  and ``memory.fill`` instructions are used in the implementation of C
+  ``memcpy`` and ``memset``, and Clang may generate them elsewhere.
 * JS BigInt integration (enabled by default, use the
-  ``-sWASM_BIGINT=0`` `setting <https://emscripten.org/docs/tools_reference/settings_reference.html#wasm-bigint>`
-  to disable).
-  This has the effect that Wasm i64 values are passed and returned between Wasm and JS as BigInt values
-  rather than being split by Binaryen into pairs of Numbers.
+  ``-sWASM_BIGINT=0`` :ref:`setting <wasm_bigint>`
+  to disable). This has the effect that Wasm i64 values are passed and returned
+  between Wasm and JS as BigInt values rather than being split by Binaryen into
+  pairs of Numbers.
 * Sign-extension operators (enabled by default, use ``-mno-sign-ext`` to disable).
 
-For the features that are enabled by default (or will be when sufficient browser support exists), it's also
-possible to control them by specifying which browser versions you want to target. You can use the
-``-sMIN_FIREFOX_VERSION`` `setting <https://emscripten.org/docs/tools_reference/settings_reference.html#min-firefox-version>`
-(and also ``MIN_CHROME_VERSION``, ``MIN_SAFARI_VERSION`` and ``MIN_NODE_VERSION``). Setting a value lower
-than the default version will disable features not supported by the specified version. Some features
-(e.g. Exception handling and threads) are not enabled by default because they have tradeoffs (e.g. binary size costs
-or restrictions on how the resulting wasm can be used such as COEP headers). These are not controlled by the browser
+For the features that are enabled by default (or will be when sufficient
+browser support exists), it's also possible to control them by specifying
+which browser versions you want to target. You can use the
+``-sMIN_FIREFOX_VERSION`` :ref:`setting <min_firefox_version>`
+(and also ``MIN_CHROME_VERSION``, ``MIN_SAFARI_VERSION`` and
+``MIN_NODE_VERSION``). Setting a value lower than the default version will
+disable features not supported by the specified version. Some features (e.g.
+Exception handling and threads) are not enabled by default because they have
+tradeoffs (e.g. binary size costs or restrictions on how the resulting wasm
+can be used such as COEP headers). These are not controlled by the browser
 version flags and must be enabled explicitly.
-See the settings page for details of the default browser versions Emscripten targets.
+See the :ref:`settings <min_firefox_version>` page for details of the default
+browser versions Emscripten targets.
 
-
-
-https://emscripten.org/docs/tools_reference/settings_reference.html#min-firefox-version
 
 ``.wasm`` files and compilation
 ===============================
