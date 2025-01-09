@@ -2804,6 +2804,9 @@ def map_to_js_libs(library_name):
     logger.debug('Mapping library `%s` to JS libraries: %s' % (library_name, libs))
     return libs
 
+  # TODO(sbc): Remove this special handling for system libraries by renaming
+  # the system libraries from `library_foo.js` to `libfoo.js` (the latter is
+  # the more standard name by which `-l` flags resolve libraries).
   if library_name.endswith('.js') and os.path.isfile(utils.path_from_root('src', f'library_{library_name}')):
     return [f'library_{library_name}']
 
@@ -2840,6 +2843,14 @@ def process_libraries(state):
       continue
 
     if js_libs is not None:
+      continue
+
+    if lib.endswith('.js'):
+      name = 'lib' + lib
+      path = find_library(name, state.lib_dirs)
+      if not path:
+        exit_with_error(f'unable to find library {flag}')
+      settings.JS_LIBRARIES.append(os.path.abspath(path))
       continue
 
     if not settings.RELOCATABLE:
