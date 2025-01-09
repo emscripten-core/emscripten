@@ -12,7 +12,6 @@ import {
   addToCompileTimeContext,
   assert,
   error,
-  isNumber,
   printErr,
   read,
   runInMacroContext,
@@ -335,6 +334,11 @@ function ensureDot(value) {
   const e = value.indexOf('e');
   if (e < 0) return value + '.0';
   return value.substr(0, e) + '.0' + value.substr(e);
+}
+
+export function isNumber(x) {
+  // XXX this does not handle 0xabc123 etc. We should likely also do x == parseInt(x) (which handles that), and remove hack |// handle 0x... as well|
+  return x == parseFloat(x) || (typeof x == 'string' && x.match(/^-?\d+$/)) || x == 'NaN';
 }
 
 // ensures that a float type has either 5.5 (clearly a float) or +5 (float due to asm coercion)
