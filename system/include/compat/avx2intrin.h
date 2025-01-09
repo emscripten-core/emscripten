@@ -1051,9 +1051,9 @@ static __inline__ __m256i
     index[i + 4] = ((__i32x4)__b.v1)[i] & 7;
   }
 
-  for (int i = 0; i < 8; i++) {
-    lane[i] = index[i] < 4 ? ((__i32x4)(__a.v0))[index[i]]
-                           : ((__i32x4)(__a.v1))[index[i] - 4];
+  for (int j = 0; j < 8; j++) {
+    lane[j] = index[j] < 4 ? ((__i32x4)(__a.v0))[index[j]]
+                           : ((__i32x4)(__a.v1))[index[j] - 4];
   }
 
   ret.v0 = (__m128i)wasm_i32x4_make(lane[0], lane[1], lane[2], lane[3]);
@@ -1081,9 +1081,9 @@ static __inline__ __m256
     index[i] = ((__i32x4)__b.v0)[i] & 7;
     index[i + 4] = ((__i32x4)__b.v1)[i] & 7;
   }
-  for (int i = 0; i < 8; i++) {
-    lane[i] = index[i] < 4 ? ((__f32x4)(__a.v0))[index[i]]
-                           : ((__f32x4)(__a.v1))[index[i] - 4];
+  for (int j = 0; j < 8; j++) {
+    lane[j] = index[j] < 4 ? ((__f32x4)(__a.v0))[index[j]]
+                           : ((__f32x4)(__a.v1))[index[j] - 4];
   }
   ret.v0 = (__m128)wasm_f32x4_make(lane[0], lane[1], lane[2], lane[3]);
   ret.v1 = (__m128)wasm_f32x4_make(lane[4], lane[5], lane[6], lane[7]);
