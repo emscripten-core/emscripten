@@ -479,6 +479,26 @@ FS.staticInit();
       stream.stream_ops?.dup?.(stream);
       return stream;
     },
+    streamGetAttr(stream) {
+      var node = stream.node;
+      var get;
+      if (get = stream.stream_ops.getattr) {
+        return get(stream);
+      } else if (get = node.node_ops.getattr) {
+        return get(node);
+      }
+      throw new FS.ErrnoError({{{ cDefs.EPERM }}});
+    },
+    streamSetAttr(stream, attr) {
+      var node = stream.node;
+      var set;
+      if (set = stream.stream_ops.setattr) {
+        return set(stream, attr);
+      } else if (set = node.node_ops.setattr) {
+        return set(node, attr);
+      }
+      throw new FS.ErrnoError({{{ cDefs.EPERM }}});
+    }
 
     //
     // devices
@@ -958,13 +978,7 @@ FS.staticInit();
     },
     fstat(fd) {
       var stream = FS.getStreamChecked(fd);
-      var node = stream.node;
-      if (stream.stream_ops.getattr) {
-        return stream.stream_ops.getattr(stream);
-      } else if (node.node_ops.getattr) {
-        return node.node_ops.getattr(node);
-      }
-      throw new FS.ErrnoError({{{ cDefs.EPERM }}});
+      return FS.streamGetAttr(stream);
     },
     lstat(path) {
       return FS.stat(path, true);
@@ -991,16 +1005,10 @@ FS.staticInit();
     },
     fchmod(fd, mode) {
       var stream = FS.getStreamChecked(fd);
-      var node = stream.node;
-      var attrs = {
+      FS.streamSetAttr(stream, {
         mode: (mode & {{{ cDefs.S_IALLUGO }}}) | (node.mode & ~{{{ cDefs.S_IALLUGO }}}),
         ctime: Date.now()
-      };
-      if (stream.stream_ops.getattr) {
-        return stream.stream_ops.setattr(stream, attrs);
-      } else if (node.node_ops.getattr) {
-        return node.node_ops.setattr(node, attrs);
-      }
+      });
       throw new FS.ErrnoError({{{ cDefs.EPERM }}});
     },
     chown(path, uid, gid, dontFollow) {
@@ -1025,22 +1033,12 @@ FS.staticInit();
     },
     fchown(fd, uid, gid) {
       var stream = FS.getStreamChecked(fd);
-      var node = stream.node;
-      var attrs = {
+      FS.streamSetAttr(stream, {
         timestamp: Date.now()
         // we ignore the uid / gid for now
-      };
-      if (stream.stream_ops.getattr) {
-        return stream.stream_ops.setattr(stream, attrs);
-      } else if (node.node_ops.getattr) {
-        return node.node_ops.setattr(node, attrs);
-      }
-      throw new FS.ErrnoError({{{ cDefs.EPERM }}});
+      };);
     },
     truncateCommon(node, stream, len) {
-      if (!node.node_ops.setattr && !stream?.stream_ops.setattr) {
-        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
-      }
       if (FS.isDir(node.mode)) {
         throw new FS.ErrnoError({{{ cDefs.EISDIR }}});
       }
@@ -1051,15 +1049,10 @@ FS.staticInit();
       if (errCode) {
         throw new FS.ErrnoError(errCode);
       }
-      var attrs = {
+      FS.streamSetAttr(stream, {
         size: len,
         timestamp: Date.now()
-      };
-      if (stream?.stream_ops.setattr) {
-        stream.stream_ops.setattr(stream, attrs);
-      } else {
-        node.node_ops.setattr(node, attrs);
-      }
+      });
     },
     truncate(path, len) {
       if (len < 0) {
