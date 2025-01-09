@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 4.0.0 (in development)
 ----------------------
+- Emscripten version was bumped to 4.0.0. Happy new year, happy new major
+  version!  While version has a few interesting changes, there is nothing huge
+  that makes it different from any other release. (#19053)
 - compiler-rt, libcxx, libcxxabi, and libunwind were updated to LLVM 19.1.6.
   (#22937, #22994, and #23294)
 - The default Safari version targeted by Emscripten has been raised from 14.1
