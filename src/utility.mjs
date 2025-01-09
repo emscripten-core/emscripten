@@ -231,13 +231,9 @@ export function isDecorator(ident) {
   return suffixes.some((suffix) => ident.endsWith(suffix));
 }
 
-export function isPowerOfTwo(x) {
-  return x > 0 && (x & (x - 1)) == 0;
-}
-
 export function read(filename) {
   const absolute = find(filename);
-  return fs.readFileSync(absolute).toString();
+  return fs.readFileSync(absolute, 'utf8');
 }
 
 export function find(filename) {
