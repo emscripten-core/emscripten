@@ -481,10 +481,8 @@ FS.staticInit();
     },
     streamGetAttr(stream) {
       var node = stream.node;
-      var res;
-      if (res = stream.stream_ops?.getattr?.(stream)) {
-        return res;
-      } else if (res = node.node_ops?.getattr?.(node)) {
+      var res = stream.stream_ops?.getattr?.(stream) ?? node.node_ops?.getattr?.(node);
+      if (res) {
         return res;
       }
       throw new FS.ErrnoError({{{ cDefs.EPERM }}});
