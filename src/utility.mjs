@@ -227,21 +227,17 @@ export function isDecorator(ident) {
 }
 
 export function read(filename) {
-  const absolute = find(filename);
-  return fs.readFileSync(absolute, 'utf8');
+  return fs.readFileSync(filename, 'utf8');
 }
 
 // Use import.meta.dirname here once we drop support for node v18.
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
 
-function find(filename) {
-  for (const prefix of [process.cwd(), __dirname]) {
-    const combined = path.join(prefix, filename);
-    if (fs.existsSync(combined)) {
-      return combined;
-    }
-  }
-  return filename;
+// Returns an absolute path for a file, resolving it relative to this script
+// (i.e. relative to the src/ directory).
+export function localFile(filename) {
+  assert(!path.isAbsolute(filename));
+  return path.join(__dirname, filename);
 }
 
 // Anything needed by the script that we load below must be added to the
@@ -314,15 +310,15 @@ export function applySettings(obj) {
 }
 
 export function loadSettingsFile(f) {
-  var settings = {};
-  vm.runInNewContext(read(f), settings, {filename: find(f)});
+  const settings = {};
+  vm.runInNewContext(read(f), settings, {filename: f});
   applySettings(settings);
   return settings;
 }
 
 export function loadDefaultSettings() {
-  const rtn = loadSettingsFile('settings.js');
-  Object.assign(rtn, loadSettingsFile('settings_internal.js'));
+  const rtn = loadSettingsFile(localFile('settings.js'));
+  Object.assign(rtn, loadSettingsFile(localFile('settings_internal.js')));
   return rtn;
 }
 
