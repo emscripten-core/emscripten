@@ -988,7 +988,7 @@ FS.staticInit();
       } else {
         node = path;
       }
-      var setattr = checkOpExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
+      var setattr = FS.checkOpExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
       setattr(node, {
         timestamp: Date.now(),
         dontFollow
@@ -1023,7 +1023,7 @@ FS.staticInit();
       if (errCode) {
         throw new FS.ErrnoError(errCode);
       }
-      var setattr = checkOpExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
+      var setattr = FS.checkOpExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
       setattr(node, {
         size: len,
         timestamp: Date.now()
@@ -1039,7 +1039,7 @@ FS.staticInit();
     utime(path, atime, mtime) {
       var lookup = FS.lookupPath(path, { follow: true });
       var node = lookup.node;
-      var setattr = checkOpExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
+      var setattr = FS.checkOpExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
       setattr(node, {
         atime: atime,
         mtime: mtime
