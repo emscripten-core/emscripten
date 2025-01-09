@@ -38,7 +38,7 @@ See docs/process.md for more on how version tagging works.
   - The `BULK_MEMORY` feature is enabled by default. `memory.copy` and
     `memory.fill` instructions are used in the implementation of C `memcpy` and
     `memset`, and Clang may generate them elsewhere (#22873). It can be
-    disabled with the `-mno-bulk-memory` flag.
+    disabled with the `-mno-bulk-memory -mno-bulk-memory-opt` flags.
 - When using `-sMODULARIZE` we now assert if the factory function is called with
   the JS `new` keyword.  e.g. `a = new Module()` rather than `b = Module()`.
   This paves the way for marking the function as `async` which does not allow
