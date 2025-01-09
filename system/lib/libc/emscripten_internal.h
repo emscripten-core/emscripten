@@ -30,12 +30,6 @@ _Noreturn void _abort_js(void);
 
 void setThrew(uintptr_t threw, int value);
 
-// An external JS implementation that is efficient for very large copies, using
-// HEAPU8.set()
-void _emscripten_memcpy_js(void* __restrict__ dest,
-                           const void* __restrict__ src,
-                           size_t n) EM_IMPORT(_emscripten_memcpy_js);
-
 void* _emscripten_memcpy_bulkmem(void* __restrict__ dest,
                                  const void* __restrict__ src,
                                  size_t n);

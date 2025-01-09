@@ -969,7 +969,8 @@ FS.staticInit();
       var setattr = FS.checkExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
       setattr(node, {
         mode: (mode & {{{ cDefs.S_IALLUGO }}}) | (node.mode & ~{{{ cDefs.S_IALLUGO }}}),
-        ctime: Date.now()
+        ctime: Date.now(),
+        dontFollow
       });
     },
     lchmod(path, mode) {
@@ -989,7 +990,8 @@ FS.staticInit();
       }
       var setattr = checkExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
       setattr(node, {
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        dontFollow
         // we ignore the uid / gid for now
       });
     },

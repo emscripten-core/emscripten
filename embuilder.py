@@ -30,7 +30,6 @@ from tools.system_libs import USE_NINJA
 
 # Minimal subset of targets used by CI systems to build enough to be useful
 MINIMAL_TASKS = [
-    'libbulkmemory',
     'libcompiler_rt',
     'libcompiler_rt-wasm-sjlj',
     'libcompiler_rt-ww',

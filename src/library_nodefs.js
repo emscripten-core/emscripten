@@ -156,6 +156,9 @@ addToLibrary({
         var path = NODEFS.realPath(node);
         NODEFS.tryFSOperation(() => {
           if (attr.mode !== undefined) {
+            if (attr.dontFollow) {
+              throw new FS.ErrnoError({{{ cDefs.ENOSYS }}});
+            }
             var mode = attr.mode;
             if (NODEFS.isWindows) {
               // Windows only supports S_IREAD / S_IWRITE (S_IRUSR / S_IWUSR)
@@ -166,9 +169,15 @@ addToLibrary({
             // update the common node structure mode as well
             node.mode = attr.mode;
           }
-          if (attr.atime || attr.mtime) {
-            var atime = attr.atime && new Date(attr.atime);
-            var mtime = attr.mtime && new Date(attr.mtime);
+          if (typeof (attr.atime ?? attr.mtime) === "number") {
+            // Unfortunately, we have to stat the current value if we don't want
+            // to change it. On top of that, since the times don't round trip
+            // this will only keep the value nearly unchanged not exactly
+            // unchanged. See:
+            // https://github.com/nodejs/node/issues/56492
+            var stat = () => fs.lstatSync(NODEFS.realPath(node));
+            var atime = new Date(attr.atime ?? stat().atime);
+            var mtime = new Date(attr.mtime ?? stat().mtime);
             fs.utimesSync(path, atime, mtime);
           }
           if (attr.size !== undefined) {

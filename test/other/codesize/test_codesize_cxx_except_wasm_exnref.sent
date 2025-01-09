@@ -1,5 +1,4 @@
 _abort_js
-_emscripten_memcpy_js
 _tzset_js
 emscripten_resize_heap
 environ_get

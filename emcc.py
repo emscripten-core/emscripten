@@ -88,6 +88,15 @@ LINK_ONLY_FLAGS = {
     '--proxy-to-worker', '--shell-file', '--source-map-base',
     '--threadprofiler', '--use-preload-plugins'
 }
+CLANG_FLAGS_WITH_ARGS = {
+    '-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
+    '-Xpreprocessor', '-include', '-imacros', '-idirafter',
+    '-iprefix', '-iwithprefix', '-iwithprefixbefore',
+    '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
+    '-install_name', '-compatibility_version', '-mllvm',
+    '-current_version', '-I', '-L', '-include-pch',
+    '-undefined', '-target', '-Xlinker', '-Xclang', '-z'
+}
 
 
 @unique
@@ -194,7 +203,7 @@ def create_reproduce_file(name, args):
           if arg.startswith('--reproduce='):
             continue
 
-          if arg.startswith('-o='):
+          if len(arg) > 2 and arg.startswith('-o'):
             rsp.write('-o\n')
             arg = arg[3:]
             output_arg = True
@@ -218,13 +227,7 @@ def create_reproduce_file(name, args):
           if ignore:
             continue
 
-          if arg in ('-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
-                     '-Xpreprocessor', '-include', '-imacros', '-idirafter',
-                     '-iprefix', '-iwithprefix', '-iwithprefixbefore',
-                     '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
-                     '-install_name', '-compatibility_version',
-                     '-current_version', '-I', '-L', '-include-pch',
-                     '-Xlinker', '-Xclang'):
+          if arg in CLANG_FLAGS_WITH_ARGS:
             ignore_next = True
 
           if arg == '-o':
@@ -384,14 +387,6 @@ def get_clang_flags(user_args):
       flags.append('-matomics')
     if '-mbulk-memory' not in user_args:
       flags.append('-mbulk-memory')
-
-  # In emscripten we currently disable bulk memory by default.
-  # This should be removed/updated when we als update the default browser targets.
-  if '-mbulk-memory' not in user_args and '-mno-bulk-memory' not in user_args:
-    # Bulk memory may be enabled via threads or directly via -s.
-    if not settings.BULK_MEMORY:
-      flags.append('-mno-bulk-memory')
-      flags.append('-mno-bulk-memory-opt')
 
   if settings.RELOCATABLE and '-fPIC' not in user_args:
     flags.append('-fPIC')
@@ -668,7 +663,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       exit_with_error('--post-link requires a single input file')
     # Delay import of link.py to avoid processing this file when only compiling
     from tools import link
-    link.run_post_link(input_files[0][1], options, state, newargs)
+    link.run_post_link(input_files[0][1], options, state)
     return 0
 
   ## Compile source code to object files
@@ -677,7 +672,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if state.mode == Mode.COMPILE_AND_LINK:
     # Delay import of link.py to avoid processing this file when only compiling
     from tools import link
-    return link.run(linker_inputs, options, state, newargs)
+    return link.run(linker_inputs, options, state)
   else:
     logger.debug('stopping after compile phase')
     return 0
@@ -710,9 +705,11 @@ def phase_parse_arguments(state):
     settings.WARN_DEPRECATED = 0
 
   for i in range(len(newargs)):
-    if newargs[i] in ('-l', '-L', '-I', '-z'):
+    if newargs[i] in ('-l', '-L', '-I', '-z', '--js-library'):
       # Scan for flags that can be written as either one or two arguments
       # and normalize them to the single argument form.
+      if newargs[i] == '--js-library':
+        newargs[i] += '='
       newargs[i] += newargs[i + 1]
       newargs[i + 1] = ''
 
@@ -773,14 +770,7 @@ def phase_setup(options, state, newargs):
       continue
 
     arg = newargs[i]
-    if arg in {'-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
-               '-Xpreprocessor', '-include', '-imacros', '-idirafter',
-               '-iprefix', '-iwithprefix', '-iwithprefixbefore',
-               '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
-               '-install_name', '-compatibility_version',
-               '-current_version', '-I', '-L', '-include-pch',
-               '-undefined', '-target',
-               '-Xlinker', '-Xclang', '-z'}:
+    if arg in CLANG_FLAGS_WITH_ARGS:
       skip = True
 
     if not arg.startswith('-'):
@@ -803,6 +793,8 @@ def phase_setup(options, state, newargs):
       state.add_link_flag(i, newargs[i])
       state.add_link_flag(i + 1, newargs[i + 1])
     elif arg.startswith('-z'):
+      state.add_link_flag(i, newargs[i])
+    elif arg.startswith('--js-library='):
       state.add_link_flag(i, newargs[i])
     elif arg.startswith('-Wl,'):
       # Multiple comma separated link flags can be specified. Create fake
@@ -951,7 +943,7 @@ def filter_out_link_flags(args):
   def is_link_flag(flag):
     if flag in ('-nostdlib', '-nostartfiles', '-nolibc', '-nodefaultlibs', '-s'):
       return True
-    return flag.startswith(('-l', '-L', '-Wl,', '-z'))
+    return flag.startswith(('-l', '-L', '-Wl,', '-z', '--js-library'))
 
   skip = False
   for arg in args:
@@ -1046,6 +1038,8 @@ def phase_compile_inputs(options, state, newargs, input_files):
 
   # In COMPILE_AND_LINK we need to compile source files too, but we also need to
   # filter out the link flags
+  assert state.mode == Mode.COMPILE_AND_LINK
+  assert not state.has_dash_c
   compile_args = filter_out_link_flags(compile_args)
   linker_inputs = []
   seen_names = {}
@@ -1070,10 +1064,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
       cmd = get_clang_command()
       if get_file_suffix(input_file) in ['.pcm']:
         cmd = [c for c in cmd if not c.startswith('-fprebuilt-module-path=')]
-    cmd += [input_file]
-    if not state.has_dash_c:
-      cmd += ['-c']
-    cmd += ['-o', output_file]
+    cmd += ['-c', input_file, '-o', output_file]
     if state.mode == Mode.COMPILE_AND_LINK and '-gsplit-dwarf' in newargs:
       # When running in COMPILE_AND_LINK mode we compile to temporary location
       # but we want the `.dwo` file to be generated in the current working directory,
@@ -1324,7 +1315,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
         options.memory_profiler = True
       newargs[i] = ''
       settings_changes.append('EMSCRIPTEN_TRACING=1')
-      settings.JS_LIBRARIES.append((0, 'library_trace.js'))
+      settings.JS_LIBRARIES.append('library_trace.js')
     elif check_flag('--emit-symbol-map'):
       options.emit_symbol_map = True
       settings.EMIT_SYMBOL_MAP = 1
@@ -1359,8 +1350,6 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       options.emit_tsd = consume_arg()
     elif check_flag('--no-entry'):
       options.no_entry = True
-    elif check_arg('--js-library'):
-      settings.JS_LIBRARIES.append((i + 1, os.path.abspath(consume_arg_file())))
     elif check_flag('--remove-duplicates'):
       diagnostics.warning('legacy-settings', '--remove-duplicates is deprecated as it is no longer needed. If you cannot link without it, file a bug with a testcase')
     elif check_flag('--jcache'):

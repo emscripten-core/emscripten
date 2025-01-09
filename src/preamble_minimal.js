@@ -32,11 +32,6 @@ if (Module['doWasm2JS']) {
 #endif
 #endif
 
-#if SINGLE_FILE && WASM == 1 && !WASM2JS
-#include "base64Decode.js"
-Module['wasm'] = base64Decode('<<< WASM_BINARY_DATA >>>');
-#endif
-
 var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64,
 #if WASM_BIGINT
   HEAP64, HEAPU64,
