@@ -4886,6 +4886,25 @@ extraLibraryFuncs.push('jsfunc');
     self.run_process([EMCC, test_file('hello_world.c'), '--js-library=lib.js', '-sEXPORTED_FUNCTIONS=Foo,_main'])
     self.assertContained("Module['Foo'] = ", read_file('a.out.js'))
 
+  def test_jslib_search_path(self):
+    create_file('libfoo.js', '''
+      addToLibrary({
+        foo: () => 42,
+      });
+      ''')
+    create_file('main.c', r'''
+      #include <stdio.h>
+      int foo();
+      int main() {
+        printf("%d\n", foo());
+        return 0;
+      }''')
+    self.do_runf('main.c', '42\n', emcc_args=['-L.', '-lfoo.js'])
+
+    # If the library path is not included with `-L` we expect the command to fail
+    err = self.expect_fail([EMCC, 'main.c', '-lfoo.js'])
+    self.assertContained('emcc: error: unable to find library -lfoo.js', err)
+
   def test_EMCC_BUILD_DIR(self):
     # EMCC_BUILD_DIR env var contains the dir we were building in, when running the js compiler (e.g. when
     # running a js library). We force the cwd to be src/ for technical reasons, so this lets you find out

@@ -97,10 +97,9 @@ var MAIN_READS_PARAMS = true;
 
 var WASI_MODULE_NAME = "wasi_snapshot_preview1";
 
-// List of JS libraries explicitly linked against.  This includes JS system
-// libraries (specified via -lfoo or -lfoo.js) in addition to user libraries
-// passed via `--js-library`.  It does not include implicitly linked libraries
-// added by the JS compiler.
+// List of JS libraries explicitly linked against.  This includes JS specified
+// on the command line via `-lfoo.js` / `--js-library`.  It does not include
+// implicitly linked libraries added by the JS compiler.
 var JS_LIBRARIES = [];
 
 // This will contain the emscripten version. This can be useful in combination

@@ -1417,7 +1417,7 @@ A list of imported module functions that will potentially do asynchronous
 work. The imported function should return a ``Promise`` when doing
 asynchronous work.
 
-Note when using ``--js-library``, the function can be marked with
+Note when using JS library files, the function can be marked with
 ``<function_name>_async:: true`` in the library instead of this setting.
 
 Default value: []

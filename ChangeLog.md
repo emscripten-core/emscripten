@@ -58,6 +58,9 @@ See docs/process.md for more on how version tagging works.
 - The `POLYFILL_OLD_MATH_FUNCTIONS` setting was removed.  The browser versions
   that require these polyfills are no longer supported by emscripten so the
   polyfills should never be needed. (#23262)
+- JavaScript libraries can now be specified via `-lfoo.js`.  This works like the
+  existing `--js-library` flag but will search the library path (all paths
+  specified with `-L`) for `libfoo.js`. (#23338)
 
 3.1.74 - 12/14/24
 -----------------
