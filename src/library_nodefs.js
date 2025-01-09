@@ -156,6 +156,9 @@ addToLibrary({
         var path = NODEFS.realPath(node);
         NODEFS.tryFSOperation(() => {
           if (attr.mode !== undefined) {
+            if (attr.dontFollow) {
+              throw new FS.ErrnoError({{{ cDefs.ENOSYS }}});
+            }
             var mode = attr.mode;
             if (NODEFS.isWindows) {
               // Windows only supports S_IREAD / S_IWRITE (S_IRUSR / S_IWUSR)
