@@ -1007,7 +1007,6 @@ FS.staticInit();
         mode: (mode & {{{ cDefs.S_IALLUGO }}}) | (stream.node.mode & ~{{{ cDefs.S_IALLUGO }}}),
         ctime: Date.now()
       });
-      throw new FS.ErrnoError({{{ cDefs.EPERM }}});
     },
     chown(path, uid, gid, dontFollow) {
       var node;
