@@ -277,23 +277,23 @@ def requires_wasm64(func):
   return decorated
 
 
+def requires_wasm_legacy_eh(func):
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    self.require_wasm_legacy_eh()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
 def requires_wasm_eh(func):
   assert callable(func)
 
   @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_wasm_eh()
-    return func(self, *args, **kwargs)
-
-  return decorated
-
-
-def requires_wasm_exnref(func):
-  assert callable(func)
-
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-    self.require_wasm_exnref()
     return func(self, *args, **kwargs)
 
   return decorated
@@ -647,10 +647,9 @@ def with_all_eh_sjlj(f):
       self.emcc_args.append('-fwasm-exceptions')
       self.set_setting('SUPPORT_LONGJMP', 'wasm')
       if mode == 'wasm':
-        self.require_wasm_eh()
+        self.require_wasm_legacy_eh()
       if mode == 'wasm_exnref':
-        self.require_wasm_exnref()
-        self.set_setting('WASM_EXNREF')
+        self.require_wasm_eh()
       f(self, *args, **kwargs)
     else:
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
@@ -683,10 +682,9 @@ def with_all_sjlj(f):
         self.skipTest('Wasm EH does not work with asan yet')
       self.set_setting('SUPPORT_LONGJMP', 'wasm')
       if mode == 'wasm':
-        self.require_wasm_eh()
+        self.require_wasm_legacy_eh()
       if mode == 'wasm_exnref':
-        self.require_wasm_exnref()
-        self.set_setting('WASM_EXNREF')
+        self.require_wasm_eh()
       f(self, *args, **kwargs)
     else:
       self.set_setting('SUPPORT_LONGJMP', 'emscripten')
@@ -997,7 +995,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     else:
       self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_SIMD to skip')
 
-  def require_wasm_eh(self):
+  def require_wasm_legacy_eh(self):
+    self.set_setting('WASM_LEGACY_EXCEPTIONS')
     nodejs = self.get_nodejs()
     if nodejs:
       version = shared.get_node_version(nodejs)
@@ -1015,7 +1014,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     else:
       self.fail('either d8 or node >= 17 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
 
-  def require_wasm_exnref(self):
+  def require_wasm_eh(self):
+    self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
     nodejs = self.get_nodejs()
     if nodejs:
       if self.node_is_canary(nodejs):
