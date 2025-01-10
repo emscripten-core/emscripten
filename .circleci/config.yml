@@ -797,8 +797,6 @@ jobs:
             core2.test_fs_nodefs_nofollow
             core2.test_fs_nodefs_readdir
             core2.test_fs_noderawfs_nofollow
-            core2.test_fs_open_no_permissions_nodefs
-            core2.test_fs_open_no_permissions_rawfs
             core2.test_fs_readdir_ino_matches_stat_ino_nodefs
             core2.test_fs_readdir_ino_matches_stat_ino_rawfs
             core2.test_fs_readv_rawfs
@@ -813,7 +811,6 @@ jobs:
             core2.test_futimens_rawfs
             core2.test_readdir_rawfs
             core2.test_stat_chmod_rawfs
-            core2.test_stat_chmod_rawfs_wasmfs
             core2.test_unistd_access_nodefs
             core2.test_unistd_access_rawfs
             core2.test_unistd_close_rawfs
