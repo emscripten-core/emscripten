@@ -779,8 +779,7 @@ var EXCEPTION_STACK_TRACES = false;
 
 // If true, emit instructions for the legacy Wasm exception handling proposal:
 // https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/legacy/Exceptions.md
-// If false, emit instructions for the standardized exception handling proposal
-// with exnref:
+// If false, emit instructions for the standardized exception handling proposal:
 // https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/Exceptions.md
 // [link]
 var WASM_LEGACY_EXCEPTIONS = true;

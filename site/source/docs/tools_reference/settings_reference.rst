@@ -1160,8 +1160,10 @@ Default value: false
 WASM_LEGACY_EXCEPTIONS
 ======================
 
-Emit instructions for the legacy exception handling proposal. If false, emit
-instructions for the standardized exception proposal with exnref.
+If true, emit instructions for the legacy Wasm exception handling proposal:
+https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/legacy/Exceptions.md
+If false, emit instructions for the standardized exception handling proposal:
+https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/Exceptions.md
 
 Default value: true
 
