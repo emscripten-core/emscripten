@@ -66,6 +66,10 @@ See docs/process.md for more on how version tagging works.
   specified with `-L`) for `libfoo.js`. (#23338)
 - The `mallinfo` struct members are now defined as `size_t` which makes them
   compatible with larger memories, and is also how linux defines them. (#23368)
+- Emscripten now uses the debug version of malloc (i.e. assertions enabled)
+  when linking in debug mode (`-O0` and/or `-sASSERTIONS`).  This means that
+  things like double-free will be detected in these builds.  Previously this was
+  only true with `-sASSERTIONS=2`. (#23330)
 
 3.1.74 - 12/14/24
 -----------------
