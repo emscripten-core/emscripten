@@ -20,6 +20,14 @@ See docs/process.md for more on how version tagging works.
 
 4.0.0 (in development)
 ----------------------
+- `-sWASM_LEAGCY_EXCEPTIONS` option is added. If true, it will emit instructions
+  for the legacy Wasm exception handling proposal
+  (https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/legacy/Exceptions.md),
+  and if false, the new standardized exception handling proposal
+  (https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/Exceptions.md).
+  This option defaults to true, given that major web browsers do not support the
+  new proposal by default yet. This option replaces the existing
+  `-sWASM_EXNREF`, whose meaning was the opposite.
 - compiler-rt, libcxx, libcxxabi, and libunwind were updated to LLVM 19.1.6.
   (#22937, #22994, and #23294)
 - The default Safari version targeted by Emscripten has been raised from 14.1
