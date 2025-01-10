@@ -487,6 +487,24 @@ FS.staticInit();
       stream.stream_ops?.dup?.(stream);
       return stream;
     },
+    streamGetAttr(stream) {
+      var node = stream.node;
+      var res = stream.stream_ops?.getattr?.(stream) ?? node.node_ops?.getattr?.(node);
+      if (res) {
+        return res;
+      }
+      throw new FS.ErrnoError({{{ cDefs.EPERM }}});
+    },
+    streamSetAttr(stream, attr) {
+      var node = stream.node;
+      var set;
+      if (set = stream.stream_ops.setattr) {
+        return set(stream, attr);
+      } else if (set = node.node_ops.setattr) {
+        return set(node, attr);
+      }
+      throw new FS.ErrnoError({{{ cDefs.EPERM }}});
+    },
 
     //
     // devices
@@ -966,7 +984,8 @@ FS.staticInit();
       return getattr(node);
     },
     fstat(fd) {
-      return FS.stat(FS.getStreamChecked(fd).path);
+      var stream = FS.getStreamChecked(fd);
+      return FS.streamGetAttr(stream);
     },
     lstat(path) {
       return FS.stat(path, true);
@@ -991,7 +1010,10 @@ FS.staticInit();
     },
     fchmod(fd, mode) {
       var stream = FS.getStreamChecked(fd);
-      FS.chmod(stream.node, mode);
+      FS.streamSetAttr(stream, {
+        mode: (mode & {{{ cDefs.S_IALLUGO }}}) | (stream.node.mode & ~{{{ cDefs.S_IALLUGO }}}),
+        ctime: Date.now()
+      });
     },
     chown(path, uid, gid, dontFollow) {
       var node;
@@ -1013,7 +1035,22 @@ FS.staticInit();
     },
     fchown(fd, uid, gid) {
       var stream = FS.getStreamChecked(fd);
-      FS.chown(stream.node, uid, gid);
+      FS.streamSetAttr(stream, {
+        timestamp: Date.now()
+        // we ignore the uid / gid for now
+      });
+    },
+    truncateChecks(node) {
+      if (FS.isDir(node.mode)) {
+        throw new FS.ErrnoError({{{ cDefs.EISDIR }}});
+      }
+      if (!FS.isFile(node.mode)) {
+        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+      }
+      var errCode = FS.nodePermissions(node, 'w');
+      if (errCode) {
+        throw new FS.ErrnoError(errCode);
+      }
     },
     truncate(path, len) {
       if (len < 0) {
@@ -1026,16 +1063,7 @@ FS.staticInit();
       } else {
         node = path;
       }
-      if (FS.isDir(node.mode)) {
-        throw new FS.ErrnoError({{{ cDefs.EISDIR }}});
-      }
-      if (!FS.isFile(node.mode)) {
-        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
-      }
-      var errCode = FS.nodePermissions(node, 'w');
-      if (errCode) {
-        throw new FS.ErrnoError(errCode);
-      }
+      FS.truncateChecks(node);
       var setattr = FS.checkOpExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
       setattr(node, {
         size: len,
@@ -1044,10 +1072,14 @@ FS.staticInit();
     },
     ftruncate(fd, len) {
       var stream = FS.getStreamChecked(fd);
-      if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_RDONLY}}}) {
+      if (len < 0 || (stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_RDONLY}}}) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
-      FS.truncate(stream.node, len);
+      FS.truncateChecks(stream.node);
+      FS.streamSetAttr(stream, {
+        size: len,
+        timestamp: Date.now()
+      });
     },
     utime(path, atime, mtime) {
       var lookup = FS.lookupPath(path, { follow: true });
