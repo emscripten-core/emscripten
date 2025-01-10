@@ -23,8 +23,8 @@ See docs/process.md for more on how version tagging works.
 - Emscripten version was bumped to 4.0.0. Happy new year, happy new major
   version!  While version has a few interesting changes, there is nothing huge
   that makes it different from any other release. (#19053)
-- `-sWASM_LEAGCY_EXCEPTIONS` option is added. If true, it will emit instructions
-  for the legacy Wasm exception handling proposal
+- `-sWASM_LEAGCY_EXCEPTIONS` option is added. (#23365) If true, it will emit
+  instructions for the legacy Wasm exception handling proposal
   (https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/legacy/Exceptions.md),
   and if false, the new standardized exception handling proposal
   (https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/Exceptions.md).
