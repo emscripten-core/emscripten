@@ -5,8 +5,10 @@
  * found in the LICENSE file.
  */
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <assert.h>
+
 int main() {
   assert(1 == true);   // pass
   assert(1 == false);  // fail

@@ -1227,6 +1227,7 @@ struct mallinfo emmalloc_mallinfo() {
 }
 EMMALLOC_ALIAS(mallinfo, emmalloc_mallinfo);
 
+#if 0
 // Note! This function is not fully multithreading safe: while this function is running, other threads should not be
 // allowed to call sbrk()!
 static int trim_dynamic_heap_reservation(size_t pad) {
@@ -1280,12 +1281,19 @@ static int trim_dynamic_heap_reservation(size_t pad) {
   // All successful, and we actually trimmed memory!
   return 1;
 }
+#endif
 
 int emmalloc_trim(size_t pad) {
+  // Reducing the size of the sbrk region is currently broken.
+  // See https://github.com/emscripten-core/emscripten/issues/23343
+  // And https://github.com/emscripten-core/emscripten/pull/13442
+  return 0;
+  /*
   MALLOC_ACQUIRE();
   int success = trim_dynamic_heap_reservation(pad);
   MALLOC_RELEASE();
   return success;
+  */
 }
 EMMALLOC_ALIAS(malloc_trim, emmalloc_trim)
 

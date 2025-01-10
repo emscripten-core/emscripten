@@ -3527,6 +3527,13 @@ More info: https://emscripten.org
                      self.get_emcc_args())
     self.assertFileContents(test_file('other/embind_tsgen_memory64.d.ts'), read_file('embind_tsgen_memory64.d.ts'))
 
+  @requires_jspi
+  def test_embind_tsgen_jspi(self):
+    self.run_process([EMXX, test_file('other/embind_tsgen_jspi.cpp'),
+                      '-lembind', '--emit-tsd', 'embind_tsgen_jspi.d.ts', '-sJSPI'] +
+                     self.get_emcc_args())
+    self.assertFileContents(test_file('other/embind_tsgen_jspi.d.ts'), read_file('embind_tsgen_jspi.d.ts'))
+
   @parameterized({
     '': [0],
     'wasm_exnref': [1]
@@ -4472,7 +4479,10 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
     self.run_process([EMCC, 'a.c', '-MJ', 'hello.json', '-c', '-o', 'test.o'])
     self.assertContained('"file": "a.c", "output": "test.o"', read_file('hello.json'))
 
-  def test_js_lib_no_override(self):
+  def test_override_stub(self):
+    self.do_other_test('test_override_stub.c')
+
+  def test_jslib_no_override(self):
     create_file('duplicated_func.c', '''
       #include <stdio.h>
       extern int duplicatedFunc();
@@ -4500,10 +4510,7 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
     err = self.expect_fail([EMCC, 'duplicated_func.c'] + self.get_emcc_args())
     self.assertContained('duplicated_func_2.js: Symbol re-definition in JavaScript library: duplicatedFunc. Do not use noOverride if this is intended', err)
 
-  def test_override_stub(self):
-    self.do_other_test('test_override_stub.c')
-
-  def test_js_lib_missing_sig(self):
+  def test_jslib_missing_sig(self):
     create_file('some_func.c', '''
       #include <stdio.h>
       extern int someFunc();
@@ -4525,7 +4532,7 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
     err = self.expect_fail([EMCC, 'some_func.c'] + self.get_emcc_args())
     self.assertContained('some_func.js: __sig is missing for function: someFunc. Do not use checkSig if this is intended', err)
 
-  def test_js_lib_extra_args(self):
+  def test_jslib_extra_args(self):
     # Verify that extra arguments in addition to those listed in `__sig` are still present
     # in the generated JS library function.
     # See https://github.com/emscripten-core/emscripten/issues/21056
@@ -4547,7 +4554,7 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
     self.emcc_args += ['--js-library', 'some_func.js', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4Gb']
     self.do_runf('test.c', 'arg1:42\narg2:undefined\n')
 
-  def test_js_lib_quoted_key(self):
+  def test_jslib_quoted_key(self):
     create_file('lib.js', r'''
 addToLibrary({
   __internal_data:{
@@ -4563,7 +4570,7 @@ addToLibrary({
 
     self.do_run_in_out_file_test('hello_world.c', emcc_args=['--js-library', 'lib.js'])
 
-  def test_js_lib_proxying(self):
+  def test_jslib_proxying(self):
     # Regression test for a bug we had where jsifier would find and use
     # the inner function in a library function consisting of a single
     # line arrow function.
@@ -4589,7 +4596,7 @@ addToLibrary({
     ''')
     self.do_runf('src.c', 'main\ndone\n', emcc_args=['-sEXIT_RUNTIME', '-pthread', '-sPROXY_TO_PTHREAD', '--js-library', 'lib.js'])
 
-  def test_js_lib_method_syntax(self):
+  def test_jslib_method_syntax(self):
     create_file('lib.js', r'''
 addToLibrary({
   foo() {
@@ -4606,7 +4613,7 @@ addToLibrary({
     ''')
     self.do_runf('src.c', 'foo', emcc_args=['--js-library', 'lib.js'])
 
-  def test_js_lib_exported(self):
+  def test_jslib_exported(self):
     create_file('lib.js', r'''
 addToLibrary({
  jslibfunc: (x) => 2 * x
@@ -4626,7 +4633,7 @@ int main() {
     self.do_runf('src.c', 'c calling: 12\njs calling: 10.',
                  emcc_args=['--js-library', 'lib.js', '-sEXPORTED_FUNCTIONS=_main,_jslibfunc'])
 
-  def test_js_lib_using_asm_lib(self):
+  def test_jslib_using_asm_lib(self):
     create_file('lib.js', r'''
 addToLibrary({
   jslibfunc__deps: ['asmlibfunc'],
@@ -4649,7 +4656,7 @@ int main() {
 ''')
     self.do_runf('src.c', 'c calling: 14\n', emcc_args=['--js-library', 'lib.js'])
 
-  def test_js_lib_errors(self):
+  def test_jslib_errors(self):
     create_file('lib.js', '''\
 // This is a library file
 #endif // line 2
@@ -4665,7 +4672,7 @@ int main() {
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js'])
     self.assertContained('lib.js:3: #else without matching #if', err)
 
-  def test_js_internal_deps(self):
+  def test_jslib_internal_deps(self):
     create_file('lib.js', r'''
 addToLibrary({
   jslibfunc__deps: ['$callRuntimeCallbacks'],
@@ -4684,7 +4691,7 @@ int main() {
     err = self.run_process([EMCC, 'src.c', '--js-library', 'lib.js'], stderr=PIPE).stderr
     self.assertContained("warning: user library symbol 'jslibfunc' depends on internal symbol '$callRuntimeCallbacks'", err)
 
-  def test_js_lib_sig_redefinition(self):
+  def test_jslib_sig_redefinition(self):
     create_file('lib.js', r'''
 addToLibrary({
   jslibfunc__sig: 'ii',
@@ -4716,7 +4723,7 @@ addToLibrary({
     err = self.expect_fail([EMCC, 'src.c', '--js-library', 'lib.js', '--js-library', 'lib2.js'])
     self.assertContained('lib2.js: signature redefinition for: jslibfunc__sig. (old=ii vs new=pp)', err)
 
-  def test_js_lib_invalid_deps(self):
+  def test_jslib_invalid_deps(self):
     create_file('lib.js', r'''
 addToLibrary({
   jslibfunc__deps: 'hello',
@@ -4737,7 +4744,7 @@ addToLibrary({
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', 'lib2.js'])
     self.assertContained("lib2.js: __deps entries must be of type 'string' or 'function' not 'number': jslibfunc__deps", err)
 
-  def test_js_lib_invalid_decorator(self):
+  def test_jslib_invalid_decorator(self):
     create_file('lib.js', r'''
 addToLibrary({
   jslibfunc__async: 'hello',
@@ -4747,7 +4754,7 @@ addToLibrary({
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js'])
     self.assertContained("lib.js: Decorator (jslibfunc__async} has wrong type. Expected 'boolean' not 'string'", err)
 
-  def test_js_lib_i53abi(self):
+  def test_jslib_i53abi(self):
     create_file('lib.js', r'''
 mergeInto(LibraryManager.library, {
   jslibfunc__i53abi: true,
@@ -4767,7 +4774,7 @@ mergeInto(LibraryManager.library, {
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=jslibfunc', '--js-library', 'lib.js'])
     self.assertContained("error: JS library error: '__i53abi' only makes sense when '__sig' includes 'j' (int64): 'jslibfunc'", err)
 
-  def test_js_lib_legacy(self):
+  def test_jslib_legacy(self):
     create_file('lib.js', r'''
 mergeInto(LibraryManager.library, {
   jslibfunc: (x) => { return 42 },
@@ -4785,11 +4792,118 @@ int main() {
   # Tests that users can pass custom JS options from command line using
   # the -jsDfoo=val syntax:
   # See https://github.com/emscripten-core/emscripten/issues/10580.
-  def test_js_lib_custom_settings(self):
+  def test_jslib_custom_settings(self):
     self.emcc_args += ['--js-library', test_file('core/test_custom_js_settings.js'), '-jsDCUSTOM_JS_OPTION=1']
-    self.do_other_test('test_js_lib_custom_settings.c')
+    self.do_other_test('test_jslib_custom_settings.c')
 
     self.assertContained('cannot change built-in settings values with a -jsD directive', self.expect_fail([EMCC, '-jsDWASM=0']))
+
+  def test_jslib_native_deps(self):
+    # Verify that memset (which lives in compiled code), can be specified as a JS library
+    # dependency.
+    create_file('lib.js', r'''
+addToLibrary({
+  depper__deps: ['memset'],
+  depper: (ptr) => {
+    _memset(ptr, 'd'.charCodeAt(0), 10);
+  },
+});
+''')
+    create_file('test.c', r'''
+#include <stdio.h>
+
+void depper(char*);
+
+int main(int argc, char** argv) {
+  char buffer[11] = { 0 };
+  depper(buffer);
+  puts(buffer);
+}
+''')
+
+    self.do_runf('test.c', 'dddddddddd\n', emcc_args=['--js-library', 'lib.js'])
+
+  def test_jslib_native_deps_extra(self):
+    # Similar to above but the JS symbol is not used by the native code.
+    # Instead is it explicitly injected using `extraLibraryFuncs`.
+    create_file('lib.js', r'''
+addToLibrary({
+  jsfunc__deps: ['raise'],
+  jsfunc: (ptr) => {
+    _raise(1);
+  },
+});
+extraLibraryFuncs.push('jsfunc');
+''')
+    self.do_runf('hello_world.c', emcc_args=['--js-library', 'lib.js'])
+
+  def test_jslib_clobber_i(self):
+    # Regression check for an issue we have where a library clobbering the global `i` variable could
+    # prevent processing of further libraries.
+    create_file('lib1.js', 'for (var i = 0; i < 100; i++) {}')
+    create_file('lib2.js', '''
+      addToLibrary({
+        foo: () => {}
+      });
+      ''')
+    self.run_process([EMCC, test_file('hello_world.c'),
+                      '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=foo',
+                      '--js-library=lib1.js',
+                      '--js-library=lib2.js'])
+
+  def test_jslib_bad_config(self):
+    create_file('lib.js', '''
+      addToLibrary({
+       foo__sig: 'ii',
+      });
+      ''')
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library=lib.js'])
+    self.assertContained("lib.js: Missing library element 'foo' for library config 'foo__sig'", err)
+
+  def test_jslib_ifdef(self):
+    create_file('lib.js', '''
+      #ifdef ASSERTIONS
+      var foo;
+      #endif
+      ''')
+    proc = self.run_process([EMCC, test_file('hello_world.c'), '--js-library=lib.js'], stderr=PIPE)
+    self.assertContained('lib.js: use of #ifdef in js library.  Use #if instead.', proc.stderr)
+
+  def test_jslib_mangling(self):
+    create_file('lib.js', '''
+      addToLibrary({
+        $__foo: () => 43,
+      });
+      ''')
+    self.run_process([EMCC, test_file('hello_world.c'), '--js-library=lib.js', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$__foo'])
+
+  def test_jslib_exported_functions(self):
+    create_file('lib.js', '''
+      addToLibrary({
+        $Foo: () => 43,
+      });
+      ''')
+    self.run_process([EMCC, test_file('hello_world.c'), '--js-library=lib.js', '-sEXPORTED_FUNCTIONS=Foo,_main'])
+    self.assertContained("Module['Foo'] = ", read_file('a.out.js'))
+
+  def test_jslib_search_path(self):
+    create_file('libfoo.js', '''
+      addToLibrary({
+        foo: () => 42,
+      });
+      ''')
+    create_file('main.c', r'''
+      #include <stdio.h>
+      int foo();
+      int main() {
+        printf("%d\n", foo());
+        return 0;
+      }''')
+    self.do_runf('main.c', '42\n', emcc_args=['-L.', '-lfoo.js'])
+
+    # If the library path is not included with `-L` we expect the command to fail
+    err = self.expect_fail([EMCC, 'main.c', '-lfoo.js'])
+    self.assertContained('emcc: error: unable to find library -lfoo.js', err)
 
   def test_EMCC_BUILD_DIR(self):
     # EMCC_BUILD_DIR env var contains the dir we were building in, when running the js compiler (e.g. when
@@ -7861,45 +7975,6 @@ addToLibrary({
     err = self.expect_fail([EMCC, 'test.c'])
     self.assertContained('undefined symbol: my_js', err)
 
-  def test_js_lib_native_deps(self):
-    # Verify that memset (which lives in compiled code), can be specified as a JS library
-    # dependency.
-    create_file('lib.js', r'''
-addToLibrary({
-  depper__deps: ['memset'],
-  depper: (ptr) => {
-    _memset(ptr, 'd'.charCodeAt(0), 10);
-  },
-});
-''')
-    create_file('test.c', r'''
-#include <stdio.h>
-
-void depper(char*);
-
-int main(int argc, char** argv) {
-  char buffer[11] = { 0 };
-  depper(buffer);
-  puts(buffer);
-}
-''')
-
-    self.do_runf('test.c', 'dddddddddd\n', emcc_args=['--js-library', 'lib.js'])
-
-  def test_js_lib_native_deps_extra(self):
-    # Similar to above but the JS symbol is not used by the native code.
-    # Instead is it explicitly injected using `extraLibraryFuncs`.
-    create_file('lib.js', r'''
-addToLibrary({
-  jsfunc__deps: ['raise'],
-  jsfunc: (ptr) => {
-    _raise(1);
-  },
-});
-extraLibraryFuncs.push('jsfunc');
-''')
-    self.do_runf('hello_world.c', emcc_args=['--js-library', 'lib.js'])
-
   @crossplatform
   @also_with_wasmfs
   def test_realpath(self):
@@ -10448,6 +10523,7 @@ int main() {
     def compile(flags):
       self.run_process([EMCC, test_file('hello_world.c')] + flags)
 
+    # Default features, unlinked and linked
     compile(['-c'])
     verify_features_sec('bulk-memory', True)
     verify_features_sec('nontrapping-fptoint', True)
@@ -10456,17 +10532,28 @@ int main() {
     verify_features_sec('multivalue', True)
     verify_features_sec('reference-types', True)
 
+    compile([])
+    verify_features_sec_linked('sign-ext', True)
+    verify_features_sec_linked('mutable-globals', True)
+    verify_features_sec_linked('multivalue', True)
+    verify_features_sec_linked('bulk-memory-opt', True)
+    verify_features_sec_linked('nontrapping-fptoint', True)
+    verify_features_sec_linked('reference-types', True)
+
     # Disable a feature
     compile(['-mno-sign-ext', '-c'])
     verify_features_sec('sign-ext', False)
     # Disable via browser selection
     compile(['-sMIN_FIREFOX_VERSION=61'])
     verify_features_sec_linked('sign-ext', False)
+    compile(['-sMIN_SAFARI_VERSION=140100'])
+    verify_features_sec_linked('bulk-memory-opt', False)
+    verify_features_sec_linked('nontrapping-fptoint', False)
     # Flag disabling overrides default browser versions
     compile(['-mno-sign-ext'])
     verify_features_sec_linked('sign-ext', False)
     # Flag disabling overrides explicit browser version
-    compile(['-sMIN_SAFARI_VERSION=150000', '-mno-sign-ext'])
+    compile(['-sMIN_SAFARI_VERSION=160000', '-mno-sign-ext'])
     verify_features_sec_linked('sign-ext', False)
     # Flag enabling overrides explicit browser version
     compile(['-sMIN_FIREFOX_VERSION=61', '-msign-ext'])
@@ -10475,18 +10562,12 @@ int main() {
     compile(['-sMIN_SAFARI_VERSION=150000', '-mno-bulk-memory'])
     verify_features_sec_linked('bulk-memory-opt', False)
 
-    # TODO(https://github.com/emscripten-core/emscripten/issues/23184) set this back to 14.1
-    # Also the section below can be deleted/updated once the default is 15.1
-    compile(['-sMIN_SAFARI_VERSION=140000'])
+    # Bigint ovrride does not cause other features to enable
+    compile(['-sMIN_SAFARI_VERSION=140100', '-sWASM_BIGINT=1'])
     verify_features_sec_linked('bulk-memory-opt', False)
-    verify_features_sec_linked('nontrapping-fptoint', False)
 
-    compile(['-sMIN_SAFARI_VERSION=150000'])
-    verify_features_sec_linked('sign-ext', True)
-    verify_features_sec_linked('mutable-globals', True)
-    verify_features_sec_linked('multivalue', True)
-    verify_features_sec_linked('bulk-memory-opt', True)
-    verify_features_sec_linked('nontrapping-fptoint', True)
+    compile(['-sMIN_SAFARI_VERSION=140100', '-mbulk-memory'])
+    verify_features_sec_linked('nontrapping-fptoint', False)
 
   def test_js_preprocess(self):
     # Use stderr rather than stdout here because stdout is redirected to the output JS file itself.
@@ -10751,6 +10832,8 @@ _d
     self.set_setting('ASYNCIFY')
     self.set_setting('ASYNCIFY_ADVISE')
     self.set_setting('ASYNCIFY_IMPORTS', ['async_func'])
+    # Also check that ASYNCIFY_STACK_SIZE can be specified using a memory size suffix
+    self.set_setting('ASYNCIFY_STACK_SIZE', ['64kb'])
 
     out = self.run_process([EMCC, src, '-o', 'asyncify_advise.js'] + self.get_emcc_args(), stdout=PIPE).stdout
     self.assertContained('[asyncify] main can', out)
@@ -10770,7 +10853,7 @@ _d
     self.assertContained('[asyncify] i can', out)
 
   def test_asyncify_stack_overflow(self):
-    self.emcc_args = ['-sASYNCIFY', '-sASYNCIFY_STACK_SIZE=4']
+    self.emcc_args = ['-sASYNCIFY', '-sASYNCIFY_STACK_SIZE=4', '-sASYNCIFY_DEBUG=2']
 
     # The unreachable error on small stack sizes is not super-helpful. Try at
     # least to hint at increasing the stack size.
@@ -12365,8 +12448,7 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     # plain -O0
     legalization_message = 'to disable int64 legalization (which requires changes after link) use -sWASM_BIGINT'
     fail(['-sWASM_BIGINT=0'], legalization_message)
-    # TODO(https://github.com/emscripten-core/emscripten/issues/23184): change this back to 140100 after 15 is default
-    fail(['-sMIN_SAFARI_VERSION=140000'], legalization_message)
+    fail(['-sMIN_SAFARI_VERSION=140100'], legalization_message)
     # optimized builds even without legalization
     optimization_message = '-O2+ optimizations always require changes, build with -O0 or -O1 instead'
     fail(['-O2'], optimization_message)
@@ -12806,55 +12888,6 @@ exec "$@"
     ''')
     output = self.run_js('runner.mjs')
     self.assertContained('hello, world!', output)
-
-  def test_jslib_clobber_i(self):
-    # Regression check for an issue we have where a library clobbering the global `i` variable could
-    # prevent processing of further libraries.
-    create_file('lib1.js', 'for (var i = 0; i < 100; i++) {}')
-    create_file('lib2.js', '''
-      addToLibrary({
-        foo: () => {}
-      });
-      ''')
-    self.run_process([EMCC, test_file('hello_world.c'),
-                      '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=foo',
-                      '--js-library=lib1.js',
-                      '--js-library=lib2.js'])
-
-  def test_jslib_bad_config(self):
-    create_file('lib.js', '''
-      addToLibrary({
-       foo__sig: 'ii',
-      });
-      ''')
-    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library=lib.js'])
-    self.assertContained("lib.js: Missing library element 'foo' for library config 'foo__sig'", err)
-
-  def test_jslib_ifdef(self):
-    create_file('lib.js', '''
-      #ifdef ASSERTIONS
-      var foo;
-      #endif
-      ''')
-    proc = self.run_process([EMCC, test_file('hello_world.c'), '--js-library=lib.js'], stderr=PIPE)
-    self.assertContained('lib.js: use of #ifdef in js library.  Use #if instead.', proc.stderr)
-
-  def test_jslib_mangling(self):
-    create_file('lib.js', '''
-      addToLibrary({
-        $__foo: () => 43,
-      });
-      ''')
-    self.run_process([EMCC, test_file('hello_world.c'), '--js-library=lib.js', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$__foo'])
-
-  def test_jslib_exported_functions(self):
-    create_file('lib.js', '''
-      addToLibrary({
-        $Foo: () => 43,
-      });
-      ''')
-    self.run_process([EMCC, test_file('hello_world.c'), '--js-library=lib.js', '-sEXPORTED_FUNCTIONS=Foo,_main'])
-    self.assertContained("Module['Foo'] = ", read_file('a.out.js'))
 
   def test_wasm2js_no_dylink(self):
     for arg in ('-sMAIN_MODULE', '-sSIDE_MODULE', '-sRELOCATABLE'):
@@ -14411,7 +14444,8 @@ int main() {
 
   @crossplatform
   def test_reproduce(self):
-    self.run_process([EMCC, '-sASSERTIONS=1', '--reproduce=foo.tar', test_file('hello_world.c')])
+    ensure_dir('tmp')
+    self.run_process([EMCC, '-sASSERTIONS=1', '--reproduce=foo.tar', '-otmp/out.js', test_file('hello_world.c')])
     self.assertExists('foo.tar')
     names = []
     root = os.path.splitdrive(path_from_root())[1][1:]
@@ -14431,6 +14465,8 @@ foo/version.txt
     self.assertTextDataIdentical(expected, names)
     expected = '''\
 -sASSERTIONS=1
+-o
+out.js
 <root>/test/hello_world.c
 '''
     response = read_file('foo/response.txt')
@@ -14440,8 +14476,7 @@ foo/version.txt
 
   def test_min_browser_version(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-sWASM_BIGINT', '-sMIN_SAFARI_VERSION=120000'])
-    # TODO(https://github.com/emscripten-core/emscripten/issues/23184): fix back to 15000 once Safari 15 is default
-    self.assertContained('emcc: error: MIN_SAFARI_VERSION=120000 is not compatible with WASM_BIGINT (140100 or above required)', err)
+    self.assertContained('emcc: error: MIN_SAFARI_VERSION=120000 is not compatible with WASM_BIGINT (150000 or above required)', err)
 
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-pthread', '-sMIN_CHROME_VERSION=73'])
     self.assertContained('emcc: error: MIN_CHROME_VERSION=73 is not compatible with pthreads (74 or above required)', err)
@@ -15213,6 +15248,11 @@ addToLibrary({
   def test_wasm64_no_asan(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMEMORY64', '-fsanitize=address'])
     self.assertContained('error: MEMORY64 does not yet work with ASAN', err)
+
+  def test_mimalloc_no_asan(self):
+    # See https://github.com/emscripten-core/emscripten/issues/23288#issuecomment-2571648258
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMALLOC=mimalloc', '-fsanitize=address'])
+    self.assertContained('error: mimalloc is not compatible with -fsanitize=address', err)
 
   @crossplatform
   def test_js_preprocess_pre_post(self):

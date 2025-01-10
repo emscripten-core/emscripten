@@ -46,7 +46,7 @@ min_browser_versions = {
   Feature.NON_TRAPPING_FPTOINT: {
     'chrome': 75,
     'firefox': 65,
-    'safari': 140100, # TODO: Reset back to 150000 when the default changes
+    'safari': 150000,
     'node': 130000,
   },
   Feature.SIGN_EXT: {
@@ -58,7 +58,7 @@ min_browser_versions = {
   Feature.BULK_MEMORY: {
     'chrome': 75,
     'firefox': 79,
-    'safari': 140100, # TODO: Reset this to 150000 when we update the default.
+    'safari': 150000,
     'node': 130000,
   },
   Feature.MUTABLE_GLOBALS: {
@@ -70,7 +70,7 @@ min_browser_versions = {
   Feature.JS_BIGINT_INTEGRATION: {
     'chrome': 67,
     'firefox': 68,
-    'safari': 140100, # TODO(https://github.com/emscripten-core/emscripten/issues/23184): set this back to 15 after we update the default targets.
+    'safari': 150000,
     'node': 130000,
   },
   Feature.THREADS: {

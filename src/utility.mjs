@@ -7,7 +7,6 @@
 // General JS utilities - things that might be useful in any JS project.
 // Nothing specific to Emscripten appears here.
 
-import * as url from 'node:url';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import * as vm from 'node:vm';
@@ -201,11 +200,6 @@ export function mergeInto(obj, other, options = null) {
   return Object.assign(obj, other);
 }
 
-export function isNumber(x) {
-  // XXX this does not handle 0xabc123 etc. We should likely also do x == parseInt(x) (which handles that), and remove hack |// handle 0x... as well|
-  return x == parseFloat(x) || (typeof x == 'string' && x.match(/^-?\d+$/)) || x == 'NaN';
-}
-
 // Symbols that start with '$' are not exported to the wasm module.
 // They are intended to be called exclusively by JS code.
 export function isJsOnlySymbol(symbol) {
@@ -231,20 +225,14 @@ export function isDecorator(ident) {
   return suffixes.some((suffix) => ident.endsWith(suffix));
 }
 
-export function isPowerOfTwo(x) {
-  return x > 0 && (x & (x - 1)) == 0;
-}
-
 export function read(filename) {
   const absolute = find(filename);
-  return fs.readFileSync(absolute).toString();
+  return fs.readFileSync(absolute, 'utf8');
 }
 
-export function find(filename) {
-  const dirname = url.fileURLToPath(new URL('.', import.meta.url));
-  const prefixes = [process.cwd(), path.join(dirname, '..', 'src')];
-  for (let i = 0; i < prefixes.length; ++i) {
-    const combined = path.join(prefixes[i], filename);
+function find(filename) {
+  for (const prefix of [process.cwd(), import.meta.dirname]) {
+    const combined = path.join(prefix, filename);
     if (fs.existsSync(combined)) {
       return combined;
     }

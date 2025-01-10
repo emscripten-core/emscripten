@@ -123,7 +123,7 @@ addToLibrary({
 #endif
           ret[x] = (...args) => {
 #if ASYNCIFY_DEBUG >= 2
-            dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length} try ${x}`);
+            dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length)} try ${x}`);
 #endif
 #if ASYNCIFY == 1
             Asyncify.exportCallStack.push(x);
@@ -254,7 +254,7 @@ addToLibrary({
     setDataRewindFunc(ptr) {
       var bottomOfCallStack = Asyncify.exportCallStack[0];
 #if ASYNCIFY_DEBUG >= 2
-      dbg('ASYNCIFY: setDataRewindFunc('+ptr+'), bottomOfCallStack is', bottomOfCallStack, new Error().stack);
+      dbg(`ASYNCIFY: setDataRewindFunc(${ptr}), bottomOfCallStack is`, bottomOfCallStack, new Error().stack);
 #endif
       var rewindId = Asyncify.getCallStackId(bottomOfCallStack);
       {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'rewindId', 'i32') }}};

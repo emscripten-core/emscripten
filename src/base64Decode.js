@@ -39,7 +39,7 @@ function base64Decode(b64) {
 #if ENVIRONMENT_MAY_BE_NODE
   if (typeof ENVIRONMENT_IS_NODE != 'undefined' && ENVIRONMENT_IS_NODE) {
     var buf = Buffer.from(b64, 'base64');
-    return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+    return new Uint8Array(buf.buffer, buf.byteOffset, buf.length);
   }
 #endif
 
@@ -58,3 +58,15 @@ function base64Decode(b64) {
 }
 
 #endif // ~WASM2JS
+
+#if !MINIMAL_RUNTIME
+// If filename is a base64 data URI, parses and returns data (Buffer on node,
+// Uint8Array otherwise). If filename is not a base64 data URI, returns undefined.
+function tryParseAsDataURI(filename) {
+  if (!isDataURI(filename)) {
+    return;
+  }
+
+  return base64Decode(filename.slice(dataURIPrefix.length));
+}
+#endif
