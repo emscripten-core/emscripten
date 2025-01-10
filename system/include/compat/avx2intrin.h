@@ -1131,24 +1131,22 @@ _mm256_inserti128_si256(__m256i __a, __m128i __b, const int imm8) {
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_maskload_epi32(int32_t const* __p, __m128i __m) {
-  // This may cause an out-of-bounds memory load since we first load and
-  // then mask, but since there are no segmentation faults in Wasm memory
-  // accesses, that is ok (as long as we are within the heap bounds -
-  // a negligible limitation in practice)
-  // TODO, loadu or load, 128-bit align?
-  return _mm_and_si128(_mm_load_si128((const __m128i*)__p),
-                       _mm_srai_epi32(__m, 31));
+  int32_t lane[4];
+  for (size_t i = 0; i < 4; i++) {
+    uint32_t mask = ((__i32x4)__m)[i];
+    lane[i] = ((mask >> 31) & 0x1) ? __p[i] : 0;
+  }
+  return (__m128i)wasm_i32x4_make(lane[0], lane[1], lane[2], lane[3]);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_maskload_epi64(int64_t const* __p, __m128i __m) {
-  // This may cause an out-of-bounds memory load since we first load and
-  // then mask, but since there are no segmentation faults in Wasm memory
-  // accesses, that is ok (as long as we are within the heap bounds -
-  // a negligible limitation in practice)
-  // TODO, loadu or load, 128-bit align?
-  return _mm_and_si128(_mm_load_si128((const __m128i*)__p),
-                       wasm_i64x2_shr(__m, 63));
+  int64_t lane[2];
+  for (size_t i = 0; i < 2; i++) {
+    uint64_t mask = ((__i64x2)__m)[i];
+    lane[i] = ((mask >> 63) & 0x1) ? __p[i] : 0;
+  }
+  return (__m128i)wasm_i64x2_make(lane[0], lane[1]);
 }
 
 static __inline__ __m256i __attribute__((__always_inline__, __nodebug__))

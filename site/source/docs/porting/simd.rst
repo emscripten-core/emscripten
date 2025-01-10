@@ -1177,9 +1177,9 @@ The following table highlights the availability and expected performance of diff
    * - _mm256_permute4x64_epi64
      - 💡 emulated with two general shuffle
    * - _mm_maskload_epi32
-     - ⚠️ emulated with SIMD load+shift+and
+     - ❌ scalarized
    * - _mm_maskload_epi64
-     - ⚠️ emulated with SIMD load+shift+and
+     - ❌ scalarized
    * - _mm_maskstore_epi32
      - ❌ scalarized
    * - _mm_maskstore_epi64
