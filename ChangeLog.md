@@ -64,6 +64,8 @@ See docs/process.md for more on how version tagging works.
 - JavaScript libraries can now be specified via `-lfoo.js`.  This works like the
   existing `--js-library` flag but will search the library path (all paths
   specified with `-L`) for `libfoo.js`. (#23338)
+- The `mallinfo` struct members are now defined as `size_t` which makes them
+  compatible with larger memories, and is also how linux defines them. (#23368)
 
 3.1.74 - 12/14/24
 -----------------
