@@ -10833,6 +10833,8 @@ _d
     self.set_setting('ASYNCIFY')
     self.set_setting('ASYNCIFY_ADVISE')
     self.set_setting('ASYNCIFY_IMPORTS', ['async_func'])
+    # Also check that ASYNCIFY_STACK_SIZE can be specified using a memory size suffix
+    self.set_setting('ASYNCIFY_STACK_SIZE', ['64kb'])
 
     out = self.run_process([EMCC, src, '-o', 'asyncify_advise.js'] + self.get_emcc_args(), stdout=PIPE).stdout
     self.assertContained('[asyncify] main can', out)

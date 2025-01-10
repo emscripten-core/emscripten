@@ -28,6 +28,9 @@ See docs/process.md for more on how version tagging works.
   This option defaults to true, given that major web browsers do not support the
   new proposal by default yet. This option replaces the existing
   `-sWASM_EXNREF`, whose meaning was the opposite.
+- Emscripten version was bumped to 4.0.0. Happy new year, happy new major
+  version!  While version has a few interesting changes, there is nothing huge
+  that makes it different from any other release. (#19053)
 - compiler-rt, libcxx, libcxxabi, and libunwind were updated to LLVM 19.1.6.
   (#22937, #22994, and #23294)
 - The default Safari version targeted by Emscripten has been raised from 14.1
@@ -69,6 +72,8 @@ See docs/process.md for more on how version tagging works.
 - JavaScript libraries can now be specified via `-lfoo.js`.  This works like the
   existing `--js-library` flag but will search the library path (all paths
   specified with `-L`) for `libfoo.js`. (#23338)
+- The `mallinfo` struct members are now defined as `size_t` which makes them
+  compatible with larger memories, and is also how linux defines them. (#23368)
 
 3.1.74 - 12/14/24
 -----------------
