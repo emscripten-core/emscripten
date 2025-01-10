@@ -172,7 +172,8 @@ FS.staticInit();
     // paths
     //
     lookupPath(path, opts = {}) {
-      if (!path) return { path: '', node: null };
+      if (!path)
+        throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
       opts.follow_mount ??= true
 
       if (!PATH.isAbs(path)) {
@@ -948,9 +949,6 @@ FS.staticInit();
     stat(path, dontFollow) {
       var lookup = FS.lookupPath(path, { follow: !dontFollow });
       var node = lookup.node;
-      if (!node) {
-        throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
-      }
       if (!node.node_ops.getattr) {
         throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       }

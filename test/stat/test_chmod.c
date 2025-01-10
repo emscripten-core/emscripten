@@ -159,6 +159,13 @@ void test() {
   assert(s.st_mode == (S_IRUSR | S_IFREG));
 #endif // WASMFS
 
+  assert(stat("", &s) == -1);
+  assert(errno == ENOENT);
+  assert(chmod("", 0777) == -1);
+  assert(errno == ENOENT);
+  assert(chown("", 1000, 1000) == -1);
+  assert(errno == ENOENT);
+
   puts("success");
 }
 

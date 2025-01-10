@@ -140,6 +140,11 @@ void test() {
 
   close(fd);
 
+  // TODO:
+  // printf("check utime on empty path...\n");
+  // assert(utime("", &tb) == -1);
+  // assert(errno == ENOENT); 
+
   puts("success");
 }
 
