@@ -952,6 +952,9 @@ FS.staticInit();
     stat(path, dontFollow) {
       var lookup = FS.lookupPath(path, { follow: !dontFollow });
       var node = lookup.node;
+      if (!node) {
+        throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
+      }
       var getattr = FS.checkOpExists(node.node_ops.getattr, {{{ cDefs.EPERM }}});
       return getattr(node);
     },
