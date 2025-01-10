@@ -957,7 +957,7 @@ FS.staticInit();
       return node.node_ops.getattr(node);
     },
     fstat(fd) {
-      return FS.stat(FS.getStreamChecked(fd).node);
+      return FS.stat(FS.getStreamChecked(fd).path);
     },
     lstat(path) {
       return FS.stat(path, true);
