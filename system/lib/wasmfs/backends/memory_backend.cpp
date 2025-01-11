@@ -47,6 +47,7 @@ std::shared_ptr<File> MemoryDirectory::getChild(const std::string& name) {
   if (auto entry = findEntry(name); entry != entries.end()) {
     return entry->child;
   }
+
   return nullptr;
 }
 

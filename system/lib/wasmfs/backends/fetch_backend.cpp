@@ -10,6 +10,8 @@
 #include "backend.h"
 #include "proxied_async_js_impl_backend.h"
 #include "wasmfs.h"
+#include <emscripten/fetch.h>
+#include <regex>
 
 namespace wasmfs {
 
@@ -21,42 +23,143 @@ public:
             mode_t mode,
             backend_t backend,
             emscripten::ProxyWorker& proxy)
-    : ProxiedAsyncJSImplFile(mode, backend, proxy), filePath(path) {}
+    : ProxiedAsyncJSImplFile(mode, backend, proxy),  filePath(path) {}
 
   const std::string& getPath() const { return filePath; }
+
+  void fetchInit() {
+    proxy([&](auto ctx) {
+      _wasmfs_jsimpl_async_fetch_init(
+        ctx.ctx, getBackendIndex(), getFileIndex());
+    });
+  }
 };
 
+
 class FetchDirectory : public MemoryDirectory {
+
   std::string dirPath;
   emscripten::ProxyWorker& proxy;
+
+  const char* fileKindToString(FileKind kind) {
+    switch (kind) {
+      case DataFileKind: return "file";
+      case DirectoryKind: return "directory";
+      case SymlinkKind: return "symlink";
+      default: return "unknown";
+    }
+  }
+
+  void createDirectoryStructure() {
+    if (fetched) return;
+    // Prepare fetch request attributes
+    emscripten_fetch_attr_t fetchAttributes;
+    emscripten_fetch_attr_init(&fetchAttributes);
+
+    fetchAttributes.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY | EMSCRIPTEN_FETCH_SYNCHRONOUS;
+    fetchAttributes.timeoutMSecs = 10;
+    strcpy(fetchAttributes.requestMethod, "GET");
+
+
+    emscripten_fetch_t* fetchData = emscripten_fetch(&fetchAttributes, dirPath.c_str());
+
+    if (!fetchData)
+      return;;
+
+    if (fetchData->status == 404) {
+        return;
+    }
+
+    std::string responseText(fetchData->data, fetchData->numBytes);
+    std::regex linkRegex(R"(<a\s+href="([^"]+)\">([^<]+)</a>)");
+    std::smatch match;
+
+    std::string::const_iterator searchStart(responseText.cbegin());
+    while (std::regex_search(searchStart, responseText.cend(), match, linkRegex)) {
+        std::string href = match[1];
+        std::string linkName = match[2];
+        FileKind kind = href.back() == '/' ? DirectoryKind : DataFileKind;
+
+        if (!linkName.empty() && linkName.back() == '/') {
+            linkName.erase(linkName.size() - 1);
+        }
+
+        searchStart = match.suffix().first;
+
+        mode_t regularMode = S_IFREG | S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+        if (kind == DataFileKind)
+          insertDataFile(linkName,  regularMode);
+        else
+          insertDirectory(linkName, mode | S_IFDIR);
+    }
+    fetched = true;
+    emscripten_fetch_close(fetchData);
+  }
+
+  bool fetched = false;
+
+
+
 
 public:
   FetchDirectory(const std::string& path,
                  mode_t mode,
                  backend_t backend,
                  emscripten::ProxyWorker& proxy)
-    : MemoryDirectory(mode, backend), dirPath(path), proxy(proxy) {}
+    : MemoryDirectory(mode, backend), dirPath(path), proxy(proxy) {
+
+    createDirectoryStructure();
+
+
+  }
+
+  FetchDirectory(const std::string& path,
+                 mode_t mode,
+                 backend_t backend,
+                 emscripten::ProxyWorker& proxy, bool willNotfetch)
+    : MemoryDirectory(mode, backend), dirPath(path), proxy(proxy) {
+  }
 
   std::shared_ptr<DataFile> insertDataFile(const std::string& name,
                                            mode_t mode) override {
     auto childPath = getChildPath(name);
     auto child =
       std::make_shared<FetchFile>(childPath, mode, getBackend(), proxy);
+
     insertChild(name, child);
+    child->fetchInit();
     return child;
   }
+
 
   std::shared_ptr<Directory> insertDirectory(const std::string& name,
                                              mode_t mode) override {
     auto childPath = getChildPath(name);
     auto childDir =
-      std::make_shared<FetchDirectory>(childPath, mode, getBackend(), proxy);
+      std::make_shared<FetchDirectory>(childPath, mode, getBackend(), proxy, true);
     insertChild(name, childDir);
     return childDir;
   }
 
   std::string getChildPath(const std::string& name) const {
     return dirPath + '/' + name;
+  }
+
+
+  std::shared_ptr<File> getChild(const std::string& name) override {
+    auto child = MemoryDirectory::getChild(name);
+    if (!child)
+      return nullptr;
+
+    if (child->kind == DirectoryKind){
+      auto dir = std::static_pointer_cast<FetchDirectory>(child);
+      dir->createDirectoryStructure();
+      return dir;
+    }
+
+    //This hack calls await in the js fetch implementation
+    child->locked().getSize();
+    return child;
   }
 };
 

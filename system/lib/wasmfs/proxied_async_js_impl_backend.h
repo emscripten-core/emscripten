@@ -67,11 +67,17 @@ void _wasmfs_jsimpl_async_get_size(em_proxying_ctx* ctx,
                                    js_index_t backend,
                                    js_index_t index,
                                    off_t* result);
+
+void _wasmfs_jsimpl_async_fetch_init(em_proxying_ctx* ctx,
+                                    js_index_t backend,
+                                    js_index_t index);
+
 }
 
 namespace wasmfs {
 
 class ProxiedAsyncJSImplFile : public DataFile {
+  public:
   emscripten::ProxyWorker& proxy;
 
   js_index_t getBackendIndex() {
@@ -84,6 +90,7 @@ class ProxiedAsyncJSImplFile : public DataFile {
     return js_index_t(this);
   }
 
+  protected:
   // TODO: Notify the JS about open and close events?
   int open(oflags_t) override { return 0; }
   int close() override { return 0; }
@@ -116,6 +123,7 @@ class ProxiedAsyncJSImplFile : public DataFile {
     });
     return result;
   }
+
 
   int setSize(off_t size) override {
     WASMFS_UNREACHABLE("TODO: ProxiedAsyncJSImplFile setSize");

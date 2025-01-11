@@ -79,6 +79,9 @@ addToLibrary({
         }
         return jsFileOps.read(file, buffer, length, offset);
       },
+      fetchInit: async (file) =>{
+        getFile(file);
+      },
       getSize: async (file) => {
         try {
           await getFile(file);

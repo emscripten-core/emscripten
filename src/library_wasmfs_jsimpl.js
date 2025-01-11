@@ -107,4 +107,14 @@ addToLibrary({
     {{{ makeSetValue('size_p', 0, 'size', 'i64') }}};
     _emscripten_proxy_finish(ctx);
   },
+
+_wasmfs_jsimpl_async_fetch_init__deps: ['emscripten_proxy_finish'],
+  _wasmfs_jsimpl_async_fetch_init: async function(ctx, backend, file) {
+#if ASSERTIONS
+    assert(wasmFS$backends[backend]);
+#endif
+    wasmFS$backends[backend].fetchInit(file);
+    _emscripten_proxy_finish(ctx);
+  },
+
 });

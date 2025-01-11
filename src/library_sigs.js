@@ -397,6 +397,7 @@ sigs = {
   _wasmfs_get_preloaded_path_name__sig: 'vip',
   _wasmfs_jsimpl_alloc_file__sig: 'vpp',
   _wasmfs_jsimpl_async_alloc_file__sig: 'vppp',
+  _wasmfs_jsimpl_async_fetch_init__sig: 'vppp',
   _wasmfs_jsimpl_async_free_file__sig: 'vppp',
   _wasmfs_jsimpl_async_get_size__sig: 'vpppp',
   _wasmfs_jsimpl_async_read__sig: 'vpppppjp',
