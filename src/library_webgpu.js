@@ -2216,11 +2216,7 @@ var LibraryWebGPU = {
     if (dynamicOffsetCount == 0) {
       pass.setBindGroup(groupIndex, group);
     } else {
-      var offsets = [];
-      for (var i = 0; i < dynamicOffsetCount; i++, dynamicOffsetsPtr += 4) {
-        offsets.push({{{ gpu.makeGetU32('dynamicOffsetsPtr', 0) }}});
-      }
-      pass.setBindGroup(groupIndex, group, offsets);
+      pass.setBindGroup(groupIndex, group, HEAPU32, {{{ getHeapOffset('dynamicOffsetsPtr', 'u32') }}}, dynamicOffsetCount);
     }
   },
   wgpuComputePassEncoderSetLabel: (passId, labelPtr) => {
@@ -2280,11 +2276,7 @@ var LibraryWebGPU = {
     if (dynamicOffsetCount == 0) {
       pass.setBindGroup(groupIndex, group);
     } else {
-      var offsets = [];
-      for (var i = 0; i < dynamicOffsetCount; i++, dynamicOffsetsPtr += 4) {
-        offsets.push({{{ gpu.makeGetU32('dynamicOffsetsPtr', 0) }}});
-      }
-      pass.setBindGroup(groupIndex, group, offsets);
+      pass.setBindGroup(groupIndex, group, HEAPU32, {{{ getHeapOffset('dynamicOffsetsPtr', 'u32') }}}, dynamicOffsetCount);
     }
   },
   wgpuRenderPassEncoderSetBlendConstant: (passId, colorPtr) => {
@@ -2405,11 +2397,7 @@ var LibraryWebGPU = {
     if (dynamicOffsetCount == 0) {
       pass.setBindGroup(groupIndex, group);
     } else {
-      var offsets = [];
-      for (var i = 0; i < dynamicOffsetCount; i++, dynamicOffsetsPtr += 4) {
-        offsets.push({{{ gpu.makeGetU32('dynamicOffsetsPtr', 0) }}});
-      }
-      pass.setBindGroup(groupIndex, group, offsets);
+      pass.setBindGroup(groupIndex, group, HEAPU32, {{{ getHeapOffset('dynamicOffsetsPtr', 'u32') }}}, dynamicOffsetCount);
     }
   },
   wgpuRenderBundleEncoderSetIndexBuffer: (bundleId, bufferId, format, offset, size) => {
