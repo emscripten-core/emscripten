@@ -39,6 +39,13 @@ class Foo {
   void process(const Test& input) {}
 };
 
+struct Override {
+  Override clone() const {
+    Override o;
+    return o;
+  }
+};
+
 Test class_returning_fn() { return Test(); }
 
 std::unique_ptr<Test> class_unique_ptr_returning_fn() {
@@ -251,6 +258,11 @@ EMSCRIPTEN_BINDINGS(Test) {
     .function("invoke", &Interface::invoke, pure_virtual())
     .allow_subclass<InterfaceWrapper>("InterfaceWrapper")
     ;
+
+  // Override ClassHandle's clone method.
+  class_<Override>("Override")
+    .constructor().
+    function("clone", &Override::clone);
 }
 
 int Test::static_property = 42;

@@ -421,7 +421,7 @@ var LibraryEmbind = {
           '  delete(): void;\n',
           '  deleteLater(): this;\n',
           '  isDeleted(): boolean;\n',
-          '  clone(): this;\n',
+          '  clone(): ThisType<this>;\n',
           '}\n',
         );
       }
