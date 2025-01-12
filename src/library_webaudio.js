@@ -23,7 +23,7 @@ let LibraryWebAudio = {
 #endif
     EmAudio[++EmAudioCounter] = object;
 #if WEBAUDIO_DEBUG
-    console.log(`Registered new WebAudio object ${object} with ID ${EmAudioCounter}`);
+    dbg(`Registered new WebAudio object ${object} with ID ${EmAudioCounter}`);
 #endif
     return EmAudioCounter;
   },
@@ -66,7 +66,7 @@ let LibraryWebAudio = {
     } : void 0;
 
 #if WEBAUDIO_DEBUG
-    console.log(`Creating new WebAudio context with parameters:`);
+    dbg(`Creating new WebAudio context with parameters:`);
     console.dir(opts);
 #endif
 
@@ -76,12 +76,12 @@ let LibraryWebAudio = {
   emscripten_resume_audio_context_async: (contextHandle, callback, userData) => {
     function cb(state) {
 #if WEBAUDIO_DEBUG
-      console.log(`emscripten_resume_audio_context_async() callback: New audio state="${EmAudio[contextHandle].state}", ID=${state}`);
+      dbg(`emscripten_resume_audio_context_async() callback: New audio state="${EmAudio[contextHandle].state}", ID=${state}`);
 #endif
       {{{ makeDynCall('viii', 'callback') }}}(contextHandle, state, userData);
     }
 #if WEBAUDIO_DEBUG
-    console.log(`emscripten_resume_audio_context_async() resuming...`);
+    dbg(`emscripten_resume_audio_context_async() resuming...`);
 #endif
     EmAudio[contextHandle].resume().then(() => { cb(1/*running*/) }).catch(() => { cb(0/*suspended*/) });
   },
@@ -92,7 +92,7 @@ let LibraryWebAudio = {
     assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_resume_audio_context_sync() on a context handle ${contextHandle} that is not an AudioContext, but of type ${typeof EmAudio[contextHandle]}`);
 #endif
 #if WEBAUDIO_DEBUG
-    console.log(`AudioContext.resume() on WebAudio context with ID ${contextHandle}`);
+    dbg(`AudioContext.resume() on WebAudio context with ID ${contextHandle}`);
 #endif
     EmAudio[contextHandle].resume();
   },
@@ -111,7 +111,7 @@ let LibraryWebAudio = {
     assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_destroy_audio_context() on a context handle ${contextHandle} that is not an AudioContext, but of type ${typeof EmAudio[contextHandle]}`);
 #endif
 #if WEBAUDIO_DEBUG
-    console.log(`Destroyed WebAudio context with ID ${contextHandle}`);
+    dbg(`Destroyed WebAudio context with ID ${contextHandle}`);
 #endif
     EmAudio[contextHandle].suspend();
     delete EmAudio[contextHandle];
@@ -123,7 +123,7 @@ let LibraryWebAudio = {
     assert(EmAudio[objectHandle].disconnect, `Called emscripten_destroy_web_audio_node() on a handle ${objectHandle} that is not an Web Audio Node, but of type ${typeof EmAudio[objectHandle]}`);
 #endif
 #if WEBAUDIO_DEBUG
-    console.log(`Destroyed Web Audio Node with ID ${objectHandle}`);
+    dbg(`Destroyed Web Audio Node with ID ${objectHandle}`);
 #endif
     // Explicitly disconnect the node from Web Audio graph before letting it GC,
     // to work around browser bugs such as https://bugs.webkit.org/show_bug.cgi?id=222098#c23
@@ -159,12 +159,15 @@ let LibraryWebAudio = {
 #endif
 
 #if WEBAUDIO_DEBUG
-    console.log(`emscripten_start_wasm_audio_worklet_thread_async() adding audioworklet.js...`);
+    dbg(`emscripten_start_wasm_audio_worklet_thread_async() adding Audio Worklet bootstrap script {{{ TARGET_BASENAME }}}.aw.js...`);
 #endif
 
-    let audioWorkletCreationFailed = () => {
 #if WEBAUDIO_DEBUG
+    let audioWorkletCreationFailed = e => {
       console.error(`emscripten_start_wasm_audio_worklet_thread_async() addModule() failed!`);
+      console.error(e);
+#else
+    let audioWorkletCreationFailed = () => {
 #endif
       {{{ makeDynCall('viip', 'callback') }}}(contextHandle, 0/*EM_FALSE*/, userData);
     };
@@ -177,15 +180,17 @@ let LibraryWebAudio = {
       } else {
         console.error(`AudioWorklets are not supported by current browser.`);
       }
-#endif
+      return audioWorkletCreationFailed('Not supported');
+#else
       return audioWorkletCreationFailed();
+#endif
     }
 
     // TODO: In MINIMAL_RUNTIME builds, read this file off of a preloaded Blob,
     // and/or embed from a string like with WASM_WORKERS==2 mode.
     audioWorklet.addModule('{{{ TARGET_BASENAME }}}.aw.js').then(() => {
 #if WEBAUDIO_DEBUG
-      console.log(`emscripten_start_wasm_audio_worklet_thread_async() addModule('audioworklet.js') completed`);
+      dbg(`emscripten_start_wasm_audio_worklet_thread_async() addModule('{{{ TARGET_BASENAME }}}.aw.js') completed`);
 #endif
       audioWorklet.bootstrapMessage = new AudioWorkletNode(audioContext, 'message', {
         processorOptions: {
@@ -220,7 +225,7 @@ let LibraryWebAudio = {
       );
     }).then(() => {
 #if WEBAUDIO_DEBUG
-      console.log(`emscripten_start_wasm_audio_worklet_thread_async() addModule() of main application JS completed`);
+      dbg(`emscripten_start_wasm_audio_worklet_thread_async() addModule() of main application JS completed`);
 #endif
       {{{ makeDynCall('viii', 'callback') }}}(contextHandle, 1/*EM_TRUE*/, userData);
     }).catch(audioWorkletCreationFailed);
@@ -258,7 +263,7 @@ let LibraryWebAudio = {
     }
 
 #if WEBAUDIO_DEBUG
-    console.log(`emscripten_create_wasm_audio_worklet_processor_async() creating a new AudioWorklet processor with name ${UTF8ToString(HEAPU32[options])}`);
+    dbg(`emscripten_create_wasm_audio_worklet_processor_async() creating a new AudioWorklet processor with name ${UTF8ToString(HEAPU32[options])}`);
 #endif
 
     EmAudio[contextHandle].audioWorklet.bootstrapMessage.port.postMessage({
@@ -301,7 +306,7 @@ let LibraryWebAudio = {
     } : void 0;
 
 #if WEBAUDIO_DEBUG
-    console.log(`Creating AudioWorkletNode "${UTF8ToString(name)}" on context=${contextHandle} with options:`);
+    dbg(`Creating AudioWorkletNode "${UTF8ToString(name)}" on context=${contextHandle} with options:`);
     console.dir(opts);
 #endif
     return emscriptenRegisterAudioObject(new AudioWorkletNode(EmAudio[contextHandle], UTF8ToString(name), opts));
