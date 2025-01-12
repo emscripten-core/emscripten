@@ -1155,16 +1155,17 @@ This option implies EXPORT_EXCEPTION_HANDLING_HELPERS.
 
 Default value: false
 
-.. _wasm_exnref:
+.. _wasm_legacy_exceptions:
 
-WASM_EXNREF
-===========
+WASM_LEGACY_EXCEPTIONS
+======================
 
-Emit instructions for the new Wasm exception handling proposal with exnref,
-which was adopted on Oct 2023. The implementation of the new proposal is
-still in progress and this feature is currently experimental.
+If true, emit instructions for the legacy Wasm exception handling proposal:
+https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/legacy/Exceptions.md
+If false, emit instructions for the standardized exception handling proposal:
+https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/Exceptions.md
 
-Default value: false
+Default value: true
 
 .. _nodejs_catch_exit:
 
