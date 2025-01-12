@@ -7,10 +7,10 @@
 // emscripten_audio_worklet_post_function_*() API.
 
 // This event will fire on the main thread.
-void MessageReceivedOnMainThread(int d, int e, int f) {
-  printf("MessageReceivedOnMainThread: d=%d, e=%d, f=%d\n", d, e, f);
+void MessageReceivedOnMainThread(int d, double e, int f) {
+  printf("MessageReceivedOnMainThread: d=%d, e=%f, f=%d\n", d, e, f);
   assert(!emscripten_current_thread_is_audio_worklet());
-  assert(d == 1 && e == 2 && f == 3);
+  assert(d == 1 && e == 2.0f && f == 3);
 #ifdef REPORT_RESULT
   REPORT_RESULT(1); // test succeeded, were able to post a message from main thread to audio thread and back!
 #endif
@@ -21,7 +21,7 @@ void MessageReceivedInAudioWorkletThread(int a, int b) {
   printf("MessageReceivedInAudioWorkletThread: a=%d, b=%d\n", a, b);
   assert(emscripten_current_thread_is_audio_worklet());
   assert(a == 42 && b == 9000);
-  emscripten_audio_worklet_post_function_viii(EMSCRIPTEN_AUDIO_MAIN_THREAD, MessageReceivedOnMainThread, /*d=*/1, /*e=*/2, /*f=*/3);
+  emscripten_audio_worklet_post_function_sig(EMSCRIPTEN_AUDIO_MAIN_THREAD, (void *)MessageReceivedOnMainThread, "idi", /*d=*/1, /*e=*/2.0f, /*f=*/3);
 }
 
 // This callback will fire when the audio worklet thread has been initialized.

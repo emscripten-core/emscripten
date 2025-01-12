@@ -378,7 +378,7 @@ let LibraryWebAudio = {
     emscripten_audio_worklet_post_function_3(audioContext, funcPtr, arg0, arg1, arg2);
   },
 
-  emscripten_audio_worklet_post_function_sig__deps: ['$readAsmConstArgs'],
+  emscripten_audio_worklet_post_function_sig__deps: ['$readEmAsmArgs'],
   emscripten_audio_worklet_post_function_sig: (audioContext, funcPtr, sigPtr, varargs) => {
 #if ASSERTIONS
     assert(audioContext >= 0);
@@ -387,7 +387,7 @@ let LibraryWebAudio = {
     assert(UTF8ToString(sigPtr)[0] != 'v', 'Do NOT specify the return argument in the signature string for a call to emscripten_audio_worklet_post_function_sig(), just pass the function arguments.');
     assert(varargs);
 #endif
-    (audioContext ? EmAudio[audioContext].audioWorklet.bootstrapMessage.port : globalThis['messagePort']).postMessage({'_wsc': funcPtr, 'x': readAsmConstArgs(sigPtr, varargs) });
+    (audioContext ? EmAudio[audioContext].audioWorklet.bootstrapMessage.port : globalThis['messagePort']).postMessage({'_wsc': funcPtr, 'x': readEmAsmArgs(sigPtr, varargs) });
   }
 };
 
