@@ -262,7 +262,7 @@ def filter_link_flags(flags, using_lld):
     if using_lld:
       for flag, takes_arg in UNSUPPORTED_LLD_FLAGS.items():
         # lld allows various flags to have either a single -foo or double --foo
-        if f.startswith(flag) or f.startswith('-' + flag):
+        if f.startswith((flag, '-' + flag)):
           diagnostics.warning('linkflags', 'ignoring unsupported linker flag: `%s`', f)
           # Skip the next argument if this linker flag takes and argument and that
           # argument was not specified as a separately (i.e. it was specified as
@@ -275,7 +275,7 @@ def filter_link_flags(flags, using_lld):
         return True, False
       # Silently ignore -l/-L flags when not using lld.  If using lld allow
       # them to pass through the linker
-      if f.startswith('-l') or f.startswith('-L'):
+      if f.startswith(('-l', '-L')):
         return False, False
       diagnostics.warning('linkflags', 'ignoring unsupported linker flag: `%s`', f)
       return False, False

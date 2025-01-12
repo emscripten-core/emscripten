@@ -285,7 +285,7 @@ window.close = () => {
     """
     reference = find_browser_test_file(reference)
     assert 'expected' not in kwargs
-    expected = [str(i) for i in range(0, reference_slack + 1)]
+    expected = [str(i) for i in range(reference_slack + 1)]
     self.make_reftest(reference)
     if '--proxy-to-worker' in self.emcc_args:
       assert 'post_build' not in kwargs
