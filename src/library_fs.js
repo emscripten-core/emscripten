@@ -172,8 +172,9 @@ FS.staticInit();
     // paths
     //
     lookupPath(path, opts = {}) {
-      if (!path)
+      if (!path) {
         throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
+      }
       opts.follow_mount ??= true
 
       if (!PATH.isAbs(path)) {
