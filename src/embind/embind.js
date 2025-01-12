@@ -567,7 +567,7 @@ var LibraryEmbind = {
             for (var i = 0; i < length; ++i) {
               var charCode = value.charCodeAt(i);
               if (charCode > 255) {
-                _free(ptr);
+                _free(base);
                 throwBindingError('String has UTF-16 code units that do not fit in 8 bits');
               }
               HEAPU8[ptr + i] = charCode;

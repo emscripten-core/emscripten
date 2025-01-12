@@ -1766,7 +1766,7 @@ class libmalloc(MTLibrary):
   def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
       malloc=settings.MALLOC,
-      is_debug=settings.ASSERTIONS >= 2,
+      is_debug=settings.ASSERTIONS,
       is_tracing=settings.EMSCRIPTEN_TRACING,
       memvalidate='memvalidate' in settings.MALLOC,
       verbose='verbose' in settings.MALLOC,
