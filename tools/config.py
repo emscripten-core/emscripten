@@ -77,6 +77,7 @@ def normalize_config_settings():
   CLOSURE_COMPILER = listify(CLOSURE_COMPILER)
   if not CACHE:
     CACHE = path_from_root('cache')
+  CACHE = os.path.normpath(os.path.abspath(CACHE))
   if not PORTS:
     PORTS = os.path.join(CACHE, 'ports')
 
@@ -274,7 +275,7 @@ def init():
   if '\n' in EM_CONFIG:
     exit_with_error('inline EM_CONFIG data no longer supported.  Please use a config file.')
 
-  EM_CONFIG = os.path.expanduser(EM_CONFIG)
+  EM_CONFIG = os.path.normpath(os.path.abspath(os.path.expanduser(EM_CONFIG)))
 
   # This command line flag needs to work even in the absence of a config
   # file, so we must process it here at script import time (otherwise
@@ -288,12 +289,16 @@ def init():
   else:
     logger.debug('config file not found; using default config')
 
+  read_config()
+
   # Emscripten compiler spawns other processes, which can reimport shared.py, so
   # make sure that those child processes get the same configuration file by
   # setting it to the currently active environment.
   os.environ['EM_CONFIG'] = EM_CONFIG
 
-  read_config()
+  # Do the same for EM_CACHE if that was specified in the environment
+  if 'EM_CACHE' in os.environ:
+    os.environ['EM_CACHE'] = CACHE
 
 
 init()

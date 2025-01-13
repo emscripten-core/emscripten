@@ -15386,6 +15386,13 @@ addToLibrary({
     self.do_runf('main.cpp', 'Hello from rust!', emcc_args=[lib])
 
   @crossplatform
+  def test_relative_cache(self):
+    if config.FROZEN_CACHE:
+      self.skipTest("test doesn't work with frozen cache")
+    with env_modify({'EM_CACHE': 'mycache'}):
+      self.run_process([EMCC, '-sSTRICT', test_file('hello_world.c')])
+
+  @crossplatform
   def test_create_cache_directory(self):
     if config.FROZEN_CACHE:
       self.skipTest("test doesn't work with frozen cache")
