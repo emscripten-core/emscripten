@@ -6,7 +6,7 @@ orbs:
 executors:
   linux-node:
     docker:
-      - image: cimg/node:18.20.3
+      - image: cimg/node:20.15.1
   linux-python:
     docker:
       - image: cimg/python:3.10.7

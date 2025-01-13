@@ -27,7 +27,6 @@ from common import read_file, also_with_minimal_runtime, EMRUN, no_wasm64, no_2g
 from common import requires_wasm2js, also_with_wasm2js, parameterize, find_browser_test_file
 from tools import shared
 from tools import ports
-from tools import utils
 from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE, DEBUG
 from tools.utils import delete_dir
 
@@ -5461,7 +5460,7 @@ Module["preRun"] = () => {
     else:
       shutil.copytree(test_file('webpack'), 'webpack')
       outfile = 'src/hello.js'
-    with utils.chdir('webpack'):
+    with common.chdir('webpack'):
       self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web,worker', '-o', outfile])
       self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool'])
     shutil.copy('webpack/src/hello.wasm', 'webpack/dist/')
