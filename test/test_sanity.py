@@ -13,6 +13,7 @@ import tempfile
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 
+import common
 from common import RunnerCore, path_from_root, env_modify, test_file
 from common import create_file, ensure_dir, make_executable, with_env_modify
 from common import crossplatform, parameterized, EMBUILDER
@@ -515,7 +516,7 @@ fi
 
     temp_dir = tempfile.mkdtemp(prefix='emscripten_temp_')
 
-    with utils.chdir(temp_dir):
+    with common.chdir(temp_dir):
       self.run_process([EMCC, '--em-config', custom_config_filename] + MINIMAL_HELLO_WORLD + ['-O2'])
       result = self.run_js('a.out.js')
 
