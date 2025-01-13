@@ -24,6 +24,9 @@ truncate(readonly, 2): -1
 errno: Permission denied
 st_size: 6
 
+truncate(empty_path, 2): -1
+errno: No such file or directory
+
 ftruncate(readonly, 4): -1
 errno: Invalid argument
 st_size: 6

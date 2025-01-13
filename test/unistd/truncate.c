@@ -86,6 +86,10 @@ int main() {
   errno = 0;
   printf("\n");
 
+  printf("truncate(empty_path, 2): %d\n", truncate("", 2));
+  printf("errno: %s\n", strerror(errno));
+  printf("\n");
+
   printf("ftruncate(readonly, 4): %d\n", ftruncate(f2, 4));
   printf("errno: %s\n", strerror(errno));
   fstat(f2, &s);

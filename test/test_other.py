@@ -13743,6 +13743,8 @@ void foo() {}
 
   @also_with_wasmfs
   def test_unistd_fstatfs(self):
+    if not self.get_setting('WASMFS'):
+      self.skipTest("fstatfs is broken in js fs, will be fixed in PR #23381")
     self.do_run_in_out_file_test('unistd/fstatfs.c')
 
   @no_windows("test is Linux-specific")
