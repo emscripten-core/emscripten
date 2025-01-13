@@ -939,7 +939,7 @@ f.close()
       cmakelistsdir = test_file('cmake', test_dir)
       builddir = 'out_' + generator.replace(' ', '_').lower()
       os.mkdir(builddir)
-      with utils.chdir(builddir):
+      with common.chdir(builddir):
         # Run Cmake
         cmd = [EMCMAKE, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir]
 
@@ -3119,7 +3119,7 @@ More info: https://emscripten.org
     # this test copies the site_scons directory alongside the test
     shutil.copytree(test_file('scons/simple'), 'test')
     shutil.copytree(path_from_root('tools/scons/site_scons'), Path('test/site_scons'))
-    with utils.chdir('test'):
+    with common.chdir('test'):
       self.run_process(['scons'])
       output = self.run_js('scons_integration.js', assert_returncode=5)
     self.assertContained('If you see this - the world is all right!', output)
@@ -3146,7 +3146,7 @@ More info: https://emscripten.org
       }
     })
 
-    with utils.chdir('test'):
+    with common.chdir('test'):
       self.run_process(['scons', '--expected-env', expected_to_propagate])
 
   @requires_scons
@@ -3165,13 +3165,13 @@ More info: https://emscripten.org
       }
     })
 
-    with utils.chdir('test'):
+    with common.chdir('test'):
       self.run_process(['scons', '--expected-env', expected_to_propagate])
 
   @requires_scons
   def test_emscons(self):
     shutil.copytree(test_file('scons/simple'), 'test')
-    with utils.chdir('test'):
+    with common.chdir('test'):
       self.run_process([path_from_root('emscons'), 'scons'])
       output = self.run_js('scons_integration.js', assert_returncode=5)
     self.assertContained('If you see this - the world is all right!', output)
@@ -3192,7 +3192,7 @@ More info: https://emscripten.org
       }
     })
 
-    with utils.chdir('test'):
+    with common.chdir('test'):
       self.run_process([path_from_root('emscons'), 'scons', '--expected-env', expected_to_propagate])
 
   def test_embind_fail(self):

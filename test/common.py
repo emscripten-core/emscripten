@@ -735,6 +735,17 @@ def create_file(name, contents, binary=False, absolute=False):
     name.write_text(contents, encoding='utf-8')
 
 
+@contextlib.contextmanager
+def chdir(dir):
+  """A context manager that performs actions in the given directory."""
+  orig_cwd = os.getcwd()
+  os.chdir(dir)
+  try:
+    yield
+  finally:
+    os.chdir(orig_cwd)
+
+
 def make_executable(name):
   Path(name).chmod(stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
 
