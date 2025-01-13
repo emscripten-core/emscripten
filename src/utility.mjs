@@ -313,6 +313,13 @@ export function loadSettingsFile(f) {
   var settings = {};
   vm.runInNewContext(read(f), settings, {filename: find(f)});
   applySettings(settings);
+  return settings;
+}
+
+export function loadDefaultSettings() {
+  const rtn = loadSettingsFile('settings.js');
+  Object.assign(rtn, loadSettingsFile('settings_internal.js'));
+  return rtn;
 }
 
 export function runInMacroContext(code, options) {
