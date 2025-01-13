@@ -696,6 +696,9 @@ FS.staticInit();
       return FS.statfsNode(FS.lookupPath(path, {follow: true}).node);
     },
     statfsStream(stream) {
+      // We keep a separate statfsStream function because noderawfs overrides
+      // it. In noderawfs, stream.node is sometimes null. Instead, we need to
+      // look at stream.path.
       return FS.statfsNode(stream.node);
     },
     statfsNode(node) {
