@@ -107,9 +107,10 @@ var LibraryPThread = {
 #if !MINIMAL_RUNTIME
       // MINIMAL_RUNTIME takes care of calling loadWasmModuleToAllWorkers
       // in postamble_minimal.js
-      addOnPreRun(() => {
+      addOnPreRun(async () => {
         addRunDependency('loading-workers')
-        PThread.loadWasmModuleToAllWorkers(() => removeRunDependency('loading-workers'));
+        await PThread.loadWasmModuleToAllWorkers();
+        removeRunDependency('loading-workers');
       });
 #endif
 #if MAIN_MODULE
@@ -362,9 +363,9 @@ var LibraryPThread = {
       });
     }),
 
-    loadWasmModuleToAllWorkers(onMaybeReady) {
+    async loadWasmModuleToAllWorkers() {
 #if !PTHREAD_POOL_SIZE
-      onMaybeReady();
+      return;
 #else
       // Instantiation is synchronous in pthreads.
       if (
@@ -373,7 +374,7 @@ var LibraryPThread = {
         || ENVIRONMENT_IS_WASM_WORKER
 #endif
       ) {
-        return onMaybeReady();
+        return;
       }
 
       let pthreadPoolReady = Promise.all(PThread.unusedWorkers.map(PThread.loadWasmModuleToWorker));
@@ -383,9 +384,9 @@ var LibraryPThread = {
       // If the user wants to wait on it elsewhere, they can do so via the
       // Module['pthreadPoolReady'] promise.
       Module['pthreadPoolReady'] = pthreadPoolReady;
-      onMaybeReady();
+      return;
 #else
-      pthreadPoolReady.then(onMaybeReady);
+      await pthreadPoolReady;
 #endif // PTHREAD_POOL_DELAY_LOAD
 #endif // PTHREAD_POOL_SIZE
     },
