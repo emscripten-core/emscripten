@@ -36,7 +36,7 @@ from common import env_modify, no_mac, no_windows, only_windows, requires_native
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64, requires_node_canary
 from common import requires_wasm_eh, crossplatform, with_all_eh_sjlj, with_all_sjlj
-from common import also_with_standalone_wasm, also_with_wasm2js, also_with_noderawfs, also_with_wasmfs
+from common import also_with_standalone_wasm, also_with_wasm2js, also_with_noderawfs, also_with_wasmfs, with_all_fs
 from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64, flaky
 from common import EMTEST_BUILD_VERBOSE, PYTHON, WEBIDL_BINDER
 from common import requires_network, parameterize
@@ -13741,10 +13741,11 @@ void foo() {}
   def test_unistd_sleep(self):
     self.do_run_in_out_file_test('unistd/sleep.c')
 
-  @also_with_wasmfs
+  @crossplatform
+  @with_all_fs
   def test_unistd_fstatfs(self):
-    if not self.get_setting('WASMFS'):
-      self.skipTest("fstatfs is broken in js fs, will be fixed in PR #23381")
+    if '-DNODERAWFS' in self.emcc_args and WINDOWS:
+      self.skipTest('Cannot look up /dev/stdout on windows')
     self.do_run_in_out_file_test('unistd/fstatfs.c')
 
   @no_windows("test is Linux-specific")
