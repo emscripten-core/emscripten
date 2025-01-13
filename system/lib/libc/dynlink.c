@@ -586,35 +586,13 @@ void* dlopen(const char* file, int flags) {
 
 void emscripten_dlopen(const char* filename, int flags, void* user_data,
                        em_dlopen_callback onsuccess, em_arg_callback_func onerror) {
-  dbg("emscripten_dlopen: %s", filename);
-  if (!filename) {
-    onsuccess(user_data, head->dso);
-    return;
-  }
-  do_write_lock();
+  
+
   char buf[2*NAME_MAX+2];
   filename = resolve_path(buf, filename, sizeof buf);
-  struct dso* p = find_existing(filename);
-  if (p) {
-    onsuccess(user_data, p);
-    return;
-  }
-  p = load_library_start(filename, flags);
-  if (!p) {
-    do_write_unlock();
-    onerror(user_data);
-    return;
-  }
+  em_promise_t promise = emscripten_dlopen_promise(filename,flags,user_data);
+  promiseToCallback(promise, onsuccess, onerror, user_data);
 
-  // For async mode
-  struct async_data* d = malloc(sizeof(struct async_data));
-  d->user_data = user_data;
-  d->onsuccess = onsuccess;
-  d->onerror = onerror;
-
-  dbg("calling emscripten_dlopen_js %p", p);
-  // Unlock happens in dlopen_onsuccess/dlopen_onerror
-  _emscripten_dlopen_js(p, dlopen_onsuccess, dlopen_onerror, d);
 }
 
 static void promise_onsuccess(void* user_data, void* handle) {
@@ -635,17 +613,31 @@ static void promise_onerror(void* user_data) {
 // based API (emscripten_dlopen).
 // TODO(sbc): Consider inverting this and perhaps deprecating/removing
 // the old API.
-em_promise_t emscripten_dlopen_promise(const char* filename, int flags) {
-  // Create a promise that is resolved (and destroyed) once the operation
-  // succeeds.
-  em_promise_t p = emscripten_promise_create();
-  emscripten_dlopen(filename, flags, p, promise_onsuccess, promise_onerror);
+em_promise_t emscripten_dlopen_promise(const char* filename, int flags,void* user_data) {
+  
+    if (!filename) {
+        return emscripten_promise_resolve(EM_PROMISE_FULFILL, RTLD_DEFAULT);
+    }
 
-  // Create a second promise bound the first one to return the caller.  It's
-  // then up to the caller to destroy this promise.
-  em_promise_t ret = emscripten_promise_create();
-  emscripten_promise_resolve(ret, EM_PROMISE_MATCH, p);
-  return ret;
+    struct dso* p = find_existing(filename);
+    
+    if (p) {
+        return emscripten_promise_resolve(EM_PROMISE_FULFILL, p);
+    }
+
+    em_promise_t promise = emscripten_promise_create();
+    
+    p = load_library_start(filename, flags);
+    
+    if (!p) {
+        emscripten_promise_reject(promise, NULL);
+    } else {
+        struct async_data* d = malloc(sizeof(struct async_data));
+        d->user_data = user_data;
+        _emscripten_dlopen_js(p, dlopen_onsuccess, dlopen_onerror,d);
+    }
+
+    return promise;
 }
 
 void* __dlsym(void* restrict p, const char* restrict s, void* restrict ra) {
