@@ -38,6 +38,7 @@ from .utils import removeprefix, exit_with_error
 from .shared import in_temp, safe_copy, do_replace, OFormat
 from .shared import DEBUG, WINDOWS, DYNAMICLIB_ENDINGS, STATICLIB_ENDINGS
 from .shared import unsuffixed, unsuffixed_basename, get_file_suffix
+from .shared import get_emscripten_temp_dir
 from .settings import settings, default_setting, user_settings, JS_ONLY_SETTINGS, DEPRECATED_SETTINGS
 from .minimal_runtime_shell import generate_minimal_runtime_html
 
@@ -1933,7 +1934,9 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms, base_
   settings.TARGET_JS_NAME = os.path.basename(state.js_target)
 
   if settings.WASM_BINDGEN:
-    phase_wasm_bindgen(in_wasm, in_wasm)
+    phase_wasm_bindgen(in_wasm)
+    settings.PRE_JS_FILES += [os.path.abspath(get_emscripten_temp_dir() + '/wbg_out/wbg_pre.js')]
+    settings.JS_LIBRARIES += [os.path.abspath(get_emscripten_temp_dir() + '/wbg_out/library_wbg.js')]
 
   metadata = phase_emscript(in_wasm, wasm_target, js_syms, base_metadata)
 
@@ -1953,7 +1956,7 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms, base_
     phase_final_emitting(options, state, target, wasm_target)
 
 
-def phase_wasm_bindgen(in_wasm, wasm_target):
+def phase_wasm_bindgen(in_wasm, wasm_target=None):
   building.run_wasm_bindgen(in_wasm, wasm_target)
 
 

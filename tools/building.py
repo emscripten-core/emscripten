@@ -1236,19 +1236,20 @@ def run_wasm_bindgen(infile, outfile=None, args=[], **kwargs):  # noqa
   if not os.path.exists(infile):
     exit_with_error('wasm-bindgen: wasm file not found (%s).' % infile)
 
-  cmd = [
-    '/usr/local/google/home/mitchfoley/repos/wasm-bindgen/target/debug/wasm-bindgen',
+  cmd = config.WASM_BINDGEN + [
     infile,
     '--target',
-    'web',
+    'emscripten',
     '--keep-lld-exports',
     '--out-dir',
-    # os.path.dirname(outfile) + '/wbg_out'
-    './wbg_out'
+    get_emscripten_temp_dir() + '/wbg_out'
   ]
   ret = check_call(cmd).stdout
-  #check_call(['cp', os.path.dirname(outfile) + '/wbg_out/*_bg.wasm', infile])
-  check_call(['cp', './wbg_out/a.wasm', outfile])
+  new_wasm_file = get_emscripten_temp_dir() + '/wbg_out/' + os.path.basename(infile).split('.')[0] + '.wasm'
+  if outfile == None:
+    outfile = infile
+  check_call(['cp', new_wasm_file, infile])
+
   return ret
 
 
