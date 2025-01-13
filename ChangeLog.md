@@ -78,6 +78,9 @@ See docs/process.md for more on how version tagging works.
   when linking in debug mode (`-O0` and/or `-sASSERTIONS`).  This means that
   things like double-free will be detected in these builds.  Previously this was
   only true with `-sASSERTIONS=2`. (#23330)
+- The code geneated in `--proxy-to-worker` no longer contains support for
+  reading the `?noProxy` URL parameter (this was not documented or tested).
+  (#23297)
 
 3.1.74 - 12/14/24
 -----------------

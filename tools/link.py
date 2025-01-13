@@ -2571,30 +2571,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
 
   if settings.PROXY_TO_WORKER:
     proxy_worker_filename = (settings.PROXY_TO_WORKER_FILENAME or target_basename) + '.js'
-    worker_js = worker_js_script(proxy_worker_filename)
-    script.inline = ('''
-  var filename = '%s';
-  if ((',' + window.location.search.substr(1) + ',').indexOf(',noProxy,') < 0) {
-    console.log('running code in a web worker');
-''' % get_subresource_location_js(proxy_worker_filename)) + worker_js + '''
-  } else {
-    console.log('running code on the main thread');
-    var fileBytes = tryParseAsDataURI(filename);
-    var script = document.createElement('script');
-    if (fileBytes) {
-      script.innerHTML = intArrayToString(fileBytes);
-    } else {
-      script.src = filename;
-    }
-    document.body.appendChild(script);
-  }
-'''
-    # add required helper functions such as tryParseAsDataURI
-    for filename in ('arrayUtils.js', 'base64Decode.js', 'URIUtils.js'):
-      content = shared.read_and_preprocess(utils.path_from_root('src', filename))
-      script.inline = content + script.inline
-
-    script.inline = 'var ASSERTIONS = %s;\n%s' % (settings.ASSERTIONS, script.inline)
+    script.inline = worker_js_script(proxy_worker_filename)
   else:
     # Normal code generation path
     script.src = base_js_target
