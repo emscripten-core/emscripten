@@ -17,7 +17,7 @@ int main() {
     assert(errno == ENOTDIR);
   }
   {
-    assert(open("./does-not-exist/", O_CREAT) == -1);
+    assert(open("./does-not-exist/", O_CREAT, 0777) == -1);
     assert(errno == EISDIR);
   }
   printf("success\n");

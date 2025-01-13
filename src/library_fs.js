@@ -172,7 +172,9 @@ FS.staticInit();
     // paths
     //
     lookupPath(path, opts = {}) {
-      if (!path) return { path: '', node: null };
+      if (!path) {
+        throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
+      }
       opts.follow_mount ??= true
 
       if (!PATH.isAbs(path)) {
@@ -432,6 +434,12 @@ FS.staticInit();
         }
       }
       return FS.nodePermissions(node, FS.flagsToPermissionString(flags));
+    },
+    checkOpExists(op, err) {
+      if (!op) {
+        throw new FS.ErrnoError(err);
+      }
+      return op;
     },
 
     //
@@ -895,10 +903,8 @@ FS.staticInit();
     readdir(path) {
       var lookup = FS.lookupPath(path, { follow: true });
       var node = lookup.node;
-      if (!node.node_ops.readdir) {
-        throw new FS.ErrnoError({{{ cDefs.ENOTDIR }}});
-      }
-      return node.node_ops.readdir(node);
+      var readdir = FS.checkOpExists(node.node_ops.readdir, {{{ cDefs.ENOTDIR }}});
+      return readdir(node);
     },
     unlink(path) {
       var lookup = FS.lookupPath(path, { parent: true });
@@ -948,13 +954,8 @@ FS.staticInit();
     stat(path, dontFollow) {
       var lookup = FS.lookupPath(path, { follow: !dontFollow });
       var node = lookup.node;
-      if (!node) {
-        throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
-      }
-      if (!node.node_ops.getattr) {
-        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
-      }
-      return node.node_ops.getattr(node);
+      var getattr = FS.checkOpExists(node.node_ops.getattr, {{{ cDefs.EPERM }}});
+      return getattr(node);
     },
     lstat(path) {
       return FS.stat(path, true);
@@ -967,12 +968,11 @@ FS.staticInit();
       } else {
         node = path;
       }
-      if (!node.node_ops.setattr) {
-        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
-      }
-      node.node_ops.setattr(node, {
+      var setattr = FS.checkOpExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
+      setattr(node, {
         mode: (mode & {{{ cDefs.S_IALLUGO }}}) | (node.mode & ~{{{ cDefs.S_IALLUGO }}}),
-        ctime: Date.now()
+        ctime: Date.now(),
+        dontFollow
       });
     },
     lchmod(path, mode) {
@@ -990,11 +990,10 @@ FS.staticInit();
       } else {
         node = path;
       }
-      if (!node.node_ops.setattr) {
-        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
-      }
-      node.node_ops.setattr(node, {
-        timestamp: Date.now()
+      var setattr = FS.checkOpExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
+      setattr(node, {
+        timestamp: Date.now(),
+        dontFollow
         // we ignore the uid / gid for now
       });
     },
@@ -1016,9 +1015,6 @@ FS.staticInit();
       } else {
         node = path;
       }
-      if (!node.node_ops.setattr) {
-        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
-      }
       if (FS.isDir(node.mode)) {
         throw new FS.ErrnoError({{{ cDefs.EISDIR }}});
       }
@@ -1029,7 +1025,8 @@ FS.staticInit();
       if (errCode) {
         throw new FS.ErrnoError(errCode);
       }
-      node.node_ops.setattr(node, {
+      var setattr = FS.checkOpExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
+      setattr(node, {
         size: len,
         timestamp: Date.now()
       });
@@ -1044,7 +1041,8 @@ FS.staticInit();
     utime(path, atime, mtime) {
       var lookup = FS.lookupPath(path, { follow: true });
       var node = lookup.node;
-      node.node_ops.setattr(node, {
+      var setattr = FS.checkOpExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
+      setattr(node, {
         atime: atime,
         mtime: mtime
       });
@@ -1411,7 +1409,8 @@ FS.staticInit();
       var randomBuffer = new Uint8Array(1024), randomLeft = 0;
       var randomByte = () => {
         if (randomLeft === 0) {
-          randomLeft = randomFill(randomBuffer).byteLength;
+          randomFill(randomBuffer);
+          randomLeft = randomBuffer.byteLength;
         }
         return randomBuffer[--randomLeft];
       };

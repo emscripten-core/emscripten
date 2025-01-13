@@ -11,16 +11,16 @@
 #include <unistd.h>
 #include <assert.h>
 #include <malloc.h>
-#include <emscripten/em_asm.h>
+#include <emscripten/heap.h>
 
 size_t getTotalMemory() {
-  return (size_t)EM_ASM_PTR(return HEAP8.length);
+  return emscripten_get_heap_size();
 }
 
 size_t getFreeMemory() {
   struct mallinfo i = mallinfo();
-  uintptr_t totalMemory = getTotalMemory();
-  uintptr_t dynamicTop = (uintptr_t)sbrk(0);
+  size_t totalMemory = getTotalMemory();
+  size_t dynamicTop = (size_t)sbrk(0);
   return totalMemory - dynamicTop + i.fordblks;
 }
 

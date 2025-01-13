@@ -422,17 +422,15 @@ class Library:
   def get_path(self, absolute=False):
     return cache.get_lib_name(self.get_filename(), absolute=absolute)
 
-  def build(self, deterministic_paths=False):
+  def build(self):
     """
     Gets the cached path of this library.
 
     This will trigger a build if this library is not in the cache.
     """
-    self.deterministic_paths = deterministic_paths
     return cache.get(self.get_path(), self.do_build, force=USE_NINJA == 2, quiet=USE_NINJA)
 
   def generate(self):
-    self.deterministic_paths = False
     return cache.get(self.get_path(), self.do_generate, force=USE_NINJA == 2, quiet=USE_NINJA,
                      deferred=True)
 
@@ -471,14 +469,9 @@ class Library:
   def generate_ninja(self, build_dir, libname):
     ensure_sysroot()
     utils.safe_ensure_dirs(build_dir)
+    self.build_dir = build_dir
 
     cflags = self.get_cflags()
-    if self.deterministic_paths:
-      source_dir = utils.path_from_root()
-      relative_source_dir = os.path.relpath(source_dir, build_dir)
-      cflags += [f'-ffile-prefix-map={source_dir}={DETERMINISITIC_PREFIX}',
-                 f'-ffile-prefix-map={relative_source_dir}={DETERMINISITIC_PREFIX}',
-                 f'-fdebug-compilation-dir={DETERMINISITIC_PREFIX}']
     asflags = get_base_cflags(preprocess=False)
     input_files = self.get_files()
     ninja_file = os.path.join(build_dir, 'build.ninja')
@@ -492,17 +485,11 @@ class Library:
     with the `cflags` returned by `self.get_cflags()`.
     """
     batch_inputs = int(os.environ.get('EMCC_BATCH_BUILD', '1'))
+    self.build_dir = build_dir
     batches = {}
     commands = []
     objects = set()
     cflags = self.get_cflags()
-    if self.deterministic_paths:
-      source_dir = utils.path_from_root()
-      if batch_inputs:
-        relative_source_dir = os.path.relpath(source_dir, build_dir)
-        cflags += [f'-ffile-prefix-map={relative_source_dir}={DETERMINISITIC_PREFIX}']
-      cflags += [f'-ffile-prefix-map={source_dir}={DETERMINISITIC_PREFIX}',
-                 f'-fdebug-compilation-dir={DETERMINISITIC_PREFIX}']
     case_insensitive = is_case_insensitive(build_dir)
     for src in self.get_files():
       ext = shared.suffix(src)
@@ -611,6 +598,11 @@ class Library:
     if self.includes:
       cflags += ['-I' + utils.path_from_root(i) for i in self._inherit_list('includes')]
 
+    source_dir = utils.path_from_root()
+    relative_source_dir = os.path.relpath(source_dir, self.build_dir)
+    cflags += [f'-ffile-prefix-map={source_dir}={DETERMINISITIC_PREFIX}',
+               f'-ffile-prefix-map={relative_source_dir}={DETERMINISITIC_PREFIX}',
+               f'-fdebug-compilation-dir={DETERMINISITIC_PREFIX}']
     return cflags
 
   def get_base_name_prefix(self):
@@ -860,7 +852,7 @@ class SjLjLibrary(Library):
       # EH/SjLj, so we should reverse it.
       cflags += ['-sSUPPORT_LONGJMP=wasm',
                  '-sDISABLE_EXCEPTION_THROWING',
-                 '-D__USING_WASM_SJLJ__']
+                 '-D__WASM_SJLJ__']
     return cflags
 
   def get_base_name(self):
@@ -1055,6 +1047,7 @@ class libc(MuslInternalLibrary,
     other_files = files_in_path(
       path='system/lib/libc',
       filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
+                 'emscripten_memcpy_bulkmem.S', 'emscripten_memset_bulkmem.S',
                  'emscripten_scan_stack.c',
                  'emscripten_get_heap_size.c',  # needed by malloc
                  'emscripten_memmove.c'])
@@ -1296,6 +1289,8 @@ class libc(MuslInternalLibrary,
           'emscripten_memcpy.c',
           'emscripten_memmove.c',
           'emscripten_memset.c',
+          'emscripten_memcpy_bulkmem.S',
+          'emscripten_memset_bulkmem.S',
           'emscripten_mmap.c',
           'emscripten_scan_stack.c',
           'emscripten_time.c',
@@ -1395,17 +1390,6 @@ class libc_optz(libc):
     # and so optz is not that important.
     return super(libc_optz, self).can_use() and settings.SHRINK_LEVEL >= 2 and \
         not settings.LINKABLE and not os.environ.get('EMCC_FORCE_STDLIBS')
-
-
-class libbulkmemory(MuslInternalLibrary, AsanInstrumentedLibrary):
-  name = 'libbulkmemory'
-  src_dir = 'system/lib/libc'
-  src_files = ['emscripten_memcpy.c', 'emscripten_memset.c',
-               'emscripten_memcpy_bulkmem.S', 'emscripten_memset_bulkmem.S']
-  cflags = ['-mbulk-memory']
-
-  def can_use(self):
-    return super(libbulkmemory, self).can_use() and settings.BULK_MEMORY
 
 
 class libprintf_long_double(libc):
@@ -1574,7 +1558,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary, DebugLibrary):
       '-D_LIBCPP_BUILDING_LIBRARY',
       '-D_LIBCXXABI_BUILDING_LIBRARY',
       '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',
-      '-std=c++20',
+      '-std=c++23',
     ]
   includes = ['system/lib/libcxx/src']
 
@@ -1651,7 +1635,7 @@ class libcxx(NoExceptLibrary, MTLibrary):
     # by `filesystem/directory_iterator.cpp`: https://reviews.llvm.org/D119670
     '-Wno-unqualified-std-cast-call',
     '-Wno-unknown-warning-option',
-    '-std=c++20',
+    '-std=c++23',
   ]
 
   includes = ['system/lib/libcxx/src']
@@ -1662,14 +1646,17 @@ class libcxx(NoExceptLibrary, MTLibrary):
     'xlocale_zos.cpp',
     'mbsnrtowcs.cpp',
     'wcsnrtombs.cpp',
+    'int128_builtins.cpp',
+    'libdispatch.cpp',
+    # Win32-specific files
     'locale_win32.cpp',
     'thread_win32.cpp',
     'support.cpp',
-    'int128_builtins.cpp',
-    'libdispatch.cpp',
+    'compiler_rt_shims.cpp',
     # Emscripten does not have C++20's time zone support which requires access
     # to IANA Time Zone Database. TODO Implement this using JS timezone
-    'tz.cpp',
+    'time_zone.cpp',
+    'tzdb.cpp',
     'tzdb_list.cpp',
   ]
 
@@ -1779,7 +1766,7 @@ class libmalloc(MTLibrary):
   def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
       malloc=settings.MALLOC,
-      is_debug=settings.ASSERTIONS >= 2,
+      is_debug=settings.ASSERTIONS,
       is_tracing=settings.EMSCRIPTEN_TRACING,
       memvalidate='memvalidate' in settings.MALLOC,
       verbose='verbose' in settings.MALLOC,
@@ -2215,9 +2202,6 @@ class libstandalonewasm(MuslInternalLibrary):
         filenames=['standalone.c',
                    'standalone_wasm_stdio.c',
                    '__main_void.c'])
-    files += files_in_path(
-        path='system/lib/libc',
-        filenames=['emscripten_memcpy.c', 'emscripten_memset.c'])
     # It is more efficient to use JS methods for time, normally.
     files += files_in_path(
         path='system/lib/libc/musl/src/time',
@@ -2375,8 +2359,6 @@ def get_libs_to_link(args):
   if settings.SHRINK_LEVEL >= 2 and not settings.LINKABLE and \
      not os.environ.get('EMCC_FORCE_STDLIBS'):
     add_library('libc_optz')
-  if settings.BULK_MEMORY:
-    add_library('libbulkmemory')
   if settings.STANDALONE_WASM:
     add_library('libstandalonewasm')
   if settings.ALLOW_UNIMPLEMENTED_SYSCALLS:
@@ -2387,6 +2369,9 @@ def get_libs_to_link(args):
     add_library('libc')
     if settings.MALLOC == 'mimalloc':
       add_library('libmimalloc')
+      if settings.USE_ASAN:
+        # See https://github.com/emscripten-core/emscripten/issues/23288#issuecomment-2571648258
+        shared.exit_with_error('mimalloc is not compatible with -fsanitize=address')
     elif settings.MALLOC != 'none':
       add_library('libmalloc')
   add_library('libcompiler_rt')

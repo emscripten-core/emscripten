@@ -93,6 +93,15 @@ void test() {
   err = fchmodat(AT_FDCWD, "otherfile", S_IXUSR, 0);
   assert(!err);
 
+  assert(symlink("otherfile", "link") == 0);
+  err = fchmodat(AT_FDCWD, "link", S_IXGRP, AT_SYMLINK_NOFOLLOW);
+#if defined(NODEFS) || defined(NODERAWFS)
+  assert(err == -1);
+  assert(errno == ENOTSUP);
+#else
+  assert(err == 0);
+#endif
+
   memset(&s, 0, sizeof s);
   stat("otherfile", &s);
   assert(s.st_mode == (S_IXUSR | S_IFREG));
@@ -153,6 +162,13 @@ void test() {
   assert(s.st_mode == (S_IRUSR | S_IFREG));
 #endif
 #endif // WASMFS
+
+  assert(stat("", &s) == -1);
+  assert(errno == ENOENT);
+  assert(chmod("", 0777) == -1);
+  assert(errno == ENOENT);
+  assert(chown("", 1000, 1000) == -1);
+  assert(errno == ENOENT);
 
   puts("success");
 }

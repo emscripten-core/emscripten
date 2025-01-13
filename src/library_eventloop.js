@@ -52,10 +52,8 @@ LibraryJSEventLoop = {
     setImmediateWrapped.mapping[id] = undefined;
   },
 
-  $polyfillSetImmediate__deps: ['$setImmediateWrapped', '$clearImmediateWrapped'],
-  $polyfillSetImmediate__postset: `
-    var emSetImmediate;
-    var emClearImmediate;
+  $emSetImmediate__deps: ['$setImmediateWrapped', '$clearImmediateWrapped', '$emClearImmediate'],
+  $emSetImmediate__postset: `
     if (typeof setImmediate != "undefined") {
       emSetImmediate = setImmediateWrapped;
       emClearImmediate = clearImmediateWrapped;
@@ -82,14 +80,12 @@ LibraryJSEventLoop = {
         if (index >= 0 && index < __setImmediate_queue.length) __setImmediate_queue[index] = () => {};
       })
     }`,
+  $emSetImmediate: undefined,
 
-  $polyfillSetImmediate: () => {
-    // nop, used for its postset to ensure setImmediate() polyfill is
-    // not duplicated between emscripten_set_immediate() and
-    // emscripten_set_immediate_loop() if application links to both of them.
-  },
+  $emClearImmediate_deps: ['$emSetImmediate'],
+  $emClearImmediate: undefined,
 
-  emscripten_set_immediate__deps: ['$polyfillSetImmediate', '$callUserCallback'],
+  emscripten_set_immediate__deps: ['$emSetImmediate', '$callUserCallback'],
   emscripten_set_immediate: (cb, userData) => {
     {{{ runtimeKeepalivePush(); }}}
     return emSetImmediate(() => {
@@ -98,13 +94,13 @@ LibraryJSEventLoop = {
     });
   },
 
-  emscripten_clear_immediate__deps: ['$polyfillSetImmediate'],
+  emscripten_clear_immediate__deps: ['$emClearImmediate'],
   emscripten_clear_immediate: (id) => {
     {{{ runtimeKeepalivePop(); }}}
     emClearImmediate(id);
   },
 
-  emscripten_set_immediate_loop__deps: ['$polyfillSetImmediate', '$callUserCallback'],
+  emscripten_set_immediate_loop__deps: ['$emSetImmediate', '$callUserCallback'],
   emscripten_set_immediate_loop: (cb, userData) => {
     function tick() {
       callUserCallback(() => {
@@ -123,7 +119,13 @@ LibraryJSEventLoop = {
   emscripten_set_timeout: (cb, msecs, userData) =>
     safeSetTimeout(() => {{{ makeDynCall('vp', 'cb') }}}(userData), msecs),
 
+#if AUDIO_WORKLET
+  // Use a wrapper function here since simply aliasing `clearTimeout` would
+  // cause the module to fail to load in the audio worklet context.
+  emscripten_clear_timeout: (id) => clearTimeout(id),
+#else
   emscripten_clear_timeout: 'clearTimeout',
+#endif
 
   emscripten_set_timeout_loop__deps: ['$callUserCallback', 'emscripten_get_now'],
   emscripten_set_timeout_loop: (cb, msecs, userData) => {

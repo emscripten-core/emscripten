@@ -33,11 +33,15 @@
 // For mips64, syscall(__NR_stat) fills the buffer in the 'struct kernel_stat'
 // format. Struct kernel_stat is defined as 'struct stat' in asm/stat.h. To
 // access stat from asm/stat.h, without conflicting with definition in
-// sys/stat.h, we use this trick.
-#  if SANITIZER_MIPS64
+// sys/stat.h, we use this trick.  sparc64 is similar, using
+// syscall(__NR_stat64) and struct kernel_stat64.
+#  if SANITIZER_LINUX && (SANITIZER_MIPS64 || SANITIZER_SPARC64)
 #    include <asm/unistd.h>
 #    include <sys/types.h>
 #    define stat kernel_stat
+#    if SANITIZER_SPARC64
+#      define stat64 kernel_stat64
+#    endif
 #    if SANITIZER_GO
 #      undef st_atime
 #      undef st_mtime
@@ -48,6 +52,7 @@
 #    endif
 #    include <asm/stat.h>
 #    undef stat
+#    undef stat64
 #  endif
 
 #  include <dlfcn.h>
@@ -167,22 +172,56 @@ void SetSigProcMask(__sanitizer_sigset_t *set, __sanitizer_sigset_t *oldset) {
   CHECK_EQ(0, internal_sigprocmask(SIG_SETMASK, set, oldset));
 }
 
+#  if SANITIZER_LINUX
+// Deletes the specified signal from newset, if it is not present in oldset
+// Equivalently: newset[signum] = newset[signum] & oldset[signum]
+static void KeepUnblocked(__sanitizer_sigset_t &newset,
+                          __sanitizer_sigset_t &oldset, int signum) {
+  // FIXME: https://github.com/google/sanitizers/issues/1816
+  if (SANITIZER_ANDROID || !internal_sigismember(&oldset, signum))
+    internal_sigdelset(&newset, signum);
+}
+#  endif
+
+// Block asynchronous signals
 void BlockSignals(__sanitizer_sigset_t *oldset) {
-  __sanitizer_sigset_t set;
-  internal_sigfillset(&set);
-#  if SANITIZER_LINUX && !SANITIZER_ANDROID
+  __sanitizer_sigset_t newset;
+  internal_sigfillset(&newset);
+
+#  if SANITIZER_LINUX
+  __sanitizer_sigset_t currentset;
+
+#    if !SANITIZER_ANDROID
+  // FIXME: https://github.com/google/sanitizers/issues/1816
+  SetSigProcMask(NULL, &currentset);
+
   // Glibc uses SIGSETXID signal during setuid call. If this signal is blocked
   // on any thread, setuid call hangs.
   // See test/sanitizer_common/TestCases/Linux/setuid.c.
-  internal_sigdelset(&set, 33);
-#  endif
-#  if SANITIZER_LINUX
+  KeepUnblocked(newset, currentset, 33);
+#    endif  // !SANITIZER_ANDROID
+
   // Seccomp-BPF-sandboxed processes rely on SIGSYS to handle trapped syscalls.
   // If this signal is blocked, such calls cannot be handled and the process may
   // hang.
-  internal_sigdelset(&set, 31);
-#  endif
-  SetSigProcMask(&set, oldset);
+  KeepUnblocked(newset, currentset, 31);
+
+#    if !SANITIZER_ANDROID
+  // Don't block synchronous signals
+  // but also don't unblock signals that the user had deliberately blocked.
+  // FIXME: https://github.com/google/sanitizers/issues/1816
+  KeepUnblocked(newset, currentset, SIGSEGV);
+  KeepUnblocked(newset, currentset, SIGBUS);
+  KeepUnblocked(newset, currentset, SIGILL);
+  KeepUnblocked(newset, currentset, SIGTRAP);
+  KeepUnblocked(newset, currentset, SIGABRT);
+  KeepUnblocked(newset, currentset, SIGFPE);
+  KeepUnblocked(newset, currentset, SIGPIPE);
+#    endif  //! SANITIZER_ANDROID
+
+#  endif  // SANITIZER_LINUX
+
+  SetSigProcMask(&newset, oldset);
 }
 
 ScopedBlockSignals::ScopedBlockSignals(__sanitizer_sigset_t *copy) {
@@ -221,7 +260,7 @@ uptr internal_mmap(void *addr, uptr length, int prot, int flags, int fd,
   // mmap2 specifies file offset in 4096-byte units.
   CHECK(IsAligned(offset, 4096));
   return internal_syscall(SYSCALL(mmap2), addr, length, prot, flags, fd,
-                          offset / 4096);
+                          (OFF_T)(offset / 4096));
 #      endif
 }
 #    endif  // !SANITIZER_S390 && !SANITIZER_EMSCRIPTEN
@@ -312,8 +351,7 @@ uptr internal_ftruncate(fd_t fd, uptr size) {
   return res;
 }
 
-#    if (!SANITIZER_LINUX_USES_64BIT_SYSCALLS || SANITIZER_SPARC) && \
-            SANITIZER_LINUX ||                                       \
+#    if !SANITIZER_LINUX_USES_64BIT_SYSCALLS && SANITIZER_LINUX || \
         SANITIZER_EMSCRIPTEN
 static void stat64_to_stat(struct stat64 *in, struct stat *out) {
   internal_memset(out, 0, sizeof(*out));
@@ -355,7 +393,12 @@ static void statx_to_stat(struct statx *in, struct stat *out) {
 }
 #    endif
 
-#    if SANITIZER_MIPS64
+#    if SANITIZER_MIPS64 || SANITIZER_SPARC64
+#      if SANITIZER_MIPS64
+typedef struct kernel_stat kstat_t;
+#      else
+typedef struct kernel_stat64 kstat_t;
+#      endif
 // Undefine compatibility macros from <sys/stat.h>
 // so that they would not clash with the kernel_stat
 // st_[a|m|c]time fields
@@ -373,7 +416,7 @@ static void statx_to_stat(struct statx *in, struct stat *out) {
 #        undef st_mtime_nsec
 #        undef st_ctime_nsec
 #      endif
-static void kernel_stat_to_stat(struct kernel_stat *in, struct stat *out) {
+static void kernel_stat_to_stat(kstat_t *in, struct stat *out) {
   internal_memset(out, 0, sizeof(*out));
   out->st_dev = in->st_dev;
   out->st_ino = in->st_ino;
@@ -419,6 +462,12 @@ uptr internal_stat(const char *path, void *buf) {
           !SANITIZER_SPARC
   return internal_syscall(SYSCALL(newfstatat), AT_FDCWD, (uptr)path, (uptr)buf,
                           0);
+#      elif SANITIZER_SPARC64
+  kstat_t buf64;
+  int res = internal_syscall(SYSCALL(fstatat64), AT_FDCWD, (uptr)path,
+                             (uptr)&buf64, 0);
+  kernel_stat_to_stat(&buf64, (struct stat *)buf);
+  return res;
 #      else
   struct stat64 buf64;
   int res = internal_syscall(SYSCALL(fstatat64), AT_FDCWD, (uptr)path,
@@ -451,6 +500,12 @@ uptr internal_lstat(const char *path, void *buf) {
           !SANITIZER_SPARC
   return internal_syscall(SYSCALL(newfstatat), AT_FDCWD, (uptr)path, (uptr)buf,
                           AT_SYMLINK_NOFOLLOW);
+#      elif SANITIZER_SPARC64
+  kstat_t buf64;
+  int res = internal_syscall(SYSCALL(fstatat64), AT_FDCWD, (uptr)path,
+                             (uptr)&buf64, AT_SYMLINK_NOFOLLOW);
+  kernel_stat_to_stat(&buf64, (struct stat *)buf);
+  return res;
 #      else
   struct stat64 buf64;
   int res = internal_syscall(SYSCALL(fstatat64), AT_FDCWD, (uptr)path,
@@ -470,8 +525,14 @@ uptr internal_fstat(fd_t fd, void *buf) {
 #    if SANITIZER_FREEBSD || SANITIZER_LINUX_USES_64BIT_SYSCALLS
 #      if SANITIZER_MIPS64
   // For mips64, fstat syscall fills buffer in the format of kernel_stat
-  struct kernel_stat kbuf;
+  kstat_t kbuf;
   int res = internal_syscall(SYSCALL(fstat), fd, &kbuf);
+  kernel_stat_to_stat(&kbuf, (struct stat *)buf);
+  return res;
+#      elif SANITIZER_LINUX && SANITIZER_SPARC64
+  // For sparc64, fstat64 syscall fills buffer in the format of kernel_stat64
+  kstat_t kbuf;
+  int res = internal_syscall(SYSCALL(fstat64), fd, &kbuf);
   kernel_stat_to_stat(&kbuf, (struct stat *)buf);
   return res;
 #      elif SANITIZER_LINUX && defined(__loongarch__)
@@ -619,7 +680,9 @@ int TgKill(pid_t pid, tid_t tid, int sig) {
   return internal_syscall(SYSCALL(thr_kill2), pid, tid, sig);
 #      elif SANITIZER_SOLARIS
   (void)pid;
-  return thr_kill(tid, sig);
+  errno = thr_kill(tid, sig);
+  // TgKill is expected to return -1 on error, not an errno.
+  return errno != 0 ? -1 : 0;
 #      endif
 }
 #    endif
@@ -899,6 +962,8 @@ uptr internal_sigaltstack(const void *ss, void *oss) {
 }
 #    endif
 
+extern "C" pid_t __fork(void);
+
 int internal_fork() {
 #    if SANITIZER_EMSCRIPTEN
   Report("fork not supported on emscripten\n");
@@ -907,6 +972,10 @@ int internal_fork() {
 #      if SANITIZER_LINUX
 #        if SANITIZER_S390
   return internal_syscall(SYSCALL(clone), 0, SIGCHLD);
+#        elif SANITIZER_SPARC
+  // The clone syscall interface on SPARC differs massively from the rest,
+  // so fall back to __fork.
+  return __fork();
 #        else
   return internal_syscall(SYSCALL(clone), SIGCHLD, 0);
 #        endif
@@ -1189,7 +1258,8 @@ uptr GetMaxVirtualAddress() {
 #  if SANITIZER_NETBSD && defined(__x86_64__)
   return 0x7f7ffffff000ULL;  // (0x00007f8000000000 - PAGE_SIZE)
 #  elif SANITIZER_WORDSIZE == 64
-#    if defined(__powerpc64__) || defined(__aarch64__) || defined(__loongarch__)
+#    if defined(__powerpc64__) || defined(__aarch64__) || \
+        defined(__loongarch__) || SANITIZER_RISCV64
   // On PowerPC64 we have two different address space layouts: 44- and 46-bit.
   // We somehow need to figure out which one we are using now and choose
   // one of 0x00000fffffffffffUL and 0x00003fffffffffffUL.
@@ -1198,9 +1268,8 @@ uptr GetMaxVirtualAddress() {
   // This should (does) work for both PowerPC64 Endian modes.
   // Similarly, aarch64 has multiple address space layouts: 39, 42 and 47-bit.
   // loongarch64 also has multiple address space layouts: default is 47-bit.
+  // RISC-V 64 also has multiple address space layouts: 39, 48 and 57-bit.
   return (1ULL << (MostSignificantSetBitIndex(GET_CURRENT_FRAME()) + 1)) - 1;
-#    elif SANITIZER_RISCV64
-  return (1ULL << 38) - 1;
 #    elif SANITIZER_MIPS64
   return (1ULL << 40) - 1;  // 0x000000ffffffffffUL;
 #    elif defined(__s390x__)
@@ -1229,7 +1298,7 @@ uptr GetMaxUserVirtualAddress() {
   return addr;
 }
 
-#  if !SANITIZER_ANDROID
+#  if !SANITIZER_ANDROID || defined(__aarch64__)
 uptr GetPageSize() {
 #    if SANITIZER_LINUX && (defined(__x86_64__) || defined(__i386__)) && \
         defined(EXEC_PAGESIZE)
@@ -1248,7 +1317,7 @@ uptr GetPageSize() {
   return sysconf(_SC_PAGESIZE);  // EXEC_PAGESIZE may not be trustworthy.
 #    endif
 }
-#  endif  // !SANITIZER_ANDROID
+#  endif
 
 #  if SANITIZER_EMSCRIPTEN
 extern "C" void _emscripten_get_progname(char *buf, int buf_len);
@@ -1280,7 +1349,7 @@ uptr ReadBinaryName(/*out*/ char *buf, uptr buf_len) {
   uptr module_name_len = internal_readlink(default_module_name, buf, buf_len);
   int readlink_error;
   bool IsErr = internal_iserror(module_name_len, &readlink_error);
-#    endif  // SANITIZER_SOLARIS
+#    endif
   if (IsErr) {
     // We can't read binary name for some reason, assume it's unknown.
     Report(
@@ -1945,18 +2014,18 @@ HandleSignalMode GetHandleSignalMode(int signum) {
 
 #  if !SANITIZER_GO && !SANITIZER_EMSCRIPTEN
 void *internal_start_thread(void *(*func)(void *arg), void *arg) {
-  if (&real_pthread_create == 0)
+  if (&internal_pthread_create == 0)
     return nullptr;
   // Start the thread with signals blocked, otherwise it can steal user signals.
   ScopedBlockSignals block(nullptr);
   void *th;
-  real_pthread_create(&th, nullptr, func, arg);
+  internal_pthread_create(&th, nullptr, func, arg);
   return th;
 }
 
 void internal_join_thread(void *th) {
-  if (&real_pthread_join)
-    real_pthread_join(th, nullptr);
+  if (&internal_pthread_join)
+    internal_pthread_join(th, nullptr);
 }
 #  else
 void *internal_start_thread(void *(*func)(void *), void *arg) { return 0; }
@@ -2068,6 +2137,18 @@ SignalContext::WriteFlag SignalContext::GetWriteFlag() const {
     return Unknown;
   return esr & ESR_ELx_WNR ? Write : Read;
 #  elif defined(__loongarch__)
+  // In the musl environment, the Linux kernel uapi sigcontext.h is not
+  // included in signal.h. To avoid missing the SC_ADDRERR_{RD,WR} macros,
+  // copy them here. The LoongArch Linux kernel uapi is already stable,
+  // so there's no need to worry about the value changing.
+#    ifndef SC_ADDRERR_RD
+  // Address error was due to memory load
+#      define SC_ADDRERR_RD (1 << 30)
+#    endif
+#    ifndef SC_ADDRERR_WR
+  // Address error was due to memory store
+#      define SC_ADDRERR_WR (1 << 31)
+#    endif
   u32 flags = ucontext->uc_mcontext.__flags;
   if (flags & SC_ADDRERR_RD)
     return SignalContext::Read;
@@ -2205,8 +2286,169 @@ bool SignalContext::IsTrueFaultingAddress() const {
   return si->si_signo == SIGSEGV && si->si_code != 128;
 }
 
+UNUSED
+static const char *RegNumToRegName(int reg) {
+  switch (reg) {
+#  if SANITIZER_LINUX
+#    if defined(__x86_64__)
+    case REG_RAX:
+      return "rax";
+    case REG_RBX:
+      return "rbx";
+    case REG_RCX:
+      return "rcx";
+    case REG_RDX:
+      return "rdx";
+    case REG_RDI:
+      return "rdi";
+    case REG_RSI:
+      return "rsi";
+    case REG_RBP:
+      return "rbp";
+    case REG_RSP:
+      return "rsp";
+    case REG_R8:
+      return "r8";
+    case REG_R9:
+      return "r9";
+    case REG_R10:
+      return "r10";
+    case REG_R11:
+      return "r11";
+    case REG_R12:
+      return "r12";
+    case REG_R13:
+      return "r13";
+    case REG_R14:
+      return "r14";
+    case REG_R15:
+      return "r15";
+#    elif defined(__i386__)
+    case REG_EAX:
+      return "eax";
+    case REG_EBX:
+      return "ebx";
+    case REG_ECX:
+      return "ecx";
+    case REG_EDX:
+      return "edx";
+    case REG_EDI:
+      return "edi";
+    case REG_ESI:
+      return "esi";
+    case REG_EBP:
+      return "ebp";
+    case REG_ESP:
+      return "esp";
+#    endif
+#  endif
+    default:
+      return NULL;
+  }
+  return NULL;
+}
+
+#  if SANITIZER_LINUX
+UNUSED
+static void DumpSingleReg(ucontext_t *ctx, int RegNum) {
+  const char *RegName = RegNumToRegName(RegNum);
+#    if defined(__x86_64__)
+  Printf("%s%s = 0x%016llx  ", internal_strlen(RegName) == 2 ? " " : "",
+         RegName, ctx->uc_mcontext.gregs[RegNum]);
+#    elif defined(__i386__)
+  Printf("%s = 0x%08x  ", RegName, ctx->uc_mcontext.gregs[RegNum]);
+#    else
+  (void)RegName;
+#    endif
+}
+#  endif
+
 void SignalContext::DumpAllRegisters(void *context) {
-  // FIXME: Implement this.
+  ucontext_t *ucontext = (ucontext_t *)context;
+#  if SANITIZER_LINUX
+#    if defined(__x86_64__)
+  Report("Register values:\n");
+  DumpSingleReg(ucontext, REG_RAX);
+  DumpSingleReg(ucontext, REG_RBX);
+  DumpSingleReg(ucontext, REG_RCX);
+  DumpSingleReg(ucontext, REG_RDX);
+  Printf("\n");
+  DumpSingleReg(ucontext, REG_RDI);
+  DumpSingleReg(ucontext, REG_RSI);
+  DumpSingleReg(ucontext, REG_RBP);
+  DumpSingleReg(ucontext, REG_RSP);
+  Printf("\n");
+  DumpSingleReg(ucontext, REG_R8);
+  DumpSingleReg(ucontext, REG_R9);
+  DumpSingleReg(ucontext, REG_R10);
+  DumpSingleReg(ucontext, REG_R11);
+  Printf("\n");
+  DumpSingleReg(ucontext, REG_R12);
+  DumpSingleReg(ucontext, REG_R13);
+  DumpSingleReg(ucontext, REG_R14);
+  DumpSingleReg(ucontext, REG_R15);
+  Printf("\n");
+#    elif defined(__i386__)
+  // Duplication of this report print is caused by partial support
+  // of register values dumping. In case of unsupported yet architecture let's
+  // avoid printing 'Register values:' without actual values in the following
+  // output.
+  Report("Register values:\n");
+  DumpSingleReg(ucontext, REG_EAX);
+  DumpSingleReg(ucontext, REG_EBX);
+  DumpSingleReg(ucontext, REG_ECX);
+  DumpSingleReg(ucontext, REG_EDX);
+  Printf("\n");
+  DumpSingleReg(ucontext, REG_EDI);
+  DumpSingleReg(ucontext, REG_ESI);
+  DumpSingleReg(ucontext, REG_EBP);
+  DumpSingleReg(ucontext, REG_ESP);
+  Printf("\n");
+#    else
+  (void)ucontext;
+#    endif
+#  elif SANITIZER_FREEBSD
+#    if defined(__x86_64__)
+  Report("Register values:\n");
+  Printf("rax = 0x%016lx  ", ucontext->uc_mcontext.mc_rax);
+  Printf("rbx = 0x%016lx  ", ucontext->uc_mcontext.mc_rbx);
+  Printf("rcx = 0x%016lx  ", ucontext->uc_mcontext.mc_rcx);
+  Printf("rdx = 0x%016lx  ", ucontext->uc_mcontext.mc_rdx);
+  Printf("\n");
+  Printf("rdi = 0x%016lx  ", ucontext->uc_mcontext.mc_rdi);
+  Printf("rsi = 0x%016lx  ", ucontext->uc_mcontext.mc_rsi);
+  Printf("rbp = 0x%016lx  ", ucontext->uc_mcontext.mc_rbp);
+  Printf("rsp = 0x%016lx  ", ucontext->uc_mcontext.mc_rsp);
+  Printf("\n");
+  Printf(" r8 = 0x%016lx  ", ucontext->uc_mcontext.mc_r8);
+  Printf(" r9 = 0x%016lx  ", ucontext->uc_mcontext.mc_r9);
+  Printf("r10 = 0x%016lx  ", ucontext->uc_mcontext.mc_r10);
+  Printf("r11 = 0x%016lx  ", ucontext->uc_mcontext.mc_r11);
+  Printf("\n");
+  Printf("r12 = 0x%016lx  ", ucontext->uc_mcontext.mc_r12);
+  Printf("r13 = 0x%016lx  ", ucontext->uc_mcontext.mc_r13);
+  Printf("r14 = 0x%016lx  ", ucontext->uc_mcontext.mc_r14);
+  Printf("r15 = 0x%016lx  ", ucontext->uc_mcontext.mc_r15);
+  Printf("\n");
+#    elif defined(__i386__)
+  Report("Register values:\n");
+  Printf("eax = 0x%08x  ", ucontext->uc_mcontext.mc_eax);
+  Printf("ebx = 0x%08x  ", ucontext->uc_mcontext.mc_ebx);
+  Printf("ecx = 0x%08x  ", ucontext->uc_mcontext.mc_ecx);
+  Printf("edx = 0x%08x  ", ucontext->uc_mcontext.mc_edx);
+  Printf("\n");
+  Printf("edi = 0x%08x  ", ucontext->uc_mcontext.mc_edi);
+  Printf("esi = 0x%08x  ", ucontext->uc_mcontext.mc_esi);
+  Printf("ebp = 0x%08x  ", ucontext->uc_mcontext.mc_ebp);
+  Printf("esp = 0x%08x  ", ucontext->uc_mcontext.mc_esp);
+  Printf("\n");
+#    else
+  (void)ucontext;
+#    endif
+#  else
+  (void)ucontext;
+#  endif
+  // FIXME: Implement this for other OSes and architectures.
 }
 
 static void GetPcSpBp(void *context, uptr *pc, uptr *sp, uptr *bp) {

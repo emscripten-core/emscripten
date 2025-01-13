@@ -36,9 +36,9 @@ var mainArgs = undefined;
 
 #if HAS_MAIN
 #if MAIN_READS_PARAMS
-{{{ asyncIf(ASYNCIFY == 2) }}} function callMain(args = []) {
+{{{ asyncIf(ASYNCIFY == 2) }}}function callMain(args = []) {
 #else
-{{{ asyncIf(ASYNCIFY == 2) }}} function callMain() {
+{{{ asyncIf(ASYNCIFY == 2) }}}function callMain() {
 #endif
 #if ASSERTIONS
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on Module["onRuntimeInitialized"])');

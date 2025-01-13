@@ -18,16 +18,43 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.75 (in development)
------------------------
-- The `WASM_BIGINT` feature has been enabled by default. This has the effect that
-  Wasm i64 values are passed and returned between Wasm and JS as BigInt values
-  rather than being split by Binaryen into pairs of Numbers. (#22993)
+4.0.0 (in development)
+----------------------
+- Emscripten version was bumped to 4.0.0. Happy new year, happy new major
+  version!  While version has a few interesting changes, there is nothing huge
+  that makes it different from any other release. (#19053)
+- `-sWASM_LEAGCY_EXCEPTIONS` option is added. (#23365) If true, it will emit
+  instructions for the legacy Wasm exception handling proposal
+  (https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/legacy/Exceptions.md),
+  and if false, the new standardized exception handling proposal
+  (https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/Exceptions.md).
+  This option defaults to true, given that major web browsers do not support the
+  new proposal by default yet. This option replaces the existing
+  `-sWASM_EXNREF`, whose meaning was the opposite.
+- compiler-rt, libcxx, libcxxabi, and libunwind were updated to LLVM 19.1.6.
+  (#22937, #22994, and #23294)
+- The default Safari version targeted by Emscripten has been raised from 14.1
+  to 15.0 (the `MIN_SAFARI_VERSION` setting) (#23312). This has several effects:
+  - The Wasm nontrapping-fptoint feature is enabled by default. Clang will
+    generate nontrapping (saturating) float-to-int conversion instructions for
+    C typecasts. This should have no effect on programs that do not have
+    undefined behavior but if the casted floating-point value is outside the range
+    of the target integer type, the result will be a number of the max or min value
+    instead of a trap. This also results in a small code size improvement because
+    of details of the LLVM IR semantics. This feature can be disabled in clang with
+    the `-mno-nontrapping-fptoint` flag. (#23007)
+  - The `WASM_BIGINT` feature is enabled by default. This has the effect that
+    Wasm i64 values are passed and returned between Wasm and JS as BigInt values
+    rather than being split by Binaryen into pairs of Numbers. (#22993)
+  - The `BULK_MEMORY` feature is enabled by default. `memory.copy` and
+    `memory.fill` instructions are used in the implementation of C `memcpy` and
+    `memset`, and Clang may generate them elsewhere (#22873). It can be
+    disabled with the `-mno-bulk-memory -mno-bulk-memory-opt` flags.
 - When using `-sMODULARIZE` we now assert if the factory function is called with
   the JS `new` keyword.  e.g. `a = new Module()` rather than `b = Module()`.
   This paves the way for marking the function as `async` which does not allow
   `new` to be used.  This usage of `new` here was never documented and is
-  considered and antipattern. (#23210)
+  considered an antipattern. (#23210)
 - `PATH.basename()` no longer calls `PATH.normalize()`, so that
   `PATH.basename("a/.")` returns `"."` instead of `"a"` and
   `PATH.basename("a/b/..")` returns `".."` instead of `"a"`. This is in line with
@@ -39,6 +66,18 @@ See docs/process.md for more on how version tagging works.
   `--post-js` files will now be delayed until after module creation and after
   `main` runs.  This matches the existing behaviour when using sync instantation
   (`-sWASM_ASYNC_COMPILATION=0`) but is an observable difference. (#23157)
+- The `POLYFILL_OLD_MATH_FUNCTIONS` setting was removed.  The browser versions
+  that require these polyfills are no longer supported by emscripten so the
+  polyfills should never be needed. (#23262)
+- JavaScript libraries can now be specified via `-lfoo.js`.  This works like the
+  existing `--js-library` flag but will search the library path (all paths
+  specified with `-L`) for `libfoo.js`. (#23338)
+- The `mallinfo` struct members are now defined as `size_t` which makes them
+  compatible with larger memories, and is also how linux defines them. (#23368)
+- Emscripten now uses the debug version of malloc (i.e. assertions enabled)
+  when linking in debug mode (`-O0` and/or `-sASSERTIONS`).  This means that
+  things like double-free will be detected in these builds.  Previously this was
+  only true with `-sASSERTIONS=2`. (#23330)
 
 3.1.74 - 12/14/24
 -----------------
@@ -59,7 +98,7 @@ See docs/process.md for more on how version tagging works.
 
 3.1.73 - 11/28/24
 -----------------
-- libunwind was updated to LLVM 19.1.4. (#22394)
+- libunwind was updated to LLVM 19.1.4. (#22934)
 - mimalloc was updated to 2.1.7. (#21548)
 
 3.1.72 - 11/19/24

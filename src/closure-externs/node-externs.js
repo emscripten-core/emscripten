@@ -127,6 +127,11 @@ fs.Stats.prototype.mtimeMs;
 fs.Stats.prototype.ctimeMs;
 
 /**
+ * @type {number}
+ */
+fs.Stats.prototype.blksize;
+
+/**
  * @param {string} p
  * @return {boolean}
  * @nosideeffects
@@ -137,3 +142,5 @@ path.isAbsolute;
  * @type {Object.<string,*>}
  */
 path.posix;
+
+crypto.randomFillSync;

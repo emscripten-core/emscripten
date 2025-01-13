@@ -30,7 +30,6 @@ from tools.system_libs import USE_NINJA
 
 # Minimal subset of targets used by CI systems to build enough to be useful
 MINIMAL_TASKS = [
-    'libbulkmemory',
     'libcompiler_rt',
     'libcompiler_rt-wasm-sjlj',
     'libcompiler_rt-ww',
@@ -55,6 +54,7 @@ MINIMAL_TASKS = [
     'libdlmalloc-tracing',
     'libdlmalloc-debug',
     'libdlmalloc-ww',
+    'libdlmalloc-ww-debug',
     'libembind',
     'libembind-rtti',
     'libemmalloc',
@@ -102,6 +102,7 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'libc++-mt',
     'libc++-mt-noexcept',
     'libdlmalloc-mt',
+    'libdlmalloc-mt-debug',
     'libGL-emu',
     'libGL-emu-webgl2-getprocaddr',
     'libGL-mt-getprocaddr',
@@ -293,7 +294,7 @@ def main():
         if USE_NINJA:
           library.generate()
         else:
-          library.build(deterministic_paths=True)
+          library.build()
     elif what == 'sysroot':
       if do_clear:
         cache.erase_file('sysroot_install.stamp')

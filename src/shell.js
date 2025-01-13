@@ -34,8 +34,7 @@ var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {
 #endif // USE_CLOSURE_COMPILER
 
 #if POLYFILL
-#if WASM_BIGINT && MIN_SAFARI_VERSION < 140100
-// TODO(https://github.com/emscripten-core/emscripten/issues/23184): Fix this back to 150000
+#if WASM_BIGINT && MIN_SAFARI_VERSION < 150000
 // See https://caniuse.com/mdn-javascript_builtins_bigint64array
 #include "polyfill/bigint64array.js"
 #endif
@@ -101,12 +100,16 @@ if (ENVIRONMENT_IS_PTHREAD) {
 
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
-#if PTHREADS || WASM_WORKERS
 #if EXPORT_ES6
-  var worker_threads = await import('worker_threads');
-#else
-  var worker_threads = require('worker_threads');
+  // When building an ES module `require` is not normally available.
+  // We need to use `createRequire()` to construct the require()` function.
+  const { createRequire } = await import('module');
+  /** @suppress{duplicate} */
+  var require = createRequire('/');
 #endif
+
+#if PTHREADS || WASM_WORKERS
+  var worker_threads = require('worker_threads');
   global.Worker = worker_threads.Worker;
   ENVIRONMENT_IS_WORKER = !worker_threads.isMainThread;
 #if PTHREADS
@@ -191,21 +194,19 @@ if (ENVIRONMENT_IS_NODE) {
   }
 #endif
 
-#if EXPORT_ES6
-  var fs = await import('fs');
-  var nodePath = await import('path');
-  var url = await import('url');
-  // EXPORT_ES6 + ENVIRONMENT_IS_NODE always requires use of import.meta.url,
-  // since there's no way getting the current absolute path of the module when
-  // support for that is not available.
-  if (!import.meta.url.startsWith('data:')) {
-    scriptDirectory = nodePath.dirname(url.fileURLToPath(import.meta.url)) + '/';
-  }
-#else
   // These modules will usually be used on Node.js. Load them eagerly to avoid
   // the complexity of lazy-loading.
   var fs = require('fs');
   var nodePath = require('path');
+
+#if EXPORT_ES6
+  // EXPORT_ES6 + ENVIRONMENT_IS_NODE always requires use of import.meta.url,
+  // since there's no way getting the current absolute path of the module when
+  // support for that is not available.
+  if (!import.meta.url.startsWith('data:')) {
+    scriptDirectory = nodePath.dirname(require('url').fileURLToPath(import.meta.url)) + '/';
+  }
+#else
   scriptDirectory = __dirname + '/';
 #endif
 

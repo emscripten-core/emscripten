@@ -19,11 +19,7 @@ addToLibrary({
     isWindows: false,
     staticInit() {
       NODEFS.isWindows = !!process.platform.match(/^win/);
-      var flags = process.binding("constants");
-      // Node.js 4 compatibility: it has no namespaces for constants
-      if (flags["fs"]) {
-        flags = flags["fs"];
-      }
+      var flags = process.binding("constants")["fs"];
       NODEFS.flagsForNodeMap = {
         "{{{ cDefs.O_APPEND }}}": flags["O_APPEND"],
         "{{{ cDefs.O_CREAT }}}": flags["O_CREAT"],
@@ -123,15 +119,6 @@ addToLibrary({
         var stat;
         NODEFS.tryFSOperation(() => stat = fs.lstatSync(path));
         if (NODEFS.isWindows) {
-          // node.js v0.10.20 doesn't report blksize and blocks on Windows. Fake
-          // them with default blksize of 4096.
-          // See http://support.microsoft.com/kb/140365
-          if (!stat.blksize) {
-            stat.blksize = 4096;
-          }
-          if (!stat.blocks) {
-            stat.blocks = (stat.size+stat.blksize-1)/stat.blksize|0;
-          }
           // Windows does not report the 'x' permission bit, so propagate read
           // bits to execute bits.
           stat.mode |= (stat.mode & {{{ cDefs.S_IRUGO }}}) >> 2;
@@ -156,6 +143,9 @@ addToLibrary({
         var path = NODEFS.realPath(node);
         NODEFS.tryFSOperation(() => {
           if (attr.mode !== undefined) {
+            if (attr.dontFollow) {
+              throw new FS.ErrnoError({{{ cDefs.ENOSYS }}});
+            }
             var mode = attr.mode;
             if (NODEFS.isWindows) {
               // Windows only supports S_IREAD / S_IWRITE (S_IRUSR / S_IWUSR)
@@ -166,9 +156,15 @@ addToLibrary({
             // update the common node structure mode as well
             node.mode = attr.mode;
           }
-          if (attr.atime || attr.mtime) {
-            var atime = attr.atime && new Date(attr.atime);
-            var mtime = attr.mtime && new Date(attr.mtime);
+          if (typeof (attr.atime ?? attr.mtime) === "number") {
+            // Unfortunately, we have to stat the current value if we don't want
+            // to change it. On top of that, since the times don't round trip
+            // this will only keep the value nearly unchanged not exactly
+            // unchanged. See:
+            // https://github.com/nodejs/node/issues/56492
+            var stat = () => fs.lstatSync(NODEFS.realPath(node));
+            var atime = new Date(attr.atime ?? stat().atime);
+            var mtime = new Date(attr.mtime ?? stat().mtime);
             fs.utimesSync(path, atime, mtime);
           }
           if (attr.size !== undefined) {
@@ -252,8 +248,6 @@ addToLibrary({
         stream.shared.refcount++;
       },
       read(stream, buffer, offset, length, position) {
-        // Node.js < 6 compatibility: node errors on 0 length reads
-        if (length === 0) return 0;
         return NODEFS.tryFSOperation(() =>
           fs.readSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), 0, length, position)
         );

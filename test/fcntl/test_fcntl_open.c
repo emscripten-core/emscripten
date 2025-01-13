@@ -151,8 +151,18 @@ void test() {
   errno = 0;
 }
 
+void test_open_create_no_permissions() {
+  int res = open("a", O_CREAT, 0);
+  printf("error: %s\n", strerror(errno));
+  assert(res >= 0);
+  struct stat st;
+  assert(stat("a", &st) == 0);
+  assert((st.st_mode & 0777) == 0);
+}
+
 int main() {
   setup();
   test();
+  test_open_create_no_permissions();
   return 0;
 }

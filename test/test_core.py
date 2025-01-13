@@ -19,7 +19,7 @@ if __name__ == '__main__':
 
 from tools.shared import PIPE
 from tools.shared import EMCC, EMAR, FILE_PACKAGER
-from tools.utils import WINDOWS, MACOS, write_file, delete_file
+from tools.utils import WINDOWS, MACOS, LINUX, write_file, delete_file
 from tools import shared, building, config, utils, webassembly
 import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
@@ -28,7 +28,7 @@ from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, 
 from common import read_file, read_binary, requires_v8, requires_node, requires_wasm2js, requires_node_canary
 from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime
 from common import with_all_fs, also_with_nodefs, also_with_nodefs_both, also_with_noderawfs, also_with_wasmfs
-from common import with_all_eh_sjlj, with_all_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64, requires_wasm_exnref
+from common import with_all_eh_sjlj, with_all_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64, requires_wasm_eh
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
 import clang_native
 
@@ -821,20 +821,21 @@ base align: 0, 0, 0, 0'''])
   @no_4gb('output is sensitive to absolute data layout')
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
+  @disabled('https://github.com/emscripten-core/emscripten/issues/23343')
   def test_emmalloc_trim(self):
     self.set_setting('MALLOC', 'emmalloc')
     self.emcc_args += ['-sINITIAL_MEMORY=128MB', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=2147418112']
 
-    self.do_core_test('test_emmalloc_trim.cpp')
+    self.do_core_test('test_emmalloc_trim.c')
 
   # Test case against https://github.com/emscripten-core/emscripten/issues/10363
   def test_emmalloc_memalign_corruption(self, *args):
     self.set_setting('MALLOC', 'emmalloc')
-    self.do_core_test('emmalloc_memalign_corruption.cpp')
+    self.do_core_test('test_emmalloc_memalign_corruption.c')
 
   @also_with_standalone_wasm()
   def test_assert(self):
-    self.do_core_test('test_assert.cpp', assert_returncode=NON_ZERO)
+    self.do_core_test('test_assert.c', assert_returncode=NON_ZERO)
 
   @crossplatform
   @also_with_standalone_wasm(impure=True)
@@ -855,7 +856,7 @@ base align: 0, 0, 0, 0'''])
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/21533')
     self.do_core_test('test_longjmp_zero.c')
 
-  @requires_wasm_exnref
+  @requires_wasm_eh
   def test_longjmp_with_and_without_exceptions(self):
     # Emscripten SjLj with and without Emscripten EH support
     self.set_setting('SUPPORT_LONGJMP', 'emscripten')
@@ -874,8 +875,8 @@ base align: 0, 0, 0, 0'''])
     self.emcc_args.append('-fwasm-exceptions')
     for arg in ('-fwasm-exceptions', '-fno-exceptions'):
       self.do_core_test('test_longjmp.c', emcc_args=[arg])
-    # Wasm SjLj with and with new EH (exnref) support
-    self.set_setting('WASM_EXNREF')
+    # Wasm SjLj with and with the standardized EH (exnref) support
+    self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
     self.do_core_test('test_longjmp.c', emcc_args=['-fwasm-exceptions'])
 
   @with_all_sjlj
@@ -993,7 +994,7 @@ int main()
     self.maybe_closure()
     self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
 
-  @requires_wasm_exnref
+  @requires_wasm_eh
   def test_exceptions_with_and_without_longjmp(self):
     self.set_setting('EXCEPTION_DEBUG')
     self.maybe_closure()
@@ -1013,8 +1014,8 @@ int main()
     for support_longjmp in (0, 'wasm'):
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
       self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
-    # Wasm new EH (exnref) with and without Wasm SjLj support
-    self.set_setting('WASM_EXNREF')
+    # Wasm standardized EH (exnref) with and without Wasm SjLj support
+    self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
     for support_longjmp in (0, 'wasm'):
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
       self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
@@ -1518,7 +1519,7 @@ int main() {
       self.clear_setting('DISABLE_EXCEPTION_CATCHING')
       self.clear_setting('SUPPORT_LONGJMP')
       self.clear_setting('ASYNCIFY')
-      self.clear_setting('WASM_EXNREF')
+      self.clear_setting('WASM_LEGACY_EXCEPTIONS')
 
     # Emscripten EH and Wasm EH cannot be enabled at the same time
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
@@ -1719,7 +1720,7 @@ int main() {
 
   def test_emscripten_api(self):
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_save_me_aimee'])
-    self.do_core_test('test_emscripten_api.cpp')
+    self.do_core_test('test_emscripten_api.c')
 
     # Sanitizers are not compatible with LINKABLE (dynamic linking.
     if not is_sanitizing(self.emcc_args) and not self.is_wasm64():
@@ -1727,7 +1728,7 @@ int main() {
       self.clear_setting('EXPORTED_FUNCTIONS')
       self.set_setting('EXPORT_ALL')
       self.set_setting('LINKABLE')
-      self.do_core_test('test_emscripten_api.cpp')
+      self.do_core_test('test_emscripten_api.c')
 
   def test_emscripten_run_script_string_int(self):
     src = r'''
@@ -2054,7 +2055,7 @@ int main(int argc, char **argv) {
       self.skipTest('wasm memory specific test')
 
     # check that memory growth does not exceed the wasm mem max limit and is exactly or one step below the wasm mem max
-    self.emcc_args += ['-sALLOW_MEMORY_GROWTH', '-sSTACK_SIZE=1Mb', '-sINITIAL_MEMORY=64Mb', '-sMAXIMUM_MEMORY=130Mb', '-sMEMORY_GROWTH_LINEAR_STEP=1Mb']
+    self.emcc_args += ['-sALLOW_MEMORY_GROWTH', '-sSTACK_SIZE=1Mb', '-sINITIAL_MEMORY=32Mb', '-sMAXIMUM_MEMORY=64Mb', '-sMEMORY_GROWTH_LINEAR_STEP=1Mb']
     self.do_core_test('test_memorygrowth_linear_step.c')
 
   @no_ubsan('UBSan seems to effect the precise memory usage')
@@ -5543,8 +5544,15 @@ got: 10
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('fcntl/test_fcntl.c')
 
+  @crossplatform
   @also_with_nodefs_both
+  @crossplatform
   def test_fcntl_open(self):
+    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
+    if nodefs and WINDOWS:
+      self.skipTest('Stat mode behavior does not match on Windows')
+    if '-DNODERAWFS' in self.emcc_args and not LINUX:
+      self.skipTest('noderawfs fails here under non-linux')
     self.do_run_in_out_file_test('fcntl/test_fcntl_open.c')
 
   @also_with_wasm_bigint
@@ -5568,7 +5576,7 @@ got: 10
   def test_utime(self):
     self.do_runf('utime/test_utime.c', 'success')
 
-  @also_with_noderawfs
+  @also_with_nodefs_both
   def test_futimens(self):
     self.do_runf('utime/test_futimens.c', 'success')
 
@@ -5860,12 +5868,10 @@ Module.onRuntimeInitialized = () => {
     self.do_runf('fs/test_fs_rename_on_existing.c', 'success')
 
   @also_with_nodefs_both
+  @no_windows('stat ino values dont match on windows')
+  @crossplatform
   def test_fs_readdir_ino_matches_stat_ino(self):
     self.do_runf('fs/test_fs_readdir_ino_matches_stat_ino.c', 'success')
-
-  @also_with_nodefs_both
-  def test_fs_open_no_permissions(self):
-    self.do_runf('fs/test_fs_open_no_permissions.c', 'success')
 
   @also_with_nodefs_both
   @crossplatform
@@ -6152,13 +6158,12 @@ PORT: 3979
   def test_reinterpreted_ptrs(self):
     self.do_core_test('test_reinterpreted_ptrs.cpp')
 
-  def test_js_libraries(self):
-    create_file('main.cpp', '''
+  def test_jslib(self):
+    create_file('main.c', '''
       #include <stdio.h>
-      extern "C" {
-        extern void printey();
-        extern int calcey(int x, int y);
-      }
+      void printey();
+      int calcey(int x, int y);
+
       int main() {
         printey();
         printf("*%d*\\n", calcey(10, 22));
@@ -6177,7 +6182,7 @@ PORT: 3979
     ''')
 
     self.emcc_args += ['--js-library', 'mylib1.js', '--js-library', 'mylib2.js']
-    self.do_runf('main.cpp', 'hello from lib!\n*32*\n')
+    self.do_runf('main.c', 'hello from lib!\n*32*\n')
 
   @with_env_modify({'LC_ALL': 'latin-1', 'PYTHONUTF8': '0', 'PYTHONCOERCECLOCALE': '0'})
   @crossplatform
@@ -7799,7 +7804,7 @@ void* operator new(size_t size) {
 
     # Get the wat, printing with -g which has binary offsets
     wat = self.run_process([Path(building.get_binaryen_bin(), 'wasm-opt'),
-                           wasm_filename, '-g', '--print'], stdout=PIPE).stdout
+                           wasm_filename, '-g', '--print', '-all'], stdout=PIPE).stdout
 
     # We expect to see a pattern like this in optimized builds (there isn't
     # much that can change with such calls to JS (they can't be reordered or
@@ -8259,8 +8264,8 @@ Module.onRuntimeInitialized = () => {
   @no_asan('asyncify stack operations confuse asan')
   @no_wasm2js('TODO: lazy loading in wasm2js')
   @parameterized({
+    '': (False,),
     'conditional': (True,),
-    'unconditional': (False,),
   })
   def test_emscripten_lazy_load_code(self, conditional):
     if self.get_setting('STACK_OVERFLOW_CHECK'):
@@ -8271,7 +8276,7 @@ Module.onRuntimeInitialized = () => {
     self.emcc_args += ['--profiling-funcs'] # so that we can find the functions for the changes below
     if conditional:
       self.emcc_args += ['-DCONDITIONAL']
-    self.do_core_test('emscripten_lazy_load_code.cpp', args=['0'])
+    self.do_core_test('emscripten_lazy_load_code.c', args=['0'])
 
     first_size = os.path.getsize('emscripten_lazy_load_code.wasm')
     second_size = os.path.getsize('emscripten_lazy_load_code.wasm.lazy.wasm')
@@ -8901,10 +8906,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'vector': ('test_asan_vector.cpp', [
       'AddressSanitizer: container-overflow on address'
     ]),
-    # some coverage for mimalloc as well
-    'use_after_free_c_mimalloc': ('test_asan_use_after_free.c', [
-      'AddressSanitizer: heap-use-after-free on address',
-    ], ['-sMALLOC=mimalloc']),
   })
   def test_asan(self, name, expected_output, cflags=None):
     if '-Oz' in self.emcc_args:
@@ -9531,11 +9532,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('test_syscall_intercept.c')
 
   @also_with_wasm_bigint
-  def test_js_library_i64_params(self):
+  def test_jslib_i64_params(self):
     # Tests the defineI64Param and receiveI64ParamAsI53 helpers that are
     # used to recieve i64 argument in syscalls.
-    self.emcc_args += ['--js-library=' + test_file('core/js_library_i64_params.js')]
-    self.do_core_test('js_library_i64_params.c')
+    self.emcc_args += ['--js-library=' + test_file('core/test_jslib_i64_params.js')]
+    self.do_core_test('test_jslib_i64_params.c')
 
   def test_main_reads_args(self):
     self.run_process([EMCC, '-c', test_file('core/test_main_reads_args_real.c'), '-o', 'real.o'] + self.get_emcc_args(compile_only=True))

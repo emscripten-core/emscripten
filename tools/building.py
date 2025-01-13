@@ -879,10 +879,11 @@ def metadce(js_file, wasm_file, debug_info, last):
 
 
 def asyncify_lazy_load_code(wasm_target, debug):
-  # create the lazy-loaded wasm. remove the memory segments from it, as memory
-  # segments have already been applied by the initial wasm, and apply the knowledge
-  # that it will only rewind, after which optimizations can remove some code
-  args = ['--remove-memory', '--mod-asyncify-never-unwind']
+  # Create the lazy-loaded wasm. Remove any active memory segments and the
+  # start function from it (as these will segments have already been applied
+  # by the initial wasm) and apply the knowledge that it will only rewind,
+  # after which optimizations can remove some code
+  args = ['--remove-memory-init', '--mod-asyncify-never-unwind']
   if settings.OPT_LEVEL > 0:
     args.append(opt_level_to_str(settings.OPT_LEVEL, settings.SHRINK_LEVEL))
   run_wasm_opt(wasm_target,
@@ -1055,12 +1056,7 @@ def little_endian_heap(js_file):
 
 def apply_wasm_memory_growth(js_file):
   logger.debug('supporting wasm memory growth with pthreads')
-  fixed = acorn_optimizer(js_file, ['growableHeap'])
-  ret = js_file + '.pgrow.js'
-  fixed = utils.read_file(fixed)
-  support_code = utils.read_file(path_from_root('src/growableHeap.js'))
-  utils.write_file(ret, support_code + '\n' + fixed)
-  return ret
+  return acorn_optimizer(js_file, ['growableHeap'])
 
 
 def use_unsigned_pointers_in_js(js_file):
