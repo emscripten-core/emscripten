@@ -13744,6 +13744,8 @@ void foo() {}
   @crossplatform
   @with_all_fs
   def test_unistd_fstatfs(self):
+    if '-DNODERAWFS' in self.emcc_args and WINDOWS:
+      self.skipTest('Cannot look up /dev/stdout on windows')
     self.do_run_in_out_file_test('unistd/fstatfs.c')
 
   @no_windows("test is Linux-specific")
