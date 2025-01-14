@@ -58,14 +58,13 @@ def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
   # way that minifies well with Closure
   # e.g. var a,b,c,d,e,f;
 
-  exports = [asmjs_mangle(x) for x in exports if x != building.WASM_CALL_CTORS]
-
-  declares = 'var ' + ',\n '.join(exports) + ';'
-  post = shared.do_replace(post, '<<< WASM_MODULE_EXPORTS_DECLARES >>>', declares)
-
-  # Generate assignments from all wasm exports out to the JS variables above: e.g. a = wasmExports['a']; b = wasmExports['b'];
+  # `receiving` contains all of the assignments from wasm exports to
+  # global JS variables: e.g. a = wasmExports['a']; b = wasmExports['b'];
   post = shared.do_replace(post, '<<< WASM_MODULE_EXPORTS >>>', receiving)
-  return post
+
+  exports = [asmjs_mangle(x) for x in exports if x != building.WASM_CALL_CTORS]
+  receiving = 'var ' + ',\n '.join(exports) + ';'
+  return post, receiving
 
 
 def write_output_file(outfile, module):
@@ -462,8 +461,9 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
 
     if settings.MINIMAL_RUNTIME:
       if settings.DECLARE_ASM_MODULE_EXPORTS:
-        post = compute_minimal_runtime_initializer_and_exports(post, function_exports, receiving)
-      receiving = ''
+        post, receiving = compute_minimal_runtime_initializer_and_exports(post, function_exports, receiving)
+      else:
+        receiving = ''
 
     module = create_module(receiving, metadata, global_exports, forwarded_json['librarySymbols'])
 

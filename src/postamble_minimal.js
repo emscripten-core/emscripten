@@ -92,10 +92,6 @@ var wasmExports;
 var wasmModule;
 #endif
 
-#if DECLARE_ASM_MODULE_EXPORTS
-<<< WASM_MODULE_EXPORTS_DECLARES >>>
-#endif
-
 #if PTHREADS
 function loadModule() {
   assignWasmImports();
