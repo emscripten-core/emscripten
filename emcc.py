@@ -644,7 +644,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     print(compiler_rt.get_path(absolute=True))
     return 0
 
-  print_file_name = [a for a in newargs if a.startswith('-print-file-name=') or a.startswith('--print-file-name=')]
+  print_file_name = [a for a in newargs if a.startswith(('-print-file-name=', '--print-file-name='))]
   if print_file_name:
     libname = print_file_name[-1].split('=')[1]
     system_libpath = cache.get_lib_dir(absolute=True)
@@ -1541,7 +1541,7 @@ def parse_value(text, expected_type):
   # places here.
   def parse_string_value(text):
     first = text[0]
-    if first == "'" or first == '"':
+    if first in {"'", '"'}:
       text = text.rstrip()
       if text[-1] != text[0] or len(text) < 2:
          raise ValueError(f'unclosed quoted string. expected final character to be "{text[0]}" and length to be greater than 1 in "{text[0]}"')
@@ -1558,7 +1558,7 @@ def parse_value(text, expected_type):
       if not len(current):
         raise ValueError('empty value in string list')
       first = current[0]
-      if not (first == "'" or first == '"'):
+      if first not in {"'", '"'}:
         result.append(current.rstrip())
       else:
         start = index
