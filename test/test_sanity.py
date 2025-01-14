@@ -439,20 +439,13 @@ fi
   def test_emcc_multiprocess_cache_access(self):
     restore_and_set_up()
 
-    create_file('test.c', r'''
-      #include <stdio.h>
-      int main() {
-        printf("hello, world!\n");
-        return 0;
-      }
-      ''')
     cache_dir_name = self.in_dir('test_cache')
     libname = cache.get_lib_name('libc.a')
     with env_modify({'EM_CACHE': cache_dir_name}):
       tasks = []
       num_times_libc_was_built = 0
       for i in range(3):
-        p = self.run_process([EMCC, 'test.c', '-O2', '-o', '%d.js' % i], stderr=STDOUT, stdout=PIPE)
+        p = self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-o', '%d.js' % i], stderr=STDOUT, stdout=PIPE)
         tasks += [p]
       for p in tasks:
         print('stdout:\n', p.stdout)
@@ -479,19 +472,12 @@ fi
     else:
       cache_dir_name = self.in_dir('emscripten_cache')
     self.assertFalse(os.path.exists(cache_dir_name))
-    create_file('test.c', r'''
-      #include <stdio.h>
-      int main() {
-        printf("hello, world!\n");
-        return 0;
-      }
-      ''')
     args = ['--cache', cache_dir_name]
     if use_response_files:
       rsp = response_file.create_response_file(args, shared.TEMP_DIR)
       args = ['@' + rsp]
 
-    self.run_process([EMCC, 'test.c'] + args, stderr=PIPE)
+    self.run_process([EMCC, test_file('hello_world.c')] + args, stderr=PIPE)
     if use_response_files:
       os.remove(rsp)
 
