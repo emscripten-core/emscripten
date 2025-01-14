@@ -36,7 +36,7 @@ var wasmImports = {
 function run() {
  var ret = _main();
 }
-function initRuntime() {
+function initRuntime(wasmExports) {
  for (var i in __ATINIT__) __ATINIT__[i].func();
 }
 var env = wasmImports;
@@ -65,11 +65,15 @@ var imports = {
  }
 };
 var _main, _unused;
-WebAssembly.instantiate(Module["wasm"], imports).then(((output) => {
- var wasmExports = output.instance.exports;
+function assignWasmExports(wasmExports) {
  _main = wasmExports["b"];
  _unused = wasmExports["c"];
- initRuntime();
+}
+
+WebAssembly.instantiate(Module["wasm"], imports).then(((output) => {
+ var wasmExports = output.instance.exports;
+ assignWasmExports(wasmExports);
+ initRuntime(wasmExports);
  ready();
 }));
 
