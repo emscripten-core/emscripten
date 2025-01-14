@@ -428,7 +428,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
       plugin = utils.read_file(arg.split('=', 1)[1])
       eval(plugin) # should append itself to plugins
       leading = ''
-    elif leading == 'preload' or leading == 'embed':
+    elif leading in {'preload', 'embed'}:
       mode = leading
       # position of @ if we're doing 'src@dst'. '__' is used to keep the index
       # same with the original if they escaped with '@@'.

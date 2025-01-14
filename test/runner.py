@@ -314,6 +314,7 @@ def flattened_tests(loaded_tests):
     tests.extend(subsuite)
   return tests
 
+
 def suite_for_module(module, tests):
   suite_supported = module.__name__ in ('test_core', 'test_other', 'test_posixtest')
   if not common.EMTEST_SAVE_DIR and not shared.DEBUG:

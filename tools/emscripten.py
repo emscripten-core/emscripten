@@ -912,7 +912,7 @@ def make_export_wrappers(function_exports):
     # The emscripten stack functions are called very early (by writeStackCookie) before
     # the runtime is initialized so we can't create these wrappers that check for
     # runtimeInitialized.
-    if sym.startswith('_asan_') or sym.startswith('emscripten_stack_') or sym.startswith('_emscripten_stack_'):
+    if sym.startswith(('_asan_', 'emscripten_stack_', '_emscripten_stack_')):
       return False
     # Likewise `__trap` can occur before the runtime is initialized since it is used in
     # abort.

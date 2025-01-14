@@ -1152,7 +1152,7 @@ f.close()
         i = os.path.normpath(i)
         # we also allow for the cache include directory and llvm's own builtin includes.
         # all other include paths should be inside the sysroot.
-        if i.startswith(cachedir) or i.startswith(llvmroot):
+        if i.startswith((cachedir, llvmroot)):
           continue
         self.assertContained(path_from_root('system'), i)
 
@@ -11374,7 +11374,7 @@ int main () {
       obtained_results[f] = size
       obtained_results[f_gz] = size_gz
 
-      if size != expected_size and (f.endswith('.js') or f.endswith('.html')):
+      if size != expected_size and (f.endswith(('.js', '.html'))):
         print('Contents of ' + f + ': ')
         print(read_file(f))
 

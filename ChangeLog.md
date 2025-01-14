@@ -4,7 +4,7 @@ Note that version numbers do not necessarily reflect the amount of changes
 between versions. A version number reflects a release that is known to pass all
 tests, and versions may be tagged more or less frequently at different times.
 
-nNote that there is *no* ABI compatibility guarantee between versions - the ABI
+Note that there is *no* ABI compatibility guarantee between versions - the ABI
 may change, so that we can keep improving and optimizing it. The compiler will
 automatically invalidate system caches when the version number updates, so that
 libc etc. are rebuilt for you. You should also rebuild object files and
@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.0 (in development)
+4.0.1 (in development)
 ----------------------
+
+4.0.0 - 01/14/25
+----------------
 - Emscripten version was bumped to 4.0.0. Happy new year, happy new major
   version!  While version has a few interesting changes, there is nothing huge
   that makes it different from any other release. (#19053)
