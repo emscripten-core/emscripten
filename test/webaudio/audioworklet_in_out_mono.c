@@ -108,53 +108,53 @@ bool onClick(int type, const EmscriptenMouseEvent* e, void* data) {
 
 // Audio processor created, now register the audio callback
 void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
-  if (success) {
-    printf("Audio worklet processor created\n");
-    printf("Click to toggle audio playback\n");
-
-    // Mono output, two inputs
-    int outputChannelCounts[1] = { 1 };
-    EmscriptenAudioWorkletNodeCreateOptions opts = {
-      .numberOfInputs  = 2,
-      .numberOfOutputs = 1,
-      .outputChannelCounts = outputChannelCounts
-    };
-    EMSCRIPTEN_AUDIO_WORKLET_NODE_T worklet = emscripten_create_wasm_audio_worklet_node(context, "mixer", &opts, &process, NULL);
-    emscripten_audio_node_connect(worklet, context, 0, 0);
-
-    // Create the two mono source nodes and connect them to the two inputs
-    // Note: we can connect the sources to the same input and it'll get mixed for us, but that's not the point
-    beatID = createTrack(context, "audio_files/emscripten-beat-mono.mp3", true);
-    if (beatID) {
-      emscripten_audio_node_connect(beatID, worklet, 0, 0);
-    }
-    bassID = createTrack(context, "audio_files/emscripten-bass-mono.mp3", true);
-    if (bassID) {
-      emscripten_audio_node_connect(bassID, worklet, 0, 1);
-    }
-
-    // Register a click to start playback
-    emscripten_set_click_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, WA_2_VOIDP(context), false, &onClick);
-
-    // Register the counter that exits the test after one second of mixing
-    emscripten_set_timeout_loop(&playedAndMixed, 16, NULL);
-  } else {
+  if (!success) {
     printf("Audio worklet node creation failed\n");
+    return;
   }
+  printf("Audio worklet processor created\n");
+  printf("Click to toggle audio playback\n");
+
+  // Mono output, two inputs
+  int outputChannelCounts[1] = { 1 };
+  EmscriptenAudioWorkletNodeCreateOptions opts = {
+    .numberOfInputs  = 2,
+    .numberOfOutputs = 1,
+    .outputChannelCounts = outputChannelCounts
+  };
+  EMSCRIPTEN_AUDIO_WORKLET_NODE_T worklet = emscripten_create_wasm_audio_worklet_node(context, "mixer", &opts, &process, NULL);
+  emscripten_audio_node_connect(worklet, context, 0, 0);
+
+  // Create the two mono source nodes and connect them to the two inputs
+  // Note: we can connect the sources to the same input and it'll get mixed for us, but that's not the point
+  beatID = createTrack(context, "audio_files/emscripten-beat-mono.mp3", true);
+  if (beatID) {
+    emscripten_audio_node_connect(beatID, worklet, 0, 0);
+  }
+  bassID = createTrack(context, "audio_files/emscripten-bass-mono.mp3", true);
+  if (bassID) {
+    emscripten_audio_node_connect(bassID, worklet, 0, 1);
+  }
+
+  // Register a click to start playback
+  emscripten_set_click_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, WA_2_VOIDP(context), false, &onClick);
+
+  // Register the counter that exits the test after one second of mixing
+  emscripten_set_timeout_loop(&playedAndMixed, 16, NULL);
 }
 
 // Worklet thread inited, now create the audio processor
 void initialised(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
-  if (success) {
-    printf("Audio worklet initialised\n");
-
-    WebAudioWorkletProcessorCreateOptions opts = {
-      .name = "mixer",
-    };
-    emscripten_create_wasm_audio_worklet_processor_async(context, &opts, &processorCreated, NULL);
-  } else {
+  if (!success) {
     printf("Audio worklet failed to initialise\n");
+    return;
   }
+  printf("Audio worklet initialised\n");
+
+  WebAudioWorkletProcessorCreateOptions opts = {
+    .name = "mixer",
+  };
+  emscripten_create_wasm_audio_worklet_processor_async(context, &opts, &processorCreated, NULL);
 }
 
 int main() {
