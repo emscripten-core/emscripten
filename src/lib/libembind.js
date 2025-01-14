@@ -34,6 +34,8 @@ var LibraryEmbind = {
 #if EMBIND_AOT
   $InvokerFunctions: '<<< EMBIND_AOT_INVOKERS >>>',
 #if MODULARIZE == 'instance'
+  // embindUpdateExports is called in the generated code after embind is
+  // initialized. It will link the bindings to the ES module exports.
   $embindUpdateExports: '<<< EMBIND_AOT_UPDATE_EXPORTS >>>',
   $embindUpdateExports__postset: 'addOnInit(embindUpdateExports);',
 #endif
