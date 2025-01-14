@@ -560,6 +560,25 @@ If manually bisecting:
     self.compile_btest(src, ['--pre-js', data_js_file, '-o', abs_page_file, '-sFORCE_FILESYSTEM'], reporting=Reporting.JS_ONLY)
     self.run_browser(page_file, '/report_result?exit:0')
 
+  # Clear all IndexedDB databases. This gives us a fresh state for tests that
+  # chech caching.
+  def clear_indexed_db(self):
+    shutil.copy(test_file('browser_reporting.js'), '.')
+    create_file('clear_indexed_db.html', '''
+      <script src="browser_reporting.js"></script>
+      <script>
+        // Clear the cache, so that the next test starts from a clean slate.
+        indexedDB.databases().then(dbs => {
+          Promise.all(dbs.map(db => {
+            return indexedDB.deleteDatabase(db.name);
+          })).then(() => {
+            reportResultToServer("clear");
+          });
+        });
+      </script>
+    ''')
+    self.run_browser('clear_indexed_db.html', '/report_result?clear')
+
   @parameterized({
     '0': (0,),
     '1mb': (1 * 1024 * 1024,),
@@ -567,6 +586,7 @@ If manually bisecting:
     '150mb': (150 * 1024 * 1024,),
   })
   def test_preload_caching(self, extra_size):
+    self.clear_indexed_db()
     self.set_setting('EXIT_RUNTIME')
     create_file('main.c', r'''
       #include <assert.h>
@@ -584,7 +604,13 @@ If manually bisecting:
         fclose(f);
         printf("|%%s|\n", buf);
 
-        assert(strcmp("load me right before", buf) == 0);
+        if (strcmp("load me right before", buf)) {
+          puts("bad data");
+          // Return a code that is easily differentiable from the 0, 1 that
+          // the main test returns, which is the # of cached packages.
+          emscripten_force_exit(99);
+        }
+
         return checkPreloadResults();
       }
     ''' % 'somefile.txt')
@@ -596,8 +622,9 @@ If manually bisecting:
           var packages = Object.keys(Module['preloadResults']);
           packages.forEach(function(package) {
             var fromCache = Module['preloadResults'][package]['fromCache'];
-            if (fromCache)
-              ++ cached;
+            if (fromCache) {
+              cached++;
+            }
           });
           return cached;
         }
