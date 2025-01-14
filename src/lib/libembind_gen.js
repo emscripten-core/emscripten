@@ -52,6 +52,7 @@ var LibraryEmbind = {
       this.thisType = thisType;
       this.isNonnullReturn = isNonnullReturn;
       this.isAsync = isAsync;
+      this.hasPublicSymbol = true;
     }
 
     printSignature(nameMap, out) {
@@ -170,6 +171,7 @@ var LibraryEmbind = {
       if (base) {
         this.destructorType = 'stack';
       }
+      this.hasPublicSymbol = true;
     }
 
     print(nameMap, out) {
@@ -271,6 +273,7 @@ var LibraryEmbind = {
     constructor(type, name) {
       this.type = type;
       this.name = name;
+      this.hasPublicSymbol = true;
     }
 
     printModuleEntry(nameMap, out) {
@@ -283,6 +286,7 @@ var LibraryEmbind = {
       this.name = name;
       this.items = [];
       this.destructorType = 'none';
+      this.hasPublicSymbol = true;
     }
 
     print(nameMap, out) {
@@ -454,14 +458,27 @@ var LibraryEmbind = {
 
     print() {
       const out = ['{\n'];
+      const publicSymbols = [];
       for (const def of this.definitions) {
+        if (def.hasPublicSymbol) {
+          publicSymbols.push(def.name);
+        }
         if (!def.printJs) {
           continue;
         }
         def.printJs(out);
       }
-      out.push('}')
-      console.log(out.join(''));
+      out.push('}\n');
+      let updateExports = '() => {\n';
+      for (const publicSymbol of publicSymbols) {
+        updateExports += `__exp_${publicSymbol} = Module['${publicSymbol}'];\n`
+      }
+      updateExports += '}\n';
+      console.log(JSON.stringify({
+        'invokers': out.join(''),
+        publicSymbols,
+        updateExports
+      }));
     }
   },
 
