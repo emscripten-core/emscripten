@@ -137,7 +137,7 @@ void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
 void initialised(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
   if (!success) {
     printf("Audio worklet failed to initialise\n");
-  	return;
+    return;
   }
   printf("Audio worklet initialised\n");
 

@@ -16,7 +16,6 @@
 // Helper for MEMORY64 to cast a void* to an audio context or type
 #define VOIDP_2_WA(ptr) ((EMSCRIPTEN_WEBAUDIO_T) (intptr_t) ptr)
 
-
 // Count the audio callbacks and return after 375 frames (1 second with the default 128 size)
 //
 // *** Remove this in your own code ***
