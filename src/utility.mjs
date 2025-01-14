@@ -232,6 +232,10 @@ export function read(filename) {
 
 function find(filename) {
   for (const prefix of [process.cwd(), import.meta.dirname]) {
+    // import.meta.dirname does not work in all versions of node.
+    if (!prefix) {
+      continue;
+    }
     const combined = path.join(prefix, filename);
     if (fs.existsSync(combined)) {
       return combined;
