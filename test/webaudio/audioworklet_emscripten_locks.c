@@ -52,27 +52,27 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
   case TEST_HAS_WAIT:
     // Should not have wait support here
     result = _emscripten_thread_supports_atomics_wait();
-    printf("TEST_HAS_WAIT: %d\n", result);
+    printf("TEST_HAS_WAIT: %d (expect: 0)\n", result);
     assert(!result);
     whichTest = TEST_TRY_ACQUIRE;
     break;
   case TEST_TRY_ACQUIRE:
     // Was locked after init, should fail to acquire
     result = emscripten_lock_try_acquire(&testLock);
-    printf("TEST_TRY_ACQUIRE: %d\n", result);
+    printf("TEST_TRY_ACQUIRE: %d (expect: 0)\n", result);
     assert(!result);
     whichTest = TEST_WAIT_ACQUIRE_FAIL;
     break;
   case TEST_WAIT_ACQUIRE_FAIL:
     // Still locked so we fail to acquire
     result = emscripten_lock_busyspin_wait_acquire(&testLock, 100);
-    printf("TEST_WAIT_ACQUIRE_FAIL: %d\n", result);
+    printf("TEST_WAIT_ACQUIRE_FAIL: %d (expect: 0)\n", result);
     assert(!result);
     whichTest = TEST_WAIT_ACQUIRE;
   case TEST_WAIT_ACQUIRE:
     // Will get unlocked in main thread, so should quickly acquire
     result = emscripten_lock_busyspin_wait_acquire(&testLock, 100);
-    printf("TEST_WAIT_ACQUIRE: %d\n", result);
+    printf("TEST_WAIT_ACQUIRE: %d  (expect: 1)\n", result);
     assert(result);
     whichTest = TEST_RELEASE;
     break;
@@ -80,7 +80,7 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
     // Unlock, check the result
     emscripten_lock_release(&testLock);
     result = emscripten_lock_try_acquire(&testLock);
-    printf("TEST_RELEASE: %d\n", result);
+    printf("TEST_RELEASE: %d (expect: 1)\n", result);
     assert(result);
     whichTest = TEST_WAIT_INFINTE_1;
     break;
@@ -93,7 +93,7 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
     break;
   case TEST_GET_NOW:
     result = (int) (emscripten_get_now() - startTime);
-    printf("TEST_GET_NOW: %d\n", result);
+    printf("TEST_GET_NOW: %d  (expect: > 0)\n", result);
     assert(result > 0);
     whichTest = TEST_DONE;
   case TEST_DONE:
