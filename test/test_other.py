@@ -3464,7 +3464,7 @@ More info: https://emscripten.org
     # Check that TypeScript generation works and that the program is runs as
     # expected.
     self.emcc(test_file('other/embind_tsgen.cpp'),
-              ['-o', 'embind_tsgen.js', '-lembind', '--emit-tsd', 'embind_tsgen.d.ts'] + opts)
+              ['-o', 'embind_tsgen.js', '-sEMBIND_AOT', '-lembind', '--emit-tsd', 'embind_tsgen.d.ts'] + opts)
 
     # Test that the output compiles with a TS file that uses the defintions.
     shutil.copyfile(test_file('other/embind_tsgen_main.ts'), 'main.ts')
