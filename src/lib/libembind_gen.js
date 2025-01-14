@@ -44,6 +44,7 @@ var LibraryEmbind = {
   },
   $FunctionDefinition__deps: ['$createJsInvoker', '$createJsInvokerSignature', '$emittedFunctions'],
   $FunctionDefinition: class {
+    hasPublicSymbol = true;
     constructor(name, returnType, argumentTypes, functionIndex, thisType = null, isNonnullReturn = false, isAsync = false) {
       this.name = name;
       this.returnType = returnType;
@@ -52,7 +53,6 @@ var LibraryEmbind = {
       this.thisType = thisType;
       this.isNonnullReturn = isNonnullReturn;
       this.isAsync = isAsync;
-      this.hasPublicSymbol = true;
     }
 
     printSignature(nameMap, out) {
@@ -158,6 +158,7 @@ var LibraryEmbind = {
     }
   },
   $ClassDefinition: class {
+    hasPublicSymbol = true;
     constructor(typeId, name, base = null) {
       this.typeId = typeId;
       this.name = name;
@@ -171,7 +172,6 @@ var LibraryEmbind = {
       if (base) {
         this.destructorType = 'stack';
       }
-      this.hasPublicSymbol = true;
     }
 
     print(nameMap, out) {
@@ -270,10 +270,10 @@ var LibraryEmbind = {
     }
   },
   $ConstantDefinition: class {
+    hasPublicSymbol = true;
     constructor(type, name) {
       this.type = type;
       this.name = name;
-      this.hasPublicSymbol = true;
     }
 
     printModuleEntry(nameMap, out) {
@@ -281,12 +281,12 @@ var LibraryEmbind = {
     }
   },
   $EnumDefinition: class {
+    hasPublicSymbol = true;
     constructor(typeId, name) {
       this.typeId = typeId;
       this.name = name;
       this.items = [];
       this.destructorType = 'none';
-      this.hasPublicSymbol = true;
     }
 
     print(nameMap, out) {
