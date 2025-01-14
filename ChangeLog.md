@@ -23,6 +23,8 @@ See docs/process.md for more on how version tagging works.
 
 4.0.0 - 01/14/25
 ----------------
+- The mimimum version of node required to run emscripten was bumped from v16.20
+  to v20.18.  This matches the version of node that is shipped in emsdk.
 - Emscripten version was bumped to 4.0.0. Happy new year, happy new major
   version!  While version has a few interesting changes, there is nothing huge
   that makes it different from any other release. (#19053)

@@ -57,9 +57,9 @@ SKIP_SUBPROCS = False
 # Minimum node version required to run the emscripten compiler.  This is
 # distinct from the minimum version required to execute the generated code
 # (settings.MIN_NODE_VERSION).
-# This version currently matches the node version that we ship with emsdk
-# which means that we can say for sure that this version is well supported.
-MINIMUM_NODE_VERSION = (16, 20, 0)
+# This version matches the node version that we ship with emsdk which means
+# that we know it has good test coverage.
+MINIMUM_NODE_VERSION = (20, 18, 0)
 EXPECTED_LLVM_VERSION = 20
 
 # These get set by setup_temp_dirs
