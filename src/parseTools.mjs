@@ -893,23 +893,6 @@ function buildStringArray(array) {
   }
 }
 
-function _asmjsDemangle(symbol) {
-  if (symbol.startsWith('dynCall_')) {
-    return symbol;
-  }
-  // Strip leading "_"
-  assert(symbol.startsWith('_'), `expected mangled symbol: ${symbol}`);
-  return symbol.substr(1);
-}
-
-// TODO(sbc): Remove this function along with _asmjsDemangle.
-function hasExportedFunction(func) {
-  warnOnce(
-    'hasExportedFunction has been replaced with hasExportedSymbol, which takes and unmangled (no leading underscore) symbol name',
-  );
-  return WASM_EXPORTS.has(_asmjsDemangle(func));
-}
-
 function hasExportedSymbol(sym) {
   return WASM_EXPORTS.has(sym);
 }
@@ -1109,7 +1092,6 @@ addToCompileTimeContext({
   getNativeTypeSize,
   getPerformanceNow,
   getUnsharedTextDecoderView,
-  hasExportedFunction,
   hasExportedSymbol,
   implicitSelf,
   isSymbolNeeded,
