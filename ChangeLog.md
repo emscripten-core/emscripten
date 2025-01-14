@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.0 (in development)
+4.0.1 (in development)
 ----------------------
+
+4.0.0 - 01/14/25
+----------------
 - Emscripten version was bumped to 4.0.0. Happy new year, happy new major
   version!  While version has a few interesting changes, there is nothing huge
   that makes it different from any other release. (#19053)
