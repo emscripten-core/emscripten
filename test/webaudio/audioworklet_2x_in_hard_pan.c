@@ -91,7 +91,7 @@ bool onClick(int type, const EmscriptenMouseEvent* e, void* data) {
   }
   printf("Toggling audio playback\n");
   toggleTrack(beatID);
-    toggleTrack(bassID);
+  toggleTrack(bassID);
   return false;
 }
 
