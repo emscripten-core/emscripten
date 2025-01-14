@@ -88,6 +88,7 @@ def linker_setup(ports, settings):
   root_path = os.path.join(ports.get_dir(), port_name)
   source_js_path = os.path.join(root_path, 'src', 'js', 'lib_emscripten_glfw3.js')
   settings.JS_LIBRARIES += [source_js_path]
+  settings.MAX_WEBGL_VERSION = 2 # for GLFW_CONTEXT_VERSION_MAJOR to work
 
 
 # Using contrib.glfw3 to avoid installing headers into top level include path
