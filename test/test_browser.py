@@ -604,13 +604,7 @@ If manually bisecting:
         fclose(f);
         printf("|%%s|\n", buf);
 
-        if (strcmp("load me right before", buf)) {
-          puts("bad data");
-          // Return a code that is easily differentiable from the 0, 1 that
-          // the main test returns, which is the # of cached packages.
-          emscripten_force_exit(99);
-        }
-
+        assert(strcmp("load me right before", buf) == 0);
         return checkPreloadResults();
       }
     ''' % 'somefile.txt')
