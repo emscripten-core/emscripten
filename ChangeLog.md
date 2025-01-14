@@ -4,7 +4,7 @@ Note that version numbers do not necessarily reflect the amount of changes
 between versions. A version number reflects a release that is known to pass all
 tests, and versions may be tagged more or less frequently at different times.
 
-nNote that there is *no* ABI compatibility guarantee between versions - the ABI
+Note that there is *no* ABI compatibility guarantee between versions - the ABI
 may change, so that we can keep improving and optimizing it. The compiler will
 automatically invalidate system caches when the version number updates, so that
 libc etc. are rebuilt for you. You should also rebuild object files and
