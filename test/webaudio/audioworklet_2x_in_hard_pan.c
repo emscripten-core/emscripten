@@ -12,7 +12,7 @@
 #define AUDIO_STACK_SIZE 3072
 
 // Shared file playback and bootstrap
-#include "audioworklet_test_shared.inl"
+#include "audioworklet_test_shared.inc"
 
 // Callback to process and copy the audio tracks
 bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, AudioSampleFrame* outputs, int numParams, const AudioParamFrame* params, void* data) {
