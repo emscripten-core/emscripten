@@ -886,9 +886,14 @@ def can_use_await():
 def make_export_wrappers(function_exports):
   assert not settings.MINIMAL_RUNTIME
 
-  wrappers = []
+  # When exports are only available asyncronously we generate an extran assignWasmExports
+  # function.   When they are syncronously available we inline the assignment along
+  # with the declaration.
+  async_exports = (settings.WASM_ASYNC_COMPILATION and not can_use_await()) or settings.PTHREADS
 
-  def install_wrapper(sym):
+  def install_debug_wrapper(sym):
+    if not settings.ASSERTIONS:
+      return False
     # The emscripten stack functions are called very early (by writeStackCookie) before
     # the runtime is initialized so we can't create these wrappers that check for
     # runtimeInitialized.
@@ -901,38 +906,58 @@ def make_export_wrappers(function_exports):
     # TODO: Look into removing these, and improving our robustness around thread termination.
     return sym not in {'__trap', 'pthread_self', '_emscripten_proxy_execute_task_queue'}
 
-  for name, types in function_exports.items():
-    nargs = len(types.params)
-    mangled = asmjs_mangle(name)
-    wrapper = 'var %s = ' % mangled
-
-    # TODO(sbc): Can we avoid exporting the dynCall_ functions on the module.
+  def outside_export(mangled):
     should_export = settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS
+    # TODO(sbc): Can we avoid exporting the dynCall_ functions on the module.
     if (name.startswith('dynCall_') and settings.MODULARIZE != 'instance') or should_export:
       if settings.MODULARIZE == 'instance':
         # Update the export declared at the top level.
-        wrapper += f" __exp_{mangled} = "
+        return f" __exp_{mangled}"
       else:
-        exported = "Module['%s'] = " % mangled
-    else:
-      exported = ''
-    wrapper += exported
+        return "Module['%s']" % mangled
 
-    if settings.ASSERTIONS and install_wrapper(name):
-      # With assertions enabled we create a wrapper that are calls get routed through, for
-      # the lifetime of the program.
-      wrapper += f"createExportWrapper('{name}', {nargs});"
-    elif (settings.WASM_ASYNC_COMPILATION and not can_use_await()) or settings.PTHREADS:
-      # With WASM_ASYNC_COMPILATION wrapper will replace the global var and Module var on
-      # first use.
-      args = [f'a{i}' for i in range(nargs)]
-      args = ', '.join(args)
-      wrapper += f"({args}) => ({mangled} = {exported}wasmExports['{name}'])({args});"
-    else:
-      wrapper += f"wasmExports['{name}']"
+  rtn = []
+  rtn.append('function assignWasmExports(wasmExports) {')
+  for name in function_exports:
+    # If a debug wrapper was used then we don't need to update anything, we want to
+    # always use the wrapper, and never the direct export.
+    if install_debug_wrapper(name):
+      continue
+    mangled = asmjs_mangle(name)
+    wrapper = f'  {mangled} = '
+    additional_export = outside_export(mangled)
+    if additional_export:
+      wrapper += additional_export + ' = '
+    wrapper += f"wasmExports['{name}'];"
+    rtn.append(wrapper)
 
-    wrappers.append(wrapper)
-  return wrappers
+  rtn.append('}')
+
+  rtn.append('')
+  rtn.append('// Exported wasm functions.')
+  if async_exports:
+    rtn.append('// These are declared here but will be remain undefined until async wasm instanatiation is complete.')
+
+  if settings.ASSERTIONS:
+    for name, types in function_exports.items():
+      mangled = asmjs_mangle(name)
+      if install_debug_wrapper(name):
+        # With assertions enabled we create a wrapper that are calls get routed through, for
+        # the lifetime of the program.
+        nargs = len(types.params)
+        additional_export = outside_export(mangled)
+        if additional_export:
+          rtn.append(f"var {mangled} = {additional_export} = createExportWrapper('{name}', {nargs});")
+        else:
+          rtn.append(f"var {mangled} = createExportWrapper('{name}', {nargs});")
+      else:
+        rtn.append(f'var {mangled};')
+  else:
+    mangled = [asmjs_mangle(name) for name in function_exports]
+    sep = ',\n  '
+    rtn.append(f'var {sep.join(mangled)};')
+
+  return rtn
 
 
 def create_receiving(function_exports):
@@ -986,17 +1011,15 @@ function assignWasmImports() {
   else:
     module.append('var wasmImports = %s;\n' % sending)
 
-  if not settings.MINIMAL_RUNTIME:
-    if settings.WASM_ASYNC_COMPILATION:
-      if can_use_await():
-        # In modularize mode the generated code is within a factory function.
-        module.append("var wasmExports = await createWasm();\n")
-      else:
-        module.append("var wasmExports;\ncreateWasm();\n")
-    else:
-      module.append("var wasmExports = createWasm();\n")
-
   module.append(receiving)
+
+  if not settings.MINIMAL_RUNTIME:
+    if settings.WASM_ASYNC_COMPILATION and can_use_await():
+      # In modularize mode the generated code is within a factory function.
+      module.append("var wasmExports = await createWasm();\n")
+    else:
+      module.append("var wasmExports;\ncreateWasm();\n")
+
   if settings.SUPPORT_LONGJMP == 'emscripten' or not settings.DISABLE_EXCEPTION_CATCHING:
     module.append(create_invoke_wrappers(metadata))
   else:
