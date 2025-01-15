@@ -219,7 +219,6 @@ rule archive
   suffix = shared.suffix(libname)
   build_dir = os.path.dirname(filename)
 
-  case_insensitive = is_case_insensitive(os.path.dirname(filename))
   if suffix == '.o':
     assert len(input_files) == 1
     input_file = escape_ninja_path(input_files[0])
@@ -232,9 +231,8 @@ rule archive
       # Resolve duplicates by appending unique.
       # This is needed on case insensitive filesystem to handle,
       # for example, _exit.o and _Exit.o.
-      object_basename = shared.unsuffixed_basename(src)
-      if case_insensitive:
-        object_basename = object_basename.lower()
+      # Always apply it to produce same libraries on different filesystems.
+      object_basename = shared.unsuffixed_basename(src).lower()
       o = os.path.join(build_dir, object_basename + '.o')
       object_uuid = 0
       # Find a unique basename
@@ -268,14 +266,6 @@ rule archive
 
   utils.write_file(filename, out)
   ensure_target_in_ninja_file(get_top_level_ninja_file(), f'subninja {escape_ninja_path(filename)}')
-
-
-def is_case_insensitive(path):
-  """Returns True if the filesystem at `path` is case insensitive."""
-  utils.write_file(os.path.join(path, 'test_file'), '')
-  case_insensitive = os.path.exists(os.path.join(path, 'TEST_FILE'))
-  os.remove(os.path.join(path, 'test_file'))
-  return case_insensitive
 
 
 class Library:
@@ -490,7 +480,6 @@ class Library:
     commands = []
     objects = set()
     cflags = self.get_cflags()
-    case_insensitive = is_case_insensitive(build_dir)
     for src in self.get_files():
       ext = shared.suffix(src)
       if ext in {'.s', '.S', '.c'}:
@@ -507,15 +496,12 @@ class Library:
         cmd += cflags
       cmd = self.customize_build_cmd(cmd, src)
 
-      object_basename = shared.unsuffixed_basename(src)
-      if case_insensitive:
-        object_basename = object_basename.lower()
+      object_basename = shared.unsuffixed_basename(src).lower()
       o = os.path.join(build_dir, object_basename + '.o')
       if o in objects:
-        # If we have seen a file with the same name before, we are on a case-insensitive
-        # filesystem and need a separate command to compile this file with a
-        # custom unique output object filename, as batch compile doesn't allow
-        # such customization.
+        # If we have seen a file with the same name before, we need a separate
+        # command to compile this file with a custom unique output object
+        # filename, as batch compile doesn't allow such customization.
         #
         # This is needed to handle, for example, _exit.o and _Exit.o.
         object_uuid = 0
