@@ -6,8 +6,8 @@
 import os
 from typing import Union, Dict
 
-TAG = '3.4.0.20241230'
-HASH = '917df0d23e425d71b189294481fe369dc50baa28493c8f4d6590c9d99b4d880ddeb1064d1481ef1586bee1504898d5b0d0a2f9b4e77c7ac384237af238e1a7a6'
+TAG = '3.4.0.20250112'
+HASH = '55d0828674c185f6ca00f76fcbaaeec8baec26be1507b33d36a2084c6352ca51dd27a61082478998b200e9a388834f2f95d6b00258c303bba1a996e305034a6b'
 
 # contrib port information (required)
 URL = 'https://github.com/pongasoft/emscripten-glfw'
@@ -88,6 +88,7 @@ def linker_setup(ports, settings):
   root_path = os.path.join(ports.get_dir(), port_name)
   source_js_path = os.path.join(root_path, 'src', 'js', 'lib_emscripten_glfw3.js')
   settings.JS_LIBRARIES += [source_js_path]
+  settings.MAX_WEBGL_VERSION = 2 # for GLFW_CONTEXT_VERSION_MAJOR to work
 
 
 # Using contrib.glfw3 to avoid installing headers into top level include path

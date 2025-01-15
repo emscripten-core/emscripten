@@ -3,7 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import contextlib
 import os
 import shutil
 import sys
@@ -45,17 +44,6 @@ def removeprefix(string, prefix):
   if string.startswith(prefix):
     return string[len(prefix):]
   return string
-
-
-@contextlib.contextmanager
-def chdir(dir):
-  """A context manager that performs actions in the given directory."""
-  orig_cwd = os.getcwd()
-  os.chdir(dir)
-  try:
-    yield
-  finally:
-    os.chdir(orig_cwd)
 
 
 def read_file(file_path):

@@ -277,23 +277,23 @@ def requires_wasm64(func):
   return decorated
 
 
+def requires_wasm_legacy_eh(func):
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    self.require_wasm_legacy_eh()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
 def requires_wasm_eh(func):
   assert callable(func)
 
   @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_wasm_eh()
-    return func(self, *args, **kwargs)
-
-  return decorated
-
-
-def requires_wasm_exnref(func):
-  assert callable(func)
-
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-    self.require_wasm_exnref()
     return func(self, *args, **kwargs)
 
   return decorated
@@ -637,7 +637,7 @@ def with_all_eh_sjlj(f):
   def metafunc(self, mode, *args, **kwargs):
     if DEBUG:
       print('parameterize:eh_mode=%s' % mode)
-    if mode == 'wasm' or mode == 'wasm_exnref':
+    if mode in {'wasm', 'wasm_exnref'}:
       # Wasm EH is currently supported only in wasm backend and V8
       if self.is_wasm2js():
         self.skipTest('wasm2js does not support wasm EH/SjLj')
@@ -647,10 +647,9 @@ def with_all_eh_sjlj(f):
       self.emcc_args.append('-fwasm-exceptions')
       self.set_setting('SUPPORT_LONGJMP', 'wasm')
       if mode == 'wasm':
-        self.require_wasm_eh()
+        self.require_wasm_legacy_eh()
       if mode == 'wasm_exnref':
-        self.require_wasm_exnref()
-        self.set_setting('WASM_EXNREF')
+        self.require_wasm_eh()
       f(self, *args, **kwargs)
     else:
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
@@ -675,7 +674,7 @@ def with_all_sjlj(f):
 
   @wraps(f)
   def metafunc(self, mode, *args, **kwargs):
-    if mode == 'wasm' or mode == 'wasm_exnref':
+    if mode in {'wasm', 'wasm_exnref'}:
       if self.is_wasm2js():
         self.skipTest('wasm2js does not support wasm SjLj')
       # FIXME Temporarily disabled. Enable this later when the bug is fixed.
@@ -683,10 +682,9 @@ def with_all_sjlj(f):
         self.skipTest('Wasm EH does not work with asan yet')
       self.set_setting('SUPPORT_LONGJMP', 'wasm')
       if mode == 'wasm':
-        self.require_wasm_eh()
+        self.require_wasm_legacy_eh()
       if mode == 'wasm_exnref':
-        self.require_wasm_exnref()
-        self.set_setting('WASM_EXNREF')
+        self.require_wasm_eh()
       f(self, *args, **kwargs)
     else:
       self.set_setting('SUPPORT_LONGJMP', 'emscripten')
@@ -735,6 +733,17 @@ def create_file(name, contents, binary=False, absolute=False):
     # python test code.
     contents = textwrap.dedent(contents)
     name.write_text(contents, encoding='utf-8')
+
+
+@contextlib.contextmanager
+def chdir(dir):
+  """A context manager that performs actions in the given directory."""
+  orig_cwd = os.getcwd()
+  os.chdir(dir)
+  try:
+    yield
+  finally:
+    os.chdir(orig_cwd)
 
 
 def make_executable(name):
@@ -997,7 +1006,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     else:
       self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_SIMD to skip')
 
-  def require_wasm_eh(self):
+  def require_wasm_legacy_eh(self):
+    self.set_setting('WASM_LEGACY_EXCEPTIONS')
     nodejs = self.get_nodejs()
     if nodejs:
       version = shared.get_node_version(nodejs)
@@ -1015,7 +1025,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     else:
       self.fail('either d8 or node >= 17 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
 
-  def require_wasm_exnref(self):
+  def require_wasm_eh(self):
+    self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
     nodejs = self.get_nodejs()
     if nodejs:
       if self.node_is_canary(nodejs):

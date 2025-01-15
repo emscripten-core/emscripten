@@ -176,7 +176,7 @@ def ignore_symbol(s, cxx):
   # Symbols that start with `emscripten_gl` or `emscripten_alc` are auto-generated
   # wrappers around GL and OpenGL symbols.  Since they inherit their signature they
   # don't need to be auto-generated.
-  if s.startswith('emscripten_gl') or s.startswith('emscripten_alc'):
+  if s.startswith(('emscripten_gl', 'emscripten_alc')):
     return True
   if s.startswith('gl') and any(s.endswith(x) for x in ('NV', 'EXT', 'WEBGL', 'ARB', 'ANGLE')):
     return True

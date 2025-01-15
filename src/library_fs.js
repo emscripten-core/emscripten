@@ -172,7 +172,9 @@ FS.staticInit();
     // paths
     //
     lookupPath(path, opts = {}) {
-      if (!path) return { path: '', node: null };
+      if (!path) {
+        throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
+      }
       opts.follow_mount ??= true
 
       if (!PATH.isAbs(path)) {
@@ -433,6 +435,12 @@ FS.staticInit();
       }
       return FS.nodePermissions(node, FS.flagsToPermissionString(flags));
     },
+    checkOpExists(op, err) {
+      if (!op) {
+        throw new FS.ErrnoError(err);
+      }
+      return op;
+    },
 
     //
     // streams
@@ -685,9 +693,18 @@ FS.staticInit();
       return parent.node_ops.mknod(parent, name, mode, dev);
     },
     statfs(path) {
-
+      return FS.statfsNode(FS.lookupPath(path, {follow: true}).node);
+    },
+    statfsStream(stream) {
+      // We keep a separate statfsStream function because noderawfs overrides
+      // it. In noderawfs, stream.node is sometimes null. Instead, we need to
+      // look at stream.path.
+      return FS.statfsNode(stream.node);
+    },
+    statfsNode(node) {
       // NOTE: None of the defaults here are true. We're just returning safe and
-      //       sane values.
+      //       sane values. Currently nodefs and rawfs replace these defaults,
+      //       other file systems leave them alone.
       var rtn = {
         bsize: 4096,
         frsize: 4096,
@@ -701,9 +718,8 @@ FS.staticInit();
         namelen: 255,
       };
 
-      var parent = FS.lookupPath(path, {follow: true}).node;
-      if (parent?.node_ops.statfs) {
-        Object.assign(rtn, parent.node_ops.statfs(parent.mount.opts.root));
+      if (node.node_ops.statfs) {
+        Object.assign(rtn, node.node_ops.statfs(node.mount.opts.root));
       }
       return rtn;
     },
@@ -895,10 +911,8 @@ FS.staticInit();
     readdir(path) {
       var lookup = FS.lookupPath(path, { follow: true });
       var node = lookup.node;
-      if (!node.node_ops.readdir) {
-        throw new FS.ErrnoError({{{ cDefs.ENOTDIR }}});
-      }
-      return node.node_ops.readdir(node);
+      var readdir = FS.checkOpExists(node.node_ops.readdir, {{{ cDefs.ENOTDIR }}});
+      return readdir(node);
     },
     unlink(path) {
       var lookup = FS.lookupPath(path, { parent: true });
@@ -948,13 +962,8 @@ FS.staticInit();
     stat(path, dontFollow) {
       var lookup = FS.lookupPath(path, { follow: !dontFollow });
       var node = lookup.node;
-      if (!node) {
-        throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
-      }
-      if (!node.node_ops.getattr) {
-        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
-      }
-      return node.node_ops.getattr(node);
+      var getattr = FS.checkOpExists(node.node_ops.getattr, {{{ cDefs.EPERM }}});
+      return getattr(node);
     },
     fstat(fd) {
       return FS.stat(FS.getStreamChecked(fd).path);
@@ -970,10 +979,8 @@ FS.staticInit();
       } else {
         node = path;
       }
-      if (!node.node_ops.setattr) {
-        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
-      }
-      node.node_ops.setattr(node, {
+      var setattr = FS.checkOpExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
+      setattr(node, {
         mode: (mode & {{{ cDefs.S_IALLUGO }}}) | (node.mode & ~{{{ cDefs.S_IALLUGO }}}),
         ctime: Date.now(),
         dontFollow
@@ -994,10 +1001,8 @@ FS.staticInit();
       } else {
         node = path;
       }
-      if (!node.node_ops.setattr) {
-        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
-      }
-      node.node_ops.setattr(node, {
+      var setattr = FS.checkOpExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
+      setattr(node, {
         timestamp: Date.now(),
         dontFollow
         // we ignore the uid / gid for now
@@ -1021,9 +1026,6 @@ FS.staticInit();
       } else {
         node = path;
       }
-      if (!node.node_ops.setattr) {
-        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
-      }
       if (FS.isDir(node.mode)) {
         throw new FS.ErrnoError({{{ cDefs.EISDIR }}});
       }
@@ -1034,7 +1036,8 @@ FS.staticInit();
       if (errCode) {
         throw new FS.ErrnoError(errCode);
       }
-      node.node_ops.setattr(node, {
+      var setattr = FS.checkOpExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
+      setattr(node, {
         size: len,
         timestamp: Date.now()
       });
@@ -1049,7 +1052,8 @@ FS.staticInit();
     utime(path, atime, mtime) {
       var lookup = FS.lookupPath(path, { follow: true });
       var node = lookup.node;
-      node.node_ops.setattr(node, {
+      var setattr = FS.checkOpExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
+      setattr(node, {
         atime: atime,
         mtime: mtime
       });

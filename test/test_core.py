@@ -28,7 +28,7 @@ from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, 
 from common import read_file, read_binary, requires_v8, requires_node, requires_wasm2js, requires_node_canary
 from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime
 from common import with_all_fs, also_with_nodefs, also_with_nodefs_both, also_with_noderawfs, also_with_wasmfs
-from common import with_all_eh_sjlj, with_all_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64, requires_wasm_exnref
+from common import with_all_eh_sjlj, with_all_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64, requires_wasm_eh
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
 import clang_native
 
@@ -856,7 +856,7 @@ base align: 0, 0, 0, 0'''])
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/21533')
     self.do_core_test('test_longjmp_zero.c')
 
-  @requires_wasm_exnref
+  @requires_wasm_eh
   def test_longjmp_with_and_without_exceptions(self):
     # Emscripten SjLj with and without Emscripten EH support
     self.set_setting('SUPPORT_LONGJMP', 'emscripten')
@@ -875,8 +875,8 @@ base align: 0, 0, 0, 0'''])
     self.emcc_args.append('-fwasm-exceptions')
     for arg in ('-fwasm-exceptions', '-fno-exceptions'):
       self.do_core_test('test_longjmp.c', emcc_args=[arg])
-    # Wasm SjLj with and with new EH (exnref) support
-    self.set_setting('WASM_EXNREF')
+    # Wasm SjLj with and with the standardized EH (exnref) support
+    self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
     self.do_core_test('test_longjmp.c', emcc_args=['-fwasm-exceptions'])
 
   @with_all_sjlj
@@ -994,7 +994,7 @@ int main()
     self.maybe_closure()
     self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
 
-  @requires_wasm_exnref
+  @requires_wasm_eh
   def test_exceptions_with_and_without_longjmp(self):
     self.set_setting('EXCEPTION_DEBUG')
     self.maybe_closure()
@@ -1014,8 +1014,8 @@ int main()
     for support_longjmp in (0, 'wasm'):
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
       self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
-    # Wasm new EH (exnref) with and without Wasm SjLj support
-    self.set_setting('WASM_EXNREF')
+    # Wasm standardized EH (exnref) with and without Wasm SjLj support
+    self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
     for support_longjmp in (0, 'wasm'):
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
       self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
@@ -1519,7 +1519,7 @@ int main() {
       self.clear_setting('DISABLE_EXCEPTION_CATCHING')
       self.clear_setting('SUPPORT_LONGJMP')
       self.clear_setting('ASYNCIFY')
-      self.clear_setting('WASM_EXNREF')
+      self.clear_setting('WASM_LEGACY_EXCEPTIONS')
 
     # Emscripten EH and Wasm EH cannot be enabled at the same time
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
@@ -5529,7 +5529,7 @@ got: 10
     nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
     if nodefs and WINDOWS:
       self.skipTest('mode bits work differently on windows')
-    if self.get_setting('WASMFS') and self.get_setting('NODERAWFS'):
+    if nodefs and self.get_setting('WASMFS'):
       self.skipTest('test requires symlink creation which currently missing from wasmfs+noderawfs')
     self.do_runf('stat/test_chmod.c', 'success')
 

@@ -262,7 +262,7 @@ def filter_link_flags(flags, using_lld):
     if using_lld:
       for flag, takes_arg in UNSUPPORTED_LLD_FLAGS.items():
         # lld allows various flags to have either a single -foo or double --foo
-        if f.startswith(flag) or f.startswith('-' + flag):
+        if f.startswith((flag, '-' + flag)):
           diagnostics.warning('linkflags', 'ignoring unsupported linker flag: `%s`', f)
           # Skip the next argument if this linker flag takes and argument and that
           # argument was not specified as a separately (i.e. it was specified as
@@ -275,7 +275,7 @@ def filter_link_flags(flags, using_lld):
         return True, False
       # Silently ignore -l/-L flags when not using lld.  If using lld allow
       # them to pass through the linker
-      if f.startswith('-l') or f.startswith('-L'):
+      if f.startswith(('-l', '-L')):
         return False, False
       diagnostics.warning('linkflags', 'ignoring unsupported linker flag: `%s`', f)
       return False, False
@@ -432,8 +432,8 @@ def get_binaryen_passes():
     extras = settings.BINARYEN_EXTRA_PASSES.split(',')
     passes += [('--' + p) if p[0] != '-' else p for p in extras if p]
 
-  # Run the translator to the new EH instructions with exnref
-  if settings.WASM_EXNREF:
+  # Run the translator to the new standardized EH instructions with exnref
+  if not settings.WASM_LEGACY_EXCEPTIONS:
     passes += ['--emit-exnref']
 
   # If we are going to run metadce then that means we will be running binaryen
@@ -2571,30 +2571,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
 
   if settings.PROXY_TO_WORKER:
     proxy_worker_filename = (settings.PROXY_TO_WORKER_FILENAME or target_basename) + '.js'
-    worker_js = worker_js_script(proxy_worker_filename)
-    script.inline = ('''
-  var filename = '%s';
-  if ((',' + window.location.search.substr(1) + ',').indexOf(',noProxy,') < 0) {
-    console.log('running code in a web worker');
-''' % get_subresource_location_js(proxy_worker_filename)) + worker_js + '''
-  } else {
-    console.log('running code on the main thread');
-    var fileBytes = tryParseAsDataURI(filename);
-    var script = document.createElement('script');
-    if (fileBytes) {
-      script.innerHTML = intArrayToString(fileBytes);
-    } else {
-      script.src = filename;
-    }
-    document.body.appendChild(script);
-  }
-'''
-    # add required helper functions such as tryParseAsDataURI
-    for filename in ('arrayUtils.js', 'base64Decode.js', 'URIUtils.js'):
-      content = shared.read_and_preprocess(utils.path_from_root('src', filename))
-      script.inline = content + script.inline
-
-    script.inline = 'var ASSERTIONS = %s;\n%s' % (settings.ASSERTIONS, script.inline)
+    script.inline = worker_js_script(proxy_worker_filename)
   else:
     # Normal code generation path
     script.src = base_js_target
