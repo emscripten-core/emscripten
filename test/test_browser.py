@@ -2731,6 +2731,24 @@ Module["preRun"] = () => {
     self.btest_exit('test_webgl2_runtime_no_context.cpp', args=['-sMAX_WEBGL_VERSION=2'])
 
   @requires_graphics_hardware
+  def test_webgl_context_major_version(self):
+    # testing that majorVersion accepts only valid values
+    self.btest('test_webgl_context_major_version.c', expected='abort:Assertion failed: 0 is not a valid value for contextAttributes.majorVersion (should be 1 or 2)', args=['-lGL', '-DWEBGL_CONTEXT_MAJOR_VERSION=0'])
+    self.btest('test_webgl_context_major_version.c', expected='abort:Assertion failed: 3 is not a valid value for contextAttributes.majorVersion (should be 1 or 2)', args=['-lGL', '-DWEBGL_CONTEXT_MAJOR_VERSION=3'])
+
+    # no linker flag (equivalent to -sMIN_WEBGL_VERSION=1 -sMAX_WEBGL_VERSION=1) => only 1 allowed
+    self.btest_exit('test_webgl_context_major_version.c', args=['-lGL', '-DWEBGL_CONTEXT_MAJOR_VERSION=1'])
+    self.btest('test_webgl_context_major_version.c', expected='abort:Assertion failed: Requesting a WebGL context with version 2 requires either -sMIN_WEBGL_VERSION=2 or -sMAX_WEBGL_VERSION=2 linker flag', args=['-lGL', '-DWEBGL_CONTEXT_MAJOR_VERSION=2'])
+
+    # -sMIN_WEBGL_VERSION=2 => only 2 allowed
+    self.btest('test_webgl_context_major_version.c', expected='abort:Assertion failed: Requesting a WebGL context with version 1 is incompatible with linker flag -sMIN_WEBGL_VERSION=2', args=['-lGL', '-sMIN_WEBGL_VERSION=2', '-DWEBGL_CONTEXT_MAJOR_VERSION=1'])
+    self.btest_exit('test_webgl_context_major_version.c', args=['-lGL', '-sMIN_WEBGL_VERSION=2', '-DWEBGL_CONTEXT_MAJOR_VERSION=2'])
+
+    # -sMAX_WEBGL_VERSION=2 => 1 and 2 are ok
+    self.btest_exit('test_webgl_context_major_version.c', args=['-lGL', '-sMAX_WEBGL_VERSION=2', '-DWEBGL_CONTEXT_MAJOR_VERSION=1'])
+    self.btest_exit('test_webgl_context_major_version.c', args=['-lGL', '-sMAX_WEBGL_VERSION=2', '-DWEBGL_CONTEXT_MAJOR_VERSION=2'])
+
+  @requires_graphics_hardware
   def test_webgl2_invalid_teximage2d_type(self):
     self.btest_exit('webgl2_invalid_teximage2d_type.cpp', args=['-sMAX_WEBGL_VERSION=2'])
 

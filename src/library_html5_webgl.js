@@ -91,6 +91,16 @@ var LibraryHtml5WebGL = {
       renderViaOffscreenBackBuffer: HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer }}}]
     };
 
+
+#if ASSERTIONS
+    assert(contextAttributes.majorVersion === 1 || contextAttributes.majorVersion === 2, `${contextAttributes.majorVersion} is not a valid value for contextAttributes.majorVersion (should be 1 or 2)`);
+#if MIN_WEBGL_VERSION >= 2
+    assert(contextAttributes.majorVersion === 2, 'Requesting a WebGL context with version 1 is incompatible with linker flag -sMIN_WEBGL_VERSION=2');
+#elif MAX_WEBGL_VERSION == 1
+    assert(contextAttributes.majorVersion === 1, 'Requesting a WebGL context with version 2 requires either -sMIN_WEBGL_VERSION=2 or -sMAX_WEBGL_VERSION=2 linker flag');
+#endif
+#endif
+
     var canvas = findCanvasEventTarget(target);
 
 #if GL_DEBUG
