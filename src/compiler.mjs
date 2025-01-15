@@ -7,11 +7,16 @@
 
 // LLVM => JavaScript compiler, main entry point
 
-import {Benchmarker, applySettings, assert, loadSettingsFile, printErr, read} from './utility.mjs';
+import {
+  Benchmarker,
+  applySettings,
+  assert,
+  loadDefaultSettings,
+  printErr,
+  read,
+} from './utility.mjs';
 
-// Load default settings
-loadSettingsFile('settings.js');
-loadSettingsFile('settings_internal.js');
+loadDefaultSettings();
 
 const argv = process.argv.slice(2);
 const symbolsOnlyArg = argv.indexOf('--symbols-only');
