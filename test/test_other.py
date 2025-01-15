@@ -15385,6 +15385,11 @@ addToLibrary({
     }''')
     self.do_runf('main.cpp', 'Hello from rust!', emcc_args=[lib])
 
+  def test_relative_em_cache(self):
+    with env_modify({'EM_CACHE': 'foo'}):
+      err = self.expect_fail([EMCC, '-c', test_file('hello_world.c')])
+      self.assertContained('emcc: error: environment variable EM_CACHE must be an absolute path: foo', err)
+
   @crossplatform
   def test_create_cache_directory(self):
     if config.FROZEN_CACHE:
