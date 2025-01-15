@@ -640,6 +640,7 @@ If manually bisecting:
 
     # test with ENVIRONMENT=web, to check for problems with node.js support
     # (see #23059)
+    self.clear_indexed_db()
     self.compile_btest('main.c', args + ['-sENVIRONMENT=web'], reporting=Reporting.JS_ONLY)
     self.run_browser('page.html', '/report_result?exit:0')
 
