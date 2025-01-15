@@ -23,6 +23,8 @@ See docs/process.md for more on how version tagging works.
 - emscan-deps tools was added.  This tool wraps clang-scan-deps and injects the
   needed `--target` and `--sysroot` argument that would normally be injected by
   emcc itself.  This enables support for C++20 in cmake projects. (#21987)
+- The version of python required to run emscripten was bumped from 3.6 to 3.8.
+  (#23417)
 
 4.0.2 - 01/30/25
 ----------------
