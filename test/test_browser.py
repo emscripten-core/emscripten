@@ -633,9 +633,16 @@ If manually bisecting:
       self.skipTest('chrome bug')
     create_file('somefile.txt', '''load me right before running the code please''' + ('_' * extra_size))
     print('size:', os.path.getsize('somefile.txt'))
-    self.compile_btest('main.c', ['--use-preload-cache', '--js-library', 'test.js', '--preload-file', 'somefile.txt', '-o', 'page.html', '-sALLOW_MEMORY_GROWTH'], reporting=Reporting.JS_ONLY)
+    args = ['--use-preload-cache', '--js-library', 'test.js', '--preload-file', 'somefile.txt', '-o', 'page.html', '-sALLOW_MEMORY_GROWTH']
+    self.compile_btest('main.c', args, reporting=Reporting.JS_ONLY)
     self.run_browser('page.html', '/report_result?exit:0')
     self.run_browser('page.html', '/report_result?exit:1')
+
+    # test with ENVIRONMENT=web, to check for problems with node.js support
+    # (see #23059)
+    self.clear_indexed_db()
+    self.compile_btest('main.c', args + ['-sENVIRONMENT=web'], reporting=Reporting.JS_ONLY)
+    self.run_browser('page.html', '/report_result?exit:0')
 
   def test_preload_caching_indexeddb_name(self):
     self.set_setting('EXIT_RUNTIME')
@@ -5453,6 +5460,18 @@ Module["preRun"] = () => {
   })
   def test_audio_worklet_modularize(self, args):
     self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sMODULARIZE=1', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')] + args)
+
+  # Tests multiple inputs, forcing a larger stack (note: passing BROWSER_TEST is
+  # specific to this test to allow it to exit rather than play forever).
+  @parameterized({
+    '': ([],),
+    'minimal_with_closure': (['-sMINIMAL_RUNTIME', '--closure=1', '-Oz'],),
+  })
+  def test_audio_worklet_stereo_io(self, args):
+    os.mkdir('audio_files')
+    shutil.copy(test_file('webaudio/audio_files/emscripten-beat.mp3'), 'audio_files/')
+    shutil.copy(test_file('webaudio/audio_files/emscripten-bass.mp3'), 'audio_files/')
+    self.btest_exit('webaudio/audioworklet_in_out_stereo.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DBROWSER_TEST'] + args)
 
   def test_error_reporting(self):
     # Test catching/reporting Error objects
