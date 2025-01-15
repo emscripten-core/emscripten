@@ -5500,6 +5500,13 @@ Module["preRun"] = () => {
     shutil.copy('webpack/src/hello.wasm', 'webpack/dist/')
     self.run_browser('webpack/dist/index.html', '/report_result?exit:0')
 
+  def test_vite(self):
+    shutil.copytree(test_file('vite'), 'vite')
+    with common.chdir('vite'):
+      self.compile_btest('hello_world.c', ['-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sMODULARIZE', '-o', 'hello.mjs'])
+      self.run_process(shared.get_npm_cmd('vite') + ['build'])
+    self.run_browser('vite/dist/index.html', '/report_result?exit:0')
+
 
 class emrun(RunnerCore):
   def test_emrun_info(self):
