@@ -1958,10 +1958,10 @@ function reattachComments(ast, commentsMap) {
       trace('dropping comments: no symbol comes after them');
       break;
     }
-    if (symbols[j].start.pos - pos > 20) {
-      // This comment is too far away to refer to the given symbol. Drop
-      // the comment altogether.
-      trace('dropping comments: too far from any symbol');
+    if (symbols[j].start.pos != pos) {
+      // This comment must have been associated with a node that still
+      // exists in the AST, otherwise to drop it.
+      trace('dropping comments: not linked to any remaining AST node');
       continue;
     }
     symbols[j].start.comments_before ??= [];
