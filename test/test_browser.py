@@ -633,9 +633,16 @@ If manually bisecting:
       self.skipTest('chrome bug')
     create_file('somefile.txt', '''load me right before running the code please''' + ('_' * extra_size))
     print('size:', os.path.getsize('somefile.txt'))
-    self.compile_btest('main.c', ['--use-preload-cache', '--js-library', 'test.js', '--preload-file', 'somefile.txt', '-o', 'page.html', '-sALLOW_MEMORY_GROWTH'], reporting=Reporting.JS_ONLY)
+    args = ['--use-preload-cache', '--js-library', 'test.js', '--preload-file', 'somefile.txt', '-o', 'page.html', '-sALLOW_MEMORY_GROWTH']
+    self.compile_btest('main.c', args, reporting=Reporting.JS_ONLY)
     self.run_browser('page.html', '/report_result?exit:0')
     self.run_browser('page.html', '/report_result?exit:1')
+
+    # test with ENVIRONMENT=web, to check for problems with node.js support
+    # (see #23059)
+    self.clear_indexed_db()
+    self.compile_btest('main.c', args + ['-sENVIRONMENT=web'], reporting=Reporting.JS_ONLY)
+    self.run_browser('page.html', '/report_result?exit:0')
 
   def test_preload_caching_indexeddb_name(self):
     self.set_setting('EXIT_RUNTIME')
