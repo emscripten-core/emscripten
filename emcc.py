@@ -1355,6 +1355,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif check_flag('--jcache'):
       logger.error('jcache is no longer supported')
     elif check_arg('--cache'):
+      diagnostics.warning('deprecated', '--cache is deprecated. Please use the EM_CACHE environment variable or the config file to configure the cache location.')
       config.CACHE = os.path.abspath(consume_arg())
       cache.setup()
       # Ensure child processes share the same cache (e.g. when using emcc to compiler system
