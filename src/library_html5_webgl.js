@@ -93,11 +93,11 @@ var LibraryHtml5WebGL = {
 
 
 #if ASSERTIONS
-    assert(contextAttributes.majorVersion === 1 || contextAttributes.majorVersion === 2, `${contextAttributes.majorVersion} is not a valid value for contextAttributes.majorVersion (should be 1 or 2)`);
+    assert(contextAttributes.majorVersion === 1 || contextAttributes.majorVersion === 2, `Invalid WebGL version requested: ${contextAttributes.majorVersion}`);
 #if MIN_WEBGL_VERSION >= 2
-    assert(contextAttributes.majorVersion === 2, 'Requesting a WebGL context with version 1 is incompatible with linker flag -sMIN_WEBGL_VERSION=2');
+    assert(contextAttributes.majorVersion === 2, 'WebGL 1 requested but only WebGL 2 is supported (MIN_WEBGL_VERSION is 2)');
 #elif MAX_WEBGL_VERSION == 1
-    assert(contextAttributes.majorVersion === 1, 'Requesting a WebGL context with version 2 requires either -sMIN_WEBGL_VERSION=2 or -sMAX_WEBGL_VERSION=2 linker flag');
+    assert(contextAttributes.majorVersion === 1, 'WebGL 2 requested but only WebGL 1 is supported (set -sMAX_WEBGL_VERSION=2 to fix the problem)');
 #endif
 #endif
 

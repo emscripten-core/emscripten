@@ -7,8 +7,7 @@
 #include <emscripten/html5.h>
 
 
-int main()
-{
+int main() {
   EmscriptenWebGLContextAttributes attrs;
   emscripten_webgl_init_context_attributes(&attrs);
   attrs.majorVersion = WEBGL_CONTEXT_MAJOR_VERSION; // provided when invoking the test
