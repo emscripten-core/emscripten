@@ -18,6 +18,7 @@ import {
   addToCompileTimeContext,
   runInMacroContext,
   mergeInto,
+  localFile,
 } from './utility.mjs';
 import {preprocess, processMacros} from './parseTools.mjs';
 
@@ -217,7 +218,7 @@ export const LibraryManager = {
     // Save the list for has() queries later.
     this.libraries = libraries;
 
-    for (const filename of libraries) {
+    for (var filename of libraries) {
       const isUserLibrary = path.isAbsolute(filename);
       if (VERBOSE) {
         if (isUserLibrary) {
@@ -241,6 +242,9 @@ export const LibraryManager = {
             return true;
           },
         });
+      } else {
+        // System libraries are specified relatative to the `src` directory
+        filename = localFile(filename);
       }
       const oldFile = setCurrentFile(filename);
       try {
@@ -301,9 +305,9 @@ function loadStructInfo(filename) {
 if (!BOOTSTRAPPING_STRUCT_INFO) {
   // Load struct and define information.
   if (MEMORY64) {
-    loadStructInfo('struct_info_generated_wasm64.json');
+    loadStructInfo(localFile('struct_info_generated_wasm64.json'));
   } else {
-    loadStructInfo('struct_info_generated.json');
+    loadStructInfo(localFile('struct_info_generated.json'));
   }
 }
 
