@@ -14279,6 +14279,7 @@ int main() {
   def test_xlocale(self):
     # Test for xlocale.h compatibility header
     self.do_other_test('test_xlocale.c')
+    self.do_other_test('test_xlocale.c', emcc_args=['-x', 'c++'])
 
   def test_print_map(self):
     self.run_process([EMCC, '-c', test_file('hello_world.c')])
@@ -15384,6 +15385,11 @@ addToLibrary({
        return 0;
     }''')
     self.do_runf('main.cpp', 'Hello from rust!', emcc_args=[lib])
+
+  def test_relative_em_cache(self):
+    with env_modify({'EM_CACHE': 'foo'}):
+      err = self.expect_fail([EMCC, '-c', test_file('hello_world.c')])
+      self.assertContained('emcc: error: environment variable EM_CACHE must be an absolute path: foo', err)
 
   @crossplatform
   def test_create_cache_directory(self):

@@ -92,10 +92,6 @@ var wasmExports;
 var wasmModule;
 #endif
 
-#if DECLARE_ASM_MODULE_EXPORTS
-<<< WASM_MODULE_EXPORTS_DECLARES >>>
-#endif
-
 #if PTHREADS
 function loadModule() {
   assignWasmImports();
@@ -187,7 +183,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #if !DECLARE_ASM_MODULE_EXPORTS
   exportWasmSymbols(wasmExports);
 #else
-  <<< WASM_MODULE_EXPORTS >>>
+  assignWasmExports(wasmExports);
 #endif
 #if '$wasmTable' in addedLibraryItems
   wasmTable = wasmExports['__indirect_function_table'];

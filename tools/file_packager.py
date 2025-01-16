@@ -792,10 +792,13 @@ def generate_js(data_target, data_files, metadata):
         var DB_VERSION = 1;
         var METADATA_STORE_NAME = 'METADATA';
         var PACKAGE_STORE_NAME = 'PACKAGES';
-        function openDatabase(callback, errback) {
-          if (isNode) {
-            return errback();
-          }
+        function openDatabase(callback, errback) {'''
+      if options.support_node:
+        code += '''
+            if (isNode) {
+              return errback();
+            }'''
+      code += '''
           var indexedDB;
           if (typeof window === 'object') {
             indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;

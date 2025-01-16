@@ -1,3 +1,8 @@
+#ifdef __cplusplus
+// Test compatibility with libc++'s locale header
+#include <locale>
+#endif
+
 #include <xlocale.h>
 #include <stdio.h>
 
