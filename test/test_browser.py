@@ -5525,6 +5525,13 @@ Module["preRun"] = () => {
       self.run_process(shared.get_npm_cmd('vite') + ['build'])
     self.run_browser('vite/dist/index.html', '/report_result?exit:0')
 
+  def test_rollup(self):
+    shutil.copytree(test_file('rollup'), 'rollup')
+    with common.chdir('rollup'):
+      self.compile_btest('hello_world.c', ['-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sMODULARIZE', '-o', 'hello.mjs'])
+      self.run_process(shared.get_npm_cmd('rollup') + ['--config'])
+    self.run_browser('rollup/index.html', '/report_result?exit:0')
+
 
 class emrun(RunnerCore):
   def test_emrun_info(self):
