@@ -8462,9 +8462,21 @@ int main() {}
   def test_run_order(self):
     create_file('lib.js', r'''
 addToLibrary({
+  foo__deps: ['$addOnPreRun', '$addOnInit', '$addOnPostCtor', '$addOnPreMain', '$addOnExit', '$addOnPostRun'],
   foo__postset: () => {
-    addAtPostCtor("console.log(`addAtPostCtor`);");
+    addAtPreRun("console.log(`addAtPreRun`);");
     addAtInit("console.log(`addAtInit`);");
+    addAtPostCtor("console.log(`addAtPostCtor`);");
+    addAtPreMain("console.log(`addAtPreMain`);");
+    addAtExit("console.log(`addAtExit`);");
+    addAtPostRun("console.log(`addAtPostRun`);");
+    // Add all the runtime equivalents of the above events.
+    return 'addOnPreRun(() => console.log("addOnPreRun"));\n' +
+           'addOnInit(() => console.log("addOnInit"));\n' +
+           'addOnPostCtor(() => console.log("addOnPostCtor"));\n' +
+           'addOnPreMain(() => console.log("addOnPreMain"));\n' +
+           'addOnExit(() => console.log("addOnExit"));\n' +
+           'addOnPostRun(() => console.log("addOnPostRun"));\n';
   },
   foo: () => {},
 });
@@ -8480,7 +8492,28 @@ addToLibrary({
       foo();
     }
     ''')
-    self.do_runf('src.c', 'addAtInit\nctor\naddAtPostCtor\nmain\n', emcc_args=['--js-library', 'lib.js'])
+    expected_order = [
+      'addOnPreRun',
+      'addAtPreRun',
+      'addOnInit',
+      'addAtInit',
+      'ctor',
+      'addOnPostCtor',
+      'addAtPostCtor',
+      'addOnPreMain',
+      'addAtPreMain',
+      'main',
+      'addOnExit',
+      'addAtExit',
+      'addOnPostRun',
+      'addAtPostRun',
+    ]
+    if self.get_setting('MINIMAL_RUNTIME'):
+      # Remove postRun events since they will not happen with MINIMAL_RUNTIME +
+      # EXIT_RUNTIME since it throws an exception during _proc_exit.
+      del expected_order[-2:]
+      self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
+    self.do_runf('src.c', '\n'.join(expected_order), emcc_args=['--js-library', 'lib.js', '-sEXIT_RUNTIME'])
 
   def test_override_js_execution_environment(self):
     create_file('main.c', r'''

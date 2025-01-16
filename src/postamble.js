@@ -42,7 +42,7 @@ var mainArgs = undefined;
 #endif
 #if ASSERTIONS
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on Module["onRuntimeInitialized"])');
-  assert(__ATPRERUN__.length == 0, 'cannot call main when preRun functions remain to be called');
+  assert(typeof __ATPRERUN__ === 'undefined' || __ATPRERUN__.length == 0, 'cannot call main when preRun functions remain to be called');
 #endif
 
   var entryFunction = {{{ getEntryFunction() }}};
