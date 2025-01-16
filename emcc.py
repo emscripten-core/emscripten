@@ -924,19 +924,6 @@ def phase_setup(options, state, newargs):
   return (newargs, input_files)
 
 
-def get_clang_output_extension(state):
-  if '-emit-llvm' in state.orig_args:
-    if state.has_dash_S:
-      return '.ll'
-    else:
-      return '.bc'
-
-  if state.has_dash_S:
-    return '.s'
-  else:
-    return '.o'
-
-
 def filter_out_link_flags(args):
   rtn = []
 
