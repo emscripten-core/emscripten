@@ -2296,6 +2296,16 @@ addToLibrary({
 
   $noExitRuntime: "{{{ makeModuleReceiveExpr('noExitRuntime', !EXIT_RUNTIME) }}}",
 
+  // functions called during startup
+  $__ATINIT__: [],
+  $__ATINIT____postset: () => {
+    addAtInit('callRuntimeCallbacks(__ATINIT__);');
+  },
+  $addOnInit__deps: ['$__ATINIT__'],
+  $addOnInit: (cb) => {
+    __ATINIT__.unshift(cb);
+  },
+
   // We used to define these globals unconditionally in support code.
   // Instead, we now define them here so folks can pull it in explicitly, on
   // demand.
