@@ -93,11 +93,17 @@ var LibraryHtml5WebGL = {
 
 
 #if ASSERTIONS
-    assert(contextAttributes.majorVersion === 1 || contextAttributes.majorVersion === 2, `Invalid WebGL version requested: ${contextAttributes.majorVersion}`);
+    if(contextAttributes.majorVersion !== 1 && contextAttributes.majorVersion !== 2) {
+      err(`Invalid WebGL version requested: ${contextAttributes.majorVersion}`);
+    }
 #if MIN_WEBGL_VERSION >= 2
-    assert(contextAttributes.majorVersion === 2, 'WebGL 1 requested but only WebGL 2 is supported (MIN_WEBGL_VERSION is 2)');
+    if(contextAttributes.majorVersion !== 2) {
+      err('WebGL 1 requested but only WebGL 2 is supported (MIN_WEBGL_VERSION is 2)');
+    }
 #elif MAX_WEBGL_VERSION == 1
-    assert(contextAttributes.majorVersion === 1, 'WebGL 2 requested but only WebGL 1 is supported (set -sMAX_WEBGL_VERSION=2 to fix the problem)');
+    if(contextAttributes.majorVersion !== 1) {
+      err('WebGL 2 requested but only WebGL 1 is supported (set -sMAX_WEBGL_VERSION=2 to fix the problem)');
+    }
 #endif
 #endif
 

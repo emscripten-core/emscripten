@@ -2733,15 +2733,15 @@ Module["preRun"] = () => {
   @requires_graphics_hardware
   def test_webgl_context_major_version(self):
     # testing that majorVersion accepts only valid values
-    self.btest('test_webgl_context_major_version.c', expected='abort:Assertion failed: Invalid WebGL version requested: 0', args=['-lGL', '-DWEBGL_CONTEXT_MAJOR_VERSION=0'])
-    self.btest('test_webgl_context_major_version.c', expected='abort:Assertion failed: Invalid WebGL version requested: 3', args=['-lGL', '-DWEBGL_CONTEXT_MAJOR_VERSION=3'])
+    self.btest('test_webgl_context_major_version.c', expected='abort:Expected Error: Invalid WebGL version requested: 0', args=['-lGL', '-DWEBGL_CONTEXT_MAJOR_VERSION=0'])
+    self.btest('test_webgl_context_major_version.c', expected='abort:Expected Error: Invalid WebGL version requested: 3', args=['-lGL', '-DWEBGL_CONTEXT_MAJOR_VERSION=3'])
 
     # no linker flag (equivalent to -sMIN_WEBGL_VERSION=1 -sMAX_WEBGL_VERSION=1) => only 1 allowed
     self.btest_exit('test_webgl_context_major_version.c', args=['-lGL', '-DWEBGL_CONTEXT_MAJOR_VERSION=1'])
-    self.btest('test_webgl_context_major_version.c', expected='abort:Assertion failed: WebGL 2 requested but only WebGL 1 is supported (set -sMAX_WEBGL_VERSION=2 to fix the problem)', args=['-lGL', '-DWEBGL_CONTEXT_MAJOR_VERSION=2'])
+    self.btest('test_webgl_context_major_version.c', expected='abort:Expected Error: WebGL 2 requested but only WebGL 1 is supported (set -sMAX_WEBGL_VERSION=2 to fix the problem)', args=['-lGL', '-DWEBGL_CONTEXT_MAJOR_VERSION=2'])
 
     # -sMIN_WEBGL_VERSION=2 => only 2 allowed
-    self.btest('test_webgl_context_major_version.c', expected='abort:Assertion failed: WebGL 1 requested but only WebGL 2 is supported (MIN_WEBGL_VERSION is 2)', args=['-lGL', '-sMIN_WEBGL_VERSION=2', '-DWEBGL_CONTEXT_MAJOR_VERSION=1'])
+    self.btest('test_webgl_context_major_version.c', expected='abort:Expected Error: WebGL 1 requested but only WebGL 2 is supported (MIN_WEBGL_VERSION is 2)', args=['-lGL', '-sMIN_WEBGL_VERSION=2', '-DWEBGL_CONTEXT_MAJOR_VERSION=1'])
     self.btest_exit('test_webgl_context_major_version.c', args=['-lGL', '-sMIN_WEBGL_VERSION=2', '-DWEBGL_CONTEXT_MAJOR_VERSION=2'])
 
     # -sMAX_WEBGL_VERSION=2 => 1 and 2 are ok
