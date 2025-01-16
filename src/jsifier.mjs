@@ -745,10 +745,6 @@ var proxiedFunctionTable = [
 `);
     }
 
-    if (errorOccured()) {
-      throw Error('Aborting compilation due to previous errors');
-    }
-
     // This is the main 'post' pass. Print out the generated code
     // that we have here, together with the rest of the output
     // that we started to print out earlier (see comment on the
@@ -764,6 +760,10 @@ var proxiedFunctionTable = [
 
     if (MODULARIZE) {
       includeFile('postamble_modularize.js');
+    }
+
+    if (errorOccured()) {
+      throw Error('Aborting compilation due to previous errors');
     }
 
     print(

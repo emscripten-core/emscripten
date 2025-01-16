@@ -4656,7 +4656,7 @@ int main() {
 ''')
     self.do_runf('src.c', 'c calling: 14\n', emcc_args=['--js-library', 'lib.js'])
 
-  def test_jslib_errors(self):
+  def test_jslib_preprocessor_errors(self):
     create_file('lib.js', '''\
 // This is a library file
 #endif // line 2
@@ -4904,6 +4904,25 @@ extraLibraryFuncs.push('jsfunc');
     # If the library path is not included with `-L` we expect the command to fail
     err = self.expect_fail([EMCC, 'main.c', '-lfoo.js'])
     self.assertContained('emcc: error: unable to find library -lfoo.js', err)
+
+  # Tests using the #warning directive in JS library files
+  def test_jslib_warnings(self):
+    proc = self.run_process([EMCC, test_file('hello_world.c'), '--js-library', test_file('warning_in_js_libraries.js')], stdout=PIPE, stderr=PIPE)
+    self.assertNotContained('This warning should not be present!', proc.stderr)
+    self.assertContained('warning_in_js_libraries.js:5: #warning This is a warning string!', proc.stderr)
+    self.assertContained('warning_in_js_libraries.js:7: #warning This is a second warning string!', proc.stderr)
+
+  # Tests using the #error directive in JS library files
+  def test_jslib_errors(self):
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', test_file('error_in_js_libraries.js')])
+    self.assertNotContained('This error should not be present!', err)
+    self.assertContained('error_in_js_libraries.js:5: #error This is an error string!', err)
+    self.assertContained('error_in_js_libraries.js:7: #error This is a second error string!', err)
+
+  def test_postjs_errors(self):
+    create_file('post.js', '#preprocess\n#error This is an error')
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--post-js', 'post.js'])
+    self.assertContained('post.js:2: #error This is an error', err)
 
   def test_EMCC_BUILD_DIR(self):
     # EMCC_BUILD_DIR env var contains the dir we were building in, when running the js compiler (e.g. when
@@ -14085,20 +14104,6 @@ int main() {
     self.do_run_in_out_file_test('hello_world.c')
     src = read_file('hello_world.js')
     self.assertContained("fetch(binaryFile, Module['fetchSettings'] || ", src)
-
-  # Tests using the #warning directive in JS library files
-  def test_warning_in_js_libraries(self):
-    proc = self.run_process([EMCC, test_file('hello_world.c'), '--js-library', test_file('warning_in_js_libraries.js')], stdout=PIPE, stderr=PIPE)
-    self.assertNotContained('This warning should not be present!', proc.stderr)
-    self.assertContained('warning_in_js_libraries.js:5: #warning This is a warning string!', proc.stderr)
-    self.assertContained('warning_in_js_libraries.js:7: #warning This is a second warning string!', proc.stderr)
-
-  # Tests using the #error directive in JS library files
-  def test_error_in_js_libraries(self):
-    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', test_file('error_in_js_libraries.js')])
-    self.assertNotContained('This error should not be present!', err)
-    self.assertContained('error_in_js_libraries.js:5: #error This is an error string!', err)
-    self.assertContained('error_in_js_libraries.js:7: #error This is a second error string!', err)
 
   # Tests building with -sSHARED_MEMORY
   @also_with_minimal_runtime
