@@ -12244,6 +12244,10 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Xlinker', '--waka'])
     self.assertContained('wasm-ld: error: unknown argument: --waka', err)
 
+    # Explicitly check that emcc doesn't try to process passthrough args
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Xlinker', '--post-link'])
+    self.assertContained('wasm-ld: error: unknown argument: --post-link', err)
+
     err = self.run_process([EMCC, test_file('hello_world.c'), '-z', 'foo'], stderr=PIPE).stderr
     self.assertContained('wasm-ld: warning: unknown -z value: foo', err)
 
