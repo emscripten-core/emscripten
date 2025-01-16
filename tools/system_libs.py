@@ -510,15 +510,18 @@ class Library:
           object_uuid += 1
           o = os.path.join(build_dir, f'{object_basename}__{object_uuid}.o')
         commands.append(cmd + [src, '-o', o])
+        objects.add(o)
       elif batch_inputs:
         # Use relative paths to reduce the length of the command line.
         # This allows to avoid switching to a response file as often.
         src = os.path.relpath(src, build_dir)
         src = utils.normalize_path(src)
         batches.setdefault(tuple(cmd), []).append(src)
+        # No -o in command, use original file name.
+        objects.add(os.path.join(build_dir, shared.unsuffixed_basename(src) + '.o'))
       else:
         commands.append(cmd + [src, '-o', o])
-      objects.add(o)
+        objects.add(o)
 
     if batch_inputs:
       # Choose a chunk size that is large enough to avoid too many subprocesses
