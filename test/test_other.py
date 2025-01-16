@@ -3530,7 +3530,7 @@ More info: https://emscripten.org
   @requires_jspi
   def test_embind_tsgen_jspi(self):
     self.run_process([EMXX, test_file('other/embind_tsgen_jspi.cpp'),
-                      '-lembind', '--emit-tsd', 'embind_tsgen_jspi.d.ts', '-sJSPI'] +
+                      '-lembind', '--emit-tsd', 'embind_tsgen_jspi.d.ts', '-sJSPI', '-sSTRICT', '--no-entry'] +
                      self.get_emcc_args())
     self.assertFileContents(test_file('other/embind_tsgen_jspi.d.ts'), read_file('embind_tsgen_jspi.d.ts'))
 

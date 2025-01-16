@@ -1964,6 +1964,7 @@ def run_embind_gen(wasm_target, js_syms, extra_settings, linker_inputs):
   # Save settings so they can be restored after TS generation.
   original_settings = settings.backup()
   settings.attrs.update(extra_settings)
+  settings.EMBIND_GEN_MODE = True
 
   if settings.MAIN_MODULE and linker_inputs:
     # Copy libraries to the temp directory so they can be used when running
@@ -2001,11 +2002,6 @@ def run_embind_gen(wasm_target, js_syms, extra_settings, linker_inputs):
   setup_environment_settings()
   # Use a separate Wasm file so the JS does not need to be modified after emscripten.emscript.
   settings.SINGLE_FILE = False
-  if settings.ASYNCIFY == 2:
-    # JSPI is not needed to generate the definitions.
-    # TODO: when the emsdk node version supports JSPI, it probably makes more sense
-    # to enable it in node than disabling the setting here.
-    settings.ASYNCIFY = 0
   # Embind may be included multiple times, de-duplicate the list first.
   settings.JS_LIBRARIES = dedup_list(settings.JS_LIBRARIES)
   # Replace embind with the TypeScript generation version.
