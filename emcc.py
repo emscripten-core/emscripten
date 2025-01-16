@@ -574,6 +574,8 @@ emcc: supported targets: llvm bitcode, WebAssembly, NOT elf
   if not shared.SKIP_SUBPROCS:
     shared.check_sanity()
 
+  # Begin early-exit flag handling.
+
   if '--version' in args:
     print(version_string())
     print('''\
@@ -608,6 +610,38 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       print(shared.shlex_join(parts[1:]))
     return 0
 
+  if '-dumpmachine' in args or '-print-target-triple' in args or '--print-target-triple' in args:
+    print(shared.get_llvm_target())
+    return 0
+
+  if '-print-search-dirs' in args or '--print-search-dirs' in args:
+    print(f'programs: ={config.LLVM_ROOT}')
+    print(f'libraries: ={cache.get_lib_dir(absolute=True)}')
+    return 0
+
+  if '-print-resource-dir' in args:
+    shared.check_call([clang] + args)
+    return 0
+
+  if '-print-libgcc-file-name' in args or '--print-libgcc-file-name' in args:
+    settings.limit_settings(None)
+    compiler_rt = system_libs.Library.get_usable_variations()['libcompiler_rt']
+    print(compiler_rt.get_path(absolute=True))
+    return 0
+
+  print_file_name = [a for a in args if a.startswith(('-print-file-name=', '--print-file-name='))]
+  if print_file_name:
+    libname = print_file_name[-1].split('=')[1]
+    system_libpath = cache.get_lib_dir(absolute=True)
+    fullpath = os.path.join(system_libpath, libname)
+    if os.path.isfile(fullpath):
+      print(fullpath)
+    else:
+      print(libname)
+    return 0
+
+  # End early-exit flag handling
+
   if 'EMMAKEN_NO_SDK' in os.environ:
     exit_with_error('EMMAKEN_NO_SDK is no longer supported.  The standard -nostdlib and -nostdinc flags should be used instead')
 
@@ -626,36 +660,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   settings.limit_settings(COMPILE_TIME_SETTINGS)
 
   newargs, input_files = phase_setup(options, state, newargs)
-
-  if '-dumpmachine' in newargs or '-print-target-triple' in newargs or '--print-target-triple' in newargs:
-    print(shared.get_llvm_target())
-    return 0
-
-  if '-print-search-dirs' in newargs or '--print-search-dirs' in newargs:
-    print(f'programs: ={config.LLVM_ROOT}')
-    print(f'libraries: ={cache.get_lib_dir(absolute=True)}')
-    return 0
-
-  if '-print-resource-dir' in newargs:
-    shared.check_call([clang] + newargs)
-    return 0
-
-  if '-print-libgcc-file-name' in newargs or '--print-libgcc-file-name' in newargs:
-    settings.limit_settings(None)
-    compiler_rt = system_libs.Library.get_usable_variations()['libcompiler_rt']
-    print(compiler_rt.get_path(absolute=True))
-    return 0
-
-  print_file_name = [a for a in newargs if a.startswith(('-print-file-name=', '--print-file-name='))]
-  if print_file_name:
-    libname = print_file_name[-1].split('=')[1]
-    system_libpath = cache.get_lib_dir(absolute=True)
-    fullpath = os.path.join(system_libpath, libname)
-    if os.path.isfile(fullpath):
-      print(fullpath)
-    else:
-      print(libname)
-    return 0
 
   if options.reproduce:
     create_reproduce_file(options.reproduce, args)
