@@ -307,12 +307,12 @@ def extract_sig_info(sig_info, extra_settings=None, extra_cflags=None, cxx=False
     'AUDIO_WORKLET': 1,
     'WASM_WORKERS': 1,
     'JS_LIBRARIES': [
-      'src/library_websocket.js',
-      'src/library_exports.js',
-      'src/library_webaudio.js',
-      'src/library_fetch.js',
-      'src/library_pthread.js',
-      'src/library_trace.js',
+      'library_websocket.js',
+      'library_exports.js',
+      'library_webaudio.js',
+      'library_fetch.js',
+      'library_pthread.js',
+      'library_trace.js',
     ],
     'SUPPORT_LONGJMP': 'emscripten'
   }
@@ -390,9 +390,9 @@ def main(args):
                               'BUILD_AS_WORKER': 1,
                               'LINK_AS_CXX': 1,
                               'AUTO_JS_LIBRARIES': 0}, cxx=True)
-  extract_sig_info(sig_info, {'WASM_WORKERS': 1, 'JS_LIBRARIES': ['src/library_wasm_worker.js']})
+  extract_sig_info(sig_info, {'WASM_WORKERS': 1, 'JS_LIBRARIES': ['library_wasm_worker.js']})
   extract_sig_info(sig_info, {'USE_GLFW': 3}, ['-DGLFW3'])
-  extract_sig_info(sig_info, {'JS_LIBRARIES': ['src/embind/embind.js', 'src/embind/emval.js'],
+  extract_sig_info(sig_info, {'JS_LIBRARIES': ['embind/embind.js', 'embind/emval.js'],
                               'USE_SDL': 0,
                               'MAX_WEBGL_VERSION': 0,
                               'AUTO_JS_LIBRARIES': 0,

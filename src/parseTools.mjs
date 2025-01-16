@@ -8,6 +8,8 @@
  * Tests live in test/other/test_parseTools.js.
  */
 
+import * as path from 'node:path';
+
 import {
   addToCompileTimeContext,
   assert,
@@ -119,15 +121,19 @@ export function preprocess(filename) {
           showStack.push(truthy ? SHOW : IGNORE);
         } else if (first === '#include') {
           if (showCurrentLine()) {
-            let filename = line.substr(line.indexOf(' ') + 1);
-            if (filename.startsWith('"')) {
-              filename = filename.substr(1, filename.length - 2);
+            let includeFile = line.substr(line.indexOf(' ') + 1);
+            if (includeFile.startsWith('"')) {
+              includeFile = includeFile.substr(1, includeFile.length - 2);
             }
-            const result = preprocess(filename);
+            // Include files are always relative to the current file being processed
+            if (!path.isAbsolute(includeFile)) {
+              includeFile = path.join(path.dirname(filename), includeFile);
+            }
+            const result = preprocess(includeFile);
             if (result) {
-              ret += `// include: ${filename}\n`;
+              ret += `// include: ${includeFile}\n`;
               ret += result;
-              ret += `// end include: ${filename}\n`;
+              ret += `// end include: ${includeFile}\n`;
             }
           }
         } else if (first === '#else') {
