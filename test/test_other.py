@@ -9229,7 +9229,7 @@ int main() {
 
   @parameterized({
     'noexcept': [],
-    'except': ['-sDISABLE_EXCEPTION_CATCHING=0'],
+    'except_emscripten': ['-sDISABLE_EXCEPTION_CATCHING=0'],
     'except_wasm': ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0'],
     'except_wasm_legacy': ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS']
   })
