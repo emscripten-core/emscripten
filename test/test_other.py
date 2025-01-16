@@ -1152,7 +1152,7 @@ f.close()
         i = os.path.normpath(i)
         # we also allow for the cache include directory and llvm's own builtin includes.
         # all other include paths should be inside the sysroot.
-        if i.startswith(cachedir) or i.startswith(llvmroot):
+        if i.startswith((cachedir, llvmroot)):
           continue
         self.assertContained(path_from_root('system'), i)
 
@@ -11374,7 +11374,7 @@ int main () {
       obtained_results[f] = size
       obtained_results[f_gz] = size_gz
 
-      if size != expected_size and (f.endswith('.js') or f.endswith('.html')):
+      if size != expected_size and (f.endswith(('.js', '.html'))):
         print('Contents of ' + f + ': ')
         print(read_file(f))
 
@@ -14279,6 +14279,7 @@ int main() {
   def test_xlocale(self):
     # Test for xlocale.h compatibility header
     self.do_other_test('test_xlocale.c')
+    self.do_other_test('test_xlocale.c', emcc_args=['-x', 'c++'])
 
   def test_print_map(self):
     self.run_process([EMCC, '-c', test_file('hello_world.c')])
@@ -15384,6 +15385,11 @@ addToLibrary({
        return 0;
     }''')
     self.do_runf('main.cpp', 'Hello from rust!', emcc_args=[lib])
+
+  def test_relative_em_cache(self):
+    with env_modify({'EM_CACHE': 'foo'}):
+      err = self.expect_fail([EMCC, '-c', test_file('hello_world.c')])
+      self.assertContained('emcc: error: environment variable EM_CACHE must be an absolute path: foo', err)
 
   @crossplatform
   def test_create_cache_directory(self):

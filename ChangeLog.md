@@ -4,7 +4,7 @@ Note that version numbers do not necessarily reflect the amount of changes
 between versions. A version number reflects a release that is known to pass all
 tests, and versions may be tagged more or less frequently at different times.
 
-nNote that there is *no* ABI compatibility guarantee between versions - the ABI
+Note that there is *no* ABI compatibility guarantee between versions - the ABI
 may change, so that we can keep improving and optimizing it. The compiler will
 automatically invalidate system caches when the version number updates, so that
 libc etc. are rebuilt for you. You should also rebuild object files and
@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 4.0.1 (in development)
 ----------------------
+- The minimum version of node required to run emscripten was bumped from v16.20
+  to v18.  Version 4.0 was mistakenly shipped with a change that required v20,
+  but that was reverted. (#23410)
 
 4.0.0 - 01/14/25
 ----------------

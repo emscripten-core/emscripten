@@ -1,12 +1,22 @@
 import globals from 'globals';
 import js from '@eslint/js';
 import { FlatCompat } from '@eslint/eslintrc';
+import { loadDefaultSettings } from './src/utility.mjs';
 
 const compat = new FlatCompat({
   baseDirectory: import.meta.dirname,
   recommendedConfig: js.configs.recommended,
   allConfig: js.configs.all
 });
+
+
+// Emscripten settings are made available to the compiler as global
+// variables.  Make sure eslint knows about them.
+const settings = loadDefaultSettings();
+const settingsGlobals = {};
+for (const name of Object.keys(settings)) {
+  settingsGlobals[name] = 'writable';
+}
 
 export default [{
   ignores: [
@@ -56,9 +66,10 @@ export default [{
     globals: {
       ...globals.browser,
       ...globals.node,
+      ...settingsGlobals,
     },
 
-    ecmaVersion: 13,
+    ecmaVersion: 'latest',
     sourceType: 'module',
   },
 
@@ -77,6 +88,7 @@ export default [{
   files: ['**/*.mjs'],
 
   rules: {
+    'no-undef': 'error',
     'no-unused-vars': ['error', {
       vars: 'all',
       args: 'none',

@@ -672,8 +672,7 @@ class Library:
     """Returns all the classes in the inheritance tree of the current class."""
     yield cls
     for subclass in cls.__subclasses__():
-      for cls in subclass.get_inheritance_tree():
-        yield cls
+      yield from subclass.get_inheritance_tree()
 
   @classmethod
   def get_all_variations(cls):
@@ -1756,7 +1755,7 @@ class libmalloc(MTLibrary):
     return name
 
   def can_use(self):
-    return super().can_use() and settings.MALLOC != 'none' and settings.MALLOC != 'mimalloc'
+    return super().can_use() and settings.MALLOC not in {'none', 'mimalloc'}
 
   @classmethod
   def vary_on(cls):
