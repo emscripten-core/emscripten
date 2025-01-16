@@ -834,7 +834,7 @@ var LibraryEmbind = {
   },
 
 #if EMBIND_AOT
-  $embindEmitAotJs__deps: ['$awaitingDependencies', '$throwBindingError', '$getTypeName', '$moduleDefinitions', '$JsPrinter'],
+  $embindEmitAotJs__deps: ['$awaitingDependencies', '$throwBindingError', '$getTypeName', '$moduleDefinitions', '$JsPrinter', '$addOnInit'],
   $embindEmitAotJs__postset: 'addOnInit(embindEmitAotJs);',
   $embindEmitAotJs: () => {
     for (const typeId in awaitingDependencies) {
@@ -844,7 +844,7 @@ var LibraryEmbind = {
     printer.print();
   },
 #else // EMBIND_AOT
-  $embindEmitTypes__deps: ['$awaitingDependencies', '$throwBindingError', '$getTypeName', '$moduleDefinitions', '$TsPrinter'],
+  $embindEmitTypes__deps: ['$awaitingDependencies', '$throwBindingError', '$getTypeName', '$moduleDefinitions', '$TsPrinter', '$addOnInit'],
   $embindEmitTypes__postset: 'addOnInit(embindEmitTypes);',
   $embindEmitTypes: () => {
     for (const typeId in awaitingDependencies) {

@@ -395,7 +395,6 @@ function exportRuntime() {
   let runtimeElements = [
     'run',
     'addOnPreRun',
-    'addOnInit',
     'addOnPreMain',
     'addOnExit',
     'addOnPostRun',

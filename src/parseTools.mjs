@@ -709,7 +709,7 @@ export const ATMAINS = [];
 export const ATINITS = [];
 
 function addAtInit(code) {
-  ATINITS.push(code);
+  ATINITS.unshift(code);
 }
 
 export const ATEXITS = [];

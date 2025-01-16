@@ -612,6 +612,7 @@ var LibraryDylink = {
     '$currentModuleWeakSymbols',
     '$updateTableMap',
     '$wasmTable',
+    '$__ATINIT__',
   ],
   $loadWebAssemblyModule: (binary, flags, libName, localScope, handle) => {
 #if DYLINK_DEBUG

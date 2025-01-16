@@ -701,6 +701,7 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('PTHREADS_PROFILING only works with ASSERTIONS enabled')
     options.post_js.append(utils.path_from_root('src/threadprofiler.js'))
     settings.REQUIRED_EXPORTS.append('emscripten_main_runtime_thread_id')
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$addOnInit']
 
   # TODO: support source maps with js_transform
   if options.js_transform and settings.GENERATE_SOURCE_MAP:
