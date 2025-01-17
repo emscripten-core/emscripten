@@ -732,7 +732,7 @@ class MTLibrary(Library):
     )
 
   @classmethod
-  def variations(cls):
+  def variations(cls, **_):
     combos = super(MTLibrary, cls).variations()
 
     # These are mutually exclusive, only one flag will be set at any give time.
