@@ -431,10 +431,6 @@ def get_binaryen_passes():
     extras = settings.BINARYEN_EXTRA_PASSES.split(',')
     passes += [('--' + p) if p[0] != '-' else p for p in extras if p]
 
-  # Run the translator to the standardized EH instructions.
-  if not settings.WASM_LEGACY_EXCEPTIONS:
-    passes += ['--emit-exnref']
-
   # If we are going to run metadce then that means we will be running binaryen
   # tools after the main invocation, whose flags are determined here
   # (specifically we will run metadce and possibly also wasm-opt for import/
