@@ -145,7 +145,7 @@ class EmccOptions:
     self.executable = False
     self.compiler_wrapper = None
     self.oformat = None
-    self.requested_debug = ''
+    self.requested_debug = None
     self.emit_symbol_map = False
     self.use_closure_compiler = None
     self.closure_args = []
@@ -949,7 +949,7 @@ def filter_out_link_flags(args):
 
 
 @ToolchainProfiler.profile_block('compile inputs')
-def phase_compile_inputs(options, state, newargs, input_files):
+def phase_compile_inputs(options, state, compile_args, input_files):
   if shared.run_via_emxx:
     compiler = [shared.CLANG_CXX]
   else:
@@ -959,7 +959,6 @@ def phase_compile_inputs(options, state, newargs, input_files):
     logger.debug('using compiler wrapper: %s', config.COMPILER_WRAPPER)
     compiler.insert(0, config.COMPILER_WRAPPER)
 
-  compile_args = newargs
   system_libs.ensure_sysroot()
 
   def get_language_mode(args):
@@ -974,7 +973,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
         return removeprefix(item, '-x')
     return ''
 
-  language_mode = get_language_mode(newargs)
+  language_mode = get_language_mode(compile_args)
   use_cxx = 'c++' in language_mode or shared.run_via_emxx
 
   def get_clang_command():
@@ -1054,7 +1053,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
       if get_file_suffix(input_file) in ['.pcm']:
         cmd = [c for c in cmd if not c.startswith('-fprebuilt-module-path=')]
     cmd += ['-c', input_file, '-o', output_file]
-    if state.mode == Mode.COMPILE_AND_LINK and '-gsplit-dwarf' in newargs:
+    if state.mode == Mode.COMPILE_AND_LINK and options.requested_debug == '-gsplit-dwarf':
       # When running in COMPILE_AND_LINK mode we compile to temporary location
       # but we want the `.dwo` file to be generated in the current working directory,
       # like it is under clang.  We could avoid this hack if we use the clang driver
