@@ -3851,7 +3851,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   glDrawElements: (mode, count, type, indices) => {
 #if FULL_ES2
     var buf;
-    var vertexes = 0;
+    var vertexes = count;
     if (!GLctx.currentElementArrayBufferBinding) {
       var size = GL.calcBufLength(1, type, 0, count);
       buf = GL.getTempIndexBuffer(size);

@@ -1839,6 +1839,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
       ('third_party/glbook/Chapter_9/Simple_Texture2D/Simple_Texture2D_orig.c', 'third_party/glbook/CH09_SimpleTexture2D.png'),
       ('third_party/glbook/Chapter_10/MultiTexture/MultiTexture_orig.c', 'third_party/glbook/CH10_MultiTexture.png'),
       ('third_party/glbook/Chapter_13/ParticleSystem/ParticleSystem_orig.c', 'third_party/glbook/CH13_ParticleSystem.png'),
+      ('third_party/glbook/Chapter_2/Hello_Triangle/Hello_Triangle_DrawElements.c', 'third_party/glbook/CH02_HelloTriangle.png'),
     ]:
       print(source)
       self.reftest(source, reference,
