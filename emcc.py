@@ -113,9 +113,6 @@ class EmccState:
     self.mode = Mode.COMPILE_AND_LINK
     # Using tuple here to prevent accidental mutation
     self.orig_args = tuple(args)
-    self.has_dash_c = False
-    self.has_dash_E = False
-    self.has_dash_S = False
     # List of link options paired with their position on the command line [(i, option), ...].
     self.link_flags = []
     self.lib_dirs = []
@@ -179,6 +176,11 @@ class EmccOptions:
     self.shared = False
     self.relocatable = False
     self.reproduce = None
+    self.syntax_only = False
+    self.dash_c = False
+    self.dash_E = False
+    self.dash_S = False
+    self.dash_M = False
 
 
 def create_reproduce_file(name, args):
@@ -572,6 +574,8 @@ emcc: supported targets: llvm bitcode, WebAssembly, NOT elf
   if not shared.SKIP_SUBPROCS:
     shared.check_sanity()
 
+  # Begin early-exit flag handling.
+
   if '--version' in args:
     print(version_string())
     print('''\
@@ -606,6 +610,38 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       print(shared.shlex_join(parts[1:]))
     return 0
 
+  if '-dumpmachine' in args or '-print-target-triple' in args or '--print-target-triple' in args:
+    print(shared.get_llvm_target())
+    return 0
+
+  if '-print-search-dirs' in args or '--print-search-dirs' in args:
+    print(f'programs: ={config.LLVM_ROOT}')
+    print(f'libraries: ={cache.get_lib_dir(absolute=True)}')
+    return 0
+
+  if '-print-resource-dir' in args:
+    shared.check_call([clang] + args)
+    return 0
+
+  if '-print-libgcc-file-name' in args or '--print-libgcc-file-name' in args:
+    settings.limit_settings(None)
+    compiler_rt = system_libs.Library.get_usable_variations()['libcompiler_rt']
+    print(compiler_rt.get_path(absolute=True))
+    return 0
+
+  print_file_name = [a for a in args if a.startswith(('-print-file-name=', '--print-file-name='))]
+  if print_file_name:
+    libname = print_file_name[-1].split('=')[1]
+    system_libpath = cache.get_lib_dir(absolute=True)
+    fullpath = os.path.join(system_libpath, libname)
+    if os.path.isfile(fullpath):
+      print(fullpath)
+    else:
+      print(libname)
+    return 0
+
+  # End early-exit flag handling
+
   if 'EMMAKEN_NO_SDK' in os.environ:
     exit_with_error('EMMAKEN_NO_SDK is no longer supported.  The standard -nostdlib and -nostdinc flags should be used instead')
 
@@ -624,36 +660,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   settings.limit_settings(COMPILE_TIME_SETTINGS)
 
   newargs, input_files = phase_setup(options, state, newargs)
-
-  if '-dumpmachine' in newargs or '-print-target-triple' in newargs or '--print-target-triple' in newargs:
-    print(shared.get_llvm_target())
-    return 0
-
-  if '-print-search-dirs' in newargs or '--print-search-dirs' in newargs:
-    print(f'programs: ={config.LLVM_ROOT}')
-    print(f'libraries: ={cache.get_lib_dir(absolute=True)}')
-    return 0
-
-  if '-print-resource-dir' in newargs:
-    shared.check_call([clang] + newargs)
-    return 0
-
-  if '-print-libgcc-file-name' in newargs or '--print-libgcc-file-name' in newargs:
-    settings.limit_settings(None)
-    compiler_rt = system_libs.Library.get_usable_variations()['libcompiler_rt']
-    print(compiler_rt.get_path(absolute=True))
-    return 0
-
-  print_file_name = [a for a in newargs if a.startswith(('-print-file-name=', '--print-file-name='))]
-  if print_file_name:
-    libname = print_file_name[-1].split('=')[1]
-    system_libpath = cache.get_lib_dir(absolute=True)
-    fullpath = os.path.join(system_libpath, libname)
-    if os.path.isfile(fullpath):
-      print(fullpath)
-    else:
-      print(libname)
-    return 0
 
   if options.reproduce:
     create_reproduce_file(options.reproduce, args)
@@ -817,17 +823,13 @@ def phase_setup(options, state, newargs):
   # so it won't think about generating native x86 SSE code.
   newargs = [x for x in newargs if x not in SIMD_INTEL_FEATURE_TOWER and x not in SIMD_NEON_FLAGS]
 
-  state.has_dash_c = '-c' in newargs or '--precompile' in newargs
-  state.has_dash_S = '-S' in newargs
-  state.has_dash_E = '-E' in newargs
-
   if options.post_link:
     state.mode = Mode.POST_LINK_ONLY
-  elif state.has_dash_E or '-M' in newargs or '-MM' in newargs or '-fsyntax-only' in newargs:
+  elif options.dash_E or options.dash_M:
     state.mode = Mode.PREPROCESS_ONLY
   elif has_header_inputs:
     state.mode = Mode.PCH
-  elif state.has_dash_c or state.has_dash_S:
+  elif options.dash_c or options.dash_S or options.syntax_only:
     state.mode = Mode.COMPILE_ONLY
 
   if state.mode in (Mode.COMPILE_ONLY, Mode.PREPROCESS_ONLY):
@@ -984,7 +986,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
   def get_clang_command_asm():
     return compiler + get_target_flags() + compile_args
 
-  # preprocessor-only (-E) support
+  # preprocessor-only (-E/-M) support
   if state.mode == Mode.PREPROCESS_ONLY:
     inputs = [i[1] for i in input_files]
     cmd = get_clang_command() + inputs
@@ -993,7 +995,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
     # Do not compile, but just output the result from preprocessing stage or
     # output the dependency rule. Warning: clang and gcc behave differently
     # with -MF! (clang seems to not recognize it)
-    logger.debug(('just preprocessor ' if state.has_dash_E else 'just dependencies: ') + ' '.join(cmd))
+    logger.debug(('just preprocessor: ' if options.dash_E else 'just dependencies: ') + ' '.join(cmd))
     shared.exec_process(cmd)
     assert False, 'exec_process does not return'
 
@@ -1026,7 +1028,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
   # In COMPILE_AND_LINK we need to compile source files too, but we also need to
   # filter out the link flags
   assert state.mode == Mode.COMPILE_AND_LINK
-  assert not state.has_dash_c
+  assert not options.dash_c
   compile_args = filter_out_link_flags(compile_args)
   linker_inputs = []
   seen_names = {}
@@ -1069,7 +1071,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   for i, input_file in input_files:
     file_suffix = get_file_suffix(input_file)
-    if file_suffix in SOURCE_ENDINGS + ASSEMBLY_ENDINGS or (state.has_dash_c and file_suffix == '.bc'):
+    if file_suffix in SOURCE_ENDINGS + ASSEMBLY_ENDINGS or (options.dash_c and file_suffix == '.bc'):
       compile_source_file(i, input_file)
     elif file_suffix in DYNAMICLIB_ENDINGS:
       logger.debug(f'using shared library: {input_file}')
@@ -1486,6 +1488,16 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
         exit_with_error(f'unsupported target: {options.target} (emcc only supports wasm64-unknown-emscripten and wasm32-unknown-emscripten)')
     elif check_arg('--use-port'):
       ports.handle_use_port_arg(settings, consume_arg())
+    elif arg in ('-c', '--precompile'):
+      options.dash_c = True
+    elif arg == '-S':
+      options.dash_S = True
+    elif arg == '-E':
+      options.dash_E = True
+    elif arg in ('-M', '-MM'):
+      options.dash_M = True
+    elif arg == '-fsyntax-only':
+      options.syntax_only = True
 
   if should_exit:
     sys.exit(0)

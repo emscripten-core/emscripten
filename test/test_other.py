@@ -3861,6 +3861,9 @@ More info: https://emscripten.org
     result = self.run_process([EMCC, test_file('hello_world.c'), '-fsyntax-only'], stdout=PIPE, stderr=STDOUT)
     self.assertEqual(result.stdout, '')
     self.assertNotExists('a.out.js')
+    # Even with `-c` and/or `-o`, `-fsyntax-only` should not produce any output
+    self.run_process([EMCC, test_file('hello_world.c'), '-fsyntax-only', '-c', '-o', 'out.o'])
+    self.assertNotExists('out.o')
 
   def test_syntax_only_invalid(self):
     create_file('src.c', 'int main() {')
