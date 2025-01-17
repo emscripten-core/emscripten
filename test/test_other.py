@@ -4922,6 +4922,22 @@ extraLibraryFuncs.push('jsfunc');
     self.assertContained('error_in_js_libraries.js:5: #error This is an error string!', err)
     self.assertContained('error_in_js_libraries.js:7: #error This is a second error string!', err)
 
+  def test_jslib_include(self):
+    create_file('inc.js', '''
+    let MY_VAR = 10;
+    ''')
+    create_file('foo.js', '''
+    // Include a file from system directory
+    #include "arrayUtils.js"
+    // Include a local file.
+    #include "inc.js"
+    ''')
+    self.run_process([EMCC, test_file('hello_world.c'), '--js-library', 'foo.js'])
+
+    delete_file('inc.js')
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', 'foo.js'])
+    self.assertContained('foo.js:5: file not found: inc.js', err)
+
   def test_postjs_errors(self):
     create_file('post.js', '#preprocess\n#error This is an error')
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--post-js', 'post.js'])

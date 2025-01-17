@@ -1469,9 +1469,9 @@ var LibraryGLFW = {
 #endif
   },
 
-  glfwPollEvents: () => {},
+  glfwPollEvents: () => 0,
 
-  glfwWaitEvents: () => {},
+  glfwWaitEvents: () => 0,
 
   glfwGetTime: () => GLFW.getTime() - GLFW.initialTime,
 
@@ -1509,9 +1509,9 @@ var LibraryGLFW = {
     return prevcbfun;
   },
 
-  glfwWaitEventsTimeout: (timeout) => {},
+  glfwWaitEventsTimeout: (timeout) => 0,
 
-  glfwPostEmptyEvent: () => {},
+  glfwPostEmptyEvent: () => 0,
 
   glfwGetMonitors__deps: ['malloc'],
   glfwGetMonitors: (count) => {
@@ -1573,7 +1573,7 @@ var LibraryGLFW = {
   glfwGetVideoMode: (monitor) => 0,
 
   // TODO: implement
-  glfwSetGamma: (monitor, gamma) => {},
+  glfwSetGamma: (monitor, gamma) => 0,
 
   glfwGetGammaRamp: (monitor) => { throw "glfwGetGammaRamp not implemented."; },
 
@@ -1659,9 +1659,9 @@ var LibraryGLFW = {
 #endif
   },
 
-  glfwShowWindow: (winid) => {},
+  glfwShowWindow: (winid) => 0,
 
-  glfwHideWindow: (winid) => {},
+  glfwHideWindow: (winid) => 0,
 
   glfwGetWindowMonitor: (winid) => {
     var win = GLFW.WindowFromId(winid);
@@ -1727,29 +1727,29 @@ var LibraryGLFW = {
     return prevcbfun;
   },
 
-  glfwSetWindowIcon: (winid, count, images) => {},
+  glfwSetWindowIcon: (winid, count, images) => 0,
 
-  glfwSetWindowSizeLimits: (winid, minwidth, minheight, maxwidth, maxheight) => {},
+  glfwSetWindowSizeLimits: (winid, minwidth, minheight, maxwidth, maxheight) => 0,
 
-  glfwSetWindowAspectRatio: (winid, numer, denom) => {},
+  glfwSetWindowAspectRatio: (winid, numer, denom) => 0,
 
   glfwGetWindowFrameSize: (winid, left, top, right, bottom) => { throw "glfwGetWindowFrameSize not implemented."; },
 
-  glfwMaximizeWindow: (winid) => {},
+  glfwMaximizeWindow: (winid) => 0,
 
-  glfwFocusWindow: (winid) => {},
+  glfwFocusWindow: (winid) => 0,
 
-  glfwRequestWindowAttention: (winid) => {}, // maybe do window.focus()?
+  glfwRequestWindowAttention: (winid) => 0, // maybe do window.focus()?
 
   glfwSetWindowMonitor: (winid, monitor, xpos, ypos, width, height, refreshRate) => { throw "glfwSetWindowMonitor not implemented."; },
 
-  glfwCreateCursor: (image, xhot, yhot) => {},
+  glfwCreateCursor: (image, xhot, yhot) => 0,
 
-  glfwCreateStandardCursor: (shape) => {},
+  glfwCreateStandardCursor: (shape) => 0,
 
-  glfwDestroyCursor: (cursor) => {},
+  glfwDestroyCursor: (cursor) => 0,
 
-  glfwSetCursor: (winid, cursor) => {},
+  glfwSetCursor: (winid, cursor) => 0,
 
   glfwSetFramebufferSizeCallback: (winid, cbfun) => {
     var win = GLFW.WindowFromId(winid);
@@ -1884,11 +1884,11 @@ var LibraryGLFW = {
 
   glfwSetJoystickCallback: (cbfun) => GLFW.setJoystickCallback(cbfun),
 
-  glfwSetClipboardString: (win, string) => {},
+  glfwSetClipboardString: (win, string) => 0,
 
-  glfwGetClipboardString: (win) => {},
+  glfwGetClipboardString: (win) => 0,
 
-  glfwMakeContextCurrent: (winid) => {},
+  glfwMakeContextCurrent: (winid) => 0,
 
   glfwGetCurrentContext: () => GLFW.active ? GLFW.active.id : 0,
 
@@ -1964,7 +1964,7 @@ var LibraryGLFW = {
 
   glfwGetMouseWheel: () => 0,
 
-  glfwSetMouseWheel: (pos) => {},
+  glfwSetMouseWheel: (pos) => 0,
 
   glfwSetKeyCallback_v2: (cbfun) => {
     GLFW.setKeyCallback(GLFW.active.id, cbfun);
@@ -2013,9 +2013,9 @@ var LibraryGLFW = {
     return 0;
   },
 
-  glfwDestroyThread: (ID) => {},
+  glfwDestroyThread: (ID) => 0,
 
-  glfwWaitThread: (ID, waitmode) => {},
+  glfwWaitThread: (ID, waitmode) => 0,
 
   // One single thread
   glfwGetThreadID: () => 0,

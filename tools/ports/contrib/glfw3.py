@@ -6,8 +6,8 @@
 import os
 from typing import Union, Dict
 
-TAG = '3.4.0.20250112'
-HASH = '55d0828674c185f6ca00f76fcbaaeec8baec26be1507b33d36a2084c6352ca51dd27a61082478998b200e9a388834f2f95d6b00258c303bba1a996e305034a6b'
+TAG = '3.4.0.20250117'
+HASH = '128b39d37887df063ed3b1a4ce747fe3f369237e8f69e5630bfb03bdf70ddb2dc5f164e5697300b327d8a542316fc9c5eb7d558c1668b2bb35ae3b0d4c234df4'
 
 # contrib port information (required)
 URL = 'https://github.com/pongasoft/emscripten-glfw'
@@ -18,13 +18,15 @@ VALID_OPTION_VALUES = {
   'disableWarning': ['true', 'false'],
   'disableJoystick': ['true', 'false'],
   'disableMultiWindow': ['true', 'false'],
+  'disableWebGL2': ['true', 'false'],
   'optimizationLevel': ['0', '1', '2', '3', 'g', 's', 'z']  # all -OX possibilities
 }
 
 OPTIONS = {
   'disableWarning': 'Boolean to disable warnings emitted by the library',
   'disableJoystick': 'Boolean to disable support for joystick entirely',
-  'disableMultiWindow': 'Boolean to disable multi window support which makes the code smaller and faster',
+  'disableMultiWindow': 'Boolean to disable multi window support',
+  'disableWebGL2': 'Boolean to disable WebGL2 support',
   'optimizationLevel': f'Optimization level: {VALID_OPTION_VALUES["optimizationLevel"]} (default to 2)',
 }
 
@@ -33,6 +35,7 @@ opts: Dict[str, Union[str, bool]] = {
   'disableWarning': False,
   'disableJoystick': False,
   'disableMultiWindow': False,
+  'disableWebGL2': False,
   'optimizationLevel': '2'
 }
 
@@ -88,7 +91,8 @@ def linker_setup(ports, settings):
   root_path = os.path.join(ports.get_dir(), port_name)
   source_js_path = os.path.join(root_path, 'src', 'js', 'lib_emscripten_glfw3.js')
   settings.JS_LIBRARIES += [source_js_path]
-  settings.MAX_WEBGL_VERSION = 2 # for GLFW_CONTEXT_VERSION_MAJOR to work
+  if not opts['disableWebGL2']:
+    settings.MAX_WEBGL_VERSION = 2
 
 
 # Using contrib.glfw3 to avoid installing headers into top level include path
