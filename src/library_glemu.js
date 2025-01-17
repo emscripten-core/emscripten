@@ -185,9 +185,9 @@ var LibraryGLEmulation = {
 
 
       // Add some emulation workarounds
-      err('WARNING: using emscripten GL emulation. This is a collection of limited workarounds, do not expect it to work.');
+      console.warning('WARNING: using emscripten GL emulation. This is a collection of limited workarounds, do not expect it to work.');
 #if GL_UNSAFE_OPTS == 1
-      err('WARNING: using emscripten GL emulation unsafe opts. If weirdness happens, try -sGL_UNSAFE_OPTS=0');
+      console.warning('WARNING: using emscripten GL emulation unsafe opts. If weirdness happens, try -sGL_UNSAFE_OPTS=0');
 #endif
 
       // XXX some of the capabilities we don't support may lead to incorrect rendering, if we do not emulate them in shaders
