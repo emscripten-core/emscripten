@@ -803,8 +803,6 @@ class ExceptionLibrary(Library):
     # suffixes. Change the default to wasm exception later.
     if self.eh_mode == Exceptions.NONE:
       name += '-noexcept'
-    elif self.eh_mode == Exceptions.EMSCRIPTEN:
-      name += '-emexcept'
     elif self.eh_mode == Exceptions.WASM_LEGACY:
       name += '-legacyexcept'
     return name
@@ -848,9 +846,7 @@ class SjLjLibrary(Library):
     name = super().get_base_name()
     # TODO Currently emscripten-based SjLj is the default mode, thus no
     # suffixes. Change the default to wasm exception later.
-    if self.eh_mode == Exceptions.EMSCRIPTEN:
-      name += '-emsjlj'
-    elif self.eh_mode == Exceptions.WASM_LEGACY:
+    if self.eh_mode == Exceptions.WASM_LEGACY:
       name += '-legacysjlj'
     return name
 
