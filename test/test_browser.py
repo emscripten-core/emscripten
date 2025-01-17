@@ -1585,17 +1585,20 @@ simulateKeyUp(100, undefined, 'Numpad4');
                  args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
-  def test_glfw(self):
-    # Using only the `-l` flag
-    self.btest_exit('test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-lglfw', '-lGL', '-sGL_ENABLE_GET_PROC_ADDRESS'])
-    # Using only the `-s` flag
-    self.btest_exit('test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-sUSE_GLFW=2', '-lGL', '-sGL_ENABLE_GET_PROC_ADDRESS'])
-    # Using both `-s` and `-l` flags
-    self.btest_exit('test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-sUSE_GLFW=2', '-lglfw', '-lGL', '-sGL_ENABLE_GET_PROC_ADDRESS'])
+  @parameterized({
+    '': (['-lglfw'],),
+    's_flag': (['-sUSE_GLFW=2'],),
+    'both_flags': (['-sUSE_GLFW=2', '-lglfw'],),
+  })
+  def test_glfw(self, args):
+    self.btest_exit('test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-lGL', '-sGL_ENABLE_GET_PROC_ADDRESS'] + args)
 
-  def test_glfw_minimal(self):
-    self.btest_exit('test_glfw_minimal.c', args=['-lglfw', '-lGL'])
-    self.btest_exit('test_glfw_minimal.c', args=['-sUSE_GLFW=2', '-lglfw', '-lGL'])
+  @parameterized({
+    '': ([],),
+    's_flag': (['-sUSE_GLFW=2'],),
+  })
+  def test_glfw_minimal(self, args):
+    self.btest_exit('test_glfw_minimal.c', args=['-lglfw', '-lGL'] + args)
 
   def test_glfw_time(self):
     self.btest_exit('test_glfw_time.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
@@ -2907,8 +2910,8 @@ Module["preRun"] = () => {
 
   @requires_graphics_hardware
   @parameterized({
+    '': (['-DCLIENT_API=GLFW_OPENGL_ES_API', '-sGL_ENABLE_GET_PROC_ADDRESS'],),
     'no_gl': (['-DCLIENT_API=GLFW_NO_API'],),
-    'gl_es': (['-DCLIENT_API=GLFW_OPENGL_ES_API', '-sGL_ENABLE_GET_PROC_ADDRESS'],)
   })
   @parameterized({
     '': ([],),
@@ -2916,7 +2919,7 @@ Module["preRun"] = () => {
     'closure': (['-Os', '--closure=1'],),
   })
   def test_glfw3(self, args, opts):
-    self.btest('test_glfw3.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'] + args + opts, expected='1')
+    self.btest_exit('test_glfw3.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'] + args + opts)
 
   @parameterized({
     '': (['-sUSE_GLFW=2', '-DUSE_GLFW=2'],),
