@@ -3536,10 +3536,10 @@ More info: https://emscripten.org
 
   @parameterized({
     '': [0],
-    'wasm_exnref': [1]
+    'legacy': [1]
   })
-  def test_embind_tsgen_exceptions(self, wasm_exnref):
-    self.set_setting('WASM_LEGACY_EXCEPTIONS', wasm_exnref == 1)
+  def test_embind_tsgen_exceptions(self, legacy):
+    self.set_setting('WASM_LEGACY_EXCEPTIONS', legacy)
     # Check that when Wasm exceptions and assertions are enabled bindings still generate.
     self.run_process([EMXX, test_file('other/embind_tsgen.cpp'),
                       '-lembind', '-fwasm-exceptions', '-sASSERTIONS',
@@ -8950,8 +8950,8 @@ int main() {
     'mangle':   (['-O2', '-fexceptions',
                   '-sDEMANGLE_SUPPORT', '-Wno-deprecated'], [], ['waka']), # noqa
     # Wasm EH's code size increase is smaller than that of Emscripten EH
-    'except_wasm':   (['-O2', '-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS'], [], ['waka']),
-    'except_wasm_exnref':   (['-O2', '-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0'], [], ['waka']),
+    'except_wasm':   (['-O2', '-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0'], [], ['waka']),
+    'except_wasm_legacy':   (['-O2', '-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS'], [], ['waka']),
     # eval_ctors 1 can partially optimize, but runs into getenv() for locale
     # code. mode 2 ignores those and fully optimizes out the ctors
     'ctors1':    (['-O2', '-sEVAL_CTORS'],   [], ['waka']),
@@ -9251,9 +9251,9 @@ int main() {
 
   @parameterized({
     'noexcept': [],
-    'except': ['-sDISABLE_EXCEPTION_CATCHING=0'],
-    'except_wasm': ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS'],
-    'except_wasm_exnref': ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0']
+    'except_emscripten': ['-sDISABLE_EXCEPTION_CATCHING=0'],
+    'except_wasm': ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0'],
+    'except_wasm_legacy': ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS']
   })
   def test_lto_libcxx(self, *args):
     self.run_process([EMXX, test_file('hello_libcxx.cpp'), '-flto'] + list(args))
@@ -9275,11 +9275,10 @@ int main() {
   @requires_wasm_eh
   def test_lto_wasm_exceptions(self):
     self.set_setting('EXCEPTION_DEBUG')
-    self.set_setting('WASM_LEGACY_EXCEPTIONS')
     self.emcc_args += ['-fwasm-exceptions', '-flto']
-    self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
-    # New Wasm EH with exnref
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
+    self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
+    self.set_setting('WASM_LEGACY_EXCEPTIONS')
     self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
 
   @parameterized({
@@ -12794,10 +12793,9 @@ int main () {
     self.set_setting('WASM_BIGINT')
     self.wasm_engines = []
     self.emcc_args += ['-fwasm-exceptions']
-    self.set_setting('WASM_LEGACY_EXCEPTIONS')
-    self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
-    # New Wasm EH with exnref
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
+    self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
+    self.set_setting('WASM_LEGACY_EXCEPTIONS')
     self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
 
   def test_missing_malloc_export(self):
@@ -15328,8 +15326,8 @@ addToLibrary({
     'noexcept': ['-fno-exceptions'],
     'default': [],
     'except': ['-sDISABLE_EXCEPTION_CATCHING=0'],
-    'except_wasm': ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS'],
-    'except_wasm_exnref': ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0']
+    'except_wasm': ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0'],
+    'except_wasm_legacy': ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS']
   })
   def test_std_promise_link(self, *args):
     # Regression test for a bug where std::promise's destructor caused a link
