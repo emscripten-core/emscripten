@@ -186,6 +186,7 @@ function preRun() {
     }
   }
 #endif
+  <<< ATPRERUN >>>
   callRuntimeCallbacks(__ATPRERUN__);
 }
 
@@ -217,6 +218,11 @@ function initRuntime() {
 #if RELOCATABLE
   callRuntimeCallbacks(__RELOC_FUNCS__);
 #endif
+
+#if hasExportedSymbol('__wasm_call_ctors')
+  wasmExports['__wasm_call_ctors']();
+#endif
+
   <<< ATINITS >>>
   callRuntimeCallbacks(__ATINIT__);
 }
@@ -952,10 +958,6 @@ function getWasmImports() {
 #if ASSERTIONS && !PURE_WASI
     assert(wasmTable, 'table not found in wasm exports');
 #endif
-#endif
-
-#if hasExportedSymbol('__wasm_call_ctors')
-    addOnInit(wasmExports['__wasm_call_ctors']);
 #endif
 
 #if hasExportedSymbol('__wasm_apply_data_relocs')

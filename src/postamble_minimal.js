@@ -217,7 +217,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #endif
   updateMemoryViews();
 #endif
-
+  <<< ATPRERUN >>>
   initRuntime(wasmExports);
 #if PTHREADS
   // Export Wasm module for pthread creation to access.

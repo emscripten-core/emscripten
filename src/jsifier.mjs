@@ -9,6 +9,7 @@
 
 import {
   ATEXITS,
+  ATPRERUN,
   ATINITS,
   ATMAINS,
   defineI64Param,
@@ -773,6 +774,7 @@ var proxiedFunctionTable = [
           warnings: warningOccured(),
           asyncFuncs,
           libraryDefinitions: LibraryManager.libraryDefinitions,
+          ATPRERUN: ATPRERUN.join('\n'),
           ATINITS: ATINITS.join('\n'),
           ATMAINS: STRICT ? '' : ATMAINS.join('\n'),
           ATEXITS: ATEXITS.join('\n'),

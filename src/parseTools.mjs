@@ -733,6 +733,14 @@ function makeEval(code) {
 
 export const ATMAINS = [];
 
+export const ATPRERUN = [];
+
+// Add code that will be run after the Wasm module is loaded, but before static
+// constructors and main are run.
+function addAtPreRun(code) {
+  ATPRERUN.push(code);
+}
+
 export const ATINITS = [];
 
 function addAtInit(code) {
@@ -1085,6 +1093,7 @@ function ENVIRONMENT_IS_WORKER_THREAD() {
 
 addToCompileTimeContext({
   ATEXITS,
+  ATPRERUN,
   ATINITS,
   FOUR_GB,
   LONG_TYPE,
@@ -1104,6 +1113,7 @@ addToCompileTimeContext({
   ENVIRONMENT_IS_WORKER_THREAD,
   addAtExit,
   addAtInit,
+  addAtPreRun,
   asyncIf,
   awaitIf,
   buildStringArray,
