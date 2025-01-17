@@ -308,7 +308,7 @@ public:
                   internal::typeSupportsMemoryView<
                     typename std::iterator_traits<Iter>::value_type>()) {
       val view{ typed_memory_view(std::distance(begin, end), std::to_address(begin)) };
-      return val(internal::_emval_new_array_from_memory_view(view.as_handle()));
+      return val(internal::_emval_new_array_from_memory_view(js_ref(view)));
     }
     // For numeric arrays, following codes are unreachable and the compiler
     // will do 'dead code elimination'.
@@ -326,7 +326,7 @@ public:
     if constexpr (internal::typeSupportsMemoryView<T>()) {
         // for numeric types, pass memory view and copy in JS side one-off
         val view{ typed_memory_view(vec.size(), vec.data()) };
-        return val(internal::_emval_new_array_from_memory_view(view.as_handle()));
+        return val(internal::_emval_new_array_from_memory_view(js_ref(view)));
     } else {
         return array(vec.begin(), vec.end());
     }
@@ -456,11 +456,23 @@ public:
     return instanceof(global("Array"));
   }
 
-  bool equals(const val& v) const {
-    return internal::_emval_equals(as_handle(), v.as_handle());
+  template <typename T>
+  bool equals(const T& v) const& {
+    return internal::_emval_equals(as_handle(), js_ref(v));
   }
 
-  bool operator==(const val& v) const {
+  template <typename T>
+  bool equals(const T& v) && {
+    return internal::_emval_equals(release_ownership_to_js(), js_ref(v));
+  }
+
+  template <typename T>
+  bool operator==(const T& v) const& {
+    return equals(v);
+  }
+
+  template <typename T>
+  bool operator==(const T& v) && {
     return equals(v);
   }
 
@@ -493,18 +505,23 @@ public:
   }
 
   template<typename T>
-  val operator[](const T& key) const {
-    return val(internal::_emval_get_property(as_handle(), val_ref(key).as_handle()));
+  val operator[](const T& key) const& {
+    return val(internal::_emval_get_property(as_handle(), js_ref(key)));
+  }
+
+  template<typename T>
+  val operator[](const T& key) && {
+    return val(internal::_emval_get_property(release_ownership_to_js(), js_ref(key)));
   }
 
   template<typename K, typename V>
   void set(const K& key, const V& value) {
-    internal::_emval_set_property(as_handle(), val_ref(key).as_handle(), val_ref(value).as_handle());
+    internal::_emval_set_property(as_handle(), js_ref(key), js_ref(value));
   }
 
   template<typename T>
   bool delete_(const T& property) const {
-    return internal::_emval_delete(as_handle(), val_ref(property).as_handle());
+    return internal::_emval_delete(as_handle(), js_ref(property));
   }
 
   template<typename... Args>
@@ -536,7 +553,7 @@ public:
   }
 
   template<typename T, typename ...Policies>
-  T as(Policies...) const {
+  T as(Policies...) const& {
     using namespace internal;
 
     typedef BindingType<T> BT;
@@ -551,9 +568,25 @@ public:
     return fromGenericWireType<T>(result);
   }
 
+  template<typename T, typename ...Policies>
+  T as(Policies...) && {
+    using namespace internal;
+
+    typedef BindingType<T> BT;
+    typename WithPolicies<Policies...>::template ArgTypeList<T> targetType;
+
+    EM_DESTRUCTORS destructors = nullptr;
+    EM_GENERIC_WIRE_TYPE result = _emval_as(
+        release_ownership_to_js(),
+        targetType.getTypes()[0],
+        &destructors);
+    DestructorsRunner dr(destructors);
+    return fromGenericWireType<T>(result);
+  }
+
 #ifdef __wasm64__
   template<>
-  long as<long>() const {
+  long as<long>() const& {
     using namespace internal;
 
     typedef BindingType<long> BT;
@@ -563,7 +596,18 @@ public:
   }
 
   template<>
-  unsigned long as<unsigned long>() const {
+  long as<long>() &&{
+    using namespace internal;
+
+    typedef BindingType<long> BT;
+    typename WithPolicies<>::template ArgTypeList<long> targetType;
+
+    // TODO
+    return _emval_as_int64(as_handle(), targetType.getTypes()[0]);
+  }
+
+  template<>
+  unsigned long as<unsigned long>() const& {
     using namespace internal;
 
     typedef BindingType<unsigned long> BT;
@@ -571,10 +615,21 @@ public:
 
     return _emval_as_uint64(as_handle(), targetType.getTypes()[0]);
   }
+
+  template<>
+  unsigned long as<unsigned long>() && {
+    using namespace internal;
+
+    typedef BindingType<unsigned long> BT;
+    typename WithPolicies<>::template ArgTypeList<unsigned long> targetType;
+
+    // TODO
+    return _emval_as_uint64(as_handle(), targetType.getTypes()[0]);
+  }
 #endif
 
   template<>
-  int64_t as<int64_t>() const {
+  int64_t as<int64_t>() const& {
     using namespace internal;
 
     typedef BindingType<int64_t> BT;
@@ -584,12 +639,34 @@ public:
   }
 
   template<>
-  uint64_t as<uint64_t>() const {
+  int64_t as<int64_t>() && {
+    using namespace internal;
+
+    typedef BindingType<int64_t> BT;
+    typename WithPolicies<>::template ArgTypeList<int64_t> targetType;
+
+    // TODO
+    return _emval_as_int64(as_handle(), targetType.getTypes()[0]);
+  }
+
+  template<>
+  uint64_t as<uint64_t>() const& {
     using namespace internal;
 
     typedef BindingType<uint64_t> BT;
     typename WithPolicies<>::template ArgTypeList<uint64_t> targetType;
 
+    return  _emval_as_uint64(as_handle(), targetType.getTypes()[0]);
+  }
+
+  template<>
+  uint64_t as<uint64_t>() && {
+    using namespace internal;
+
+    typedef BindingType<uint64_t> BT;
+    typename WithPolicies<>::template ArgTypeList<uint64_t> targetType;
+
+    // TODO
     return  _emval_as_uint64(as_handle(), targetType.getTypes()[0]);
   }
 
@@ -665,13 +742,28 @@ private:
     return fromGenericWireType<Ret>(result);
   }
 
-  template<typename T>
-  val val_ref(const T& v) const {
-    return val(v);
+  // Invalidates this instance and returns handle for JS ownership.
+  // Expected to be immediately use by Emval.toValue() which will decref
+  // the handle.
+  // Takes advantage of the even-only property of handle to encode this
+  // ownership transfer as an odd handle.
+  EM_VAL release_ownership_to_js() {
+    EM_VAL taken = as_handle();
+    handle = 0;
+    return reinterpret_cast<EM_VAL>(reinterpret_cast<uint32_t>(taken) + 1);
   }
 
-  const val& val_ref(const val& v) const {
-    return v;
+  template<typename T>
+  static EM_VAL js_ref(const T& v) {
+    return val(v).release_ownership_to_js();
+  }
+
+  static EM_VAL js_ref(val&& v) {
+    return v.release_ownership_to_js();
+  }
+
+  static EM_VAL js_ref(const val& v) {
+    return v.as_handle();
   }
 
   pthread_t thread;
