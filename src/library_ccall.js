@@ -31,6 +31,10 @@ addToLibrary({
 #endif
       'string': (str) => {
         var ret = 0;
+         if (typeof str !== 'string')
+         {
+         assert(typeof str == 'string', 'Argument must be a string');
+         }
         if (str !== null && str !== undefined && str !== 0) { // null string
           ret = stringToUTF8OnStack(str);
         }
