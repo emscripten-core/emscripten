@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.1 (in development)
+4.0.2 (in development)
 ----------------------
+
+4.0.1 - 01/17/25
+----------------
 - The minimum version of node required to run emscripten was bumped from v16.20
   to v18.  Version 4.0 was mistakenly shipped with a change that required v20,
   but that was reverted. (#23410)
