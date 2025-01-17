@@ -732,7 +732,7 @@ class MTLibrary(Library):
     )
 
   @classmethod
-  def variations(cls, **_):
+  def variations(cls):
     combos = super(MTLibrary, cls).variations()
 
     # These are mutually exclusive, only one flag will be set at any give time.
@@ -793,7 +793,7 @@ class ExceptionLibrary(Library):
     elif self.eh_mode == Exceptions.EMSCRIPTEN:
       cflags += ['-sDISABLE_EXCEPTION_CATCHING=0']
     elif self.eh_mode == Exceptions.WASM_LEGACY:
-      cflags += ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=1']
+      cflags += ['-fwasm-exceptions']
 
     return cflags
 
