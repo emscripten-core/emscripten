@@ -30,7 +30,7 @@ from tools.system_libs import USE_NINJA
 
 # Minimal subset of targets used by CI systems to build enough to be useful
 MINIMAL_TASKS = [
-    'libcompiler_rt'
+    'libcompiler_rt',
     'libcompiler_rt-legacysjlj',
     'libcompiler_rt-ww',
     'libc',
