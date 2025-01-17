@@ -30,7 +30,7 @@ from tools.system_libs import USE_NINJA
 
 # Minimal subset of targets used by CI systems to build enough to be useful
 MINIMAL_TASKS = [
-    'libcompiler_rt-emsjlj',
+    'libcompiler_rt'
     'libcompiler_rt-legacysjlj',
     'libcompiler_rt-ww',
     'libc',
@@ -39,10 +39,10 @@ MINIMAL_TASKS = [
     'libc_optz',
     'libc_optz-debug',
     'libc++abi',
-    'libc++abi-except',
+    'libc++abi-legacyexcept',
     'libc++abi-noexcept',
     'libc++abi-debug',
-    'libc++abi-debug-except',
+    'libc++abi-debug-legacyexcept',
     'libc++abi-debug-noexcept',
     'libc++abi-debug-ww-noexcept',
     'libc++',
