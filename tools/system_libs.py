@@ -775,12 +775,10 @@ class Exceptions(IntEnum):
   - EMSCRIPTEN: Emscripten provides exception handling capability using JS
     emulation. This causes code size increase and performance degradation.
   - WASM_LEGACY: Wasm native exception handling support (legacy)
-  - WASM: Wasm native exception handling support
   """
   NONE = auto()
   EMSCRIPTEN = auto()
   WASM_LEGACY = auto()
-  WASM = auto()
 
 
 class ExceptionLibrary(Library):
@@ -796,8 +794,6 @@ class ExceptionLibrary(Library):
       cflags += ['-sDISABLE_EXCEPTION_CATCHING=0']
     elif self.eh_mode == Exceptions.WASM_LEGACY:
       cflags += ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=1']
-    elif self.eh_mode == Exceptions.WASM:
-      cflags += ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0']
 
     return cflags
 
