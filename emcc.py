@@ -139,6 +139,7 @@ class EmccOptions:
   def __init__(self):
     self.target = ''
     self.output_file = None
+    self.input_files = []
     self.no_minify = False
     self.post_link = False
     self.save_temps = False
@@ -659,21 +660,23 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   # settings until we reach the linking phase.
   settings.limit_settings(COMPILE_TIME_SETTINGS)
 
-  newargs, input_files = phase_setup(options, state, newargs)
+  phase_setup(options, state, newargs)
 
   if options.reproduce:
     create_reproduce_file(options.reproduce, args)
 
   if state.mode == Mode.POST_LINK_ONLY:
-    if len(input_files) != 1:
+    if len(options.input_files) != 1:
       exit_with_error('--post-link requires a single input file')
+    separate_linker_flags(options, state, newargs)
     # Delay import of link.py to avoid processing this file when only compiling
     from tools import link
-    link.run_post_link(input_files[0][1], options, state)
+    link.run_post_link(options.input_files[0], options, state)
     return 0
 
-  ## Compile source code to object files
-  linker_inputs = phase_compile_inputs(options, state, newargs, input_files)
+  # Compile source code to object files
+  # When only compiling this function never returns.
+  linker_inputs = phase_compile_inputs(options, state, newargs)
 
   if state.mode == Mode.COMPILE_AND_LINK:
     # Delay import of link.py to avoid processing this file when only compiling
@@ -711,11 +714,13 @@ def phase_parse_arguments(state):
     settings.WARN_DEPRECATED = 0
 
   for i in range(len(newargs)):
-    if newargs[i] in ('-l', '-L', '-I', '-z', '--js-library'):
+    if newargs[i] in ('-l', '-L', '-I', '-z', '--js-library', '-o'):
       # Scan for flags that can be written as either one or two arguments
       # and normalize them to the single argument form.
       if newargs[i] == '--js-library':
         newargs[i] += '='
+      if len(newargs) <= i + 1:
+        exit_with_error(f"option '{newargs[i]}' requires an argument")
       newargs[i] += newargs[i + 1]
       newargs[i + 1] = ''
 
@@ -748,10 +753,8 @@ def phase_parse_arguments(state):
   return options, newargs
 
 
-@ToolchainProfiler.profile_block('setup')
-def phase_setup(options, state, newargs):
-  """Second phase: configure and setup the compiler based on the specified settings and arguments.
-  """
+def separate_linker_flags(options, state, newargs):
+  newargs = list(newargs)
 
   if settings.RUNTIME_LINKED_LIBS:
     newargs += settings.RUNTIME_LINKED_LIBS
@@ -769,7 +772,6 @@ def phase_setup(options, state, newargs):
   # based on a full understanding of gcc params, right now we just assume that
   # what is left contains no more |-x OPT| things
   skip = False
-  has_header_inputs = False
   for i in range(len(newargs)):
     if skip:
       skip = False
@@ -787,10 +789,9 @@ def phase_setup(options, state, newargs):
       # https://bugs.python.org/issue1311
       if not os.path.exists(arg) and arg != os.devnull:
         exit_with_error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)', arg, arg)
-      file_suffix = get_file_suffix(arg)
-      if file_suffix in HEADER_ENDINGS:
-        has_header_inputs = True
       input_files.append((i, arg))
+    elif arg.startswith('-o'):
+      newargs[i] = ''
     elif arg.startswith('-L'):
       state.add_link_flag(i, arg)
     elif arg.startswith('-l'):
@@ -819,9 +820,15 @@ def phase_setup(options, state, newargs):
 
   newargs = [a for a in newargs if a]
 
-  # SSEx is implemented on top of SIMD128 instruction set, but do not pass SSE flags to LLVM
-  # so it won't think about generating native x86 SSE code.
-  newargs = [x for x in newargs if x not in SIMD_INTEL_FEATURE_TOWER and x not in SIMD_NEON_FLAGS]
+  return newargs, input_files
+
+
+@ToolchainProfiler.profile_block('setup')
+def phase_setup(options, state, newargs):
+  """Second phase: configure and setup the compiler based on the specified settings and arguments.
+  """
+
+  has_header_inputs = any(get_file_suffix(f) in HEADER_ENDINGS for f in options.input_files)
 
   if options.post_link:
     state.mode = Mode.POST_LINK_ONLY
@@ -923,8 +930,6 @@ def phase_setup(options, state, newargs):
   if settings.USE_SDL == 2 or settings.USE_SDL_MIXER == 2 or settings.USE_SDL_GFX == 2:
     default_setting('GL_ENABLE_GET_PROC_ADDRESS', 1)
 
-  return (newargs, input_files)
-
 
 def filter_out_link_flags(args):
   rtn = []
@@ -949,7 +954,7 @@ def filter_out_link_flags(args):
 
 
 @ToolchainProfiler.profile_block('compile inputs')
-def phase_compile_inputs(options, state, compile_args, input_files):
+def phase_compile_inputs(options, state, newargs):
   if shared.run_via_emxx:
     compiler = [shared.CLANG_CXX]
   else:
@@ -973,24 +978,21 @@ def phase_compile_inputs(options, state, compile_args, input_files):
         return removeprefix(item, '-x')
     return ''
 
-  language_mode = get_language_mode(compile_args)
+  language_mode = get_language_mode(newargs)
   use_cxx = 'c++' in language_mode or shared.run_via_emxx
 
   def get_clang_command():
-    return compiler + get_cflags(state.orig_args, use_cxx) + compile_args
+    return compiler + get_cflags(state.orig_args, use_cxx)
 
   def get_clang_command_preprocessed():
-    return compiler + get_clang_flags(state.orig_args) + compile_args
+    return compiler + get_clang_flags(state.orig_args)
 
   def get_clang_command_asm():
-    return compiler + get_target_flags() + compile_args
+    return compiler + get_target_flags()
 
   # preprocessor-only (-E/-M) support
   if state.mode == Mode.PREPROCESS_ONLY:
-    inputs = [i[1] for i in input_files]
-    cmd = get_clang_command() + inputs
-    if options.output_file:
-      cmd += ['-o', options.output_file]
+    cmd = get_clang_command() + newargs
     # Do not compile, but just output the result from preprocessing stage or
     # output the dependency rule. Warning: clang and gcc behave differently
     # with -MF! (clang seems to not recognize it)
@@ -1000,27 +1002,18 @@ def phase_compile_inputs(options, state, compile_args, input_files):
 
   # Precompiled headers support
   if state.mode == Mode.PCH:
-    inputs = [i[1] for i in input_files]
-    for header in inputs:
-      if shared.suffix(header) not in HEADER_ENDINGS:
-        exit_with_error(f'cannot mix precompiled headers with non-header inputs: {inputs} : {header}')
-    cmd = get_clang_command() + inputs
-    if options.output_file:
-      cmd += ['-o', options.output_file]
+    cmd = get_clang_command() + newargs
     logger.debug(f"running (for precompiled headers): {cmd[0]} {' '.join(cmd[1:])}")
     shared.exec_process(cmd)
     assert False, 'exec_process does not return'
 
   if state.mode == Mode.COMPILE_ONLY:
-    inputs = [i[1] for i in input_files]
-    if all(get_file_suffix(i) in ASSEMBLY_ENDINGS for i in inputs):
-      cmd = get_clang_command_asm() + inputs
+    if options.output_file and get_file_suffix(options.output_file) == '.bc' and not settings.LTO and '-emit-llvm' not in state.orig_args:
+      diagnostics.warning('emcc', '.bc output file suffix used without -flto or -emit-llvm.  Consider using .o extension since emcc will output an object file, not a bitcode file')
+    if all(get_file_suffix(i) in ASSEMBLY_ENDINGS for i in options.input_files):
+      cmd = get_clang_command_asm() + newargs
     else:
-      cmd = get_clang_command() + inputs
-    if options.output_file:
-      cmd += ['-o', options.output_file]
-      if get_file_suffix(options.output_file) == '.bc' and not settings.LTO and '-emit-llvm' not in state.orig_args:
-        diagnostics.warning('emcc', '.bc output file suffix used without -flto or -emit-llvm.  Consider using .o extension since emcc will output an object file, not a bitcode file')
+      cmd = get_clang_command() + newargs
     shared.exec_process(cmd)
     assert False, 'exec_process does not return'
 
@@ -1028,6 +1021,7 @@ def phase_compile_inputs(options, state, compile_args, input_files):
   # filter out the link flags
   assert state.mode == Mode.COMPILE_AND_LINK
   assert not options.dash_c
+  compile_args, input_files = separate_linker_flags(options, state, newargs)
   compile_args = filter_out_link_flags(compile_args)
   linker_inputs = []
   seen_names = {}
@@ -1052,7 +1046,7 @@ def phase_compile_inputs(options, state, compile_args, input_files):
       cmd = get_clang_command()
       if get_file_suffix(input_file) in ['.pcm']:
         cmd = [c for c in cmd if not c.startswith('-fprebuilt-module-path=')]
-    cmd += ['-c', input_file, '-o', output_file]
+    cmd += compile_args + ['-c', input_file, '-o', output_file]
     if state.mode == Mode.COMPILE_AND_LINK and options.requested_debug == '-gsplit-dwarf':
       # When running in COMPILE_AND_LINK mode we compile to temporary location
       # but we want the `.dwo` file to be generated in the current working directory,
@@ -1476,11 +1470,8 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       options.shared = True
     elif check_flag('-r'):
       options.relocatable = True
-    elif check_arg('-o'):
-      options.output_file = consume_arg()
     elif arg.startswith('-o'):
       options.output_file = removeprefix(arg, '-o')
-      newargs[i] = ''
     elif check_arg('-target') or check_arg('--target'):
       options.target = consume_arg()
       if options.target not in ('wasm32', 'wasm64', 'wasm64-unknown-emscripten', 'wasm32-unknown-emscripten'):
@@ -1497,6 +1488,12 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       options.dash_M = True
     elif arg == '-fsyntax-only':
       options.syntax_only = True
+    elif arg in SIMD_INTEL_FEATURE_TOWER or arg in SIMD_NEON_FLAGS:
+      # SSEx is implemented on top of SIMD128 instruction set, but do not pass SSE flags to LLVM
+      # so it won't think about generating native x86 SSE code.
+      newargs[i] = ''
+    elif arg and (arg == '-' or not arg.startswith('-')):
+      options.input_files.append(arg)
 
   if should_exit:
     sys.exit(0)
