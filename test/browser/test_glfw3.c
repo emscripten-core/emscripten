@@ -238,6 +238,11 @@ int main() {
     glfwSetTime(0);
   }
 
+    {
+        GLFWcursor* cur = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+        printf("glfwCreateStandardCursor => %p\n", cur);
+    }
+
 #if CLIENT_API == GLFW_OPENGL_ES_API
   {
     glfwMakeContextCurrent(window); // stub
