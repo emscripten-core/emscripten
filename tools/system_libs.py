@@ -774,8 +774,7 @@ class Exceptions(IntEnum):
     allows throwing, but library-wise they use the same version.
   - EMSCRIPTEN: Emscripten provides exception handling capability using JS
     emulation. This causes code size increase and performance degradation.
-  - WASM_LEGACY: Wasm native exception handling support. Currently the legacy
-    proposal is used to build libraries.
+  - WASM_LEGACY: Wasm native exception handling support (legacy)
   """
   NONE = auto()
   EMSCRIPTEN = auto()
