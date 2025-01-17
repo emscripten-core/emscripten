@@ -233,11 +233,13 @@ export function read(filename) {
 // Use import.meta.dirname here once we drop support for node v18.
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
 
+export const srcDir = __dirname;
+
 // Returns an absolute path for a file, resolving it relative to this script
 // (i.e. relative to the src/ directory).
 export function localFile(filename) {
   assert(!path.isAbsolute(filename));
-  return path.join(__dirname, filename);
+  return path.join(srcDir, filename);
 }
 
 // Anything needed by the script that we load below must be added to the
