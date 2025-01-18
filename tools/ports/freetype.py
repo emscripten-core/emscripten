@@ -8,7 +8,7 @@ import os
 TAG = 'VER-2-13-3'
 HASH = 'ce413487c24e689631d705f53b64725256f89fffe9aade7cf07bbd785a9cd49eb6b8d2297a55554f3fee0a50b17e8af78f505cdab565768afab833794f968c2f'
 
-variants = {'freetype-legacysjlj': {'SUPPORT_LONGJMP': 'wasm', 'WASM_LEGACY_EXCEPTIONS', 1}}
+variants = {'freetype-legacysjlj': {'SUPPORT_LONGJMP': 'wasm', 'WASM_LEGACY_EXCEPTIONS': 1}}
 deps = ['zlib']
 
 
