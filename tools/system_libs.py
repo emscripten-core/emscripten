@@ -732,7 +732,7 @@ class MTLibrary(Library):
     )
 
   @classmethod
-  def variations(cls, **_):
+  def variations(cls, **kwargs):  # noqa
     combos = super(MTLibrary, cls).variations()
 
     # These are mutually exclusive, only one flag will be set at any give time.
@@ -808,7 +808,7 @@ class ExceptionLibrary(Library):
     return name
 
   @classmethod
-  def variations(cls, **kwargs):
+  def variations(cls, **kwargs):  # noqa
     combos = super().variations()
     return ([dict(eh_mode=Exceptions.NONE, **combo) for combo in combos] +
             [dict(eh_mode=Exceptions.EMSCRIPTEN, **combo) for combo in combos] +
@@ -851,7 +851,7 @@ class SjLjLibrary(Library):
     return name
 
   @classmethod
-  def variations(cls, **kwargs):
+  def variations(cls, **kwargs):  # noqa
     combos = super().variations()
     return ([dict(eh_mode=Exceptions.EMSCRIPTEN, **combo) for combo in combos] +
             [dict(eh_mode=Exceptions.WASM_LEGACY, **combo) for combo in combos])
