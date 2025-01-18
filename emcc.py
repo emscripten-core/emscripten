@@ -1309,7 +1309,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
         options.memory_profiler = True
       newargs[i] = ''
       settings_changes.append('EMSCRIPTEN_TRACING=1')
-      settings.JS_LIBRARIES.append('library_trace.js')
+      settings.JS_LIBRARIES.append('libtrace.js')
     elif check_flag('--emit-symbol-map'):
       options.emit_symbol_map = True
       settings.EMIT_SYMBOL_MAP = 1

@@ -203,7 +203,7 @@ var LibraryBrowser = {
           alpha: false,
 #if MIN_WEBGL_VERSION >= 2
           majorVersion: 2,
-#elif MAX_WEBGL_VERSION >= 2 // library_browser.js defaults: use the WebGL version chosen at compile time (unless overridden below)
+#elif MAX_WEBGL_VERSION >= 2 // libbrowser.js defaults: use the WebGL version chosen at compile time (unless overridden below)
           majorVersion: (typeof WebGL2RenderingContext != 'undefined') ? 2 : 1,
 #else
           majorVersion: 1,

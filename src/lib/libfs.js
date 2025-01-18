@@ -12,19 +12,19 @@ addToLibrary({
     '$intArrayFromString',
     '$stringToUTF8Array',
     '$lengthBytesUTF8',
-#if LibraryManager.has('library_idbfs.js')
+#if LibraryManager.has('libidbfs.js')
     '$IDBFS',
 #endif
-#if LibraryManager.has('library_nodefs.js')
+#if LibraryManager.has('libnodefs.js')
     '$NODEFS',
 #endif
-#if LibraryManager.has('library_workerfs.js')
+#if LibraryManager.has('libworkerfs.js')
     '$WORKERFS',
 #endif
-#if LibraryManager.has('library_noderawfs.js')
+#if LibraryManager.has('libnoderawfs.js')
     '$NODERAWFS',
 #endif
-#if LibraryManager.has('library_proxyfs.js')
+#if LibraryManager.has('libproxyfs.js')
     '$PROXYFS',
 #endif
 #if ASSERTIONS
@@ -1510,16 +1510,16 @@ FS.staticInit();
 
       FS.filesystems = {
         'MEMFS': MEMFS,
-#if LibraryManager.has('library_idbfs.js')
+#if LibraryManager.has('libidbfs.js')
         'IDBFS': IDBFS,
 #endif
-#if LibraryManager.has('library_nodefs.js')
+#if LibraryManager.has('libnodefs.js')
         'NODEFS': NODEFS,
 #endif
-#if LibraryManager.has('library_workerfs.js')
+#if LibraryManager.has('libworkerfs.js')
         'WORKERFS': WORKERFS,
 #endif
-#if LibraryManager.has('library_proxyfs.js')
+#if LibraryManager.has('libproxyfs.js')
         'PROXYFS': PROXYFS,
 #endif
       };

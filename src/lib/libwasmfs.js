@@ -50,19 +50,19 @@ FS.init();
     '$FS_mkdirTree',
     '$FS_writeFile',
     '$FS_unlink',
-#if LibraryManager.has('library_icasefs.js')
+#if LibraryManager.has('libicasefs.js')
     '$ICASEFS',
 #endif
-#if LibraryManager.has('library_nodefs.js')
+#if LibraryManager.has('libnodefs.js')
     '$NODEFS',
 #endif
-#if LibraryManager.has('library_opfs.js')
+#if LibraryManager.has('libopfs.js')
     '$OPFS',
 #endif
-#if LibraryManager.has('library_jsfilefs.js')
+#if LibraryManager.has('libjsfilefs.js')
     '$JSFILEFS',
 #endif
-#if LibraryManager.has('library_fetchfs.js')
+#if LibraryManager.has('libfetchfs.js')
     '$FETCHFS',
 #endif
     'malloc',
@@ -482,7 +482,7 @@ FS.init();
   // need some specific FS_* operations. When the FS object is present, it calls
   // into those FS_* methods as needed.
   //
-  // In contrast, the old JS FS (library_fs.js) does the opposite: it puts all
+  // In contrast, the old JS FS (libfs.js) does the opposite: it puts all
   // things on the FS object, and copies them to FS_* methods for use from JS
   // library code. Given that the JS FS is implemented entirely in JS, that
   // makes sense there (as almost all that FS object ends up needed anyhow all
