@@ -808,7 +808,7 @@ class ExceptionLibrary(Library):
     return name
 
   @classmethod
-  def variations(cls, **kwargs):  # noqa
+  def variations(cls, **kwargs):
     combos = super().variations()
     return ([dict(eh_mode=Exceptions.NONE, **combo) for combo in combos] +
             [dict(eh_mode=Exceptions.EMSCRIPTEN, **combo) for combo in combos] +
@@ -851,7 +851,7 @@ class SjLjLibrary(Library):
     return name
 
   @classmethod
-  def variations(cls, **kwargs):  # noqa
+  def variations(cls, **kwargs):
     combos = super().variations()
     return ([dict(eh_mode=Exceptions.EMSCRIPTEN, **combo) for combo in combos] +
             [dict(eh_mode=Exceptions.WASM_LEGACY, **combo) for combo in combos])
