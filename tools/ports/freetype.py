@@ -8,7 +8,7 @@ import os
 TAG = 'VER-2-13-3'
 HASH = 'ce413487c24e689631d705f53b64725256f89fffe9aade7cf07bbd785a9cd49eb6b8d2297a55554f3fee0a50b17e8af78f505cdab565768afab833794f968c2f'
 
-variants = {'freetype-wasm-sjlj': {'SUPPORT_LONGJMP': 'wasm'}}
+variants = {'freetype-legacysjlj': {'SUPPORT_LONGJMP': 'wasm', 'WASM_LEGACY_EXCEPTIONS', 1}}
 deps = ['zlib']
 
 
@@ -18,7 +18,7 @@ def needed(settings):
 
 def get_lib_name(settings):
   if settings.SUPPORT_LONGJMP == 'wasm':
-    return 'libfreetype-wasm-sjlj.a'
+    return 'libfreetype-legacysjlj.a'
   else:
     return 'libfreetype.a'
 

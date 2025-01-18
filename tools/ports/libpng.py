@@ -11,8 +11,8 @@ HASH = '19851afffbe2ffde62d918f7e9017dec778a7ce9c60c75cdc65072f086e6cdc9d9895eb7
 deps = ['zlib']
 variants = {
   'libpng-mt': {'PTHREADS': 1},
-  'libpng-wasm-sjlj': {'SUPPORT_LONGJMP': 'wasm'},
-  'libpng-mt-wasm-sjlj': {'PTHREADS': 1, 'SUPPORT_LONGJMP': 'wasm'},
+  'libpng-legacysjlj': {'SUPPORT_LONGJMP': 'wasm', 'WASM_LEGACY_EXCEPTIONS', 1}},
+  'libpng-mt-legacysjlj': {'PTHREADS': 1, 'SUPPORT_LONGJMP': 'wasm', 'WASM_LEGACY_EXCEPTIONS', 1}},
 }
 
 
@@ -25,7 +25,7 @@ def get_lib_name(settings):
   if settings.PTHREADS:
     suffix += '-mt'
   if settings.SUPPORT_LONGJMP == 'wasm':
-    suffix += '-wasm-sjlj'
+    suffix += '-legacysjlj'
   return f'libpng{suffix}.a'
 
 
