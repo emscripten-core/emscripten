@@ -7,28 +7,16 @@
 
 // LLVM => JavaScript compiler, main entry point
 
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import * as url from 'node:url';
+import {
+  Benchmarker,
+  applySettings,
+  assert,
+  loadDefaultSettings,
+  printErr,
+  read,
+} from './utility.mjs';
 
-import {Benchmarker, applySettings, assert, loadSettingsFile, printErr, read} from './utility.mjs';
-
-function find(filename) {
-  assert(filename);
-  const dirname = url.fileURLToPath(new URL('.', import.meta.url));
-  const prefixes = [dirname, process.cwd()];
-  for (let i = 0; i < prefixes.length; ++i) {
-    const combined = path.join(prefixes[i], filename);
-    if (fs.existsSync(combined)) {
-      return combined;
-    }
-  }
-  return filename;
-}
-
-// Load default settings
-loadSettingsFile(find('settings.js'));
-loadSettingsFile(find('settings_internal.js'));
+loadDefaultSettings();
 
 const argv = process.argv.slice(2);
 const symbolsOnlyArg = argv.indexOf('--symbols-only');

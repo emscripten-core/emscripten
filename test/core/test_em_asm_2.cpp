@@ -6,8 +6,7 @@
 #include <emscripten.h>
 #include <stdio.h>
 
-int main()
-{
+int main() {
   printf("EM_ASM: Simple expression without trailing semicolon\n");
   EM_ASM(out('1. expression without trailing semicolon'));
   EM_ASM("out('2. expression without trailing semicolon')");

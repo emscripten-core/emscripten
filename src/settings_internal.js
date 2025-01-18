@@ -92,15 +92,18 @@ var EMBIND = false;
 // Whether a TypeScript definition file has been requested.
 var EMIT_TSD = false;
 
+// This will be true during the generation of code in run_embind_gen. Helpful
+// for detecting if either TSD file or embind AOT JS generation is running.
+var EMBIND_GEN_MODE = false;
+
 // Whether the main() function reads the argc/argv parameters.
 var MAIN_READS_PARAMS = true;
 
 var WASI_MODULE_NAME = "wasi_snapshot_preview1";
 
-// List of JS libraries explicitly linked against.  This includes JS system
-// libraries (specified via -lfoo or -lfoo.js) in addition to user libraries
-// passed via `--js-library`.  It does not include implicitly linked libraries
-// added by the JS compiler.
+// List of JS libraries explicitly linked against.  This includes JS specified
+// on the command line via `-lfoo.js` / `--js-library`.  It does not include
+// implicitly linked libraries added by the JS compiler.
 var JS_LIBRARIES = [];
 
 // This will contain the emscripten version. This can be useful in combination
@@ -140,7 +143,7 @@ var AUDIO_WORKLET_FILE = '';
 // Base URL the source mapfile, if relevant
 var SOURCE_MAP_BASE = '';
 
-// If set to 1, src/base64Utils.js will be included in the bundle.
+// If set to 1 then base64 decoding functions will be included in the bundle.
 // This is set internally when needed (SINGLE_FILE)
 var SUPPORT_BASE64_EMBEDDING = false;
 

@@ -23,7 +23,8 @@ MEM_SIZE_SETTINGS = {
     'MEMORY_GROWTH_GEOMETRIC_CAP',
     'GL_MAX_TEMP_BUFFER_SIZE',
     'MAXIMUM_MEMORY',
-    'DEFAULT_PTHREAD_STACK_SIZE'
+    'DEFAULT_PTHREAD_STACK_SIZE',
+    'ASYNCIFY_STACK_SIZE',
 }
 
 PORTS_SETTINGS = {
@@ -160,7 +161,7 @@ class SettingsManager:
       with open(filename) as fh:
         settings = fh.read()
       # Use a bunch of regexs to convert the file from JS to python
-      # TODO(sbc): This is kind hacky and we should probably covert
+      # TODO(sbc): This is kind hacky and we should probably convert
       # this file in format that python can read directly (since we
       # no longer read this file from JS at all).
       settings = settings.replace('//', '#')
@@ -267,12 +268,13 @@ class SettingsManager:
     self.attrs[name] = value
 
   def check_type(self, name, value):
-    if name in ('SUPPORT_LONGJMP', 'PTHREAD_POOL_SIZE', 'SEPARATE_DWARF', 'LTO'):
+    # These settings have a variable type so cannot be easily type checked.
+    if name in ('SUPPORT_LONGJMP', 'PTHREAD_POOL_SIZE', 'SEPARATE_DWARF', 'LTO', 'MODULARIZE'):
       return
     expected_type = self.types.get(name)
     if not expected_type:
       return
-    # Allow itegers 1 and 0 for type `bool`
+    # Allow integers 1 and 0 for type `bool`
     if expected_type == bool:
       if value in (1, 0):
         value = bool(value)

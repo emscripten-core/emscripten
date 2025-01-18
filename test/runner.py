@@ -106,7 +106,7 @@ def check_js_engines():
   working_engines = [e for e in config.JS_ENGINES if jsrun.check_engine(e)]
   if len(working_engines) < len(config.JS_ENGINES):
     print('Not all the JS engines in JS_ENGINES appears to work.')
-    exit(1)
+    sys.exit(1)
 
   if common.EMTEST_ALL_ENGINES:
     print('(using ALL js engines)')
@@ -311,8 +311,7 @@ def load_test_suites(args, modules, start_at, repeat):
 def flattened_tests(loaded_tests):
   tests = []
   for subsuite in loaded_tests:
-    for test in subsuite:
-      tests.append(test)
+    tests.extend(subsuite)
   return tests
 
 

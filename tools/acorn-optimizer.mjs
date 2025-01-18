@@ -65,9 +65,13 @@ function simpleWalk(node, cs) {
   }
 }
 
-// Full post-order walk, calling a single function for all types.
-function fullWalk(node, c) {
-  visitChildren(node, (child) => fullWalk(child, c));
+// Full post-order walk, calling a single function for all types. If |pre| is
+// provided, it is called in pre-order (before children).
+function fullWalk(node, c, pre) {
+  if (pre) {
+    pre(node);
+  }
+  visitChildren(node, (child) => fullWalk(child, c, pre));
   c(node);
 }
 
@@ -397,7 +401,7 @@ function JSDCE(ast, aggressive) {
               if (elem) traverse(elem);
             }
           } else {
-            assertAt(id.type === 'Identifier', id, `expected Indentifier but found ${id.type}`);
+            assertAt(id.type === 'Identifier', id, `expected Identifier but found ${id.type}`);
             const name = id.name;
             ensureData(scopes[scopes.length - 1], name).def = 1;
           }
@@ -453,7 +457,7 @@ function JSDCE(ast, aggressive) {
     cleanUp(ast, names);
     return removed;
   }
-  while (iteration() && aggressive) {}
+  while (iteration() && aggressive) {} // eslint-disable-line no-empty
 }
 
 // Aggressive JSDCE - multiple iterations
@@ -670,9 +674,7 @@ function emitDCEGraph(ast) {
   //
   // or, in the minimal runtime, it looks like
   //
-  //  WebAssembly.instantiate(Module["wasm"], imports).then((output) => {
-  //   var wasmExports = output.instance.exports; // may also not have "var", if
-  //                                              // declared outside and used elsewhere
+  //  function assignWasmExports(wasmExports)
   //   ..
   //   _malloc = wasmExports["malloc"];
   //   ..
@@ -699,170 +701,161 @@ function emitDCEGraph(ast) {
     }
   }
 
-  fullWalk(ast, (node) => {
-    if (isWasmImportsAssign(node)) {
-      const assignedObject = getWasmImportsValue(node);
-      assignedObject.properties.forEach((item) => {
-        let value = item.value;
-        if (value.type === 'Literal' || value.type === 'FunctionExpression') {
-          return; // if it's a numeric or function literal, nothing to do here
-        }
-        if (value.type === 'LogicalExpression') {
-          // We may have something like  wasmMemory || Module.wasmMemory  in pthreads code;
-          // use the left hand identifier.
-          value = value.left;
-        }
-        assertAt(value.type === 'Identifier', value);
-        const nativeName = item.key.type == 'Literal' ? item.key.value : item.key.name;
-        assert(nativeName);
-        imports.push([value.name, nativeName]);
-      });
-      foundWasmImportsAssign = true;
-      emptyOut(node); // ignore this in the second pass; this does not root
-    } else if (node.type === 'AssignmentExpression') {
-      const target = node.left;
-      // Ignore assignment to the wasmExports object (as happens in
-      // applySignatureConversions).
-      if (isExportUse(target)) {
-        emptyOut(node);
-      }
-    } else if (node.type === 'VariableDeclaration') {
-      if (node.declarations.length === 1) {
-        const item = node.declarations[0];
-        const name = item.id.name;
-        const value = item.init;
-        if (value && isExportUse(value)) {
-          const asmName = getExportOrModuleUseName(value);
-          // this is:
-          //  var _x = wasmExports['x'];
-          saveAsmExport(name, asmName);
+  // We track defined functions very carefully, so that we can remove them and
+  // the things they call, but other function scopes (like arrow functions and
+  // object methods) are trickier to track (object methods require knowing what
+  // object a function name is called on), so we do not track those. We consider
+  // all content inside them as top-level, which means it is used.
+  var specialScopes = 0;
+
+  fullWalk(
+    ast,
+    (node) => {
+      if (isWasmImportsAssign(node)) {
+        const assignedObject = getWasmImportsValue(node);
+        assignedObject.properties.forEach((item) => {
+          let value = item.value;
+          if (value.type === 'Literal' || value.type === 'FunctionExpression') {
+            return; // if it's a numeric or function literal, nothing to do here
+          }
+          if (value.type === 'LogicalExpression') {
+            // We may have something like  wasmMemory || Module.wasmMemory  in pthreads code;
+            // use the left hand identifier.
+            value = value.left;
+          }
+          assertAt(value.type === 'Identifier', value);
+          const nativeName = item.key.type == 'Literal' ? item.key.value : item.key.name;
+          assert(nativeName);
+          imports.push([value.name, nativeName]);
+        });
+        foundWasmImportsAssign = true;
+        emptyOut(node); // ignore this in the second pass; this does not root
+      } else if (node.type === 'AssignmentExpression') {
+        const target = node.left;
+        // Ignore assignment to the wasmExports object (as happens in
+        // applySignatureConversions).
+        if (isExportUse(target)) {
           emptyOut(node);
-        } else if (value && value.type === 'ArrowFunctionExpression') {
-          // this is
-          //  () => (x = wasmExports['x'])(..)
-          // or
-          //  () => (x = Module['_x'] = wasmExports['x'])(..)
-          let asmName = isExportWrapperFunction(value);
-          if (asmName) {
+        }
+      } else if (node.type === 'VariableDeclaration') {
+        if (node.declarations.length === 1) {
+          const item = node.declarations[0];
+          const name = item.id.name;
+          const value = item.init;
+          if (value && isExportUse(value)) {
+            const asmName = getExportOrModuleUseName(value);
+            // this is:
+            //  var _x = wasmExports['x'];
             saveAsmExport(name, asmName);
             emptyOut(node);
-          }
-        } else if (value && value.type === 'AssignmentExpression') {
-          const assigned = value.left;
-          if (isModuleUse(assigned) && getExportOrModuleUseName(assigned) === name) {
+          } else if (value && value.type === 'ArrowFunctionExpression') {
             // this is
-            //  var x = Module['x'] = ?
-            // which looks like a wasm export being received. confirm with the asm use
-            let found = 0;
-            let asmName;
-            fullWalk(value.right, (node) => {
-              if (isExportUse(node)) {
-                found++;
-                asmName = getExportOrModuleUseName(node);
-              }
-            });
-            // in the wasm backend, the asm name may have one fewer "_" prefixed
-            if (found === 1) {
-              // this is indeed an export
-              // the asmName is what the wasm provides directly; the outside JS
-              // name may be slightly different (extra "_" in wasm backend)
+            //  () => (x = wasmExports['x'])(..)
+            // or
+            //  () => (x = Module['_x'] = wasmExports['x'])(..)
+            let asmName = isExportWrapperFunction(value);
+            if (asmName) {
               saveAsmExport(name, asmName);
-              emptyOut(node); // ignore this in the second pass; this does not root
-              return;
-            }
-            if (value.right.type === 'Literal') {
-              // this is
-              //  var x = Module['x'] = 1234;
-              // this form occurs when global addresses are exported from the
-              // module.  It doesn't constitute a usage.
-              assertAt(typeof value.right.value === 'number', value.right);
               emptyOut(node);
             }
-          }
-        }
-      }
-      // A variable declaration that has no initial values can be ignored in
-      // the second pass, these are just declarations, not roots - an actual
-      // use must be found in order to root.
-      if (!node.declarations.reduce((hasInit, decl) => hasInit || !!decl.init, false)) {
-        emptyOut(node);
-      }
-    } else if (node.type === 'FunctionDeclaration') {
-      defuns.push(node);
-      const name = node.id.name;
-      nameToGraphName[name] = getGraphName(name, 'defun');
-      emptyOut(node); // ignore this in the second pass; we scan defuns separately
-    } else if (node.type === 'ArrowFunctionExpression') {
-      // Check if this is the minimal runtime exports function, which looks like
-      //   (output) => { var wasmExports = output.instance.exports;
-      if (
-        node.params.length === 1 &&
-        node.params[0].type === 'Identifier' &&
-        node.params[0].name === 'output' &&
-        node.body.type === 'BlockStatement'
-      ) {
-        const body = node.body.body;
-        if (body.length >= 1) {
-          const first = body[0];
-          let target;
-          let value; // "(var?) target = value"
-          // Look either for  var wasmExports =  or just   wasmExports =
-          if (first.type === 'VariableDeclaration' && first.declarations.length === 1) {
-            const decl = first.declarations[0];
-            target = decl.id;
-            value = decl.init;
-          } else if (
-            first.type === 'ExpressionStatement' &&
-            first.expression.type === 'AssignmentExpression'
-          ) {
-            const assign = first.expression;
-            if (assign.operator === '=') {
-              target = assign.left;
-              value = assign.right;
-            }
-          }
-          if (target && target.type === 'Identifier' && target.name === 'wasmExports' && value) {
-            if (
-              value.type === 'MemberExpression' &&
-              value.object.type === 'MemberExpression' &&
-              value.object.object.type === 'Identifier' &&
-              value.object.object.name === 'output' &&
-              value.object.property.type === 'Identifier' &&
-              value.object.property.name === 'instance' &&
-              value.property.type === 'Identifier' &&
-              value.property.name === 'exports'
-            ) {
-              // This looks very much like what we are looking for.
-              assert(!foundMinimalRuntimeExports);
-              for (let i = 1; i < body.length; i++) {
-                const item = body[i];
-                if (
-                  item.type === 'ExpressionStatement' &&
-                  item.expression.type === 'AssignmentExpression' &&
-                  item.expression.operator === '=' &&
-                  item.expression.left.type === 'Identifier' &&
-                  item.expression.right.type === 'MemberExpression' &&
-                  item.expression.right.object.type === 'Identifier' &&
-                  item.expression.right.object.name === 'wasmExports' &&
-                  item.expression.right.property.type === 'Literal'
-                ) {
-                  const name = item.expression.left.name;
-                  const asmName = item.expression.right.property.value;
-                  saveAsmExport(name, asmName);
-                  emptyOut(item); // ignore all this in the second pass; this does not root
+          } else if (value && value.type === 'AssignmentExpression') {
+            const assigned = value.left;
+            if (isModuleUse(assigned) && getExportOrModuleUseName(assigned) === name) {
+              // this is
+              //  var x = Module['x'] = ?
+              // which looks like a wasm export being received. confirm with the asm use
+              let found = 0;
+              let asmName;
+              fullWalk(value.right, (node) => {
+                if (isExportUse(node)) {
+                  found++;
+                  asmName = getExportOrModuleUseName(node);
                 }
+              });
+              // in the wasm backend, the asm name may have one fewer "_" prefixed
+              if (found === 1) {
+                // this is indeed an export
+                // the asmName is what the wasm provides directly; the outside JS
+                // name may be slightly different (extra "_" in wasm backend)
+                saveAsmExport(name, asmName);
+                emptyOut(node); // ignore this in the second pass; this does not root
+                return;
               }
-              foundMinimalRuntimeExports = true;
+              if (value.right.type === 'Literal') {
+                // this is
+                //  var x = Module['x'] = 1234;
+                // this form occurs when global addresses are exported from the
+                // module.  It doesn't constitute a usage.
+                assertAt(typeof value.right.value === 'number', value.right);
+                emptyOut(node);
+              }
             }
           }
         }
+        // A variable declaration that has no initial values can be ignored in
+        // the second pass, these are just declarations, not roots - an actual
+        // use must be found in order to root.
+        if (!node.declarations.reduce((hasInit, decl) => hasInit || !!decl.init, false)) {
+          emptyOut(node);
+        }
+      } else if (node.type === 'FunctionDeclaration') {
+        const name = node.id.name;
+        // Check if this is the minimal runtime exports function, which looks like
+        //   function assignWasmExports(wasmExports)
+        if (
+          name == 'assignWasmExports' &&
+          node.params.length === 1 &&
+          node.params[0].type === 'Identifier' &&
+          node.params[0].name === 'wasmExports'
+        ) {
+          // This looks very much like what we are looking for.
+          const body = node.body.body;
+          assert(!foundMinimalRuntimeExports);
+          foundMinimalRuntimeExports = true;
+          for (let i = 0; i < body.length; i++) {
+            const item = body[i];
+            if (
+              item.type === 'ExpressionStatement' &&
+              item.expression.type === 'AssignmentExpression' &&
+              item.expression.operator === '=' &&
+              item.expression.left.type === 'Identifier' &&
+              item.expression.right.type === 'MemberExpression' &&
+              item.expression.right.object.type === 'Identifier' &&
+              item.expression.right.object.name === 'wasmExports' &&
+              item.expression.right.property.type === 'Literal'
+            ) {
+              const name = item.expression.left.name;
+              const asmName = item.expression.right.property.value;
+              saveAsmExport(name, asmName);
+              emptyOut(item); // ignore all this in the second pass; this does not root
+            }
+          }
+        } else if (!specialScopes) {
+          defuns.push(node);
+          nameToGraphName[name] = getGraphName(name, 'defun');
+          emptyOut(node); // ignore this in the second pass; we scan defuns separately
+        }
+      } else if (node.type === 'ArrowFunctionExpression') {
+        assert(specialScopes > 0);
+        specialScopes--;
+      } else if (node.type === 'Property' && node.method) {
+        assert(specialScopes > 0);
+        specialScopes--;
       }
-    }
-  });
-  // must find the info we need
+    },
+    (node) => {
+      // Pre-walking logic. We note special scopes (see above).
+      if (node.type === 'ArrowFunctionExpression' || (node.type === 'Property' && node.method)) {
+        specialScopes++;
+      }
+    },
+  );
+  // Scoping must balance out.
+  assert(specialScopes === 0);
+  // We must have found the info we need.
   assert(
     foundWasmImportsAssign,
-    'could not find the assigment to "wasmImports". perhaps --pre-js or --post-js code moved it out of the global scope? (things like that should be done after emcc runs, as they do not need to be run through the optimizer which is the special thing about --pre-js/--post-js code)',
+    'could not find the assignment to "wasmImports". perhaps --pre-js or --post-js code moved it out of the global scope? (things like that should be done after emcc runs, as they do not need to be run through the optimizer which is the special thing about --pre-js/--post-js code)',
   );
   // Read exports that were declared in extraInfo
   if (extraInfo) {
@@ -870,6 +863,7 @@ function emitDCEGraph(ast) {
       saveAsmExport(exp[0], exp[1]);
     }
   }
+
   // Second pass: everything used in the toplevel scope is rooted;
   // things used in defun scopes create links
   function getGraphName(name, what) {
@@ -932,7 +926,7 @@ function emitDCEGraph(ast) {
           if (infos[reached]) {
             infos[reached].root = true; // in global scope, root it
           } else {
-            // An info might not exist for the identifer if it is missing, for
+            // An info might not exist for the identifier if it is missing, for
             // example, we might call Module.dynCall_vi in library code, but it
             // won't exist in a standalone (non-JS) build anyhow. We can ignore
             // it in that case as the JS won't be used, but warn to be safe.
@@ -1221,6 +1215,12 @@ function littleEndianHeap(ast) {
 // in each access), see #8365.
 function growableHeap(ast) {
   recursiveWalk(ast, {
+    FunctionDeclaration(node, c) {
+      // Do not recurse into to GROWABLE_HEAP_ helper functions themselves.
+      if (!(node.id.type === 'Identifier' && node.id.name.startsWith('GROWABLE_HEAP_'))) {
+        c(node.body);
+      }
+    },
     AssignmentExpression: (node) => {
       if (node.left.type === 'Identifier' && isEmscriptenHEAP(node.left.name)) {
         // Don't transform initial setup of the arrays.
@@ -1274,8 +1274,6 @@ function growableHeap(ast) {
           case 'HEAPF64': {
             makeCallExpression(node, 'GROWABLE_HEAP_F64', []);
             break;
-          }
-          default: {
           }
         }
       }
@@ -1419,8 +1417,6 @@ function asanify(ast) {
             makeCallExpression(node, '_asan_js_store_d', [ptr, value]);
             break;
           }
-          default: {
-          }
         }
       } else {
         c(target);
@@ -1465,8 +1461,6 @@ function asanify(ast) {
           case 'HEAPF64': {
             makeCallExpression(node, '_asan_js_load_d', [ptr]);
             break;
-          }
-          default: {
           }
         }
       }
@@ -1615,8 +1609,6 @@ function safeHeap(ast) {
             ]);
             break;
           }
-          default: {
-          }
         }
       }
     },
@@ -1660,7 +1652,7 @@ function ensureMinifiedNames(n) {
     if (!RESERVED.has(name)) minifiedNames.push(name);
     // increment the state
     let i = 0;
-    while (1) {
+    while (true) {
       minifiedState[i]++;
       if (minifiedState[i] < (i === 0 ? VALID_MIN_INITS : VALID_MIN_LATERS).length) break;
       // overflow
@@ -1739,7 +1731,7 @@ function minifyLocals(ast) {
     let nextMinifiedName = 0;
 
     function getNextMinifiedName() {
-      while (1) {
+      while (true) {
         ensureMinifiedNames(nextMinifiedName);
         const minified = minifiedNames[nextMinifiedName++];
         // TODO: we can probably remove !isLocalName here
@@ -1958,10 +1950,10 @@ function reattachComments(ast, commentsMap) {
       trace('dropping comments: no symbol comes after them');
       break;
     }
-    if (symbols[j].start.pos - pos > 20) {
-      // This comment is too far away to refer to the given symbol. Drop
-      // the comment altogether.
-      trace('dropping comments: too far from any symbol');
+    if (symbols[j].start.pos != pos) {
+      // This comment must have been associated with a node that still
+      // exists in the AST, otherwise to drop it.
+      trace('dropping comments: not linked to any remaining AST node');
       continue;
     }
     symbols[j].start.comments_before ??= [];
@@ -2037,8 +2029,7 @@ if (extraInfoStart > 0) {
 // outputted code if --closureFriendly was requested.
 const sourceComments = {};
 const params = {
-  // Keep in sync with --language_in that we pass to closure in building.py
-  ecmaVersion: 2021,
+  ecmaVersion: 'latest',
   sourceType: exportES6 ? 'module' : 'script',
   allowAwaitOutsideFunction: true,
 };

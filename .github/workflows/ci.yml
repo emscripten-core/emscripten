@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  create:
+    tags:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
+    - name: make dist
+      run: |
+        make dist
+        version=`cat emscripten-version.txt | sed s/\"//g`
+        echo "VERSION=$version" >> $GITHUB_ENV
+    - uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.5
+      with:
+        name: emscripten-${{ env.VERSION }}
+        path: emscripten-${{ env.VERSION }}.tar.bz2
+
+  check-expectations:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # We want access to other branches, specifically `main`
+      - name: pip install
+        run: |
+          which python3
+          python3 --version
+          python3 -m pip install -r requirements-dev.txt
+      - name: Install emsdk
+        run: |
+          EM_CONFIG=$HOME/emsdk/.emscripten
+          echo $EM_CONFIG
+          echo "EM_CONFIG=$EM_CONFIG" >> $GITHUB_ENV
+          curl -# -L -o ~/emsdk-main.tar.gz https://github.com/emscripten-core/emsdk/archive/main.tar.gz
+          tar -C ~ -xf ~/emsdk-main.tar.gz
+          mv ~/emsdk-main ~/emsdk
+          cd ~/emsdk
+          ./emsdk install tot
+          ./emsdk activate tot
+          echo "JS_ENGINES = [NODE_JS]" >> $EM_CONFIG
+          echo "final config:"
+          cat $EM_CONFIG
+      - name: Check test expectations on target branch
+        run: |
+          echo "Checking out ${{ github.base_ref }}"
+          git checkout ${{ github.base_ref }}
+          git rev-parse HEAD
+          # Hack to honor changes to rebaseline_tests.py in the current PR
+          git checkout - ./tools/maint/rebaseline_tests.py
+          ./bootstrap
+          if ! ./tools/maint/rebaseline_tests.py --check-only; then
+            echo "Test expectations are out-of-date on the target branch."
+            echo "You can run './tools/maint/rebaseline_tests.py --new-branch'"
+            echo "and use it to create a seperate PR."
+            echo "-- This failure is only a warning and can be ignored"
+            exit 1
+          fi
+      - name: Check test expectations on PR branch
+        run: |
+          echo "Checking out ${{ github.ref }} (${{ github.sha }})"
+          # For some reason we cannot pass ${{ github.ref }} direclty to git
+          # since it doesn't recognise it.
+          git checkout ${{ github.sha }}
+          git rev-parse HEAD
+          ./bootstrap
+          if ! ./tools/maint/rebaseline_tests.py --check-only --clear-cache; then
+            echo "Test expectations are out-of-date on the PR branch."
+            echo "You can run './tools/maint/rebaseline_tests.py' to"
+            echo "create a commit updating the expectations."
+            echo "Be sure to have `emsdk install tot` first."
+            echo "-- This failure is only a warning and can be ignored"
+            exit 1
+          fi

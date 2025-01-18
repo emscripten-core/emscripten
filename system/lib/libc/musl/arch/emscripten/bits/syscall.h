@@ -14,7 +14,6 @@
 #define SYS_setsid		 __syscall_setsid
 #define SYS_setrlimit		 __syscall_setrlimit
 #define SYS_getrusage		 __syscall_getrusage
-#define SYS_symlink		 __syscall_symlink
 #define SYS_munmap		 __syscall_munmap
 #define SYS_fchmod		 __syscall_fchmod
 #define SYS_getpriority	 __syscall_getpriority

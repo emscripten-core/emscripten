@@ -8,16 +8,19 @@
  * Tests live in test/other/test_parseTools.js.
  */
 
+import * as path from 'node:path';
+import {existsSync} from 'node:fs';
+
 import {
   addToCompileTimeContext,
   assert,
   error,
-  isNumber,
   printErr,
   read,
   runInMacroContext,
   setCurrentFile,
   warn,
+  srcDir,
 } from './utility.mjs';
 
 const FOUR_GB = 4 * 1024 * 1024 * 1024;
@@ -37,6 +40,24 @@ export function processMacros(text, filename) {
     const ret = runInMacroContext(str, {filename: filename});
     return ret !== null ? ret.toString() : '';
   });
+}
+
+function findIncludeFile(filename, currentDir) {
+  if (path.isAbsolute(filename)) {
+    return existsSync(filename) ? filename : null;
+  }
+
+  // Search for include files either relative to the including file,
+  // or in the src root directory.
+  const includePath = [currentDir, srcDir];
+  for (const p of includePath) {
+    const f = path.join(p, filename);
+    if (existsSync(f)) {
+      return f;
+    }
+  }
+
+  return null;
 }
 
 // Simple #if/else/endif preprocessing for a file. Checks if the
@@ -120,15 +141,20 @@ export function preprocess(filename) {
           showStack.push(truthy ? SHOW : IGNORE);
         } else if (first === '#include') {
           if (showCurrentLine()) {
-            let filename = line.substr(line.indexOf(' ') + 1);
-            if (filename.startsWith('"')) {
-              filename = filename.substr(1, filename.length - 2);
+            let includeFile = line.substr(line.indexOf(' ') + 1);
+            if (includeFile.startsWith('"')) {
+              includeFile = includeFile.substr(1, includeFile.length - 2);
             }
-            const result = preprocess(filename);
+            const absPath = findIncludeFile(includeFile, path.dirname(filename));
+            if (!absPath) {
+              error(`${filename}:${i + 1}: file not found: ${includeFile}`);
+              continue;
+            }
+            const result = preprocess(absPath);
             if (result) {
-              ret += `// include: ${filename}\n`;
+              ret += `// include: ${includeFile}\n`;
               ret += result;
-              ret += `// end include: ${filename}\n`;
+              ret += `// end include: ${includeFile}\n`;
             }
           }
         } else if (first === '#else') {
@@ -335,6 +361,11 @@ function ensureDot(value) {
   const e = value.indexOf('e');
   if (e < 0) return value + '.0';
   return value.substr(0, e) + '.0' + value.substr(e);
+}
+
+export function isNumber(x) {
+  // XXX this does not handle 0xabc123 etc. We should likely also do x == parseInt(x) (which handles that), and remove hack |// handle 0x... as well|
+  return x == parseFloat(x) || (typeof x == 'string' && x.match(/^-?\d+$/)) || x == 'NaN';
 }
 
 // ensures that a float type has either 5.5 (clearly a float) or +5 (float due to asm coercion)
@@ -597,11 +628,12 @@ function charCode(char) {
   return char.charCodeAt(0);
 }
 
-function makeDynCall(sig, funcPtr) {
+function makeDynCall(sig, funcPtr, promising = false) {
   assert(
     !sig.includes('j'),
     'Cannot specify 64-bit signatures ("j" in signature string) with makeDynCall!',
   );
+  assert(!(DYNCALLS && promising), 'DYNCALLS cannot be used with JSPI.');
 
   let args = [];
   for (let i = 1; i < sig.length; ++i) {
@@ -672,10 +704,15 @@ Please update to new syntax.`);
     return `(() => ${dyncall}(${funcPtr}))`;
   }
 
-  if (needArgConversion) {
-    return `((${args}) => getWasmTableEntry(${funcPtr}).call(null, ${callArgs}))`;
+  let getWasmTableEntry = `getWasmTableEntry(${funcPtr})`;
+  if (promising) {
+    getWasmTableEntry = `WebAssembly.promising(${getWasmTableEntry})`;
   }
-  return `getWasmTableEntry(${funcPtr})`;
+
+  if (needArgConversion) {
+    return `((${args}) => ${getWasmTableEntry}.call(null, ${callArgs}))`;
+  }
+  return getWasmTableEntry;
 }
 
 function makeEval(code) {
@@ -779,24 +816,16 @@ export function modifyJSFunction(text, func) {
 }
 
 export function runIfMainThread(text) {
-  if (WASM_WORKERS && PTHREADS) {
-    return `if (!ENVIRONMENT_IS_WASM_WORKER && !ENVIRONMENT_IS_PTHREAD) { ${text} }`;
-  } else if (WASM_WORKERS) {
-    return `if (!ENVIRONMENT_IS_WASM_WORKER) { ${text} }`;
-  } else if (PTHREADS) {
-    return `if (!ENVIRONMENT_IS_PTHREAD) { ${text} }`;
+  if (WASM_WORKERS || PTHREADS) {
+    return `if (${ENVIRONMENT_IS_MAIN_THREAD()}) { ${text} }`;
   } else {
     return text;
   }
 }
 
 function runIfWorkerThread(text) {
-  if (WASM_WORKERS && PTHREADS) {
-    return `if (ENVIRONMENT_IS_WASM_WORKER || ENVIRONMENT_IS_PTHREAD) { ${text} }`;
-  } else if (WASM_WORKERS) {
-    return `if (ENVIRONMENT_IS_WASM_WORKER) { ${text} }`;
-  } else if (PTHREADS) {
-    return `if (ENVIRONMENT_IS_PTHREAD) { ${text} }`;
+  if (WASM_WORKERS || PTHREADS) {
+    return `if (${ENVIRONMENT_IS_WORKER_THREAD()}) { ${text} }`;
   } else {
     return '';
   }
@@ -878,7 +907,7 @@ function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert)
 function makeRemovedFSAssert(fsName) {
   assert(ASSERTIONS);
   const lower = fsName.toLowerCase();
-  if (JS_LIBRARIES.includes(`library_${lower}.js`)) return '';
+  if (JS_LIBRARIES.includes(path.resolve(path.join('lib', `lib${lower}.js`)))) return '';
   return `var ${fsName} = '${fsName} is no longer included by default; build with -l${lower}.js';`;
 }
 
@@ -889,23 +918,6 @@ function buildStringArray(array) {
   } else {
     return '[]';
   }
-}
-
-function _asmjsDemangle(symbol) {
-  if (symbol.startsWith('dynCall_')) {
-    return symbol;
-  }
-  // Strip leading "_"
-  assert(symbol.startsWith('_'), `expected mangled symbol: ${symbol}`);
-  return symbol.substr(1);
-}
-
-// TODO(sbc): Remove this function along with _asmjsDemangle.
-function hasExportedFunction(func) {
-  warnOnce(
-    'hasExportedFunction has been replaced with hasExportedSymbol, which takes and unmangled (no leading underscore) symbol name',
-  );
-  return WASM_EXPORTS.has(_asmjsDemangle(func));
 }
 
 function hasExportedSymbol(sym) {
@@ -964,8 +976,8 @@ function from64Expr(x, assign = true) {
 }
 
 function toIndexType(x) {
-  if (MEMORY64 != 1) return x;
-  return `toIndexType(${x})`;
+  if (MEMORY64 == 1) return `BigInt(${x})`;
+  return x;
 }
 
 function to64(x) {
@@ -973,40 +985,12 @@ function to64(x) {
   return `BigInt(${x})`;
 }
 
-// Add assertions to catch common errors when using the Promise object we
-// return from MODULARIZE Module() invocations.
-function addReadyPromiseAssertions() {
-  // Warn on someone doing
-  //
-  //  var instance = Module();
-  //  ...
-  //  instance._main();
-  const properties = Array.from(EXPORTED_FUNCTIONS.values());
-  // Also warn on onRuntimeInitialized which might be a common pattern with
-  // older MODULARIZE-using codebases.
-  properties.push('onRuntimeInitialized');
-  const warningEnding =
-    ' on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js';
-  const res = JSON.stringify(properties);
-  return (
-    res +
-    `.forEach((prop) => {
-  if (!Object.getOwnPropertyDescriptor(readyPromise, prop)) {
-    Object.defineProperty(readyPromise, prop, {
-      get: () => abort('You are getting ' + prop + '${warningEnding}'),
-      set: () => abort('You are setting ' + prop + '${warningEnding}'),
-    });
-  }
-});`
-  );
-}
-
 function asyncIf(condition) {
-  return condition ? 'async' : '';
+  return condition ? 'async ' : '';
 }
 
 function awaitIf(condition) {
-  return condition ? 'await' : '';
+  return condition ? 'await ' : '';
 }
 
 // Adds a call to runtimeKeepalivePush, if needed by the current build
@@ -1042,9 +1026,11 @@ function getUnsharedTextDecoderView(heap, start, end) {
   // then unconditionally do a .slice() for smallest code size.
   if (SHRINK_LEVEL == 2 || heap == 'HEAPU8') return shared;
 
-  // Otherwise, generate a runtime type check: must do a .slice() if looking at a SAB,
-  // or can use .subarray() otherwise.
-  return `${heap}.buffer instanceof SharedArrayBuffer ? ${shared} : ${unshared}`;
+  // Otherwise, generate a runtime type check: must do a .slice() if looking at
+  // a SAB, or can use .subarray() otherwise.  Note: We compare with
+  // `ArrayBuffer` here to avoid referencing `SharedArrayBuffer` which could be
+  // undefined.
+  return `${heap}.buffer instanceof ArrayBuffer ? ${unshared} : ${shared}`;
 }
 
 function getEntryFunction() {
@@ -1086,12 +1072,15 @@ function implicitSelf() {
 }
 
 function ENVIRONMENT_IS_MAIN_THREAD() {
+  return `(!${ENVIRONMENT_IS_WORKER_THREAD()})`;
+}
+
+function ENVIRONMENT_IS_WORKER_THREAD() {
+  assert(PTHREADS || WASM_WORKERS);
   var envs = [];
   if (PTHREADS) envs.push('ENVIRONMENT_IS_PTHREAD');
   if (WASM_WORKERS) envs.push('ENVIRONMENT_IS_WASM_WORKER');
-  if (AUDIO_WORKLET) envs.push('ENVIRONMENT_IS_AUDIO_WORKLET');
-  if (envs.length == 0) return 'true';
-  return '(!(' + envs.join('||') + '))';
+  return '(' + envs.join('||') + ')';
 }
 
 addToCompileTimeContext({
@@ -1112,9 +1101,9 @@ addToCompileTimeContext({
   TARGET_NOT_SUPPORTED,
   WASM_PAGE_SIZE,
   ENVIRONMENT_IS_MAIN_THREAD,
+  ENVIRONMENT_IS_WORKER_THREAD,
   addAtExit,
   addAtInit,
-  addReadyPromiseAssertions,
   asyncIf,
   awaitIf,
   buildStringArray,
@@ -1130,7 +1119,6 @@ addToCompileTimeContext({
   getNativeTypeSize,
   getPerformanceNow,
   getUnsharedTextDecoderView,
-  hasExportedFunction,
   hasExportedSymbol,
   implicitSelf,
   isSymbolNeeded,

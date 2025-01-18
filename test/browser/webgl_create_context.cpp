@@ -114,7 +114,7 @@ int main() {
     std::vector<std::string> exts = split(extensions, ' ');
     for(size_t i = 0; i < exts.size(); ++i)
     {
-      EM_BOOL supported = emscripten_webgl_enable_extension(context, exts[i].c_str());
+      bool supported = emscripten_webgl_enable_extension(context, exts[i].c_str());
       printf("%s\n", exts[i].c_str());
       assert(supported);
     }

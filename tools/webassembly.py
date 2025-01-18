@@ -3,7 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Utilties for manipulating WebAssembly binaries from python.
+"""Utilities for manipulating WebAssembly binaries from python.
 """
 
 from collections import namedtuple
@@ -162,6 +162,11 @@ class DylinkType(IntEnum):
   IMPORT_INFO = 4
 
 
+class TargetFeaturePrefix(IntEnum):
+  USED = 0x2b
+  DISALLOWED = 0x2d
+
+
 class InvalidWasmError(BaseException):
   pass
 
@@ -287,15 +292,11 @@ class Module:
       type_form = self.read_byte()
       assert type_form == 0x60
 
-      params = []
       num_params = self.read_uleb()
-      for _ in range(num_params):
-        params.append(self.read_type())
+      params = [self.read_type() for _ in range(num_params)]
 
-      returns = []
       num_returns = self.read_uleb()
-      for _ in range(num_returns):
-        returns.append(self.read_type())
+      returns = [self.read_type() for _ in range(num_returns)]
 
       types.append(FuncType(params, returns))
 
@@ -519,10 +520,7 @@ class Module:
 
     self.seek(function_section.offset)
     num_types = self.read_uleb()
-    func_types = []
-    for _ in range(num_types):
-      func_types.append(self.read_uleb())
-    return func_types
+    return [self.read_uleb() for _ in range(num_types)]
 
   def has_name_section(self):
     return self.get_custom_section('name') is not None
@@ -560,6 +558,18 @@ class Module:
     else:
       func_type = self.get_function_types()[idx - self.num_imported_funcs()]
     return self.get_types()[func_type]
+
+  def get_target_features(self):
+    section = self.get_custom_section('target_features')
+    self.seek(section.offset)
+    assert self.read_string() == 'target_features'
+    features = {}
+    self.read_byte() # ignore feature count
+    while self.tell() < section.offset + section.size:
+      prefix = TargetFeaturePrefix(self.read_byte())
+      feature = self.read_string()
+      features[feature] = prefix
+    return features
 
 
 def parse_dylink_section(wasm_file):

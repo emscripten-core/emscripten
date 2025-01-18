@@ -45,28 +45,6 @@ _Static_assert(CLOCK_MONOTONIC == __WASI_CLOCKID_MONOTONIC, "must match");
 _Static_assert(CLOCK_PROCESS_CPUTIME_ID == __WASI_CLOCKID_PROCESS_CPUTIME_ID, "must match");
 _Static_assert(CLOCK_THREAD_CPUTIME_ID == __WASI_CLOCKID_THREAD_CPUTIME_ID, "must match");
 
-#define NSEC_PER_SEC (1000 * 1000 * 1000)
-
-struct timespec __wasi_timestamp_to_timespec(__wasi_timestamp_t timestamp) {
-  return (struct timespec){.tv_sec = timestamp / NSEC_PER_SEC,
-                           .tv_nsec = timestamp % NSEC_PER_SEC};
-}
-
-int clock_getres(clockid_t clk_id, struct timespec *tp) {
-  // See https://github.com/bytecodealliance/wasmtime/issues/3714
-  if (clk_id > __WASI_CLOCKID_THREAD_CPUTIME_ID || clk_id < 0) {
-    errno = EINVAL;
-    return -1;
-  }
-  __wasi_timestamp_t res;
-  __wasi_errno_t error = __wasi_clock_res_get(clk_id, &res);
-  if (error != __WASI_ERRNO_SUCCESS) {
-    return __wasi_syscall_ret(error);
-  }
-  *tp = __wasi_timestamp_to_timespec(res);
-  return 0;
-}
-
 // mmap support is nonexistent. TODO: emulate simple mmaps using
 // stdio + malloc, which is slow but may help some things?
 
@@ -134,12 +112,6 @@ weak int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags)
 
 weak int __syscall_lstat64(intptr_t path, intptr_t buf) {
   return -ENOSYS;
-}
-
-// There is no good source of entropy without an import. Make this weak so that
-// it can be replaced with a pRNG or a proper import.
-weak int getentropy(void* buffer, size_t length) {
-  abort();
 }
 
 // Emscripten additions

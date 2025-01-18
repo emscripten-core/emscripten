@@ -18,8 +18,8 @@ if __name__ == '__main__':
 import clang_native
 import common
 from common import BrowserCore, no_windows, create_file, test_file, read_file
-from common import parameterized, requires_native_clang, crossplatform, PYTHON
-from tools import config, utils
+from common import parameterized, requires_native_clang, crossplatform, PYTHON, NON_ZERO
+from tools import config
 from tools.shared import EMCC, path_from_root, run_process, CLANG_CC
 
 npm_checked = False
@@ -65,7 +65,10 @@ class WebsockifyServerHarness():
 
     # start the websocket proxy
     print('running websockify on %d, forward to tcp %d' % (self.listen_port, self.target_port), file=sys.stderr)
-    wsp = websockify.WebSocketProxy(verbose=True, listen_port=self.listen_port, target_host="127.0.0.1", target_port=self.target_port, run_once=True)
+    # source_is_ipv6=True here signals to websockify that it should prefer ipv6 address when
+    # resolving host names.  This matches what the node `ws` module does and means that `localhost`
+    # resolves to `::1` on IPv6 systems.
+    wsp = websockify.WebSocketProxy(verbose=True, source_is_ipv6=True, listen_port=self.listen_port, target_host="127.0.0.1", target_port=self.target_port, run_once=True)
     self.websockify = multiprocessing.Process(target=wsp.start_server)
     self.websockify.start()
     self.processes.append(self.websockify)
@@ -269,7 +272,7 @@ class sockets(BrowserCore):
   def test_enet(self):
     # this is also a good test of raw usage of emconfigure and emmake
     shutil.copytree(test_file('third_party', 'enet'), 'enet')
-    with utils.chdir('enet'):
+    with common.chdir('enet'):
       self.run_process([path_from_root('emconfigure'), './configure', '--disable-shared'])
       self.run_process([path_from_root('emmake'), 'make'])
       enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I' + self.in_dir('enet', 'include')]
@@ -282,6 +285,7 @@ class sockets(BrowserCore):
     'native': [WebsockifyServerHarness, 59160, ['-DTEST_DGRAM=0']],
     'tcp': [CompiledServerHarness, 59162, ['-DTEST_DGRAM=0']],
     'udp': [CompiledServerHarness, 59164, ['-DTEST_DGRAM=1']],
+    'pthread': [CompiledServerHarness, 59166, ['-pthread', '-sPROXY_TO_PTHREAD']],
   })
   def test_nodejs_sockets_echo(self, harness_class, port, args):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
@@ -292,22 +296,26 @@ class sockets(BrowserCore):
       expected = 'do_msg_read: read 14 bytes'
       self.do_runf('sockets/test_sockets_echo_client.c', expected, emcc_args=['-DSOCKK=%d' % harness.listen_port] + args)
 
+  def test_nodejs_sockets_connect_failure(self):
+    self.do_runf('sockets/test_sockets_echo_client.c', 'connect failed: Connection refused', emcc_args=['-DSOCKK=666'], assert_returncode=NON_ZERO)
+
   @requires_native_clang
   def test_nodejs_sockets_echo_subprotocol(self):
     # Test against a Websockified server with compile time configured WebSocket subprotocol. We use a Websockified
     # server because as long as the subprotocol list contains binary it will configure itself to accept binary
     # This test also checks that the connect url contains the correct subprotocols.
-    with WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 59166):
-      self.run_process([EMCC, '-Werror', test_file('sockets/test_sockets_echo_client.c'), '-o', 'client.js', '-sSOCKET_DEBUG', '-sWEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59166'])
+    with WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 59168):
+      self.run_process([EMCC, '-Werror', test_file('sockets/test_sockets_echo_client.c'), '-o', 'client.js', '-sSOCKET_DEBUG', '-sWEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59168'])
 
       out = self.run_js('client.js')
       self.assertContained('do_msg_read: read 14 bytes', out)
-      self.assertContained(['connect: ws://127.0.0.1:59166, base64,binary', 'connect: ws://127.0.0.1:59166/, base64,binary'], out)
+      self.assertContained(['connect: ws://127.0.0.1:59168, base64,binary', 'connect: ws://127.0.0.1:59168/, base64,binary'], out)
 
+  @requires_native_clang
+  def test_nodejs_sockets_echo_subprotocol_runtime(self):
     # Test against a Websockified server with runtime WebSocket configuration. We specify both url and subprotocol.
     # In this test we have *deliberately* used the wrong port '-DSOCKK=12345' to configure the echo_client.c, so
     # the connection would fail without us specifying a valid WebSocket URL in the configuration.
-    print("\nTesting runtime WebSocket configuration.\n")
     create_file('websocket_pre.js', '''
       var Module = {
         websocket: {
@@ -349,6 +357,11 @@ class sockets(BrowserCore):
       with PythonTcpEchoServerProcess('7777'):
         # Build and run the TCP echo client program with Emscripten
         self.btest_exit('websocket/tcp_echo_client.c', args=['-lwebsocket', '-sPROXY_POSIX_SOCKETS', '-pthread', '-sPROXY_TO_PTHREAD'])
+
+  # Test that calling send() right after a socket connect() works.
+  def test_sockets_send_while_connecting(self):
+    with NodeJsWebSocketEchoServerProcess():
+      self.btest('sockets/test_sockets_send_while_connecting.c', args=['-DSOCKET_DEBUG'], expected='0')
 
 
 class sockets64(sockets):

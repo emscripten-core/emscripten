@@ -36,7 +36,7 @@ function checkStackCookie() {
   if (ABORT) return;
 #endif
   var max = _emscripten_stack_get_end();
-#if RUNTIME_DEBUG
+#if RUNTIME_DEBUG >= 2
   dbg(`checkStackCookie: ${ptrToString(max)}`);
 #endif
   // See writeStackCookie().

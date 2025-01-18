@@ -121,7 +121,7 @@ def strip_debug_sections(wasm):
       name_len, name_pos = read_var_uint(wasm, section_body)
       name_end = name_pos + name_len
       name = wasm[name_pos:name_end]
-      if name == "linking" or name == "sourceMappingURL" or name.startswith("reloc..debug_") or name.startswith(".debug_"):
+      if name in {'linking', 'sourceMappingURL'} or name.startswith(('reloc..debug_', '.debug_')):
         continue  # skip debug related sections
     stripped = stripped + wasm[section_start:pos]
 
@@ -317,9 +317,9 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources, bas
     last_line = line
     last_column = column
   return {'version': 3,
-          'names': [],
           'sources': sources,
           'sourcesContent': sources_content,
+          'names': [],
           'mappings': ','.join(mappings)}
 
 

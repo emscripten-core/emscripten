@@ -449,33 +449,6 @@ module({
             assert.equal('ABCD', e);
         });
 
-        test("can pass Uint8Array to std::basic_string<unsigned char>", function() {
-            var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char(new Uint8Array([65, 66, 67, 68]));
-            assert.equal('ABCD', e);
-        });
-
-        test("can pass long string to std::basic_string<unsigned char>", function() {
-            var s = 'this string is long enough to exceed the short string optimization';
-            var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char(s);
-            assert.equal(s, e);
-        });
-
-        test("can pass Uint8ClampedArray to std::basic_string<unsigned char>", function() {
-            var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char(new Uint8ClampedArray([65, 66, 67, 68]));
-            assert.equal('ABCD', e);
-        });
-
-
-        test("can pass Int8Array to std::basic_string<unsigned char>", function() {
-            var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char(new Int8Array([65, 66, 67, 68]));
-            assert.equal('ABCD', e);
-        });
-
-        test("can pass ArrayBuffer to std::basic_string<unsigned char>", function() {
-            var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char((new Int8Array([65, 66, 67, 68])).buffer);
-            assert.equal('ABCD', e);
-        });
-
         test("can pass string to std::string", function() {
             var string = stdStringIsUTF8?"aeiáéíαειЖЛФ從獅子€":"ABCD";
 
@@ -1293,6 +1266,20 @@ module({
 
             value = cm.embind_test_optional_small_class_arg(undefined);
             assert.equal(-1, value);
+        });
+
+        test("std::optional args can be omitted", function() {
+            if (cm.getCompilerSetting('ASSERTIONS')) {
+                // Argument length is only validated with assertions enabled.
+                assert.throws(cm.BindingError, function() {
+                    cm.embind_test_optional_multiple_arg();
+                });
+                assert.throws(cm.BindingError, function() {
+                    cm.embind_test_optional_multiple_arg(1, 2, 3, 4);
+                });
+            }
+            cm.embind_test_optional_multiple_arg(1);
+            cm.embind_test_optional_multiple_arg(1, 2);
         });
     });
 

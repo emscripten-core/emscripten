@@ -53,7 +53,7 @@ The typical format of registration functions is as follows (some methods may omi
     EMSCRIPTEN_RESULT emscripten_set_some_callback(
       const char *target,   // ID of the target HTML element.
       void *userData,   // User-defined data to be passed to the callback.
-      EM_BOOL useCapture,   // Whether or not to use capture.
+      bool useCapture,   // Whether or not to use capture.
       em_someevent_callback_func callback   // Callback function.
     );
 
@@ -96,7 +96,7 @@ Callback functions
 
 When the event occurs the callback is invoked with the relevant event "type" (for example :c:data:`EMSCRIPTEN_EVENT_CLICK`), a ``struct`` containing the details of the event that occurred, and the ``userData`` that was originally passed to the registration function. The general format of the callback function is: ::
 
-  typedef EM_BOOL (*em_someevent_callback_func) // Callback function. Return true if event is "consumed".
+  typedef bool (*em_someevent_callback_func) // Callback function. Return true if event is "consumed".
     (
     int eventType, // The type of event.
     const EmscriptenSomeEvent *someEvent, // Information about the event.
@@ -106,7 +106,7 @@ When the event occurs the callback is invoked with the relevant event "type" (fo
 
 .. _callback-handler-return-em_bool-html5-api:
 
-Callback handlers that return an :c:data:`EM_BOOL` may specify ``true`` to signal that the handler *consumed* the event (this suppresses the default action for that event by calling its ``.preventDefault();`` member). Returning ``false`` indicates that the event was not consumed — the default browser event action is carried out and the event is allowed to pass on/bubble up as normal.
+Callback handlers that return a ``bool`` may specify ``true`` to signal that the handler *consumed* the event (this suppresses the default action for that event by calling its ``.preventDefault();`` member). Returning ``false`` indicates that the event was not consumed — the default browser event action is carried out and the event is allowed to pass on/bubble up as normal.
 
 Calling a registration function with a ``null`` pointer for the callback causes a de-registration of that callback from the given ``target`` element. All event handlers are also automatically unregistered when the C ``exit()`` function is invoked during the ``atexit`` handler pass. Either use the function :c:func:`emscripten_set_main_loop` or set ``Module.noExitRuntime = true;`` to make sure that leaving ``main()`` will not immediately cause an ``exit()`` and clean up the event handlers.
 
@@ -140,24 +140,9 @@ General types
 =============
 
 
-.. c:macro:: EM_BOOL
-
-  This is the Emscripten type for a ``bool``.
-  Possible values:
-
-  .. c:macro:: EM_TRUE
-
-    This is the Emscripten value for ``true``.
-
-  .. c:macro:: EM_FALSE
-
-    This is the Emscripten value for ``false``.
-
-
 .. c:macro:: EM_UTF8
 
   This is the Emscripten type for a UTF8 string (maps to a ``char``). This is used for node names, element ids, etc.
-
 
 
 Function result values
@@ -259,18 +244,18 @@ Struct
 
     Maximum size 32 ``char`` (i.e. ``EM_UTF8 code[32]``).
 
-  .. c:member:: unsigned long location
+  .. c:member:: unsigned int location
 
     Indicates the location of the key on the keyboard. One of the :c:data:`DOM_KEY_LOCATION <DOM_KEY_LOCATION_STANDARD>` values.
 
-  .. c:member:: EM_BOOL ctrlKey
-    EM_BOOL shiftKey
-    EM_BOOL altKey
-    EM_BOOL metaKey
+  .. c:member:: bool ctrlKey
+    bool shiftKey
+    bool altKey
+    bool metaKey
 
     Specifies which modifiers were active during the key event.
 
-  .. c:member:: EM_BOOL repeat
+  .. c:member:: bool repeat
 
     Specifies if this keyboard event represents a repeated press.
 
@@ -288,20 +273,20 @@ Struct
 
     .. warning:: This attribute has been dropped from DOM Level 3 events.
 
-  .. c:member:: unsigned long charCode
+  .. c:member:: unsigned int charCode
 
     The Unicode reference number of the key; this attribute is used only by the keypress event. For keys whose ``char`` attribute contains multiple characters, this is the Unicode value of the first character in that attribute.
 
     .. warning:: This attribute is deprecated, you should use the field ``key`` instead, if available.
 
-  .. c:member:: unsigned long keyCode
+  .. c:member:: unsigned int keyCode
 
     A system and implementation dependent numerical code identifying the unmodified value of the pressed key.
 
     .. warning:: This attribute is deprecated, you should use the field ``key`` instead, if available.
 
 
-  .. c:member:: unsigned long which
+  .. c:member:: unsigned int which
 
     A system and implementation dependent numeric code identifying the unmodified value of the pressed key; this is usually the same as ``keyCode``.
 
@@ -317,29 +302,29 @@ Callback functions
 
   .. code-block:: cpp
 
-    typedef EM_BOOL (*em_key_callback_func)(int eventType, const EmscriptenKeyboardEvent *keyEvent, void *userData);
+    typedef bool (*em_key_callback_func)(int eventType, const EmscriptenKeyboardEvent *keyEvent, void *userData);
 
   :param int eventType: The type of :c:data:`key event <EMSCRIPTEN_EVENT_KEYPRESS>`.
   :param keyEvent: Information about the key event that occurred.
   :type keyEvent: const EmscriptenKeyboardEvent*
   :param void* userData: The ``userData`` originally passed to the registration function.
   :returns: |callback-handler-return-value-doc|
-  :rtype: |EM_BOOL|
+  :rtype: bool
 
 
 Functions
 ---------
 
-.. c:function:: EMSCRIPTEN_RESULT emscripten_set_keypress_callback(const char *target, void *userData, EM_BOOL useCapture, em_key_callback_func callback)
-  EMSCRIPTEN_RESULT emscripten_set_keydown_callback(const char *target, void *userData, EM_BOOL useCapture, em_key_callback_func callback)
-  EMSCRIPTEN_RESULT emscripten_set_keyup_callback(const char *target, void *userData, EM_BOOL useCapture, em_key_callback_func callback)
+.. c:function:: EMSCRIPTEN_RESULT emscripten_set_keypress_callback(const char *target, void *userData, bool useCapture, em_key_callback_func callback)
+  EMSCRIPTEN_RESULT emscripten_set_keydown_callback(const char *target, void *userData, bool useCapture, em_key_callback_func callback)
+  EMSCRIPTEN_RESULT emscripten_set_keyup_callback(const char *target, void *userData, bool useCapture, em_key_callback_func callback)
 
   Registers a callback function for receiving browser-generated keyboard input events.
 
   :param target: |target-parameter-doc|
   :type target: const char*
   :param void* userData: |userData-parameter-doc|
-  :param EM_BOOL  useCapture: |useCapture-parameter-doc|
+  :param bool  useCapture: |useCapture-parameter-doc|
   :param em_key_callback_func callback: |callback-function-parameter-doc|
   :returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
   :rtype: |EMSCRIPTEN_RESULT|
@@ -379,21 +364,21 @@ Struct
 
     Absolute wallclock time when the data was recorded (milliseconds).
 
-  .. c:member:: long screenX
-    long screenY
+  .. c:member:: int screenX
+    int screenY
 
     The coordinates relative to the browser screen coordinate system.
 
-  .. c:member:: long clientX
-    long clientY
+  .. c:member:: int clientX
+    int clientY
 
     The coordinates relative to the viewport associated with the event.
 
 
-  .. c:member:: EM_BOOL ctrlKey
-    EM_BOOL shiftKey
-    EM_BOOL altKey
-    EM_BOOL metaKey
+  .. c:member:: bool ctrlKey
+    bool shiftKey
+    bool altKey
+    bool metaKey
 
     Specifies which modifiers were active during the mouse event.
 
@@ -411,24 +396,24 @@ Struct
 
     A bitmask that indicates which combinations of mouse buttons were being held down at the time of the event.
 
-  .. c:member:: long movementX
-    long movementY;
+  .. c:member:: int movementX
+    int movementY;
 
     If pointer lock is active, these two extra fields give relative mouse movement since the last event.
 
-  .. c:member:: long targetX
-     long targetY
+  .. c:member:: int targetX
+     int targetY
 
     These fields give the mouse coordinates mapped relative to the coordinate space of the target DOM element receiving the input events (Emscripten-specific extension; coordinates are rounded down to the nearest integer).
 
 
-  .. c:member:: long canvasX
-     long canvasY
+  .. c:member:: int canvasX
+     int canvasY
 
     These fields give the mouse coordinates mapped to the Emscripten canvas client area (Emscripten-specific extension; coordinates are rounded down the nearest integer).
 
 
-  .. c:member:: long padding
+  .. c:member:: int padding
 
     Internal, and can be ignored.
 
@@ -444,34 +429,34 @@ Callback functions
 
   .. code-block:: cpp
 
-    typedef EM_BOOL (*em_mouse_callback_func)(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData);
+    typedef bool (*em_mouse_callback_func)(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData);
 
   :param int eventType: The type of :c:data:`mouse event <EMSCRIPTEN_EVENT_CLICK>`.
   :param mouseEvent: Information about the mouse event that occurred.
   :type mouseEvent: const EmscriptenMouseEvent*
   :param void* userData: The ``userData`` originally passed to the registration function.
   :returns: |callback-handler-return-value-doc|
-  :rtype: |EM_BOOL|
+  :rtype: bool
 
 
 
 Functions
 ---------
 
-.. c:function:: EMSCRIPTEN_RESULT emscripten_set_click_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback)
-  EMSCRIPTEN_RESULT emscripten_set_mousedown_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback)
-  EMSCRIPTEN_RESULT emscripten_set_mouseup_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback)
-  EMSCRIPTEN_RESULT emscripten_set_dblclick_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback)
-  EMSCRIPTEN_RESULT emscripten_set_mousemove_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback)
-  EMSCRIPTEN_RESULT emscripten_set_mouseenter_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback)
-  EMSCRIPTEN_RESULT emscripten_set_mouseleave_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback)
+.. c:function:: EMSCRIPTEN_RESULT emscripten_set_click_callback(const char *target, void *userData, bool useCapture, em_mouse_callback_func callback)
+  EMSCRIPTEN_RESULT emscripten_set_mousedown_callback(const char *target, void *userData, bool useCapture, em_mouse_callback_func callback)
+  EMSCRIPTEN_RESULT emscripten_set_mouseup_callback(const char *target, void *userData, bool useCapture, em_mouse_callback_func callback)
+  EMSCRIPTEN_RESULT emscripten_set_dblclick_callback(const char *target, void *userData, bool useCapture, em_mouse_callback_func callback)
+  EMSCRIPTEN_RESULT emscripten_set_mousemove_callback(const char *target, void *userData, bool useCapture, em_mouse_callback_func callback)
+  EMSCRIPTEN_RESULT emscripten_set_mouseenter_callback(const char *target, void *userData, bool useCapture, em_mouse_callback_func callback)
+  EMSCRIPTEN_RESULT emscripten_set_mouseleave_callback(const char *target, void *userData, bool useCapture, em_mouse_callback_func callback)
 
   Registers a callback function for receiving browser-generated `mouse input events <https://developer.mozilla.org/en/DOM/MouseEvent>`_.
 
   :param target: |target-parameter-doc|
   :type target: const char*
   :param void* userData: |userData-parameter-doc|
-  :param EM_BOOL useCapture: |useCapture-parameter-doc|
+  :param bool useCapture: |useCapture-parameter-doc|
   :param em_mouse_callback_func callback: |callback-function-parameter-doc|
   :returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
   :rtype: |EMSCRIPTEN_RESULT|
@@ -532,7 +517,7 @@ Struct
     in scroll values of 0. The positive Y scroll direction is when scrolling the page downwards (page CSS pixel +Y direction), which corresponds to scrolling
     the mouse wheel downwards (away from the screen) on Windows, Linux, and also on macOS when the 'natural scroll' option is disabled.
 
-  .. c:member:: unsigned long deltaMode
+  .. c:member:: unsigned int deltaMode
 
     One of the :c:data:`DOM_DELTA_<DOM_DELTA_PIXEL>` values that indicates the units of measurement for the delta values.
 
@@ -546,28 +531,28 @@ Callback functions
 
   .. code-block:: cpp
 
-    typedef EM_BOOL (*em_wheel_callback_func)(int eventType, const EmscriptenWheelEvent *wheelEvent, void *userData);
+    typedef bool (*em_wheel_callback_func)(int eventType, const EmscriptenWheelEvent *wheelEvent, void *userData);
 
   :param int eventType: The type of wheel event (:c:data:`EMSCRIPTEN_EVENT_WHEEL`).
   :param wheelEvent: Information about the wheel event that occurred.
   :type wheelEvent: const EmscriptenWheelEvent*
   :param void* userData: The ``userData`` originally passed to the registration function.
   :returns: |callback-handler-return-value-doc|
-  :rtype: |EM_BOOL|
+  :rtype: bool
 
 
 
 Functions
 ---------
 
-.. c:function:: EMSCRIPTEN_RESULT emscripten_set_wheel_callback(const char *target, void *userData, EM_BOOL useCapture, em_wheel_callback_func callback)
+.. c:function:: EMSCRIPTEN_RESULT emscripten_set_wheel_callback(const char *target, void *userData, bool useCapture, em_wheel_callback_func callback)
 
   Registers a callback function for receiving browser-generated `mousewheel events <http://www.w3.org/TR/DOM-Level-3-Events/#event-type-wheel>`_.
 
   :param target: |target-parameter-doc|
   :type target: const char*
   :param void* userData: |userData-parameter-doc|
-  :param EM_BOOL useCapture: |useCapture-parameter-doc|
+  :param bool useCapture: |useCapture-parameter-doc|
   :param em_wheel_callback_func callback: |callback-function-parameter-doc|
   :returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
   :rtype: |EMSCRIPTEN_RESULT|
@@ -594,7 +579,7 @@ Struct
   The event structure passed in DOM element `UIEvent <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#interface-UIEvent>`_ events: `resize <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-resize>`_ and `scroll <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-scroll>`_.
 
 
-  .. c:member:: long detail
+  .. c:member:: int detail
 
     For resize and scroll events this is always zero.
 
@@ -628,21 +613,21 @@ Callback functions
 
   .. code-block:: cpp
 
-    typedef EM_BOOL (*em_ui_callback_func)(int eventType, const EmscriptenUiEvent *uiEvent, void *userData);
+    typedef bool (*em_ui_callback_func)(int eventType, const EmscriptenUiEvent *uiEvent, void *userData);
 
   :param int eventType: The type of UI event (:c:data:`EMSCRIPTEN_EVENT_RESIZE`).
   :param uiEvent: Information about the UI event that occurred.
   :type uiEvent: const EmscriptenUiEvent*
   :param void* userData: The ``userData`` originally passed to the registration function.
   :returns: |callback-handler-return-value-doc|
-  :rtype: |EM_BOOL|
+  :rtype: bool
 
 
 Functions
 ---------
 
-.. c:function:: EMSCRIPTEN_RESULT emscripten_set_resize_callback(const char *target, void *userData, EM_BOOL useCapture, em_ui_callback_func callback)
-  EMSCRIPTEN_RESULT emscripten_set_scroll_callback(const char *target, void *userData, EM_BOOL useCapture, em_ui_callback_func callback)
+.. c:function:: EMSCRIPTEN_RESULT emscripten_set_resize_callback(const char *target, void *userData, bool useCapture, em_ui_callback_func callback)
+  EMSCRIPTEN_RESULT emscripten_set_scroll_callback(const char *target, void *userData, bool useCapture, em_ui_callback_func callback)
 
   Registers a callback function for receiving DOM element `resize <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-resize>`_ and `scroll <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-scroll>`_ events.
 
@@ -654,7 +639,7 @@ Functions
   :param target: |target-parameter-doc|
   :type target: const char*
   :param void* userData: |userData-parameter-doc|
-  :param EM_BOOL useCapture: |useCapture-parameter-doc|
+  :param bool useCapture: |useCapture-parameter-doc|
   :param em_ui_callback_func callback: |callback-function-parameter-doc|
   :returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
   :rtype: |EMSCRIPTEN_RESULT|
@@ -706,31 +691,31 @@ Callback functions
 
   .. code-block:: cpp
 
-    typedef EM_BOOL (*em_focus_callback_func)(int eventType, const EmscriptenFocusEvent *focusEvent, void *userData);
+    typedef bool (*em_focus_callback_func)(int eventType, const EmscriptenFocusEvent *focusEvent, void *userData);
 
   :param int eventType: The type of focus event (:c:data:`EMSCRIPTEN_EVENT_BLUR`).
   :param focusEvent: Information about the focus event that occurred.
   :type focusEvent: const EmscriptenFocusEvent*
   :param void* userData: The ``userData`` originally passed to the registration function.
   :returns: |callback-handler-return-value-doc|
-  :rtype: |EM_BOOL|
+  :rtype: bool
 
 
 
 Functions
 ---------
 
-.. c:function:: EMSCRIPTEN_RESULT emscripten_set_blur_callback(const char *target, void *userData, EM_BOOL useCapture, em_focus_callback_func callback)
-  EMSCRIPTEN_RESULT emscripten_set_focus_callback(const char *target, void *userData, EM_BOOL useCapture, em_focus_callback_func callback)
-  EMSCRIPTEN_RESULT emscripten_set_focusin_callback(const char *target, void *userData, EM_BOOL useCapture, em_focus_callback_func callback)
-  EMSCRIPTEN_RESULT emscripten_set_focusout_callback(const char *target, void *userData, EM_BOOL useCapture, em_focus_callback_func callback)
+.. c:function:: EMSCRIPTEN_RESULT emscripten_set_blur_callback(const char *target, void *userData, bool useCapture, em_focus_callback_func callback)
+  EMSCRIPTEN_RESULT emscripten_set_focus_callback(const char *target, void *userData, bool useCapture, em_focus_callback_func callback)
+  EMSCRIPTEN_RESULT emscripten_set_focusin_callback(const char *target, void *userData, bool useCapture, em_focus_callback_func callback)
+  EMSCRIPTEN_RESULT emscripten_set_focusout_callback(const char *target, void *userData, bool useCapture, em_focus_callback_func callback)
 
   Registers a callback function for receiving DOM element `blur <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-blur>`_, `focus <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-focus>`_, `focusin <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-focusin>`_ and `focusout <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-focusout>`_ events.
 
   :param target: |target-parameter-doc|
   :type target: const char*
   :param void* userData: |userData-parameter-doc|
-  :param EM_BOOL useCapture: |useCapture-parameter-doc|
+  :param bool useCapture: |useCapture-parameter-doc|
   :param em_focus_callback_func callback: |callback-function-parameter-doc|
   :returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
   :rtype: |EMSCRIPTEN_RESULT|
@@ -772,7 +757,7 @@ Struct
       :alt: Image of device showing X, Y, Z axes
 
 
-  .. c:member:: EM_BOOL absolute
+  .. c:member:: bool absolute
 
     If ``false``, the orientation is only relative to some other base orientation, not to the fixed coordinate frame.
 
@@ -786,26 +771,26 @@ Callback functions
 
   .. code-block:: cpp
 
-    typedef EM_BOOL (*em_deviceorientation_callback_func)(int eventType, const EmscriptenDeviceOrientationEvent *deviceOrientationEvent, void *userData);
+    typedef bool (*em_deviceorientation_callback_func)(int eventType, const EmscriptenDeviceOrientationEvent *deviceOrientationEvent, void *userData);
 
   :param int eventType: The type of orientation event (:c:data:`EMSCRIPTEN_EVENT_DEVICEORIENTATION`).
   :param deviceOrientationEvent: Information about the orientation event that occurred.
   :type deviceOrientationEvent: const EmscriptenDeviceOrientationEvent*
   :param void* userData: The ``userData`` originally passed to the registration function.
   :returns: |callback-handler-return-value-doc|
-  :rtype: |EM_BOOL|
+  :rtype: bool
 
 
 
 Functions
 ---------
 
-.. c:function:: EMSCRIPTEN_RESULT emscripten_set_deviceorientation_callback(void *userData, EM_BOOL useCapture, em_deviceorientation_callback_func callback)
+.. c:function:: EMSCRIPTEN_RESULT emscripten_set_deviceorientation_callback(void *userData, bool useCapture, em_deviceorientation_callback_func callback)
 
   Registers a callback function for receiving the `deviceorientation <http://dev.w3.org/geo/api/spec-source-orientation.html#deviceorientation>`_ event.
 
   :param void* userData: |userData-parameter-doc|
-  :param EM_BOOL useCapture: |useCapture-parameter-doc|
+  :param bool useCapture: |useCapture-parameter-doc|
   :param em_deviceorientation_callback_func callback: |callback-function-parameter-doc|
   :returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
   :rtype: |EMSCRIPTEN_RESULT|
@@ -877,14 +862,14 @@ Callback functions
 
   .. code-block:: cpp
 
-    typedef EM_BOOL (*em_devicemotion_callback_func)(int eventType, const EmscriptenDeviceMotionEvent *deviceMotionEvent, void *userData);
+    typedef bool (*em_devicemotion_callback_func)(int eventType, const EmscriptenDeviceMotionEvent *deviceMotionEvent, void *userData);
 
   :param int eventType: The type of devicemotion event (:c:data:`EMSCRIPTEN_EVENT_DEVICEMOTION`).
   :param deviceMotionEvent: Information about the devicemotion event that occurred.
   :type deviceMotionEvent: const EmscriptenDeviceMotionEvent*
   :param void* userData: The ``userData`` originally passed to the registration function.
   :returns: |callback-handler-return-value-doc|
-  :rtype: |EM_BOOL|
+  :rtype: bool
 
 
 
@@ -892,12 +877,12 @@ Callback functions
 Functions
 ---------
 
-.. c:function:: EMSCRIPTEN_RESULT emscripten_set_devicemotion_callback(void *userData, EM_BOOL useCapture, em_devicemotion_callback_func callback)
+.. c:function:: EMSCRIPTEN_RESULT emscripten_set_devicemotion_callback(void *userData, bool useCapture, em_devicemotion_callback_func callback)
 
   Registers a callback function for receiving the `devicemotion <http://w3c.github.io/deviceorientation/spec-source-orientation.html#devicemotion>`_ event.
 
   :param void* userData: |userData-parameter-doc|
-  :param EM_BOOL useCapture: |useCapture-parameter-doc|
+  :param bool useCapture: |useCapture-parameter-doc|
   :param em_devicemotion_callback_func callback: |callback-function-parameter-doc|
   :returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
   :rtype: |EMSCRIPTEN_RESULT|
@@ -976,25 +961,25 @@ Callback functions
 
   .. code-block:: cpp
 
-    typedef EM_BOOL (*em_orientationchange_callback_func)(int eventType, const EmscriptenOrientationChangeEvent *orientationChangeEvent, void *userData);
+    typedef bool (*em_orientationchange_callback_func)(int eventType, const EmscriptenOrientationChangeEvent *orientationChangeEvent, void *userData);
 
   :param int eventType: The type of orientationchange event (:c:data:`EMSCRIPTEN_EVENT_ORIENTATIONCHANGE`).
   :param orientationChangeEvent: Information about the orientationchange event that occurred.
   :type orientationChangeEvent: const EmscriptenOrientationChangeEvent*
   :param void* userData: The ``userData`` originally passed to the registration function.
   :returns: |callback-handler-return-value-doc|
-  :rtype: |EM_BOOL|
+  :rtype: bool
 
 
 Functions
 ---------
 
-.. c:function:: EMSCRIPTEN_RESULT emscripten_set_orientationchange_callback(void *userData, EM_BOOL useCapture, em_orientationchange_callback_func callback)
+.. c:function:: EMSCRIPTEN_RESULT emscripten_set_orientationchange_callback(void *userData, bool useCapture, em_orientationchange_callback_func callback)
 
   Registers a callback function for receiving the `orientationchange <https://w3c.github.io/screen-orientation/>`_ event.
 
   :param void* userData: |userData-parameter-doc|
-  :param EM_BOOL useCapture: |useCapture-parameter-doc|
+  :param bool useCapture: |useCapture-parameter-doc|
   :param em_orientationchange_callback_func callback: |callback-function-parameter-doc|
   :returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
   :rtype: |EMSCRIPTEN_RESULT|
@@ -1105,12 +1090,12 @@ Struct
 
   The event structure passed in the `fullscreenchange <https://dvcs.w3.org/hg/fullscreen/raw-file/tip/Overview.html>`_ event.
 
-  .. c:member:: EM_BOOL isFullscreen
+  .. c:member:: bool isFullscreen
 
     Specifies whether an element on the browser page is currently fullscreen.
 
 
-  .. c:member:: EM_BOOL fullscreenEnabled
+  .. c:member:: bool fullscreenEnabled
 
     Specifies if the current page has the ability to display elements fullscreen.
 
@@ -1176,28 +1161,28 @@ Callback functions
 
   .. code-block:: cpp
 
-    typedef EM_BOOL (*em_fullscreenchange_callback_func)(int eventType, const EmscriptenFullscreenChangeEvent *fullscreenChangeEvent, void *userData);
+    typedef bool (*em_fullscreenchange_callback_func)(int eventType, const EmscriptenFullscreenChangeEvent *fullscreenChangeEvent, void *userData);
 
   :param int eventType: The type of fullscreen event (:c:data:`EMSCRIPTEN_EVENT_FULLSCREENCHANGE`).
   :param fullscreenChangeEvent: Information about the fullscreen event that occurred.
   :type fullscreenChangeEvent: const EmscriptenFullscreenChangeEvent*
   :param void* userData: The ``userData`` originally passed to the registration function.
   :returns: |callback-handler-return-value-doc|
-  :rtype: |EM_BOOL|
+  :rtype: bool
 
 
 
 Functions
 ---------
 
-.. c:function:: EMSCRIPTEN_RESULT emscripten_set_fullscreenchange_callback(const char *target, void *userData, EM_BOOL useCapture, em_fullscreenchange_callback_func callback)
+.. c:function:: EMSCRIPTEN_RESULT emscripten_set_fullscreenchange_callback(const char *target, void *userData, bool useCapture, em_fullscreenchange_callback_func callback)
 
   Registers a callback function for receiving the `fullscreenchange <https://dvcs.w3.org/hg/fullscreen/raw-file/tip/Overview.html>`_ event.
 
   :param target: |target-parameter-doc|
   :type target: const char*
   :param void* userData: |userData-parameter-doc|
-  :param EM_BOOL useCapture: |useCapture-parameter-doc|
+  :param bool useCapture: |useCapture-parameter-doc|
   :param em_fullscreenchange_callback_func callback: |callback-function-parameter-doc|
   :returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
   :rtype: |EMSCRIPTEN_RESULT|
@@ -1213,7 +1198,7 @@ Functions
   :rtype: |EMSCRIPTEN_RESULT|
 
 
-.. c:function:: EMSCRIPTEN_RESULT emscripten_request_fullscreen(const char *target, EM_BOOL deferUntilInEventHandler)
+.. c:function:: EMSCRIPTEN_RESULT emscripten_request_fullscreen(const char *target, bool deferUntilInEventHandler)
 
   Requests the given target element to transition to full screen mode.
 
@@ -1223,12 +1208,12 @@ Functions
 
   :param target: |target-parameter-doc|
   :type target: const char*
-  :param EM_BOOL deferUntilInEventHandler: If ``true`` requests made outside of a user-generated event handler are automatically deferred until the user next presses a keyboard or mouse button. If ``false`` the request will fail if called outside of a user-generated event handler.
+  :param bool deferUntilInEventHandler: If ``true`` requests made outside of a user-generated event handler are automatically deferred until the user next presses a keyboard or mouse button. If ``false`` the request will fail if called outside of a user-generated event handler.
 
   :returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
   :rtype: **EMSCRIPTEN_RESULT**
 
-.. c:function:: EMSCRIPTEN_RESULT emscripten_request_fullscreen_strategy(const char *target, EM_BOOL deferUntilInEventHandler, const EmscriptenFullscreenStrategy *fullscreenStrategy)
+.. c:function:: EMSCRIPTEN_RESULT emscripten_request_fullscreen_strategy(const char *target, bool deferUntilInEventHandler, const EmscriptenFullscreenStrategy *fullscreenStrategy)
 
   Requests the given target element to transition to full screen mode, using a custom presentation mode for the element. This function is otherwise the same as :c:func:`emscripten_request_fullscreen`, but this function adds options to control how resizing and aspect ratio, and ensures that the behavior is consistent across browsers.
 
@@ -1278,7 +1263,7 @@ Struct
   The event structure passed in the `pointerlockchange <http://www.w3.org/TR/pointerlock/#pointerlockchange-and-pointerlockerror-events>`_ event.
 
 
-  .. c:member:: EM_BOOL isActive
+  .. c:member:: bool isActive
 
     Specifies whether an element on the browser page currently has pointer lock enabled.
 
@@ -1304,14 +1289,14 @@ Callback functions
 
   .. code-block:: cpp
 
-    typedef EM_BOOL (*em_pointerlockchange_callback_func)(int eventType, const EmscriptenPointerlockChangeEvent *pointerlockChangeEvent, void *userData);
+    typedef bool (*em_pointerlockchange_callback_func)(int eventType, const EmscriptenPointerlockChangeEvent *pointerlockChangeEvent, void *userData);
 
   :param int eventType: The type of pointerlockchange event (:c:data:`EMSCRIPTEN_EVENT_POINTERLOCKCHANGE`).
   :param pointerlockChangeEvent: Information about the pointerlockchange event that occurred.
   :type pointerlockChangeEvent: const EmscriptenPointerlockChangeEvent*
   :param void* userData: The ``userData`` originally passed to the registration function.
   :returns: |callback-handler-return-value-doc|
-  :rtype: |EM_BOOL|
+  :rtype: bool
 
 .. c:type:: em_pointerlockerror_callback_func
 
@@ -1319,20 +1304,20 @@ Callback functions
 
   .. code-block:: cpp
 
-    typedef EM_BOOL (*em_pointerlockerror_callback_func)(int eventType, const void *reserved, void *userData);
+    typedef bool (*em_pointerlockerror_callback_func)(int eventType, const void *reserved, void *userData);
 
   :param int eventType: The type of pointerlockerror event (:c:data:`EMSCRIPTEN_EVENT_POINTERLOCKERROR`).
   :param const void* reserved: Reserved for future use; pass in 0.
   :param void* userData: The ``userData`` originally passed to the registration function.
   :returns: |callback-handler-return-value-doc|
-  :rtype: |EM_BOOL|
+  :rtype: bool
 
 
 
 Functions
 ---------
 
-.. c:function:: EMSCRIPTEN_RESULT emscripten_set_pointerlockchange_callback(const char *target, void *userData, EM_BOOL useCapture, em_pointerlockchange_callback_func callback)
+.. c:function:: EMSCRIPTEN_RESULT emscripten_set_pointerlockchange_callback(const char *target, void *userData, bool useCapture, em_pointerlockchange_callback_func callback)
 
   Registers a callback function for receiving the `pointerlockchange <http://www.w3.org/TR/pointerlock/#pointerlockchange-and-pointerlockerror-events>`_ event.
 
@@ -1341,21 +1326,21 @@ Functions
   :param target: |target-parameter-doc|
   :type target: const char*
   :param void* userData: |userData-parameter-doc|
-  :param EM_BOOL useCapture: |useCapture-parameter-doc|
+  :param bool useCapture: |useCapture-parameter-doc|
   :param em_pointerlockchange_callback_func callback: |callback-function-parameter-doc|
   :returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
   :rtype: |EMSCRIPTEN_RESULT|
 
 
 
-.. c:function:: EMSCRIPTEN_RESULT emscripten_set_pointerlockerror_callback(const char *target, void *userData, EM_BOOL useCapture, em_pointerlockerror_callback_func callback)
+.. c:function:: EMSCRIPTEN_RESULT emscripten_set_pointerlockerror_callback(const char *target, void *userData, bool useCapture, em_pointerlockerror_callback_func callback)
 
   Registers a callback function for receiving the `pointerlockerror <http://www.w3.org/TR/pointerlock/#pointerlockchange-and-pointerlockerror-events>`_ event.
 
   :param target: |target-parameter-doc|
   :type target: const char*
   :param void* userData: |userData-parameter-doc|
-  :param EM_BOOL useCapture: |useCapture-parameter-doc|
+  :param bool useCapture: |useCapture-parameter-doc|
   :param em_pointerlockerror_callback_func callback: |callback-function-parameter-doc|
   :returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
   :rtype: |EMSCRIPTEN_RESULT|
@@ -1371,7 +1356,7 @@ Functions
   :rtype: |EMSCRIPTEN_RESULT|
 
 
-.. c:function:: EMSCRIPTEN_RESULT emscripten_request_pointerlock(const char *target, EM_BOOL deferUntilInEventHandler)
+.. c:function:: EMSCRIPTEN_RESULT emscripten_request_pointerlock(const char *target, bool deferUntilInEventHandler)
 
   Requests the given target element to grab pointerlock.
 
@@ -1380,7 +1365,7 @@ Functions
 
   :param target: |target-parameter-doc|
   :type target: const char*
-  :param EM_BOOL deferUntilInEventHandler: If ``true`` requests made outside of a user-generated event handler are automatically deferred until the user next presses a keyboard or mouse button. If ``false`` the request will fail if called outside of a user-generated event handler.
+  :param bool deferUntilInEventHandler: If ``true`` requests made outside of a user-generated event handler are automatically deferred until the user next presses a keyboard or mouse button. If ``false`` the request will fail if called outside of a user-generated event handler.
   :returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
   :rtype: |EMSCRIPTEN_RESULT|
 
@@ -1428,7 +1413,7 @@ Struct
 
   The event structure passed in the `visibilitychange <http://www.w3.org/TR/page-visibility/>`__ event.
 
-  .. c:member:: EM_BOOL hidden
+  .. c:member:: bool hidden
 
     If true, the current browser page is now hidden.
 
@@ -1447,25 +1432,25 @@ Callback functions
 
   .. code-block:: cpp
 
-    typedef EM_BOOL (*em_visibilitychange_callback_func)(int eventType, const EmscriptenVisibilityChangeEvent *visibilityChangeEvent, void *userData);
+    typedef bool (*em_visibilitychange_callback_func)(int eventType, const EmscriptenVisibilityChangeEvent *visibilityChangeEvent, void *userData);
 
   :param int eventType: The type of ``visibilitychange`` event (:c:data:`EMSCRIPTEN_VISIBILITY_HIDDEN`).
   :param visibilityChangeEvent: Information about the ``visibilitychange`` event that occurred.
   :type visibilityChangeEvent: const EmscriptenVisibilityChangeEvent*
   :param void* userData: The ``userData`` originally passed to the registration function.
   :returns: |callback-handler-return-value-doc|
-  :rtype: |EM_BOOL|
+  :rtype: bool
 
 
 Functions
 ---------
 
-.. c:function:: EMSCRIPTEN_RESULT emscripten_set_visibilitychange_callback(void *userData, EM_BOOL useCapture, em_visibilitychange_callback_func callback)
+.. c:function:: EMSCRIPTEN_RESULT emscripten_set_visibilitychange_callback(void *userData, bool useCapture, em_visibilitychange_callback_func callback)
 
   Registers a callback function for receiving the `visibilitychange <http://www.w3.org/TR/page-visibility/>`_ event.
 
   :param void* userData: |userData-parameter-doc|
-  :param EM_BOOL useCapture: |useCapture-parameter-doc|
+  :param bool useCapture: |useCapture-parameter-doc|
   :param em_visibilitychange_callback_func callback: |callback-function-parameter-doc|
   :returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
   :rtype: |EMSCRIPTEN_RESULT|
@@ -1502,40 +1487,40 @@ Struct
 
   Specifies the status of a single `touch point <http://www.w3.org/TR/touch-events/#touch-interface>`_ on the page.
 
-  .. c:member:: long identifier
+  .. c:member:: int identifier
 
     An identification number for each touch point.
 
-  .. c:member:: long screenX
-    long screenY
+  .. c:member:: int screenX
+    int screenY
 
     The touch coordinate relative to the whole screen origin, in pixels.
 
-  .. c:member:: long clientX
-    long clientY
+  .. c:member:: int clientX
+    int clientY
 
     The touch coordinate relative to the viewport, in pixels.
 
-  .. c:member:: long pageX
-    long pageY
+  .. c:member:: int pageX
+    int pageY
 
     The touch coordinate relative to the viewport, in pixels, and including any scroll offset.
 
-  .. c:member:: EM_BOOL isChanged
+  .. c:member:: bool isChanged
 
     Specifies whether the touch point changed during this event.
 
-  .. c:member:: EM_BOOL onTarget
+  .. c:member:: bool onTarget
 
     Specifies whether this touch point is still above the original target on which it was initially pressed.
 
-  .. c:member:: long targetX
-     long targetY
+  .. c:member:: int targetX
+     int targetY
 
     These fields give the touch coordinates mapped relative to the coordinate space of the target DOM element receiving the input events (Emscripten-specific extension).
 
-  .. c:member:: long canvasX
-    long canvasY
+  .. c:member:: int canvasX
+    int canvasY
 
     The touch coordinates mapped to the Emscripten canvas client area, in pixels (Emscripten-specific extension).
 
@@ -1554,10 +1539,10 @@ Struct
     The number of valid elements in the touches array.
 
 
-  .. c:member:: EM_BOOL ctrlKey
-    EM_BOOL shiftKey
-    EM_BOOL altKey
-    EM_BOOL metaKey
+  .. c:member:: bool ctrlKey
+    bool shiftKey
+    bool altKey
+    bool metaKey
 
     Specifies which modifiers were active during the touch event.
 
@@ -1577,31 +1562,31 @@ Callback functions
 
   .. code-block:: cpp
 
-    typedef EM_BOOL (*em_touch_callback_func)(int eventType, const EmscriptenTouchEvent *touchEvent, void *userData);
+    typedef bool (*em_touch_callback_func)(int eventType, const EmscriptenTouchEvent *touchEvent, void *userData);
 
   :param int eventType: The type of touch event (:c:data:`EMSCRIPTEN_EVENT_TOUCHSTART`).
   :param touchEvent: Information about the touch event that occurred.
   :type touchEvent: const EmscriptenTouchEvent*
   :param void* userData: The ``userData`` originally passed to the registration function.
   :returns: |callback-handler-return-value-doc|
-  :rtype: |EM_BOOL|
+  :rtype: bool
 
 
 
 Functions
 ---------
 
-.. c:function:: EMSCRIPTEN_RESULT emscripten_set_touchstart_callback(const char *target, void *userData, EM_BOOL useCapture, em_touch_callback_func callback)
-  EMSCRIPTEN_RESULT emscripten_set_touchend_callback(const char *target, void *userData, EM_BOOL useCapture, em_touch_callback_func callback)
-  EMSCRIPTEN_RESULT emscripten_set_touchmove_callback(const char *target, void *userData, EM_BOOL useCapture, em_touch_callback_func callback)
-  EMSCRIPTEN_RESULT emscripten_set_touchcancel_callback(const char *target, void *userData, EM_BOOL useCapture, em_touch_callback_func callback)
+.. c:function:: EMSCRIPTEN_RESULT emscripten_set_touchstart_callback(const char *target, void *userData, bool useCapture, em_touch_callback_func callback)
+  EMSCRIPTEN_RESULT emscripten_set_touchend_callback(const char *target, void *userData, bool useCapture, em_touch_callback_func callback)
+  EMSCRIPTEN_RESULT emscripten_set_touchmove_callback(const char *target, void *userData, bool useCapture, em_touch_callback_func callback)
+  EMSCRIPTEN_RESULT emscripten_set_touchcancel_callback(const char *target, void *userData, bool useCapture, em_touch_callback_func callback)
 
   Registers a callback function for receiving `touch events <http://www.w3.org/TR/touch-events/)>`__ : `touchstart <http://www.w3.org/TR/touch-events/#the-touchstart-event>`_, `touchend <http://www.w3.org/TR/touch-events/#dfn-touchend>`_, `touchmove <http://www.w3.org/TR/touch-events/#dfn-touchmove>`_ and `touchcancel <http://www.w3.org/TR/touch-events/#dfn-touchcancel>`_.
 
   :param target: |target-parameter-doc|
   :type target: const char*
   :param void* userData: |userData-parameter-doc|
-  :param EM_BOOL useCapture: |useCapture-parameter-doc|
+  :param bool useCapture: |useCapture-parameter-doc|
   :param em_touch_callback_func callback: |callback-function-parameter-doc|
   :returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
   :rtype: |EMSCRIPTEN_RESULT|
@@ -1650,15 +1635,15 @@ Struct
     The analog state of the gamepad buttons, in the range [0, 1].
 
 
-  .. c:member:: EM_BOOL digitalButton[64]
+  .. c:member:: bool digitalButton[64]
 
     The digital state of the gamepad buttons, either 0 or 1.
 
-  .. c:member:: EM_BOOL connected
+  .. c:member:: bool connected
 
     Specifies whether this gamepad is connected to the browser page.
 
-  .. c:member:: long index
+  .. c:member:: int index
 
     An ordinal associated with this gamepad, zero-based.
 
@@ -1685,27 +1670,27 @@ Callback functions
 
   .. code-block:: cpp
 
-    typedef EM_BOOL (*em_gamepad_callback_func)(int eventType, const EmscriptenGamepadEvent *gamepadEvent, void *userData)
+    typedef bool (*em_gamepad_callback_func)(int eventType, const EmscriptenGamepadEvent *gamepadEvent, void *userData)
 
   :param int eventType: The type of gamepad event (:c:data:`EMSCRIPTEN_EVENT_GAMEPADCONNECTED`).
   :param gamepadEvent: Information about the gamepad event that occurred.
   :type gamepadEvent: const EmscriptenGamepadEvent*
   :param void* userData: The ``userData`` originally passed to the registration function.
   :returns: |callback-handler-return-value-doc|
-  :rtype: |EM_BOOL|
+  :rtype: bool
 
 
 
 Functions
 ---------
 
-.. c:function:: EMSCRIPTEN_RESULT emscripten_set_gamepadconnected_callback(void *userData, EM_BOOL useCapture, em_gamepad_callback_func callback)
-  EMSCRIPTEN_RESULT emscripten_set_gamepaddisconnected_callback(void *userData, EM_BOOL useCapture, em_gamepad_callback_func callback)
+.. c:function:: EMSCRIPTEN_RESULT emscripten_set_gamepadconnected_callback(void *userData, bool useCapture, em_gamepad_callback_func callback)
+  EMSCRIPTEN_RESULT emscripten_set_gamepaddisconnected_callback(void *userData, bool useCapture, em_gamepad_callback_func callback)
 
   Registers a callback function for receiving the gamepad_ events: `gamepadconnected <http://www.w3.org/TR/gamepad/#the-gamepadconnected-event>`_ and `gamepaddisconnected <http://www.w3.org/TR/gamepad/#the-gamepaddisconnected-event>`_.
 
   :param void* userData: |userData-parameter-doc|
-  :param EM_BOOL useCapture: |useCapture-parameter-doc|
+  :param bool useCapture: |useCapture-parameter-doc|
   :param em_gamepad_callback_func callback: |callback-function-parameter-doc|
   :returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
   :rtype: |EMSCRIPTEN_RESULT|
@@ -1793,7 +1778,7 @@ Struct
 
     Current battery level, on a scale of 0 to 1.0.
 
-  .. c:member::  EM_BOOL charging;
+  .. c:member::  bool charging;
 
     ``true`` if the battery is charging, ``false`` otherwise.
 
@@ -1807,14 +1792,14 @@ Callback functions
 
   .. code-block:: cpp
 
-    typedef EM_BOOL (*em_battery_callback_func)(int eventType, const EmscriptenBatteryEvent *batteryEvent, void *userData);
+    typedef bool (*em_battery_callback_func)(int eventType, const EmscriptenBatteryEvent *batteryEvent, void *userData);
 
   :param int eventType: The type of ``batterymanager`` event (:c:data:`EMSCRIPTEN_EVENT_BATTERYCHARGINGCHANGE`).
   :param batteryEvent: Information about the ``batterymanager`` event that occurred.
   :type batteryEvent: const EmscriptenBatteryEvent*
   :param void* userData: The ``userData`` originally passed to the registration function.
   :returns: |callback-handler-return-value-doc|
-  :rtype: |EM_BOOL|
+  :rtype: bool
 
 
 
@@ -1940,29 +1925,29 @@ Struct
 
   Specifies `WebGL context creation parameters <http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.2>`_.
 
-  .. c:member:: EM_BOOL alpha
+  .. c:member:: bool alpha
 
     If ``true``, request an alpha channel for the context. If you create an alpha channel, you can blend the canvas rendering with the underlying web page contents. Default value: ``true``.
 
-  .. c:member:: EM_BOOL depth
+  .. c:member:: bool depth
 
     If ``true``, request a depth buffer of at least 16 bits. If ``false``, no depth buffer will be initialized. Default value: ``true``.
 
-  .. c:member:: EM_BOOL stencil
+  .. c:member:: bool stencil
 
     If ``true``, request a stencil buffer of at least 8 bits. If ``false``, no stencil buffer will be initialized. Default value: ``false``.
 
-  .. c:member:: EM_BOOL antialias
+  .. c:member:: bool antialias
 
     If ``true``, antialiasing will be initialized with a browser-specified algorithm and quality level. If ``false``, antialiasing is disabled. Default value: ``true``.
 
 
-  .. c:member:: EM_BOOL premultipliedAlpha
+  .. c:member:: bool premultipliedAlpha
 
     If ``true``, the alpha channel of the rendering context will be treated as representing premultiplied alpha values. If ``false``, the alpha channel represents non-premultiplied alpha. Default value: ``true``.
 
 
-  .. c:member:: EM_BOOL preserveDrawingBuffer
+  .. c:member:: bool preserveDrawingBuffer
 
     If ``true``, the contents of the drawing buffer are preserved between consecutive ``requestAnimationFrame()`` calls. If ``false``, color, depth and stencil are cleared at the beginning of each ``requestAnimationFrame()``. Generally setting this to ``false`` gives better performance. Default value: ``false``.
 
@@ -1971,7 +1956,7 @@ Struct
 
     Specifies a hint to the WebGL canvas implementation to how it should choose the use of available GPU resources. One of EM_WEBGL_POWER_PREFERENCE_DEFAULT, EM_WEBGL_POWER_PREFERENCE_LOW_POWER, EM_WEBGL_POWER_PREFERENCE_HIGH_PERFORMANCE.
 
-  .. c:member:: EM_BOOL failIfMajorPerformanceCaveat
+  .. c:member:: bool failIfMajorPerformanceCaveat
 
     If ``true``, requests context creation to abort if the browser is only able to create a context that does not give good hardware-accelerated performance. Default value: ``false``.
 
@@ -1986,26 +1971,26 @@ Struct
     Default value: ``majorVersion=1``, ``minorVersion=0``
 
 
-  .. c:member:: EM_BOOL enableExtensionsByDefault
+  .. c:member:: bool enableExtensionsByDefault
 
     If ``true``, all GLES2-compatible non-performance-impacting WebGL extensions will automatically be enabled for you after the context has been created. If ``false``, no extensions are enabled by default, and you need to manually call :c:func:`emscripten_webgl_enable_extension` to enable each extension that you want to use. Default value: ``true``.
 
 
-  .. c:member:: EM_BOOL explicitSwapControl
+  .. c:member:: bool explicitSwapControl
 
     By default, when ``explicitSwapControl`` is in its default state ``false``, rendered WebGL content is implicitly presented (displayed to the user) on the canvas when the event handler that renders with WebGL returns back to the browser event loop. If ``explicitSwapControl`` is set to ``true``, rendered content will not be displayed on screen automatically when event handler function finishes, but the control of swapping is given to the user to manage, via the ``emscripten_webgl_commit_frame()`` function.
 
     In order to be able to set ``explicitSwapControl==true``, support for it must explicitly be enabled either 1) via adding the ``-sOFFSCREEN_FRAMEBUFFER`` Emscripten linker flag, and enabling ``renderViaOffscreenBackBuffer==1``, or 2) via adding the linker flag ``-sOFFSCREENCANVAS_SUPPORT``, and running in a browser that supports OffscreenCanvas.
 
 
-  .. c:member:: EM_BOOL renderViaOffscreenBackBuffer
+  .. c:member:: bool renderViaOffscreenBackBuffer
 
     If ``true``, an extra intermediate backbuffer (offscreen render target) is allocated to the created WebGL context, and rendering occurs to this backbuffer instead of directly onto the WebGL "default backbuffer". This is required to be enabled if 1) ``explicitSwapControl==true`` and the browser does not support OffscreenCanvas, 2) when performing WebGL rendering in a worker thread and the browser does not support OffscreenCanvas, and 3) when performing WebGL context accesses from multiple threads simultaneously (independent of whether OffscreenCanvas is supported or not).
 
     Because supporting offscreen framebuffer adds some amount of extra code to the compiled output, support for it must explicitly be enabled via the ``-sOFFSCREEN_FRAMEBUFFER`` Emscripten linker flag. When building simultaneously with both ``-sOFFSCREEN_FRAMEBUFFER`` and ``-sOFFSCREENCANVAS_SUPPORT`` linker flags enabled, offscreen backbuffer can be used as a polyfill-like compatibility fallback to enable rendering WebGL from a pthread when the browser does not support the OffscreenCanvas API.
 
 
-  .. c:member:: EM_BOOL proxyContextToMainThread
+  .. c:member:: bool proxyContextToMainThread
 
     This member specifies the threading model that will be used for the created WebGL context, when the WebGL context is created in a pthread. Three values are possible: ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_DISALLOW``, ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK`` or ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS``. If ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_DISALLOW`` is specified, the WebGLRenderingContext object will be created inside the pthread that is calling the ``emscripten_webgl_create_context()`` function as an OffscreenCanvas-based rendering context. This is only possible if 1) current browser supports OffscreenCanvas specification, 2) code was compiled with ``-sOFFSCREENCANVAS_SUPPORT`` linker flag enabled, 3) the Canvas object that the context is being created on was transferred over to the calling pthread with function ``emscripten_pthread_attr_settransferredcanvases()`` when the pthread was originally created, and 4) no OffscreenCanvas-based context already exists from the given Canvas at the same time.
 
@@ -2027,14 +2012,14 @@ Callback functions
 
   .. code-block:: cpp
 
-    typedef EM_BOOL (*em_webgl_context_callback)(int eventType, const void *reserved, void *userData);
+    typedef bool (*em_webgl_context_callback)(int eventType, const void *reserved, void *userData);
 
   :param int eventType: The type of :c:data:`WebGL context event <EMSCRIPTEN_EVENT_WEBGLCONTEXTLOST>`.
   :param reserved: Reserved for future use; pass in 0.
   :type reserved: const void*
   :param void* userData: The ``userData`` originally passed to the registration function.
   :returns: |callback-handler-return-value-doc|
-  :rtype: |EM_BOOL|
+  :rtype: bool
 
 
 
@@ -2042,28 +2027,28 @@ Functions
 ---------
 
 
-.. c:function:: EMSCRIPTEN_RESULT emscripten_set_webglcontextlost_callback(const char *target, void *userData, EM_BOOL useCapture, em_webgl_context_callback callback)
-  EMSCRIPTEN_RESULT emscripten_set_webglcontextrestored_callback(const char *target, void *userData, EM_BOOL useCapture, em_webgl_context_callback callback)
+.. c:function:: EMSCRIPTEN_RESULT emscripten_set_webglcontextlost_callback(const char *target, void *userData, bool useCapture, em_webgl_context_callback callback)
+  EMSCRIPTEN_RESULT emscripten_set_webglcontextrestored_callback(const char *target, void *userData, bool useCapture, em_webgl_context_callback callback)
 
   Registers a callback function for the canvas `WebGL context`_ events: ``webglcontextlost`` and ``webglcontextrestored``.
 
   :param target: |target-parameter-doc|
   :type target: const char*
   :param void* userData: |userData-parameter-doc|
-  :param EM_BOOL useCapture: |useCapture-parameter-doc|
+  :param bool useCapture: |useCapture-parameter-doc|
   :param em_webgl_context_callback callback: |callback-function-parameter-doc|
   :returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
   :rtype: |EMSCRIPTEN_RESULT|
 
 
-.. c:function:: EM_BOOL emscripten_is_webgl_context_lost(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context)
+.. c:function:: bool emscripten_is_webgl_context_lost(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context)
 
   Queries the given WebGL context if it is in a lost context state.
 
   :param target: Specifies a handle to the context to test.
   :type target: EMSCRIPTEN_WEBGL_CONTEXT_HANDLE
   :returns: ``true`` if the WebGL context is in a lost state (or the context does not exist)
-  :rtype: |EM_BOOL|
+  :rtype: bool
 
 
 .. c:function:: void emscripten_webgl_init_context_attributes(EmscriptenWebGLContextAttributes *attributes)
@@ -2084,7 +2069,11 @@ Functions
   .. note::
 
     - A successful call to this function will not immediately make that rendering context active. Call :c:func:`emscripten_webgl_make_context_current` after creating a context to activate it.
-    - This function will try to initialize the context version that was *exactly* requested. It will not e.g. initialize a newer backwards-compatible version or similar.
+    - A word of caution about :c:type:`EmscriptenWebGLContextAttributes.majorVersion`:
+
+      - When no (WEBGL) linker flags are set, then this attribute is ignored and the context returned is WebGL 1.0
+      - When the linker flag ``-sMIN_WEBGL_VERSION=2`` is set, then this attribute is ignored and the context returned is WebGL 2.0
+      - When the linker flag ``-sMAX_WEBGL_VERSION=2`` is set, then this attribute is used and the context returned matches the value of this attribute
 
   :param target: The DOM canvas element in which to initialize the WebGL context.
   :type target: const char*
@@ -2148,15 +2137,15 @@ Functions
   :rtype: |EMSCRIPTEN_RESULT|
 
 
-.. c:function:: EM_BOOL emscripten_webgl_enable_extension(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context, const char *extension)
+.. c:function:: bool emscripten_webgl_enable_extension(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context, const char *extension)
 
   Enables the given extension on the given context.
 
   :param EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context: The WebGL context on which the extension is to be enabled.
   :param extension: A string identifying the `WebGL extension <http://www.khronos.org/registry/webgl/extensions/>`_. For example "OES_texture_float".
   :type extension: const char*
-  :returns: EM_TRUE if the given extension is supported by the context, and EM_FALSE if the extension was not available.
-  :rtype: |EM_BOOL|
+  :returns: true if the given extension is supported by the context, and false if the extension was not available.
+  :rtype: bool
 
 
 .. c:function:: EMSCRIPTEN_RESULT emscripten_set_canvas_element_size(const char *target, int width, int height)
@@ -2216,7 +2205,6 @@ Functions
 .. COMMENT (not rendered): The replace function return values with links (not created automatically)
 
 .. |EMSCRIPTEN_RESULT| replace:: :c:type:`EMSCRIPTEN_RESULT`
-.. |EM_BOOL| replace:: :c:type:`EM_BOOL`
 .. |EMSCRIPTEN_WEBGL_CONTEXT_HANDLE| replace:: :c:type:`EMSCRIPTEN_WEBGL_CONTEXT_HANDLE`
 
 
@@ -2259,10 +2247,10 @@ Functions
   :param setTimeoutId: An ID returned by function :c:func:`emscripten_set_timeout()`.
 
 
-.. c:function:: void emscripten_set_timeout_loop(EM_BOOL (*cb)(double time, void *userData), double intervalMsecs, void *userData)
+.. c:function:: void emscripten_set_timeout_loop(bool (*cb)(double time, void *userData), double intervalMsecs, void *userData)
 
   Initializes a ``setTimeout()`` loop on the given function on the calling thread. The specified callback
-  function 'cb' needs to keep returning ``EM_TRUE`` as long as the animation loop should continue to run.
+  function 'cb' needs to keep returning ``true`` as long as the animation loop should continue to run.
   When the function returns false, the ``setTimeout()`` loop will stop.
   Note: The loop will start immediately with a 0 msecs delay - the passed in intervalMsecs time specifies
   the interval that the consecutive callback calls should fire at.
@@ -2272,7 +2260,7 @@ Functions
   :param userData: Specifies a pointer sized field of custom data that will be passed in to the callback function.
 
 
-.. c:function:: long emscripten_request_animation_frame(EM_BOOL (*cb)(double time, void *userData), void *userData)
+.. c:function:: long emscripten_request_animation_frame(bool (*cb)(double time, void *userData), void *userData)
 
   Performs a single ``requestAnimationFrame()`` callback call on the given function on the calling thread.
 
@@ -2293,10 +2281,10 @@ Functions
   :param requestAnimationFrameId: An ID returned by function :c:func:`emscripten_request_animation_frame()`.
 
 
-.. c:function:: void emscripten_request_animation_frame_loop(EM_BOOL (*cb)(double time, void *userData), void *userData)
+.. c:function:: void emscripten_request_animation_frame_loop(bool (*cb)(double time, void *userData), void *userData)
 
   Initializes a ``requestAnimationFrame()`` loop on the given function on the calling thread. The specified
-  callback function 'cb' needs to keep returning ``EM_TRUE`` as long as the animation loop should continue
+  callback function 'cb' needs to keep returning ``true`` as long as the animation loop should continue
   to run. When the function returns false, the animation frame loop will stop.
 
   :param cb: The callback function to call. This function will receive the current high precision timer value
@@ -2324,10 +2312,10 @@ Functions
   :param setImmediateId: An ID returned by function :c:func:`emscripten_set_immediate()`.
 
 
-.. c:function:: void emscripten_set_immediate_loop(EM_BOOL (*cb)(void *userData), void *userData)
+.. c:function:: void emscripten_set_immediate_loop(bool (*cb)(void *userData), void *userData)
 
   Initializes a ``setImmediate()`` loop on the given function on the calling thread. The specified callback
-  function 'cb' needs to keep returning ``EM_TRUE`` as long as the loop should continue to run.
+  function 'cb' needs to keep returning ``true`` as long as the loop should continue to run.
   When the function returns false, the ``setImmediate()`` loop will stop.
   TODO: Currently the polyfill of ``setImmediate()`` only works in the main browser thread, but not in pthreads.
 

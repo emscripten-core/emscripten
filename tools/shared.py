@@ -47,6 +47,7 @@ from . import config
 from . import filelock
 from . import utils
 from .settings import settings
+import contextlib
 
 
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
@@ -56,9 +57,9 @@ SKIP_SUBPROCS = False
 # Minimum node version required to run the emscripten compiler.  This is
 # distinct from the minimum version required to execute the generated code
 # (settings.MIN_NODE_VERSION).
-# This version currently matches the node version that we ship with emsdk
-# which means that we can say for sure that this version is well supported.
-MINIMUM_NODE_VERSION = (16, 20, 0)
+# This is currently set to v18 since this is the version of node available
+# in debian/stable (bookworm).
+MINIMUM_NODE_VERSION = (18, 0, 0)
 EXPECTED_LLVM_VERSION = 20
 
 # These get set by setup_temp_dirs
@@ -116,7 +117,7 @@ def shlex_join(cmd):
 def run_process(cmd, check=True, input=None, *args, **kw):
   """Runs a subprocess returning the exit code.
 
-  By default this function will raise an exception on failure.  Therefor this should only be
+  By default this function will raise an exception on failure.  Therefore this should only be
   used if you want to handle such failures.  For most subprocesses, failures are not recoverable
   and should be fatal.  In those cases the `check_call` wrapper should be preferred.
   """
@@ -249,7 +250,7 @@ def exec_process(cmd):
   else:
     sys.stdout.flush()
     sys.stderr.flush()
-    os.execv(cmd[0], cmd)
+    os.execvp(cmd[0], cmd)
 
 
 def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: mutable default args
@@ -393,10 +394,6 @@ def node_reference_types_flags(nodejs):
     return []
 
 
-def node_memory64_flags():
-  return ['--experimental-wasm-memory64']
-
-
 def node_exception_flags(nodejs):
   node_version = get_node_version(nodejs)
   # Exception handling was enabled by default in node v17.
@@ -493,10 +490,8 @@ def check_sanity(force=False):
     # We can't simply check for the existence of sanity_file and then read from
     # it here because we don't hold the cache lock yet and some other process
     # could clear the cache between checking for, and reading from, the file.
-    try:
+    with contextlib.suppress(Exception):
       sanity_data = utils.read_file(sanity_file)
-    except Exception:
-      pass
     if sanity_data == expected:
       logger.debug(f'sanity file up-to-date: {sanity_file}')
       # Even if the sanity file is up-to-date we still run the checks
@@ -511,7 +506,7 @@ def check_sanity(force=False):
     return
 
   with cache.lock('sanity'):
-    # Check again once the cache lock as aquired
+    # Check again once the cache lock as acquired
     if sanity_is_correct():
       return
 
@@ -639,10 +634,6 @@ def get_temp_files():
   else:
     # Otherwise use the system tempdir and try to clean up after ourselves.
     return tempfiles.TempFiles(TEMP_DIR, save_debug_files=False)
-
-
-def target_environment_may_be(environment):
-  return not settings.ENVIRONMENT or environment in settings.ENVIRONMENT.split(',')
 
 
 def print_compiler_stage(cmd):

@@ -31,7 +31,7 @@ int main() {
 
   EM_ASM({
     var output = FS.readFile("/root/test");
-    out(UTF8ArrayToString(output, 0));
+    out(UTF8ArrayToString(output));
     out("Length: " + output.byteLength);
     var err = FS.unlink("/root/test");
     out("FS.unlink: " + err);

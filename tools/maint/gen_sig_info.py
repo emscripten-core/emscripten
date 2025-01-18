@@ -6,7 +6,7 @@
 
 """This tool extracts native/C signature information for JS library functions
 
-It generates a file called `src/library_sigs.js` which contains `__sig` declarations
+It generates a file called `src/libsigs.js` which contains `__sig` declarations
 for the majority of JS library functions.
 """
 
@@ -166,11 +166,17 @@ wasi_symbols = {
 
 
 def ignore_symbol(s, cxx):
+  # We need to ignore certain symbols here. Specifically, any symbol that is not
+  # pre-declared in a C/C++ header need to be ignored, otherwise the generated
+  # file will fail to compile.
   if s.startswith('$'):
     return True
   if s in {'SDL_GetKeyState'}:
     return True
-  if s.startswith('emscripten_gl') or s.startswith('emscripten_alc'):
+  # Symbols that start with `emscripten_gl` or `emscripten_alc` are auto-generated
+  # wrappers around GL and OpenGL symbols.  Since they inherit their signature they
+  # don't need to be auto-generated.
+  if s.startswith(('emscripten_gl', 'emscripten_alc')):
     return True
   if s.startswith('gl') and any(s.endswith(x) for x in ('NV', 'EXT', 'WEBGL', 'ARB', 'ANGLE')):
     return True
@@ -181,9 +187,7 @@ def ignore_symbol(s, cxx):
            'stackSave', 'stackRestore', 'stackAlloc', 'getTempRet0', 'setTempRet0',
            }:
     return True
-  if cxx and s in ('__asctime_r') or s.startswith('__cxa_find_matching_catch'):
-    return True
-  return False
+  return cxx and s == '__asctime_r' or s.startswith('__cxa_find_matching_catch')
 
 
 def create_c_file(filename, symbol_list, header):
@@ -263,7 +267,7 @@ def update_sigs(sig_info):
 def remove_sigs(sig_info):
   print("removing __sig attributes ...")
 
-  to_remove = [f'{sym}__sig:' for sym in sig_info.keys()]
+  to_remove = [f'{sym}__sig:' for sym in sig_info]
 
   def strip_line(l):
     l = l.strip()
@@ -271,7 +275,7 @@ def remove_sigs(sig_info):
 
   files = glob.glob('src/*.js') + glob.glob('src/**/*.js')
   for file in files:
-    if os.path.basename(file) != 'library_sigs.js':
+    if os.path.basename(file) != 'libsigs.js':
       lines = utils.read_file(file).splitlines()
       lines = [l for l in lines if not strip_line(l)]
       utils.write_file(file, '\n'.join(lines) + '\n')
@@ -303,12 +307,12 @@ def extract_sig_info(sig_info, extra_settings=None, extra_cflags=None, cxx=False
     'AUDIO_WORKLET': 1,
     'WASM_WORKERS': 1,
     'JS_LIBRARIES': [
-      'src/library_websocket.js',
-      'src/library_exports.js',
-      'src/library_webaudio.js',
-      'src/library_fetch.js',
-      'src/library_pthread.js',
-      'src/library_trace.js',
+      'libwebsocket.js',
+      'libexports.js',
+      'libwebaudio.js',
+      'libfetch.js',
+      'libpthread.js',
+      'libtrace.js',
     ],
     'SUPPORT_LONGJMP': 'emscripten'
   }
@@ -362,20 +366,19 @@ def extract_sig_info(sig_info, extra_settings=None, extra_cflags=None, cxx=False
       assert sym in sig_info64
       sig64 = sig_info64[sym]
       sig_string = functype_to_str(sig32, sig64)
-      if sym in sig_info:
-        if sig_info[sym] != sig_string:
-          print(sym)
-          print(sig_string)
-          print(sig_info[sym])
-          assert sig_info[sym] == sig_string
+      if sym in sig_info and sig_info[sym] != sig_string:
+        print(sym)
+        print(sig_string)
+        print(sig_info[sym])
+        assert sig_info[sym] == sig_string
       sig_info[sym] = sig_string
 
 
 def main(args):
   parser = argparse.ArgumentParser()
-  parser.add_argument('-o', '--output', default='src/library_sigs.js')
-  parser.add_argument('-r', '--remove', action='store_true', help='remove from JS library files any `__sig` entires that are part of the auto-generated file')
-  parser.add_argument('-u', '--update', action='store_true', help='update with JS library files any `__sig` entires that are part of the auto-generated file')
+  parser.add_argument('-o', '--output', default='src/libsigs.js')
+  parser.add_argument('-r', '--remove', action='store_true', help='remove from JS library files any `__sig` entries that are part of the auto-generated file')
+  parser.add_argument('-u', '--update', action='store_true', help='update with JS library files any `__sig` entries that are part of the auto-generated file')
   args = parser.parse_args()
 
   print('generating signatures ...')
@@ -387,9 +390,9 @@ def main(args):
                               'BUILD_AS_WORKER': 1,
                               'LINK_AS_CXX': 1,
                               'AUTO_JS_LIBRARIES': 0}, cxx=True)
-  extract_sig_info(sig_info, {'WASM_WORKERS': 1, 'JS_LIBRARIES': ['src/library_wasm_worker.js']})
+  extract_sig_info(sig_info, {'WASM_WORKERS': 1, 'JS_LIBRARIES': ['libwasm_worker.js']})
   extract_sig_info(sig_info, {'USE_GLFW': 3}, ['-DGLFW3'])
-  extract_sig_info(sig_info, {'JS_LIBRARIES': ['src/embind/embind.js', 'src/embind/emval.js'],
+  extract_sig_info(sig_info, {'JS_LIBRARIES': ['libembind.js', 'libemval.js'],
                               'USE_SDL': 0,
                               'MAX_WEBGL_VERSION': 0,
                               'AUTO_JS_LIBRARIES': 0,

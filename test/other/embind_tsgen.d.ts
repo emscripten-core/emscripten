@@ -17,7 +17,14 @@ interface WasmModule {
 }
 
 type EmbindString = ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string;
-export interface Test {
+export interface ClassHandle {
+  isAliasOf(other: ClassHandle): boolean;
+  delete(): void;
+  deleteLater(): this;
+  isDeleted(): boolean;
+  clone(): this;
+}
+export interface Test extends ClassHandle {
   x: number;
   readonly y: number;
   get stringProperty(): string;
@@ -30,11 +37,9 @@ export interface Test {
   longFn(_0: number): number;
   functionThree(_0: EmbindString): number;
   functionSix(str: EmbindString): number;
-  delete(): void;
 }
 
-export interface Obj {
-  delete(): void;
+export interface Obj extends ClassHandle {
 }
 
 export interface BarValue<T extends number> {
@@ -49,69 +54,59 @@ export type EmptyEnum = never/* Empty Enumerator */;
 
 export type ValArrIx = [ Bar, Bar, Bar, Bar ];
 
-export interface IntVec {
+export interface IntVec extends ClassHandle {
   push_back(_0: number): void;
   resize(_0: number, _1: number): void;
   size(): number;
   get(_0: number): number | undefined;
   set(_0: number, _1: number): boolean;
-  delete(): void;
 }
 
-export interface MapIntInt {
+export interface MapIntInt extends ClassHandle {
   keys(): IntVec;
   get(_0: number): number | undefined;
   set(_0: number, _1: number): void;
   size(): number;
-  delete(): void;
 }
 
-export interface Foo {
+export interface Foo extends ClassHandle {
   process(_0: Test): void;
-  delete(): void;
 }
 
-export interface ClassWithConstructor {
+export interface ClassWithConstructor extends ClassHandle {
   fn(_0: number): number;
-  delete(): void;
 }
 
-export interface ClassWithTwoConstructors {
-  delete(): void;
+export interface ClassWithTwoConstructors extends ClassHandle {
 }
 
-export interface ClassWithSmartPtrConstructor {
+export interface ClassWithSmartPtrConstructor extends ClassHandle {
   fn(_0: number): number;
-  delete(): void;
 }
 
-export type ValObj = {
-  foo: Foo,
-  bar: Bar,
-  callback: (message: string) => void
-};
-
-export interface BaseClass {
+export interface BaseClass extends ClassHandle {
   fn(_0: number): number;
-  delete(): void;
 }
 
 export interface DerivedClass extends BaseClass {
   fn2(_0: number): number;
-  delete(): void;
 }
 
-export interface Interface {
+export interface Interface extends ClassHandle {
   invoke(_0: EmbindString): void;
-  delete(): void;
 }
 
 export interface InterfaceWrapper extends Interface {
   notifyOnDestruction(): void;
-  delete(): void;
 }
 
 export type ValArr = [ number, number, number ];
+
+export type ValObj = {
+  string: EmbindString,
+  bar: Bar,
+  callback: (message: string) => void
+};
 
 interface EmbindModule {
   Test: {
@@ -163,6 +158,8 @@ interface EmbindModule {
   smart_ptr_function(_0: ClassWithSmartPtrConstructor | null): number;
   smart_ptr_function_with_params(foo: ClassWithSmartPtrConstructor | null): number;
   function_with_callback_param(_0: (message: string) => void): number;
+  getValObj(): ValObj;
+  setValObj(_0: ValObj): void;
   string_test(_0: EmbindString): string;
   wstring_test(_0: string): string;
 }

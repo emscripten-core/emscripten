@@ -1,6 +1,5 @@
 env.__cxa_throw
 env._abort_js
-env._emscripten_memcpy_js
 env._tzset_js
 env._wasmfs_copy_preloaded_file_data
 env._wasmfs_get_num_preloaded_dirs
@@ -15,6 +14,6 @@ env.emscripten_date_now
 env.emscripten_err
 env.emscripten_out
 env.emscripten_resize_heap
-env.getentropy
 wasi_snapshot_preview1.environ_get
 wasi_snapshot_preview1.environ_sizes_get
+wasi_snapshot_preview1.random_get

@@ -23,12 +23,19 @@ cachelock = None
 cachelock_name = None
 
 
+def is_writable(path):
+  return os.access(path, os.W_OK)
+
+
 def acquire_cache_lock(reason):
   global acquired_count
   if config.FROZEN_CACHE:
     # Raise an exception here rather than exit_with_error since in practice this
     # should never happen
     raise Exception('Attempt to lock the cache but FROZEN_CACHE is set')
+
+  if not is_writable(cachedir):
+    utils.exit_with_error(f'cache directory "{cachedir}" is not writable while accessing cache for: {reason} (see https://emscripten.org/docs/tools_reference/emcc.html for info on setting the cache directory)')
 
   if acquired_count == 0:
     logger.debug(f'PID {os.getpid()} acquiring multiprocess file lock to Emscripten cache at {cachedir}')
@@ -67,7 +74,11 @@ def lock(reason):
 
 def ensure():
   ensure_setup()
-  utils.safe_ensure_dirs(cachedir)
+  if not os.path.isdir(cachedir):
+    try:
+      utils.safe_ensure_dirs(cachedir)
+    except Exception as e:
+      utils.exit_with_error(f'unable to create cache directory "{cachedir}": {e} (see https://emscripten.org/docs/tools_reference/emcc.html for info on setting the cache directory)')
 
 
 def erase():

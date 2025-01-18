@@ -55,10 +55,6 @@ def fix_js_engine(old, new):
   return new
 
 
-def root_is_writable():
-  return os.access(__rootpath__, os.W_OK)
-
-
 def normalize_config_settings():
   global CACHE, PORTS, LLVM_ADD_VERSION, CLANG_ADD_VERSION, CLOSURE_COMPILER
   global NODE_JS, NODE_JS_TEST, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
@@ -80,16 +76,7 @@ def normalize_config_settings():
   WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
   CLOSURE_COMPILER = listify(CLOSURE_COMPILER)
   if not CACHE:
-    if FROZEN_CACHE or root_is_writable():
-      CACHE = path_from_root('cache')
-    else:
-      # Use the legacy method of putting the cache in the user's home directory
-      # if the emscripten root is not writable.
-      # This is useful mostly for read-only installation and perhaps could
-      # be removed in the future since such installations should probably be
-      # setting a specific cache location.
-      logger.debug('Using home-directory for emscripten cache due to read-only root')
-      CACHE = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
+    CACHE = path_from_root('cache')
   if not PORTS:
     PORTS = os.path.join(CACHE, 'ports')
 
@@ -147,8 +134,11 @@ def parse_config_file():
       if env_value in ('', '0'):
         env_value = None
       # Unlike the other keys these two should always be lists.
-      if key in ('JS_ENGINES', 'WASM_ENGINES'):
+      if env_var in ('EM_JS_ENGINES', 'EM_WASM_ENGINES'):
         env_value = env_value.split(',')
+      if env_var in ('EM_CONFIG', 'EM_CACHE', 'EM_PORTS', 'EM_LLVM_ROOT', 'EM_BINARYEN_ROOT'):
+        if not os.path.isabs(env_value):
+          exit_with_error(f'environment variable {env_var} must be an absolute path: {env_value}')
       globals()[key] = env_value
     elif key in config:
       globals()[key] = config[key]
@@ -274,10 +264,6 @@ def find_config_file():
     return emsdk_embedded_config
 
   if os.path.isfile(user_home_config):
-    return user_home_config
-
-  # No config file found.  Return the default location.
-  if not root_is_writable():
     return user_home_config
 
   return embedded_config

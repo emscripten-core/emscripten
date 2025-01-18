@@ -65,7 +65,7 @@ void* thread_main(void* arg) {
 
 #endif
 
-EM_BOOL main_loop(double time, void *userData) {
+bool main_loop(double time, void *userData) {
   if (addr == 0x300000000ull) {
     // Burn one second to make sure worker finishes its test.
     emscripten_out("main: seen worker running");
@@ -80,9 +80,9 @@ EM_BOOL main_loop(double time, void *userData) {
     pthread_join(t, NULL);
 #endif
 
-    return EM_FALSE;
+    return false;
   }
-  return EM_TRUE;
+  return true;
 }
 
 int main() {

@@ -284,17 +284,21 @@ ${argConversions}
 
     // apply LIBRARY_DEBUG if relevant
     if (LIBRARY_DEBUG && !isJsOnlySymbol(symbol)) {
-      snippet = modifyJSFunction(
-        snippet,
-        (args, body, async) => `\
+      snippet = modifyJSFunction(snippet, (args, body, async, oneliner) => {
+        var run_func;
+        if (oneliner) {
+          run_func = `var ret = ${body}`;
+        } else {
+          run_func = `var ret = (() => { ${body} })();`;
+        }
+        return `\
 function(${args}) {
-  var ret = (() => { if (runtimeDebug) err("[library call:${mangled}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
-  ${body}
-  })();
-  if (runtimeDebug && typeof ret != "undefined") err("  [     return:" + prettyPrint(ret));
+  if (runtimeDebug) err("[library call:${mangled}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
+  ${run_func}
+  if (runtimeDebug) err("  [     return:" + prettyPrint(ret));
   return ret;
-}`,
-      );
+}`;
+      });
     }
 
     const sig = LibraryManager.library[symbol + '__sig'];
@@ -322,7 +326,7 @@ function(${args}) {
       if (proxyingMode !== 'sync' && proxyingMode !== 'async' && proxyingMode !== 'none') {
         throw new Error(`Invalid proxyingMode ${symbol}__proxy: '${proxyingMode}' specified!`);
       }
-      if (SHARED_MEMORY) {
+      if (SHARED_MEMORY && proxyingMode != 'none') {
         const sync = proxyingMode === 'sync';
         if (PTHREADS) {
           snippet = modifyJSFunction(snippet, (args, body, async_, oneliner) => {
@@ -334,7 +338,7 @@ function(${args}) {
               MEMORY64 && rtnType == 'p' ? 'proxyToMainThreadPtr' : 'proxyToMainThread';
             deps.push('$' + proxyFunc);
             return `
-function(${args}) {
+${async_}function(${args}) {
 if (ENVIRONMENT_IS_PTHREAD)
   return ${proxyFunc}(${proxiedFunctionTable.length}, 0, ${+sync}${args ? ', ' : ''}${args});
 ${body}
@@ -581,7 +585,7 @@ function(${args}) {
           return dep();
         }
         // $noExitRuntime is special since there are conditional usages of it
-        // in library.js and library_pthread.js.  These happen before deps are
+        // in libcore.js and libpthread.js.  These happen before deps are
         // processed so depending on it via `__deps` doesn't work.
         if (dep === '$noExitRuntime') {
           error(
@@ -640,7 +644,11 @@ function(${args}) {
       // asm module exports are done in emscripten.py, after the asm module is ready. Here
       // we also export library methods as necessary.
       if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
-        contentText += `\nModule['${mangled}'] = ${mangled};`;
+        if (MODULARIZE === 'instance') {
+          contentText += `\n__exp_${mangled} = ${mangled};`;
+        } else {
+          contentText += `\nModule['${mangled}'] = ${mangled};`;
+        }
       }
       // Relocatable code needs signatures to create proper wrappers.
       if (sig && RELOCATABLE) {
@@ -737,10 +745,6 @@ var proxiedFunctionTable = [
 `);
     }
 
-    if (errorOccured()) {
-      throw Error('Aborting compilation due to previous errors');
-    }
-
     // This is the main 'post' pass. Print out the generated code
     // that we have here, together with the rest of the output
     // that we started to print out earlier (see comment on the
@@ -756,6 +760,10 @@ var proxiedFunctionTable = [
 
     if (MODULARIZE) {
       includeFile('postamble_modularize.js');
+    }
+
+    if (errorOccured()) {
+      throw Error('Aborting compilation due to previous errors');
     }
 
     print(
