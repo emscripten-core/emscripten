@@ -26,7 +26,7 @@ export default [{
     '**/third_party/',
     '**/test/',
     'src/polyfill/',
-    'src/library*.js',
+    'src/lib/',
     'src/runtime_*.js',
     'src/shell*.js',
     'src/preamble*.js',
