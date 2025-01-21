@@ -779,6 +779,11 @@ def phase_setup(options, state, newargs):
     if arg in CLANG_FLAGS_WITH_ARGS:
       skip = True
 
+    def get_next_arg():
+      if len(newargs) <= i + 1:
+        exit_with_error(f"option '{arg}' requires an argument")
+      return newargs[i + 1]
+
     if not arg.startswith('-'):
       # we already removed -o <target>, so all these should be inputs
       newargs[i] = ''
@@ -797,7 +802,7 @@ def phase_setup(options, state, newargs):
       state.add_link_flag(i, arg)
     elif arg == '-z':
       state.add_link_flag(i, newargs[i])
-      state.add_link_flag(i + 1, newargs[i + 1])
+      state.add_link_flag(i + 1, get_next_arg())
     elif arg.startswith('-z'):
       state.add_link_flag(i, newargs[i])
     elif arg.startswith('--js-library='):
@@ -810,7 +815,7 @@ def phase_setup(options, state, newargs):
       for flag_index, flag in enumerate(link_flags_to_add):
         state.add_link_flag(i + float(flag_index) / len(link_flags_to_add), flag)
     elif arg == '-Xlinker':
-      state.add_link_flag(i + 1, newargs[i + 1])
+      state.add_link_flag(i + 1, get_next_arg())
     elif arg == '-s':
       state.add_link_flag(i, newargs[i])
     elif arg == '-':
@@ -1154,7 +1159,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
         return True
       if arg == name:
         if len(newargs) <= i + 1:
-          exit_with_error("option '%s' requires an argument" % arg)
+          exit_with_error(f"option '{arg}' requires an argument")
         arg_value = newargs[i + 1]
         newargs[i] = ''
         newargs[i + 1] = ''
