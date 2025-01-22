@@ -101,10 +101,11 @@ CLANG_FLAGS_WITH_ARGS = {
 
 @unique
 class Mode(Enum):
-  PREPROCESS_ONLY = auto()
-  PCH = auto()
+  # Used any time we are not linking, including PCH, pre-processing, etc
   COMPILE_ONLY = auto()
+  # Only when --post-link is specified
   POST_LINK_ONLY = auto()
+  # This is the default mode, in the absence of any flags such as -c, -E, etc
   COMPILE_AND_LINK = auto()
 
 
@@ -649,7 +650,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   # settings until we reach the linking phase.
   settings.limit_settings(COMPILE_TIME_SETTINGS)
 
-  phase_setup(options, state, newargs)
+  phase_setup(options, state)
 
   if options.reproduce:
     create_reproduce_file(options.reproduce, args)
@@ -657,7 +658,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if state.mode == Mode.POST_LINK_ONLY:
     if len(options.input_files) != 1:
       exit_with_error('--post-link requires a single input file')
-    separate_linker_flags(options, state, newargs)
+    separate_linker_flags(state, newargs)
     # Delay import of link.py to avoid processing this file when only compiling
     from tools import link
     link.run_post_link(options.input_files[0], options, state)
@@ -742,7 +743,7 @@ def phase_parse_arguments(state):
   return options, newargs
 
 
-def separate_linker_flags(options, state, newargs):
+def separate_linker_flags(state, newargs):
   newargs = list(newargs)
 
   if settings.RUNTIME_LINKED_LIBS:
@@ -818,7 +819,7 @@ def separate_linker_flags(options, state, newargs):
 
 
 @ToolchainProfiler.profile_block('setup')
-def phase_setup(options, state, newargs):
+def phase_setup(options, state):
   """Second phase: configure and setup the compiler based on the specified settings and arguments.
   """
 
@@ -826,14 +827,10 @@ def phase_setup(options, state, newargs):
 
   if options.post_link:
     state.mode = Mode.POST_LINK_ONLY
-  elif options.dash_E or options.dash_M:
-    state.mode = Mode.PREPROCESS_ONLY
-  elif has_header_inputs:
-    state.mode = Mode.PCH
-  elif options.dash_c or options.dash_S or options.syntax_only:
+  elif has_header_inputs or options.dash_c or options.dash_S or options.syntax_only or options.dash_E or options.dash_M:
     state.mode = Mode.COMPILE_ONLY
 
-  if state.mode in (Mode.COMPILE_ONLY, Mode.PREPROCESS_ONLY):
+  if state.mode == Mode.COMPILE_ONLY:
     for key in user_settings:
       if key not in COMPILE_TIME_SETTINGS:
         diagnostics.warning(
@@ -983,23 +980,6 @@ def phase_compile_inputs(options, state, newargs):
   def get_clang_command_asm():
     return compiler + get_target_flags()
 
-  # preprocessor-only (-E/-M) support
-  if state.mode == Mode.PREPROCESS_ONLY:
-    cmd = get_clang_command() + newargs
-    # Do not compile, but just output the result from preprocessing stage or
-    # output the dependency rule. Warning: clang and gcc behave differently
-    # with -MF! (clang seems to not recognize it)
-    logger.debug(('just preprocessor: ' if options.dash_E else 'just dependencies: ') + ' '.join(cmd))
-    shared.exec_process(cmd)
-    assert False, 'exec_process does not return'
-
-  # Precompiled headers support
-  if state.mode == Mode.PCH:
-    cmd = get_clang_command() + newargs
-    logger.debug(f"running (for precompiled headers): {cmd[0]} {' '.join(cmd[1:])}")
-    shared.exec_process(cmd)
-    assert False, 'exec_process does not return'
-
   if state.mode == Mode.COMPILE_ONLY:
     if options.output_file and get_file_suffix(options.output_file) == '.bc' and not settings.LTO and '-emit-llvm' not in state.orig_args:
       diagnostics.warning('emcc', '.bc output file suffix used without -flto or -emit-llvm.  Consider using .o extension since emcc will output an object file, not a bitcode file')
@@ -1014,7 +994,7 @@ def phase_compile_inputs(options, state, newargs):
   # filter out the link flags
   assert state.mode == Mode.COMPILE_AND_LINK
   assert not options.dash_c
-  compile_args, input_files = separate_linker_flags(options, state, newargs)
+  compile_args, input_files = separate_linker_flags(state, newargs)
   compile_args = filter_out_link_flags(compile_args)
   linker_inputs = []
   seen_names = {}
