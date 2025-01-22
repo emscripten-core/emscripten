@@ -36,7 +36,7 @@ from . import extract_metadata
 from .utils import read_file, write_file, delete_file
 from .utils import removeprefix, exit_with_error
 from .shared import in_temp, safe_copy, do_replace, OFormat
-from .shared import DEBUG, WINDOWS, DYNAMICLIB_ENDINGS
+from .shared import DEBUG, WINDOWS, DYLIB_EXTENSIONS
 from .shared import unsuffixed, unsuffixed_basename, get_file_suffix
 from .settings import settings, default_setting, user_settings, JS_ONLY_SETTINGS, DEPRECATED_SETTINGS
 from .minimal_runtime_shell import generate_minimal_runtime_html
@@ -56,7 +56,7 @@ DEFAULT_ASYNCIFY_EXPORTS = [
 
 VALID_ENVIRONMENTS = ('web', 'webview', 'worker', 'node', 'shell')
 
-EXECUTABLE_ENDINGS = ['.wasm', '.html', '.js', '.mjs', '.out', '']
+EXECUTABLE_EXTENSIONS = ['.wasm', '.html', '.js', '.mjs', '.out', '']
 
 # Supported LLD flags which we will pass through to the linker.
 SUPPORTED_LINKER_FLAGS = (
@@ -742,7 +742,7 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
     # we support a compatibility mode where shared libraries are actually just
     # object files linked with `wasm-ld --relocatable` or `llvm-link` in the case
     # of LTO.
-    if final_suffix in EXECUTABLE_ENDINGS:
+    if final_suffix in EXECUTABLE_EXTENSIONS:
       diagnostics.warning('emcc', '-shared/-r used with executable output suffix. This behaviour is deprecated.  Please remove -shared/-r to build an executable or avoid the executable suffix (%s) when building object files.' % final_suffix)
     else:
       if options.shared:
@@ -2828,7 +2828,7 @@ def process_libraries(state):
       # when statically linking.  The native linker (wasm-ld) will otherwise
       # ignore .so files in this mode.
       found_dylib = False
-      for ext in DYNAMICLIB_ENDINGS:
+      for ext in DYLIB_EXTENSIONS:
         name = 'lib' + lib + ext
         path = find_library(name, state.lib_dirs)
         if path:
@@ -2892,7 +2892,7 @@ class ScriptSource:
 def filter_out_dynamic_libs(options, inputs):
   # Filters out "fake" dynamic libraries that are really just intermediate object files.
   def check(input_file):
-    if get_file_suffix(input_file) in DYNAMICLIB_ENDINGS and not building.is_wasm_dylib(input_file):
+    if get_file_suffix(input_file) in DYLIB_EXTENSIONS and not building.is_wasm_dylib(input_file):
       if not options.ignore_dynamic_linking:
         diagnostics.warning('emcc', 'ignoring dynamic library %s because not compiling to JS or HTML, remember to link it when compiling to JS or HTML at the end', os.path.basename(input_file))
       return False
@@ -2908,7 +2908,7 @@ def filter_out_duplicate_dynamic_libs(inputs):
   # Filter out duplicate "fake" shared libraries (intermediate object files).
   # See test_core.py:test_redundant_link
   def check(input_file):
-    if get_file_suffix(input_file) in DYNAMICLIB_ENDINGS and not building.is_wasm_dylib(input_file):
+    if get_file_suffix(input_file) in DYLIB_EXTENSIONS and not building.is_wasm_dylib(input_file):
       abspath = os.path.abspath(input_file)
       if abspath in seen:
         return False
