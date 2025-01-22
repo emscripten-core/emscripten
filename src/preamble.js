@@ -229,7 +229,6 @@ function preMain() {
 #if PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
-  <<< ATMAINS >>>
   callRuntimeCallbacks(__ATMAIN__);
 }
 #endif

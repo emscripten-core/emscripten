@@ -731,8 +731,6 @@ function makeEval(code) {
   return ret;
 }
 
-export const ATMAINS = [];
-
 export const ATINITS = [];
 
 function addAtInit(code) {

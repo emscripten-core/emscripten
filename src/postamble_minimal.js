@@ -13,8 +13,6 @@ function run() {
   emscriptenMemoryProfiler.onPreloadComplete();
 #endif
 
-  <<< ATMAINS >>>
-
 #if PROXY_TO_PTHREAD
   // User requested the PROXY_TO_PTHREAD option, so call a stub main which
   // pthread_create()s a new thread that will call the user's real main() for
