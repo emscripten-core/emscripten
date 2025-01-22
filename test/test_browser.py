@@ -1585,17 +1585,20 @@ simulateKeyUp(100, undefined, 'Numpad4');
                  args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
-  def test_glfw(self):
-    # Using only the `-l` flag
-    self.btest_exit('test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-lglfw', '-lGL', '-sGL_ENABLE_GET_PROC_ADDRESS'])
-    # Using only the `-s` flag
-    self.btest_exit('test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-sUSE_GLFW=2', '-lGL', '-sGL_ENABLE_GET_PROC_ADDRESS'])
-    # Using both `-s` and `-l` flags
-    self.btest_exit('test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-sUSE_GLFW=2', '-lglfw', '-lGL', '-sGL_ENABLE_GET_PROC_ADDRESS'])
+  @parameterized({
+    '': (['-lglfw'],),
+    's_flag': (['-sUSE_GLFW=2'],),
+    'both_flags': (['-sUSE_GLFW=2', '-lglfw'],),
+  })
+  def test_glfw(self, args):
+    self.btest_exit('test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-lGL', '-sGL_ENABLE_GET_PROC_ADDRESS'] + args)
 
-  def test_glfw_minimal(self):
-    self.btest_exit('test_glfw_minimal.c', args=['-lglfw', '-lGL'])
-    self.btest_exit('test_glfw_minimal.c', args=['-sUSE_GLFW=2', '-lglfw', '-lGL'])
+  @parameterized({
+    '': ([],),
+    's_flag': (['-sUSE_GLFW=2'],),
+  })
+  def test_glfw_minimal(self, args):
+    self.btest_exit('test_glfw_minimal.c', args=['-lglfw', '-lGL'] + args)
 
   def test_glfw_time(self):
     self.btest_exit('test_glfw_time.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
@@ -2759,6 +2762,24 @@ Module["preRun"] = () => {
     self.btest_exit('test_webgl2_runtime_no_context.cpp', args=['-sMAX_WEBGL_VERSION=2'])
 
   @requires_graphics_hardware
+  def test_webgl_context_major_version(self):
+    # testing that majorVersion accepts only valid values
+    self.btest('test_webgl_context_major_version.c', expected='abort:Expected Error: Invalid WebGL version requested: 0', args=['-lGL', '-DWEBGL_CONTEXT_MAJOR_VERSION=0'])
+    self.btest('test_webgl_context_major_version.c', expected='abort:Expected Error: Invalid WebGL version requested: 3', args=['-lGL', '-DWEBGL_CONTEXT_MAJOR_VERSION=3'])
+
+    # no linker flag (equivalent to -sMIN_WEBGL_VERSION=1 -sMAX_WEBGL_VERSION=1) => only 1 allowed
+    self.btest_exit('test_webgl_context_major_version.c', args=['-lGL', '-DWEBGL_CONTEXT_MAJOR_VERSION=1'])
+    self.btest('test_webgl_context_major_version.c', expected='abort:Expected Error: WebGL 2 requested but only WebGL 1 is supported (set -sMAX_WEBGL_VERSION=2 to fix the problem)', args=['-lGL', '-DWEBGL_CONTEXT_MAJOR_VERSION=2'])
+
+    # -sMIN_WEBGL_VERSION=2 => only 2 allowed
+    self.btest('test_webgl_context_major_version.c', expected='abort:Expected Error: WebGL 1 requested but only WebGL 2 is supported (MIN_WEBGL_VERSION is 2)', args=['-lGL', '-sMIN_WEBGL_VERSION=2', '-DWEBGL_CONTEXT_MAJOR_VERSION=1'])
+    self.btest_exit('test_webgl_context_major_version.c', args=['-lGL', '-sMIN_WEBGL_VERSION=2', '-DWEBGL_CONTEXT_MAJOR_VERSION=2'])
+
+    # -sMAX_WEBGL_VERSION=2 => 1 and 2 are ok
+    self.btest_exit('test_webgl_context_major_version.c', args=['-lGL', '-sMAX_WEBGL_VERSION=2', '-DWEBGL_CONTEXT_MAJOR_VERSION=1'])
+    self.btest_exit('test_webgl_context_major_version.c', args=['-lGL', '-sMAX_WEBGL_VERSION=2', '-DWEBGL_CONTEXT_MAJOR_VERSION=2'])
+
+  @requires_graphics_hardware
   def test_webgl2_invalid_teximage2d_type(self):
     self.btest_exit('webgl2_invalid_teximage2d_type.cpp', args=['-sMAX_WEBGL_VERSION=2'])
 
@@ -2889,8 +2910,8 @@ Module["preRun"] = () => {
 
   @requires_graphics_hardware
   @parameterized({
+    '': (['-DCLIENT_API=GLFW_OPENGL_ES_API', '-sGL_ENABLE_GET_PROC_ADDRESS'],),
     'no_gl': (['-DCLIENT_API=GLFW_NO_API'],),
-    'gl_es': (['-DCLIENT_API=GLFW_OPENGL_ES_API', '-sGL_ENABLE_GET_PROC_ADDRESS'],)
   })
   @parameterized({
     '': ([],),
@@ -2898,7 +2919,7 @@ Module["preRun"] = () => {
     'closure': (['-Os', '--closure=1'],),
   })
   def test_glfw3(self, args, opts):
-    self.btest('test_glfw3.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'] + args + opts, expected='1')
+    self.btest_exit('test_glfw3.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'] + args + opts)
 
   @parameterized({
     '': (['-sUSE_GLFW=2', '-DUSE_GLFW=2'],),
@@ -5499,6 +5520,20 @@ Module["preRun"] = () => {
       self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool'])
     shutil.copy('webpack/src/hello.wasm', 'webpack/dist/')
     self.run_browser('webpack/dist/index.html', '/report_result?exit:0')
+
+  def test_vite(self):
+    shutil.copytree(test_file('vite'), 'vite')
+    with common.chdir('vite'):
+      self.compile_btest('hello_world.c', ['-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sMODULARIZE', '-o', 'hello.mjs'])
+      self.run_process(shared.get_npm_cmd('vite') + ['build'])
+    self.run_browser('vite/dist/index.html', '/report_result?exit:0')
+
+  def test_rollup(self):
+    shutil.copytree(test_file('rollup'), 'rollup')
+    with common.chdir('rollup'):
+      self.compile_btest('hello_world.c', ['-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sMODULARIZE', '-o', 'hello.mjs'])
+      self.run_process(shared.get_npm_cmd('rollup') + ['--config'])
+    self.run_browser('rollup/index.html', '/report_result?exit:0')
 
 
 class emrun(RunnerCore):

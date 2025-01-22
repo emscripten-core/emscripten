@@ -73,7 +73,6 @@ UNSUPPORTED_LLD_FLAGS = {
     '-bind_at_load': False,
     # wasm-ld doesn't support soname or other dynamic linking flags (yet).   Ignore them
     # in order to aid build systems that want to pass these flags.
-    '-soname': True,
     '-allow-shlib-undefined': False,
     '-rpath': True,
     '-rpath-link': True,
@@ -220,7 +219,7 @@ def get_js_sym_info():
   input_files.extend(read_file(jslib) for jslib in sorted(jslibs))
   for jslib in settings.JS_LIBRARIES:
     if not os.path.isabs(jslib):
-      jslib = utils.path_from_root('src', jslib)
+      jslib = utils.path_from_root('src/lib', jslib)
     input_files.append(read_file(jslib))
   content = '\n'.join(input_files)
   content_hash = hashlib.sha1(content.encode('utf-8')).hexdigest()
@@ -432,7 +431,7 @@ def get_binaryen_passes():
     extras = settings.BINARYEN_EXTRA_PASSES.split(',')
     passes += [('--' + p) if p[0] != '-' else p for p in extras if p]
 
-  # Run the translator to the new standardized EH instructions with exnref
+  # Run the translator to the standardized EH instructions.
   if not settings.WASM_LEGACY_EXCEPTIONS:
     passes += ['--emit-exnref']
 
@@ -646,7 +645,9 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
   system_libpath = '-L' + str(cache.get_lib_dir(absolute=True))
+  system_js_path = '-L' + utils.path_from_root('src', 'lib')
   state.append_link_flag(system_libpath)
+  state.append_link_flag(system_js_path)
 
   # We used to do this check during on startup during `check_sanity`, but
   # we now only do it when linking, in order to reduce the overhead when
@@ -1240,7 +1241,7 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
       state.append_link_flag('--no-whole-archive')
     settings.FILESYSTEM = 1
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
-    settings.JS_LIBRARIES.append('library_wasmfs.js')
+    settings.JS_LIBRARIES.append('libwasmfs.js')
     if settings.ASSERTIONS:
       # used in assertion checks for unflushed content
       settings.REQUIRED_EXPORTS += ['wasmfs_flush']
@@ -1362,14 +1363,14 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
 
   if settings.PTHREADS:
     setup_pthreads()
-    settings.JS_LIBRARIES.append('library_pthread.js')
+    settings.JS_LIBRARIES.append('libpthread.js')
     if settings.PROXY_TO_PTHREAD:
       settings.PTHREAD_POOL_SIZE_STRICT = 0
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$runtimeKeepalivePush']
   else:
     if settings.PROXY_TO_PTHREAD:
       exit_with_error('-sPROXY_TO_PTHREAD requires -pthread to work!')
-    settings.JS_LIBRARIES.append('library_pthread_stub.js')
+    settings.JS_LIBRARIES.append('libpthread_stub.js')
 
   if settings.MEMORY64:
     # Any "pointers" passed to JS will now be i64's, in both modes.
@@ -1383,7 +1384,7 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
     # set location of Wasm Worker bootstrap JS file
     if settings.WASM_WORKERS == 1:
       settings.WASM_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.ww.js'
-    settings.JS_LIBRARIES.append('library_wasm_worker.js')
+    settings.JS_LIBRARIES.append('libwasm_worker.js')
 
   # Set min browser versions based on certain settings such as WASM_BIGINT,
   # PTHREADS, AUDIO_WORKLET
@@ -1401,7 +1402,7 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
   if settings.AUDIO_WORKLET:
     if settings.AUDIO_WORKLET == 1:
       settings.AUDIO_WORKLET_FILE = unsuffixed(os.path.basename(target)) + '.aw.js'
-    settings.JS_LIBRARIES.append(shared.path_from_root('src', 'library_webaudio.js'))
+    settings.JS_LIBRARIES.append('libwebaudio.js')
     if not settings.MINIMAL_RUNTIME:
       # If we are in the audio worklet environment, we can only access the Module object
       # and not the global scope of the main JS script. Therefore we need to export
@@ -1459,7 +1460,7 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
 
   # When not declaring wasm module exports in outer scope one by one, disable minifying
   # wasm module export names so that the names can be passed directly to the outer scope.
-  # Also, if using library_exports.js API, disable minification so that the feature can work.
+  # Also, if using libexports.js API, disable minification so that the feature can work.
   if not settings.DECLARE_ASM_MODULE_EXPORTS or state.has_link_flag('-lexports.js'):
     settings.MINIFY_WASM_EXPORT_NAMES = 0
 
@@ -1964,6 +1965,7 @@ def run_embind_gen(wasm_target, js_syms, extra_settings, linker_inputs):
   # Save settings so they can be restored after TS generation.
   original_settings = settings.backup()
   settings.attrs.update(extra_settings)
+  settings.EMBIND_GEN_MODE = True
 
   if settings.MAIN_MODULE and linker_inputs:
     # Copy libraries to the temp directory so they can be used when running
@@ -2001,16 +2003,11 @@ def run_embind_gen(wasm_target, js_syms, extra_settings, linker_inputs):
   setup_environment_settings()
   # Use a separate Wasm file so the JS does not need to be modified after emscripten.emscript.
   settings.SINGLE_FILE = False
-  if settings.ASYNCIFY == 2:
-    # JSPI is not needed to generate the definitions.
-    # TODO: when the emsdk node version supports JSPI, it probably makes more sense
-    # to enable it in node than disabling the setting here.
-    settings.ASYNCIFY = 0
   # Embind may be included multiple times, de-duplicate the list first.
   settings.JS_LIBRARIES = dedup_list(settings.JS_LIBRARIES)
   # Replace embind with the TypeScript generation version.
-  embind_index = settings.JS_LIBRARIES.index('embind/embind.js')
-  settings.JS_LIBRARIES[embind_index] = 'embind/embind_gen.js'
+  embind_index = settings.JS_LIBRARIES.index('libembind.js')
+  settings.JS_LIBRARIES[embind_index] = 'libembind_gen.js'
   if settings.MEMORY64:
     settings.MIN_NODE_VERSION = 160000
   # Source maps haven't been generated yet and aren't needed to run embind_gen.
@@ -2736,23 +2733,23 @@ def map_to_js_libs(library_name):
   """
   # Some native libraries are implemented in Emscripten as system side JS libraries
   library_map = {
-    'embind': ['embind/embind.js', 'embind/emval.js'],
-    'EGL': ['library_egl.js'],
-    'GL': ['library_webgl.js', 'library_html5_webgl.js'],
-    'webgl.js': ['library_webgl.js', 'library_html5_webgl.js'],
-    'GLESv2': ['library_webgl.js'],
+    'embind': ['libembind.js', 'libemval.js'],
+    'EGL': ['libegl.js'],
+    'GL': ['libwebgl.js', 'libhtml5_webgl.js'],
+    'webgl.js': ['libwebgl.js', 'libhtml5_webgl.js'],
+    'GLESv2': ['libwebgl.js'],
     # N.b. there is no GLESv3 to link to (note [f] in https://www.khronos.org/registry/implementers_guide.html)
-    'GLEW': ['library_glew.js'],
-    'glfw': ['library_glfw.js'],
-    'glfw3': ['library_glfw.js'],
+    'GLEW': ['libglew.js'],
+    'glfw': ['libglfw.js'],
+    'glfw3': ['libglfw.js'],
     'GLU': [],
-    'glut': ['library_glut.js'],
-    'openal': ['library_openal.js'],
-    'X11': ['library_xlib.js'],
-    'SDL': ['library_sdl.js'],
-    'uuid': ['library_uuid.js'],
-    'fetch': ['library_fetch.js'],
-    'websocket': ['library_websocket.js'],
+    'glut': ['libglut.js'],
+    'openal': ['libopenal.js'],
+    'X11': ['libxlib.js'],
+    'SDL': ['libsdl.js'],
+    'uuid': ['libuuid.js'],
+    'fetch': ['libfetch.js'],
+    'websocket': ['libwebsocket.js'],
     # These 4 libraries are separate under glibc but are all rolled into
     # libc with musl.  For compatibility with glibc we just ignore them
     # completely.
@@ -2780,12 +2777,6 @@ def map_to_js_libs(library_name):
     libs = library_map[library_name]
     logger.debug('Mapping library `%s` to JS libraries: %s' % (library_name, libs))
     return libs
-
-  # TODO(sbc): Remove this special handling for system libraries by renaming
-  # the system libraries from `library_foo.js` to `libfoo.js` (the latter is
-  # the more standard name by which `-l` flags resolve libraries).
-  if library_name.endswith('.js') and os.path.isfile(utils.path_from_root('src', f'library_{library_name}')):
-    return [f'library_{library_name}']
 
   return None
 

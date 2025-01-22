@@ -50,7 +50,7 @@ lint.ignore = [
   "PLW2901",
 ]
 lint.per-file-ignores."emrun.py" = [ "PLE0704" ]
-lint.mccabe.max-complexity = 49 # Recommended: 10
+lint.mccabe.max-complexity = 51 # Recommended: 10
 lint.pylint.allow-magic-value-types = [
   "bytes",
   "float",

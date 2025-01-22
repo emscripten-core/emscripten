@@ -457,7 +457,7 @@ function JSDCE(ast, aggressive) {
     cleanUp(ast, names);
     return removed;
   }
-  while (iteration() && aggressive) {}
+  while (iteration() && aggressive) {} // eslint-disable-line no-empty
 }
 
 // Aggressive JSDCE - multiple iterations
@@ -1275,8 +1275,6 @@ function growableHeap(ast) {
             makeCallExpression(node, 'GROWABLE_HEAP_F64', []);
             break;
           }
-          default: {
-          }
         }
       }
     },
@@ -1419,8 +1417,6 @@ function asanify(ast) {
             makeCallExpression(node, '_asan_js_store_d', [ptr, value]);
             break;
           }
-          default: {
-          }
         }
       } else {
         c(target);
@@ -1465,8 +1461,6 @@ function asanify(ast) {
           case 'HEAPF64': {
             makeCallExpression(node, '_asan_js_load_d', [ptr]);
             break;
-          }
-          default: {
           }
         }
       }
@@ -1615,8 +1609,6 @@ function safeHeap(ast) {
             ]);
             break;
           }
-          default: {
-          }
         }
       }
     },
@@ -1660,7 +1652,7 @@ function ensureMinifiedNames(n) {
     if (!RESERVED.has(name)) minifiedNames.push(name);
     // increment the state
     let i = 0;
-    while (1) {
+    while (true) {
       minifiedState[i]++;
       if (minifiedState[i] < (i === 0 ? VALID_MIN_INITS : VALID_MIN_LATERS).length) break;
       // overflow
@@ -1739,7 +1731,7 @@ function minifyLocals(ast) {
     let nextMinifiedName = 0;
 
     function getNextMinifiedName() {
-      while (1) {
+      while (true) {
         ensureMinifiedNames(nextMinifiedName);
         const minified = minifiedNames[nextMinifiedName++];
         // TODO: we can probably remove !isLocalName here
@@ -1958,10 +1950,10 @@ function reattachComments(ast, commentsMap) {
       trace('dropping comments: no symbol comes after them');
       break;
     }
-    if (symbols[j].start.pos - pos > 20) {
-      // This comment is too far away to refer to the given symbol. Drop
-      // the comment altogether.
-      trace('dropping comments: too far from any symbol');
+    if (symbols[j].start.pos != pos) {
+      // This comment must have been associated with a node that still
+      // exists in the AST, otherwise to drop it.
+      trace('dropping comments: not linked to any remaining AST node');
       continue;
     }
     symbols[j].start.comments_before ??= [];

@@ -585,7 +585,7 @@ function(${args}) {
           return dep();
         }
         // $noExitRuntime is special since there are conditional usages of it
-        // in library.js and library_pthread.js.  These happen before deps are
+        // in libcore.js and libpthread.js.  These happen before deps are
         // processed so depending on it via `__deps` doesn't work.
         if (dep === '$noExitRuntime') {
           error(
@@ -745,10 +745,6 @@ var proxiedFunctionTable = [
 `);
     }
 
-    if (errorOccured()) {
-      throw Error('Aborting compilation due to previous errors');
-    }
-
     // This is the main 'post' pass. Print out the generated code
     // that we have here, together with the rest of the output
     // that we started to print out earlier (see comment on the
@@ -764,6 +760,10 @@ var proxiedFunctionTable = [
 
     if (MODULARIZE) {
       includeFile('postamble_modularize.js');
+    }
+
+    if (errorOccured()) {
+      throw Error('Aborting compilation due to previous errors');
     }
 
     print(

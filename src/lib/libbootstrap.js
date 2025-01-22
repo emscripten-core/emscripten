@@ -8,7 +8,7 @@
 // it itself depends on the struct info information.
 
 #if !BOOTSTRAPPING_STRUCT_INFO
-assert(false, "library_bootstrap.js only designed for use with BOOTSTRAPPING_STRUCT_INFO")
+assert(false, "libbootstrap.js only designed for use with BOOTSTRAPPING_STRUCT_INFO")
 #endif
 
 assert(Object.keys(LibraryManager.library).length === 0);
