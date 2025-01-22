@@ -487,23 +487,12 @@ FS.staticInit();
       stream.stream_ops?.dup?.(stream);
       return stream;
     },
-    streamGetAttr(stream) {
-      var node = stream.node;
-      var res = stream.stream_ops?.getattr?.(stream) ?? node.node_ops?.getattr?.(node);
-      if (res) {
-        return res;
-      }
-      throw new FS.ErrnoError({{{ cDefs.EPERM }}});
-    },
-    streamSetAttr(stream, attr) {
-      var node = stream.node;
-      var set;
-      if (set = stream.stream_ops.setattr) {
-        return set(stream, attr);
-      } else if (set = node.node_ops.setattr) {
-        return set(node, attr);
-      }
-      throw new FS.ErrnoError({{{ cDefs.EPERM }}});
+    doSetAttr(stream, node, attr) {
+      var setattr = stream?.stream_ops.setattr;
+      var arg = setattr ? stream : node;
+      setattr ??= node.node_ops.setattr;
+      FS.checkOpExists(setattr, {{{ cDefs.EPERM }}})
+      setattr(arg, attr);
     },
 
     //
@@ -985,10 +974,21 @@ FS.staticInit();
     },
     fstat(fd) {
       var stream = FS.getStreamChecked(fd);
-      return FS.streamGetAttr(stream);
+      var getattr = stream.stream_ops.getattr;
+      var arg = getattr ? stream : node;
+      getattr ??= node.node_ops.getattr;
+      FS.checkOpExists(getattr, {{{ cDefs.EPERM }}})
+      return getattr(arg);
     },
     lstat(path) {
       return FS.stat(path, true);
+    },
+    doChmod(stream, node, mode, dontFollow) {
+      FS.doSetAttr(stream, node, {
+        mode: (mode & {{{ cDefs.S_IALLUGO }}}) | (node.mode & ~{{{ cDefs.S_IALLUGO }}}),
+        ctime: Date.now(),
+        dontFollow
+      });
     },
     chmod(path, mode, dontFollow) {
       var node;
@@ -998,21 +998,20 @@ FS.staticInit();
       } else {
         node = path;
       }
-      var setattr = FS.checkOpExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
-      setattr(node, {
-        mode: (mode & {{{ cDefs.S_IALLUGO }}}) | (node.mode & ~{{{ cDefs.S_IALLUGO }}}),
-        ctime: Date.now(),
-        dontFollow
-      });
+      FS.doChmod(null, node, dontFollow);
     },
     lchmod(path, mode) {
       FS.chmod(path, mode, true);
     },
     fchmod(fd, mode) {
       var stream = FS.getStreamChecked(fd);
-      FS.streamSetAttr(stream, {
-        mode: (mode & {{{ cDefs.S_IALLUGO }}}) | (stream.node.mode & ~{{{ cDefs.S_IALLUGO }}}),
-        ctime: Date.now()
+      FS.doChmod(stream, stream.node, false);
+    },
+    doChown(stream, node, dontFollow) {
+      FS.doSetAttr(stream, node, {
+        timestamp: Date.now(),
+        dontFollow
+        // we ignore the uid / gid for now
       });
     },
     chown(path, uid, gid, dontFollow) {
@@ -1023,24 +1022,16 @@ FS.staticInit();
       } else {
         node = path;
       }
-      var setattr = FS.checkOpExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
-      setattr(node, {
-        timestamp: Date.now(),
-        dontFollow
-        // we ignore the uid / gid for now
-      });
+      FS.doChown(null, node, dontFollow);
     },
     lchown(path, uid, gid) {
       FS.chown(path, uid, gid, true);
     },
     fchown(fd, uid, gid) {
       var stream = FS.getStreamChecked(fd);
-      FS.streamSetAttr(stream, {
-        timestamp: Date.now()
-        // we ignore the uid / gid for now
-      });
+      FS.doChown(stream, stream.node, dontFollow);
     },
-    truncateChecks(node) {
+    doTruncate(stream, node, len) {
       if (FS.isDir(node.mode)) {
         throw new FS.ErrnoError({{{ cDefs.EISDIR }}});
       }
@@ -1051,6 +1042,10 @@ FS.staticInit();
       if (errCode) {
         throw new FS.ErrnoError(errCode);
       }
+      FS.doSetAttr(stream, node, {
+        size: len,
+        timestamp: Date.now()
+      });
     },
     truncate(path, len) {
       if (len < 0) {
@@ -1063,23 +1058,14 @@ FS.staticInit();
       } else {
         node = path;
       }
-      FS.truncateChecks(node);
-      var setattr = FS.checkOpExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
-      setattr(node, {
-        size: len,
-        timestamp: Date.now()
-      });
+      FS.doTruncate(null, node, len);
     },
     ftruncate(fd, len) {
       var stream = FS.getStreamChecked(fd);
       if (len < 0 || (stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_RDONLY}}}) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
-      FS.truncateChecks(stream.node);
-      FS.streamSetAttr(stream, {
-        size: len,
-        timestamp: Date.now()
-      });
+      FS.doTruncate(stream, stream.node, len);
     },
     utime(path, atime, mtime) {
       var lookup = FS.lookupPath(path, { follow: true });
