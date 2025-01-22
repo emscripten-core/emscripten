@@ -40,7 +40,7 @@ from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, get_file_suffix
 from tools.shared import run_process, exit_with_error, DEBUG
 from tools.shared import in_temp, OFormat
-from tools.shared import DYNAMICLIB_ENDINGS
+from tools.shared import DYLIB_EXTENSIONS
 from tools.response_file import substitute_response_files
 from tools import config
 from tools import cache
@@ -59,17 +59,17 @@ if os.path.exists(utils.path_from_root('.git')) and os.path.exists(utils.path_fr
   bootstrap.check()
 
 # endings = dot + a suffix, compare against result of shared.suffix()
-C_ENDINGS = ['.c', '.i']
-CXX_ENDINGS = ['.cppm', '.pcm', '.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.C', '.CC', '.C++', '.ii']
-OBJC_ENDINGS = ['.m', '.mi']
-PREPROCESSED_ENDINGS = ['.i', '.ii']
-OBJCXX_ENDINGS = ['.mm', '.mii']
+C_EXTENSIONS = ['.c', '.i']
+CXX_EXTENSIONS = ['.cppm', '.pcm', '.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.C', '.CC', '.C++', '.ii']
+OBJC_EXTENSIONS = ['.m', '.mi']
+PREPROCESSED_EXTENSIONS = ['.i', '.ii']
+OBJCXX_EXTENSIONS = ['.mm', '.mii']
 SPECIAL_ENDINGLESS_FILENAMES = [os.devnull]
-C_ENDINGS += SPECIAL_ENDINGLESS_FILENAMES # consider the special endingless filenames like /dev/null to be C
+C_EXTENSIONS += SPECIAL_ENDINGLESS_FILENAMES # consider the special endingless filenames like /dev/null to be C
 
-SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + ['.bc', '.ll', '.S']
-ASSEMBLY_ENDINGS = ['.s']
-HEADER_ENDINGS = ['.h', '.hxx', '.hpp', '.hh', '.H', '.HXX', '.HPP', '.HH']
+SOURCE_EXTENSIONS = C_EXTENSIONS + CXX_EXTENSIONS + OBJC_EXTENSIONS + OBJCXX_EXTENSIONS + ['.bc', '.ll', '.S']
+ASSEMBLY_EXTENSIONS = ['.s']
+HEADER_EXTENSIONS = ['.h', '.hxx', '.hpp', '.hh', '.H', '.HXX', '.HPP', '.HH']
 
 # These symbol names are allowed in INCOMING_MODULE_JS_API but are not part of the
 # default set.
@@ -823,7 +823,7 @@ def phase_setup(options, state):
   """Second phase: configure and setup the compiler based on the specified settings and arguments.
   """
 
-  has_header_inputs = any(get_file_suffix(f) in HEADER_ENDINGS for f in options.input_files)
+  has_header_inputs = any(get_file_suffix(f) in HEADER_EXTENSIONS for f in options.input_files)
 
   if options.post_link:
     state.mode = Mode.POST_LINK_ONLY
@@ -983,7 +983,7 @@ def phase_compile_inputs(options, state, newargs):
   if state.mode == Mode.COMPILE_ONLY:
     if options.output_file and get_file_suffix(options.output_file) == '.bc' and not settings.LTO and '-emit-llvm' not in state.orig_args:
       diagnostics.warning('emcc', '.bc output file suffix used without -flto or -emit-llvm.  Consider using .o extension since emcc will output an object file, not a bitcode file')
-    if all(get_file_suffix(i) in ASSEMBLY_ENDINGS for i in options.input_files):
+    if all(get_file_suffix(i) in ASSEMBLY_EXTENSIONS for i in options.input_files):
       cmd = get_clang_command_asm() + newargs
     else:
       cmd = get_clang_command() + newargs
@@ -1011,9 +1011,9 @@ def phase_compile_inputs(options, state, newargs):
     logger.debug(f'compiling source file: {input_file}')
     output_file = get_object_filename(input_file)
     linker_inputs.append((i, output_file))
-    if get_file_suffix(input_file) in ASSEMBLY_ENDINGS:
+    if get_file_suffix(input_file) in ASSEMBLY_EXTENSIONS:
       cmd = get_clang_command_asm()
-    elif get_file_suffix(input_file) in PREPROCESSED_ENDINGS:
+    elif get_file_suffix(input_file) in PREPROCESSED_EXTENSIONS:
       cmd = get_clang_command_preprocessed()
     else:
       cmd = get_clang_command()
@@ -1037,9 +1037,9 @@ def phase_compile_inputs(options, state, newargs):
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   for i, input_file in input_files:
     file_suffix = get_file_suffix(input_file)
-    if file_suffix in SOURCE_ENDINGS + ASSEMBLY_ENDINGS or (options.dash_c and file_suffix == '.bc'):
+    if file_suffix in SOURCE_EXTENSIONS + ASSEMBLY_EXTENSIONS or (options.dash_c and file_suffix == '.bc'):
       compile_source_file(i, input_file)
-    elif file_suffix in DYNAMICLIB_ENDINGS:
+    elif file_suffix in DYLIB_EXTENSIONS:
       logger.debug(f'using shared library: {input_file}')
       linker_inputs.append((i, input_file))
     elif building.is_ar(input_file):
