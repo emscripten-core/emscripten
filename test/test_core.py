@@ -795,7 +795,7 @@ base align: 0, 0, 0, 0'''])
 
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
-  def test_emmalloc_usable_size(self, *args):
+  def test_emmalloc_usable_size(self):
     self.set_setting('MALLOC', 'emmalloc')
     self.do_core_test('test_malloc_usable_size.c', regex=True)
 
@@ -829,7 +829,7 @@ base align: 0, 0, 0, 0'''])
     self.do_core_test('test_emmalloc_trim.c')
 
   # Test case against https://github.com/emscripten-core/emscripten/issues/10363
-  def test_emmalloc_memalign_corruption(self, *args):
+  def test_emmalloc_memalign_corruption(self):
     self.set_setting('MALLOC', 'emmalloc')
     self.do_core_test('test_emmalloc_memalign_corruption.c')
 

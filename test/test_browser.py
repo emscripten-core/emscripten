@@ -4406,9 +4406,9 @@ Module["preRun"] = () => {
     # blitFramebuffer path on WebGL 2.0 (falls back to VAO on Firefox < 67)
     'gl2_no_aa': (['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=0'],),
   })
-  def test_webgl_offscreen_framebuffer_state_restoration(self, args, skip_vao=False):
-    cmd = args + ['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1']
-    self.btest_exit('webgl_offscreen_framebuffer_swap_with_bad_state.c', args=cmd)
+  def test_webgl_offscreen_framebuffer_state_restoration(self, args):
+    base_args = ['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1']
+    self.btest_exit('webgl_offscreen_framebuffer_swap_with_bad_state.c', args=base_args + args)
 
   @parameterized({
     '': ([],),
@@ -5017,7 +5017,7 @@ Module["preRun"] = () => {
     self.btest_exit('test_offset_converter.c', args=['-sUSE_OFFSET_CONVERTER', '-gsource-map'] + args)
 
   # Tests emscripten_unwind_to_js_event_loop() behavior
-  def test_emscripten_unwind_to_js_event_loop(self, *args):
+  def test_emscripten_unwind_to_js_event_loop(self):
     self.btest_exit('test_emscripten_unwind_to_js_event_loop.c')
 
   @requires_wasm2js
@@ -5358,7 +5358,7 @@ Module["preRun"] = () => {
     self.btest(test, args=args, expected='0')
 
   @no_firefox('no 4GB support yet')
-  def test_emmalloc_memgrowth(self, *args):
+  def test_emmalloc_memgrowth(self):
     if not self.is_4gb():
       self.set_setting('MAXIMUM_MEMORY', '4GB')
     self.btest_exit('emmalloc_memgrowth.cpp', args=['-sMALLOC=emmalloc', '-sALLOW_MEMORY_GROWTH=1', '-sABORTING_MALLOC=0', '-sASSERTIONS=2', '-sMINIMAL_RUNTIME=1'])

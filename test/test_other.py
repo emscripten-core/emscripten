@@ -426,15 +426,11 @@ class other(RunnerCore):
     self.assertContained('EXPORT_ES6 and ENVIRONMENT=*node* requires USE_ES6_IMPORT_META to be set', err)
 
   @parameterized({
-    '': (False,),
-    'package_json': (True,),
-  })
-  @parameterized({
     '': ([],),
     # load a worker before startup to check ES6 modules there as well
     'pthreads': (['-pthread', '-sPTHREAD_POOL_SIZE=1'],),
   })
-  def test_export_es6(self, package_json, args):
+  def test_export_es6(self, args):
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6',
                       '-o', 'hello.mjs'] + args)
     # In ES6 mode we use MODULARIZE, so we must instantiate an instance of the
@@ -5277,7 +5273,7 @@ int main() {
     'O1': [['-O1']],
   })
   def test_fs_after_main(self, args):
-    self.do_runf('test_fs_after_main.c', 'Test passed.')
+    self.do_runf('test_fs_after_main.c', 'Test passed.', emcc_args=args)
 
   def test_oz_size(self):
     sizes = {}
@@ -13725,7 +13721,7 @@ void foo() {}
     self.do_run_in_out_file_test('emscripten_console_log.c', emcc_args=['--pre-js', test_file('emscripten_console_log_pre.js')])
 
   # Tests emscripten_unwind_to_js_event_loop() behavior
-  def test_emscripten_unwind_to_js_event_loop(self, *args):
+  def test_emscripten_unwind_to_js_event_loop(self):
     self.do_runf('test_emscripten_unwind_to_js_event_loop.c')
 
   @node_pthreads
