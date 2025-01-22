@@ -183,6 +183,7 @@ class EmccOptions:
     self.dash_E = False
     self.dash_S = False
     self.dash_M = False
+    self.input_language = None
 
 
 def create_reproduce_file(name, args):
@@ -698,7 +699,7 @@ def phase_parse_arguments(state):
     settings.WARN_DEPRECATED = 0
 
   for i in range(len(newargs)):
-    if newargs[i] in ('-l', '-L', '-I', '-z', '--js-library', '-o'):
+    if newargs[i] in ('-l', '-L', '-I', '-z', '--js-library', '-o', '-x'):
       # Scan for flags that can be written as either one or two arguments
       # and normalize them to the single argument form.
       if newargs[i] == '--js-library':
@@ -951,20 +952,6 @@ def phase_compile_inputs(options, state, newargs):
 
   system_libs.ensure_sysroot()
 
-  def get_language_mode(args):
-    return_next = False
-    for item in args:
-      if return_next:
-        return item
-      if item == '-x':
-        return_next = True
-        continue
-      if item.startswith('-x'):
-        return removeprefix(item, '-x')
-    return ''
-
-  language_mode = get_language_mode(newargs)
-
   def get_clang_command():
     return compiler + get_cflags(state.orig_args)
 
@@ -1039,7 +1026,7 @@ def phase_compile_inputs(options, state, newargs):
     elif building.is_ar(input_file):
       logger.debug(f'using static library: {input_file}')
       linker_inputs.append((i, input_file))
-    elif language_mode:
+    elif options.input_language:
       compile_source_file(i, input_file)
     elif input_file == '-':
       exit_with_error('-E or -x required when input is from standard input')
@@ -1453,6 +1440,9 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       options.dash_E = True
     elif arg in ('-M', '-MM'):
       options.dash_M = True
+    elif arg.startswith('-x'):
+      # TODO(sbc): Handle multiple -x flags on the same command line
+      options.input_language = arg
     elif arg == '-fsyntax-only':
       options.syntax_only = True
     elif arg in SIMD_INTEL_FEATURE_TOWER or arg in SIMD_NEON_FLAGS:
