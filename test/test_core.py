@@ -8381,7 +8381,7 @@ Module.onRuntimeInitialized = () => {
     cmd = [PYTHON, path_from_root('tools/maybe_wasm2js.py'), 'test_hello_world.js', 'test_hello_world.wasm']
     if self.is_optimizing():
       cmd += ['-O2']
-    self.run_process(cmd, stdout=open('do_wasm2js.js', 'w')).stdout
+    self.run_process(cmd, stdout=open('do_wasm2js.js', 'w'))
     # remove the wasm to make sure we never use it again
     os.remove('test_hello_world.wasm')
     # verify that it runs
