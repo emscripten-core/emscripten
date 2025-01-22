@@ -690,8 +690,7 @@ var SyscallsLibrary = {
     return SYSCALLS.writeStat(buf, FS.lstat(path));
   },
   __syscall_fstat64: (fd, buf) => {
-    var stream = SYSCALLS.getStreamFromFD(fd);
-    return SYSCALLS.writeStat(buf, FS.stat(stream.path));
+    return SYSCALLS.writeStat(buf, FS.fstat(fd));
   },
   __syscall_fchown32: (fd, owner, group) => {
     FS.fchown(fd, owner, group);

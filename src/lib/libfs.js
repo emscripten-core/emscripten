@@ -965,6 +965,9 @@ FS.staticInit();
       var getattr = FS.checkOpExists(node.node_ops.getattr, {{{ cDefs.EPERM }}});
       return getattr(node);
     },
+    fstat(fd) {
+      return FS.stat(FS.getStreamChecked(fd).path);
+    },
     lstat(path) {
       return FS.stat(path, true);
     },

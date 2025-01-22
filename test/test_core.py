@@ -5842,6 +5842,15 @@ Module.onRuntimeInitialized = () => {
       self.set_setting('FORCE_FILESYSTEM')
     self.do_runf('fs/test_64bit.c', 'success')
 
+  @crossplatform
+  @with_all_fs
+  def test_fs_stat_unnamed_file_descriptor(self):
+    noderawfs = '-DNODERAWFS' in self.emcc_args
+    wasmfs = self.get_setting('WASMFS')
+    if not (noderawfs or wasmfs):
+      self.skipTest('TODO: doesnt work in memfs or nodefs')
+    self.do_runf('fs/test_stat_unnamed_file_descriptor.c', 'success')
+
   @requires_node
   @crossplatform
   @with_all_fs
