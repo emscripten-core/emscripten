@@ -424,7 +424,7 @@ def get_clang_flags(user_args):
 cflags = None
 
 
-def get_cflags(user_args, is_cxx):
+def get_cflags(user_args):
   global cflags
   if cflags:
     return cflags
@@ -447,17 +447,6 @@ def get_cflags(user_args, is_cxx):
     # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
     # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
     cflags.append('-DEMSCRIPTEN')
-
-  # Changes to default clang behavior
-
-  # Implicit functions can cause horribly confusing function pointer type errors, see #2175
-  # If your codebase really needs them - very unrecommended! - you can disable the error with
-  #   -Wno-error=implicit-function-declaration
-  # or disable even a warning about it with
-  #   -Wno-implicit-function-declaration
-  # This is already an error in C++ so we don't need to inject extra flags.
-  if not is_cxx:
-    cflags += ['-Werror=implicit-function-declaration']
 
   ports.add_cflags(cflags, settings)
 
@@ -984,10 +973,9 @@ def phase_compile_inputs(options, state, newargs):
     return ''
 
   language_mode = get_language_mode(newargs)
-  use_cxx = 'c++' in language_mode or shared.run_via_emxx
 
   def get_clang_command():
-    return compiler + get_cflags(state.orig_args, use_cxx)
+    return compiler + get_cflags(state.orig_args)
 
   def get_clang_command_preprocessed():
     return compiler + get_clang_flags(state.orig_args)
