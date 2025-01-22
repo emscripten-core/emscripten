@@ -6,7 +6,6 @@
 from .toolchain_profiler import ToolchainProfiler
 
 from enum import Enum, unique, auto
-from functools import wraps
 from subprocess import PIPE
 import atexit
 import json
@@ -40,7 +39,7 @@ elif EMCC_LOGGING:
 logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s', level=log_level)
 colored_logger.enable()
 
-from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS, set_version_globals
+from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS, set_version_globals, memoize
 from . import cache, tempfiles
 from . import diagnostics
 from . import config
@@ -271,22 +270,6 @@ def get_npm_cmd(name):
   if not os.path.exists(cmd[-1]):
     exit_with_error(f'{name} was not found! Please run "npm install" in Emscripten root directory to set up npm dependencies')
   return cmd
-
-
-# TODO(sbc): Replace with functools.cache, once we update to python 3.7
-def memoize(func):
-  called = False
-  result = None
-
-  @wraps(func)
-  def helper():
-    nonlocal called, result
-    if not called:
-      result = func()
-      called = True
-    return result
-
-  return helper
 
 
 @memoize

@@ -45,7 +45,7 @@ from tools.response_file import substitute_response_files
 from tools import config
 from tools import cache
 from tools.settings import default_setting, user_settings, settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
-from tools.utils import read_file, removeprefix
+from tools.utils import read_file, removeprefix, memoize
 from tools import feature_matrix
 
 logger = logging.getLogger('emcc')
@@ -422,14 +422,8 @@ def get_clang_flags(user_args):
   return flags
 
 
-cflags = None
-
-
+@memoize
 def get_cflags(user_args):
-  global cflags
-  if cflags:
-    return cflags
-
   # Flags we pass to the compiler when building C/C++ code
   # We add these to the user's flags (newargs), but not when building .s or .S assembly files
   cflags = get_clang_flags(user_args)
