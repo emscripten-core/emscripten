@@ -12646,8 +12646,8 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     self.assertContained("'string' file not found", err)
 
     # But it works if we pass and explicit language mode.
-    self.run_process([EMCC, '-c', 'cxxfoo.h', '-x', 'c++-header'])
-    self.run_process([EMCC, '-c', 'cxxfoo.h', '-x', 'c++'])
+    self.run_process([EMCC, '-x', 'c++-header', '-c', 'cxxfoo.h'])
+    self.run_process([EMCC, '-x', 'c++', '-c', 'cxxfoo.h'])
 
   @parameterized({
     '': ([],),
