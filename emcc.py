@@ -58,18 +58,17 @@ if os.path.exists(utils.path_from_root('.git')) and os.path.exists(utils.path_fr
   import bootstrap
   bootstrap.check()
 
-# endings = dot + a suffix, compare against result of shared.suffix()
-C_EXTENSIONS = ['.c', '.i']
-CXX_EXTENSIONS = ['.cppm', '.pcm', '.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.C', '.CC', '.C++', '.ii']
-OBJC_EXTENSIONS = ['.m', '.mi']
-PREPROCESSED_EXTENSIONS = ['.i', '.ii']
-OBJCXX_EXTENSIONS = ['.mm', '.mii']
-SPECIAL_ENDINGLESS_FILENAMES = [os.devnull]
-C_EXTENSIONS += SPECIAL_ENDINGLESS_FILENAMES # consider the special endingless filenames like /dev/null to be C
-
-SOURCE_EXTENSIONS = C_EXTENSIONS + CXX_EXTENSIONS + OBJC_EXTENSIONS + OBJCXX_EXTENSIONS + ['.bc', '.ll', '.S']
-ASSEMBLY_EXTENSIONS = ['.s']
-HEADER_EXTENSIONS = ['.h', '.hxx', '.hpp', '.hh', '.H', '.HXX', '.HPP', '.HH']
+PREPROCESSED_EXTENSIONS = {'.i', '.ii'}
+ASSEMBLY_EXTENSIONS = {'.s'}
+HEADER_EXTENSIONS = {'.h', '.hxx', '.hpp', '.hh', '.H', '.HXX', '.HPP', '.HH'}
+SOURCE_EXTENSIONS = {
+  '.c', '.i', # C
+  '.cppm', '.pcm', '.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.C', '.CC', '.C++', '.ii', # C++
+  '.m', '.mi', '.mm', '.mii', # ObjC/ObjC++
+  '.bc', '.ll', # LLVM IR
+  '.S', # asm with preprocessor
+  os.devnull # consider the special endingless filenames like /dev/null to be C
+} | PREPROCESSED_EXTENSIONS
 
 # These symbol names are allowed in INCOMING_MODULE_JS_API but are not part of the
 # default set.
@@ -1018,7 +1017,7 @@ def phase_compile_inputs(options, state, newargs):
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   for i, input_file in input_files:
     file_suffix = get_file_suffix(input_file)
-    if file_suffix in SOURCE_EXTENSIONS + ASSEMBLY_EXTENSIONS or (options.dash_c and file_suffix == '.bc'):
+    if file_suffix in SOURCE_EXTENSIONS | ASSEMBLY_EXTENSIONS or (options.dash_c and file_suffix == '.bc'):
       compile_source_file(i, input_file)
     elif file_suffix in DYLIB_EXTENSIONS:
       logger.debug(f'using shared library: {input_file}')
