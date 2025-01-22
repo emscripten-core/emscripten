@@ -1109,7 +1109,7 @@ class benchmark(common.RunnerCore):
       }
     ''' % DEFAULT_ARG)
 
-    def lib_builder(name, native, env_init):
+    def lib_builder(name, native, env_init):  # noqa
       return self.get_poppler_library(env_init=env_init)
 
     # TODO: Fix poppler native build and remove skip_native=True
