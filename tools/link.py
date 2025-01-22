@@ -1909,7 +1909,7 @@ def phase_link(linker_arguments, wasm_target, js_syms):
 
 
 @ToolchainProfiler.profile_block('post link')
-def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms, base_metadata=None, linker_inputs=None):
+def phase_post_link(options, in_wasm, wasm_target, target, js_syms, base_metadata=None, linker_inputs=None):
   global final_js
 
   target_basename = unsuffixed_basename(target)
@@ -1941,7 +1941,7 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms, base_
 
   # If we are not emitting any JS then we are all done now
   if options.oformat != OFormat.WASM:
-    phase_final_emitting(options, state, target, js_target, wasm_target)
+    phase_final_emitting(options, target, js_target, wasm_target)
 
 
 @ToolchainProfiler.profile_block('emscript')
@@ -2110,7 +2110,7 @@ def create_worker_file(input_file, target_dir, output_file, options):
 
 
 @ToolchainProfiler.profile_block('final emitting')
-def phase_final_emitting(options, state, target, js_target, wasm_target):
+def phase_final_emitting(options, target, js_target, wasm_target):
   global final_js
 
   if shared.SKIP_SUBPROCS:
@@ -3100,7 +3100,7 @@ def run_post_link(wasm_input, options, state):
   settings.limit_settings(None)
   target, wasm_target = phase_linker_setup(options, state)
   process_libraries(state)
-  phase_post_link(options, state, wasm_input, wasm_target, target, {})
+  phase_post_link(options, wasm_input, wasm_target, target, {})
 
 
 def run(linker_inputs, options, state):
@@ -3171,6 +3171,6 @@ def run(linker_inputs, options, state):
 
   # Perform post-link steps (unless we are running bare mode)
   if options.oformat != OFormat.BARE:
-    phase_post_link(options, state, wasm_target, wasm_target, target, js_syms, base_metadata, linker_inputs)
+    phase_post_link(options, wasm_target, wasm_target, target, js_syms, base_metadata, linker_inputs)
 
   return 0

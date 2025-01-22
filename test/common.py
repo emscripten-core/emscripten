@@ -1644,7 +1644,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       make_args = ['-j', str(shared.get_num_cores())]
 
     build_dir = self.get_build_dir()
-    output_dir = self.get_dir()
 
     emcc_args = []
     if not native:
@@ -1677,7 +1676,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     cflags = ' '.join(emcc_args)
     env_init.setdefault('CFLAGS', cflags)
     env_init.setdefault('CXXFLAGS', cflags)
-    return build_library(name, build_dir, output_dir, generated_libs, configure,
+    return build_library(name, build_dir, generated_libs, configure,
                          make, make_args, self.library_cache,
                          cache_name, env_init=env_init, native=native)
 
@@ -2359,7 +2358,6 @@ class BrowserCore(RunnerCore):
 
 def build_library(name,
                   build_dir,
-                  output_dir,
                   generated_libs,
                   configure,
                   make,

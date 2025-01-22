@@ -650,7 +650,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   # settings until we reach the linking phase.
   settings.limit_settings(COMPILE_TIME_SETTINGS)
 
-  phase_setup(options, state, newargs)
+  phase_setup(options, state)
 
   if options.reproduce:
     create_reproduce_file(options.reproduce, args)
@@ -658,7 +658,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if state.mode == Mode.POST_LINK_ONLY:
     if len(options.input_files) != 1:
       exit_with_error('--post-link requires a single input file')
-    separate_linker_flags(options, state, newargs)
+    separate_linker_flags(state, newargs)
     # Delay import of link.py to avoid processing this file when only compiling
     from tools import link
     link.run_post_link(options.input_files[0], options, state)
@@ -743,7 +743,7 @@ def phase_parse_arguments(state):
   return options, newargs
 
 
-def separate_linker_flags(options, state, newargs):
+def separate_linker_flags(state, newargs):
   newargs = list(newargs)
 
   if settings.RUNTIME_LINKED_LIBS:
@@ -819,7 +819,7 @@ def separate_linker_flags(options, state, newargs):
 
 
 @ToolchainProfiler.profile_block('setup')
-def phase_setup(options, state, newargs):
+def phase_setup(options, state):
   """Second phase: configure and setup the compiler based on the specified settings and arguments.
   """
 
@@ -994,7 +994,7 @@ def phase_compile_inputs(options, state, newargs):
   # filter out the link flags
   assert state.mode == Mode.COMPILE_AND_LINK
   assert not options.dash_c
-  compile_args, input_files = separate_linker_flags(options, state, newargs)
+  compile_args, input_files = separate_linker_flags(state, newargs)
   compile_args = filter_out_link_flags(compile_args)
   linker_inputs = []
   seen_names = {}
