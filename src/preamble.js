@@ -186,8 +186,8 @@ function preRun() {
     }
   }
 #endif
-  <<< ATPRERUN >>>
   callRuntimeCallbacks(__ATPRERUN__);
+  <<< ATPRERUN >>>
 }
 
 function initRuntime() {
