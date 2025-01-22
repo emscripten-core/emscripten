@@ -30,6 +30,7 @@ See docs/process.md for more on how version tagging works.
   a conflict between the `majorVersion` requested and the WebGL support defined
   via linker flags (`MIN_WEBGL_VERSION` and `MAX_WEBGL_VERSION`). This warning
   will be turned into a hard failure in a future release. (#23372, #23416)
+- zlib port updated from 1.2.13 to 1.3.1. (#23462)
 
 4.0.0 - 01/14/25
 ----------------
