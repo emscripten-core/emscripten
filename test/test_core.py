@@ -5848,11 +5848,12 @@ Module.onRuntimeInitialized = () => {
     self.do_runf('fs/test_64bit.c', 'success')
 
   @crossplatform
-  @also_with_nodefs_both
+  @with_all_fs
   def test_fs_stat_unnamed_file_descriptor(self):
     noderawfs = '-DNODERAWFS' in self.emcc_args
-    if not noderawfs:
-      self.skipTest('TODO: only works in noderawfs for now')
+    wasmfs = self.get_setting('WASMFS')
+    if not (noderawfs or wasmfs):
+      self.skipTest('TODO: doesnt work in memfs or nodefs')
     self.do_runf('fs/test_stat_unnamed_file_descriptor.c', 'success')
 
   @requires_node
