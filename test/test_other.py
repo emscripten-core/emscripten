@@ -10467,7 +10467,7 @@ int main() {
     # Check that dwp runs, and results in usable output as well
     self.run_process([LLVM_DWP, '-e', 'a.out.wasm', '-o', 'a.out.wasm.dwp'])
     self.assertExists('a.out.wasm.dwp')
-    self.run_process([LLVM_DWARFDUMP, 'a.out.wasm.dwp'], stdout=PIPE).stdout
+    self.run_process([LLVM_DWARFDUMP, 'a.out.wasm.dwp'], stdout=PIPE)
     self.assertIn('.debug_info.dwo contents:', dwdump)
     self.assertIn('DW_AT_GNU_dwo_name\t("hello_world.dwo")', dwdump)
     self.assertIn('DW_AT_name\t("main")', dwdump)

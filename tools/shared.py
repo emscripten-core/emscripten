@@ -252,7 +252,7 @@ def exec_process(cmd):
     os.execvp(cmd[0], cmd)
 
 
-def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: mutable default args
+def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: B006
   """Execute a javascript tool.
 
   This is used by emcc to run parts of the build process that are written

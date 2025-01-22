@@ -27,12 +27,9 @@ lint.select = [
 ]
 
 lint.ignore = [
-  "B006",
-  "B011",
-  "B018",
+  "B011", # See https://github.com/PyCQA/flake8-bugbear/issues/66
   "B023",
   "B026",
-  "B904",
   "E402",
   "E501",
   "E721",
