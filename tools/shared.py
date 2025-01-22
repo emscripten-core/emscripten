@@ -825,7 +825,6 @@ WASM_SOURCEMAP = bat_suffix(path_from_root('tools/wasm-sourcemap'))
 # Windows .dll suffix is not included in this list, since those are never
 # linked to directly on the command line.
 DYNAMICLIB_ENDINGS = ['.dylib', '.so']
-STATICLIB_ENDINGS = ['.a']
 
 run_via_emxx = False
 
