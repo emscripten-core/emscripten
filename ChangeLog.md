@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 4.0.1 (in development)
 ----------------------
+- The standard Wasm EH, enabled by `-sWASM_LEGACY_EXCEPTIONS=0`, now uses the
+- LLVM backend implementation rather than the previously used Binaryen
+  translator
+  (https://github.com/WebAssembly/binaryen/blob/main/src/passes/TranslateEH.cpp).
+  (#23469) No specific action from the user is required.
 - The system JS libraries in `src/` were renamed from `library_foo.js` to
   `lib/libfoo.js`. They are still included via the same `-lfoo.js` flag so
   this should not be a user-visible change. (#23348)
