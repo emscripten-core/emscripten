@@ -6575,6 +6575,25 @@ void* operator new(size_t size) {
     self.maybe_closure()
     self.do_runf(src, native_result)
 
+  # Tests invoking the SIMD API via x86 AVX2 avx2intrin.h header (_mm_x()/_mm256_x() functions)
+  @wasm_simd
+  @requires_native_clang
+  @is_slow_test
+  @no_asan('local count too large')
+  @no_ubsan('local count too large')
+  @parameterized({
+    '': ([],),
+    'nontrapping': (['-mnontrapping-fptoint'],)
+  })
+  def test_avx2(self, args):
+    src = test_file('sse/test_avx2.cpp')
+    self.run_process([shared.CLANG_CXX, src, '-mavx2', '-Wno-argument-outside-range', '-Wpedantic', '-o', 'test_avx2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    native_result = self.run_process('./test_avx2', stdout=PIPE).stdout
+
+    self.emcc_args += ['-I' + test_file('sse'), '-mavx2', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB'] + args
+    self.maybe_closure()
+    self.do_runf(src, native_result)
+
   @wasm_simd
   def test_sse_diagnostics(self):
     self.emcc_args.remove('-Werror')
