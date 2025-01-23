@@ -31,7 +31,7 @@ from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE, DEBUG
 from tools.utils import delete_dir
 
 
-def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, checksum, port):
+def test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
   class ChunkedServerHandler(BaseHTTPRequestHandler):
     def sendheaders(s, extra=None, length=None):
       length = length or len(data)
@@ -1722,7 +1722,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
     data = os.urandom(10 * chunkSize + 1) # 10 full chunks and one 1 byte chunk
     checksum = zlib.adler32(data) & 0xffffffff # Python 2 compatibility: force bigint
 
-    server = multiprocessing.Process(target=test_chunked_synchronous_xhr_server, args=(True, chunkSize, data, checksum, self.PORT))
+    server = multiprocessing.Process(target=test_chunked_synchronous_xhr_server, args=(True, data, self.PORT))
     server.start()
 
     # block until the server is actually ready
@@ -4406,9 +4406,9 @@ Module["preRun"] = () => {
     # blitFramebuffer path on WebGL 2.0 (falls back to VAO on Firefox < 67)
     'gl2_no_aa': (['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=0'],),
   })
-  def test_webgl_offscreen_framebuffer_state_restoration(self, args, skip_vao=False):
-    cmd = args + ['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1']
-    self.btest_exit('webgl_offscreen_framebuffer_swap_with_bad_state.c', args=cmd)
+  def test_webgl_offscreen_framebuffer_state_restoration(self, args):
+    base_args = ['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1']
+    self.btest_exit('webgl_offscreen_framebuffer_swap_with_bad_state.c', args=base_args + args)
 
   @parameterized({
     '': ([],),
@@ -5017,7 +5017,7 @@ Module["preRun"] = () => {
     self.btest_exit('test_offset_converter.c', args=['-sUSE_OFFSET_CONVERTER', '-gsource-map'] + args)
 
   # Tests emscripten_unwind_to_js_event_loop() behavior
-  def test_emscripten_unwind_to_js_event_loop(self, *args):
+  def test_emscripten_unwind_to_js_event_loop(self):
     self.btest_exit('test_emscripten_unwind_to_js_event_loop.c')
 
   @requires_wasm2js
@@ -5358,7 +5358,7 @@ Module["preRun"] = () => {
     self.btest(test, args=args, expected='0')
 
   @no_firefox('no 4GB support yet')
-  def test_emmalloc_memgrowth(self, *args):
+  def test_emmalloc_memgrowth(self):
     if not self.is_4gb():
       self.set_setting('MAXIMUM_MEMORY', '4GB')
     self.btest_exit('emmalloc_memgrowth.cpp', args=['-sMALLOC=emmalloc', '-sALLOW_MEMORY_GROWTH=1', '-sABORTING_MALLOC=0', '-sASSERTIONS=2', '-sMINIMAL_RUNTIME=1'])

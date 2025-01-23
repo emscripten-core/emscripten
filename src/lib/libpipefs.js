@@ -20,6 +20,7 @@ addToLibrary({
         // refcnt 2 because pipe has a read end and a write end. We need to be
         // able to read from the read end after write end is closed.
         refcnt : 2,
+        timestamp: new Date(),
       };
 
       pipe.buckets.push({
@@ -60,6 +61,25 @@ addToLibrary({
       };
     },
     stream_ops: {
+      getattr(stream) {
+        var node = stream.node;
+        var timestamp = node.pipe.timestamp;
+        return {
+          dev: 14,
+          ino: node.id,
+          mode: 0o10600,
+          nlink: 1,
+          uid: 0,
+          gid: 0,
+          rdev: 0,
+          size: 0,
+          atime: timestamp,
+          mtime: timestamp,
+          ctime: timestamp,
+          blksize: 4096,
+          blocks: 0,
+        };
+      },
       poll(stream) {
         var pipe = stream.node.pipe;
 

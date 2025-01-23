@@ -426,15 +426,11 @@ class other(RunnerCore):
     self.assertContained('EXPORT_ES6 and ENVIRONMENT=*node* requires USE_ES6_IMPORT_META to be set', err)
 
   @parameterized({
-    '': (False,),
-    'package_json': (True,),
-  })
-  @parameterized({
     '': ([],),
     # load a worker before startup to check ES6 modules there as well
     'pthreads': (['-pthread', '-sPTHREAD_POOL_SIZE=1'],),
   })
-  def test_export_es6(self, package_json, args):
+  def test_export_es6(self, args):
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6',
                       '-o', 'hello.mjs'] + args)
     # In ES6 mode we use MODULARIZE, so we must instantiate an instance of the
@@ -5277,7 +5273,7 @@ int main() {
     'O1': [['-O1']],
   })
   def test_fs_after_main(self, args):
-    self.do_runf('test_fs_after_main.c', 'Test passed.')
+    self.do_runf('test_fs_after_main.c', 'Test passed.', emcc_args=args)
 
   def test_oz_size(self):
     sizes = {}
@@ -9571,7 +9567,8 @@ int main() {
         print('header: ' + header)
         # These headers cannot be included in isolation.
         # e.g: error: unknown type name 'EGLDisplay'
-        if header in ['eglext.h', 'SDL_config_macosx.h', 'glext.h', 'gl2ext.h']:
+        # Don't include avxintrin.h and avx2inrin.h directly, include immintrin.h instead
+        if header in ['eglext.h', 'SDL_config_macosx.h', 'glext.h', 'gl2ext.h', 'avxintrin.h', 'avx2intrin.h']:
           continue
         # These headers are C++ only and cannot be included from C code.
         # But we still want to check they can be included on there own without
@@ -9585,7 +9582,9 @@ int main() {
         if directory and directory != 'compat':
           header = f'{directory}/{header}'
         inc = f'#include <{header}>\n__attribute__((weak)) int foo;\n'
-        cflags = ['-Werror', '-Wall', '-pedantic', '-mavx', '-msimd128', '-msse3']
+        cflags = ['-Werror', '-Wall', '-pedantic', '-msimd128', '-msse4']
+        if header == 'immintrin.h':
+          cflags.append('-mavx2')
         if cxx_only:
           create_file('a.cxx', inc)
           create_file('b.cxx', inc)
@@ -10471,7 +10470,7 @@ int main() {
     # Check that dwp runs, and results in usable output as well
     self.run_process([LLVM_DWP, '-e', 'a.out.wasm', '-o', 'a.out.wasm.dwp'])
     self.assertExists('a.out.wasm.dwp')
-    self.run_process([LLVM_DWARFDUMP, 'a.out.wasm.dwp'], stdout=PIPE).stdout
+    self.run_process([LLVM_DWARFDUMP, 'a.out.wasm.dwp'], stdout=PIPE)
     self.assertIn('.debug_info.dwo contents:', dwdump)
     self.assertIn('DW_AT_GNU_dwo_name\t("hello_world.dwo")', dwdump)
     self.assertIn('DW_AT_name\t("main")', dwdump)
@@ -13725,7 +13724,7 @@ void foo() {}
     self.do_run_in_out_file_test('emscripten_console_log.c', emcc_args=['--pre-js', test_file('emscripten_console_log_pre.js')])
 
   # Tests emscripten_unwind_to_js_event_loop() behavior
-  def test_emscripten_unwind_to_js_event_loop(self, *args):
+  def test_emscripten_unwind_to_js_event_loop(self):
     self.do_runf('test_emscripten_unwind_to_js_event_loop.c')
 
   @node_pthreads

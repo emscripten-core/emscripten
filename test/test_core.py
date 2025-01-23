@@ -795,7 +795,7 @@ base align: 0, 0, 0, 0'''])
 
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
-  def test_emmalloc_usable_size(self, *args):
+  def test_emmalloc_usable_size(self):
     self.set_setting('MALLOC', 'emmalloc')
     self.do_core_test('test_malloc_usable_size.c', regex=True)
 
@@ -829,7 +829,7 @@ base align: 0, 0, 0, 0'''])
     self.do_core_test('test_emmalloc_trim.c')
 
   # Test case against https://github.com/emscripten-core/emscripten/issues/10363
-  def test_emmalloc_memalign_corruption(self, *args):
+  def test_emmalloc_memalign_corruption(self):
     self.set_setting('MALLOC', 'emmalloc')
     self.do_core_test('test_emmalloc_memalign_corruption.c')
 
@@ -5842,6 +5842,13 @@ Module.onRuntimeInitialized = () => {
       self.set_setting('FORCE_FILESYSTEM')
     self.do_runf('fs/test_64bit.c', 'success')
 
+  @crossplatform
+  @with_all_fs
+  def test_fs_stat_unnamed_file_descriptor(self):
+    if '-DNODEFS' in self.emcc_args:
+      self.skipTest('TODO: doesnt work in nodefs')
+    self.do_runf('fs/test_stat_unnamed_file_descriptor.c', 'success')
+
   @requires_node
   @crossplatform
   @with_all_fs
@@ -6565,6 +6572,25 @@ void* operator new(size_t size) {
     native_result = self.run_process('./test_avx', stdout=PIPE).stdout
 
     self.emcc_args += ['-I' + test_file('sse'), '-mavx', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB'] + args
+    self.maybe_closure()
+    self.do_runf(src, native_result)
+
+  # Tests invoking the SIMD API via x86 AVX2 avx2intrin.h header (_mm_x()/_mm256_x() functions)
+  @wasm_simd
+  @requires_native_clang
+  @is_slow_test
+  @no_asan('local count too large')
+  @no_ubsan('local count too large')
+  @parameterized({
+    '': ([],),
+    'nontrapping': (['-mnontrapping-fptoint'],)
+  })
+  def test_avx2(self, args):
+    src = test_file('sse/test_avx2.cpp')
+    self.run_process([shared.CLANG_CXX, src, '-mavx2', '-Wno-argument-outside-range', '-Wpedantic', '-o', 'test_avx2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    native_result = self.run_process('./test_avx2', stdout=PIPE).stdout
+
+    self.emcc_args += ['-I' + test_file('sse'), '-mavx2', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB'] + args
     self.maybe_closure()
     self.do_runf(src, native_result)
 
@@ -8372,7 +8398,7 @@ Module.onRuntimeInitialized = () => {
     cmd = [PYTHON, path_from_root('tools/maybe_wasm2js.py'), 'test_hello_world.js', 'test_hello_world.wasm']
     if self.is_optimizing():
       cmd += ['-O2']
-    self.run_process(cmd, stdout=open('do_wasm2js.js', 'w')).stdout
+    self.run_process(cmd, stdout=open('do_wasm2js.js', 'w'))
     # remove the wasm to make sure we never use it again
     os.remove('test_hello_world.wasm')
     # verify that it runs

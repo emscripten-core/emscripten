@@ -25,6 +25,9 @@ See docs/process.md for more on how version tagging works.
   translator
   (https://github.com/WebAssembly/binaryen/blob/main/src/passes/TranslateEH.cpp).
   (#23469) No specific action from the user is required.
+- Added support for compiling AVX2 intrinsics, 256-bit wide intrinsic is emulated
+  on top of 128-bit Wasm SIMD instruction set. (#23035). Pass `-msimd128 -mavx2`
+  to enable targeting AVX2.
 - The system JS libraries in `src/` were renamed from `library_foo.js` to
   `lib/libfoo.js`. They are still included via the same `-lfoo.js` flag so
   this should not be a user-visible change. (#23348)

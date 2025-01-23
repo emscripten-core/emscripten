@@ -62,7 +62,7 @@ def process_changed_file(filename):
   return f'{filename}: {old_size} => {size} [{delta:+} bytes / {percent_delta:+.2f}%]\n'
 
 
-def main(argv):
+def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('-s', '--skip-tests', action='store_true', help="Don't actually run the tests, just analyze the existing results")
   parser.add_argument('-b', '--new-branch', action='store_true', help='Create a new branch containing the updates')
@@ -131,4 +131,4 @@ running the tests with `--rebaseline`:
 
 
 if __name__ == '__main__':
-  sys.exit(main(sys.argv))
+  sys.exit(main())

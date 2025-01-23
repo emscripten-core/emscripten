@@ -27,15 +27,9 @@ lint.select = [
 ]
 
 lint.ignore = [
-  "ARG001",
-  "ARG002",
-  "ARG005",
-  "B006",
-  "B011",
-  "B018",
+  "B011", # See https://github.com/PyCQA/flake8-bugbear/issues/66
   "B023",
   "B026",
-  "B904",
   "E402",
   "E501",
   "E721",
@@ -50,6 +44,10 @@ lint.ignore = [
   "PLW2901",
 ]
 lint.per-file-ignores."emrun.py" = [ "PLE0704" ]
+lint.per-file-ignores."tools/ports/*.py" = [ "ARG001", "ARG005" ]
+lint.per-file-ignores."test/other/ports/*.py" = [ "ARG001" ]
+lint.per-file-ignores."test/parallel_testsuite.py" = [ "ARG002" ]
+lint.per-file-ignores."test/test_benchmark.py" = [ "ARG002" ]
 lint.mccabe.max-complexity = 51 # Recommended: 10
 lint.pylint.allow-magic-value-types = [
   "bytes",

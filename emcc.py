@@ -40,12 +40,12 @@ from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, get_file_suffix
 from tools.shared import run_process, exit_with_error, DEBUG
 from tools.shared import in_temp, OFormat
-from tools.shared import DYNAMICLIB_ENDINGS
+from tools.shared import DYLIB_EXTENSIONS
 from tools.response_file import substitute_response_files
 from tools import config
 from tools import cache
 from tools.settings import default_setting, user_settings, settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
-from tools.utils import read_file, removeprefix
+from tools.utils import read_file, removeprefix, memoize
 from tools import feature_matrix
 
 logger = logging.getLogger('emcc')
@@ -58,18 +58,17 @@ if os.path.exists(utils.path_from_root('.git')) and os.path.exists(utils.path_fr
   import bootstrap
   bootstrap.check()
 
-# endings = dot + a suffix, compare against result of shared.suffix()
-C_ENDINGS = ['.c', '.i']
-CXX_ENDINGS = ['.cppm', '.pcm', '.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.C', '.CC', '.C++', '.ii']
-OBJC_ENDINGS = ['.m', '.mi']
-PREPROCESSED_ENDINGS = ['.i', '.ii']
-OBJCXX_ENDINGS = ['.mm', '.mii']
-SPECIAL_ENDINGLESS_FILENAMES = [os.devnull]
-C_ENDINGS += SPECIAL_ENDINGLESS_FILENAMES # consider the special endingless filenames like /dev/null to be C
-
-SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + ['.bc', '.ll', '.S']
-ASSEMBLY_ENDINGS = ['.s']
-HEADER_ENDINGS = ['.h', '.hxx', '.hpp', '.hh', '.H', '.HXX', '.HPP', '.HH']
+PREPROCESSED_EXTENSIONS = {'.i', '.ii'}
+ASSEMBLY_EXTENSIONS = {'.s'}
+HEADER_EXTENSIONS = {'.h', '.hxx', '.hpp', '.hh', '.H', '.HXX', '.HPP', '.HH'}
+SOURCE_EXTENSIONS = {
+  '.c', '.i', # C
+  '.cppm', '.pcm', '.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.C', '.CC', '.C++', '.ii', # C++
+  '.m', '.mi', '.mm', '.mii', # ObjC/ObjC++
+  '.bc', '.ll', # LLVM IR
+  '.S', # asm with preprocessor
+  os.devnull # consider the special endingless filenames like /dev/null to be C
+} | PREPROCESSED_EXTENSIONS
 
 # These symbol names are allowed in INCOMING_MODULE_JS_API but are not part of the
 # default set.
@@ -77,7 +76,7 @@ EXTRA_INCOMING_JS_API = [
   'fetchSettings'
 ]
 
-SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx']
+SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
 LINK_ONLY_FLAGS = {
     '--bind', '--closure', '--cpuprofiler', '--embed-file',
@@ -101,10 +100,11 @@ CLANG_FLAGS_WITH_ARGS = {
 
 @unique
 class Mode(Enum):
-  PREPROCESS_ONLY = auto()
-  PCH = auto()
+  # Used any time we are not linking, including PCH, pre-processing, etc
   COMPILE_ONLY = auto()
+  # Only when --post-link is specified
   POST_LINK_ONLY = auto()
+  # This is the default mode, in the absence of any flags such as -c, -E, etc
   COMPILE_AND_LINK = auto()
 
 
@@ -182,6 +182,7 @@ class EmccOptions:
     self.dash_E = False
     self.dash_S = False
     self.dash_M = False
+    self.input_language = None
 
 
 def create_reproduce_file(name, args):
@@ -421,14 +422,8 @@ def get_clang_flags(user_args):
   return flags
 
 
-cflags = None
-
-
+@memoize
 def get_cflags(user_args):
-  global cflags
-  if cflags:
-    return cflags
-
   # Flags we pass to the compiler when building C/C++ code
   # We add these to the user's flags (newargs), but not when building .s or .S assembly files
   cflags = get_clang_flags(user_args)
@@ -478,6 +473,9 @@ def get_cflags(user_args):
 
   if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[7:]):
     cflags += ['-D__AVX__=1']
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[8:]):
+    cflags += ['-D__AVX2__=1']
 
   if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
     cflags += ['-D__ARM_NEON__=1']
@@ -649,7 +647,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   # settings until we reach the linking phase.
   settings.limit_settings(COMPILE_TIME_SETTINGS)
 
-  phase_setup(options, state, newargs)
+  phase_setup(options, state)
 
   if options.reproduce:
     create_reproduce_file(options.reproduce, args)
@@ -657,7 +655,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if state.mode == Mode.POST_LINK_ONLY:
     if len(options.input_files) != 1:
       exit_with_error('--post-link requires a single input file')
-    separate_linker_flags(options, state, newargs)
+    separate_linker_flags(state, newargs)
     # Delay import of link.py to avoid processing this file when only compiling
     from tools import link
     link.run_post_link(options.input_files[0], options, state)
@@ -703,7 +701,7 @@ def phase_parse_arguments(state):
     settings.WARN_DEPRECATED = 0
 
   for i in range(len(newargs)):
-    if newargs[i] in ('-l', '-L', '-I', '-z', '--js-library', '-o'):
+    if newargs[i] in ('-l', '-L', '-I', '-z', '--js-library', '-o', '-x'):
       # Scan for flags that can be written as either one or two arguments
       # and normalize them to the single argument form.
       if newargs[i] == '--js-library':
@@ -742,24 +740,27 @@ def phase_parse_arguments(state):
   return options, newargs
 
 
-def separate_linker_flags(options, state, newargs):
-  newargs = list(newargs)
+def separate_linker_flags(state, newargs):
+  """Process argument list separating out input files, compiler flags
+  and linker flags.
+
+  - Linker flags are stored in state.link_flags
+  - Input files and compiler-only flags are returned as two separate lists.
+
+  Both linker flags and input files are stored as pairs of (i, entry) where
+  `i` is the orginal index in the command line arguments.  This allow the two
+  lists to be recombined in the correct order by the linker code (link.py).
+
+  Note that this index can have a fractional part for input arguments that
+  expand into multiple processed arguments, as in -Wl,-f1,-f2.
+  """
 
   if settings.RUNTIME_LINKED_LIBS:
     newargs += settings.RUNTIME_LINKED_LIBS
 
-  # Find input files
-
-  # These three arrays are used to store arguments of different types for
-  # type-specific processing. In order to shuffle the arguments back together
-  # after processing, all of these arrays hold tuples (original_index, value).
-  # Note that the index part of the tuple can have a fractional part for input
-  # arguments that expand into multiple processed arguments, as in -Wl,-f1,-f2.
   input_files = []
+  compiler_args = []
 
-  # find input files with a simple heuristic. we should really analyze
-  # based on a full understanding of gcc params, right now we just assume that
-  # what is left contains no more |-x OPT| things
   skip = False
   for i in range(len(newargs)):
     if skip:
@@ -775,28 +776,16 @@ def separate_linker_flags(options, state, newargs):
         exit_with_error(f"option '{arg}' requires an argument")
       return newargs[i + 1]
 
-    if not arg.startswith('-'):
-      # we already removed -o <target>, so all these should be inputs
-      newargs[i] = ''
+    if not arg.startswith('-') or arg == '-':
       # os.devnul should always be reported as existing but there is bug in windows
       # python before 3.8:
       # https://bugs.python.org/issue1311
-      if not os.path.exists(arg) and arg != os.devnull:
+      if not os.path.exists(arg) and arg not in (os.devnull, '-'):
         exit_with_error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)', arg, arg)
       input_files.append((i, arg))
-    elif arg.startswith('-o'):
-      newargs[i] = ''
-    elif arg.startswith('-L'):
-      state.add_link_flag(i, arg)
-    elif arg.startswith('-l'):
-      state.add_link_flag(i, arg)
     elif arg == '-z':
       state.add_link_flag(i, newargs[i])
       state.add_link_flag(i + 1, get_next_arg())
-    elif arg.startswith('-z'):
-      state.add_link_flag(i, newargs[i])
-    elif arg.startswith('--js-library='):
-      state.add_link_flag(i, newargs[i])
     elif arg.startswith('-Wl,'):
       # Multiple comma separated link flags can be specified. Create fake
       # fractional indices for these: -Wl,a,b,c,d at index 4 becomes:
@@ -808,32 +797,30 @@ def separate_linker_flags(options, state, newargs):
       state.add_link_flag(i + 1, get_next_arg())
     elif arg == '-s':
       state.add_link_flag(i, newargs[i])
-    elif arg == '-':
-      input_files.append((i, arg))
-      newargs[i] = ''
+    elif arg == '-s' or arg.startswith(('-l', '-L', '--js-library=', '-z')):
+      state.add_link_flag(i, arg)
+    elif not arg.startswith('-o') and arg not in ('-nostdlib', '-nostartfiles', '-nolibc', '-nodefaultlibs', '-s'):
+      # All other flags are for the compiler
+      compiler_args.append(arg)
+      if skip:
+        compiler_args.append(get_next_arg())
 
-  newargs = [a for a in newargs if a]
-
-  return newargs, input_files
+  return compiler_args, input_files
 
 
 @ToolchainProfiler.profile_block('setup')
-def phase_setup(options, state, newargs):
+def phase_setup(options, state):
   """Second phase: configure and setup the compiler based on the specified settings and arguments.
   """
 
-  has_header_inputs = any(get_file_suffix(f) in HEADER_ENDINGS for f in options.input_files)
+  has_header_inputs = any(get_file_suffix(f) in HEADER_EXTENSIONS for f in options.input_files)
 
   if options.post_link:
     state.mode = Mode.POST_LINK_ONLY
-  elif options.dash_E or options.dash_M:
-    state.mode = Mode.PREPROCESS_ONLY
-  elif has_header_inputs:
-    state.mode = Mode.PCH
-  elif options.dash_c or options.dash_S or options.syntax_only:
+  elif has_header_inputs or options.dash_c or options.dash_S or options.syntax_only or options.dash_E or options.dash_M:
     state.mode = Mode.COMPILE_ONLY
 
-  if state.mode in (Mode.COMPILE_ONLY, Mode.PREPROCESS_ONLY):
+  if state.mode == Mode.COMPILE_ONLY:
     for key in user_settings:
       if key not in COMPILE_TIME_SETTINGS:
         diagnostics.warning(
@@ -925,28 +912,6 @@ def phase_setup(options, state, newargs):
     default_setting('GL_ENABLE_GET_PROC_ADDRESS', 1)
 
 
-def filter_out_link_flags(args):
-  rtn = []
-
-  def is_link_flag(flag):
-    if flag in ('-nostdlib', '-nostartfiles', '-nolibc', '-nodefaultlibs', '-s'):
-      return True
-    return flag.startswith(('-l', '-L', '-Wl,', '-z', '--js-library'))
-
-  skip = False
-  for arg in args:
-    if skip:
-      skip = False
-      continue
-    if is_link_flag(arg):
-      continue
-    if arg == '-Xlinker':
-      skip = True
-      continue
-    rtn.append(arg)
-  return rtn
-
-
 @ToolchainProfiler.profile_block('compile inputs')
 def phase_compile_inputs(options, state, newargs):
   if shared.run_via_emxx:
@@ -960,20 +925,6 @@ def phase_compile_inputs(options, state, newargs):
 
   system_libs.ensure_sysroot()
 
-  def get_language_mode(args):
-    return_next = False
-    for item in args:
-      if return_next:
-        return item
-      if item == '-x':
-        return_next = True
-        continue
-      if item.startswith('-x'):
-        return removeprefix(item, '-x')
-    return ''
-
-  language_mode = get_language_mode(newargs)
-
   def get_clang_command():
     return compiler + get_cflags(state.orig_args)
 
@@ -983,27 +934,10 @@ def phase_compile_inputs(options, state, newargs):
   def get_clang_command_asm():
     return compiler + get_target_flags()
 
-  # preprocessor-only (-E/-M) support
-  if state.mode == Mode.PREPROCESS_ONLY:
-    cmd = get_clang_command() + newargs
-    # Do not compile, but just output the result from preprocessing stage or
-    # output the dependency rule. Warning: clang and gcc behave differently
-    # with -MF! (clang seems to not recognize it)
-    logger.debug(('just preprocessor: ' if options.dash_E else 'just dependencies: ') + ' '.join(cmd))
-    shared.exec_process(cmd)
-    assert False, 'exec_process does not return'
-
-  # Precompiled headers support
-  if state.mode == Mode.PCH:
-    cmd = get_clang_command() + newargs
-    logger.debug(f"running (for precompiled headers): {cmd[0]} {' '.join(cmd[1:])}")
-    shared.exec_process(cmd)
-    assert False, 'exec_process does not return'
-
   if state.mode == Mode.COMPILE_ONLY:
     if options.output_file and get_file_suffix(options.output_file) == '.bc' and not settings.LTO and '-emit-llvm' not in state.orig_args:
       diagnostics.warning('emcc', '.bc output file suffix used without -flto or -emit-llvm.  Consider using .o extension since emcc will output an object file, not a bitcode file')
-    if all(get_file_suffix(i) in ASSEMBLY_ENDINGS for i in options.input_files):
+    if all(get_file_suffix(i) in ASSEMBLY_EXTENSIONS for i in options.input_files):
       cmd = get_clang_command_asm() + newargs
     else:
       cmd = get_clang_command() + newargs
@@ -1014,8 +948,7 @@ def phase_compile_inputs(options, state, newargs):
   # filter out the link flags
   assert state.mode == Mode.COMPILE_AND_LINK
   assert not options.dash_c
-  compile_args, input_files = separate_linker_flags(options, state, newargs)
-  compile_args = filter_out_link_flags(compile_args)
+  compile_args, input_files = separate_linker_flags(state, newargs)
   linker_inputs = []
   seen_names = {}
 
@@ -1031,9 +964,9 @@ def phase_compile_inputs(options, state, newargs):
     logger.debug(f'compiling source file: {input_file}')
     output_file = get_object_filename(input_file)
     linker_inputs.append((i, output_file))
-    if get_file_suffix(input_file) in ASSEMBLY_ENDINGS:
+    if get_file_suffix(input_file) in ASSEMBLY_EXTENSIONS:
       cmd = get_clang_command_asm()
-    elif get_file_suffix(input_file) in PREPROCESSED_ENDINGS:
+    elif get_file_suffix(input_file) in PREPROCESSED_EXTENSIONS:
       cmd = get_clang_command_preprocessed()
     else:
       cmd = get_clang_command()
@@ -1057,15 +990,15 @@ def phase_compile_inputs(options, state, newargs):
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   for i, input_file in input_files:
     file_suffix = get_file_suffix(input_file)
-    if file_suffix in SOURCE_ENDINGS + ASSEMBLY_ENDINGS or (options.dash_c and file_suffix == '.bc'):
+    if file_suffix in SOURCE_EXTENSIONS | ASSEMBLY_EXTENSIONS or (options.dash_c and file_suffix == '.bc'):
       compile_source_file(i, input_file)
-    elif file_suffix in DYNAMICLIB_ENDINGS:
+    elif file_suffix in DYLIB_EXTENSIONS:
       logger.debug(f'using shared library: {input_file}')
       linker_inputs.append((i, input_file))
     elif building.is_ar(input_file):
       logger.debug(f'using static library: {input_file}')
       linker_inputs.append((i, input_file))
-    elif language_mode:
+    elif options.input_language:
       compile_source_file(i, input_file)
     elif input_file == '-':
       exit_with_error('-E or -x required when input is from standard input')
@@ -1479,6 +1412,9 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       options.dash_E = True
     elif arg in ('-M', '-MM'):
       options.dash_M = True
+    elif arg.startswith('-x'):
+      # TODO(sbc): Handle multiple -x flags on the same command line
+      options.input_language = arg
     elif arg == '-fsyntax-only':
       options.syntax_only = True
     elif arg in SIMD_INTEL_FEATURE_TOWER or arg in SIMD_NEON_FLAGS:
