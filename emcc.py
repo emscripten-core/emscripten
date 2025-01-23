@@ -738,23 +738,26 @@ def phase_parse_arguments(state):
 
 
 def separate_linker_flags(state, newargs):
-  newargs = list(newargs)
+  """Process argument list separating out intput files, compiler flags
+  and linker flags.
+
+  - Linker flags are stored in state.link_flags
+  - Input files and compiler-only flags are return as two separate lists.
+
+  Both linker flags and input files are stored as pairs of (i, entry) where
+  `i` is the orginal index in the command line arguments.  This allow the two
+  lists to be recombined in the correct order by the linker code (link.py).
+
+  Note that this index can have a fractional part for input arguments that
+  expand into multiple processed arguments, as in -Wl,-f1,-f2.
+  """
 
   if settings.RUNTIME_LINKED_LIBS:
     newargs += settings.RUNTIME_LINKED_LIBS
 
-  # Find input files
-
-  # These three arrays are used to store arguments of different types for
-  # type-specific processing. In order to shuffle the arguments back together
-  # after processing, all of these arrays hold tuples (original_index, value).
-  # Note that the index part of the tuple can have a fractional part for input
-  # arguments that expand into multiple processed arguments, as in -Wl,-f1,-f2.
   input_files = []
+  compiler_args = []
 
-  # find input files with a simple heuristic. we should really analyze
-  # based on a full understanding of gcc params, right now we just assume that
-  # what is left contains no more |-x OPT| things
   skip = False
   for i in range(len(newargs)):
     if skip:
@@ -770,28 +773,16 @@ def separate_linker_flags(state, newargs):
         exit_with_error(f"option '{arg}' requires an argument")
       return newargs[i + 1]
 
-    if not arg.startswith('-'):
-      # we already removed -o <target>, so all these should be inputs
-      newargs[i] = ''
+    if not arg.startswith('-') or arg == '-':
       # os.devnul should always be reported as existing but there is bug in windows
       # python before 3.8:
       # https://bugs.python.org/issue1311
-      if not os.path.exists(arg) and arg != os.devnull:
+      if not os.path.exists(arg) and arg not in (os.devnull, '-'):
         exit_with_error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)', arg, arg)
       input_files.append((i, arg))
-    elif arg.startswith('-o'):
-      newargs[i] = ''
-    elif arg.startswith('-L'):
-      state.add_link_flag(i, arg)
-    elif arg.startswith('-l'):
-      state.add_link_flag(i, arg)
     elif arg == '-z':
       state.add_link_flag(i, newargs[i])
       state.add_link_flag(i + 1, get_next_arg())
-    elif arg.startswith('-z'):
-      state.add_link_flag(i, newargs[i])
-    elif arg.startswith('--js-library='):
-      state.add_link_flag(i, newargs[i])
     elif arg.startswith('-Wl,'):
       # Multiple comma separated link flags can be specified. Create fake
       # fractional indices for these: -Wl,a,b,c,d at index 4 becomes:
@@ -803,13 +794,15 @@ def separate_linker_flags(state, newargs):
       state.add_link_flag(i + 1, get_next_arg())
     elif arg == '-s':
       state.add_link_flag(i, newargs[i])
-    elif arg == '-':
-      input_files.append((i, arg))
-      newargs[i] = ''
+    elif arg == '-s' or arg.startswith(('-l', '-L', '--js-library=', '-z')):
+      state.add_link_flag(i, arg)
+    elif not arg.startswith('-o') and arg not in ('-nostdlib', '-nostartfiles', '-nolibc', '-nodefaultlibs', '-s'):
+      # All other flags are for the compiler
+      compiler_args.append(arg)
+      if skip:
+        compiler_args.append(get_next_arg())
 
-  newargs = [a for a in newargs if a]
-
-  return newargs, input_files
+  return compiler_args, input_files
 
 
 @ToolchainProfiler.profile_block('setup')
@@ -916,28 +909,6 @@ def phase_setup(options, state):
     default_setting('GL_ENABLE_GET_PROC_ADDRESS', 1)
 
 
-def filter_out_link_flags(args):
-  rtn = []
-
-  def is_link_flag(flag):
-    if flag in ('-nostdlib', '-nostartfiles', '-nolibc', '-nodefaultlibs', '-s'):
-      return True
-    return flag.startswith(('-l', '-L', '-Wl,', '-z', '--js-library'))
-
-  skip = False
-  for arg in args:
-    if skip:
-      skip = False
-      continue
-    if is_link_flag(arg):
-      continue
-    if arg == '-Xlinker':
-      skip = True
-      continue
-    rtn.append(arg)
-  return rtn
-
-
 @ToolchainProfiler.profile_block('compile inputs')
 def phase_compile_inputs(options, state, newargs):
   if shared.run_via_emxx:
@@ -975,7 +946,6 @@ def phase_compile_inputs(options, state, newargs):
   assert state.mode == Mode.COMPILE_AND_LINK
   assert not options.dash_c
   compile_args, input_files = separate_linker_flags(state, newargs)
-  compile_args = filter_out_link_flags(compile_args)
   linker_inputs = []
   seen_names = {}
 
