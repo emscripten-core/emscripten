@@ -5853,12 +5853,10 @@ Module.onRuntimeInitialized = () => {
   @crossplatform
   @with_all_fs
   def test_fs_symlink_resolution(self):
-    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-    if nodefs:
-      if WINDOWS:
-        self.skipTest('No symlinks on Windows')
+    if nodefs and WINDOWS:
+      self.skipTest('No symlinks on Windows')
     self.do_runf('fs/test_fs_symlink_resolution.c', 'success')
 
   @with_all_fs
@@ -5914,7 +5912,7 @@ Module.onRuntimeInitialized = () => {
     # We also report all files as executable since there is no x bit
     # recorded there.
     # See https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/chmod-wchmod?view=msvc-170#remarks
-    if WINDOWS and '-DNODERAWFS' in self.emcc_args:
+    if WINDOWS and nodefs:
       out_suffix = '.win'
     else:
       out_suffix = ''
@@ -5942,7 +5940,6 @@ Module.onRuntimeInitialized = () => {
 
   @with_all_fs
   def test_unistd_truncate(self):
-    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
     if WINDOWS or os.geteuid() == 0:
@@ -5976,8 +5973,6 @@ Module.onRuntimeInitialized = () => {
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @with_all_fs
   def test_unistd_unlink(self):
-    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
-
     # symlinks on node.js on non-linux behave differently (e.g. on Windows they require administrative privileges)
     # so skip testing those bits on that combination.
     if '-DNODEFS' in self.emcc_args:
