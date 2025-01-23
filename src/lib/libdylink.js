@@ -168,7 +168,7 @@ var LibraryDylink = {
       }
       if (!currentModuleWeakSymbols.has(symName)) {
         // Any non-weak reference to a symbol marks it as `required`, which
-        // enabled `reportUndefinedSymbols` to report undefeind symbol errors
+        // enabled `reportUndefinedSymbols` to report undefined symbol errors
         // correctly.
         rtn.required = true;
       }

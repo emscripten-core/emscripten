@@ -314,6 +314,7 @@ def flattened_tests(loaded_tests):
     tests.extend(subsuite)
   return tests
 
+
 def suite_for_module(module, tests):
   suite_supported = module.__name__ in ('test_core', 'test_other', 'test_posixtest')
   if not common.EMTEST_SAVE_DIR and not shared.DEBUG:
@@ -363,7 +364,7 @@ def run_tests(options, suites):
   return num_failures
 
 
-def parse_args(args):
+def parse_args():
   parser = argparse.ArgumentParser(prog='runner.py', description=__doc__)
   parser.add_argument('--save-dir', action='store_true',
                       help='Save the temporary directory used during for each '
@@ -411,8 +412,8 @@ def configure():
   parallel_testsuite.NUM_CORES = os.environ.get('EMTEST_CORES') or os.environ.get('EMCC_CORES')
 
 
-def main(args):
-  options = parse_args(args)
+def main():
+  options = parse_args()
 
   # Some options make sense being set in the environment, others not-so-much.
   # TODO(sbc): eventually just make these command-line only.
@@ -493,7 +494,7 @@ configure()
 
 if __name__ == '__main__':
   try:
-    sys.exit(main(sys.argv))
+    sys.exit(main())
   except KeyboardInterrupt:
     logger.warning('KeyboardInterrupt')
     sys.exit(1)

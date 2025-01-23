@@ -457,7 +457,7 @@ function JSDCE(ast, aggressive) {
     cleanUp(ast, names);
     return removed;
   }
-  while (iteration() && aggressive) {}
+  while (iteration() && aggressive) {} // eslint-disable-line no-empty
 }
 
 // Aggressive JSDCE - multiple iterations
@@ -674,9 +674,7 @@ function emitDCEGraph(ast) {
   //
   // or, in the minimal runtime, it looks like
   //
-  //  WebAssembly.instantiate(Module["wasm"], imports).then((output) => {
-  //   var wasmExports = output.instance.exports; // may also not have "var", if
-  //                                              // declared outside and used elsewhere
+  //  function assignWasmExports(wasmExports)
   //   ..
   //   _malloc = wasmExports["malloc"];
   //   ..
@@ -801,79 +799,45 @@ function emitDCEGraph(ast) {
           emptyOut(node);
         }
       } else if (node.type === 'FunctionDeclaration') {
-        if (!specialScopes) {
+        const name = node.id.name;
+        // Check if this is the minimal runtime exports function, which looks like
+        //   function assignWasmExports(wasmExports)
+        if (
+          name == 'assignWasmExports' &&
+          node.params.length === 1 &&
+          node.params[0].type === 'Identifier' &&
+          node.params[0].name === 'wasmExports'
+        ) {
+          // This looks very much like what we are looking for.
+          const body = node.body.body;
+          assert(!foundMinimalRuntimeExports);
+          foundMinimalRuntimeExports = true;
+          for (let i = 0; i < body.length; i++) {
+            const item = body[i];
+            if (
+              item.type === 'ExpressionStatement' &&
+              item.expression.type === 'AssignmentExpression' &&
+              item.expression.operator === '=' &&
+              item.expression.left.type === 'Identifier' &&
+              item.expression.right.type === 'MemberExpression' &&
+              item.expression.right.object.type === 'Identifier' &&
+              item.expression.right.object.name === 'wasmExports' &&
+              item.expression.right.property.type === 'Literal'
+            ) {
+              const name = item.expression.left.name;
+              const asmName = item.expression.right.property.value;
+              saveAsmExport(name, asmName);
+              emptyOut(item); // ignore all this in the second pass; this does not root
+            }
+          }
+        } else if (!specialScopes) {
           defuns.push(node);
-          const name = node.id.name;
           nameToGraphName[name] = getGraphName(name, 'defun');
           emptyOut(node); // ignore this in the second pass; we scan defuns separately
         }
       } else if (node.type === 'ArrowFunctionExpression') {
         assert(specialScopes > 0);
         specialScopes--;
-        // Check if this is the minimal runtime exports function, which looks like
-        //   (output) => { var wasmExports = output.instance.exports;
-        if (
-          node.params.length === 1 &&
-          node.params[0].type === 'Identifier' &&
-          node.params[0].name === 'output' &&
-          node.body.type === 'BlockStatement'
-        ) {
-          const body = node.body.body;
-          if (body.length >= 1) {
-            const first = body[0];
-            let target;
-            let value; // "(var?) target = value"
-            // Look either for  var wasmExports =  or just   wasmExports =
-            if (first.type === 'VariableDeclaration' && first.declarations.length === 1) {
-              const decl = first.declarations[0];
-              target = decl.id;
-              value = decl.init;
-            } else if (
-              first.type === 'ExpressionStatement' &&
-              first.expression.type === 'AssignmentExpression'
-            ) {
-              const assign = first.expression;
-              if (assign.operator === '=') {
-                target = assign.left;
-                value = assign.right;
-              }
-            }
-            if (target && target.type === 'Identifier' && target.name === 'wasmExports' && value) {
-              if (
-                value.type === 'MemberExpression' &&
-                value.object.type === 'MemberExpression' &&
-                value.object.object.type === 'Identifier' &&
-                value.object.object.name === 'output' &&
-                value.object.property.type === 'Identifier' &&
-                value.object.property.name === 'instance' &&
-                value.property.type === 'Identifier' &&
-                value.property.name === 'exports'
-              ) {
-                // This looks very much like what we are looking for.
-                assert(!foundMinimalRuntimeExports);
-                for (let i = 1; i < body.length; i++) {
-                  const item = body[i];
-                  if (
-                    item.type === 'ExpressionStatement' &&
-                    item.expression.type === 'AssignmentExpression' &&
-                    item.expression.operator === '=' &&
-                    item.expression.left.type === 'Identifier' &&
-                    item.expression.right.type === 'MemberExpression' &&
-                    item.expression.right.object.type === 'Identifier' &&
-                    item.expression.right.object.name === 'wasmExports' &&
-                    item.expression.right.property.type === 'Literal'
-                  ) {
-                    const name = item.expression.left.name;
-                    const asmName = item.expression.right.property.value;
-                    saveAsmExport(name, asmName);
-                    emptyOut(item); // ignore all this in the second pass; this does not root
-                  }
-                }
-                foundMinimalRuntimeExports = true;
-              }
-            }
-          }
-        }
       } else if (node.type === 'Property' && node.method) {
         assert(specialScopes > 0);
         specialScopes--;
@@ -1311,8 +1275,6 @@ function growableHeap(ast) {
             makeCallExpression(node, 'GROWABLE_HEAP_F64', []);
             break;
           }
-          default: {
-          }
         }
       }
     },
@@ -1455,8 +1417,6 @@ function asanify(ast) {
             makeCallExpression(node, '_asan_js_store_d', [ptr, value]);
             break;
           }
-          default: {
-          }
         }
       } else {
         c(target);
@@ -1501,8 +1461,6 @@ function asanify(ast) {
           case 'HEAPF64': {
             makeCallExpression(node, '_asan_js_load_d', [ptr]);
             break;
-          }
-          default: {
           }
         }
       }
@@ -1651,8 +1609,6 @@ function safeHeap(ast) {
             ]);
             break;
           }
-          default: {
-          }
         }
       }
     },
@@ -1696,7 +1652,7 @@ function ensureMinifiedNames(n) {
     if (!RESERVED.has(name)) minifiedNames.push(name);
     // increment the state
     let i = 0;
-    while (1) {
+    while (true) {
       minifiedState[i]++;
       if (minifiedState[i] < (i === 0 ? VALID_MIN_INITS : VALID_MIN_LATERS).length) break;
       // overflow
@@ -1775,7 +1731,7 @@ function minifyLocals(ast) {
     let nextMinifiedName = 0;
 
     function getNextMinifiedName() {
-      while (1) {
+      while (true) {
         ensureMinifiedNames(nextMinifiedName);
         const minified = minifiedNames[nextMinifiedName++];
         // TODO: we can probably remove !isLocalName here
@@ -1994,10 +1950,10 @@ function reattachComments(ast, commentsMap) {
       trace('dropping comments: no symbol comes after them');
       break;
     }
-    if (symbols[j].start.pos - pos > 20) {
-      // This comment is too far away to refer to the given symbol. Drop
-      // the comment altogether.
-      trace('dropping comments: too far from any symbol');
+    if (symbols[j].start.pos != pos) {
+      // This comment must have been associated with a node that still
+      // exists in the AST, otherwise to drop it.
+      trace('dropping comments: not linked to any remaining AST node');
       continue;
     }
     symbols[j].start.comments_before ??= [];

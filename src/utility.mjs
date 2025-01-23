@@ -7,6 +7,7 @@
 // General JS utilities - things that might be useful in any JS project.
 // Nothing specific to Emscripten appears here.
 
+import * as url from 'node:url';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import * as vm from 'node:vm';
@@ -226,18 +227,19 @@ export function isDecorator(ident) {
 }
 
 export function read(filename) {
-  const absolute = find(filename);
-  return fs.readFileSync(absolute, 'utf8');
+  return fs.readFileSync(filename, 'utf8');
 }
 
-function find(filename) {
-  for (const prefix of [process.cwd(), import.meta.dirname]) {
-    const combined = path.join(prefix, filename);
-    if (fs.existsSync(combined)) {
-      return combined;
-    }
-  }
-  return filename;
+// Use import.meta.dirname here once we drop support for node v18.
+const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
+
+export const srcDir = __dirname;
+
+// Returns an absolute path for a file, resolving it relative to this script
+// (i.e. relative to the src/ directory).
+export function localFile(filename) {
+  assert(!path.isAbsolute(filename));
+  return path.join(srcDir, filename);
 }
 
 // Anything needed by the script that we load below must be added to the
@@ -310,9 +312,16 @@ export function applySettings(obj) {
 }
 
 export function loadSettingsFile(f) {
-  var settings = {};
-  vm.runInNewContext(read(f), settings, {filename: find(f)});
+  const settings = {};
+  vm.runInNewContext(read(f), settings, {filename: f});
   applySettings(settings);
+  return settings;
+}
+
+export function loadDefaultSettings() {
+  const rtn = loadSettingsFile(localFile('settings.js'));
+  Object.assign(rtn, loadSettingsFile(localFile('settings_internal.js')));
+  return rtn;
 }
 
 export function runInMacroContext(code, options) {

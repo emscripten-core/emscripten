@@ -12,19 +12,19 @@ addToLibrary({
     '$intArrayFromString',
     '$stringToUTF8Array',
     '$lengthBytesUTF8',
-#if LibraryManager.has('library_idbfs.js')
+#if LibraryManager.has('libidbfs.js')
     '$IDBFS',
 #endif
-#if LibraryManager.has('library_nodefs.js')
+#if LibraryManager.has('libnodefs.js')
     '$NODEFS',
 #endif
-#if LibraryManager.has('library_workerfs.js')
+#if LibraryManager.has('libworkerfs.js')
     '$WORKERFS',
 #endif
-#if LibraryManager.has('library_noderawfs.js')
+#if LibraryManager.has('libnoderawfs.js')
     '$NODERAWFS',
 #endif
-#if LibraryManager.has('library_proxyfs.js')
+#if LibraryManager.has('libproxyfs.js')
     '$PROXYFS',
 #endif
 #if ASSERTIONS
@@ -172,7 +172,9 @@ FS.staticInit();
     // paths
     //
     lookupPath(path, opts = {}) {
-      if (!path) return { path: '', node: null };
+      if (!path) {
+        throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
+      }
       opts.follow_mount ??= true
 
       if (!PATH.isAbs(path)) {
@@ -433,6 +435,12 @@ FS.staticInit();
       }
       return FS.nodePermissions(node, FS.flagsToPermissionString(flags));
     },
+    checkOpExists(op, err) {
+      if (!op) {
+        throw new FS.ErrnoError(err);
+      }
+      return op;
+    },
 
     //
     // streams
@@ -478,6 +486,13 @@ FS.staticInit();
       var stream = FS.createStream(origStream, fd);
       stream.stream_ops?.dup?.(stream);
       return stream;
+    },
+    doSetAttr(stream, node, attr) {
+      var setattr = stream?.stream_ops.setattr;
+      var arg = setattr ? stream : node;
+      setattr ??= node.node_ops.setattr;
+      FS.checkOpExists(setattr, {{{ cDefs.EPERM }}})
+      setattr(arg, attr);
     },
 
     //
@@ -685,9 +700,18 @@ FS.staticInit();
       return parent.node_ops.mknod(parent, name, mode, dev);
     },
     statfs(path) {
-
+      return FS.statfsNode(FS.lookupPath(path, {follow: true}).node);
+    },
+    statfsStream(stream) {
+      // We keep a separate statfsStream function because noderawfs overrides
+      // it. In noderawfs, stream.node is sometimes null. Instead, we need to
+      // look at stream.path.
+      return FS.statfsNode(stream.node);
+    },
+    statfsNode(node) {
       // NOTE: None of the defaults here are true. We're just returning safe and
-      //       sane values.
+      //       sane values. Currently nodefs and rawfs replace these defaults,
+      //       other file systems leave them alone.
       var rtn = {
         bsize: 4096,
         frsize: 4096,
@@ -701,9 +725,8 @@ FS.staticInit();
         namelen: 255,
       };
 
-      var parent = FS.lookupPath(path, {follow: true}).node;
-      if (parent?.node_ops.statfs) {
-        Object.assign(rtn, parent.node_ops.statfs(parent.mount.opts.root));
+      if (node.node_ops.statfs) {
+        Object.assign(rtn, node.node_ops.statfs(node.mount.opts.root));
       }
       return rtn;
     },
@@ -895,10 +918,8 @@ FS.staticInit();
     readdir(path) {
       var lookup = FS.lookupPath(path, { follow: true });
       var node = lookup.node;
-      if (!node.node_ops.readdir) {
-        throw new FS.ErrnoError({{{ cDefs.ENOTDIR }}});
-      }
-      return node.node_ops.readdir(node);
+      var readdir = FS.checkOpExists(node.node_ops.readdir, {{{ cDefs.ENOTDIR }}});
+      return readdir(node);
     },
     unlink(path) {
       var lookup = FS.lookupPath(path, { parent: true });
@@ -948,16 +969,27 @@ FS.staticInit();
     stat(path, dontFollow) {
       var lookup = FS.lookupPath(path, { follow: !dontFollow });
       var node = lookup.node;
-      if (!node) {
-        throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
-      }
-      if (!node.node_ops.getattr) {
-        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
-      }
-      return node.node_ops.getattr(node);
+      var getattr = FS.checkOpExists(node.node_ops.getattr, {{{ cDefs.EPERM }}});
+      return getattr(node);
+    },
+    fstat(fd) {
+      var stream = FS.getStreamChecked(fd);
+      var node = stream.node;
+      var getattr = stream.stream_ops.getattr;
+      var arg = getattr ? stream : node;
+      getattr ??= node.node_ops.getattr;
+      FS.checkOpExists(getattr, {{{ cDefs.EPERM }}})
+      return getattr(arg);
     },
     lstat(path) {
       return FS.stat(path, true);
+    },
+    doChmod(stream, node, mode, dontFollow) {
+      FS.doSetAttr(stream, node, {
+        mode: (mode & {{{ cDefs.S_IALLUGO }}}) | (node.mode & ~{{{ cDefs.S_IALLUGO }}}),
+        ctime: Date.now(),
+        dontFollow
+      });
     },
     chmod(path, mode, dontFollow) {
       var node;
@@ -967,21 +999,21 @@ FS.staticInit();
       } else {
         node = path;
       }
-      if (!node.node_ops.setattr) {
-        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
-      }
-      node.node_ops.setattr(node, {
-        mode: (mode & {{{ cDefs.S_IALLUGO }}}) | (node.mode & ~{{{ cDefs.S_IALLUGO }}}),
-        ctime: Date.now(),
-        dontFollow
-      });
+      FS.doChmod(null, node, mode, dontFollow);
     },
     lchmod(path, mode) {
       FS.chmod(path, mode, true);
     },
     fchmod(fd, mode) {
       var stream = FS.getStreamChecked(fd);
-      FS.chmod(stream.node, mode);
+      FS.doChmod(stream, stream.node, mode, false);
+    },
+    doChown(stream, node, dontFollow) {
+      FS.doSetAttr(stream, node, {
+        timestamp: Date.now(),
+        dontFollow
+        // we ignore the uid / gid for now
+      });
     },
     chown(path, uid, gid, dontFollow) {
       var node;
@@ -991,21 +1023,30 @@ FS.staticInit();
       } else {
         node = path;
       }
-      if (!node.node_ops.setattr) {
-        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
-      }
-      node.node_ops.setattr(node, {
-        timestamp: Date.now(),
-        dontFollow
-        // we ignore the uid / gid for now
-      });
+      FS.doChown(null, node, dontFollow);
     },
     lchown(path, uid, gid) {
       FS.chown(path, uid, gid, true);
     },
     fchown(fd, uid, gid) {
       var stream = FS.getStreamChecked(fd);
-      FS.chown(stream.node, uid, gid);
+      FS.doChown(stream, stream.node, false);
+    },
+    doTruncate(stream, node, len) {
+      if (FS.isDir(node.mode)) {
+        throw new FS.ErrnoError({{{ cDefs.EISDIR }}});
+      }
+      if (!FS.isFile(node.mode)) {
+        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+      }
+      var errCode = FS.nodePermissions(node, 'w');
+      if (errCode) {
+        throw new FS.ErrnoError(errCode);
+      }
+      FS.doSetAttr(stream, node, {
+        size: len,
+        timestamp: Date.now()
+      });
     },
     truncate(path, len) {
       if (len < 0) {
@@ -1018,35 +1059,20 @@ FS.staticInit();
       } else {
         node = path;
       }
-      if (!node.node_ops.setattr) {
-        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
-      }
-      if (FS.isDir(node.mode)) {
-        throw new FS.ErrnoError({{{ cDefs.EISDIR }}});
-      }
-      if (!FS.isFile(node.mode)) {
-        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
-      }
-      var errCode = FS.nodePermissions(node, 'w');
-      if (errCode) {
-        throw new FS.ErrnoError(errCode);
-      }
-      node.node_ops.setattr(node, {
-        size: len,
-        timestamp: Date.now()
-      });
+      FS.doTruncate(null, node, len);
     },
     ftruncate(fd, len) {
       var stream = FS.getStreamChecked(fd);
-      if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_RDONLY}}}) {
+      if (len < 0 || (stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_RDONLY}}}) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
-      FS.truncate(stream.node, len);
+      FS.doTruncate(stream, stream.node, len);
     },
     utime(path, atime, mtime) {
       var lookup = FS.lookupPath(path, { follow: true });
       var node = lookup.node;
-      node.node_ops.setattr(node, {
+      var setattr = FS.checkOpExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
+      setattr(node, {
         atime: atime,
         mtime: mtime
       });
@@ -1506,16 +1532,16 @@ FS.staticInit();
 
       FS.filesystems = {
         'MEMFS': MEMFS,
-#if LibraryManager.has('library_idbfs.js')
+#if LibraryManager.has('libidbfs.js')
         'IDBFS': IDBFS,
 #endif
-#if LibraryManager.has('library_nodefs.js')
+#if LibraryManager.has('libnodefs.js')
         'NODEFS': NODEFS,
 #endif
-#if LibraryManager.has('library_workerfs.js')
+#if LibraryManager.has('libworkerfs.js')
         'WORKERFS': WORKERFS,
 #endif
-#if LibraryManager.has('library_proxyfs.js')
+#if LibraryManager.has('libproxyfs.js')
         'PROXYFS': PROXYFS,
 #endif
       };

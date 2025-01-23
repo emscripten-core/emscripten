@@ -63,6 +63,18 @@ var SyscallsLibrary = {
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i64') }}};
       return 0;
     },
+    writeStatFs(buf, stats) {
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bsize, 'stats.bsize', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_frsize, 'stats.bsize', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_blocks, 'stats.blocks', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bfree, 'stats.bfree', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bavail, 'stats.bavail', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_files, 'stats.files', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_ffree, 'stats.ffree', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_fsid, 'stats.fsid', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_flags, 'stats.flags', 'i32') }}};  // ST_NOSUID
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_namelen, 'stats.namelen', 'i32') }}};
+    },
     doMsync(addr, stream, len, flags, offset) {
       if (!FS.isFile(stream.node.mode)) {
         throw new FS.ErrnoError({{{ cDefs.ENODEV }}});
@@ -678,8 +690,7 @@ var SyscallsLibrary = {
     return SYSCALLS.writeStat(buf, FS.lstat(path));
   },
   __syscall_fstat64: (fd, buf) => {
-    var stream = SYSCALLS.getStreamFromFD(fd);
-    return SYSCALLS.writeStat(buf, FS.stat(stream.path));
+    return SYSCALLS.writeStat(buf, FS.fstat(fd));
   },
   __syscall_fchown32: (fd, owner, group) => {
     FS.fchown(fd, owner, group);
@@ -801,23 +812,17 @@ var SyscallsLibrary = {
 #if ASSERTIONS
     assert(size === {{{ C_STRUCTS.statfs.__size__ }}});
 #endif
-    var stats = FS.statfs(SYSCALLS.getStr(path));
-    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bsize, 'stats.bsize', 'i32') }}};
-    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_frsize, 'stats.bsize', 'i32') }}};
-    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_blocks, 'stats.blocks', 'i32') }}};
-    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bfree, 'stats.bfree', 'i32') }}};
-    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bavail, 'stats.bavail', 'i32') }}};
-    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_files, 'stats.files', 'i32') }}};
-    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_ffree, 'stats.ffree', 'i32') }}};
-    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_fsid, 'stats.fsid', 'i32') }}};
-    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_flags, 'stats.flags', 'i32') }}};  // ST_NOSUID
-    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_namelen, 'stats.namelen', 'i32') }}};
+    SYSCALLS.writeStatFs(buf, FS.statfs(SYSCALLS.getStr(path)));
     return 0;
   },
   __syscall_fstatfs64__deps: ['__syscall_statfs64'],
   __syscall_fstatfs64: (fd, size, buf) => {
+#if ASSERTIONS
+    assert(size === {{{ C_STRUCTS.statfs.__size__ }}});
+#endif
     var stream = SYSCALLS.getStreamFromFD(fd);
-    return ___syscall_statfs64(0, size, buf);
+    SYSCALLS.writeStatFs(buf, FS.statfsStream(stream));
+    return 0;
   },
   __syscall_fadvise64__nothrow: true,
   __syscall_fadvise64__proxy: 'none',

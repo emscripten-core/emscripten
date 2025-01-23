@@ -48,9 +48,10 @@ addToLibrary({
     },
     createStandardStreams() {
       // FIXME: tty is set to true to appease isatty(), the underlying ioctl syscalls still needs to be implemented, see issue #22264.
-      FS.createStream({ nfd: 0, position: 0, path: '', flags: 0, tty: true, seekable: false }, 0);
+      FS.createStream({ nfd: 0, position: 0, path: '/dev/stdin', flags: 0, tty: true, seekable: false }, 0);
+      var paths = [,'/dev/stdout', '/dev/stderr'];
       for (var i = 1; i < 3; i++) {
-        FS.createStream({ nfd: i, position: 0, path: '', flags: {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}}, tty: true, seekable: false }, i);
+        FS.createStream({ nfd: i, position: 0, path: paths[i], flags: {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}}, tty: true, seekable: false }, i);
       }
     },
     // generic function for all node creation
@@ -78,6 +79,16 @@ addToLibrary({
         stat.mode |= (stat.mode & {{{ cDefs.S_IRUGO }}}) >> 2;
       }
       return stat;
+    },
+    fstat(fd) {
+      var stream = FS.getStreamChecked(fd);
+      return fs.fstatSync(stream.nfd);
+    },
+    statfsStream(stream) {
+      return fs.statfsSync(stream.path);
+    },
+    statfsNode(node) {
+      return fs.statfsSync(node.path);
     },
     chmod(path, mode, dontFollow) {
       mode &= {{{ cDefs.S_IALLUGO }}};

@@ -25,7 +25,7 @@
 /*global throwInstanceAlreadyDeleted, shallowCopyInternalPointer*/
 /*global RegisteredPointer_fromWireType, constNoSmartPtrRawPointerToWireType, nonConstNoSmartPtrRawPointerToWireType, genericPointerToWireType*/
 
-#include "embind/embind_shared.js"
+#include "libembind_shared.js"
 
 var LibraryEmbind = {
   $UnboundTypeError__postset: "UnboundTypeError = Module['UnboundTypeError'] = extendError(Error, 'UnboundTypeError');",
@@ -567,7 +567,7 @@ var LibraryEmbind = {
             for (var i = 0; i < length; ++i) {
               var charCode = value.charCodeAt(i);
               if (charCode > 255) {
-                _free(ptr);
+                _free(base);
                 throwBindingError('String has UTF-16 code units that do not fit in 8 bits');
               }
               HEAPU8[ptr + i] = charCode;

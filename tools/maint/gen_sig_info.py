@@ -6,7 +6,7 @@
 
 """This tool extracts native/C signature information for JS library functions
 
-It generates a file called `src/library_sigs.js` which contains `__sig` declarations
+It generates a file called `src/libsigs.js` which contains `__sig` declarations
 for the majority of JS library functions.
 """
 
@@ -176,7 +176,7 @@ def ignore_symbol(s, cxx):
   # Symbols that start with `emscripten_gl` or `emscripten_alc` are auto-generated
   # wrappers around GL and OpenGL symbols.  Since they inherit their signature they
   # don't need to be auto-generated.
-  if s.startswith('emscripten_gl') or s.startswith('emscripten_alc'):
+  if s.startswith(('emscripten_gl', 'emscripten_alc')):
     return True
   if s.startswith('gl') and any(s.endswith(x) for x in ('NV', 'EXT', 'WEBGL', 'ARB', 'ANGLE')):
     return True
@@ -275,7 +275,7 @@ def remove_sigs(sig_info):
 
   files = glob.glob('src/*.js') + glob.glob('src/**/*.js')
   for file in files:
-    if os.path.basename(file) != 'library_sigs.js':
+    if os.path.basename(file) != 'libsigs.js':
       lines = utils.read_file(file).splitlines()
       lines = [l for l in lines if not strip_line(l)]
       utils.write_file(file, '\n'.join(lines) + '\n')
@@ -307,12 +307,12 @@ def extract_sig_info(sig_info, extra_settings=None, extra_cflags=None, cxx=False
     'AUDIO_WORKLET': 1,
     'WASM_WORKERS': 1,
     'JS_LIBRARIES': [
-      'src/library_websocket.js',
-      'src/library_exports.js',
-      'src/library_webaudio.js',
-      'src/library_fetch.js',
-      'src/library_pthread.js',
-      'src/library_trace.js',
+      'libwebsocket.js',
+      'libexports.js',
+      'libwebaudio.js',
+      'libfetch.js',
+      'libpthread.js',
+      'libtrace.js',
     ],
     'SUPPORT_LONGJMP': 'emscripten'
   }
@@ -376,7 +376,7 @@ def extract_sig_info(sig_info, extra_settings=None, extra_cflags=None, cxx=False
 
 def main(args):
   parser = argparse.ArgumentParser()
-  parser.add_argument('-o', '--output', default='src/library_sigs.js')
+  parser.add_argument('-o', '--output', default='src/libsigs.js')
   parser.add_argument('-r', '--remove', action='store_true', help='remove from JS library files any `__sig` entries that are part of the auto-generated file')
   parser.add_argument('-u', '--update', action='store_true', help='update with JS library files any `__sig` entries that are part of the auto-generated file')
   args = parser.parse_args()
@@ -390,9 +390,9 @@ def main(args):
                               'BUILD_AS_WORKER': 1,
                               'LINK_AS_CXX': 1,
                               'AUTO_JS_LIBRARIES': 0}, cxx=True)
-  extract_sig_info(sig_info, {'WASM_WORKERS': 1, 'JS_LIBRARIES': ['src/library_wasm_worker.js']})
+  extract_sig_info(sig_info, {'WASM_WORKERS': 1, 'JS_LIBRARIES': ['libwasm_worker.js']})
   extract_sig_info(sig_info, {'USE_GLFW': 3}, ['-DGLFW3'])
-  extract_sig_info(sig_info, {'JS_LIBRARIES': ['src/embind/embind.js', 'src/embind/emval.js'],
+  extract_sig_info(sig_info, {'JS_LIBRARIES': ['libembind.js', 'libemval.js'],
                               'USE_SDL': 0,
                               'MAX_WEBGL_VERSION': 0,
                               'AUTO_JS_LIBRARIES': 0,

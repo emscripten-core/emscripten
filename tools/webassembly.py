@@ -13,6 +13,7 @@ import logging
 import os
 import sys
 
+from .utils import memoize
 from . import utils
 
 sys.path.append(utils.path_from_root('third_party'))
@@ -53,19 +54,6 @@ def read_uleb(iobuf):
 
 def read_sleb(iobuf):
   return leb128.i.decode_reader(iobuf)[0]
-
-
-def memoize(method):
-
-  @wraps(method)
-  def wrapper(self, *args, **kwargs):
-    assert not kwargs
-    key = (method.__name__, args)
-    if key not in self._cache:
-      self._cache[key] = method(self, *args, **kwargs)
-    return self._cache[key]
-
-  return wrapper
 
 
 def once(method):

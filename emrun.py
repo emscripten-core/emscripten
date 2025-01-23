@@ -817,7 +817,7 @@ def win_get_gpu_info():
         return gpu
     return None
 
-  for i in range(0, 16):
+  for i in range(16):
     try:
       hHardwareReg = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, 'HARDWARE')
       hDeviceMapReg = winreg.OpenKey(hHardwareReg, 'DEVICEMAP')
@@ -1398,7 +1398,7 @@ def get_system_info(format_json):
       if len(gpus) == 1:
         info += 'GPU: ' + gpus[0]['model'] + ' with ' + str(gpus[0]['ram'] // 1024 // 1024) + " MB of VRAM\n"
       elif len(gpus) > 1:
-        for i in range(0, len(gpus)):
+        for i in range(len(gpus)):
           info += 'GPU' + str(i) + ": " + gpus[i]['model'] + ' with ' + str(gpus[i]['ram'] // 1024 // 1024) + ' MBs of VRAM\n'
       info += 'UUID: ' + unique_system_id
       return info.strip()
@@ -1427,7 +1427,6 @@ def list_processes_by_name(exe_full_path):
   except Exception:
     # Fail gracefully if psutil not available
     logv('import psutil failed, unable to detect browser processes')
-    pass
 
   logv('Searching for processes by full path name "' + exe_full_path + '".. found ' + str(len(pids)) + ' entries')
 
@@ -1637,7 +1636,7 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
     file_to_serve = options.serve
   else:
     file_to_serve = '.'
-  file_to_serve_is_url = file_to_serve.startswith('file://') or file_to_serve.startswith('http://') or file_to_serve.startswith('https://')
+  file_to_serve_is_url = file_to_serve.startswith(('file://', 'http://', 'https://'))
 
   if options.serve_root:
     serve_dir = os.path.abspath(options.serve_root)
@@ -1645,7 +1644,7 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
     if file_to_serve == '.' or file_to_serve_is_url:
       serve_dir = os.path.abspath('.')
     else:
-      if file_to_serve.endswith('/') or file_to_serve.endswith('\\') or os.path.isdir(file_to_serve):
+      if file_to_serve.endswith(('/', '\\')) or os.path.isdir(file_to_serve):
         serve_dir = file_to_serve
       else:
         serve_dir = os.path.dirname(os.path.abspath(file_to_serve))
@@ -1684,7 +1683,7 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
         return 1
       elif options.browser == 'firefox':
         browser_app = 'org.mozilla.firefox/org.mozilla.gecko.BrowserApp'
-      elif options.browser == 'firefox_nightly' or options.browser == 'fenix':
+      elif options.browser in {'firefox_nightly', 'fenix'}:
         browser_app = 'org.mozilla.fenix/org.mozilla.gecko.BrowserApp'
       elif options.browser == 'chrome':
         browser_app = 'com.android.chrome/com.google.android.apps.chrome.Main'

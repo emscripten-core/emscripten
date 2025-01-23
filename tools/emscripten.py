@@ -53,21 +53,6 @@ ASAN_C_HELPERS = [
 ]
 
 
-def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
-  # Declare all exports out to global JS scope so that JS library functions can access them in a
-  # way that minifies well with Closure
-  # e.g. var a,b,c,d,e,f;
-
-  exports = [asmjs_mangle(x) for x in exports if x != building.WASM_CALL_CTORS]
-
-  declares = 'var ' + ',\n '.join(exports) + ';'
-  post = shared.do_replace(post, '<<< WASM_MODULE_EXPORTS_DECLARES >>>', declares)
-
-  # Generate assignments from all wasm exports out to the JS variables above: e.g. a = wasmExports['a']; b = wasmExports['b'];
-  post = shared.do_replace(post, '<<< WASM_MODULE_EXPORTS >>>', receiving)
-  return post
-
-
 def write_output_file(outfile, module):
   for chunk in module:
     outfile.write(chunk)
@@ -459,11 +444,6 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     pre = None
 
     receiving = create_receiving(function_exports)
-
-    if settings.MINIMAL_RUNTIME:
-      if settings.DECLARE_ASM_MODULE_EXPORTS:
-        post = compute_minimal_runtime_initializer_and_exports(post, function_exports, receiving)
-      receiving = ''
 
     module = create_module(receiving, metadata, global_exports, forwarded_json['librarySymbols'])
 
@@ -912,7 +892,7 @@ def make_export_wrappers(function_exports):
     # The emscripten stack functions are called very early (by writeStackCookie) before
     # the runtime is initialized so we can't create these wrappers that check for
     # runtimeInitialized.
-    if sym.startswith('_asan_') or sym.startswith('emscripten_stack_') or sym.startswith('_emscripten_stack_'):
+    if sym.startswith(('_asan_', 'emscripten_stack_', '_emscripten_stack_')):
       return False
     # Likewise `__trap` can occur before the runtime is initialized since it is used in
     # abort.
@@ -964,30 +944,30 @@ def create_receiving(function_exports):
   receiving = []
 
   if settings.MINIMAL_RUNTIME:
-    # In Wasm exports are assigned inside a function to variables
+    # Exports are assigned inside a function to variables
     # existing in top level JS scope, i.e.
     # var _main;
-    # WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
-    #   var wasmExports = output.instance.exports;
+    # function assignWasmExports(wasmExport) {
     #   _main = wasmExports["_main"];
     generate_dyncall_assignment = settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
-    exports_that_are_not_initializers = [x for x in function_exports if x != building.WASM_CALL_CTORS]
-
-    for s in exports_that_are_not_initializers:
+    exports = [x for x in function_exports if x != building.WASM_CALL_CTORS]
+    receiving.append('function assignWasmExports(wasmExports) {')
+    for s in exports:
       mangled = asmjs_mangle(s)
       dynCallAssignment = ('dynCalls["' + s.replace('dynCall_', '') + '"] = ') if generate_dyncall_assignment and mangled.startswith('dynCall_') else ''
       should_export = settings.EXPORT_ALL or (settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS)
       export_assignment = ''
       if settings.MODULARIZE and should_export:
         export_assignment = f"Module['{mangled}'] = "
-      receiving += [f'{export_assignment}{dynCallAssignment}{mangled} = wasmExports["{s}"]']
+      receiving.append(f"  {export_assignment}{dynCallAssignment}{mangled} = wasmExports['{s}'];")
+    receiving.append('}')
+    sep = ',\n  '
+    mangled = [asmjs_mangle(s) for s in exports]
+    receiving.append(f'var {sep.join(mangled)};')
   else:
     receiving += make_export_wrappers(function_exports)
 
-  if settings.MINIMAL_RUNTIME:
-    return '\n  '.join(receiving) + '\n'
-  else:
-    return '\n'.join(receiving) + '\n'
+  return '\n'.join(receiving) + '\n'
 
 
 def create_module(receiving, metadata, global_exports, library_symbols):
