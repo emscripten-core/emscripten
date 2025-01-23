@@ -487,6 +487,13 @@ FS.staticInit();
       stream.stream_ops?.dup?.(stream);
       return stream;
     },
+    doSetAttr(stream, node, attr) {
+      var setattr = stream?.stream_ops.setattr;
+      var arg = setattr ? stream : node;
+      setattr ??= node.node_ops.setattr;
+      FS.checkOpExists(setattr, {{{ cDefs.EPERM }}})
+      setattr(arg, attr);
+    },
 
     //
     // devices
@@ -966,10 +973,23 @@ FS.staticInit();
       return getattr(node);
     },
     fstat(fd) {
-      return FS.stat(FS.getStreamChecked(fd).path);
+      var stream = FS.getStreamChecked(fd);
+      var node = stream.node;
+      var getattr = stream.stream_ops.getattr;
+      var arg = getattr ? stream : node;
+      getattr ??= node.node_ops.getattr;
+      FS.checkOpExists(getattr, {{{ cDefs.EPERM }}})
+      return getattr(arg);
     },
     lstat(path) {
       return FS.stat(path, true);
+    },
+    doChmod(stream, node, mode, dontFollow) {
+      FS.doSetAttr(stream, node, {
+        mode: (mode & {{{ cDefs.S_IALLUGO }}}) | (node.mode & ~{{{ cDefs.S_IALLUGO }}}),
+        ctime: Date.now(),
+        dontFollow
+      });
     },
     chmod(path, mode, dontFollow) {
       var node;
@@ -979,19 +999,21 @@ FS.staticInit();
       } else {
         node = path;
       }
-      var setattr = FS.checkOpExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
-      setattr(node, {
-        mode: (mode & {{{ cDefs.S_IALLUGO }}}) | (node.mode & ~{{{ cDefs.S_IALLUGO }}}),
-        ctime: Date.now(),
-        dontFollow
-      });
+      FS.doChmod(null, node, mode, dontFollow);
     },
     lchmod(path, mode) {
       FS.chmod(path, mode, true);
     },
     fchmod(fd, mode) {
       var stream = FS.getStreamChecked(fd);
-      FS.chmod(stream.node, mode);
+      FS.doChmod(stream, stream.node, mode, false);
+    },
+    doChown(stream, node, dontFollow) {
+      FS.doSetAttr(stream, node, {
+        timestamp: Date.now(),
+        dontFollow
+        // we ignore the uid / gid for now
+      });
     },
     chown(path, uid, gid, dontFollow) {
       var node;
@@ -1001,19 +1023,30 @@ FS.staticInit();
       } else {
         node = path;
       }
-      var setattr = FS.checkOpExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
-      setattr(node, {
-        timestamp: Date.now(),
-        dontFollow
-        // we ignore the uid / gid for now
-      });
+      FS.doChown(null, node, dontFollow);
     },
     lchown(path, uid, gid) {
       FS.chown(path, uid, gid, true);
     },
     fchown(fd, uid, gid) {
       var stream = FS.getStreamChecked(fd);
-      FS.chown(stream.node, uid, gid);
+      FS.doChown(stream, stream.node, false);
+    },
+    doTruncate(stream, node, len) {
+      if (FS.isDir(node.mode)) {
+        throw new FS.ErrnoError({{{ cDefs.EISDIR }}});
+      }
+      if (!FS.isFile(node.mode)) {
+        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+      }
+      var errCode = FS.nodePermissions(node, 'w');
+      if (errCode) {
+        throw new FS.ErrnoError(errCode);
+      }
+      FS.doSetAttr(stream, node, {
+        size: len,
+        timestamp: Date.now()
+      });
     },
     truncate(path, len) {
       if (len < 0) {
@@ -1026,28 +1059,14 @@ FS.staticInit();
       } else {
         node = path;
       }
-      if (FS.isDir(node.mode)) {
-        throw new FS.ErrnoError({{{ cDefs.EISDIR }}});
-      }
-      if (!FS.isFile(node.mode)) {
-        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
-      }
-      var errCode = FS.nodePermissions(node, 'w');
-      if (errCode) {
-        throw new FS.ErrnoError(errCode);
-      }
-      var setattr = FS.checkOpExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
-      setattr(node, {
-        size: len,
-        timestamp: Date.now()
-      });
+      FS.doTruncate(null, node, len);
     },
     ftruncate(fd, len) {
       var stream = FS.getStreamChecked(fd);
-      if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_RDONLY}}}) {
+      if (len < 0 || (stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_RDONLY}}}) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
-      FS.truncate(stream.node, len);
+      FS.doTruncate(stream, stream.node, len);
     },
     utime(path, atime, mtime) {
       var lookup = FS.lookupPath(path, { follow: true });
