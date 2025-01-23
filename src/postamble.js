@@ -35,6 +35,9 @@ var mainArgs = undefined;
 #endif
 
 #if HAS_MAIN
+#if ASSERTIONS
+var alreadyCalledMain = false;
+#endif
 #if MAIN_READS_PARAMS
 {{{ asyncIf(ASYNCIFY == 2) }}}function callMain(args = []) {
 #else
@@ -43,6 +46,8 @@ var mainArgs = undefined;
 #if ASSERTIONS
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on Module["onRuntimeInitialized"])');
   assert(__ATPRERUN__.length == 0, 'cannot call main when preRun functions remain to be called');
+  assert(!alreadyCalledMain, 'cannot call main more than once (consider using a library, or MODULARIZE)');
+  alreadyCalledMain = true;
 #endif
 
   var entryFunction = {{{ getEntryFunction() }}};
