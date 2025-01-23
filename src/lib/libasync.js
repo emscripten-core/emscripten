@@ -38,6 +38,10 @@ addToLibrary({
     rewindArguments: {},
 #endif
     instrumentWasmImports(imports) {
+#if EMBIND_GEN_MODE
+      // Instrumenting is not needed when generating code.
+      return imports;
+#endif
 #if ASYNCIFY_DEBUG
       dbg('asyncify instrumenting imports');
 #endif
@@ -103,6 +107,10 @@ addToLibrary({
     },
 #endif
     instrumentWasmExports(exports) {
+#if EMBIND_GEN_MODE
+      // Instrumenting is not needed when generating code.
+      return exports;
+#endif
 #if ASYNCIFY_DEBUG
       dbg('asyncify instrumenting exports');
 #endif

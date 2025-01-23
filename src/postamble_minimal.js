@@ -84,7 +84,7 @@ function initRuntime(wasmExports) {
 
 // In non-fastcomp non-asm.js builds, grab wasm exports to outer scope
 // for emscripten_get_exported_function() to be able to access them.
-#if LibraryManager.has('library_exports.js')
+#if LibraryManager.has('libexports.js')
 var wasmExports;
 #endif
 
@@ -138,7 +138,7 @@ if (!Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.w
 WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #endif
 
-#if !LibraryManager.has('library_exports.js')
+#if !LibraryManager.has('libexports.js')
   // If not using the emscripten_get_exported_function() API, keep the
   // `wasmExports` variable in local scope to this instantiate function to save
   // code size.  (otherwise access it without to export it to outer scope)

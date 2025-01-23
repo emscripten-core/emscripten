@@ -795,7 +795,7 @@ base align: 0, 0, 0, 0'''])
 
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
-  def test_emmalloc_usable_size(self, *args):
+  def test_emmalloc_usable_size(self):
     self.set_setting('MALLOC', 'emmalloc')
     self.do_core_test('test_malloc_usable_size.c', regex=True)
 
@@ -829,7 +829,7 @@ base align: 0, 0, 0, 0'''])
     self.do_core_test('test_emmalloc_trim.c')
 
   # Test case against https://github.com/emscripten-core/emscripten/issues/10363
-  def test_emmalloc_memalign_corruption(self, *args):
+  def test_emmalloc_memalign_corruption(self):
     self.set_setting('MALLOC', 'emmalloc')
     self.do_core_test('test_emmalloc_memalign_corruption.c')
 
@@ -872,12 +872,10 @@ base align: 0, 0, 0, 0'''])
     # FIXME Temporarily disabled. Enable this later when the bug is fixed.
     if '-fsanitize=address' in self.emcc_args:
       self.skipTest('Wasm EH does not work with asan yet')
-    self.emcc_args.append('-fwasm-exceptions')
-    for arg in ('-fwasm-exceptions', '-fno-exceptions'):
-      self.do_core_test('test_longjmp.c', emcc_args=[arg])
-    # Wasm SjLj with and with the standardized EH (exnref) support
-    self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
-    self.do_core_test('test_longjmp.c', emcc_args=['-fwasm-exceptions'])
+    for legacy in [0, 1]:
+      self.set_setting('WASM_LEGACY_EXCEPTIONS', legacy)
+      for arg in ('-fwasm-exceptions', '-fno-exceptions'):
+        self.do_core_test('test_longjmp.c', emcc_args=[arg])
 
   @with_all_sjlj
   def test_longjmp2(self):
@@ -1011,14 +1009,11 @@ int main()
     if '-fsanitize=address' in self.emcc_args:
       self.skipTest('Wasm EH does not work with asan yet')
     self.emcc_args.append('-fwasm-exceptions')
-    for support_longjmp in (0, 'wasm'):
-      self.set_setting('SUPPORT_LONGJMP', support_longjmp)
-      self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
-    # Wasm standardized EH (exnref) with and without Wasm SjLj support
-    self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
-    for support_longjmp in (0, 'wasm'):
-      self.set_setting('SUPPORT_LONGJMP', support_longjmp)
-      self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
+    for legacy in [0, 1]:
+      self.set_setting('WASM_LEGACY_EXCEPTIONS', legacy)
+      for support_longjmp in (0, 'wasm'):
+        self.set_setting('SUPPORT_LONGJMP', support_longjmp)
+        self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
 
   def test_exceptions_off(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING')
@@ -5847,6 +5842,13 @@ Module.onRuntimeInitialized = () => {
       self.set_setting('FORCE_FILESYSTEM')
     self.do_runf('fs/test_64bit.c', 'success')
 
+  @crossplatform
+  @with_all_fs
+  def test_fs_stat_unnamed_file_descriptor(self):
+    if '-DNODEFS' in self.emcc_args:
+      self.skipTest('TODO: doesnt work in nodefs')
+    self.do_runf('fs/test_stat_unnamed_file_descriptor.c', 'success')
+
   @requires_node
   @crossplatform
   @with_all_fs
@@ -8377,7 +8379,7 @@ Module.onRuntimeInitialized = () => {
     cmd = [PYTHON, path_from_root('tools/maybe_wasm2js.py'), 'test_hello_world.js', 'test_hello_world.wasm']
     if self.is_optimizing():
       cmd += ['-O2']
-    self.run_process(cmd, stdout=open('do_wasm2js.js', 'w')).stdout
+    self.run_process(cmd, stdout=open('do_wasm2js.js', 'w'))
     # remove the wasm to make sure we never use it again
     os.remove('test_hello_world.wasm')
     # verify that it runs

@@ -31,7 +31,7 @@ from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE, DEBUG
 from tools.utils import delete_dir
 
 
-def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, checksum, port):
+def test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
   class ChunkedServerHandler(BaseHTTPRequestHandler):
     def sendheaders(s, extra=None, length=None):
       length = length or len(data)
@@ -1585,17 +1585,20 @@ simulateKeyUp(100, undefined, 'Numpad4');
                  args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
-  def test_glfw(self):
-    # Using only the `-l` flag
-    self.btest_exit('test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-lglfw', '-lGL', '-sGL_ENABLE_GET_PROC_ADDRESS'])
-    # Using only the `-s` flag
-    self.btest_exit('test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-sUSE_GLFW=2', '-lGL', '-sGL_ENABLE_GET_PROC_ADDRESS'])
-    # Using both `-s` and `-l` flags
-    self.btest_exit('test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-sUSE_GLFW=2', '-lglfw', '-lGL', '-sGL_ENABLE_GET_PROC_ADDRESS'])
+  @parameterized({
+    '': (['-lglfw'],),
+    's_flag': (['-sUSE_GLFW=2'],),
+    'both_flags': (['-sUSE_GLFW=2', '-lglfw'],),
+  })
+  def test_glfw(self, args):
+    self.btest_exit('test_glfw.c', args=['-sLEGACY_GL_EMULATION', '-lGL', '-sGL_ENABLE_GET_PROC_ADDRESS'] + args)
 
-  def test_glfw_minimal(self):
-    self.btest_exit('test_glfw_minimal.c', args=['-lglfw', '-lGL'])
-    self.btest_exit('test_glfw_minimal.c', args=['-sUSE_GLFW=2', '-lglfw', '-lGL'])
+  @parameterized({
+    '': ([],),
+    's_flag': (['-sUSE_GLFW=2'],),
+  })
+  def test_glfw_minimal(self, args):
+    self.btest_exit('test_glfw_minimal.c', args=['-lglfw', '-lGL'] + args)
 
   def test_glfw_time(self):
     self.btest_exit('test_glfw_time.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
@@ -1719,7 +1722,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
     data = os.urandom(10 * chunkSize + 1) # 10 full chunks and one 1 byte chunk
     checksum = zlib.adler32(data) & 0xffffffff # Python 2 compatibility: force bigint
 
-    server = multiprocessing.Process(target=test_chunked_synchronous_xhr_server, args=(True, chunkSize, data, checksum, self.PORT))
+    server = multiprocessing.Process(target=test_chunked_synchronous_xhr_server, args=(True, data, self.PORT))
     server.start()
 
     # block until the server is actually ready
@@ -2759,6 +2762,24 @@ Module["preRun"] = () => {
     self.btest_exit('test_webgl2_runtime_no_context.cpp', args=['-sMAX_WEBGL_VERSION=2'])
 
   @requires_graphics_hardware
+  def test_webgl_context_major_version(self):
+    # testing that majorVersion accepts only valid values
+    self.btest('test_webgl_context_major_version.c', expected='abort:Expected Error: Invalid WebGL version requested: 0', args=['-lGL', '-DWEBGL_CONTEXT_MAJOR_VERSION=0'])
+    self.btest('test_webgl_context_major_version.c', expected='abort:Expected Error: Invalid WebGL version requested: 3', args=['-lGL', '-DWEBGL_CONTEXT_MAJOR_VERSION=3'])
+
+    # no linker flag (equivalent to -sMIN_WEBGL_VERSION=1 -sMAX_WEBGL_VERSION=1) => only 1 allowed
+    self.btest_exit('test_webgl_context_major_version.c', args=['-lGL', '-DWEBGL_CONTEXT_MAJOR_VERSION=1'])
+    self.btest('test_webgl_context_major_version.c', expected='abort:Expected Error: WebGL 2 requested but only WebGL 1 is supported (set -sMAX_WEBGL_VERSION=2 to fix the problem)', args=['-lGL', '-DWEBGL_CONTEXT_MAJOR_VERSION=2'])
+
+    # -sMIN_WEBGL_VERSION=2 => only 2 allowed
+    self.btest('test_webgl_context_major_version.c', expected='abort:Expected Error: WebGL 1 requested but only WebGL 2 is supported (MIN_WEBGL_VERSION is 2)', args=['-lGL', '-sMIN_WEBGL_VERSION=2', '-DWEBGL_CONTEXT_MAJOR_VERSION=1'])
+    self.btest_exit('test_webgl_context_major_version.c', args=['-lGL', '-sMIN_WEBGL_VERSION=2', '-DWEBGL_CONTEXT_MAJOR_VERSION=2'])
+
+    # -sMAX_WEBGL_VERSION=2 => 1 and 2 are ok
+    self.btest_exit('test_webgl_context_major_version.c', args=['-lGL', '-sMAX_WEBGL_VERSION=2', '-DWEBGL_CONTEXT_MAJOR_VERSION=1'])
+    self.btest_exit('test_webgl_context_major_version.c', args=['-lGL', '-sMAX_WEBGL_VERSION=2', '-DWEBGL_CONTEXT_MAJOR_VERSION=2'])
+
+  @requires_graphics_hardware
   def test_webgl2_invalid_teximage2d_type(self):
     self.btest_exit('webgl2_invalid_teximage2d_type.cpp', args=['-sMAX_WEBGL_VERSION=2'])
 
@@ -2889,8 +2910,8 @@ Module["preRun"] = () => {
 
   @requires_graphics_hardware
   @parameterized({
+    '': (['-DCLIENT_API=GLFW_OPENGL_ES_API', '-sGL_ENABLE_GET_PROC_ADDRESS'],),
     'no_gl': (['-DCLIENT_API=GLFW_NO_API'],),
-    'gl_es': (['-DCLIENT_API=GLFW_OPENGL_ES_API', '-sGL_ENABLE_GET_PROC_ADDRESS'],)
   })
   @parameterized({
     '': ([],),
@@ -2898,7 +2919,7 @@ Module["preRun"] = () => {
     'closure': (['-Os', '--closure=1'],),
   })
   def test_glfw3(self, args, opts):
-    self.btest('test_glfw3.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'] + args + opts, expected='1')
+    self.btest_exit('test_glfw3.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'] + args + opts)
 
   @parameterized({
     '': (['-sUSE_GLFW=2', '-DUSE_GLFW=2'],),
@@ -4385,9 +4406,9 @@ Module["preRun"] = () => {
     # blitFramebuffer path on WebGL 2.0 (falls back to VAO on Firefox < 67)
     'gl2_no_aa': (['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=0'],),
   })
-  def test_webgl_offscreen_framebuffer_state_restoration(self, args, skip_vao=False):
-    cmd = args + ['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1']
-    self.btest_exit('webgl_offscreen_framebuffer_swap_with_bad_state.c', args=cmd)
+  def test_webgl_offscreen_framebuffer_state_restoration(self, args):
+    base_args = ['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1']
+    self.btest_exit('webgl_offscreen_framebuffer_swap_with_bad_state.c', args=base_args + args)
 
   @parameterized({
     '': ([],),
@@ -4996,7 +5017,7 @@ Module["preRun"] = () => {
     self.btest_exit('test_offset_converter.c', args=['-sUSE_OFFSET_CONVERTER', '-gsource-map'] + args)
 
   # Tests emscripten_unwind_to_js_event_loop() behavior
-  def test_emscripten_unwind_to_js_event_loop(self, *args):
+  def test_emscripten_unwind_to_js_event_loop(self):
     self.btest_exit('test_emscripten_unwind_to_js_event_loop.c')
 
   @requires_wasm2js
@@ -5337,7 +5358,7 @@ Module["preRun"] = () => {
     self.btest(test, args=args, expected='0')
 
   @no_firefox('no 4GB support yet')
-  def test_emmalloc_memgrowth(self, *args):
+  def test_emmalloc_memgrowth(self):
     if not self.is_4gb():
       self.set_setting('MAXIMUM_MEMORY', '4GB')
     self.btest_exit('emmalloc_memgrowth.cpp', args=['-sMALLOC=emmalloc', '-sALLOW_MEMORY_GROWTH=1', '-sABORTING_MALLOC=0', '-sASSERTIONS=2', '-sMINIMAL_RUNTIME=1'])
@@ -5499,6 +5520,20 @@ Module["preRun"] = () => {
       self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool'])
     shutil.copy('webpack/src/hello.wasm', 'webpack/dist/')
     self.run_browser('webpack/dist/index.html', '/report_result?exit:0')
+
+  def test_vite(self):
+    shutil.copytree(test_file('vite'), 'vite')
+    with common.chdir('vite'):
+      self.compile_btest('hello_world.c', ['-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sMODULARIZE', '-o', 'hello.mjs'])
+      self.run_process(shared.get_npm_cmd('vite') + ['build'])
+    self.run_browser('vite/dist/index.html', '/report_result?exit:0')
+
+  def test_rollup(self):
+    shutil.copytree(test_file('rollup'), 'rollup')
+    with common.chdir('rollup'):
+      self.compile_btest('hello_world.c', ['-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sMODULARIZE', '-o', 'hello.mjs'])
+      self.run_process(shared.get_npm_cmd('rollup') + ['--config'])
+    self.run_browser('rollup/index.html', '/report_result?exit:0')
 
 
 class emrun(RunnerCore):

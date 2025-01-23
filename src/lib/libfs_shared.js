@@ -13,7 +13,7 @@ addToLibrary({
   $FS_handledByPreloadPlugin__internal: true,
   $FS_handledByPreloadPlugin__deps: ['$preloadPlugins'],
   $FS_handledByPreloadPlugin: (byteArray, fullname, finish, onerror) => {
-#if LibraryManager.has('library_browser.js')
+#if LibraryManager.has('libbrowser.js')
     // Ensure plugins are ready.
     if (typeof Browser != 'undefined') Browser.init();
 #endif

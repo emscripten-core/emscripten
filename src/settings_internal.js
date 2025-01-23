@@ -92,6 +92,10 @@ var EMBIND = false;
 // Whether a TypeScript definition file has been requested.
 var EMIT_TSD = false;
 
+// This will be true during the generation of code in run_embind_gen. Helpful
+// for detecting if either TSD file or embind AOT JS generation is running.
+var EMBIND_GEN_MODE = false;
+
 // Whether the main() function reads the argc/argv parameters.
 var MAIN_READS_PARAMS = true;
 

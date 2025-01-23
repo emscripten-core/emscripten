@@ -26,7 +26,7 @@ export default [{
     '**/third_party/',
     '**/test/',
     'src/polyfill/',
-    'src/library*.js',
+    'src/lib/',
     'src/runtime_*.js',
     'src/shell*.js',
     'src/preamble*.js',
@@ -52,6 +52,8 @@ export default [{
     'src/Fetch.js',
     'src/settings.js',
     'src/settings_internal.js',
+    'src/growableHeap.js',
+    'src/emrun_prejs.js',
     'src/arrayUtils.js',
     'src/deterministic.js',
     'src/base64Decode.js',
@@ -61,7 +63,7 @@ export default [{
     'src/URIUtils.js',
     'tools/experimental',
   ],
-}, ...compat.extends('prettier'), {
+}, ...compat.extends('prettier'), js.configs.recommended, {
   languageOptions: {
     globals: {
       ...globals.browser,
@@ -79,6 +81,7 @@ export default [{
     'require-jsdoc': 'off',
     'arrow-body-style': ['error', 'as-needed'],
     'space-infix-ops': 'error',
+    'no-prototype-builtins': 'off',
 
     quotes: ['error', 'single', {
       avoidEscape: true,

@@ -80,6 +80,10 @@ addToLibrary({
       }
       return stat;
     },
+    fstat(fd) {
+      var stream = FS.getStreamChecked(fd);
+      return fs.fstatSync(stream.nfd);
+    },
     statfsStream(stream) {
       return fs.statfsSync(stream.path);
     },
