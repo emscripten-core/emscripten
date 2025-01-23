@@ -974,6 +974,7 @@ FS.staticInit();
     },
     fstat(fd) {
       var stream = FS.getStreamChecked(fd);
+      var node = stream.node;
       var getattr = stream.stream_ops.getattr;
       var arg = getattr ? stream : node;
       getattr ??= node.node_ops.getattr;
@@ -998,14 +999,14 @@ FS.staticInit();
       } else {
         node = path;
       }
-      FS.doChmod(null, node, dontFollow);
+      FS.doChmod(null, node, mode, dontFollow);
     },
     lchmod(path, mode) {
       FS.chmod(path, mode, true);
     },
     fchmod(fd, mode) {
       var stream = FS.getStreamChecked(fd);
-      FS.doChmod(stream, stream.node, false);
+      FS.doChmod(stream, stream.node, mode, false);
     },
     doChown(stream, node, dontFollow) {
       FS.doSetAttr(stream, node, {
@@ -1029,7 +1030,7 @@ FS.staticInit();
     },
     fchown(fd, uid, gid) {
       var stream = FS.getStreamChecked(fd);
-      FS.doChown(stream, stream.node, dontFollow);
+      FS.doChown(stream, stream.node, false);
     },
     doTruncate(stream, node, len) {
       if (FS.isDir(node.mode)) {
