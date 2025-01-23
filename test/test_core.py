@@ -5859,8 +5859,6 @@ Module.onRuntimeInitialized = () => {
     if nodefs:
       if WINDOWS:
         self.skipTest('No symlinks on Windows')
-      if self.get_setting('WASMFS'):
-        self.skipTest('NODEFS in WasmFS')
     self.do_runf('fs/test_fs_symlink_resolution.c', 'success')
 
   @with_all_fs
@@ -5910,8 +5908,6 @@ Module.onRuntimeInitialized = () => {
     nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-      if nodefs:
-        self.skipTest('NODEFS in WasmFS')
     # On windows we have slighly different output because we the same
     # level of permissions are not available. For example, on windows
     # its not possible have a file that is not readable, but writable.
@@ -5949,8 +5945,6 @@ Module.onRuntimeInitialized = () => {
     nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-      if nodefs:
-        self.skipTest('TODO: NODEFS in WasmFS')
     if WINDOWS or os.geteuid() == 0:
       self.skipTest('Root access invalidates this test by being able to write on readonly files')
     self.do_run_in_out_file_test('unistd/truncate.c')
@@ -5983,8 +5977,6 @@ Module.onRuntimeInitialized = () => {
   @with_all_fs
   def test_unistd_unlink(self):
     nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
-    if self.get_setting('WASMFS') and nodefs:
-      self.skipTest('NODEFS in WasmFS')
 
     # symlinks on node.js on non-linux behave differently (e.g. on Windows they require administrative privileges)
     # so skip testing those bits on that combination.
@@ -6035,8 +6027,6 @@ Module.onRuntimeInitialized = () => {
   @also_with_nodefs
   def test_unistd_io(self):
     if self.get_setting('WASMFS'):
-      if '-DNODEFS' in self.emcc_args:
-        self.skipTest('NODEFS in WasmFS')
       self.set_setting('FORCE_FILESYSTEM')
     self.do_run_in_out_file_test('unistd/io.c')
 
