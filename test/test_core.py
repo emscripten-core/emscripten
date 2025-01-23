@@ -5904,7 +5904,6 @@ Module.onRuntimeInitialized = () => {
   @crossplatform
   @with_all_fs
   def test_unistd_access(self):
-    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
     # On windows we have slighly different output because we the same
@@ -5913,7 +5912,7 @@ Module.onRuntimeInitialized = () => {
     # We also report all files as executable since there is no x bit
     # recorded there.
     # See https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/chmod-wchmod?view=msvc-170#remarks
-    if WINDOWS and nodefs:
+    if WINDOWS and '-DNODERAWFS' in self.emcc_args:
       out_suffix = '.win'
     else:
       out_suffix = ''
