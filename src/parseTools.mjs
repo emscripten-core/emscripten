@@ -735,8 +735,8 @@ export const ATMAINS = [];
 
 export const ATPRERUN = [];
 
-// Add code that will be run after the Wasm module is loaded, but before static
-// constructors and main are run.
+// Add code that runs after the Wasm module is loaded and the runtime ATINIT
+// callbacks, but before static constructors and main are run.
 function addAtPreRun(code) {
   ATPRERUN.push(code);
 }
