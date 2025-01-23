@@ -738,11 +738,11 @@ def phase_parse_arguments(state):
 
 
 def separate_linker_flags(state, newargs):
-  """Process argument list separating out intput files, compiler flags
+  """Process argument list separating out input files, compiler flags
   and linker flags.
 
   - Linker flags are stored in state.link_flags
-  - Input files and compiler-only flags are return as two separate lists.
+  - Input files and compiler-only flags are returned as two separate lists.
 
   Both linker flags and input files are stored as pairs of (i, entry) where
   `i` is the orginal index in the command line arguments.  This allow the two
