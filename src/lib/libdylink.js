@@ -859,7 +859,7 @@ var LibraryDylink = {
               init();
             } else {
               // we aren't ready to run compiled code yet
-              __ATINIT__.push(init);
+              __ATPOSTCTOR__.push(init);
             }
           }
 #if PTHREADS

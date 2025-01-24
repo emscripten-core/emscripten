@@ -731,12 +731,20 @@ function makeEval(code) {
   return ret;
 }
 
-export const ATMAINS = [];
-
 export const ATINITS = [];
 
+// Add code to run after the Wasm module is loaded, but before static
+// constructors and main (if applicable). The code will be executed before the
+// runtime `__ATINIT__` callbacks.
 function addAtInit(code) {
   ATINITS.push(code);
+}
+
+export const ATPOSTCTORS = [];
+
+// Add code to run after static constructors, but before main (if applicable).
+function addAtPostCtor(code) {
+  ATPOSTCTORS.push(code);
 }
 
 export const ATEXITS = [];
@@ -1104,6 +1112,7 @@ addToCompileTimeContext({
   ENVIRONMENT_IS_WORKER_THREAD,
   addAtExit,
   addAtInit,
+  addAtPostCtor,
   asyncIf,
   awaitIf,
   buildStringArray,

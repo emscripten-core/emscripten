@@ -835,7 +835,7 @@ var LibraryEmbind = {
 
 #if EMBIND_AOT
   $embindEmitAotJs__deps: ['$awaitingDependencies', '$throwBindingError', '$getTypeName', '$moduleDefinitions', '$JsPrinter'],
-  $embindEmitAotJs__postset: 'addOnInit(embindEmitAotJs);',
+  $embindEmitAotJs__postset: () => { addAtPostCtor('embindEmitAotJs()'); },
   $embindEmitAotJs: () => {
     for (const typeId in awaitingDependencies) {
       throwBindingError(`Missing binding for type: '${getTypeName(typeId)}' typeId: ${typeId}`);
@@ -845,7 +845,7 @@ var LibraryEmbind = {
   },
 #else // EMBIND_AOT
   $embindEmitTypes__deps: ['$awaitingDependencies', '$throwBindingError', '$getTypeName', '$moduleDefinitions', '$TsPrinter'],
-  $embindEmitTypes__postset: 'addOnInit(embindEmitTypes);',
+  $embindEmitTypes__postset: () => { addAtPostCtor('embindEmitTypes()'); },
   $embindEmitTypes: () => {
     for (const typeId in awaitingDependencies) {
       throwBindingError(`Missing binding for type: '${getTypeName(typeId)}' typeId: ${typeId}`);

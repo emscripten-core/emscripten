@@ -13,8 +13,6 @@ function run() {
   emscriptenMemoryProfiler.onPreloadComplete();
 #endif
 
-  <<< ATMAINS >>>
-
 #if PROXY_TO_PTHREAD
   // User requested the PROXY_TO_PTHREAD option, so call a stub main which
   // pthread_create()s a new thread that will call the user's real main() for
@@ -73,11 +71,13 @@ function initRuntime(wasmExports) {
   PThread.tlsInitFunctions.push(wasmExports['_emscripten_tls_init']);
 #endif
 
+  <<< ATINITS >>>
+
 #if hasExportedSymbol('__wasm_call_ctors')
   wasmExports['__wasm_call_ctors']();
 #endif
 
-  <<< ATINITS >>>
+  <<< ATPOSTCTORS >>>
 }
 
 // Initialize wasm (asynchronous)

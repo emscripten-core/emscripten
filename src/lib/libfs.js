@@ -33,11 +33,8 @@ addToLibrary({
   ],
   $FS__postset: () => {
     // TODO: do we need noFSInit?
-    addAtInit(`
-if (!Module['noFSInit'] && !FS.initialized)
-  FS.init();
-FS.ignorePermissions = false;
-`)
+    addAtInit(`if (!Module['noFSInit'] && !FS.initialized) FS.init();`);
+    addAtPostCtor('FS.ignorePermissions = false;');
     addAtExit('FS.quit();');
     return `
 FS.createPreloadedFile = FS_createPreloadedFile;
