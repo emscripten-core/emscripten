@@ -129,7 +129,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
 
       // Copy parameters descriptor structs and data to Wasm
       paramsPtr = dataPtr;
-      k = paramsPtr >> 2;
+      k = paramsPtr >>> 2;
       dataPtr += numParams * {{{ C_STRUCTS.AudioParamFrame.__size__ }}};
       for (i = 0; paramArray = parameters[i++];) {
         // Write the AudioParamFrame struct instance
@@ -144,7 +144,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
       // Copy output audio descriptor structs to Wasm (note that dataPtr after
       // the struct offsets should now be 16-byte aligned).
       outputsPtr = dataPtr;
-      k = outputsPtr >> 2;
+      k = outputsPtr >>> 2;
       dataPtr += numOutputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
       for (i of outputList) {
         // Write the AudioSampleFrame struct instance
