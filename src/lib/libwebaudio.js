@@ -78,7 +78,7 @@ let LibraryWebAudio = {
 #if WEBAUDIO_DEBUG
       console.log(`emscripten_resume_audio_context_async() callback: New audio state="${EmAudio[contextHandle].state}", ID=${state}`);
 #endif
-      {{{ makeDynCall('viii', 'callback') }}}(contextHandle, state, userData);
+      {{{ makeDynCall('viip', 'callback') }}}(contextHandle, state, userData);
     }
 #if WEBAUDIO_DEBUG
     console.log(`emscripten_resume_audio_context_async() resuming...`);
@@ -162,12 +162,13 @@ let LibraryWebAudio = {
     console.log(`emscripten_start_wasm_audio_worklet_thread_async() adding audioworklet.js...`);
 #endif
 
-    let audioWorkletCreationFailed = () => {
+    let audioWorkletCreationFailed = (err) => {
 #if WEBAUDIO_DEBUG
       // Note about Cross-Origin here: a lack of Cross-Origin-Opener-Policy and
       // Cross-Origin-Embedder-Policy headers to the client request will result
       // in the worklet file failing to load.
       console.error(`emscripten_start_wasm_audio_worklet_thread_async() addModule() failed! Are the Cross-Origin headers being set?`);
+      if (err) console.error(err);
 #endif
       {{{ makeDynCall('viip', 'callback') }}}(contextHandle, 0/*EM_FALSE*/, userData);
     };
@@ -225,7 +226,7 @@ let LibraryWebAudio = {
 #if WEBAUDIO_DEBUG
       console.log(`emscripten_start_wasm_audio_worklet_thread_async() addModule() of main application JS completed`);
 #endif
-      {{{ makeDynCall('viii', 'callback') }}}(contextHandle, 1/*EM_TRUE*/, userData);
+      {{{ makeDynCall('viip', 'callback') }}}(contextHandle, 1/*EM_TRUE*/, userData);
     }).catch(audioWorkletCreationFailed);
   },
 
@@ -272,8 +273,8 @@ let LibraryWebAudio = {
       '_wpn': UTF8ToString(HEAPU32[options]),
       'ap': audioParams,
       'ch': contextHandle,
-      'cb': callback,
-      'ud': userData
+      'cb': BigInt(callback),
+      'ud': BigInt(userData)
     });
   },
 
@@ -297,8 +298,8 @@ let LibraryWebAudio = {
       numberOfOutputs: HEAP32[options+1],
       outputChannelCount: HEAPU32[options+2] ? readChannelCountArray(HEAPU32[options+2]>>2, HEAP32[options+1]) : void 0,
       processorOptions: {
-        'cb': callback,
-        'ud': userData,
+        'cb': BigInt(callback),
+        'ud': BigInt(userData),
         'sc': emscriptenGetContextQuantumSize(contextHandle)
       }
     } : void 0;

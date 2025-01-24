@@ -112,7 +112,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
 
       // Copy input audio descriptor structs and data to Wasm
       inputsPtr = dataPtr;
-      k = inputsPtr >> 2;
+      k = inputsPtr >>> 2;
       dataPtr += numInputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
       for (i of inputList) {
         // Write the AudioSampleFrame struct instance
@@ -122,7 +122,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
         k += {{{ C_STRUCTS.AudioSampleFrame.__size__ / 4 }}};
         // Marshal the input audio sample data for each audio channel of this input
         for (j of i) {
-          HEAPF32.set(j, dataPtr>>2);
+          HEAPF32.set(j, dataPtr>>>2);
           dataPtr += bytesPerChannel;
         }
       }
@@ -179,7 +179,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
 #endif
 
       // Call out to Wasm callback to perform audio processing
-      if (didProduceAudio = this.callbackFunction(numInputs, inputsPtr, numOutputs, outputsPtr, numParams, paramsPtr, this.userData)) {
+      if (didProduceAudio = this.callbackFunction(numInputs, BigInt(inputsPtr), numOutputs, BigInt(outputsPtr), numParams, BigInt(paramsPtr), this.userData)) {
         // Read back the produced audio data to all outputs and their channels.
         // The preallocated 'outputViews' already have the correct offsets and
         // sizes into the stack (recall from the ctor that they run backwards).

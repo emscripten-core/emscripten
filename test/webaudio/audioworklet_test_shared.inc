@@ -28,6 +28,10 @@ EM_JS(EMSCRIPTEN_WEBAUDIO_T, createTrack, (EMSCRIPTEN_WEBAUDIO_T ctxID, const ch
   var context = emscriptenGetAudioObject(ctxID);
   if (context) {
     var audio = document.createElement('audio');
+
+    // Workaround for UTF8ToString() needing a JS number
+    url = Number(BigInt.asUintN(53, url));
+
     audio.src = UTF8ToString(url);
     audio.loop = looping;
     var track = context.createMediaElementSource(audio);
@@ -82,11 +86,15 @@ void initialised(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
   emscripten_create_wasm_audio_worklet_processor_async(context, &opts, &processorCreated, NULL);
 }
 
+
 // Common entry point for the mixer tests
 int main() {
-  static char workletStack[AUDIO_STACK_SIZE];
+  char* const emptySpace = malloc(2147483648);
+  (void) emptySpace;
+  char* const workletStack = malloc(AUDIO_STACK_SIZE);
+  //static char workletStack[AUDIO_STACK_SIZE];
   EMSCRIPTEN_WEBAUDIO_T context = emscripten_create_audio_context(NULL);
-  emscripten_start_wasm_audio_worklet_thread_async(context, workletStack, sizeof workletStack, &initialised, NULL);
+  emscripten_start_wasm_audio_worklet_thread_async(context, workletStack, AUDIO_STACK_SIZE, &initialised, NULL);
 #ifndef BROWSER_TEST
   // Special case: browser tests need to exit instantly, interactive tests need to wait
   emscripten_runtime_keepalive_push();
