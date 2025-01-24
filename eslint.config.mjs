@@ -54,7 +54,6 @@ export default [{
     'src/settings_internal.js',
     'src/growableHeap.js',
     'src/emrun_prejs.js',
-    'src/arrayUtils.js',
     'src/deterministic.js',
     'src/base64Decode.js',
     'src/proxyWorker.js',
