@@ -226,9 +226,6 @@ function preMain() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-#if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
-#endif
   <<< ATMAINS >>>
   callRuntimeCallbacks(__ATMAIN__);
 }
