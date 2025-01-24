@@ -226,9 +226,6 @@ function preMain() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-#if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
-#endif
   <<< ATMAINS >>>
   callRuntimeCallbacks(__ATMAIN__);
 }
@@ -630,11 +627,7 @@ function getBinarySync(file) {
 async function getWasmBinary(binaryFile) {
 #if !SINGLE_FILE
   // If we don't have the binary yet, load it asynchronously using readAsync.
-  if (!wasmBinary
-#if SUPPORT_BASE64_EMBEDDING
-      || isDataURI(binaryFile)
-#endif
-      ) {
+  if (!wasmBinary) {
     // Fetch the binary using readAsync
     try {
       var response = await readAsync(binaryFile);

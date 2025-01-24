@@ -4,8 +4,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "arrayUtils.js"
-
 addToLibrary({
   // TextDecoder constructor defaults to UTF-8
 #if TEXTDECODER == 2
@@ -256,8 +254,28 @@ addToLibrary({
 
   $intArrayFromString__docs: '/** @type {function(string, boolean=, number=)} */',
   $intArrayFromString__deps: ['$lengthBytesUTF8', '$stringToUTF8Array'],
-  $intArrayFromString: intArrayFromString,
-  $intArrayToString: intArrayToString,
+  $intArrayFromString: (stringy, dontAddNull, length) => {
+    var len = length > 0 ? length : lengthBytesUTF8(stringy)+1;
+    var u8array = new Array(len);
+    var numBytesWritten = stringToUTF8Array(stringy, u8array, 0, u8array.length);
+    if (dontAddNull) u8array.length = numBytesWritten;
+    return u8array;
+  },
+
+  $intArrayToString: (array) => {
+    var ret = [];
+    for (var i = 0; i < array.length; i++) {
+      var chr = array[i];
+      if (chr > 0xFF) {
+  #if ASSERTIONS
+        assert(false, `Character code ${chr} (${String.fromCharCode(chr)}) at offset ${i} not in 0x00-0xFF.`);
+  #endif
+        chr &= 0xFF;
+      }
+      ret.push(String.fromCharCode(chr));
+    }
+    return ret.join('');
+  },
 
   // Given a pointer 'ptr' to a null-terminated ASCII-encoded string in the
   // emscripten HEAP, returns a copy of that string as a Javascript String

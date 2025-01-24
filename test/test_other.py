@@ -4924,7 +4924,7 @@ extraLibraryFuncs.push('jsfunc');
     ''')
     create_file('foo.js', '''
     // Include a file from system directory
-    #include "arrayUtils.js"
+    #include "IDBStore.js"
     // Include a local file.
     #include "inc.js"
     ''')
