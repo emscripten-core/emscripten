@@ -122,7 +122,7 @@ if (ENVIRONMENT_IS_NODE) {
 #endif // ENVIRONMENT_MAY_BE_NODE
 
 #if WASM_WORKERS
-var ENVIRONMENT_IS_WASM_WORKER = Module['$ww'];
+var ENVIRONMENT_IS_WASM_WORKER = !!Module['$ww'];
 #endif
 
 // --pre-jses are emitted after the Module integration code, so that they can
