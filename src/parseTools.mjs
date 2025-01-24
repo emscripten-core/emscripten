@@ -214,7 +214,7 @@ no matching #endif found (${showStack.length$}' unmatched preprocessing directiv
 }
 
 // Returns true if ident is a niceIdent (see toNiceIdent). Also allow () and spaces.
-function isNiceIdent(ident, loose) {
+function isNiceIdent(ident) {
   return /^\(?[$_]+[\w$_\d ]*\)?$/.test(ident);
 }
 
@@ -970,7 +970,7 @@ function from64(x) {
 
 // Like from64 above but generate an expression instead of an assignment
 // statement.
-function from64Expr(x, assign = true) {
+function from64Expr(x) {
   if (!MEMORY64) return x;
   return `Number(${x})`;
 }

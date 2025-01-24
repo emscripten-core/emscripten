@@ -90,11 +90,8 @@ export default [{
   files: ['**/*.mjs'],
 
   rules: {
-    'no-undef': 'error',
     'no-unused-vars': ['error', {
-      vars: 'all',
-      args: 'none',
-      ignoreRestSiblings: false,
+      argsIgnorePattern: '^_',
       destructuredArrayIgnorePattern: '^_',
     }],
   },

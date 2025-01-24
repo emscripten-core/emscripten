@@ -112,7 +112,7 @@ function resolveAlias(symbol) {
   return symbol;
 }
 
-function getTransitiveDeps(symbol, debug) {
+function getTransitiveDeps(symbol) {
   // TODO(sbc): Use some kind of cache to avoid quadratic behaviour here.
   const transitiveDeps = new Set();
   const seen = new Set();
