@@ -20,6 +20,12 @@ See docs/process.md for more on how version tagging works.
 
 4.0.2 (in development)
 ----------------------
+- Added support for compiling AVX2 intrinsics, 256-bit wide intrinsic is emulated
+  on top of 128-bit Wasm SIMD instruction set. (#23035). Pass `-msimd128 -mavx2`
+  to enable targeting AVX2.
+- The system JS libraries in `src/` were renamed from `library_foo.js` to
+  `lib/libfoo.js`. They are still included via the same `-lfoo.js` flag so
+  this should not be a user-visible change. (#23348)
 
 4.0.1 - 01/17/25
 ----------------
@@ -30,6 +36,7 @@ See docs/process.md for more on how version tagging works.
   a conflict between the `majorVersion` requested and the WebGL support defined
   via linker flags (`MIN_WEBGL_VERSION` and `MAX_WEBGL_VERSION`). This warning
   will be turned into a hard failure in a future release. (#23372, #23416)
+- zlib port updated from 1.2.13 to 1.3.1. (#23462)
 
 4.0.0 - 01/14/25
 ----------------

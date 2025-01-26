@@ -769,21 +769,19 @@ class Exceptions(IntEnum):
   """
   This represents exception handling mode of Emscripten. Currently there are
   three modes of exception handling:
-  - None: Does not handle exceptions. This includes -fno-exceptions, which
+  - NONE: Does not handle exceptions. This includes -fno-exceptions, which
     prevents both throwing and catching, and -fignore-exceptions, which only
     allows throwing, but library-wise they use the same version.
-  - Emscripten: Emscripten provides exception handling capability using JS
+  - EMSCRIPTEN: Emscripten provides exception handling capability using JS
     emulation. This causes code size increase and performance degradation.
-  - Wasm: Wasm native exception handling support uses Wasm EH instructions and
-    is meant to be fast. You need to use a VM that has the EH support to use
-    this. This is not fully working yet and still experimental.
+  - WASM_LEGACY: Wasm native exception handling support (legacy)
   """
   NONE = auto()
   EMSCRIPTEN = auto()
-  WASM = auto()
+  WASM_LEGACY = auto()
 
 
-class NoExceptLibrary(Library):
+class ExceptionLibrary(Library):
   def __init__(self, **kwargs):
     self.eh_mode = kwargs.pop('eh_mode')
     super().__init__(**kwargs)
@@ -794,8 +792,9 @@ class NoExceptLibrary(Library):
       cflags += ['-fno-exceptions']
     elif self.eh_mode == Exceptions.EMSCRIPTEN:
       cflags += ['-sDISABLE_EXCEPTION_CATCHING=0']
-    elif self.eh_mode == Exceptions.WASM:
+    elif self.eh_mode == Exceptions.WASM_LEGACY:
       cflags += ['-fwasm-exceptions']
+
     return cflags
 
   def get_base_name(self):
@@ -804,21 +803,21 @@ class NoExceptLibrary(Library):
     # suffixes. Change the default to wasm exception later.
     if self.eh_mode == Exceptions.NONE:
       name += '-noexcept'
-    elif self.eh_mode == Exceptions.WASM:
-      name += '-except'
+    elif self.eh_mode == Exceptions.WASM_LEGACY:
+      name += '-legacyexcept'
     return name
 
   @classmethod
-  def variations(cls, **kwargs):  # noqa
+  def variations(cls):
     combos = super().variations()
     return ([dict(eh_mode=Exceptions.NONE, **combo) for combo in combos] +
             [dict(eh_mode=Exceptions.EMSCRIPTEN, **combo) for combo in combos] +
-            [dict(eh_mode=Exceptions.WASM, **combo) for combo in combos])
+            [dict(eh_mode=Exceptions.WASM_LEGACY, **combo) for combo in combos])
 
   @classmethod
   def get_default_variation(cls, **kwargs):
     if settings.WASM_EXCEPTIONS:
-      eh_mode = Exceptions.WASM
+      eh_mode = Exceptions.WASM_LEGACY
     elif settings.DISABLE_EXCEPTION_CATCHING == 1:
       eh_mode = Exceptions.NONE
     else:
@@ -828,15 +827,16 @@ class NoExceptLibrary(Library):
 
 class SjLjLibrary(Library):
   def __init__(self, **kwargs):
-    # Whether we use Wasm EH instructions for SjLj support
-    self.is_wasm = kwargs.pop('is_wasm')
+    # Which EH method we use for SjLj support
+    self.eh_mode = kwargs.pop('eh_mode')
     super().__init__(**kwargs)
 
   def get_cflags(self):
     cflags = super().get_cflags()
-    if self.is_wasm:
-      # DISABLE_EXCEPTION_THROWING=0 is the default, which is for Emscripten
-      # EH/SjLj, so we should reverse it.
+    if self.eh_mode == Exceptions.EMSCRIPTEN:
+      cflags += ['-sSUPPORT_LONGJMP=emscripten',
+                 '-sDISABLE_EXCEPTION_THROWING=0']
+    elif self.eh_mode == Exceptions.WASM_LEGACY:
       cflags += ['-sSUPPORT_LONGJMP=wasm',
                  '-sDISABLE_EXCEPTION_THROWING',
                  '-D__WASM_SJLJ__']
@@ -846,18 +846,23 @@ class SjLjLibrary(Library):
     name = super().get_base_name()
     # TODO Currently emscripten-based SjLj is the default mode, thus no
     # suffixes. Change the default to wasm exception later.
-    if self.is_wasm:
-      name += '-wasm-sjlj'
+    if self.eh_mode == Exceptions.WASM_LEGACY:
+      name += '-legacysjlj'
     return name
 
   @classmethod
-  def vary_on(cls):
-    return super().vary_on() + ['is_wasm']
+  def variations(cls):
+    combos = super().variations()
+    return ([dict(eh_mode=Exceptions.EMSCRIPTEN, **combo) for combo in combos] +
+            [dict(eh_mode=Exceptions.WASM_LEGACY, **combo) for combo in combos])
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    is_wasm = settings.SUPPORT_LONGJMP == 'wasm'
-    return super().get_default_variation(is_wasm=is_wasm, **kwargs)
+    if settings.SUPPORT_LONGJMP == 'wasm':
+      eh_mode = Exceptions.WASM_LEGACY
+    else:
+      eh_mode = Exceptions.EMSCRIPTEN
+    return super().get_default_variation(eh_mode=eh_mode, **kwargs)
 
 
 class MuslInternalLibrary(Library):
@@ -1537,7 +1542,7 @@ class crtbegin(MuslInternalLibrary):
     return super().can_use() and settings.SHARED_MEMORY
 
 
-class libcxxabi(NoExceptLibrary, MTLibrary, DebugLibrary):
+class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
   name = 'libc++abi'
   cflags = [
       '-Oz',
@@ -1569,7 +1574,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary, DebugLibrary):
       # The code used to interpret exceptions during terminate
       # is not compatible with emscripten exceptions.
       cflags.append('-DLIBCXXABI_SILENT_TERMINATE')
-    elif self.eh_mode == Exceptions.WASM:
+    elif self.eh_mode == Exceptions.WASM_LEGACY:
       cflags.append('-D__WASM_EXCEPTIONS__')
     return cflags
 
@@ -1595,7 +1600,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary, DebugLibrary):
       filenames += ['cxa_noexception.cpp']
     elif self.eh_mode == Exceptions.EMSCRIPTEN:
       filenames += ['cxa_exception_emscripten.cpp']
-    elif self.eh_mode == Exceptions.WASM:
+    elif self.eh_mode == Exceptions.WASM_LEGACY:
       filenames += [
         'cxa_exception_storage.cpp',
         'cxa_exception.cpp',
@@ -1609,7 +1614,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary, DebugLibrary):
         filenames=filenames)
 
 
-class libcxx(NoExceptLibrary, MTLibrary):
+class libcxx(ExceptionLibrary, MTLibrary):
   name = 'libc++'
 
   cflags = [
@@ -1649,12 +1654,12 @@ class libcxx(NoExceptLibrary, MTLibrary):
 
   def get_cflags(self):
     cflags = super().get_cflags()
-    if self.eh_mode == Exceptions.WASM:
+    if self.eh_mode == Exceptions.WASM_LEGACY:
       cflags.append('-D__WASM_EXCEPTIONS__')
     return cflags
 
 
-class libunwind(NoExceptLibrary, MTLibrary):
+class libunwind(ExceptionLibrary, MTLibrary):
   name = 'libunwind'
   # Because calls to _Unwind_CallPersonality are generated during LTO, libunwind
   # can't currently be part of LTO.
@@ -1672,7 +1677,7 @@ class libunwind(NoExceptLibrary, MTLibrary):
     super().__init__(**kwargs)
 
   def can_use(self):
-    return super().can_use() and self.eh_mode == Exceptions.WASM
+    return super().can_use() and self.eh_mode == Exceptions.WASM_LEGACY
 
   def get_cflags(self):
     cflags = super().get_cflags()
@@ -1683,7 +1688,7 @@ class libunwind(NoExceptLibrary, MTLibrary):
       cflags.append('-D_LIBUNWIND_HAS_NO_EXCEPTIONS')
     elif self.eh_mode == Exceptions.EMSCRIPTEN:
       cflags.append('-D__EMSCRIPTEN_EXCEPTIONS__')
-    elif self.eh_mode == Exceptions.WASM:
+    elif self.eh_mode == Exceptions.WASM_LEGACY:
       cflags.append('-D__WASM_EXCEPTIONS__')
     return cflags
 

@@ -9,6 +9,7 @@
  */
 
 import * as path from 'node:path';
+import {existsSync} from 'node:fs';
 
 import {
   addToCompileTimeContext,
@@ -19,6 +20,7 @@ import {
   runInMacroContext,
   setCurrentFile,
   warn,
+  srcDir,
 } from './utility.mjs';
 
 const FOUR_GB = 4 * 1024 * 1024 * 1024;
@@ -38,6 +40,24 @@ export function processMacros(text, filename) {
     const ret = runInMacroContext(str, {filename: filename});
     return ret !== null ? ret.toString() : '';
   });
+}
+
+function findIncludeFile(filename, currentDir) {
+  if (path.isAbsolute(filename)) {
+    return existsSync(filename) ? filename : null;
+  }
+
+  // Search for include files either relative to the including file,
+  // or in the src root directory.
+  const includePath = [currentDir, srcDir];
+  for (const p of includePath) {
+    const f = path.join(p, filename);
+    if (existsSync(f)) {
+      return f;
+    }
+  }
+
+  return null;
 }
 
 // Simple #if/else/endif preprocessing for a file. Checks if the
@@ -125,11 +145,12 @@ export function preprocess(filename) {
             if (includeFile.startsWith('"')) {
               includeFile = includeFile.substr(1, includeFile.length - 2);
             }
-            // Include files are always relative to the current file being processed
-            if (!path.isAbsolute(includeFile)) {
-              includeFile = path.join(path.dirname(filename), includeFile);
+            const absPath = findIncludeFile(includeFile, path.dirname(filename));
+            if (!absPath) {
+              error(`${filename}:${i + 1}: file not found: ${includeFile}`);
+              continue;
             }
-            const result = preprocess(includeFile);
+            const result = preprocess(absPath);
             if (result) {
               ret += `// include: ${includeFile}\n`;
               ret += result;
@@ -886,7 +907,7 @@ function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert)
 function makeRemovedFSAssert(fsName) {
   assert(ASSERTIONS);
   const lower = fsName.toLowerCase();
-  if (JS_LIBRARIES.includes(`library_${lower}.js`)) return '';
+  if (JS_LIBRARIES.includes(path.resolve(path.join('lib', `lib${lower}.js`)))) return '';
   return `var ${fsName} = '${fsName} is no longer included by default; build with -l${lower}.js';`;
 }
 

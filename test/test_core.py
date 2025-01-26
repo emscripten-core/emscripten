@@ -795,7 +795,7 @@ base align: 0, 0, 0, 0'''])
 
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
-  def test_emmalloc_usable_size(self, *args):
+  def test_emmalloc_usable_size(self):
     self.set_setting('MALLOC', 'emmalloc')
     self.do_core_test('test_malloc_usable_size.c', regex=True)
 
@@ -829,7 +829,7 @@ base align: 0, 0, 0, 0'''])
     self.do_core_test('test_emmalloc_trim.c')
 
   # Test case against https://github.com/emscripten-core/emscripten/issues/10363
-  def test_emmalloc_memalign_corruption(self, *args):
+  def test_emmalloc_memalign_corruption(self):
     self.set_setting('MALLOC', 'emmalloc')
     self.do_core_test('test_emmalloc_memalign_corruption.c')
 
@@ -872,12 +872,10 @@ base align: 0, 0, 0, 0'''])
     # FIXME Temporarily disabled. Enable this later when the bug is fixed.
     if '-fsanitize=address' in self.emcc_args:
       self.skipTest('Wasm EH does not work with asan yet')
-    self.emcc_args.append('-fwasm-exceptions')
-    for arg in ('-fwasm-exceptions', '-fno-exceptions'):
-      self.do_core_test('test_longjmp.c', emcc_args=[arg])
-    # Wasm SjLj with and with the standardized EH (exnref) support
-    self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
-    self.do_core_test('test_longjmp.c', emcc_args=['-fwasm-exceptions'])
+    for legacy in [0, 1]:
+      self.set_setting('WASM_LEGACY_EXCEPTIONS', legacy)
+      for arg in ('-fwasm-exceptions', '-fno-exceptions'):
+        self.do_core_test('test_longjmp.c', emcc_args=[arg])
 
   @with_all_sjlj
   def test_longjmp2(self):
@@ -1011,14 +1009,11 @@ int main()
     if '-fsanitize=address' in self.emcc_args:
       self.skipTest('Wasm EH does not work with asan yet')
     self.emcc_args.append('-fwasm-exceptions')
-    for support_longjmp in (0, 'wasm'):
-      self.set_setting('SUPPORT_LONGJMP', support_longjmp)
-      self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
-    # Wasm standardized EH (exnref) with and without Wasm SjLj support
-    self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
-    for support_longjmp in (0, 'wasm'):
-      self.set_setting('SUPPORT_LONGJMP', support_longjmp)
-      self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
+    for legacy in [0, 1]:
+      self.set_setting('WASM_LEGACY_EXCEPTIONS', legacy)
+      for support_longjmp in (0, 'wasm'):
+        self.set_setting('SUPPORT_LONGJMP', support_longjmp)
+        self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
 
   def test_exceptions_off(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING')
@@ -5847,18 +5842,22 @@ Module.onRuntimeInitialized = () => {
       self.set_setting('FORCE_FILESYSTEM')
     self.do_runf('fs/test_64bit.c', 'success')
 
+  @crossplatform
+  @with_all_fs
+  def test_fs_stat_unnamed_file_descriptor(self):
+    if '-DNODEFS' in self.emcc_args:
+      self.skipTest('TODO: doesnt work in nodefs')
+    self.do_runf('fs/test_stat_unnamed_file_descriptor.c', 'success')
+
   @requires_node
   @crossplatform
   @with_all_fs
   def test_fs_symlink_resolution(self):
-    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-    if nodefs:
-      if WINDOWS:
-        self.skipTest('No symlinks on Windows')
-      if self.get_setting('WASMFS'):
-        self.skipTest('NODEFS in WasmFS')
+    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
+    if nodefs and WINDOWS:
+      self.skipTest('No symlinks on Windows')
     self.do_runf('fs/test_fs_symlink_resolution.c', 'success')
 
   @with_all_fs
@@ -5905,11 +5904,8 @@ Module.onRuntimeInitialized = () => {
   @crossplatform
   @with_all_fs
   def test_unistd_access(self):
-    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-      if nodefs:
-        self.skipTest('NODEFS in WasmFS')
     # On windows we have slighly different output because we the same
     # level of permissions are not available. For example, on windows
     # its not possible have a file that is not readable, but writable.
@@ -5944,11 +5940,8 @@ Module.onRuntimeInitialized = () => {
 
   @with_all_fs
   def test_unistd_truncate(self):
-    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-      if nodefs:
-        self.skipTest('TODO: NODEFS in WasmFS')
     if WINDOWS or os.geteuid() == 0:
       self.skipTest('Root access invalidates this test by being able to write on readonly files')
     self.do_run_in_out_file_test('unistd/truncate.c')
@@ -5980,10 +5973,6 @@ Module.onRuntimeInitialized = () => {
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @with_all_fs
   def test_unistd_unlink(self):
-    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
-    if self.get_setting('WASMFS') and nodefs:
-      self.skipTest('NODEFS in WasmFS')
-
     # symlinks on node.js on non-linux behave differently (e.g. on Windows they require administrative privileges)
     # so skip testing those bits on that combination.
     if '-DNODEFS' in self.emcc_args:
@@ -6033,8 +6022,6 @@ Module.onRuntimeInitialized = () => {
   @also_with_nodefs
   def test_unistd_io(self):
     if self.get_setting('WASMFS'):
-      if '-DNODEFS' in self.emcc_args:
-        self.skipTest('NODEFS in WasmFS')
       self.set_setting('FORCE_FILESYSTEM')
     self.do_run_in_out_file_test('unistd/io.c')
 
@@ -6570,6 +6557,25 @@ void* operator new(size_t size) {
     native_result = self.run_process('./test_avx', stdout=PIPE).stdout
 
     self.emcc_args += ['-I' + test_file('sse'), '-mavx', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB'] + args
+    self.maybe_closure()
+    self.do_runf(src, native_result)
+
+  # Tests invoking the SIMD API via x86 AVX2 avx2intrin.h header (_mm_x()/_mm256_x() functions)
+  @wasm_simd
+  @requires_native_clang
+  @is_slow_test
+  @no_asan('local count too large')
+  @no_ubsan('local count too large')
+  @parameterized({
+    '': ([],),
+    'nontrapping': (['-mnontrapping-fptoint'],)
+  })
+  def test_avx2(self, args):
+    src = test_file('sse/test_avx2.cpp')
+    self.run_process([shared.CLANG_CXX, src, '-mavx2', '-Wno-argument-outside-range', '-Wpedantic', '-o', 'test_avx2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    native_result = self.run_process('./test_avx2', stdout=PIPE).stdout
+
+    self.emcc_args += ['-I' + test_file('sse'), '-mavx2', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB'] + args
     self.maybe_closure()
     self.do_runf(src, native_result)
 
@@ -8377,7 +8383,7 @@ Module.onRuntimeInitialized = () => {
     cmd = [PYTHON, path_from_root('tools/maybe_wasm2js.py'), 'test_hello_world.js', 'test_hello_world.wasm']
     if self.is_optimizing():
       cmd += ['-O2']
-    self.run_process(cmd, stdout=open('do_wasm2js.js', 'w')).stdout
+    self.run_process(cmd, stdout=open('do_wasm2js.js', 'w'))
     # remove the wasm to make sure we never use it again
     os.remove('test_hello_world.wasm')
     # verify that it runs
