@@ -270,11 +270,13 @@ let LibraryWebAudio = {
       // Processor Name' used as a 'key' to verify the message type so as to
       // not get accidentally mixed with user submitted messages, the remainder
       // for space saving reasons, abbreviated from their variable names).
+      // Note: we can only pass clonable object, so need to pass the function
+      // pointer and not the wasm function object.
       '_wpn': UTF8ToString(HEAPU32[options]),
       'ap': audioParams,
       'ch': contextHandle,
-      'cb': BigInt(callback),
-      'ud': BigInt(userData)
+      'cb': {{{ toIndexType('callback') }}},
+      'ud': {{{ toIndexType('userData') }}}
     });
   },
 
@@ -298,8 +300,8 @@ let LibraryWebAudio = {
       numberOfOutputs: HEAP32[options+1],
       outputChannelCount: HEAPU32[options+2] ? readChannelCountArray(HEAPU32[options+2]>>2, HEAP32[options+1]) : void 0,
       processorOptions: {
-        'cb': BigInt(callback),
-        'ud': BigInt(userData),
+        'cb': {{{ toIndexType('callback') }}},
+        'ud': {{{ toIndexType('userData') }}},
         'sc': emscriptenGetContextQuantumSize(contextHandle)
       }
     } : void 0;
