@@ -1,5 +1,11 @@
 // Shared code for the audio worklet mixer tests.
 
+// Defines an offset in GB from where to start the stack (for testing >2GB and
+// >4GB heaps). See _main_().
+#ifndef TEST_OFFSET_GB
+#define TEST_OFFSET_GB 0
+#endif
+
 // Helper for MEMORY64 to cast an audio context or type to a void*
 #define WA_2_VOIDP(ctx) ((void*) (intptr_t) ctx)
 // Helper for MEMORY64 to cast a void* to an audio context or type
@@ -28,10 +34,10 @@ EM_JS(EMSCRIPTEN_WEBAUDIO_T, createTrack, (EMSCRIPTEN_WEBAUDIO_T ctxID, const ch
   var context = emscriptenGetAudioObject(ctxID);
   if (context) {
     var audio = document.createElement('audio');
-
-    // Workaround for UTF8ToString() needing a JS number
-    url = Number(BigInt.asUintN(53, url));
-
+#if __wasm64__
+    // Workaround for UTF8ToString() needing a JS number and from64() not working in EM_JS
+    url = Number(url);
+#endif
     audio.src = UTF8ToString(url);
     audio.loop = looping;
     var track = context.createMediaElementSource(audio);
@@ -86,18 +92,43 @@ void initialised(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
   emscripten_create_wasm_audio_worklet_processor_async(context, &opts, &processorCreated, NULL);
 }
 
-
 // Common entry point for the mixer tests
-int main() {
-  char* const emptySpace = malloc(2147483648);
-  (void) emptySpace;
-  char* const workletStack = malloc(AUDIO_STACK_SIZE);
-  //static char workletStack[AUDIO_STACK_SIZE];
+// stackSize - audio worklet stack size in bytes
+// return true if the requested memory could be allocated
+bool _main_(int stackSize) {
+  // Optional empty space before the audio worklet's stack
+#if TEST_OFFSET_GB > 0
+  char* const emptySpace = malloc(1073741824L * TEST_OFFSET_GB);
+  if (emptySpace) {
+    printf("Empty space allocated (%dGB)\n", TEST_OFFSET_GB);
+  } else {
+    printf("Failed to allocate the required memory offset\n");
+    return false;
+  }
+#endif
+
+  char* const workletStack = memalign(16, stackSize);
+  if (!workletStack) {
+      printf("Failed to allocate the required worklet stack\n");
+      return false;
+  }
+
+#if TEST_OFFSET_GB > 0
+    free(emptySpace);
+#endif
+
   EMSCRIPTEN_WEBAUDIO_T context = emscripten_create_audio_context(NULL);
-  emscripten_start_wasm_audio_worklet_thread_async(context, workletStack, AUDIO_STACK_SIZE, &initialised, NULL);
+  emscripten_start_wasm_audio_worklet_thread_async(context, workletStack, stackSize, &initialised, NULL);
 #ifndef BROWSER_TEST
   // Special case: browser tests need to exit instantly, interactive tests need to wait
   emscripten_runtime_keepalive_push();
 #endif
-  return 0;
+  return true;
+}
+
+int main() {
+  if (_main_(AUDIO_STACK_SIZE)) {
+    return EXIT_SUCCESS;
+  }
+  return EXIT_FAILURE;
 }
