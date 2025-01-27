@@ -339,7 +339,7 @@ class interactive(BrowserCore):
     os.mkdir('audio_files')
     shutil.copy(test_file('webaudio/audio_files/emscripten-beat.mp3'), 'audio_files/')
     shutil.copy(test_file('webaudio/audio_files/emscripten-bass.mp3'), 'audio_files/')
-    self.btest_exit('webaudio/audioworklet_in_out_stereo.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sMEMORY64', '-sINITIAL_MEMORY=4311744512', '-DTEST_OFFSET_GB=2'])
+    self.btest_exit('webaudio/audioworklet_in_out_stereo.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sMEMORY64', '-sINITIAL_MEMORY=2164260864', '-DTEST_OFFSET_GB=2'])
 
   # Same as 'test_audio_worklet_stereo_io_2gb' but with a 4GB offset
   def test_audio_worklet_stereo_io_4gb(self):
