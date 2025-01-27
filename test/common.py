@@ -1333,10 +1333,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.fail('es-check failed to verify ES5 output compliance')
 
   # Build JavaScript code from source code
-  def build(self, filename, libraries=None, includes=None, force_c=False, js_outfile=True, emcc_args=None, output_basename=None):
+  def build(self, filename, libraries=None, includes=None, force_c=False, output_suffix='.js', emcc_args=None, output_basename=None):
     if not os.path.exists(filename):
       filename = test_file(filename)
-    suffix = '.js' if js_outfile else '.wasm'
     compiler = [compiler_for(filename, force_c)]
 
     if force_c:
@@ -1344,10 +1343,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       compiler.append('-xc')
 
     if output_basename:
-      output = output_basename + suffix
+      output = output_basename + output_suffix
     else:
-      basename = os.path.basename(filename)
-      output = shared.unsuffixed(basename) + suffix
+      output = shared.unsuffixed_basename(filename) + output_suffix
     cmd = compiler + [filename, '-o', output] + self.get_emcc_args(main_file=True)
     if emcc_args:
       cmd += emcc_args
