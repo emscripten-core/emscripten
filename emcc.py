@@ -76,7 +76,7 @@ EXTRA_INCOMING_JS_API = [
   'fetchSettings'
 ]
 
-SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx']
+SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
 LINK_ONLY_FLAGS = {
     '--bind', '--closure', '--cpuprofiler', '--embed-file',
@@ -474,6 +474,9 @@ def get_cflags(user_args):
   if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[7:]):
     cflags += ['-D__AVX__=1']
 
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[8:]):
+    cflags += ['-D__AVX2__=1']
+
   if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
     cflags += ['-D__ARM_NEON__=1']
 
@@ -738,11 +741,11 @@ def phase_parse_arguments(state):
 
 
 def separate_linker_flags(state, newargs):
-  """Process argument list separating out intput files, compiler flags
+  """Process argument list separating out input files, compiler flags
   and linker flags.
 
   - Linker flags are stored in state.link_flags
-  - Input files and compiler-only flags are return as two separate lists.
+  - Input files and compiler-only flags are returned as two separate lists.
 
   Both linker flags and input files are stored as pairs of (i, entry) where
   `i` is the orginal index in the command line arguments.  This allow the two

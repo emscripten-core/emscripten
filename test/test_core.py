@@ -5853,14 +5853,11 @@ Module.onRuntimeInitialized = () => {
   @crossplatform
   @with_all_fs
   def test_fs_symlink_resolution(self):
-    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-    if nodefs:
-      if WINDOWS:
-        self.skipTest('No symlinks on Windows')
-      if self.get_setting('WASMFS'):
-        self.skipTest('NODEFS in WasmFS')
+    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
+    if nodefs and WINDOWS:
+      self.skipTest('No symlinks on Windows')
     self.do_runf('fs/test_fs_symlink_resolution.c', 'success')
 
   @with_all_fs
@@ -5907,11 +5904,8 @@ Module.onRuntimeInitialized = () => {
   @crossplatform
   @with_all_fs
   def test_unistd_access(self):
-    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-      if nodefs:
-        self.skipTest('NODEFS in WasmFS')
     # On windows we have slighly different output because we the same
     # level of permissions are not available. For example, on windows
     # its not possible have a file that is not readable, but writable.
@@ -5946,11 +5940,8 @@ Module.onRuntimeInitialized = () => {
 
   @with_all_fs
   def test_unistd_truncate(self):
-    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-      if nodefs:
-        self.skipTest('TODO: NODEFS in WasmFS')
     if WINDOWS or os.geteuid() == 0:
       self.skipTest('Root access invalidates this test by being able to write on readonly files')
     self.do_run_in_out_file_test('unistd/truncate.c')
@@ -5982,10 +5973,6 @@ Module.onRuntimeInitialized = () => {
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @with_all_fs
   def test_unistd_unlink(self):
-    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
-    if self.get_setting('WASMFS') and nodefs:
-      self.skipTest('NODEFS in WasmFS')
-
     # symlinks on node.js on non-linux behave differently (e.g. on Windows they require administrative privileges)
     # so skip testing those bits on that combination.
     if '-DNODEFS' in self.emcc_args:
@@ -6035,8 +6022,6 @@ Module.onRuntimeInitialized = () => {
   @also_with_nodefs
   def test_unistd_io(self):
     if self.get_setting('WASMFS'):
-      if '-DNODEFS' in self.emcc_args:
-        self.skipTest('NODEFS in WasmFS')
       self.set_setting('FORCE_FILESYSTEM')
     self.do_run_in_out_file_test('unistd/io.c')
 
@@ -6572,6 +6557,25 @@ void* operator new(size_t size) {
     native_result = self.run_process('./test_avx', stdout=PIPE).stdout
 
     self.emcc_args += ['-I' + test_file('sse'), '-mavx', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB'] + args
+    self.maybe_closure()
+    self.do_runf(src, native_result)
+
+  # Tests invoking the SIMD API via x86 AVX2 avx2intrin.h header (_mm_x()/_mm256_x() functions)
+  @wasm_simd
+  @requires_native_clang
+  @is_slow_test
+  @no_asan('local count too large')
+  @no_ubsan('local count too large')
+  @parameterized({
+    '': ([],),
+    'nontrapping': (['-mnontrapping-fptoint'],)
+  })
+  def test_avx2(self, args):
+    src = test_file('sse/test_avx2.cpp')
+    self.run_process([shared.CLANG_CXX, src, '-mavx2', '-Wno-argument-outside-range', '-Wpedantic', '-o', 'test_avx2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    native_result = self.run_process('./test_avx2', stdout=PIPE).stdout
+
+    self.emcc_args += ['-I' + test_file('sse'), '-mavx2', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB'] + args
     self.maybe_closure()
     self.do_runf(src, native_result)
 
