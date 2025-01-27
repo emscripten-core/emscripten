@@ -21,7 +21,7 @@ See docs/process.md for more on how version tagging works.
 4.0.2 (in development)
 ----------------------
 - The standard Wasm EH, enabled by `-sWASM_LEGACY_EXCEPTIONS=0`, now uses the
-- LLVM backend implementation rather than the previously used Binaryen
+  LLVM backend implementation rather than the previously used Binaryen
   translator
   (https://github.com/WebAssembly/binaryen/blob/main/src/passes/TranslateEH.cpp).
   (#23469) No specific action from the user is required.
