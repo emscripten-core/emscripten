@@ -18,7 +18,7 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.1 (in development)
+4.0.2 (in development)
 ----------------------
 - The standard Wasm EH, enabled by `-sWASM_LEGACY_EXCEPTIONS=0`, now uses the
 - LLVM backend implementation rather than the previously used Binaryen
@@ -31,6 +31,9 @@ See docs/process.md for more on how version tagging works.
 - The system JS libraries in `src/` were renamed from `library_foo.js` to
   `lib/libfoo.js`. They are still included via the same `-lfoo.js` flag so
   this should not be a user-visible change. (#23348)
+
+4.0.1 - 01/17/25
+----------------
 - The minimum version of node required to run emscripten was bumped from v16.20
   to v18.  Version 4.0 was mistakenly shipped with a change that required v20,
   but that was reverted. (#23410)
