@@ -59,7 +59,6 @@ export default [{
     'src/proxyWorker.js',
     'src/proxyClient.js',
     'src/IDBStore.js',
-    'src/URIUtils.js',
     'tools/experimental',
   ],
 }, ...compat.extends('prettier'), js.configs.recommended, {
