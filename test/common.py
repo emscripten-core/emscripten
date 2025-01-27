@@ -792,6 +792,7 @@ def parameterize(func, parameters):
   test functions.
   """
   prev = getattr(func, '_parameterize', None)
+  assert not any(p.startswith('_') for p in parameters)
   if prev:
     # If we're parameterizing 2nd time, construct a cartesian product for various combinations.
     func._parameterize = {
