@@ -1334,7 +1334,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.fail('es-check failed to verify ES5 output compliance')
 
   # Build JavaScript code from source code
-  def build(self, filename, libraries=None, includes=None, force_c=False, output_suffix='.js', emcc_args=None, output_basename=None):
+  def build(self, filename, libraries=None, includes=None, force_c=False, emcc_args=None, output_basename=None, output_suffix=None):
     if not os.path.exists(filename):
       filename = test_file(filename)
     compiler = [compiler_for(filename, force_c)]
@@ -1342,6 +1342,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if force_c:
       assert shared.suffix(filename) != '.c', 'force_c is not needed for source files ending in .c'
       compiler.append('-xc')
+
+    if not output_suffix:
+      output_suffix = '.mjs' if emcc_args and '-sEXPORT_ES6' in emcc_args else '.js'
 
     if output_basename:
       output = output_basename + output_suffix
