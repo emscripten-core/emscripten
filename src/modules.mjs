@@ -7,10 +7,10 @@
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import {fileURLToPath} from 'node:url';
+import assert from 'node:assert';
 
 import {
   isDecorator,
-  assert,
   isJsOnlySymbol,
   error,
   read,

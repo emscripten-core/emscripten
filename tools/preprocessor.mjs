@@ -12,16 +12,28 @@
 //                   file with modified settings and supply the filename here.
 //    input file     This is the file that will be processed by the preprocessor
 
-import assert from 'assert';
+import assert from 'node:assert';
+import {parseArgs} from 'node:util';
 
 import {loadSettingsFile} from '../src/utility.mjs';
 
-const args = process.argv.slice(2);
+const options = {
+  'expand-macros': {type: 'boolean'},
+  help: {type: 'boolean', short: 'h'},
+};
+const {values, positionals} = parseArgs({options, allowPositionals: true});
 
-assert(args.length >= 2, 'Script requires 2 arguments');
-const settingsFile = args[0];
-const inputFile = args[1];
-const expandMacros = args.includes('--expandMacros');
+if (values.help) {
+  console.log(`\
+Run JS preprocessor / macro processor on an input file
+
+Usage: preprocessor.mjs <settings.json> <input-file> [--expand-macros]`);
+  process.exit(0);
+}
+
+assert(positionals.length == 2, 'Script requires 2 arguments');
+const settingsFile = positionals[0];
+const inputFile = positionals[1];
 
 loadSettingsFile(settingsFile);
 
@@ -32,7 +44,7 @@ const parseTools = await import('../src/parseTools.mjs');
 await import('../src/modules.mjs');
 
 let output = parseTools.preprocess(inputFile);
-if (expandMacros) {
+if (values['expand-macros']) {
   output = parseTools.processMacros(output, inputFile);
 }
 process.stdout.write(output);

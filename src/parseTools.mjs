@@ -10,10 +10,10 @@
 
 import * as path from 'node:path';
 import {existsSync} from 'node:fs';
+import assert from 'node:assert';
 
 import {
   addToCompileTimeContext,
-  assert,
   error,
   printErr,
   read,
