@@ -103,9 +103,13 @@ if (ENVIRONMENT_IS_NODE) {
 #if EXPORT_ES6
   // When building an ES module `require` is not normally available.
   // We need to use `createRequire()` to construct the require()` function.
-  const { createRequire } = await import('module');
+  const { createRequire } = await import('node:module');
   /** @suppress{duplicate} */
   var require = createRequire('/');
+
+  if (typeof Deno !== "undefined") {
+    var Buffer = require('buffer').Buffer;
+  }
 #endif
 
 #if PTHREADS || WASM_WORKERS
