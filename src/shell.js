@@ -105,7 +105,7 @@ if (ENVIRONMENT_IS_NODE) {
   // We need to use `createRequire()` to construct the require()` function.
   const { createRequire } = await import('module');
   /** @suppress{duplicate} */
-  var require = createRequire('/');
+  var require = createRequire(import.meta.url);
 #endif
 
 #if PTHREADS || WASM_WORKERS
