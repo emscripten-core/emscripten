@@ -517,6 +517,17 @@ function isModuleUse(node) {
   );
 }
 
+function isESModuleExportIdentifier(node) {
+  return (
+    node.type === 'Identifier' &&
+    node.name.startsWith('__exp_')
+  );
+}
+
+function getESModuleExportName(node) {
+  return node.name.substr(6 /* '__exp_' */);
+}
+
 // Apply import/export name changes (after minifying them)
 function applyImportAndExportNameChanges(ast) {
   const mapping = extraInfo.mapping;
@@ -760,9 +771,11 @@ function emitDCEGraph(ast) {
             }
           } else if (value && value.type === 'AssignmentExpression') {
             const assigned = value.left;
-            if (isModuleUse(assigned) && getExportOrModuleUseName(assigned) === name) {
-              // this is
-              //  var x = Module['x'] = ?
+            if ((isModuleUse(assigned) && getExportOrModuleUseName(assigned) === name) ||
+                (isESModuleExportIdentifier(assigned) && getESModuleExportName(assigned) === name)) {
+              // this is either:
+              // 1) var x = Module['x'] = ?
+              // 2) var x = __exp_x = ?
               // which looks like a wasm export being received. confirm with the asm use
               let found = 0;
               let asmName;
