@@ -374,7 +374,7 @@ function getUnusedLibrarySymbols() {
   for (const [ident, value] of Object.entries(LibraryManager.library)) {
     if (typeof value === 'function' || typeof value === 'number') {
       if (isJsOnlySymbol(ident) && !isDecorator(ident) && !isInternalSymbol(ident)) {
-        const name = ident.substr(1);
+        const name = ident.slice(1);
         if (!librarySymbolSet.has(name)) {
           missingSyms.add(name);
         }
@@ -492,7 +492,7 @@ function exportRuntime() {
   let runtimeElementsSet = new Set(runtimeElements);
   for (const ident of Object.keys(LibraryManager.library)) {
     if (isJsOnlySymbol(ident) && !isDecorator(ident) && !isInternalSymbol(ident)) {
-      const jsname = ident.substr(1);
+      const jsname = ident.slice(1);
       // Note that this assertion may be hit when a function is moved into the
       // JS library. In that case the function should be removed from the list
       // of runtime elements above.

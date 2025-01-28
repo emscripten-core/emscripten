@@ -51,7 +51,7 @@ function mangleCSymbolName(f) {
   if (f === '__main_argc_argv') {
     f = 'main';
   }
-  return f[0] == '$' ? f.substr(1) : '_' + f;
+  return f[0] == '$' ? f.slice(1) : '_' + f;
 }
 
 // Splits out items that pass filter. Returns also the original sans the filtered
@@ -284,7 +284,7 @@ ${argConversions}
 
     // apply LIBRARY_DEBUG if relevant
     if (LIBRARY_DEBUG && !isJsOnlySymbol(symbol)) {
-      snippet = modifyJSFunction(snippet, (args, body, async, oneliner) => {
+      snippet = modifyJSFunction(snippet, (args, body, _async, oneliner) => {
         var run_func;
         if (oneliner) {
           run_func = `var ret = ${body}`;
@@ -637,7 +637,7 @@ function(${args}) {
         //  emits
         //   'var foo = [value];'
         if (typeof snippet == 'string' && snippet[0] == '=') {
-          snippet = snippet.substr(1);
+          snippet = snippet.slice(1);
         }
         contentText = `var ${mangled} = ${snippet};`;
       }
