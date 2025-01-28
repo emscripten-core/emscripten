@@ -378,7 +378,9 @@ def node_reference_types_flags(nodejs):
 
 
 def node_exception_flags(nodejs):
+  print('\n-- node_exception_flags: nodejs = ' + str(nodejs))
   node_version = get_node_version(nodejs)
+  print('node_version = ' + str(node_version))
   # Legacy exception handling was enabled by default in node v17.
   if node_version and node_version < (17, 0, 0):
     return ['--experimental-wasm-eh']
