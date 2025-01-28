@@ -383,7 +383,7 @@ def node_exception_flags(nodejs):
   if node_version and node_version < (17, 0, 0):
     return ['--experimental-wasm-eh']
   # Standard exception handling was supported behind flag in node v22.
-  if node_version and node_version > (22, 0, 0) and not settings.WASM_LEGACY_EXCEPTIONS:
+  if node_version and node_version >= (22, 0, 0) and not settings.WASM_LEGACY_EXCEPTIONS:
     return ['--experimental-wasm-exnref']
   return []
 
