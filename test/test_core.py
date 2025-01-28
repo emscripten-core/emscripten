@@ -1908,7 +1908,7 @@ int main(int argc, char **argv) {
 
   @needs_dylink
   def test_em_asm_side_module(self):
-    self.build(test_file('core/test_em_asm_side.c'), js_outfile=False, emcc_args=['-sSIDE_MODULE'], output_basename='side')
+    self.build(test_file('core/test_em_asm_side.c'), output_suffix='.wasm', emcc_args=['-sSIDE_MODULE'], output_basename='side')
     self.do_core_test('test_em_asm_main.c', emcc_args=['-sMAIN_MODULE=2', 'side.wasm'])
 
   @parameterized({
@@ -3928,13 +3928,13 @@ ok
     # side settings
     self.clear_setting('MAIN_MODULE')
     self.set_setting('SIDE_MODULE')
-    side_suffix = 'wasm' if self.is_wasm() else 'js'
+    side_suffix = '.wasm' if self.is_wasm() else '.js'
     if isinstance(side, list):
-      out_file = 'liblib.' + side_suffix
+      out_file = 'liblib' + side_suffix
       # side is just a library
       self.run_process([EMCC] + side + self.get_emcc_args() + ['-o', out_file])
     else:
-      out_file = self.build(side, js_outfile=(side_suffix == 'js'))
+      out_file = self.build(side, output_suffix=side_suffix)
     shutil.move(out_file, os.path.join(so_dir, so_name))
 
     # main settings
@@ -4814,8 +4814,7 @@ res64 - external 64\n''', header='''\
     # side settings
     self.clear_setting('MAIN_MODULE')
     self.set_setting('SIDE_MODULE')
-    out_file = self.build('liblib.cpp', js_outfile=False)
-    shutil.move(out_file, "liblib.so")
+    self.build('liblib.cpp', output_suffix='.so')
 
     # main settings
     self.set_setting('MAIN_MODULE', 1)
@@ -7017,7 +7016,7 @@ void* operator new(size_t size) {
 
   @parameterized({
     '': ([],),
-    '_files': (['-DUSE_FILES'],)
+    'files': (['-DUSE_FILES'],)
   })
   def test_FS_exports(self, extra_args):
     # these used to be exported, but no longer are by default

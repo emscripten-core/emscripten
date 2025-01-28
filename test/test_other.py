@@ -999,7 +999,7 @@ f.close()
   @requires_ninja
   @parameterized({
     '': [[]],
-    '_no_gnu': [['-DNO_GNU_EXTENSIONS=1']],
+    'no_gnu': [['-DNO_GNU_EXTENSIONS=1']],
   })
   def test_cmake_with_embind_cpp11_mode(self, args):
     # Use ninja generator here since we assume its always installed on our build/test machines.
@@ -1022,7 +1022,7 @@ f.close()
 
   @parameterized({
     '': ['0'],
-    '_suffix': ['1'],
+    'suffix': ['1'],
   })
   def test_cmake_static_lib(self, custom):
     # Test that one is able to use custom suffixes for static libraries.
@@ -13213,7 +13213,7 @@ exec "$@"
 
   @crossplatform
   def test_em_js_side_module(self):
-    self.build(test_file('other/test_em_js_side.c'), js_outfile=False, emcc_args=['-sSIDE_MODULE'], output_basename='side')
+    self.build(test_file('other/test_em_js_side.c'), output_suffix='.wasm', emcc_args=['-sSIDE_MODULE'], output_basename='side')
     self.do_other_test('test_em_js_main.c', emcc_args=['-sMAIN_MODULE=2', 'side.wasm'])
 
   def test_em_js_main_module(self):
@@ -14970,8 +14970,8 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
   @parameterized({
     '':   ([],),
-    '_single_file': (['-sSINGLE_FILE'],),
-    '_single_file_es6': (['-sSINGLE_FILE', '-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')],),
+    'single_file': (['-sSINGLE_FILE'],),
+    'single_file_es6': (['-sSINGLE_FILE', '-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')],),
   })
   def test_proxy_to_worker(self, args):
     self.do_runf('hello_world.c', emcc_args=['--proxy-to-worker'] + args)

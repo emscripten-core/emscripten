@@ -59,7 +59,6 @@ export default [{
     'src/proxyWorker.js',
     'src/proxyClient.js',
     'src/IDBStore.js',
-    'src/URIUtils.js',
     'tools/experimental',
   ],
 }, ...compat.extends('prettier'), js.configs.recommended, {
@@ -90,11 +89,8 @@ export default [{
   files: ['**/*.mjs'],
 
   rules: {
-    'no-undef': 'error',
     'no-unused-vars': ['error', {
-      vars: 'all',
-      args: 'none',
-      ignoreRestSiblings: false,
+      argsIgnorePattern: '^_',
       destructuredArrayIgnorePattern: '^_',
     }],
   },

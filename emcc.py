@@ -183,6 +183,13 @@ class EmccOptions:
     self.dash_S = False
     self.dash_M = False
     self.input_language = None
+    self.nostdlib = False
+    self.nostdlibxx = False
+    self.nodefaultlibs = False
+    self.nolibc = False
+    self.nostartfiles = False
+    self.sanitize_minimal_runtime = False
+    self.sanitize = set()
 
 
 def create_reproduce_file(name, args):
@@ -973,8 +980,8 @@ def phase_compile_inputs(options, state, newargs):
       if get_file_suffix(input_file) in ['.pcm']:
         cmd = [c for c in cmd if not c.startswith('-fprebuilt-module-path=')]
     cmd += compile_args + ['-c', input_file, '-o', output_file]
-    if state.mode == Mode.COMPILE_AND_LINK and options.requested_debug == '-gsplit-dwarf':
-      # When running in COMPILE_AND_LINK mode we compile to temporary location
+    if options.requested_debug == '-gsplit-dwarf':
+      # When running in COMPILE_AND_LINK mode we compile objects to a temporary location
       # but we want the `.dwo` file to be generated in the current working directory,
       # like it is under clang.  We could avoid this hack if we use the clang driver
       # to generate the temporary files, but that would also involve using the clang
@@ -1421,6 +1428,22 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       # SSEx is implemented on top of SIMD128 instruction set, but do not pass SSE flags to LLVM
       # so it won't think about generating native x86 SSE code.
       newargs[i] = ''
+    elif arg == '-nostdlib':
+      options.nostdlib = True
+    elif arg == '-nostdlibxx':
+      options.nostdlibxx = True
+    elif arg == '-nodefaultlibs':
+      options.nodefaultlibs = True
+    elif arg == '-nolibc':
+      options.nolibc = True
+    elif arg == '-nostartfiles':
+      options.nostartfiles = True
+    elif arg == '-fsanitize-minimal-runtime':
+      options.sanitize_minimal_runtime = True
+    elif arg.startswith('-fsanitize='):
+      options.sanitize.update(arg.split('=', 1)[1].split(','))
+    elif arg.startswith('-fno-sanitize='):
+      options.sanitize.difference_update(arg.split('=', 1)[1].split(','))
     elif arg and (arg == '-' or not arg.startswith('-')):
       options.input_files.append(arg)
 
