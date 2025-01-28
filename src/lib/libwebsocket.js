@@ -247,7 +247,7 @@ var LibraryWebSocket = {
         var buf = stringToNewUTF8(e.data);
         var len = lengthBytesUTF8(e.data)+1;
 #if WEBSOCKET_DEBUG
-        var s = (e.data.length < 256) ? e.data : (e.data.substr(0, 256) + ` (${e.data.length-256} more characters)`);
+        var s = (e.data.length < 256) ? e.data : (e.data.slice(0, 256) + ` (${e.data.length-256} more characters)`);
         dbg(`WebSocket onmessage, received data: "${e.data}", ${e.data.length} chars, ${len} bytes encoded as UTF-8: "${s}"`);
 #endif
       } else {

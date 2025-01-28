@@ -38,7 +38,7 @@ addToLibrary({
     },
     normalize: (path) => {
       var isAbsolute = PATH.isAbs(path),
-          trailingSlash = path.substr(-1) === '/';
+          trailingSlash = path.slice(-1) === '/';
       // Normalize the path
       path = PATH.normalizeArray(path.split('/').filter((p) => !!p), !isAbsolute).join('/');
       if (!path && !isAbsolute) {
@@ -59,7 +59,7 @@ addToLibrary({
       }
       if (dir) {
         // It has a dirname, strip trailing slash
-        dir = dir.substr(0, dir.length - 1);
+        dir = dir.slice(0, -1);
       }
       return root + dir;
     },
@@ -101,8 +101,8 @@ addToLibrary({
       return ((resolvedAbsolute ? '/' : '') + resolvedPath) || '.';
     },
     relative: (from, to) => {
-      from = PATH_FS.resolve(from).substr(1);
-      to = PATH_FS.resolve(to).substr(1);
+      from = PATH_FS.resolve(from).slice(1);
+      to = PATH_FS.resolve(to).slice(1);
       function trim(arr) {
         var start = 0;
         for (; start < arr.length; start++) {

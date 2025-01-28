@@ -167,7 +167,7 @@ setTimeout(() => {
 var workerResponded = false;
 
 worker.onmessage = (event) => {
-  //dump('\nclient got ' + JSON.stringify(event.data).substr(0, 150) + '\n');
+  //dump('\nclient got ' + JSON.stringify(event.data).slice(0, 150) + '\n');
   if (!workerResponded) {
     workerResponded = true;
     Module.setStatus?.('');

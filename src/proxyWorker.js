@@ -400,7 +400,7 @@ function onMessageFromMainEmscriptenThread(message) {
     clearTimeout(messageResenderTimeout);
     messageResender();
   }
-  //dump('worker got ' + JSON.stringify(message.data).substr(0, 150) + '\n');
+  //dump('worker got ' + JSON.stringify(message.data).slice(0, 150) + '\n');
   switch (message.data.target) {
     case 'document': {
       document.fireEvent(message.data.event);

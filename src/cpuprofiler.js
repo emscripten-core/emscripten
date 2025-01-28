@@ -225,7 +225,7 @@ var emscriptenCpuProfiler = {
           if (i != 2) cs += ' <- ';
           var fn = funcs[i];
           var at = fn.indexOf('@');
-          if (at != -1) fn = fn.substr(0, at);
+          if (at != -1) fn = fn.slice(0, at);
           fn = fn.trim();
           cs += '"' + fn + '"';
         }
