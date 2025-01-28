@@ -289,7 +289,7 @@ function JSDCE(ast, aggressive) {
     }
     function cleanUp(ast, names) {
       recursiveWalk(ast, {
-        VariableDeclaration(node, c) {
+        VariableDeclaration(node, _c) {
           const old = node.declarations;
           let removedHere = 0;
           node.declarations = node.declarations.filter((node) => {
@@ -315,7 +315,7 @@ function JSDCE(ast, aggressive) {
             node.oldDeclarations = old;
           }
         },
-        ExpressionStatement(node, c) {
+        ExpressionStatement(node, _c) {
           if (aggressive && !hasSideEffects(node)) {
             if (!isNull(node.expression) && !isUseStrict(node.expression)) {
               convertToNullStatement(node);
@@ -323,7 +323,7 @@ function JSDCE(ast, aggressive) {
             }
           }
         },
-        FunctionDeclaration(node, c) {
+        FunctionDeclaration(node, _c) {
           if (Object.prototype.hasOwnProperty.call(names, node.id.name)) {
             removed++;
             emptyOut(node);
@@ -436,7 +436,7 @@ function JSDCE(ast, aggressive) {
       ArrowFunctionExpression(node, c) {
         handleFunction(node, c);
       },
-      Identifier(node, c) {
+      Identifier(node, _c) {
         const name = node.name;
         ensureData(scopes[scopes.length - 1], name).use = 1;
       },
@@ -1678,7 +1678,7 @@ function minifyLocals(ast) {
       localNames.add(param.name);
     }
     simpleWalk(fun, {
-      VariableDeclaration(node, c) {
+      VariableDeclaration(node, _c) {
         for (const dec of node.declarations) {
           localNames.add(dec.id.name);
         }
@@ -1704,7 +1704,7 @@ function minifyLocals(ast) {
     // Don't actually minify them yet as that might interfere with local
     // variable names; just mark them as used, and what their new name will be.
     simpleWalk(fun, {
-      Identifier(node, c) {
+      Identifier(node, _c) {
         const name = node.name;
         if (!isLocalName(name)) {
           const minified = extraInfo.globals[name];
@@ -1714,7 +1714,7 @@ function minifyLocals(ast) {
           }
         }
       },
-      CallExpression(node, c) {
+      CallExpression(node, _c) {
         // We should never call a local name, as in asm.js-style code our
         // locals are just numbers, not functions; functions are all declared
         // in the outer scope. If a local is called, that is a bug.
@@ -1775,12 +1775,12 @@ function minifyLocals(ast) {
         node.label.name = labelNames.get(node.label.name);
         c(node.body);
       },
-      BreakStatement(node, c) {
+      BreakStatement(node, _c) {
         if (node.label) {
           node.label.name = labelNames.get(node.label.name);
         }
       },
-      ContinueStatement(node, c) {
+      ContinueStatement(node, _c) {
         if (node.label) {
           node.label.name = labelNames.get(node.label.name);
         }
