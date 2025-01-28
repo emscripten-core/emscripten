@@ -113,7 +113,7 @@ addToLibrary({
         }
       },
       fsync(tty) {
-        if (tty.output && tty.output.length > 0) {
+        if (tty.output?.length > 0) {
           out(UTF8ArrayToString(tty.output));
           tty.output = [];
         }
@@ -150,7 +150,7 @@ addToLibrary({
         }
       },
       fsync(tty) {
-        if (tty.output && tty.output.length > 0) {
+        if (tty.output?.length > 0) {
           err(UTF8ArrayToString(tty.output));
           tty.output = [];
         }

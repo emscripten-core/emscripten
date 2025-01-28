@@ -1184,7 +1184,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       }
       // Make sure the canvas object no longer refers to the context object so
       // there are no GC surprises.
-      if (GL.contexts[contextHandle] && GL.contexts[contextHandle].GLctx.canvas) {
+      if (GL.contexts[contextHandle]?.GLctx?.canvas) {
         GL.contexts[contextHandle].GLctx.canvas.GLctxObject = undefined;
       }
 #if PTHREADS

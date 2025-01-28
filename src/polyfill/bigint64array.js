@@ -29,7 +29,7 @@ if (typeof globalThis.BigInt64Array === "undefined") {
       }
       var orig_array;
       if (!ArrayBuffer.isView(array)) {
-        if (array.constructor && array.constructor.name === "ArrayBuffer") {
+        if (array.constructor?.name === "ArrayBuffer") {
           array = new Uint32Array(array);
         } else {
           orig_array = array;

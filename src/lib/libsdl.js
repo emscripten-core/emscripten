@@ -1108,7 +1108,7 @@ var LibrarySDL = {
     // since the browser engine handles that for us.  Therefore, in JS we just
     // maintain a list of channels and return IDs for them to the SDL consumer.
     allocateChannels(num) { // called from Mix_AllocateChannels and init
-      if (SDL.numChannels && SDL.numChannels >= num && num != 0) return;
+      if (SDL.numChannels >= num && num != 0) return;
       SDL.numChannels = num;
       SDL.channels = [];
       for (var i = 0; i < num; i++) {
@@ -3506,7 +3506,7 @@ var LibrarySDL = {
   SDL_JoystickGetAxis__proxy: 'sync',
   SDL_JoystickGetAxis: (joystick, axis) => {
     var gamepad = SDL.getGamepad(joystick - 1);
-    if (gamepad && gamepad.axes.length > axis) {
+    if (gamepad?.axes.length > axis) {
       return SDL.joystickAxisValueConversion(gamepad.axes[axis]);
     }
     return 0;
@@ -3519,7 +3519,7 @@ var LibrarySDL = {
   SDL_JoystickGetButton__proxy: 'sync',
   SDL_JoystickGetButton: (joystick, button) => {
     var gamepad = SDL.getGamepad(joystick - 1);
-    if (gamepad && gamepad.buttons.length > button) {
+    if (gamepad?.buttons.length > button) {
       return SDL.getJoystickButtonState(gamepad.buttons[button]) ? 1 : 0;
     }
     return 0;
