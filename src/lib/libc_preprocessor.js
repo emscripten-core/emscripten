@@ -96,7 +96,7 @@ addToLibrary({
           }
         } else if (kind == 1/*operator symbol*/) {
           // Lookahead for two-character operators.
-          var op2 = exprString.substr(i, 2);
+          var op2 = exprString.slice(i, i + 2);
           if (['<=', '>=', '==', '!=', '&&', '||'].includes(op2)) {
             out.push(op2);
             ++i;

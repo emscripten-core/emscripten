@@ -290,7 +290,7 @@ addToLibrary({
             // Move sign to prefix so we zero-pad after the sign
             if (argText.charAt(0) == '-') {
               prefix = '-' + prefix;
-              argText = argText.substr(1);
+              argText = argText.slice(1);
             }
 
             // Add padding.
@@ -417,7 +417,7 @@ addToLibrary({
                 ret.push({{{ makeGetValue('arg++', 0, 'u8') }}});
               }
             } else {
-              ret = ret.concat(intArrayFromString('(null)'.substr(0, argLength), true));
+              ret = ret.concat(intArrayFromString('(null)'.slice(0, argLength), true));
             }
             if (flagLeftAlign) {
               while (argLength < width--) {

@@ -43,7 +43,7 @@ addToLibrary({
     // extra effort to support printf, even without a filesystem. very partial, very hackish
     var result = formatString(format, varargs);
     var string = intArrayToString(result);
-    if (string[string.length-1] === '\n') string = string.substr(0, string.length-1); // remove a final \n, as Module.print will do that
+    if (string.endsWith('\n')) string = string.slice(0, -1); // remove a final \n, as Module.print will do that
     out(string);
     return result.length;
   },
@@ -52,8 +52,8 @@ addToLibrary({
   puts: (s) => {
     // extra effort to support puts, even without a filesystem. very partial, very hackish
     var result = UTF8ToString(s);
-    var string = result.substr(0);
-    if (string[string.length-1] === '\n') string = string.substr(0, string.length-1); // remove a final \n, as Module.print will do that
+    var string = result;
+    if (string.endsWith('\n')) string = string.slice(0, -1); // remove a final \n, as Module.print will do that
     out(string);
     return result.length;
   },

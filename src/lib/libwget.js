@@ -115,7 +115,7 @@ var LibraryWget = {
         // if the destination directory does not yet exist, create it
         FS.mkdirTree(destinationDirectory);
 
-        FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(/** @type{ArrayBuffer}*/(http.response)), true, true, false);
+        FS.createDataFile( _file.slice(0, index), _file.slice(index + 1), new Uint8Array(/** @type{ArrayBuffer}*/(http.response)), true, true, false);
         if (onload) {
           var sp = stackSave();
           {{{ makeDynCall('vipp', 'onload') }}}(handle, userdata, stringToUTF8OnStack(_file));
@@ -189,7 +189,7 @@ var LibraryWget = {
 
     // LOAD
     http.onload = (e) => {
-      if (http.status >= 200 && http.status < 300 || (http.status === 0 && _url.substr(0,4).toLowerCase() != "http")) {
+      if (http.status >= 200 && http.status < 300 || (http.status === 0 && _url.slice(0, 4).toLowerCase() != "http")) {
         var byteArray = new Uint8Array(/** @type{ArrayBuffer} */(http.response));
         var buffer = _malloc(byteArray.length);
         HEAPU8.set(byteArray, buffer);

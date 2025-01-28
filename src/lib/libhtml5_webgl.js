@@ -365,7 +365,7 @@ var LibraryHtml5WebGL = {
     var context = GL.getContext(contextHandle);
     var extString = UTF8ToString(extension);
 #if GL_EXTENSIONS_IN_PREFIXED_FORMAT
-    if (extString.startsWith('GL_')) extString = extString.substr(3); // Allow enabling extensions both with "GL_" prefix and without.
+    if (extString.startsWith('GL_')) extString = extString.slice(3); // Allow enabling extensions both with "GL_" prefix and without.
 #endif
 
 #if GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS

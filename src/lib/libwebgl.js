@@ -4323,7 +4323,7 @@ function createGLPassthroughFunctions(lib, funcs) {
         cName = name.replace('[', '').replace(']', '');
         name = cName.slice(0, -1);
       }
-      cName = 'gl' + cName[0].toUpperCase() + cName.substr(1);
+      cName = 'gl' + cName[0].toUpperCase() + cName.slice(1);
       assert(!(cName in lib), "Cannot reimplement the existing function " + cName);
       lib[cName] = eval(stub.replace('NAME', name));
       assert(lib[cName + '__sig'] || LibraryManager.library[cName + '__sig'], 'missing sig for ' + cName);
