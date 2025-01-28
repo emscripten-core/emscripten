@@ -7016,7 +7016,7 @@ void* operator new(size_t size) {
 
   @parameterized({
     '': ([],),
-    '_files': (['-DUSE_FILES'],)
+    'files': (['-DUSE_FILES'],)
   })
   def test_FS_exports(self, extra_args):
     # these used to be exported, but no longer are by default

@@ -980,8 +980,8 @@ def phase_compile_inputs(options, state, newargs):
       if get_file_suffix(input_file) in ['.pcm']:
         cmd = [c for c in cmd if not c.startswith('-fprebuilt-module-path=')]
     cmd += compile_args + ['-c', input_file, '-o', output_file]
-    if state.mode == Mode.COMPILE_AND_LINK and options.requested_debug == '-gsplit-dwarf':
-      # When running in COMPILE_AND_LINK mode we compile to temporary location
+    if options.requested_debug == '-gsplit-dwarf':
+      # When running in COMPILE_AND_LINK mode we compile objects to a temporary location
       # but we want the `.dwo` file to be generated in the current working directory,
       # like it is under clang.  We could avoid this hack if we use the clang driver
       # to generate the temporary files, but that would also involve using the clang
