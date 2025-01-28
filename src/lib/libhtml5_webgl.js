@@ -109,7 +109,7 @@ var LibraryHtml5WebGL = {
 #endif
 
     var canvas = findCanvasEventTarget(target);
-
+    if (canvas.canvas) { canvas = canvas.canvas; }
 #if GL_DEBUG
     var targetStr = UTF8ToString(target);
 #endif
