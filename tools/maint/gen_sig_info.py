@@ -322,7 +322,7 @@ def extract_sig_info(sig_info, extra_settings=None, extra_cflags=None, cxx=False
     utils.write_file(settings_json, json.dumps(settings))
     output = shared.run_js_tool(utils.path_from_root('src/compiler.mjs'),
                                 ['--symbols-only', settings_json],
-                                stdout=subprocess.PIPE, cwd=utils.path_from_root())
+                                stdout=subprocess.PIPE)
   symbols = json.loads(output)['deps'].keys()
   symbols = [s for s in symbols if not ignore_symbol(s, cxx)]
   if cxx:

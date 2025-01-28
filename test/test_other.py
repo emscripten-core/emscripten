@@ -4961,14 +4961,15 @@ extraLibraryFuncs.push('jsfunc');
     self.do_runf(test_file('hello_world.c'), emcc_args=['-L', '-lfoo.js'])
 
   def test_EMCC_BUILD_DIR(self):
-    # EMCC_BUILD_DIR env var contains the dir we were building in, when running the js compiler (e.g. when
-    # running a js library). We force the cwd to be src/ for technical reasons, so this lets you find out
-    # where you were.
+    # EMCC_BUILD_DIR was necessary in the past since we used to force the cwd to be src/ for
+    # technical reasons.
     create_file('lib.js', r'''
-printErr('dir was ' + process.env.EMCC_BUILD_DIR);
+printErr('EMCC_BUILD_DIR: ' + process.env.EMCC_BUILD_DIR);
+printErr('CWD: ' + process.cwd());
 ''')
     err = self.run_process([EMXX, test_file('hello_world.c'), '--js-library', 'lib.js'], stderr=PIPE).stderr
-    self.assertContained('dir was ' + os.path.realpath(os.path.normpath(self.get_dir())), err)
+    self.assertContained('EMCC_BUILD_DIR: ' + os.path.realpath(os.path.normpath(self.get_dir())), err)
+    self.assertContained('CWD: ' + os.path.realpath(os.path.normpath(self.get_dir())), err)
 
   def test_float_h(self):
     process = self.run_process([EMCC, test_file('float+.c')], stdout=PIPE, stderr=PIPE)

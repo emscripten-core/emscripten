@@ -7,10 +7,9 @@
 
 // JavaScript compiler, main entry point
 
-import {Benchmarker, applySettings, loadDefaultSettings, printErr, read} from './utility.mjs';
-
 import assert from 'node:assert';
 import {parseArgs} from 'node:util';
+import {Benchmarker, applySettings, loadDefaultSettings, printErr, readFile} from './utility.mjs';
 
 loadDefaultSettings();
 
@@ -31,10 +30,14 @@ Usage: compiler.mjs <settings.json> [-o out.js] [--symbols-only]`);
 // Load settings from JSON passed on the command line
 const settingsFile = positionals[0];
 assert(settingsFile, 'settings file not specified');
-const user_settings = JSON.parse(read(settingsFile));
+const user_settings = JSON.parse(readFile(settingsFile));
 applySettings(user_settings);
 
 export const symbolsOnly = values['symbols-only'];
+
+// TODO(sbc): Remove EMCC_BUILD_DIR at some point.  It used to be required
+// back when ran the JS compiler with overridden CWD.
+process.env['EMCC_BUILD_DIR'] = process.cwd()
 
 // In case compiler.mjs is run directly (as in gen_sig_info)
 // ALL_INCOMING_MODULE_JS_API might not be populated yet.

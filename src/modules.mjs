@@ -13,7 +13,7 @@ import {
   isDecorator,
   isJsOnlySymbol,
   error,
-  read,
+  readFile,
   warn,
   setCurrentFile,
   printErr,
@@ -273,7 +273,7 @@ export const LibraryManager = {
       } catch (e) {
         error(`failure to execute js library "${filename}":`);
         if (VERBOSE) {
-          const orig = read(filename);
+          const orig = readFile(filename);
           if (processed) {
             error(
               `preprocessed source (you can run a js engine on this to get a clearer error message sometimes):\n=============\n${processed}\n=============`,
@@ -317,7 +317,7 @@ let defines = {};
  * that can then be used in JavaScript via macros.
  */
 function loadStructInfo(filename) {
-  const temp = JSON.parse(read(filename));
+  const temp = JSON.parse(readFile(filename));
   Object.assign(structs, temp.structs);
   Object.assign(defines, temp.defines);
 }
