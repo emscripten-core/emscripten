@@ -2023,7 +2023,7 @@ const input = read(infile);
 const extraInfoStart = input.lastIndexOf('// EXTRA_INFO:');
 let extraInfo = null;
 if (extraInfoStart > 0) {
-  extraInfo = JSON.parse(input.substr(extraInfoStart + 14));
+  extraInfo = JSON.parse(input.slice(extraInfoStart + 14));
 }
 // Collect all JS code comments to this map so that we can retain them in the
 // outputted code if --closureFriendly was requested.

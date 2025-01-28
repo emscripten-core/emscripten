@@ -141,9 +141,9 @@ export function preprocess(filename) {
           showStack.push(truthy ? SHOW : IGNORE);
         } else if (first === '#include') {
           if (showCurrentLine()) {
-            let includeFile = line.substr(line.indexOf(' ') + 1);
+            let includeFile = line.slice(line.indexOf(' ') + 1);
             if (includeFile.startsWith('"')) {
-              includeFile = includeFile.substr(1, includeFile.length - 2);
+              includeFile = includeFile.slice(1, -1);
             }
             const absPath = findIncludeFile(includeFile, path.dirname(filename));
             if (!absPath) {
@@ -328,7 +328,7 @@ function getNativeTypeSize(type) {
         return POINTER_SIZE;
       }
       if (type[0] === 'i') {
-        const bits = Number(type.substr(1));
+        const bits = Number(type.slice(1));
         assert(bits % 8 === 0, `getNativeTypeSize invalid bits ${bits}, ${type} type`);
         return bits / 8;
       }
@@ -360,7 +360,7 @@ function ensureDot(value) {
   if (value.includes('.') || /[IN]/.test(value)) return value;
   const e = value.indexOf('e');
   if (e < 0) return value + '.0';
-  return value.substr(0, e) + '.0' + value.substr(e);
+  return value.slice(0, e) + '.0' + value.slice(e);
 }
 
 export function isNumber(x) {
@@ -406,7 +406,7 @@ function asmFloatToInt(x) {
 }
 
 // See makeSetValue
-function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
+function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, _ignore, align) {
   assert(typeof align === 'undefined', 'makeGetValue no longer supports align parameter');
   assert(
     typeof noNeedFirst === 'undefined',
@@ -551,7 +551,7 @@ function getFastValue(a, op, b) {
 
   if (b[0] === '-') {
     op = '-';
-    b = b.substr(1);
+    b = b.slice(1);
   }
 
   return `(${a})${op}(${b})`;
@@ -785,14 +785,14 @@ export function modifyJSFunction(text, func) {
   if (match) {
     async_ = match[1] || '';
     args = match[3];
-    rest = text.substr(match[0].length);
+    rest = text.slice(match[0].length);
   } else {
     // Match an arrow function
     let match = text.match(/^\s*(var (\w+) = )?(async\s+)?\(([^)]*)\)\s+=>\s+/);
     if (match) {
       async_ = match[3] || '';
       args = match[4];
-      rest = text.substr(match[0].length);
+      rest = text.slice(match[0].length);
       rest = rest.trim();
       oneliner = rest[0] != '{';
     } else {
@@ -802,7 +802,7 @@ export function modifyJSFunction(text, func) {
       assert(match, `could not match function:\n${text}\n`);
       async_ = match[1] || '';
       args = match[2];
-      rest = text.substr(match[0].length);
+      rest = text.slice(match[0].length);
     }
   }
   let body = rest;
