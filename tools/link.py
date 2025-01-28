@@ -651,7 +651,7 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
   if not shared.SKIP_SUBPROCS:
     shared.check_llvm_version()
 
-  autoconf = os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in state.orig_args or 'conftest.cpp' in state.orig_args
+  autoconf = os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in options.input_files or 'conftest.cpp' in options.input_files
   if autoconf:
     # configure tests want a more shell-like style, where we emit return codes on exit()
     settings.EXIT_RUNTIME = 1
@@ -895,7 +895,7 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
     # PURE_WASI, or when we are linking without standard libraries because
     # STACK_OVERFLOW_CHECK depends on emscripten_stack_get_end which is defined
     # in libcompiler-rt.
-    if not settings.PURE_WASI and '-nostdlib' not in state.orig_args and '-nodefaultlibs' not in state.orig_args:
+    if not settings.PURE_WASI and not options.nostdlib and not options.nodefaultlibs:
       default_setting('STACK_OVERFLOW_CHECK', max(settings.ASSERTIONS, settings.STACK_OVERFLOW_CHECK))
 
   # For users that opt out of WARN_ON_UNDEFINED_SYMBOLS we assume they also
@@ -1532,15 +1532,7 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
   if settings.SIDE_MODULE and shared.suffix(target) == '.js':
     diagnostics.warning('emcc', 'output suffix .js requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
 
-  sanitize = set()
-
-  for arg in state.orig_args:
-    if arg.startswith('-fsanitize='):
-      sanitize.update(arg.split('=', 1)[1].split(','))
-    elif arg.startswith('-fno-sanitize='):
-      sanitize.difference_update(arg.split('=', 1)[1].split(','))
-
-  if sanitize:
+  if options.sanitize:
     settings.USE_OFFSET_CONVERTER = 1
     # These symbols are needed by `withBuiltinMalloc` which used to implement
     # the `__noleakcheck` attribute.  However this dependency is not yet represented in the JS
@@ -1556,7 +1548,7 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
       'emscripten_builtin_free',
     ]
 
-  if ('leak' in sanitize or 'address' in sanitize) and not settings.ALLOW_MEMORY_GROWTH:
+  if ('leak' in options.sanitize or 'address' in options.sanitize) and not settings.ALLOW_MEMORY_GROWTH:
     # Increase the minimum memory requirements to account for extra memory
     # that the sanitizers might need (in addition to the shadow memory
     # requirements handled below).
@@ -1572,17 +1564,17 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('wasm2js is not compatible with USE_OFFSET_CONVERTER (see #14630)')
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$UTF8ArrayToString')
 
-  if sanitize & UBSAN_SANITIZERS:
-    if '-fsanitize-minimal-runtime' in state.orig_args:
+  if options.sanitize & UBSAN_SANITIZERS:
+    if options.sanitize_minimal_runtime:
       settings.UBSAN_RUNTIME = 1
     else:
       settings.UBSAN_RUNTIME = 2
 
-  if 'leak' in sanitize:
+  if 'leak' in options.sanitize:
     settings.USE_LSAN = 1
     default_setting('EXIT_RUNTIME', 1)
 
-  if 'address' in sanitize:
+  if 'address' in options.sanitize:
     settings.USE_ASAN = 1
     default_setting('EXIT_RUNTIME', 1)
     if not settings.UBSAN_RUNTIME:
@@ -1657,7 +1649,7 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
     # ASan and SAFE_HEAP check address 0 themselves
     settings.CHECK_NULL_WRITES = 0
 
-  if sanitize and settings.GENERATE_SOURCE_MAP:
+  if options.sanitize and settings.GENERATE_SOURCE_MAP:
     settings.LOAD_SOURCE_MAP = 1
 
   if 'GLOBAL_BASE' not in user_settings and not settings.SHRINK_LEVEL and not settings.OPT_LEVEL and not settings.USE_ASAN:
@@ -1788,7 +1780,7 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
   settings.EMSCRIPTEN_VERSION = utils.EMSCRIPTEN_VERSION
   settings.SOURCE_MAP_BASE = options.source_map_base or ''
 
-  settings.LINK_AS_CXX = (shared.run_via_emxx or settings.DEFAULT_TO_CXX) and '-nostdlib++' not in state.orig_args
+  settings.LINK_AS_CXX = (shared.run_via_emxx or settings.DEFAULT_TO_CXX) and not options.nostdlibxx
 
   # WASMFS itself is written in C++, and needs C++ standard libraries
   if settings.WASMFS:
@@ -1863,13 +1855,13 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
 
 
 @ToolchainProfiler.profile_block('calculate system libraries')
-def phase_calculate_system_libraries(state, linker_arguments):
+def phase_calculate_system_libraries(options, linker_arguments):
   extra_files_to_link = []
   # Link in ports and system libraries, if necessary
   if not settings.SIDE_MODULE:
     # Ports are always linked into the main module, never the side module.
     extra_files_to_link += ports.get_libs(settings)
-  extra_files_to_link += system_libs.calculate(state.orig_args)
+  extra_files_to_link += system_libs.calculate(options)
   linker_arguments.extend(extra_files_to_link)
 
 
@@ -3124,7 +3116,7 @@ def run(linker_inputs, options, state):
     logger.debug('stopping after linking to object file')
     return 0
 
-  phase_calculate_system_libraries(state, linker_arguments)
+  phase_calculate_system_libraries(options, linker_arguments)
 
   js_syms = {}
   if (not settings.SIDE_MODULE or settings.ASYNCIFY) and not shared.SKIP_SUBPROCS:
