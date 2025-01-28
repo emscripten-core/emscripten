@@ -3530,6 +3530,7 @@ More info: https://emscripten.org
                      self.get_emcc_args())
     self.assertFileContents(test_file('other/embind_tsgen_jspi.d.ts'), read_file('embind_tsgen_jspi.d.ts'))
 
+  @requires_wasm_eh
   @parameterized({
     '': [0],
     'legacy': [1]
