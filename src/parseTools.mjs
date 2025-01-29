@@ -876,7 +876,7 @@ function makeModuleReceive(localName, moduleName) {
 function makeModuleReceiveExpr(name, defaultValue) {
   checkReceiving(name);
   if (expectToReceiveOnModule(name)) {
-    return `Module['${name}'] || ${defaultValue}`;
+    return `Module['${name}'] ?? ${defaultValue}`;
   } else {
     return `${defaultValue}`;
   }
