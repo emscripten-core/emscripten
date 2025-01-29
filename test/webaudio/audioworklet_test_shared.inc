@@ -1,11 +1,5 @@
 // Shared code for the audio worklet mixer tests.
 
-// Defines an offset in GB from where to start the stack (for testing >2GB and
-// >4GB heaps). See _main_().
-#ifndef TEST_OFFSET_GB
-#define TEST_OFFSET_GB 0
-#endif
-
 // Helper for MEMORY64 to cast an audio context or type to a void*
 #define WA_2_VOIDP(ctx) ((void*) (intptr_t) ctx)
 // Helper for MEMORY64 to cast a void* to an audio context or type
@@ -126,9 +120,16 @@ bool _main_(int stackSize) {
   return true;
 }
 
+// Common entry point for the mixer tests
 int main() {
-  if (_main_(AUDIO_STACK_SIZE)) {
-    return EXIT_SUCCESS;
-  }
-  return EXIT_FAILURE;
+  char* const workletStack = memalign(16, AUDIO_STACK_SIZE);
+  printf("Audio worklet stack at 0x%p\n", workletStack);
+  assert(workletStack);
+  EMSCRIPTEN_WEBAUDIO_T context = emscripten_create_audio_context(NULL);
+  emscripten_start_wasm_audio_worklet_thread_async(context, workletStack, AUDIO_STACK_SIZE, &initialised, NULL);
+#ifndef BROWSER_TEST
+  // Special case: browser tests need to exit instantly, interactive tests need to wait
+  emscripten_runtime_keepalive_push();
+#endif
+  return EXIT_SUCCESS;
 }
