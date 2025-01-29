@@ -518,10 +518,7 @@ function isModuleUse(node) {
 }
 
 function isESModuleExportIdentifier(node) {
-  return (
-    node.type === 'Identifier' &&
-    node.name.startsWith('__exp_')
-  );
+  return node.type === 'Identifier' && node.name.startsWith('__exp_');
 }
 
 function getESModuleExportName(node) {
@@ -771,8 +768,10 @@ function emitDCEGraph(ast) {
             }
           } else if (value && value.type === 'AssignmentExpression') {
             const assigned = value.left;
-            if ((isModuleUse(assigned) && getExportOrModuleUseName(assigned) === name) ||
-                (isESModuleExportIdentifier(assigned) && getESModuleExportName(assigned) === name)) {
+            if (
+              (isModuleUse(assigned) && getExportOrModuleUseName(assigned) === name) ||
+              (isESModuleExportIdentifier(assigned) && getESModuleExportName(assigned) === name)
+            ) {
               // this is either:
               // 1) var x = Module['x'] = ?
               // 2) var x = __exp_x = ?
