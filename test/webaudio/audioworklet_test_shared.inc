@@ -5,12 +5,18 @@
 // Helper for MEMORY64 to cast a void* to an audio context or type
 #define VOIDP_2_WA(ptr) ((EMSCRIPTEN_WEBAUDIO_T) (intptr_t) ptr)
 
+// Attribute that marks a function, parameter, variable, etc., as unused
+// (silencing any -Wunused warnings).
+#ifndef __unused
+#define __unused __attribute__((unused))
+#endif
+
 // Count the audio callbacks and return after 375 frames (1 second with the default 128 size)
 //
 // *** Remove this in your own code ***
 //
 volatile int audioProcessedCount = 0;
-bool playedAndMixed(double time, void* data) {
+bool playedAndMixed(double __unused time, void* __unused data) {
   if (audioProcessedCount >= 375) {
     emscripten_force_exit(0);
     return false;
@@ -57,7 +63,7 @@ EM_JS(void, toggleTrack, (EMSCRIPTEN_WEBAUDIO_T srcID), {
 });
 
 // Registered click even to (1) enable audio playback and (2) toggle playing the tracks
-bool onClick(int type, const EmscriptenMouseEvent* e, void* data) {
+bool onClick(int __unused type, const EmscriptenMouseEvent* __unused e, void* data) {
   EMSCRIPTEN_WEBAUDIO_T ctx = VOIDP_2_WA(data);
   if (emscripten_audio_context_state(ctx) != AUDIO_CONTEXT_STATE_RUNNING) {
     printf("Resuming playback\n");
@@ -73,7 +79,7 @@ bool onClick(int type, const EmscriptenMouseEvent* e, void* data) {
 void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data);
 
 // Worklet thread inited, now create the audio processor
-void initialised(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
+void initialised(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* __unused data) {
   if (!success) {
     printf("Audio worklet failed to initialise\n");
     return;
@@ -84,40 +90,6 @@ void initialised(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
     .name = "mixer",
   };
   emscripten_create_wasm_audio_worklet_processor_async(context, &opts, &processorCreated, NULL);
-}
-
-// Common entry point for the mixer tests
-// stackSize - audio worklet stack size in bytes
-// return true if the requested memory could be allocated
-bool _main_(int stackSize) {
-  // Optional empty space before the audio worklet's stack
-#if TEST_OFFSET_GB > 0
-  char* const emptySpace = malloc(1073741824L * TEST_OFFSET_GB);
-  if (emptySpace) {
-    printf("Empty space allocated (%dGB)\n", TEST_OFFSET_GB);
-  } else {
-    printf("Failed to allocate the required memory offset\n");
-    return false;
-  }
-#endif
-
-  char* const workletStack = memalign(16, stackSize);
-  if (!workletStack) {
-      printf("Failed to allocate the required worklet stack\n");
-      return false;
-  }
-
-#if TEST_OFFSET_GB > 0
-    free(emptySpace);
-#endif
-
-  EMSCRIPTEN_WEBAUDIO_T context = emscripten_create_audio_context(NULL);
-  emscripten_start_wasm_audio_worklet_thread_async(context, workletStack, stackSize, &initialised, NULL);
-#ifndef BROWSER_TEST
-  // Special case: browser tests need to exit instantly, interactive tests need to wait
-  emscripten_runtime_keepalive_push();
-#endif
-  return true;
 }
 
 // Common entry point for the mixer tests

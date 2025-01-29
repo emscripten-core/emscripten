@@ -14,7 +14,7 @@
 #include "audioworklet_test_shared.inc"
 
 // Callback to process and copy the audio tracks
-bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, AudioSampleFrame* outputs, int numParams, const AudioParamFrame* params, void* data) {
+bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, AudioSampleFrame* outputs, int __unused numParams, const AudioParamFrame* __unused params, void* __unused data) {
   audioProcessedCount++;
 
   // Twin stereo in and out
@@ -33,7 +33,7 @@ bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, Audi
 }
 
 // Audio processor created, now register the audio callback
-void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
+void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* __unused data) {
   if (!success) {
     printf("Audio worklet node creation failed\n");
     return;
