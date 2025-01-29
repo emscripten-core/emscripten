@@ -552,7 +552,7 @@ var LibraryBrowser = {
       }
       var w = wNative;
       var h = hNative;
-      if (Module['forcedAspectRatio'] && Module['forcedAspectRatio'] > 0) {
+      if (Module['forcedAspectRatio'] > 0) {
         if (w/h < Module['forcedAspectRatio']) {
           w = Math.round(h * Module['forcedAspectRatio']);
         } else {

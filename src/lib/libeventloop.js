@@ -489,7 +489,7 @@ LibraryJSEventLoop = {
     }
 
     if (!noSetTiming) {
-      if (fps && fps > 0) {
+      if (fps > 0) {
         _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_SETTIMEOUT }}}, 1000.0 / fps);
       } else {
         // Do rAF by rendering each frame (no decimating)
