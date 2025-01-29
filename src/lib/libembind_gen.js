@@ -499,13 +499,13 @@ var LibraryEmbind = {
         }
         argStart = 2;
       }
-      if (argsName.length && argsName.length != (argTypes.length - hasThis - 1)) {
+      if (argsName && argsName.length != (argTypes.length - hasThis - 1)) {
         throw new Error('Argument names should match number of parameters.');
       }
 
       const args = [];
       for (let i = argStart, x = 0; i < argTypes.length; i++) {
-        if (x < argsName.length) {
+        if (argsName) {
           args.push(new Argument(argsName[x++], argTypes[i]));
         } else {
           args.push(new Argument(`_${i - argStart}`, argTypes[i]));
