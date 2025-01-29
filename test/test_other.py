@@ -1020,6 +1020,25 @@ f.close()
     err = self.expect_fail([EMCMAKE, 'cmake', test_file('cmake/static_lib'), '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON'])
     self.assertContained('EMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES is not compatible with the', err)
 
+  @crossplatform
+  @parameterized({
+    '': ([],),
+    'noforce': (['-DEMSCRIPTEN_FORCE_COMPILERS=OFF'],),
+  })
+  def test_cmake_compile_commands(self, args):
+    self.run_process([EMCMAKE, 'cmake', test_file('cmake/static_lib'), '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON'] + args)
+    self.assertExists('compile_commands.json')
+    compile_commands = json.load(open('compile_commands.json'))
+    command = compile_commands[0]['command']
+    # Sometimes cmake puts the include dirs in an RSP file
+    rsp = [p for p in command.split() if 'includes_CXX.rsp' in p]
+    if rsp:
+      command = read_file(rsp[0][1:])
+    include_dir = utils.normalize_path(cache.get_sysroot_dir('include'))
+    include_dir_cxx = utils.normalize_path(cache.get_sysroot_dir('include/c++/v1'))
+    self.assertContained(include_dir, command)
+    self.assertContained(include_dir_cxx, command)
+
   @parameterized({
     '': ['0'],
     'suffix': ['1'],
