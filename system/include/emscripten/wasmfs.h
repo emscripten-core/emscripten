@@ -48,6 +48,18 @@ typedef backend_t (*backend_constructor_t)(void*);
 
 backend_t wasmfs_create_memory_backend(void);
 
+// Fetch backend
+//
+// Creates a new fetchfs backend.  FetchFS will backstop filesystem
+// reads to HTTP fetch requests, which will download just specific
+// ranges of the requested files.  FetchFS works best when your web
+// server supports HTTP range requests, and it's important that those
+// files are not stored encrypted or compressed at rest.  FetchFS by
+// default will dispatch HTTP requests to URLs beginning with base_url
+// and ending with whatever the file's path is relative to where the
+// fetchfs directory is mounted.
+//
+//
 // Note: this cannot be called on the browser main thread because it might
 // deadlock while waiting for its dedicated worker thread to be spawned.
 //
@@ -57,7 +69,9 @@ backend_t wasmfs_create_memory_backend(void);
 //
 // TODO: Add an async version of this function that will work on the main
 // thread.
-backend_t wasmfs_create_fetch_backend(const char* base_url __attribute__((nonnull)), uint32_t);
+//
+backend_t wasmfs_create_fetch_backend(const char* base_url __attribute__((nonnull)),
+                                      uint32_t chunkSize);
 
 backend_t wasmfs_create_node_backend(const char* root __attribute__((nonnull)));
 

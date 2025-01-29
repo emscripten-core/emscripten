@@ -31,17 +31,18 @@ addToLibrary({
         try {
           var u = new URL(fileUrl, self.location.origin);
           url = u.toString();
-        } catch (e) {
+        } catch (_e) {
+          throw {status: 404};
         }
       }
       var chunkSize = __wasmfs_fetch_get_chunk_size(file);
-      offset = offset || 0;
+      offset ??= 0;
       len = len || chunkSize;
       var firstChunk = (offset / chunkSize) | 0;
       var lastChunk = ((offset+len) / chunkSize) | 0;
       if (!(file in wasmFS$JSMemoryRanges)) {
         var fileInfo = await fetch(url,{method:"HEAD", headers:{"Range": "bytes=0-"}});
-        if(fileInfo.ok &&
+        if (fileInfo.ok &&
            fileInfo.headers.has("Content-Length") &&
            fileInfo.headers.get("Accept-Ranges") == "bytes" &&
            (parseInt(fileInfo.headers.get("Content-Length")) > chunkSize*2)) {
@@ -49,7 +50,7 @@ addToLibrary({
         } else {
           // may as well/forced to download the whole file
           var wholeFileReq = await fetch(url);
-          if(!wholeFileReq.ok) {
+          if (!wholeFileReq.ok) {
             throw wholeFileReq;
           }
           var wholeFileData = new Uint8Array(await wholeFileReq.arrayBuffer());
@@ -60,11 +61,11 @@ addToLibrary({
       }
       var allPresent = true;
       var i;
-      if(lastChunk * chunkSize < offset+len) {
+      if (lastChunk * chunkSize < offset+len) {
         lastChunk += 1;
       }
-      for(i = firstChunk; i < lastChunk; i++) {
-        if(!wasmFS$JSMemoryRanges[file].chunks[i]) {
+      for (i = firstChunk; i < lastChunk; i++) {
+        if (!wasmFS$JSMemoryRanges[file].chunks[i]) {
           allPresent = false;
           break;
         }
@@ -78,13 +79,12 @@ addToLibrary({
       var start = firstChunk*chunkSize;
       var end = lastChunk*chunkSize;
       var response = await fetch(url, {headers:{"Range": `bytes=${start}-${end-1}`}});
-      if (response.ok) {
-        var bytes = new Uint8Array(await response['arrayBuffer']());
-        for (i = firstChunk; i < lastChunk; i++) {
-          wasmFS$JSMemoryRanges[file].chunks[i] = bytes.slice(i*chunkSize-start,(i+1)*chunkSize-start);
-        }
-      } else {
+      if (!response.ok) {
         throw response;
+      }
+      var bytes = new Uint8Array(await response['arrayBuffer']());
+      for (i = firstChunk; i < lastChunk; i++) {
+        wasmFS$JSMemoryRanges[file].chunks[i] = bytes.slice(i*chunkSize-start,(i+1)*chunkSize-start);
       }
       return Promise.resolve();
     }
@@ -110,24 +110,21 @@ addToLibrary({
       read: async (file, buffer, length, offset) => {
         try {
           await getFileRange(file, offset || 0, length);
-        } catch (response) {
-          return response.status === 404 ? -{{{ cDefs.ENOENT }}} : -{{{ cDefs.EBADF }}};
+        } catch (failedResponse) {
+          return failedResponse.status === 404 ? -{{{ cDefs.ENOENT }}} : -{{{ cDefs.EBADF }}};
         }
         var fileInfo = wasmFS$JSMemoryRanges[file];
         var fileData = fileInfo.chunks;
         var chunkSize = fileInfo.chunkSize;
         var firstChunk = (offset / chunkSize) | 0;
         var lastChunk = ((offset+length) / chunkSize) | 0;
-        if(offset + length > lastChunk * chunkSize) {
+        if (offset + length > lastChunk * chunkSize) {
           lastChunk += 1;
         }
         var readLength = 0;
         for (var i = firstChunk; i < lastChunk; i++) {
           var chunk = fileData[i];
           var start = Math.max(i*chunkSize, offset);
-          if(!chunk) {
-            throw [fileData.length, firstChunk, lastChunk, i];
-          }
           var chunkStart = i*chunkSize;
           var end = Math.min(chunkStart+chunkSize, offset+length);
           HEAPU8.set(chunk.subarray(start-chunkStart, end-chunkStart), buffer+(start-offset));
@@ -138,7 +135,7 @@ addToLibrary({
       getSize: async (file) => {
         try {
           await getFileRange(file, 0, 0);
-        } catch (response) {
+        } catch (failedResponse) {
           return 0;
         }
         return wasmFS$JSMemoryRanges[file].size;

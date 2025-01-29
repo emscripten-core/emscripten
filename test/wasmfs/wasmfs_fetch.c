@@ -6,6 +6,7 @@
  */
 
 #include <assert.h>
+#include <fcntl.h>
 #include <dirent.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/wasmfs.h>
