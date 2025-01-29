@@ -183,14 +183,11 @@ def compile_javascript(symbols_only=False):
       json.dump(settings.external_dict(), s, sort_keys=True, indent=2)
 
     # Call js compiler
-    env = os.environ.copy()
-    env['EMCC_BUILD_DIR'] = os.getcwd()
     args = [settings_file]
     if symbols_only:
       args += ['--symbols-only']
     out = shared.run_js_tool(path_from_root('src/compiler.mjs'),
-                             args, stdout=subprocess.PIPE, stderr=stderr_file,
-                             cwd=path_from_root('src'), env=env, encoding='utf-8')
+                             args, stdout=subprocess.PIPE, stderr=stderr_file, encoding='utf-8')
   if symbols_only:
     glue = None
     forwarded_data = out
