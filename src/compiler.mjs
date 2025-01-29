@@ -37,7 +37,7 @@ export const symbolsOnly = values['symbols-only'];
 
 // TODO(sbc): Remove EMCC_BUILD_DIR at some point.  It used to be required
 // back when ran the JS compiler with overridden CWD.
-process.env['EMCC_BUILD_DIR'] = process.cwd()
+process.env['EMCC_BUILD_DIR'] = process.cwd();
 
 // In case compiler.mjs is run directly (as in gen_sig_info)
 // ALL_INCOMING_MODULE_JS_API might not be populated yet.
