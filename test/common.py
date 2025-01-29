@@ -1028,19 +1028,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def require_wasm_eh(self):
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
-    print('-- require_wasm_eh')
-    print('js_engines = ' + str(self.js_engines))
     nodejs = self.get_nodejs()
     if nodejs:
-      print('  nodejs: ' + str(nodejs))
       if self.node_is_canary(nodejs):
-        print('    canary')
         self.js_engines = [nodejs]
         self.node_args.append('--experimental-wasm-exnref')
         return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
-      print('  v8')
       self.emcc_args.append('-sENVIRONMENT=shell')
       self.js_engines = [config.V8_ENGINE]
       self.v8_args.append('--experimental-wasm-exnref')
