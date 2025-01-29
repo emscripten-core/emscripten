@@ -139,6 +139,7 @@ var moduleOverrides = Object.assign({}, Module);
 var arguments_ = [];
 var thisProgram = './this.program';
 var quit_ = (status, toThrow) => {
+  Module.exitCode = status;
   throw toThrow;
 };
 
@@ -251,6 +252,7 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
 
   quit_ = (status, toThrow) => {
+    Module.exitCode = status;
     process.exitCode = status;
     throw toThrow;
   };
@@ -293,6 +295,7 @@ if (ENVIRONMENT_IS_SHELL) {
 
   if (typeof quit == 'function') {
     quit_ = (status, toThrow) => {
+      Module.exitCode = status;
       // Unlike node which has process.exitCode, d8 has no such mechanism. So we
       // have no way to set the exit code and then let the program exit with
       // that code when it naturally stops running (say, when all setTimeouts
