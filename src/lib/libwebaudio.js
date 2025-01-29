@@ -182,7 +182,7 @@ let LibraryWebAudio = {
         console.error(`AudioWorklets are not supported by current browser.`);
       }
 #endif
-      return audioWorkletCreationFailed();
+      return audioWorkletCreationFailed(null);
     }
 
     // TODO: In MINIMAL_RUNTIME builds, read this file off of a preloaded Blob,
