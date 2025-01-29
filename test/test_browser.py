@@ -2635,7 +2635,7 @@ Module["preRun"] = () => {
   @parameterized({
     '': ([],),
     'closure': (['-O2', '-g1', '--closure=1'],),
-    'full_es2': (['-sFULL_ES2'],),
+    'full_es2': (['-sFULL_ES2', '-DFULL_ES2', '-sGL_ASSERTIONS'],),
     'pthread': (['-pthread'],),
   })
   def test_html5_webgl_create_context(self, args):
