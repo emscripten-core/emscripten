@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 3.0)
 
 project(static_library)
 
+if (CMAKE_EXPORT_COMPILE_COMMANDS)
+  message(STATUS "CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES -> ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES}")
+  set(CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
+endif()
+
 # Test mode that checks that it's possible to override the file suffix
 # (independent of whether ar archive or LLVM bitcode file is created)
 # Note that "-DCMAKE_STATIC_LIBRARY_SUFFIX=foo" cannot be passed to CMake from
