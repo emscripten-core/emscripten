@@ -1245,10 +1245,17 @@ def run_wasm_bindgen(infile, outfile=None, args=[], **kwargs):  # noqa
     get_emscripten_temp_dir() + '/wbg_out'
   ]
   ret = check_call(cmd).stdout
-  new_wasm_file = get_emscripten_temp_dir() + '/wbg_out/' + os.path.basename(infile).split('.')[0] + '.wasm'
+
+  bindgen_out_dir = get_emscripten_temp_dir() + '/wbg_out/'
+
+  # TODO(walkingeye): don't try to predict the .wasm filename that wasm-bindgen
+  # outputs. instead just grab the .wasm file itself (there will only ever be one).
+  all_output_files = os.listdir(bindgen_out_dir)
+  new_wasm_file = list(filter(lambda x: x.endswith('.wasm'), all_output_files))[0]
   if outfile == None:
     outfile = infile
-  check_call(['cp', new_wasm_file, infile])
+
+  check_call(['cp', new_wasm_file, outfile])
 
   return ret
 
