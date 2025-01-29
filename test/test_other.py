@@ -3535,7 +3535,10 @@ More info: https://emscripten.org
     'legacy': [1]
   })
   def test_embind_tsgen_exceptions(self, legacy):
+    if not legacy and shared.get_node_version(config.NODE_JS)[0] < 22:
+      self.skipTest('Node version needs to be 22 or greater to run tsgen with exnref')
     self.set_setting('WASM_LEGACY_EXCEPTIONS', legacy)
+
     # Check that when Wasm exceptions and assertions are enabled bindings still generate.
     self.run_process([EMXX, test_file('other/embind_tsgen.cpp'),
                       '-lembind', '-fwasm-exceptions', '-sASSERTIONS',
@@ -14971,7 +14974,6 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   @parameterized({
     '':   ([],),
     'single_file': (['-sSINGLE_FILE'],),
-    'single_file_es6': (['-sSINGLE_FILE', '-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')],),
   })
   def test_proxy_to_worker(self, args):
     self.do_runf('hello_world.c', emcc_args=['--proxy-to-worker'] + args)

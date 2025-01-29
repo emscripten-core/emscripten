@@ -431,10 +431,6 @@ def get_binaryen_passes():
     extras = settings.BINARYEN_EXTRA_PASSES.split(',')
     passes += [('--' + p) if p[0] != '-' else p for p in extras if p]
 
-  # Run the translator to the standardized EH instructions.
-  if not settings.WASM_LEGACY_EXCEPTIONS:
-    passes += ['--emit-exnref']
-
   # If we are going to run metadce then that means we will be running binaryen
   # tools after the main invocation, whose flags are determined here
   # (specifically we will run metadce and possibly also wasm-opt for import/
@@ -915,6 +911,12 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
     # When using MINIMAL_RUNTIME, symbols should only be exported if requested.
     default_setting('EXPORT_KEEPALIVE', 0)
 
+  if settings.EXPORT_ES6 and not settings.MODULARIZE:
+    # EXPORT_ES6 requires output to be a module
+    if 'MODULARIZE' in user_settings:
+      exit_with_error('EXPORT_ES6 requires MODULARIZE to be set')
+    settings.MODULARIZE = 1
+
   if settings.STRICT_JS and (settings.MODULARIZE or settings.EXPORT_ES6):
     exit_with_error("STRICT_JS doesn't work with MODULARIZE or EXPORT_ES6")
 
@@ -926,7 +928,7 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
       options.shell_path = DEFAULT_SHELL_HTML
 
   if settings.STRICT:
-    if not settings.MODULARIZE and not settings.EXPORT_ES6:
+    if not settings.MODULARIZE:
       default_setting('STRICT_JS', 1)
     default_setting('DEFAULT_TO_CXX', 0)
     default_setting('IGNORE_MISSING_MAIN', 0)
@@ -1441,17 +1443,11 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
 
   set_initial_memory()
 
-  if settings.EXPORT_ES6:
-    if not settings.MODULARIZE:
-      # EXPORT_ES6 requires output to be a module
-      if 'MODULARIZE' in user_settings:
-        exit_with_error('EXPORT_ES6 requires MODULARIZE to be set')
-      settings.MODULARIZE = 1
-    if settings.ENVIRONMENT_MAY_BE_NODE and not settings.USE_ES6_IMPORT_META:
-      # EXPORT_ES6 + ENVIRONMENT=*node* requires the use of import.meta.url
-      if 'USE_ES6_IMPORT_META' in user_settings:
-        exit_with_error('EXPORT_ES6 and ENVIRONMENT=*node* requires USE_ES6_IMPORT_META to be set')
-      settings.USE_ES6_IMPORT_META = 1
+  if settings.EXPORT_ES6 and settings.ENVIRONMENT_MAY_BE_NODE and not settings.USE_ES6_IMPORT_META:
+    # EXPORT_ES6 + ENVIRONMENT=*node* requires the use of import.meta.url
+    if 'USE_ES6_IMPORT_META' in user_settings:
+      exit_with_error('EXPORT_ES6 and ENVIRONMENT=*node* requires USE_ES6_IMPORT_META to be set')
+    settings.USE_ES6_IMPORT_META = 1
 
   if settings.MODULARIZE and not settings.DECLARE_ASM_MODULE_EXPORTS:
     # When MODULARIZE option is used, currently requires declaring all module exports

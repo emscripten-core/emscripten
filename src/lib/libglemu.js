@@ -3574,7 +3574,7 @@ var LibraryGLEmulation = {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('vaos', 'i*4', 'i32') }}};
       GLEmulation.vaos[id] = null;
-      if (GLEmulation.currentVao && GLEmulation.currentVao.id == id) GLEmulation.currentVao = null;
+      if (GLEmulation.currentVao?.id == id) GLEmulation.currentVao = null;
     }
   },
   $emulGlIsVertexArray: (array) => {

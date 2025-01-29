@@ -732,8 +732,8 @@ function WebGLWorker() {
           var fullname = name;
           if (open >= 0) {
             var close = name.indexOf(']');
-            size = parseInt(name.substring(open+1, close));
-            name = name.substr(0, open);
+            size = parseInt(name.slice(open+1, close));
+            name = name.slice(0, open);
             fullname = name + '[0]';
           }
           if (!obj[name]) {
@@ -801,8 +801,8 @@ function WebGLWorker() {
     var open = name.indexOf('[');
     if (open >= 0) {
       var close = name.indexOf(']');
-      index = parseInt(name.substring(open+1, close));
-      name = name.substr(0, open);
+      index = parseInt(name.slice(open+1, close));
+      name = name.slice(0, open);
     }
     if (!(name in program.uniforms)) return null;
     var id = nextId++;

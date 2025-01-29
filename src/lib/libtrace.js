@@ -92,7 +92,7 @@ var LibraryTracing = {
     },
 
     configureForGoogleWTF: () => {
-      if (window && window['wtf']) {
+      if (window?.['wtf']) {
         EmscriptenTrace.googleWTFEnabled = true;
       } else {
         out('GOOGLE WTF NOT AVAILABLE TO ENABLE');

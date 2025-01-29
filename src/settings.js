@@ -781,7 +781,7 @@ var EXCEPTION_STACK_TRACES = false;
 // https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/legacy/Exceptions.md
 // If false, emit instructions for the standardized exception handling proposal:
 // https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/Exceptions.md
-// [link]
+// [compile+link]
 var WASM_LEGACY_EXCEPTIONS = true;
 
 // Emscripten throws an ExitStatus exception to unwind when exit() is called.

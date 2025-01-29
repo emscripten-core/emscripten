@@ -50,14 +50,14 @@ var LibraryStackTrace = {
       var column = 0;
 
       var parts = chromeRe.exec(line);
-      if (parts && parts.length == 5) {
+      if (parts?.length == 5) {
         symbolName = parts[1];
         file = parts[2];
         lineno = parts[3];
         column = parts[4];
       } else {
         parts = newFirefoxRe.exec(line) || firefoxRe.exec(line);
-        if (parts && parts.length >= 4) {
+        if (parts?.length >= 4) {
           symbolName = parts[1];
           file = parts[2];
           lineno = parts[3];

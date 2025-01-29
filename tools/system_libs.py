@@ -775,10 +775,12 @@ class Exceptions(IntEnum):
   - EMSCRIPTEN: Emscripten provides exception handling capability using JS
     emulation. This causes code size increase and performance degradation.
   - WASM_LEGACY: Wasm native exception handling support (legacy)
+  - WASM: Wasm native exception handling support
   """
   NONE = auto()
   EMSCRIPTEN = auto()
   WASM_LEGACY = auto()
+  WASM = auto()
 
 
 class ExceptionLibrary(Library):
@@ -793,7 +795,9 @@ class ExceptionLibrary(Library):
     elif self.eh_mode == Exceptions.EMSCRIPTEN:
       cflags += ['-sDISABLE_EXCEPTION_CATCHING=0']
     elif self.eh_mode == Exceptions.WASM_LEGACY:
-      cflags += ['-fwasm-exceptions']
+      cflags += ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS']
+    elif self.eh_mode == Exceptions.WASM:
+      cflags += ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0']
 
     return cflags
 
@@ -805,6 +809,8 @@ class ExceptionLibrary(Library):
       name += '-noexcept'
     elif self.eh_mode == Exceptions.WASM_LEGACY:
       name += '-legacyexcept'
+    elif self.eh_mode == Exceptions.WASM:
+      name += '-wasmexcept'
     return name
 
   @classmethod
@@ -812,12 +818,16 @@ class ExceptionLibrary(Library):
     combos = super().variations()
     return ([dict(eh_mode=Exceptions.NONE, **combo) for combo in combos] +
             [dict(eh_mode=Exceptions.EMSCRIPTEN, **combo) for combo in combos] +
-            [dict(eh_mode=Exceptions.WASM_LEGACY, **combo) for combo in combos])
+            [dict(eh_mode=Exceptions.WASM_LEGACY, **combo) for combo in combos] +
+            [dict(eh_mode=Exceptions.WASM, **combo) for combo in combos])
 
   @classmethod
   def get_default_variation(cls, **kwargs):
     if settings.WASM_EXCEPTIONS:
-      eh_mode = Exceptions.WASM_LEGACY
+      if settings.WASM_LEGACY_EXCEPTIONS:
+        eh_mode = Exceptions.WASM_LEGACY
+      else:
+        eh_mode = Exceptions.WASM
     elif settings.DISABLE_EXCEPTION_CATCHING == 1:
       eh_mode = Exceptions.NONE
     else:
@@ -838,6 +848,12 @@ class SjLjLibrary(Library):
                  '-sDISABLE_EXCEPTION_THROWING=0']
     elif self.eh_mode == Exceptions.WASM_LEGACY:
       cflags += ['-sSUPPORT_LONGJMP=wasm',
+                 '-sWASM_LEGACY_EXCEPTIONS',
+                 '-sDISABLE_EXCEPTION_THROWING',
+                 '-D__WASM_SJLJ__']
+    elif self.eh_mode == Exceptions.WASM:
+      cflags += ['-sSUPPORT_LONGJMP=wasm',
+                 '-sWASM_LEGACY_EXCEPTIONS=0',
                  '-sDISABLE_EXCEPTION_THROWING',
                  '-D__WASM_SJLJ__']
     return cflags
@@ -848,18 +864,24 @@ class SjLjLibrary(Library):
     # suffixes. Change the default to wasm exception later.
     if self.eh_mode == Exceptions.WASM_LEGACY:
       name += '-legacysjlj'
+    elif self.eh_mode == Exceptions.WASM:
+      name += '-wasmsjlj'
     return name
 
   @classmethod
   def variations(cls):
     combos = super().variations()
     return ([dict(eh_mode=Exceptions.EMSCRIPTEN, **combo) for combo in combos] +
-            [dict(eh_mode=Exceptions.WASM_LEGACY, **combo) for combo in combos])
+            [dict(eh_mode=Exceptions.WASM_LEGACY, **combo) for combo in combos] +
+            [dict(eh_mode=Exceptions.WASM, **combo) for combo in combos])
 
   @classmethod
   def get_default_variation(cls, **kwargs):
     if settings.SUPPORT_LONGJMP == 'wasm':
-      eh_mode = Exceptions.WASM_LEGACY
+      if settings.WASM_LEGACY_EXCEPTIONS:
+        eh_mode = Exceptions.WASM_LEGACY
+      else:
+        eh_mode = Exceptions.WASM
     else:
       eh_mode = Exceptions.EMSCRIPTEN
     return super().get_default_variation(eh_mode=eh_mode, **kwargs)
@@ -1600,7 +1622,7 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
       filenames += ['cxa_noexception.cpp']
     elif self.eh_mode == Exceptions.EMSCRIPTEN:
       filenames += ['cxa_exception_emscripten.cpp']
-    elif self.eh_mode == Exceptions.WASM_LEGACY:
+    elif self.eh_mode in (Exceptions.WASM_LEGACY, Exceptions.WASM):
       filenames += [
         'cxa_exception_storage.cpp',
         'cxa_exception.cpp',
@@ -1654,7 +1676,7 @@ class libcxx(ExceptionLibrary, MTLibrary):
 
   def get_cflags(self):
     cflags = super().get_cflags()
-    if self.eh_mode == Exceptions.WASM_LEGACY:
+    if self.eh_mode in (Exceptions.WASM_LEGACY, Exceptions.WASM):
       cflags.append('-D__WASM_EXCEPTIONS__')
     return cflags
 
@@ -1677,7 +1699,7 @@ class libunwind(ExceptionLibrary, MTLibrary):
     super().__init__(**kwargs)
 
   def can_use(self):
-    return super().can_use() and self.eh_mode == Exceptions.WASM_LEGACY
+    return super().can_use() and self.eh_mode in (Exceptions.WASM_LEGACY, Exceptions.WASM)
 
   def get_cflags(self):
     cflags = super().get_cflags()
@@ -1688,7 +1710,7 @@ class libunwind(ExceptionLibrary, MTLibrary):
       cflags.append('-D_LIBUNWIND_HAS_NO_EXCEPTIONS')
     elif self.eh_mode == Exceptions.EMSCRIPTEN:
       cflags.append('-D__EMSCRIPTEN_EXCEPTIONS__')
-    elif self.eh_mode == Exceptions.WASM_LEGACY:
+    elif self.eh_mode in (Exceptions.WASM_LEGACY, Exceptions.WASM):
       cflags.append('-D__WASM_EXCEPTIONS__')
     return cflags
 

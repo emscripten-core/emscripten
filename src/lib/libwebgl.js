@@ -1184,7 +1184,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       }
       // Make sure the canvas object no longer refers to the context object so
       // there are no GC surprises.
-      if (GL.contexts[contextHandle] && GL.contexts[contextHandle].GLctx.canvas) {
+      if (GL.contexts[contextHandle]?.GLctx?.canvas) {
         GL.contexts[contextHandle].GLctx.canvas.GLctxObject = undefined;
       }
 #if PTHREADS
@@ -4323,7 +4323,7 @@ function createGLPassthroughFunctions(lib, funcs) {
         cName = name.replace('[', '').replace(']', '');
         name = cName.slice(0, -1);
       }
-      cName = 'gl' + cName[0].toUpperCase() + cName.substr(1);
+      cName = 'gl' + cName[0].toUpperCase() + cName.slice(1);
       assert(!(cName in lib), "Cannot reimplement the existing function " + cName);
       lib[cName] = eval(stub.replace('NAME', name));
       assert(lib[cName + '__sig'] || LibraryManager.library[cName + '__sig'], 'missing sig for ' + cName);

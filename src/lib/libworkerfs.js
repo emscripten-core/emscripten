@@ -46,7 +46,7 @@ addToLibrary({
       });
       (mount.opts["packages"] || []).forEach((pack) => {
         pack['metadata'].files.forEach((file) => {
-          var name = file.filename.substr(1); // remove initial slash
+          var name = file.filename.slice(1); // remove initial slash
           WORKERFS.createNode(ensureParent(name), base(name), WORKERFS.FILE_MODE, 0, pack['blob'].slice(file.start, file.end));
         });
       });

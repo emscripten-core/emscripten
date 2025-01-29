@@ -112,65 +112,84 @@ addToLibrary({
       }
       return newFlags;
     },
-
+    getattr(func, node) {
+      var stat = NODEFS.tryFSOperation(func);
+      if (NODEFS.isWindows) {
+        // node.js v0.10.20 doesn't report blksize and blocks on Windows. Fake
+        // them with default blksize of 4096.
+        // See http://support.microsoft.com/kb/140365
+        if (!stat.blksize) {
+          stat.blksize = 4096;
+        }
+        if (!stat.blocks) {
+          stat.blocks = (stat.size+stat.blksize-1)/stat.blksize|0;
+        }
+        // Windows does not report the 'x' permission bit, so propagate read
+        // bits to execute bits.
+        stat.mode |= (stat.mode & {{{ cDefs.S_IRUGO }}}) >> 2;
+      }
+      return {
+        dev: stat.dev,
+        ino: node.id,
+        mode: stat.mode,
+        nlink: stat.nlink,
+        uid: stat.uid,
+        gid: stat.gid,
+        rdev: stat.rdev,
+        size: stat.size,
+        atime: stat.atime,
+        mtime: stat.mtime,
+        ctime: stat.ctime,
+        blksize: stat.blksize,
+        blocks: stat.blocks
+      };
+    },
+    // Common code for both node and stream setattr
+    // For node getatrr:
+    //  - arg is a native path
+    //  - chmod, utimes, truncate are fs.chmodSync,  fs.utimesSync,  fs.truncateSync
+    // For stream getatrr:
+    //  - arg is a native file descriptor
+    //  - chmod, utimes, truncate are fs.fchmodSync, fs.futimesSync, fs.ftruncateSync
+    setattr(arg, node, attr, chmod, utimes, truncate, stat) {
+      NODEFS.tryFSOperation(() => {
+        if (attr.mode !== undefined) {
+          var mode = attr.mode;
+          if (NODEFS.isWindows) {
+            // Windows only supports S_IREAD / S_IWRITE (S_IRUSR / S_IWUSR)
+            // https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/chmod-wchmod
+            mode &= {{{ cDefs.S_IRUSR | cDefs.S_IWUSR }}};
+          }
+          chmod(arg, mode);
+          // update the common node structure mode as well
+          node.mode = attr.mode;
+        }
+        if (typeof (attr.atime ?? attr.mtime) === "number") {
+          // Unfortunately, we have to stat the current value if we don't want
+          // to change it. On top of that, since the times don't round trip
+          // this will only keep the value nearly unchanged not exactly
+          // unchanged. See:
+          // https://github.com/nodejs/node/issues/56492
+          var atime = new Date(attr.atime ?? stat(arg).atime);
+          var mtime = new Date(attr.mtime ?? stat(arg).mtime);
+          utimes(arg, atime, mtime);
+        }
+        if (attr.size !== undefined) {
+          truncate(arg, attr.size);
+        }
+      });
+    },
     node_ops: {
       getattr(node) {
         var path = NODEFS.realPath(node);
-        var stat;
-        NODEFS.tryFSOperation(() => stat = fs.lstatSync(path));
-        if (NODEFS.isWindows) {
-          // Windows does not report the 'x' permission bit, so propagate read
-          // bits to execute bits.
-          stat.mode |= (stat.mode & {{{ cDefs.S_IRUGO }}}) >> 2;
-        }
-        return {
-          dev: stat.dev,
-          ino: node.id,
-          mode: stat.mode,
-          nlink: stat.nlink,
-          uid: stat.uid,
-          gid: stat.gid,
-          rdev: stat.rdev,
-          size: stat.size,
-          atime: stat.atime,
-          mtime: stat.mtime,
-          ctime: stat.ctime,
-          blksize: stat.blksize,
-          blocks: stat.blocks
-        };
+        return NODEFS.getattr(() => fs.lstatSync(path), node);
       },
       setattr(node, attr) {
         var path = NODEFS.realPath(node);
-        NODEFS.tryFSOperation(() => {
-          if (attr.mode !== undefined) {
-            if (attr.dontFollow) {
-              throw new FS.ErrnoError({{{ cDefs.ENOSYS }}});
-            }
-            var mode = attr.mode;
-            if (NODEFS.isWindows) {
-              // Windows only supports S_IREAD / S_IWRITE (S_IRUSR / S_IWUSR)
-              // https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/chmod-wchmod
-              mode &= {{{ cDefs.S_IRUSR | cDefs.S_IWUSR }}};
-            }
-            fs.chmodSync(path, mode);
-            // update the common node structure mode as well
-            node.mode = attr.mode;
-          }
-          if (typeof (attr.atime ?? attr.mtime) === "number") {
-            // Unfortunately, we have to stat the current value if we don't want
-            // to change it. On top of that, since the times don't round trip
-            // this will only keep the value nearly unchanged not exactly
-            // unchanged. See:
-            // https://github.com/nodejs/node/issues/56492
-            var stat = () => fs.lstatSync(NODEFS.realPath(node));
-            var atime = new Date(attr.atime ?? stat().atime);
-            var mtime = new Date(attr.mtime ?? stat().mtime);
-            fs.utimesSync(path, atime, mtime);
-          }
-          if (attr.size !== undefined) {
-            fs.truncateSync(path, attr.size);
-          }
-        });
+        if (attr.mode != null && attr.dontFollow) {
+          throw new FS.ErrnoError({{{ cDefs.ENOSYS }}});
+        }
+        NODEFS.setattr(path, node, attr, fs.chmodSync, fs.utimesSync, fs.truncateSync, fs.lstatSync);
       },
       lookup(parent, name) {
         var path = PATH.join2(NODEFS.realPath(parent), name);
@@ -228,18 +247,22 @@ addToLibrary({
       }
     },
     stream_ops: {
+      getattr(stream) {
+        return NODEFS.getattr(() => fs.fstatSync(stream.nfd), stream.node);
+      },
+      setattr(stream, attr) {
+        NODEFS.setattr(stream.nfd, stream.node, attr, fs.fchmodSync, fs.futimesSync, fs.ftruncateSync, fs.fstatSync);
+      },
       open(stream) {
         var path = NODEFS.realPath(stream.node);
         NODEFS.tryFSOperation(() => {
-          if (FS.isFile(stream.node.mode)) {
-            stream.shared.refcount = 1;
-            stream.nfd = fs.openSync(path, NODEFS.flagsForNode(stream.flags));
-          }
+          stream.shared.refcount = 1;
+          stream.nfd = fs.openSync(path, NODEFS.flagsForNode(stream.flags));
         });
       },
       close(stream) {
         NODEFS.tryFSOperation(() => {
-          if (FS.isFile(stream.node.mode) && stream.nfd && --stream.shared.refcount === 0) {
+          if (stream.nfd && --stream.shared.refcount === 0) {
             fs.closeSync(stream.nfd);
           }
         });
