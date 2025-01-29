@@ -1165,6 +1165,8 @@ https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-
 If false, emit instructions for the standardized exception handling proposal:
 https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/Exceptions.md
 
+.. note:: Applicable during both linking and compilation
+
 Default value: true
 
 .. _nodejs_catch_exit:
