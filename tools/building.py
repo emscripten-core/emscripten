@@ -1233,8 +1233,7 @@ def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # noqa
 
 
 def run_wasm_bindgen(infile, outfile=None, args=[], **kwargs):  # noqa
-  if not os.path.exists(infile):
-    exit_with_error('wasm-bindgen: wasm file not found (%s).' % infile)
+  bindgen_out_dir = get_emscripten_temp_dir() + '/bindgen_out/'
 
   cmd = config.WASM_BINDGEN + [
     infile,
@@ -1242,11 +1241,9 @@ def run_wasm_bindgen(infile, outfile=None, args=[], **kwargs):  # noqa
     'emscripten',
     '--keep-lld-exports',
     '--out-dir',
-    get_emscripten_temp_dir() + '/wbg_out'
+    bindgen_out_dir,
   ]
-  ret = check_call(cmd).stdout
-
-  bindgen_out_dir = get_emscripten_temp_dir() + '/wbg_out/'
+  check_call(cmd)
 
   # TODO(walkingeye): don't try to predict the .wasm filename that wasm-bindgen
   # outputs. instead just grab the .wasm file itself (there will only ever be one).
@@ -1255,9 +1252,7 @@ def run_wasm_bindgen(infile, outfile=None, args=[], **kwargs):  # noqa
   if outfile == None:
     outfile = infile
 
-  check_call(['cp', new_wasm_file, outfile])
-
-  return ret
+  shutil.copyfile(bindgen_out_dir + new_wasm_file, outfile)
 
 
 def save_intermediate(src, dst):
