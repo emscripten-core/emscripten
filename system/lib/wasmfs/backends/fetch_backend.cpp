@@ -21,16 +21,14 @@ class FetchBackend : public wasmfs::ProxiedAsyncJSBackend {
   FetchBackend(const std::string& baseUrl,
                uint32_t chunkSize,
                std::function<void(backend_t)> setupOnThread)
-    : ProxiedAsyncJSBackend(setupOnThread), baseUrl(baseUrl), chunkSize(chunkSize)
-      // TODO manifest
-  {}
+    : ProxiedAsyncJSBackend(setupOnThread), baseUrl(baseUrl), chunkSize(chunkSize) {}
   std::shared_ptr<DataFile> createFile(mode_t mode) override;
   std::shared_ptr<Directory> createDirectory(mode_t mode) override;
   const std::string getFileURL(const std::string& filePath);
   uint32_t getChunkSize();
 };
 
-  
+
 class FetchFile : public ProxiedAsyncJSImplFile {
   std::string filePath;
   std::string fileUrl;
@@ -81,6 +79,10 @@ public:
   std::string getChildPath(const std::string& name) const {
     return dirPath + '/' + name;
   }
+
+  std::shared_ptr<File> getChild(const std::string& name) override {
+    return MemoryDirectory::getChild(name);
+  }
 };
 
 std::shared_ptr<DataFile> FetchBackend::createFile(mode_t mode) {
@@ -92,41 +94,38 @@ std::shared_ptr<Directory> FetchBackend::createDirectory(mode_t mode) {
 }
 
 const std::string FetchBackend::getFileURL(const std::string& filePath) {
-  // TODO use manifest
   if(filePath == "") {
     return baseUrl;
   }
   return baseUrl + "/" + filePath;
 }
+
 uint32_t FetchBackend::getChunkSize() {
   return chunkSize;
 }
 
 extern "C" {
-  backend_t wasmfs_create_fetch_backend(const char* base_url, uint32_t chunkSize /* TODO manifest */) {
+  backend_t wasmfs_create_fetch_backend(const char* base_url, uint32_t chunkSize) {
   // ProxyWorker cannot safely be synchronously spawned from the main browser
   // thread. See comment in thread_utils.h for more details.
   assert(!emscripten_is_main_browser_thread() &&
          "Cannot safely create fetch backend on main browser thread");
   return wasmFS.addBackend(std::make_unique<FetchBackend>(
     base_url ? base_url : "",
-    chunkSize != 0 ? chunkSize : DEFAULT_CHUNK_SIZE,
-    /* TODO manifest */
+    chunkSize ? chunkSize : DEFAULT_CHUNK_SIZE,
     [](backend_t backend) { _wasmfs_create_fetch_backend_js(backend); }));
   }
 
-const char* EMSCRIPTEN_KEEPALIVE _wasmfs_fetch_get_file_path(void* ptr) {
-  auto* file = reinterpret_cast<wasmfs::FetchFile*>(ptr);
-  return file ? file->getPath().data() : nullptr;
-}
-const char* EMSCRIPTEN_KEEPALIVE _wasmfs_fetch_get_file_url(void* ptr) {
+const char* _wasmfs_fetch_get_file_url(void* ptr) {
   auto* file = reinterpret_cast<wasmfs::FetchFile*>(ptr);
   return file ? file->getURL().data() : nullptr;
 }
-uint32_t EMSCRIPTEN_KEEPALIVE _wasmfs_fetch_get_chunk_size(void* ptr) {
+
+uint32_t _wasmfs_fetch_get_chunk_size(void* ptr) {
   auto* file = reinterpret_cast<wasmfs::FetchFile*>(ptr);
   return file ? file->getChunkSize() : DEFAULT_CHUNK_SIZE;
 }
+
 }
 
 } // namespace wasmfs
