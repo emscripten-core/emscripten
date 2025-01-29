@@ -358,13 +358,13 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     // creation, 'objectTable' points to the GL object table where to populate the
     // created objects, and 'functionName' carries the name of the caller for
     // debug information.
-    genObject: (n, buffers, createFunction, objectTable
+    genObjects: (n, buffers, createFunction, objectTable
 #if GL_ASSERTIONS
       , functionName
 #endif
       ) => {
       for (var i = 0; i < n; i++) {
-        var buffer = GLctx[createFunction]();
+        var buffer = createFunction();
         var id = buffer && GL.getNewId(objectTable);
         if (buffer) {
           buffer.name = id;
@@ -1820,7 +1820,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   },
 
   glGenBuffers: (n, buffers) => {
-    GL.genObject(n, buffers, 'createBuffer', GL.buffers
+    GL.genObjects(n, buffers, GLctx.createBuffer, GL.buffers
 #if GL_ASSERTIONS
     , 'glGenBuffers'
 #endif
@@ -1828,7 +1828,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   },
 
   glGenTextures: (n, textures) => {
-    GL.genObject(n, textures, 'createTexture', GL.textures
+    GL.genObjects(n, textures, GLctx.createTexture, GL.textures
 #if GL_ASSERTIONS
     , 'glGenTextures'
 #endif
@@ -2073,7 +2073,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   },
 
   glGenRenderbuffers: (n, renderbuffers) => {
-    GL.genObject(n, renderbuffers, 'createRenderbuffer', GL.renderbuffers
+    GL.genObjects(n, renderbuffers, GLctx.createRenderbuffer, GL.renderbuffers
 #if GL_ASSERTIONS
     , 'glGenRenderbuffers'
 #endif
@@ -3640,7 +3640,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   },
 
   glGenFramebuffers: (n, ids) => {
-    GL.genObject(n, ids, 'createFramebuffer', GL.framebuffers
+    GL.genObjects(n, ids, GLctx.createFramebuffer, GL.framebuffers
 #if GL_ASSERTIONS
     , 'glGenFramebuffers'
 #endif
@@ -3699,7 +3699,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #if GL_ASSERTIONS
     assert(GLctx.createVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
-    GL.genObject(n, arrays, 'createVertexArray', GL.vaos
+    GL.genObjects(n, arrays, GLctx.createVertexArray, GL.vaos
 #if GL_ASSERTIONS
     , 'glGenVertexArrays'
 #endif

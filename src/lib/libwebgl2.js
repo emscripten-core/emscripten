@@ -186,7 +186,7 @@ var LibraryWebGL2 = {
 
   // Queries
   glGenQueries: (n, ids) => {
-    GL.genObject(n, ids, 'createQuery', GL.queries
+    GL.genObjects(n, ids, GLctx.createQuery, GL.queries
 #if GL_ASSERTIONS
     , 'glGenQueries'
 #endif
@@ -259,7 +259,7 @@ var LibraryWebGL2 = {
 
   // Sampler objects
   glGenSamplers: (n, samplers) => {
-    GL.genObject(n, samplers, 'createSampler', GL.samplers
+    GL.genObjects(n, samplers, GLctx.createSampler, GL.samplers
 #if GL_ASSERTIONS
     , 'glGenSamplers'
 #endif
@@ -352,7 +352,7 @@ var LibraryWebGL2 = {
 
   // Transform Feedback
   glGenTransformFeedbacks: (n, ids) => {
-    GL.genObject(n, ids, 'createTransformFeedback', GL.transformFeedbacks
+    GL.genObjects(n, ids, GLctx.createTransformFeedback, GL.transformFeedbacks
 #if GL_ASSERTIONS
     , 'glGenTransformFeedbacks'
 #endif
