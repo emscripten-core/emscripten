@@ -88,7 +88,7 @@ var LibraryBrowser = {
 
       var audioPlugin = {};
       audioPlugin['canHandle'] = function audioPlugin_canHandle(name) {
-        return !Module['noAudioDecoding'] && name.substr(-4) in { '.ogg': 1, '.wav': 1, '.mp3': 1 };
+        return !Module['noAudioDecoding'] && name.slice(-4) in { '.ogg': 1, '.wav': 1, '.mp3': 1 };
       };
       audioPlugin['handle'] = function audioPlugin_handle(byteArray, name, onload, onerror) {
         var done = false;
@@ -138,7 +138,7 @@ var LibraryBrowser = {
             }
             return ret;
           }
-          audio.src = 'data:audio/x-' + name.substr(-3) + ';base64,' + encode64(byteArray);
+          audio.src = 'data:audio/x-' + name.slice(-3) + ';base64,' + encode64(byteArray);
           finish(audio); // we don't wait for confirmation this worked - but it's worth trying
         };
         audio.src = url;
@@ -348,7 +348,7 @@ var LibraryBrowser = {
         'ogg': 'audio/ogg',
         'wav': 'audio/wav',
         'mp3': 'audio/mpeg'
-      }[name.substr(name.lastIndexOf('.')+1)];
+      }[name.slice(name.lastIndexOf('.')+1)];
     },
 
     getUserMedia(func) {
@@ -732,7 +732,7 @@ var LibraryBrowser = {
     var styleSheet = document.styleSheets[0];
     var rules = styleSheet.cssRules;
     for (var i = 0; i < rules.length; i++) {
-      if (rules[i].cssText.substr(0, 6) == 'canvas') {
+      if (rules[i].cssText.startsWith('canvas')) {
         styleSheet.deleteRule(i);
         i--;
       }

@@ -360,7 +360,7 @@ var LibraryHTML5 = {
     // represents the set of OffscreenCanvases owned by the current calling thread.
 
     // First check out the list of OffscreenCanvases by CSS selector ID ('#myCanvasID')
-    return GL.offscreenCanvases[target.substr(1)] // Remove '#' prefix
+    return GL.offscreenCanvases[target.slice(1)] // Remove '#' prefix
     // If not found, if one is querying by using DOM tag name selector 'canvas', grab the first
     // OffscreenCanvas that we can find.
      || (target == 'canvas' && Object.keys(GL.offscreenCanvases)[0])

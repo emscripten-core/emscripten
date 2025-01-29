@@ -43,7 +43,7 @@ FS.ignorePermissions = false;
 FS.createPreloadedFile = FS_createPreloadedFile;
 FS.staticInit();
 // Set module methods based on EXPORTED_RUNTIME_METHODS
-{{{ EXPORTED_RUNTIME_METHODS.filter((func) => func.startsWith('FS_')).map((func) => 'Module["' + func + '"] = FS.' + func.substr(3) + ";\n").reduce((str, func) => str + func, '') }}}`;
+{{{ EXPORTED_RUNTIME_METHODS.filter((func) => func.startsWith('FS_')).map((func) => 'Module["' + func + '"] = FS.' + func.slice(3) + ";\n").reduce((str, func) => str + func, '') }}}`;
   },
   $FS: {
     root: null,

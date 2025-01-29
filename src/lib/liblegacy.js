@@ -102,7 +102,7 @@ legacyFuncs = {
       try {
         var s = func;
         if (s.startsWith('__Z'))
-          s = s.substr(1);
+          s = s.slice(1);
         var buf = stringToUTF8OnStack(s);
         var status = stackAlloc(4);
         var ret = ___cxa_demangle(buf, 0, 0, status);

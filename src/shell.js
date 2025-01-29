@@ -105,7 +105,7 @@ if (ENVIRONMENT_IS_NODE) {
   // We need to use `createRequire()` to construct the require()` function.
   const { createRequire } = await import('module');
   /** @suppress{duplicate} */
-  var require = createRequire('/');
+  var require = createRequire(import.meta.url);
 #endif
 
 #if PTHREADS || WASM_WORKERS
@@ -360,7 +360,7 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   if (scriptDirectory.startsWith('blob:')) {
     scriptDirectory = '';
   } else {
-    scriptDirectory = scriptDirectory.substr(0, scriptDirectory.replace(/[?#].*/, '').lastIndexOf('/')+1);
+    scriptDirectory = scriptDirectory.slice(0, scriptDirectory.replace(/[?#].*/, '').lastIndexOf('/')+1);
   }
 
 #if ENVIRONMENT && ASSERTIONS

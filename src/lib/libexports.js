@@ -10,7 +10,7 @@ addToLibrary({
     name = UTF8ToString(name);
     // Wasm backend does not use C name mangling on exports,
     // so adjust for that manually.
-    if (name[0] == '_') name = name.substr(1);
+    if (name[0] == '_') name = name.slice(1);
     var exportedFunc = wasmExports[name];
     if (exportedFunc) {
       // Record the created function pointer to each function object,
