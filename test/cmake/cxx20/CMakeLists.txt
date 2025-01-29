@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5...3.28)
+cmake_minimum_required(VERSION 3.16...3.28)
 
 project(cxx20test)
 
