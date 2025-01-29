@@ -3536,10 +3536,7 @@ More info: https://emscripten.org
     'legacy': [1]
   })
   def test_embind_tsgen_exceptions(self, legacy):
-    print('--------------')
-    print(config.NODE_JS)
-    print(self.get_nodejs())
-    if not legacy and shared.get_node_version(self.get_nodejs())[0] < 22:
+    if not legacy and shared.get_node_version(config.NODE_JS)[0] < 22:
       self.skipTest('Node version needs to be 22 or greater to run tsgen with exnref')
     self.set_setting('WASM_LEGACY_EXCEPTIONS', legacy)
 
