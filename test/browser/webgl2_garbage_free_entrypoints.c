@@ -10,8 +10,7 @@
 #include <emscripten/html5.h>
 #include <GLES2/gl2.h>
 
-GLuint CompileShader(GLenum type, const char *src)
-{
+GLuint CompileShader(GLenum type, const char *src) {
   GLuint shader = glCreateShader(type);
   glShaderSource(shader, 1, &src, NULL);
   glCompileShader(shader);
@@ -19,8 +18,7 @@ GLuint CompileShader(GLenum type, const char *src)
   return shader;
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   emscripten_set_canvas_element_size("#canvas", 256, 256);
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);

@@ -4,8 +4,8 @@
 // found in the LICENSE file.
 
 #include <stdlib.h>
-#include <cassert>
-#include <cstdio>
+#include <assert.h>
+#include <stdio.h>
 #include <emscripten.h>
 #include <emscripten/html5.h>
 
@@ -25,8 +25,7 @@ GLuint sampleQuery = 0;
         } \
     } \
 
-void getQueryResult()
-{
+void getQueryResult() {
   /* Get the result. It should be nonzero. */
   GLuint any;
   GL_CALL(glGetQueryObjectuiv(sampleQuery, GL_QUERY_RESULT, &any));
@@ -42,8 +41,7 @@ void getQueryResult()
   exit(result);
 }
 
-GLuint compile_shader(GLenum shaderType, const char *src)
-{
+GLuint compile_shader(GLenum shaderType, const char *src) {
   GLuint shader = glCreateShader(shaderType);
   GL_CALL(glShaderSource(shader, 1, &src, NULL));
   GL_CALL(glCompileShader(shader));
@@ -54,8 +52,7 @@ GLuint compile_shader(GLenum shaderType, const char *src)
   return shader;
 }
 
-GLuint create_program(GLuint vert, GLuint frag)
-{
+GLuint create_program(GLuint vert, GLuint frag) {
    GLuint program = glCreateProgram();
    GL_CALL(glAttachShader(program, vert));
    GL_CALL(glAttachShader(program, frag));
@@ -108,7 +105,7 @@ int main() {
     "}\n");
   GLuint program = create_program(vert, frag);
   GL_CALL(glUseProgram(program));
-  const float positions[]{
+  const float positions[] = {
     -0.5f, -0.5f, 0.0f,
      0.5f, -0.5f, 0.0f,
      0.0f,  0.5f, 0.0f

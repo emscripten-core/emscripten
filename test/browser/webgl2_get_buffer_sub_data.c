@@ -5,8 +5,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-int main()
-{
+int main() {
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
   attr.majorVersion = 2;
