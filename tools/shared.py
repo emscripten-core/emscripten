@@ -59,7 +59,7 @@ SKIP_SUBPROCS = False
 # This is currently set to v18 since this is the version of node available
 # in debian/stable (bookworm).
 MINIMUM_NODE_VERSION = (18, 0, 0)
-EXPECTED_LLVM_VERSION = 20
+EXPECTED_LLVM_VERSION = 21
 
 # These get set by setup_temp_dirs
 TEMP_DIR = None
