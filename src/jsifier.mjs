@@ -7,6 +7,7 @@
 // Convert analyzed data to javascript. Everything has already been calculated
 // before this stage, which just does the final conversion to JavaScript.
 
+import assert from 'node:assert';
 import {
   ATEXITS,
   ATINITS,
@@ -21,7 +22,6 @@ import {
 } from './parseTools.mjs';
 import {
   addToCompileTimeContext,
-  assert,
   error,
   errorOccured,
   isDecorator,

@@ -755,9 +755,9 @@ jobs:
       # version.
       # Keep this in sync with MINIMUM_NODE_VERSION in tools/shared.py.
       - install-node-version:
-          node_version: "18.0.0"
+          node_version: "18.3.0"
       - run:
-          name: configure compiler to use 18.0.0
+          name: configure compiler to use 18.3.0
           command: echo "NODE_JS = '$(which node)'" >> ~/emsdk/.emscripten
       - install-node-canary
       - run-tests:

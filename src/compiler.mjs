@@ -5,32 +5,36 @@
  * SPDX-License-Identifier: MIT
  */
 
-// LLVM => JavaScript compiler, main entry point
+// JavaScript compiler, main entry point
 
-import {
-  Benchmarker,
-  applySettings,
-  assert,
-  loadDefaultSettings,
-  printErr,
-  read,
-} from './utility.mjs';
+import {Benchmarker, applySettings, loadDefaultSettings, printErr, read} from './utility.mjs';
+
+import assert from 'node:assert';
+import {parseArgs} from 'node:util';
 
 loadDefaultSettings();
 
-const argv = process.argv.slice(2);
-const symbolsOnlyArg = argv.indexOf('--symbols-only');
-if (symbolsOnlyArg != -1) {
-  argv.splice(symbolsOnlyArg, 1);
+const options = {
+  help: {type: 'boolean', short: 'h'},
+  'symbols-only': {type: 'boolean'},
+};
+const {values, positionals} = parseArgs({options, allowPositionals: true});
+
+if (values.help) {
+  console.log(`\
+Main entry point for JS compiler
+
+Usage: compiler.mjs <settings.json> [-o out.js] [--symbols-only]`);
+  process.exit(0);
 }
 
 // Load settings from JSON passed on the command line
-const settingsFile = argv[0];
-assert(settingsFile);
+const settingsFile = positionals[0];
+assert(settingsFile, 'settings file not specified');
 const user_settings = JSON.parse(read(settingsFile));
 applySettings(user_settings);
 
-export const symbolsOnly = symbolsOnlyArg != -1;
+export const symbolsOnly = values['symbols-only'];
 
 // In case compiler.mjs is run directly (as in gen_sig_info)
 // ALL_INCOMING_MODULE_JS_API might not be populated yet.

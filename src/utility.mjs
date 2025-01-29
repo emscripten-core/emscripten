@@ -13,8 +13,6 @@ import * as fs from 'node:fs';
 import * as vm from 'node:vm';
 import assert from 'node:assert';
 
-export {assert};
-
 export function safeQuote(x) {
   return x.replace(/"/g, '\\"').replace(/'/g, "\\'");
 }
