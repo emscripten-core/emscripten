@@ -1264,6 +1264,11 @@
     {
         "file": "emscripten/webaudio.h",
         "structs": {
+            "WebAudioWorkletProcessorCreateOptions": [
+              "name",
+              "numAudioParams",
+              "audioParamDescriptors"
+            ],
             "AudioSampleFrame": [
               "numberOfChannels",
               "samplesPerChannel",
@@ -1272,6 +1277,11 @@
             "AudioParamFrame": [
               "length",
               "data"
+            ],
+            "EmscriptenAudioWorkletNodeCreateOptions": [
+              "numberOfInputs",
+              "numberOfOutputs",
+              "outputChannelCounts"
             ]
         }
     },

@@ -529,6 +529,12 @@
             "numberOfChannels": 0,
             "samplesPerChannel": 4
         },
+        "EmscriptenAudioWorkletNodeCreateOptions": {
+            "__size__": 16,
+            "numberOfInputs": 0,
+            "numberOfOutputs": 4,
+            "outputChannelCounts": 8
+        },
         "EmscriptenBatteryEvent": {
             "__size__": 32,
             "charging": 24,
@@ -1473,6 +1479,12 @@
             "entryPoint": 16,
             "module": 8,
             "nextInChain": 0
+        },
+        "WebAudioWorkletProcessorCreateOptions": {
+            "__size__": 24,
+            "audioParamDescriptors": 16,
+            "name": 0,
+            "numAudioParams": 8
         },
         "__cxa_exception": {
             "__size__": 48,
