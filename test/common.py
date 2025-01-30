@@ -971,7 +971,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     else:
       self.fail('either d8 or node >= 24 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
 
-
   def require_wasm_eh(self):
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
     nodejs = self.get_nodejs()
