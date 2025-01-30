@@ -140,15 +140,6 @@ var runtimeInitialized = false;
 var runtimeExited = false;
 #endif
 
-// Prefix of data URIs emitted by SINGLE_FILE and related options.
-var dataURIPrefix = 'data:application/octet-stream;base64,';
-
-/**
- * Indicates whether filename is a base64 data URI.
- * @noinline
- */
-var isDataURI = (filename) => filename.startsWith(dataURIPrefix);
-
 /**
  * Indicates whether filename is delivered via file protocol (as opposed to http/https)
  * @noinline
@@ -606,18 +597,13 @@ function findWasmBinary() {
 #if EXPORT_ES6 && USE_ES6_IMPORT_META && !AUDIO_WORKLET
   if (Module['locateFile']) {
 #endif
-    var f = '{{{ WASM_BINARY_FILE }}}';
-#if !SINGLE_FILE
-    if (!isDataURI(f)) {
-      return locateFile(f);
-    }
-#endif
-    return f;
-#if EXPORT_ES6 && USE_ES6_IMPORT_META && !AUDIO_WORKLET // In single-file mode, repeating WASM_BINARY_FILE would emit the contents again. For an Audio Worklet, we cannot use `new URL()`.
+    return locateFile('{{{ WASM_BINARY_FILE }}}');
+#if EXPORT_ES6 && USE_ES6_IMPORT_META && !AUDIO_WORKLET // For an Audio Worklet, we cannot use `new URL()`.
   }
 #if ENVIRONMENT_MAY_BE_SHELL
-  if (ENVIRONMENT_IS_SHELL)
+  if (ENVIRONMENT_IS_SHELL) {
     return '{{{ WASM_BINARY_FILE }}}';
+  }
 #endif
   // Use bundler-friendly `new URL(..., import.meta.url)` pattern; works in browsers too.
   return new URL('{{{ WASM_BINARY_FILE }}}', import.meta.url).href;
@@ -800,9 +786,7 @@ async function instantiateArrayBuffer(binaryFile, imports) {
 
 async function instantiateAsync(binary, binaryFile, imports) {
 #if !SINGLE_FILE
-  if (!binary &&
-      typeof WebAssembly.instantiateStreaming == 'function' &&
-      !isDataURI(binaryFile)
+  if (!binary && typeof WebAssembly.instantiateStreaming == 'function'
 #if ENVIRONMENT_MAY_BE_WEBVIEW
       // Don't use streaming for file:// delivered objects in a webview, fetch them synchronously.
       && !isFileURI(binaryFile)
