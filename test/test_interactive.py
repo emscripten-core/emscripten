@@ -334,7 +334,7 @@ class interactive(BrowserCore):
     shutil.copy(test_file('webaudio/audio_files/emscripten-bass-mono.mp3'), 'audio_files/')
     self.btest_exit('webaudio/audioworklet_2x_in_hard_pan.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
 
-  # Same as 'test_audio_worklet_2x_stereo_io' but with the worklet stack starting 2GB in (tests for unsigned shifts in the memory offsets)
+  # Same as 'test_audio_worklet_2x_stereo_io' but with the worklet stack starting at 2GB in (tests for unsigned shifts in the memory offsets)
   def test_audio_worklet_stereo_io_2gb(self):
     os.mkdir('audio_files')
     shutil.copy(test_file('webaudio/audio_files/emscripten-beat.mp3'), 'audio_files/')
