@@ -483,17 +483,6 @@ def check_closure_compiler(cmd, args, env, allowed_to_fail):
   return True
 
 
-# Remove this once we require python3.7 and can use std.isascii.
-# See: https://docs.python.org/3/library/stdtypes.html#str.isascii
-def isascii(s):
-  try:
-    s.encode('ascii')
-  except UnicodeEncodeError:
-    return False
-  else:
-    return True
-
-
 def get_closure_compiler_and_env(user_args):
   env = shared.env_with_node_in_path()
   closure_cmd = get_closure_compiler()
@@ -630,7 +619,7 @@ def run_closure_cmd(cmd, filename, env):
   tempfiles = shared.get_temp_files()
 
   def move_to_safe_7bit_ascii_filename(filename):
-    if isascii(filename):
+    if filename.isascii():
       return os.path.abspath(filename)
     safe_filename = tempfiles.get('.js').name  # Safe 7-bit filename
     shutil.copyfile(filename, safe_filename)
