@@ -1480,6 +1480,13 @@
             "module": 8,
             "nextInChain": 0
         },
+        "WebAudioParamDescriptor": {
+            "__size__": 16,
+            "automationRate": 12,
+            "defaultValue": 0,
+            "maxValue": 8,
+            "minValue": 4
+        },
         "WebAudioWorkletProcessorCreateOptions": {
             "__size__": 24,
             "audioParamDescriptors": 16,

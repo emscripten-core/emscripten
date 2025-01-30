@@ -245,26 +245,25 @@ let LibraryWebAudio = {
     assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_create_wasm_audio_worklet_processor_async() on a context handle ${contextHandle} that is not an AudioContext, but of type ${typeof EmAudio[contextHandle]}`);
 #endif
 
-    //options = {{{ getHeapOffset('options', 'u32') }}};
     let audioParams = [],
+      processorName = UTF8ToString({{{ makeGetValue('options', C_STRUCTS.WebAudioWorkletProcessorCreateOptions.name, '*') }}}),
       numAudioParams = {{{ makeGetValue('options', C_STRUCTS.WebAudioWorkletProcessorCreateOptions.numAudioParams, 'i32') }}},
       audioParamDescriptors = {{{ makeGetValue('options', C_STRUCTS.WebAudioWorkletProcessorCreateOptions.audioParamDescriptors, '*') }}},
       i = 0;
 
-    // TODO: wrong and currently not running (since no param descriptors are tested)
+    // TODO: add tests and wire this up
     while (numAudioParams--) {
       audioParams.push({
         name: i++,
-        defaultValue: HEAPF32[audioParamDescriptors++],
-        minValue: HEAPF32[audioParamDescriptors++],
-        maxValue: HEAPF32[audioParamDescriptors++],
-        automationRate: ['a','k'][HEAPU32[audioParamDescriptors++]] + '-rate',
+        defaultValue: {{{ makeGetValue('audioParamDescriptors++', C_STRUCTS.WebAudioParamDescriptor.defaultValue, 'float') }}},
+        minValue: {{{ makeGetValue('audioParamDescriptors++', C_STRUCTS.WebAudioParamDescriptor.minValue, 'float') }}},
+        maxValue: {{{ makeGetValue('audioParamDescriptors++', C_STRUCTS.WebAudioParamDescriptor.maxValue, 'float') }}},
+        automationRate: ({{{ makeGetValue('audioParamDescriptors++', C_STRUCTS.WebAudioParamDescriptor.maxValue, 'i32') }}} ? 'a' : 'k') + '-rate'
       });
     }
 
-    let name = UTF8ToString({{{ makeGetValue('options', C_STRUCTS.WebAudioWorkletProcessorCreateOptions.name, '*') }}});
 #if WEBAUDIO_DEBUG
-    console.log(`emscripten_create_wasm_audio_worklet_processor_async() creating a new AudioWorklet processor with name ${name}`);
+    console.log(`emscripten_create_wasm_audio_worklet_processor_async() creating a new AudioWorklet processor with name ${processorName}`);
 #endif
 
     EmAudio[contextHandle].audioWorklet.bootstrapMessage.port.postMessage({
@@ -274,7 +273,7 @@ let LibraryWebAudio = {
       // for space saving reasons, abbreviated from their variable names).
       // Note: we can only pass clonable object, so need to pass the function
       // pointer and not the wasm function object.
-      '_wpn': name,
+      '_wpn': processorName,
       'ap': audioParams,
       'ch': contextHandle,
       'cb': {{{ toIndexType('callback') }}},
@@ -290,6 +289,7 @@ let LibraryWebAudio = {
     assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_create_wasm_audio_worklet_node() on a context handle ${contextHandle} that is not an AudioContext, but of type ${typeof EmAudio[contextHandle]}`);
 #endif
 
+    // TODO: this next
     function readChannelCountArray(heapIndex, numOutputs) {
       if (!heapIndex) return void 0;
       heapIndex = {{{ getHeapOffset('heapIndex', 'i32') }}};
