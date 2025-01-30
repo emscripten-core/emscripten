@@ -789,9 +789,9 @@ __cxa_rethrow_primary_exception(void* thrown_object)
         // In debug mode, call a JS library function to use
         // WebAssembly.Exception JS API, which enables us to include stack
         // traces
-        __throw_exception_with_stack_trace(&exception_header->unwindHeader);
+        __throw_exception_with_stack_trace(&dep_exception_header->unwindHeader);
 #else
-        _Unwind_RaiseException(&exception_header->unwindHeader);
+        _Unwind_RaiseException(&dep_exception_header->unwindHeader);
 #endif
         // Some sort of unwinding error.  Note that terminate is a handler.
         __cxa_begin_catch(&dep_exception_header->unwindHeader);
