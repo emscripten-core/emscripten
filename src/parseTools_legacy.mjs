@@ -5,7 +5,7 @@
  */
 
 import {warn, addToCompileTimeContext} from './utility.mjs';
-import {ATMAINS, POINTER_SIZE, runIfMainThread} from './parseTools.mjs';
+import {POINTER_SIZE, runIfMainThread} from './parseTools.mjs';
 
 // Replaced (at least internally) with receiveI64ParamAsI53 that does
 // bounds checking.
@@ -42,7 +42,6 @@ const Runtime = {
 const runOnMainThread = runIfMainThread;
 
 addToCompileTimeContext({
-  ATMAINS,
   Runtime,
   makeMalloc,
   receiveI64ParamAsDouble,

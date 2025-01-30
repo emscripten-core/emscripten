@@ -8458,6 +8458,30 @@ int main() {}
     self.assertLess(err.count(DISABLE), 2)
     self.assertLess(err.count(ENABLE), 2)
 
+  @also_with_minimal_runtime
+  def test_run_order(self):
+    create_file('lib.js', r'''
+addToLibrary({
+  foo__postset: () => {
+    addAtPostCtor("console.log(`addAtPostCtor`);");
+    addAtInit("console.log(`addAtInit`);");
+  },
+  foo: () => {},
+});
+''')
+    create_file('src.c', r'''
+    #include <stdio.h>
+    void foo();
+    __attribute__((constructor)) void ctor() {
+      printf("ctor\n");
+    }
+    int main() {
+      printf("main\n");
+      foo();
+    }
+    ''')
+    self.do_runf('src.c', 'addAtInit\nctor\naddAtPostCtor\nmain\n', emcc_args=['--js-library', 'lib.js'])
+
   def test_override_js_execution_environment(self):
     create_file('main.c', r'''
       #include <emscripten.h>

@@ -12,7 +12,7 @@ import * as path from 'node:path';
 import {
   ATEXITS,
   ATINITS,
-  ATMAINS,
+  ATPOSTCTORS,
   defineI64Param,
   indentify,
   makeReturn64,
@@ -778,7 +778,7 @@ var proxiedFunctionTable = [
           asyncFuncs,
           libraryDefinitions: LibraryManager.libraryDefinitions,
           ATINITS: ATINITS.join('\n'),
-          ATMAINS: STRICT ? '' : ATMAINS.join('\n'),
+          ATPOSTCTORS: ATPOSTCTORS.join('\n'),
           ATEXITS: ATEXITS.join('\n'),
         }),
     );

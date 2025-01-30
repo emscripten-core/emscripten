@@ -177,6 +177,7 @@ assert(!Module['INITIAL_MEMORY'], 'Detected runtime INITIAL_MEMORY setting.  Use
 
 var __ATPRERUN__  = []; // functions called before the runtime is initialized
 var __ATINIT__    = []; // functions called during startup
+var __ATPOSTCTOR__    = []; // functions called after static constructors
 #if HAS_MAIN
 var __ATMAIN__    = []; // functions called when main() is to be run
 #endif
@@ -230,8 +231,16 @@ function initRuntime() {
 #if RELOCATABLE
   callRuntimeCallbacks(__RELOC_FUNCS__);
 #endif
+
   <<< ATINITS >>>
   callRuntimeCallbacks(__ATINIT__);
+
+#if hasExportedSymbol('__wasm_call_ctors')
+  wasmExports['__wasm_call_ctors']();
+#endif
+
+  <<< ATPOSTCTORS >>>
+  callRuntimeCallbacks(__ATPOSTCTOR__);
 }
 
 #if HAS_MAIN
@@ -239,7 +248,6 @@ function preMain() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-  <<< ATMAINS >>>
   callRuntimeCallbacks(__ATMAIN__);
 }
 #endif
@@ -958,10 +966,6 @@ function getWasmImports() {
 #if ASSERTIONS && !PURE_WASI
     assert(wasmTable, 'table not found in wasm exports');
 #endif
-#endif
-
-#if hasExportedSymbol('__wasm_call_ctors')
-    addOnInit(wasmExports['__wasm_call_ctors']);
 #endif
 
 #if hasExportedSymbol('__wasm_apply_data_relocs')
