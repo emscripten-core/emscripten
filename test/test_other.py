@@ -966,7 +966,11 @@ f.close()
   # If we update LLVM version and this test fails, copy over the new advertised features from Clang
   # and place them to cmake/Modules/Platform/Emscripten.cmake.
   @no_windows('Skipped on Windows because CMake does not configure native Clang builds well on Windows.')
-  def test_cmake_compile_features(self):
+  @parameterized({
+    '': ([],),
+    'force': (['-DEMSCRIPTEN_FORCE_COMPILERS=ON'],),
+  })
+  def test_cmake_compile_features(self, args):
     os.mkdir('build_native')
     cmd = ['cmake',
            '-DCMAKE_C_COMPILER=' + CLANG_CC, '-DCMAKE_C_FLAGS=--target=' + clang_native.get_native_triple(),
@@ -976,7 +980,7 @@ f.close()
     native_features = self.run_process(cmd, stdout=PIPE, cwd='build_native').stdout
 
     os.mkdir('build_emcc')
-    cmd = [EMCMAKE, 'cmake', test_file('cmake/stdproperty')]
+    cmd = [EMCMAKE, 'cmake', test_file('cmake/stdproperty')] + args
     print(str(cmd))
     emscripten_features = self.run_process(cmd, stdout=PIPE, cwd='build_emcc').stdout
 
@@ -1023,7 +1027,7 @@ f.close()
   @crossplatform
   @parameterized({
     '': ([],),
-    'noforce': (['-DEMSCRIPTEN_FORCE_COMPILERS=OFF'],),
+    'force': (['-DEMSCRIPTEN_FORCE_COMPILERS=ON'],),
   })
   def test_cmake_compile_commands(self, args):
     self.run_process([EMCMAKE, 'cmake', test_file('cmake/static_lib'), '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON'] + args)
