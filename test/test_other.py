@@ -8997,7 +8997,7 @@ int main() {
     'Os': (['-Os'], [], []), # noqa
     'Oz': (['-Oz'], [], []), # noqa
     'Os_mr': (['-Os', '-sMINIMAL_RUNTIME'], [], [], 74), # noqa
-    'O3_instance': (['-O3', '-sMODULARIZE=instance', '-Wno-experimental'], [], []), # noqa
+    'O3_instance': (['-O3', '-sMODULARIZE=instance', '-Wno-experimental', '-sEXPORT_ES6'], [], []), # noqa
     # EVAL_CTORS also removes the __wasm_call_ctors function
     'Oz-ctors': (['-Oz', '-sEVAL_CTORS'], [], []), # noqa
     '64': (['-Oz', '-sMEMORY64'], [], []), # noqa
