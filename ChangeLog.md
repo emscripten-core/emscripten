@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 4.0.3 (in development)
 ----------------------
+- emscan-deps tools was added.  This tool wraps clang-scan-deps and injects the
+  needed `--target` and `--sysroot` argument that would normally be injected by
+  emcc itself.  This enables support for C++20 in cmake projects. (#21987)
 
 4.0.2 - 01/30/25
 ----------------
