@@ -15469,3 +15469,40 @@ addToLibrary({
       with env_modify({'EM_CACHE': os.path.abspath('rodir/foo')}):
         err = self.expect_fail([EMCC, '-c', test_file('hello_world.c')])
         self.assertContained('emcc: error: unable to create cache directory', err)
+
+  def test_cxx20_modules(self):
+    # Test basic use of modules by user code
+    create_file('Hello.cppm', r'''
+    module;
+    #include <iostream>
+    export module Hello;
+    export void hello() {
+      std::cout << "Hello Module!\n";
+    }
+    ''')
+
+    create_file('main.cpp', '''
+    import Hello;
+    int main() {
+      hello();
+      return 0;
+    }
+    ''')
+
+    self.run_process([EMXX, '-std=c++20', 'Hello.cppm', '--precompile', '-o', 'Hello.pcm'])
+    # Use explict `-fmodule-file=`
+    self.do_runf('main.cpp', 'Hello Module!', emcc_args=['-std=c++20', '-fmodule-file=Hello=Hello.pcm', 'Hello.pcm'])
+    # Same again but with `-fprebuilt-module-path=`
+    self.do_runf('main.cpp', 'Hello Module!', emcc_args=['-std=c++20', '-fprebuilt-module-path=.', 'Hello.pcm'])
+
+  def test_cxx20_modules_std_headers(self):
+    # Test import <header_name> usage
+    create_file('main.cpp', r'''
+    import <iostream>;
+
+    int main() {
+      std::cout << "Hello Module!\n";
+      return 0;
+    }
+    ''')
+    self.do_runf('main.cpp', 'Hello Module!', emcc_args=['-std=c++20', '-fmodules'])
