@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.2 (in development)
+4.0.3 (in development)
 ----------------------
+
+4.0.2 - 01/30/25
+----------------
 - The standard Wasm EH, enabled by `-sWASM_LEGACY_EXCEPTIONS=0`, now uses the
   LLVM backend implementation rather than the previously used Binaryen
   translator
