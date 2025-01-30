@@ -7,6 +7,8 @@
 // Convert analyzed data to javascript. Everything has already been calculated
 // before this stage, which just does the final conversion to JavaScript.
 
+import assert from 'node:assert';
+import * as path from 'node:path';
 import {
   ATEXITS,
   ATINITS,
@@ -21,7 +23,6 @@ import {
 } from './parseTools.mjs';
 import {
   addToCompileTimeContext,
-  assert,
   error,
   errorOccured,
   isDecorator,
@@ -29,10 +30,11 @@ import {
   compileTimeContext,
   print,
   printErr,
-  read,
+  readFile,
   warn,
   warnOnce,
   warningOccured,
+  localFile,
 } from './utility.mjs';
 import {LibraryManager, librarySymbols} from './modules.mjs';
 
@@ -137,16 +139,18 @@ function getTransitiveDeps(symbol) {
 }
 
 function shouldPreprocess(fileName) {
-  var content = read(fileName).trim();
+  var content = readFile(fileName).trim();
   return content.startsWith('#preprocess\n') || content.startsWith('#preprocess\r\n');
 }
 
-function getIncludeFile(fileName, needsPreprocess) {
+function getIncludeFile(fileName, alwaysPreprocess) {
   let result = `// include: ${fileName}\n`;
-  if (needsPreprocess) {
-    result += processMacros(preprocess(fileName), fileName);
+  const absFile = path.isAbsolute(fileName) ? fileName : localFile(fileName);
+  const doPreprocess = alwaysPreprocess || shouldPreprocess(absFile);
+  if (doPreprocess) {
+    result += processMacros(preprocess(absFile), fileName);
   } else {
-    result += read(fileName);
+    result += readFile(absFile);
   }
   result += `// end include: ${fileName}\n`;
   return result;
@@ -155,7 +159,7 @@ function getIncludeFile(fileName, needsPreprocess) {
 function preJS() {
   let result = '';
   for (const fileName of PRE_JS_FILES) {
-    result += getIncludeFile(fileName, shouldPreprocess(fileName));
+    result += getIncludeFile(fileName, /*alwaysPreprocess=*/ false);
   }
   return result;
 }
@@ -697,8 +701,8 @@ function(${args}) {
     libraryItems.push(JS);
   }
 
-  function includeFile(fileName, needsPreprocess = true) {
-    print(getIncludeFile(fileName, needsPreprocess));
+  function includeFile(fileName, alwaysPreprocess = true) {
+    print(getIncludeFile(fileName, alwaysPreprocess));
   }
 
   function finalCombiner() {
@@ -755,7 +759,7 @@ var proxiedFunctionTable = [
     includeFile(postFile);
 
     for (const fileName of POST_JS_FILES) {
-      includeFile(fileName, shouldPreprocess(fileName));
+      includeFile(fileName, /*alwaysPreprocess=*/ false);
     }
 
     if (MODULARIZE) {

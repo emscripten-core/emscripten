@@ -17,7 +17,7 @@ void report_result(int result) {
   emscripten_force_exit(result);
 }
 
-void finish(void*) {
+void finish(void* arg) {
   report_result(0);
 }
 

@@ -57,9 +57,10 @@ SKIP_SUBPROCS = False
 # distinct from the minimum version required to execute the generated code
 # (settings.MIN_NODE_VERSION).
 # This is currently set to v18 since this is the version of node available
-# in debian/stable (bookworm).
-MINIMUM_NODE_VERSION = (18, 0, 0)
-EXPECTED_LLVM_VERSION = 20
+# in debian/stable (bookworm).  We need at least v18.3.0 because we make
+# use of util.parseArg which was added in v18.3.0.
+MINIMUM_NODE_VERSION = (18, 3, 0)
+EXPECTED_LLVM_VERSION = 21
 
 # These get set by setup_temp_dirs
 TEMP_DIR = None
@@ -741,7 +742,7 @@ def read_and_preprocess(filename, expand_macros=False):
   stdout = os.path.join(temp_dir, 'stdout')
   args = [settings_file, filename]
   if expand_macros:
-    args += ['--expandMacros']
+    args += ['--expand-macros']
 
   run_js_tool(path_from_root('tools/preprocessor.mjs'), args, stdout=open(stdout, 'w'), cwd=dirname)
   out = utils.read_file(stdout)

@@ -97,7 +97,7 @@ int main()
     int mips = 10;
     int sizeO = 512;
 
-    unsigned short* data = new unsigned short[ 512 * 512 * 4 ];
+    unsigned short* data = malloc(512 * 512 * 4 * 2);
     //memset( data, 0, 512 * 512 * 4 );
 
     // Create texture 1
@@ -113,7 +113,7 @@ int main()
     for( int i=0; i<6; ++i )
         GL_CALL( glTexSubImage2D( GL_TEXTURE_CUBE_MAP_POSITIVE_X+i, 0, 0, 0, sizeO, sizeO, GL_RGBA, GL_HALF_FLOAT, data ) );
 
-    delete [] data;
+    free(data);
 
     // Create texture 2
     GLuint tex2;

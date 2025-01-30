@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.2 (in development)
+4.0.3 (in development)
 ----------------------
+
+4.0.2 - 01/30/25
+----------------
 - The standard Wasm EH, enabled by `-sWASM_LEGACY_EXCEPTIONS=0`, now uses the
   LLVM backend implementation rather than the previously used Binaryen
   translator
@@ -35,7 +38,7 @@ See docs/process.md for more on how version tagging works.
 4.0.1 - 01/17/25
 ----------------
 - The minimum version of node required to run emscripten was bumped from v16.20
-  to v18.  Version 4.0 was mistakenly shipped with a change that required v20,
+  to v18.3.  Version 4.0 was mistakenly shipped with a change that required v20,
   but that was reverted. (#23410)
 - `emscripten_webgl_create_context` now displays a warning message when there is
   a conflict between the `majorVersion` requested and the WebGL support defined

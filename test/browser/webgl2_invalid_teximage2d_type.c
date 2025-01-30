@@ -15,8 +15,7 @@
 // WebGL 2 core does not support GL_UNSIGNED_SHORT_5_6_5_REV extension.
 #define GL_UNSIGNED_SHORT_5_6_5_REV 0x8364
 
-int main()
-{
+int main() {
   EmscriptenWebGLContextAttributes attrs;
   emscripten_webgl_init_context_attributes(&attrs);
   attrs.majorVersion = 2;
@@ -30,7 +29,7 @@ int main()
   GLuint tex;
   glGenTextures(1, &tex);
   glBindTexture(GL_TEXTURE_2D, tex);
-  void* data = new char[512];
+  char data[512];
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 16, 16, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5_REV, data);
   assert(glGetError() != 0); // We should be getting an error
   return 0;

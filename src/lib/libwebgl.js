@@ -348,6 +348,13 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       for (var i = table.length; i < ret; i++) {
         table[i] = null;
       }
+#if FULL_ES2
+      // Skip over any non-null elements that might have been created by
+      // glBindBuffer.
+      while (table[ret]) {
+        ret = GL.counter++;
+      }
+#endif
       return ret;
     },
 
@@ -1184,7 +1191,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       }
       // Make sure the canvas object no longer refers to the context object so
       // there are no GC surprises.
-      if (GL.contexts[contextHandle]?.GLctx?.canvas) {
+      if (GL.contexts[contextHandle]?.GLctx.canvas) {
         GL.contexts[contextHandle].GLctx.canvas.GLctxObject = undefined;
       }
 #if PTHREADS
@@ -2971,6 +2978,16 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   },
 
   glBindBuffer: (target, buffer) => {
+#if FULL_ES2
+    // Calling glBindBuffer with an unknown buffer will implicitly create a
+    // new one.  Here we bypass `GL.counter` and directly using the ID passed
+    // in.
+    if (buffer && !GL.buffers[buffer]) {
+      var b = GLctx.createBuffer();
+      b.name = buffer;
+      GL.buffers[buffer] = b;
+    }
+#endif
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.buffers, buffer, 'glBindBuffer', 'buffer');
 #endif

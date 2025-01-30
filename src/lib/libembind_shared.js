@@ -126,27 +126,21 @@ var LibraryEmbindShared = {
   $getFunctionName: (signature) => {
     signature = signature.trim();
     const argsIndex = signature.indexOf("(");
-    if (argsIndex !== -1) {
+    if (argsIndex === -1) return signature;
 #if ASSERTIONS
-      assert(signature.endsWith(")"), "Parentheses for argument names should match.");
+    assert(signature.endsWith(")"), "Parentheses for argument names should match.");
 #endif
-      return signature.slice(0, argsIndex);
-    } else {
-      return signature;
-    }
+    return signature.slice(0, argsIndex);
   },
   $getFunctionArgsName__deps: [],
   $getFunctionArgsName: (signature) => {
     signature = signature.trim();
-    const argsIndex = signature.indexOf("(") + 1;
-    if (argsIndex !== 0) {
+    const argsIndex = signature.indexOf("(");
+    if (argsIndex == -1) return; // Return undefined to mean we don't have any argument names
 #if ASSERTIONS
-      assert(signature.endsWith(")"), "Parentheses for argument names should match.");
+    assert(signature.endsWith(")"), "Parentheses for argument names should match.");
 #endif
-      return signature.slice(argsIndex, -1).replaceAll(" ", "").split(",").filter(n => n.length);
-    } else {
-      return [];
-    }
+    return signature.slice(argsIndex + 1, -1).replaceAll(" ", "").split(",").filter(n => n.length);
   },
   $heap32VectorToArray: (count, firstElement) => {
     var array = [];

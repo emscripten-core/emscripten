@@ -1311,7 +1311,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
 
   @requires_graphics_hardware
   def test_webgl_no_double_error(self):
-    self.btest_exit('webgl_error.cpp')
+    self.btest_exit('webgl_error.c')
 
   @requires_graphics_hardware
   def test_webgl_parallel_shader_compile(self):
@@ -2635,7 +2635,7 @@ Module["preRun"] = () => {
   @parameterized({
     '': ([],),
     'closure': (['-O2', '-g1', '--closure=1'],),
-    'full_es2': (['-sFULL_ES2'],),
+    'full_es2': (['-sFULL_ES2', '-DFULL_ES2', '-sGL_ASSERTIONS'],),
     'pthread': (['-pthread'],),
   })
   def test_html5_webgl_create_context(self, args):
@@ -2644,7 +2644,7 @@ Module["preRun"] = () => {
   @requires_graphics_hardware
   # Verify bug https://github.com/emscripten-core/emscripten/issues/4556: creating a WebGL context to Module.canvas without an ID explicitly assigned to it.
   def test_html5_webgl_create_context2(self):
-    self.btest_exit('webgl_create_context2.cpp')
+    self.btest_exit('webgl_create_context2.c')
 
   @requires_graphics_hardware
   # Verify bug https://github.com/emscripten-core/emscripten/issues/22943: creating a WebGL context with explicit swap control and offscreenCanvas
@@ -2668,11 +2668,11 @@ Module["preRun"] = () => {
     'full_es2': (['-sFULL_ES2'],),
   })
   def test_html5_webgl_destroy_context(self, args):
-    self.btest_exit('webgl_destroy_context.cpp', args=args + ['--shell-file', test_file('browser/webgl_destroy_context_shell.html'), '-lGL'])
+    self.btest_exit('webgl_destroy_context.c', args=args + ['--shell-file', test_file('browser/webgl_destroy_context_shell.html'), '-lGL'])
 
   @requires_graphics_hardware
   def test_webgl_context_params(self):
-    self.btest_exit('webgl_color_buffer_readpixels.cpp', args=['-lGL'])
+    self.btest_exit('webgl_color_buffer_readpixels.c', args=['-lGL'])
 
   # Test for PR#5373 (https://github.com/emscripten-core/emscripten/pull/5373)
   @requires_graphics_hardware
@@ -2681,7 +2681,7 @@ Module["preRun"] = () => {
     'full_es2': (['-sFULL_ES2'],),
   })
   def test_webgl_shader_source_length(self, args):
-    self.btest_exit('webgl_shader_source_length.cpp', args=args + ['-lGL'])
+    self.btest_exit('webgl_shader_source_length.c', args=args + ['-lGL'])
 
   # Tests calling glGetString(GL_UNMASKED_VENDOR_WEBGL).
   @requires_graphics_hardware
@@ -2697,23 +2697,23 @@ Module["preRun"] = () => {
   def test_webgl2(self, args):
     if '-sMIN_CHROME_VERSION=0' in args and self.is_wasm64():
       self.skipTest('wasm64 not supported by legacy browsers')
-    self.btest_exit('webgl2.cpp', args=['-sMAX_WEBGL_VERSION=2', '-lGL'] + args)
+    self.btest_exit('webgl2.c', args=['-sMAX_WEBGL_VERSION=2', '-lGL'] + args)
 
   # Tests the WebGL 2 glGetBufferSubData() functionality.
   @requires_graphics_hardware
   @no_4gb('getBufferSubData fails: https://crbug.com/325090165')
   def test_webgl2_get_buffer_sub_data(self):
-    self.btest_exit('webgl2_get_buffer_sub_data.cpp', args=['-sMAX_WEBGL_VERSION=2', '-lGL'])
+    self.btest_exit('webgl2_get_buffer_sub_data.c', args=['-sMAX_WEBGL_VERSION=2', '-lGL'])
 
   @requires_graphics_hardware
   def test_webgl2_pthreads(self):
     # test that a program can be compiled with pthreads and render WebGL2 properly on the main thread
     # (the testcase doesn't even use threads, but is compiled with thread support).
-    self.btest_exit('webgl2.cpp', args=['-sMAX_WEBGL_VERSION=2', '-lGL', '-pthread'])
+    self.btest_exit('webgl2.c', args=['-sMAX_WEBGL_VERSION=2', '-lGL', '-pthread'])
 
   @requires_graphics_hardware
   def test_webgl2_objects(self):
-    self.btest_exit('webgl2_objects.cpp', args=['-sMAX_WEBGL_VERSION=2', '-lGL'])
+    self.btest_exit('webgl2_objects.c', args=['-sMAX_WEBGL_VERSION=2', '-lGL'])
 
   @requires_graphics_hardware
   @parameterized({
@@ -2738,7 +2738,7 @@ Module["preRun"] = () => {
 
   @requires_graphics_hardware
   def test_webgl2_ubos(self):
-    self.btest_exit('webgl2_ubos.cpp', args=['-sMAX_WEBGL_VERSION=2', '-lGL'])
+    self.btest_exit('webgl2_ubos.c', args=['-sMAX_WEBGL_VERSION=2', '-lGL'])
 
   @requires_graphics_hardware
   @parameterized({
@@ -2748,11 +2748,11 @@ Module["preRun"] = () => {
   def test_webgl2_garbage_free_entrypoints(self, args):
     if args and self.is_4gb():
       self.skipTest('readPixels fails: https://crbug.com/324992397')
-    self.btest_exit('webgl2_garbage_free_entrypoints.cpp', args=args)
+    self.btest_exit('webgl2_garbage_free_entrypoints.c', args=args)
 
   @requires_graphics_hardware
   def test_webgl2_backwards_compatibility_emulation(self):
-    self.btest_exit('webgl2_backwards_compatibility_emulation.cpp', args=['-sMAX_WEBGL_VERSION=2', '-sWEBGL2_BACKWARDS_COMPATIBILITY_EMULATION'])
+    self.btest_exit('webgl2_backwards_compatibility_emulation.c', args=['-sMAX_WEBGL_VERSION=2', '-sWEBGL2_BACKWARDS_COMPATIBILITY_EMULATION'])
 
   @requires_graphics_hardware
   def test_webgl2_runtime_no_context(self):
@@ -2781,11 +2781,11 @@ Module["preRun"] = () => {
 
   @requires_graphics_hardware
   def test_webgl2_invalid_teximage2d_type(self):
-    self.btest_exit('webgl2_invalid_teximage2d_type.cpp', args=['-sMAX_WEBGL_VERSION=2'])
+    self.btest_exit('webgl2_invalid_teximage2d_type.c', args=['-sMAX_WEBGL_VERSION=2'])
 
   @requires_graphics_hardware
   def test_webgl_with_closure(self):
-    self.btest_exit('webgl_with_closure.cpp', args=['-O2', '-sMAX_WEBGL_VERSION=2', '--closure=1', '-lGL'])
+    self.btest_exit('webgl_with_closure.c', args=['-O2', '-sMAX_WEBGL_VERSION=2', '--closure=1', '-lGL'])
 
   # Tests that -sGL_ASSERTIONS and glVertexAttribPointer with packed types works
   @requires_graphics_hardware
@@ -2795,7 +2795,7 @@ Module["preRun"] = () => {
   @requires_graphics_hardware
   @no_4gb('compressedTexSubImage2D fails: https://crbug.com/324562920')
   def test_webgl2_pbo(self):
-    self.btest_exit('webgl2_pbo.cpp', args=['-sMAX_WEBGL_VERSION=2', '-lGL'])
+    self.btest_exit('webgl2_pbo.c', args=['-sMAX_WEBGL_VERSION=2', '-lGL'])
 
   @no_firefox('fails on CI likely due to GPU drivers there')
   @requires_graphics_hardware
@@ -4356,7 +4356,7 @@ Module["preRun"] = () => {
 
   @requires_graphics_hardware
   def test_webgl_sample_query(self):
-    self.btest_exit('webgl_sample_query.cpp', args=['-sMAX_WEBGL_VERSION=2', '-lGL'])
+    self.btest_exit('webgl_sample_query.c', args=['-sMAX_WEBGL_VERSION=2', '-lGL'])
 
   @requires_graphics_hardware
   @parameterized({

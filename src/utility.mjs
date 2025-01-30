@@ -13,8 +13,6 @@ import * as fs from 'node:fs';
 import * as vm from 'node:vm';
 import assert from 'node:assert';
 
-export {assert};
-
 export function safeQuote(x) {
   return x.replace(/"/g, '\\"').replace(/'/g, "\\'");
 }
@@ -226,7 +224,7 @@ export function isDecorator(ident) {
   return suffixes.some((suffix) => ident.endsWith(suffix));
 }
 
-export function read(filename) {
+export function readFile(filename) {
   return fs.readFileSync(filename, 'utf8');
 }
 
@@ -240,6 +238,15 @@ export const srcDir = __dirname;
 export function localFile(filename) {
   assert(!path.isAbsolute(filename));
   return path.join(srcDir, filename);
+}
+
+// Helper function for JS library files that can be used to read files
+// relative to the src/ directory.
+function read(filename) {
+  if (!path.isAbsolute(filename)) {
+    filename = localFile(filename);
+  }
+  return readFile(filename);
 }
 
 // Anything needed by the script that we load below must be added to the
@@ -313,7 +320,7 @@ export function applySettings(obj) {
 
 export function loadSettingsFile(f) {
   const settings = {};
-  vm.runInNewContext(read(f), settings, {filename: f});
+  vm.runInNewContext(readFile(f), settings, {filename: f});
   applySettings(settings);
   return settings;
 }

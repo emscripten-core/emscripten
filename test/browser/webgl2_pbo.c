@@ -9,11 +9,10 @@
 #include <GLES3/gl3.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <emscripten.h>
 #include <emscripten/html5.h>
 #include <assert.h>
-
-#include <string>
 
 #define GL_CALL( x ) \
     { \
@@ -58,7 +57,7 @@ int main()
     glBufferData(GL_PIXEL_UNPACK_BUFFER, 4*4, pixels, GL_STATIC_DRAW);
 
     /* This should use the unpack buffer */
-    GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 4, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
+    GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 4, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL));
 
     glDeleteBuffers(1, &buffer);
 
@@ -67,9 +66,8 @@ int main()
   }
 
   /* Verify that unpack buffer is used for compressed image upload as well */
-  const std::string exts = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
-  if(exts.find("WEBGL_compressed_texture_s3tc") != std::string::npos)
-  {
+  const char* exts = (const char*)glGetString(GL_EXTENSIONS);
+  if (strstr(exts, "WEBGL_compressed_texture_s3tc") != NULL) {
     printf("WEBGL_compressed_texture_s3tc is supported, testing ...\n");
 
     glBindTexture(GL_TEXTURE_2D, tex[1]);
@@ -81,8 +79,8 @@ int main()
     glBufferData(GL_PIXEL_UNPACK_BUFFER, 8, pixels, GL_STATIC_DRAW);
 
     /* This should all use the unpack buffer */
-    GL_CALL(glCompressedTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, 4, 4, 0, 8, nullptr));
-    GL_CALL(glCompressedTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 4, 4, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, 8, nullptr));
+    GL_CALL(glCompressedTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, 4, 4, 0, 8, NULL));
+    GL_CALL(glCompressedTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 4, 4, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, 8, NULL));
 
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
@@ -90,8 +88,9 @@ int main()
     GL_CALL(glCompressedTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 4, 4, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, 8, pixels));
 
     glDeleteBuffers(1, &buffer);
+  } else {
+    printf("WEBGL_compressed_texture_s3tc is NOT supported\n");
   }
-  else printf("WEBGL_compressed_texture_s3tc is NOT supported\n");
 
   glDeleteTextures(2, tex);
 
