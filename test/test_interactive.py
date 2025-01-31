@@ -36,6 +36,9 @@ class interactive(BrowserCore):
   def test_html5_mouse(self):
     self.btest('test_html5_mouse.c', expected='0', args=['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR'])
 
+  def test_html5_input(self):
+    self.btest('test_html5_input.c', expected='0', args=['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR'])
+
   def test_html5_pointerlockerror(self):
     self.btest('test_html5_pointerlockerror.c', expected='0', args=['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR'])
 
