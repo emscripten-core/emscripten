@@ -25,6 +25,10 @@ See docs/process.md for more on how version tagging works.
   emcc itself.  This enables support for C++20 in cmake projects. (#21987)
 - The version of python required to run emscripten was bumped from 3.6 to 3.8.
   (#23417)
+- The `EM_LOG_C_STACK` flag to `emscripten_log` was deprecated and the helper
+  file on which it was based (`emscripten-source-map.min.js`) was deteted.  It
+  seems this feature has been broken for at least 4 years and making it work
+  with WebAssembly was no feasible. (#23553)
 
 4.0.2 - 01/30/25
 ----------------
