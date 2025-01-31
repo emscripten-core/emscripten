@@ -1022,7 +1022,6 @@ int main()
       self.do_runf('core/test_exceptions.cpp', assert_returncode=NON_ZERO)
 
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
-  @no_asan('TODO: ASan support in minimal runtime')
   def test_exceptions_minimal_runtime(self):
     self.maybe_closure()
     self.set_setting('MINIMAL_RUNTIME')
@@ -5605,7 +5604,6 @@ got: 10
     self.do_runf('test_utf8_invalid.c', 'OK.', emcc_args=args)
 
   # Test that invalid character in UTF8 does not cause decoding to crash.
-  @no_asan('TODO: ASan support in minimal runtime')
   @parameterized({
     '': [[]],
     'textdecoder': [['-sTEXTDECODER']],
@@ -8621,7 +8619,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   # Tests that building with -sDECLARE_ASM_MODULE_EXPORTS=0 works
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
-  @no_asan('TODO: ASan support in minimal runtime')
   def test_minimal_runtime_no_declare_asm_module_exports(self):
     self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
@@ -8651,7 +8648,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'fs': ('FORCE_FILESYSTEM',),
     'nofs': ('NO_FILESYSTEM',),
   })
-  @no_asan('TODO: ASan support in minimal runtime')
   def test_minimal_runtime_hello_printf(self, extra_setting):
     self.set_setting('MINIMAL_RUNTIME')
     self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
@@ -8664,7 +8660,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   # Tests that -sMINIMAL_RUNTIME works well with SAFE_HEAP
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
-  @no_asan('TODO: ASan support in minimal runtime')
+  @no_asan('SAFE_HEAP cannot be used with ASan')
   def test_minimal_runtime_safe_heap(self):
     self.set_setting('MINIMAL_RUNTIME')
     self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
@@ -8678,7 +8674,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   # Tests global initializer with -sMINIMAL_RUNTIME
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
-  @no_asan('TODO: ASan support in minimal runtime')
   def test_minimal_runtime_global_initializer(self):
     self.set_setting('MINIMAL_RUNTIME')
     self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
@@ -9365,7 +9360,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('test_get_exported_function.cpp')
 
   # Tests the emscripten_get_exported_function() API.
-  @no_asan('TODO: ASan support in minimal runtime')
   def test_minimal_runtime_get_exported_function(self):
     self.set_setting('ALLOW_TABLE_GROWTH')
     self.set_setting('MINIMAL_RUNTIME')
