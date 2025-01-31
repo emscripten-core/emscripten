@@ -771,6 +771,7 @@ sigs = {
   emscripten_set_gamepaddisconnected_callback_on_thread__sig: 'ipipp',
   emscripten_set_immediate__sig: 'ipp',
   emscripten_set_immediate_loop__sig: 'vpp',
+  emscripten_set_input_callback_on_thread__sig: 'ippipp',
   emscripten_set_interval__sig: 'ipdp',
   emscripten_set_keydown_callback_on_thread__sig: 'ippipp',
   emscripten_set_keypress_callback_on_thread__sig: 'ippipp',
