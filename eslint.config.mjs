@@ -55,7 +55,6 @@ export default [{
     'src/growableHeap.js',
     'src/emrun_prejs.js',
     'src/deterministic.js',
-    'src/base64Decode.js',
     'src/proxyWorker.js',
     'src/proxyClient.js',
     'src/IDBStore.js',

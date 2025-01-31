@@ -17,10 +17,6 @@
 #include "growableHeap.js"
 #endif
 
-#if SUPPORT_BASE64_EMBEDDING
-#include "base64Decode.js"
-#endif
-
 #if USE_ASAN
 #include "runtime_asan.js"
 #endif

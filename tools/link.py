@@ -1938,7 +1938,12 @@ def phase_emscript(in_wasm, wasm_target, js_syms, base_metadata):
 
   # No need to support base64 embedding in wasm2js mode since
   # the module is already in JS format.
-  settings.SUPPORT_BASE64_EMBEDDING = settings.SINGLE_FILE and not settings.WASM2JS
+  if settings.SINGLE_FILE and not settings.WASM2JS:
+    settings.SUPPORT_BASE64_EMBEDDING = 1
+    if settings.MINIMAL_RUNTIME:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$base64Decode')
+    else:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$tryParseAsDataURI')
 
   if shared.SKIP_SUBPROCS:
     return
