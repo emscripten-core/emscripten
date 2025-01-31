@@ -60,6 +60,14 @@ function base64Decode(b64) {
 #endif // ~WASM2JS
 
 #if !MINIMAL_RUNTIME
+// Prefix of data URIs emitted by SINGLE_FILE and related options.
+var dataURIPrefix = 'data:application/octet-stream;base64,';
+
+/**
+ * Indicates whether filename is a base64 data URI.
+ */
+var isDataURI = (uri) => uri.startsWith(dataURIPrefix);
+
 // If filename is a base64 data URI, parses and returns data (Buffer on node,
 // Uint8Array otherwise). If filename is not a base64 data URI, returns undefined.
 function tryParseAsDataURI(filename) {
