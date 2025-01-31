@@ -1224,6 +1224,29 @@ def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # noqa
   return run_binaryen_command('wasm-opt', infile, outfile, args=args, **kwargs)
 
 
+def run_wasm_bindgen(infile, outfile=None, args=[], **kwargs):  # noqa
+  bindgen_out_dir = get_emscripten_temp_dir() + '/bindgen_out/'
+
+  cmd = config.WASM_BINDGEN + [
+    infile,
+    '--target',
+    'emscripten',
+    '--keep-lld-exports',
+    '--out-dir',
+    bindgen_out_dir,
+  ]
+  check_call(cmd)
+
+  # TODO(walkingeye): don't try to predict the .wasm filename that wasm-bindgen
+  # outputs. instead just grab the .wasm file itself (there will only ever be one).
+  all_output_files = os.listdir(bindgen_out_dir)
+  new_wasm_file = list(filter(lambda x: x.endswith('.wasm'), all_output_files))[0]
+  if outfile == None:
+    outfile = infile
+
+  shutil.copyfile(bindgen_out_dir + new_wasm_file, outfile)
+
+
 def save_intermediate(src, dst):
   if DEBUG:
     dst = 'emcc-%02d-%s' % (save_intermediate.counter, dst)
