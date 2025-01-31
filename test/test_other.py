@@ -13208,13 +13208,13 @@ exec "$@"
   def test_gen_struct_info(self):
     # This test will start failing whenever the struct info changes (e.g. offset or defines
     # change).  However it's easy to rebaseline with --rebaseline.
-    self.run_process([PYTHON, path_from_root('tools/maint/gen_struct_info.py'), '-o', 'out.json'])
+    self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '-o', 'out.json'])
     self.assertFileContents(path_from_root('src/struct_info_generated.json'), read_file('out.json'))
 
     # Same again for wasm64
     node_version = shared.get_node_version(self.get_nodejs())
     if node_version and node_version >= (14, 0, 0):
-      self.run_process([PYTHON, path_from_root('tools/maint/gen_struct_info.py'), '--wasm64', '-o', 'out.json'])
+      self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '--wasm64', '-o', 'out.json'])
       self.assertFileContents(path_from_root('src/struct_info_generated_wasm64.json'), read_file('out.json'))
 
   @crossplatform
@@ -13231,7 +13231,7 @@ exec "$@"
     # linking) to effect the internal building and running of this code.
     # For example -O2 causes printf -> iprintf which will fail with undefined symbol iprintf.
     with env_modify({'EMCC_CFLAGS': '-O2 BAD_ARG', 'EMCC_FORCE_STDLIBS': '1', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
-      self.run_process([PYTHON, path_from_root('tools/maint/gen_struct_info.py'), '-o', 'out.json'])
+      self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '-o', 'out.json'])
 
   def test_relocatable_limited_exports(self):
     # Building with RELOCATABLE should *not* automatically export all sybmols.
@@ -14727,13 +14727,13 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       {{{ C_STRUCTS.Foo }}}
     ''')
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library=lib.js'])
-    self.assertContained('Error: Missing C struct Foo! If you just added it to struct_info.json, you need to run ./tools/maint/gen_struct_info.py (then run a second time with --wasm64)', err)
+    self.assertContained('Error: Missing C struct Foo! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py (then run a second time with --wasm64)', err)
 
     create_file('lib.js', '''
       {{{ C_DEFINES.Foo }}}
     ''')
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library=lib.js'])
-    self.assertContained('Error: Missing C define Foo! If you just added it to struct_info.json, you need to run ./tools/maint/gen_struct_info.py (then run a second time with --wasm64)', err)
+    self.assertContained('Error: Missing C define Foo! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py (then run a second time with --wasm64)', err)
 
   def run_wasi_test_suite_test(self, name):
     if not os.path.exists(path_from_root('test/third_party/wasi-test-suite')):
@@ -15435,6 +15435,7 @@ addToLibrary({
     self.assertExists('hello_world.o')
 
   def test_extra_struct_info(self):
+    self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), test_file('other/test_extra_struct_info.json'), '-o', 'generated.json', '-I', test_file('other')])
     stderr = self.run_process([EMCC, test_file('hello_world.c'), '--js-library', test_file('other/test_extra_struct_info.js')], stderr=PIPE).stderr
     self.assertContained('(before) AF_INET=2', stderr)
     self.assertContained('(after) AF_INET=42', stderr)

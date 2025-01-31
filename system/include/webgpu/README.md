@@ -46,8 +46,8 @@ To update these bindings from Dawn:
 
     ```
     emcc --clear-cache
-    ./tools/maint/gen_struct_info.py
-    ./tools/maint/gen_struct_info.py --wasm64
+    ./tools/gen_struct_info.py
+    ./tools/gen_struct_info.py --wasm64
     ./tools/maint/gen_sig_info.py
     ```
 

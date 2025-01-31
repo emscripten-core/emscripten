@@ -337,7 +337,7 @@ const C_STRUCTS = new Proxy(structs, {
   get(target, prop) {
     if (!(prop in target)) {
       throw new Error(
-        `Missing C struct ${prop}! If you just added it to struct_info.json, you need to run ./tools/maint/gen_struct_info.py (then run a second time with --wasm64)`,
+        `Missing C struct ${prop}! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py (then run a second time with --wasm64)`,
       );
     }
     return target[prop];
@@ -348,7 +348,7 @@ const C_DEFINES = new Proxy(defines, {
   get(target, prop) {
     if (!(prop in target)) {
       throw new Error(
-        `Missing C define ${prop}! If you just added it to struct_info.json, you need to run ./tools/maint/gen_struct_info.py (then run a second time with --wasm64)`,
+        `Missing C define ${prop}! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py (then run a second time with --wasm64)`,
       );
     }
     return target[prop];
