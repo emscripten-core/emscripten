@@ -1328,8 +1328,6 @@ int main(int argc, char **argv) {
 
   @with_all_eh_sjlj
   def test_exceptions_primary(self):
-    if '-fsanitize=leak' in self.emcc_args and '-fwasm-exceptions' in self.emcc_args:
-      self.skipTest('https://github.com/emscripten-core/emscripten/issues/21124')
     self.do_core_test('test_exceptions_primary.cpp')
 
   @with_all_eh_sjlj
@@ -1346,8 +1344,6 @@ int main(int argc, char **argv) {
 
   @with_all_eh_sjlj
   def test_exceptions_multiple_inherit_rethrow(self):
-    if '-fsanitize=leak' in self.emcc_args and '-fwasm-exceptions' in self.emcc_args:
-      self.skipTest('https://github.com/emscripten-core/emscripten/issues/21124')
     self.do_core_test('test_exceptions_multiple_inherit_rethrow.cpp')
 
   @with_all_eh_sjlj
@@ -1499,8 +1495,6 @@ int main() {
 
   @with_all_eh_sjlj
   def test_exceptions_longjmp3(self):
-    if '-fwasm-exceptions' in self.emcc_args:
-      self.skipTest('https://github.com/emscripten-core/emscripten/issues/17004')
     self.do_core_test('test_exceptions_longjmp3.cpp')
 
   @with_all_eh_sjlj
