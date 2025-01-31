@@ -10,6 +10,8 @@
 #include <stdint.h>
 #include <sys/stat.h>
 
+#include <emscripten/promise.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -67,10 +69,12 @@ backend_t wasmfs_create_node_backend(const char* root __attribute__((nonnull)));
 // Note: This function blocks on the main browser thread returning to its event
 // loop. Calling this function while holding a lock the main thread is waiting
 // to acquire will cause a deadlock.
-//
-// TODO: Add an async version of this function that will work on the main
-// thread.
 backend_t wasmfs_create_opfs_backend(void);
+
+// Returns a promise that will be fulfilled with the backend_t handle to the
+// OPFS backend once it has been asynchronously initialized. The caller is
+// responsible for managing the lifetime of the returned promise handle.
+em_promise_t wasmfs_create_opfs_backend_async(void);
 
 // Creates a generic JSIMPL backend in the new file system.
 backend_t wasmfs_create_jsimpl_backend(void);
