@@ -29,6 +29,7 @@ var LibraryHTML5 = {
     pointerlockChangeEvent: 0,
     visibilityChangeEvent: 0,
     touchEvent: 0,
+    inputEvent: 0,
 #endif
 
 /* We do not depend on the exact initial values of falsey member fields - these
@@ -805,6 +806,48 @@ var LibraryHTML5 = {
   emscripten_set_focusout_callback_on_thread__deps: ['$registerFocusEventCallback'],
   emscripten_set_focusout_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) =>
     registerFocusEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_FOCUSOUT }}}, "focusout", targetThread),
+
+$registerInputEventCallback__deps: ['$JSEvents', '$findEventTarget', 'malloc', '$stringToUTF8'],
+    $registerInputEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
+    #if PTHREADS
+    targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
+    #endif
+    JSEvents.inputEvent ||= _malloc({{{ C_STRUCTS.EmscriptenInputEvent.__size__ }}});
+
+    var inputEventHandlerFunc = (e = event) => {
+        var data = e.data ? e.data : '';
+        var inputType = e.inputType ? e.inputType : '';
+
+        #if PTHREADS
+        var inputEvent = targetThread ? _malloc({{{ C_STRUCTS.EmscriptenInputEvent.__size__ }}}) : JSEvents.inputEvent;
+        #else
+        var inputEvent = JSEvents.inputEvent;
+        #endif
+        stringToUTF8(data, inputEvent + {{{ C_STRUCTS.EmscriptenInputEvent.data }}}, {{{ cDefs.EM_HTML5_LONG_STRING_LEN_BYTES }}});
+        stringToUTF8(inputType, inputEvent + {{{ C_STRUCTS.EmscriptenInputEvent.inputType }}}, {{{ cDefs.EM_HTML5_SHORT_STRING_LEN_BYTES }}});
+        HEAP8[inputEvent + {{{ C_STRUCTS.EmscriptenInputEvent.isComposing }}}] = e.isComposing;
+
+        #if PTHREADS
+        if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, inputEvent, userData);
+        else
+            #endif
+        if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, inputEvent, userData)) e.preventDefault();
+    };
+
+    var eventHandler = {
+        target: findEventTarget(target),
+        eventTypeString,
+        callbackfunc,
+        handlerFunc: inputEventHandlerFunc,
+        useCapture
+    };
+    return JSEvents.registerOrRemoveHandler(eventHandler);
+},
+
+  emscripten_set_input_callback_on_thread__proxy: 'sync',
+  emscripten_set_input_callback_on_thread__deps: ['$registerInputEventCallback'],
+  emscripten_set_input_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) =>
+    registerInputEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_INPUT }}}, "input", targetThread),
 
   $fillDeviceOrientationEventData__deps: ['$JSEvents'],
   $fillDeviceOrientationEventData: (eventStruct, e, target) => {
