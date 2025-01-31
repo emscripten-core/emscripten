@@ -552,6 +552,16 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
   if settings.MODULARIZE:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/modularize-externs.js')]
 
+  # The ES module exports are generated after closure is run, so add the exports
+  # to and extern file to avoid closure complaining about undefined variables.
+  if settings.MODULARIZE == 'instance':
+    exports = settings.EXPORTED_FUNCTIONS + settings.EXPORTED_RUNTIME_METHODS
+    export_vars = ';\n'.join(['var' +  ' __exp_' + export for export in exports]) + ';\n'
+    exports_file = shared.get_temp_files().get('.js', prefix='emcc_instance_exports_')
+    exports_file.write(export_vars.encode())
+    exports_file.close()
+    CLOSURE_EXTERNS += [exports_file.name]
+
   if settings.USE_WEBGPU:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/webgpu-externs.js')]
 
