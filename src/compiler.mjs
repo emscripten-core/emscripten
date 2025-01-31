@@ -16,12 +16,15 @@ loadDefaultSettings();
 const options = {
   help: {type: 'boolean', short: 'h'},
   'symbols-only': {type: 'boolean'},
+  output: {type: 'string', short: 'o'},
 };
 const {values, positionals} = parseArgs({options, allowPositionals: true});
 
 if (values.help) {
   console.log(`\
 Main entry point for JS compiler
+
+If no -o file is specified then the generated code is written to stdout.
 
 Usage: compiler.mjs <settings.json> [-o out.js] [--symbols-only]`);
   process.exit(0);
@@ -81,7 +84,7 @@ const jsifier = await import('./jsifier.mjs');
 const B = new Benchmarker();
 
 try {
-  jsifier.runJSify(symbolsOnly);
+  await jsifier.runJSify(values.output, symbolsOnly);
 
   B.print('glue');
 } catch (err) {
