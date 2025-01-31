@@ -504,6 +504,9 @@ def also_with_minimal_runtime(f):
     assert self.get_setting('MINIMAL_RUNTIME') is None
     if with_minimal_runtime:
       self.set_setting('MINIMAL_RUNTIME', 1)
+      # This extra helper code is needed to cleanly handle calls to exit() which throw
+      # an ExitCode exception.
+      self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
     f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
