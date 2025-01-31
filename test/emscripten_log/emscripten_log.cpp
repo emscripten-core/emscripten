@@ -53,9 +53,6 @@ void __attribute__((noinline)) bar(int = 0, char * = 0, double = 0) {
     MYASSERT(1 == 1, "");
 
   int flags = EM_LOG_NO_PATHS | EM_LOG_JS_STACK | EM_LOG_FUNC_PARAMS;
-#ifndef RUN_FROM_JS_SHELL
-  flags |= EM_LOG_C_STACK;
-#endif
 
   // We can programmatically get the callstack.
   // 1. Ask for callstack length:
@@ -79,16 +76,7 @@ void __attribute__((noinline)) bar(int = 0, char * = 0, double = 0) {
 
     but the line numbers will greatly vary depending on the mode we are compiling in, so cannot test with direct string comparison. */
 
-  if ((flags & EM_LOG_C_STACK) != 0) {
-    // TODO(https://github.com/emscripten-core/emscripten/issues/13089)
-    // We should be able to check for emscripten_log.cpp here but sadly
-    // source maps seems to be broken under wasm.
-#if 0
-    MYASSERT(!!strstr(callstack, ".cpp:"), "Callstack was %s!", callstack);
-#endif
-  } else {
-    MYASSERT(!!strstr(callstack, ".js:"), "Callstack was %s!", callstack);
-  }
+  MYASSERT(!!strstr(callstack, ".js:"), "Callstack was %s!", callstack);
   MYASSERT(!!strstr(callstack, "bar(int, char*, double)"), "Callstack was %s!", callstack);
   MYASSERT(!!strstr(callstack, "void Foo<int>()"), "Callstack was %s!", callstack);
 

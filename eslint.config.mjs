@@ -47,7 +47,6 @@ export default [{
     'src/gl-matrix.js',
     'src/headless.js',
     'src/headlessCanvas.js',
-    'src/emscripten-source-map.min.js',
     'src/source_map_support.js',
     'src/Fetch.js',
     'src/settings.js',
