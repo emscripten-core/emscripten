@@ -5596,21 +5596,12 @@ got: 10
     self.do_runf('benchmark/benchmark_utf8.c', 'OK.')
 
   # Test that invalid character in UTF8 does not cause decoding to crash.
+  @also_with_minimal_runtime
   @parameterized({
-    '': [[]],
-    'textdecoder': [['-sTEXTDECODER']],
+    '': ([],),
+    'textdecoder': (['-sTEXTDECODER'],),
   })
   def test_utf8_invalid(self, args):
-    self.do_runf('test_utf8_invalid.c', 'OK.', emcc_args=args)
-
-  # Test that invalid character in UTF8 does not cause decoding to crash.
-  @parameterized({
-    '': [[]],
-    'textdecoder': [['-sTEXTDECODER']],
-  })
-  def test_minimal_runtime_utf8_invalid(self, args):
-    self.set_setting('MINIMAL_RUNTIME')
-    self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
     self.do_runf('test_utf8_invalid.c', 'OK.', emcc_args=args)
 
   def test_utf16_textdecoder(self):
@@ -6929,25 +6920,20 @@ void* operator new(size_t size) {
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['dynCall', 'addFunction', 'lengthBytesUTF8', 'getTempRet0', 'setTempRet0'])
     self.do_core_test('EXPORTED_RUNTIME_METHODS.c')
 
-  @parameterized({
-    '': [],
-    'minimal_runtime': ['-sMINIMAL_RUNTIME=1']
-  })
-  def test_dyncall_specific(self, *args):
+  @also_with_minimal_runtime
+  def test_dyncall_specific(self):
     if self.get_setting('MEMORY64'):
       self.skipTest('not compatible with MEMORY64')
     if self.get_setting('WASM_BIGINT') != 0 and not self.is_wasm2js():
       # define DYNCALLS because this test does test calling them directly, and
       # in WASM_BIGINT mode we do not enable them by default (since we can do
       # more without them - we don't need to legalize)
-      args = list(args) + ['-sDYNCALLS', '-DWASM_BIGINT']
+      self.emcc_args += ['-sDYNCALLS', '-DWASM_BIGINT']
     cases = [
         ('DIRECT', []),
         ('DYNAMIC_SIG', ['-sDYNCALLS']),
       ]
-    if '-sMINIMAL_RUNTIME=1' in args:
-      self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
-    else:
+    if self.get_setting('MINIMAL_RUNTIME') == 0:
       cases += [
         ('EXPORTED', []),
         ('EXPORTED_DYNAMIC_SIG', ['-sDYNCALLS', '-sEXPORTED_RUNTIME_METHODS=dynCall']),
@@ -6955,8 +6941,8 @@ void* operator new(size_t size) {
       ]
 
     for which, extra_args in cases:
-      print(str(args) + ' ' + which)
-      self.do_core_test('test_dyncall_specific.c', emcc_args=['-D' + which] + list(args) + extra_args)
+      print(str(extra_args) + ' ' + which)
+      self.do_core_test('test_dyncall_specific.c', emcc_args=['-D' + which] + extra_args)
 
   @parameterized({
     '': ([],),
@@ -8600,6 +8586,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf('hello_world.c', 'post run')
 
   # Tests that building with -sDECLARE_ASM_MODULE_EXPORTS=0 works
+  @also_with_minimal_runtime
   def test_no_declare_asm_module_exports(self):
     self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
@@ -8616,16 +8603,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
         self.assertEqual(occurances, 2)
     else:
       print(occurances)
-
-  # Tests that building with -sDECLARE_ASM_MODULE_EXPORTS=0 works
-  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
-  def test_minimal_runtime_no_declare_asm_module_exports(self):
-    self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
-    self.set_setting('WASM_ASYNC_COMPILATION', 0)
-    self.maybe_closure()
-    self.set_setting('MINIMAL_RUNTIME')
-    self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
-    self.do_runf('declare_asm_module_exports.c', 'jsFunction: 1')
 
   # Tests that -sMINIMAL_RUNTIME works well in different build modes
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
@@ -9354,16 +9331,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
       force_c=True)
 
   # Tests the emscripten_get_exported_function() API.
+  @also_with_minimal_runtime
   def test_get_exported_function(self):
     self.set_setting('ALLOW_TABLE_GROWTH')
-    self.emcc_args += ['-lexports.js']
-    self.do_core_test('test_get_exported_function.cpp')
-
-  # Tests the emscripten_get_exported_function() API.
-  def test_minimal_runtime_get_exported_function(self):
-    self.set_setting('ALLOW_TABLE_GROWTH')
-    self.set_setting('MINIMAL_RUNTIME')
-    self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
     self.emcc_args += ['-lexports.js']
     self.do_core_test('test_get_exported_function.cpp')
 
