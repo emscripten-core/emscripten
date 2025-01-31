@@ -595,10 +595,10 @@
             "timestamp": 0
         },
         "EmscriptenInputEvent": {
-            "__size__": 257,
+            "__size__": 161,
             "data": 0,
             "inputType": 128,
-            "isComposing": 256
+            "isComposing": 160
         },
         "EmscriptenKeyboardEvent": {
             "__size__": 160,
