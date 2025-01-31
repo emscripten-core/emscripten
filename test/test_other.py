@@ -2535,14 +2535,14 @@ F1 -> ''
 
   @requires_network
   def test_bullet(self):
-    self.do_runf('bullet_hello_world.cpp', 'BULLET RUNNING', emcc_args=['-sUSE_BULLET'])
-    self.do_runf('bullet_hello_world.cpp', 'BULLET RUNNING', emcc_args=['--use-port=bullet'])
+    self.do_runf('test_bullet_hello_world.cpp', 'BULLET RUNNING', emcc_args=['-sUSE_BULLET'])
+    self.do_runf('test_bullet_hello_world.cpp', 'BULLET RUNNING', emcc_args=['--use-port=bullet'])
 
   @requires_network
   def test_vorbis(self):
     # This will also test if ogg compiles, because vorbis depends on ogg
-    self.do_runf('vorbis_test.c', 'ALL OK', emcc_args=['-sUSE_VORBIS'])
-    self.do_runf('vorbis_test.c', 'ALL OK', emcc_args=['--use-port=vorbis'])
+    self.do_runf('third_party/vorbis_test.c', 'ALL OK', emcc_args=['-sUSE_VORBIS'])
+    self.do_runf('third_party/vorbis_test.c', 'ALL OK', emcc_args=['--use-port=vorbis'])
 
   @requires_network
   def test_bzip2(self):

@@ -3,7 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-#include <iostream>
+#include <stdio.h>
 
 #include <btBulletDynamicsCommon.h>
 
