@@ -19,9 +19,9 @@ import stat
 import sys
 import tempfile
 
-# We depend on python 3.6 for fstring support
-if sys.version_info < (3, 6):
-  print('error: emscripten requires python 3.6 or above', file=sys.stderr)
+# We depend on python 3.8 features
+if sys.version_info < (3, 8):
+  print(f'error: emscripten requires python 3.8 or above ({sys.executable} {sys.version})', file=sys.stderr)
   sys.exit(1)
 
 from . import colored_logger

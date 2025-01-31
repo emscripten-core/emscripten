@@ -1332,7 +1332,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
   # Test that -sGL_PREINITIALIZED_CONTEXT works and allows user to set Module['preinitializedWebGLContext'] to a preinitialized WebGL context.
   @requires_graphics_hardware
   def test_preinitialized_webgl_context(self):
-    self.btest_exit('preinitialized_webgl_context.cpp', args=['-sGL_PREINITIALIZED_CONTEXT', '--shell-file', test_file('preinitialized_webgl_context.html')])
+    self.btest_exit('test_preinitialized_webgl_context.c', args=['-sGL_PREINITIALIZED_CONTEXT', '--shell-file', test_file('test_preinitialized_webgl_context.html')])
 
   @parameterized({
     '': ([],),
@@ -2021,11 +2021,11 @@ simulateKeyUp(100, undefined, 'Numpad4');
   @requires_graphics_hardware
   @also_with_proxying
   def test_gles2_uniform_arrays(self):
-    self.btest('gles2_uniform_arrays.cpp', args=['-sGL_ASSERTIONS', '-lGL', '-lSDL'], expected='1')
+    self.btest_exit('test_gles2_uniform_arrays.c', args=['-sGL_ASSERTIONS', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_gles2_conformance(self):
-    self.btest('gles2_conformance.cpp', args=['-sGL_ASSERTIONS', '-lGL', '-lSDL'], expected='1')
+    self.btest_exit('test_gles2_conformance.c', args=['-sGL_ASSERTIONS', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_matrix_identity(self):
@@ -3979,8 +3979,8 @@ Module["preRun"] = () => {
     '': ([],),
     'O2': (['-O2'],),
   })
-  def test_pthread_gauge_available_memory(self, args):
-    self.btest('gauge_available_memory.cpp', expected='1', args=['-sABORTING_MALLOC=0'] + args)
+  def test_gauge_available_memory(self, args):
+    self.btest_exit('test_gauge_available_memory.c', args=['-sABORTING_MALLOC=0'] + args)
 
   # Test that the proxying operations of user code from pthreads to main thread
   # work
@@ -4216,9 +4216,9 @@ Module["preRun"] = () => {
         self.skipTest('TODO: ASAN in memory64')
       if self.is_2gb() or self.is_4gb():
         self.skipTest('asan doesnt support GLOBAL_BASE')
-    self.compile_btest('manual_wasm_instantiate.cpp', ['-o', 'manual_wasm_instantiate.js'] + args)
-    shutil.copy(test_file('manual_wasm_instantiate.html'), '.')
-    self.run_browser('manual_wasm_instantiate.html', '/report_result?1')
+    self.compile_btest('test_manual_wasm_instantiate.c', ['-o', 'manual_wasm_instantiate.js'] + args)
+    shutil.copy(test_file('test_manual_wasm_instantiate.html'), '.')
+    self.run_browser('test_manual_wasm_instantiate.html', '/report_result?1')
 
   def test_wasm_locate_file(self):
     # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
@@ -4465,7 +4465,7 @@ Module["preRun"] = () => {
   def test_webgl_resize_offscreencanvas_from_main_thread(self, args1, args2, args3):
     cmd = args1 + args2 + args3 + ['-pthread', '-lGL', '-sGL_DEBUG']
     print(str(cmd))
-    self.btest_exit('resize_offscreencanvas_from_main_thread.cpp', args=cmd)
+    self.btest_exit('test_webgl_resize_offscreencanvas_from_main_thread.c', args=cmd)
 
   @requires_graphics_hardware
   @parameterized({
@@ -4918,7 +4918,7 @@ Module["preRun"] = () => {
 
   @also_with_proxying
   def test_request_animation_frame(self):
-    self.btest_exit('request_animation_frame.cpp')
+    self.btest_exit('test_request_animation_frame.c')
 
   def test_emscripten_set_timeout(self):
     self.btest_exit('emscripten_set_timeout.c', args=['-pthread', '-sPROXY_TO_PTHREAD'])

@@ -2148,7 +2148,7 @@ int main(int argc, char **argv) {
     if not self.is_optimizing():
       self.skipTest('nodejs takes ~4GB to compile this if the wasm is not optimized, which OOMs')
     self.set_setting('USE_SDL')
-    self.do_runf('bigswitch.cpp', '''34962: GL_ARRAY_BUFFER (0x8892)
+    self.do_runf('core/test_bigswitch.c', '''34962: GL_ARRAY_BUFFER (0x8892)
 26214: what?
 35040: GL_STREAM_DRAW (0x88E0)
 3060: what?
@@ -5602,7 +5602,7 @@ got: 10
     'textdecoder': [['-sTEXTDECODER']],
   })
   def test_utf8_invalid(self, args):
-    self.do_runf('utf8_invalid.cpp', 'OK.', emcc_args=args)
+    self.do_runf('test_utf8_invalid.c', 'OK.', emcc_args=args)
 
   # Test that invalid character in UTF8 does not cause decoding to crash.
   @no_asan('TODO: ASan support in minimal runtime')
@@ -5613,7 +5613,7 @@ got: 10
   def test_minimal_runtime_utf8_invalid(self, args):
     self.set_setting('MINIMAL_RUNTIME')
     self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
-    self.do_runf('utf8_invalid.cpp', 'OK.', emcc_args=args)
+    self.do_runf('test_utf8_invalid.c', 'OK.', emcc_args=args)
 
   def test_utf16_textdecoder(self):
     self.emcc_args += ['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt']
@@ -6220,7 +6220,7 @@ int main(void) {
 
   def test_fannkuch(self):
     results = [(1, 0), (2, 1), (3, 2), (4, 4), (5, 7), (6, 10), (7, 16), (8, 22)]
-    self.build(test_file('fannkuch.cpp'))
+    self.build(test_file('third_party/fannkuch.c'))
     for i, j in results:
       print(i, j)
       self.do_run('fannkuch.js', 'Pfannkuchen(%d) = %d.' % (i, j), args=[str(i)], no_build=True)
@@ -6242,7 +6242,7 @@ int main(void) {
                ('20', '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTT\ncttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg\n\ntacgtgtagcctagtgtttgtgttgcgttatagtctatttgtggacacagtatggtcaaa\n\ntgacgtcttttgatctgacggcgttaacaaagatactctg\n'''),
                ('50', '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACAT\ncttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg\n\ntactDtDagcctatttSVHtHttKtgtHMaSattgWaHKHttttagacatWatgtRgaaa\n\nNtactMcSMtYtcMgRtacttctWBacgaa\n\nagatactctgggcaacacacatacttctctcatgttgtttcttcggacctttcataacct\n\nttcctggcacatggttagctgcacatcacaggattgtaagggtctagtggttcagtgagc\n\nggaatatcattcgtcggtggtgttaatctatctcggtgtagcttataaatgcatccgtaa\n\ngaatattatgtttatttgtcggtacgttcatggtagtggtgtcgccgatttagacgtaaa\n\nggcatgtatg\n''')]
 
-    orig_src = read_file(test_file('fasta.cpp'))
+    orig_src = read_file(test_file('third_party/fasta.cpp'))
 
     src = orig_src.replace('double', float_type)
     create_file('fasta.cpp', src)
@@ -6256,7 +6256,7 @@ int main(void) {
     self.test_fasta()
 
   def test_whets(self):
-    self.do_runf('whets.cpp', 'Single Precision C Whetstone Benchmark')
+    self.do_runf('third_party/whets.c', 'Single Precision C Whetstone Benchmark')
 
   # node is slower, and fail on 64-bit
   @requires_v8
@@ -8521,13 +8521,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @also_with_standalone_wasm()
   def test_sbrk(self):
-    self.do_runf('sbrk_brk.cpp', 'OK.')
+    self.do_runf('test_sbrk_brk.c', 'OK.')
     self.set_setting('ALLOW_MEMORY_GROWTH')
-    self.do_runf('sbrk_brk.cpp', 'OK.')
+    self.do_runf('test_sbrk_brk.c', 'OK.')
 
   def test_brk(self):
     self.emcc_args += ['-DTEST_BRK=1']
-    self.do_runf('sbrk_brk.cpp', 'OK.')
+    self.do_runf('test_sbrk_brk.c', 'OK.')
 
   # Tests that we can use the dlmalloc mallinfo() function to obtain information
   # about malloc()ed blocks and compute how much memory is used/freed.

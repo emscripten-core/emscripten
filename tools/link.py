@@ -761,8 +761,7 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
         diagnostics.warning('unused-command-line-argument', f'{s} is only valid when generating JavaScript output')
 
   if options.oformat == OFormat.MJS:
-    settings.EXPORT_ES6 = 1
-    default_setting('MODULARIZE', 1)
+    default_setting('EXPORT_ES6', 1)
 
   if settings.MODULARIZE and settings.MODULARIZE not in [1, 'instance']:
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
