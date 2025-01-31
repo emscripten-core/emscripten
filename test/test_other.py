@@ -573,7 +573,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
     # emcc [..] -o [path] ==> should work with absolute paths
-    for path in (os.path.abspath(Path('../file1.js')), Path('b_dir/file2.js')):
+    for path in (os.path.abspath('../file1.js'), 'b_dir/file2.js'):
       print(path)
       os.chdir(self.get_dir())
       self.clear()
@@ -1327,26 +1327,24 @@ f.close()
     ''')
 
     ensure_dir('libdir')
-    libfile = Path('libdir/libfile.so')
-    aout = 'a.out.js'
 
     def build(path, args):
       self.run_process([EMCC, path] + args)
 
     # Test linking the library built here by emcc
     build('libfile.c', ['-c'])
-    shutil.move('libfile.o', libfile)
+    shutil.move('libfile.o', 'libdir/libfile.so')
     build('main.c', ['-L' + 'libdir', '-lfile'])
 
-    self.assertContained('hello from lib', self.run_js(aout))
+    self.assertContained('hello from lib', self.run_js('a.out.js'))
 
     # Also test execution with `-l c` and space-separated library linking syntax
-    os.remove(aout)
+    os.remove('a.out.js')
     build('libfile.c', ['-c', '-l', 'c'])
-    shutil.move('libfile.o', libfile)
+    shutil.move('libfile.o', 'libdir/libfile.so')
     build('main.c', ['-L', 'libdir', '-l', 'file'])
 
-    self.assertContained('hello from lib', self.run_js(aout))
+    self.assertContained('hello from lib', self.run_js('a.out.js'))
 
     # Must not leave unneeded linker stubs
     self.assertNotExists('a.out')
@@ -1837,14 +1835,14 @@ Module['postRun'] = () => {
       void printey() { printf("hello there\\n"); }
     ''')
 
-    self.run_process([EMCC, Path('foo/main.c'), Path('bar/main.c')])
+    self.run_process([EMCC, 'foo/main.c', 'bar/main.c'])
     self.assertContained('hello there', self.run_js('a.out.js'))
 
     # ditto with first creating .o files
     delete_file('a.out.js')
-    self.run_process([EMCC, '-c', Path('foo/main.c'), '-o', Path('foo/main.o')])
-    self.run_process([EMCC, '-c', Path('bar/main.c'), '-o', Path('bar/main.o')])
-    self.run_process([EMCC, Path('foo/main.o'), Path('bar/main.o')])
+    self.run_process([EMCC, '-c', 'foo/main.c', '-o', 'foo/main.o'])
+    self.run_process([EMCC, '-c', 'bar/main.c', '-o', 'bar/main.o'])
+    self.run_process([EMCC, 'foo/main.o', 'bar/main.o'])
     self.assertContained('hello there', self.run_js('a.out.js'))
 
   def test_main_a(self):
@@ -1913,7 +1911,7 @@ Module['postRun'] = () => {
         printf("a\n");
       }
     ''')
-    self.run_process([EMCC, Path('a/common.c'), '-c', '-o', Path('a/common.o')])
+    self.run_process([EMCC, 'a/common.c', '-c', '-o', 'a/common.o'])
 
     ensure_dir('b')
     create_file('b/common.c', r'''
@@ -1922,10 +1920,10 @@ Module['postRun'] = () => {
         printf("b...\n");
       }
     ''')
-    self.run_process([EMCC, Path('b/common.c'), '-c', '-o', Path('b/common.o')])
+    self.run_process([EMCC, 'b/common.c', '-c', '-o', 'b/common.o'])
 
     delete_file('liba.a')
-    self.run_process([EMAR, 'rc', 'liba.a', Path('a/common.o'), Path('b/common.o')])
+    self.run_process([EMAR, 'rc', 'liba.a', 'a/common.o', 'b/common.o'])
 
     # Verify that archive contains basenames with hashes to avoid duplication
     text = self.run_process([EMAR, 't', 'liba.a'], stdout=PIPE).stdout
@@ -1948,7 +1946,7 @@ Module['postRun'] = () => {
 
     # Using llvm-ar directly should cause duplicate basenames
     delete_file('libdup.a')
-    self.run_process([LLVM_AR, 'rc', 'libdup.a', Path('a/common.o'), Path('b/common.o')])
+    self.run_process([LLVM_AR, 'rc', 'libdup.a', 'a/common.o', 'b/common.o'])
     text = self.run_process([EMAR, 't', 'libdup.a'], stdout=PIPE).stdout
     self.assertEqual(text.count('common.o'), 2)
 
@@ -2164,9 +2162,9 @@ Module['postRun'] = () => {
       ''')
 
       # Build libfile normally into an .so
-      self.run_process([EMCC, Path('libdir/libfile.c'), '-shared', '-o', Path('libdir/libfile.so' + lib_suffix)])
+      self.run_process([EMCC, 'libdir/libfile.c', '-shared', '-o', 'libdir/libfile.so' + lib_suffix])
       # Build libother and dynamically link it to libfile
-      self.run_process([EMCC, '-Llibdir', Path('libdir/libother.c')] + link_flags + ['-shared', '-o', Path('libdir/libother.so')])
+      self.run_process([EMCC, '-Llibdir', 'libdir/libother.c'] + link_flags + ['-shared', '-o', 'libdir/libother.so'])
       # Build the main file, linking in both the libs
       self.run_process([EMCC, '-Llibdir', os.path.join('main.c')] + link_flags + ['-lother', '-c'])
       print('...')
@@ -2177,7 +2175,7 @@ Module['postRun'] = () => {
       self.assertContained('*hello from lib\n|hello from lib|\n*\n', self.run_js('a.out.js'))
 
     test(['-lfile'], '') # -l, auto detection from library path
-    test([self.in_dir('libdir/libfile.so.3.1.4.1.5.9')], '.3.1.4.1.5.9') # handle libX.so.1.2.3 as well
+    test(['libdir/libfile.so.3.1.4.1.5.9'], '.3.1.4.1.5.9') # handle libX.so.1.2.3 as well
 
   @node_pthreads
   def test_dylink_pthread_static_data(self):
@@ -3138,7 +3136,7 @@ More info: https://emscripten.org
   def test_scons(self):
     # this test copies the site_scons directory alongside the test
     shutil.copytree(test_file('scons/simple'), 'test')
-    shutil.copytree(path_from_root('tools/scons/site_scons'), Path('test/site_scons'))
+    shutil.copytree(path_from_root('tools/scons/site_scons'), 'test/site_scons')
     with common.chdir('test'):
       self.run_process(['scons'])
       output = self.run_js('scons_integration.js', assert_returncode=5)
@@ -3153,7 +3151,7 @@ More info: https://emscripten.org
   def test_scons_env(self):
     # this test copies the site_scons directory alongside the test
     shutil.copytree(test_file('scons/env'), 'test')
-    shutil.copytree(path_from_root('tools/scons/site_scons'), Path('test/site_scons'))
+    shutil.copytree(path_from_root('tools/scons/site_scons'), 'test/site_scons')
 
     expected_to_propagate = json.dumps({
       'CC': path_from_root('emcc'),
@@ -3172,7 +3170,7 @@ More info: https://emscripten.org
   @requires_scons
   def test_scons_env_no_emscons(self):
     shutil.copytree(test_file('scons/env'), 'test')
-    shutil.copytree(path_from_root('tools/scons/site_scons'), Path('test/site_scons'))
+    shutil.copytree(path_from_root('tools/scons/site_scons'), 'test/site_scons')
 
     expected_to_propagate = json.dumps({
       'CC': 'emcc',
@@ -8772,8 +8770,8 @@ int main() {
     self.assertContained('emcc: error: MAXIMUM_MEMORY is only meaningful with ALLOW_MEMORY_GROWTH', err)
 
   def test_dasho_invalid_dir(self):
-    ret = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', Path('NONEXISTING_DIRECTORY/out.js')])
-    self.assertContained('specified output file (NONEXISTING_DIRECTORY%sout.js) is in a directory that does not exist' % os.path.sep, ret)
+    ret = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', 'NONEXISTING_DIRECTORY/out.js'])
+    self.assertContained('specified output file (NONEXISTING_DIRECTORY/out.js) is in a directory that does not exist', ret)
 
   def test_dasho_is_dir(self):
     ret = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', '.'])
@@ -10472,13 +10470,13 @@ int main() {
     os.mkdir('subdir')
     self.run_process([EMCC, test_file('hello_world.c'),
                       '-gseparate-dwarf',
-                      '-o', Path('subdir/output.js')])
+                      '-o', 'subdir/output.js'])
     wasm = read_binary('subdir/output.wasm')
     self.assertIn(b'output.wasm.debug.wasm', wasm)
     # check both unix-style slashes and the system's slashes, so that we don't
     # assume the encoding of the section in this test
     self.assertNotIn(b'subdir/output.wasm.debug.wasm', wasm)
-    self.assertNotIn(bytes(os.path.join('subdir', 'output.wasm.debug.wasm'), 'ascii'), wasm)
+    self.assertNotIn(os.path.join('subdir', 'output.wasm.debug.wasm').encode(), wasm)
 
     # Check that the dwarf file has only dwarf, name, and non-code sections
     with webassembly.Module('subdir/output.wasm.debug.wasm') as debug_wasm:
@@ -10540,7 +10538,7 @@ int main() {
     # should leave a relative path to the debug wasm
     os.mkdir('subdir')
     self.run_process([EMCC, test_file('hello_world.c'),
-                      '-o', Path('subdir/output.js'),
+                      '-o', 'subdir/output.js',
                       '-gseparate-dwarf=with_dwarf2.wasm'])
     self.assertExists('with_dwarf2.wasm')
     wasm = read_binary('subdir/output.wasm')
@@ -10756,7 +10754,7 @@ T6:(else) !ASSERTIONS""", output)
   @requires_node
   def test_node_js_run_from_different_directory(self):
     ensure_dir('subdir')
-    self.run_process([EMCC, test_file('hello_world.c'), '-o', Path('subdir/a.js'), '-O3'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-o', 'subdir/a.js', '-O3'])
     ret = self.run_js('subdir/a.js')
     self.assertContained('hello, world!', ret)
 
