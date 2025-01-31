@@ -336,9 +336,9 @@ class TestCoreBase(RunnerCore):
                         '-DCMAKE_CXX_STANDARD=14']
       # Depending on whether 'configure' or 'cmake' is used to build, Bullet
       # places output files in different directory structures.
-      generated_libs = [Path('src/BulletDynamics/libBulletDynamics.a'),
-                        Path('src/BulletCollision/libBulletCollision.a'),
-                        Path('src/LinearMath/libLinearMath.a')]
+      generated_libs = ['src/BulletDynamics/libBulletDynamics.a',
+                        'src/BulletCollision/libBulletCollision.a',
+                        'src/LinearMath/libLinearMath.a']
     else:
       configure_commands = ['sh', './configure']
       # Force a nondefault --host= so that the configure script will interpret
@@ -347,9 +347,9 @@ class TestCoreBase(RunnerCore):
       # which would fail since we are building a .js file.
       configure_args = ['--disable-shared', '--host=i686-pc-linux-gnu',
                         '--disable-demos', '--disable-dependency-tracking']
-      generated_libs = [Path('src/.libs/libBulletDynamics.a'),
-                        Path('src/.libs/libBulletCollision.a'),
-                        Path('src/.libs/libLinearMath.a')]
+      generated_libs = ['src/.libs/libBulletDynamics.a',
+                        'src/.libs/libBulletCollision.a',
+                        'src/.libs/libLinearMath.a']
 
     return self.get_library('third_party/bullet', generated_libs,
                             configure=configure_commands,
@@ -6601,7 +6601,7 @@ void* operator new(size_t size) {
       'SYSLDFLAGS': ' '.join(self.get_emcc_args())
     }
     libs = self.get_library('third_party/lua',
-                            [Path('src/lua.o'), Path('src/liblua.a')],
+                            ['src/lua.o', 'src/liblua.a'],
                             make=['make', 'echo', 'generic'],
                             env_init=env_init,
                             configure=None)
@@ -6789,11 +6789,11 @@ void* operator new(size_t size) {
       self.emcc_args.append('-Wno-pointer-to-int-cast')
     self.run_process(builder_cmd)
     lib = self.get_library('third_party/openjpeg',
-                           [Path('codec/CMakeFiles/j2k_to_image.dir/index.c.o'),
-                            Path('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'),
-                            Path('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'),
-                            Path('codec/CMakeFiles/j2k_to_image.dir/__/common/getopt.c.o'),
-                            Path('bin/libopenjpeg.a')],
+                           ['codec/CMakeFiles/j2k_to_image.dir/index.c.o',
+                            'codec/CMakeFiles/j2k_to_image.dir/convert.c.o',
+                            'codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o',
+                            'codec/CMakeFiles/j2k_to_image.dir/__/common/getopt.c.o',
+                            'bin/libopenjpeg.a'],
                            configure=['cmake', '.'],
                            # configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
                            make_args=[]) # no -j 2, since parallel builds can fail
