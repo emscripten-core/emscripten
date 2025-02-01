@@ -3,11 +3,9 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-#include <stdio.h>
-
-class Test {}; // This will fail in C mode
+#include <iostream>
 
 int main() {
-  printf("hello, world!\n");
+  std::cout << "hello, world!" << std::endl;
   return 0;
 }
