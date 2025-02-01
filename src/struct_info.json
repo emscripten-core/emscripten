@@ -842,6 +842,7 @@
             "EMSCRIPTEN_EVENT_MOUSEOUT",
             "EMSCRIPTEN_EVENT_CANVASRESIZED",
             "EMSCRIPTEN_EVENT_POINTERLOCKERROR",
+            "EMSCRIPTEN_EVENT_INPUT",
 
             "EMSCRIPTEN_RESULT_SUCCESS",
             "EMSCRIPTEN_RESULT_DEFERRED",
@@ -944,6 +945,11 @@
             "EmscriptenFocusEvent": [
               "nodeName",
               "id"
+            ],
+            "EmscriptenInputEvent": [
+              "data",
+              "inputType",
+              "isComposing"
             ],
             "EmscriptenDeviceOrientationEvent": [
               "alpha",
