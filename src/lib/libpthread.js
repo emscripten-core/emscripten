@@ -36,6 +36,7 @@ var LibraryPThread = {
   $PThread__deps: ['_emscripten_thread_init',
                    '$terminateWorker',
                    '$cleanupThread',
+                   '$addOnPreRun',
 #if MAIN_MODULE
                    '$markAsFinished',
 #endif

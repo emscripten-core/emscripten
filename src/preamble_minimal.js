@@ -46,7 +46,6 @@ var runtimeInitialized = false;
 #endif
 
 #if EXIT_RUNTIME
-var __ATEXIT__    = []; // functions called during shutdown
 var runtimeExited = false;
 #endif
 
