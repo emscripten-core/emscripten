@@ -285,7 +285,7 @@ def filter_link_flags(flags, using_lld):
     if skip_next:
       skip_next = False
       continue
-    keep, skip_next = is_supported(f[1])
+    keep, skip_next = is_supported(f)
     if keep:
       results.append(f)
 
@@ -631,7 +631,7 @@ def check_browser_versions():
 
 
 @ToolchainProfiler.profile_block('linker_setup')
-def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
+def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   """Future modifications should consider refactoring to reduce complexity.
 
   * The McCabe cyclomatiic complexity is currently 251 vs 10 recommended.
@@ -640,10 +640,13 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
 
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
-  system_libpath = '-L' + str(cache.get_lib_dir(absolute=True))
-  system_js_path = '-L' + utils.path_from_root('src', 'lib')
-  state.append_link_flag(system_libpath)
-  state.append_link_flag(system_js_path)
+  extra_args = []
+  system_libpath = str(cache.get_lib_dir(absolute=True))
+  system_js_path = utils.path_from_root('src', 'lib')
+  options.lib_dirs.append(system_libpath)
+  options.lib_dirs.append(system_js_path)
+  extra_args.append('-L' + system_libpath)
+  extra_args.append('-L' + system_js_path)
 
   # We used to do this check during on startup during `check_sanity`, but
   # we now only do it when linking, in order to reduce the overhead when
@@ -1201,7 +1204,7 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
     settings.EXCEPTION_STACK_TRACES = 0
 
   if settings.STB_IMAGE:
-    state.append_link_flag('-lstb_image')
+    extra_args.append('-lstb_image')
     settings.EXPORTED_FUNCTIONS += ['_stbi_load', '_stbi_load_from_memory', '_stbi_image_free']
 
   if settings.USE_WEBGL2:
@@ -1237,9 +1240,9 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
       # implements can remain unimplemented, so it won't be linked in
       # automatically)
       # TODO: find a better way to do this
-      state.append_link_flag('--whole-archive')
-      state.append_link_flag('-lwasmfs_noderawfs')
-      state.append_link_flag('--no-whole-archive')
+      extra_args.append('--whole-archive')
+      extra_args.append('-lwasmfs_noderawfs')
+      extra_args.append('--no-whole-archive')
     settings.FILESYSTEM = 1
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
     settings.JS_LIBRARIES.append('libwasmfs.js')
@@ -1295,7 +1298,7 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
       ]
 
   if settings.FETCH:
-    state.append_link_flag('-lfetch')
+    extra_args.append('-lfetch')
 
   if settings.DEMANGLE_SUPPORT:
     settings.REQUIRED_EXPORTS += ['__cxa_demangle', 'free']
@@ -1350,9 +1353,6 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
     # a standard system would. However, if the user sets the flag it
     # overrides that.
     default_setting('ABORTING_MALLOC', 0)
-
-  if state.has_link_flag('-lembind'):
-    settings.EMBIND = 1
 
   if settings.EMBIND:
     # Workaround for embind+LTO issue:
@@ -1456,7 +1456,7 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
   # When not declaring wasm module exports in outer scope one by one, disable minifying
   # wasm module export names so that the names can be passed directly to the outer scope.
   # Also, if using libexports.js API, disable minification so that the feature can work.
-  if not settings.DECLARE_ASM_MODULE_EXPORTS or state.has_link_flag('-lexports.js'):
+  if not settings.DECLARE_ASM_MODULE_EXPORTS or '-lexports.js' in linker_args:
     settings.MINIFY_WASM_EXPORT_NAMES = 0
 
   # Enable minification of wasm imports and exports when appropriate, if we
@@ -1659,7 +1659,7 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
     # (because stack overflows will trap rather than corrupting data).
     settings.STACK_FIRST = True
 
-  if state.has_link_flag('--stack-first'):
+  if '--stack-first' in linker_args:
     settings.STACK_FIRST = True
     if settings.USE_ASAN:
       exit_with_error('--stack-first is not compatible with asan')
@@ -1850,7 +1850,7 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
   if settings.USE_CLOSURE_COMPILER or not settings.MINIFY_WHITESPACE:
     settings.MAYBE_CLOSURE_COMPILER = 1
 
-  return target, wasm_target
+  return target, wasm_target, extra_args
 
 
 @ToolchainProfiler.profile_block('calculate system libraries')
@@ -1896,7 +1896,7 @@ def phase_link(linker_arguments, wasm_target, js_syms):
 
 
 @ToolchainProfiler.profile_block('post link')
-def phase_post_link(options, in_wasm, wasm_target, target, js_syms, base_metadata=None, linker_inputs=None):
+def phase_post_link(options, in_wasm, wasm_target, target, js_syms, base_metadata=None):
   global final_js
 
   target_basename = unsuffixed_basename(target)
@@ -1916,10 +1916,10 @@ def phase_post_link(options, in_wasm, wasm_target, target, js_syms, base_metadat
   metadata = phase_emscript(in_wasm, wasm_target, js_syms, base_metadata)
 
   if settings.EMBIND_AOT:
-    phase_embind_aot(wasm_target, js_syms, linker_inputs)
+    phase_embind_aot(options, wasm_target, js_syms)
 
   if options.emit_tsd:
-    phase_emit_tsd(options, wasm_target, js_target, js_syms, metadata, linker_inputs)
+    phase_emit_tsd(options, wasm_target, js_target, js_syms, metadata)
 
   if options.js_transform:
     phase_source_transforms(options)
@@ -1948,18 +1948,18 @@ def phase_emscript(in_wasm, wasm_target, js_syms, base_metadata):
   return metadata
 
 
-def run_embind_gen(wasm_target, js_syms, extra_settings, linker_inputs):
+def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   # Save settings so they can be restored after TS generation.
   original_settings = settings.backup()
   settings.attrs.update(extra_settings)
   settings.EMBIND_GEN_MODE = True
 
-  if settings.MAIN_MODULE and linker_inputs:
+  if settings.MAIN_MODULE:
     # Copy libraries to the temp directory so they can be used when running
     # in node.
-    for _i, linker_input in linker_inputs:
-      if building.is_wasm_dylib(linker_input):
-        safe_copy(linker_input, in_temp(''))
+    for f in options.input_files:
+      if building.is_wasm_dylib(f):
+        safe_copy(f, in_temp(''))
 
   settings.EXPORTED_RUNTIME_METHODS = []
   # Ignore any options or settings that can conflict with running the TS
@@ -2019,20 +2019,20 @@ def run_embind_gen(wasm_target, js_syms, extra_settings, linker_inputs):
 
 
 @ToolchainProfiler.profile_block('emit tsd')
-def phase_emit_tsd(options, wasm_target, js_target, js_syms, metadata, linker_inputs):
+def phase_emit_tsd(options, wasm_target, js_target, js_syms, metadata):
   logger.debug('emit tsd')
   filename = options.emit_tsd
   embind_tsd = ''
   if settings.EMBIND:
-    embind_tsd = run_embind_gen(wasm_target, js_syms, {'EMBIND_AOT': False}, linker_inputs)
+    embind_tsd = run_embind_gen(options, wasm_target, js_syms, {'EMBIND_AOT': False})
   all_tsd = emscripten.create_tsd(metadata, embind_tsd)
   out_file = os.path.join(os.path.dirname(js_target), filename)
   write_file(out_file, all_tsd)
 
 
 @ToolchainProfiler.profile_block('embind aot js')
-def phase_embind_aot(wasm_target, js_syms, linker_inputs):
-  out = run_embind_gen(wasm_target, js_syms, {}, linker_inputs)
+def phase_embind_aot(options, wasm_target, js_syms):
+  out = run_embind_gen(options, wasm_target, js_syms, {})
   if DEBUG:
     write_file(in_temp('embind_aot.js'), out)
   src = read_file(final_js)
@@ -2750,6 +2750,7 @@ def map_to_js_libs(library_name):
     'SDL2_mixer': [],
   }
   settings_map = {
+    'embind': {'EMBIND': 1},
     'glfw': {'USE_GLFW': 2},
     'glfw3': {'USE_GLFW': 3},
     'SDL': {'USE_SDL': 1},
@@ -2768,18 +2769,18 @@ def map_to_js_libs(library_name):
   return None
 
 
-def process_libraries(state):
+def process_libraries(options, flags):
   new_flags = []
   system_libs_map = system_libs.Library.get_usable_variations()
 
   # Process `-l` and `--js-library` flags
-  for i, flag in state.link_flags:
+  for flag in flags:
     if flag.startswith('--js-library='):
       js_lib = os.path.abspath(flag.split('=', 1)[1])
       settings.JS_LIBRARIES.append(js_lib)
       continue
     if not flag.startswith('-l'):
-      new_flags.append((i, flag))
+      new_flags.append(flag)
       continue
     lib = removeprefix(flag, '-l')
 
@@ -2794,7 +2795,7 @@ def process_libraries(state):
     # For example we map `-lc` to `-lc-mt` if we are building with threading support.
     if 'lib' + lib in system_libs_map:
       lib = system_libs_map['lib' + lib].get_link_flag()
-      new_flags.append((i, lib))
+      new_flags.append(lib)
       continue
 
     if js_libs is not None:
@@ -2802,7 +2803,7 @@ def process_libraries(state):
 
     if lib.endswith('.js'):
       name = 'lib' + lib
-      path = find_library(name, state.lib_dirs)
+      path = find_library(name, options.lib_dirs)
       if not path:
         exit_with_error(f'unable to find library {flag}')
       settings.JS_LIBRARIES.append(os.path.abspath(path))
@@ -2817,18 +2818,18 @@ def process_libraries(state):
       found_dylib = False
       for ext in DYLIB_EXTENSIONS:
         name = 'lib' + lib + ext
-        path = find_library(name, state.lib_dirs)
+        path = find_library(name, options.lib_dirs)
         if path:
           found_dylib = True
-          new_flags.append((i, path))
+          new_flags.append(path)
           break
 
       if found_dylib:
         continue
 
-    new_flags.append((i, flag))
+    new_flags.append(flag)
 
-  state.link_flags = new_flags
+  return new_flags
 
 
 class ScriptSource:
@@ -3056,17 +3057,13 @@ def package_files(options, target):
 
 
 @ToolchainProfiler.profile_block('calculate linker inputs')
-def phase_calculate_linker_inputs(options, state, linker_inputs):
+def phase_calculate_linker_inputs(options, linker_args):
   using_lld = not (options.oformat == OFormat.OBJECT and settings.LTO)
-  state.link_flags = filter_link_flags(state.link_flags, using_lld)
+
+  linker_args = filter_link_flags(linker_args, using_lld)
 
   # Decide what we will link
-  process_libraries(state)
-
-  # Interleave the linker inputs with the linker flags while maintainging their
-  # relative order on the command line (both of these list are pairs, with the
-  # first element being their command line position).
-  linker_args = [val for _, val in sorted(linker_inputs + state.link_flags)]
+  linker_args = process_libraries(options, linker_args)
 
   # If we are linking to an intermediate object then ignore other
   # "fake" dynamic libraries, since otherwise we will end up with
@@ -3078,32 +3075,33 @@ def phase_calculate_linker_inputs(options, state, linker_inputs):
 
   if settings.MAIN_MODULE:
     dylibs = [a for a in linker_args if building.is_wasm_dylib(a)]
-    process_dynamic_libs(dylibs, state.lib_dirs)
+    process_dynamic_libs(dylibs, options.lib_dirs)
 
   return linker_args
 
 
-def run_post_link(wasm_input, options, state):
+def run_post_link(wasm_input, options, linker_args):
   settings.limit_settings(None)
-  target, wasm_target = phase_linker_setup(options, state)
-  process_libraries(state)
+  target, wasm_target, extra_args = phase_linker_setup(options, linker_args)
+  process_libraries(options, linker_args + extra_args)
   phase_post_link(options, wasm_input, wasm_target, target, {})
 
 
-def run(linker_inputs, options, state):
+def run(options, linker_args):
   # We have now passed the compile phase, allow reading/writing of all settings.
   settings.limit_settings(None)
 
-  if not linker_inputs and not state.link_flags:
+  if not linker_args:
     exit_with_error('no input files')
 
   if options.output_file and options.output_file.startswith('-'):
     exit_with_error(f'invalid output filename: `{options.output_file}`')
 
-  target, wasm_target = phase_linker_setup(options, state)
+  target, wasm_target, extra_args = phase_linker_setup(options, linker_args)
+  linker_args += extra_args
 
   # Link object files using wasm-ld or llvm-link (for bitcode linking)
-  linker_arguments = phase_calculate_linker_inputs(options, state, linker_inputs)
+  linker_arguments = phase_calculate_linker_inputs(options, linker_args)
 
   # Embed and preload files
   if len(options.preload_files) or len(options.embed_files):
@@ -3158,6 +3156,6 @@ def run(linker_inputs, options, state):
 
   # Perform post-link steps (unless we are running bare mode)
   if options.oformat != OFormat.BARE:
-    phase_post_link(options, wasm_target, wasm_target, target, js_syms, base_metadata, linker_inputs)
+    phase_post_link(options, wasm_target, wasm_target, target, js_syms, base_metadata)
 
   return 0
