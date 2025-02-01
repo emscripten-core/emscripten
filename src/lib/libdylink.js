@@ -786,7 +786,7 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
           dbg(`adding new EM_ASM constant at: ${ptrToString(start)}`);
 #endif
-          {{{ makeEval('ASM_CONSTS[start] = eval(func)') }}};
+          {{{ makeEval('ASM_CONSTS[start] = (0, eval)(func)') }}};
         }
 
         // Add any EM_ASM function that exist in the side module
@@ -819,7 +819,7 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
           dbg(`adding new EM_JS function: ${jsArgs} = ${func}`);
 #endif
-          {{{ makeEval('moduleExports[name] = eval(func)') }}};
+          {{{ makeEval('moduleExports[name] = (0, eval)(func)') }}};
         }
 
         for (var name in moduleExports) {
