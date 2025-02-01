@@ -36,7 +36,13 @@ var LibraryEmbind = {
   $PureVirtualError: undefined,
   $GenericWireTypeSize: {{{ 2 * POINTER_SIZE }}},
 #if EMBIND_AOT
-  $InvokerFunctions: '<<< EMBIND_AOT_OUTPUT >>>',
+  $InvokerFunctions: '<<< EMBIND_AOT_INVOKERS >>>',
+#if MODULARIZE == 'instance'
+  // embindUpdateExports is called in the generated code after embind is
+  // initialized. It will link the bindings to the ES module exports.
+  $embindUpdateExports: '<<< EMBIND_AOT_UPDATE_EXPORTS >>>',
+  $embindUpdateExports__postset: 'addOnInit(embindUpdateExports);',
+#endif
 #endif
   // If register_type is used, emval will be registered multiple times for
   // different type id's, but only a single type object is needed on the JS side
@@ -2361,5 +2367,9 @@ var LibraryEmbind = {
     });
   },
 };
+
+#if MODULARIZE == 'instance'
+extraLibraryFuncs.push('$embindUpdateExports');
+#endif
 
 addToLibrary(LibraryEmbind);
