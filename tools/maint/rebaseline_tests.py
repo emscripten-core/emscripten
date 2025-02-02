@@ -88,7 +88,7 @@ def main():
   filenames = []
   for line in output.splitlines():
     filename = line.strip().rsplit(' ', 1)[1]
-    if filename.startswith('test'):
+    if filename.startswith('test') and os.path.isfile(file):
       filenames.append(filename)
 
   if args.check_only:
@@ -112,8 +112,7 @@ running the tests with `--rebaseline`:
 '''
 
   for file in filenames:
-    if os.path.isfile(file):
-      message += process_changed_file(file)
+    message += process_changed_file(file)
 
   message += f'\nAverage change: {statistics.mean(all_deltas):+.2f}% ({min(all_deltas):+.2f}% - {max(all_deltas):+.2f}%)\n'
 
