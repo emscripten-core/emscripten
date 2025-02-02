@@ -88,7 +88,7 @@ def main():
   filenames = []
   for line in output.splitlines():
     filename = line.strip().rsplit(' ', 1)[1]
-    if filename.startswith('test') and os.path.isfile(file):
+    if filename.startswith('test') and os.path.isfile(filename):
       filenames.append(filename)
 
   if args.check_only:
