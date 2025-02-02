@@ -80,16 +80,16 @@ def main():
 
     subprocess.check_call(['test/runner', '--rebaseline', '--browser=0'] + TESTS, cwd=root_dir)
 
-  if not run(['git', 'status', '-uno', '--porcelain', 'test']):
-    print('test expectations are up-to-date')
-    return 0
-
   output = run(['git', 'status', '-uno', '--porcelain'])
   filenames = []
   for line in output.splitlines():
     filename = line.strip().rsplit(' ', 1)[1]
     if filename.startswith('test') and os.path.isfile(filename):
       filenames.append(filename)
+
+  if not filenames:
+    print('test expectations are up-to-date')
+    return 0
 
   if args.check_only:
     message = f'''Test expectations are out-of-date
