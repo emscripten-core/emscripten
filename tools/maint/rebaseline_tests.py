@@ -112,7 +112,8 @@ running the tests with `--rebaseline`:
 '''
 
   for file in filenames:
-    message += process_changed_file(file)
+    if os.path.isfile(file):
+      message += process_changed_file(file)
 
   message += f'\nAverage change: {statistics.mean(all_deltas):+.2f}% ({min(all_deltas):+.2f}% - {max(all_deltas):+.2f}%)\n'
 
