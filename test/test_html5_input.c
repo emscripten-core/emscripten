@@ -116,10 +116,8 @@ EM_JS(void, setInputBValue, (const char *str), {
 
 static void testingDone() {
   emscripten_html5_remove_all_event_listeners();
-
-#ifdef REPORT_RESULT
-  REPORT_RESULT(testStatus());
-#endif
+  emscripten_runtime_keepalive_pop();
+  emscripten_force_exit(testStatus());
 }
 
 static bool inputCallbackWaitingForCheckboxChange(
@@ -345,5 +343,6 @@ int main() {
   startTestInputSingleLetter();
   // further tests are invoked by chained callbacks ...
 
+  emscripten_runtime_keepalive_push();
   return 0;
 }
