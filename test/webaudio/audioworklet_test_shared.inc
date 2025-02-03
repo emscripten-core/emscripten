@@ -87,7 +87,7 @@ void initialised(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* __unused dat
   printf("Audio worklet initialised\n");
 
   WebAudioWorkletProcessorCreateOptions opts = {
-    .name = "mixer",
+    .name = "mixer"
   };
   emscripten_create_wasm_audio_worklet_processor_async(context, &opts, &processorCreated, NULL);
 }
