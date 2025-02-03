@@ -809,28 +809,28 @@ var LibraryHTML5 = {
 
 $registerInputEventCallback__deps: ['$JSEvents', '$findEventTarget', 'malloc', '$stringToUTF8'],
     $registerInputEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
-    #if PTHREADS
+#if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
-    #endif
+#endif
     JSEvents.inputEvent ||= _malloc({{{ C_STRUCTS.EmscriptenInputEvent.__size__ }}});
 
     var inputEventHandlerFunc = (e = event) => {
         var data = e.data || '';
         var inputType = e.inputType || '';
 
-        #if PTHREADS
+#if PTHREADS
         var inputEvent = targetThread ? _malloc({{{ C_STRUCTS.EmscriptenInputEvent.__size__ }}}) : JSEvents.inputEvent;
-        #else
+#else
         var inputEvent = JSEvents.inputEvent;
-        #endif
+#endif
         stringToUTF8(data, inputEvent + {{{ C_STRUCTS.EmscriptenInputEvent.data }}}, {{{ cDefs.EM_HTML5_LONG_STRING_LEN_BYTES }}});
         stringToUTF8(inputType, inputEvent + {{{ C_STRUCTS.EmscriptenInputEvent.inputType }}}, {{{ cDefs.EM_HTML5_SHORT_STRING_LEN_BYTES }}});
         HEAP8[inputEvent + {{{ C_STRUCTS.EmscriptenInputEvent.isComposing }}}] = e.isComposing;
 
-        #if PTHREADS
+#if PTHREADS
         if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, inputEvent, userData);
         else
-            #endif
+#endif
         if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, inputEvent, userData)) e.preventDefault();
     };
 
