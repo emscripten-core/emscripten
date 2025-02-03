@@ -191,9 +191,9 @@ EMSCRIPTEN_RESULT emscripten_set_focusin_callback_on_thread(const char *target _
 EMSCRIPTEN_RESULT emscripten_set_focusout_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, bool useCapture, em_focus_callback_func callback, pthread_t targetThread);
 
 typedef struct EmscriptenInputEvent {
-  EM_UTF8 data[EM_HTML5_LONG_STRING_LEN_BYTES];
-  EM_UTF8 inputType[EM_HTML5_SHORT_STRING_LEN_BYTES];
   bool isComposing;
+  EM_UTF8 inputType[EM_HTML5_SHORT_STRING_LEN_BYTES];
+  EM_UTF8 data[];
 } EmscriptenInputEvent;
 
 typedef bool (*em_input_callback_func)(int eventType, const EmscriptenInputEvent *inputEvent __attribute__((nonnull)), void *userData);
