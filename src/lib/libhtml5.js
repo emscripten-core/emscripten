@@ -815,8 +815,8 @@ $registerInputEventCallback__deps: ['$JSEvents', '$findEventTarget', 'malloc', '
     JSEvents.inputEvent ||= _malloc({{{ C_STRUCTS.EmscriptenInputEvent.__size__ }}});
 
     var inputEventHandlerFunc = (e = event) => {
-        var data = e.data ? e.data : '';
-        var inputType = e.inputType ? e.inputType : '';
+        var data = e.data || '';
+        var inputType = e.inputType || '';
 
         #if PTHREADS
         var inputEvent = targetThread ? _malloc({{{ C_STRUCTS.EmscriptenInputEvent.__size__ }}}) : JSEvents.inputEvent;
