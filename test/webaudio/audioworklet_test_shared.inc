@@ -62,7 +62,7 @@ EM_JS(void, toggleTrack, (EMSCRIPTEN_WEBAUDIO_T srcID), {
   }
 });
 
-// Registered click even to (1) enable audio playback and (2) toggle playing the tracks
+// Registered click event to (1) enable audio playback and (2) toggle playing the tracks
 bool onClick(int __unused type, const EmscriptenMouseEvent* __unused e, void* data) {
   EMSCRIPTEN_WEBAUDIO_T ctx = VOIDP_2_WA(data);
   if (emscripten_audio_context_state(ctx) != AUDIO_CONTEXT_STATE_RUNNING) {
