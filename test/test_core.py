@@ -7864,9 +7864,7 @@ void* operator new(size_t size) {
   @no_wasm2js('symbol names look different wasm2js backtraces')
   @also_with_wasm_bigint
   def test_emscripten_log(self):
-    if '-g' not in self.emcc_args:
-      self.emcc_args.append('-g')
-    self.emcc_args += ['-DRUN_FROM_JS_SHELL', '-Wno-deprecated-pragma']
+    self.emcc_args += ['-g', '-DRUN_FROM_JS_SHELL', '-Wno-deprecated-pragma']
     self.do_run_in_out_file_test('emscripten_log/emscripten_log.cpp', interleaved_output=False)
     # test closure compiler as well
     if self.maybe_closure():
