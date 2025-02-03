@@ -171,10 +171,10 @@ static void startTestChangeCheckbox() {
   printf("Please check checkbox C.\n");
 }
 
-static const char* const longPasteText =
-  "This is an example for the longest string that will be received in wasm "
-  "from JS.  128 chars incl. 0-term. after the arrow tip->And this remainder "
-  "will be truncated.";
+static const char* const longDropText =
+  "This is an example for a long text which is longer than the previously "
+  "pasted text. Hence, it will trigger a realloc() call to reserve more "
+  "memory. The string ends at the following arrow tip -->";
 
 static bool inputCallbackWaitingForPasteOfLongText(
   const int eventType,
@@ -194,25 +194,8 @@ static bool inputCallbackWaitingForPasteOfLongText(
     return false;
   }
 
-  // note: Truncation of the string is expected on the wasm side.
-  const int expectedLen = EM_HTML5_LONG_STRING_LEN_BYTES - 1;
-  const int receivedLen = strlen(inputEvent->data);
-  if (receivedLen != expectedLen) {
-    printf("    FAIL    wrong data length %d, expected %d\n",
-           receivedLen,
-           expectedLen);
-    return false;
-  }
-
-  if (strncmp(inputEvent->data,
-              longPasteText,
-              EM_HTML5_LONG_STRING_LEN_BYTES - 1) != 0) {
+  if (strcmp(inputEvent->data, longDropText) != 0) {
     printf("    FAIL    wrong text received: %s\n", inputEvent->data);
-    return false;
-  }
-
-  if (inputEvent->data[EM_HTML5_LONG_STRING_LEN_BYTES - 1] != '\0') {
-    printf("    FAIL    zero termination missing\n");
     return false;
   }
 
@@ -222,7 +205,7 @@ static bool inputCallbackWaitingForPasteOfLongText(
   return true;
 }
 
-static void startTestDropVeryLongText() {
+static void startTestDropLongText() {
   currentGoal = GoalDragAndDropVeryLongText;
   emscripten_html5_remove_all_event_listeners();
   const EMSCRIPTEN_RESULT res = emscripten_set_input_callback(
@@ -232,7 +215,7 @@ static void startTestDropVeryLongText() {
                 "install callback on existing input element");
 
   setInputAValue("");
-  setInputBValue(longPasteText);
+  setInputBValue(longDropText);
   printf("Please drag&drop all text from B to A (Ctrl+A, drag, drop).\n");
 }
 
@@ -264,7 +247,7 @@ inputCallbackWaitingForPaste(const int eventType,
 
   printf("    SUCCESS\n");
   goalPassed_pasteText = true;
-  startTestDropVeryLongText();
+  startTestDropLongText();
   return true;
 }
 
