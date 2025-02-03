@@ -23,8 +23,9 @@ from urllib.request import urlopen
 import common
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
-from common import read_file, also_with_minimal_runtime, EMRUN, no_wasm64, no_2gb, no_4gb
-from common import requires_wasm2js, also_with_wasm2js, parameterize, find_browser_test_file
+from common import read_file, EMRUN, no_wasm64, no_2gb, no_4gb
+from common import requires_wasm2js, parameterize, find_browser_test_file
+from common import also_with_minimal_runtime, also_with_wasm2js, also_with_asan
 from tools import shared
 from tools import ports
 from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE, DEBUG
@@ -4206,17 +4207,9 @@ Module["preRun"] = () => {
     self.btest_exit('test_async_compile.c', assert_returncode=1, args=common_args)
 
   # Test that implementing Module.instantiateWasm() callback works.
-  @parameterized({
-    '': ([],),
-    'asan': (['-fsanitize=address'],)
-  })
-  def test_manual_wasm_instantiate(self, args):
-    if args:
-      if self.is_wasm64():
-        self.skipTest('TODO: ASAN in memory64')
-      if self.is_2gb() or self.is_4gb():
-        self.skipTest('asan doesnt support GLOBAL_BASE')
-    self.compile_btest('test_manual_wasm_instantiate.c', ['-o', 'manual_wasm_instantiate.js'] + args)
+  @also_with_asan
+  def test_manual_wasm_instantiate(self):
+    self.compile_btest('test_manual_wasm_instantiate.c', ['-o', 'manual_wasm_instantiate.js'])
     shutil.copy(test_file('test_manual_wasm_instantiate.html'), '.')
     self.run_browser('test_manual_wasm_instantiate.html', '/report_result?1')
 
