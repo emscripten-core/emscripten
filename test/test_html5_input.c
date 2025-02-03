@@ -22,13 +22,6 @@ static const char* const inputType_insertFromPaste = "insertFromPaste";
 // * drag and drop:
 static const char* const inputType_insertFromDrop = "insertFromDrop";
 
-static void testInstallCallback();
-static void startTestInputSingleLetter();
-static void startTestPasteText();
-static void startTestDropVeryLongText();
-static void startTestChangeCheckbox();
-static void testingDone();
-
 enum TestGoal {
   GoalUnspecified,
   GoalInputSingleLetter,
@@ -105,131 +98,77 @@ static void checkEqual(const EMSCRIPTEN_RESULT expected,
     assert(e == a);                                                            \
   } while (0)
 
-EM_JS( void, createParagraphWithContent, ( const char* str ), {
-        const para = document.createElement( "p" );
-        para.innerHTML = UTF8ToString( str );
-        document.body.appendChild( para );
+EM_JS(void, createParagraphWithContent, (const char *str), {
+  const para = document.createElement("p");
+  para.innerHTML = UTF8ToString(str);
+  document.body.appendChild( para );
 } )
 
-EM_JS( void, setInputAValue, ( const char* str ), {
-        var target = document.getElementById('input-a');
-        target.value = UTF8ToString(str);
+EM_JS(void, setInputAValue, (const char *str), {
+  var target = document.getElementById('input-a');
+  target.value = UTF8ToString(str);
 } )
 
-EM_JS( void, setInputBValue, ( const char* str ), {
-        var target = document.getElementById('input-b');
-        target.value = UTF8ToString(str);
+EM_JS(void, setInputBValue, (const char *str), {
+  var target = document.getElementById('input-b');
+  target.value = UTF8ToString(str);
 } )
 
-static bool emptyInputCallback(const int eventType,
-                               const EmscriptenInputEvent* const inputEvent
-                               __attribute__((nonnull)),
-                               void* const userData) {
-  return true;
-}
-
-// WHEN an input callback is installed on an existing component.
-// THEN this succeeds.
-// note: for negative test see test_html5_unknown_event_target.c
-static void testInstallCallback() {
-  const EMSCRIPTEN_RESULT res =
-    emscripten_set_input_callback("#input-a", 0, false, emptyInputCallback);
-  ASSERT_RESULT(res,
-                EMSCRIPTEN_RESULT_SUCCESS,
-                "install callback on existing input element");
+static void testingDone() {
   emscripten_html5_remove_all_event_listeners();
+
+#ifdef REPORT_RESULT
+  REPORT_RESULT(testStatus());
+#endif
 }
 
-static void* const expectedUserDataPtr = (void*)0x13370001;
-
-static bool
-inputCallbackWaitingForLetterA(const int eventType,
-                               const EmscriptenInputEvent* const inputEvent
-                               __attribute__((nonnull)),
-                               void* const userData) {
+static bool inputCallbackWaitingForCheckboxChange(
+  const int eventType,
+  const EmscriptenInputEvent* const inputEvent __attribute__((nonnull)),
+  void* const userData) {
   printEvent(inputEvent, __func__);
 
-  if (currentGoal != GoalInputSingleLetter) {
+  if (currentGoal != GoalCheckboxChange) {
     printf("    FAIL    unexpected call to %s\n", __func__);
     return false;
   }
 
-  if (strcmp(inputEvent->inputType, inputType_insertText) != 0) {
-    printf("    FAIL    inputType is not 'insertText': %s\n",
-           inputEvent->inputType);
+  const int expectedInputTypeLen = 0;
+  const int receivedInputTypeLen = strlen(inputEvent->inputType);
+  if (receivedInputTypeLen != expectedInputTypeLen) {
+    printf("    FAIL    wrong type length %d, expected %d\n",
+           receivedInputTypeLen,
+           expectedInputTypeLen);
     return false;
   }
 
-  if (userData != expectedUserDataPtr) {
-    printf("    FAIL    userData not forwarded correctly (%s)\n", __func__);
-    return false;
-  }
-
-  if (strcmp(inputEvent->data, "a") != 0) {
-    printf("    FAIL    this is not an 'a': %s\n", inputEvent->data);
-    return false;
-  }
-
-  printf("    SUCCESS\n");
-  goalPassed_inputSingleLetter = true;
-  startTestPasteText();
-  return true;
-}
-
-static void startTestInputSingleLetter() {
-  currentGoal = GoalInputSingleLetter;
-  const EMSCRIPTEN_RESULT res = emscripten_set_input_callback(
-    "#input-a", expectedUserDataPtr, false, inputCallbackWaitingForLetterA);
-  ASSERT_RESULT(res,
-                EMSCRIPTEN_RESULT_SUCCESS,
-                "install callback on existing input element");
-  printf("Please insert a single char 'a' into input field A by typing on"
-         " the keyboard.\n");
-}
-
-static const char* const expectedPasteText = "I like emscripten.";
-
-static bool
-inputCallbackWaitingForPaste(const int eventType,
-                             const EmscriptenInputEvent* const inputEvent
-                             __attribute__((nonnull)),
-                             void* const userData) {
-  printEvent(inputEvent, __func__);
-
-  if (currentGoal != GoalPasteText) {
-    printf("    FAIL    unexpected call to %s\n", __func__);
-    return false;
-  }
-
-  if (strcmp(inputEvent->inputType, inputType_insertFromPaste) != 0) {
-    printf("    FAIL    inputType is not '%s': %s\n",
-           inputType_insertFromPaste,
-           inputEvent->inputType);
-    return false;
-  }
-
-  if (strcmp(inputEvent->data, expectedPasteText) != 0) {
-    printf("    FAIL    wrong text received: %s\n", inputEvent->data);
+  const int expectedDataLen = 0;
+  const int receivedDataLen = strlen(inputEvent->data);
+  if (receivedDataLen != expectedDataLen) {
+    printf("    FAIL    wrong data length %d, expected %d\n",
+           receivedDataLen,
+           expectedDataLen);
     return false;
   }
 
   printf("    SUCCESS\n");
-  goalPassed_pasteText = true;
-  startTestDropVeryLongText();
+  goalPassed_checkboxChange = true;
+  emscripten_async_call(testingDone, 0, 5000);
   return true;
 }
 
-static void startTestPasteText() {
-  currentGoal = GoalPasteText;
+static void startTestChangeCheckbox() {
+  currentGoal = GoalCheckboxChange;
   emscripten_html5_remove_all_event_listeners();
   const EMSCRIPTEN_RESULT res = emscripten_set_input_callback(
-    "#input-b", 0, false, inputCallbackWaitingForPaste);
+    "#checkbox-c", 0, false, inputCallbackWaitingForCheckboxChange);
   ASSERT_RESULT(res,
                 EMSCRIPTEN_RESULT_SUCCESS,
                 "install callback on existing input element");
 
-  setInputAValue(expectedPasteText);
-  printf("Please copy&paste all text from A to B (Ctrl+A, Ctrl+C, Ctrl+V).\n");
+  setInputAValue("");
+  setInputBValue("");
+  printf("Please check checkbox C.\n");
 }
 
 static const char* const longPasteText =
@@ -297,61 +236,115 @@ static void startTestDropVeryLongText() {
   printf("Please drag&drop all text from B to A (Ctrl+A, drag, drop).\n");
 }
 
-static bool inputCallbackWaitingForCheckboxChange(
-  const int eventType,
-  const EmscriptenInputEvent* const inputEvent __attribute__((nonnull)),
-  void* const userData) {
+static const char* const expectedPasteText = "I like emscripten.";
+
+static bool
+inputCallbackWaitingForPaste(const int eventType,
+                             const EmscriptenInputEvent* const inputEvent
+                             __attribute__((nonnull)),
+                             void* const userData) {
   printEvent(inputEvent, __func__);
 
-  if (currentGoal != GoalCheckboxChange) {
+  if (currentGoal != GoalPasteText) {
     printf("    FAIL    unexpected call to %s\n", __func__);
     return false;
   }
 
-  const int expectedInputTypeLen = 0;
-  const int receivedInputTypeLen = strlen(inputEvent->inputType);
-  if (receivedInputTypeLen != expectedInputTypeLen) {
-    printf("    FAIL    wrong type length %d, expected %d\n",
-           receivedInputTypeLen,
-           expectedInputTypeLen);
+  if (strcmp(inputEvent->inputType, inputType_insertFromPaste) != 0) {
+    printf("    FAIL    inputType is not '%s': %s\n",
+           inputType_insertFromPaste,
+           inputEvent->inputType);
     return false;
   }
 
-  const int expectedDataLen = 0;
-  const int receivedDataLen = strlen(inputEvent->data);
-  if (receivedDataLen != expectedDataLen) {
-    printf("    FAIL    wrong data length %d, expected %d\n",
-           receivedDataLen,
-           expectedDataLen);
+  if (strcmp(inputEvent->data, expectedPasteText) != 0) {
+    printf("    FAIL    wrong text received: %s\n", inputEvent->data);
     return false;
   }
 
   printf("    SUCCESS\n");
-  goalPassed_checkboxChange = true;
-  emscripten_async_call(testingDone, 0, 5000);
+  goalPassed_pasteText = true;
+  startTestDropVeryLongText();
   return true;
 }
 
-static void startTestChangeCheckbox() {
-  currentGoal = GoalCheckboxChange;
+static void startTestPasteText() {
+  currentGoal = GoalPasteText;
   emscripten_html5_remove_all_event_listeners();
   const EMSCRIPTEN_RESULT res = emscripten_set_input_callback(
-    "#checkbox-c", 0, false, inputCallbackWaitingForCheckboxChange);
+    "#input-b", 0, false, inputCallbackWaitingForPaste);
   ASSERT_RESULT(res,
                 EMSCRIPTEN_RESULT_SUCCESS,
                 "install callback on existing input element");
 
-  setInputAValue("");
-  setInputBValue("");
-  printf("Please check checkbox C.\n");
+  setInputAValue(expectedPasteText);
+  printf("Please copy&paste all text from A to B (Ctrl+A, Ctrl+C, Ctrl+V).\n");
 }
 
-static void testingDone() {
-  emscripten_html5_remove_all_event_listeners();
+static void* const expectedUserDataPtr = (void*)0x13370001;
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(testStatus());
-#endif
+static bool
+inputCallbackWaitingForLetterA(const int eventType,
+                               const EmscriptenInputEvent* const inputEvent
+                               __attribute__((nonnull)),
+                               void* const userData) {
+  printEvent(inputEvent, __func__);
+
+  if (currentGoal != GoalInputSingleLetter) {
+    printf("    FAIL    unexpected call to %s\n", __func__);
+    return false;
+  }
+
+  if (strcmp(inputEvent->inputType, inputType_insertText) != 0) {
+    printf("    FAIL    inputType is not 'insertText': %s\n",
+           inputEvent->inputType);
+    return false;
+  }
+
+  if (userData != expectedUserDataPtr) {
+    printf("    FAIL    userData not forwarded correctly (%s)\n", __func__);
+    return false;
+  }
+
+  if (strcmp(inputEvent->data, "a") != 0) {
+    printf("    FAIL    this is not an 'a': %s\n", inputEvent->data);
+    return false;
+  }
+
+  printf("    SUCCESS\n");
+  goalPassed_inputSingleLetter = true;
+  startTestPasteText();
+  return true;
+}
+
+static void startTestInputSingleLetter() {
+  currentGoal = GoalInputSingleLetter;
+  const EMSCRIPTEN_RESULT res = emscripten_set_input_callback(
+    "#input-a", expectedUserDataPtr, false, inputCallbackWaitingForLetterA);
+  ASSERT_RESULT(res,
+                EMSCRIPTEN_RESULT_SUCCESS,
+                "install callback on existing input element");
+  printf("Please insert a single char 'a' into input field A by typing on"
+         " the keyboard.\n");
+}
+
+static bool emptyInputCallback(const int eventType,
+                               const EmscriptenInputEvent* const inputEvent
+                               __attribute__((nonnull)),
+                               void* const userData) {
+  return true;
+}
+
+// WHEN an input callback is installed on an existing component.
+// THEN this succeeds.
+// note: for negative test see test_html5_unknown_event_target.c
+static void testInstallCallback() {
+  const EMSCRIPTEN_RESULT res =
+    emscripten_set_input_callback("#input-a", 0, false, emptyInputCallback);
+  ASSERT_RESULT(res,
+                EMSCRIPTEN_RESULT_SUCCESS,
+                "install callback on existing input element");
+  emscripten_html5_remove_all_event_listeners();
 }
 
 int main() {
