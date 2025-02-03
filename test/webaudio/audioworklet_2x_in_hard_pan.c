@@ -68,3 +68,8 @@ void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
   // Register the counter that exits the test after one second of mixing
   emscripten_set_timeout_loop(&playedAndMixed, 16, NULL);
 }
+
+// This implementation has no custom start-up requirements
+EmscriptenStartWebAudioWorkletCallback getStartCallback() {
+  return &initialised;
+}

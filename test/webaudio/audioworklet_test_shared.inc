@@ -92,16 +92,22 @@ void initialised(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* __unused dat
   emscripten_create_wasm_audio_worklet_processor_async(context, &opts, &processorCreated, NULL);
 }
 
+// To be implemented by the test code, allowing initialised() to be changed.
+EmscriptenStartWebAudioWorkletCallback getStartCallback();
+
 // Common entry point for the mixer tests
 int main() {
   char* const workletStack = memalign(16, AUDIO_STACK_SIZE);
   printf("Audio worklet stack at 0x%p\n", workletStack);
   assert(workletStack);
+
   EMSCRIPTEN_WEBAUDIO_T context = emscripten_create_audio_context(NULL);
-  emscripten_start_wasm_audio_worklet_thread_async(context, workletStack, AUDIO_STACK_SIZE, &initialised, NULL);
+  emscripten_start_wasm_audio_worklet_thread_async(context, workletStack, AUDIO_STACK_SIZE, getStartCallback(), NULL);
+
 #ifndef BROWSER_TEST
   // Special case: browser tests need to exit instantly, interactive tests need to wait
   emscripten_runtime_keepalive_push();
 #endif
+
   return EXIT_SUCCESS;
 }
