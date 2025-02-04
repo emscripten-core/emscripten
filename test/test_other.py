@@ -36,8 +36,9 @@ from common import env_modify, no_mac, no_windows, only_windows, requires_native
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64, requires_node_canary
 from common import requires_wasm_eh, crossplatform, with_all_eh_sjlj, with_all_sjlj, requires_jspi
-from common import also_with_standalone_wasm, also_with_wasm2js, also_with_noderawfs, also_with_wasmfs, with_all_fs
-from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64, flaky
+from common import also_with_standalone_wasm, also_with_wasm2js, also_with_noderawfs
+from common import also_with_modularize, also_with_wasmfs, with_all_fs
+from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64, also_with_asan, flaky
 from common import EMTEST_BUILD_VERBOSE, PYTHON, WEBIDL_BINDER
 from common import requires_network, parameterize
 from tools import shared, building, utils, response_file, cache
@@ -11937,11 +11938,9 @@ int main(void) {
       emcc_args.extend(['--embed-file', f])
     self.do_other_test('test_mmap_and_munmap.c', emcc_args)
 
+  @also_with_asan
   def test_mmap_and_munmap_anonymous(self):
     self.do_other_test('test_mmap_and_munmap_anonymous.cpp', emcc_args=['-sNO_FILESYSTEM'])
-
-  def test_mmap_and_munmap_anonymous_asan(self):
-    self.do_other_test('test_mmap_and_munmap_anonymous.cpp', emcc_args=['-sNO_FILESYSTEM', '-fsanitize=address'])
 
   def test_mmap_memorygrowth(self):
     self.do_other_test('test_mmap_memorygrowth.cpp', ['-sALLOW_MEMORY_GROWTH'])
@@ -15528,3 +15527,24 @@ addToLibrary({
     }
     ''')
     self.do_runf('main.cpp', 'Hello Module!', emcc_args=['-std=c++20', '-fmodules'])
+
+  def test_invalid_export_name(self):
+    create_file('test.c', '__attribute__((export_name("my.func"))) void myfunc() {}')
+    err = self.expect_fail([EMCC, 'test.c'])
+    self.assertContained('emcc: error: invalid export name: my.func', err)
+
+  @also_with_modularize
+  def test_instantiate_wasm(self):
+    create_file('pre.js', '''
+      Module['instantiateWasm'] = (imports, successCallback) => {
+        var wasmFile = findWasmBinary();
+        getWasmBinary(wasmFile).then((bytes) => {
+          WebAssembly.instantiate(bytes, imports).then((res) => {
+            out('wasm instantiation succeeded');
+            Module['testWasmInstantiationSucceeded'] = 1;
+            successCallback(res.instance, res.module);
+          });
+        });
+        return {}; // Compiling asynchronously, no exports.
+      }''')
+    self.do_runf('test_manual_wasm_instantiate.c', emcc_args=['--pre-js=pre.js'])

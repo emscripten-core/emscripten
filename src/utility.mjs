@@ -249,12 +249,6 @@ function read(filename) {
   return readFile(filename);
 }
 
-// Anything needed by the script that we load below must be added to the
-// global object.  These, for example, are all needed by parseTools.js.
-export function print(x) {
-  process.stdout.write(x + '\n');
-}
-
 export function printErr(x) {
   process.stderr.write(x + '\n');
 }

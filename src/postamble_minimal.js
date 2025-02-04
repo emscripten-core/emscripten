@@ -82,9 +82,13 @@ function initRuntime(wasmExports) {
 
 // Initialize wasm (asynchronous)
 
-// In non-fastcomp non-asm.js builds, grab wasm exports to outer scope
-// for emscripten_get_exported_function() to be able to access them.
+#if SINGLE_FILE && WASM == 1 && !WASM2JS
+Module['wasm'] = base64Decode('<<< WASM_BINARY_DATA >>>');
+#endif
+
 #if LibraryManager.has('libexports.js')
+// emscripten_get_exported_function() requires wasmExports to be defined in the
+// outer scope.
 var wasmExports;
 #endif
 
@@ -105,10 +109,6 @@ var imports = {
   '{{{ WASI_MODULE_NAME }}}': wasmImports,
 #endif // MINIFY_WASM_IMPORTED_MODULES
 };
-
-#if SINGLE_FILE && WASM == 1 && !WASM2JS
-Module['wasm'] = base64Decode('<<< WASM_BINARY_DATA >>>');
-#endif
 
 #if MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
 // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming

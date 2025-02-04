@@ -651,7 +651,7 @@ def is_c_symbol(name):
 
 
 def treat_as_user_export(name):
-  return not name.startswith('dynCall_')
+  return not name.startswith(('dynCall_', 'orig$'))
 
 
 def asmjs_mangle(name):

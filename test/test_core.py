@@ -26,7 +26,7 @@ from common import RunnerCore, path_from_root, requires_native_clang, test_file,
 from common import skip_if, no_windows, no_mac, is_slow_test, parameterized, parameterize
 from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_with_wasm_bigint
 from common import read_file, read_binary, requires_v8, requires_node, requires_wasm2js, requires_node_canary
-from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime
+from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime, also_with_modularize
 from common import with_all_fs, also_with_nodefs, also_with_nodefs_both, also_with_noderawfs, also_with_wasmfs
 from common import with_all_eh_sjlj, with_all_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64, requires_wasm_eh, requires_jspi
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
@@ -2424,24 +2424,17 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_equal.cpp')
 
   @node_pthreads
-  @parameterized({
-      '': (False,),
-      'modularize': (True,),
-  })
-  def test_pthread_proxying(self, modularize):
-    if modularize and self.get_setting('WASM') == 0:
-      self.skipTest('MODULARIZE + WASM=0 + pthreads does not work (#16794)')
+  @also_with_modularize
+  def test_pthread_proxying(self):
+    if '-sMODULARIZE' in self.emcc_args:
+      if self.get_setting('WASM') == 0:
+        self.skipTest('MODULARIZE + WASM=0 + pthreads does not work (#16794)')
+      self.set_setting('EXPORT_NAME=ModuleFactory')
     self.maybe_closure()
     self.set_setting('PROXY_TO_PTHREAD')
     if not self.has_changed_setting('INITIAL_MEMORY'):
       self.set_setting('INITIAL_MEMORY=32mb')
-    args = []
-    if modularize:
-      self.set_setting('MODULARIZE')
-      self.set_setting('EXPORT_NAME=ModuleFactory')
-      args = ['--extern-post-js', test_file('modularize_post_js.js')]
-    self.do_run_in_out_file_test('pthread/test_pthread_proxying.c',
-                                 interleaved_output=False, emcc_args=args)
+    self.do_run_in_out_file_test('pthread/test_pthread_proxying.c', interleaved_output=False)
 
   @node_pthreads
   def test_pthread_proxying_cpp(self):
@@ -7875,9 +7868,7 @@ void* operator new(size_t size) {
   @no_wasm2js('symbol names look different wasm2js backtraces')
   @also_with_wasm_bigint
   def test_emscripten_log(self):
-    if '-g' not in self.emcc_args:
-      self.emcc_args.append('-g')
-    self.emcc_args += ['-DRUN_FROM_JS_SHELL', '-Wno-deprecated-pragma']
+    self.emcc_args += ['-g', '-DRUN_FROM_JS_SHELL', '-Wno-deprecated-pragma']
     self.do_run_in_out_file_test('emscripten_log/emscripten_log.cpp', interleaved_output=False)
     # test closure compiler as well
     if self.maybe_closure():
@@ -9131,23 +9122,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
+  @also_with_modularize
   def test_pthread_offset_converter(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('USE_OFFSET_CONVERTER')
-    if '-g' in self.emcc_args:
-      self.emcc_args += ['-DDEBUG']
-    self.do_runf('core/test_return_address.c', 'passed')
-
-  @node_pthreads
-  @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
-  def test_pthread_offset_converter_modularize(self):
-    self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
-    self.set_setting('USE_OFFSET_CONVERTER')
-    self.set_setting('MODULARIZE')
-    self.set_setting('EXPORT_NAME', 'foo')
-    self.emcc_args += ['--extern-post-js', test_file('modularize_post_js.js')]
+    if '-sMODULARIZE' in self.emcc_args:
+      self.set_setting('EXPORT_NAME', 'foo')
     if '-g' in self.emcc_args:
       self.emcc_args += ['-DDEBUG']
     self.do_runf('core/test_return_address.c', 'passed')

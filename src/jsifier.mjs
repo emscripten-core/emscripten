@@ -8,6 +8,7 @@
 // before this stage, which just does the final conversion to JavaScript.
 
 import assert from 'node:assert';
+import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import {
   ATEXITS,
@@ -28,7 +29,6 @@ import {
   isDecorator,
   isJsOnlySymbol,
   compileTimeContext,
-  print,
   printErr,
   readFile,
   warn,
@@ -164,13 +164,22 @@ function preJS() {
   return result;
 }
 
-export function runJSify(symbolsOnly) {
+export async function runJSify(outputFile, symbolsOnly) {
   const libraryItems = [];
   const symbolDeps = {};
   const asyncFuncs = [];
   let postSets = [];
 
   LibraryManager.load();
+
+  let outputHandle = process.stdout;
+  if (outputFile) {
+    outputHandle = await fs.open(outputFile, 'w');
+  }
+
+  async function writeOutput(str) {
+    await outputHandle.write(str + '\n');
+  }
 
   const symbolsNeeded = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
   symbolsNeeded.push(...extraLibraryFuncs);
@@ -702,7 +711,7 @@ function(${args}) {
   }
 
   function includeFile(fileName, alwaysPreprocess = true) {
-    print(getIncludeFile(fileName, alwaysPreprocess));
+    writeOutput(getIncludeFile(fileName, alwaysPreprocess));
   }
 
   function finalCombiner() {
@@ -734,11 +743,11 @@ function(${args}) {
     includeFile(preFile);
 
     for (const item of libraryItems.concat(postSets)) {
-      print(indentify(item || '', 2));
+      writeOutput(indentify(item || '', 2));
     }
 
     if (PTHREADS) {
-      print(`
+      writeOutput(`
 // proxiedFunctionTable specifies the list of functions that can be called
 // either synchronously or asynchronously from other threads in postMessage()d
 // or internally queued events. This way a pthread in a Worker can synchronously
@@ -753,7 +762,7 @@ var proxiedFunctionTable = [
     // that we have here, together with the rest of the output
     // that we started to print out earlier (see comment on the
     // "Final shape that will be created").
-    print('// EMSCRIPTEN_END_FUNCS\n');
+    writeOutput('// EMSCRIPTEN_END_FUNCS\n');
 
     const postFile = MINIMAL_RUNTIME ? 'postamble_minimal.js' : 'postamble.js';
     includeFile(postFile);
@@ -770,7 +779,7 @@ var proxiedFunctionTable = [
       throw Error('Aborting compilation due to previous errors');
     }
 
-    print(
+    writeOutput(
       '//FORWARDED_DATA:' +
         JSON.stringify({
           librarySymbols,
@@ -789,7 +798,7 @@ var proxiedFunctionTable = [
   }
 
   if (symbolsOnly) {
-    print(
+    writeOutput(
       JSON.stringify({
         deps: symbolDeps,
         asyncFuncs,
@@ -803,6 +812,8 @@ var proxiedFunctionTable = [
   if (errorOccured()) {
     throw Error('Aborting compilation due to previous errors');
   }
+
+  if (outputFile) await outputHandle.close();
 }
 
 addToCompileTimeContext({

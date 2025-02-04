@@ -1015,17 +1015,21 @@ function getWasmImports() {
   // Also pthreads and wasm workers initialize the wasm instance through this
   // path.
   if (Module['instantiateWasm']) {
-    try {
-      return Module['instantiateWasm'](info, receiveInstance);
-    } catch(e) {
-      err(`Module.instantiateWasm callback failed with error: ${e}`);
-      #if MODULARIZE
-        // If instantiation fails, reject the module ready promise.
-        readyPromiseReject(e);
-      #else
-        return false;
-      #endif
-    }
+    return new Promise((resolve, reject) => {
+#if ASSERTIONS
+      try {
+#endif
+        Module['instantiateWasm'](info, (mod, inst) => {
+          receiveInstance(mod, inst);
+          resolve(mod.exports);
+        });
+#if ASSERTIONS
+      } catch(e) {
+        err(`Module.instantiateWasm callback failed with error: ${e}`);
+        reject(e);
+      }
+#endif
+    });
   }
 #endif
 
