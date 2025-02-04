@@ -3749,14 +3749,14 @@ ok
 
   @requires_jspi
   @needs_dylink
-  def test_jspi_dylink(self):
+  def test_dlfcn_jspi(self):
     self.set_setting('JSPI')
     self.run_process([
       EMCC,
       '-o', 'side.so',
-      test_file('core/test_jspi_dylink_side.c'),
+      test_file('core/test_dlfcn_jspi_side.c'),
       '-sSIDE_MODULE'])
-    self.do_run_in_out_file_test('core/test_jspi_dylink_main.c', emcc_args=['side.so', '-sMAIN_MODULE=2'])
+    self.do_run_in_out_file_test('core/test_dlfcn_jspi_main.c', emcc_args=['side.so', '-sMAIN_MODULE=2'])
 
   @needs_dylink
   def test_dlfcn_rtld_local(self):
