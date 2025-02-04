@@ -8513,7 +8513,6 @@ addToLibrary({
     ]
     if self.get_setting('MINIMAL_RUNTIME'):
       expected_order = [item[0] for item in expected_order if item[1]]
-      self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
     else:
       expected_order = [item[0] for item in expected_order]
     self.emcc_args += [
