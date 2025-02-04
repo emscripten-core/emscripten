@@ -612,7 +612,7 @@ var LibraryDylink = {
     '$currentModuleWeakSymbols',
     '$updateTableMap',
     '$wasmTable',
-    '$__ATPOSTCTOR__',
+    '$addOnPostCtor',
   ],
   $loadWebAssemblyModule: (binary, flags, libName, localScope, handle) => {
 #if DYLINK_DEBUG
@@ -860,7 +860,7 @@ var LibraryDylink = {
               init();
             } else {
               // we aren't ready to run compiled code yet
-              __ATPOSTCTOR__.push(init);
+              addOnPostCtor(init);
             }
           }
 #if PTHREADS
