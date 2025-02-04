@@ -731,28 +731,52 @@ function makeEval(code) {
   return ret;
 }
 
-export const ATINITS = [];
+// Add code to run soon after the Wasm module has been loaded. This is the first
+// injection point before all the other addAt<X> functions below. The code will
+// be executed after the runtime `onPreRuns` callbacks.
+export const ATPRERUNS = [];
+function addAtPreRun(code) {
+  ATPRERUNS.push(code);
+}
 
 // Add code to run after the Wasm module is loaded, but before static
-// constructors and main (if applicable). The code will be executed before the
-// runtime `__ATINIT__` callbacks.
+// constructors and main (if applicable). The code will be executed after the
+// runtime `onInits` callbacks.
+export const ATINITS = [];
 function addAtInit(code) {
   ATINITS.push(code);
 }
 
-export const ATPOSTCTORS = [];
-
 // Add code to run after static constructors, but before main (if applicable).
+// The code will be executed after the runtime `onPostCtors` callbacks.
+export const ATPOSTCTORS = [];
 function addAtPostCtor(code) {
   ATPOSTCTORS.push(code);
 }
 
-export const ATEXITS = [];
+// Add code to run right before main is called. This is only available if the
+// the Wasm module has a main function. The code will be executed after the
+// runtime `onMains` callbacks.
+export const ATMAINS = [];
+function addAtPreMain(code) {
+  ATMAINS.push(code);
+}
 
+// Add code to run after main has executed and the runtime is shutdown. This is
+// only available when the Wasm module has a main function and -sEXIT_RUNTIME is
+// set. The code will be executed after the runtime `onExits` callbacks.
+export const ATEXITS = [];
 function addAtExit(code) {
   if (EXIT_RUNTIME) {
     ATEXITS.push(code);
   }
+}
+
+// Add code to run after main and ATEXITS (if applicable). The code will be
+// executed after the runtime `onPostRuns` callbacks.
+export const ATPOSTRUNS = [];
+function addAtPostRun(code) {
+  ATPOSTRUNS.push(code);
 }
 
 function makeRetainedCompilerSettings() {
@@ -1093,7 +1117,11 @@ function ENVIRONMENT_IS_WORKER_THREAD() {
 
 addToCompileTimeContext({
   ATEXITS,
+  ATPRERUNS,
   ATINITS,
+  ATPOSTCTORS,
+  ATMAINS,
+  ATPOSTRUNS,
   FOUR_GB,
   LONG_TYPE,
   POINTER_HEAP,
@@ -1111,8 +1139,11 @@ addToCompileTimeContext({
   ENVIRONMENT_IS_MAIN_THREAD,
   ENVIRONMENT_IS_WORKER_THREAD,
   addAtExit,
+  addAtPreRun,
   addAtInit,
   addAtPostCtor,
+  addAtPreMain,
+  addAtPostRun,
   asyncIf,
   awaitIf,
   buildStringArray,

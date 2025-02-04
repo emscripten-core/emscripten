@@ -698,6 +698,8 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('PTHREADS_PROFILING only works with ASSERTIONS enabled')
     options.post_js.append(utils.path_from_root('src/threadprofiler.js'))
     settings.REQUIRED_EXPORTS.append('emscripten_main_runtime_thread_id')
+    # threadprofiler.js needs these library functions.
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$addOnInit', '$addOnExit']
 
   # TODO: support source maps with js_transform
   if options.js_transform and settings.GENERATE_SOURCE_MAP:
@@ -1413,6 +1415,12 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
       settings.EXPORTED_RUNTIME_METHODS += ['stackSave', 'stackAlloc', 'stackRestore', 'wasmTable']
       # The following symbols need exposing to load and bootstrap the audio worklet:
       settings.INCOMING_MODULE_JS_API += ['instantiateWasm', 'wasm', 'wasmMemory']
+
+  if not settings.MINIMAL_RUNTIME:
+    if 'preRun' in settings.INCOMING_MODULE_JS_API:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$addOnPreRun')
+    if 'postRun' in settings.INCOMING_MODULE_JS_API:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$addOnPostRun')
 
   if settings.FORCE_FILESYSTEM and not settings.MINIMAL_RUNTIME:
     # when the filesystem is forced, we export by default methods that filesystem usage
