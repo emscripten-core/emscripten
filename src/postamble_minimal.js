@@ -86,9 +86,9 @@ function initRuntime(wasmExports) {
 Module['wasm'] = base64Decode('<<< WASM_BINARY_DATA >>>');
 #endif
 
-// In non-fastcomp non-asm.js builds, grab wasm exports to outer scope
-// for emscripten_get_exported_function() to be able to access them.
 #if LibraryManager.has('libexports.js')
+// emscripten_get_exported_function() requires wasmExports to be defined in the
+// outer scope.
 var wasmExports;
 #endif
 
