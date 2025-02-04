@@ -8,14 +8,14 @@
 #include <dlfcn.h>
 
 EM_ASYNC_JS(int, test, (), {
-    console.log("sleeping");
-    await new Promise(res => setTimeout(res, 500));
-    console.log("slept");
-    return 77;
+  console.log("sleeping");
+  await new Promise(res => setTimeout(res, 500));
+  console.log("slept");
+  return 77;
 });
 
 int test_wrapper() {
-    return test();
+  return test();
 }
 
 typedef int (*F)();
