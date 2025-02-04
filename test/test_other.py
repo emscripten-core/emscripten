@@ -2841,18 +2841,6 @@ More info: https://emscripten.org
       create_file('a.out.js', src)
       self.assertContained('hello, world!\ncallMain -> 0\n', self.run_js('a.out.js'))
 
-  def test_preinit(self):
-    create_file('pre.js', '''
-      var Module = {
-        preRun: () => out('pre-run'),
-        postRun: () => out('post-run'),
-        preInit: () => out('pre-init')
-      };
-    ''')
-    self.do_runf(test_file('hello_world.c'),
-                 'pre-init\npre-run\nhello, world!\npost-run\n',
-                 emcc_args=['--pre-js', 'pre.js'])
-
   def test_prepost2(self):
     create_file('pre.js', 'Module.preRun = () => out("pre-run");')
     create_file('pre2.js', 'Module.postRun = () => out("post-run");')
@@ -8460,23 +8448,31 @@ int main() {}
 
   @also_with_minimal_runtime
   def test_run_order(self):
+    create_file('pre.js', '''
+var Module = {
+  preRun: () => console.log('modulePreRun'),
+  postRun: () => console.log('modulePostRun'),
+  preInit: () => console.log('modulePreInit')
+};
+    ''')
+    create_file('post.js', r'''
+addOnPreRun(() => console.log("addOnPreRun"));
+addOnInit(() => console.log("addOnInit"));
+addOnPostCtor(() => console.log("addOnPostCtor"));
+addOnPreMain(() => console.log("addOnPreMain"));
+addOnExit(() => console.log("addOnExit"));
+addOnPostRun(() => console.log("addOnPostRun"));
+    ''')
     create_file('lib.js', r'''
 addToLibrary({
-  foo__deps: ['$addOnPreRun', '$addOnInit', '$addOnPostCtor', '$addOnPreMain', '$addOnExit', '$addOnPostRun'],
   foo__postset: () => {
+    // Add all the compile time equivalents of the above runtime events.
     addAtPreRun("console.log(`addAtPreRun`);");
     addAtInit("console.log(`addAtInit`);");
     addAtPostCtor("console.log(`addAtPostCtor`);");
     addAtPreMain("console.log(`addAtPreMain`);");
     addAtExit("console.log(`addAtExit`);");
     addAtPostRun("console.log(`addAtPostRun`);");
-    // Add all the runtime equivalents of the above events.
-    return 'addOnPreRun(() => console.log("addOnPreRun"));\n' +
-           'addOnInit(() => console.log("addOnInit"));\n' +
-           'addOnPostCtor(() => console.log("addOnPostCtor"));\n' +
-           'addOnPreMain(() => console.log("addOnPreMain"));\n' +
-           'addOnExit(() => console.log("addOnExit"));\n' +
-           'addOnPostRun(() => console.log("addOnPostRun"));\n';
   },
   foo: () => {},
 });
@@ -8492,28 +8488,42 @@ addToLibrary({
       foo();
     }
     ''')
+    # Each element is [<log message>, <applies to minimal runtime>]
     expected_order = [
-      'addOnPreRun',
-      'addAtPreRun',
-      'addOnInit',
-      'addAtInit',
-      'ctor',
-      'addOnPostCtor',
-      'addAtPostCtor',
-      'addOnPreMain',
-      'addAtPreMain',
-      'main',
-      'addOnExit',
-      'addAtExit',
-      'addOnPostRun',
-      'addAtPostRun',
+      ['modulePreInit', False], # Not supported in minimal runtime.
+      ['modulePreRun', False], # Not supported in minimal runtime.
+      ['addOnPreRun', True],
+      ['addAtPreRun', True],
+      ['addOnInit', True],
+      ['addAtInit', True],
+      ['ctor', True],
+      ['addOnPostCtor', True],
+      ['addAtPostCtor', True],
+      ['addOnPreMain', True],
+      ['addAtPreMain', True],
+      ['main', True],
+      ['addOnExit', True],
+      ['addAtExit', True],
+      ['modulePostRun', False],  # Not supported in minimal runtime.
+      # The following two events are supported in miminal runtime, but they will
+      # not happen with MINIMAL_RUNTIME + EXIT_RUNTIME since it throws an
+      # exception during _proc_exit.
+      ['addOnPostRun', False],
+      ['addAtPostRun', False]
     ]
     if self.get_setting('MINIMAL_RUNTIME'):
-      # Remove postRun events since they will not happen with MINIMAL_RUNTIME +
-      # EXIT_RUNTIME since it throws an exception during _proc_exit.
-      del expected_order[-2:]
+      expected_order = [item[0] for item in expected_order if item[1]]
       self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
-    self.do_runf('src.c', '\n'.join(expected_order), emcc_args=['--js-library', 'lib.js', '-sEXIT_RUNTIME'])
+    else:
+      expected_order = [item[0] for item in expected_order]
+    self.emcc_args += [
+      '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$addOnPreRun,$addOnInit,$addOnPostCtor,$addOnPreMain,$addOnExit,$addOnPostRun',
+      '--js-library', 'lib.js',
+      '--pre-js', 'pre.js',
+      '--post-js', 'post.js',
+      '-sEXIT_RUNTIME'
+    ]
+    self.do_runf('src.c', '\n'.join(expected_order))
 
   def test_override_js_execution_environment(self):
     create_file('main.c', r'''

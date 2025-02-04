@@ -1416,10 +1416,11 @@ def phase_linker_setup(options, state):  # noqa: C901, PLR0912, PLR0915
       # The following symbols need exposing to load and bootstrap the audio worklet:
       settings.INCOMING_MODULE_JS_API += ['instantiateWasm', 'wasm', 'wasmMemory']
 
-  if 'preRun' in settings.INCOMING_MODULE_JS_API and not settings.MINIMAL_RUNTIME:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$addOnPreRun')
-  if 'postRun' in settings.INCOMING_MODULE_JS_API and not settings.MINIMAL_RUNTIME:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$addOnPostRun')
+  if not settings.MINIMAL_RUNTIME:
+    if 'preRun' in settings.INCOMING_MODULE_JS_API:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$addOnPreRun')
+    if 'postRun' in settings.INCOMING_MODULE_JS_API:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$addOnPostRun')
 
   if settings.FORCE_FILESYSTEM and not settings.MINIMAL_RUNTIME:
     # when the filesystem is forced, we export by default methods that filesystem usage
