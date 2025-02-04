@@ -1938,7 +1938,12 @@ def phase_emscript(in_wasm, wasm_target, js_syms, base_metadata):
 
   # No need to support base64 embedding in wasm2js mode since
   # the module is already in JS format.
-  settings.SUPPORT_BASE64_EMBEDDING = settings.SINGLE_FILE and not settings.WASM2JS
+  if settings.SINGLE_FILE and not settings.WASM2JS:
+    settings.SUPPORT_BASE64_EMBEDDING = 1
+    if settings.MINIMAL_RUNTIME:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$base64Decode')
+    else:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$tryParseAsDataURI')
 
   if shared.SKIP_SUBPROCS:
     return
@@ -2876,17 +2881,17 @@ class ScriptSource:
       return '<script>\n%s\n</script>' % self.inline
 
 
-def filter_out_dynamic_libs(options, inputs):
+def filter_out_fake_dynamic_libs(options, inputs):
   # Filters out "fake" dynamic libraries that are really just intermediate object files.
-  def check(input_file):
-    if get_file_suffix(input_file) in DYLIB_EXTENSIONS and not building.is_wasm_dylib(input_file):
+  def is_fake_dylib(input_file):
+    if get_file_suffix(input_file) in DYLIB_EXTENSIONS and os.path.exists(input_file) and not building.is_wasm_dylib(input_file):
       if not options.ignore_dynamic_linking:
         diagnostics.warning('emcc', 'ignoring dynamic library %s because not compiling to JS or HTML, remember to link it when compiling to JS or HTML at the end', os.path.basename(input_file))
-      return False
-    else:
       return True
+    else:
+      return False
 
-  return [f for f in inputs if check(f)]
+  return [f for f in inputs if not is_fake_dylib(f)]
 
 
 def filter_out_duplicate_dynamic_libs(inputs):
@@ -3072,7 +3077,7 @@ def phase_calculate_linker_inputs(options, state, linker_inputs):
   # "fake" dynamic libraries, since otherwise we will end up with
   # multiple copies in the final executable.
   if options.oformat == OFormat.OBJECT or options.ignore_dynamic_linking:
-    linker_args = filter_out_dynamic_libs(options, linker_args)
+    linker_args = filter_out_fake_dynamic_libs(options, linker_args)
   else:
     linker_args = filter_out_duplicate_dynamic_libs(linker_args)
 

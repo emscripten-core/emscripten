@@ -10,9 +10,9 @@ This script acts as a frontend replacement for clang-scan-deps.
 """
 
 import sys
-from tools import shared, cache
+import emcc
+from tools import shared
 
 args = sys.argv[1:]
-args.append('--sysroot=' + cache.get_sysroot(absolute=True))
-args.append('--target=' + shared.get_llvm_target())
+args += emcc.get_cflags(tuple(args))
 shared.exec_process([shared.CLANG_SCAN_DEPS] + args)
