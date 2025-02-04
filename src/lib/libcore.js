@@ -2298,7 +2298,7 @@ addToLibrary({
 
   // The following addOn<X> functions are for adding runtime callbacks at
   // various executions points. Each addOn<X> function has a corresponding
-  // compile time version named addAt<X> that will instead inline during
+  // compiled time version named addAt<X> that will instead inline during
   // compilation (see parseTools.mjs).
   // Note: if there are both runtime and compile time code, the runtime
   // callbacks will be invoked before the compile time code.
@@ -2310,9 +2310,7 @@ addToLibrary({
     ATPRERUNS.unshift('callRuntimeCallbacks(__ATPRERUN__);');
   },
   $addOnPreRun__deps: ['$__ATPRERUN__'],
-  $addOnPreRun: (cb) => {
-    __ATPRERUN__.unshift(cb);
-  },
+  $addOnPreRun: (cb) => __ATPRERUN__.unshift(cb),
   // See ATINITS in parseTools.mjs for more information.
   $__ATINIT__: [],
   $__ATINIT____deps: ['$callRuntimeCallbacks'],
@@ -2320,31 +2318,37 @@ addToLibrary({
     ATINITS.unshift('callRuntimeCallbacks(__ATINIT__);');
   },
   $addOnInit__deps: ['$__ATINIT__'],
-  $addOnInit: (cb) => {
-    __ATINIT__.unshift(cb);
-  },
+  $addOnInit: (cb) => __ATINIT__.unshift(cb),
   // See ATPOSTCTORS in parseTools.mjs for more information.
   $__ATPOSTCTOR__: [],
   $__ATPOSTCTOR____deps: ['$callRuntimeCallbacks'],
-  $__ATPOSTCTOR____postset: () => ATPOSTCTORS.unshift('callRuntimeCallbacks(__ATPOSTCTOR__);'),
+  $__ATPOSTCTOR____postset: () =>  {
+    ATPOSTCTORS.unshift('callRuntimeCallbacks(__ATPOSTCTOR__);');
+  },
   $addOnPostCtor__deps: ['$__ATPOSTCTOR__'],
   $addOnPostCtor: (cb) => __ATPOSTCTOR__.unshift(cb),
   // See ATMAINS in parseTools.mjs for more information.
   $__ATMAIN__: [],
   $__ATMAIN____deps: ['$callRuntimeCallbacks'],
-  $__ATMAIN____postset: () => ATMAINS.unshift('callRuntimeCallbacks(__ATMAIN__);'),
+  $__ATMAIN____postset: () => {
+    ATMAINS.unshift('callRuntimeCallbacks(__ATMAIN__);');
+  },
   $addOnPreMain__deps: ['$__ATMAIN__'],
   $addOnPreMain: (cb) => __ATMAIN__.unshift(cb),
   // See ATEXITS in parseTools.mjs for more information.
   $__ATEXIT__: [],
   $__ATEXIT____deps: ['$callRuntimeCallbacks'],
-  $__ATEXIT____postset: () => ATEXITS.unshift('callRuntimeCallbacks(__ATEXIT__);'),
+  $__ATEXIT____postset: () => {
+    ATEXITS.unshift('callRuntimeCallbacks(__ATEXIT__);');
+  },
   $addOnExit__deps: ['$__ATEXIT__'],
   $addOnExit: (cb) => __ATEXIT__.unshift(cb),
   // See ATPOSTRUNS in parseTools.mjs for more information.
   $__ATPOSTRUN__: [],
   $__ATPOSTRUN____deps: ['$callRuntimeCallbacks'],
-  $__ATPOSTRUN____postset: () => ATPOSTRUNS.unshift('callRuntimeCallbacks(__ATPOSTRUN__);'),
+  $__ATPOSTRUN____postset: () => {
+    ATPOSTRUNS.unshift('callRuntimeCallbacks(__ATPOSTRUN__);');
+  },
   $addOnPostRun__deps: ['$__ATPOSTRUN__'],
   $addOnPostRun: (cb) => __ATPOSTRUN__.unshift(cb),
 
