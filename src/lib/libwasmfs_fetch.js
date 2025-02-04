@@ -37,7 +37,7 @@ addToLibrary({
       }
       var chunkSize = __wasmfs_fetch_get_chunk_size(file);
       offset ??= 0;
-      len = len || chunkSize;
+      len ??= chunkSize;
       var firstChunk = (offset / chunkSize) | 0;
       var lastChunk = ((offset+len) / chunkSize) | 0;
       if (!(file in wasmFS$JSMemoryRanges)) {
@@ -46,7 +46,11 @@ addToLibrary({
            fileInfo.headers.has("Content-Length") &&
            fileInfo.headers.get("Accept-Ranges") == "bytes" &&
            (parseInt(fileInfo.headers.get("Content-Length")) > chunkSize*2)) {
-          wasmFS$JSMemoryRanges[file] = {size:parseInt(fileInfo.headers.get("Content-Length")), chunks:[], chunkSize:chunkSize};
+          wasmFS$JSMemoryRanges[file] = {
+            size:parseInt(fileInfo.headers.get("Content-Length")),
+            chunks:[],
+            chunkSize:chunkSize
+          };
         } else {
           // may as well/forced to download the whole file
           var wholeFileReq = await fetch(url);
@@ -55,7 +59,11 @@ addToLibrary({
           }
           var wholeFileData = new Uint8Array(await wholeFileReq.arrayBuffer());
           var text = new TextDecoder().decode(wholeFileData);
-          wasmFS$JSMemoryRanges[file] = {size:wholeFileData.byteLength, chunks:[wholeFileData], chunkSize:wholeFileData.byteLength};
+          wasmFS$JSMemoryRanges[file] = {
+            size:wholeFileData.byteLength,
+            chunks:[wholeFileData],
+            chunkSize:wholeFileData.byteLength
+          };
           return Promise.resolve();
         }
       }

@@ -94,7 +94,7 @@ std::shared_ptr<Directory> FetchBackend::createDirectory(mode_t mode) {
 }
 
 const std::string FetchBackend::getFileURL(const std::string& filePath) {
-  if(filePath == "") {
+  if (filePath == "") {
     return baseUrl;
   }
   return baseUrl + "/" + filePath;

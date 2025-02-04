@@ -59,6 +59,11 @@ backend_t wasmfs_create_memory_backend(void);
 // and ending with whatever the file's path is relative to where the
 // fetchfs directory is mounted.
 //
+// Individual range requests will be no bigger than chunk_size, and will
+// be aligned to boundaries of chunk_size.  Files smaller than chunk_size
+// will be downloaded all at once.
+//
+// If chunk_size is 0, a reasonable default value will be used.
 //
 // Note: this cannot be called on the browser main thread because it might
 // deadlock while waiting for its dedicated worker thread to be spawned.
@@ -71,7 +76,7 @@ backend_t wasmfs_create_memory_backend(void);
 // thread.
 //
 backend_t wasmfs_create_fetch_backend(const char* base_url __attribute__((nonnull)),
-                                      uint32_t chunkSize);
+                                      uint32_t chunk_size);
 
 backend_t wasmfs_create_node_backend(const char* root __attribute__((nonnull)));
 

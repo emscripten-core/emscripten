@@ -43,7 +43,7 @@ void check_file(int fd, const char* content) {
 void test_url_relative() {
   printf("Running %s...\n", __FUNCTION__);
 
-  backend_t backend2 = wasmfs_create_fetch_backend("test.txt",0);
+  backend_t backend2 = wasmfs_create_fetch_backend("test.txt", 0);
   int fd = wasmfs_create_file("/file_rel", 0777, backend2);
   check_file(fd, "fetch 2");
   assert(close(fd) == 0);
@@ -57,7 +57,7 @@ void test_url_absolute() {
   char url[200];
   snprintf(url, sizeof(url), "%s%s", url_orig, file_name);
 
-  backend_t backend = wasmfs_create_fetch_backend(url,0);
+  backend_t backend = wasmfs_create_fetch_backend(url, 0);
   int fd = wasmfs_create_file(file_name, 0777, backend);
   check_file(fd, "fetch 2");
   assert(close(fd) == 0);
@@ -70,7 +70,7 @@ void test_directory_abs() {
   char url[200];
   snprintf(url, sizeof(url), "%s%s", url_orig, dir_path);
 
-  backend_t backend = wasmfs_create_fetch_backend(url,0);
+  backend_t backend = wasmfs_create_fetch_backend(url, 0);
   int res = wasmfs_create_directory(dir_path, 0777, backend);
   if (errno)
     perror("wasmfs_create_directory");
@@ -101,7 +101,7 @@ void test_directory_abs() {
 
 void test_default() {
   printf("Running %s...\n", __FUNCTION__);
-  backend_t backend = wasmfs_create_fetch_backend("data.dat",0);
+  backend_t backend = wasmfs_create_fetch_backend("data.dat", 0);
 
   // Create a file in that backend.
   int fd = wasmfs_create_file("/testfile", 0777, backend);
@@ -137,7 +137,7 @@ void test_small_reads() {
   char expected[] = "hello";
   size_t size = 5;
 
-  backend_t backend = wasmfs_create_fetch_backend("small.dat",0);
+  backend_t backend = wasmfs_create_fetch_backend("small.dat", 0);
   int fd = wasmfs_create_file("/testfile3", 0777, backend);
   char buf[size + 1];
   for (size_t i = 0; i < size; i++) {
