@@ -37,6 +37,189 @@ function isBeneath(childPath, parentPath) {
   return !relativePath.startsWith('..') && !path.isAbsolute(relativePath);
 }
 
+function calculateLibraries() {
+  // Core system libraries (always linked against)
+  let libraries = [
+    'libint53.js',
+    'libcore.js',
+    'libsigs.js',
+    'libccall.js',
+    'libaddfunction.js',
+    'libformatString.js',
+    'libgetvalue.js',
+    'libmath.js',
+    'libpath.js',
+    'libstrings.js',
+    'libhtml5.js',
+    'libstack_trace.js',
+    'libwasi.js',
+    'libeventloop.js',
+    'libpromise.js',
+  ];
+
+  if (LINK_AS_CXX) {
+    if (DISABLE_EXCEPTION_THROWING && !WASM_EXCEPTIONS) {
+      libraries.push('libexceptions_stub.js');
+    } else {
+      libraries.push('libexceptions.js');
+    }
+  }
+
+  if (!MINIMAL_RUNTIME) {
+    libraries.push('libbrowser.js');
+    libraries.push('libwget.js');
+  }
+
+  if (!STANDALONE_WASM) {
+    libraries.push('libtime.js');
+  }
+
+  if (EMSCRIPTEN_TRACING) {
+    libraries.push('libmemoryprofiler.js');
+  }
+
+  if (SUPPORT_BASE64_EMBEDDING) {
+    libraries.push('libbase64.js');
+  }
+
+  if (AUTODEBUG) {
+    libraries.push('libautodebug.js');
+  }
+
+  if (!WASMFS) {
+    libraries.push('libsyscall.js');
+  }
+
+  if (RELOCATABLE) {
+    libraries.push('libdylink.js');
+  }
+
+  if (FILESYSTEM) {
+    libraries.push('libfs_shared.js');
+    if (WASMFS) {
+      libraries.push(
+        'libwasmfs.js',
+        'libwasmfs_js_file.js',
+        'libwasmfs_jsimpl.js',
+        'libwasmfs_fetch.js',
+        'libwasmfs_node.js',
+        'libwasmfs_opfs.js',
+      );
+    } else {
+      // Core filesystem libraries (always linked against, unless -sFILESYSTEM=0 is specified)
+      libraries.push(
+        'libfs.js',
+        'libmemfs.js',
+        'libtty.js',
+        'libpipefs.js', // ok to include it by default since it's only used if the syscall is used
+        'libsockfs.js', // ok to include it by default since it's only used if the syscall is used
+      );
+
+      if (NODERAWFS) {
+        // NODERAWFS requires NODEFS
+        if (!JS_LIBRARIES.includes('libnodefs.js')) {
+          libraries.push('libnodefs.js');
+        }
+        libraries.push('libnoderawfs.js');
+        // NODERAWFS overwrites libpath.js
+        libraries.push('libnodepath.js');
+      }
+    }
+  }
+
+  // Additional JS libraries (without AUTO_JS_LIBRARIES, link to these explicitly via -lxxx.js)
+  if (AUTO_JS_LIBRARIES) {
+    libraries.push(
+      'libwebgl.js',
+      'libhtml5_webgl.js',
+      'libopenal.js',
+      'libglut.js',
+      'libxlib.js',
+      'libegl.js',
+      'libuuid.js',
+      'libglew.js',
+      'libidbstore.js',
+      'libasync.js',
+    );
+    if (USE_SDL != 2) {
+      libraries.push('libsdl.js');
+    }
+  } else {
+    if (ASYNCIFY) {
+      libraries.push('libasync.js');
+    }
+    if (USE_SDL == 1) {
+      libraries.push('libsdl.js');
+    }
+    if (USE_SDL == 2) {
+      libraries.push('libegl.js', 'libwebgl.js', 'libhtml5_webgl.js');
+    }
+  }
+
+  if (USE_GLFW) {
+    libraries.push('libglfw.js');
+  }
+
+  if (LZ4) {
+    libraries.push('liblz4.js');
+  }
+
+  if (SHARED_MEMORY) {
+    libraries.push('libatomic.js');
+  }
+
+  if (MAX_WEBGL_VERSION >= 2) {
+    // libwebgl2.js must be included only after libwebgl.js, so if we are
+    // about to include libwebgl2.js, first squeeze in libwebgl.js.
+    libraries.push('libwebgl.js');
+    libraries.push('libwebgl2.js');
+  }
+
+  if (GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING) {
+    libraries.push('libc_preprocessor.js');
+  }
+
+  if (LEGACY_GL_EMULATION) {
+    libraries.push('libglemu.js');
+  }
+
+  if (USE_WEBGPU) {
+    libraries.push('libwebgpu.js');
+    libraries.push('libhtml5_webgpu.js');
+  }
+
+  if (!STRICT) {
+    libraries.push('liblegacy.js');
+  }
+
+  if (BOOTSTRAPPING_STRUCT_INFO) {
+    libraries = ['libbootstrap.js', 'libformatString.js', 'libstrings.js', 'libint53.js'];
+  }
+
+  if (SUPPORT_BIG_ENDIAN) {
+    libraries.push('liblittle_endian_heap.js');
+  }
+
+  // Add all user specified JS library files to the link.
+  // These must be added last after all Emscripten-provided system libraries
+  // above, so that users can override built-in JS library symbols in their
+  // own code.
+  libraries.push(...JS_LIBRARIES);
+
+  // Resolve all filenames to absolute paths
+  libraries = libraries.map((filename) => {
+    if (!path.isAbsolute(filename) && fs.existsSync(path.join(systemLibdir, filename))) {
+      filename = path.join(systemLibdir, filename);
+    }
+    return path.resolve(filename);
+  });
+
+  // Deduplicate libraries to avoid processing any library file multiple times
+  libraries = libraries.filter((item, pos) => libraries.indexOf(item) == pos);
+
+  return libraries;
+}
+
 export const LibraryManager = {
   library: {},
   // The JS and JS docs of each library definition indexed my mangled name.
@@ -61,190 +244,20 @@ export const LibraryManager = {
   load() {
     assert(!this.loaded);
     this.loaded = true;
+    // Save the list for has() queries later.
+    this.libraries = calculateLibraries();
 
-    // Core system libraries (always linked against)
-    let libraries = [
-      'libint53.js',
-      'libcore.js',
-      'libsigs.js',
-      'libccall.js',
-      'libaddfunction.js',
-      'libformatString.js',
-      'libgetvalue.js',
-      'libmath.js',
-      'libpath.js',
-      'libstrings.js',
-      'libhtml5.js',
-      'libstack_trace.js',
-      'libwasi.js',
-      'libeventloop.js',
-      'libpromise.js',
-    ];
-
-    if (LINK_AS_CXX) {
-      if (DISABLE_EXCEPTION_THROWING && !WASM_EXCEPTIONS) {
-        libraries.push('libexceptions_stub.js');
-      } else {
-        libraries.push('libexceptions.js');
-      }
-    }
-
-    if (!MINIMAL_RUNTIME) {
-      libraries.push('libbrowser.js');
-      libraries.push('libwget.js');
-    }
-
-    if (!STANDALONE_WASM) {
-      libraries.push('libtime.js');
-    }
-
-    if (EMSCRIPTEN_TRACING) {
-      libraries.push('libmemoryprofiler.js');
-    }
-
-    if (SUPPORT_BASE64_EMBEDDING) {
-      libraries.push('libbase64.js');
-    }
-
-    if (AUTODEBUG) {
-      libraries.push('libautodebug.js');
-    }
-
-    if (!WASMFS) {
-      libraries.push('libsyscall.js');
-    }
-
-    if (RELOCATABLE) {
-      libraries.push('libdylink.js');
-    }
-
-    if (FILESYSTEM) {
-      libraries.push('libfs_shared.js');
-      if (WASMFS) {
-        libraries.push(
-          'libwasmfs.js',
-          'libwasmfs_js_file.js',
-          'libwasmfs_jsimpl.js',
-          'libwasmfs_fetch.js',
-          'libwasmfs_node.js',
-          'libwasmfs_opfs.js',
-        );
-      } else {
-        // Core filesystem libraries (always linked against, unless -sFILESYSTEM=0 is specified)
-        libraries.push(
-          'libfs.js',
-          'libmemfs.js',
-          'libtty.js',
-          'libpipefs.js', // ok to include it by default since it's only used if the syscall is used
-          'libsockfs.js', // ok to include it by default since it's only used if the syscall is used
-        );
-
-        if (NODERAWFS) {
-          // NODERAWFS requires NODEFS
-          if (!JS_LIBRARIES.includes('libnodefs.js')) {
-            libraries.push('libnodefs.js');
-          }
-          libraries.push('libnoderawfs.js');
-          // NODERAWFS overwrites libpath.js
-          libraries.push('libnodepath.js');
+    const userLibraryProxy = new Proxy(this.library, {
+      set(target, prop, value) {
+        target[prop] = value;
+        if (!isDecorator(prop)) {
+          target[prop + '__user'] = true;
         }
-      }
-    }
-
-    // Additional JS libraries (without AUTO_JS_LIBRARIES, link to these explicitly via -lxxx.js)
-    if (AUTO_JS_LIBRARIES) {
-      libraries.push(
-        'libwebgl.js',
-        'libhtml5_webgl.js',
-        'libopenal.js',
-        'libglut.js',
-        'libxlib.js',
-        'libegl.js',
-        'libuuid.js',
-        'libglew.js',
-        'libidbstore.js',
-        'libasync.js',
-      );
-      if (USE_SDL != 2) {
-        libraries.push('libsdl.js');
-      }
-    } else {
-      if (ASYNCIFY) {
-        libraries.push('libasync.js');
-      }
-      if (USE_SDL == 1) {
-        libraries.push('libsdl.js');
-      }
-      if (USE_SDL == 2) {
-        libraries.push('libegl.js', 'libwebgl.js', 'libhtml5_webgl.js');
-      }
-    }
-
-    if (USE_GLFW) {
-      libraries.push('libglfw.js');
-    }
-
-    if (LZ4) {
-      libraries.push('liblz4.js');
-    }
-
-    if (SHARED_MEMORY) {
-      libraries.push('libatomic.js');
-    }
-
-    if (MAX_WEBGL_VERSION >= 2) {
-      // libwebgl2.js must be included only after libwebgl.js, so if we are
-      // about to include libwebgl2.js, first squeeze in libwebgl.js.
-      libraries.push('libwebgl.js');
-      libraries.push('libwebgl2.js');
-    }
-
-    if (GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING) {
-      libraries.push('libc_preprocessor.js');
-    }
-
-    if (LEGACY_GL_EMULATION) {
-      libraries.push('libglemu.js');
-    }
-
-    if (USE_WEBGPU) {
-      libraries.push('libwebgpu.js');
-      libraries.push('libhtml5_webgpu.js');
-    }
-
-    if (!STRICT) {
-      libraries.push('liblegacy.js');
-    }
-
-    if (BOOTSTRAPPING_STRUCT_INFO) {
-      libraries = ['libbootstrap.js', 'libformatString.js', 'libstrings.js', 'libint53.js'];
-    }
-
-    if (SUPPORT_BIG_ENDIAN) {
-      libraries.push('liblittle_endian_heap.js');
-    }
-
-    // Add all user specified JS library files to the link.
-    // These must be added last after all Emscripten-provided system libraries
-    // above, so that users can override built-in JS library symbols in their
-    // own code.
-    libraries.push(...JS_LIBRARIES);
-
-    // Resolve all filenames to absolute paths
-    libraries = libraries.map((filename) => {
-      if (!path.isAbsolute(filename) && fs.existsSync(path.join(systemLibdir, filename))) {
-        filename = path.join(systemLibdir, filename);
-      }
-      return path.resolve(filename);
+        return true;
+      },
     });
 
-    // Deduplicate libraries to avoid processing any library file multiple times
-    libraries = libraries.filter((item, pos) => libraries.indexOf(item) == pos);
-
-    // Save the list for has() queries later.
-    this.libraries = libraries;
-
-    for (let filename of libraries) {
+    for (let filename of this.libraries) {
       const isUserLibrary = !isBeneath(filename, systemLibdir);
 
       if (VERBOSE) {
@@ -260,15 +273,7 @@ export const LibraryManager = {
       // on each element so that we can distinguish them later.
       if (isUserLibrary) {
         origLibrary = this.library;
-        this.library = new Proxy(this.library, {
-          set(target, prop, value) {
-            target[prop] = value;
-            if (!isDecorator(prop)) {
-              target[prop + '__user'] = true;
-            }
-            return true;
-          },
-        });
+        this.library = userLibraryProxy;
       }
       const oldFile = setCurrentFile(filename);
       try {
