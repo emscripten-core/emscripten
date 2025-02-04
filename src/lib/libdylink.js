@@ -715,7 +715,13 @@ var LibraryDylink = {
           }
           if (prop in wasmImports && !wasmImports[prop].stub) {
             // No stub needed, symbol already exists in symbol table
-            return wasmImports[prop];
+            var res = wasmImports[prop];
+#if JSPI
+            if ('orig' in res) {
+              res = res.orig;
+            }
+#endif
+            return res;
           }
           // Return a stub function that will resolve the symbol
           // when first called.

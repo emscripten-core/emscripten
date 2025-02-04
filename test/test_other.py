@@ -3411,6 +3411,15 @@ More info: https://emscripten.org
       '-Wno-experimental']
     self.do_runf('other/test_jspi_add_function.c', 'done')
 
+  @requires_jspi
+  def test_jspi_dylink(self):
+      self.run_process([
+        EMCC,
+        '-o', 'side.so',
+        test_file('other/test_jspi_dylink_side.c'),
+        '-sSIDE_MODULE'])
+      self.do_run_in_out_file_test('other/test_jspi_dylink_main.c', emcc_args=['side.so', '-sMAIN_MODULE=2', '-sJSPI'])
+
   @parameterized({
     'commonjs': [['-sMODULARIZE'], ['--module', 'commonjs', '--moduleResolution', 'node']],
     'esm': [['-sEXPORT_ES6'], ['--module', 'NodeNext', '--moduleResolution', 'nodenext']],
