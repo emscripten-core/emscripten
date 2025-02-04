@@ -733,7 +733,7 @@ function makeEval(code) {
 
 // Add code to run soon after the Wasm module has been loaded. This is the first
 // injection point before all the other addAt<X> functions below. The code will
-// be executed after the runtime `__ATPRERUNS__` callbacks.
+// be executed after the runtime `onPreRuns` callbacks.
 export const ATPRERUNS = [];
 function addAtPreRun(code) {
   ATPRERUNS.push(code);
@@ -741,14 +741,14 @@ function addAtPreRun(code) {
 
 // Add code to run after the Wasm module is loaded, but before static
 // constructors and main (if applicable). The code will be executed after the
-// runtime `__ATINIT__` callbacks.
+// runtime `onInits` callbacks.
 export const ATINITS = [];
 function addAtInit(code) {
   ATINITS.push(code);
 }
 
 // Add code to run after static constructors, but before main (if applicable).
-// The code will be executed after the runtime `__ATPOSTCTOR__` callbacks.
+// The code will be executed after the runtime `onPostCtors` callbacks.
 export const ATPOSTCTORS = [];
 function addAtPostCtor(code) {
   ATPOSTCTORS.push(code);
@@ -756,7 +756,7 @@ function addAtPostCtor(code) {
 
 // Add code to run right before main is called. This is only available if the
 // the Wasm module has a main function. The code will be executed after the
-// runtime `__ATMAIN__` callbacks.
+// runtime `onMains` callbacks.
 export const ATMAINS = [];
 function addAtPreMain(code) {
   ATMAINS.push(code);
@@ -764,7 +764,7 @@ function addAtPreMain(code) {
 
 // Add code to run after main has executed and the runtime is shutdown. This is
 // only available when the Wasm module has a main function and -sEXIT_RUNTIME is
-// set. The code will be executed after the runtime `__ATEXIT__` callbacks.
+// set. The code will be executed after the runtime `onExits` callbacks.
 export const ATEXITS = [];
 function addAtExit(code) {
   if (EXIT_RUNTIME) {
@@ -773,7 +773,7 @@ function addAtExit(code) {
 }
 
 // Add code to run after main and ATEXITS (if applicable). The code will be
-// executed after the runtime `__ATPOSTRUN__` callbacks.
+// executed after the runtime `onPostRuns` callbacks.
 export const ATPOSTRUNS = [];
 function addAtPostRun(code) {
   ATPOSTRUNS.push(code);

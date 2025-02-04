@@ -2304,53 +2304,59 @@ addToLibrary({
   // callbacks will be invoked before the compile time code.
 
   // See ATPRERUNS in parseTools.mjs for more information.
-  $__ATPRERUN__: [],
-  $__ATPRERUN____deps: ['$callRuntimeCallbacks'],
-  $__ATPRERUN____postset: () => {
-    ATPRERUNS.unshift('callRuntimeCallbacks(__ATPRERUN__);');
+  $onPreRuns: [],
+  $onPreRuns__internal: true,
+  $onPreRuns__deps: ['$callRuntimeCallbacks'],
+  $onPreRuns__postset: () => {
+    ATPRERUNS.unshift('callRuntimeCallbacks(onPreRuns);');
   },
-  $addOnPreRun__deps: ['$__ATPRERUN__'],
-  $addOnPreRun: (cb) => __ATPRERUN__.unshift(cb),
+  $addOnPreRun__deps: ['$onPreRuns'],
+  $addOnPreRun: (cb) => onPreRuns.unshift(cb),
   // See ATINITS in parseTools.mjs for more information.
-  $__ATINIT__: [],
-  $__ATINIT____deps: ['$callRuntimeCallbacks'],
-  $__ATINIT____postset: () => {
-    ATINITS.unshift('callRuntimeCallbacks(__ATINIT__);');
+  $onInits: [],
+  $onInits__internal: true,
+  $onInits__deps: ['$callRuntimeCallbacks'],
+  $onInits__postset: () => {
+    ATINITS.unshift('callRuntimeCallbacks(onInits);');
   },
-  $addOnInit__deps: ['$__ATINIT__'],
-  $addOnInit: (cb) => __ATINIT__.unshift(cb),
+  $addOnInit__deps: ['$onInits'],
+  $addOnInit: (cb) => onInits.unshift(cb),
   // See ATPOSTCTORS in parseTools.mjs for more information.
-  $__ATPOSTCTOR__: [],
-  $__ATPOSTCTOR____deps: ['$callRuntimeCallbacks'],
-  $__ATPOSTCTOR____postset: () =>  {
-    ATPOSTCTORS.unshift('callRuntimeCallbacks(__ATPOSTCTOR__);');
+  $onPostCtors: [],
+  $onPostCtors__internal: true,
+  $onPostCtors__deps: ['$callRuntimeCallbacks'],
+  $onPostCtors__postset: () =>  {
+    ATPOSTCTORS.unshift('callRuntimeCallbacks(onPostCtors);');
   },
-  $addOnPostCtor__deps: ['$__ATPOSTCTOR__'],
-  $addOnPostCtor: (cb) => __ATPOSTCTOR__.unshift(cb),
+  $addOnPostCtor__deps: ['$onPostCtors'],
+  $addOnPostCtor: (cb) => onPostCtors.unshift(cb),
   // See ATMAINS in parseTools.mjs for more information.
-  $__ATMAIN__: [],
-  $__ATMAIN____deps: ['$callRuntimeCallbacks'],
-  $__ATMAIN____postset: () => {
-    ATMAINS.unshift('callRuntimeCallbacks(__ATMAIN__);');
+  $onMains: [],
+  $onMains__internal: true,
+  $onMains__deps: ['$callRuntimeCallbacks'],
+  $onMains__postset: () => {
+    ATMAINS.unshift('callRuntimeCallbacks(onMains);');
   },
-  $addOnPreMain__deps: ['$__ATMAIN__'],
-  $addOnPreMain: (cb) => __ATMAIN__.unshift(cb),
+  $addOnPreMain__deps: ['$onMains'],
+  $addOnPreMain: (cb) => onMains.unshift(cb),
   // See ATEXITS in parseTools.mjs for more information.
-  $__ATEXIT__: [],
-  $__ATEXIT____deps: ['$callRuntimeCallbacks'],
-  $__ATEXIT____postset: () => {
-    ATEXITS.unshift('callRuntimeCallbacks(__ATEXIT__);');
+  $onExits: [],
+  $onExits__internal: true,
+  $onExits__deps: ['$callRuntimeCallbacks'],
+  $onExits__postset: () => {
+    ATEXITS.unshift('callRuntimeCallbacks(onExits);');
   },
-  $addOnExit__deps: ['$__ATEXIT__'],
-  $addOnExit: (cb) => __ATEXIT__.unshift(cb),
+  $addOnExit__deps: ['$onExits'],
+  $addOnExit: (cb) => onExits.unshift(cb),
   // See ATPOSTRUNS in parseTools.mjs for more information.
-  $__ATPOSTRUN__: [],
-  $__ATPOSTRUN____deps: ['$callRuntimeCallbacks'],
-  $__ATPOSTRUN____postset: () => {
-    ATPOSTRUNS.unshift('callRuntimeCallbacks(__ATPOSTRUN__);');
+  $onPostRuns: [],
+  $onPostRuns__internal: true,
+  $onPostRuns__deps: ['$callRuntimeCallbacks'],
+  $onPostRuns__postset: () => {
+    ATPOSTRUNS.unshift('callRuntimeCallbacks(onPostRuns);');
   },
-  $addOnPostRun__deps: ['$__ATPOSTRUN__'],
-  $addOnPostRun: (cb) => __ATPOSTRUN__.unshift(cb),
+  $addOnPostRun__deps: ['$onPostRuns'],
+  $addOnPostRun: (cb) => onPostRuns.unshift(cb),
 
   // We used to define these globals unconditionally in support code.
   // Instead, we now define them here so folks can pull it in explicitly, on
