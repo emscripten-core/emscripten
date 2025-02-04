@@ -236,14 +236,6 @@ class browser(BrowserCore):
       print('Running the browser tests. Make sure the browser allows popups from localhost.')
       print()
 
-  def setUp(self):
-    super().setUp()
-    # avoid various compiler warnings that many browser tests currently generate
-    self.emcc_args += [
-      '-Wno-pointer-sign',
-      '-Wno-int-conversion',
-    ]
-
   def proxy_to_worker(self):
     self.emcc_args += ['--proxy-to-worker', '-sGL_TESTING']
 
@@ -1784,7 +1776,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
 
   @requires_graphics_hardware
   def test_fulles2_sdlproc(self):
-    self.btest_exit('full_es2_sdlproc.c', assert_returncode=1, args=['-sGL_TESTING', '-DHAVE_BUILTIN_SINCOS', '-sFULL_ES2', '-lGL', '-lSDL', '-lglut', '-sGL_ENABLE_GET_PROC_ADDRESS'])
+    self.btest_exit('full_es2_sdlproc.c', args=['-sGL_TESTING', '-DHAVE_BUILTIN_SINCOS', '-sFULL_ES2', '-lGL', '-lSDL', '-lglut', '-sGL_ENABLE_GET_PROC_ADDRESS', '-Wno-int-conversion'])
 
   @requires_graphics_hardware
   def test_glgears_deriv(self):
@@ -1850,7 +1842,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
                          test_file('third_party/glbook/Common/esShader.c'),
                          test_file('third_party/glbook/Common/esShapes.c'),
                          test_file('third_party/glbook/Common/esTransform.c'),
-                         '-lGL', '-lEGL', '-lX11',
+                         '-lGL', '-lEGL', '-lX11', '-Wno-int-conversion', '-Wno-pointer-sign',
                          '--preload-file', 'basemap.tga', '--preload-file', 'lightmap.tga', '--preload-file', 'smoke.tga'] + args)
 
   @requires_graphics_hardware
