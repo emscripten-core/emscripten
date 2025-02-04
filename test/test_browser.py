@@ -4208,9 +4208,10 @@ Module["preRun"] = () => {
   # Test that implementing Module.instantiateWasm() callback works.
   @also_with_asan
   def test_manual_wasm_instantiate(self):
-    self.compile_btest('test_manual_wasm_instantiate.c', ['-o', 'manual_wasm_instantiate.js'])
+    self.set_setting('EXIT_RUNTIME')
+    self.compile_btest('test_manual_wasm_instantiate.c', ['-o', 'manual_wasm_instantiate.js'], reporting=Reporting.JS_ONLY)
     shutil.copy(test_file('test_manual_wasm_instantiate.html'), '.')
-    self.run_browser('test_manual_wasm_instantiate.html', '/report_result?1')
+    self.run_browser('test_manual_wasm_instantiate.html', '/report_result?exit:0')
 
   def test_wasm_locate_file(self):
     # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.

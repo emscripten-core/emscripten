@@ -15542,3 +15542,18 @@ addToLibrary({
     create_file('test.c', '__attribute__((export_name("my.func"))) void myfunc() {}')
     err = self.expect_fail([EMCC, 'test.c'])
     self.assertContained('emcc: error: invalid export name: my.func', err)
+
+  def test_instantiate_wasm(self):
+    create_file('pre.js', '''
+      Module['instantiateWasm'] = (imports, successCallback) => {
+        var wasmFile = findWasmBinary();
+        getWasmBinary(wasmFile).then((bytes) => {
+          WebAssembly.instantiate(bytes, imports).then((res) => {
+            out('wasm instantiation succeeded');
+            Module['testWasmInstantiationSucceeded'] = 1;
+            successCallback(res.instance, res.module);
+          });
+        });
+        return {}; // Compiling asynchronously, no exports.
+      }''')
+    self.do_runf('test_manual_wasm_instantiate.c', emcc_args=['--pre-js=pre.js'])
