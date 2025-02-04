@@ -8,8 +8,8 @@
 // Tests processing two stereo audio inputs being mixed to a single stereo audio
 // output in process() (by adding the inputs together).
 
-// This needs to be big enough for the stereo output, 2x inputs and the worker stack
-#define AUDIO_STACK_SIZE 4096
+// This needs to be big enough for the stereo output, 2x inputs, 2x params and the worker stack
+#define AUDIO_STACK_SIZE 5120
 
 // Shared file playback and bootstrap
 #include "audioworklet_test_shared.inc"
@@ -20,26 +20,43 @@ bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, Audi
 
   // Single stereo output
   assert(numOutputs == 1 && outputs[0].numberOfChannels == 2);
+  int outSamplesPerChannel = outputs[0].samplesPerChannel;
   for (int n = 0; n < numInputs; n++) {
     // And all inputs are also stereo
     assert(inputs[n].numberOfChannels == 2 || inputs[n].numberOfChannels == 0);
     // This should always be the case
-    assert(inputs[n].samplesPerChannel == outputs[0].samplesPerChannel);
+    assert(inputs[n].samplesPerChannel == outSamplesPerChannel);
   }
-  // Interestingly, params won't have a length > 1 unless the value changes, but
-  // we do know two params are incoming
+  // Interestingly, params varies per browser. Chrome won't have a length > 1
+  // unless the value changes, and FF has all the samples even for a k-rate
+  // parameter. The only given is that two params are incoming.
   assert(numParams = 2);
+  assert(params[0].length == 1 || params[0].length == outSamplesPerChannel);
+  assert(params[1].length == 1 || params[1].length == outSamplesPerChannel);
   // We can now do a quick mix since we know the layouts
   if (numInputs > 0) {
-    int totalSamples = outputs[0].samplesPerChannel * outputs[0].numberOfChannels;
+    int totalSamples = outSamplesPerChannel * outputs[0].numberOfChannels;
+    // Simple copy of single input's audio data, checking that we have channels
+    // (since a muted input has zero channels)
     float* outputData = outputs[0].data;
-    memcpy(outputData, inputs[0].data, totalSamples * sizeof(float));
+    if (inputs[0].numberOfChannels != 0) {
+      memcpy(outputData, inputs[0].data, totalSamples * sizeof(float));
+    } else {
+      // And for muted we need to full the buffer with zeroes otherwise it play the previous frame
+      memset(outputData, 0, totalSamples * sizeof(float));
+    }
+    // Grab the mix level parameter (with either a length of 1 or the samples per channel)
+    const AudioParamFrame* mixLevel = &params[0];
     for (int n = 1; n < numInputs; n++) {
-      // It's possible to have an input with no channels
-      if (inputs[n].numberOfChannels == 2) {
+      if (inputs[n].numberOfChannels != 0) {
         float* inputData = inputs[n].data;
         for (int i = totalSamples - 1; i >= 0; i--) {
-          outputData[i] += inputData[i] * params[0].data[(params[0].length > 1) ? i : 0]; // world's worst mixer...
+          // Output and input buffers are stereo planar in this example so we
+          // need to get a mixLevel->data[] per channel, hence the quick % (and
+          // as noticed in the wild, implementations have either one or all
+          // entries, regardless of the param spec we passed in)
+          float mixLevelValue = mixLevel->data[(mixLevel->length > 1) ? (i % outSamplesPerChannel) : 0];
+          outputData[i] += inputData[i] * mixLevelValue;
         }
       }
     }
@@ -53,8 +70,8 @@ EM_JS(void, doFade, (EMSCRIPTEN_AUDIO_WORKLET_NODE_T workletID), {
   var worklet = emscriptenGetAudioObject(workletID);
   if (worklet) {
     // Emscripten's API creates these from a C array, indexing them instead of a
-    // name, so technically 0 is "0" but we might as well use numerical indices.
-    var param = worklet.parameters.get(0);
+    // name. Chrome and FF work with 0 but Safari requires the correct "0".
+    var param = worklet.parameters.get("0");
     if (param) {
       param.setTargetAtTime((param.value > 0.5) ? 0 : 1, 0 /* same as context.currentTime */, 0.5);
     }
@@ -64,6 +81,7 @@ EM_JS(void, doFade, (EMSCRIPTEN_AUDIO_WORKLET_NODE_T workletID), {
 // Registered keypress event to call the JS doFade()
 bool onPress(int __unused type, const EmscriptenKeyboardEvent* e, void* data) {
   if (!e->repeat && data) {
+    printf("Toggling fade\n");
     doFade(VOIDP_2_WA(data));
   }
   return false;
@@ -77,7 +95,7 @@ void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* __unuse
   }
   printf("Audio worklet processor created\n");
   printf("Click to toggle audio playback\n");
-  printf("Keypress to fade the baseline in or out\n");
+  printf("Keypress to fade the beat in or out\n");
 
   // Stereo output, two inputs
   int outputChannelCounts[1] = { 2 };
@@ -93,11 +111,11 @@ void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* __unuse
   // Note: we can connect the sources to the same input and it'll get mixed for us, but that's not the point
   beatID = createTrack(context, "audio_files/emscripten-beat.mp3", true);
   if (beatID) {
-    emscripten_audio_node_connect(beatID, worklet, 0, 0);
+    emscripten_audio_node_connect(beatID, worklet, 0, 1);
   }
   bassID = createTrack(context, "audio_files/emscripten-bass.mp3", true);
   if (bassID) {
-    emscripten_audio_node_connect(bassID, worklet, 0, 1);
+    emscripten_audio_node_connect(bassID, worklet, 0, 0);
   }
 
   // Register a click to start playback
