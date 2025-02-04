@@ -646,6 +646,20 @@ def also_with_asan(f):
   return metafunc
 
 
+def also_with_modularize(f):
+  assert callable(f)
+
+  @wraps(f)
+  def metafunc(self, modularize, *args, **kwargs):
+    if modularize:
+      self.emcc_args += ['--extern-post-js', test_file('modularize_post_js.js'), '-sMODULARIZE']
+    f(self, *args, **kwargs)
+
+  parameterize(metafunc, {'': (False,),
+                          'modularize': (True,)})
+  return metafunc
+
+
 # Tests exception handling and setjmp/longjmp handling. This tests three
 # combinations:
 # - Emscripten EH + Emscripten SjLj

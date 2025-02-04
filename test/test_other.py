@@ -36,7 +36,8 @@ from common import env_modify, no_mac, no_windows, only_windows, requires_native
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64, requires_node_canary
 from common import requires_wasm_eh, crossplatform, with_all_eh_sjlj, with_all_sjlj
-from common import also_with_standalone_wasm, also_with_wasm2js, also_with_noderawfs, also_with_wasmfs, with_all_fs
+from common import also_with_standalone_wasm, also_with_wasm2js, also_with_noderawfs
+from common import also_with_modularize, also_with_wasmfs, with_all_fs
 from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64, also_with_asan, flaky
 from common import EMTEST_BUILD_VERBOSE, PYTHON, WEBIDL_BINDER
 from common import requires_network, parameterize
@@ -121,20 +122,6 @@ def wasmfs_all_backends(f):
 
   parameterize(metafunc, {'': ('WASMFS_MEMORY_BACKEND',),
                           'node': ('WASMFS_NODE_BACKEND',)})
-  return metafunc
-
-
-def also_with_modularize(f):
-  assert callable(f)
-
-  @wraps(f)
-  def metafunc(self, modularize, *args, **kwargs):
-    if modularize:
-      self.emcc_args += ['--extern-post-js', test_file('modularize_post_js.js'), '-sMODULARIZE']
-    f(self, *args, **kwargs)
-
-  parameterize(metafunc, {'': (False,),
-                          'modularize': (True,)})
   return metafunc
 
 
