@@ -717,7 +717,8 @@ var LibraryDylink = {
             // No stub needed, symbol already exists in symbol table
             var res = wasmImports[prop];
 #if JSPI
-            if ('orig' in res) {
+            // Asyncify wraps exports, and we need to look through those wrappers.
+            if (res.orig) {
               res = res.orig;
             }
 #endif
@@ -1253,7 +1254,7 @@ var LibraryDylink = {
 
 #if ASYNCIFY
       // Asyncify wraps exports, and we need to look through those wrappers.
-      if ('orig' in result) {
+      if (res.orig) {
         result = result.orig;
       }
 #endif
