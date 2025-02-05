@@ -2821,7 +2821,8 @@ def process_libraries(state):
       settings.JS_LIBRARIES.append(os.path.abspath(path))
       continue
 
-    if not settings.RELOCATABLE:
+    static_lib = f'lib{lib}.a'
+    if not settings.RELOCATABLE and not find_library(static_lib, state.lib_dirs):
       # Normally we can rely on the native linker to expand `-l` args.
       # However, emscripten also supports `.so` files that are actually just
       # regular object file.  This means we need to support `.so` files even
