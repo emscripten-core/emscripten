@@ -122,7 +122,7 @@ addToLibrary({
           return failedResponse.status === 404 ? -{{{ cDefs.ENOENT }}} : -{{{ cDefs.EBADF }}};
         }
         var fileInfo = wasmFS$JSMemoryRanges[file];
-        var fileData = fileInfo.chunks;
+        var chunks = fileInfo.chunks;
         var chunkSize = fileInfo.chunkSize;
         var firstChunk = (offset / chunkSize) | 0;
         var lastChunk = ((offset+length) / chunkSize) | 0;
@@ -131,7 +131,7 @@ addToLibrary({
         }
         var readLength = 0;
         for (var i = firstChunk; i < lastChunk; i++) {
-          var chunk = fileData[i];
+          var chunk = chunks[i];
           var start = Math.max(i*chunkSize, offset);
           var chunkStart = i*chunkSize;
           var end = Math.min(chunkStart+chunkSize, offset+length);
