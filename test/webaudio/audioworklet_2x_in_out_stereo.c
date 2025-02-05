@@ -19,16 +19,27 @@ bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, Audi
 
   // Twin stereo in and out
   assert(numInputs == 2 && numOutputs == 2);
-  assert(inputs[0].numberOfChannels == 2 && inputs[1].numberOfChannels == 2);
-  assert(outputs[0].numberOfChannels == 2 && outputs[1].numberOfChannels == 2);
+  assert(inputs[0].numberOfChannels == 0 || inputs[0].numberOfChannels == 2);
+  assert(inputs[1].numberOfChannels == 0 || inputs[1].numberOfChannels == 2);
+  assert(outputs[0].numberOfChannels == 2);
+  assert(outputs[1].numberOfChannels == 2);
   // All with the same number of samples
   assert(inputs[0].samplesPerChannel == inputs[1].samplesPerChannel);
   assert(inputs[0].samplesPerChannel == outputs[0].samplesPerChannel);
   assert(outputs[0].samplesPerChannel == outputs[1].samplesPerChannel);
-  // Now with all known quantities we can memcpy the data
-  int totalSamples = outputs[0].samplesPerChannel * outputs[0].numberOfChannels;
-  memcpy(outputs[0].data, inputs[0].data, totalSamples * sizeof(float));
-  memcpy(outputs[1].data, inputs[1].data, totalSamples * sizeof(float));
+  // Now with all known quantities we can memcpy all the data (or zero it if the
+  // channels are disabled)
+  int totalBytes = outputs[0].samplesPerChannel * outputs[0].numberOfChannels * sizeof(float);
+  if (inputs[0].numberOfChannels > 0) {
+    memcpy(outputs[0].data, inputs[0].data, totalBytes);
+  } else {
+    memset(outputs[0].data, 0, totalBytes);
+  }
+  if (inputs[1].numberOfChannels > 0) {
+    memcpy(outputs[1].data, inputs[1].data, totalBytes);
+  } else {
+    memset(outputs[1].data, 0, totalBytes);
+  }
   return true;
 }
 
@@ -72,6 +83,6 @@ void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* __unuse
 }
 
 // This implementation has no custom start-up requirements
-EmscriptenStartWebAudioWorkletCallback getStartCallback() {
+EmscriptenStartWebAudioWorkletCallback getStartCallback(void) {
   return &initialised;
 }

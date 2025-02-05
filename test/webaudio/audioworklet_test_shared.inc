@@ -35,7 +35,8 @@ EM_JS(EMSCRIPTEN_WEBAUDIO_T, createTrack, (EMSCRIPTEN_WEBAUDIO_T ctxID, const ch
   if (context) {
     var audio = document.createElement('audio');
 #if __wasm64__
-    // Workaround for UTF8ToString() needing a JS number and from64() not working in EM_JS
+    // Number() wrapper is a workaround for UTF8ToString() needing a JS number
+    // and from64() not being available in EM_JS macros. Fix in UTF8ToString?
     url = Number(url);
 #endif
     audio.src = UTF8ToString(url);
@@ -44,7 +45,7 @@ EM_JS(EMSCRIPTEN_WEBAUDIO_T, createTrack, (EMSCRIPTEN_WEBAUDIO_T ctxID, const ch
     return emscriptenRegisterAudioObject(track);
   }
   return 0;
-});
+})
 
 // Toggles the play/pause of a MediaElementAudioSourceNode given its ID
 EM_JS(void, toggleTrack, (EMSCRIPTEN_WEBAUDIO_T srcID), {
@@ -60,7 +61,7 @@ EM_JS(void, toggleTrack, (EMSCRIPTEN_WEBAUDIO_T srcID), {
       }
     }
   }
-});
+})
 
 // Registered click event to (1) enable audio playback and (2) toggle playing the tracks
 bool onClick(int __unused type, const EmscriptenMouseEvent* __unused e, void* data) {
@@ -93,10 +94,10 @@ void initialised(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* __unused dat
 }
 
 // To be implemented by the test code, allowing initialised() to be changed.
-EmscriptenStartWebAudioWorkletCallback getStartCallback();
+EmscriptenStartWebAudioWorkletCallback getStartCallback(void);
 
 // Common entry point for the mixer tests
-int main() {
+int main(void) {
   char* const workletStack = memalign(16, AUDIO_STACK_SIZE);
   printf("Audio worklet stack at 0x%p\n", workletStack);
   assert(workletStack);
