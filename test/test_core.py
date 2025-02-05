@@ -3761,8 +3761,6 @@ ok
   @requires_jspi
   @needs_dylink
   def test_dlfcn_jspi(self):
-    if self.get_setting('MEMORY64'):
-      self.skipTest('https://github.com/emscripten-core/emscripten/issues/23598')
     side_flags = ['-sSIDE_MODULE']
     if self.get_setting('MEMORY64'):
       side_flags.append('-sMEMORY64')
