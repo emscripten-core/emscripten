@@ -3743,6 +3743,8 @@ ok
   @requires_jspi
   @needs_dylink
   def test_dlfcn_jspi(self):
+    if self.get_setting('MEMORY64'):
+      self.skipTest('fails with MEMORY64')
     self.set_setting('JSPI')
     self.run_process([
       EMCC,
