@@ -3744,13 +3744,16 @@ ok
   @needs_dylink
   def test_dlfcn_jspi(self):
     if self.get_setting('MEMORY64'):
-      self.skipTest('fails with MEMORY64')
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/23598')
+    side_flags = ['-sSIDE_MODULE']
+    if self.get_setting('MEMORY64'):
+      side_flags.append('-sMEMORY64')
     self.set_setting('JSPI')
     self.run_process([
       EMCC,
       '-o', 'side.so',
       test_file('core/test_dlfcn_jspi_side.c'),
-      '-sSIDE_MODULE'])
+      *side_flags])
     self.do_run_in_out_file_test('core/test_dlfcn_jspi_main.c', emcc_args=['side.so', '-sMAIN_MODULE=2'])
 
   @needs_dylink
