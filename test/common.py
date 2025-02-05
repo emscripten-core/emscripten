@@ -1003,6 +1003,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       version = shared.get_node_version(nodejs)
       if version >= (24, 0, 0):
         self.js_engines = [nodejs]
+        self.node_args += ['--experimental-wasm-memory64']
         return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
