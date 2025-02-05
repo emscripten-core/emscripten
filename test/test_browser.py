@@ -1491,7 +1491,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
     self.btest('test_idbstore_sync_worker.c', expected='0', args=['-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '-g2', '--proxy-to-worker', '-sASYNCIFY'])
 
   def test_force_exit(self):
-    self.btest_exit('force_exit.c', assert_returncode=10)
+    self.btest_exit('test_force_exit.c')
 
   def test_sdl_pumpevents(self):
     # key events should be detected using SDL_PumpEvents

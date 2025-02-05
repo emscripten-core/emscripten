@@ -2416,6 +2416,10 @@ The current type of b is: 9
       self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_atexit.c')
 
+  def test_force_exit(self):
+    self.set_setting('EXIT_RUNTIME')
+    self.do_run_in_out_file_test('test_force_exit.c')
+
   @no_lsan('https://github.com/emscripten-core/emscripten/issues/15988')
   def test_atexit_threads_stub(self):
     # also tests thread exit (__cxa_thread_atexit)
