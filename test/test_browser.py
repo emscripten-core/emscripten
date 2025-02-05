@@ -24,7 +24,7 @@ import common
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
 from common import read_file, EMRUN, no_wasm64, no_2gb, no_4gb
-from common import requires_wasm2js, parameterize, find_browser_test_file
+from common import requires_wasm2js, parameterize, find_browser_test_file, with_all_sjlj
 from common import also_with_minimal_runtime, also_with_wasm2js, also_with_asan
 from tools import shared
 from tools import ports
@@ -2956,6 +2956,7 @@ Module["preRun"] = () => {
 
   @also_with_wasmfs
   @requires_graphics_hardware
+  @with_all_sjlj
   def test_sdl2_image_formats(self):
     shutil.copy(test_file('screenshot.png'), '.')
     shutil.copy(test_file('screenshot.jpg'), '.')
