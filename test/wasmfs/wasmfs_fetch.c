@@ -130,6 +130,15 @@ void test_default() {
   assert(close(fd2) == 0);
 }
 
+void read_chunks_check(int fd, char *buf, unsigned size, unsigned read_by) {
+  for (size_t i = 0; i < size; i+=read_by) {
+    int read_now = read(fd, buf + i, read_by);
+    assert(read_now > 0);
+    assert(read_now <= read_by);
+    printf("read %d bytes\n", read_now);
+  }
+}
+
 void test_small_reads() {
   // Read the file in small amounts.
   printf("Running %s...\n", __FUNCTION__);
@@ -140,11 +149,7 @@ void test_small_reads() {
   backend_t backend = wasmfs_create_fetch_backend("small.dat", 0);
   int fd = wasmfs_create_file("/testfile3", 0777, backend);
   char buf[size + 1];
-  for (size_t i = 0; i < size; i++) {
-    int read_now = read(fd, buf + i, 1);
-    assert(read_now == 1);
-    printf("read one byte\n");
-  }
+  read_chunks_check(fd, buf, size, 1);
   buf[size] = 0;
   assert(strcmp(buf, "hello") == 0);
 
@@ -162,11 +167,7 @@ void test_small_chunks() {
   int fd;
   char buf[size + 1];
   fd = wasmfs_create_file("/testfile4", 0777, backend);
-  for (size_t i = 0; i < size; i+=1) {
-    int read_now = read(fd, buf + i, 1);
-    assert(read_now <= 1);
-    printf("read some bytes smaller than chunk size\n");
-  }
+  read_chunks_check(fd, buf, size, 1);
   buf[size] = 0;
   printf("buf %s\n",buf);
   assert(strcmp(buf, "hello") == 0);
@@ -174,11 +175,7 @@ void test_small_chunks() {
   assert(close(fd) == 0);
 
   fd = wasmfs_create_file("/testfile5", 0777, backend);
-  for (size_t i = 0; i < size; i+=2) {
-    int read_now = read(fd, buf + i, 2);
-    assert(read_now <= 2);
-    printf("read some bytes equal to chunk size\n");
-  }
+  read_chunks_check(fd, buf, size, 2);
   buf[size] = 0;
   printf("buf %s\n",buf);
   assert(strcmp(buf, "hello") == 0);
@@ -186,11 +183,7 @@ void test_small_chunks() {
   assert(close(fd) == 0);
 
   fd = wasmfs_create_file("/testfile6", 0777, backend);
-  for (size_t i = 0; i < size; i += 5) {
-    int read_now = read(fd, buf + i, 5);
-    assert(read_now <= 5);
-    printf("read some bytes much larger than chunk size\n");
-  }
+  read_chunks_check(fd, buf, size, 5);
   buf[size] = 0;
   printf("buf %s\n",buf);
   assert(strcmp(buf, "hello") == 0);
@@ -208,22 +201,14 @@ void test_small_chunks_divisor_of_size() {
   int fd;
   char buf[size + 1];
   fd = wasmfs_create_file("/testfile7", 0777, backend);
-  for (size_t i = 0; i < size; i+=3) {
-    int read_now = read(fd, buf + i, 3);
-    assert(read_now <= 3);
-    printf("read some bytes less than chunk size\n");
-  }
+  read_chunks_check(fd, buf, size, 3);
   buf[size] = 0;
   printf("buf %s\n",buf);
   assert(strcmp(buf, "hello, fetch") == 0);
   assert(close(fd) == 0);
 
   fd = wasmfs_create_file("/testfile8", 0777, backend);
-  for (size_t i = 0; i < size; i+=4) {
-    int read_now = read(fd, buf + i, 4);
-    assert(read_now <= 4);
-    printf("read some bytes equal to chunk size\n");
-  }
+  read_chunks_check(fd, buf, size, 4);
   buf[size] = 0;
   printf("buf %s\n",buf);
   assert(strcmp(buf, "hello, fetch") == 0);
@@ -231,11 +216,7 @@ void test_small_chunks_divisor_of_size() {
   assert(close(fd) == 0);
 
   fd = wasmfs_create_file("/testfile9", 0777, backend);
-  for (size_t i = 0; i < size; i+=5) {
-    int read_now = read(fd, buf + i, 5);
-    assert(read_now <= 5);
-    printf("read some bytes greater than chunk size\n");
-  }
+  read_chunks_check(fd, buf, size, 5);
   buf[size] = 0;
   printf("buf %s\n",buf);
   assert(strcmp(buf, "hello, fetch") == 0);
