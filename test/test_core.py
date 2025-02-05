@@ -3754,7 +3754,7 @@ ok
       '-o', 'side.so',
       test_file('core/test_dlfcn_jspi_side.c'),
       *side_flags])
-    self.do_run_in_out_file_test('core/test_dlfcn_jspi_main.c', emcc_args=['side.so', '-sMAIN_MODULE=2'])
+    self.do_run_in_out_file_test('core/test_dlfcn_jspi.c', emcc_args=['side.so', '-sMAIN_MODULE=2'])
 
   @needs_dylink
   def test_dlfcn_rtld_local(self):
