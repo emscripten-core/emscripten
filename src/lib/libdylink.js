@@ -612,6 +612,7 @@ var LibraryDylink = {
     '$currentModuleWeakSymbols',
     '$updateTableMap',
     '$wasmTable',
+    '$addOnPostCtor',
   ],
   $loadWebAssemblyModule: (binary, flags, libName, localScope, handle) => {
 #if DYLINK_DEBUG
@@ -866,7 +867,7 @@ var LibraryDylink = {
               init();
             } else {
               // we aren't ready to run compiled code yet
-              __ATPOSTCTOR__.push(init);
+              addOnPostCtor(init);
             }
           }
 #if PTHREADS
@@ -1165,7 +1166,7 @@ var LibraryDylink = {
 #if ASYNCIFY
   _dlopen_js__async: true,
 #endif
-  _dlopen_js: (handle) => {
+  _dlopen_js: {{{ asyncIf(ASYNCIFY == 2) }}} (handle) => {
 #if ASYNCIFY
     return Asyncify.handleSleep((wakeUp) => {
       dlopenInternal(handle, { loadAsync: true })

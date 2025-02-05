@@ -166,15 +166,6 @@ assert(!Module['wasmMemory'], 'Use of `wasmMemory` detected.  Use -sIMPORTED_MEM
 assert(!Module['INITIAL_MEMORY'], 'Detected runtime INITIAL_MEMORY setting.  Use -sIMPORTED_MEMORY to define wasmMemory dynamically');
 #endif // !IMPORTED_MEMORY && ASSERTIONS
 
-var __ATPRERUN__  = []; // functions called before the runtime is initialized
-var __ATINIT__    = []; // functions called during startup
-var __ATPOSTCTOR__    = []; // functions called after static constructors
-#if HAS_MAIN
-var __ATMAIN__    = []; // functions called when main() is to be run
-#endif
-var __ATEXIT__    = []; // functions called during shutdown
-var __ATPOSTRUN__ = []; // functions called after the main() is called
-
 #if RELOCATABLE
 var __RELOC_FUNCS__ = [];
 #endif
@@ -191,7 +182,7 @@ function preRun() {
     }
   }
 #endif
-  callRuntimeCallbacks(__ATPRERUN__);
+  <<< ATPRERUNS >>>
 }
 
 function initRuntime() {
@@ -224,14 +215,12 @@ function initRuntime() {
 #endif
 
   <<< ATINITS >>>
-  callRuntimeCallbacks(__ATINIT__);
 
 #if hasExportedSymbol('__wasm_call_ctors')
   wasmExports['__wasm_call_ctors']();
 #endif
 
   <<< ATPOSTCTORS >>>
-  callRuntimeCallbacks(__ATPOSTCTOR__);
 }
 
 #if HAS_MAIN
@@ -239,7 +228,7 @@ function preMain() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-  callRuntimeCallbacks(__ATMAIN__);
+  <<< ATMAINS >>>
 }
 #endif
 
@@ -264,7 +253,6 @@ function exitRuntime() {
 #if !STANDALONE_WASM
   ___funcs_on_exit(); // Native atexit() functions
 #endif
-  callRuntimeCallbacks(__ATEXIT__);
   <<< ATEXITS >>>
 #if PTHREADS
   PThread.terminateAllThreads();
@@ -290,31 +278,7 @@ function postRun() {
   }
 #endif
 
-  callRuntimeCallbacks(__ATPOSTRUN__);
-}
-
-function addOnPreRun(cb) {
-  __ATPRERUN__.unshift(cb);
-}
-
-function addOnInit(cb) {
-  __ATINIT__.unshift(cb);
-}
-
-#if HAS_MAIN
-function addOnPreMain(cb) {
-  __ATMAIN__.unshift(cb);
-}
-#endif
-
-function addOnExit(cb) {
-#if EXIT_RUNTIME
-  __ATEXIT__.unshift(cb);
-#endif
-}
-
-function addOnPostRun(cb) {
-  __ATPOSTRUN__.unshift(cb);
+  <<< ATPOSTRUNS >>>
 }
 
 // A counter of dependencies for calling run(). If we need to

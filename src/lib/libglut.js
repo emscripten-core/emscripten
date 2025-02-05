@@ -304,7 +304,7 @@ var LibraryGLUT = {
   glutGetModifiers__proxy: 'sync',
   glutGetModifiers: () => GLUT.modifiers,
 
-  glutInit__deps: ['$Browser'],
+  glutInit__deps: ['$Browser', '$addOnExit'],
   glutInit__proxy: 'sync',
   glutInit: (argcp, argv) => {
     // Ignore arguments
@@ -342,7 +342,7 @@ var LibraryGLUT = {
       }
     });
 
-    __ATEXIT__.push(() => {
+    addOnExit(() => {
       if (isTouchDevice) {
         window.removeEventListener("touchmove", GLUT.touchHandler, true);
         window.removeEventListener("touchstart", GLUT.touchHandler, true);

@@ -161,17 +161,36 @@ def with_asyncify_and_jspi(f):
   assert callable(f)
 
   @wraps(f)
-  def metafunc(self, jspi):
+  def metafunc(self, jspi, *args, **kwargs):
     if jspi:
       self.set_setting('ASYNCIFY', 2)
       self.require_jspi()
-      f(self)
     else:
       self.set_setting('ASYNCIFY')
-      f(self)
+    f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'jspi': (True,)})
+  return metafunc
+
+
+def also_with_asyncify_and_jspi(f):
+  assert callable(f)
+
+  @wraps(f)
+  def metafunc(self, asyncify, *args, **kwargs):
+    if asyncify == 2:
+      self.set_setting('ASYNCIFY', 2)
+      self.require_jspi()
+    elif asyncify == 1:
+      self.set_setting('ASYNCIFY')
+    else:
+      assert asyncify == 0
+    f(self, *args, **kwargs)
+
+  parameterize(metafunc, {'': (0,),
+                          'asyncify': (1,),
+                          'jspi': (2,)})
   return metafunc
 
 
@@ -3708,9 +3727,8 @@ ok
     self.do_run(src, 'float: 42.\n')
 
   @needs_dylink
+  @with_asyncify_and_jspi
   def test_dlfcn_asyncify(self):
-    self.set_setting('ASYNCIFY')
-
     create_file('liblib.c', r'''
       #include <stdio.h>
       #include <emscripten/emscripten.h>
@@ -6380,12 +6398,8 @@ void* operator new(size_t size) {
     self.do_core_test('test_mmap_anon.c')
 
   @no_lsan('Test code contains memory leaks')
-  @parameterized({
-      '': (0,),
-      'asyncify': (1,),
-      'jspi': (2,),
-  })
-  def test_cubescript(self, asyncify):
+  @also_with_asyncify_and_jspi
+  def test_cubescript(self):
     # uses register keyword
     self.emcc_args += ['-std=c++03', '-Wno-dynamic-class-memaccess']
     self.maybe_closure()
@@ -6394,14 +6408,7 @@ void* operator new(size_t size) {
     if '-fsanitize=address' in self.emcc_args:
       self.emcc_args += ['--pre-js', test_file('asan-no-leak.js')]
 
-    if asyncify:
-      self.set_setting('ASYNCIFY', asyncify)
-    if asyncify == 2:
-      self.require_jspi()
-      self.emcc_args += ['-Wno-experimental']
-
-    src = test_file('third_party/cubescript/command.cpp')
-    self.do_runf(src, '*\nTemp is 33\n9\n5\nhello, everyone\n*')
+    self.do_runf('third_party/cubescript/command.cpp', '*\nTemp is 33\n9\n5\nhello, everyone\n*')
 
   @needs_dylink
   def test_relocatable_void_function(self):
@@ -8061,16 +8068,13 @@ Module.onRuntimeInitialized = () => {
     self.do_runf('main.c', 'HelloWorld')
 
   @parameterized({
-    'asyncify': (False, 1),
-    'exit_runtime_asyncify': (True, 1),
-    'jspi': (False, 2),
-    'exit_runtime_jspi': (True, 2),
+    '': (False,),
+    'exit_runtime': (True,),
   })
-  def test_async_ccall_promise(self, exit_runtime, asyncify):
-    if asyncify == 2:
-      self.require_jspi()
+  @with_asyncify_and_jspi
+  def test_async_ccall_promise(self, exit_runtime):
+    if self.get_setting('ASYNCIFY') ==  2:
       self.set_setting('JSPI_EXPORTS', ['stringf', 'floatf'])
-    self.set_setting('ASYNCIFY', asyncify)
     self.set_setting('ASSERTIONS')
     self.set_setting('INVOKE_RUN', 0)
     self.set_setting('EXIT_RUNTIME', exit_runtime)

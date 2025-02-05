@@ -427,11 +427,6 @@ function exportRuntime() {
   // All possible runtime elements that can be exported
   let runtimeElements = [
     'run',
-    'addOnPreRun',
-    'addOnInit',
-    'addOnPreMain',
-    'addOnExit',
-    'addOnPostRun',
     'addRunDependency',
     'removeRunDependency',
     'out',
