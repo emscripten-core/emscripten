@@ -48,9 +48,9 @@ addToLibrary({
         if (fileInfo.ok &&
            fileInfo.headers.has("Content-Length") &&
            fileInfo.headers.get("Accept-Ranges") == "bytes" &&
-           (parseInt(fileInfo.headers.get("Content-Length")) > chunkSize*2)) {
+           (parseInt(fileInfo.headers.get("Content-Length"), 10) > chunkSize*2)) {
           wasmFS$JSMemoryRanges[file] = {
-            size: parseInt(fileInfo.headers.get("Content-Length")),
+            size: parseInt(fileInfo.headers.get("Content-Length"), 10),
             chunks: [],
             chunkSize: chunkSize
           };
