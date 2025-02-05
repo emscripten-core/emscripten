@@ -248,22 +248,23 @@ export async function runJSify(outputFile, symbolsOnly) {
       }
 
       if ((sig[0] == 'j' && i53abi) || (sig[0] == 'p' && MEMORY64)) {
+        const await_ = (async_ ? 'await ' : '');
         // For functions that where we need to mutate the return value, we
         // also need to wrap the body in an inner function.
         if (oneliner) {
           if (argConversions) {
             return `${async_}(${args}) => {
 ${argConversions}
-  return ${makeReturn64(body)};
+  return ${makeReturn64(await_ + body)};
 }`;
           }
-          return `${async_}(${args}) => ${makeReturn64(body)};`;
+          return `${async_}(${args}) => ${makeReturn64(await_ + body)};`;
         }
         return `\
 ${async_}function(${args}) {
 ${argConversions}
-  var ret = (() => { ${body} })();
-  return ${makeReturn64('ret')};
+  var ret = (${async_}() => { ${body} })();
+  return ${makeReturn64(await_ + 'ret')};
 }`;
       }
 
