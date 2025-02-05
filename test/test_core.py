@@ -3765,22 +3765,17 @@ ok
   @requires_jspi
   @needs_dylink
   def test_dlfcn_jspi(self):
-      side_flags = []
-      if self.get_setting("MEMORY64"):
-          side_flags.append("-sMEMORY64")
-      self.run_process(
-          [
-              EMCC,
-              "-o",
-              "side.so",
-              test_file("core/test_dlfcn_jspi_side.c"),
-              "-sSIDE_MODULE",
-          ]
-          + self.get_emcc_args()
-      )
-      self.do_run_in_out_file_test(
-          "core/test_dlfcn_jspi.c", emcc_args=["side.so", "-sMAIN_MODULE=2"]
-      )
+    self.run_process(
+      [
+        EMCC,
+        "-o",
+        "side.so",
+        test_file("core/test_dlfcn_jspi_side.c"),
+        "-sSIDE_MODULE",
+      ]
+      + self.get_emcc_args()
+    )
+    self.do_run_in_out_file_test("core/test_dlfcn_jspi.c", emcc_args=["side.so", "-sMAIN_MODULE=2"])
 
   @needs_dylink
   def test_dlfcn_rtld_local(self):
