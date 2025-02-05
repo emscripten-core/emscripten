@@ -38,8 +38,11 @@ addToLibrary({
       var chunkSize = __wasmfs_fetch_get_chunk_size(file);
       offset ??= 0;
       len ??= chunkSize;
+      // In which chunk does the seeked range start?  E.g., 5-14 with chunksize 8 will start in chunk 0.
       var firstChunk = (offset / chunkSize) | 0;
-      var lastChunk = ((offset+len) / chunkSize) | 0;
+      // In which chunk does the seeked range end?  E.g., 5-14 with chunksize 8 will end in chunk 1, as will 5-16 (since byte 16 isn't requested).
+      // This will always give us a chunk >= firstChunk since len > 0.
+      var lastChunk = ((offset+len-1) / chunkSize) | 0;
       if (!(file in wasmFS$JSMemoryRanges)) {
         var fileInfo = await fetch(url,{method:"HEAD", headers:{"Range": "bytes=0-"}});
         if (fileInfo.ok &&
@@ -69,10 +72,8 @@ addToLibrary({
       }
       var allPresent = true;
       var i;
-      if (lastChunk * chunkSize < offset + len) {
-        lastChunk += 1;
-      }
-      for (i = firstChunk; i < lastChunk; i++) {
+      // Do we have all the chunks already?  If so, we don't need to do any fetches.
+      for (i = firstChunk; i <= lastChunk; i++) {
         if (!wasmFS$JSMemoryRanges[file].chunks[i]) {
           allPresent = false;
           break;
@@ -83,15 +84,18 @@ addToLibrary({
         // the actual read.
         return Promise.resolve();
       }
-      // This is the first time we want the chunk's data.
+      // This is the first time we want the chunks' data.  We'll make
+      // one request for all the chunks we need, rather than one
+      // request per chunk.
       var start = firstChunk * chunkSize;
-      var end = lastChunk * chunkSize;
+      // We must fetch *up to* the last byte of the last chunk.
+      var end = (lastChunk+1) * chunkSize;
       var response = await fetch(url, {headers:{"Range": `bytes=${start}-${end-1}`}});
       if (!response.ok) {
         throw response;
       }
       var bytes = new Uint8Array(await response['arrayBuffer']());
-      for (i = firstChunk; i < lastChunk; i++) {
+      for (i = firstChunk; i <= lastChunk; i++) {
         wasmFS$JSMemoryRanges[file].chunks[i] = bytes.slice(i*chunkSize-start,(i+1)*chunkSize-start);
       }
       return Promise.resolve();
@@ -116,6 +120,9 @@ addToLibrary({
 
       // read/getSize fetch the data, then forward to the parent class.
       read: async (file, buffer, length, offset) => {
+        if (length == 0) {
+          return 0;
+        }
         try {
           await getFileRange(file, offset || 0, length);
         } catch (failedResponse) {
@@ -125,12 +132,10 @@ addToLibrary({
         var chunks = fileInfo.chunks;
         var chunkSize = fileInfo.chunkSize;
         var firstChunk = (offset / chunkSize) | 0;
-        var lastChunk = ((offset+length) / chunkSize) | 0;
-        if (offset + length > lastChunk * chunkSize) {
-          lastChunk += 1;
-        }
+        // See comments in getFileRange.
+        var lastChunk = ((offset+length-1) / chunkSize) | 0;
         var readLength = 0;
-        for (var i = firstChunk; i < lastChunk; i++) {
+        for (var i = firstChunk; i <= lastChunk; i++) {
           var chunk = chunks[i];
           var start = Math.max(i*chunkSize, offset);
           var chunkStart = i*chunkSize;
