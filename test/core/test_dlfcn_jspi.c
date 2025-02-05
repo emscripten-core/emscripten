@@ -22,8 +22,8 @@ typedef int (*F)();
 
 int main() {
   void* handle = dlopen("side.so", RTLD_NOW|RTLD_GLOBAL);
-  F f = dlsym(handle, "f");
-  int res = f();
+  F side_module_trampoline = dlsym(handle, "side_module_trampoline");
+  int res = side_module_trampoline();
   printf("done %d\n", res);
   return 0;
 }
