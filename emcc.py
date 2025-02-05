@@ -108,31 +108,24 @@ class Mode(Enum):
   COMPILE_AND_LINK = auto()
 
 
+class LinkFlag:
+  """Used to represent a linker flag.
+
+  The flag value is stored along with a bool that distingingishes input
+  files from non-files.
+
+  A list of these is return by separate_linker_flags.
+  """
+  def __init__(self, value, is_file):
+    self.value = value
+    self.is_file = is_file
+
+
 class EmccState:
   def __init__(self, args):
     self.mode = Mode.COMPILE_AND_LINK
     # Using tuple here to prevent accidental mutation
     self.orig_args = tuple(args)
-    # List of link options paired with their position on the command line [(i, option), ...].
-    self.link_flags = []
-    self.lib_dirs = []
-
-  def has_link_flag(self, f):
-    return f in [x for _, x in self.link_flags]
-
-  def add_link_flag(self, i, flag):
-    if flag.startswith('-L'):
-      self.lib_dirs.append(flag[2:])
-    # Link flags should be adding in strictly ascending order
-    assert not self.link_flags or i > self.link_flags[-1][0], self.link_flags
-    self.link_flags.append((i, flag))
-
-  def append_link_flag(self, flag):
-    if self.link_flags:
-      index = self.link_flags[-1][0] + 1
-    else:
-      index = 1
-    self.add_link_flag(index, flag)
 
 
 class EmccOptions:
@@ -190,6 +183,7 @@ class EmccOptions:
     self.nostartfiles = False
     self.sanitize_minimal_runtime = False
     self.sanitize = set()
+    self.lib_dirs = []
 
 
 def create_reproduce_file(name, args):
@@ -662,20 +656,21 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if state.mode == Mode.POST_LINK_ONLY:
     if len(options.input_files) != 1:
       exit_with_error('--post-link requires a single input file')
-    separate_linker_flags(state, newargs)
+    linker_args = separate_linker_flags(newargs)[1]
+    linker_args = [f.value for f in linker_args]
     # Delay import of link.py to avoid processing this file when only compiling
     from tools import link
-    link.run_post_link(options.input_files[0], options, state)
+    link.run_post_link(options.input_files[0], options, linker_args)
     return 0
 
   # Compile source code to object files
   # When only compiling this function never returns.
-  linker_inputs = phase_compile_inputs(options, state, newargs)
+  linker_args = phase_compile_inputs(options, state, newargs)
 
   if state.mode == Mode.COMPILE_AND_LINK:
     # Delay import of link.py to avoid processing this file when only compiling
     from tools import link
-    return link.run(linker_inputs, options, state)
+    return link.run(options, linker_args)
   else:
     logger.debug('stopping after compile phase')
     return 0
@@ -747,26 +742,21 @@ def phase_parse_arguments(state):
   return options, newargs
 
 
-def separate_linker_flags(state, newargs):
-  """Process argument list separating out input files, compiler flags
-  and linker flags.
+def separate_linker_flags(newargs):
+  """Process argument list separating out compiler args and linker args.
 
-  - Linker flags are stored in state.link_flags
-  - Input files and compiler-only flags are returned as two separate lists.
-
-  Both linker flags and input files are stored as pairs of (i, entry) where
-  `i` is the orginal index in the command line arguments.  This allow the two
-  lists to be recombined in the correct order by the linker code (link.py).
-
-  Note that this index can have a fractional part for input arguments that
-  expand into multiple processed arguments, as in -Wl,-f1,-f2.
+  - Linker flags include input files and are returned a list of LinkFlag objects.
+  - Compiler flags are those to be passed to `clang -c`.
   """
 
   if settings.RUNTIME_LINKED_LIBS:
     newargs += settings.RUNTIME_LINKED_LIBS
 
-  input_files = []
   compiler_args = []
+  linker_args = []
+
+  def add_link_arg(flag, is_file=False):
+    linker_args.append(LinkFlag(flag, is_file))
 
   skip = False
   for i in range(len(newargs)):
@@ -789,30 +779,24 @@ def separate_linker_flags(state, newargs):
       # https://bugs.python.org/issue1311
       if not os.path.exists(arg) and arg not in (os.devnull, '-'):
         exit_with_error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)', arg, arg)
-      input_files.append((i, arg))
+      add_link_arg(arg, True)
     elif arg == '-z':
-      state.add_link_flag(i, newargs[i])
-      state.add_link_flag(i + 1, get_next_arg())
+      add_link_arg(arg)
+      add_link_arg(get_next_arg())
     elif arg.startswith('-Wl,'):
-      # Multiple comma separated link flags can be specified. Create fake
-      # fractional indices for these: -Wl,a,b,c,d at index 4 becomes:
-      # (4, a), (4.25, b), (4.5, c), (4.75, d)
-      link_flags_to_add = arg.split(',')[1:]
-      for flag_index, flag in enumerate(link_flags_to_add):
-        state.add_link_flag(i + float(flag_index) / len(link_flags_to_add), flag)
+      for flag in arg.split(',')[1:]:
+        add_link_arg(flag)
     elif arg == '-Xlinker':
-      state.add_link_flag(i + 1, get_next_arg())
-    elif arg == '-s':
-      state.add_link_flag(i, newargs[i])
+      add_link_arg(get_next_arg())
     elif arg == '-s' or arg.startswith(('-l', '-L', '--js-library=', '-z')):
-      state.add_link_flag(i, arg)
+      add_link_arg(arg)
     elif not arg.startswith('-o') and arg not in ('-nostdlib', '-nostartfiles', '-nolibc', '-nodefaultlibs', '-s'):
       # All other flags are for the compiler
       compiler_args.append(arg)
       if skip:
         compiler_args.append(get_next_arg())
 
-  return compiler_args, input_files
+  return compiler_args, linker_args
 
 
 @ToolchainProfiler.profile_block('setup')
@@ -955,8 +939,7 @@ def phase_compile_inputs(options, state, newargs):
   # filter out the link flags
   assert state.mode == Mode.COMPILE_AND_LINK
   assert not options.dash_c
-  compile_args, input_files = separate_linker_flags(state, newargs)
-  linker_inputs = []
+  compile_args, linker_args = separate_linker_flags(newargs)
   seen_names = {}
 
   def uniquename(name):
@@ -967,10 +950,9 @@ def phase_compile_inputs(options, state, newargs):
   def get_object_filename(input_file):
     return in_temp(shared.replace_suffix(uniquename(input_file), '.o'))
 
-  def compile_source_file(i, input_file):
+  def compile_source_file(input_file):
     logger.debug(f'compiling source file: {input_file}')
     output_file = get_object_filename(input_file)
-    linker_inputs.append((i, output_file))
     if get_file_suffix(input_file) in ASSEMBLY_EXTENSIONS:
       cmd = get_clang_command_asm()
     elif get_file_suffix(input_file) in PREPROCESSED_EXTENSIONS:
@@ -993,28 +975,29 @@ def phase_compile_inputs(options, state, newargs):
       assert os.path.exists(output_file)
       if options.save_temps:
         shutil.copyfile(output_file, shared.unsuffixed_basename(input_file) + '.o')
+    return output_file
 
-  # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
-  for i, input_file in input_files:
+  # Compile input files individually to temporary locations.
+  for arg in linker_args:
+    if not arg.is_file:
+      continue
+    input_file = arg.value
     file_suffix = get_file_suffix(input_file)
     if file_suffix in SOURCE_EXTENSIONS | ASSEMBLY_EXTENSIONS or (options.dash_c and file_suffix == '.bc'):
-      compile_source_file(i, input_file)
+      arg.value = compile_source_file(input_file)
     elif file_suffix in DYLIB_EXTENSIONS:
       logger.debug(f'using shared library: {input_file}')
-      linker_inputs.append((i, input_file))
     elif building.is_ar(input_file):
       logger.debug(f'using static library: {input_file}')
-      linker_inputs.append((i, input_file))
     elif options.input_language:
-      compile_source_file(i, input_file)
+      arg.value = compile_source_file(input_file)
     elif input_file == '-':
       exit_with_error('-E or -x required when input is from standard input')
     else:
       # Default to assuming the inputs are object files and pass them to the linker
-      logger.debug(f'using object file: {input_file}')
-      linker_inputs.append((i, input_file))
+      pass
 
-  return linker_inputs
+  return [f.value for f in linker_args]
 
 
 def version_string():
@@ -1319,6 +1302,8 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
             'encountered. If this is to a local system header/library, it may '
             'cause problems (local system files make sense for compiling natively '
             'on your system, but not necessarily to JavaScript).')
+      if arg.startswith('-L'):
+        options.lib_dirs.append(path_name)
     elif check_flag('--emrun'):
       options.emrun = True
     elif check_flag('--cpuprofiler'):
