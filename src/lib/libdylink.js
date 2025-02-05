@@ -1161,7 +1161,7 @@ var LibraryDylink = {
 #endif
   _dlopen_js: {{{ asyncIf(ASYNCIFY == 2) }}} (handle) => {
 #if ASYNCIFY
-    return {{{ awaitIf(ASYNCIFY == 2) }}} Asyncify.handleSleep((wakeUp) => {
+    return Asyncify.handleSleep((wakeUp) => {
       dlopenInternal(handle, { loadAsync: true })
         .then(wakeUp)
         .catch(() => wakeUp(0));
