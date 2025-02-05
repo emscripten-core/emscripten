@@ -1888,7 +1888,7 @@ int main(int argc, char **argv) {
 
   # Tests MAIN_THREAD_EM_ASM_INT() function call with different signatures.
   def test_main_thread_em_asm_signatures(self):
-    self.do_core_test('test_em_asm_signatures.cpp', assert_returncode=NON_ZERO)
+    self.do_core_test('test_em_asm_signatures.cpp')
 
   @crossplatform
   def test_em_asm_unicode(self):
