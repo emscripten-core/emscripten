@@ -47,9 +47,9 @@ addToLibrary({
            fileInfo.headers.get("Accept-Ranges") == "bytes" &&
            (parseInt(fileInfo.headers.get("Content-Length")) > chunkSize*2)) {
           wasmFS$JSMemoryRanges[file] = {
-            size:parseInt(fileInfo.headers.get("Content-Length")),
-            chunks:[],
-            chunkSize:chunkSize
+            size: parseInt(fileInfo.headers.get("Content-Length")),
+            chunks: [],
+            chunkSize: chunkSize
           };
         } else {
           // may as well/forced to download the whole file
@@ -60,16 +60,16 @@ addToLibrary({
           var wholeFileData = new Uint8Array(await wholeFileReq.arrayBuffer());
           var text = new TextDecoder().decode(wholeFileData);
           wasmFS$JSMemoryRanges[file] = {
-            size:wholeFileData.byteLength,
-            chunks:[wholeFileData],
-            chunkSize:wholeFileData.byteLength
+            size: wholeFileData.byteLength,
+            chunks: [wholeFileData],
+            chunkSize: wholeFileData.byteLength
           };
           return Promise.resolve();
         }
       }
       var allPresent = true;
       var i;
-      if (lastChunk * chunkSize < offset+len) {
+      if (lastChunk * chunkSize < offset + len) {
         lastChunk += 1;
       }
       for (i = firstChunk; i < lastChunk; i++) {
@@ -84,8 +84,8 @@ addToLibrary({
         return Promise.resolve();
       }
       // This is the first time we want the chunk's data.
-      var start = firstChunk*chunkSize;
-      var end = lastChunk*chunkSize;
+      var start = firstChunk * chunkSize;
+      var end = lastChunk * chunkSize;
       var response = await fetch(url, {headers:{"Range": `bytes=${start}-${end-1}`}});
       if (!response.ok) {
         throw response;

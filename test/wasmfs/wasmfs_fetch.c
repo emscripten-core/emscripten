@@ -158,7 +158,7 @@ void test_small_chunks() {
   char expected[] = "hello";
   size_t size = 5;
 
-  backend_t backend = wasmfs_create_fetch_backend("small.dat",2);
+  backend_t backend = wasmfs_create_fetch_backend("small.dat", 2);
   int fd;
   char buf[size + 1];
   fd = wasmfs_create_file("/testfile4", 0777, backend);
@@ -186,7 +186,7 @@ void test_small_chunks() {
   assert(close(fd) == 0);
 
   fd = wasmfs_create_file("/testfile6", 0777, backend);
-  for (size_t i = 0; i < size; i+=5) {
+  for (size_t i = 0; i < size; i += 5) {
     int read_now = read(fd, buf + i, 5);
     assert(read_now <= 5);
     printf("read some bytes much larger than chunk size\n");
