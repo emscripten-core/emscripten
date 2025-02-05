@@ -3729,8 +3729,6 @@ ok
   @needs_dylink
   @with_asyncify_and_jspi
   def test_dlfcn_asyncify(self):
-    if self.is_wasm64() and self.get_setting('ASYNCIFY') == 2:
-      self.skipTest('https://github.com/emscripten-core/emscripten/issues/23585')
     create_file('liblib.c', r'''
       #include <stdio.h>
       #include <emscripten/emscripten.h>
