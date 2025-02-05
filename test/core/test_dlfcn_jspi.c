@@ -9,7 +9,7 @@
 
 EM_ASYNC_JS(int, test, (), {
   console.log("sleeping");
-  await new Promise(res => setTimeout(res, 500));
+  await new Promise(res => setTimeout(res, 0));
   console.log("slept");
   return 77;
 });
