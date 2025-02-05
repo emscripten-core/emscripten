@@ -1075,6 +1075,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         self.node_args.append('--experimental-wasm-exnref')
         return
 
+    if self.is_browser_test():
+      return
+
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
       self.emcc_args.append('-sENVIRONMENT=shell')
       self.js_engines = [config.V8_ENGINE]
