@@ -2051,28 +2051,21 @@ def harness_server_func(in_queue, out_queue, port):
     def send_head(self):
       path = self.translate_path(self.path)
       try:
+        fsize = os.path.getsize(path)
         f = open(path, 'rb')
-        fs = os.fstat(f.fileno())
       except IOError:
         self.send_error(404, f'File not found {path}')
         return None
-      if self.path.endswith('.js'):
-        self.send_response(200)
-        self.send_header('Content-type', 'application/javascript')
-        self.send_header('Connection', 'close')
-        self.send_header('Content-length', fs[6])
-        self.end_headers()
-        return f
-      elif self.headers.get('Range'):
+      if self.headers.get('Range'):
         self.send_response(206)
         ctype = self.guess_type(path)
         self.send_header('Content-Type', ctype)
         pieces = self.headers.get('Range').split('=')[1].split('-')
         start = int(pieces[0]) if pieces[0] != '' else 0
-        end = int(pieces[1]) if pieces[1] != '' else fs[6] - 1
-        end = min(fs[6] - 1, end)
+        end = int(pieces[1]) if pieces[1] != '' else fsize - 1
+        end = min(fsize - 1, end)
         length = end - start + 1
-        self.send_header('Content-Range', f'bytes {start}-{end}/{fs[6]}')
+        self.send_header('Content-Range', f'bytes {start}-{end}/{fsize}')
         self.send_header('Content-Length', str(length))
         self.end_headers()
         return f

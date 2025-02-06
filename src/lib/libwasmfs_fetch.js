@@ -44,13 +44,13 @@ addToLibrary({
       // This will always give us a chunk >= firstChunk since len > 0.
       var lastChunk = ((offset+len-1) / chunkSize) | 0;
       if (!(file in wasmFS$JSMemoryRanges)) {
-        var fileInfo = await fetch(url,{method:"HEAD", headers:{"Range": "bytes=0-"}});
+        var fileInfo = await fetch(url, {method:'HEAD', headers:{'Range': 'bytes=0-'}});
         if (fileInfo.ok &&
-           fileInfo.headers.has("Content-Length") &&
-           fileInfo.headers.get("Accept-Ranges") == "bytes" &&
-           (parseInt(fileInfo.headers.get("Content-Length"), 10) > chunkSize*2)) {
+            fileInfo.headers.has('Content-Length') &&
+            fileInfo.headers.get('Accept-Ranges') == 'bytes' &&
+            (parseInt(fileInfo.headers.get('Content-Length'), 10) > chunkSize*2)) {
           wasmFS$JSMemoryRanges[file] = {
-            size: parseInt(fileInfo.headers.get("Content-Length"), 10),
+            size: parseInt(fileInfo.headers.get('Content-Length'), 10),
             chunks: [],
             chunkSize: chunkSize
           };
@@ -90,11 +90,11 @@ addToLibrary({
       var start = firstChunk * chunkSize;
       // We must fetch *up to* the last byte of the last chunk.
       var end = (lastChunk+1) * chunkSize;
-      var response = await fetch(url, {headers:{"Range": `bytes=${start}-${end-1}`}});
+      var response = await fetch(url, {headers:{'Range': `bytes=${start}-${end-1}`}});
       if (!response.ok) {
         throw response;
       }
-      var bytes = new Uint8Array(await response['arrayBuffer']());
+      var bytes = await response.bytes();
       for (i = firstChunk; i <= lastChunk; i++) {
         wasmFS$JSMemoryRanges[file].chunks[i] = bytes.slice(i*chunkSize-start,(i+1)*chunkSize-start);
       }
@@ -115,7 +115,7 @@ addToLibrary({
       },
 
       write: async (file, buffer, length, offset) => {
-        abort("TODO: file writing in fetch backend? read-only for now");
+        console.error('TODO: file writing in fetch backend? read-only for now');
       },
 
       // read/getSize fetch the data, then forward to the parent class.
