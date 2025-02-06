@@ -5509,7 +5509,7 @@ Module["preRun"] = () => {
 
   @parameterized({
     '': ([],),
-    'pthreads': (['-pthread', '-sPTHREAD_POOL_SIZE=1'],),
+    'pthreads': (['-pthread', '-sPTHREAD_POOL_SIZE=1', '-sENVIRONMENT=web,worker'],),
   })
   def test_vite(self, args):
     shutil.copytree(test_file('vite'), 'vite')
