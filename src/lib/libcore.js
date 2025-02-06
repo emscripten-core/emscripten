@@ -2296,6 +2296,68 @@ addToLibrary({
 
   $noExitRuntime: "{{{ makeModuleReceiveExpr('noExitRuntime', !EXIT_RUNTIME) }}}",
 
+  // The following addOn<X> functions are for adding runtime callbacks at
+  // various executions points. Each addOn<X> function has a corresponding
+  // compiled time version named addAt<X> that will instead inline during
+  // compilation (see parseTools.mjs).
+  // Note: if there are both runtime and compile time code, the runtime
+  // callbacks will be invoked before the compile time code.
+
+  // See ATPRERUNS in parseTools.mjs for more information.
+  $onPreRuns: [],
+  $onPreRuns__internal: true,
+  $onPreRuns__deps: ['$callRuntimeCallbacks'],
+  $onPreRuns__postset: () => {
+    ATPRERUNS.unshift('callRuntimeCallbacks(onPreRuns);');
+  },
+  $addOnPreRun__deps: ['$onPreRuns'],
+  $addOnPreRun: (cb) => onPreRuns.unshift(cb),
+  // See ATINITS in parseTools.mjs for more information.
+  $onInits: [],
+  $onInits__internal: true,
+  $onInits__deps: ['$callRuntimeCallbacks'],
+  $onInits__postset: () => {
+    ATINITS.unshift('callRuntimeCallbacks(onInits);');
+  },
+  $addOnInit__deps: ['$onInits'],
+  $addOnInit: (cb) => onInits.unshift(cb),
+  // See ATPOSTCTORS in parseTools.mjs for more information.
+  $onPostCtors: [],
+  $onPostCtors__internal: true,
+  $onPostCtors__deps: ['$callRuntimeCallbacks'],
+  $onPostCtors__postset: () =>  {
+    ATPOSTCTORS.unshift('callRuntimeCallbacks(onPostCtors);');
+  },
+  $addOnPostCtor__deps: ['$onPostCtors'],
+  $addOnPostCtor: (cb) => onPostCtors.unshift(cb),
+  // See ATMAINS in parseTools.mjs for more information.
+  $onMains: [],
+  $onMains__internal: true,
+  $onMains__deps: ['$callRuntimeCallbacks'],
+  $onMains__postset: () => {
+    ATMAINS.unshift('callRuntimeCallbacks(onMains);');
+  },
+  $addOnPreMain__deps: ['$onMains'],
+  $addOnPreMain: (cb) => onMains.unshift(cb),
+  // See ATEXITS in parseTools.mjs for more information.
+  $onExits: [],
+  $onExits__internal: true,
+  $onExits__deps: ['$callRuntimeCallbacks'],
+  $onExits__postset: () => {
+    ATEXITS.unshift('callRuntimeCallbacks(onExits);');
+  },
+  $addOnExit__deps: ['$onExits'],
+  $addOnExit: (cb) => onExits.unshift(cb),
+  // See ATPOSTRUNS in parseTools.mjs for more information.
+  $onPostRuns: [],
+  $onPostRuns__internal: true,
+  $onPostRuns__deps: ['$callRuntimeCallbacks'],
+  $onPostRuns__postset: () => {
+    ATPOSTRUNS.unshift('callRuntimeCallbacks(onPostRuns);');
+  },
+  $addOnPostRun__deps: ['$onPostRuns'],
+  $addOnPostRun: (cb) => onPostRuns.unshift(cb),
+
   // We used to define these globals unconditionally in support code.
   // Instead, we now define them here so folks can pull it in explicitly, on
   // demand.

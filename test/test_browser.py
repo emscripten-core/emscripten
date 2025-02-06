@@ -23,8 +23,9 @@ from urllib.request import urlopen
 import common
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
-from common import read_file, also_with_minimal_runtime, EMRUN, no_wasm64, no_2gb, no_4gb
-from common import requires_wasm2js, also_with_wasm2js, parameterize, find_browser_test_file
+from common import read_file, EMRUN, no_wasm64, no_2gb, no_4gb
+from common import requires_wasm2js, parameterize, find_browser_test_file, with_all_sjlj
+from common import also_with_minimal_runtime, also_with_wasm2js, also_with_asan
 from tools import shared
 from tools import ports
 from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE, DEBUG
@@ -235,14 +236,6 @@ class browser(BrowserCore):
       print('Running the browser tests. Make sure the browser allows popups from localhost.')
       print()
 
-  def setUp(self):
-    super().setUp()
-    # avoid various compiler warnings that many browser tests currently generate
-    self.emcc_args += [
-      '-Wno-pointer-sign',
-      '-Wno-int-conversion',
-    ]
-
   def proxy_to_worker(self):
     self.emcc_args += ['--proxy-to-worker', '-sGL_TESTING']
 
@@ -355,8 +348,7 @@ If manually bisecting:
 ''')
 
   def test_emscripten_log(self):
-    self.btest_exit('emscripten_log/emscripten_log.cpp',
-                    args=['-Wno-deprecated-pragma', '--pre-js', path_from_root('src/emscripten-source-map.min.js'), '-gsource-map'])
+    self.btest_exit('emscripten_log/emscripten_log.cpp', args=['-Wno-deprecated-pragma', '-gsource-map'])
 
   @also_with_wasmfs
   def test_preload_file(self):
@@ -1332,7 +1324,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
   # Test that -sGL_PREINITIALIZED_CONTEXT works and allows user to set Module['preinitializedWebGLContext'] to a preinitialized WebGL context.
   @requires_graphics_hardware
   def test_preinitialized_webgl_context(self):
-    self.btest_exit('preinitialized_webgl_context.cpp', args=['-sGL_PREINITIALIZED_CONTEXT', '--shell-file', test_file('preinitialized_webgl_context.html')])
+    self.btest_exit('test_preinitialized_webgl_context.c', args=['-sGL_PREINITIALIZED_CONTEXT', '--shell-file', test_file('test_preinitialized_webgl_context.html')])
 
   @parameterized({
     '': ([],),
@@ -1499,7 +1491,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
     self.btest('test_idbstore_sync_worker.c', expected='0', args=['-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '-g2', '--proxy-to-worker', '-sASYNCIFY'])
 
   def test_force_exit(self):
-    self.btest_exit('force_exit.c', assert_returncode=10)
+    self.btest_exit('test_force_exit.c')
 
   def test_sdl_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
@@ -1784,7 +1776,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
 
   @requires_graphics_hardware
   def test_fulles2_sdlproc(self):
-    self.btest_exit('full_es2_sdlproc.c', assert_returncode=1, args=['-sGL_TESTING', '-DHAVE_BUILTIN_SINCOS', '-sFULL_ES2', '-lGL', '-lSDL', '-lglut', '-sGL_ENABLE_GET_PROC_ADDRESS'])
+    self.btest_exit('full_es2_sdlproc.c', args=['-sGL_TESTING', '-DHAVE_BUILTIN_SINCOS', '-sFULL_ES2', '-lGL', '-lSDL', '-lglut', '-sGL_ENABLE_GET_PROC_ADDRESS', '-Wno-int-conversion'])
 
   @requires_graphics_hardware
   def test_glgears_deriv(self):
@@ -1850,7 +1842,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
                          test_file('third_party/glbook/Common/esShader.c'),
                          test_file('third_party/glbook/Common/esShapes.c'),
                          test_file('third_party/glbook/Common/esTransform.c'),
-                         '-lGL', '-lEGL', '-lX11',
+                         '-lGL', '-lEGL', '-lX11', '-Wno-int-conversion', '-Wno-pointer-sign',
                          '--preload-file', 'basemap.tga', '--preload-file', 'lightmap.tga', '--preload-file', 'smoke.tga'] + args)
 
   @requires_graphics_hardware
@@ -1882,16 +1874,16 @@ simulateKeyUp(100, undefined, 'Numpad4');
     self.btest_exit('test_emscripten_async_load_script.c', args=['-sFORCE_FILESYSTEM'])
 
   def test_emscripten_api_infloop(self):
-    self.btest_exit('emscripten_api_browser_infloop.cpp', assert_returncode=7)
+    self.btest_exit('emscripten_api_browser_infloop.cpp')
 
   @also_with_wasmfs
   def test_emscripten_fs_api(self):
     shutil.copy(test_file('screenshot.png'), '.') # preloaded *after* run
-    self.btest_exit('emscripten_fs_api_browser.c', assert_returncode=1, args=['-lSDL'])
+    self.btest_exit('emscripten_fs_api_browser.c', args=['-lSDL'])
 
   def test_emscripten_fs_api2(self):
-    self.btest_exit('emscripten_fs_api_browser2.c', assert_returncode=1, args=['-sASSERTIONS=0'])
-    self.btest_exit('emscripten_fs_api_browser2.c', assert_returncode=1, args=['-sASSERTIONS=1'])
+    self.btest_exit('emscripten_fs_api_browser2.c', args=['-sASSERTIONS=0'])
+    self.btest_exit('emscripten_fs_api_browser2.c', args=['-sASSERTIONS=1'])
 
   @parameterized({
     '': ([],),
@@ -2021,11 +2013,11 @@ simulateKeyUp(100, undefined, 'Numpad4');
   @requires_graphics_hardware
   @also_with_proxying
   def test_gles2_uniform_arrays(self):
-    self.btest('gles2_uniform_arrays.cpp', args=['-sGL_ASSERTIONS', '-lGL', '-lSDL'], expected='1')
+    self.btest_exit('test_gles2_uniform_arrays.c', args=['-sGL_ASSERTIONS', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_gles2_conformance(self):
-    self.btest('gles2_conformance.cpp', args=['-sGL_ASSERTIONS', '-lGL', '-lSDL'], expected='1')
+    self.btest_exit('test_gles2_conformance.c', args=['-sGL_ASSERTIONS', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_matrix_identity(self):
@@ -2964,6 +2956,7 @@ Module["preRun"] = () => {
 
   @also_with_wasmfs
   @requires_graphics_hardware
+  @with_all_sjlj
   def test_sdl2_image_formats(self):
     shutil.copy(test_file('screenshot.png'), '.')
     shutil.copy(test_file('screenshot.jpg'), '.')
@@ -3859,7 +3852,7 @@ Module["preRun"] = () => {
 
   # Test that pthread_cancel() cancels pthread_cond_wait() operation
   def test_pthread_cancel_cond_wait(self):
-    self.btest_exit('pthread/test_pthread_cancel_cond_wait.c', assert_returncode=1, args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit('pthread/test_pthread_cancel_cond_wait.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test pthread_kill() operation
   @no_chrome('pthread_kill hangs chrome renderer, and keep subsequent tests from passing')
@@ -3979,8 +3972,8 @@ Module["preRun"] = () => {
     '': ([],),
     'O2': (['-O2'],),
   })
-  def test_pthread_gauge_available_memory(self, args):
-    self.btest('gauge_available_memory.cpp', expected='1', args=['-sABORTING_MALLOC=0'] + args)
+  def test_gauge_available_memory(self, args):
+    self.btest_exit('test_gauge_available_memory.c', args=['-sABORTING_MALLOC=0'] + args)
 
   # Test that the proxying operations of user code from pthreads to main thread
   # work
@@ -4123,10 +4116,10 @@ Module["preRun"] = () => {
 
   # Tests MAIN_THREAD_EM_ASM_INT() function call signatures.
   def test_main_thread_em_asm_signatures(self):
-    self.btest_exit('core/test_em_asm_signatures.cpp', assert_returncode=121, args=[])
+    self.btest_exit('core/test_em_asm_signatures.cpp')
 
   def test_main_thread_em_asm_signatures_pthreads(self):
-    self.btest_exit('core/test_em_asm_signatures.cpp', assert_returncode=121, args=['-O3', '-pthread', '-sPROXY_TO_PTHREAD', '-sASSERTIONS'])
+    self.btest_exit('core/test_em_asm_signatures.cpp', args=['-O3', '-pthread', '-sPROXY_TO_PTHREAD', '-sASSERTIONS'])
 
   def test_main_thread_async_em_asm(self):
     self.btest_exit('core/test_main_thread_async_em_asm.cpp', args=['-O3', '-pthread', '-sPROXY_TO_PTHREAD', '-sASSERTIONS'])
@@ -4206,19 +4199,12 @@ Module["preRun"] = () => {
     self.btest_exit('test_async_compile.c', assert_returncode=1, args=common_args)
 
   # Test that implementing Module.instantiateWasm() callback works.
-  @parameterized({
-    '': ([],),
-    'asan': (['-fsanitize=address'],)
-  })
-  def test_manual_wasm_instantiate(self, args):
-    if args:
-      if self.is_wasm64():
-        self.skipTest('TODO: ASAN in memory64')
-      if self.is_2gb() or self.is_4gb():
-        self.skipTest('asan doesnt support GLOBAL_BASE')
-    self.compile_btest('manual_wasm_instantiate.cpp', ['-o', 'manual_wasm_instantiate.js'] + args)
-    shutil.copy(test_file('manual_wasm_instantiate.html'), '.')
-    self.run_browser('manual_wasm_instantiate.html', '/report_result?1')
+  @also_with_asan
+  def test_manual_wasm_instantiate(self):
+    self.set_setting('EXIT_RUNTIME')
+    self.compile_btest('test_manual_wasm_instantiate.c', ['-o', 'manual_wasm_instantiate.js'], reporting=Reporting.JS_ONLY)
+    shutil.copy(test_file('test_manual_wasm_instantiate.html'), '.')
+    self.run_browser('test_manual_wasm_instantiate.html', '/report_result?exit:0')
 
   def test_wasm_locate_file(self):
     # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
@@ -4465,7 +4451,7 @@ Module["preRun"] = () => {
   def test_webgl_resize_offscreencanvas_from_main_thread(self, args1, args2, args3):
     cmd = args1 + args2 + args3 + ['-pthread', '-lGL', '-sGL_DEBUG']
     print(str(cmd))
-    self.btest_exit('resize_offscreencanvas_from_main_thread.cpp', args=cmd)
+    self.btest_exit('test_webgl_resize_offscreencanvas_from_main_thread.c', args=cmd)
 
   @requires_graphics_hardware
   @parameterized({
@@ -4918,7 +4904,7 @@ Module["preRun"] = () => {
 
   @also_with_proxying
   def test_request_animation_frame(self):
-    self.btest_exit('request_animation_frame.cpp')
+    self.btest_exit('test_request_animation_frame.c')
 
   def test_emscripten_set_timeout(self):
     self.btest_exit('emscripten_set_timeout.c', args=['-pthread', '-sPROXY_TO_PTHREAD'])

@@ -26,7 +26,7 @@ from common import RunnerCore, path_from_root, requires_native_clang, test_file,
 from common import skip_if, no_windows, no_mac, is_slow_test, parameterized, parameterize
 from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_with_wasm_bigint
 from common import read_file, read_binary, requires_v8, requires_node, requires_wasm2js, requires_node_canary
-from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime
+from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime, also_with_modularize
 from common import with_all_fs, also_with_nodefs, also_with_nodefs_both, also_with_noderawfs, also_with_wasmfs
 from common import with_all_eh_sjlj, with_all_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64, requires_wasm_eh
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
@@ -161,17 +161,36 @@ def with_asyncify_and_jspi(f):
   assert callable(f)
 
   @wraps(f)
-  def metafunc(self, jspi):
+  def metafunc(self, jspi, *args, **kwargs):
     if jspi:
       self.set_setting('ASYNCIFY', 2)
       self.require_jspi()
-      f(self)
     else:
       self.set_setting('ASYNCIFY')
-      f(self)
+    f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'jspi': (True,)})
+  return metafunc
+
+
+def also_with_asyncify_and_jspi(f):
+  assert callable(f)
+
+  @wraps(f)
+  def metafunc(self, asyncify, *args, **kwargs):
+    if asyncify == 2:
+      self.set_setting('ASYNCIFY', 2)
+      self.require_jspi()
+    elif asyncify == 1:
+      self.set_setting('ASYNCIFY')
+    else:
+      assert asyncify == 0
+    f(self, *args, **kwargs)
+
+  parameterize(metafunc, {'': (0,),
+                          'asyncify': (1,),
+                          'jspi': (2,)})
   return metafunc
 
 
@@ -336,9 +355,9 @@ class TestCoreBase(RunnerCore):
                         '-DCMAKE_CXX_STANDARD=14']
       # Depending on whether 'configure' or 'cmake' is used to build, Bullet
       # places output files in different directory structures.
-      generated_libs = [Path('src/BulletDynamics/libBulletDynamics.a'),
-                        Path('src/BulletCollision/libBulletCollision.a'),
-                        Path('src/LinearMath/libLinearMath.a')]
+      generated_libs = ['src/BulletDynamics/libBulletDynamics.a',
+                        'src/BulletCollision/libBulletCollision.a',
+                        'src/LinearMath/libLinearMath.a']
     else:
       configure_commands = ['sh', './configure']
       # Force a nondefault --host= so that the configure script will interpret
@@ -347,9 +366,9 @@ class TestCoreBase(RunnerCore):
       # which would fail since we are building a .js file.
       configure_args = ['--disable-shared', '--host=i686-pc-linux-gnu',
                         '--disable-demos', '--disable-dependency-tracking']
-      generated_libs = [Path('src/.libs/libBulletDynamics.a'),
-                        Path('src/.libs/libBulletCollision.a'),
-                        Path('src/.libs/libLinearMath.a')]
+      generated_libs = ['src/.libs/libBulletDynamics.a',
+                        'src/.libs/libBulletCollision.a',
+                        'src/.libs/libLinearMath.a']
 
     return self.get_library('third_party/bullet', generated_libs,
                             configure=configure_commands,
@@ -1022,7 +1041,6 @@ int main()
       self.do_runf('core/test_exceptions.cpp', assert_returncode=NON_ZERO)
 
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
-  @no_asan('TODO: ASan support in minimal runtime')
   def test_exceptions_minimal_runtime(self):
     self.maybe_closure()
     self.set_setting('MINIMAL_RUNTIME')
@@ -1328,8 +1346,6 @@ int main(int argc, char **argv) {
 
   @with_all_eh_sjlj
   def test_exceptions_primary(self):
-    if '-fsanitize=leak' in self.emcc_args and '-fwasm-exceptions' in self.emcc_args:
-      self.skipTest('https://github.com/emscripten-core/emscripten/issues/21124')
     self.do_core_test('test_exceptions_primary.cpp')
 
   @with_all_eh_sjlj
@@ -1346,8 +1362,6 @@ int main(int argc, char **argv) {
 
   @with_all_eh_sjlj
   def test_exceptions_multiple_inherit_rethrow(self):
-    if '-fsanitize=leak' in self.emcc_args and '-fwasm-exceptions' in self.emcc_args:
-      self.skipTest('https://github.com/emscripten-core/emscripten/issues/21124')
     self.do_core_test('test_exceptions_multiple_inherit_rethrow.cpp')
 
   @with_all_eh_sjlj
@@ -1499,8 +1513,6 @@ int main() {
 
   @with_all_eh_sjlj
   def test_exceptions_longjmp3(self):
-    if '-fwasm-exceptions' in self.emcc_args:
-      self.skipTest('https://github.com/emscripten-core/emscripten/issues/17004')
     self.do_core_test('test_exceptions_longjmp3.cpp')
 
   @with_all_eh_sjlj
@@ -1876,7 +1888,7 @@ int main(int argc, char **argv) {
 
   # Tests MAIN_THREAD_EM_ASM_INT() function call with different signatures.
   def test_main_thread_em_asm_signatures(self):
-    self.do_core_test('test_em_asm_signatures.cpp', assert_returncode=NON_ZERO)
+    self.do_core_test('test_em_asm_signatures.cpp')
 
   @crossplatform
   def test_em_asm_unicode(self):
@@ -2154,7 +2166,7 @@ int main(int argc, char **argv) {
     if not self.is_optimizing():
       self.skipTest('nodejs takes ~4GB to compile this if the wasm is not optimized, which OOMs')
     self.set_setting('USE_SDL')
-    self.do_runf('bigswitch.cpp', '''34962: GL_ARRAY_BUFFER (0x8892)
+    self.do_runf('core/test_bigswitch.c', '''34962: GL_ARRAY_BUFFER (0x8892)
 26214: what?
 35040: GL_STREAM_DRAW (0x88E0)
 3060: what?
@@ -2404,6 +2416,10 @@ The current type of b is: 9
       self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_atexit.c')
 
+  def test_force_exit(self):
+    self.set_setting('EXIT_RUNTIME')
+    self.do_run_in_out_file_test('test_force_exit.c')
+
   @no_lsan('https://github.com/emscripten-core/emscripten/issues/15988')
   def test_atexit_threads_stub(self):
     # also tests thread exit (__cxa_thread_atexit)
@@ -2431,24 +2447,17 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_equal.cpp')
 
   @node_pthreads
-  @parameterized({
-      '': (False,),
-      'modularize': (True,),
-  })
-  def test_pthread_proxying(self, modularize):
-    if modularize and self.get_setting('WASM') == 0:
-      self.skipTest('MODULARIZE + WASM=0 + pthreads does not work (#16794)')
+  @also_with_modularize
+  def test_pthread_proxying(self):
+    if '-sMODULARIZE' in self.emcc_args:
+      if self.get_setting('WASM') == 0:
+        self.skipTest('MODULARIZE + WASM=0 + pthreads does not work (#16794)')
+      self.set_setting('EXPORT_NAME=ModuleFactory')
     self.maybe_closure()
     self.set_setting('PROXY_TO_PTHREAD')
     if not self.has_changed_setting('INITIAL_MEMORY'):
       self.set_setting('INITIAL_MEMORY=32mb')
-    args = []
-    if modularize:
-      self.set_setting('MODULARIZE')
-      self.set_setting('EXPORT_NAME=ModuleFactory')
-      args = ['--extern-post-js', test_file('modularize_post_js.js')]
-    self.do_run_in_out_file_test('pthread/test_pthread_proxying.c',
-                                 interleaved_output=False, emcc_args=args)
+    self.do_run_in_out_file_test('pthread/test_pthread_proxying.c', interleaved_output=False)
 
   @node_pthreads
   def test_pthread_proxying_cpp(self):
@@ -3722,9 +3731,8 @@ ok
     self.do_run(src, 'float: 42.\n')
 
   @needs_dylink
+  @with_asyncify_and_jspi
   def test_dlfcn_asyncify(self):
-    self.set_setting('ASYNCIFY')
-
     create_file('liblib.c', r'''
       #include <stdio.h>
       #include <emscripten/emscripten.h>
@@ -5603,23 +5611,13 @@ got: 10
     self.do_runf('benchmark/benchmark_utf8.c', 'OK.')
 
   # Test that invalid character in UTF8 does not cause decoding to crash.
+  @also_with_minimal_runtime
   @parameterized({
-    '': [[]],
-    'textdecoder': [['-sTEXTDECODER']],
+    '': ([],),
+    'textdecoder': (['-sTEXTDECODER'],),
   })
   def test_utf8_invalid(self, args):
-    self.do_runf('utf8_invalid.cpp', 'OK.', emcc_args=args)
-
-  # Test that invalid character in UTF8 does not cause decoding to crash.
-  @no_asan('TODO: ASan support in minimal runtime')
-  @parameterized({
-    '': [[]],
-    'textdecoder': [['-sTEXTDECODER']],
-  })
-  def test_minimal_runtime_utf8_invalid(self, args):
-    self.set_setting('MINIMAL_RUNTIME')
-    self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
-    self.do_runf('utf8_invalid.cpp', 'OK.', emcc_args=args)
+    self.do_runf('test_utf8_invalid.c', 'OK.', emcc_args=args)
 
   def test_utf16_textdecoder(self):
     self.emcc_args += ['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt']
@@ -6226,7 +6224,7 @@ int main(void) {
 
   def test_fannkuch(self):
     results = [(1, 0), (2, 1), (3, 2), (4, 4), (5, 7), (6, 10), (7, 16), (8, 22)]
-    self.build(test_file('fannkuch.cpp'))
+    self.build(test_file('third_party/fannkuch.c'))
     for i, j in results:
       print(i, j)
       self.do_run('fannkuch.js', 'Pfannkuchen(%d) = %d.' % (i, j), args=[str(i)], no_build=True)
@@ -6248,7 +6246,7 @@ int main(void) {
                ('20', '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTT\ncttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg\n\ntacgtgtagcctagtgtttgtgttgcgttatagtctatttgtggacacagtatggtcaaa\n\ntgacgtcttttgatctgacggcgttaacaaagatactctg\n'''),
                ('50', '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACAT\ncttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg\n\ntactDtDagcctatttSVHtHttKtgtHMaSattgWaHKHttttagacatWatgtRgaaa\n\nNtactMcSMtYtcMgRtacttctWBacgaa\n\nagatactctgggcaacacacatacttctctcatgttgtttcttcggacctttcataacct\n\nttcctggcacatggttagctgcacatcacaggattgtaagggtctagtggttcagtgagc\n\nggaatatcattcgtcggtggtgttaatctatctcggtgtagcttataaatgcatccgtaa\n\ngaatattatgtttatttgtcggtacgttcatggtagtggtgtcgccgatttagacgtaaa\n\nggcatgtatg\n''')]
 
-    orig_src = read_file(test_file('fasta.cpp'))
+    orig_src = read_file(test_file('third_party/fasta.cpp'))
 
     src = orig_src.replace('double', float_type)
     create_file('fasta.cpp', src)
@@ -6262,7 +6260,7 @@ int main(void) {
     self.test_fasta()
 
   def test_whets(self):
-    self.do_runf('whets.cpp', 'Single Precision C Whetstone Benchmark')
+    self.do_runf('third_party/whets.c', 'Single Precision C Whetstone Benchmark')
 
   # node is slower, and fail on 64-bit
   @requires_v8
@@ -6388,12 +6386,8 @@ void* operator new(size_t size) {
     self.do_core_test('test_mmap_anon.c')
 
   @no_lsan('Test code contains memory leaks')
-  @parameterized({
-      '': (0,),
-      'asyncify': (1,),
-      'jspi': (2,),
-  })
-  def test_cubescript(self, asyncify):
+  @also_with_asyncify_and_jspi
+  def test_cubescript(self):
     # uses register keyword
     self.emcc_args += ['-std=c++03', '-Wno-dynamic-class-memaccess']
     self.maybe_closure()
@@ -6402,14 +6396,7 @@ void* operator new(size_t size) {
     if '-fsanitize=address' in self.emcc_args:
       self.emcc_args += ['--pre-js', test_file('asan-no-leak.js')]
 
-    if asyncify:
-      self.set_setting('ASYNCIFY', asyncify)
-    if asyncify == 2:
-      self.require_jspi()
-      self.emcc_args += ['-Wno-experimental']
-
-    src = test_file('third_party/cubescript/command.cpp')
-    self.do_runf(src, '*\nTemp is 33\n9\n5\nhello, everyone\n*')
+    self.do_runf('third_party/cubescript/command.cpp', '*\nTemp is 33\n9\n5\nhello, everyone\n*')
 
   @needs_dylink
   def test_relocatable_void_function(self):
@@ -6607,7 +6594,7 @@ void* operator new(size_t size) {
       'SYSLDFLAGS': ' '.join(self.get_emcc_args())
     }
     libs = self.get_library('third_party/lua',
-                            [Path('src/lua.o'), Path('src/liblua.a')],
+                            ['src/lua.o', 'src/liblua.a'],
                             make=['make', 'echo', 'generic'],
                             env_init=env_init,
                             configure=None)
@@ -6795,11 +6782,11 @@ void* operator new(size_t size) {
       self.emcc_args.append('-Wno-pointer-to-int-cast')
     self.run_process(builder_cmd)
     lib = self.get_library('third_party/openjpeg',
-                           [Path('codec/CMakeFiles/j2k_to_image.dir/index.c.o'),
-                            Path('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'),
-                            Path('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'),
-                            Path('codec/CMakeFiles/j2k_to_image.dir/__/common/getopt.c.o'),
-                            Path('bin/libopenjpeg.a')],
+                           ['codec/CMakeFiles/j2k_to_image.dir/index.c.o',
+                            'codec/CMakeFiles/j2k_to_image.dir/convert.c.o',
+                            'codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o',
+                            'codec/CMakeFiles/j2k_to_image.dir/__/common/getopt.c.o',
+                            'bin/libopenjpeg.a'],
                            configure=['cmake', '.'],
                            # configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
                            make_args=[]) # no -j 2, since parallel builds can fail
@@ -6937,25 +6924,20 @@ void* operator new(size_t size) {
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['dynCall', 'addFunction', 'lengthBytesUTF8', 'getTempRet0', 'setTempRet0'])
     self.do_core_test('EXPORTED_RUNTIME_METHODS.c')
 
-  @parameterized({
-    '': [],
-    'minimal_runtime': ['-sMINIMAL_RUNTIME=1']
-  })
-  def test_dyncall_specific(self, *args):
+  @also_with_minimal_runtime
+  def test_dyncall_specific(self):
     if self.get_setting('MEMORY64'):
       self.skipTest('not compatible with MEMORY64')
     if self.get_setting('WASM_BIGINT') != 0 and not self.is_wasm2js():
       # define DYNCALLS because this test does test calling them directly, and
       # in WASM_BIGINT mode we do not enable them by default (since we can do
       # more without them - we don't need to legalize)
-      args = list(args) + ['-sDYNCALLS', '-DWASM_BIGINT']
+      self.emcc_args += ['-sDYNCALLS', '-DWASM_BIGINT']
     cases = [
         ('DIRECT', []),
         ('DYNAMIC_SIG', ['-sDYNCALLS']),
       ]
-    if '-sMINIMAL_RUNTIME=1' in args:
-      self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
-    else:
+    if self.get_setting('MINIMAL_RUNTIME') == 0:
       cases += [
         ('EXPORTED', []),
         ('EXPORTED_DYNAMIC_SIG', ['-sDYNCALLS', '-sEXPORTED_RUNTIME_METHODS=dynCall']),
@@ -6963,8 +6945,8 @@ void* operator new(size_t size) {
       ]
 
     for which, extra_args in cases:
-      print(str(args) + ' ' + which)
-      self.do_core_test('test_dyncall_specific.c', emcc_args=['-D' + which] + list(args) + extra_args)
+      print(str(extra_args) + ' ' + which)
+      self.do_core_test('test_dyncall_specific.c', emcc_args=['-D' + which] + extra_args)
 
   @parameterized({
     '': ([],),
@@ -7886,9 +7868,7 @@ void* operator new(size_t size) {
   @no_wasm2js('symbol names look different wasm2js backtraces')
   @also_with_wasm_bigint
   def test_emscripten_log(self):
-    if '-g' not in self.emcc_args:
-      self.emcc_args.append('-g')
-    self.emcc_args += ['-DRUN_FROM_JS_SHELL', '-Wno-deprecated-pragma']
+    self.emcc_args += ['-g', '-DRUN_FROM_JS_SHELL', '-Wno-deprecated-pragma']
     self.do_run_in_out_file_test('emscripten_log/emscripten_log.cpp', interleaved_output=False)
     # test closure compiler as well
     if self.maybe_closure():
@@ -8076,16 +8056,13 @@ Module.onRuntimeInitialized = () => {
     self.do_runf('main.c', 'HelloWorld')
 
   @parameterized({
-    'asyncify': (False, 1),
-    'exit_runtime_asyncify': (True, 1),
-    'jspi': (False, 2),
-    'exit_runtime_jspi': (True, 2),
+    '': (False,),
+    'exit_runtime': (True,),
   })
-  def test_async_ccall_promise(self, exit_runtime, asyncify):
-    if asyncify == 2:
-      self.require_jspi()
+  @with_asyncify_and_jspi
+  def test_async_ccall_promise(self, exit_runtime):
+    if self.get_setting('ASYNCIFY') ==  2:
       self.set_setting('JSPI_EXPORTS', ['stringf', 'floatf'])
-    self.set_setting('ASYNCIFY', asyncify)
     self.set_setting('ASSERTIONS')
     self.set_setting('INVOKE_RUN', 0)
     self.set_setting('EXIT_RUNTIME', exit_runtime)
@@ -8527,13 +8504,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @also_with_standalone_wasm()
   def test_sbrk(self):
-    self.do_runf('sbrk_brk.cpp', 'OK.')
+    self.do_runf('test_sbrk_brk.c', 'OK.')
     self.set_setting('ALLOW_MEMORY_GROWTH')
-    self.do_runf('sbrk_brk.cpp', 'OK.')
+    self.do_runf('test_sbrk_brk.c', 'OK.')
 
   def test_brk(self):
     self.emcc_args += ['-DTEST_BRK=1']
-    self.do_runf('sbrk_brk.cpp', 'OK.')
+    self.do_runf('test_sbrk_brk.c', 'OK.')
 
   # Tests that we can use the dlmalloc mallinfo() function to obtain information
   # about malloc()ed blocks and compute how much memory is used/freed.
@@ -8608,6 +8585,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf('hello_world.c', 'post run')
 
   # Tests that building with -sDECLARE_ASM_MODULE_EXPORTS=0 works
+  @also_with_minimal_runtime
   def test_no_declare_asm_module_exports(self):
     self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
@@ -8624,17 +8602,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
         self.assertEqual(occurances, 2)
     else:
       print(occurances)
-
-  # Tests that building with -sDECLARE_ASM_MODULE_EXPORTS=0 works
-  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
-  @no_asan('TODO: ASan support in minimal runtime')
-  def test_minimal_runtime_no_declare_asm_module_exports(self):
-    self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
-    self.set_setting('WASM_ASYNC_COMPILATION', 0)
-    self.maybe_closure()
-    self.set_setting('MINIMAL_RUNTIME')
-    self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
-    self.do_runf('declare_asm_module_exports.c', 'jsFunction: 1')
 
   # Tests that -sMINIMAL_RUNTIME works well in different build modes
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
@@ -8657,7 +8624,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'fs': ('FORCE_FILESYSTEM',),
     'nofs': ('NO_FILESYSTEM',),
   })
-  @no_asan('TODO: ASan support in minimal runtime')
   def test_minimal_runtime_hello_printf(self, extra_setting):
     self.set_setting('MINIMAL_RUNTIME')
     self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
@@ -8670,7 +8636,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   # Tests that -sMINIMAL_RUNTIME works well with SAFE_HEAP
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
-  @no_asan('TODO: ASan support in minimal runtime')
+  @no_asan('SAFE_HEAP cannot be used with ASan')
   def test_minimal_runtime_safe_heap(self):
     self.set_setting('MINIMAL_RUNTIME')
     self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
@@ -8684,7 +8650,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   # Tests global initializer with -sMINIMAL_RUNTIME
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
-  @no_asan('TODO: ASan support in minimal runtime')
   def test_minimal_runtime_global_initializer(self):
     self.set_setting('MINIMAL_RUNTIME')
     self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
@@ -9154,23 +9119,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
+  @also_with_modularize
   def test_pthread_offset_converter(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('USE_OFFSET_CONVERTER')
-    if '-g' in self.emcc_args:
-      self.emcc_args += ['-DDEBUG']
-    self.do_runf('core/test_return_address.c', 'passed')
-
-  @node_pthreads
-  @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
-  def test_pthread_offset_converter_modularize(self):
-    self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
-    self.set_setting('USE_OFFSET_CONVERTER')
-    self.set_setting('MODULARIZE')
-    self.set_setting('EXPORT_NAME', 'foo')
-    self.emcc_args += ['--extern-post-js', test_file('modularize_post_js.js')]
+    if '-sMODULARIZE' in self.emcc_args:
+      self.set_setting('EXPORT_NAME', 'foo')
     if '-g' in self.emcc_args:
       self.emcc_args += ['-DDEBUG']
     self.do_runf('core/test_return_address.c', 'passed')
@@ -9365,17 +9320,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
       force_c=True)
 
   # Tests the emscripten_get_exported_function() API.
+  @also_with_minimal_runtime
   def test_get_exported_function(self):
     self.set_setting('ALLOW_TABLE_GROWTH')
-    self.emcc_args += ['-lexports.js']
-    self.do_core_test('test_get_exported_function.cpp')
-
-  # Tests the emscripten_get_exported_function() API.
-  @no_asan('TODO: ASan support in minimal runtime')
-  def test_minimal_runtime_get_exported_function(self):
-    self.set_setting('ALLOW_TABLE_GROWTH')
-    self.set_setting('MINIMAL_RUNTIME')
-    self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
     self.emcc_args += ['-lexports.js']
     self.do_core_test('test_get_exported_function.cpp')
 

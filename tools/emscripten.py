@@ -161,11 +161,15 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
 
 
 def apply_static_code_hooks(forwarded_json, code):
+  code = shared.do_replace(code, '<<< ATPRERUNS >>>', str(forwarded_json['ATPRERUNS']))
   code = shared.do_replace(code, '<<< ATINITS >>>', str(forwarded_json['ATINITS']))
+  code = shared.do_replace(code, '<<< ATPOSTCTORS >>>', str(forwarded_json['ATPOSTCTORS']))
   if settings.HAS_MAIN:
     code = shared.do_replace(code, '<<< ATMAINS >>>', str(forwarded_json['ATMAINS']))
-  if settings.EXIT_RUNTIME and (not settings.MINIMAL_RUNTIME or settings.HAS_MAIN):
-    code = shared.do_replace(code, '<<< ATEXITS >>>', str(forwarded_json['ATEXITS']))
+  if not settings.MINIMAL_RUNTIME or settings.HAS_MAIN:
+    code = shared.do_replace(code, '<<< ATPOSTRUNS >>>', str(forwarded_json['ATPOSTRUNS']))
+    if settings.EXIT_RUNTIME:
+      code = shared.do_replace(code, '<<< ATEXITS >>>', str(forwarded_json['ATEXITS']))
   return code
 
 
@@ -579,6 +583,9 @@ def finalize_wasm(infile, outfile, js_syms):
   # These are any exports that were not requested on the command line and are
   # not known auto-generated system functions.
   unexpected_exports = [e for e in metadata.all_exports if treat_as_user_export(e)]
+  for n in unexpected_exports:
+    if not n.isidentifier():
+      exit_with_error(f'invalid export name: {n}')
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
 

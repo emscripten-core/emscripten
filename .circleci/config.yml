@@ -526,6 +526,7 @@ jobs:
             asan.test_externref_emjs_dynlink
             asan.test_asyncify_longjmp
             asan.test_pthread_run_on_main_thread
+            asan.test_minimal_runtime_global_initializer
             lsan.test_dylink_dso_needed
             lsan.test_stdio_locking
             lsan.test_dlfcn_basic
@@ -769,8 +770,7 @@ jobs:
             other.test_node_unhandled_rejection
             core2.test_hello_world
             core0.test_pthread_join_and_asyncify
-            core0.test_async_ccall_promise_jspi
-            core0.test_async_ccall_promise_exit_runtime_jspi
+            core0.test_async_ccall_promise_jspi*
             core0.test_cubescript_jspi"
       # Run some basic tests with the minimum version of node that we currently
       # support in the generated code.
@@ -984,7 +984,6 @@ jobs:
       EMTEST_SKIP_V8: "1"
       EMTEST_SKIP_EH: "1"
       EMTEST_SKIP_WASM64: "1"
-      EMTEST_SKIP_SIMD: "1"
       EMTEST_SKIP_SCONS: "1"
       EMTEST_SKIP_RUST: "1"
       EMTEST_SKIP_NODE_CANARY: "1"

@@ -9,6 +9,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     '_emscripten_run_callback_on_thread',
 #endif
+    '$addOnExit',
   ],
   $JSEvents: {
 
@@ -49,7 +50,7 @@ var LibraryHTML5 = {
 
     // When the C runtime exits via exit(), we unregister all event handlers
     // added by this library to be nice and clean.
-    // Track in this field whether we have yet registered that __ATEXIT__ handler.
+    // Track in this field whether we have yet registered that onExit handler.
     removeEventListenersRegistered: false,
 
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
@@ -74,7 +75,7 @@ var LibraryHTML5 = {
 #if EXIT_RUNTIME
     registerRemoveEventListeners() {
       if (!JSEvents.removeEventListenersRegistered) {
-        __ATEXIT__.push(JSEvents.removeAllEventListeners);
+        addOnExit(JSEvents.removeAllEventListeners);
         JSEvents.removeEventListenersRegistered = true;
       }
     },

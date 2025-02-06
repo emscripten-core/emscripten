@@ -403,10 +403,7 @@ WASM_CALL_CTORS = '__wasm_call_ctors'
 # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool
 # for this, and we are in wasm mode
 def eval_ctors(js_file, wasm_file, debug_info):
-  if settings.MINIMAL_RUNTIME:
-    CTOR_ADD_PATTERN = f"wasmExports['{WASM_CALL_CTORS}']();" # TODO test
-  else:
-    CTOR_ADD_PATTERN = f"addOnInit(wasmExports['{WASM_CALL_CTORS}']);"
+  CTOR_ADD_PATTERN = f"wasmExports['{WASM_CALL_CTORS}']();"
 
   js = utils.read_file(js_file)
 
@@ -484,17 +481,6 @@ def check_closure_compiler(cmd, args, env, allowed_to_fail):
     exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (shared.shlex_join(cmd), output))
 
   return True
-
-
-# Remove this once we require python3.7 and can use std.isascii.
-# See: https://docs.python.org/3/library/stdtypes.html#str.isascii
-def isascii(s):
-  try:
-    s.encode('ascii')
-  except UnicodeEncodeError:
-    return False
-  else:
-    return True
 
 
 def get_closure_compiler_and_env(user_args):
@@ -633,7 +619,7 @@ def run_closure_cmd(cmd, filename, env):
   tempfiles = shared.get_temp_files()
 
   def move_to_safe_7bit_ascii_filename(filename):
-    if isascii(filename):
+    if filename.isascii():
       return os.path.abspath(filename)
     safe_filename = tempfiles.get('.js').name  # Safe 7-bit filename
     shutil.copyfile(filename, safe_filename)

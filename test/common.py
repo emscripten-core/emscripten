@@ -504,6 +504,9 @@ def also_with_minimal_runtime(f):
     assert self.get_setting('MINIMAL_RUNTIME') is None
     if with_minimal_runtime:
       self.set_setting('MINIMAL_RUNTIME', 1)
+      # This extra helper code is needed to cleanly handle calls to exit() which throw
+      # an ExitCode exception.
+      self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
     f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
@@ -625,6 +628,38 @@ def also_with_standalone_wasm(impure=False):
   return decorated
 
 
+def also_with_asan(f):
+  assert callable(f)
+
+  @wraps(f)
+  def metafunc(self, asan, *args, **kwargs):
+    if asan:
+      if self.is_wasm64():
+        self.skipTest('TODO: ASAN in memory64')
+      if self.is_2gb() or self.is_4gb():
+        self.skipTest('asan doesnt support GLOBAL_BASE')
+      self.emcc_args.append('-fsanitize=address')
+    f(self, *args, **kwargs)
+
+  parameterize(metafunc, {'': (False,),
+                          'asan': (True,)})
+  return metafunc
+
+
+def also_with_modularize(f):
+  assert callable(f)
+
+  @wraps(f)
+  def metafunc(self, modularize, *args, **kwargs):
+    if modularize:
+      self.emcc_args += ['--extern-post-js', test_file('modularize_post_js.js'), '-sMODULARIZE']
+    f(self, *args, **kwargs)
+
+  parameterize(metafunc, {'': (False,),
+                          'modularize': (True,)})
+  return metafunc
+
+
 # Tests exception handling and setjmp/longjmp handling. This tests three
 # combinations:
 # - Emscripten EH + Emscripten SjLj
@@ -641,9 +676,6 @@ def with_all_eh_sjlj(f):
       # Wasm EH is currently supported only in wasm backend and V8
       if self.is_wasm2js():
         self.skipTest('wasm2js does not support wasm EH/SjLj')
-      # FIXME Temporarily disabled. Enable this later when the bug is fixed.
-      if '-fsanitize=address' in self.emcc_args:
-        self.skipTest('Wasm EH does not work with asan yet')
       self.emcc_args.append('-fwasm-exceptions')
       self.set_setting('SUPPORT_LONGJMP', 'wasm')
       if mode == 'wasm':
@@ -677,9 +709,6 @@ def with_all_sjlj(f):
     if mode in {'wasm', 'wasm_legacy'}:
       if self.is_wasm2js():
         self.skipTest('wasm2js does not support wasm SjLj')
-      # FIXME Temporarily disabled. Enable this later when the bug is fixed.
-      if '-fsanitize=address' in self.emcc_args:
-        self.skipTest('Wasm EH does not work with asan yet')
       self.set_setting('SUPPORT_LONGJMP', 'wasm')
       if mode == 'wasm':
         self.require_wasm_eh()
@@ -1034,6 +1063,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         self.js_engines = [nodejs]
         self.node_args.append('--experimental-wasm-exnref')
         return
+
+    if self.is_browser_test():
+      return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
       self.emcc_args.append('-sENVIRONMENT=shell')

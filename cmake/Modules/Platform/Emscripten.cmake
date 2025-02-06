@@ -93,6 +93,7 @@ set(CMAKE_C_COMPILER_AR "${CMAKE_AR}")
 set(CMAKE_CXX_COMPILER_AR "${CMAKE_AR}")
 set(CMAKE_C_COMPILER_RANLIB "${CMAKE_RANLIB}")
 set(CMAKE_CXX_COMPILER_RANLIB "${CMAKE_RANLIB}")
+set(CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS "${EMSCRIPTEN_ROOT_PATH}/emscan-deps")
 
 # Capture the Emscripten version to EMSCRIPTEN_VERSION variable.
 if (NOT EMSCRIPTEN_VERSION)
@@ -120,11 +121,9 @@ endif()
 file(TO_CMAKE_PATH "${_emcache_output}" _emcache_output)
 set(EMSCRIPTEN_SYSROOT "${_emcache_output}/sysroot")
 
-# Don't allow CMake to autodetect the compiler, since this is quite slow with
-# Emscripten.
-# Pass -DEMSCRIPTEN_FORCE_COMPILERS=OFF to disable (sensible mostly only for
-# testing/debugging purposes).
-option(EMSCRIPTEN_FORCE_COMPILERS "Force C/C++ compiler" ON)
+# Allow skipping of CMake compiler autodetection, since this is quite slow with
+# Emscripten. Pass -DEMSCRIPTEN_FORCE_COMPILERS=ON to enable
+option(EMSCRIPTEN_FORCE_COMPILERS "Force C/C++ compiler" OFF)
 if (EMSCRIPTEN_FORCE_COMPILERS)
 
   # Detect version of the 'emcc' executable. Note that for CMake, we tell it the

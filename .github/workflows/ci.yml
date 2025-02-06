@@ -33,6 +33,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
+          submodules: true
           fetch-depth: 0 # We want access to other branches, specifically `main`
       - name: pip install
         run: |

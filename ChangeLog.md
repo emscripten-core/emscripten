@@ -20,6 +20,17 @@ See docs/process.md for more on how version tagging works.
 
 4.0.3 (in development)
 ----------------------
+- emscan-deps tools was added.  This tool wraps clang-scan-deps and injects the
+  needed `--target` and `--sysroot` argument that would normally be injected by
+  emcc itself.  This enables support for C++20 in cmake projects. (#21987)
+- The version of python required to run emscripten was bumped from 3.6 to 3.8.
+  (#23417)
+- The `EM_LOG_C_STACK` flag to `emscripten_log` was deprecated and the helper
+  file on which it was based (`emscripten-source-map.min.js`) deleted.  This
+  feature (userspace source map parsing in logs) was never ported to wasm
+  source maps, so it has not worked in many years, and there have been no
+  requests for it. This has no impact on the source map support in browser
+  devtools. (#23553)
 
 4.0.2 - 01/30/25
 ----------------
@@ -34,6 +45,10 @@ See docs/process.md for more on how version tagging works.
 - The system JS libraries in `src/` were renamed from `library_foo.js` to
   `lib/libfoo.js`. They are still included via the same `-lfoo.js` flag so
   this should not be a user-visible change. (#23348)
+- When using cmake the emscripten toolchain will no longer skip the toolchain
+  detection stages.  This means the initial cmake run will be slower, but will
+  result in more accruate information.  If cmake is running too slow for you,
+  you can revert to the previous behaviour with `-DEMSCRIPTEN_FORCE_COMPILERS=ON`.
 
 4.0.1 - 01/17/25
 ----------------

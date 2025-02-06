@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <emscripten.h>
 
-EMSCRIPTEN_KEEPALIVE extern "C" void good() {
+EMSCRIPTEN_KEEPALIVE void good() {
   printf("good!\n");
   emscripten_force_exit(0);
 }

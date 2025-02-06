@@ -2457,17 +2457,8 @@ def calculate(options):
   return ret
 
 
-# Once we require python 3.8 we can use shutil.copytree with
-# dirs_exist_ok=True and remove this function.
 def copytree_exist_ok(src, dst):
-  os.makedirs(dst, exist_ok=True)
-  for entry in os.scandir(src):
-    srcname = os.path.join(src, entry.name)
-    dstname = os.path.join(dst, entry.name)
-    if entry.is_dir():
-      copytree_exist_ok(srcname, dstname)
-    else:
-      shared.safe_copy(srcname, dstname)
+  shutil.copytree(src, dst, dirs_exist_ok=True)
 
 
 def install_system_headers(stamp):

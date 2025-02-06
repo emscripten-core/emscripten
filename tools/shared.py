@@ -19,9 +19,9 @@ import stat
 import sys
 import tempfile
 
-# We depend on python 3.6 for fstring support
-if sys.version_info < (3, 6):
-  print('error: emscripten requires python 3.6 or above', file=sys.stderr)
+# We depend on python 3.8 features
+if sys.version_info < (3, 8):
+  print(f'error: emscripten requires python 3.8 or above ({sys.executable} {sys.version})', file=sys.stderr)
   sys.exit(1)
 
 from . import colored_logger
@@ -651,7 +651,7 @@ def is_c_symbol(name):
 
 
 def treat_as_user_export(name):
-  return not name.startswith('dynCall_')
+  return not name.startswith(('dynCall_', 'orig$'))
 
 
 def asmjs_mangle(name):
@@ -790,6 +790,7 @@ class OFormat(Enum):
 
 CLANG_CC = os.path.expanduser(build_clang_tool_path(exe_suffix('clang')))
 CLANG_CXX = os.path.expanduser(build_clang_tool_path(exe_suffix('clang++')))
+CLANG_SCAN_DEPS = build_llvm_tool_path(exe_suffix('clang-scan-deps'))
 LLVM_AR = build_llvm_tool_path(exe_suffix('llvm-ar'))
 LLVM_DWP = build_llvm_tool_path(exe_suffix('llvm-dwp'))
 LLVM_RANLIB = build_llvm_tool_path(exe_suffix('llvm-ranlib'))

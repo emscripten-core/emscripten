@@ -5,6 +5,7 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <emscripten.h>
 #include <string.h>
@@ -34,7 +35,11 @@ const char *emscripten_result_to_string(EMSCRIPTEN_RESULT result) {
   return "Unknown EMSCRIPTEN_RESULT!";
 }
 
+// Report API failure
 #define TEST_RESULT(x) if (ret != EMSCRIPTEN_RESULT_SUCCESS) printf("%s returned %s.\n", #x, emscripten_result_to_string(ret));
+
+// Like above above but also assert API success
+#define ASSERT_RESULT(x) TEST_RESULT(x); assert(ret == EMSCRIPTEN_RESULT_SUCCESS);
 
 // The event handler functions can return 1 to suppress the event and disable the default action. That calls event.preventDefault();
 // Returning 0 signals that the event was not consumed by the code, and will allow the event to pass on and bubble up normally.
@@ -230,67 +235,66 @@ void test_done(void *arg) {
 
 int main() {
   EMSCRIPTEN_RESULT ret = emscripten_set_keypress_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, key_callback);
-  TEST_RESULT(emscripten_set_keypress_callback);
+  ASSERT_RESULT(emscripten_set_keypress_callback);
   ret = emscripten_set_keydown_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, key_callback);
-  TEST_RESULT(emscripten_set_keydown_callback);
+  ASSERT_RESULT(emscripten_set_keydown_callback);
   ret = emscripten_set_keyup_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, key_callback);
-  TEST_RESULT(emscripten_set_keyup_callback);
+  ASSERT_RESULT(emscripten_set_keyup_callback);
 
   ret = emscripten_set_click_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
-  TEST_RESULT(emscripten_set_click_callback);
+  ASSERT_RESULT(emscripten_set_click_callback);
   ret = emscripten_set_mousedown_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
-  TEST_RESULT(emscripten_set_mousedown_callback);
+  ASSERT_RESULT(emscripten_set_mousedown_callback);
   ret = emscripten_set_mouseup_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
-  TEST_RESULT(emscripten_set_mouseup_callback);
+  ASSERT_RESULT(emscripten_set_mouseup_callback);
   ret = emscripten_set_dblclick_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
-  TEST_RESULT(emscripten_set_dblclick_callback);
+  ASSERT_RESULT(emscripten_set_dblclick_callback);
   ret = emscripten_set_mousemove_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
-  TEST_RESULT(emscripten_set_mousemove_callback);
+  ASSERT_RESULT(emscripten_set_mousemove_callback);
   ret = emscripten_set_mouseenter_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
-  TEST_RESULT(emscripten_set_mouseenter_callback);
+  ASSERT_RESULT(emscripten_set_mouseenter_callback);
   ret = emscripten_set_mouseleave_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
-  TEST_RESULT(emscripten_set_mouseleave_callback);
+  ASSERT_RESULT(emscripten_set_mouseleave_callback);
   ret = emscripten_set_mouseover_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
-  TEST_RESULT(emscripten_set_mouseover_callback);
+  ASSERT_RESULT(emscripten_set_mouseover_callback);
   ret = emscripten_set_mouseout_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
-  TEST_RESULT(emscripten_set_mouseout_callback);
+  ASSERT_RESULT(emscripten_set_mouseout_callback);
 
   ret = emscripten_set_wheel_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, wheel_callback);
-  TEST_RESULT(emscripten_set_wheel_callback);
+  ASSERT_RESULT(emscripten_set_wheel_callback);
 
   ret = emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, uievent_callback);
-  TEST_RESULT(emscripten_set_resize_callback);
+  ASSERT_RESULT(emscripten_set_resize_callback);
   ret = emscripten_set_scroll_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, 0, 1, uievent_callback);
-  TEST_RESULT(emscripten_set_scroll_callback);
+  ASSERT_RESULT(emscripten_set_scroll_callback);
 
   ret = emscripten_set_blur_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, focusevent_callback);
-  TEST_RESULT(emscripten_set_blur_callback);
+  ASSERT_RESULT(emscripten_set_blur_callback);
   ret = emscripten_set_focus_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, focusevent_callback);
-  TEST_RESULT(emscripten_set_focus_callback);
+  ASSERT_RESULT(emscripten_set_focus_callback);
   ret = emscripten_set_focusin_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, focusevent_callback);
-  TEST_RESULT(emscripten_set_focusin_callback);
+  ASSERT_RESULT(emscripten_set_focusin_callback);
   ret = emscripten_set_focusout_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, focusevent_callback);
-  TEST_RESULT(emscripten_set_focusout_callback);
+  ASSERT_RESULT(emscripten_set_focusout_callback);
 
   ret = emscripten_set_deviceorientation_callback(0, 1, deviceorientation_callback);
-  TEST_RESULT(emscripten_set_deviceorientation_callback);
+  ASSERT_RESULT(emscripten_set_deviceorientation_callback);
   ret = emscripten_set_devicemotion_callback(0, 1, devicemotion_callback);
-  TEST_RESULT(emscripten_set_devicemotion_callback);
+  ASSERT_RESULT(emscripten_set_devicemotion_callback);
 
   ret = emscripten_set_orientationchange_callback(0, 1, orientationchange_callback);
-  TEST_RESULT(emscripten_set_orientationchange_callback);
+  ASSERT_RESULT(emscripten_set_orientationchange_callback);
 
   // Test the polling of orientation.
   EmscriptenOrientationChangeEvent oce;
   ret = emscripten_get_orientation_status(&oce);
-  TEST_RESULT(emscripten_get_orientation_status);
+  ASSERT_RESULT(emscripten_get_orientation_status);
   if (ret == EMSCRIPTEN_RESULT_SUCCESS) {
     printf("The current orientation is:\n");
     orientationchange_callback(EMSCRIPTEN_EVENT_ORIENTATIONCHANGE, &oce, 0);
   }
 
-  int newOrientation = (oce.orientationIndex == EMSCRIPTEN_ORIENTATION_PORTRAIT_PRIMARY
-  || oce.orientationIndex == EMSCRIPTEN_ORIENTATION_PORTRAIT_SECONDARY) ? EMSCRIPTEN_ORIENTATION_LANDSCAPE_PRIMARY : EMSCRIPTEN_ORIENTATION_PORTRAIT_PRIMARY;
+  int newOrientation = (oce.orientationIndex == EMSCRIPTEN_ORIENTATION_PORTRAIT_PRIMARY || oce.orientationIndex == EMSCRIPTEN_ORIENTATION_PORTRAIT_SECONDARY) ? EMSCRIPTEN_ORIENTATION_LANDSCAPE_PRIMARY : EMSCRIPTEN_ORIENTATION_PORTRAIT_PRIMARY;
   // Test locking of orientation.
   ret = emscripten_lock_orientation(newOrientation);
   TEST_RESULT(emscripten_lock_orientation);
@@ -299,7 +303,7 @@ int main() {
   }
 
   ret = emscripten_get_orientation_status(&oce);
-  TEST_RESULT(emscripten_get_orientation_status);
+  ASSERT_RESULT(emscripten_get_orientation_status);
   if (ret == EMSCRIPTEN_RESULT_SUCCESS) {
     printf("The current orientation is after locking:\n");
     orientationchange_callback(18, &oce, 0);
@@ -313,39 +317,39 @@ int main() {
 
   EmscriptenFullscreenChangeEvent fsce;
   ret = emscripten_get_fullscreen_status(&fsce);
-  TEST_RESULT(emscripten_get_fullscreen_status);
+  ASSERT_RESULT(emscripten_get_fullscreen_status);
   if (ret == EMSCRIPTEN_RESULT_SUCCESS) {
     printf("The current fullscreen status is:\n");
     fullscreenchange_callback(EMSCRIPTEN_EVENT_FULLSCREENCHANGE, &fsce, 0);
   }
 
   ret = emscripten_set_fullscreenchange_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, 0, 1, fullscreenchange_callback);
-  TEST_RESULT(emscripten_set_fullscreenchange_callback);
+  ASSERT_RESULT(emscripten_set_fullscreenchange_callback);
 
   // These won't do anything, since fullscreen must be requested in an event handler,
   // but call these anyways to confirm that they don't crash in an exception in the test suite.
   ret = emscripten_request_fullscreen("#canvas", 1);
   TEST_RESULT(emscripten_request_fullscreen);
   ret = emscripten_exit_fullscreen();
-  TEST_RESULT(emscripten_exit_fullscreen);
+  ASSERT_RESULT(emscripten_exit_fullscreen);
 
   EmscriptenPointerlockChangeEvent plce;
   ret = emscripten_get_pointerlock_status(&plce);
-  TEST_RESULT(emscripten_get_pointerlock_status);
+  ASSERT_RESULT(emscripten_get_pointerlock_status);
   if (ret == EMSCRIPTEN_RESULT_SUCCESS) {
     printf("The current pointerlock status is:\n");
     pointerlockchange_callback(EMSCRIPTEN_EVENT_POINTERLOCKCHANGE, &plce, 0);
   }
 
   ret = emscripten_set_pointerlockchange_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, 0, 1, pointerlockchange_callback);
-  TEST_RESULT(emscripten_set_pointerlockchange_callback);
+  ASSERT_RESULT(emscripten_set_pointerlockchange_callback);
 
   // These won't do anything, since pointer lock must be requested in an event handler,
   // but call these anyways to confirm that they don't crash in an exception in the test suite.
   ret = emscripten_request_pointerlock("#canvas", 1);
   TEST_RESULT(emscripten_request_pointerlock);
   ret = emscripten_exit_pointerlock();
-  TEST_RESULT(emscripten_exit_pointerlock);
+  ASSERT_RESULT(emscripten_exit_pointerlock);
 
   int vibratePattern[] = {
     150, 500,
@@ -357,27 +361,29 @@ int main() {
 
   EmscriptenVisibilityChangeEvent vce;
   ret = emscripten_get_visibility_status(&vce);
-  TEST_RESULT(emscripten_get_visibility_status);
+  ASSERT_RESULT(emscripten_get_visibility_status);
   if (ret == EMSCRIPTEN_RESULT_SUCCESS) {
     printf("Current visibility status:\n");
     visibilitychange_callback(EMSCRIPTEN_EVENT_VISIBILITYCHANGE, &vce, 0);
   }
 
   ret = emscripten_set_visibilitychange_callback(0, 1, visibilitychange_callback);
-  TEST_RESULT(emscripten_set_visibilitychange_callback);
+  ASSERT_RESULT(emscripten_set_visibilitychange_callback);
 
   ret = emscripten_set_touchstart_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, touch_callback);
-  TEST_RESULT(emscripten_set_touchstart_callback);
+  ASSERT_RESULT(emscripten_set_touchstart_callback);
   ret = emscripten_set_touchend_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, touch_callback);
-  TEST_RESULT(emscripten_set_touchend_callback);
+  ASSERT_RESULT(emscripten_set_touchend_callback);
   ret = emscripten_set_touchmove_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, touch_callback);
-  TEST_RESULT(emscripten_set_touchmove_callback);
+  ASSERT_RESULT(emscripten_set_touchmove_callback);
   ret = emscripten_set_touchcancel_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, touch_callback);
-  TEST_RESULT(emscripten_set_touchcancel_callback);
+  ASSERT_RESULT(emscripten_set_touchcancel_callback);
 
   ret = emscripten_set_beforeunload_callback(0, beforeunload_callback);
-  TEST_RESULT(emscripten_set_beforeunload_callback);
+  ASSERT_RESULT(emscripten_set_beforeunload_callback);
 
+  // Use TEST_RESULT rather than ASSERT_RESULT for battery status since
+  // not all machines support this API.
   ret = emscripten_set_batterychargingchange_callback(0, battery_callback);
   TEST_RESULT(emscripten_set_batterychargingchange_callback);
   ret = emscripten_set_batterylevelchange_callback(0, battery_callback);
@@ -392,21 +398,21 @@ int main() {
   }
 
   ret = emscripten_set_webglcontextlost_callback("#canvas", 0, 1, webglcontext_callback);
-  TEST_RESULT(emscripten_set_webglcontextlost_callback);
+  ASSERT_RESULT(emscripten_set_webglcontextlost_callback);
   ret = emscripten_set_webglcontextrestored_callback("#canvas", 0, 1, webglcontext_callback);
-  TEST_RESULT(emscripten_set_webglcontextrestored_callback);
+  ASSERT_RESULT(emscripten_set_webglcontextrestored_callback);
 
   char *source_window_title = "test window title Äあ🙂";
   emscripten_set_window_title(source_window_title);
   char *current_window_title = emscripten_get_window_title();
   ret = (strcmp(source_window_title, current_window_title) == 0 \
                   ? EMSCRIPTEN_RESULT_SUCCESS : EMSCRIPTEN_RESULT_FAILED);
-  TEST_RESULT(emscripten_get_window_title);
+  ASSERT_RESULT(emscripten_get_window_title);
 
   int width, height;
   emscripten_get_screen_size(&width, &height);
   ret = (width && height) ? EMSCRIPTEN_RESULT_SUCCESS : EMSCRIPTEN_RESULT_FAILED;
-  TEST_RESULT(emscripten_get_screen_size);
+  ASSERT_RESULT(emscripten_get_screen_size);
 
 #ifdef KEEP_ALIVE
   emscripten_exit_with_live_runtime();

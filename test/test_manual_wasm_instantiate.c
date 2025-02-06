@@ -3,14 +3,13 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <assert.h>
 #include <stdio.h>
-#include <emscripten/emscripten.h>
+#include <emscripten/em_asm.h>
 
-int main()
-{
-	printf("OK\n");
-#ifdef REPORT_RESULT
-	int result = EM_ASM_INT({return Module.testWasmInstantiationSucceeded;});
-	REPORT_RESULT(result);
-#endif
+int main() {
+  printf("in main\n");
+  int result = EM_ASM_INT({return Module.testWasmInstantiationSucceeded;});
+  assert(result);
+  return 0;
 }

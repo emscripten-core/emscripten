@@ -14,7 +14,6 @@ function run() {
 #endif
 
   <<< ATMAINS >>>
-
 #if PROXY_TO_PTHREAD
   // User requested the PROXY_TO_PTHREAD option, so call a stub main which
   // pthread_create()s a new thread that will call the user's real main() for
@@ -24,7 +23,6 @@ function run() {
   var ret = _main();
 
 #if EXIT_RUNTIME
-  callRuntimeCallbacks(__ATEXIT__);
   <<< ATEXITS >>>
 #if PTHREADS
   PThread.terminateAllThreads();
@@ -45,6 +43,7 @@ function run() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
+  <<< ATPOSTRUNS >>>
 }
 #endif
 
@@ -73,18 +72,24 @@ function initRuntime(wasmExports) {
   PThread.tlsInitFunctions.push(wasmExports['_emscripten_tls_init']);
 #endif
 
+  <<< ATINITS >>>
+
 #if hasExportedSymbol('__wasm_call_ctors')
   wasmExports['__wasm_call_ctors']();
 #endif
 
-  <<< ATINITS >>>
+  <<< ATPOSTCTORS >>>
 }
 
 // Initialize wasm (asynchronous)
 
-// In non-fastcomp non-asm.js builds, grab wasm exports to outer scope
-// for emscripten_get_exported_function() to be able to access them.
+#if SINGLE_FILE && WASM == 1 && !WASM2JS
+Module['wasm'] = base64Decode('<<< WASM_BINARY_DATA >>>');
+#endif
+
 #if LibraryManager.has('libexports.js')
+// emscripten_get_exported_function() requires wasmExports to be defined in the
+// outer scope.
 var wasmExports;
 #endif
 
@@ -105,10 +110,6 @@ var imports = {
   '{{{ WASI_MODULE_NAME }}}': wasmImports,
 #endif // MINIFY_WASM_IMPORTED_MODULES
 };
-
-#if SINGLE_FILE && WASM == 1 && !WASM2JS
-Module['wasm'] = base64Decode('<<< WASM_BINARY_DATA >>>');
-#endif
 
 #if MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
 // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
@@ -217,6 +218,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #endif
   updateMemoryViews();
 #endif
+  <<< ATPRERUNS >>>
 
   initRuntime(wasmExports);
 #if PTHREADS

@@ -140,15 +140,6 @@ var runtimeInitialized = false;
 var runtimeExited = false;
 #endif
 
-// Prefix of data URIs emitted by SINGLE_FILE and related options.
-var dataURIPrefix = 'data:application/octet-stream;base64,';
-
-/**
- * Indicates whether filename is a base64 data URI.
- * @noinline
- */
-var isDataURI = (filename) => filename.startsWith(dataURIPrefix);
-
 /**
  * Indicates whether filename is delivered via file protocol (as opposed to http/https)
  * @noinline
@@ -175,14 +166,6 @@ assert(!Module['wasmMemory'], 'Use of `wasmMemory` detected.  Use -sIMPORTED_MEM
 assert(!Module['INITIAL_MEMORY'], 'Detected runtime INITIAL_MEMORY setting.  Use -sIMPORTED_MEMORY to define wasmMemory dynamically');
 #endif // !IMPORTED_MEMORY && ASSERTIONS
 
-var __ATPRERUN__  = []; // functions called before the runtime is initialized
-var __ATINIT__    = []; // functions called during startup
-#if HAS_MAIN
-var __ATMAIN__    = []; // functions called when main() is to be run
-#endif
-var __ATEXIT__    = []; // functions called during shutdown
-var __ATPOSTRUN__ = []; // functions called after the main() is called
-
 #if RELOCATABLE
 var __RELOC_FUNCS__ = [];
 #endif
@@ -199,7 +182,7 @@ function preRun() {
     }
   }
 #endif
-  callRuntimeCallbacks(__ATPRERUN__);
+  <<< ATPRERUNS >>>
 }
 
 function initRuntime() {
@@ -230,8 +213,14 @@ function initRuntime() {
 #if RELOCATABLE
   callRuntimeCallbacks(__RELOC_FUNCS__);
 #endif
+
   <<< ATINITS >>>
-  callRuntimeCallbacks(__ATINIT__);
+
+#if hasExportedSymbol('__wasm_call_ctors')
+  wasmExports['__wasm_call_ctors']();
+#endif
+
+  <<< ATPOSTCTORS >>>
 }
 
 #if HAS_MAIN
@@ -240,7 +229,6 @@ function preMain() {
   checkStackCookie();
 #endif
   <<< ATMAINS >>>
-  callRuntimeCallbacks(__ATMAIN__);
 }
 #endif
 
@@ -265,7 +253,6 @@ function exitRuntime() {
 #if !STANDALONE_WASM
   ___funcs_on_exit(); // Native atexit() functions
 #endif
-  callRuntimeCallbacks(__ATEXIT__);
   <<< ATEXITS >>>
 #if PTHREADS
   PThread.terminateAllThreads();
@@ -291,31 +278,7 @@ function postRun() {
   }
 #endif
 
-  callRuntimeCallbacks(__ATPOSTRUN__);
-}
-
-function addOnPreRun(cb) {
-  __ATPRERUN__.unshift(cb);
-}
-
-function addOnInit(cb) {
-  __ATINIT__.unshift(cb);
-}
-
-#if HAS_MAIN
-function addOnPreMain(cb) {
-  __ATMAIN__.unshift(cb);
-}
-#endif
-
-function addOnExit(cb) {
-#if EXIT_RUNTIME
-  __ATEXIT__.unshift(cb);
-#endif
-}
-
-function addOnPostRun(cb) {
-  __ATPOSTRUN__.unshift(cb);
+  <<< ATPOSTRUNS >>>
 }
 
 // A counter of dependencies for calling run(). If we need to
@@ -598,18 +561,13 @@ function findWasmBinary() {
 #if EXPORT_ES6 && USE_ES6_IMPORT_META && !AUDIO_WORKLET
   if (Module['locateFile']) {
 #endif
-    var f = '{{{ WASM_BINARY_FILE }}}';
-#if !SINGLE_FILE
-    if (!isDataURI(f)) {
-      return locateFile(f);
-    }
-#endif
-    return f;
-#if EXPORT_ES6 && USE_ES6_IMPORT_META && !AUDIO_WORKLET // In single-file mode, repeating WASM_BINARY_FILE would emit the contents again. For an Audio Worklet, we cannot use `new URL()`.
+    return locateFile('{{{ WASM_BINARY_FILE }}}');
+#if EXPORT_ES6 && USE_ES6_IMPORT_META && !AUDIO_WORKLET // For an Audio Worklet, we cannot use `new URL()`.
   }
 #if ENVIRONMENT_MAY_BE_SHELL
-  if (ENVIRONMENT_IS_SHELL)
+  if (ENVIRONMENT_IS_SHELL) {
     return '{{{ WASM_BINARY_FILE }}}';
+  }
 #endif
   // Use bundler-friendly `new URL(..., import.meta.url)` pattern; works in browsers too.
   return new URL('{{{ WASM_BINARY_FILE }}}', import.meta.url).href;
@@ -792,9 +750,7 @@ async function instantiateArrayBuffer(binaryFile, imports) {
 
 async function instantiateAsync(binary, binaryFile, imports) {
 #if !SINGLE_FILE
-  if (!binary &&
-      typeof WebAssembly.instantiateStreaming == 'function' &&
-      !isDataURI(binaryFile)
+  if (!binary && typeof WebAssembly.instantiateStreaming == 'function'
 #if ENVIRONMENT_MAY_BE_WEBVIEW
       // Don't use streaming for file:// delivered objects in a webview, fetch them synchronously.
       && !isFileURI(binaryFile)
@@ -960,10 +916,6 @@ function getWasmImports() {
 #endif
 #endif
 
-#if hasExportedSymbol('__wasm_call_ctors')
-    addOnInit(wasmExports['__wasm_call_ctors']);
-#endif
-
 #if hasExportedSymbol('__wasm_apply_data_relocs')
     __RELOC_FUNCS__.push(wasmExports['__wasm_apply_data_relocs']);
 #endif
@@ -1027,17 +979,21 @@ function getWasmImports() {
   // Also pthreads and wasm workers initialize the wasm instance through this
   // path.
   if (Module['instantiateWasm']) {
-    try {
-      return Module['instantiateWasm'](info, receiveInstance);
-    } catch(e) {
-      err(`Module.instantiateWasm callback failed with error: ${e}`);
-      #if MODULARIZE
-        // If instantiation fails, reject the module ready promise.
-        readyPromiseReject(e);
-      #else
-        return false;
-      #endif
-    }
+    return new Promise((resolve, reject) => {
+#if ASSERTIONS
+      try {
+#endif
+        Module['instantiateWasm'](info, (mod, inst) => {
+          receiveInstance(mod, inst);
+          resolve(mod.exports);
+        });
+#if ASSERTIONS
+      } catch(e) {
+        err(`Module.instantiateWasm callback failed with error: ${e}`);
+        reject(e);
+      }
+#endif
+    });
   }
 #endif
 
