@@ -38,8 +38,8 @@ bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, Audi
   // We can now do a quick mix since we know the layouts
   if (numInputs > 0) {
     int totalSamples = outSamplesPerChannel * outputs[0].numberOfChannels;
-    // Simple copy of single input's audio data, checking that we have channels
-    // (since a muted input has zero channels)
+    // Simple copy of the first input's audio data, checking that we have
+    // channels (since a muted input has zero channels).
     float* outputData = outputs[0].data;
     if (inputs[0].numberOfChannels > 0) {
       memcpy(outputData, inputs[0].data, totalSamples * sizeof(float));
