@@ -348,6 +348,7 @@ class interactive64(interactive):
     self.set_setting('MEMORY64')
     self.require_wasm64()
 
+
 class interactive64_4gb(interactive):
   def setUp(self):
     super().setUp()
@@ -355,6 +356,7 @@ class interactive64_4gb(interactive):
     self.set_setting('INITIAL_MEMORY', '4200mb')
     self.set_setting('GLOBAL_BASE', '4gb')
     self.require_wasm64()
+
 
 class interactive_2gb(interactive):
   def setUp(self):
