@@ -2060,24 +2060,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 # it this way then allows the page to close() itself when done.
 def harness_server_func(in_queue, out_queue, port):
   class TestServerHandler(SimpleHTTPRequestHandler):
-    # Request header handler for default do_GET() path in
-    # SimpleHTTPRequestHandler.do_GET(self) below.
-    def send_head(self):
-      if self.path.endswith('.js'):
-        path = self.translate_path(self.path)
-        try:
-          f = open(path, 'rb')
-        except IOError:
-          self.send_error(404, "File not found: " + path)
-          return None
-        self.send_response(200)
-        self.send_header('Content-type', 'application/javascript')
-        self.send_header('Connection', 'close')
-        self.end_headers()
-        return f
-      else:
-        return SimpleHTTPRequestHandler.send_head(self)
-
     # Add COOP, COEP, CORP, and no-caching headers
     def end_headers(self):
       self.send_header('Access-Control-Allow-Origin', '*')
