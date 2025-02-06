@@ -10,8 +10,8 @@
 
 // This needs to be big enough for the stereo output, 2x inputs, 2x params and
 // the worker stack. To note that different browsers have different stack size
-// requirement (see notes in process()).
-#define AUDIO_STACK_SIZE 5120
+// requirement (see notes in process() plus the expansion of the params).
+#define AUDIO_STACK_SIZE 6144
 
 // Shared file playback and bootstrap
 #include "audioworklet_test_shared.inc"

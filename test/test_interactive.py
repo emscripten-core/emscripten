@@ -334,7 +334,7 @@ class interactive(BrowserCore):
     shutil.copy(test_file('webaudio/audio_files/emscripten-bass-mono.mp3'), 'audio_files/')
     self.btest_exit('webaudio/audioworklet_2x_in_hard_pan.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
 
-  # Tests an AudioWorklet with multiple stereo inputs mixing in the processor via a parameter to a single stereo output
+  # Tests an AudioWorklet with multiple stereo inputs mixing in the processor via a parameter to a single stereo output (6kB stack)
   def test_audio_worklet_params_mixing(self):
     os.mkdir('audio_files')
     shutil.copy(test_file('webaudio/audio_files/emscripten-beat.mp3'), 'audio_files/')
