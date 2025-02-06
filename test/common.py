@@ -321,6 +321,17 @@ def requires_wasm2js(f):
   return decorated
 
 
+def requires_jspi(func):
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    self.require_jspi()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
 def node_pthreads(f):
   assert callable(f)
 
