@@ -52,7 +52,7 @@ var LibraryGLUT = {
       var newY = Browser.mouseY;
       if (newX == lastX && newY == lastY) return;
 
-      if (GLUT.buttons == 0 && event.target == Module['canvas'] && GLUT.passiveMotionFunc) {
+      if (GLUT.buttons == 0 && event.target == Browser.getCanvas() && GLUT.passiveMotionFunc) {
         event.preventDefault();
         GLUT.saveModifiers(event);
         {{{ makeDynCall('vii', 'GLUT.passiveMotionFunc') }}}(lastX, lastY);
@@ -201,7 +201,7 @@ var LibraryGLUT = {
     },
 
     touchHandler: (event) => {
-      if (event.target != Module['canvas']) {
+      if (event.target != Browser.getCanvas()) {
         return;
       }
 
@@ -231,7 +231,7 @@ var LibraryGLUT = {
 
       GLUT.buttons |= (1 << event['button']);
 
-      if (event.target == Module['canvas'] && GLUT.mouseFunc) {
+      if (event.target == Browser.getCanvas() && GLUT.mouseFunc) {
         try {
           event.target.setCapture();
         } catch (e) {}
@@ -359,7 +359,8 @@ var LibraryGLUT = {
       // Firefox
       window.removeEventListener('DOMMouseScroll', GLUT.onMouseWheel, true);
 
-      Module['canvas'].width = Module['canvas'].height = 1;
+      var canvas = Browser.getCanvas();
+      canvas.width = canvas.height = 1;
     });
   },
 
@@ -380,13 +381,13 @@ var LibraryGLUT = {
       case 101: /* GLUT_WINDOW_Y */
         return 0; /* TODO */
       case 102: /* GLUT_WINDOW_WIDTH */
-        return Module['canvas'].width;
+        return Browser.getCanvas().width;
       case 103: /* GLUT_WINDOW_HEIGHT */
-        return Module['canvas'].height;
+        return Browser.getCanvas().height;
       case 200: /* GLUT_SCREEN_WIDTH */
-        return Module['canvas'].width;
+        return Browser.getCanvas().width;
       case 201: /* GLUT_SCREEN_HEIGHT */
-        return Module['canvas'].height;
+        return Browser.getCanvas().height;
       case 500: /* GLUT_INIT_WINDOW_X */
         return 0; /* TODO */
       case 501: /* GLUT_INIT_WINDOW_Y */
@@ -550,7 +551,7 @@ var LibraryGLUT = {
       default:
         throw "glutSetCursor: Unknown cursor type: " + cursor;
     }
-    Module['canvas'].style.cursor = cursorStyle;
+    Browser.getCanvas().style.cursor = cursorStyle;
   },
 
   glutCreateWindow__proxy: 'sync',
@@ -566,7 +567,7 @@ var LibraryGLUT = {
     // TODO: Make glutCreateWindow explicitly aware of whether it is being proxied or not, and set these to true only when proxying is being performed.
     GL.enableOffscreenFramebufferAttributes(contextAttributes);
 #endif
-    if (!Browser.createContext(Module['canvas'], /*useWebGL=*/true, /*setInModule=*/true, contextAttributes)) {
+    if (!Browser.createContext(Browser.getCanvas(), /*useWebGL=*/true, /*setInModule=*/true, contextAttributes)) {
       return 0; // failure
     }
     return 1; // a new GLUT window ID for the created context
@@ -604,8 +605,9 @@ var LibraryGLUT = {
   glutFullScreen: () => {
     GLUT.windowX = 0; // TODO
     GLUT.windowY = 0; // TODO
-    GLUT.windowWidth  = Module['canvas'].width;
-    GLUT.windowHeight = Module['canvas'].height;
+    var canvas = Browser.getCanvas();
+    GLUT.windowWidth = canvas.width;
+    GLUT.windowHeight = canvas.height;
     document.addEventListener('fullscreenchange', GLUT.onFullscreenEventChange, true);
     document.addEventListener('mozfullscreenchange', GLUT.onFullscreenEventChange, true);
     document.addEventListener('webkitfullscreenchange', GLUT.onFullscreenEventChange, true);
@@ -633,7 +635,8 @@ var LibraryGLUT = {
   glutMainLoop__proxy: 'sync',
   glutMainLoop__deps: ['$GLUT', 'glutReshapeWindow', 'glutPostRedisplay'],
   glutMainLoop: () => {
-    _glutReshapeWindow(Module['canvas'].width, Module['canvas'].height);
+    var canvas = Browser.getCanvas();
+    _glutReshapeWindow(canvas.width, canvas.height);
     _glutPostRedisplay();
     throw 'unwind';
   },
