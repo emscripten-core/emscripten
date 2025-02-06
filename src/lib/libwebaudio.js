@@ -251,7 +251,6 @@ let LibraryWebAudio = {
       audioParamDescriptors = {{{ makeGetValue('options', C_STRUCTS.WebAudioWorkletProcessorCreateOptions.audioParamDescriptors, '*') }}},
       i = 0;
 
-    // TODO: add tests and wire this up
     while (numAudioParams--) {
       audioParams.push({
         name: i++,
@@ -277,8 +276,8 @@ let LibraryWebAudio = {
       '_wpn': processorName,
       'ap': audioParams,
       'ch': contextHandle,
-      'cb': {{{ toIndexType('callback') }}},
-      'ud': {{{ toIndexType('userData') }}}
+      'cb': callback,
+      'ud': userData
     });
   },
 
@@ -290,7 +289,6 @@ let LibraryWebAudio = {
     assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_create_wasm_audio_worklet_node() on a context handle ${contextHandle} that is not an AudioContext, but of type ${typeof EmAudio[contextHandle]}`);
 #endif
 
-    // TODO: this next
     function readChannelCountArray(heapIndex, numOutputs) {
       if (!heapIndex) return void 0;
       heapIndex = {{{ getHeapOffset('heapIndex', 'i32') }}};
@@ -305,8 +303,8 @@ let LibraryWebAudio = {
       numberOfOutputs: optionsOutputs,
       outputChannelCount: readChannelCountArray({{{ makeGetValue('options', C_STRUCTS.EmscriptenAudioWorkletNodeCreateOptions.outputChannelCounts, 'i32*') }}}, optionsOutputs),
       processorOptions: {
-        'cb': {{{ toIndexType('callback') }}},
-        'ud': {{{ toIndexType('userData') }}},
+        'cb': callback,
+        'ud': userData,
         'sc': emscriptenGetContextQuantumSize(contextHandle)
       }
     } : void 0;

@@ -29,8 +29,8 @@ function createWasmAudioWorkletProcessor(audioParams) {
 
       // Capture the Wasm function callback to invoke.
       let opts = args.processorOptions;
-      this.callbackFunction = Module['wasmTable'].get(opts['cb']);
-      this.userData = opts['ud'];
+      this.callbackFunction = Module['wasmTable'].get({{{ toIndexType("opts['cb']") }}});
+      this.userData = {{{ toIndexType("opts['ud']") }}};
 
       // Then the samples per channel to process, fixed for the lifetime of the
       // context that created this processor. Even though this 'render quantum
@@ -273,9 +273,9 @@ class BootstrapMessages extends AudioWorkletProcessor {
         // 'cb' the callback function
         // 'ch' the context handle
         // 'ud' the passed user data
-        p.postMessage({'_wsc': d['cb'], 'x': [d['ch'], 1/*EM_TRUE*/, d['ud']] });
+        p.postMessage({'_wsc': {{{ toIndexType("d['cb']") }}}, 'x': [d['ch'], 1/*EM_TRUE*/, {{{ toIndexType("d['ud']") }}}] });
       } else if (d['_wsc']) {
-        Module['wasmTable'].get({{{ toIndexType('d[\'_wsc\']') }}})(...d['x']);
+        Module['wasmTable'].get({{{ toIndexType("d['_wsc']") }}})(...d['x']);
       };
     }
   }
