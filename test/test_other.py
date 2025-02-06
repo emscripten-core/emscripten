@@ -35,7 +35,7 @@ from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disable
 from common import env_modify, no_mac, no_windows, only_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64, requires_node_canary
-from common import requires_wasm_eh, crossplatform, with_all_eh_sjlj, with_all_sjlj
+from common import requires_wasm_eh, crossplatform, with_all_eh_sjlj, with_all_sjlj, requires_jspi
 from common import also_with_standalone_wasm, also_with_wasm2js, also_with_noderawfs
 from common import also_with_modularize, also_with_wasmfs, with_all_fs
 from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64, also_with_asan, flaky
@@ -190,17 +190,6 @@ def requires_pkg_config(func):
         self.skipTest('test requires pkg-config and EMTEST_SKIP_PKG_CONFIG is set')
       else:
         self.fail('pkg-config is required to run this test')
-    return func(self, *args, **kwargs)
-
-  return decorated
-
-
-def requires_jspi(func):
-  assert callable(func)
-
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-    self.require_jspi()
     return func(self, *args, **kwargs)
 
   return decorated
