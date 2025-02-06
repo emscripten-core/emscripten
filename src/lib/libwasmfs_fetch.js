@@ -94,7 +94,7 @@ addToLibrary({
       if (!response.ok) {
         throw response;
       }
-      var bytes = await response.bytes();
+      var bytes = await response['bytes']();
       for (i = firstChunk; i <= lastChunk; i++) {
         wasmFS$JSMemoryRanges[file].chunks[i] = bytes.slice(i*chunkSize-start,(i+1)*chunkSize-start);
       }
