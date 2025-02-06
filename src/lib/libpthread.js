@@ -410,20 +410,20 @@ var LibraryPThread = {
         );
         worker = new Worker(p.createScriptURL('ignored'), {
 #if EXPORT_ES6
-            'type': 'module',
+          type: 'module',
 #endif
 #if ENVIRONMENT_MAY_BE_NODE
-            // This is the way that we signal to the node worker that it is hosting
-            // a pthread.
-            'workerData': 'em-pthread',
+          // This is the way that we signal to the node worker that it is hosting
+          // a pthread.
+          workerData: 'em-pthread',
 #endif
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
-            // This is the way that we signal to the Web Worker that it is hosting
-            // a pthread.
+          // This is the way that we signal to the Web Worker that it is hosting
+          // a pthread.
 #if ASSERTIONS
-            'name': 'em-pthread-' + PThread.nextWorkerID,
+          name: 'em-pthread-' + PThread.nextWorkerID,
 #else
-            'name': 'em-pthread',
+          name: 'em-pthread',
 #endif
 #endif
         });
@@ -435,20 +435,20 @@ var LibraryPThread = {
       // URL to import from the server (e.g., for webpack the file:// path).
       worker = new Worker(new URL('{{{ TARGET_JS_NAME }}}', import.meta.url), {
 #if EXPORT_ES6
-          'type': 'module',
+        type: 'module',
 #endif
 #if ENVIRONMENT_MAY_BE_NODE
-          // This is the way that we signal to the node worker that it is hosting
-          // a pthread.
-          'workerData': 'em-pthread',
+        // This is the way that we signal to the node worker that it is hosting
+        // a pthread.
+        workerData: 'em-pthread',
 #endif
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
-          // This is the way that we signal to the Web Worker that it is hosting
-          // a pthread.
+        // This is the way that we signal to the Web Worker that it is hosting
+        // a pthread.
 #if ASSERTIONS
-          'name': 'em-pthread-' + PThread.nextWorkerID,
+        name: 'em-pthread-' + PThread.nextWorkerID,
 #else
-          'name': 'em-pthread',
+        name: 'em-pthread',
 #endif
 #endif
       });
@@ -473,20 +473,20 @@ var LibraryPThread = {
         var p = trustedTypes.createPolicy('emscripten#workerPolicy2', { createScriptURL: (ignored) => pthreadMainJs });
         worker = new Worker(p.createScriptURL('ignored'), {
 #if EXPORT_ES6
-            'type': 'module',
+          type: 'module',
 #endif
 #if ENVIRONMENT_MAY_BE_NODE
-            // This is the way that we signal to the node worker that it is hosting
-            // a pthread.
-            'workerData': 'em-pthread',
+          // This is the way that we signal to the node worker that it is hosting
+          // a pthread.
+          workerData: 'em-pthread',
 #endif
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
-            // This is the way that we signal to the Web Worker that it is hosting
-            // a pthread.
+          // This is the way that we signal to the Web Worker that it is hosting
+          // a pthread.
 #if ASSERTIONS
-            'name': 'em-pthread-' + PThread.nextWorkerID,
+          name: 'em-pthread-' + PThread.nextWorkerID,
 #else
-            'name': 'em-pthread',
+          name: 'em-pthread',
 #endif
 #endif
         });
@@ -494,20 +494,20 @@ var LibraryPThread = {
 #endif
       worker = new Worker(pthreadMainJs,       worker = new Worker(pthreadMainJs, {
 #if EXPORT_ES6
-          'type': 'module',
+        type: 'module',
 #endif
 #if ENVIRONMENT_MAY_BE_NODE
-          // This is the way that we signal to the node worker that it is hosting
-          // a pthread.
-          'workerData': 'em-pthread',
+        // This is the way that we signal to the node worker that it is hosting
+        // a pthread.
+        workerData: 'em-pthread',
 #endif
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
-          // This is the way that we signal to the Web Worker that it is hosting
-          // a pthread.
+        // This is the way that we signal to the Web Worker that it is hosting
+        // a pthread.
 #if ASSERTIONS
-          'name': 'em-pthread-' + PThread.nextWorkerID,
+        name: 'em-pthread-' + PThread.nextWorkerID,
 #else
-          'name': 'em-pthread',
+        name: 'em-pthread',
 #endif
 #endif
       });
