@@ -2049,14 +2049,14 @@ def harness_server_func(in_queue, out_queue, port):
     # Request header handler for default do_GET() path in
     # SimpleHTTPRequestHandler.do_GET(self) below.
     def send_head(self):
-      path = self.translate_path(self.path)
-      try:
-        fsize = os.path.getsize(path)
-        f = open(path, 'rb')
-      except IOError:
-        self.send_error(404, f'File not found {path}')
-        return None
       if self.headers.get('Range'):
+        path = self.translate_path(self.path)
+        try:
+          fsize = os.path.getsize(path)
+          f = open(path, 'rb')
+        except IOError:
+          self.send_error(404, f'File not found {path}')
+          return None
         self.send_response(206)
         ctype = self.guess_type(path)
         self.send_header('Content-Type', ctype)
