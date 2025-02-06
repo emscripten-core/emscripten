@@ -1874,16 +1874,16 @@ simulateKeyUp(100, undefined, 'Numpad4');
     self.btest_exit('test_emscripten_async_load_script.c', args=['-sFORCE_FILESYSTEM'])
 
   def test_emscripten_api_infloop(self):
-    self.btest_exit('emscripten_api_browser_infloop.cpp', assert_returncode=7)
+    self.btest_exit('emscripten_api_browser_infloop.cpp')
 
   @also_with_wasmfs
   def test_emscripten_fs_api(self):
     shutil.copy(test_file('screenshot.png'), '.') # preloaded *after* run
-    self.btest_exit('emscripten_fs_api_browser.c', assert_returncode=1, args=['-lSDL'])
+    self.btest_exit('emscripten_fs_api_browser.c', args=['-lSDL'])
 
   def test_emscripten_fs_api2(self):
-    self.btest_exit('emscripten_fs_api_browser2.c', assert_returncode=1, args=['-sASSERTIONS=0'])
-    self.btest_exit('emscripten_fs_api_browser2.c', assert_returncode=1, args=['-sASSERTIONS=1'])
+    self.btest_exit('emscripten_fs_api_browser2.c', args=['-sASSERTIONS=0'])
+    self.btest_exit('emscripten_fs_api_browser2.c', args=['-sASSERTIONS=1'])
 
   @parameterized({
     '': ([],),
@@ -3852,7 +3852,7 @@ Module["preRun"] = () => {
 
   # Test that pthread_cancel() cancels pthread_cond_wait() operation
   def test_pthread_cancel_cond_wait(self):
-    self.btest_exit('pthread/test_pthread_cancel_cond_wait.c', assert_returncode=1, args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit('pthread/test_pthread_cancel_cond_wait.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test pthread_kill() operation
   @no_chrome('pthread_kill hangs chrome renderer, and keep subsequent tests from passing')
@@ -4116,10 +4116,10 @@ Module["preRun"] = () => {
 
   # Tests MAIN_THREAD_EM_ASM_INT() function call signatures.
   def test_main_thread_em_asm_signatures(self):
-    self.btest_exit('core/test_em_asm_signatures.cpp', assert_returncode=121, args=[])
+    self.btest_exit('core/test_em_asm_signatures.cpp')
 
   def test_main_thread_em_asm_signatures_pthreads(self):
-    self.btest_exit('core/test_em_asm_signatures.cpp', assert_returncode=121, args=['-O3', '-pthread', '-sPROXY_TO_PTHREAD', '-sASSERTIONS'])
+    self.btest_exit('core/test_em_asm_signatures.cpp', args=['-O3', '-pthread', '-sPROXY_TO_PTHREAD', '-sASSERTIONS'])
 
   def test_main_thread_async_em_asm(self):
     self.btest_exit('core/test_main_thread_async_em_asm.cpp', args=['-O3', '-pthread', '-sPROXY_TO_PTHREAD', '-sASSERTIONS'])

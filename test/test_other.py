@@ -9317,7 +9317,7 @@ int main() {
 
     # Attempting to link statically against a side module (libside.so) should fail.
     err = self.expect_fail([EMCC, '-L.', '-lside'])
-    self.assertContained('error: attempted static link of dynamic object ./libside.so', err)
+    self.assertContained(r'error: attempted static link of dynamic object \.[/\\]libside.so', err, regex=True)
 
     # But a static library in the same location (libside.a) should take precedence.
     self.run_process([EMCC, test_file('hello_world.c'), '-c'])
