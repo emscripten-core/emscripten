@@ -47,19 +47,28 @@ bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, Audi
       // And for muted we need to fill the buffer with zeroes otherwise it repeats the last frame
       memset(outputData, 0, totalSamples * sizeof(float));
     }
-    // Grab the mix level parameter (with either a length of 1 or the samples
-    // per channel) and add any other inputs
-    const AudioParamFrame* mixLevel = &params[0];
+    // Grab the mix level parameter and expand it to have one entry per output
+    // sample. This simplifies the mixer and smooths out browser differences.
+    // Output and input buffers are stereo planar, so the mix data just repeats.
+    float* const mixLevel = alloca(totalSamples * sizeof(float));
+    if (params[0].length > 1) {
+      // This is the regular path, one entry per sample by number of channels
+      for (int ch = outputs[0].numberOfChannels - 1; ch >= 0; ch--) {
+        memcpy(mixLevel + ch * outSamplesPerChannel, params[0].data, outSamplesPerChannel * sizeof(float));
+      }
+    } else {
+      // Chrome will take this path when the k-rate parameter doesn't change
+      float singleLevel = params[0].data[0];
+      for (int n = totalSamples - 1; n >= 0; n--) {
+        mixLevel[n] = singleLevel;
+      }
+    }
+    // Now add another inputs with the mix level
     for (int n = 1; n < numInputs; n++) {
       if (inputs[n].numberOfChannels > 0) {
         float* inputData = inputs[n].data;
         for (int i = totalSamples - 1; i >= 0; i--) {
-          // Output and input buffers are stereo planar in this example so we
-          // need to get a mixLevel->data[] per channel, hence the quick % (and
-          // as noticed in the wild, implementations have either one or all
-          // entries, regardless of the param spec we passed in)
-          float mixLevelValue = mixLevel->data[(mixLevel->length > 1) ? (i % outSamplesPerChannel) : 0];
-          outputData[i] += inputData[i] * mixLevelValue;
+          outputData[i] += inputData[i] * mixLevel[i];
         }
       }
     }
