@@ -189,9 +189,9 @@ LibraryJSEventLoop = {
   $MainLoop__internal: true,
   $MainLoop__deps: ['$setMainLoop', '$callUserCallback', 'emscripten_set_main_loop_timing'],
   $MainLoop__postset: `
-    Module["requestAnimationFrame"] = MainLoop.requestAnimationFrame;
-    Module["pauseMainLoop"] = MainLoop.pause;
-    Module["resumeMainLoop"] = MainLoop.resume;
+    Module['requestAnimationFrame'] = MainLoop.requestAnimationFrame;
+    Module['pauseMainLoop'] = MainLoop.pause;
+    Module['resumeMainLoop'] = MainLoop.resume;
     MainLoop.init();`,
   $MainLoop: {
     running: false,
