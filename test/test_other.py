@@ -35,7 +35,7 @@ from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disable
 from common import env_modify, no_mac, no_windows, only_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64, requires_node_canary
-from common import requires_wasm_eh, crossplatform, with_all_eh_sjlj, with_all_sjlj
+from common import requires_wasm_eh, crossplatform, with_all_eh_sjlj, with_all_sjlj, requires_jspi
 from common import also_with_standalone_wasm, also_with_wasm2js, also_with_noderawfs
 from common import also_with_modularize, also_with_wasmfs, with_all_fs
 from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64, also_with_asan, flaky
@@ -190,17 +190,6 @@ def requires_pkg_config(func):
         self.skipTest('test requires pkg-config and EMTEST_SKIP_PKG_CONFIG is set')
       else:
         self.fail('pkg-config is required to run this test')
-    return func(self, *args, **kwargs)
-
-  return decorated
-
-
-def requires_jspi(func):
-  assert callable(func)
-
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-    self.require_jspi()
     return func(self, *args, **kwargs)
 
   return decorated
@@ -6736,7 +6725,7 @@ This locale is not the C locale.
       if be_clean:
         assert len(clutter) == 0, 'should not leave clutter ' + str(clutter)
       else:
-         assert len(clutter) == 2, 'should leave .o files'
+        assert len(clutter) == 2, 'should leave .o files'
     test(['-o', 'c.so', '-r'], True)
     test(['-o', 'c.js'], True)
     test(['-o', 'c.html'], True)
@@ -9321,6 +9310,20 @@ int main() {
     self.run_process([EMCC, test_file('hello_world.c'), '-sSIDE_MODULE', '-o', 'subdir/libside1.so'])
     self.run_process([EMCC, test_file('hello_world.c'), '-sSIDE_MODULE', '-o', 'subdir/libside2.so', '-L', 'subdir', '-lside1'])
     self.run_process([EMCC, test_file('hello_world.c'), '-sMAIN_MODULE', '-o', 'main.js', '-L', 'subdir', '-lside2'])
+
+  @crossplatform
+  def test_side_module_ignore(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-sSIDE_MODULE', '-o', 'libside.so'])
+
+    # Attempting to link statically against a side module (libside.so) should fail.
+    err = self.expect_fail([EMCC, '-L.', '-lside'])
+    self.assertContained(r'error: attempted static link of dynamic object \.[/\\]libside.so', err, regex=True)
+
+    # But a static library in the same location (libside.a) should take precedence.
+    self.run_process([EMCC, test_file('hello_world.c'), '-c'])
+    self.run_process([EMAR, 'cr', 'libside.a', 'hello_world.o'])
+    self.run_process([EMCC, '-L.', '-lside'])
+    self.assertContained('hello, world!', self.run_js('a.out.js'))
 
   @is_slow_test
   @parameterized({
@@ -12866,9 +12869,12 @@ int main () {
     self.do_other_test('test_euidaccess.c')
 
   def test_shared_flag(self):
+    self.run_process([EMCC, '-shared', test_file('hello_world.c'), '-o', 'libother.so'])
+
     # Test that `-shared` flag causes object file generation but gives a warning
-    err = self.run_process([EMCC, '-shared', test_file('hello_world.c'), '-o', 'out.foo'], stderr=PIPE).stderr
+    err = self.run_process([EMCC, '-shared', test_file('hello_world.c'), '-o', 'out.foo', 'libother.so'], stderr=PIPE).stderr
     self.assertContained('linking a library with `-shared` will emit a static object', err)
+    self.assertContained('emcc: warning: ignoring dynamic library libother.so when generating an object file, this will need to be included explicitly in the final link', err)
     self.assertIsObjectFile('out.foo')
 
     # Test that using an executable output name overrides the `-shared` flag, but produces a warning.

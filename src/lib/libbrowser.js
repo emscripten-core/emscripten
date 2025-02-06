@@ -19,13 +19,13 @@ var LibraryBrowser = {
   ],
   $Browser__postset: `
     // exports
-    Module["requestFullscreen"] = Browser.requestFullscreen;
+    Module['requestFullscreen'] = Browser.requestFullscreen;
 #if ASSERTIONS
-    Module["requestFullScreen"] = Browser.requestFullScreen;
+    Module['requestFullScreen'] = Browser.requestFullScreen;
 #endif
-    Module["setCanvasSize"] = Browser.setCanvasSize;
-    Module["getUserMedia"] = Browser.getUserMedia;
-    Module["createContext"] = Browser.createContext;
+    Module['setCanvasSize'] = Browser.setCanvasSize;
+    Module['getUserMedia'] = Browser.getUserMedia;
+    Module['createContext'] = Browser.createContext;
   `,
 
   $Browser: {
@@ -428,9 +428,9 @@ var LibraryBrowser = {
     calculateMouseCoords(pageX, pageY) {
       // Calculate the movement based on the changes
       // in the coordinates.
-      var rect = Module["canvas"].getBoundingClientRect();
-      var cw = Module["canvas"].width;
-      var ch = Module["canvas"].height;
+      var rect = Module['canvas'].getBoundingClientRect();
+      var cw = Module['canvas'].width;
+      var ch = Module['canvas'].height;
 
       // Neither .scrollX or .pageXOffset are defined in a spec, but
       // we prefer .scrollX because it is currently in a spec draft.

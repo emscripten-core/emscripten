@@ -716,7 +716,14 @@ var LibraryDylink = {
           }
           if (prop in wasmImports && !wasmImports[prop].stub) {
             // No stub needed, symbol already exists in symbol table
-            return wasmImports[prop];
+            var res = wasmImports[prop];
+#if ASYNCIFY
+            // Asyncify wraps exports, and we need to look through those wrappers.
+            if (res.orig) {
+              res = res.orig;
+            }
+#endif
+            return res;
           }
           // Return a stub function that will resolve the symbol
           // when first called.
@@ -1159,7 +1166,7 @@ var LibraryDylink = {
 #if ASYNCIFY
   _dlopen_js__async: true,
 #endif
-  _dlopen_js: (handle) => {
+  _dlopen_js: {{{ asyncIf(ASYNCIFY == 2) }}} (handle) => {
 #if ASYNCIFY
     return Asyncify.handleSleep((wakeUp) => {
       dlopenInternal(handle, { loadAsync: true })
@@ -1248,7 +1255,7 @@ var LibraryDylink = {
 
 #if ASYNCIFY
       // Asyncify wraps exports, and we need to look through those wrappers.
-      if ('orig' in result) {
+      if (result.orig) {
         result = result.orig;
       }
 #endif

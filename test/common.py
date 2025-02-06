@@ -321,6 +321,17 @@ def requires_wasm2js(f):
   return decorated
 
 
+def requires_jspi(func):
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    self.require_jspi()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
 def node_pthreads(f):
   assert callable(f)
 
@@ -1063,6 +1074,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         self.js_engines = [nodejs]
         self.node_args.append('--experimental-wasm-exnref')
         return
+
+    if self.is_browser_test():
+      return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
       self.emcc_args.append('-sENVIRONMENT=shell')

@@ -26,9 +26,12 @@ actions = [
      'tools/maint/run_python.bat',
      'tools/maint/run_python.sh',
      'tools/maint/run_python.ps1',
-   ],
-   [sys.executable, 'tools/maint/create_entry_points.py']),
-  ('git submodules', ['test/third_party/posixtestsuite/'], [shutil.which('git'), 'submodule', 'update', '--init']),
+   ], [sys.executable, 'tools/maint/create_entry_points.py']),
+  ('git submodules', [
+     'test/third_party/posixtestsuite/',
+     'test/third_party/googletest',
+     'test/third_party/wasi-test-suite',
+   ], [shutil.which('git'), 'submodule', 'update', '--init']),
 ]
 
 

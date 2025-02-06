@@ -5,36 +5,39 @@
  * found in the LICENSE file.
  */
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <emscripten.h>
+#include <emscripten/eventloop.h>
 
-int result = 0;
+bool done = false;
 
-void EMSCRIPTEN_KEEPALIVE success() {
-  printf("success? %d\n", result);
-  assert(result == 10);
+void success() {
+  printf("atexit: done=%d\n", done);
+  assert(done);
 }
 
 void EMSCRIPTEN_KEEPALIVE later() {
   printf("later, now force an exit\n");
-  result += 10;
-  emscripten_force_exit(result);
+  done = true;
+  emscripten_force_exit(0);
 }
+
+EM_JS_DEPS(deps, "$callUserCallback")
 
 int main() {
   atexit(success);
 
   EM_ASM({
-    setTimeout(function() {
-      Module._later();
-    }, 1000);
+    // Use callUserCallback here so that ExitStatus is handled correctly
+    setTimeout(() => callUserCallback(Module._later), 1);
   });
 
   printf("exit, but still alive\n");
   emscripten_exit_with_live_runtime();
   __builtin_trap();
-  return 0;
+  return 99;
 }
 
