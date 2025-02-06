@@ -341,24 +341,23 @@ class interactive(BrowserCore):
     shutil.copy(test_file('webaudio/audio_files/emscripten-bass.mp3'), 'audio_files/')
     self.btest_exit('webaudio/audioworklet_params_mixing.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
 
-  # Same as 'test_audio_worklet_2x_stereo_io' but with the worklet stack starting at 2GB in (tests for unsigned shifts in the memory offsets)
-  def test_audio_worklet_stereo_io_2gb(self):
-    os.mkdir('audio_files')
-    shutil.copy(test_file('webaudio/audio_files/emscripten-beat.mp3'), 'audio_files/')
-    shutil.copy(test_file('webaudio/audio_files/emscripten-bass.mp3'), 'audio_files/')
-    self.btest_exit('webaudio/audioworklet_in_out_stereo.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sINITIAL_MEMORY=2200mb', '-sGLOBAL_BASE=2gb'])
-
-  # Same as 'test_audio_worklet_stereo_io_2gb' but built for wasm64 with the worklet stack starting at 4GB
-  def test_audio_worklet_stereo_io_4gb(self):
-    os.mkdir('audio_files')
-    shutil.copy(test_file('webaudio/audio_files/emscripten-beat.mp3'), 'audio_files/')
-    shutil.copy(test_file('webaudio/audio_files/emscripten-bass.mp3'), 'audio_files/')
-    self.btest_exit('webaudio/audioworklet_in_out_stereo.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sMEMORY64', '-sINITIAL_MEMORY=4200mb', '-sGLOBAL_BASE=4gb'])
-
 
 class interactive64(interactive):
   def setUp(self):
     super().setUp()
     self.set_setting('MEMORY64')
-    self.emcc_args.append('-Wno-experimental')
     self.require_wasm64()
+    
+class interactive64_4gb(interactive):
+  def setUp(self):
+    super().setUp()
+    self.set_setting('MEMORY64')
+    self.set_setting('INITIAL_MEMORY', '4200mb')
+    self.set_setting('GLOBAL_BASE', '4gb')
+    self.require_wasm64()
+
+class interactive_2gb(interactive):
+  def setUp(self):
+    super().setUp()
+    self.set_setting('INITIAL_MEMORY', '2200mb')
+    self.set_setting('GLOBAL_BASE', '2gb')
