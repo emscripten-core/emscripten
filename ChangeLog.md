@@ -36,7 +36,7 @@ See docs/process.md for more on how version tagging works.
   takes a second parameter (`uint32_t chunk_size`) to configure the size of
   each chunk. If a file is read a few times with random accesses, a small
   chunk size will minimize bandwidth; if a file is read in larger contiguous
-  ranges, a larger chunk size will reduce the number of requests.
+  ranges, a larger chunk size will reduce the number of requests. (#23021)
 
 4.0.2 - 01/30/25
 ----------------
