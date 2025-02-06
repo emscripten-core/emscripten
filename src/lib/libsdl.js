@@ -374,8 +374,8 @@ var LibrarySDL = {
 
       {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.clip_rect+C_STRUCTS.SDL_Rect.x, '0', 'i32') }}};
       {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.clip_rect+C_STRUCTS.SDL_Rect.y, '0', 'i32') }}};
-      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.clip_rect+C_STRUCTS.SDL_Rect.w, 'Module["canvas"].width', 'i32') }}};
-      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.clip_rect+C_STRUCTS.SDL_Rect.h, 'Module["canvas"].height', 'i32') }}};
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.clip_rect+C_STRUCTS.SDL_Rect.w, "Module['canvas'].width", 'i32') }}};
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.clip_rect+C_STRUCTS.SDL_Rect.h, "Module['canvas'].height" , 'i32') }}};
 
       {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.refcount, '1', 'i32') }}};
 
@@ -1444,8 +1444,8 @@ var LibrarySDL = {
   SDL_GetVideoInfo__proxy: 'sync',
   SDL_GetVideoInfo: () => {
     var ret = _calloc({{{ C_STRUCTS.SDL_VideoInfo.__size__ }}}, 1);
-    {{{ makeSetValue('ret', C_STRUCTS.SDL_VideoInfo.current_w, 'Module["canvas"].width', 'i32') }}};
-    {{{ makeSetValue('ret', C_STRUCTS.SDL_VideoInfo.current_h, 'Module["canvas"].height', 'i32') }}};
+    {{{ makeSetValue('ret', C_STRUCTS.SDL_VideoInfo.current_w, "Module['canvas'].width", 'i32') }}};
+    {{{ makeSetValue('ret', C_STRUCTS.SDL_VideoInfo.current_h, "Module['canvas'].height", 'i32') }}};
     return ret;
   },
 
@@ -1808,7 +1808,7 @@ var LibrarySDL = {
   SDL_WarpMouse: (x, y) => {
     return; // TODO: implement this in a non-buggy way. Need to keep relative mouse movements correct after calling this
     /*
-    var rect = Module["canvas"].getBoundingClientRect();
+    var rect = Module['canvas'].getBoundingClientRect();
     SDL.events.push({
       type: 'mousemove',
       pageX: x + (window.scrollX + rect.left),

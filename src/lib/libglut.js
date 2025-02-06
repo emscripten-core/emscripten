@@ -52,7 +52,7 @@ var LibraryGLUT = {
       var newY = Browser.mouseY;
       if (newX == lastX && newY == lastY) return;
 
-      if (GLUT.buttons == 0 && event.target == Module["canvas"] && GLUT.passiveMotionFunc) {
+      if (GLUT.buttons == 0 && event.target == Module['canvas'] && GLUT.passiveMotionFunc) {
         event.preventDefault();
         GLUT.saveModifiers(event);
         {{{ makeDynCall('vii', 'GLUT.passiveMotionFunc') }}}(lastX, lastY);
@@ -231,7 +231,7 @@ var LibraryGLUT = {
 
       GLUT.buttons |= (1 << event['button']);
 
-      if (event.target == Module["canvas"] && GLUT.mouseFunc) {
+      if (event.target == Module['canvas'] && GLUT.mouseFunc) {
         try {
           event.target.setCapture();
         } catch (e) {}
@@ -321,20 +321,20 @@ var LibraryGLUT = {
       // are only looking at single finger touches to emulate left click,
       // so we can use workaround and convert all touch events in mouse
       // events. See touchHandler.
-      window.addEventListener("touchmove", GLUT.touchHandler, true);
-      window.addEventListener("touchstart", GLUT.touchHandler, true);
-      window.addEventListener("touchend", GLUT.touchHandler, true);
+      window.addEventListener('touchmove', GLUT.touchHandler, true);
+      window.addEventListener('touchstart', GLUT.touchHandler, true);
+      window.addEventListener('touchend', GLUT.touchHandler, true);
     }
 
-    window.addEventListener("keydown", GLUT.onKeydown, true);
-    window.addEventListener("keyup", GLUT.onKeyup, true);
-    window.addEventListener("mousemove", GLUT.onMousemove, true);
-    window.addEventListener("mousedown", GLUT.onMouseButtonDown, true);
-    window.addEventListener("mouseup", GLUT.onMouseButtonUp, true);
+    window.addEventListener('keydown', GLUT.onKeydown, true);
+    window.addEventListener('keyup', GLUT.onKeyup, true);
+    window.addEventListener('mousemove', GLUT.onMousemove, true);
+    window.addEventListener('mousedown', GLUT.onMouseButtonDown, true);
+    window.addEventListener('mouseup', GLUT.onMouseButtonUp, true);
     // IE9, Chrome, Safari, Opera
-    window.addEventListener("mousewheel", GLUT.onMouseWheel, true);
+    window.addEventListener('mousewheel', GLUT.onMouseWheel, true);
     // Firefox
-    window.addEventListener("DOMMouseScroll", GLUT.onMouseWheel, true);
+    window.addEventListener('DOMMouseScroll', GLUT.onMouseWheel, true);
 
     Browser.resizeListeners.push((width, height) => {
       if (GLUT.reshapeFunc) {
@@ -344,22 +344,22 @@ var LibraryGLUT = {
 
     addOnExit(() => {
       if (isTouchDevice) {
-        window.removeEventListener("touchmove", GLUT.touchHandler, true);
-        window.removeEventListener("touchstart", GLUT.touchHandler, true);
-        window.removeEventListener("touchend", GLUT.touchHandler, true);
+        window.removeEventListener('touchmove', GLUT.touchHandler, true);
+        window.removeEventListener('touchstart', GLUT.touchHandler, true);
+        window.removeEventListener('touchend', GLUT.touchHandler, true);
       }
 
-      window.removeEventListener("keydown", GLUT.onKeydown, true);
-      window.removeEventListener("keyup", GLUT.onKeyup, true);
-      window.removeEventListener("mousemove", GLUT.onMousemove, true);
-      window.removeEventListener("mousedown", GLUT.onMouseButtonDown, true);
-      window.removeEventListener("mouseup", GLUT.onMouseButtonUp, true);
+      window.removeEventListener('keydown', GLUT.onKeydown, true);
+      window.removeEventListener('keyup', GLUT.onKeyup, true);
+      window.removeEventListener('mousemove', GLUT.onMousemove, true);
+      window.removeEventListener('mousedown', GLUT.onMouseButtonDown, true);
+      window.removeEventListener('mouseup', GLUT.onMouseButtonUp, true);
       // IE9, Chrome, Safari, Opera
-      window.removeEventListener("mousewheel", GLUT.onMouseWheel, true);
+      window.removeEventListener('mousewheel', GLUT.onMouseWheel, true);
       // Firefox
-      window.removeEventListener("DOMMouseScroll", GLUT.onMouseWheel, true);
+      window.removeEventListener('DOMMouseScroll', GLUT.onMouseWheel, true);
 
-      Module["canvas"].width = Module["canvas"].height = 1;
+      Module['canvas'].width = Module['canvas'].height = 1;
     });
   },
 
