@@ -347,7 +347,7 @@ class interactive64(interactive):
     super().setUp()
     self.set_setting('MEMORY64')
     self.require_wasm64()
-    
+
 class interactive64_4gb(interactive):
   def setUp(self):
     super().setUp()
