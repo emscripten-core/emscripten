@@ -492,7 +492,7 @@ var LibraryPThread = {
         });
       } else
 #endif
-      worker = new Worker(pthreadMainJs,       worker = new Worker(pthreadMainJs, {
+      worker = new Worker(pthreadMainJs, {
 #if EXPORT_ES6
         type: 'module',
 #endif
