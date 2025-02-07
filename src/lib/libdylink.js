@@ -596,7 +596,179 @@ var LibraryDylink = {
     }
   },
 #endif
+  $getStubImportModule__postset: `
+    var stubImportModuleCache = new Map();
+  `,
+  $getStubImportModule__deps: [
+    "$generateFuncType",
+    "$uleb128Encode"
+  ],
+  // We need to call out to JS to resolve the function, but then make the actual
+  // onward call from WebAssembly. The JavaScript $resolve function is
+  // responsible for putting the appropriate function in the table. When the sig
+  // is ii, the wat for the generated module looks like this:
+  //
+  // (module
+  //   (type $r (func ))
+  //   (type $ii (func (param i32) (result i32)))
+  //   (import "e" "t" (table 0 funcref))
+  //   (import "e" "r" (func $resolve))
+  //   (global $isResolved (mut i32) i32.const 0)
+  //
+  //   (func (export "o") (param $p1 i32) (result i32)
+  //     global.get $isResolved
+  //     i32.eqz
+  //     if
+  //       call $resolve
+  //       i32.const 1
+  //       global.set $isResolved
+  //     end
+  //     local.get $p1
+  //     i32.const 0
+  //     call_indirect (type $ii)
+  //   )
+  // )
+  $getStubImportModule: (sig) => {
+    var cached = stubImportModuleCache.get(sig);
+    if (cached) {
+      return cached;
+    }
+    const bytes = [
+      0x00, 0x61, 0x73, 0x6d, // Magic number
+      0x01, 0x00, 0x00, 0x00, // version 1
+      0x01, // Type section code
+    ];
+    var typeSectionBody = [
+      0x02, // count: 2
+    ];
+    generateFuncType('v', typeSectionBody);
+    generateFuncType(sig, typeSectionBody);
+    uleb128Encode(typeSectionBody.length, bytes);
+    bytes.push(...typeSectionBody);
 
+    // static sections
+    bytes.push(
+      // Import section
+      0x02, 0x0f,
+      0x02, // 2 imports
+        0x01, 0x65, // e
+        0x01, 0x74, // t
+        // funcref table with no limits
+        0x01, 0x70, 0x00, 0x00,
+
+        0x01, 0x65, // e
+        0x01, 0x72, // r
+        0x00, 0x00, // function of type 0 ('v')
+
+      // Function section
+      0x03, 0x02,
+      0x01, 0x01,  // One function of type 1 (sig)
+
+      // Globals section
+      0x06, 0x06,
+      0x01, // one global
+      0x7f, 0x01, // i32 mut
+      0x41, 0x00, 0x0b, // initialized to i32.const 0
+
+      // Export section
+      0x07, 0x05,
+      0x01, // one export
+      0x01, 0x6f, // o
+      0x00, 0x01, // function at index 1
+    );
+    bytes.push(0x0a); // Code section
+    var codeBody = [
+      0x00, // 0 locals
+        0x23, 0x00, // global.get 0
+        0x45, // i32.eqz
+        0x04, // if
+          0x40, 0x10, 0x00, // Call function 0
+          0x41, 0x01, // i32.const 1
+          0x24, 0x00, // global.set 0
+        0x0b, // end
+    ];
+    for (let i = 0; i < sig.length - 1; i++) {
+      codeBody.push(0x20, i);
+    }
+
+    codeBody.push(
+        0x41, 0x00, // i32.const 0
+        0x11, 0x01, 0x00, // call_indirect table 0, type 0
+      0x0b // end
+    );
+    var codeSectionBody = [0x01];
+    uleb128Encode(codeBody.length, codeSectionBody);
+    codeSectionBody.push(...codeBody);
+    uleb128Encode(codeSectionBody.length, bytes);
+    bytes.push(...codeSectionBody);
+    var result = new WebAssembly.Module(new Uint8Array(bytes));
+    stubImportModuleCache.set(sig, result);
+    return result;
+  },
+
+  $wasmSigToEmscripten: (type) => {
+    var lookup = {i32: 'i', i64: 'j', f32: 'f', f64: 'd', externref: 'e'};
+    var sig = 'v';
+    if (type.results.length) {
+      sig = lookup[type.results[0]];
+    }
+    for (var v of type.parameters) {
+      sig += lookup[v];
+    }
+    return sig;
+  },
+  $getStubImportResolver: (name, sig, table, resolveSymbol) => {
+    return function r() {
+      var res = resolveSymbol(name);
+      if (res.orig) {
+        res = res.orig;
+      }
+      try {
+        // Attempting to call this with JS function will cause table.set() to fail
+        table.set(0, res);
+      } catch (err) {
+        if (!(err instanceof TypeError)) {
+          throw err;
+        }
+        var wrapped = convertJsFunctionToWasm(res, sig);
+        table.set(0, wrapped);
+      }
+    };
+  },
+  $addStubImports__deps: [
+    "$getStubImportModule",
+    "$wasmSigToEmscripten",
+    "$getStubImportResolver"
+  ],
+  $addStubImports: (mod, stubs, resolveSymbol) => {
+    // Assumes --experimental-wasm-type-reflection to get type field of WebAssembly.Module.imports().
+    // TODO: Make this work without it.
+    for (const {module, name, kind, type} of WebAssembly.Module.imports(mod)) {
+      if (module !== 'env') {
+        continue;
+      }
+      if (kind !== 'function') {
+        continue;
+      }
+      if (name in wasmImports && !wasmImports[name].stub) {
+        continue;
+      }
+#if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
+      if (name.startsWith("invoke_")) {
+        // JSPI + JS exceptions probably doesn't work but maybe nobody will
+        // attempt stack switch inside a try block.
+        stubs[name] = createInvokeFunction(name.split('_')[1]);
+        continue;
+      }
+#endif
+      var sig = wasmSigToEmscripten(type);
+      var mod = getStubImportModule(sig);
+      const t = new WebAssembly.Table({element: 'funcref', initial: 1});
+      const r = getStubImportResolver(name, sig, t, resolveSymbol);
+      const inst = new WebAssembly.Instance(mod, {e: {t, r}});
+      stubs[name] = inst.exports.o;
+    }
+  },
   // Loads a side module from binary data or compiled Module. Returns the module's exports or a
   // promise that resolves to its exports if the loadAsync flag is set.
   $loadWebAssemblyModule__docs: `
@@ -613,6 +785,9 @@ var LibraryDylink = {
     '$updateTableMap',
     '$wasmTable',
     '$addOnPostCtor',
+#if JSPI
+    '$addStubImports',
+#endif
   ],
   $loadWebAssemblyModule: (binary, flags, libName, localScope, handle) => {
 #if DYLINK_DEBUG
@@ -697,6 +872,7 @@ var LibraryDylink = {
       // to add the indirection for, without inspecting what A's imports
       // are. To do that here, we use a JS proxy (another option would
       // be to inspect the binary directly).
+      const stubs = {};
       var proxyHandler = {
         get(stubs, prop) {
           // symbols that should be local to this module
@@ -728,16 +904,20 @@ var LibraryDylink = {
           // Return a stub function that will resolve the symbol
           // when first called.
           if (!(prop in stubs)) {
+#if JSPI
+            throw new Error("Missing stub for " + prop);
+#else
             var resolved;
             stubs[prop] = (...args) => {
               resolved ||= resolveSymbol(prop);
               return resolved(...args);
             };
+#endif
           }
           return stubs[prop];
         }
       };
-      var proxy = new Proxy({}, proxyHandler);
+      var proxy = new Proxy(stubs, proxyHandler);
       var info = {
         'GOT.mem': new Proxy({}, GOTHandler),
         'GOT.func': new Proxy({}, GOTHandler),
@@ -877,16 +1057,28 @@ var LibraryDylink = {
       }
 
       if (flags.loadAsync) {
-        if (binary instanceof WebAssembly.Module) {
-          var instance = new WebAssembly.Instance(binary, info);
-          return Promise.resolve(postInstantiation(binary, instance));
-        }
-        return WebAssembly.instantiate(binary, info).then(
-          (result) => postInstantiation(result.module, result.instance)
-        );
+        return (async function() {
+          if (binary instanceof WebAssembly.Module) {
+#if JSPI
+            addStubImports(binary, stubs, resolveSymbol);
+#endif
+            var instance = new WebAssembly.Instance(binary, info);
+            return postInstantiation(binary, instance);
+          }
+#if JSPI
+          var module = await WebAssembly.compile(binary);
+          addStubImports(module, stubs, resolveSymbol);
+          var instance = await WebAssembly.instantiate(module, info);
+#else
+          var {module, instance} = await WebAssembly.instantiate(binary, info);
+#endif
+          return postInstantiation(module, instance);
+        })();
       }
-
       var module = binary instanceof WebAssembly.Module ? binary : new WebAssembly.Module(binary);
+#if JSPI
+      addStubImports(module, stubs, resolveSymbol);
+#endif
       var instance = new WebAssembly.Instance(module, info);
       return postInstantiation(module, instance);
     }

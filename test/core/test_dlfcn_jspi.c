@@ -3,6 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <assert.h>
 #include <emscripten.h>
 #include <stdio.h>
 #include <dlfcn.h>
@@ -21,9 +22,11 @@ int test_wrapper() {
 typedef int (*F)();
 
 int main() {
-  void* handle = dlopen("side.so", RTLD_NOW|RTLD_GLOBAL);
-  F side_module_trampoline = dlsym(handle, "side_module_trampoline");
-  int res = side_module_trampoline();
+  void* handle = dlopen("side_a.so", RTLD_NOW|RTLD_GLOBAL);
+  assert(handle != NULL);
+  F side_module_trampolinea = dlsym(handle, "side_module_trampoline_a");
+  assert(side_module_trampolinea != NULL);
+  int res = side_module_trampolinea();
   printf("done %d\n", res);
   return 0;
 }
