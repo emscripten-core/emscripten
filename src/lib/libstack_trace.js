@@ -29,19 +29,14 @@ var LibraryStackTrace = {
     // Process all lines:
     var lines = callstack.split('\n');
     callstack = '';
-    // New FF30 with column info: extract components of form:
+    // Extract components of form:
     // '       Object._main@http://server.com:4324:12'
-    var newFirefoxRe = new RegExp('\\s*(.*?)@(.*?):([0-9]+):([0-9]+)');
-    // Old FF without column info: extract components of form:
-    // '       Object._main@http://server.com:4324'
-    var firefoxRe = new RegExp('\\s*(.*?)@(.*):(.*)(:(.*))?');
+    var firefoxRe = new RegExp('\\s*(.*?)@(.*?):([0-9]+):([0-9]+)');
     // Extract components of form:
     // '    at Object._main (http://server.com/file.html:4324:12)'
     var chromeRe = new RegExp('\\s*at (.*?) \\\((.*):(.*):(.*)\\\)');
 
-    for (var l in lines) {
-      var line = lines[l];
-
+    for (var line of lines) {
       var symbolName = '';
       var file = '';
       var lineno = 0;
@@ -54,7 +49,7 @@ var LibraryStackTrace = {
         lineno = parts[3];
         column = parts[4];
       } else {
-        parts = newFirefoxRe.exec(line) || firefoxRe.exec(line);
+        parts = firefoxRe.exec(line);
         if (parts?.length >= 4) {
           symbolName = parts[1];
           file = parts[2];
