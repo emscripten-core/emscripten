@@ -212,13 +212,11 @@ private:
 
   std::shared_ptr<Symlink> insertSymlink(const std::string& name,
                                          const std::string& target) override {
-    // TODO
-    abort();
+    WASMFS_UNREACHABLE("TODO: implement NodeDirectory::insertSymlink");
   }
 
   int insertMove(const std::string& name, std::shared_ptr<File> file) override {
-    // TODO
-    abort();
+    WASMFS_UNREACHABLE("TODO: implement NodeDirectory::insertMove");
   }
 
   ssize_t getNumEntries() override {
@@ -256,8 +254,7 @@ public:
   }
 
   std::shared_ptr<Symlink> createSymlink(std::string target) override {
-    // TODO
-    abort();
+    WASMFS_UNREACHABLE("TODO: implement NodeBackend::createSymlink");
   }
 };
 
