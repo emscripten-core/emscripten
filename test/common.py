@@ -448,6 +448,9 @@ def with_all_fs(func):
       self.setup_noderawfs_test()
     elif fs == 'wasmfs':
       self.setup_wasmfs_test()
+    elif fs == 'wasmfs_rawfs':
+      self.setup_wasmfs_test()
+      self.setup_noderawfs_test()
     else:
       self.emcc_args += ['-DMEMFS']
       assert fs is None
@@ -458,7 +461,8 @@ def with_all_fs(func):
   parameterize(metafunc, {'': (None,),
                           'nodefs': ('nodefs',),
                           'rawfs': ('rawfs',),
-                          'wasmfs': ('wasmfs',)})
+                          'wasmfs': ('wasmfs',),
+                          'wasmfs_rawfs': ('wasmfs_rawfs',)})
   return metafunc
 
 

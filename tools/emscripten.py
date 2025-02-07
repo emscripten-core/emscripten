@@ -1070,6 +1070,7 @@ def create_pointer_conversion_wrappers(metadata):
     '_wasmfs_get_cwd': 'p_',
     '_wasmfs_identify': '_p',
     '_wasmfs_read_file': 'pp',
+    '_wasmfs_node_record_dirent': '_pp_',
     '__dl_seterr': '_pp',
     '_emscripten_run_on_main_thread_js': '__p_p_',
     '_emscripten_proxy_execute_task_queue': '_p',
