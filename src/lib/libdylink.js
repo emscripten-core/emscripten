@@ -745,10 +745,7 @@ var LibraryDylink = {
     // Assumes --experimental-wasm-type-reflection to get type field of WebAssembly.Module.imports().
     // TODO: Make this work without it.
     for (const {module, name, kind, type} of WebAssembly.Module.imports(mod)) {
-      if (module !== 'env') {
-        continue;
-      }
-      if (kind !== 'function') {
+      if (module !== 'env' || kind !== 'function') {
         continue;
       }
       if (name in wasmImports && !wasmImports[name].stub) {
