@@ -596,6 +596,7 @@ var LibraryDylink = {
     }
   },
 #endif
+#if JSPI
   $getStubImportModule__postset: `
     var stubImportModuleCache = new Map();
   `,
@@ -769,6 +770,7 @@ var LibraryDylink = {
       stubs[name] = inst.exports.o;
     }
   },
+#endif
   // Loads a side module from binary data or compiled Module. Returns the module's exports or a
   // promise that resolves to its exports if the loadAsync flag is set.
   $loadWebAssemblyModule__docs: `
