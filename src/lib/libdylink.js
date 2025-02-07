@@ -872,7 +872,6 @@ var LibraryDylink = {
       // to add the indirection for, without inspecting what A's imports
       // are. To do that here, we use a JS proxy (another option would
       // be to inspect the binary directly).
-      const stubs = {};
       var proxyHandler = {
         get(stubs, prop) {
           // symbols that should be local to this module
@@ -917,6 +916,7 @@ var LibraryDylink = {
           return stubs[prop];
         }
       };
+      const stubs = {};
       var proxy = new Proxy(stubs, proxyHandler);
       var info = {
         'GOT.mem': new Proxy({}, GOTHandler),
