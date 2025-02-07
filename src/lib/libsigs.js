@@ -339,6 +339,7 @@ sigs = {
   _emval_await__sig: 'pp',
   _emval_call__sig: 'dpppp',
   _emval_call_method__sig: 'dppppp',
+  _emval_coro_exception_to_error__sig: 'p',
   _emval_coro_make_promise__sig: 'ppp',
   _emval_coro_suspend__sig: 'vpp',
   _emval_decref__sig: 'vp',

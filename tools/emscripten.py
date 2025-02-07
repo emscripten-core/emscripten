@@ -1093,6 +1093,7 @@ def create_pointer_conversion_wrappers(metadata):
     'emscripten_proxy_finish': '_p',
     'emscripten_proxy_execute_queue': '_p',
     '_emval_coro_resume': '_pp',
+    '_emval_coro_reject': '_pp',
     'emscripten_main_runtime_thread_id': 'p',
     '_emscripten_set_offscreencanvas_size_on_thread': '_pp__',
     'fileno': '_p',
