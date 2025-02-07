@@ -28,7 +28,7 @@ from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, 
 from common import read_file, read_binary, requires_v8, requires_node, requires_wasm2js, requires_node_canary
 from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime, also_with_modularize
 from common import with_all_fs, also_with_nodefs, also_with_nodefs_both, also_with_noderawfs, also_with_wasmfs
-from common import with_all_eh_sjlj, with_all_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64, requires_wasm_eh
+from common import with_all_eh_sjlj, with_all_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64, requires_wasm_eh, requires_jspi
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
 import clang_native
 
@@ -3761,6 +3761,21 @@ ok
       }
       '''
     self.do_run(src, 'before sleep\nafter sleep\n42\n')
+
+  @requires_jspi
+  @needs_dylink
+  def test_dlfcn_jspi(self):
+    self.run_process(
+      [
+        EMCC,
+        "-o",
+        "side.so",
+        test_file("core/test_dlfcn_jspi_side.c"),
+        "-sSIDE_MODULE",
+      ]
+      + self.get_emcc_args()
+    )
+    self.do_run_in_out_file_test("core/test_dlfcn_jspi.c", emcc_args=["side.so", "-sMAIN_MODULE=2"])
 
   @needs_dylink
   def test_dlfcn_rtld_local(self):
@@ -7869,11 +7884,9 @@ void* operator new(size_t size) {
   @also_with_wasm_bigint
   def test_emscripten_log(self):
     self.emcc_args += ['-g', '-DRUN_FROM_JS_SHELL', '-Wno-deprecated-pragma']
-    self.do_run_in_out_file_test('emscripten_log/emscripten_log.cpp', interleaved_output=False)
-    # test closure compiler as well
     if self.maybe_closure():
       self.emcc_args += ['-g1'] # extra testing
-      self.do_run_in_out_file_test('emscripten_log/emscripten_log_with_closure.cpp', interleaved_output=False)
+    self.do_run_in_out_file_test('emscripten_log/emscripten_log.cpp', interleaved_output=False)
 
   def test_float_literals(self):
     self.do_run_in_out_file_test('test_float_literals.cpp')

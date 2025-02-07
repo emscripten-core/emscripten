@@ -467,7 +467,7 @@ var LibraryGLFW = {
         Browser.calculateMouseEvent(event);
       }
 
-      if (event.target != Module["canvas"] || !GLFW.active.cursorPosFunc) return;
+      if (event.target != Browser.getCanvas() || !GLFW.active.cursorPosFunc) return;
 
       if (GLFW.active.cursorPosFunc) {
 #if USE_GLFW == 2
@@ -496,7 +496,7 @@ var LibraryGLFW = {
     onMouseenter: (event) => {
       if (!GLFW.active) return;
 
-      if (event.target != Module["canvas"]) return;
+      if (event.target != Browser.getCanvas()) return;
 
 #if USE_GLFW == 3
       if (GLFW.active.cursorEnterFunc) {
@@ -508,7 +508,7 @@ var LibraryGLFW = {
     onMouseleave: (event) => {
       if (!GLFW.active) return;
 
-      if (event.target != Module["canvas"]) return;
+      if (event.target != Browser.getCanvas()) return;
 
 #if USE_GLFW == 3
       if (GLFW.active.cursorEnterFunc) {
@@ -520,7 +520,7 @@ var LibraryGLFW = {
     onMouseButtonChanged: (event, status) => {
       if (!GLFW.active) return;
 
-      if (event.target != Module["canvas"]) return;
+      if (event.target != Browser.getCanvas()) return;
 
       // Is this from a touch event?
       const isTouchType = event.type === 'touchstart' || event.type === 'touchend' || event.type === 'touchcancel';
@@ -602,7 +602,7 @@ var LibraryGLFW = {
       delta = (delta == 0) ? 0 : (delta > 0 ? Math.max(delta, 1) : Math.min(delta, -1)); // Quantize to integer so that minimum scroll is at least +/- 1.
       GLFW.wheelPos += delta;
 
-      if (!GLFW.active || !GLFW.active.scrollFunc || event.target != Module['canvas']) return;
+      if (!GLFW.active || !GLFW.active.scrollFunc || event.target != Browser.getCanvas()) return;
 #if USE_GLFW == 2
       {{{ makeDynCall('vi', 'GLFW.active.scrollFunc') }}}(GLFW.wheelPos);
 #endif
@@ -923,8 +923,9 @@ var LibraryGLFW = {
     },
 
     onClickRequestPointerLock: (e) => {
-      if (!Browser.pointerLock && Module['canvas'].requestPointerLock) {
-        Module['canvas'].requestPointerLock();
+      var canvas = Browser.getCanvas();
+      if (!Browser.pointerLock && canvas.requestPointerLock) {
+        canvas.requestPointerLock();
         e.preventDefault();
       }
     },
@@ -935,11 +936,12 @@ var LibraryGLFW = {
 
       switch (mode) {
         case 0x00033001: { // GLFW_CURSOR
+          var canvas = Browser.getCanvas();
           switch (value) {
             case 0x00034001: { // GLFW_CURSOR_NORMAL
               win.inputModes[mode] = value;
-              Module['canvas'].removeEventListener('click', GLFW.onClickRequestPointerLock, true);
-              Module['canvas'].exitPointerLock();
+              canvas.removeEventListener('click', GLFW.onClickRequestPointerLock, true);
+              canvas.exitPointerLock();
               break;
             }
             case 0x00034002: { // GLFW_CURSOR_HIDDEN
@@ -948,8 +950,8 @@ var LibraryGLFW = {
             }
             case 0x00034003: { // GLFW_CURSOR_DISABLED
               win.inputModes[mode] = value;
-              Module['canvas'].addEventListener('click', GLFW.onClickRequestPointerLock, true);
-              Module['canvas'].requestPointerLock();
+              canvas.addEventListener('click', GLFW.onClickRequestPointerLock, true);
+              canvas.requestPointerLock();
               break;
             }
             default: {
@@ -1088,6 +1090,9 @@ var LibraryGLFW = {
       for (i = 0; i < GLFW.windows.length && GLFW.windows[i] == null; i++) {
         // no-op
       }
+
+      const canvas = Browser.getCanvas();
+
       var useWebGL = GLFW.hints[0x00022001] > 0; // Use WebGL when we are told to based on GLFW_CLIENT_API
       if (i == GLFW.windows.length) {
         if (useWebGL) {
@@ -1101,7 +1106,7 @@ var LibraryGLFW = {
           // TODO: Make GLFW explicitly aware of whether it is being proxied or not, and set these to true only when proxying is being performed.
           GL.enableOffscreenFramebufferAttributes(contextAttributes);
 #endif
-          Browser.createContext(Module['canvas'], /*useWebGL=*/true, /*setInModule=*/true, contextAttributes);
+          Browser.createContext(canvas, /*useWebGL=*/true, /*setInModule=*/true, contextAttributes);
         } else {
           Browser.init();
         }
@@ -1111,7 +1116,6 @@ var LibraryGLFW = {
       if (!Module['ctx'] && useWebGL) return 0;
 
       // Initializes the framebuffer size from the canvas
-      const canvas = Module['canvas'];
       var win = new GLFW_Window(id, width, height, canvas.width, canvas.height, title, monitor, share);
 
       // Set window to array
@@ -1157,7 +1161,7 @@ var LibraryGLFW = {
       if (typeof Browser.lockPointer == 'undefined') Browser.lockPointer = true;
       if (typeof Browser.resizeCanvas == 'undefined') Browser.resizeCanvas = false;
 
-      var canvas = Module['canvas'];
+      var canvas = Browser.getCanvas();
       function fullscreenChange() {
         Browser.isFullscreen = false;
         var canvasContainer = canvas.parentNode;
@@ -1262,7 +1266,7 @@ var LibraryGLFW = {
     calculateMouseCoords(pageX, pageY) {
       // Calculate the movement based on the changes
       // in the coordinates.
-      const rect = Module["canvas"].getBoundingClientRect();
+      const rect = Browser.getCanvas().getBoundingClientRect();
 
       // Neither .scrollX or .pageXOffset are defined in a spec, but
       // we prefer .scrollX because it is currently in a spec draft.
@@ -1319,7 +1323,7 @@ var LibraryGLFW = {
 
     adjustCanvasDimensions() {
       if (GLFW.active) {
-        Browser.updateCanvasDimensions(Module['canvas'], GLFW.active.width, GLFW.active.height);
+        Browser.updateCanvasDimensions(Browser.getCanvas(), GLFW.active.width, GLFW.active.height);
         Browser.updateResizeListeners();
       }
     },
@@ -1384,30 +1388,31 @@ var LibraryGLFW = {
     GLFW.scale  = GLFW.getDevicePixelRatio();
 
 
-    window.addEventListener("gamepadconnected", GLFW.onGamepadConnected, true);
-    window.addEventListener("gamepaddisconnected", GLFW.onGamepadDisconnected, true);
-    window.addEventListener("keydown", GLFW.onKeydown, true);
-    window.addEventListener("keypress", GLFW.onKeyPress, true);
-    window.addEventListener("keyup", GLFW.onKeyup, true);
-    window.addEventListener("blur", GLFW.onBlur, true);
+    window.addEventListener('gamepadconnected', GLFW.onGamepadConnected, true);
+    window.addEventListener('gamepaddisconnected', GLFW.onGamepadDisconnected, true);
+    window.addEventListener('keydown', GLFW.onKeydown, true);
+    window.addEventListener('keypress', GLFW.onKeyPress, true);
+    window.addEventListener('keyup', GLFW.onKeyup, true);
+    window.addEventListener('blur', GLFW.onBlur, true);
 
     // watch for devicePixelRatio changes
     GLFW.devicePixelRatioMQL = window.matchMedia('(resolution: ' + GLFW.getDevicePixelRatio() + 'dppx)');
     GLFW.devicePixelRatioMQL.addEventListener('change', GLFW.onDevicePixelRatioChange);
 
-    Module["canvas"].addEventListener("touchmove", GLFW.onMousemove, true);
-    Module["canvas"].addEventListener("touchstart", GLFW.onMouseButtonDown, true);
-    Module["canvas"].addEventListener("touchcancel", GLFW.onMouseButtonUp, true);
-    Module["canvas"].addEventListener("touchend", GLFW.onMouseButtonUp, true);
-    Module["canvas"].addEventListener("mousemove", GLFW.onMousemove, true);
-    Module["canvas"].addEventListener("mousedown", GLFW.onMouseButtonDown, true);
-    Module["canvas"].addEventListener("mouseup", GLFW.onMouseButtonUp, true);
-    Module["canvas"].addEventListener('wheel', GLFW.onMouseWheel, true);
-    Module["canvas"].addEventListener('mousewheel', GLFW.onMouseWheel, true);
-    Module["canvas"].addEventListener('mouseenter', GLFW.onMouseenter, true);
-    Module["canvas"].addEventListener('mouseleave', GLFW.onMouseleave, true);
-    Module["canvas"].addEventListener('drop', GLFW.onDrop, true);
-    Module["canvas"].addEventListener('dragover', GLFW.onDragover, true);
+    var canvas = Browser.getCanvas();
+    canvas.addEventListener('touchmove', GLFW.onMousemove, true);
+    canvas.addEventListener('touchstart', GLFW.onMouseButtonDown, true);
+    canvas.addEventListener('touchcancel', GLFW.onMouseButtonUp, true);
+    canvas.addEventListener('touchend', GLFW.onMouseButtonUp, true);
+    canvas.addEventListener('mousemove', GLFW.onMousemove, true);
+    canvas.addEventListener('mousedown', GLFW.onMouseButtonDown, true);
+    canvas.addEventListener("mouseup", GLFW.onMouseButtonUp, true);
+    canvas.addEventListener('wheel', GLFW.onMouseWheel, true);
+    canvas.addEventListener('mousewheel', GLFW.onMouseWheel, true);
+    canvas.addEventListener('mouseenter', GLFW.onMouseenter, true);
+    canvas.addEventListener('mouseleave', GLFW.onMouseleave, true);
+    canvas.addEventListener('drop', GLFW.onDrop, true);
+    canvas.addEventListener('dragover', GLFW.onDragover, true);
 
     // Overriding implementation to account for HiDPI
     Browser.requestFullscreen = GLFW.requestFullscreen;
@@ -1416,7 +1421,7 @@ var LibraryGLFW = {
 
     Browser.resizeListeners.push((width, height) => {
       if (GLFW.isHiDPIAware()) {
-        var canvas = Module['canvas'];
+        var canvas = Browser.getCanvas();
         GLFW.onCanvasResize(canvas.clientWidth, canvas.clientHeight, width, height);
       } else {
         GLFW.onCanvasResize(width, height, width, height);
@@ -1427,30 +1432,31 @@ var LibraryGLFW = {
   },
 
   glfwTerminate: () => {
-    window.removeEventListener("gamepadconnected", GLFW.onGamepadConnected, true);
-    window.removeEventListener("gamepaddisconnected", GLFW.onGamepadDisconnected, true);
-    window.removeEventListener("keydown", GLFW.onKeydown, true);
-    window.removeEventListener("keypress", GLFW.onKeyPress, true);
-    window.removeEventListener("keyup", GLFW.onKeyup, true);
-    window.removeEventListener("blur", GLFW.onBlur, true);
-    Module["canvas"].removeEventListener("touchmove", GLFW.onMousemove, true);
-    Module["canvas"].removeEventListener("touchstart", GLFW.onMouseButtonDown, true);
-    Module["canvas"].removeEventListener("touchcancel", GLFW.onMouseButtonUp, true);
-    Module["canvas"].removeEventListener("touchend", GLFW.onMouseButtonUp, true);
-    Module["canvas"].removeEventListener("mousemove", GLFW.onMousemove, true);
-    Module["canvas"].removeEventListener("mousedown", GLFW.onMouseButtonDown, true);
-    Module["canvas"].removeEventListener("mouseup", GLFW.onMouseButtonUp, true);
-    Module["canvas"].removeEventListener('wheel', GLFW.onMouseWheel, true);
-    Module["canvas"].removeEventListener('mousewheel', GLFW.onMouseWheel, true);
-    Module["canvas"].removeEventListener('mouseenter', GLFW.onMouseenter, true);
-    Module["canvas"].removeEventListener('mouseleave', GLFW.onMouseleave, true);
-    Module["canvas"].removeEventListener('drop', GLFW.onDrop, true);
-    Module["canvas"].removeEventListener('dragover', GLFW.onDragover, true);
+    window.removeEventListener('gamepadconnected', GLFW.onGamepadConnected, true);
+    window.removeEventListener('gamepaddisconnected', GLFW.onGamepadDisconnected, true);
+    window.removeEventListener('keydown', GLFW.onKeydown, true);
+    window.removeEventListener('keypress', GLFW.onKeyPress, true);
+    window.removeEventListener('keyup', GLFW.onKeyup, true);
+    window.removeEventListener('blur', GLFW.onBlur, true);
+    var canvas = Browser.getCanvas();
+    canvas.removeEventListener('touchmove', GLFW.onMousemove, true);
+    canvas.removeEventListener('touchstart', GLFW.onMouseButtonDown, true);
+    canvas.removeEventListener('touchcancel', GLFW.onMouseButtonUp, true);
+    canvas.removeEventListener('touchend', GLFW.onMouseButtonUp, true);
+    canvas.removeEventListener('mousemove', GLFW.onMousemove, true);
+    canvas.removeEventListener('mousedown', GLFW.onMouseButtonDown, true);
+    canvas.removeEventListener('mouseup', GLFW.onMouseButtonUp, true);
+    canvas.removeEventListener('wheel', GLFW.onMouseWheel, true);
+    canvas.removeEventListener('mousewheel', GLFW.onMouseWheel, true);
+    canvas.removeEventListener('mouseenter', GLFW.onMouseenter, true);
+    canvas.removeEventListener('mouseleave', GLFW.onMouseleave, true);
+    canvas.removeEventListener('drop', GLFW.onDrop, true);
+    canvas.removeEventListener('dragover', GLFW.onDragover, true);
 
     if (GLFW.devicePixelRatioMQL)
       GLFW.devicePixelRatioMQL.removeEventListener('change', GLFW.onDevicePixelRatioChange);
 
-    Module["canvas"].width = Module["canvas"].height = 1;
+    canvas.width = canvas.height = 1;
     GLFW.windows = null;
     GLFW.active = null;
   },

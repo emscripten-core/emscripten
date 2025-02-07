@@ -8,7 +8,7 @@
     "eslint-config-prettier": "^10.0.1",
     "globals": "^15.14.0",
     "prettier": "^3.4.2",
-    "rollup": "^4.34.1",
+    "rollup": "^4.34.4",
     "source-map": "0.7.4",
     "typescript": "^5.7.3",
     "vite": "^6.1.0",
