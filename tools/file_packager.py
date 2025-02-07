@@ -950,7 +950,7 @@ def generate_js(data_target, data_files, metadata):
     if options.support_node:
       node_support_code = '''
         if (isNode) {
-          require('fs').readFile(packageName, (err, contents) => {
+          require('node:fs').readFile(packageName, (err, contents) => {
             if (err) {
               errback(err);
             } else {
@@ -1108,7 +1108,7 @@ def generate_js(data_target, data_files, metadata):
     if options.support_node:
       node_support_code = '''
         if (isNode) {
-          require('fs').readFile(metadataUrl, 'utf8', (err, contents) => {
+          require('node:fs').readFile(metadataUrl, 'utf8', (err, contents) => {
             if (err) {
               return Promise.reject(err);
             } else {

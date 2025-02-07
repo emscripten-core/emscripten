@@ -153,7 +153,7 @@ addToLibrary({
 
   emscripten_num_logical_cores: () =>
 #if ENVIRONMENT_MAY_BE_NODE
-    ENVIRONMENT_IS_NODE ? require('os').cpus().length :
+    ENVIRONMENT_IS_NODE ? require('node:os').cpus().length :
 #endif
     navigator['hardwareConcurrency'],
 });

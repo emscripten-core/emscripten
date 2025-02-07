@@ -208,7 +208,7 @@ addToLibrary({
             var WebSocketConstructor;
 #if ENVIRONMENT_MAY_BE_NODE
             if (ENVIRONMENT_IS_NODE) {
-              WebSocketConstructor = /** @type{(typeof WebSocket)} */(require('ws'));
+              WebSocketConstructor = /** @type{(typeof WebSocket)} */(require('node:ws'));
             } else
 #endif // ENVIRONMENT_MAY_BE_NODE
             {
@@ -503,7 +503,7 @@ addToLibrary({
         if (sock.server) {
            throw new FS.ErrnoError({{{ cDefs.EINVAL }}});  // already listening
         }
-        var WebSocketServer = require('ws').Server;
+        var WebSocketServer = require('node:ws').Server;
         var host = sock.saddr;
 #if SOCKET_DEBUG
         dbg(`websocket: listen: ${host}:${sock.sport}`);

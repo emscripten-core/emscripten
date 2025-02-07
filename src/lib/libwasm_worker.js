@@ -286,7 +286,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
 
   emscripten_navigator_hardware_concurrency: () => {
 #if ENVIRONMENT_MAY_BE_NODE
-    if (ENVIRONMENT_IS_NODE) return require('os').cpus().length;
+    if (ENVIRONMENT_IS_NODE) return require('node:os').cpus().length;
 #endif
     return navigator['hardwareConcurrency'];
   },

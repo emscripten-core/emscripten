@@ -10,7 +10,7 @@ var ENVIRONMENT_IS_NODE = typeof process == 'object' && typeof process.versions 
 if (ENVIRONMENT_IS_NODE) {
   // Create as web-worker-like an environment as we can.
 
-  var nodeWorkerThreads = require('worker_threads');
+  var nodeWorkerThreads = require('node:worker_threads');
 
   var parentPort = nodeWorkerThreads.parentPort;
 
@@ -28,8 +28,8 @@ if (ENVIRONMENT_IS_NODE) {
     return f;
   }
 
-  var fs = require('fs');
-  var vm = require('vm');
+  var fs = require('node:fs');
+  var vm = require('node:vm');
 
   Object.assign(global, {
     self: global,
