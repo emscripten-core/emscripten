@@ -1488,7 +1488,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def run_js(self, filename, engine=None, args=None,
              assert_returncode=0,
-             interleaved_output=True):
+             interleaved_output=True,
+             **kwargs):
     # use files, as PIPE can get too full and hang us
     stdout_file = self.in_dir('stdout')
     stderr_file = None
@@ -1510,7 +1511,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       jsrun.run_js(filename, engine, args,
                    stdout=stdout,
                    stderr=stderr,
-                   assert_returncode=assert_returncode)
+                   assert_returncode=assert_returncode,
+                   **kwargs)
     except subprocess.TimeoutExpired as e:
       timeout_error = e
     except subprocess.CalledProcessError as e:
@@ -1933,9 +1935,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                      includes=None,
                      assert_returncode=0, assert_identical=False, assert_all=False,
                      check_for_error=True, force_c=False, emcc_args=None,
-                     interleaved_output=True,
                      regex=False,
-                     output_basename=None):
+                     output_basename=None,
+                     **kwargs):
     logger.debug(f'_build_and_run: {filename}')
 
     if no_build:
@@ -1959,9 +1961,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if len(engines) == 0:
       self.fail('No JS engine present to run this test with. Check %s and the paths therein.' % config.EM_CONFIG)
     for engine in engines:
-      js_output = self.run_js(js_file, engine, args,
-                              assert_returncode=assert_returncode,
-                              interleaved_output=interleaved_output)
+      js_output = self.run_js(js_file, engine, args, assert_returncode=assert_returncode, **kwargs)
       js_output = js_output.replace('\r\n', '\n')
       if expected_output:
         if type(expected_output) not in [list, tuple]:

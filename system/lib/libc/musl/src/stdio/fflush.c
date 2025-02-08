@@ -34,11 +34,22 @@ int fflush(FILE *f)
 	}
 
 	/* If reading, sync position, per POSIX */
+#if __EMSCRIPTEN__
+	/* Handle failues of lseek, which can happen in emscripten, e.g. for stdin etc */
+	if (f->rpos != f->rend) {
+		if (f->seek(f, f->rpos-f->rend, SEEK_CUR) == 0) {
+			/* Clear read and write modes */
+			f->wpos = f->wbase = f->wend = 0;
+			f->rpos = f->rend = 0;
+		}
+	}
+#else
 	if (f->rpos != f->rend) f->seek(f, f->rpos-f->rend, SEEK_CUR);
 
 	/* Clear read and write modes */
 	f->wpos = f->wbase = f->wend = 0;
 	f->rpos = f->rend = 0;
+#endif
 
 	FUNLOCK(f);
 	return 0;
