@@ -2472,7 +2472,7 @@ F1 -> ''
     self.emcc(test_file('browser/test_sdl2_misc.c'), ['-sLINKABLE', '--use-port=sdl2'], output_filename='a.out.js')
 
   def test_sdl3_linkable(self):
-    # Ensure that SDL2 can be built with LINKABLE.  This implies there are no undefined
+    # Ensure that SDL3 can be built with LINKABLE.  This implies there are no undefined
     # symbols in the library (because LINKABLE includes the entire library).
     self.emcc_args.append('-Wno-experimental')
     self.emcc(test_file('browser/test_sdl3_misc.c'), ['-sLINKABLE', '-sUSE_SDL=3'], output_filename='a.out.js')
