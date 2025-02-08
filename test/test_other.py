@@ -1731,6 +1731,11 @@ Module['stdin'] = () => data.shift() || null;
     self.do_runf('module/test_stdin.c', 'hello, world!')
 
   @crossplatform
+  def test_stdin_fflush(self):
+    # Force text=False here so that newlines are not treated differently on windows.
+    self.do_other_test('test_stdin_fflush.c', input=b'foo\nbar\n', text=False)
+
+  @crossplatform
   def test_module_stdout_stderr(self):
     self.set_setting('FORCE_FILESYSTEM')
     create_file('pre.js', '''
