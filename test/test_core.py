@@ -5922,7 +5922,7 @@ Module.onRuntimeInitialized = () => {
     # We also report all files as executable since there is no x bit
     # recorded there.
     # See https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/chmod-wchmod?view=msvc-170#remarks
-    if WINDOWS and '-DNODERAWFS' in self.emcc_args:
+    if WINDOWS and '-DNODERAWFS' in self.emcc_args and not self.get_setting('WASMFS'):
       out_suffix = '.win'
     else:
       out_suffix = ''
