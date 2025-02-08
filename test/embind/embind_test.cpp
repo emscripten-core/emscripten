@@ -2380,7 +2380,6 @@ EMSCRIPTEN_BINDINGS(tests) {
   function("embind_test_optional_multiple_arg", &embind_test_optional_multiple_arg);
 #endif
 
-
   register_map<std::string, int>("StringIntMap");
   function("embind_test_get_string_int_map", embind_test_get_string_int_map);
     
