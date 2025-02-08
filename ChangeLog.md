@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 4.0.4 (in development)
 ----------------------
+- An initial port of SDL3 was added.  Use it with `-sUSE_SDL=3`.  This port
+  is still experimental. (#23630)
 - The `--output_eol` command line flag was renamed `--output-eol` for
   consistency with other flags. The old name continues to work as an alias.
   (#20735)
