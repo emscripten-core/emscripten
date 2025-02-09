@@ -870,9 +870,9 @@ var LibraryPThread = {
   $proxyToMainThreadPtr: (...args) => BigInt(proxyToMainThread(...args)),
 #endif
 
-  $proxyToMainThread__deps: ['$stackSave', '$stackRestore', '$stackAlloc', '_emscripten_run_on_main_thread_js'],
-  $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), ...number)} */',
-  $proxyToMainThread: (funcIndex, emAsmAddr, sync, ...callArgs) => {
+  $proxyToMainThread__deps: ['$stackSave', '$stackRestore', '$stackAlloc', '_emscripten_run_on_main_thread_js', '_emscripten_await_on_main_thread_js'],
+  $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), number, (number|undefined), ...number)} */',
+  $proxyToMainThread: (funcIndex, emAsmAddr, sync, asyncAwait, ...callArgs) => {
     // EM_ASM proxying is done by passing a pointer to the address of the EM_ASM
     // content as `emAsmAddr`.  JS library proxying is done by passing an index
     // into `proxiedJSCallArgs` as `funcIndex`. If `emAsmAddr` is non-zero then
@@ -910,7 +910,12 @@ var LibraryPThread = {
       HEAPF64[b + i] = arg;
 #endif
     }
-    var rtn = __emscripten_run_on_main_thread_js(funcIndex, emAsmAddr, serializedNumCallArgs, args, sync);
+    var rtn;
+    if (asyncAwait) {
+      rtn = __emscripten_await_on_main_thread_js(funcIndex, emAsmAddr, serializedNumCallArgs, args);
+    } else {
+      rtn = __emscripten_run_on_main_thread_js(funcIndex, emAsmAddr, serializedNumCallArgs, args, sync);
+    }
     stackRestore(sp);
     return rtn;
   },
@@ -921,7 +926,11 @@ var LibraryPThread = {
   _emscripten_receive_on_main_thread_js__deps: [
     '$proxyToMainThread',
     '$proxiedJSCallArgs'],
-  _emscripten_receive_on_main_thread_js: (funcIndex, emAsmAddr, callingThread, numCallArgs, args) => {
+  /**
+   * @param {number=} promiseCtx Optionally, when set, expect func to return a Promise
+   * and use promiseCtx to signal awaiting pthread.
+   */
+  _emscripten_receive_on_main_thread_js: (funcIndex, emAsmAddr, callingThread, numCallArgs, args, promiseCtx) => {
     // Sometimes we need to backproxy events to the calling thread (e.g.
     // HTML5 DOM events handlers such as
     // emscripten_set_mousemove_callback()), so keep track in a globally
@@ -960,6 +969,24 @@ var LibraryPThread = {
     PThread.currentProxiedOperationCallerThread = callingThread;
     var rtn = func(...proxiedJSCallArgs);
     PThread.currentProxiedOperationCallerThread = 0;
+    if (promiseCtx) {
+#if ASSERTIONS
+      assert(!!rtn.then, 'Return value of proxied function expected to be a Promise but got' + rtn);
+#endif
+      rtn.then(res => {
+#if MEMORY64
+    // In memory64 mode some proxied functions return bigint/pointer but
+    // our return type is i53/double.
+    if (typeof res == "bigint") {
+      res = bigintToI53Checked(res);
+    }
+#endif
+      __emscripten_proxy_promise_finish(promiseCtx, res);
+      }).catch(err => {
+        __emscripten_proxy_promise_finish(promiseCtx, 0);
+      });
+      return 0;
+    }
 #if MEMORY64
     // In memory64 mode some proxied functions return bigint/pointer but
     // our return type is i53/double.

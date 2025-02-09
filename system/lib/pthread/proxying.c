@@ -591,12 +591,15 @@ typedef struct proxied_js_func_t {
   double* argBuffer;
   double result;
   bool owned;
+  // Only used when the underlying js func is async.
+  // Can be null when the function is sync.
+  em_proxying_ctx * ctx;
 } proxied_js_func_t;
 
 static void run_js_func(void* arg) {
   proxied_js_func_t* f = (proxied_js_func_t*)arg;
   f->result = _emscripten_receive_on_main_thread_js(
-    f->funcIndex, f->emAsmAddr, f->callingThread, f->numArgs, f->argBuffer);
+    f->funcIndex, f->emAsmAddr, f->callingThread, f->numArgs, f->argBuffer, f->ctx);
   if (f->owned) {
     free(f->argBuffer);
     free(f);
@@ -615,6 +618,7 @@ double _emscripten_run_on_main_thread_js(int func_index,
     .numArgs = num_args,
     .argBuffer = buffer,
     .owned = false,
+    .ctx = NULL,
   };
 
   em_proxying_queue* q = emscripten_proxy_get_system_queue();
@@ -641,4 +645,46 @@ double _emscripten_run_on_main_thread_js(int func_index,
     assert(false && "emscripten_proxy_async failed");
   }
   return 0;
+}
+
+static void call_proxied_js_task_with_ctx(em_proxying_ctx* ctx, void* arg) {
+  task* t = arg;
+  proxied_js_func_t* p = t->arg;
+  p->ctx = ctx;
+  t->func(t->arg);
+}
+
+double _emscripten_await_on_main_thread_js(int func_index,
+                                           void* em_asm_addr,
+                                           int num_args,
+                                           double* buffer) {
+  em_proxying_queue* q = emscripten_proxy_get_system_queue();
+  pthread_t target = emscripten_main_runtime_thread_id();
+
+  proxied_js_func_t f = {
+    .funcIndex = func_index,
+    .emAsmAddr = em_asm_addr,
+    .callingThread = pthread_self(),
+    .numArgs = num_args,
+    .argBuffer = buffer,
+    .owned = false,
+  };
+  task t = {.func = run_js_func, .arg = &f};
+
+  if (!emscripten_proxy_sync_with_ctx(q, target, call_proxied_js_task_with_ctx, &t)) {
+    assert(false && "emscripten_proxy_sync_with_ctx failed");
+    return 0;
+  }
+  return f.result;
+}
+
+void _emscripten_proxy_promise_finish(em_proxying_ctx* ctx, void* res) {
+  task* t = (task*)ctx->arg;
+  proxied_js_func_t* func = (proxied_js_func_t*)t->arg;
+  if (res == NULL) {
+    func->result = 0;
+  } else {
+    func->result = (double)(intptr_t)res;
+  }
+  emscripten_proxy_finish(ctx);
 }

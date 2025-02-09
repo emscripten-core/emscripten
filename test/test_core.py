@@ -1972,6 +1972,26 @@ int main(int argc, char **argv) {
   def test_main_thread_async_em_asm(self, args, force_c=False):
     self.do_core_test('test_main_thread_async_em_asm.cpp', emcc_args=args, force_c=force_c)
 
+  @needs_dylink
+  @parameterized({
+    '': (['-sASSERTIONS'], False),
+    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'], False),
+  })
+  def test_main_thread_async_em_asm_await(self, args, force_c=False):
+    if '-sPROXY_TO_PTHREAD' not in args:
+      # expect runtime to error
+      output = self.do_runf('core/test_main_thread_async_em_asm_await.cpp', expected_output=None, assert_returncode=NON_ZERO, emcc_args=args)
+      self.assertContained('emscripten_asm_const_int_await_on_main_thread is not available on the main thread', output)
+    else:
+      self.do_core_test('test_main_thread_async_em_asm_await.cpp', emcc_args=args, force_c=force_c)
+
+  @needs_dylink
+  @parameterized({
+    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '-sASSERTIONS'], False),
+  })
+  def test_main_thread_async_em_asm_await_reject(self, args, force_c=False):
+    self.do_core_test('test_main_thread_async_em_asm_await_reject.cpp', emcc_args=args, force_c=force_c)
+
   # Tests MAIN_THREAD_EM_ASM_INT() function call with different signatures.
   def test_main_thread_em_asm_signatures(self):
     self.do_core_test('test_em_asm_signatures.cpp')

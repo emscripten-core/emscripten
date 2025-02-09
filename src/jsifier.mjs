@@ -454,7 +454,7 @@ function(${args}) {
             return `
 ${async_}function(${args}) {
 if (ENVIRONMENT_IS_PTHREAD)
-  return ${proxyFunc}(${proxiedFunctionTable.length}, 0, ${+sync}${args ? ', ' : ''}${args});
+  return ${proxyFunc}(${proxiedFunctionTable.length}, 0, ${+sync}, 0${args ? ', ' : ''}${args});
 ${body}
 }\n`;
           });

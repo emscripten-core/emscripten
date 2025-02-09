@@ -526,6 +526,7 @@ def setup_pthreads():
   settings.REQUIRED_EXPORTS += [
     '_emscripten_thread_free_data',
     '_emscripten_thread_crashed',
+    '_emscripten_proxy_promise_finish',
   ]
 
   if settings.MAIN_MODULE:

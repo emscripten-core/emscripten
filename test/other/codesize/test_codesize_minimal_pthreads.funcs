@@ -25,8 +25,10 @@ $__wasi_syscall_ret
 $__wasm_call_ctors
 $__wasm_init_memory
 $__wasm_init_tls
+$_emscripten_await_on_main_thread_js
 $_emscripten_check_mailbox
 $_emscripten_proxy_main
+$_emscripten_proxy_promise_finish
 $_emscripten_run_on_main_thread_js
 $_emscripten_stack_alloc
 $_emscripten_stack_restore
@@ -50,6 +52,7 @@ $a_swap
 $add
 $call_callback_then_free_ctx
 $call_cancel_then_free_ctx
+$call_proxied_js_task_with_ctx
 $call_then_finish_task
 $call_with_ctx
 $cancel_active_ctxs
@@ -69,6 +72,8 @@ $emscripten_builtin_free
 $emscripten_builtin_malloc
 $emscripten_futex_wait
 $emscripten_futex_wake
+$emscripten_proxy_finish
+$emscripten_proxy_sync_with_ctx
 $emscripten_stack_get_current
 $emscripten_stack_set_limits
 $free_ctx
