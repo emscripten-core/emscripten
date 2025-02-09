@@ -1086,7 +1086,10 @@ var LibraryPThread = {
     var rtn = func(...proxiedJSCallArgs);
     PThread.currentProxiedOperationCallerThread = 0;
     if (ctx) {
-      rtn.then((rtn) => __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, rtn));
+      rtn.then(
+        (rtn) => __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, rtn),
+        () => __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, 0),
+      );
       return;
     }
 

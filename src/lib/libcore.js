@@ -1651,7 +1651,7 @@ addToLibrary({
     '$proxyToMainThread'
 #endif
   ],
-  $runMainThreadEmAsm: (emAsmAddr, sigPtr, argbuf, sync) => {
+  $runMainThreadEmAsm: (emAsmAddr, sigPtr, argbuf, proxyMode) => {
     var args = readEmAsmArgs(sigPtr, argbuf);
 #if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
@@ -1664,7 +1664,7 @@ addToLibrary({
       // of using __proxy. (And for simplicity, do the same in the sync
       // case as well, even though it's not strictly necessary, to keep the two
       // code paths as similar as possible on both sides.)
-      return proxyToMainThread(0, emAsmAddr, sync, ...args);
+      return proxyToMainThread(0, emAsmAddr, proxyMode, ...args);
     }
 #endif
 #if ASSERTIONS
@@ -1674,6 +1674,19 @@ addToLibrary({
   },
   emscripten_asm_const_int_sync_on_main_thread__deps: ['$runMainThreadEmAsm'],
   emscripten_asm_const_int_sync_on_main_thread: (emAsmAddr, sigPtr, argbuf) => runMainThreadEmAsm(emAsmAddr, sigPtr, argbuf, 1),
+
+  emscripten_asm_const_int_await_on_main_thread__deps: ['$runMainThreadEmAsm'],
+  emscripten_asm_const_int_await_on_main_thread: (emAsmAddr, sigPtr, argbuf) => {
+#if PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) {
+      return runMainThreadEmAsm(emAsmAddr, sigPtr, argbuf, 2);
+    }
+#endif
+#if ASSERTIONS
+    assert((typeof ENVIRONMENT_IS_PTHREAD !== 'undefined' && ENVIRONMENT_IS_PTHREAD), "emscripten_asm_const_int_await_on_main_thread is not available on the main thread");
+#endif
+    return runMainThreadEmAsm(emAsmAddr, sigPtr, argbuf, 2);
+  },
 
   emscripten_asm_const_ptr_sync_on_main_thread__deps: ['$runMainThreadEmAsm'],
   emscripten_asm_const_ptr_sync_on_main_thread: (emAsmAddr, sigPtr, argbuf) => runMainThreadEmAsm(emAsmAddr, sigPtr, argbuf, 1),

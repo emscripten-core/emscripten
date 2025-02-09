@@ -590,6 +590,7 @@ sigs = {
   emscripten_asm_const_double__sig: 'dppp',
   emscripten_asm_const_double_sync_on_main_thread__sig: 'dppp',
   emscripten_asm_const_int__sig: 'ippp',
+  emscripten_asm_const_int_await_on_main_thread__sig: 'ippp',
   emscripten_asm_const_int_sync_on_main_thread__sig: 'ippp',
   emscripten_asm_const_ptr__sig: 'pppp',
   emscripten_asm_const_ptr_sync_on_main_thread__sig: 'pppp',
