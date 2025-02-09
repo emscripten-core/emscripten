@@ -7,22 +7,7 @@
 import os
 import sys
 
-
-def convert_line_endings(text, from_eol, to_eol):
-  if from_eol == to_eol:
-    return text
-  return text.replace(from_eol, to_eol)
-
-
-def convert_line_endings_in_file(filename, from_eol, to_eol):
-  if from_eol == to_eol:
-    return # No conversion needed
-
-  with open(filename, 'rb') as f:
-    text = f.read()
-  text = convert_line_endings(text, from_eol.encode(), to_eol.encode())
-  with open(filename, 'wb') as f:
-    f.write(text)
+from tools import utils
 
 
 def check_line_endings(filename, expect_only=None, print_errors=True, print_info=False):
@@ -38,8 +23,7 @@ def check_line_endings(filename, expect_only=None, print_errors=True, print_info
       print('File not found: ' + filename, file=sys.stderr)
     return 1
 
-  with open(filename, 'rb') as f:
-    data = f.read()
+  data = utils.read_binary(filename)
 
   index = data.find(b"\r\r\n")
   if index != -1:
@@ -75,15 +59,15 @@ def check_line_endings(filename, expect_only=None, print_errors=True, print_info
     old_macos_line_ending_example = data[index - 50:index + 50].replace(b'\r', b'\\r').replace(b'\n', b'\\n')
     if print_errors:
       print('File \'' + filename + '\' contains OLD macOS line endings "\\r"', file=sys.stderr)
-      print("Content around an OLD macOS line ending location: '" + old_macos_line_ending_example + "'", file=sys.stderr)
+      print("Content around an OLD macOS line ending location: '" + old_macos_line_ending_example.decode('utf-8') + "'", file=sys.stderr)
     # We don't want to use the old macOS (9.x) line endings anywhere.
     return 1
 
   if has_dos_line_endings and has_unix_line_endings:
     if print_errors:
       print('File \'' + filename + '\' contains both DOS "\\r\\n" and UNIX "\\n" line endings! (' + str(dos_line_ending_count) + ' DOS line endings, ' + str(unix_line_ending_count) + ' UNIX line endings)', file=sys.stderr)
-      print("Content around a DOS line ending location: '" + dos_line_ending_example + "'", file=sys.stderr)
-      print("Content around an UNIX line ending location: '" + unix_line_ending_example + "'", file=sys.stderr)
+      print("Content around a DOS line ending location: '" + dos_line_ending_example.decode('utf-8') + "'", file=sys.stderr)
+      print("Content around an UNIX line ending location: '" + unix_line_ending_example.decode('utf-8') + "'", file=sys.stderr)
     # Mixed line endings
     return 1
 
@@ -96,13 +80,13 @@ def check_line_endings(filename, expect_only=None, print_errors=True, print_info
   if expect_only == '\n' and has_dos_line_endings:
     if print_errors:
       print('File \'' + filename + '\' contains DOS "\\r\\n" line endings! (' + str(dos_line_ending_count) + ' DOS line endings), but expected only UNIX line endings!', file=sys.stderr)
-      print("Content around a DOS line ending location: '" + dos_line_ending_example + "'", file=sys.stderr)
+      print("Content around a DOS line ending location: '" + dos_line_ending_example.decode('utf-8') + "'", file=sys.stderr)
     return 1 # DOS line endings, but expected UNIX
 
   if expect_only == '\r\n' and has_unix_line_endings:
     if print_errors:
       print('File \'' + filename + '\' contains UNIX "\\n" line endings! (' + str(unix_line_ending_count) + ' UNIX line endings), but expected only DOS line endings!', file=sys.stderr)
-      print("Content around a UNIX line ending location: '" + unix_line_ending_example + "'", file=sys.stderr)
+      print("Content around a UNIX line ending location: '" + unix_line_ending_example.decode('utf-8') + "'", file=sys.stderr)
     return 1 # UNIX line endings, but expected DOS
 
   return 0

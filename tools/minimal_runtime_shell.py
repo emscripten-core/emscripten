@@ -8,7 +8,6 @@ __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
 from . import shared
-from . import line_endings
 from . import utils
 from . import feature_matrix
 from .settings import settings
@@ -211,5 +210,4 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename):
   else:
     js_contents = ''
   shell = shell.replace('{{{ JS_CONTENTS_IN_SINGLE_FILE_BUILD }}}', js_contents)
-  shell = line_endings.convert_line_endings(shell, '\n', options.output_eol)
-  utils.write_file(target, shell)
+  utils.write_file(target, shell, options.output_eol)

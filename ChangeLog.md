@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 4.0.4 (in development)
 ----------------------
+- The `--output_eol` command line flag was renamed `--output-eol` for
+  consistency with other flags. The old name continues to work as an alias.
+  (#20735)
 
 4.0.3 - 02/07/25
 ----------------
