@@ -138,28 +138,45 @@ addToLibrary({
 #endif // WASM2JS
   },
 
-  $freeTableIndexes: [],
-
+  $freeTableIndexesStart: [],
+  $freeTableIndexesLength: [],
+  // We select a power of 2 for alignment, and 1024 showed good performance
+  // in benchmarks.
+  $tablegrowIncrement: 1024,
   // Weak map of functions in the table to their indexes, created on first use.
   $functionsInTableMap: undefined,
 
-  $getEmptyTableSlot__deps: ['$freeTableIndexes', '$wasmTable'],
+  $getEmptyTableSlot__deps: ['$freeTableIndexesStart', '$freeTableIndexesLength', '$wasmTable', '$tablegrowIncrement'],
   $getEmptyTableSlot: () => {
     // Reuse a free index if there is one, otherwise grow.
-    if (freeTableIndexes.length) {
-      return freeTableIndexes.pop();
+    if (freeTableIndexesStart.length) {
+      freeTableIndexesLength[0]--;
+      if (freeTableIndexesLength[0] === 0) {
+        freeTableIndexesLength.pop();
+        return freeTableIndexesStart.pop();
+      }
+      return freeTableIndexesStart[0]++;
     }
     // Grow the table
-    try {
-      /** @suppress {checkTypes} */
-      wasmTable.grow({{{ toIndexType('1') }}});
-    } catch (err) {
-      if (!(err instanceof RangeError)) {
-        throw err;
+    let grown = false;
+    while (!grown && tablegrowIncrement > 1) {
+      try {
+        /** @suppress {checkTypes} */
+        wasmTable.grow({{{ toIndexType('tablegrowIncrement') }}});
+        grown = true;
+      } catch (err) {
+        if (tablegrowIncrement === 1) {
+          if (!(err instanceof RangeError)) {
+            throw err;
+          }
+          throw 'Unable to grow wasm table. Set ALLOW_TABLE_GROWTH.';
+        }
+        tablegrowIncrement = Math.max(1, tablegrowIncrement / 2);
       }
-      throw 'Unable to grow wasm table. Set ALLOW_TABLE_GROWTH.';
     }
-    return {{{ from64Expr('wasmTable.length') }}} - 1;
+    freeTableIndexesLength.push(tablegrowIncrement - 1);
+    freeTableIndexesStart.push({{{from64Expr('wasmTable.length')}}} - tablegrowIncrement + 1);
+    return {{{from64Expr('wasmTable.length')}}} - tablegrowIncrement;
   },
 
   $updateTableMap__deps: ['$getWasmTableEntry'],
@@ -238,12 +255,20 @@ addToLibrary({
     return ret;
   },
 
-  $removeFunction__deps: ['$functionsInTableMap', '$freeTableIndexes',
-                          '$getWasmTableEntry', '$setWasmTableEntry'],
+  $removeFunction__deps: ['$functionsInTableMap', '$freeTableIndexesStart',
+                          '$freeTableIndexesLength', '$getWasmTableEntry',
+                          '$setWasmTableEntry'],
   $removeFunction: (index) => {
     functionsInTableMap.delete(getWasmTableEntry(index));
     setWasmTableEntry(index, null);
-    freeTableIndexes.push(index);
+    if (freeTableIndexStart.length &&
+        freeTableIndexStart[freeTableIndexStart.length-1] + freeTableIndexLength[freeTableIndexStart.length-1] === index) {
+          freeTableIndexLength[freeTableIndexStart.length-1]++;
+          return
+
+    }
+    freeTableIndexesStart.push(index);
+    freeTableIndexesLength.push(1);
   },
 });
 
