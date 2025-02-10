@@ -1873,6 +1873,22 @@ simulateKeyUp(100, undefined, 'Numpad4');
     shutil.copy(Path('sub/test.data'), '.')
     self.btest_exit('test_emscripten_async_load_script.c', args=['-sFORCE_FILESYSTEM'])
 
+  @also_with_wasmfs
+  def test_emscripten_overlapped_package(self):
+    # test that a program that loads multiple file_packager.py packages has a correctly initialized filesystem.
+    # this exercises https://github.com/emscripten-core/emscripten/issues/23602 whose root cause was a difference
+    # between JS FS and WASMFS behavior.
+    def setup():
+      ensure_dir('sub')
+      create_file('sub/file1.txt', 'first')
+      create_file('sub/file2.txt', 'second')
+
+    setup()
+    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'sub/file1.txt@/target/file1.txt'], stdout=open('script1.js', 'w'))
+    self.run_process([FILE_PACKAGER, 'test2.data', '--preload', 'sub/file2.txt@/target/file2.txt'], stdout=open('script2.js', 'w'))
+    self.btest_exit('test_emscripten_overlapped_package.c', args=['-sFORCE_FILESYSTEM'])
+    self.clear()
+
   def test_emscripten_api_infloop(self):
     self.btest_exit('emscripten_api_browser_infloop.cpp')
 
