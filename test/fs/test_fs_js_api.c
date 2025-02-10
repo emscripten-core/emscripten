@@ -41,6 +41,7 @@ EM_JS(void, test_fs_open, (), {
 // createPath should succeed when called on existing paths ( https://github.com/emscripten-core/emscripten/issues/23602 )
 EM_JS(void, test_fs_createPath, (), {
     FS.createPath('/', 'home', true, true);
+    FS.createPath('/', 'home', true, true); // Creating an already existing path
     FS.createPath('/home', 'nested1', true, true);
     FS.createPath('/home', 'nested2', true, true);
     FS.writeFile('/home/nested1/test.txt', 'a=1\nb=2\n');
