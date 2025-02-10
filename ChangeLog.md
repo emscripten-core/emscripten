@@ -37,6 +37,12 @@ See docs/process.md for more on how version tagging works.
   source maps, so it has not worked in many years, and there have been no
   requests for it. This has no impact on the source map support in browser
   devtools. (#23553)
+- The WASMFS fetch backend now fetches files in chunks using HTTP range
+  requests (if supported by the server). `wasmfs_create_fetch_backend` now
+  takes a second parameter (`uint32_t chunk_size`) to configure the size of
+  each chunk. If a file is read a few times with random accesses, a small
+  chunk size will minimize bandwidth; if a file is read in larger contiguous
+  ranges, a larger chunk size will reduce the number of requests. (#23021)
 
 4.0.2 - 01/30/25
 ----------------
