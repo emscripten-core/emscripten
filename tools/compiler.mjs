@@ -39,8 +39,8 @@ Usage: compiler.mjs <settings.json> [-o out.js] [--symbols-only]`);
 // Load settings from JSON passed on the command line
 const settingsFile = positionals[0];
 assert(settingsFile, 'settings file not specified');
-const user_settings = JSON.parse(readFile(settingsFile));
-applySettings(user_settings);
+const userSettings = JSON.parse(readFile(settingsFile));
+applySettings(userSettings);
 
 export const symbolsOnly = values['symbols-only'];
 

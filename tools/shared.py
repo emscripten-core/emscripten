@@ -723,29 +723,24 @@ def read_and_preprocess(filename, expand_macros=False):
   temp_dir = get_emscripten_temp_dir()
   # Create a settings file with the current settings to pass to the JS preprocessor
 
-  settings_str = ''
-  for key, value in settings.external_dict().items():
-    assert key == key.upper()  # should only ever be uppercase keys in settings
-    jsoned = json.dumps(value, sort_keys=True)
-    settings_str += f'var {key} = {jsoned};\n'
+  with get_temp_files().get_file('.json') as settings_file:
+    with open(settings_file, 'w') as s:
+      json.dump(settings.external_dict(), s, sort_keys=True, indent=2)
 
-  settings_file = os.path.join(temp_dir, 'settings.js')
-  utils.write_file(settings_file, settings_str)
+    # Run the JS preprocessor
+    # N.B. We can't use the default stdout=PIPE here as it only allows 64K of output before it hangs
+    # and shell.html is bigger than that!
+    # See https://thraxil.org/users/anders/posts/2008/03/13/Subprocess-Hanging-PIPE-is-your-enemy/
+    dirname, filename = os.path.split(filename)
+    if not dirname:
+      dirname = None
+    stdout = os.path.join(temp_dir, 'stdout')
+    args = [settings_file, filename]
+    if expand_macros:
+      args += ['--expand-macros']
 
-  # Run the JS preprocessor
-  # N.B. We can't use the default stdout=PIPE here as it only allows 64K of output before it hangs
-  # and shell.html is bigger than that!
-  # See https://thraxil.org/users/anders/posts/2008/03/13/Subprocess-Hanging-PIPE-is-your-enemy/
-  dirname, filename = os.path.split(filename)
-  if not dirname:
-    dirname = None
-  stdout = os.path.join(temp_dir, 'stdout')
-  args = [settings_file, filename]
-  if expand_macros:
-    args += ['--expand-macros']
-
-  run_js_tool(path_from_root('tools/preprocessor.mjs'), args, stdout=open(stdout, 'w'), cwd=dirname)
-  out = utils.read_file(stdout)
+    run_js_tool(path_from_root('tools/preprocessor.mjs'), args, stdout=open(stdout, 'w'), cwd=dirname)
+    out = utils.read_file(stdout)
 
   return out
 

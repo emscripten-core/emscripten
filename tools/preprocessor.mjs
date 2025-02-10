@@ -15,7 +15,7 @@
 import assert from 'node:assert';
 import {parseArgs} from 'node:util';
 
-import {loadSettingsFile} from '../src/utility.mjs';
+import {readFile, loadDefaultSettings, applySettings} from '../src/utility.mjs';
 
 const options = {
   'expand-macros': {type: 'boolean'},
@@ -31,11 +31,17 @@ Usage: preprocessor.mjs <settings.json> <input-file> [--expand-macros]`);
   process.exit(0);
 }
 
-assert(positionals.length == 2, 'Script requires 2 arguments');
-const settingsFile = positionals[0];
-const inputFile = positionals[1];
+loadDefaultSettings();
 
-loadSettingsFile(settingsFile);
+assert(positionals.length == 2, 'Script requires 2 arguments');
+
+// Load settings from JSON passed on the command line
+const settingsFile = positionals[0];
+assert(settingsFile, 'settings file not specified');
+const userSettings = JSON.parse(readFile(settingsFile));
+applySettings(userSettings);
+
+const inputFile = positionals[1];
 
 // We can't use static import statements here because several of these
 // file depend on having the settings defined in the global scope (which
