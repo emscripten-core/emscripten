@@ -1224,16 +1224,45 @@ def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # noqa
   return run_binaryen_command('wasm-opt', infile, outfile, args=args, **kwargs)
 
 
-def save_intermediate(src, dst):
+intermediate_counter = 0
+
+
+def new_intermediate_filename(name):
+  assert DEBUG
+  global intermediate_counter
+  basename = 'emcc-%02d-%s' % (intermediate_counter, name)
+  intermediate_counter += 1
+  filename = os.path.join(shared.CANONICAL_TEMP_DIR, basename)
+  logger.debug('saving intermediate file %s' % filename)
+  return filename
+
+
+def save_intermediate(src, name):
+  """Copy an existing file CANONICAL_TEMP_DIR"""
   if DEBUG:
-    dst = 'emcc-%02d-%s' % (save_intermediate.counter, dst)
-    save_intermediate.counter += 1
-    dst = os.path.join(shared.CANONICAL_TEMP_DIR, dst)
-    logger.debug('saving debug copy %s' % dst)
-    shutil.copyfile(src, dst)
+    shutil.copyfile(src, new_intermediate_filename(name))
 
 
-save_intermediate.counter = 0  # type: ignore
+def write_intermediate(content, name):
+  """Generate a new debug file CANONICAL_TEMP_DIR"""
+  if DEBUG:
+    utils.write_file(new_intermediate_filename(name), content)
+
+
+def read_and_preprocess(filename, expand_macros=False):
+  # Create a settings file with the current settings to pass to the JS preprocessor
+  settings_json = json.dumps(settings.external_dict(), sort_keys=True, indent=2)
+  write_intermediate(settings_json, 'settings.json')
+
+  # Run the JS preprocessor
+  dirname, filename = os.path.split(filename)
+  if not dirname:
+    dirname = None
+  args = ['-', filename]
+  if expand_macros:
+    args += ['--expand-macros']
+
+  return shared.run_js_tool(path_from_root('tools/preprocessor.mjs'), args, input=settings_json, stdout=subprocess.PIPE, cwd=dirname)
 
 
 def js_legalization_pass_flags():

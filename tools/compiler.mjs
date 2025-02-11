@@ -37,8 +37,12 @@ Usage: compiler.mjs <settings.json> [-o out.js] [--symbols-only]`);
 }
 
 // Load settings from JSON passed on the command line
-const settingsFile = positionals[0];
+let settingsFile = positionals[0];
 assert(settingsFile, 'settings file not specified');
+if (settingsFile == '-') {
+  // Read settings json from stdin (FD 0)
+  settingsFile = 0;
+}
 const userSettings = JSON.parse(readFile(settingsFile));
 applySettings(userSettings);
 

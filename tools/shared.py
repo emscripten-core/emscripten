@@ -8,7 +8,6 @@ from .toolchain_profiler import ToolchainProfiler
 from enum import Enum, unique, auto
 from subprocess import PIPE
 import atexit
-import json
 import logging
 import os
 import re
@@ -717,23 +716,6 @@ def safe_copy(src, dst):
   # We always want the target file to be writable even when copying from
   # read-only source. (e.g. a read-only install of emscripten).
   make_writable(dst)
-
-
-def read_and_preprocess(filename, expand_macros=False):
-  # Create a settings file with the current settings to pass to the JS preprocessor
-  with get_temp_files().get_file('.json') as settings_file:
-    with open(settings_file, 'w') as s:
-      json.dump(settings.external_dict(), s, sort_keys=True, indent=2)
-
-    # Run the JS preprocessor
-    dirname, filename = os.path.split(filename)
-    if not dirname:
-      dirname = None
-    args = [settings_file, filename]
-    if expand_macros:
-      args += ['--expand-macros']
-
-    return run_js_tool(path_from_root('tools/preprocessor.mjs'), args, stdout=subprocess.PIPE, cwd=dirname)
 
 
 def do_replace(input_, pattern, replacement):
