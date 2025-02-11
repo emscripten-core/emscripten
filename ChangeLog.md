@@ -37,6 +37,9 @@ See docs/process.md for more on how version tagging works.
 
 4.0.4 - 02/25/25
 ----------------
+- The `-DEMSCRIPTEN_FORCE_COMPILERS` option in the cmake toolchain file was
+  removed. Instead we believe emcc is now fast enough that this bypass mechanism
+  should no longer be needed. (#23656)
 - An initial port of SDL3 was added.  Use it with `-sUSE_SDL=3`.  This port
   is still experimental. (#23630)
 - The `--output_eol` command line flag was renamed `--output-eol` for
