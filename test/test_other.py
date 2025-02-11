@@ -2969,7 +2969,7 @@ More info: https://emscripten.org
           self.assertFalse(os.path.exists(self.canonical_temp_dir))
         else:
           print(sorted(os.listdir(self.canonical_temp_dir)))
-          self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-02-original.js'))
+          self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-04-original.js'))
 
   def test_debuginfo_line_tables_only(self):
     def test(do_compile):
