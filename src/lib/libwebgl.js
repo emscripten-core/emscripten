@@ -1083,8 +1083,12 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
         gl.bindTexture(0xDE1 /*GL_TEXTURE_2D*/, prevTextureBinding);
         gl.activeTexture(prevActiveTexture);
-        gl.bindBuffer(0x8892 /*GL_ARRAY_BUFFER*/, prevVB);
-        gl.useProgram(prevProgram);
+        if (gl.isBuffer(prevVB)) {
+          gl.bindBuffer(0x8892 /*GL_ARRAY_BUFFER*/, prevVB);
+        }
+        if (gl.isProgram(prevProgram)){
+          gl.useProgram(prevProgram);
+        }
       }
       gl.bindFramebuffer(0x8D40 /*GL_FRAMEBUFFER*/, prevFbo);
       if (prevScissorTest) gl.enable(0xC11 /*GL_SCISSOR_TEST*/);
