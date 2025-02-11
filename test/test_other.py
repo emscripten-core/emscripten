@@ -14167,6 +14167,10 @@ Module.postRun = () => {{
   def test_unistd_dup(self):
     self.do_run_in_out_file_test('wasmfs/wasmfs_dup.c')
 
+  def test_mounted_cwd(self):
+    self.set_setting('WASMFS')
+    self.do_run_in_out_file_test('wasmfs/wasmfs_mounted_cwd.c')
+
   @also_with_wasmfs
   def test_unistd_open(self):
     self.do_run_in_out_file_test('wasmfs/wasmfs_open.c')
