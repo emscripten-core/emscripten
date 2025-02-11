@@ -15409,6 +15409,18 @@ addToLibrary({
     self.do_runf('hello_world.c', 'assertions disabled\n4', emcc_args=['-sASSERTIONS=0'])
     self.assertNotContained('#preprocess', read_file('hello_world.js'))
 
+  @crossplatform
+  def test_js_preprocess_huge_file(self):
+    # Check that huge files can be preprocessed.  We once had issues with files
+    # larger then 64k being sent over stdout using python's subprocess.
+    huge_js = '#preprocess\nfunction hugeFunc() {\n'
+    huge_js += 100000 * '  console.log("huge function");\n'
+    huge_js += '}\n'
+    create_file('huge.js', huge_js)
+    assert len(huge_js) > (1024 * 1024)
+    self.do_runf('hello_world.c', 'hello, world!\n', emcc_args=['--pre-js=huge.js'])
+    self.assertContained('function hugeFunc', read_file('hello_world.js'))
+
   @with_both_compilers
   def test_use_port_errors(self, compiler):
     stderr = self.expect_fail([compiler, test_file('hello_world.c'), '--use-port=invalid', '-o', 'out.js'])
