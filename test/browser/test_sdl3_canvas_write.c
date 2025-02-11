@@ -1,10 +1,12 @@
-// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Copyright 2025 The Emscripten Authors.  All rights reserved.
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
 #include <assert.h>
-#include <SDL.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <SDL3/SDL.h>
 #include <emscripten/em_asm.h>
 
 static void sdlError(const char* str) {
@@ -16,21 +18,24 @@ void draw(SDL_Window* window, SDL_Surface* surface) {
   int x, y;
 
   if (SDL_MUSTLOCK(surface)) {
-    if (SDL_LockSurface(surface) != 0)
+    if (!SDL_LockSurface(surface)) {
       sdlError("SDL_LockSurface");
+    }
   }
 
   for (y = 0; y < 256; y++) {
     Uint32* p = (Uint32*)(((Uint8*)surface->pixels) + surface->pitch * y);
     for (x = 0; x < 256; x++) {
-      *(p++) = SDL_MapRGB(surface->format, x, x ^ y, y);
+      *(p++) = SDL_MapSurfaceRGB(surface, x, x ^ y, y);
     }
   }
 
-  if (SDL_MUSTLOCK(surface))
+  if (SDL_MUSTLOCK(surface)) {
     SDL_UnlockSurface(surface);
-  if (SDL_UpdateWindowSurface(window) != 0)
+  }
+  if (!SDL_UpdateWindowSurface(window)) {
     sdlError("SDL_UpdateWindowSurface");
+  }
 }
 
 void verify(void) {
@@ -60,10 +65,11 @@ int main(void) {
   SDL_Window* window;
   SDL_Surface* surface;
 
-  if (SDL_Init(SDL_INIT_VIDEO) != 0)
+  if (!SDL_Init(SDL_INIT_VIDEO)) {
     sdlError("SDL_Init");
+  }
 
-  window = SDL_CreateWindow("SDL 2 test", 0, 0, 256, 256, SDL_WINDOW_SHOWN);
+  window = SDL_CreateWindow("SDL 2 test", 256, 256, 0);
   if (window == NULL) {
     sdlError("SDL_CreateWindow");
   }

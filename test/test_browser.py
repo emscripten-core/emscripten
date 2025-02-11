@@ -3261,6 +3261,14 @@ Module["preRun"] = () => {
       args += ['-lc++', '-lc++abi']
     self.btest_exit('test_sdl2_mixer_music.c', args=args)
 
+  def test_sdl3_misc(self):
+    self.emcc_args.append('-Wno-experimental')
+    self.btest_exit('test_sdl3_misc.c', args=['-sUSE_SDL=3'])
+
+  def test_sdl3_canvas_write(self):
+    self.emcc_args.append('-Wno-experimental')
+    self.btest_exit('test_sdl3_canvas_write.c', args=['-sUSE_SDL=3'])
+
   @requires_graphics_hardware
   @no_wasm64('cocos2d ports does not compile with wasm64')
   def test_cocos2d_hello(self):
