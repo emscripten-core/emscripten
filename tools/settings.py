@@ -221,7 +221,7 @@ class SettingsManager:
       if value != self.defaults.get(key) and key not in INTERNAL_SETTINGS and key not in skip_keys:
         external_settings[key] = value # noqa: PERF403
     if not self.attrs['STRICT']:
-      # When not running in strict mode we also externalize all leggacy settings
+      # When not running in strict mode we also externalize all legacy settings
       # (Since the external tools do process LEGACY_SETTINGS themselves)
       for key in self.legacy_settings:
         external_settings[key] = self.attrs[key]
