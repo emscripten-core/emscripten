@@ -1826,8 +1826,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.PTHREADS:
     settings.REQUIRED_EXPORTS.append('_emscripten_tls_init')
 
-  settings.PRE_JS_FILES = [os.path.abspath(f) for f in options.pre_js]
-  settings.POST_JS_FILES = [os.path.abspath(f) for f in options.post_js]
+  settings.PRE_JS_FILES = options.pre_js
+  settings.POST_JS_FILES = options.post_js
 
   settings.MINIFY_WHITESPACE = settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL == 0 and not options.no_minify
 
