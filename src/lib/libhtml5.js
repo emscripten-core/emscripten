@@ -815,35 +815,35 @@ var LibraryHTML5 = {
 #endif
 
     var inputEventHandlerFunc = (e = event) => {
-        var data = e.data || '';
-        var inputType = e.inputType || '';
-        var isComposing = e.isComposing;
-        const dataLengthWithTermination = lengthBytesUTF8(data) + 1;
-        const eventSize = {{{ C_STRUCTS.EmscriptenInputEvent.__size__ }}} + dataLengthWithTermination;
-        JSEvents.inputEvent = _realloc(JSEvents.inputEvent, eventSize);
+      var data = e.data || '';
+      var inputType = e.inputType || '';
+      var isComposing = e.isComposing;
+      const dataLengthWithTermination = lengthBytesUTF8(data) + 1;
+      const eventSize = {{{ C_STRUCTS.EmscriptenInputEvent.__size__ }}} + dataLengthWithTermination;
+      JSEvents.inputEvent = _realloc(JSEvents.inputEvent, eventSize);
 
 #if PTHREADS
-        var inputEvent = targetThread ? _malloc(eventSize) : JSEvents.inputEvent;
+      var inputEvent = targetThread ? _malloc(eventSize) : JSEvents.inputEvent;
 #else
-        var inputEvent = JSEvents.inputEvent;
+      var inputEvent = JSEvents.inputEvent;
 #endif
-        {{{ makeSetValue('inputEvent', C_STRUCTS.EmscriptenInputEvent.isComposing, 'isComposing', 'i8') }}};
-        stringToUTF8(inputType, inputEvent + {{{ C_STRUCTS.EmscriptenInputEvent.inputType }}}, {{{ cDefs.EM_HTML5_SHORT_STRING_LEN_BYTES }}});
-        stringToUTF8(data, inputEvent + {{{ C_STRUCTS.EmscriptenInputEvent.data }}}, dataLengthWithTermination);
+      {{{ makeSetValue('inputEvent', C_STRUCTS.EmscriptenInputEvent.isComposing, 'isComposing', 'i8') }}};
+      stringToUTF8(inputType, inputEvent + {{{ C_STRUCTS.EmscriptenInputEvent.inputType }}}, {{{ cDefs.EM_HTML5_SHORT_STRING_LEN_BYTES }}});
+      stringToUTF8(data, inputEvent + {{{ C_STRUCTS.EmscriptenInputEvent.data }}}, dataLengthWithTermination);
 
 #if PTHREADS
-        if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, inputEvent, userData);
-        else
+      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, inputEvent, userData);
+      else
 #endif
-        if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, inputEvent, userData)) e.preventDefault();
+      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, inputEvent, userData)) e.preventDefault();
     };
 
     var eventHandler = {
-        target: findEventTarget(target),
-        eventTypeString,
-        callbackfunc,
-        handlerFunc: inputEventHandlerFunc,
-        useCapture
+      target: findEventTarget(target),
+      eventTypeString,
+      callbackfunc,
+      handlerFunc: inputEventHandlerFunc,
+      useCapture
     };
     return JSEvents.registerOrRemoveHandler(eventHandler);
 },
