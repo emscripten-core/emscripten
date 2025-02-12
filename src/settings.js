@@ -1929,7 +1929,7 @@ var MIN_CHROME_VERSION = 85;
 // distinct from the minimum version required run the emscripten compiler.
 // This version aligns with the current Ubuuntu TLS 20.04 (Focal).
 // Version is encoded in MMmmVV, e.g. 181401 denotes Node 18.14.01.
-// Minimum supported value is 101900, which was released 2020-02-05 (see
+// Minimum supported value is 122000, which was released 2020-11-25 (see
 // feature_matrix.py).
 var MIN_NODE_VERSION = 160000;
 

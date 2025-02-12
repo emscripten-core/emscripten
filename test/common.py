@@ -1188,7 +1188,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     nodejs = self.get_nodejs()
     if nodejs:
       node_version = shared.get_node_version(nodejs)
-      if node_version < (11, 0, 0):
+      if node_version < (13, 1, 0):
         self.node_args.append('--unhandled-rejections=strict')
         self.node_args.append('--experimental-wasm-se')
       else:
