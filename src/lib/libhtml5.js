@@ -30,7 +30,6 @@ var LibraryHTML5 = {
     visibilityChangeEvent: 0,
     touchEvent: 0,
     inputEvent: 0,
-    inputEventAllocatedSize: 0,
 #endif
 
 /* We do not depend on the exact initial values of falsey member fields - these
@@ -821,14 +820,7 @@ var LibraryHTML5 = {
         var isComposing = e.isComposing;
         const dataLengthWithTermination = lengthBytesUTF8(data) + 1;
         const eventSize = {{{ C_STRUCTS.EmscriptenInputEvent.__size__ }}} + dataLengthWithTermination;
-        if(JSEvents.inputEvent == null){
-            JSEvents.inputEvent = _malloc(eventSize);
-            JSEvents.inputEventAllocatedSize = eventSize;
-        }
-        else if(JSEvents.inputEventAllocatedSize < eventSize) {
-            JSEvents.inputEvent = _realloc(JSEvents.inputEvent, eventSize);
-            JSEvents.inputEventAllocatedSize = eventSize;
-        }
+        JSEvents.inputEvent = _realloc(JSEvents.inputEvent, eventSize);
 
 #if PTHREADS
         var inputEvent = targetThread ? _malloc(eventSize) : JSEvents.inputEvent;
