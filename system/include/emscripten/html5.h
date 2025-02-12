@@ -193,7 +193,7 @@ EMSCRIPTEN_RESULT emscripten_set_focusout_callback_on_thread(const char *target 
 typedef struct EmscriptenInputEvent {
   bool isComposing;
   EM_UTF8 inputType[EM_HTML5_SHORT_STRING_LEN_BYTES];
-  EM_UTF8 data[];
+  EM_UTF8 data[]; // variable size string; must be the final element of the struct
 } EmscriptenInputEvent;
 
 typedef bool (*em_input_callback_func)(int eventType, const EmscriptenInputEvent *inputEvent __attribute__((nonnull)), void *userData);
