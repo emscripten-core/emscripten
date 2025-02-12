@@ -18,8 +18,16 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.3 (in development)
+4.0.4 (in development)
 ----------------------
+- An initial port of SDL3 was added.  Use it with `-sUSE_SDL=3`.  This port
+  is still experimental. (#23630)
+- The `--output_eol` command line flag was renamed `--output-eol` for
+  consistency with other flags. The old name continues to work as an alias.
+  (#20735)
+
+4.0.3 - 02/07/25
+----------------
 - emscan-deps tools was added.  This tool wraps clang-scan-deps and injects the
   needed `--target` and `--sysroot` argument that would normally be injected by
   emcc itself.  This enables support for C++20 in cmake projects. (#21987)
@@ -31,6 +39,12 @@ See docs/process.md for more on how version tagging works.
   source maps, so it has not worked in many years, and there have been no
   requests for it. This has no impact on the source map support in browser
   devtools. (#23553)
+- The WASMFS fetch backend now fetches files in chunks using HTTP range
+  requests (if supported by the server). `wasmfs_create_fetch_backend` now
+  takes a second parameter (`uint32_t chunk_size`) to configure the size of
+  each chunk. If a file is read a few times with random accesses, a small
+  chunk size will minimize bandwidth; if a file is read in larger contiguous
+  ranges, a larger chunk size will reduce the number of requests. (#23021)
 
 4.0.2 - 01/30/25
 ----------------

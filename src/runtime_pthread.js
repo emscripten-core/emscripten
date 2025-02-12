@@ -157,7 +157,9 @@ if (ENVIRONMENT_IS_PTHREAD) {
         // Pass the thread address to wasm to store it for fast access.
         __emscripten_thread_init(msgData.pthread_ptr, /*is_main=*/0, /*is_runtime=*/0, /*can_block=*/1, 0, 0);
 
-        PThread.receiveObjectTransfer(msgData);
+#if OFFSCREENCANVAS_SUPPORT
+        PThread.receiveOffscreenCanvases(msgData);
+#endif
         PThread.threadInitTLS();
 
         // Await mailbox notifications with `Atomics.waitAsync` so we can start

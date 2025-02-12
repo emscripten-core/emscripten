@@ -8,7 +8,6 @@ from .toolchain_profiler import ToolchainProfiler
 from enum import Enum, unique, auto
 from subprocess import PIPE
 import atexit
-import json
 import logging
 import os
 import re
@@ -126,7 +125,7 @@ def run_process(cmd, check=True, input=None, *args, **kw):
   # output before messages that we have already written.
   sys.stdout.flush()
   sys.stderr.flush()
-  kw.setdefault('universal_newlines', True)
+  kw.setdefault('text', True)
   kw.setdefault('encoding', 'utf-8')
   ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
   debug_text = '%sexecuted %s' % ('successfully ' if check else '', shlex_join(cmd))
@@ -717,37 +716,6 @@ def safe_copy(src, dst):
   # We always want the target file to be writable even when copying from
   # read-only source. (e.g. a read-only install of emscripten).
   make_writable(dst)
-
-
-def read_and_preprocess(filename, expand_macros=False):
-  temp_dir = get_emscripten_temp_dir()
-  # Create a settings file with the current settings to pass to the JS preprocessor
-
-  settings_str = ''
-  for key, value in settings.external_dict().items():
-    assert key == key.upper()  # should only ever be uppercase keys in settings
-    jsoned = json.dumps(value, sort_keys=True)
-    settings_str += f'var {key} = {jsoned};\n'
-
-  settings_file = os.path.join(temp_dir, 'settings.js')
-  utils.write_file(settings_file, settings_str)
-
-  # Run the JS preprocessor
-  # N.B. We can't use the default stdout=PIPE here as it only allows 64K of output before it hangs
-  # and shell.html is bigger than that!
-  # See https://thraxil.org/users/anders/posts/2008/03/13/Subprocess-Hanging-PIPE-is-your-enemy/
-  dirname, filename = os.path.split(filename)
-  if not dirname:
-    dirname = None
-  stdout = os.path.join(temp_dir, 'stdout')
-  args = [settings_file, filename]
-  if expand_macros:
-    args += ['--expand-macros']
-
-  run_js_tool(path_from_root('tools/preprocessor.mjs'), args, stdout=open(stdout, 'w'), cwd=dirname)
-  out = utils.read_file(stdout)
-
-  return out
 
 
 def do_replace(input_, pattern, replacement):

@@ -5563,7 +5563,6 @@ got: 10
 
   @crossplatform
   @also_with_nodefs_both
-  @crossplatform
   def test_fcntl_open(self):
     nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
     if nodefs and WINDOWS:
@@ -5747,8 +5746,7 @@ got: 10
     self.set_setting('FS_DEBUG')
     self.do_run_in_out_file_test('fs/test_trackingdelegate.c')
 
-  @also_with_noderawfs
-  @also_with_wasmfs
+  @with_all_fs
   def test_fs_writeFile(self):
     if self.get_setting('WASMFS'):
       self.set_setting("FORCE_FILESYSTEM")
@@ -5922,7 +5920,7 @@ Module.onRuntimeInitialized = () => {
     # We also report all files as executable since there is no x bit
     # recorded there.
     # See https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/chmod-wchmod?view=msvc-170#remarks
-    if WINDOWS and '-DNODERAWFS' in self.emcc_args:
+    if WINDOWS and '-DNODERAWFS' in self.emcc_args and not self.get_setting('WASMFS'):
       out_suffix = '.win'
     else:
       out_suffix = ''
@@ -7886,7 +7884,7 @@ void* operator new(size_t size) {
     self.emcc_args += ['-g', '-DRUN_FROM_JS_SHELL', '-Wno-deprecated-pragma']
     if self.maybe_closure():
       self.emcc_args += ['-g1'] # extra testing
-    self.do_run_in_out_file_test('emscripten_log/emscripten_log.cpp', interleaved_output=False)
+    self.do_run_in_out_file_test('test_emscripten_log.cpp', interleaved_output=False)
 
   def test_float_literals(self):
     self.do_run_in_out_file_test('test_float_literals.cpp')

@@ -33,11 +33,12 @@ import queue
 
 import clang_native
 import jsrun
+import line_endings
 from tools.shared import EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
 from tools.shared import get_canonical_temp_dir, path_from_root
 from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_binary, exit_with_error
 from tools.settings import COMPILE_TIME_SETTINGS
-from tools import shared, feature_matrix, line_endings, building, config, utils
+from tools import shared, feature_matrix, building, config, utils
 
 logger = logging.getLogger('common')
 
@@ -448,6 +449,9 @@ def with_all_fs(func):
       self.setup_noderawfs_test()
     elif fs == 'wasmfs':
       self.setup_wasmfs_test()
+    elif fs == 'wasmfs_rawfs':
+      self.setup_wasmfs_test()
+      self.setup_noderawfs_test()
     else:
       self.emcc_args += ['-DMEMFS']
       assert fs is None
@@ -458,7 +462,8 @@ def with_all_fs(func):
   parameterize(metafunc, {'': (None,),
                           'nodefs': ('nodefs',),
                           'rawfs': ('rawfs',),
-                          'wasmfs': ('wasmfs',)})
+                          'wasmfs': ('wasmfs',),
+                          'wasmfs_rawfs': ('wasmfs_rawfs',)})
   return metafunc
 
 
@@ -2060,8 +2065,35 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 # it this way then allows the page to close() itself when done.
 def harness_server_func(in_queue, out_queue, port):
   class TestServerHandler(SimpleHTTPRequestHandler):
+    # Request header handler for default do_GET() path in
+    # SimpleHTTPRequestHandler.do_GET(self) below.
+    def send_head(self):
+      if self.headers.get('Range'):
+        path = self.translate_path(self.path)
+        try:
+          fsize = os.path.getsize(path)
+          f = open(path, 'rb')
+        except IOError:
+          self.send_error(404, f'File not found {path}')
+          return None
+        self.send_response(206)
+        ctype = self.guess_type(path)
+        self.send_header('Content-Type', ctype)
+        pieces = self.headers.get('Range').split('=')[1].split('-')
+        start = int(pieces[0]) if pieces[0] != '' else 0
+        end = int(pieces[1]) if pieces[1] != '' else fsize - 1
+        end = min(fsize - 1, end)
+        length = end - start + 1
+        self.send_header('Content-Range', f'bytes {start}-{end}/{fsize}')
+        self.send_header('Content-Length', str(length))
+        self.end_headers()
+        return f
+      else:
+        return SimpleHTTPRequestHandler.send_head(self)
+
     # Add COOP, COEP, CORP, and no-caching headers
     def end_headers(self):
+      self.send_header('Accept-Ranges', 'bytes')
       self.send_header('Access-Control-Allow-Origin', '*')
       self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
       self.send_header('Cross-Origin-Embedder-Policy', 'require-corp')
@@ -2156,7 +2188,23 @@ def harness_server_func(in_queue, out_queue, port):
         # Use SimpleHTTPServer default file serving operation for GET.
         if DEBUG:
           print('[simple HTTP serving:', unquote_plus(self.path), ']')
-        SimpleHTTPRequestHandler.do_GET(self)
+        if self.headers.get('Range'):
+          self.send_response(206)
+          path = self.translate_path(self.path)
+          data = read_binary(path)
+          ctype = self.guess_type(path)
+          self.send_header('Content-type', ctype)
+          pieces = self.headers.get('Range').split('=')[1].split('-')
+          start = int(pieces[0]) if pieces[0] != '' else 0
+          end = int(pieces[1]) if pieces[1] != '' else len(data) - 1
+          end = min(len(data) - 1, end)
+          length = end - start + 1
+          self.send_header('Content-Length', str(length))
+          self.send_header('Content-Range', f'bytes {start}-{end}/{len(data)}')
+          self.end_headers()
+          self.wfile.write(data[start:end + 1])
+        else:
+          SimpleHTTPRequestHandler.do_GET(self)
 
     def log_request(code=0, size=0):
       # don't log; too noisy
