@@ -15,7 +15,7 @@
 #include "audioworklet_test_shared.inc"
 
 // Callback to process and mix the audio tracks
-bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, AudioSampleFrame* outputs, int __unused numParams, const AudioParamFrame* __unused params, void* __unused data) {
+bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, AudioSampleFrame* outputs, int numParams, const AudioParamFrame* params, void* data) {
   audioProcessedCount++;
 
   // Single mono output
@@ -29,18 +29,11 @@ bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, Audi
   // We can now do a quick mix since we know the layouts
   if (numInputs > 0) {
     int totalSamples = outputs[0].samplesPerChannel * outputs[0].numberOfChannels;
-    // Simple copy of the first input's audio data, checking that we have
-    // channels (since a muted input has zero channels).
     float* outputData = outputs[0].data;
-    if (inputs[0].numberOfChannels > 0) {
-      memcpy(outputData, inputs[0].data, totalSamples * sizeof(float));
-    } else {
-      // And for muted we need to fill the buffer with zeroes otherwise it repeats the last frame
-      memset(outputData, 0, totalSamples * sizeof(float));
-    }
-    // Now add another inputs
+    memcpy(outputData, inputs[0].data, totalSamples * sizeof(float));
     for (int n = 1; n < numInputs; n++) {
-      if (inputs[n].numberOfChannels > 0) {
+      // It's possible to have an input with no channels
+      if (inputs[n].numberOfChannels == 1) {
         float* inputData = inputs[n].data;
         for (int i = totalSamples - 1; i >= 0; i--) {
           outputData[i] += inputData[i];
@@ -52,7 +45,7 @@ bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, Audi
 }
 
 // Audio processor created, now register the audio callback
-void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* __unused data) {
+void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
   if (!success) {
     printf("Audio worklet node creation failed\n");
     return;
@@ -87,9 +80,3 @@ void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* __unuse
   // Register the counter that exits the test after one second of mixing
   emscripten_set_timeout_loop(&playedAndMixed, 16, NULL);
 }
-
-// This implementation has no custom start-up requirements
-EmscriptenStartWebAudioWorkletCallback getStartCallback(void) {
-  return &initialised;
-}
-
