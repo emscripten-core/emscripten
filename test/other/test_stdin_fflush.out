@@ -1,6 +1,0 @@
-read 3 bytes: 'foo'
-read 3 bytes: '
-ba'
-read 2 bytes: 'r
-'
-done

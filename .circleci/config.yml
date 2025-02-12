@@ -591,8 +591,6 @@ jobs:
             wasmfs.test_fs_write
             wasmfs.test_fs_writev
             wasmfs.test_fs_writev_rawfs
-            wasmfs.test_fs_writeFile
-            wasmfs.test_fs_writeFile_rawfs
             wasmfs.test_fs_readv
             wasmfs.test_fs_write
             wasmfs.test_fs_readv_rawfs
@@ -818,8 +816,7 @@ jobs:
             core2.test_fs_rename_on_existing_rawfs
             core2.test_fs_symlink_resolution_nodefs
             core2.test_fs_symlink_resolution_rawfs
-            core2.test_fs_writeFile_rawfs
-            core2.test_fs_writeFile_wasmfs_rawfs
+            core2.test_fs_writeFile*
             core2.test_fs_write_rawfs
             core2.test_fs_writev_rawfs
             core2.test_futimens_rawfs

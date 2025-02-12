@@ -181,6 +181,9 @@ function preRun() {
       addOnPreRun(Module['preRun'].shift());
     }
   }
+#if ASSERTIONS
+  consumedModuleProp('preRun');
+#endif
 #endif
   <<< ATPRERUNS >>>
 }
@@ -276,6 +279,9 @@ function postRun() {
       addOnPostRun(Module['postRun'].shift());
     }
   }
+#if ASSERTIONS
+  consumedModuleProp('postRun');
+#endif
 #endif
 
   <<< ATPOSTRUNS >>>

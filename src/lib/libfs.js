@@ -1626,7 +1626,7 @@ FS.staticInit();
         try {
           FS.mkdir(current);
         } catch (e) {
-          // ignore EEXIST
+          if (e.errno != {{{ cDefs.EEXIST }}}) throw e;
         }
         parent = current;
       }

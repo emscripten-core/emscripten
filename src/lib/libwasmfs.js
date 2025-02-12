@@ -111,7 +111,11 @@ FS.init();
         if (!wasmFSPreloadingFlushed) {
           wasmFSPreloadedDirs.push({parentPath: parent, childName: part});
         } else {
-          FS.mkdir(current);
+          try {
+            FS.mkdir(current);
+          } catch (e) {
+            if (e.errno != {{{ cDefs.EEXIST }}}) throw e;
+          }
         }
         parent = current;
       }
