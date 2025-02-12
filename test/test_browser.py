@@ -5470,8 +5470,6 @@ Module["preRun"] = () => {
     'strict': (['-sSTRICT'],),
   })
   def test_audio_worklet(self, args):
-    if '-sMEMORY64' in args and is_firefox():
-      self.skipTest('https://github.com/emscripten-core/emscripten/issues/19161')
     self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args)
 
   # Tests that audioworklets and workers can be used at the same time
