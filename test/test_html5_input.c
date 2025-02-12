@@ -126,10 +126,7 @@ static bool inputCallbackWaitingForCheckboxChange(
   void* const userData) {
   printEvent(inputEvent, __func__);
 
-  if (currentGoal != GoalCheckboxChange) {
-    printf("    FAIL    unexpected call to %s\n", __func__);
-    return false;
-  }
+  assert(currentGoal != GoalCheckboxChange);
 
   const int expectedInputTypeLen = 0;
   const int receivedInputTypeLen = strlen(inputEvent->inputType);
@@ -180,10 +177,7 @@ static bool inputCallbackWaitingForPasteOfLongText(
   void* const userData) {
   printEvent(inputEvent, __func__);
 
-  if (currentGoal != GoalDragAndDropVeryLongText) {
-    printf("    FAIL    unexpected call to %s\n", __func__);
-    return false;
-  }
+  assert(currentGoal != GoalDragAndDropVeryLongText);
 
   if (strcmp(inputEvent->inputType, inputType_insertFromDrop) != 0) {
     printf("    FAIL    inputType is not '%s': %s\n",
@@ -226,10 +220,7 @@ inputCallbackWaitingForPaste(const int eventType,
                              void* const userData) {
   printEvent(inputEvent, __func__);
 
-  if (currentGoal != GoalPasteText) {
-    printf("    FAIL    unexpected call to %s\n", __func__);
-    return false;
-  }
+  assert(currentGoal != GoalPasteText);
 
   if (strcmp(inputEvent->inputType, inputType_insertFromPaste) != 0) {
     printf("    FAIL    inputType is not '%s': %s\n",
