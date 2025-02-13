@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 The Emscripten Authors.  All rights reserved.
+ * Copyright 2025 The Emscripten Authors.  All rights reserved.
  * Emscripten is available under two separate licenses, the MIT license and the
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
@@ -469,6 +469,17 @@ void cleanup() {
     remove("closetestfile");
 }
 
+#if WASMFS
+void test_fs_createfile_js() {
+  EM_ASM(
+         var backend = MEMFS.createBackend({});
+         var file = FS.createFile("/test.txt", 0o777, backend);
+         assert(file > 0);
+         FS.close(file);
+         );
+}
+#endif
+
 int main() {
     test_fs_open();
     test_fs_createPath();
@@ -483,6 +494,7 @@ int main() {
 #if WASMFS
     // TODO: Fix legacy API FS.mmap bug involving emscripten_builtin_memalign
     test_fs_mmap();
+    test_fs_createfile_js();
 #endif
     test_fs_mkdirTree();
     test_fs_utime();
