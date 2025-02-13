@@ -49,11 +49,14 @@ addToLibrary({
             fileInfo.headers.has('Content-Length') &&
             fileInfo.headers.get('Accept-Ranges') == 'bytes' &&
             (parseInt(fileInfo.headers.get('Content-Length'), 10) > chunkSize*2)) {
+          var size = parseInt(fileInfo.headers.get('Content-Length'), 10);
           wasmFS$JSMemoryRanges[file] = {
-            size: parseInt(fileInfo.headers.get('Content-Length'), 10),
+            size,
             chunks: [],
             chunkSize: chunkSize
           };
+          firstChunk = 0;
+          lastChunk = Math.min(lastChunk, ((size-1) / chunkSize));
         } else {
           // may as well/forced to download the whole file
           var wholeFileReq = await fetch(url);
@@ -133,7 +136,9 @@ addToLibrary({
         var chunkSize = fileInfo.chunkSize;
         var firstChunk = (offset / chunkSize) | 0;
         // See comments in getFileRange.
-        var lastChunk = ((offset+length-1) / chunkSize) | 0;
+        var lastChunk = Math.min(
+          ((offset+length-1) / chunkSize),
+          ((fileInfo.size-1) / chunkSize)) | 0;
         var readLength = 0;
         for (var i = firstChunk; i <= lastChunk; i++) {
           var chunk = chunks[i];
