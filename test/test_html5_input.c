@@ -12,16 +12,6 @@
 #include <stdio.h>
 #include <string.h>
 
-// The following input type strings are provided by the browser depending
-// on the kind of input used to change an element.
-// See https://w3c.github.io/input-events/#interface-InputEvent-Attributes
-// * typing on the keyboard:
-static const char* const inputType_insertText = "insertText";
-// * copy and paste:
-static const char* const inputType_insertFromPaste = "insertFromPaste";
-// * drag and drop:
-static const char* const inputType_insertFromDrop = "insertFromDrop";
-
 enum TestGoal {
   GoalUnspecified,
   GoalInputSingleLetter,
@@ -179,9 +169,8 @@ static bool inputCallbackWaitingForPasteOfLongText(
 
   assert(currentGoal == GoalDragAndDropVeryLongText);
 
-  if (strcmp(inputEvent->inputType, inputType_insertFromDrop) != 0) {
-    printf("    FAIL    inputType is not '%s': %s\n",
-           inputType_insertFromDrop,
+  if (strcmp(inputEvent->inputType, "insertFromDrop") != 0) {
+    printf("    FAIL    inputType is not 'insertFromDrop': %s\n",
            inputEvent->inputType);
     return false;
   }
@@ -222,9 +211,8 @@ inputCallbackWaitingForPaste(const int eventType,
 
   assert(currentGoal == GoalPasteText);
 
-  if (strcmp(inputEvent->inputType, inputType_insertFromPaste) != 0) {
-    printf("    FAIL    inputType is not '%s': %s\n",
-           inputType_insertFromPaste,
+  if (strcmp(inputEvent->inputType, "insertFromPaste") != 0) {
+    printf("    FAIL    inputType is not 'insertFromPaste': %s\n",
            inputEvent->inputType);
     return false;
   }
@@ -264,7 +252,7 @@ inputCallbackWaitingForLetterA(const int eventType,
 
   assert(currentGoal == GoalInputSingleLetter);
 
-  if (strcmp(inputEvent->inputType, inputType_insertText) != 0) {
+  if (strcmp(inputEvent->inputType, "insertText") != 0) {
     printf("    FAIL    inputType is not 'insertText': %s\n",
            inputEvent->inputType);
     return false;
