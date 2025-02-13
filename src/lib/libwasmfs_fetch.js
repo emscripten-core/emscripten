@@ -39,10 +39,6 @@ addToLibrary({
       offset ??= 0;
       len ??= chunkSize;
       // In which chunk does the seeked range start?  E.g., 5-14 with chunksize 8 will start in chunk 0.
-      var firstChunk = (offset / chunkSize) | 0;
-      // In which chunk does the seeked range end?  E.g., 5-14 with chunksize 8 will end in chunk 1, as will 5-16 (since byte 16 isn't requested).
-      // This will always give us a chunk >= firstChunk since len > 0.
-      var lastChunk = ((offset+len-1) / chunkSize) | 0;
       if (!(file in wasmFS$JSMemoryRanges)) {
         var fileInfo = await fetch(url, {method:'HEAD', headers:{'Range': 'bytes=0-'}});
         if (fileInfo.ok &&
@@ -55,7 +51,7 @@ addToLibrary({
             chunks: [],
             chunkSize: chunkSize
           };
-          lastChunk = Math.min(lastChunk, ((size-1) / chunkSize)) | 0;
+          len = Math.min(len, size-offset+1) | 0;
         } else {
           // may as well/forced to download the whole file
           var wholeFileReq = await fetch(url);
@@ -72,6 +68,10 @@ addToLibrary({
           return Promise.resolve();
         }
       }
+      var firstChunk = (offset / chunkSize) | 0;
+      // In which chunk does the seeked range end?  E.g., 5-14 with chunksize 8 will end in chunk 1, as will 5-16 (since byte 16 isn't requested).
+      // This will always give us a chunk >= firstChunk since len > 0.
+      var lastChunk = ((offset+len-1) / chunkSize) | 0;
       var allPresent = true;
       var i;
       // Do we have all the chunks already?  If so, we don't need to do any fetches.
@@ -122,7 +122,7 @@ addToLibrary({
 
       // read/getSize fetch the data, then forward to the parent class.
       read: async (file, buffer, length, offset) => {
-        if (length == 0) {
+        if (offset < 0 || length == 0) {
           return 0;
         }
         try {
@@ -131,13 +131,15 @@ addToLibrary({
           return failedResponse.status === 404 ? -{{{ cDefs.ENOENT }}} : -{{{ cDefs.EBADF }}};
         }
         var fileInfo = wasmFS$JSMemoryRanges[file];
+        length = Math.min(length, fileInfo.size-offset+1) | 0;
+        if (offset < 0 || length <= 0) {
+          return 0;
+        }
         var chunks = fileInfo.chunks;
         var chunkSize = fileInfo.chunkSize;
         var firstChunk = (offset / chunkSize) | 0;
         // See comments in getFileRange.
-        var lastChunk = Math.min(
-          ((offset+length-1) / chunkSize),
-          ((fileInfo.size-1) / chunkSize)) | 0;
+        var lastChunk = ((offset+length-1) / chunkSize) | 0;
         var readLength = 0;
         for (var i = firstChunk; i <= lastChunk; i++) {
           var chunk = chunks[i];
