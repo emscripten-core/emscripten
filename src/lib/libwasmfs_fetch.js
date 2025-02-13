@@ -55,7 +55,6 @@ addToLibrary({
             chunks: [],
             chunkSize: chunkSize
           };
-          firstChunk = 0;
           lastChunk = Math.min(lastChunk, ((size-1) / chunkSize));
         } else {
           // may as well/forced to download the whole file
