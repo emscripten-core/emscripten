@@ -41,8 +41,6 @@ from .shared import unsuffixed, unsuffixed_basename, get_file_suffix
 from .settings import settings, default_setting, user_settings, JS_ONLY_SETTINGS, DEPRECATED_SETTINGS
 from .minimal_runtime_shell import generate_minimal_runtime_html
 
-import tools.line_endings
-
 logger = logging.getLogger('link')
 
 DEFAULT_SHELL_HTML = utils.path_from_root('src/shell.html')
@@ -235,11 +233,11 @@ def get_js_sym_info():
   # We need to use a separate lock here for symbol lists because, unlike with system libraries,
   # it's normally for these file to get pruned as part of normal operation.  This means that it
   # can be deleted between the `cache.get()` then the `read_file`.
-  with filelock.FileLock(cache.get_path(cache.get_path('symbol_lists.lock'))):
+  with filelock.FileLock(cache.get_path('symbol_lists.lock')):
     filename = cache.get(f'symbol_lists/{content_hash}.json', build_symbol_list)
     library_syms = json.loads(read_file(filename))
 
-    # Limit of the overall size of the cache to 100 files.
+    # Limit of the overall size of the cache.
     # This code will get test coverage since a full test run of `other` or `core`
     # generates ~1000 unique symbol lists.
     cache_limit = 500
@@ -305,7 +303,7 @@ def read_js_files(files):
   for f in files:
     content = read_file(f)
     if content.startswith('#preprocess\n'):
-      contents.append(shared.read_and_preprocess(f, expand_macros=True))
+      contents.append(building.read_and_preprocess(f, expand_macros=True))
     else:
       contents.append(content)
   contents = '\n'.join(contents)
@@ -2080,7 +2078,7 @@ def fix_es6_import_statements(js_file):
 def create_worker_file(input_file, target_dir, output_file, options):
   output_file = os.path.join(target_dir, output_file)
   input_file = utils.path_from_root(input_file)
-  contents = shared.read_and_preprocess(input_file, expand_macros=True)
+  contents = building.read_and_preprocess(input_file, expand_macros=True)
   write_file(output_file, contents)
 
   fix_es6_import_statements(output_file)
@@ -2090,7 +2088,7 @@ def create_worker_file(input_file, target_dir, output_file, options):
     contents = building.acorn_optimizer(output_file, ['--minify-whitespace'], return_output=True, worker_js=True)
     write_file(output_file, contents)
 
-  tools.line_endings.convert_line_endings_in_file(output_file, os.linesep, options.output_eol)
+  utils.convert_line_endings_in_file(output_file, options.output_eol)
 
 
 @ToolchainProfiler.profile_block('final emitting')
@@ -2160,14 +2158,14 @@ def phase_final_emitting(options, target, js_target, wasm_target):
     generate_html(target, options, js_target, target_basename,
                   wasm_target)
   elif settings.PROXY_TO_WORKER:
-    generate_worker_js(target, js_target, target_basename)
+    generate_worker_js(target, options, js_target, target_basename)
 
   if settings.SPLIT_MODULE:
     diagnostics.warning('experimental', 'the SPLIT_MODULE setting is experimental and subject to change')
     do_split_module(wasm_target, options)
 
   if not settings.SINGLE_FILE:
-    tools.line_endings.convert_line_endings_in_file(js_target, os.linesep, options.output_eol)
+    utils.convert_line_endings_in_file(js_target, options.output_eol)
 
   if options.executable:
     make_js_executable(js_target)
@@ -2286,7 +2284,7 @@ def phase_binaryen(target, options, wasm_target):
     if settings.WASM == 2:
       # With normal wasm2js mode this file gets included as part of the
       # preamble, but with WASM=2 its a separate file.
-      wasm2js_polyfill = shared.read_and_preprocess(utils.path_from_root('src/wasm2js.js'), expand_macros=True)
+      wasm2js_polyfill = building.read_and_preprocess(utils.path_from_root('src/wasm2js.js'), expand_macros=True)
       wasm2js_template = wasm_target + '.js'
       write_file(wasm2js_template, wasm2js_polyfill)
       # generate secondary file for JS symbols
@@ -2545,7 +2543,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
     # name, but the normal one does not support that currently
     exit_with_error('customizing EXPORT_NAME requires that the HTML be customized to use that name (see https://github.com/emscripten-core/emscripten/issues/10086)')
 
-  shell = shared.read_and_preprocess(options.shell_path)
+  shell = building.read_and_preprocess(options.shell_path)
   if '{{{ SCRIPT }}}' not in shell:
     exit_with_error('HTML shell must contain {{{ SCRIPT }}}, see src/shell.html for an example')
   base_js_target = os.path.basename(js_target)
@@ -2672,10 +2670,10 @@ def generate_html(target, options, js_target, target_basename, wasm_target):
   if settings.MINIFY_HTML and (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1):
     minify_html(target)
 
-  tools.line_endings.convert_line_endings_in_file(target, os.linesep, options.output_eol)
+  utils.convert_line_endings_in_file(target, options.output_eol)
 
 
-def generate_worker_js(target, js_target, target_basename):
+def generate_worker_js(target, options, js_target, target_basename):
   if settings.SINGLE_FILE:
     # compiler output is embedded as base64 data URL
     proxy_worker_filename = get_subresource_location_js(js_target)
@@ -2686,12 +2684,12 @@ def generate_worker_js(target, js_target, target_basename):
     proxy_worker_filename = (settings.PROXY_TO_WORKER_FILENAME or worker_target_basename) + '.js'
 
   target_contents = worker_js_script(proxy_worker_filename)
-  write_file(target, target_contents)
+  utils.write_file(target, target_contents, options.output_eol)
 
 
 def worker_js_script(proxy_worker_filename):
   web_gl_client_src = read_file(utils.path_from_root('src/webGLClient.js'))
-  proxy_client_src = shared.read_and_preprocess(utils.path_from_root('src/proxyClient.js'), expand_macros=True)
+  proxy_client_src = building.read_and_preprocess(utils.path_from_root('src/proxyClient.js'), expand_macros=True)
   if not settings.SINGLE_FILE and not os.path.dirname(proxy_worker_filename):
     proxy_worker_filename = './' + proxy_worker_filename
   proxy_client_src = do_replace(proxy_client_src, '<<< filename >>>', proxy_worker_filename)

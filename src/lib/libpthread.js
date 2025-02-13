@@ -203,8 +203,8 @@ var LibraryPThread = {
       // linear memory.
       __emscripten_thread_free_data(pthread_ptr);
     },
-    receiveObjectTransfer(data) {
 #if OFFSCREENCANVAS_SUPPORT
+    receiveOffscreenCanvases(data) {
       if (typeof GL != 'undefined') {
         Object.assign(GL.offscreenCanvases, data.offscreenCanvases);
         if (!Module['canvas'] && data.moduleCanvasId && GL.offscreenCanvases[data.moduleCanvasId]) {
@@ -212,8 +212,8 @@ var LibraryPThread = {
           Module['canvas'].id = data.moduleCanvasId;
         }
       }
-#endif
     },
+#endif
     // Called by worker.js each time a thread is started.
     threadInitTLS() {
 #if PTHREADS_DEBUG

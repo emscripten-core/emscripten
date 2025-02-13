@@ -1873,6 +1873,22 @@ simulateKeyUp(100, undefined, 'Numpad4');
     shutil.copy(Path('sub/test.data'), '.')
     self.btest_exit('test_emscripten_async_load_script.c', args=['-sFORCE_FILESYSTEM'])
 
+  @also_with_wasmfs
+  def test_emscripten_overlapped_package(self):
+    # test that a program that loads multiple file_packager.py packages has a correctly initialized filesystem.
+    # this exercises https://github.com/emscripten-core/emscripten/issues/23602 whose root cause was a difference
+    # between JS FS and WASMFS behavior.
+    def setup():
+      ensure_dir('sub')
+      create_file('sub/file1.txt', 'first')
+      create_file('sub/file2.txt', 'second')
+
+    setup()
+    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'sub/file1.txt@/target/file1.txt'], stdout=open('script1.js', 'w'))
+    self.run_process([FILE_PACKAGER, 'test2.data', '--preload', 'sub/file2.txt@/target/file2.txt'], stdout=open('script2.js', 'w'))
+    self.btest_exit('test_emscripten_overlapped_package.c', args=['-sFORCE_FILESYSTEM'])
+    self.clear()
+
   def test_emscripten_api_infloop(self):
     self.btest_exit('emscripten_api_browser_infloop.cpp')
 
@@ -3244,6 +3260,14 @@ Module["preRun"] = () => {
     if 'mod' in formats:
       args += ['-lc++', '-lc++abi']
     self.btest_exit('test_sdl2_mixer_music.c', args=args)
+
+  def test_sdl3_misc(self):
+    self.emcc_args.append('-Wno-experimental')
+    self.btest_exit('test_sdl3_misc.c', args=['-sUSE_SDL=3'])
+
+  def test_sdl3_canvas_write(self):
+    self.emcc_args.append('-Wno-experimental')
+    self.btest_exit('test_sdl3_canvas_write.c', args=['-sUSE_SDL=3'])
 
   @requires_graphics_hardware
   @no_wasm64('cocos2d ports does not compile with wasm64')
@@ -5319,6 +5343,7 @@ Module["preRun"] = () => {
     create_file('subdir/backendfile2', 'file 2')
     self.btest_exit('wasmfs/wasmfs_fetch.c',
                     args=['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD',
+                          '-sFORCE_FILESYSTEM', '-lfetchfs.js',
                           '--js-library', test_file('wasmfs/wasmfs_fetch.js')] + args)
 
   @no_firefox('no OPFS support yet')
