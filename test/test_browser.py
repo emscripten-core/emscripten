@@ -5470,7 +5470,7 @@ Module["preRun"] = () => {
     'strict': (['-sSTRICT'],),
   })
   def test_audio_worklet(self, args):
-    self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args)
+    self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DTEST_AND_EXIT'] + args)
 
   # Tests that audioworklets and workers can be used at the same time
   def test_audio_worklet_worker(self):
