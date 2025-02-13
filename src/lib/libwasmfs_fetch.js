@@ -55,7 +55,7 @@ addToLibrary({
             chunks: [],
             chunkSize: chunkSize
           };
-          lastChunk = Math.min(lastChunk, ((size-1) / chunkSize));
+          lastChunk = Math.min(lastChunk, ((size-1) / chunkSize)) | 0;
         } else {
           // may as well/forced to download the whole file
           var wholeFileReq = await fetch(url);
