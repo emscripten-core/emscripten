@@ -20,14 +20,14 @@ enum TestGoal {
   GoalCheckboxChange,
 };
 
-static enum TestGoal currentGoal = GoalUnspecified;
+enum TestGoal currentGoal = GoalUnspecified;
 
-static bool goalPassed_inputSingleLetter = false;
-static bool goalPassed_pasteText = false;
-static bool goalPassed_dropVeryLongText = false;
-static bool goalPassed_checkboxChange = false;
+bool goalPassed_inputSingleLetter = false;
+bool goalPassed_pasteText = false;
+bool goalPassed_dropVeryLongText = false;
+bool goalPassed_checkboxChange = false;
 
-static int testStatus() {
+int testStatus() {
   if (goalPassed_inputSingleLetter && goalPassed_pasteText &&
       goalPassed_dropVeryLongText && goalPassed_checkboxChange) {
     return 0;
@@ -58,8 +58,8 @@ const char* emscripten_result_to_string(EMSCRIPTEN_RESULT result) {
   return "Unknown EMSCRIPTEN_RESULT!";
 }
 
-static void printEvent(const EmscriptenInputEvent* const inputEvent,
-                       const char* const context) {
+void printEvent(const EmscriptenInputEvent* const inputEvent,
+                const char* const context) {
   printf("    INFO    data: %s (%s)\n"
          "    INFO    inputType: %s (%s)\n"
          "    INFO    isComposing: %d (%s)\n",
@@ -71,9 +71,9 @@ static void printEvent(const EmscriptenInputEvent* const inputEvent,
          context);
 }
 
-static void checkEqual(const EMSCRIPTEN_RESULT expected,
-                       const EMSCRIPTEN_RESULT actual,
-                       const char* const context) {
+void checkEqual(const EMSCRIPTEN_RESULT expected,
+                const EMSCRIPTEN_RESULT actual,
+                const char* const context) {
   if (expected != actual) {
     printf("expected %s but got %s (context: %s)\n",
            emscripten_result_to_string(expected),
@@ -104,13 +104,13 @@ EM_JS(void, setInputBValue, (const char *str), {
   target.value = UTF8ToString(str);
 } )
 
-static void testingDone() {
+void testingDone() {
   emscripten_html5_remove_all_event_listeners();
   emscripten_runtime_keepalive_pop();
   emscripten_force_exit(testStatus());
 }
 
-static bool inputCallbackWaitingForCheckboxChange(
+bool inputCallbackWaitingForCheckboxChange(
   const int eventType,
   const EmscriptenInputEvent* const inputEvent __attribute__((nonnull)),
   void* const userData) {
@@ -142,7 +142,7 @@ static bool inputCallbackWaitingForCheckboxChange(
   return true;
 }
 
-static void startTestChangeCheckbox() {
+void startTestChangeCheckbox() {
   currentGoal = GoalCheckboxChange;
   emscripten_html5_remove_all_event_listeners();
   const EMSCRIPTEN_RESULT res = emscripten_set_input_callback(
@@ -156,12 +156,12 @@ static void startTestChangeCheckbox() {
   printf("Please check checkbox C.\n");
 }
 
-static const char* const longDropText =
+const char* const longDropText =
   "This is an example for a long text which is longer than the previously "
   "pasted text. Hence, it will trigger a realloc() call to reserve more "
   "memory. The string ends at the following arrow tip -->";
 
-static bool inputCallbackWaitingForPasteOfLongText(
+bool inputCallbackWaitingForPasteOfLongText(
   const int eventType,
   const EmscriptenInputEvent* const inputEvent __attribute__((nonnull)),
   void* const userData) {
@@ -186,7 +186,7 @@ static bool inputCallbackWaitingForPasteOfLongText(
   return true;
 }
 
-static void startTestDropLongText() {
+void startTestDropLongText() {
   currentGoal = GoalDragAndDropVeryLongText;
   emscripten_html5_remove_all_event_listeners();
   const EMSCRIPTEN_RESULT res = emscripten_set_input_callback(
@@ -200,13 +200,12 @@ static void startTestDropLongText() {
   printf("Please drag&drop all text from B to A (Ctrl+A, drag, drop).\n");
 }
 
-static const char* const expectedPasteText = "I like emscripten.";
+const char* const expectedPasteText = "I like emscripten.";
 
-static bool
-inputCallbackWaitingForPaste(const int eventType,
-                             const EmscriptenInputEvent* const inputEvent
-                             __attribute__((nonnull)),
-                             void* const userData) {
+bool inputCallbackWaitingForPaste(const int eventType,
+                                  const EmscriptenInputEvent* const inputEvent
+                                  __attribute__((nonnull)),
+                                  void* const userData) {
   printEvent(inputEvent, __func__);
 
   assert(currentGoal == GoalPasteText);
@@ -228,7 +227,7 @@ inputCallbackWaitingForPaste(const int eventType,
   return true;
 }
 
-static void startTestPasteText() {
+void startTestPasteText() {
   currentGoal = GoalPasteText;
   emscripten_html5_remove_all_event_listeners();
   const EMSCRIPTEN_RESULT res = emscripten_set_input_callback(
@@ -241,13 +240,12 @@ static void startTestPasteText() {
   printf("Please copy&paste all text from A to B (Ctrl+A, Ctrl+C, Ctrl+V).\n");
 }
 
-static void* const expectedUserDataPtr = (void*)0x13370001;
+void* const expectedUserDataPtr = (void*)0x13370001;
 
-static bool
-inputCallbackWaitingForLetterA(const int eventType,
-                               const EmscriptenInputEvent* const inputEvent
-                               __attribute__((nonnull)),
-                               void* const userData) {
+bool inputCallbackWaitingForLetterA(const int eventType,
+                                    const EmscriptenInputEvent* const inputEvent
+                                    __attribute__((nonnull)),
+                                    void* const userData) {
   printEvent(inputEvent, __func__);
 
   assert(currentGoal == GoalInputSingleLetter);
@@ -274,7 +272,7 @@ inputCallbackWaitingForLetterA(const int eventType,
   return true;
 }
 
-static void startTestInputSingleLetter() {
+void startTestInputSingleLetter() {
   currentGoal = GoalInputSingleLetter;
   const EMSCRIPTEN_RESULT res = emscripten_set_input_callback(
     "#input-a", expectedUserDataPtr, false, inputCallbackWaitingForLetterA);
@@ -285,17 +283,17 @@ static void startTestInputSingleLetter() {
          " the keyboard.\n");
 }
 
-static bool emptyInputCallback(const int eventType,
-                               const EmscriptenInputEvent* const inputEvent
-                               __attribute__((nonnull)),
-                               void* const userData) {
+bool emptyInputCallback(const int eventType,
+                        const EmscriptenInputEvent* const inputEvent
+                        __attribute__((nonnull)),
+                        void* const userData) {
   return true;
 }
 
 // WHEN an input callback is installed on an existing component.
 // THEN this succeeds.
 // note: for negative test see test_html5_unknown_event_target.c
-static void testInstallCallback() {
+void testInstallCallback() {
   const EMSCRIPTEN_RESULT res =
     emscripten_set_input_callback("#input-a", 0, false, emptyInputCallback);
   ASSERT_RESULT(res,
