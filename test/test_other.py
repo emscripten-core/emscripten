@@ -438,8 +438,8 @@ class other(RunnerCore):
   def test_modularize_instance(self, args):
     create_file('library.js', '''\
     addToLibrary({
-      $baz: function() { console.log('baz'); },
-      $qux: function() { console.log('qux'); }
+      $baz: () => console.log('baz'),
+      $qux: () => console.log('qux'),
     });''')
     self.run_process([EMCC, test_file('modularize_instance.c'),
                       '-sMODULARIZE=instance',
@@ -7862,7 +7862,7 @@ int main(int argc, char** argv) {
       addToLibrary({
        foo__sig: 'ii',
        foo: function(f) { return f + 10 },
-       bar: function(f) {  returnf + 10 },
+       bar: function(f) { return f + 10 },
       });
       ''')
     create_file('main.c', r'''
@@ -10101,20 +10101,12 @@ end
     attributes = ['put', 'getContext', 'contains', 'stopPropagation', 'pause']
     methods = ''
     for attribute in attributes:
-      methods += f'''
-        this.{attribute} = function() {{
-          console.error("my {attribute}");
-        }};
-      '''
+      methods += f'this.{attribute} = () => console.error("my {attribute}");'
     create_file('post.js', '''
       /** @constructor */
       function Foo() {
-        this.bar = function() {
-          console.error("my bar");
-        };
-        this.baz = function() {
-          console.error("my baz");
-        };
+        this.bar = () => console.error("my bar");
+        this.baz = () => console.error("my baz");
         %s
         return this;
       }
