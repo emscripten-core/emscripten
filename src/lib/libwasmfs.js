@@ -98,6 +98,7 @@ FS.init();
       FS.ErrnoError.prototype = new Error();
       FS.ErrnoError.prototype.constructor = FS.ErrnoError;
     },
+    createFile: (path, mode, backend) => FS.handleError(withStackSave(() => _wasmfs_create_file(stringToUTF8OnStack(path), mode, backend))),
     createDataFile(parent, name, fileData, canRead, canWrite, canOwn) {
       FS_createDataFile(parent, name, fileData, canRead, canWrite, canOwn);
     },
