@@ -7473,7 +7473,7 @@ void* operator new(size_t size) {
     self.emcc_args += ['-std=c++20', '--bind', '--post-js=post.js']
     self.do_runf('embind/test_val_coro.cpp', '34\n')
 
-  def test_embind_val_coro_caught(self):
+  def test_embind_val_coro_propogate_cpp_exception(self):
     self.set_setting('EXCEPTION_STACK_TRACES')
     create_file('post.js', r'''Module.onRuntimeInitialized = () => {
       Module.throwingCoro().then(
@@ -7483,6 +7483,25 @@ void* operator new(size_t size) {
     }''')
     self.emcc_args += ['-std=c++20', '--bind', '--post-js=post.js', '-fexceptions']
     self.do_runf('embind/test_val_coro.cpp', 'rejected with: std::runtime_error: bang from throwingCoro!\n')
+
+  def test_embind_val_coro_propogate_js_error(self):
+    self.set_setting('EXCEPTION_STACK_TRACES')
+    create_file('post.js', r'''Module.onRuntimeInitialized = () => {
+      Module.failingPromise().then(
+        console.log,
+        err => console.error(`rejected with: ${err.message}`)
+      );
+    }''')
+    self.emcc_args += ['-std=c++20', '--bind', '--post-js=post.js', '-fexceptions']
+    self.do_runf('embind/test_val_coro.cpp', 'rejected with: bang from JS promise!\n')
+
+  def test_embind_val_coro_caught_exception(self):
+    self.set_setting('EXCEPTION_STACK_TRACES')
+    create_file('post.js', r'''Module.onRuntimeInitialized = () => {
+      Module.caughtException().then(console.log);
+    }''')
+    self.emcc_args += ['-std=c++20', '--bind', '--post-js=post.js', '-fexceptions']
+    self.do_runf('embind/test_val_coro.cpp', '42\n')
 
   def test_embind_dynamic_initialization(self):
     self.emcc_args += ['-lembind']
