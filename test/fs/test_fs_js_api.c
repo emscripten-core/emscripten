@@ -474,13 +474,13 @@ void test_fs_createfile_js() {
   EM_ASM(
          var backend = MEMFS.createBackend({});
          var file = FS.createFile("/", "test.txt", backend, true, true);
-         assert(file > 0);
+         if (file <= 0) throw "No file created";
          FS.close(file);
          );
 #else
   EM_ASM(
          var file = FS.createFile("/", "test.txt", {}, true, true);
-         assert(file > 0);
+         if (file <= 0) throw "No file created";
          FS.close(file);
          );
 #endif
