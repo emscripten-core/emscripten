@@ -81,7 +81,11 @@ bool main_thread_tls_access(double time, void *userData) {
 // This callback will fire after the Audio Worklet Processor has finished being
 // added to the Worklet global scope.
 void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData) {
-  if (!success) return;
+  if (!success) {
+    emscripten_out("Stopped in AudioWorkletProcessorCreated");
+    assert(0);
+    return;
+  }
 
   // Specify the input and output node configurations for the Wasm Audio
   // Worklet. A simple setup with single mono output channel here, and no
@@ -111,7 +115,11 @@ void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, bool succe
 // AudioWorklet global scope, and is now ready to begin adding Audio Worklet
 // Processors.
 void WebAudioWorkletThreadInitialized(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData) {
-  if (!success) return;
+  if (!success) {
+    emscripten_out("Stopped in WebAudioWorkletThreadInitialized");
+    assert(0);
+    return;
+  }
 
   WebAudioWorkletProcessorCreateOptions opts = {
     .name = "noise-generator",
