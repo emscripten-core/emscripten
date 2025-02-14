@@ -21,6 +21,7 @@
 #include <pthread.h>
 #if __cplusplus >= 202002L
 #include <coroutine>
+#include <exception>
 #include <variant>
 #endif
 
