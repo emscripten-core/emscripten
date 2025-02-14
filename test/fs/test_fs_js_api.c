@@ -469,16 +469,22 @@ void cleanup() {
     remove("closetestfile");
 }
 
-#if WASMFS
 void test_fs_createfile_js() {
+#if WASMFS
   EM_ASM(
          var backend = MEMFS.createBackend({});
-         var file = FS.createFile("/test.txt", 0o777, backend);
+         var file = FS.createFile("/", "test.txt", backend, true, true);
          assert(file > 0);
          FS.close(file);
          );
-}
+#else
+  EM_ASM(
+         var file = FS.createFile("/", "test.txt", {}, true, true);
+         assert(file > 0);
+         FS.close(file);
+         );
 #endif
+}
 
 int main() {
     test_fs_open();
@@ -494,8 +500,8 @@ int main() {
 #if WASMFS
     // TODO: Fix legacy API FS.mmap bug involving emscripten_builtin_memalign
     test_fs_mmap();
-    test_fs_createfile_js();
 #endif
+    test_fs_createfile_js();
     test_fs_mkdirTree();
     test_fs_utime();
 
