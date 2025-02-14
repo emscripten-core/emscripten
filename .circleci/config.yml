@@ -34,6 +34,8 @@ commands:
       - run:
           name: download chrome
           command: |
+            # Try adding a dummy sound device for Chrome...
+            modprobe snd-dummy
             # TODO: Make these part of the base image
             apt-get install -q -y libu2f-udev libvulkan1 xdg-utils
             # wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
