@@ -102,7 +102,7 @@ FS.init();
       var path = PATH.join2(typeof parent == 'string' ? parent : FS.getPath(parent), name);
       var mode = FS_getMode(canRead, canWrite);
       return FS.handleError(withStackSave(() => _wasmfs_create_file(stringToUTF8OnStack(path), mode, backend)));
-    }
+    },
     createDataFile(parent, name, fileData, canRead, canWrite, canOwn) {
       FS_createDataFile(parent, name, fileData, canRead, canWrite, canOwn);
     },
