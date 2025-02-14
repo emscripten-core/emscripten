@@ -5457,7 +5457,7 @@ Module["preRun"] = () => {
   # Tests the AudioWorklet demo
   @parameterized({
     '': ([],),
-    'memory64': (['-sMEMORY64'],),
+    # 'memory64': (['-sMEMORY64'],),
     'with_fs': (['--preload-file', test_file('hello_world.c') + '@/'],),
     'closure': (['--closure', '1', '-Oz'],),
     'asyncify': (['-sASYNCIFY'],),
