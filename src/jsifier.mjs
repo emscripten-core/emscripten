@@ -79,6 +79,14 @@ function stringifyWithFunctions(obj) {
   if (Array.isArray(obj)) {
     return '[' + obj.map(stringifyWithFunctions).join(',') + ']';
   }
+  var builtinContainers = [Map, Set, WeakMap, WeakSet];
+  for (const container of builtinContainers) {
+    if (obj instanceof container) {
+      const className = container.name;
+      assert(obj.size === 0, `cannot stringify ${className} with data`);
+      return `new ${className}()`;
+    }
+  }
   var rtn = '{\n';
   for (const [key, value] of Object.entries(obj)) {
     var str = stringifyWithFunctions(value);
