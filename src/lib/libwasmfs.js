@@ -99,7 +99,7 @@ FS.init();
       FS.ErrnoError.prototype.constructor = FS.ErrnoError;
     },
     createFile(parent, name, backend, canRead, canWrite) {
-      var path = PATH.join2(typeof parent == 'string' ? parent : FS.getPath(parent), name);
+      var pathName = name ? parent + '/' + name : parent;
       var mode = FS_getMode(canRead, canWrite);
       return FS.handleError(withStackSave(() => _wasmfs_create_file(stringToUTF8OnStack(path), mode, backend)));
     },
