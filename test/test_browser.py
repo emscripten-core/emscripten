@@ -5469,7 +5469,7 @@ Module["preRun"] = () => {
     'es6': (['-sEXPORT_ES6'],),
     'strict': (['-sSTRICT'],),
   })
-  @requires_sound_hardware
+  # @requires_sound_hardware
   def test_audio_worklet(self, args):
     self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DTEST_AND_EXIT'] + args)
 
