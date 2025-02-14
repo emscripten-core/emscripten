@@ -1281,6 +1281,12 @@ module({
             cm.embind_test_optional_multiple_arg(1);
             cm.embind_test_optional_multiple_arg(1, 2);
         });
+        test("std::optional properties can be omitted", function() {
+            // Sanity check: Not omitting still works.
+            cm.embind_test_optional_property({x: 1, y: 2});
+            // Omitting should also work, since "y" is std::optional.
+            cm.embind_test_optional_property({x: 1});
+        });
     });
 
     BaseFixture.extend("functors", function() {
