@@ -40,14 +40,6 @@ var LibraryHTML5 = {
     // information about that element in the event message.
     previousFullscreenElement: null,
 
-#if MIN_SAFARI_VERSION <= 80000 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
-    // Remember the current mouse coordinates in case we need to emulate
-    // movementXY generation for browsers that don't support it.
-    // Some browsers (e.g. Safari 6.0.5) only give movementXY when Pointerlock is active.
-    previousScreenX: null,
-    previousScreenY: null,
-#endif
-
     // When the C runtime exits via exit(), we unregister all event handlers
     // added by this library to be nice and clean.
     // Track in this field whether we have yet registered that onExit handler.
@@ -461,23 +453,11 @@ var LibraryHTML5 = {
       //     https://caniuse.com/#feat=mdn-api_mouseevent_movementx
       || e["mozMovementX"]
 #endif
-#if MIN_CHROME_VERSION <= 36 // || MIN_ANDROID_BROWSER_VERSION <= 4.4.4
-      || e["webkitMovementX"]
-#endif
-#if MIN_SAFARI_VERSION <= 80000 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
-      || (e.screenX-JSEvents.previousScreenX)
-#endif
       ;
 
     HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.movementY / 4 }}}] = e["movementY"]
 #if MIN_FIREFOX_VERSION <= 40
       || e["mozMovementY"]
-#endif
-#if MIN_CHROME_VERSION <= 36 // || MIN_ANDROID_BROWSER_VERSION <= 4.4.4
-      || e["webkitMovementY"]
-#endif
-#if MIN_SAFARI_VERSION <= 80000 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
-      || (e.screenY-JSEvents.previousScreenY)
 #endif
       ;
 
@@ -495,21 +475,6 @@ var LibraryHTML5 = {
     var rect = getBoundingClientRect(target);
     HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetX / 4 }}}] = e.clientX - (rect.left | 0);
     HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetY / 4 }}}] = e.clientY - (rect.top  | 0);
-
-#if MIN_SAFARI_VERSION <= 80000 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
-#if MIN_CHROME_VERSION <= 76
-    // wheel and mousewheel events contain wrong screenX/screenY on chrome/opera <= 76,
-    // so there we should not record previous screen coordinates on wheel events.
-    // https://bugs.chromium.org/p/chromium/issues/detail?id=699956
-    // https://github.com/emscripten-core/emscripten/pull/4997
-    if (e.type !== 'wheel') {
-#endif
-      JSEvents.previousScreenX = e.screenX;
-      JSEvents.previousScreenY = e.screenY;
-#if MIN_CHROME_VERSION <= 76
-    }
-#endif
-#endif
   },
 
   $registerMouseEventCallback__deps: ['$JSEvents', '$fillMouseEventData', '$findEventTarget', 'malloc'],
@@ -628,22 +593,6 @@ var LibraryHTML5 = {
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, wheelEvent, userData)) e.preventDefault();
     };
-#if MIN_SAFARI_VERSION < 60100 // Browsers that do not support https://caniuse.com/#feat=mdn-api_wheelevent
-    // The 'mousewheel' event as implemented in Safari 6.0.5
-    var mouseWheelHandlerFunc = (e = event) => {
-      fillMouseEventData(JSEvents.wheelEvent, e, target);
-      {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaX, 'e["wheelDeltaX"] || 0', 'double') }}};
-      /* 1. Invert to unify direction with the DOM Level 3 wheel event. 2. MSIE does not provide wheelDeltaY, so wheelDelta is used as a fallback. */
-      var wheelDeltaY = -(e["wheelDeltaY"] || e["wheelDelta"])
-      {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaY, 'wheelDeltaY', 'double') }}};
-      {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaZ, '0 /* Not available */', 'double') }}};
-      {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaMode, '0 /* DOM_DELTA_PIXEL */', 'i32') }}};
-      var shouldCancel = {{{ makeDynCall('iipp', 'callbackfunc') }}}( eventTypeId, JSEvents.wheelEvent, userData);
-      if (shouldCancel) {
-        e.preventDefault();
-      }
-    };
-#endif
 
     var eventHandler = {
       target,
@@ -652,11 +601,7 @@ var LibraryHTML5 = {
 #endif
       eventTypeString,
       callbackfunc,
-#if MIN_SAFARI_VERSION < 60100 // Browsers that do not support https://caniuse.com/#feat=mdn-api_wheelevent
-      handlerFunc: (eventTypeString == 'wheel') ? wheelHandlerFunc : mouseWheelHandlerFunc,
-#else
       handlerFunc: wheelHandlerFunc,
-#endif
       useCapture
     };
     return JSEvents.registerOrRemoveHandler(eventHandler);
@@ -669,10 +614,6 @@ var LibraryHTML5 = {
     if (!target) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
     if (typeof target.onwheel != 'undefined') {
       return registerWheelEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_WHEEL }}}, "wheel", targetThread);
-#if MIN_SAFARI_VERSION < 60100 // Browsers that do not support https://caniuse.com/#feat=mdn-api_wheelevent
-    } else if (typeof target.onmousewheel != 'undefined') {
-      return registerWheelEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_WHEEL }}}, "mousewheel", targetThread);
-#endif
     } else {
       return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     }
@@ -1725,19 +1666,12 @@ var LibraryHTML5 = {
     } else if (target.mozRequestPointerLock) {
       target.mozRequestPointerLock();
 #endif
-#if MIN_CHROME_VERSION <= 36 // https://caniuse.com/#feat=pointerlock
-    } else if (target.webkitRequestPointerLock) {
-      target.webkitRequestPointerLock();
-#endif
     } else {
       // document.body is known to accept pointer lock, so use that to differentiate if the user passed a bad element,
       // or if the whole browser just doesn't support the feature.
       if (document.body.requestPointerLock
 #if MIN_FIREFOX_VERSION <= 40 // https://caniuse.com/#feat=pointerlock
         || document.body.mozRequestPointerLock
-#endif
-#if MIN_CHROME_VERSION <= 36 // https://caniuse.com/#feat=pointerlock
-        || document.body.webkitRequestPointerLock
 #endif
         ) {
         return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
@@ -1758,9 +1692,6 @@ var LibraryHTML5 = {
     if (!target.requestPointerLock
 #if MIN_FIREFOX_VERSION <= 40 // https://caniuse.com/#feat=pointerlock
       && !target.mozRequestPointerLock
-#endif
-#if MIN_CHROME_VERSION <= 36 // https://caniuse.com/#feat=pointerlock
-      && !target.webkitRequestPointerLock
 #endif
       ) {
       return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
@@ -1794,10 +1725,6 @@ var LibraryHTML5 = {
 #if MIN_FIREFOX_VERSION <= 40 // https://caniuse.com/#feat=pointerlock
     } else if (document.mozExitPointerLock) {
       document.mozExitPointerLock();
-#endif
-#if MIN_CHROME_VERSION <= 36 // https://caniuse.com/#feat=pointerlock
-    } else if (document.webkitExitPointerLock) {
-      document.webkitExitPointerLock();
 #endif
     } else {
       return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
@@ -2482,11 +2409,7 @@ var LibraryHTML5 = {
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
     return (typeof devicePixelRatio == 'number' && devicePixelRatio) || 1.0;
 #else // otherwise, on the web and in workers, things are simpler
-#if MIN_FIREFOX_VERSION < 18 || MIN_CHROME_VERSION < 4 || MIN_SAFARI_VERSION < 30100 // https://caniuse.com/#feat=devicepixelratio
-    return window.devicePixelRatio || 1.0;
-#else
     return devicePixelRatio;
-#endif
 #endif
   }
 };

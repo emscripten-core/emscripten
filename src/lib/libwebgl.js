@@ -787,12 +787,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
         :
 #endif
-        (canvas.getContext("webgl", webGLContextAttributes)
-          // https://caniuse.com/#feat=webgl
-#if MIN_FIREFOX_VERSION <= 23 || MIN_CHROME_VERSION <= 32 || MIN_SAFARI_VERSION <= 70101
-          || canvas.getContext("experimental-webgl", webGLContextAttributes)
-#endif
-          );
+        canvas.getContext("webgl", webGLContextAttributes);
 #endif // MAX_WEBGL_VERSION >= 2
 
 #if GL_PREINITIALIZED_CONTEXT

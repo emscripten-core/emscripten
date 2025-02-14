@@ -568,7 +568,7 @@ emcc: supported targets: llvm bitcode, WebAssembly, NOT elf
   if '--version' in args:
     print(version_string())
     print('''\
-Copyright (C) 2014 the Emscripten authors (see AUTHORS.txt)
+Copyright (C) 2025 the Emscripten authors (see AUTHORS.txt)
 This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 ''')
