@@ -241,6 +241,16 @@ def deminify_syms(names, minification_map):
 
 
 class other(RunnerCore):
+  @classmethod
+  def setUpClass(cls):
+    """setUpClass included purely so we can verify that is run."""
+    super().setUpClass()
+    cls.doneSetup = True
+
+  def setUp(self):
+    assert self.__class__.doneSetup
+    super().setUp()
+
   def assertIsObjectFile(self, filename):
     self.assertTrue(building.is_wasm(filename))
 
