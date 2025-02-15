@@ -82,10 +82,7 @@ function stringifyWithFunctions(obj) {
   }
 
   // preserve the type of the object if it is one of [Map, Set, WeakMap, WeakSet].
-  const builtinContainers = vm.runInContext(
-    '[Map, Set, WeakMap, WeakSet]',
-    compileTimeContext,
-  );
+  const builtinContainers = vm.runInContext('[Map, Set, WeakMap, WeakSet]', compileTimeContext);
   for (const container of builtinContainers) {
     if (obj instanceof container) {
       const className = container.name;
