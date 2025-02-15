@@ -1185,6 +1185,26 @@ module({
        });
     });
 
+    BaseFixture.extend("map_with_greater_comparator", function() {
+        test("std::map with std::greater comparator", function() {
+            var map = cm.embind_test_get_int_string_greater_map();
+            assert.equal(2, map.size());
+            assert.equal("one", map.get(1));
+            assert.equal("two", map.get(2));
+            map.delete();
+        });
+
+        test("std::map with std::greater comparator keys are sorted in reverse", function() {
+            var map = cm.embind_test_get_int_string_greater_map();
+            var keys = map.keys();
+            assert.equal(2, keys.size());
+            assert.equal(2, keys.get(0));
+            assert.equal(1, keys.get(1));
+            keys.delete();
+            map.delete();
+        });
+    });
+
     BaseFixture.extend("optional", function() {
         if (!("embind_test_return_optional_int" in cm)) {
             return;
