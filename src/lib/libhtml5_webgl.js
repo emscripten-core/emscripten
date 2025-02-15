@@ -109,7 +109,10 @@ var LibraryHtml5WebGL = {
 #endif
 
     var canvas = findCanvasEventTarget(target);
+#if OFFSCREENCANVAS_SUPPORT
+    // If our canvas from findCanvasEventTarget is actually an offscreen canvas record, we should extract the inner canvas.
     if (canvas?.canvas) { canvas = canvas.canvas; }
+#endif
 #if GL_DEBUG
     var targetStr = UTF8ToString(target);
 #endif
