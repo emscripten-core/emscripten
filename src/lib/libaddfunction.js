@@ -159,7 +159,7 @@ addToLibrary({
     }
     // Grow the table
     let grown = false;
-    while (!grown && tablegrowIncrement > 1) {
+    while (!grown) {
       try {
         /** @suppress {checkTypes} */
         wasmTable.grow({{{ toIndexType('tablegrowIncrement') }}});
