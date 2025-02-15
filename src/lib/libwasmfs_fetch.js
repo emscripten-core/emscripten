@@ -122,7 +122,10 @@ addToLibrary({
 
       // read/getSize fetch the data, then forward to the parent class.
       read: async (file, buffer, length, offset) => {
-        if (offset < 0 || length == 0) {
+        // This function assumes that offset is non-negative and length is positive.
+        // C read() doesn't take an offset and so doesn't have to deal with the former situation,
+        // and if the length is 0 or the offset is negative there's no reasonable read we can make.
+        if (offset < 0 || length <= 0) {
           return 0;
         }
         try {
@@ -132,7 +135,8 @@ addToLibrary({
         }
         var fileInfo = wasmFS$JSMemoryRanges[file];
         length = Math.min(length, fileInfo.size-offset+1) | 0;
-        if (offset < 0 || length <= 0) {
+        // As above, we check the length just in case offset was beyond size and length is now negative.
+        if (length <= 0) {
           return 0;
         }
         var chunks = fileInfo.chunks;
