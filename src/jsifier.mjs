@@ -9,6 +9,7 @@
 
 import assert from 'node:assert';
 import * as fs from 'node:fs/promises';
+import * as vm from 'node:vm';
 import {
   ATEXITS,
   ATINITS,
@@ -79,14 +80,20 @@ function stringifyWithFunctions(obj) {
   if (Array.isArray(obj)) {
     return '[' + obj.map(stringifyWithFunctions).join(',') + ']';
   }
-  var builtinContainers = [Map, Set, WeakMap, WeakSet];
+
+  // preserve the type of the object if it is one of [Map, Set, WeakMap, WeakSet].
+  const builtinContainers = vm.runInContext(
+    '[Map, Set, WeakMap, WeakSet]',
+    compileTimeContext,
+  );
   for (const container of builtinContainers) {
     if (obj instanceof container) {
       const className = container.name;
-      assert(obj.size === 0, `cannot stringify ${className} with data`);
-      return `new ${className}()`;
+      assert(!obj.size, `cannot stringify ${className} with data`);
+      return `new ${className}`;
     }
   }
+
   var rtn = '{\n';
   for (const [key, value] of Object.entries(obj)) {
     var str = stringifyWithFunctions(value);
