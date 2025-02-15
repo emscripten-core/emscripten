@@ -836,7 +836,7 @@ var LibraryGLFW = {
       event.preventDefault();
 
 #if FILESYSTEM
-      var filenames = _malloc(event.dataTransfer.files.length*4);
+      var filenames = _malloc(event.dataTransfer.files.length * {{{ POINTER_SIZE }}});
       var filenamesArray = [];
       var count = event.dataTransfer.files.length;
 
@@ -858,7 +858,7 @@ var LibraryGLFW = {
           var data = e.target.result;
           FS.writeFile(path, new Uint8Array(data));
           if (++written === count) {
-            {{{ makeDynCall('vpii', 'GLFW.active.dropFunc') }}}(GLFW.active.id, count, filenames);
+            {{{ makeDynCall('vpip', 'GLFW.active.dropFunc') }}}(GLFW.active.id, count, filenames);
 
             for (var i = 0; i < filenamesArray.length; ++i) {
               _free(filenamesArray[i]);
@@ -870,7 +870,7 @@ var LibraryGLFW = {
 
         var filename = stringToNewUTF8(path);
         filenamesArray.push(filename);
-        {{{ makeSetValue('filenames + i*4', '0', 'filename', POINTER_TYPE) }}};
+        {{{ makeSetValue('filenames', `i*${POINTER_SIZE}` , 'filename', POINTER_TYPE) }}};
       }
 
       for (var i = 0; i < count; ++i) {
