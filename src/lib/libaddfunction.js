@@ -261,9 +261,9 @@ addToLibrary({
   $removeFunction: (index) => {
     functionsInTableMap.delete(getWasmTableEntry(index));
     setWasmTableEntry(index, null);
-    if (freeTableIndexStart.length &&
-        freeTableIndexStart[freeTableIndexStart.length-1] + freeTableIndexLength[freeTableIndexStart.length-1] === index) {
-          freeTableIndexLength[freeTableIndexStart.length-1]++;
+    if (freeTableIndexesStart.length &&
+        freeTableIndexesStart[freeTableIndexesStart.length-1] + freeTableIndexesLength[freeTableIndexesStart.length-1] === index) {
+          freeTableIndexesLength[freeTableIndexesStart.length-1]++;
           return
 
     }
