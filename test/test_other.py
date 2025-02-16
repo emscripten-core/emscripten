@@ -2624,6 +2624,10 @@ Options:
 More info: https://emscripten.org
 ''', stdout)
 
+  @requires_network
+  def test_port_contrib_lua(self):
+    self.do_runf('other/test_port_contrib_lua.c', 'hello world\nHELLO WORLD\nsqrt(16)=4\n', emcc_args=[f'--use-port=contrib.lua'])
+
   def test_link_memcpy(self):
     # memcpy can show up *after* optimizations, so after our opportunity to link in libc, so it must be special-cased
     create_file('main.c', r'''
