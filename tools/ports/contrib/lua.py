@@ -11,7 +11,7 @@ ZIP_URL = f'https://www.lua.org/ftp/lua-{TAG}.tar.gz'
 
 # contrib port information (required)
 URL = 'https://www.lua.org/'
-DESCRIPTION = f'Lua is a powerful, efficient, lightweight, embeddable scripting language'
+DESCRIPTION = 'Lua is a powerful, efficient, lightweight, embeddable scripting language'
 LICENSE = 'MIT License'
 
 port_name = 'contrib.lua'
@@ -35,7 +35,7 @@ def get(ports, settings, shared):
       ports.install_headers(source_path, pattern=f, target='lua')
 
     srcs = '''
-       lapi.c lcode.c lctype.c ldebug.c ldo.c ldump.c lfunc.c lgc.c llex.c lmem.c lobject.c lopcodes.c 
+       lapi.c lcode.c lctype.c ldebug.c ldo.c ldump.c lfunc.c lgc.c llex.c lmem.c lobject.c lopcodes.c
        lparser.c lstate.c lstring.c ltable.c ltm.c lundump.c lvm.c lzio.c lauxlib.c lbaselib.c lcorolib.c
        ldblib.c liolib.c lmathlib.c loadlib.c loslib.c lstrlib.c ltablib.c lutf8lib.c linit.c
        '''.split()
