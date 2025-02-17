@@ -94,24 +94,8 @@ val failingPromise<0>() {
   co_return 65;
 }
 
-val caughtException() {
-  int result = 0;
-  try {
-    co_return co_await throwingCoro<2>();
-  } catch (const val&) { // runtime_error turns into emscripten::val
-    result += 21;
-  }
-  try {
-    co_return co_await failingPromise<2>();
-  } catch (const val&) {
-    result += 21;
-  }
-  co_return result;
-}
-
 EMSCRIPTEN_BINDINGS(test_val_coro) {
   function("asyncCoro", asyncCoro<3>);
   function("throwingCoro", throwingCoro<3>);
   function("failingPromise", failingPromise<3>);
-  function("caughtException", caughtException);
 }

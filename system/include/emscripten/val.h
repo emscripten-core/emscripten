@@ -713,13 +713,11 @@ class val::awaiter {
   //  - initially created with promise
   //  - waiting with a given coroutine handle
   //  - completed with a result
-  //  - rejected with an error
-  std::variant<val, std::coroutine_handle<val::promise_type>, val, val> state;
+  std::variant<val, std::coroutine_handle<val::promise_type>, val> state;
 
   constexpr static std::size_t STATE_PROMISE = 0;
   constexpr static std::size_t STATE_CORO = 1;
   constexpr static std::size_t STATE_RESULT = 2;
-  constexpr static std::size_t STATE_ERROR = 3;
 
 public:
   awaiter(const val& promise)
@@ -732,7 +730,8 @@ public:
   bool await_ready() { return false; }
 
   // On suspend, store the coroutine handle and invoke a helper that will do
-  // a rough equivalent of `promise.then(value => this.resume_with(value))`.
+  // a rough equivalent of
+  // `promise.then(value => this.resume_with(value)).catch(error => this.reject_with(error))`.
   void await_suspend(std::coroutine_handle<val::promise_type> handle) {
     internal::_emval_coro_suspend(std::get<STATE_PROMISE>(state).as_handle(), this);
     state.emplace<STATE_CORO>(handle);
@@ -746,18 +745,14 @@ public:
     coro.resume();
   }
 
-  void reject_with(val&& error) {
-    auto coro = std::move(std::get<STATE_CORO>(state));
-    state.emplace<STATE_ERROR>(std::move(error));
-    coro.resume();
-  }
+  // When JS invokes `reject_with` with some error value, reject currently suspended
+  // coroutine's promise with the error value and destroy coroutine frame, because
+  // in this scenario coroutine never reaches final_suspend point to be destroyed automatically.
+  void reject_with(val&& error);
 
   // `await_resume` finalizes the awaiter and should return the result
   // of the `co_await ...` expression - in our case, the stored value.
   val await_resume() {
-    if (state.index() == STATE_ERROR) {
-      throw std::get<STATE_ERROR>(state);
-    }
     return std::move(std::get<STATE_RESULT>(state));
   }
 };
@@ -803,12 +798,25 @@ public:
     }
   }
 
+  // Reject the stored promise due to rejection deeper in the call chain
+  void reject_with(val&& error) {
+    reject(std::move(error));
+  }
+
   // Resolve the stored promise on `co_return value`.
   template<typename T>
   void return_value(T&& value) {
     resolve(std::forward<T>(value));
   }
 };
+
+inline void val::awaiter::reject_with(val&& error) {
+  auto coro = std::move(std::get<STATE_CORO>(state));
+  auto& promise = coro.promise();
+  promise.reject_with(std::move(error));
+  coro.destroy();
+}
+
 #endif
 
 // Declare a custom type that can be used in conjunction with
