@@ -22,17 +22,16 @@
      begin to fire.
 */
 
-// TEST_AND_EXIT is defined when running in Emscripten test harness. You can
-// strip these out in your own project (otherwise playback will end quickly).
-#ifdef TEST_AND_EXIT
+// REPORT_RESULT is defined when running in Emscripten test harness. You can
+// strip these out in your own project.
+#ifdef REPORT_RESULT
 _Thread_local int testTlsVariable = 1;
 int lastTlsVariableValueInAudioThread = 1;
 #endif
 
 // This function will be called for every fixed-size buffer of audio samples to be processed.
 bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs, AudioSampleFrame *outputs, int numParams, const AudioParamFrame *params, void *userData) {
-#ifdef TEST_AND_EXIT
-  // Only running in the test harness, see main_thread_tls_access()
+#ifdef REPORT_RESULT
   assert(testTlsVariable == lastTlsVariableValueInAudioThread);
   ++testTlsVariable;
   lastTlsVariableValueInAudioThread = testTlsVariable;
@@ -64,15 +63,14 @@ EM_JS(void, InitHtmlUi, (EMSCRIPTEN_WEBAUDIO_T audioContext), {
   };
 });
 
-#ifdef TEST_AND_EXIT
+#ifdef REPORT_RESULT
 bool main_thread_tls_access(double time, void *userData) {
   // Try to mess the TLS variable on the main thread, with the expectation that
-  // it should not change the TLS value on the AudioWorklet thread, asserted in
-  // ProcessAudio().
+  // it should not change the TLS value on the AudioWorklet thread.
   testTlsVariable = (int)time;
-  // Exit to the test harness after enough calls to ProcessAudio()
   if (lastTlsVariableValueInAudioThread >= 100) {
-    emscripten_force_exit(EXIT_SUCCESS);
+    REPORT_RESULT(0);
+    return false;
   }
   return true;
 }
@@ -81,11 +79,7 @@ bool main_thread_tls_access(double time, void *userData) {
 // This callback will fire after the Audio Worklet Processor has finished being
 // added to the Worklet global scope.
 void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData) {
-  if (!success) {
-    emscripten_out("Stopped in AudioWorkletProcessorCreated");
-    assert(0);
-    return;
-  }
+  if (!success) return;
 
   // Specify the input and output node configurations for the Wasm Audio
   // Worklet. A simple setup with single mono output channel here, and no
@@ -103,8 +97,7 @@ void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, bool succe
   // Connect the audio worklet node to the graph.
   emscripten_audio_node_connect(wasmAudioWorklet, audioContext, 0, 0);
 
-#ifdef TEST_AND_EXIT
-  // Schedule this to exit after ProcessAudio() has been called 100 times
+#ifdef REPORT_RESULT
   emscripten_set_timeout_loop(main_thread_tls_access, 10, 0);
 #endif
 
@@ -115,11 +108,7 @@ void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, bool succe
 // AudioWorklet global scope, and is now ready to begin adding Audio Worklet
 // Processors.
 void WebAudioWorkletThreadInitialized(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData) {
-  if (!success) {
-    emscripten_out("Stopped in WebAudioWorkletThreadInitialized");
-    assert(0);
-    return;
-  }
+  if (!success) return;
 
   WebAudioWorkletProcessorCreateOptions opts = {
     .name = "noise-generator",
@@ -143,9 +132,4 @@ int main() {
   // and kick off Audio Worklet scope initialization, which shares the Wasm
   // Module and Memory to the AudioWorklet scope and initializes its stack.
   emscripten_start_wasm_audio_worklet_thread_async(context, wasmAudioWorkletStack, sizeof(wasmAudioWorkletStack), WebAudioWorkletThreadInitialized, 0);
-
-#ifdef TEST_AND_EXIT
-  // We're in the test harness and exiting is via main_thread_tls_access()
-  emscripten_exit_with_live_runtime();
-#endif
 }
