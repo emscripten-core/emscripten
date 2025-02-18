@@ -362,8 +362,6 @@ commands:
             user_pref("javascript.options.shared_memory", true);
             user_pref("javascript.options.wasm_memory64", true);
             user_pref("dom.postMessage.sharedArrayBuffer.bypassCOOP_COEP.insecure.enabled", true);
-            user_pref("media.navigator.streams.fake", true);
-            user_pref("media.autoplay.default", 0);
             EOF
       - run:
           name: run tests (<< parameters.title >>)
@@ -373,12 +371,12 @@ commands:
             #       support in headless mode) resolves
             EMTEST_LACKS_GRAPHICS_HARDWARE: "1"
             EMTEST_LACKS_WEBGPU: "1"
+            # TODO: replicate with FF the same as CHROME_FLAGS_AUDIO
+            EMTEST_LACKS_SOUND_HARDWARE: "1"
             # OffscreenCanvas support is not yet done in Firefox.
             EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
             DISPLAY: ":0"
-            # Note: as per Chrome, the FF profile enables a dummy audio device
-            # (so doesn't need the EMTEST_LACKS_SOUND_HARDWARE var)
           command: |
             export EMTEST_BROWSER="$HOME/firefox/firefox -headless -profile $HOME/tmp-firefox-profile/"
             # There are tests in the browser test suite that using libraries
