@@ -3231,7 +3231,7 @@ Module["preRun"] = () => {
     '': (['-sUSE_SDL=2', '-sUSE_SDL_MIXER=2'],),
     'dash_l': (['-lSDL2', '-lSDL2_mixer'],),
   })
-  @no_wasm64('TODO: SDL2 audio memory64')
+  @no_wasm64('https://github.com/libsdl-org/SDL/pull/12332')
   @requires_sound_hardware
   def test_sdl2_mixer_wav(self, flags):
     shutil.copy(test_file('sounds/the_entertainer.wav'), 'sound.wav')
@@ -3245,7 +3245,7 @@ Module["preRun"] = () => {
     # TODO: need to source freepats.cfg and a midi file
     # 'mod': (['mid'],    'MIX_INIT_MID', 'midi.mid'),
   })
-  @no_wasm64('TODO: SDL2 audio memory64')
+  @no_wasm64('https://github.com/libsdl-org/SDL/pull/12332')
   @requires_sound_hardware
   def test_sdl2_mixer_music(self, formats, flags, music_name):
     shutil.copy(test_file('sounds', music_name), '.')
