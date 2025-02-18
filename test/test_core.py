@@ -6661,6 +6661,7 @@ void* operator new(size_t size) {
   @no_asan('local count too large for VMs')
   @no_ubsan('local count too large for VMs')
   @is_slow_test
+  @also_with_wasmfs
   @parameterized({
     '': (False,),
     'pthreads': (True,),
@@ -6670,7 +6671,7 @@ void* operator new(size_t size) {
       self.emcc_args.append('-pthread')
       self.setup_node_pthreads()
     self.emcc_args += ['-sUSE_SQLITE3']
-    self.do_run_in_out_file_test('sqlite/benchmark.c')
+    self.do_run_in_out_file_test('sqlite/test.c')
 
   @needs_make('mingw32-make')
   @is_slow_test
