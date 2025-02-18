@@ -1,17 +1,16 @@
 /*
-* Copyright 2025 The Emscripten Authors.  All rights reserved.
-* Emscripten is available under two separate licenses, the MIT license and the
-* University of Illinois/NCSA Open Source License.  Both these licenses can be
-* found in the LICENSE file.
-*/
+ * Copyright 2025 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
 
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
 #include <stdio.h>
 
-int main()
-{
+int main() {
   // Create a new Lua state
   lua_State *L = luaL_newstate();
 
