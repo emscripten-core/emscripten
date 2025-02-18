@@ -511,7 +511,7 @@ def version_split(v):
 @ToolchainProfiler.profile()
 def transpile(filename):
   config = {
-    'sourceType': 'script',
+    'sourceType': 'module',
     'targets': {}
   }
   if settings.MIN_CHROME_VERSION != UNSUPPORTED:
