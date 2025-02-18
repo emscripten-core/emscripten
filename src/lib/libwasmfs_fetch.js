@@ -39,21 +39,19 @@ addToLibrary({
       offset ??= 0;
       len ??= chunkSize;
       // In which chunk does the seeked range start?  E.g., 5-14 with chunksize 8 will start in chunk 0.
-      var firstChunk = (offset / chunkSize) | 0;
-      // In which chunk does the seeked range end?  E.g., 5-14 with chunksize 8 will end in chunk 1, as will 5-16 (since byte 16 isn't requested).
-      // This will always give us a chunk >= firstChunk since len > 0.
-      var lastChunk = ((offset+len-1) / chunkSize) | 0;
       if (!(file in wasmFS$JSMemoryRanges)) {
         var fileInfo = await fetch(url, {method:'HEAD', headers:{'Range': 'bytes=0-'}});
         if (fileInfo.ok &&
             fileInfo.headers.has('Content-Length') &&
             fileInfo.headers.get('Accept-Ranges') == 'bytes' &&
             (parseInt(fileInfo.headers.get('Content-Length'), 10) > chunkSize*2)) {
+          var size = parseInt(fileInfo.headers.get('Content-Length'), 10);
           wasmFS$JSMemoryRanges[file] = {
-            size: parseInt(fileInfo.headers.get('Content-Length'), 10),
+            size,
             chunks: [],
             chunkSize: chunkSize
           };
+          len = Math.min(len, size-offset+1) | 0;
         } else {
           // may as well/forced to download the whole file
           var wholeFileReq = await fetch(url);
@@ -70,6 +68,10 @@ addToLibrary({
           return Promise.resolve();
         }
       }
+      var firstChunk = (offset / chunkSize) | 0;
+      // In which chunk does the seeked range end?  E.g., 5-14 with chunksize 8 will end in chunk 1, as will 5-16 (since byte 16 isn't requested).
+      // This will always give us a chunk >= firstChunk since len > 0.
+      var lastChunk = ((offset+len-1) / chunkSize) | 0;
       var allPresent = true;
       var i;
       // Do we have all the chunks already?  If so, we don't need to do any fetches.
@@ -120,7 +122,10 @@ addToLibrary({
 
       // read/getSize fetch the data, then forward to the parent class.
       read: async (file, buffer, length, offset) => {
-        if (length == 0) {
+        // This function assumes that offset is non-negative and length is positive.
+        // C read() doesn't take an offset and so doesn't have to deal with the former situation,
+        // and if the length is 0 or the offset is negative there's no reasonable read we can make.
+        if (offset < 0 || length <= 0) {
           return 0;
         }
         try {
@@ -129,6 +134,11 @@ addToLibrary({
           return failedResponse.status === 404 ? -{{{ cDefs.ENOENT }}} : -{{{ cDefs.EBADF }}};
         }
         var fileInfo = wasmFS$JSMemoryRanges[file];
+        length = Math.min(length, fileInfo.size-offset+1) | 0;
+        // As above, we check the length just in case offset was beyond size and length is now negative.
+        if (length <= 0) {
+          return 0;
+        }
         var chunks = fileInfo.chunks;
         var chunkSize = fileInfo.chunkSize;
         var firstChunk = (offset / chunkSize) | 0;

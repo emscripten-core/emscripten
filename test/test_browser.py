@@ -3231,6 +3231,7 @@ Module["preRun"] = () => {
     '': (['-sUSE_SDL=2', '-sUSE_SDL_MIXER=2'],),
     'dash_l': (['-lSDL2', '-lSDL2_mixer'],),
   })
+  @no_wasm64('https://github.com/libsdl-org/SDL/pull/12332')
   @requires_sound_hardware
   def test_sdl2_mixer_wav(self, flags):
     shutil.copy(test_file('sounds/the_entertainer.wav'), 'sound.wav')
@@ -3244,6 +3245,7 @@ Module["preRun"] = () => {
     # TODO: need to source freepats.cfg and a midi file
     # 'mod': (['mid'],    'MIX_INIT_MID', 'midi.mid'),
   })
+  @no_wasm64('https://github.com/libsdl-org/SDL/pull/12332')
   @requires_sound_hardware
   def test_sdl2_mixer_music(self, formats, flags, music_name):
     shutil.copy(test_file('sounds', music_name), '.')
@@ -5469,9 +5471,8 @@ Module["preRun"] = () => {
     'es6': (['-sEXPORT_ES6'],),
     'strict': (['-sSTRICT'],),
   })
+  @requires_sound_hardware
   def test_audio_worklet(self, args):
-    if '-sMEMORY64' in args and is_firefox():
-      self.skipTest('https://github.com/emscripten-core/emscripten/issues/19161')
     self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args)
 
   # Tests that audioworklets and workers can be used at the same time
@@ -5490,6 +5491,7 @@ Module["preRun"] = () => {
     '': ([],),
     'closure': (['--closure', '1', '-Oz'],),
   })
+  @requires_sound_hardware
   def test_audio_worklet_modularize(self, args):
     self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sMODULARIZE=1', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')] + args)
 
