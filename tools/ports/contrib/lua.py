@@ -32,7 +32,7 @@ def get(ports, settings, shared):
     # install headers
     includes = ['lua.h', 'lua.hpp', 'luaconf.h', 'lauxlib.h', 'lualib.h']
     for f in includes:
-      ports.install_headers(source_path, pattern=f, target='lua')
+      ports.install_headers(source_path, pattern=f)
 
     srcs = '''
        lapi.c lcode.c lctype.c ldebug.c ldo.c ldump.c lfunc.c lgc.c llex.c lmem.c lobject.c lopcodes.c
@@ -49,7 +49,3 @@ def get(ports, settings, shared):
 
 def clear(ports, settings, shared):
   shared.cache.erase_lib(get_lib_name(settings))
-
-
-def process_args(ports):
-  return ['-isystem', ports.get_include_dir('lua')]
