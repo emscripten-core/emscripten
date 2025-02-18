@@ -199,6 +199,8 @@ GPUAdapter.prototype.isFallbackAdapter;
 GPUAdapter.prototype.requestDevice = function() {};
 /** @return {!Promise<!GPUAdapterInfo>} */
 GPUAdapter.prototype.requestAdapterInfo = function() {};
+/** @type {!GPUAdapterInfo} */
+GPUAdapter.prototype.info;
 
 /** @constructor */
 function GPUDevice() {}
@@ -250,6 +252,8 @@ GPUDevice.prototype.pushErrorScope = function() {};
 GPUDevice.prototype.popErrorScope = function() {};
 /** @type {!Function} */
 GPUDevice.prototype.onuncapturederror;
+/** @type {!GPUAdapterInfo} */
+GPUDevice.prototype.adapterInfo;
 
 /** @constructor */
 function GPUBuffer() {}
