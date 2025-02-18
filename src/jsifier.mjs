@@ -9,7 +9,6 @@
 
 import assert from 'node:assert';
 import * as fs from 'node:fs/promises';
-import * as vm from 'node:vm';
 import {
   ATEXITS,
   ATINITS,
@@ -34,6 +33,7 @@ import {
   compileTimeContext,
   printErr,
   readFile,
+  runInMacroContext,
   warn,
   warnOnce,
   warningOccured,
@@ -82,7 +82,9 @@ function stringifyWithFunctions(obj) {
   }
 
   // preserve the type of the object if it is one of [Map, Set, WeakMap, WeakSet].
-  const builtinContainers = vm.runInContext('[Map, Set, WeakMap, WeakSet]', compileTimeContext);
+  const builtinContainers = runInMacroContext('[Map, Set, WeakMap, WeakSet]', {
+    filename: '<internal>',
+  });
   for (const container of builtinContainers) {
     if (obj instanceof container) {
       const className = container.name;
