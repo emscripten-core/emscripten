@@ -5471,7 +5471,7 @@ Module["preRun"] = () => {
   })
   @requires_sound_hardware
   def test_audio_worklet(self, args):
-    self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DTEST_AND_EXIT'] + args)
+    self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args)
 
   # Tests that audioworklets and workers can be used at the same time
   def test_audio_worklet_worker(self):
@@ -5491,7 +5491,7 @@ Module["preRun"] = () => {
   })
   @requires_sound_hardware
   def test_audio_worklet_modularize(self, args):
-    self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sMODULARIZE=1', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html'), '-DTEST_AND_EXIT'] + args)
+    self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sMODULARIZE=1', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')] + args)
 
   # Tests multiple inputs, forcing a larger stack (note: passing BROWSER_TEST is
   # specific to this test to allow it to exit rather than play forever).
