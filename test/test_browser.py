@@ -5471,6 +5471,7 @@ Module["preRun"] = () => {
     'es6': (['-sEXPORT_ES6'],),
     'strict': (['-sSTRICT'],),
   })
+  @no_wasm64('https://github.com/emscripten-core/emscripten/pull/23508')
   @requires_sound_hardware
   def test_audio_worklet(self, args):
     self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DTEST_AND_EXIT'] + args)
@@ -5491,6 +5492,7 @@ Module["preRun"] = () => {
     '': ([],),
     'closure': (['--closure', '1', '-Oz'],),
   })
+  @no_wasm64('https://github.com/emscripten-core/emscripten/pull/23508')
   @requires_sound_hardware
   def test_audio_worklet_modularize(self, args):
     self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sMODULARIZE=1', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html'), '-DTEST_AND_EXIT'] + args)
