@@ -6598,25 +6598,6 @@ void* operator new(size_t size) {
 
     self.do_runf('third_party/libiberty/cp-demangle.c', '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'])
 
-  @needs_make('make')
-  @crossplatform
-  def test_lua(self):
-    self.emcc_args.remove('-Werror')
-    env_init = {
-      'SYSCFLAGS': ' '.join(self.get_emcc_args(compile_only=True)),
-      'SYSLDFLAGS': ' '.join(self.get_emcc_args())
-    }
-    libs = self.get_library('third_party/lua',
-                            ['src/lua.o', 'src/liblua.a'],
-                            make=['make', 'echo', 'generic'],
-                            env_init=env_init,
-                            configure=None)
-    self.do_run('',
-                'hello lua world!\n17\n1\n2\n3\n4\n7',
-                args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
-                libraries=libs,
-                includes=[test_file('lua')])
-
   @no_asan('issues with freetype itself')
   @needs_make('configure script')
   @is_slow_test

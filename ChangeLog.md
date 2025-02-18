@@ -25,6 +25,8 @@ See docs/process.md for more on how version tagging works.
 - The `--output_eol` command line flag was renamed `--output-eol` for
   consistency with other flags. The old name continues to work as an alias.
   (#20735)
+- Added Lua contrib port (`--use-port=contrib.lua`) to easily embed the Lua
+  scripting language in any C/C++ Emscripten project (#23682)
 
 4.0.3 - 02/07/25
 ----------------
