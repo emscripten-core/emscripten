@@ -7,7 +7,6 @@ import os
 
 TAG = '5.4.7'
 HASH = '98c5c8978dfdf867e37e9eb3b3ec83dee92d199243b5119505da83895e33f10d43c841be6a7d3b106daba8a0b2bd25fe099ebff8f87831dcc55c79c78b97d8b8'
-ZIP_URL = f'https://www.lua.org/ftp/lua-{TAG}.tar.gz'
 
 # contrib port information (required)
 URL = 'https://www.lua.org/'
@@ -20,7 +19,7 @@ lib_name = 'liblua.a'
 
 def get(ports, settings, shared):
   # get the port
-  ports.fetch_project(port_name, ZIP_URL, sha512hash=HASH)
+  ports.fetch_project(port_name, f'https://www.lua.org/ftp/lua-{TAG}.tar.gz', sha512hash=HASH)
 
   def create(final):
     root_path = os.path.join(ports.get_dir(), port_name, f'lua-{TAG}')
