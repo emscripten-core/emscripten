@@ -317,6 +317,12 @@ def is_sanitizing(args):
 
 
 class TestCoreBase(RunnerCore):
+  @classmethod
+  def setUpClass(cls):
+    """setUpClass included purely so we can verify that is run."""
+    super().setUpClass()
+    cls.doneSetup = True
+
   # A simple check whether the compiler arguments cause optimization.
   def is_optimizing(self):
     return '-O' in str(self.emcc_args) and '-O0' not in self.emcc_args
@@ -9551,6 +9557,7 @@ def make_run(name, emcc_args, settings=None, env=None,
   TT.tearDown = tearDown
 
   def setUp(self):
+    assert self.__class__.doneSetup
     super(TT, self).setUp()
     for k, v in self.env.items():
       assert k not in os.environ, k + ' should not be in environment'
