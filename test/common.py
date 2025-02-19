@@ -1167,7 +1167,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
-    shared.check_sanity(force=True)
+    shared.check_sanity(force=True, quiet=True)
 
   def setUp(self):
     super().setUp()
