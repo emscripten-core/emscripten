@@ -22,7 +22,7 @@
      begin to fire.
 */
 
-// TEST_AND_EXIT is defined when running in Emscripten test harness. You can
+// TEST_AND_EXIT is defined when running in the Emscripten test harness. You can
 // strip these out in your own project (otherwise playback will end quickly).
 #ifdef TEST_AND_EXIT
 _Thread_local int testTlsVariable = 1;
