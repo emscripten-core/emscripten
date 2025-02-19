@@ -10371,7 +10371,7 @@ int main() {
     # has "sourcesContent" entry with source code (included with `-s` option)
     self.assertIn('int foo()', output)
     # has some entries
-    self.assertRegexpMatches(output, r'"mappings":\s*"[A-Za-z0-9+/]')
+    self.assertRegex(output, r'"mappings":\s*"[A-Za-z0-9+/]')
 
   def test_wasm_sourcemap_dead(self):
     wasm_map_cmd = [PYTHON, path_from_root('tools/wasm-sourcemap.py'),
@@ -10383,7 +10383,7 @@ int main() {
     self.run_process(wasm_map_cmd, stdout=PIPE, stderr=PIPE)
     output = read_file('a.out.wasm.map')
     # has only two entries
-    self.assertRegexpMatches(output, r'"mappings":\s*"[A-Za-z0-9+/]+,[A-Za-z0-9+/]+"')
+    self.assertRegex(output, r'"mappings":\s*"[A-Za-z0-9+/]+,[A-Za-z0-9+/]+"')
 
   def test_wasm_sourcemap_relative_paths(self):
     ensure_dir('build')

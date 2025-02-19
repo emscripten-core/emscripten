@@ -107,6 +107,9 @@ class BufferedParallelTestResult():
   def test(self):
     return self.buffered_result.test
 
+  def addDuration(self, test, elapsed):
+    pass
+
   def updateResult(self, result):
     result.startTest(self.test)
     self.buffered_result.updateResult(result)
