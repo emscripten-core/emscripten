@@ -439,6 +439,10 @@ def get_cflags(user_args):
   if settings.WASM_WORKERS:
     cflags.append('-D__EMSCRIPTEN_WASM_WORKERS__=1')
 
+  if settings.ASYNCIFY:
+    # Note this macro doesn't care whether we're using JSPI or not.
+    cflags.append('-D__EMSCRIPTEN_HAS_ASYNCIFY__=1')
+
   if not settings.STRICT:
     # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
     # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
