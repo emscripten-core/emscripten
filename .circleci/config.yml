@@ -357,9 +357,9 @@ commands:
           name: configure firefox
           command: |
             # Some before and after tests to try enabling a sound device:
-            #lsmod | grep snd
-            modprobe snd-aloop
-            #lsmod | grep snd
+            /sbin/lsmod | grep snd
+            /sbin/modprobe snd-aloop
+            /sbin/lsmod | grep snd
             mkdir ~/tmp-firefox-profile/
             cat > ~/tmp-firefox-profile/user.js \<<EOF
             user_pref("gfx.offscreencanvas.enabled", true);
