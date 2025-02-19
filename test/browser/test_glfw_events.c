@@ -34,51 +34,51 @@ typedef struct {
 
 // Javascript event.button 0 = left, 1 = middle, 2 = right
 test_t g_tests[] = {
-    { "Module.injectMouseEvent(10.0, 10.0, 'mousedown', 0)", { 1, 10.0, 10.0, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, -1 } },
-    { "Module.injectMouseEvent(10.0, 20.0, 'mouseup', 0)", { 1, 10.0, 20.0, GLFW_MOUSE_BUTTON_LEFT, GLFW_RELEASE, -1 } },
-    { "Module.injectMouseEvent(10.0, 30.0, 'mousedown', 1)", { 1, 10.0, 30.0, GLFW_MOUSE_BUTTON_MIDDLE, GLFW_PRESS, -1 } },
-    { "Module.injectMouseEvent(10.0, 40.0, 'mouseup', 1)", { 1, 10.0, 40.0, GLFW_MOUSE_BUTTON_MIDDLE, GLFW_RELEASE, -1 } },
-    { "Module.injectMouseEvent(10.0, 30.0, 'mousedown', 2)", { 1, 10.0, 30.0, GLFW_MOUSE_BUTTON_RIGHT, GLFW_PRESS, -1 } },
-    { "Module.injectMouseEvent(10.0, 40.0, 'mouseup', 2)", { 1, 10.0, 40.0, GLFW_MOUSE_BUTTON_RIGHT, GLFW_RELEASE, -1 } },
+    { "simulateMouseDown(10.0, 10.0, 0)", { 1, 10.0, 10.0, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, -1 } },
+    { "simulateMouseUp  (10.0, 20.0, 0)", { 1, 10.0, 20.0, GLFW_MOUSE_BUTTON_LEFT, GLFW_RELEASE, -1 } },
+    { "simulateMouseDown(10.0, 30.0, 1)", { 1, 10.0, 30.0, GLFW_MOUSE_BUTTON_MIDDLE, GLFW_PRESS, -1 } },
+    { "simulateMouseUp  (10.0, 40.0, 1)", { 1, 10.0, 40.0, GLFW_MOUSE_BUTTON_MIDDLE, GLFW_RELEASE, -1 } },
+    { "simulateMouseDown(10.0, 30.0, 2)", { 1, 10.0, 30.0, GLFW_MOUSE_BUTTON_RIGHT, GLFW_PRESS, -1 } },
+    { "simulateMouseUp  (10.0, 40.0, 2)", { 1, 10.0, 40.0, GLFW_MOUSE_BUTTON_RIGHT, GLFW_RELEASE, -1 } },
     //{ "Module.injectMouseEvent(10.0, 50.0, 'mousewheel', 0)", { 10.0, 50.0, -1, -1, -1 } },
     //{ "Module.injectMouseEvent(10.0, 60.0, 'mousemove', 0)", { 10.0, 60.0, -1, -1, -1 } }
 
-    { "Module.injectKeyEvent('keydown', 8)", { 0, 0.0, 0.0, GLFW_KEY_BACKSPACE, GLFW_PRESS, -1 } },
-    { "Module.injectKeyEvent('keyup', 8)", { 0, 0.0, 0.0, GLFW_KEY_BACKSPACE, GLFW_RELEASE, -1 } },
-    { "Module.injectKeyEvent('keydown', 9)", { 0, 0.0, 0.0, GLFW_KEY_TAB, GLFW_PRESS, -1 } },
-    { "Module.injectKeyEvent('keyup', 9)", { 0, 0.0, 0.0, GLFW_KEY_TAB, GLFW_RELEASE, -1 } },
-    { "Module.injectKeyEvent('keydown', 112)", { 0, 0.0, 0.0, GLFW_KEY_F1, GLFW_PRESS, -1 } },
-    { "Module.injectKeyEvent('keyup', 112)", { 0, 0.0, 0.0, GLFW_KEY_F1, GLFW_RELEASE, -1 } },
-    { "Module.injectKeyEvent('keydown', 37)", { 0, 0.0, 0.0, GLFW_KEY_LEFT, GLFW_PRESS, -1 } },
-    { "Module.injectKeyEvent('keyup', 37)", { 0, 0.0, 0.0, GLFW_KEY_LEFT, GLFW_RELEASE, -1 } },
-    { "Module.injectKeyEvent('keydown', 39)", { 0, 0.0, 0.0, GLFW_KEY_RIGHT, GLFW_PRESS, -1 } },
-    { "Module.injectKeyEvent('keyup', 39)", { 0, 0.0, 0.0, GLFW_KEY_RIGHT, GLFW_RELEASE, -1 } },
-    { "Module.injectKeyEvent('keydown', 38)", { 0, 0.0, 0.0, GLFW_KEY_UP, GLFW_PRESS, -1 } },
-    { "Module.injectKeyEvent('keyup', 38)", { 0, 0.0, 0.0, GLFW_KEY_UP, GLFW_RELEASE, -1 } },
-    { "Module.injectKeyEvent('keydown', 40)", { 0, 0.0, 0.0, GLFW_KEY_DOWN, GLFW_PRESS, -1 } },
-    { "Module.injectKeyEvent('keyup', 40)", { 0, 0.0, 0.0, GLFW_KEY_DOWN, GLFW_RELEASE, -1 } },
+    { "simulateKeyDown(8)", { 0, 0.0, 0.0, GLFW_KEY_BACKSPACE, GLFW_PRESS, -1 } },
+    { "simulateKeyUp  (8)", { 0, 0.0, 0.0, GLFW_KEY_BACKSPACE, GLFW_RELEASE, -1 } },
+    { "simulateKeyDown(9)", { 0, 0.0, 0.0, GLFW_KEY_TAB, GLFW_PRESS, -1 } },
+    { "simulateKeyUp  (9)", { 0, 0.0, 0.0, GLFW_KEY_TAB, GLFW_RELEASE, -1 } },
+    { "simulateKeyDown(112)", { 0, 0.0, 0.0, GLFW_KEY_F1, GLFW_PRESS, -1 } },
+    { "simulateKeyUp  (112)", { 0, 0.0, 0.0, GLFW_KEY_F1, GLFW_RELEASE, -1 } },
+    { "simulateKeyDown(37)", { 0, 0.0, 0.0, GLFW_KEY_LEFT, GLFW_PRESS, -1 } },
+    { "simulateKeyUp  (37)", { 0, 0.0, 0.0, GLFW_KEY_LEFT, GLFW_RELEASE, -1 } },
+    { "simulateKeyDown(39)", { 0, 0.0, 0.0, GLFW_KEY_RIGHT, GLFW_PRESS, -1 } },
+    { "simulateKeyUp  (39)", { 0, 0.0, 0.0, GLFW_KEY_RIGHT, GLFW_RELEASE, -1 } },
+    { "simulateKeyDown(38)", { 0, 0.0, 0.0, GLFW_KEY_UP, GLFW_PRESS, -1 } },
+    { "simulateKeyUp  (38)", { 0, 0.0, 0.0, GLFW_KEY_UP, GLFW_RELEASE, -1 } },
+    { "simulateKeyDown(40)", { 0, 0.0, 0.0, GLFW_KEY_DOWN, GLFW_PRESS, -1 } },
+    { "simulateKeyUp  (40)", { 0, 0.0, 0.0, GLFW_KEY_DOWN, GLFW_RELEASE, -1 } },
     #if USE_GLFW == 2
-        { "Module.injectKeyEvent('keydown', 27)", { 0, 0.0, 0.0, GLFW_KEY_ESC, GLFW_PRESS, -1 } },
-        { "Module.injectKeyEvent('keyup', 27)", { 0, 0.0, 0.0, GLFW_KEY_ESC, GLFW_RELEASE, -1 } },
+        { "simulateKeyDown(27)", { 0, 0.0, 0.0, GLFW_KEY_ESC, GLFW_PRESS, -1 } },
+        { "simulateKeyUp(27)", { 0, 0.0, 0.0, GLFW_KEY_ESC, GLFW_RELEASE, -1 } },
 
-        { "Module.injectKeyEvent('keydown', 65)", { 0, 0.0, 0.0, 'A', GLFW_PRESS, -1, 'A' } },
-        { "Module.injectKeyEvent('keypress', 65, {charCode: 65})", { 0, 0.0, 0.0, -1, -1, -1, 'A' } },
-        { "Module.injectKeyEvent('keyup', 65)", { 0, 0.0, 0.0, 'A', GLFW_RELEASE, -1, 'A' } },
+        { "simulateKeyDown(65)", { 0, 0.0, 0.0, 'A', GLFW_PRESS, -1, 'A' } },
+        { "simulateKeyEvent('keypress', 65, {charCode: 65})", { 0, 0.0, 0.0, -1, -1, -1, 'A' } },
+        { "simulateKeyUp(65)", { 0, 0.0, 0.0, 'A', GLFW_RELEASE, -1, 'A' } },
 
-        { "Module.injectKeyEvent('keydown', 65, {ctrlKey: true})", { 0, 0.0, 0.0, 'A', GLFW_PRESS, -1, 'A' } },
-        { "Module.injectKeyEvent('keypress', 65, {ctrlKey: true, charCode: 65})", { 0, 0.0, 0.0, -1, -1, -1, -1 } },
-        { "Module.injectKeyEvent('keyup', 65, {ctrlKey: true})", { 0, 0.0, 0.0, 'A', GLFW_RELEASE, -1, 'A' } },
+        { "simulateKeyDown(65, {ctrlKey: true})", { 0, 0.0, 0.0, 'A', GLFW_PRESS, -1, 'A' } },
+        { "simulateKeyEvent('keypress', 65, {ctrlKey: true, charCode: 65})", { 0, 0.0, 0.0, -1, -1, -1, -1 } },
+        { "simulateKeyUp(65, {ctrlKey: true})", { 0, 0.0, 0.0, 'A', GLFW_RELEASE, -1, 'A' } },
     #else
-        { "Module.injectKeyEvent('keydown', 27)", { 0, 0.0, 0.0, GLFW_KEY_ESCAPE, GLFW_PRESS, -1 } },
-        { "Module.injectKeyEvent('keyup', 27)", { 0, 0.0, 0.0, GLFW_KEY_ESCAPE, GLFW_RELEASE, -1 } },
+        { "simulateKeyDown(27)", { 0, 0.0, 0.0, GLFW_KEY_ESCAPE, GLFW_PRESS, -1 } },
+        { "simulateKeyUp(27)", { 0, 0.0, 0.0, GLFW_KEY_ESCAPE, GLFW_RELEASE, -1 } },
 
-        { "Module.injectKeyEvent('keydown', 65)", { 0, 0.0, 0.0, GLFW_KEY_A, GLFW_PRESS, -1 } },
-        { "Module.injectKeyEvent('keypress', 65, {charCode: 65})", { 0, 0.0, 0.0, -1, -1, -1, 'A' } },
-        { "Module.injectKeyEvent('keyup', 65)", { 0, 0.0, 0.0, GLFW_KEY_A, GLFW_RELEASE, -1 } },
+        { "simulateKeyDown(65)", { 0, 0.0, 0.0, GLFW_KEY_A, GLFW_PRESS, -1 } },
+        { "simulateKeyEvent('keypress', 65, {charCode: 65})", { 0, 0.0, 0.0, -1, -1, -1, 'A' } },
+        { "simulateKeyUp(65)", { 0, 0.0, 0.0, GLFW_KEY_A, GLFW_RELEASE, -1 } },
 
-        { "Module.injectKeyEvent('keydown', 65, {ctrlKey: true})", { 0, 0.0, 0.0, GLFW_KEY_A, GLFW_PRESS, -1, 'A' } },
-        { "Module.injectKeyEvent('keypress', 65, {ctrlKey: true, charCode: 65})", { 0, 0.0, 0.0, -1, -1, -1, -1 } },
-        { "Module.injectKeyEvent('keyup', 65, {ctrlKey: true})", { 0, 0.0, 0.0, GLFW_KEY_A, GLFW_RELEASE, -1, 'A' } },
+        { "simulateKeyDown(65, {ctrlKey: true})", { 0, 0.0, 0.0, GLFW_KEY_A, GLFW_PRESS, -1, 'A' } },
+        { "simulateKeyEvent('keypress', 65, {ctrlKey: true, charCode: 65})", { 0, 0.0, 0.0, -1, -1, -1, -1 } },
+        { "simulateKeyUp(65, {ctrlKey: true})", { 0, 0.0, 0.0, GLFW_KEY_A, GLFW_RELEASE, -1, 'A' } },
     #endif
 };
 
@@ -165,40 +165,6 @@ static void on_error(int error, const char *msg) {
 
 int main() {
   unsigned int success = (1 << (sizeof(g_tests) / sizeof(test_t))) - 1; // (2^count)-1;
-
-  emscripten_run_script(MULTILINE(
-    Module.injectMouseEvent = function(x, y, event_, button) {
-      var canvas = Module['canvas'];
-      var event = new MouseEvent(event_, {
-          'view': window,
-          'bubbles': true,
-          'cancelable': true,
-          'screenX': canvas.offsetLeft + x,
-          'screenY': canvas.offsetTop + y,
-          'clientX': canvas.offsetLeft + x,
-          'clientY': canvas.offsetTop + y,
-          'button': button
-      });
-      canvas.dispatchEvent(event);
-
-      //var event = document.createEvent("MouseEvents");
-      //var canvas = Module['canvas'];
-      //event.initMouseEvent(event_, true, true, window, 0, canvas.offsetLeft + x, canvas.offsetTop + y, canvas.offsetLeft + x, canvas.offsetTop + y, 0, 0, 0, 0, button, null);
-      //canvas.dispatchEvent(event);
-    };
-
-    Module.injectKeyEvent = function(type, keyCode, options) {
-      // KeyboardEvent constructor always returns 0 keyCode on Chrome, so use generic events
-      //var keyboardEvent = new KeyboardEvent(type, Object.assign({ keyCode: keyCode}, options));
-      var keyboardEvent = document.createEventObject ?
-              document.createEventObject() : document.createEvent('Events');
-      keyboardEvent.initEvent(type, true, true);
-      keyboardEvent.keyCode = keyCode;
-      keyboardEvent = Object.assign(keyboardEvent,  options);
-
-      canvas.dispatchEvent(keyboardEvent);
-    };
-  ));
 
   glfwInit();
 

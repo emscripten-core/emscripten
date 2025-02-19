@@ -84,7 +84,7 @@ def read_response_file(response_filename):
   # Guess encoding based on the file suffix
   components = os.path.basename(response_filename).split('.')
   encoding_suffix = components[-1].lower()
-  if len(components) > 1 and (encoding_suffix.startswith('utf') or encoding_suffix.startswith('cp') or encoding_suffix.startswith('iso') or encoding_suffix in ['ascii', 'latin-1']):
+  if len(components) > 1 and (encoding_suffix.startswith(('utf', 'cp', 'iso')) or encoding_suffix in {'ascii', 'latin-1'}):
     guessed_encoding = encoding_suffix
   else:
     # On windows, recent version of CMake emit rsp files containing

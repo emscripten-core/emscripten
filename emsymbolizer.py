@@ -121,10 +121,8 @@ class WasmSourceMap(object):
     self.version = source_map_json['version']
     self.sources = source_map_json['sources']
 
-    vlq_map = {}
     chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
-    for i, c in enumerate(chars):
-      vlq_map[c] = i
+    vlq_map = {c: i for i, c in enumerate(chars)}
 
     def decodeVLQ(string):
       result = []
@@ -133,8 +131,8 @@ class WasmSourceMap(object):
       for c in string:
         try:
           integer = vlq_map[c]
-        except ValueError:
-          raise Error(f'Invalid character ({c}) in VLQ')
+        except ValueError as e:
+          raise Error(f'Invalid character ({c}) in VLQ') from e
         value += (integer & 31) << shift
         if integer & 32:
           shift += 5

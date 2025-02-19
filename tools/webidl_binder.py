@@ -97,7 +97,7 @@ pre_c = ['''
 #include <emscripten.h>
 #include <stdlib.h>
 
-EM_JS_DEPS(webidl_binder, "$intArrayFromString,$UTF8ToString,$alignMemory");
+EM_JS_DEPS(webidl_binder, "$intArrayFromString,$UTF8ToString,$alignMemory,$addOnInit");
 ''']
 
 mid_c = ['''
@@ -386,10 +386,18 @@ def type_to_cdec(raw):
   return ret + '*'
 
 
-def render_function(class_name, func_name, sigs, return_type, non_pointer,
+def render_function(class_name, func_name, sigs, return_type, non_pointer,  # noqa: C901, PLR0912, PLR0915
                     copy, operator, constructor, is_static, func_scope,
                     call_content=None, const=False, array_attribute=False,
                     bind_to=None):
+  """Future modifications should consider refactoring to reduce complexity.
+
+  * The McCabe cyclomatiic complexity is currently 67 vs 10 recommended.
+  * There are currently 79 branches vs 12 recommended.
+  * There are currently 195 statements vs 50 recommended.
+
+  To revalidate these numbers, run `ruff check --select=C901,PLR091`.
+  """
   legacy_mode = CHECKS not in ['ALL', 'FAST']
   all_checks = CHECKS == 'ALL'
 
@@ -454,10 +462,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
     return (t.isArray() or t.isAny() or t.isString() or t.isObject() or t.isInterface())
 
   for i, (js_arg, arg) in enumerate(zip(args, all_args)):
-    if i >= min_args:
-      optional = True
-    else:
-      optional = False
+    optional = i >= min_args
     do_default = False
     # Filter out arguments we don't know how to parse. Fast casing only common cases.
     compatible_arg = isinstance(arg, Dummy) or (isinstance(arg, WebIDL.IDLArgument) and arg.optional is False)
@@ -693,7 +698,7 @@ for name, interface in interfaces.items():
     continue
   implements[name] = [js_impl[0]]
 
-# Compute the height in the inheritance tree of each node. Note that the order of interation
+# Compute the height in the inheritance tree of each node. Note that the order of iteration
 # of `implements` is irrelevant.
 #
 # After one iteration of the loop, all ancestors of child are guaranteed to have a larger

@@ -7,9 +7,10 @@
 #if MODULARIZE
 var Module = moduleArg;
 #elif USE_CLOSURE_COMPILER
+/** @type{Object} */
+var Module;
 // if (!Module)` is crucial for Closure Compiler here as it will
 // otherwise replace every `Module` occurrence with the object below
-var /** @type{Object} */ Module;
 if (!Module) /** @suppress{checkTypes}*/Module = 
 #if AUDIO_WORKLET
   globalThis.{{{ EXPORT_NAME }}} || 
@@ -40,9 +41,6 @@ var readyPromise = new Promise((resolve, reject) => {
   readyPromiseResolve = resolve;
   readyPromiseReject = reject;
 });
-#if ASSERTIONS
-{{{ addReadyPromiseAssertions() }}}
-#endif
 #endif
 
 #if ENVIRONMENT_MAY_BE_NODE
@@ -72,7 +70,7 @@ var ENVIRONMENT_IS_WEB = !ENVIRONMENT_IS_NODE;
 #endif // ASSERTIONS || PTHREADS
 
 #if WASM_WORKERS
-var ENVIRONMENT_IS_WASM_WORKER = Module['$ww'];
+var ENVIRONMENT_IS_WASM_WORKER = !!Module['$ww'];
 #endif
 
 #if ASSERTIONS && ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_SHELL
@@ -126,13 +124,6 @@ function ready() {
   }
 #endif
 }
-
-#if POLYFILL
-// See https://caniuse.com/mdn-javascript_builtins_object_assign
-#if MIN_CHROME_VERSION < 45 || MIN_FIREFOX_VERSION < 34 || MIN_SAFARI_VERSION < 90000
-#include "polyfill/objassign.js"
-#endif
-#endif
 
 #if PTHREADS
 // MINIMAL_RUNTIME does not support --proxy-to-worker option, so Worker and Pthread environments

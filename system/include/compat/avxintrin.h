@@ -4,19 +4,17 @@
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
  */
+
+#ifndef __emscripten_immintrin_h__
+#error "Never use <avxintrin.h> directly; include <immintrin.h> instead."
+#endif
+
 #ifndef __emscripten_avxintrin_h__
 #define __emscripten_avxintrin_h__
 
 #ifndef __AVX__
 #error "AVX instruction set not enabled"
 #endif
-
-#include <emmintrin.h>
-#include <nmmintrin.h>
-#include <pmmintrin.h>
-#include <smmintrin.h>
-#include <tmmintrin.h>
-#include <xmmintrin.h>
 
 typedef struct {
   __m128d v0;
@@ -40,7 +38,7 @@ typedef struct {
   __m128i_u v1;
 } __m256i_u;
 
-union m256_data {
+union __m256_data {
   __m256i int_view;
   __m256d double_view;
   __m256 float_view;
@@ -1771,42 +1769,42 @@ _mm256_setzero_si256(void) {
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_castpd_ps(__m256d __a) {
-  m256_data ret;
+  union __m256_data ret;
   ret.double_view = __a;
   return ret.float_view;
 }
 
 static __inline__ __m256i __attribute__((__always_inline__, __nodebug__))
 _mm256_castpd_si256(__m256d __a) {
-  m256_data ret;
+  union __m256_data ret;
   ret.double_view = __a;
   return ret.int_view;
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_castps_pd(__m256 __a) {
-  m256_data ret;
+  union __m256_data ret;
   ret.float_view = __a;
   return ret.double_view;
 }
 
 static __inline__ __m256i __attribute__((__always_inline__, __nodebug__))
 _mm256_castps_si256(__m256 __a) {
-  m256_data ret;
+  union __m256_data ret;
   ret.float_view = __a;
   return ret.int_view;
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_castsi256_ps(__m256i __a) {
-  m256_data ret;
+  union __m256_data ret;
   ret.int_view = __a;
   return ret.float_view;
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_castsi256_pd(__m256i __a) {
-  m256_data ret;
+  union __m256_data ret;
   ret.int_view = __a;
   return ret.double_view;
 }

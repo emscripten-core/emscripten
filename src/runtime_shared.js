@@ -4,6 +4,37 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "runtime_stack_check.js"
+#include "runtime_exceptions.js"
+#include "runtime_debug.js"
+#include "memoryprofiler.js"
+
+#if SAFE_HEAP
+#include "runtime_safe_heap.js"
+#endif
+
+#if SHARED_MEMORY && ALLOW_MEMORY_GROWTH
+#include "growableHeap.js"
+#endif
+
+#if USE_ASAN
+#include "runtime_asan.js"
+#endif
+
+#if PTHREADS
+#include "runtime_pthread.js"
+#endif
+
+#if LOAD_SOURCE_MAP
+var wasmSourceMap;
+#include "source_map_support.js"
+#endif
+
+#if USE_OFFSET_CONVERTER
+var wasmOffsetConverter;
+#include "wasm_offset_converter.js"
+#endif
+
 {{{
   // Helper function to export a heap symbol on the module object,
   // if requested.
@@ -22,8 +53,13 @@
         shouldExport = true;
       }
     }
-
-    return shouldExport ? `Module['${x}'] = ` : '';
+    if (shouldExport) {
+      if (MODULARIZE === 'instance') {
+        return `__exp_${x} = `
+      }
+      return `Module['${x}'] = `;
+    }
+    return '';
   };
   null;
 }}}

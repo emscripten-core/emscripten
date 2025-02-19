@@ -3,7 +3,6 @@ __wasm_call_ctors
 _emscripten_stack_alloc
 _emscripten_stack_restore
 calloc
-dynCall_jiji
 emscripten_stack_get_current
 main
 setThrew

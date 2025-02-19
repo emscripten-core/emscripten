@@ -44,7 +44,7 @@ def create_profiling_graph(outfile):
     if len(json_data.strip()) == 0:
       continue
     lines = json_data.split('\n')
-    lines = [x for x in lines if x != '[' and x != ']' and x != ',' and len(x.strip())]
+    lines = [x for x in lines if x not in {'[', ']', ','} and len(x.strip())]
     lines = [(x + ',') if not x.endswith(',') else x for x in lines]
     lines[-1] = lines[-1][:-1]
     json_data = '[' + '\n'.join(lines) + ']'
@@ -96,7 +96,7 @@ Optional parameters:
   else:
     outfile = 'toolchain_profiler.results_' + time.strftime('%Y%m%d_%H%M')
     for i, arg in enumerate(args):
-      if arg.startswith('--outfile=') or arg.startswith('-o='):
+      if arg.startswith(('--outfile=', '-o=')):
         outfile = arg.split('=', 1)[1].strip().replace('.html', '')
       elif arg == '-o':
         outfile = args[i + 1].strip().replace('.html', '')

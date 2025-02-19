@@ -5,44 +5,42 @@
  * SPDX-License-Identifier: MIT
  */
 
-// LLVM => JavaScript compiler, main entry point
+// JavaScript compiler, main entry point
 
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import * as url from 'node:url';
+import assert from 'node:assert';
+import {parseArgs} from 'node:util';
+import {Benchmarker, applySettings, loadDefaultSettings, printErr, readFile} from './utility.mjs';
 
-import {Benchmarker, applySettings, assert, loadSettingsFile, printErr, read} from './utility.mjs';
+loadDefaultSettings();
 
-function find(filename) {
-  assert(filename);
-  const dirname = url.fileURLToPath(new URL('.', import.meta.url));
-  const prefixes = [dirname, process.cwd()];
-  for (let i = 0; i < prefixes.length; ++i) {
-    const combined = path.join(prefixes[i], filename);
-    if (fs.existsSync(combined)) {
-      return combined;
-    }
-  }
-  return filename;
-}
+const options = {
+  help: {type: 'boolean', short: 'h'},
+  'symbols-only': {type: 'boolean'},
+  output: {type: 'string', short: 'o'},
+};
+const {values, positionals} = parseArgs({options, allowPositionals: true});
 
-// Load default settings
-loadSettingsFile(find('settings.js'));
-loadSettingsFile(find('settings_internal.js'));
+if (values.help) {
+  console.log(`\
+Main entry point for JS compiler
 
-const argv = process.argv.slice(2);
-const symbolsOnlyArg = argv.indexOf('--symbols-only');
-if (symbolsOnlyArg != -1) {
-  argv.splice(symbolsOnlyArg, 1);
+If no -o file is specified then the generated code is written to stdout.
+
+Usage: compiler.mjs <settings.json> [-o out.js] [--symbols-only]`);
+  process.exit(0);
 }
 
 // Load settings from JSON passed on the command line
-const settingsFile = argv[0];
-assert(settingsFile);
-const user_settings = JSON.parse(read(settingsFile));
+const settingsFile = positionals[0];
+assert(settingsFile, 'settings file not specified');
+const user_settings = JSON.parse(readFile(settingsFile));
 applySettings(user_settings);
 
-export const symbolsOnly = symbolsOnlyArg != -1;
+export const symbolsOnly = values['symbols-only'];
+
+// TODO(sbc): Remove EMCC_BUILD_DIR at some point.  It used to be required
+// back when ran the JS compiler with overridden CWD.
+process.env['EMCC_BUILD_DIR'] = process.cwd();
 
 // In case compiler.mjs is run directly (as in gen_sig_info)
 // ALL_INCOMING_MODULE_JS_API might not be populated yet.
@@ -86,7 +84,7 @@ const jsifier = await import('./jsifier.mjs');
 const B = new Benchmarker();
 
 try {
-  jsifier.runJSify(symbolsOnly);
+  await jsifier.runJSify(values.output, symbolsOnly);
 
   B.print('glue');
 } catch (err) {

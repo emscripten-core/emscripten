@@ -8,16 +8,19 @@
  * Tests live in test/other/test_parseTools.js.
  */
 
+import * as path from 'node:path';
+import {existsSync} from 'node:fs';
+import assert from 'node:assert';
+
 import {
   addToCompileTimeContext,
-  assert,
   error,
-  isNumber,
   printErr,
-  read,
+  readFile,
   runInMacroContext,
   setCurrentFile,
   warn,
+  srcDir,
 } from './utility.mjs';
 
 const FOUR_GB = 4 * 1024 * 1024 * 1024;
@@ -39,11 +42,29 @@ export function processMacros(text, filename) {
   });
 }
 
+function findIncludeFile(filename, currentDir) {
+  if (path.isAbsolute(filename)) {
+    return existsSync(filename) ? filename : null;
+  }
+
+  // Search for include files either relative to the including file,
+  // or in the src root directory.
+  const includePath = [currentDir, srcDir];
+  for (const p of includePath) {
+    const f = path.join(p, filename);
+    if (existsSync(f)) {
+      return f;
+    }
+  }
+
+  return null;
+}
+
 // Simple #if/else/endif preprocessing for a file. Checks if the
 // ident checked is true in our global.
 // Also handles #include x.js (similar to C #include <file>)
 export function preprocess(filename) {
-  let text = read(filename);
+  let text = readFile(filename);
   if (EXPORT_ES6 && USE_ES6_IMPORT_META) {
     // `eval`, Terser and Closure don't support module syntax; to allow it,
     // we need to temporarily replace `import.meta` and `await import` usages
@@ -120,15 +141,20 @@ export function preprocess(filename) {
           showStack.push(truthy ? SHOW : IGNORE);
         } else if (first === '#include') {
           if (showCurrentLine()) {
-            let filename = line.substr(line.indexOf(' ') + 1);
-            if (filename.startsWith('"')) {
-              filename = filename.substr(1, filename.length - 2);
+            let includeFile = line.slice(line.indexOf(' ') + 1);
+            if (includeFile.startsWith('"')) {
+              includeFile = includeFile.slice(1, -1);
             }
-            const result = preprocess(filename);
+            const absPath = findIncludeFile(includeFile, path.dirname(filename));
+            if (!absPath) {
+              error(`${filename}:${i + 1}: file not found: ${includeFile}`);
+              continue;
+            }
+            const result = preprocess(absPath);
             if (result) {
-              ret += `// include: ${filename}\n`;
+              ret += `// include: ${includeFile}\n`;
               ret += result;
-              ret += `// end include: ${filename}\n`;
+              ret += `// end include: ${includeFile}\n`;
             }
           }
         } else if (first === '#else') {
@@ -188,7 +214,7 @@ no matching #endif found (${showStack.length$}' unmatched preprocessing directiv
 }
 
 // Returns true if ident is a niceIdent (see toNiceIdent). Also allow () and spaces.
-function isNiceIdent(ident, loose) {
+function isNiceIdent(ident) {
   return /^\(?[$_]+[\w$_\d ]*\)?$/.test(ident);
 }
 
@@ -302,7 +328,7 @@ function getNativeTypeSize(type) {
         return POINTER_SIZE;
       }
       if (type[0] === 'i') {
-        const bits = Number(type.substr(1));
+        const bits = Number(type.slice(1));
         assert(bits % 8 === 0, `getNativeTypeSize invalid bits ${bits}, ${type} type`);
         return bits / 8;
       }
@@ -334,7 +360,12 @@ function ensureDot(value) {
   if (value.includes('.') || /[IN]/.test(value)) return value;
   const e = value.indexOf('e');
   if (e < 0) return value + '.0';
-  return value.substr(0, e) + '.0' + value.substr(e);
+  return value.slice(0, e) + '.0' + value.slice(e);
+}
+
+export function isNumber(x) {
+  // XXX this does not handle 0xabc123 etc. We should likely also do x == parseInt(x) (which handles that), and remove hack |// handle 0x... as well|
+  return x == parseFloat(x) || (typeof x == 'string' && x.match(/^-?\d+$/)) || x == 'NaN';
 }
 
 // ensures that a float type has either 5.5 (clearly a float) or +5 (float due to asm coercion)
@@ -375,7 +406,7 @@ function asmFloatToInt(x) {
 }
 
 // See makeSetValue
-function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
+function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, _ignore, align) {
   assert(typeof align === 'undefined', 'makeGetValue no longer supports align parameter');
   assert(
     typeof noNeedFirst === 'undefined',
@@ -520,7 +551,7 @@ function getFastValue(a, op, b) {
 
   if (b[0] === '-') {
     op = '-';
-    b = b.substr(1);
+    b = b.slice(1);
   }
 
   return `(${a})${op}(${b})`;
@@ -700,20 +731,52 @@ function makeEval(code) {
   return ret;
 }
 
-export const ATMAINS = [];
+// Add code to run soon after the Wasm module has been loaded. This is the first
+// injection point before all the other addAt<X> functions below. The code will
+// be executed after the runtime `onPreRuns` callbacks.
+export const ATPRERUNS = [];
+function addAtPreRun(code) {
+  ATPRERUNS.push(code);
+}
 
+// Add code to run after the Wasm module is loaded, but before static
+// constructors and main (if applicable). The code will be executed after the
+// runtime `onInits` callbacks.
 export const ATINITS = [];
-
 function addAtInit(code) {
   ATINITS.push(code);
 }
 
-export const ATEXITS = [];
+// Add code to run after static constructors, but before main (if applicable).
+// The code will be executed after the runtime `onPostCtors` callbacks.
+export const ATPOSTCTORS = [];
+function addAtPostCtor(code) {
+  ATPOSTCTORS.push(code);
+}
 
+// Add code to run right before main is called. This is only available if the
+// the Wasm module has a main function. The code will be executed after the
+// runtime `onMains` callbacks.
+export const ATMAINS = [];
+function addAtPreMain(code) {
+  ATMAINS.push(code);
+}
+
+// Add code to run after main has executed and the runtime is shutdown. This is
+// only available when the Wasm module has a main function and -sEXIT_RUNTIME is
+// set. The code will be executed after the runtime `onExits` callbacks.
+export const ATEXITS = [];
 function addAtExit(code) {
   if (EXIT_RUNTIME) {
     ATEXITS.push(code);
   }
+}
+
+// Add code to run after main and ATEXITS (if applicable). The code will be
+// executed after the runtime `onPostRuns` callbacks.
+export const ATPOSTRUNS = [];
+function addAtPostRun(code) {
+  ATPOSTRUNS.push(code);
 }
 
 function makeRetainedCompilerSettings() {
@@ -754,14 +817,14 @@ export function modifyJSFunction(text, func) {
   if (match) {
     async_ = match[1] || '';
     args = match[3];
-    rest = text.substr(match[0].length);
+    rest = text.slice(match[0].length);
   } else {
     // Match an arrow function
     let match = text.match(/^\s*(var (\w+) = )?(async\s+)?\(([^)]*)\)\s+=>\s+/);
     if (match) {
       async_ = match[3] || '';
       args = match[4];
-      rest = text.substr(match[0].length);
+      rest = text.slice(match[0].length);
       rest = rest.trim();
       oneliner = rest[0] != '{';
     } else {
@@ -771,7 +834,7 @@ export function modifyJSFunction(text, func) {
       assert(match, `could not match function:\n${text}\n`);
       async_ = match[1] || '';
       args = match[2];
-      rest = text.substr(match[0].length);
+      rest = text.slice(match[0].length);
     }
   }
   let body = rest;
@@ -785,24 +848,16 @@ export function modifyJSFunction(text, func) {
 }
 
 export function runIfMainThread(text) {
-  if (WASM_WORKERS && PTHREADS) {
-    return `if (!ENVIRONMENT_IS_WASM_WORKER && !ENVIRONMENT_IS_PTHREAD) { ${text} }`;
-  } else if (WASM_WORKERS) {
-    return `if (!ENVIRONMENT_IS_WASM_WORKER) { ${text} }`;
-  } else if (PTHREADS) {
-    return `if (!ENVIRONMENT_IS_PTHREAD) { ${text} }`;
+  if (WASM_WORKERS || PTHREADS) {
+    return `if (${ENVIRONMENT_IS_MAIN_THREAD()}) { ${text} }`;
   } else {
     return text;
   }
 }
 
 function runIfWorkerThread(text) {
-  if (WASM_WORKERS && PTHREADS) {
-    return `if (ENVIRONMENT_IS_WASM_WORKER || ENVIRONMENT_IS_PTHREAD) { ${text} }`;
-  } else if (WASM_WORKERS) {
-    return `if (ENVIRONMENT_IS_WASM_WORKER) { ${text} }`;
-  } else if (PTHREADS) {
-    return `if (ENVIRONMENT_IS_PTHREAD) { ${text} }`;
+  if (WASM_WORKERS || PTHREADS) {
+    return `if (${ENVIRONMENT_IS_WORKER_THREAD()}) { ${text} }`;
   } else {
     return '';
   }
@@ -884,7 +939,7 @@ function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert)
 function makeRemovedFSAssert(fsName) {
   assert(ASSERTIONS);
   const lower = fsName.toLowerCase();
-  if (JS_LIBRARIES.includes(`library_${lower}.js`)) return '';
+  if (JS_LIBRARIES.includes(path.resolve(path.join('lib', `lib${lower}.js`)))) return '';
   return `var ${fsName} = '${fsName} is no longer included by default; build with -l${lower}.js';`;
 }
 
@@ -895,23 +950,6 @@ function buildStringArray(array) {
   } else {
     return '[]';
   }
-}
-
-function _asmjsDemangle(symbol) {
-  if (symbol.startsWith('dynCall_')) {
-    return symbol;
-  }
-  // Strip leading "_"
-  assert(symbol.startsWith('_'), `expected mangled symbol: ${symbol}`);
-  return symbol.substr(1);
-}
-
-// TODO(sbc): Remove this function along with _asmjsDemangle.
-function hasExportedFunction(func) {
-  warnOnce(
-    'hasExportedFunction has been replaced with hasExportedSymbol, which takes and unmangled (no leading underscore) symbol name',
-  );
-  return WASM_EXPORTS.has(_asmjsDemangle(func));
 }
 
 function hasExportedSymbol(sym) {
@@ -964,7 +1002,7 @@ function from64(x) {
 
 // Like from64 above but generate an expression instead of an assignment
 // statement.
-function from64Expr(x, assign = true) {
+function from64Expr(x) {
   if (!MEMORY64) return x;
   return `Number(${x})`;
 }
@@ -979,40 +1017,12 @@ function to64(x) {
   return `BigInt(${x})`;
 }
 
-// Add assertions to catch common errors when using the Promise object we
-// return from MODULARIZE Module() invocations.
-function addReadyPromiseAssertions() {
-  // Warn on someone doing
-  //
-  //  var instance = Module();
-  //  ...
-  //  instance._main();
-  const properties = Array.from(EXPORTED_FUNCTIONS.values());
-  // Also warn on onRuntimeInitialized which might be a common pattern with
-  // older MODULARIZE-using codebases.
-  properties.push('onRuntimeInitialized');
-  const warningEnding =
-    ' on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js';
-  const res = JSON.stringify(properties);
-  return (
-    res +
-    `.forEach((prop) => {
-  if (!Object.getOwnPropertyDescriptor(readyPromise, prop)) {
-    Object.defineProperty(readyPromise, prop, {
-      get: () => abort('You are getting ' + prop + '${warningEnding}'),
-      set: () => abort('You are setting ' + prop + '${warningEnding}'),
-    });
-  }
-});`
-  );
-}
-
 function asyncIf(condition) {
-  return condition ? 'async' : '';
+  return condition ? 'async ' : '';
 }
 
 function awaitIf(condition) {
-  return condition ? 'await' : '';
+  return condition ? 'await ' : '';
 }
 
 // Adds a call to runtimeKeepalivePush, if needed by the current build
@@ -1094,17 +1104,24 @@ function implicitSelf() {
 }
 
 function ENVIRONMENT_IS_MAIN_THREAD() {
+  return `(!${ENVIRONMENT_IS_WORKER_THREAD()})`;
+}
+
+function ENVIRONMENT_IS_WORKER_THREAD() {
+  assert(PTHREADS || WASM_WORKERS);
   var envs = [];
   if (PTHREADS) envs.push('ENVIRONMENT_IS_PTHREAD');
   if (WASM_WORKERS) envs.push('ENVIRONMENT_IS_WASM_WORKER');
-  if (AUDIO_WORKLET) envs.push('ENVIRONMENT_IS_AUDIO_WORKLET');
-  if (envs.length == 0) return 'true';
-  return '(!(' + envs.join('||') + '))';
+  return '(' + envs.join('||') + ')';
 }
 
 addToCompileTimeContext({
   ATEXITS,
+  ATPRERUNS,
   ATINITS,
+  ATPOSTCTORS,
+  ATMAINS,
+  ATPOSTRUNS,
   FOUR_GB,
   LONG_TYPE,
   POINTER_HEAP,
@@ -1120,9 +1137,13 @@ addToCompileTimeContext({
   TARGET_NOT_SUPPORTED,
   WASM_PAGE_SIZE,
   ENVIRONMENT_IS_MAIN_THREAD,
+  ENVIRONMENT_IS_WORKER_THREAD,
   addAtExit,
+  addAtPreRun,
   addAtInit,
-  addReadyPromiseAssertions,
+  addAtPostCtor,
+  addAtPreMain,
+  addAtPostRun,
   asyncIf,
   awaitIf,
   buildStringArray,
@@ -1138,7 +1159,6 @@ addToCompileTimeContext({
   getNativeTypeSize,
   getPerformanceNow,
   getUnsharedTextDecoderView,
-  hasExportedFunction,
   hasExportedSymbol,
   implicitSelf,
   isSymbolNeeded,

@@ -6,8 +6,8 @@
 import os
 from typing import Union, Dict
 
-TAG = '3.4.0.20241004'
-HASH = 'd2745e9f621090b6f78e1c8122d1e6a2e7e774d27799f14945ddcfd543aedeac0e6acdecf42fe74f9ecdbc25aa3599372798ecfc55ddd941661e0628c494cda6'
+TAG = '3.4.0.20250117'
+HASH = '128b39d37887df063ed3b1a4ce747fe3f369237e8f69e5630bfb03bdf70ddb2dc5f164e5697300b327d8a542316fc9c5eb7d558c1668b2bb35ae3b0d4c234df4'
 
 # contrib port information (required)
 URL = 'https://github.com/pongasoft/emscripten-glfw'
@@ -18,13 +18,15 @@ VALID_OPTION_VALUES = {
   'disableWarning': ['true', 'false'],
   'disableJoystick': ['true', 'false'],
   'disableMultiWindow': ['true', 'false'],
+  'disableWebGL2': ['true', 'false'],
   'optimizationLevel': ['0', '1', '2', '3', 'g', 's', 'z']  # all -OX possibilities
 }
 
 OPTIONS = {
   'disableWarning': 'Boolean to disable warnings emitted by the library',
   'disableJoystick': 'Boolean to disable support for joystick entirely',
-  'disableMultiWindow': 'Boolean to disable multi window support which makes the code smaller and faster',
+  'disableMultiWindow': 'Boolean to disable multi window support',
+  'disableWebGL2': 'Boolean to disable WebGL2 support',
   'optimizationLevel': f'Optimization level: {VALID_OPTION_VALUES["optimizationLevel"]} (default to 2)',
 }
 
@@ -33,6 +35,7 @@ opts: Dict[str, Union[str, bool]] = {
   'disableWarning': False,
   'disableJoystick': False,
   'disableMultiWindow': False,
+  'disableWebGL2': False,
   'optimizationLevel': '2'
 }
 
@@ -44,6 +47,7 @@ def get_lib_name(settings):
           ('-nw' if opts['disableWarning'] else '') +
           ('-nj' if opts['disableJoystick'] else '') +
           ('-sw' if opts['disableMultiWindow'] else '') +
+          ('-mt' if settings.PTHREADS else '') +
           '.a')
 
 
@@ -71,6 +75,9 @@ def get(ports, settings, shared):
     if opts['disableMultiWindow']:
       flags += ['-DEMSCRIPTEN_GLFW3_DISABLE_MULTI_WINDOW_SUPPORT']
 
+    if settings.PTHREADS:
+      flags += ['-pthread']
+
     ports.build_port(source_path, final, port_name, includes=source_include_paths, flags=flags)
 
   return [shared.cache.get_lib(get_lib_name(settings), create, what='port')]
@@ -84,6 +91,8 @@ def linker_setup(ports, settings):
   root_path = os.path.join(ports.get_dir(), port_name)
   source_js_path = os.path.join(root_path, 'src', 'js', 'lib_emscripten_glfw3.js')
   settings.JS_LIBRARIES += [source_js_path]
+  if not opts['disableWebGL2']:
+    settings.MAX_WEBGL_VERSION = 2
 
 
 # Using contrib.glfw3 to avoid installing headers into top level include path

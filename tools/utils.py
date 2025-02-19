@@ -3,10 +3,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import contextlib
 import os
 import shutil
 import sys
+from functools import wraps
 from pathlib import Path
 
 from . import diagnostics
@@ -45,17 +45,6 @@ def removeprefix(string, prefix):
   if string.startswith(prefix):
     return string[len(prefix):]
   return string
-
-
-@contextlib.contextmanager
-def chdir(dir):
-  """A context manager that performs actions in the given directory."""
-  orig_cwd = os.getcwd()
-  os.chdir(dir)
-  try:
-    yield
-  finally:
-    os.chdir(orig_cwd)
 
 
 def read_file(file_path):
@@ -108,6 +97,21 @@ def delete_contents(dirname, exclude=None):
       delete_dir(entry)
     else:
       delete_file(entry)
+
+
+# TODO(sbc): Replace with functools.cache, once we update to python 3.7
+def memoize(func):
+  results = {}
+
+  @wraps(func)
+  def helper(*args, **kwargs):
+    assert not kwargs
+    key = (func.__name__, args)
+    if key not in results:
+      results[key] = func(*args)
+    return results[key]
+
+  return helper
 
 
 # TODO: Move this back to shared.py once importing that file becoming side effect free (i.e. it no longer requires a config).

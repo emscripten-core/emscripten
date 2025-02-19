@@ -3,7 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Utilties for manipulating WebAssembly binaries from python.
+"""Utilities for manipulating WebAssembly binaries from python.
 """
 
 from collections import namedtuple
@@ -13,6 +13,7 @@ import logging
 import os
 import sys
 
+from .utils import memoize
 from . import utils
 
 sys.path.append(utils.path_from_root('third_party'))
@@ -55,19 +56,6 @@ def read_sleb(iobuf):
   return leb128.i.decode_reader(iobuf)[0]
 
 
-def memoize(method):
-
-  @wraps(method)
-  def wrapper(self, *args, **kwargs):
-    assert not kwargs
-    key = (method.__name__, args)
-    if key not in self._cache:
-      self._cache[key] = method(self, *args, **kwargs)
-    return self._cache[key]
-
-  return wrapper
-
-
 def once(method):
 
   @wraps(method)
@@ -87,6 +75,7 @@ class Type(IntEnum):
   V128 = 0x7b # -0x5
   FUNCREF = 0x70 # -0x10
   EXTERNREF = 0x6f # -0x11
+  EXNREF = 0x69 # -0x17
   VOID = 0x40 # -0x40
 
 
@@ -292,15 +281,11 @@ class Module:
       type_form = self.read_byte()
       assert type_form == 0x60
 
-      params = []
       num_params = self.read_uleb()
-      for _ in range(num_params):
-        params.append(self.read_type())
+      params = [self.read_type() for _ in range(num_params)]
 
-      returns = []
       num_returns = self.read_uleb()
-      for _ in range(num_returns):
-        returns.append(self.read_type())
+      returns = [self.read_type() for _ in range(num_returns)]
 
       types.append(FuncType(params, returns))
 
@@ -524,10 +509,7 @@ class Module:
 
     self.seek(function_section.offset)
     num_types = self.read_uleb()
-    func_types = []
-    for _ in range(num_types):
-      func_types.append(self.read_uleb())
-    return func_types
+    return [self.read_uleb() for _ in range(num_types)]
 
   def has_name_section(self):
     return self.get_custom_section('name') is not None

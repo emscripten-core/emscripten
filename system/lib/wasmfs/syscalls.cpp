@@ -2,9 +2,8 @@
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
-// syscalls.cpp will implement the syscalls of the new file system replacing the
-// old JS version. Current Status: Work in Progress. See
-// https://github.com/emscripten-core/emscripten/issues/15041.
+
+// Syscall implementations.
 
 #define _LARGEFILE64_SOURCE // For F_GETLK64 etc
 
@@ -520,7 +519,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
     return -EEXIST;
   }
 
-  if (child->is<Directory>() && accessMode != O_RDONLY) {
+  if (child->is<Directory>() && (accessMode != O_RDONLY || (flags & O_CREAT))) {
     return -EISDIR;
   }
 
@@ -1093,10 +1092,6 @@ int __syscall_symlinkat(intptr_t target, int newdirfd, intptr_t linkpath) {
     return -EPERM;
   }
   return 0;
-}
-
-int __syscall_symlink(intptr_t target, intptr_t linkpath) {
-  return __syscall_symlinkat(target, AT_FDCWD, linkpath);
 }
 
 // TODO: Test this with non-AT_FDCWD values.

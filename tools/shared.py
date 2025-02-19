@@ -6,7 +6,6 @@
 from .toolchain_profiler import ToolchainProfiler
 
 from enum import Enum, unique, auto
-from functools import wraps
 from subprocess import PIPE
 import atexit
 import json
@@ -20,9 +19,9 @@ import stat
 import sys
 import tempfile
 
-# We depend on python 3.6 for fstring support
-if sys.version_info < (3, 6):
-  print('error: emscripten requires python 3.6 or above', file=sys.stderr)
+# We depend on python 3.8 features
+if sys.version_info < (3, 8):
+  print(f'error: emscripten requires python 3.8 or above ({sys.executable} {sys.version})', file=sys.stderr)
   sys.exit(1)
 
 from . import colored_logger
@@ -40,13 +39,14 @@ elif EMCC_LOGGING:
 logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s', level=log_level)
 colored_logger.enable()
 
-from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS, set_version_globals
+from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS, set_version_globals, memoize
 from . import cache, tempfiles
 from . import diagnostics
 from . import config
 from . import filelock
 from . import utils
 from .settings import settings
+import contextlib
 
 
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
@@ -56,10 +56,11 @@ SKIP_SUBPROCS = False
 # Minimum node version required to run the emscripten compiler.  This is
 # distinct from the minimum version required to execute the generated code
 # (settings.MIN_NODE_VERSION).
-# This version currently matches the node version that we ship with emsdk
-# which means that we can say for sure that this version is well supported.
-MINIMUM_NODE_VERSION = (16, 20, 0)
-EXPECTED_LLVM_VERSION = 20
+# This is currently set to v18 since this is the version of node available
+# in debian/stable (bookworm).  We need at least v18.3.0 because we make
+# use of util.parseArg which was added in v18.3.0.
+MINIMUM_NODE_VERSION = (18, 3, 0)
+EXPECTED_LLVM_VERSION = 21
 
 # These get set by setup_temp_dirs
 TEMP_DIR = None
@@ -116,7 +117,7 @@ def shlex_join(cmd):
 def run_process(cmd, check=True, input=None, *args, **kw):
   """Runs a subprocess returning the exit code.
 
-  By default this function will raise an exception on failure.  Therefor this should only be
+  By default this function will raise an exception on failure.  Therefore this should only be
   used if you want to handle such failures.  For most subprocesses, failures are not recoverable
   and should be fatal.  In those cases the `check_call` wrapper should be preferred.
   """
@@ -252,7 +253,7 @@ def exec_process(cmd):
     os.execvp(cmd[0], cmd)
 
 
-def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: mutable default args
+def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: B006
   """Execute a javascript tool.
 
   This is used by emcc to run parts of the build process that are written
@@ -270,22 +271,6 @@ def get_npm_cmd(name):
   if not os.path.exists(cmd[-1]):
     exit_with_error(f'{name} was not found! Please run "npm install" in Emscripten root directory to set up npm dependencies')
   return cmd
-
-
-# TODO(sbc): Replace with functools.cache, once we update to python 3.7
-def memoize(func):
-  called = False
-  result = None
-
-  @wraps(func)
-  def helper():
-    nonlocal called, result
-    if not called:
-      result = func()
-      called = True
-    return result
-
-  return helper
 
 
 @memoize
@@ -393,17 +378,15 @@ def node_reference_types_flags(nodejs):
     return []
 
 
-def node_memory64_flags():
-  return ['--experimental-wasm-memory64']
-
-
 def node_exception_flags(nodejs):
   node_version = get_node_version(nodejs)
-  # Exception handling was enabled by default in node v17.
+  # Legacy exception handling was enabled by default in node v17.
   if node_version and node_version < (17, 0, 0):
     return ['--experimental-wasm-eh']
-  else:
-    return []
+  # Standard exception handling was supported behind flag in node v22.
+  if node_version and node_version >= (22, 0, 0) and not settings.WASM_LEGACY_EXCEPTIONS:
+    return ['--experimental-wasm-exnref']
+  return []
 
 
 def node_pthread_flags(nodejs):
@@ -493,10 +476,8 @@ def check_sanity(force=False):
     # We can't simply check for the existence of sanity_file and then read from
     # it here because we don't hold the cache lock yet and some other process
     # could clear the cache between checking for, and reading from, the file.
-    try:
+    with contextlib.suppress(Exception):
       sanity_data = utils.read_file(sanity_file)
-    except Exception:
-      pass
     if sanity_data == expected:
       logger.debug(f'sanity file up-to-date: {sanity_file}')
       # Even if the sanity file is up-to-date we still run the checks
@@ -511,7 +492,7 @@ def check_sanity(force=False):
     return
 
   with cache.lock('sanity'):
-    # Check again once the cache lock as aquired
+    # Check again once the cache lock as acquired
     if sanity_is_correct():
       return
 
@@ -641,10 +622,6 @@ def get_temp_files():
     return tempfiles.TempFiles(TEMP_DIR, save_debug_files=False)
 
 
-def target_environment_may_be(environment):
-  return not settings.ENVIRONMENT or environment in settings.ENVIRONMENT.split(',')
-
-
 def print_compiler_stage(cmd):
   """Emulate the '-v/-###' flags of clang/gcc by printing the sub-commands
   that we run."""
@@ -674,7 +651,7 @@ def is_c_symbol(name):
 
 
 def treat_as_user_export(name):
-  return not name.startswith('dynCall_')
+  return not name.startswith(('dynCall_', 'orig$'))
 
 
 def asmjs_mangle(name):
@@ -765,7 +742,7 @@ def read_and_preprocess(filename, expand_macros=False):
   stdout = os.path.join(temp_dir, 'stdout')
   args = [settings_file, filename]
   if expand_macros:
-    args += ['--expandMacros']
+    args += ['--expand-macros']
 
   run_js_tool(path_from_root('tools/preprocessor.mjs'), args, stdout=open(stdout, 'w'), cwd=dirname)
   out = utils.read_file(stdout)
@@ -813,6 +790,7 @@ class OFormat(Enum):
 
 CLANG_CC = os.path.expanduser(build_clang_tool_path(exe_suffix('clang')))
 CLANG_CXX = os.path.expanduser(build_clang_tool_path(exe_suffix('clang++')))
+CLANG_SCAN_DEPS = build_llvm_tool_path(exe_suffix('clang-scan-deps'))
 LLVM_AR = build_llvm_tool_path(exe_suffix('llvm-ar'))
 LLVM_DWP = build_llvm_tool_path(exe_suffix('llvm-dwp'))
 LLVM_RANLIB = build_llvm_tool_path(exe_suffix('llvm-ranlib'))
@@ -833,8 +811,7 @@ FILE_PACKAGER = bat_suffix(path_from_root('tools/file_packager'))
 WASM_SOURCEMAP = bat_suffix(path_from_root('tools/wasm-sourcemap'))
 # Windows .dll suffix is not included in this list, since those are never
 # linked to directly on the command line.
-DYNAMICLIB_ENDINGS = ['.dylib', '.so']
-STATICLIB_ENDINGS = ['.a']
+DYLIB_EXTENSIONS = ['.dylib', '.so']
 
 run_via_emxx = False
 

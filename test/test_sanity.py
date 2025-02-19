@@ -13,6 +13,7 @@ import tempfile
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 
+import common
 from common import RunnerCore, path_from_root, env_modify, test_file
 from common import create_file, ensure_dir, make_executable, with_env_modify
 from common import crossplatform, parameterized, EMBUILDER
@@ -285,8 +286,9 @@ class sanity(RunnerCore):
     for version, succeed in (('v0.8.0', False),
                              ('v4.1.0', False),
                              ('v10.18.0', False),
-                             ('v16.20.0', True),
-                             ('v16.20.1-pre', True),
+                             ('v16.20.0', False),
+                             ('v18.3.0', True),
+                             ('v18.3.1-pre', True),
                              ('cheez', False)):
       print(version, succeed)
       delete_file(SANITY_FILE)
@@ -438,20 +440,13 @@ fi
   def test_emcc_multiprocess_cache_access(self):
     restore_and_set_up()
 
-    create_file('test.c', r'''
-      #include <stdio.h>
-      int main() {
-        printf("hello, world!\n");
-        return 0;
-      }
-      ''')
     cache_dir_name = self.in_dir('test_cache')
     libname = cache.get_lib_name('libc.a')
     with env_modify({'EM_CACHE': cache_dir_name}):
       tasks = []
       num_times_libc_was_built = 0
       for i in range(3):
-        p = self.run_process([EMCC, 'test.c', '-O2', '-o', '%d.js' % i], stderr=STDOUT, stdout=PIPE)
+        p = self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-o', '%d.js' % i], stderr=STDOUT, stdout=PIPE)
         tasks += [p]
       for p in tasks:
         print('stdout:\n', p.stdout)
@@ -478,19 +473,12 @@ fi
     else:
       cache_dir_name = self.in_dir('emscripten_cache')
     self.assertFalse(os.path.exists(cache_dir_name))
-    create_file('test.c', r'''
-      #include <stdio.h>
-      int main() {
-        printf("hello, world!\n");
-        return 0;
-      }
-      ''')
     args = ['--cache', cache_dir_name]
     if use_response_files:
       rsp = response_file.create_response_file(args, shared.TEMP_DIR)
       args = ['@' + rsp]
 
-    self.run_process([EMCC, 'test.c'] + args, stderr=PIPE)
+    self.run_process([EMCC, test_file('hello_world.c')] + args, stderr=PIPE)
     if use_response_files:
       os.remove(rsp)
 
@@ -515,7 +503,7 @@ fi
 
     temp_dir = tempfile.mkdtemp(prefix='emscripten_temp_')
 
-    with utils.chdir(temp_dir):
+    with common.chdir(temp_dir):
       self.run_process([EMCC, '--em-config', custom_config_filename] + MINIMAL_HELLO_WORLD + ['-O2'])
       result = self.run_js('a.out.js')
 
@@ -752,7 +740,7 @@ fi
   def test_embuilder_with_use_port_syntax(self):
     restore_and_set_up()
     self.run_process([EMBUILDER, 'build', 'sdl2_image:formats=png,jpg', '--force'])
-    self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'libSDL2_image_jpg-png.a'))
+    self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'libSDL2_image-jpg-png.a'))
     self.assertContained('error building port `sdl2_image:formats=invalid` | invalid is not a supported format', self.do([EMBUILDER, 'build', 'sdl2_image:formats=invalid', '--force']))
 
   def test_embuilder_external_ports(self):
@@ -777,10 +765,10 @@ fi
       f.write('\nBINARYEN_ROOT = "' + self.in_dir('fake') + '"')
 
     make_fake_tool(self.in_dir('fake', 'bin', 'wasm-opt'), 'foo')
-    self.check_working([EMCC, test_file('hello_world.c')], 'error parsing binaryen version (wasm-opt version foo). Please check your binaryen installation')
+    self.check_working([EMCC, test_file('hello_world.c'), '-O2'], 'error parsing binaryen version (wasm-opt version foo). Please check your binaryen installation')
 
     make_fake_tool(self.in_dir('fake', 'bin', 'wasm-opt'), '70')
-    self.check_working([EMCC, test_file('hello_world.c')], 'unexpected binaryen version: 70 (expected ')
+    self.check_working([EMCC, test_file('hello_world.c'), '-O2'], 'unexpected binaryen version: 70 (expected ')
 
   def test_bootstrap(self):
     restore_and_set_up()
