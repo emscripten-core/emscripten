@@ -38,7 +38,7 @@ from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROO
 from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64, requires_node_canary
 from common import requires_wasm_eh, crossplatform, with_all_eh_sjlj, with_all_sjlj, requires_jspi
 from common import also_with_standalone_wasm, also_with_wasm2js, also_with_noderawfs
-from common import also_with_modularize, also_with_wasmfs, with_all_fs
+from common import also_with_modularize, also_with_wasmfs, with_all_fs, test_assets
 from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64, also_with_asan, flaky
 from common import EMTEST_BUILD_VERBOSE, PYTHON, WEBIDL_BINDER
 from common import requires_network, parameterize
@@ -2498,8 +2498,8 @@ F1 -> ''
     self.emcc(test_file('browser/test_sdl2_misc.c'), ['-Wl,-fatal-warnings', '-sLINKABLE', '--use-port=sdl2_gfx'], output_filename='a.out.js')
 
   @requires_network
+  @test_assets(['third_party/libpng/pngtest.png'])
   def test_libpng(self):
-    shutil.copy(test_file('third_party/libpng/pngtest.png'), '.')
     self.do_runf('third_party/libpng/pngtest.c', 'libpng passes test',
                  emcc_args=['--embed-file', 'pngtest.png', '-sUSE_LIBPNG'])
     self.do_runf('third_party/libpng/pngtest.c', 'libpng passes test',
@@ -2507,16 +2507,16 @@ F1 -> ''
 
   @node_pthreads
   @requires_network
+  @test_assets(['third_party/libpng/pngtest.png'])
   def test_libpng_with_pthreads(self):
-    shutil.copy(test_file('third_party/libpng/pngtest.png'), '.')
     self.do_runf('third_party/libpng/pngtest.c', 'libpng passes test',
                  emcc_args=['--embed-file', 'pngtest.png', '-sUSE_LIBPNG', '-pthread'])
 
   @requires_network
+  @test_assets(['third_party/giflib/treescap.gif'])
   def test_giflib(self):
     # giftext.c contains a sprintf warning
     self.emcc_args += ['-Wno-fortify-source']
-    shutil.copy(test_file('third_party/giflib/treescap.gif'), '.')
     self.do_runf('third_party/giflib/giftext.c',
                  'GIF file terminated normally',
                  emcc_args=['--embed-file', 'treescap.gif', '-sUSE_GIFLIB'],
@@ -2532,8 +2532,8 @@ F1 -> ''
                  args=['treescap.gif'])
 
   @requires_network
+  @test_assets(['screenshot.jpg'])
   def test_libjpeg(self):
-    shutil.copy(test_file('screenshot.jpg'), '.')
     self.do_runf('jpeg_test.c', 'Image is 600 by 450 with 3 components',
                  emcc_args=['--embed-file', 'screenshot.jpg', '-sUSE_LIBJPEG'],
                  args=['screenshot.jpg'])
@@ -2562,10 +2562,8 @@ F1 -> ''
   @with_all_sjlj
   @requires_network
   @crossplatform
+  @test_assets(['freetype/LiberationSansBold.ttf'])
   def test_freetype(self):
-    # copy the Liberation Sans Bold truetype file located in the
-    # <emscripten_root>/test/freetype to the compilation folder
-    shutil.copy2(test_file('freetype/LiberationSansBold.ttf'), os.getcwd())
     self.emcc_args += ['--embed-file', 'LiberationSansBold.ttf']
     # the test program will print an ascii representation of a bitmap where the
     # 'w' character has been rendered using the Liberation Sans Bold font.
@@ -3425,11 +3423,11 @@ More info: https://emscripten.org
               ['-o', 'embind_tsgen.js', '-lembind', '--emit-tsd', 'embind_tsgen.d.ts'] + opts)
 
     # Test that the output compiles with a TS file that uses the defintions.
-    shutil.copyfile(test_file('other/embind_tsgen_main.ts'), 'main.ts')
+    shutil.copy(test_file('other/embind_tsgen_main.ts'), 'main.ts')
     if '-sEXPORT_ES6' in opts:
       # A package file with type=module is needed to enabled ES modules in TSC and
       # also run the output JS file as a module in node.
-      shutil.copyfile(test_file('other/embind_tsgen_package.json'), 'package.json')
+      shutil.copy(test_file('other/embind_tsgen_package.json'), 'package.json')
 
     cmd = shared.get_npm_cmd('tsc') + ['embind_tsgen.d.ts', 'main.ts', '--target', 'es2021'] + tsc_opts
     shared.check_call(cmd)
@@ -3863,7 +3861,6 @@ More info: https://emscripten.org
     self.assertContained('|hello world|', result)
 
   def test_sdl_headless(self):
-    shutil.copy(test_file('screenshot.png'), 'example.png')
     self.do_other_test('test_sdl_headless.c', emcc_args=['-sHEADLESS'])
 
   def test_preprocess(self):
@@ -3988,6 +3985,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     self.assertLess(output.count('Cannot enlarge memory arrays'),  6)
 
   @requires_node
+  @test_assets(['module_exports/main.js'])
   def test_module_exports_with_closure(self):
     # This test checks that module.export is retained when JavaScript
     # is minified by compiling with --closure 1
@@ -4006,7 +4004,6 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
 
     # Check that main.js (which requires test.js) completes successfully when run in node.js
     # in order to check that the exports are indeed functioning correctly.
-    shutil.copy(test_file('module_exports/main.js'), '.')
     self.assertContained('bufferTest finished', self.run_js('main.js'))
 
     # Delete test.js again and check it's gone.
@@ -4486,22 +4483,20 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
     self.assertContained('test.c', tail)
     self.assertContained('test.h', tail)
 
+  @test_assets({'hello_world.c': 'a.c'})
   def test_dependency_file_2(self):
-    shutil.copy(test_file('hello_world.c'), 'a.c')
     self.run_process([EMCC, 'a.c', '-MMD', '-MF', 'test.d', '-c'])
     self.assertContained('a.o: a.c\n', read_file('test.d'))
 
-    shutil.copy(test_file('hello_world.c'), 'a.c')
     self.run_process([EMCC, 'a.c', '-MMD', '-MF', 'test2.d', '-c', '-o', 'test.o'])
     self.assertContained('test.o: a.c\n', read_file('test2.d'))
 
-    shutil.copy(test_file('hello_world.c'), 'a.c')
     ensure_dir('obj')
     self.run_process([EMCC, 'a.c', '-MMD', '-MF', 'test3.d', '-c', '-o', 'obj/test.o'])
     self.assertContained('obj/test.o: a.c\n', read_file('test3.d'))
 
+  @test_assets({'hello_world.c': 'a.c'})
   def test_compilation_database(self):
-    shutil.copy(test_file('hello_world.c'), 'a.c')
     self.run_process([EMCC, 'a.c', '-MJ', 'hello.json', '-c', '-o', 'test.o'])
     self.assertContained('"file": "a.c", "output": "test.o"', read_file('hello.json'))
 
@@ -10009,10 +10004,10 @@ end
 
   # Tests --closure-args command line flag
   @crossplatform
+  @test_assets({'test_closure_externs.js': 'local_externs.js'})
   def test_closure_externs(self):
     # Test with relocate path to the externs file to ensure that incoming relative paths
     # are translated correctly (Since closure runs with a different CWD)
-    shutil.copy(test_file('test_closure_externs.js'), 'local_externs.js')
     test_cases = (
       ['--closure-args', '--externs "local_externs.js"'],
       ['--closure-args', '--externs=local_externs.js'],
@@ -15590,8 +15585,8 @@ addToLibrary({
     self.do_other_test('test_embool.c')
 
   @requires_rust
+  @test_assets(['rust/basics'])
   def test_rust_integration_basics(self):
-    shutil.copytree(test_file('rust/basics'), 'basics')
     self.run_process(['cargo', 'build', '--target=wasm32-unknown-emscripten'], cwd='basics')
     lib = 'basics/target/wasm32-unknown-emscripten/debug/libbasics.a'
     self.assertExists(lib)

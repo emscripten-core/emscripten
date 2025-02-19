@@ -168,6 +168,32 @@ def flaky(note=''):
   return decorated
 
 
+def test_assets(assets):
+  assert not callable(assets)
+
+  def do_copy(src, dest):
+    if os.path.isdir(src):
+      dest_full = os.path.join(dest, os.path.basename(src))
+      shutil.copytree(src, dest_full)
+    else:
+      shutil.copy(src, dest)
+
+  def decorated(f):
+    @wraps(f)
+    def modified(*args, **kwargs):
+      if isinstance(assets, dict):
+        for file, dest in assets.items():
+          do_copy(test_file(file), dest)
+      else:
+        for file in assets:
+          do_copy(test_file(file), '.')
+      return f(*args, **kwargs)
+
+    return modified
+
+  return decorated
+
+
 def disabled(note=''):
   assert not callable(note)
   return unittest.skip(note)
