@@ -23,7 +23,7 @@ from urllib.request import urlopen
 import common
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
-from common import read_file, EMRUN, no_wasm64, no_2gb, no_4gb
+from common import read_file, EMRUN, no_wasm64, no_2gb, no_4gb, copytree
 from common import requires_wasm2js, parameterize, find_browser_test_file, with_all_sjlj
 from common import also_with_minimal_runtime, also_with_wasm2js, also_with_asan
 from tools import shared
@@ -5522,31 +5522,28 @@ Module["preRun"] = () => {
   })
   def test_webpack(self, es6):
     if es6:
-      shutil.copytree(test_file('webpack_es6'), 'webpack')
+      copytree(test_file('webpack_es6'), '.')
       self.emcc_args += ['-sEXPORT_ES6', '-pthread', '-sPTHREAD_POOL_SIZE=1']
       outfile = 'src/hello.mjs'
     else:
-      shutil.copytree(test_file('webpack'), 'webpack')
+      copytree(test_file('webpack'), '.')
       outfile = 'src/hello.js'
-    with common.chdir('webpack'):
-      self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web,worker', '-o', outfile])
-      self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool'])
-    shutil.copy('webpack/src/hello.wasm', 'webpack/dist/')
-    self.run_browser('webpack/dist/index.html', '/report_result?exit:0')
+    self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web,worker', '-o', outfile])
+    self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool'])
+    shutil.copy('src/hello.wasm', 'dist/')
+    self.run_browser('dist/index.html', '/report_result?exit:0')
 
   def test_vite(self):
-    shutil.copytree(test_file('vite'), 'vite')
-    with common.chdir('vite'):
-      self.compile_btest('hello_world.c', ['-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sMODULARIZE', '-o', 'hello.mjs'])
-      self.run_process(shared.get_npm_cmd('vite') + ['build'])
-    self.run_browser('vite/dist/index.html', '/report_result?exit:0')
+    copytree(test_file('vite'), '.')
+    self.compile_btest('hello_world.c', ['-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sMODULARIZE', '-o', 'hello.mjs'])
+    self.run_process(shared.get_npm_cmd('vite') + ['build'])
+    self.run_browser('dist/index.html', '/report_result?exit:0')
 
   def test_rollup(self):
-    shutil.copytree(test_file('rollup'), 'rollup')
-    with common.chdir('rollup'):
-      self.compile_btest('hello_world.c', ['-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sMODULARIZE', '-o', 'hello.mjs'])
-      self.run_process(shared.get_npm_cmd('rollup') + ['--config'])
-    self.run_browser('rollup/index.html', '/report_result?exit:0')
+    copytree(test_file('rollup'), '.')
+    self.compile_btest('hello_world.c', ['-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sMODULARIZE', '-o', 'hello.mjs'])
+    self.run_process(shared.get_npm_cmd('rollup') + ['--config'])
+    self.run_browser('index.html', '/report_result?exit:0')
 
 
 class emrun(RunnerCore):
