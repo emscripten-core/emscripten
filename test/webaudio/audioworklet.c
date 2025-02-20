@@ -79,7 +79,7 @@ bool main_thread_tls_access(double time, void *userData) {
 // This callback will fire after the Audio Worklet Processor has finished being
 // added to the Worklet global scope.
 void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData) {
-  assert(success && "Stopped in AudioWorkletProcessorCreated" && success);
+  assert(success && "Stopped in AudioWorkletProcessorCreated");
 
   // Specify the input and output node configurations for the Wasm Audio
   // Worklet. A simple setup with single mono output channel here, and no
