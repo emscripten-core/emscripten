@@ -23,7 +23,7 @@ from tools.utils import WINDOWS, MACOS, LINUX, write_file, delete_file
 from tools import shared, building, config, utils, webassembly
 import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
-from common import skip_if, no_windows, no_mac, is_slow_test, parameterized, parameterize
+from common import skip_if, no_windows, no_mac, is_slow_test, parameterized, parameterize, test_assets
 from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_with_wasm_bigint
 from common import read_file, read_binary, requires_v8, requires_node, requires_wasm2js, requires_node_canary
 from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime, also_with_modularize
@@ -562,8 +562,8 @@ class TestCoreBase(RunnerCore):
   def test_core_types(self):
     self.do_runf('core/test_core_types.c')
 
+  @test_assets(['core/test_cube2md5.txt'])
   def test_cube2md5(self):
-    shutil.copy(test_file('core/test_cube2md5.txt'), '.')
     self.do_core_test('test_cube2md5.c', emcc_args=['--embed-file', 'test_cube2md5.txt'])
 
   @also_with_standalone_wasm()
@@ -2587,8 +2587,8 @@ The current type of b is: 9
     self.emcc_args.append('-Wno-experimental')
     self.do_run_in_out_file_test('pthread/test_pthread_tls_dylink.c')
 
+  @test_assets(['pthread/foo.js'])
   def test_pthread_run_script(self):
-    shutil.copy(test_file('pthread/foo.js'), '.')
     self.do_runf('pthread/test_pthread_run_script.c')
 
     # Run the test again with PROXY_TO_PTHREAD
@@ -6607,6 +6607,7 @@ void* operator new(size_t size) {
   @no_asan('issues with freetype itself')
   @needs_make('configure script')
   @is_slow_test
+  @test_assets({'freetype/LiberationSansBold.ttf': 'font.ttf'})
   def test_freetype(self):
     if self.get_setting('WASMFS'):
       self.emcc_args += ['-sFORCE_FILESYSTEM']
@@ -6616,7 +6617,6 @@ void* operator new(size_t size) {
     ))
 
     # Not needed for js, but useful for debugging
-    shutil.copy(test_file('freetype/LiberationSansBold.ttf'), 'font.ttf')
     ftlib = self.get_freetype_library()
 
     # Main
@@ -6722,11 +6722,11 @@ void* operator new(size_t size) {
   @needs_make('depends on freetype')
   @no_4gb('runs out of memory')
   @is_slow_test
+  @test_assets(['poppler/paper.pdf'])
   def test_poppler(self):
     # See https://github.com/emscripten-core/emscripten/issues/20757
     self.emcc_args.extend(['-Wno-deprecated-declarations', '-Wno-nontrivial-memaccess'])
     poppler = self.get_poppler_library()
-    shutil.copy(test_file('poppler/paper.pdf'), '.')
 
     create_file('pre.js', '''
     Module.preRun = () => {
@@ -7711,12 +7711,12 @@ void* operator new(size_t size) {
       self.assertTrue(seen_lines.issuperset([6, 7, 11, 12]), seen_lines)
 
   @no_wasm2js('TODO: source maps in wasm2js')
+  @test_assets(['core/test_dwarf.c'])
   def test_dwarf(self):
     self.emcc_args.append('-g')
 
     js_filename = 'a.out.js'
     wasm_filename = 'a.out.wasm'
-    shutil.copy(test_file('core/test_dwarf.c'), '.')
 
     self.emcc('test_dwarf.c', output_filename=js_filename)
 
