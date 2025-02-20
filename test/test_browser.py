@@ -5477,6 +5477,7 @@ Module["preRun"] = () => {
     self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DTEST_AND_EXIT'] + args)
 
   # Tests that audioworklets and workers can be used at the same time
+  # Note: doesn't need audio hardware (and has no AW code that tests 2GB or wasm64)
   def test_audio_worklet_worker(self):
     self.btest_exit('webaudio/audioworklet_worker.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
 
