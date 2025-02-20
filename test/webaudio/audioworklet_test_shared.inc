@@ -25,7 +25,7 @@ bool playedAndMixed(double __unused time, void* __unused data) {
 #else
   if (audioProcessedCount >= 375) {
 #endif
-    emscripten_force_exit(EXIT_SUCCESS);
+    emscripten_force_exit(0);
     return false;
   }
   return true;
@@ -89,10 +89,7 @@ void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data);
 
 // Worklet thread inited, now create the audio processor
 void initialised(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* __unused data) {
-  if (!success) {
-    assert("Audio worklet failed in initialised()" && success);
-    return;
-  }
+  assert(success && "Audio worklet failed in initialised()");
   emscripten_out("Audio worklet initialised");
 
   WebAudioWorkletProcessorCreateOptions opts = {

@@ -46,10 +46,7 @@ bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, Audi
 
 // Audio processor created, now register the audio callback
 void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* __unused data) {
-  if (!success) {
-    assert("Audio worklet failed in processorCreated()" && success);
-    return;
-  }
+  assert(success && "Audio worklet failed in processorCreated()");
   emscripten_out("Audio worklet processor created");
   emscripten_out("Click to toggle audio playback");
 

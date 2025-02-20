@@ -102,10 +102,7 @@ bool onPress(int __unused type, const EmscriptenKeyboardEvent* e, void* data) {
 
 // Audio processor created, now register the audio callback
 void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* __unused data) {
-  if (!success) {
-    assert("Audio worklet failed in processorCreated()" && success);
-    return;
-  }
+  assert(success && "Audio worklet failed in processorCreated()");
   emscripten_out("Audio worklet processor created");
   emscripten_out("Click to toggle audio playback");
   emscripten_out("Keypress to fade the beat in or out");
@@ -144,10 +141,7 @@ void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* __unuse
 
 // Worklet thread inited, now create the audio processor
 void initialisedWithParams(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* __unused data) {
-  if (!success) {
-    assert("Audio worklet failed initialised()" && success);
-    return;
-  }
+  assert(success && "Audio worklet failed initialised()");
   emscripten_out("Audio worklet initialised");
 
   // Custom audio params we'll use as a fader
