@@ -101,6 +101,10 @@ def test_file(*path_components):
   return str(Path(TEST_ROOT, *path_components))
 
 
+def copytree(src, dest):
+  shutil.copytree(src, dest, dirs_exist_ok=True)
+
+
 # checks if browser testing is enabled
 def has_browser():
   return EMTEST_BROWSER != '0'
