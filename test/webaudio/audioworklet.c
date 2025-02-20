@@ -80,8 +80,7 @@ bool main_thread_tls_access(double time, void *userData) {
 // added to the Worklet global scope.
 void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData) {
   if (!success) {
-    emscripten_out("Stopped in AudioWorkletProcessorCreated");
-    assert(0);
+    assert("Stopped in AudioWorkletProcessorCreated" && success);
     return;
   }
 
@@ -114,8 +113,7 @@ void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, bool succe
 // Processors.
 void WebAudioWorkletThreadInitialized(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData) {
   if (!success) {
-    emscripten_out("Stopped in WebAudioWorkletThreadInitialized");
-    assert(0);
+    assert("Stopped in WebAudioWorkletThreadInitialized" && success);
     return;
   }
 
