@@ -4,7 +4,7 @@ Note that version numbers do not necessarily reflect the amount of changes
 between versions. A version number reflects a release that is known to pass all
 tests, and versions may be tagged more or less frequently at different times.
 
-nNote that there is *no* ABI compatibility guarantee between versions - the ABI
+Note that there is *no* ABI compatibility guarantee between versions - the ABI
 may change, so that we can keep improving and optimizing it. The compiler will
 automatically invalidate system caches when the version number updates, so that
 libc etc. are rebuilt for you. You should also rebuild object files and
@@ -18,24 +18,102 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.75 (in development)
------------------------
-- The Wasm nontrapping-fptoint feature has been enabled by default. clang will
-  generate nontrapping (saturating) float-to-int conversion instructions for
-  C typecasts. This should have no effect on programs that do not have
-  undefined behavior but if the casted floating-point value is outside the range
-  of the target integer type, the result will be a number of the max or min value
-  instead of a trap. This also results in a small code size improvement because
-  of details of the LLVM IR semantics. This feature can be disabled in clang with
-  the -mno-nontrapping-fptoint flag. (#23007)
-- The `WASM_BIGINT` feature has been enabled by default. This has the effect that
-  Wasm i64 values are passed and returned between Wasm and JS as BigInt values
-  rather than being split by Binaryen into pairs of Numbers. (#22993)
+4.0.4 (in development)
+----------------------
+- An initial port of SDL3 was added.  Use it with `-sUSE_SDL=3`.  This port
+  is still experimental. (#23630)
+- The `--output_eol` command line flag was renamed `--output-eol` for
+  consistency with other flags. The old name continues to work as an alias.
+  (#20735)
+- Added Lua contrib port (`--use-port=contrib.lua`) to easily embed the Lua
+  scripting language in any C/C++ Emscripten project (#23682)
+
+4.0.3 - 02/07/25
+----------------
+- emscan-deps tools was added.  This tool wraps clang-scan-deps and injects the
+  needed `--target` and `--sysroot` argument that would normally be injected by
+  emcc itself.  This enables support for C++20 in cmake projects. (#21987)
+- The version of python required to run emscripten was bumped from 3.6 to 3.8.
+  (#23417)
+- The `EM_LOG_C_STACK` flag to `emscripten_log` was deprecated and the helper
+  file on which it was based (`emscripten-source-map.min.js`) deleted.  This
+  feature (userspace source map parsing in logs) was never ported to wasm
+  source maps, so it has not worked in many years, and there have been no
+  requests for it. This has no impact on the source map support in browser
+  devtools. (#23553)
+- The WASMFS fetch backend now fetches files in chunks using HTTP range
+  requests (if supported by the server). `wasmfs_create_fetch_backend` now
+  takes a second parameter (`uint32_t chunk_size`) to configure the size of
+  each chunk. If a file is read a few times with random accesses, a small
+  chunk size will minimize bandwidth; if a file is read in larger contiguous
+  ranges, a larger chunk size will reduce the number of requests. (#23021)
+
+4.0.2 - 01/30/25
+----------------
+- The standard Wasm EH, enabled by `-sWASM_LEGACY_EXCEPTIONS=0`, now uses the
+  LLVM backend implementation rather than the previously used Binaryen
+  translator
+  (https://github.com/WebAssembly/binaryen/blob/main/src/passes/TranslateEH.cpp).
+  (#23469) No specific action from the user is required.
+- Added support for compiling AVX2 intrinsics, 256-bit wide intrinsic is emulated
+  on top of 128-bit Wasm SIMD instruction set. (#23035). Pass `-msimd128 -mavx2`
+  to enable targeting AVX2.
+- The system JS libraries in `src/` were renamed from `library_foo.js` to
+  `lib/libfoo.js`. They are still included via the same `-lfoo.js` flag so
+  this should not be a user-visible change. (#23348)
+- When using cmake the emscripten toolchain will no longer skip the toolchain
+  detection stages.  This means the initial cmake run will be slower, but will
+  result in more accruate information.  If cmake is running too slow for you,
+  you can revert to the previous behaviour with `-DEMSCRIPTEN_FORCE_COMPILERS=ON`.
+
+4.0.1 - 01/17/25
+----------------
+- The minimum version of node required to run emscripten was bumped from v16.20
+  to v18.3.  Version 4.0 was mistakenly shipped with a change that required v20,
+  but that was reverted. (#23410)
+- `emscripten_webgl_create_context` now displays a warning message when there is
+  a conflict between the `majorVersion` requested and the WebGL support defined
+  via linker flags (`MIN_WEBGL_VERSION` and `MAX_WEBGL_VERSION`). This warning
+  will be turned into a hard failure in a future release. (#23372, #23416)
+- zlib port updated from 1.2.13 to 1.3.1. (#23462)
+
+4.0.0 - 01/14/25
+----------------
+- Emscripten version was bumped to 4.0.0. Happy new year, happy new major
+  version!  While version has a few interesting changes, there is nothing huge
+  that makes it different from any other release. (#19053)
+- `-sWASM_LEAGCY_EXCEPTIONS` option is added. (#23365) If true, it will emit
+  instructions for the legacy Wasm exception handling proposal
+  (https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/legacy/Exceptions.md),
+  and if false, the new standardized exception handling proposal
+  (https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/Exceptions.md).
+  This option defaults to true, given that major web browsers do not support the
+  new proposal by default yet. This option replaces the existing
+  `-sWASM_EXNREF`, whose meaning was the opposite.
+- compiler-rt, libcxx, libcxxabi, and libunwind were updated to LLVM 19.1.6.
+  (#22937, #22994, and #23294)
+- The default Safari version targeted by Emscripten has been raised from 14.1
+  to 15.0 (the `MIN_SAFARI_VERSION` setting) (#23312). This has several effects:
+  - The Wasm nontrapping-fptoint feature is enabled by default. Clang will
+    generate nontrapping (saturating) float-to-int conversion instructions for
+    C typecasts. This should have no effect on programs that do not have
+    undefined behavior but if the casted floating-point value is outside the range
+    of the target integer type, the result will be a number of the max or min value
+    instead of a trap. This also results in a small code size improvement because
+    of details of the LLVM IR semantics. This feature can be disabled in clang with
+    the `-mno-nontrapping-fptoint` flag. (#23007)
+  - The `WASM_BIGINT` feature is enabled by default. This has the effect that
+    Wasm i64 values are passed and returned between Wasm and JS as BigInt values
+    rather than being split by Binaryen into pairs of Numbers. (#22993)
+  - The `BULK_MEMORY` feature is enabled by default. `memory.copy` and
+    `memory.fill` instructions are used in the implementation of C `memcpy` and
+    `memset`, and Clang may generate them elsewhere (#22873). It can be
+    disabled with the `-mno-bulk-memory -mno-bulk-memory-opt` flags.
 - When using `-sMODULARIZE` we now assert if the factory function is called with
   the JS `new` keyword.  e.g. `a = new Module()` rather than `b = Module()`.
   This paves the way for marking the function as `async` which does not allow
   `new` to be used.  This usage of `new` here was never documented and is
-  considered and antipattern. (#23210)
+  considered an antipattern. (#23210)
 - `PATH.basename()` no longer calls `PATH.normalize()`, so that
   `PATH.basename("a/.")` returns `"."` instead of `"a"` and
   `PATH.basename("a/b/..")` returns `".."` instead of `"a"`. This is in line with
@@ -47,6 +125,21 @@ See docs/process.md for more on how version tagging works.
   `--post-js` files will now be delayed until after module creation and after
   `main` runs.  This matches the existing behaviour when using sync instantation
   (`-sWASM_ASYNC_COMPILATION=0`) but is an observable difference. (#23157)
+- The `POLYFILL_OLD_MATH_FUNCTIONS` setting was removed.  The browser versions
+  that require these polyfills are no longer supported by emscripten so the
+  polyfills should never be needed. (#23262)
+- JavaScript libraries can now be specified via `-lfoo.js`.  This works like the
+  existing `--js-library` flag but will search the library path (all paths
+  specified with `-L`) for `libfoo.js`. (#23338)
+- The `mallinfo` struct members are now defined as `size_t` which makes them
+  compatible with larger memories, and is also how linux defines them. (#23368)
+- Emscripten now uses the debug version of malloc (i.e. assertions enabled)
+  when linking in debug mode (`-O0` and/or `-sASSERTIONS`).  This means that
+  things like double-free will be detected in these builds.  Previously this was
+  only true with `-sASSERTIONS=2`. (#23330)
+- The code geneated in `--proxy-to-worker` no longer contains support for
+  reading the `?noProxy` URL parameter (this was not documented or tested).
+  (#23297)
 
 3.1.74 - 12/14/24
 -----------------
@@ -67,7 +160,7 @@ See docs/process.md for more on how version tagging works.
 
 3.1.73 - 11/28/24
 -----------------
-- libunwind was updated to LLVM 19.1.4. (#22394)
+- libunwind was updated to LLVM 19.1.4. (#22934)
 - mimalloc was updated to 2.1.7. (#21548)
 
 3.1.72 - 11/19/24

@@ -25,6 +25,7 @@ jobs:
           title: Mark ${{ env.RELEASE_VERSION }} as released
           body: Update changelog and emscripten-version.txt [ci skip]
           team-reviewers: release-reviewers
+          branch: release_${{ env.RELEASE_VERSION }}
           delete-branch: true
       - name: Enable auto-merge
         run: gh pr merge --squash --auto "${{ steps.cpr.outputs.pull-request-number }}"

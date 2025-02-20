@@ -14,7 +14,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-int result = 1;
 int get_count = 0;
 int data_ok = 0;
 int data_bad = 0;
@@ -65,43 +64,33 @@ void wait_wgets() {
     assert(IMG_Load("/tmp/screen_shot.png"));
     assert(data_ok == 1 && data_bad == 1);
     emscripten_cancel_main_loop();
-    exit(result);
+    exit(0);
   }
   assert(get_count <= 8);
 }
 
 void onLoaded(const char* file) {
-  if (strcmp(file, "/tmp/test.html") && strcmp(file, "/tmp/screen_shot.png")
-     && strcmp(file, "/this_directory_does_not_exist_and_should_be_created_by_wget/test.html")
-     && strcmp(file, "/path/this_directory_is_relative_to_cwd/test.html")) {
-    result = 0;
-  }
+  assert(strcmp(file, "/tmp/test.html") == 0 ||
+         strcmp(file, "/tmp/screen_shot.png") == 0 ||
+         strcmp(file, "/this_directory_does_not_exist_and_should_be_created_by_wget/test.html") == 0 ||
+         strcmp(file, "/path/this_directory_is_relative_to_cwd/test.html") == 0);
 
   FILE * f = fopen(file, "r");
-  if (f) {
-      printf("exists: %s\n", file);
-      int c = fgetc (f);
-      if (c == EOF) {
-        printf("file empty: %s\n", file);
-        result = 0;
-      }
-      fclose(f);
-  } else {
-    result = 0;
-    printf("!exists: %s\n", file);
-  }
+  assert(f);
+  printf("exists: %s\n", file);
+  int c = fgetc (f);
+  assert(c != EOF && "file empty");
+  fclose(f);
 
   get_count++;
   printf("onLoaded %s\n", file);
 }
 
 void onError(const char* file) {
-  if (strcmp(file, "/tmp/null")) {
-    result = 0;
-  }
+  printf("onError %s\n", file);
+  assert(strcmp(file, "/tmp/null") == 0);
 
   get_count++;
-  printf("onError %s\n", file);
 }
 
 int main() {
@@ -152,5 +141,5 @@ int main() {
 
   emscripten_set_main_loop(wait_wgets, 0, 0);
 
-  return 0;
+  return 99;
 }

@@ -33,11 +33,12 @@ import queue
 
 import clang_native
 import jsrun
+import line_endings
 from tools.shared import EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
 from tools.shared import get_canonical_temp_dir, path_from_root
 from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_binary, exit_with_error
 from tools.settings import COMPILE_TIME_SETTINGS
-from tools import shared, feature_matrix, line_endings, building, config, utils
+from tools import shared, feature_matrix, building, config, utils
 
 logger = logging.getLogger('common')
 
@@ -98,6 +99,10 @@ requires_network = unittest.skipIf(os.getenv('EMTEST_SKIP_NETWORK_TESTS'), 'This
 def test_file(*path_components):
   """Construct a path relative to the emscripten "tests" directory."""
   return str(Path(TEST_ROOT, *path_components))
+
+
+def copytree(src, dest):
+  shutil.copytree(src, dest, dirs_exist_ok=True)
 
 
 # checks if browser testing is enabled
@@ -277,23 +282,23 @@ def requires_wasm64(func):
   return decorated
 
 
+def requires_wasm_legacy_eh(func):
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    self.require_wasm_legacy_eh()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
 def requires_wasm_eh(func):
   assert callable(func)
 
   @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_wasm_eh()
-    return func(self, *args, **kwargs)
-
-  return decorated
-
-
-def requires_wasm_exnref(func):
-  assert callable(func)
-
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-    self.require_wasm_exnref()
     return func(self, *args, **kwargs)
 
   return decorated
@@ -317,6 +322,17 @@ def requires_wasm2js(f):
   def decorated(self, *args, **kwargs):
     self.require_wasm2js()
     return f(self, *args, **kwargs)
+
+  return decorated
+
+
+def requires_jspi(func):
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    self.require_jspi()
+    return func(self, *args, **kwargs)
 
   return decorated
 
@@ -437,6 +453,9 @@ def with_all_fs(func):
       self.setup_noderawfs_test()
     elif fs == 'wasmfs':
       self.setup_wasmfs_test()
+    elif fs == 'wasmfs_rawfs':
+      self.setup_wasmfs_test()
+      self.setup_noderawfs_test()
     else:
       self.emcc_args += ['-DMEMFS']
       assert fs is None
@@ -447,7 +466,8 @@ def with_all_fs(func):
   parameterize(metafunc, {'': (None,),
                           'nodefs': ('nodefs',),
                           'rawfs': ('rawfs',),
-                          'wasmfs': ('wasmfs',)})
+                          'wasmfs': ('wasmfs',),
+                          'wasmfs_rawfs': ('wasmfs_rawfs',)})
   return metafunc
 
 
@@ -504,6 +524,9 @@ def also_with_minimal_runtime(f):
     assert self.get_setting('MINIMAL_RUNTIME') is None
     if with_minimal_runtime:
       self.set_setting('MINIMAL_RUNTIME', 1)
+      # This extra helper code is needed to cleanly handle calls to exit() which throw
+      # an ExitCode exception.
+      self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
     f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
@@ -625,11 +648,43 @@ def also_with_standalone_wasm(impure=False):
   return decorated
 
 
-# Tests exception handling / setjmp/longjmp handling in Emscripten EH/SjLj mode
-# and new wasm EH/SjLj modes. This tests three combinations:
+def also_with_asan(f):
+  assert callable(f)
+
+  @wraps(f)
+  def metafunc(self, asan, *args, **kwargs):
+    if asan:
+      if self.is_wasm64():
+        self.skipTest('TODO: ASAN in memory64')
+      if self.is_2gb() or self.is_4gb():
+        self.skipTest('asan doesnt support GLOBAL_BASE')
+      self.emcc_args.append('-fsanitize=address')
+    f(self, *args, **kwargs)
+
+  parameterize(metafunc, {'': (False,),
+                          'asan': (True,)})
+  return metafunc
+
+
+def also_with_modularize(f):
+  assert callable(f)
+
+  @wraps(f)
+  def metafunc(self, modularize, *args, **kwargs):
+    if modularize:
+      self.emcc_args += ['--extern-post-js', test_file('modularize_post_js.js'), '-sMODULARIZE']
+    f(self, *args, **kwargs)
+
+  parameterize(metafunc, {'': (False,),
+                          'modularize': (True,)})
+  return metafunc
+
+
+# Tests exception handling and setjmp/longjmp handling. This tests three
+# combinations:
 # - Emscripten EH + Emscripten SjLj
-# - Wasm EH + Wasm SjLj (Phase 3, to be deprecated)
-# - Wasm EH + Wasm SjLj (New proposal witn exnref, experimental)
+# - Wasm EH + Wasm SjLj
+# - Wasm EH + Wasm SjLj (Legacy)
 def with_all_eh_sjlj(f):
   assert callable(f)
 
@@ -637,20 +692,16 @@ def with_all_eh_sjlj(f):
   def metafunc(self, mode, *args, **kwargs):
     if DEBUG:
       print('parameterize:eh_mode=%s' % mode)
-    if mode == 'wasm' or mode == 'wasm_exnref':
+    if mode in {'wasm', 'wasm_legacy'}:
       # Wasm EH is currently supported only in wasm backend and V8
       if self.is_wasm2js():
         self.skipTest('wasm2js does not support wasm EH/SjLj')
-      # FIXME Temporarily disabled. Enable this later when the bug is fixed.
-      if '-fsanitize=address' in self.emcc_args:
-        self.skipTest('Wasm EH does not work with asan yet')
       self.emcc_args.append('-fwasm-exceptions')
       self.set_setting('SUPPORT_LONGJMP', 'wasm')
       if mode == 'wasm':
         self.require_wasm_eh()
-      if mode == 'wasm_exnref':
-        self.require_wasm_exnref()
-        self.set_setting('WASM_EXNREF')
+      if mode == 'wasm_legacy':
+        self.require_wasm_legacy_eh()
       f(self, *args, **kwargs)
     else:
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
@@ -664,7 +715,7 @@ def with_all_eh_sjlj(f):
 
   parameterize(metafunc, {'emscripten': ('emscripten',),
                           'wasm': ('wasm',),
-                          'wasm_exnref': ('wasm_exnref',)})
+                          'wasm_legacy': ('wasm_legacy',)})
   return metafunc
 
 
@@ -675,18 +726,14 @@ def with_all_sjlj(f):
 
   @wraps(f)
   def metafunc(self, mode, *args, **kwargs):
-    if mode == 'wasm' or mode == 'wasm_exnref':
+    if mode in {'wasm', 'wasm_legacy'}:
       if self.is_wasm2js():
         self.skipTest('wasm2js does not support wasm SjLj')
-      # FIXME Temporarily disabled. Enable this later when the bug is fixed.
-      if '-fsanitize=address' in self.emcc_args:
-        self.skipTest('Wasm EH does not work with asan yet')
       self.set_setting('SUPPORT_LONGJMP', 'wasm')
       if mode == 'wasm':
         self.require_wasm_eh()
-      if mode == 'wasm_exnref':
-        self.require_wasm_exnref()
-        self.set_setting('WASM_EXNREF')
+      if mode == 'wasm_legacy':
+        self.require_wasm_legacy_eh()
       f(self, *args, **kwargs)
     else:
       self.set_setting('SUPPORT_LONGJMP', 'emscripten')
@@ -694,7 +741,7 @@ def with_all_sjlj(f):
 
   parameterize(metafunc, {'emscripten': ('emscripten',),
                           'wasm': ('wasm',),
-                          'wasm_exnref': ('wasm_exnref',)})
+                          'wasm_legacy': ('wasm_legacy',)})
   return metafunc
 
 
@@ -735,6 +782,17 @@ def create_file(name, contents, binary=False, absolute=False):
     # python test code.
     contents = textwrap.dedent(contents)
     name.write_text(contents, encoding='utf-8')
+
+
+@contextlib.contextmanager
+def chdir(dir):
+  """A context manager that performs actions in the given directory."""
+  orig_cwd = os.getcwd()
+  os.chdir(dir)
+  try:
+    yield
+  finally:
+    os.chdir(orig_cwd)
 
 
 def make_executable(name):
@@ -783,6 +841,7 @@ def parameterize(func, parameters):
   test functions.
   """
   prev = getattr(func, '_parameterize', None)
+  assert not any(p.startswith('_') for p in parameters)
   if prev:
     # If we're parameterizing 2nd time, construct a cartesian product for various combinations.
     func._parameterize = {
@@ -962,21 +1021,19 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     nodejs = self.get_nodejs()
     if nodejs:
       version = shared.get_node_version(nodejs)
-      if version >= (23, 0, 0):
+      if version >= (24, 0, 0):
         self.js_engines = [nodejs]
-        self.node_args += shared.node_memory64_flags()
         return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
       self.emcc_args.append('-sENVIRONMENT=shell')
       self.js_engines = [config.V8_ENGINE]
-      self.v8_args.append('--experimental-wasm-memory64')
       return
 
     if 'EMTEST_SKIP_WASM64' in os.environ:
-      self.skipTest('test requires node >= 23 or d8 (and EMTEST_SKIP_WASM64 is set)')
+      self.skipTest('test requires node >= 24 or d8 (and EMTEST_SKIP_WASM64 is set)')
     else:
-      self.fail('either d8 or node >= 23 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
+      self.fail('either d8 or node >= 24 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
 
   def require_simd(self):
     if self.is_browser_test():
@@ -999,7 +1056,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     else:
       self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_SIMD to skip')
 
-  def require_wasm_eh(self):
+  def require_wasm_legacy_eh(self):
+    self.set_setting('WASM_LEGACY_EXCEPTIONS')
     nodejs = self.get_nodejs()
     if nodejs:
       version = shared.get_node_version(nodejs)
@@ -1017,13 +1075,17 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     else:
       self.fail('either d8 or node >= 17 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
 
-  def require_wasm_exnref(self):
+  def require_wasm_eh(self):
+    self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
     nodejs = self.get_nodejs()
     if nodejs:
       if self.node_is_canary(nodejs):
         self.js_engines = [nodejs]
         self.node_args.append('--experimental-wasm-exnref')
         return
+
+    if self.is_browser_test():
+      return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
       self.emcc_args.append('-sENVIRONMENT=shell')
@@ -1109,15 +1171,13 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
-    print('(checking sanity from test runner)') # do this after we set env stuff
-    shared.check_sanity(force=True)
+    shared.check_sanity(force=True, quiet=True)
 
   def setUp(self):
     super().setUp()
     self.js_engines = config.JS_ENGINES.copy()
     self.settings_mods = {}
     self.skip_exec = None
-    self.proxied = False
     self.emcc_args = ['-Wclosure', '-Werror', '-Wno-limited-postlink-optimizations']
     # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
     # For historical reasons emcc compiles and links as C++ by default.
@@ -1286,7 +1346,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   #                  libraries, for example
   def get_emcc_args(self, main_file=False, compile_only=False, asm_only=False):
     def is_ldflag(f):
-      return any(f.startswith(s) for s in ['-sEXPORT_ES6', '-sPROXY_TO_PTHREAD', '-sENVIRONMENT=', '--pre-js=', '--post-js=', '-sPTHREAD_POOL_SIZE='])
+      return any(f.startswith(s) for s in ['-sEXPORT_ES6', '--proxy-to-worker', '-sGL_TESTING', '-sPROXY_TO_WORKER', '-sPROXY_TO_PTHREAD', '-sENVIRONMENT=', '--pre-js=', '--post-js=', '-sPTHREAD_POOL_SIZE='])
 
     args = self.serialize_settings(compile_only or asm_only) + self.emcc_args
     if asm_only:
@@ -1325,21 +1385,22 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.fail('es-check failed to verify ES5 output compliance')
 
   # Build JavaScript code from source code
-  def build(self, filename, libraries=None, includes=None, force_c=False, js_outfile=True, emcc_args=None, output_basename=None):
+  def build(self, filename, libraries=None, includes=None, force_c=False, emcc_args=None, output_basename=None, output_suffix=None):
     if not os.path.exists(filename):
       filename = test_file(filename)
-    suffix = '.js' if js_outfile else '.wasm'
     compiler = [compiler_for(filename, force_c)]
 
     if force_c:
       assert shared.suffix(filename) != '.c', 'force_c is not needed for source files ending in .c'
       compiler.append('-xc')
 
+    if not output_suffix:
+      output_suffix = '.mjs' if emcc_args and '-sEXPORT_ES6' in emcc_args else '.js'
+
     if output_basename:
-      output = output_basename + suffix
+      output = output_basename + output_suffix
     else:
-      basename = os.path.basename(filename)
-      output = shared.unsuffixed(basename) + suffix
+      output = shared.unsuffixed_basename(filename) + output_suffix
     cmd = compiler + [filename, '-o', output] + self.get_emcc_args(main_file=True)
     if emcc_args:
       cmd += emcc_args
@@ -1636,7 +1697,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       make_args = ['-j', str(shared.get_num_cores())]
 
     build_dir = self.get_build_dir()
-    output_dir = self.get_dir()
 
     emcc_args = []
     if not native:
@@ -1669,7 +1729,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     cflags = ' '.join(emcc_args)
     env_init.setdefault('CFLAGS', cflags)
     env_init.setdefault('CXXFLAGS', cflags)
-    return build_library(name, build_dir, output_dir, generated_libs, configure,
+    return build_library(name, build_dir, generated_libs, configure,
                          make, make_args, self.library_cache,
                          cache_name, env_init=env_init, native=native)
 
@@ -1692,7 +1752,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         self.fail(f'subprocess exited with non-zero return code({e.returncode}): `{shared.shlex_join(cmd)}`')
 
   def emcc(self, filename, args=[], output_filename=None, **kwargs):  # noqa
-    cmd = [compiler_for(filename), filename] + self.get_emcc_args(compile_only='-c' in args) + args
+    compile_only = '-c' in args or '-sSIDE_MODULE' in args
+    cmd = [compiler_for(filename), filename] + self.get_emcc_args(compile_only=compile_only) + args
     if output_filename:
       cmd += ['-o', output_filename]
     self.run_process(cmd, **kwargs)
@@ -2010,16 +2071,24 @@ def harness_server_func(in_queue, out_queue, port):
     # Request header handler for default do_GET() path in
     # SimpleHTTPRequestHandler.do_GET(self) below.
     def send_head(self):
-      if self.path.endswith('.js'):
+      if self.headers.get('Range'):
         path = self.translate_path(self.path)
         try:
+          fsize = os.path.getsize(path)
           f = open(path, 'rb')
         except IOError:
-          self.send_error(404, "File not found: " + path)
+          self.send_error(404, f'File not found {path}')
           return None
-        self.send_response(200)
-        self.send_header('Content-type', 'application/javascript')
-        self.send_header('Connection', 'close')
+        self.send_response(206)
+        ctype = self.guess_type(path)
+        self.send_header('Content-Type', ctype)
+        pieces = self.headers.get('Range').split('=')[1].split('-')
+        start = int(pieces[0]) if pieces[0] != '' else 0
+        end = int(pieces[1]) if pieces[1] != '' else fsize - 1
+        end = min(fsize - 1, end)
+        length = end - start + 1
+        self.send_header('Content-Range', f'bytes {start}-{end}/{fsize}')
+        self.send_header('Content-Length', str(length))
         self.end_headers()
         return f
       else:
@@ -2027,6 +2096,7 @@ def harness_server_func(in_queue, out_queue, port):
 
     # Add COOP, COEP, CORP, and no-caching headers
     def end_headers(self):
+      self.send_header('Accept-Ranges', 'bytes')
       self.send_header('Access-Control-Allow-Origin', '*')
       self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
       self.send_header('Cross-Origin-Embedder-Policy', 'require-corp')
@@ -2121,7 +2191,23 @@ def harness_server_func(in_queue, out_queue, port):
         # Use SimpleHTTPServer default file serving operation for GET.
         if DEBUG:
           print('[simple HTTP serving:', unquote_plus(self.path), ']')
-        SimpleHTTPRequestHandler.do_GET(self)
+        if self.headers.get('Range'):
+          self.send_response(206)
+          path = self.translate_path(self.path)
+          data = read_binary(path)
+          ctype = self.guess_type(path)
+          self.send_header('Content-type', ctype)
+          pieces = self.headers.get('Range').split('=')[1].split('-')
+          start = int(pieces[0]) if pieces[0] != '' else 0
+          end = int(pieces[1]) if pieces[1] != '' else len(data) - 1
+          end = min(len(data) - 1, end)
+          length = end - start + 1
+          self.send_header('Content-Length', str(length))
+          self.send_header('Content-Range', f'bytes {start}-{end}/{len(data)}')
+          self.end_headers()
+          self.wfile.write(data[start:end + 1])
+        else:
+          SimpleHTTPRequestHandler.do_GET(self)
 
     def log_request(code=0, size=0):
       # don't log; too noisy
@@ -2326,11 +2412,6 @@ class BrowserCore(RunnerCore):
       args = []
     args = args.copy()
     filename = find_browser_test_file(filename)
-
-    # Run via --proxy-to-worker.  This gets set by the @also_with_proxying.
-    if self.proxied:
-      args += ['--proxy-to-worker', '-sGL_TESTING']
-
     outfile = output_basename + '.html'
     args += ['-o', outfile]
     # print('all args:', args)
@@ -2355,7 +2436,6 @@ class BrowserCore(RunnerCore):
 
 def build_library(name,
                   build_dir,
-                  output_dir,
                   generated_libs,
                   configure,
                   make,

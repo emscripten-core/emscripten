@@ -30,9 +30,9 @@ from tools.system_libs import USE_NINJA
 
 # Minimal subset of targets used by CI systems to build enough to be useful
 MINIMAL_TASKS = [
-    'libbulkmemory',
     'libcompiler_rt',
-    'libcompiler_rt-wasm-sjlj',
+    'libcompiler_rt-legacysjlj',
+    'libcompiler_rt-wasmsjlj',
     'libcompiler_rt-ww',
     'libc',
     'libc-debug',
@@ -40,14 +40,17 @@ MINIMAL_TASKS = [
     'libc_optz',
     'libc_optz-debug',
     'libc++abi',
-    'libc++abi-except',
+    'libc++abi-legacyexcept',
+    'libc++abi-wasmexcept',
     'libc++abi-noexcept',
     'libc++abi-debug',
-    'libc++abi-debug-except',
+    'libc++abi-debug-legacyexcept',
+    'libc++abi-debug-wasmexcept',
     'libc++abi-debug-noexcept',
     'libc++abi-debug-ww-noexcept',
     'libc++',
-    'libc++-except',
+    'libc++-legacyexcept',
+    'libc++-wasmexcept',
     'libc++-noexcept',
     'libc++-ww-noexcept',
     'libal',
@@ -55,6 +58,7 @@ MINIMAL_TASKS = [
     'libdlmalloc-tracing',
     'libdlmalloc-debug',
     'libdlmalloc-ww',
+    'libdlmalloc-ww-debug',
     'libembind',
     'libembind-rtti',
     'libemmalloc',
@@ -79,7 +83,8 @@ MINIMAL_TASKS = [
     'crt1',
     'crt1_proxy_main',
     'crtbegin',
-    'libunwind-except',
+    'libunwind-legacyexcept',
+    'libunwind-wasmexcept',
     'libnoexit',
     'sqlite3',
     'sqlite3-mt',
@@ -102,6 +107,7 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'libc++-mt',
     'libc++-mt-noexcept',
     'libdlmalloc-mt',
+    'libdlmalloc-mt-debug',
     'libGL-emu',
     'libGL-emu-webgl2-getprocaddr',
     'libGL-mt-getprocaddr',
@@ -293,7 +299,7 @@ def main():
         if USE_NINJA:
           library.generate()
         else:
-          library.build(deterministic_paths=True)
+          library.build()
     elif what == 'sysroot':
       if do_clear:
         cache.erase_file('sysroot_install.stamp')

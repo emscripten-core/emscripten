@@ -66,7 +66,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
   // notified about them.
   self.onunhandledrejection = (e) => { throw e.reason || e; };
 
-  {{{ asyncIf(ASYNCIFY == 2) }}} function handleMessage(e) {
+  {{{ asyncIf(ASYNCIFY == 2) }}}function handleMessage(e) {
     try {
       var msgData = e['data'];
       //dbg('msgData: ' + Object.keys(msgData));
@@ -157,7 +157,9 @@ if (ENVIRONMENT_IS_PTHREAD) {
         // Pass the thread address to wasm to store it for fast access.
         __emscripten_thread_init(msgData.pthread_ptr, /*is_main=*/0, /*is_runtime=*/0, /*can_block=*/1, 0, 0);
 
-        PThread.receiveObjectTransfer(msgData);
+#if OFFSCREENCANVAS_SUPPORT
+        PThread.receiveOffscreenCanvases(msgData);
+#endif
         PThread.threadInitTLS();
 
         // Await mailbox notifications with `Atomics.waitAsync` so we can start
@@ -177,7 +179,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
         }
 
         try {
-          {{{ awaitIf(ASYNCIFY == 2) }}} invokeEntryPoint(msgData.start_routine, msgData.arg);
+          {{{ awaitIf(ASYNCIFY == 2) }}}invokeEntryPoint(msgData.start_routine, msgData.arg);
         } catch(ex) {
           if (ex != 'unwind') {
             // The pthread "crashed".  Do not call `_emscripten_thread_exit` (which

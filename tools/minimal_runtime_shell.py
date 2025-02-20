@@ -7,8 +7,8 @@ __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
+from . import building
 from . import shared
-from . import line_endings
 from . import utils
 from . import feature_matrix
 from .settings import settings
@@ -195,7 +195,7 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename):
   temp_files = shared.get_temp_files()
   with temp_files.get_file(suffix='.js') as shell_temp:
     utils.write_file(shell_temp, shell)
-    shell = shared.read_and_preprocess(shell_temp)
+    shell = building.read_and_preprocess(shell_temp)
 
   if re.search(r'{{{\s*SCRIPT\s*}}}', shell):
     shared.exit_with_error('--shell-file "' + options.shell_path + '": MINIMAL_RUNTIME uses a different kind of HTML page shell file than the traditional runtime! Please see $EMSCRIPTEN/src/shell_minimal_runtime.html for a template to use as a basis.')
@@ -211,5 +211,4 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename):
   else:
     js_contents = ''
   shell = shell.replace('{{{ JS_CONTENTS_IN_SINGLE_FILE_BUILD }}}', js_contents)
-  shell = line_endings.convert_line_endings(shell, '\n', options.output_eol)
-  utils.write_file(target, shell)
+  utils.write_file(target, shell, options.output_eol)

@@ -1,4 +1,4 @@
-var b = Module, c = b.$ww, e = b.mem || new WebAssembly.Memory({
+var b = Module, c = !!b.$ww, e = b.mem || new WebAssembly.Memory({
     initial: 256,
     maximum: 256,
     shared: !0

@@ -19,7 +19,7 @@ import clang_native
 import common
 from common import BrowserCore, no_windows, create_file, test_file, read_file
 from common import parameterized, requires_native_clang, crossplatform, PYTHON, NON_ZERO
-from tools import config, utils
+from tools import config
 from tools.shared import EMCC, path_from_root, run_process, CLANG_CC
 
 npm_checked = False
@@ -117,10 +117,11 @@ class CompiledServerHarness():
       npm_checked = True
 
     # compile the server
-    proc = run_process([EMCC, '-Werror', test_file(self.filename), '-o', 'server.js', '-DSOCKK=%d' % self.listen_port] + self.args)
+    suffix = '.mjs' if '-sEXPORT_ES6' in self.args else '.js'
+    proc = run_process([EMCC, '-Werror', test_file(self.filename), '-o', 'server' + suffix, '-DSOCKK=%d' % self.listen_port] + self.args)
     print('Socket server build: out:', proc.stdout or '', '/ err:', proc.stderr or '')
 
-    process = Popen(config.NODE_JS + ['server.js'])
+    process = Popen(config.NODE_JS + ['server' + suffix])
     self.processes.append(process)
     return self
 
@@ -165,11 +166,6 @@ class sockets(BrowserCore):
     print()
     print('Running the socket tests. Make sure the browser allows popups from localhost.')
     print()
-
-    # Use emscripten root for node module lookup.  This is needed because the unit tests each
-    # run with CWD set to a temporary directory outside the emscripten tree.
-    print('Setting NODE_PATH=' + path_from_root('node_modules'))
-    os.environ['NODE_PATH'] = path_from_root('node_modules')
 
   # Note: in the WebsockifyServerHarness and CompiledServerHarness tests below, explicitly use
   # consecutive server listen ports, because server teardown might not occur deterministically
@@ -272,7 +268,7 @@ class sockets(BrowserCore):
   def test_enet(self):
     # this is also a good test of raw usage of emconfigure and emmake
     shutil.copytree(test_file('third_party', 'enet'), 'enet')
-    with utils.chdir('enet'):
+    with common.chdir('enet'):
       self.run_process([path_from_root('emconfigure'), './configure', '--disable-shared'])
       self.run_process([path_from_root('emmake'), 'make'])
       enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I' + self.in_dir('enet', 'include')]
@@ -283,7 +279,7 @@ class sockets(BrowserCore):
   @crossplatform
   @parameterized({
     'native': [WebsockifyServerHarness, 59160, ['-DTEST_DGRAM=0']],
-    'tcp': [CompiledServerHarness, 59162, ['-DTEST_DGRAM=0']],
+    'tcp': [CompiledServerHarness, 59162, ['-DTEST_DGRAM=0', '-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')]],
     'udp': [CompiledServerHarness, 59164, ['-DTEST_DGRAM=1']],
     'pthread': [CompiledServerHarness, 59166, ['-pthread', '-sPROXY_TO_PTHREAD']],
   })

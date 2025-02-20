@@ -62,7 +62,7 @@ def process_changed_file(filename):
   return f'{filename}: {old_size} => {size} [{delta:+} bytes / {percent_delta:+.2f}%]\n'
 
 
-def main(argv):
+def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('-s', '--skip-tests', action='store_true', help="Don't actually run the tests, just analyze the existing results")
   parser.add_argument('-b', '--new-branch', action='store_true', help='Create a new branch containing the updates')
@@ -71,7 +71,7 @@ def main(argv):
   args = parser.parse_args()
 
   if args.clear_cache:
-    run(['emcc', '--clear-cache'])
+    run(['./emcc', '--clear-cache'])
 
   if not args.skip_tests:
     if not args.check_only and run(['git', 'status', '-uno', '--porcelain']).strip():
@@ -80,16 +80,16 @@ def main(argv):
 
     subprocess.check_call(['test/runner', '--rebaseline', '--browser=0'] + TESTS, cwd=root_dir)
 
-  if not run(['git', 'status', '-uno', '--porcelain', 'test']):
-    print('test expectations are up-to-date')
-    return 0
-
   output = run(['git', 'status', '-uno', '--porcelain'])
   filenames = []
   for line in output.splitlines():
     filename = line.strip().rsplit(' ', 1)[1]
-    if filename.startswith('test'):
+    if filename.startswith('test') and os.path.isfile(filename):
       filenames.append(filename)
+
+  if not filenames:
+    print('test expectations are up-to-date')
+    return 0
 
   if args.check_only:
     message = f'''Test expectations are out-of-date
@@ -131,4 +131,4 @@ running the tests with `--rebaseline`:
 
 
 if __name__ == '__main__':
-  sys.exit(main(sys.argv))
+  sys.exit(main())

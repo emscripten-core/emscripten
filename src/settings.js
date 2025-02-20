@@ -248,7 +248,6 @@ var MEMORY_GROWTH_LINEAR_STEP = -1;
 // using i64 pointers).
 // Assumes WASM_BIGINT.
 // [compile+link]
-// [experimental]
 var MEMORY64 = 0;
 
 // Sets the initial size of the table when MAIN_MODULE or SIDE_MODULE is use
@@ -778,11 +777,12 @@ var EXPORT_EXCEPTION_HANDLING_HELPERS = false;
 // [link]
 var EXCEPTION_STACK_TRACES = false;
 
-// Emit instructions for the new Wasm exception handling proposal with exnref,
-// which was adopted on Oct 2023. The implementation of the new proposal is
-// still in progress and this feature is currently experimental.
-// [link]
-var WASM_EXNREF = false;
+// If true, emit instructions for the legacy Wasm exception handling proposal:
+// https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/legacy/Exceptions.md
+// If false, emit instructions for the standardized exception handling proposal:
+// https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/Exceptions.md
+// [compile+link]
+var WASM_LEGACY_EXCEPTIONS = true;
 
 // Emscripten throws an ExitStatus exception to unwind when exit() is called.
 // Without this setting enabled this can show up as a top level unhandled
@@ -954,7 +954,7 @@ var JSPI_EXPORTS = [];
 // work. The imported function should return a ``Promise`` when doing
 // asynchronous work.
 //
-// Note when using ``--js-library``, the function can be marked with
+// Note when using JS library files, the function can be marked with
 // ``<function_name>_async:: true`` in the library instead of this setting.
 // [link]
 var JSPI_IMPORTS = [];
@@ -1495,8 +1495,7 @@ var DYNCALLS = false;
 
 // WebAssembly integration with JavaScript BigInt. When enabled we don't need to
 // legalize i64s into pairs of i32s, as the wasm VM will use a BigInt where an
-// i64 is used. If WASM_BIGINT is present, the default minimum supported browser
-// versions will be increased to the min version that supports BigInt.
+// i64 is used.
 // [link]
 var WASM_BIGINT = true;
 
@@ -1895,7 +1894,8 @@ var AUTO_NATIVE_LIBRARIES = true;
 // for Firefox versions older than < majorVersion.
 // Firefox 79 was released on 2020-07-28.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// Minimum supported value is 34 which was released on 2014-12-01.
+// Minimum supported value is 40 which was released on 2015-09-11 (see
+// feature_matrix.py)
 // [link]
 var MIN_FIREFOX_VERSION = 79;
 
@@ -1909,9 +1909,10 @@ var MIN_FIREFOX_VERSION = 79;
 // older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
 // see https://github.com/emscripten-core/emscripten/pull/7191.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// Minimum supported value is 90000 which was released in 2015.
+// Minimum supported value is 101000 which was released in 2016-09 (see
+// feature_matrix.py).
 // [link]
-var MIN_SAFARI_VERSION = 140100;
+var MIN_SAFARI_VERSION = 150000;
 
 // Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=58 to
 // drop support for Chrome 57 and older.
@@ -1919,7 +1920,8 @@ var MIN_SAFARI_VERSION = 140100;
 // numbers with Chrome.
 // Chrome 85 was released on 2020-08-25.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// Minimum supported value is 33, which was released on 2014-02-18.
+// Minimum supported value is 45, which was released on 2015-09-01 (see
+// feature_matrix.py).
 // [link]
 var MIN_CHROME_VERSION = 85;
 
@@ -1927,7 +1929,8 @@ var MIN_CHROME_VERSION = 85;
 // distinct from the minimum version required run the emscripten compiler.
 // This version aligns with the current Ubuuntu TLS 20.04 (Focal).
 // Version is encoded in MMmmVV, e.g. 181401 denotes Node 18.14.01.
-// Minimum supported value is 101900, which was released 2020-02-05.
+// Minimum supported value is 101900, which was released 2020-02-05 (see
+// feature_matrix.py).
 var MIN_NODE_VERSION = 160000;
 
 // Whether we support setting errno from JS library code.

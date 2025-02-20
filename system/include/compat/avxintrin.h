@@ -4,19 +4,17 @@
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
  */
+
+#ifndef __emscripten_immintrin_h__
+#error "Never use <avxintrin.h> directly; include <immintrin.h> instead."
+#endif
+
 #ifndef __emscripten_avxintrin_h__
 #define __emscripten_avxintrin_h__
 
 #ifndef __AVX__
 #error "AVX instruction set not enabled"
 #endif
-
-#include <emmintrin.h>
-#include <nmmintrin.h>
-#include <pmmintrin.h>
-#include <smmintrin.h>
-#include <tmmintrin.h>
-#include <xmmintrin.h>
 
 typedef struct {
   __m128d v0;

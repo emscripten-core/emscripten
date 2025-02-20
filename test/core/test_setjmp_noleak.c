@@ -16,7 +16,7 @@ void luaWork(int d){
 
 void dump() {
   struct mallinfo m = mallinfo();
-  emscripten_outf("dump: %d , %d", m.arena, m.uordblks);
+  emscripten_outf("dump: %zu , %zu", m.arena, m.uordblks);
 }
 
 void work(int n) {

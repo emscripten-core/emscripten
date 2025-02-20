@@ -97,9 +97,7 @@ WasmSourceMap.prototype.normalizeOffset = function (offset) {
 }
 
 var wasmSourceMapFile = '{{{ WASM_BINARY_FILE }}}.map';
-if (!isDataURI(wasmSourceMapFile)) {
-  wasmSourceMapFile = locateFile(wasmSourceMapFile);
-}
+wasmSourceMapFile = locateFile(wasmSourceMapFile);
 
 function getSourceMap() {
   var buf = readBinary(wasmSourceMapFile);

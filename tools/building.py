@@ -93,6 +93,12 @@ def llvm_backend_args():
   elif settings.SUPPORT_LONGJMP == 'wasm':
     args += ['-wasm-enable-sjlj']
 
+  if settings.WASM_EXCEPTIONS:
+    if settings.WASM_LEGACY_EXCEPTIONS:
+      args += ['-wasm-use-legacy-eh']
+    else:
+      args += ['-wasm-use-legacy-eh=0']
+
   # better (smaller, sometimes faster) codegen, see binaryen#1054
   # and https://bugs.llvm.org/show_bug.cgi?id=39488
   args += ['-disable-lsr']
@@ -277,6 +283,10 @@ def link_lld(args, target, external_symbols=None):
 
   if settings.WASM_EXCEPTIONS:
     cmd += ['-mllvm', '-wasm-enable-eh']
+    if settings.WASM_LEGACY_EXCEPTIONS:
+      cmd += ['-mllvm', '-wasm-use-legacy-eh']
+    else:
+      cmd += ['-mllvm', '-wasm-use-legacy-eh=0']
   if settings.WASM_EXCEPTIONS or settings.SUPPORT_LONGJMP == 'wasm':
     cmd += ['-mllvm', '-exception-model=wasm']
 
@@ -393,10 +403,7 @@ WASM_CALL_CTORS = '__wasm_call_ctors'
 # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool
 # for this, and we are in wasm mode
 def eval_ctors(js_file, wasm_file, debug_info):
-  if settings.MINIMAL_RUNTIME:
-    CTOR_ADD_PATTERN = f"wasmExports['{WASM_CALL_CTORS}']();" # TODO test
-  else:
-    CTOR_ADD_PATTERN = f"addOnInit(wasmExports['{WASM_CALL_CTORS}']);"
+  CTOR_ADD_PATTERN = f"wasmExports['{WASM_CALL_CTORS}']();"
 
   js = utils.read_file(js_file)
 
@@ -474,17 +481,6 @@ def check_closure_compiler(cmd, args, env, allowed_to_fail):
     exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (shared.shlex_join(cmd), output))
 
   return True
-
-
-# Remove this once we require python3.7 and can use std.isascii.
-# See: https://docs.python.org/3/library/stdtypes.html#str.isascii
-def isascii(s):
-  try:
-    s.encode('ascii')
-  except UnicodeEncodeError:
-    return False
-  else:
-    return True
 
 
 def get_closure_compiler_and_env(user_args):
@@ -623,7 +619,7 @@ def run_closure_cmd(cmd, filename, env):
   tempfiles = shared.get_temp_files()
 
   def move_to_safe_7bit_ascii_filename(filename):
-    if isascii(filename):
+    if filename.isascii():
       return os.path.abspath(filename)
     safe_filename = tempfiles.get('.js').name  # Safe 7-bit filename
     shutil.copyfile(filename, safe_filename)
@@ -879,10 +875,11 @@ def metadce(js_file, wasm_file, debug_info, last):
 
 
 def asyncify_lazy_load_code(wasm_target, debug):
-  # create the lazy-loaded wasm. remove the memory segments from it, as memory
-  # segments have already been applied by the initial wasm, and apply the knowledge
-  # that it will only rewind, after which optimizations can remove some code
-  args = ['--remove-memory', '--mod-asyncify-never-unwind']
+  # Create the lazy-loaded wasm. Remove any active memory segments and the
+  # start function from it (as these will segments have already been applied
+  # by the initial wasm) and apply the knowledge that it will only rewind,
+  # after which optimizations can remove some code
+  args = ['--remove-memory-init', '--mod-asyncify-never-unwind']
   if settings.OPT_LEVEL > 0:
     args.append(opt_level_to_str(settings.OPT_LEVEL, settings.SHRINK_LEVEL))
   run_wasm_opt(wasm_target,
@@ -1055,12 +1052,7 @@ def little_endian_heap(js_file):
 
 def apply_wasm_memory_growth(js_file):
   logger.debug('supporting wasm memory growth with pthreads')
-  fixed = acorn_optimizer(js_file, ['growableHeap'])
-  ret = js_file + '.pgrow.js'
-  fixed = utils.read_file(fixed)
-  support_code = utils.read_file(path_from_root('src/growableHeap.js'))
-  utils.write_file(ret, support_code + '\n' + fixed)
-  return ret
+  return acorn_optimizer(js_file, ['growableHeap'])
 
 
 def use_unsigned_pointers_in_js(js_file):
@@ -1255,16 +1247,45 @@ def run_wasm_bindgen(infile, outfile=None, args=[], **kwargs):  # noqa
   shutil.copyfile(bindgen_out_dir + new_wasm_file, outfile)
 
 
-def save_intermediate(src, dst):
+intermediate_counter = 0
+
+
+def new_intermediate_filename(name):
+  assert DEBUG
+  global intermediate_counter
+  basename = 'emcc-%02d-%s' % (intermediate_counter, name)
+  intermediate_counter += 1
+  filename = os.path.join(shared.CANONICAL_TEMP_DIR, basename)
+  logger.debug('saving intermediate file %s' % filename)
+  return filename
+
+
+def save_intermediate(src, name):
+  """Copy an existing file CANONICAL_TEMP_DIR"""
   if DEBUG:
-    dst = 'emcc-%02d-%s' % (save_intermediate.counter, dst)
-    save_intermediate.counter += 1
-    dst = os.path.join(shared.CANONICAL_TEMP_DIR, dst)
-    logger.debug('saving debug copy %s' % dst)
-    shutil.copyfile(src, dst)
+    shutil.copyfile(src, new_intermediate_filename(name))
 
 
-save_intermediate.counter = 0  # type: ignore
+def write_intermediate(content, name):
+  """Generate a new debug file CANONICAL_TEMP_DIR"""
+  if DEBUG:
+    utils.write_file(new_intermediate_filename(name), content)
+
+
+def read_and_preprocess(filename, expand_macros=False):
+  # Create a settings file with the current settings to pass to the JS preprocessor
+  settings_json = json.dumps(settings.external_dict(), sort_keys=True, indent=2)
+  write_intermediate(settings_json, 'settings.json')
+
+  # Run the JS preprocessor
+  dirname, filename = os.path.split(filename)
+  if not dirname:
+    dirname = None
+  args = ['-', filename]
+  if expand_macros:
+    args += ['--expand-macros']
+
+  return shared.run_js_tool(path_from_root('tools/preprocessor.mjs'), args, input=settings_json, stdout=subprocess.PIPE, cwd=dirname)
 
 
 def js_legalization_pass_flags():

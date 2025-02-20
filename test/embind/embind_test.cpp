@@ -885,6 +885,15 @@ std::map<std::string, int> embind_test_get_string_int_map() {
   return m;
 };
 
+std::map<int, std::string, std::greater<int>> embind_test_get_int_string_greater_map() {
+    std::map<int, std::string, std::greater<int>> m;
+
+    m[1] = "one";
+    m[2] = "two";
+
+    return m;
+}
+
 struct Vector {
   Vector() = delete;
 
@@ -2373,6 +2382,9 @@ EMSCRIPTEN_BINDINGS(tests) {
 
   register_map<std::string, int>("StringIntMap");
   function("embind_test_get_string_int_map", embind_test_get_string_int_map);
+    
+  register_map<int, std::string, std::greater<int>>("IntStringMapGreater");
+  function("embind_test_get_int_string_greater_map", embind_test_get_int_string_greater_map);
 
   function("embind_test_getglobal", &embind_test_getglobal);
 

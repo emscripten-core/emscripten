@@ -122,14 +122,11 @@ def parse_parens(s):
 # Valid characters in Emscripten outputted JS content (in reality valid character set is much more complex, but do not need that here)
 def is_javascript_symbol_char(ch):
   i = ord(ch)
-  return (i >= 97 and i <= 122) or (i >= 65 and i <= 90) or (i >= 48 and i <= 57) or i == 36 or i == 95 # a-z, A-Z, 0-9, $, _
+  return 97 <= i <= 122 or 65 <= i <= 90 or 48 <= i <= 57 or i in {36, 95} # a-z, A-Z, 0-9, $, _
 
 
 def cxxfilt():
-  filt = shutil.which('llvm-cxxfilt')
-  if filt:
-    return filt
-  return shutil.which('c++filt')
+  return shutil.which('llvm-cxxfilt') or shutil.which('c++filt')
 
 
 # Runs the given symbols list through c++filt to demangle.

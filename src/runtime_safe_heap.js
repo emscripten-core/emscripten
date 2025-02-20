@@ -77,7 +77,7 @@ function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
   }
   var type = getSafeHeapType(bytes, isFloat);
   var ret = getValue_safe(dest, type);
-  if (unsigned) ret = unSign(ret, parseInt(type.substr(1), 10));
+  if (unsigned) ret = unSign(ret, parseInt(type.slice(1), 10));
 #if SAFE_HEAP_LOG
   dbg('SAFE_HEAP load: ' + [dest, ret, bytes, isFloat, unsigned, SAFE_HEAP_COUNTER++]);
 #endif

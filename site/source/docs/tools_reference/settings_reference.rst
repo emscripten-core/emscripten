@@ -304,8 +304,6 @@ Assumes WASM_BIGINT.
 
 .. note:: Applicable during both linking and compilation
 
-.. note:: This is an experimental setting
-
 Default value: 0
 
 .. _initial_table:
@@ -1157,16 +1155,19 @@ This option implies EXPORT_EXCEPTION_HANDLING_HELPERS.
 
 Default value: false
 
-.. _wasm_exnref:
+.. _wasm_legacy_exceptions:
 
-WASM_EXNREF
-===========
+WASM_LEGACY_EXCEPTIONS
+======================
 
-Emit instructions for the new Wasm exception handling proposal with exnref,
-which was adopted on Oct 2023. The implementation of the new proposal is
-still in progress and this feature is currently experimental.
+If true, emit instructions for the legacy Wasm exception handling proposal:
+https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/legacy/Exceptions.md
+If false, emit instructions for the standardized exception handling proposal:
+https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/Exceptions.md
 
-Default value: false
+.. note:: Applicable during both linking and compilation
+
+Default value: true
 
 .. _nodejs_catch_exit:
 
@@ -1419,7 +1420,7 @@ A list of imported module functions that will potentially do asynchronous
 work. The imported function should return a ``Promise`` when doing
 asynchronous work.
 
-Note when using ``--js-library``, the function can be marked with
+Note when using JS library files, the function can be marked with
 ``<function_name>_async:: true`` in the library instead of this setting.
 
 Default value: []
@@ -2186,8 +2187,7 @@ WASM_BIGINT
 
 WebAssembly integration with JavaScript BigInt. When enabled we don't need to
 legalize i64s into pairs of i32s, as the wasm VM will use a BigInt where an
-i64 is used. If WASM_BIGINT is present, the default minimum supported browser
-versions will be increased to the min version that supports BigInt.
+i64 is used.
 
 Default value: true
 
@@ -2905,7 +2905,8 @@ are desired to work. Pass -sMIN_FIREFOX_VERSION=majorVersion to drop support
 for Firefox versions older than < majorVersion.
 Firefox 79 was released on 2020-07-28.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 34 which was released on 2014-12-01.
+Minimum supported value is 40 which was released on 2015-09-11 (see
+feature_matrix.py)
 
 Default value: 79
 
@@ -2924,9 +2925,10 @@ NOTE: Emscripten is unable to produce code that would work in iOS 9.3.5 and
 older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
 see https://github.com/emscripten-core/emscripten/pull/7191.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 90000 which was released in 2015.
+Minimum supported value is 101000 which was released in 2016-09 (see
+feature_matrix.py).
 
-Default value: 140100
+Default value: 150000
 
 .. _min_chrome_version:
 
@@ -2939,7 +2941,8 @@ This setting also applies to modern Chromium-based Edge, which shares version
 numbers with Chrome.
 Chrome 85 was released on 2020-08-25.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 33, which was released on 2014-02-18.
+Minimum supported value is 45, which was released on 2015-09-01 (see
+feature_matrix.py).
 
 Default value: 85
 
@@ -2952,7 +2955,8 @@ Specifies minimum node version to target for the generated code.  This is
 distinct from the minimum version required run the emscripten compiler.
 This version aligns with the current Ubuuntu TLS 20.04 (Focal).
 Version is encoded in MMmmVV, e.g. 181401 denotes Node 18.14.01.
-Minimum supported value is 101900, which was released 2020-02-05.
+Minimum supported value is 101900, which was released 2020-02-05 (see
+feature_matrix.py).
 
 Default value: 160000
 

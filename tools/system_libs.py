@@ -219,7 +219,6 @@ rule archive
   suffix = shared.suffix(libname)
   build_dir = os.path.dirname(filename)
 
-  case_insensitive = is_case_insensitive(os.path.dirname(filename))
   if suffix == '.o':
     assert len(input_files) == 1
     input_file = escape_ninja_path(input_files[0])
@@ -229,12 +228,11 @@ rule archive
   else:
     objects = []
     for src in input_files:
-      # Resolve duplicates by appending unique.
-      # This is needed on case insensitive filesystem to handle,
-      # for example, _exit.o and _Exit.o.
-      object_basename = shared.unsuffixed_basename(src)
-      if case_insensitive:
-        object_basename = object_basename.lower()
+      # Resolve duplicates by appending unique. This is needed on case
+      # insensitive filesystem to handle, for example, _exit.o and _Exit.o.
+      # This is done even on case sensitive filesystem so that builds are
+      # reproducible across platforms.
+      object_basename = shared.unsuffixed_basename(src).lower()
       o = os.path.join(build_dir, object_basename + '.o')
       object_uuid = 0
       # Find a unique basename
@@ -268,14 +266,6 @@ rule archive
 
   utils.write_file(filename, out)
   ensure_target_in_ninja_file(get_top_level_ninja_file(), f'subninja {escape_ninja_path(filename)}')
-
-
-def is_case_insensitive(path):
-  """Returns True if the filesystem at `path` is case insensitive."""
-  utils.write_file(os.path.join(path, 'test_file'), '')
-  case_insensitive = os.path.exists(os.path.join(path, 'TEST_FILE'))
-  os.remove(os.path.join(path, 'test_file'))
-  return case_insensitive
 
 
 class Library:
@@ -422,17 +412,15 @@ class Library:
   def get_path(self, absolute=False):
     return cache.get_lib_name(self.get_filename(), absolute=absolute)
 
-  def build(self, deterministic_paths=False):
+  def build(self):
     """
     Gets the cached path of this library.
 
     This will trigger a build if this library is not in the cache.
     """
-    self.deterministic_paths = deterministic_paths
     return cache.get(self.get_path(), self.do_build, force=USE_NINJA == 2, quiet=USE_NINJA)
 
   def generate(self):
-    self.deterministic_paths = False
     return cache.get(self.get_path(), self.do_generate, force=USE_NINJA == 2, quiet=USE_NINJA,
                      deferred=True)
 
@@ -471,14 +459,9 @@ class Library:
   def generate_ninja(self, build_dir, libname):
     ensure_sysroot()
     utils.safe_ensure_dirs(build_dir)
+    self.build_dir = build_dir
 
     cflags = self.get_cflags()
-    if self.deterministic_paths:
-      source_dir = utils.path_from_root()
-      relative_source_dir = os.path.relpath(source_dir, build_dir)
-      cflags += [f'-ffile-prefix-map={source_dir}={DETERMINISITIC_PREFIX}',
-                 f'-ffile-prefix-map={relative_source_dir}={DETERMINISITIC_PREFIX}',
-                 f'-fdebug-compilation-dir={DETERMINISITIC_PREFIX}']
     asflags = get_base_cflags(preprocess=False)
     input_files = self.get_files()
     ninja_file = os.path.join(build_dir, 'build.ninja')
@@ -492,18 +475,11 @@ class Library:
     with the `cflags` returned by `self.get_cflags()`.
     """
     batch_inputs = int(os.environ.get('EMCC_BATCH_BUILD', '1'))
+    self.build_dir = build_dir
     batches = {}
     commands = []
     objects = set()
     cflags = self.get_cflags()
-    if self.deterministic_paths:
-      source_dir = utils.path_from_root()
-      if batch_inputs:
-        relative_source_dir = os.path.relpath(source_dir, build_dir)
-        cflags += [f'-ffile-prefix-map={relative_source_dir}={DETERMINISITIC_PREFIX}']
-      cflags += [f'-ffile-prefix-map={source_dir}={DETERMINISITIC_PREFIX}',
-                 f'-fdebug-compilation-dir={DETERMINISITIC_PREFIX}']
-    case_insensitive = is_case_insensitive(build_dir)
     for src in self.get_files():
       ext = shared.suffix(src)
       if ext in {'.s', '.S', '.c'}:
@@ -520,15 +496,12 @@ class Library:
         cmd += cflags
       cmd = self.customize_build_cmd(cmd, src)
 
-      object_basename = shared.unsuffixed_basename(src)
-      if case_insensitive:
-        object_basename = object_basename.lower()
+      object_basename = shared.unsuffixed_basename(src).lower()
       o = os.path.join(build_dir, object_basename + '.o')
       if o in objects:
-        # If we have seen a file with the same name before, we are on a case-insensitive
-        # filesystem and need a separate command to compile this file with a
-        # custom unique output object filename, as batch compile doesn't allow
-        # such customization.
+        # If we have seen a file with the same name before, we need a separate
+        # command to compile this file with a custom unique output object
+        # filename, as batch compile doesn't allow such customization.
         #
         # This is needed to handle, for example, _exit.o and _Exit.o.
         object_uuid = 0
@@ -543,6 +516,8 @@ class Library:
         src = os.path.relpath(src, build_dir)
         src = utils.normalize_path(src)
         batches.setdefault(tuple(cmd), []).append(src)
+        # No -o in command, use original file name.
+        o = os.path.join(build_dir, shared.unsuffixed_basename(src) + '.o')
       else:
         commands.append(cmd + [src, '-o', o])
       objects.add(o)
@@ -611,6 +586,11 @@ class Library:
     if self.includes:
       cflags += ['-I' + utils.path_from_root(i) for i in self._inherit_list('includes')]
 
+    source_dir = utils.path_from_root()
+    relative_source_dir = os.path.relpath(source_dir, self.build_dir)
+    cflags += [f'-ffile-prefix-map={source_dir}={DETERMINISITIC_PREFIX}',
+               f'-ffile-prefix-map={relative_source_dir}={DETERMINISITIC_PREFIX}',
+               f'-fdebug-compilation-dir={DETERMINISITIC_PREFIX}']
     return cflags
 
   def get_base_name_prefix(self):
@@ -680,8 +660,7 @@ class Library:
     """Returns all the classes in the inheritance tree of the current class."""
     yield cls
     for subclass in cls.__subclasses__():
-      for cls in subclass.get_inheritance_tree():
-        yield cls
+      yield from subclass.get_inheritance_tree()
 
   @classmethod
   def get_all_variations(cls):
@@ -790,21 +769,21 @@ class Exceptions(IntEnum):
   """
   This represents exception handling mode of Emscripten. Currently there are
   three modes of exception handling:
-  - None: Does not handle exceptions. This includes -fno-exceptions, which
+  - NONE: Does not handle exceptions. This includes -fno-exceptions, which
     prevents both throwing and catching, and -fignore-exceptions, which only
     allows throwing, but library-wise they use the same version.
-  - Emscripten: Emscripten provides exception handling capability using JS
+  - EMSCRIPTEN: Emscripten provides exception handling capability using JS
     emulation. This causes code size increase and performance degradation.
-  - Wasm: Wasm native exception handling support uses Wasm EH instructions and
-    is meant to be fast. You need to use a VM that has the EH support to use
-    this. This is not fully working yet and still experimental.
+  - WASM_LEGACY: Wasm native exception handling support (legacy)
+  - WASM: Wasm native exception handling support
   """
   NONE = auto()
   EMSCRIPTEN = auto()
+  WASM_LEGACY = auto()
   WASM = auto()
 
 
-class NoExceptLibrary(Library):
+class ExceptionLibrary(Library):
   def __init__(self, **kwargs):
     self.eh_mode = kwargs.pop('eh_mode')
     super().__init__(**kwargs)
@@ -815,8 +794,11 @@ class NoExceptLibrary(Library):
       cflags += ['-fno-exceptions']
     elif self.eh_mode == Exceptions.EMSCRIPTEN:
       cflags += ['-sDISABLE_EXCEPTION_CATCHING=0']
+    elif self.eh_mode == Exceptions.WASM_LEGACY:
+      cflags += ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS']
     elif self.eh_mode == Exceptions.WASM:
-      cflags += ['-fwasm-exceptions']
+      cflags += ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0']
+
     return cflags
 
   def get_base_name(self):
@@ -825,21 +807,27 @@ class NoExceptLibrary(Library):
     # suffixes. Change the default to wasm exception later.
     if self.eh_mode == Exceptions.NONE:
       name += '-noexcept'
+    elif self.eh_mode == Exceptions.WASM_LEGACY:
+      name += '-legacyexcept'
     elif self.eh_mode == Exceptions.WASM:
-      name += '-except'
+      name += '-wasmexcept'
     return name
 
   @classmethod
-  def variations(cls, **kwargs):  # noqa
+  def variations(cls):
     combos = super().variations()
     return ([dict(eh_mode=Exceptions.NONE, **combo) for combo in combos] +
             [dict(eh_mode=Exceptions.EMSCRIPTEN, **combo) for combo in combos] +
+            [dict(eh_mode=Exceptions.WASM_LEGACY, **combo) for combo in combos] +
             [dict(eh_mode=Exceptions.WASM, **combo) for combo in combos])
 
   @classmethod
   def get_default_variation(cls, **kwargs):
     if settings.WASM_EXCEPTIONS:
-      eh_mode = Exceptions.WASM
+      if settings.WASM_LEGACY_EXCEPTIONS:
+        eh_mode = Exceptions.WASM_LEGACY
+      else:
+        eh_mode = Exceptions.WASM
     elif settings.DISABLE_EXCEPTION_CATCHING == 1:
       eh_mode = Exceptions.NONE
     else:
@@ -849,36 +837,54 @@ class NoExceptLibrary(Library):
 
 class SjLjLibrary(Library):
   def __init__(self, **kwargs):
-    # Whether we use Wasm EH instructions for SjLj support
-    self.is_wasm = kwargs.pop('is_wasm')
+    # Which EH method we use for SjLj support
+    self.eh_mode = kwargs.pop('eh_mode')
     super().__init__(**kwargs)
 
   def get_cflags(self):
     cflags = super().get_cflags()
-    if self.is_wasm:
-      # DISABLE_EXCEPTION_THROWING=0 is the default, which is for Emscripten
-      # EH/SjLj, so we should reverse it.
+    if self.eh_mode == Exceptions.EMSCRIPTEN:
+      cflags += ['-sSUPPORT_LONGJMP=emscripten',
+                 '-sDISABLE_EXCEPTION_THROWING=0']
+    elif self.eh_mode == Exceptions.WASM_LEGACY:
       cflags += ['-sSUPPORT_LONGJMP=wasm',
+                 '-sWASM_LEGACY_EXCEPTIONS',
                  '-sDISABLE_EXCEPTION_THROWING',
-                 '-D__USING_WASM_SJLJ__']
+                 '-D__WASM_SJLJ__']
+    elif self.eh_mode == Exceptions.WASM:
+      cflags += ['-sSUPPORT_LONGJMP=wasm',
+                 '-sWASM_LEGACY_EXCEPTIONS=0',
+                 '-sDISABLE_EXCEPTION_THROWING',
+                 '-D__WASM_SJLJ__']
     return cflags
 
   def get_base_name(self):
     name = super().get_base_name()
     # TODO Currently emscripten-based SjLj is the default mode, thus no
     # suffixes. Change the default to wasm exception later.
-    if self.is_wasm:
-      name += '-wasm-sjlj'
+    if self.eh_mode == Exceptions.WASM_LEGACY:
+      name += '-legacysjlj'
+    elif self.eh_mode == Exceptions.WASM:
+      name += '-wasmsjlj'
     return name
 
   @classmethod
-  def vary_on(cls):
-    return super().vary_on() + ['is_wasm']
+  def variations(cls):
+    combos = super().variations()
+    return ([dict(eh_mode=Exceptions.EMSCRIPTEN, **combo) for combo in combos] +
+            [dict(eh_mode=Exceptions.WASM_LEGACY, **combo) for combo in combos] +
+            [dict(eh_mode=Exceptions.WASM, **combo) for combo in combos])
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    is_wasm = settings.SUPPORT_LONGJMP == 'wasm'
-    return super().get_default_variation(is_wasm=is_wasm, **kwargs)
+    if settings.SUPPORT_LONGJMP == 'wasm':
+      if settings.WASM_LEGACY_EXCEPTIONS:
+        eh_mode = Exceptions.WASM_LEGACY
+      else:
+        eh_mode = Exceptions.WASM
+    else:
+      eh_mode = Exceptions.EMSCRIPTEN
+    return super().get_default_variation(eh_mode=eh_mode, **kwargs)
 
 
 class MuslInternalLibrary(Library):
@@ -1055,6 +1061,7 @@ class libc(MuslInternalLibrary,
     other_files = files_in_path(
       path='system/lib/libc',
       filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
+                 'emscripten_memcpy_bulkmem.S', 'emscripten_memset_bulkmem.S',
                  'emscripten_scan_stack.c',
                  'emscripten_get_heap_size.c',  # needed by malloc
                  'emscripten_memmove.c'])
@@ -1296,6 +1303,8 @@ class libc(MuslInternalLibrary,
           'emscripten_memcpy.c',
           'emscripten_memmove.c',
           'emscripten_memset.c',
+          'emscripten_memcpy_bulkmem.S',
+          'emscripten_memset_bulkmem.S',
           'emscripten_mmap.c',
           'emscripten_scan_stack.c',
           'emscripten_time.c',
@@ -1395,17 +1404,6 @@ class libc_optz(libc):
     # and so optz is not that important.
     return super(libc_optz, self).can_use() and settings.SHRINK_LEVEL >= 2 and \
         not settings.LINKABLE and not os.environ.get('EMCC_FORCE_STDLIBS')
-
-
-class libbulkmemory(MuslInternalLibrary, AsanInstrumentedLibrary):
-  name = 'libbulkmemory'
-  src_dir = 'system/lib/libc'
-  src_files = ['emscripten_memcpy.c', 'emscripten_memset.c',
-               'emscripten_memcpy_bulkmem.S', 'emscripten_memset_bulkmem.S']
-  cflags = ['-mbulk-memory']
-
-  def can_use(self):
-    return super(libbulkmemory, self).can_use() and settings.BULK_MEMORY
 
 
 class libprintf_long_double(libc):
@@ -1566,7 +1564,7 @@ class crtbegin(MuslInternalLibrary):
     return super().can_use() and settings.SHARED_MEMORY
 
 
-class libcxxabi(NoExceptLibrary, MTLibrary, DebugLibrary):
+class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
   name = 'libc++abi'
   cflags = [
       '-Oz',
@@ -1574,7 +1572,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary, DebugLibrary):
       '-D_LIBCPP_BUILDING_LIBRARY',
       '-D_LIBCXXABI_BUILDING_LIBRARY',
       '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',
-      '-std=c++20',
+      '-std=c++23',
     ]
   includes = ['system/lib/libcxx/src']
 
@@ -1598,7 +1596,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary, DebugLibrary):
       # The code used to interpret exceptions during terminate
       # is not compatible with emscripten exceptions.
       cflags.append('-DLIBCXXABI_SILENT_TERMINATE')
-    elif self.eh_mode == Exceptions.WASM:
+    elif self.eh_mode == Exceptions.WASM_LEGACY:
       cflags.append('-D__WASM_EXCEPTIONS__')
     return cflags
 
@@ -1624,7 +1622,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary, DebugLibrary):
       filenames += ['cxa_noexception.cpp']
     elif self.eh_mode == Exceptions.EMSCRIPTEN:
       filenames += ['cxa_exception_emscripten.cpp']
-    elif self.eh_mode == Exceptions.WASM:
+    elif self.eh_mode in (Exceptions.WASM_LEGACY, Exceptions.WASM):
       filenames += [
         'cxa_exception_storage.cpp',
         'cxa_exception.cpp',
@@ -1638,7 +1636,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary, DebugLibrary):
         filenames=filenames)
 
 
-class libcxx(NoExceptLibrary, MTLibrary):
+class libcxx(ExceptionLibrary, MTLibrary):
   name = 'libc++'
 
   cflags = [
@@ -1651,7 +1649,7 @@ class libcxx(NoExceptLibrary, MTLibrary):
     # by `filesystem/directory_iterator.cpp`: https://reviews.llvm.org/D119670
     '-Wno-unqualified-std-cast-call',
     '-Wno-unknown-warning-option',
-    '-std=c++20',
+    '-std=c++23',
   ]
 
   includes = ['system/lib/libcxx/src']
@@ -1662,25 +1660,28 @@ class libcxx(NoExceptLibrary, MTLibrary):
     'xlocale_zos.cpp',
     'mbsnrtowcs.cpp',
     'wcsnrtombs.cpp',
+    'int128_builtins.cpp',
+    'libdispatch.cpp',
+    # Win32-specific files
     'locale_win32.cpp',
     'thread_win32.cpp',
     'support.cpp',
-    'int128_builtins.cpp',
-    'libdispatch.cpp',
+    'compiler_rt_shims.cpp',
     # Emscripten does not have C++20's time zone support which requires access
     # to IANA Time Zone Database. TODO Implement this using JS timezone
-    'tz.cpp',
+    'time_zone.cpp',
+    'tzdb.cpp',
     'tzdb_list.cpp',
   ]
 
   def get_cflags(self):
     cflags = super().get_cflags()
-    if self.eh_mode == Exceptions.WASM:
+    if self.eh_mode in (Exceptions.WASM_LEGACY, Exceptions.WASM):
       cflags.append('-D__WASM_EXCEPTIONS__')
     return cflags
 
 
-class libunwind(NoExceptLibrary, MTLibrary):
+class libunwind(ExceptionLibrary, MTLibrary):
   name = 'libunwind'
   # Because calls to _Unwind_CallPersonality are generated during LTO, libunwind
   # can't currently be part of LTO.
@@ -1698,7 +1699,7 @@ class libunwind(NoExceptLibrary, MTLibrary):
     super().__init__(**kwargs)
 
   def can_use(self):
-    return super().can_use() and self.eh_mode == Exceptions.WASM
+    return super().can_use() and self.eh_mode in (Exceptions.WASM_LEGACY, Exceptions.WASM)
 
   def get_cflags(self):
     cflags = super().get_cflags()
@@ -1709,7 +1710,7 @@ class libunwind(NoExceptLibrary, MTLibrary):
       cflags.append('-D_LIBUNWIND_HAS_NO_EXCEPTIONS')
     elif self.eh_mode == Exceptions.EMSCRIPTEN:
       cflags.append('-D__EMSCRIPTEN_EXCEPTIONS__')
-    elif self.eh_mode == Exceptions.WASM:
+    elif self.eh_mode in (Exceptions.WASM_LEGACY, Exceptions.WASM):
       cflags.append('-D__WASM_EXCEPTIONS__')
     return cflags
 
@@ -1769,7 +1770,7 @@ class libmalloc(MTLibrary):
     return name
 
   def can_use(self):
-    return super().can_use() and settings.MALLOC != 'none' and settings.MALLOC != 'mimalloc'
+    return super().can_use() and settings.MALLOC not in {'none', 'mimalloc'}
 
   @classmethod
   def vary_on(cls):
@@ -1779,7 +1780,7 @@ class libmalloc(MTLibrary):
   def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
       malloc=settings.MALLOC,
-      is_debug=settings.ASSERTIONS >= 2,
+      is_debug=settings.ASSERTIONS,
       is_tracing=settings.EMSCRIPTEN_TRACING,
       memvalidate='memvalidate' in settings.MALLOC,
       verbose='verbose' in settings.MALLOC,
@@ -2215,9 +2216,6 @@ class libstandalonewasm(MuslInternalLibrary):
         filenames=['standalone.c',
                    'standalone_wasm_stdio.c',
                    '__main_void.c'])
-    files += files_in_path(
-        path='system/lib/libc',
-        filenames=['emscripten_memcpy.c', 'emscripten_memset.c'])
     # It is more efficient to use JS methods for time, normally.
     files += files_in_path(
         path='system/lib/libc/musl/src/time',
@@ -2258,10 +2256,10 @@ class libstubs(DebugLibrary):
   src_files = ['emscripten_syscall_stubs.c', 'emscripten_libc_stubs.c']
 
 
-def get_libs_to_link(args):
+def get_libs_to_link(options):
   libs_to_link = []
 
-  if '-nostdlib' in args:
+  if options.nostdlib:
     return libs_to_link
 
   already_included = set()
@@ -2301,7 +2299,7 @@ def get_libs_to_link(args):
     need_whole_archive = lib.name in force_include and lib.get_ext() == '.a'
     libs_to_link.append((lib.get_link_flag(), whole_archive or need_whole_archive))
 
-  if '-nostartfiles' not in args:
+  if not options.nostartfiles:
     if settings.SHARED_MEMORY:
       add_library('crtbegin')
 
@@ -2326,7 +2324,7 @@ def get_libs_to_link(args):
         shared.exit_with_error('invalid forced library: %s', forced)
       add_library(forced)
 
-  if '-nodefaultlibs' in args:
+  if options.nodefaultlibs:
     add_forced_libs()
     return libs_to_link
 
@@ -2375,18 +2373,19 @@ def get_libs_to_link(args):
   if settings.SHRINK_LEVEL >= 2 and not settings.LINKABLE and \
      not os.environ.get('EMCC_FORCE_STDLIBS'):
     add_library('libc_optz')
-  if settings.BULK_MEMORY:
-    add_library('libbulkmemory')
   if settings.STANDALONE_WASM:
     add_library('libstandalonewasm')
   if settings.ALLOW_UNIMPLEMENTED_SYSCALLS:
     add_library('libstubs')
-  if '-nolibc' not in args:
+  if not options.nolibc:
     if not settings.EXIT_RUNTIME:
       add_library('libnoexit')
     add_library('libc')
     if settings.MALLOC == 'mimalloc':
       add_library('libmimalloc')
+      if settings.USE_ASAN:
+        # See https://github.com/emscripten-core/emscripten/issues/23288#issuecomment-2571648258
+        shared.exit_with_error('mimalloc is not compatible with -fsanitize=address')
     elif settings.MALLOC != 'none':
       add_library('libmalloc')
   add_library('libcompiler_rt')
@@ -2430,9 +2429,9 @@ def get_libs_to_link(args):
   return libs_to_link
 
 
-def calculate(args):
+def calculate(options):
 
-  libs_to_link = get_libs_to_link(args)
+  libs_to_link = get_libs_to_link(options)
 
   # When LINKABLE is set the entire link command line is wrapped in --whole-archive by
   # building.link_ldd.  And since --whole-archive/--no-whole-archive processing does not nest we
@@ -2458,17 +2457,8 @@ def calculate(args):
   return ret
 
 
-# Once we require python 3.8 we can use shutil.copytree with
-# dirs_exist_ok=True and remove this function.
 def copytree_exist_ok(src, dst):
-  os.makedirs(dst, exist_ok=True)
-  for entry in os.scandir(src):
-    srcname = os.path.join(src, entry.name)
-    dstname = os.path.join(dst, entry.name)
-    if entry.is_dir():
-      copytree_exist_ok(srcname, dstname)
-    else:
-      shared.safe_copy(srcname, dstname)
+  shutil.copytree(src, dst, dirs_exist_ok=True)
 
 
 def install_system_headers(stamp):

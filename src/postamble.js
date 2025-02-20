@@ -36,13 +36,13 @@ var mainArgs = undefined;
 
 #if HAS_MAIN
 #if MAIN_READS_PARAMS
-{{{ asyncIf(ASYNCIFY == 2) }}} function callMain(args = []) {
+{{{ asyncIf(ASYNCIFY == 2) }}}function callMain(args = []) {
 #else
-{{{ asyncIf(ASYNCIFY == 2) }}} function callMain() {
+{{{ asyncIf(ASYNCIFY == 2) }}}function callMain() {
 #endif
 #if ASSERTIONS
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on Module["onRuntimeInitialized"])');
-  assert(__ATPRERUN__.length == 0, 'cannot call main when preRun functions remain to be called');
+  assert(typeof onPreRuns === 'undefined' || onPreRuns.length == 0, 'cannot call main when preRun functions remain to be called');
 #endif
 
   var entryFunction = {{{ getEntryFunction() }}};
@@ -199,6 +199,9 @@ function run() {
 #endif
 #if expectToReceiveOnModule('onRuntimeInitialized')
     Module['onRuntimeInitialized']?.();
+#if ASSERTIONS
+    consumedModuleProp('onRuntimeInitialized');
+#endif
 #endif
 
 #if HAS_MAIN
@@ -297,6 +300,9 @@ if (Module['preInit']) {
     Module['preInit'].pop()();
   }
 }
+#if ASSERTIONS
+consumedModuleProp('preInit');
+#endif
 #endif
 
 run();
