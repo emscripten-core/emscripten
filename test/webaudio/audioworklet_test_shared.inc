@@ -5,11 +5,6 @@
 // Helper for MEMORY64 to cast a void* to an audio context or type
 #define VOIDP_2_WA(ptr) ((EMSCRIPTEN_WEBAUDIO_T) (intptr_t) ptr)
 
-// Attribute that marks a function, parameter, variable, etc., as unused
-// (silencing any -Wunused warnings).
-#ifndef __unused
-#define __unused __attribute__((unused))
-#endif
 
 // Count the audio callbacks and return after 375 frames (1 second with the
 // default 128 size).
@@ -18,13 +13,8 @@
 //
 #ifdef TEST_AND_EXIT
 volatile int audioProcessedCount = 0;
-bool playedAndMixed(double __unused time, void* __unused data) {
-#if TEST_AND_EXIT > 0
-  // Special interactive case to play for 10 seconds
-  if (audioProcessedCount >= 3750) {
-#else
+bool playedAndMixed(double time, void* data) {
   if (audioProcessedCount >= 375) {
-#endif
     emscripten_force_exit(0);
     return false;
   }
@@ -42,12 +32,9 @@ EM_JS(EMSCRIPTEN_WEBAUDIO_T, createTrack, (EMSCRIPTEN_WEBAUDIO_T ctxID, const ch
   var context = emscriptenGetAudioObject(ctxID);
   if (context) {
     var audio = document.createElement('audio');
-#if __wasm64__
     // Number() wrapper is a workaround for UTF8ToString() needing a JS number
     // and from64() not being available in EM_JS macros. Fix in UTF8ToString?
-    url = Number(url);
-#endif
-    audio.src = UTF8ToString(url);
+    audio.src = UTF8ToString(Number(url));
     audio.loop = looping;
     var track = context.createMediaElementSource(audio);
     return emscriptenRegisterAudioObject(track);
@@ -72,7 +59,7 @@ EM_JS(void, toggleTrack, (EMSCRIPTEN_WEBAUDIO_T srcID), {
 })
 
 // Registered click event to (1) enable audio playback and (2) toggle playing the tracks
-bool onClick(int __unused type, const EmscriptenMouseEvent* __unused e, void* data) {
+bool onClick(int type, const EmscriptenMouseEvent* e, void* data) {
   EMSCRIPTEN_WEBAUDIO_T ctx = VOIDP_2_WA(data);
   if (emscripten_audio_context_state(ctx) != AUDIO_CONTEXT_STATE_RUNNING) {
     emscripten_out("Resuming playback");
@@ -88,7 +75,7 @@ bool onClick(int __unused type, const EmscriptenMouseEvent* __unused e, void* da
 void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data);
 
 // Worklet thread inited, now create the audio processor
-void initialised(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* __unused data) {
+void initialised(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
   assert(success && "Audio worklet failed in initialised()");
   emscripten_out("Audio worklet initialised");
 
@@ -112,13 +99,9 @@ int main(void) {
 
 #ifdef TEST_AND_EXIT
    // We're in the test harness and exiting is via playedAndMixed()
-#if TEST_AND_EXIT > 0
-  emscripten_out("In test mode, will exit after 10 seconds of playback");
-#else
   emscripten_out("In test mode, will exit after 1 second of playback");
 #endif
   emscripten_exit_with_live_runtime();
-#endif
 
   return EXIT_SUCCESS;
 }

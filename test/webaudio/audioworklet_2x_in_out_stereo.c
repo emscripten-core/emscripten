@@ -13,7 +13,7 @@
 #include "audioworklet_test_shared.inc"
 
 // Callback to process and copy the audio tracks
-bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, AudioSampleFrame* outputs, int __unused numParams, const AudioParamFrame* __unused params, void* __unused data) {
+bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, AudioSampleFrame* outputs, int numParams, const AudioParamFrame* params, void* data) {
 #ifdef TEST_AND_EXIT
   audioProcessedCount++;
 #endif
@@ -45,7 +45,7 @@ bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, Audi
 }
 
 // Audio processor created, now register the audio callback
-void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* __unused data) {
+void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
   assert(success && "Audio worklet failed in processorCreated()");
   emscripten_out("Audio worklet processor created");
   emscripten_out("Click to toggle audio playback");

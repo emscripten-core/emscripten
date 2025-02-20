@@ -16,7 +16,7 @@
 #include "audioworklet_test_shared.inc"
 
 // Callback to process and mix the audio tracks
-bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, AudioSampleFrame* outputs, int numParams, const AudioParamFrame* params, void* __unused data) {
+bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, AudioSampleFrame* outputs, int numParams, const AudioParamFrame* params, void* data) {
 #ifdef TEST_AND_EXIT
   audioProcessedCount++;
 #endif
@@ -92,7 +92,7 @@ EM_JS(void, doFade, (EMSCRIPTEN_AUDIO_WORKLET_NODE_T workletID), {
 })
 
 // Registered keypress event to call the JS doFade()
-bool onPress(int __unused type, const EmscriptenKeyboardEvent* e, void* data) {
+bool onPress(int type, const EmscriptenKeyboardEvent* e, void* data) {
   if (!e->repeat && data) {
     emscripten_out("Toggling fade");
     doFade(VOIDP_2_WA(data));
@@ -101,7 +101,7 @@ bool onPress(int __unused type, const EmscriptenKeyboardEvent* e, void* data) {
 }
 
 // Audio processor created, now register the audio callback
-void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* __unused data) {
+void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
   assert(success && "Audio worklet failed in processorCreated()");
   emscripten_out("Audio worklet processor created");
   emscripten_out("Click to toggle audio playback");
@@ -140,7 +140,7 @@ void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* __unuse
 }
 
 // Worklet thread inited, now create the audio processor
-void initialisedWithParams(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* __unused data) {
+void initialisedWithParams(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
   assert(success && "Audio worklet failed initialised()");
   emscripten_out("Audio worklet initialised");
 
