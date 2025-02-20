@@ -5478,7 +5478,7 @@ Module["preRun"] = () => {
 
   # Tests that audioworklets and workers can be used at the same time
   def test_audio_worklet_worker(self):
-    self.btest('webaudio/audioworklet_worker.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'], expected='1')
+    self.btest_exit('webaudio/audioworklet_worker.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
 
   # Tests that posting functions between the main thread and the audioworklet thread works
   @parameterized({
