@@ -11,18 +11,21 @@
 #define __unused __attribute__((unused))
 #endif
 
-// Count the audio callbacks and return after 375 frames (1 second with the default 128 size)
+// Count the audio callbacks and return after 375 frames (1 second with the
+// default 128 size).
 //
 // *** Remove this in your own code ***
 //
+#ifdef TEST_AND_EXIT
 volatile int audioProcessedCount = 0;
 bool playedAndMixed(double __unused time, void* __unused data) {
   if (audioProcessedCount >= 375) {
-    emscripten_force_exit(0);
+    emscripten_force_exit(EXIT_SUCCESS);
     return false;
   }
   return true;
 }
+#endif
 
 // ID to the beat and bass loops
 EMSCRIPTEN_WEBAUDIO_T beatID = 0;
@@ -67,10 +70,10 @@ EM_JS(void, toggleTrack, (EMSCRIPTEN_WEBAUDIO_T srcID), {
 bool onClick(int __unused type, const EmscriptenMouseEvent* __unused e, void* data) {
   EMSCRIPTEN_WEBAUDIO_T ctx = VOIDP_2_WA(data);
   if (emscripten_audio_context_state(ctx) != AUDIO_CONTEXT_STATE_RUNNING) {
-    printf("Resuming playback\n");
+    emscripten_out("Resuming playback");
     emscripten_resume_audio_context_sync(ctx);
   }
-  printf("Toggling audio playback\n");
+  emscripten_out("Toggling audio playback");
   toggleTrack(beatID);
   toggleTrack(bassID);
   return false;
@@ -82,10 +85,10 @@ void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data);
 // Worklet thread inited, now create the audio processor
 void initialised(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* __unused data) {
   if (!success) {
-    printf("Audio worklet failed to initialise\n");
+    assert("Audio worklet failed in initialised()" && success);
     return;
   }
-  printf("Audio worklet initialised\n");
+  emscripten_out("Audio worklet initialised");
 
   WebAudioWorkletProcessorCreateOptions opts = {
     .name = "mixer"
@@ -99,16 +102,16 @@ EmscriptenStartWebAudioWorkletCallback getStartCallback(void);
 // Common entry point for the mixer tests
 int main(void) {
   char* const workletStack = memalign(16, AUDIO_STACK_SIZE);
-  printf("Audio worklet stack at 0x%p\n", workletStack);
+  emscripten_outf("Audio worklet stack at 0x%p", workletStack);
   assert(workletStack);
 
   EMSCRIPTEN_WEBAUDIO_T context = emscripten_create_audio_context(NULL);
   emscripten_start_wasm_audio_worklet_thread_async(context, workletStack, AUDIO_STACK_SIZE, getStartCallback(), NULL);
 
-#ifndef BROWSER_TEST
-  // Special case: browser tests need to exit instantly, interactive tests need to wait
-  emscripten_runtime_keepalive_push();
-#endif
+#ifdef TEST_AND_EXIT
+   // We're in the test harness and exiting is via playedAndMixed()
+   emscripten_exit_with_live_runtime();
+ #endif
 
   return EXIT_SUCCESS;
 }

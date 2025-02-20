@@ -1,6 +1,5 @@
 #include <assert.h>
 #include <string.h>
-#include <stdio.h>
 
 #include <emscripten/em_js.h>
 #include <emscripten/webaudio.h>
@@ -18,7 +17,9 @@
 
 // Callback to process and mix the audio tracks
 bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, AudioSampleFrame* outputs, int numParams, const AudioParamFrame* params, void* __unused data) {
+#ifdef TEST_AND_EXIT
   audioProcessedCount++;
+#endif
 
   // Single stereo output
   assert(numOutputs == 1 && outputs[0].numberOfChannels == 2);
@@ -93,7 +94,7 @@ EM_JS(void, doFade, (EMSCRIPTEN_AUDIO_WORKLET_NODE_T workletID), {
 // Registered keypress event to call the JS doFade()
 bool onPress(int __unused type, const EmscriptenKeyboardEvent* e, void* data) {
   if (!e->repeat && data) {
-    printf("Toggling fade\n");
+    emscripten_out("Toggling fade");
     doFade(VOIDP_2_WA(data));
   }
   return false;
@@ -102,12 +103,12 @@ bool onPress(int __unused type, const EmscriptenKeyboardEvent* e, void* data) {
 // Audio processor created, now register the audio callback
 void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* __unused data) {
   if (!success) {
-    printf("Audio worklet node creation failed\n");
+    assert("Audio worklet failed in processorCreated()" && success);
     return;
   }
-  printf("Audio worklet processor created\n");
-  printf("Click to toggle audio playback\n");
-  printf("Keypress to fade the beat in or out\n");
+  emscripten_out("Audio worklet processor created");
+  emscripten_out("Click to toggle audio playback");
+  emscripten_out("Keypress to fade the beat in or out");
 
   // Stereo output, two inputs
   int outputChannelCounts[1] = { 2 };
@@ -135,17 +136,19 @@ void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* __unuse
   // And a keypress to do affect the fader
   emscripten_set_keypress_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, WA_2_VOIDP(worklet), false, &onPress);
 
+#ifdef TEST_AND_EXIT
   // Register the counter that exits the test after one second of mixing
   emscripten_set_timeout_loop(&playedAndMixed, 16, NULL);
+#endif
 }
 
 // Worklet thread inited, now create the audio processor
 void initialisedWithParams(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* __unused data) {
   if (!success) {
-    printf("Audio worklet failed to initialise\n");
+    assert("Audio worklet failed initialised()" && success);
     return;
   }
-  printf("Audio worklet initialised\n");
+  emscripten_out("Audio worklet initialised");
 
   // Custom audio params we'll use as a fader
   WebAudioParamDescriptor faderParam[] = {
