@@ -1,7 +1,6 @@
 #include <emscripten/webaudio.h>
 #include <emscripten/wasm_worker.h>
 #include <emscripten/threading.h>
-#include <stdlib.h>
 #include <assert.h>
 
 // Tests that
