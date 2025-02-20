@@ -5486,8 +5486,9 @@ Module["preRun"] = () => {
     '': ([],),
     'closure': (['--closure', '1', '-Oz'],),
   })
+  # Note: doesn't need audio hardware (and has no AW code that tests 2GB or wasm64)
   def test_audio_worklet_post_function(self, args):
-    self.btest('webaudio/audioworklet_post_function.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args, expected='1')
+    self.btest_exit('webaudio/audioworklet_post_function.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args)
 
   @parameterized({
     '': ([],),
