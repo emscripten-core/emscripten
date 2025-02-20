@@ -12,10 +12,15 @@ void magic_test_function(void) {
       out(x);
       fetch('http://localhost:8888?stdout=' + encodeURIComponent(x));
     }
-    report('magic_test_function: input=' + $0);
-    var converted = wasmOffsetConverter.getName($0);
-    report('magic_test_function: converted=' + converted);
-    return converted == 'magic_test_function';
+    try {
+      report('magic_test_function: input=' + $0);
+      var converted = wasmOffsetConverter.getName($0);
+      report('magic_test_function: converted=' + converted);
+      return converted == 'magic_test_function';
+    } catch (e) {
+      report((e?.message ?? '(unknown message)') + ' ' + (e?.stack ?? '(unknown stack)'));
+      return false;
+    }
   }, get_pc());
   assert(result);
 }

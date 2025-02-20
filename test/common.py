@@ -1201,6 +1201,12 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           # Opt in to node v15 default behaviour:
           # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
           self.node_args.append('--unhandled-rejections=throw')
+        elif node_version >= (23, 0, 0):
+          # node version >= 23 warns negative timer value, which
+          #   emscripten_set_timeout_loop() sometimes met it.
+          # TimeoutNegativeWarning is introduced with
+          #   https://github.com/nodejs/node/pull/46678
+          self.node_args.append('--disable-warning=TimeoutNegativeWarning')
 
       # If the version we are running tests in is lower than the version that
       # emcc targets then we need to tell emcc to target that older version.
