@@ -19,7 +19,12 @@
 #ifdef TEST_AND_EXIT
 volatile int audioProcessedCount = 0;
 bool playedAndMixed(double __unused time, void* __unused data) {
+#if TEST_AND_EXIT > 0
+  // Special interactive case to play for 10 seconds
+  if (audioProcessedCount >= 3750) {
+#else
   if (audioProcessedCount >= 375) {
+#endif
     emscripten_force_exit(EXIT_SUCCESS);
     return false;
   }
@@ -110,8 +115,13 @@ int main(void) {
 
 #ifdef TEST_AND_EXIT
    // We're in the test harness and exiting is via playedAndMixed()
-   emscripten_exit_with_live_runtime();
- #endif
+#if TEST_AND_EXIT > 0
+  emscripten_out("In test mode, will exit after 10 seconds of playback");
+#else
+  emscripten_out("In test mode, will exit after 1 second of playback");
+#endif
+  emscripten_exit_with_live_runtime();
+#endif
 
   return EXIT_SUCCESS;
 }
