@@ -13,7 +13,7 @@ int workletToWorkerFlag = 0;
 
 void do_exit() {
   emscripten_terminate_all_wasm_workers();
-  emscripten_force_exit(EXIT_SUCCESS);
+  emscripten_force_exit(0);
 }
 
 void run_in_worker() {

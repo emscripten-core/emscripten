@@ -12,7 +12,7 @@ void MessageReceivedOnMainThread(int d, int e, int f) {
   assert(d == 1 && e == 2 && f == 3);
 
   // test succeeded, were able to post a message from main thread to audio thread and back!
-  emscripten_force_exit(EXIT_SUCCESS);
+  emscripten_force_exit(0);
 }
 
 // This event will fire on the audio worklet thread.
