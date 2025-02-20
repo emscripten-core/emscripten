@@ -1,5 +1,4 @@
 #include <emscripten/webaudio.h>
-#include <stdlib.h>
 #include <assert.h>
 
 /* Steps to use Wasm-based AudioWorklets:
