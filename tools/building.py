@@ -1237,8 +1237,8 @@ def run_wasm_bindgen(infile, outfile=None, args=[], **kwargs):  # noqa
   ]
   check_call(cmd)
 
-  # TODO(walkingeye): don't try to predict the .wasm filename that wasm-bindgen
-  # outputs. instead just grab the .wasm file itself (there will only ever be one).
+  # Don't try to predict the .wasm filename that wasm-bindgen outputs. Instead
+  # just grab the .wasm file itself.
   all_output_files = os.listdir(bindgen_out_dir)
   new_wasm_file = list(filter(lambda x: x.endswith('.wasm'), all_output_files))[0]
   if outfile == None:
