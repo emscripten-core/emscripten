@@ -13,6 +13,9 @@
 int futexLocation = 0;
 int testSuccess = 0;
 
+// Internal, found in 'system/lib/pthread/threading_internal.h'
+extern "C" int _emscripten_thread_supports_atomics_wait();
+
 bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs, AudioSampleFrame *outputs, int numParams, const AudioParamFrame *params, void *userData) {
   int supportsAtomicWait = _emscripten_thread_supports_atomics_wait();
   printf("supportsAtomicWait: %d\n", supportsAtomicWait);
