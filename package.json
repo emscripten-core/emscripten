@@ -6,7 +6,7 @@
     "es-check": "^8.0.1",
     "eslint": "^9.19.0",
     "eslint-config-prettier": "^10.0.1",
-    "globals": "^15.14.0",
+    "globals": "^16.0.0",
     "prettier": "^3.4.2",
     "rollup": "^4.34.4",
     "source-map": "0.7.4",
