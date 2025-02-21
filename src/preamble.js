@@ -564,11 +564,11 @@ var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
 #else
 var wasmBinaryFile;
 function findWasmBinary() {
-#if EXPORT_ES6 && USE_ES6_IMPORT_META && !AUDIO_WORKLET
+#if EXPORT_ES6 && !AUDIO_WORKLET
   if (Module['locateFile']) {
 #endif
     return locateFile('{{{ WASM_BINARY_FILE }}}');
-#if EXPORT_ES6 && USE_ES6_IMPORT_META && !AUDIO_WORKLET // For an Audio Worklet, we cannot use `new URL()`.
+#if EXPORT_ES6 && !AUDIO_WORKLET // For an Audio Worklet, we cannot use `new URL()`.
   }
 #if ENVIRONMENT_MAY_BE_SHELL
   if (ENVIRONMENT_IS_SHELL) {

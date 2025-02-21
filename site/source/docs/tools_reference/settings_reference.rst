@@ -1978,18 +1978,6 @@ This is implicitly enabled if the output suffix is set to 'mjs'.
 
 Default value: false
 
-.. _use_es6_import_meta:
-
-USE_ES6_IMPORT_META
-===================
-
-Use the ES6 Module relative import feature 'import.meta.url'
-to auto-detect WASM Module path.
-It might not be supported on old browsers / toolchains. This setting
-may not be disabled when Node.js is targeted (-sENVIRONMENT=*node*).
-
-Default value: true
-
 .. _export_name:
 
 EXPORT_NAME
