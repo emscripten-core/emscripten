@@ -1090,6 +1090,7 @@ Functions
 .. c:function:: int emscripten_has_asyncify()
 
   Returns whether pseudo-synchronous functions can be used.
+  (Use the preprocessor macro ``__EMSCRIPTEN_HAS_ASYNCIFY__`` if compile-time switching is needed.)
 
   :rtype: int
   :returns: 1 if program was compiled with -sASYNCIFY, 0 otherwise.
