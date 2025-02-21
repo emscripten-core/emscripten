@@ -14,6 +14,7 @@
 // Special placeholder for `import.meta` and `await import`.
 var EMSCRIPTEN$IMPORT$META;
 var EMSCRIPTEN$AWAIT$IMPORT;
+var EMSCRIPTEN$AWAIT;
 
 // Don't minify createRequire
 var createRequire;
