@@ -5512,6 +5512,13 @@ Module["preRun"] = () => {
     shutil.copy(test_file('webaudio/audio_files/emscripten-bass.mp3'), 'audio_files/')
     self.btest_exit('webaudio/audioworklet_in_out_stereo.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DBROWSER_TEST'] + args)
 
+  # Tests AudioWorklet with emscripten_futex_wake().
+  @requires_sound_hardware
+  @also_with_minimal_runtime
+  @disabled('https://github.com/emscripten-core/emscripten/issues/22962')
+  def test_audio_worklet_emscripten_futex_wake(self):
+    self.btest('webaudio/audioworklet_emscripten_futex_wake.cpp', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread', '-sPTHREAD_POOL_SIZE=2'])
+
   def test_error_reporting(self):
     # Test catching/reporting Error objects
     create_file('post.js', 'throw new Error("oops");')
