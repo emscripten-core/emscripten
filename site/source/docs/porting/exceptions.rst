@@ -171,3 +171,14 @@ Using Exceptions and setjmp-longjmp Together
 ============================================
 
 See :ref:`using-exceptions-and-setjmp-longjmp-together`.
+
+
+Limitations
+===========
+
+Currently `std::set_terminate
+<https://en.cppreference.com/w/cpp/error/set_terminate>`_ is NOT supported, both
+in Emscripten-style and WebAssembly exceptions. The functionality requires the
+`two-phase exception handling
+<https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html>`_, which neither
+supports.
