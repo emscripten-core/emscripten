@@ -359,7 +359,7 @@ commands:
             # This should add and start PulseAudio's dummy mixer
             apt-get update -y; true
             apt-get install -q -y pulseaudio
-            pulseaudio --start
+            pulseaudio --start --system
             mkdir ~/tmp-firefox-profile/
             cat > ~/tmp-firefox-profile/user.js \<<EOF
             user_pref("gfx.offscreencanvas.enabled", true);
