@@ -356,10 +356,9 @@ commands:
       - run:
           name: configure firefox
           command: |
-            # Some before and after tests to try enabling a sound device:
-            /sbin/lsmod | grep snd
-            /sbin/modprobe snd-aloop
-            /sbin/lsmod | grep snd
+            # This should add and start PulseAudio's dummy mixer
+            apt-get install -q -y pulseaudio
+            pulseaudio --start
             mkdir ~/tmp-firefox-profile/
             cat > ~/tmp-firefox-profile/user.js \<<EOF
             user_pref("gfx.offscreencanvas.enabled", true);
