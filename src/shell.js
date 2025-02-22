@@ -131,7 +131,7 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
 #endif // PTHREADS || WASM_WORKERS
 }
-#endif // ENVIRONMENT_MAY_BE_NODE
+#endif // ENVIRONMENT_MAY_BE_NODE && (EXPORT_ES6 || PTHREADS || WASM_WORKERS)
 
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
