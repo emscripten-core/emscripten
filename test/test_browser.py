@@ -5519,7 +5519,7 @@ Module["preRun"] = () => {
   # Tests AudioWorklet with emscripten_lock_busyspin_wait_acquire() and friends.
   @requires_sound_hardware
   @also_with_minimal_runtime
-  def test_audio_worklet_emscripten_futex_wake(self):
+  def test_audio_worklet_emscripten_locks(self):
     self.btest_exit('webaudio/audioworklet_emscripten_futex_wake.cpp', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread', '-sPTHREAD_POOL_SIZE=2'])
 
   def test_error_reporting(self):
