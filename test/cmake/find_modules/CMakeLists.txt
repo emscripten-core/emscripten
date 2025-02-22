@@ -11,7 +11,7 @@ message(" test: OPENGL_LIBRARIES: ${OPENGL_LIBRARIES}")
 find_package(OpenAL REQUIRED)
 include_directories(${OPENAL_INCLUDE_DIR})
 target_link_libraries(test_prog ${OPENAL_LIBRARY})
-message(" test: OPENGL_LIBRARIES: ${OPENAL_LIBRARIES}")
+message(" test: OPENAL_LIBRARIES: ${OPENAL_LIBRARIES}")
 
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
