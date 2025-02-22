@@ -46,17 +46,19 @@ export function warningOccured() {
   return warnings;
 }
 
-let currentFile = null;
+let currentFile = [];
 
-export function setCurrentFile(f) {
-  let rtn = currentFile;
-  currentFile = f;
-  return rtn;
+export function pushCurrentFile(f) {
+  currentFile.push(f);
+}
+
+export function popCurrentFile(f) {
+  currentFile.pop(f);
 }
 
 function errorPrefix() {
-  if (currentFile) {
-    return currentFile + ': ';
+  if (currentFile.length > 0) {
+    return currentFile[currentFile.length - 1] + ': ';
   } else {
     return '';
   }
