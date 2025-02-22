@@ -357,6 +357,7 @@ commands:
           name: configure firefox
           command: |
             # This should add and start PulseAudio's dummy mixer
+            apt-get update -y; true
             apt-get install -q -y pulseaudio
             pulseaudio --start
             mkdir ~/tmp-firefox-profile/
