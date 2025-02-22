@@ -470,6 +470,23 @@ void cleanup() {
     remove("closetestfile");
 }
 
+void test_fs_createfile_js() {
+#if WASMFS
+  EM_ASM(
+         var backend = MEMFS.createBackend({});
+         var file = FS.createFile("/", "test.txt", backend, true, true);
+         if (file <= 0) throw "No file created";
+         FS.close(file);
+         );
+#else
+  EM_ASM(
+         var file = FS.createFile("/", "test.txt", {}, true, true);
+         if (file <= 0) throw "No file created";
+         FS.close(file);
+         );
+#endif
+}
+
 int main() {
     test_fs_open();
     test_fs_createPath();
@@ -485,6 +502,7 @@ int main() {
     // TODO: Fix legacy API FS.mmap bug involving emscripten_builtin_memalign
     test_fs_mmap();
 #endif
+    test_fs_createfile_js();
     test_fs_mkdirTree();
     test_fs_utime();
 
