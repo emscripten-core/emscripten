@@ -1,8 +1,6 @@
 #include <emscripten/threading.h>
 #include <emscripten/wasm_worker.h>
 #include <emscripten/webaudio.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <assert.h>
 
 // Tests that these audio worklet compatible functions work, details in comments below:
@@ -52,27 +50,27 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
   case TEST_HAS_WAIT:
     // Should not have wait support here
     result = _emscripten_thread_supports_atomics_wait();
-    printf("TEST_HAS_WAIT: %d (expect: 0)\n", result);
+    emscripten_outf("TEST_HAS_WAIT: %d (expect: 0)", result);
     assert(!result);
     whichTest = TEST_TRY_ACQUIRE;
     break;
   case TEST_TRY_ACQUIRE:
     // Was locked after init, should fail to acquire
     result = emscripten_lock_try_acquire(&testLock);
-    printf("TEST_TRY_ACQUIRE: %d (expect: 0)\n", result);
+    emscripten_outf("TEST_TRY_ACQUIRE: %d (expect: 0)", result);
     assert(!result);
     whichTest = TEST_WAIT_ACQUIRE_FAIL;
     break;
   case TEST_WAIT_ACQUIRE_FAIL:
     // Still locked so we fail to acquire
     result = emscripten_lock_busyspin_wait_acquire(&testLock, 100);
-    printf("TEST_WAIT_ACQUIRE_FAIL: %d (expect: 0)\n", result);
+    emscripten_outf("TEST_WAIT_ACQUIRE_FAIL: %d (expect: 0)", result);
     assert(!result);
     whichTest = TEST_WAIT_ACQUIRE;
   case TEST_WAIT_ACQUIRE:
     // Will get unlocked in main thread, so should quickly acquire
     result = emscripten_lock_busyspin_wait_acquire(&testLock, 100);
-    printf("TEST_WAIT_ACQUIRE: %d  (expect: 1)\n", result);
+    emscripten_outf("TEST_WAIT_ACQUIRE: %d  (expect: 1)", result);
     assert(result);
     whichTest = TEST_RELEASE;
     break;
@@ -80,7 +78,7 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
     // Unlock, check the result
     emscripten_lock_release(&testLock);
     result = emscripten_lock_try_acquire(&testLock);
-    printf("TEST_RELEASE: %d (expect: 1)\n", result);
+    emscripten_outf("TEST_RELEASE: %d (expect: 1)", result);
     assert(result);
     whichTest = TEST_WAIT_INFINTE_1;
     break;
@@ -93,7 +91,7 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
     break;
   case TEST_GET_NOW:
     result = (int) (emscripten_get_now() - startTime);
-    printf("TEST_GET_NOW: %d  (expect: > 0)\n", result);
+    emscripten_outf("TEST_GET_NOW: %d  (expect: > 0)", result);
     assert(result > 0);
     whichTest = TEST_DONE;
   case TEST_DONE:
@@ -125,9 +123,12 @@ bool MainLoop(double time, void* data) {
     // Spin here until released in process (but don't change test until we know this case ran)
     whichTest = TEST_WAIT_INFINTE_2;
     emscripten_lock_busyspin_waitinf_acquire(&testLock);
-    printf("TEST_WAIT_INFINTE (from main)\n");
+    emscripten_out("TEST_WAIT_INFINTE (from main)");
     break;
   case TEST_DONE:
+    // Finished, exit from the main thread
+    emscripten_out("Test success");
+    emscripten_force_exit(0);
     return false;
   default:
     break;
@@ -161,4 +162,6 @@ int main() {
   emscripten_set_timeout_loop(MainLoop, 10, NULL);
   EMSCRIPTEN_WEBAUDIO_T context = emscripten_create_audio_context(NULL);
   emscripten_start_wasm_audio_worklet_thread_async(context, wasmAudioWorkletStack, sizeof(wasmAudioWorkletStack), WebAudioWorkletThreadInitialized, NULL);
+
+  emscripten_exit_with_live_runtime();
 }
