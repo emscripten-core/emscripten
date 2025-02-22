@@ -5516,7 +5516,9 @@ Module["preRun"] = () => {
     shutil.copy(test_file('webaudio/audio_files/emscripten-bass.mp3'), 'audio_files/')
     self.btest_exit('webaudio/audioworklet_params_mixing.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DTEST_AND_EXIT'] + args)
 
-  # Tests AudioWorklet with emscripten_lock_busyspin_wait_acquire() and friends.
+  # Tests AudioWorklet with emscripten_lock_busyspin_wait_acquire() and friends
+  @no_wasm64('https://github.com/emscripten-core/emscripten/pull/23508')
+  @no_2gb('https://github.com/emscripten-core/emscripten/pull/23508')
   @requires_sound_hardware
   @also_with_minimal_runtime
   def test_audio_worklet_emscripten_locks(self):
