@@ -18,3 +18,6 @@ include_directories(${SDL2_INCLUDE_DIRS})
 target_link_libraries(test_prog SDL2::SDL2)
 message(" test: SDL2_LIBRARIES: ${SDL2_LIBRARIES}")
 message(" test: SDL2_INCLUDE_DIRS: ${SDL2_INCLUDE_DIRS}")
+
+get_target_property(lib OpenGL::GL IMPORTED_LIBNAME)
+message(STATUS " test: OpenGL::GL IMPORTED_LIBNAME: ${lib}")
