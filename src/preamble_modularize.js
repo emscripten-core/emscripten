@@ -1,5 +1,5 @@
 #if !MINIMAL_RUNTIME || PTHREADS
-#if EXPORT_ES6 && USE_ES6_IMPORT_META
+#if EXPORT_ES6
 var _scriptName = import.meta.url;
 #else
 var _scriptName = typeof document != 'undefined' ? document.currentScript?.src : undefined;
