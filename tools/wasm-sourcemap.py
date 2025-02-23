@@ -273,7 +273,7 @@ def build_sourcemap(entries, code_section_offset, options):
   prefixes = SourceMapPrefixes(options.prefix, options.load_prefix, base_path)
 
   sources = []
-  sources_content = [] if collect_sources else None
+  sources_content = []
   mappings = []
   sources_map = {}
   last_address = 0
