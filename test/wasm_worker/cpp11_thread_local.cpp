@@ -1,4 +1,5 @@
 #include <emscripten/console.h>
+#include <emscripten/emscripten.h>
 #include <emscripten/wasm_worker.h>
 #include <assert.h>
 
@@ -7,9 +8,9 @@ thread_local int tls = 1;
 void main_thread_func() {
   assert(!emscripten_current_thread_is_wasm_worker());
   emscripten_outf("%d", tls);
-#ifdef REPORT_RESULT
-  REPORT_RESULT(tls);
-#endif
+  assert(tls == 42);
+  emscripten_terminate_all_wasm_workers();
+  emscripten_force_exit(0);
 }
 
 void worker_main() {
@@ -29,4 +30,5 @@ int main() {
   tls = 42;
   emscripten_wasm_worker_t worker = emscripten_create_wasm_worker(stack, sizeof(stack));
   emscripten_wasm_worker_post_function_v(worker, worker_main);
+  emscripten_exit_with_live_runtime();
 }

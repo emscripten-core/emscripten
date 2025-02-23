@@ -17,9 +17,8 @@ void asyncWaitFinishedShouldNotBeCalled(int32_t *ptr, uint32_t val, ATOMICS_WAIT
 
 void asyncWaitFinishedShouldBeCalled(int32_t *ptr, uint32_t val, ATOMICS_WAIT_RESULT_T waitResult, void *userData) {
   emscripten_out("asyncWaitFinishedShouldBeCalled");
-#ifdef REPORT_RESULT
-  REPORT_RESULT(testSucceeded);
-#endif
+  assert(testSucceeded);
+  emscripten_force_exit(0);
 }
 
 int main() {
@@ -62,4 +61,5 @@ int main() {
   emscripten_out("Notifying an async wait after value changing should trigger the callback");
   numWoken = emscripten_atomic_notify((int32_t*)&addr, EMSCRIPTEN_NOTIFY_ALL_WAITERS);
 #endif
+  emscripten_exit_with_live_runtime();
 }
