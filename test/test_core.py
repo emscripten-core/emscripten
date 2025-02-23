@@ -3774,14 +3774,24 @@ ok
     self.run_process(
       [
         EMCC,
-        "-o",
-        "side.so",
-        test_file("core/test_dlfcn_jspi_side.c"),
-        "-sSIDE_MODULE",
+        '-o',
+        'side_a.so',
+        test_file('core/test_dlfcn_jspi_side_a.c'),
+        '-sSIDE_MODULE',
       ]
       + self.get_emcc_args()
     )
-    self.do_run_in_out_file_test("core/test_dlfcn_jspi.c", emcc_args=["side.so", "-sMAIN_MODULE=2"])
+    self.run_process(
+      [
+        EMCC,
+        '-o',
+        'side_b.so',
+        test_file('core/test_dlfcn_jspi_side_b.c'),
+        '-sSIDE_MODULE',
+      ]
+      + self.get_emcc_args()
+    )
+    self.do_run_in_out_file_test('core/test_dlfcn_jspi.c', emcc_args=['side_a.so', 'side_b.so', '-sMAIN_MODULE=2'])
 
   @needs_dylink
   def test_dlfcn_rtld_local(self):
