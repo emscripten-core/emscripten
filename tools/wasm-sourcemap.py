@@ -25,6 +25,10 @@ __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
 from tools import utils
+from tools.system_libs import DETERMINISITIC_PREFIX
+from tools.shared import path_from_root
+
+EMSCRIPTEN_PREFIX = utils.normalize_path(path_from_root())
 
 logger = logging.getLogger('wasm-sourcemap')
 
@@ -46,7 +50,7 @@ def parse_args():
 
 
 class Prefixes:
-  def __init__(self, args, base_path=None):
+  def __init__(self, args, base_path=None, preserve_deterministic_prefix=True):
     prefixes = []
     for p in args:
       if '=' in p:
@@ -55,6 +59,7 @@ class Prefixes:
       else:
         prefixes.append({'prefix': p, 'replacement': ''})
     self.base_path = base_path
+    self.preserve_deterministic_prefix = preserve_deterministic_prefix
     self.prefixes = prefixes
     self.cache = {}
 
@@ -63,6 +68,9 @@ class Prefixes:
       return self.cache[name]
 
     source = name
+    if not self.preserve_deterministic_prefix and name.startswith(DETERMINISITIC_PREFIX):
+      source = EMSCRIPTEN_PREFIX + utils.removeprefix(name, DETERMINISITIC_PREFIX)
+
     provided = False
     for p in self.prefixes:
       if source.startswith(p['prefix']):
@@ -89,7 +97,7 @@ class Prefixes:
 class SourceMapPrefixes:
   def __init__(self, sources, load, base_path):
     self.sources = Prefixes(sources, base_path=base_path)
-    self.load = Prefixes(load)
+    self.load = Prefixes(load, preserve_deterministic_prefix=False)
 
 
 def encode_vlq(n):
