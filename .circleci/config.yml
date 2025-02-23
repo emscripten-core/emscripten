@@ -354,12 +354,18 @@ commands:
             wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-nightly-latest-ssl&os=linux64&lang=en-US"
             tar -C ~ -xf ~/ff.tar.bz2
       - run:
-          name: configure firefox
+          name: Add audio dependencies
           command: |
-            # This should add and start PulseAudio's dummy mixer
+            # This should add and start PulseAudio's dummy mixer. It will warn
+            # that "This program is not intended to be run as root" but it can
+            # be ignored.
             apt-get update -y; true
             apt-get install -q -y pulseaudio
-            pulseaudio -D
+            pulseaudio --start
+      - run:
+          name: configure firefox
+          command: |
+            # Note: the autoplay pref allows playback without user interaction
             mkdir ~/tmp-firefox-profile/
             cat > ~/tmp-firefox-profile/user.js \<<EOF
             user_pref("gfx.offscreencanvas.enabled", true);
