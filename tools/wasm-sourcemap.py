@@ -46,14 +46,15 @@ def parse_args():
 
 
 class Prefixes:
-  def __init__(self, args):
+  def __init__(self, args, base_path=None):
     prefixes = []
     for p in args:
       if '=' in p:
         prefix, replacement = p.split('=')
         prefixes.append({'prefix': prefix, 'replacement': replacement})
       else:
-        prefixes.append({'prefix': p, 'replacement': None})
+        prefixes.append({'prefix': p, 'replacement': ''})
+    self.base_path = base_path
     self.prefixes = prefixes
     self.cache = {}
 
@@ -61,27 +62,34 @@ class Prefixes:
     if name in self.cache:
       return self.cache[name]
 
+    source = name
+    provided = False
     for p in self.prefixes:
-      if name.startswith(p['prefix']):
-        if p['replacement'] is None:
-          result = utils.removeprefix(name, p['prefix'])
-        else:
-          result = p['replacement'] + utils.removeprefix(name, p['prefix'])
+      if source.startswith(p['prefix']):
+        source = p['replacement'] + utils.removeprefix(source, p['prefix'])
+        provided = True
         break
-    self.cache[name] = result
-    return result
+
+    # If prefixes were provided, we use that; otherwise if base_path is set, we
+    # emit a relative path.
+    if not provided and self.base_path is not None:
+      try:
+        source = os.path.relpath(source, self.base_path)
+      except ValueError:
+        source = os.path.abspath(source)
+      source = utils.normalize_path(source)
+
+    self.cache[name] = source
+    return source
 
 
 # SourceMapPrefixes contains resolver for file names that are:
 #  - "sources" is for names that output to source maps JSON
 #  - "load" is for paths that used to load source text
 class SourceMapPrefixes:
-  def __init__(self, sources, load):
-    self.sources = sources
-    self.load = load
-
-  def provided(self):
-    return bool(self.sources.prefixes or self.load.prefixes)
+  def __init__(self, sources, load, base_path):
+    self.sources = Prefixes(sources, base_path=base_path)
+    self.load = Prefixes(load)
 
 
 def encode_vlq(n):
@@ -259,7 +267,11 @@ def read_dwarf_entries(wasm, options):
   return sorted(entries, key=lambda entry: entry['address'])
 
 
-def build_sourcemap(entries, code_section_offset, prefixes, collect_sources, base_path):
+def build_sourcemap(entries, code_section_offset, options):
+  base_path = options.basepath
+  collect_sources = options.sources
+  prefixes = SourceMapPrefixes(options.prefix, options.load_prefix, base_path)
+
   sources = []
   sources_content = [] if collect_sources else None
   mappings = []
@@ -268,6 +280,7 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources, bas
   last_source_id = 0
   last_line = 1
   last_column = 1
+
   for entry in entries:
     line = entry['line']
     column = entry['column']
@@ -277,20 +290,11 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources, bas
     # start at least at column 1
     if column == 0:
       column = 1
+
     address = entry['address'] + code_section_offset
-    file_name = entry['file']
-    file_name = utils.normalize_path(file_name)
-    # if prefixes were provided, we use that; otherwise, we emit a relative
-    # path
-    if prefixes.provided():
-      source_name = prefixes.sources.resolve(file_name)
-    else:
-      try:
-        file_name = os.path.relpath(file_name, base_path)
-      except ValueError:
-        file_name = os.path.abspath(file_name)
-      file_name = utils.normalize_path(file_name)
-      source_name = file_name
+    file_name = utils.normalize_path(entry['file'])
+    source_name = prefixes.sources.resolve(file_name)
+
     if source_name not in sources_map:
       source_id = len(sources)
       sources_map[source_name] = source_id
@@ -316,6 +320,7 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources, bas
     last_source_id = source_id
     last_line = line
     last_column = column
+
   return {'version': 3,
           'sources': sources,
           'sourcesContent': sources_content,
@@ -334,10 +339,8 @@ def main():
 
   code_section_offset = get_code_section_offset(wasm)
 
-  prefixes = SourceMapPrefixes(sources=Prefixes(options.prefix), load=Prefixes(options.load_prefix))
-
   logger.debug('Saving to %s' % options.output)
-  map = build_sourcemap(entries, code_section_offset, prefixes, options.sources, options.basepath)
+  map = build_sourcemap(entries, code_section_offset, options)
   with open(options.output, 'w') as outfile:
     json.dump(map, outfile, separators=(',', ':'))
 
