@@ -1064,9 +1064,9 @@ function nodePthreadDetection() {
   // Under node we detect that we are running in a pthread by checking the
   // workerData property.
   if (EXPORT_ES6) {
-    return "(await import('worker_threads')).workerData === 'em-pthread'";
+    return "(await import('worker_threads'))['workerData'] === 'em-pthread'";
   } else {
-    return "require('worker_threads').workerData === 'em-pthread'";
+    return "require('worker_threads')['workerData'] === 'em-pthread'";
   }
 }
 
