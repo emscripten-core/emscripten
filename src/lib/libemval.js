@@ -17,9 +17,9 @@
 /*global emval_get_global*/
 
 // Number of handles reserved for non-use (0) or common values w/o refcount.
-{{{ 
-  globalThis.EMVAL_RESERVED_HANDLES = 5;
-  globalThis.EMVAL_LAST_RESERVED_HANDLE = globalThis.EMVAL_RESERVED_HANDLES * 2 - 1;
+{{{
+  const EMVAL_RESERVED_HANDLES = 5;
+  const EMVAL_LAST_RESERVED_HANDLE = EMVAL_RESERVED_HANDLES * 2 - 1;
   null;
 }}}
 var LibraryEmVal = {

@@ -354,14 +354,25 @@ commands:
             wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-nightly-latest-ssl&os=linux64&lang=en-US"
             tar -C ~ -xf ~/ff.tar.bz2
       - run:
+          name: Add audio dependencies
+          command: |
+            # This should add and start PulseAudio's dummy mixer. It will warn
+            # that "This program is not intended to be run as root" but it can
+            # be ignored.
+            apt-get update -y
+            apt-get install -q -y pulseaudio
+            pulseaudio --start
+      - run:
           name: configure firefox
           command: |
+            # Note: the autoplay pref allows playback without user interaction
             mkdir ~/tmp-firefox-profile/
             cat > ~/tmp-firefox-profile/user.js \<<EOF
             user_pref("gfx.offscreencanvas.enabled", true);
             user_pref("javascript.options.shared_memory", true);
             user_pref("javascript.options.wasm_memory64", true);
             user_pref("dom.postMessage.sharedArrayBuffer.bypassCOOP_COEP.insecure.enabled", true);
+            user_pref("media.autoplay.default", 0);
             EOF
       - run:
           name: run tests (<< parameters.title >>)
@@ -371,8 +382,6 @@ commands:
             #       support in headless mode) resolves
             EMTEST_LACKS_GRAPHICS_HARDWARE: "1"
             EMTEST_LACKS_WEBGPU: "1"
-            # TODO: replicate with FF the same as CHROME_FLAGS_AUDIO
-            EMTEST_LACKS_SOUND_HARDWARE: "1"
             # OffscreenCanvas support is not yet done in Firefox.
             EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"

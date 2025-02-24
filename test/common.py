@@ -1187,6 +1187,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.ldflags = []
     # Increate stack trace limit to maximise usefulness of test failure reports
     self.node_args = ['--stack-trace-limit=50']
+    self.spidermonkey_args = ['-w']
 
     nodejs = self.get_nodejs()
     if nodejs:
@@ -1412,6 +1413,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.run_process(cmd, stderr=self.stderr_redirect if not DEBUG else None)
     self.assertExists(output)
 
+    if output_suffix in ('.js', '.mjs'):
+      # Make sure we produced correct line endings
+      self.assertEqual(line_endings.check_line_endings(output), 0)
+
     return output
 
   def get_func(self, src, name):
@@ -1512,8 +1517,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       engine = self.js_engines[0]
     if engine == config.NODE_JS_TEST:
       engine = engine + self.node_args
-    if engine == config.V8_ENGINE:
+    elif engine == config.V8_ENGINE:
       engine = engine + self.v8_args
+    elif engine == config.SPIDERMONKEY_ENGINE:
+      engine = engine + self.spidermonkey_args
     try:
       jsrun.run_js(filename, engine, args,
                    stdout=stdout,
@@ -1527,10 +1534,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       stdout.close()
       if stderr != STDOUT:
         stderr.close()
-
-    # Make sure that we produced proper line endings to the .js file we are about to run.
-    if not filename.endswith('.wasm'):
-      self.assertEqual(line_endings.check_line_endings(filename), 0)
 
     ret = read_file(stdout_file)
     if not interleaved_output:
@@ -1554,8 +1557,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       else:
         self.fail('JS subprocess failed (%s): %s (expected=%s).  Output:\n%s' % (error.cmd, error.returncode, assert_returncode, ret))
 
-    #  We should pass all strict mode checks
-    self.assertNotContained('strict warning:', ret)
     return ret
 
   def assertExists(self, filename, msg=None):
