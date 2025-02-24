@@ -9438,6 +9438,22 @@ int main() {
     stderr = self.expect_fail([EMCC, '-sSTRICT', test_file('other/test_exceptions_c_linker.c')])
     self.assertContained('error: undefined symbol: __cxa_find_matching_catch_1', stderr)
 
+  def test_exceptions_mismatch(self):
+    create_file('main.c', '''
+    #include <setjmp.h>
+    int main() {
+      jmp_buf buf;
+      longjmp(buf, 8);
+    }
+    ''')
+    self.emcc('main.c', ['-c'])
+    err = self.expect_fail([EMCC, 'main.o', '-fwasm-exceptions'])
+    self.assertContained('error: undefined reference to `emscripten_longjmp`. One or more object files was not compiled with `-fwasm-exceptions`.  Build with `-sASSERTIONS=0` to have wasm-ld report which one.', err)
+
+    err = self.expect_fail([EMCC, 'main.o', '-fwasm-exceptions', '-sASSERTIONS=0'])
+    self.assertContained('wasm-ld: error: main.o: undefined symbol: emscripten_longjmp', err)
+
+
   @with_all_eh_sjlj
   def test_exceptions_stack_trace_and_message(self):
     src = r'''
