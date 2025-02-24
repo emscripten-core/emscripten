@@ -1187,6 +1187,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.ldflags = []
     # Increate stack trace limit to maximise usefulness of test failure reports
     self.node_args = ['--stack-trace-limit=50']
+    self.spidermonkey_args = ['-w']
 
     nodejs = self.get_nodejs()
     if nodejs:
@@ -1512,8 +1513,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       engine = self.js_engines[0]
     if engine == config.NODE_JS_TEST:
       engine = engine + self.node_args
-    if engine == config.V8_ENGINE:
+    elif engine == config.V8_ENGINE:
       engine = engine + self.v8_args
+    elif engine == config.SPIDERMONKEY_ENGINE:
+      engine = engine + self.spidermonkey_args
     try:
       jsrun.run_js(filename, engine, args,
                    stdout=stdout,
