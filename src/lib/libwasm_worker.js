@@ -7,9 +7,9 @@
 #if WASM_WORKERS == 2
 // Helpers for _wasmWorkerBlobUrl used in WASM_WORKERS == 2 mode
 {{{
-  globalThis.captureModuleArg = () => MODULARIZE ? '' : 'self.Module=d;';
-  globalThis.instantiateModule = () => MODULARIZE ? `${EXPORT_NAME}(d);` : '';
-  globalThis.instantiateWasm = () => MINIMAL_RUNTIME ? '' : 'd[`instantiateWasm`]=(i,r)=>{var n=new WebAssembly.Instance(d[`wasm`],i);return r(n,d[`wasm`]);};';
+  const captureModuleArg = () => MODULARIZE ? '' : 'self.Module=d;';
+  const instantiateModule = () => MODULARIZE ? `${EXPORT_NAME}(d);` : '';
+  const instantiateWasm = () => MINIMAL_RUNTIME ? '' : 'd[`instantiateWasm`]=(i,r)=>{var n=new WebAssembly.Instance(d[`wasm`],i);return r(n,d[`wasm`]);};';
   null;
 }}}
 #endif
@@ -33,7 +33,7 @@
 #endif
 
 {{{
-  globalThis.workerSupportsFutexWait = () => AUDIO_WORKLET ? "typeof AudioWorkletGlobalScope === 'undefined'" : '1';
+  const workerSupportsFutexWait = () => AUDIO_WORKLET ? "typeof AudioWorkletGlobalScope === 'undefined'" : '1';
   null;
 }}}
 

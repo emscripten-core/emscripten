@@ -28,7 +28,7 @@
 
 {{{
   // Helper functions for code generation
-  globalThis.gpu = {
+  const gpu = {
     makeInitManager: function(type) {
       return `WebGPU.mgr${type} = new Manager();`;
     },
