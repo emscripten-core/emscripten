@@ -14,7 +14,7 @@
     "vite": "^6.1.0",
     "webpack": "^5.97.1",
     "webpack-cli": "^6.0.1",
-    "ws": "^8.18.0"
+    "ws": "^8.18.1"
   },
   "dependencies": {
     "@babel/cli": "^7.26.4",
