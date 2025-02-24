@@ -359,7 +359,7 @@ commands:
             # This should add and start PulseAudio's dummy mixer. It will warn
             # that "This program is not intended to be run as root" but it can
             # be ignored.
-            apt-get update -y; true
+            apt-get update -y
             apt-get install -q -y pulseaudio
             pulseaudio --start
       - run:
