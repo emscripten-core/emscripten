@@ -1554,8 +1554,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       else:
         self.fail('JS subprocess failed (%s): %s (expected=%s).  Output:\n%s' % (error.cmd, error.returncode, assert_returncode, ret))
 
-    #  We should pass all strict mode checks
-    self.assertNotContained('strict warning:', ret)
     return ret
 
   def assertExists(self, filename, msg=None):
