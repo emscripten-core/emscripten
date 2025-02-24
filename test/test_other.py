@@ -50,6 +50,7 @@ import clang_native
 import line_endings
 from tools import webassembly
 from tools.settings import settings
+from tools.system_libs import DETERMINISITIC_PREFIX
 
 scons_path = shutil.which('scons')
 emmake = shared.bat_suffix(path_from_root('emmake'))
@@ -10364,6 +10365,51 @@ int main() {
     else: # otherwise a path relative to the given basepath.
       sources_url = utils.normalize_path(os.path.relpath(DW_AT_decl_file, basepath))
     self.assertIn(sources_url, output)
+    # "mappings" contains valid Base64 VLQ segments.
+    self.assertRegex(output, r'"mappings":\s*"(?:[A-Za-z0-9+\/]+[,;]?)+"')
+
+  @parameterized({
+    '': ([], 0),
+    'prefix': ([
+      '<cwd>=file:///path/to/src',
+      DETERMINISITIC_PREFIX + '=file:///path/to/emscripten',
+    ], 0),
+    'sources': ([], 1)
+  })
+  def test_emcc_sourcemap_options(self, prefixes, sources):
+    wasm_sourcemap = importlib.import_module('tools.wasm-sourcemap')
+    cwd = os.getcwd()
+    src_file = shutil.copy(test_file('hello_123.c'), cwd)
+    lib_file = DETERMINISITIC_PREFIX + '/system/lib/libc/musl/src/stdio/fflush.c'
+    if prefixes:
+      prefixes = [p.replace('<cwd>', cwd) for p in prefixes]
+    self.set_setting('INLINE_SOURCES', sources)
+    self.set_setting('SOURCE_MAP_PREFIXES', prefixes)
+    self.emcc(src_file, args=['-gsource-map'], output_filename='test.js')
+    output = read_file('test.wasm.map')
+    # Check source file resolution
+    p = wasm_sourcemap.Prefixes(prefixes, base_path=cwd)
+    self.assertEqual(len(p.prefixes), len(prefixes))
+    src_file_url = p.resolve(utils.normalize_path(src_file))
+    lib_file_url = p.resolve(utils.normalize_path(lib_file))
+    if prefixes:
+      self.assertEqual(src_file_url, 'file:///path/to/src/hello_123.c')
+      self.assertEqual(lib_file_url, 'file:///path/to/emscripten/system/lib/libc/musl/src/stdio/fflush.c')
+    else:
+      self.assertEqual(src_file_url, 'hello_123.c')
+      self.assertEqual(lib_file_url, '/emsdk/emscripten/system/lib/libc/musl/src/stdio/fflush.c')
+    # "sources" contains resolved filepath.
+    self.assertIn(f'"{src_file_url}"', output)
+    self.assertIn(f'"{lib_file_url}"', output)
+    # "sourcesContent" contains source code iff -SINLINE_SOURCES=1 is specified.
+    if sources:
+      p = wasm_sourcemap.Prefixes(prefixes, preserve_deterministic_prefix=False)
+      for filepath in [src_file, lib_file]:
+        resolved_path = p.resolve(utils.normalize_path(filepath))
+        sources_content = json.dumps(read_file(resolved_path))
+        self.assertIn(sources_content, output)
+    else:
+      self.assertIn('"sourcesContent":[]', output)
     # "mappings" contains valid Base64 VLQ segments.
     self.assertRegex(output, r'"mappings":\s*"(?:[A-Za-z0-9+\/]+[,;]?)+"')
 
