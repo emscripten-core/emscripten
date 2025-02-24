@@ -15678,6 +15678,7 @@ addToLibrary({
       expected = f"Aborted(Attempt to set `Module.{prop}` after it has already been processed.  This can happen, for example, when code is injected via '--post-js' rather than '--pre-js')"
       self.do_runf(test_file('hello_world.c'), expected, emcc_args=['--post-js=post.js', '-sWASM_ASYNC_COMPILATION=0'], assert_returncode=NON_ZERO)
 
+  @crossplatform
   def test_rollup(self):
     copytree(test_file('rollup_node'), '.')
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sENVIRONMENT=node', '-sMODULARIZE', '-o', 'hello.mjs'])
