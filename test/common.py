@@ -1412,6 +1412,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.run_process(cmd, stderr=self.stderr_redirect if not DEBUG else None)
     self.assertExists(output)
 
+    if output_suffix in ('.js', '.mjs'):
+      # Make sure we produced correct line endings
+      self.assertEqual(line_endings.check_line_endings(output), 0)
+
     return output
 
   def get_func(self, src, name):
@@ -1527,10 +1531,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       stdout.close()
       if stderr != STDOUT:
         stderr.close()
-
-    # Make sure that we produced proper line endings to the .js file we are about to run.
-    if not filename.endswith('.wasm'):
-      self.assertEqual(line_endings.check_line_endings(filename), 0)
 
     ret = read_file(stdout_file)
     if not interleaved_output:
