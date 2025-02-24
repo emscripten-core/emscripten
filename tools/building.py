@@ -1137,8 +1137,6 @@ def emit_wasm_source_map(wasm_file, map_file, final_wasm):
 
   if settings.INLINE_SOURCES:
     sourcemap_cmd += ['--sources']
-    if settings.INLINE_SOURCES_PREFIXES:
-      sourcemap_cmd += ['--load-prefix', *settings.INLINE_SOURCES_PREFIXES]
 
   check_call(sourcemap_cmd)
 

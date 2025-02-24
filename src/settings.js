@@ -2056,13 +2056,6 @@ var INLINE_SOURCES = false;
 // [link]
 var SOURCE_MAP_PREFIXES = [];
 
-// List of path substitutions to apply when loading the actual source files
-// and their content into the source map.
-// Corresponds to ``--load-prefix`` option used in ``tools/wasm-sourcemap.py``.
-// Must be used with ``-gsource-map`` and ``-sINLINE_SOURCES``.
-// [link]
-var INLINE_SOURCES_PREFIXES = [];
-
 // Default to c++ mode even when run as ``emcc`` rather then ``emc++``.
 // When this is disabled ``em++`` is required linking C++ programs. Disabling
 // this will match the behaviour of gcc/g++ and clang/clang++.
