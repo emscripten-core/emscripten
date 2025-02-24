@@ -20,18 +20,10 @@ logger = logging.getLogger('config')
 # See parse_config_file below.
 EMSCRIPTEN_ROOT = __rootpath__
 NODE_JS = None
-NODE_JS_TEST = None
 BINARYEN_ROOT = None
-SPIDERMONKEY_ENGINE = None
-V8_ENGINE: Optional[List[str]] = None
-LLVM_ROOT = None
 LLVM_ADD_VERSION = None
 CLANG_ADD_VERSION = None
 CLOSURE_COMPILER = None
-JS_ENGINES: List[List[str]] = []
-WASMER = None
-WASMTIME = None
-WASM_ENGINES: List[List[str]] = []
 FROZEN_CACHE = None
 CACHE = None
 PORTS = None
@@ -39,6 +31,17 @@ COMPILER_WRAPPER = None
 
 # Set by init()
 EM_CONFIG = None
+
+# Settings that are only used for testing.  emcc itself does not use
+# any of these.
+NODE_JS_TEST = None
+SPIDERMONKEY_ENGINE = None
+V8_ENGINE: Optional[List[str]] = None
+LLVM_ROOT = None
+JS_ENGINES: List[List[str]] = []
+WASMER = None
+WASMTIME = None
+WASM_ENGINES: List[List[str]] = []
 
 
 def listify(x):
