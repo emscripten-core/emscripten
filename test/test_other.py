@@ -50,7 +50,7 @@ import clang_native
 import line_endings
 from tools import webassembly
 from tools.settings import settings
-from tools.system_libs import DETERMINISITIC_PREFIX
+from tools.system_libs import DETERMINISTIC_PREFIX
 
 scons_path = shutil.which('scons')
 emmake = shared.bat_suffix(path_from_root('emmake'))
@@ -10372,7 +10372,7 @@ int main() {
     '': ([], 0),
     'prefix': ([
       '<cwd>=file:///path/to/src',
-      DETERMINISITIC_PREFIX + '=file:///path/to/emscripten',
+      DETERMINISTIC_PREFIX + '=file:///path/to/emscripten',
     ], 0),
     'sources': ([], 1)
   })
@@ -10380,7 +10380,7 @@ int main() {
     wasm_sourcemap = importlib.import_module('tools.wasm-sourcemap')
     cwd = os.getcwd()
     src_file = shutil.copy(test_file('hello_123.c'), cwd)
-    lib_file = DETERMINISITIC_PREFIX + '/system/lib/libc/musl/src/stdio/fflush.c'
+    lib_file = DETERMINISTIC_PREFIX + '/system/lib/libc/musl/src/stdio/fflush.c'
     if prefixes:
       prefixes = [p.replace('<cwd>', cwd) for p in prefixes]
     self.set_setting('INLINE_SOURCES', sources)

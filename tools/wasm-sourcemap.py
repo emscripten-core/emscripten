@@ -25,7 +25,7 @@ __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
 from tools import utils
-from tools.system_libs import DETERMINISITIC_PREFIX
+from tools.system_libs import DETERMINISTIC_PREFIX
 from tools.shared import path_from_root
 
 EMSCRIPTEN_PREFIX = utils.normalize_path(path_from_root())
@@ -68,8 +68,8 @@ class Prefixes:
       return self.cache[name]
 
     source = name
-    if not self.preserve_deterministic_prefix and name.startswith(DETERMINISITIC_PREFIX):
-      source = EMSCRIPTEN_PREFIX + utils.removeprefix(name, DETERMINISITIC_PREFIX)
+    if not self.preserve_deterministic_prefix and name.startswith(DETERMINISTIC_PREFIX):
+      source = EMSCRIPTEN_PREFIX + utils.removeprefix(name, DETERMINISTIC_PREFIX)
 
     provided = False
     for p in self.prefixes:
@@ -83,7 +83,7 @@ class Prefixes:
     # a relative path, precisely to preserve determinism, and because it would
     # still point to the wrong location, so we leave the filepath untouched to
     # let users map it to the proper location using prefix options.
-    if not (source.startswith(DETERMINISITIC_PREFIX) or provided or self.base_path is None):
+    if not (source.startswith(DETERMINISTIC_PREFIX) or provided or self.base_path is None):
       try:
         source = os.path.relpath(source, self.base_path)
       except ValueError:
