@@ -63,12 +63,7 @@ def normalize_config_settings():
   if not JS_ENGINES:
     JS_ENGINES = [NODE_JS]
 
-  # Engine tweaks
-  if SPIDERMONKEY_ENGINE:
-    new_spidermonkey = SPIDERMONKEY_ENGINE
-    if '-w' not in str(new_spidermonkey):
-      new_spidermonkey += ['-w']
-    SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
+  SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, listify(SPIDERMONKEY_ENGINE))
   NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
   NODE_JS_TEST = fix_js_engine(NODE_JS_TEST, listify(NODE_JS_TEST))
   V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
