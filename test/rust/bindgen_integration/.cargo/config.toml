@@ -1,0 +1,7 @@
+[build]
+target = "wasm32-unknown-emscripten"
+rustflags = [
+    "-Cllvm-args=-enable-emscripten-cxx-exceptions=0",
+    "-Cpanic=abort",
+    "-Crelocation-model=static",
+]

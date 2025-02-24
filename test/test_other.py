@@ -15587,7 +15587,7 @@ addToLibrary({
   @requires_rust
   def test_rust_integration_basics(self):
     copytree(test_file('rust/basics'), '.')
-    self.run_process(['cargo', 'build', '--target=wasm32-unknown-emscripten'])
+    self.run_process(['cargo', 'build'])
     lib = 'target/wasm32-unknown-emscripten/debug/libbasics.a'
     self.assertExists(lib)
 
@@ -15598,6 +15598,40 @@ addToLibrary({
        return 0;
     }''')
     self.do_runf('main.cpp', 'Hello from rust!', emcc_args=[lib])
+
+  @requires_rust
+  def test_wasm_bindgen_integration(self):
+    copytree(test_file('rust/bindgen_integration'), '.')
+    self.run_process(['cargo', 'build'])
+    lib = 'target/wasm32-unknown-emscripten/debug/libbindgen_integration.a'
+    self.assertExists(lib)
+
+    create_file('main.cpp', '')
+    create_file('post.js', '''
+      Module.onRuntimeInitialized = () => {
+        out(Module.rs_add(17, 25));
+      };
+    ''')
+    exported_funcs = [
+        '___wbindgen_describe_rs_add',
+        '_rs_add',
+        '___externref_drop_slice',
+        '___externref_heap_live_count',
+        '___externref_table_alloc',
+        '___externref_table_dealloc',
+        '___wbindgen_exn_store',
+        '___wbindgen_free',
+        '___wbindgen_malloc',
+        '___wbindgen_realloc']
+    emcc_args = [
+        lib,
+        '-sWASM_BINDGEN',
+        '--post-js',
+        'post.js',
+        '-Wno-undefined',
+        '-sEXPORTED_FUNCTIONS=' + ','.join(exported_funcs),
+    ]
+    self.do_runf('main.cpp', '42', emcc_args=emcc_args)
 
   def test_relative_em_cache(self):
     with env_modify({'EM_CACHE': 'foo'}):
