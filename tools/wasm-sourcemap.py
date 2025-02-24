@@ -79,8 +79,11 @@ class Prefixes:
         break
 
     # If prefixes were provided, we use that; otherwise if base_path is set, we
-    # emit a relative path.
-    if not provided and self.base_path is not None:
+    # emit a relative path. For files with deterministic prefix, we never use
+    # a relative path, precisely to preserve determinism, and because it would
+    # still point to the wrong location, so we leave the filepath untouched to
+    # let users map it to the proper location using prefix options.
+    if not (source.startswith(DETERMINISITIC_PREFIX) or provided or self.base_path is None):
       try:
         source = os.path.relpath(source, self.base_path)
       except ValueError:
