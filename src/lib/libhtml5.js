@@ -430,7 +430,7 @@ var LibraryHTML5 = {
   // eventStruct: the structure to populate.
   // e: The JS mouse event to read data from.
   // target: Specifies a target DOM element that will be used as the reference to populate targetX and targetY parameters.
-  $fillMouseEventData__deps: ['$JSEvents', '$getBoundingClientRect', '$specialHTMLTargets'],
+  $fillMouseEventData__deps: ['$getBoundingClientRect', '$specialHTMLTargets'],
   $fillMouseEventData: (eventStruct, e, target) => {
 #if ASSERTIONS
     assert(eventStruct % 4 == 0);
@@ -608,7 +608,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_wheel_callback_on_thread__proxy: 'sync',
-  emscripten_set_wheel_callback_on_thread__deps: ['$JSEvents', '$registerWheelEventCallback', '$findEventTarget'],
+  emscripten_set_wheel_callback_on_thread__deps: ['$registerWheelEventCallback', '$findEventTarget'],
   emscripten_set_wheel_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) => {
     target = findEventTarget(target);
     if (!target) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
@@ -747,7 +747,6 @@ var LibraryHTML5 = {
   emscripten_set_focusout_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) =>
     registerFocusEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_FOCUSOUT }}}, "focusout", targetThread),
 
-  $fillDeviceOrientationEventData__deps: ['$JSEvents'],
   $fillDeviceOrientationEventData: (eventStruct, e, target) => {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.alpha, 'e.alpha', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.beta, 'e.beta', 'double') }}};
@@ -802,7 +801,6 @@ var LibraryHTML5 = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  $fillDeviceMotionEventData__deps: ['$JSEvents'],
   $fillDeviceMotionEventData: (eventStruct, e, target) => {
     var supportedFields = 0;
     var a = e['acceleration'];
@@ -1178,7 +1176,7 @@ var LibraryHTML5 = {
     return restoreOldStyle;
   },
 
-  $registerRestoreOldStyle__deps: ['$JSEvents', '$getCanvasElementSize', '$setCanvasElementSize'],
+  $registerRestoreOldStyle__deps: ['$getCanvasElementSize', '$setCanvasElementSize'],
   $registerRestoreOldStyle: (canvas) => {
     var canvasSize = getCanvasElementSize(canvas);
     var oldWidth = canvasSize[0];
@@ -1297,7 +1295,6 @@ var LibraryHTML5 = {
   },
 
   // Add letterboxes to a fullscreen element in a cross-browser way.
-  $setLetterbox__deps: ['$JSEvents'],
   $setLetterbox: (element, topBottom, leftRight) => {
     // Cannot use margin to specify letterboxes in FF or Chrome, since those ignore margins in fullscreen mode.
     element.style.paddingLeft = element.style.paddingRight = leftRight + 'px';
@@ -1307,7 +1304,7 @@ var LibraryHTML5 = {
   $currentFullscreenStrategy: {},
   $restoreOldWindowedStyle: null,
 
-  $softFullscreenResizeWebGLRenderTarget__deps: ['$JSEvents', '$setLetterbox', '$currentFullscreenStrategy', '$getCanvasElementSize', '$setCanvasElementSize', '$jstoi_q'],
+  $softFullscreenResizeWebGLRenderTarget__deps: ['$setLetterbox', '$currentFullscreenStrategy', '$getCanvasElementSize', '$setCanvasElementSize', '$jstoi_q'],
   $softFullscreenResizeWebGLRenderTarget: () => {
     var dpr = devicePixelRatio;
     var inHiDPIFullscreenMode = currentFullscreenStrategy.canvasResolutionScaleMode == {{{ cDefs.EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF }}};
@@ -1582,7 +1579,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_pointerlockchange_callback_on_thread__proxy: 'sync',
-  emscripten_set_pointerlockchange_callback_on_thread__deps: ['$JSEvents', '$registerPointerlockChangeEventCallback', '$findEventTarget', '$specialHTMLTargets'],
+  emscripten_set_pointerlockchange_callback_on_thread__deps: ['$registerPointerlockChangeEventCallback', '$findEventTarget', '$specialHTMLTargets'],
   emscripten_set_pointerlockchange_callback_on_thread__docs: '/** @suppress {missingProperties} */', // Closure does not see document.body.mozRequestPointerLock etc.
   emscripten_set_pointerlockchange_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) => {
     // TODO: Currently not supported in pthreads or in --proxy-to-worker mode. (In pthreads mode, document object is not defined)
@@ -1627,7 +1624,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_pointerlockerror_callback_on_thread__proxy: 'sync',
-  emscripten_set_pointerlockerror_callback_on_thread__deps: ['$JSEvents', '$registerPointerlockErrorEventCallback', '$findEventTarget', '$specialHTMLTargets'],
+  emscripten_set_pointerlockerror_callback_on_thread__deps: ['$registerPointerlockErrorEventCallback', '$findEventTarget', '$specialHTMLTargets'],
   emscripten_set_pointerlockerror_callback_on_thread__docs: '/** @suppress {missingProperties} */', // Closure does not see document.body.mozRequestPointerLock etc.
   emscripten_set_pointerlockerror_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) => {
     // TODO: Currently not supported in pthreads or in --proxy-to-worker mode. (In pthreads mode, document object is not defined)
@@ -2162,7 +2159,6 @@ var LibraryHTML5 = {
 
 #if PTHREADS
   $setCanvasElementSizeCallingThread__deps: [
-    '$JSEvents',
 #if OFFSCREENCANVAS_SUPPORT
     '$setOffscreenCanvasSizeOnTargetThread',
 #endif
@@ -2240,7 +2236,7 @@ var LibraryHTML5 = {
   $setCanvasElementSizeMainThread__deps: ['$setCanvasElementSizeCallingThread'],
   $setCanvasElementSizeMainThread: (target, width, height) => setCanvasElementSizeCallingThread(target, width, height),
 
-  emscripten_set_canvas_element_size__deps: ['$JSEvents', '$setCanvasElementSizeCallingThread', '$setCanvasElementSizeMainThread', '$findCanvasEventTarget'],
+  emscripten_set_canvas_element_size__deps: ['$setCanvasElementSizeCallingThread', '$setCanvasElementSizeMainThread', '$findCanvasEventTarget'],
   emscripten_set_canvas_element_size: (target, width, height) => {
 #if GL_DEBUG
     dbg(`emscripten_set_canvas_element_size(target=${target},width=${width},height=${height}`);
@@ -2252,7 +2248,7 @@ var LibraryHTML5 = {
     return setCanvasElementSizeMainThread(target, width, height);
   },
 #else
-  emscripten_set_canvas_element_size__deps: ['$JSEvents', '$findCanvasEventTarget'],
+  emscripten_set_canvas_element_size__deps: ['$findCanvasEventTarget'],
   emscripten_set_canvas_element_size: (target, width, height) => {
 #if GL_DEBUG
     dbg(`emscripten_set_canvas_element_size(target=${target},width=${width},height=${height}`);
@@ -2287,7 +2283,7 @@ var LibraryHTML5 = {
   },
 
 #if PTHREADS
-  $getCanvasSizeCallingThread__deps: ['$JSEvents', '$findCanvasEventTarget'],
+  $getCanvasSizeCallingThread__deps: ['$findCanvasEventTarget'],
   $getCanvasSizeCallingThread: (target, width, height) => {
     var canvas = findCanvasEventTarget(target);
     if (!canvas) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
@@ -2322,7 +2318,7 @@ var LibraryHTML5 = {
   $getCanvasSizeMainThread__deps: ['$getCanvasSizeCallingThread'],
   $getCanvasSizeMainThread: (target, width, height) => getCanvasSizeCallingThread(target, width, height),
 
-  emscripten_get_canvas_element_size__deps: ['$JSEvents', '$getCanvasSizeCallingThread', '$getCanvasSizeMainThread', '$findCanvasEventTarget'],
+  emscripten_get_canvas_element_size__deps: ['$getCanvasSizeCallingThread', '$getCanvasSizeMainThread', '$findCanvasEventTarget'],
   emscripten_get_canvas_element_size: (target, width, height) => {
     var canvas = findCanvasEventTarget(target);
     if (canvas) {
@@ -2331,7 +2327,7 @@ var LibraryHTML5 = {
     return getCanvasSizeMainThread(target, width, height);
   },
 #else
-  emscripten_get_canvas_element_size__deps: ['$JSEvents', '$findCanvasEventTarget'],
+  emscripten_get_canvas_element_size__deps: ['$findCanvasEventTarget'],
   emscripten_get_canvas_element_size: (target, width, height) => {
     var canvas = findCanvasEventTarget(target);
     if (!canvas) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
@@ -2355,7 +2351,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_element_css_size__proxy: 'sync',
-  emscripten_set_element_css_size__deps: ['$JSEvents', '$findEventTarget'],
+  emscripten_set_element_css_size__deps: ['$findEventTarget'],
   emscripten_set_element_css_size: (target, width, height) => {
 #if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     target = findEventTarget(target);
@@ -2371,7 +2367,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_get_element_css_size__proxy: 'sync',
-  emscripten_get_element_css_size__deps: ['$JSEvents', '$findEventTarget', '$getBoundingClientRect'],
+  emscripten_get_element_css_size__deps: ['$findEventTarget', '$getBoundingClientRect'],
   emscripten_get_element_css_size: (target, width, height) => {
 #if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     target = findEventTarget(target);
