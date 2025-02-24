@@ -9580,6 +9580,23 @@ int main() {
     self.assertNotContained('important_function', err)
 
   @with_all_eh_sjlj
+  def test_cxa_current_exception_type(self):
+    create_file('main.cpp', r'''
+    #include <cstdio>
+    #include <stdexcept>
+    #include <typeinfo>
+    #include <cxxabi.h>
+
+    int main() {
+      try {
+        throw std::runtime_error("ERROR");
+      } catch (...) {
+        printf("__cxa_current_exception_type: %s\n", abi::__cxa_current_exception_type()->name());
+      }
+    }''')
+    self.do_runf('main.cpp', '__cxa_current_exception_type: St13runtime_error')
+
+  @with_all_eh_sjlj
   def test_exceptions_exit_runtime(self):
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_exceptions_exit_runtime.cpp')
