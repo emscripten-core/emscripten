@@ -1179,11 +1179,6 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       if (GL.currentContext === GL.contexts[contextHandle]) {
         GL.currentContext = null;
       }
-      if (typeof JSEvents == 'object') {
-        // Release all JS event handlers on the DOM element that the GL context is
-        // associated with since the context is now deleted.
-        JSEvents.removeAllHandlersOnTarget(GL.contexts[contextHandle].GLctx.canvas);
-      }
       // Make sure the canvas object no longer refers to the context object so
       // there are no GC surprises.
       if (GL.contexts[contextHandle]?.GLctx.canvas) {
