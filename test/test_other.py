@@ -358,13 +358,17 @@ class other(RunnerCore):
   @parameterized({
     '': ([],),
     'node': (['-sENVIRONMENT=node'],),
+    'optimize': (['-O3'],),  # i.e., OPT_LEVEL >= 2, minified with tools/acorn-optimizer.js
   })
   def test_emcc_output_mjs(self, args):
+    optimized = '-O3' in args
     self.run_process([EMCC, '-o', 'hello_world.mjs',
                       '--extern-post-js', test_file('modularize_post_js.js'),
                       test_file('hello_world.c')] + args)
     src = read_file('hello_world.mjs')
-    self.assertContained('export default Module;', src)
+    self.assertContained('export default async function Module', src)
+    self.assertContainedIf("new URL('hello_world.wasm', import.meta.url)", src, not optimized)
+    self.assertContainedIf('new URL("hello_world.wasm",import.meta.url)', src, optimized)
     self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
   @parameterized({
@@ -381,7 +385,7 @@ class other(RunnerCore):
     src = read_file('subdir/hello_world.mjs')
     self.assertContained("new URL('hello_world.wasm', import.meta.url)", src)
     self.assertContained("new Worker(new URL('hello_world.mjs', import.meta.url), {", src)
-    self.assertContained('export default Module;', src)
+    self.assertContained('export default async function Module', src)
     self.assertContained('hello, world!', self.run_js('subdir/hello_world.mjs'))
 
   @node_pthreads
@@ -405,7 +409,7 @@ class other(RunnerCore):
   def test_export_es6_implies_modularize(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6'])
     src = read_file('a.out.js')
-    self.assertContained('export default Module;', src)
+    self.assertContained('export default async function Module', src)
 
   def test_export_es6_requires_modularize(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sMODULARIZE=0'])
@@ -431,6 +435,7 @@ class other(RunnerCore):
   @parameterized({
     '': ([],),
     'pthreads': (['-pthread'],),
+    # 'closure': (['-O2', '--closure=1'],), # Disabled: see FIXME in postamble_modularize.js
   })
   def test_modularize_instance(self, args):
     create_file('library.js', '''\

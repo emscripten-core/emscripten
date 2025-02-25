@@ -853,10 +853,7 @@ function emitDCEGraph(ast) {
   // Scoping must balance out.
   assert(specialScopes === 0);
   // We must have found the info we need.
-  assert(
-    foundWasmImportsAssign,
-    'could not find the assignment to "wasmImports". perhaps --pre-js or --post-js code moved it out of the global scope? (things like that should be done after emcc runs, as they do not need to be run through the optimizer which is the special thing about --pre-js/--post-js code)',
-  );
+  assert(foundWasmImportsAssign, 'could not find the assignment to "wasmImports"');
   // Read exports that were declared in extraInfo
   if (extraInfo) {
     for (const exp of extraInfo.exports) {
@@ -2032,6 +2029,7 @@ const params = {
   ecmaVersion: 'latest',
   sourceType: exportES6 ? 'module' : 'script',
   allowAwaitOutsideFunction: true,
+  allowImportExportEverywhere: exportES6,
 };
 if (closureFriendly) {
   const currentComments = [];

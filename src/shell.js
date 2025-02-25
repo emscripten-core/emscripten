@@ -21,7 +21,7 @@
 // before the code. Then that object will be used in the code, and you
 // can continue to use Module afterwards as well.
 #if MODULARIZE
-var Module = moduleArg;
+#include "preamble_modularize.js"
 #elif USE_CLOSURE_COMPILER
 /** @type{Object} */
 var Module;
@@ -98,7 +98,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
 #endif
 
-#if ENVIRONMENT_MAY_BE_NODE
+#if ENVIRONMENT_MAY_BE_NODE && (EXPORT_ES6 || PTHREADS || WASM_WORKERS)
 if (ENVIRONMENT_IS_NODE) {
 #if EXPORT_ES6
   // When building an ES module `require` is not normally available.
@@ -119,7 +119,7 @@ if (ENVIRONMENT_IS_NODE) {
 #endif // PTHREADS
 #endif // PTHREADS || WASM_WORKERS
 }
-#endif // ENVIRONMENT_MAY_BE_NODE
+#endif // ENVIRONMENT_MAY_BE_NODE && (EXPORT_ES6 || PTHREADS || WASM_WORKERS)
 
 #if WASM_WORKERS
 var ENVIRONMENT_IS_WASM_WORKER = !!Module['$ww'];
