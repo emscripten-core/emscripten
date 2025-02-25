@@ -70,6 +70,7 @@ extern "C" {
 #define EMSCRIPTEN_EVENT_MOUSEOUT              36
 #define EMSCRIPTEN_EVENT_CANVASRESIZED         37
 #define EMSCRIPTEN_EVENT_POINTERLOCKERROR      38
+#define EMSCRIPTEN_EVENT_INPUT                 39
 
 #define EMSCRIPTEN_EVENT_TARGET_INVALID        0
 #define EMSCRIPTEN_EVENT_TARGET_DOCUMENT       ((const char*)1)
@@ -188,6 +189,15 @@ EMSCRIPTEN_RESULT emscripten_set_blur_callback_on_thread(const char *target __at
 EMSCRIPTEN_RESULT emscripten_set_focus_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, bool useCapture, em_focus_callback_func callback, pthread_t targetThread);
 EMSCRIPTEN_RESULT emscripten_set_focusin_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, bool useCapture, em_focus_callback_func callback, pthread_t targetThread);
 EMSCRIPTEN_RESULT emscripten_set_focusout_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, bool useCapture, em_focus_callback_func callback, pthread_t targetThread);
+
+typedef struct EmscriptenInputEvent {
+  bool isComposing;
+  EM_UTF8 inputType[EM_HTML5_SHORT_STRING_LEN_BYTES];
+  EM_UTF8 data[]; // variable size string; must be the final element of the struct
+} EmscriptenInputEvent;
+
+typedef bool (*em_input_callback_func)(int eventType, const EmscriptenInputEvent *inputEvent __attribute__((nonnull)), void *userData);
+EMSCRIPTEN_RESULT emscripten_set_input_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, bool useCapture, em_input_callback_func callback, pthread_t targetThread);
 
 typedef struct EmscriptenDeviceOrientationEvent {
   double alpha;
@@ -445,6 +455,7 @@ void emscripten_html5_remove_all_event_listeners(void);
 #define emscripten_set_focus_callback(target, userData, useCapture, callback)                 emscripten_set_focus_callback_on_thread(                (target), (userData), (useCapture), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
 #define emscripten_set_focusin_callback(target, userData, useCapture, callback)               emscripten_set_focusin_callback_on_thread(              (target), (userData), (useCapture), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
 #define emscripten_set_focusout_callback(target, userData, useCapture, callback)              emscripten_set_focusout_callback_on_thread(             (target), (userData), (useCapture), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
+#define emscripten_set_input_callback(target, userData, useCapture, callback)                 emscripten_set_input_callback_on_thread(                (target), (userData), (useCapture), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
 #define emscripten_set_deviceorientation_callback(userData, useCapture, callback)             emscripten_set_deviceorientation_callback_on_thread(              (userData), (useCapture), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
 #define emscripten_set_devicemotion_callback(userData, useCapture, callback)                  emscripten_set_devicemotion_callback_on_thread(                   (userData), (useCapture), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
 #define emscripten_set_orientationchange_callback(userData, useCapture, callback)             emscripten_set_orientationchange_callback_on_thread(              (userData), (useCapture), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
