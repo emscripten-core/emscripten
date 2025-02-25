@@ -5533,6 +5533,7 @@ Module["preRun"] = () => {
     create_file('post.js', 'throw "foo";')
     self.btest('hello_world.c', args=['--post-js=post.js'], expected='exception:foo')
 
+  @also_with_threads
   @parameterized({
     '': (False,),
     'es6': (True,),
@@ -5557,6 +5558,7 @@ Module["preRun"] = () => {
     self.run_process(shared.get_npm_cmd('vite') + ['build'])
     self.run_browser('dist/index.html', '/report_result?exit:0')
 
+  @also_with_threads
   def test_rollup(self):
     copytree(test_file('rollup'), '.')
     self.compile_btest('hello_world.c', ['-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sMODULARIZE', '-o', 'hello.mjs'])
