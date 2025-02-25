@@ -411,7 +411,7 @@ def generate_sanity():
 
 
 @memoize
-def perform_sanity_checks():
+def perform_sanity_checks(quiet=False):
   # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
   check_node_version()
   check_llvm_version()
@@ -422,7 +422,8 @@ def perform_sanity_checks():
     logger.info('EM_IGNORE_SANITY set, ignoring sanity checks')
     return
 
-  logger.info('(Emscripten: Running sanity checks)')
+  if not quiet:
+    logger.info('(Emscripten: Running sanity checks)')
 
   if not llvm_ok:
     exit_with_error('failing sanity checks due to previous llvm failure')
@@ -436,7 +437,7 @@ def perform_sanity_checks():
 
 
 @ToolchainProfiler.profile()
-def check_sanity(force=False):
+def check_sanity(force=False, quiet=False):
   """Check that basic stuff we need (a JS engine to compile, Node.js, and Clang
   and LLVM) exists.
 
@@ -459,11 +460,11 @@ def check_sanity(force=False):
 
   if config.FROZEN_CACHE:
     if force:
-      perform_sanity_checks()
+      perform_sanity_checks(quiet)
     return
 
   if os.environ.get('EM_IGNORE_SANITY'):
-    perform_sanity_checks()
+    perform_sanity_checks(quiet)
     return
 
   expected = generate_sanity()
@@ -482,7 +483,7 @@ def check_sanity(force=False):
       # Even if the sanity file is up-to-date we still run the checks
       # when force is set.
       if force:
-        perform_sanity_checks()
+        perform_sanity_checks(quiet)
       return True # all is well
     return False
 

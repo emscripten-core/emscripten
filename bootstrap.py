@@ -20,7 +20,10 @@ STAMP_DIR = os.path.join(__rootdir__, 'out')
 from tools import shared, utils
 
 actions = [
-  ('npm packages', ['package.json'], [shutil.which('npm'), 'ci']),
+  ('npm packages', [
+     'package.json',
+     'package-lock.json'
+   ], [shutil.which('npm'), 'ci']),
   ('create entry points', [
      'tools/maint/create_entry_points.py',
      'tools/maint/run_python.bat',

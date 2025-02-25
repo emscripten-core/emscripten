@@ -93,7 +93,7 @@ CLANG_FLAGS_WITH_ARGS = {
     '-iprefix', '-iwithprefix', '-iwithprefixbefore',
     '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
     '-install_name', '-compatibility_version', '-mllvm',
-    '-current_version', '-I', '-L', '-include-pch',
+    '-current_version', '-I', '-L', '-include-pch', '-u',
     '-undefined', '-target', '-Xlinker', '-Xclang', '-z'
 }
 
@@ -703,7 +703,7 @@ def phase_parse_arguments(state):
     settings.WARN_DEPRECATED = 0
 
   for i in range(len(newargs)):
-    if newargs[i] in ('-l', '-L', '-I', '-z', '--js-library', '-o', '-x'):
+    if newargs[i] in ('-l', '-L', '-I', '-z', '--js-library', '-o', '-x', '-u'):
       # Scan for flags that can be written as either one or two arguments
       # and normalize them to the single argument form.
       if newargs[i] == '--js-library':
@@ -788,7 +788,7 @@ def separate_linker_flags(newargs):
         add_link_arg(flag)
     elif arg == '-Xlinker':
       add_link_arg(get_next_arg())
-    elif arg == '-s' or arg.startswith(('-l', '-L', '--js-library=', '-z')):
+    elif arg == '-s' or arg.startswith(('-l', '-L', '--js-library=', '-z', '-u')):
       add_link_arg(arg)
     elif not arg.startswith('-o') and arg not in ('-nostdlib', '-nostartfiles', '-nolibc', '-nodefaultlibs', '-s'):
       # All other flags are for the compiler

@@ -33,6 +33,7 @@ import {
   compileTimeContext,
   printErr,
   readFile,
+  runInMacroContext,
   warn,
   warnOnce,
   warningOccured,
@@ -79,6 +80,19 @@ function stringifyWithFunctions(obj) {
   if (Array.isArray(obj)) {
     return '[' + obj.map(stringifyWithFunctions).join(',') + ']';
   }
+
+  // preserve the type of the object if it is one of [Map, Set, WeakMap, WeakSet].
+  const builtinContainers = runInMacroContext('[Map, Set, WeakMap, WeakSet]', {
+    filename: '<internal>',
+  });
+  for (const container of builtinContainers) {
+    if (obj instanceof container) {
+      const className = container.name;
+      assert(!obj.size, `cannot stringify ${className} with data`);
+      return `new ${className}`;
+    }
+  }
+
   var rtn = '{\n';
   for (const [key, value] of Object.entries(obj)) {
     var str = stringifyWithFunctions(value);

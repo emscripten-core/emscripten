@@ -171,6 +171,7 @@ void test_small_chunks() {
   buf[size] = 0;
   printf("buf %s\n",buf);
   assert(strcmp(buf, "hello") == 0);
+  assert(read(fd, buf+size-1, 1024) == 1);
 
   assert(close(fd) == 0);
 

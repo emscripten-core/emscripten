@@ -1521,8 +1521,11 @@ int __syscall_fcntl64(int fd, int cmd, ...) {
     case F_SETLKW: {
       static_assert(F_SETLK == F_SETLK64);
       static_assert(F_SETLKW == F_SETLKW64);
-      // Always error for now, until we implement byte-range locks.
-      return -EACCES;
+      // Pretend that the locking is successful. These are process-level locks,
+      // and Emscripten programs are a single process. If we supported linking a
+      // filesystem between programs, we'd need to do more here.
+      // See https://github.com/emscripten-core/emscripten/issues/23697
+      return 0;
     }
     default: {
       // TODO: support any remaining cmds

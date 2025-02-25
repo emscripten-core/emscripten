@@ -794,7 +794,11 @@ var SyscallsLibrary = {
       }
       case {{{ cDefs.F_SETLK }}}:
       case {{{ cDefs.F_SETLKW }}}:
-        return 0; // Pretend that the locking is successful.
+        // Pretend that the locking is successful. These are process-level locks,
+        // and Emscripten programs are a single process. If we supported linking a
+        // filesystem between programs, we'd need to do more here.
+        // See https://github.com/emscripten-core/emscripten/issues/23697
+        return 0;
 #if SYSCALL_DEBUG
       case {{{ cDefs.F_GETOWN_EX }}}:
       case {{{ cDefs.F_SETOWN }}}:
