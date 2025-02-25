@@ -134,7 +134,7 @@ var ENVIRONMENT_IS_WASM_WORKER = !!Module['$ww'];
 // we collect those properties and reapply _after_ we configure
 // the current environment's defaults to avoid having to be so
 // defensive during initialization.
-var moduleOverrides = Object.assign({}, Module);
+var moduleOverrides = {...Module};
 
 var arguments_ = [];
 var thisProgram = './this.program';
