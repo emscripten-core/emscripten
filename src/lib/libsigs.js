@@ -218,6 +218,7 @@ sigs = {
   __call_sighandler__sig: 'vpi',
   __cxa_begin_catch__sig: 'pp',
   __cxa_call_unexpected__sig: 'vp',
+  __cxa_current_exception_type__sig: 'p',
   __cxa_current_primary_exception__sig: 'p',
   __cxa_end_catch__sig: 'v',
   __cxa_rethrow__sig: 'v',

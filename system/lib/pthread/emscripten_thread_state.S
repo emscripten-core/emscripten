@@ -53,7 +53,7 @@ emscripten_is_main_browser_thread:
   global.get is_main_thread
   end_function
 
-# Semantically the same as testing "!ENVIRONMENT_IS_WEB" in JS
+# Semantically the same as testing "!ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_AUDIO_WORKLET" in JS
 .globl _emscripten_thread_supports_atomics_wait
 _emscripten_thread_supports_atomics_wait:
   .functype _emscripten_thread_supports_atomics_wait () -> (i32)
