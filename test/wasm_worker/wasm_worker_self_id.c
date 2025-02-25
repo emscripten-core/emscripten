@@ -17,6 +17,7 @@ void test_success() {
 }
 
 void worker1_main() {
+  assert(emscripten_current_thread_is_wasm_worker());
   assert(emscripten_wasm_worker_self_id() != 0);
   assert(emscripten_wasm_worker_self_id() == worker1);
   if (emscripten_wasm_worker_self_id() == worker1) {
@@ -25,6 +26,7 @@ void worker1_main() {
 }
 
 void worker2_main() {
+  assert(emscripten_current_thread_is_wasm_worker());
   assert(emscripten_wasm_worker_self_id() != 0);
   assert(emscripten_wasm_worker_self_id() == worker2);
   if (emscripten_wasm_worker_self_id() == worker2) {
@@ -36,6 +38,7 @@ char stack1[1024];
 char stack2[1024];
 
 int main() {
+  assert(!emscripten_current_thread_is_wasm_worker());
   assert(emscripten_wasm_worker_self_id() == 0);
   worker1 = emscripten_create_wasm_worker(stack1, sizeof(stack1));
   worker2 = emscripten_create_wasm_worker(stack2, sizeof(stack2));

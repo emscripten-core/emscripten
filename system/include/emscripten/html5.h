@@ -12,10 +12,11 @@
 
 #include <emscripten/emscripten.h>
 
-// Include eventloop.h and console.h for compat with older version of this
-// header that used to define these functions.
+// Include eventloop.h, console.h and html5_webgl.h for compat with older
+// version of this header that used to define these functions.
 #include <emscripten/eventloop.h>
 #include <emscripten/console.h>
+#include <emscripten/html5_webgl.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -331,8 +332,7 @@ EMSCRIPTEN_RESULT emscripten_set_visibilitychange_callback_on_thread(void *userD
 EMSCRIPTEN_RESULT emscripten_get_visibility_status(EmscriptenVisibilityChangeEvent *visibilityStatus __attribute__((nonnull)));
 
 
-typedef struct EmscriptenTouchPoint
-{
+typedef struct EmscriptenTouchPoint {
   int identifier;
   int screenX;
   int screenY;
@@ -472,6 +472,3 @@ double emscripten_performance_now(void);
 #ifdef __cplusplus
 } // ~extern "C"
 #endif
-
-// For backwards compatibility, always include html5_webgl.h from html5.h
-#include <emscripten/html5_webgl.h>

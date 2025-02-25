@@ -5,8 +5,8 @@
 
 import os
 
-TAG = 'release-2.30.9'
-HASH = '00079415bd3aab9ab2cf67c466ca0ab96076ff8b9c8ed6d4e11db15e10f5cf91f49da6356cf3ed9adc91e185c1aada3886baa80d14d421729805adaa98563e36'
+TAG = 'release-2.32.0'
+HASH = 'd3e4ce9784152aa1194c4f2d2399829f3b01a652915afc6ddaec334068bf95d850edcb43b1a951e0202fc2ecaafc1f58e538ca39b9b16d3fdfe412af0b6aebb0'
 SUBDIR = 'SDL-' + TAG
 
 variants = {'sdl2-mt': {'PTHREADS': 1}}

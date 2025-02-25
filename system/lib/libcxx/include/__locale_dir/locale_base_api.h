@@ -9,7 +9,9 @@
 #ifndef _LIBCPP___LOCALE_DIR_LOCALE_BASE_API_H
 #define _LIBCPP___LOCALE_DIR_LOCALE_BASE_API_H
 
-#if defined(_LIBCPP_MSVCRT_LIKE)
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__EMSCRIPTEN__)
+#  include <xlocale.h>
+#elif defined(_LIBCPP_MSVCRT_LIKE)
 #  include <__locale_dir/locale_base_api/win32.h>
 #elif defined(_AIX) || defined(__MVS__)
 #  include <__locale_dir/locale_base_api/ibm.h>
@@ -25,8 +27,6 @@
 #  include <__locale_dir/locale_base_api/fuchsia.h>
 #elif defined(__wasi__) || defined(_LIBCPP_HAS_MUSL_LIBC)
 #  include <__locale_dir/locale_base_api/musl.h>
-#elif defined(__APPLE__) || defined(__FreeBSD__)
-#  include <xlocale.h>
 #endif
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)

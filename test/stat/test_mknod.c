@@ -59,6 +59,8 @@ void test() {
   assert(S_ISCHR(s.st_mode));
 #endif // WASMFS
 
+  assert(mknod("", 0777, 0) == -1);
+  assert(errno == ENOENT);
 #endif
 
   //

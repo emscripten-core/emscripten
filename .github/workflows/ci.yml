@@ -21,7 +21,7 @@ jobs:
         make dist
         version=`cat emscripten-version.txt | sed s/\"//g`
         echo "VERSION=$version" >> $GITHUB_ENV
-    - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+    - uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.5
       with:
         name: emscripten-${{ env.VERSION }}
         path: emscripten-${{ env.VERSION }}.tar.bz2
@@ -33,6 +33,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
+          submodules: true
           fetch-depth: 0 # We want access to other branches, specifically `main`
       - name: pip install
         run: |

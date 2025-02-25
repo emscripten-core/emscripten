@@ -6,10 +6,8 @@
 from .toolchain_profiler import ToolchainProfiler
 
 from enum import Enum, unique, auto
-from functools import wraps
 from subprocess import PIPE
 import atexit
-import json
 import logging
 import os
 import re
@@ -20,9 +18,9 @@ import stat
 import sys
 import tempfile
 
-# We depend on python 3.6 for fstring support
-if sys.version_info < (3, 6):
-  print('error: emscripten requires python 3.6 or above', file=sys.stderr)
+# We depend on python 3.8 features
+if sys.version_info < (3, 8):
+  print(f'error: emscripten requires python 3.8 or above ({sys.executable} {sys.version})', file=sys.stderr)
   sys.exit(1)
 
 from . import colored_logger
@@ -40,7 +38,7 @@ elif EMCC_LOGGING:
 logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s', level=log_level)
 colored_logger.enable()
 
-from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS, set_version_globals
+from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS, set_version_globals, memoize
 from . import cache, tempfiles
 from . import diagnostics
 from . import config
@@ -57,10 +55,11 @@ SKIP_SUBPROCS = False
 # Minimum node version required to run the emscripten compiler.  This is
 # distinct from the minimum version required to execute the generated code
 # (settings.MIN_NODE_VERSION).
-# This version currently matches the node version that we ship with emsdk
-# which means that we can say for sure that this version is well supported.
-MINIMUM_NODE_VERSION = (16, 20, 0)
-EXPECTED_LLVM_VERSION = 20
+# This is currently set to v18 since this is the version of node available
+# in debian/stable (bookworm).  We need at least v18.3.0 because we make
+# use of util.parseArg which was added in v18.3.0.
+MINIMUM_NODE_VERSION = (18, 3, 0)
+EXPECTED_LLVM_VERSION = 21
 
 # These get set by setup_temp_dirs
 TEMP_DIR = None
@@ -126,7 +125,7 @@ def run_process(cmd, check=True, input=None, *args, **kw):
   # output before messages that we have already written.
   sys.stdout.flush()
   sys.stderr.flush()
-  kw.setdefault('universal_newlines', True)
+  kw.setdefault('text', True)
   kw.setdefault('encoding', 'utf-8')
   ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
   debug_text = '%sexecuted %s' % ('successfully ' if check else '', shlex_join(cmd))
@@ -253,7 +252,7 @@ def exec_process(cmd):
     os.execvp(cmd[0], cmd)
 
 
-def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: mutable default args
+def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: B006
   """Execute a javascript tool.
 
   This is used by emcc to run parts of the build process that are written
@@ -271,22 +270,6 @@ def get_npm_cmd(name):
   if not os.path.exists(cmd[-1]):
     exit_with_error(f'{name} was not found! Please run "npm install" in Emscripten root directory to set up npm dependencies')
   return cmd
-
-
-# TODO(sbc): Replace with functools.cache, once we update to python 3.7
-def memoize(func):
-  called = False
-  result = None
-
-  @wraps(func)
-  def helper():
-    nonlocal called, result
-    if not called:
-      result = func()
-      called = True
-    return result
-
-  return helper
 
 
 @memoize
@@ -394,17 +377,15 @@ def node_reference_types_flags(nodejs):
     return []
 
 
-def node_memory64_flags():
-  return ['--experimental-wasm-memory64']
-
-
 def node_exception_flags(nodejs):
   node_version = get_node_version(nodejs)
-  # Exception handling was enabled by default in node v17.
+  # Legacy exception handling was enabled by default in node v17.
   if node_version and node_version < (17, 0, 0):
     return ['--experimental-wasm-eh']
-  else:
-    return []
+  # Standard exception handling was supported behind flag in node v22.
+  if node_version and node_version >= (22, 0, 0) and not settings.WASM_LEGACY_EXCEPTIONS:
+    return ['--experimental-wasm-exnref']
+  return []
 
 
 def node_pthread_flags(nodejs):
@@ -430,7 +411,7 @@ def generate_sanity():
 
 
 @memoize
-def perform_sanity_checks():
+def perform_sanity_checks(quiet=False):
   # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
   check_node_version()
   check_llvm_version()
@@ -441,7 +422,8 @@ def perform_sanity_checks():
     logger.info('EM_IGNORE_SANITY set, ignoring sanity checks')
     return
 
-  logger.info('(Emscripten: Running sanity checks)')
+  if not quiet:
+    logger.info('(Emscripten: Running sanity checks)')
 
   if not llvm_ok:
     exit_with_error('failing sanity checks due to previous llvm failure')
@@ -455,7 +437,7 @@ def perform_sanity_checks():
 
 
 @ToolchainProfiler.profile()
-def check_sanity(force=False):
+def check_sanity(force=False, quiet=False):
   """Check that basic stuff we need (a JS engine to compile, Node.js, and Clang
   and LLVM) exists.
 
@@ -478,11 +460,11 @@ def check_sanity(force=False):
 
   if config.FROZEN_CACHE:
     if force:
-      perform_sanity_checks()
+      perform_sanity_checks(quiet)
     return
 
   if os.environ.get('EM_IGNORE_SANITY'):
-    perform_sanity_checks()
+    perform_sanity_checks(quiet)
     return
 
   expected = generate_sanity()
@@ -501,7 +483,7 @@ def check_sanity(force=False):
       # Even if the sanity file is up-to-date we still run the checks
       # when force is set.
       if force:
-        perform_sanity_checks()
+        perform_sanity_checks(quiet)
       return True # all is well
     return False
 
@@ -669,7 +651,7 @@ def is_c_symbol(name):
 
 
 def treat_as_user_export(name):
-  return not name.startswith('dynCall_')
+  return not name.startswith(('dynCall_', 'orig$'))
 
 
 def asmjs_mangle(name):
@@ -737,37 +719,6 @@ def safe_copy(src, dst):
   make_writable(dst)
 
 
-def read_and_preprocess(filename, expand_macros=False):
-  temp_dir = get_emscripten_temp_dir()
-  # Create a settings file with the current settings to pass to the JS preprocessor
-
-  settings_str = ''
-  for key, value in settings.external_dict().items():
-    assert key == key.upper()  # should only ever be uppercase keys in settings
-    jsoned = json.dumps(value, sort_keys=True)
-    settings_str += f'var {key} = {jsoned};\n'
-
-  settings_file = os.path.join(temp_dir, 'settings.js')
-  utils.write_file(settings_file, settings_str)
-
-  # Run the JS preprocessor
-  # N.B. We can't use the default stdout=PIPE here as it only allows 64K of output before it hangs
-  # and shell.html is bigger than that!
-  # See https://thraxil.org/users/anders/posts/2008/03/13/Subprocess-Hanging-PIPE-is-your-enemy/
-  dirname, filename = os.path.split(filename)
-  if not dirname:
-    dirname = None
-  stdout = os.path.join(temp_dir, 'stdout')
-  args = [settings_file, filename]
-  if expand_macros:
-    args += ['--expandMacros']
-
-  run_js_tool(path_from_root('tools/preprocessor.mjs'), args, stdout=open(stdout, 'w'), cwd=dirname)
-  out = utils.read_file(stdout)
-
-  return out
-
-
 def do_replace(input_, pattern, replacement):
   if pattern not in input_:
     exit_with_error('expected to find pattern in input JS: %s' % pattern)
@@ -808,6 +759,7 @@ class OFormat(Enum):
 
 CLANG_CC = os.path.expanduser(build_clang_tool_path(exe_suffix('clang')))
 CLANG_CXX = os.path.expanduser(build_clang_tool_path(exe_suffix('clang++')))
+CLANG_SCAN_DEPS = build_llvm_tool_path(exe_suffix('clang-scan-deps'))
 LLVM_AR = build_llvm_tool_path(exe_suffix('llvm-ar'))
 LLVM_DWP = build_llvm_tool_path(exe_suffix('llvm-dwp'))
 LLVM_RANLIB = build_llvm_tool_path(exe_suffix('llvm-ranlib'))
@@ -828,8 +780,7 @@ FILE_PACKAGER = bat_suffix(path_from_root('tools/file_packager'))
 WASM_SOURCEMAP = bat_suffix(path_from_root('tools/wasm-sourcemap'))
 # Windows .dll suffix is not included in this list, since those are never
 # linked to directly on the command line.
-DYNAMICLIB_ENDINGS = ['.dylib', '.so']
-STATICLIB_ENDINGS = ['.a']
+DYLIB_EXTENSIONS = ['.dylib', '.so']
 
 run_via_emxx = False
 

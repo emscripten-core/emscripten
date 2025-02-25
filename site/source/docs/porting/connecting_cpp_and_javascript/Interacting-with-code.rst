@@ -373,7 +373,7 @@ By default, the implementation is added to **library.js** (and this is
 where you'll find parts of Emscripten's *libc*). You can put
 the JavaScript implementation in your own library file and add it using
 the :ref:`emcc option <emcc-js-library>` ``--js-library``. See
-`test_js_libraries`_ in **test/test_other.py** for a complete working
+`test_jslib`_ in **test/test_other.py** for a complete working
 example, including the syntax you should use inside the JavaScript library
 file.
 
@@ -844,7 +844,7 @@ or compile the same binding code to both Node.js native addon and WebAssembly,
 you can give it a try. See `Emnapi documentation`_ for more details.
 
 .. _library.js: https://github.com/emscripten-core/emscripten/blob/main/src/library.js
-.. _test_js_libraries: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L5043
+.. _test_jslib: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L5043
 .. _tools/system_libs.py: https://github.com/emscripten-core/emscripten/blob/main/tools/system_libs.py
 .. _library_\*.js: https://github.com/emscripten-core/emscripten/tree/main/src
 .. _test_add_function in test/test_core.py: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L6237

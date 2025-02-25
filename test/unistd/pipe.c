@@ -7,6 +7,7 @@
 
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <poll.h>
 #include <errno.h>
@@ -64,6 +65,10 @@ int test_most() {
   unsigned char rchar = 0;
 
   assert(pipe(fd) == 0);
+
+  // Test that pipe is statable
+  struct stat st;
+  assert(fstat(fd[0], &st) == 0);
 
   // Test that pipe is not seekable
 

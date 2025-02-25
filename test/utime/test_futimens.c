@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <utime.h>
 
 
 void create_file(const char *path, const char *buffer, int mode) {
@@ -67,7 +68,7 @@ void test() {
   assert(s.st_rdev == 0);
   assert(s.st_size == 8);
   assert(s.st_ctime);
-#if defined(__EMSCRIPTEN__) && !defined(NODERAWFS)
+#if defined(__EMSCRIPTEN__) && !defined(NODERAWFS) && !defined(NODEFS)
   assert(s.st_blksize == 4096);
   assert(s.st_blocks == 1);
 #endif
@@ -128,7 +129,21 @@ void test() {
   times[1].tv_nsec = now.tv_nsec;
   check_times(fd, times, 1);
 
+  printf("check setting time to 0...\n");
+  struct utimbuf tb = {0};
+  utime("folder/file", &tb);
+  times[0].tv_sec = 0;
+  times[0].tv_nsec = 0;
+  times[1].tv_sec = 0;
+  times[1].tv_nsec = 0;
+  check_times(fd, times, 0);
+
   close(fd);
+
+  // TODO:
+  // printf("check utime on empty path...\n");
+  // assert(utime("", &tb) == -1);
+  // assert(errno == ENOENT); 
 
   puts("success");
 }

@@ -131,8 +131,8 @@ class WasmSourceMap(object):
       for c in string:
         try:
           integer = vlq_map[c]
-        except ValueError:
-          raise Error(f'Invalid character ({c}) in VLQ')
+        except ValueError as e:
+          raise Error(f'Invalid character ({c}) in VLQ') from e
         value += (integer & 31) << shift
         if integer & 32:
           shift += 5

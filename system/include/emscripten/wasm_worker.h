@@ -83,9 +83,9 @@ uint32_t emscripten_wasm_worker_self_id(void);
 // never be called.
 // Passing messages between threads with this family of functions is relatively
 // slow and has a really high latency cost compared to direct coordination using
-// atomics and synchronization primitives like mutexes and synchronization
-// primitives. Additionally these functions will generate garbage on the JS
-// heap.  Therefore avoid using these functions where performance is critical.
+// atomics and synchronization primitives like mutexes. Additionally these 
+// functions will generate garbage on the JS heap.  Therefore avoid using these 
+// functions where performance is critical.
 void emscripten_wasm_worker_post_function_v(emscripten_wasm_worker_t id, void (*funcPtr)(void) __attribute__((nonnull)));
 void emscripten_wasm_worker_post_function_vi(emscripten_wasm_worker_t id, void (*funcPtr)(int) __attribute__((nonnull)), int arg0);
 void emscripten_wasm_worker_post_function_vii(emscripten_wasm_worker_t id, void (*funcPtr)(int, int) __attribute__((nonnull)), int arg0, int arg1);

@@ -7,32 +7,36 @@
 #ifndef __emscripten_immintrin_h__
 #define __emscripten_immintrin_h__
 
-#ifdef __AVX__
-#include <avxintrin.h>
-#endif
-
-#ifdef __SSE4_2__
-#include <nmmintrin.h>
-#endif
-
-#ifdef __SSE4_1__
-#include <smmintrin.h>
-#endif
-
-#ifdef __SSSE3__
-#include <tmmintrin.h>
-#endif
-
-#ifdef __SSE3__
-#include <pmmintrin.h>
+#ifdef __SSE__
+#include <xmmintrin.h>
 #endif
 
 #ifdef __SSE2__
 #include <emmintrin.h>
 #endif
 
-#ifdef __SSE__
-#include <xmmintrin.h>
+#ifdef __SSE3__
+#include <pmmintrin.h>
+#endif
+
+#ifdef __SSSE3__
+#include <tmmintrin.h>
+#endif
+
+#ifdef __SSE4_1__
+#include <smmintrin.h>
+#endif
+
+#ifdef __SSE4_2__
+#include <nmmintrin.h>
+#endif
+
+#ifdef __AVX__
+#include <avxintrin.h>
+#endif
+
+#ifdef __AVX2__
+#include <avx2intrin.h>
 #endif
 
 #endif /* __emscripten_immintrin_h__ */

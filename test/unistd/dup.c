@@ -102,8 +102,8 @@ int main() {
 
   printf("DUP truncate\n");
   f = open("./blah.txt", O_RDWR, 0600);
-  f2 = dup(f);
   assert(f != -1);
+  f2 = dup(f);
   assert(f2 != -1);
   rtn = ftruncate(f2, 0);
   assert(rtn == 0);

@@ -20,15 +20,21 @@ STAMP_DIR = os.path.join(__rootdir__, 'out')
 from tools import shared, utils
 
 actions = [
-  ('npm packages', ['package.json'], [shutil.which('npm'), 'ci']),
+  ('npm packages', [
+     'package.json',
+     'package-lock.json'
+   ], [shutil.which('npm'), 'ci']),
   ('create entry points', [
      'tools/maint/create_entry_points.py',
      'tools/maint/run_python.bat',
      'tools/maint/run_python.sh',
      'tools/maint/run_python.ps1',
-   ],
-   [sys.executable, 'tools/maint/create_entry_points.py']),
-  ('git submodules', ['test/third_party/posixtestsuite/'], [shutil.which('git'), 'submodule', 'update', '--init']),
+   ], [sys.executable, 'tools/maint/create_entry_points.py']),
+  ('git submodules', [
+     'test/third_party/posixtestsuite/',
+     'test/third_party/googletest',
+     'test/third_party/wasi-test-suite',
+   ], [shutil.which('git'), 'submodule', 'update', '--init']),
 ]
 
 

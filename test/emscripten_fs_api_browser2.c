@@ -3,6 +3,8 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <assert.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <emscripten.h>
@@ -11,40 +13,28 @@
 #include <SDL/SDL.h>
 #include "SDL/SDL_image.h"
 
-int result = 1;
 int get_count = 0;
 
 void onLoaded(const char* file) {
-  if (strcmp(file, "/tmp/test.html")) {
-    printf("what?\n");
-    result = 0;
-  }
-
-  FILE * f = fopen(file, "r");
-  if (f) {
-      printf("exists: %s\n", file);
-      int c = fgetc (f);
-      if (c == EOF) {
-        printf("file empty: %s\n", file);
-        result = 0;
-      }
-      fclose(f);
-  } else {
-    result = 0;
-    printf("!exists: %s\n", file);
-  }
-
-  get_count++;
   printf("onLoaded %s\n", file);
 
-  if (get_count == 2) {
-    exit(result);
+  assert(strcmp(file, "/tmp/test.html") == 0);
+
+  FILE * f = fopen(file, "r");
+  assert(f);
+  printf("exists: %s\n", file);
+  int c = fgetc(f);
+  assert(c != EOF && "file empty!");
+  fclose(f);
+
+  if (++get_count == 2) {
+    exit(0);
   }
 }
 
 void onError(const char* file) {
   printf("error...\n");
-  result = 0;
+  assert(false);
 }
 
 int main() {
@@ -61,5 +51,5 @@ int main() {
     onLoaded,
     onError);
 
-  return 0;
+  return 99;
 }

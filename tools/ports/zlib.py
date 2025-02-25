@@ -5,8 +5,8 @@
 
 import os
 
-VERSION = '1.2.13'
-HASH = '44b834fbfb50cca229209b8dbe1f96b258f19a49f5df23b80970b716371d856a4adf525edb4c6e0e645b180ea949cb90f5365a1d896160f297f56794dd888659'
+VERSION = '1.3.1'
+HASH = '8c9642495bafd6fad4ab9fb67f09b268c69ff9af0f4f20cf15dfc18852ff1f312bd8ca41de761b3f8d8e90e77d79f2ccacd3d4c5b19e475ecf09d021fdfe9088'
 
 
 def needed(settings):

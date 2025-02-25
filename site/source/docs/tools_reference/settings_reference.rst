@@ -304,8 +304,6 @@ Assumes WASM_BIGINT.
 
 .. note:: Applicable during both linking and compilation
 
-.. note:: This is an experimental setting
-
 Default value: 0
 
 .. _initial_table:
@@ -1157,16 +1155,19 @@ This option implies EXPORT_EXCEPTION_HANDLING_HELPERS.
 
 Default value: false
 
-.. _wasm_exnref:
+.. _wasm_legacy_exceptions:
 
-WASM_EXNREF
-===========
+WASM_LEGACY_EXCEPTIONS
+======================
 
-Emit instructions for the new Wasm exception handling proposal with exnref,
-which was adopted on Oct 2023. The implementation of the new proposal is
-still in progress and this feature is currently experimental.
+If true, emit instructions for the legacy Wasm exception handling proposal:
+https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/legacy/Exceptions.md
+If false, emit instructions for the standardized exception handling proposal:
+https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/Exceptions.md
 
-Default value: false
+.. note:: Applicable during both linking and compilation
+
+Default value: true
 
 .. _nodejs_catch_exit:
 
@@ -1419,7 +1420,7 @@ A list of imported module functions that will potentially do asynchronous
 work. The imported function should return a ``Promise`` when doing
 asynchronous work.
 
-Note when using ``--js-library``, the function can be marked with
+Note when using JS library files, the function can be marked with
 ``<function_name>_async:: true`` in the library instead of this setting.
 
 Default value: []
@@ -1977,18 +1978,6 @@ This is implicitly enabled if the output suffix is set to 'mjs'.
 
 Default value: false
 
-.. _use_es6_import_meta:
-
-USE_ES6_IMPORT_META
-===================
-
-Use the ES6 Module relative import feature 'import.meta.url'
-to auto-detect WASM Module path.
-It might not be supported on old browsers / toolchains. This setting
-may not be disabled when Node.js is targeted (-sENVIRONMENT=*node*).
-
-Default value: true
-
 .. _export_name:
 
 EXPORT_NAME
@@ -2186,8 +2175,7 @@ WASM_BIGINT
 
 WebAssembly integration with JavaScript BigInt. When enabled we don't need to
 legalize i64s into pairs of i32s, as the wasm VM will use a BigInt where an
-i64 is used. If WASM_BIGINT is present, the default minimum supported browser
-versions will be increased to the min version that supports BigInt.
+i64 is used.
 
 Default value: true
 
@@ -2928,7 +2916,7 @@ MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 Minimum supported value is 101000 which was released in 2016-09 (see
 feature_matrix.py).
 
-Default value: 140100
+Default value: 150000
 
 .. _min_chrome_version:
 

@@ -38,6 +38,22 @@ EM_JS(void, test_fs_open, (), {
     assert(createFileNotHere && createFileNotHere.fd >= 0);
 });
 
+// createPath should succeed when called on existing paths ( https://github.com/emscripten-core/emscripten/issues/23602 )
+EM_JS(void, test_fs_createPath, (), {
+    FS.createPath('/', 'home', true, true);
+    FS.createPath('/', 'home', true, true); // Creating an already existing path
+    FS.createPath('/home', 'nested1', true, true);
+    FS.createPath('/home', 'nested2', true, true);
+    FS.writeFile('/home/nested1/test.txt', 'a=1\nb=2\n');
+    FS.writeFile('/home/nested2/test.txt', 'a=2\nb=4\n');
+    var read1 = FS.readFile('/home/nested1/test.txt',{encoding:'utf8'});
+    var read2 = FS.readFile('/home/nested2/test.txt',{encoding:'utf8'});
+    console.log("r1",read1);
+    console.log("r2",read2);
+    assert(read1 == 'a=1\nb=2\n');
+    assert(read2 == 'a=2\nb=4\n');
+});
+
 EM_JS(void, test_fs_rename, (), {
     FS.mkdir('renamedir');
     FS.writeFile('renamedir/renametestfile', "");
@@ -456,6 +472,7 @@ void cleanup() {
 
 int main() {
     test_fs_open();
+    test_fs_createPath();
     test_fs_rename();
     test_fs_readlink();
     test_fs_read();
