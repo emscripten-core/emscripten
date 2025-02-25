@@ -13883,9 +13883,8 @@ void foo() {}
   def test_pthread_kill(self):
     self.do_run_in_out_file_test('pthread/test_pthread_kill.c')
 
-  @node_pthreads
   def test_emscripten_set_interval(self):
-    self.do_runf('emscripten_set_interval.c', args=['-pthread', '-sPROXY_TO_PTHREAD'])
+    self.do_runf('emscripten_set_interval.c')
 
   # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
   def test_emscripten_console_log(self):
@@ -13895,13 +13894,11 @@ void foo() {}
   def test_emscripten_unwind_to_js_event_loop(self):
     self.do_runf('test_emscripten_unwind_to_js_event_loop.c')
 
-  @node_pthreads
   def test_emscripten_set_timeout(self):
-    self.do_runf('emscripten_set_timeout.c', args=['-pthread', '-sPROXY_TO_PTHREAD'])
+    self.do_runf('emscripten_set_timeout.c')
 
-  @node_pthreads
   def test_emscripten_set_timeout_loop(self):
-    self.do_runf('emscripten_set_timeout_loop.c', args=['-pthread', '-sPROXY_TO_PTHREAD'])
+    self.do_runf('emscripten_set_timeout_loop.c')
 
   # Verify that we are able to successfully compile a script when the Windows 7
   # and Python workaround env. vars are enabled.
