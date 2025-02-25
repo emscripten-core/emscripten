@@ -3130,16 +3130,6 @@ This is enabled automatically when using -gsource-map with sanitizers.
 
 Default value: false
 
-.. _inline_sources:
-
-INLINE_SOURCES
-==============
-
-Whether we should embed the sources content into the source map file.
-Must be used with ``-gsource-map``.
-
-Default value: false
-
 .. _source_map_prefixes:
 
 SOURCE_MAP_PREFIXES

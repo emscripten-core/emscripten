@@ -10383,9 +10383,9 @@ int main() {
     lib_file = DETERMINISTIC_PREFIX + '/system/lib/libc/musl/src/stdio/fflush.c'
     if prefixes:
       prefixes = [p.replace('<cwd>', cwd) for p in prefixes]
-    self.set_setting('INLINE_SOURCES', sources)
     self.set_setting('SOURCE_MAP_PREFIXES', prefixes)
-    self.emcc(src_file, args=['-gsource-map'], output_filename='test.js')
+    args = ['-gsource-map=inline' if sources else '-gsource-map']
+    self.emcc(src_file, args=args, output_filename='test.js')
     output = read_file('test.wasm.map')
     # Check source file resolution
     p = wasm_sourcemap.Prefixes(prefixes, base_path=cwd)
@@ -10401,7 +10401,7 @@ int main() {
     # "sources" contains resolved filepath.
     self.assertIn(f'"{src_file_url}"', output)
     self.assertIn(f'"{lib_file_url}"', output)
-    # "sourcesContent" contains source code iff -SINLINE_SOURCES=1 is specified.
+    # "sourcesContent" contains source code iff -gsource-map=inline is specified.
     if sources:
       p = wasm_sourcemap.Prefixes(prefixes, preserve_deterministic_prefix=False)
       for filepath in [src_file, lib_file]:

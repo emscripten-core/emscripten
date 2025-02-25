@@ -2045,11 +2045,6 @@ var USE_OFFSET_CONVERTER = false;
 // This is enabled automatically when using -gsource-map with sanitizers.
 var LOAD_SOURCE_MAP = false;
 
-// Whether we should embed the sources content into the source map file.
-// Must be used with ``-gsource-map``.
-// [link]
-var INLINE_SOURCES = false;
-
 // List of path substitutions to apply in the "sources" field of the source map.
 // Corresponds to the ``--prefix`` option used in ``tools/wasm-sourcemap.py``.
 // Must be used with ``-gsource-map``.
