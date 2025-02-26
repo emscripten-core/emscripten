@@ -3139,6 +3139,10 @@ List of path substitutions to apply in the "sources" field of the source map.
 Corresponds to the ``--prefix`` option used in ``tools/wasm-sourcemap.py``.
 Must be used with ``-gsource-map``.
 
+This setting allows to map path prefixes to the proper ones so that the final
+(possibly relative) URLs point to the correct locations :
+``-sSOURCE_MAP_PREFIXES=['/old/path=/new/path']``
+
 Default value: []
 
 .. _default_to_cxx:
