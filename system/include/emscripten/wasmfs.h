@@ -17,7 +17,7 @@ extern "C" {
 typedef struct Backend* backend_t;
 
 // Obtains the backend_t of a specified path.
-backend_t wasmfs_get_backend_by_path(char* path __attribute__((nonnull)));
+backend_t wasmfs_get_backend_by_path(const char* path __attribute__((nonnull)));
 
 // Obtains the backend_t of a specified fd.
 backend_t wasmfs_get_backend_by_fd(int fd);
@@ -36,7 +36,7 @@ int wasmfs_create_directory(const char* path __attribute__((nonnull)), mode_t mo
 
 // Unmounts the directory (Which must be a valid mountpoint) at a specific path.
 // Returns 0 on success, or a negative value on error.
-int wasmfs_unmount(intptr_t path);
+int wasmfs_unmount(const char* path __attribute__((nonnull)));
 
 // Backend creation
 

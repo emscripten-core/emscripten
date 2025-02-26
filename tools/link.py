@@ -1260,8 +1260,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       settings.REQUIRED_EXPORTS += [
         'emscripten_builtin_memalign',
         'wasmfs_create_file',
+        'wasmfs_unmount',
         '_wasmfs_mount',
-        '_wasmfs_unmount',
         '_wasmfs_read_file',
         '_wasmfs_write_file',
         '_wasmfs_open',
