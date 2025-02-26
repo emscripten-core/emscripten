@@ -34,7 +34,7 @@ import queue
 import clang_native
 import jsrun
 import line_endings
-from tools.shared import EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
+from tools.shared import EMCC, EMXX, DEBUG
 from tools.shared import get_canonical_temp_dir, path_from_root
 from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_binary, exit_with_error
 from tools.settings import COMPILE_TIME_SETTINGS
@@ -85,6 +85,8 @@ WEBIDL_BINDER = shared.bat_suffix(path_from_root('tools/webidl_binder'))
 
 EMBUILDER = shared.bat_suffix(path_from_root('embuilder'))
 EMMAKE = shared.bat_suffix(path_from_root('emmake'))
+EMCMAKE = shared.bat_suffix(path_from_root('emcmake'))
+EMCONFIGURE = shared.bat_suffix(path_from_root('emconfigure'))
 EMRUN = shared.bat_suffix(shared.path_from_root('emrun'))
 WASM_DIS = Path(building.get_binaryen_bin(), 'wasm-dis')
 LLVM_OBJDUMP = os.path.expanduser(shared.build_llvm_tool_path(shared.exe_suffix('llvm-objdump')))
