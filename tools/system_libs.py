@@ -44,7 +44,7 @@ USE_NINJA = int(os.environ.get('EMCC_USE_NINJA', '0'))
 
 # A (fake) deterministic emscripten path to use in __FILE__ macro and debug info
 # to produce reproducible builds across platforms.
-DETERMINISITIC_PREFIX = '/emsdk/emscripten'
+DETERMINISTIC_PREFIX = '/emsdk/emscripten'
 
 
 def files_in_path(path, filenames):
@@ -588,9 +588,9 @@ class Library:
 
     source_dir = utils.path_from_root()
     relative_source_dir = os.path.relpath(source_dir, self.build_dir)
-    cflags += [f'-ffile-prefix-map={source_dir}={DETERMINISITIC_PREFIX}',
-               f'-ffile-prefix-map={relative_source_dir}={DETERMINISITIC_PREFIX}',
-               f'-fdebug-compilation-dir={DETERMINISITIC_PREFIX}']
+    cflags += [f'-ffile-prefix-map={source_dir}={DETERMINISTIC_PREFIX}',
+               f'-ffile-prefix-map={relative_source_dir}={DETERMINISTIC_PREFIX}',
+               f'-fdebug-compilation-dir={DETERMINISTIC_PREFIX}']
     return cflags
 
   def get_base_name_prefix(self):
