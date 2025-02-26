@@ -759,11 +759,9 @@ int __syscall_getcwd(intptr_t buf, size_t size) {
       return -ENOENT;
     }
 
-    auto parentDir = parent->dynCast<Directory>();
-
-    auto name = parentDir->locked().getName(curr);
+    auto name = parent->locked().getName(curr);
     result = '/' + name + result;
-    curr = parentDir;
+    curr = parent;
   }
 
   // Check if the cwd is the root directory.
@@ -771,8 +769,7 @@ int __syscall_getcwd(intptr_t buf, size_t size) {
     result = "/";
   }
 
-  auto res = result.c_str();
-  int len = strlen(res) + 1;
+  int len = result.length() + 1;
 
   // Check if the size argument is less than the length of the absolute
   // pathname of the working directory, including null terminator.
@@ -781,7 +778,7 @@ int __syscall_getcwd(intptr_t buf, size_t size) {
   }
 
   // Return value is a null-terminated c string.
-  strcpy((char*)buf, res);
+  strcpy((char*)buf, result.c_str());
 
   return len;
 }
