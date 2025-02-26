@@ -3141,7 +3141,7 @@ Must be used with ``-gsource-map``.
 
 This setting allows to map path prefixes to the proper ones so that the final
 (possibly relative) URLs point to the correct locations :
-``-sSOURCE_MAP_PREFIXES=['/old/path=/new/path']``
+``-sSOURCE_MAP_PREFIXES=/old/path=/new/path``
 
 Default value: []
 
