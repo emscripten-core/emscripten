@@ -214,19 +214,31 @@ var ensureCache = {
     if (!ensureCache.buffer) { // happens first time, or when we need to grow
       ensureCache.size += 128; // heuristic, avoid many small grow events
       ensureCache.buffer = Module['_webidl_malloc'](ensureCache.size);
-      assert(ensureCache.buffer);
+''']
+if CHECKS == 'ALL':
+  mid_js += ["      assert(ensureCache.buffer);"]
+
+mid_js += ['''
     }
     ensureCache.pos = 0;
   },
   alloc(array, view) {
-    assert(ensureCache.buffer);
+''']
+if CHECKS == 'ALL':
+  mid_js += ["    assert(ensureCache.buffer);"]
+
+mid_js += ['''
     var bytes = view.BYTES_PER_ELEMENT;
     var len = array.length * bytes;
     len = alignMemory(len, 8); // keep things aligned to 8 byte boundaries
     var ret;
     if (ensureCache.pos + len >= ensureCache.size) {
       // we failed to allocate in the buffer, ensureCache time around :(
-      assert(len > 0); // null terminator, at least
+''']
+if CHECKS == 'ALL':
+  mid_js += ["      assert(len > 0); // null terminator, at least"]
+
+mid_js += ['''
       ensureCache.needed += len;
       ret = Module['_webidl_malloc'](len);
       ensureCache.temps.push(ret);
