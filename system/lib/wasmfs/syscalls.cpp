@@ -60,7 +60,7 @@ int __syscall_dup3(int oldfd, int newfd, int flags) {
   if (!oldOpenFile) {
     return -EBADF;
   }
-  if (newfd < 0) {
+  if (newfd < 0 || newfd >= WASMFS_FD_MAX) {
     return -EBADF;
   }
   if (oldfd == newfd) {
