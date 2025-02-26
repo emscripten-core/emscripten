@@ -1106,8 +1106,19 @@ function littleEndianHeap(ast) {
   recursiveWalk(ast, {
     FunctionDeclaration: (node, c) => {
       // do not recurse into LE_HEAP_STORE, LE_HEAP_LOAD functions
-      if (!(node.id.type === 'Identifier' && node.id.name.startsWith('LE_HEAP'))) {
+      if (
+        !(
+          node.id.type === 'Identifier' &&
+          (node.id.name.startsWith('LE_HEAP') || node.id.name.startsWith('LE_ATOMICS_'))
+        )
+      ) {
         c(node.body);
+      }
+    },
+    VariableDeclarator: (node, c) => {
+      if (!(node.id.type === 'Identifier' && node.id.name.startsWith('LE_ATOMICS_'))) {
+        c(node.id);
+        if (node.init) c(node.init);
       }
     },
     AssignmentExpression: (node, c) => {
@@ -1158,6 +1169,27 @@ function littleEndianHeap(ast) {
             break;
           }
         }
+      }
+    },
+    CallExpression: (node, c) => {
+      if (node.arguments) {
+        for (var a of node.arguments) c(a);
+      }
+      if (
+        // Atomics.X(args) -> LE_ATOMICS_X(args)
+        node.callee.type === 'MemberExpression' &&
+        node.callee.object.type === 'Identifier' &&
+        node.callee.object.name === 'Atomics' &&
+        node.callee.property.type === 'Identifier' &&
+        !node.computed
+      ) {
+        makeCallExpression(
+          node,
+          'LE_ATOMICS_' + node.callee.property.name.toUpperCase(),
+          node.arguments,
+        );
+      } else {
+        c(node.callee);
       }
     },
     MemberExpression: (node, c) => {
@@ -1217,7 +1249,12 @@ function growableHeap(ast) {
   recursiveWalk(ast, {
     FunctionDeclaration(node, c) {
       // Do not recurse into to GROWABLE_HEAP_ helper functions themselves.
-      if (!(node.id.type === 'Identifier' && node.id.name.startsWith('GROWABLE_HEAP_'))) {
+      if (
+        !(
+          node.id.type === 'Identifier' &&
+          (node.id.name.startsWith('GROWABLE_HEAP_') || node.id.name === 'LE_HEAP_UPDATE')
+        )
+      ) {
         c(node.body);
       }
     },

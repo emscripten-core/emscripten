@@ -66,9 +66,6 @@ var wasmOffsetConverter;
 
 function updateMemoryViews() {
   var b = wasmMemory.buffer;
-#if SUPPORT_BIG_ENDIAN
-  {{{ maybeExportHeap('HEAP_DATA_VIEW') }}} HEAP_DATA_VIEW = new DataView(b);
-#endif
   {{{ maybeExportHeap('HEAP8')   }}}HEAP8 = new Int8Array(b);
   {{{ maybeExportHeap('HEAP16')  }}}HEAP16 = new Int16Array(b);
   {{{ maybeExportHeap('HEAPU8')  }}}HEAPU8 = new Uint8Array(b);
@@ -80,6 +77,10 @@ function updateMemoryViews() {
 #if WASM_BIGINT
   {{{ maybeExportHeap('HEAP64')  }}}HEAP64 = new BigInt64Array(b);
   {{{ maybeExportHeap('HEAPU64') }}}HEAPU64 = new BigUint64Array(b);
+#endif
+#if SUPPORT_BIG_ENDIAN
+  {{{ maybeExportHeap('HEAP_DATA_VIEW') }}} HEAP_DATA_VIEW = new DataView(b);
+  LE_HEAP_UPDATE();
 #endif
 }
 

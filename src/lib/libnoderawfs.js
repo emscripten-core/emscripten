@@ -24,7 +24,7 @@ addToLibrary({
     };
     // Use this to reference our in-memory filesystem
     /** @suppress {partialAlias} */
-    var VFS = Object.assign({}, FS);
+    var VFS = {...FS};
     // Wrap the whole in-memory filesystem API with
     // our Node.js based functions
     for (var _key in NODERAWFS) {

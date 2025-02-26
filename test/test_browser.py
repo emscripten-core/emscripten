@@ -5516,12 +5516,13 @@ Module["preRun"] = () => {
     shutil.copy(test_file('webaudio/audio_files/emscripten-bass.mp3'), 'audio_files/')
     self.btest_exit('webaudio/audioworklet_params_mixing.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DTEST_AND_EXIT'] + args)
 
-  # Tests AudioWorklet with emscripten_futex_wake().
+  # Tests AudioWorklet with emscripten_lock_busyspin_wait_acquire() and friends
+  @no_wasm64('https://github.com/emscripten-core/emscripten/pull/23508')
+  @no_2gb('https://github.com/emscripten-core/emscripten/pull/23508')
   @requires_sound_hardware
   @also_with_minimal_runtime
-  @disabled('https://github.com/emscripten-core/emscripten/issues/22962')
-  def test_audio_worklet_emscripten_futex_wake(self):
-    self.btest('webaudio/audioworklet_emscripten_futex_wake.cpp', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread', '-sPTHREAD_POOL_SIZE=2'])
+  def test_audio_worklet_emscripten_locks(self):
+    self.btest_exit('webaudio/audioworklet_emscripten_futex_wake.cpp', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread'])
 
   def test_error_reporting(self):
     # Test catching/reporting Error objects
@@ -5532,6 +5533,7 @@ Module["preRun"] = () => {
     create_file('post.js', 'throw "foo";')
     self.btest('hello_world.c', args=['--post-js=post.js'], expected='exception:foo')
 
+  @also_with_threads
   @parameterized({
     '': (False,),
     'es6': (True,),
@@ -5556,6 +5558,7 @@ Module["preRun"] = () => {
     self.run_process(shared.get_npm_cmd('vite') + ['build'])
     self.run_browser('dist/index.html', '/report_result?exit:0')
 
+  @also_with_threads
   def test_rollup(self):
     copytree(test_file('rollup'), '.')
     self.compile_btest('hello_world.c', ['-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sMODULARIZE', '-o', 'hello.mjs'])
