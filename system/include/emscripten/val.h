@@ -24,8 +24,6 @@
 #include <variant>
 #endif
 
-#define EMSCRIPTEN_EXPORT __attribute__((visibility("default")))
-
 namespace emscripten {
 
 class val;
