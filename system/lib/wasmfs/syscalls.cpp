@@ -776,7 +776,7 @@ int __syscall_getcwd(intptr_t buf, size_t size) {
 
   // Check if the size argument is less than the length of the absolute
   // pathname of the working directory, including null terminator.
-  if (len >= size) {
+  if (len > size) {
     return -ERANGE;
   }
 
