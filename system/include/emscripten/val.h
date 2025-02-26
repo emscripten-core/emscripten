@@ -24,6 +24,7 @@
 #include <variant>
 #endif
 
+#define EMSCRIPTEN_EXPORT __attribute__((visibility("default")))
 
 namespace emscripten {
 
@@ -285,7 +286,7 @@ private:
 static const char name##_symbol[] = #name;                          \
 static const ::emscripten::internal::symbol_registrar<name##_symbol> name##_registrar
 
-class val {
+class EMSCRIPTEN_EXPORT val {
 public:
   // missing operators:
   // * ~ - + ++ --

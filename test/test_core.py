@@ -7710,6 +7710,41 @@ void* operator new(size_t size) {
     else:
       self.assertTrue(seen_lines.issuperset([6, 7, 11, 12]), seen_lines)
 
+  @no_asan("asan does not work with dynamic linking")
+  @needs_dylink
+  def test_embind_dylink_visibility_hidden(self):
+    # Check that embind is usable from a library built with "-fvisibility=hidden"
+    create_file('liba.cpp', r'''
+      #include <emscripten/val.h>
+      #define EXPORT __attribute__((visibility("default")))
+      using namespace emscripten;
+      EXPORT void liba_fun() {
+        unsigned char buffer[1];
+        val view(typed_memory_view(1, buffer));
+      }
+    ''')
+
+    # side module
+    self.build_dlfcn_lib('liba.cpp', outfile='liba.so', emcc_args=['-std=c++11', '-fvisibility=hidden'])
+
+    # main module
+    self.set_setting('MAIN_MODULE', 1)
+    self.clear_setting('SIDE_MODULE')
+
+    self.emcc_args = ['liba.so', '-L.', '--bind']
+    create_file('main.cpp', r'''
+      #include <stdio.h>
+      #include <emscripten/val.h>
+      using namespace emscripten;
+      void liba_fun();
+      int main() {
+        liba_fun();
+        printf("done\n");
+        return 0;
+      }
+    ''')
+    self.do_runf('main.cpp', 'done\n')
+
   @no_wasm2js('TODO: source maps in wasm2js')
   def test_dwarf(self):
     self.emcc_args.append('-g')
