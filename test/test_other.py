@@ -4915,24 +4915,26 @@ extraLibraryFuncs.push('jsfunc');
 
   # Tests using the #warning directive in JS library files
   def test_jslib_warnings(self):
-    proc = self.run_process([EMCC, test_file('hello_world.c'), '--js-library', test_file('warning_in_js_libraries.js')], stdout=PIPE, stderr=PIPE)
+    shutil.copy(test_file('warning_in_js_libraries.js'), '.')
+    proc = self.run_process([EMCC, test_file('hello_world.c'), '--js-library', 'warning_in_js_libraries.js'], stdout=PIPE, stderr=PIPE)
     self.assertNotContained('This warning should not be present!', proc.stderr)
-    self.assertContained('warning_in_js_libraries.js:5: #warning This is a warning string!', proc.stderr)
-    self.assertContained('warning_in_js_libraries.js:7: #warning This is a second warning string!', proc.stderr)
+    self.assertContained('warning: warning_in_js_libraries.js:5: #warning This is a warning string!', proc.stderr)
+    self.assertContained('warning: warning_in_js_libraries.js:7: #warning This is a second warning string!', proc.stderr)
     self.assertContained('emcc: warning: warnings in JS library compilation [-Wjs-compiler]', proc.stderr)
 
-    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', test_file('warning_in_js_libraries.js'), '-Werror'])
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', 'warning_in_js_libraries.js', '-Werror'])
     self.assertNotContained('This warning should not be present!', err)
-    self.assertContained('warning_in_js_libraries.js:5: #warning This is a warning string!', err)
-    self.assertContained('warning_in_js_libraries.js:7: #warning This is a second warning string!', err)
+    self.assertContained('warning: warning_in_js_libraries.js:5: #warning This is a warning string!', err)
+    self.assertContained('warning: warning_in_js_libraries.js:7: #warning This is a second warning string!', err)
     self.assertContained('emcc: error: warnings in JS library compilation [-Wjs-compiler] [-Werror]', err)
 
   # Tests using the #error directive in JS library files
   def test_jslib_errors(self):
-    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', test_file('error_in_js_libraries.js')])
+    shutil.copy(test_file('error_in_js_libraries.js'), '.')
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', 'error_in_js_libraries.js'])
     self.assertNotContained('This error should not be present!', err)
-    self.assertContained('error_in_js_libraries.js:5: #error This is an error string!', err)
-    self.assertContained('error_in_js_libraries.js:7: #error This is a second error string!', err)
+    self.assertContained('error: error_in_js_libraries.js:5: #error This is an error string!', err)
+    self.assertContained('error: error_in_js_libraries.js:7: #error This is a second error string!', err)
 
   def test_jslib_include(self):
     create_file('inc.js', '''
