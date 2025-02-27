@@ -989,8 +989,8 @@ function getWasmImports() {
 #if ASSERTIONS
       try {
 #endif
-        Module['instantiateWasm'](info, (mod, inst) => {
-          receiveInstance(mod, inst);
+        Module['instantiateWasm'](info, (inst, mod) => {
+          receiveInstance(inst, mod);
           resolve(mod.exports);
         }, reject);
 #if ASSERTIONS
