@@ -176,9 +176,35 @@ See :ref:`using-exceptions-and-setjmp-longjmp-together`.
 Limitations
 ===========
 
-Currently `std::set_terminate
-<https://en.cppreference.com/w/cpp/error/set_terminate>`_ is NOT supported, both
-in Emscripten-style and WebAssembly exceptions. That functionality requires
-`two-phase exception handling
-<https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html>`_, which neither
-supports.
+  * Currently `std::set_terminate
+    <https://en.cppreference.com/w/cpp/error/set_terminate>`_ is NOT supported
+    when a thrown exception does not have a matching handler and unwinds all the
+    stack and crashes the program. This applies to both Emscripten-style and
+    WebAssembly exceptions. That functionality requires `two-phase exception
+    handling <https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html>`_, which
+    neither supports.
+
+  * When the exception handling encounters a termination condition, libc++abi
+    spec says we call `__cxa_begin_catch()` to mark the exception as handled and
+    then call `terminate()`. But currently Wasm EH does not support calling
+    `__cxa_begin_catch()`. So the following program prints ``exception_ptr is
+    null``, where it is supposed to print ``exception_ptr is NOT null``.
+
+    .. code-block:: cpp
+
+        #include <iostream>
+        #include <exception>
+
+        int main() noexcept {
+          std::set_terminate([] {
+            auto ptr = std::current_exception();
+            if (ptr)
+              std::cerr << "exception_ptr is NOT null" << std::endl;
+            else
+              std::cerr << "exception_ptr is null" << std::endl;
+            std::abort();
+          });
+          throw 3;
+        }
+
+    This can possibly be supported in the future.
