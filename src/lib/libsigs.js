@@ -710,7 +710,6 @@ sigs = {
   emscripten_math_sqrt__sig: 'dd',
   emscripten_math_tan__sig: 'dd',
   emscripten_math_tanh__sig: 'dd',
-  emscripten_navigator_hardware_concurrency__sig: 'i',
   emscripten_notify_memory_growth__sig: 'vp',
   emscripten_num_logical_cores__sig: 'i',
   emscripten_out__sig: 'vp',
