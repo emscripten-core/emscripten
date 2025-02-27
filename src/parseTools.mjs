@@ -18,7 +18,8 @@ import {
   printErr,
   readFile,
   runInMacroContext,
-  setCurrentFile,
+  pushCurrentFile,
+  popCurrentFile,
   warn,
   srcDir,
 } from './utility.mjs';
@@ -36,10 +37,15 @@ export function processMacros(text, filename) {
   // The `?` here in makes the regex non-greedy so it matches with the closest
   // set of closing braces.
   // `[\s\S]` works like `.` but include newline.
-  return text.replace(/{{{([\s\S]+?)}}}/g, (_, str) => {
-    const ret = runInMacroContext(str, {filename: filename});
-    return ret !== null ? ret.toString() : '';
-  });
+  pushCurrentFile(filename);
+  try {
+    return text.replace(/{{{([\s\S]+?)}}}/g, (_, str) => {
+      const ret = runInMacroContext(str, {filename: filename});
+      return ret !== null ? ret.toString() : '';
+    });
+  } finally {
+    popCurrentFile();
+  }
 }
 
 function findIncludeFile(filename, currentDir) {
@@ -86,7 +92,6 @@ export function preprocess(filename) {
   const showStack = [];
   const showCurrentLine = () => showStack.every((x) => x == SHOW);
 
-  const oldFilename = setCurrentFile(filename);
   const fileExt = filename.split('.').pop().toLowerCase();
   const isHtml = fileExt === 'html' || fileExt === 'htm' ? true : false;
   let inStyle = false;
@@ -99,6 +104,7 @@ export function preprocess(filename) {
   let ret = '';
   let emptyLine = false;
 
+  pushCurrentFile(filename);
   try {
     for (let [i, line] of lines.entries()) {
       if (isHtml) {
@@ -209,7 +215,7 @@ no matching #endif found (${showStack.length$}' unmatched preprocessing directiv
     );
     return ret;
   } finally {
-    setCurrentFile(oldFilename);
+    popCurrentFile();
   }
 }
 
