@@ -412,27 +412,13 @@ function asmFloatToInt(x) {
 }
 
 // See makeSetValue
-function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, _ignore, align) {
-  assert(typeof align === 'undefined', 'makeGetValue no longer supports align parameter');
-  assert(
-    typeof noNeedFirst === 'undefined',
-    'makeGetValue no longer supports noNeedFirst parameter',
-  );
-  if (typeof unsigned !== 'undefined') {
-    // TODO(sbc): make this into an error at some point.
-    printErr(
-      'makeGetValue: Please use u8/u16/u32/u64 unsigned types in favor of additional argument',
-    );
-    if (unsigned && type.startsWith('i')) {
-      type = `u${type.slice(1)}`;
-    }
-  } else if (type.startsWith('u')) {
-    // Set `unsigned` based on the type name.
-    unsigned = true;
-  }
+function makeGetValue(ptr, pos, type) {
+  assert(arguments.length == 3, 'makeGetValue expects 3 arguments');
 
   const offset = calcFastOffset(ptr, pos);
   if (type === 'i53' || type === 'u53') {
+    // Set `unsigned` based on the type name.
+    const unsigned = type.startsWith('u');
     return `readI53From${unsigned ? 'U' : 'I'}64(${offset})`;
   }
 
