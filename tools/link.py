@@ -218,7 +218,9 @@ def get_js_sym_info():
   input_files.extend(read_file(jslib) for jslib in sorted(jslibs))
   for jslib in settings.JS_LIBRARIES:
     if not os.path.isabs(jslib):
-      jslib = utils.path_from_root('src/lib', jslib)
+      system_lib = utils.path_from_root('src/lib', jslib)
+      if os.path.exists(system_lib):
+        jslib = system_lib
     input_files.append(read_file(jslib))
   content = '\n'.join(input_files)
   content_hash = hashlib.sha1(content.encode('utf-8')).hexdigest()
@@ -1246,7 +1248,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.WASMFS:
     settings.FILESYSTEM = 1
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
-    settings.JS_LIBRARIES.append('libwasmfs.js')
+    add_system_lib('libwasmfs.js')
     if settings.ASSERTIONS:
       # used in assertion checks for unflushed content
       settings.REQUIRED_EXPORTS += ['wasmfs_flush']
@@ -1362,14 +1364,14 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.PTHREADS:
     setup_pthreads()
-    settings.JS_LIBRARIES.append('libpthread.js')
+    add_system_lib('libpthread.js')
     if settings.PROXY_TO_PTHREAD:
       settings.PTHREAD_POOL_SIZE_STRICT = 0
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$runtimeKeepalivePush']
   else:
     if settings.PROXY_TO_PTHREAD:
       exit_with_error('-sPROXY_TO_PTHREAD requires -pthread to work!')
-    settings.JS_LIBRARIES.append('libpthread_stub.js')
+    add_system_lib('libpthread_stub.js')
 
   if settings.MEMORY64:
     # Any "pointers" passed to JS will now be i64's, in both modes.
@@ -1383,7 +1385,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     # set location of Wasm Worker bootstrap JS file
     if settings.WASM_WORKERS == 1:
       settings.WASM_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.ww.js'
-    settings.JS_LIBRARIES.append('libwasm_worker.js')
+    add_system_lib('libwasm_worker.js')
 
   # Set min browser versions based on certain settings such as WASM_BIGINT,
   # PTHREADS, AUDIO_WORKLET
@@ -1401,7 +1403,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.AUDIO_WORKLET:
     if settings.AUDIO_WORKLET == 1:
       settings.AUDIO_WORKLET_FILE = unsuffixed(os.path.basename(target)) + '.aw.js'
-    settings.JS_LIBRARIES.append('libwebaudio.js')
+    add_system_lib('libwebaudio.js')
     if not settings.MINIMAL_RUNTIME:
       # If we are in the audio worklet environment, we can only access the Module object
       # and not the global scope of the main JS script. Therefore we need to export
@@ -2759,12 +2761,18 @@ def map_to_js_libs(library_name):
     'SDL2_mixer': [],
   }
 
-  if library_name in library_map:
-    libs = library_map[library_name]
-    logger.debug('Mapping library `%s` to JS libraries: %s' % (library_name, libs))
-    return libs
+  if library_name not in library_map:
+    return []
 
-  return None
+  libs = library_map[library_name]
+  logger.debug('Mapping library `%s` to JS libraries: %s' % (library_name, libs))
+  return libs
+
+
+def add_system_lib(lib):
+  lib = utils.path_from_root('src/lib', lib)
+  assert os.path.exists(lib)
+  settings.JS_LIBRARIES.append(lib)
 
 
 def process_libraries(options, flags):
@@ -2774,7 +2782,7 @@ def process_libraries(options, flags):
   # Process `-l` and `--js-library` flags
   for flag in flags:
     if flag.startswith('--js-library='):
-      js_lib = os.path.abspath(flag.split('=', 1)[1])
+      js_lib = flag.split('=', 1)[1]
       settings.JS_LIBRARIES.append(js_lib)
       continue
     if not flag.startswith('-l'):
@@ -2784,9 +2792,8 @@ def process_libraries(options, flags):
 
     logger.debug('looking for library "%s"', lib)
 
-    js_libs = map_to_js_libs(lib)
-    if js_libs is not None:
-      settings.JS_LIBRARIES += js_libs
+    for lib in map_to_js_libs(lib):
+      add_system_lib(lib)
 
     # We don't need to resolve system libraries to absolute paths here, we can just
     # let wasm-ld handle that.  However, we do want to map to the correct variant.

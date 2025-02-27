@@ -152,7 +152,7 @@ export function preprocess(filename) {
             }
             const absPath = findIncludeFile(includeFile, path.dirname(filename));
             if (!absPath) {
-              error(`${filename}:${i + 1}: file not found: ${includeFile}`);
+              error(`file not found: ${includeFile}`, i + 1);
               continue;
             }
             const result = preprocess(absPath);
@@ -164,7 +164,7 @@ export function preprocess(filename) {
           }
         } else if (first === '#else') {
           if (showStack.length == 0) {
-            error(`${filename}:${i + 1}: #else without matching #if`);
+            error('#else without matching #if', i + 1);
           }
           const curr = showStack.pop();
           if (curr == IGNORE) {
@@ -174,23 +174,21 @@ export function preprocess(filename) {
           }
         } else if (first === '#endif') {
           if (showStack.length == 0) {
-            error(`${filename}:${i + 1}: #endif without matching #if`);
+            error('#endif without matching #if', i + 1);
           }
           showStack.pop();
         } else if (first === '#warning') {
           if (showCurrentLine()) {
-            warn(
-              `${filename}:${i + 1}: #warning ${trimmed.substring(trimmed.indexOf(' ')).trim()}`,
-            );
+            warn(`#warning ${trimmed.substring(trimmed.indexOf(' ')).trim()}`, i + 1);
           }
         } else if (first === '#error') {
           if (showCurrentLine()) {
-            error(`${filename}:${i + 1}: #error ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
+            error(`#error ${trimmed.substring(trimmed.indexOf(' ')).trim()}`, i + 1);
           }
         } else if (first === '#preprocess') {
           // Do nothing
         } else {
-          error(`${filename}:${i + 1}: Unknown preprocessor directive ${first}`);
+          error(`Unknown preprocessor directive ${first}`, i + 1);
         }
       } else {
         if (showCurrentLine()) {
