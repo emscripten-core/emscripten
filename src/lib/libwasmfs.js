@@ -351,7 +351,7 @@ addToLibrary({
       return FS.handleError(withStackSave(() => __wasmfs_mount(stringToUTF8OnStack(mountpoint), backendPointer)));
     },
     unmount: (mountpoint) => (
-      FS.handleError(withStackSave(() => __wasmfs_unmount(stringToUTF8OnStack(mountpoint))))
+      FS.handleError(withStackSave(() => _wasmfs_unmount(stringToUTF8OnStack(mountpoint))))
     ),
     // TODO: lookup
     mknod: (path, mode, dev) => FS_mknod(path, mode, dev),

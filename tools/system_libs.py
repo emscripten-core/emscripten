@@ -58,7 +58,7 @@ def glob_in_path(path, glob_pattern, excludes=()):
   return sorted(f for f in files if os.path.basename(f) not in excludes)
 
 
-def get_base_cflags(force_object_files=False, preprocess=True):
+def get_base_cflags(build_dir, force_object_files=False, preprocess=True):
   # Always build system libraries with debug information.  Non-debug builds
   # will ignore this at link time because we link with `-strip-debug`.
   flags = ['-g', '-sSTRICT', '-Werror']
@@ -70,6 +70,12 @@ def get_base_cflags(force_object_files=False, preprocess=True):
       flags += ['-DEMSCRIPTEN_DYNAMIC_LINKING']
   if settings.MEMORY64:
     flags += ['-Wno-experimental', '-sMEMORY64=' + str(settings.MEMORY64)]
+
+  source_dir = utils.path_from_root()
+  relative_source_dir = os.path.relpath(source_dir, build_dir)
+  flags += [f'-ffile-prefix-map={source_dir}={DETERMINISTIC_PREFIX}',
+            f'-ffile-prefix-map={relative_source_dir}={DETERMINISTIC_PREFIX}',
+            f'-fdebug-compilation-dir={DETERMINISTIC_PREFIX}']
   return flags
 
 
@@ -462,7 +468,7 @@ class Library:
     self.build_dir = build_dir
 
     cflags = self.get_cflags()
-    asflags = get_base_cflags(preprocess=False)
+    asflags = get_base_cflags(self.build_dir, preprocess=False)
     input_files = self.get_files()
     ninja_file = os.path.join(build_dir, 'build.ninja')
     create_ninja_file(input_files, ninja_file, libname, cflags, asflags=asflags, customize_build_flags=self.customize_build_cmd)
@@ -491,7 +497,7 @@ class Library:
         # .s files are processed directly by the assembler.  In this case we can't pass
         # pre-processor flags such as `-I` and `-D` but we still want core flags such as
         # `-sMEMORY64`.
-        cmd += get_base_cflags(preprocess=False)
+        cmd += get_base_cflags(self.build_dir, preprocess=False)
       else:
         cmd += cflags
       cmd = self.customize_build_cmd(cmd, src)
@@ -581,16 +587,10 @@ class Library:
     Override and add any flags as needed to handle new variations.
     """
     cflags = self._inherit_list('cflags')
-    cflags += get_base_cflags(force_object_files=self.force_object_files)
+    cflags += get_base_cflags(self.build_dir, force_object_files=self.force_object_files)
 
     if self.includes:
       cflags += ['-I' + utils.path_from_root(i) for i in self._inherit_list('includes')]
-
-    source_dir = utils.path_from_root()
-    relative_source_dir = os.path.relpath(source_dir, self.build_dir)
-    cflags += [f'-ffile-prefix-map={source_dir}={DETERMINISTIC_PREFIX}',
-               f'-ffile-prefix-map={relative_source_dir}={DETERMINISTIC_PREFIX}',
-               f'-fdebug-compilation-dir={DETERMINISTIC_PREFIX}']
     return cflags
 
   def get_base_name_prefix(self):
