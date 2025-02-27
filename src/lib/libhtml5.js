@@ -1307,7 +1307,7 @@ var LibraryHTML5 = {
   $currentFullscreenStrategy: {},
   $restoreOldWindowedStyle: null,
 
-  $softFullscreenResizeWebGLRenderTarget__deps: ['$JSEvents', '$setLetterbox', '$currentFullscreenStrategy', '$getCanvasElementSize', '$setCanvasElementSize', '$jstoi_q'],
+  $softFullscreenResizeWebGLRenderTarget__deps: ['$JSEvents', '$setLetterbox', '$currentFullscreenStrategy', '$getCanvasElementSize', '$setCanvasElementSize'],
   $softFullscreenResizeWebGLRenderTarget: () => {
     var dpr = devicePixelRatio;
     var inHiDPIFullscreenMode = currentFullscreenStrategy.canvasResolutionScaleMode == {{{ cDefs.EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF }}};
@@ -1347,8 +1347,8 @@ var LibraryHTML5 = {
     }
 
     if (inCenteredWithoutScalingFullscreenMode) {
-      var t = (innerHeight - jstoi_q(canvas.style.height)) / 2;
-      var b = (innerWidth - jstoi_q(canvas.style.width)) / 2;
+      var t = (innerHeight - Number(canvas.style.height)) / 2;
+      var b = (innerWidth - Number(canvas.style.width)) / 2;
       setLetterbox(canvas, t, b);
     } else {
       canvas.style.width = w + 'px';
