@@ -15,7 +15,6 @@ import assert from 'node:assert';
 import {
   addToCompileTimeContext,
   error,
-  printErr,
   readFile,
   runInMacroContext,
   pushCurrentFile,
