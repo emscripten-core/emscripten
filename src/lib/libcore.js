@@ -1658,11 +1658,6 @@ addToLibrary({
   $jstoi_q__docs: '/** @suppress {checkTypes} */',
   $jstoi_q: (str) => parseInt(str),
 
-  // Converts a JS string to an integer base-10, with signaling error
-  // handling (throws a JS exception on error). E.g. jstoi_s("123abc")
-  // throws an exception.
-  $jstoi_s: 'Number',
-
 #if LINK_AS_CXX
   // libunwind
 
