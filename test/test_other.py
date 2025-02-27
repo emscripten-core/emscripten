@@ -4919,6 +4919,13 @@ extraLibraryFuncs.push('jsfunc');
     self.assertNotContained('This warning should not be present!', proc.stderr)
     self.assertContained('warning_in_js_libraries.js:5: #warning This is a warning string!', proc.stderr)
     self.assertContained('warning_in_js_libraries.js:7: #warning This is a second warning string!', proc.stderr)
+    self.assertContained('emcc: warning: warnings in JS library compilation [-Wjs-compiler]', proc.stderr)
+
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', test_file('warning_in_js_libraries.js'), '-Werror'])
+    self.assertNotContained('This warning should not be present!', err)
+    self.assertContained('warning_in_js_libraries.js:5: #warning This is a warning string!', err)
+    self.assertContained('warning_in_js_libraries.js:7: #warning This is a second warning string!', err)
+    self.assertContained('emcc: error: warnings in JS library compilation [-Wjs-compiler] [-Werror]', err)
 
   # Tests using the #error directive in JS library files
   def test_jslib_errors(self):

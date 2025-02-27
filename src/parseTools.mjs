@@ -180,7 +180,7 @@ export function preprocess(filename) {
           showStack.pop();
         } else if (first === '#warning') {
           if (showCurrentLine()) {
-            printErr(
+            warn(
               `${filename}:${i + 1}: #warning ${trimmed.substring(trimmed.indexOf(' ')).trim()}`,
             );
           }
