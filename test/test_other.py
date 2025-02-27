@@ -31,7 +31,7 @@ if __name__ == '__main__':
 from tools.building import get_building_env
 from tools.shared import config
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, FILE_PACKAGER, LLVM_NM
-from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP, EMCMAKE, EMCONFIGURE, WASM_LD
+from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP, WASM_LD
 from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from common import env_modify, no_mac, no_windows, only_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
@@ -40,8 +40,8 @@ from common import requires_wasm_eh, crossplatform, with_all_eh_sjlj, with_all_s
 from common import also_with_standalone_wasm, also_with_wasm2js, also_with_noderawfs
 from common import also_with_modularize, also_with_wasmfs, with_all_fs
 from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64, also_with_asan, flaky
-from common import EMTEST_BUILD_VERBOSE, PYTHON, WEBIDL_BINDER
-from common import requires_network, parameterize
+from common import EMTEST_BUILD_VERBOSE, PYTHON, WEBIDL_BINDER, EMCMAKE, EMCONFIGURE
+from common import requires_network, parameterize, copytree
 from tools import shared, building, utils, response_file, cache
 from tools.utils import read_file, write_file, delete_file, read_binary, MACOS, WINDOWS
 import common
@@ -380,7 +380,7 @@ class other(RunnerCore):
                       test_file('hello_world.c')] + args)
     src = read_file('subdir/hello_world.mjs')
     self.assertContained("new URL('hello_world.wasm', import.meta.url)", src)
-    self.assertContained("new Worker(new URL('hello_world.mjs', import.meta.url), workerOptions)", src)
+    self.assertContained("new Worker(new URL('hello_world.mjs', import.meta.url), {", src)
     self.assertContained('export default Module;', src)
     self.assertContained('hello, world!', self.run_js('subdir/hello_world.mjs'))
 
@@ -391,7 +391,7 @@ class other(RunnerCore):
                       test_file('hello_world.c'), '-sSINGLE_FILE'])
     src = read_file('hello_world.mjs')
     self.assertNotContained("new URL('data:", src)
-    self.assertContained("new Worker(new URL('hello_world.mjs', import.meta.url), workerOptions)", src)
+    self.assertContained("new Worker(new URL('hello_world.mjs', import.meta.url), {", src)
     self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
   def test_emcc_output_mjs_closure(self):
@@ -402,16 +402,6 @@ class other(RunnerCore):
     self.assertContained('new URL("hello_world.wasm", import.meta.url)', src)
     self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
-  def test_emcc_output_mjs_web_no_import_meta(self):
-    # Ensure we don't emit import.meta.url at all for:
-    # ENVIRONMENT=web + EXPORT_ES6 + USE_ES6_IMPORT_META=0
-    self.run_process([EMCC, '-o', 'hello_world.mjs',
-                      test_file('hello_world.c'),
-                      '-sENVIRONMENT=web', '-sUSE_ES6_IMPORT_META=0'])
-    src = read_file('hello_world.mjs')
-    self.assertNotContained('import.meta.url', src)
-    self.assertContained('export default Module;', src)
-
   def test_export_es6_implies_modularize(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6'])
     src = read_file('a.out.js')
@@ -420,11 +410,6 @@ class other(RunnerCore):
   def test_export_es6_requires_modularize(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sMODULARIZE=0'])
     self.assertContained('EXPORT_ES6 requires MODULARIZE to be set', err)
-
-  def test_export_es6_node_requires_import_meta(self):
-    err = self.expect_fail([EMCC, test_file('hello_world.c'),
-                            '-sENVIRONMENT=node', '-sEXPORT_ES6', '-sUSE_ES6_IMPORT_META=0'])
-    self.assertContained('EXPORT_ES6 and ENVIRONMENT=*node* requires USE_ES6_IMPORT_META to be set', err)
 
   @parameterized({
     '': ([],),
@@ -3139,11 +3124,10 @@ More info: https://emscripten.org
   @with_env_modify({'EMSCRIPTEN_ROOT': path_from_root()})
   def test_scons(self):
     # this test copies the site_scons directory alongside the test
-    shutil.copytree(test_file('scons/simple'), 'test')
-    shutil.copytree(path_from_root('tools/scons/site_scons'), 'test/site_scons')
-    with common.chdir('test'):
-      self.run_process(['scons'])
-      output = self.run_js('scons_integration.js', assert_returncode=5)
+    copytree(test_file('scons/simple'), '.')
+    copytree(path_from_root('tools/scons/site_scons'), 'site_scons')
+    self.run_process(['scons'])
+    output = self.run_js('scons_integration.js', assert_returncode=5)
     self.assertContained('If you see this - the world is all right!', output)
 
   @requires_scons
@@ -3154,8 +3138,8 @@ More info: https://emscripten.org
   })
   def test_scons_env(self):
     # this test copies the site_scons directory alongside the test
-    shutil.copytree(test_file('scons/env'), 'test')
-    shutil.copytree(path_from_root('tools/scons/site_scons'), 'test/site_scons')
+    copytree(test_file('scons/env'), '.')
+    copytree(path_from_root('tools/scons/site_scons'), 'site_scons')
 
     expected_to_propagate = json.dumps({
       'CC': path_from_root('emcc'),
@@ -3168,13 +3152,12 @@ More info: https://emscripten.org
       }
     })
 
-    with common.chdir('test'):
-      self.run_process(['scons', '--expected-env', expected_to_propagate])
+    self.run_process(['scons', '--expected-env', expected_to_propagate])
 
   @requires_scons
   def test_scons_env_no_emscons(self):
-    shutil.copytree(test_file('scons/env'), 'test')
-    shutil.copytree(path_from_root('tools/scons/site_scons'), 'test/site_scons')
+    copytree(test_file('scons/env'), '.')
+    copytree(path_from_root('tools/scons/site_scons'), 'site_scons')
 
     expected_to_propagate = json.dumps({
       'CC': 'emcc',
@@ -3187,20 +3170,18 @@ More info: https://emscripten.org
       }
     })
 
-    with common.chdir('test'):
-      self.run_process(['scons', '--expected-env', expected_to_propagate])
+    self.run_process(['scons', '--expected-env', expected_to_propagate])
 
   @requires_scons
   def test_emscons(self):
-    shutil.copytree(test_file('scons/simple'), 'test')
-    with common.chdir('test'):
-      self.run_process([path_from_root('emscons'), 'scons'])
-      output = self.run_js('scons_integration.js', assert_returncode=5)
+    copytree(test_file('scons/simple'), '.')
+    self.run_process([path_from_root('emscons'), 'scons'])
+    output = self.run_js('scons_integration.js', assert_returncode=5)
     self.assertContained('If you see this - the world is all right!', output)
 
   @requires_scons
   def test_emscons_env(self):
-    shutil.copytree(test_file('scons/env'), 'test')
+    copytree(test_file('scons/env'), '.')
 
     building_env = get_building_env()
     expected_to_propagate = json.dumps({
@@ -3214,8 +3195,7 @@ More info: https://emscripten.org
       }
     })
 
-    with common.chdir('test'):
-      self.run_process([path_from_root('emscons'), 'scons', '--expected-env', expected_to_propagate])
+    self.run_process([path_from_root('emscons'), 'scons', '--expected-env', expected_to_propagate])
 
   def test_embind_fail(self):
     out = self.expect_fail([EMXX, test_file('embind/test_unsigned.cpp')])
@@ -9602,6 +9582,23 @@ int main() {
     self.assertNotContained('important_function', err)
 
   @with_all_eh_sjlj
+  def test_cxa_current_exception_type(self):
+    create_file('main.cpp', r'''
+    #include <cstdio>
+    #include <stdexcept>
+    #include <typeinfo>
+    #include <cxxabi.h>
+
+    int main() {
+      try {
+        throw std::runtime_error("ERROR");
+      } catch (...) {
+        printf("__cxa_current_exception_type: %s\n", abi::__cxa_current_exception_type()->name());
+      }
+    }''')
+    self.do_runf('main.cpp', '__cxa_current_exception_type: St13runtime_error')
+
+  @with_all_eh_sjlj
   def test_exceptions_exit_runtime(self):
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_exceptions_exit_runtime.cpp')
@@ -13994,13 +13991,8 @@ Module.postRun = () => {{
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_run_in_out_file_test('unistd/close.c')
 
-  # WASMFS tests
-
-  # TODO: This test will only work with the new file system.
-  # Addresses this issue: https://github.com/emscripten-core/emscripten/issues/4017
-  # The new file system also correctly identifies errors that the JS file system missed.
-  def test_wasmfs_dup(self):
-    self.set_setting('WASMFS')
+  @also_with_wasmfs
+  def test_unistd_dup(self):
     self.do_run_in_out_file_test('wasmfs/wasmfs_dup.c')
 
   @also_with_wasmfs
@@ -15593,9 +15585,9 @@ addToLibrary({
 
   @requires_rust
   def test_rust_integration_basics(self):
-    shutil.copytree(test_file('rust/basics'), 'basics')
-    self.run_process(['cargo', 'build', '--target=wasm32-unknown-emscripten'], cwd='basics')
-    lib = 'basics/target/wasm32-unknown-emscripten/debug/libbasics.a'
+    copytree(test_file('rust/basics'), '.')
+    self.run_process(['cargo', 'build', '--target=wasm32-unknown-emscripten'])
+    lib = 'target/wasm32-unknown-emscripten/debug/libbasics.a'
     self.assertExists(lib)
 
     create_file('main.cpp', '''
@@ -15699,3 +15691,13 @@ addToLibrary({
       create_file('post.js', f'Module.{prop} = () => console.log("will never fire since assigned too late")')
       expected = f"Aborted(Attempt to set `Module.{prop}` after it has already been processed.  This can happen, for example, when code is injected via '--post-js' rather than '--pre-js')"
       self.do_runf(test_file('hello_world.c'), expected, emcc_args=['--post-js=post.js', '-sWASM_ASYNC_COMPILATION=0'], assert_returncode=NON_ZERO)
+
+  @crossplatform
+  def test_rollup(self):
+    copytree(test_file('rollup_node'), '.')
+    self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sENVIRONMENT=node', '-sMODULARIZE', '-o', 'hello.mjs'])
+    self.run_process(shared.get_npm_cmd('rollup') + ['--config'])
+    self.assertContained('hello, world!', self.run_js('bundle.mjs'))
+
+  def test_rlimit(self):
+    self.do_other_test('test_rlimit.c', emcc_args=['-O1'])

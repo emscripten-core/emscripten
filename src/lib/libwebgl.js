@@ -6,15 +6,15 @@
 
 // Specifies the size of the GL temp buffer pool, in bytes. Must be a multiple
 // of 9 and 16.
-{{{ GL_POOL_TEMP_BUFFERS_SIZE = 2*9*16 }}} // = 288
-
 {{{
-  globalThis.isCurrentContextWebGL2 = () => {
+  const GL_POOL_TEMP_BUFFERS_SIZE = 2*9*16 // = 288
+
+  const isCurrentContextWebGL2 = () => {
     // This function should only be called inside of `#if MAX_WEBGL_VERSION >= 2` blocks
     assert(MAX_WEBGL_VERSION >= 2, 'isCurrentContextWebGL2 called without webgl2 support');
     if (MIN_WEBGL_VERSION >= 2) return 'true';
     return 'GL.currentContext.version >= 2';
-  };
+  }
   null;
 }}}
 

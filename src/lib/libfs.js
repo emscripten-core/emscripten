@@ -59,7 +59,6 @@ FS.staticInit();
 #if FS_DEBUG
     trackingDelegate: {},
 #endif
-    ErrnoError: null, // set during init
     filesystems: null,
     syncFSRequests: 0, // we warn if there are multiple in flight at once
 #if expectToReceiveOnModule('logReadFiles')

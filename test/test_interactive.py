@@ -293,11 +293,6 @@ class interactive(BrowserCore):
     self.btest('webaudio/audioworklet.c', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '--preload-file', test_file('hello_world.c') + '@/'])
     self.btest('webaudio/audioworklet.c', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread'])
 
-  # Tests AudioWorklet with emscripten_futex_wake().
-  @also_with_minimal_runtime
-  def test_audio_worklet_emscripten_futex_wake(self):
-    self.btest('webaudio/audioworklet_emscripten_futex_wake.cpp', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread', '-sPTHREAD_POOL_SIZE=2'])
-
   # Tests a second AudioWorklet example: sine wave tone generator.
   def test_audio_worklet_tone_generator(self):
     self.btest('webaudio/audio_worklet_tone_generator.c', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
@@ -334,10 +329,32 @@ class interactive(BrowserCore):
     shutil.copy(test_file('webaudio/audio_files/emscripten-bass-mono.mp3'), 'audio_files/')
     self.btest_exit('webaudio/audioworklet_2x_in_hard_pan.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
 
+  # Tests an AudioWorklet with multiple stereo inputs mixing in the processor via a parameter to a single stereo output (6kB stack)
+  def test_audio_worklet_params_mixing(self):
+    os.mkdir('audio_files')
+    shutil.copy(test_file('webaudio/audio_files/emscripten-beat.mp3'), 'audio_files/')
+    shutil.copy(test_file('webaudio/audio_files/emscripten-bass.mp3'), 'audio_files/')
+    self.btest_exit('webaudio/audioworklet_params_mixing.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
+
 
 class interactive64(interactive):
   def setUp(self):
     super().setUp()
     self.set_setting('MEMORY64')
-    self.emcc_args.append('-Wno-experimental')
     self.require_wasm64()
+
+
+class interactive64_4gb(interactive):
+  def setUp(self):
+    super().setUp()
+    self.set_setting('MEMORY64')
+    self.set_setting('INITIAL_MEMORY', '4200mb')
+    self.set_setting('GLOBAL_BASE', '4gb')
+    self.require_wasm64()
+
+
+class interactive_2gb(interactive):
+  def setUp(self):
+    super().setUp()
+    self.set_setting('INITIAL_MEMORY', '2200mb')
+    self.set_setting('GLOBAL_BASE', '2gb')

@@ -21,9 +21,6 @@ addToLibrary({
   $wasmFSDevices: {},
   $wasmFSDeviceStreams: {},
 
-  $FS__postset: `
-FS.init();
-`,
   $FS__deps: [
     '$MEMFS',
     '$wasmFSPreloadedFiles',
@@ -74,10 +71,14 @@ FS.init();
 #endif
   ],
   $FS : {
-    init() {
-      FS.ensureErrnoError();
+    ErrnoError: class extends Error {
+      name = 'ErrnoError';
+      message = 'FS error';
+      constructor(code) {
+        super();
+        this.errno = code
+      }
     },
-    ErrnoError: null,
     handleError(returnValue) {
       // Assume errors correspond to negative returnValues
       // since some functions like _wasmfs_open() return positive
@@ -87,16 +88,6 @@ FS.init();
       }
 
       return returnValue;
-    },
-    ensureErrnoError() {
-      if (FS.ErrnoError) return;
-      FS.ErrnoError = /** @this{Object} */ function ErrnoError(code) {
-        this.errno = code;
-        this.message = 'FS error';
-        this.name = "ErrnoError";
-      }
-      FS.ErrnoError.prototype = new Error();
-      FS.ErrnoError.prototype.constructor = FS.ErrnoError;
     },
     createDataFile(parent, name, fileData, canRead, canWrite, canOwn) {
       FS_createDataFile(parent, name, fileData, canRead, canWrite, canOwn);
@@ -360,7 +351,7 @@ FS.init();
       return FS.handleError(withStackSave(() => __wasmfs_mount(stringToUTF8OnStack(mountpoint), backendPointer)));
     },
     unmount: (mountpoint) => (
-      FS.handleError(withStackSave(() => __wasmfs_unmount(stringToUTF8OnStack(mountpoint))))
+      FS.handleError(withStackSave(() => _wasmfs_unmount(stringToUTF8OnStack(mountpoint))))
     ),
     // TODO: lookup
     mknod: (path, mode, dev) => FS_mknod(path, mode, dev),

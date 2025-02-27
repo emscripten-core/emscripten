@@ -179,6 +179,14 @@ var LibraryExceptions = {
     return info.excPtr;
   },
 
+  __cxa_current_exception_type() {
+    if (!exceptionCaught.length) {
+      return 0;
+    }
+    var info = exceptionCaught[exceptionCaught.length - 1];
+    return info.get_type();
+  },
+
   __cxa_rethrow_primary_exception__deps: ['$ExceptionInfo', '$exceptionCaught', '__cxa_rethrow'],
   __cxa_rethrow_primary_exception: (ptr) => {
     if (!ptr) return;

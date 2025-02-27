@@ -62,26 +62,16 @@ function errorPrefix() {
   }
 }
 
-export function warn(a, msg) {
+export function warn(msg) {
   warnings = true;
-  if (!msg) {
-    msg = a;
-    a = false;
-  }
-  if (!a) {
-    printErr(`warning: ${errorPrefix()}${msg}`);
-  }
+  printErr(`warning: ${errorPrefix()}${msg}`);
 }
 
-export function warnOnce(a, msg) {
-  if (!msg) {
-    msg = a;
-    a = false;
-  }
-  if (!a) {
-    warnOnce.msgs ||= {};
-    if (msg in warnOnce.msgs) return;
-    warnOnce.msgs[msg] = true;
+const seenWarnings = new Set();
+
+export function warnOnce(msg) {
+  if (!seenWarnings.has(msg)) {
+    seenWarnings.add(msg);
     warn(msg);
   }
 }

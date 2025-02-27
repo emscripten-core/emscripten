@@ -34,7 +34,7 @@ import queue
 import clang_native
 import jsrun
 import line_endings
-from tools.shared import EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
+from tools.shared import EMCC, EMXX, DEBUG
 from tools.shared import get_canonical_temp_dir, path_from_root
 from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_binary, exit_with_error
 from tools.settings import COMPILE_TIME_SETTINGS
@@ -85,6 +85,8 @@ WEBIDL_BINDER = shared.bat_suffix(path_from_root('tools/webidl_binder'))
 
 EMBUILDER = shared.bat_suffix(path_from_root('embuilder'))
 EMMAKE = shared.bat_suffix(path_from_root('emmake'))
+EMCMAKE = shared.bat_suffix(path_from_root('emcmake'))
+EMCONFIGURE = shared.bat_suffix(path_from_root('emconfigure'))
 EMRUN = shared.bat_suffix(shared.path_from_root('emrun'))
 WASM_DIS = Path(building.get_binaryen_bin(), 'wasm-dis')
 LLVM_OBJDUMP = os.path.expanduser(shared.build_llvm_tool_path(shared.exe_suffix('llvm-objdump')))
@@ -99,6 +101,10 @@ requires_network = unittest.skipIf(os.getenv('EMTEST_SKIP_NETWORK_TESTS'), 'This
 def test_file(*path_components):
   """Construct a path relative to the emscripten "tests" directory."""
   return str(Path(TEST_ROOT, *path_components))
+
+
+def copytree(src, dest):
+  shutil.copytree(src, dest, dirs_exist_ok=True)
 
 
 # checks if browser testing is enabled
@@ -1183,6 +1189,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.ldflags = []
     # Increate stack trace limit to maximise usefulness of test failure reports
     self.node_args = ['--stack-trace-limit=50']
+    self.spidermonkey_args = ['-w']
 
     nodejs = self.get_nodejs()
     if nodejs:
@@ -1408,6 +1415,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.run_process(cmd, stderr=self.stderr_redirect if not DEBUG else None)
     self.assertExists(output)
 
+    if output_suffix in ('.js', '.mjs'):
+      # Make sure we produced correct line endings
+      self.assertEqual(line_endings.check_line_endings(output), 0)
+
     return output
 
   def get_func(self, src, name):
@@ -1508,8 +1519,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       engine = self.js_engines[0]
     if engine == config.NODE_JS_TEST:
       engine = engine + self.node_args
-    if engine == config.V8_ENGINE:
+    elif engine == config.V8_ENGINE:
       engine = engine + self.v8_args
+    elif engine == config.SPIDERMONKEY_ENGINE:
+      engine = engine + self.spidermonkey_args
     try:
       jsrun.run_js(filename, engine, args,
                    stdout=stdout,
@@ -1523,10 +1536,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       stdout.close()
       if stderr != STDOUT:
         stderr.close()
-
-    # Make sure that we produced proper line endings to the .js file we are about to run.
-    if not filename.endswith('.wasm'):
-      self.assertEqual(line_endings.check_line_endings(filename), 0)
 
     ret = read_file(stdout_file)
     if not interleaved_output:
@@ -1550,8 +1559,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       else:
         self.fail('JS subprocess failed (%s): %s (expected=%s).  Output:\n%s' % (error.cmd, error.returncode, assert_returncode, ret))
 
-    #  We should pass all strict mode checks
-    self.assertNotContained('strict warning:', ret)
     return ret
 
   def assertExists(self, filename, msg=None):
