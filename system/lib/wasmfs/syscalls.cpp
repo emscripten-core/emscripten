@@ -60,7 +60,7 @@ int __syscall_dup3(int oldfd, int newfd, int flags) {
   if (!oldOpenFile) {
     return -EBADF;
   }
-  if (newfd < 0) {
+  if (newfd < 0 || newfd >= WASMFS_FD_MAX) {
     return -EBADF;
   }
   if (oldfd == newfd) {
@@ -759,11 +759,9 @@ int __syscall_getcwd(intptr_t buf, size_t size) {
       return -ENOENT;
     }
 
-    auto parentDir = parent->dynCast<Directory>();
-
-    auto name = parentDir->locked().getName(curr);
+    auto name = parent->locked().getName(curr);
     result = '/' + name + result;
-    curr = parentDir;
+    curr = parent;
   }
 
   // Check if the cwd is the root directory.
@@ -771,17 +769,16 @@ int __syscall_getcwd(intptr_t buf, size_t size) {
     result = "/";
   }
 
-  auto res = result.c_str();
-  int len = strlen(res) + 1;
+  int len = result.length() + 1;
 
   // Check if the size argument is less than the length of the absolute
   // pathname of the working directory, including null terminator.
-  if (len >= size) {
+  if (len > size) {
     return -ERANGE;
   }
 
   // Return value is a null-terminated c string.
-  strcpy((char*)buf, res);
+  strcpy((char*)buf, result.c_str());
 
   return len;
 }
@@ -870,8 +867,8 @@ int __syscall_rmdir(intptr_t path) {
 
 // wasmfs_unmount is similar to __syscall_unlinkat, but assumes AT_REMOVEDIR is
 // true and will only unlink mountpoints (Empty and nonempty).
-int wasmfs_unmount(intptr_t path) {
-  auto parsed = path::parseParent((char*)path, AT_FDCWD);
+int wasmfs_unmount(const char* path) {
+  auto parsed = path::parseParent(path, AT_FDCWD);
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -1521,8 +1518,11 @@ int __syscall_fcntl64(int fd, int cmd, ...) {
     case F_SETLKW: {
       static_assert(F_SETLK == F_SETLK64);
       static_assert(F_SETLKW == F_SETLKW64);
-      // Always error for now, until we implement byte-range locks.
-      return -EACCES;
+      // Pretend that the locking is successful. These are process-level locks,
+      // and Emscripten programs are a single process. If we supported linking a
+      // filesystem between programs, we'd need to do more here.
+      // See https://github.com/emscripten-core/emscripten/issues/23697
+      return 0;
     }
     default: {
       // TODO: support any remaining cmds

@@ -15,6 +15,9 @@
 #include <vector>
 #include <wasi/api.h>
 
+// Copied from legacy FS (FS.MAX_OPEN_FDS)
+#define WASMFS_FD_MAX 4096
+
 namespace wasmfs {
 static_assert(std::is_same<size_t, __wasi_size_t>::value,
               "size_t should be the same as __wasi_size_t");

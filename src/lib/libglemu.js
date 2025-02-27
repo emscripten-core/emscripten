@@ -5,11 +5,11 @@
  */
 
 {{{
-  globalThis.copySigs = (func) => {
+  const copySigs = (func) => {
     if (!RELOCATABLE) return '';
     return ` _${func}.sig = _emscripten_${func}.sig = orig_${func}.sig;`;
   };
-  globalThis.fromPtr = (arg) => {
+  const fromPtr = (arg) => {
     if (CAN_ADDRESS_2GB) {
       return `${arg} >>>= 0`;
     } else if (MEMORY64) {

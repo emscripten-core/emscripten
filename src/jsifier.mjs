@@ -9,7 +9,6 @@
 
 import assert from 'node:assert';
 import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
 import {
   ATEXITS,
   ATINITS,
@@ -34,6 +33,7 @@ import {
   compileTimeContext,
   printErr,
   readFile,
+  runInMacroContext,
   warn,
   warnOnce,
   warningOccured,
@@ -80,6 +80,19 @@ function stringifyWithFunctions(obj) {
   if (Array.isArray(obj)) {
     return '[' + obj.map(stringifyWithFunctions).join(',') + ']';
   }
+
+  // preserve the type of the object if it is one of [Map, Set, WeakMap, WeakSet].
+  const builtinContainers = runInMacroContext('[Map, Set, WeakMap, WeakSet]', {
+    filename: '<internal>',
+  });
+  for (const container of builtinContainers) {
+    if (obj instanceof container) {
+      const className = container.name;
+      assert(!obj.size, `cannot stringify ${className} with data`);
+      return `new ${className}`;
+    }
+  }
+
   var rtn = '{\n';
   for (const [key, value] of Object.entries(obj)) {
     var str = stringifyWithFunctions(value);
@@ -146,23 +159,27 @@ function shouldPreprocess(fileName) {
   return content.startsWith('#preprocess\n') || content.startsWith('#preprocess\r\n');
 }
 
-function getIncludeFile(fileName, alwaysPreprocess) {
-  let result = `// include: ${fileName}\n`;
-  const absFile = path.isAbsolute(fileName) ? fileName : localFile(fileName);
-  const doPreprocess = alwaysPreprocess || shouldPreprocess(absFile);
+function getIncludeFile(fileName, alwaysPreprocess, shortName) {
+  shortName ??= fileName;
+  let result = `// include: ${shortName}\n`;
+  const doPreprocess = alwaysPreprocess || shouldPreprocess(fileName);
   if (doPreprocess) {
-    result += processMacros(preprocess(absFile), fileName);
+    result += processMacros(preprocess(fileName), fileName);
   } else {
-    result += readFile(absFile);
+    result += readFile(fileName);
   }
-  result += `// end include: ${fileName}\n`;
+  result += `// end include: ${shortName}\n`;
   return result;
+}
+
+function getSystemIncludeFile(fileName) {
+  return getIncludeFile(localFile(fileName), /*alwaysPreprocess=*/ true, /*shortName=*/ fileName);
 }
 
 function preJS() {
   let result = '';
   for (const fileName of PRE_JS_FILES) {
-    result += getIncludeFile(fileName, /*alwaysPreprocess=*/ false);
+    result += getIncludeFile(fileName);
   }
   return result;
 }
@@ -714,8 +731,12 @@ function(${args}) {
     libraryItems.push(JS);
   }
 
-  function includeFile(fileName, alwaysPreprocess = true) {
-    writeOutput(getIncludeFile(fileName, alwaysPreprocess));
+  function includeSystemFile(fileName) {
+    writeOutput(getSystemIncludeFile(fileName));
+  }
+
+  function includeFile(fileName) {
+    writeOutput(getIncludeFile(fileName));
   }
 
   function finalCombiner() {
@@ -741,10 +762,10 @@ function(${args}) {
     postSets.push(...orderedPostSets);
 
     const shellFile = MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js';
-    includeFile(shellFile);
+    includeSystemFile(shellFile);
 
     const preFile = MINIMAL_RUNTIME ? 'preamble_minimal.js' : 'preamble.js';
-    includeFile(preFile);
+    includeSystemFile(preFile);
 
     for (const item of libraryItems.concat(postSets)) {
       writeOutput(indentify(item || '', 2));
@@ -769,14 +790,14 @@ var proxiedFunctionTable = [
     writeOutput('// EMSCRIPTEN_END_FUNCS\n');
 
     const postFile = MINIMAL_RUNTIME ? 'postamble_minimal.js' : 'postamble.js';
-    includeFile(postFile);
+    includeSystemFile(postFile);
 
     for (const fileName of POST_JS_FILES) {
-      includeFile(fileName, /*alwaysPreprocess=*/ false);
+      includeFile(fileName);
     }
 
     if (MODULARIZE) {
-      includeFile('postamble_modularize.js');
+      includeSystemFile('postamble_modularize.js');
     }
 
     if (errorOccured()) {

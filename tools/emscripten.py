@@ -182,16 +182,15 @@ def compile_javascript(symbols_only=False):
     stderr_file = open(stderr_file, 'w')
 
   # Save settings to a file to work around v8 issue 1579
-  with shared.get_temp_files().get_file('.json') as settings_file:
-    with open(settings_file, 'w') as s:
-      json.dump(settings.external_dict(), s, sort_keys=True, indent=2)
+  settings_json = json.dumps(settings.external_dict(), sort_keys=True, indent=2)
+  building.write_intermediate(settings_json, 'settings.json')
 
-    # Call js compiler
-    args = [settings_file]
-    if symbols_only:
-      args += ['--symbols-only']
-    out = shared.run_js_tool(path_from_root('src/compiler.mjs'),
-                             args, stdout=subprocess.PIPE, stderr=stderr_file, encoding='utf-8')
+  # Call js compiler. Passing `-` here mean read the settings from stdin.
+  args = ['-']
+  if symbols_only:
+    args += ['--symbols-only']
+  out = shared.run_js_tool(path_from_root('tools/compiler.mjs'),
+                           args, input=settings_json, stdout=subprocess.PIPE, stderr=stderr_file)
   if symbols_only:
     glue = None
     forwarded_data = out
@@ -1070,6 +1069,7 @@ def create_pointer_conversion_wrappers(metadata):
     '_wasmfs_get_cwd': 'p_',
     '_wasmfs_identify': '_p',
     '_wasmfs_read_file': 'pp',
+    '_wasmfs_node_record_dirent': '_pp_',
     '__dl_seterr': '_pp',
     '_emscripten_run_on_main_thread_js': '__p_p_',
     '_emscripten_proxy_execute_task_queue': '_p',

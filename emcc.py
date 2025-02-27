@@ -82,7 +82,7 @@ LINK_ONLY_FLAGS = {
     '--bind', '--closure', '--cpuprofiler', '--embed-file',
     '--emit-symbol-map', '--emrun', '--exclude-file', '--extern-post-js',
     '--extern-pre-js', '--ignore-dynamic-linking', '--js-library',
-    '--js-transform', '--oformat', '--output_eol',
+    '--js-transform', '--oformat', '--output_eol', '--output-eol',
     '--post-js', '--pre-js', '--preload-file', '--profiling-funcs',
     '--proxy-to-worker', '--shell-file', '--source-map-base',
     '--threadprofiler', '--use-preload-plugins'
@@ -93,7 +93,7 @@ CLANG_FLAGS_WITH_ARGS = {
     '-iprefix', '-iwithprefix', '-iwithprefixbefore',
     '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
     '-install_name', '-compatibility_version', '-mllvm',
-    '-current_version', '-I', '-L', '-include-pch',
+    '-current_version', '-I', '-L', '-include-pch', '-u',
     '-undefined', '-target', '-Xlinker', '-Xclang', '-z'
 }
 
@@ -568,7 +568,7 @@ emcc: supported targets: llvm bitcode, WebAssembly, NOT elf
   if '--version' in args:
     print(version_string())
     print('''\
-Copyright (C) 2014 the Emscripten authors (see AUTHORS.txt)
+Copyright (C) 2025 the Emscripten authors (see AUTHORS.txt)
 This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 ''')
@@ -703,7 +703,7 @@ def phase_parse_arguments(state):
     settings.WARN_DEPRECATED = 0
 
   for i in range(len(newargs)):
-    if newargs[i] in ('-l', '-L', '-I', '-z', '--js-library', '-o', '-x'):
+    if newargs[i] in ('-l', '-L', '-I', '-z', '--js-library', '-o', '-x', '-u'):
       # Scan for flags that can be written as either one or two arguments
       # and normalize them to the single argument form.
       if newargs[i] == '--js-library':
@@ -788,7 +788,7 @@ def separate_linker_flags(newargs):
         add_link_arg(flag)
     elif arg == '-Xlinker':
       add_link_arg(get_next_arg())
-    elif arg == '-s' or arg.startswith(('-l', '-L', '--js-library=', '-z')):
+    elif arg == '-s' or arg.startswith(('-l', '-L', '--js-library=', '-z', '-u')):
       add_link_arg(arg)
     elif not arg.startswith('-o') and arg not in ('-nostdlib', '-nostartfiles', '-nolibc', '-nodefaultlibs', '-s'):
       # All other flags are for the compiler
@@ -1348,14 +1348,14 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('--default-obj-ext is no longer supported by emcc')
     elif arg.startswith('-fsanitize=cfi'):
       exit_with_error('emscripten does not currently support -fsanitize=cfi')
-    elif check_arg('--output_eol'):
+    elif check_arg('--output_eol') or check_arg('--output-eol'):
       style = consume_arg()
       if style.lower() == 'windows':
         options.output_eol = '\r\n'
       elif style.lower() == 'linux':
         options.output_eol = '\n'
       else:
-        exit_with_error(f'Invalid value "{style}" to --output_eol!')
+        exit_with_error(f'invalid value for --output-eol: `{style}`')
     # Record PTHREADS setting because it controls whether --shared-memory is passed to lld
     elif arg == '-pthread':
       settings.PTHREADS = 1

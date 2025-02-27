@@ -16,6 +16,7 @@ from tools.shared import cap_max_workers_in_pool
 
 
 NUM_CORES = None
+seen_class = set()
 
 
 def run_test(test):
@@ -24,6 +25,9 @@ def run_test(test):
   temp_dir = tempfile.mkdtemp(prefix='emtest_')
   test.set_temp_dir(temp_dir)
   try:
+    if test.__class__ not in seen_class:
+      seen_class.add(test.__class__)
+      test.__class__.setUpClass()
     test(result)
   except unittest.SkipTest as e:
     result.addSkip(test, e)
@@ -102,6 +106,9 @@ class BufferedParallelTestResult():
   @property
   def test(self):
     return self.buffered_result.test
+
+  def addDuration(self, test, elapsed):
+    pass
 
   def updateResult(self, result):
     result.startTest(self.test)

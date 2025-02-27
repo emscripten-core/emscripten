@@ -801,6 +801,7 @@ var LibraryDylink = {
     // loadModule loads the wasm module after all its dependencies have been loaded.
     // can be called both sync/async.
     function loadModule() {
+#if PTHREADS
       // The first thread to load a given module needs to allocate the static
       // table and memory regions.  Later threads re-use the same table region
       // and can ignore the memory region (since memory is shared between
@@ -810,6 +811,7 @@ var LibraryDylink = {
       // locking in `dynlink.c`.
       var firstLoad = !handle || !{{{ makeGetValue('handle', C_STRUCTS.dso.mem_allocated, 'i8') }}};
       if (firstLoad) {
+#endif
         // alignments are powers of 2
         var memAlign = Math.pow(2, metadata.memoryAlign);
         // prepare memory
@@ -822,21 +824,27 @@ var LibraryDylink = {
           {{{ makeSetValue('handle', C_STRUCTS.dso.table_addr, 'tableBase', '*') }}};
           {{{ makeSetValue('handle', C_STRUCTS.dso.table_size, 'metadata.tableSize', 'i32') }}};
         }
+#if PTHREADS
       } else {
+        // Read the values for tableBase and memoryBase from shared memory. The
+        // thread that first loaded the DLL already set these values.
         memoryBase = {{{ makeGetValue('handle', C_STRUCTS.dso.mem_addr, '*') }}};
         tableBase = {{{ makeGetValue('handle', C_STRUCTS.dso.table_addr, '*') }}};
       }
-
-      var tableGrowthNeeded = tableBase + metadata.tableSize - {{{ from64Expr('wasmTable.length') }}};
-      if (tableGrowthNeeded > 0) {
-#if DYLINK_DEBUG
-        dbg("loadModule: growing table: " + tableGrowthNeeded);
 #endif
-        wasmTable.grow({{{ toIndexType('tableGrowthNeeded') }}});
+
+      if (metadata.tableSize) {
+#if ASSERTIONS
+        assert({{{ from64Expr('wasmTable.length') }}} == tableBase, `unexpected table size while loading ${libName}: ${wasmTable.length}`);
+#endif
+#if DYLINK_DEBUG
+        dbg("loadModule: growing table by: " + metadata.tableSize);
+#endif
+        wasmTable.grow({{{ toIndexType('metadata.tableSize') }}});
       }
 #if DYLINK_DEBUG
-      dbg("loadModule: memory[" + memoryBase + ":" + (memoryBase + metadata.memorySize) + "]" +
-                     " table[" + tableBase + ":" + (tableBase + metadata.tableSize) + "]");
+      dbg(`loadModule: memory[${memoryBase}:${memoryBase + metadata.memorySize}]` +
+                     ` table[${tableBasex}:${tableBase + metadata.tableSize}]`);
 #endif
 
       // This is the export map that we ultimately return.  We declare it here

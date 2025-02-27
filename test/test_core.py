@@ -317,6 +317,12 @@ def is_sanitizing(args):
 
 
 class TestCoreBase(RunnerCore):
+  @classmethod
+  def setUpClass(cls):
+    """setUpClass included purely so we can verify that is run."""
+    super().setUpClass()
+    cls.doneSetup = True
+
   # A simple check whether the compiler arguments cause optimization.
   def is_optimizing(self):
     return '-O' in str(self.emcc_args) and '-O0' not in self.emcc_args
@@ -5573,7 +5579,6 @@ got: 10
 
   @crossplatform
   @also_with_nodefs_both
-  @crossplatform
   def test_fcntl_open(self):
     nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
     if nodefs and WINDOWS:
@@ -5757,8 +5762,7 @@ got: 10
     self.set_setting('FS_DEBUG')
     self.do_run_in_out_file_test('fs/test_trackingdelegate.c')
 
-  @also_with_noderawfs
-  @also_with_wasmfs
+  @with_all_fs
   def test_fs_writeFile(self):
     if self.get_setting('WASMFS'):
       self.set_setting("FORCE_FILESYSTEM")
@@ -5932,7 +5936,7 @@ Module.onRuntimeInitialized = () => {
     # We also report all files as executable since there is no x bit
     # recorded there.
     # See https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/chmod-wchmod?view=msvc-170#remarks
-    if WINDOWS and '-DNODERAWFS' in self.emcc_args:
+    if WINDOWS and '-DNODERAWFS' in self.emcc_args and not self.get_setting('WASMFS'):
       out_suffix = '.win'
     else:
       out_suffix = ''
@@ -6610,25 +6614,6 @@ void* operator new(size_t size) {
 
     self.do_runf('third_party/libiberty/cp-demangle.c', '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'])
 
-  @needs_make('make')
-  @crossplatform
-  def test_lua(self):
-    self.emcc_args.remove('-Werror')
-    env_init = {
-      'SYSCFLAGS': ' '.join(self.get_emcc_args(compile_only=True)),
-      'SYSLDFLAGS': ' '.join(self.get_emcc_args())
-    }
-    libs = self.get_library('third_party/lua',
-                            ['src/lua.o', 'src/liblua.a'],
-                            make=['make', 'echo', 'generic'],
-                            env_init=env_init,
-                            configure=None)
-    self.do_run('',
-                'hello lua world!\n17\n1\n2\n3\n4\n7',
-                args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
-                libraries=libs,
-                includes=[test_file('lua')])
-
   @no_asan('issues with freetype itself')
   @needs_make('configure script')
   @is_slow_test
@@ -6673,6 +6658,7 @@ void* operator new(size_t size) {
   @no_asan('local count too large for VMs')
   @no_ubsan('local count too large for VMs')
   @is_slow_test
+  @also_with_wasmfs
   @parameterized({
     '': (False,),
     'pthreads': (True,),
@@ -6682,7 +6668,7 @@ void* operator new(size_t size) {
       self.emcc_args.append('-pthread')
       self.setup_node_pthreads()
     self.emcc_args += ['-sUSE_SQLITE3']
-    self.do_run_in_out_file_test('sqlite/benchmark.c')
+    self.do_run_in_out_file_test('sqlite/test.c')
 
   @needs_make('mingw32-make')
   @is_slow_test
@@ -7896,7 +7882,7 @@ void* operator new(size_t size) {
     self.emcc_args += ['-g', '-DRUN_FROM_JS_SHELL', '-Wno-deprecated-pragma']
     if self.maybe_closure():
       self.emcc_args += ['-g1'] # extra testing
-    self.do_run_in_out_file_test('emscripten_log/emscripten_log.cpp', interleaved_output=False)
+    self.do_run_in_out_file_test('test_emscripten_log.cpp', interleaved_output=False)
 
   def test_float_literals(self):
     self.do_run_in_out_file_test('test_float_literals.cpp')
@@ -9581,6 +9567,7 @@ def make_run(name, emcc_args, settings=None, env=None,
   TT.tearDown = tearDown
 
   def setUp(self):
+    assert self.__class__.doneSetup
     super(TT, self).setUp()
     for k, v in self.env.items():
       assert k not in os.environ, k + ' should not be in environment'

@@ -16,7 +16,7 @@ root_dir = os.path.dirname(os.path.dirname(script_dir))
 
 
 def run(*args, **kwargs):
-  kwargs['universal_newlines'] = True
+  kwargs['text'] = True
   return subprocess.check_output(*args, **kwargs)
 
 

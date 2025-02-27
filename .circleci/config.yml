@@ -306,7 +306,6 @@ commands:
       - run:
           name: run tests (<< parameters.title >>)
           environment:
-            EMTEST_LACKS_SOUND_HARDWARE: "1"
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
             # --no-sandbox because we are running as root and chrome requires
             # this flag for now: https://crbug.com/638180
@@ -314,8 +313,11 @@ commands:
             CHROME_FLAGS_HEADLESS: "--headless=new --remote-debugging-port=1234"
             CHROME_FLAGS_WASM: "--enable-experimental-webassembly-features --js-flags=\"--experimental-wasm-stack-switching --experimental-wasm-type-reflection\""
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
+            # The runners lack sound hardware so fallback to a dummy device (and
+            # bypass the user gesture so audio tests work without interaction)
+            CHROME_FLAGS_AUDIO: " --use-fake-device-for-media-stream --autoplay-policy=no-user-gesture-required"
           command: |
-            export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
+            export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE $CHROME_FLAGS_AUDIO"
             # There are tests in the browser test suite that using libraries
             # that are not included by "./embuilder build ALL".  For example the
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
@@ -352,14 +354,25 @@ commands:
             wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-nightly-latest-ssl&os=linux64&lang=en-US"
             tar -C ~ -xf ~/ff.tar.bz2
       - run:
+          name: Add audio dependencies
+          command: |
+            # This should add and start PulseAudio's dummy mixer. It will warn
+            # that "This program is not intended to be run as root" but it can
+            # be ignored.
+            apt-get update -y
+            apt-get install -q -y pulseaudio
+            pulseaudio --start
+      - run:
           name: configure firefox
           command: |
+            # Note: the autoplay pref allows playback without user interaction
             mkdir ~/tmp-firefox-profile/
             cat > ~/tmp-firefox-profile/user.js \<<EOF
             user_pref("gfx.offscreencanvas.enabled", true);
             user_pref("javascript.options.shared_memory", true);
             user_pref("javascript.options.wasm_memory64", true);
             user_pref("dom.postMessage.sharedArrayBuffer.bypassCOOP_COEP.insecure.enabled", true);
+            user_pref("media.autoplay.default", 0);
             EOF
       - run:
           name: run tests (<< parameters.title >>)
@@ -369,7 +382,6 @@ commands:
             #       support in headless mode) resolves
             EMTEST_LACKS_GRAPHICS_HARDWARE: "1"
             EMTEST_LACKS_WEBGPU: "1"
-            EMTEST_LACKS_SOUND_HARDWARE: "1"
             # OffscreenCanvas support is not yet done in Firefox.
             EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
@@ -578,6 +590,7 @@ jobs:
             wasmfs.test_readdir_rawfs
             wasmfs.test_utime
             wasmfs.test_unistd_unlink
+            wasmfs.test_unistd_dup
             wasmfs.test_unistd_access
             wasmfs.test_unistd_close
             wasmfs.test_unistd_truncate
@@ -591,8 +604,6 @@ jobs:
             wasmfs.test_fs_write
             wasmfs.test_fs_writev
             wasmfs.test_fs_writev_rawfs
-            wasmfs.test_fs_writeFile
-            wasmfs.test_fs_writeFile_rawfs
             wasmfs.test_fs_readv
             wasmfs.test_fs_write
             wasmfs.test_fs_readv_rawfs
@@ -818,8 +829,7 @@ jobs:
             core2.test_fs_rename_on_existing_rawfs
             core2.test_fs_symlink_resolution_nodefs
             core2.test_fs_symlink_resolution_rawfs
-            core2.test_fs_writeFile_rawfs
-            core2.test_fs_writeFile_wasmfs_rawfs
+            core2.test_fs_writeFile*
             core2.test_fs_write_rawfs
             core2.test_fs_writev_rawfs
             core2.test_futimens_rawfs

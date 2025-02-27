@@ -41,8 +41,6 @@ from .shared import unsuffixed, unsuffixed_basename, get_file_suffix
 from .settings import settings, default_setting, user_settings, JS_ONLY_SETTINGS, DEPRECATED_SETTINGS
 from .minimal_runtime_shell import generate_minimal_runtime_html
 
-import tools.line_endings
-
 logger = logging.getLogger('link')
 
 DEFAULT_SHELL_HTML = utils.path_from_root('src/shell.html')
@@ -215,7 +213,8 @@ def get_js_sym_info():
   # and can contain full paths to temporary files.
   skip_settings = {'PRE_JS_FILES', 'POST_JS_FILES'}
   input_files = [json.dumps(settings.external_dict(skip_keys=skip_settings), sort_keys=True, indent=2)]
-  jslibs = glob.glob(utils.path_from_root('src') + '/library*.js')
+  jslibs = glob.glob(utils.path_from_root('src/lib') + '/lib*.js')
+  assert jslibs
   input_files.extend(read_file(jslib) for jslib in sorted(jslibs))
   for jslib in settings.JS_LIBRARIES:
     if not os.path.isabs(jslib):
@@ -234,11 +233,11 @@ def get_js_sym_info():
   # We need to use a separate lock here for symbol lists because, unlike with system libraries,
   # it's normally for these file to get pruned as part of normal operation.  This means that it
   # can be deleted between the `cache.get()` then the `read_file`.
-  with filelock.FileLock(cache.get_path(cache.get_path('symbol_lists.lock'))):
+  with filelock.FileLock(cache.get_path('symbol_lists.lock')):
     filename = cache.get(f'symbol_lists/{content_hash}.json', build_symbol_list)
     library_syms = json.loads(read_file(filename))
 
-    # Limit of the overall size of the cache to 100 files.
+    # Limit of the overall size of the cache.
     # This code will get test coverage since a full test run of `other` or `core`
     # generates ~1000 unique symbol lists.
     cache_limit = 500
@@ -304,7 +303,7 @@ def read_js_files(files):
   for f in files:
     content = read_file(f)
     if content.startswith('#preprocess\n'):
-      contents.append(shared.read_and_preprocess(f, expand_macros=True))
+      contents.append(building.read_and_preprocess(f, expand_macros=True))
     else:
       contents.append(content)
   contents = '\n'.join(contents)
@@ -1123,7 +1122,21 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       '$LE_HEAP_LOAD_U32',
       '$LE_HEAP_LOAD_I32',
       '$LE_HEAP_LOAD_F32',
-      '$LE_HEAP_LOAD_F64'
+      '$LE_HEAP_LOAD_F64',
+      '$LE_ATOMICS_NATIVE_BYTE_ORDER',
+      '$LE_ATOMICS_ADD',
+      '$LE_ATOMICS_AND',
+      '$LE_ATOMICS_COMPAREEXCHANGE',
+      '$LE_ATOMICS_EXCHANGE',
+      '$LE_ATOMICS_ISLOCKFREE',
+      '$LE_ATOMICS_LOAD',
+      '$LE_ATOMICS_NOTIFY',
+      '$LE_ATOMICS_OR',
+      '$LE_ATOMICS_STORE',
+      '$LE_ATOMICS_SUB',
+      '$LE_ATOMICS_WAIT',
+      '$LE_ATOMICS_WAITASYNC',
+      '$LE_ATOMICS_XOR',
     ]
 
   if settings.RUNTIME_DEBUG or settings.ASSERTIONS or settings.STACK_OVERFLOW_CHECK or settings.PTHREADS_PROFILING or settings.GL_ASSERTIONS:
@@ -1247,8 +1260,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       settings.REQUIRED_EXPORTS += [
         'emscripten_builtin_memalign',
         'wasmfs_create_file',
+        'wasmfs_unmount',
         '_wasmfs_mount',
-        '_wasmfs_unmount',
         '_wasmfs_read_file',
         '_wasmfs_write_file',
         '_wasmfs_open',
@@ -1433,11 +1446,11 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   set_initial_memory()
 
-  if settings.EXPORT_ES6 and settings.ENVIRONMENT_MAY_BE_NODE and not settings.USE_ES6_IMPORT_META:
-    # EXPORT_ES6 + ENVIRONMENT=*node* requires the use of import.meta.url
-    if 'USE_ES6_IMPORT_META' in user_settings:
-      exit_with_error('EXPORT_ES6 and ENVIRONMENT=*node* requires USE_ES6_IMPORT_META to be set')
-    settings.USE_ES6_IMPORT_META = 1
+  if settings.EXPORT_ES6 and not settings.MODULARIZE:
+    # EXPORT_ES6 requires output to be a module
+    if 'MODULARIZE' in user_settings:
+      exit_with_error('EXPORT_ES6 requires MODULARIZE to be set')
+    settings.MODULARIZE = 1
 
   if settings.MODULARIZE and not settings.DECLARE_ASM_MODULE_EXPORTS:
     # When MODULARIZE option is used, currently requires declaring all module exports
@@ -1827,8 +1840,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.PTHREADS:
     settings.REQUIRED_EXPORTS.append('_emscripten_tls_init')
 
-  settings.PRE_JS_FILES = [os.path.abspath(f) for f in options.pre_js]
-  settings.POST_JS_FILES = [os.path.abspath(f) for f in options.post_js]
+  settings.PRE_JS_FILES = options.pre_js
+  settings.POST_JS_FILES = options.post_js
 
   settings.MINIFY_WHITESPACE = settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL == 0 and not options.no_minify
 
@@ -2066,7 +2079,7 @@ def phase_source_transforms(options):
 # both main code and libraries.
 # See also: `preprocess` in parseTools.js.
 def fix_es6_import_statements(js_file):
-  if not settings.EXPORT_ES6 or not settings.USE_ES6_IMPORT_META:
+  if not settings.EXPORT_ES6:
     return
 
   src = read_file(js_file)
@@ -2079,7 +2092,7 @@ def fix_es6_import_statements(js_file):
 def create_worker_file(input_file, target_dir, output_file, options):
   output_file = os.path.join(target_dir, output_file)
   input_file = utils.path_from_root(input_file)
-  contents = shared.read_and_preprocess(input_file, expand_macros=True)
+  contents = building.read_and_preprocess(input_file, expand_macros=True)
   write_file(output_file, contents)
 
   fix_es6_import_statements(output_file)
@@ -2089,7 +2102,7 @@ def create_worker_file(input_file, target_dir, output_file, options):
     contents = building.acorn_optimizer(output_file, ['--minify-whitespace'], return_output=True, worker_js=True)
     write_file(output_file, contents)
 
-  tools.line_endings.convert_line_endings_in_file(output_file, os.linesep, options.output_eol)
+  utils.convert_line_endings_in_file(output_file, options.output_eol)
 
 
 @ToolchainProfiler.profile_block('final emitting')
@@ -2159,14 +2172,14 @@ def phase_final_emitting(options, target, js_target, wasm_target):
     generate_html(target, options, js_target, target_basename,
                   wasm_target)
   elif settings.PROXY_TO_WORKER:
-    generate_worker_js(target, js_target, target_basename)
+    generate_worker_js(target, options, js_target, target_basename)
 
   if settings.SPLIT_MODULE:
     diagnostics.warning('experimental', 'the SPLIT_MODULE setting is experimental and subject to change')
     do_split_module(wasm_target, options)
 
   if not settings.SINGLE_FILE:
-    tools.line_endings.convert_line_endings_in_file(js_target, os.linesep, options.output_eol)
+    utils.convert_line_endings_in_file(js_target, options.output_eol)
 
   if options.executable:
     make_js_executable(js_target)
@@ -2285,7 +2298,7 @@ def phase_binaryen(target, options, wasm_target):
     if settings.WASM == 2:
       # With normal wasm2js mode this file gets included as part of the
       # preamble, but with WASM=2 its a separate file.
-      wasm2js_polyfill = shared.read_and_preprocess(utils.path_from_root('src/wasm2js.js'), expand_macros=True)
+      wasm2js_polyfill = building.read_and_preprocess(utils.path_from_root('src/wasm2js.js'), expand_macros=True)
       wasm2js_template = wasm_target + '.js'
       write_file(wasm2js_template, wasm2js_polyfill)
       # generate secondary file for JS symbols
@@ -2416,7 +2429,7 @@ export default %(maybe_async)s function init(moduleArg = {}) {
     # In EXPORT_ES6 + PTHREADS the 'thread' is actually an ES6 module
     # webworker running in strict mode, so doesn't have access to 'document'.
     # In this case use 'import.meta' instead.
-    if settings.EXPORT_ES6 and settings.USE_ES6_IMPORT_META:
+    if settings.EXPORT_ES6:
       script_url = 'import.meta.url'
     else:
       script_url = "typeof document != 'undefined' ? document.currentScript?.src : undefined"
@@ -2544,7 +2557,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
     # name, but the normal one does not support that currently
     exit_with_error('customizing EXPORT_NAME requires that the HTML be customized to use that name (see https://github.com/emscripten-core/emscripten/issues/10086)')
 
-  shell = shared.read_and_preprocess(options.shell_path)
+  shell = building.read_and_preprocess(options.shell_path)
   if '{{{ SCRIPT }}}' not in shell:
     exit_with_error('HTML shell must contain {{{ SCRIPT }}}, see src/shell.html for an example')
   base_js_target = os.path.basename(js_target)
@@ -2671,10 +2684,10 @@ def generate_html(target, options, js_target, target_basename, wasm_target):
   if settings.MINIFY_HTML and (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1):
     minify_html(target)
 
-  tools.line_endings.convert_line_endings_in_file(target, os.linesep, options.output_eol)
+  utils.convert_line_endings_in_file(target, options.output_eol)
 
 
-def generate_worker_js(target, js_target, target_basename):
+def generate_worker_js(target, options, js_target, target_basename):
   if settings.SINGLE_FILE:
     # compiler output is embedded as base64 data URL
     proxy_worker_filename = get_subresource_location_js(js_target)
@@ -2685,12 +2698,12 @@ def generate_worker_js(target, js_target, target_basename):
     proxy_worker_filename = (settings.PROXY_TO_WORKER_FILENAME or worker_target_basename) + '.js'
 
   target_contents = worker_js_script(proxy_worker_filename)
-  write_file(target, target_contents)
+  utils.write_file(target, target_contents, options.output_eol)
 
 
 def worker_js_script(proxy_worker_filename):
   web_gl_client_src = read_file(utils.path_from_root('src/webGLClient.js'))
-  proxy_client_src = shared.read_and_preprocess(utils.path_from_root('src/proxyClient.js'), expand_macros=True)
+  proxy_client_src = building.read_and_preprocess(utils.path_from_root('src/proxyClient.js'), expand_macros=True)
   if not settings.SINGLE_FILE and not os.path.dirname(proxy_worker_filename):
     proxy_worker_filename = './' + proxy_worker_filename
   proxy_client_src = do_replace(proxy_client_src, '<<< filename >>>', proxy_worker_filename)

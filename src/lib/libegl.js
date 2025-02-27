@@ -17,11 +17,12 @@
 
 {{{
 // Magic ID for Emscripten 'default display' 
-globalThis.eglDefaultDisplay = 62000;
+const eglDefaultDisplay = 62000;
 // Magic ID for the only EGLConfig supported by Emscripten
-globalThis.eglDefaultConfig = 62002;
+const eglDefaultConfig = 62002;
 // Magic ID for Emscripten EGLContext
-globalThis.eglDefaultContext = 62004;
+const eglDefaultContext = 62004;
+null;
 }}}
 
 var LibraryEGL = {

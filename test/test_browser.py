@@ -23,7 +23,7 @@ from urllib.request import urlopen
 import common
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
-from common import read_file, EMRUN, no_wasm64, no_2gb, no_4gb
+from common import read_file, EMRUN, no_wasm64, no_2gb, no_4gb, copytree
 from common import requires_wasm2js, parameterize, find_browser_test_file, with_all_sjlj
 from common import also_with_minimal_runtime, also_with_wasm2js, also_with_asan
 from tools import shared
@@ -348,7 +348,7 @@ If manually bisecting:
 ''')
 
   def test_emscripten_log(self):
-    self.btest_exit('emscripten_log/emscripten_log.cpp', args=['-Wno-deprecated-pragma', '-gsource-map'])
+    self.btest_exit('test_emscripten_log.cpp', args=['-Wno-deprecated-pragma', '-gsource-map'])
 
   @also_with_wasmfs
   def test_preload_file(self):
@@ -1873,6 +1873,22 @@ simulateKeyUp(100, undefined, 'Numpad4');
     shutil.copy(Path('sub/test.data'), '.')
     self.btest_exit('test_emscripten_async_load_script.c', args=['-sFORCE_FILESYSTEM'])
 
+  @also_with_wasmfs
+  def test_emscripten_overlapped_package(self):
+    # test that a program that loads multiple file_packager.py packages has a correctly initialized filesystem.
+    # this exercises https://github.com/emscripten-core/emscripten/issues/23602 whose root cause was a difference
+    # between JS FS and WASMFS behavior.
+    def setup():
+      ensure_dir('sub')
+      create_file('sub/file1.txt', 'first')
+      create_file('sub/file2.txt', 'second')
+
+    setup()
+    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'sub/file1.txt@/target/file1.txt'], stdout=open('script1.js', 'w'))
+    self.run_process([FILE_PACKAGER, 'test2.data', '--preload', 'sub/file2.txt@/target/file2.txt'], stdout=open('script2.js', 'w'))
+    self.btest_exit('test_emscripten_overlapped_package.c', args=['-sFORCE_FILESYSTEM'])
+    self.clear()
+
   def test_emscripten_api_infloop(self):
     self.btest_exit('emscripten_api_browser_infloop.cpp')
 
@@ -3215,6 +3231,7 @@ Module["preRun"] = () => {
     '': (['-sUSE_SDL=2', '-sUSE_SDL_MIXER=2'],),
     'dash_l': (['-lSDL2', '-lSDL2_mixer'],),
   })
+  @no_wasm64('https://github.com/libsdl-org/SDL/pull/12332')
   @requires_sound_hardware
   def test_sdl2_mixer_wav(self, flags):
     shutil.copy(test_file('sounds/the_entertainer.wav'), 'sound.wav')
@@ -3228,6 +3245,7 @@ Module["preRun"] = () => {
     # TODO: need to source freepats.cfg and a midi file
     # 'mod': (['mid'],    'MIX_INIT_MID', 'midi.mid'),
   })
+  @no_wasm64('https://github.com/libsdl-org/SDL/pull/12332')
   @requires_sound_hardware
   def test_sdl2_mixer_music(self, formats, flags, music_name):
     shutil.copy(test_file('sounds', music_name), '.')
@@ -3244,6 +3262,14 @@ Module["preRun"] = () => {
     if 'mod' in formats:
       args += ['-lc++', '-lc++abi']
     self.btest_exit('test_sdl2_mixer_music.c', args=args)
+
+  def test_sdl3_misc(self):
+    self.emcc_args.append('-Wno-experimental')
+    self.btest_exit('test_sdl3_misc.c', args=['-sUSE_SDL=3'])
+
+  def test_sdl3_canvas_write(self):
+    self.emcc_args.append('-Wno-experimental')
+    self.btest_exit('test_sdl3_canvas_write.c', args=['-sUSE_SDL=3'])
 
   @requires_graphics_hardware
   @no_wasm64('cocos2d ports does not compile with wasm64')
@@ -5319,6 +5345,7 @@ Module["preRun"] = () => {
     create_file('subdir/backendfile2', 'file 2')
     self.btest_exit('wasmfs/wasmfs_fetch.c',
                     args=['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD',
+                          '-sFORCE_FILESYSTEM', '-lfetchfs.js',
                           '--js-library', test_file('wasmfs/wasmfs_fetch.js')] + args)
 
   @no_firefox('no OPFS support yet')
@@ -5432,7 +5459,6 @@ Module["preRun"] = () => {
   # Tests the AudioWorklet demo
   @parameterized({
     '': ([],),
-    'memory64': (['-sMEMORY64'],),
     'with_fs': (['--preload-file', test_file('hello_world.c') + '@/'],),
     'closure': (['--closure', '1', '-Oz'],),
     'asyncify': (['-sASYNCIFY'],),
@@ -5444,41 +5470,59 @@ Module["preRun"] = () => {
     'es6': (['-sEXPORT_ES6'],),
     'strict': (['-sSTRICT'],),
   })
+  @no_wasm64('https://github.com/emscripten-core/emscripten/pull/23508')
+  @no_2gb('https://github.com/emscripten-core/emscripten/pull/23508')
+  @requires_sound_hardware
   def test_audio_worklet(self, args):
-    if '-sMEMORY64' in args and is_firefox():
-      self.skipTest('https://github.com/emscripten-core/emscripten/issues/19161')
-    self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args)
+    self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DTEST_AND_EXIT'] + args)
 
   # Tests that audioworklets and workers can be used at the same time
+  # Note: doesn't need audio hardware (and has no AW code that tests 2GB or wasm64)
   def test_audio_worklet_worker(self):
-    self.btest('webaudio/audioworklet_worker.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'], expected='1')
+    self.btest_exit('webaudio/audioworklet_worker.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
 
   # Tests that posting functions between the main thread and the audioworklet thread works
   @parameterized({
     '': ([],),
     'closure': (['--closure', '1', '-Oz'],),
   })
+  # Note: doesn't need audio hardware (and has no AW code that tests 2GB or wasm64)
   def test_audio_worklet_post_function(self, args):
-    self.btest('webaudio/audioworklet_post_function.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args, expected='1')
+    self.btest_exit('webaudio/audioworklet_post_function.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args)
 
   @parameterized({
     '': ([],),
     'closure': (['--closure', '1', '-Oz'],),
   })
+  @no_wasm64('https://github.com/emscripten-core/emscripten/pull/23508')
+  @no_2gb('https://github.com/emscripten-core/emscripten/pull/23508')
+  @requires_sound_hardware
   def test_audio_worklet_modularize(self, args):
-    self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sMODULARIZE=1', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')] + args)
+    self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sMODULARIZE=1', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html'), '-DTEST_AND_EXIT'] + args)
 
-  # Tests multiple inputs, forcing a larger stack (note: passing BROWSER_TEST is
-  # specific to this test to allow it to exit rather than play forever).
+  # Tests an AudioWorklet with multiple stereo inputs mixing in the processor
+  # via a varying parameter to a single stereo output (touching all of the API
+  # copying from structs)
   @parameterized({
     '': ([],),
     'minimal_with_closure': (['-sMINIMAL_RUNTIME', '--closure=1', '-Oz'],),
   })
-  def test_audio_worklet_stereo_io(self, args):
+  @no_wasm64('https://github.com/emscripten-core/emscripten/pull/23508')
+  @no_2gb('https://github.com/emscripten-core/emscripten/pull/23508')
+  @requires_sound_hardware
+  def test_audio_worklet_params_mixing(self, args):
     os.mkdir('audio_files')
     shutil.copy(test_file('webaudio/audio_files/emscripten-beat.mp3'), 'audio_files/')
     shutil.copy(test_file('webaudio/audio_files/emscripten-bass.mp3'), 'audio_files/')
-    self.btest_exit('webaudio/audioworklet_in_out_stereo.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DBROWSER_TEST'] + args)
+    self.btest_exit('webaudio/audioworklet_params_mixing.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DTEST_AND_EXIT'] + args)
+
+  # Tests AudioWorklet with emscripten_lock_busyspin_wait_acquire() and friends
+  @no_wasm64('https://github.com/emscripten-core/emscripten/pull/23508')
+  @no_2gb('https://github.com/emscripten-core/emscripten/pull/23508')
+  @requires_sound_hardware
+  @also_with_minimal_runtime
+  def test_audio_worklet_emscripten_locks(self):
+    self.btest_exit('webaudio/audioworklet_emscripten_futex_wake.cpp', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread'])
 
   def test_error_reporting(self):
     # Test catching/reporting Error objects
@@ -5489,37 +5533,37 @@ Module["preRun"] = () => {
     create_file('post.js', 'throw "foo";')
     self.btest('hello_world.c', args=['--post-js=post.js'], expected='exception:foo')
 
+  @also_with_threads
   @parameterized({
     '': (False,),
     'es6': (True,),
   })
   def test_webpack(self, es6):
     if es6:
-      shutil.copytree(test_file('webpack_es6'), 'webpack')
+      copytree(test_file('webpack_es6'), '.')
       self.emcc_args += ['-sEXPORT_ES6', '-pthread', '-sPTHREAD_POOL_SIZE=1']
       outfile = 'src/hello.mjs'
     else:
-      shutil.copytree(test_file('webpack'), 'webpack')
+      copytree(test_file('webpack'), '.')
       outfile = 'src/hello.js'
-    with common.chdir('webpack'):
-      self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web,worker', '-o', outfile])
-      self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool'])
-    shutil.copy('webpack/src/hello.wasm', 'webpack/dist/')
-    self.run_browser('webpack/dist/index.html', '/report_result?exit:0')
+    self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web,worker', '-o', outfile])
+    self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool'])
+    shutil.copy('src/hello.wasm', 'dist/')
+    self.run_browser('dist/index.html', '/report_result?exit:0')
 
+  @also_with_threads
   def test_vite(self):
-    shutil.copytree(test_file('vite'), 'vite')
-    with common.chdir('vite'):
-      self.compile_btest('hello_world.c', ['-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sMODULARIZE', '-o', 'hello.mjs'])
-      self.run_process(shared.get_npm_cmd('vite') + ['build'])
-    self.run_browser('vite/dist/index.html', '/report_result?exit:0')
+    copytree(test_file('vite'), '.')
+    self.compile_btest('hello_world.c', ['-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web,worker', '-o', 'hello.mjs'])
+    self.run_process(shared.get_npm_cmd('vite') + ['build'])
+    self.run_browser('dist/index.html', '/report_result?exit:0')
 
+  @also_with_threads
   def test_rollup(self):
-    shutil.copytree(test_file('rollup'), 'rollup')
-    with common.chdir('rollup'):
-      self.compile_btest('hello_world.c', ['-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sMODULARIZE', '-o', 'hello.mjs'])
-      self.run_process(shared.get_npm_cmd('rollup') + ['--config'])
-    self.run_browser('rollup/index.html', '/report_result?exit:0')
+    copytree(test_file('rollup'), '.')
+    self.compile_btest('hello_world.c', ['-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sMODULARIZE', '-o', 'hello.mjs'])
+    self.run_process(shared.get_npm_cmd('rollup') + ['--config'])
+    self.run_browser('index.html', '/report_result?exit:0')
 
 
 class emrun(RunnerCore):

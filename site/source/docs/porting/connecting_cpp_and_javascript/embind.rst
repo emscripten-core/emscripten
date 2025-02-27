@@ -1071,7 +1071,7 @@ Out of the box, *embind* provides converters for many standard C++ types:
 \*\*Requires BigInt support to be enabled with the `-sWASM_BIGINT` flag.
 
 For convenience, *embind* provides factory functions to register
-``std::vector<T>`` (:cpp:func:`register_vector`), ``std::map<K, V>``
+``std::vector<T, class Allocator=std::allocator<T>>`` (:cpp:func:`register_vector`), ``std::map<K, V, class Compare=std::less<K>, class Allocator=std::allocator<std::pair<const K, V>>>``
 (:cpp:func:`register_map`), and ``std::optional<T>`` (:cpp:func:`register_optional`) types:
 
 .. code:: cpp
