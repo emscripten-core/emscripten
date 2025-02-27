@@ -178,7 +178,7 @@ Limitations
 
 Currently `std::set_terminate
 <https://en.cppreference.com/w/cpp/error/set_terminate>`_ is NOT supported, both
-in Emscripten-style and WebAssembly exceptions. The functionality requires the
+in Emscripten-style and WebAssembly exceptions. That functionality requires
 `two-phase exception handling
 <https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html>`_, which neither
 supports.
