@@ -22,14 +22,14 @@ backend_t wasmfs_get_backend_by_path(const char* path __attribute__((nonnull)));
 // Obtains the backend_t of a specified fd.
 backend_t wasmfs_get_backend_by_fd(int fd);
 
-// Creates and opens a new file in the new file system under a specific backend.
+// Creates and opens a new file using a specific backend.
 // Returns the file descriptor for the new file like `open`. Returns a negative
 // value on error. TODO: It might be worth returning a more specialized type
 // like __wasi_fd_t here.
 // TODO: Remove this function so that only directories can be mounted.
 int wasmfs_create_file(const char* pathname __attribute__((nonnull)), mode_t mode, backend_t backend);
 
-// Creates a new directory in the new file system under a specific backend.
+// Creates a new directory using a specific backend.
 // Returns 0 on success like `mkdir`, or a negative value on error.
 // TODO: Add an alias with wasmfs_mount.
 int wasmfs_create_directory(const char* path __attribute__((nonnull)), mode_t mode, backend_t backend);
@@ -40,7 +40,7 @@ int wasmfs_unmount(const char* path __attribute__((nonnull)));
 
 // Backend creation
 
-// Creates a JSFile Backend in the new file system.
+// Creates a new JSFile Backend
 backend_t wasmfs_create_js_file_backend(void);
 
 // A function that receives a void* and returns a backend.
@@ -91,7 +91,7 @@ backend_t wasmfs_create_node_backend(const char* root __attribute__((nonnull)));
 // thread.
 backend_t wasmfs_create_opfs_backend(void);
 
-// Creates a generic JSIMPL backend in the new file system.
+// Creates a generic JSIMPL backend
 backend_t wasmfs_create_jsimpl_backend(void);
 
 backend_t wasmfs_create_icase_backend(backend_t backend);
