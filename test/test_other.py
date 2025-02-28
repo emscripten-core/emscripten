@@ -15698,6 +15698,7 @@ addToLibrary({
       };
     ''')
     self.emcc_args.remove('-Werror')
+    self.set_setting('INCOMING_MODULE_JS_API', 'adjustWasmImports')
     self.do_runf('other/test_adjust_wasm_imports.c', emcc_args=['--pre-js=pre.js', '-sERROR_ON_UNDEFINED_SYMBOLS=0'])
 
   def test_late_module_api_assignment(self):
