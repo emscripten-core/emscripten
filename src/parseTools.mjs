@@ -15,10 +15,10 @@ import assert from 'node:assert';
 import {
   addToCompileTimeContext,
   error,
-  printErr,
   readFile,
   runInMacroContext,
-  setCurrentFile,
+  pushCurrentFile,
+  popCurrentFile,
   warn,
   srcDir,
 } from './utility.mjs';
@@ -36,10 +36,15 @@ export function processMacros(text, filename) {
   // The `?` here in makes the regex non-greedy so it matches with the closest
   // set of closing braces.
   // `[\s\S]` works like `.` but include newline.
-  return text.replace(/{{{([\s\S]+?)}}}/g, (_, str) => {
-    const ret = runInMacroContext(str, {filename: filename});
-    return ret !== null ? ret.toString() : '';
-  });
+  pushCurrentFile(filename);
+  try {
+    return text.replace(/{{{([\s\S]+?)}}}/g, (_, str) => {
+      const ret = runInMacroContext(str, {filename: filename});
+      return ret !== null ? ret.toString() : '';
+    });
+  } finally {
+    popCurrentFile();
+  }
 }
 
 function findIncludeFile(filename, currentDir) {
@@ -86,7 +91,6 @@ export function preprocess(filename) {
   const showStack = [];
   const showCurrentLine = () => showStack.every((x) => x == SHOW);
 
-  const oldFilename = setCurrentFile(filename);
   const fileExt = filename.split('.').pop().toLowerCase();
   const isHtml = fileExt === 'html' || fileExt === 'htm' ? true : false;
   let inStyle = false;
@@ -99,6 +103,7 @@ export function preprocess(filename) {
   let ret = '';
   let emptyLine = false;
 
+  pushCurrentFile(filename);
   try {
     for (let [i, line] of lines.entries()) {
       if (isHtml) {
@@ -174,7 +179,7 @@ export function preprocess(filename) {
           showStack.pop();
         } else if (first === '#warning') {
           if (showCurrentLine()) {
-            printErr(
+            warn(
               `${filename}:${i + 1}: #warning ${trimmed.substring(trimmed.indexOf(' ')).trim()}`,
             );
           }
@@ -209,7 +214,7 @@ no matching #endif found (${showStack.length$}' unmatched preprocessing directiv
     );
     return ret;
   } finally {
-    setCurrentFile(oldFilename);
+    popCurrentFile();
   }
 }
 
@@ -406,27 +411,13 @@ function asmFloatToInt(x) {
 }
 
 // See makeSetValue
-function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, _ignore, align) {
-  assert(typeof align === 'undefined', 'makeGetValue no longer supports align parameter');
-  assert(
-    typeof noNeedFirst === 'undefined',
-    'makeGetValue no longer supports noNeedFirst parameter',
-  );
-  if (typeof unsigned !== 'undefined') {
-    // TODO(sbc): make this into an error at some point.
-    printErr(
-      'makeGetValue: Please use u8/u16/u32/u64 unsigned types in favor of additional argument',
-    );
-    if (unsigned && type.startsWith('i')) {
-      type = `u${type.slice(1)}`;
-    }
-  } else if (type.startsWith('u')) {
-    // Set `unsigned` based on the type name.
-    unsigned = true;
-  }
+function makeGetValue(ptr, pos, type) {
+  assert(arguments.length == 3, 'makeGetValue expects 3 arguments');
 
   const offset = calcFastOffset(ptr, pos);
   if (type === 'i53' || type === 'u53') {
+    // Set `unsigned` based on the type name.
+    const unsigned = type.startsWith('u');
     return `readI53From${unsigned ? 'U' : 'I'}64(${offset})`;
   }
 

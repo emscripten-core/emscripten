@@ -1091,7 +1091,9 @@ f.close()
 
   @requires_network
   def test_cmake_find_modules(self):
-    self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_modules')])
+    output = self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_modules')], stdout=PIPE).stdout
+    self.assertContained(' test: OpenGL::GL IMPORTED_LIBNAME: GL', output)
+    self.assertContained(' test: OpenGL::GL INTERFACE_INCLUDE_DIRECTORIES: /.+/cache/sysroot/include', output, regex=True)
     self.run_process(['cmake', '--build', '.'])
     output = self.run_js('test_prog.js')
     self.assertContained('AL_VERSION: 1.1', output)
@@ -4917,6 +4919,13 @@ extraLibraryFuncs.push('jsfunc');
     self.assertNotContained('This warning should not be present!', proc.stderr)
     self.assertContained('warning_in_js_libraries.js:5: #warning This is a warning string!', proc.stderr)
     self.assertContained('warning_in_js_libraries.js:7: #warning This is a second warning string!', proc.stderr)
+    self.assertContained('emcc: warning: warnings in JS library compilation [-Wjs-compiler]', proc.stderr)
+
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', test_file('warning_in_js_libraries.js'), '-Werror'])
+    self.assertNotContained('This warning should not be present!', err)
+    self.assertContained('warning_in_js_libraries.js:5: #warning This is a warning string!', err)
+    self.assertContained('warning_in_js_libraries.js:7: #warning This is a second warning string!', err)
+    self.assertContained('emcc: error: warnings in JS library compilation [-Wjs-compiler] [-Werror]', err)
 
   # Tests using the #error directive in JS library files
   def test_jslib_errors(self):
@@ -14283,7 +14292,7 @@ int main() {
     self.clear_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE')
     for opt in ('-O0', '-O3'):
       err = self.expect_fail([EMCC, test_file('other/test_legacy_runtime.c'), opt] + self.get_emcc_args())
-      self.assertContained('warning: invalid item in EXPORTED_RUNTIME_METHODS: allocate', err)
+      self.assertContained('invalid item in EXPORTED_RUNTIME_METHODS: allocate', err)
 
   def test_fetch_settings(self):
     create_file('pre.js', '''
