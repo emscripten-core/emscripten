@@ -78,6 +78,9 @@ def main(args):
     shutil.copy(src, dst)
     return 0
 
+  if not shutil.which('npm'):
+    utils.exit_with_error('npm not found in path.')
+
   for name, deps, cmd in actions:
     if check_deps(name, deps):
       print('Up-to-date: %s' % name)
