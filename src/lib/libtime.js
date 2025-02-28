@@ -256,8 +256,7 @@ addToLibrary({
     return newDate;
   },
 
-  strptime__deps: ['$isLeapYear', '$arraySum', '$addDays', '$MONTH_DAYS_REGULAR', '$MONTH_DAYS_LEAP',
-                   '$jstoi_q', '$intArrayFromString' ],
+  strptime__deps: ['$isLeapYear', '$arraySum', '$addDays', '$MONTH_DAYS_REGULAR', '$MONTH_DAYS_LEAP', '$intArrayFromString' ],
   strptime: (buf, format, tm) => {
     // char *strptime(const char *restrict buf, const char *restrict format, struct tm *restrict tm);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strptime.html
@@ -362,21 +361,21 @@ addToLibrary({
 
       // seconds
       if ((value=getMatch('S'))) {
-        date.sec = jstoi_q(value);
+        date.sec = parseInt(value);
       }
 
       // minutes
       if ((value=getMatch('M'))) {
-        date.min = jstoi_q(value);
+        date.min = parseInt(value);
       }
 
       // hours
       if ((value=getMatch('H'))) {
         // 24h clock
-        date.hour = jstoi_q(value);
+        date.hour = parseInt(value);
       } else if ((value = getMatch('I'))) {
         // AM/PM clock
-        var hour = jstoi_q(value);
+        var hour = parseInt(value);
         if ((value=getMatch('p'))) {
           hour += value.toUpperCase()[0] === 'P' ? 12 : 0;
         }
@@ -386,13 +385,13 @@ addToLibrary({
       // year
       if ((value=getMatch('Y'))) {
         // parse from four-digit year
-        date.year = jstoi_q(value);
+        date.year = parseInt(value);
       } else if ((value=getMatch('y'))) {
         // parse from two-digit year...
-        var year = jstoi_q(value);
+        var year = parseInt(value);
         if ((value=getMatch('C'))) {
           // ...and century
-          year += jstoi_q(value)*100;
+          year += parseInt(value)*100;
         } else {
           // ...and rule-of-thumb
           year += year<69 ? 2000 : 1900;
@@ -403,7 +402,7 @@ addToLibrary({
       // month
       if ((value=getMatch('m'))) {
         // parse from month number
-        date.month = jstoi_q(value)-1;
+        date.month = parseInt(value)-1;
       } else if ((value=getMatch('b'))) {
         // parse from month name
         date.month = MONTH_NUMBERS[value.substring(0,3).toUpperCase()] || 0;
@@ -413,10 +412,10 @@ addToLibrary({
       // day
       if ((value=getMatch('d'))) {
         // get day of month directly
-        date.day = jstoi_q(value);
+        date.day = parseInt(value);
       } else if ((value=getMatch('j'))) {
         // get day of month from day of year ...
-        var day = jstoi_q(value);
+        var day = parseInt(value);
         var leapYear = isLeapYear(date.year);
         for (var month=0; month<12; ++month) {
           var daysUntilMonth = arraySum(leapYear ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR, month-1);
@@ -432,7 +431,7 @@ addToLibrary({
           // Week number of the year (Sunday as the first day of the week) as a decimal number [00,53].
           // All days in a new year preceding the first Sunday are considered to be in week 0.
           var weekDayNumber = DAY_NUMBERS_SUN_FIRST[weekDay];
-          var weekNumber = jstoi_q(value);
+          var weekNumber = parseInt(value);
 
           // January 1st
           var janFirst = new Date(date.year, 0, 1);
@@ -451,7 +450,7 @@ addToLibrary({
           // Week number of the year (Monday as the first day of the week) as a decimal number [00,53].
           // All days in a new year preceding the first Monday are considered to be in week 0.
           var weekDayNumber = DAY_NUMBERS_MON_FIRST[weekDay];
-          var weekNumber = jstoi_q(value);
+          var weekNumber = parseInt(value);
 
           // January 1st
           var janFirst = new Date(date.year, 0, 1);

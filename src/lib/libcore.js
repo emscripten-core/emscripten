@@ -647,7 +647,7 @@ addToLibrary({
   },
   $inetNtop4: (addr) =>
     (addr & 0xff) + '.' + ((addr >> 8) & 0xff) + '.' + ((addr >> 16) & 0xff) + '.' + ((addr >> 24) & 0xff),
-  $inetPton6__deps: ['htons', '$jstoi_q'],
+  $inetPton6__deps: ['htons'],
   $inetPton6: (str) => {
     var words;
     var w, offset, z, i;
@@ -671,8 +671,8 @@ addToLibrary({
       // parse IPv4 embedded stress
       str = str.replace(new RegExp('[.]', 'g'), ":");
       words = str.split(":");
-      words[words.length-4] = jstoi_q(words[words.length-4]) + jstoi_q(words[words.length-3])*256;
-      words[words.length-3] = jstoi_q(words[words.length-2]) + jstoi_q(words[words.length-1])*256;
+      words[words.length-4] = parseInt(words[words.length-4]) + parseInt(words[words.length-3])*256;
+      words[words.length-3] = parseInt(words[words.length-2]) + parseInt(words[words.length-1])*256;
       words = words.slice(0, words.length-2);
     } else {
       words = str.split(":");
@@ -1650,18 +1650,6 @@ addToLibrary({
 
   },
 #endif
-
-  // Parses as much of the given JS string to an integer, with quiet error
-  // handling (returns a NaN on error). E.g. jstoi_q("123abc") returns 123.
-  // Note that "smart" radix handling is employed for input string:
-  // "0314" is parsed as octal, and "0x1234" is parsed as base-16.
-  $jstoi_q__docs: '/** @suppress {checkTypes} */',
-  $jstoi_q: (str) => parseInt(str),
-
-  // Converts a JS string to an integer base-10, with signaling error
-  // handling (throws a JS exception on error). E.g. jstoi_s("123abc")
-  // throws an exception.
-  $jstoi_s: 'Number',
 
 #if LINK_AS_CXX
   // libunwind

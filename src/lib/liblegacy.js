@@ -131,6 +131,9 @@ legacyFuncs = {
   // Legacy names for runtime `out`/`err` symbols.
   $print: 'out',
   $printErr: 'err',
+
+  $jstoi_q: 'parseInt',
+  $jstoi_s: 'Number',
 };
 
 if (WARN_DEPRECATED && !INCLUDE_FULL_LIBRARY) {
