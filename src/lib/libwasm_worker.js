@@ -170,21 +170,36 @@ if (ENVIRONMENT_IS_WASM_WORKER
       return 0;
     }
 #endif
-    let worker = _wasmWorkers[_wasmWorkersID] = new Worker(
 #if WASM_WORKERS == 2
-      // WASM_WORKERS=2 mode embeds .ww.js file contents into the main .js file
-      // as a Blob URL. (convenient, but not CSP security safe, since this is
-      // eval-like)
-      _wasmWorkerBlobUrl
+    // WASM_WORKERS=2 mode embeds .ww.js file contents into the main .js file
+    // as a Blob URL. (convenient, but not CSP security safe, since this is
+    // eval-like)
+    let ww_js = _wasmWorkerBlobUrl;
 #elif MINIMAL_RUNTIME
-      // MINIMAL_RUNTIME has a structure where the .ww.js file is loaded from
-      // the main HTML file in parallel to all other files for best performance
-      Module['$wb'] // $wb="Wasm worker Blob", abbreviated since not DCEable
+    // MINIMAL_RUNTIME has a structure where the .ww.js file is loaded from
+    // the main HTML file in parallel to all other files for best performance
+    let ww_js = Module['$wb']; // $wb="Wasm worker Blob", abbreviated since not DCEable
 #else
-      // default runtime loads the .ww.js file on demand.
-      locateFile('{{{ WASM_WORKER_FILE }}}')
+    // default runtime loads the .ww.js file on demand.
+    let ww_js = locateFile('{{{ WASM_WORKER_FILE }}}');
 #endif
-    );
+    let worker;
+#if TRUSTED_TYPES
+    // Use Trusted Types compatible wrappers.
+    if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
+      var p = trustedTypes.createPolicy(
+        'emscripten#workerPolicy1',
+        {
+          createScriptURL: (ignored) => ww_js
+        }
+      );
+      worker = _wasmWorkers[_wasmWorkersID] = new Worker(p.createScriptURL('ignored'));
+    } else {
+      worker = _wasmWorkers[_wasmWorkersID] = new Worker(ww_js);
+    }
+#else
+    worker = _wasmWorkers[_wasmWorkersID] = new Worker(ww_js);
+#endif
     // Craft the Module object for the Wasm Worker scope:
     worker.postMessage({
       // Signal with a non-zero value that this Worker will be a Wasm Worker,

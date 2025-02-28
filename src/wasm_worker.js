@@ -59,6 +59,18 @@ if (ENVIRONMENT_IS_NODE) {
 #if !MINIMAL_RUNTIME
   d['instantiateWasm'] = (info, receiveInstance) => { var instance = new WebAssembly.Instance(d['wasm'], info); return receiveInstance(instance, d['wasm']); }
 #endif
+#if TRUSTED_TYPES
+  // Use Trusted Types compatible wrappers.
+  if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
+    var p = trustedTypes.createPolicy(
+      'emscripten#scriptPolicy1',
+      {
+        createScriptURL: (ignored) => d.js
+      }
+    );
+    importScripts(p.createScriptURL('ignored'));
+  } else
+#endif
   importScripts(d.js);
 #if MODULARIZE
   {{{ EXPORT_NAME }}}(d);
