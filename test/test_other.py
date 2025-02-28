@@ -15679,7 +15679,12 @@ addToLibrary({
         });
         return {}; // Compiling asynchronously, no exports.
       }''')
-    self.do_runf('test_manual_wasm_instantiate.c', emcc_args=['--pre-js=pre.js'])
+    self.run_process([EMCC, test_file('test_manual_wasm_instantiate.c'), '--pre-js=pre.js','-sASYNCIFY','-sEXPORT_ES6=1','-o','manual_init_module.mjs'])
+    create_file('manual_init.mjs', '''
+      import {default as moduleLoader} from "./manual_init_module.mjs";
+      await moduleLoader();
+    ''')
+    self.assertContained('testWasmInstantiationSucceeded: 1', self.run_js('manual_init.mjs'))
 
   def test_late_module_api_assignment(self):
     # When sync instantiation is used (or when async/await is used in MODULARIZE mode) certain

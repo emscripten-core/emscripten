@@ -6,10 +6,15 @@
 #include <assert.h>
 #include <stdio.h>
 #include <emscripten/em_asm.h>
+#include <emscripten.h>
+
+EM_ASYNC_JS(int, getResult, (), {
+  return Module.testWasmInstantiationSucceeded;
+});
 
 int main() {
-  printf("in main\n");
-  int result = EM_ASM_INT({return Module.testWasmInstantiationSucceeded;});
-  assert(result);
+  printf("main: before getResult\n");
+  int result = getResult();
+  printf("testWasmInstantiationSucceeded: %d\n",result);
   return 0;
 }
