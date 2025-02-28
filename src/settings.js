@@ -999,7 +999,7 @@ var INCOMING_MODULE_JS_API = [
   'SDL_numSimultaneouslyQueuedBuffers', 'INITIAL_MEMORY', 'wasmMemory', 'arguments',
   'buffer', 'canvas', 'doNotCaptureKeyboard', 'dynamicLibraries',
   'elementPointerLock', 'extraStackTrace', 'forcedAspectRatio',
-  'instantiateWasm', 'adjustWasmImports', 'keyboardListeningElement', 'freePreloadedMediaOnUse',
+  'instantiateWasm', 'keyboardListeningElement', 'freePreloadedMediaOnUse',
   'loadSplitModule', 'locateFile', 'logReadFiles', 'mainScriptUrlOrBlob', 'mem',
   'monitorRunDependencies', 'noExitRuntime', 'noInitialRun', 'onAbort',
   'onCustomMessage', 'onExit', 'onFree', 'onFullScreen', 'onMalloc',
