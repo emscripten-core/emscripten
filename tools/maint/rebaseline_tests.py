@@ -89,7 +89,7 @@ def main():
 
   if not filenames:
     print('test expectations are up-to-date')
-    return 0
+    return 1
 
   if args.check_only:
     message = f'''Test expectations are out-of-date
@@ -120,7 +120,7 @@ running the tests with `--rebaseline`:
 
   print(message)
   if args.check_only:
-    return 1
+    return 0
 
   if args.new_branch:
     run(['git', 'checkout', '-b', 'rebaseline_tests'])
