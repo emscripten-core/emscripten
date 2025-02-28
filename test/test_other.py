@@ -15690,6 +15690,16 @@ addToLibrary({
       }''')
     self.do_runf('test_manual_wasm_instantiate.c', emcc_args=['--pre-js=pre.js'])
 
+  @also_with_modularize
+  def test_adjust_wasm_imports(self):
+    create_file('pre.js', '''
+      Module['adjustWasmImports'] = (imports) => {
+        imports.env.js_fun = (x, y) => x + y;
+      };
+    ''')
+    self.emcc_args.remove('-Werror')
+    self.do_runf('other/test_adjust_wasm_imports.c', emcc_args=['--pre-js=pre.js', '-sERROR_ON_UNDEFINED_SYMBOLS=0'])
+
   def test_late_module_api_assignment(self):
     # When sync instantiation is used (or when async/await is used in MODULARIZE mode) certain
     # Module properties cannot be assigned in `--post-js` code because its too late by the time

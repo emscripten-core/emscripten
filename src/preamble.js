@@ -977,6 +977,12 @@ function getWasmImports() {
 
   var info = getWasmImports();
 
+#if expectToReceiveOnModule('adjustWasmImports')
+  if (Module['adjustWasmImports']) {
+    Module['adjustWasmImports'](info);
+  }
+#endif
+
 #if expectToReceiveOnModule('instantiateWasm')
   // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback
   // to manually instantiate the Wasm module themselves. This allows pages to
