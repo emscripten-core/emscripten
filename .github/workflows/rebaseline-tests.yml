@@ -14,6 +14,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           submodules: true
       - name: pip install
         run: |
@@ -36,15 +37,19 @@ jobs:
           echo "EM_CONFIG=$EM_CONFIG" >> $GITHUB_ENV
       - name: Rebaseline tests
         run: |
-          ./bootstrap
           git config user.name emscripten-bot
           git config user.email emscripten-bot@users.noreply.github.com
+          #echo "TEST" >> README.md
+          #git add README.md
+          #git checkout -b testing ${{ github.ref_name }}
+          #git commit -m "Testing"
+          ./bootstrap
           ./tools/maint/rebaseline_tests.py
       - name: Create PR
         id: cpr
         run: |
-          git push origin
-          gh pr create --fill
+          git push origin testing
+          gh pr create --fill --base ${{ github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Enable auto-merge
