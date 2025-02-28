@@ -14,36 +14,22 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           submodules: true
-      - name: pip install
-        run: |
-          which python3
-          python3 --version
-          python3 -m pip install -r requirements-dev.txt
-      - name: Install emsdk
-        run: |
-          EM_CONFIG=$HOME/emsdk/.emscripten
-          echo $EM_CONFIG
-          curl -# -L -o ~/emsdk-main.tar.gz https://github.com/emscripten-core/emsdk/archive/main.tar.gz
-          tar -C ~ -xf ~/emsdk-main.tar.gz
-          mv ~/emsdk-main ~/emsdk
-          cd ~/emsdk
-          ./emsdk install tot
-          ./emsdk activate tot
-          echo "JS_ENGINES = [NODE_JS]" >> $EM_CONFIG
-          echo "final config:"
-          cat $EM_CONFIG
-          echo "EM_CONFIG=$EM_CONFIG" >> $GITHUB_ENV
       - name: Rebaseline tests
         run: |
-          ./bootstrap
           git config user.name emscripten-bot
           git config user.email emscripten-bot@users.noreply.github.com
-          ./tools/maint/rebaseline_tests.py
+          echo "TEST" >> README.md
+          git add README.md
+          git checkout -b testing ${{ github.ref_name }}
+          git commit -m "Testing"
+          #./bootstrap
+          #./tools/maint/rebaseline_tests.py
       - name: Create PR
         id: cpr
         run: |
-          git push origin
+          git push origin testing
           gh pr create --fill
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
