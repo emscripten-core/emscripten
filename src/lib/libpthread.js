@@ -25,15 +25,15 @@
 
 {{{
 #if MEMORY64
-globalThis.MAX_PTR = Number((2n ** 64n) - 1n);
+const MAX_PTR = Number((2n ** 64n) - 1n);
 #else
-globalThis.MAX_PTR = (2 ** 32) - 1
+const MAX_PTR = (2 ** 32) - 1
 #endif
 // Use a macro to avoid duplicating pthread worker options.
 // We cannot use a normal JS variable since the vite bundler requires that worker
 // options be inline.
 // See https://github.com/emscripten-core/emscripten/issues/22394
-globalThis.pthreadWorkerOptions = `{
+const pthreadWorkerOptions = `{
 #if EXPORT_ES6
         'type': 'module',
 #endif

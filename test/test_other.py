@@ -31,7 +31,7 @@ if __name__ == '__main__':
 from tools.building import get_building_env
 from tools.shared import config
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, FILE_PACKAGER, LLVM_NM
-from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP, EMCMAKE, EMCONFIGURE, WASM_LD
+from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP, WASM_LD
 from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from common import env_modify, no_mac, no_windows, only_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
@@ -40,7 +40,7 @@ from common import requires_wasm_eh, crossplatform, with_all_eh_sjlj, with_all_s
 from common import also_with_standalone_wasm, also_with_wasm2js, also_with_noderawfs
 from common import also_with_modularize, also_with_wasmfs, with_all_fs
 from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64, also_with_asan, flaky
-from common import EMTEST_BUILD_VERBOSE, PYTHON, WEBIDL_BINDER
+from common import EMTEST_BUILD_VERBOSE, PYTHON, WEBIDL_BINDER, EMCMAKE, EMCONFIGURE
 from common import requires_network, parameterize, copytree
 from tools import shared, building, utils, response_file, cache
 from tools.utils import read_file, write_file, delete_file, read_binary, MACOS, WINDOWS
@@ -1091,7 +1091,9 @@ f.close()
 
   @requires_network
   def test_cmake_find_modules(self):
-    self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_modules')])
+    output = self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_modules')], stdout=PIPE).stdout
+    self.assertContained(' test: OpenGL::GL IMPORTED_LIBNAME: GL', output)
+    self.assertContained(' test: OpenGL::GL INTERFACE_INCLUDE_DIRECTORIES: /.+/cache/sysroot/include', output, regex=True)
     self.run_process(['cmake', '--build', '.'])
     output = self.run_js('test_prog.js')
     self.assertContained('AL_VERSION: 1.1', output)
@@ -4917,6 +4919,13 @@ extraLibraryFuncs.push('jsfunc');
     self.assertNotContained('This warning should not be present!', proc.stderr)
     self.assertContained('warning_in_js_libraries.js:5: #warning This is a warning string!', proc.stderr)
     self.assertContained('warning_in_js_libraries.js:7: #warning This is a second warning string!', proc.stderr)
+    self.assertContained('emcc: warning: warnings in JS library compilation [-Wjs-compiler]', proc.stderr)
+
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', test_file('warning_in_js_libraries.js'), '-Werror'])
+    self.assertNotContained('This warning should not be present!', err)
+    self.assertContained('warning_in_js_libraries.js:5: #warning This is a warning string!', err)
+    self.assertContained('warning_in_js_libraries.js:7: #warning This is a second warning string!', err)
+    self.assertContained('emcc: error: warnings in JS library compilation [-Wjs-compiler] [-Werror]', err)
 
   # Tests using the #error directive in JS library files
   def test_jslib_errors(self):
@@ -9580,6 +9589,23 @@ int main() {
     self.assertNotContained('important_function', err)
 
   @with_all_eh_sjlj
+  def test_cxa_current_exception_type(self):
+    create_file('main.cpp', r'''
+    #include <cstdio>
+    #include <stdexcept>
+    #include <typeinfo>
+    #include <cxxabi.h>
+
+    int main() {
+      try {
+        throw std::runtime_error("ERROR");
+      } catch (...) {
+        printf("__cxa_current_exception_type: %s\n", abi::__cxa_current_exception_type()->name());
+      }
+    }''')
+    self.do_runf('main.cpp', '__cxa_current_exception_type: St13runtime_error')
+
+  @with_all_eh_sjlj
   def test_exceptions_exit_runtime(self):
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_exceptions_exit_runtime.cpp')
@@ -13972,13 +13998,8 @@ Module.postRun = () => {{
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_run_in_out_file_test('unistd/close.c')
 
-  # WASMFS tests
-
-  # TODO: This test will only work with the new file system.
-  # Addresses this issue: https://github.com/emscripten-core/emscripten/issues/4017
-  # The new file system also correctly identifies errors that the JS file system missed.
-  def test_wasmfs_dup(self):
-    self.set_setting('WASMFS')
+  @also_with_wasmfs
+  def test_unistd_dup(self):
     self.do_run_in_out_file_test('wasmfs/wasmfs_dup.c')
 
   @also_with_wasmfs
@@ -14271,7 +14292,7 @@ int main() {
     self.clear_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE')
     for opt in ('-O0', '-O3'):
       err = self.expect_fail([EMCC, test_file('other/test_legacy_runtime.c'), opt] + self.get_emcc_args())
-      self.assertContained('warning: invalid item in EXPORTED_RUNTIME_METHODS: allocate', err)
+      self.assertContained('invalid item in EXPORTED_RUNTIME_METHODS: allocate', err)
 
   def test_fetch_settings(self):
     create_file('pre.js', '''
@@ -15678,8 +15699,12 @@ addToLibrary({
       expected = f"Aborted(Attempt to set `Module.{prop}` after it has already been processed.  This can happen, for example, when code is injected via '--post-js' rather than '--pre-js')"
       self.do_runf(test_file('hello_world.c'), expected, emcc_args=['--post-js=post.js', '-sWASM_ASYNC_COMPILATION=0'], assert_returncode=NON_ZERO)
 
+  @crossplatform
   def test_rollup(self):
     copytree(test_file('rollup_node'), '.')
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sENVIRONMENT=node', '-sMODULARIZE', '-o', 'hello.mjs'])
     self.run_process(shared.get_npm_cmd('rollup') + ['--config'])
     self.assertContained('hello, world!', self.run_js('bundle.mjs'))
+
+  def test_rlimit(self):
+    self.do_other_test('test_rlimit.c', emcc_args=['-O1'])

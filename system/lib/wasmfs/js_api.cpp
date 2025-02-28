@@ -24,9 +24,8 @@ extern "C" {
 
 // TODO: Replace forward declarations with #include <emscripten/wasmfs.h> and
 // resolve wasmfs::backend_t namespace conflicts.
-__wasi_fd_t wasmfs_create_file(char* pathname, mode_t mode, backend_t backend);
-int wasmfs_create_directory(char* path, int mode, backend_t backend);
-int wasmfs_unmount(intptr_t path);
+__wasi_fd_t wasmfs_create_file(const char* pathname, mode_t mode, backend_t backend);
+int wasmfs_create_directory(const char* path, int mode, backend_t backend);
 
 // Copy the file specified by the pathname into JS.
 // Return a pointer to the JS buffer in HEAPU8.
@@ -297,10 +296,6 @@ int _wasmfs_mount(char* path, wasmfs::backend_t created_backend) {
 
   return wasmfs_create_directory(path, 0777, created_backend);
 }
-
-// WasmFS will always remove the mounted directory, regardless of if the
-// directory existed before.
-int _wasmfs_unmount(char* path) { return wasmfs_unmount((intptr_t)path); }
 
 // Helper method that identifies what a path is:
 //   ENOENT - if nothing exists there

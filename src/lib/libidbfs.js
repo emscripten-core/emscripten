@@ -59,7 +59,7 @@ addToLibrary({
       if (mount?.opts?.autoPersist) {
         mnt.idbPersistState = 0; // IndexedDB sync starts in idle state
         var memfs_node_ops = mnt.node_ops;
-        mnt.node_ops = Object.assign({}, mnt.node_ops); // Clone node_ops to inject write tracking
+        mnt.node_ops = {...mnt.node_ops}; // Clone node_ops to inject write tracking
         mnt.node_ops.mknod = (parent, name, mode, dev) => {
           var node = memfs_node_ops.mknod(parent, name, mode, dev);
           // Propagate injected node_ops to the newly created child node
@@ -69,7 +69,7 @@ addToLibrary({
           // Remember original MEMFS stream_ops for this node
           node.memfs_stream_ops = node.stream_ops;
           // Clone stream_ops to inject write tracking
-          node.stream_ops = Object.assign({}, node.stream_ops);
+          node.stream_ops = {...node.stream_ops};
 
           // Track all file writes
           node.stream_ops.write = (stream, buffer, offset, length, position, canOwn) => {

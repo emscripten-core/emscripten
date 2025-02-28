@@ -46,42 +46,34 @@ export function warningOccured() {
   return warnings;
 }
 
-let currentFile = null;
+let currentFile = [];
 
-export function setCurrentFile(f) {
-  let rtn = currentFile;
-  currentFile = f;
-  return rtn;
+export function pushCurrentFile(f) {
+  currentFile.push(f);
+}
+
+export function popCurrentFile() {
+  currentFile.pop();
 }
 
 function errorPrefix() {
-  if (currentFile) {
-    return currentFile + ': ';
+  if (currentFile.length > 0) {
+    return currentFile[currentFile.length - 1] + ': ';
   } else {
     return '';
   }
 }
 
-export function warn(a, msg) {
+export function warn(msg) {
   warnings = true;
-  if (!msg) {
-    msg = a;
-    a = false;
-  }
-  if (!a) {
-    printErr(`warning: ${errorPrefix()}${msg}`);
-  }
+  printErr(`warning: ${errorPrefix()}${msg}`);
 }
 
-export function warnOnce(a, msg) {
-  if (!msg) {
-    msg = a;
-    a = false;
-  }
-  if (!a) {
-    warnOnce.msgs ||= {};
-    if (msg in warnOnce.msgs) return;
-    warnOnce.msgs[msg] = true;
+const seenWarnings = new Set();
+
+export function warnOnce(msg) {
+  if (!seenWarnings.has(msg)) {
+    seenWarnings.add(msg);
     warn(msg);
   }
 }

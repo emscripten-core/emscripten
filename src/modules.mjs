@@ -15,7 +15,8 @@ import {
   error,
   readFile,
   warn,
-  setCurrentFile,
+  pushCurrentFile,
+  popCurrentFile,
   printErr,
   addToCompileTimeContext,
   runInMacroContext,
@@ -275,7 +276,7 @@ export const LibraryManager = {
         origLibrary = this.library;
         this.library = userLibraryProxy;
       }
-      const oldFile = setCurrentFile(filename);
+      pushCurrentFile(filename);
       try {
         processed = processMacros(preprocess(filename), filename);
         runInMacroContext(processed, {filename: filename.replace(/\.\w+$/, '.preprocessed$&')});
@@ -295,7 +296,7 @@ export const LibraryManager = {
         }
         throw e;
       } finally {
-        setCurrentFile(oldFile);
+        popCurrentFile();
         if (origLibrary) {
           this.library = origLibrary;
         }
