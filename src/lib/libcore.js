@@ -647,7 +647,7 @@ addToLibrary({
   },
   $inetNtop4: (addr) =>
     (addr & 0xff) + '.' + ((addr >> 8) & 0xff) + '.' + ((addr >> 16) & 0xff) + '.' + ((addr >> 24) & 0xff),
-  $inetPton6__deps: ['htons', '$jstoi_q'],
+  $inetPton6__deps: ['htons'],
   $inetPton6: (str) => {
     var words;
     var w, offset, z, i;
@@ -671,8 +671,8 @@ addToLibrary({
       // parse IPv4 embedded stress
       str = str.replace(new RegExp('[.]', 'g'), ":");
       words = str.split(":");
-      words[words.length-4] = jstoi_q(words[words.length-4]) + jstoi_q(words[words.length-3])*256;
-      words[words.length-3] = jstoi_q(words[words.length-2]) + jstoi_q(words[words.length-1])*256;
+      words[words.length-4] = Number(words[words.length-4]) + Number(words[words.length-3])*256;
+      words[words.length-3] = Number(words[words.length-2]) + Number(words[words.length-1])*256;
       words = words.slice(0, words.length-2);
     } else {
       words = str.split(":");
