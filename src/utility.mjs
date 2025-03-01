@@ -56,17 +56,19 @@ export function popCurrentFile() {
   currentFile.pop();
 }
 
-function errorPrefix() {
-  if (currentFile.length > 0) {
-    return currentFile[currentFile.length - 1] + ': ';
+function errorPrefix(lineNo) {
+  if (!currentFile.length) return '';
+  const filename = currentFile[currentFile.length - 1];
+  if (lineNo) {
+    return `${filename}:${lineNo}: `;
   } else {
-    return '';
+    return `${filename}: `;
   }
 }
 
-export function warn(msg) {
+export function warn(msg, lineNo) {
   warnings = true;
-  printErr(`warning: ${errorPrefix()}${msg}`);
+  printErr(`warning: ${errorPrefix(lineNo)}${msg}`);
 }
 
 const seenWarnings = new Set();
@@ -84,9 +86,9 @@ export function errorOccured() {
   return abortExecution;
 }
 
-export function error(msg) {
+export function error(msg, lineNo) {
   abortExecution = true;
-  printErr(`error: ${errorPrefix()}${msg}`);
+  printErr(`error: ${errorPrefix(lineNo)}${msg}`);
 }
 
 function range(size) {
