@@ -13,6 +13,7 @@ permissions:
 
 jobs:
   archive:
+    name: Archive
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
@@ -27,6 +28,7 @@ jobs:
         path: emscripten-${{ env.VERSION }}.tar.bz2
 
   check-expectations:
+    name: Check Expectations
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
@@ -62,7 +64,7 @@ jobs:
           # Hack to honor changes to rebaseline_tests.py in the current PR
           git checkout - ./tools/maint/rebaseline_tests.py
           ./bootstrap
-          if ! ./tools/maint/rebaseline_tests.py --check-only; then
+          if ./tools/maint/rebaseline_tests.py --check-only; then
             echo "Test expectations are out-of-date on the target branch."
             echo "You can run './tools/maint/rebaseline_tests.py --new-branch'"
             echo "and use it to create a seperate PR."
@@ -77,7 +79,7 @@ jobs:
           git checkout ${{ github.sha }}
           git rev-parse HEAD
           ./bootstrap
-          if ! ./tools/maint/rebaseline_tests.py --check-only --clear-cache; then
+          if ./tools/maint/rebaseline_tests.py --check-only --clear-cache; then
             echo "Test expectations are out-of-date on the PR branch."
             echo "You can run './tools/maint/rebaseline_tests.py' to"
             echo "create a commit updating the expectations."
