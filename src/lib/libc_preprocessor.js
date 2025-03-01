@@ -35,7 +35,7 @@ addToLibrary({
   // Runs C preprocessor algorithm on the given string 'code'.
   // Supported preprocessor directives: #if, #ifdef, #ifndef, #else, #elif, #endif, #define and #undef.
   // predefs: Specifies a dictionary of { 'key1': function(arg0, arg1) {...}, 'key2': ... } of predefined preprocessing variables
-  $preprocess_c_code__deps: ['$jstoi_q', '$find_closing_parens_index'],
+  $preprocess_c_code__deps: ['$find_closing_parens_index'],
   $preprocess_c_code: function(code, defs = {}) {
     var i = 0, // iterator over the input string
       len = code.length, // cache input length
@@ -207,7 +207,7 @@ addToLibrary({
           if (tokens[i] == ')') throw 'Parsing failure, mismatched parentheses in parsing!' + tokens.toString();
           assert(operatorAndPriority == -1);
 #endif
-          var num = jstoi_q(tokens[i]);
+          var num = Number(tokens[i]);
           return [function() { return num; }]
         })(tokens);
       }

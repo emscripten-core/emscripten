@@ -2260,7 +2260,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   $webglGetLeftBracePos__docs: '/** @noinline */',
   $webglGetLeftBracePos: (name) => name.slice(-1) == ']' && name.lastIndexOf('['),
 
-  glGetUniformLocation__deps: ['$jstoi_q', '$webglPrepareUniformLocationsBeforeFirstUse', '$webglGetLeftBracePos'],
+  glGetUniformLocation__deps: ['$webglPrepareUniformLocationsBeforeFirstUse', '$webglGetLeftBracePos'],
   glGetUniformLocation: (program, name) => {
 
 #if GL_ASSERTIONS
@@ -2291,9 +2291,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       // If user passed an array accessor "[index]", parse the array index off the accessor.
       if (leftBrace > 0) {
   #if GL_ASSERTIONS
-        assert(name.slice(leftBrace + 1).length == 1 || !isNaN(jstoi_q(name.slice(leftBrace + 1))), `Malformed input parameter name "${name}" passed to glGetUniformLocation!`);
+        assert(name.slice(leftBrace + 1).length == 1 || !isNaN(Number(name.slice(leftBrace + 1))), `Malformed input parameter name "${name}" passed to glGetUniformLocation!`);
   #endif
-        arrayIndex = jstoi_q(name.slice(leftBrace + 1)) >>> 0; // "index]", coerce parseInt(']') with >>>0 to treat "foo[]" as "foo[0]" and foo[-1] as unsigned out-of-bounds.
+        arrayIndex = Number(name.slice(leftBrace + 1)) >>> 0; // "index]", coerce parseInt(']') with >>>0 to treat "foo[]" as "foo[0]" and foo[-1] as unsigned out-of-bounds.
         uniformBaseName = name.slice(0, leftBrace);
       }
 
@@ -3125,7 +3125,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   },
 
 #if GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING
-  glShaderSource__deps: ['$preprocess_c_code', '$remove_cpp_comments_in_shaders', '$jstoi_q', '$find_closing_parens_index'],
+  glShaderSource__deps: ['$preprocess_c_code', '$remove_cpp_comments_in_shaders', '$find_closing_parens_index'],
 #endif
   glShaderSource: (shader, count, string, length) => {
 #if GL_ASSERTIONS
@@ -3205,7 +3205,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #if GL_DEBUG
       console.dir(match);
 #endif
-      explicitUniformLocations[match[5]] = jstoi_q(match[1]);
+      explicitUniformLocations[match[5]] = Number(match[1]);
 #if GL_TRACK_ERRORS
       if (!(explicitUniformLocations[match[5]] >= 0 && explicitUniformLocations[match[5]] < 1048576)) {
         err(`Specified an out of range layout(location=x) directive "${explicitUniformLocations[match[5]]}"! (${match[0]})`);
@@ -3246,7 +3246,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       var arrayLength = 1;
       for (var i = bindingMatch.index; i < source.length && source[i] != ';'; ++i) {
         if (source[i] == '[') {
-          arrayLength = jstoi_q(source.slice(i+1));
+          arrayLength = Number(source.slice(i+1));
           break;
         }
         if (source[i] == '{') i = find_closing_parens_index(source, i, '{', '}') - 1;
@@ -3254,7 +3254,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #if GL_DEBUG
       console.dir(bindingMatch);
 #endif
-      var binding = jstoi_q(bindingMatch[1]);
+      var binding = Number(bindingMatch[1]);
 #if GL_TRACK_ERRORS
       var bindingsType = 0x8872/*GL_MAX_TEXTURE_IMAGE_UNITS*/;
 #endif
