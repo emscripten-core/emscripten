@@ -64,7 +64,7 @@ jobs:
           # Hack to honor changes to rebaseline_tests.py in the current PR
           git checkout - ./tools/maint/rebaseline_tests.py
           ./bootstrap
-          if ./tools/maint/rebaseline_tests.py --check-only; then
+          if ! ./tools/maint/rebaseline_tests.py --check-only; then
             echo "Test expectations are out-of-date on the target branch."
             echo "You can run './tools/maint/rebaseline_tests.py --new-branch'"
             echo "and use it to create a seperate PR."
@@ -79,7 +79,7 @@ jobs:
           git checkout ${{ github.sha }}
           git rev-parse HEAD
           ./bootstrap
-          if ./tools/maint/rebaseline_tests.py --check-only --clear-cache; then
+          if ! ./tools/maint/rebaseline_tests.py --check-only --clear-cache; then
             echo "Test expectations are out-of-date on the PR branch."
             echo "You can run './tools/maint/rebaseline_tests.py' to"
             echo "create a commit updating the expectations."
