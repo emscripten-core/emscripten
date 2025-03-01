@@ -5001,6 +5001,23 @@ extraLibraryFuncs.push('jsfunc');
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library=lib.js', '-sEXPORTED_FUNCTIONS=obj,_main'])
     self.assertContained('cannot stringify Map with data', err)
 
+  def test_jslib_system_lib_name(self):
+    create_file('libcore.js', r'''
+addToLibrary({
+ jslibfunc: (x) => 2 * x
+});
+''')
+    create_file('src.c', r'''
+#include <emscripten.h>
+#include <stdio.h>
+int jslibfunc(int x);
+int main() {
+  printf("jslibfunc: %d\n", jslibfunc(6));
+  return 0;
+}
+''')
+    self.do_runf('src.c', 'jslibfunc: 12', emcc_args=['--js-library', 'libcore.js'])
+
   def test_EMCC_BUILD_DIR(self):
     # EMCC_BUILD_DIR was necessary in the past since we used to force the cwd to be src/ for
     # technical reasons.

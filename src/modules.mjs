@@ -5,7 +5,6 @@
  */
 
 import * as path from 'node:path';
-import * as fs from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import assert from 'node:assert';
 
@@ -201,19 +200,14 @@ function calculateLibraries() {
     libraries.push('liblittle_endian_heap.js');
   }
 
+  // Resolve system libraries
+  libraries = libraries.map((filename) => path.join(systemLibdir, filename));
+
   // Add all user specified JS library files to the link.
   // These must be added last after all Emscripten-provided system libraries
   // above, so that users can override built-in JS library symbols in their
   // own code.
   libraries.push(...JS_LIBRARIES);
-
-  // Resolve all filenames to absolute paths
-  libraries = libraries.map((filename) => {
-    if (!path.isAbsolute(filename) && fs.existsSync(path.join(systemLibdir, filename))) {
-      filename = path.join(systemLibdir, filename);
-    }
-    return path.resolve(filename);
-  });
 
   // Deduplicate libraries to avoid processing any library file multiple times
   libraries = libraries.filter((item, pos) => libraries.indexOf(item) == pos);
