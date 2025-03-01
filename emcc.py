@@ -73,7 +73,8 @@ SOURCE_EXTENSIONS = {
 # These symbol names are allowed in INCOMING_MODULE_JS_API but are not part of the
 # default set.
 EXTRA_INCOMING_JS_API = [
-  'fetchSettings'
+  'fetchSettings',
+  'adjustWasmImports',
 ]
 
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2']
