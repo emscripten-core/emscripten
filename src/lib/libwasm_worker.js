@@ -284,17 +284,6 @@ if (ENVIRONMENT_IS_WASM_WORKER
     _wasmWorkers[id].postMessage({'_wsc': funcPtr, 'x': readEmAsmArgs(sigPtr, varargs) });
   },
 
-  emscripten_navigator_hardware_concurrency: () => {
-#if ENVIRONMENT_MAY_BE_NODE
-    if (ENVIRONMENT_IS_NODE) return require('os').cpus().length;
-#endif
-    return navigator['hardwareConcurrency'];
-  },
-
-  emscripten_atomics_is_lock_free: (width) => {
-    return Atomics.isLockFree(width);
-  },
-
   emscripten_lock_async_acquire__deps: ['$polyfillWaitAsync'],
   emscripten_lock_async_acquire: (lock, asyncWaitFinished, userData, maxWaitMilliseconds) => {
     let dispatch = (val, ret) => {

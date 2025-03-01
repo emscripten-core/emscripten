@@ -149,6 +149,8 @@ addToLibrary({
     return numCancelled;
   },
 
+  emscripten_atomics_is_lock_free: (width) => Atomics.isLockFree(width),
+
   emscripten_has_threading_support: () => typeof SharedArrayBuffer != 'undefined',
 
   emscripten_num_logical_cores: () =>
