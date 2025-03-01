@@ -15688,12 +15688,9 @@ addToLibrary({
         });
         return {}; // Compiling asynchronously, no exports.
       }''')
-    self.run_process([EMCC, test_file('test_manual_wasm_instantiate.c'), '--pre-js=pre.js','-sASYNCIFY','-sEXPORT_ES6=1','-o','manual_init_module.mjs'])
-    create_file('manual_init.mjs', '''
-      import {default as moduleLoader} from "./manual_init_module.mjs";
-      await moduleLoader();
-    ''')
-    self.assertContained('testWasmInstantiationSucceeded: 1', self.run_js('manual_init.mjs'))
+    # Test with ASYNCIFY here to ensure that that wasmExports gets set to the wrapped version of the wasm exports.
+    self.run_process([EMCC, test_file('test_manual_wasm_instantiate.c'), '--pre-js=pre.js','--extern-post-js', test_file('modularize_post_js.js'),'-sASYNCIFY','-o','manual_init_module.mjs'])
+    self.assertContained('testWasmInstantiationSucceeded: 1', self.run_js('manual_init_module.mjs'))
 
   def test_late_module_api_assignment(self):
     # When sync instantiation is used (or when async/await is used in MODULARIZE mode) certain
