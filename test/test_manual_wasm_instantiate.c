@@ -4,17 +4,17 @@
 // found in the LICENSE file.
 
 #include <assert.h>
-#include <stdio.h>
-#include <emscripten/em_asm.h>
 #include <emscripten.h>
+#include <emscripten/em_asm.h>
+#include <stdio.h>
 
 EM_ASYNC_JS(int, getResult, (), {
   return Module.testWasmInstantiationSucceeded;
 });
 
 int main() {
-  printf("main: before getResult\n");
+  printf("in main\n");
   int result = getResult();
-  printf("testWasmInstantiationSucceeded: %d\n",result);
+  assert(result);
   return 0;
 }
