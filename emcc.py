@@ -47,6 +47,7 @@ from tools import cache
 from tools.settings import default_setting, user_settings, settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
 from tools.utils import read_file, removeprefix, memoize
 from tools import feature_matrix
+from tools.system_libs import DETERMINISTIC_PREFIX
 
 logger = logging.getLogger('emcc')
 
@@ -375,6 +376,9 @@ def get_target_flags():
 
 def get_clang_flags(user_args):
   flags = get_target_flags()
+
+  source_dir = utils.path_from_root()
+  flags.append(f'-ffile-prefix-map={source_dir}={DETERMINISTIC_PREFIX}')
 
   # if exception catching is disabled, we can prevent that code from being
   # generated in the frontend
