@@ -2414,17 +2414,14 @@ Module['postRun'] = () => {
     self.run_process(cmd + ['-L.', '-Wl,-rpath,$ORIGIN'])
     self.run_js('a.out.js')
 
-    with webassembly.Module('libside2.so') as module:
-      dylink_section = module.parse_dylink_section()
-      self.assertEqual(dylink_section.runtime_paths == [], dylink_section.runtime_paths)
+    def get_runtime_paths(path):
+      with webassembly.Module(path) as module:
+        dylink_section = module.parse_dylink_section()
+        return dylink_section.runtime_paths
 
-    with webassembly.Module('libside1.so') as module:
-      dylink_section = module.parse_dylink_section()
-      self.assertEqual(dylink_section.runtime_paths == ['$ORIGIN'], dylink_section.runtime_paths)
-
-    with webassembly.Module('a.out.wasm') as module:
-      dylink_section = module.parse_dylink_section()
-      self.assertEqual(dylink_section.runtime_paths == ['$ORIGIN'], dylink_section.runtime_paths)
+    self.assertEqual(get_runtime_paths('libside2.so') == [])
+    self.assertEqual(get_runtime_paths('libside1.so') == ['$ORIGIN'])
+    self.assertEqual(get_runtime_paths('a.out.wasm') == ['$ORIGIN'])
 
   def test_dylink_LEGACY_GL_EMULATION(self):
     # LEGACY_GL_EMULATION wraps JS library functions. This test ensure that when it does
