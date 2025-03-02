@@ -44,12 +44,16 @@ void run_test() {
 // This test run in both wasm workers and pthreads mode
 #ifdef __EMSCRIPTEN_WASM_WORKERS__
 
+void do_exit() {
+  emscripten_out("do_exit");
+  emscripten_terminate_all_wasm_workers();
+  emscripten_force_exit(0);
+}
+
 void worker_main() {
   run_test();
-
-#ifdef REPORT_RESULT
-  REPORT_RESULT(addr);
-#endif
+  assert(addr == 3);
+  emscripten_wasm_worker_post_function_v(EMSCRIPTEN_WASM_WORKER_ID_PARENT, do_exit);
 }
 
 #else
@@ -69,7 +73,7 @@ bool main_loop(double time, void *userData) {
     // Burn one second to make sure worker finishes its test.
     emscripten_out("main: seen worker running");
     double t0 = emscripten_performance_now();
-    while(emscripten_performance_now() < t0 + 1000);
+    while (emscripten_performance_now() < t0 + 1000);
 
     // Wake the waiter
     emscripten_out("main: waking worker");
@@ -91,6 +95,7 @@ int main() {
   static char stack[1024];
   emscripten_wasm_worker_t worker = emscripten_create_wasm_worker(stack, sizeof(stack));
   emscripten_wasm_worker_post_function_v(worker, worker_main);
+  emscripten_runtime_keepalive_push();
 #else
   pthread_create(&t, NULL, thread_main, NULL);
 #endif
