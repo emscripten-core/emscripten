@@ -110,6 +110,17 @@
   "reaches": []
  },
  {
+  "name": "emcc$export$expESM1",
+  "export": "expESM1",
+  "reaches": []
+ },
+ {
+  "name": "emcc$export$expESM2",
+  "export": "expESM2",
+  "reaches": [],
+  "root": true
+ },
+ {
   "name": "emcc$export$expI1",
   "export": "expI1",
   "reaches": [],
