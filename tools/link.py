@@ -61,7 +61,8 @@ SUPPORTED_LINKER_FLAGS = (
     '--start-group', '--end-group',
     '-(', '-)',
     '--whole-archive', '--no-whole-archive',
-    '-whole-archive', '-no-whole-archive'
+    '-whole-archive', '-no-whole-archive',
+    '-rpath',
 )
 
 # Unsupported LLD flags which we will ignore.
