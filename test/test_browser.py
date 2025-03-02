@@ -5348,6 +5348,17 @@ Module["preRun"] = () => {
                           '-sFORCE_FILESYSTEM', '-lfetchfs.js',
                           '--js-library', test_file('wasmfs/wasmfs_fetch.js')] + args)
 
+  @no_wasm64()
+  @parameterized({
+    # using BigInt support affects the ABI, and should not break things. (this
+    # could be tested on either thread; do the main thread for simplicity)
+    'bigint': (['-sWASM_BIGINT'],),
+  })
+  def test_wasmfs_map(self, args):
+    self.btest_exit('wasmfs/wasmfs_map.c',
+                    args=['-sWASMFS', '-sFORCE_FILESYSTEM', '-lmapfs.js'] + args)
+
+
   @no_firefox('no OPFS support yet')
   @no_wasm64()
   @parameterized({
