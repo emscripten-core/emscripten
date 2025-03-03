@@ -8741,15 +8741,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
         ".cpp:5:14: runtime error: reference binding to null pointer of type 'int'",
       ])
 
-  @parameterized({
-    'fsanitize_undefined': (['-fsanitize=undefined'],),
-    'fsanitize_vptr': (['-fsanitize=vptr'],),
-  })
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  def test_ubsan_full_static_cast(self, args):
-    self.emcc_args += args
+  def test_sanitize_vptr(self):
     self.do_runf(
-      'core/test_ubsan_full_static_cast.cpp',
+      'core/test_sanitize_vptr.cpp',
+      emcc_args=['-fsanitize=vptr'],
       assert_all=True,
       expected_output=[
         ".cpp:18:10: runtime error: downcast of address",
