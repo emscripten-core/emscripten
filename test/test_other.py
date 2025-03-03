@@ -1090,10 +1090,11 @@ f.close()
     self.run_process(['cmake', '--build', 'build2', '--target', 'install'])
 
   @requires_network
+  @crossplatform
   def test_cmake_find_modules(self):
     output = self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_modules')], stdout=PIPE).stdout
     self.assertContained(' test: OpenGL::GL IMPORTED_LIBNAME: GL', output)
-    self.assertContained(' test: OpenGL::GL INTERFACE_INCLUDE_DIRECTORIES: /.+/cache/sysroot/include', output, regex=True)
+    self.assertContained(' test: OpenGL::GL INTERFACE_INCLUDE_DIRECTORIES: .+/cache/sysroot/include', output, regex=True)
     self.run_process(['cmake', '--build', '.'])
     output = self.run_js('test_prog.js')
     self.assertContained('AL_VERSION: 1.1', output)
