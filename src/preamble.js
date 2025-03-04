@@ -701,18 +701,6 @@ function instantiateSync(file, info) {
 }
 #endif
 
-#if (PTHREADS || WASM_WORKERS) && (LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER)
-// When using postMessage to send an object, it is processed by the structured
-// clone algorithm.  The prototype, and hence methods, on that object is then
-// lost. This function adds back the lost prototype.  This does not work with
-// nested objects that has prototypes, but it suffices for WasmSourceMap and
-// WasmOffsetConverter.
-function resetPrototype(constructor, attrs) {
-  var object = Object.create(constructor.prototype);
-  return Object.assign(object, attrs);
-}
-#endif
-
 #if WASM_ASYNC_COMPILATION
 async function instantiateArrayBuffer(binaryFile, imports) {
   try {
