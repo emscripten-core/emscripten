@@ -768,7 +768,7 @@ for name in names:
         assert return_type == ret.name, 'overloads must have the same return type'
       for i in range(len(args) + 1):
         if i == len(args) or args[i].optional:
-          assert i not in sigs, 'overloading must differentiate by # of arguments (cannot have two signatures that differ by types but not by length)'
+          assert i not in sigs, f"{m.identifier.name}: overloading must differentiate by # of arguments (cannot have two signatures that differ by types but not by length)"
           sigs[i] = args[:i]
     render_function(name,
                     m.identifier.name, sigs, return_type,
