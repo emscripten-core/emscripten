@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 4.0.5 (in development)
 ----------------------
+- Added support for applying path prefix substitution to the sources of the
+  source map : use `-sSOURCE_MAP_PREFIXES=["<old>=<new>"]` with `-gsource-map`.
+  Alternatively, you can now embed the sources content into the source map file
+  using `-gsource-map=inline`. (#23741)
 
 4.0.4 - 02/25/25
 ----------------
