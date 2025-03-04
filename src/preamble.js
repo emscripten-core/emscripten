@@ -558,11 +558,32 @@ function instrumentWasmTableWithAbort() {
 }
 #endif
 
+#if LOAD_SOURCE_MAP
+function receiveSourceMapJSON(sourceMap) {
+  wasmSourceMap = new WasmSourceMap(sourceMap);
+  {{{ runIfMainThread("removeRunDependency('source-map');") }}}
+}
+#endif
+
+#if (PTHREADS || WASM_WORKERS) && (LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER)
+// When using postMessage to send an object, it is processed by the structured
+// clone algorithm.  The prototype, and hence methods, on that object is then
+// lost. This function adds back the lost prototype.  This does not work with
+// nested objects that has prototypes, but it suffices for WasmSourceMap and
+// WasmOffsetConverter.
+function resetPrototype(constructor, attrs) {
+  var object = Object.create(constructor.prototype);
+  return Object.assign(object, attrs);
+}
+#endif
+
+#if !SOURCE_PHASE_IMPORTS
 #if SINGLE_FILE
 // In SINGLE_FILE mode the wasm binary is encoded inline here as a data: URL.
 var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
 #else
 var wasmBinaryFile;
+
 function findWasmBinary() {
 #if EXPORT_ES6 && !AUDIO_WORKLET
   if (Module['locateFile']) {
@@ -645,13 +666,6 @@ var splitModuleProxyHandler = {
     }
   }
 };
-#endif
-
-#if LOAD_SOURCE_MAP
-function receiveSourceMapJSON(sourceMap) {
-  wasmSourceMap = new WasmSourceMap(sourceMap);
-  {{{ runIfMainThread("removeRunDependency('source-map');") }}}
-}
 #endif
 
 #if SPLIT_MODULE || !WASM_ASYNC_COMPILATION
@@ -803,6 +817,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
   return instantiateArrayBuffer(binaryFile, imports);
 }
 #endif // WASM_ASYNC_COMPILATION
+#endif // SOURCE_PHASE_IMPORTS
 
 function getWasmImports() {
 #if PTHREADS
@@ -1004,10 +1019,14 @@ function getWasmImports() {
   }
 #endif
 
+#if SOURCE_PHASE_IMPORTS
+  var instance = await WebAssembly.instantiate(wasmModule, info);
+  var exports = receiveInstantiationResult({instance, 'module':wasmModule});
+  return exports;
+#else
 #if !SINGLE_FILE
   wasmBinaryFile ??= findWasmBinary();
 #endif
-
 #if WASM_ASYNC_COMPILATION
 #if RUNTIME_DEBUG
   dbg('asynchronously preparing wasm');
@@ -1039,6 +1058,7 @@ function getWasmImports() {
   return receiveInstance(result[0]);
 #endif
 #endif // WASM_ASYNC_COMPILATION
+#endif // SOURCE_PHASE_IMPORTS
 }
 
 #if !WASM_BIGINT

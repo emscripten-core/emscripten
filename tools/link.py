@@ -1757,6 +1757,9 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if settings.ASYNCIFY == 2:
       diagnostics.warning('experimental', '-sASYNCIFY=2 (JSPI) is still experimental')
 
+  if settings.SOURCE_PHASE_IMPORTS:
+    diagnostics.warning('experimental', '-sSOURCE_PHASE_IMPORTS is still experimental and not yet supported in browsers')
+
   if settings.WASM2JS:
     if settings.GENERATE_SOURCE_MAP:
       exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
@@ -2477,6 +2480,9 @@ var %(EXPORT_NAME)s = (() => {
   }
 })();
 ''' % {'EXPORT_NAME': settings.EXPORT_NAME}
+
+  if settings.SOURCE_PHASE_IMPORTS:
+    src = f"import source wasmModule from './{settings.WASM_BINARY_FILE}';\n\n" + src
 
   # Given the async nature of how the Module function and Module object
   # come into existence in AudioWorkletGlobalScope, store the Module

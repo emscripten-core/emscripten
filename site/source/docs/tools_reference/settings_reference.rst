@@ -3347,3 +3347,15 @@ Use _ for non-pointer arguments, p for pointer/i53 arguments, and P for optional
 Example use -sSIGNATURE_CONVERSIONS=someFunction:_p,anotherFunction:p
 
 Default value: []
+
+.. _source_phase_imports:
+
+SOURCE_PHASE_IMPORTS
+====================
+
+Experimental support for wasm source phase imports.
+This is only currently implemented in the pre-release/nightly version of node,
+and not yet supported by browsers.
+Requires EXPORT_ES6
+
+Default value: false
