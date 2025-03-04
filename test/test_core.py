@@ -6722,6 +6722,7 @@ void* operator new(size_t size) {
   @needs_make('depends on freetype')
   @no_4gb('runs out of memory')
   @is_slow_test
+  @crossplatform
   def test_poppler(self):
     # See https://github.com/emscripten-core/emscripten/issues/20757
     self.emcc_args.extend(['-Wno-deprecated-declarations', '-Wno-nontrivial-memaccess'])
