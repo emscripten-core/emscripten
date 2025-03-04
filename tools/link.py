@@ -38,6 +38,7 @@ from .utils import removeprefix, exit_with_error
 from .shared import in_temp, safe_copy, do_replace, OFormat
 from .shared import DEBUG, WINDOWS, DYLIB_EXTENSIONS
 from .shared import unsuffixed, unsuffixed_basename, get_file_suffix
+from .shared import get_emscripten_temp_dir
 from .settings import settings, default_setting, user_settings, JS_ONLY_SETTINGS, DEPRECATED_SETTINGS
 from .minimal_runtime_shell import generate_minimal_runtime_html
 
@@ -1922,6 +1923,10 @@ def phase_post_link(options, in_wasm, wasm_target, target, js_syms, base_metadat
     js_target = get_secondary_target(target, '.js')
 
   settings.TARGET_JS_NAME = os.path.basename(js_target)
+
+  if settings.WASM_BINDGEN:
+    building.run_wasm_bindgen(in_wasm)
+    settings.JS_LIBRARIES += [get_emscripten_temp_dir() + '/bindgen_out/library_bindgen.js']
 
   metadata = phase_emscript(in_wasm, wasm_target, js_syms, base_metadata)
 
