@@ -29,10 +29,12 @@ backend_t wasmfs_get_backend_by_fd(int fd);
 // TODO: Remove this function so that only directories can be mounted.
 int wasmfs_create_file(const char* pathname __attribute__((nonnull)), mode_t mode, backend_t backend);
 
-// Creates a new directory using a specific backend.
-// Returns 0 on success like `mkdir`, or a negative value on error.
-// TODO: Add an alias with wasmfs_mount.
+// Legacy function. This function works like `mkdir` + `wasmfs_mount`.
 int wasmfs_create_directory(const char* path __attribute__((nonnull)), mode_t mode, backend_t backend);
+
+// Mount a backend at a given location in the filesystem
+// `path` must be an existing directory.
+int wasmfs_mount(const char* path __attribute__((nonnull)), backend_t backend);
 
 // Unmounts the directory (Which must be a valid mountpoint) at a specific path.
 // Returns 0 on success, or a negative value on error.

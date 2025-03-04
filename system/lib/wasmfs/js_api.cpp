@@ -277,21 +277,6 @@ int _wasmfs_lstat(const char* path, struct stat* statBuf) {
   return __syscall_lstat64((intptr_t)path, (intptr_t)statBuf);
 }
 
-// The legacy JS API requires a mountpoint to already exist, so  WasmFS will
-// attempt to remove the target directory if it exists before replacing it with
-// a mounted directory.
-int _wasmfs_mount(const char* path, ::backend_t created_backend) {
-  int err = __syscall_rmdir((intptr_t)path);
-
-  // The legacy JS API mount requires the directory to already exist, but we
-  // will also allow it to be missing.
-  if (err && err != -ENOENT) {
-    return err;
-  }
-
-  return wasmfs_create_directory(path, 0777, created_backend);
-}
-
 // Helper method that identifies what a path is:
 //   ENOENT - if nothing exists there
 //   EISDIR - if it is a directory

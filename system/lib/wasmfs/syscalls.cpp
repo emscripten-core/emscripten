@@ -597,8 +597,7 @@ int __syscall_mknodat(int dirfd, intptr_t path, int mode, int dev) {
                 OpenReturnMode::Nothing);
 }
 
-static int
-doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
+static int doMkdir(path::ParsedParent parsed, int mode) {
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -624,28 +623,10 @@ doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
     return -EACCES;
   }
 
-  // By default, the backend that the directory is created in is the same as
-  // the parent directory. However, if a backend is passed as a parameter,
-  // then that backend is used.
-  if (!backend) {
-    backend = parent->getBackend();
-  }
-
-  if (backend == parent->getBackend()) {
-    if (!lockedParent.insertDirectory(childName, mode)) {
-      // TODO Receive a specific error code, and report it here. For now, report
-      //      a generic error.
-      return -EIO;
-    }
-  } else {
-    auto created = backend->createDirectory(mode);
-    if (!created) {
-      // TODO Receive a specific error code, and report it here. For now, report
-      //      a generic error.
-      return -EIO;
-    }
-    [[maybe_unused]] bool mounted = lockedParent.mountChild(childName, created);
-    assert(mounted);
+  if (!lockedParent.insertDirectory(childName, mode)) {
+    // TODO Receive a specific error code, and report it here. For now, report
+    //      a generic error.
+    return -EIO;
   }
 
   // TODO: Check that the insertion is successful.
@@ -653,12 +634,46 @@ doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
   return 0;
 }
 
-// This function is exposed to users and allows users to specify a particular
-// backend that a directory should be created within.
-int wasmfs_create_directory(char* path, int mode, backend_t backend) {
-  static_assert(std::is_same_v<decltype(doMkdir(0, 0, 0)), int>,
+int wasmfs_mount(const char* path, backend_t backend) {
+  path::ParsedParent parsed = path::parseParent(path);
+  if (auto err = parsed.getError()) {
+    return err;
+  }
+  auto& [parent, childNameView] = parsed.getParentChild();
+  auto lockedParent = parent->locked();
+  std::string childName(childNameView);
+
+  // Child must exist and must be directory
+  auto child = lockedParent.getChild(childName);
+  if (!child) {
+    return -EEXIST;
+  }
+  if (!child->dynCast<Directory>()) {
+    return -ENOTDIR;
+  }
+
+  auto created = backend->createDirectory(0777);
+  if (!created) {
+    // TODO Receive a specific error code, and report it here. For now, report
+    //      a generic error.
+    return -EIO;
+  }
+  [[maybe_unused]] bool mounted = lockedParent.mountChild(childName, created);
+  assert(mounted);
+
+  return 0;
+}
+
+// Legacy function, use wasmfs_mount instead.
+int wasmfs_create_directory(const char* path, int mode, backend_t backend) {
+  static_assert(std::is_same_v<decltype(doMkdir(0, 0)), int>,
                 "unexpected conversion from result of doMkdir to int");
-  return doMkdir(path::parseParent(path), mode, backend);
+  int rtn = doMkdir(path::parseParent(path), mode);
+  if (rtn != 0) {
+    return rtn;
+  }
+
+  return wasmfs_mount(path, backend);
 }
 
 // TODO: Test this.

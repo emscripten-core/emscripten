@@ -348,7 +348,7 @@ addToLibrary({
       }
 #endif
       var backendPointer = type.createBackend(opts);
-      return FS.handleError(withStackSave(() => __wasmfs_mount(stringToUTF8OnStack(mountpoint), backendPointer)));
+      return FS.handleError(withStackSave(() => _wasmfs_mount(stringToUTF8OnStack(mountpoint), backendPointer)));
     },
     unmount: (mountpoint) => (
       FS.handleError(withStackSave(() => _wasmfs_unmount(stringToUTF8OnStack(mountpoint))))
