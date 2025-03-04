@@ -1558,7 +1558,9 @@ var LibraryEmbind = {
     '$delayFunction',
   ],
   $init_ClassHandle: () => {
-    Object.assign(ClassHandle.prototype, {
+    let proto = ClassHandle.prototype;
+
+    Object.assign(proto, {
       "isAliasOf"(other) {
         if (!(this instanceof ClassHandle)) {
           return false;
@@ -1644,6 +1646,12 @@ var LibraryEmbind = {
         return this;
       },
     });
+
+    // Support `using ...` from https://github.com/tc39/proposal-explicit-resource-management.
+    const symbolDispose = Symbol.dispose;
+    if (symbolDispose) {
+      proto[symbolDispose] = proto["delete"];
+    }
   },
 
   $ClassHandle__docs: '/** @constructor */',

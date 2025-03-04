@@ -3359,6 +3359,37 @@ More info: https://emscripten.org
     self.do_runf('embind/test_embind_long_long.cpp', '1000000000000n\n-1000000000000n',
                  emcc_args=['-lembind', '-sWASM_BIGINT'] + args)
 
+  @requires_node
+  def test_embind_resource_management(self):
+    self.node_args.append('--js-explicit-resource-management')
+
+    create_file('main.cpp', r'''
+      #include <emscripten.h>
+      #include <emscripten/bind.h>
+
+      using namespace emscripten;
+
+      class MyClass {};
+      EMSCRIPTEN_BINDINGS(my_module) {
+          class_<MyClass>("MyClass")
+          .constructor();
+      }
+
+      int main() {
+        EM_ASM({
+          let instanceRef;
+          {
+            using instance = new Module.MyClass();
+            assert(!instance.isDeleted());
+            // "Leak" a reference to the instance just to check that it's deleted.
+            instanceRef = instance;
+          }
+          assert(instanceRef.isDeleted());
+        });
+      }
+    ''')
+    self.do_runf('main.cpp', emcc_args=['-lembind'])
+
   @requires_jspi
   @parameterized({
     '': [['-sJSPI_EXPORTS=async*']],
