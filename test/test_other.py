@@ -131,27 +131,6 @@ def wasmfs_all_backends(f):
   return metafunc
 
 
-def also_with_wasmfs_all_backends(f):
-  assert callable(f)
-
-  @wraps(f)
-  def metafunc(self, backend, *args, **kwargs):
-    if backend:
-      self.setup_wasmfs_test()
-      if backend == 'node':
-        self.setup_nodefs_test()
-      elif backend == 'raw':
-        self.setup_noderawfs_test()
-      self.emcc_args.append(f'-D{backend}')
-    f(self, *args, **kwargs)
-
-  parameterize(metafunc, {'': (None,),
-                          'wasmfs': ('memory',),
-                          'wasmfs_node': ('node',),
-                          'wasmfs_raw': ('raw',)})
-  return metafunc
-
-
 def requires_tool(tool, env_name=None):
   assert not callable(tool)
 
@@ -5777,7 +5756,7 @@ int main() {
 
   @no_mac("TODO: investigate different Node FS semantics on Mac")
   @no_windows("TODO: investigate different Node FS semantics on Windows")
-  @also_with_wasmfs_all_backends
+  @with_all_fs
   def test_unlink(self):
     self.do_other_test('test_unlink.cpp')
 
