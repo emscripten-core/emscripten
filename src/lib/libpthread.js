@@ -431,11 +431,29 @@ var LibraryPThread = {
         worker = new Worker(p.createScriptURL('ignored'), {{{ pthreadWorkerOptions }}});
       } else
 #endif
-      // We need to generate the URL with import.meta.url as the base URL of the JS file
-      // instead of just using new URL(import.meta.url) because bundler's only recognize
-      // the first case in their bundling step. The latter ends up producing an invalid
-      // URL to import from the server (e.g., for webpack the file:// path).
-      worker = new Worker(new URL('{{{ TARGET_JS_NAME }}}', import.meta.url), {{{ pthreadWorkerOptions }}});
+      {
+#if expectToReceiveOnModule('mainScriptUrlOrBlob')
+        if (Module['mainScriptUrlOrBlob']) {
+          var pthreadMainJs = Module['mainScriptUrlOrBlob'];
+          if (typeof pthreadMainJs != 'string') {
+            pthreadMainJs = URL.createObjectURL(pthreadMainJs);
+          }
+          worker = new Worker(pthreadMainJs, {{{ pthreadWorkerOptions }}});
+        } else
+#endif
+        {
+          if (import.meta.url.startsWith('blob:')) {
+            // If our import.meta.url is a blob, we should just use it.
+            worker = new Worker(import.meta.url, {{{ pthreadWorkerOptions }}});
+          } else {
+            // We need to generate the URL with import.meta.url as the base URL of the JS file
+            // instead of just using new URL(import.meta.url) because bundler's only recognize
+            // the first case in their bundling step. The latter ends up producing an invalid
+            // URL to import from the server (e.g., for webpack the file:// path).
+            worker = new Worker(new URL('{{{ TARGET_JS_NAME }}}', import.meta.url), {{{ pthreadWorkerOptions }}});
+          }
+        }
+      }
 #else // EXPORT_ES6
       var pthreadMainJs = _scriptName;
 #if expectToReceiveOnModule('mainScriptUrlOrBlob')
