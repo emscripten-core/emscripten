@@ -352,10 +352,6 @@ var LibraryPThread = {
         }
       }
 
-#if ASSERTIONS
-      worker.workerID = PThread.nextWorkerID++;
-#endif
-
       // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
       worker.postMessage({
         cmd: 'load',
@@ -464,6 +460,9 @@ var LibraryPThread = {
 #endif
       worker = new Worker(pthreadMainJs, {{{ pthreadWorkerOptions }}});
 #endif // EXPORT_ES6
+#if ASSERTIONS
+      worker.workerID = PThread.nextWorkerID++;
+#endif
       PThread.unusedWorkers.push(worker);
     },
 

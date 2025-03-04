@@ -359,7 +359,7 @@ class other(RunnerCore):
     '': ([],),
     'node': (['-sENVIRONMENT=node'],),
   })
-  def test_emcc_output_mjs(self, args):
+  def test_esm(self, args):
     self.run_process([EMCC, '-o', 'hello_world.mjs',
                       '--extern-post-js', test_file('modularize_post_js.js'),
                       test_file('hello_world.c')] + args)
@@ -372,7 +372,7 @@ class other(RunnerCore):
     'node': (['-sENVIRONMENT=node'],),
   })
   @node_pthreads
-  def test_emcc_output_worker_mjs(self, args):
+  def test_esm_worker(self, args):
     os.mkdir('subdir')
     self.run_process([EMCC, '-o', 'subdir/hello_world.mjs',
                       '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD', '-pthread', '-O1',
@@ -385,7 +385,7 @@ class other(RunnerCore):
     self.assertContained('hello, world!', self.run_js('subdir/hello_world.mjs'))
 
   @node_pthreads
-  def test_emcc_output_worker_mjs_single_file(self):
+  def test_esm_worker_single_file(self):
     self.run_process([EMCC, '-o', 'hello_world.mjs', '-pthread',
                       '--extern-post-js', test_file('modularize_post_js.js'),
                       test_file('hello_world.c'), '-sSINGLE_FILE'])
@@ -394,7 +394,7 @@ class other(RunnerCore):
     self.assertContained("new Worker(new URL('hello_world.mjs', import.meta.url), {", src)
     self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
-  def test_emcc_output_mjs_closure(self):
+  def test_esm_closure(self):
     self.run_process([EMCC, '-o', 'hello_world.mjs',
                       '--extern-post-js', test_file('modularize_post_js.js'),
                       test_file('hello_world.c'), '--closure=1'])
@@ -402,31 +402,14 @@ class other(RunnerCore):
     self.assertContained('new URL("hello_world.wasm", import.meta.url)', src)
     self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
-  def test_export_es6_implies_modularize(self):
+  def test_esm_implies_modularize(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6'])
     src = read_file('a.out.js')
     self.assertContained('export default Module;', src)
 
-  def test_export_es6_requires_modularize(self):
+  def test_esm_requires_modularize(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sMODULARIZE=0'])
     self.assertContained('EXPORT_ES6 requires MODULARIZE to be set', err)
-
-  @parameterized({
-    '': ([],),
-    # load a worker before startup to check ES6 modules there as well
-    'pthreads': (['-pthread', '-sPTHREAD_POOL_SIZE=1'],),
-  })
-  def test_export_es6(self, args):
-    self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6',
-                      '-o', 'hello.mjs'] + args)
-    # In ES6 mode we use MODULARIZE, so we must instantiate an instance of the
-    # module to run it.
-    create_file('runner.mjs', '''
-      import Hello from "./hello.mjs";
-      Hello();
-    ''')
-
-    self.assertContained('hello, world!', self.run_js('runner.mjs'))
 
   @parameterized({
     '': ([],),
@@ -1090,10 +1073,11 @@ f.close()
     self.run_process(['cmake', '--build', 'build2', '--target', 'install'])
 
   @requires_network
+  @crossplatform
   def test_cmake_find_modules(self):
     output = self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_modules')], stdout=PIPE).stdout
     self.assertContained(' test: OpenGL::GL IMPORTED_LIBNAME: GL', output)
-    self.assertContained(' test: OpenGL::GL INTERFACE_INCLUDE_DIRECTORIES: /.+/cache/sysroot/include', output, regex=True)
+    self.assertContained(' test: OpenGL::GL INTERFACE_INCLUDE_DIRECTORIES: .+/cache/sysroot/include', output, regex=True)
     self.run_process(['cmake', '--build', '.'])
     output = self.run_js('test_prog.js')
     self.assertContained('AL_VERSION: 1.1', output)
@@ -4964,24 +4948,26 @@ extraLibraryFuncs.push('jsfunc');
 
   # Tests using the #warning directive in JS library files
   def test_jslib_warnings(self):
-    proc = self.run_process([EMCC, test_file('hello_world.c'), '--js-library', test_file('warning_in_js_libraries.js')], stdout=PIPE, stderr=PIPE)
+    shutil.copy(test_file('warning_in_js_libraries.js'), '.')
+    proc = self.run_process([EMCC, test_file('hello_world.c'), '--js-library', 'warning_in_js_libraries.js'], stdout=PIPE, stderr=PIPE)
     self.assertNotContained('This warning should not be present!', proc.stderr)
-    self.assertContained('warning_in_js_libraries.js:5: #warning This is a warning string!', proc.stderr)
-    self.assertContained('warning_in_js_libraries.js:7: #warning This is a second warning string!', proc.stderr)
+    self.assertContained('warning: warning_in_js_libraries.js:5: #warning This is a warning string!', proc.stderr)
+    self.assertContained('warning: warning_in_js_libraries.js:7: #warning This is a second warning string!', proc.stderr)
     self.assertContained('emcc: warning: warnings in JS library compilation [-Wjs-compiler]', proc.stderr)
 
-    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', test_file('warning_in_js_libraries.js'), '-Werror'])
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', 'warning_in_js_libraries.js', '-Werror'])
     self.assertNotContained('This warning should not be present!', err)
-    self.assertContained('warning_in_js_libraries.js:5: #warning This is a warning string!', err)
-    self.assertContained('warning_in_js_libraries.js:7: #warning This is a second warning string!', err)
+    self.assertContained('warning: warning_in_js_libraries.js:5: #warning This is a warning string!', err)
+    self.assertContained('warning: warning_in_js_libraries.js:7: #warning This is a second warning string!', err)
     self.assertContained('emcc: error: warnings in JS library compilation [-Wjs-compiler] [-Werror]', err)
 
   # Tests using the #error directive in JS library files
   def test_jslib_errors(self):
-    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', test_file('error_in_js_libraries.js')])
+    shutil.copy(test_file('error_in_js_libraries.js'), '.')
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', 'error_in_js_libraries.js'])
     self.assertNotContained('This error should not be present!', err)
-    self.assertContained('error_in_js_libraries.js:5: #error This is an error string!', err)
-    self.assertContained('error_in_js_libraries.js:7: #error This is a second error string!', err)
+    self.assertContained('error: error_in_js_libraries.js:5: #error This is an error string!', err)
+    self.assertContained('error: error_in_js_libraries.js:7: #error This is a second error string!', err)
 
   def test_jslib_include(self):
     create_file('inc.js', '''
