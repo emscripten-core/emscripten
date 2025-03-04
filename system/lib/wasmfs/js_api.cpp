@@ -6,6 +6,7 @@
 #include <dirent.h>
 #include <syscall_arch.h>
 #include <unistd.h>
+#include <emscripten/wasmfs.h>
 
 #include "backend.h"
 #include "file.h"
@@ -21,11 +22,6 @@
 using namespace wasmfs;
 
 extern "C" {
-
-// TODO: Replace forward declarations with #include <emscripten/wasmfs.h> and
-// resolve wasmfs::backend_t namespace conflicts.
-__wasi_fd_t wasmfs_create_file(const char* pathname, mode_t mode, backend_t backend);
-int wasmfs_create_directory(const char* path, int mode, backend_t backend);
 
 // Copy the file specified by the pathname into JS.
 // Return a pointer to the JS buffer in HEAPU8.
@@ -285,7 +281,7 @@ int _wasmfs_lstat(char* path, struct stat* statBuf) {
 // The legacy JS API requires a mountpoint to already exist, so  WasmFS will
 // attempt to remove the target directory if it exists before replacing it with
 // a mounted directory.
-int _wasmfs_mount(char* path, wasmfs::backend_t created_backend) {
+int _wasmfs_mount(char* path, ::backend_t created_backend) {
   int err = __syscall_rmdir((intptr_t)path);
 
   // The legacy JS API mount requires the directory to already exist, but we
