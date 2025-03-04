@@ -118,11 +118,16 @@ def wasmfs_all_backends(f):
   @wraps(f)
   def metafunc(self, backend, *args, **kwargs):
     self.setup_wasmfs_test()
+    if backend == 'node':
+      self.setup_nodefs_test()
+    elif backend == 'raw':
+      self.setup_noderawfs_test()
     self.emcc_args.append(f'-D{backend}')
     f(self, *args, **kwargs)
 
-  parameterize(metafunc, {'': ('WASMFS_MEMORY_BACKEND',),
-                          'node': ('WASMFS_NODE_BACKEND',)})
+  parameterize(metafunc, {'': ('memory',),
+                          'node': ('node',),
+                          'raw': ('raw',)})
   return metafunc
 
 
@@ -133,12 +138,17 @@ def also_with_wasmfs_all_backends(f):
   def metafunc(self, backend, *args, **kwargs):
     if backend:
       self.setup_wasmfs_test()
+      if backend == 'node':
+        self.setup_nodefs_test()
+      elif backend == 'raw':
+        self.setup_noderawfs_test()
       self.emcc_args.append(f'-D{backend}')
     f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (None,),
-                          'wasmfs': ('WASMFS_MEMORY_BACKEND',),
-                          'wasmfs_node': ('WASMFS_NODE_BACKEND',)})
+                          'wasmfs': ('memory',),
+                          'wasmfs_node': ('node',),
+                          'wasmfs_raw': ('raw',)})
   return metafunc
 
 

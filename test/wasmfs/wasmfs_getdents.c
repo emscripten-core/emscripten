@@ -20,8 +20,6 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
-#include "get_backend.h"
-
 void print_one(int fd) {
   struct dirent d;
   int nread = getdents(fd, &d, sizeof(d));
@@ -54,21 +52,23 @@ void print(const char* dir) {
 }
 
 int main() {
-  int err = wasmfs_create_directory("/root", 0777, get_backend());
+  int err;
 
   // Set up test directories.
-  err = mkdir("/root/working", 0777);
+  err = mkdir("root", 0777);
   assert(err != -1);
-  err = mkdir("/root/working/test", 0777);
+  err = mkdir("root/working", 0777);
+  assert(err != -1);
+  err = mkdir("root/working/test", 0777);
   assert(err != -1);
 
   struct dirent d;
 
   // Try opening the directory that was just created.
-  printf("------------- Reading from /root/working Directory -------------\n");
-  print("/root/working");
+  printf("------------- Reading from root/working Directory -------------\n");
+  print("root/working");
 
-  int fd = open("/root/working", O_RDONLY | O_DIRECTORY);
+  int fd = open("root/working", O_RDONLY | O_DIRECTORY);
 
   // Try reading an invalid fd.
   errno = 0;
@@ -109,17 +109,17 @@ int main() {
 
   // Try to advance the offset of the directory.
   // Expect that '.' will be skipped.
-  fd = open("/root/working", O_RDONLY | O_DIRECTORY);
-  printf("/root/working file position is: %lli\n", lseek(fd, 1, SEEK_SET));
+  fd = open("root/working", O_RDONLY | O_DIRECTORY);
+  printf("root/working file position is: %lli\n", lseek(fd, 1, SEEK_SET));
   printf(
-    "------------- Reading one from /root/working Directory -------------\n");
+    "------------- Reading one from root/working Directory -------------\n");
   print_one(fd);
   close(fd);
 
   // Try to add a file to the /working directory.
-  fd = open("/root/working/foobar", O_CREAT, S_IRGRP);
+  fd = open("root/working/foobar", O_CREAT, S_IRGRP);
   assert(fd != -1);
   close(fd);
-  printf("------------- Reading from /root/working Directory -------------\n");
-  print("/root/working");
+  printf("------------- Reading from root/working Directory -------------\n");
+  print("root/working");
 }
