@@ -23,6 +23,7 @@ Whether we should add runtime assertions. This affects both JS and how
 system libraries are built.
 ASSERTIONS == 2 gives even more runtime checks, that may be very slow. That
 includes internal dlmalloc assertions, for example.
+ASSERTIONS defaults to 0 in optimized builds (-O1 and above).
 
 Default value: 1
 
