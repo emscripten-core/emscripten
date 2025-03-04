@@ -1112,6 +1112,7 @@ var LibraryEmbind = {
       fieldRecords.forEach((field, i) => {
         var fieldName = field.fieldName;
         var getterReturnType = fieldTypes[i];
+        var optional = fieldTypes[i].optional;
         var getter = field.getter;
         var getterContext = field.getterContext;
         var setterArgumentType = fieldTypes[i + fieldRecords.length];
@@ -1123,7 +1124,8 @@ var LibraryEmbind = {
             var destructors = [];
             setter(setterContext, ptr, setterArgumentType['toWireType'](destructors, o));
             runDestructors(destructors);
-          }
+          },
+          optional,
         };
       });
 
@@ -1141,7 +1143,7 @@ var LibraryEmbind = {
           // todo: Here we have an opportunity for -O3 level "unsafe" optimizations:
           // assume all fields are present without checking.
           for (var fieldName in fields) {
-            if (!(fieldName in o)) {
+            if (!(fieldName in o) && !fields[fieldName].optional) {
               throw new TypeError(`Missing field: "${fieldName}"`);
             }
           }
