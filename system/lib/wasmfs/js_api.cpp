@@ -150,14 +150,13 @@ int _wasmfs_symlink(char* old_path, char* new_path) {
 }
 
 intptr_t _wasmfs_readlink(char* path) {
-  static thread_local void* readBuf = nullptr;
-  readBuf = realloc(readBuf, PATH_MAX);
+  static thread_local char* readBuf = (char*)malloc(PATH_MAX);
   int bytes =
     __syscall_readlinkat(AT_FDCWD, (intptr_t)path, (intptr_t)readBuf, PATH_MAX);
   if (bytes < 0) {
     return bytes;
   }
-  ((char*)readBuf)[bytes] = '\0';
+  readBuf[bytes] = '\0';
   return (intptr_t)readBuf;
 }
 
@@ -350,9 +349,8 @@ void _wasmfs_readdir_finish(struct wasmfs_readdir_state* state) {
 
 char* _wasmfs_get_cwd(void) {
   // TODO: PATH_MAX is 4K atm, so it might be good to reduce this somehow.
-  static thread_local void* path = nullptr;
-  path = realloc(path, PATH_MAX);
-  return getcwd((char*)path, PATH_MAX);
+  static thread_local char* path = (char*)malloc(PATH_MAX);
+  return getcwd(path, PATH_MAX);
 }
 
 } // extern "C"
