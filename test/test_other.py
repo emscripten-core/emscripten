@@ -2403,9 +2403,9 @@ Module['postRun'] = () => {
         dylink_section = module.parse_dylink_section()
         return dylink_section.runtime_paths
 
-    self.assertEqual(get_runtime_paths('libside2.so') == [])
-    self.assertEqual(get_runtime_paths('libside1.so') == ['$ORIGIN'])
-    self.assertEqual(get_runtime_paths('a.out.wasm') == ['$ORIGIN'])
+    self.assertEqual(get_runtime_paths('libside2.so'), [])
+    self.assertEqual(get_runtime_paths('libside1.so'), ['$ORIGIN'])
+    self.assertEqual(get_runtime_paths('a.out.wasm'), ['$ORIGIN'])
 
   def test_dylink_LEGACY_GL_EMULATION(self):
     # LEGACY_GL_EMULATION wraps JS library functions. This test ensure that when it does
