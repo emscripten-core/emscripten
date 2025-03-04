@@ -3,7 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-// This file defines the fetch backend.
+// This file defines the MAPFS backend.
 
 #include "backend.h"
 #include "wasmfs.h"
@@ -15,9 +15,9 @@
 
 namespace wasmfs {
 
-typedef std::map<std::string,std::string> MapManifest;
+using MapManifest=std::map<std::string,std::string>;
 
-class MapBackend : public wasmfs::Backend {
+class MapBackend : public Backend {
   MapManifest *manifest;
  public:
   // Takes ownership of manifest
@@ -25,14 +25,14 @@ class MapBackend : public wasmfs::Backend {
     assert(manifest && "Mapfs: null manifest not supported");
   }
   ~MapBackend() {
-    if(manifest != NULL) {
+    if (manifest != NULL) {
       delete manifest;
     }
   }
   std::shared_ptr<DataFile> createFile(mode_t mode) override;
   std::shared_ptr<Directory> createDirectory(mode_t mode) override;
   std::shared_ptr<Symlink> createSymlink(std::string target) override {
-    fprintf(stderr, "mapfs doesn't support creating symlinks");
+    fprintf(stderr, "MAPFS doesn't support creating symlinks");
     abort();
     return NULL;
   }
@@ -44,13 +44,13 @@ class MapBackend : public wasmfs::Backend {
 
 
 class MapDirectory : public MemoryDirectory {
-  std::string dirPath;
+  std::string virtualPath;
 
 public:
   MapDirectory(const std::string& path,
                  mode_t mode,
                  backend_t backend)
-    : MemoryDirectory(mode, backend), dirPath(path) {
+    : MemoryDirectory(mode, backend), virtualPath(path) {
     auto manifest = dynamic_cast<MapBackend*>(getBackend())->getManifest();
     if (manifest && path == "") {
       for (const auto& pair : *manifest) {
@@ -124,7 +124,7 @@ public:
   }
 
   std::string getChildPath(const std::string& name) const {
-    return dirPath + '/' + name;
+    return virtualPath + '/' + name;
   }
 
   std::shared_ptr<File> getChild(const std::string& name) override {
@@ -133,7 +133,7 @@ public:
 };
 
 std::shared_ptr<DataFile> MapBackend::createFile(mode_t mode) {
-  assert(false && "Can't create freestanding file with mapfs");
+  assert(false && "Can't create freestanding file with MAPFS");
   return NULL;
 }
 
