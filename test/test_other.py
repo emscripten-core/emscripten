@@ -14338,8 +14338,12 @@ int main() {
     else:
       self.run_process([EMCC, test_file('hello_world.c'), '-Werror'] + args)
 
-  def test_wasm_worker_hello(self):
-    self.do_runf(test_file('wasm_worker/hello_wasm_worker.c'), emcc_args=['-sWASM_WORKERS'])
+  @parameterized({
+    '': [[]],
+    'trusted': [['-sTRUSTED_TYPES']]
+  })
+  def test_wasm_worker_hello(self, args):
+    self.do_runf(test_file('wasm_worker/hello_wasm_worker.c'), emcc_args=['-sWASM_WORKERS'] + args)
 
   def test_wasm_worker_terminate(self):
     self.do_runf(test_file('wasm_worker/terminate_wasm_worker.c'), emcc_args=['-sWASM_WORKERS'])
