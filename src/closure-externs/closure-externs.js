@@ -261,3 +261,9 @@ var moduleRtn;
  */
 Navigator.prototype.webkitGetUserMedia = function(
     constraints, successCallback, errorCallback) {};
+
+/**
+ * A symbol from the explicit resource management proposal that isn't yet part of Closure.
+ * @type {symbol}
+ */
+Symbol.dispose;
