@@ -179,16 +179,20 @@ Limitations
   * Currently `std::set_terminate
     <https://en.cppreference.com/w/cpp/error/set_terminate>`_ is NOT supported
     when a thrown exception does not have a matching handler and unwinds all the
-    stack and crashes the program. This applies to both Emscripten-style and
-    WebAssembly exceptions. That functionality requires `two-phase exception
-    handling <https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html>`_, which
-    neither supports.
+    stack up to the topmost caller and crashes the program, i.e., there is no
+    ``catch`` that catches it and the callers are not marked as ``noexcept``.
+    This applies to both Emscripten-style and WebAssembly exceptions. That
+    functionality requires `two-phase exception handling
+    <https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html>`_, which neither
+    supports.
 
   * When the exception handling encounters a termination condition, libc++abi
     spec says we call `__cxa_begin_catch()` to mark the exception as handled and
     then call `terminate()`. But currently Wasm EH does not support calling
     `__cxa_begin_catch()`. So the following program prints ``exception_ptr is
-    null``, where it is supposed to print ``exception_ptr is NOT null``.
+    null``, where it is supposed to print ``exception_ptr is NOT null``; note
+    that the use of ``noexcept`` here means that the ``throw 3`` will turn into
+    a termination condition.
 
     .. code-block:: cpp
 
