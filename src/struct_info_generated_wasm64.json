@@ -141,6 +141,7 @@
         "EMSCRIPTEN_EVENT_FULLSCREENCHANGE": 19,
         "EMSCRIPTEN_EVENT_GAMEPADCONNECTED": 26,
         "EMSCRIPTEN_EVENT_GAMEPADDISCONNECTED": 27,
+        "EMSCRIPTEN_EVENT_INPUT": 39,
         "EMSCRIPTEN_EVENT_KEYDOWN": 2,
         "EMSCRIPTEN_EVENT_KEYPRESS": 1,
         "EMSCRIPTEN_EVENT_KEYUP": 3,
@@ -592,6 +593,12 @@
             "numAxes": 8,
             "numButtons": 12,
             "timestamp": 0
+        },
+        "EmscriptenInputEvent": {
+            "__size__": 33,
+            "data": 33,
+            "inputType": 1,
+            "isComposing": 0
         },
         "EmscriptenKeyboardEvent": {
             "__size__": 160,

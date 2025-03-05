@@ -559,6 +559,85 @@ Functions
 
 
 
+Input
+=====
+
+Defines
+-------
+
+.. c:macro:: EMSCRIPTEN_EVENT_INPUT
+
+    Emscripten input event.
+
+Struct
+------
+
+.. c:type:: EmscriptenInputEvent
+
+  The event structure passed in `DOM input events <http://www.w3.org/TR/DOM-Level-3-Events/#idl-inputevent>`_.
+
+  .. c:member:: EM_UTF8 data
+
+    The `data <https://developer.mozilla.org/en-US/docs/Web/API/InputEvent/data>`_ field contains inserted characters
+    or an empty string in case the input event deleted characters or a non-character input was performed
+    (e.g. a checkbox was toggled).
+
+    Maximum size 128 ``char`` (i.e. ``EM_UTF8 nodeName[128]``).
+
+  .. c:member:: EM_UTF8 inputType
+
+    The `inputType <https://developer.mozilla.org/en-US/docs/Web/API/InputEvent/inputType>`_ indicating the context
+    of the input event generation (e.g. typing on the keyboard, copy&paste or drag&drop).
+    See the `list of possible input types <https://w3c.github.io/input-events/#interface-InputEvent-Attributes>`_.
+    Null values are represented as zero length string.
+
+    Maximum size 32 ``char`` (i.e. ``EM_UTF8 id[32]``).
+
+  .. c:member:: bool isComposing
+
+    A ``true`` `isComposing <https://developer.mozilla.org/en-US/docs/Web/API/InputEvent/isComposing>`_ field indicates
+    the input event was received during an active session of a composition system (e.g. an
+    `input method editor <https://developer.mozilla.org/en-US/docs/Glossary/Input_method_editor>`_
+    which composes several latin characters into a single traditional chinese character).
+
+
+Callback functions
+------------------
+
+.. c:type:: em_input_callback_func
+
+  Function pointer for the :c:func:`input event callback functions <emscripten_set_input_callback>`, defined as:
+
+  .. code-block:: cpp
+
+    typedef bool (*em_input_callback_func)(int eventType, const EmscriptenInputEvent *inputEvent, void *userData);
+
+  :param int eventType: The type of event (:c:data:`EMSCRIPTEN_EVENT_INPUT`).
+  :param inputEvent: Information about the input event that occurred.
+  :type inputEvent: const EmscriptenInputEvent*
+  :param userData: The ``userData`` originally passed to the registration function.
+  :returns: |callback-handler-return-value-doc|
+  :rtype: bool
+
+
+
+Functions
+---------
+
+.. c:function:: EMSCRIPTEN_RESULT emscripten_set_input_callback(const char *target, void *userData, bool useCapture, em_input_callback_func callback)
+
+  Registers a callback function for receiving browser-generated `input events <http://www.w3.org/TR/DOM-Level-3-Events/#event-type-input>`_.
+
+  :param target: |target-parameter-doc|
+  :type target: const char*
+  :param void* userData: |userData-parameter-doc|
+  :param bool useCapture: |useCapture-parameter-doc|
+  :param em_input_callback_func callback: |callback-function-parameter-doc|
+  :returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
+  :rtype: |EMSCRIPTEN_RESULT|
+
+
+
 UI
 ==
 
