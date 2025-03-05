@@ -20,6 +20,17 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+const char* type_to_string(char d_type) {
+  switch (d_type) {
+    case DT_REG: return "DT_REG";
+    case DT_DIR: return "DT_DIR";
+    case DT_CHR: return "DT_CHR";
+    case DT_BLK: return "DT_BLK";
+    case DT_LNK: return "DT_LNK";
+    default: abort();
+  }
+}
+
 void print_one(int fd) {
   struct dirent d;
   int nread = getdents(fd, &d, sizeof(d));
@@ -29,23 +40,17 @@ void print_one(int fd) {
   }
   printf("d.d_name = %s\n", d.d_name);
   printf("d.d_reclen = %hu\n", d.d_reclen);
-  printf("d.d_type = %s\n\n",
-         (d.d_type == DT_REG)   ? "regular"
-         : (d.d_type == DT_DIR) ? "directory"
-                                : "???");
+  printf("d.d_type = %s\n\n", type_to_string(d.d_type));
 }
 
-void print(const char* dir) {
+void print_dir(const char* dir) {
   struct dirent** entries;
   int nentries = scandir(dir, &entries, NULL, alphasort);
   assert(nentries != -1);
   for (int i = 0; i < nentries; i++) {
     printf("d.d_name = %s\n", entries[i]->d_name);
     printf("d.d_reclen = %hu\n", entries[i]->d_reclen);
-    printf("d.d_type = %s\n\n",
-           (entries[i]->d_type == DT_REG)   ? "regular"
-           : (entries[i]->d_type == DT_DIR) ? "directory"
-                                            : "???");
+    printf("d.d_type = %s\n\n", type_to_string(entries[i]->d_type));
     free(entries[i]);
   }
   free(entries);
@@ -66,7 +71,7 @@ int main() {
 
   // Try opening the directory that was just created.
   printf("------------- Reading from root/working Directory -------------\n");
-  print("root/working");
+  print_dir("root/working");
 
   int fd = open("root/working", O_RDONLY | O_DIRECTORY);
 
@@ -95,7 +100,7 @@ int main() {
 
   // Try opening the dev directory and read its contents.
   printf("------------- Reading from /dev Directory -------------\n");
-  print("/dev");
+  print_dir("/dev");
 
   // The same, but via the JS API.
   printf("------------- Reading from /dev Directory via JS -------------\n");
@@ -107,12 +112,17 @@ int main() {
     console.log();
   });
 
-  // Try to advance the offset of the directory.
-  // Expect that '.' will be skipped.
+  // Try to advance reset of the offset of the directory.
+  // Expect that '..' be printed a second time.
   fd = open("root/working", O_RDONLY | O_DIRECTORY);
-  printf("root/working file position is: %lli\n", lseek(fd, 1, SEEK_SET));
-  printf(
-    "------------- Reading one from root/working Directory -------------\n");
+  print_one(fd);
+  off_t pos = lseek(fd, 0, SEEK_CUR);
+  print_one(fd);
+  // Reset back to the previous position
+  printf("rewinding from position %llu to %lli\n", lseek(fd, 0, SEEK_CUR), pos);
+  lseek(fd, pos, SEEK_SET);
+
+  printf("------------- Reading one from root/working Directory -------------\n");
   print_one(fd);
   close(fd);
 
@@ -121,5 +131,5 @@ int main() {
   assert(fd != -1);
   close(fd);
   printf("------------- Reading from root/working Directory -------------\n");
-  print("root/working");
+  print_dir("root/working");
 }
