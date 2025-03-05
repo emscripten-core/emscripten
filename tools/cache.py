@@ -17,17 +17,17 @@ from .settings import settings
 logger = logging.getLogger('cache')
 
 
-acquired_count = 0
+acquired_count = {}
 cachedir = None
-cachelock = None
-cachelock_name = None
+cache_file_locks = {}
+global_cachelock = 'cache'
 
 
 def is_writable(path):
   return os.access(path, os.W_OK)
 
 
-def acquire_cache_lock(reason):
+def acquire_cache_lock(reason, cachefile):
   global acquired_count
   if config.FROZEN_CACHE:
     # Raise an exception here rather than exit_with_error since in practice this
@@ -37,39 +37,43 @@ def acquire_cache_lock(reason):
   if not is_writable(cachedir):
     utils.exit_with_error(f'cache directory "{cachedir}" is not writable while accessing cache for: {reason} (see https://emscripten.org/docs/tools_reference/emcc.html for info on setting the cache directory)')
 
-  if acquired_count == 0:
-    logger.debug(f'PID {os.getpid()} acquiring multiprocess file lock to Emscripten cache at {cachedir}')
-    assert 'EM_CACHE_IS_LOCKED' not in os.environ, f'attempt to lock the cache while a parent process is holding the lock ({reason})'
+  # TODO: create a name-mangling scheme so we don't have to keep the .lock files next to the real files
+  with cache_file_locks[global_cachelock].acquire():
+    setup_file(cachefile)
+  # TODO: is aqcuired_count even necessary? filelock.py seems to have similar logic inside.
+  if acquired_count[cachefile] == 0:
+    logger.debug(f'PID {os.getpid()} acquiring multiprocess file lock to Emscripten cache at {cachedir} for {cachefile}')
+    #assert 'EM_CACHE_IS_LOCKED' not in os.environ, f'attempt to lock the cache while a parent process is holding the lock ({reason})'
     try:
-      cachelock.acquire(60)
+      cache_file_locks[cachefile].acquire(60)
     except filelock.Timeout:
-      logger.warning(f'Accessing the Emscripten cache at "{cachedir}" (for "{reason}") is taking a long time, another process should be writing to it. If there are none and you suspect this process has deadlocked, try deleting the lock file "{cachelock_name}" and try again. If this occurs deterministically, consider filing a bug.')
-      cachelock.acquire()
+      logger.warning(f'Accessing the Emscripten cache at "{cachedir}" (for "{reason}") is taking a long time, another process should be writing to it. If there are none and you suspect this process has deadlocked, try deleting the lock file "{global_cachelock}" and try again. If this occurs deterministically, consider filing a bug.')
+      cache_file_locks[cachefile].acquire()
 
-    os.environ['EM_CACHE_IS_LOCKED'] = '1'
+    #os.environ['EM_CACHE_IS_LOCKED'] = '1'
     logger.debug('done')
-  acquired_count += 1
+  acquired_count[cachefile] += 1
 
 
-def release_cache_lock():
+def release_cache_lock(cachefile):
   global acquired_count
-  acquired_count -= 1
-  assert acquired_count >= 0, "Called release more times than acquire"
-  if acquired_count == 0:
-    assert os.environ['EM_CACHE_IS_LOCKED'] == '1'
-    del os.environ['EM_CACHE_IS_LOCKED']
-    cachelock.release()
-    logger.debug(f'PID {os.getpid()} released multiprocess file lock to Emscripten cache at {cachedir}')
+  acquired_count[cachefile] -= 1
+  assert acquired_count[cachefile] >= 0, "Called release more times than acquire"
+  if acquired_count[cachefile] == 0:
+    #assert os.environ['EM_CACHE_IS_LOCKED'] == '1'
+    #del os.environ['EM_CACHE_IS_LOCKED']
+    cache_file_locks[cachefile].release()
+    logger.debug(f'PID {os.getpid()} released multiprocess file lock to Emscripten cache at {cachedir} for {cachefile}')
 
 
 @contextlib.contextmanager
-def lock(reason):
+def lock(reason, cachefile=global_cachelock):
   """A context manager that performs actions in the given directory."""
-  acquire_cache_lock(reason)
+  acquire_cache_lock(reason, cachefile)
   try:
     yield
   finally:
-    release_cache_lock()
+    release_cache_lock(cachefile)
 
 
 def ensure():
@@ -83,9 +87,9 @@ def ensure():
 
 def erase():
   ensure_setup()
-  with lock('erase'):
+  with lock('erase', global_cachelock):
     # Delete everything except the lockfile itself
-    utils.delete_contents(cachedir, exclude=[os.path.basename(cachelock_name)])
+    utils.delete_contents(cachedir, exclude=[os.path.basename(global_cachelock)])
 
 
 def get_path(name):
@@ -138,8 +142,8 @@ def erase_lib(name):
 
 
 def erase_file(shortname):
-  with lock('erase: ' + shortname):
-    name = Path(cachedir, shortname)
+  name = Path(cachedir, shortname)
+  with lock('erase: ' + shortname, name):
     if name.exists():
       logger.info(f'deleting cached file: {name}')
       utils.delete_file(name)
@@ -165,7 +169,7 @@ def get(shortname, creator, what=None, force=False, quiet=False, deferred=False)
     # should never happen
     raise Exception(f'FROZEN_CACHE is set, but cache file is missing: "{shortname}" (in cache root path "{cachedir}")')
 
-  with lock(shortname):
+  with lock(shortname, shortname):
     if cachename.exists() and not force:
       return str(cachename)
     if what is None:
@@ -185,16 +189,23 @@ def get(shortname, creator, what=None, force=False, quiet=False, deferred=False)
   return str(cachename)
 
 
+def setup_file(cache_file):
+  global cachedir, cache_file_locks, acquired_count
+  utils.safe_ensure_dirs(Path(cachedir, cache_file).parent)
+  filename = Path(cachedir, str(cache_file) + '.lock')
+  cache_file_locks[cache_file] = filelock.FileLock(filename)
+  acquired_count[cache_file] = 0
+
+
 def setup():
-  global cachedir, cachelock, cachelock_name
+  global cachedir, global_cachelock
   # figure out the root directory for all caching
   cachedir = Path(config.CACHE).resolve()
 
   # since the lock itself lives inside the cache directory we need to ensure it
   # exists.
   ensure()
-  cachelock_name = Path(cachedir, 'cache.lock')
-  cachelock = filelock.FileLock(cachelock_name)
+  setup_file(global_cachelock)
 
 
 def ensure_setup():
