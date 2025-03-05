@@ -179,19 +179,6 @@ if (ENVIRONMENT_IS_WASM_WORKER
       return 0;
     }
 #endif
-#if WASM_WORKERS == 2
-    // WASM_WORKERS=2 mode embeds .ww.js file contents into the main .js file
-    // as a Blob URL. (convenient, but not CSP security safe, since this is
-    // eval-like)
-    let ww_js = _wasmWorkerBlobUrl;
-#elif MINIMAL_RUNTIME
-    // MINIMAL_RUNTIME has a structure where the .ww.js file is loaded from
-    // the main HTML file in parallel to all other files for best performance
-    let ww_js = Module['$wb']; // $wb="Wasm worker Blob", abbreviated since not DCEable
-#else
-    // default runtime loads the .ww.js file on demand.
-    let ww_js = locateFile('{{{ WASM_WORKER_FILE }}}');
-#endif
     let worker;
 #if TRUSTED_TYPES
     // Use Trusted Types compatible wrappers.
