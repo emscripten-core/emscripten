@@ -884,14 +884,14 @@ int wasmfs_unmount(const char* path) {
     return -EBUSY;
   }
 
-  if (auto dir = file->dynCast<Directory>()) {
-    if (parent->getBackend() == dir->getBackend()) {
-      // The child is not a valid mountpoint.
-      return -EINVAL;
-    }
-  } else {
+  if (!file->dynCast<Directory>()) {
     // A normal file or symlink.
     return -ENOTDIR;
+  }
+
+  if (parent->getBackend() == file->getBackend()) {
+    // The child is not a valid mountpoint.
+    return -EINVAL;
   }
 
   // Input is valid, perform the unlink.

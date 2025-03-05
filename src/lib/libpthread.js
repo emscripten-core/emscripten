@@ -352,10 +352,6 @@ var LibraryPThread = {
         }
       }
 
-#if ASSERTIONS
-      worker.workerID = PThread.nextWorkerID++;
-#endif
-
       // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
       worker.postMessage({
         cmd: 'load',
@@ -426,12 +422,7 @@ var LibraryPThread = {
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
       if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
-        var p = trustedTypes.createPolicy(
-          'emscripten#workerPolicy1',
-          {
-            createScriptURL: (ignored) => new URL("{{{ TARGET_JS_NAME }}}", import.meta.url)
-          }
-        );
+        var p = trustedTypes.createPolicy('emscripten#workerPolicy1', { createScriptURL: (ignored) => import.meta.url });
         worker = new Worker(p.createScriptURL('ignored'), {{{ pthreadWorkerOptions }}});
       } else
 #endif
@@ -439,6 +430,7 @@ var LibraryPThread = {
       // instead of just using new URL(import.meta.url) because bundler's only recognize
       // the first case in their bundling step. The latter ends up producing an invalid
       // URL to import from the server (e.g., for webpack the file:// path).
+      // See https://github.com/webpack/webpack/issues/12638
       worker = new Worker(new URL('{{{ TARGET_JS_NAME }}}', import.meta.url), {{{ pthreadWorkerOptions }}});
 #else // EXPORT_ES6
       var pthreadMainJs = _scriptName;
@@ -464,6 +456,9 @@ var LibraryPThread = {
 #endif
       worker = new Worker(pthreadMainJs, {{{ pthreadWorkerOptions }}});
 #endif // EXPORT_ES6
+#if ASSERTIONS
+      worker.workerID = PThread.nextWorkerID++;
+#endif
       PThread.unusedWorkers.push(worker);
     },
 

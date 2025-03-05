@@ -243,11 +243,27 @@ a C++ object is no longer needed and can be deleted:
 Automatic memory management
 ---------------------------
 
-JavaScript only gained support for `finalizers`_ in ECMAScript 2021, or ECMA-262
-Edition 12. The new API is called `FinalizationRegistry`_ and it still does not
-offer any guarantees that the provided finalization callback will be called.
-Embind uses this for cleanup if available, but only for smart pointers,
-and only as a last resort.
+Embind integrates with the `Explicit Resource Management`_ proposal.
+
+It allows to automatically delete short-lived C++ objects at the end of the
+scope when they're declared with a `using` keyword:
+
+.. code:: javascript
+
+    using x = new Module.MyClass;
+    x.method();
+
+At the moment of writing, this proposal is natively supported in
+Chromium-based browsers as well as Babel and TypeScript via transpilation.
+
+Embind also supports `finalizers`_, which were added in ECMAScript 2021 under a
+`FinalizationRegistry`_ API. Unlike the `using` keyword, finalizers are not
+guaranteed to be called, and even if they are, there are no guarantees about
+their timing or order of execution, which makes them unsuitable for general
+RAII-style resource management.
+
+Embind uses it for cleanup if available, but only for smart pointers, and only
+as a last resort.
 
 .. warning:: It is strongly recommended that JavaScript code explicitly deletes
     any C++ object handles it has received.
@@ -1245,3 +1261,4 @@ real-world applications has proved to be more than acceptable.
 .. _Making sine, square, sawtooth and triangle waves: http://stuartmemo.com/making-sine-square-sawtooth-and-triangle-waves/
 .. _embind_tsgen.cpp: https://github.com/emscripten-core/emscripten/blob/main/test/other/embind_tsgen.cpp
 .. _embind_tsgen.d.ts: https://github.com/emscripten-core/emscripten/blob/main/test/other/embind_tsgen.d.ts
+.. _Explicit Resource Management: https://tc39.es/proposal-explicit-resource-management/
