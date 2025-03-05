@@ -674,6 +674,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if user_settings.get('EXIT_RUNTIME') == '0':
       exit_with_error('--emrun is not compatible with EXIT_RUNTIME=0')
     settings.EXIT_RUNTIME = 1
+    # emrun_postjs.js needs this library function.
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$addOnExit']
 
   if options.cpu_profiler:
     options.post_js.append(utils.path_from_root('src/cpuprofiler.js'))
