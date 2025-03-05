@@ -143,7 +143,7 @@ def erase_lib(name):
 
 def erase_file(shortname):
   name = Path(cachedir, shortname)
-  with lock('erase: ' + shortname, name):
+  with lock('erase: ' + shortname, shortname):
     if name.exists():
       logger.info(f'deleting cached file: {name}')
       utils.delete_file(name)
