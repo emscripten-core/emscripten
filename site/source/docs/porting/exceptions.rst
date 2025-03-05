@@ -184,7 +184,20 @@ Limitations
     This applies to both Emscripten-style and WebAssembly exceptions. That
     functionality requires `two-phase exception handling
     <https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html>`_, which neither
-    supports.
+    supports. So the following program does NOT print ``my set_terminate``:
+
+    .. code-block:: cpp
+
+        #include <iostream>
+        #include <exception>
+
+        int main() {
+          std::set_terminate([] {
+            std::cerr << "my set_terminate" << std::endl;
+            std::abort();
+          });
+          throw 3;
+        }
 
   * When the exception handling encounters a termination condition, libc++abi
     spec says we call `__cxa_begin_catch()` to mark the exception as handled and
