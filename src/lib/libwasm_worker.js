@@ -34,6 +34,15 @@
 
 {{{
   const workerSupportsFutexWait = () => AUDIO_WORKLET ? "typeof AudioWorkletGlobalScope === 'undefined'" : '1';
+  const wasmWorkerJs = `
+#if WASM_WORKERS == 2
+    _wasmWorkerBlobUrl
+#elif MINIMAL_RUNTIME
+    Module['$wb']
+#else
+    locateFile('${WASM_WORKER_FILE}')
+#endif
+`;
   null;
 }}}
 
@@ -188,18 +197,12 @@ if (ENVIRONMENT_IS_WASM_WORKER
     // Use Trusted Types compatible wrappers.
     if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
       var p = trustedTypes.createPolicy(
-        'emscripten#workerPolicy1',
-        {
-          createScriptURL: (ignored) => ww_js
-        }
+          'emscripten#workerPolicy1', { createScriptURL: (ignored) => {{{ wasmWorkerJs }}}}
       );
       worker = _wasmWorkers[_wasmWorkersID] = new Worker(p.createScriptURL('ignored'));
-    } else {
-      worker = _wasmWorkers[_wasmWorkersID] = new Worker(ww_js);
-    }
-#else
-    worker = _wasmWorkers[_wasmWorkersID] = new Worker(ww_js);
+    } else
 #endif
+    worker = _wasmWorkers[_wasmWorkersID] = new Worker({{{ wasmWorkerJs }}});
     // Craft the Module object for the Wasm Worker scope:
     worker.postMessage({
       // Signal with a non-zero value that this Worker will be a Wasm Worker,
