@@ -37,9 +37,7 @@ def acquire_cache_lock(reason, cachefile):
   if not is_writable(cachedir):
     utils.exit_with_error(f'cache directory "{cachedir}" is not writable while accessing cache for: {reason} (see https://emscripten.org/docs/tools_reference/emcc.html for info on setting the cache directory)')
 
-  # TODO: create a name-mangling scheme so we don't have to keep the .lock files next to the real files
-  with cache_file_locks[global_cachelock].acquire():
-    setup_file(cachefile)
+  setup_file(cachefile)
   # TODO: is aqcuired_count even necessary? filelock.py seems to have similar logic inside.
   if acquired_count[cachefile] == 0:
     logger.debug(f'PID {os.getpid()} acquiring multiprocess file lock to Emscripten cache at {cachedir} for {cachefile}')
@@ -191,10 +189,13 @@ def get(shortname, creator, what=None, force=False, quiet=False, deferred=False)
 
 def setup_file(cache_file):
   global cachedir, cache_file_locks, acquired_count
-  utils.safe_ensure_dirs(Path(cachedir, cache_file).parent)
-  filename = Path(cachedir, str(cache_file) + '.lock')
-  cache_file_locks[cache_file] = filelock.FileLock(filename)
-  acquired_count[cache_file] = 0
+  if cache_file not in cache_file_locks:
+    file_path = Path(cache_file)
+    assert not file_path.is_absolute()
+    key_name = '_'.join(file_path.parts) + '.lock'
+    filename = Path(cachedir, 'locks', key_name)
+    cache_file_locks[cache_file] = filelock.FileLock(filename)
+    acquired_count[cache_file] = 0
 
 
 def setup():
@@ -205,6 +206,7 @@ def setup():
   # since the lock itself lives inside the cache directory we need to ensure it
   # exists.
   ensure()
+  utils.safe_ensure_dirs(Path(cachedir, 'locks'))
   setup_file(global_cachelock)
 
 
