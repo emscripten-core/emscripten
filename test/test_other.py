@@ -10008,6 +10008,7 @@ end
     self.build(test_file('hello_world.c'), emcc_args=[
       '--closure=1',
       '--minify=0',
+      '-lbase64.js',
       '-Werror=closure',
       '-sINCLUDE_FULL_LIBRARY',
       '-sOFFSCREEN_FRAMEBUFFER',
