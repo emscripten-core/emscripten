@@ -84,7 +84,9 @@ addToLibrary({
     }
   },
   // Wraps a JS function as a wasm function with a given signature.
+#if !WASM2JS
   $convertJsFunctionToWasm__deps: ['$uleb128Encode', '$sigToWasmTypes', '$generateFuncType'],
+#endif
   $convertJsFunctionToWasm: (func, sig) => {
 #if WASM2JS
     // return func;
@@ -192,8 +194,12 @@ addToLibrary({
   $addFunction__docs: '/** @param {string=} sig */',
   $addFunction__deps: ['$convertJsFunctionToWasm', '$getFunctionAddress',
                        '$functionsInTableMap', '$getEmptyTableSlot',
-                       '$getWasmTableEntry', '$setWasmTableEntry',
-                       '$wasmTable'],
+                       '$setWasmTableEntry',
+#if ASSERTIONS >= 2
+                       '$getWasmTableEntry', '$wasmTable',
+#endif
+  ],
+
   $addFunction: (func, sig) => {
   #if ASSERTIONS
     assert(typeof func != 'undefined');

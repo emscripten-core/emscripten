@@ -350,8 +350,11 @@ var LibraryEmbind = {
   // When converting a number from JS to C++ side, the valid range of the number is
   // [minRange, maxRange], inclusive.
   _embind_register_integer__deps: [
-    '$embindRepr', '$integerReadValueFromPointer',
-    '$readLatin1String', '$registerType'],
+    '$integerReadValueFromPointer', '$readLatin1String', '$registerType',
+#if ASSERTIONS
+    '$embindRepr',
+#endif
+  ],
   _embind_register_integer: (primitiveType, name, size, minRange, maxRange) => {
     name = readLatin1String(name);
     // LLVM doesn't have signed and unsigned 32-bit types, so u32 literals come
@@ -444,8 +447,11 @@ var LibraryEmbind = {
 #endif
 
   _embind_register_float__deps: [
-    '$embindRepr', '$floatReadValueFromPointer',
-    '$readLatin1String', '$registerType'],
+    '$floatReadValueFromPointer', '$readLatin1String', '$registerType',
+#if ASSERTIONS
+    '$embindRepr',
+#endif
+  ],
   _embind_register_float: (rawType, name, size) => {
     name = readLatin1String(name);
     registerType(rawType, {
@@ -735,11 +741,8 @@ var LibraryEmbind = {
   // craftInvokerFunction generates the JS invoker function for each function exposed to JS through embind.
   $craftInvokerFunction__deps: [
     '$createNamedFunction', '$runDestructors', '$throwBindingError', '$usesDestructorStack',
-#if DYNAMIC_EXECUTION
-    '$newFunc',
-#if !EMBIND_AOT
-    '$createJsInvoker',
-#endif
+#if DYNAMIC_EXECUTION && !EMBIND_AOT
+    '$newFunc', '$createJsInvoker',
 #endif
 #if EMBIND_AOT
     '$InvokerFunctions',
@@ -1481,8 +1484,12 @@ var LibraryEmbind = {
   $detachFinalizer_deps: ['$finalizationRegistry'],
   $detachFinalizer: (handle) => {},
 
-  $attachFinalizer__deps: ['$finalizationRegistry', '$detachFinalizer',
-                           '$releaseClassHandle', '$RegisteredPointer_fromWireType'],
+  $attachFinalizer__deps: [
+    '$finalizationRegistry', '$detachFinalizer', '$releaseClassHandle',
+#if ASSERTIONS
+    '$RegisteredPointer_fromWireType'
+#endif
+  ],
   $attachFinalizer: (handle) => {
     if ('undefined' === typeof FinalizationRegistry) {
       attachFinalizer = (handle) => handle;
@@ -1836,8 +1843,8 @@ var LibraryEmbind = {
   },
 
   _embind_register_class_constructor__deps: [
-    '$heap32VectorToArray', '$embind__requireFunction', '$runDestructors',
-    '$throwBindingError', '$whenDependentTypesAreResolved', '$registeredTypes',
+    '$heap32VectorToArray', '$embind__requireFunction',
+    '$whenDependentTypesAreResolved',
     '$craftInvokerFunction'],
   _embind_register_class_constructor: (
     rawClassType,
@@ -2134,7 +2141,7 @@ var LibraryEmbind = {
   _embind_register_class_class_property__deps: [
     '$readLatin1String', '$embind__requireFunction', '$runDestructors',
     '$throwBindingError', '$throwUnboundTypeError',
-    '$whenDependentTypesAreResolved', '$validateThis'],
+    '$whenDependentTypesAreResolved'],
   _embind_register_class_class_property: (rawClassType,
                                           fieldName,
                                           rawFieldType,
