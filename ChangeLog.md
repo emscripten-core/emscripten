@@ -24,6 +24,9 @@ See docs/process.md for more on how version tagging works.
   source map : use `-sSOURCE_MAP_PREFIXES=["<old>=<new>"]` with `-gsource-map`.
   Alternatively, you can now embed the sources content into the source map file
   using `-gsource-map=inline`. (#23741)
+- Added initial support for wasm source phase imports via
+  `-sSOURCE_PHASE_IMPORTS`.  This is currently experimental and not yet
+  implemented in browsers. (#23175)
 
 4.0.4 - 02/25/25
 ----------------

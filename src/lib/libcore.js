@@ -52,17 +52,7 @@ addToLibrary({
     return '0x' + ptr.toString(16).padStart(8, '0');
   },
 
-  $zeroMemory: (address, size) => {
-#if LEGACY_VM_SUPPORT
-    if (!HEAPU8.fill) {
-      for (var i = 0; i < size; i++) {
-        HEAPU8[address + i] = 0;
-      }
-      return;
-    }
-#endif
-    HEAPU8.fill(0, address, address + size);
-  },
+  $zeroMemory: (ptr, size) => HEAPU8.fill(0, ptr, ptr + size),
 
 #if SAFE_HEAP
   // Trivial wrappers around runtime functions that make these symbols available

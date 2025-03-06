@@ -47,6 +47,7 @@
 // system libraries are built.
 // ASSERTIONS == 2 gives even more runtime checks, that may be very slow. That
 // includes internal dlmalloc assertions, for example.
+// ASSERTIONS defaults to 0 in optimized builds (-O1 and above).
 // [link]
 var ASSERTIONS = 1;
 
@@ -1784,7 +1785,7 @@ var PTHREADS_DEBUG = false;
 // [link]
 var EVAL_CTORS = 0;
 
-// Is enabled, use the JavaScript TextDecoder API for string marshalling.
+// If enabled, use the JavaScript TextDecoder API for string marshalling.
 // Enabled by default, set this to 0 to disable.
 // If set to 2, we assume TextDecoder is present and usable, and do not emit
 // any JS code to fall back if it is missing. In single threaded -Oz build modes,
@@ -2192,6 +2193,13 @@ var LEGACY_RUNTIME = false;
 // Example use -sSIGNATURE_CONVERSIONS=someFunction:_p,anotherFunction:p
 // [link]
 var SIGNATURE_CONVERSIONS = [];
+
+// Experimental support for wasm source phase imports.
+// This is only currently implemented in the pre-release/nightly version of node,
+// and not yet supported by browsers.
+// Requires EXPORT_ES6
+// [link]
+var SOURCE_PHASE_IMPORTS = false;
 
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]

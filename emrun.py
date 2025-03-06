@@ -17,6 +17,7 @@ See emrun --help for more information
 import argparse
 import atexit
 import json
+import math
 import os
 import platform
 import re
@@ -769,12 +770,11 @@ def get_cpu_info():
       logical_cores = int(check_output(['sysctl', '-n', 'machdep.cpu.thread_count']).strip())
       frequency = int(check_output(['sysctl', '-n', 'hw.cpufrequency']).strip()) // 1000000
     elif LINUX:
-      all_info = check_output(['cat', '/proc/cpuinfo']).strip()
-      for line in all_info.split("\n"):
+      for line in open('/proc/cpuinfo').readlines():
         if 'model name' in line:
           cpu_name = re.sub('.*model name.*:', '', line, count=1).strip()
       lscpu = check_output(['lscpu'])
-      frequency = int(float(re.search('CPU MHz: (.*)', lscpu).group(1).strip()) + 0.5)
+      frequency = math.ceil(float(re.search('CPU (max )?MHz: (.*)', lscpu).group(2).strip()))
       sockets = int(re.search(r'Socket\(s\): (.*)', lscpu).group(1).strip())
       physical_cores = sockets * int(re.search(r'Core\(s\) per socket: (.*)', lscpu).group(1).strip())
       logical_cores = physical_cores * int(re.search(r'Thread\(s\) per core: (.*)', lscpu).group(1).strip())
@@ -1391,7 +1391,8 @@ def get_system_info(format_json):
     else:
       cpu = get_cpu_info()
       gpus = get_gpu_info()
-      info = 'Computer name: ' + socket.gethostname() + '\n' # http://stackoverflow.com/questions/799767/getting-name-of-windows-computer-running-python-script
+      # http://stackoverflow.com/questions/799767/getting-name-of-windows-computer-running-python-script
+      info = 'Computer name: ' + socket.gethostname() + '\n'
       info += 'Model: ' + get_computer_model() + '\n'
       info += 'OS: ' + get_os_version() + ' with ' + str(get_system_memory() // 1024 // 1024) + ' MB of System RAM\n'
       info += 'CPU: ' + cpu['model'] + ', ' + str(cpu['frequency']) + ' MHz, ' + str(cpu['physicalCores']) + ' physical cores, ' + str(cpu['logicalCores']) + ' logical cores\n'

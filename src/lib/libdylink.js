@@ -447,7 +447,7 @@ var LibraryDylink = {
       name = getString();
     }
 
-    var customSection = { neededDynlibs: [], tlsExports: new Set(), weakImports: new Set() };
+    var customSection = { neededDynlibs: [], tlsExports: new Set(), weakImports: new Set(), runtimePaths: [] };
     if (name == 'dylink') {
       customSection.memorySize = getLEB();
       customSection.memoryAlign = getLEB();
@@ -457,7 +457,7 @@ var LibraryDylink = {
       // current module could resolve its imports. (see tools/shared.py
       // WebAssembly.make_shared_library() for "dylink" section extension format)
       var neededDynlibsCount = getLEB();
-      for (var i = 0; i < neededDynlibsCount; ++i) {
+      while (neededDynlibsCount--) {
         var libname = getString();
         customSection.neededDynlibs.push(libname);
       }
@@ -467,6 +467,7 @@ var LibraryDylink = {
       var WASM_DYLINK_NEEDED = 0x2;
       var WASM_DYLINK_EXPORT_INFO = 0x3;
       var WASM_DYLINK_IMPORT_INFO = 0x4;
+      var WASM_DYLINK_RUNTIME_PATH = 0x5;
       var WASM_SYMBOL_TLS = 0x100;
       var WASM_SYMBOL_BINDING_MASK = 0x3;
       var WASM_SYMBOL_BINDING_WEAK = 0x1;
@@ -480,8 +481,8 @@ var LibraryDylink = {
           customSection.tableAlign = getLEB();
         } else if (subsectionType === WASM_DYLINK_NEEDED) {
           var neededDynlibsCount = getLEB();
-          for (var i = 0; i < neededDynlibsCount; ++i) {
-            libname = getString();
+          while (neededDynlibsCount--) {
+            var libname = getString();
             customSection.neededDynlibs.push(libname);
           }
         } else if (subsectionType === WASM_DYLINK_EXPORT_INFO) {
@@ -502,6 +503,12 @@ var LibraryDylink = {
             if ((flags & WASM_SYMBOL_BINDING_MASK) == WASM_SYMBOL_BINDING_WEAK) {
               customSection.weakImports.add(symname);
             }
+          }
+        } else if (subsectionType === WASM_DYLINK_RUNTIME_PATH) {
+          var runtimePathsCount = getLEB();
+          while (runtimePathsCount--) {
+            var path = getString();
+            customSection.runtimePaths.push(path);
           }
         } else {
 #if ASSERTIONS
