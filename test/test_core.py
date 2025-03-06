@@ -5994,6 +5994,8 @@ Module.onRuntimeInitialized = () => {
         self.emcc_args += ['-DNO_SYMLINK=1']
       if MACOS:
         self.skipTest('only tested on linux')
+      if self.get_setting('WASMFS'):
+        self.skipTest('https://github.com/emscripten-core/emscripten/issues/18112')
 
     # Several differences/bugs on non-linux including https://github.com/nodejs/node/issues/18014
     # TODO: NODERAWFS in WasmFS
