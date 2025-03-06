@@ -269,7 +269,7 @@ void test_big_chunks() {
   char expected[] = "hello";
   size_t size = 5;
 
-  backend_t backend = wasmfs_create_fetch_backend("small.dat",16);
+  backend_t backend = wasmfs_create_fetch_backend("small.dat", 16);
   int fd;
   char buf[size + 1];
   fd = wasmfs_create_file("/testfile11", 0777, backend);
