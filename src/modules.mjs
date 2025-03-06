@@ -273,6 +273,14 @@ export const LibraryManager = {
       pushCurrentFile(filename);
       try {
         processed = processMacros(preprocess(filename), filename);
+        if (EXPORT_ES6) {
+          // `vm.runInContext` doesn't support module syntax; to allow it,
+          // we need to temporarily replace `import.meta` usages with
+          // placeholders during the JS compile phase, then in Python
+          // we reverse this replacement.
+          // See also: `compile_javascript` in emscripten.py.
+          processed = processed.replace(/\bimport\.meta\b/g, 'EMSCRIPTEN$IMPORT$META');
+        }
         runInMacroContext(processed, {filename: filename.replace(/\.\w+$/, '.preprocessed$&')});
       } catch (e) {
         error(`failure to execute js library "${filename}":`);

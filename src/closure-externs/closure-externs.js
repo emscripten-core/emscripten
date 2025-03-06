@@ -11,11 +11,7 @@
  * The closure_compiler() method in tools/shared.py refers to this file when calling closure.
  */
 
-// Special placeholder for `import.meta` and `await import`.
-var EMSCRIPTEN$IMPORT$META;
-var EMSCRIPTEN$AWAIT$IMPORT;
-
-// Don't minify createRequire
+// Don't minify createRequire (i.e. when doing -sEXPORT_ES6 + -sENVIRONMENT=node)
 var createRequire;
 
 // Don't minify startWorker which we use to start workers once the runtime is ready.
@@ -160,9 +156,10 @@ var wakaUnknownBefore;
 // Module loaders externs, for AMD etc.
 
 /**
+ * @param {Object} deps
  * @param {Function} wrapper
  */
-var define = function (wrapper) {};
+var define = function (deps, wrapper) {};
 
 /**
  * @type {Worker}
@@ -230,20 +227,6 @@ var sampleRate;
  * Avoid closure minifying anything to "id". See #13965
  */
 var id;
-
-/**
- * Used in MODULARIZE mode as the name of the incoming module argument.
- * This is generated outside of the code we pass to closure so from closure's
- * POV this is "extern".
- */
-var moduleArg;
-
-/**
- * Used in MODULARIZE mode.
- * We need to access this after the code we pass to closure so from closure's
- * POV this is "extern".
- */
-var moduleRtn;
 
 /**
  * This was removed from upstream closure compiler in

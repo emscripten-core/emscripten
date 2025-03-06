@@ -5,6 +5,11 @@
 
 #if PTHREADS
 // Avoid instantiating the module on pthreads.
-if (!isPthread)
+#if EXPORT_ES6
+const isMainThread = (await import('worker_threads')).isMainThread;
+#else
+const { isMainThread } = require('worker_threads');
+#endif
+if (isMainThread)
 #endif
 {{{ EXPORT_NAME }}}();

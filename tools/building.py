@@ -556,7 +556,14 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
   CLOSURE_EXTERNS = [path_from_root('src/closure-externs/closure-externs.js')]
 
   if settings.MODULARIZE:
-    CLOSURE_EXTERNS += [path_from_root('src/closure-externs/modularize-externs.js')]
+    temp = shared.get_temp_files().get('.js', prefix='emcc_closure_externs_').name
+    utils.write_file(temp, f'''
+/**
+ * @suppress {{duplicate}}
+ */
+var {settings.EXPORT_NAME};
+''')
+    CLOSURE_EXTERNS += [temp]
 
   if settings.USE_WEBGPU:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/webgpu-externs.js')]
@@ -601,6 +608,14 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
 
   args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
   args += ['--language_in', 'UNSTABLE']
+  # Make Closure aware of the ES6 module syntax;
+  # i.e. the `import.meta` and `await import` usages
+  if settings.EXPORT_ES6:
+    args += ['--chunk_output_type', 'ES_MODULES']
+    if settings.ENVIRONMENT_MAY_BE_NODE:
+      args += ['--module_resolution', 'NODE']
+      # https://github.com/google/closure-compiler/issues/3740
+      args += ['--jscomp_off=moduleLoad']
   # We do transpilation using babel
   args += ['--language_out', 'NO_TRANSPILE']
   # Tell closure never to inject the 'use strict' directive.
