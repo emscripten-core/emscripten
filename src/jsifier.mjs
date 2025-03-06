@@ -184,6 +184,108 @@ function preJS() {
   return result;
 }
 
+function addImplicitDeps(snippet, deps) {
+  // There are some common dependencies that we inject automatically by
+  // conservatively scanning the input functions for their usage.
+  // Specifically, these are dependencies that are very common and would be
+  // burdensome to add manually to all functions.
+  // The first four are deps that are automatically/conditionally added
+  // by the {{{ makeDynCall }}}, and {{{ runtimeKeepalivePush/Pop }}} macros.
+  const autoDeps = [
+    'getDynCaller',
+    'getWasmTableEntry',
+    'runtimeKeepalivePush',
+    'runtimeKeepalivePop',
+    'UTF8ToString',
+  ];
+  for (const dep of autoDeps) {
+    if (snippet.includes(dep + '(')) {
+      deps.push('$' + dep);
+    }
+  }
+}
+
+function handleI64Signatures(symbol, snippet, sig, i53abi) {
+  // Handle i64 parameters and return values.
+  //
+  // When WASM_BIGINT is enabled these arrive as BigInt values which we
+  // convert to int53 JS numbers.  If necessary, we also convert the return
+  // value back into a BigInt.
+  //
+  // When WASM_BIGINT is not enabled we receive i64 values as a pair of i32
+  // numbers which is converted to single int53 number.  In necessary, we also
+  // split the return value into a pair of i32 numbers.
+  return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
+    let argLines = args.split('\n');
+    argLines = argLines.map((line) => line.split('//')[0]);
+    const argNames = argLines
+      .join(' ')
+      .split(',')
+      .map((name) => name.trim());
+    const newArgs = [];
+    let argConversions = '';
+    if (sig.length > argNames.length + 1) {
+      error(`handleI64Signatures: signature too long for ${symbol}`);
+      return snippet;
+    }
+    for (let i = 0; i < argNames.length; i++) {
+      const name = argNames[i];
+      // If sig is shorter than argNames list then argType will be undefined
+      // here, which will result in the default case below.
+      const argType = sig[i + 1];
+      if (WASM_BIGINT && ((MEMORY64 && argType == 'p') || (i53abi && argType == 'j'))) {
+        argConversions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
+      } else {
+        if (argType == 'j' && i53abi) {
+          argConversions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
+          newArgs.push(defineI64Param(name));
+        } else if (argType == 'p' && CAN_ADDRESS_2GB) {
+          argConversions += `  ${name} >>>= 0;\n`;
+          newArgs.push(name);
+        } else {
+          newArgs.push(name);
+        }
+      }
+    }
+
+    if (!WASM_BIGINT) {
+      args = newArgs.join(',');
+    }
+
+    if ((sig[0] == 'j' && i53abi) || (sig[0] == 'p' && MEMORY64)) {
+      const await_ = async_ ? 'await ' : '';
+      // For functions that where we need to mutate the return value, we
+      // also need to wrap the body in an inner function.
+      if (oneliner) {
+        if (argConversions) {
+          return `${async_}(${args}) => {
+${argConversions}
+return ${makeReturn64(await_ + body)};
+}`;
+        }
+        return `${async_}(${args}) => ${makeReturn64(await_ + body)};`;
+      }
+      return `\
+${async_}function(${args}) {
+${argConversions}
+var ret = (() => { ${body} })();
+return ${makeReturn64(await_ + 'ret')};
+}`;
+    }
+
+    // Otherwise no inner function is needed and we covert the arguments
+    // before executing the function body.
+    if (oneliner) {
+      body = `return ${body}`;
+    }
+    return `\
+${async_}function(${args}) {
+${argConversions}
+${body};
+}`;
+  });
+}
+
 export async function runJSify(outputFile, symbolsOnly) {
   const libraryItems = [];
   const symbolDeps = {};
@@ -215,87 +317,6 @@ export async function runJSify(outputFile, symbolsOnly) {
         symbolsNeeded.push(key);
       }
     }
-  }
-
-  function handleI64Signatures(symbol, snippet, sig, i53abi) {
-    // Handle i64 parameters and return values.
-    //
-    // When WASM_BIGINT is enabled these arrive as BigInt values which we
-    // convert to int53 JS numbers.  If necessary, we also convert the return
-    // value back into a BigInt.
-    //
-    // When WASM_BIGINT is not enabled we receive i64 values as a pair of i32
-    // numbers which is converted to single int53 number.  In necessary, we also
-    // split the return value into a pair of i32 numbers.
-    return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
-      let argLines = args.split('\n');
-      argLines = argLines.map((line) => line.split('//')[0]);
-      const argNames = argLines
-        .join(' ')
-        .split(',')
-        .map((name) => name.trim());
-      const newArgs = [];
-      let argConversions = '';
-      if (sig.length > argNames.length + 1) {
-        error(`handleI64Signatures: signature too long for ${symbol}`);
-        return snippet;
-      }
-      for (let i = 0; i < argNames.length; i++) {
-        const name = argNames[i];
-        // If sig is shorter than argNames list then argType will be undefined
-        // here, which will result in the default case below.
-        const argType = sig[i + 1];
-        if (WASM_BIGINT && ((MEMORY64 && argType == 'p') || (i53abi && argType == 'j'))) {
-          argConversions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
-        } else {
-          if (argType == 'j' && i53abi) {
-            argConversions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
-            newArgs.push(defineI64Param(name));
-          } else if (argType == 'p' && CAN_ADDRESS_2GB) {
-            argConversions += `  ${name} >>>= 0;\n`;
-            newArgs.push(name);
-          } else {
-            newArgs.push(name);
-          }
-        }
-      }
-
-      if (!WASM_BIGINT) {
-        args = newArgs.join(',');
-      }
-
-      if ((sig[0] == 'j' && i53abi) || (sig[0] == 'p' && MEMORY64)) {
-        const await_ = async_ ? 'await ' : '';
-        // For functions that where we need to mutate the return value, we
-        // also need to wrap the body in an inner function.
-        if (oneliner) {
-          if (argConversions) {
-            return `${async_}(${args}) => {
-${argConversions}
-  return ${makeReturn64(await_ + body)};
-}`;
-          }
-          return `${async_}(${args}) => ${makeReturn64(await_ + body)};`;
-        }
-        return `\
-${async_}function(${args}) {
-${argConversions}
-  var ret = (() => { ${body} })();
-  return ${makeReturn64(await_ + 'ret')};
-}`;
-      }
-
-      // Otherwise no inner function is needed and we covert the arguments
-      // before executing the function body.
-      if (oneliner) {
-        body = `return ${body}`;
-      }
-      return `\
-${async_}function(${args}) {
-${argConversions}
-  ${body};
-}`;
-    });
   }
 
   function processLibraryFunction(snippet, symbol, mangled, deps, isStub) {
@@ -395,27 +416,6 @@ function(${args}) {
     }
 
     return snippet;
-  }
-
-  function addImplicitDeps(snippet, deps) {
-    // There are some common dependencies that we inject automatically by
-    // conservatively scanning the input functions for their usage.
-    // Specifically, these are dependencies that are very common and would be
-    // burdensome to add manually to all functions.
-    // The first four are deps that are automatically/conditionally added
-    // by the {{{ makeDynCall }}}, and {{{ runtimeKeepalivePush/Pop }}} macros.
-    const autoDeps = [
-      'getDynCaller',
-      'getWasmTableEntry',
-      'runtimeKeepalivePush',
-      'runtimeKeepalivePop',
-      'UTF8ToString',
-    ];
-    for (const dep of autoDeps) {
-      if (snippet.includes(dep + '(')) {
-        deps.push('$' + dep);
-      }
-    }
   }
 
   function symbolHandler(symbol) {
