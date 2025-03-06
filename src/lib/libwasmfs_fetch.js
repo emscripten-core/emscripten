@@ -51,7 +51,7 @@ addToLibrary({
             chunks: [],
             chunkSize: chunkSize
           };
-          len = Math.min(len, size-offset+1) | 0;
+          len = Math.min(len, size-offset) | 0;
         } else {
           // may as well/forced to download the whole file
           var wholeFileReq = await fetch(url);
@@ -134,7 +134,7 @@ addToLibrary({
           return failedResponse.status === 404 ? -{{{ cDefs.ENOENT }}} : -{{{ cDefs.EBADF }}};
         }
         var fileInfo = wasmFS$JSMemoryRanges[file];
-        length = Math.min(length, fileInfo.size-offset+1) | 0;
+        length = Math.min(length, fileInfo.size-offset) | 0;
         // As above, we check the length just in case offset was beyond size and length is now negative.
         if (length <= 0) {
           return 0;
