@@ -173,8 +173,8 @@ Using Exceptions and setjmp-longjmp Together
 See :ref:`using-exceptions-and-setjmp-longjmp-together`.
 
 
-Limitations
-===========
+Limitations regarding std::terminate()
+======================================
 
   * Currently `std::set_terminate
     <https://en.cppreference.com/w/cpp/error/set_terminate>`_ is NOT supported
@@ -201,7 +201,7 @@ Limitations
 
   * When the exception handling encounters a termination condition, libc++abi
     spec says we call `__cxa_begin_catch()` to mark the exception as handled and
-    then call `terminate()`. But currently Wasm EH does not support calling
+    then call `std::terminate()`. But currently Wasm EH does not support calling
     `__cxa_begin_catch()`. So the following program prints ``exception_ptr is
     null``, where it is supposed to print ``exception_ptr is NOT null``; note
     that the use of ``noexcept`` here means that the ``throw 3`` will turn into
