@@ -446,7 +446,7 @@ var SyscallsLibrary = {
     }
     return -{{{ cDefs.ENOPROTOOPT }}}; // The option is unknown at the level indicated.
   },
-  __syscall_sendmsg__deps: ['$getSocketFromFD', '$getSocketAddress', '$DNS'],
+  __syscall_sendmsg__deps: ['$getSocketFromFD', '$getSocketAddress'],
   __syscall_sendmsg: (fd, message, flags, d1, d2, d3) => {
     var sock = getSocketFromFD(fd);
     var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, '*') }}};
@@ -819,7 +819,6 @@ var SyscallsLibrary = {
     SYSCALLS.writeStatFs(buf, FS.statfs(SYSCALLS.getStr(path)));
     return 0;
   },
-  __syscall_fstatfs64__deps: ['__syscall_statfs64'],
   __syscall_fstatfs64: (fd, size, buf) => {
 #if ASSERTIONS
     assert(size === {{{ C_STRUCTS.statfs.__size__ }}});

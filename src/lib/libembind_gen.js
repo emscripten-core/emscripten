@@ -551,7 +551,7 @@ var LibraryEmbind = {
     name = readLatin1String(name);
     registerType(rawType, new UserType(rawType, name));
   },
-  _embind_register_optional__deps: ['_embind_register_emval', '$OptionalType'],
+  _embind_register_optional__deps: ['$OptionalType'],
   _embind_register_optional: (rawOptionalType, rawType) => {
     whenDependentTypesAreResolved([rawOptionalType], [rawType], function(type) {
       type = type[0];

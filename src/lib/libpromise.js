@@ -25,7 +25,7 @@ addToLibrary({
     return promiseInfo;
   },
 
-  $idsToPromises__deps: ['$promiseMap', '$getPromise'],
+  $idsToPromises__deps: ['$getPromise'],
   $idsToPromises: (idBuf, size) => {
     var promises = [];
     for (var i = 0; i < size; i++) {
@@ -258,7 +258,9 @@ addToLibrary({
   },
 
   emscripten_promise_await__async: true,
+#if ASYNCIFY
   emscripten_promise_await__deps: ['$getPromise', '$setPromiseResult'],
+#endif
   emscripten_promise_await: (returnValuePtr, id) => {
 #if ASYNCIFY
 #if RUNTIME_DEBUG

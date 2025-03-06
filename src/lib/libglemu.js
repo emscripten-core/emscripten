@@ -3464,7 +3464,6 @@ var LibraryGLEmulation = {
     }
   },
 
-  glVertexPointer__deps: ['$GLEmulation'], // if any pointers are used, glVertexPointer must be, and if it is, then we need emulation
   glVertexPointer: (size, type, stride, pointer) => {
     GLImmediate.setClientAttribute(GLImmediate.VERTEX, size, type, stride, pointer);
 #if GL_FFP_ONLY
@@ -3616,7 +3615,7 @@ var LibraryGLEmulation = {
 
   // OpenGL Immediate Mode matrix routines.
   // Note that in the future we might make these available only in certain modes.
-  glMatrixMode__deps: ['$GL', '$GLImmediateSetup', '$GLEmulation'], // emulation is not strictly needed, this is a workaround
+  glMatrixMode__deps: ['$GL', '$GLImmediateSetup'], // emulation is not strictly needed, this is a workaround
   glMatrixMode: (mode) => {
     if (mode == 0x1700 /* GL_MODELVIEW */) {
       GLImmediate.currentMatrix = 0/*m*/;

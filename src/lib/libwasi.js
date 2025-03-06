@@ -41,7 +41,11 @@ var WasiLibrary = {
   sched_yield__nothrow: true,
   sched_yield: () => 0,
 
-  $getEnvStrings__deps: ['$ENV', '$getExecutableName'],
+  $getEnvStrings__deps: ['$ENV',
+#if !PURE_WASI
+    '$getExecutableName'
+#endif
+  ],
   $getEnvStrings: () => {
     if (!getEnvStrings.strings) {
       // Default values.
