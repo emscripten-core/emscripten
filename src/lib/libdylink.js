@@ -416,6 +416,13 @@ var LibraryDylink = {
       return UTF8ArrayToString(binary, offset - len, len);
     }
 
+    function getStringList() {
+      var count = getLEB();
+      var rtn = []
+      while (count--) rtn.push(getString());
+      return rtn;
+    }
+
     /** @param {string=} message */
     function failIf(condition, message) {
       if (condition) throw new Error(message);
@@ -456,11 +463,7 @@ var LibraryDylink = {
       // shared libraries this module needs. We need to load them first, so that
       // current module could resolve its imports. (see tools/shared.py
       // WebAssembly.make_shared_library() for "dylink" section extension format)
-      var neededDynlibsCount = getLEB();
-      while (neededDynlibsCount--) {
-        var libname = getString();
-        customSection.neededDynlibs.push(libname);
-      }
+      customSection.neededDynlibs = getStringList();
     } else {
       failIf(name !== 'dylink.0');
       var WASM_DYLINK_MEM_INFO = 0x1;
@@ -480,11 +483,7 @@ var LibraryDylink = {
           customSection.tableSize = getLEB();
           customSection.tableAlign = getLEB();
         } else if (subsectionType === WASM_DYLINK_NEEDED) {
-          var neededDynlibsCount = getLEB();
-          while (neededDynlibsCount--) {
-            var libname = getString();
-            customSection.neededDynlibs.push(libname);
-          }
+          customSection.neededDynlibs = getStringList();
         } else if (subsectionType === WASM_DYLINK_EXPORT_INFO) {
           var count = getLEB();
           while (count--) {
@@ -505,11 +504,7 @@ var LibraryDylink = {
             }
           }
         } else if (subsectionType === WASM_DYLINK_RUNTIME_PATH) {
-          var runtimePathsCount = getLEB();
-          while (runtimePathsCount--) {
-            var path = getString();
-            customSection.runtimePaths.push(path);
-          }
+          customSection.runtimePaths = getStringList();
         } else {
 #if ASSERTIONS
           err(`unknown dylink.0 subsection: ${subsectionType}`)
