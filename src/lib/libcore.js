@@ -1864,7 +1864,6 @@ addToLibrary({
 #endif
     var func = wasmTableMirror[funcPtr];
     if (!func) {
-      if (funcPtr >= wasmTableMirror.length) wasmTableMirror.length = funcPtr + 1;
       /** @suppress {checkTypes} */
       wasmTableMirror[funcPtr] = func = wasmTable.get({{{ toIndexType('funcPtr') }}});
 #if ASYNCIFY == 2
