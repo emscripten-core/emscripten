@@ -23,7 +23,7 @@ var LibraryGL = {
   // glInvalidateSubFramebuffer that need to pass a short array to the WebGL
   // API, create a set of short fixed-length arrays to avoid having to generate
   // any garbage when calling those functions.
-  $tempFixedLengthArray__postset: 'for (var i = 0; i < 32; ++i) tempFixedLengthArray.push(new Array(i));',
+  $tempFixedLengthArray__postset: 'for (let i = 0; i < 32; ++i) tempFixedLengthArray.push(new Array(i));',
   $tempFixedLengthArray: [],
 
   $miniTempWebGLFloatBuffers: [],

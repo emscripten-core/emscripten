@@ -118,27 +118,16 @@ def wasmfs_all_backends(f):
   @wraps(f)
   def metafunc(self, backend, *args, **kwargs):
     self.setup_wasmfs_test()
+    if backend == 'node':
+      self.setup_nodefs_test()
+    elif backend == 'raw':
+      self.setup_noderawfs_test()
     self.emcc_args.append(f'-D{backend}')
     f(self, *args, **kwargs)
 
-  parameterize(metafunc, {'': ('WASMFS_MEMORY_BACKEND',),
-                          'node': ('WASMFS_NODE_BACKEND',)})
-  return metafunc
-
-
-def also_with_wasmfs_all_backends(f):
-  assert callable(f)
-
-  @wraps(f)
-  def metafunc(self, backend, *args, **kwargs):
-    if backend:
-      self.setup_wasmfs_test()
-      self.emcc_args.append(f'-D{backend}')
-    f(self, *args, **kwargs)
-
-  parameterize(metafunc, {'': (None,),
-                          'wasmfs': ('WASMFS_MEMORY_BACKEND',),
-                          'wasmfs_node': ('WASMFS_NODE_BACKEND',)})
+  parameterize(metafunc, {'': ('memory',),
+                          'node': ('node',),
+                          'raw': ('raw',)})
   return metafunc
 
 
@@ -358,13 +347,23 @@ class other(RunnerCore):
   @parameterized({
     '': ([],),
     'node': (['-sENVIRONMENT=node'],),
+    # load a worker before startup to check ES6 modules there as well
+    'pthreads': (['-pthread', '-sPTHREAD_POOL_SIZE=1'],),
   })
   def test_esm(self, args):
     self.run_process([EMCC, '-o', 'hello_world.mjs',
                       '--extern-post-js', test_file('modularize_post_js.js'),
                       test_file('hello_world.c')] + args)
-    src = read_file('hello_world.mjs')
-    self.assertContained('export default Module;', src)
+    self.assertContained('export default Module;', read_file('hello_world.mjs'))
+    self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
+
+  @requires_node_canary
+  def test_esm_source_phase_imports(self):
+    self.node_args += ['--experimental-wasm-modules']
+    self.run_process([EMCC, '-o', 'hello_world.mjs', '-sSOURCE_PHASE_IMPORTS',
+                      '--extern-post-js', test_file('modularize_post_js.js'),
+                      test_file('hello_world.c')])
+    self.assertContained('import source wasmModule from', read_file('hello_world.mjs'))
     self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
   @parameterized({
@@ -3408,6 +3407,37 @@ More info: https://emscripten.org
     self.do_runf('embind/test_embind_long_long.cpp', '1000000000000n\n-1000000000000n',
                  emcc_args=['-lembind', '-sWASM_BIGINT'] + args)
 
+  @requires_node_canary
+  def test_embind_resource_management(self):
+    self.node_args.append('--js-explicit-resource-management')
+
+    create_file('main.cpp', r'''
+      #include <emscripten.h>
+      #include <emscripten/bind.h>
+
+      using namespace emscripten;
+
+      class MyClass {};
+      EMSCRIPTEN_BINDINGS(my_module) {
+          class_<MyClass>("MyClass")
+          .constructor();
+      }
+
+      int main() {
+        EM_ASM({
+          let instanceRef;
+          {
+            using instance = new Module.MyClass();
+            assert(!instance.isDeleted());
+            // "Leak" a reference to the instance just to check that it's deleted.
+            instanceRef = instance;
+          }
+          assert(instanceRef.isDeleted());
+        });
+      }
+    ''')
+    self.do_runf('main.cpp', emcc_args=['-lembind'])
+
   @requires_jspi
   @parameterized({
     '': [['-sJSPI_EXPORTS=async*']],
@@ -5775,7 +5805,7 @@ int main() {
 
   @no_mac("TODO: investigate different Node FS semantics on Mac")
   @no_windows("TODO: investigate different Node FS semantics on Windows")
-  @also_with_wasmfs_all_backends
+  @with_all_fs
   def test_unlink(self):
     self.do_other_test('test_unlink.cpp')
 
@@ -10006,6 +10036,7 @@ end
     self.build(test_file('hello_world.c'), emcc_args=[
       '--closure=1',
       '--minify=0',
+      '-lbase64.js',
       '-Werror=closure',
       '-sINCLUDE_FULL_LIBRARY',
       '-sOFFSCREEN_FRAMEBUFFER',
