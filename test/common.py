@@ -2004,8 +2004,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     ]
     return self.get_library(os.path.join('third_party', 'freetype'),
                             os.path.join('objs', '.libs', 'libfreetype.a'),
-                             # freetype's config.sub doesn't recognize Emscripten, so fake it with Linux
-                            configure_args=['--disable-shared', '--without-zlib', '--build=i686-linux'])
+                            configure_args=['--disable-shared', '--without-zlib'])
 
   def get_poppler_library(self, env_init=None):
     freetype = self.get_freetype_library()
@@ -2041,7 +2040,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         os.path.join('third_party', 'poppler'),
         [os.path.join('utils', 'pdftoppm.o'), os.path.join('utils', 'parseargs.o'), os.path.join('poppler', '.libs', 'libpoppler.a')],
         env_init=env_init,
-        configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--disable-shared', '--build=wasm32-emscripten'])
+        configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--disable-shared', '--host=wasm32-emscripten'])
 
     return poppler + freetype
 
