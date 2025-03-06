@@ -428,7 +428,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
       plugin = utils.read_file(arg.split('=', 1)[1])
       eval(plugin) # should append itself to plugins
       leading = ''
-    elif leading == 'preload' or leading == 'embed':
+    elif leading in {'preload', 'embed'}:
       mode = leading
       # position of @ if we're doing 'src@dst'. '__' is used to keep the index
       # same with the original if they escaped with '@@'.
@@ -792,10 +792,13 @@ def generate_js(data_target, data_files, metadata):
         var DB_VERSION = 1;
         var METADATA_STORE_NAME = 'METADATA';
         var PACKAGE_STORE_NAME = 'PACKAGES';
-        function openDatabase(callback, errback) {
-          if (isNode) {
-            return errback();
-          }
+        function openDatabase(callback, errback) {'''
+      if options.support_node:
+        code += '''
+            if (isNode) {
+              return errback();
+            }'''
+      code += '''
           var indexedDB;
           if (typeof window === 'object') {
             indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;

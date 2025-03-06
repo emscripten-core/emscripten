@@ -93,6 +93,12 @@ def llvm_backend_args():
   elif settings.SUPPORT_LONGJMP == 'wasm':
     args += ['-wasm-enable-sjlj']
 
+  if settings.WASM_EXCEPTIONS:
+    if settings.WASM_LEGACY_EXCEPTIONS:
+      args += ['-wasm-use-legacy-eh']
+    else:
+      args += ['-wasm-use-legacy-eh=0']
+
   # better (smaller, sometimes faster) codegen, see binaryen#1054
   # and https://bugs.llvm.org/show_bug.cgi?id=39488
   args += ['-disable-lsr']
@@ -277,6 +283,10 @@ def link_lld(args, target, external_symbols=None):
 
   if settings.WASM_EXCEPTIONS:
     cmd += ['-mllvm', '-wasm-enable-eh']
+    if settings.WASM_LEGACY_EXCEPTIONS:
+      cmd += ['-mllvm', '-wasm-use-legacy-eh']
+    else:
+      cmd += ['-mllvm', '-wasm-use-legacy-eh=0']
   if settings.WASM_EXCEPTIONS or settings.SUPPORT_LONGJMP == 'wasm':
     cmd += ['-mllvm', '-exception-model=wasm']
 
@@ -393,10 +403,7 @@ WASM_CALL_CTORS = '__wasm_call_ctors'
 # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool
 # for this, and we are in wasm mode
 def eval_ctors(js_file, wasm_file, debug_info):
-  if settings.MINIMAL_RUNTIME:
-    CTOR_ADD_PATTERN = f"wasmExports['{WASM_CALL_CTORS}']();" # TODO test
-  else:
-    CTOR_ADD_PATTERN = f"addOnInit(wasmExports['{WASM_CALL_CTORS}']);"
+  CTOR_ADD_PATTERN = f"wasmExports['{WASM_CALL_CTORS}']();"
 
   js = utils.read_file(js_file)
 
@@ -476,17 +483,6 @@ def check_closure_compiler(cmd, args, env, allowed_to_fail):
   return True
 
 
-# Remove this once we require python3.7 and can use std.isascii.
-# See: https://docs.python.org/3/library/stdtypes.html#str.isascii
-def isascii(s):
-  try:
-    s.encode('ascii')
-  except UnicodeEncodeError:
-    return False
-  else:
-    return True
-
-
 def get_closure_compiler_and_env(user_args):
   env = shared.env_with_node_in_path()
   closure_cmd = get_closure_compiler()
@@ -516,6 +512,7 @@ def version_split(v):
 def transpile(filename):
   config = {
     'sourceType': 'script',
+    'presets': ['@babel/preset-env'],
     'targets': {}
   }
   if settings.MIN_CHROME_VERSION != UNSUPPORTED:
@@ -533,8 +530,13 @@ def transpile(filename):
   config_file = shared.get_temp_files().get('babel_config.json').name
   logger.debug(config_json)
   utils.write_file(config_file, config_json)
-  cmd = shared.get_npm_cmd('babel') + [filename, '-o', outfile, '--presets', '@babel/preset-env', '--config-file', config_file]
-  check_call(cmd, cwd=path_from_root())
+  cmd = shared.get_npm_cmd('babel') + [filename, '-o', outfile, '--config-file', config_file]
+  # Babel needs access to `node_modules` for things like `preset-env`, but the
+  # location of the config file (and the current working directory) might not be
+  # in the emscripten tree, so we explicitly set NODE_PATH here.
+  env = os.environ.copy()
+  env['NODE_PATH'] = path_from_root('node_modules')
+  check_call(cmd, env=env)
   return outfile
 
 
@@ -638,7 +640,7 @@ def run_closure_cmd(cmd, filename, env):
   tempfiles = shared.get_temp_files()
 
   def move_to_safe_7bit_ascii_filename(filename):
-    if isascii(filename):
+    if filename.isascii():
       return os.path.abspath(filename)
     safe_filename = tempfiles.get('.js').name  # Safe 7-bit filename
     shutil.copyfile(filename, safe_filename)
@@ -894,10 +896,11 @@ def metadce(js_file, wasm_file, debug_info, last):
 
 
 def asyncify_lazy_load_code(wasm_target, debug):
-  # create the lazy-loaded wasm. remove the memory segments from it, as memory
-  # segments have already been applied by the initial wasm, and apply the knowledge
-  # that it will only rewind, after which optimizations can remove some code
-  args = ['--remove-memory', '--mod-asyncify-never-unwind']
+  # Create the lazy-loaded wasm. Remove any active memory segments and the
+  # start function from it (as these will segments have already been applied
+  # by the initial wasm) and apply the knowledge that it will only rewind,
+  # after which optimizations can remove some code
+  args = ['--remove-memory-init', '--mod-asyncify-never-unwind']
   if settings.OPT_LEVEL > 0:
     args.append(opt_level_to_str(settings.OPT_LEVEL, settings.SHRINK_LEVEL))
   run_wasm_opt(wasm_target,
@@ -1242,16 +1245,45 @@ def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # noqa
   return run_binaryen_command('wasm-opt', infile, outfile, args=args, **kwargs)
 
 
-def save_intermediate(src, dst):
+intermediate_counter = 0
+
+
+def new_intermediate_filename(name):
+  assert DEBUG
+  global intermediate_counter
+  basename = 'emcc-%02d-%s' % (intermediate_counter, name)
+  intermediate_counter += 1
+  filename = os.path.join(shared.CANONICAL_TEMP_DIR, basename)
+  logger.debug('saving intermediate file %s' % filename)
+  return filename
+
+
+def save_intermediate(src, name):
+  """Copy an existing file CANONICAL_TEMP_DIR"""
   if DEBUG:
-    dst = 'emcc-%02d-%s' % (save_intermediate.counter, dst)
-    save_intermediate.counter += 1
-    dst = os.path.join(shared.CANONICAL_TEMP_DIR, dst)
-    logger.debug('saving debug copy %s' % dst)
-    shutil.copyfile(src, dst)
+    shutil.copyfile(src, new_intermediate_filename(name))
 
 
-save_intermediate.counter = 0  # type: ignore
+def write_intermediate(content, name):
+  """Generate a new debug file CANONICAL_TEMP_DIR"""
+  if DEBUG:
+    utils.write_file(new_intermediate_filename(name), content)
+
+
+def read_and_preprocess(filename, expand_macros=False):
+  # Create a settings file with the current settings to pass to the JS preprocessor
+  settings_json = json.dumps(settings.external_dict(), sort_keys=True, indent=2)
+  write_intermediate(settings_json, 'settings.json')
+
+  # Run the JS preprocessor
+  dirname, filename = os.path.split(filename)
+  if not dirname:
+    dirname = None
+  args = ['-', filename]
+  if expand_macros:
+    args += ['--expand-macros']
+
+  return shared.run_js_tool(path_from_root('tools/preprocessor.mjs'), args, input=settings_json, stdout=subprocess.PIPE, cwd=dirname)
 
 
 def js_legalization_pass_flags():

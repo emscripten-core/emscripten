@@ -16,3 +16,13 @@ a = HEAPF64[x];   // HEAPF64
 HEAPF64[x] = a;
 HEAP[x];          // should not be changed
 HeAp[x];
+Atomics.add(heap, offset, value);
+Atomics.and(heap, offset, value);
+Atomics.compareExchange(heap, offset, expected, replacement);
+Atomics.exchange(heap, offset, value);
+Atomics.load(heap, offset);
+Atomics.or(heap, offset, value);
+Atomics.sub(heap, offset, value);
+Atomics.wait(heap, offset, value, timeout);
+Atomics.waitAsync(heap, offset, value, timeout);
+Atomics.xor(heap, offset, value);

@@ -2073,9 +2073,9 @@ struct VectorAccess {
 
 } // end namespace internal
 
-template<typename T>
-class_<std::vector<T>> register_vector(const char* name) {
-    typedef std::vector<T> VecType;
+template<typename T, class Allocator=std::allocator<T>>
+class_<std::vector<T, Allocator>> register_vector(const char* name) {
+    typedef std::vector<T, Allocator> VecType;
 #if __cplusplus >= 201703L
     register_optional<T>();
 #endif
@@ -2151,9 +2151,10 @@ struct MapAccess {
 
 } // end namespace internal
 
-template<typename K, typename V>
-class_<std::map<K, V>> register_map(const char* name) {
-    typedef std::map<K,V> MapType;
+template<typename K, typename V, class Compare = std::less<K>, 
+    class Allocator = std::allocator<std::pair<const K, V>>>
+class_<std::map<K, V, Compare, Allocator>> register_map(const char* name) {
+    typedef std::map<K,V, Compare, Allocator> MapType;
 #if __cplusplus >= 201703L
     register_optional<V>();
 #endif

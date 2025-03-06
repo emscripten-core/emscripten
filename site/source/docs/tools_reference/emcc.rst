@@ -566,9 +566,9 @@ Options that are modified or new in *emcc* are listed below:
   [compile]
   Tells *emcc* to emit an object file which can then be linked with other object files to produce an executable.
 
-``--output_eol windows|linux``
+``--output-eol windows|linux``
   [link]
-  Specifies the line ending to generate for the text files that are outputted. If "--output_eol windows" is passed, the final output files will have Windows \r\n line endings in them. With "--output_eol linux", the final generated files will be written with Unix \n line endings.
+  Specifies the line ending to generate for the text files that are outputted. If "--output-eol windows" is passed, the final output files will have Windows ``\r\n`` line endings in them. With "--output-eol linux", the final generated files will be written with Unix ``\n`` line endings.
 
 ``--cflags``
   [other]

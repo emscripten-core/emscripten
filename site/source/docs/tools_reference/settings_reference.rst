@@ -23,6 +23,7 @@ Whether we should add runtime assertions. This affects both JS and how
 system libraries are built.
 ASSERTIONS == 2 gives even more runtime checks, that may be very slow. That
 includes internal dlmalloc assertions, for example.
+ASSERTIONS defaults to 0 in optimized builds (-O1 and above).
 
 Default value: 1
 
@@ -303,8 +304,6 @@ using i64 pointers).
 Assumes WASM_BIGINT.
 
 .. note:: Applicable during both linking and compilation
-
-.. note:: This is an experimental setting
 
 Default value: 0
 
@@ -1157,16 +1156,19 @@ This option implies EXPORT_EXCEPTION_HANDLING_HELPERS.
 
 Default value: false
 
-.. _wasm_exnref:
+.. _wasm_legacy_exceptions:
 
-WASM_EXNREF
-===========
+WASM_LEGACY_EXCEPTIONS
+======================
 
-Emit instructions for the new Wasm exception handling proposal with exnref,
-which was adopted on Oct 2023. The implementation of the new proposal is
-still in progress and this feature is currently experimental.
+If true, emit instructions for the legacy Wasm exception handling proposal:
+https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/legacy/Exceptions.md
+If false, emit instructions for the standardized exception handling proposal:
+https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/Exceptions.md
 
-Default value: false
+.. note:: Applicable during both linking and compilation
+
+Default value: true
 
 .. _nodejs_catch_exit:
 
@@ -1419,7 +1421,7 @@ A list of imported module functions that will potentially do asynchronous
 work. The imported function should return a ``Promise`` when doing
 asynchronous work.
 
-Note when using ``--js-library``, the function can be marked with
+Note when using JS library files, the function can be marked with
 ``<function_name>_async:: true`` in the library instead of this setting.
 
 Default value: []
@@ -1977,18 +1979,6 @@ This is implicitly enabled if the output suffix is set to 'mjs'.
 
 Default value: false
 
-.. _use_es6_import_meta:
-
-USE_ES6_IMPORT_META
-===================
-
-Use the ES6 Module relative import feature 'import.meta.url'
-to auto-detect WASM Module path.
-It might not be supported on old browsers / toolchains. This setting
-may not be disabled when Node.js is targeted (-sENVIRONMENT=*node*).
-
-Default value: true
-
 .. _export_name:
 
 EXPORT_NAME
@@ -2186,8 +2176,7 @@ WASM_BIGINT
 
 WebAssembly integration with JavaScript BigInt. When enabled we don't need to
 legalize i64s into pairs of i32s, as the wasm VM will use a BigInt where an
-i64 is used. If WASM_BIGINT is present, the default minimum supported browser
-versions will be increased to the min version that supports BigInt.
+i64 is used.
 
 Default value: true
 
@@ -2735,7 +2724,7 @@ Default value: 0
 TEXTDECODER
 ===========
 
-Is enabled, use the JavaScript TextDecoder API for string marshalling.
+If enabled, use the JavaScript TextDecoder API for string marshalling.
 Enabled by default, set this to 0 to disable.
 If set to 2, we assume TextDecoder is present and usable, and do not emit
 any JS code to fall back if it is missing. In single threaded -Oz build modes,
@@ -2928,7 +2917,7 @@ MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 Minimum supported value is 101000 which was released in 2016-09 (see
 feature_matrix.py).
 
-Default value: 140100
+Default value: 150000
 
 .. _min_chrome_version:
 
@@ -3359,3 +3348,15 @@ Use _ for non-pointer arguments, p for pointer/i53 arguments, and P for optional
 Example use -sSIGNATURE_CONVERSIONS=someFunction:_p,anotherFunction:p
 
 Default value: []
+
+.. _source_phase_imports:
+
+SOURCE_PHASE_IMPORTS
+====================
+
+Experimental support for wasm source phase imports.
+This is only currently implemented in the pre-release/nightly version of node,
+and not yet supported by browsers.
+Requires EXPORT_ES6
+
+Default value: false

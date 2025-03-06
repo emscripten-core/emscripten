@@ -147,8 +147,10 @@ weak void setgrent(void) {
 // ==========================================================================
 
 weak int flock(int fd, int operation) {
-  // int flock(int fd, int operation);
-  // Pretend to succeed
+  // Pretend that the locking is successful. These are process-level locks,
+  // and Emscripten programs are a single process. If we supported linking a
+  // filesystem between programs, we'd need to do more here.
+  // See https://github.com/emscripten-core/emscripten/issues/23697
   return 0;
 }
 

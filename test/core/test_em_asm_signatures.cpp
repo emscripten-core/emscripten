@@ -1,8 +1,8 @@
+#include <assert.h>
 #include <emscripten.h>
 #include <stdio.h>
 
-int main()
-{
+int main() {
   int ret = MAIN_THREAD_EM_ASM_INT(return 1);
   ret += MAIN_THREAD_EM_ASM_INT(return $0, 1);
   ret += MAIN_THREAD_EM_ASM_INT(return $0 + $1, 1, 2);
@@ -13,5 +13,6 @@ int main()
   ret += MAIN_THREAD_EM_ASM_INT(return $0 + $1 + $2 + $3 + $4 + $5 + $6, 1, 2, 3, 4, 5, 6, 7);
   ret += MAIN_THREAD_EM_ASM_INT(return $0 + $1 + $2 + $3 + $4 + $5 + $6 + $7, 1, 2, 3, 4, 5, 6, 7, 8);
   printf("ret: %d\n", ret);
-  return ret;
+  assert(ret == 121);
+  return 0;
 }

@@ -3,6 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,14 +15,18 @@ struct Class {
   int x;
 
   Class() : x(0) {}
-  ~Class() { x = -9999; }
+  ~Class() {
+    // Destructor should never be called.
+    assert(false);
+    x = -9999;
+  }
 
   void print() {
     printf("waka %d\n", x++);
 
     if (x == 7 || x < 0) {
       emscripten_cancel_main_loop();
-      exit(x);
+      exit(x == 7 ? 0 : 1);
     }
   }
 
@@ -52,6 +57,6 @@ Class *Class::instance = NULL;
 
 int main() {
   Class().start();
-  return 1;
+  return 99;
 }
 

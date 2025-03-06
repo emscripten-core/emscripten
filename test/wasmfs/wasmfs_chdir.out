@@ -1,3 +1,4 @@
+Errno: Invalid argument
 Current working dir: /
 Current working dir: /working
 Current working dir: /
@@ -11,4 +12,3 @@ Current working dir is still: /working
 Current working dir: /dev
 Errno: Not a directory
 Current working dir is still: /dev
-Errno: Invalid argument

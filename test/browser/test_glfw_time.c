@@ -10,22 +10,22 @@
 #include <GLFW/glfw3.h>
 
 int main() {
-    if (!glfwInit()) {
-        return 1;
-    }
+  if (!glfwInit()) {
+    return 1;
+  }
 
-    float t = glfwGetTime();
-    printf("glfwGetTime() = %f\n", t);
+  float t = glfwGetTime();
+  printf("glfwGetTime() = %f\n", t);
 
-    printf("glfwSetTime(50)\n");
-    glfwSetTime(50);
+  printf("glfwSetTime(50)\n");
+  glfwSetTime(50);
 
-    // Expect time to be slightly greater than what we set
-    t = glfwGetTime();
-    printf("glfwGetTime() = %f\n", t);
-    assert(t < 50 + 1e-3);
+  // Expect time to be slightly greater than what we set
+  t = glfwGetTime();
+  printf("glfwGetTime() = %f\n", t);
+  assert(t < 50 + 1e-3);
 
-    glfwTerminate();
+  glfwTerminate();
 
-    return 0;
+  return 0;
 }

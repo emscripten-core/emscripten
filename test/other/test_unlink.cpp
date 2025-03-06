@@ -12,23 +12,9 @@
 #include <unistd.h>
 #include <assert.h>
 
-#ifdef WASMFS
-#include "../wasmfs/get_backend.h"
-#include <emscripten/wasmfs.h>
-#endif
-
 int main() {
   const char *filename = "test.dat";
-  const char *dirname = "test";
-
-#ifdef WASMFS
-  if (wasmfs_create_directory("root", 0777, get_backend()) != 0) {
-    return 1;
-  }
-  if (chdir("root") != 0) {
-    return 1;
-  }
-#endif
+  const char *dirname = "test.dir";
 
   // Create a file
   int fd = open(filename, O_RDWR | O_CREAT, 0777);
@@ -61,7 +47,6 @@ int main() {
   assert(access(dirname, F_OK) == -1);
 
   // The rest of this test does not yet pass with the node backend!
-#ifndef WASMFS_NODE_BACKEND
 
   // Check that we can still read the directory, but that it is empty.
   errno = 0;
@@ -91,8 +76,6 @@ int main() {
   assert(parent != -1);
   close(parent);
 #endif
-
-#endif // WASMFS_NODE_BACKEND
 
   closedir(d);
 

@@ -6,7 +6,7 @@
 
 coverage[toml]==5.5
 mypy==0.971
-ruff==0.8.2
+ruff==0.9.1
 types-requests==2.27.14
 unittest-xml-reporting==3.1.0
 

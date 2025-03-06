@@ -32,20 +32,22 @@ int main(){
     NULL
   };
 
-  rc = sqlite3_open(":memory:", &db);
-  if( rc ){
-    fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+  rc = sqlite3_open("test.db", &db);
+  if (rc) {
+    printf("Can't open database: %s\n", sqlite3_errmsg(db));
     sqlite3_close(db);
     exit(1);
   }
+
   for (i = 0; commands[i]; i++) {
     rc = sqlite3_exec(db, commands[i], callback, 0, &zErrMsg);
-    if( rc!=SQLITE_OK ){
-      fprintf(stderr, "SQL error on %d: %s\n", i, zErrMsg);
+    if (rc != SQLITE_OK){
+      printf("SQL error on %d: %s\n", i, zErrMsg);
       sqlite3_free(zErrMsg);
       exit(1);
     }
   }
+
   sqlite3_close(db);
   return 0;
 }

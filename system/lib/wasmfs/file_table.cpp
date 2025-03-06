@@ -33,6 +33,7 @@ std::shared_ptr<DataFile>
 FileTable::Handle::setEntry(__wasi_fd_t fd,
                             std::shared_ptr<OpenFileState> openFile) {
   assert(fd >= 0);
+  assert(fd < WASMFS_FD_MAX);
   if (fd >= fileTable.entries.size()) {
     fileTable.entries.resize(fd + 1);
   }
@@ -50,7 +51,7 @@ FileTable::Handle::setEntry(__wasi_fd_t fd,
 __wasi_fd_t
 FileTable::Handle::addEntry(std::shared_ptr<OpenFileState> openFileState) {
   // TODO: add freelist to avoid linear lookup time.
-  for (__wasi_fd_t i = 0;; i++) {
+  for (__wasi_fd_t i = 0; i < WASMFS_FD_MAX; i++) {
     if (!getEntry(i)) {
       (void)setEntry(i, openFileState);
       return i;

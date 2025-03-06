@@ -47,6 +47,7 @@
 // system libraries are built.
 // ASSERTIONS == 2 gives even more runtime checks, that may be very slow. That
 // includes internal dlmalloc assertions, for example.
+// ASSERTIONS defaults to 0 in optimized builds (-O1 and above).
 // [link]
 var ASSERTIONS = 1;
 
@@ -248,7 +249,6 @@ var MEMORY_GROWTH_LINEAR_STEP = -1;
 // using i64 pointers).
 // Assumes WASM_BIGINT.
 // [compile+link]
-// [experimental]
 var MEMORY64 = 0;
 
 // Sets the initial size of the table when MAIN_MODULE or SIDE_MODULE is use
@@ -778,11 +778,12 @@ var EXPORT_EXCEPTION_HANDLING_HELPERS = false;
 // [link]
 var EXCEPTION_STACK_TRACES = false;
 
-// Emit instructions for the new Wasm exception handling proposal with exnref,
-// which was adopted on Oct 2023. The implementation of the new proposal is
-// still in progress and this feature is currently experimental.
-// [link]
-var WASM_EXNREF = false;
+// If true, emit instructions for the legacy Wasm exception handling proposal:
+// https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/legacy/Exceptions.md
+// If false, emit instructions for the standardized exception handling proposal:
+// https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/Exceptions.md
+// [compile+link]
+var WASM_LEGACY_EXCEPTIONS = true;
 
 // Emscripten throws an ExitStatus exception to unwind when exit() is called.
 // Without this setting enabled this can show up as a top level unhandled
@@ -954,7 +955,7 @@ var JSPI_EXPORTS = [];
 // work. The imported function should return a ``Promise`` when doing
 // asynchronous work.
 //
-// Note when using ``--js-library``, the function can be marked with
+// Note when using JS library files, the function can be marked with
 // ``<function_name>_async:: true`` in the library instead of this setting.
 // [link]
 var JSPI_IMPORTS = [];
@@ -1353,13 +1354,6 @@ var MODULARIZE = false;
 // [link]
 var EXPORT_ES6 = false;
 
-// Use the ES6 Module relative import feature 'import.meta.url'
-// to auto-detect WASM Module path.
-// It might not be supported on old browsers / toolchains. This setting
-// may not be disabled when Node.js is targeted (-sENVIRONMENT=*node*).
-// [link]
-var USE_ES6_IMPORT_META = true;
-
 // Global variable to export the module as for environments without a
 // standardized module loading system (e.g. the browser and SM shell).
 // [link]
@@ -1495,8 +1489,7 @@ var DYNCALLS = false;
 
 // WebAssembly integration with JavaScript BigInt. When enabled we don't need to
 // legalize i64s into pairs of i32s, as the wasm VM will use a BigInt where an
-// i64 is used. If WASM_BIGINT is present, the default minimum supported browser
-// versions will be increased to the min version that supports BigInt.
+// i64 is used.
 // [link]
 var WASM_BIGINT = true;
 
@@ -1792,7 +1785,7 @@ var PTHREADS_DEBUG = false;
 // [link]
 var EVAL_CTORS = 0;
 
-// Is enabled, use the JavaScript TextDecoder API for string marshalling.
+// If enabled, use the JavaScript TextDecoder API for string marshalling.
 // Enabled by default, set this to 0 to disable.
 // If set to 2, we assume TextDecoder is present and usable, and do not emit
 // any JS code to fall back if it is missing. In single threaded -Oz build modes,
@@ -1913,7 +1906,7 @@ var MIN_FIREFOX_VERSION = 79;
 // Minimum supported value is 101000 which was released in 2016-09 (see
 // feature_matrix.py).
 // [link]
-var MIN_SAFARI_VERSION = 140100;
+var MIN_SAFARI_VERSION = 150000;
 
 // Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=58 to
 // drop support for Chrome 57 and older.
@@ -2190,6 +2183,13 @@ var LEGACY_RUNTIME = false;
 // [link]
 var SIGNATURE_CONVERSIONS = [];
 
+// Experimental support for wasm source phase imports.
+// This is only currently implemented in the pre-release/nightly version of node,
+// and not yet supported by browsers.
+// Requires EXPORT_ES6
+// [link]
+var SOURCE_PHASE_IMPORTS = false;
+
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]
 // For removed settings (which now effectively have a fixed value and can no
@@ -2271,4 +2271,5 @@ var LEGACY_SETTINGS = [
   ['MIN_IE_VERSION', [0x7FFFFFFF], 'No longer supported'],
   ['WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG', [0], 'No longer supported'],
   ['AUTO_ARCHIVE_INDEXES', [0, 1], 'No longer needed'],
+  ['USE_ES6_IMPORT_META', [1], 'Disabling is no longer supported'],
 ];

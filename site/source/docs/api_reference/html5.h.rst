@@ -2069,7 +2069,11 @@ Functions
   .. note::
 
     - A successful call to this function will not immediately make that rendering context active. Call :c:func:`emscripten_webgl_make_context_current` after creating a context to activate it.
-    - This function will try to initialize the context version that was *exactly* requested. It will not e.g. initialize a newer backwards-compatible version or similar.
+    - A word of caution about :c:type:`EmscriptenWebGLContextAttributes.majorVersion`:
+
+      - When no (WEBGL) linker flags are set, then this attribute is ignored and the context returned is WebGL 1.0
+      - When the linker flag ``-sMIN_WEBGL_VERSION=2`` is set, then this attribute is ignored and the context returned is WebGL 2.0
+      - When the linker flag ``-sMAX_WEBGL_VERSION=2`` is set, then this attribute is used and the context returned matches the value of this attribute
 
   :param target: The DOM canvas element in which to initialize the WebGL context.
   :type target: const char*

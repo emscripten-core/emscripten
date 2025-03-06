@@ -126,10 +126,6 @@ weak int __syscall_umask(int mask) {
   return old;
 }
 
-weak int __syscall_setrlimit(int resource, intptr_t limit) {
-  return 0; // no-op
-}
-
 weak int __syscall_getrusage(int who, intptr_t usage) {
   REPORT(getrusage);
   struct rusage *u = (struct rusage *)usage;
@@ -228,19 +224,21 @@ weak int __syscall_munlockall() {
 weak int __syscall_prlimit64(int pid, int resource, intptr_t new_limit, intptr_t old_limit) {
   REPORT(prlimit64);
   struct rlimit *old = (struct rlimit *)old_limit;
-  if (old) { // just report no limits
-    old->rlim_cur = RLIM_INFINITY;
-    old->rlim_max = RLIM_INFINITY;
+  if (new_limit) {
+    return -EPERM;
+  }
+  if (old) {
+    if (resource == RLIMIT_NOFILE) {
+      // See FS.MAX_OPEN_FDS in src/lib/libfs.js
+      old->rlim_cur = 4096;
+      old->rlim_max = 4096;
+    } else {
+      // Just report no limits
+      old->rlim_cur = RLIM_INFINITY;
+      old->rlim_max = RLIM_INFINITY;
+    }
   }
   return 0;
-}
-
-weak int __syscall_ugetrlimit(int resource, intptr_t rlim) {
-  REPORT(ugetrlimit);
-  struct rlimit * limits = (struct rlimit *)rlim;
-  limits->rlim_cur = RLIM_INFINITY;
-  limits->rlim_max = RLIM_INFINITY;
-  return 0; // just report no limits
 }
 
 weak int __syscall_setsockopt(int sockfd, int level, int optname, intptr_t optval, size_t optlen, int dummy) {
