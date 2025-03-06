@@ -40,12 +40,12 @@ def acquire_cache_lock(reason, cachefile):
   setup_file(cachefile)
   # TODO: is aqcuired_count even necessary? filelock.py seems to have similar logic inside.
   if acquired_count[cachefile] == 0:
-    logger.debug(f'PID {os.getpid()} acquiring multiprocess file lock to Emscripten cache at {cachedir} for {cachefile}')
+    logger.debug(f'PID {os.getpid()} acquiring multiprocess file lock to {cache_file_locks[cachefile].lock_file} for {cachefile}')
     #assert 'EM_CACHE_IS_LOCKED' not in os.environ, f'attempt to lock the cache while a parent process is holding the lock ({reason})'
     try:
       cache_file_locks[cachefile].acquire(60)
     except filelock.Timeout:
-      logger.warning(f'Accessing the Emscripten cache at "{cachedir}" (for "{reason}") is taking a long time, another process should be writing to it. If there are none and you suspect this process has deadlocked, try deleting the lock file "{global_cachelock}" and try again. If this occurs deterministically, consider filing a bug.')
+      logger.warning(f'Accessing the Emscripten cache at "{cache_file_locks[cachefile].lock_file}" (for "{reason}") is taking a long time, another process should be writing to it. If there are none and you suspect this process has deadlocked, try deleting the lock file and try again. If this occurs deterministically, consider filing a bug.')
       cache_file_locks[cachefile].acquire()
 
     #os.environ['EM_CACHE_IS_LOCKED'] = '1'
@@ -58,10 +58,11 @@ def release_cache_lock(cachefile):
   acquired_count[cachefile] -= 1
   assert acquired_count[cachefile] >= 0, "Called release more times than acquire"
   if acquired_count[cachefile] == 0:
+    # XXX this global var isn't useful anymore. just delete it?
     #assert os.environ['EM_CACHE_IS_LOCKED'] == '1'
     #del os.environ['EM_CACHE_IS_LOCKED']
     cache_file_locks[cachefile].release()
-    logger.debug(f'PID {os.getpid()} released multiprocess file lock to Emscripten cache at {cachedir} for {cachefile}')
+    logger.debug(f'PID {os.getpid()} released multiprocess file lock to Emscripten cache at {cache_file_locks[cachefile].lock_file} for {cachefile}')
 
 
 @contextlib.contextmanager
