@@ -118,7 +118,7 @@ EM_VAL _emval_iter_next(EM_VAL iterator);
 
 #if __cplusplus >= 202002L
 void _emval_coro_suspend(EM_VAL promise, void* coro_ptr);
-EM_VAL _emval_coro_exception_to_error();
+EM_VAL _emval_from_current_cxa_exception();
 EM_VAL _emval_coro_make_promise(EM_VAL *resolve, EM_VAL *reject);
 #endif
 
@@ -793,7 +793,7 @@ public:
     } catch (const val& error) {
       reject(error);
     } catch (...) {
-      val error = val(internal::_emval_coro_exception_to_error());
+      val error = val(internal::_emval_from_current_cxa_exception());
       reject(error);
     }
   }

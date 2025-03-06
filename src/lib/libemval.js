@@ -482,8 +482,8 @@ var LibraryEmVal = {
     }));
   },
 
-  _emval_coro_exception_to_error__deps: ['$Emval', '__cxa_rethrow'],
-  _emval_coro_exception_to_error: () => {
+  _emval_from_current_cxa_exception__deps: ['$Emval', '__cxa_rethrow'],
+  _emval_from_current_cxa_exception: () => {
     try {
       // Use __cxa_rethrow which already has mechanism for generating
       // user-friendly error message and stacktrace from C++ exception
