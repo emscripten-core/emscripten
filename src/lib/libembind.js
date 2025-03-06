@@ -533,7 +533,8 @@ var LibraryEmbind = {
         var length;
         var valueIsOfTypeString = (typeof value == 'string');
 
-        if (!(valueIsOfTypeString || value instanceof Uint8Array || value instanceof Uint8ClampedArray || value instanceof Int8Array)) {
+        // We accept `string` or array views with single byte elements
+        if (!(valueIsOfTypeString || (ArrayBuffer.isView(value) && value.BYTES_PER_ELEMENT == 1))) {
           throwBindingError('Cannot pass non-string to std::string');
         }
         if (stdStringIsUTF8 && valueIsOfTypeString) {
@@ -546,10 +547,10 @@ var LibraryEmbind = {
         var base = _malloc({{{ POINTER_SIZE }}} + length + 1);
         var ptr = base + {{{ POINTER_SIZE }}};
         {{{ makeSetValue('base', '0', 'length', SIZE_TYPE) }}};
-        if (stdStringIsUTF8 && valueIsOfTypeString) {
-          stringToUTF8(value, ptr, length + 1);
-        } else {
-          if (valueIsOfTypeString) {
+        if (valueIsOfTypeString) {
+          if (stdStringIsUTF8) {
+            stringToUTF8(value, ptr, length + 1);
+          } else {
             for (var i = 0; i < length; ++i) {
               var charCode = value.charCodeAt(i);
               if (charCode > 255) {
@@ -558,11 +559,9 @@ var LibraryEmbind = {
               }
               HEAPU8[ptr + i] = charCode;
             }
-          } else {
-            for (var i = 0; i < length; ++i) {
-              HEAPU8[ptr + i] = value[i];
-            }
           }
+        } else {
+          HEAPU8.set(value, ptr);
         }
 
         if (destructors !== null) {
@@ -1112,6 +1111,7 @@ var LibraryEmbind = {
       fieldRecords.forEach((field, i) => {
         var fieldName = field.fieldName;
         var getterReturnType = fieldTypes[i];
+        var optional = fieldTypes[i].optional;
         var getter = field.getter;
         var getterContext = field.getterContext;
         var setterArgumentType = fieldTypes[i + fieldRecords.length];
@@ -1123,7 +1123,8 @@ var LibraryEmbind = {
             var destructors = [];
             setter(setterContext, ptr, setterArgumentType['toWireType'](destructors, o));
             runDestructors(destructors);
-          }
+          },
+          optional,
         };
       });
 
@@ -1141,7 +1142,7 @@ var LibraryEmbind = {
           // todo: Here we have an opportunity for -O3 level "unsafe" optimizations:
           // assume all fields are present without checking.
           for (var fieldName in fields) {
-            if (!(fieldName in o)) {
+            if (!(fieldName in o) && !fields[fieldName].optional) {
               throw new TypeError(`Missing field: "${fieldName}"`);
             }
           }
@@ -1556,7 +1557,9 @@ var LibraryEmbind = {
     '$delayFunction',
   ],
   $init_ClassHandle: () => {
-    Object.assign(ClassHandle.prototype, {
+    let proto = ClassHandle.prototype;
+
+    Object.assign(proto, {
       "isAliasOf"(other) {
         if (!(this instanceof ClassHandle)) {
           return false;
@@ -1642,6 +1645,12 @@ var LibraryEmbind = {
         return this;
       },
     });
+
+    // Support `using ...` from https://github.com/tc39/proposal-explicit-resource-management.
+    const symbolDispose = Symbol.dispose;
+    if (symbolDispose) {
+      proto[symbolDispose] = proto["delete"];
+    }
   },
 
   $ClassHandle__docs: '/** @constructor */',

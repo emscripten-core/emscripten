@@ -111,7 +111,7 @@ commands:
     description: "install canary version of node"
     steps:
       - install-node-version:
-         node_version: "24.0.0-v8-canary202501036428a2737e"
+         node_version: "24.0.0-v8-canary20250303cbbb63ede3"
          canary: true
   install-v8:
     description: "install v8 using jsvu"
@@ -590,6 +590,7 @@ jobs:
             wasmfs.test_readdir_rawfs
             wasmfs.test_utime
             wasmfs.test_unistd_unlink
+            wasmfs.test_unistd_dup
             wasmfs.test_unistd_access
             wasmfs.test_unistd_close
             wasmfs.test_unistd_truncate
