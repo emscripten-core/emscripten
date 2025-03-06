@@ -1785,14 +1785,17 @@ addToLibrary({
   // All callers should use direct table access where possible and only fall
   // back to this function if needed.
   $getDynCaller__deps: ['$dynCall'],
-  $getDynCaller: (sig, ptr) => {
+  $getDynCaller: (sig, ptr, promising = false) => {
 #if ASSERTIONS && !DYNCALLS
     assert(sig.includes('j') || sig.includes('p'), 'getDynCaller should only be called with i64 sigs')
 #endif
-    return (...args) => dynCall(sig, ptr, args);
+    return (...args) => dynCall(sig, ptr, args, promising);
   },
 
-  $dynCall: (sig, ptr, args = []) => {
+  $dynCall: (sig, ptr, args = [], promising = false) => {
+#if ASSERTIONS && (DYNCALLS || !WASM_BIGINT || !JSPI)
+    assert(!promising, 'async dynCall is not supported in this mode')
+#endif
 #if MEMORY64
     // With MEMORY64 we have an additional step to convert `p` arguments to
     // bigint. This is the runtime equivalent of the wrappers we create for wasm
@@ -1815,7 +1818,13 @@ addToLibrary({
 #if ASSERTIONS
     assert(getWasmTableEntry(ptr), `missing table entry in dynCall: ${ptr}`);
 #endif
-    var rtn = getWasmTableEntry(ptr)(...args);
+    var func = getWasmTableEntry(ptr);
+#if JSPI
+    if (promising) {
+      func = WebAssembly.promising(func);
+    }
+#endif
+    var rtn = func(...args);
 #endif
 #if MEMORY64
     return sig[0] == 'p' ? Number(rtn) : rtn;

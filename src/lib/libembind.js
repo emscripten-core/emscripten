@@ -774,13 +774,6 @@ var LibraryEmbind = {
 #if ASSERTIONS && ASYNCIFY != 2
     assert(!isAsync, 'Async bindings are only supported with JSPI.');
 #endif
-
-#if ASYNCIFY == 2
-    if (isAsync) {
-      cppInvokerFunc = Asyncify.makeAsyncFunction(cppInvokerFunc);
-    }
-#endif
-
     var isClassMethodFunc = (argTypes[1] !== null && classType !== null);
 
     // Free functions with signature "void function()" do not need an invoker that marshalls between wire types.
@@ -896,11 +889,15 @@ var LibraryEmbind = {
   },
 
   $embind__requireFunction__deps: ['$readLatin1String', '$throwBindingError'
-#if DYNCALLS || !WASM_BIGINT || MEMORY64
+#if DYNCALLS || !WASM_BIGINT || MEMORY64 || CAN_ADDRESS_2GB
     , '$getDynCaller'
 #endif
   ],
-  $embind__requireFunction: (signature, rawFunction) => {
+  $embind__requireFunction: (signature, rawFunction, isAsync = false) => {
+#if ASSERTIONS && ASYNCIFY != 2
+    assert(!isAsync, 'Async bindings are only supported with JSPI.');
+#endif
+
     signature = readLatin1String(signature);
 
     function makeDynCaller() {
@@ -914,10 +911,16 @@ var LibraryEmbind = {
 #endif
 #if MEMORY64 || CAN_ADDRESS_2GB
       if (signature.includes('p')) {
-        return getDynCaller(signature, rawFunction);
+        return getDynCaller(signature, rawFunction, isAsync);
       }
 #endif
-      return getWasmTableEntry(rawFunction);
+      var rtn = getWasmTableEntry(rawFunction);
+#if JSPI
+      if (isAsync) {
+        rtn = WebAssembly.promising(rtn);
+      }
+#endif
+      return rtn;
 #endif
     }
 
@@ -937,7 +940,7 @@ var LibraryEmbind = {
     name = readLatin1String(name);
     name = getFunctionName(name);
 
-    rawInvoker = embind__requireFunction(signature, rawInvoker);
+    rawInvoker = embind__requireFunction(signature, rawInvoker, isAsync);
 
     exposePublicSymbol(name, function() {
       throwUnboundTypeError(`Cannot call ${name} due to unbound types`, argTypes);
@@ -1940,7 +1943,7 @@ var LibraryEmbind = {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = readLatin1String(methodName);
     methodName = getFunctionName(methodName);
-    rawInvoker = embind__requireFunction(invokerSignature, rawInvoker);
+    rawInvoker = embind__requireFunction(invokerSignature, rawInvoker, isAsync);
 
     whenDependentTypesAreResolved([], [rawClassType], (classType) => {
       classType = classType[0];
@@ -2077,7 +2080,7 @@ var LibraryEmbind = {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = readLatin1String(methodName);
     methodName = getFunctionName(methodName);
-    rawInvoker = embind__requireFunction(invokerSignature, rawInvoker);
+    rawInvoker = embind__requireFunction(invokerSignature, rawInvoker, isAsync);
     whenDependentTypesAreResolved([], [rawClassType], (classType) => {
       classType = classType[0];
       var humanName = `${classType.name}.${methodName}`;
