@@ -32,7 +32,7 @@ var LibraryIDBStore = {
       });
     });
   },
-  emscripten_idb_async_store__deps: ['$UTF8ToString', 'free', '$callUserCallback'],
+  emscripten_idb_async_store__deps: ['$UTF8ToString', '$callUserCallback'],
   emscripten_idb_async_store: (db, id, ptr, num, arg, onstore, onerror) => {
     // note that we copy the data here, as these are async operatins - changes
     // to HEAPU8 meanwhile should not affect us!
