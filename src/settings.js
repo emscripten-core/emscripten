@@ -1785,7 +1785,7 @@ var PTHREADS_DEBUG = false;
 // [link]
 var EVAL_CTORS = 0;
 
-// Is enabled, use the JavaScript TextDecoder API for string marshalling.
+// If enabled, use the JavaScript TextDecoder API for string marshalling.
 // Enabled by default, set this to 0 to disable.
 // If set to 2, we assume TextDecoder is present and usable, and do not emit
 // any JS code to fall back if it is missing. In single threaded -Oz build modes,

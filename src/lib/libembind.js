@@ -533,7 +533,8 @@ var LibraryEmbind = {
         var length;
         var valueIsOfTypeString = (typeof value == 'string');
 
-        if (!(valueIsOfTypeString || value instanceof Uint8Array || value instanceof Uint8ClampedArray || value instanceof Int8Array)) {
+        // We accept `string` or array views with single byte elements
+        if (!(valueIsOfTypeString || (ArrayBuffer.isView(value) && value.BYTES_PER_ELEMENT == 1))) {
           throwBindingError('Cannot pass non-string to std::string');
         }
         if (stdStringIsUTF8 && valueIsOfTypeString) {
@@ -546,10 +547,10 @@ var LibraryEmbind = {
         var base = _malloc({{{ POINTER_SIZE }}} + length + 1);
         var ptr = base + {{{ POINTER_SIZE }}};
         {{{ makeSetValue('base', '0', 'length', SIZE_TYPE) }}};
-        if (stdStringIsUTF8 && valueIsOfTypeString) {
-          stringToUTF8(value, ptr, length + 1);
-        } else {
-          if (valueIsOfTypeString) {
+        if (valueIsOfTypeString) {
+          if (stdStringIsUTF8) {
+            stringToUTF8(value, ptr, length + 1);
+          } else {
             for (var i = 0; i < length; ++i) {
               var charCode = value.charCodeAt(i);
               if (charCode > 255) {
@@ -558,11 +559,9 @@ var LibraryEmbind = {
               }
               HEAPU8[ptr + i] = charCode;
             }
-          } else {
-            for (var i = 0; i < length; ++i) {
-              HEAPU8[ptr + i] = value[i];
-            }
           }
+        } else {
+          HEAPU8.set(value, ptr);
         }
 
         if (destructors !== null) {
