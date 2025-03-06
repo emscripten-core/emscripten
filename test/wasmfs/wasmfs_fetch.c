@@ -171,7 +171,7 @@ void test_small_chunks() {
   buf[size] = 0;
   printf("buf %s\n",buf);
   assert(strcmp(buf, "hello") == 0);
-  assert(read(fd, buf+size-1, 1024) == 1);
+  assert(read(fd, buf, 1024) == 0);
 
   assert(close(fd) == 0);
 
@@ -263,6 +263,23 @@ void test_nonexistent() {
   assert(close(fd) == 0);
 }
 
+void test_big_chunks() {
+  printf("Running %s...\n", __FUNCTION__);
+
+  char expected[] = "hello";
+  size_t size = 5;
+
+  backend_t backend = wasmfs_create_fetch_backend("small.dat",16);
+  int fd;
+  char buf[size + 1];
+  fd = wasmfs_create_file("/testfile11", 0777, backend);
+  read_chunks_check(fd, buf, size, 2);
+  buf[size] = 0;
+  printf("buf %s\n",buf);
+  assert(strcmp(buf, "hello") == 0);
+  assert(close(fd) == 0);
+}
+
 int main() {
   getUrlOrigin(url_orig, sizeof(url_orig));
   test_default();
@@ -273,6 +290,7 @@ int main() {
   test_small_chunks();
   test_small_chunks_divisor_of_size();
   test_nonexistent();
+  test_big_chunks();
 
   return 0;
 }
