@@ -457,7 +457,7 @@ var LibraryDylink = {
       // current module could resolve its imports. (see tools/shared.py
       // WebAssembly.make_shared_library() for "dylink" section extension format)
       var neededDynlibsCount = getLEB();
-      for (var i = 0; i < neededDynlibsCount; ++i) {
+      while (neededDynlibsCount--) {
         var libname = getString();
         customSection.neededDynlibs.push(libname);
       }
@@ -481,8 +481,8 @@ var LibraryDylink = {
           customSection.tableAlign = getLEB();
         } else if (subsectionType === WASM_DYLINK_NEEDED) {
           var neededDynlibsCount = getLEB();
-          for (var i = 0; i < neededDynlibsCount; ++i) {
-            libname = getString();
+          while (neededDynlibsCount--) {
+            var libname = getString();
             customSection.neededDynlibs.push(libname);
           }
         } else if (subsectionType === WASM_DYLINK_EXPORT_INFO) {
@@ -506,8 +506,8 @@ var LibraryDylink = {
           }
         } else if (subsectionType === WASM_DYLINK_RUNTIME_PATH) {
           var runtimePathsCount = getLEB();
-          for (var i = 0; i < runtimePathsCount; ++i) {
-            path = getString();
+          while (runtimePathsCount--) {
+            var path = getString();
             customSection.runtimePaths.push(path);
           }
         } else {
