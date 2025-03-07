@@ -4041,7 +4041,7 @@ ok
     so_name = 'liblib.so'
     os.mkdir(so_dir)
     create_file('pre.js', '''
-    Module['locateFile'] = function(f) {
+    Module['locateFile'] = (f) => {
       if (f === '%s') {
         return '%s/' + f;
       } else {
@@ -4516,9 +4516,7 @@ res64 - external 64\n''', header='''\
   def test_dylink_jslib(self):
     create_file('lib.js', r'''
       addToLibrary({
-        test_lib_func: function(x) {
-          return x + 17.2;
-        }
+        test_lib_func: (x) => x + 17.2
       });
     ''')
     self.dylink_test(header=r'''
@@ -5985,15 +5983,16 @@ Module.onRuntimeInitialized = () => {
     self.do_runf(filename, str(expected) + ', errno: 0')
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
+  @crossplatform
   @with_all_fs
   def test_unistd_unlink(self):
     # symlinks on node.js on non-linux behave differently (e.g. on Windows they require administrative privileges)
     # so skip testing those bits on that combination.
+    if MACOS and any(arg in self.emcc_args for arg in ('-DNODEFS', '-DNODERAWFS')):
+      self.skipTest('only tested on linux')
     if '-DNODEFS' in self.emcc_args:
       if WINDOWS:
         self.emcc_args += ['-DNO_SYMLINK=1']
-      if MACOS:
-        self.skipTest('only tested on linux')
       if self.get_setting('WASMFS'):
         self.skipTest('https://github.com/emscripten-core/emscripten/issues/18112')
 

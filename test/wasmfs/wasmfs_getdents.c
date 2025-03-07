@@ -112,17 +112,18 @@ int main() {
     console.log();
   });
 
-  // Try to advance reset of the offset of the directory.
-  // Expect that '..' be printed a second time.
+  printf("------------- Reading one from root/working Directory -------------\n");
   fd = open("root/working", O_RDONLY | O_DIRECTORY);
   print_one(fd);
+
+  printf("------------- Reading and then seeking backwards -------------\n");
+  // Advance and then reset of the offset of the directory using lseek
   off_t pos = lseek(fd, 0, SEEK_CUR);
   print_one(fd);
-  // Reset back to the previous position
+  // Reset back to the previous position and then expect that '..' be printed a
+  // second time.
   printf("rewinding from position %llu to %lli\n", lseek(fd, 0, SEEK_CUR), pos);
   lseek(fd, pos, SEEK_SET);
-
-  printf("------------- Reading one from root/working Directory -------------\n");
   print_one(fd);
   close(fd);
 
