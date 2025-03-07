@@ -16,6 +16,7 @@ from .settings import settings
 
 logger = logging.getLogger('cache')
 
+LOCK_SUBDIR = 'locks'
 
 acquired_count = {}
 cachedir = None
@@ -40,7 +41,7 @@ def acquire_cache_lock(reason, cachefile):
   setup_file(cachefile)
   # TODO: is aqcuired_count even necessary? filelock.py seems to have similar logic inside.
   if acquired_count[cachefile] == 0:
-    logger.debug(f'PID {os.getpid()} acquiring multiprocess file lock to {cache_file_locks[cachefile].lock_file} for {cachefile}')
+    logger.debug(f'PID {os.getpid()} acquiring multiprocess file lock {cache_file_locks[cachefile].lock_file} for {cachefile} ({reason})')
     #assert 'EM_CACHE_IS_LOCKED' not in os.environ, f'attempt to lock the cache while a parent process is holding the lock ({reason})'
     try:
       cache_file_locks[cachefile].acquire(60)
@@ -49,7 +50,7 @@ def acquire_cache_lock(reason, cachefile):
       cache_file_locks[cachefile].acquire()
 
     #os.environ['EM_CACHE_IS_LOCKED'] = '1'
-    logger.debug('done')
+    logger.debug(f'PID {os.getpid()} done')
   acquired_count[cachefile] += 1
 
 
@@ -87,8 +88,10 @@ def ensure():
 def erase():
   ensure_setup()
   with lock('erase', global_cachelock):
-    # Delete everything except the lockfile itself
-    utils.delete_contents(cachedir, exclude=[os.path.basename(global_cachelock)])
+    # Delete everything except the lockfiles directory itself
+    utils.delete_contents(cachedir, exclude=[LOCK_SUBDIR])
+    assert os.path.exists(Path(cachedir, LOCK_SUBDIR))
+    assert os.path.exists(cache_file_locks[global_cachelock].lock_file)
 
 
 def get_path(name):
@@ -194,7 +197,7 @@ def setup_file(cache_file):
     file_path = Path(cache_file)
     assert not file_path.is_absolute()
     key_name = '_'.join(file_path.parts) + '.lock'
-    filename = Path(cachedir, 'locks', key_name)
+    filename = Path(cachedir, LOCK_SUBDIR, key_name)
     cache_file_locks[cache_file] = filelock.FileLock(filename)
     acquired_count[cache_file] = 0
 
