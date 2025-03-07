@@ -413,49 +413,39 @@ var LibraryPThread = {
 
     // Creates a new web Worker and places it in the unused worker pool to wait for its use.
     allocateUnusedWorker() {
-      var worker;
+      var workerUrl, workerPolicyUrl;
+#if expectToReceiveOnModule('mainScriptUrlOrBlob')
+      // We can't use makeModuleReceiveWithVar here since we want to also
+      // call URL.createObjectURL on the mainScriptUrlOrBlob.
+      workerPolicyUrl = workerUrl = Module['mainScriptUrlOrBlob'];
+      if (workerUrl && typeof workerUrl != 'string') {
+        workerPolicyUrl = workerUrl = URL.createObjectURL(workerUrl);
+      }
+#endif
+      if (!workerUrl) {
 #if EXPORT_ES6
-      // If we're using module output, use bundler-friendly pattern.
-#if PTHREADS_DEBUG
-      dbg(`Allocating a new web worker from ${import.meta.url}`);
-#endif
-#if TRUSTED_TYPES
-      // Use Trusted Types compatible wrappers.
-      if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
-        var p = trustedTypes.createPolicy('emscripten#workerPolicy1', { createScriptURL: (ignored) => import.meta.url });
-        worker = new Worker(p.createScriptURL('ignored'), {{{ pthreadWorkerOptions }}});
-      } else
-#endif
       // We need to generate the URL with import.meta.url as the base URL of the JS file
       // instead of just using new URL(import.meta.url) because bundler's only recognize
       // the first case in their bundling step. The latter ends up producing an invalid
       // URL to import from the server (e.g., for webpack the file:// path).
       // See https://github.com/webpack/webpack/issues/12638
-      worker = new Worker(new URL('{{{ TARGET_JS_NAME }}}', import.meta.url), {{{ pthreadWorkerOptions }}});
-#else // EXPORT_ES6
-      var pthreadMainJs = _scriptName;
-#if expectToReceiveOnModule('mainScriptUrlOrBlob')
-      // We can't use makeModuleReceiveWithVar here since we want to also
-      // call URL.createObjectURL on the mainScriptUrlOrBlob.
-      if (Module['mainScriptUrlOrBlob']) {
-        pthreadMainJs = Module['mainScriptUrlOrBlob'];
-        if (typeof pthreadMainJs != 'string') {
-          pthreadMainJs = URL.createObjectURL(pthreadMainJs);
-        }
-      }
+        workerUrl = new URL("{{{ TARGET_JS_NAME }}}", import.meta.url);
+        workerPolicyUrl = import.meta.url
+#else
+        workerUrl = workerPolicyUrl = _scriptName;
 #endif
+      }
 #if PTHREADS_DEBUG
-      dbg(`Allocating a new web worker from ${pthreadMainJs}`);
+      dbg(`Allocating a new web worker from ${workerUrl}`);
 #endif
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
       if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
-        var p = trustedTypes.createPolicy('emscripten#workerPolicy2', { createScriptURL: (ignored) => pthreadMainJs });
-        worker = new Worker(p.createScriptURL('ignored'), {{{ pthreadWorkerOptions }}});
-      } else
+        var p = trustedTypes.createPolicy('emscripten#workerPolicy2', { createScriptURL: (ignored) => workerPolicyUrl });
+        workerUrl = p.createScriptURL('ignored');
+      }
 #endif
-      worker = new Worker(pthreadMainJs, {{{ pthreadWorkerOptions }}});
-#endif // EXPORT_ES6
+      var worker = new Worker(workerUrl, {{{ pthreadWorkerOptions }}});
 #if ASSERTIONS
       worker.workerID = PThread.nextWorkerID++;
 #endif
