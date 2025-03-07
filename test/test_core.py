@@ -5989,7 +5989,7 @@ Module.onRuntimeInitialized = () => {
   def test_unistd_unlink(self):
     # symlinks on node.js on non-linux behave differently (e.g. on Windows they require administrative privileges)
     # so skip testing those bits on that combination.
-    if any([arg in self.emcc_args for arg in ('-DNODEFS', '-DNODERAWFS')]) and MACOS:
+    if MACOS and any(arg in self.emcc_args for arg in ('-DNODEFS', '-DNODERAWFS')):
       self.skipTest('only tested on linux')
     if '-DNODEFS' in self.emcc_args:
       if WINDOWS:
