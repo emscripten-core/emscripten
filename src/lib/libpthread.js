@@ -436,7 +436,7 @@ var LibraryPThread = {
 #endif
       }
 #if PTHREADS_DEBUG
-      dbg(`Allocating a new web worker from ${workerUrl}`);
+      dbg(`Allocating a new web worker from ${workerUrl ?? workerPolicyUrl}`);
 #endif
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
@@ -445,7 +445,10 @@ var LibraryPThread = {
         workerUrl = p.createScriptURL('ignored');
       }
 #endif
-      var worker = new Worker(workerUrl, {{{ pthreadWorkerOptions }}});
+      var options = {{{ pthreadWorkerOptions }}};
+      var worker = workerUrl 
+        ? new Worker(workerUrl, options)
+        : new Worker(new URL("{{{ TARGET_JS_NAME }}}", import.meta.url), options);
 #if ASSERTIONS
       worker.workerID = PThread.nextWorkerID++;
 #endif
