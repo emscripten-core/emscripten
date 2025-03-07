@@ -28,12 +28,10 @@
 #include "libembind_shared.js"
 
 var LibraryEmbind = {
-  $UnboundTypeError__postset: "UnboundTypeError = Module['UnboundTypeError'] = extendError(Error, 'UnboundTypeError');",
   $UnboundTypeError__deps: ['$extendError'],
-  $UnboundTypeError: undefined,
-  $PureVirtualError__postset: "PureVirtualError = Module['PureVirtualError'] = extendError(Error, 'PureVirtualError');",
+  $UnboundTypeError: "=Module['UnboundTypeError'] = extendError(Error, 'UnboundTypeError')",
   $PureVirtualError__deps: ['$extendError'],
-  $PureVirtualError: undefined,
+  $PureVirtualError: "=Module['PureVirtualError'] = extendError(Error, 'PureVirtualError')",
   $GenericWireTypeSize: {{{ 2 * POINTER_SIZE }}},
 #if EMBIND_AOT
   $InvokerFunctions: '<<< EMBIND_AOT_OUTPUT >>>',
