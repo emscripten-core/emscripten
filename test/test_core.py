@@ -5756,6 +5756,7 @@ got: 10
       self.set_setting("FORCE_FILESYSTEM")
     self.do_run_in_out_file_test('fs/test_writeFile.cpp')
 
+  @also_with_wasmfs
   def test_fs_js_api(self):
     self.set_setting("FORCE_FILESYSTEM")
     self.do_runf('fs/test_fs_js_api.c', 'success')

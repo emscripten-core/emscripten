@@ -259,12 +259,12 @@ int _wasmfs_munmap(void* addr, size_t length) {
   return __syscall_munmap((intptr_t)addr, length);
 }
 
-int _wasmfs_utime(const char* path, long atime_ms, long mtime_ms) {
+int _wasmfs_utime(const char* path, double atime_ms, double mtime_ms) {
   struct timespec times[2];
-  times[0].tv_sec = atime_ms / 1000;
-  times[0].tv_nsec = (atime_ms % 1000) * 1000000;
-  times[1].tv_sec = mtime_ms / 1000;
-  times[1].tv_nsec = (mtime_ms % 1000) * 1000000;
+  times[0].tv_sec = (long)atime_ms / 1000;
+  times[0].tv_nsec = ((long)atime_ms % 1000) * 1000000;
+  times[1].tv_sec = (long)mtime_ms / 1000;
+  times[1].tv_nsec = ((long)mtime_ms % 1000) * 1000000;
 
   return __syscall_utimensat(AT_FDCWD, (intptr_t)path, (intptr_t)times, 0);
 }
