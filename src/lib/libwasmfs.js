@@ -126,25 +126,23 @@ addToLibrary({
     readFile(path, opts = {}) {
       opts.encoding = opts.encoding || 'binary';
       if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
-        throw new Error('Invalid encoding type "' + opts.encoding + '"');
+        throw new Error(`Invalid encoding type "${opts.encoding}"`);
       }
 
+      var buf, length;
       // Copy the file into a JS buffer on the heap.
-      var sp = stackSave();
-      var buf = __wasmfs_read_file(stringToUTF8OnStack(path));
-      stackRestore(sp);
-
-      // The signed integer length resides in the first 8 bytes of the buffer.
-      var length = {{{ makeGetValue('buf', '0', 'i53') }}};
+      withStackSave(() => {
+        var bufPtr = stackAlloc({{{ POINTER_SIZE }}});
+        var sizePtr = stackAlloc({{{ POINTER_SIZE }}});
+        FS.handleError(-__wasmfs_read_file(stringToUTF8OnStack(path), bufPtr, sizePtr));
+        buf = {{{ makeGetValue('bufPtr', '0', '*') }}};
+        length = {{{ makeGetValue('sizePtr', '0', 'i53') }}};
+      });
 
       // Default return type is binary.
       // The buffer contents exist 8 bytes after the returned pointer.
-      var ret = new Uint8Array(HEAPU8.subarray(buf + 8, buf + 8 + length));
-      if (opts.encoding === 'utf8') {
-        ret = UTF8ArrayToString(ret);
-      }
-
-      return ret;
+      var ret = new Uint8Array(HEAPU8.subarray(buf, buf + length));
+      return opts.encoding === 'utf8' ? UTF8ArrayToString(ret) : ret;
     },
 #endif
 

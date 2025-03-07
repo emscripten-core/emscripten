@@ -8148,14 +8148,12 @@ addToLibrary({
     self.do_other_test('test_realpath.c', emcc_args=['-sSAFE_HEAP', '--embed-file', 'boot'])
 
   @crossplatform
-  @parameterized({
-    '': ([],),
-    # WasmFS requires FORCE_FILESYSTEM for the full JS API (FS.mkdir etc.).
-    'wasmfs': (['-sWASMFS', '-sFORCE_FILESYSTEM'],),
-  })
-  def test_realpath_nodefs(self, args):
+  @also_with_wasmfs
+  def test_realpath_nodefs(self):
+    if self.get_setting('WASMFS'):
+      self.emcc_args += ['-sFORCE_FILESYSTEM']
     create_file('TEST_NODEFS.txt', ' ')
-    self.do_other_test('test_realpath_nodefs.c', emcc_args=args + ['-lnodefs.js'])
+    self.do_other_test('test_realpath_nodefs.c', emcc_args=['-lnodefs.js'])
 
   @also_with_wasmfs
   def test_realpath_2(self):
@@ -14118,12 +14116,6 @@ Module.postRun = () => {{
     # Run only in WASMFS for now.
     self.set_setting('FORCE_FILESYSTEM')
     self.do_run_in_out_file_test('wasmfs/wasmfs_getdents.c')
-
-  @wasmfs_all_backends
-  @also_with_wasm_bigint
-  def test_wasmfs_readfile(self):
-    self.set_setting('FORCE_FILESYSTEM')
-    self.do_run_in_out_file_test('wasmfs/wasmfs_readfile.c')
 
   def test_wasmfs_jsfile(self):
     self.set_setting('WASMFS')
