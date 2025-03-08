@@ -552,7 +552,9 @@ class Library:
   def do_build(self, out_filename, generate_only=False):
     """Builds the library and returns the path to the file."""
     assert out_filename == self.get_path(absolute=True)
-    build_dir = os.path.join(cache.get_path('build'), self.get_base_name())
+    # Make separate build directories for each lib dir (e.g. wasm64, PIC, LTO)
+    lib_subdir = cache.get_lib_dir(False).relative_to(cache.get_sysroot(False) + '/lib')
+    build_dir = os.path.join(cache.get_path('build'), lib_subdir, self.get_base_name())
     if USE_NINJA:
       self.generate_ninja(build_dir, out_filename)
       if not generate_only:
