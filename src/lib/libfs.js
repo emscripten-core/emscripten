@@ -746,9 +746,9 @@ FS.staticInit();
     mkdirTree(path, mode) {
       var dirs = path.split('/');
       var d = '';
-      for (var i = 0; i < dirs.length; ++i) {
-        if (!dirs[i]) continue;
-        d += '/' + dirs[i];
+      for (var dir of dirs) {
+        if (!dir) continue;
+        d += '/' + dir;
         try {
           FS.mkdir(d, mode);
         } catch(e) {
@@ -1550,12 +1550,10 @@ FS.staticInit();
       _fflush(0);
 #endif
       // close all of our streams
-      for (var i = 0; i < FS.streams.length; i++) {
-        var stream = FS.streams[i];
-        if (!stream) {
-          continue;
+      for (var stream of FS.streams) {
+        if (stream) {
+          FS.close(stream);
         }
-        FS.close(stream);
       }
     },
 
