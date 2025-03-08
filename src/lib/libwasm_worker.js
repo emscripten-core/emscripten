@@ -34,6 +34,15 @@
 
 {{{
   const workerSupportsFutexWait = () => AUDIO_WORKLET ? "typeof AudioWorkletGlobalScope === 'undefined'" : '1';
+  const wasmWorkerJs = `
+#if WASM_WORKERS == 2
+    _wasmWorkerBlobUrl
+#elif MINIMAL_RUNTIME
+    Module['$wb']
+#else
+    locateFile('${WASM_WORKER_FILE}')
+#endif
+`;
   null;
 }}}
 
@@ -170,21 +179,17 @@ if (ENVIRONMENT_IS_WASM_WORKER
       return 0;
     }
 #endif
-    let worker = _wasmWorkers[_wasmWorkersID] = new Worker(
-#if WASM_WORKERS == 2
-      // WASM_WORKERS=2 mode embeds .ww.js file contents into the main .js file
-      // as a Blob URL. (convenient, but not CSP security safe, since this is
-      // eval-like)
-      _wasmWorkerBlobUrl
-#elif MINIMAL_RUNTIME
-      // MINIMAL_RUNTIME has a structure where the .ww.js file is loaded from
-      // the main HTML file in parallel to all other files for best performance
-      Module['$wb'] // $wb="Wasm worker Blob", abbreviated since not DCEable
-#else
-      // default runtime loads the .ww.js file on demand.
-      locateFile('{{{ WASM_WORKER_FILE }}}')
+    let worker;
+#if TRUSTED_TYPES
+    // Use Trusted Types compatible wrappers.
+    if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
+      var p = trustedTypes.createPolicy(
+          'emscripten#workerPolicy1', { createScriptURL: (ignored) => {{{ wasmWorkerJs }}}}
+      );
+      worker = _wasmWorkers[_wasmWorkersID] = new Worker(p.createScriptURL('ignored'));
+    } else
 #endif
-    );
+    worker = _wasmWorkers[_wasmWorkersID] = new Worker({{{ wasmWorkerJs }}});
     // Craft the Module object for the Wasm Worker scope:
     worker.postMessage({
       // Signal with a non-zero value that this Worker will be a Wasm Worker,
