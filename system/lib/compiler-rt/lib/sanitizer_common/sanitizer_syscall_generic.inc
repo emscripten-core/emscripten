@@ -10,10 +10,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-// NetBSD uses libc calls directly
-#if !SANITIZER_NETBSD
+// NetBSD and Emscripten uses libc calls directly
+#if !SANITIZER_NETBSD && !SANITIZER_EMSCRIPTEN
 
-#if SANITIZER_FREEBSD || SANITIZER_APPLE || SANITIZER_SOLARIS || SANITIZER_EMSCRIPTEN
+#if SANITIZER_FREEBSD || SANITIZER_APPLE || SANITIZER_SOLARIS
 # define SYSCALL(name) SYS_ ## name
 #else
 # define SYSCALL(name) __NR_ ## name
