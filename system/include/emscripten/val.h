@@ -21,9 +21,9 @@
 #include <pthread.h>
 #if __cplusplus >= 202002L
 #include <coroutine>
+#include <exception>
 #include <variant>
 #endif
-
 
 namespace emscripten {
 
@@ -118,6 +118,7 @@ EM_VAL _emval_iter_next(EM_VAL iterator);
 
 #if __cplusplus >= 202002L
 void _emval_coro_suspend(EM_VAL promise, void* coro_ptr);
+EM_VAL _emval_from_current_cxa_exception();
 EM_VAL _emval_coro_make_promise(EM_VAL *resolve, EM_VAL *reject);
 #endif
 
@@ -729,7 +730,8 @@ public:
   bool await_ready() { return false; }
 
   // On suspend, store the coroutine handle and invoke a helper that will do
-  // a rough equivalent of `promise.then(value => this.resume_with(value))`.
+  // a rough equivalent of
+  // `promise.then(value => this.resume_with(value)).catch(error => this.reject_with(error))`.
   void await_suspend(std::coroutine_handle<val::promise_type> handle) {
     internal::_emval_coro_suspend(std::get<STATE_PROMISE>(state).as_handle(), this);
     state.emplace<STATE_CORO>(handle);
@@ -743,9 +745,16 @@ public:
     coro.resume();
   }
 
+  // When JS invokes `reject_with` with some error value, reject currently suspended
+  // coroutine's promise with the error value and destroy coroutine frame, because
+  // in this scenario coroutine never reaches final_suspend point to be destroyed automatically.
+  void reject_with(val&& error);
+
   // `await_resume` finalizes the awaiter and should return the result
   // of the `co_await ...` expression - in our case, the stored value.
-  val await_resume() { return std::move(std::get<STATE_RESULT>(state)); }
+  val await_resume() {
+    return std::move(std::get<STATE_RESULT>(state));
+  }
 };
 
 inline val::awaiter val::operator co_await() const {
@@ -756,7 +765,7 @@ inline val::awaiter val::operator co_await() const {
 // that compiler uses to drive the coroutine itself
 // (`T::promise_type` is used for any coroutine with declared return type `T`).
 class val::promise_type {
-  val promise, resolve, reject_with_current_exception;
+  val promise, resolve, reject;
 
 public:
   // Create a `new Promise` and store it alongside the `resolve` and `reject`
@@ -766,7 +775,7 @@ public:
     EM_VAL reject_handle;
     promise = val(internal::_emval_coro_make_promise(&resolve_handle, &reject_handle));
     resolve = val(resolve_handle);
-    reject_with_current_exception = val(reject_handle);
+    reject = val(reject_handle);
   }
 
   // Return the stored promise as the actual return value of the coroutine.
@@ -779,7 +788,19 @@ public:
   // On an unhandled exception, reject the stored promise instead of throwing
   // it asynchronously where it can't be handled.
   void unhandled_exception() {
-    reject_with_current_exception();
+    try {
+      std::rethrow_exception(std::current_exception());
+    } catch (const val& error) {
+      reject(error);
+    } catch (...) {
+      val error = val(internal::_emval_from_current_cxa_exception());
+      reject(error);
+    }
+  }
+
+  // Reject the stored promise due to rejection deeper in the call chain
+  void reject_with(val&& error) {
+    reject(std::move(error));
   }
 
   // Resolve the stored promise on `co_return value`.
@@ -788,6 +809,14 @@ public:
     resolve(std::forward<T>(value));
   }
 };
+
+inline void val::awaiter::reject_with(val&& error) {
+  auto coro = std::move(std::get<STATE_CORO>(state));
+  auto& promise = coro.promise();
+  promise.reject_with(std::move(error));
+  coro.destroy();
+}
+
 #endif
 
 // Declare a custom type that can be used in conjunction with
