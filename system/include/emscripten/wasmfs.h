@@ -78,6 +78,45 @@ backend_t wasmfs_create_memory_backend(void);
 backend_t wasmfs_create_fetch_backend(const char* base_url __attribute__((nonnull)),
                                       uint32_t chunk_size);
 
+// Mapping backend
+//
+// Creates a new path mapping backend based on a provided `manifest`,
+// which is a mapping from file paths (relative to where the mapfs is
+// mounted, but starting with a leading /) to absolute file paths.
+// This is useful if your C program expects files at certain
+// locations, but might not handle symlinks properly.  It can also be
+// combined with e.g. fetchfs, in case your web server has files at
+// several different paths but the C program wants to see all the
+// files within one directory.  The manifest can be built using
+// `wasmfs_map_create_manifest` and `wasmfs_map_add_to_manifest`.
+
+// When the mapfs is mounted, directories and files corresponding to
+// the manifest entries will be automatically created.  Importantly,
+// only individual files can be mapped through mapfs, not whole
+// directories---a manifest can't map one directory to another, just
+// one file to another.
+//
+// For example, a manifest like `{'/test.txt':'/resources/file.txt'}`
+// mounted at `/dat` (using either `wasmfs_mount` or
+// `wasmfs_create_directory`) will let you write
+// `open("/dat/test.txt", O_RDONLY)` and get the contents of
+// `/resources/file.txt`.
+//
+typedef struct MapManifest *manifest_t;
+backend_t wasmfs_create_map_backend(manifest_t manifest __attribute__((nonnull)));
+
+// Create a MapFS manifest record that can be populated with
+// wasmfs_map_add_to_manifest and passed into
+// wasmfs_map_create_backend.
+manifest_t wasmfs_map_create_manifest();
+
+// Add a path-to-URL mapping to the given manifest.
+void wasmfs_map_add_to_manifest(manifest_t manifest __attribute__((nonnull)),
+                                  const char *from_path __attribute__((nonnull)),
+                                  const char *to_path __attribute__((nonnull)));
+
+
+
 backend_t wasmfs_create_node_backend(const char* root __attribute__((nonnull)));
 
 // Note: this cannot be called on the browser main thread because it might

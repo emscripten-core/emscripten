@@ -62,6 +62,9 @@ addToLibrary({
 #if LibraryManager.has('libfetchfs.js')
     '$FETCHFS',
 #endif
+#if LibraryManager.has('libmapfs.js')
+    '$MAPFS',
+#endif
     'malloc',
     'free',
     'wasmfs_create_jsimpl_backend',
