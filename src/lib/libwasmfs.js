@@ -224,9 +224,6 @@ addToLibrary({
 
       return bytesRead;
     },
-    allocate(stream, offset, length) {
-      return FS.handleError(__wasmfs_allocate(stream.fd, {{{ splitI64('offset') }}}, {{{ splitI64('length') }}}));
-    },
     writeFile: (path, data) => FS_writeFile(path, data),
     mmap: (stream, length, offset, prot, flags) => {
       var buf = FS.handleError(__wasmfs_mmap(length, prot, flags, stream.fd, {{{ splitI64('offset') }}}));

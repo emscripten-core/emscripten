@@ -258,46 +258,6 @@ void test_fs_mknod() {
     remove("createtest");
 }
 
-void test_fs_allocate() {
-    EM_ASM(
-        FS.writeFile("allocatetestfile", 'a=1\nb=2\n');
-    );
-    struct stat s;
-    stat("allocatetestfile", &s);
-    assert(s.st_size == 8);
-
-    EM_ASM(
-        // Allocate more space at the very end.
-        var stream = FS.open("allocatetestfile", "w");
-        FS.allocate(stream, 8, 10);
-    );
-    stat("allocatetestfile", &s);
-    assert(s.st_size == 18);
-
-    EM_ASM(
-        // Reduce allocated space at the very start.
-        var stream = FS.open("allocatetestfile", "w");
-        FS.allocate(stream, 0, 4);
-    );
-    stat("allocatetestfile", &s);
-    assert(s.st_size == 4);
-
-    EM_ASM(
-        var stream = FS.open("allocatetestfile", "w");
-        
-        var ex;
-        try {
-            // Attempt to allocate negative length.
-            FS.allocate(stream, 0, -1);
-        } catch (err) {
-            ex = err;
-        }
-        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
-    );
-
-    remove("allocatetestfile");
-}
-
 void test_fs_truncate() {
     EM_ASM(
         FS.writeFile('truncatetest', 'a=1\nb=2\n');
@@ -492,7 +452,6 @@ int main() {
     test_fs_rmdir();
     test_fs_close();
     test_fs_mknod();
-    test_fs_allocate();
     test_fs_truncate();
 #if WASMFS
     // TODO: Fix legacy API FS.mmap bug involving emscripten_builtin_memalign
