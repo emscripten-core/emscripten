@@ -3255,13 +3255,14 @@ More info: https://emscripten.org
     self.do_runf('main.cpp', 'done', emcc_args=['-lembind', '-sASYNCIFY', '--post-js', 'post.js'])
 
   @parameterized({
-    '': ['-sDYNAMIC_EXECUTION=1'],
-    'no_dynamic': ['-sDYNAMIC_EXECUTION=0'],
+    '': [['-sDYNAMIC_EXECUTION=1']],
+    'no_dynamic': [['-sDYNAMIC_EXECUTION=0']],
+    'dyncall': [['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB']],
   })
   @requires_jspi
   def test_embind_jspi(self, extra):
     self.emcc_args += ['-lembind', '-g']
-    self.emcc_args += [extra]
+    self.emcc_args += extra
 
     self.do_runf('embind/embind_jspi_test.cpp', 'done')
 
