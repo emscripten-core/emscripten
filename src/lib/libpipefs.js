@@ -86,12 +86,9 @@ addToLibrary({
         if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_WRONLY }}}) {
           return ({{{ cDefs.POLLWRNORM }}} | {{{ cDefs.POLLOUT }}});
         }
-        if (pipe.buckets.length > 0) {
-          for (var i = 0; i < pipe.buckets.length; i++) {
-            var bucket = pipe.buckets[i];
-            if (bucket.offset - bucket.roffset > 0) {
-              return ({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
-            }
+        for (var bucket of pipe.buckets) {
+          if (bucket.offset - bucket.roffset > 0) {
+            return ({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
           }
         }
 
@@ -110,8 +107,7 @@ addToLibrary({
         var pipe = stream.node.pipe;
         var currentLength = 0;
 
-        for (var i = 0; i < pipe.buckets.length; i++) {
-          var bucket = pipe.buckets[i];
+        for (var bucket of pipe.buckets) {
           currentLength += bucket.offset - bucket.roffset;
         }
 
@@ -136,22 +132,21 @@ addToLibrary({
         var totalRead = toRead;
         var toRemove = 0;
 
-        for (var i = 0; i < pipe.buckets.length; i++) {
-          var currBucket = pipe.buckets[i];
-          var bucketSize = currBucket.offset - currBucket.roffset;
+        for (var bucket of pipe.buckets) {
+          var bucketSize = bucket.offset - bucket.roffset;
 
           if (toRead <= bucketSize) {
-            var tmpSlice = currBucket.buffer.subarray(currBucket.roffset, currBucket.offset);
+            var tmpSlice = bucket.buffer.subarray(bucket.roffset, bucket.offset);
             if (toRead < bucketSize) {
               tmpSlice = tmpSlice.subarray(0, toRead);
-              currBucket.roffset += toRead;
+              bucket.roffset += toRead;
             } else {
               toRemove++;
             }
             data.set(tmpSlice);
             break;
           } else {
-            var tmpSlice = currBucket.buffer.subarray(currBucket.roffset, currBucket.offset);
+            var tmpSlice = bucket.buffer.subarray(bucket.roffset, bucket.offset);
             data.set(tmpSlice);
             data = data.subarray(tmpSlice.byteLength);
             toRead -= tmpSlice.byteLength;

@@ -1275,10 +1275,10 @@ var LibraryHTML5 = {
     var hiddenElements = [];
     while (child != document.body) {
       var children = parent.children;
-      for (var i = 0; i < children.length; ++i) {
-        if (children[i] != child) {
-          hiddenElements.push({ node: children[i], displayState: children[i].style.display });
-          children[i].style.display = 'none';
+      for (var currChild of children) {
+        if (currChild != child) {
+          hiddenElements.push({ node: currChild, displayState: currChild.style.display });
+          currChild.style.display = 'none';
         }
       }
       child = parent;
