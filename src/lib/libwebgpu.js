@@ -808,8 +808,8 @@ var LibraryWebGPU = {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
     {{{ gpu.makeCheckDefined('bufferWrapper') }}}
     if (bufferWrapper.onUnmap) {
-      for (var i = 0; i < bufferWrapper.onUnmap.length; ++i) {
-        bufferWrapper.onUnmap[i]();
+      for (var onUmap of bufferWrapper.onUnmap) {
+        onUnmap();
       }
       bufferWrapper.onUnmap = undefined;
     }
@@ -2119,8 +2119,8 @@ var LibraryWebGPU = {
       return;
     }
 
-    for (var i = 0; i < bufferWrapper.onUnmap.length; ++i) {
-      bufferWrapper.onUnmap[i]();
+    for (var onUnmap of bufferWrapper.onUnmap) {
+      onUnmap();
     }
     bufferWrapper.onUnmap = undefined;
 

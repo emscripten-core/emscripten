@@ -549,9 +549,9 @@ addToLibrary({
   $FS_mkdirTree: (path, mode) => {
     var dirs = path.split('/');
     var d = '';
-    for (var i = 0; i < dirs.length; ++i) {
-      if (!dirs[i]) continue;
-      d += '/' + dirs[i];
+    for (var dir of dirs) {
+      if (!dir) continue;
+      d += '/' + dir;
       try {
         FS_mkdir(d, mode);
       } catch(e) {

@@ -1620,8 +1620,8 @@ var LibraryGLEmulation = {
         getActiveTexture: () => s_activeTexture,
 
         traverseState: (keyView) => {
-          for (var i = 0; i < s_texUnits.length; i++) {
-            s_texUnits[i].traverseState(keyView);
+          for (var texUnit of s_texUnits) {
+            texUnit.traverseState(keyView);
           }
         },
 
@@ -2087,8 +2087,8 @@ var LibraryGLEmulation = {
 
       // By attrib state:
       var enabledAttributesKey = 0;
-      for (var i = 0; i < attributes.length; i++) {
-        enabledAttributesKey |= 1 << attributes[i].name;
+      for (var attr of attributes) {
+        enabledAttributesKey |= 1 << attr.name;
       }
 
       // To prevent using more than 31 bits add another level to the maptree
@@ -2226,8 +2226,7 @@ var LibraryGLEmulation = {
             var texUnitUniformList = '';
             var vsTexCoordInits = '';
             this.usedTexUnitList = GLImmediate.TexEnvJIT.getUsedTexUnitList();
-            for (var i = 0; i < this.usedTexUnitList.length; i++) {
-              var texUnit = this.usedTexUnitList[i];
+            for (var texUnit of this.usedTexUnitList) {
               texUnitAttribList += 'attribute vec4 ' + aTexCoordPrefix + texUnit + ';\n';
               texUnitVaryingList += 'varying vec4 ' + vTexCoordPrefix + texUnit + ';\n';
               texUnitUniformList += 'uniform sampler2D ' + uTexUnitPrefix + texUnit + ';\n';
@@ -2972,16 +2971,14 @@ var LibraryGLEmulation = {
         var start = GLImmediate.restrideBuffer;
         bytes = 0;
         // calculate restrided offsets and total size
-        for (var i = 0; i < attributes.length; i++) {
-          var attr = attributes[i];
+        for (var attr of attributes) {
           var size = attr.sizeBytes;
           if (size % 4 != 0) size += 4 - (size % 4); // align everything
           attr.offset = bytes;
           bytes += size;
         }
         // copy out the data (we need to know the stride for that, and define attr.pointer)
-        for (var i = 0; i < attributes.length; i++) {
-          var attr = attributes[i];
+        for (var attr of attributes) {
           var srcStride = Math.max(attr.sizeBytes, attr.stride);
           if ((srcStride & 3) == 0 && (attr.sizeBytes & 3) == 0) {
             for (var j = 0; j < count; j++) {
@@ -3008,8 +3005,7 @@ var LibraryGLEmulation = {
         } else {
           GLImmediate.vertexPointer = clientStartPointer;
         }
-        for (var i = 0; i < attributes.length; i++) {
-          var attr = attributes[i];
+        for (var attr of attribute) {
           attr.offset = attr.pointer - GLImmediate.vertexPointer; // Compute what will be the offset of this attribute in the VBO after we upload.
         }
         GLImmediate.stride = Math.max(maxStride, bytes);
