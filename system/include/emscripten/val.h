@@ -24,7 +24,6 @@
 #include <variant>
 #endif
 
-
 namespace emscripten {
 
 class val;
@@ -285,7 +284,7 @@ private:
 static const char name##_symbol[] = #name;                          \
 static const ::emscripten::internal::symbol_registrar<name##_symbol> name##_registrar
 
-class val {
+class EMBIND_VISIBILITY_DEFAULT val {
 public:
   // missing operators:
   // * ~ - + ++ --
