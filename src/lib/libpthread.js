@@ -439,7 +439,7 @@ var LibraryPThread = {
         workerUrl = p.createScriptURL('ignored');
       }
 #endif
-      var worker, workerOptions = {{{ pthreadWorkerOptions }}};
+      var worker;
 #if EXPORT_ES6
       if (!workerUrl) {
       // We need to generate the URL with import.meta.url as the base URL of the JS file
@@ -447,10 +447,10 @@ var LibraryPThread = {
       // the first case in their bundling step. The latter ends up producing an invalid
       // URL to import from the server (e.g., for webpack the file:// path).
       // See https://github.com/webpack/webpack/issues/12638
-        worker = new Worker(new URL("{{{ TARGET_JS_NAME }}}", import.meta.url), workerOptions);
+        worker = new Worker(new URL("{{{ TARGET_JS_NAME }}}", import.meta.url), {{{ pthreadWorkerOptions }}});
       } else
 #endif
-      worker = new Worker(workerUrl, workerOptions);
+      worker = new Worker(workerUrl, {{{ pthreadWorkerOptions }}});
 #if ASSERTIONS
       worker.workerID = PThread.nextWorkerID++;
 #endif
