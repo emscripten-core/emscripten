@@ -2046,6 +2046,17 @@ var USE_OFFSET_CONVERTER = false;
 // This is enabled automatically when using -gsource-map with sanitizers.
 var LOAD_SOURCE_MAP = false;
 
+// List of path substitutions to apply in the "sources" field of the source map.
+// Corresponds to the ``--prefix`` option used in ``tools/wasm-sourcemap.py``.
+// Must be used with ``-gsource-map``.
+//
+// This setting allows to map path prefixes to the proper ones so that the final
+// (possibly relative) URLs point to the correct locations :
+// ``-sSOURCE_MAP_PREFIXES=/old/path=/new/path``
+//
+// [link]
+var SOURCE_MAP_PREFIXES = [];
+
 // Default to c++ mode even when run as ``emcc`` rather then ``emc++``.
 // When this is disabled ``em++`` is required linking C++ programs. Disabling
 // this will match the behaviour of gcc/g++ and clang/clang++.

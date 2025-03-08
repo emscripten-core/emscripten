@@ -50,6 +50,7 @@ import clang_native
 import line_endings
 from tools import webassembly
 from tools.settings import settings
+from tools.system_libs import DETERMINISTIC_PREFIX
 
 scons_path = shutil.which('scons')
 emmake = shared.bat_suffix(path_from_root('emmake'))
@@ -10432,25 +10433,84 @@ int main() {
     source_mapping_url_content = webassembly.to_leb(len('sourceMappingURL')) + b'sourceMappingURL' + webassembly.to_leb(len('a.wasm.map')) + b'a.wasm.map'
     self.assertIn(source_mapping_url_content, output)
 
-  def test_wasm_sourcemap(self):
-    # The no_main.c will be read (from relative location) due to speficied "-s"
+  @parameterized({
+    '': ([], [], []),
+    'prefix_wildcard': ([], ['--prefix', '=wasm-src://'], []),
+    'prefix_partial': ([], ['--prefix', '/emscripten/=wasm-src:///emscripten/'], []),
+    'sources': (['--sources'], [], ['--load-prefix', '/emscripten/test/other/wasm_sourcemap=.'])
+  })
+  @parameterized({
+    '': ('/',),
+    'basepath': ('/emscripten/test',)
+  })
+  def test_wasm_sourcemap(self, sources, prefix, load_prefix, basepath):
+    # The no_main.c will be read from relative location if necessary (depends
+    # on --sources and --load-prefix options).
     shutil.copy(test_file('other/wasm_sourcemap/no_main.c'), '.')
+    DW_AT_decl_file = '/emscripten/test/other/wasm_sourcemap/no_main.c'
     wasm_map_cmd = [PYTHON, path_from_root('tools/wasm-sourcemap.py'),
-                    '--sources', '--prefix', '=wasm-src://',
-                    '--load-prefix', '/emscripten/test/other/wasm_sourcemap=.',
+                    *sources, *prefix, *load_prefix,
                     '--dwarfdump-output',
                     test_file('other/wasm_sourcemap/foo.wasm.dump'),
                     '-o', 'a.out.wasm.map',
                     test_file('other/wasm_sourcemap/foo.wasm'),
-                    '--basepath=' + os.getcwd()]
+                    '--basepath=' + basepath]
     self.run_process(wasm_map_cmd)
     output = read_file('a.out.wasm.map')
-    # has "sources" entry with file (includes also `--prefix =wasm-src:///` replacement)
-    self.assertIn('wasm-src:///emscripten/test/other/wasm_sourcemap/no_main.c', output)
-    # has "sourcesContent" entry with source code (included with `-s` option)
-    self.assertIn('int foo()', output)
-    # has some entries
-    self.assertRegex(output, r'"mappings":\s*"[A-Za-z0-9+/]')
+    # "sourcesContent" contains source code iff --sources is specified.
+    self.assertIn('int foo()' if sources else '"sourcesContent":[]', output)
+    if prefix: # "sources" contains URL with prefix path substition if provided
+      sources_url = 'wasm-src:///emscripten/test/other/wasm_sourcemap/no_main.c'
+    else: # otherwise a path relative to the given basepath.
+      sources_url = utils.normalize_path(os.path.relpath(DW_AT_decl_file, basepath))
+    self.assertIn(sources_url, output)
+    # "mappings" contains valid Base64 VLQ segments.
+    self.assertRegex(output, r'"mappings":\s*"(?:[A-Za-z0-9+\/]+[,;]?)+"')
+
+  @parameterized({
+    '': ([], 0),
+    'prefix': ([
+      '<cwd>=file:///path/to/src',
+      DETERMINISTIC_PREFIX + '=file:///path/to/emscripten',
+    ], 0),
+    'sources': ([], 1)
+  })
+  def test_emcc_sourcemap_options(self, prefixes, sources):
+    wasm_sourcemap = importlib.import_module('tools.wasm-sourcemap')
+    cwd = os.getcwd()
+    src_file = shutil.copy(test_file('hello_123.c'), cwd)
+    lib_file = DETERMINISTIC_PREFIX + '/system/lib/libc/musl/src/stdio/fflush.c'
+    if prefixes:
+      prefixes = [p.replace('<cwd>', cwd) for p in prefixes]
+    self.set_setting('SOURCE_MAP_PREFIXES', prefixes)
+    args = ['-gsource-map=inline' if sources else '-gsource-map']
+    self.emcc(src_file, args=args, output_filename='test.js')
+    output = read_file('test.wasm.map')
+    # Check source file resolution
+    p = wasm_sourcemap.Prefixes(prefixes, base_path=cwd)
+    self.assertEqual(len(p.prefixes), len(prefixes))
+    src_file_url = p.resolve(utils.normalize_path(src_file))
+    lib_file_url = p.resolve(utils.normalize_path(lib_file))
+    if prefixes:
+      self.assertEqual(src_file_url, 'file:///path/to/src/hello_123.c')
+      self.assertEqual(lib_file_url, 'file:///path/to/emscripten/system/lib/libc/musl/src/stdio/fflush.c')
+    else:
+      self.assertEqual(src_file_url, 'hello_123.c')
+      self.assertEqual(lib_file_url, '/emsdk/emscripten/system/lib/libc/musl/src/stdio/fflush.c')
+    # "sources" contains resolved filepath.
+    self.assertIn(f'"{src_file_url}"', output)
+    self.assertIn(f'"{lib_file_url}"', output)
+    # "sourcesContent" contains source code iff -gsource-map=inline is specified.
+    if sources:
+      p = wasm_sourcemap.Prefixes(prefixes, preserve_deterministic_prefix=False)
+      for filepath in [src_file, lib_file]:
+        resolved_path = p.resolve(utils.normalize_path(filepath))
+        sources_content = json.dumps(read_file(resolved_path))
+        self.assertIn(sources_content, output)
+    else:
+      self.assertIn('"sourcesContent":[]', output)
+    # "mappings" contains valid Base64 VLQ segments.
+    self.assertRegex(output, r'"mappings":\s*"(?:[A-Za-z0-9+\/]+[,;]?)+"')
 
   def test_wasm_sourcemap_dead(self):
     wasm_map_cmd = [PYTHON, path_from_root('tools/wasm-sourcemap.py'),
