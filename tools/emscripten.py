@@ -1083,7 +1083,7 @@ def create_pointer_conversion_wrappers(metadata):
     '_wasmfs_rename': '_pp',
     '_wasmfs_readlink': 'pp',
     '_wasmfs_truncate': '_p_',
-    '_wasmfs_mmap': '_p____',
+    '_wasmfs_mmap': 'pp____',
     '_wasmfs_munmap': '_pp',
     '_wasmfs_msync': '_pp_',
     '_wasmfs_read': '__pp',
