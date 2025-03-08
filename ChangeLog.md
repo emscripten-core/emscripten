@@ -41,6 +41,9 @@ See docs/process.md for more on how version tagging works.
   on by default, but now it cannot be disabled.  This setting was originally
   added in 2019 as a temporary measure while engines and bundlers learned to
   deal with `import.meta`. (#23171)
+- The pthread functions now live in a separate libpthread (or libpthread-stub).
+  This library is automatically included so this change will only effect those
+  building with `-nostdlib` or `-nolibc`. (#22735)
 
 4.0.3 - 02/07/25
 ----------------
