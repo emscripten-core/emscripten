@@ -396,9 +396,6 @@ LibraryJSEventLoop = {
   $setMainLoop__deps: [
     '$MainLoop',
     'emscripten_set_main_loop_timing', 'emscripten_get_now',
-#if OFFSCREEN_FRAMEBUFFER
-    'emscripten_webgl_commit_frame',
-#endif
 #if !MINIMAL_RUNTIME
     '$maybeExit',
 #endif

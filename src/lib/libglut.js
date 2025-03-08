@@ -601,7 +601,7 @@ var LibraryGLUT = {
   },
 
   glutFullScreen__proxy: 'sync',
-  glutFullScreen__deps: ['$GLUT', 'glutPostRedisplay'],
+  glutFullScreen__deps: ['$GLUT'],
   glutFullScreen: () => {
     GLUT.windowX = 0; // TODO
     GLUT.windowY = 0; // TODO
