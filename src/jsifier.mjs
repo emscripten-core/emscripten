@@ -348,9 +348,9 @@ export async function runJSify(outputFile, symbolsOnly) {
         }
         return `\
 function(${args}) {
-  if (runtimeDebug) err("[library call:${mangled}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
+  dbg("[library call:${mangled}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
   ${run_func}
-  if (runtimeDebug) err("  [     return:" + prettyPrint(ret));
+  dbg("  [     return:" + prettyPrint(ret));
   return ret;
 }`;
       });

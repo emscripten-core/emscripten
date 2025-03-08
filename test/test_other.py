@@ -13154,6 +13154,11 @@ exec "$@"
     self.set_setting('SYSCALL_DEBUG')
     self.do_runf('hello_world.c', 'syscall! fd_write: [1,')
 
+    # Check that we can disable debug output by setting runtimeDebug to false
+    create_file('post.js', 'runtimeDebug = false;')
+    output = self.do_runf('hello_world.c', emcc_args=['--post-js=post.js'])
+    self.assertNotContained('fd_write', output)
+
   def test_LIBRARY_DEBUG(self):
     self.set_setting('LIBRARY_DEBUG')
     self.do_runf('hello_world.c', '[library call:_fd_write: 0x00000001 (1)')
