@@ -24,3 +24,7 @@ message(STATUS " test: OpenGL::GL IMPORTED_LIBNAME: ${TEST_OPENGL_GL_LIBNAME}")
 
 get_target_property(TEST_OPENGL_GL_INCLUDES OpenGL::GL INTERFACE_INCLUDE_DIRECTORIES)
 message(STATUS " test: OpenGL::GL INTERFACE_INCLUDE_DIRECTORIES: ${TEST_OPENGL_GL_INCLUDES}")
+
+find_package(SDL3 REQUIRED)
+add_executable(test_prog_sdl3 test_sdl3.c)
+target_link_libraries(test_prog_sdl3 SDL3::SDL3)

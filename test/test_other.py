@@ -1081,6 +1081,8 @@ f.close()
     output = self.run_js('test_prog.js')
     self.assertContained('AL_VERSION: 1.1', output)
     self.assertContained('SDL version: 2.', output)
+    output = self.run_js('test_prog_sdl3.js')
+    self.assertContained('SDL version: 3.', output)
 
   def test_cmake_threads(self):
     self.run_process([EMCMAKE, 'cmake', test_file('cmake/threads')])
