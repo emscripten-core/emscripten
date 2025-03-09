@@ -765,24 +765,53 @@ are available.
 Overloaded functions
 ====================
 
-Constructors and functions can be overloaded on the number of arguments,
-but *embind* does not support overloading based on type. When specifying
-an overload, use the :cpp:func:`select_overload` helper function to select
-the appropriate signature.
+Constructors and functions can be overloaded on both the number and
+javascript types of arguments, but *embind* does not support overloading
+based on the C++ type. When specifying an overload, use the
+:cpp:func:`select_overload` helper function to select the appropriate signature.
 
 .. code:: cpp
 
-    struct HasOverloadedMethods {
+    class A {};
+    class B : public A {};
+    class C {};
+
+    class HasOverloadedMethods {
+    public:
+        HasOverloadedMethods(std::string i); // javascript type of parameter: string
+        HasOverloadedMethods(int i); // javascript type of parameter: number
+
         void foo();
-        void foo(int i);
-        void foo(float f) const;
+        void foo(std::string i); // javascript type of parameter: string
+        void foo(short i); // javascript type of parameter: number
+        void foo(A i); // javascript type of parameter: A
+        void foo(std::shared_ptr<C> i); // javascript type of parameter: C
+        void foo(int i, int j); // javascript types of parameters: number, number
+        void foo(double i); // javascript type of parameter: number
+        void foo(float f) const; // javascript type of parameter: number
+        void foo(B i); // javascript type of parameter: B (derived from A)
+
+        static void staticFoo(std::string i); // javascript type of parameter: string
+        static void staticFoo(int i); // javascript type of parameter: number
     };
 
     EMSCRIPTEN_BINDING(overloads) {
         class_<HasOverloadedMethods>("HasOverloadedMethods")
+            .constructor<std::string>()
+            .constructor<int>()
+            // .smart_ptr_constructor("HasOverloadedMethods", &std::make_shared<HasOverloadedMethods, std::string>)
+            // .smart_ptr_constructor("HasOverloadedMethods", &std::make_shared<HasOverloadedMethods, int>)
             .function("foo", select_overload<void()>(&HasOverloadedMethods::foo))
-            .function("foo_int", select_overload<void(int)>(&HasOverloadedMethods::foo))
+            .function("foo", select_overload<void(std::string)>(&HasOverloadedMethods::foo))
+            .function("foo", select_overload<void(short)>(&HasOverloadedMethods::foo))
+            .function("foo", select_overload<void(A)>(&HasOverloadedMethods::foo))
+            .function("foo", select_overload<void(std::shared_ptr<C>)>(&HasOverloadedMethods::foo))
+            .function("foo", select_overload<void(int, int)>(&HasOverloadedMethods::foo))
+            .function("foo_double", select_overload<void(double)>(&HasOverloadedMethods::foo))
             .function("foo_float", select_overload<void(float)const>(&HasOverloadedMethods::foo))
+            .function("foo_B", select_overload<void(B)>(&HasOverloadedMethods::foo))
+            .class_function("staticFoo", select_overload<void(std::string)>(&HasOverloadedMethods::staticFoo))
+            .class_function("staticFoo", select_overload<void(int)>(&HasOverloadedMethods::staticFoo))
             ;
     }
 
