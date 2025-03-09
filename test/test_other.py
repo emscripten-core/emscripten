@@ -2406,7 +2406,6 @@ Module['postRun'] = () => {
     self.assertEqual(get_runtime_paths('libside1.so'), ['$ORIGIN'])
     self.assertEqual(get_runtime_paths('a.out.wasm'), ['$ORIGIN'])
 
-
   def test_dylink_LEGACY_GL_EMULATION(self):
     # LEGACY_GL_EMULATION wraps JS library functions. This test ensure that when it does
     # so it preserves the `.sig` attributes needed by dynamic linking.
@@ -7731,7 +7730,6 @@ int main() {
     self.assertContained('Hello1_2', out)
     self.assertContained('Ok', out)
 
-
   @parameterized({
     '': ([],),
     'pthread': (['-g', '-pthread', '-Wno-experimental', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
@@ -7804,7 +7802,6 @@ int main() {
     self.assertContained('Hello1', out)
     self.assertContained('Hello1_2', out)
     self.assertContained('Ok', out)
-
 
   def test_dlopen_bad_flags(self):
     create_file('main.c', r'''
