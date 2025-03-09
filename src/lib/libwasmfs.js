@@ -512,7 +512,7 @@ addToLibrary({
     return FS_mknod(path, mode, 0);
   },
 
-  $FS_writeFile__deps: ['_wasmfs_write_file', '$stackSave', '$stackRestore'],
+  $FS_writeFile__deps: ['_wasmfs_write_file', '$stackSave', '$stackRestore', 'malloc', 'free'],
   $FS_writeFile: (path, data) => {
     var sp = stackSave();
     var pathBuffer = stringToUTF8OnStack(path);

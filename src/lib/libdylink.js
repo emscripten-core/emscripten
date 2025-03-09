@@ -53,6 +53,11 @@ var LibraryDylink = {
   $locateLibraryFromFS: (filename, searchDirs) => {
     // Find the library in the filesystem
     // returns [true, abspath] if found, [false, null] otherwise.
+    if (!(typeof FS.findObject === 'function')) {
+      // FS may not have the findObject method if the filesystem is not
+      // used in the build. Skip the search in this case.
+      return [false, null];
+    }
     var candidates = [];
     if (PATH.isAbs(filename)) {
       candidates.push(filename);
