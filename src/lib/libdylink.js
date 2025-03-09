@@ -48,40 +48,6 @@ var LibraryDylink = {
     registerWasmPlugin();
     `,
   $preloadedWasm: {},
-
-  // Read file from the filesystem.
-  // This is used to load shared libraries from the filesystem.
-  $readFileFromFS__deps: ['$FS', '$PATH'],
-  $readFileFromFS: (filename, searchDirs) => {
-    var candidates = [];
-    if (PATH.isAbs(filename)) {
-      candidates.push(filename);
-    } else if (searchDirs) {
-      for (var i = 0; i < searchDirs.length; i++) {
-        candidates.push(PATH.join(searchDirs[i], filename));
-      }
-    } else {
-      return null;
-    }
-
-    for (var i = 0; i < candidates.length; i++) {
-      var path = candidates[i];
-      if (FS.findObject(path)) {
-        return FS.readFile(path, {encoding: 'binary'});
-      }
-    }
-
-    return null;
-  },
-
-  $getDefaultLibDirs__deps: ['$ENV'],
-  $getDefaultLibDirs: () => {
-    var ldLibraryPath = ENV.get('LD_LIBRARY_PATH');
-    if (ldLibraryPath) {
-      return ldLibraryPath.split(':');
-    }
-    return [];
-  },
 #endif // FILESYSTEM
 
   $isSymbolDefined: (symName) => {
@@ -923,12 +889,12 @@ var LibraryDylink = {
     if (flags.loadAsync) {
       return metadata.neededDynlibs
         .reduce((chain, dynNeeded) => chain.then(() =>
-          loadDynamicLibrary(dynNeeded, flags, localScope, metadata.runtimePaths)
+          loadDynamicLibrary(dynNeeded, flags, localScope)
         ), Promise.resolve())
         .then(loadModule);
     }
 
-    metadata.neededDynlibs.forEach((needed) => loadDynamicLibrary(needed, flags, localScope, metadata.runtimePaths));
+    metadata.neededDynlibs.forEach((needed) => loadDynamicLibrary(needed, flags, localScope));
     return loadModule();
   },
 
@@ -983,8 +949,6 @@ var LibraryDylink = {
                               '$asyncLoad',
 #if FILESYSTEM
                               '$preloadedWasm',
-                              '$readFileFromFS',
-                              '$getDefaultLibDirs',
 #endif
 #if DYNCALLS || !WASM_BIGINT
                               '$registerDynCallSymbols',
@@ -995,7 +959,7 @@ var LibraryDylink = {
      * @param {number=} handle
      * @param {Object=} localScope
      */`,
-  $loadDynamicLibrary: function(libName, flags = {global: true, nodelete: true}, localScope, runtimePaths, handle) {
+  $loadDynamicLibrary: function(libName, flags = {global: true, nodelete: true}, localScope, handle) {
 #if DYLINK_DEBUG
     dbg(`loadDynamicLibrary: ${libName} handle: ${handle}`);
     dbg(`existing: ${Object.keys(LDSO.loadedLibsByName)}`);
@@ -1059,14 +1023,6 @@ var LibraryDylink = {
           return flags.loadAsync ? Promise.resolve(libData) : libData;
         }
       }
-
-#if FILESYSTEM
-      var searchDirs = getDefaultLibDirs() + (runtimePaths || []);
-      var libData = readFileFromFS(libName, searchDirs);
-      if (libData) {
-        return flags.loadAsync ? Promise.resolve(libData) : libFile;
-      }
-#endif
 
       var libFile = locateFile(libName);
       if (flags.loadAsync) {
@@ -1186,11 +1142,11 @@ var LibraryDylink = {
     }
 
     if (jsflags.loadAsync) {
-      return loadDynamicLibrary(filename, combinedFlags, localScope, [], handle);
+      return loadDynamicLibrary(filename, combinedFlags, localScope, handle);
     }
 
     try {
-      return loadDynamicLibrary(filename, combinedFlags, localScope, [], handle)
+      return loadDynamicLibrary(filename, combinedFlags, localScope, handle)
     } catch (e) {
 #if ASSERTIONS
       err(`Error in loading dynamic library ${filename}: ${e}`);
