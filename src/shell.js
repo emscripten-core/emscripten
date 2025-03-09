@@ -103,13 +103,13 @@ if (ENVIRONMENT_IS_NODE) {
 #if EXPORT_ES6
   // When building an ES module `require` is not normally available.
   // We need to use `createRequire()` to construct the require()` function.
-  const { createRequire } = await import('module');
+  const { createRequire } = await import('node:module');
   /** @suppress{duplicate} */
   var require = createRequire(import.meta.url);
 #endif
 
 #if PTHREADS || WASM_WORKERS
-  var worker_threads = require('worker_threads');
+  var worker_threads = require('node:worker_threads');
   global.Worker = worker_threads.Worker;
   ENVIRONMENT_IS_WORKER = !worker_threads.isMainThread;
 #if PTHREADS
@@ -196,8 +196,8 @@ if (ENVIRONMENT_IS_NODE) {
 
   // These modules will usually be used on Node.js. Load them eagerly to avoid
   // the complexity of lazy-loading.
-  var fs = require('fs');
-  var nodePath = require('path');
+  var fs = require('node:fs');
+  var nodePath = require('node:path');
 
 #if EXPORT_ES6
   // EXPORT_ES6 + ENVIRONMENT_IS_NODE always requires use of import.meta.url,
