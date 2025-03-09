@@ -48,6 +48,57 @@ var LibraryDylink = {
     registerWasmPlugin();
     `,
   $preloadedWasm: {},
+
+  $locateLibraryFromFS__deps: ['$FS', '$PATH'],
+  $locateLibraryFromFS: (filename, searchDirs) => {
+    // Find the library in the filesystem
+    // returns [true, abspath] if found, [false, null] otherwise.
+    var candidates = [];
+    if (PATH.isAbs(filename)) {
+      candidates.push(filename);
+    } else if (searchDirs) {
+      for (var i = 0; i < searchDirs.length; i++) {
+        candidates.push(PATH.join(searchDirs[i], filename));
+      }
+    } else {
+      return [false, null];
+    }
+
+    for (var i = 0; i < candidates.length; i++) {
+      var path = candidates[i];
+      if (FS.findObject(path)) {
+        return [true, path];
+      }
+    }
+
+    return [false, null];
+  },
+
+  $readLibraryFromFS__deps: ['$FS'],
+  $readLibraryFromFS: (path) => {
+    var data = FS.readFile(path, {encoding: 'binary'});
+    return data;
+  },
+
+  $getDefaultLibDirs__deps: ['$ENV'],
+  $getDefaultLibDirs: () => {
+    var ldLibraryPath = ENV['LD_LIBRARY_PATH'];
+    if (ldLibraryPath) {
+      return ldLibraryPath.split(':');
+    }
+    return [];
+  },
+
+  $replaceORIGIN__deps: ['$FS', '$PATH'],
+  $replaceORIGIN: (parentLibPath, rpath) => {
+    if (rpath.startsWith('$ORIGIN')) {
+      // TODO: what to do if we only know the relative path of the file? It will return "." here.
+      var origin = PATH.dirname(parentLibPath);
+      return rpath.replace('$ORIGIN', origin);
+    }
+
+    return rpath
+  },
 #endif // FILESYSTEM
 
   $isSymbolDefined: (symName) => {
@@ -889,12 +940,12 @@ var LibraryDylink = {
     if (flags.loadAsync) {
       return metadata.neededDynlibs
         .reduce((chain, dynNeeded) => chain.then(() =>
-          loadDynamicLibrary(dynNeeded, flags, localScope)
+          loadDynamicLibrary(dynNeeded, flags, localScope, { parentLibPath: libName, paths: metadata.runtimePaths })
         ), Promise.resolve())
         .then(loadModule);
     }
 
-    metadata.neededDynlibs.forEach((needed) => loadDynamicLibrary(needed, flags, localScope));
+    metadata.neededDynlibs.forEach((needed) => loadDynamicLibrary(needed, flags, localScope, { parentLibPath: libName, paths: metadata.runtimePaths }));
     return loadModule();
   },
 
@@ -949,6 +1000,10 @@ var LibraryDylink = {
                               '$asyncLoad',
 #if FILESYSTEM
                               '$preloadedWasm',
+                              '$locateLibraryFromFS',
+                              '$readLibraryFromFS',
+                              '$getDefaultLibDirs',
+                              '$replaceORIGIN',
 #endif
 #if DYNCALLS || !WASM_BIGINT
                               '$registerDynCallSymbols',
@@ -959,11 +1014,24 @@ var LibraryDylink = {
      * @param {number=} handle
      * @param {Object=} localScope
      */`,
-  $loadDynamicLibrary: function(libName, flags = {global: true, nodelete: true}, localScope, handle) {
+  $loadDynamicLibrary: function(libName, flags = {global: true, nodelete: true}, localScope, rpath = {parentLibPath: '', paths: []}, handle) {
 #if DYLINK_DEBUG
     dbg(`loadDynamicLibrary: ${libName} handle: ${handle}`);
     dbg(`existing: ${Object.keys(LDSO.loadedLibsByName)}`);
 #endif
+
+#if FILESYSTEM
+      var runtimePathsAbs = (rpath.paths || []).map((p) => replaceORIGIN(rpath.parentLibPath, p));
+      var searchDirs = getDefaultLibDirs().concat(runtimePathsAbs);
+      var [existsInFS, libNameAbs] = locateLibraryFromFS(libName, searchDirs);
+      if (existsInFS) {
+        libName = libNameAbs;
+#if DYLINK_DEBUG
+        dbg(`found library from filesystem: ${libName}`);
+#endif
+      }
+#endif
+
     // when loadDynamicLibrary did not have flags, libraries were loaded
     // globally & permanently
 
@@ -1023,6 +1091,18 @@ var LibraryDylink = {
           return flags.loadAsync ? Promise.resolve(libData) : libData;
         }
       }
+
+#if FILESYSTEM
+      if (existsInFS) {
+        var libData = readLibraryFromFS(libName);
+        if (libData) {
+#if DYLINK_DEBUG
+          dbg(`loaded library from filesystem: ${libName}`);
+#endif
+          return flags.loadAsync ? Promise.resolve(libData) : libData;
+        }
+      }
+#endif
 
       var libFile = locateFile(libName);
       if (flags.loadAsync) {
@@ -1142,11 +1222,11 @@ var LibraryDylink = {
     }
 
     if (jsflags.loadAsync) {
-      return loadDynamicLibrary(filename, combinedFlags, localScope, handle);
+      return loadDynamicLibrary(filename, combinedFlags, localScope, {}, handle);
     }
 
     try {
-      return loadDynamicLibrary(filename, combinedFlags, localScope, handle)
+      return loadDynamicLibrary(filename, combinedFlags, localScope, {}, handle)
     } catch (e) {
 #if ASSERTIONS
       err(`Error in loading dynamic library ${filename}: ${e}`);
