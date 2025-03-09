@@ -1026,10 +1026,10 @@ var LibraryDylink = {
       var [existsInFS, libNameAbs] = locateLibraryFromFS(libName, searchDirs);
       if (existsInFS) {
         libName = libNameAbs;
-#if DYLINK_DEBUG
-        dbg(`found library from filesystem: ${libName}`);
-#endif
       }
+#if DYLINK_DEBUG
+      dbg(`checking filesystem: ${libName}: ${existsInFS ? 'found' : 'not found'}`);
+#endif
 #endif
 
     // when loadDynamicLibrary did not have flags, libraries were loaded
