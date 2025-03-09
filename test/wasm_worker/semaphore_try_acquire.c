@@ -30,7 +30,5 @@ int main() {
   idx = emscripten_semaphore_try_acquire(&available, 9);
   assert(idx == 1);
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  return 0;
 }

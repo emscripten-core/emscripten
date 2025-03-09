@@ -21,6 +21,12 @@ void worker1_main() {
   emscripten_out("worker1 released lock");
 }
 
+void do_exit() {
+  emscripten_out("do_exit");
+  emscripten_terminate_all_wasm_workers();
+  emscripten_force_exit(0);
+}
+
 void worker2_main() {
   emscripten_out("worker2 main sleeping 500 msecs");
   emscripten_wasm_worker_sleep(500 * 1000000ull);
@@ -34,9 +40,7 @@ void worker2_main() {
   emscripten_out("worker2 wait_acquired lock");
   assert(success);
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  emscripten_wasm_worker_post_function_v(EMSCRIPTEN_WASM_WORKER_ID_PARENT, do_exit);
 }
 
 char stack1[1024];
@@ -47,4 +51,5 @@ int main() {
   emscripten_wasm_worker_t worker2 = emscripten_create_wasm_worker(stack2, sizeof(stack2));
   emscripten_wasm_worker_post_function_v(worker1, worker1_main);
   emscripten_wasm_worker_post_function_v(worker2, worker2_main);
+  emscripten_exit_with_live_runtime();
 }

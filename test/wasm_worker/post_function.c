@@ -1,4 +1,5 @@
 #include <emscripten/console.h>
+#include <emscripten/emscripten.h>
 #include <emscripten/wasm_worker.h>
 #include <assert.h>
 
@@ -70,10 +71,15 @@ void viiiiiidddddd(int a, int b, int c, int d, int e, int f, double g, double h,
   ++success;
 }
 
+void do_exit() {
+  assert(success == 8);
+  emscripten_out("do_exit");
+  emscripten_terminate_all_wasm_workers();
+  emscripten_force_exit(0);
+}
+
 void test_finished() {
-#ifdef REPORT_RESULT
-  REPORT_RESULT(success);
-#endif
+  emscripten_wasm_worker_post_function_v(EMSCRIPTEN_WASM_WORKER_ID_PARENT, do_exit);
 }
 
 char stack[1024];
@@ -90,4 +96,5 @@ int main() {
   emscripten_wasm_worker_post_function_vddd(worker, vddd, 4.5, 5.5, 6.5);
   emscripten_wasm_worker_post_function_sig(worker, viiiiiidddddd, "iiiiiidddddd", 10, 11, 12, 13, 14, 15, 16.5, 17.5, 18.5, 19.5, 20.5, 21.5);
   emscripten_wasm_worker_post_function_v(worker, test_finished);
+  emscripten_exit_with_live_runtime();
 }

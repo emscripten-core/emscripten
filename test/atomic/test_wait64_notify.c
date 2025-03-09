@@ -47,11 +47,16 @@ void run_test() {
 
 char stack[1024];
 
+void do_exit() {
+  emscripten_out("do_exit");
+  emscripten_terminate_all_wasm_workers();
+  emscripten_force_exit(0);
+}
+
 void worker_main() {
   run_test();
-#ifdef REPORT_RESULT
-  REPORT_RESULT(addr >> 32);
-#endif
+  assert(addr == 0x300000000ull);
+  emscripten_wasm_worker_post_function_v(EMSCRIPTEN_WASM_WORKER_ID_PARENT, do_exit);
 }
 
 #else
@@ -91,6 +96,7 @@ int main() {
 #ifdef __EMSCRIPTEN_WASM_WORKERS__
   emscripten_wasm_worker_t worker = emscripten_create_wasm_worker(stack, sizeof(stack));
   emscripten_wasm_worker_post_function_v(worker, worker_main);
+  emscripten_runtime_keepalive_push();
 #else
   pthread_create(&t, NULL, thread_main, NULL);
 #endif
