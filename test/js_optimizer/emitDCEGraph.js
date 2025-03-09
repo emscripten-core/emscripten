@@ -61,6 +61,10 @@ var expI4 = Module['expI4'] = () => (expI4 = Module['expI4'] = wasmExports['expI
 // Same as above but not export on the Module.
 var expI5 = () => (expI5 = wasmExports['expI5'])();
 
+// Modularize instance style exports.
+var expESM1 = __exp_expESM1 = wasmExports['expESM1'];
+var expESM2 = __exp_expESM2 = wasmExports['expESM2'];
+
 function applySignatureConversions() {
   // Wrapping functions should not constitute a usage
   wasmExports['expI5'] = foo(wasmExports['expI5']);
@@ -74,6 +78,8 @@ wasmExports['expD3'];
 expI1;
 Module['expI2'];
 wasmExports['expI3'];
+
+expESM2;
 
 // deep uses, that we can't scan
 function usedFromDeep() {
