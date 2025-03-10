@@ -1085,4 +1085,4 @@ function getCompilerSetting(name) {
 var asyncifyStubs = {};
 #endif
 
-// === Body ===
+<<< EM_JS_CODE >>>
