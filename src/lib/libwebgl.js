@@ -3130,7 +3130,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #if GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING
   glShaderSource__deps: ['$preprocess_c_code', '$remove_cpp_comments_in_shaders',
 #if GL_EXPLICIT_UNIFORM_BINDING
-    '$find_closing_parens_index' '$jstoi_q',
+    '$find_closing_parens_index', '$jstoi_q',
 #endif
   ],
 #endif
