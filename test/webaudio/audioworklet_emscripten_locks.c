@@ -14,7 +14,7 @@
 // - emscripten_get_now()
 
 // Internal, found in 'system/lib/pthread/threading_internal.h' (and requires building with -pthread)
-extern "C" int _emscripten_thread_supports_atomics_wait(void);
+int _emscripten_thread_supports_atomics_wait(void);
 
 typedef enum {
   // No wait support in audio worklets

@@ -1926,7 +1926,7 @@ int main(int argc, char **argv) {
 
   @needs_dylink
   def test_em_asm_side_module(self):
-    self.build(test_file('core/test_em_asm_side.c'), output_suffix='.wasm', emcc_args=['-sSIDE_MODULE'], output_basename='side')
+    self.build('core/test_em_asm_side.c', output_suffix='.wasm', emcc_args=['-sSIDE_MODULE'], output_basename='side')
     self.do_core_test('test_em_asm_main.c', emcc_args=['-sMAIN_MODULE=2', 'side.wasm'])
 
   @parameterized({
@@ -4041,7 +4041,7 @@ ok
     so_name = 'liblib.so'
     os.mkdir(so_dir)
     create_file('pre.js', '''
-    Module['locateFile'] = function(f) {
+    Module['locateFile'] = (f) => {
       if (f === '%s') {
         return '%s/' + f;
       } else {
@@ -4516,9 +4516,7 @@ res64 - external 64\n''', header='''\
   def test_dylink_jslib(self):
     create_file('lib.js', r'''
       addToLibrary({
-        test_lib_func: function(x) {
-          return x + 17.2;
-        }
+        test_lib_func: (x) => x + 17.2
       });
     ''')
     self.dylink_test(header=r'''
@@ -5758,6 +5756,7 @@ got: 10
       self.set_setting("FORCE_FILESYSTEM")
     self.do_run_in_out_file_test('fs/test_writeFile.cpp')
 
+  @also_with_wasmfs
   def test_fs_js_api(self):
     self.set_setting("FORCE_FILESYSTEM")
     self.do_runf('fs/test_fs_js_api.c', 'success')
@@ -5985,15 +5984,18 @@ Module.onRuntimeInitialized = () => {
     self.do_runf(filename, str(expected) + ', errno: 0')
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
+  @crossplatform
   @with_all_fs
   def test_unistd_unlink(self):
     # symlinks on node.js on non-linux behave differently (e.g. on Windows they require administrative privileges)
     # so skip testing those bits on that combination.
+    if MACOS and any(arg in self.emcc_args for arg in ('-DNODEFS', '-DNODERAWFS')):
+      self.skipTest('only tested on linux')
     if '-DNODEFS' in self.emcc_args:
       if WINDOWS:
         self.emcc_args += ['-DNO_SYMLINK=1']
-      if MACOS:
-        self.skipTest('only tested on linux')
+      if self.get_setting('WASMFS'):
+        self.skipTest('https://github.com/emscripten-core/emscripten/issues/18112')
 
     # Several differences/bugs on non-linux including https://github.com/nodejs/node/issues/18014
     # TODO: NODERAWFS in WasmFS
@@ -6243,7 +6245,7 @@ int main(void) {
 
   def test_fannkuch(self):
     results = [(1, 0), (2, 1), (3, 2), (4, 4), (5, 7), (6, 10), (7, 16), (8, 22)]
-    self.build(test_file('third_party/fannkuch.c'))
+    self.build('third_party/fannkuch.c')
     for i, j in results:
       print(i, j)
       self.do_run('fannkuch.js', 'Pfannkuchen(%d) = %d.' % (i, j), args=[str(i)], no_build=True)
@@ -6722,6 +6724,7 @@ void* operator new(size_t size) {
   @needs_make('depends on freetype')
   @no_4gb('runs out of memory')
   @is_slow_test
+  @crossplatform
   def test_poppler(self):
     # See https://github.com/emscripten-core/emscripten/issues/20757
     self.emcc_args.extend(['-Wno-deprecated-declarations', '-Wno-nontrivial-memaccess'])
@@ -8581,7 +8584,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # verify that an exception thrown in postRun() will not trigger the
     # compilation failed handler, and will be printed to stderr.
     self.add_post_run('ThisFunctionDoesNotExist()')
-    self.build(test_file('core/test_hello_world.c'))
+    self.build('core/test_hello_world.c')
     output = self.run_js('test_hello_world.js', assert_returncode=NON_ZERO)
     self.assertStartswith(output, 'hello, world!')
     self.assertContained('ThisFunctionDoesNotExist is not defined', output)
@@ -8752,15 +8755,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
         ".cpp:5:14: runtime error: reference binding to null pointer of type 'int'",
       ])
 
-  @parameterized({
-    'fsanitize_undefined': (['-fsanitize=undefined'],),
-    'fsanitize_vptr': (['-fsanitize=vptr'],),
-  })
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  def test_ubsan_full_static_cast(self, args):
-    self.emcc_args += args
+  def test_sanitize_vptr(self):
     self.do_runf(
-      'core/test_ubsan_full_static_cast.cpp',
+      'core/test_sanitize_vptr.cpp',
+      emcc_args=['-fsanitize=vptr'],
       assert_all=True,
       expected_output=[
         ".cpp:18:10: runtime error: downcast of address",

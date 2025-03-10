@@ -446,30 +446,26 @@ def also_with_nodefs_both(func):
 
 def with_all_fs(func):
   @wraps(func)
-  def metafunc(self, fs, *args, **kwargs):
+  def metafunc(self, wasmfs, fs, *args, **kwargs):
     if DEBUG:
       print('parameterize:fs=%s' % (fs))
+    if wasmfs:
+      self.setup_wasmfs_test()
     if fs == 'nodefs':
       self.setup_nodefs_test()
     elif fs == 'rawfs':
-      self.setup_noderawfs_test()
-    elif fs == 'wasmfs':
-      self.setup_wasmfs_test()
-    elif fs == 'wasmfs_rawfs':
-      self.setup_wasmfs_test()
       self.setup_noderawfs_test()
     else:
       self.emcc_args += ['-DMEMFS']
       assert fs is None
     func(self, *args, **kwargs)
 
-  # TODO(sbc): rather than treat WASMFS as orthogonal we should
-  # probably make it combinatorial with nodefs and noderawfs.
-  parameterize(metafunc, {'': (None,),
-                          'nodefs': ('nodefs',),
-                          'rawfs': ('rawfs',),
-                          'wasmfs': ('wasmfs',),
-                          'wasmfs_rawfs': ('wasmfs_rawfs',)})
+  parameterize(metafunc, {'': (False, None,),
+                          'nodefs': (False, 'nodefs',),
+                          'rawfs': (False, 'rawfs',),
+                          'wasmfs': (True, None,),
+                          'wasmfs_nodefs': (True, 'nodefs',),
+                          'wasmfs_rawfs': (True, 'rawfs',)})
   return metafunc
 
 
@@ -2040,7 +2036,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         os.path.join('third_party', 'poppler'),
         [os.path.join('utils', 'pdftoppm.o'), os.path.join('utils', 'parseargs.o'), os.path.join('poppler', '.libs', 'libpoppler.a')],
         env_init=env_init,
-        configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--disable-shared'])
+        configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--disable-shared', '--host=wasm32-emscripten'])
 
     return poppler + freetype
 

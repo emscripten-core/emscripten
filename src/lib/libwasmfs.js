@@ -126,25 +126,23 @@ addToLibrary({
     readFile(path, opts = {}) {
       opts.encoding = opts.encoding || 'binary';
       if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
-        throw new Error('Invalid encoding type "' + opts.encoding + '"');
+        throw new Error(`Invalid encoding type "${opts.encoding}"`);
       }
 
+      var buf, length;
       // Copy the file into a JS buffer on the heap.
-      var sp = stackSave();
-      var buf = __wasmfs_read_file(stringToUTF8OnStack(path));
-      stackRestore(sp);
-
-      // The signed integer length resides in the first 8 bytes of the buffer.
-      var length = {{{ makeGetValue('buf', '0', 'i53') }}};
+      withStackSave(() => {
+        var bufPtr = stackAlloc({{{ POINTER_SIZE }}});
+        var sizePtr = stackAlloc({{{ POINTER_SIZE }}});
+        FS.handleError(-__wasmfs_read_file(stringToUTF8OnStack(path), bufPtr, sizePtr));
+        buf = {{{ makeGetValue('bufPtr', '0', '*') }}};
+        length = {{{ makeGetValue('sizePtr', '0', 'i53') }}};
+      });
 
       // Default return type is binary.
       // The buffer contents exist 8 bytes after the returned pointer.
-      var ret = new Uint8Array(HEAPU8.subarray(buf + 8, buf + 8 + length));
-      if (opts.encoding === 'utf8') {
-        ret = UTF8ArrayToString(ret);
-      }
-
-      return ret;
+      var ret = new Uint8Array(HEAPU8.subarray(buf, buf + length));
+      return opts.encoding === 'utf8' ? UTF8ArrayToString(ret) : ret;
     },
 #endif
 
@@ -225,9 +223,6 @@ addToLibrary({
       _free(dataBuffer);
 
       return bytesRead;
-    },
-    allocate(stream, offset, length) {
-      return FS.handleError(__wasmfs_allocate(stream.fd, {{{ splitI64('offset') }}}, {{{ splitI64('length') }}}));
     },
     writeFile: (path, data) => FS_writeFile(path, data),
     mmap: (stream, length, offset, prot, flags) => {
@@ -351,7 +346,7 @@ addToLibrary({
       return FS.handleError(withStackSave(() => __wasmfs_mount(stringToUTF8OnStack(mountpoint), backendPointer)));
     },
     unmount: (mountpoint) => (
-      FS.handleError(withStackSave(() => __wasmfs_unmount(stringToUTF8OnStack(mountpoint))))
+      FS.handleError(withStackSave(() => _wasmfs_unmount(stringToUTF8OnStack(mountpoint))))
     ),
     // TODO: lookup
     mknod: (path, mode, dev) => FS_mknod(path, mode, dev),
