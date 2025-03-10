@@ -12,7 +12,6 @@
 
 var LibraryDylink = {
 #if FILESYSTEM
-  // FILESYSTEM comes with FS and PATH modules
   $registerWasmPlugin__deps: ['$preloadPlugins'],
   $registerWasmPlugin: () => {
     // Use string keys here to avoid minification since the plugin consumer
@@ -53,6 +52,12 @@ var LibraryDylink = {
   $locateLibraryFromFS: (filename, searchDirs) => {
     // Find the library in the filesystem.
     // returns null if not found.
+    if (!(typeof PATH === 'object' && typeof FS === 'object')) {
+      // FILESYSTEM comes with FS and PATH modules
+      // so this will always pass, but closure compiler complains if we don't check this here.
+      return null
+    }
+
     var candidates = [];
     if (PATH.isAbs(filename)) {
       candidates.push(filename);
