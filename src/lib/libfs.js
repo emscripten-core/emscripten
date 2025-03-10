@@ -1299,24 +1299,6 @@ FS.staticInit();
 #endif
       return bytesWritten;
     },
-    allocate(stream, offset, length) {
-      if (FS.isClosed(stream)) {
-        throw new FS.ErrnoError({{{ cDefs.EBADF }}});
-      }
-      if (offset < 0 || length <= 0) {
-        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
-      }
-      if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_RDONLY}}}) {
-        throw new FS.ErrnoError({{{ cDefs.EBADF }}});
-      }
-      if (!FS.isFile(stream.node.mode) && !FS.isDir(stream.node.mode)) {
-        throw new FS.ErrnoError({{{ cDefs.ENODEV }}});
-      }
-      if (!stream.stream_ops.allocate) {
-        throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
-      }
-      stream.stream_ops.allocate(stream, offset, length);
-    },
     mmap(stream, length, position, prot, flags) {
       // User requests writing to file (prot & PROT_WRITE != 0).
       // Checking if we have permissions to write to the file unless

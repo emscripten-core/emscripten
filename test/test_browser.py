@@ -2896,7 +2896,7 @@ Module["preRun"] = () => {
       <body>
         <script>
           var Module = {
-            locateFile: function(x) { return "sub/" + x }
+            locateFile: (x) => "sub/" + x,
           };
         </script>
 
@@ -4235,7 +4235,8 @@ Module["preRun"] = () => {
   def test_wasm_locate_file(self):
     # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
     ensure_dir('cdn')
-    create_file('shell2.html', read_file(path_from_root('src/shell.html')).replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.wasm") return "cdn/test.wasm"; else return filename; }, '))
+    shell = read_file(path_from_root('src/shell.html'))
+    create_file('shell2.html', shell.replace('var Module = {', 'var Module = { locateFile: (filename) => (filename == "test.wasm") ? "cdn/test.wasm" : filename, '))
     self.compile_btest('browser_test_hello_world.c', ['--shell-file', 'shell2.html', '-o', 'test.html'])
     shutil.move('test.wasm', Path('cdn/test.wasm'))
     self.run_browser('test.html', '/report_result?0')

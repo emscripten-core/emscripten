@@ -1,9 +1,11 @@
 posix_fadvise: 0
-errno: 0
 
 posix_fallocate: 0
 errno: 0
 
-posix_fallocate2: 0
-errno: 0
+posix_fallocate 2: 0
 st_size: 10
+
+posix_fallocate 3: Invalid argument
+
+posix_fallocate 4: Invalid argument

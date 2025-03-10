@@ -1271,7 +1271,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
         '_wasmfs_read_file',
         '_wasmfs_write_file',
         '_wasmfs_open',
-        '_wasmfs_allocate',
         '_wasmfs_close',
         '_wasmfs_write',
         '_wasmfs_pwrite',

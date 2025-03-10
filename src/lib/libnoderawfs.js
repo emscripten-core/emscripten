@@ -214,9 +214,6 @@ addToLibrary({
       if (!seeking) stream.position += bytesWritten;
       return bytesWritten;
     },
-    allocate() {
-      throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
-    },
     mmap(stream, length, position, prot, flags) {
       if (!length) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
