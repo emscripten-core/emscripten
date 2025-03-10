@@ -238,8 +238,8 @@ int _wasmfs_ftruncate(int fd, off_t length) {
 
 int _wasmfs_close(int fd) { return __wasi_fd_close(fd); }
 
-int _wasmfs_mmap(size_t length, int prot, int flags, int fd, off_t offset) {
-  return __syscall_mmap2(0, length, prot, flags, fd, offset);
+void* _wasmfs_mmap(size_t length, int prot, int flags, int fd, off_t offset) {
+  return (void*)__syscall_mmap2(0, length, prot, flags, fd, offset);
 }
 
 int _wasmfs_msync(void* addr, size_t length, int flags) {
