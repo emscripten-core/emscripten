@@ -1270,7 +1270,7 @@ var LibrarySDL = {
     joystickNamePool: {},
     recordJoystickState(joystick, state) {
       // Standardize button state.
-      var buttons = []
+      var buttons = [];
       for (var button of state.buttons) {
         buttons.push(SDL.getJoystickButtonState(button));
       }
