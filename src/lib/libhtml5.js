@@ -1180,7 +1180,7 @@ var LibraryHTML5 = {
     return restoreOldStyle;
   },
 
-  $registerRestoreOldStyle__deps: ['$getCanvasElementSize', '$setCanvasElementSize'],
+  $registerRestoreOldStyle__deps: ['$getCanvasElementSize', '$setCanvasElementSize', '$currentFullscreenStrategy'],
   $registerRestoreOldStyle: (canvas) => {
     var canvasSize = getCanvasElementSize(canvas);
     var oldWidth = canvasSize[0];
@@ -1508,7 +1508,13 @@ var LibraryHTML5 = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  emscripten_exit_fullscreen__deps: ['$JSEvents', '$JSEvents_requestFullscreen', '$specialHTMLTargets'],
+  emscripten_exit_fullscreen__deps: [
+    '$JSEvents',
+    '$specialHTMLTargets',
+#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
+    '$JSEvents_requestFullscreen',
+#endif
+  ],
   emscripten_exit_fullscreen__proxy: 'sync',
   emscripten_exit_fullscreen: () => {
     if (!JSEvents.fullscreenEnabled()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
@@ -1691,7 +1697,11 @@ var LibraryHTML5 = {
   },
 
   emscripten_request_pointerlock__proxy: 'sync',
-  emscripten_request_pointerlock__deps: ['$JSEvents', '$requestPointerLock', '$findEventTarget'],
+  emscripten_request_pointerlock__deps: ['$requestPointerLock', '$findEventTarget',
+#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
+    '$JSEvents',
+#endif
+  ],
   emscripten_request_pointerlock: (target, deferUntilInEventHandler) => {
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     target ||= '#canvas';
@@ -1721,8 +1731,10 @@ var LibraryHTML5 = {
     return requestPointerLock(target);
   },
 
-  emscripten_exit_pointerlock__proxy: 'sync',
+#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
   emscripten_exit_pointerlock__deps: ['$JSEvents', '$requestPointerLock'],
+#endif
+  emscripten_exit_pointerlock__proxy: 'sync',
   emscripten_exit_pointerlock: () => {
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
     // Make sure no queued up calls will fire after this.
