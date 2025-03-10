@@ -290,8 +290,6 @@ var LibraryPThread = {
           }
 #endif
           onFinishedLoading(worker);
-        } else if (cmd === 'alert') {
-          alert(`Thread ${d.threadId}: ${d.text}`);
         } else if (d.target === 'setimmediate') {
           // Worker wants to postMessage() to itself to implement setImmediate()
           // emulation.

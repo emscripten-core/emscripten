@@ -64,11 +64,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
   if (!Module['printErr'])
 #endif
     err = threadPrintErr;
-  function threadAlert(...args) {
-    var text = args.join(' ');
-    postMessage({cmd: 'alert', text, threadId: _pthread_self()});
-  }
-  self.alert = threadAlert;
 
   // Turn unhandled rejected promises into errors so that the main thread will be
   // notified about them.
