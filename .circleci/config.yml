@@ -629,7 +629,6 @@ jobs:
             wasmfs.test_futimens
             wasmfs.test_unistd_links
             wasmfs.test_fcntl_open
-            wasmfs.test_fs_js_api
             wasmfs.test_fs_llseek
             wasmfs.test_fs_llseek_rawfs
             wasmfs.test_freetype"

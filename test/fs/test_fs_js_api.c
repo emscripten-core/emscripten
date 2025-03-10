@@ -38,6 +38,18 @@ EM_JS(void, test_fs_open, (), {
     assert(createFileNotHere && createFileNotHere.fd >= 0);
 });
 
+EM_JS(void, test_fs_readFile, (), {
+    // Reading existing files is already covered by other tests here, so
+    // just test the error conditions.
+    var ex;
+    try {
+      var output = FS.readFile("root/no-exist", {encoding : 'utf8'});
+    } catch (err) {
+      ex = err;
+    }
+    assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
+});
+
 // createPath should succeed when called on existing paths ( https://github.com/emscripten-core/emscripten/issues/23602 )
 EM_JS(void, test_fs_createPath, (), {
     FS.createPath('/', 'home', true, true);
@@ -46,8 +58,8 @@ EM_JS(void, test_fs_createPath, (), {
     FS.createPath('/home', 'nested2', true, true);
     FS.writeFile('/home/nested1/test.txt', 'a=1\nb=2\n');
     FS.writeFile('/home/nested2/test.txt', 'a=2\nb=4\n');
-    var read1 = FS.readFile('/home/nested1/test.txt',{encoding:'utf8'});
-    var read2 = FS.readFile('/home/nested2/test.txt',{encoding:'utf8'});
+    var read1 = FS.readFile('/home/nested1/test.txt', {encoding:'utf8'});
+    var read2 = FS.readFile('/home/nested2/test.txt', {encoding:'utf8'});
     console.log("r1",read1);
     console.log("r2",read2);
     assert(read1 == 'a=1\nb=2\n');
@@ -246,46 +258,6 @@ void test_fs_mknod() {
     remove("createtest");
 }
 
-void test_fs_allocate() {
-    EM_ASM(
-        FS.writeFile("allocatetestfile", 'a=1\nb=2\n');
-    );
-    struct stat s;
-    stat("allocatetestfile", &s);
-    assert(s.st_size == 8);
-
-    EM_ASM(
-        // Allocate more space at the very end.
-        var stream = FS.open("allocatetestfile", "w");
-        FS.allocate(stream, 8, 10);
-    );
-    stat("allocatetestfile", &s);
-    assert(s.st_size == 18);
-
-    EM_ASM(
-        // Reduce allocated space at the very start.
-        var stream = FS.open("allocatetestfile", "w");
-        FS.allocate(stream, 0, 4);
-    );
-    stat("allocatetestfile", &s);
-    assert(s.st_size == 4);
-
-    EM_ASM(
-        var stream = FS.open("allocatetestfile", "w");
-        
-        var ex;
-        try {
-            // Attempt to allocate negative length.
-            FS.allocate(stream, 0, -1);
-        } catch (err) {
-            ex = err;
-        }
-        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
-    );
-
-    remove("allocatetestfile");
-}
-
 void test_fs_truncate() {
     EM_ASM(
         FS.writeFile('truncatetest', 'a=1\nb=2\n');
@@ -473,13 +445,13 @@ void cleanup() {
 int main() {
     test_fs_open();
     test_fs_createPath();
+    test_fs_readFile();
     test_fs_rename();
     test_fs_readlink();
     test_fs_read();
     test_fs_rmdir();
     test_fs_close();
     test_fs_mknod();
-    test_fs_allocate();
     test_fs_truncate();
 #if WASMFS
     // TODO: Fix legacy API FS.mmap bug involving emscripten_builtin_memalign

@@ -24,47 +24,42 @@ using namespace wasmfs;
 extern "C" {
 
 // Copy the file specified by the pathname into JS.
-// Return a pointer to the JS buffer in HEAPU8.
-// The buffer will also contain the file length.
-// TODO: Use WasmFS ErrnoError handling instead of aborting on failure.
-void* _wasmfs_read_file(const char* path) {
+// Return zero on success, errno on failure.
+// Output point and length are written to `out_buf` and `out_size` params.
+int _wasmfs_read_file(const char* path, uint8_t** out_buf, off_t* out_size) {
   static_assert(sizeof(off_t) == 8, "File offset type must be 64-bit");
 
   struct stat file;
   int err = 0;
   err = stat(path, &file);
   if (err < 0) {
-    emscripten_err("Fatal error in FS.readFile");
-    abort();
+    return errno;
   }
 
-  // The function will return a pointer to a buffer with the file length in the
-  // first 8 bytes. The remaining bytes will contain the buffer contents. This
-  // allows the caller to use HEAPU8.subarray(buf + 8, buf + 8 + length).
   off_t size = file.st_size;
 
-  static thread_local void* buffer = nullptr;
-  buffer = realloc(buffer, size + sizeof(size));
-
-  auto* result = (uint8_t*)buffer;
-  *(off_t*)result = size;
+  static thread_local uint8_t* buffer = nullptr;
+  buffer = (uint8_t*)realloc(buffer, size);
 
   int fd = open(path, O_RDONLY);
   if (fd < 0) {
-    emscripten_err("Fatal error in FS.readFile");
-    abort();
+    return errno;
   }
-  [[maybe_unused]] int numRead = pread(fd, result + sizeof(size), size, 0);
+  ssize_t numRead = read(fd, buffer, size);
+  if (numRead < 0) {
+    return errno;
+  }
   // TODO: Generalize this so that it is thread-proof.
   // Must guarantee that the file size has not changed by the time it is read.
   assert(numRead == size);
   err = close(fd);
   if (err < 0) {
-    emscripten_err("Fatal error in FS.readFile");
-    abort();
+    return errno;
   }
 
-  return result;
+  *out_size = size;
+  *out_buf = buffer;
+  return 0;
 }
 
 // Writes to a file, possibly creating it, and returns the number of bytes
@@ -129,10 +124,6 @@ int _wasmfs_rmdir(const char* path) {
 
 int _wasmfs_open(const char* path, int flags, mode_t mode) {
   return __syscall_openat(AT_FDCWD, (intptr_t)path, flags, mode);
-}
-
-int _wasmfs_allocate(int fd, off_t offset, off_t len) {
-  return __syscall_fallocate(fd, 0, offset, len);
 }
 
 int _wasmfs_mknod(const char* path, mode_t mode, dev_t dev) {
@@ -247,8 +238,8 @@ int _wasmfs_ftruncate(int fd, off_t length) {
 
 int _wasmfs_close(int fd) { return __wasi_fd_close(fd); }
 
-int _wasmfs_mmap(size_t length, int prot, int flags, int fd, off_t offset) {
-  return __syscall_mmap2(0, length, prot, flags, fd, offset);
+void* _wasmfs_mmap(size_t length, int prot, int flags, int fd, off_t offset) {
+  return (void*)__syscall_mmap2(0, length, prot, flags, fd, offset);
 }
 
 int _wasmfs_msync(void* addr, size_t length, int flags) {
@@ -259,12 +250,12 @@ int _wasmfs_munmap(void* addr, size_t length) {
   return __syscall_munmap((intptr_t)addr, length);
 }
 
-int _wasmfs_utime(const char* path, long atime_ms, long mtime_ms) {
+int _wasmfs_utime(const char* path, double atime_ms, double mtime_ms) {
   struct timespec times[2];
-  times[0].tv_sec = atime_ms / 1000;
-  times[0].tv_nsec = (atime_ms % 1000) * 1000000;
-  times[1].tv_sec = mtime_ms / 1000;
-  times[1].tv_nsec = (mtime_ms % 1000) * 1000000;
+  times[0].tv_sec = (long)atime_ms / 1000;
+  times[0].tv_nsec = ((long)atime_ms % 1000) * 1000000;
+  times[1].tv_sec = (long)mtime_ms / 1000;
+  times[1].tv_nsec = ((long)mtime_ms % 1000) * 1000000;
 
   return __syscall_utimensat(AT_FDCWD, (intptr_t)path, (intptr_t)times, 0);
 }
