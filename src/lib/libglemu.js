@@ -3005,7 +3005,7 @@ var LibraryGLEmulation = {
         } else {
           GLImmediate.vertexPointer = clientStartPointer;
         }
-        for (var attr of attribute) {
+        for (var attr of attributes) {
           attr.offset = attr.pointer - GLImmediate.vertexPointer; // Compute what will be the offset of this attribute in the VBO after we upload.
         }
         GLImmediate.stride = Math.max(maxStride, bytes);
