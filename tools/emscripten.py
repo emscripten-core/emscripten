@@ -414,15 +414,12 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     pre = apply_static_code_hooks(forwarded_json, pre)
 
   asm_const_pairs = ['%s: %s' % (key, value) for key, value in asm_consts]
-  extra_code = ''
+  em_js_code = ''
   if asm_const_pairs or settings.MAIN_MODULE:
-    extra_code += 'var ASM_CONSTS = {\n  ' + ',  \n '.join(asm_const_pairs) + '\n};\n'
+    em_js_code += 'var ASM_CONSTS = {\n  ' + ',  \n '.join(asm_const_pairs) + '\n};\n'
   if em_js_funcs:
-    extra_code += '\n'.join(em_js_funcs) + '\n'
-  if extra_code:
-    pre = pre.replace(
-      '// === Body ===\n',
-      '// === Body ===\n\n' + extra_code + '\n')
+    em_js_code += '\n'.join(em_js_funcs) + '\n'
+  pre = shared.do_replace(pre, '<<< EM_JS_CODE >>>', em_js_code)
 
   if base_metadata:
     function_exports = base_metadata.function_exports

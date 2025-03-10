@@ -55,4 +55,4 @@ var runtimeExited = false;
 #include "runtime_init_memory.js"
 #endif // IMPORTED_MEMORY
 
-// === Body ===
+<<< EM_JS_CODE >>>
