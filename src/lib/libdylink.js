@@ -12,6 +12,7 @@
 
 var LibraryDylink = {
 #if FILESYSTEM
+  // FILESYSTEM comes with FS and PATH modules
   $registerWasmPlugin__deps: ['$preloadPlugins'],
   $registerWasmPlugin: () => {
     // Use string keys here to avoid minification since the plugin consumer
@@ -49,15 +50,9 @@ var LibraryDylink = {
     `,
   $preloadedWasm: {},
 
-  $locateLibraryFromFS__deps: ['$FS', '$PATH'],
   $locateLibraryFromFS: (filename, searchDirs) => {
-    // Find the library in the filesystem
-    // returns [true, abspath] if found, [false, null] otherwise.
-    if (!(typeof FS.findObject === 'function')) {
-      // FS may not have the findObject method if the filesystem is not
-      // used in the build. Skip the search in this case.
-      return [false, null];
-    }
+    // Find the library in the filesystem.
+    // returns null if not found.
     var candidates = [];
     if (PATH.isAbs(filename)) {
       candidates.push(filename);
@@ -66,20 +61,22 @@ var LibraryDylink = {
         candidates.push(PATH.join(searchDirs[i], filename));
       }
     } else {
-      return [false, null];
+      return null;
     }
 
     for (var i = 0; i < candidates.length; i++) {
       var path = candidates[i];
-      if (FS.findObject(path)) {
-        return [true, path];
+      try {
+        var res = FS.lookupPath(path);
+        return res.path;
+      } catch(e) {
+        // do nothing is file is not found
       }
     }
 
-    return [false, null];
+    return null;
   },
 
-  $readLibraryFromFS__deps: ['$FS'],
   $readLibraryFromFS: (path) => {
     var data = FS.readFile(path, {encoding: 'binary'});
     return data;
@@ -87,14 +84,9 @@ var LibraryDylink = {
 
   $getDefaultLibDirs__deps: ['$ENV'],
   $getDefaultLibDirs: () => {
-    var ldLibraryPath = ENV['LD_LIBRARY_PATH'];
-    if (ldLibraryPath) {
-      return ldLibraryPath.split(':');
-    }
-    return [];
+    return ENV['LD_LIBRARY_PATH']?.split(':') ?? [];
   },
 
-  $replaceORIGIN__deps: ['$FS', '$PATH'],
   $replaceORIGIN: (parentLibPath, rpath) => {
     if (rpath.startsWith('$ORIGIN')) {
       // TODO: what to do if we only know the relative path of the file? It will return "." here.
@@ -1028,12 +1020,12 @@ var LibraryDylink = {
 #if FILESYSTEM
       var runtimePathsAbs = (rpath.paths || []).map((p) => replaceORIGIN(rpath.parentLibPath, p));
       var searchDirs = getDefaultLibDirs().concat(runtimePathsAbs);
-      var [existsInFS, libNameAbs] = locateLibraryFromFS(libName, searchDirs);
-      if (existsInFS) {
+      var libNameAbs = locateLibraryFromFS(libName, searchDirs);
+      if (libNameAbs) {
         libName = libNameAbs;
       }
 #if DYLINK_DEBUG
-      dbg(`checking filesystem: ${libName}: ${existsInFS ? 'found' : 'not found'}`);
+      dbg(`checking filesystem: ${libName}: ${libNameAbs ? 'found' : 'not found'}`);
 #endif
 #endif
 
@@ -1098,7 +1090,7 @@ var LibraryDylink = {
       }
 
 #if FILESYSTEM
-      if (existsInFS) {
+      if (libNameAbs) {
         var libData = readLibraryFromFS(libName);
         if (libData) {
 #if DYLINK_DEBUG

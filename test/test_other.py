@@ -7662,9 +7662,7 @@ int main() {
     self.assertContained('Hello4', out)
     self.assertContained('Ok', out)
 
-  def test_ld_library_path_dependencies(self, args):
-    if args:
-      self.setup_node_pthreads()
+  def test_ld_library_path_dependencies(self):
     create_file('hello1_dep.c', r'''
 #include<stdio.h>
 
