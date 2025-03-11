@@ -4,6 +4,10 @@
  * SPDX-License-Identifier: MIT
  */
 
+assert(LEGACY_GL_EMULATION, 'libglemu.js should only be included with LEGACY_GL_EMULATION set')
+assert(!FULL_ES2, 'cannot emulate both ES2 and legacy GL');
+assert(!FULL_ES3, 'cannot emulate both ES3 and legacy GL');
+
 {{{
   const copySigs = (func) => {
     if (!RELOCATABLE) return '';
@@ -3616,7 +3620,7 @@ var LibraryGLEmulation = {
 
   // OpenGL Immediate Mode matrix routines.
   // Note that in the future we might make these available only in certain modes.
-  glMatrixMode__deps: ['$GL', '$GLImmediateSetup', '$GLEmulation'], // emulation is not strictly needed, this is a workaround
+  glMatrixMode__deps: ['$GL', '$GLImmediateSetup'],
   glMatrixMode: (mode) => {
     if (mode == 0x1700 /* GL_MODELVIEW */) {
       GLImmediate.currentMatrix = 0/*m*/;
@@ -3948,14 +3952,8 @@ var LibraryGLEmulation = {
   gluOrtho2D: (left, right, bottom, top) => _glOrtho(left, right, bottom, top, -1, 1),
 };
 
-// Legacy GL emulation
-if (LEGACY_GL_EMULATION) {
-  extraLibraryFuncs.push('$GLEmulation');
-}
+extraLibraryFuncs.push('$GLEmulation');
 
 recordGLProcAddressGet(LibraryGLEmulation);
 
 addToLibrary(LibraryGLEmulation);
-
-assert(!(FULL_ES2 && LEGACY_GL_EMULATION), 'cannot emulate both ES2 and legacy GL');
-assert(!(FULL_ES3 && LEGACY_GL_EMULATION), 'cannot emulate both ES3 and legacy GL');

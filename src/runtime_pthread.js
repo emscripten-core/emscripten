@@ -38,15 +38,14 @@ if (ENVIRONMENT_IS_PTHREAD) {
   var initializedJS = false;
 
   function threadPrintErr(...args) {
-    var text = args.join(' ');
 #if ENVIRONMENT_MAY_BE_NODE
     // See https://github.com/emscripten-core/emscripten/issues/14804
     if (ENVIRONMENT_IS_NODE) {
-      fs.writeSync(2, text + '\n');
+      fs.writeSync(2, args.join(' ') + '\n');
       return;
     }
 #endif
-    console.error(text);
+    console.error(...args);
   }
 
 #if LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER
@@ -65,14 +64,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
   if (!Module['printErr'])
 #endif
     err = threadPrintErr;
-#if ASSERTIONS || RUNTIME_DEBUG
-  dbg = threadPrintErr;
-#endif
-  function threadAlert(...args) {
-    var text = args.join(' ');
-    postMessage({cmd: 'alert', text, threadId: _pthread_self()});
-  }
-  self.alert = threadAlert;
 
   // Turn unhandled rejected promises into errors so that the main thread will be
   // notified about them.

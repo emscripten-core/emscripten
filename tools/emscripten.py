@@ -414,15 +414,10 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     pre = apply_static_code_hooks(forwarded_json, pre)
 
   asm_const_pairs = ['%s: %s' % (key, value) for key, value in asm_consts]
-  extra_code = ''
   if asm_const_pairs or settings.MAIN_MODULE:
-    extra_code += 'var ASM_CONSTS = {\n  ' + ',  \n '.join(asm_const_pairs) + '\n};\n'
+    pre += 'var ASM_CONSTS = {\n  ' + ',  \n '.join(asm_const_pairs) + '\n};\n'
   if em_js_funcs:
-    extra_code += '\n'.join(em_js_funcs) + '\n'
-  if extra_code:
-    pre = pre.replace(
-      '// === Body ===\n',
-      '// === Body ===\n\n' + extra_code + '\n')
+    pre += '\n'.join(em_js_funcs) + '\n'
 
   if base_metadata:
     function_exports = base_metadata.function_exports
@@ -1083,7 +1078,7 @@ def create_pointer_conversion_wrappers(metadata):
     '_wasmfs_rename': '_pp',
     '_wasmfs_readlink': 'pp',
     '_wasmfs_truncate': '_p_',
-    '_wasmfs_mmap': '_p____',
+    '_wasmfs_mmap': 'pp____',
     '_wasmfs_munmap': '_pp',
     '_wasmfs_msync': '_pp_',
     '_wasmfs_read': '__pp',

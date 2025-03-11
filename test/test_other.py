@@ -13283,6 +13283,11 @@ exec "$@"
     self.set_setting('SYSCALL_DEBUG')
     self.do_runf('hello_world.c', 'syscall! fd_write: [1,')
 
+    # Check that we can disable debug output by setting runtimeDebug to false
+    create_file('post.js', 'runtimeDebug = false;')
+    output = self.do_runf('hello_world.c', emcc_args=['--post-js=post.js'])
+    self.assertNotContained('fd_write', output)
+
   def test_LIBRARY_DEBUG(self):
     self.set_setting('LIBRARY_DEBUG')
     self.do_runf('hello_world.c', '[library call:_fd_write: 0x00000001 (1)')
@@ -13628,6 +13633,29 @@ exec "$@"
     ''')
     self.run_process([EMCC, 'em_js.c', '-c'])
     self.do_runf('main.c', 'js_func called\n', emcc_args=['em_js.o'])
+
+  def test_em_js_top_level(self):
+    # It turns out that EM_JS can be used to inject top level JS code.
+    # This test verifies that it works, despite it not being an officially
+    # supported feature.
+    # See https://github.com/emscripten-core/emscripten/issues/23884
+    create_file('main.c', r'''
+      #include <emscripten/em_js.h>
+
+      EM_JS_DEPS(deps, "$addOnPreRun");
+
+      EM_JS(void, js_func, (), {
+        out('js_func called');
+      }
+      console.log("Top level code");
+      addOnPreRun(() => console.log("hello from pre-run"));
+      );
+
+      int main() {
+        js_func();
+      }
+    ''')
+    self.do_runf('main.c', 'Top level code\nhello from pre-run\njs_func called\n')
 
   # On Windows maximum command line length is 32767 characters. Create such a long build line by linking together
   # several .o files to test that emcc internally uses response files properly when calling llvm-nm and wasm-ld.
@@ -14535,8 +14563,12 @@ int main() {
     else:
       self.run_process([EMCC, test_file('hello_world.c'), '-Werror'] + args)
 
-  def test_wasm_worker_hello(self):
-    self.do_runf('wasm_worker/hello_wasm_worker.c', emcc_args=['-sWASM_WORKERS'])
+  @parameterized({
+    '': [[]],
+    'trusted': [['-sTRUSTED_TYPES']]
+  })
+  def test_wasm_worker_hello(self, args):
+    self.do_runf('wasm_worker/hello_wasm_worker.c', emcc_args=['-sWASM_WORKERS'] + args)
 
   def test_wasm_worker_terminate(self):
     self.do_runf('wasm_worker/terminate_wasm_worker.c', emcc_args=['-sWASM_WORKERS'])

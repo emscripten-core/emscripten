@@ -348,9 +348,9 @@ export async function runJSify(outputFile, symbolsOnly) {
         }
         return `\
 function(${args}) {
-  if (runtimeDebug) err("[library call:${mangled}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
+  dbg("[library call:${mangled}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
   ${run_func}
-  if (runtimeDebug) err("  [     return:" + prettyPrint(ret));
+  dbg("  [     return:" + prettyPrint(ret));
   return ret;
 }`;
       });
@@ -767,9 +767,11 @@ function(${args}) {
     const preFile = MINIMAL_RUNTIME ? 'preamble_minimal.js' : 'preamble.js';
     includeSystemFile(preFile);
 
+    writeOutput('// Begin JS library code\n');
     for (const item of libraryItems.concat(postSets)) {
       writeOutput(indentify(item || '', 2));
     }
+    writeOutput('// End JS library code\n');
 
     if (PTHREADS) {
       writeOutput(`

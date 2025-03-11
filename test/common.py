@@ -2366,25 +2366,25 @@ class BrowserCore(RunnerCore):
       time.sleep(5)
       print('(moving on..)')
 
-  def compile_btest(self, filename, args, reporting=Reporting.FULL):
+  def compile_btest(self, filename, emcc_args, reporting=Reporting.FULL):
     # Inject support code for reporting results. This adds an include a header so testcases can
     # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
     # contains the implementation of REPORT_RESULT (we can't just include that implementation in
     # the header as there may be multiple files being compiled here).
     if reporting != Reporting.NONE:
       # For basic reporting we inject JS helper funtions to report result back to server.
-      args += ['--pre-js', test_file('browser_reporting.js')]
+      emcc_args += ['--pre-js', test_file('browser_reporting.js')]
       if reporting == Reporting.FULL:
         # If C reporting (i.e. the REPORT_RESULT macro) is required we
         # also include report_result.c and force-include report_result.h
         self.run_process([EMCC, '-c', '-I' + TEST_ROOT,
-                          test_file('report_result.c')] + self.get_emcc_args(compile_only=True) + (['-fPIC'] if '-fPIC' in args else []))
-        args += ['report_result.o', '-include', test_file('report_result.h')]
+                          test_file('report_result.c')] + self.get_emcc_args(compile_only=True) + (['-fPIC'] if '-fPIC' in emcc_args else []))
+        emcc_args += ['report_result.o', '-include', test_file('report_result.h')]
     if EMTEST_BROWSER == 'node':
-      args.append('-DEMTEST_NODE')
+      emcc_args.append('-DEMTEST_NODE')
     if not os.path.exists(filename):
       filename = test_file(filename)
-    self.run_process([compiler_for(filename), filename] + self.get_emcc_args() + args)
+    self.run_process([compiler_for(filename), filename] + self.get_emcc_args() + emcc_args)
 
   def btest_exit(self, filename, assert_returncode=0, *args, **kwargs):
     """Special case of `btest` that reports its result solely via exiting
@@ -2402,20 +2402,20 @@ class BrowserCore(RunnerCore):
 
   def btest(self, filename, expected=None,
             post_build=None,
-            args=None, url_suffix='', timeout=None,
+            emcc_args=None, url_suffix='', timeout=None,
             extra_tries=1,
             reporting=Reporting.FULL,
             output_basename='test'):
     assert expected, 'a btest must have an expected output'
-    if args is None:
-      args = []
-    args = args.copy()
+    if emcc_args is None:
+      emcc_args = []
+    emcc_args = emcc_args.copy()
     filename = find_browser_test_file(filename)
     outfile = output_basename + '.html'
-    args += ['-o', outfile]
-    # print('all args:', args)
+    emcc_args += ['-o', outfile]
+    # print('all args:', emcc_args)
     utils.delete_file(outfile)
-    self.compile_btest(filename, args, reporting=reporting)
+    self.compile_btest(filename, emcc_args, reporting=reporting)
     self.assertExists(outfile)
     if post_build:
       post_build()
