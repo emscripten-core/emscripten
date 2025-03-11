@@ -24,7 +24,7 @@ executors:
     environment:
       EMSDK_NOTTY: "1"
     macos:
-      xcode: "14.2.0"
+      xcode: "16.2.0"
     resource_class: macos.m1.medium.gen1
 
 commands:
@@ -332,7 +332,7 @@ commands:
             HOMEBREW_NO_AUTO_UPDATE: "1"
           command: |
             brew update
-            brew install cmake ninja python3 pkg-config
+            brew install cmake ninja pkg-config
       - checkout
       - run:
           name: submodule update
@@ -662,6 +662,7 @@ jobs:
             wasm64
             core_2gb.test_*em_asm*
             core_2gb.test_*embind*
+            core_2gb.test_fs_js_api_wasmfs
             wasm64l.test_hello_world
             wasm64l.test_bigswitch
             wasm64l.test_module_wasm_memory

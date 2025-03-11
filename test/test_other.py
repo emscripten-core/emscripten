@@ -1081,6 +1081,8 @@ f.close()
     output = self.run_js('test_prog.js')
     self.assertContained('AL_VERSION: 1.1', output)
     self.assertContained('SDL version: 2.', output)
+    output = self.run_js('test_prog_sdl3.js')
+    self.assertContained('SDL version: 3.', output)
 
   def test_cmake_threads(self):
     self.run_process([EMCMAKE, 'cmake', test_file('cmake/threads')])
@@ -15807,3 +15809,16 @@ addToLibrary({
 
   def test_stub_pthread_getattr_np(self):
     self.do_other_test('test_stub_pthread_getattr_np.c')
+
+  def test_mainScriptUrlOrBlob(self):
+    # Use `foo.js` instead of the current script name when creating new threads
+    create_file('pre.js', 'Module = { mainScriptUrlOrBlob: "./foo.js" }')
+    self.run_process([EMCC, test_file('hello_world.c'), '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD', '-pthread', '--pre-js=pre.js'])
+
+    # First run without foo.js present to verify that the pthread creation fails
+    err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
+    self.assertContained('Cannot find module.*foo.js', err, regex=True)
+
+    # Now create foo.js and the program should run as expected.
+    shutil.copy('a.out.js', 'foo.js')
+    self.assertContained('hello, world', self.run_js('a.out.js'))

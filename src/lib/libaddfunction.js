@@ -68,11 +68,11 @@ addToLibrary({
     // Parameters, length + signatures
     target.push(0x60 /* form: func */);
     uleb128Encode(sigParam.length, target);
-    for (var i = 0; i < sigParam.length; ++i) {
+    for (var paramType of sigParam) {
 #if ASSERTIONS
-      assert(sigParam[i] in typeCodes, 'invalid signature char: ' + sigParam[i]);
+      assert(paramType in typeCodes, `invalid signature char: ${paramType}`);
 #endif
-      target.push(typeCodes[sigParam[i]]);
+      target.push(typeCodes[paramType]);
     }
 
     // Return values, length + signatures
