@@ -48,6 +48,61 @@ var LibraryDylink = {
     registerWasmPlugin();
     `,
   $preloadedWasm: {},
+
+  $locateLibraryFromFS__deps: ['$FS'],
+  $locateLibraryFromFS: (filename, searchDirs) => {
+    // Find the library in the filesystem.
+    // returns null if not found.
+    if (typeof FS.lookupPath !== 'function') {
+      // wasmfs does not implement FS.lookupPath
+      return null;
+    }
+
+    var candidates = [];
+    if (filename.charAt(0) === '/') {  // abs path
+      candidates.push(filename);
+    } else if (searchDirs) {
+      for (var dir of searchDirs) {
+        // PATH.join does not work well with symlinks
+        candidates.push(dir + '/' + filename);
+      }
+    } else {
+      return null;
+    }
+
+    for (var path of candidates) {
+      try {
+        var res = FS.lookupPath(path);
+        return res.path;
+      } catch(e) {
+        // do nothing is file is not found
+      }
+    }
+
+    return null;
+  },
+
+  $readLibraryFromFS__deps: ['$FS'],
+  $readLibraryFromFS: (path) => {
+    var data = FS.readFile(path, {encoding: 'binary'});
+    return data;
+  },
+
+  $getDefaultLibDirs__deps: ['$ENV'],
+  $getDefaultLibDirs: () => {
+    return ENV['LD_LIBRARY_PATH']?.split(':') ?? [];
+  },
+
+  $replaceORIGIN__deps: ['$PATH'],
+  $replaceORIGIN: (parentLibPath, rpath) => {
+    if (rpath.startsWith('$ORIGIN')) {
+      // TODO: what to do if we only know the relative path of the file? It will return "." here.
+      var origin = PATH.dirname(parentLibPath);
+      return rpath.replace('$ORIGIN', origin);
+    }
+
+    return rpath
+  },
 #endif // FILESYSTEM
 
   $isSymbolDefined: (symName) => {
@@ -889,12 +944,12 @@ var LibraryDylink = {
     if (flags.loadAsync) {
       return metadata.neededDynlibs
         .reduce((chain, dynNeeded) => chain.then(() =>
-          loadDynamicLibrary(dynNeeded, flags, localScope)
+          loadDynamicLibrary(dynNeeded, flags, localScope, { parentLibPath: libName, paths: metadata.runtimePaths })
         ), Promise.resolve())
         .then(loadModule);
     }
 
-    metadata.neededDynlibs.forEach((needed) => loadDynamicLibrary(needed, flags, localScope));
+    metadata.neededDynlibs.forEach((needed) => loadDynamicLibrary(needed, flags, localScope, { parentLibPath: libName, paths: metadata.runtimePaths }));
     return loadModule();
   },
 
@@ -949,6 +1004,10 @@ var LibraryDylink = {
                               '$asyncLoad',
 #if FILESYSTEM
                               '$preloadedWasm',
+                              '$locateLibraryFromFS',
+                              '$readLibraryFromFS',
+                              '$getDefaultLibDirs',
+                              '$replaceORIGIN',
 #endif
 #if DYNCALLS || !WASM_BIGINT
                               '$registerDynCallSymbols',
@@ -959,11 +1018,24 @@ var LibraryDylink = {
      * @param {number=} handle
      * @param {Object=} localScope
      */`,
-  $loadDynamicLibrary: function(libName, flags = {global: true, nodelete: true}, localScope, handle) {
+  $loadDynamicLibrary: function(libName, flags = {global: true, nodelete: true}, localScope, rpath = {parentLibPath: '', paths: []}, handle) {
 #if DYLINK_DEBUG
     dbg(`loadDynamicLibrary: ${libName} handle: ${handle}`);
     dbg(`existing: ${Object.keys(LDSO.loadedLibsByName)}`);
 #endif
+
+#if FILESYSTEM
+      var runtimePathsAbs = (rpath.paths || []).map((p) => replaceORIGIN(rpath.parentLibPath, p));
+      var searchDirs = getDefaultLibDirs().concat(runtimePathsAbs);
+      var libNameAbs = locateLibraryFromFS(libName, searchDirs);
+      if (libNameAbs) {
+        libName = libNameAbs;
+      }
+#if DYLINK_DEBUG
+      dbg(`checking filesystem: ${libName}: ${libNameAbs ? 'found' : 'not found'}`);
+#endif
+#endif
+
     // when loadDynamicLibrary did not have flags, libraries were loaded
     // globally & permanently
 
@@ -1023,6 +1095,18 @@ var LibraryDylink = {
           return flags.loadAsync ? Promise.resolve(libData) : libData;
         }
       }
+
+#if FILESYSTEM
+      if (libNameAbs) {
+        var libData = readLibraryFromFS(libName);
+        if (libData) {
+#if DYLINK_DEBUG
+          dbg(`loaded library from filesystem: ${libName}`);
+#endif
+          return flags.loadAsync ? Promise.resolve(libData) : libData;
+        }
+      }
+#endif
 
       var libFile = locateFile(libName);
       if (flags.loadAsync) {
@@ -1142,11 +1226,11 @@ var LibraryDylink = {
     }
 
     if (jsflags.loadAsync) {
-      return loadDynamicLibrary(filename, combinedFlags, localScope, handle);
+      return loadDynamicLibrary(filename, combinedFlags, localScope, {}, handle);
     }
 
     try {
-      return loadDynamicLibrary(filename, combinedFlags, localScope, handle)
+      return loadDynamicLibrary(filename, combinedFlags, localScope, {}, handle)
     } catch (e) {
 #if ASSERTIONS
       err(`Error in loading dynamic library ${filename}: ${e}`);
