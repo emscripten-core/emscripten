@@ -1024,6 +1024,8 @@ jobs:
       EMTEST_SKIP_NODE_CANARY: "1"
       EMTEST_BROWSER: "0"
     steps:
+      -  attach_workspace:
+          at: ~/
       - checkout
       - run:
           name: Install packages
@@ -1124,5 +1126,7 @@ workflows:
       - test-jsc
       - test-spidermonkey
       - test-node-compat
-      - test-windows
+      - test-windows:
+          requires:
+            - build-linux
       - test-mac-arm64
