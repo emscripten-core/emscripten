@@ -49,28 +49,28 @@ var LibraryDylink = {
     `,
   $preloadedWasm: {},
 
+  $locateLibraryFromFS__deps: ['$FS'],
   $locateLibraryFromFS: (filename, searchDirs) => {
     // Find the library in the filesystem.
     // returns null if not found.
-    if (!(typeof PATH === 'object' && typeof FS === 'object')) {
-      // FILESYSTEM comes with FS and PATH modules
-      // so this will always pass, but closure compiler complains if we don't check this here.
-      return null
+    if (typeof FS.lookupPath !== 'function') {
+      // wasmfs does not implement FS.lookupPath
+      return null;
     }
 
     var candidates = [];
-    if (PATH.isAbs(filename)) {
+    if (filename.charAt(0) === '/') {  // abs path
       candidates.push(filename);
     } else if (searchDirs) {
-      for (var i = 0; i < searchDirs.length; i++) {
-        candidates.push(PATH.join(searchDirs[i], filename));
+      for (var dir of searchDirs) {
+        // PATH.join does not work well with symlinks
+        candidates.push(dir + '/' + filename);
       }
     } else {
       return null;
     }
 
-    for (var i = 0; i < candidates.length; i++) {
-      var path = candidates[i];
+    for (var path of candidates) {
       try {
         var res = FS.lookupPath(path);
         return res.path;
@@ -82,6 +82,7 @@ var LibraryDylink = {
     return null;
   },
 
+  $readLibraryFromFS__deps: ['$FS'],
   $readLibraryFromFS: (path) => {
     var data = FS.readFile(path, {encoding: 'binary'});
     return data;
@@ -92,6 +93,7 @@ var LibraryDylink = {
     return ENV['LD_LIBRARY_PATH']?.split(':') ?? [];
   },
 
+  $replaceORIGIN__deps: ['$PATH'],
   $replaceORIGIN: (parentLibPath, rpath) => {
     if (rpath.startsWith('$ORIGIN')) {
       // TODO: what to do if we only know the relative path of the file? It will return "." here.
