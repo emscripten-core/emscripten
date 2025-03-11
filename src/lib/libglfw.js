@@ -1146,7 +1146,7 @@ var LibraryGLFW = {
       }
 
       // Destroy context when no alive windows
-      for (var win of GLFW.windows) {
+      for (win of GLFW.windows) {
         if (win !== null) return;
       }
 
