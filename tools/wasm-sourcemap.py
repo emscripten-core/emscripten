@@ -61,6 +61,7 @@ class Prefixes:
     if name in self.cache:
       return self.cache[name]
 
+    result = name
     for p in self.prefixes:
       if name.startswith(p['prefix']):
         if p['replacement'] is None:
@@ -285,12 +286,12 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources, bas
     if prefixes.provided():
       source_name = prefixes.sources.resolve(file_name)
     else:
-      try:
-        file_name = os.path.relpath(file_name, base_path)
-      except ValueError:
-        file_name = os.path.abspath(file_name)
-      file_name = utils.normalize_path(file_name)
       source_name = file_name
+      try:
+        source_name = os.path.relpath(source_name, base_path)
+      except ValueError:
+        source_name = os.path.abspath(source_name)
+      source_name = utils.normalize_path(source_name)
     if source_name not in sources_map:
       source_id = len(sources)
       sources_map[source_name] = source_id
@@ -298,7 +299,7 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources, bas
       if collect_sources:
         load_name = prefixes.load.resolve(file_name)
         try:
-          with open(load_name, 'r') as infile:
+          with open(os.path.normpath(load_name), 'r') as infile:
             source_content = infile.read()
           sources_content.append(source_content)
         except IOError:
