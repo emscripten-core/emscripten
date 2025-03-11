@@ -140,7 +140,7 @@ int _wasmfs_symlink(const char* old_path, const char* new_path) {
   return __syscall_symlinkat((intptr_t)old_path, AT_FDCWD, (intptr_t)new_path);
 }
 
-intptr_t _wasmfs_readlink(const char* path) {
+int _wasmfs_readlink(const char* path, char** out_ptr) {
   static thread_local char* readBuf = (char*)malloc(PATH_MAX);
   int bytes =
     __syscall_readlinkat(AT_FDCWD, (intptr_t)path, (intptr_t)readBuf, PATH_MAX);
@@ -148,7 +148,8 @@ intptr_t _wasmfs_readlink(const char* path) {
     return bytes;
   }
   readBuf[bytes] = '\0';
-  return (intptr_t)readBuf;
+  *out_ptr = readBuf;
+  return 0;
 }
 
 int _wasmfs_write(int fd, void* buf, size_t count) {
