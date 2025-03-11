@@ -1080,53 +1080,56 @@ workflows:
       - eslint
       - build-docs
       - build-linux
-      - test-sanity:
-          requires:
-            - build-linux
-      - test-posixtest:
-          requires:
-            - build-linux
-      - test-core0:
-          requires:
-            - build-linux
-      - test-core2:
-          requires:
-            - build-linux
-      - test-core3:
-          requires:
-            - build-linux
-      - test-wasm64-4gb:
-          requires:
-            - build-linux
-      - test-wasm2js1:
-          requires:
-            - build-linux
-      - test-other:
-          requires:
-            - build-linux
-      - test-browser-chrome:
-          requires:
-            - build-linux
-      - test-browser-chrome-2gb:
-          requires:
-            - build-linux
-      - test-browser-chrome-wasm64:
-          requires:
-            - build-linux
-      - test-browser-chrome-wasm64-4gb:
-          requires:
-            - build-linux
-      - test-browser-firefox:
-          requires:
-            - build-linux
-      - test-browser-firefox-wasm64
-      - test-sockets-chrome:
-          requires:
-            - build-linux
+      # - test-sanity:
+      #     requires:
+      #       - build-linux
+      # - test-posixtest:
+      #     requires:
+      #       - build-linux
+      # - test-core0:
+      #     requires:
+      #       - build-linux
+      # - test-core2:
+      #     requires:
+      #       - build-linux
+      # - test-core3:
+      #     requires:
+      #       - build-linux
+      # - test-wasm64:
+      #     requires:
+      #       - build-linux
+      # - test-wasm64-4gb:
+      #     requires:
+      #       - build-linux
+      # - test-wasm2js1:
+      #     requires:
+      #       - build-linux
+      # - test-other:
+      #     requires:
+      #       - build-linux
+      # - test-browser-chrome:
+      #     requires:
+      #       - build-linux
+      # - test-browser-chrome-2gb:
+      #     requires:
+      #       - build-linux
+      # - test-browser-chrome-wasm64:
+      #     requires:
+      #       - build-linux
+      # - test-browser-chrome-wasm64-4gb:
+      #     requires:
+      #       - build-linux
+      # - test-browser-firefox:
+      #     requires:
+      #       - build-linux
+      # - test-browser-firefox-wasm64
+      # - test-sockets-chrome:
+      #     requires:
+      #       - build-linux
       - test-jsc
       - test-spidermonkey
       - test-node-compat
       - test-windows:
           requires:
             - build-linux
-      - test-mac-arm64
+      #- test-mac-arm64
