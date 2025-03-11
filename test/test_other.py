@@ -13505,6 +13505,29 @@ exec "$@"
     self.run_process([EMCC, 'em_js.c', '-c'])
     self.do_runf('main.c', 'js_func called\n', emcc_args=['em_js.o'])
 
+  def test_em_js_top_level(self):
+    # It turns out that EM_JS can be used to inject top level JS code.
+    # This test verifies that it works, despite it not being an officially
+    # supported feature.
+    # See https://github.com/emscripten-core/emscripten/issues/23884
+    create_file('main.c', r'''
+      #include <emscripten/em_js.h>
+
+      EM_JS_DEPS(deps, "$addOnPreRun");
+
+      EM_JS(void, js_func, (), {
+        out('js_func called');
+      }
+      console.log("Top level code");
+      addOnPreRun(() => console.log("hello from pre-run"));
+      );
+
+      int main() {
+        js_func();
+      }
+    ''')
+    self.do_runf('main.c', 'Top level code\nhello from pre-run\njs_func called\n')
+
   # On Windows maximum command line length is 32767 characters. Create such a long build line by linking together
   # several .o files to test that emcc internally uses response files properly when calling llvm-nm and wasm-ld.
   @is_slow_test

@@ -1084,5 +1084,3 @@ function getCompilerSetting(name) {
 // dynamic linker as symbols are loaded.
 var asyncifyStubs = {};
 #endif
-
-<<< EM_JS_CODE >>>
