@@ -662,6 +662,7 @@ jobs:
             wasm64
             core_2gb.test_*em_asm*
             core_2gb.test_*embind*
+            core_2gb.test_fs_js_api_wasmfs
             wasm64l.test_hello_world
             wasm64l.test_bigswitch
             wasm64l.test_module_wasm_memory

@@ -1078,7 +1078,7 @@ def create_pointer_conversion_wrappers(metadata):
     '_emscripten_proxy_dlsync_async': '_pp',
     '_emscripten_wasm_worker_initialize': '_p_',
     '_wasmfs_rename': '_pp',
-    '_wasmfs_readlink': 'pp',
+    '_wasmfs_readlink': '_pp',
     '_wasmfs_truncate': '_p_',
     '_wasmfs_mmap': 'pp____',
     '_wasmfs_munmap': '_pp',
