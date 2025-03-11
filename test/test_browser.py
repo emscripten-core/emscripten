@@ -1484,7 +1484,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
     if asyncify == 2:
       self.require_jspi()
     secret = str(time.time())
-    self.btest('test_idbstore_sync.c', '8', emcc_args=['-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '-g2', f'-sASYNCIFY={asyncify}'])
+    self.btest('test_idbstore_sync.c', '8', emcc_args=['-sSTRICT', '-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '--closure=1', f'-sASYNCIFY={asyncify}'])
 
   def test_idbstore_sync_worker(self):
     secret = str(time.time())
