@@ -15804,3 +15804,6 @@ addToLibrary({
 
   def test_rlimit(self):
     self.do_other_test('test_rlimit.c', emcc_args=['-O1'])
+
+  def test_stub_pthread_getattr_np(self):
+    self.do_runf(test_file('other/test_stub_pthread_getattr_np.c'), 'stack_addr: 0, stack_size: 65536, guard_size: 8192')
