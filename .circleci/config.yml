@@ -330,9 +330,7 @@ commands:
           name: Install brew package dependencies
           environment:
             HOMEBREW_NO_AUTO_UPDATE: "1"
-          command: |
-            brew update
-            brew install cmake ninja pkg-config
+          command: brew install cmake ninja pkg-config
       - checkout
       - run:
           name: submodule update
