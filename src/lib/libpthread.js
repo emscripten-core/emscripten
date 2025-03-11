@@ -424,12 +424,7 @@ var LibraryPThread = {
         worker = new Worker(p.createScriptURL('ignored'), {{{ pthreadWorkerOptions }}});
       } else
 #endif
-      // We need to generate the URL with import.meta.url as the base URL of the JS file
-      // instead of just using new URL(import.meta.url) because bundler's only recognize
-      // the first case in their bundling step. The latter ends up producing an invalid
-      // URL to import from the server (e.g., for webpack the file:// path).
-      // See https://github.com/webpack/webpack/issues/12638
-      worker = new Worker(new URL('{{{ TARGET_JS_NAME }}}', import.meta.url), {{{ pthreadWorkerOptions }}});
+      worker = new Worker(import.meta.url, {{{ pthreadWorkerOptions }}});
 #else // EXPORT_ES6
       var pthreadMainJs = _scriptName;
 #if expectToReceiveOnModule('mainScriptUrlOrBlob')
