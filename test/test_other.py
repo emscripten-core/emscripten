@@ -3260,11 +3260,8 @@ More info: https://emscripten.org
     'dyncall': [['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB']],
   })
   @requires_jspi
-  def test_embind_jspi(self, extra):
-    self.emcc_args += ['-lembind', '-g']
-    self.emcc_args += extra
-
-    self.do_runf('embind/embind_jspi_test.cpp', 'done')
+  def test_embind_jspi(self, args):
+    self.do_runf('embind/embind_jspi_test.cpp', 'done', emcc_args=['-lembind', '-g'] + args)
 
   def test_embind_no_function(self):
     create_file('post.js', '''
