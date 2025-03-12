@@ -171,7 +171,7 @@ def clear_port(port_name):
 
 def build_port(port_name):
   with get_port_variant(port_name) as port_name:
-    ports.build_port(port_name, settings)
+    ports.build_port(port_name, settings, deferred=True)
 
 
 def get_system_tasks():

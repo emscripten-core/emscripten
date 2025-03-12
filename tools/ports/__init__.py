@@ -175,7 +175,7 @@ class Ports:
       maybe_copy(f, os.path.join(dest, os.path.basename(f)))
 
   @staticmethod
-  def build_port(src_dir, output_path, port_name, includes=[], flags=[], cxxflags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # noqa
+  def build_port(src_dir, output_path, port_name, includes=[], flags=[], cxxflags=[], exclude_files=[], exclude_dirs=[], srcs=[], deferred=False):  # noqa
     build_dir = os.path.join(Ports.get_build_dir(), port_name)
     if srcs:
       srcs = [os.path.join(src_dir, s) for s in srcs]
@@ -199,7 +199,8 @@ class Ports:
       ninja_file = os.path.join(build_dir, 'build.ninja')
       system_libs.ensure_sysroot()
       system_libs.create_ninja_file(srcs, ninja_file, output_path, cflags=cflags)
-      system_libs.run_ninja(build_dir)
+      if not deferred:
+        system_libs.run_ninja(build_dir)
     else:
       commands = []
       objects = []
@@ -525,12 +526,12 @@ def get_needed_ports(settings):
   return needed
 
 
-def build_port(port_name, settings):
+def build_port(port_name, settings, deferred=False):
   port = ports_by_name[port_name]
   port_set = OrderedSet([port])
   resolve_dependencies(port_set, settings)
   for port in dependency_order(port_set):
-    port.get(Ports, settings, shared)
+    port.get(Ports, settings, shared, deferred=deferred)
 
 
 def clear_port(port_name, settings):

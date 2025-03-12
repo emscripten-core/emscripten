@@ -20,7 +20,7 @@ def get_lib_name(settings):
   return 'libSDL2' + ('-mt' if settings.PTHREADS else '') + '.a'
 
 
-def get(ports, settings, shared):
+def get(ports, settings, shared, deferred=False):
   # get the port
   ports.fetch_project('sdl2', f'https://github.com/libsdl-org/SDL/archive/{TAG}.zip', sha512hash=HASH)
 
@@ -74,9 +74,9 @@ def get(ports, settings, shared):
     includes = [ports.get_include_dir('SDL2')]
     if settings.PTHREADS:
       flags += ['-pthread']
-    ports.build_port(src_dir, final, 'sdl2', srcs=srcs, includes=includes, flags=flags)
+    ports.build_port(src_dir, final, 'sdl2', srcs=srcs, includes=includes, flags=flags, deferred=deferred)
 
-  return [shared.cache.get_lib(get_lib_name(settings), create, what='port')]
+  return [shared.cache.get_lib(get_lib_name(settings), create, what='port', deferred=deferred)]
 
 
 def clear(ports, settings, shared):
