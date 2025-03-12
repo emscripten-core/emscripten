@@ -4764,7 +4764,7 @@ Module["preRun"] = () => {
     'blob_es6': (True, True),
     'url_es6': (True, False),
   })
-  def test_pthreads_mainScriptUrlOrBlob(self, es6, use_blob):
+  def test_mainScriptUrlOrBlob(self, es6, use_blob):
     # TODO: enable this with wasm, currently pthreads/atomics have limitations
     self.set_setting('EXIT_RUNTIME')
     js_name = 'hello_thread_with_loader.js'
