@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.5 (in development)
+4.0.6 (in development)
 ----------------------
+
+4.0.5 - 03/12/25
+----------------
 - Added initial support for wasm source phase imports via
   `-sSOURCE_PHASE_IMPORTS`.  This is currently experimental and not yet
   implemented in browsers. (#23175)
