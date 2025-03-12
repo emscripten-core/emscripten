@@ -330,9 +330,7 @@ commands:
           name: Install brew package dependencies
           environment:
             HOMEBREW_NO_AUTO_UPDATE: "1"
-          command: |
-            brew update
-            brew install cmake ninja pkg-config
+          command: brew install cmake ninja pkg-config
       - checkout
       - run:
           name: submodule update
@@ -539,6 +537,7 @@ jobs:
             asan.test_asyncify_longjmp
             asan.test_pthread_run_on_main_thread
             asan.test_minimal_runtime_global_initializer
+            asan.test_fs_js_api_wasmfs
             lsan.test_dylink_dso_needed
             lsan.test_stdio_locking
             lsan.test_dlfcn_basic
@@ -658,22 +657,12 @@ jobs:
           command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
       - run-tests:
           title: "wasm64"
-          test_targets: "
-            wasm64
-            core_2gb.test_*em_asm*
-            core_2gb.test_*embind*
-            core_2gb.test_fs_js_api_wasmfs
-            wasm64l.test_hello_world
-            wasm64l.test_bigswitch
-            wasm64l.test_module_wasm_memory
-            wasm64l.test_longjmp2_emscripten
-            other.test_memory64_proxies
-            other.test_failing_growth_wasm64"
+          test_targets: "wasm64"
       - upload-test-results
   test-wasm64-4gb:
     environment:
       LANG: "C.UTF-8"
-      # Only run 2 tests at a time to avoid OOM (since each tests used >4gb)
+      # Only run 2 tests at a time to avoid OOM (since each test used >4gb)
       EMCC_CORES: "2"
     # We don't use `bionic` here since its too old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
@@ -693,7 +682,16 @@ jobs:
           command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
       - run-tests:
           title: "wasm64_4gb"
-          test_targets: "wasm64_4gb"
+          test_targets: "wasm64_4gb
+            core_2gb.test_*em_asm*
+            core_2gb.test_*embind*
+            core_2gb.test_fs_js_api_wasmfs
+            wasm64l.test_hello_world
+            wasm64l.test_bigswitch
+            wasm64l.test_module_wasm_memory
+            wasm64l.test_longjmp2_emscripten
+            other.test_memory64_proxies
+            other.test_failing_growth_wasm64"
       - upload-test-results
   test-jsc:
     executor: linux-python
@@ -1066,9 +1064,6 @@ workflows:
           requires:
             - build-linux
       - test-core3:
-          requires:
-            - build-linux
-      - test-wasm64:
           requires:
             - build-linux
       - test-wasm64-4gb:
