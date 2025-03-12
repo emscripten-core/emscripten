@@ -1892,15 +1892,6 @@ simulateKeyUp(100, undefined, 'Numpad4');
   def test_emscripten_api_infloop(self):
     self.btest_exit('emscripten_api_browser_infloop.cpp')
 
-  @also_with_wasmfs
-  def test_emscripten_fs_api(self):
-    shutil.copy(test_file('screenshot.png'), '.') # preloaded *after* run
-    self.btest_exit('emscripten_fs_api_browser.c', emcc_args=['-lSDL'])
-
-  def test_emscripten_fs_api2(self):
-    self.btest_exit('emscripten_fs_api_browser2.c', emcc_args=['-sASSERTIONS=0'])
-    self.btest_exit('emscripten_fs_api_browser2.c', emcc_args=['-sASSERTIONS=1'])
-
   @parameterized({
     '': ([],),
     'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
@@ -2517,6 +2508,24 @@ void *getBindBuffer() {
     self.assertContained("pthreads + BUILD_AS_WORKER require separate modes that don't work together, see https://github.com/emscripten-core/emscripten/issues/8854", stderr)
 
   @also_with_wasmfs
+  def test_wget(self):
+    create_file('test.txt', 'emscripten')
+    self.btest_exit('test_wget.c', emcc_args=['-sASYNCIFY'])
+
+  def test_wget_data(self):
+    create_file('test.txt', 'emscripten')
+    self.btest_exit('test_wget_data.c', emcc_args=['-O2', '-g2', '-sASYNCIFY'])
+
+  @also_with_wasmfs
+  @parameterized({
+    '': ([],),
+    'O2': (['-O2'],),
+  })
+  def test_emscripten_async_wget(self, args):
+    shutil.copy(test_file('screenshot.png'), '.') # preloaded *after* run
+    self.btest_exit('test_emscripten_async_wget.c', emcc_args=['-lSDL'] + args)
+
+  @also_with_wasmfs
   def test_emscripten_async_wget2(self):
     self.btest_exit('test_emscripten_async_wget2.cpp')
 
@@ -2526,8 +2535,8 @@ void *getBindBuffer() {
     self.btest('test_emscripten_async_wget2_data.cpp', expected='0')
 
   def test_emscripten_async_wget_side_module(self):
-    self.emcc(test_file('browser_module.c'), ['-o', 'lib.wasm', '-O2', '-sSIDE_MODULE'])
-    self.btest_exit('browser_main.c', emcc_args=['-O2', '-sMAIN_MODULE=2'])
+    self.emcc(test_file('test_emscripten_async_wget_side_module.c'), ['-o', 'lib.wasm', '-O2', '-sSIDE_MODULE'])
+    self.btest_exit('test_emscripten_async_wget_main_module.c', emcc_args=['-O2', '-sMAIN_MODULE=2'])
 
   @parameterized({
     '': ([],),
@@ -2844,15 +2853,6 @@ Module["preRun"] = () => {
   })
   def test_sdl_mousewheel(self, opts):
     self.btest_exit('test_sdl_mousewheel.c', emcc_args=opts + ['-DAUTOMATE_SUCCESS=1', '-lSDL', '-lGL'])
-
-  @also_with_wasmfs
-  def test_wget(self):
-    create_file('test.txt', 'emscripten')
-    self.btest_exit('test_wget.c', emcc_args=['-sASYNCIFY'])
-
-  def test_wget_data(self):
-    create_file('test.txt', 'emscripten')
-    self.btest_exit('test_wget_data.c', emcc_args=['-O2', '-g2', '-sASYNCIFY'])
 
   @also_with_wasm2js
   @parameterized({
