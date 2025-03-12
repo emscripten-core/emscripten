@@ -2301,7 +2301,7 @@ class BrowserCore(RunnerCore):
   def assert_out_queue_empty(self, who):
     if not self.harness_out_queue.empty():
       while not self.harness_out_queue.empty():
-        print(self.harness_out_queue.get())
+        self.harness_out_queue.get()
       raise Exception('excessive responses from %s' % who)
 
   # @param extra_tries: how many more times to try this test, if it fails. browser tests have
