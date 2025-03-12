@@ -135,8 +135,7 @@
         monitorRunDependencies: function(left) {
           this.totalDependencies = Math.max(this.totalDependencies, left);
           Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
-        },
-        locateFile: function(path, _prefix) { return path; }
+        }
       };
       Module.setStatus('Downloading...');
       window.onerror = function() {
@@ -148,11 +147,8 @@
       };
     </script>
 
-    <script type="module">
-      Module['mainScriptUrlOrBlob'] = 'hello_thread_with_blob_url.mjs';
-      import('./'+Module['mainScriptUrlOrBlob']).then((fac) => fac.default(Module).then((instance) => {
-        console.log("success");
-      }))
-    </script>
+    <!-- Exactly one of these two scripts will exist -->
+    <script src="loader.js"></script>
+    <script type="module" src="loader.mjs"></script>
   </body>
 </html>
