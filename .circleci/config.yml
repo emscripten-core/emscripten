@@ -495,6 +495,9 @@ jobs:
       - install-v8
       - install-emsdk
       - build-libs
+      - run:
+          name: Clean build directory
+          command: rm -rf ~/cache/build
       - persist
   # Perhaps we don't need to run this suite with every commit. Consider moving this to FYI bot.
   test-posixtest:
