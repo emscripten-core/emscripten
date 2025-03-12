@@ -15866,10 +15866,10 @@ addToLibrary({
     self.do_other_test('test_rlimit.c', emcc_args=['-O1'])
 
   @parameterized({
-    '': (False, False),
-    'es6': (True, False),
+    '': (False,),
+    'es6': (True,),
   })
-  def test_mainScriptUrlOrBlob(self, es6, use_blob):
+  def test_mainScriptUrlOrBlob(self, es6):
     # Use `foo.js` instead of the current script name when creating new threads
     if es6:
       self.emcc_args += ['-sEXPORT_ES6']
