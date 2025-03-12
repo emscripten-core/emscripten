@@ -997,11 +997,19 @@ var SyscallsLibrary = {
   __syscall_fallocate__i53abi: true,
   __syscall_fallocate: (fd, mode, offset, len) => {
     if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
-    var stream = SYSCALLS.getStreamFromFD(fd)
-#if ASSERTIONS
-    assert(mode === 0);
-#endif
-    FS.allocate(stream, offset, len);
+    if (mode != 0) {
+      return -{{{ cDefs.ENOTSUP }}}
+    }
+    if (offset < 0 || len < 0) {
+      return -{{{ cDefs.EINVAL }}}
+    }
+    // We only support mode == 0, which means we can implement fallocate
+    // in terms of ftruncate.
+    var oldSize = FS.fstat(fd).size;
+    var newSize = offset + len;
+    if (newSize > oldSize) {
+      FS.ftruncate(fd, newSize);
+    }
     return 0;
   },
   __syscall_dup3: (fd, newfd, flags) => {

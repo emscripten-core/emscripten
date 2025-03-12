@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.5 (in development)
+4.0.6 (in development)
 ----------------------
+
+4.0.5 - 03/12/25
+----------------
 - Added support for applying path prefix substitution to the sources of the
   source map : use `-sSOURCE_MAP_PREFIXES=["<old>=<new>"]` with `-gsource-map`.
   Alternatively, you can now embed the sources content into the source map file
@@ -27,6 +30,10 @@ See docs/process.md for more on how version tagging works.
 - Added initial support for wasm source phase imports via
   `-sSOURCE_PHASE_IMPORTS`.  This is currently experimental and not yet
   implemented in browsers. (#23175)
+- The `FS.allocate` API was removed. This was originally intended to
+  implement the fallocate/posix_fallocate system calls, but without the ability
+  to punch holes (`FALLOC_FL_PUNCH_HOLE`) the `FS.truncate` API is sufficient
+  for resizing files.
 
 4.0.4 - 02/25/25
 ----------------

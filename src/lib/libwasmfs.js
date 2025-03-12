@@ -126,25 +126,23 @@ addToLibrary({
     readFile(path, opts = {}) {
       opts.encoding = opts.encoding || 'binary';
       if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
-        throw new Error('Invalid encoding type "' + opts.encoding + '"');
+        throw new Error(`Invalid encoding type "${opts.encoding}"`);
       }
 
+      var buf, length;
       // Copy the file into a JS buffer on the heap.
-      var sp = stackSave();
-      var buf = __wasmfs_read_file(stringToUTF8OnStack(path));
-      stackRestore(sp);
-
-      // The signed integer length resides in the first 8 bytes of the buffer.
-      var length = {{{ makeGetValue('buf', '0', 'i53') }}};
+      withStackSave(() => {
+        var bufPtr = stackAlloc({{{ POINTER_SIZE }}});
+        var sizePtr = stackAlloc({{{ POINTER_SIZE }}});
+        FS.handleError(-__wasmfs_read_file(stringToUTF8OnStack(path), bufPtr, sizePtr));
+        buf = {{{ makeGetValue('bufPtr', '0', '*') }}};
+        length = {{{ makeGetValue('sizePtr', '0', 'i53') }}};
+      });
 
       // Default return type is binary.
       // The buffer contents exist 8 bytes after the returned pointer.
-      var ret = new Uint8Array(HEAPU8.subarray(buf + 8, buf + 8 + length));
-      if (opts.encoding === 'utf8') {
-        ret = UTF8ArrayToString(ret);
-      }
-
-      return ret;
+      var ret = new Uint8Array(HEAPU8.subarray(buf, buf + length));
+      return opts.encoding === 'utf8' ? UTF8ArrayToString(ret) : ret;
     },
 #endif
 
@@ -197,13 +195,12 @@ addToLibrary({
       } else {
         bytesRead = __wasmfs_read(stream.fd, dataBuffer, length);
       }
-      bytesRead = FS.handleError(bytesRead);
-
-      for (var i = 0; i < length; i++) {
+      for (var i = 0; i < bytesRead; i++) {
         buffer[offset + i] = {{{ makeGetValue('dataBuffer', 'i', 'i8')}}}
       }
 
       _free(dataBuffer);
+      bytesRead = FS.handleError(bytesRead);
       return bytesRead;
     },
     // Note that canOwn is an optimization that we ignore for now in WasmFS.
@@ -221,13 +218,10 @@ addToLibrary({
       } else {
         bytesRead = __wasmfs_write(stream.fd, dataBuffer, length);
       }
-      bytesRead = FS.handleError(bytesRead);
       _free(dataBuffer);
+      bytesRead = FS.handleError(bytesRead);
 
       return bytesRead;
-    },
-    allocate(stream, offset, length) {
-      return FS.handleError(__wasmfs_allocate(stream.fd, {{{ splitI64('offset') }}}, {{{ splitI64('length') }}}));
     },
     writeFile: (path, data) => FS_writeFile(path, data),
     mmap: (stream, length, offset, prot, flags) => {
@@ -247,8 +241,12 @@ addToLibrary({
       __wasmfs_symlink(stringToUTF8OnStack(target), stringToUTF8OnStack(linkpath))
     )),
     readlink(path) {
-      var readBuffer = FS.handleError(withStackSave(() => __wasmfs_readlink(stringToUTF8OnStack(path))));
-      return UTF8ToString(readBuffer);
+      return withStackSave(() => {
+        var bufPtr = stackAlloc({{{ POINTER_SIZE }}});
+        FS.handleError(__wasmfs_readlink(stringToUTF8OnStack(path), bufPtr));
+        var readBuffer = {{{ makeGetValue('bufPtr', '0', '*') }}};
+        return UTF8ToString(readBuffer);
+      });
     },
     statBufToObject(statBuf) {
       // i53/u53 are enough for times and ino in practice.
@@ -554,9 +552,9 @@ addToLibrary({
   $FS_mkdirTree: (path, mode) => {
     var dirs = path.split('/');
     var d = '';
-    for (var i = 0; i < dirs.length; ++i) {
-      if (!dirs[i]) continue;
-      d += '/' + dirs[i];
+    for (var dir of dirs) {
+      if (!dir) continue;
+      d += '/' + dir;
       try {
         FS_mkdir(d, mode);
       } catch(e) {

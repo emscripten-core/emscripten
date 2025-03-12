@@ -58,16 +58,17 @@ stdin
 stdout
 urandom
 
+------------- Reading one from root/working Directory -------------
 d.d_name = .
 d.d_reclen = 280
 d.d_type = DT_DIR
 
+------------- Reading and then seeking backwards -------------
 d.d_name = ..
 d.d_reclen = 280
 d.d_type = DT_DIR
 
 rewinding from position 2 to 1
-------------- Reading one from root/working Directory -------------
 d.d_name = ..
 d.d_reclen = 280
 d.d_type = DT_DIR

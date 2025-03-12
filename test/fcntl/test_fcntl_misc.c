@@ -17,24 +17,33 @@ int main() {
   int f = open("/test", O_RDWR, 0777);
   assert(f);
 
-  printf("posix_fadvise: %d\n", posix_fadvise(f, 3, 2, POSIX_FADV_DONTNEED));
-  printf("errno: %d\n", errno);
+  int err = posix_fadvise(f, 3, 2, POSIX_FADV_DONTNEED);
+  printf("posix_fadvise: %d\n", err);
+  assert(err == 0);
   printf("\n");
-  errno = 0;
 
-  printf("posix_fallocate: %d\n", posix_fallocate(f, 3, 2));
+  err = posix_fallocate(f, 3, 2);
+  printf("posix_fallocate: %d\n", err);
+  assert(err == 0);
   printf("errno: %d\n", errno);
   stat("/test", &s);
   assert(s.st_size == 6);
   memset(&s, 0, sizeof s);
   printf("\n");
-  errno = 0;
 
-  printf("posix_fallocate2: %d\n", posix_fallocate(f, 3, 7));
-  printf("errno: %d\n", errno);
+  err = posix_fallocate(f, 3, 7);
+  printf("posix_fallocate 2: %d\n", err);
+  assert(err == 0);
   stat("/test", &s);
   printf("st_size: %lld\n", s.st_size);
-  memset(&s, 0, sizeof s);
+  printf("\n");
+
+  err = posix_fallocate(f, -1, 7);
+  printf("posix_fallocate 3: %s\n", strerror(err));
+  printf("\n");
+
+  err = posix_fallocate(f, 3, -1);
+  printf("posix_fallocate 4: %s\n", strerror(err));
 
   return 0;
 }
