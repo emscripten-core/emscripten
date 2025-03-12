@@ -195,13 +195,12 @@ addToLibrary({
       } else {
         bytesRead = __wasmfs_read(stream.fd, dataBuffer, length);
       }
-      for (var i = 0; i < bytesRead; i++) {
-        buffer[offset + i] = {{{ makeGetValue('dataBuffer', 'i', 'i8')}}}
+      if (bytesRead > 0) {
+        buffer.set(HEAPU8.subarray(dataBuffer, dataBuffer + bytesRead), offset);
       }
 
       _free(dataBuffer);
-      bytesRead = FS.handleError(bytesRead);
-      return bytesRead;
+      return FS.handleError(bytesRead);
     },
     // Note that canOwn is an optimization that we ignore for now in WasmFS.
     write(stream, buffer, offset, length, position, canOwn) {
@@ -219,9 +218,7 @@ addToLibrary({
         bytesRead = __wasmfs_write(stream.fd, dataBuffer, length);
       }
       _free(dataBuffer);
-      bytesRead = FS.handleError(bytesRead);
-
-      return bytesRead;
+      return FS.handleError(bytesRead);
     },
     writeFile: (path, data) => FS_writeFile(path, data),
     mmap: (stream, length, offset, prot, flags) => {
