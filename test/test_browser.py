@@ -4775,7 +4775,7 @@ Module["preRun"] = () => {
 
     # Now run the test with the JS file renamed and with its content
     # stored in Module['mainScriptUrlOrBlob'].
-    
+
     shutil.move('out.js', js_name)
     shutil.copy(test_file('pthread/%s' % which_html), 'hello_thread_with_blob_url.html')
     self.run_browser('hello_thread_with_blob_url.html', '/report_result?exit:0')
@@ -5547,19 +5547,30 @@ Module["preRun"] = () => {
 
   @also_with_threads
   @parameterized({
-    '': (False,),
-    'es6': (True,),
+    '': (False,False),
+    'blob': (False,True),
+    'es6': (True,False),
+    'es6_blob': (True,True)
   })
-  def test_webpack(self, es6):
-    if es6:
+  def test_webpack(self, es6, useblob):
+    if es6 and useblob:
+      copytree(test_file('webpack_es6_with_blob'), '.')
+      self.emcc_args += ['-sEXPORT_ES6', '-pthread', '-sPTHREAD_POOL_SIZE=1']
+      outfile = 'src/hello.mjs'
+    elif es6:
       copytree(test_file('webpack_es6'), '.')
       self.emcc_args += ['-sEXPORT_ES6', '-pthread', '-sPTHREAD_POOL_SIZE=1']
       outfile = 'src/hello.mjs'
+    elif useblob:
+      copytree(test_file('webpack_with_blob'), '.')
+      self.emcc_args += ['-pthread', '-sPTHREAD_POOL_SIZE=1']
+      outfile = 'src/hello.js'
     else:
       copytree(test_file('webpack'), '.')
       outfile = 'src/hello.js'
     self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web,worker', '-o', outfile])
     self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool'])
+    shutil.copy(outfile, 'dist/')
     shutil.copy('src/hello.wasm', 'dist/')
     self.run_browser('dist/index.html', '/report_result?exit:0')
 
@@ -5569,6 +5580,12 @@ Module["preRun"] = () => {
     self.compile_btest('hello_world.c', ['-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web,worker', '-o', 'hello.mjs'])
     self.run_process(shared.get_npm_cmd('vite') + ['build'])
     self.run_browser('dist/index.html', '/report_result?exit:0')
+
+  def test_vite_with_blob(self):
+    copytree(test_file('vite_with_blob'), '.')
+    self.compile_btest('hello_world.c', ['-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web,worker', '-sPTHREAD_POOL_SIZE=1', '-pthread', '-sPROXY_TO_PTHREAD', '-o', 'public/hello.mjs'])
+    self.run_process(shared.get_npm_cmd('vite') + ['build'])
+    self.run_browser('dist/index.html', '/report_result?exit=0')
 
   @also_with_threads
   def test_rollup(self):
