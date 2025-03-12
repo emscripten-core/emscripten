@@ -5548,7 +5548,7 @@ Module["preRun"] = () => {
   @also_with_threads
   @parameterized({
     '': (False,),
-    'es6': (True)
+    'es6': (True,),
   })
   def test_webpack(self, es6):
     if es6:
