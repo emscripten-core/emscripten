@@ -921,10 +921,8 @@ jobs:
           # make this exclusion list a bit more automatic.
           test_targets: "
             browser64.test_emscripten_animate_canvas_element_size*
-            browser64.test_4gb
             browser64.test_*malloc_*gb*
             browser64.test_emmalloc_memgrowth
-            browser64.test_*gb_fail
             browser64.test_subdata_es2*
             browser64.test_webgl2_garbage_free_entrypoints*
             browser64.test_gl_stride
