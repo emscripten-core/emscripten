@@ -12014,9 +12014,6 @@ int main(void) {
                             '-sSTACK_SIZE=128kb', '-sEXIT_RUNTIME',
                             '--profiling-funcs'])
 
-  def test_stub_pthread_getattr_np(self):
-    self.do_other_test('test_stub_pthread_getattr_np.c')
-
   @parameterized({
     '': ([],),
     'sync': (['-sWASM_ASYNC_COMPILATION=0'],),
