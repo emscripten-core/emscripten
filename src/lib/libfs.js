@@ -748,7 +748,8 @@ FS.staticInit();
       var d = '';
       for (var dir of dirs) {
         if (!dir) continue;
-        d += '/' + dir;
+        if (d || PATH.isAbs(path)) d += '/';
+        d += dir;
         try {
           FS.mkdir(d, mode);
         } catch(e) {
