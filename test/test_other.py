@@ -15889,7 +15889,7 @@ addToLibrary({
     # First run without foo.{mjs,js} present to verify that the pthread creation fails
     err = self.run_js(runfile, assert_returncode=NON_ZERO)
     self.assertContained('Cannot find module.*foo', err, regex=True)
-    
+
     # Now create foo.{mjs,js} and the program should run as expected.
     shutil.copy(binfile, real_binfile)
     self.assertContained('hello, world', self.run_js(runfile))
