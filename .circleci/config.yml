@@ -935,7 +935,7 @@ jobs:
             browser64.test_pthread_sbrk*
             browser64.test_pthread_asan*
             browser64.test_webgl_multi_draw*
-            browser64.test_pthread_growth*
+            browser64.test_pthread_growth*"
   test-browser-chrome-2gb:
     executor: focal
     environment:
