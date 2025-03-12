@@ -470,8 +470,8 @@ var LibraryEmVal = {
   _emval_coro_suspend__deps: ['$Emval', '_emval_coro_resume',  '_emval_coro_reject'],
   _emval_coro_suspend: (promiseHandle, awaiterPtr) => {
     Emval.toValue(promiseHandle)
-      .then(result => __emval_coro_resume(awaiterPtr, Emval.toHandle(result)))
-      .catch(error => __emval_coro_reject(awaiterPtr, Emval.toHandle(error)));
+      .then(result => __emval_coro_resume(awaiterPtr, Emval.toHandle(result)),
+            error => __emval_coro_reject(awaiterPtr, Emval.toHandle(error)));
   },
 
   _emval_coro_make_promise__deps: ['$Emval'],
