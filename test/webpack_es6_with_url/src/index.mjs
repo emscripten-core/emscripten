@@ -6,8 +6,7 @@ var params_url = {
       element.innerHTML += text.replace('\n', '<br>', 'g') + '<br>';
     };
   })(),
-  locateFile: function(path, _prefix) {
-    console.log("path",_prefix,path);
+  locateFile: function(path, prefix) {
     return path;
   },
   canvas: document.getElementById('canvas'),
@@ -15,9 +14,8 @@ var params_url = {
 };
 
 params_url.print('testing...');
-
-import(/* @vite-ignore */ './hello.mjs').then((factory) =>
+import(/* webpackIgnore: true */ 'hello.mjs').then((factory) => {
   factory.default(params_url).then((instance) => {
     console.log('loaded by url');
-  })
-);
+  });
+});

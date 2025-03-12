@@ -7,17 +7,17 @@ var params_url = {
     };
   })(),
   locateFile: function(path, _prefix) {
-    console.log("path",_prefix,path);
     return path;
   },
   canvas: document.getElementById('canvas'),
-  mainScriptUrlOrBlob: 'hello.mjs'
+  mainScriptUrlOrBlob: 'hello.js'
 };
 
-params_url.print('testing...');
+params_url.print("testing..");
 
-import(/* @vite-ignore */ './hello.mjs').then((factory) =>
-  factory.default(params_url).then((instance) => {
-    console.log('loaded by url');
-  })
-);
+var script = document.createElement("script");
+script.src = params_url['mainScriptUrlOrBlob'];
+script.onload = () => {
+  Module(params_url).then((instance) => { console.log("loaded") })
+};
+document.body.appendChild(script);
