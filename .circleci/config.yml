@@ -896,9 +896,20 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser"
-          # Skip test_4gb_fail as it OOMs on the current bot
+          # Just tests that don't run in browser 2G mode
           test_targets: "
-            browser skip:browser.test_4gb_fail
+            browser.test_gl_stride
+            browser.test_memory_growth_during_startup
+            browser.test_pthread_large_pthread_allocation
+            browser.test_pthread_sbrk*
+            browser.test_pthread_asan*
+            browser.test_webgl_multi_draw*
+            browser.test_pthread_growth*
+            browser.test_4gb
+            browser.test_emmalloc_3gb*
+            browser.test_dlmalloc_3gb
+            browser.test_2gb_fail
+            browser.test_audio_worklet*
             "
   test-browser-chrome-wasm64:
     executor: focal
@@ -907,14 +918,25 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser64"
-          # Skip tests that depend on running the output in node
-          # (This bot doesn't have node canary installed which is required to
-          # run wasm64 output).
-          test_targets: "browser64
-            skip:browser64.test_hello_world_worker*
-            skip:browser64.test_2gb_fail
-            skip:browser64.test_4gb_fail
-            skip:browser64.test_4gb"
+          # Just tests that don't run in browser64 4G mode
+          # TODO: restore this coverage (and the corresponding wasm64) and/or
+          # make this exclusion list a bit more automatic.
+          test_targets: "
+            browser64.test_emscripten_animate_canvas_element_size*
+            browser64.test_*malloc_*gb*
+            browser64.test_emmalloc_memgrowth
+            browser64.test_subdata_es2*
+            browser64.test_webgl2_garbage_free_entrypoints*
+            browser64.test_gl_stride
+            browser64.test_webgl2_get_buffer_sub_data
+            browser64.test_webgl2_pbo
+            browser64.test_webgl2_sokol*
+            browser64.test_memory_growth_during_startup
+            browser64.test_pthread_large_pthread_allocation
+            browser64.test_pthread_sbrk*
+            browser64.test_pthread_asan*
+            browser64.test_webgl_multi_draw*
+            browser64.test_pthread_growth*"
   test-browser-chrome-2gb:
     executor: focal
     environment:
