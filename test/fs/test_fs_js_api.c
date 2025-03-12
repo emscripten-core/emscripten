@@ -381,20 +381,19 @@ void test_fs_mmap() {
 
 void test_fs_mkdirTree() {
   EM_ASM(
-    FS.mkdirTree("/test1/test2/test3");
-
+    FS.mkdirTree("/test1/test2/test3"); // Abs path
     FS.mkdirTree("/readable", 0400 /* S_IRUSR */);
   );
 
   struct stat s;
-  stat("/test1", &s);
+  assert(stat("/test1", &s) == 0);
   assert(S_ISDIR(s.st_mode));
-  stat("/test1/test2", &s);
+  assert(stat("/test1/test2", &s) == 0);
   assert(S_ISDIR(s.st_mode));
-  stat("/test1/test2/test3", &s);
+  assert(stat("/test1/test2/test3", &s) == 0);
   assert(S_ISDIR(s.st_mode));
 
-  stat("/readable", &s);
+  assert(stat("/readable", &s) == 0);
   assert(s.st_mode & 0400 /* S_IRUSR */);
 
   EM_ASM(
@@ -407,8 +406,22 @@ void test_fs_mkdirTree() {
     assert(ex.name === "ErrnoError" && ex.errno === 2 /* EACCES */);
   );
 
+  chdir("test1");
+  EM_ASM(
+    FS.mkdirTree("foo/bar"); // Relative path
+  );
+  chdir("/");
+
+  assert(stat("/test1/foo", &s) == 0);
+  assert(S_ISDIR(s.st_mode));
+
+  assert(stat("/test1/foo/bar", &s) == 0);
+  assert(S_ISDIR(s.st_mode));
+
   remove("/test1/test2/test3");
   remove("/test1/test2");
+  remove("/test1/foo/bar");
+  remove("/test1/foo");
   remove("/test1");
   remove("/readable");
 }
