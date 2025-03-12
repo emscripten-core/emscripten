@@ -130,7 +130,7 @@ var HEAP,
 /** @type {!Float64Array} */
   HEAPF64;
 
-#if SUPPORT_BIG_ENDIAN
+#if SUPPORT_BIG_ENDIAN || WASM_BINDGEN
 var HEAP_DATA_VIEW;
 #endif
 
