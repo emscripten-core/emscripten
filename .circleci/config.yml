@@ -330,7 +330,9 @@ commands:
           name: Install brew package dependencies
           environment:
             HOMEBREW_NO_AUTO_UPDATE: "1"
-          command: brew install cmake ninja pkg-config
+          # Use --force-bottle to force homebrew use binary packages avoiding
+          # costly build times.
+          command: brew install --force-bottle cmake ninja pkg-config
       - checkout
       - run:
           name: submodule update
