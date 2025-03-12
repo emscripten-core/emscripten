@@ -5559,6 +5559,16 @@ Module["preRun"] = () => {
     self.run_process(shared.get_npm_cmd('vite') + ['build'])
     self.run_browser('dist/index.html', '/report_result?exit:0')
 
+  @parameterized({
+    '':('vite_with_blob',),
+    'url':('vite_with_blob_url',),
+  })
+  def test_vite_with_blob(self, package):
+    copytree(test_file(package), '.')
+    self.compile_btest('hello_world.c', ['-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web,worker', '-sPTHREAD_POOL_SIZE=1', '-pthread', '-sPROXY_TO_PTHREAD', '-o', 'public/hello.mjs'])
+    self.run_process(shared.get_npm_cmd('vite') + ['build'])
+    self.run_browser('dist/index.html', '/report_result?exit:0')
+
   @also_with_threads
   def test_rollup(self):
     copytree(test_file('rollup'), '.')
