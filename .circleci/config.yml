@@ -894,7 +894,7 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser"
-          # Skip test_4gb_fail as it OOMs on the current bot
+          # Just tests that don't run in browser 2G mode
           test_targets: "
             browser.test_gl_stride
             browser.test_memory_growth_during_startup
@@ -916,9 +916,8 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser64"
-          # Just do basic smoke test and tests that don't run
-          # in browser64 4G mode
-          test_targets: "browser64.test_hello_world
+          # Just tests that don't run in browser64 4G mode
+          test_targets: "
             browser64.test_emscripten_animate_canvas_element_size*
             browser64.test_4gb
             browser64.test_*malloc_*gb*
