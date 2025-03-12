@@ -15874,7 +15874,7 @@ addToLibrary({
     if es6:
       self.emcc_args += ['-sEXPORT_ES6']
       create_file('pre.js', '')
-      create_file('run.mjs', 'import("./foo.mjs").then((fac) => fac.default({mainScriptUrlOrBlob:"./foo.mjs"}))')
+      create_file('run.mjs', '(await import("./foo.mjs")).default({mainScriptUrlOrBlob:"./foo.mjs"});')
       binfile = 'a.out.mjs'
       real_binfile = 'foo.mjs'
       runfile = 'run.mjs'
