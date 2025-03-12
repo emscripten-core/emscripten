@@ -12014,6 +12014,9 @@ int main(void) {
                             '-sSTACK_SIZE=128kb', '-sEXIT_RUNTIME',
                             '--profiling-funcs'])
 
+  def test_stub_pthread_getattr_np(self):
+    self.do_other_test('test_stub_pthread_getattr_np.c')
+
   @parameterized({
     '': ([],),
     'sync': (['-sWASM_ASYNC_COMPILATION=0'],),
@@ -15806,9 +15809,6 @@ addToLibrary({
 
   def test_rlimit(self):
     self.do_other_test('test_rlimit.c', emcc_args=['-O1'])
-
-  def test_stub_pthread_getattr_np(self):
-    self.do_other_test('test_stub_pthread_getattr_np.c')
 
   def test_mainScriptUrlOrBlob(self):
     # Use `foo.js` instead of the current script name when creating new threads
