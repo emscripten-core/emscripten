@@ -917,6 +917,8 @@ jobs:
       - run-tests-chrome:
           title: "browser64"
           # Just tests that don't run in browser64 4G mode
+          # TODO: restore this coverage (and the corresponding wasm64) and/or
+          # make this exclusion list a bit more automatic.
           test_targets: "
             browser64.test_emscripten_animate_canvas_element_size*
             browser64.test_4gb
