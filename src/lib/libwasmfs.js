@@ -180,10 +180,7 @@ addToLibrary({
     create: (path, mode) => FS_create(path, mode),
     close: (stream) => FS.handleError(-__wasmfs_close(stream.fd)),
     unlink: (path) => FS_unlink(path),
-    chdir: (path) => withStackSave(() => {
-      var buffer = stringToUTF8OnStack(path);
-      return __wasmfs_chdir(buffer);
-    }),
+    chdir: (path) => withStackSave(() => __wasmfs_chdir(stringToUTF8OnStack(path))),
     read(stream, buffer, offset, length, position) {
       var seeking = typeof position != 'undefined';
 
@@ -263,25 +260,19 @@ addToLibrary({
           ino: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ino, "u53") }}}
       }
     },
-    stat(path) {
-      var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
-      FS.handleError(withStackSave(() =>
-        __wasmfs_stat(stringToUTF8OnStack(path), statBuf)
-      ));
-      var stats = FS.statBufToObject(statBuf);
-      _free(statBuf);
-
-      return stats;
+    stat(path) { 
+      return withStackSave(() => {
+        var statBuf = stackAlloc({{{ C_STRUCTS.stat.__size__ }}});
+        FS.handleError(__wasmfs_stat(stringToUTF8OnStack(path), statBuf));
+        return FS.statBufToObject(statBuf);
+      });
     },
     lstat(path) {
-      var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
-      FS.handleError(withStackSave(() =>
-        __wasmfs_lstat(stringToUTF8OnStack(path), statBuf)
-      ));
-      var stats = FS.statBufToObject(statBuf);
-      _free(statBuf);
-
-      return stats;
+      return withStackSave(() => {
+        var statBuf = stackAlloc({{{ C_STRUCTS.stat.__size__ }}});
+        FS.handleError(__wasmfs_lstat(stringToUTF8OnStack(path), statBuf));
+        return FS.statBufToObject(statBuf);
+      });
     },
     chmod(path, mode) {
       return FS.handleError(withStackSave(() => {
