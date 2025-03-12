@@ -8,7 +8,9 @@
 #include "pthread_impl.h"
 #include <unistd.h>
 
-static struct pthread __main_pthread;
+static struct pthread __main_pthread = {
+  .locale = &libc.global_locale,
+};
 
 uintptr_t __get_tp(void) {
   return (uintptr_t)&__main_pthread;
@@ -26,6 +28,5 @@ pthread_t emscripten_main_runtime_thread_id() {
 
 __attribute__((constructor))
 static void init_pthread_self(void) {
-  __main_pthread.locale = &libc.global_locale;
   __main_pthread.tid = getpid();
 }
