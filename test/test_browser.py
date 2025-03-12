@@ -4767,37 +4767,31 @@ Module["preRun"] = () => {
   def test_mainScriptUrlOrBlob(self, es6, use_blob):
     # TODO: enable this with wasm, currently pthreads/atomics have limitations
     self.set_setting('EXIT_RUNTIME')
-    js_name = 'hello_thread_with_loader.js'
-    ext = '.js'
+    js_name = 'hello_thread_with_loader.%s' % ('mjs' if es6 else 'js')
     if es6:
-      ext = '.mjs'
       self.emcc_args += ['-sEXPORT_ES6']
-      js_name = 'hello_thread_with_loader.mjs'
     if es6 and use_blob:
       create_file('loader.mjs', '''
         Module['locateFile'] = (path,_prefix) => path;
-        fetch('hello_thread_with_loader.mjs').then((rsp) => rsp.blob().then((blob) => {
-          Module['mainScriptUrlOrBlob'] = blob;
-          import(URL.createObjectURL(blob)).then((fac) => fac.default(Module))
-        }));
+        let blob = await (await fetch('hello_thread_with_loader.mjs')).blob();
+        Module['mainScriptUrlOrBlob'] = blob;
+        (await import(URL.createObjectURL(blob))).default(Module);
       ''')
     elif use_blob:
-      create_file('loader.js', '''
-        Module['locateFile'] = (path,_prefix) => path;
-        fetch('hello_thread_with_loader.js').then((rsp) => rsp.blob().then((blob) => {
+      create_file('loader.mjs', '''
+        let blob = await (await fetch('hello_thread_with_loader.js')).blob();
         Module['mainScriptUrlOrBlob'] = blob;
         var script = document.createElement('script');
         script.src = URL.createObjectURL(blob);
         document.body.appendChild(script);
-        }));
       ''')
     elif es6:
       create_file('loader.mjs', '''
         Module['mainScriptUrlOrBlob'] = 'hello_thread_with_loader.mjs';
-        import('./'+Module['mainScriptUrlOrBlob']).then((fac) => fac.default(Module))
+        (await import('./hello_thread_with_loader.mjs')).default(Module);
       ''')
     else:
-      create_file('loader.js', '''
+      create_file('loader.mjs', '''
         var script = document.createElement('script');
         Module['mainScriptUrlOrBlob'] = 'hello_thread_with_loader.js';
         script.src = Module['mainScriptUrlOrBlob'];

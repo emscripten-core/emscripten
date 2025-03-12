@@ -15865,15 +15865,31 @@ addToLibrary({
   def test_rlimit(self):
     self.do_other_test('test_rlimit.c', emcc_args=['-O1'])
 
-  def test_mainScriptUrlOrBlob(self):
+  @parameterized({
+    '': (False, False),
+    'es6': (True, False),
+  })
+  def test_mainScriptUrlOrBlob(self, es6, use_blob):
     # Use `foo.js` instead of the current script name when creating new threads
-    create_file('pre.js', 'Module = { mainScriptUrlOrBlob: "./foo.js" }')
-    self.run_process([EMCC, test_file('hello_world.c'), '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD', '-pthread', '--pre-js=pre.js'])
+    if es6:
+      self.emcc_args += ['-sEXPORT_ES6']
+      create_file('pre.js', '')
+      create_file('run.mjs', 'import("./foo.mjs").then((fac) => fac.default({mainScriptUrlOrBlob:"./foo.mjs"}))')
+      binfile = 'a.out.mjs'
+      real_binfile = 'foo.mjs'
+      runfile = 'run.mjs'
+    else:
+      create_file('pre.js', 'Module = { mainScriptUrlOrBlob: "./foo.js" }')
+      binfile = 'a.out.js'
+      real_binfile = 'foo.js'
+      runfile = binfile
 
-    # First run without foo.js present to verify that the pthread creation fails
-    err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-    self.assertContained('Cannot find module.*foo.js', err, regex=True)
+    self.run_process([EMCC, test_file('hello_world.c'), '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD', '-pthread', '--pre-js=pre.js', '-o', binfile])
 
-    # Now create foo.js and the program should run as expected.
-    shutil.copy('a.out.js', 'foo.js')
-    self.assertContained('hello, world', self.run_js('a.out.js'))
+    # First run without foo.{mjs,js} present to verify that the pthread creation fails
+    err = self.run_js(runfile, assert_returncode=NON_ZERO)
+    self.assertContained('Cannot find module.*foo', err, regex=True)
+    
+    # Now create foo.{mjs,js} and the program should run as expected.
+    shutil.copy(binfile, real_binfile)
+    self.assertContained('hello, world', self.run_js(runfile))
