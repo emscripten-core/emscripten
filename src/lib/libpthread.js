@@ -430,7 +430,7 @@ var LibraryPThread = {
           if (typeof pthreadMainJs != 'string') {
             pthreadMainJs = URL.createObjectURL(pthreadMainJs);
           }
-          worker = new Worker(new URL(pthreadMainJs, import.meta.url), {{{ pthreadWorkerOptions }}});
+          worker = new Worker(pthreadMainJs, {{{ pthreadWorkerOptions }}});
         } else
 #endif
       // We need to generate the URL with import.meta.url as the base URL of the JS file

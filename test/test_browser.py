@@ -4758,15 +4758,26 @@ Module["preRun"] = () => {
 
   # Tests that it is possible to load the main .js file of the application manually via a Blob URL,
   # and still use pthreads.
-  def test_load_js_from_blob_with_pthreads(self):
+  @parameterized({
+    'blob': ('main_js_as_blob_loader.html',False),
+    'url': ('main_js_as_url_loader.html',False),
+    'blob_es6': ('main_js_as_blob_loader_es6.html',True),
+    'url_es6': ('main_js_as_url_loader_es6.html',True),
+  })
+  def test_load_js_from_blob_with_pthreads(self, which_html, es6):
     # TODO: enable this with wasm, currently pthreads/atomics have limitations
     self.set_setting('EXIT_RUNTIME')
+    js_name = 'hello_thread_with_blob_url.js'
+    if es6:
+      self.emcc_args += ['-sEXPORT_ES6']
+      js_name = 'hello_thread_with_blob_url.mjs'
     self.compile_btest('pthread/hello_thread.c', ['-pthread', '-o', 'out.js'], reporting=Reporting.JS_ONLY)
 
     # Now run the test with the JS file renamed and with its content
     # stored in Module['mainScriptUrlOrBlob'].
-    shutil.move('out.js', 'hello_thread_with_blob_url.js')
-    shutil.copy(test_file('pthread/main_js_as_blob_loader.html'), 'hello_thread_with_blob_url.html')
+    
+    shutil.move('out.js', js_name)
+    shutil.copy(test_file('pthread/%s' % which_html), 'hello_thread_with_blob_url.html')
     self.run_browser('hello_thread_with_blob_url.html', '/report_result?exit:0')
 
   # Tests that SINGLE_FILE works as intended in generated HTML (with and without Worker)
