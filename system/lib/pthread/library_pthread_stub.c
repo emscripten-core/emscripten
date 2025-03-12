@@ -276,13 +276,6 @@ int pthread_condattr_setpshared(pthread_condattr_t *attr, int shared) {
   return 0;
 }
 
-int pthread_getattr_np(pthread_t thread, pthread_attr_t *attr) {
-  attr->_a_stackaddr = emscripten_stack_get_base();
-  attr->_a_stacksize = emscripten_stack_get_base() - emscripten_stack_get_end();
-  attr->_a_guardsize = __default_guardsize;
-  return 0;
-}
-
 int pthread_setcancelstate(int state, int* oldstate) {
   return 0;
 }
