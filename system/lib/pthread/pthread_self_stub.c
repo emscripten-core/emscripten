@@ -30,6 +30,6 @@ static void init_pthread_self(void) {
   __main_pthread.locale = &libc.global_locale;
   __main_pthread.tid = getpid();
   __main_pthread.stack = (void*)emscripten_stack_get_base();
-  __main_pthread.stack_size = emscripten_stack_get_base();
+  __main_pthread.stack_size = emscripten_stack_get_base() - emscripten_stack_get_end();
   __main_pthread.guard_size = __default_guardsize;
 }
