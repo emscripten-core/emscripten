@@ -26,14 +26,14 @@ class typed_promise: public val {
 public:
   typed_promise(val&& promise): val(std::move(promise)) {}
 
-  auto operator co_await() const {
+  auto operator co_await() && {
     struct typed_awaiter: public val::awaiter {
       T await_resume() {
         return val::awaiter::await_resume().template as<T>();
       }
     };
 
-    return typed_awaiter(*this);
+    return typed_awaiter(std::move(*this));
   }
 };
 
@@ -46,6 +46,12 @@ val asyncCoro() {
   // check that awaiting a subclassed promise works and returns the correct type
   int x = co_await typed_promise<int>(promise_sleep(1, 23));
   assert(x == 23);
+  // check awaiting the same promise twice using copy-path of co_await.
+  val twice = promise_sleep(1, 30);
+  val first = co_await twice;
+  val second = co_await twice;
+  assert(first.as<int>() == 30);
+  assert(second.as<int>() == 30);
   // check that returning value works (checked by JS in tests)
   co_return 34;
 }
