@@ -1,6 +1,10 @@
 name: Rebaseline Tests
 
-on: [workflow_dispatch]
+on:
+  workflow_dispatch:
+  # Trigger every day at 3.30 AM PST (= 10:30 AM UTC)
+  schedule:
+    - cron: "30 10 * * *"
 
 permissions:
   contents: write
