@@ -15866,17 +15866,14 @@ addToLibrary({
     self.do_other_test('test_rlimit.c', emcc_args=['-O1'])
 
   @parameterized({
-    '': (False,),
-    'es6': (True,),
+    '': ([],),
+    'es6': (['-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')],),
   })
-  def test_mainScriptUrlOrBlob(self, es6):
+  def test_mainScriptUrlOrBlob(self, args):
     # Use `foo.js` instead of the current script name when creating new threads
-    if es6:
-      self.emcc_args += ['-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')]
-
     create_file('pre.js', 'Module = { mainScriptUrlOrBlob: "./foo.js" }')
 
-    self.run_process([EMCC, test_file('hello_world.c'), '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD', '-pthread', '--pre-js=pre.js', '-o', 'a.out.js'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD', '-pthread', '--pre-js=pre.js', '-o', 'a.out.js'] + args)
 
     # First run without foo.js present to verify that the pthread creation fails
     err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
