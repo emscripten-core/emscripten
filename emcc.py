@@ -997,7 +997,7 @@ def phase_compile_inputs(options, state, newargs):
       # Default to assuming the inputs are object files and pass them to the linker
       pass
 
-  return [f.value for f in linker_args]
+  return linker_args
 
 
 def version_string():
