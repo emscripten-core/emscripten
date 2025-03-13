@@ -271,9 +271,6 @@ def get_wasm_bindgen_exported_symbols(input_files):
   symbols = []
   for line in result.stdout.splitlines():
     (path, symbol) = line.split()
-    # Skip system libraries which are not needed and causes bloat.
-    if path.find('bin/third_party/crosstool/rust/') != -1:
-      continue
     # Skip mangled (non-C) symbols
     if symbol.startswith('_Z') or symbol.startswith('_R'):
       continue
