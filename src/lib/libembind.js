@@ -748,7 +748,7 @@ var LibraryEmbind = {
     '$InvokerFunctions',
     '$createJsInvokerSignature',
 #endif
-#if ASYNCIFY
+#if ASYNCIFY == 1
     '$Asyncify',
 #endif
 #if ASSERTIONS
