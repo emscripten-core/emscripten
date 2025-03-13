@@ -195,6 +195,7 @@ const checkDependenciesSkip = new Set([
   '_emscripten_throw_longjmp',
   '_emscripten_receive_on_main_thread_js',
   'emscripten_start_fetch',
+  'emscripten_start_wasm_audio_worklet_thread_async',
 ]);
 
 const checkDependenciesIgnore = new Set([
@@ -211,6 +212,7 @@ const checkDependenciesIgnore = new Set([
   // These are added purely for their side effects
   '$polyfillWaitAsync',
   '$GLImmediateSetup',
+  '$emscriptenGetAudioObject',
   // These get conservatively injected via i53ConversionDeps
   '$bigintToI53Checked',
   '$convertI32PairToI53Checked',

@@ -202,6 +202,9 @@ addToLibrary({
   },
 
   emscripten_resize_heap__deps: [
+#if ASSERTIONS == 2
+    'emscripten_get_now',
+#endif
 #if ABORTING_MALLOC
     '$abortOnCannotGrowMemory',
 #endif
