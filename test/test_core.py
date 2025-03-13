@@ -5757,8 +5757,13 @@ got: 10
     self.do_run_in_out_file_test('fs/test_writeFile.cpp')
 
   @with_all_fs
+  @crossplatform
   def test_fs_js_api(self):
-    self.set_setting("FORCE_FILESYSTEM")
+    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
+    if nodefs and WINDOWS:
+      self.skipTest('specific errno values differ')
+    if self.get_setting('WASMFS'):
+      self.set_setting("FORCE_FILESYSTEM")
     self.do_runf('fs/test_fs_js_api.c', 'success')
 
   @also_with_noderawfs
