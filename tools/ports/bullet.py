@@ -14,7 +14,7 @@ def needed(settings):
   return settings.USE_BULLET == 1
 
 
-def get(ports, settings, shared, deferred):
+def get(ports, settings, shared):
   ports.fetch_project('bullet', f'https://github.com/emscripten-ports/bullet/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
@@ -42,9 +42,9 @@ def get(ports, settings, shared, deferred):
       '-std=gnu++14'
     ]
 
-    ports.build_port(src_path, final, 'bullet', includes=includes, flags=flags, exclude_dirs=['MiniCL'], deferred=deferred)
+    ports.build_port(src_path, final, 'bullet', includes=includes, flags=flags, exclude_dirs=['MiniCL'])
 
-  return [shared.cache.get_lib('libbullet.a', create, deferred=deferred)]
+  return [shared.cache.get_lib('libbullet.a', create)]
 
 
 def clear(ports, settings, shared):

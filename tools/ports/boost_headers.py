@@ -13,7 +13,7 @@ def needed(settings):
   return settings.USE_BOOST_HEADERS == 1
 
 
-def get(ports, settings, shared, deferred=False):
+def get(ports, settings, shared):
   ports.fetch_project('boost_headers',
                       f'https://github.com/emscripten-ports/boost/releases/download/boost-{TAG}/boost-headers-{TAG}.zip',
                       sha512hash=HASH)
@@ -30,9 +30,9 @@ def get(ports, settings, shared, deferred=False):
     shared.safe_ensure_dirs(os.path.dirname(dummy_file))
     ports.write_file(dummy_file, 'static void dummy() {}')
 
-    ports.build_port(source_path, final, 'boost_headers', srcs=['dummy.cpp'], deferred=deferred)
+    ports.build_port(source_path, final, 'boost_headers', srcs=['dummy.cpp'])
 
-  return [shared.cache.get_lib('libboost_headers.a', create, what='port', deferred=deferred)]
+  return [shared.cache.get_lib('libboost_headers.a', create, what='port')]
 
 
 def clear(ports, settings, shared):
