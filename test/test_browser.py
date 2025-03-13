@@ -2332,7 +2332,7 @@ void *getBindBuffer() {
     self.btest('openal/test_openal_playback.c', '1', emcc_args=['-O2', '--preload-file', 'audio.wav'] + args)
 
   def test_openal_buffers(self):
-    self.btest_exit('openal/test_openal_buffers.c', emcc_args=['-DTEST_FAST=1','--preload-file', test_file('sounds/the_entertainer.wav') + '@/'],)
+    self.btest_exit('openal/test_openal_buffers.c', emcc_args=['--preload-file', test_file('sounds/the_entertainer.wav') + '@/'],)
     
   def test_runtimelink(self):
     create_file('header.h', r'''

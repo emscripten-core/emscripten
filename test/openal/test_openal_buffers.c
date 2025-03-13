@@ -89,7 +89,7 @@ void iter() {
   alGetSourcef(source, AL_PITCH, &testPitch);
   assert(pitch == testPitch);
 #endif
-#ifdef TEST_FAST
+#ifndef TEST_INTERACTIVE
   offset = size;
 #endif
   // Exit once we've processed the entire clip.
