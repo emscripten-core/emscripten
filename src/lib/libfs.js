@@ -696,15 +696,30 @@ FS.staticInit();
       return parent.node_ops.mknod(parent, name, mode, dev);
     },
     statfs(path) {
-      return FS.statfsNode(FS.lookupPath(path, {follow: true}).node);
+      // When NODEFS is available, Emscripten still uses MEMFS as the default
+      // file system which doesn't have a statfs function.
+      // To ensure statfsNode has access to the statfs function, we pass in
+      // the NODEFS object.
+      if (this.filesystems.NODEFS) {
+        return FS.statfsNode({
+          path,
+          node: this.filesystems.NODEFS,
+        });
+      }
+      return FS.statfsNode({
+        path,
+        node: FS.lookupPath(path, {
+          follow: true
+        }).node
+      });
     },
     statfsStream(stream) {
       // We keep a separate statfsStream function because noderawfs overrides
       // it. In noderawfs, stream.node is sometimes null. Instead, we need to
       // look at stream.path.
-      return FS.statfsNode(stream.node);
+      return FS.statfsNode(stream);
     },
-    statfsNode(node) {
+    statfsNode({path, node}) {
       // NOTE: None of the defaults here are true. We're just returning safe and
       //       sane values. Currently nodefs and rawfs replace these defaults,
       //       other file systems leave them alone.
@@ -718,11 +733,10 @@ FS.staticInit();
         ffree: FS.nextInode - 1,
         fsid: 42,
         flags: 2,
-        namelen: 255,
+        namelen: 255
       };
-
       if (node.node_ops.statfs) {
-        Object.assign(rtn, node.node_ops.statfs(node.mount.opts.root));
+        Object.assign(rtn, node.node_ops.statfs(path));
       }
       return rtn;
     },
