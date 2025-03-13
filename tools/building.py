@@ -254,7 +254,35 @@ def lld_flags_for_executable(external_symbols):
   return cmd
 
 
-def link_lld(args, target, external_symbols=None):
+def get_wasm_bindgen_exported_symbols(input_files):
+  if not os.path.exists(LLVM_NM):
+    exit_with_error('llvm-nm not found in LLVM directory: %s', LLVM_NM)
+
+  nm_args = [
+      LLVM_NM,
+      '--defined-only',
+      '--extern-only',
+      '--format=just-symbols',
+      '--print-file-name',
+      '--quiet',
+  ]
+
+  result = run_process(nm_args + input_files, stdout=subprocess.PIPE)
+  symbols = []
+  for line in result.stdout.splitlines():
+    (path, symbol) = line.split()
+    # Skip system libraries which are not needed and causes bloat.
+    if path.find('bin/third_party/crosstool/rust/') != -1:
+      continue
+    # Skip mangled (non-C) symbols
+    if symbol.startswith('_Z') or symbol.startswith('_R'):
+      continue
+    symbols.append(symbol)
+
+  return symbols
+
+
+def link_lld(args, target, external_symbols=None, linker_inputs=[]):
   if not os.path.exists(WASM_LD):
     exit_with_error('linker binary not found in LLVM directory: %s', WASM_LD)
   # runs lld to link things.
@@ -262,6 +290,10 @@ def link_lld(args, target, external_symbols=None):
   # semantics are more like the windows linker where there is no need for
   # grouping.
   args = [a for a in args if a not in ('--start-group', '--end-group')]
+
+  if settings.WASM_BINDGEN:
+    exported_symbols = get_wasm_bindgen_exported_symbols(linker_inputs)
+    args.extend(f'--export-if-defined={e}' for e in exported_symbols)
 
   # Emscripten currently expects linkable output (SIDE_MODULE/MAIN_MODULE) to
   # include all archive contents.
