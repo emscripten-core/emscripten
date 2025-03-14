@@ -202,13 +202,13 @@ addToLibrary({
   },
 
   emscripten_resize_heap__deps: [
-#if ASSERTIONS == 2
-    'emscripten_get_now',
-#endif
 #if ABORTING_MALLOC
     '$abortOnCannotGrowMemory',
 #endif
 #if ALLOW_MEMORY_GROWTH
+#if ASSERTIONS == 2
+    'emscripten_get_now',
+#endif
     '$getHeapMax',
     '$alignMemory',
     '$growMemory',
