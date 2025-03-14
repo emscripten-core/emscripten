@@ -171,10 +171,7 @@ def clear_port(port_name):
 
 def build_port(port_name):
   with get_port_variant(port_name) as port_name_base:
-    # TODO: switch this to use str.removeprefix once we use Python 3.9
-    assert port_name.index(port_name_base) == 0
-    variant = port_name[len(port_name_base):]
-    ports.build_port(port_name_base, settings, {'deferred':USE_NINJA, 'variant':variant})
+    ports.build_port(port_name_base, settings, deferred=USE_NINJA)
 
 
 def get_system_tasks():
