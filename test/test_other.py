@@ -15862,7 +15862,10 @@ addToLibrary({
     copytree(test_file('rollup_node'), '.')
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sENVIRONMENT=node', '-sMODULARIZE', '-o', 'hello.mjs'])
     self.run_process(shared.get_npm_cmd('rollup') + ['--config'])
-    self.assertContained('hello, world!', self.run_js('bundle.mjs'))
+    # Rollup doesn't bundler the wasm file by default so we need to copy it
+    # TODO(sbc): Look into plugings that do bundling.
+    shutil.copy('hello.wasm', 'dist/')
+    self.assertContained('hello, world!', self.run_js('dist/bundle.mjs'))
 
   def test_rlimit(self):
     self.do_other_test('test_rlimit.c', emcc_args=['-O1'])
