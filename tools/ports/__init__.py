@@ -35,7 +35,6 @@ port_variants = {}
 ports_dir = os.path.dirname(os.path.abspath(__file__))
 
 logger = logging.getLogger('ports')
-logger.setLevel(logging.DEBUG)
 
 DEFAULT_BUILD_CONFIG = {'deferred': False, 'variant': ''}
 current_build_config = DEFAULT_BUILD_CONFIG
@@ -534,7 +533,7 @@ def get_needed_ports(settings):
 def build_port(port_name, settings, build_config=DEFAULT_BUILD_CONFIG):
   global current_build_config
   current_build_config = build_config
-  logger.debug(f'build_Port {port_name}')
+  logger.debug(f'build_port {port_name}')
   port = ports_by_name[port_name]
   port_set = OrderedSet([port])
   resolve_dependencies(port_set, settings)
