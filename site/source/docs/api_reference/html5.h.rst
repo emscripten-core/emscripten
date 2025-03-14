@@ -800,7 +800,7 @@ Functions
 
   Returns the most recently received ``deviceorientation`` event state.
 
-  Note that for this function call to succeed, :c:func:`emscripten_set_deviceorientation_callback` must have first been called with an :c:data:`EMSCRIPTEN_EVENT_DEVICEORIENTATION` event and a non-zero callback function pointer to enable the ``deviceorientation`` state capture.
+  Note that for this function call to succeed, :c:func:`emscripten_set_deviceorientation_callback` must have first been called with a non-zero callback function pointer to enable the ``deviceorientation`` state capture.
 
   :param orientationState: The most recently received ``deviceorientation`` event state.
   :type orientationState: EmscriptenDeviceOrientationEvent*
@@ -892,7 +892,7 @@ Functions
 
   Returns the most recently received `devicemotion <http://w3c.github.io/deviceorientation/spec-source-orientation.html#devicemotion>`_ event state.
 
-  Note that for this function call to succeed, :c:func:`emscripten_set_devicemotion_callback` must have first been called with an :c:data:`EMSCRIPTEN_EVENT_DEVICEMOTION` event and a non-zero callback function pointer to enable the ``devicemotion`` state capture.
+  Note that for this function call to succeed, :c:func:`emscripten_set_devicemotion_callback` must have first been called with a non-zero callback function pointer to enable the ``devicemotion`` state capture.
 
   :param motionState: The most recently received ``devicemotion`` event state.
   :type motionState: EmscriptenDeviceMotionEvent*
