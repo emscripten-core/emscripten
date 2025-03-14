@@ -15866,19 +15866,25 @@ addToLibrary({
     self.do_other_test('test_rlimit.c', emcc_args=['-O1'])
 
   @parameterized({
-    '': ([],),
-    'es6': (['-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')],),
+    '': (False,),
+    'es6': (True,),
   })
-  def test_mainScriptUrlOrBlob(self, args):
+  def test_mainScriptUrlOrBlob(self, es6):
+    ext = "js"
+    args = []
+    if es6:
+      ext = "mjs"
+      args = ['-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')]
+    outfile = ('a.out.%s' % ext)
     # Use `foo.js` instead of the current script name when creating new threads
-    create_file('pre.js', 'Module = { mainScriptUrlOrBlob: "./foo.js" }')
+    create_file('pre.js', 'Module = { mainScriptUrlOrBlob: "./foo.%s" }' % ext)
 
-    self.run_process([EMCC, test_file('hello_world.c'), '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD', '-pthread', '--pre-js=pre.js', '-o', 'a.out.js'] + args)
+    self.run_process([EMCC, test_file('hello_world.c'), '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD', '-pthread', '--pre-js=pre.js', '-o', outfile] + args)
 
-    # First run without foo.js present to verify that the pthread creation fails
-    err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-    self.assertContained('Cannot find module.*foo.js', err, regex=True)
+    # First run without foo.[m]js present to verify that the pthread creation fails
+    err = self.run_js(outfile, assert_returncode=NON_ZERO)
+    self.assertContained('Cannot find module.*foo\.', err, regex=True)
 
-    # Now create foo.js and the program should run as expected.
-    shutil.copy('a.out.js', 'foo.js')
-    self.assertContained('hello, world', self.run_js('a.out.js'))
+    # Now create foo.[m]js and the program should run as expected.
+    shutil.copy(outfile, ('foo.%s' % ext))
+    self.assertContained('hello, world', self.run_js(outfile))
