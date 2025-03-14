@@ -170,8 +170,9 @@ def clear_port(port_name):
 
 
 def build_port(port_name):
-  with get_port_variant(port_name) as port_name:
-    ports.build_port(port_name, settings, deferred=True)
+  with get_port_variant(port_name) as port_name_base:
+    variant = port_name.removeprefix(port_name_base)
+    ports.build_port(port_name_base, settings, {'deferred':USE_NINJA, 'variant':variant})
 
 
 def get_system_tasks():
@@ -221,6 +222,7 @@ def main():
   # a system library into the cache, causing trouble.
   cache.setup()
   shared.check_sanity()
+  utils.safe_ensure_dirs(cache.get_path('build'))
 
   if args.lto:
     settings.LTO = args.lto

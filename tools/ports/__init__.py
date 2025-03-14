@@ -35,8 +35,11 @@ port_variants = {}
 ports_dir = os.path.dirname(os.path.abspath(__file__))
 
 logger = logging.getLogger('ports')
+logger.setLevel(logging.DEBUG)
 
-build_deferred = False
+DEFAULT_BUILD_CONFIG = {'deferred': False, 'variant': ''}
+current_build_config = DEFAULT_BUILD_CONFIG
+
 
 def init_port(name, port):
   ports.append(port)
@@ -177,7 +180,8 @@ class Ports:
 
   @staticmethod
   def build_port(src_dir, output_path, port_name, includes=[], flags=[], cxxflags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # noqa
-    build_dir = os.path.join(Ports.get_build_dir(), port_name)
+    build_dir = os.path.join(Ports.get_build_dir(), cache.get_lib_subdir(), port_name) + current_build_config['variant']
+    logger.debug(f'build_port: {port_name} in {build_dir}')
     if srcs:
       srcs = [os.path.join(src_dir, s) for s in srcs]
     else:
@@ -200,7 +204,7 @@ class Ports:
       ninja_file = os.path.join(build_dir, 'build.ninja')
       system_libs.ensure_sysroot()
       system_libs.create_ninja_file(srcs, ninja_file, output_path, cflags=cflags)
-      if not build_deferred:
+      if not current_build_config['deferred']:
         system_libs.run_ninja(build_dir)
     else:
       commands = []
@@ -527,9 +531,10 @@ def get_needed_ports(settings):
   return needed
 
 
-def build_port(port_name, settings, deferred=False):
-  global build_deferred
-  build_deferred = deferred
+def build_port(port_name, settings, build_config=DEFAULT_BUILD_CONFIG):
+  global current_build_config
+  current_build_config = build_config
+  logger.debug(f'build_Port {port_name}')
   port = ports_by_name[port_name]
   port_set = OrderedSet([port])
   resolve_dependencies(port_set, settings)
@@ -577,13 +582,13 @@ def add_cflags(args, settings): # noqa: U100
 
   # Now get (i.e. build) the ports in dependency order.  This is important because the
   # headers from one ports might be needed before we can build the next.
-  global build_deferred
-  assert not build_deferred, "add_cflags shouldn't be called from embuilder"
-  build_deferred = True
+  global current_build_config
+  assert not current_build_config['deferred'], "add_cflags shouldn't be called from embuilder"
+  current_build_config['deferred'] = True
   for port in dependency_order(needed):
     port.get(Ports, settings, shared)
     args += port.process_args(Ports)
-  build_deferred = False
+  current_build_config['deferred'] = False
 
 def show_ports():
   sorted_ports = sorted(ports, key=lambda p: p.name)

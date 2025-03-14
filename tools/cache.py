@@ -129,6 +129,10 @@ def get_lib_dir(absolute):
   return path
 
 
+def get_lib_subdir():
+  return get_lib_dir(False).relative_to(Path(get_sysroot(False), 'lib'))
+
+
 def get_lib_name(name, absolute=False):
   return str(get_lib_dir(absolute=absolute).joinpath(name))
 
