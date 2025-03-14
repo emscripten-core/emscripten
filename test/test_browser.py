@@ -2323,6 +2323,13 @@ void *getBindBuffer() {
   def test_openal_extensions(self):
     self.btest_exit('openal/test_openal_extensions.c')
 
+  def test_openal_playback(self):
+    shutil.copy(test_file('sounds/audio.wav'), '.')
+    self.btest_exit('openal/test_openal_playback.c', emcc_args=['-O2', '--preload-file', 'audio.wav'],)
+
+  def test_openal_buffers(self):
+    self.btest_exit('openal/test_openal_buffers.c', emcc_args=['--preload-file', test_file('sounds/the_entertainer.wav') + '@/'],)
+
   def test_runtimelink(self):
     create_file('header.h', r'''
       struct point {
