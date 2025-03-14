@@ -47,7 +47,7 @@ const extraLibraryFuncs = [];
 
 // Experimental feature to check for invalid __deps entries. Modify this line
 // locally to try it out.
-const CHECK_DEPS = true;
+const CHECK_DEPS = process.env.EMCC_CHECK_DEPS;
 
 // Some JS-implemented library functions are proxied to be called on the main
 // browser thread, if the Emscripten runtime is executing in a Web Worker.
