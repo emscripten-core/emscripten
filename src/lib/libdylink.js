@@ -1215,6 +1215,9 @@ var LibraryDylink = {
 #endif
         return res.path;
       } catch(e) {
+#if DYLINK_DEBUG
+        dbg(`locateLibraryFromFS: ${path} not found: ${e}`);
+#endif
         // do nothing is file is not found
       }
     }
@@ -1238,10 +1241,6 @@ var LibraryDylink = {
     if (file.startsWith("/")) {
       return cfile;
     }
-
-// #if DYLINK_DEBUG
-//     dbg("_dylink_resolve_path_js: entries in sharedModules: " + Object.keys(sharedModules));
-// #endif
 
     var res = locateLibraryFromFS(file, getDefaultLibDirs(), buflen - 1);
     if (!res) {
