@@ -947,7 +947,7 @@ var LibraryPThread = {
   },
 
   // Reuse global JS array to avoid creating JS garbage for each proxied call
-  $proxiedJSCallArgs: '=[]',
+  $proxiedJSCallArgs: [],
 
   _emscripten_receive_on_main_thread_js__deps: [
     '$proxyToMainThread',

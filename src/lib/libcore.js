@@ -1505,7 +1505,7 @@ addToLibrary({
   },
 #endif
 
-  $readEmAsmArgsArray: '=[]',
+  $readEmAsmArgsArray: [],
   $readEmAsmArgs__deps: [
     '$readEmAsmArgsArray',
 #if MEMORY64
