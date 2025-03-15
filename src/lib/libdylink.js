@@ -1242,6 +1242,7 @@ var LibraryDylink = {
 
 #if MEMORY64
     cfilePtr = Number(cfilePtr);
+    buflen = Number(buflen)
 #endif
 
     var file = UTF8ToString(cfilePtr);
@@ -1250,9 +1251,6 @@ var LibraryDylink = {
       return cfile;
     }
 
-    // Use decrement instead of subtracting 1 normally to handle memory64 case
-    var buflenMinusOne = buflen;
-    buflenMinusOne--;
     var res = locateLibraryFromFS(file, getDefaultLibDirs(), buflenMinusOne);
     if (!res) {
 #if DYLINK_DEBUG
