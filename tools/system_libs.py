@@ -1926,7 +1926,7 @@ class libwebgpu_cpp(MTLibrary):
   src_files = ['webgpu_cpp.cpp']
 
 
-class libembind(Library):
+class libembind(MTLibrary):
   name = 'libembind'
   never_force = True
 
