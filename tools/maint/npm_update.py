@@ -23,7 +23,7 @@ def run(cmd, **args):
 def main():
   if run(['git', 'status', '-uno', '--porcelain']).strip():
     print('tree is not clean')
-    #return 1
+    return 1
 
   output = run(['npx', 'npm-check-updates', '-u'], stderr=subprocess.STDOUT).strip()
 

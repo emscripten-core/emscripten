@@ -3778,8 +3778,7 @@ ok
         "side.so",
         test_file("core/test_dlfcn_jspi_side.c"),
         "-sSIDE_MODULE",
-      ]
-      + self.get_emcc_args()
+      ] + self.get_emcc_args()
     )
     self.do_run_in_out_file_test("core/test_dlfcn_jspi.c", emcc_args=["side.so", "-sMAIN_MODULE=2"])
 
@@ -8068,7 +8067,7 @@ Module.onRuntimeInitialized = () => {
   })
   @with_asyncify_and_jspi
   def test_async_ccall_promise(self, exit_runtime):
-    if self.get_setting('ASYNCIFY') ==  2:
+    if self.get_setting('ASYNCIFY') == 2:
       self.set_setting('JSPI_EXPORTS', ['stringf', 'floatf'])
     self.set_setting('ASSERTIONS')
     self.set_setting('INVOKE_RUN', 0)
