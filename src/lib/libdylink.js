@@ -656,7 +656,7 @@ var LibraryDylink = {
       }
 #if DYLINK_DEBUG
       dbg(`loadModule: memory[${memoryBase}:${memoryBase + metadata.memorySize}]` +
-                     ` table[${tableBasex}:${tableBase + metadata.tableSize}]`);
+                     ` table[${tableBase}:${tableBase + metadata.tableSize}]`);
 #endif
 
       // This is the export map that we ultimately return.  We declare it here
@@ -1170,6 +1170,96 @@ var LibraryDylink = {
 #else
     return dlopenInternal(handle, { loadAsync: false });
 #endif
+  },
+
+  $locateLibraryFromFS__deps: ['$FS'],
+  $locateLibraryFromFS: (filename, searchDirs, maxLength = Infinity) => {
+    // Find the library in the filesystem.
+    // returns null if not found.
+    if (typeof FS.lookupPath !== 'function') {
+      // wasmfs does not implement FS.lookupPath
+#if DYLINK_DEBUG
+      dbg("locateLibraryFromFS: FS.lookupPath not implemented");
+#endif
+      return null;
+    }
+
+    var candidates = [];
+    if (filename.charAt(0) === '/') {  // abs path
+      candidates.push(filename);
+    } else if (searchDirs) {
+      for (var dir of searchDirs) {
+        // PATH.join does not work well with symlinks
+        candidates.push(dir + '/' + filename);
+      }
+    } else {
+      return null;
+    }
+
+#if DYLINK_DEBUG
+    dbg("locateLibraryFromFS: candidates " + candidates);
+#endif
+
+    for (var path of candidates) {
+      try {
+        var res = FS.lookupPath(path);
+        if (res.node.isDir || res.node.isDevice) {
+          continue
+        }
+
+        if (res.path.length >= maxLength) {
+          continue
+        }
+#if DYLINK_DEBUG
+        dbg(`locateLibraryFromFS: found ${res.path} for (${filename})`);
+#endif
+        return res.path;
+      } catch(e) {
+#if DYLINK_DEBUG
+        dbg(`locateLibraryFromFS: ${path} not found: ${e}`);
+#endif
+        // do nothing is file is not found
+      }
+    }
+
+    return null;
+  },
+
+  $getDefaultLibDirs__deps: ['$ENV'],
+  $getDefaultLibDirs__proxy: 'sync',
+  $getDefaultLibDirs: () => {
+    var ldLibraryPath = ENV['LD_LIBRARY_PATH']
+#if DYLINK_DEBUG
+    dbg(`getDefaultLibDirs: LD_LIBRARY_PATH=${ldLibraryPath}`);
+#endif
+    return ldLibraryPath?.split(':') ?? [];
+  },
+
+  _dylink_resolve_path_js__deps: ['$UTF8ToString', '$stringToUTF8', '$locateLibraryFromFS', '$getDefaultLibDirs'],
+  _dylink_resolve_path_js__proxy: 'sync',
+  _dylink_resolve_path_js: (cbuf, cfile, buflen) => {
+    var cfilePtr = cfile;
+
+#if MEMORY64
+    cfilePtr = Number(cfilePtr);
+    buflen = Number(buflen)
+#endif
+
+    var file = UTF8ToString(cfilePtr);
+
+    if (file.startsWith("/")) {
+      return cfile;
+    }
+
+    var res = locateLibraryFromFS(file, getDefaultLibDirs(), buflen - 1);
+    if (!res) {
+#if DYLINK_DEBUG
+    dbg("_dylink_resolve_path_js: fail to locate " + file);
+#endif
+      return cfile;
+    }
+    stringToUTF8(res, cbuf, buflen);
+    return cbuf;
   },
 
   // Async version of dlopen.
