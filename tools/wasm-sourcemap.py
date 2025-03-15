@@ -55,10 +55,10 @@ class Prefixes:
     for p in args:
       if '=' in p:
         prefix, replacement = p.split('=')
-        prefixes.append({'prefix': prefix, 'replacement': replacement})
+        prefixes.append({'prefix': utils.normalize_path(prefix), 'replacement': replacement})
       else:
-        prefixes.append({'prefix': p, 'replacement': ''})
-    self.base_path = base_path
+        prefixes.append({'prefix': utils.normalize_path(p), 'replacement': ''})
+    self.base_path = utils.normalize_path(base_path) if base_path is not None else None
     self.preserve_deterministic_prefix = preserve_deterministic_prefix
     self.prefixes = prefixes
     self.cache = {}

@@ -10476,7 +10476,6 @@ int main() {
     'sources': ([], 1)
   })
   @crossplatform
-  @no_windows('https://github.com/emscripten-core/emscripten/pull/23741#issuecomment-2725574867')
   def test_emcc_sourcemap_options(self, prefixes, sources):
     wasm_sourcemap = importlib.import_module('tools.wasm-sourcemap')
     cwd = os.getcwd()
