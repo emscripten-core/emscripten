@@ -494,6 +494,49 @@ static struct dso* find_existing(const char* file) {
   return NULL;
 }
 
+// Modified version of path_open from musl/ldso/dynlink.c
+static int path_find(const char *name, const char *s, char *buf, size_t buf_size) {
+  size_t l;
+  int fd;
+  for (;;) {
+    s += strspn(s, ":\n");
+    l = strcspn(s, ":\n");
+    if (l-1 >= INT_MAX) return -1;
+    if (snprintf(buf, buf_size, "%.*s/%s", (int)l, s, name) < buf_size) {
+      dbg("dlopen: path_find: %s", buf);
+      struct stat statbuf;
+      if (stat(buf, &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
+        return 0;
+      }
+      switch (errno) {
+      case ENOENT:
+      case ENOTDIR:
+      case EACCES:
+      case ENAMETOOLONG:
+        break;
+      default:
+        dbg("dlopen: path_find failed: %s", strerror(errno));
+        /* Any negative value but -1 will inhibit
+         * futher path search. */
+        return -2;
+      }
+    }
+    s += l;
+  }
+}
+
+// Resolve filename using LD_LIBRARY_PATH
+static const char* resolve_path(char* buf, const char* file, size_t buflen) {
+  if (!strchr(file, '/')) {
+    const char* env_path = getenv("LD_LIBRARY_PATH");
+    if (env_path && path_find(file, env_path, buf, buflen) == 0) {
+      dbg("dlopen: found in LD_LIBRARY_PATH: %s", buf);
+      return buf;
+    }
+  }
+  return file;
+}
+
 // Internal version of dlopen with typed return value.
 // Without this, the compiler won't tell us if we have the wrong return type.
 static struct dso* _dlopen(const char* file, int flags) {

@@ -1239,9 +1239,9 @@ var LibraryDylink = {
       return cfile;
     }
 
-#if DYLINK_DEBUG
-    dbg("_dylink_resolve_path_js: entries in sharedModules: " + Object.keys(sharedModules));
-#endif
+// #if DYLINK_DEBUG
+//     dbg("_dylink_resolve_path_js: entries in sharedModules: " + Object.keys(sharedModules));
+// #endif
 
     var res = locateLibraryFromFS(file, getDefaultLibDirs(), buflen - 1);
     if (!res) {
