@@ -1236,6 +1236,7 @@ var LibraryDylink = {
   },
 
   _dylink_resolve_path_js__deps: ['$UTF8ToString', '$stringToUTF8', '$locateLibraryFromFS', '$getDefaultLibDirs'],
+  _dylink_resolve_path_js__proxy: 'sync',
   _dylink_resolve_path_js: (cbuf, cfile, buflen) => {
     var file = UTF8ToString(cfile);
     if (file.startsWith("/")) {
