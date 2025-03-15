@@ -1226,13 +1226,13 @@ var LibraryDylink = {
   },
 
   $getDefaultLibDirs__deps: ['$ENV'],
+  $getDefaultLibDirs__proxy: 'sync',
   $getDefaultLibDirs: () => {
     var ldLibraryPath = ENV['LD_LIBRARY_PATH']
 #if DYLINK_DEBUG
     dbg(`getDefaultLibDirs: LD_LIBRARY_PATH=${ldLibraryPath}`);
 #endif
-    // return ldLibraryPath?.split(':') ?? [];
-    return "/lib:/usr/lib:/usr/local/lib".split(':');
+    return ldLibraryPath?.split(':') ?? [];
   },
 
   _dylink_resolve_path_js__deps: ['$UTF8ToString', '$stringToUTF8', '$locateLibraryFromFS', '$getDefaultLibDirs'],
