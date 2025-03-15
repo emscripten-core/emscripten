@@ -1251,7 +1251,7 @@ var LibraryDylink = {
       return cfile;
     }
 
-    var res = locateLibraryFromFS(file, getDefaultLibDirs(), buflenMinusOne);
+    var res = locateLibraryFromFS(file, getDefaultLibDirs(), buflen - 1);
     if (!res) {
 #if DYLINK_DEBUG
     dbg("_dylink_resolve_path_js: fail to locate " + file);
