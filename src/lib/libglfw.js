@@ -84,6 +84,7 @@ var LibraryGLFW = {
     },
 
   $GLFW__deps: ['emscripten_get_now', '$GL', '$Browser', '$GLFW_Window',
+    'malloc', 'free',
     '$MainLoop',
     '$stringToNewUTF8',
     'emscripten_set_window_title',
@@ -1379,7 +1380,6 @@ var LibraryGLFW = {
 /*******************************************************************************
  * GLFW FUNCTIONS
  ******************************************************************************/
-  glfwInit__deps: ['malloc', 'free'],
   glfwInit: () => {
     if (GLFW.windows) return 1; // GL_TRUE
 

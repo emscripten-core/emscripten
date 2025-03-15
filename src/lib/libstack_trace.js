@@ -7,7 +7,11 @@
 var LibraryStackTrace = {
   $jsStackTrace: () => new Error().stack.toString(),
 
-  $getCallstack__deps: ['$jsStackTrace', '$warnOnce'],
+  $getCallstack__deps: ['$jsStackTrace',
+#if ASSERTIONS
+    '$warnOnce'
+#endif
+  ],
   $getCallstack__docs: '/** @param {number=} flags */',
   $getCallstack: (flags) => {
     var callstack = jsStackTrace();
@@ -271,7 +275,7 @@ var LibraryStackTrace = {
 #endif
   },
 
-  $convertPCtoSourceLocation__deps: ['$UNWIND_CACHE', '$convertFrameToPC'],
+  $convertPCtoSourceLocation__deps: ['$UNWIND_CACHE'],
   $convertPCtoSourceLocation: (pc) => {
     if (UNWIND_CACHE.last_get_source_pc == pc) return UNWIND_CACHE.last_source;
 

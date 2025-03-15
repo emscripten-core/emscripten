@@ -430,7 +430,7 @@ var LibraryHTML5 = {
   // eventStruct: the structure to populate.
   // e: The JS mouse event to read data from.
   // target: Specifies a target DOM element that will be used as the reference to populate targetX and targetY parameters.
-  $fillMouseEventData__deps: ['$getBoundingClientRect', '$specialHTMLTargets'],
+  $fillMouseEventData__deps: ['$getBoundingClientRect'],
   $fillMouseEventData: (eventStruct, e, target) => {
 #if ASSERTIONS
     assert(eventStruct % 4 == 0);
@@ -568,7 +568,7 @@ var LibraryHTML5 = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  $registerWheelEventCallback__deps: ['$JSEvents', '$fillMouseEventData', '$findEventTarget', 'malloc'],
+  $registerWheelEventCallback__deps: ['$JSEvents', '$fillMouseEventData', 'malloc'],
   $registerWheelEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
@@ -791,7 +791,7 @@ var LibraryHTML5 = {
   },
 
   emscripten_get_deviceorientation_status__proxy: 'sync',
-  emscripten_get_deviceorientation_status__deps: ['$JSEvents', '$registerDeviceOrientationEventCallback'],
+  emscripten_get_deviceorientation_status__deps: ['$JSEvents'],
   emscripten_get_deviceorientation_status: (orientationState) => {
     if (!JSEvents.deviceOrientationEvent) return {{{ cDefs.EMSCRIPTEN_RESULT_NO_DATA }}};
     // HTML5 does not really have a polling API for device orientation events, so implement one manually by
@@ -905,7 +905,7 @@ var LibraryHTML5 = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationAngle, 'orientationAngle', 'i32') }}};
   },
 
-  $registerOrientationChangeEventCallback__deps: ['$JSEvents', '$fillOrientationChangeEventData', '$findEventTarget', 'malloc'],
+  $registerOrientationChangeEventCallback__deps: ['$JSEvents', '$fillOrientationChangeEventData', 'malloc'],
   $registerOrientationChangeEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
@@ -1017,7 +1017,7 @@ var LibraryHTML5 = {
     }
   },
 
-  $registerFullscreenChangeEventCallback__deps: ['$JSEvents', '$fillFullscreenChangeEventData', '$findEventTarget', 'malloc'],
+  $registerFullscreenChangeEventCallback__deps: ['$JSEvents', '$fillFullscreenChangeEventData', 'malloc'],
   $registerFullscreenChangeEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
@@ -1051,7 +1051,11 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_fullscreenchange_callback_on_thread__proxy: 'sync',
-  emscripten_set_fullscreenchange_callback_on_thread__deps: ['$JSEvents', '$registerFullscreenChangeEventCallback', '$findEventTarget', '$specialHTMLTargets'],
+  emscripten_set_fullscreenchange_callback_on_thread__deps: ['$JSEvents', '$registerFullscreenChangeEventCallback', '$findEventTarget',
+#if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
+    '$specialHTMLTargets'
+#endif
+  ],
   emscripten_set_fullscreenchange_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) => {
     if (!JSEvents.fullscreenEnabled()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
 #if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
@@ -1176,7 +1180,7 @@ var LibraryHTML5 = {
     return restoreOldStyle;
   },
 
-  $registerRestoreOldStyle__deps: ['$getCanvasElementSize', '$setCanvasElementSize'],
+  $registerRestoreOldStyle__deps: ['$getCanvasElementSize', '$setCanvasElementSize', '$currentFullscreenStrategy'],
   $registerRestoreOldStyle: (canvas) => {
     var canvasSize = getCanvasElementSize(canvas);
     var oldWidth = canvasSize[0];
@@ -1364,7 +1368,7 @@ var LibraryHTML5 = {
   },
 
   // https://developer.mozilla.org/en-US/docs/Web/Guide/API/DOM/Using_full_screen_mode
-  $doRequestFullscreen__deps: ['$JSEvents', '$setLetterbox', 'emscripten_set_canvas_element_size', 'emscripten_get_canvas_element_size', '$getCanvasElementSize', '$setCanvasElementSize', '$JSEvents_requestFullscreen', '$findEventTarget'],
+  $doRequestFullscreen__deps: ['$JSEvents', '$JSEvents_requestFullscreen', '$findEventTarget'],
   $doRequestFullscreen: (target, strategy) => {
     if (!JSEvents.fullscreenEnabled()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
@@ -1416,7 +1420,7 @@ var LibraryHTML5 = {
     return doRequestFullscreen(target, strategy);
   },
 
-  emscripten_request_fullscreen_strategy__deps: ['$doRequestFullscreen', '$currentFullscreenStrategy', '$registerRestoreOldStyle'],
+  emscripten_request_fullscreen_strategy__deps: ['$doRequestFullscreen'],
   emscripten_request_fullscreen_strategy__proxy: 'sync',
   emscripten_request_fullscreen_strategy: (target, deferUntilInEventHandler, fullscreenStrategy) => {
     var strategy = {
@@ -1436,7 +1440,7 @@ var LibraryHTML5 = {
     return doRequestFullscreen(target, strategy);
   },
 
-  emscripten_enter_soft_fullscreen__deps: ['$JSEvents', '$setLetterbox', '$hideEverythingExceptGivenElement', '$restoreOldWindowedStyle', '$registerRestoreOldStyle', '$restoreHiddenElements', '$currentFullscreenStrategy', '$softFullscreenResizeWebGLRenderTarget', '$getCanvasElementSize', '$setCanvasElementSize', '$JSEvents_resizeCanvasForFullscreen', '$findEventTarget'],
+  emscripten_enter_soft_fullscreen__deps: ['$JSEvents', '$hideEverythingExceptGivenElement', '$restoreOldWindowedStyle', '$restoreHiddenElements', '$currentFullscreenStrategy', '$softFullscreenResizeWebGLRenderTarget', '$JSEvents_resizeCanvasForFullscreen', '$findEventTarget'],
   emscripten_enter_soft_fullscreen__proxy: 'sync',
   emscripten_enter_soft_fullscreen: (target, fullscreenStrategy) => {
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
@@ -1504,7 +1508,13 @@ var LibraryHTML5 = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  emscripten_exit_fullscreen__deps: ['$JSEvents', '$currentFullscreenStrategy', '$JSEvents_requestFullscreen', '$specialHTMLTargets'],
+  emscripten_exit_fullscreen__deps: [
+    '$JSEvents',
+    '$specialHTMLTargets',
+#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
+    '$JSEvents_requestFullscreen',
+#endif
+  ],
   emscripten_exit_fullscreen__proxy: 'sync',
   emscripten_exit_fullscreen: () => {
     if (!JSEvents.fullscreenEnabled()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
@@ -1546,7 +1556,7 @@ var LibraryHTML5 = {
     stringToUTF8(id, eventStruct + {{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.id }}}, {{{ cDefs.EM_HTML5_LONG_STRING_LEN_BYTES }}});
   },
 
-  $registerPointerlockChangeEventCallback__deps: ['$JSEvents', '$fillPointerlockChangeEventData', '$findEventTarget', 'malloc'],
+  $registerPointerlockChangeEventCallback__deps: ['$JSEvents', '$fillPointerlockChangeEventData', 'malloc'],
   $registerPointerlockChangeEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
@@ -1579,7 +1589,11 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_pointerlockchange_callback_on_thread__proxy: 'sync',
-  emscripten_set_pointerlockchange_callback_on_thread__deps: ['$registerPointerlockChangeEventCallback', '$findEventTarget', '$specialHTMLTargets'],
+  emscripten_set_pointerlockchange_callback_on_thread__deps: ['$registerPointerlockChangeEventCallback', '$findEventTarget',
+#if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
+    '$specialHTMLTargets'
+#endif
+  ],
   emscripten_set_pointerlockchange_callback_on_thread__docs: '/** @suppress {missingProperties} */', // Closure does not see document.body.mozRequestPointerLock etc.
   emscripten_set_pointerlockchange_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) => {
     // TODO: Currently not supported in pthreads or in --proxy-to-worker mode. (In pthreads mode, document object is not defined)
@@ -1599,7 +1613,7 @@ var LibraryHTML5 = {
     return registerPointerlockChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_POINTERLOCKCHANGE }}}, "pointerlockchange", targetThread);
   },
 
-  $registerPointerlockErrorEventCallback__deps: ['$JSEvents', '$findEventTarget', '$specialHTMLTargets'],
+  $registerPointerlockErrorEventCallback__deps: ['$JSEvents'],
   $registerPointerlockErrorEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
@@ -1624,7 +1638,11 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_pointerlockerror_callback_on_thread__proxy: 'sync',
-  emscripten_set_pointerlockerror_callback_on_thread__deps: ['$registerPointerlockErrorEventCallback', '$findEventTarget', '$specialHTMLTargets'],
+  emscripten_set_pointerlockerror_callback_on_thread__deps: ['$registerPointerlockErrorEventCallback', '$findEventTarget',
+#if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
+    '$specialHTMLTargets'
+#endif
+  ],
   emscripten_set_pointerlockerror_callback_on_thread__docs: '/** @suppress {missingProperties} */', // Closure does not see document.body.mozRequestPointerLock etc.
   emscripten_set_pointerlockerror_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) => {
     // TODO: Currently not supported in pthreads or in --proxy-to-worker mode. (In pthreads mode, document object is not defined)
@@ -1679,7 +1697,11 @@ var LibraryHTML5 = {
   },
 
   emscripten_request_pointerlock__proxy: 'sync',
-  emscripten_request_pointerlock__deps: ['$JSEvents', '$requestPointerLock', '$findEventTarget'],
+  emscripten_request_pointerlock__deps: ['$requestPointerLock', '$findEventTarget',
+#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
+    '$JSEvents',
+#endif
+  ],
   emscripten_request_pointerlock: (target, deferUntilInEventHandler) => {
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     target ||= '#canvas';
@@ -1709,8 +1731,10 @@ var LibraryHTML5 = {
     return requestPointerLock(target);
   },
 
-  emscripten_exit_pointerlock__proxy: 'sync',
+#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
   emscripten_exit_pointerlock__deps: ['$JSEvents', '$requestPointerLock'],
+#endif
+  emscripten_exit_pointerlock__proxy: 'sync',
   emscripten_exit_pointerlock: () => {
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
     // Make sure no queued up calls will fire after this.
@@ -1761,7 +1785,7 @@ var LibraryHTML5 = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.visibilityState, 'visibilityState', 'i32') }}};
   },
 
-  $registerVisibilityChangeEventCallback__deps: ['$JSEvents', '$fillVisibilityChangeEventData', '$findEventTarget', 'malloc'],
+  $registerVisibilityChangeEventCallback__deps: ['$JSEvents', '$fillVisibilityChangeEventData', 'malloc'],
   $registerVisibilityChangeEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);

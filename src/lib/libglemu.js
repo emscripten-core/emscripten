@@ -3464,7 +3464,6 @@ var LibraryGLEmulation = {
     }
   },
 
-  glVertexPointer__deps: ['$GLEmulation'], // if any pointers are used, glVertexPointer must be, and if it is, then we need emulation
   glVertexPointer: (size, type, stride, pointer) => {
     GLImmediate.setClientAttribute(GLImmediate.VERTEX, size, type, stride, pointer);
 #if GL_FFP_ONLY

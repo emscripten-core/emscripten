@@ -23,6 +23,7 @@ var LibrarySDL = {
     '$intArrayFromString',
     // Many SDL functions depend on malloc/free
     'malloc', 'free',
+    'memcpy',
   ],
   $SDL: {
     defaults: {
@@ -1380,7 +1381,7 @@ var LibrarySDL = {
     return SDL.version;
   },
 
-  SDL_Init__deps: ['calloc', 'memcpy'],
+  SDL_Init__deps: ['calloc'],
   SDL_Init__proxy: 'sync',
   SDL_Init__docs: '/** @param{number} initFlags */',
   SDL_Init: (initFlags) => {
@@ -2183,7 +2184,11 @@ var LibrarySDL = {
   // We support JPG, PNG, TIF because browsers do
   IMG_Init: (flags) => flags,
 
-  IMG_Load_RW__deps: ['$Browser', 'SDL_LockSurface', 'SDL_FreeRW', '$PATH_FS', '$stackSave', '$stackRestore', '$stringToUTF8OnStack', '$stackAlloc'],
+  IMG_Load_RW__deps: ['$Browser', 'SDL_LockSurface', 'SDL_FreeRW', '$PATH_FS', '$stackSave', '$stackRestore', '$stackAlloc',
+#if STB_IMAGE
+    '$stringToUTF8OnStack',
+#endif
+  ],
   IMG_Load_RW__proxy: 'sync',
   IMG_Load_RW: (rwopsID, freeSrc) => {
     var sp = stackSave();
@@ -2688,11 +2693,7 @@ var LibrarySDL = {
     return 1;
   },
 
-  Mix_LoadWAV_RW__deps: [
-    '$FS',
-    '$PATH_FS',
-    'fileno',
-  ],
+  Mix_LoadWAV_RW__deps: ['$FS', '$PATH_FS'],
   Mix_LoadWAV_RW__proxy: 'sync',
   Mix_LoadWAV_RW__docs: '/** @param {number} freesrc */',
   Mix_LoadWAV_RW: (rwopsID, freesrc) => {
