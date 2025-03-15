@@ -5543,26 +5543,49 @@ Module["preRun"] = () => {
 
   @also_with_threads
   @parameterized({
-    '': (False,),
-    'es6': (True,),
+    '': (False,False,False),
+    # 'blob': (False,True,True),
+    # 'url': (False,True,False),
+    'es6': (True,False,False),
+    # 'es6_url': (True,True,True),
+    # 'es6_blob': (True,True,False),
   })
-  def test_webpack(self, es6):
-    if es6:
+  def test_webpack(self, es6, main_script_url_or_blob, use_blob):
+    if es6 and main_script_url_or_blob:
+      copytree(test_file('webpack_es6_with_%s' % ('blob' if use_blob else 'url')), '.')
+      self.emcc_args += ['-sEXPORT_ES6', '-pthread', '-sPTHREAD_POOL_SIZE=1']
+      outfile = 'dist/hello.mjs'
+    elif es6:
       copytree(test_file('webpack_es6'), '.')
       self.emcc_args += ['-sEXPORT_ES6', '-pthread', '-sPTHREAD_POOL_SIZE=1']
       outfile = 'src/hello.mjs'
+    elif main_script_url_or_blob:
+      copytree(test_file('webpack_with_%s' % ('blob' if use_blob else 'url')), '.')
+      self.emcc_args += ['-pthread', '-sPTHREAD_POOL_SIZE=1']
+      outfile = 'dist/hello.js'
     else:
       copytree(test_file('webpack'), '.')
       outfile = 'src/hello.js'
     self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web,worker', '-o', outfile])
     self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool'])
-    shutil.copy('src/hello.wasm', 'dist/')
+    if not main_script_url_or_blob:
+      shutil.copy('src/hello.wasm', 'dist/')
     self.run_browser('dist/index.html', '/report_result?exit:0')
 
   @also_with_threads
   def test_vite(self):
     copytree(test_file('vite'), '.')
     self.compile_btest('hello_world.c', ['-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web,worker', '-o', 'hello.mjs'])
+    self.run_process(shared.get_npm_cmd('vite') + ['build'])
+    self.run_browser('dist/index.html', '/report_result?exit:0')
+
+  @parameterized({
+    '':('vite_with_blob',),
+    'url':('vite_with_blob_url',),
+  })
+  def test_vite_with_blob(self, package):
+    copytree(test_file(package), '.')
+    self.compile_btest('hello_world.c', ['-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web,worker', '-sPTHREAD_POOL_SIZE=1', '-pthread', '-sPROXY_TO_PTHREAD', '-o', 'public/hello.mjs'])
     self.run_process(shared.get_npm_cmd('vite') + ['build'])
     self.run_browser('dist/index.html', '/report_result?exit:0')
 
