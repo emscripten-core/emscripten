@@ -1250,7 +1250,10 @@ var LibraryDylink = {
       return cfile;
     }
 
-    var res = locateLibraryFromFS(file, getDefaultLibDirs(), buflen - 1);
+    // Use decrement instead of subtracting 1 normally to handle memory64 case
+    var buflenMinusOne = buflen;
+    buflenMinusOne--;
+    var res = locateLibraryFromFS(file, getDefaultLibDirs(), buflenMinusOne);
     if (!res) {
 #if DYLINK_DEBUG
     dbg("_dylink_resolve_path_js: fail to locate " + file);
