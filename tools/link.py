@@ -774,8 +774,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.MODULARIZE == 'instance':
     diagnostics.warning('experimental', '-sMODULARIZE=instance is still experimental. Many features may not work or will change.')
-    if options.oformat != OFormat.MJS:
-      exit_with_error('emcc: MODULARIZE instance is only compatible with .mjs output files')
+    if not settings.EXPORT_ES6:
+      exit_with_error('emcc: MODULARIZE instance is only compatible with EXPORT_ES6')
 
   if options.oformat in (OFormat.WASM, OFormat.BARE):
     if options.emit_tsd:
