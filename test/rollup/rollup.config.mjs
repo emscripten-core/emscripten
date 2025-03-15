@@ -1,7 +1,7 @@
 export default {
   input: 'index.mjs',
   output: {
-    file: 'bundle.mjs',
+    file: 'dist/bundle.mjs',
     format: 'es'
   }
 };
