@@ -7567,7 +7567,7 @@ int main(int argc, char** argv) {
       self.setup_node_pthreads()
     if wasm64:
       self.require_wasm64()
-      args += ['-sMEMORY64']
+      args += ['-sMEMORY64', '-sENVIRONMENT=node,shell']
     create_file('hello1.c', r'''
 #include <stdio.h>
 
