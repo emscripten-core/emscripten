@@ -21,7 +21,7 @@
 // before the code. Then that object will be used in the code, and you
 // can continue to use Module afterwards as well.
 #if MODULARIZE
-var Module = moduleArg;
+var Module = Object.assign({}, moduleArg);
 #elif USE_CLOSURE_COMPILER
 /** @type{Object} */
 var Module;
