@@ -424,6 +424,15 @@ var LibraryPThread = {
         worker = new Worker(p.createScriptURL('ignored'), {{{ pthreadWorkerOptions }}});
       } else
 #endif
+#if expectToReceiveOnModule('mainScriptUrlOrBlob')
+        if (Module['mainScriptUrlOrBlob']) {
+          var pthreadMainJs = Module['mainScriptUrlOrBlob'];
+          if (typeof pthreadMainJs != 'string') {
+            pthreadMainJs = URL.createObjectURL(pthreadMainJs);
+          }
+          worker = new Worker(pthreadMainJs, {{{ pthreadWorkerOptions }}});
+        } else
+#endif
       // We need to generate the URL with import.meta.url as the base URL of the JS file
       // instead of just using new URL(import.meta.url) because bundler's only recognize
       // the first case in their bundling step. The latter ends up producing an invalid

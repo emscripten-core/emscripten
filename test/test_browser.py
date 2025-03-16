@@ -4763,18 +4763,55 @@ Module["preRun"] = () => {
   def test_pthread_reltime(self):
     self.btest_exit('pthread/test_pthread_reltime.cpp', emcc_args=['-pthread', '-sPTHREAD_POOL_SIZE'])
 
-  # Tests that it is possible to load the main .js file of the application manually via a Blob URL,
+  # Tests that it is possible to load the main .js file of the application manually via mainScriptUrlOrBlob,
   # and still use pthreads.
-  def test_load_js_from_blob_with_pthreads(self):
+  @parameterized({
+    'blob': (False, True),
+    'url': (False, False),
+    'blob_es6': (True, True),
+    'url_es6': (True, False),
+  })
+  def test_mainScriptUrlOrBlob(self, es6, use_blob):
     # TODO: enable this with wasm, currently pthreads/atomics have limitations
     self.set_setting('EXIT_RUNTIME')
+    js_name = 'hello_thread_with_loader.%s' % ('mjs' if es6 else 'js')
+    if es6:
+      self.emcc_args += ['-sEXPORT_ES6']
+    if es6 and use_blob:
+      create_file('loader.mjs', '''
+        Module['locateFile'] = (path,_prefix) => path;
+        let blob = await (await fetch('hello_thread_with_loader.mjs')).blob();
+        Module['mainScriptUrlOrBlob'] = blob;
+        (await import(URL.createObjectURL(blob))).default(Module);
+      ''')
+    elif use_blob:
+      create_file('loader.mjs', '''
+        let blob = await (await fetch('hello_thread_with_loader.js')).blob();
+        Module['mainScriptUrlOrBlob'] = blob;
+        var script = document.createElement('script');
+        script.src = URL.createObjectURL(blob);
+        document.body.appendChild(script);
+      ''')
+    elif es6:
+      create_file('loader.mjs', '''
+        Module['mainScriptUrlOrBlob'] = 'hello_thread_with_loader.mjs';
+        (await import('./hello_thread_with_loader.mjs')).default(Module);
+      ''')
+    else:
+      create_file('loader.mjs', '''
+        var script = document.createElement('script');
+        Module['mainScriptUrlOrBlob'] = 'hello_thread_with_loader.js';
+        script.src = Module['mainScriptUrlOrBlob'];
+        document.body.appendChild(script);
+      ''')
+
     self.compile_btest('pthread/hello_thread.c', ['-pthread', '-o', 'out.js'], reporting=Reporting.JS_ONLY)
 
     # Now run the test with the JS file renamed and with its content
     # stored in Module['mainScriptUrlOrBlob'].
-    shutil.move('out.js', 'hello_thread_with_blob_url.js')
-    shutil.copy(test_file('pthread/main_js_as_blob_loader.html'), 'hello_thread_with_blob_url.html')
-    self.run_browser('hello_thread_with_blob_url.html', '/report_result?exit:0')
+    shutil.move('out.js', js_name)
+    shutil.copy(test_file('pthread/main_js_with_loader.html'), 'hello_thread_with_loader.html')
+    self.run_browser('hello_thread_with_loader.html', '/report_result?exit:0')
 
   # Tests that SINGLE_FILE works as intended in generated HTML (with and without Worker)
   @also_with_proxying

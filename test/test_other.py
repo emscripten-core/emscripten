@@ -10476,7 +10476,6 @@ int main() {
     'sources': ([], 1)
   })
   @crossplatform
-  @no_windows('https://github.com/emscripten-core/emscripten/pull/23741#issuecomment-2725574867')
   def test_emcc_sourcemap_options(self, prefixes, sources):
     wasm_sourcemap = importlib.import_module('tools.wasm-sourcemap')
     cwd = os.getcwd()
@@ -15867,15 +15866,26 @@ addToLibrary({
   def test_rlimit(self):
     self.do_other_test('test_rlimit.c', emcc_args=['-O1'])
 
-  def test_mainScriptUrlOrBlob(self):
+  @parameterized({
+    '': (False,),
+    'es6': (True,),
+  })
+  def test_mainScriptUrlOrBlob(self, es6):
+    ext = "js"
+    args = []
+    if es6:
+      ext = "mjs"
+      args = ['-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')]
+    outfile = ('a.out.%s' % ext)
     # Use `foo.js` instead of the current script name when creating new threads
-    create_file('pre.js', 'Module = { mainScriptUrlOrBlob: "./foo.js" }')
-    self.run_process([EMCC, test_file('hello_world.c'), '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD', '-pthread', '--pre-js=pre.js'])
+    create_file('pre.js', 'Module = { mainScriptUrlOrBlob: "./foo.%s" }' % ext)
 
-    # First run without foo.js present to verify that the pthread creation fails
-    err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-    self.assertContained('Cannot find module.*foo.js', err, regex=True)
+    self.run_process([EMCC, test_file('hello_world.c'), '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD', '-pthread', '--pre-js=pre.js', '-o', outfile] + args)
 
-    # Now create foo.js and the program should run as expected.
-    shutil.copy('a.out.js', 'foo.js')
-    self.assertContained('hello, world', self.run_js('a.out.js'))
+    # First run without foo.[m]js present to verify that the pthread creation fails
+    err = self.run_js(outfile, assert_returncode=NON_ZERO)
+    self.assertContained('Cannot find module.*foo\\.', err, regex=True)
+
+    # Now create foo.[m]js and the program should run as expected.
+    shutil.copy(outfile, ('foo.%s' % ext))
+    self.assertContained('hello, world', self.run_js(outfile))
