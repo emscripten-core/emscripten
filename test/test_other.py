@@ -7555,8 +7555,8 @@ int main(int argc, char** argv) {
     self.assertBinaryEqual('main.wasm', 'main2.wasm')
 
   @parameterized({
-    '': (['-sDYLINK_DEBUG'],),
-    'pthread': (['-g', '-pthread', '-Wno-experimental', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '-sDYLINK_DEBUG'],),
+    '': ([],),
+    'pthread': (['-g', '-pthread', '-Wno-experimental', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
   def test_ld_library_path(self, args):
     if args:
