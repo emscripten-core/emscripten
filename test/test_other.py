@@ -7555,12 +7555,19 @@ int main(int argc, char** argv) {
     self.assertBinaryEqual('main.wasm', 'main2.wasm')
 
   @parameterized({
-    '': ([],),
-    'pthread': (['-g', '-pthread', '-Wno-experimental', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
+    '': (False, False),
+    'pthread': (True, False),
+    'wasm64': (False, True),
+    'pthread-wasm64': (True, True),
   })
-  def test_ld_library_path(self, args):
-    if args:
+  def test_ld_library_path(self, pthread, wasm64):
+    args = []
+    if pthread:
+      args += ['-g', '-pthread', '-Wno-experimental', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME']
       self.setup_node_pthreads()
+    if wasm64:
+      self.require_wasm64()
+      args += ['-sMEMORY64']
     create_file('hello1.c', r'''
 #include <stdio.h>
 
