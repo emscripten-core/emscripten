@@ -706,28 +706,12 @@ var LibraryEmbind = {
   },
 
 #if DYNAMIC_EXECUTION
-  $newFunc__deps: ['$createNamedFunction'],
   $newFunc: function(constructor, argumentList) {
-    if (!(constructor instanceof Function)) {
+    if (!typeof constructor !== "function") {
       throw new TypeError(`new_ called with constructor type ${typeof(constructor)} which is not a function`);
     }
-    /*
-     * Previously, the following line was just:
-     *   function dummy() {};
-     * Unfortunately, Chrome was preserving 'dummy' as the object's name, even
-     * though at creation, the 'dummy' has the correct constructor name.  Thus,
-     * objects created with IMVU.new would show up in the debugger as 'dummy',
-     * which isn't very helpful.  Using IMVU.createNamedFunction addresses the
-     * issue.  Doubly-unfortunately, there's no way to write a test for this
-     * behavior.  -NRD 2013.02.22
-     */
-    var dummy = createNamedFunction(constructor.name || 'unknownFunctionName', function(){});
-    dummy.prototype = constructor.prototype;
-    var obj = new dummy;
-
-    var r = constructor.apply(obj, argumentList);
-    return (r instanceof Object) ? r : obj;
-  },
+    return new Function(...argumentList);
+  }
 #endif
 
   // The path to interop from JS code to C++ code:
