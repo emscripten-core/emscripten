@@ -7717,6 +7717,36 @@ void* operator new(size_t size) {
     else:
       self.assertTrue(seen_lines.issuperset([6, 7, 11, 12]), seen_lines)
 
+  @needs_dylink
+  def test_embind_dylink_visibility_hidden(self):
+    # Check that embind is usable from a library built with "-fvisibility=hidden"
+
+    create_file('liblib.cpp', r'''
+      #include <emscripten/val.h>
+      #define EXPORT __attribute__((visibility("default")))
+      using namespace emscripten;
+      EXPORT void liba_fun() {
+        unsigned char buffer[1];
+        val view(typed_memory_view(1, buffer));
+      }
+    ''')
+    self.build_dlfcn_lib('liblib.cpp', emcc_args=['-fvisibility=hidden'])
+
+    self.prep_dlfcn_main()
+    self.clear_setting('NO_AUTOLOAD_DYLIBS')
+    create_file('main.cpp', r'''
+      #include <stdio.h>
+      #include <emscripten/val.h>
+      using namespace emscripten;
+      void liba_fun();
+      int main() {
+        liba_fun();
+        printf("done\n");
+        return 0;
+      }
+    ''')
+    self.do_runf('main.cpp', 'done\n', emcc_args=['--bind'])
+
   @no_wasm2js('TODO: source maps in wasm2js')
   def test_dwarf(self):
     self.emcc_args.append('-g')
