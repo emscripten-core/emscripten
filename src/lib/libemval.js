@@ -5,7 +5,6 @@
 
 /*global Module:true, Runtime*/
 /*global HEAP32*/
-/*global newFunc*/
 /*global createNamedFunction*/
 /*global readLatin1String, stringToUTF8*/
 /*global requireRegisteredType, throwBindingError, runDestructors*/
@@ -332,9 +331,6 @@ var LibraryEmVal = {
     '$emval_addMethodCaller', '$emval_lookupTypes',
     '$createNamedFunction',
     '$reflectConstruct', '$emval_returnValue',
-#if DYNAMIC_EXECUTION
-    '$newFunc',
-#endif
   ],
   _emval_get_method_caller: (argCount, argTypes, kind) => {
     var types = emval_lookupTypes(argCount, argTypes);
@@ -384,7 +380,7 @@ var LibraryEmVal = {
       "};\n";
 
     params.push(functionBody);
-    var invokerFunction = newFunc(Function, params)(...args);
+    var invokerFunction = new Function(...params)(...args);
 #endif
     var functionName = `methodCaller<(${types.map(t => t.name).join(', ')}) => ${retType.name}>`;
     return emval_addMethodCaller(createNamedFunction(functionName, invokerFunction));
