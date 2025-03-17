@@ -712,7 +712,7 @@ var LibraryEmbind = {
       throw new TypeError(`new_ called with constructor type ${typeof(constructor)} which is not a function`);
     }
     return new Function(...argumentList);
-  }
+  },
 #endif
 
   // The path to interop from JS code to C++ code:
