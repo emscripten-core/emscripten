@@ -708,7 +708,7 @@ var LibraryEmbind = {
 #if DYNAMIC_EXECUTION
   $newFunc__deps: [],
   $newFunc: function(constructor, argumentList) {
-    if (!typeof constructor !== "function") {
+    if (typeof constructor !== "function") {
       throw new TypeError(`new_ called with constructor type ${typeof(constructor)} which is not a function`);
     }
     return new Function(...argumentList);
