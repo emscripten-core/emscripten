@@ -747,10 +747,10 @@ var LibraryEmbind = {
     var isClassMethodFunc = (argTypes[1] !== null && classType !== null);
 
     // Free functions with signature "void function()" do not need an invoker that marshalls between wire types.
-// TODO: This omits argument count check - enable only at -O3 or similar.
-//    if (ENABLE_UNSAFE_OPTS && argCount == 2 && argTypes[0].name == "void" && !isClassMethodFunc) {
-//       return FUNCTION_TABLE[fn];
-//    }
+    // TODO: This omits argument count check - enable only at -O3 or similar.
+    //    if (ENABLE_UNSAFE_OPTS && argCount == 2 && argTypes[0].name == "void" && !isClassMethodFunc) {
+    //       return FUNCTION_TABLE[fn];
+    //    }
 
 
     // Determine if we need to use a dynamic stack to store the destructors for the function parameters.
@@ -823,36 +823,38 @@ var LibraryEmbind = {
       return onDone(rv);
     };
 #else
-  // Builld the arguments that will be passed into the closure around the invoker
-  // function.
-  var closureArgs = [humanName, throwBindingError, cppInvokerFunc, cppTargetFunc, runDestructors, argTypes[0], argTypes[1]];
+    // Builld the arguments that will be passed into the closure around the invoker
+    // function.
+    var closureArgs = [humanName, throwBindingError, cppInvokerFunc, cppTargetFunc, runDestructors, argTypes[0], argTypes[1]];
 #if EMSCRIPTEN_TRACING
-  closureArgs.push(Module);
+    closureArgs.push(Module);
 #endif
-  for (var i = 0; i < argCount - 2; ++i) {
-    closureArgs.push(argTypes[i+2]);
-  }
+    for (var i = 0; i < argCount - 2; ++i) {
+      closureArgs.push(argTypes[i+2]);
+    }
 #if ASYNCIFY == 1
-  closureArgs.push(Asyncify);
+    closureArgs.push(Asyncify);
 #endif
-  if (!needsDestructorStack) {
-    for (var i = isClassMethodFunc?1:2; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here. Also skip class type if not a method.
-      if (argTypes[i].destructorFunction !== null) {
-        closureArgs.push(argTypes[i].destructorFunction);
+    if (!needsDestructorStack) {
+      for (var i = isClassMethodFunc?1:2; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here. Also skip class type if not a method.
+        if (argTypes[i].destructorFunction !== null) {
+          closureArgs.push(argTypes[i].destructorFunction);
+        }
       }
     }
-  }
 #if ASSERTIONS
-  closureArgs.push(checkArgCount, minArgs, expectedArgCount);
+    closureArgs.push(checkArgCount, minArgs, expectedArgCount);
 #endif
 
 #if EMBIND_AOT
-  var signature = createJsInvokerSignature(argTypes, isClassMethodFunc, returns, isAsync);
-  var invokerFn = InvokerFunctions[signature](...closureArgs);
+    var signature = createJsInvokerSignature(argTypes, isClassMethodFunc, returns, isAsync);
+    var invokerFn = InvokerFunctions[signature](...closureArgs);
 #else
+
   let [args, invokerFnBody] = createJsInvoker(argTypes, isClassMethodFunc, returns, isAsync);
   args.push(invokerFnBody);
   var invokerFn = new Function(...args)(...closureArgs);
+
 #endif
 #endif
     return createNamedFunction(humanName, invokerFn);

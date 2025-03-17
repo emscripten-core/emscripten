@@ -1370,7 +1370,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
 
     args = ['--pre-js', 'pre.js', '-lidbfs.js', '-sEXIT_RUNTIME', '-sASYNCIFY']
     secret = str(time.time())
-    self.btest('fs/test_idbfs_fsync.c', '1', emcc_args=args + ['-DFIRST', f'-DSECRET="{secret }"', '-lidbfs.js'])
+    self.btest('fs/test_idbfs_fsync.c', '1', emcc_args=args + ['-DFIRST', f'-DSECRET="{secret}"', '-lidbfs.js'])
     self.btest('fs/test_idbfs_fsync.c', '1', emcc_args=args + [f'-DSECRET="{secret}"', '-lidbfs.js'])
 
   def test_fs_memfs_fsync(self):
@@ -1392,7 +1392,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
         }, '/work');
       };
     ''' % (secret, secret2))
-    self.btest_exit('fs/test_workerfs_read.c', emcc_args=['-lworkerfs.js', '--pre-js', 'pre.js', f'-DSECRET="{secret }"', f'-DSECRET2="{secret2}"', '--proxy-to-worker', '-lworkerfs.js'])
+    self.btest_exit('fs/test_workerfs_read.c', emcc_args=['-lworkerfs.js', '--pre-js', 'pre.js', f'-DSECRET="{secret}"', f'-DSECRET2="{secret2}"', '--proxy-to-worker', '-lworkerfs.js'])
 
   def test_fs_workerfs_package(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
@@ -1445,8 +1445,8 @@ simulateKeyUp(100, undefined, 'Numpad4');
     self.btest_exit('fs/test_lz4fs.cpp', 1, emcc_args=['-DLOAD_MANUALLY', '-sLZ4', '-sFORCE_FILESYSTEM', '-O2'])
     print('    opts+closure')
     self.btest_exit('fs/test_lz4fs.cpp', 1, emcc_args=['-DLOAD_MANUALLY', '-sLZ4',
-                                                  '-sFORCE_FILESYSTEM', '-O2',
-                                                  '--closure=1', '-g1', '-Wno-closure'])
+                                                       '-sFORCE_FILESYSTEM', '-O2',
+                                                       '--closure=1', '-g1', '-Wno-closure'])
 
     '''# non-lz4 for comparison
     try:
@@ -4367,12 +4367,12 @@ Module["preRun"] = () => {
   def test_webgl_draw_base_vertex_base_instance(self, multi_draw, draw_elements):
     self.reftest('webgl_draw_base_vertex_base_instance_test.c', 'webgl_draw_instanced_base_vertex_base_instance.png',
                  emcc_args=['-lGL',
-                       '-sMAX_WEBGL_VERSION=2',
-                       '-sOFFSCREEN_FRAMEBUFFER',
-                       '-DMULTI_DRAW=' + str(multi_draw),
-                       '-DDRAW_ELEMENTS=' + str(draw_elements),
-                       '-DEXPLICIT_SWAP=1',
-                       '-DWEBGL_CONTEXT_VERSION=2'])
+                            '-sMAX_WEBGL_VERSION=2',
+                            '-sOFFSCREEN_FRAMEBUFFER',
+                            '-DMULTI_DRAW=' + str(multi_draw),
+                            '-DDRAW_ELEMENTS=' + str(draw_elements),
+                            '-DEXPLICIT_SWAP=1',
+                            '-DWEBGL_CONTEXT_VERSION=2'])
 
   @requires_graphics_hardware
   def test_webgl_sample_query(self):
@@ -5390,8 +5390,8 @@ Module["preRun"] = () => {
     create_file('subdir/backendfile2', 'file 2')
     self.btest_exit('wasmfs/wasmfs_fetch.c',
                     emcc_args=['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD',
-                          '-sFORCE_FILESYSTEM', '-lfetchfs.js',
-                          '--js-library', test_file('wasmfs/wasmfs_fetch.js')] + args)
+                               '-sFORCE_FILESYSTEM', '-lfetchfs.js',
+                               '--js-library', test_file('wasmfs/wasmfs_fetch.js')] + args)
 
   @no_firefox('no OPFS support yet')
   @no_wasm64()
