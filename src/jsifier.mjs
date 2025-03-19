@@ -45,8 +45,8 @@ const addedLibraryItems = {};
 
 const extraLibraryFuncs = [];
 
-// Experimental feature to check for invalid __deps entries. Modify this line
-// locally to try it out.
+// Experimental feature to check for invalid __deps entries.
+// See `EMCC_CHECK_DEPS` in in the environment to try it out.
 const CHECK_DEPS = process.env.EMCC_CHECK_DEPS;
 
 // Some JS-implemented library functions are proxied to be called on the main
