@@ -52,17 +52,7 @@ addToLibrary({
     return '0x' + ptr.toString(16).padStart(8, '0');
   },
 
-  $zeroMemory: (address, size) => {
-#if LEGACY_VM_SUPPORT
-    if (!HEAPU8.fill) {
-      for (var i = 0; i < size; i++) {
-        HEAPU8[address + i] = 0;
-      }
-      return;
-    }
-#endif
-    HEAPU8.fill(0, address, address + size);
-  },
+  $zeroMemory: (ptr, size) => HEAPU8.fill(0, ptr, ptr + size),
 
 #if SAFE_HEAP
   // Trivial wrappers around runtime functions that make these symbols available
@@ -647,7 +637,7 @@ addToLibrary({
   },
   $inetNtop4: (addr) =>
     (addr & 0xff) + '.' + ((addr >> 8) & 0xff) + '.' + ((addr >> 16) & 0xff) + '.' + ((addr >> 24) & 0xff),
-  $inetPton6__deps: ['htons', '$jstoi_q'],
+  $inetPton6__deps: ['htons'],
   $inetPton6: (str) => {
     var words;
     var w, offset, z, i;
@@ -671,8 +661,8 @@ addToLibrary({
       // parse IPv4 embedded stress
       str = str.replace(new RegExp('[.]', 'g'), ":");
       words = str.split(":");
-      words[words.length-4] = jstoi_q(words[words.length-4]) + jstoi_q(words[words.length-3])*256;
-      words[words.length-3] = jstoi_q(words[words.length-2]) + jstoi_q(words[words.length-1])*256;
+      words[words.length-4] = Number(words[words.length-4]) + Number(words[words.length-3])*256;
+      words[words.length-3] = Number(words[words.length-2]) + Number(words[words.length-1])*256;
       words = words.slice(0, words.length-2);
     } else {
       words = str.split(":");
@@ -1515,7 +1505,7 @@ addToLibrary({
   },
 #endif
 
-  $readEmAsmArgsArray: '=[]',
+  $readEmAsmArgsArray: [],
   $readEmAsmArgs__deps: [
     '$readEmAsmArgsArray',
 #if MEMORY64
@@ -1795,14 +1785,17 @@ addToLibrary({
   // All callers should use direct table access where possible and only fall
   // back to this function if needed.
   $getDynCaller__deps: ['$dynCall'],
-  $getDynCaller: (sig, ptr) => {
+  $getDynCaller: (sig, ptr, promising = false) => {
 #if ASSERTIONS && !DYNCALLS
     assert(sig.includes('j') || sig.includes('p'), 'getDynCaller should only be called with i64 sigs')
 #endif
-    return (...args) => dynCall(sig, ptr, args);
+    return (...args) => dynCall(sig, ptr, args, promising);
   },
 
-  $dynCall: (sig, ptr, args = []) => {
+  $dynCall: (sig, ptr, args = [], promising = false) => {
+#if ASSERTIONS && (DYNCALLS || !WASM_BIGINT || !JSPI)
+    assert(!promising, 'async dynCall is not supported in this mode')
+#endif
 #if MEMORY64
     // With MEMORY64 we have an additional step to convert `p` arguments to
     // bigint. This is the runtime equivalent of the wrappers we create for wasm
@@ -1825,7 +1818,13 @@ addToLibrary({
 #if ASSERTIONS
     assert(getWasmTableEntry(ptr), `missing table entry in dynCall: ${ptr}`);
 #endif
-    var rtn = getWasmTableEntry(ptr)(...args);
+    var func = getWasmTableEntry(ptr);
+#if JSPI
+    if (promising) {
+      func = WebAssembly.promising(func);
+    }
+#endif
+    var rtn = func(...args);
 #endif
 #if MEMORY64
     return sig[0] == 'p' ? Number(rtn) : rtn;
@@ -1874,7 +1873,6 @@ addToLibrary({
 #endif
     var func = wasmTableMirror[funcPtr];
     if (!func) {
-      if (funcPtr >= wasmTableMirror.length) wasmTableMirror.length = funcPtr + 1;
       /** @suppress {checkTypes} */
       wasmTableMirror[funcPtr] = func = wasmTable.get({{{ toIndexType('funcPtr') }}});
 #if ASYNCIFY == 2
@@ -2277,10 +2275,6 @@ addToLibrary({
 #endif
 #if MEMORY64 == 1
   'address': 'i64',
-   // TODO(sbc): remove this alias for 'address' once both firefox and
-   // chrome roll out the spec change.
-   // See https://github.com/WebAssembly/memory64/pull/92
-  'index': 'i64',
 #endif
   'element': 'anyfunc'
 });

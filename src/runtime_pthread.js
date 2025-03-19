@@ -38,29 +38,32 @@ if (ENVIRONMENT_IS_PTHREAD) {
   var initializedJS = false;
 
   function threadPrintErr(...args) {
-    var text = args.join(' ');
 #if ENVIRONMENT_MAY_BE_NODE
     // See https://github.com/emscripten-core/emscripten/issues/14804
     if (ENVIRONMENT_IS_NODE) {
-      fs.writeSync(2, text + '\n');
+      fs.writeSync(2, args.join(' ') + '\n');
       return;
     }
 #endif
-    console.error(text);
+    console.error(...args);
   }
+
+#if LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER
+  // When using postMessage to send an object, it is processed by the structured
+  // clone algorithm.  The prototype, and hence methods, on that object is then
+  // lost. This function adds back the lost prototype.  This does not work with
+  // nested objects that has prototypes, but it suffices for WasmSourceMap and
+  // WasmOffsetConverter.
+  function resetPrototype(constructor, attrs) {
+    var object = Object.create(constructor.prototype);
+    return Object.assign(object, attrs);
+  }
+#endif
 
 #if expectToReceiveOnModule('printErr')
   if (!Module['printErr'])
 #endif
     err = threadPrintErr;
-#if ASSERTIONS || RUNTIME_DEBUG
-  dbg = threadPrintErr;
-#endif
-  function threadAlert(...args) {
-    var text = args.join(' ');
-    postMessage({cmd: 'alert', text, threadId: _pthread_self()});
-  }
-  self.alert = threadAlert;
 
   // Turn unhandled rejected promises into errors so that the main thread will be
   // notified about them.

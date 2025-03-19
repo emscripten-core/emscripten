@@ -414,15 +414,10 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     pre = apply_static_code_hooks(forwarded_json, pre)
 
   asm_const_pairs = ['%s: %s' % (key, value) for key, value in asm_consts]
-  extra_code = ''
   if asm_const_pairs or settings.MAIN_MODULE:
-    extra_code += 'var ASM_CONSTS = {\n  ' + ',  \n '.join(asm_const_pairs) + '\n};\n'
+    pre += 'var ASM_CONSTS = {\n  ' + ',  \n '.join(asm_const_pairs) + '\n};\n'
   if em_js_funcs:
-    extra_code += '\n'.join(em_js_funcs) + '\n'
-  if extra_code:
-    pre = pre.replace(
-      '// === Body ===\n',
-      '// === Body ===\n\n' + extra_code + '\n')
+    pre += '\n'.join(em_js_funcs) + '\n'
 
   if base_metadata:
     function_exports = base_metadata.function_exports
@@ -1033,6 +1028,7 @@ def create_pointer_conversion_wrappers(metadata):
     '_emscripten_stack_alloc': 'pp',
     'emscripten_builtin_malloc': 'pp',
     'emscripten_builtin_calloc': 'ppp',
+    'wasmfs_create_node_backend': 'pp',
     'malloc': 'pp',
     'calloc': 'ppp',
     'webidl_malloc': 'pp',
@@ -1068,7 +1064,7 @@ def create_pointer_conversion_wrappers(metadata):
     '_wasmfs_lchmod': '_p_',
     '_wasmfs_get_cwd': 'p_',
     '_wasmfs_identify': '_p',
-    '_wasmfs_read_file': 'pp',
+    '_wasmfs_read_file': '_ppp',
     '_wasmfs_node_record_dirent': '_pp_',
     '__dl_seterr': '_pp',
     '_emscripten_run_on_main_thread_js': '__p_p_',
@@ -1079,10 +1075,21 @@ def create_pointer_conversion_wrappers(metadata):
     '_emscripten_dlsync_self_async': '_p',
     '_emscripten_proxy_dlsync_async': '_pp',
     '_emscripten_wasm_worker_initialize': '_p_',
+    '_wasmfs_rename': '_pp',
+    '_wasmfs_readlink': '_pp',
+    '_wasmfs_truncate': '_p_',
+    '_wasmfs_mmap': 'pp____',
+    '_wasmfs_munmap': '_pp',
+    '_wasmfs_msync': '_pp_',
+    '_wasmfs_read': '__pp',
+    '_wasmfs_pread': '__pp_',
+    '_wasmfs_utime': '_p__',
     '_wasmfs_rmdir': '_p',
     '_wasmfs_unlink': '_p',
     '_wasmfs_mkdir': '_p_',
     '_wasmfs_open': '_p__',
+    '_wasmfs_mount': '_pp',
+    '_wasmfs_chdir': '_p',
     'asyncify_start_rewind': '_p',
     'asyncify_start_unwind': '_p',
     '__get_exception_message': '_ppp',

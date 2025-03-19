@@ -427,9 +427,7 @@ addToLibrary({
           sock.server = null;
         }
         // close any peer connections
-        var peers = Object.keys(sock.peers);
-        for (var i = 0; i < peers.length; i++) {
-          var peer = sock.peers[peers[i]];
+        for (var peer of Object.values(sock.peers)) {
           try {
             peer.socket.close();
           } catch (e) {

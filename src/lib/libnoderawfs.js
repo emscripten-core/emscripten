@@ -113,7 +113,13 @@ addToLibrary({
       var stream = FS.getStreamChecked(fd);
       fs.fchownSync(stream.nfd, owner, group);
     },
-    truncate(...args) { fs.truncateSync(...args); },
+    truncate(path, len) {
+      // See https://github.com/nodejs/node/issues/35632
+      if (len < 0) {
+        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+      }
+      return fs.truncateSync(path, len);
+    },
     ftruncate(fd, len) {
       // See https://github.com/nodejs/node/issues/35632
       if (len < 0) {
@@ -160,7 +166,7 @@ addToLibrary({
     },
     close(stream) {
       VFS.closeStream(stream.fd);
-      if (!stream.stream_ops && --stream.shared.refcnt === 0) {
+      if (!stream.stream_ops && --stream.shared.refcnt <= 0) {
         // This stream is created by our Node.js filesystem, close the
         // native file descriptor when its reference count drops to 0.
         fs.closeSync(stream.nfd);
@@ -213,9 +219,6 @@ addToLibrary({
       // update position marker when non-seeking
       if (!seeking) stream.position += bytesWritten;
       return bytesWritten;
-    },
-    allocate() {
-      throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
     },
     mmap(stream, length, position, prot, flags) {
       if (!length) {

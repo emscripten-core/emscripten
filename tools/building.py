@@ -512,6 +512,7 @@ def version_split(v):
 def transpile(filename):
   config = {
     'sourceType': 'script',
+    'presets': ['@babel/preset-env'],
     'targets': {}
   }
   if settings.MIN_CHROME_VERSION != UNSUPPORTED:
@@ -529,8 +530,13 @@ def transpile(filename):
   config_file = shared.get_temp_files().get('babel_config.json').name
   logger.debug(config_json)
   utils.write_file(config_file, config_json)
-  cmd = shared.get_npm_cmd('babel') + [filename, '-o', outfile, '--presets', '@babel/preset-env', '--config-file', config_file]
-  check_call(cmd, cwd=path_from_root())
+  cmd = shared.get_npm_cmd('babel') + [filename, '-o', outfile, '--config-file', config_file]
+  # Babel needs access to `node_modules` for things like `preset-env`, but the
+  # location of the config file (and the current working directory) might not be
+  # in the emscripten tree, so we explicitly set NODE_PATH here.
+  env = os.environ.copy()
+  env['NODE_PATH'] = path_from_root('node_modules')
+  check_call(cmd, env=env)
   return outfile
 
 
@@ -1131,6 +1137,13 @@ def emit_wasm_source_map(wasm_file, map_file, final_wasm):
                    '--dwarfdump=' + LLVM_DWARFDUMP,
                    '-o',  map_file,
                    '--basepath=' + base_path]
+
+  if settings.SOURCE_MAP_PREFIXES:
+    sourcemap_cmd += ['--prefix', *settings.SOURCE_MAP_PREFIXES]
+
+  if settings.GENERATE_SOURCE_MAP == 2:
+    sourcemap_cmd += ['--sources']
+
   check_call(sourcemap_cmd)
 
 

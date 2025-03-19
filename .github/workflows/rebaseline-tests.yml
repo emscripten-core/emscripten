@@ -1,6 +1,10 @@
 name: Rebaseline Tests
 
-on: [workflow_dispatch]
+on:
+  workflow_dispatch:
+  # Trigger every day at 3.30 AM PST (= 10:30 AM UTC)
+  schedule:
+    - cron: "30 10 * * *"
 
 permissions:
   contents: write
@@ -10,6 +14,8 @@ jobs:
   rebaseline-tests:
     name: Rebaseline Tests
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -39,20 +45,18 @@ jobs:
         run: |
           git config user.name emscripten-bot
           git config user.email emscripten-bot@users.noreply.github.com
-          #echo "TEST" >> README.md
-          #git add README.md
-          #git checkout -b testing ${{ github.ref_name }}
-          #git commit -m "Testing"
           ./bootstrap
-          ./tools/maint/rebaseline_tests.py
-      - name: Create PR
-        id: cpr
-        run: |
-          git push origin testing
+          if ./tools/maint/rebaseline_tests.py --new-branch; then
+             echo "rebaseline_tests returned zero, expectations up-to-date"
+             # Exit early and don't create a PR
+             exit 0
+          else
+            code=$?
+            if [[ $code != 2 ]] ; then
+               echo "rebaseline_tests.py failed with unexpected error $code (expected 2)"
+               exit 1
+            fi
+          fi
+          git push origin rebaseline_tests
           gh pr create --fill --base ${{ github.ref_name }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Enable auto-merge
-        run: gh pr merge --squash --auto "${{ steps.cpr.outputs.pull-request-number }}"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          gh pr merge --squash --auto
