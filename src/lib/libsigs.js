@@ -282,7 +282,6 @@ sigs = {
   _dlopen_js__sig: 'pp',
   _dlsym_catchup_js__sig: 'ppi',
   _dlsym_js__sig: 'pppp',
-  _dylink_resolve_path_js__sig: 'pppp',
   _embind_create_inheriting_constructor__sig: 'pppp',
   _embind_finalize_value_array__sig: 'vp',
   _embind_finalize_value_object__sig: 'vp',

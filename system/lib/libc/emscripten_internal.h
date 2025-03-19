@@ -90,7 +90,6 @@ void _emscripten_dlopen_js(struct dso* handle,
                            dlopen_callback_func onsuccess,
                            dlopen_callback_func onerror,
                            void* user_data);
-const char* _dylink_resolve_path_js(char* buf, const char* file, size_t buflen);
 void* _dlsym_catchup_js(struct dso* handle, int sym_index);
 
 int _setitimer_js(int which, double timeout);
