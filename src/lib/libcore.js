@@ -202,15 +202,15 @@ addToLibrary({
   },
 
   emscripten_resize_heap__deps: [
-    '$getHeapMax',
-    '$alignMemory',
-#if ASSERTIONS == 2
-    'emscripten_get_now',
-#endif
 #if ABORTING_MALLOC
     '$abortOnCannotGrowMemory',
 #endif
 #if ALLOW_MEMORY_GROWTH
+#if ASSERTIONS == 2
+    'emscripten_get_now',
+#endif
+    '$getHeapMax',
+    '$alignMemory',
     '$growMemory',
 #endif
   ],
@@ -791,7 +791,7 @@ addToLibrary({
     return str;
   },
 
-  $readSockaddr__deps: ['$Sockets', '$inetNtop4', '$inetNtop6', 'ntohs'],
+  $readSockaddr__deps: ['$inetNtop4', '$inetNtop6', 'ntohs'],
   $readSockaddr: (sa, salen) => {
     // family / port offsets are common to both sockaddr_in and sockaddr_in6
     var family = {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_family, 'i16') }}};
@@ -825,7 +825,7 @@ addToLibrary({
     return { family: family, addr: addr, port: port };
   },
   $writeSockaddr__docs: '/** @param {number=} addrlen */',
-  $writeSockaddr__deps: ['$Sockets', '$inetPton4', '$inetPton6', '$zeroMemory', 'htons'],
+  $writeSockaddr__deps: ['$inetPton4', '$inetPton6', '$zeroMemory', 'htons'],
   $writeSockaddr: (sa, family, addr, port, addrlen) => {
     switch (family) {
       case {{{ cDefs.AF_INET }}}:
@@ -914,7 +914,7 @@ addToLibrary({
     return inetPton4(DNS.lookup_name(nameString));
   },
 
-  getaddrinfo__deps: ['$Sockets', '$DNS', '$inetPton4', '$inetNtop4', '$inetPton6', '$inetNtop6', '$writeSockaddr', 'malloc', 'htonl'],
+  getaddrinfo__deps: ['$DNS', '$inetPton4', '$inetNtop4', '$inetPton6', '$inetNtop6', '$writeSockaddr', 'malloc', 'htonl'],
   getaddrinfo__proxy: 'sync',
   getaddrinfo: (node, service, hint, out) => {
     // Note getaddrinfo currently only returns a single addrinfo with ai_next defaulting to NULL. When NULL
@@ -1085,7 +1085,7 @@ addToLibrary({
     return 0;
   },
 
-  getnameinfo__deps: ['$Sockets', '$DNS', '$readSockaddr', '$stringToUTF8'],
+  getnameinfo__deps: ['$DNS', '$readSockaddr', '$stringToUTF8'],
   getnameinfo: (sa, salen, node, nodelen, serv, servlen, flags) => {
     var info = readSockaddr(sa, salen);
     if (info.errno) {
@@ -1251,8 +1251,7 @@ addToLibrary({
   // Timers always fire on the main thread, either directly from JS (here) or
   // or when the main thread is busy waiting calling _emscripten_yield.
   _setitimer_js__proxy: 'sync',
-  _setitimer_js__deps: ['$timers', '$callUserCallback',
-                        '_emscripten_timeout', 'emscripten_get_now'],
+  _setitimer_js__deps: ['$timers', '$callUserCallback', '_emscripten_timeout', 'emscripten_get_now'],
   _setitimer_js: (which, timeout_ms) => {
 #if RUNTIME_DEBUG
     dbg(`setitimer_js ${which} timeout=${timeout_ms}`);
@@ -1506,12 +1505,7 @@ addToLibrary({
 #endif
 
   $readEmAsmArgsArray: [],
-  $readEmAsmArgs__deps: [
-    '$readEmAsmArgsArray',
-#if MEMORY64
-    '$readI53FromI64',
-#endif
-  ],
+  $readEmAsmArgs__deps: ['$readEmAsmArgsArray'],
   $readEmAsmArgs: (sigPtr, buf) => {
 #if ASSERTIONS
     // Nobody should have mutated _readEmAsmArgsArray underneath us to be something else than an array.
@@ -1778,7 +1772,11 @@ addToLibrary({
 #endif
     return f(ptr, ...args);
   },
-  $dynCall__deps: ['$dynCallLegacy', '$getWasmTableEntry'],
+#if DYNCALLS
+  $dynCall__deps: ['$dynCallLegacy'],
+#else
+  $dynCall__deps: ['$getWasmTableEntry'],
+#endif
 #endif
 
   // Used in library code to get JS function from wasm function pointer.
@@ -2101,7 +2099,7 @@ addToLibrary({
 #if PTHREADS
     '_emscripten_thread_exit',
 #endif
-#if RUNTIME_DEBUG
+#if RUNTIME_DEBUG >= 2
     '$runtimeKeepaliveCounter',
 #endif
   ],
@@ -2159,7 +2157,9 @@ addToLibrary({
 
   // Allocate memory for an mmap operation. This allocates space of the right
   // page-aligned size, and clears the allocated space.
+#if hasExportedSymbol('emscripten_builtin_memalign')
   $mmapAlloc__deps: ['$zeroMemory', '$alignMemory'],
+#endif
   $mmapAlloc: (size) => {
 #if hasExportedSymbol('emscripten_builtin_memalign')
     size = alignMemory(size, {{{ WASM_PAGE_SIZE }}});
@@ -2416,6 +2416,7 @@ function wrapSyscallFunction(x, library, isWasi) {
   // has disabled the filesystem or we have proven some other way that this will
   // not be called in practice, and do not need that code.
   if (!SYSCALLS_REQUIRE_FILESYSTEM && t.includes('FS.')) {
+    library[x + '__deps'] = [];
     t = modifyJSFunction(t, (args, body) => {
       return `(${args}) => {\n` +
              (ASSERTIONS ? "abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');\n" : '') +

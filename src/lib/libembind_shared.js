@@ -27,8 +27,7 @@ var LibraryEmbindShared = {
 
   $sharedRegisterType__deps: [
     '$awaitingDependencies', '$registeredTypes',
-    '$typeDependencies', '$throwBindingError',
-    '$whenDependentTypesAreResolved'],
+    '$typeDependencies', '$throwBindingError' ],
   $sharedRegisterType__docs: '/** @param {Object=} options */',
   $sharedRegisterType: function(rawType, registeredInstance, options = {}) {
     var name = registeredInstance.name;

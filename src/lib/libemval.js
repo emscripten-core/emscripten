@@ -329,8 +329,10 @@ var LibraryEmVal = {
 
   _emval_get_method_caller__deps: [
     '$emval_addMethodCaller', '$emval_lookupTypes',
-    '$createNamedFunction',
-    '$reflectConstruct', '$emval_returnValue',
+    '$createNamedFunction', '$emval_returnValue',
+#if !DYNAMIC_EXECUTION
+    '$reflectConstruct',
+#endif
   ],
   _emval_get_method_caller: (argCount, argTypes, kind) => {
     var types = emval_lookupTypes(argCount, argTypes);
