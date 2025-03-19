@@ -483,49 +483,6 @@ static void dlopen_onerror(struct dso* dso, void* user_data) {
   free(data);
 }
 
-// Modified version of path_open from musl/ldso/dynlink.c
-static int path_find(const char *name, const char *s, char *buf, size_t buf_size) {
-  size_t l;
-  int fd;
-  for (;;) {
-    s += strspn(s, ":\n");
-    l = strcspn(s, ":\n");
-    if (l-1 >= INT_MAX) return -1;
-    if (snprintf(buf, buf_size, "%.*s/%s", (int)l, s, name) < buf_size) {
-      dbg("dlopen: path_find: %s", buf);
-      struct stat statbuf;
-      if (stat(buf, &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
-        return 0;
-      }
-      switch (errno) {
-      case ENOENT:
-      case ENOTDIR:
-      case EACCES:
-      case ENAMETOOLONG:
-        break;
-      default:
-        dbg("dlopen: path_find failed: %s", strerror(errno));
-        /* Any negative value but -1 will inhibit
-         * futher path search. */
-        return -2;
-      }
-    }
-    s += l;
-  }
-}
-
-// Resolve filename using LD_LIBRARY_PATH
-static const char* resolve_path(char* buf, const char* file, size_t buflen) {
-  if (!strchr(file, '/')) {
-    const char* env_path = getenv("LD_LIBRARY_PATH");
-    if (env_path && path_find(file, env_path, buf, buflen) == 0) {
-      dbg("dlopen: found in LD_LIBRARY_PATH: %s", buf);
-      return buf;
-    }
-  }
-  return file;
-}
-
 // Search for library name to see if it's already loaded
 static struct dso* find_existing(const char* file) {
   for (struct dlevent* e = head; e; e = e->next) {
@@ -553,7 +510,9 @@ static struct dso* _dlopen(const char* file, int flags) {
   do_write_lock();
 
   char buf[2*NAME_MAX+2];
-  file = resolve_path(buf, file, sizeof buf);
+
+  dbg("calling _dylink_resolve_path_js %s", file);
+  file = _dylink_resolve_path_js(buf, file, sizeof buf);
 
   struct dso* p = find_existing(file);
   if (p) {
@@ -593,7 +552,10 @@ void emscripten_dlopen(const char* filename, int flags, void* user_data,
   }
   do_write_lock();
   char buf[2*NAME_MAX+2];
-  filename = resolve_path(buf, filename, sizeof buf);
+
+  dbg("calling _dylink_resolve_path_js %s", filename);
+  filename = _dylink_resolve_path_js(buf, filename, sizeof buf);
+
   struct dso* p = find_existing(filename);
   if (p) {
     onsuccess(user_data, p);
