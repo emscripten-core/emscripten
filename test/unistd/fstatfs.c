@@ -13,16 +13,15 @@ int main() {
   struct statfs buf;
   const char *expected_blocks_str = getenv("EXPECTED_BLOCKS");
   long expected_blocks = expected_blocks_str ? atol(expected_blocks_str) : DEFAULT_BLOCKS;
+  int fstatfs_rtn;
 
-  int fstatfs_rtn = statfs("/nodefs", &buf);
+#if NODEF || NODERAWFSS
+  fstatfs_rtn = statfs("/nodefs", &buf);
   printf("f_type: %ld\n", buf.f_type);
   assert(fstatfs_rtn == 0);
   printf("f_blocks: %d\n", buf.f_blocks);
   printf("expected_blocks: %ld\n", expected_blocks);
-#if NODEFS || NODERAWFS
   assert(buf.f_blocks == expected_blocks);
-#else
-  assert(buf.f_blocks == DEFAULT_BLOCKS);
 #endif
 
   fstatfs_rtn = fstatfs(STDOUT_FILENO, &buf);

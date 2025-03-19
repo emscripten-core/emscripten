@@ -1,8 +1,14 @@
 const statfsSync = require('fs').statfsSync;
 
+const DEFAULT_BLOCKS = 1e6;
+
 Module['preRun'] = () => {
-  const statfs = statfsSync('/');
-  ENV.EXPECTED_BLOCKS = statfs.blocks.toString();
+  try {
+    const statfs = statfsSync('/');
+    ENV.EXPECTED_BLOCKS = statfs.blocks.toString();
+  } catch (e) {
+    // Older versions of Node don't support statfsSync
+  }
 };
 
 Module['onRuntimeInitialized'] = () => {
