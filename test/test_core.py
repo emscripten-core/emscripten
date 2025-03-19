@@ -7142,7 +7142,7 @@ void* operator new(size_t size) {
     # https://github.com/emscripten-core/emscripten/issues/15081
     self.set_setting('EXIT_RUNTIME', 0)
     self.set_setting('EMULATE_FUNCTION_POINTER_CASTS')
-    self.do_core_test('test_emulate_function_pointer_casts.cpp')
+    self.do_core_test('test_emulate_function_pointer_casts.cpp', emcc_args=['-Wno-deprecated'])
 
   @no_wasm2js('TODO: nicely printed names in wasm2js')
   @parameterized({
