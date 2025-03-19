@@ -139,10 +139,7 @@ var LibraryEmbind = {
       }
       emittedFunctions.add(signature);
       let [args, body] = createJsInvoker(argTypes, !!this.thisType, this.returnType.name !== 'void', this.isAsync);
-      out.push(
-        // The ${""} is hack to workaround the preprocessor replacing "function".
-        `'${signature}': f${""}unction(${args.join(',')}) {\n${body}},`
-      );
+      out.push(`'${signature}': function(${args.join(',')}) {\n${body}},`);
     }
   },
   $PointerDefinition: class {
