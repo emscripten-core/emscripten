@@ -15860,6 +15860,33 @@ addToLibrary({
     shutil.copy('hello.wasm', 'dist/')
     self.assertContained('hello, world!', self.run_js('dist/bundle.mjs'))
 
+  @parameterized({
+    '': ('',),
+    'O1': ('-O1',),
+    'O2': ('-O2',),
+    'O3': ('-O3',),
+  })
+  def test_rollup_plugin(self, opt):
+    def get_exports(path):
+      with webassembly.Module(path) as module:
+        return [export.name for export in module.get_exports()]
+
+    copytree(test_file('rollup_plugin'), '.')
+    self.run_process([EMCC, 'library.c', opt, '--no-entry', '-sMODULARIZE=instance', '-sENVIRONMENT=node', '--js-library', 'library.js', '-o', 'library.mjs'])
+    self.run_process(['npm', 'install', path_from_root('tools/rollup-plugin-emscripten')])
+    self.run_process(shared.get_npm_cmd('rollup') + ['--config'])
+    exports_pre_rollup = get_exports('library.wasm')
+    self.assertContained('42\ndone\n', self.run_js('dist/index.js'))
+    exports = get_exports('dist/library.wasm')
+    self.assertTrue(len(exports) < len(exports_pre_rollup))
+    if opt != '-O3':
+      # In O3 wasm export names are minified.
+      self.assertTrue('used_externally' in exports)
+      self.assertTrue('used_internally' in exports)
+      self.assertTrue('unused' not in exports)
+
+
+
   def test_rlimit(self):
     self.do_other_test('test_rlimit.c', emcc_args=['-O1'])
 
