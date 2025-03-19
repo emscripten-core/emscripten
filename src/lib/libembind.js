@@ -858,9 +858,7 @@ var LibraryEmbind = {
 #else
 
     let [args, invokerFnBody] = createJsInvoker(argTypes, isClassMethodFunc, returns, isAsync);
-    args.push(invokerFnBody);
-    var invokerFn = new Function(...args)(...closureArgs);
-
+    var invokerFn = new Function(...args, invokerFnBody)(...closureArgs);
 #endif
 #endif
     return createNamedFunction(humanName, invokerFn);
