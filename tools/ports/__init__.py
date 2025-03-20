@@ -590,6 +590,7 @@ def add_cflags(args, settings): # noqa: U100
     args += port.process_args(Ports)
   build_deferred = False
 
+
 def show_ports():
   sorted_ports = sorted(ports, key=lambda p: p.name)
   print('Available official ports:')
