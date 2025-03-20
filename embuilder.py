@@ -221,7 +221,6 @@ def main():
   # a system library into the cache, causing trouble.
   cache.setup()
   shared.check_sanity()
-  utils.safe_ensure_dirs(cache.get_path('build'))
 
   if args.lto:
     settings.LTO = args.lto
