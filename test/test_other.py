@@ -9081,17 +9081,23 @@ int main() {
     for not_exists in expected_not_exists:
       self.assertNotIn(not_exists, sent)
 
-    # measure the wasm size without the name section
-    building.strip('a.out.wasm', 'a.out.nodebug.wasm', sections=['name'])
-    wasm_size = os.path.getsize('a.out.nodebug.wasm')
-    size_file = expected_basename + '.size'
     js_size = os.path.getsize('a.out.js')
     gz_size = get_file_gzipped_size('a.out.js')
     js_size_file = expected_basename + '.jssize'
     gz_size_file = expected_basename + '.gzsize'
-    self.check_expected_size_in_file('wasm', size_file, wasm_size)
     self.check_expected_size_in_file('js', js_size_file, js_size)
     self.check_expected_size_in_file('gz', gz_size_file, gz_size)
+
+    if '-sSINGLE_FILE' in args:
+      # No wasm file in the final output so we skip the rest of the
+      # testing
+      return
+
+    # measure the wasm size without the name section
+    building.strip('a.out.wasm', 'a.out.nodebug.wasm', sections=['name'])
+    wasm_size = os.path.getsize('a.out.nodebug.wasm')
+    size_file = expected_basename + '.size'
+    self.check_expected_size_in_file('wasm', size_file, wasm_size)
 
     imports, exports, funcs = self.parse_wasm('a.out.wasm')
     # Deminify the imports/export lists, if minification occured
@@ -9189,14 +9195,14 @@ int main() {
     'Os': (['-Os'], [], []),
     'Oz': (['-Oz'], [], []),
     # finally, check what happens when we export nothing. wasm should be almost empty
-    'export_nothing':
-          (['-Os', '-sEXPORTED_FUNCTIONS=[]'],    [], []), # noqa
+    'export_nothing': (['-Os', '-sEXPORTED_FUNCTIONS=[]'], [], []),
     # we don't metadce with linkable code! other modules may want stuff
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'dylink': (['-O3', '-sMAIN_MODULE=2'], [], []), # noqa
+    'dylink': (['-O3', '-sMAIN_MODULE=2'], [], []),
     # WasmFS should not be fully linked into a hello world program.
-    'wasmfs': (['-O3', '-sWASMFS'],        [], []), # noqa
+    'wasmfs': (['-O3', '-sWASMFS'], [], []),
+    'single_file': (['-O3', '-sSINGLE_FILE'], [], []), # noqa
   })
   def test_codesize_hello(self, *args):
     self.run_codesize_test('hello_world.c', *args)
