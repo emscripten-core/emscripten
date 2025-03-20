@@ -7040,7 +7040,7 @@ int main(void) {
     self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE', '-sEXPORT_NAME=Foo'])
     create_file('run.js', 'var m = require("./a.out.js"); new m();')
     err = self.run_js('run.js', assert_returncode=NON_ZERO)
-    self.assertContained('Error: Foo() should not be called with `new Foo()`', err)
+    self.assertContained('TypeError: m is not a constructor', err)
 
   @parameterized({
     '': ([],),
