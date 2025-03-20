@@ -139,10 +139,7 @@ var LibraryEmbind = {
       }
       emittedFunctions.add(signature);
       let [args, body] = createJsInvoker(argTypes, !!this.thisType, this.returnType.name !== 'void', this.isAsync);
-      out.push(
-        // The ${""} is hack to workaround the preprocessor replacing "function".
-        `'${signature}': f${""}unction(${args.join(',')}) {\n${body}},`
-      );
+      out.push(`'${signature}': function(${args.join(',')}) {\n${body}},`);
     }
   },
   $PointerDefinition: class {
@@ -551,7 +548,7 @@ var LibraryEmbind = {
     name = readLatin1String(name);
     registerType(rawType, new UserType(rawType, name));
   },
-  _embind_register_optional__deps: ['_embind_register_emval', '$OptionalType'],
+  _embind_register_optional__deps: ['$OptionalType'],
   _embind_register_optional: (rawOptionalType, rawType) => {
     whenDependentTypesAreResolved([rawOptionalType], [rawType], function(type) {
       type = type[0];
@@ -857,7 +854,6 @@ var LibraryEmbind = {
 
   // Stub functions used by eval, but not needed for TS generation:
   $makeLegalFunctionName: () => { throw new Error('stub function should not be called'); },
-  $newFunc: () => { throw new Error('stub function should not be called'); },
   $runDestructors: () => { throw new Error('stub function should not be called'); },
   $createNamedFunction: () => { throw new Error('stub function should not be called'); },
 };

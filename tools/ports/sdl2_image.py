@@ -3,7 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import os
 from typing import Dict, Set
 
 TAG = 'release-2.6.0'

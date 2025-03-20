@@ -20,9 +20,6 @@ var LibraryExceptions = {
   // reference counter) is not protected from that. Also protection is not enough, separate state
   // should be allocated. libcxxabi has concept of dependent exception which is used for that
   // purpose, it references the primary exception.
-#if EXCEPTION_DEBUG
-  $ExceptionInfo__deps: ['$ptrToString'],
-#endif
   $ExceptionInfo: class {
     // excPtr - Thrown object pointer to wrap. Metadata pointer is calculated from it.
     constructor(excPtr) {
@@ -205,7 +202,7 @@ var LibraryExceptions = {
   // unwinding using 'if' blocks around each function, so the remaining
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
-  $findMatchingCatch__deps: ['$exceptionLast', '$ExceptionInfo', '__resumeException', '__cxa_can_catch', '$setTempRet0'],
+  $findMatchingCatch__deps: ['$exceptionLast', '$ExceptionInfo', '__cxa_can_catch', '$setTempRet0'],
   $findMatchingCatch: (args) => {
     var thrown =
 #if EXCEPTION_STACK_TRACES

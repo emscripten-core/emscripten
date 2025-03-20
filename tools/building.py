@@ -1137,6 +1137,13 @@ def emit_wasm_source_map(wasm_file, map_file, final_wasm):
                    '--dwarfdump=' + LLVM_DWARFDUMP,
                    '-o',  map_file,
                    '--basepath=' + base_path]
+
+  if settings.SOURCE_MAP_PREFIXES:
+    sourcemap_cmd += ['--prefix', *settings.SOURCE_MAP_PREFIXES]
+
+  if settings.GENERATE_SOURCE_MAP == 2:
+    sourcemap_cmd += ['--sources']
+
   check_call(sourcemap_cmd)
 
 

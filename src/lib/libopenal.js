@@ -4056,7 +4056,7 @@ var LibraryOpenAL = {
 
     // Find the first non-zero buffer in the queue to determine the proper format
     var templateBuf = AL.buffers[0];
-    for (var buf of src.bufQueue.length) {
+    for (var buf of src.bufQueue) {
       if (buf.id !== 0) {
         templateBuf = buf;
         break;
