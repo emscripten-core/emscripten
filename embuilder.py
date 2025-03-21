@@ -170,8 +170,8 @@ def clear_port(port_name):
 
 
 def build_port(port_name):
-  with get_port_variant(port_name) as port_name:
-    ports.build_port(port_name, settings)
+  with get_port_variant(port_name) as port_name_base:
+    ports.build_port(port_name_base, settings, deferred=USE_NINJA)
 
 
 def get_system_tasks():

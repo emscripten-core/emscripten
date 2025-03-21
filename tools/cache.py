@@ -152,7 +152,7 @@ def get_lib(libname, *args, **kwargs):
 
 # Request a cached file. If it isn't in the cache, it will be created with
 # the given creator function
-def get(shortname, creator, what=None, force=False, quiet=False, deferred=False):
+def get(shortname, creator, what=None, force=False, quiet=False):
   ensure_setup()
   cachename = Path(cachedir, shortname)
   # Check for existence before taking the lock in case we can avoid the
@@ -177,8 +177,6 @@ def get(shortname, creator, what=None, force=False, quiet=False, deferred=False)
     logger.info(message)
     utils.safe_ensure_dirs(cachename.parent)
     creator(str(cachename))
-    if not deferred:
-      assert cachename.exists()
     if not quiet:
       logger.info(' - ok')
 
