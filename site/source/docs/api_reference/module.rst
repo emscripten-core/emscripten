@@ -166,9 +166,7 @@ Other methods
 
 .. js:function:: Module.instantiateWasm
 
-  When targeting WebAssembly, Module.instantiateWasm is an optional user-implemented callback function that the Emscripten runtime calls to perform the WebAssembly instantiation action. The callback function will be called with two parameters, ``imports`` and ``successCallback``. ``imports`` is a JS object which contains all the function imports that need to be passed to the WebAssembly Module when instantiating, and once instantiated, this callback function should call ``successCallback()`` with the generated WebAssembly Instance object.
-
-  The instantiation can be performed either synchronously or asynchronously. The return value of this function should contain the ``exports`` object of the instantiated WebAssembly Module, or an empty dictionary object ``{}`` if the instantiation is performed asynchronously, or ``false`` if instantiation failed.
+  When targeting WebAssembly, Module.instantiateWasm is an optional user-implemented callback function that the Emscripten runtime calls to perform the WebAssembly instantiation action. The callback function will be called with three parameters, ``imports``, ``successCallback`` and ``errorCallback``. ``imports`` is a JS object which contains all the function imports that need to be passed to the WebAssembly Module when instantiating. Once instantiated, this callback function should call ``successCallback(instance, module)`` with the generated WebAssembly Instance and Module objects. The instantiation can be performed either synchronously or asynchronously.  If an error occurs during instantiation, the callback function should call ``errorCallback(error)``.
 
   Overriding the WebAssembly instantiation procedure via this function is useful when you have other custom asynchronous startup actions or downloads that can be performed in parallel to WebAssembly compilation. Implementing this callback allows performing all of these in parallel. See the file ``test/manual_wasm_instantiate.html`` and the test ``browser.test_manual_wasm_instantiate`` for an example of how this construct works in action.
 
