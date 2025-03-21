@@ -6,6 +6,7 @@
 import logging
 import hashlib
 import os
+from pathlib import Path
 import shutil
 import glob
 import importlib.util
@@ -176,7 +177,10 @@ class Ports:
 
   @staticmethod
   def build_port(src_dir, output_path, port_name, includes=[], flags=[], cxxflags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # noqa
-    build_dir = os.path.join(Ports.get_build_dir(), port_name)
+    mangled_name = str(Path(output_path).relative_to(Path(cache.get_sysroot(True)) / 'lib'))
+    mangled_name = mangled_name.replace(os.sep, '_').replace('.a', '').replace('-emscripten', '')
+    build_dir = os.path.join(Ports.get_build_dir(), port_name, mangled_name)
+    logger.debug(f'build_port: {port_name} {output_path} in {build_dir}')
     if srcs:
       srcs = [os.path.join(src_dir, s) for s in srcs]
     else:
@@ -356,6 +360,7 @@ class Ports:
     port = ports_by_name[name]
     port.clear(Ports, settings, shared)
     build_dir = os.path.join(Ports.get_build_dir(), name)
+    logger.debug(f'clearing port build: {name} {build_dir}')
     utils.delete_dir(build_dir)
     return build_dir
 
