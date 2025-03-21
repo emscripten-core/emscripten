@@ -73,7 +73,6 @@ def get(ports, settings, shared):
     if settings.PTHREADS:
       flags.append('-pthread')
 
-    build_dir = ports.clear_project_build('sdl2_mixer')
     include_path = os.path.join(source_path, 'include')
     includes = [
       include_path,
@@ -83,7 +82,7 @@ def get(ports, settings, shared):
     ports.build_port(
       source_path,
       final,
-      build_dir,
+      'sdl2_mixer',
       flags=flags,
       exclude_files=[
         'playmus.c',

@@ -237,7 +237,7 @@ class Ports:
 
   @staticmethod
   def get_build_dir():
-    return os.path.join(system_libs.get_build_dir(), 'ports')
+    return system_libs.get_build_dir()
 
   name_cache: Set[str] = set()
 
@@ -360,6 +360,7 @@ class Ports:
     port = ports_by_name[name]
     port.clear(Ports, settings, shared)
     build_dir = os.path.join(Ports.get_build_dir(), name)
+    logger.debug(f'clearing port build: {name} {build_dir}')
     utils.delete_dir(build_dir)
     return build_dir
 
