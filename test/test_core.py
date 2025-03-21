@@ -8388,7 +8388,7 @@ Module.onRuntimeInitialized = () => {
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
     self.set_setting('MAYBE_WASM2JS')
     # see that running as wasm works
-    self.do_core_test('test_hello_world.c')
+    self.do_core_test('test_hello_world.c', emcc_args=['-Wno-deprecated'])
     # run wasm2js, bundle the code, and use the wasm2js path
     cmd = [PYTHON, path_from_root('tools/maybe_wasm2js.py'), 'test_hello_world.js', 'test_hello_world.wasm']
     if self.is_optimizing():
