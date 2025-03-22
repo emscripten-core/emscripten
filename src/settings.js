@@ -344,6 +344,7 @@ var SAFE_HEAP_LOG = false;
 // this is all undefined behavior). This approaches appears good enough to
 // support Python, which is the main use case motivating this feature.
 // [link]
+// [deprecated]
 var EMULATE_FUNCTION_POINTER_CASTS = false;
 
 // Print out exceptions in emscriptened code.
@@ -2027,6 +2028,7 @@ var MINIFY_HTML = true;
 // test_maybe_wasm2js test.  This option can be useful for debugging and
 // bisecting.
 // [link]
+// [deprecated]
 var MAYBE_WASM2JS = false;
 
 // This option is no longer used. The appropriate shadow memory size is now

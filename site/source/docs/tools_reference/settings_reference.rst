@@ -469,6 +469,8 @@ emulated values may not match (this is true of native too, for that matter -
 this is all undefined behavior). This approaches appears good enough to
 support Python, which is the main use case motivating this feature.
 
+.. note:: This setting is deprecated
+
 Default value: false
 
 .. _exception_debug:
@@ -3095,6 +3097,8 @@ you run wasm2js *later* on the wasm, and you can pick between running the
 normal wasm or that wasm2js code. For details of how to do that, see the
 test_maybe_wasm2js test.  This option can be useful for debugging and
 bisecting.
+
+.. note:: This setting is deprecated
 
 Default value: false
 
