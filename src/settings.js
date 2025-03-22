@@ -2008,15 +2008,6 @@ var HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS = true;
 // [link]
 var MINIFY_HTML = true;
 
-// Whether we *may* be using wasm2js. This compiles to wasm normally, but lets
-// you run wasm2js *later* on the wasm, and you can pick between running the
-// normal wasm or that wasm2js code. For details of how to do that, see the
-// test_maybe_wasm2js test.  This option can be useful for debugging and
-// bisecting.
-// [link]
-// [deprecated]
-var MAYBE_WASM2JS = false;
-
 // This option is no longer used. The appropriate shadow memory size is now
 // calculated from INITIAL_MEMORY and MAXIMUM_MEMORY. Will be removed in a
 // future release.
@@ -2287,4 +2278,5 @@ var LEGACY_SETTINGS = [
   ['EXTRA_EXPORTED_RUNTIME_METHODS', [[]], 'No longer supported, use EXPORTED_RUNTIME_METHODS'],
   ['SUPPORT_ERRNO', [0], 'No longer supported'],
   ['DEMANGLE_SUPPORT', [0], 'No longer supported'],
+  ['MAYBE_WASM2JS', [0], 'No longer supported (use -sWASM=2)'],
 ];

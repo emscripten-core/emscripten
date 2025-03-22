@@ -401,6 +401,8 @@ class TestCoreBase(RunnerCore):
     self.emcc_args += ['-Wno-experimental']
     if self.is_wasm64():
       self.skipTest('wasm64 requires wasm export wrappers')
+    if self.is_wasm2js():
+      self.skipTest('WASM_ESM_INTEGRATION is not compatible with wasm2js')
 
   # Use closure in some tests for some additional coverage
   def maybe_closure(self):
@@ -8480,25 +8482,6 @@ Module.onRuntimeInitialized = () => {
     self.set_setting('WASM', 0)
     self.do_core_test('test_hello_world.c')
     self.assertNotExists('test_hello_world.js.mem')
-
-  @no_sanitize('no wasm2js support yet in sanitizers')
-  @requires_wasm2js
-  @no_modularize_instance('MODULARIZE is not compatible with MAYBE_WASM2JS')
-  def test_maybe_wasm2js(self):
-    if self.is_wasm2js():
-      self.skipTest('redundant to test wasm2js in wasm2js* mode')
-    self.set_setting('MAYBE_WASM2JS')
-    # see that running as wasm works
-    self.do_core_test('test_hello_world.c', emcc_args=['-Wno-deprecated'])
-    # run wasm2js, bundle the code, and use the wasm2js path
-    cmd = [PYTHON, path_from_root('tools/maybe_wasm2js.py'), self.output_name('test_hello_world'), 'test_hello_world.wasm']
-    if self.is_optimizing():
-      cmd += ['-O2']
-    self.run_process(cmd, stdout=open('do_wasm2js.js', 'w'))
-    # remove the wasm to make sure we never use it again
-    os.remove('test_hello_world.wasm')
-    # verify that it runs
-    self.assertContained('hello, world!', self.run_js('do_wasm2js.js'))
 
   @no_asan('no wasm2js support yet in asan')
   @requires_wasm2js
