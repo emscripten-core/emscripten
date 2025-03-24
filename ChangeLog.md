@@ -24,6 +24,8 @@ See docs/process.md for more on how version tagging works.
   source map : use `-sSOURCE_MAP_PREFIXES=["<old>=<new>"]` with `-gsource-map`.
   Alternatively, you can now embed the sources content into the source map file
   using `-gsource-map=inline`. (#23741)
+- The python `__file__` builtin now works in the emscripten config file.
+  (#23973)
 
 4.0.5 - 03/12/25
 ----------------
