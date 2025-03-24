@@ -3958,6 +3958,8 @@ More info: https://emscripten.org
       #include <stdio.h>
       #include <emscripten.h>
 
+      EM_JS_DEPS(deps, "$demangle,$stackTrace");
+
       void two(char c) {
         EM_ASM(out(stackTrace()));
       }
@@ -3989,7 +3991,7 @@ More info: https://emscripten.org
 
     # full demangle support
 
-    self.run_process([EMXX, 'src.cpp', '-sDEMANGLE_SUPPORT'])
+    self.run_process([EMXX, 'src.cpp', '-sEXPORTED_FUNCTIONS=_main,_free,___cxa_demangle'])
     output = self.run_js('a.out.js')
     self.assertContained('''operator new(unsigned long)
 _main
@@ -4010,7 +4012,7 @@ FWakaGLXFleeflsMarfoo::FWakaGLXFleeflsMarfoo(unsigned int, unsigned int, unsigne
 void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::OR>(unsigned int const*, unsigned int)
 ''', output)
     # test for multiple functions in one stack trace
-    self.run_process([EMXX, 'src.cpp', '-sDEMANGLE_SUPPORT', '-g'])
+    self.run_process([EMXX, 'src.cpp', '-sEXPORTED_FUNCTIONS=_main,_free,___cxa_demangle', '-g'])
     output = self.run_js('a.out.js')
     self.assertIn('one(int)', output)
     self.assertIn('two(char)', output)
@@ -9184,7 +9186,7 @@ int main() {
     'except':   (['-O2', '-fexceptions'],    [], ['waka']), # noqa
     # exceptions does not pull in demangling by default, which increases code size
     'mangle':   (['-O2', '-fexceptions',
-                  '-sDEMANGLE_SUPPORT', '-Wno-deprecated'], [], ['waka']), # noqa
+                  '-sEXPORTED_FUNCTIONS=_main,_free,___cxa_demangle', '-Wno-deprecated'], [], ['waka']), # noqa
     # Wasm EH's code size increase is smaller than that of Emscripten EH
     'except_wasm':   (['-O2', '-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0'], [], ['waka']),
     'except_wasm_legacy':   (['-O2', '-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS'], [], ['waka']),
@@ -9262,19 +9264,9 @@ int main() {
   def test_codesize_files(self, *args):
     self.run_codesize_test('files.cpp', *args)
 
-  # ensures runtime exports work, even with metadce
-  @parameterized({
-    '': (False,),
-    'legacy': (True,)
-  })
-  def test_exported_runtime_methods_metadce(self, use_legacy_name):
+  def test_exported_runtime_methods_metadce(self):
     exports = ['stackSave', 'stackRestore', 'stackAlloc', 'FS']
-    setting_name = 'EXPORTED_RUNTIME_METHODS'
-    if use_legacy_name:
-      setting_name = 'EXTRA_EXPORTED_RUNTIME_METHODS'
-    err = self.run_process([EMCC, test_file('hello_world.c'), '-Os', '-s%s=%s' % (setting_name, ','.join(exports))], stderr=PIPE).stderr
-    if use_legacy_name:
-      self.assertContained('warning: EXTRA_EXPORTED_RUNTIME_METHODS is deprecated (please use EXPORTED_RUNTIME_METHODS instead). Please open a bug if you have a continuing need for this setting [-Wdeprecated]', err)
+    self.run_process([EMCC, test_file('hello_world.c'), '-Os', '-sEXPORTED_RUNTIME_METHODS=%s' % ','.join(exports)])
     js = read_file('a.out.js')
     for export in exports:
       self.assertContained(f'Module["{export}"]', js)
@@ -12955,24 +12947,6 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     # But it works if we pass and explicit language mode.
     self.run_process([EMCC, '-x', 'c++-header', '-c', 'cxxfoo.h'])
     self.run_process([EMCC, '-x', 'c++', '-c', 'cxxfoo.h'])
-
-  @parameterized({
-    '': ([],),
-    'minimal': (['-sMINIMAL_RUNTIME', '-sSUPPORT_ERRNO'],),
-  })
-  def test_support_errno(self, args):
-    self.emcc_args += args + ['-sEXPORTED_FUNCTIONS=_main,___errno_location', '-Wno-deprecated']
-
-    self.do_other_test('test_support_errno.c')
-    size_default = os.path.getsize('test_support_errno.js')
-
-    # Run the same test again but with SUPPORT_ERRNO disabled.  This time we don't expect errno
-    # to be set after the failing syscall.
-    self.emcc_args += ['-sSUPPORT_ERRNO=0']
-    self.do_other_test('test_support_errno.c', out_suffix='_disabled')
-
-    # Verify the JS output was smaller
-    self.assertLess(os.path.getsize('test_support_errno.js'), size_default)
 
   def test_assembly(self):
     self.run_process([EMCC, '-c', test_file('other/test_asm.s'), '-o', 'foo.o'])

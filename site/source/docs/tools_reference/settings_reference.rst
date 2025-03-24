@@ -482,17 +482,6 @@ Print out exceptions in emscriptened code.
 
 Default value: false
 
-.. _demangle_support:
-
-DEMANGLE_SUPPORT
-================
-
-If 1, export `demangle` and `stackTrace` JS library functions.
-
-.. note:: This setting is deprecated
-
-Default value: false
-
 .. _library_debug:
 
 LIBRARY_DEBUG
@@ -1439,17 +1428,6 @@ EXPORTED_RUNTIME_METHODS for things you want to export from the runtime.
 Note that the name may be slightly misleading, as this is for any JS library
 element, and not just methods. For example, we can export the FS object by
 having "FS" in this list.
-
-Default value: []
-
-.. _extra_exported_runtime_methods:
-
-EXTRA_EXPORTED_RUNTIME_METHODS
-==============================
-
-Deprecated, use EXPORTED_RUNTIME_METHODS instead.
-
-.. note:: This setting is deprecated
 
 Default value: []
 
@@ -2950,18 +2928,6 @@ Minimum supported value is 101900, which was released 2020-02-05 (see
 feature_matrix.py).
 
 Default value: 160000
-
-.. _support_errno:
-
-SUPPORT_ERRNO
-=============
-
-Whether we support setting errno from JS library code.
-In MINIMAL_RUNTIME builds, this option defaults to 0.
-
-.. note:: This setting is deprecated
-
-Default value: true
 
 .. _minimal_runtime:
 
