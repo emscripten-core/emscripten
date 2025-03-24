@@ -7170,6 +7170,9 @@ Descriptor desc;
     self.run_process([EMXX, 'src.cpp', '-O2', '-sEXPORT_ALL'])
     self.assertExists('a.out.js')
 
+  def test_modularize_legacy(self):
+    self.do_runf('hello_world.c', emcc_args=['-sMODULARIZE', '-sLEGACY_VM_SUPPORT'])
+
   def test_emmake_emconfigure(self):
     def check(what, args, fail=True, expect=''):
       args = [what] + args

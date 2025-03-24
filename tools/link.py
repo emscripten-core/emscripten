@@ -2086,13 +2086,15 @@ def phase_source_transforms(options):
 # both main code and libraries.
 # See also: `preprocess` in parseTools.js.
 def fix_es6_import_statements(js_file):
-  if not settings.EXPORT_ES6:
+  if not settings.MODULARIZE:
     return
 
   src = read_file(js_file)
   write_file(js_file, src
              .replace('EMSCRIPTEN$IMPORT$META', 'import.meta')
-             .replace('EMSCRIPTEN$AWAIT$IMPORT', 'await import'))
+             .replace('EMSCRIPTEN$AWAIT$IMPORT', 'await import')
+             .replace('EMSCRIPTEN$AWAIT(createWasm())', 'await createWasm()')
+             .replace('EMSCRIPTEN$AWAIT(', 'await ('))
   save_intermediate('es6-module')
 
 

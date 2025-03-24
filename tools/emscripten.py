@@ -872,13 +872,7 @@ def create_sending(metadata, library_symbols):
 
 
 def can_use_await():
-  # In MODULARIZE mode we can use `await` since the factory function itself
-  # is marked as `async` and the generated code all lives inside that factory
-  # function.
-  # However, because closure does not see this (it runs only on the inner code),
-  # it sees this as a top-level-await, which it does not yet support.
-  # FIXME(https://github.com/emscripten-core/emscripten/issues/23158)
-  return settings.MODULARIZE and not settings.USE_CLOSURE_COMPILER
+  return settings.MODULARIZE
 
 
 def make_export_wrappers(function_exports):
@@ -988,7 +982,10 @@ function assignWasmImports() {
     if settings.WASM_ASYNC_COMPILATION:
       if can_use_await():
         # In modularize mode the generated code is within a factory function.
-        module.append("var wasmExports = await createWasm();\n")
+        # This magic string gets replaced by `await createWasm`.  It needed to allow
+        # closure and acorn to process the module without seeing this as a top-level
+        # await.
+        module.append("var wasmExports = EMSCRIPTEN$AWAIT(createWasm());\n")
       else:
         module.append("var wasmExports;\ncreateWasm();\n")
     else:
