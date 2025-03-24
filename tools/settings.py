@@ -117,6 +117,8 @@ COMPILE_TIME_SETTINGS = {
 #
 # At some point in the future, once folks have stopped using these
 # settings we can move them to `LEGACY_SETTINGS`.
+#
+# All settings here should be tagged as `[deprecated]` in settings.js
 DEPRECATED_SETTINGS = {
     'SUPPORT_ERRNO': 'emscripten no longer uses the setErrNo library function',
     'EXTRA_EXPORTED_RUNTIME_METHODS': 'please use EXPORTED_RUNTIME_METHODS instead',
