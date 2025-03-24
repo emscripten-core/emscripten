@@ -38,7 +38,7 @@ export default async function emscriptenPlugin(pluginOptions = {}) {
     async generateBundle(options, chunkMap) {
       assert(options.dir, 'Emscripten plugin requires dir option.');
       assert(exportInfo, 'Failed to find Emscripten output.');
-      for (const [file, chunk] of Object.entries(chunkMap)) {
+      for (const [_file, chunk] of Object.entries(chunkMap)) {
         for (const [id, module] of Object.entries(chunk.modules)) {
           if (path.basename(id) === pluginOptions.input) {
             const tmpWasm = tmp.tmpNameSync({postfix: '.wasm'});
@@ -214,7 +214,7 @@ function getExportInfo(ast, variableNames) {
 function getUnusedExports(ast, exports) {
   const unusedExports = new Set();
   const varExports = new Map();
-  for (const [key, value] of exports) {
+  for (const value of exports.values()) {
     varExports.set(value.varName, value);
     unusedExports.add(value.wasmName);
   }
