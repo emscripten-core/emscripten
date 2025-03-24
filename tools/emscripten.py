@@ -297,12 +297,8 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
   #     to use emscripten's wasm<->JS ABI
   #   * Use the metadata to generate the JS glue that goes with the wasm
 
-  if settings.SINGLE_FILE:
-    # placeholder strings for JS glue, to be replaced with subresource locations in do_binaryen
-    settings.WASM_BINARY_FILE = '<<< WASM_BINARY_FILE >>>'
-  else:
-    # set file locations, so that JS glue can find what it needs
-    settings.WASM_BINARY_FILE = js_manipulation.escape_for_js_string(os.path.basename(out_wasm))
+  # set file locations, so that JS glue can find what it needs
+  settings.WASM_BINARY_FILE = js_manipulation.escape_for_js_string(os.path.basename(out_wasm))
 
   if finalize:
     metadata = finalize_wasm(in_wasm, out_wasm, js_syms)

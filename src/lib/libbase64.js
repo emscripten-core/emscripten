@@ -43,24 +43,4 @@ addToLibrary({
     }
     return output;
   },
-
-  // Prefix of data URIs emitted by SINGLE_FILE and related options.
-  // Double quotes here needed, othersise jsifier will not include any in the
-  // output.
-  $dataURIPrefix: "'data:application/octet-stream;base64,'",
-
-  /**
-   * Indicates whether filename is a base64 data URI.
-   */
-  $isDataURI: (filename) => filename.startsWith(dataURIPrefix),
-
-  // If filename is a base64 data URI, parses and returns data (Buffer on node,
-  // Uint8Array otherwise). If filename is not a base64 data URI, returns
-  // undefined.
-  $tryParseAsDataURI__deps: ['$base64Decode', '$isDataURI', '$dataURIPrefix'],
-  $tryParseAsDataURI: (filename) => {
-    if (isDataURI(filename)) {
-      return base64Decode(filename.slice(dataURIPrefix.length));
-    }
-  },
 });

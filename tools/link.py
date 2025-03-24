@@ -1951,10 +1951,7 @@ def phase_emscript(in_wasm, wasm_target, js_syms, base_metadata):
   # the module is already in JS format.
   if settings.SINGLE_FILE and not settings.WASM2JS:
     settings.SUPPORT_BASE64_EMBEDDING = 1
-    if settings.MINIMAL_RUNTIME:
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$base64Decode')
-    else:
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$tryParseAsDataURI')
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$base64Decode')
 
   if shared.SKIP_SUBPROCS:
     return
@@ -2371,10 +2368,7 @@ def phase_binaryen(target, options, wasm_target):
   if final_js and settings.SINGLE_FILE and not settings.WASM2JS:
     js = read_file(final_js)
 
-    if settings.MINIMAL_RUNTIME:
-      js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(wasm_target))
-    else:
-      js = do_replace(js, '<<< WASM_BINARY_FILE >>>', get_subresource_location(wasm_target))
+    js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(wasm_target))
     delete_file(wasm_target)
     write_file(final_js, js)
 
