@@ -24,6 +24,10 @@ actions = [
      'package.json',
      'package-lock.json'
    ], ['npm', 'ci']),
+  ('npm rollup plugin packages', [
+     'tools/rollup-plugin-emscripten/package.json',
+     'tools/rollup-plugin-emscripten/package-lock.json'
+   ], ['npm', 'ci', '--prefix', 'tools/rollup-plugin-emscripten']),
   ('create entry points', [
      'tools/maint/create_entry_points.py',
      'tools/maint/run_python.bat',
