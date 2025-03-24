@@ -272,7 +272,7 @@ def get_wasm_bindgen_exported_symbols(input_files):
   for line in result.stdout.splitlines():
     (path, symbol) = line.split()
     # Skip mangled (non-C) symbols
-    if symbol.startswith('_Z') or symbol.startswith('_R'):
+    if symbol.startswith('_Z') or symbol.startswith('_R') or symbol.startswith('anon.'):
       continue
     symbols.append(symbol)
 
