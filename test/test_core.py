@@ -9568,12 +9568,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # TODO(sbc): WASM_ESM_INTEGRATION doesn't currently work with closure.
     # self.maybe_closure()
     self.node_args += ['--experimental-wasm-modules', '--no-warnings']
-    self.run_process([EMCC, '-o', 'hello_world.mjs', '-sWASM_ESM_INTEGRATION', '-Wno-experimental', test_file('hello_world.c')] + self.get_emcc_args())
+    self.run_process([EMCC, '-o', 'hello_world.mjs', '-sWASM_ESM_INTEGRATION', '-Wno-experimental', test_file('hello_world_argv.c')] + self.get_emcc_args())
     create_file('runner.mjs', '''
       import init from "./hello_world.mjs";
-      await init();
+      await init({arguments: ['foo', 'bar']});
     ''')
-    self.assertContained('hello, world!', self.run_js('runner.mjs'))
+    self.assertContained('hello, world! (3)', self.run_js('runner.mjs'))
 
 
 # Generate tests for everything
