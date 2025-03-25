@@ -203,7 +203,6 @@ class Ports:
       ninja_file = os.path.join(build_dir, 'build.ninja')
       system_libs.ensure_sysroot()
       system_libs.create_ninja_file(srcs, ninja_file, output_path, cflags=cflags)
-      print(f'deferred {os.getenv('EMBUILDER_PORT_BUILD_DEFERRED')} pid {os.getpid()}')
       if not os.getenv('EMBUILDER_PORT_BUILD_DEFERRED'):
         system_libs.run_ninja(build_dir)
     else:
@@ -581,7 +580,9 @@ def add_cflags(args, settings): # noqa: U100
   # Now get (i.e. build) the ports in dependency order.  This is important because the
   # headers from one port might be needed before we can build the next.
   for port in dependency_order(needed):
-    port.get(Ports, settings, shared)
+    # When using embuilder, don't build the dependencies
+    if not os.getenv('EMBUILDER_PORT_BUILD_DEFERRED'):
+      port.get(Ports, settings, shared)
     args += port.process_args(Ports)
 
 
