@@ -734,9 +734,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if s in user_settings:
       diagnostics.warning('deprecated', f'{s} is deprecated ({reason}). Please open a bug if you have a continuing need for this setting')
 
-  if settings.EXTRA_EXPORTED_RUNTIME_METHODS:
-    settings.EXPORTED_RUNTIME_METHODS += settings.EXTRA_EXPORTED_RUNTIME_METHODS
-
   # If no output format was specified we try to deduce the format based on
   # the output filename extension
   if not options.oformat and (options.relocatable or (options.shared and not settings.SIDE_MODULE)):
@@ -1303,10 +1300,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
         '_wasmfs_get_cwd',
       ]
 
-  if settings.DEMANGLE_SUPPORT:
-    settings.REQUIRED_EXPORTS += ['__cxa_demangle', 'free']
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$demangle', '$stackTrace']
-
   if settings.FULL_ES3:
     settings.FULL_ES2 = 1
     settings.MAX_WEBGL_VERSION = max(2, settings.MAX_WEBGL_VERSION)
@@ -1799,7 +1792,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   # Some settings make no sense when not linking as C++
   if not settings.LINK_AS_CXX:
     cxx_only_settings = [
-      'DEMANGLE_SUPPORT',
       'EXCEPTION_DEBUG',
       'DISABLE_EXCEPTION_CATCHING',
       'EXCEPTION_CATCHING_ALLOWED',

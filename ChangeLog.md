@@ -26,6 +26,12 @@ See docs/process.md for more on how version tagging works.
   using `-gsource-map=inline`. (#23741)
 - The python `__file__` builtin now works in the emscripten config file.
   (#23973)
+- Three deprecated settings were removed.  These settings were marked as
+  deprecated for more than year:
+  - SUPPORT_ERRNO: Instead, export `__errno_location` if needed.
+  - EXTRA_EXPORTED_RUNTIME_METHODS: Instead use EXPORTED_RUNTIME_METHODS.
+  - DEMANGLE_SUPPORT: Instead use the `$demangle` JS libary function.
+  (#23975)
 
 4.0.5 - 03/12/25
 ----------------
