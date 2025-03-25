@@ -763,7 +763,7 @@ var LibraryEmbind = {
     // TODO: Remove this completely once all function invokers are being dynamically generated.
     var needsDestructorStack = usesDestructorStack(argTypes);
 
-    var returns = (argTypes[0].name !== "void");
+    var returns = (argTypes[0].name !== 'void');
 
     var expectedArgCount = argCount - 2;
 #if ASSERTIONS
@@ -842,7 +842,8 @@ var LibraryEmbind = {
     closureArgs.push(Asyncify);
 #endif
     if (!needsDestructorStack) {
-      for (var i = isClassMethodFunc?1:2; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here. Also skip class type if not a method.
+      // Skip return value at index 0 - it's not deleted here. Also skip class type if not a method.
+      for (var i = isClassMethodFunc?1:2; i < argTypes.length; ++i) {
         if (argTypes[i].destructorFunction !== null) {
           closureArgs.push(argTypes[i].destructorFunction);
         }
@@ -901,7 +902,7 @@ var LibraryEmbind = {
     }
 
     var fp = makeDynCaller();
-    if (typeof fp != "function") {
+    if (typeof fp != 'function') {
         throwBindingError(`unknown function pointer with signature ${signature}: ${rawFunction}`);
     }
     return fp;
@@ -1632,7 +1633,7 @@ var LibraryEmbind = {
     // Support `using ...` from https://github.com/tc39/proposal-explicit-resource-management.
     const symbolDispose = Symbol.dispose;
     if (symbolDispose) {
-      proto[symbolDispose] = proto["delete"];
+      proto[symbolDispose] = proto['delete'];
     }
   },
 
@@ -1753,10 +1754,10 @@ var LibraryEmbind = {
 
         var constructor = createNamedFunction(name, function(...args) {
           if (Object.getPrototypeOf(this) !== instancePrototype) {
-            throw new BindingError("Use 'new' to construct " + name);
+            throw new BindingError(`Use 'new' to construct ${name}`);
           }
           if (undefined === registeredClass.constructor_body) {
-            throw new BindingError(name + " has no accessible constructor");
+            throw new BindingError(`${name} has no accessible constructor`);
           }
           var body = registeredClass.constructor_body[args.length];
           if (undefined === body) {
@@ -2069,7 +2070,7 @@ var LibraryEmbind = {
         throwUnboundTypeError(`Cannot call ${humanName} due to unbound types`, rawArgTypes);
       }
 
-      if (methodName.startsWith("@@")) {
+      if (methodName.startsWith('@@')) {
         methodName = Symbol[methodName.substring(2)];
       }
 
@@ -2202,20 +2203,20 @@ var LibraryEmbind = {
       Object.defineProperty(this, '__parent', {
         value: wrapperPrototype
       });
-      this["__construct"](...args);
+      this['__construct'](...args);
     });
 
     // It's a little nasty that we're modifying the wrapper prototype here.
 
-    wrapperPrototype["__construct"] = function __construct(...args) {
+    wrapperPrototype['__construct'] = function __construct(...args) {
       if (this === wrapperPrototype) {
         throwBindingError("Pass correct 'this' to __construct");
       }
 
-      var inner = baseConstructor["implement"](this, ...args);
+      var inner = baseConstructor['implement'](this, ...args);
       detachFinalizer(inner);
       var $$ = inner.$$;
-      inner["notifyOnDestruction"]();
+      inner['notifyOnDestruction']();
       $$.preservePointerOnDelete = true;
       Object.defineProperties(this, { $$: {
           value: $$
@@ -2224,7 +2225,7 @@ var LibraryEmbind = {
       registerInheritedInstance(registeredClass, $$.ptr, this);
     };
 
-    wrapperPrototype["__destruct"] = function __destruct() {
+    wrapperPrototype['__destruct'] = function __destruct() {
       if (this === wrapperPrototype) {
         throwBindingError("Pass correct 'this' to __destruct");
       }
