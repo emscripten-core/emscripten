@@ -158,10 +158,6 @@ assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' &
 #if IMPORTED_MEMORY
 // In non-standalone/normal mode, we create the memory here.
 #include "runtime_init_memory.js"
-#elif ASSERTIONS
-// If memory is defined in wasm, the user can't provide it, or set INITIAL_MEMORY
-assert(!Module['wasmMemory'], 'Use of `wasmMemory` detected.  Use -sIMPORTED_MEMORY to define wasmMemory externally');
-assert(!Module['INITIAL_MEMORY'], 'Detected runtime INITIAL_MEMORY setting.  Use -sIMPORTED_MEMORY to define wasmMemory dynamically');
 #endif // !IMPORTED_MEMORY && ASSERTIONS
 
 #if RELOCATABLE
@@ -461,8 +457,8 @@ var FS = {
 
   ErrnoError() { FS.error() },
 };
-Module['FS_createDataFile'] = FS.createDataFile;
-Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
+//Module['FS_createDataFile'] = FS.createDataFile;
+//Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
 #endif
 
 #if ASSERTIONS
@@ -1086,3 +1082,68 @@ function getCompilerSetting(name) {
 // dynamic linker as symbols are loaded.
 var asyncifyStubs = {};
 #endif
+
+function processModuleArgs() {
+#if ASSERTIONS
+  checkIncomingModuleAPI();
+#endif
+
+  <<< ATPREINITS >>>
+
+#if expectToReceiveOnModule('preInit')
+  if (Module['preInit']) {
+    if (typeof Module['preInit'] == 'function') Module['preInit'] = [Module['preInit']];
+    while (Module['preInit'].length > 0) {
+      Module['preInit'].pop()();
+    }
+  }
+#if ASSERTIONS
+  consumedModuleProp('preInit');
+#endif
+#endif
+
+  {{{ makeModuleReceive('arguments_', 'arguments') }}}
+  {{{ makeModuleReceive('thisProgram') }}}
+
+
+#if ASSERTIONS
+  // Assertions on removed incoming Module JS APIs.
+  assert(typeof Module['memoryInitializerPrefixURL'] == 'undefined', 'Module.memoryInitializerPrefixURL option was removed, use Module.locateFile instead');
+  assert(typeof Module['pthreadMainPrefixURL'] == 'undefined', 'Module.pthreadMainPrefixURL option was removed, use Module.locateFile instead');
+  assert(typeof Module['cdInitializerPrefixURL'] == 'undefined', 'Module.cdInitializerPrefixURL option was removed, use Module.locateFile instead');
+  assert(typeof Module['filePackagePrefixURL'] == 'undefined', 'Module.filePackagePrefixURL option was removed, use Module.locateFile instead');
+  assert(typeof Module['read'] == 'undefined', 'Module.read option was removed');
+  assert(typeof Module['readAsync'] == 'undefined', 'Module.readAsync option was removed (modify readAsync in JS)');
+  assert(typeof Module['readBinary'] == 'undefined', 'Module.readBinary option was removed (modify readBinary in JS)');
+  assert(typeof Module['setWindowTitle'] == 'undefined', 'Module.setWindowTitle option was removed (modify emscripten_set_window_title in JS)');
+  assert(typeof Module['TOTAL_MEMORY'] == 'undefined', 'Module.TOTAL_MEMORY has been renamed Module.INITIAL_MEMORY');
+  assert(typeof Module['ENVIRONMENT'] == 'undefined', 'Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -sENVIRONMENT=web or -sENVIRONMENT=node)');
+  assert(typeof Module['STACK_SIZE'] == 'undefined', 'STACK_SIZE can no longer be set at runtime.  Use -sSTACK_SIZE at link time')
+#if !IMPORTED_MEMORY
+  // If memory is defined in wasm, the user can't provide it, or set INITIAL_MEMORY
+  assert(typeof Module['wasmMemory'] == 'undefined', 'Use of `wasmMemory` detected.  Use -sIMPORTED_MEMORY to define wasmMemory externally');
+  assert(typeof Module['INITIAL_MEMORY'] == 'undefined', 'Detected runtime INITIAL_MEMORY setting.  Use -sIMPORTED_MEMORY to define wasmMemory dynamically');
+#endif
+  {{{ makeRemovedModuleAPIAssert('asm', 'wasmExports', false) }}}
+  {{{ makeRemovedModuleAPIAssert('readAsync') }}}
+  {{{ makeRemovedModuleAPIAssert('readBinary') }}}
+  {{{ makeRemovedModuleAPIAssert('setWindowTitle') }}}
+  {{{ makeRemovedFSAssert('IDBFS') }}}
+  {{{ makeRemovedFSAssert('PROXYFS') }}}
+  {{{ makeRemovedFSAssert('WORKERFS') }}}
+  {{{ makeRemovedFSAssert('FETCHFS') }}}
+  {{{ makeRemovedFSAssert('ICASEFS') }}}
+  {{{ makeRemovedFSAssert('JSFILEFS') }}}
+  {{{ makeRemovedFSAssert('OPFS') }}}
+
+#if !NODERAWFS
+  {{{ makeRemovedFSAssert('NODEFS') }}}
+#endif
+
+#if !EXPORT_ALL
+  unexportedSymbols.forEach(unexportedRuntimeSymbol);
+  missingLibrarySymbols.forEach(missingLibrarySymbol);
+#endif
+
+#endif // ASSERTIONS
+}

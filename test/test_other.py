@@ -370,12 +370,12 @@ class other(RunnerCore):
   @requires_node_canary
   def test_esm_integration(self):
     self.node_args += ['--experimental-wasm-modules', '--no-warnings']
-    self.run_process([EMCC, '-o', 'hello_world.mjs', '-sWASM_ESM_INTEGRATION', '-Wno-experimental', test_file('hello_world.c')])
+    self.run_process([EMCC, '-o', 'hello_world.mjs', '-sWASM_ESM_INTEGRATION', '-Wno-experimental', test_file('hello_world_argv.c')])
     create_file('runner.mjs', '''
       import init from "./hello_world.mjs";
-      await init();
+      await init({arguments: ['foo', 'bar']});
     ''')
-    self.assertContained('hello, world!', self.run_js('runner.mjs'))
+    self.assertContained('hello, world! (3)', self.run_js('runner.mjs'))
 
   @parameterized({
     '': ([],),

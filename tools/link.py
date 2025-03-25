@@ -2111,10 +2111,18 @@ def create_worker_file(input_file, target_dir, output_file, options):
 
 
 def create_esm_wrapper(wrapper_file, support_target, wasm_target):
-  wasm_exports = ', '.join(shared.demangle_c_symbol_name(f) for f in settings.EXPORTED_FUNCTIONS)
+  wasm_exports = []
+  for f in settings.USER_EXPORTS:
+    if f == '_main' and '__main_argc_argv' in settings.WASM_EXPORTS:
+      wasm_exports.append('__main_argc_argv as main')
+    else:
+      wasm_exports.append(shared.demangle_c_symbol_name(f))
+  if not wasm_exports:
+    wasm_exports.append('memory')
+  wasm_exports = ', '.join(wasm_exports)
+
   wrapper = []
-  if wasm_exports:
-    wrapper.append(f"export {{ {wasm_exports} }} from './{settings.WASM_BINARY_FILE}';")
+  wrapper.append(f"export {{ {wasm_exports} }} from './{settings.WASM_BINARY_FILE}';")
   support_url = f'./{os.path.basename(support_target)}'
   wrapper.append(f"import init from '{support_url}';")
   wrapper.append('export default init;')

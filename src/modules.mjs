@@ -22,7 +22,7 @@ import {
   mergeInto,
   localFile,
 } from './utility.mjs';
-import {preprocess, processMacros} from './parseTools.mjs';
+import {addAtPreInit, preprocess, processMacros} from './parseTools.mjs';
 
 // Various namespace-like modules
 
@@ -401,7 +401,6 @@ function addMissingLibraryStubs(unusedLibSymbols) {
     rtn += `  '${sym}',\n`;
   }
   rtn += '];\n';
-  rtn += 'missingLibrarySymbols.forEach(missingLibrarySymbol)\n';
   return rtn;
 }
 
@@ -515,9 +514,7 @@ function exportRuntime() {
     // in ASSERTIONS mode we show a useful error if it is used without being
     // exported.  See `unexportedRuntimeSymbol` in runtime_debug.js.
     const unusedLibSymbols = getUnusedLibrarySymbols();
-    if (unusedLibSymbols.size) {
-      results.push(addMissingLibraryStubs(unusedLibSymbols));
-    }
+    results.push(addMissingLibraryStubs(unusedLibSymbols));
 
     const unexported = [];
     for (const name of runtimeElements) {
@@ -526,15 +523,12 @@ function exportRuntime() {
       }
     }
 
-    if (unexported.length || unusedLibSymbols.size) {
-      let unexportedStubs = 'var unexportedSymbols = [\n';
-      for (const sym of unexported) {
-        unexportedStubs += `  '${sym}',\n`;
-      }
-      unexportedStubs += '];\n';
-      unexportedStubs += 'unexportedSymbols.forEach(unexportedRuntimeSymbol);\n';
-      results.push(unexportedStubs);
+    let unexportedStubs = 'var unexportedSymbols = [\n';
+    for (const sym of unexported) {
+      unexportedStubs += `  '${sym}',\n`;
     }
+    unexportedStubs += '];\n';
+    results.push(unexportedStubs);
   }
 
   return results.join('\n') + '\n';
