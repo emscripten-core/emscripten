@@ -720,6 +720,14 @@ function makeEval(code) {
   return ret;
 }
 
+// Add code that runs before the wasm modules is loaded.  This is the first
+// point at which the global `Module` object is guaranteed to exist. This hook
+// is mostly used to read incoming `Module` properties.
+export const ATMODULES = [];
+function addAtModule(code) {
+  ATMODULES.push(code);
+}
+
 // Add code to run soon after the Wasm module has been loaded. This is the first
 // injection point before all the other addAt<X> functions below. The code will
 // be executed after the runtime `onPreRuns` callbacks.
@@ -882,7 +890,7 @@ function makeModuleReceive(localName, moduleName) {
   if (expectToReceiveOnModule(moduleName)) {
     // Usually the local we use is the same as the Module property name,
     // but sometimes they must differ.
-    ret = `\nif (Module['${moduleName}']) ${localName} = Module['${moduleName}'];`;
+    ret = `if (Module['${moduleName}']) ${localName} = Module['${moduleName}'];`;
   }
   return ret;
 }
@@ -900,17 +908,12 @@ function makeModuleReceiveWithVar(localName, moduleName, defaultValue) {
   moduleName ||= localName;
   checkReceiving(moduleName);
   let ret = `var ${localName}`;
-  if (!expectToReceiveOnModule(moduleName)) {
-    if (defaultValue) {
-      ret += ` = ${defaultValue}`;
-    }
-    ret += ';';
-  } else {
-    if (defaultValue) {
-      ret += ` = Module['${moduleName}'] || ${defaultValue};`;
-    } else {
-      ret += ` = Module['${moduleName}'];`;
-    }
+  if (defaultValue) {
+    ret += ` = ${defaultValue}`;
+  }
+  ret += ';';
+  if (expectToReceiveOnModule(moduleName)) {
+    addAtModule(`if (Module['${moduleName}']) ${localName} = Module['${moduleName}'];`);
   }
   return ret;
 }
@@ -1119,6 +1122,7 @@ addToCompileTimeContext({
   ENVIRONMENT_IS_WORKER_THREAD,
   addAtExit,
   addAtPreRun,
+  addAtModule,
   addAtInit,
   addAtPostCtor,
   addAtPreMain,

@@ -513,7 +513,6 @@ function exportRuntimeSymbols() {
   }
 
   const exports = runtimeElements.map(maybeExport);
-  exports.unshift('// Begin runtime exports');
   const results = exports.filter((name) => name);
 
   if (ASSERTIONS && !EXPORT_ALL) {
@@ -542,7 +541,9 @@ function exportRuntimeSymbols() {
     }
   }
 
-  return results.join('\n') + '\n';
+  results.unshift('// Begin runtime exports');
+  results.push('// End runtime exports');
+  return results.join('\n  ') + '\n';
 }
 
 function exportLibrarySymbols() {
@@ -552,12 +553,12 @@ function exportLibrarySymbols() {
       results.push(exportSymbol(ident));
     }
   }
-
-  return results.join('\n') + '\n';
+  results.push('// End JS library exports');
+  return results.join('\n  ') + '\n';
 }
 
 function exportJSSymbols() {
-  return exportRuntimeSymbols() + exportLibrarySymbols();
+  return exportRuntimeSymbols() + '  ' + exportLibrarySymbols();
 }
 
 addToCompileTimeContext({
