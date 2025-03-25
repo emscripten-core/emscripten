@@ -17,7 +17,7 @@
     "ws": "^8.18.1"
   },
   "dependencies": {
-    "@babel/cli": "^7.26.4",
+    "@babel/cli": "^7.27.0",
     "@babel/core": "^7.26.10",
     "@babel/preset-env": "^7.26.7",
     "acorn": "^8.14.1",
