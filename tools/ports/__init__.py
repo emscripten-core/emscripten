@@ -37,8 +37,6 @@ ports_dir = os.path.dirname(os.path.abspath(__file__))
 
 logger = logging.getLogger('ports')
 
-build_deferred = False
-
 
 def init_port(name, port):
   ports.append(port)
@@ -205,7 +203,8 @@ class Ports:
       ninja_file = os.path.join(build_dir, 'build.ninja')
       system_libs.ensure_sysroot()
       system_libs.create_ninja_file(srcs, ninja_file, output_path, cflags=cflags)
-      if not build_deferred:
+      print(f'deferred {os.getenv('EMBUILDER_PORT_BUILD_DEFERRED')} pid {os.getpid()}')
+      if not os.getenv('EMBUILDER_PORT_BUILD_DEFERRED'):
         system_libs.run_ninja(build_dir)
     else:
       commands = []
@@ -533,10 +532,7 @@ def get_needed_ports(settings):
   return needed
 
 
-def build_port(port_name, settings, deferred=False):
-  global build_deferred
-  build_deferred = deferred
-  logger.debug(f'build_port {port_name}, {"deferred" if deferred else ""}')
+def build_port(port_name, settings):
   port = ports_by_name[port_name]
   port_set = OrderedSet([port])
   resolve_dependencies(port_set, settings)
@@ -583,14 +579,10 @@ def add_cflags(args, settings): # noqa: U100
   needed = get_needed_ports(settings)
 
   # Now get (i.e. build) the ports in dependency order.  This is important because the
-  # headers from one ports might be needed before we can build the next.
-  global build_deferred
-  assert not build_deferred, "add_cflags shouldn't be called from embuilder"
-  build_deferred = True
+  # headers from one port might be needed before we can build the next.
   for port in dependency_order(needed):
     port.get(Ports, settings, shared)
     args += port.process_args(Ports)
-  build_deferred = False
 
 
 def show_ports():

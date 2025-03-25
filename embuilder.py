@@ -15,6 +15,7 @@ running multiple build commands in parallel, confusion can occur).
 import argparse
 import fnmatch
 import logging
+import os
 import sys
 import time
 from contextlib import contextmanager
@@ -171,7 +172,7 @@ def clear_port(port_name):
 
 def build_port(port_name):
   with get_port_variant(port_name) as port_name_base:
-    ports.build_port(port_name_base, settings, deferred=USE_NINJA)
+    ports.build_port(port_name_base, settings)
 
 
 def get_system_tasks():
@@ -279,6 +280,10 @@ def main():
 
   if auto_tasks:
     print('Building targets: %s' % ' '.join(tasks))
+
+  if USE_NINJA:
+    os.environ['EMBUILDER_PORT_BUILD_DEFERRED'] = '1'
+    print(f'setting EMBUILDER_PORT_BUILD_DEFERRED=1 pid {os.getpid()}')
 
   for what in tasks:
     for old, new in legacy_prefixes.items():
