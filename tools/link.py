@@ -766,6 +766,13 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if options.oformat == OFormat.MJS:
     default_setting('EXPORT_ES6', 1)
 
+  if settings.WASM_ESM_INTEGRATION:
+    diagnostics.warning('experimental', '-sWASM_ESM_INTEGRATION is still experimental and not yet supported in browsers')
+    default_setting('EXPORT_ES6', 1)
+    default_setting('MODULARIZE', 'instance')
+    if not settings.EXPORT_ES6 or settings.MODULARIZE != 'instance':
+      exit_with_error('WASM_ESM_INTEGRATION requires EXPORT_ES6 and MODULARIZE=instance')
+
   if settings.MODULARIZE and settings.MODULARIZE not in [1, 'instance']:
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
 
@@ -2103,6 +2110,27 @@ def create_worker_file(input_file, target_dir, output_file, options):
   utils.convert_line_endings_in_file(output_file, options.output_eol)
 
 
+def create_esm_wrapper(wrapper_file, support_target, wasm_target):
+  wasm_exports = ', '.join(shared.demangle_c_symbol_name(f) for f in settings.EXPORTED_FUNCTIONS)
+  wrapper = []
+  if wasm_exports:
+    wrapper.append(f"export {{ {wasm_exports} }} from './{settings.WASM_BINARY_FILE}';")
+  support_url = f'./{os.path.basename(support_target)}'
+  wrapper.append(f"import init from '{support_url}';")
+  wrapper.append('export default init;')
+  write_file(wrapper_file, '\n'.join(wrapper) + '\n')
+
+  # FIXME(sbc): This is a huge hack to rename the imports in the
+  # wasm file.  Find a better way to do this.
+  wasm_dis = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
+  mod = shared.check_call([wasm_dis, wasm_target], stdout=PIPE).stdout
+  mod = mod.replace('(import "env"', f'(import "{support_url}"')
+  mod = mod.replace('(import "wasi_snapshot_preview1"', f'(import "{support_url}"')
+
+  wasm_as = os.path.join(building.get_binaryen_bin(), 'wasm-as')
+  shared.check_call([wasm_as, '--all-features', '-o', wasm_target, '-'], input=mod)
+
+
 @ToolchainProfiler.profile_block('final emitting')
 def phase_final_emitting(options, target, js_target, wasm_target):
   global final_js
@@ -2120,7 +2148,7 @@ def phase_final_emitting(options, target, js_target, wasm_target):
   if settings.AUDIO_WORKLET == 1:
     create_worker_file('src/audio_worklet.js', target_dir, settings.AUDIO_WORKLET_FILE, options)
 
-  if settings.MODULARIZE:
+  if settings.MODULARIZE and not settings.WASM_ESM_INTEGRATION:
     modularize()
   elif settings.USE_CLOSURE_COMPILER:
     module_export_name_substitution()
@@ -2161,7 +2189,12 @@ def phase_final_emitting(options, target, js_target, wasm_target):
   js_manipulation.handle_license(final_js)
 
   # The JS is now final. Move it to its final location
-  move_file(final_js, js_target)
+  if settings.WASM_ESM_INTEGRATION:
+    support_target = unsuffixed(js_target) + '.support.mjs'
+    move_file(final_js, support_target)
+    create_esm_wrapper(js_target, support_target, wasm_target)
+  else:
+    move_file(final_js, js_target)
 
   target_basename = unsuffixed_basename(target)
 

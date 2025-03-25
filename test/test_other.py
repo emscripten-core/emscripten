@@ -360,12 +360,22 @@ class other(RunnerCore):
 
   @requires_node_canary
   def test_esm_source_phase_imports(self):
-    self.node_args += ['--experimental-wasm-modules']
+    self.node_args += ['--experimental-wasm-modules', '--no-warnings']
     self.run_process([EMCC, '-o', 'hello_world.mjs', '-sSOURCE_PHASE_IMPORTS',
                       '--extern-post-js', test_file('modularize_post_js.js'),
                       test_file('hello_world.c')])
     self.assertContained('import source wasmModule from', read_file('hello_world.mjs'))
     self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
+
+  @requires_node_canary
+  def test_esm_integration(self):
+    self.node_args += ['--experimental-wasm-modules', '--no-warnings']
+    self.run_process([EMCC, '-o', 'hello_world.mjs', '-sWASM_ESM_INTEGRATION', '-Wno-experimental', test_file('hello_world.c')])
+    create_file('runner.mjs', '''
+      import init from "./hello_world.mjs";
+      await init();
+    ''')
+    self.assertContained('hello, world!', self.run_js('runner.mjs'))
 
   @parameterized({
     '': ([],),
