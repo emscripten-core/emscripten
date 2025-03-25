@@ -735,6 +735,13 @@ function(${args}) {
         }
         contentText = `var ${mangled} = ${snippet};`;
       }
+
+      if (WASM_ESM_INTEGRATION && (EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
+        // It ESM integration mode we mark JS library symbols are exported at
+        // the point of declaration.
+        contentText = 'export ' + contentText;
+      }
+
       // Relocatable code needs signatures to create proper wrappers.
       if (sig && RELOCATABLE) {
         if (!WASM_BIGINT) {

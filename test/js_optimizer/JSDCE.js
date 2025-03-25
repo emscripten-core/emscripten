@@ -48,6 +48,11 @@ export default function l(a) {
   return a+1;
 }
 
+// ES6 exported var
+export var m = (a) => {
+  return a+1;
+}
+
 // inner workings
 (function() {
   var x;

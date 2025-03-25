@@ -558,6 +558,9 @@ function exportLibrarySymbols() {
 }
 
 function exportJSSymbols() {
+  // In WASM_ESM_INTEGRATION mode JS library symbols are marked with `export`
+  // at the point of declaration.
+  if (WASM_ESM_INTEGRATION) return '';
   return exportRuntimeSymbols() + '  ' + exportLibrarySymbols();
 }
 
