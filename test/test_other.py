@@ -845,11 +845,12 @@ f.close()
     out = self.expect_fail([EMCC, '--em-config'])
     self.assertContained('error: --em-config must be followed by a filename', out)
 
+  @crossplatform
   def test_em_config_filename(self):
     create_file('myconfig.py', f'''
-      LLVM_ROOT = '{config.LLVM_ROOT}'
-      BINARYEN_ROOT = '{config.BINARYEN_ROOT}'
-      CACHE = '{os.path.abspath("cache")}'
+      LLVM_ROOT = r'{config.LLVM_ROOT}'
+      BINARYEN_ROOT = r'{config.BINARYEN_ROOT}'
+      CACHE = r'{os.path.abspath("cache")}'
       print("filename", __file__)
     ''')
     proc = self.run_process([EMAR, '--em-config', 'myconfig.py', '--version'], stdout=PIPE, stderr=PIPE)
