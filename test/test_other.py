@@ -15871,7 +15871,13 @@ addToLibrary({
       with webassembly.Module(path) as module:
         return [export.name for export in module.get_exports()]
 
+    # Pass the path to wasm-metadce into the plugin.
     copytree(test_file('rollup_plugin'), '.')
+    rollup_config_file = 'rollup.config.mjs'
+    replacement_path = str(Path(building.get_binaryen_bin(), 'wasm-metadce'))
+    modified_content = read_file(rollup_config_file).replace("BINARYEN_PATH", replacement_path)
+    write_file(rollup_config_file, modified_content)
+
     self.run_process([EMCC, 'library.c', opt, '--no-entry', '-sMODULARIZE=instance', '-sENVIRONMENT=node', '--js-library', 'library.js', '-o', 'library.mjs'])
     self.run_process(['npm', 'install', path_from_root('tools/rollup-plugin-emscripten')])
     self.run_process(shared.get_npm_cmd('rollup') + ['--config'])

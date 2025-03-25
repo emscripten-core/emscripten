@@ -8,7 +8,8 @@ export default {
   },
   plugins: [
     emscriptenPlugin({
-      'input': 'library.mjs'
+      'input': 'library.mjs',
+      'wasmMetaDCE': 'BINARYEN_PATH'
     })
   ]
 };
