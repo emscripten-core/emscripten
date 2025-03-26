@@ -20,7 +20,9 @@
 // after the generated code, you will need to define   var Module = {};
 // before the code. Then that object will be used in the code, and you
 // can continue to use Module afterwards as well.
-#if MODULARIZE
+#if WASM_ESM_INTEGRATION
+var Module = {};
+#elif MODULARIZE
 var Module = moduleArg;
 #elif USE_CLOSURE_COMPILER
 /** @type{Object} */

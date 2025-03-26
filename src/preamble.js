@@ -46,7 +46,9 @@ if (typeof WebAssembly != 'object') {
 
 // Wasm globals
 
+#if !WASM_ESM_INTEGRATION
 var wasmMemory;
+#endif
 
 #if SHARED_MEMORY
 // For sending to workers.
@@ -220,7 +222,11 @@ function initRuntime() {
   <<< ATINITS >>>
 
 #if hasExportedSymbol('__wasm_call_ctors')
+#if WASM_ESM_INTEGRATION
+  ___wasm_call_ctors();
+#else
   wasmExports['__wasm_call_ctors']();
+#endif
 #endif
 
   <<< ATPOSTCTORS >>>
@@ -577,7 +583,7 @@ function resetPrototype(constructor, attrs) {
 }
 #endif
 
-#if !SOURCE_PHASE_IMPORTS
+#if !SOURCE_PHASE_IMPORTS && !WASM_ESM_INTEGRATION
 var wasmBinaryFile;
 
 function findWasmBinary() {
@@ -819,6 +825,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
 #endif // WASM_ASYNC_COMPILATION
 #endif // SOURCE_PHASE_IMPORTS
 
+#if !WASM_ESM_INTEGRATION
 function getWasmImports() {
 #if PTHREADS
   assignWasmImports();
@@ -1058,6 +1065,7 @@ function getWasmImports() {
 #endif // WASM_ASYNC_COMPILATION
 #endif // SOURCE_PHASE_IMPORTS
 }
+#endif
 
 #if !WASM_BIGINT
 // Globals used by JS i64 conversions (see makeSetValue)

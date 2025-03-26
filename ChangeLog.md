@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 4.0.7 (in development)
 ----------------------
+- Added experimental support for Wasm ESM integration with
+  `-sWASM_ESM_INTEGRATION`. This is currently only supported in node behind a
+  flag and not in any browsers. (#23985)
 
 4.0.6 - 03/26/25
 ----------------

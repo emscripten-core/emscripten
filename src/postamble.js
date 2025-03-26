@@ -305,7 +305,16 @@ consumedModuleProp('preInit');
 #endif
 #endif
 
+
+#if WASM_ESM_INTEGRATION
+export default function init(moduleArg = {}) {
+  // TODO(sbc): moduleArg processing
+  updateMemoryViews();
+  run();
+}
+#else
 run();
+#endif
 
 #if BUILD_AS_WORKER
 
