@@ -31,7 +31,7 @@ if __name__ == '__main__':
 from tools.building import get_building_env
 from tools.shared import config
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, FILE_PACKAGER, LLVM_NM
-from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP, WASM_LD
+from tools.shared import CLANG_CC, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP, WASM_LD
 from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from common import env_modify, no_mac, no_windows, only_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
@@ -945,33 +945,6 @@ f.close()
         if test_dir == 'post_build':
           ret = self.run_process(['ctest'], env=env)
 
-  # Test that the various CMAKE_xxx_COMPILE_FEATURES that are advertised for the Emscripten
-  # toolchain match with the actual language features that Clang supports.
-  # If we update LLVM version and this test fails, copy over the new advertised features from Clang
-  # and place them to cmake/Modules/Platform/Emscripten.cmake.
-  @no_windows('Skipped on Windows because CMake does not configure native Clang builds well on Windows.')
-  @parameterized({
-    '': ([],),
-    'force': (['-DEMSCRIPTEN_FORCE_COMPILERS=ON'],),
-  })
-  def test_cmake_compile_features(self, args):
-    os.mkdir('build_native')
-    cmd = ['cmake',
-           '-DCMAKE_C_COMPILER=' + CLANG_CC, '-DCMAKE_C_FLAGS=--target=' + clang_native.get_native_triple(),
-           '-DCMAKE_CXX_COMPILER=' + CLANG_CXX, '-DCMAKE_CXX_FLAGS=--target=' + clang_native.get_native_triple(),
-           test_file('cmake/stdproperty')]
-    print(str(cmd))
-    native_features = self.run_process(cmd, stdout=PIPE, cwd='build_native').stdout
-
-    os.mkdir('build_emcc')
-    cmd = [EMCMAKE, 'cmake', test_file('cmake/stdproperty')] + args
-    print(str(cmd))
-    emscripten_features = self.run_process(cmd, stdout=PIPE, cwd='build_emcc').stdout
-
-    native_features = '\n'.join([x for x in native_features.split('\n') if '***' in x])
-    emscripten_features = '\n'.join([x for x in emscripten_features.split('\n') if '***' in x])
-    self.assertTextDataIdentical(native_features, emscripten_features)
-
   # Test that the user's explicitly specified generator is always honored
   # Internally we override the generator on windows, unles the user specifies one
   # Test require Ninja to be installed
@@ -1009,12 +982,8 @@ f.close()
     self.assertContained('EMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES is not compatible with the', err)
 
   @crossplatform
-  @parameterized({
-    '': ([],),
-    'force': (['-DEMSCRIPTEN_FORCE_COMPILERS=ON'],),
-  })
-  def test_cmake_compile_commands(self, args):
-    self.run_process([EMCMAKE, 'cmake', test_file('cmake/static_lib'), '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON'] + args)
+  def test_cmake_compile_commands(self):
+    self.run_process([EMCMAKE, 'cmake', test_file('cmake/static_lib'), '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON'])
     self.assertExists('compile_commands.json')
     compile_commands = json.load(open('compile_commands.json'))
     command = compile_commands[0]['command']
@@ -1049,8 +1018,6 @@ f.close()
   # Tests that the CMake variable EMSCRIPTEN_VERSION is properly provided to user CMake scripts
   def test_cmake_emscripten_version(self):
     self.run_process([EMCMAKE, 'cmake', test_file('cmake/emscripten_version')])
-    self.clear()
-    self.run_process([EMCMAKE, 'cmake', test_file('cmake/emscripten_version'), '-DEMSCRIPTEN_FORCE_COMPILERS=OFF'])
 
   def test_cmake_emscripten_system_processor(self):
     cmake_dir = test_file('cmake/emscripten_system_processor')
