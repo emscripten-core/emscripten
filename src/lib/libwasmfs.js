@@ -180,10 +180,7 @@ addToLibrary({
     create: (path, mode) => FS_create(path, mode),
     close: (stream) => FS.handleError(-__wasmfs_close(stream.fd)),
     unlink: (path) => FS_unlink(path),
-    chdir: (path) => withStackSave(() => {
-      var buffer = stringToUTF8OnStack(path);
-      return __wasmfs_chdir(buffer);
-    }),
+    chdir: (path) => withStackSave(() => __wasmfs_chdir(stringToUTF8OnStack(path))),
     read(stream, buffer, offset, length, position) {
       var seeking = typeof position != 'undefined';
 
@@ -195,13 +192,12 @@ addToLibrary({
       } else {
         bytesRead = __wasmfs_read(stream.fd, dataBuffer, length);
       }
-      for (var i = 0; i < bytesRead; i++) {
-        buffer[offset + i] = {{{ makeGetValue('dataBuffer', 'i', 'i8')}}}
+      if (bytesRead > 0) {
+        buffer.set(HEAPU8.subarray(dataBuffer, dataBuffer + bytesRead), offset);
       }
 
       _free(dataBuffer);
-      bytesRead = FS.handleError(bytesRead);
-      return bytesRead;
+      return FS.handleError(bytesRead);
     },
     // Note that canOwn is an optimization that we ignore for now in WasmFS.
     write(stream, buffer, offset, length, position, canOwn) {
@@ -219,9 +215,7 @@ addToLibrary({
         bytesRead = __wasmfs_write(stream.fd, dataBuffer, length);
       }
       _free(dataBuffer);
-      bytesRead = FS.handleError(bytesRead);
-
-      return bytesRead;
+      return FS.handleError(bytesRead);
     },
     writeFile: (path, data) => FS_writeFile(path, data),
     mmap: (stream, length, offset, prot, flags) => {
@@ -266,25 +260,19 @@ addToLibrary({
           ino: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ino, "u53") }}}
       }
     },
-    stat(path) {
-      var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
-      FS.handleError(withStackSave(() =>
-        __wasmfs_stat(stringToUTF8OnStack(path), statBuf)
-      ));
-      var stats = FS.statBufToObject(statBuf);
-      _free(statBuf);
-
-      return stats;
+    stat(path) { 
+      return withStackSave(() => {
+        var statBuf = stackAlloc({{{ C_STRUCTS.stat.__size__ }}});
+        FS.handleError(__wasmfs_stat(stringToUTF8OnStack(path), statBuf));
+        return FS.statBufToObject(statBuf);
+      });
     },
     lstat(path) {
-      var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
-      FS.handleError(withStackSave(() =>
-        __wasmfs_lstat(stringToUTF8OnStack(path), statBuf)
-      ));
-      var stats = FS.statBufToObject(statBuf);
-      _free(statBuf);
-
-      return stats;
+      return withStackSave(() => {
+        var statBuf = stackAlloc({{{ C_STRUCTS.stat.__size__ }}});
+        FS.handleError(__wasmfs_lstat(stringToUTF8OnStack(path), statBuf));
+        return FS.statBufToObject(statBuf);
+      });
     },
     chmod(path, mode) {
       return FS.handleError(withStackSave(() => {
@@ -554,7 +542,8 @@ addToLibrary({
     var d = '';
     for (var dir of dirs) {
       if (!dir) continue;
-      d += '/' + dir;
+      if (d || PATH.isAbs(path)) d += '/';
+      d += dir;
       try {
         FS_mkdir(d, mode);
       } catch(e) {

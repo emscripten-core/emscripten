@@ -79,6 +79,10 @@ def get_base_cflags(build_dir, force_object_files=False, preprocess=True):
   return flags
 
 
+def get_build_dir():
+  return cache.get_path('build')
+
+
 def clean_env():
   # building system libraries and ports should be hermetic in that it is not
   # affected by things like EMCC_CFLAGS which the user may have set.
@@ -150,7 +154,7 @@ def create_lib(libname, inputs):
 
 
 def get_top_level_ninja_file():
-  return os.path.join(cache.get_path('build'), 'build.ninja')
+  return os.path.join(get_build_dir(), 'build.ninja')
 
 
 def run_ninja(build_dir):
@@ -552,7 +556,7 @@ class Library:
   def do_build(self, out_filename, generate_only=False):
     """Builds the library and returns the path to the file."""
     assert out_filename == self.get_path(absolute=True)
-    build_dir = os.path.join(cache.get_path('build'), self.get_base_name())
+    build_dir = os.path.join(get_build_dir(), self.get_base_name())
     if USE_NINJA:
       self.generate_ninja(build_dir, out_filename)
       if not generate_only:
@@ -1168,6 +1172,7 @@ class libc(MuslInternalLibrary,
           'pthread_attr_setscope.c',
           'pthread_attr_setstack.c',
           'pthread_attr_setstacksize.c',
+          'pthread_getattr_np.c',
           'pthread_getconcurrency.c',
           'pthread_getcpuclockid.c',
           'pthread_getschedparam.c',

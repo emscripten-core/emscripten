@@ -297,12 +297,8 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
   #     to use emscripten's wasm<->JS ABI
   #   * Use the metadata to generate the JS glue that goes with the wasm
 
-  if settings.SINGLE_FILE:
-    # placeholder strings for JS glue, to be replaced with subresource locations in do_binaryen
-    settings.WASM_BINARY_FILE = '<<< WASM_BINARY_FILE >>>'
-  else:
-    # set file locations, so that JS glue can find what it needs
-    settings.WASM_BINARY_FILE = js_manipulation.escape_for_js_string(os.path.basename(out_wasm))
+  # set file locations, so that JS glue can find what it needs
+  settings.WASM_BINARY_FILE = js_manipulation.escape_for_js_string(os.path.basename(out_wasm))
 
   if finalize:
     metadata = finalize_wasm(in_wasm, out_wasm, js_syms)
@@ -872,13 +868,7 @@ def create_sending(metadata, library_symbols):
 
 
 def can_use_await():
-  # In MODULARIZE mode we can use `await` since the factory function itself
-  # is marked as `async` and the generated code all lives inside that factory
-  # function.
-  # However, because closure does not see this (it runs only on the inner code),
-  # it sees this as a top-level-await, which it does not yet support.
-  # FIXME(https://github.com/emscripten-core/emscripten/issues/23158)
-  return settings.MODULARIZE and not settings.USE_CLOSURE_COMPILER
+  return settings.MODULARIZE
 
 
 def make_export_wrappers(function_exports):
@@ -988,7 +978,10 @@ function assignWasmImports() {
     if settings.WASM_ASYNC_COMPILATION:
       if can_use_await():
         # In modularize mode the generated code is within a factory function.
-        module.append("var wasmExports = await createWasm();\n")
+        # This magic string gets replaced by `await createWasm`.  It needed to allow
+        # closure and acorn to process the module without seeing this as a top-level
+        # await.
+        module.append("var wasmExports = EMSCRIPTEN$AWAIT(createWasm());\n")
       else:
         module.append("var wasmExports;\ncreateWasm();\n")
     else:

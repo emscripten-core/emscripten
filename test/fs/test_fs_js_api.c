@@ -381,20 +381,19 @@ void test_fs_mmap() {
 
 void test_fs_mkdirTree() {
   EM_ASM(
-    FS.mkdirTree("/test1/test2/test3");
-
+    FS.mkdirTree("/test1/test2/test3"); // Abs path
     FS.mkdirTree("/readable", 0400 /* S_IRUSR */);
   );
 
   struct stat s;
-  stat("/test1", &s);
+  assert(stat("/test1", &s) == 0);
   assert(S_ISDIR(s.st_mode));
-  stat("/test1/test2", &s);
+  assert(stat("/test1/test2", &s) == 0);
   assert(S_ISDIR(s.st_mode));
-  stat("/test1/test2/test3", &s);
+  assert(stat("/test1/test2/test3", &s) == 0);
   assert(S_ISDIR(s.st_mode));
 
-  stat("/readable", &s);
+  assert(stat("/readable", &s) == 0);
   assert(s.st_mode & 0400 /* S_IRUSR */);
 
   EM_ASM(
@@ -407,8 +406,22 @@ void test_fs_mkdirTree() {
     assert(ex.name === "ErrnoError" && ex.errno === 2 /* EACCES */);
   );
 
+  chdir("/test1");
+  EM_ASM(
+    FS.mkdirTree("foo/bar"); // Relative path
+  );
+  chdir("/");
+
+  assert(stat("/test1/foo", &s) == 0);
+  assert(S_ISDIR(s.st_mode));
+
+  assert(stat("/test1/foo/bar", &s) == 0);
+  assert(S_ISDIR(s.st_mode));
+
   remove("/test1/test2/test3");
   remove("/test1/test2");
+  remove("/test1/foo/bar");
+  remove("/test1/foo");
   remove("/test1");
   remove("/readable");
 }
@@ -435,22 +448,37 @@ void test_fs_utime() {
   remove("utimetest");
 }
 
+#if !defined(NODERAWFS)
+// NODERAWFS don't support absolute paths since we cannot write the
+// actual root directory.
+// In addition, abs paths testing is not really running correctly
+// when we build run with NODEFS because the NODEFS filesystem is mounted
+// at /nodefs in that case.
+// TODO(sbc): Refactor these tests such that they test both relative
+// and absolute paths, and don't depend on write access to the root
+// directory.
+#define ABS_PATH_OK
+#endif
+
 int main() {
-  test_fs_open();
+#ifdef ABS_PATH_OK
   test_fs_createPath();
+  test_fs_mkdirTree();
+  test_fs_close();
+  test_fs_readlink();
+  test_fs_rmdir();
+#endif
+  test_fs_open();
   test_fs_readFile();
   test_fs_rename();
-  test_fs_readlink();
   test_fs_read();
-  test_fs_rmdir();
-  test_fs_close();
   test_fs_mknod();
   test_fs_truncate();
 #if WASMFS
   // TODO: Fix legacy API FS.mmap bug involving emscripten_builtin_memalign
   test_fs_mmap();
 #endif
-  test_fs_mkdirTree();
+
   test_fs_utime();
 
   puts("success");
