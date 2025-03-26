@@ -151,10 +151,6 @@ var isFileURI = (filename) => filename.startsWith('file://');
 #include "runtime_shared.js"
 
 #if ASSERTIONS
-assert(!Module['STACK_SIZE'], 'STACK_SIZE can no longer be set at runtime.  Use -sSTACK_SIZE at link time')
-#endif
-
-#if ASSERTIONS
 assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray != undefined && Int32Array.prototype.set != undefined,
        'JS engine does not provide full typed array support');
 #endif
