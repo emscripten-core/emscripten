@@ -43,9 +43,9 @@ typedef struct thread_profiler_block {
 // the current time.
 void _emscripten_yield(double now);
 
-void __emscripten_init_main_thread_js(void* tb);
+void _emscripten_init_main_thread_js(void* tb);
 void _emscripten_thread_profiler_enable();
-void __emscripten_thread_cleanup(pthread_t thread);
+void _emscripten_thread_cleanup(pthread_t thread);
 
 hidden void* _emscripten_tls_init(void);
 hidden void _emscripten_tls_free(void);
@@ -66,6 +66,7 @@ void _emscripten_thread_set_strongref(pthread_t thread);
 int _emscripten_thread_is_valid(pthread_t thread);
 
 void _emscripten_thread_exit_joinable(pthread_t thread);
+void _emscripten_thread_exit(void* result);
 void _emscripten_process_dlopen_queue(void);
 
 #ifdef NDEBUG
@@ -95,7 +96,7 @@ int __pthread_create_js(struct __pthread *thread, const pthread_attr_t *attr, vo
 int _emscripten_default_pthread_stack_size();
 void __set_thread_state(pthread_t ptr, int is_main, int is_runtime, int can_block);
 
-double _emscripten_receive_on_main_thread_js(int functionIndex, pthread_t callingThread, int numCallArgs, double* args);
+double _emscripten_receive_on_main_thread_js(int funcIndex, void* emAsmAddr, pthread_t callingThread, int numCallArgs, double* args);
 
 // Return non-zero if the calling thread supports Atomic.wait (For example
 // if called from the main browser thread, this function will return zero

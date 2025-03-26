@@ -8,9 +8,10 @@
 #pragma once
 
 #include <limits.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <emscripten/html5.h>
+#include <emscripten/em_types.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -61,9 +62,8 @@ extern "C" {
 // emscripten_fetch() while the operation is in progress.
 #define EMSCRIPTEN_FETCH_SYNCHRONOUS 64
 
-// If specified, it will be possible to call emscripten_fetch_wait() on the
-// fetch to test or wait for its completion.
 #define EMSCRIPTEN_FETCH_WAITABLE 128
+#pragma clang deprecated(EMSCRIPTEN_FETCH_WAITABLE, "waitable fetch requests are no longer implemented")
 
 struct emscripten_fetch_t;
 
@@ -89,7 +89,7 @@ typedef struct emscripten_fetch_attr_t {
 
   // Indicates whether cross-site access control requests should be made using
   // credentials.
-  EM_BOOL withCredentials;
+  bool withCredentials;
 
   // Specifies the destination path in IndexedDB where to store the downloaded
   // content body. If this is empty, the transfer is not stored to IndexedDB at
@@ -190,8 +190,6 @@ typedef struct emscripten_fetch_t {
   // Specifies a human-readable form of the status code.
   char statusText[64];
 
-  _Atomic uint32_t __proxyState;
-
   // For internal use only.
   emscripten_fetch_attr_t __attributes;
 } emscripten_fetch_t;
@@ -204,14 +202,7 @@ void emscripten_fetch_attr_init(emscripten_fetch_attr_t * _Nonnull fetch_attr);
 // given URL or from IndexedDB database.
 emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t * _Nonnull fetch_attr, const char * _Nonnull url);
 
-// Synchronously blocks to wait for the given fetch operation to complete. This
-// operation is not allowed in the main browser thread, in which case it will
-// return EMSCRIPTEN_RESULT_NOT_SUPPORTED. Pass timeoutMSecs=infinite to wait
-// indefinitely. If the wait times out, the return value will be
-// EMSCRIPTEN_RESULT_TIMED_OUT.
-// The onsuccess()/onerror()/onprogress() handlers will be called in the calling
-// thread from within this function before this function returns.
-EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t * _Nonnull fetch, double timeoutMSecs);
+EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t * _Nonnull fetch, double timeoutMSecs) __attribute__((deprecated));
 
 // Closes a finished or an executing fetch operation and frees up all memory. If
 // the fetch operation was still executing, the onerror() handler will be called

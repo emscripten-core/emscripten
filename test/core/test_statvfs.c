@@ -8,10 +8,13 @@
 #include <stdio.h>
 #include <errno.h>
 #include <sys/statvfs.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 int main() {
   struct statvfs s;
 
+  mkdir("/test", S_IRWXU | S_IRWXG | S_IRWXO);
   printf("result: %d\n", statvfs("/test", &s));
   printf("errno: %d\n", errno);
 
@@ -21,8 +24,8 @@ int main() {
   printf("f_bfree: %u\n", s.f_bfree);
   printf("f_bavail: %u\n", s.f_bavail);
   printf("f_files: %d\n", s.f_files > 5);
-  printf("f_ffree: %u\n", s.f_ffree);
-  printf("f_favail: %u\n", s.f_favail);
+  printf("f_ffree: %u\n", s.f_ffree <= s.f_files && s.f_ffree > 0);
+  printf("f_favail: %u\n", s.f_favail <= s.f_files && s.f_favail > 0);
   printf("f_fsid: %lu\n", s.f_fsid);
   printf("f_flag: %lu\n", s.f_flag);
   printf("f_namemax: %lu\n", s.f_namemax);

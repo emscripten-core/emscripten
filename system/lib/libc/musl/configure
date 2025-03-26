@@ -328,6 +328,7 @@ i?86*) ARCH=i386 ;;
 x86_64-x32*|x32*|x86_64*x32) ARCH=x32 ;;
 x86_64-nt64*) ARCH=nt64 ;;
 x86_64*) ARCH=x86_64 ;;
+loongarch64*) ARCH=loongarch64 ;;
 m68k*) ARCH=m68k ;;
 mips64*|mipsisa64*) ARCH=mips64 ;;
 mips*) ARCH=mips ;;
@@ -336,6 +337,7 @@ or1k*) ARCH=or1k ;;
 powerpc64*|ppc64*) ARCH=powerpc64 ;;
 powerpc*|ppc*) ARCH=powerpc ;;
 riscv64*) ARCH=riscv64 ;;
+riscv32*) ARCH=riscv32 ;;
 sh[1-9bel-]*|sh|superh*) ARCH=sh ;;
 s390x*) ARCH=s390x ;;
 unknown) fail "$0: unable to detect target arch; try $0 --target=..." ;;
@@ -444,7 +446,20 @@ xno|x) printf "disabled\n" ; optimize=no ;;
 *) printf "custom\n" ;;
 esac
 
-test "$optimize" = no || tryflag CFLAGS_AUTO -Os || tryflag CFLAGS_AUTO -O2
+if test "$optimize" = no ; then :
+else
+tryflag CFLAGS_AUTO -O2
+tryflag CFLAGS_AUTO -fno-align-jumps
+tryflag CFLAGS_AUTO -fno-align-functions
+tryflag CFLAGS_AUTO -fno-align-loops
+tryflag CFLAGS_AUTO -fno-align-labels
+tryflag CFLAGS_AUTO -fira-region=one
+tryflag CFLAGS_AUTO -fira-hoist-pressure
+tryflag CFLAGS_AUTO -freorder-blocks-algorithm=simple \
+|| tryflag CFLAGS_AUTO -fno-reorder-blocks
+tryflag CFLAGS_AUTO -fno-prefetch-loop-arrays
+tryflag CFLAGS_AUTO -fno-tree-ch
+fi
 test "$optimize" = yes && optimize="internal,malloc,string"
 
 if fnmatch 'no|size' "$optimize" ; then :
@@ -658,6 +673,19 @@ if test "$ARCH" = "aarch64" ; then
 trycppif __AARCH64EB__ "$t" && SUBARCH=${SUBARCH}_be
 fi
 
+if test "$ARCH" = "loongarch64" ; then
+trycppif __loongarch_soft_float "$t" && SUBARCH=${SUBARCH}-sf
+trycppif __loongarch_single_float "$t" && SUBARCH=${SUBARCH}-sp
+printf "checking whether assembler support FCSRs... "
+echo "__asm__(\"movfcsr2gr \$t0,\$fcsr0\");" > "$tmpc"
+if $CC -c -o /dev/null "$tmpc" >/dev/null 2>&1 ; then
+printf "yes\n"
+else
+printf "no\n"
+CFLAGS_AUTO="$CFLAGS_AUTO -DBROKEN_LOONGARCH_FCSR_ASM"
+fi
+fi
+
 if test "$ARCH" = "m68k" ; then
 if trycppif "__HAVE_68881__" ; then : ;
 elif trycppif "__mcffpu__" ; then SUBARCH="-fp64"
@@ -700,7 +728,7 @@ trycppif __LITTLE_ENDIAN__ "$t" && SUBARCH=${SUBARCH}le
 trycppif _SOFT_FLOAT "$t" && fail "$0: error: soft-float not supported on powerpc64"
 fi
 
-if test "$ARCH" = "riscv64" ; then
+if test "$ARCH" = "riscv64" -o "$ARCH" = "riscv32" ; then
 trycppif __riscv_float_abi_soft "$t" && SUBARCH=${SUBARCH}-sf
 trycppif __riscv_float_abi_single "$t" && SUBARCH=${SUBARCH}-sp
 fi

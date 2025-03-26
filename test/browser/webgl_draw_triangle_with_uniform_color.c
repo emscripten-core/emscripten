@@ -11,8 +11,7 @@
 #include <emscripten/html5.h>
 #include <GLES2/gl2.h>
 
-GLuint compile_shader(GLenum shaderType, const char *src)
-{
+GLuint compile_shader(GLenum shaderType, const char *src) {
   GLuint shader = glCreateShader(shaderType);
   glShaderSource(shader, 1, &src, NULL);
   glCompileShader(shader);
@@ -30,22 +29,20 @@ GLuint compile_shader(GLenum shaderType, const char *src)
     return 0;
   }
 
-   return shader;
+  return shader;
 }
 
-GLuint create_program(GLuint vertexShader, GLuint fragmentShader)
-{
-   GLuint program = glCreateProgram();
-   glAttachShader(program, vertexShader);
-   glAttachShader(program, fragmentShader);
-   glBindAttribLocation(program, 0, "apos");
-   glBindAttribLocation(program, 1, "acolor");
-   glLinkProgram(program);
-   return program;
+GLuint create_program(GLuint vertexShader, GLuint fragmentShader) {
+  GLuint program = glCreateProgram();
+  glAttachShader(program, vertexShader);
+  glAttachShader(program, fragmentShader);
+  glBindAttribLocation(program, 0, "apos");
+  glBindAttribLocation(program, 1, "acolor");
+  glLinkProgram(program);
+  return program;
 }
 
-int main()
-{
+int main() {
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
 #ifdef EXPLICIT_SWAP
@@ -102,8 +99,57 @@ int main()
   glEnableVertexAttribArray(0);
   glEnableVertexAttribArray(1);
 
+  // Spot-test for miniTempWebGLFloatBuffers optimization in library_webgl.js.
+  // Note there WILL be GL errors from this, but the test doesn't check for them
+  // so it won't cause it to fail.
+#define GL_POOL_TEMP_BUFFERS_SIZE 288
+  {
+    GLfloat fdata[GL_POOL_TEMP_BUFFERS_SIZE + 4] = {};
+    // Just under the optimization limit (should use unoptimized codepath)
+    glUniform4fv(glGetUniformLocation(program, "color2"), GL_POOL_TEMP_BUFFERS_SIZE / 4 - 1, fdata);
+    glUniform2fv(glGetUniformLocation(program, "color2"), GL_POOL_TEMP_BUFFERS_SIZE / 2 - 1, fdata);
+    glUniform1fv(glGetUniformLocation(program, "color2"), GL_POOL_TEMP_BUFFERS_SIZE - 1, fdata);
+    // Just at the optimization limit (should use optimized codepath)
+    glUniform4fv(glGetUniformLocation(program, "color2"), GL_POOL_TEMP_BUFFERS_SIZE / 4, fdata);
+    glUniform2fv(glGetUniformLocation(program, "color2"), GL_POOL_TEMP_BUFFERS_SIZE / 2, fdata);
+    glUniform1fv(glGetUniformLocation(program, "color2"), GL_POOL_TEMP_BUFFERS_SIZE, fdata);
+    // Just over the optimization limit (should use optimized codepath)
+    glUniform4fv(glGetUniformLocation(program, "color2"), GL_POOL_TEMP_BUFFERS_SIZE / 4 + 1, fdata);
+    glUniform2fv(glGetUniformLocation(program, "color2"), GL_POOL_TEMP_BUFFERS_SIZE / 2 + 1, fdata);
+    glUniform1fv(glGetUniformLocation(program, "color2"), GL_POOL_TEMP_BUFFERS_SIZE + 1, fdata);
+
+    GLint idata[GL_POOL_TEMP_BUFFERS_SIZE + 4] = {};
+    // Just under the optimization limit (should use unoptimized codepath)
+    glUniform4iv(glGetUniformLocation(program, "color2"), GL_POOL_TEMP_BUFFERS_SIZE / 4 - 1, idata);
+    glUniform2iv(glGetUniformLocation(program, "color2"), GL_POOL_TEMP_BUFFERS_SIZE / 2 - 1, idata);
+    glUniform1iv(glGetUniformLocation(program, "color2"), GL_POOL_TEMP_BUFFERS_SIZE - 1, idata);
+    // Just at the optimization limit (should use optimized codepath)
+    glUniform4iv(glGetUniformLocation(program, "color2"), GL_POOL_TEMP_BUFFERS_SIZE / 4, idata);
+    glUniform2iv(glGetUniformLocation(program, "color2"), GL_POOL_TEMP_BUFFERS_SIZE / 2, idata);
+    glUniform1iv(glGetUniformLocation(program, "color2"), GL_POOL_TEMP_BUFFERS_SIZE, idata);
+    // Just over the optimization limit (should use optimized codepath)
+    glUniform4iv(glGetUniformLocation(program, "color2"), GL_POOL_TEMP_BUFFERS_SIZE / 4 + 1, idata);
+    glUniform2iv(glGetUniformLocation(program, "color2"), GL_POOL_TEMP_BUFFERS_SIZE / 2 + 1, idata);
+    glUniform1iv(glGetUniformLocation(program, "color2"), GL_POOL_TEMP_BUFFERS_SIZE + 1, idata);
+  }
+
+  // Actual upload for the rest of the test (overwrites the previous one).
   float color2[4] = { 0.0f, 1.f, 0.0f, 1.0f };
   glUniform4fv(glGetUniformLocation(program, "color2"), 1, color2);
+
+  // Test that passing zero for the size paramater does not cause error
+  // https://github.com/emscripten-core/emscripten/issues/21567
+  // (These are zero-sized, so shouldn't overwrite anything.)
+  {
+    GLfloat fdata[4] = {};
+    glUniform4fv(glGetUniformLocation(program, "color2"), 0, fdata);
+    glUniform4fv(glGetUniformLocation(program, "color2"), 0, NULL);
+
+    GLint idata[4] = {};
+    glUniform4iv(glGetUniformLocation(program, "color2"), 0, idata);
+    glUniform4iv(glGetUniformLocation(program, "color2"), 0, NULL);
+  }
+
   glClearColor(0.3f,0.3f,0.3f,1);
   glClear(GL_COLOR_BUFFER_BIT);
   glDrawArrays(GL_TRIANGLES, 0, 3);

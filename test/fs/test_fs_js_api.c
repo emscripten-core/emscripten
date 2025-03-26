@@ -14,471 +14,472 @@
 #include <fcntl.h>
 
 EM_JS(void, test_fs_open, (), {
-    FS.writeFile('testfile', 'a=1\nb=2\n');
-    var readStream = FS.open('testfile', 'r');
-    var writeStream = FS.open('testfile', 'w');
-    var writePlusStream = FS.open('testfile', 'w+');
-    var appendStream = FS.open('testfile', 'a');
+  FS.writeFile('testfile', 'a=1\nb=2\n');
+  var readStream = FS.open('testfile', 'r');
+  var writeStream = FS.open('testfile', 'w');
+  var writePlusStream = FS.open('testfile', 'w+');
+  var appendStream = FS.open('testfile', 'a');
 
-    assert(readStream && readStream.fd >= 0);
-    assert(writeStream && writeStream.fd >= 0);
-    assert(writePlusStream && writePlusStream.fd >= 0);
-    assert(appendStream && appendStream.fd >= 0);
+  assert(readStream && readStream.fd >= 0);
+  assert(writeStream && writeStream.fd >= 0);
+  assert(writePlusStream && writePlusStream.fd >= 0);
+  assert(appendStream && appendStream.fd >= 0);
 
-    var ex;
-    try {
-        FS.open('filenothere', 'r');
-    } catch(err) {
-        ex = err;
-    }
-    assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
+  var ex;
+  try {
+    FS.open('filenothere', 'r');
+  } catch(err) {
+    ex = err;
+  }
+  assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
 
-    var createFileNotHere = FS.open('filenothere', 'w+');
+  var createFileNotHere = FS.open('filenothere', 'w+');
 
-    assert(createFileNotHere && createFileNotHere.fd >= 0);
+  assert(createFileNotHere && createFileNotHere.fd >= 0);
+});
+
+EM_JS(void, test_fs_readFile, (), {
+  // Reading existing files is already covered by other tests here, so
+  // just test the error conditions.
+  var ex;
+  try {
+    var output = FS.readFile("root/no-exist", {encoding : 'utf8'});
+  } catch (err) {
+    ex = err;
+  }
+  assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
+});
+
+// createPath should succeed when called on existing paths ( https://github.com/emscripten-core/emscripten/issues/23602 )
+EM_JS(void, test_fs_createPath, (), {
+  FS.createPath('/', 'home', true, true);
+  FS.createPath('/', 'home', true, true); // Creating an already existing path
+  FS.createPath('/home', 'nested1', true, true);
+  FS.createPath('/home', 'nested2', true, true);
+  FS.writeFile('/home/nested1/test.txt', 'a=1\nb=2\n');
+  FS.writeFile('/home/nested2/test.txt', 'a=2\nb=4\n');
+  var read1 = FS.readFile('/home/nested1/test.txt', {encoding:'utf8'});
+  var read2 = FS.readFile('/home/nested2/test.txt', {encoding:'utf8'});
+  console.log("r1",read1);
+  console.log("r2",read2);
+  assert(read1 == 'a=1\nb=2\n');
+  assert(read2 == 'a=2\nb=4\n');
 });
 
 EM_JS(void, test_fs_rename, (), {
-    FS.mkdir('renamedir');
-    FS.writeFile('renamedir/renametestfile', "");
+  FS.mkdir('renamedir');
+  FS.writeFile('renamedir/renametestfile', "");
 
-    FS.rename('renamedir/renametestfile', 'renamedir/newname');
-    var newnameStream = FS.open('renamedir/newname', 'r');
-    assert(newnameStream);
+  FS.rename('renamedir/renametestfile', 'renamedir/newname');
+  var newnameStream = FS.open('renamedir/newname', 'r');
+  assert(newnameStream);
 
-    var ex;
-    try {
-        FS.open('renamedir/renametestfile', 'r');
-    } catch (err) {
-        ex = err;
-    }
-    assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
+  var ex;
+  try {
+    FS.open('renamedir/renametestfile', 'r');
+  } catch (err) {
+    ex = err;
+  }
+  assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
 
-    try {
-        FS.rename('renamedir', 'renamedir/newdirname');
-    } catch (err) {
-        ex = err;
-    }
-    // The old path should not be an ancestor of the new path.
-    assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+  try {
+    FS.rename('renamedir', 'renamedir/newdirname');
+  } catch (err) {
+    ex = err;
+  }
+  // The old path should not be an ancestor of the new path.
+  assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
 
-    FS.writeFile('toplevelfile', "");
-    try {
-        FS.rename('renamedir', 'toplevelfile');
-    } catch (err) {
-        ex = err;
-    }
-    assert(ex.name === "ErrnoError" && ex.errno === 54 /* ENOTDIR */);
+  FS.writeFile('toplevelfile', "");
+  try {
+    FS.rename('renamedir', 'toplevelfile');
+  } catch (err) {
+    ex = err;
+  }
+  assert(ex.name === "ErrnoError" && ex.errno === 54 /* ENOTDIR */);
 });
 
 EM_JS(void, test_fs_readlink,(), {
-    FS.writeFile('/readlinktestfile', "");
-    FS.symlink('/readlinktestfile', '/readlinksymlink');
+  FS.writeFile('/readlinktestfile', "");
+  FS.symlink('/readlinktestfile', '/readlinksymlink');
 
-    var symlinkString = FS.readlink('readlinksymlink');
-    assert(symlinkString === '/readlinktestfile');
+  var symlinkString = FS.readlink('readlinksymlink');
+  assert(symlinkString === '/readlinktestfile');
 
-    var ex;
-    try {
-        FS.readlink('nonexistent');
-    } catch (err) {
-        ex = err;
-    }
-    assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
+  var ex;
+  try {
+    FS.readlink('nonexistent');
+  } catch (err) {
+    ex = err;
+  }
+  assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
 
-    try {
-        FS.readlink('readlinktestfile');
-    } catch (err) {
-        ex = err;
-    }
-    assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+  try {
+    FS.readlink('readlinktestfile');
+  } catch (err) {
+    ex = err;
+  }
+  assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
 });
 
 EM_JS(void, test_fs_read, (), {
-    FS.writeFile("readtestfile", 'a=1_b=2_');
+  FS.writeFile("readtestfile", 'a=1_b=2_');
 
-    // Test read variant, checking that the file offset moves correctly.
-    var buf = new Uint8Array(8);
-    var stream = FS.open("readtestfile", "r");
-    var numRead = FS.read(stream, buf, 0, 4);
-    assert(numRead == 4);
-    assert((new TextDecoder().decode(buf.subarray(0, 4))) === "a=1_");
-    numRead = FS.read(stream, buf, 4, 4);
-    assert(numRead == 4);
-    assert((new TextDecoder().decode(buf)) == 'a=1_b=2_');
+  // Test read variant, checking that the file offset moves correctly.
+  var buf = new Uint8Array(8);
+  var stream = FS.open("readtestfile", "r");
+  var numRead = FS.read(stream, buf, 0, 4);
+  assert(numRead == 4);
+  assert((new TextDecoder().decode(buf.subarray(0, 4))) === "a=1_");
+  numRead = FS.read(stream, buf, 4, 4);
+  assert(numRead == 4);
+  assert((new TextDecoder().decode(buf)) == 'a=1_b=2_');
 
-    // Test pread variant.
-    stream = FS.open("readtestfile", "r");
-    var extraBuf = new Uint8Array(8);
-    numRead = FS.read(stream, extraBuf, 0, 4, 0);
-    assert(numRead == 4);
-    assert((new TextDecoder().decode(extraBuf.subarray(0, 4))) == 'a=1_');
+  // Test pread variant.
+  stream = FS.open("readtestfile", "r");
+  var extraBuf = new Uint8Array(8);
+  numRead = FS.read(stream, extraBuf, 0, 4, 0);
+  assert(numRead == 4);
+  assert((new TextDecoder().decode(extraBuf.subarray(0, 4))) == 'a=1_');
 
-    // Check that pread did not move the file offset (Offset begins at 0).
-    var doubleBuf = new Uint8Array(8);
-    var firstNumRead = FS.read(stream, doubleBuf, 0, 4);
-    var secondNumRead = FS.read(stream, doubleBuf, 4, 4);
-    assert(firstNumRead == 4 && secondNumRead == 4);
-    assert((new TextDecoder().decode(doubleBuf)) == 'a=1_b=2_');
+  // Check that pread did not move the file offset (Offset begins at 0).
+  var doubleBuf = new Uint8Array(8);
+  var firstNumRead = FS.read(stream, doubleBuf, 0, 4);
+  var secondNumRead = FS.read(stream, doubleBuf, 4, 4);
+  assert(firstNumRead == 4 && secondNumRead == 4);
+  assert((new TextDecoder().decode(doubleBuf)) == 'a=1_b=2_');
 
-    // Check that full read works.
-    stream = FS.open("readtestfile", "r");
-    var fullBuf = new Uint8Array(8);
-    numRead = FS.read(stream, fullBuf, 0, 8);
-    assert(numRead == 8);
-    assert((new TextDecoder().decode(fullBuf)) == 'a=1_b=2_');
+  // Check that full read works.
+  stream = FS.open("readtestfile", "r");
+  var fullBuf = new Uint8Array(8);
+  numRead = FS.read(stream, fullBuf, 0, 8);
+  assert(numRead == 8);
+  assert((new TextDecoder().decode(fullBuf)) == 'a=1_b=2_');
 
-    FS.close(stream);
-    var ex;
-    try {
-        FS.read(stream, buf, 4, 4);
-    } catch (err) {
-        ex = err;
-    }
-    assert(ex.name === 'ErrnoError' && ex.errno == 8 /* EBADF */);
+  FS.close(stream);
+  var ex;
+  try {
+    FS.read(stream, buf, 4, 4);
+  } catch (err) {
+    ex = err;
+  }
+  assert(ex.name === 'ErrnoError' && ex.errno == 8 /* EBADF */);
 });
 
 void test_fs_rmdir() {
-    EM_ASM(
-        // Create multiple directories
-        FS.mkdir('/dir1');
-        FS.mkdir('/dir2');
-    );
+  EM_ASM(
+    // Create multiple directories
+    FS.mkdir('/dir1');
+    FS.mkdir('/dir2');
+  );
 
-    struct stat s;
-    stat("/dir1", &s);
-    assert(S_ISDIR(s.st_mode));
-    stat("/dir2", &s);
-    assert(S_ISDIR(s.st_mode));
+  struct stat s;
+  stat("/dir1", &s);
+  assert(S_ISDIR(s.st_mode));
+  stat("/dir2", &s);
+  assert(S_ISDIR(s.st_mode));
 
-    EM_ASM(
-        // Remove the multiple directories
-        FS.rmdir('/dir1');
-        FS.rmdir('/dir2');
-    );
+  EM_ASM(
+    // Remove the multiple directories
+    FS.rmdir('/dir1');
+    FS.rmdir('/dir2');
+  );
 
-    int err = open("/dir1", O_RDWR);
-    assert(err);
-    err = open("/dir2", O_RDWR);
-    assert(err);
+  int err = open("/dir1", O_RDWR);
+  assert(err);
+  err = open("/dir2", O_RDWR);
+  assert(err);
 
-    EM_ASM(    
-        // Create a directory with a file inside it
-        FS.mkdir('/test_dir');
-        FS.writeFile('/test_dir/file.txt', 'Hello World!');
+  EM_ASM(
+    // Create a directory with a file inside it
+    FS.mkdir('/test_dir');
+    FS.writeFile('/test_dir/file.txt', 'Hello World!');
 
-        // Attempt to remove the directory (should fail)
-        var ex;
-        try {
-        FS.rmdir('/test_dir');
-        } catch (err) {
-        ex = err;
-        }
-        assert(ex.name === "ErrnoError" && ex.errno === 55 /* ENOTEMPTY */);
+    // Attempt to remove the directory (should fail)
+    var ex;
+    try {
+    FS.rmdir('/test_dir');
+    } catch (err) {
+    ex = err;
+    }
+    assert(ex.name === "ErrnoError" && ex.errno === 55 /* ENOTEMPTY */);
 
-        // Remove the file and then the directory
-        FS.unlink('/test_dir/file.txt');
-        FS.rmdir('/test_dir');
+    // Remove the file and then the directory
+    FS.unlink('/test_dir/file.txt');
+    FS.rmdir('/test_dir');
 
-        // Attempt to remove a non-existent directory (should fail)
-        try {
-        FS.rmdir('/non_existent_dir');
-        } catch (err) {
-        ex = err;
-        }
-        assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOEN */);
-    );
+    // Attempt to remove a non-existent directory (should fail)
+    try {
+    FS.rmdir('/non_existent_dir');
+    } catch (err) {
+    ex = err;
+    }
+    assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOEN */);
+  );
 }
 
 EM_JS(void, test_fs_close, (), {
-    FS.writeFile("closetestfile", 'a=1\nb=2\n');
-    FS.mkdir("/testdir");
-    var file = FS.open("closetestfile", "r");
-    var error = FS.close(file);
-    assert(!error);
+  FS.writeFile("closetestfile", 'a=1\nb=2\n');
+  FS.mkdir("/testdir");
+  var file = FS.open("closetestfile", "r");
+  var error = FS.close(file);
+  assert(!error);
 
-    file = FS.open("/testdir", "r");
-    error = FS.close(file);
-    assert(!error);
+  file = FS.open("/testdir", "r");
+  error = FS.close(file);
+  assert(!error);
 
-    var ex;
-    try {
-        FS.close(file);
-    } catch(err) {
-        ex = err;
-    }
-    assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */);
+  var ex;
+  try {
+    FS.close(file);
+  } catch(err) {
+    ex = err;
+  }
+  assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */);
 });
 
 void test_fs_mknod() {
-    EM_ASM(
-        FS.mknod("mknodtest", 0100000 | 0777 /* S_IFREG | S_RWXU | S_RWXG | S_RWXO */);
+  EM_ASM(
+    FS.mknod("mknodtest", 0100000 | 0777 /* S_IFREG | S_RWXU | S_RWXG | S_RWXO */);
 
-        FS.create("createtest", 0400 /* S_IRUSR */);
-    );
-    struct stat s;
-    stat("mknodtest", &s);
+    FS.create("createtest", 0400 /* S_IRUSR */);
+  );
+  struct stat s;
+  stat("mknodtest", &s);
 
-    assert(S_ISREG(s.st_mode));
-    assert(s.st_mode & 0777);
+  assert(S_ISREG(s.st_mode));
+  assert(s.st_mode & 0777);
 
-    stat("createtest", &s);
-    assert(S_ISREG(s.st_mode));
-    assert(s.st_mode & 0400);
+  stat("createtest", &s);
+  assert(S_ISREG(s.st_mode));
+  assert(s.st_mode & 0400);
 
-    remove("mknodtest");
-    remove("createtest");
-}
-
-void test_fs_allocate() {
-    EM_ASM(
-        FS.writeFile("allocatetestfile", 'a=1\nb=2\n');
-    );
-    struct stat s;
-    stat("allocatetestfile", &s);
-    assert(s.st_size == 8);
-
-    EM_ASM(
-        // Allocate more space at the very end.
-        var stream = FS.open("allocatetestfile", "w");
-        FS.allocate(stream, 8, 10);
-    );
-    stat("allocatetestfile", &s);
-    assert(s.st_size == 18);
-
-    EM_ASM(
-        // Reduce allocated space at the very start.
-        var stream = FS.open("allocatetestfile", "w");
-        FS.allocate(stream, 0, 4);
-    );
-    stat("allocatetestfile", &s);
-    assert(s.st_size == 4);
-
-    EM_ASM(
-        var stream = FS.open("allocatetestfile", "w");
-        
-        var ex;
-        try {
-            // Attempt to allocate negative length.
-            FS.allocate(stream, 0, -1);
-        } catch (err) {
-            ex = err;
-        }
-        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
-    );
-
-    remove("allocatetestfile");
+  remove("mknodtest");
+  remove("createtest");
 }
 
 void test_fs_truncate() {
-    EM_ASM(
-        FS.writeFile('truncatetest', 'a=1\nb=2\n');
-    );
+  EM_ASM(
+    FS.writeFile('truncatetest', 'a=1\nb=2\n');
+  );
 
-    struct stat s;
-    stat("truncatetest", &s);
-    assert(s.st_size == 8);
+  struct stat s;
+  stat("truncatetest", &s);
+  assert(s.st_size == 8);
 
-    EM_ASM(
-        FS.truncate('truncatetest', 2);
-    );
-    stat("truncatetest", &s);
-    assert(s.st_size == 2);
+  EM_ASM(
+    FS.truncate('truncatetest', 2);
+  );
+  stat("truncatetest", &s);
+  assert(s.st_size == 2);
 
-    EM_ASM(
-        FS.truncate('truncatetest', 10);
-    );
-    stat("truncatetest", &s);
-    assert(s.st_size == 10);
+  EM_ASM(
+    FS.truncate('truncatetest', 10);
+  );
+  stat("truncatetest", &s);
+  assert(s.st_size == 10);
 
-    EM_ASM(
-        var truncateStream = FS.open('truncatetest', 'w');
-        FS.ftruncate(truncateStream.fd, 4);
-    );
-    stat("truncatetest", &s);
-    assert(s.st_size == 4);
+  EM_ASM(
+    var truncateStream = FS.open('truncatetest', 'w');
+    FS.ftruncate(truncateStream.fd, 4);
+  );
+  stat("truncatetest", &s);
+  assert(s.st_size == 4);
 
-    EM_ASM(
-        var ex;
-        try {
-            FS.truncate('truncatetest', -10);
-        } catch(err) {
-            ex = err;
-        }
-        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+  EM_ASM(
+    var ex;
+    try {
+      FS.truncate('truncatetest', -10);
+    } catch(err) {
+      ex = err;
+    }
+    assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
 
-        try {
-            var truncateStream = FS.open('truncatetest', 'w');
-            FS.ftruncate(truncateStream.fd, -10);
-        } catch(err) {
-            ex = err;
-        }
-        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+    try {
+      var truncateStream = FS.open('truncatetest', 'w');
+      FS.ftruncate(truncateStream.fd, -10);
+    } catch(err) {
+      ex = err;
+    }
+    assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
 
-        try {
-            FS.truncate('nonexistent', 10);
-        } catch(err) {
-            ex = err;
-        }
-        assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
+    try {
+      FS.truncate('nonexistent', 10);
+    } catch(err) {
+      ex = err;
+    }
+    assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
 
-        var ex;
-        try {
-            FS.ftruncate(99, 10);
-        } catch(err) {
-            ex = err;
-        }
-        assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */);
-    );
+    var ex;
+    try {
+      FS.ftruncate(99, 10);
+    } catch(err) {
+      ex = err;
+    }
+    assert(ex.name === "ErrnoError" && ex.errno === 8 /* EBADF */);
+  );
 
-    remove("truncatetest");
+  remove("truncatetest");
 }
 
 void test_fs_mmap() {
-    EM_ASM(
-        FS.writeFile('mmaptest', 'a=1_b=2_');
+  EM_ASM(
+    FS.writeFile('mmaptest', 'a=1_b=2_');
 
-        var stream = FS.open('mmaptest', 'r+');
-        assert(stream);
+    var stream = FS.open('mmaptest', 'r+');
+    assert(stream);
 
-        var mapped = FS.mmap(stream, 12, 0, 1 | 2 /* PROT_READ | PROT_WRITE */, 1 /* MAP_SHARED */);
-        var ret = new Uint8Array(Module.HEAPU8.subarray(mapped.ptr, mapped.ptr + 12));
-        var fileContents = "";
-        for (var i = 0; i < 12; i++) {
-            fileContents += String.fromCharCode(ret[i]);
-        }
-        assert(fileContents === 'a=1_b=2_\0\0\0\0');
+    var mapped = FS.mmap(stream, 12, 0, 1 | 2 /* PROT_READ | PROT_WRITE */, 1 /* MAP_SHARED */);
+    var ret = new Uint8Array(Module.HEAPU8.subarray(mapped.ptr, mapped.ptr + 12));
+    var fileContents = "";
+    for (var i = 0; i < 12; i++) {
+      fileContents += String.fromCharCode(ret[i]);
+    }
+    assert(fileContents === 'a=1_b=2_\0\0\0\0');
 
-        ret[8] = ':'.charCodeAt(0);
-        ret[9] = 'x'.charCodeAt(0);
-        ret[10] = 'y'.charCodeAt(0);
-        ret[11] = 'z'.charCodeAt(0);
-        Module.HEAPU8.set(ret, mapped.ptr);
+    ret[8] = ':'.charCodeAt(0);
+    ret[9] = 'x'.charCodeAt(0);
+    ret[10] = 'y'.charCodeAt(0);
+    ret[11] = 'z'.charCodeAt(0);
+    Module.HEAPU8.set(ret, mapped.ptr);
 
-        // The WasmFS msync syscall requires a pointer to the mapped memory, while the legacy JS API takes in any Uint8Array 
-        // buffer to write to a file.
+    // The WasmFS msync syscall requires a pointer to the mapped memory, while the legacy JS API takes in any Uint8Array
+    // buffer to write to a file.
 #if WASMFS
-        FS.msync(stream, mapped.ptr, 0, 12, 1 /* MAP_SHARED */);
+    FS.msync(stream, mapped.ptr, 0, 12, 1 /* MAP_SHARED */);
 
-        var ex;
-        try {
-            FS.munmap(mapped.ptr, 4);
-        } catch (err) {
-            ex = err;
-        }
-        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+    var ex;
+    try {
+      FS.munmap(mapped.ptr, 4);
+    } catch (err) {
+      ex = err;
+    }
+    assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
 
-        FS.munmap(mapped.ptr, 12);
+    FS.munmap(mapped.ptr, 12);
 
-        // WasmFS correctly handles unmapping, while the legacy JS API does not.
-        try {
-            FS.msync(stream, mapped.ptr, 0, 12, 1 /* MAP_SHARED */);
-        } catch (err) {
-            ex = err;
-        }
-        assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
+    // WasmFS correctly handles unmapping, while the legacy JS API does not.
+    try {
+      FS.msync(stream, mapped.ptr, 0, 12, 1 /* MAP_SHARED */);
+    } catch (err) {
+      ex = err;
+    }
+    assert(ex.name === "ErrnoError" && ex.errno === 28 /* EINVAL */);
 #else
-        FS.msync(stream, new Uint8Array(ret), 0, 12, 1 /* MAP_SHARED */);
-        FS.munmap(stream);
+    FS.msync(stream, new Uint8Array(ret), 0, 12, 1 /* MAP_SHARED */);
+    FS.munmap(stream);
 #endif
-    );
+  );
 
-    FILE *fptr = fopen("mmaptest", "r");
-    char res[13];
-    fgets(res, 13, fptr);
-    assert(strcmp(res, "a=1_b=2_:xyz") == 0);
+  FILE *fptr = fopen("mmaptest", "r");
+  char res[13];
+  fgets(res, 13, fptr);
+  assert(strcmp(res, "a=1_b=2_:xyz") == 0);
 
-    remove("mmaptest");
+  remove("mmaptest");
 }
 
 void test_fs_mkdirTree() {
-    EM_ASM(
-        FS.mkdirTree("/test1/test2/test3");
+  EM_ASM(
+    FS.mkdirTree("/test1/test2/test3"); // Abs path
+    FS.mkdirTree("/readable", 0400 /* S_IRUSR */);
+  );
 
-        FS.mkdirTree("/readable", 0400 /* S_IRUSR */);
-    );
+  struct stat s;
+  assert(stat("/test1", &s) == 0);
+  assert(S_ISDIR(s.st_mode));
+  assert(stat("/test1/test2", &s) == 0);
+  assert(S_ISDIR(s.st_mode));
+  assert(stat("/test1/test2/test3", &s) == 0);
+  assert(S_ISDIR(s.st_mode));
 
-    struct stat s;
-    stat("/test1", &s);
-    assert(S_ISDIR(s.st_mode));
-    stat("/test1/test2", &s);
-    assert(S_ISDIR(s.st_mode));
-    stat("/test1/test2/test3", &s);
-    assert(S_ISDIR(s.st_mode));
+  assert(stat("/readable", &s) == 0);
+  assert(s.st_mode & 0400 /* S_IRUSR */);
 
-    stat("/readable", &s);
-    assert(s.st_mode & 0400 /* S_IRUSR */);
+  EM_ASM(
+    var ex;
+    try {
+      FS.mkdirTree("/readable/forbidden");
+    } catch (err) {
+      ex = err;
+    }
+    assert(ex.name === "ErrnoError" && ex.errno === 2 /* EACCES */);
+  );
 
-    EM_ASM(
-        var ex;
-        try {
-            FS.mkdirTree("/readable/forbidden");
-        } catch (err) {
-            ex = err;
-        }
-        assert(ex.name === "ErrnoError" && ex.errno === 2 /* EACCES */);
-    );
-    
-    remove("/test1/test2/test3");
-    remove("/test1/test2");
-    remove("/test1");
-    remove("/readable");
+  chdir("/test1");
+  EM_ASM(
+    FS.mkdirTree("foo/bar"); // Relative path
+  );
+  chdir("/");
+
+  assert(stat("/test1/foo", &s) == 0);
+  assert(S_ISDIR(s.st_mode));
+
+  assert(stat("/test1/foo/bar", &s) == 0);
+  assert(S_ISDIR(s.st_mode));
+
+  remove("/test1/test2/test3");
+  remove("/test1/test2");
+  remove("/test1/foo/bar");
+  remove("/test1/foo");
+  remove("/test1");
+  remove("/readable");
 }
 
 void test_fs_utime() {
-    EM_ASM(
-        FS.writeFile('utimetest', 'a=1\nb=2\n');
-    );
+  EM_ASM(
+    FS.writeFile('utimetest', 'a=1\nb=2\n');
+  );
 
-    EM_ASM(
-        FS.utime('utimetest', 10500, 8000);
-    );
-    struct stat utimeStats;
-    stat("utimetest", &utimeStats);
+  EM_ASM(
+    FS.utime('utimetest', 10500, 8000);
+  );
+  struct stat utimeStats;
+  stat("utimetest", &utimeStats);
 
-    assert(utimeStats.st_atime == 10);
-    assert(utimeStats.st_atim.tv_sec == 10);
+  assert(utimeStats.st_atime == 10);
+  assert(utimeStats.st_atim.tv_sec == 10);
 
-    // WasmFS correctly sets both times, but the legacy API sets both times to the max of atime and mtime
-    // and does not correctly handle nanseconds.
-#if WASMFS
-    assert(utimeStats.st_atim.tv_nsec == 500000000);
-    
-    assert(utimeStats.st_mtime == 8);
-    assert(utimeStats.st_mtim.tv_sec == 8);
-#else
-    assert(utimeStats.st_mtime == 10);
-    assert(utimeStats.st_mtim.tv_sec == 10);
+  assert(utimeStats.st_atim.tv_nsec == 500000000);
+
+  assert(utimeStats.st_mtime == 8);
+  assert(utimeStats.st_mtim.tv_sec == 8);
+
+  remove("utimetest");
+}
+
+#if !defined(NODERAWFS)
+// NODERAWFS don't support absolute paths since we cannot write the
+// actual root directory.
+// In addition, abs paths testing is not really running correctly
+// when we build run with NODEFS because the NODEFS filesystem is mounted
+// at /nodefs in that case.
+// TODO(sbc): Refactor these tests such that they test both relative
+// and absolute paths, and don't depend on write access to the root
+// directory.
+#define ABS_PATH_OK
 #endif
-
-    remove("utimetest");
-}
-
-void cleanup() {
-    remove("testfile");
-    remove("renametestfile");
-    remove("readtestfile");
-    remove("closetestfile");
-}
 
 int main() {
-    test_fs_open();
-    test_fs_rename();
-    test_fs_readlink();
-    test_fs_read();
-    test_fs_rmdir();
-    test_fs_close();
-    test_fs_mknod();
-    test_fs_allocate();
-    test_fs_truncate();
-#if WASMFS
-    // TODO: Fix legacy API FS.mmap bug involving emscripten_builtin_memalign
-    test_fs_mmap();
+#ifdef ABS_PATH_OK
+  test_fs_createPath();
+  test_fs_mkdirTree();
+  test_fs_close();
+  test_fs_readlink();
+  test_fs_rmdir();
 #endif
-    test_fs_mkdirTree();
-    test_fs_utime();
+  test_fs_open();
+  test_fs_readFile();
+  test_fs_rename();
+  test_fs_read();
+  test_fs_mknod();
+  test_fs_truncate();
+#if WASMFS
+  // TODO: Fix legacy API FS.mmap bug involving emscripten_builtin_memalign
+  test_fs_mmap();
+#endif
 
-    cleanup();
+  test_fs_utime();
 
-    puts("success");
+  puts("success");
 }

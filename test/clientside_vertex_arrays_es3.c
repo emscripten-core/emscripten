@@ -12,8 +12,7 @@
 #include <emscripten.h>
 #endif
 
-void onDraw(void* arg)
-{
+void onDraw(void* arg) {
   GLFWwindow* window = *((GLFWwindow**)arg);
   glClear(GL_COLOR_BUFFER_BIT);
   glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -21,20 +20,17 @@ void onDraw(void* arg)
   glfwPollEvents();
 }
 
-void onResize(GLFWwindow* window, int width, int height)
-{
+void onResize(GLFWwindow* window, int width, int height) {
   glViewport(0, 0, width, height);
 }
 
-void onClose(GLFWwindow* window)
-{
+void onClose(GLFWwindow* window) {
   glfwDestroyWindow(window);
   glfwTerminate();
   exit(EXIT_SUCCESS);
 }
 
-int main()
-{
+int main() {
   GLFWwindow* window;
 
   if (!glfwInit()) {

@@ -3,9 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-// This file defines the memory file backend of the new file system.
-// Current Status: Work in Progress.
-// See https://github.com/emscripten-core/emscripten/issues/15041.
+// This file defines the memory file backend.
 
 #include "memory_backend.h"
 #include "backend.h"
@@ -15,6 +13,11 @@ namespace wasmfs {
 
 ssize_t MemoryDataFile::write(const uint8_t* buf, size_t len, off_t offset) {
   if (offset + len > buffer.size()) {
+    if (offset + len > buffer.max_size()) {
+      // Overflow: the necessary size fits in an off_t, but cannot fit in the
+      // container.
+      return -EIO;
+    }
     buffer.resize(offset + len);
   }
   std::memcpy(&buffer[offset], buf, len);

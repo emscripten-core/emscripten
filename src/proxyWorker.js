@@ -65,7 +65,7 @@ function EventListener() {
   this.listeners = {};
 
   this.addEventListener = function addEventListener(event, func) {
-    if (!this.listeners[event]) this.listeners[event] = [];
+    this.listeners[event] ||= [];
     this.listeners[event].push(func);
   };
 
@@ -121,10 +121,10 @@ window.scrollX = window.scrollY = 0; // TODO: proxy these
 
 window.WebGLRenderingContext = WebGLWorker;
 
-window.requestAnimationFrame = (function() {
+window.requestAnimationFrame = (() => {
   // similar to Browser.requestAnimationFrame
   var nextRAF = 0;
-  return function(func) {
+  return (func) => {
     // try to keep 60fps between calls to here
     var now = Date.now();
     if (nextRAF === 0) {
@@ -200,21 +200,19 @@ document.createElement = (what) => {
         }
       };
       canvas.boundingClientRect = {};
-      canvas.getBoundingClientRect = () => {
-        return {
-          width: canvas.boundingClientRect.width,
-          height: canvas.boundingClientRect.height,
-          top: canvas.boundingClientRect.top,
-          left: canvas.boundingClientRect.left,
-          bottom: canvas.boundingClientRect.bottom,
-          right: canvas.boundingClientRect.right
-        };
-      };
+      canvas.getBoundingClientRect = () => ({
+        width: canvas.boundingClientRect.width,
+        height: canvas.boundingClientRect.height,
+        top: canvas.boundingClientRect.top,
+        left: canvas.boundingClientRect.left,
+        bottom: canvas.boundingClientRect.bottom,
+        right: canvas.boundingClientRect.right
+      });
       canvas.style = new PropertyBag();
       canvas.exitPointerLock = () => {};
 
-      canvas.width_ = canvas.width_ || 0;
-      canvas.height_ = canvas.height_ || 0;
+      canvas.width_ ||= 0;
+      canvas.height_ ||= 0;
       Object.defineProperty(canvas, 'width', {
         set: (value) => {
           canvas.width_ = value;
@@ -222,9 +220,7 @@ document.createElement = (what) => {
             postMessage({ target: 'canvas', op: 'resize', width: canvas.width_, height: canvas.height_ });
           }
         },
-        get: () => {
-          return canvas.width_;
-        }
+        get: () => canvas.width_
       });
       Object.defineProperty(canvas, 'height', {
         set: (value) => {
@@ -233,9 +229,7 @@ document.createElement = (what) => {
             postMessage({ target: 'canvas', op: 'resize', width: canvas.width_, height: canvas.height_ });
           }
         },
-        get: () => {
-          return canvas.height_;
-        }
+        get: () => canvas.height_
       });
 
       var style = {
@@ -267,14 +261,14 @@ document.createElement = (what) => {
 
 document.getElementById = (id) => {
   if (id === 'canvas' || id === 'application-canvas') {
-    return Module.canvas;
+    return Module['canvas'];
   }
   throw 'document.getElementById failed on ' + id;
 };
 
 document.querySelector = (id) => {
   if (id === '#canvas' || id === '#application-canvas' || id === 'canvas' || id === 'application-canvas') {
-    return Module.canvas;
+    return Module['canvas'];
   }
   throw 'document.querySelector failed on ' + id;
 };
@@ -330,7 +324,7 @@ var screen = {
   height: 0
 };
 
-Module.canvas = document.createElement('canvas');
+Module['canvas'] = document.createElement('canvas');
 
 Module.setStatus = () => {};
 
@@ -350,7 +344,7 @@ var clientFrameId = 0;
 
 var postMainLoop = Module['postMainLoop'];
 Module['postMainLoop'] = () => {
-  if (postMainLoop) postMainLoop();
+  postMainLoop?.();
   // frame complete, send a frame id
   postMessage({ target: 'tick', id: frameId++ });
   commandBuffer = [];
@@ -377,8 +371,8 @@ var messageBuffer = null;
 var messageResenderTimeout = null;
 var calledMain = false;
 
-// Set calledMain to true during postRun which happens onces main returns
-if (!Module['postRun']) Module['postRun'] = [];
+// Set calledMain to true during postRun which happens once main returns
+Module['postRun'] ||= [];
 if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
 Module['postRun'].push(() => { calledMain = true; });
 
@@ -386,7 +380,7 @@ function messageResender() {
   if (calledMain) {
     assert(messageBuffer && messageBuffer.length > 0);
     messageResenderTimeout = null;
-    messageBuffer.forEach((message) => onmessage(message));
+    messageBuffer.forEach(onmessage);
     messageBuffer = null;
   } else {
     messageResenderTimeout = setTimeout(messageResender, 100);
@@ -406,7 +400,7 @@ function onMessageFromMainEmscriptenThread(message) {
     clearTimeout(messageResenderTimeout);
     messageResender();
   }
-  //dump('worker got ' + JSON.stringify(message.data).substr(0, 150) + '\n');
+  //dump('worker got ' + JSON.stringify(message.data).slice(0, 150) + '\n');
   switch (message.data.target) {
     case 'document': {
       document.fireEvent(message.data.event);
@@ -418,9 +412,9 @@ function onMessageFromMainEmscriptenThread(message) {
     }
     case 'canvas': {
       if (message.data.event) {
-        Module.canvas.fireEvent(message.data.event);
+        Module['canvas'].fireEvent(message.data.event);
       } else if (message.data.boundingClientRect) {
-        Module.canvas.boundingClientRect = message.data.boundingClientRect;
+        Module['canvas'].boundingClientRect = message.data.boundingClientRect;
       } else throw 'ey?';
       break;
     }
@@ -457,10 +451,10 @@ function onMessageFromMainEmscriptenThread(message) {
       break;
     }
     case 'worker-init': {
-      Module.canvas = document.createElement('canvas');
-      screen.width = Module.canvas.width_ = message.data.width;
-      screen.height = Module.canvas.height_ = message.data.height;
-      Module.canvas.boundingClientRect = message.data.boundingClientRect;
+      Module['canvas'] = document.createElement('canvas');
+      screen.width = Module['canvas'].width_ = message.data.width;
+      screen.height = Module['canvas'].height_ = message.data.height;
+      Module['canvas'].boundingClientRect = message.data.boundingClientRect;
 #if ENVIRONMENT_MAY_BE_NODE
       if (ENVIRONMENT_IS_NODE)
 #endif
@@ -481,7 +475,7 @@ function onMessageFromMainEmscriptenThread(message) {
       break;
     }
     case 'setimmediate': {
-      if (Module['setImmediates']) Module['setImmediates'].shift()();
+      Module['setImmediates']?.shift()();
       break;
     }
     default: throw 'wha? ' + message.data.target;

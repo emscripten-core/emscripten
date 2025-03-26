@@ -9,19 +9,10 @@ __attribute__((no_sanitize("address"))) void *__memset(void *str, int c, size_t 
 __attribute__((__weak__)) void *__musl_memset(void *str, int c, size_t n);
 __attribute__((__weak__)) void *__memset(void *str, int c, size_t n);
 
-#ifdef EMSCRIPTEN_OPTIMIZE_FOR_OZ
+#if defined(EMSCRIPTEN_OPTIMIZE_FOR_OZ)
 
 void *__memset(void *str, int c, size_t n) {
-  unsigned char *s = (unsigned char *)str;
-#pragma clang loop unroll(disable)
-  while(n--) *s++ = c;
-  return str;
-}
-
-#elif defined(__wasm_bulk_memory__)
-
-void *__memset(void *str, int c, size_t n) {
-  return emscripten_memset_bulkmem(str, c, n);
+  return _emscripten_memset_bulkmem(str, c, n);
 }
 
 #else

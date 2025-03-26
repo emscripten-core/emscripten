@@ -14,6 +14,7 @@
 // Special placeholder for `import.meta` and `await import`.
 var EMSCRIPTEN$IMPORT$META;
 var EMSCRIPTEN$AWAIT$IMPORT;
+var EMSCRIPTEN$AWAIT;
 
 // Don't minify createRequire
 var createRequire;
@@ -112,6 +113,16 @@ WebAssembly.Memory.prototype.buffer;
  * @type {number}
  */
 WebAssembly.Table.prototype.length;
+/**
+ * @param {!Function} func
+ * @returns {Function}
+ */
+WebAssembly.promising = function(func) {};
+/**
+ * @constructor
+ * @param {!Function} func
+ */
+WebAssembly.Suspending = function(func) {};
 
 /**
  * @record
@@ -125,26 +136,13 @@ FunctionType.prototype.parameters;
  * @type {Array<string>}
  */
 FunctionType.prototype.results;
-/**
- * @record
- */
- function FunctionUsage() {}
- /**
-  * @type {string|undefined}
-  */
-FunctionUsage.prototype.promising;
- /**
-  * @type {string|undefined}
-  */
-FunctionUsage.prototype.suspending;
 
 /**
  * @constructor
  * @param {!FunctionType} type
  * @param {!Function} func
- * @param {FunctionUsage=} usage
  */
-WebAssembly.Function = function(type, func, usage) {};
+WebAssembly.Function = function(type, func) {};
 /**
  * @param {Function} func
  * @return {FunctionType}
@@ -196,14 +194,6 @@ var removeEventListener = function (type, listener) {};
  */
 var close;
 
-// Due to the way MODULARIZE works, Closure is run on generated code that does not define _scriptDir,
-// but only after MODULARIZE has finished, _scriptDir is injected to the generated code.
-// Therefore it cannot be minified.
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _scriptDir;
-
 // Closure run on asm.js uses a hack to execute only on shell code, declare externs needed for it.
 /**
  * @suppress {undefinedVars}
@@ -229,14 +219,6 @@ var outerHeight;
 var event;
 var devicePixelRatio;
 
-// TODO: Use Closure's multifile support and/or migrate worker.js onmessage handler to inside the MODULARIZEd block
-// to be able to remove all the variables below:
-
-// Variables that are present in both output runtime .js file/JS lib files, and worker.js, so cannot be minified because
-// the names need to match:
-/** @suppress {duplicate} */
-var noExitRuntime;
-
 /*
  * AudioWorkletGlobalScope globals
  */
@@ -250,7 +232,19 @@ var sampleRate;
  */
 var id;
 
+/**
+ * Used in MODULARIZE mode as the name of the incoming module argument.
+ * This is generated outside of the code we pass to closure so from closure's
+ * POV this is "extern".
+ */
 var moduleArg;
+
+/**
+ * Used in MODULARIZE mode.
+ * We need to access this after the code we pass to closure so from closure's
+ * POV this is "extern".
+ */
+var moduleRtn;
 
 /**
  * This was removed from upstream closure compiler in
@@ -268,3 +262,9 @@ var moduleArg;
  */
 Navigator.prototype.webkitGetUserMedia = function(
     constraints, successCallback, errorCallback) {};
+
+/**
+ * A symbol from the explicit resource management proposal that isn't yet part of Closure.
+ * @type {symbol}
+ */
+Symbol.dispose;

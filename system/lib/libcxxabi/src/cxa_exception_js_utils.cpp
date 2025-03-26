@@ -1,3 +1,5 @@
+#ifdef __EMSCRIPTEN__
+
 #include "cxxabi.h"
 
 #include "cxa_exception.h"
@@ -35,6 +37,14 @@ static inline __cxa_exception* cxa_exception_from_unwind_exception(
   _Unwind_Exception* unwind_exception) {
   return cxa_exception_from_thrown_object(unwind_exception + 1);
 }
+
+#ifdef __WASM_EXCEPTIONS__
+struct __cxa_dependent_exception;
+uint64_t __getExceptionClass(const _Unwind_Exception* unwind_exception);
+static bool isDependentException(_Unwind_Exception* unwind_exception) {
+  return (__getExceptionClass(unwind_exception) & 0xFF) == 0x01;
+}
+#endif
 
 extern "C" {
 
@@ -76,6 +86,13 @@ void __get_exception_message(void* thrown_object, char** type, char** message) {
     static_cast<const __shim_type_info*>(&typeid(std::exception));
   int can_catch = catch_type->can_catch(thrown_type, thrown_object);
   if (can_catch) {
+#if __WASM_EXCEPTIONS__
+    if (isDependentException(&exception_header->unwindHeader))
+      thrown_object =
+        reinterpret_cast<__cxa_dependent_exception*>(exception_header)
+          ->primaryException;
+#endif
+
     const char* what =
       static_cast<const std::exception*>(thrown_object)->what();
     *message = (char*)malloc(strlen(what) + 1);
@@ -103,3 +120,5 @@ char* __get_exception_terminate_message(void* thrown_object) {
 } // extern "C"
 
 } // namespace __cxxabiv1
+
+#endif // __EMSCRIPTEN__

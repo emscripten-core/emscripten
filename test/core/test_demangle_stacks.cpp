@@ -16,7 +16,7 @@ class Class {
     volatile int w = 1;
     if (w) {
       if (EM_ASM_INT({
-        out(stackTrace());
+        out(jsStackTrace());
       }) == 999999) {
         // Add a fake call (that never happens in practice) to avoid the
         // binaryen optimizer from inlining this method.

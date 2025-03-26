@@ -12,6 +12,8 @@
 #include <stdint.h>
 #include <threads.h>
 
+#include "emscripten_internal.h"
+
 thread_local uintptr_t __THREW__ = 0;
 thread_local int __threwValue = 0;
 

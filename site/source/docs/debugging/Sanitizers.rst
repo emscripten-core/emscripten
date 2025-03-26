@@ -119,15 +119,15 @@ To use ASan, simply pass ``-fsanitize=address`` to ``emcc`` or ``em++``. As
 with UBSan, you need to pass this at both the compile and link stages,
 as it affects both codegen and system libraries.
 
-You probably need to increase ``INITIAL_MEMORY`` to at least 64 MB or pass
-``-sALLOW_MEMORY_GROWTH`` so that ASan has enough memory to start. Otherwise,
+You probably need to increase :ref:`INITIAL_MEMORY` to at least 64 MB or set
+:ref:`ALLOW_MEMORY_GROWTH` so that ASan has enough memory to start. Otherwise,
 you will receive an error message that looks something like:
 
   Cannot enlarge memory arrays to size 55152640 bytes (OOM). Either (1) compile
-  with  -sINITIAL_MEMORY=X  with X higher than the current value 50331648, (2)
-  compile with  -sALLOW_MEMORY_GROWTH  which allows increasing the size at
+  with ``-sINITIAL_MEMORY=X``  with X higher than the current value 50331648, (2)
+  compile with ``-sALLOW_MEMORY_GROWTH``  which allows increasing the size at
   runtime, or (3) if you want malloc to return NULL (0) instead of this abort,
-  compile with  -sABORTING_MALLOC=0
+  compile with ``-sABORTING_MALLOC=0``
 
 ASan fully supports multi-thread environments. ASan also operates on the JS
 support code, that is, if JS tries to read from a memory address that is not

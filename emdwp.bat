@@ -22,7 +22,7 @@
 :: script is invoked via enclosing the invocation in quotes via PATH lookup, then %~f0 and
 :: %~dp0 expansions will not work.
 :: So first try if %~dp0 might work, and if not, manually look up this script from PATH.
-@if exist %~f0 (
+@if exist "%~f0" (
   set MYDIR=%~dp0
   goto FOUND_MYDIR
 )

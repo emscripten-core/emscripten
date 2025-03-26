@@ -25,6 +25,12 @@
         ]
     },
     {
+        "file": "threading_internal.h",
+        "defines": [
+            "EM_THREAD_STATUS_NUMFIELDS"
+        ]
+    },
+    {
         "file": "dynlink.h",
         "structs": {
             "dso": [

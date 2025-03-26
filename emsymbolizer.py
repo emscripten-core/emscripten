@@ -8,8 +8,10 @@
 # line/column number, potentially including inlining.
 # If the wasm has separate DWARF info, do the above with the side file
 # If there is a source map, we can parse it to get file and line number.
-# If there is an emscripten symbol map, we can parse that to get the symbol name
-# If there is a name section or symbol table, llvm-nm can show the symbol name.
+# If there is an emscripten symbol map, we can use that to get the symbol name
+# If there is a name section or symbol table, llvm-symbolizer can show the
+#  symbol name.
+# Separate DWARF and emscripten symbol maps are not supported yet.
 
 import argparse
 import json
@@ -50,21 +52,30 @@ def get_codesec_offset(module):
 
 
 def has_debug_line_section(module):
-  for sec in module.sections():
-    if sec.name == ".debug_line":
-      return True
-  return False
+  return module.get_custom_section('.debug_line') is not None
 
 
-def symbolize_address_dwarf(module, address):
-  vma_adjust = get_codesec_offset(module)
+def has_name_section(module):
+  return module.get_custom_section('name') is not None
+
+
+def has_linking_section(module):
+  return module.get_custom_section('linking') is not None
+
+
+def symbolize_address_symbolizer(module, address, is_dwarf):
+  if is_dwarf:
+    vma_adjust = get_codesec_offset(module)
+  else:
+    vma_adjust = 0
   cmd = [LLVM_SYMBOLIZER, '-e', module.filename, f'--adjust-vma={vma_adjust}',
          str(address)]
   out = shared.run_process(cmd, stdout=subprocess.PIPE).stdout.strip()
   out_lines = out.splitlines()
+
   # Source location regex, e.g., /abc/def.c:3:5
   SOURCE_LOC_RE = re.compile(r'(.+):(\d+):(\d+)$')
-  # llvm-dwarfdump prints two lines per location. The first line contains a
+  # llvm-symbolizer prints two lines per location. The first line contains a
   # function name, and the second contains a source location like
   # '/abc/def.c:3:5'. If the function or source info is not available, it will
   # be printed as '??', in which case we store None. If the line and column info
@@ -110,10 +121,8 @@ class WasmSourceMap(object):
     self.version = source_map_json['version']
     self.sources = source_map_json['sources']
 
-    vlq_map = {}
     chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
-    for i, c in enumerate(chars):
-      vlq_map[c] = i
+    vlq_map = {c: i for i, c in enumerate(chars)}
 
     def decodeVLQ(string):
       result = []
@@ -122,8 +131,8 @@ class WasmSourceMap(object):
       for c in string:
         try:
           integer = vlq_map[c]
-        except ValueError:
-          raise Error(f'Invalid character ({c}) in VLQ')
+        except ValueError as e:
+          raise Error(f'Invalid character ({c}) in VLQ') from e
         value += (integer & 31) << shift
         if integer & 32:
           shift += 5
@@ -202,7 +211,7 @@ def symbolize_address_sourcemap(module, address, force_file):
     print(sm.mappings)
     # Print with section offsets to easily compare against dwarf
     for k, v in sm.mappings.items():
-      print(f'{k-csoff:x}: {v}')
+      print(f'{k - csoff:x}: {v}')
   sm.lookup(address).print()
 
 
@@ -210,22 +219,23 @@ def main(args):
   with webassembly.Module(args.wasm_file) as module:
     base = 16 if args.address.lower().startswith('0x') else 10
     address = int(args.address, base)
-    symbolized = 0
 
     if args.addrtype == 'code':
       address += get_codesec_offset(module)
 
     if ((has_debug_line_section(module) and not args.source) or
        'dwarf' in args.source):
-      symbolize_address_dwarf(module, address)
-      symbolized += 1
-
-    if ((get_sourceMappingURL_section(module) and not args.source) or
-       'sourcemap' in args.source):
+      symbolize_address_symbolizer(module, address, is_dwarf=True)
+    elif ((get_sourceMappingURL_section(module) and not args.source) or
+          'sourcemap' in args.source):
       symbolize_address_sourcemap(module, address, args.file)
-      symbolized += 1
-
-    if not symbolized:
+    elif ((has_name_section(module) and not args.source) or
+          'names' in args.source):
+      symbolize_address_symbolizer(module, address, is_dwarf=False)
+    elif ((has_linking_section(module) and not args.source) or
+          'symtab' in args.source):
+      symbolize_address_symbolizer(module, address, is_dwarf=False)
+    else:
       raise Error('No .debug_line or sourceMappingURL section found in '
                   f'{module.filename}.'
                   " I don't know how to symbolize this file yet")
@@ -233,7 +243,8 @@ def main(args):
 
 def get_args():
   parser = argparse.ArgumentParser()
-  parser.add_argument('-s', '--source', choices=['dwarf', 'sourcemap'],
+  parser.add_argument('-s', '--source', choices=['dwarf', 'sourcemap',
+                                                 'names', 'symtab'],
                       help='Force debug info source type', default=())
   parser.add_argument('-f', '--file', action='store',
                       help='Force debug info source file')
@@ -246,7 +257,7 @@ def get_args():
   parser.add_argument('address', help='Address to lookup')
   args = parser.parse_args()
   if args.verbose:
-    shared.PRINT_STAGES = 1
+    shared.PRINT_SUBPROCS = 1
     shared.DEBUG = True
   return args
 

@@ -1,0 +1,51 @@
+foo.wasm:	file format WASM
+
+.debug_info contents:
+0x00000000: Compile Unit: length = 0x0000003a, format = DWARF32, version = 0x0004, abbr_offset = 0x0000, addr_size = 0x04 (next unit at 0x0000003e)
+
+0x0000000b: DW_TAG_compile_unit
+              DW_AT_producer	("clang version 18.0.0 (https://github.com/llvm/llvm-project 269685545e439ad050b67740533c59f965cae955)")
+              DW_AT_language	(DW_LANG_C11)
+              DW_AT_name	("system/lib/compiler-rt/__trap.c")
+              DW_AT_stmt_list	(0x00000000)
+              DW_AT_comp_dir	("/emsdk/emscripten")
+              DW_AT_low_pc	(0x00000002)
+              DW_AT_high_pc	(0x00000006)
+
+.debug_line contents:
+debug_line[0x00000000]
+Line table prologue:
+    total_length: 0x00000059
+          format: DWARF32
+         version: 4
+ prologue_length: 0x00000040
+ min_inst_length: 1
+max_ops_per_inst: 1
+ default_is_stmt: 1
+       line_base: -5
+      line_range: 14
+     opcode_base: 13
+standard_opcode_lengths[DW_LNS_copy] = 0
+standard_opcode_lengths[DW_LNS_advance_pc] = 1
+standard_opcode_lengths[DW_LNS_advance_line] = 1
+standard_opcode_lengths[DW_LNS_set_file] = 1
+standard_opcode_lengths[DW_LNS_set_column] = 1
+standard_opcode_lengths[DW_LNS_negate_stmt] = 0
+standard_opcode_lengths[DW_LNS_set_basic_block] = 0
+standard_opcode_lengths[DW_LNS_const_add_pc] = 0
+standard_opcode_lengths[DW_LNS_fixed_advance_pc] = 1
+standard_opcode_lengths[DW_LNS_set_prologue_end] = 0
+standard_opcode_lengths[DW_LNS_set_epilogue_begin] = 0
+standard_opcode_lengths[DW_LNS_set_isa] = 1
+include_directories[  1] = "system/lib/compiler-rt"
+file_names[  1]:
+           name: "__trap.c"
+      dir_index: 1
+       mod_time: 0x00000000
+         length: 0x00000000
+
+Address            Line   Column File   ISA Discriminator OpIndex Flags
+------------------ ------ ------ ------ --- ------------- ------- -------------
+0x0000000000000003      2      3      1   0             0       0  is_stmt prologue_end
+0x0000000000000004      3      1      1   0             0       0  is_stmt
+0x0000000000000006      3      1      1   0             0       0  is_stmt end_sequence

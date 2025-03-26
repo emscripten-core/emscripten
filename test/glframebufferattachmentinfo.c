@@ -11,8 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 
-int check_equal(int expected, int actual)
-{
+int check_equal(int expected, int actual) {
   if (expected == actual) {
     printf("ok\n");
     return 1;
@@ -22,8 +21,7 @@ int check_equal(int expected, int actual)
   }
 }
 
-int main()
-{
+int main() {
   EGLDisplay dpy;
   EGLint dpy_attrib_list[] = {
     EGL_CONFORMANT, EGL_OPENGL_ES2_BIT,

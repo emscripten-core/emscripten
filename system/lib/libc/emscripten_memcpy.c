@@ -9,20 +9,20 @@
 #include "emscripten_internal.h"
 
 // Use the simple/naive version of memcpy when building with asan
-#if defined(EMSCRIPTEN_OPTIMIZE_FOR_OZ) || __has_feature(address_sanitizer)
+#if __has_feature(address_sanitizer)
 
 static void *__memcpy(void *dest, const void *src, size_t n) {
   unsigned char *d = (unsigned char *)dest;
   const unsigned char *s = (const unsigned char *)src;
-#pragma clang loop unroll(disable)
   while(n--) *d++ = *s++;
   return dest;
 }
 
-#elif defined(__wasm_bulk_memory__)
+#elif defined(EMSCRIPTEN_OPTIMIZE_FOR_OZ)
 
 static void *__memcpy(void *restrict dest, const void *restrict src, size_t n) {
-  return emscripten_memcpy_bulkmem(dest, src, n);
+  // TODO: Ensure this is inlined with Binaryen or inline asm
+  return _emscripten_memcpy_bulkmem(dest, src, n);
 }
 
 #else
@@ -35,12 +35,10 @@ static void *__memcpy(void *restrict dest, const void *restrict src, size_t n) {
   unsigned char *block_aligned_d_end;
   unsigned char *d_end;
 
-#if !defined(EMSCRIPTEN_STANDALONE_WASM)
   if (n >= 512) {
-    emscripten_memcpy_js(dest, src, n);
-    return dest;
+    // TODO: Re-investigate the size threshold to enable this
+    return _emscripten_memcpy_bulkmem(dest, src, n);
   }
-#endif
 
   d_end = d + n;
   if ((((uintptr_t)d) & 3) == (((uintptr_t)s) & 3)) {

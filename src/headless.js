@@ -83,9 +83,7 @@ var window = {
   eventListeners: {},
   addEventListener(id, func) {
     var listeners = this.eventListeners[id];
-    if (!listeners) {
-      listeners = this.eventListeners[id] = [];
-    }
+    listeners ||= this.eventListeners[id] = [];
     listeners.push(func);
   },
   removeEventListener(id, func) {
@@ -100,9 +98,7 @@ var window = {
   },
   callEventListeners(id) {
     var listeners = this.eventListeners[id];
-    if (listeners) {
-      listeners.forEach((listener) => listener());
-    }
+    listeners?.forEach((listener) => listener());
   },
   URL: {
     createObjectURL(x) {
@@ -161,17 +157,15 @@ var document = {
   },
   elements: {},
   querySelector(id) {
-    if (!document.elements[id]) {
-      document.elements[id] = {
-        classList: {
-          add() {},
-          remove() {},
-        },
-        eventListeners: {},
-        addEventListener: document.addEventListener,
-        removeEventListener: document.removeEventListener,
-        callEventListeners: document.callEventListeners,
-      };
+    document.elements[id] ||= {
+      classList: {
+        add() {},
+        remove() {},
+      },
+      eventListeners: {},
+      addEventListener: document.addEventListener,
+      removeEventListener: document.removeEventListener,
+      callEventListeners: document.callEventListeners,
     };
     return document.elements[id];
   },
@@ -214,7 +208,7 @@ var XMLHttpRequest = function() {
       } else {
         window.setTimeout(() => {
           this.doSend();
-          if (this.onload) this.onload();
+          this.onload?.();
         }, 0);
       }
     },
@@ -227,34 +221,32 @@ var XMLHttpRequest = function() {
     },
   };
 };
-var Audio = () => {
-  return {
-    play() {},
-    pause() {},
-    cloneNode() {
-      return this;
-    },
-  };
-};
+var Audio = () => ({
+  play() {},
+  pause() {},
+  cloneNode() {
+    return this;
+  },
+});
 var Image = () => {
-  window.setTimeout(function() {
+  window.setTimeout(() => {
     this.complete = true;
     this.width = 64;
     this.height = 64;
-    if (this.onload) this.onload();
+    this.onload?.();
   });
 };
 var Worker = (workerPath) => {
   workerPath = fixPath(workerPath);
   var workerCode = read(workerPath);
   workerCode = workerCode.replace(/Module/g, 'zzModuleyy' + (Worker.id++)). // prevent collision with the global Module object. Note that this becomes global, so we need unique ids
-                          replace(/\nonmessage = /, '\nvar onmessage = '); // workers commonly do "onmessage = ", we need to varify that to sandbox
+                          replace(/\nonmessage = /, '\nvar onmessage = '); // workers commonly do "onmessage = ", we need to verify that to sandbox
   headlessPrint(`loading worker ${workerPath} : ${workerCode.substring(0, 50)}`);
   eval(workerCode); // will implement onmessage()
 
   function duplicateJSON(json) {
     function handleTypedArrays(key, value) {
-      if (value && value.toString && value.toString().substring(0, 8) == '[object ' && value.length && value.byteLength) {
+      if (value?.toString && value.toString().substring(0, 8) == '[object ' && value.length && value.byteLength) {
         return Array.prototype.slice.call(value);
       }
       return value;
@@ -295,6 +287,4 @@ if (typeof console == 'undefined') {
 }
 
 // additional setup
-if (!Module['canvas']) {
-  Module['canvas'] = document.getElementById('canvas');
-}
+Module['canvas'] ||= document.getElementById('canvas');

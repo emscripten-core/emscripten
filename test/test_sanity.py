@@ -3,6 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+import glob
 import os
 import platform
 import shutil
@@ -12,9 +13,10 @@ import tempfile
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 
+import common
 from common import RunnerCore, path_from_root, env_modify, test_file
 from common import create_file, ensure_dir, make_executable, with_env_modify
-from common import parameterized, EMBUILDER
+from common import crossplatform, parameterized, EMBUILDER
 from tools.config import EM_CONFIG
 from tools.shared import EMCC
 from tools.shared import config
@@ -25,7 +27,7 @@ from tools import response_file
 from tools import ports
 
 SANITY_FILE = cache.get_path('sanity.txt')
-commands = [[EMCC], [path_from_root('test/runner'), 'blahblah']]
+commands = [[EMCC], [shared.bat_suffix(path_from_root('test/runner')), 'blahblah']]
 expected_llvm_version = str(shared.EXPECTED_LLVM_VERSION) + '.0.0'
 
 
@@ -142,17 +144,20 @@ class sanity(RunnerCore):
   def check_working(self, command, expected=None):
     if type(command) is not list:
       command = [command]
+    if command == [EMCC]:
+      command = [EMCC, '--version']
     if expected is None:
       if command[0] == EMCC or (len(command) >= 2 and command[1] == EMCC):
-        expected = 'no input files'
+        expected = 'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld)'
       else:
-        expected = "could not find the following tests: blahblah"
+        expected = 'could not find the following tests: blahblah'
 
     output = self.do(command)
     self.assertContained(expected, output)
     return output
 
   # this should be the very first thing that runs. if this fails, everything else is irrelevant!
+  @crossplatform
   def test_aaa_normal(self):
     for command in commands:
       # Your existing EM_CONFIG should work!
@@ -199,7 +204,7 @@ class sanity(RunnerCore):
     self.assertNotContained('}}}', config_data)
     self.assertContained('{{{', template_data)
     self.assertContained('}}}', template_data)
-    for content in ['LLVM_ROOT', 'NODE_JS', 'JS_ENGINES']:
+    for content in ('LLVM_ROOT', 'NODE_JS', 'JS_ENGINES'):
       self.assertContained(content, config_data)
 
     # The guessed config should be ok
@@ -210,13 +215,13 @@ class sanity(RunnerCore):
 
     for command in commands:
       # Second run, with bad EM_CONFIG
-      for settings in ['blah', 'LLVM_ROOT="blarg"; JS_ENGINES=[]; NODE_JS=[]; SPIDERMONKEY_ENGINE=[]']:
+      for settings in ('blah', 'LLVM_ROOT="blarg"; JS_ENGINES=[]; NODE_JS=[]; SPIDERMONKEY_ENGINE=[]'):
         try:
           utils.write_file(default_config, settings)
           output = self.do(command)
 
           if 'blah' in settings:
-            self.assertContained('Error in evaluating config file (%s)' % default_config, output)
+            self.assertContained('error: error in evaluating config file (%s)' % default_config, output)
           elif 'runner' not in ' '.join(command):
             self.assertContained('error: NODE_JS is set to empty value', output) # sanity check should fail
         finally:
@@ -278,12 +283,13 @@ class sanity(RunnerCore):
 
     ensure_dir('fake')
 
-    for version, succeed in [('v0.8.0', False),
+    for version, succeed in (('v0.8.0', False),
                              ('v4.1.0', False),
                              ('v10.18.0', False),
-                             ('v10.19.0', True),
-                             ('v10.19.1-pre', True),
-                             ('cheez', False)]:
+                             ('v16.20.0', False),
+                             ('v18.3.0', True),
+                             ('v18.3.1-pre', True),
+                             ('cheez', False)):
       print(version, succeed)
       delete_file(SANITY_FILE)
       utils.write_file(self.in_dir('fake', 'nodejs'), '''#!/bin/sh
@@ -360,7 +366,7 @@ fi
     with env_modify({'EM_CONFIG': get_basic_config()}):
       out = self.expect_fail([EMCC, 'main.cpp', '-Wno-deprecated', '-o', 'a.out.js'])
 
-    self.assertContained('error: Inline EM_CONFIG data no longer supported.  Please use a config file.', out)
+    self.assertContained('error: inline EM_CONFIG data no longer supported.  Please use a config file.', out)
 
   def clear_cache(self):
     self.run_process([EMCC, '--clear-cache'])
@@ -434,20 +440,13 @@ fi
   def test_emcc_multiprocess_cache_access(self):
     restore_and_set_up()
 
-    create_file('test.c', r'''
-      #include <stdio.h>
-      int main() {
-        printf("hello, world!\n");
-        return 0;
-      }
-      ''')
     cache_dir_name = self.in_dir('test_cache')
     libname = cache.get_lib_name('libc.a')
     with env_modify({'EM_CACHE': cache_dir_name}):
       tasks = []
       num_times_libc_was_built = 0
       for i in range(3):
-        p = self.run_process([EMCC, 'test.c', '-O2', '-o', '%d.js' % i], stderr=STDOUT, stdout=PIPE)
+        p = self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-o', '%d.js' % i], stderr=STDOUT, stdout=PIPE)
         tasks += [p]
       for p in tasks:
         print('stdout:\n', p.stdout)
@@ -474,19 +473,12 @@ fi
     else:
       cache_dir_name = self.in_dir('emscripten_cache')
     self.assertFalse(os.path.exists(cache_dir_name))
-    create_file('test.c', r'''
-      #include <stdio.h>
-      int main() {
-        printf("hello, world!\n");
-        return 0;
-      }
-      ''')
     args = ['--cache', cache_dir_name]
     if use_response_files:
       rsp = response_file.create_response_file(args, shared.TEMP_DIR)
       args = ['@' + rsp]
 
-    self.run_process([EMCC, 'test.c'] + args, stderr=PIPE)
+    self.run_process([EMCC, test_file('hello_world.c')] + args, stderr=PIPE)
     if use_response_files:
       os.remove(rsp)
 
@@ -511,7 +503,7 @@ fi
 
     temp_dir = tempfile.mkdtemp(prefix='emscripten_temp_')
 
-    with utils.chdir(temp_dir):
+    with common.chdir(temp_dir):
       self.run_process([EMCC, '--em-config', custom_config_filename] + MINIMAL_HELLO_WORLD + ['-O2'])
       result = self.run_js('a.out.js')
 
@@ -526,10 +518,10 @@ fi
 
     # listing ports
     out = self.do([EMCC, '--show-ports'])
-    self.assertContained('Available ports:', out)
-    self.assertContained('SDL2', out)
-    self.assertContained('SDL2_image', out)
-    self.assertContained('SDL2_net', out)
+    self.assertContained('Available official ports:', out)
+    self.assertContained('sdl2', out)
+    self.assertContained('sdl2_image', out)
+    self.assertContained('sdl2_net', out)
 
     # using ports
     RETRIEVING_MESSAGE = 'retrieving port'
@@ -537,7 +529,7 @@ fi
 
     PORTS_DIR = ports.Ports.get_dir()
 
-    for i in [0, 1]:
+    for i in (0, 1):
       self.do([EMCC, '--clear-cache'])
       print(i)
       if i == 0:
@@ -547,20 +539,20 @@ fi
       self.assertNotExists(PORTS_DIR)
 
       # Building a file that doesn't need ports should not trigger anything
-      output = self.do([EMCC, test_file('hello_world_sdl.cpp')])
+      output = self.do([EMCC, test_file('hello_world_sdl.c')])
       self.assertNotContained(RETRIEVING_MESSAGE, output)
       self.assertNotContained(BUILDING_MESSAGE, output)
       self.assertNotExists(PORTS_DIR)
 
       def first_use():
-        output = self.do([EMCC, test_file('hello_world_sdl.cpp'), '-sUSE_SDL=2'])
+        output = self.do([EMCC, test_file('hello_world_sdl.c'), '-sUSE_SDL=2'])
         self.assertContained(RETRIEVING_MESSAGE, output)
         self.assertContained(BUILDING_MESSAGE, output)
         self.assertExists(PORTS_DIR)
 
       def second_use():
         # Using it again avoids retrieve and build
-        output = self.do([EMCC, test_file('hello_world_sdl.cpp'), '-sUSE_SDL=2'])
+        output = self.do([EMCC, test_file('hello_world_sdl.c'), '-sUSE_SDL=2'])
         self.assertNotContained(RETRIEVING_MESSAGE, output)
         self.assertNotContained(BUILDING_MESSAGE, output)
 
@@ -727,9 +719,9 @@ fi
     # Unless --force is specified
     self.assertContained('Building targets: zlib', self.do([EMBUILDER, 'build', 'zlib', 'MINIMAL', '--force']))
 
-  def test_embuilder_wasm_backend(self):
+  def test_embuilder(self):
     restore_and_set_up()
-    # the --lto flag makes us build wasm-bc
+    # the --lto flag makes us build LTO libraries
     self.clear_cache()
     self.run_process([EMBUILDER, 'build', 'libemmalloc'])
     self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten'))
@@ -737,13 +729,59 @@ fi
     self.run_process([EMBUILDER, 'build', 'libemmalloc', '--lto'])
     self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'lto'))
 
+  def test_embuilder_wildcards(self):
+    restore_and_set_up()
+    glob_match = os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'libwebgpu*.a')
+    self.run_process([EMBUILDER, 'clear', 'libwebgpu*'])
+    self.assertFalse(glob.glob(glob_match))
+    self.run_process([EMBUILDER, 'build', 'libwebgpu*'])
+    self.assertGreater(len(glob.glob(glob_match)), 3)
+
+  def test_embuilder_with_use_port_syntax(self):
+    restore_and_set_up()
+    self.run_process([EMBUILDER, 'build', 'sdl2_image:formats=png,jpg', '--force'])
+    self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'libSDL2_image-jpg-png.a'))
+    self.assertContained('error building port `sdl2_image:formats=invalid` | invalid is not a supported format', self.do([EMBUILDER, 'build', 'sdl2_image:formats=invalid', '--force']))
+
+  def test_embuilder_external_ports(self):
+    restore_and_set_up()
+    simple_port_path = test_file("other/ports/simple.py")
+    # embuilder handles external port target that ends with .py
+    self.run_process([EMBUILDER, 'build', f'{simple_port_path}', '--force'])
+    self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'lib_simple.a'))
+    # embuilder handles external port target that contains port options
+    external_port_path = test_file("other/ports/external.py")
+    self.run_process([EMBUILDER, 'build', f'{external_port_path}:value1=12:value2=36', '--force'])
+    self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'lib_external.a'))
+    # embuilder handles external port target that contains port options (influences library name,
+    # like sdl2_image:formats=png)
+    external_port_path = test_file("other/ports/external.py")
+    self.run_process([EMBUILDER, 'build', f'{external_port_path}:dependency=sdl2', '--force'])
+    self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'lib_external-sdl2.a'))
+
   def test_binaryen_version(self):
     restore_and_set_up()
     with open(EM_CONFIG, 'a') as f:
       f.write('\nBINARYEN_ROOT = "' + self.in_dir('fake') + '"')
 
     make_fake_tool(self.in_dir('fake', 'bin', 'wasm-opt'), 'foo')
-    self.check_working([EMCC, test_file('hello_world.c')], 'error parsing binaryen version (wasm-opt version foo). Please check your binaryen installation')
+    self.check_working([EMCC, test_file('hello_world.c'), '-O2'], 'error parsing binaryen version (wasm-opt version foo). Please check your binaryen installation')
 
     make_fake_tool(self.in_dir('fake', 'bin', 'wasm-opt'), '70')
-    self.check_working([EMCC, test_file('hello_world.c')], 'unexpected binaryen version: 70 (expected ')
+    self.check_working([EMCC, test_file('hello_world.c'), '-O2'], 'unexpected binaryen version: 70 (expected ')
+
+  def test_bootstrap(self):
+    restore_and_set_up()
+    self.run_process([EMCC, test_file('hello_world.c')])
+
+    # Touching package.json should cause compiler to fail with bootstrap message
+    Path(utils.path_from_root('package.json')).touch()
+    err = self.expect_fail([EMCC, test_file('hello_world.c')])
+    self.assertContained('emcc: error: emscripten setup is not complete ("npm packages" is out-of-date). Run `bootstrap` to update', err)
+
+    # Running bootstrap.py should fix that
+    bootstrap = shared.bat_suffix(shared.path_from_root('bootstrap'))
+    self.run_process([bootstrap])
+
+    # Now the compiler should work again
+    self.run_process([EMCC, test_file('hello_world.c')])

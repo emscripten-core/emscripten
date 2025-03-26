@@ -12,8 +12,7 @@
 
 // Tests the operation of emscripten_set_canvas_element_size() and emscripten_get_canvas_element_size()
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   // For testing purposes, rename the canvas on the page to some arbitrary ID.
   EM_ASM(document.getElementById('canvas').id = 'myCanvasId');
 

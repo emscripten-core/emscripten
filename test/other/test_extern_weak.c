@@ -7,9 +7,9 @@ extern int __attribute__((weak)) externData;
 int main() {
   printf("externFunc: %p\n", externFunc);
   printf("externData: %p\n", &externData);
-  if (externFunc)
+  if (&externFunc)
     printf("externFunc value: %d\n", externFunc());
-  if (externData)
+  if (&externData)
     printf("externData value: %d\n", externData);
   return 0;
 }

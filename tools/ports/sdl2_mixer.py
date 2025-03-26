@@ -5,13 +5,15 @@
 
 import os
 
-TAG = 'release-2.0.4'
-HASH = '5ba387f997219a1deda868f380bf7ee8bc0842261dd54772ad2d560f5282fcbe7bc130e8d16dccc259eeb8cda993a0f34cd3be103fc38f8c6a68428a10e5db4c'
+TAG = 'release-2.8.0'
+HASH = '494ccd74540f74e717f7e4f1dc7f96398c0f4b1883ab00c4a76b0c7239bd2c185cb4358a35ef47819c49e7c14dac7c37b98a29c7b5237478121571f5e7ac4dfc'
 
 deps = ['sdl2']
 variants = {
-  'sdl2_mixer_mp3': {'SDL2_MIXER_FORMATS': ["mp3"]},
-  'sdl2_mixer_none': {'SDL2_MIXER_FORMATS': []},
+  'sdl2_mixer-mp3': {'SDL2_MIXER_FORMATS': ['mp3']},
+  'sdl2_mixer-none': {'SDL2_MIXER_FORMATS': []},
+  'sdl2_mixer-mp3-mt': {'SDL2_MIXER_FORMATS': ['mp3'], 'PTHREADS': 1},
+  'sdl2_mixer-none-mt': {'SDL2_MIXER_FORMATS': [], 'PTHREADS': 1},
 }
 
 
@@ -25,20 +27,20 @@ def get_lib_name(settings):
 
   libname = 'libSDL2_mixer'
   if formats != '':
-    libname += '_' + formats
+    libname += '-' + formats
+  if settings.PTHREADS:
+    libname += '-mt'
   libname += '.a'
 
   return libname
 
 
 def get(ports, settings, shared):
-  sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
-  assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_mixer'
   ports.fetch_project('sdl2_mixer', f'https://github.com/libsdl-org/SDL_mixer/archive/{TAG}.zip', sha512hash=HASH)
   libname = get_lib_name(settings)
 
   def create(final):
-    source_path = os.path.join(ports.get_dir(), 'sdl2_mixer', 'SDL_mixer-' + TAG)
+    source_path = ports.get_dir('sdl2_mixer', 'SDL_mixer-' + TAG)
     flags = [
       '-sUSE_SDL=2',
       '-O2',
@@ -53,7 +55,6 @@ def get(ports, settings, shared):
 
     if "mp3" in settings.SDL2_MIXER_FORMATS:
       flags += [
-        '-Wno-incompatible-function-pointer-types',
         '-sUSE_MPG123',
         '-DMUSIC_MP3_MPG123',
       ]
@@ -69,24 +70,34 @@ def get(ports, settings, shared):
         '-DMUSIC_MID_TIMIDITY',
       ]
 
-    build_dir = ports.clear_project_build('sdl2_mixer')
+    if settings.PTHREADS:
+      flags.append('-pthread')
+
+    include_path = os.path.join(source_path, 'include')
+    includes = [
+      include_path,
+      os.path.join(source_path, 'src'),
+      os.path.join(source_path, 'src', 'codecs')
+    ]
     ports.build_port(
       source_path,
       final,
-      build_dir,
+      'sdl2_mixer',
       flags=flags,
       exclude_files=[
         'playmus.c',
         'playwave.c',
+        'main.c',
       ],
       exclude_dirs=[
         'native_midi',
         'external',
-      ]
+        'Xcode',
+      ],
+      includes=includes,
     )
 
-    # copy header to a location so it can be used as 'SDL2/'
-    ports.install_headers(source_path, pattern='SDL_*.h', target='SDL2')
+    ports.install_headers(include_path, target='SDL2')
 
   return [shared.cache.get_lib(libname, create, what='port')]
 
@@ -108,9 +119,5 @@ def process_dependencies(settings):
     settings.USE_MODPLUG = 1
 
 
-def process_args(ports):
-  return []
-
-
 def show():
-  return 'SDL2_mixer (USE_SDL_MIXER=2; zlib license)'
+  return 'sdl2_mixer (-sUSE_SDL_MIXER=2 or --use-port=sdl2_mixer; zlib license)'

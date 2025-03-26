@@ -24,7 +24,5 @@ int main()
   EMSCRIPTEN_RESULT res = emscripten_webgl_make_context_current(context);
   assert(res == EMSCRIPTEN_RESULT_SUCCESS);
   assert(emscripten_webgl_get_current_context() == context);
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  return 0;
 }

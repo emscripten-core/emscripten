@@ -115,7 +115,12 @@ int main(int argc, char *argv[])
       while (level < 5) {
         printf("uploading level %d: %d, %d\n", level, w, h);
         assert(!glGetError());
+#if TEST_TEXSUBIMAGE
+        glCompressedTexImage2D(GL_TEXTURE_2D, level, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, w, h, 0, w*h, NULL);
+        glCompressedTexSubImage2D(GL_TEXTURE_2D, level, 0, 0, w, h, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, w*h, curr);
+#else
         glCompressedTexImage2D(GL_TEXTURE_2D, level, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, w, h, 0, w*h, curr);
+#endif
         assert(!glGetError());
         curr += MAX(w, 4)*MAX(h, 4);
         w /= 2;
@@ -136,7 +141,12 @@ int main(int argc, char *argv[])
       while (level < 5) {
         printf("uploading level %d: %d, %d\n", level, w, h);
         assert(!glGetError());
+#if TEST_TEXSUBIMAGE
+        glCompressedTexImage2D(GL_TEXTURE_2D, level, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, w, h, 0, w*h, NULL);
+        glCompressedTexSubImage2D(GL_TEXTURE_2D, level, 0, 0, w, h, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, w*h, curr);
+#else
         glCompressedTexImage2D(GL_TEXTURE_2D, level, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, w, h, 0, w*h, curr);
+#endif
         assert(!glGetError());
         curr += MAX(w, 4)*MAX(h, 4);
         w /= 2;

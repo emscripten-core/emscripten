@@ -12,12 +12,14 @@
 #define realloc undef
 #define free undef
 
+#ifndef __EMSCRIPTEN__
 const char *__lctrans_impl(const char *msg, const struct __locale_map *lm)
 {
 	const char *trans = 0;
 	if (lm) trans = __mo_lookup(lm->map, lm->map_size, msg);
 	return trans ? trans : msg;
 }
+#endif
 
 static const char envvars[][12] = {
 	"LC_CTYPE",

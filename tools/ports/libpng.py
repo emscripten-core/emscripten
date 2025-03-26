@@ -11,8 +11,8 @@ HASH = '19851afffbe2ffde62d918f7e9017dec778a7ce9c60c75cdc65072f086e6cdc9d9895eb7
 deps = ['zlib']
 variants = {
   'libpng-mt': {'PTHREADS': 1},
-  'libpng-wasm-sjlj': {'SUPPORT_LONGJMP': 'wasm'},
-  'libpng-mt-wasm-sjlj': {'PTHREADS': 1, 'SUPPORT_LONGJMP': 'wasm'},
+  'libpng-legacysjlj': {'SUPPORT_LONGJMP': 'wasm', 'WASM_LEGACY_EXCEPTIONS': 1},
+  'libpng-mt-legacysjlj': {'PTHREADS': 1, 'SUPPORT_LONGJMP': 'wasm', 'WASM_LEGACY_EXCEPTIONS': 1},
 }
 
 
@@ -25,7 +25,7 @@ def get_lib_name(settings):
   if settings.PTHREADS:
     suffix += '-mt'
   if settings.SUPPORT_LONGJMP == 'wasm':
-    suffix += '-wasm-sjlj'
+    suffix += '-legacysjlj'
   return f'libpng{suffix}.a'
 
 
@@ -34,7 +34,7 @@ def get(ports, settings, shared):
   ports.fetch_project('libpng', f'https://storage.googleapis.com/webassembly/emscripten-ports/libpng-{TAG}.tar.gz', sha512hash=HASH)
 
   def create(final):
-    source_path = os.path.join(ports.get_dir(), 'libpng', 'libpng-' + TAG)
+    source_path = ports.get_dir('libpng', 'libpng-' + TAG)
     ports.write_file(os.path.join(source_path, 'pnglibconf.h'), pnglibconf_h)
     ports.install_headers(source_path)
 
@@ -57,12 +57,8 @@ def process_dependencies(settings):
   settings.USE_ZLIB = 1
 
 
-def process_args(ports):
-  return []
-
-
 def show():
-  return 'libpng (-sUSE_LIBPNG; zlib license)'
+  return 'libpng (-sUSE_LIBPNG or --use-port=libpng; zlib license)'
 
 
 pnglibconf_h = r'''/* pnglibconf.h - library build configuration */

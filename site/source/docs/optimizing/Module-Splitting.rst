@@ -137,7 +137,7 @@ Here’s the function to write the profile and our new main function::
     __write_profile(ptr, len);
 
     // Write the profile file.
-    var profile_data = new Uint8Array(HEAP8.buffer, ptr, len);
+    var profile_data = HEAPU8.subarray(ptr, ptr + len);
     const fs = require("fs");
     fs.writeFileSync('profile.data', profile_data);
 
@@ -273,7 +273,7 @@ copying a base64 encoding of it from the console.
 
 Here’s code implementing the base64 solution::
 
-  var profile_data = new Uint8Array(buffer, ptr, len);
+  var profile_data = HEAPU8.subarray(ptr, ptr + len);
   var binary = '';
   for (var i = 0; i < profile_data.length; i++) {
       binary += String.fromCharCode(profile_data[i]);

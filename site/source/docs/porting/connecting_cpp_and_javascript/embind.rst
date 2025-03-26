@@ -203,15 +203,6 @@ to enable the closure compiler.
 Memory management
 =================
 
-JavaScript only gained support for `finalizers`_ in ECMAScript 2021, or ECMA-262
-Edition 12. The new API is called `FinalizationRegistry`_ and it still does not
-offer any guarantees that the provided finalization callback will be called.
-Embind uses this for cleanup if available, but only for smart pointers,
-and only as a last resort.
-
-.. warning:: It is strongly recommended that JavaScript code explicitly deletes
-    any C++ object handles it has received.
-
 The :js:func:`delete()` JavaScript method is provided to manually signal that
 a C++ object is no longer needed and can be deleted:
 
@@ -226,7 +217,8 @@ a C++ object is no longer needed and can be deleted:
     y.delete();
 
 .. note:: Both C++ objects constructed from the JavaScript side as well as
-    those returned from C++ methods must be explicitly deleted.
+    those returned from C++ methods must be explicitly deleted, unless a
+    ``reference`` return value policy is used (see below).
 
 
 .. tip:: The ``try`` … ``finally`` JavaScript construct can be used to guarantee
@@ -248,6 +240,35 @@ a C++ object is no longer needed and can be deleted:
         }
     }
 
+Automatic memory management
+---------------------------
+
+Embind integrates with the `Explicit Resource Management`_ proposal.
+
+It allows to automatically delete short-lived C++ objects at the end of the
+scope when they're declared with a `using` keyword:
+
+.. code:: javascript
+
+    using x = new Module.MyClass;
+    x.method();
+
+At the moment of writing, this proposal is natively supported in
+Chromium-based browsers as well as Babel and TypeScript via transpilation.
+
+Embind also supports `finalizers`_, which were added in ECMAScript 2021 under a
+`FinalizationRegistry`_ API. Unlike the `using` keyword, finalizers are not
+guaranteed to be called, and even if they are, there are no guarantees about
+their timing or order of execution, which makes them unsuitable for general
+RAII-style resource management.
+
+Embind uses it for cleanup if available, but only for smart pointers, and only
+as a last resort.
+
+.. warning:: It is strongly recommended that JavaScript code explicitly deletes
+    any C++ object handles it has received.
+
+
 Cloning and Reference Counting
 ------------------------------
 
@@ -255,7 +276,7 @@ There are situations in which multiple long-lived portions of the
 JavaScript codebase need to hold on to the same C++ object for different
 amounts of time.
 
-To accomodate that use case, Emscripten provides a `reference counting`_
+To accommodate that use case, Emscripten provides a `reference counting`_
 mechanism in which multiple handles can be produced for the same underlying
 C++ object. Only when all handles have been deleted does the object get
 destroyed.
@@ -344,13 +365,76 @@ The JavaScript code does not need to worry about lifetime management.
 Advanced class concepts
 =======================
 
+.. _embind-object-ownership:
+
+Object Ownership
+----------------
+
+JavaScript and C++ have very different memory models which can lead to it being
+unclear which language owns and is responsible for deleting an object when it
+moves between languages. To make object ownership more explicit, *embind*
+supports smart pointers and return value policies. Return value
+polices dictate what happens to a C++ object when it is returned to JavaScript.
+
+To use a return value policy, pass the desired policy into function, method, or
+property bindings. For example:
+
+.. code:: cpp
+
+    EMSCRIPTEN_BINDINGS(module) {
+      function("createData", &createData, return_value_policy::take_ownership());
+    }
+
+Embind supports three return value policies that behave differently depending
+on the return type of the function. The policies work as follows:
+
+* *default (no argument)* - For return by value and reference a new object will be allocated using the
+  object's copy constructor. JS then owns the object and is responsible for deleting it. Returning a
+  pointer is not allowed by default (use an explicit policy below).
+* :cpp:type:`return_value_policy::take_ownership` - Ownership is transferred to JS.
+* :cpp:type:`return_value_policy::reference` - Reference an existing object but do not take
+  ownership. Care must be taken to not delete the object while it is still in use in JS.
+
+More details below:
+
++--------------------+-------------+---------------------------------------------------------------+
+| Return Type        | Constructor | Cleanup                                                       |
++====================+=============+===============================================================+
+| **default**                                                                                      |
++--------------------+-------------+---------------------------------------------------------------+
+| Value (``T``)      | copy        | JS must delete the copied object.                             |
++--------------------+-------------+---------------------------------------------------------------+
+| Reference (``T&``) | copy        | JS must delete the copied object.                             |
++--------------------+-------------+---------------------------------------------------------------+
+| Pointer (``T*``)   | n/a         | Pointers must explicitly use a return policy.                 |
++--------------------+-------------+---------------------------------------------------------------+
+| **take_ownership**                                                                               |
++--------------------+-------------+---------------------------------------------------------------+
+| Value (``T``)      | move        | JS must delete the moved object.                              |
++--------------------+-------------+---------------------------------------------------------------+
+| Reference (``T&``) | move        | JS must delete the moved object.                              |
++--------------------+-------------+---------------------------------------------------------------+
+| Pointer (``T*``)   | none        | JS must delete the object.                                    |
++--------------------+-------------+---------------------------------------------------------------+
+| **reference**                                                                                    |
++--------------------+-------------+---------------------------------------------------------------+
+| Value (``T``)      | n/a         | Reference to a value is not allowed.                          |
++--------------------+-------------+---------------------------------------------------------------+
+| Reference (``T&``) | none        | C++ must delete the object.                                   |
++--------------------+-------------+---------------------------------------------------------------+
+| Pointer (``T*``)   | none        | C++ must delete the object.                                   |
++--------------------+-------------+---------------------------------------------------------------+
+
 .. _embind-raw-pointers:
 
 Raw pointers
 ------------
 
 Because raw pointers have unclear lifetime semantics, *embind* requires
-their use to be marked with :cpp:type:`allow_raw_pointers`.
+their use to be marked with either :cpp:type:`allow_raw_pointers` or with a
+:cpp:type:`return_value_policy`. If the function returns a pointer it is
+recommended to use a :cpp:type:`return_value_policy` instead of the general
+:cpp:type:`allow_raw_pointers`.
 
 For example:
 
@@ -358,17 +442,19 @@ For example:
 
     class C {};
     C* passThrough(C* ptr) { return ptr; }
+    C* createC() { return new C(); }
     EMSCRIPTEN_BINDINGS(raw_pointers) {
         class_<C>("C");
         function("passThrough", &passThrough, allow_raw_pointers());
+        function("createC", &createC, return_value_policy::take_ownership());
     }
 
 .. note::
 
-   Currently the markup serves only to allow raw pointer use, and
-   show that you've thought about the use of the raw pointers. Eventually
-   we hope to implement `Boost.Python-like raw pointer policies`_ for
-   managing object ownership.
+   Currently allow_raw_pointers for pointer arguments only serves to allow raw
+   pointer use, and show that you've thought about the use of the raw pointers.
+   Eventually we hope to implement `Boost.Python-like raw pointer policies`_ for
+   managing object ownership of arguments as well.
 
 .. _embind-external-constructors:
 
@@ -527,6 +613,7 @@ implemented in JavaScript.
 .. code:: cpp
 
     struct Interface {
+        virtual ~Interface() {}
         virtual void invoke(const std::string& str) = 0;
     };
 
@@ -672,6 +759,8 @@ are available.
 .. note:: *Embind* must understand the fully-derived type for automatic
    downcasting to work.
 
+.. note:: *Embind* does not support this unless RTTI is enabled.
+
 
 Overloaded functions
 ====================
@@ -753,6 +842,71 @@ To expose a C++ :cpp:func:`constant` to JavaScript, simply write:
 
 
 .. _embind-memory-view:
+
+Class Properties
+================
+
+.. warning:: By default ``property()`` bindings to objects use
+    ``return_value_policy::copy`` which can very easily lead to memory leaks
+    since each access to the property will create a new object that must be
+    deleted. Alternatively, use ``return_value_policy::reference``, so a new
+    object is not allocated and changes to the object will be reflected in the
+    original object.
+
+Class properties can be defined several ways as seen below.
+
+.. code:: cpp
+
+    struct Point {
+        float x;
+        float y;
+    };
+
+    struct Person {
+        Point location;
+        Point getLocation() const { // Note: const is required on getters
+            return location;
+        }
+        void setLocation(Point p) {
+            location = p;
+        }
+    };
+
+    EMSCRIPTEN_BINDINGS(xxx) {
+        class_<Person>("Person")
+            .constructor<>()
+            // Bind directly to a class member with automatically generated getters/setters using a
+            // reference return policy so the object does not need to be deleted from JS.
+            .property("location", &Person::location, return_value_policy::reference())
+            // Same as above, but this will return a copy and the object must be deleted or it will
+            // leak!
+            .property("locationCopy", &Person::location)
+            // Bind using a only getter method for read only access.
+            .property("readOnlyLocation", &Person::getLocation, return_value_policy::reference())
+            // Bind using a getter and setter method.
+            .property("getterAndSetterLocation", &Person::getLocation, &Person::setLocation,
+                      return_value_policy::reference());
+        class_<Point>("Point")
+            .property("x", &Point::x)
+            .property("y", &Point::y);
+    }
+
+    int main() {
+        EM_ASM(
+            let person = new Module.Person();
+            person.location.x = 42;
+            console.log(person.location.x); // 42
+            let locationCopy = person.locationCopy;
+            // This is a copy so the original person's location will not be updated.
+            locationCopy.x = 99;
+            console.log(locationCopy.x); // 99
+            // Important: delete any copies!
+            locationCopy.delete();
+            console.log(person.readOnlyLocation.x); // 42
+            console.log(person.getterAndSetterLocation.x); // 42
+            person.delete();
+        );
+    }
 
 Memory views
 ============
@@ -909,13 +1063,17 @@ Out of the box, *embind* provides converters for many standard C++ types:
 +---------------------+--------------------------------------------------------------------+
 | ``unsigned int``    | Number                                                             |
 +---------------------+--------------------------------------------------------------------+
-| ``long``            | Number                                                             |
+| ``long``            | Number, or BigInt*                                                 |
 +---------------------+--------------------------------------------------------------------+
-| ``unsigned long``   | Number                                                             |
+| ``unsigned long``   | Number, or BigInt*                                                 |
 +---------------------+--------------------------------------------------------------------+
 | ``float``           | Number                                                             |
 +---------------------+--------------------------------------------------------------------+
 | ``double``          | Number                                                             |
++---------------------+--------------------------------------------------------------------+
+| ``int64_t``         | BigInt**                                                           |
++---------------------+--------------------------------------------------------------------+
+| ``uint64_t``        | BigInt**                                                           |
 +---------------------+--------------------------------------------------------------------+
 | ``std::string``     | ArrayBuffer, Uint8Array, Uint8ClampedArray, Int8Array, or String   |
 +---------------------+--------------------------------------------------------------------+
@@ -924,15 +1082,20 @@ Out of the box, *embind* provides converters for many standard C++ types:
 | ``emscripten::val`` | anything                                                           |
 +---------------------+--------------------------------------------------------------------+
 
+\*BigInt when MEMORY64 is used, Number otherwise.
+
+\*\*Requires BigInt support to be enabled with the `-sWASM_BIGINT` flag.
+
 For convenience, *embind* provides factory functions to register
-``std::vector<T>`` (:cpp:func:`register_vector`) and ``std::map<K, V>``
-(:cpp:func:`register_map`) types:
+``std::vector<T, class Allocator=std::allocator<T>>`` (:cpp:func:`register_vector`), ``std::map<K, V, class Compare=std::less<K>, class Allocator=std::allocator<std::pair<const K, V>>>``
+(:cpp:func:`register_map`), and ``std::optional<T>`` (:cpp:func:`register_optional`) types:
 
 .. code:: cpp
 
     EMSCRIPTEN_BINDINGS(stl_wrappers) {
         register_vector<int>("VectorInt");
         register_map<int,int>("MapIntInt");
+        register_optional<std::string>();
     }
 
 A full example is shown below:
@@ -942,6 +1105,7 @@ A full example is shown below:
     #include <emscripten/bind.h>
     #include <string>
     #include <vector>
+    #include <optional>
 
     using namespace emscripten;
 
@@ -956,13 +1120,20 @@ A full example is shown below:
       return m;
     }
 
+    std::optional<std::string> returnOptionalData() {
+      return "hello";
+    }
+
     EMSCRIPTEN_BINDINGS(module) {
       function("returnVectorData", &returnVectorData);
       function("returnMapData", &returnMapData);
+      function("returnOptionalData", &returnOptionalData);
 
-      // register bindings for std::vector<int> and std::map<int, std::string>.
+      // register bindings for std::vector<int>, std::map<int, std::string>, and
+      // std::optional<std::string>.
       register_vector<int>("vector<int>");
       register_map<int, std::string>("map<int, string>");
+      register_optional<std::string>();
     }
 
 
@@ -1009,21 +1180,63 @@ The following JavaScript can be used to interact with the above C++.
     // reset the value at the given index position
     retMap.set(10, "OtherValue");
 
+    // Optional values will return undefined if there is no value.
+    var optional = Module['returnOptionalData']();
+    if (optional !== undefined) {
+        console.log(optional);
+    }
+
 
 TypeScript Definitions
 ======================
 
+Generating
+----------
+
 Embind supports generating TypeScript definition files from :cpp:func:`EMSCRIPTEN_BINDINGS`
 blocks. To generate **.d.ts** files invoke *emcc* with the
-:ref:`embind-emit-tsd <emcc-embind-emit-tsd>` option::
+:ref:`embind-emit-tsd <emcc-emit-tsd>` option::
 
-   emcc -lembind quick_example.cpp --embind-emit-tsd interface.d.ts
+   emcc -lembind quick_example.cpp --emit-tsd interface.d.ts
 
 Running this command will build the program with an instrumented version of embind
 that is then run in *node* to generate the definition files.
 Not all of embind's features are currently supported, but many of the commonly used
 ones are.  Examples of input and output can be seen in `embind_tsgen.cpp`_ and
 `embind_tsgen.d.ts`_.
+
+Custom ``val`` Definitions
+--------------------------
+
+:cpp:class:`emscripten::val` types are mapped to TypeScript's `any` type by default,
+which does not provide much useful information for API's that consume or
+produce `val` types. To give better type information, custom `val` types can be
+registered using :cpp:func:`EMSCRIPTEN_DECLARE_VAL_TYPE` in combination with
+:cpp:class:`emscripten::register_type`. An example below:
+
+.. code:: cpp
+
+    EMSCRIPTEN_DECLARE_VAL_TYPE(CallbackType);
+
+    int function_with_callback_param(CallbackType ct) {
+        ct(val("hello"));
+        return 0;
+    }
+
+    EMSCRIPTEN_BINDINGS(custom_val) {
+        function("function_with_callback_param", &function_with_callback_param);
+        register_type<CallbackType>("(message: string) => void");
+    }
+
+
+``nonnull`` Pointers
+--------------------
+
+C++ functions that return pointers generate TS definitions with ``<SomeClass> |
+null`` to allow ``nullptr`` by default. If the C++ function is guaranteed to
+return a valid object, then a policy parameter of ``nonnull<ret_val>()`` can be
+added to the function binding to omit ``| null`` from TS. This avoids having to
+handle the ``null`` case in TS.
 
 Performance
 ===========
@@ -1048,3 +1261,4 @@ real-world applications has proved to be more than acceptable.
 .. _Making sine, square, sawtooth and triangle waves: http://stuartmemo.com/making-sine-square-sawtooth-and-triangle-waves/
 .. _embind_tsgen.cpp: https://github.com/emscripten-core/emscripten/blob/main/test/other/embind_tsgen.cpp
 .. _embind_tsgen.d.ts: https://github.com/emscripten-core/emscripten/blob/main/test/other/embind_tsgen.d.ts
+.. _Explicit Resource Management: https://tc39.es/proposal-explicit-resource-management/

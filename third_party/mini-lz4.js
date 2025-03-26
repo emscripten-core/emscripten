@@ -343,3 +343,6 @@ return exports;
 
 })();
 
+if (typeof module != 'undefined') {
+  module.exports = MiniLZ4;
+}

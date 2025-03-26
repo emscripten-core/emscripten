@@ -15,6 +15,29 @@ local_root = os.path.join(script_dir, 'libcxxabi')
 local_src = os.path.join(local_root, 'src')
 local_inc = os.path.join(local_root, 'include')
 
+excludes = ('CMakeLists.txt',)
+preserve_files = ()
+
+
+def clean_dir(dirname):
+  for f in os.listdir(dirname):
+    if f in preserve_files:
+      continue
+    full = os.path.join(dirname, f)
+    if os.path.isdir(full):
+      shutil.rmtree(full)
+    else:
+      os.remove(full)
+
+
+def copy_tree(upstream_dir, local_dir):
+  for f in os.listdir(upstream_dir):
+    full = os.path.join(upstream_dir, f)
+    if os.path.isdir(full):
+      shutil.copytree(full, os.path.join(local_dir, f))
+    elif f not in excludes:
+      shutil.copy2(full, os.path.join(local_dir, f))
+
 
 def main():
   if len(sys.argv) > 1:
@@ -28,11 +51,11 @@ def main():
   assert os.path.exists(upstream_src)
 
   # Remove old version
-  shutil.rmtree(local_src)
-  shutil.rmtree(local_inc)
+  clean_dir(local_src)
+  clean_dir(local_inc)
 
-  shutil.copytree(upstream_src, local_src)
-  shutil.copytree(upstream_inc, local_inc)
+  copy_tree(upstream_src, local_src)
+  copy_tree(upstream_inc, local_inc)
   shutil.copy2(os.path.join(upstream_root, 'CREDITS.TXT'), local_root)
   shutil.copy2(os.path.join(upstream_root, 'LICENSE.TXT'), local_root)
 

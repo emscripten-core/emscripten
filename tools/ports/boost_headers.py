@@ -5,8 +5,8 @@
 
 import os
 
-TAG = '1.75.0'
-HASH = '8c38be1ebef1b8ada358ad6b7c9ec17f5e0a300e8085db3473a13e19712c95eeb3c3defacd3c53482eb96368987c4b022efa8da2aac2431a154e40153d3c3dcd'
+TAG = '1.83.0'
+HASH = '82e3a64e55caac0254f9e6b179437ad9421943b8f73957285978dad16c24dcae6372c464909fdc085b9790662b6a3af5163140b1e456705e80fda51c5fe3c243'
 
 
 def needed(settings):
@@ -20,7 +20,7 @@ def get(ports, settings, shared):
 
   def create(final):
     # includes
-    source_path = os.path.join(ports.get_dir(), 'boost_headers')
+    source_path = ports.get_dir('boost_headers')
     source_path_include = os.path.join(source_path, 'boost')
     ports.install_header_dir(source_path_include, 'boost')
 
@@ -44,4 +44,4 @@ def process_args(ports):
 
 
 def show():
-  return 'Boost headers v1.70.0 (USE_BOOST_HEADERS=1; Boost license)'
+  return f'boost_headers - Boost headers v{TAG} (-sUSE_BOOST_HEADERS=1 or --use-port=boost_headers; Boost license)'

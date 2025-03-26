@@ -29,7 +29,6 @@ const bool USE_MEMORY = true;
 const bool USE_SHIFTS = false;
 
 void randoms() {
-  srandom(1);
   size_t before = (size_t)sbrk(0);
   double sum_sbrk = 0;
   size_t max_sbrk = before;
@@ -86,11 +85,11 @@ void randoms() {
         }
       } else {
         if (calloc_ && USE_CALLOC) {
-          bins[bin] = malloc(size);
+          bins[bin] = calloc(size, 1);
           allocated[bin] = size;
           total_allocated += size;
         } else {
-          bins[bin] = calloc(size, 1);
+          bins[bin] = malloc(size);
           allocated[bin] = size;
           total_allocated += size;
         }

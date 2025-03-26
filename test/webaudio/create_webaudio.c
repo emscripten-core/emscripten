@@ -23,9 +23,7 @@ int main()
 		startButton.onclick = () => {
 			if (audioContext.state != 'running') {
 				audioContext.resume();
-#ifdef REPORT_RESULT
-				__ReportResult(0, 0);
-#endif
+				reportResultToServer(0);
 			} else {
 				audioContext.suspend();
 			}

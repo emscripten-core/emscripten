@@ -20,22 +20,21 @@
 #include <emscripten/html5.h>
 
 std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) {
-    std::stringstream ss(s);
-    std::string item;
-    while (std::getline(ss, item, delim)) {
-        elems.push_back(item);
-    }
-    return elems;
+  std::stringstream ss(s);
+  std::string item;
+  while (std::getline(ss, item, delim)) {
+    elems.push_back(item);
+  }
+  return elems;
 }
 
 std::vector<std::string> split(const std::string &s, char delim) {
-    std::vector<std::string> elems;
-    split(s, delim, elems);
-    return elems;
+  std::vector<std::string> elems;
+  split(s, delim, elems);
+  return elems;
 }
 
-GLint GetInt(GLenum param)
-{
+GLint GetInt(GLenum param) {
   GLint value;
   glGetIntegerv(param, &value);
   return value;
@@ -47,8 +46,7 @@ void final(void*) {
 
 EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context;
 
-void loop()
-{
+void loop() {
   EMSCRIPTEN_RESULT res;
   if (!context) {
     // new rendering frame started without a context
@@ -76,8 +74,7 @@ void loop()
   }
 }
 
-int main()
-{
+int main() {
   bool first = true;
   EmscriptenWebGLContextAttributes attrs;
   int depth = 0;
@@ -117,7 +114,7 @@ int main()
     std::vector<std::string> exts = split(extensions, ' ');
     for(size_t i = 0; i < exts.size(); ++i)
     {
-      EM_BOOL supported = emscripten_webgl_enable_extension(context, exts[i].c_str());
+      bool supported = emscripten_webgl_enable_extension(context, exts[i].c_str());
       printf("%s\n", exts[i].c_str());
       assert(supported);
     }
@@ -146,7 +143,7 @@ int main()
     printf("RGBA: %d%d%d%d, Depth: %d, Stencil: %d, Samples: %d\n",
       GetInt(GL_RED_BITS), GetInt(GL_GREEN_BITS), GetInt(GL_BLUE_BITS), GetInt(GL_ALPHA_BITS),
       numDepthBits, numStencilBits, numSamples);
-    
+
     if (!depth && stencil && numDepthBits && numStencilBits && EM_ASM_INT(navigator.userAgent.toLowerCase().indexOf('firefox')) > -1)
     {
       numDepthBits = 0;
@@ -158,8 +155,14 @@ int main()
     printf("\n");
 
     // Test bug https://github.com/emscripten-core/emscripten/issues/1330:
+
+#if FULL_ES2
+    // Test bug https://github.com/emscripten-core/emscripten/issues/18886
+    unsigned vb = 100;
+#else
     unsigned vb;
     glGenBuffers(1, &vb);
+#endif
     glBindBuffer(GL_ARRAY_BUFFER, vb);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
@@ -183,6 +186,9 @@ int main()
     glGetVertexAttribiv(0, GL_VERTEX_ATTRIB_ARRAY_ENABLED, &enabled);
     assert(enabled == 0);
 
+#if FULL_ES2
+    glDeleteBuffers(1, &vb);
+#endif
     // Test that deleting the context works.
     res = emscripten_webgl_destroy_context(context);
     assert(res == 0);

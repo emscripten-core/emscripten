@@ -12,7 +12,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 #include <sys/stat.h>
+#include <utime.h>
 
 
 void create_file(const char *path, const char *buffer, int mode) {
@@ -29,6 +31,23 @@ void setup() {
   mkdir("folder", 0777);
   create_file("folder/file", "dracones", 0777);
   symlink("file", "folder/file-link");
+}
+
+void check_times(int fd, struct timespec* expected, int tolerance) {
+  struct stat s;
+  int rtn = fstatat(fd, "", &s, AT_EMPTY_PATH);
+  assert(rtn == 0);
+  printf("atime: tv_sec=%lld tv_nsec=%ld\n", s.st_atim.tv_sec, s.st_atim.tv_nsec);
+  printf("mtime: tv_sec=%lld tv_nsec=%ld\n", s.st_mtim.tv_sec, s.st_mtim.tv_nsec);
+  printf("expected atime: tv_sec=%lld tv_nsec=%ld\n", expected[0].tv_sec, expected[0].tv_nsec);
+  printf("expected mtime: tv_sec=%lld tv_nsec=%ld\n", expected[1].tv_sec, expected[1].tv_nsec);
+  if (tolerance) {
+    assert(llabs(expected[0].tv_sec - s.st_atim.tv_sec) <= tolerance);
+    assert(llabs(expected[1].tv_sec - s.st_mtim.tv_sec) <= tolerance);
+  } else {
+    assert(expected[0].tv_sec == s.st_atim.tv_sec);
+    assert(expected[1].tv_sec == s.st_mtim.tv_sec);
+  }
 }
 
 void test() {
@@ -49,20 +68,82 @@ void test() {
   assert(s.st_rdev == 0);
   assert(s.st_size == 8);
   assert(s.st_ctime);
-#ifdef __EMSCRIPTEN__
+#if defined(__EMSCRIPTEN__) && !defined(NODERAWFS) && !defined(NODEFS)
   assert(s.st_blksize == 4096);
   assert(s.st_blocks == 1);
 #endif
 
-  struct timespec origTimes[2];
-  origTimes[0].tv_sec = (time_t)s.st_atime;
-  origTimes[0].tv_nsec = origTimes[0].tv_sec * 1000;
-  origTimes[1].tv_sec = (time_t)s.st_mtime;
-  origTimes[1].tv_nsec = origTimes[1].tv_sec * 1000;
-  err = futimens(fd, origTimes);
+  struct timespec times[2];
+  times[0].tv_sec = s.st_atim.tv_sec;
+  times[0].tv_nsec = s.st_atim.tv_nsec;
+  times[1].tv_sec = s.st_mtim.tv_sec;
+  times[1].tv_nsec = s.st_mtim.tv_nsec;
+
+  // set the timestampe to the current value
+  err = futimens(fd, times);
+  assert(!err);
+  check_times(fd, times, 0);
+
+  // UTIME_OMIT means that the timeval is ignored, so
+  // this call should do nothing.
+  printf("check double UTIME_OMIT...\n");
+  struct timespec newtimes[2];
+  newtimes[0].tv_sec = 42;
+  newtimes[0].tv_nsec = UTIME_OMIT;
+  newtimes[1].tv_sec = 42;
+  newtimes[1].tv_nsec = UTIME_OMIT;
+  err = futimens(fd, newtimes);
+  assert(!err);
+  check_times(fd, times, 0);
+
+  // Setting just one of the two times to UTIME_OMIT means
+  // the other should be honored.
+  printf("check single UTIME_OMIT...\n");
+  newtimes[0].tv_sec = 41;
+  newtimes[0].tv_nsec = UTIME_OMIT;
+  newtimes[1].tv_sec = 42;
+  newtimes[1].tv_nsec = 88;
+  err = futimens(fd, newtimes);
   assert(!err);
 
+  times[1].tv_sec = 42;
+  times[1].tv_nsec = 88;
+  check_times(fd, times, 0);
+
+  // UTIME_NOW means use the current date and ignore the seconds value
+  printf("check single UTIME_NOW...\n");
+  newtimes[0].tv_sec = 99;
+  newtimes[0].tv_nsec = UTIME_NOW;
+  newtimes[1].tv_sec = 99;
+  newtimes[1].tv_nsec = UTIME_NOW;
+  err = futimens(fd, newtimes);
+  assert(!err);
+
+  struct timespec now;
+  err = clock_gettime(CLOCK_REALTIME, &now);
+  printf("now: %lld %ld\n", now.tv_sec, now.tv_nsec);
+  assert(!err);
+  times[0].tv_sec = now.tv_sec;
+  times[0].tv_nsec = now.tv_nsec;
+  times[1].tv_sec = now.tv_sec;
+  times[1].tv_nsec = now.tv_nsec;
+  check_times(fd, times, 1);
+
+  printf("check setting time to 0...\n");
+  struct utimbuf tb = {0};
+  utime("folder/file", &tb);
+  times[0].tv_sec = 0;
+  times[0].tv_nsec = 0;
+  times[1].tv_sec = 0;
+  times[1].tv_nsec = 0;
+  check_times(fd, times, 0);
+
   close(fd);
+
+  // TODO:
+  // printf("check utime on empty path...\n");
+  // assert(utime("", &tb) == -1);
+  // assert(errno == ENOENT); 
 
   puts("success");
 }

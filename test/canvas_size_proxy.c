@@ -8,15 +8,13 @@
 #include <math.h>
 #include <emscripten/html5.h>
 
-int main() 
-{
-    int result = 0;
-    double w, h;
-    emscripten_get_element_css_size("#canvas", &w, &h);
-    if (isnan(w) || isnan(h))
-    {
-        result = 1;
-    }
-    REPORT_RESULT(result);
-    return 0;
+int main() {
+  int result = 0;
+  double w, h;
+  emscripten_get_element_css_size("#canvas", &w, &h);
+  if (isnan(w) || isnan(h)) {
+    result = 1;
+  }
+  REPORT_RESULT(result);
+  return 0;
 }

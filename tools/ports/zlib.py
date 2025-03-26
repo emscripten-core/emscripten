@@ -5,8 +5,8 @@
 
 import os
 
-VERSION = '1.2.13'
-HASH = '44b834fbfb50cca229209b8dbe1f96b258f19a49f5df23b80970b716371d856a4adf525edb4c6e0e645b180ea949cb90f5365a1d896160f297f56794dd888659'
+VERSION = '1.3.1'
+HASH = '8c9642495bafd6fad4ab9fb67f09b268c69ff9af0f4f20cf15dfc18852ff1f312bd8ca41de761b3f8d8e90e77d79f2ccacd3d4c5b19e475ecf09d021fdfe9088'
 
 
 def needed(settings):
@@ -17,7 +17,7 @@ def get(ports, settings, shared):
   ports.fetch_project('zlib', f'https://github.com/madler/zlib/archive/refs/tags/v{VERSION}.tar.gz', sha512hash=HASH)
 
   def create(final):
-    source_path = os.path.join(ports.get_dir(), 'zlib', 'zlib-' + VERSION)
+    source_path = ports.get_dir('zlib', 'zlib-' + VERSION)
     ports.write_file(os.path.join(source_path, 'zconf.h'), zconf_h)
     ports.install_headers(source_path)
 
@@ -33,12 +33,8 @@ def clear(ports, settings, shared):
   shared.cache.erase_lib('libz.a')
 
 
-def process_args(ports):
-  return []
-
-
 def show():
-  return 'zlib (USE_ZLIB=1; zlib license)'
+  return 'zlib (-sUSE_ZLIB=1 or --use-port=zlib; zlib license)'
 
 
 zconf_h = r'''/* zconf.h -- configuration of the zlib compression library

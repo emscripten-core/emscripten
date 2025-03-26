@@ -101,14 +101,14 @@ void init_webgl(int width, int height)
 
 typedef void (*tick_func)(double t, double dt);
 
-static EM_BOOL tick(double time, void *userData)
+static bool tick(double time, void *userData)
 {
   static double t0;
   double dt = time - t0;
   t0 = time;
   tick_func f = (tick_func)(userData);
   f(time, dt);
-  return EM_TRUE;
+  return true;
 }
 
 void clear_screen(float r, float g, float b, float a)

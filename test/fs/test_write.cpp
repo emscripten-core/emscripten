@@ -24,7 +24,7 @@ int main()
         var pos = lengthBytesUTF8(str);
 
         str = '1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890';
-        data = new Uint8Array(100);
+        data = new Uint8Array(str.length+1);
         stringToUTF8Array(str, data, 0, lengthBytesUTF8(str)+1);
         FS.write(stream, data, 0, lengthBytesUTF8(str)+1, pos, /*canOwn=*/false);
 

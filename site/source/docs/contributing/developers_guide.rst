@@ -8,7 +8,8 @@ This article provides information that is relevant to people who want to
 contribute to Emscripten. We welcome contributions from anyone that is
 interested in helping out!
 
-.. tip:: The information will be less relevant if you're just using Emscripten, but may still be of interest.
+.. tip:: The information will be less relevant if you're just using Emscripten,
+   but may still be of interest.
 
 .. _developers-guide-setting-up:
 
@@ -78,10 +79,10 @@ The :ref:`Emscripten Compiler Frontend (emcc) <emccdoc>` is a python script that
 - **emcc** calls :term:`Clang` to compile C++ and ``wasm-ld`` to link it. It
   builds and integrates with the Emscripten system libraries, both the
   compiled ones and the ones implemented in JS.
-- **emcc** then calls `emscripten.py <https://github.com/emscripten-core/emscripten/blob/main/emscripten.py>`_
+- **emcc** then calls `emscripten.py <https://github.com/emscripten-core/emscripten/blob/main/tools/emscripten.py>`_
   which performs the final transformation to Wasm (including invoking
   **wasm-emscripten-finalize** from Binaryen) and calls the JS compiler
-  (see ``src/compiler.js`` and related files) which emits the JS.
+  (see ``tools/compiler.mjs`` and related files) which emits the JS.
 - If optimizing Wasm, **emcc** will then call **wasm-opt**, run meta-dce, and
   other useful things. It will also run JS optimizations on the JS that is
   emitted alongside the Wasm.

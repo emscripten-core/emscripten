@@ -16,6 +16,7 @@ from tools.shared import cap_max_workers_in_pool
 
 
 NUM_CORES = None
+seen_class = set()
 
 
 def run_test(test):
@@ -24,6 +25,9 @@ def run_test(test):
   temp_dir = tempfile.mkdtemp(prefix='emtest_')
   test.set_temp_dir(temp_dir)
   try:
+    if test.__class__ not in seen_class:
+      seen_class.add(test.__class__)
+      test.__class__.setUpClass()
     test(result)
   except unittest.SkipTest as e:
     result.addSkip(test, e)
@@ -45,6 +49,10 @@ class ParallelTestSuite(unittest.BaseTestSuite):
   def __init__(self, max_cores):
     super().__init__()
     self.max_cores = max_cores
+
+  def addTest(self, test):
+    super().addTest(test)
+    test.is_parallel = True
 
   def run(self, result):
     # The 'spawn' method is used on windows and it can be useful to set this on
@@ -98,6 +106,9 @@ class BufferedParallelTestResult():
   @property
   def test(self):
     return self.buffered_result.test
+
+  def addDuration(self, test, elapsed):
+    pass
 
   def updateResult(self, result):
     result.startTest(self.test)

@@ -6,8 +6,9 @@
 
 import sys
 import emcc
+from tools import shared
 
-emcc.run_via_emxx = True
+shared.run_via_emxx = True
 
 if __name__ == '__main__':
   try:

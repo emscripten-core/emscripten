@@ -73,10 +73,7 @@ int __syscall_munmap(intptr_t addr, size_t length) {
   UNLOCK(lock);
 
   if (!(map->flags & MAP_ANONYMOUS)) {
-    int rtn = _munmap_js(addr, length, map->prot, map->flags, map->fd, map->offset);
-    if (rtn) {
-      return rtn;
-    }
+    _munmap_js(addr, length, map->prot, map->flags, map->fd, map->offset);
   }
 
   // Release the memory.

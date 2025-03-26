@@ -1,0 +1,15 @@
+in main
+running=0 unused=1
+in thread_main: 1
+running=0 unused=1
+in thread_main: 0
+running=0 unused=1
+in thread_main: 1
+running=0 unused=1
+in thread_main: 0
+running=0 unused=1
+in thread_main: 1
+running=0 unused=1
+in thread_main: 0
+running=0 unused=1
+done

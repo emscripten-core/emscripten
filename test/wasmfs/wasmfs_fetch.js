@@ -1,4 +1,5 @@
 addToLibrary({
+  getUrlOrigin__sig: 'vpp',
   getUrlOrigin: function (ptr, len) {
     try {
       var orig = self.location.origin;

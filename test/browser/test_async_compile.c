@@ -14,6 +14,7 @@ int main() {
   int result = EM_ASM_INT({
     return Module.sawAsyncCompilation | 0;
   });
+  printf("sawAsyncCompilation => %d\n", result);
   return result;
 }
 

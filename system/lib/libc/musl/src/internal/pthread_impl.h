@@ -97,9 +97,13 @@ struct pthread {
 	// wait until it reaches 0, at which point the mailbox is considered
 	// closed and no further messages will be enqueued.
 	_Atomic int mailbox_refcount;
-	// Whether the thread has executed a `waitAsync` on this pthread struct
-	// and can be notified of new mailbox messages via `Atomics.notify`.
-	// Otherwise the notification has to fall back to the postMessage path.
+	// Whether the thread has executed an `Atomics.waitAsync` on this
+	// pthread struct and can be notified of new mailbox messages via
+	// `Atomics.notify`. Otherwise, such as when the environment does not
+	// implement `Atomics.waitAsync` or when the thread has not had a chance
+	// to initialize itself yet, the notification has to fall back to the
+	// postMessage path. Once this becomes true, it remains true so we never
+	// fall back to postMessage unnecessarily.
 	_Atomic int waiting_async;
 #endif
 #ifdef EMSCRIPTEN_DYNAMIC_LINKING

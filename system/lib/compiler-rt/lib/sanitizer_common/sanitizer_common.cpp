@@ -61,6 +61,26 @@ void NORETURN ReportMmapFailureAndDie(uptr size, const char *mem_type,
   UNREACHABLE("unable to mmap");
 }
 
+void NORETURN ReportMunmapFailureAndDie(void *addr, uptr size, error_t err,
+                                        bool raw_report) {
+  static int recursion_count;
+  if (raw_report || recursion_count) {
+    // If raw report is requested or we went into recursion just die.  The
+    // Report() and CHECK calls below may call munmap recursively and fail.
+    RawWrite("ERROR: Failed to munmap\n");
+    Die();
+  }
+  recursion_count++;
+  Report(
+      "ERROR: %s failed to deallocate 0x%zx (%zd) bytes at address %p (error "
+      "code: %d)\n",
+      SanitizerToolName, size, size, addr, err);
+#if !SANITIZER_GO
+  DumpProcessMap();
+#endif
+  UNREACHABLE("unable to unmmap");
+}
+
 typedef bool UptrComparisonFunction(const uptr &a, const uptr &b);
 typedef bool U32ComparisonFunction(const u32 &a, const u32 &b);
 
@@ -95,8 +115,9 @@ void ReportErrorSummary(const char *error_message, const char *alt_tool_name) {
   if (!common_flags()->print_summary)
     return;
   InternalScopedString buff;
-  buff.append("SUMMARY: %s: %s",
-              alt_tool_name ? alt_tool_name : SanitizerToolName, error_message);
+  buff.AppendF("SUMMARY: %s: %s",
+               alt_tool_name ? alt_tool_name : SanitizerToolName,
+               error_message);
   __sanitizer_report_error_summary(buff.data());
 }
 
@@ -326,7 +347,13 @@ void RunMallocHooks(void *ptr, uptr size) {
   }
 }
 
-void RunFreeHooks(void *ptr) {
+// Returns '1' if the call to free() should be ignored (based on
+// __sanitizer_ignore_free_hook), or '0' otherwise.
+int RunFreeHooks(void *ptr) {
+  if (__sanitizer_ignore_free_hook(ptr)) {
+    return 1;
+  }
+
   __sanitizer_free_hook(ptr);
   for (int i = 0; i < kMaxMallocFreeHooks; i++) {
     auto hook = MFHooks[i].free_hook;
@@ -334,6 +361,8 @@ void RunFreeHooks(void *ptr) {
       break;
     hook(ptr);
   }
+
+  return 0;
 }
 
 static int InstallMallocFreeHooks(void (*malloc_hook)(const void *, uptr),
@@ -396,6 +425,11 @@ SANITIZER_INTERFACE_WEAK_DEF(void, __sanitizer_malloc_hook, void *ptr,
 
 SANITIZER_INTERFACE_WEAK_DEF(void, __sanitizer_free_hook, void *ptr) {
   (void)ptr;
+}
+
+SANITIZER_INTERFACE_WEAK_DEF(int, __sanitizer_ignore_free_hook, void *ptr) {
+  (void)ptr;
+  return 0;
 }
 
 } // extern "C"

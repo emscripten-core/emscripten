@@ -110,7 +110,7 @@ property. For example:
     console.log(e.stack);
   }
 
-Stack traces within Wasm code are not supported in :ref:`JavaScipt-based
+Stack traces within Wasm code are not supported in :ref:`JavaScript-based
 exceptions <javascript-based-exception-support>`.
 
 
@@ -129,9 +129,11 @@ subclass of ``std::exception``. Otherwise it will be just an empty string.
 
 .. code-block:: javascript
 
+  var sp = stackSave();
   try {
     ... // some code that calls WebAssembly
   } catch (e) {
+    stackRestore(sp);
     console.log(getExceptionMessage(e).toString());
   } finally {
     ...
@@ -145,6 +147,11 @@ exception thrown``, this code will print ``MyException,My exception thrown``.
 To use this function, you need to pass ``-sEXPORT_EXCEPTION_HANDLING_HELPERS``
 to the options. You need to enable either of Emscripten EH or Wasm EH to use
 this option.
+
+If the stack pointer has been moved due to stack allocations within the Wasm
+function before an exception is thrown, you can use ``stackSave()`` and
+``stackRestore()`` to restore the stack pointer so that no stack memory is
+leaked.
 
 .. note:: If you catch a Wasm exception and do not rethrow it, you need to free
    the storage associated with the exception in JS using
@@ -164,3 +171,57 @@ Using Exceptions and setjmp-longjmp Together
 ============================================
 
 See :ref:`using-exceptions-and-setjmp-longjmp-together`.
+
+
+Limitations regarding std::terminate()
+======================================
+
+  * Currently `std::set_terminate
+    <https://en.cppreference.com/w/cpp/error/set_terminate>`_ is NOT supported
+    when a thrown exception does not have a matching handler and unwinds all the
+    stack up to the topmost caller and crashes the program, i.e., there is no
+    ``catch`` that catches it and the callers are not marked as ``noexcept``.
+    This applies to both Emscripten-style and WebAssembly exceptions. That
+    functionality requires `two-phase exception handling
+    <https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html>`_, which neither
+    supports. So the following program does NOT print ``my set_terminate``:
+
+    .. code-block:: cpp
+
+        #include <iostream>
+        #include <exception>
+
+        int main() {
+          std::set_terminate([] {
+            std::cerr << "my set_terminate" << std::endl;
+            std::abort();
+          });
+          throw 3;
+        }
+
+  * When the exception handling encounters a termination condition, libc++abi
+    spec says we call `__cxa_begin_catch()` to mark the exception as handled and
+    then call `std::terminate()`. But currently Wasm EH does not support calling
+    `__cxa_begin_catch()`. So the following program prints ``exception_ptr is
+    null``, where it is supposed to print ``exception_ptr is NOT null``; note
+    that the use of ``noexcept`` here means that the ``throw 3`` will turn into
+    a termination condition.
+
+    .. code-block:: cpp
+
+        #include <iostream>
+        #include <exception>
+
+        int main() noexcept {
+          std::set_terminate([] {
+            auto ptr = std::current_exception();
+            if (ptr)
+              std::cerr << "exception_ptr is NOT null" << std::endl;
+            else
+              std::cerr << "exception_ptr is null" << std::endl;
+            std::abort();
+          });
+          throw 3;
+        }
+
+    This can possibly be supported in the future.

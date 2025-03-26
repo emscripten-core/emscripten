@@ -17,20 +17,15 @@
 int wheel_up = 0;
 int wheel_down = 0;
 
-void mouseCB(int button, int state, int x, int y)
-{
-    if(button == 3)
-    {
-      wheel_up = 1;   
-    }
-    else if (button == 4)
-    {
-      wheel_down = 1;
-    }
+void mouseCB(int button, int state, int x, int y) {
+  if (button == 3) {
+    wheel_up = 1;
+  } else if (button == 4) {
+    wheel_down = 1;
+  }
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   emscripten_run_script(MULTILINE(
       Module.injectWheelEvent = function(x, y, delta) {
           var isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;

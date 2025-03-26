@@ -1,28 +1,19 @@
 # TODO(sbc): switch to using Pipenv since it seems like that way to go
 # these day managing python deps.
-# These requirements are only needed for developers who want to run flake8 on
+# These requirements are only needed for developers who want to run ruff on
 # the codebase and generate docs using Sphinx, not for users of emscripten.
 # Install with `pip3 install -r requirements-dev.txt`
 
-flake8==5.0.4
-flake8-bugbear==22.9.23
-flake8-unused-arguments==0.0.11
-coverage==5.5
+coverage[toml]==5.5
 mypy==0.971
+ruff==0.9.1
 types-requests==2.27.14
 unittest-xml-reporting==3.1.0
 
-# See https://github.com/emscripten-core/emscripten/issues/19785
-lxml==4.9.2
-
 # This version is mentioned in `site/source/docs/site/about.rst`.
 # Please keep them in sync.
-sphinx==2.4.4
-# See https://github.com/readthedocs/readthedocs.org/issues/9038
-jinja2<3.1
-
-# Pin docutils because newer versions are not compatible with sphinx 2.4.4
-docutils==0.17.1
+sphinx==7.1.2
+sphinxcontrib-jquery==4.0
 
 # Needed by test/test_sockets.py
 websockify==0.10.0

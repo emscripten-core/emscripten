@@ -50,8 +50,8 @@ template<typename T>
 struct BindingType<T, typename std::enable_if<IsIntWrapper<T>::value, void>::type> {
   typedef typename BindingType<IntWrapperIntermediate>::WireType WireType;
 
-  constexpr static WireType toWireType(const T& v) {
-    return BindingType<IntWrapperIntermediate>::toWireType(v.get());
+  constexpr static WireType toWireType(const T& v, rvp::default_tag) {
+    return BindingType<IntWrapperIntermediate>::toWireType(v.get(), rvp::default_tag{});
   }
   constexpr static T fromWireType(WireType v) {
     return T::create(BindingType<IntWrapperIntermediate>::fromWireType(v));

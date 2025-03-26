@@ -2,9 +2,8 @@
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
-// syscalls.cpp will implement the syscalls of the new file system replacing the
-// old JS version. Current Status: Work in Progress. See
-// https://github.com/emscripten-core/emscripten/issues/15041.
+
+// Syscall implementations.
 
 #define _LARGEFILE64_SOURCE // For F_GETLK64 etc
 
@@ -61,7 +60,7 @@ int __syscall_dup3(int oldfd, int newfd, int flags) {
   if (!oldOpenFile) {
     return -EBADF;
   }
-  if (newfd < 0) {
+  if (newfd < 0 || newfd >= WASMFS_FD_MAX) {
     return -EBADF;
   }
   if (oldfd == newfd) {
@@ -159,7 +158,7 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     // The write was successful.
     bytesWritten += result;
     if (result < len) {
-      // The read was short, so stop here.
+      // The write was short, so stop here.
       break;
     }
   }
@@ -353,10 +352,6 @@ static timespec ms_to_timespec(double ms) {
   return ts;
 }
 
-static double timespec_to_ms(timespec ts) {
-  return double(ts.tv_sec) * 1000 + double(ts.tv_nsec) / (1000 * 1000);
-}
-
 int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
   // Only accept valid flags.
   if (flags & ~(AT_EMPTY_PATH | AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW)) {
@@ -524,7 +519,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
     return -EEXIST;
   }
 
-  if (child->is<Directory>() && accessMode != O_RDONLY) {
+  if (child->is<Directory>() && (accessMode != O_RDONLY || (flags & O_CREAT))) {
     return -EISDIR;
   }
 
@@ -764,11 +759,9 @@ int __syscall_getcwd(intptr_t buf, size_t size) {
       return -ENOENT;
     }
 
-    auto parentDir = parent->dynCast<Directory>();
-
-    auto name = parentDir->locked().getName(curr);
+    auto name = parent->locked().getName(curr);
     result = '/' + name + result;
-    curr = parentDir;
+    curr = parent;
   }
 
   // Check if the cwd is the root directory.
@@ -776,17 +769,16 @@ int __syscall_getcwd(intptr_t buf, size_t size) {
     result = "/";
   }
 
-  auto res = result.c_str();
-  int len = strlen(res) + 1;
+  int len = result.length() + 1;
 
   // Check if the size argument is less than the length of the absolute
   // pathname of the working directory, including null terminator.
-  if (len >= size) {
+  if (len > size) {
     return -ERANGE;
   }
 
   // Return value is a null-terminated c string.
-  strcpy((char*)buf, res);
+  strcpy((char*)buf, result.c_str());
 
   return len;
 }
@@ -875,8 +867,8 @@ int __syscall_rmdir(intptr_t path) {
 
 // wasmfs_unmount is similar to __syscall_unlinkat, but assumes AT_REMOVEDIR is
 // true and will only unlink mountpoints (Empty and nonempty).
-int wasmfs_unmount(intptr_t path) {
-  auto parsed = path::parseParent((char*)path, AT_FDCWD);
+int wasmfs_unmount(const char* path) {
+  auto parsed = path::parseParent(path, AT_FDCWD);
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -892,14 +884,14 @@ int wasmfs_unmount(intptr_t path) {
     return -EBUSY;
   }
 
-  if (auto dir = file->dynCast<Directory>()) {
-    if (parent->getBackend() == dir->getBackend()) {
-      // The child is not a valid mountpoint.
-      return -EINVAL;
-    }
-  } else {
+  if (!file->dynCast<Directory>()) {
     // A normal file or symlink.
     return -ENOTDIR;
+  }
+
+  if (parent->getBackend() == file->getBackend()) {
+    // The child is not a valid mountpoint.
+    return -EINVAL;
   }
 
   // Input is valid, perform the unlink.
@@ -1099,10 +1091,6 @@ int __syscall_symlinkat(intptr_t target, int newdirfd, intptr_t linkpath) {
   return 0;
 }
 
-int __syscall_symlink(intptr_t target, intptr_t linkpath) {
-  return __syscall_symlinkat(target, AT_FDCWD, linkpath);
-}
-
 // TODO: Test this with non-AT_FDCWD values.
 int __syscall_readlinkat(int dirfd,
                          intptr_t path,
@@ -1121,6 +1109,16 @@ int __syscall_readlinkat(int dirfd,
   auto bytes = std::min((size_t)bufsize, target.size());
   memcpy((char*)buf, target.c_str(), bytes);
   return bytes;
+}
+
+static double timespec_to_ms(timespec ts) {
+  if (ts.tv_nsec == UTIME_OMIT) {
+    return INFINITY;
+  }
+  if (ts.tv_nsec == UTIME_NOW) {
+    return emscripten_date_now();
+  }
+  return double(ts.tv_sec) * 1000 + double(ts.tv_nsec) / (1000 * 1000);
 }
 
 // TODO: Test this with non-AT_FDCWD values.
@@ -1148,7 +1146,7 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
   // TODO: Check for write access to the file (see man page for specifics).
   double aTime, mTime;
 
-  if (times == NULL) {
+  if (times == nullptr) {
     aTime = mTime = emscripten_date_now();
   } else {
     aTime = timespec_to_ms(times[0]);
@@ -1156,20 +1154,18 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
   }
 
   auto locked = parsed.getFile()->locked();
-  locked.setATime(aTime);
-  locked.setMTime(mTime);
+  if (aTime != INFINITY) {
+    locked.setATime(aTime);
+  }
+  if (mTime != INFINITY) {
+    locked.setMTime(mTime);
+  }
 
   return 0;
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_fchmodat(int dirfd, intptr_t path, int mode, ...) {
-  int flags = 0;
-  va_list v1;
-  va_start(v1, mode);
-  flags = va_arg(v1, int);
-  va_end(v1);
-
+int __syscall_fchmodat2(int dirfd, intptr_t path, int mode, int flags) {
   if (flags & ~AT_SYMLINK_NOFOLLOW) {
     // TODO: Test this case.
     return -EINVAL;
@@ -1186,7 +1182,7 @@ int __syscall_fchmodat(int dirfd, intptr_t path, int mode, ...) {
 }
 
 int __syscall_chmod(intptr_t path, int mode) {
-  return __syscall_fchmodat(AT_FDCWD, path, mode, 0);
+  return __syscall_fchmodat2(AT_FDCWD, path, mode, 0);
 }
 
 int __syscall_fchmod(int fd, int mode) {
@@ -1522,19 +1518,12 @@ int __syscall_fcntl64(int fd, int cmd, ...) {
     case F_SETLKW: {
       static_assert(F_SETLK == F_SETLK64);
       static_assert(F_SETLKW == F_SETLKW64);
-      // Always error for now, until we implement byte-range locks.
-      return -EACCES;
+      // Pretend that the locking is successful. These are process-level locks,
+      // and Emscripten programs are a single process. If we supported linking a
+      // filesystem between programs, we'd need to do more here.
+      // See https://github.com/emscripten-core/emscripten/issues/23697
+      return 0;
     }
-    case F_GETOWN_EX:
-    case F_SETOWN:
-      // These are for sockets. We don't have them fully implemented yet.
-      return -EINVAL;
-    case F_GETOWN:
-      // Work around what seems to be a musl bug, where they do not set errno
-      // in the caller. This has been an issue since the JS filesystem and had
-      // the same workaround there.
-      errno = EINVAL;
-      return -1;
     default: {
       // TODO: support any remaining cmds
       return -EINVAL;
@@ -1593,6 +1582,10 @@ int _mmap_js(size_t length,
   // PROT_READ or PROT_WRITE).
   if ((prot & PROT_EXEC)) {
     return -EPERM;
+  }
+
+  if (!length) {
+    return -EINVAL;
   }
 
   // One of MAP_PRIVATE, MAP_SHARED, or MAP_SHARED_VALIDATE must be used.

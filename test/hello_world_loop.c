@@ -21,4 +21,3 @@ int main() {
   dump(copy);
   return 0;
 }
-

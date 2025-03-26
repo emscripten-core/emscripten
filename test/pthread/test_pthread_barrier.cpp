@@ -44,7 +44,7 @@ void *thread_main(void *arg)
     }
 
     // Then each thread sums the one intermediate vector.
-    int totalSum = 0;
+    intptr_t totalSum = 0;
     for(int i = 0; i < N; ++i)
         totalSum += intermediate[i];
 
@@ -57,7 +57,6 @@ int main(int argc, char **argv)
 
     // Create the matrix and compute the expected result.
     int expectedTotalSum = 0;
-    srand(time(NULL));
     for(int i = 0; i < N; ++i)
         for(int j = 0; j < N; ++j)
         {
@@ -70,9 +69,10 @@ int main(int argc, char **argv)
     int ret = pthread_barrier_init(&barr, NULL, THREADS);
     assert(ret == 0);
 
-    for(int i = 0; i < THREADS; ++i) pthread_create(&thr[i], NULL, &thread_main, (void*)i);
-    for(int i = 0; i < THREADS; ++i)
-    {
+    for(intptr_t i = 0; i < THREADS; ++i) {
+      pthread_create(&thr[i], NULL, &thread_main, (void*)i);
+    }
+    for(int i = 0; i < THREADS; ++i) {
         int totalSum = 0;
         pthread_join(thr[i], (void**)&totalSum);
         assert(totalSum == expectedTotalSum);

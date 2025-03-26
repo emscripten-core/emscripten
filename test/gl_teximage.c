@@ -26,8 +26,7 @@ typedef enum {
 
 /* Report success or failure (1 or 0) to Emscripten's test harness. Also, exit
  * with the given error code. */
-static void exit_with_status(TestStatus code)
-{
+static void exit_with_status(TestStatus code) {
 #ifdef REPORT_RESULT
     int result = (code == TEST_STATUS_SUCCESS) ? 1 : 0;
     REPORT_RESULT(result);
@@ -37,16 +36,14 @@ static void exit_with_status(TestStatus code)
 }
 
 /* Loop over all glGetError() results until GL reports GL_NO_ERROR */
-static void clear_gl_errors()
-{
+static void clear_gl_errors() {
     GLenum err;
     do {
         err = glGetError();
     } while (err != GL_NO_ERROR);
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     TestStatus passed = TEST_STATUS_SUCCESS;
     SDL_Surface *screen;
 

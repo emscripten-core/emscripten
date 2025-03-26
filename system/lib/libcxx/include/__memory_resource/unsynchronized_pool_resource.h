@@ -19,7 +19,7 @@
 #  pragma GCC system_header
 #endif
 
-#if _LIBCPP_STD_VER > 14
+#if _LIBCPP_STD_VER >= 17
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -27,7 +27,7 @@ namespace pmr {
 
 // [mem.res.pool.overview]
 
-class _LIBCPP_TYPE_VIS unsynchronized_pool_resource : public memory_resource {
+class _LIBCPP_AVAILABILITY_PMR _LIBCPP_EXPORTED_FROM_ABI unsynchronized_pool_resource : public memory_resource {
   class __fixed_pool;
 
   class __adhoc_pool {
@@ -101,6 +101,6 @@ private:
 
 _LIBCPP_END_NAMESPACE_STD
 
-#endif // _LIBCPP_STD_VER > 14
+#endif // _LIBCPP_STD_VER >= 17
 
 #endif // _LIBCPP___MEMORY_RESOURCE_UNSYNCHRONIZED_POOL_RESOURCE_H

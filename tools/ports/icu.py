@@ -31,7 +31,7 @@ def get(ports, settings, shared):
 
   def prepare_build():
     nonlocal icu_source_path
-    source_path = os.path.join(ports.get_dir(), 'icu', 'icu') # downloaded icu4c path
+    source_path = ports.get_dir('icu', 'icu') # downloaded icu4c path
     icu_source_path = os.path.join(source_path, 'source')
 
   def build_lib(lib_output, lib_src, other_includes, build_flags):
@@ -39,6 +39,8 @@ def get(ports, settings, shared):
         # TODO: investigate why this is needed and remove
         '-Wno-macro-redefined',
         '-Wno-deprecated-declarations',
+        '-Wno-array-compare',
+        '-Wno-unknown-warning-option',
         # usage of 'using namespace icu' is deprecated: icu v61
         '-DU_USING_ICU_NAMESPACE=0',
         # make explicit inclusion of utf header: ref utf.h
@@ -99,9 +101,5 @@ def clear(ports, settings, shared):
   shared.cache.erase_lib(get_lib_name(libname_libicu_io, settings))
 
 
-def process_args(ports):
-  return []
-
-
 def show():
-  return 'icu (USE_ICU=1; Unicode License)'
+  return 'icu (-sUSE_ICU=1 or --use-port=icu; Unicode License)'

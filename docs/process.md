@@ -1,5 +1,8 @@
 # Development Processes
 
+More information can be found in the [Contribution
+section](https://emscripten.org/docs/contributing/contributing.html) of the
+webside.
 
 ## Landing PRs
 
@@ -52,8 +55,8 @@ pre-processor.  See [`.clang-format`][clang-format] for more details.
 ### Python Code
 
 We generally follow the pep8 standard with the major exception that we use 2
-spaces for indentation.  `flake8` is run on all PRs to ensure that python code
-conforms to this style.  See [`.flake8`][flake8] for more details.
+spaces for indentation.  `ruff` is run on all PRs to ensure that Python code
+conforms to this style.  See [`pyproject.toml`][pyproject.toml] for more details.
 
 #### Static Type Checking
 
@@ -92,6 +95,11 @@ How:
    [emscripten-releases][releases_repo] repo. When this CL is committed, let the
    resulting SHA be `<LTO-sha>`. An example of this CL is
    https://chromium-review.googlesource.com/c/emscripten-releases/+/3781978.
+   After landing the CL, wait for a couple hours before proceeding because
+   building and archiving for the new commit will take some time. Check
+   https://ci.chromium.org/p/emscripten-releases/g/main/console to see if the
+   commit has passed "Archive Binaries" phase for all three platforms and
+   additionally "Archive Binaries (arm64)" for Mac.
 1. Run [`scripts/create_release.py`][create_release_emsdk] in the emsdk
    repository. When we do both an LTO and a non-LTO release, run:
    ```
@@ -160,6 +168,18 @@ itself, or pass the location of the checkout if not.
 You will need the specific sphinx version installed, which you can do using
 `pip3 install -r requirements-dev.txt` (depending on your system, you may then
 need to add `~/.local/bin` to your path, if pip installs to there).
+
+
+### Building and viewing the Website locally
+
+To build the site locally for testing purposes you only need a subset of the
+`update_docs.py` command just mentioned above. Specifically:
+
+1. Run `pip3` to install python dependencies, as described above.
+2. Run `make -C site html`.
+3. Run a local webserver on the outout of that command, e.g.,
+   `python3 -m http.server 8000 -d site/build/html`.
+4. Browse to `http://localhost:8000/` (assuming you use port 8000 as above).
 
 
 ## Updating the `emcc.py` help text
@@ -284,7 +304,7 @@ To update our libraries to a newer musl release:
 [emsdk_tags]: https://github.com/emscripten-core/emsdk/tags
 [emscripten_tags]: https://github.com/emscripten-core/emscripten/tags
 [clang-format]: https://github.com/emscripten-core/emscripten/blob/main/.clang-format
-[flake8]: https://github.com/emscripten-core/emscripten/blob/main/.flake8
+[pyproject.toml]: https://github.com/emscripten-core/emscripten/blob/main/pyproject.toml
 [mypy]: https://github.com/emscripten-core/emscripten/blob/main/.mypy
 [update_docs]: https://github.com/emscripten-core/emscripten/blob/main/tools/maint/update_docs.py
 [llvm_repo]: https://github.com/llvm/llvm-project

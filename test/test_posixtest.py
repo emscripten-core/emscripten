@@ -24,7 +24,7 @@ class posixtest(RunnerCore):
 
   This class get populated dynamically below.
   """
-  pass
+  pass  # noqa: PIE790
 
 
 def filter_tests(all_tests):
@@ -62,7 +62,6 @@ unsupported_noreturn = {
   'test_pthread_atfork_2_2': 'fork() and multiple processes are not supported',
   'test_pthread_atfork_3_2': 'fork() and multiple processes are not supported',
   'test_pthread_atfork_4_1': 'fork() and multiple processes are not supported',
-  'test_pthread_kill_1_1': 'signals are not supported',
   'test_pthread_create_1_5': 'fork() and multiple processes are not supported',
   'test_pthread_exit_6_1': 'lacking necessary mmap() support',
   'test_pthread_spin_lock_1_1': 'signals are not supported',
@@ -102,7 +101,6 @@ unsupported = {
   'test_pthread_getcpuclockid_1_1': 'pthread_getcpuclockid not supported',
   'test_pthread_getschedparam_1_3': 'scheduling policy/parameters are not supported',
   'test_pthread_getschedparam_1_2': 'scheduling policy/parameters are not supported',
-  'test_pthread_kill_1_2': 'signals are not supported',
   'test_pthread_mutexattr_getprioceiling_1_2': 'pthread_mutexattr_setprioceiling is not supported',
   'test_pthread_mutexattr_getprotocol_1_2': 'pthread_mutexattr_setprotocol is not supported',
   'test_pthread_mutexattr_setprioceiling_1_1': 'pthread_mutexattr_setprioceiling is not supported',

@@ -34,7 +34,7 @@ __attribute__((noinline)) int calc(int x) {
   }
   // Keep the recursion by passing the function pointer between C++ and JS, so
   // that we have a deeply nested stack.
-  int (*fp)(int) = (int(*)(int))EM_ASM_INT({
+  int (*fp)(int) = (int(*)(int))EM_ASM_PTR({
     return $0;
   }, &calc);
   return fp(x - 1);

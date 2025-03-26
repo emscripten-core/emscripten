@@ -20,21 +20,25 @@
 extern "C" {
 #endif
 
-// Returns a pointer to a memory location that contains the heap DYNAMICTOP
-// variable (the end of the dynamic memory region)
+// Returns a pointer to a memory location that contains the current sbrk
+// location (which marks the end of the dynamic memory region used for malloc,
+// etc).
 uintptr_t *emscripten_get_sbrk_ptr(void);
 
-// Attempts to geometrically or linearly increase the heap so that it
-// grows to the new size of at least `requested_size` bytes. The heap size may
-// be overallocated, see src/settings.js variables MEMORY_GROWTH_GEOMETRIC_STEP,
+// Attempts to geometrically or linearly increase the size of the WebAssembly
+// memory (referred to as heap for legacy reason) so that its new size is at
+// least `requested_size` bytes. The size may be overallocated, see
+// src/settings.js variables MEMORY_GROWTH_GEOMETRIC_STEP,
 // MEMORY_GROWTH_GEOMETRIC_CAP and MEMORY_GROWTH_LINEAR_STEP. This function
-// cannot be used to shrink the size of the heap.
+// cannot be used to shrink the size of the memory.
 int emscripten_resize_heap(size_t requested_size) EM_IMPORT(emscripten_resize_heap);
 
-// Returns the current size of the WebAssembly heap.
+// Returns the current size of the WebAssembly memory (referred to as heap for
+// legacy reason).
 size_t emscripten_get_heap_size(void);
 
-// Returns the max size of the WebAssembly heap.
+// Returns the max size of the WebAssembly memory (referred to as heap for
+// legacy reason).
 size_t emscripten_get_heap_max(void);
 
 // Direct access to the system allocator.  Use these to access that underlying
@@ -42,6 +46,8 @@ size_t emscripten_get_heap_max(void);
 // dlmalloc and emmalloc.
 void *emscripten_builtin_memalign(size_t alignment, size_t size);
 void *emscripten_builtin_malloc(size_t size);
+void *emscripten_builtin_realloc(void *ptr, size_t size);
+void *emscripten_builtin_calloc(size_t nmemb, size_t size);
 void emscripten_builtin_free(void *ptr);
 
 #ifdef __cplusplus

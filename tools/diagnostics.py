@@ -242,6 +242,10 @@ def disable_warning(name):
   manager.warnings[name]['enabled'] = False
 
 
+def is_enabled(name):
+  return manager.warnings[name]['enabled']
+
+
 def warning(warning_type, message, *args):
   manager.warning(warning_type, message, *args)
 

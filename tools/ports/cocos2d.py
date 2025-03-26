@@ -23,7 +23,7 @@ def get(ports, settings, shared):
   def create(final):
     diagnostics.warning('experimental', 'cocos2d: library is experimental, do not expect that it will work out of the box')
 
-    cocos2d_src = os.path.join(ports.get_dir(), 'cocos2d')
+    cocos2d_src = ports.get_dir('cocos2d')
     cocos2d_root = os.path.join(cocos2d_src, 'Cocos2d-' + TAG)
     cocos2dx_root = os.path.join(cocos2d_root, 'cocos2dx')
 
@@ -69,12 +69,12 @@ def process_dependencies(settings):
 def process_args(ports):
   args = []
   for include in make_includes(ports.get_include_dir('cocos2d')):
-    args.append('-I' + include)
+    args += ['-isystem', include]
   return args
 
 
 def show():
-  return 'cocos2d'
+  return 'cocos2d (-sUSE_COCOS2D=3 or --use-port=cocos2d)'
 
 
 def make_source_list(cocos2d_root, cocos2dx_root):

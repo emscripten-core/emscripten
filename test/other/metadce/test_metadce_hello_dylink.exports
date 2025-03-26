@@ -1,9 +1,0 @@
-__wasm_apply_data_relocs
-__wasm_call_ctors
-dynCall_jiji
-main
-malloc
-setThrew
-stackAlloc
-stackRestore
-stackSave

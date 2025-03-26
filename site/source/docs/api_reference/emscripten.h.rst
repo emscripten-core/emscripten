@@ -349,7 +349,7 @@ Guide material for the following APIs can be found in :ref:`emscripten-runtime-e
 Functions
 ---------
 
-.. c:function:: void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_infinite_loop)
+.. c:function:: void emscripten_set_main_loop(em_callback_func func, int fps, bool simulate_infinite_loop)
 
   Set a C function as the main event loop for the calling thread.
 
@@ -373,10 +373,10 @@ Functions
 
   :param em_callback_func func: C function to set as main event loop for the calling thread.
   :param int fps: Number of frames per second that the JavaScript will call the function. Setting ``int <=0`` (recommended) uses the browser’s ``requestAnimationFrame`` mechanism to call the function.
-  :param int simulate_infinite_loop: If true, this function will throw an exception in order to stop execution of the caller.
+  :param bool simulate_infinite_loop: If true, this function will throw an exception in order to stop execution of the caller.
 
 
-.. c:function:: void emscripten_set_main_loop_arg(em_arg_callback_func func, void *arg, int fps, int simulate_infinite_loop)
+.. c:function:: void emscripten_set_main_loop_arg(em_arg_callback_func func, void *arg, int fps, bool simulate_infinite_loop)
 
   Set a C function as the main event loop for the calling thread, passing it user-defined data.
 
@@ -385,7 +385,7 @@ Functions
   :param em_arg_callback_func func: C function to set as main event loop. The function signature must have a ``void*`` parameter for passing the ``arg`` value.
   :param void* arg: User-defined data passed to the main loop function, untouched by the API itself.
   :param int fps: Number of frames per second at which the JavaScript will call the function. Setting ``int <=0`` (recommended) uses the browser’s ``requestAnimationFrame`` mechanism to call the function.
-  :param int simulate_infinite_loop: If true, this function will throw an exception in order to stop execution of the caller.
+  :param bool simulate_infinite_loop: If true, this function will throw an exception in order to stop execution of the caller.
 
 
 .. c:function:: void emscripten_push_main_loop_blocker(em_arg_callback_func func, void *arg)
@@ -482,8 +482,9 @@ Functions
 
 .. c:function:: void emscripten_exit_with_live_runtime(void)
 
-  Exits the program immediately, but leaves the runtime alive so that you can continue to run code later (so global destructors etc., are not run). Note that the runtime is kept alive automatically when you do an asynchronous operation like :c:func:`emscripten_async_call`, so you don't need to call this function for those cases.
+  Stops the current thread of execution, but leaves the runtime alive so that you can continue to run code later (so global destructors etc., are not run). Note that the runtime is kept alive automatically when you do an asynchronous operation like :c:func:`emscripten_async_call`, so you don't need to call this function for those cases.
 
+  In a multithreaded application, this just exits the current thread (and allows running code later in the Web Worker in which it runs).
 
 .. c:function:: void emscripten_force_exit(int status)
 
@@ -777,7 +778,7 @@ Functions
 
 .. c:function:: void emscripten_dlopen(const char *filename, int flags, void* user_data, em_dlopen_callback onsuccess, em_arg_callback_func onerror);
 
-  Starts and asyncronous dlopen operation to load a shared library from a
+  Starts an asynchronous dlopen operation to load a shared library from a
   filename or URL.  Returns immediately and requires the caller to return to the
   event loop.  The ``onsuccess`` and ``onerror`` callbacks are used to signal
   success or failure of the request.  Upon ``onerror`` callback the normal
@@ -1047,7 +1048,7 @@ Defines
 
 .. c:macro:: EM_LOG_ERROR
 
-  If specified, prints an error message (combined with :c:data:`EM_LOG_CONSOLE`). If neither :c:data:`EM_LOG_WARN`, :c:data:`EM_LOG_ERROR`, :c:data:`EM_LOG_INFO` nor :c:data:`EM_LOG_DEBUG` is specified, a log message is printed. :c:data:`EM_LOG_WARN`, :c:data:`EM_LOG_INFO`, :c:data:`EM_LOG_DEBUG` and :c:data:`EM_LOG_ERROR` are mutually exclusive. If :c:data:`EM_LOG_CONSOLE` is not specified then the message will be outputed via err() (for :c:data:`EM_LOG_ERROR` or :c:data:`EM_LOG_WARN`) or out() otherwise.
+  If specified, prints an error message (combined with :c:data:`EM_LOG_CONSOLE`). If neither :c:data:`EM_LOG_WARN`, :c:data:`EM_LOG_ERROR`, :c:data:`EM_LOG_INFO` nor :c:data:`EM_LOG_DEBUG` is specified, a log message is printed. :c:data:`EM_LOG_WARN`, :c:data:`EM_LOG_INFO`, :c:data:`EM_LOG_DEBUG` and :c:data:`EM_LOG_ERROR` are mutually exclusive. If :c:data:`EM_LOG_CONSOLE` is not specified then the message will be outputted via err() (for :c:data:`EM_LOG_ERROR` or :c:data:`EM_LOG_WARN`) or out() otherwise.
 
 .. c:macro:: EM_LOG_C_STACK
 

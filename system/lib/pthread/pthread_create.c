@@ -335,7 +335,7 @@ void _emscripten_thread_exit(void* result) {
   int state = a_cas(&self->detach_state, DT_JOINABLE, DT_EXITING);
 
   if (state == DT_DETACHED) {
-    __emscripten_thread_cleanup(self);
+    _emscripten_thread_cleanup(self);
   } else {
     // Mark the thread as no longer running, so it can be joined.
     // Once we publish this, any threads that are waiting to join with us can
@@ -361,4 +361,5 @@ _Noreturn void __pthread_exit(void* retval) {
 
 weak_alias(__pthread_create, emscripten_builtin_pthread_create);
 weak_alias(__pthread_create, pthread_create);
+weak_alias(__pthread_exit, emscripten_builtin_pthread_exit);
 weak_alias(__pthread_exit, pthread_exit);

@@ -37,34 +37,34 @@ int main() {
   const double interestingDoubles[] = { -4.5,  -3.6,  -3.5,  -3.4,  -2.6,  -2.5,  -2.4,  -1.5,  -0.5,  0, 0.5,  1.4,  1.5,  1.6,  2.5,  3.5,  4.5 };
   const float interestingFloats[] =   { -4.5f, -3.6f, -3.5f, -3.4f, -2.6f, -2.5f, -2.4f, -1.5f, -0.5f, 0, 0.5f, 1.4f, 1.5f, 1.6f, 2.5f, 3.5f, 4.5f };
 
-  for(int i = 0; i < NUMELEMS(modes); ++i)
+  for (int i = 0; i < NUMELEMS(modes); ++i)
   {
     int ret = fesetround(modes[i]);
     int modeAfter = fegetround();
     printf("fesetround(%s) returned %d, fegetround() afterwards returns %s. Test results:\n", mode(modes[i]), ret, mode(modeAfter));
 
-    for(int j = 0; j < NUMELEMS(interestingDoubles); ++j)
+    for (int j = 0; j < NUMELEMS(interestingDoubles); ++j)
       printf("%s: round(%.1f)=%.1f\n", mode(modeAfter), interestingDoubles[j], round(interestingDoubles[j]));
 
-    for(int j = 0; j < NUMELEMS(interestingFloats); ++j)
+    for (int j = 0; j < NUMELEMS(interestingFloats); ++j)
       printf("%s: roundf(%.1f)=%.1f\n", mode(modeAfter), interestingFloats[j], roundf(interestingFloats[j]));
 
-    for(int j = 0; j < NUMELEMS(interestingDoubles); ++j)
+    for (int j = 0; j < NUMELEMS(interestingDoubles); ++j)
       printf("%s: rint(%.1f)=%.1f\n", mode(modeAfter), interestingDoubles[j], rint(interestingDoubles[j]));
 
-    for(int j = 0; j < NUMELEMS(interestingDoubles); ++j)
+    for (int j = 0; j < NUMELEMS(interestingDoubles); ++j)
       printf("%s: rintf(%.1f)=%.1f\n", mode(modeAfter), interestingFloats[j], rint(interestingFloats[j]));
 
-    for(int j = 0; j < NUMELEMS(interestingDoubles); ++j)
+    for (int j = 0; j < NUMELEMS(interestingDoubles); ++j)
       printf("%s: lrint(%.1f)=%ld\n", mode(modeAfter), interestingDoubles[j], lrint(interestingDoubles[j]));
 
-    for(int j = 0; j < NUMELEMS(interestingDoubles); ++j)
+    for (int j = 0; j < NUMELEMS(interestingDoubles); ++j)
       printf("%s: lrintf(%.1f)=%ld\n", mode(modeAfter), interestingFloats[j], lrintf(interestingFloats[j]));
 
-    for(int j = 0; j < NUMELEMS(interestingDoubles); ++j)
+    for (int j = 0; j < NUMELEMS(interestingDoubles); ++j)
       printf("%s: llrint(%.1f)=%lld\n", mode(modeAfter), interestingDoubles[j], llrint(interestingDoubles[j]));
 
-    for(int j = 0; j < NUMELEMS(interestingDoubles); ++j)
+    for (int j = 0; j < NUMELEMS(interestingDoubles); ++j)
       printf("%s: llrintf(%.1f)=%lld\n", mode(modeAfter), interestingFloats[j], llrintf(interestingFloats[j]));
   }
 

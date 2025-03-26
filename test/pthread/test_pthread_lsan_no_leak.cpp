@@ -13,7 +13,6 @@ void g(void) {
   void *stuff = malloc(3432);
   tls_ptr = malloc(1234);
   atomic_store(&thread_done, true);
-  printf("thread done\n");
   while (1);
 }
 

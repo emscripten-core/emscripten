@@ -211,9 +211,8 @@ Limitations
   ``file_packager.py``) to make Emscripten compile them on startup
   `[doc] <https://emscripten.org/docs/porting/files/packaging_files.html#preloading-files>`__
   `[discuss] <https://groups.google.com/forum/#!topic/emscripten-discuss/cE3hUV3fDSw>`__.
-- ``EM_ASM`` code defined within side modules depends on ``eval`` support are
-  is therefore incompatible with ``-sDYNAMIC_EXECUTION=0``.
-- ``EM_JS`` functions defined in side modules are not yet supported.
+- ``EM_ASM`` and ``EM_JS`` code defined within side modules depends on ``eval``
+  support and are therefore incompatible with ``-sDYNAMIC_EXECUTION=0``.
 
 
 Pthreads support
@@ -232,7 +231,7 @@ added and these changes need to be mirrored on every thread in the process.
 Changes to the table are protected by a mutex, and before any thread returns
 from ``dlopen`` or ``dlsym`` it will wait until all other threads are sync.  In
 order to make this synchronization as seamless as possible, we hook into the
-low level primitives of `emscripten_futex_wait` and `emscirpten_yield`.
+low level primitives of `emscripten_futex_wait` and `emscripten_yield`.
 
 For most use cases all this happens under hood and no special action is needed.
 However, there there is one class of application that currently may require

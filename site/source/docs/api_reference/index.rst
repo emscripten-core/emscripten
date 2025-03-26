@@ -25,7 +25,7 @@ high level it consists of:
 - :ref:`Fetch-API`:
   API for managing accesses to network XHR and IndexedDB.
 
-- :ref:`wasm_workers`:
+- :ref:`wasm workers section`:
   Enables writing multithreaded programs using a web-like API.
 
 - :ref:`wasm_audio_worklets`:

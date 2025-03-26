@@ -51,7 +51,14 @@
 #define SYMLOOP_MAX 40
 #define WORD_BIT 32
 #define SSIZE_MAX LONG_MAX
+#ifdef __EMSCRIPTEN__
+// We depend on the JS API to reteive the local name for the current
+// timezone and this can sometimes exceed 6 chars.  For example:
+// TZ='Asia/Kathmandu' yields 'GMT+5:45'.
+#define TZNAME_MAX 16
+#else
 #define TZNAME_MAX 6
+#endif
 #define TTY_NAME_MAX 32
 #define HOST_NAME_MAX 255
 

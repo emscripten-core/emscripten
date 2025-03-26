@@ -11,7 +11,7 @@ import subprocess
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(os.path.dirname(script_dir))
-test_dir = os.path.join(root_dir, 'tests')
+test_dir = os.path.join(root_dir, 'test')
 ignore_dirs = {
   'third_party',
   'metadce',
@@ -26,6 +26,7 @@ ignore_files = {
 }
 ignore_root_patterns = ['runner.*', 'test_*.py']
 ignore_root_files = {
+  'check_clean.py',
   'jsrun.py',
   'clang_native.py',
   'common.py',
@@ -80,7 +81,7 @@ def check_file(dirpath, filename):
     if ext == '.json' and grep("'" + os.path.basename(stem) + "'"):
       return
 
-  # test_asan builds it pathnames programatically based on the basename, so just
+  # test_asan builds it pathnames programmatically based on the basename, so just
   # search for the basename.
   if filename.startswith('test_asan_'):
     relpath = os.path.basename(relpath)
@@ -97,7 +98,7 @@ def main(args):
       check_file(test_dir, arg)
     return 0
 
-  for (dirpath, dirnames, filenames) in os.walk(test_dir):
+  for dirpath, dirnames, filenames in os.walk(test_dir):
     if os.path.basename(dirpath) in ignore_dirs:
       dirnames.clear()
       filenames.clear()

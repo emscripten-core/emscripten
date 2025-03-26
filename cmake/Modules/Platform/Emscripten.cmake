@@ -6,7 +6,7 @@
 # line parameters:
 # cmake -DCMAKE_TOOLCHAIN_FILE=<EmscriptenRoot>/cmake/Modules/Platform/Emscripten.cmake
 #       -DCMAKE_BUILD_TYPE=<Debug|RelWithDebInfo|Release|MinSizeRel>
-#       -G "Unix Makefiles" (Linux and OSX)
+#       -G "Unix Makefiles" (Linux and macOS)
 #       -G "MinGW Makefiles" (Windows)
 #       <path/to/CMakeLists.txt> # Note, pass in here ONLY the path to the file, not the filename 'CMakeLists.txt' itself.
 
@@ -24,7 +24,7 @@ set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS FALSE)
 # CMAKE_SYSTEM_PROCESSOR=x86_64 for 64-bit platform), since some projects (e.g.
 # OpenCV) use this to detect bitness.
 # Allow users to ovewrite this on the command line with -DEMSCRIPTEN_SYSTEM_PROCESSOR=arm.
-if ("${EMSCRIPTEN_SYSTEM_PROCESSOR}" STREQUAL "")
+if (NOT DEFINED EMSCRIPTEN_SYSTEM_PROCESSOR)
   set(EMSCRIPTEN_SYSTEM_PROCESSOR x86)
 endif()
 set(CMAKE_SYSTEM_PROCESSOR ${EMSCRIPTEN_SYSTEM_PROCESSOR})
@@ -58,21 +58,18 @@ if (CMAKE_TOOLCHAIN_FILE)
 endif()
 
 # Locate where the Emscripten compiler resides in relative to this toolchain file.
-if ("${EMSCRIPTEN_ROOT_PATH}" STREQUAL "")
+if (NOT DEFINED EMSCRIPTEN_ROOT_PATH)
   get_filename_component(GUESS_EMSCRIPTEN_ROOT_PATH "${CMAKE_CURRENT_LIST_DIR}/../../../" ABSOLUTE)
   if (EXISTS "${GUESS_EMSCRIPTEN_ROOT_PATH}/emranlib")
     set(EMSCRIPTEN_ROOT_PATH "${GUESS_EMSCRIPTEN_ROOT_PATH}")
+  else()
+    # If not found by above search, locate using the EMSCRIPTEN environment variable.
+    set(EMSCRIPTEN_ROOT_PATH "$ENV{EMSCRIPTEN}")
+    # Abort if not found.
+    if ("${EMSCRIPTEN_ROOT_PATH}" STREQUAL "")
+      message(FATAL_ERROR "Could not locate the Emscripten compiler toolchain directory! Either set the EMSCRIPTEN environment variable, or pass -DEMSCRIPTEN_ROOT_PATH=xxx to CMake to explicitly specify the location of the compiler!")
+    endif()
   endif()
-endif()
-
-# If not found by above search, locate using the EMSCRIPTEN environment variable.
-if ("${EMSCRIPTEN_ROOT_PATH}" STREQUAL "")
-  set(EMSCRIPTEN_ROOT_PATH "$ENV{EMSCRIPTEN}")
-endif()
-
-# Abort if not found.
-if ("${EMSCRIPTEN_ROOT_PATH}" STREQUAL "")
-  message(FATAL_ERROR "Could not locate the Emscripten compiler toolchain directory! Either set the EMSCRIPTEN environment variable, or pass -DEMSCRIPTEN_ROOT_PATH=xxx to CMake to explicitly specify the location of the compiler!")
 endif()
 
 # Normalize, convert Windows backslashes to forward slashes or CMake will crash.
@@ -96,6 +93,7 @@ set(CMAKE_C_COMPILER_AR "${CMAKE_AR}")
 set(CMAKE_CXX_COMPILER_AR "${CMAKE_AR}")
 set(CMAKE_C_COMPILER_RANLIB "${CMAKE_RANLIB}")
 set(CMAKE_CXX_COMPILER_RANLIB "${CMAKE_RANLIB}")
+set(CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS "${EMSCRIPTEN_ROOT_PATH}/emscan-deps")
 
 # Capture the Emscripten version to EMSCRIPTEN_VERSION variable.
 if (NOT EMSCRIPTEN_VERSION)
@@ -113,11 +111,19 @@ if (NOT EMSCRIPTEN_VERSION)
   set(EMSCRIPTEN_VERSION "${CMAKE_MATCH_1}")
 endif()
 
-# Don't allow CMake to autodetect the compiler, since this is quite slow with
-# Emscripten.
-# Pass -DEMSCRIPTEN_FORCE_COMPILERS=OFF to disable (sensible mostly only for
-# testing/debugging purposes).
-option(EMSCRIPTEN_FORCE_COMPILERS "Force C/C++ compiler" ON)
+execute_process(COMMAND "${EMSCRIPTEN_ROOT_PATH}/em-config${EMCC_SUFFIX}" "CACHE"
+  RESULT_VARIABLE _emcache_result
+  OUTPUT_VARIABLE _emcache_output
+  OUTPUT_STRIP_TRAILING_WHITESPACE)
+if (NOT _emcache_result EQUAL 0)
+  message(FATAL_ERROR "Failed to find emscripten cache directory with command \"'${EMSCRIPTEN_ROOT_PATH}/em-config${EMCC_SUFFIX}' CACHE\"! Process returned with error code ${_emcache_result}.")
+endif()
+file(TO_CMAKE_PATH "${_emcache_output}" _emcache_output)
+set(EMSCRIPTEN_SYSROOT "${_emcache_output}/sysroot")
+
+# Allow skipping of CMake compiler autodetection, since this is quite slow with
+# Emscripten. Pass -DEMSCRIPTEN_FORCE_COMPILERS=ON to enable
+option(EMSCRIPTEN_FORCE_COMPILERS "Force C/C++ compiler" OFF)
 if (EMSCRIPTEN_FORCE_COMPILERS)
 
   # Detect version of the 'emcc' executable. Note that for CMake, we tell it the
@@ -162,6 +168,13 @@ if (EMSCRIPTEN_FORCE_COMPILERS)
   set(CMAKE_C_PLATFORM_ID "emscripten")
   set(CMAKE_CXX_PLATFORM_ID "emscripten")
 
+  if (NOT DEFINED CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES)
+    set(CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES "${EMSCRIPTEN_SYSROOT}/include")
+  endif()
+  if (NOT DEFINED CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES)
+    set(CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES "${EMSCRIPTEN_SYSROOT}/include;${EMSCRIPTEN_SYSROOT}/include/c++/v1")
+  endif()
+
   if ("${CMAKE_VERSION}" VERSION_LESS "3.8")
     set(CMAKE_C_COMPILE_FEATURES "c_function_prototypes;c_restrict;c_variadic_macros;c_static_assert")
     set(CMAKE_C90_COMPILE_FEATURES "c_function_prototypes")
@@ -203,16 +216,6 @@ if (EMSCRIPTEN_FORCE_COMPILERS)
     endif()
   endif()
 endif()
-
-execute_process(COMMAND "${EMSCRIPTEN_ROOT_PATH}/em-config${EMCC_SUFFIX}" "CACHE"
-  RESULT_VARIABLE _emcache_result
-  OUTPUT_VARIABLE _emcache_output
-  OUTPUT_STRIP_TRAILING_WHITESPACE)
-if (NOT _emcache_result EQUAL 0)
-  message(FATAL_ERROR "Failed to find emscripten cache directory with command \"'${EMSCRIPTEN_ROOT_PATH}/em-config${EMCC_SUFFIX}' CACHE\"! Process returned with error code ${_emcache_result}.")
-endif()
-file(TO_CMAKE_PATH "${_emcache_output}" _emcache_output)
-set(EMSCRIPTEN_SYSROOT "${_emcache_output}/sysroot")
 
 list(APPEND CMAKE_FIND_ROOT_PATH "${EMSCRIPTEN_SYSROOT}")
 list(APPEND CMAKE_SYSTEM_PREFIX_PATH /)
@@ -282,9 +285,13 @@ set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_INCLUDES 1)
 set(CMAKE_C_RESPONSE_FILE_LINK_FLAG "@")
 set(CMAKE_CXX_RESPONSE_FILE_LINK_FLAG "@")
 
+# Enable $<LINK_LIBRARY:WHOLE_ARCHIVE,static_lib> for CMake 3.24+
+set(CMAKE_LINK_LIBRARY_USING_WHOLE_ARCHIVE "-Wl,--whole-archive" "<LINK_ITEM>" "-Wl,--no-whole-archive")
+set(CMAKE_LINK_LIBRARY_USING_WHOLE_ARCHIVE_SUPPORTED True)
+
 # Set a global EMSCRIPTEN variable that can be used in client CMakeLists.txt to
 # detect when building using Emscripten.
-set(EMSCRIPTEN 1 CACHE BOOL "If true, we are targeting Emscripten output.")
+set(EMSCRIPTEN 1 CACHE INTERNAL "If true, we are targeting Emscripten output.")
 
 # Hardwire support for cmake-2.8/Modules/CMakeBackwardsCompatibilityC.cmake
 # without having CMake to try complex things to autodetect these:
@@ -303,6 +310,8 @@ set(CMAKE_HAVE_UNISTD_H 1)
 set(CMAKE_HAVE_PTHREAD_H 1)
 set(CMAKE_HAVE_SYS_PRCTL_H 1)
 set(CMAKE_WORDS_BIGENDIAN 0)
+set(CMAKE_C_BYTE_ORDER "LITTLE_ENDIAN")
+set(CMAKE_CXX_BYTE_ORDER "LITTLE_ENDIAN")
 set(CMAKE_DL_LIBS)
 
 function(em_validate_asmjs_after_build target)
@@ -352,35 +361,6 @@ function(em_link_post_js target)
   em_add_link_deps(${target} "--post-js" ${ARGN})
 endfunction()
 
-# Experimental support for targeting generation of Visual Studio project files
-# (vs-tool) of Emscripten projects for Windows.  To use this, pass the
-# combination -G "Visual Studio 10" -DCMAKE_TOOLCHAIN_FILE=Emscripten.cmake
-if ("${CMAKE_GENERATOR}" MATCHES "^Visual Studio.*")
-  # By default, CMake generates VS project files with a
-  # <GenerateManifest>true</GenerateManifest> directive.
-  # This causes VS to attempt to invoke rc.exe during the build, which will fail
-  # since app manifests are meaningless for Emscripten.  To disable this, add
-  # the following linker flag. This flag will not go to emcc, since the Visual
-  # Studio CMake generator will swallow it.
-  set(EMSCRIPTEN_VS_LINKER_FLAGS "/MANIFEST:NO")
-  # CMake is hardcoded to write a ClCompile directive
-  # <ObjectFileName>$(IntDir)</ObjectFileName> in all VS project files it
-  # generates.  This makes VS pass emcc a -o param that points to a directory
-  # instead of a file, which causes emcc autogenerate the output filename.
-  # CMake is hardcoded to assume all object files have the suffix .obj, so
-  # adjust the emcc-autogenerated default suffix name to match.
-  set(EMSCRIPTEN_VS_LINKER_FLAGS "${EMSCRIPTEN_VS_LINKER_FLAGS} --default-obj-ext .obj")
-  # Also hint CMake that it should not hardcode <ObjectFileName> generation.
-  # Requires a custom CMake build for this to work (ignored on others)
-  # See http://www.cmake.org/Bug/view.php?id=14673 and https://github.com/juj/CMake
-  set(CMAKE_VS_NO_DEFAULT_OBJECTFILENAME 1)
-
-  # Apply and cache Emscripten Visual Studio IDE-specific linker flags.
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${EMSCRIPTEN_VS_LINKER_FLAGS}" CACHE STRING "")
-  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${EMSCRIPTEN_VS_LINKER_FLAGS}" CACHE STRING "")
-  set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} ${EMSCRIPTEN_VS_LINKER_FLAGS}" CACHE STRING "")
-endif()
-
 if (NOT DEFINED CMAKE_CROSSCOMPILING_EMULATOR)
   find_program(NODE_JS_EXECUTABLE NAMES nodejs node)
   if(NODE_JS_EXECUTABLE)
@@ -392,12 +372,3 @@ endif()
 # complain about unused CMake variable.
 if (CMAKE_CROSSCOMPILING_EMULATOR)
 endif()
-
-# TODO: CMake appends <sysroot>/usr/include to implicit includes; switching to use usr/include will make this redundant.
-if ("${CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES}" STREQUAL "")
-  set(CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES "${EMSCRIPTEN_SYSROOT}/include")
-endif()
-if ("${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES}" STREQUAL "")
-  set(CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES "${EMSCRIPTEN_SYSROOT}/include")
-endif()
-unset(_em_sysroot_include)

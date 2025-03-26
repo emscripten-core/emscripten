@@ -10,7 +10,7 @@ num_cases = int(sys.argv[1])
 cases = ''
 i = 1
 incr = 1
-for _ in range(0, num_cases):
+for _ in range(num_cases):
   cases += '  case ' + str(i) + ': return "' + str(i) + str(i) + str(i) + '";\n'
   i += incr
   incr = (incr % 5) + 1

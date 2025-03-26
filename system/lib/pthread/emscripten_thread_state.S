@@ -4,6 +4,8 @@
 #define PTR i32
 #endif
 
+.section .globals,"",@
+
 .globaltype thread_ptr, PTR
 thread_ptr:
 
@@ -15,6 +17,8 @@ is_runtime_thread:
 
 .globaltype supports_wait, i32
 supports_wait:
+
+.section .text,"",@
 
 .globl __get_tp
 __get_tp:
@@ -49,7 +53,7 @@ emscripten_is_main_browser_thread:
   global.get is_main_thread
   end_function
 
-# Semantically the same as testing "!ENVIRONMENT_IS_WEB" in JS
+# Semantically the same as testing "!ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_AUDIO_WORKLET" in JS
 .globl _emscripten_thread_supports_atomics_wait
 _emscripten_thread_supports_atomics_wait:
   .functype _emscripten_thread_supports_atomics_wait () -> (i32)

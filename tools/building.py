@@ -32,31 +32,18 @@ from .shared import asmjs_mangle, DEBUG
 from .shared import LLVM_DWARFDUMP, demangle_c_symbol_name
 from .shared import get_emscripten_temp_dir, exe_suffix, is_c_symbol
 from .utils import WINDOWS
-from .settings import settings, default_setting
+from .settings import settings
+from .feature_matrix import UNSUPPORTED
 
 logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
-EXPECTED_BINARYEN_VERSION = 115
+EXPECTED_BINARYEN_VERSION = 122
 
 _is_ar_cache: Dict[str, bool] = {}
 # the exports the user requested
 user_requested_exports: Set[str] = set()
-
-
-# .. but for Popen, we cannot have doublequotes, so provide functionality to
-# remove them when needed.
-def remove_quotes(arg):
-  if isinstance(arg, list):
-    return [remove_quotes(a) for a in arg]
-
-  if arg.startswith('"') and arg.endswith('"'):
-    return arg[1:-1].replace('\\"', '"')
-  elif arg.startswith("'") and arg.endswith("'"):
-    return arg[1:-1].replace("\\'", "'")
-  else:
-    return arg
 
 
 def get_building_env():
@@ -79,6 +66,7 @@ def get_building_env():
   env['PKG_CONFIG_PATH'] = os.environ.get('EM_PKG_CONFIG_PATH', '')
   env['EMSCRIPTEN'] = path_from_root()
   env['PATH'] = cache.get_sysroot_dir('bin') + os.pathsep + env['PATH']
+  env['ACLOCAL_PATH'] = cache.get_sysroot_dir('share/aclocal')
   env['CROSS_COMPILE'] = path_from_root('em') # produces /path/to/emscripten/em , which then can have 'cc', 'ar', etc appended to it
   return env
 
@@ -105,6 +93,12 @@ def llvm_backend_args():
   elif settings.SUPPORT_LONGJMP == 'wasm':
     args += ['-wasm-enable-sjlj']
 
+  if settings.WASM_EXCEPTIONS:
+    if settings.WASM_LEGACY_EXCEPTIONS:
+      args += ['-wasm-use-legacy-eh']
+    else:
+      args += ['-wasm-use-legacy-eh=0']
+
   # better (smaller, sometimes faster) codegen, see binaryen#1054
   # and https://bugs.llvm.org/show_bug.cgi?id=39488
   args += ['-disable-lsr']
@@ -126,11 +120,11 @@ def side_module_external_deps(external_symbols):
     sym = demangle_c_symbol_name(sym)
     if sym in external_symbols:
       deps = deps.union(external_symbols[sym])
-  return sorted(list(deps))
+  return sorted(deps)
 
 
 def create_stub_object(external_symbols):
-  """Create a stub object, based on the JS libary symbols and their
+  """Create a stub object, based on the JS library symbols and their
   dependencies, that we can pass to wasm-ld.
   """
   stubfile = shared.get_temp_files().get('libemscripten_js_symbols.so').name
@@ -177,25 +171,40 @@ def lld_flags_for_executable(external_symbols):
   if settings.LINKABLE:
     cmd.append('--export-dynamic')
 
+  if settings.LTO and not settings.EXIT_RUNTIME:
+    # The WebAssembly backend can generate new references to `__cxa_atexit` at
+    # LTO time.  This `-u` flag forces the `__cxa_atexit` symbol to be
+    # included at LTO time.  For other such symbols we exclude them from LTO
+    # and always build them as normal object files, but that would inhibit the
+    # LowerGlobalDtors optimization which allows destructors to be completely
+    # removed when __cxa_atexit is a no-op.
+    cmd.append('-u__cxa_atexit')
+
   c_exports = [e for e in settings.EXPORTED_FUNCTIONS if is_c_symbol(e)]
   # Strip the leading underscores
   c_exports = [demangle_c_symbol_name(e) for e in c_exports]
-  c_exports += settings.EXPORT_IF_DEFINED
   # Filter out symbols external/JS symbols
   c_exports = [e for e in c_exports if e not in external_symbols]
+  c_exports += settings.REQUIRED_EXPORTS
   if settings.MAIN_MODULE:
     c_exports += side_module_external_deps(external_symbols)
   for export in c_exports:
-    cmd.append('--export-if-defined=' + export)
-
-  for export in settings.REQUIRED_EXPORTS:
     if settings.ERROR_ON_UNDEFINED_SYMBOLS:
-      cmd.append('--export=' + export)
+      cmd.append(f'--export={export}')
     else:
-      cmd.append('--export-if-defined=' + export)
+      cmd.append(f'--export-if-defined={export}')
+
+  cmd.extend(f'--export-if-defined={e}' for e in settings.EXPORT_IF_DEFINED)
 
   if settings.RELOCATABLE:
     cmd.append('--experimental-pic')
+    cmd.append('--unresolved-symbols=import-dynamic')
+    if not settings.WASM_BIGINT:
+      # When we don't have WASM_BIGINT available, JS signature legalization
+      # in binaryen will mutate the signatures of the imports/exports of our
+      # shared libraries.  Because of this we need to disabled signature
+      # checking of shared library functions in this case.
+      cmd.append('--no-shlib-sigcheck')
     if settings.SIDE_MODULE:
       cmd.append('-shared')
     else:
@@ -208,13 +217,17 @@ def lld_flags_for_executable(external_symbols):
       cmd.append('--growable-table')
 
   if not settings.SIDE_MODULE:
-    # Export these two section start symbols so that we can extract the string
-    # data that they contain.
-    cmd += [
-      '-z', 'stack-size=%s' % settings.STACK_SIZE,
-      '--initial-memory=%d' % settings.INITIAL_MEMORY,
-      '--max-memory=%d' % settings.MAXIMUM_MEMORY,
-    ]
+    cmd += ['-z', 'stack-size=%s' % settings.STACK_SIZE]
+
+    if settings.ALLOW_MEMORY_GROWTH:
+      cmd += ['--max-memory=%d' % settings.MAXIMUM_MEMORY]
+    else:
+      cmd += ['--no-growable-memory']
+
+    if settings.INITIAL_HEAP != -1:
+      cmd += ['--initial-heap=%d' % settings.INITIAL_HEAP]
+    if settings.INITIAL_MEMORY != -1:
+      cmd += ['--initial-memory=%d' % settings.INITIAL_MEMORY]
 
     if settings.STANDALONE_WASM:
       # when settings.EXPECT_MAIN is set we fall back to wasm-ld default of _start
@@ -256,8 +269,13 @@ def link_lld(args, target, external_symbols=None):
     args.insert(0, '--whole-archive')
     args.append('--no-whole-archive')
 
-  if settings.STRICT:
+  if settings.STRICT and '--no-fatal-warnings' not in args:
     args.append('--fatal-warnings')
+
+  if any(a in args for a in ('--strip-all', '-s')):
+    # Tell wasm-ld to always generate a target_features section even if --strip-all/-s
+    # is passed.
+    args.append('--keep-section=target_features')
 
   cmd = [WASM_LD, '-o', target] + args
   for a in llvm_backend_args():
@@ -265,6 +283,10 @@ def link_lld(args, target, external_symbols=None):
 
   if settings.WASM_EXCEPTIONS:
     cmd += ['-mllvm', '-wasm-enable-eh']
+    if settings.WASM_LEGACY_EXCEPTIONS:
+      cmd += ['-mllvm', '-wasm-use-legacy-eh']
+    else:
+      cmd += ['-mllvm', '-wasm-use-legacy-eh=0']
   if settings.WASM_EXCEPTIONS or settings.SUPPORT_LONGJMP == 'wasm':
     cmd += ['-mllvm', '-exception-model=wasm']
 
@@ -284,9 +306,15 @@ def get_command_with_possible_response_file(cmd):
   # One of None, 0 or 1. (None: do default decision, 0: force disable, 1: force enable)
   force_response_files = os.getenv('EM_FORCE_RESPONSE_FILES')
 
-  # 8k is a bit of an arbitrary limit, but a reasonable one
-  # for max command line size before we use a response file
-  if (len(shared.shlex_join(cmd)) <= 8192 and force_response_files != '1') or force_response_files == '0':
+  # Different OS have different limits. The most limiting usually is Windows one
+  # which is set at 8191 characters. We could just use that, but it leads to
+  # problems when invoking shell wrappers (e.g. emcc.bat), which, in turn,
+  # pass arguments to some longer command like `(full path to Clang) ...args`.
+  # In that scenario, even if the initial command line is short enough, the
+  # subprocess can still run into the Command Line Too Long error.
+  # Reduce the limit by ~1K for now to be on the safe side, but we might need to
+  # adjust this in the future if it turns out not to be enough.
+  if (len(shared.shlex_join(cmd)) <= 7000 and force_response_files != '1') or force_response_files == '0':
     return cmd
 
   logger.debug('using response file for %s' % cmd[0])
@@ -320,16 +348,16 @@ def opt_level_to_str(opt_level, shrink_level=0):
 def js_optimizer(filename, passes):
   from . import js_optimizer
   try:
-    return js_optimizer.run_on_js(filename, passes)
+    return js_optimizer.run_on_file(filename, passes)
   except subprocess.CalledProcessError as e:
     exit_with_error("'%s' failed (%d)", ' '.join(e.cmd), e.returncode)
 
 
 # run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
-def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
-  optimizer = path_from_root('tools/acorn-optimizer.js')
+def acorn_optimizer(filename, passes, extra_info=None, return_output=False, worker_js=False):
+  optimizer = path_from_root('tools/acorn-optimizer.mjs')
   original_filename = filename
-  if extra_info is not None:
+  if extra_info is not None and not shared.SKIP_SUBPROCS:
     temp_files = shared.get_temp_files()
     temp = temp_files.get('.js', prefix='emcc_acorn_info_').name
     shutil.copyfile(filename, temp)
@@ -337,15 +365,19 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
       f.write('// EXTRA_INFO: ' + extra_info)
     filename = temp
   cmd = config.NODE_JS + [optimizer, filename] + passes
-  # Keep JS code comments intact through the acorn optimization pass so that
-  # JSDoc comments will be carried over to a later Closure run.
-  if settings.MAYBE_CLOSURE_COMPILER:
-    cmd += ['--closureFriendly']
-  if settings.EXPORT_ES6:
-    cmd += ['--exportES6']
+  if not worker_js:
+    # Keep JS code comments intact through the acorn optimization pass so that
+    # JSDoc comments will be carried over to a later Closure run.
+    if settings.MAYBE_CLOSURE_COMPILER:
+      cmd += ['--closure-friendly']
+    if settings.EXPORT_ES6:
+      cmd += ['--export-es6']
   if settings.VERBOSE:
-    cmd += ['verbose']
+    cmd += ['--verbose']
   if return_output:
+    shared.print_compiler_stage(cmd)
+    if shared.SKIP_SUBPROCS:
+      return ''
     return check_call(cmd, stdout=PIPE).stdout
 
   acorn_optimizer.counter += 1
@@ -355,6 +387,9 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
   output_file = basename + '.jso%d.js' % acorn_optimizer.counter
   shared.get_temp_files().note(output_file)
   cmd += ['-o', output_file]
+  shared.print_compiler_stage(cmd)
+  if shared.SKIP_SUBPROCS:
+    return output_file
   check_call(cmd)
   save_intermediate(output_file, '%s.js' % passes[0])
   return output_file
@@ -368,10 +403,7 @@ WASM_CALL_CTORS = '__wasm_call_ctors'
 # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool
 # for this, and we are in wasm mode
 def eval_ctors(js_file, wasm_file, debug_info):
-  if settings.MINIMAL_RUNTIME:
-    CTOR_ADD_PATTERN = f"wasmExports['{WASM_CALL_CTORS}']();" # TODO test
-  else:
-    CTOR_ADD_PATTERN = f"addOnInit(wasmExports['{WASM_CALL_CTORS}']);"
+  CTOR_ADD_PATTERN = f"wasmExports['{WASM_CALL_CTORS}']();"
 
   js = utils.read_file(js_file)
 
@@ -451,49 +483,61 @@ def check_closure_compiler(cmd, args, env, allowed_to_fail):
   return True
 
 
-# Remove this once we require python3.7 and can use std.isascii.
-# See: https://docs.python.org/3/library/stdtypes.html#str.isascii
-def isascii(s):
-  try:
-    s.encode('ascii')
-  except UnicodeEncodeError:
-    return False
-  else:
-    return True
-
-
 def get_closure_compiler_and_env(user_args):
   env = shared.env_with_node_in_path()
   closure_cmd = get_closure_compiler()
 
   native_closure_compiler_works = check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=True)
   if not native_closure_compiler_works and not any(a.startswith('--platform') for a in user_args):
-    # Run with Java Closure compiler as a fallback if the native version does not work
+    # Run with Java Closure compiler as a fallback if the native version does not work.
+    # This can happen, for example, on arm64 macOS machines that do not have Rosetta installed.
+    logger.warn('falling back to java version of closure compiler')
     user_args.append('--platform=java')
     check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=False)
-
-  if config.JAVA and '--platform=java' in user_args:
-    # Closure compiler expects JAVA_HOME to be set *and* java.exe to be in the PATH in order
-    # to enable use the java backend.  Without this it will only try the native and JavaScript
-    # versions of the compiler.
-    java_bin = os.path.dirname(config.JAVA)
-    if java_bin:
-      def add_to_path(dirname):
-        env['PATH'] = env['PATH'] + os.pathsep + dirname
-      add_to_path(java_bin)
-      java_home = os.path.dirname(java_bin)
-      env.setdefault('JAVA_HOME', java_home)
 
   return closure_cmd, env
 
 
+def version_split(v):
+  """Split version setting number (e.g. 162000) into versions string (e.g. "16.2.0")
+  """
+  v = str(v).rjust(6, '0')
+  assert len(v) == 6
+  m = re.match(r'(\d{2})(\d{2})(\d{2})', v)
+  major, minor, rev = m.group(1, 2, 3)
+  return f'{int(major)}.{int(minor)}.{int(rev)}'
+
+
 @ToolchainProfiler.profile()
-def closure_transpile(filename):
-  user_args = []
-  closure_cmd, env = get_closure_compiler_and_env(user_args)
-  closure_cmd += ['--language_out', 'ES5']
-  closure_cmd += ['--compilation_level', 'WHITESPACE_ONLY']
-  return run_closure_cmd(closure_cmd, filename, env)
+def transpile(filename):
+  config = {
+    'sourceType': 'script',
+    'presets': ['@babel/preset-env'],
+    'targets': {}
+  }
+  if settings.MIN_CHROME_VERSION != UNSUPPORTED:
+    config['targets']['chrome'] = str(settings.MIN_CHROME_VERSION)
+  if settings.MIN_FIREFOX_VERSION != UNSUPPORTED:
+    config['targets']['firefox'] = str(settings.MIN_FIREFOX_VERSION)
+  if settings.MIN_IE_VERSION != UNSUPPORTED:
+    config['targets']['ie'] = str(settings.MIN_IE_VERSION)
+  if settings.MIN_SAFARI_VERSION != UNSUPPORTED:
+    config['targets']['safari'] = version_split(settings.MIN_SAFARI_VERSION)
+  if settings.MIN_NODE_VERSION != UNSUPPORTED:
+    config['targets']['node'] = version_split(settings.MIN_NODE_VERSION)
+  config_json = json.dumps(config, indent=2)
+  outfile = shared.get_temp_files().get('babel.js').name
+  config_file = shared.get_temp_files().get('babel_config.json').name
+  logger.debug(config_json)
+  utils.write_file(config_file, config_json)
+  cmd = shared.get_npm_cmd('babel') + [filename, '-o', outfile, '--config-file', config_file]
+  # Babel needs access to `node_modules` for things like `preset-env`, but the
+  # location of the config file (and the current working directory) might not be
+  # in the emscripten tree, so we explicitly set NODE_PATH here.
+  env = os.environ.copy()
+  env['NODE_PATH'] = path_from_root('node_modules')
+  check_call(cmd, env=env)
+  return outfile
 
 
 @ToolchainProfiler.profile()
@@ -511,6 +555,9 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
   # should not minify these symbol names.
   CLOSURE_EXTERNS = [path_from_root('src/closure-externs/closure-externs.js')]
 
+  if settings.MODULARIZE:
+    CLOSURE_EXTERNS += [path_from_root('src/closure-externs/modularize-externs.js')]
+
   if settings.USE_WEBGPU:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/webgpu-externs.js')]
 
@@ -527,7 +574,7 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
     CLOSURE_EXTERNS += [exports_file.name]
 
   # Node.js specific externs
-  if shared.target_environment_may_be('node'):
+  if settings.ENVIRONMENT_MAY_BE_NODE:
     NODE_EXTERNS_BASE = path_from_root('third_party/closure-compiler/node-externs')
     NODE_EXTERNS = os.listdir(NODE_EXTERNS_BASE)
     NODE_EXTERNS = [os.path.join(NODE_EXTERNS_BASE, name) for name in NODE_EXTERNS
@@ -535,13 +582,13 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/node-externs.js')] + NODE_EXTERNS
 
   # V8/SpiderMonkey shell specific externs
-  if shared.target_environment_may_be('shell'):
+  if settings.ENVIRONMENT_MAY_BE_SHELL:
     V8_EXTERNS = [path_from_root('src/closure-externs/v8-externs.js')]
     SPIDERMONKEY_EXTERNS = [path_from_root('src/closure-externs/spidermonkey-externs.js')]
     CLOSURE_EXTERNS += V8_EXTERNS + SPIDERMONKEY_EXTERNS
 
   # Web environment specific externs
-  if shared.target_environment_may_be('web') or shared.target_environment_may_be('worker'):
+  if settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WORKER:
     BROWSER_EXTERNS_BASE = path_from_root('src/closure-externs/browser-externs')
     if os.path.isdir(BROWSER_EXTERNS_BASE):
       BROWSER_EXTERNS = os.listdir(BROWSER_EXTERNS_BASE)
@@ -552,19 +599,10 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
   if settings.DYNCALLS:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/dyncall-externs.js')]
 
-  if settings.MINIMAL_RUNTIME and settings.PTHREADS:
-    CLOSURE_EXTERNS += [path_from_root('src/closure-externs/minimal_runtime_worker_externs.js')]
-
   args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
-  # Keep in sync with ecmaVersion in tools/acorn-optimizer.js
-  args += ['--language_in', 'ECMASCRIPT_2020']
-  # Tell closure not to do any transpiling or inject any polyfills.
-  # At some point we may want to look into using this as way to convert to ES5 but
-  # babel is perhaps a better tool for that.
-  if settings.TRANSPILE_TO_ES5:
-    args += ['--language_out', 'ES5']
-  else:
-    args += ['--language_out', 'NO_TRANSPILE']
+  args += ['--language_in', 'UNSTABLE']
+  # We do transpilation using babel
+  args += ['--language_out', 'NO_TRANSPILE']
   # Tell closure never to inject the 'use strict' directive.
   args += ['--emit_use_strict=false']
 
@@ -587,7 +625,7 @@ def run_closure_cmd(cmd, filename, env):
   tempfiles = shared.get_temp_files()
 
   def move_to_safe_7bit_ascii_filename(filename):
-    if isascii(filename):
+    if filename.isascii():
       return os.path.abspath(filename)
     safe_filename = tempfiles.get('.js').name  # Safe 7-bit filename
     shutil.copyfile(filename, safe_filename)
@@ -683,7 +721,7 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
   # Don't minify if we are going to run closure compiler afterwards
   minify = settings.MINIFY_WHITESPACE and not settings.MAYBE_CLOSURE_COMPILER
   if minify:
-    passes.append('minifyWhitespace')
+    passes.append('--minify-whitespace')
   if passes:
     logger.debug('running cleanup on shell code: ' + ' '.join(passes))
     js_file = acorn_optimizer(js_file, passes)
@@ -693,12 +731,15 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
     # if we are optimizing for size, shrink the combined wasm+JS
     # TODO: support this when a symbol map is used
     if expensive_optimizations:
-      js_file = metadce(js_file, wasm_file, debug_info=debug_info)
+      js_file = metadce(js_file,
+                        wasm_file,
+                        debug_info=debug_info,
+                        last=not settings.MINIFY_WASM_IMPORTS_AND_EXPORTS)
       # now that we removed unneeded communication between js and wasm, we can clean up
       # the js some more.
       passes = ['AJSDCE']
       if minify:
-        passes.append('minifyWhitespace')
+        passes.append('--minify-whitespace')
       logger.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
       js_file = acorn_optimizer(js_file, passes)
       if settings.MINIFY_WASM_IMPORTS_AND_EXPORTS:
@@ -708,8 +749,25 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
   return js_file
 
 
+def is_internal_global(name):
+  internal_start_stop_symbols = {'__start_em_asm', '__stop_em_asm',
+                                 '__start_em_js', '__stop_em_js',
+                                 '__start_em_lib_deps', '__stop_em_lib_deps',
+                                 '__em_lib_deps'}
+  internal_prefixes = ('__em_js__', '__em_lib_deps')
+  return name in internal_start_stop_symbols or any(name.startswith(p) for p in internal_prefixes)
+
+
+# get the flags to pass into the very last binaryen tool invocation, that runs
+# the final set of optimizations
+def get_last_binaryen_opts():
+  return [f'--optimize-level={settings.OPT_LEVEL}',
+          f'--shrink-level={settings.SHRINK_LEVEL}',
+          '--optimize-stack-ir']
+
+
 # run binaryen's wasm-metadce to dce both js and wasm
-def metadce(js_file, wasm_file, debug_info):
+def metadce(js_file, wasm_file, debug_info, last):
   logger.debug('running meta-DCE')
   temp_files = shared.get_temp_files()
   # first, get the JS part of the graph
@@ -728,7 +786,10 @@ def metadce(js_file, wasm_file, debug_info):
 
   extra_info = '{ "exports": [' + ','.join(f'["{asmjs_mangle(x)}", "{x}"]' for x in exports) + ']}'
 
-  txt = acorn_optimizer(js_file, ['emitDCEGraph', 'noPrint'], return_output=True, extra_info=extra_info)
+  txt = acorn_optimizer(js_file, ['emitDCEGraph', '--no-print'], return_output=True, extra_info=extra_info)
+  if shared.SKIP_SUBPROCS:
+    # The next steps depend on the output from this step, so we can't do them if we aren't actually running.
+    return js_file
   graph = json.loads(txt)
   # ensure that functions expected to be exported to the outside are roots
   required_symbols = user_requested_exports.union(set(settings.SIDE_MODULE_IMPORTS))
@@ -737,6 +798,7 @@ def metadce(js_file, wasm_file, debug_info):
       export = asmjs_mangle(item['export'])
       if settings.EXPORT_ALL or export in required_symbols:
         item['root'] = True
+
   # fix wasi imports TODO: support wasm stable with an option?
   WASI_IMPORTS = {
     'environ_get',
@@ -755,54 +817,75 @@ def metadce(js_file, wasm_file, debug_info):
     'clock_res_get',
     'clock_time_get',
     'path_open',
+    'random_get',
   }
   for item in graph:
-    if 'import' in item and item['import'][1][1:] in WASI_IMPORTS:
+    if 'import' in item and item['import'][1] in WASI_IMPORTS:
       item['import'][0] = settings.WASI_MODULE_NAME
-  # fixup wasm backend prefixing
-  for item in graph:
-    if 'import' in item:
-      if item['import'][1][0] == '_':
-        item['import'][1] = item['import'][1][1:]
-  # map import names from wasm to JS, using the actual name the wasm uses for the import
+
+  # map import/export names to native wasm symbols.
   import_name_map = {}
+  export_name_map = {}
   for item in graph:
     if 'import' in item:
       name = item['import'][1]
-      import_name_map[item['name']] = 'emcc$import$' + name
+      import_name_map[item['name']] = name
       if asmjs_mangle(name) in settings.SIDE_MODULE_IMPORTS:
         item['root'] = True
+    elif 'export' in item:
+      export_name_map[item['name']] = item['export']
   temp = temp_files.get('.json', prefix='emcc_dce_graph_').name
   utils.write_file(temp, json.dumps(graph, indent=2))
   # run wasm-metadce
+  args = ['--graph-file=' + temp]
+  if last:
+    args += get_last_binaryen_opts()
   out = run_binaryen_command('wasm-metadce',
                              wasm_file,
                              wasm_file,
-                             ['--graph-file=' + temp],
+                             args,
                              debug=debug_info,
                              stdout=PIPE)
   # find the unused things in js
-  unused = []
+  unused_imports = []
+  unused_exports = []
   PREFIX = 'unused: '
   for line in out.splitlines():
     if line.startswith(PREFIX):
       name = line.replace(PREFIX, '').strip()
-      if name in import_name_map:
-        name = import_name_map[name]
-      unused.append(name)
+      # With dynamic linking we never want to strip the memory or the table
+      # This can be removed once SIDE_MODULE_IMPORTS includes tables and memories.
+      if settings.MAIN_MODULE and name.split('$')[-1] in ('wasmMemory', 'wasmTable'):
+        continue
+      # we only remove imports and exports in applyDCEGraphRemovals
+      if name.startswith('emcc$import$'):
+        native_name = import_name_map[name]
+        unused_imports.append(native_name)
+      elif name.startswith('emcc$export$'):
+        if settings.DECLARE_ASM_MODULE_EXPORTS:
+          native_name = export_name_map[name]
+          if not is_internal_global(native_name):
+            unused_exports.append(native_name)
+  if not unused_exports and not unused_imports:
+    # nothing found to be unused, so we have nothing to remove
+    return js_file
   # remove them
   passes = ['applyDCEGraphRemovals']
   if settings.MINIFY_WHITESPACE:
-    passes.append('minifyWhitespace')
-  extra_info = {'unused': unused}
+    passes.append('--minify-whitespace')
+  if DEBUG:
+    logger.debug("unused_imports: %s", str(unused_imports))
+    logger.debug("unused_exports: %s", str(unused_exports))
+  extra_info = {'unusedImports': unused_imports, 'unusedExports': unused_exports}
   return acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
 
 def asyncify_lazy_load_code(wasm_target, debug):
-  # create the lazy-loaded wasm. remove the memory segments from it, as memory
-  # segments have already been applied by the initial wasm, and apply the knowledge
-  # that it will only rewind, after which optimizations can remove some code
-  args = ['--remove-memory', '--mod-asyncify-never-unwind']
+  # Create the lazy-loaded wasm. Remove any active memory segments and the
+  # start function from it (as these will segments have already been applied
+  # by the initial wasm) and apply the knowledge that it will only rewind,
+  # after which optimizations can remove some code
+  args = ['--remove-memory-init', '--mod-asyncify-never-unwind']
   if settings.OPT_LEVEL > 0:
     args.append(opt_level_to_str(settings.OPT_LEVEL, settings.SHRINK_LEVEL))
   run_wasm_opt(wasm_target,
@@ -826,23 +909,19 @@ def asyncify_lazy_load_code(wasm_target, debug):
 def minify_wasm_imports_and_exports(js_file, wasm_file, minify_exports, debug_info):
   logger.debug('minifying wasm imports and exports')
   # run the pass
+  args = []
   if minify_exports:
     # standalone wasm mode means we need to emit a wasi import module.
     # otherwise, minify even the imported module names.
     if settings.MINIFY_WASM_IMPORTED_MODULES:
-      pass_name = '--minify-imports-and-exports-and-modules'
+      args.append('--minify-imports-and-exports-and-modules')
     else:
-      pass_name = '--minify-imports-and-exports'
+      args.append('--minify-imports-and-exports')
   else:
-    pass_name = '--minify-imports'
-  out = run_wasm_opt(wasm_file, wasm_file,
-                     [pass_name],
-                     debug=debug_info,
-                     stdout=PIPE)
-  # TODO this is the last tool we run, after normal opts and metadce. it
-  # might make sense to run Stack IR optimizations here or even -O (as
-  # metadce which runs before us might open up new general optimization
-  # opportunities). however, the benefit is less than 0.5%.
+    args.append('--minify-imports')
+  # this is always the last tool we run (if we run it)
+  args += get_last_binaryen_opts()
+  out = run_wasm_opt(wasm_file, wasm_file, args, debug=debug_info, stdout=PIPE)
 
   # get the mapping
   SEP = ' => '
@@ -855,8 +934,11 @@ def minify_wasm_imports_and_exports(js_file, wasm_file, minify_exports, debug_in
   # apply them
   passes = ['applyImportAndExportNameChanges']
   if settings.MINIFY_WHITESPACE:
-    passes.append('minifyWhitespace')
+    passes.append('--minify-whitespace')
   extra_info = {'mapping': mapping}
+  if settings.MINIFICATION_MAP:
+    lines = [f'{new}:{old}' for old, new in mapping.items()]
+    utils.write_file(settings.MINIFICATION_MAP, '\n'.join(lines) + '\n')
   return acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
 
@@ -881,8 +963,7 @@ def wasm2js(js_file, wasm_file, opt_level, use_closure_compiler, debug_info, sym
       if symbols_file_js:
         passes += ['symbolMap=%s' % symbols_file_js]
     if settings.MINIFY_WHITESPACE:
-      passes += ['minifyWhitespace']
-    passes += ['last']
+      passes += ['--minify-whitespace']
     if passes:
       # hackish fixups to work around wasm2js style and the js optimizer FIXME
       wasm2js_js = f'// EMSCRIPTEN_START_ASM\n{wasm2js_js}// EMSCRIPTEN_END_ASM\n'
@@ -935,11 +1016,7 @@ def strip(infile, outfile, debug=False, sections=None):
 
 # extract the DWARF info from the main file, and leave the wasm with
 # debug into as a file on the side
-def emit_debug_on_side(wasm_file):
-  # if the dwarf filename wasn't provided, use the default target + a suffix
-  wasm_file_with_dwarf = settings.SEPARATE_DWARF
-  if wasm_file_with_dwarf is True:
-    wasm_file_with_dwarf = wasm_file + '.debug.wasm'
+def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
   embedded_path = settings.SEPARATE_DWARF_URL
   if not embedded_path:
     # a path was provided - make it relative to the wasm.
@@ -981,12 +1058,7 @@ def little_endian_heap(js_file):
 
 def apply_wasm_memory_growth(js_file):
   logger.debug('supporting wasm memory growth with pthreads')
-  fixed = acorn_optimizer(js_file, ['growableHeap'])
-  ret = js_file + '.pgrow.js'
-  fixed = utils.read_file(fixed)
-  support_code = utils.read_file(path_from_root('src/growableHeap.js'))
-  utils.write_file(ret, support_code + '\n' + fixed)
-  return ret
+  return acorn_optimizer(js_file, ['growableHeap'])
 
 
 def use_unsigned_pointers_in_js(js_file):
@@ -1010,46 +1082,30 @@ def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
   args = []
   if symbols_file:
     args += ['--print-function-map']
-  if not debug_info:
-    # to remove debug info, we just write to that same file, and without -g
-    args += ['-o', wasm_file]
   else:
     # suppress the wasm-opt warning regarding "no output file specified"
     args += ['--quiet']
   output = run_wasm_opt(wasm_file, args=args, stdout=PIPE)
   if symbols_file:
     utils.write_file(symbols_file, output)
+  if not debug_info:
+    # strip the names section using llvm-objcopy. this is slightly slower than
+    # using wasm-opt (we could run wasm-opt without -g here and just tell it to
+    # write the file back out), but running wasm-opt would undo StackIR
+    # optimizations, if we did those.
+    strip(wasm_file, wasm_file, sections=['name'])
 
 
 def is_ar(filename):
+  """Return True if a the given filename is an ar archive, False otherwise.
+  """
   try:
-    if _is_ar_cache.get(filename):
-      return _is_ar_cache[filename]
     header = open(filename, 'rb').read(8)
-    sigcheck = header in (b'!<arch>\n', b'!<thin>\n')
-    _is_ar_cache[filename] = sigcheck
-    return sigcheck
   except Exception as e:
     logger.debug('is_ar failed to test whether file \'%s\' is a llvm archive file! Failed on exception: %s' % (filename, e))
     return False
 
-
-def is_bitcode(filename):
-  try:
-    # look for magic signature
-    b = open(filename, 'rb').read(4)
-    if b[:2] == b'BC':
-      return True
-    # on macOS, there is a 20-byte prefix which starts with little endian
-    # encoding of 0x0B17C0DE
-    elif b == b'\xDE\xC0\x17\x0B':
-      b = bytearray(open(filename, 'rb').read(22))
-      return b[20:] == b'BC'
-  except IndexError:
-    # not enough characters in the input
-    # note that logging will be done on the caller function
-    pass
-  return False
+  return header in (b'!<arch>\n', b'!<thin>\n')
 
 
 def is_wasm(filename):
@@ -1072,92 +1128,6 @@ def is_wasm_dylib(filename):
   return False
 
 
-def map_to_js_libs(library_name, emit_tsd):
-  """Given the name of a special Emscripten-implemented system library, returns an
-  pair containing
-  1. Array of absolute paths to JS library files, inside emscripten/src/ that corresponds to the
-     library name. `None` means there is no mapping and the library will be processed by the linker
-     as a require for normal native library.
-  2. Optional name of a corresponding native library to link in.
-  """
-  # Some native libraries are implemented in Emscripten as system side JS libraries
-  embind = 'embind/embind.js'
-  if emit_tsd:
-    embind = 'embind/embind_ts.js'
-  library_map = {
-    'embind': [embind, 'embind/emval.js'],
-    'EGL': ['library_egl.js'],
-    'GL': ['library_webgl.js', 'library_html5_webgl.js'],
-    'webgl.js': ['library_webgl.js', 'library_html5_webgl.js'],
-    'GLESv2': ['library_webgl.js'],
-    # N.b. there is no GLESv3 to link to (note [f] in https://www.khronos.org/registry/implementers_guide.html)
-    'GLEW': ['library_glew.js'],
-    'glfw': ['library_glfw.js'],
-    'glfw3': ['library_glfw.js'],
-    'GLU': [],
-    'glut': ['library_glut.js'],
-    'openal': ['library_openal.js'],
-    'X11': ['library_xlib.js'],
-    'SDL': ['library_sdl.js'],
-    'uuid': ['library_uuid.js'],
-    'websocket': ['library_websocket.js'],
-    # These 4 libraries are seperate under glibc but are all rolled into
-    # libc with musl.  For compatibility with glibc we just ignore them
-    # completely.
-    'dl': [],
-    'm': [],
-    'rt': [],
-    'pthread': [],
-    # This is the name of GNU's C++ standard library. We ignore it here
-    # for compatibility with GNU toolchains.
-    'stdc++': [],
-  }
-  # And some are hybrid and require JS and native libraries to be included
-  native_library_map = {
-    'embind': 'libembind',
-    'GL': 'libGL',
-  }
-  settings_map = {
-    'glfw': {'USE_GLFW': 2},
-    'glfw3': {'USE_GLFW': 3},
-    'SDL': {'USE_SDL': 1},
-  }
-
-  if library_name in settings_map:
-    for key, value in settings_map[library_name].items():
-      default_setting(key, value)
-
-  if library_name in library_map:
-    libs = library_map[library_name]
-    logger.debug('Mapping library `%s` to JS libraries: %s' % (library_name, libs))
-    return (libs, native_library_map.get(library_name))
-
-  if library_name.endswith('.js') and os.path.isfile(path_from_root('src', f'library_{library_name}')):
-    return ([f'library_{library_name}'], None)
-
-  return (None, None)
-
-
-# Map a linker flag to a settings. This lets a user write -lSDL2 and it will
-# have the same effect as -sUSE_SDL=2.
-def map_and_apply_to_settings(library_name):
-  # most libraries just work, because the -l name matches the name of the
-  # library we build. however, if a library has variations, which cause us to
-  # build multiple versions with multiple names, then we need this mechanism.
-  library_map = {
-    # SDL2_mixer's built library name contains the specific codecs built in.
-    'SDL2_mixer': [('USE_SDL_MIXER', 2)],
-  }
-
-  if library_name in library_map:
-    for key, value in library_map[library_name]:
-      logger.debug('Mapping library `%s` to settings changes: %s = %s' % (library_name, key, value))
-      setattr(settings, key, value)
-    return True
-
-  return False
-
-
 def emit_wasm_source_map(wasm_file, map_file, final_wasm):
   # source file paths must be relative to the location of the map (which is
   # emitted alongside the wasm)
@@ -1167,6 +1137,13 @@ def emit_wasm_source_map(wasm_file, map_file, final_wasm):
                    '--dwarfdump=' + LLVM_DWARFDUMP,
                    '-o',  map_file,
                    '--basepath=' + base_path]
+
+  if settings.SOURCE_MAP_PREFIXES:
+    sourcemap_cmd += ['--prefix', *settings.SOURCE_MAP_PREFIXES]
+
+  if settings.GENERATE_SOURCE_MAP == 2:
+    sourcemap_cmd += ['--sources']
+
   check_call(sourcemap_cmd)
 
 
@@ -1245,6 +1222,9 @@ def run_binaryen_command(tool, infile, outfile=None, args=None, debug=False, std
   if settings.GENERATE_SOURCE_MAP and outfile and tool in ['wasm-opt', 'wasm-emscripten-finalize']:
     cmd += [f'--input-source-map={infile}.map']
     cmd += [f'--output-source-map={outfile}.map']
+  shared.print_compiler_stage(cmd)
+  if shared.SKIP_SUBPROCS:
+    return ''
   ret = check_call(cmd, stdout=stdout).stdout
   if outfile:
     save_intermediate(outfile, '%s.wasm' % tool)
@@ -1257,16 +1237,45 @@ def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # noqa
   return run_binaryen_command('wasm-opt', infile, outfile, args=args, **kwargs)
 
 
-def save_intermediate(src, dst):
+intermediate_counter = 0
+
+
+def new_intermediate_filename(name):
+  assert DEBUG
+  global intermediate_counter
+  basename = 'emcc-%02d-%s' % (intermediate_counter, name)
+  intermediate_counter += 1
+  filename = os.path.join(shared.CANONICAL_TEMP_DIR, basename)
+  logger.debug('saving intermediate file %s' % filename)
+  return filename
+
+
+def save_intermediate(src, name):
+  """Copy an existing file CANONICAL_TEMP_DIR"""
   if DEBUG:
-    dst = 'emcc-%d-%s' % (save_intermediate.counter, dst)
-    save_intermediate.counter += 1
-    dst = os.path.join(shared.CANONICAL_TEMP_DIR, dst)
-    logger.debug('saving debug copy %s' % dst)
-    shutil.copyfile(src, dst)
+    shutil.copyfile(src, new_intermediate_filename(name))
 
 
-save_intermediate.counter = 0  # type: ignore
+def write_intermediate(content, name):
+  """Generate a new debug file CANONICAL_TEMP_DIR"""
+  if DEBUG:
+    utils.write_file(new_intermediate_filename(name), content)
+
+
+def read_and_preprocess(filename, expand_macros=False):
+  # Create a settings file with the current settings to pass to the JS preprocessor
+  settings_json = json.dumps(settings.external_dict(), sort_keys=True, indent=2)
+  write_intermediate(settings_json, 'settings.json')
+
+  # Run the JS preprocessor
+  dirname, filename = os.path.split(filename)
+  if not dirname:
+    dirname = None
+  args = ['-', filename]
+  if expand_macros:
+    args += ['--expand-macros']
+
+  return shared.run_js_tool(path_from_root('tools/preprocessor.mjs'), args, input=settings_json, stdout=subprocess.PIPE, cwd=dirname)
 
 
 def js_legalization_pass_flags():

@@ -74,23 +74,23 @@ int internal_sysctlbyname(const char *sname, void *oldp, uptr *oldlenp,
 // These functions call appropriate pthread_ functions directly, bypassing
 // the interceptor. They are weak and may not be present in some tools.
 SANITIZER_WEAK_ATTRIBUTE
-int real_pthread_create(void *th, void *attr, void *(*callback)(void *),
-                        void *param);
+int internal_pthread_create(void *th, void *attr, void *(*callback)(void *),
+                            void *param);
 SANITIZER_WEAK_ATTRIBUTE
-int real_pthread_join(void *th, void **ret);
+int internal_pthread_join(void *th, void **ret);
 
-#define DEFINE_REAL_PTHREAD_FUNCTIONS                                          \
-  namespace __sanitizer {                                                      \
-  int real_pthread_create(void *th, void *attr, void *(*callback)(void *),     \
-                          void *param) {                                       \
-    return REAL(pthread_create)(th, attr, callback, param);                    \
-  }                                                                            \
-  int real_pthread_join(void *th, void **ret) {                                \
-    return REAL(pthread_join(th, ret));                                        \
-  }                                                                            \
-  }  // namespace __sanitizer
+#  define DEFINE_INTERNAL_PTHREAD_FUNCTIONS                               \
+    namespace __sanitizer {                                               \
+    int internal_pthread_create(void *th, void *attr,                     \
+                                void *(*callback)(void *), void *param) { \
+      return REAL(pthread_create)(th, attr, callback, param);             \
+    }                                                                     \
+    int internal_pthread_join(void *th, void **ret) {                     \
+      return REAL(pthread_join(th, ret));                                 \
+    }                                                                     \
+    }  // namespace __sanitizer
 
-int my_pthread_attr_getstack(void *attr, void **addr, uptr *size);
+int internal_pthread_attr_getstack(void *attr, void **addr, uptr *size);
 
 // A routine named real_sigaction() must be implemented by each sanitizer in
 // order for internal_sigaction() to bypass interceptors.
@@ -120,6 +120,9 @@ int GetNamedMappingFd(const char *name, uptr size, int *flags);
 // alive at least as long as the mapping exists.
 void DecorateMapping(uptr addr, uptr size, const char *name);
 
+#  if !SANITIZER_FREEBSD
+#    define __sanitizer_dirsiz(dp) ((dp)->d_reclen)
+#  endif
 
 }  // namespace __sanitizer
 

@@ -38,6 +38,10 @@
 //          Called before fork syscall.
 //   COMMON_SYSCALL_POST_FORK(long res)
 //          Called after fork syscall.
+//   COMMON_SYSCALL_BLOCKING_START()
+//         Called before blocking syscall.
+//   COMMON_SYSCALL_BLOCKING_END()
+//         Called after blocking syscall.
 //===----------------------------------------------------------------------===//
 
 #include "sanitizer_platform.h"
@@ -82,6 +86,16 @@
 
 #  ifndef COMMON_SYSCALL_POST_FORK
 #    define COMMON_SYSCALL_POST_FORK(res) \
+      {}
+#  endif
+
+#  ifndef COMMON_SYSCALL_BLOCKING_START
+#    define COMMON_SYSCALL_BLOCKING_START() \
+      {}
+#  endif
+
+#  ifndef COMMON_SYSCALL_BLOCKING_END
+#    define COMMON_SYSCALL_BLOCKING_END() \
       {}
 #  endif
 
@@ -417,14 +431,14 @@ PRE_SYSCALL(capget)(void *header, void *dataptr) {
 POST_SYSCALL(capget)(long res, void *header, void *dataptr) {
   if (res >= 0)
     if (dataptr)
-      POST_WRITE(dataptr, __user_cap_data_struct_sz);
+      POST_WRITE(dataptr, __user_cap_data_struct_sz(header));
 }
 
 PRE_SYSCALL(capset)(void *header, const void *data) {
   if (header)
     PRE_READ(header, __user_cap_header_struct_sz);
   if (data)
-    PRE_READ(data, __user_cap_data_struct_sz);
+    PRE_READ(data, __user_cap_data_struct_sz(header));
 }
 
 POST_SYSCALL(capset)(long res, void *header, const void *data) {}
@@ -1374,9 +1388,8 @@ PRE_SYSCALL(io_setup)(long nr_reqs, void **ctx) {
 }
 
 POST_SYSCALL(io_setup)(long res, long nr_reqs, void **ctx) {
-  if (res >= 0) {
-    if (ctx)
-      POST_WRITE(ctx, sizeof(*ctx));
+  if (res >= 0 && ctx) {
+    POST_WRITE(ctx, sizeof(*ctx));
     // (*ctx) is actually a pointer to a kernel mapped page, and there are
     // people out there who are crazy enough to peek into that page's 32-byte
     // header.
@@ -2136,7 +2149,7 @@ PRE_SYSCALL(epoll_pwait2)
  const sanitizer_kernel_timespec *timeout, const kernel_sigset_t *sigmask,
  long sigsetsize) {
   if (timeout)
-    PRE_READ(timeout, sizeof(timeout));
+    PRE_READ(timeout, sizeof(*timeout));
   if (sigmask)
     PRE_READ(sigmask, sigsetsize);
 }
@@ -2809,6 +2822,15 @@ PRE_SYSCALL(fchownat)
 POST_SYSCALL(fchownat)
 (long res, long dfd, const void *filename, long user, long group, long flag) {}
 
+PRE_SYSCALL(fchmodat2)(long dfd, const void *filename, long mode, long flag) {
+  if (filename)
+    PRE_READ(filename,
+             __sanitizer::internal_strlen((const char *)filename) + 1);
+}
+
+POST_SYSCALL(fchmodat2)
+(long res, long dfd, const void *filename, long mode, long flag) {}
+
 PRE_SYSCALL(openat)(long dfd, const void *filename, long flags, long mode) {
   if (filename)
     PRE_READ(filename,
@@ -3168,6 +3190,18 @@ POST_SYSCALL(sigaltstack)(long res, void *ss, void *oss) {
     }
   }
 }
+
+PRE_SYSCALL(futex)
+(void *uaddr, long futex_op, long val, void *timeout, void *uaddr2, long val3) {
+  COMMON_SYSCALL_BLOCKING_START();
+}
+
+POST_SYSCALL(futex)
+(long res, void *uaddr, long futex_op, long val, void *timeout, void *uaddr2,
+ long val3) {
+  COMMON_SYSCALL_BLOCKING_END();
+}
+
 }  // extern "C"
 
 #  undef PRE_SYSCALL

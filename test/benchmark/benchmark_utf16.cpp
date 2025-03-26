@@ -10,10 +10,12 @@
 #include <cassert>
 #include <emscripten.h>
 
+EM_JS_DEPS(deps, "$UTF16ToString");
+
 double test(const unsigned short *str) {
   double res = EM_ASM_DOUBLE({
     var t0 = _emscripten_get_now();
-    var str = Module.UTF16ToString($0);
+    var str = UTF16ToString($0);
     var t1 = _emscripten_get_now();
     out('t: ' + (t1 - t0) + ', len(result): ' + str.length + ', result: ' + str.slice(0, 100));
     return (t1-t0);
@@ -52,7 +54,6 @@ unsigned short *randomString(int len) {
 }
 
 int main() {
-  srand(time(NULL));
   double t = 0;
   double t2 = emscripten_get_now();
   for(int i = 0; i < 10; ++i) {

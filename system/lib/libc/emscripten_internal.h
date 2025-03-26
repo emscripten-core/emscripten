@@ -26,16 +26,14 @@
 extern "C" {
 #endif
 
-// An external JS implementation that is efficient for very large copies, using
-// HEAPU8.set()
-void emscripten_memcpy_js(void* __restrict__ dest,
-                           const void* __restrict__ src,
-                           size_t n) EM_IMPORT(emscripten_memcpy_js);
+_Noreturn void _abort_js(void);
 
-void* emscripten_memcpy_bulkmem(void* __restrict__ dest,
-                                const void* __restrict__ src,
-                                size_t n);
-void* emscripten_memset_bulkmem(void* ptr, char value, size_t n);
+void setThrew(uintptr_t threw, int value);
+
+void* _emscripten_memcpy_bulkmem(void* __restrict__ dest,
+                                 const void* __restrict__ src,
+                                 size_t n);
+void* _emscripten_memset_bulkmem(void* ptr, char value, size_t n);
 
 void emscripten_notify_memory_growth(size_t memory_index);
 
@@ -44,14 +42,13 @@ time_t _mktime_js(struct tm* tm);
 void _localtime_js(time_t t, struct tm* __restrict__ tm);
 void _gmtime_js(time_t t, struct tm* __restrict__ tm);
 
-void _tzset_js(long* timezone, int* daylight, char** tzname);
+void _tzset_js(long* timezone, int* daylight, char* std_name, char* dst_name);
 
 const char* emscripten_pc_get_function(uintptr_t pc);
 const char* emscripten_pc_get_file(uintptr_t pc);
 int emscripten_pc_get_line(uintptr_t pc);
 int emscripten_pc_get_column(uintptr_t pc);
 
-char* emscripten_get_module_name(char* buf, size_t length);
 void* emscripten_builtin_mmap(
   void* addr, size_t length, int prot, int flags, int fd, off_t offset);
 int emscripten_builtin_munmap(void* addr, size_t length);
@@ -125,6 +122,8 @@ void _emscripten_fs_load_embedded_files(void* ptr);
 
 void _emscripten_throw_longjmp(void);
 
+void _emscripten_runtime_keepalive_clear();
+
 void __handle_stack_overflow(void* addr);
 
 // Internal fetch API
@@ -132,9 +131,7 @@ struct emscripten_fetch_t;
 void emscripten_start_fetch(struct emscripten_fetch_t* fetch);
 size_t _emscripten_fetch_get_response_headers_length(int32_t fetchID);
 size_t _emscripten_fetch_get_response_headers(int32_t fetchID, char *dst, size_t dstSizeBytes);
-void _emscripten_fetch_free(unsigned int);
-
-EMSCRIPTEN_RESULT _emscripten_set_offscreencanvas_size(const char *target, int width, int height);
+void emscripten_fetch_free(unsigned int);
 
 // Internal implementation function in JavaScript side that emscripten_create_wasm_worker() calls to
 // to perform the wasm worker creation.
@@ -143,6 +140,10 @@ emscripten_wasm_worker_t _emscripten_create_wasm_worker(void *stackLowestAddress
 void __resumeException(void* exn);
 void __cxa_call_unexpected(void* exn);
 void llvm_eh_typeid_for(void* exn);
+
+uint32_t _emscripten_lookup_name(const char *name);
+
+int _emscripten_system(const char *command);
 
 #ifdef __cplusplus
 }

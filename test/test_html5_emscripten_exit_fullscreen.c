@@ -4,10 +4,9 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
 
-EM_BOOL is_fs = EM_FALSE;
+bool is_fs = false;
 
-EM_BOOL fullscreen_change(int eventType, const EmscriptenFullscreenChangeEvent *fullscreenChangeEvent, void *userData)
-{
+bool fullscreen_change(int eventType, const EmscriptenFullscreenChangeEvent *fullscreenChangeEvent, void *userData) {
     is_fs = fullscreenChangeEvent->isFullscreen;
 
     printf("%s fullscreen\n", is_fs ? "entered" : "left");
@@ -17,8 +16,7 @@ EM_BOOL fullscreen_change(int eventType, const EmscriptenFullscreenChangeEvent *
 
 static int resizes = 0;
 
-EM_BOOL canvas_resize(int eventType, const void *reserved, void *userData)
-{
+bool canvas_resize(int eventType, const void *reserved, void *userData) {
     double css_w, css_h;
     emscripten_get_element_css_size("#canvas", &css_w, &css_h);
 
@@ -32,12 +30,11 @@ EM_BOOL canvas_resize(int eventType, const void *reserved, void *userData)
     return 0;
 }
 
-EM_BOOL key_down(int eventType, const EmscriptenKeyboardEvent *keyEvent, void *userData)
-{
-    if(keyEvent->keyCode == 0x46/*f*/) {
-        if(is_fs)
+bool key_down(int eventType, const EmscriptenKeyboardEvent *keyEvent, void *userData) {
+    if (keyEvent->keyCode == 0x46/*f*/) {
+        if (is_fs) {
             emscripten_exit_fullscreen();
-        else {
+        } else {
             EmscriptenFullscreenStrategy strategy;
             strategy.scaleMode = EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH;
             strategy.canvasResolutionScaleMode = EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_STDDEF;

@@ -82,8 +82,8 @@ var emscriptenMemoryProfiler = {
   // Converts number f to string with at most two decimals, without redundant trailing zeros.
   truncDec(f = 0) {
     var str = f.toFixed(2);
-    if (str.includes('.00', str.length-3)) return str.substr(0, str.length-3);
-    else if (str.includes('0', str.length-1)) return str.substr(0, str.length-1);
+    if (str.includes('.00', str.length-3)) return str.slice(0, -3);
+    else if (str.includes('0', str.length-1)) return str.slice(0, -1);
     else return str;
   },
 
@@ -190,7 +190,7 @@ var emscriptenMemoryProfiler = {
     if (!self.pagePreRunIsFinished) self.sizeOfPreRunAllocatedPtr[ptr] = size;
 
     var loc = new Error().stack.toString();
-    if (!self.allocationsAtLoc[loc]) self.allocationsAtLoc[loc] = [0, 0, self.filterCallstackForMalloc(loc)];
+    self.allocationsAtLoc[loc] ||= [0, 0, self.filterCallstackForMalloc(loc)];
     self.allocationsAtLoc[loc][0] += 1;
     self.allocationsAtLoc[loc][1] += size;
     self.allocationSitePtrs[ptr] = loc;
@@ -247,7 +247,7 @@ var emscriptenMemoryProfiler = {
     emscriptenMemoryProfiler.recordStackWatermark();
 
     // Add a tracking mechanism to detect when VFS loading is complete.
-    if (!Module['preRun']) Module['preRun'] = [];
+    Module['preRun'] ||= [];
     Module['preRun'].push(emscriptenMemoryProfiler.onPreloadComplete);
 
     if (emscriptenMemoryProfiler.hookStackAlloc && typeof stackAlloc == 'function') {
@@ -262,10 +262,10 @@ var emscriptenMemoryProfiler = {
     }
 
     if (location.search.toLowerCase().includes('trackbytes=')) {
-      emscriptenMemoryProfiler.trackedCallstackMinSizeBytes = parseInt(location.search.substr(location.search.toLowerCase().indexOf('trackbytes=') + 'trackbytes='.length), undefined /* https://github.com/google/closure-compiler/issues/3230 / https://github.com/google/closure-compiler/issues/3548 */);
+      emscriptenMemoryProfiler.trackedCallstackMinSizeBytes = parseInt(location.search.slice(location.search.toLowerCase().indexOf('trackbytes=') + 'trackbytes='.length), undefined /* https://github.com/google/closure-compiler/issues/3230 / https://github.com/google/closure-compiler/issues/3548 */);
     }
     if (location.search.toLowerCase().includes('trackcount=')) {
-      emscriptenMemoryProfiler.trackedCallstackMinAllocCount = parseInt(location.search.substr(location.search.toLowerCase().indexOf('trackcount=') + 'trackcount='.length), undefined);
+      emscriptenMemoryProfiler.trackedCallstackMinAllocCount = parseInt(location.search.slice(location.search.toLowerCase().indexOf('trackcount=') + 'trackcount='.length), undefined);
     }
 
     emscriptenMemoryProfiler.memoryprofiler_summary = document.getElementById('memoryprofiler_summary');
@@ -406,7 +406,7 @@ var emscriptenMemoryProfiler = {
     if (i != -1) {
       var end = callstack.indexOf('<br />', i);
       if (end != -1) {
-        return callstack.substr(0, end);
+        return callstack.slice(0, end);
       }
     }
     return callstack;
@@ -416,7 +416,7 @@ var emscriptenMemoryProfiler = {
     // Do not show Memoryprofiler's own callstacks in the callstack prints.
     var i = callstack.indexOf('emscripten_trace_record_');
     if (i != -1) {
-      callstack = callstack.substr(callstack.indexOf('\n', i)+1);
+      callstack = callstack.slice(callstack.indexOf('\n', i)+1);
     }
     return emscriptenMemoryProfiler.filterURLsFromCallstack(callstack);
   },
@@ -427,14 +427,13 @@ var emscriptenMemoryProfiler = {
     var j = callstack.indexOf('growMemory');
     i = (i == -1) ? j : (j == -1 ? i : Math.min(i, j));
     if (i != -1) {
-      callstack = callstack.substr(callstack.indexOf('\n', i)+1);
+      callstack = callstack.slice(callstack.indexOf('\n', i)+1);
     }
     callstack = callstack.replace(/(wasm-function\[\d+\]):0x[0-9a-f]+/g, "$1");
     return emscriptenMemoryProfiler.filterURLsFromCallstack(callstack);
   },
 
   printHeapResizeLog(heapResizes) {
-    var demangler = typeof demangleAll != 'undefined' ? demangleAll : (x) => x;
     var html = '';
     for (var i = 0; i < heapResizes.length; ++i) {
       var j = i+1;
@@ -448,7 +447,7 @@ var emscriptenMemoryProfiler = {
       var resizeFirst = heapResizes[i];
       var resizeLast = heapResizes[j-1];
       var count = j - i;
-      html += '<div style="background-color: ' + resizeFirst.color + '"><b>' + resizeFirst.begin + '-' + resizeLast.end + ' (' + count + ' times, ' + emscriptenMemoryProfiler.formatBytes(resizeLast.end-resizeFirst.begin) + ')</b>:' + demangler(resizeFirst.filteredStack || resizeFirst.stack) + '</div><br>';
+      html += '<div style="background-color: ' + resizeFirst.color + '"><b>' + resizeFirst.begin + '-' + resizeLast.end + ' (' + count + ' times, ' + emscriptenMemoryProfiler.formatBytes(resizeLast.end-resizeFirst.begin) + ')</b>:' + (resizeFirst.filteredStack || resizeFirst.stack) + '</div><br>';
       i = j-1;
     }
     return html;
@@ -504,7 +503,7 @@ var emscriptenMemoryProfiler = {
     html += '<br />STACK memory area used now (should be zero): ' + self.formatBytes(stackBase - stackCurrent) + '.' + colorBar('#FFFF00') + ' STACK watermark highest seen usage (approximate lower-bound!): ' + self.formatBytes(stackBase - self.stackTopWatermark);
 
     var heap_base = Module['___heap_base'];
-    var heap_end = _sbrk();
+    var heap_end = _sbrk({{{ to64('0') }}});
     html += "<br />DYNAMIC memory area size: " + self.formatBytes(heap_end - heap_base);
     html += ". start: " + toHex(heap_base, width);
     html += ". end: " + toHex(heap_end, width) + ".";
@@ -563,9 +562,7 @@ var emscriptenMemoryProfiler = {
           stack = self.filterCallstackAfterFunctionName(stack, s);
         }
         sbrk.filteredStack = stack;
-        if (!uniqueSources[stack]) {
-          uniqueSources[stack] = self.hsvToRgb(Object.keys(uniqueSources).length * 0.618033988749895 % 1, 0.5, 0.95);
-        }
+        uniqueSources[stack] ||= self.hsvToRgb(Object.keys(uniqueSources).length * 0.618033988749895 % 1, 0.5, 0.95);
         self.drawContext.fillStyle = sbrk.color = uniqueSources[stack];
         self.fillRect(sbrk.begin, sbrk.end, 0.25);
       }
@@ -601,7 +598,6 @@ var emscriptenMemoryProfiler = {
       html += self.printHeapResizeLog(self.sbrkSources);
       html += '</div>'
     } else {
-      var demangler = typeof demangleAll != 'undefined' ? demangleAll : (x) => x;
       // Print out statistics of individual allocations if they were tracked.
       if (Object.keys(self.allocationsAtLoc).length > 0) {
         var calls = [];
@@ -613,12 +609,11 @@ var emscriptenMemoryProfiler = {
         if (calls.length > 0) {
           if (sortOrder != 'fixed') {
             var sortIdx = (sortOrder == 'count') ? 0 : 1;
-            calls.sort((a,b) => { return b[sortIdx] - a[sortIdx]; });
+            calls.sort((a,b) => b[sortIdx] - a[sortIdx]);
           }
           html += '<h4>Allocation sites with more than ' + self.formatBytes(self.trackedCallstackMinSizeBytes) + ' of accumulated allocations, or more than ' + self.trackedCallstackMinAllocCount + ' simultaneously outstanding allocations:</h4>'
-          for (var i in calls) {
-            if (calls[i].length == 3) calls[i] = [calls[i][0], calls[i][1], calls[i][2], demangler(calls[i][2])];
-            html += "<b>" + self.formatBytes(calls[i][1]) + '/' + calls[i][0] + " allocs</b>: " + calls[i][3] + "<br />";
+          for (var call of calls) {
+            html += "<b>" + self.formatBytes(call[1]) + '/' + call[0] + " allocs</b>: " + call[2] + "<br />";
           }
         }
       }
@@ -636,5 +631,8 @@ function memoryprofiler_add_hooks() {
 if (typeof document != 'undefined' && typeof window != 'undefined' && typeof process == 'undefined') {
   emscriptenMemoryProfiler.initialize();
 }
+
+// Declared in globalThis so that `onclick` handlers work when `-sMODULARIZE=1`
+globalThis.emscriptenMemoryProfiler = emscriptenMemoryProfiler;
 
 #endif

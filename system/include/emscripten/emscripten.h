@@ -38,7 +38,7 @@ char *emscripten_run_script_string(const char *script __attribute__((nonnull)));
 void emscripten_async_run_script(const char *script __attribute__((nonnull)), int millis);
 void emscripten_async_load_script(const char *script __attribute__((nonnull)), em_callback_func onload, em_callback_func onerror);
 
-void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_infinite_loop);
+void emscripten_set_main_loop(em_callback_func func, int fps, bool simulate_infinite_loop);
 
 #define EM_TIMING_SETTIMEOUT 0
 #define EM_TIMING_RAF 1
@@ -46,7 +46,7 @@ void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_infin
 
 int emscripten_set_main_loop_timing(int mode, int value);
 void emscripten_get_main_loop_timing(int *mode, int *value); // Pass a null pointer to skip receiving that particular value
-void emscripten_set_main_loop_arg(em_arg_callback_func func, void *arg, int fps, int simulate_infinite_loop);
+void emscripten_set_main_loop_arg(em_arg_callback_func func, void *arg, int fps, bool simulate_infinite_loop);
 void emscripten_pause_main_loop(void);
 void emscripten_resume_main_loop(void);
 void emscripten_cancel_main_loop(void);
@@ -176,7 +176,7 @@ void emscripten_scan_stack(em_scan_func func);
 
 // Asynchronous version of dlopen.  Since WebAssembly module loading in general
 // is asynchronous the normal dlopen function can't be used in all situations.
-typedef void (*em_dlopen_callback)(void* handle, void* user_data);
+typedef void (*em_dlopen_callback)(void* user_data, void* handle);
 void emscripten_dlopen(const char *filename, int flags, void* user_data, em_dlopen_callback onsuccess, em_arg_callback_func onerror);
 
 // Promisified version of emscripten_dlopen
