@@ -129,13 +129,6 @@ var ENVIRONMENT_IS_WASM_WORKER = !!Module['$ww'];
 // refer to Module (if they choose; they can also define Module)
 {{{ preJS() }}}
 
-// Sometimes an existing Module object exists with properties
-// meant to overwrite the default module functionality. Here
-// we collect those properties and reapply _after_ we configure
-// the current environment's defaults to avoid having to be so
-// defensive during initialization.
-var moduleOverrides = {...Module};
-
 var arguments_ = [];
 var thisProgram = './this.program';
 var quit_ = (status, toThrow) => {
@@ -218,9 +211,8 @@ if (ENVIRONMENT_IS_NODE) {
 
   arguments_ = process.argv.slice(2);
 
-#if MODULARIZE
+#if !MODULARIZE
   // MODULARIZE will export the module in the proper place outside, we don't need to export here
-#else
   if (typeof module != 'undefined') {
     module['exports'] = Module;
   }
@@ -406,11 +398,6 @@ if (ENVIRONMENT_IS_NODE) {
 {{{ makeModuleReceiveWithVar('err', 'printErr', 'console.error.bind(console)', true) }}}
 #endif
 
-// Merge back in the overrides
-Object.assign(Module, moduleOverrides);
-// Free the object hierarchy contained in the overrides, this lets the GC
-// reclaim data used.
-moduleOverrides = null;
 #if ASSERTIONS
 checkIncomingModuleAPI();
 #endif
