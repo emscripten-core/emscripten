@@ -283,7 +283,6 @@ def main():
 
   if USE_NINJA:
     os.environ['EMBUILDER_PORT_BUILD_DEFERRED'] = '1'
-    print(f'setting EMBUILDER_PORT_BUILD_DEFERRED=1 pid {os.getpid()}')
 
   for what in tasks:
     for old, new in legacy_prefixes.items():
