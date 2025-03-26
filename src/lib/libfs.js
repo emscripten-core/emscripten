@@ -199,7 +199,12 @@ FS.staticInit();
 
           if (parts[i] === '..') {
             current_path = PATH.dirname(current_path);
-            current = current.parent;
+            if (FS.isRoot(current)) {
+              path = current_path + '/' + parts.slice(i + 1).join('/');
+              continue linkloop;
+            } else {
+              current = current.parent;
+            }
             continue;
           }
 

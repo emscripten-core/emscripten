@@ -8164,6 +8164,11 @@ addToLibrary({
     create_file('Folder/testfile.txt', '')
     self.do_other_test('test_realpath_2.c', emcc_args=['--embed-file', 'testfile.txt', '--embed-file', 'Folder'])
 
+  @requires_node
+  @also_with_wasmfs
+  def test_resolve_mountpoint_parent(self):
+    self.do_other_test('test_resolve_mountpoint_parent.c', emcc_args=['-sFORCE_FILESYSTEM', '-lnodefs.js'])
+
   @with_env_modify({'EMCC_LOGGING': '0'})  # this test assumes no emcc output
   def test_no_warnings(self):
     # build once before to make sure system libs etc. exist
