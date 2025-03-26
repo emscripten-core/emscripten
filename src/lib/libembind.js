@@ -28,10 +28,8 @@
 #include "libembind_shared.js"
 
 var LibraryEmbind = {
-  $UnboundTypeError__deps: ['$extendError'],
-  $UnboundTypeError: "=Module['UnboundTypeError'] = extendError(Error, 'UnboundTypeError')",
-  $PureVirtualError__deps: ['$extendError'],
-  $PureVirtualError: "=Module['PureVirtualError'] = extendError(Error, 'PureVirtualError')",
+  $UnboundTypeError: class extends Error {},
+  $PureVirtualError: class extends Error {},
   $GenericWireTypeSize: {{{ 2 * POINTER_SIZE }}},
 #if EMBIND_AOT
   $InvokerFunctions: '<<< EMBIND_AOT_OUTPUT >>>',
@@ -146,32 +144,6 @@ var LibraryEmbind = {
       Module[name] = value;
       Module[name].argCount = numArguments;
     }
-  },
-
-  // from https://github.com/imvu/imvujs/blob/master/src/error.js
-  $extendError__deps: ['$createNamedFunction'],
-  $extendError: (baseErrorType, errorName) => {
-    var errorClass = createNamedFunction(errorName, function(message) {
-      this.name = errorName;
-      this.message = message;
-
-      var stack = (new Error(message)).stack;
-      if (stack !== undefined) {
-        this.stack = this.toString() + '\n' +
-            stack.replace(/^Error(:[^\n]*)?\n/, '');
-      }
-    });
-    errorClass.prototype = Object.create(baseErrorType.prototype);
-    errorClass.prototype.constructor = errorClass;
-    errorClass.prototype.toString = function() {
-      if (this.message === undefined) {
-        return this.name;
-      } else {
-        return `${this.name}: ${this.message}`;
-      }
-    };
-
-    return errorClass;
   },
 
   $createNamedFunction: (name, func) => Object.defineProperty(func, 'name', { value: name }),
