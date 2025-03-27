@@ -9320,9 +9320,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
     create_file('lib.js', '''
       addToLibrary({
-#if PTHREADS
-        mainCallback__deps: ['$sharedModules'],
-#endif
         mainCallback: () => {
 #if PTHREADS
           err('sharedModules: ' + Object.keys(sharedModules));

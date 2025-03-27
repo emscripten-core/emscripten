@@ -15265,10 +15265,6 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       #include <emscripten.h>
       #include <emscripten/threading.h>
 
-      #ifdef __EMSCRIPTEN_PTHREADS__
-      EM_JS_DEPS(main, "$sharedModules");
-      #endif
-
       int main() {
         // Check the file exists in the VFS
         struct stat statbuf;
@@ -15282,17 +15278,13 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
             return preloadedWasm['/library.so'] !== undefined;
           );
           assert(found);
-        }
-      #ifdef __EMSCRIPTEN_PTHREADS__
-        else {
+        } else {
           int found = EM_ASM_INT(
             err(sharedModules);
             return sharedModules['/library.so'] !== undefined;
           );
           assert(found);
         }
-      #endif
-
         void *lib_handle = dlopen("/library.so", RTLD_NOW);
         assert(lib_handle);
         typedef int (*voidfunc)();
