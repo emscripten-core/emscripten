@@ -857,7 +857,7 @@ var proxiedFunctionTable = [
       includeFile(fileName);
     }
 
-    if (MODULARIZE) {
+    if (MODULARIZE && !WASM_ESM_INTEGRATION) {
       includeSystemFile('postamble_modularize.js');
     }
 

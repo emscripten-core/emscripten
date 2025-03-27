@@ -20,7 +20,9 @@
 // after the generated code, you will need to define   var Module = {};
 // before the code. Then that object will be used in the code, and you
 // can continue to use Module afterwards as well.
-#if MODULARIZE
+#if WASM_ESM_INTEGRATION
+var Module = {};
+#elif MODULARIZE
 var Module = moduleArg;
 #elif USE_CLOSURE_COMPILER
 /** @type{Object} */
@@ -129,13 +131,6 @@ var ENVIRONMENT_IS_WASM_WORKER = !!Module['$ww'];
 // refer to Module (if they choose; they can also define Module)
 {{{ preJS() }}}
 
-// Sometimes an existing Module object exists with properties
-// meant to overwrite the default module functionality. Here
-// we collect those properties and reapply _after_ we configure
-// the current environment's defaults to avoid having to be so
-// defensive during initialization.
-var moduleOverrides = {...Module};
-
 var arguments_ = [];
 var thisProgram = './this.program';
 var quit_ = (status, toThrow) => {
@@ -212,15 +207,14 @@ if (ENVIRONMENT_IS_NODE) {
 
 #include "node_shell_read.js"
 
-  if (!Module['thisProgram'] && process.argv.length > 1) {
+  if (process.argv.length > 1) {
     thisProgram = process.argv[1].replace(/\\/g, '/');
   }
 
   arguments_ = process.argv.slice(2);
 
-#if MODULARIZE
+#if !MODULARIZE
   // MODULARIZE will export the module in the proper place outside, we don't need to export here
-#else
   if (typeof module != 'undefined') {
     module['exports'] = Module;
   }
@@ -406,11 +400,6 @@ if (ENVIRONMENT_IS_NODE) {
 {{{ makeModuleReceiveWithVar('err', 'printErr', 'console.error.bind(console)', true) }}}
 #endif
 
-// Merge back in the overrides
-Object.assign(Module, moduleOverrides);
-// Free the object hierarchy contained in the overrides, this lets the GC
-// reclaim data used.
-moduleOverrides = null;
 #if ASSERTIONS
 checkIncomingModuleAPI();
 #endif
@@ -434,6 +423,9 @@ assert(typeof Module['readAsync'] == 'undefined', 'Module.readAsync option was r
 assert(typeof Module['readBinary'] == 'undefined', 'Module.readBinary option was removed (modify readBinary in JS)');
 assert(typeof Module['setWindowTitle'] == 'undefined', 'Module.setWindowTitle option was removed (modify emscripten_set_window_title in JS)');
 assert(typeof Module['TOTAL_MEMORY'] == 'undefined', 'Module.TOTAL_MEMORY has been renamed Module.INITIAL_MEMORY');
+assert(typeof Module['ENVIRONMENT'] == 'undefined', 'Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -sENVIRONMENT=web or -sENVIRONMENT=node)');
+assert(typeof Module['STACK_SIZE'] == 'undefined', 'STACK_SIZE can no longer be set at runtime.  Use -sSTACK_SIZE at link time')
+
 {{{ makeRemovedModuleAPIAssert('asm', 'wasmExports', false) }}}
 {{{ makeRemovedModuleAPIAssert('readAsync') }}}
 {{{ makeRemovedModuleAPIAssert('readBinary') }}}
