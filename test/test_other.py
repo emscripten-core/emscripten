@@ -2176,6 +2176,29 @@ Module['postRun'] = () => {
     test(['libdir/libfile.so.3.1.4.1.5.9'], '.3.1.4.1.5.9') # handle libX.so.1.2.3 as well
 
   @node_pthreads
+  @also_with_modularize
+  def test_dylink_pthread(self):
+    create_file('library.c', r'''
+      int answer() {
+        return 42;
+      }
+    ''')
+    self.run_process([EMCC, 'library.c', '-pthread', '-Wno-experimental', '-sSIDE_MODULE', '-o', 'side.wasm'])
+    create_file('main.c', r'''
+      #include <assert.h>
+      #include <stdio.h>
+
+      extern int answer();
+
+      int main() {
+        assert(answer() == 42);
+        printf("done\n");
+        return 0;
+      }
+    ''')
+    self.do_runf('main.c', 'done\n', emcc_args=['-sMAIN_MODULE=2', '-pthread', '-Wno-experimental', 'side.wasm'])
+
+  @node_pthreads
   def test_dylink_pthread_static_data(self):
     # Test that a side module uses the same static data region for global objects across all threads
 
