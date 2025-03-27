@@ -2116,8 +2116,7 @@ def create_esm_wrapper(wrapper_file, support_target, wasm_target):
   if wasm_exports:
     wrapper.append(f"export {{ {wasm_exports} }} from './{settings.WASM_BINARY_FILE}';")
   support_url = f'./{os.path.basename(support_target)}'
-  wrapper.append(f"import init from '{support_url}';")
-  wrapper.append('export default init;')
+  wrapper.append(f"export {{ default }} from '{support_url}';")
   write_file(wrapper_file, '\n'.join(wrapper) + '\n')
 
   # FIXME(sbc): This is a huge hack to rename the imports in the
