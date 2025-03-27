@@ -395,12 +395,6 @@ addToLibrary({
   // the initial values of the environment accessible by getenv.
   $ENV: {},
 
-#if MAIN_MODULE && PTHREADS
-  // Map of modules to be shared with new threads.  This gets populated by the
-  // main thread and shared with all new workers via the initial `load` message.
-  $sharedModules: {},
-#endif
-
 #if !STANDALONE_WASM
   // ==========================================================================
   // assert.h

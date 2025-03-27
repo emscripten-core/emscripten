@@ -63,7 +63,6 @@ var LibraryPThread = {
                    '$addOnPreRun',
 #if MAIN_MODULE
                    '$markAsFinished',
-                   '$sharedModules',
 #endif
                    '$spawnThread',
                    '_emscripten_thread_free_data',
