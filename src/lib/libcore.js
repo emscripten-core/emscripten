@@ -1697,7 +1697,7 @@ addToLibrary({
     return "./this.program";
   },
 #else
-  $getExecutableName: () => thisProgram || './this.program',
+  $getExecutableName: () => thisProgram,
 #endif
 
   $listenOnce: (object, event, func) =>
