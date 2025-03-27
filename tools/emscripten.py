@@ -628,12 +628,16 @@ def create_tsd_exported_runtime_methods(metadata):
   js_doc_file = in_temp('jsdoc.js')
   tsc_output_file = in_temp('jsdoc.d.ts')
   utils.write_file(js_doc_file, js_doc)
-  tsc = shutil.which('tsc')
-  if tsc:
+  tsc = shared.get_npm_cmd('tsc', missing_ok=True)
+  # Prefer the npm install'd version of tsc since we know that one is compatible
+  # with emscripten output.
+  if not tsc:
+    # Fall back to tsc in the user's PATH.
+    tsc = shutil.which('tsc')
+    if not tsc:
+      exit_with_error('tsc executable not found in node_modules or in $PATH')
     # Use the full path from the which command so windows can find tsc.
     tsc = [tsc]
-  else:
-    tsc = shared.get_npm_cmd('tsc')
   cmd = tsc + ['--outFile', tsc_output_file,
                '--skipLibCheck', # Avoid checking any of the user's types e.g. node_modules/@types.
                '--declaration',
