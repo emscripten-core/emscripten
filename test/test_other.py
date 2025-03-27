@@ -12355,7 +12355,7 @@ int main(void) {
       }
     ''')
     expected = [
-      '`Module.asm` has been replaced by `wasmExports`',
+      'Attempt to get legacy module property `asm`',
     ]
     self.do_runf('src.c', expected, assert_all=True, emcc_args=['-sASSERTIONS'])
 
@@ -12386,8 +12386,8 @@ int main(void) {
       }
     ''')
     expected = '''
-Aborted(`Module.wasmBinary` has been replaced by `wasmBinary` (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name))
-Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name))
+Aborted(Attempt to set `Module.wasmBinary` after it has already been processed.)
+Aborted(Attempt to set `Module.arguments` after it has already been processed.)
 '''
     self.do_runf('src.cpp', expected, emcc_args=['-sASSERTIONS'])
 

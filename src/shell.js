@@ -428,7 +428,7 @@ assert(typeof Module['TOTAL_MEMORY'] == 'undefined', 'Module.TOTAL_MEMORY has be
 assert(typeof Module['ENVIRONMENT'] == 'undefined', 'Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -sENVIRONMENT=web or -sENVIRONMENT=node)');
 assert(typeof Module['STACK_SIZE'] == 'undefined', 'STACK_SIZE can no longer be set at runtime.  Use -sSTACK_SIZE at link time')
 
-{{{ makeRemovedModuleAPIAssert('asm', 'wasmExports', false) }}}
+{{{ makeRemovedModuleAPIAssert('asm') }}}
 {{{ makeRemovedModuleAPIAssert('readAsync') }}}
 {{{ makeRemovedModuleAPIAssert('readBinary') }}}
 {{{ makeRemovedModuleAPIAssert('setWindowTitle') }}}
