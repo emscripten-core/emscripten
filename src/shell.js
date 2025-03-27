@@ -390,8 +390,10 @@ if (!ENVIRONMENT_IS_AUDIO_WORKLET)
 var defaultPrint = console.log.bind(console);
 var defaultPrintErr = console.error.bind(console);
 if (ENVIRONMENT_IS_NODE) {
-  defaultPrint = (...args) => fs.writeSync(1, args.join(' ') + '\n');
-  defaultPrintErr = (...args) => fs.writeSync(2, args.join(' ') + '\n');
+  var utils = require('util');
+  var stringify = (a) => typeof a == 'object' ? utils.inspect(a) : a;
+  defaultPrint = (...args) => fs.writeSync(1, args.map(stringify).join(' ') + '\n');
+  defaultPrintErr = (...args) => fs.writeSync(2, args.map(stringify).join(' ') + '\n');
 }
 {{{ makeModuleReceiveWithVar('out', 'print',    'defaultPrint',    true) }}}
 {{{ makeModuleReceiveWithVar('err', 'printErr', 'defaultPrintErr', true) }}}

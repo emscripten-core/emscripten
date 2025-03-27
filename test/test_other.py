@@ -15280,7 +15280,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
           assert(found);
         } else {
           int found = EM_ASM_INT(
-            err(sharedModules);
+            err('sharedModules:', sharedModules);
             return sharedModules['/library.so'] !== undefined;
           );
           assert(found);
@@ -15295,7 +15295,10 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
         return 0;
       }
     ''')
-    self.do_runf('main.c', 'done\n', emcc_args=['-sMAIN_MODULE=2', '--preload-file', 'tmp.so@library.so', '--use-preload-plugins'] + args)
+    expected = 'done\n'
+    if args:
+      expected = "sharedModules: { '/library.so': Module [WebAssembly.Module] {} }\ndone\n"
+    self.do_runf('main.c', expected, emcc_args=['-sMAIN_MODULE=2', '--preload-file', 'tmp.so@library.so', '--use-preload-plugins'] + args)
 
   @node_pthreads
   def test_standalone_whole_archive(self):
