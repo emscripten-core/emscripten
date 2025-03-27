@@ -15265,6 +15265,10 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       #include <emscripten.h>
       #include <emscripten/threading.h>
 
+      #ifdef __EMSCRIPTEN_PTHREADS__
+      EM_JS_DEPS(main, "$sharedModules");
+      #endif
+
       int main() {
         // Check the file exists in the VFS
         struct stat statbuf;
@@ -15272,19 +15276,23 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
         // Check that it was preloaded.
         // The preloading actually only happens on the main thread where the filesystem
-        // lives.  On worker threads the module object is shared via preloadedModules.
+        // lives.  On worker threads the module object is shared via sharedModules.
         if (emscripten_is_main_runtime_thread()) {
           int found = EM_ASM_INT(
             return preloadedWasm['/library.so'] !== undefined;
           );
           assert(found);
-        } else {
+        }
+      #ifdef __EMSCRIPTEN_PTHREADS__
+        else {
           int found = EM_ASM_INT(
             err(sharedModules);
             return sharedModules['/library.so'] !== undefined;
           );
           assert(found);
         }
+      #endif
+
         void *lib_handle = dlopen("/library.so", RTLD_NOW);
         assert(lib_handle);
         typedef int (*voidfunc)();

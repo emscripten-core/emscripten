@@ -599,6 +599,9 @@ var LibraryDylink = {
     '$updateTableMap',
     '$wasmTable',
     '$addOnPostCtor',
+#if PTHREADS
+    '$sharedModules',
+#endif
   ],
   $loadWebAssemblyModule: (binary, flags, libName, localScope, handle) => {
 #if DYLINK_DEBUG
@@ -952,6 +955,9 @@ var LibraryDylink = {
 #endif
 #if DYNCALLS || !WASM_BIGINT
                               '$registerDynCallSymbols',
+#endif
+#if PTHREADS
+                              '$sharedModules',
 #endif
   ],
   $loadDynamicLibrary__docs: `
