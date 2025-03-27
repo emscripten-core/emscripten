@@ -2176,6 +2176,7 @@ Module['postRun'] = () => {
     test(['libdir/libfile.so.3.1.4.1.5.9'], '.3.1.4.1.5.9') # handle libX.so.1.2.3 as well
 
   @node_pthreads
+  @also_with_modularize
   def test_dylink_pthread_static_data(self):
     # Test that a side module uses the same static data region for global objects across all threads
 
@@ -15272,7 +15273,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
         // Check that it was preloaded.
         // The preloading actually only happens on the main thread where the filesystem
-        // lives.  On worker threads the module object is shared via preloadedModules.
+        // lives.  On worker threads the module object is shared via sharedModules.
         if (emscripten_is_main_runtime_thread()) {
           int found = EM_ASM_INT(
             return preloadedWasm['/library.so'] !== undefined;

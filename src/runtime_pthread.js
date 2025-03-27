@@ -14,6 +14,12 @@
 var workerID = 0;
 #endif
 
+#if MAIN_MODULE
+// Map of modules to be shared with new threads.  This gets populated by the
+// main thread and shared with all new workers via the initial `load` message.
+var sharedModules = {};
+#endif
+
 if (ENVIRONMENT_IS_PTHREAD) {
 #if !MINIMAL_RUNTIME
   var wasmModuleReceived;
