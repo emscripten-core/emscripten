@@ -93,7 +93,8 @@ void __get_exception_message(void* thrown_object, char** type, char** message) {
         reinterpret_cast<__cxa_dependent_exception*>(exception_header)
           ->primaryException;
       // can_catch can adjust thrown_object ptr, so rerun it
-      bool ret = catch_type->can_catch(thrown_type, thrown_object);
+      [[maybe_unused]] bool ret =
+        catch_type->can_catch(thrown_type, thrown_object);
       assert(ret);
     }
 #endif
