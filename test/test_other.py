@@ -9732,7 +9732,8 @@ int main() {
         }
       }
     ''')
-    self.do_runf('src.cpp', 'ERROR\n', emcc_args=['-DNDEBUG'])
+    self.set_setting('ASSERTIONS')
+    self.do_runf('src.cpp', 'ERROR\n')
 
 
   @requires_node
