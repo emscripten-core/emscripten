@@ -3188,7 +3188,7 @@ overhead for the extra instrumented function indirection.  Enable this if you
 want Emscripten to handle unhandled exceptions nicely at the cost of a few
 bytes extra.
 Exceptions that occur within the ``main`` function are already handled via an
-alternative mechanism.
+alternative mechanimsm.
 
 Default value: false
 
