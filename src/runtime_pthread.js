@@ -43,17 +43,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
   // Thread-local guard variable for one-time init of the JS state
   var initializedJS = false;
 
-  function threadPrintErr(...args) {
-#if ENVIRONMENT_MAY_BE_NODE
-    // See https://github.com/emscripten-core/emscripten/issues/14804
-    if (ENVIRONMENT_IS_NODE) {
-      fs.writeSync(2, args.join(' ') + '\n');
-      return;
-    }
-#endif
-    console.error(...args);
-  }
-
 #if LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER
   // When using postMessage to send an object, it is processed by the structured
   // clone algorithm.  The prototype, and hence methods, on that object is then
@@ -65,11 +54,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
     return Object.assign(object, attrs);
   }
 #endif
-
-#if expectToReceiveOnModule('printErr')
-  if (!Module['printErr'])
-#endif
-    err = threadPrintErr;
 
   // Turn unhandled rejected promises into errors so that the main thread will be
   // notified about them.
