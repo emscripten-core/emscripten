@@ -9735,7 +9735,6 @@ int main() {
     self.set_setting('ASSERTIONS')
     self.do_runf('src.cpp', 'ERROR\n')
 
-
   @requires_node
   def test_jsrun(self):
     print(config.NODE_JS)
