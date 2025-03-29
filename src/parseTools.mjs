@@ -868,10 +868,9 @@ function isSymbolNeeded(symName) {
   return false;
 }
 
-function makeRemovedModuleAPIAssert(moduleName, localName) {
+function makeRemovedModuleAPIAssert(moduleName) {
   if (!ASSERTIONS) return '';
-  localName ||= moduleName;
-  return `legacyModuleProp('${moduleName}', '${localName}');`;
+  return `legacyModuleProp('${moduleName}');`;
 }
 
 function checkReceiving(name) {
@@ -890,7 +889,9 @@ function makeModuleReceive(localName, moduleName) {
     // but sometimes they must differ.
     ret = `\nif (Module['${moduleName}']) ${localName} = Module['${moduleName}'];`;
   }
-  ret += makeRemovedModuleAPIAssert(moduleName, localName);
+  if (ASSERTIONS) {
+    ret += `consumedModuleProp('${moduleName}');`;
+  }
   return ret;
 }
 
@@ -919,8 +920,8 @@ function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert)
       ret += ` = Module['${moduleName}'];`;
     }
   }
-  if (!noAssert) {
-    ret += makeRemovedModuleAPIAssert(moduleName, localName);
+  if (ASSERTIONS && !noAssert) {
+    ret += `consumedModuleProp('${moduleName}');`;
   }
   return ret;
 }
