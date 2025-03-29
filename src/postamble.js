@@ -291,7 +291,7 @@ function checkUnflushedContent() {
 if (Module['preInit']) {
   if (typeof Module['preInit'] == 'function') Module['preInit'] = [Module['preInit']];
   while (Module['preInit'].length > 0) {
-    Module['preInit'].pop()();
+    Module['preInit'].shift()();
   }
 }
 #if ASSERTIONS
