@@ -132,12 +132,6 @@ function stackCheckInit() {
 }
 #endif
 
-#if MAIN_MODULE && PTHREADS
-// Map of modules to be shared with new threads.  This gets populated by the
-// main thread and shared with all new workers via the initial `load` message.
-var sharedModules = {};
-#endif
-
 #if MAIN_READS_PARAMS
 function run(args = arguments_) {
 #else
@@ -305,7 +299,16 @@ consumedModuleProp('preInit');
 #endif
 #endif
 
+
+#if WASM_ESM_INTEGRATION
+export default function init(moduleArg = {}) {
+  // TODO(sbc): moduleArg processing
+  updateMemoryViews();
+  run();
+}
+#else
 run();
+#endif
 
 #if BUILD_AS_WORKER
 

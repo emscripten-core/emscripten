@@ -18,12 +18,26 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.6 (in development)
+4.0.7 (in development)
 ----------------------
+- Added experimental support for Wasm ESM integration with
+  `-sWASM_ESM_INTEGRATION`. This is currently only supported in node behind a
+  flag and not in any browsers. (#23985)
+
+4.0.6 - 03/26/25
+----------------
 - Added support for applying path prefix substitution to the sources of the
   source map : use `-sSOURCE_MAP_PREFIXES=["<old>=<new>"]` with `-gsource-map`.
   Alternatively, you can now embed the sources content into the source map file
   using `-gsource-map=inline`. (#23741)
+- The python `__file__` builtin now works in the emscripten config file.
+  (#23973)
+- Three deprecated settings were removed.  These settings were marked as
+  deprecated for more than year:
+  - SUPPORT_ERRNO: Instead, export `__errno_location` if needed.
+  - EXTRA_EXPORTED_RUNTIME_METHODS: Instead use EXPORTED_RUNTIME_METHODS.
+  - DEMANGLE_SUPPORT: Instead use the `$demangle` JS libary function.
+  (#23975)
 
 4.0.5 - 03/12/25
 ----------------

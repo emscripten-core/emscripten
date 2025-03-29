@@ -68,7 +68,7 @@ var LibraryEmVal = {
   $Emval: {
     toValue: (handle) => {
       if (!handle) {
-          throwBindingError('Cannot use deleted val. handle = ' + handle);
+          throwBindingError(`Cannot use deleted val. handle = ${handle}`);
       }
   #if ASSERTIONS
       // handle 2 is supposed to be `undefined`.
@@ -294,8 +294,8 @@ var LibraryEmVal = {
   $emval_lookupTypes: (argCount, argTypes) => {
     var a = new Array(argCount);
     for (var i = 0; i < argCount; ++i) {
-      a[i] = requireRegisteredType({{{ makeGetValue('argTypes', 'i * ' + POINTER_SIZE, '*') }}},
-                                   "parameter " + i);
+      a[i] = requireRegisteredType({{{ makeGetValue('argTypes', `i*${POINTER_SIZE}`, '*') }}},
+                                   `parameter ${i}`);
     }
     return a;
   },
@@ -357,26 +357,26 @@ var LibraryEmVal = {
     var offset = 0;
     var argsList = []; // 'obj?, arg0, arg1, arg2, ... , argN'
     if (kind === /* FUNCTION */ 0) {
-      argsList.push("obj");
+      argsList.push('obj');
     }
-    var params = ["retType"];
+    var params = ['retType'];
     var args = [retType];
     for (var i = 0; i < argCount; ++i) {
-      argsList.push("arg" + i);
-      params.push("argType" + i);
+      argsList.push(`arg${i}`);
+      params.push(`argType${i}`);
       args.push(types[i]);
       functionBody +=
-        `  var arg${i} = argType${i}.readValueFromPointer(args${offset ? "+" + offset : ""});\n`;
+        `  var arg${i} = argType${i}.readValueFromPointer(args${offset ? '+' + offset : ''});\n`;
       offset += types[i].argPackAdvance;
     }
     var invoker = kind === /* CONSTRUCTOR */ 1 ? 'new func' : 'func.call';
     functionBody +=
-      `  var rv = ${invoker}(${argsList.join(", ")});\n`;
+      `  var rv = ${invoker}(${argsList.join(', ')});\n`;
     if (!retType.isVoid) {
-      params.push("emval_returnValue");
+      params.push('emval_returnValue');
       args.push(emval_returnValue);
       functionBody +=
-        "  return emval_returnValue(retType, destructorsRef, rv);\n";
+        '  return emval_returnValue(retType, destructorsRef, rv);\n';
     }
     functionBody +=
       "};\n";
