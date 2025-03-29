@@ -1028,6 +1028,9 @@ jobs:
           at: ~/
       - checkout
       - run:
+          name: Remove Linux binaries
+          command: rm -rf ~/emsdk ~/vms
+      - run:
           name: Install packages
           command: |
             choco install -y cmake.portable ninja pkgconfiglite
