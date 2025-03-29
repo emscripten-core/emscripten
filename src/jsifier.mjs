@@ -10,6 +10,7 @@
 import assert from 'node:assert';
 import * as fs from 'node:fs/promises';
 import {
+  ATPREINITS,
   ATEXITS,
   ATINITS,
   ATPOSTCTORS,
@@ -873,6 +874,7 @@ var proxiedFunctionTable = [
           asyncFuncs,
           libraryDefinitions: LibraryManager.libraryDefinitions,
           ATPRERUNS: ATPRERUNS.join('\n'),
+          ATPREINITS: ATPREINITS.join('\n'),
           ATINITS: ATINITS.join('\n'),
           ATPOSTCTORS: ATPOSTCTORS.join('\n'),
           ATMAINS: ATMAINS.join('\n'),

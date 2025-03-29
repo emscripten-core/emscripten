@@ -161,6 +161,7 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
 
 
 def apply_static_code_hooks(forwarded_json, code):
+  code = shared.do_replace(code, '<<< ATPREINITS >>>', str(forwarded_json['ATPREINITS']))
   code = shared.do_replace(code, '<<< ATPRERUNS >>>', str(forwarded_json['ATPRERUNS']))
   code = shared.do_replace(code, '<<< ATINITS >>>', str(forwarded_json['ATINITS']))
   code = shared.do_replace(code, '<<< ATPOSTCTORS >>>', str(forwarded_json['ATPOSTCTORS']))

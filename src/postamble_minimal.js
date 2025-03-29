@@ -136,6 +136,8 @@ WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
 if (!Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM';
 #endif
 
+<<< ATPREINITS >>>
+
 WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #endif
 
