@@ -131,8 +131,8 @@ var ENVIRONMENT_IS_WASM_WORKER = !!Module['$ww'];
 // refer to Module (if they choose; they can also define Module)
 {{{ preJS() }}}
 
-var arguments_ = [];
-var thisProgram = './this.program';
+{{{ makeModuleReceiveWithVar('arguments_', 'arguments', undefined, true) }}}
+{{{ makeModuleReceiveWithVar('thisProgram', undefined, undefined, true) }}}
 var quit_ = (status, toThrow) => {
   throw toThrow;
 };
@@ -208,10 +208,10 @@ if (ENVIRONMENT_IS_NODE) {
 #include "node_shell_read.js"
 
   if (process.argv.length > 1) {
-    thisProgram = process.argv[1].replace(/\\/g, '/');
+    thisProgram ??= process.argv[1].replace(/\\/g, '/');
   }
 
-  arguments_ = process.argv.slice(2);
+  arguments_ ??= process.argv.slice(2);
 
 #if !MODULARIZE
   // MODULARIZE will export the module in the proper place outside, we don't need to export here
@@ -283,7 +283,7 @@ if (ENVIRONMENT_IS_SHELL) {
   globalThis.setTimeout ??= (f) => f();
 
   // v8 uses `arguments_` whereas spidermonkey uses `scriptArgs`
-  arguments_ = globalThis.arguments || globalThis.scriptArgs;
+  arguments_ ??= globalThis.arguments || globalThis.scriptArgs;
 
   if (typeof quit == 'function') {
     quit_ = (status, toThrow) => {
@@ -405,13 +405,6 @@ if (ENVIRONMENT_IS_NODE) {
 #if ASSERTIONS
 checkIncomingModuleAPI();
 #endif
-
-// Emit code to handle expected values on the Module object. This applies Module.x
-// to the proper local x. This has two benefits: first, we only emit it if it is
-// expected to arrive, and second, by using a local everywhere else that can be
-// minified.
-{{{ makeModuleReceive('arguments_', 'arguments') }}}
-{{{ makeModuleReceive('thisProgram') }}}
 
 // perform assertions in shell.js after we set up out() and err(), as otherwise if an assertion fails it cannot print the message
 #if ASSERTIONS
