@@ -78,7 +78,7 @@ let LibraryWebAudio = {
 #if WEBAUDIO_DEBUG
       console.log(`emscripten_resume_audio_context_async() callback: New audio state="${EmAudio[contextHandle].state}", ID=${state}`);
 #endif
-      {{{ makeDynCall('viii', 'callback') }}}(contextHandle, state, userData);
+      {{{ makeDynCall('viip', 'callback') }}}(contextHandle, state, userData);
     }
 #if WEBAUDIO_DEBUG
     console.log(`emscripten_resume_audio_context_async() resuming...`);
@@ -162,9 +162,13 @@ let LibraryWebAudio = {
     console.log(`emscripten_start_wasm_audio_worklet_thread_async() adding audioworklet.js...`);
 #endif
 
-    let audioWorkletCreationFailed = () => {
+    let audioWorkletCreationFailed = (err) => {
 #if WEBAUDIO_DEBUG
-      console.error(`emscripten_start_wasm_audio_worklet_thread_async() addModule() failed!`);
+      // Note about Cross-Origin here: a lack of Cross-Origin-Opener-Policy and
+      // Cross-Origin-Embedder-Policy headers to the client request will result
+      // in the worklet file failing to load.
+      console.error(`emscripten_start_wasm_audio_worklet_thread_async() addModule() failed! Are the Cross-Origin headers being set?`);
+      if (err) console.error(err);
 #endif
       {{{ makeDynCall('viip', 'callback') }}}(contextHandle, 0/*EM_FALSE*/, userData);
     };
@@ -178,7 +182,7 @@ let LibraryWebAudio = {
         console.error(`AudioWorklets are not supported by current browser.`);
       }
 #endif
-      return audioWorkletCreationFailed();
+      return audioWorkletCreationFailed(null);
     }
 
     // TODO: In MINIMAL_RUNTIME builds, read this file off of a preloaded Blob,
@@ -222,7 +226,7 @@ let LibraryWebAudio = {
 #if WEBAUDIO_DEBUG
       console.log(`emscripten_start_wasm_audio_worklet_thread_async() addModule() of main application JS completed`);
 #endif
-      {{{ makeDynCall('viii', 'callback') }}}(contextHandle, 1/*EM_TRUE*/, userData);
+      {{{ makeDynCall('viip', 'callback') }}}(contextHandle, 1/*EM_TRUE*/, userData);
     }).catch(audioWorkletCreationFailed);
   },
 
@@ -241,24 +245,25 @@ let LibraryWebAudio = {
     assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_create_wasm_audio_worklet_processor_async() on a context handle ${contextHandle} that is not an AudioContext, but of type ${typeof EmAudio[contextHandle]}`);
 #endif
 
-    options >>= 2;
     let audioParams = [],
-      numAudioParams = HEAPU32[options+1],
-      audioParamDescriptors = HEAPU32[options+2] >> 2,
+      processorName = UTF8ToString({{{ makeGetValue('options', C_STRUCTS.WebAudioWorkletProcessorCreateOptions.name, '*') }}}),
+      numAudioParams = {{{ makeGetValue('options', C_STRUCTS.WebAudioWorkletProcessorCreateOptions.numAudioParams, 'i32') }}},
+      audioParamDescriptors = {{{ makeGetValue('options', C_STRUCTS.WebAudioWorkletProcessorCreateOptions.audioParamDescriptors, '*') }}},
       i = 0;
 
     while (numAudioParams--) {
       audioParams.push({
         name: i++,
-        defaultValue: HEAPF32[audioParamDescriptors++],
-        minValue: HEAPF32[audioParamDescriptors++],
-        maxValue: HEAPF32[audioParamDescriptors++],
-        automationRate: ['a','k'][HEAPU32[audioParamDescriptors++]] + '-rate',
+        defaultValue: {{{ makeGetValue('audioParamDescriptors', C_STRUCTS.WebAudioParamDescriptor.defaultValue, 'float') }}},
+        minValue: {{{ makeGetValue('audioParamDescriptors', C_STRUCTS.WebAudioParamDescriptor.minValue, 'float') }}},
+        maxValue: {{{ makeGetValue('audioParamDescriptors', C_STRUCTS.WebAudioParamDescriptor.maxValue, 'float') }}},
+        automationRate: ({{{ makeGetValue('audioParamDescriptors', C_STRUCTS.WebAudioParamDescriptor.automationRate, 'i32') }}} ? 'k' : 'a') + '-rate'
       });
+      audioParamDescriptors += {{{ C_STRUCTS.WebAudioParamDescriptor.__size__ }}};
     }
 
 #if WEBAUDIO_DEBUG
-    console.log(`emscripten_create_wasm_audio_worklet_processor_async() creating a new AudioWorklet processor with name ${UTF8ToString(HEAPU32[options])}`);
+    console.log(`emscripten_create_wasm_audio_worklet_processor_async() creating a new AudioWorklet processor with name ${processorName}`);
 #endif
 
     EmAudio[contextHandle].audioWorklet.bootstrapMessage.port.postMessage({
@@ -266,7 +271,9 @@ let LibraryWebAudio = {
       // Processor Name' used as a 'key' to verify the message type so as to
       // not get accidentally mixed with user submitted messages, the remainder
       // for space saving reasons, abbreviated from their variable names).
-      '_wpn': UTF8ToString(HEAPU32[options]),
+      // Note: we can only pass clonable object, so need to pass the function
+      // pointer and not the wasm function object.
+      '_wpn': processorName,
       'ap': audioParams,
       'ch': contextHandle,
       'cb': callback,
@@ -281,18 +288,20 @@ let LibraryWebAudio = {
     assert(EmAudio[contextHandle], `Called emscripten_create_wasm_audio_worklet_node() with a nonexisting/already freed Web Audio Context handle ${contextHandle}!`);
     assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_create_wasm_audio_worklet_node() on a context handle ${contextHandle} that is not an AudioContext, but of type ${typeof EmAudio[contextHandle]}`);
 #endif
-    options >>= 2;
 
     function readChannelCountArray(heapIndex, numOutputs) {
+      if (!heapIndex) return void 0;
+      heapIndex = {{{ getHeapOffset('heapIndex', 'i32') }}};
       let channelCounts = [];
       while (numOutputs--) channelCounts.push(HEAPU32[heapIndex++]);
       return channelCounts;
     }
 
+    let optionsOutputs = options ? {{{ makeGetValue('options', C_STRUCTS.EmscriptenAudioWorkletNodeCreateOptions.numberOfOutputs, 'i32') }}} : 0;
     let opts = options ? {
-      numberOfInputs: HEAP32[options],
-      numberOfOutputs: HEAP32[options+1],
-      outputChannelCount: HEAPU32[options+2] ? readChannelCountArray(HEAPU32[options+2]>>2, HEAP32[options+1]) : void 0,
+      numberOfInputs: {{{ makeGetValue('options', C_STRUCTS.EmscriptenAudioWorkletNodeCreateOptions.numberOfInputs, 'i32') }}},
+      numberOfOutputs: optionsOutputs,
+      outputChannelCount: readChannelCountArray({{{ makeGetValue('options', C_STRUCTS.EmscriptenAudioWorkletNodeCreateOptions.outputChannelCounts, 'i32*') }}}, optionsOutputs),
       processorOptions: {
         'cb': callback,
         'ud': userData,
