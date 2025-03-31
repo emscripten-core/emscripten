@@ -7692,7 +7692,7 @@ int main() {
     self.assertContained('Ok', out)
 
   @also_with_wasmfs
-  def test_ld_library_path_dependencies(self):
+  def test_dlopen_rpath(self):
     create_file('hello1_dep.c', r'''
 #include<stdio.h>
 
