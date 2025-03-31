@@ -1042,7 +1042,9 @@ var LibraryDylink = {
       }
       HEAP8[cur] = 0;
       var libNameC = stringToUTF8OnStack(libName);
-      var resLibNameC = __emscripten_resolve_path(buf, rpath, libNameC, bufSize);
+      // We use wasmExports["_emscripten_resolve_path"] so we can use this for
+      // preloading dynamic libraries when runtimeInitialized is false.
+      var resLibNameC = wasmExports["_emscripten_resolve_path"](buf, rpath, libNameC, bufSize);
       var foundFile = resLibNameC !== libNameC;
       libName = UTF8ToString(resLibNameC);
       stackRestore(origStack);
