@@ -49,45 +49,6 @@ var LibraryDylink = {
     `,
   $preloadedWasm: {},
 
-  $locateLibraryFromFS__deps: ['$FS'],
-  $locateLibraryFromFS: (filename, searchDirs) => {
-    // Find the library in the filesystem.
-    // returns null if not found.
-    if (typeof FS.lookupPath !== 'function') {
-      // wasmfs does not implement FS.lookupPath
-      return null;
-    }
-
-    var candidates = [];
-    if (filename.charAt(0) === '/') {  // abs path
-      candidates.push(filename);
-    } else if (searchDirs) {
-      for (var dir of searchDirs) {
-        // PATH.join does not work well with symlinks
-        candidates.push(dir + '/' + filename);
-      }
-    } else {
-      return null;
-    }
-
-    for (var path of candidates) {
-      try {
-        var res = FS.lookupPath(path);
-        return res.path;
-      } catch(e) {
-        // do nothing is file is not found
-      }
-    }
-
-    return null;
-  },
-
-  $readLibraryFromFS__deps: ['$FS'],
-  $readLibraryFromFS: (path) => {
-    var data = FS.readFile(path, {encoding: 'binary'});
-    return data;
-  },
-
   $replaceORIGIN__deps: ['$PATH'],
   $replaceORIGIN: (parentLibPath, rpath) => {
     if (rpath.startsWith('$ORIGIN')) {
@@ -999,8 +960,6 @@ var LibraryDylink = {
                               '$asyncLoad',
 #if FILESYSTEM
                               '$preloadedWasm',
-                              '$locateLibraryFromFS',
-                              '$readLibraryFromFS',
                               '$replaceORIGIN',
                               '_emscripten_resolve_path',
                               '$stackSave',
@@ -1115,7 +1074,7 @@ var LibraryDylink = {
 
 #if FILESYSTEM
       if (foundFile) {
-        var libData = readLibraryFromFS(libName);
+        var libData = FS.readFile(libName, {encoding: 'binary'});
         if (libData) {
 #if DYLINK_DEBUG
           dbg(`loaded library from filesystem: ${libName}`);
