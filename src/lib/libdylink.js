@@ -88,11 +88,6 @@ var LibraryDylink = {
     return data;
   },
 
-  $getDefaultLibDirs__deps: ['$ENV'],
-  $getDefaultLibDirs: () => {
-    return ENV['LD_LIBRARY_PATH']?.split(':') ?? [];
-  },
-
   $replaceORIGIN__deps: ['$PATH'],
   $replaceORIGIN: (parentLibPath, rpath) => {
     if (rpath.startsWith('$ORIGIN')) {
@@ -1006,8 +1001,14 @@ var LibraryDylink = {
                               '$preloadedWasm',
                               '$locateLibraryFromFS',
                               '$readLibraryFromFS',
-                              '$getDefaultLibDirs',
                               '$replaceORIGIN',
+                              '_emscripten_resolve_path',
+                              '$stackSave',
+                              '$stackAlloc',
+                              '$stackRestore',
+                              '$lengthBytesUTF8',
+                              '$stringToUTF8OnStack',
+                              '$stringToUTF8',
 #endif
 #if DYNCALLS || !WASM_BIGINT
                               '$registerDynCallSymbols',
@@ -1026,13 +1027,27 @@ var LibraryDylink = {
 
 #if FILESYSTEM
       var runtimePathsAbs = (rpath.paths || []).map((p) => replaceORIGIN(rpath.parentLibPath, p));
-      var searchDirs = getDefaultLibDirs().concat(runtimePathsAbs);
-      var libNameAbs = locateLibraryFromFS(libName, searchDirs);
-      if (libNameAbs) {
-        libName = libNameAbs;
+      var origStack = stackSave();
+      var bufSize = 2*255 + 2;
+      var buf = stackAlloc(bufSize);
+      var size = 0;
+      for (var str of runtimePathsAbs) {
+        size += lengthBytesUTF8(str) + 1;
       }
+      var rpath = stackAlloc(size);
+      var cur = rpath
+      for (var str of runtimePathsAbs) {
+        cur += stringToUTF8(str, cur, size);
+        HEAP8[cur] = ':'.charCodeAt(0);
+      }
+      HEAP8[cur] = 0;
+      var libNameC = stringToUTF8OnStack(libName);
+      var resLibNameC = __emscripten_resolve_path(buf, rpath, libNameC, bufSize);
+      var foundFile = resLibNameC !== libNameC;
+      libName = UTF8ToString(resLibNameC);
+      stackRestore(origStack);
 #if DYLINK_DEBUG
-      dbg(`checking filesystem: ${libName}: ${libNameAbs ? 'found' : 'not found'}`);
+      dbg(`checking filesystem: ${libName}: ${foundFile ? 'found' : 'not found'}`);
 #endif
 #endif
 
@@ -1097,7 +1112,7 @@ var LibraryDylink = {
       }
 
 #if FILESYSTEM
-      if (libNameAbs) {
+      if (foundFile) {
         var libData = readLibraryFromFS(libName);
         if (libData) {
 #if DYLINK_DEBUG
