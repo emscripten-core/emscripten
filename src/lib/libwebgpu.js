@@ -185,7 +185,6 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
       Instance: 3,
     },
   };
-  null;
 }}}
 
 var LibraryWebGPU = {
