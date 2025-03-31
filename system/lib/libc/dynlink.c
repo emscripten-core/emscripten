@@ -484,50 +484,41 @@ static void dlopen_onerror(struct dso* dso, void* user_data) {
 }
 
 // Modified version of path_open from musl/ldso/dynlink.c
-static int path_find(const char *name, int ncandidates, const char **candidates, char *buf, size_t buf_size) {
+static int path_find(const char *name, const char *s, char *buf, size_t buf_size) {
   size_t l;
   int fd;
-  for (int c = 0; c < ncandidates; c ++) {
-    const char* s = candidates[c];
-    if (s == NULL) {
-      continue;
-    }
-    for (;;) {
-      s += strspn(s, ":\n");
-      l = strcspn(s, ":\n");
-      if (l-1 >= INT_MAX) return -1;
-      if (snprintf(buf, buf_size, "%.*s/%s", (int)l, s, name) < buf_size) {
-        dbg("dlopen: path_find: %s", buf);
-        struct stat statbuf;
-        if (stat(buf, &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
-          return 0;
-        }
-        switch (errno) {
-        case ENOENT:
-        case ENOTDIR:
-        case EACCES:
-        case ENAMETOOLONG:
-          break;
-        default:
-          dbg("dlopen: path_find failed: %s", strerror(errno));
-          /* Any negative value but -1 will inhibit
-          * futher path search. */
-          return -2;
-        }
+  for (;;) {
+    s += strspn(s, ":\n");
+    l = strcspn(s, ":\n");
+    if (l-1 >= INT_MAX) return -1;
+    if (snprintf(buf, buf_size, "%.*s/%s", (int)l, s, name) < buf_size) {
+      dbg("dlopen: path_find: %s", buf);
+      struct stat statbuf;
+      if (stat(buf, &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
+        return 0;
       }
-      s += l;
+      switch (errno) {
+      case ENOENT:
+      case ENOTDIR:
+      case EACCES:
+      case ENAMETOOLONG:
+        break;
+      default:
+        dbg("dlopen: path_find failed: %s", strerror(errno));
+        /* Any negative value but -1 will inhibit
+         * futher path search. */
+        return -2;
+      }
     }
+    s += l;
   }
-  return -1;
 }
 
 // Resolve filename using LD_LIBRARY_PATH
-const char* _emscripten_resolve_path(char* buf, const char* rpath, const char* file, size_t buflen) {
+static const char* resolve_path(char* buf, const char* file, size_t buflen) {
   if (!strchr(file, '/')) {
     const char* env_path = getenv("LD_LIBRARY_PATH");
-    int ncandidates = 2;
-    const char* candidates[2] = {env_path, rpath};
-    if (env_path && path_find(file, ncandidates, candidates, buf, buflen) == 0) {
+    if (env_path && path_find(file, env_path, buf, buflen) == 0) {
       dbg("dlopen: found in LD_LIBRARY_PATH: %s", buf);
       return buf;
     }
@@ -562,7 +553,7 @@ static struct dso* _dlopen(const char* file, int flags) {
   do_write_lock();
 
   char buf[2*NAME_MAX+2];
-  file = _emscripten_resolve_path(buf, NULL, file, sizeof buf);
+  file = resolve_path(buf, file, sizeof buf);
 
   struct dso* p = find_existing(file);
   if (p) {
@@ -602,7 +593,7 @@ void emscripten_dlopen(const char* filename, int flags, void* user_data,
   }
   do_write_lock();
   char buf[2*NAME_MAX+2];
-  filename = _emscripten_resolve_path(buf, NULL, filename, sizeof buf);
+  filename = resolve_path(buf, filename, sizeof buf);
   struct dso* p = find_existing(filename);
   if (p) {
     onsuccess(user_data, p);

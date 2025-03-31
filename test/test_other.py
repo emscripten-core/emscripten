@@ -7691,7 +7691,6 @@ int main() {
     self.assertContained('Hello4', out)
     self.assertContained('Ok', out)
 
-  @also_with_wasmfs
   def test_ld_library_path_dependencies(self):
     create_file('hello1_dep.c', r'''
 #include<stdio.h>
