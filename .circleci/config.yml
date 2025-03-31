@@ -1029,7 +1029,7 @@ jobs:
       - checkout
       - run:
           name: Remove Linux binaries
-          command: rm -rf ~/emsdk ~/vms
+          command: rm -rf ~/emsdk ~/vms ~/.jsvu ~/wasi-sdk
       - run:
           name: Install packages
           command: |
