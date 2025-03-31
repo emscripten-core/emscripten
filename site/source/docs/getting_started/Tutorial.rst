@@ -28,10 +28,10 @@ using ``./emcc`` or ``./em++``.
 For the next section you will need to open a command prompt:
 
 - On Linux or macOS, open a *Terminal*.
-- On Windows open the :ref:`Emscripten Command Prompt <emcmdprompt>`, a command
+- On Windows, open the :ref:`Emscripten Command Prompt <emcmdprompt>`, a command
   prompt that has been pre-configured with the correct system paths and settings
   to point to the :term:`active <Active Tool/SDK>` Emscripten tools. To access
-  this prompt, type **Emscripten** in the Windows 8 start screen, and then
+  this prompt, type **Emscripten** in the Windows start menu, and then
   select the **Emscripten Command Prompt** option.
 
 Navigate with the command prompt to the emscripten directory under the SDK. This
@@ -39,7 +39,7 @@ is a folder below the :term:`emsdk root directory`, typically
 **<emsdk root directory>/upstream/emscripten/**.
 The examples below will depend on finding files relative to that location.
 
-.. note:: In older emscripten versions the directory structure was different:
+.. note:: In older emscripten versions, the directory structure was different:
    the version number appeared, and the backend (fastcomp/upstream) did not, so
    you would use something like **<emsdk root directory>/emscripten/1.20.0/**.
 
@@ -52,7 +52,7 @@ If you haven't run Emscripten before, run it now with: ::
     ./emcc -v
 
 If the output contains warnings about missing tools, see
-:ref:`verifying-the-emscripten-environment` for debugging help. Otherwise
+:ref:`verifying-the-emscripten-environment` for debugging help. Otherwise,
 continue to the next sections where we'll build some code.
 
 
@@ -61,7 +61,7 @@ Running Emscripten
 
 You can now compile your first C/C++ file to JavaScript.
 
-First, lets have a look at the file to be compiled: **hello_world.c**. This is
+First, let's have a look at the file to be compiled: **hello_world.c**. This is
 the simplest test code in the SDK, and as you can see, all it does is print
 "hello, world!" to the console and then exit.
 
@@ -87,13 +87,13 @@ execute it. You can run them using :term:`node.js`:
 This prints "hello, world!" to the console, as expected.
 
 .. note:: Older node.js versions do not have WebAssembly support yet. In that
-   case you will see an error message suggesting that you build with
+   case, you will see an error message suggesting that you build with
    ``-sWASM=0`` to disable WebAssembly, and then emscripten will emit the compiled
    code as JavaScript. In general, WebAssembly is recommended as it has
    widespread browser support and is more efficient both to execute and to
    download (and therefore emscripten emits it by default), but sometimes you
-   may need your code to run in an environment where it is not yet present and
-   so should disable it.
+   may need your code to run in an environment where it is not yet present,
+   so you should disable it.
 
 .. tip:: If an error occurs when calling *emcc*, run it with the ``-v`` option
    to print out a lot of useful debug information.
@@ -116,10 +116,10 @@ file as the target file: ::
 
 You can now open ``hello.html`` in a web browser.
 
-.. note:: Unfortunately several browsers (including *Chrome*, *Safari*, and
+.. note:: Unfortunately, several browsers (including *Chrome*, *Safari*, and
    *Internet Explorer*) do not support ``file://`` :term:`XHR` requests, and
    can't load extra files needed by the HTML (like a ``.wasm`` file, or packaged
-   file data as mentioned lower down). For these browsers you'll need to serve
+   file data as mentioned lower down). For these browsers, you'll need to serve
    the files using a :ref:`local webserver <faq-local-webserver>` and then open
    ``http://localhost:8000/hello.html``).
 
