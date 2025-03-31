@@ -8,10 +8,10 @@
     "eslint-config-prettier": "^10.1.1",
     "globals": "^16.0.0",
     "prettier": "^3.5.3",
-    "rollup": "^4.37.0",
+    "rollup": "^4.38.0",
     "source-map": "0.7.4",
     "typescript": "^5.8.2",
-    "vite": "^6.2.3",
+    "vite": "^6.2.4",
     "webpack": "^5.97.1",
     "webpack-cli": "^6.0.1",
     "ws": "^8.18.1"
