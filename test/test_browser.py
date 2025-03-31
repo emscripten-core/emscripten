@@ -1370,7 +1370,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
 
     args = ['--pre-js', 'pre.js', '-lidbfs.js', '-sEXIT_RUNTIME', '-sASYNCIFY']
     secret = str(time.time())
-    self.btest('fs/test_idbfs_fsync.c', '1', emcc_args=args + ['-DFIRST', f'-DSECRET="{secret }"', '-lidbfs.js'])
+    self.btest('fs/test_idbfs_fsync.c', '1', emcc_args=args + ['-DFIRST', f'-DSECRET="{secret}"', '-lidbfs.js'])
     self.btest('fs/test_idbfs_fsync.c', '1', emcc_args=args + [f'-DSECRET="{secret}"', '-lidbfs.js'])
 
   def test_fs_memfs_fsync(self):
@@ -1392,7 +1392,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
         }, '/work');
       };
     ''' % (secret, secret2))
-    self.btest_exit('fs/test_workerfs_read.c', emcc_args=['-lworkerfs.js', '--pre-js', 'pre.js', f'-DSECRET="{secret }"', f'-DSECRET2="{secret2}"', '--proxy-to-worker', '-lworkerfs.js'])
+    self.btest_exit('fs/test_workerfs_read.c', emcc_args=['-lworkerfs.js', '--pre-js', 'pre.js', f'-DSECRET="{secret}"', f'-DSECRET2="{secret2}"', '--proxy-to-worker', '-lworkerfs.js'])
 
   def test_fs_workerfs_package(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
@@ -1445,8 +1445,8 @@ simulateKeyUp(100, undefined, 'Numpad4');
     self.btest_exit('fs/test_lz4fs.cpp', 1, emcc_args=['-DLOAD_MANUALLY', '-sLZ4', '-sFORCE_FILESYSTEM', '-O2'])
     print('    opts+closure')
     self.btest_exit('fs/test_lz4fs.cpp', 1, emcc_args=['-DLOAD_MANUALLY', '-sLZ4',
-                                                  '-sFORCE_FILESYSTEM', '-O2',
-                                                  '--closure=1', '-g1', '-Wno-closure'])
+                                                       '-sFORCE_FILESYSTEM', '-O2',
+                                                       '--closure=1', '-g1', '-Wno-closure'])
 
     '''# non-lz4 for comparison
     try:
@@ -1484,7 +1484,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
     if asyncify == 2:
       self.require_jspi()
     secret = str(time.time())
-    self.btest('test_idbstore_sync.c', '8', emcc_args=['-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '-g2', f'-sASYNCIFY={asyncify}'])
+    self.btest('test_idbstore_sync.c', '8', emcc_args=['-sSTRICT', '-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '--closure=1', f'-sASYNCIFY={asyncify}'])
 
   def test_idbstore_sync_worker(self):
     secret = str(time.time())
@@ -1891,15 +1891,6 @@ simulateKeyUp(100, undefined, 'Numpad4');
 
   def test_emscripten_api_infloop(self):
     self.btest_exit('emscripten_api_browser_infloop.cpp')
-
-  @also_with_wasmfs
-  def test_emscripten_fs_api(self):
-    shutil.copy(test_file('screenshot.png'), '.') # preloaded *after* run
-    self.btest_exit('emscripten_fs_api_browser.c', emcc_args=['-lSDL'])
-
-  def test_emscripten_fs_api2(self):
-    self.btest_exit('emscripten_fs_api_browser2.c', emcc_args=['-sASSERTIONS=0'])
-    self.btest_exit('emscripten_fs_api_browser2.c', emcc_args=['-sASSERTIONS=1'])
 
   @parameterized({
     '': ([],),
@@ -2332,6 +2323,13 @@ void *getBindBuffer() {
   def test_openal_extensions(self):
     self.btest_exit('openal/test_openal_extensions.c')
 
+  def test_openal_playback(self):
+    shutil.copy(test_file('sounds/audio.wav'), '.')
+    self.btest_exit('openal/test_openal_playback.c', emcc_args=['-O2', '--preload-file', 'audio.wav'],)
+
+  def test_openal_buffers(self):
+    self.btest_exit('openal/test_openal_buffers.c', emcc_args=['--preload-file', test_file('sounds/the_entertainer.wav') + '@/'],)
+
   def test_runtimelink(self):
     create_file('header.h', r'''
       struct point {
@@ -2517,6 +2515,24 @@ void *getBindBuffer() {
     self.assertContained("pthreads + BUILD_AS_WORKER require separate modes that don't work together, see https://github.com/emscripten-core/emscripten/issues/8854", stderr)
 
   @also_with_wasmfs
+  def test_wget(self):
+    create_file('test.txt', 'emscripten')
+    self.btest_exit('test_wget.c', emcc_args=['-sASYNCIFY'])
+
+  def test_wget_data(self):
+    create_file('test.txt', 'emscripten')
+    self.btest_exit('test_wget_data.c', emcc_args=['-O2', '-g2', '-sASYNCIFY'])
+
+  @also_with_wasmfs
+  @parameterized({
+    '': ([],),
+    'O2': (['-O2'],),
+  })
+  def test_emscripten_async_wget(self, args):
+    shutil.copy(test_file('screenshot.png'), '.') # preloaded *after* run
+    self.btest_exit('test_emscripten_async_wget.c', emcc_args=['-lSDL'] + args)
+
+  @also_with_wasmfs
   def test_emscripten_async_wget2(self):
     self.btest_exit('test_emscripten_async_wget2.cpp')
 
@@ -2526,8 +2542,8 @@ void *getBindBuffer() {
     self.btest('test_emscripten_async_wget2_data.cpp', expected='0')
 
   def test_emscripten_async_wget_side_module(self):
-    self.emcc(test_file('browser_module.c'), ['-o', 'lib.wasm', '-O2', '-sSIDE_MODULE'])
-    self.btest_exit('browser_main.c', emcc_args=['-O2', '-sMAIN_MODULE=2'])
+    self.emcc(test_file('test_emscripten_async_wget_side_module.c'), ['-o', 'lib.wasm', '-O2', '-sSIDE_MODULE'])
+    self.btest_exit('test_emscripten_async_wget_main_module.c', emcc_args=['-O2', '-sMAIN_MODULE=2'])
 
   @parameterized({
     '': ([],),
@@ -2844,15 +2860,6 @@ Module["preRun"] = () => {
   })
   def test_sdl_mousewheel(self, opts):
     self.btest_exit('test_sdl_mousewheel.c', emcc_args=opts + ['-DAUTOMATE_SUCCESS=1', '-lSDL', '-lGL'])
-
-  @also_with_wasmfs
-  def test_wget(self):
-    create_file('test.txt', 'emscripten')
-    self.btest_exit('test_wget.c', emcc_args=['-sASYNCIFY'])
-
-  def test_wget_data(self):
-    create_file('test.txt', 'emscripten')
-    self.btest_exit('test_wget_data.c', emcc_args=['-O2', '-g2', '-sASYNCIFY'])
 
   @also_with_wasm2js
   @parameterized({
@@ -4360,12 +4367,12 @@ Module["preRun"] = () => {
   def test_webgl_draw_base_vertex_base_instance(self, multi_draw, draw_elements):
     self.reftest('webgl_draw_base_vertex_base_instance_test.c', 'webgl_draw_instanced_base_vertex_base_instance.png',
                  emcc_args=['-lGL',
-                       '-sMAX_WEBGL_VERSION=2',
-                       '-sOFFSCREEN_FRAMEBUFFER',
-                       '-DMULTI_DRAW=' + str(multi_draw),
-                       '-DDRAW_ELEMENTS=' + str(draw_elements),
-                       '-DEXPLICIT_SWAP=1',
-                       '-DWEBGL_CONTEXT_VERSION=2'])
+                            '-sMAX_WEBGL_VERSION=2',
+                            '-sOFFSCREEN_FRAMEBUFFER',
+                            '-DMULTI_DRAW=' + str(multi_draw),
+                            '-DDRAW_ELEMENTS=' + str(draw_elements),
+                            '-DEXPLICIT_SWAP=1',
+                            '-DWEBGL_CONTEXT_VERSION=2'])
 
   @requires_graphics_hardware
   def test_webgl_sample_query(self):
@@ -4756,18 +4763,55 @@ Module["preRun"] = () => {
   def test_pthread_reltime(self):
     self.btest_exit('pthread/test_pthread_reltime.cpp', emcc_args=['-pthread', '-sPTHREAD_POOL_SIZE'])
 
-  # Tests that it is possible to load the main .js file of the application manually via a Blob URL,
+  # Tests that it is possible to load the main .js file of the application manually via mainScriptUrlOrBlob,
   # and still use pthreads.
-  def test_load_js_from_blob_with_pthreads(self):
+  @parameterized({
+    'blob': (False, True),
+    'url': (False, False),
+    'blob_es6': (True, True),
+    'url_es6': (True, False),
+  })
+  def test_mainScriptUrlOrBlob(self, es6, use_blob):
     # TODO: enable this with wasm, currently pthreads/atomics have limitations
     self.set_setting('EXIT_RUNTIME')
+    js_name = 'hello_thread_with_loader.%s' % ('mjs' if es6 else 'js')
+    if es6:
+      self.emcc_args += ['-sEXPORT_ES6']
+    if es6 and use_blob:
+      create_file('loader.mjs', '''
+        Module['locateFile'] = (path,_prefix) => path;
+        let blob = await (await fetch('hello_thread_with_loader.mjs')).blob();
+        Module['mainScriptUrlOrBlob'] = blob;
+        (await import(URL.createObjectURL(blob))).default(Module);
+      ''')
+    elif use_blob:
+      create_file('loader.mjs', '''
+        let blob = await (await fetch('hello_thread_with_loader.js')).blob();
+        Module['mainScriptUrlOrBlob'] = blob;
+        var script = document.createElement('script');
+        script.src = URL.createObjectURL(blob);
+        document.body.appendChild(script);
+      ''')
+    elif es6:
+      create_file('loader.mjs', '''
+        Module['mainScriptUrlOrBlob'] = 'hello_thread_with_loader.mjs';
+        (await import('./hello_thread_with_loader.mjs')).default(Module);
+      ''')
+    else:
+      create_file('loader.mjs', '''
+        var script = document.createElement('script');
+        Module['mainScriptUrlOrBlob'] = 'hello_thread_with_loader.js';
+        script.src = Module['mainScriptUrlOrBlob'];
+        document.body.appendChild(script);
+      ''')
+
     self.compile_btest('pthread/hello_thread.c', ['-pthread', '-o', 'out.js'], reporting=Reporting.JS_ONLY)
 
     # Now run the test with the JS file renamed and with its content
     # stored in Module['mainScriptUrlOrBlob'].
-    shutil.move('out.js', 'hello_thread_with_blob_url.js')
-    shutil.copy(test_file('pthread/main_js_as_blob_loader.html'), 'hello_thread_with_blob_url.html')
-    self.run_browser('hello_thread_with_blob_url.html', '/report_result?exit:0')
+    shutil.move('out.js', js_name)
+    shutil.copy(test_file('pthread/main_js_with_loader.html'), 'hello_thread_with_loader.html')
+    self.run_browser('hello_thread_with_loader.html', '/report_result?exit:0')
 
   # Tests that SINGLE_FILE works as intended in generated HTML (with and without Worker)
   @also_with_proxying
@@ -5346,8 +5390,8 @@ Module["preRun"] = () => {
     create_file('subdir/backendfile2', 'file 2')
     self.btest_exit('wasmfs/wasmfs_fetch.c',
                     emcc_args=['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD',
-                          '-sFORCE_FILESYSTEM', '-lfetchfs.js',
-                          '--js-library', test_file('wasmfs/wasmfs_fetch.js')] + args)
+                               '-sFORCE_FILESYSTEM', '-lfetchfs.js',
+                               '--js-library', test_file('wasmfs/wasmfs_fetch.js')] + args)
 
   @no_firefox('no OPFS support yet')
   @no_wasm64()
@@ -5549,21 +5593,26 @@ Module["preRun"] = () => {
       outfile = 'src/hello.js'
     self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web,worker', '-o', outfile])
     self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool'])
+    # Webpack doesn't bundle the wasm file by default so we need to copy it
+    # TODO(sbc): Look into plugins that do bundling.
     shutil.copy('src/hello.wasm', 'dist/')
     self.run_browser('dist/index.html', '/report_result?exit:0')
 
   @also_with_threads
   def test_vite(self):
     copytree(test_file('vite'), '.')
-    self.compile_btest('hello_world.c', ['-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web,worker', '-o', 'hello.mjs'])
+    self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sENVIRONMENT=web,worker', '-o', 'hello.mjs'])
     self.run_process(shared.get_npm_cmd('vite') + ['build'])
     self.run_browser('dist/index.html', '/report_result?exit:0')
 
   @also_with_threads
   def test_rollup(self):
     copytree(test_file('rollup'), '.')
-    self.compile_btest('hello_world.c', ['-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sMODULARIZE', '-o', 'hello.mjs'])
+    self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-o', 'hello.mjs'])
     self.run_process(shared.get_npm_cmd('rollup') + ['--config'])
+    # Rollup doesn't bundle the wasm file by default so we need to copy it
+    # TODO(sbc): Look into plugins that do bundling.
+    shutil.copy('hello.wasm', 'dist/')
     self.run_browser('index.html', '/report_result?exit:0')
 
 

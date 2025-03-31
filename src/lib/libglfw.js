@@ -84,6 +84,7 @@ var LibraryGLFW = {
     },
 
   $GLFW__deps: ['emscripten_get_now', '$GL', '$Browser', '$GLFW_Window',
+    'malloc', 'free',
     '$MainLoop',
     '$stringToNewUTF8',
     'emscripten_set_window_title',
@@ -1141,12 +1142,14 @@ var LibraryGLFW = {
 #endif
 
       GLFW.windows[win.id - 1] = null;
-      if (GLFW.active.id == win.id)
+      if (GLFW.active.id == win.id) {
         GLFW.active = null;
+      }
 
       // Destroy context when no alive windows
-      for (var i = 0; i < GLFW.windows.length; i++)
-        if (GLFW.windows[i] !== null) return;
+      for (win of GLFW.windows) {
+        if (win !== null) return;
+      }
 
       delete Module['ctx'];
     },
@@ -1377,7 +1380,6 @@ var LibraryGLFW = {
 /*******************************************************************************
  * GLFW FUNCTIONS
  ******************************************************************************/
-  glfwInit__deps: ['malloc', 'free'],
   glfwInit: () => {
     if (GLFW.windows) return 1; // GL_TRUE
 

@@ -114,9 +114,8 @@ var LibraryGLEW = {
 
   glewIsSupported: (name) => {
     var exts = UTF8ToString(name).split(' ');
-    for (var i = 0; i < exts.length; ++i) {
-      if (!GLEW.extensionIsSupported(exts[i]))
-        return 0;
+    for (var ext of exts) {
+      if (!GLEW.extensionIsSupported(ext)) return 0;
     }
     return 1;
   },

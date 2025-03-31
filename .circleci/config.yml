@@ -24,7 +24,7 @@ executors:
     environment:
       EMSDK_NOTTY: "1"
     macos:
-      xcode: "14.2.0"
+      xcode: "16.2.0"
     resource_class: macos.m1.medium.gen1
 
 commands:
@@ -330,9 +330,9 @@ commands:
           name: Install brew package dependencies
           environment:
             HOMEBREW_NO_AUTO_UPDATE: "1"
-          command: |
-            brew update
-            brew install cmake ninja python3 pkg-config
+          # Use --force-bottle to force homebrew use binary packages avoiding
+          # costly build times.
+          command: brew install --force-bottle cmake ninja pkg-config
       - checkout
       - run:
           name: submodule update
@@ -437,8 +437,8 @@ jobs:
       - checkout
       - pip-install
       - run: ruff check
-      # TODO (cclauss): When ruff supports rules E20,E30 without --preview, remove following line
-      - run: ruff check --preview --select=E20,E30
+      # TODO (cclauss): When ruff supports rules these errors without --preview, remove following line
+      - run: ruff check --preview --select=E20,E30,E221,E225,E226
   mypy:
     executor: focal
     steps:
@@ -497,6 +497,9 @@ jobs:
       - install-v8
       - install-emsdk
       - build-libs
+      - run:
+          name: Clean build directory
+          command: rm -rf ~/cache/build
       - persist
   # Perhaps we don't need to run this suite with every commit. Consider moving this to FYI bot.
   test-posixtest:
@@ -539,6 +542,7 @@ jobs:
             asan.test_asyncify_longjmp
             asan.test_pthread_run_on_main_thread
             asan.test_minimal_runtime_global_initializer
+            asan.test_fs_js_api_wasmfs
             lsan.test_dylink_dso_needed
             lsan.test_stdio_locking
             lsan.test_dlfcn_basic
@@ -658,21 +662,12 @@ jobs:
           command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
       - run-tests:
           title: "wasm64"
-          test_targets: "
-            wasm64
-            core_2gb.test_*em_asm*
-            core_2gb.test_*embind*
-            wasm64l.test_hello_world
-            wasm64l.test_bigswitch
-            wasm64l.test_module_wasm_memory
-            wasm64l.test_longjmp2_emscripten
-            other.test_memory64_proxies
-            other.test_failing_growth_wasm64"
+          test_targets: "wasm64"
       - upload-test-results
   test-wasm64-4gb:
     environment:
       LANG: "C.UTF-8"
-      # Only run 2 tests at a time to avoid OOM (since each tests used >4gb)
+      # Only run 2 tests at a time to avoid OOM (since each test used >4gb)
       EMCC_CORES: "2"
     # We don't use `bionic` here since its too old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
@@ -692,7 +687,16 @@ jobs:
           command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
       - run-tests:
           title: "wasm64_4gb"
-          test_targets: "wasm64_4gb"
+          test_targets: "wasm64_4gb
+            core_2gb.test_*em_asm*
+            core_2gb.test_*embind*
+            core_2gb.test_fs_js_api_wasmfs
+            wasm64l.test_hello_world
+            wasm64l.test_bigswitch
+            wasm64l.test_module_wasm_memory
+            wasm64l.test_longjmp2_emscripten
+            other.test_memory64_proxies
+            other.test_failing_growth_wasm64"
       - upload-test-results
   test-jsc:
     executor: linux-python
@@ -892,9 +896,20 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser"
-          # Skip test_4gb_fail as it OOMs on the current bot
+          # Just tests that don't run in browser 2G mode
           test_targets: "
-            browser skip:browser.test_4gb_fail
+            browser.test_gl_stride
+            browser.test_memory_growth_during_startup
+            browser.test_pthread_large_pthread_allocation
+            browser.test_pthread_sbrk*
+            browser.test_pthread_asan*
+            browser.test_webgl_multi_draw*
+            browser.test_pthread_growth*
+            browser.test_4gb
+            browser.test_emmalloc_3gb*
+            browser.test_dlmalloc_3gb
+            browser.test_2gb_fail
+            browser.test_audio_worklet*
             "
   test-browser-chrome-wasm64:
     executor: focal
@@ -903,14 +918,25 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser64"
-          # Skip tests that depend on running the output in node
-          # (This bot doesn't have node canary installed which is required to
-          # run wasm64 output).
-          test_targets: "browser64
-            skip:browser64.test_hello_world_worker*
-            skip:browser64.test_2gb_fail
-            skip:browser64.test_4gb_fail
-            skip:browser64.test_4gb"
+          # Just tests that don't run in browser64 4G mode
+          # TODO: restore this coverage (and the corresponding wasm64) and/or
+          # make this exclusion list a bit more automatic.
+          test_targets: "
+            browser64.test_emscripten_animate_canvas_element_size*
+            browser64.test_*malloc_*gb*
+            browser64.test_emmalloc_memgrowth
+            browser64.test_subdata_es2*
+            browser64.test_webgl2_garbage_free_entrypoints*
+            browser64.test_gl_stride
+            browser64.test_webgl2_get_buffer_sub_data
+            browser64.test_webgl2_pbo
+            browser64.test_webgl2_sokol*
+            browser64.test_memory_growth_during_startup
+            browser64.test_pthread_large_pthread_allocation
+            browser64.test_pthread_sbrk*
+            browser64.test_pthread_asan*
+            browser64.test_webgl_multi_draw*
+            browser64.test_pthread_growth*"
   test-browser-chrome-2gb:
     executor: focal
     environment:
@@ -928,44 +954,6 @@ jobs:
       - run-tests-chrome:
           title: "browser64_4gb"
           test_targets: "browser64_4gb"
-  test-browser-firefox:
-    executor: focal
-    steps:
-      - prepare-for-tests
-      - run-tests-firefox:
-          title: "browser"
-          # browser.test_sdl2_mouse and/or SDL2 should be fixed. The case happens
-          # to be failing here, and the root cause might be related with the
-          # initial position of the mouse pointer relative to the canvas.
-          # browser.test_html5_webgl_create_context is skipped because
-          # anti-aliasing is not well supported.
-          # browser.test_webgl_offscreen_canvas_in_pthread and
-          # browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
-          # are crashing Firefox (bugzil.la/1281796). The former case is
-          # further blocked by issue #6897.
-          test_targets: "
-            browser
-            skip:browser.test_sdl2_mouse
-            skip:browser.test_html5_webgl_create_context
-            skip:browser.test_webgl_offscreen_canvas_in_pthread
-            skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
-            skip:browser.test_glut_glutget
-            "
-  test-browser-firefox-wasm64:
-    executor: focal
-    steps:
-      - checkout
-      - run:
-          name: submodule update
-          command: git submodule update --init
-      - pip-install
-      - install-emsdk
-      - run-tests-firefox:
-          title: "browser64"
-          test_targets: "
-            browser64.test_sdl_image
-            browser64.test_dylink_many
-            "
   # TODO(sbc): Re-enable once we figure out why the emrun tests are
   # locking up.
   #test-browser-chrome-emrun:
@@ -977,72 +965,6 @@ jobs:
     executor: focal
     steps:
       - test-sockets-chrome
-  # windows and mac do not have separate build and test jobs, as they only run
-  # a limited set of tests; it is simpler and faster to do it all in one job.
-  test-windows:
-    working_directory: "~/path with spaces"
-    executor:
-      name: win/server-2019
-      shell: bash.exe -eo pipefail
-    environment:
-      PYTHONUNBUFFERED: "1"
-      EMSDK_NOTTY: "1"
-      # clang can compile but not link in the current setup, see
-      # https://github.com/emscripten-core/emscripten/pull/11382#pullrequestreview-428902638
-      EMTEST_LACKS_NATIVE_CLANG: "1"
-      EMTEST_SKIP_V8: "1"
-      EMTEST_SKIP_EH: "1"
-      EMTEST_SKIP_WASM64: "1"
-      EMTEST_SKIP_SCONS: "1"
-      EMTEST_SKIP_RUST: "1"
-      EMTEST_SKIP_NODE_CANARY: "1"
-      EMTEST_BROWSER: "0"
-    steps:
-      - checkout
-      - run:
-          name: Install packages
-          command: |
-            choco install -y cmake.portable ninja pkgconfiglite
-      - run:
-          name: Add python to bash path
-          command: echo "export PATH=\"$PATH:/c/Python27amd64/\"" >> $BASH_ENV
-      # note we do *not* build all libraries and freeze the cache; as we run
-      # only limited tests here, it's more efficient to build on demand
-      - install-emsdk
-      - pip-install:
-          python: "$EMSDK_PYTHON"
-      - run-tests:
-          title: "crossplatform tests"
-          test_targets: "--crossplatform-only"
-      - upload-test-results
-      # Run a single websockify-based test to ensure it works on windows.
-      - run-tests:
-          title: "sockets.test_nodejs_sockets_echo*"
-          test_targets: "sockets.test_nodejs_sockets_echo*"
-      - upload-test-results
-
-  test-mac-arm64:
-    executor: mac-arm64
-    environment:
-      # We don't install d8 or modern node on the mac runner so we skip any
-      # tests that depend on those.
-      EMTEST_SKIP_V8: "1"
-      EMTEST_SKIP_EH: "1"
-      EMTEST_SKIP_WASM64: "1"
-      EMTEST_SKIP_SCONS: "1"
-      EMTEST_SKIP_RUST: "1"
-      # Some native clang tests assume x86 clang (e.g. -sse2)
-      EMTEST_LACKS_NATIVE_CLANG: "1"
-      EMCC_SKIP_SANITY_CHECK: "1"
-    steps:
-      - setup-macos
-      - install-emsdk
-      # TODO: We can't currently do pip install here since numpy and other packages
-      # are currently missing arm64 macos binaries.
-      - run-tests:
-          title: "crossplatform tests"
-          test_targets: "--crossplatform-only"
-      - upload-test-results
 
 workflows:
   build-test:
@@ -1067,9 +989,6 @@ workflows:
       - test-core3:
           requires:
             - build-linux
-      - test-wasm64:
-          requires:
-            - build-linux
       - test-wasm64-4gb:
           requires:
             - build-linux
@@ -1091,15 +1010,9 @@ workflows:
       - test-browser-chrome-wasm64-4gb:
           requires:
             - build-linux
-      - test-browser-firefox:
-          requires:
-            - build-linux
-      - test-browser-firefox-wasm64
       - test-sockets-chrome:
           requires:
             - build-linux
       - test-jsc
       - test-spidermonkey
       - test-node-compat
-      - test-windows
-      - test-mac-arm64

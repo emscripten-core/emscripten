@@ -204,7 +204,10 @@ var USE_READY_PROMISE = true;
 // If true, building against Emscripten's wasm heap memory profiler.
 var MEMORYPROFILER = false;
 
-var GENERATE_SOURCE_MAP = false;
+// Set automatically to :
+// - 1 when using `-gsource-map`
+// - 2 when using `gsource-map=inline` (embed sources content in souce map)
+var GENERATE_SOURCE_MAP = 0;
 
 var GENERATE_DWARF = false;
 

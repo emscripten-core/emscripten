@@ -130,7 +130,11 @@ addToLibrary({
    * @param {Array=} argTypes
    * @param {Object=} opts
    */`,
-  $cwrap__deps: ['$getCFunc', '$ccall'],
+  $cwrap__deps: [ '$ccall',
+#if !ASSERTIONS
+    '$getCFunc',
+#endif
+  ],
   $cwrap: (ident, returnType, argTypes, opts) => {
 #if !ASSERTIONS
     // When the function takes numbers and returns a number, we can just return

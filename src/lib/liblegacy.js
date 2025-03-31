@@ -17,7 +17,7 @@ legacyFuncs = {
    * @param {(Uint8Array|Array<number>)} slab: An array of data.
    * @param {number=} allocator : How to allocate memory, see ALLOC_*
    */
-  $allocate__deps: ['$ALLOC_NORMAL', '$ALLOC_STACK', 'malloc', '$stackAlloc'],
+  $allocate__deps: ['$ALLOC_STACK', 'malloc', '$stackAlloc'],
   $allocate: (slab, allocator) => {
     var ret;
   #if ASSERTIONS
@@ -75,21 +75,6 @@ legacyFuncs = {
 
   $allocateUTF8: '$stringToNewUTF8',
   $allocateUTF8OnStack: '$stringToUTF8OnStack',
-
-#if SUPPORT_ERRNO
-  $setErrNo__deps: ['__errno_location'],
-  $setErrNo: (value) => {
-    {{{makeSetValue("___errno_location()", 0, 'value', 'i32') }}};
-    return value;
-  },
-#else
-  $setErrNo: (value) => {
-#if ASSERTIONS
-    err('failed to set errno from JS');
-#endif
-    return 0;
-  },
-#endif
 
 #if LINK_AS_CXX
   $demangle__deps: ['$withStackSave', '__cxa_demangle', 'free', '$stringToUTF8OnStack'],

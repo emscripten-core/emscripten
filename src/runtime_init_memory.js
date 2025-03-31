@@ -48,10 +48,6 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
 #if MEMORY64 == 1
       'address': 'i64',
-      // TODO(sbc): remove this alias for `address` once both firefox and
-      // chrome roll out the spec change.
-      // See https://github.com/WebAssembly/memory64/pull/92
-      'index': 'i64',
 #endif
     });
   }

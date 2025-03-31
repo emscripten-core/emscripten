@@ -262,13 +262,16 @@ def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: B006
   return check_call(command, **kw).stdout
 
 
-def get_npm_cmd(name):
+def get_npm_cmd(name, missing_ok=False):
   if WINDOWS:
     cmd = [path_from_root('node_modules/.bin', name + '.cmd')]
   else:
     cmd = config.NODE_JS + [path_from_root('node_modules/.bin', name)]
   if not os.path.exists(cmd[-1]):
-    exit_with_error(f'{name} was not found! Please run "npm install" in Emscripten root directory to set up npm dependencies')
+    if missing_ok:
+      return None
+    else:
+      exit_with_error(f'{name} was not found! Please run "npm install" in Emscripten root directory to set up npm dependencies')
   return cmd
 
 

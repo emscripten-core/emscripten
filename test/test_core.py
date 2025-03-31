@@ -3778,8 +3778,7 @@ ok
         "side.so",
         test_file("core/test_dlfcn_jspi_side.c"),
         "-sSIDE_MODULE",
-      ]
-      + self.get_emcc_args()
+      ] + self.get_emcc_args()
     )
     self.do_run_in_out_file_test("core/test_dlfcn_jspi.c", emcc_args=["side.so", "-sMAIN_MODULE=2"])
 
@@ -5756,9 +5755,14 @@ got: 10
       self.set_setting("FORCE_FILESYSTEM")
     self.do_run_in_out_file_test('fs/test_writeFile.cpp')
 
-  @also_with_wasmfs
+  @with_all_fs
+  @crossplatform
   def test_fs_js_api(self):
-    self.set_setting("FORCE_FILESYSTEM")
+    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
+    if nodefs and WINDOWS:
+      self.skipTest('specific errno values differ')
+    if self.get_setting('WASMFS'):
+      self.set_setting("FORCE_FILESYSTEM")
     self.do_runf('fs/test_fs_js_api.c', 'success')
 
   @also_with_noderawfs
@@ -7138,7 +7142,7 @@ void* operator new(size_t size) {
     # https://github.com/emscripten-core/emscripten/issues/15081
     self.set_setting('EXIT_RUNTIME', 0)
     self.set_setting('EMULATE_FUNCTION_POINTER_CASTS')
-    self.do_core_test('test_emulate_function_pointer_casts.cpp')
+    self.do_core_test('test_emulate_function_pointer_casts.cpp', emcc_args=['-Wno-deprecated'])
 
   @no_wasm2js('TODO: nicely printed names in wasm2js')
   @parameterized({
@@ -7713,6 +7717,36 @@ void* operator new(size_t size) {
     else:
       self.assertTrue(seen_lines.issuperset([6, 7, 11, 12]), seen_lines)
 
+  @needs_dylink
+  def test_embind_dylink_visibility_hidden(self):
+    # Check that embind is usable from a library built with "-fvisibility=hidden"
+
+    create_file('liblib.cpp', r'''
+      #include <emscripten/val.h>
+      #define EXPORT __attribute__((visibility("default")))
+      using namespace emscripten;
+      EXPORT void liba_fun() {
+        unsigned char buffer[1];
+        val view(typed_memory_view(1, buffer));
+      }
+    ''')
+    self.build_dlfcn_lib('liblib.cpp', emcc_args=['-fvisibility=hidden'])
+
+    self.prep_dlfcn_main()
+    self.clear_setting('NO_AUTOLOAD_DYLIBS')
+    create_file('main.cpp', r'''
+      #include <stdio.h>
+      #include <emscripten/val.h>
+      using namespace emscripten;
+      void liba_fun();
+      int main() {
+        liba_fun();
+        printf("done\n");
+        return 0;
+      }
+    ''')
+    self.do_runf('main.cpp', 'done\n', emcc_args=['--bind'])
+
   @no_wasm2js('TODO: source maps in wasm2js')
   def test_dwarf(self):
     self.emcc_args.append('-g')
@@ -8063,7 +8097,7 @@ Module.onRuntimeInitialized = () => {
   })
   @with_asyncify_and_jspi
   def test_async_ccall_promise(self, exit_runtime):
-    if self.get_setting('ASYNCIFY') ==  2:
+    if self.get_setting('ASYNCIFY') == 2:
       self.set_setting('JSPI_EXPORTS', ['stringf', 'floatf'])
     self.set_setting('ASSERTIONS')
     self.set_setting('INVOKE_RUN', 0)
@@ -8354,7 +8388,7 @@ Module.onRuntimeInitialized = () => {
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
     self.set_setting('MAYBE_WASM2JS')
     # see that running as wasm works
-    self.do_core_test('test_hello_world.c')
+    self.do_core_test('test_hello_world.c', emcc_args=['-Wno-deprecated'])
     # run wasm2js, bundle the code, and use the wasm2js path
     cmd = [PYTHON, path_from_root('tools/maybe_wasm2js.py'), 'test_hello_world.js', 'test_hello_world.wasm']
     if self.is_optimizing():

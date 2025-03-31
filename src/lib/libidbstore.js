@@ -32,7 +32,7 @@ var LibraryIDBStore = {
       });
     });
   },
-  emscripten_idb_async_store__deps: ['$UTF8ToString', 'free', '$callUserCallback'],
+  emscripten_idb_async_store__deps: ['$UTF8ToString', '$callUserCallback'],
   emscripten_idb_async_store: (db, id, ptr, num, arg, onstore, onerror) => {
     // note that we copy the data here, as these are async operatins - changes
     // to HEAPU8 meanwhile should not affect us!
@@ -112,6 +112,8 @@ var LibraryIDBStore = {
   emscripten_idb_store__async: true,
   emscripten_idb_store: (db, id, ptr, num, perror) => Asyncify.handleSleep((wakeUp) => {
     IDBStore.setFile(UTF8ToString(db), UTF8ToString(id), new Uint8Array(HEAPU8.subarray(ptr, ptr+num)), (error) => {
+      // Closure warns about storing booleans in TypedArrays.
+      /** @suppress{checkTypes} */
       {{{ makeSetValue('perror', 0, '!!error', 'i32') }}};
       wakeUp();
     });
@@ -119,6 +121,7 @@ var LibraryIDBStore = {
   emscripten_idb_delete__async: true,
   emscripten_idb_delete: (db, id, perror) => Asyncify.handleSleep((wakeUp) => {
     IDBStore.deleteFile(UTF8ToString(db), UTF8ToString(id), (error) => {
+      /** @suppress{checkTypes} */
       {{{ makeSetValue('perror', 0, '!!error', 'i32') }}};
       wakeUp();
     });
@@ -126,7 +129,9 @@ var LibraryIDBStore = {
   emscripten_idb_exists__async: true,
   emscripten_idb_exists: (db, id, pexists, perror) => Asyncify.handleSleep((wakeUp) => {
     IDBStore.existsFile(UTF8ToString(db), UTF8ToString(id), (error, exists) => {
+      /** @suppress{checkTypes} */
       {{{ makeSetValue('pexists', 0, '!!exists', 'i32') }}};
+      /** @suppress{checkTypes} */
       {{{ makeSetValue('perror',  0, '!!error', 'i32') }}};
       wakeUp();
     });
@@ -134,6 +139,7 @@ var LibraryIDBStore = {
   emscripten_idb_clear__async: true,
   emscripten_idb_clear: (db, perror) => Asyncify.handleSleep((wakeUp) => {
     IDBStore.clearStore(UTF8ToString(db), (error) => {
+      /** @suppress{checkTypes} */
       {{{ makeSetValue('perror', 0, '!!error', 'i32') }}};
       wakeUp();
     });
@@ -141,7 +147,9 @@ var LibraryIDBStore = {
   // extra worker methods - proxied
   emscripten_idb_load_blob__async: true,
   emscripten_idb_load_blob: (db, id, pblob, perror) => Asyncify.handleSleep((wakeUp) => {
+#if ASSERTIONS
     assert(!IDBStore.pending);
+#endif
     IDBStore.pending = (msg) => {
       IDBStore.pending = null;
       var blob = msg.blob;
@@ -150,7 +158,9 @@ var LibraryIDBStore = {
         wakeUp();
         return;
       }
+#if ASSERTIONS
       assert(blob instanceof Blob);
+#endif
       var blobId = IDBStore.blobs.length;
       IDBStore.blobs.push(blob);
       {{{ makeSetValue('pblob', 0, 'blobId', 'i32') }}};
@@ -165,7 +175,9 @@ var LibraryIDBStore = {
   }),
   emscripten_idb_store_blob__async: true,
   emscripten_idb_store_blob: (db, id, ptr, num, perror) => Asyncify.handleSleep((wakeUp) => {
+#if ASSERTIONS
     assert(!IDBStore.pending);
+#endif
     IDBStore.pending = (msg) => {
       IDBStore.pending = null;
       {{{ makeSetValue('perror', 0, '!!msg.error', 'i32') }}};
@@ -188,7 +200,9 @@ var LibraryIDBStore = {
     return 0;
   },
   emscripten_idb_free_blob: (blobId) => {
+#if ASSERTIONS
     assert(IDBStore.blobs[blobId]);
+#endif
     IDBStore.blobs[blobId] = null;
   },
 #else
