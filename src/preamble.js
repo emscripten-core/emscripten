@@ -46,7 +46,9 @@ if (typeof WebAssembly != 'object') {
 
 // Wasm globals
 
+#if !WASM_ESM_INTEGRATION
 var wasmMemory;
+#endif
 
 #if SHARED_MEMORY
 // For sending to workers.
@@ -149,10 +151,6 @@ var isFileURI = (filename) => filename.startsWith('file://');
 #include "runtime_shared.js"
 
 #if ASSERTIONS
-assert(!Module['STACK_SIZE'], 'STACK_SIZE can no longer be set at runtime.  Use -sSTACK_SIZE at link time')
-#endif
-
-#if ASSERTIONS
 assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray != undefined && Int32Array.prototype.set != undefined,
        'JS engine does not provide full typed array support');
 #endif
@@ -220,7 +218,11 @@ function initRuntime() {
   <<< ATINITS >>>
 
 #if hasExportedSymbol('__wasm_call_ctors')
+#if WASM_ESM_INTEGRATION
+  ___wasm_call_ctors();
+#else
   wasmExports['__wasm_call_ctors']();
+#endif
 #endif
 
   <<< ATPOSTCTORS >>>
@@ -558,12 +560,32 @@ function instrumentWasmTableWithAbort() {
 }
 #endif
 
-#if SINGLE_FILE
-// In SINGLE_FILE mode the wasm binary is encoded inline here as a data: URL.
-var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
-#else
+#if LOAD_SOURCE_MAP
+function receiveSourceMapJSON(sourceMap) {
+  wasmSourceMap = new WasmSourceMap(sourceMap);
+  {{{ runIfMainThread("removeRunDependency('source-map');") }}}
+}
+#endif
+
+#if (PTHREADS || WASM_WORKERS) && (LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER)
+// When using postMessage to send an object, it is processed by the structured
+// clone algorithm.  The prototype, and hence methods, on that object is then
+// lost. This function adds back the lost prototype.  This does not work with
+// nested objects that has prototypes, but it suffices for WasmSourceMap and
+// WasmOffsetConverter.
+function resetPrototype(constructor, attrs) {
+  var object = Object.create(constructor.prototype);
+  return Object.assign(object, attrs);
+}
+#endif
+
+#if !SOURCE_PHASE_IMPORTS && !WASM_ESM_INTEGRATION
 var wasmBinaryFile;
+
 function findWasmBinary() {
+#if SINGLE_FILE && WASM == 1 && !WASM2JS
+  return base64Decode('<<< WASM_BINARY_DATA >>>');
+#else
 #if EXPORT_ES6 && !AUDIO_WORKLET
   if (Module['locateFile']) {
 #endif
@@ -578,17 +600,18 @@ function findWasmBinary() {
   // Use bundler-friendly `new URL(..., import.meta.url)` pattern; works in browsers too.
   return new URL('{{{ WASM_BINARY_FILE }}}', import.meta.url).href;
 #endif
-}
 #endif
+}
 
 function getBinarySync(file) {
+#if SINGLE_FILE && WASM == 1 && !WASM2JS
+  if (ArrayBuffer.isView(file)) {
+    return file;
+  }
+#endif
+#if expectToReceiveOnModule('wasmBinary') || MAYBE_WASM2JS
   if (file == wasmBinaryFile && wasmBinary) {
     return new Uint8Array(wasmBinary);
-  }
-#if SUPPORT_BASE64_EMBEDDING
-  var binary = tryParseAsDataURI(file);
-  if (binary) {
-    return binary;
   }
 #endif
   if (readBinary) {
@@ -647,13 +670,6 @@ var splitModuleProxyHandler = {
 };
 #endif
 
-#if LOAD_SOURCE_MAP
-function receiveSourceMapJSON(sourceMap) {
-  wasmSourceMap = new WasmSourceMap(sourceMap);
-  {{{ runIfMainThread("removeRunDependency('source-map');") }}}
-}
-#endif
-
 #if SPLIT_MODULE || !WASM_ASYNC_COMPILATION
 function instantiateSync(file, info) {
   var module;
@@ -698,18 +714,6 @@ function instantiateSync(file, info) {
   receiveSourceMapJSON(getSourceMap());
 #endif
   return [instance, module];
-}
-#endif
-
-#if (PTHREADS || WASM_WORKERS) && (LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER)
-// When using postMessage to send an object, it is processed by the structured
-// clone algorithm.  The prototype, and hence methods, on that object is then
-// lost. This function adds back the lost prototype.  This does not work with
-// nested objects that has prototypes, but it suffices for WasmSourceMap and
-// WasmOffsetConverter.
-function resetPrototype(constructor, attrs) {
-  var object = Object.create(constructor.prototype);
-  return Object.assign(object, attrs);
 }
 #endif
 
@@ -815,7 +819,9 @@ async function instantiateAsync(binary, binaryFile, imports) {
   return instantiateArrayBuffer(binaryFile, imports);
 }
 #endif // WASM_ASYNC_COMPILATION
+#endif // SOURCE_PHASE_IMPORTS
 
+#if !WASM_ESM_INTEGRATION
 function getWasmImports() {
 #if PTHREADS
   assignWasmImports();
@@ -1016,10 +1022,12 @@ function getWasmImports() {
   }
 #endif
 
-#if !SINGLE_FILE
+#if SOURCE_PHASE_IMPORTS
+  var instance = await WebAssembly.instantiate(wasmModule, info);
+  var exports = receiveInstantiationResult({instance, 'module':wasmModule});
+  return exports;
+#else
   wasmBinaryFile ??= findWasmBinary();
-#endif
-
 #if WASM_ASYNC_COMPILATION
 #if RUNTIME_DEBUG
   dbg('asynchronously preparing wasm');
@@ -1051,7 +1059,9 @@ function getWasmImports() {
   return receiveInstance(result[0]);
 #endif
 #endif // WASM_ASYNC_COMPILATION
+#endif // SOURCE_PHASE_IMPORTS
 }
+#endif
 
 #if !WASM_BIGINT
 // Globals used by JS i64 conversions (see makeSetValue)
@@ -1076,5 +1086,3 @@ function getCompilerSetting(name) {
 // dynamic linker as symbols are loaded.
 var asyncifyStubs = {};
 #endif
-
-// === Body ===

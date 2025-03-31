@@ -1926,7 +1926,7 @@ int main(int argc, char **argv) {
 
   @needs_dylink
   def test_em_asm_side_module(self):
-    self.build(test_file('core/test_em_asm_side.c'), output_suffix='.wasm', emcc_args=['-sSIDE_MODULE'], output_basename='side')
+    self.build('core/test_em_asm_side.c', output_suffix='.wasm', emcc_args=['-sSIDE_MODULE'], output_basename='side')
     self.do_core_test('test_em_asm_main.c', emcc_args=['-sMAIN_MODULE=2', 'side.wasm'])
 
   @parameterized({
@@ -4051,7 +4051,7 @@ ok
     so_name = 'liblib.so'
     os.mkdir(so_dir)
     create_file('pre.js', '''
-    Module['locateFile'] = function(f) {
+    Module['locateFile'] = (f) => {
       if (f === '%s') {
         return '%s/' + f;
       } else {
@@ -4526,9 +4526,7 @@ res64 - external 64\n''', header='''\
   def test_dylink_jslib(self):
     create_file('lib.js', r'''
       addToLibrary({
-        test_lib_func: function(x) {
-          return x + 17.2;
-        }
+        test_lib_func: (x) => x + 17.2
       });
     ''')
     self.dylink_test(header=r'''
@@ -5768,8 +5766,14 @@ got: 10
       self.set_setting("FORCE_FILESYSTEM")
     self.do_run_in_out_file_test('fs/test_writeFile.cpp')
 
+  @with_all_fs
+  @crossplatform
   def test_fs_js_api(self):
-    self.set_setting("FORCE_FILESYSTEM")
+    nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
+    if nodefs and WINDOWS:
+      self.skipTest('specific errno values differ')
+    if self.get_setting('WASMFS'):
+      self.set_setting("FORCE_FILESYSTEM")
     self.do_runf('fs/test_fs_js_api.c', 'success')
 
   @also_with_noderawfs
@@ -5995,15 +5999,18 @@ Module.onRuntimeInitialized = () => {
     self.do_runf(filename, str(expected) + ', errno: 0')
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
+  @crossplatform
   @with_all_fs
   def test_unistd_unlink(self):
     # symlinks on node.js on non-linux behave differently (e.g. on Windows they require administrative privileges)
     # so skip testing those bits on that combination.
+    if MACOS and any(arg in self.emcc_args for arg in ('-DNODEFS', '-DNODERAWFS')):
+      self.skipTest('only tested on linux')
     if '-DNODEFS' in self.emcc_args:
       if WINDOWS:
         self.emcc_args += ['-DNO_SYMLINK=1']
-      if MACOS:
-        self.skipTest('only tested on linux')
+      if self.get_setting('WASMFS'):
+        self.skipTest('https://github.com/emscripten-core/emscripten/issues/18112')
 
     # Several differences/bugs on non-linux including https://github.com/nodejs/node/issues/18014
     # TODO: NODERAWFS in WasmFS
@@ -6253,7 +6260,7 @@ int main(void) {
 
   def test_fannkuch(self):
     results = [(1, 0), (2, 1), (3, 2), (4, 4), (5, 7), (6, 10), (7, 16), (8, 22)]
-    self.build(test_file('third_party/fannkuch.c'))
+    self.build('third_party/fannkuch.c')
     for i, j in results:
       print(i, j)
       self.do_run('fannkuch.js', 'Pfannkuchen(%d) = %d.' % (i, j), args=[str(i)], no_build=True)
@@ -6732,6 +6739,7 @@ void* operator new(size_t size) {
   @needs_make('depends on freetype')
   @no_4gb('runs out of memory')
   @is_slow_test
+  @crossplatform
   def test_poppler(self):
     # See https://github.com/emscripten-core/emscripten/issues/20757
     self.emcc_args.extend(['-Wno-deprecated-declarations', '-Wno-nontrivial-memaccess'])
@@ -7145,7 +7153,7 @@ void* operator new(size_t size) {
     # https://github.com/emscripten-core/emscripten/issues/15081
     self.set_setting('EXIT_RUNTIME', 0)
     self.set_setting('EMULATE_FUNCTION_POINTER_CASTS')
-    self.do_core_test('test_emulate_function_pointer_casts.cpp')
+    self.do_core_test('test_emulate_function_pointer_casts.cpp', emcc_args=['-Wno-deprecated'])
 
   @no_wasm2js('TODO: nicely printed names in wasm2js')
   @parameterized({
@@ -7720,6 +7728,36 @@ void* operator new(size_t size) {
     else:
       self.assertTrue(seen_lines.issuperset([6, 7, 11, 12]), seen_lines)
 
+  @needs_dylink
+  def test_embind_dylink_visibility_hidden(self):
+    # Check that embind is usable from a library built with "-fvisibility=hidden"
+
+    create_file('liblib.cpp', r'''
+      #include <emscripten/val.h>
+      #define EXPORT __attribute__((visibility("default")))
+      using namespace emscripten;
+      EXPORT void liba_fun() {
+        unsigned char buffer[1];
+        val view(typed_memory_view(1, buffer));
+      }
+    ''')
+    self.build_dlfcn_lib('liblib.cpp', emcc_args=['-fvisibility=hidden'])
+
+    self.prep_dlfcn_main()
+    self.clear_setting('NO_AUTOLOAD_DYLIBS')
+    create_file('main.cpp', r'''
+      #include <stdio.h>
+      #include <emscripten/val.h>
+      using namespace emscripten;
+      void liba_fun();
+      int main() {
+        liba_fun();
+        printf("done\n");
+        return 0;
+      }
+    ''')
+    self.do_runf('main.cpp', 'done\n', emcc_args=['--bind'])
+
   @no_wasm2js('TODO: source maps in wasm2js')
   def test_dwarf(self):
     self.emcc_args.append('-g')
@@ -8070,7 +8108,7 @@ Module.onRuntimeInitialized = () => {
   })
   @with_asyncify_and_jspi
   def test_async_ccall_promise(self, exit_runtime):
-    if self.get_setting('ASYNCIFY') ==  2:
+    if self.get_setting('ASYNCIFY') == 2:
       self.set_setting('JSPI_EXPORTS', ['stringf', 'floatf'])
     self.set_setting('ASSERTIONS')
     self.set_setting('INVOKE_RUN', 0)
@@ -8361,7 +8399,7 @@ Module.onRuntimeInitialized = () => {
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
     self.set_setting('MAYBE_WASM2JS')
     # see that running as wasm works
-    self.do_core_test('test_hello_world.c')
+    self.do_core_test('test_hello_world.c', emcc_args=['-Wno-deprecated'])
     # run wasm2js, bundle the code, and use the wasm2js path
     cmd = [PYTHON, path_from_root('tools/maybe_wasm2js.py'), 'test_hello_world.js', 'test_hello_world.wasm']
     if self.is_optimizing():
@@ -8580,7 +8618,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # verify that an exception thrown in postRun() will not trigger the
     # compilation failed handler, and will be printed to stderr.
     self.add_post_run('ThisFunctionDoesNotExist()')
-    self.build(test_file('core/test_hello_world.c'))
+    self.build('core/test_hello_world.c')
     output = self.run_js('test_hello_world.js', assert_returncode=NON_ZERO)
     self.assertStartswith(output, 'hello, world!')
     self.assertContained('ThisFunctionDoesNotExist is not defined', output)
@@ -8751,15 +8789,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
         ".cpp:5:14: runtime error: reference binding to null pointer of type 'int'",
       ])
 
-  @parameterized({
-    'fsanitize_undefined': (['-fsanitize=undefined'],),
-    'fsanitize_vptr': (['-fsanitize=vptr'],),
-  })
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  def test_ubsan_full_static_cast(self, args):
-    self.emcc_args += args
+  def test_sanitize_vptr(self):
     self.do_runf(
-      'core/test_ubsan_full_static_cast.cpp',
+      'core/test_sanitize_vptr.cpp',
+      emcc_args=['-fsanitize=vptr'],
       assert_all=True,
       expected_output=[
         ".cpp:18:10: runtime error: downcast of address",

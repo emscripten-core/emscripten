@@ -446,7 +446,7 @@ var SyscallsLibrary = {
     }
     return -{{{ cDefs.ENOPROTOOPT }}}; // The option is unknown at the level indicated.
   },
-  __syscall_sendmsg__deps: ['$getSocketFromFD', '$getSocketAddress', '$DNS'],
+  __syscall_sendmsg__deps: ['$getSocketFromFD', '$getSocketAddress'],
   __syscall_sendmsg: (fd, message, flags, d1, d2, d3) => {
     var sock = getSocketFromFD(fd);
     var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, '*') }}};
@@ -819,7 +819,6 @@ var SyscallsLibrary = {
     SYSCALLS.writeStatFs(buf, FS.statfs(SYSCALLS.getStr(path)));
     return 0;
   },
-  __syscall_fstatfs64__deps: ['__syscall_statfs64'],
   __syscall_fstatfs64: (fd, size, buf) => {
 #if ASSERTIONS
     assert(size === {{{ C_STRUCTS.statfs.__size__ }}});
@@ -997,11 +996,19 @@ var SyscallsLibrary = {
   __syscall_fallocate__i53abi: true,
   __syscall_fallocate: (fd, mode, offset, len) => {
     if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
-    var stream = SYSCALLS.getStreamFromFD(fd)
-#if ASSERTIONS
-    assert(mode === 0);
-#endif
-    FS.allocate(stream, offset, len);
+    if (mode != 0) {
+      return -{{{ cDefs.ENOTSUP }}}
+    }
+    if (offset < 0 || len < 0) {
+      return -{{{ cDefs.EINVAL }}}
+    }
+    // We only support mode == 0, which means we can implement fallocate
+    // in terms of ftruncate.
+    var oldSize = FS.fstat(fd).size;
+    var newSize = offset + len;
+    if (newSize > oldSize) {
+      FS.ftruncate(fd, newSize);
+    }
     return 0;
   },
   __syscall_dup3: (fd, newfd, flags) => {

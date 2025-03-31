@@ -1196,8 +1196,8 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
           else:
             settings.SEPARATE_DWARF = True
           settings.GENERATE_DWARF = 1
-        elif requested_level == 'source-map':
-          settings.GENERATE_SOURCE_MAP = 1
+        elif requested_level in ['source-map', 'source-map=inline']:
+          settings.GENERATE_SOURCE_MAP = 1 if requested_level == 'source-map' else 2
           settings.EMIT_NAME_SECTION = 1
           newargs[i] = '-g'
         else:
@@ -1219,7 +1219,6 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
         options.memory_profiler = True
       newargs[i] = ''
       settings_changes.append('EMSCRIPTEN_TRACING=1')
-      settings.JS_LIBRARIES.append('libtrace.js')
     elif check_flag('--emit-symbol-map'):
       options.emit_symbol_map = True
       settings.EMIT_SYMBOL_MAP = 1

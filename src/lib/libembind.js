@@ -18,7 +18,7 @@
 /*global floatReadValueFromPointer, integerReadValueFromPointer, enumReadValueFromPointer, replacePublicSymbol, craftInvokerFunction, tupleRegistrations*/
 /*global finalizationRegistry, attachFinalizer, detachFinalizer, releaseClassHandle, runDestructor*/
 /*global ClassHandle, makeClassHandle, structRegistrations, whenDependentTypesAreResolved, BindingError, deletionQueue, delayFunction:true, upcastPointer*/
-/*global exposePublicSymbol, heap32VectorToArray, newFunc, char_0, char_9*/
+/*global exposePublicSymbol, heap32VectorToArray, char_0, char_9*/
 /*global getInheritedInstanceCount, getLiveInheritedInstances, setDelayFunction, InternalError, runDestructors*/
 /*global requireRegisteredType, unregisterInheritedInstance, registerInheritedInstance, PureVirtualError, throwUnboundTypeError*/
 /*global assert, validateThis, downcastPointer, registeredPointers, RegisteredClass, getInheritedInstance */
@@ -28,12 +28,8 @@
 #include "libembind_shared.js"
 
 var LibraryEmbind = {
-  $UnboundTypeError__postset: "UnboundTypeError = Module['UnboundTypeError'] = extendError(Error, 'UnboundTypeError');",
-  $UnboundTypeError__deps: ['$extendError'],
-  $UnboundTypeError: undefined,
-  $PureVirtualError__postset: "PureVirtualError = Module['PureVirtualError'] = extendError(Error, 'PureVirtualError');",
-  $PureVirtualError__deps: ['$extendError'],
-  $PureVirtualError: undefined,
+  $UnboundTypeError: class extends Error {},
+  $PureVirtualError: class extends Error {},
   $GenericWireTypeSize: {{{ 2 * POINTER_SIZE }}},
 #if EMBIND_AOT
   $InvokerFunctions: '<<< EMBIND_AOT_OUTPUT >>>',
@@ -148,32 +144,6 @@ var LibraryEmbind = {
       Module[name] = value;
       Module[name].argCount = numArguments;
     }
-  },
-
-  // from https://github.com/imvu/imvujs/blob/master/src/error.js
-  $extendError__deps: ['$createNamedFunction'],
-  $extendError: (baseErrorType, errorName) => {
-    var errorClass = createNamedFunction(errorName, function(message) {
-      this.name = errorName;
-      this.message = message;
-
-      var stack = (new Error(message)).stack;
-      if (stack !== undefined) {
-        this.stack = this.toString() + '\n' +
-            stack.replace(/^Error(:[^\n]*)?\n/, '');
-      }
-    });
-    errorClass.prototype = Object.create(baseErrorType.prototype);
-    errorClass.prototype.constructor = errorClass;
-    errorClass.prototype.toString = function() {
-      if (this.message === undefined) {
-        return this.name;
-      } else {
-        return `${this.name}: ${this.message}`;
-      }
-    };
-
-    return errorClass;
   },
 
   $createNamedFunction: (name, func) => Object.defineProperty(func, 'name', { value: name }),
@@ -352,8 +322,11 @@ var LibraryEmbind = {
   // When converting a number from JS to C++ side, the valid range of the number is
   // [minRange, maxRange], inclusive.
   _embind_register_integer__deps: [
-    '$embindRepr', '$integerReadValueFromPointer',
-    '$readLatin1String', '$registerType'],
+    '$integerReadValueFromPointer', '$readLatin1String', '$registerType',
+#if ASSERTIONS
+    '$embindRepr',
+#endif
+  ],
   _embind_register_integer: (primitiveType, name, size, minRange, maxRange) => {
     name = readLatin1String(name);
     // LLVM doesn't have signed and unsigned 32-bit types, so u32 literals come
@@ -446,8 +419,11 @@ var LibraryEmbind = {
 #endif
 
   _embind_register_float__deps: [
-    '$embindRepr', '$floatReadValueFromPointer',
-    '$readLatin1String', '$registerType'],
+    '$floatReadValueFromPointer', '$readLatin1String', '$registerType',
+#if ASSERTIONS
+    '$embindRepr',
+#endif
+  ],
   _embind_register_float: (rawType, name, size) => {
     name = readLatin1String(name);
     registerType(rawType, {
@@ -533,7 +509,8 @@ var LibraryEmbind = {
         var length;
         var valueIsOfTypeString = (typeof value == 'string');
 
-        if (!(valueIsOfTypeString || value instanceof Uint8Array || value instanceof Uint8ClampedArray || value instanceof Int8Array)) {
+        // We accept `string` or array views with single byte elements
+        if (!(valueIsOfTypeString || (ArrayBuffer.isView(value) && value.BYTES_PER_ELEMENT == 1))) {
           throwBindingError('Cannot pass non-string to std::string');
         }
         if (stdStringIsUTF8 && valueIsOfTypeString) {
@@ -546,10 +523,10 @@ var LibraryEmbind = {
         var base = _malloc({{{ POINTER_SIZE }}} + length + 1);
         var ptr = base + {{{ POINTER_SIZE }}};
         {{{ makeSetValue('base', '0', 'length', SIZE_TYPE) }}};
-        if (stdStringIsUTF8 && valueIsOfTypeString) {
-          stringToUTF8(value, ptr, length + 1);
-        } else {
-          if (valueIsOfTypeString) {
+        if (valueIsOfTypeString) {
+          if (stdStringIsUTF8) {
+            stringToUTF8(value, ptr, length + 1);
+          } else {
             for (var i = 0; i < length; ++i) {
               var charCode = value.charCodeAt(i);
               if (charCode > 255) {
@@ -558,11 +535,9 @@ var LibraryEmbind = {
               }
               HEAPU8[ptr + i] = charCode;
             }
-          } else {
-            for (var i = 0; i < length; ++i) {
-              HEAPU8[ptr + i] = value[i];
-            }
           }
+        } else {
+          HEAPU8.set(value, ptr);
         }
 
         if (destructors !== null) {
@@ -708,47 +683,19 @@ var LibraryEmbind = {
     }
   },
 
-#if DYNAMIC_EXECUTION
-  $newFunc__deps: ['$createNamedFunction'],
-  $newFunc: function(constructor, argumentList) {
-    if (!(constructor instanceof Function)) {
-      throw new TypeError(`new_ called with constructor type ${typeof(constructor)} which is not a function`);
-    }
-    /*
-     * Previously, the following line was just:
-     *   function dummy() {};
-     * Unfortunately, Chrome was preserving 'dummy' as the object's name, even
-     * though at creation, the 'dummy' has the correct constructor name.  Thus,
-     * objects created with IMVU.new would show up in the debugger as 'dummy',
-     * which isn't very helpful.  Using IMVU.createNamedFunction addresses the
-     * issue.  Doubly-unfortunately, there's no way to write a test for this
-     * behavior.  -NRD 2013.02.22
-     */
-    var dummy = createNamedFunction(constructor.name || 'unknownFunctionName', function(){});
-    dummy.prototype = constructor.prototype;
-    var obj = new dummy;
-
-    var r = constructor.apply(obj, argumentList);
-    return (r instanceof Object) ? r : obj;
-  },
-#endif
-
   // The path to interop from JS code to C++ code:
   // (hand-written JS code) -> (autogenerated JS invoker) -> (template-generated C++ invoker) -> (target C++ function)
   // craftInvokerFunction generates the JS invoker function for each function exposed to JS through embind.
   $craftInvokerFunction__deps: [
     '$createNamedFunction', '$runDestructors', '$throwBindingError', '$usesDestructorStack',
-#if DYNAMIC_EXECUTION
-    '$newFunc',
-#if !EMBIND_AOT
+#if DYNAMIC_EXECUTION && !EMBIND_AOT
     '$createJsInvoker',
-#endif
 #endif
 #if EMBIND_AOT
     '$InvokerFunctions',
     '$createJsInvokerSignature',
 #endif
-#if ASYNCIFY
+#if ASYNCIFY == 1
     '$Asyncify',
 #endif
 #if ASSERTIONS
@@ -775,27 +722,20 @@ var LibraryEmbind = {
 #if ASSERTIONS && ASYNCIFY != 2
     assert(!isAsync, 'Async bindings are only supported with JSPI.');
 #endif
-
-#if ASYNCIFY == 2
-    if (isAsync) {
-      cppInvokerFunc = Asyncify.makeAsyncFunction(cppInvokerFunc);
-    }
-#endif
-
     var isClassMethodFunc = (argTypes[1] !== null && classType !== null);
 
     // Free functions with signature "void function()" do not need an invoker that marshalls between wire types.
-// TODO: This omits argument count check - enable only at -O3 or similar.
-//    if (ENABLE_UNSAFE_OPTS && argCount == 2 && argTypes[0].name == "void" && !isClassMethodFunc) {
-//       return FUNCTION_TABLE[fn];
-//    }
+    // TODO: This omits argument count check - enable only at -O3 or similar.
+    //    if (ENABLE_UNSAFE_OPTS && argCount == 2 && argTypes[0].name == "void" && !isClassMethodFunc) {
+    //       return FUNCTION_TABLE[fn];
+    //    }
 
 
     // Determine if we need to use a dynamic stack to store the destructors for the function parameters.
     // TODO: Remove this completely once all function invokers are being dynamically generated.
     var needsDestructorStack = usesDestructorStack(argTypes);
 
-    var returns = (argTypes[0].name !== "void");
+    var returns = (argTypes[0].name !== 'void');
 
     var expectedArgCount = argCount - 2;
 #if ASSERTIONS
@@ -861,47 +801,52 @@ var LibraryEmbind = {
       return onDone(rv);
     };
 #else
-  // Builld the arguments that will be passed into the closure around the invoker
-  // function.
-  var closureArgs = [humanName, throwBindingError, cppInvokerFunc, cppTargetFunc, runDestructors, argTypes[0], argTypes[1]];
+    // Builld the arguments that will be passed into the closure around the invoker
+    // function.
+    var closureArgs = [humanName, throwBindingError, cppInvokerFunc, cppTargetFunc, runDestructors, argTypes[0], argTypes[1]];
 #if EMSCRIPTEN_TRACING
-  closureArgs.push(Module);
+    closureArgs.push(Module);
 #endif
-  for (var i = 0; i < argCount - 2; ++i) {
-    closureArgs.push(argTypes[i+2]);
-  }
+    for (var i = 0; i < argCount - 2; ++i) {
+      closureArgs.push(argTypes[i+2]);
+    }
 #if ASYNCIFY == 1
-  closureArgs.push(Asyncify);
+    closureArgs.push(Asyncify);
 #endif
-  if (!needsDestructorStack) {
-    for (var i = isClassMethodFunc?1:2; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here. Also skip class type if not a method.
-      if (argTypes[i].destructorFunction !== null) {
-        closureArgs.push(argTypes[i].destructorFunction);
+    if (!needsDestructorStack) {
+      // Skip return value at index 0 - it's not deleted here. Also skip class type if not a method.
+      for (var i = isClassMethodFunc?1:2; i < argTypes.length; ++i) {
+        if (argTypes[i].destructorFunction !== null) {
+          closureArgs.push(argTypes[i].destructorFunction);
+        }
       }
     }
-  }
 #if ASSERTIONS
-  closureArgs.push(checkArgCount, minArgs, expectedArgCount);
+    closureArgs.push(checkArgCount, minArgs, expectedArgCount);
 #endif
 
 #if EMBIND_AOT
-  var signature = createJsInvokerSignature(argTypes, isClassMethodFunc, returns, isAsync);
-  var invokerFn = InvokerFunctions[signature](...closureArgs);
+    var signature = createJsInvokerSignature(argTypes, isClassMethodFunc, returns, isAsync);
+    var invokerFn = InvokerFunctions[signature](...closureArgs);
 #else
-  let [args, invokerFnBody] = createJsInvoker(argTypes, isClassMethodFunc, returns, isAsync);
-  args.push(invokerFnBody);
-  var invokerFn = newFunc(Function, args)(...closureArgs);
+
+    let [args, invokerFnBody] = createJsInvoker(argTypes, isClassMethodFunc, returns, isAsync);
+    var invokerFn = new Function(...args, invokerFnBody)(...closureArgs);
 #endif
 #endif
     return createNamedFunction(humanName, invokerFn);
   },
 
   $embind__requireFunction__deps: ['$readLatin1String', '$throwBindingError'
-#if DYNCALLS || !WASM_BIGINT || MEMORY64
+#if DYNCALLS || !WASM_BIGINT || MEMORY64 || CAN_ADDRESS_2GB
     , '$getDynCaller'
 #endif
   ],
-  $embind__requireFunction: (signature, rawFunction) => {
+  $embind__requireFunction: (signature, rawFunction, isAsync = false) => {
+#if ASSERTIONS && ASYNCIFY != 2
+    assert(!isAsync, 'Async bindings are only supported with JSPI.');
+#endif
+
     signature = readLatin1String(signature);
 
     function makeDynCaller() {
@@ -915,15 +860,21 @@ var LibraryEmbind = {
 #endif
 #if MEMORY64 || CAN_ADDRESS_2GB
       if (signature.includes('p')) {
-        return getDynCaller(signature, rawFunction);
+        return getDynCaller(signature, rawFunction, isAsync);
       }
 #endif
-      return getWasmTableEntry(rawFunction);
+      var rtn = getWasmTableEntry(rawFunction);
+#if JSPI
+      if (isAsync) {
+        rtn = WebAssembly.promising(rtn);
+      }
+#endif
+      return rtn;
 #endif
     }
 
     var fp = makeDynCaller();
-    if (typeof fp != "function") {
+    if (typeof fp != 'function') {
         throwBindingError(`unknown function pointer with signature ${signature}: ${rawFunction}`);
     }
     return fp;
@@ -938,7 +889,7 @@ var LibraryEmbind = {
     name = readLatin1String(name);
     name = getFunctionName(name);
 
-    rawInvoker = embind__requireFunction(signature, rawInvoker);
+    rawInvoker = embind__requireFunction(signature, rawInvoker, isAsync);
 
     exposePublicSymbol(name, function() {
       throwUnboundTypeError(`Cannot call ${name} due to unbound types`, argTypes);
@@ -1112,6 +1063,7 @@ var LibraryEmbind = {
       fieldRecords.forEach((field, i) => {
         var fieldName = field.fieldName;
         var getterReturnType = fieldTypes[i];
+        var optional = fieldTypes[i].optional;
         var getter = field.getter;
         var getterContext = field.getterContext;
         var setterArgumentType = fieldTypes[i + fieldRecords.length];
@@ -1123,7 +1075,8 @@ var LibraryEmbind = {
             var destructors = [];
             setter(setterContext, ptr, setterArgumentType['toWireType'](destructors, o));
             runDestructors(destructors);
-          }
+          },
+          optional,
         };
       });
 
@@ -1141,7 +1094,7 @@ var LibraryEmbind = {
           // todo: Here we have an opportunity for -O3 level "unsafe" optimizations:
           // assume all fields are present without checking.
           for (var fieldName in fields) {
-            if (!(fieldName in o)) {
+            if (!(fieldName in o) && !fields[fieldName].optional) {
               throw new TypeError(`Missing field: "${fieldName}"`);
             }
           }
@@ -1479,8 +1432,12 @@ var LibraryEmbind = {
   $detachFinalizer_deps: ['$finalizationRegistry'],
   $detachFinalizer: (handle) => {},
 
-  $attachFinalizer__deps: ['$finalizationRegistry', '$detachFinalizer',
-                           '$releaseClassHandle', '$RegisteredPointer_fromWireType'],
+  $attachFinalizer__deps: [
+    '$finalizationRegistry', '$detachFinalizer', '$releaseClassHandle',
+#if ASSERTIONS
+    '$RegisteredPointer_fromWireType'
+#endif
+  ],
   $attachFinalizer: (handle) => {
     if ('undefined' === typeof FinalizationRegistry) {
       attachFinalizer = (handle) => handle;
@@ -1556,7 +1513,9 @@ var LibraryEmbind = {
     '$delayFunction',
   ],
   $init_ClassHandle: () => {
-    Object.assign(ClassHandle.prototype, {
+    let proto = ClassHandle.prototype;
+
+    Object.assign(proto, {
       "isAliasOf"(other) {
         if (!(this instanceof ClassHandle)) {
           return false;
@@ -1642,6 +1601,12 @@ var LibraryEmbind = {
         return this;
       },
     });
+
+    // Support `using ...` from https://github.com/tc39/proposal-explicit-resource-management.
+    const symbolDispose = Symbol.dispose;
+    if (symbolDispose) {
+      proto[symbolDispose] = proto['delete'];
+    }
   },
 
   $ClassHandle__docs: '/** @constructor */',
@@ -1761,10 +1726,10 @@ var LibraryEmbind = {
 
         var constructor = createNamedFunction(name, function(...args) {
           if (Object.getPrototypeOf(this) !== instancePrototype) {
-            throw new BindingError("Use 'new' to construct " + name);
+            throw new BindingError(`Use 'new' to construct ${name}`);
           }
           if (undefined === registeredClass.constructor_body) {
-            throw new BindingError(name + " has no accessible constructor");
+            throw new BindingError(`${name} has no accessible constructor`);
           }
           var body = registeredClass.constructor_body[args.length];
           if (undefined === body) {
@@ -1826,8 +1791,8 @@ var LibraryEmbind = {
   },
 
   _embind_register_class_constructor__deps: [
-    '$heap32VectorToArray', '$embind__requireFunction', '$runDestructors',
-    '$throwBindingError', '$whenDependentTypesAreResolved', '$registeredTypes',
+    '$heap32VectorToArray', '$embind__requireFunction',
+    '$whenDependentTypesAreResolved',
     '$craftInvokerFunction'],
   _embind_register_class_constructor: (
     rawClassType,
@@ -1931,7 +1896,7 @@ var LibraryEmbind = {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = readLatin1String(methodName);
     methodName = getFunctionName(methodName);
-    rawInvoker = embind__requireFunction(invokerSignature, rawInvoker);
+    rawInvoker = embind__requireFunction(invokerSignature, rawInvoker, isAsync);
 
     whenDependentTypesAreResolved([], [rawClassType], (classType) => {
       classType = classType[0];
@@ -2068,7 +2033,7 @@ var LibraryEmbind = {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = readLatin1String(methodName);
     methodName = getFunctionName(methodName);
-    rawInvoker = embind__requireFunction(invokerSignature, rawInvoker);
+    rawInvoker = embind__requireFunction(invokerSignature, rawInvoker, isAsync);
     whenDependentTypesAreResolved([], [rawClassType], (classType) => {
       classType = classType[0];
       var humanName = `${classType.name}.${methodName}`;
@@ -2077,7 +2042,7 @@ var LibraryEmbind = {
         throwUnboundTypeError(`Cannot call ${humanName} due to unbound types`, rawArgTypes);
       }
 
-      if (methodName.startsWith("@@")) {
+      if (methodName.startsWith('@@')) {
         methodName = Symbol[methodName.substring(2)];
       }
 
@@ -2124,7 +2089,7 @@ var LibraryEmbind = {
   _embind_register_class_class_property__deps: [
     '$readLatin1String', '$embind__requireFunction', '$runDestructors',
     '$throwBindingError', '$throwUnboundTypeError',
-    '$whenDependentTypesAreResolved', '$validateThis'],
+    '$whenDependentTypesAreResolved'],
   _embind_register_class_class_property: (rawClassType,
                                           fieldName,
                                           rawFieldType,
@@ -2210,20 +2175,20 @@ var LibraryEmbind = {
       Object.defineProperty(this, '__parent', {
         value: wrapperPrototype
       });
-      this["__construct"](...args);
+      this['__construct'](...args);
     });
 
     // It's a little nasty that we're modifying the wrapper prototype here.
 
-    wrapperPrototype["__construct"] = function __construct(...args) {
+    wrapperPrototype['__construct'] = function __construct(...args) {
       if (this === wrapperPrototype) {
         throwBindingError("Pass correct 'this' to __construct");
       }
 
-      var inner = baseConstructor["implement"](this, ...args);
+      var inner = baseConstructor['implement'](this, ...args);
       detachFinalizer(inner);
       var $$ = inner.$$;
-      inner["notifyOnDestruction"]();
+      inner['notifyOnDestruction']();
       $$.preservePointerOnDelete = true;
       Object.defineProperties(this, { $$: {
           value: $$
@@ -2232,7 +2197,7 @@ var LibraryEmbind = {
       registerInheritedInstance(registeredClass, $$.ptr, this);
     };
 
-    wrapperPrototype["__destruct"] = function __destruct() {
+    wrapperPrototype['__destruct'] = function __destruct() {
       if (this === wrapperPrototype) {
         throwBindingError("Pass correct 'this' to __destruct");
       }

@@ -23,7 +23,7 @@ var LibraryGL = {
   // glInvalidateSubFramebuffer that need to pass a short array to the WebGL
   // API, create a set of short fixed-length arrays to avoid having to generate
   // any garbage when calling those functions.
-  $tempFixedLengthArray__postset: 'for (var i = 0; i < 32; ++i) tempFixedLengthArray.push(new Array(i));',
+  $tempFixedLengthArray__postset: 'for (let i = 0; i < 32; ++i) tempFixedLengthArray.push(new Array(i));',
   $tempFixedLengthArray: [],
 
   $miniTempWebGLFloatBuffers: [],
@@ -1737,9 +1737,12 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixelData);
   },
 
-  glReadPixels__deps: ['$emscriptenWebGLGetTexPixelData'
+  glReadPixels__deps: [
+#if INCLUDE_WEBGL1_FALLBACK
+    '$emscriptenWebGLGetTexPixelData',
+#endif
 #if MAX_WEBGL_VERSION >= 2
-                       , '$heapObjectForWebGLType', '$toTypedArrayIndex'
+    '$heapObjectForWebGLType', '$toTypedArrayIndex',
 #endif
   ],
   glReadPixels: (x, y, width, height, format, type, pixels) => {
@@ -3125,7 +3128,11 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   },
 
 #if GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING
-  glShaderSource__deps: ['$preprocess_c_code', '$remove_cpp_comments_in_shaders', '$jstoi_q', '$find_closing_parens_index'],
+  glShaderSource__deps: ['$preprocess_c_code', '$remove_cpp_comments_in_shaders',
+#if GL_EXPLICIT_UNIFORM_BINDING
+    '$find_closing_parens_index', '$jstoi_q',
+#endif
+  ],
 #endif
   glShaderSource: (shader, count, string, length) => {
 #if GL_ASSERTIONS
@@ -3205,7 +3212,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #if GL_DEBUG
       console.dir(match);
 #endif
-      explicitUniformLocations[match[5]] = jstoi_q(match[1]);
+      explicitUniformLocations[match[5]] = Number(match[1]);
 #if GL_TRACK_ERRORS
       if (!(explicitUniformLocations[match[5]] >= 0 && explicitUniformLocations[match[5]] < 1048576)) {
         err(`Specified an out of range layout(location=x) directive "${explicitUniformLocations[match[5]]}"! (${match[0]})`);

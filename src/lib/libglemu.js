@@ -4,6 +4,10 @@
  * SPDX-License-Identifier: MIT
  */
 
+assert(LEGACY_GL_EMULATION, 'libglemu.js should only be included with LEGACY_GL_EMULATION set')
+assert(!FULL_ES2, 'cannot emulate both ES2 and legacy GL');
+assert(!FULL_ES3, 'cannot emulate both ES3 and legacy GL');
+
 {{{
   const copySigs = (func) => {
     if (!RELOCATABLE) return '';
@@ -1616,8 +1620,8 @@ var LibraryGLEmulation = {
         getActiveTexture: () => s_activeTexture,
 
         traverseState: (keyView) => {
-          for (var i = 0; i < s_texUnits.length; i++) {
-            s_texUnits[i].traverseState(keyView);
+          for (var texUnit of s_texUnits) {
+            texUnit.traverseState(keyView);
           }
         },
 
@@ -2083,8 +2087,8 @@ var LibraryGLEmulation = {
 
       // By attrib state:
       var enabledAttributesKey = 0;
-      for (var i = 0; i < attributes.length; i++) {
-        enabledAttributesKey |= 1 << attributes[i].name;
+      for (var attr of attributes) {
+        enabledAttributesKey |= 1 << attr.name;
       }
 
       // To prevent using more than 31 bits add another level to the maptree
@@ -2222,8 +2226,7 @@ var LibraryGLEmulation = {
             var texUnitUniformList = '';
             var vsTexCoordInits = '';
             this.usedTexUnitList = GLImmediate.TexEnvJIT.getUsedTexUnitList();
-            for (var i = 0; i < this.usedTexUnitList.length; i++) {
-              var texUnit = this.usedTexUnitList[i];
+            for (var texUnit of this.usedTexUnitList) {
               texUnitAttribList += 'attribute vec4 ' + aTexCoordPrefix + texUnit + ';\n';
               texUnitVaryingList += 'varying vec4 ' + vTexCoordPrefix + texUnit + ';\n';
               texUnitUniformList += 'uniform sampler2D ' + uTexUnitPrefix + texUnit + ';\n';
@@ -2968,16 +2971,14 @@ var LibraryGLEmulation = {
         var start = GLImmediate.restrideBuffer;
         bytes = 0;
         // calculate restrided offsets and total size
-        for (var i = 0; i < attributes.length; i++) {
-          var attr = attributes[i];
+        for (var attr of attributes) {
           var size = attr.sizeBytes;
           if (size % 4 != 0) size += 4 - (size % 4); // align everything
           attr.offset = bytes;
           bytes += size;
         }
         // copy out the data (we need to know the stride for that, and define attr.pointer)
-        for (var i = 0; i < attributes.length; i++) {
-          var attr = attributes[i];
+        for (var attr of attributes) {
           var srcStride = Math.max(attr.sizeBytes, attr.stride);
           if ((srcStride & 3) == 0 && (attr.sizeBytes & 3) == 0) {
             for (var j = 0; j < count; j++) {
@@ -3004,8 +3005,7 @@ var LibraryGLEmulation = {
         } else {
           GLImmediate.vertexPointer = clientStartPointer;
         }
-        for (var i = 0; i < attributes.length; i++) {
-          var attr = attributes[i];
+        for (var attr of attributes) {
           attr.offset = attr.pointer - GLImmediate.vertexPointer; // Compute what will be the offset of this attribute in the VBO after we upload.
         }
         GLImmediate.stride = Math.max(maxStride, bytes);
@@ -3464,7 +3464,6 @@ var LibraryGLEmulation = {
     }
   },
 
-  glVertexPointer__deps: ['$GLEmulation'], // if any pointers are used, glVertexPointer must be, and if it is, then we need emulation
   glVertexPointer: (size, type, stride, pointer) => {
     GLImmediate.setClientAttribute(GLImmediate.VERTEX, size, type, stride, pointer);
 #if GL_FFP_ONLY
@@ -3616,7 +3615,7 @@ var LibraryGLEmulation = {
 
   // OpenGL Immediate Mode matrix routines.
   // Note that in the future we might make these available only in certain modes.
-  glMatrixMode__deps: ['$GL', '$GLImmediateSetup', '$GLEmulation'], // emulation is not strictly needed, this is a workaround
+  glMatrixMode__deps: ['$GL', '$GLImmediateSetup'],
   glMatrixMode: (mode) => {
     if (mode == 0x1700 /* GL_MODELVIEW */) {
       GLImmediate.currentMatrix = 0/*m*/;
@@ -3948,14 +3947,8 @@ var LibraryGLEmulation = {
   gluOrtho2D: (left, right, bottom, top) => _glOrtho(left, right, bottom, top, -1, 1),
 };
 
-// Legacy GL emulation
-if (LEGACY_GL_EMULATION) {
-  extraLibraryFuncs.push('$GLEmulation');
-}
+extraLibraryFuncs.push('$GLEmulation');
 
 recordGLProcAddressGet(LibraryGLEmulation);
 
 addToLibrary(LibraryGLEmulation);
-
-assert(!(FULL_ES2 && LEGACY_GL_EMULATION), 'cannot emulate both ES2 and legacy GL');
-assert(!(FULL_ES3 && LEGACY_GL_EMULATION), 'cannot emulate both ES3 and legacy GL');

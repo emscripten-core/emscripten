@@ -297,12 +297,8 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
   #     to use emscripten's wasm<->JS ABI
   #   * Use the metadata to generate the JS glue that goes with the wasm
 
-  if settings.SINGLE_FILE:
-    # placeholder strings for JS glue, to be replaced with subresource locations in do_binaryen
-    settings.WASM_BINARY_FILE = '<<< WASM_BINARY_FILE >>>'
-  else:
-    # set file locations, so that JS glue can find what it needs
-    settings.WASM_BINARY_FILE = js_manipulation.escape_for_js_string(os.path.basename(out_wasm))
+  # set file locations, so that JS glue can find what it needs
+  settings.WASM_BINARY_FILE = js_manipulation.escape_for_js_string(os.path.basename(out_wasm))
 
   if finalize:
     metadata = finalize_wasm(in_wasm, out_wasm, js_syms)
@@ -414,15 +410,10 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     pre = apply_static_code_hooks(forwarded_json, pre)
 
   asm_const_pairs = ['%s: %s' % (key, value) for key, value in asm_consts]
-  extra_code = ''
   if asm_const_pairs or settings.MAIN_MODULE:
-    extra_code += 'var ASM_CONSTS = {\n  ' + ',  \n '.join(asm_const_pairs) + '\n};\n'
+    pre += 'var ASM_CONSTS = {\n  ' + ',  \n '.join(asm_const_pairs) + '\n};\n'
   if em_js_funcs:
-    extra_code += '\n'.join(em_js_funcs) + '\n'
-  if extra_code:
-    pre = pre.replace(
-      '// === Body ===\n',
-      '// === Body ===\n\n' + extra_code + '\n')
+    pre += '\n'.join(em_js_funcs) + '\n'
 
   if base_metadata:
     function_exports = base_metadata.function_exports
@@ -444,17 +435,18 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     pre = None
 
     receiving = create_receiving(function_exports)
-
-    module = create_module(receiving, metadata, global_exports, forwarded_json['librarySymbols'])
-
-    metadata.library_definitions = forwarded_json['libraryDefinitions']
-
+    if settings.WASM_ESM_INTEGRATION:
+      sending = create_sending(metadata, forwarded_json['librarySymbols'])
+      module = [sending, receiving]
+    else:
+      module = create_module(receiving, metadata, global_exports, forwarded_json['librarySymbols'])
     write_output_file(out, module)
 
     out.write(post)
     module = None
 
-    return metadata
+  metadata.library_definitions = forwarded_json['libraryDefinitions']
+  return metadata
 
 
 @ToolchainProfiler.profile()
@@ -636,12 +628,16 @@ def create_tsd_exported_runtime_methods(metadata):
   js_doc_file = in_temp('jsdoc.js')
   tsc_output_file = in_temp('jsdoc.d.ts')
   utils.write_file(js_doc_file, js_doc)
-  tsc = shutil.which('tsc')
-  if tsc:
+  tsc = shared.get_npm_cmd('tsc', missing_ok=True)
+  # Prefer the npm install'd version of tsc since we know that one is compatible
+  # with emscripten output.
+  if not tsc:
+    # Fall back to tsc in the user's PATH.
+    tsc = shutil.which('tsc')
+    if not tsc:
+      exit_with_error('tsc executable not found in node_modules or in $PATH')
     # Use the full path from the which command so windows can find tsc.
     tsc = [tsc]
-  else:
-    tsc = shared.get_npm_cmd('tsc')
   cmd = tsc + ['--outFile', tsc_output_file,
                '--skipLibCheck', # Avoid checking any of the user's types e.g. node_modules/@types.
                '--declaration',
@@ -860,6 +856,13 @@ def create_sending(metadata, library_symbols):
           send_items_map[demangled] = f
 
   sorted_items = sorted(send_items_map.items())
+
+  if settings.WASM_ESM_INTEGRATION:
+    elems = []
+    for k, v in sorted_items:
+      elems.append(f'{v} as {k}')
+    return f"export {{ {', '.join(elems)} }};\n\n"
+
   prefix = ''
   if settings.MAYBE_CLOSURE_COMPILER:
     # This prevents closure compiler from minifying the field names in this
@@ -877,13 +880,7 @@ def create_sending(metadata, library_symbols):
 
 
 def can_use_await():
-  # In MODULARIZE mode we can use `await` since the factory function itself
-  # is marked as `async` and the generated code all lives inside that factory
-  # function.
-  # However, because closure does not see this (it runs only on the inner code),
-  # it sees this as a top-level-await, which it does not yet support.
-  # FIXME(https://github.com/emscripten-core/emscripten/issues/23158)
-  return settings.MODULARIZE and not settings.USE_CLOSURE_COMPILER
+  return settings.MODULARIZE
 
 
 def make_export_wrappers(function_exports):
@@ -939,6 +936,13 @@ def make_export_wrappers(function_exports):
 
 
 def create_receiving(function_exports):
+  if settings.WASM_ESM_INTEGRATION:
+    exports = [f'{f} as {asmjs_mangle(f)}' for f in function_exports]
+    exports.append('memory as wasmMemory')
+    exports.append('__indirect_function_table as wasmTable')
+    exports = ',\n  '.join(exports)
+    return f"import {{\n  {exports}\n}} from './{settings.WASM_BINARY_FILE}';\n\n"
+
   # When not declaring asm exports this section is empty and we instead programmatically export
   # symbols on the global object by calling exportWasmSymbols after initialization
   if not settings.DECLARE_ASM_MODULE_EXPORTS:
@@ -993,7 +997,10 @@ function assignWasmImports() {
     if settings.WASM_ASYNC_COMPILATION:
       if can_use_await():
         # In modularize mode the generated code is within a factory function.
-        module.append("var wasmExports = await createWasm();\n")
+        # This magic string gets replaced by `await createWasm`.  It needed to allow
+        # closure and acorn to process the module without seeing this as a top-level
+        # await.
+        module.append("var wasmExports = EMSCRIPTEN$AWAIT(createWasm());\n")
       else:
         module.append("var wasmExports;\ncreateWasm();\n")
     else:
@@ -1033,6 +1040,7 @@ def create_pointer_conversion_wrappers(metadata):
     '_emscripten_stack_alloc': 'pp',
     'emscripten_builtin_malloc': 'pp',
     'emscripten_builtin_calloc': 'ppp',
+    'wasmfs_create_node_backend': 'pp',
     'malloc': 'pp',
     'calloc': 'ppp',
     'webidl_malloc': 'pp',
@@ -1068,7 +1076,7 @@ def create_pointer_conversion_wrappers(metadata):
     '_wasmfs_lchmod': '_p_',
     '_wasmfs_get_cwd': 'p_',
     '_wasmfs_identify': '_p',
-    '_wasmfs_read_file': 'pp',
+    '_wasmfs_read_file': '_ppp',
     '_wasmfs_node_record_dirent': '_pp_',
     '__dl_seterr': '_pp',
     '_emscripten_run_on_main_thread_js': '__p_p_',
@@ -1079,10 +1087,21 @@ def create_pointer_conversion_wrappers(metadata):
     '_emscripten_dlsync_self_async': '_p',
     '_emscripten_proxy_dlsync_async': '_pp',
     '_emscripten_wasm_worker_initialize': '_p_',
+    '_wasmfs_rename': '_pp',
+    '_wasmfs_readlink': '_pp',
+    '_wasmfs_truncate': '_p_',
+    '_wasmfs_mmap': 'pp____',
+    '_wasmfs_munmap': '_pp',
+    '_wasmfs_msync': '_pp_',
+    '_wasmfs_read': '__pp',
+    '_wasmfs_pread': '__pp_',
+    '_wasmfs_utime': '_p__',
     '_wasmfs_rmdir': '_p',
     '_wasmfs_unlink': '_p',
     '_wasmfs_mkdir': '_p_',
     '_wasmfs_open': '_p__',
+    '_wasmfs_mount': '_pp',
+    '_wasmfs_chdir': '_p',
     'asyncify_start_rewind': '_p',
     'asyncify_start_unwind': '_p',
     '__get_exception_message': '_ppp',

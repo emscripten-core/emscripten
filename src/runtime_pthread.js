@@ -14,6 +14,12 @@
 var workerID = 0;
 #endif
 
+#if MAIN_MODULE
+// Map of modules to be shared with new threads.  This gets populated by the
+// main thread and shared with all new workers via the initial `load` message.
+var sharedModules = {};
+#endif
+
 if (ENVIRONMENT_IS_PTHREAD) {
 #if !MINIMAL_RUNTIME
   var wasmModuleReceived;
@@ -37,30 +43,17 @@ if (ENVIRONMENT_IS_PTHREAD) {
   // Thread-local guard variable for one-time init of the JS state
   var initializedJS = false;
 
-  function threadPrintErr(...args) {
-    var text = args.join(' ');
-#if ENVIRONMENT_MAY_BE_NODE
-    // See https://github.com/emscripten-core/emscripten/issues/14804
-    if (ENVIRONMENT_IS_NODE) {
-      fs.writeSync(2, text + '\n');
-      return;
-    }
-#endif
-    console.error(text);
+#if LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER
+  // When using postMessage to send an object, it is processed by the structured
+  // clone algorithm.  The prototype, and hence methods, on that object is then
+  // lost. This function adds back the lost prototype.  This does not work with
+  // nested objects that has prototypes, but it suffices for WasmSourceMap and
+  // WasmOffsetConverter.
+  function resetPrototype(constructor, attrs) {
+    var object = Object.create(constructor.prototype);
+    return Object.assign(object, attrs);
   }
-
-#if expectToReceiveOnModule('printErr')
-  if (!Module['printErr'])
 #endif
-    err = threadPrintErr;
-#if ASSERTIONS || RUNTIME_DEBUG
-  dbg = threadPrintErr;
-#endif
-  function threadAlert(...args) {
-    var text = args.join(' ');
-    postMessage({cmd: 'alert', text, threadId: _pthread_self()});
-  }
-  self.alert = threadAlert;
 
   // Turn unhandled rejected promises into errors so that the main thread will be
   // notified about them.

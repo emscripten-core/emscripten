@@ -65,7 +65,7 @@ var LibraryHtml5WebGL = {
 #if PTHREADS && OFFSCREEN_FRAMEBUFFER
   'emscripten_webgl_create_context_proxied',
 #endif
-  '$JSEvents', '$webglPowerPreferences', '$findEventTarget', '$findCanvasEventTarget'],
+  '$webglPowerPreferences', '$findCanvasEventTarget'],
   // This function performs proxying manually, depending on the style of context that is to be created.
   emscripten_webgl_do_create_context: (target, attributes) => {
 #if ASSERTIONS
@@ -331,7 +331,6 @@ var LibraryHtml5WebGL = {
   },
 
   emscripten_webgl_destroy_context__proxy: 'sync_on_webgl_context_handle_thread',
-  emscripten_webgl_destroy_context__deps: ['free'],
   emscripten_webgl_destroy_context: (contextHandle) => {
     if (GL.currentContext == contextHandle) GL.currentContext = 0;
     GL.deleteContext(contextHandle);

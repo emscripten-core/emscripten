@@ -23,6 +23,7 @@ var LibrarySDL = {
     '$intArrayFromString',
     // Many SDL functions depend on malloc/free
     'malloc', 'free',
+    'memcpy',
   ],
   $SDL: {
     defaults: {
@@ -570,8 +571,7 @@ var LibrarySDL = {
 
           // Clear out any touchstart events that we've already processed
           if (event.type === 'touchstart') {
-            for (var i = 0; i < event.touches.length; i++) {
-              var touch = event.touches[i];
+            for (var touch of event.touches) {
               if (SDL.downFingers[touch.identifier] != true) {
                 SDL.downFingers[touch.identifier] = true;
                 touches.push(touch);
@@ -600,8 +600,7 @@ var LibrarySDL = {
             SDL.events.push(mouseEvent);
           }
 
-          for (var i = 0; i < touches.length; i++) {
-            var touch = touches[i];
+          for (var touch of touches) {
             SDL.events.push({
               type: event.type,
               touch
@@ -614,8 +613,7 @@ var LibrarySDL = {
 
           // Remove the entry in the SDL.downFingers hash
           // because the finger is no longer down.
-          for (var i = 0; i < event.changedTouches.length; i++) {
-            var touch = event.changedTouches[i];
+          for (var touch of event.changedTouches) {
             if (SDL.downFingers[touch.identifier] === true) {
               delete SDL.downFingers[touch.identifier];
             }
@@ -630,8 +628,7 @@ var LibrarySDL = {
           SDL.DOMButtons[0] = 0;
           SDL.events.push(mouseEvent);
 
-          for (var i = 0; i < event.changedTouches.length; i++) {
-            var touch = event.changedTouches[i];
+          for (var touch of event.changedTouches) {
             SDL.events.push({
               type: 'touchend',
               touch
@@ -1274,9 +1271,9 @@ var LibrarySDL = {
     joystickNamePool: {},
     recordJoystickState(joystick, state) {
       // Standardize button state.
-      var buttons = new Array(state.buttons.length);
-      for (var i = 0; i < state.buttons.length; i++) {
-        buttons[i] = SDL.getJoystickButtonState(state.buttons[i]);
+      var buttons = [];
+      for (var button of state.buttons) {
+        buttons.push(SDL.getJoystickButtonState(button));
       }
 
       SDL.lastJoystickState[joystick] = {
@@ -1384,7 +1381,7 @@ var LibrarySDL = {
     return SDL.version;
   },
 
-  SDL_Init__deps: ['calloc', 'memcpy'],
+  SDL_Init__deps: ['calloc'],
   SDL_Init__proxy: 'sync',
   SDL_Init__docs: '/** @param{number} initFlags */',
   SDL_Init: (initFlags) => {
@@ -2187,7 +2184,11 @@ var LibrarySDL = {
   // We support JPG, PNG, TIF because browsers do
   IMG_Init: (flags) => flags,
 
-  IMG_Load_RW__deps: ['$Browser', 'SDL_LockSurface', 'SDL_FreeRW', '$PATH_FS', '$stackSave', '$stackRestore', '$stringToUTF8OnStack', '$stackAlloc'],
+  IMG_Load_RW__deps: ['$Browser', 'SDL_LockSurface', 'SDL_FreeRW', '$PATH_FS', '$stackSave', '$stackRestore', '$stackAlloc',
+#if STB_IMAGE
+    '$stringToUTF8OnStack',
+#endif
+  ],
   IMG_Load_RW__proxy: 'sync',
   IMG_Load_RW: (rwopsID, freeSrc) => {
     var sp = stackSave();
@@ -2692,11 +2693,7 @@ var LibrarySDL = {
     return 1;
   },
 
-  Mix_LoadWAV_RW__deps: [
-    '$FS',
-    '$PATH_FS',
-    'fileno',
-  ],
+  Mix_LoadWAV_RW__deps: ['$FS', '$PATH_FS'],
   Mix_LoadWAV_RW__proxy: 'sync',
   Mix_LoadWAV_RW__docs: '/** @param {number} freesrc */',
   Mix_LoadWAV_RW: (rwopsID, freesrc) => {
@@ -3053,7 +3050,7 @@ var LibrarySDL = {
   Mix_Pause__proxy: 'sync',
   Mix_Pause: (channel) => {
     if (channel === -1) {
-      for (var i = 0; i<SDL.channels.length;i++) {
+      for (var i = 0; i < SDL.channels.length; i++) {
         _Mix_Pause(i);
       }
       return;
@@ -3072,7 +3069,7 @@ var LibrarySDL = {
   Mix_Paused: (channel) => {
     if (channel === -1) {
       var pausedCount = 0;
-      for (var i = 0; i<SDL.channels.length;i++) {
+      for (var i = 0; i < SDL.channels.length; i++) {
         pausedCount += _Mix_Paused(i);
       }
       return pausedCount;
@@ -3088,7 +3085,7 @@ var LibrarySDL = {
   Mix_Resume__proxy: 'sync',
   Mix_Resume: (channel) => {
     if (channel === -1) {
-      for (var i = 0; i<SDL.channels.length;i++) {
+      for (var i = 0; i < SDL.channels.length; i++) {
         _Mix_Resume(i);
       }
       return;
@@ -3430,8 +3427,8 @@ var LibrarySDL = {
     var count = 0;
     var gamepads = SDL.getGamepads();
     // The length is not the number of gamepads; check which ones are defined.
-    for (var i = 0; i < gamepads.length; i++) {
-      if (gamepads[i] !== undefined) count++;
+    for (var gamepad of gamepads) {
+      if (gamepad !== undefined) count++;
     }
     return count;
   },

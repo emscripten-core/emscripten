@@ -54,7 +54,7 @@ var wasmOffsetConverter;
       }
     }
     if (shouldExport) {
-      if (MODULARIZE === 'instance') {
+      if (MODULARIZE === 'instance' && !WASM_ESM_INTEGRATION) {
         return `__exp_${x} = `
       }
       return `Module['${x}'] = `;
