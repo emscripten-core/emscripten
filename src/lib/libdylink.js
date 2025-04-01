@@ -960,6 +960,8 @@ var LibraryDylink = {
                               '$asyncLoad',
 #if FILESYSTEM
                               '$preloadedWasm',
+#endif
+#if FILESYSTEM && SUPPORT_RPATH
                               '$replaceORIGIN',
                               '_emscripten_resolve_path',
                               '$stackSave',
@@ -984,7 +986,7 @@ var LibraryDylink = {
     dbg(`existing: ${Object.keys(LDSO.loadedLibsByName)}`);
 #endif
 
-#if FILESYSTEM
+#if FILESYSTEM && SUPPORT_RPATH
       var foundFile = false;
       if (libName.startsWith("/")) {
         try {
@@ -1078,7 +1080,7 @@ var LibraryDylink = {
         }
       }
 
-#if FILESYSTEM
+#if FILESYSTEM && SUPPORT_RPATH
       if (foundFile) {
         var libData = FS.readFile(libName, {encoding: 'binary'});
         if (libData) {

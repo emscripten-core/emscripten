@@ -1135,6 +1135,10 @@ var MAIN_MODULE = 0;
 // [compile+link]
 var SIDE_MODULE = 0;
 
+// Include RPATH support.
+// [link]
+var SUPPORT_RPATH = 0;
+
 // Deprecated, list shared libraries directly on the command line instead.
 // [link]
 // [deprecated]
