@@ -723,9 +723,9 @@ var LibraryDylink = {
     };
   },
   $addStubImports__deps: [
-    "$getStubImportModule",
-    "$wasmSigToEmscripten",
-    "$getStubImportResolver"
+    '$getStubImportModule',
+    '$wasmSigToEmscripten',
+    '$getStubImportResolver',
   ],
   $addStubImports: (mod, stubs, resolveSymbol) => {
     // Assumes --experimental-wasm-type-reflection to get type field of WebAssembly.Module.imports().
