@@ -23,6 +23,8 @@ See docs/process.md for more on how version tagging works.
 - Added experimental support for Wasm ESM integration with
   `-sWASM_ESM_INTEGRATION`. This is currently only supported in node behind a
   flag and not in any browsers. (#23985)
+- Runtime callbacks are now enqueued and executed FIFO (historically was LIFO),
+  which matches the behavior of compile-time callbacks. (#24012)
 
 4.0.6 - 03/26/25
 ----------------
