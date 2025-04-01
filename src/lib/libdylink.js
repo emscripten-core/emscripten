@@ -897,7 +897,9 @@ var LibraryDylink = {
           // when first called.
           if (!(prop in stubs)) {
 #if JSPI
-            throw new Error("Missing stub for " + prop);
+#if ASSERTIONS
+            assert(prop in stubs, 'missing JSPI stub');
+#endif
 #else
             var resolved;
             stubs[prop] = (...args) => {
