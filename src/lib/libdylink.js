@@ -628,34 +628,35 @@ var LibraryDylink = {
     var typeSectionBody = [
       0x02, // count: 2
     ];
-    generateFuncType('v', typeSectionBody);
+
+    // Type 0 is "sig"
     generateFuncType(sig, typeSectionBody);
+    // Type 1 is (void) => (func ref to function of signature sig)
+    typeSectionBody.push(0x60 /* form: func */);
+    typeSectionBody.push(0x00); // 0 args
+    typeSectionBody.push(0x01, 0x63, 0x00); // (ref nullable func type 0)
+
     uleb128Encode(typeSectionBody.length, bytes);
     bytes.push(...typeSectionBody);
 
     // static sections
     bytes.push(
       // Import section
-      0x02, 0x0f,
-      0x02, // 2 imports
-        0x01, 0x65, // e
-        0x01, 0x74, // t
-        // funcref table with no limits
-        0x01, 0x70, 0x00, 0x00,
-
+      0x02, 0x07,
+      0x01, // 1 import
         0x01, 0x65, // e
         0x01, 0x72, // r
-        0x00, 0x00, // function of type 0 ('v')
+        0x00, 0x01, // function of type 0 ('f')
 
       // Function section
       0x03, 0x02,
-      0x01, 0x01,  // One function of type 1 (sig)
+      0x01, 0x00,  // One function of type 0 (sig)
 
       // Globals section
-      0x06, 0x06,
+      0x06, 0x07,
       0x01, // one global
-      0x7f, 0x01, // i32 mut
-      0x41, 0x00, 0x0b, // initialized to i32.const 0
+      0x63, 0x00, 0x01, // (ref nullable func type 0) mutable
+      0xd0, 0x00, 0x0b, // initialized to ref.null (func type 0)
 
       // Export section
       0x07, 0x05,
@@ -667,10 +668,9 @@ var LibraryDylink = {
     var codeBody = [
       0x00, // 0 locals
         0x23, 0x00, // global.get 0
-        0x45, // i32.eqz
+        0xd1, // ref.is_null
         0x04, // if
           0x40, 0x10, 0x00, // Call function 0
-          0x41, 0x01, // i32.const 1
           0x24, 0x00, // global.set 0
         0x0b, // end
     ];
@@ -679,8 +679,8 @@ var LibraryDylink = {
     }
 
     codeBody.push(
-        0x41, 0x00, // i32.const 0
-        0x11, 0x01, 0x00, // call_indirect table 0, type 0
+        0x23, 0x00, // global.get 0
+        0x14, 0x00, // call_ref type 0
       0x0b // end
     );
     var codeSectionBody = [0x01];
@@ -704,22 +704,13 @@ var LibraryDylink = {
     }
     return sig;
   },
-  $getStubImportResolver: (name, sig, table, resolveSymbol) => {
+  $getStubImportResolver: (name, resolveSymbol) => {
     return function r() {
       var res = resolveSymbol(name);
       if (res.orig) {
         res = res.orig;
       }
-      try {
-        // Attempting to call this with JS function will cause table.set() to fail
-        table.set(0, res);
-      } catch (err) {
-        if (!(err instanceof TypeError)) {
-          throw err;
-        }
-        var wrapped = convertJsFunctionToWasm(res, sig);
-        table.set(0, wrapped);
-      }
+      return res;
     };
   },
   $addStubImports__deps: [
@@ -734,7 +725,7 @@ var LibraryDylink = {
       if (kind !== 'function') {
         continue;
       }
-      if (resolveSymbol(name)) {
+      if (resolveSymbol(name, true)) {
         // We only need stubs for late-binding symbols.
         continue;
       }
@@ -748,9 +739,8 @@ var LibraryDylink = {
 #endif
       var sig = wasmSigToEmscripten(type);
       var mod = getStubImportModule(sig);
-      const t = new WebAssembly.Table({element: 'funcref', initial: 1});
-      const r = getStubImportResolver(name, sig, t, resolveSymbol);
-      const inst = new WebAssembly.Instance(mod, {e: {t, r}});
+      const r = getStubImportResolver(name, resolveSymbol);
+      const inst = new WebAssembly.Instance(mod, {e: {r}});
       stubs[name] = inst.exports.o;
     }
   },
@@ -841,7 +831,7 @@ var LibraryDylink = {
       // need to import their own symbols
       var moduleExports;
 
-      function resolveSymbol(sym) {
+      function resolveSymbol(sym, allowUndefined) {
         var resolved = resolveGlobalSymbol(sym).sym;
         if (!resolved && localScope) {
           resolved = localScope[sym];
@@ -850,7 +840,9 @@ var LibraryDylink = {
           resolved = moduleExports?.[sym];
         }
 #if ASSERTIONS
-        assert(resolved, `undefined symbol '${sym}'. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment`);
+        if (!allowUndefined) {
+          assert(resolved, `undefined symbol '${sym}'. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment`);
+        }
 #endif
         return resolved;
       }
