@@ -7692,7 +7692,7 @@ int main() {
     self.assertContained('Ok', out)
 
   @also_with_wasmfs
-  def test_dlopen_rpath(self):
+  def test_dlopen_library_path(self):
     create_file('hello1_dep.c', r'''
 #include<stdio.h>
 
@@ -7745,16 +7745,17 @@ int main() {
     self.run_process([EMCC, '-o', 'subdir/libhello1_dep.so', 'hello1_dep.c', '-sSIDE_MODULE'])
     self.run_process([EMCC, '-o', 'hello1.wasm', 'hello1.c', '-sSIDE_MODULE', 'subdir/libhello1_dep.so'])
     self.run_process([EMCC, '--profiling-funcs', '-o', 'main.js', 'main.c', '-sMAIN_MODULE=2', '-sINITIAL_MEMORY=32Mb',
-                      '--embed-file', 'hello1.wasm@/libhello1.wasm',
+                      '--embed-file', 'hello1.wasm@/lib/libhello1.wasm',
                       '--embed-file', 'subdir/libhello1_dep.so@/usr/lib/libhello1_dep.so',
-                      'hello1.wasm', '-sNO_AUTOLOAD_DYLIBS',
+                      'hello1.wasm', '-sNO_AUTOLOAD_DYLIBS', '-sSUPPORT_RPATH',
                       '-L./subdir', '-lhello1_dep', '--pre-js', 'pre.js'])
     out = self.run_js('main.js')
     self.assertContained('Hello1', out)
     self.assertContained('Hello1_2', out)
     self.assertContained('Ok', out)
 
-  def test_rpath_dependencies(self):
+  @also_with_wasmfs
+  def test_dlopen_rpath(self):
     create_file('hello1_dep.c', r'''
 #include<stdio.h>
 
