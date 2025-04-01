@@ -490,8 +490,10 @@ static int path_find(const char *name, int ncandidates, const char **candidates,
   for (int c = 0; c < ncandidates; c ++) {
     const char* s = candidates[c];
     if (s == NULL) {
+      dbg("Candidate %d is null, skipping\n", c);
       continue;
     }
+    dbg("Candidate %d...\n", c);
     for (;;) {
       s += strspn(s, ":\n");
       l = strcspn(s, ":\n");
@@ -499,9 +501,12 @@ static int path_find(const char *name, int ncandidates, const char **candidates,
       if (snprintf(buf, buf_size, "%.*s/%s", (int)l, s, name) < buf_size) {
         dbg("dlopen: path_find: %s", buf);
         struct stat statbuf;
+        dbg("Checking file: %s\n", buf);
         if (stat(buf, &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
+          dbg(" .. found\n");
           return 0;
         }
+        dbg(" .. not found\n");
         switch (errno) {
         case ENOENT:
         case ENOTDIR:

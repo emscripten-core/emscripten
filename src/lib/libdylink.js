@@ -985,28 +985,34 @@ var LibraryDylink = {
 #endif
 
 #if FILESYSTEM
-      var runtimePathsAbs = (rpath.paths || []).map((p) => replaceORIGIN(rpath.parentLibPath, p));
-      var origStack = stackSave();
-      var bufSize = 2*255 + 2;
-      var buf = stackAlloc(bufSize);
-      var size = 0;
-      for (var str of runtimePathsAbs) {
-        size += lengthBytesUTF8(str) + 1;
+      var foundFile = false;
+      if (libName.startsWith("/")) {
+        try {
+          FS.lookupPath(libName);
+          foundFile = true;
+        } catch(e){}
+      } else if (runtimeInitialized) {
+        var runtimePathsAbs = (rpath.paths || []).map((p) => replaceORIGIN(rpath.parentLibPath, p));
+        var origStack = stackSave();
+        var bufSize = 2*255 + 2;
+        var buf = stackAlloc(bufSize);
+        var size = 0;
+        for (var str of runtimePathsAbs) {
+          size += lengthBytesUTF8(str) + 1;
+        }
+        var rpath = stackAlloc(size);
+        var cur = rpath
+        for (var str of runtimePathsAbs) {
+          cur += stringToUTF8(str, cur, size);
+          HEAP8[cur] = ':'.charCodeAt(0);
+        }
+        HEAP8[cur] = 0;
+        var libNameC = stringToUTF8OnStack(libName);
+        var resLibNameC = __emscripten_resolve_path(buf, rpath, libNameC, bufSize);
+        var foundFile = resLibNameC !== libNameC;
+        libName = UTF8ToString(resLibNameC);
+        stackRestore(origStack);
       }
-      var rpath = stackAlloc(size);
-      var cur = rpath
-      for (var str of runtimePathsAbs) {
-        cur += stringToUTF8(str, cur, size);
-        HEAP8[cur] = ':'.charCodeAt(0);
-      }
-      HEAP8[cur] = 0;
-      var libNameC = stringToUTF8OnStack(libName);
-      // We use wasmExports["_emscripten_resolve_path"] so we can use this for
-      // preloading dynamic libraries when runtimeInitialized is false.
-      var resLibNameC = wasmExports["_emscripten_resolve_path"](buf, rpath, libNameC, bufSize);
-      var foundFile = resLibNameC !== libNameC;
-      libName = UTF8ToString(resLibNameC);
-      stackRestore(origStack);
 #if DYLINK_DEBUG
       dbg(`checking filesystem: ${libName}: ${foundFile ? 'found' : 'not found'}`);
 #endif
