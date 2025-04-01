@@ -40,7 +40,7 @@ export function processMacros(text, filename) {
   try {
     return text.replace(/{{{([\s\S]+?)}}}/g, (_, str) => {
       const ret = runInMacroContext(str, {filename: filename});
-      return ret !== null ? ret.toString() : '';
+      return ret?.toString() ?? '';
     });
   } finally {
     popCurrentFile();
