@@ -872,13 +872,12 @@ var LibraryDylink = {
 
       if (flags.loadAsync) {
         return (async function() {
-          var instance;
           if (binary instanceof WebAssembly.Module) {
-            instance = new WebAssembly.Instance(binary, info);
-          } else {
-            ({binary, instance} = await WebAssembly.instantiate(binary, info));
+            var instance = new WebAssembly.Instance(binary, info);
+            return postInstantiation(binary, instance);
           }
-          return postInstantiation(module, instance);
+          const result = await WebAssembly.instantiate(binary, info);
+          return postInstantiation(result.module, result.instance);
         })();
       }
 
