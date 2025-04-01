@@ -107,11 +107,11 @@ file as the target file: ::
 
 You can now open ``hello.html`` in a web browser.
 
-.. note:: Unfortunately, several browsers (including *Chrome*, *Safari*, and
-   *Internet Explorer*) do not support ``file://`` :term:`XHR` requests, and
-   can't load extra files needed by the HTML (like a ``.wasm`` file, or packaged
-   file data as mentioned lower down). For these browsers, you'll need to serve
-   the files using a :ref:`local webserver <faq-local-webserver>` and then open
+.. note:: Unfortunately, several browsers (including *Chrome*, and *Safari*) do
+   not support ``file://`` :term:`XHR` requests, and can't load extra files
+   needed by the HTML (like a ``.wasm`` file, or packaged file data as mentioned
+   lower down). For these browsers, you'll need to serve the files using a
+   :ref:`local webserver <faq-local-webserver>` and then open
    ``http://localhost:8000/hello.html``).
 
 Once you have the HTML loaded in your browser, you'll see a text area for
