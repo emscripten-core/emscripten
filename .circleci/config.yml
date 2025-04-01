@@ -1023,6 +1023,7 @@ jobs:
       EMTEST_SKIP_RUST: "1"
       EMTEST_SKIP_NODE_CANARY: "1"
       EMTEST_BROWSER: "0"
+      EMCC_DEBUG: "1"
     steps:
       -  attach_workspace:
           at: ~/
