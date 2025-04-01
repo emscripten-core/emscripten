@@ -1000,7 +1000,7 @@ var LibraryDylink = {
         for (var str of runtimePathsAbs) {
           size += lengthBytesUTF8(str) + 1;
         }
-        var rpath = stackAlloc(size);
+        rpath = stackAlloc(size);
         var cur = rpath
         for (var str of runtimePathsAbs) {
           cur += stringToUTF8(str, cur, size);
@@ -1009,7 +1009,7 @@ var LibraryDylink = {
         HEAP8[cur] = 0;
         var libNameC = stringToUTF8OnStack(libName);
         var resLibNameC = __emscripten_resolve_path(buf, rpath, libNameC, bufSize);
-        var foundFile = resLibNameC !== libNameC;
+        foundFile = resLibNameC !== libNameC;
         libName = UTF8ToString(resLibNameC);
         stackRestore(origStack);
       }
