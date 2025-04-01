@@ -86,15 +86,6 @@ execute it. You can run them using :term:`node.js`:
 
 This prints "hello, world!" to the console, as expected.
 
-.. note:: Older node.js versions do not have WebAssembly support yet. In that
-   case, you will see an error message suggesting that you build with
-   ``-sWASM=0`` to disable WebAssembly, and then emscripten will emit the compiled
-   code as JavaScript. In general, WebAssembly is recommended as it has
-   widespread browser support and is more efficient both to execute and to
-   download (and therefore emscripten emits it by default), but sometimes you
-   may need your code to run in an environment where it is not yet present,
-   so you should disable it.
-
 .. tip:: If an error occurs when calling *emcc*, run it with the ``-v`` option
    to print out a lot of useful debug information.
 
