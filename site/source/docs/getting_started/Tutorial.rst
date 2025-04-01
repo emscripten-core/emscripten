@@ -107,7 +107,7 @@ file as the target file: ::
 
 You can now open ``hello.html`` in a web browser.
 
-.. note:: Unfortunately, several browsers (including *Chrome*, and *Safari*) do
+.. note:: Unfortunately, several browsers (including *Chrome* and *Safari*) do
    not support ``file://`` :term:`XHR` requests, and can't load extra files
    needed by the HTML (like a ``.wasm`` file, or packaged file data as mentioned
    lower down). For these browsers, you'll need to serve the files using a
