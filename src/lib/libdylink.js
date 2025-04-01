@@ -730,11 +730,12 @@ var LibraryDylink = {
   $addStubImports: (mod, stubs, resolveSymbol) => {
     // Assumes --experimental-wasm-type-reflection to get type field of WebAssembly.Module.imports().
     // TODO: Make this work without it.
-    for (const {module, name, kind, type} of WebAssembly.Module.imports(mod)) {
+    for (const {name, kind, type} of WebAssembly.Module.imports(mod)) {
       if (kind !== 'function') {
         continue;
       }
-      if (name in wasmImports && !wasmImports[name].stub) {
+      if (resolveSymbol(name)) {
+        // We only need stubs for late-binding symbols.
         continue;
       }
 #if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
