@@ -847,7 +847,7 @@ var LibraryDylink = {
           resolved = localScope[sym];
         }
         if (!resolved) {
-          resolved = moduleExports[sym];
+          resolved = moduleExports?.[sym];
         }
 #if ASSERTIONS
         assert(resolved, `undefined symbol '${sym}'. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment`);
