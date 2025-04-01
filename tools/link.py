@@ -220,19 +220,32 @@ def get_js_sym_info():
     input_files.append(read_file(jslib))
   content = '\n'.join(input_files)
   content_hash = hashlib.sha1(content.encode('utf-8')).hexdigest()
+  library_syms = None
+
+  cache_file = f'symbol_lists/{content_hash}.json'
+  # When we are racing with other processes the existence of the file
+  # at this point in time only means its likely a cache hit, since another
+  # process could be performing a cache cleanup.
+  cache_miss_likely = not os.path.exists(cache.get_path(cache_file))
+
+  if cache_miss_likely:
+    library_syms = generate_js_sym_info()
+  else:
+    library_syms = None
 
   def build_symbol_list(filename):
     """Only called when there is no existing symbol list for a given content hash.
     """
-    library_syms = generate_js_sym_info()
-
+    nonlocal library_syms
+    if not library_syms:
+      library_syms = generate_js_sym_info()
     write_file(filename, json.dumps(library_syms, separators=(',', ':'), indent=2))
 
-  # We need to use a separate lock here for symbol lists because, unlike with system libraries,
-  # it's normally for these file to get pruned as part of normal operation.  This means that it
+  # We need to use a separate lock here for symbol lists because, unlike with system
+  # libraries, these files get pruned as part of normal operation.  This means that it
   # can be deleted between the `cache.get()` then the `read_file`.
   with filelock.FileLock(cache.get_path('symbol_lists.lock')):
-    filename = cache.get(f'symbol_lists/{content_hash}.json', build_symbol_list)
+    filename = cache.get(cache_file, build_symbol_list)
     library_syms = json.loads(read_file(filename))
 
     # Limit of the overall size of the cache.
