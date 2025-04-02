@@ -12392,62 +12392,11 @@ int main(void) {
       ''')
     self.run_process([EMCC, 'src.cpp', '-fexceptions', '--closure=1'])
 
-  def test_assertions_on_internal_api_changes(self):
-    create_file('src.c', r'''
-      #include <emscripten.h>
-      int main(int argc, char **argv) {
-        EM_ASM({
-          try {
-            Module['read'];
-            out('it should not be there');
-          } catch(e) {
-            out('error: ' + e);
-          }
-          try {
-            Module['asm'];
-            out('it should not be there');
-          } catch(e) {
-            out('error: ' + e);
-          }
-        });
-      }
-    ''')
-    expected = [
-      '`Module.asm` has been replaced by `wasmExports`',
-    ]
-    self.do_runf('src.c', expected, assert_all=True, emcc_args=['-sASSERTIONS'])
-
   def test_assertions_on_incoming_module_api_changes(self):
     create_file('pre.js', 'Module.read = () => {};')
     self.do_runf('hello_world.c', 'Module.read option was removed',
                  emcc_args=['-sASSERTIONS', '--pre-js', 'pre.js'],
                  assert_returncode=NON_ZERO)
-
-  def test_assertions_on_outgoing_module_api_changes(self):
-    create_file('src.cpp', r'''
-      #include <emscripten.h>
-      int main() {
-        EM_ASM({
-          out();
-          function check(name) {
-            try {
-              Module[name];
-              out("success: " + name);
-            } catch(e) {
-            }
-          }
-          check("read");
-          // TODO check("setWindowTitle");
-          check("wasmBinary");
-          check("arguments");
-        });
-      }
-    ''')
-    expected = '''
-Aborted(`Module.wasmBinary` has been replaced by `wasmBinary` (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name))
-Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name))
-'''
-    self.do_runf('src.cpp', expected, emcc_args=['-sASSERTIONS'])
 
   def test_modularize_assertions_on_reject_promise(self):
     # Check that there is an uncaught exception in modularize mode.

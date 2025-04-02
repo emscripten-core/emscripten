@@ -395,11 +395,11 @@ if (ENVIRONMENT_IS_NODE) {
   defaultPrint = (...args) => fs.writeSync(1, args.map(stringify).join(' ') + '\n');
   defaultPrintErr = (...args) => fs.writeSync(2, args.map(stringify).join(' ') + '\n');
 }
-{{{ makeModuleReceiveWithVar('out', 'print',    'defaultPrint',    true) }}}
-{{{ makeModuleReceiveWithVar('err', 'printErr', 'defaultPrintErr', true) }}}
+{{{ makeModuleReceiveWithVar('out', 'print',    'defaultPrint') }}}
+{{{ makeModuleReceiveWithVar('err', 'printErr', 'defaultPrintErr') }}}
 #else
-{{{ makeModuleReceiveWithVar('out', 'print',    'console.log.bind(console)',  true) }}}
-{{{ makeModuleReceiveWithVar('err', 'printErr', 'console.error.bind(console)', true) }}}
+{{{ makeModuleReceiveWithVar('out', 'print',    'console.log.bind(console)') }}}
+{{{ makeModuleReceiveWithVar('err', 'printErr', 'console.error.bind(console)') }}}
 #endif
 
 #if ASSERTIONS
@@ -428,10 +428,6 @@ assert(typeof Module['TOTAL_MEMORY'] == 'undefined', 'Module.TOTAL_MEMORY has be
 assert(typeof Module['ENVIRONMENT'] == 'undefined', 'Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -sENVIRONMENT=web or -sENVIRONMENT=node)');
 assert(typeof Module['STACK_SIZE'] == 'undefined', 'STACK_SIZE can no longer be set at runtime.  Use -sSTACK_SIZE at link time')
 
-{{{ makeRemovedModuleAPIAssert('asm', 'wasmExports', false) }}}
-{{{ makeRemovedModuleAPIAssert('readAsync') }}}
-{{{ makeRemovedModuleAPIAssert('readBinary') }}}
-{{{ makeRemovedModuleAPIAssert('setWindowTitle') }}}
 {{{ makeRemovedFSAssert('IDBFS') }}}
 {{{ makeRemovedFSAssert('PROXYFS') }}}
 {{{ makeRemovedFSAssert('WORKERFS') }}}
