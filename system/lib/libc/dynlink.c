@@ -532,7 +532,7 @@ const char* _emscripten_resolve_path(char* buf, const char* rpath, const char* f
     const char* env_path = getenv("LD_LIBRARY_PATH");
     int ncandidates = 2;
     const char* candidates[2] = {env_path, rpath};
-    if (env_path && path_find(file, ncandidates, candidates, buf, buflen) == 0) {
+    if (path_find(file, ncandidates, candidates, buf, buflen) == 0) {
       dbg("dlopen: found in LD_LIBRARY_PATH: %s", buf);
       return buf;
     }
