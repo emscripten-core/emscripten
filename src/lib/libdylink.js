@@ -964,9 +964,8 @@ var LibraryDylink = {
 #if FILESYSTEM
                               '$replaceORIGIN',
                               '_emscripten_resolve_path',
-                              '$stackSave',
+                              '$withStackSave',
                               '$stackAlloc',
-                              '$stackRestore',
                               '$lengthBytesUTF8',
                               '$stringToUTF8OnStack',
                               '$stringToUTF8',
@@ -987,15 +986,15 @@ var LibraryDylink = {
 #endif
 
 #if FILESYSTEM
-      var foundFile = false;
-      if (libName.startsWith("/")) {
-        try {
-          FS.lookupPath(libName);
-          foundFile = true;
-        } catch(e){}
-      } else if (runtimeInitialized) {
-        var runtimePathsAbs = (rpath.paths || []).map((p) => replaceORIGIN(rpath.parentLibPath, p));
-        var origStack = stackSave();
+    var foundFile = false;
+    if (libName.startsWith("/")) {
+      try {
+        FS.lookupPath(libName);
+        foundFile = true;
+      } catch(e){}
+    } else if (runtimeInitialized) {
+      var runtimePathsAbs = (rpath.paths || []).map((p) => replaceORIGIN(rpath.parentLibPath, p));
+      withStackSave(() => {
         var bufSize = 2*255 + 2;
         var buf = stackAlloc(bufSize);
         var size = 0;
@@ -1013,10 +1012,10 @@ var LibraryDylink = {
         var resLibNameC = __emscripten_resolve_path(buf, rpath, libNameC, bufSize);
         foundFile = resLibNameC !== libNameC;
         libName = UTF8ToString(resLibNameC);
-        stackRestore(origStack);
-      }
+      });
+    }
 #if DYLINK_DEBUG
-      dbg(`checking filesystem: ${libName}: ${foundFile ? 'found' : 'not found'}`);
+    dbg(`checking filesystem: ${libName}: ${foundFile ? 'found' : 'not found'}`);
 #endif
 #endif
 
