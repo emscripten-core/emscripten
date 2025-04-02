@@ -985,40 +985,6 @@ var LibraryDylink = {
     dbg(`existing: ${Object.keys(LDSO.loadedLibsByName)}`);
 #endif
 
-#if FILESYSTEM
-    var foundFile = false;
-    if (libName.startsWith("/")) {
-      try {
-        FS.lookupPath(libName);
-        foundFile = true;
-      } catch(e){}
-    } else if (runtimeInitialized) {
-      var runtimePathsAbs = (rpath.paths || []).map((p) => replaceORIGIN(rpath.parentLibPath, p));
-      withStackSave(() => {
-        var bufSize = 2*255 + 2;
-        var buf = stackAlloc(bufSize);
-        var size = 0;
-        for (var str of runtimePathsAbs) {
-          size += lengthBytesUTF8(str) + 1;
-        }
-        rpath = stackAlloc(size);
-        var cur = rpath
-        for (var str of runtimePathsAbs) {
-          cur += stringToUTF8(str, cur, size);
-          HEAP8[cur] = ':'.charCodeAt(0);
-        }
-        HEAP8[cur] = 0;
-        var libNameC = stringToUTF8OnStack(libName);
-        var resLibNameC = __emscripten_resolve_path(buf, rpath, libNameC, bufSize);
-        foundFile = resLibNameC !== libNameC;
-        libName = UTF8ToString(resLibNameC);
-      });
-    }
-#if DYLINK_DEBUG
-    dbg(`checking filesystem: ${libName}: ${foundFile ? 'found' : 'not found'}`);
-#endif
-#endif
-
     // when loadDynamicLibrary did not have flags, libraries were loaded
     // globally & permanently
 
@@ -1080,6 +1046,37 @@ var LibraryDylink = {
       }
 
 #if FILESYSTEM
+      var foundFile = false;
+      if (libName.startsWith("/")) {
+        try {
+          FS.lookupPath(libName);
+          foundFile = true;
+        } catch(e){}
+      } else if (runtimeInitialized) {
+        var runtimePathsAbs = (rpath.paths || []).map((p) => replaceORIGIN(rpath.parentLibPath, p));
+        withStackSave(() => {
+          var bufSize = 2*255 + 2;
+          var buf = stackAlloc(bufSize);
+          var size = 0;
+          for (var str of runtimePathsAbs) {
+            size += lengthBytesUTF8(str) + 1;
+          }
+          rpath = stackAlloc(size);
+          var cur = rpath
+          for (var str of runtimePathsAbs) {
+            cur += stringToUTF8(str, cur, size);
+            HEAP8[cur] = ':'.charCodeAt(0);
+          }
+          HEAP8[cur] = 0;
+          var libNameC = stringToUTF8OnStack(libName);
+          var resLibNameC = __emscripten_resolve_path(buf, rpath, libNameC, bufSize);
+          foundFile = resLibNameC !== libNameC;
+          libName = UTF8ToString(resLibNameC);
+        });
+      }
+#if DYLINK_DEBUG
+      dbg(`checking filesystem: ${libName}: ${foundFile ? 'found' : 'not found'}`);
+#endif
       if (foundFile) {
         var libData = FS.readFile(libName, {encoding: 'binary'});
         if (libData) {
