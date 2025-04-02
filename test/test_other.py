@@ -2907,12 +2907,13 @@ More info: https://emscripten.org
 
   def test_prepre(self):
     create_file('pre.js', '''
-      Module.preRun = [() => out('pre-run')];
+      Module.preRun = [() => out('pre-run-0'), () => out('pre-run-1')];
     ''')
     create_file('pre2.js', '''
-      Module.preRun.push(() => out('prepre'));
+      Module.preRun.push(() => out('pre-run-2'));
     ''')
-    self.do_runf('hello_world.c', 'prepre\npre-run\nhello, world!\n',
+    self.do_runf('hello_world.c',
+                 'pre-run-0\npre-run-1\npre-run-2\nhello, world!\n',
                  emcc_args=['--pre-js', 'pre.js', '--pre-js', 'pre2.js'])
 
   def test_extern_prepost(self):
@@ -8590,31 +8591,45 @@ int main() {}
 
   @also_with_minimal_runtime
   def test_run_order(self):
-    create_file('pre.js', '''
+    create_file('pre.js', r'''
 var Module = {
-  preRun: () => console.log('modulePreRun'),
-  postRun: () => console.log('modulePostRun'),
-  preInit: () => console.log('modulePreInit')
+  preRun: [() => console.log('modulePreRun 0')],
+  postRun: [() => console.log('modulePostRun 0')],
+  preInit: [() => console.log('modulePreInit 0'), () => console.log('modulePreInit 1')]
 };
     ''')
     create_file('post.js', r'''
-addOnPreRun(() => console.log("addOnPreRun"));
-addOnInit(() => console.log("addOnInit"));
-addOnPostCtor(() => console.log("addOnPostCtor"));
-addOnPreMain(() => console.log("addOnPreMain"));
-addOnExit(() => console.log("addOnExit"));
-addOnPostRun(() => console.log("addOnPostRun"));
+Module['preRun'].push(() => console.log('modulePreRun 1'));
+Module['postRun'].push(() => console.log('modulePostRun 1'));
+addOnPreRun(() => console.log("addOnPreRun 0"));
+addOnPreRun(() => console.log("addOnPreRun 1"));
+addOnInit(() => console.log("addOnInit 0"));
+addOnInit(() => console.log("addOnInit 1"));
+addOnPostCtor(() => console.log("addOnPostCtor 0"));
+addOnPostCtor(() => console.log("addOnPostCtor 1"));
+addOnPreMain(() => console.log("addOnPreMain 0"));
+addOnPreMain(() => console.log("addOnPreMain 1"));
+addOnExit(() => console.log("addOnExit 0"));
+addOnExit(() => console.log("addOnExit 1"));
+addOnPostRun(() => console.log("addOnPostRun 0"));
+addOnPostRun(() => console.log("addOnPostRun 1"));
     ''')
     create_file('lib.js', r'''
 addToLibrary({
   foo__postset: () => {
     // Add all the compile time equivalents of the above runtime events.
-    addAtPreRun("console.log(`addAtPreRun`);");
-    addAtInit("console.log(`addAtInit`);");
-    addAtPostCtor("console.log(`addAtPostCtor`);");
-    addAtPreMain("console.log(`addAtPreMain`);");
-    addAtExit("console.log(`addAtExit`);");
-    addAtPostRun("console.log(`addAtPostRun`);");
+    addAtPreRun("console.log(`addAtPreRun 0`);");
+    addAtPreRun("console.log(`addAtPreRun 1`);");
+    addAtInit("console.log(`addAtInit 0`);");
+    addAtInit("console.log(`addAtInit 1`);");
+    addAtPostCtor("console.log(`addAtPostCtor 0`);");
+    addAtPostCtor("console.log(`addAtPostCtor 1`);");
+    addAtPreMain("console.log(`addAtPreMain 0`);");
+    addAtPreMain("console.log(`addAtPreMain 1`);");
+    addAtExit("console.log(`addAtExit 0`);");
+    addAtExit("console.log(`addAtExit 1`);");
+    addAtPostRun("console.log(`addAtPostRun 0`);");
+    addAtPostRun("console.log(`addAtPostRun 1`);");
   },
   foo: () => {},
 });
@@ -8632,26 +8647,38 @@ addToLibrary({
     ''')
     # Each element is [<log message>, <applies to minimal runtime>]
     expected_order = [
-      ['modulePreInit', False], # Not supported in minimal runtime.
-      ['modulePreRun', False], # Not supported in minimal runtime.
-      ['addOnPreRun', True],
-      ['addAtPreRun', True],
-      ['addOnInit', True],
-      ['addAtInit', True],
+      ['modulePreInit 0', False], # Not supported in minimal runtime.
+      ['modulePreInit 1', False], # Not supported in minimal runtime.
+      ['addOnPreRun 0', True],
+      ['addOnPreRun 1', True],
+      ['modulePreRun 0', False],  # Not supported in minimal runtime.
+      ['modulePreRun 1', False],  # Not supported in minimal runtime.
+      ['addAtPreRun 0', True],
+      ['addAtPreRun 1', True],
+      ['addOnInit 0', True],
+      ['addOnInit 1', True],
+      ['addAtInit 0', True],
+      ['addAtInit 1', True],
       ['ctor', True],
-      ['addOnPostCtor', True],
-      ['addAtPostCtor', True],
-      ['addOnPreMain', True],
-      ['addAtPreMain', True],
+      ['addOnPostCtor 0', True],
+      ['addOnPostCtor 1', True],
+      ['addAtPostCtor 0', True],
+      ['addAtPostCtor 1', True],
+      ['addOnPreMain 0', True],
+      ['addOnPreMain 1', True],
+      ['addAtPreMain 0', True],
+      ['addAtPreMain 1', True],
       ['main', True],
-      ['addOnExit', True],
-      ['addAtExit', True],
-      ['modulePostRun', False],  # Not supported in minimal runtime.
-      # The following two events are supported in miminal runtime, but they will
-      # not happen with MINIMAL_RUNTIME + EXIT_RUNTIME since it throws an
-      # exception during _proc_exit.
-      ['addOnPostRun', False],
-      ['addAtPostRun', False]
+      ['addOnExit 0', True],
+      ['addOnExit 1', True],
+      ['addAtExit 0', True],
+      ['addAtExit 1', True],
+      ['addOnPostRun 0', False],  # not with EXIT_RUNTIME (throws an exception during _proc_exit).
+      ['addOnPostRun 1', False],  # not with EXIT_RUNTIME (throws an exception during _proc_exit).
+      ['modulePostRun 0', False], # Not supported in minimal runtime.
+      ['modulePostRun 1', False], # Not supported in minimal runtime.
+      ['addAtPostRun 0', False],  # not with EXIT_RUNTIME (throws an exception during _proc_exit).
+      ['addAtPostRun 1', False]   # not with EXIT_RUNTIME (throws an exception during _proc_exit).
     ]
     if self.get_setting('MINIMAL_RUNTIME'):
       expected_order = [item[0] for item in expected_order if item[1]]
@@ -8701,7 +8728,7 @@ addToLibrary({
 
   def test_override_c_environ(self):
     create_file('pre.js', r'''
-      Module.preRun = () => { ENV.hello = 'world'; ENV.LANG = undefined; }
+      Module.preRun = () => { ENV.hello = '💩 world'; ENV.LANG = undefined; }
     ''')
     create_file('src.c', r'''
       #include <stdlib.h>
@@ -8713,7 +8740,7 @@ addToLibrary({
     ''')
     self.run_process([EMCC, 'src.c', '--pre-js', 'pre.js'])
     output = self.run_js('a.out.js')
-    self.assertContained('|world|', output)
+    self.assertContained('|💩 world|', output)
     self.assertContained('LANG is not set', output)
 
     create_file('pre.js', r'''
