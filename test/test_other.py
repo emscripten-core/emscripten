@@ -8897,17 +8897,17 @@ int main() {
 
         self.assertEqual(line_endings.check_line_endings(f, expect_only=expected_ending), 0, f'expected on ly {eol} line endingsn in {f}')
 
-  def test_binaryen_warn_mem(self):
+  def test_bad_memory_size(self):
     # if user changes INITIAL_MEMORY at runtime, the wasm module may not accept the memory import if
     # it is too big/small
     create_file('pre.js', 'Module.INITIAL_MEMORY = 50 * 1024 * 1024')
-    self.run_process([EMCC, test_file('hello_world.c'), '-sINITIAL_MEMORY=' + str(16 * 1024 * 1024), '--pre-js', 'pre.js', '-sWASM_ASYNC_COMPILATION=0', '-sIMPORTED_MEMORY'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-sINITIAL_MEMORY=16mb', '--pre-js', 'pre.js', '-sIMPORTED_MEMORY'])
     out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
     self.assertContained('LinkError', out)
     self.assertContained("has a larger maximum size 800 than the module's declared maximum", out)
     self.assertNotContained('hello, world!', out)
     # and with memory growth, all should be good
-    self.run_process([EMCC, test_file('hello_world.c'), '-sINITIAL_MEMORY=' + str(16 * 1024 * 1024), '--pre-js', 'pre.js', '-sALLOW_MEMORY_GROWTH', '-sWASM_ASYNC_COMPILATION=0', '-sIMPORTED_MEMORY'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-sINITIAL_MEMORY=16mb', '--pre-js', 'pre.js', '-sALLOW_MEMORY_GROWTH', '-sIMPORTED_MEMORY'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
   @parameterized({
