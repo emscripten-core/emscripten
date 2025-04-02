@@ -7748,7 +7748,7 @@ int main() {
     self.run_process([EMCC, '--profiling-funcs', '-o', 'main.js', 'main.c', '-sMAIN_MODULE=2', '-sINITIAL_MEMORY=32Mb',
                       '--embed-file', 'hello1.wasm@/lib/libhello1.wasm',
                       '--embed-file', 'subdir/libhello1_dep.so@/usr/lib/libhello1_dep.so',
-                      'hello1.wasm', '-sNO_AUTOLOAD_DYLIBS', '-sSUPPORT_RPATH',
+                      'hello1.wasm', '-sNO_AUTOLOAD_DYLIBS',
                       '-L./subdir', '-lhello1_dep', '--pre-js', 'pre.js'])
     out = self.run_js('main.js')
     self.assertContained('Hello1', out)
@@ -7808,7 +7808,7 @@ int main() {
       self.run_process([EMCC, '--profiling-funcs', '-o', 'main.js', 'main.c', '-sMAIN_MODULE=2', '-sINITIAL_MEMORY=32Mb',
                         '--embed-file', 'hello1.wasm@/usr/lib/libhello1.wasm',
                         '--embed-file', 'subdir/libhello1_dep.so@/usr/lib/subdir/libhello1_dep.so',
-                        'hello1.wasm', '-sNO_AUTOLOAD_DYLIBS', '-sSUPPORT_RPATH',
+                        'hello1.wasm', '-sNO_AUTOLOAD_DYLIBS',
                         '-L./subdir', '-lhello1_dep'])
 
     # case 1) without rpath: fail to locate the library

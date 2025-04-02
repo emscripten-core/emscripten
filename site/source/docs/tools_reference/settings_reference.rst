@@ -1667,15 +1667,6 @@ Corresponds to MAIN_MODULE (also supports modes 1 and 2)
 
 Default value: 0
 
-.. _support_rpath:
-
-SUPPORT_RPATH
-=============
-
-Include RPATH support.
-
-Default value: 0
-
 .. _runtime_linked_libs:
 
 RUNTIME_LINKED_LIBS
