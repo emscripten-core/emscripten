@@ -1043,6 +1043,7 @@ jobs:
       - install-emsdk
       - pip-install:
           python: "$EMSDK_PYTHON"
+      - freeze-cache
       - run-tests:
           title: "crossplatform tests"
           test_targets: "--crossplatform-only"
