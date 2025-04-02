@@ -1008,7 +1008,7 @@ jobs:
   test-windows:
     working_directory: "~/path with spaces"
     executor:
-      name: win/server-2019
+      name: win/server-2022
       shell: bash.exe -eo pipefail
     environment:
       PYTHONUNBUFFERED: "1"
