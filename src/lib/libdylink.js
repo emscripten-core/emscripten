@@ -901,16 +901,17 @@ var LibraryDylink = {
       return postInstantiation(module, instance);
     }
 
+    flags = Object.assign(flags, {rpath: { parentLibPath: libName, paths: metadata.runtimePaths }})
     // now load needed libraries and the module itself.
     if (flags.loadAsync) {
       return metadata.neededDynlibs
         .reduce((chain, dynNeeded) => chain.then(() =>
-          loadDynamicLibrary(dynNeeded, flags, localScope, undefined, { parentLibPath: libName, paths: metadata.runtimePaths })
+          loadDynamicLibrary(dynNeeded, flags, localScope)
         ), Promise.resolve())
         .then(loadModule);
     }
 
-    metadata.neededDynlibs.forEach((needed) => loadDynamicLibrary(needed, flags, localScope, undefined, { parentLibPath: libName, paths: metadata.runtimePaths }));
+    metadata.neededDynlibs.forEach((needed) => loadDynamicLibrary(needed, flags, localScope));
     return loadModule();
   },
 
@@ -984,7 +985,7 @@ var LibraryDylink = {
      * @param {number=} handle
      * @param {Object=} localScope
      */`,
-  $loadDynamicLibrary: function(libName, flags = {global: true, nodelete: true}, localScope, handle, rpath) {
+  $loadDynamicLibrary: function(libName, flags = {global: true, nodelete: true}, localScope, handle) {
 #if DYLINK_DEBUG
     dbg(`loadDynamicLibrary: ${libName} handle: ${handle}`);
     dbg(`existing: ${Object.keys(LDSO.loadedLibsByName)}`);
@@ -1057,7 +1058,7 @@ var LibraryDylink = {
           foundFile = true;
         } catch(e){}
       } else if (runtimeInitialized) {
-        var runtimePathsAbs = (rpath?.paths || []).map((p) => replaceORIGIN(rpath?.parentLibPath, p));
+        var runtimePathsAbs = (flags.rpath?.paths || []).map((p) => replaceORIGIN(flags.rpath?.parentLibPath, p));
         withStackSave(() => {
           var bufSize = 2*255 + 2;
           var buf = stackAlloc(bufSize);
@@ -1065,15 +1066,15 @@ var LibraryDylink = {
           for (var str of runtimePathsAbs) {
             size += lengthBytesUTF8(str) + 1;
           }
-          rpath = stackAlloc(size);
-          var cur = rpath
+          var rpathC = stackAlloc(size);
+          var cur = rpathC
           for (var str of runtimePathsAbs) {
             cur += stringToUTF8(str, cur, size);
             HEAP8[cur] = ':'.charCodeAt(0);
           }
           HEAP8[cur] = 0;
           var libNameC = stringToUTF8OnStack(libName);
-          var resLibNameC = __emscripten_resolve_path(buf, rpath, libNameC, bufSize);
+          var resLibNameC = __emscripten_resolve_path(buf, rpathC, libNameC, bufSize);
           foundFile = resLibNameC !== libNameC;
           libName = UTF8ToString(resLibNameC);
         });
