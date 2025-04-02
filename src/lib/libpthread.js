@@ -52,7 +52,6 @@ const pthreadWorkerOptions = `{
 #endif
 #endif
 }`;
-null
 }}}
 
 var LibraryPThread = {

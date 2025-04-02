@@ -30,6 +30,7 @@
 
 # Use #include <emscripten/dom_pk_codes.h> in your code to access these IDs.
 
+import os
 import sys
 import random
 
@@ -276,8 +277,16 @@ def longest_key_code_length():
   return max(map(len, [x[1] for x in input_strings]))
 
 
-h_file = open('system/include/emscripten/dom_pk_codes.h', 'w')
-c_file = open('system/lib/html5/dom_pk_codes.c', 'w')
+script_dir = os.path.dirname(os.path.abspath(__file__))
+root = os.path.dirname(os.path.dirname(script_dir))
+
+h_filename = os.path.join(root, 'system/include/emscripten/dom_pk_codes.h')
+c_filename = os.path.join(root, 'system/lib/html5/dom_pk_codes.c')
+print(f'Writing: {h_filename}')
+print(f'Writing: {c_filename}')
+h_file = open(h_filename, 'w')
+c_file = open(c_filename, 'w')
+
 
 # Generate the output file:
 
@@ -289,10 +298,10 @@ h_file.write('''\
  * found in the LICENSE file.
  *
  * This file was automatically generated from script
- * tools/create_dom_pk_codes.py. Edit that file to make changes here.
- * Run
+ * tools/maint/create_dom_pk_codes.py. Edit that file to make changes here.
+ * Then run:
  *
- *   tools/create_dom_pk_codes.py
+ *   tools/maint/create_dom_pk_codes.py
  *
  * in Emscripten root directory to regenerate this file.
  */
@@ -303,13 +312,16 @@ h_file.write('''\
 
 ''')
 
-c_file.write('''/* This file was automatically generated from script
-tools/create_dom_pk_codes.py. Edit that file to make changes here.
-Run
-
-  python tools/create_dom_pk_codes.py
-
-in Emscripten root directory to regenerate this file. */
+c_file.write('''\
+/*
+ * This file was automatically generated from script
+ * tools/maint/create_dom_pk_codes.py. Edit that file to make changes here.
+ * Then run:
+ *
+ *  tools/maint/create_dom_pk_codes.py
+ *
+ * in Emscripten root directory to regenerate this file.
+ */
 
 #include <emscripten/dom_pk_codes.h>
 ''')
@@ -332,20 +344,20 @@ const char *emscripten_dom_pk_code_to_string(DOM_PK_CODE_TYPE code);
 ''')
 
 c_file.write('''
-DOM_PK_CODE_TYPE emscripten_compute_dom_pk_code(const char *keyCodeString)
-{
+DOM_PK_CODE_TYPE emscripten_compute_dom_pk_code(const char *keyCodeString) {
   if (!keyCodeString) return 0;
 
   /* Compute the collision free hash. */
   unsigned int hash = 0;
-  while(*keyCodeString) hash = ((hash ^ 0x%04XU) << %d) ^ (unsigned int)*keyCodeString++;
+  while (*keyCodeString) hash = ((hash ^ 0x%04XU) << %d) ^ (unsigned int)*keyCodeString++;
 
-  /* Don't expose the hash values out to the application, but map to fixed IDs. This is useful for
-     mapping back codes to MDN documentation page at
-
-       https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code */
-  switch(hash)
-  {
+  /*
+   * Don't expose the hash values out to the application, but map to fixed IDs.
+   * This is useful for mapping back codes to MDN documentation page at
+   *
+   *   https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code
+   */
+  switch (hash) {
 ''' % (k1, k2))
 
 for s in input_strings:
@@ -355,10 +367,8 @@ c_file.write('''    default: return DOM_PK_UNKNOWN;
   }
 }
 
-const char *emscripten_dom_pk_code_to_string(DOM_PK_CODE_TYPE code)
-{
-  switch(code)
-  {
+const char *emscripten_dom_pk_code_to_string(DOM_PK_CODE_TYPE code) {
+  switch (code) {
 ''')
 
 for s in input_strings:

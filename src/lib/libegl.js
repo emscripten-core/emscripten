@@ -22,7 +22,6 @@ const eglDefaultDisplay = 62000;
 const eglDefaultConfig = 62002;
 // Magic ID for Emscripten EGLContext
 const eglDefaultContext = 62004;
-null;
 }}}
 
 var LibraryEGL = {
