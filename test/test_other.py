@@ -2592,6 +2592,7 @@ F1 -> ''
     self.do_runf('test_bullet_hello_world.cpp', 'BULLET RUNNING', emcc_args=['--use-port=bullet'])
 
   @requires_network
+  @is_slow_test
   def test_vorbis(self):
     # This will also test if ogg compiles, because vorbis depends on ogg
     self.do_runf('third_party/vorbis_test.c', 'ALL OK', emcc_args=['-sUSE_VORBIS'])
@@ -3123,6 +3124,7 @@ More info: https://emscripten.org
     compile_with_dwarf([], 'a.js')
     self.verify_dwarf_exists('a.wasm')
 
+  @is_slow_test
   def test_dwarf_sourcemap_names(self):
     source_file = 'hello_world.c'
     js_file = 'a.out.js'
@@ -3507,6 +3509,7 @@ More info: https://emscripten.org
     self.assertFileContents(test_file('other/embind_tsgen_module.d.ts'), actual)
     self.assertContained('main ran\nts ran', self.run_js('main.js'))
 
+  @is_slow_test
   def test_embind_tsgen_ignore(self):
     create_file('fail.js', 'assert(false);')
     self.emcc_args += ['-lembind', '--emit-tsd', 'embind_tsgen.d.ts']
@@ -5347,6 +5350,7 @@ int main(int argc, char **argv) {
     # assert ('atexit(' in src) == exit, 'atexit should not appear in src when EXIT_RUNTIME=0'
     # assert ('_ZN5WasteILi2EED' in src) == exit, 'destructors should not appear if no exit:\n' + src
 
+  @is_slow_test
   def test_no_exit_runtime_warnings_flush(self):
     # check we warn if there is unflushed info
     create_file('code.c', r'''
@@ -7487,6 +7491,7 @@ int main(int argc, char** argv) {
     # TODO(sbc): make dynamic linking work with wasm2js
     # 'wasm2js': ('0',)
   })
+  @is_slow_test
   def test_minimal_dynamic(self, wasm):
     library_file = 'library.wasm' if wasm else 'library.js'
 
@@ -8224,6 +8229,7 @@ addToLibrary({
     out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
     self.assertContained('native code called abort()', out)
 
+  @is_slow_test
   def test_mallocs(self):
     def run(opts):
       print(opts)
@@ -11548,6 +11554,8 @@ int main () {
 
   # This test verifies that function names embedded into the build with --js-library (JS functions exported to wasm)
   # are minified when -O3 is used
+  @is_slow_test
+  @also_with_wasm2js
   def test_js_function_names_are_minified(self):
     def check_size(f, expected_size):
       if not os.path.isfile(f):
@@ -11558,19 +11566,17 @@ int main () {
       self.assertLess(obtained_size, expected_size)
 
     self.run_process([PYTHON, test_file('gen_many_js_functions.py'), 'library_long.js', 'main_long.c'])
-    for wasm in ([], ['-sWASM=0']):
-      # Currently we rely on Closure for full minification of every appearance of JS function names.
-      # TODO: Add minification also for non-Closure users and add [] to this list to test minification without Closure.
-      for closure in [['--closure=1']]:
-        args = [EMCC, '-O3', '--js-library', 'library_long.js', 'main_long.c', '-o', 'a.html'] + wasm + closure
-        print(' '.join(args))
-        self.run_process(args)
+    # Currently we rely on Closure for full minification of every appearance of JS function names.
+    # TODO: Add minification also for non-Closure users and add [] to this list to test minification without Closure.
+    for closure in [['--closure=1', '-Wno-closure']]:
+      args = [EMCC, '-O3', '--js-library', 'library_long.js', 'main_long.c'] + self.get_emcc_args() + closure
+      self.run_process(args)
 
-        ret = self.run_js('a.js')
-        self.assertTextDataIdentical('Sum of numbers from 1 to 1000: 500500 (expected 500500)', ret.strip())
+      ret = self.run_js('a.out.js')
+      self.assertTextDataIdentical('Sum of numbers from 1 to 1000: 500500 (expected 500500)', ret.strip())
 
-        check_size('a.js', 150000)
-        check_size('a.wasm', 80000)
+      check_size('a.out.js', 150000)
+      check_size('a.out.wasm', 80000)
 
   # Checks that C++ exceptions managing invoke_*() wrappers will not be generated if exceptions are disabled
   def test_no_invoke_functions_are_generated_if_exception_catching_is_disabled(self):
@@ -12894,6 +12900,7 @@ int main(void) {
     self.assertContained('function signature mismatch: foo', stderr)
 
   # Verifies that warning messages that Closure outputs are recorded to console
+  @is_slow_test
   def test_closure_warnings(self):
     # Default should be no warnings
     proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1'], stderr=PIPE)
@@ -14586,6 +14593,7 @@ int main() {
     self.assertNotIn(b'.debug', read_binary('hello_world.o'))
 
   @requires_v8
+  @is_slow_test
   def test_jspi_code_size(self):
     # use iostream code here to purposefully get a fairly large wasm file, so
     # that our size comparisons later are meaningful
