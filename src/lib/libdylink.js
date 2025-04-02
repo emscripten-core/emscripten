@@ -50,10 +50,10 @@ var LibraryDylink = {
   $preloadedWasm: {},
 
   $replaceORIGIN__deps: ['$PATH'],
-  $replaceORIGIN: (parentLibPath, rpath) => {
+  $replaceORIGIN: (parentLibName, rpath) => {
     if (rpath.startsWith('$ORIGIN')) {
       // TODO: what to do if we only know the relative path of the file? It will return "." here.
-      var origin = PATH.dirname(parentLibPath);
+      var origin = PATH.dirname(parentLibName);
       return rpath.replace('$ORIGIN', origin);
     }
 
