@@ -876,6 +876,9 @@ var LibraryDylink = {
           if (binary instanceof WebAssembly.Module) {
             instance = new WebAssembly.Instance(binary, info);
           } else {
+            // Destructuring assignment without declaration has to be wrapped
+            // with parens or parser will treat the l-value as an object
+            // literal instead.
             ({ module: binary, instance } = await WebAssembly.instantiate(binary, info));
           }
           return postInstantiation(binary, instance);
