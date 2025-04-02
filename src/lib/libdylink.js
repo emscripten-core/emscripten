@@ -900,12 +900,12 @@ var LibraryDylink = {
     if (flags.loadAsync) {
       return metadata.neededDynlibs
         .reduce((chain, dynNeeded) => chain.then(() =>
-          loadDynamicLibrary(dynNeeded, flags, localScope, { parentLibPath: libName, paths: metadata.runtimePaths })
+          loadDynamicLibrary(dynNeeded, flags, localScope, undefined, { parentLibPath: libName, paths: metadata.runtimePaths })
         ), Promise.resolve())
         .then(loadModule);
     }
 
-    metadata.neededDynlibs.forEach((needed) => loadDynamicLibrary(needed, flags, localScope, { parentLibPath: libName, paths: metadata.runtimePaths }));
+    metadata.neededDynlibs.forEach((needed) => loadDynamicLibrary(needed, flags, localScope, undefined, { parentLibPath: libName, paths: metadata.runtimePaths }));
     return loadModule();
   },
 
@@ -979,7 +979,7 @@ var LibraryDylink = {
      * @param {number=} handle
      * @param {Object=} localScope
      */`,
-  $loadDynamicLibrary: function(libName, flags = {global: true, nodelete: true}, localScope, rpath = {parentLibPath: '', paths: []}, handle) {
+  $loadDynamicLibrary: function(libName, flags = {global: true, nodelete: true}, localScope, handle, rpath) {
 #if DYLINK_DEBUG
     dbg(`loadDynamicLibrary: ${libName} handle: ${handle}`);
     dbg(`existing: ${Object.keys(LDSO.loadedLibsByName)}`);
@@ -1052,7 +1052,7 @@ var LibraryDylink = {
           foundFile = true;
         } catch(e){}
       } else if (runtimeInitialized) {
-        var runtimePathsAbs = (rpath.paths || []).map((p) => replaceORIGIN(rpath.parentLibPath, p));
+        var runtimePathsAbs = (rpath?.paths || []).map((p) => replaceORIGIN(rpath?.parentLibPath, p));
         withStackSave(() => {
           var bufSize = 2*255 + 2;
           var buf = stackAlloc(bufSize);
@@ -1205,11 +1205,11 @@ var LibraryDylink = {
     }
 
     if (jsflags.loadAsync) {
-      return loadDynamicLibrary(filename, combinedFlags, localScope, {}, handle);
+      return loadDynamicLibrary(filename, combinedFlags, localScope, handle);
     }
 
     try {
-      return loadDynamicLibrary(filename, combinedFlags, localScope, {}, handle)
+      return loadDynamicLibrary(filename, combinedFlags, localScope, handle)
     } catch (e) {
 #if ASSERTIONS
       err(`Error in loading dynamic library ${filename}: ${e}`);
