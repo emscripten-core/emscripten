@@ -1060,6 +1060,8 @@ var LibraryDylink = {
       } else if (runtimeInitialized) {
         var runtimePathsAbs = (flags.rpath?.paths || []).map((p) => replaceORIGIN(flags.rpath?.parentLibPath, p));
         withStackSave(() => {
+          // In dylink.c we use: `char buf[2*NAME_MAX+2];` and NAME_MAX is 255.
+          // So we use the same size here.
           var bufSize = 2*255 + 2;
           var buf = stackAlloc(bufSize);
           var size = 0;
