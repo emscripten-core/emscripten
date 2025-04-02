@@ -18,7 +18,7 @@ Why do I get errors building basic code and the tests?
 
 All the tests in the :ref:`Emscripten test suite <emscripten-test-suite>` are
 known to build and pass on our test infrastructure, so if you see failures
-locally it is likely that there is some problem with your environment. (Rarely,
+locally, it is likely that there is some problem with your environment. (Rarely,
 there may be temporary breakage, but never on a tagged release version.)
 
 First call ``emcc --check``, which runs basic sanity checks and prints out
@@ -105,13 +105,13 @@ compilation time).
 Why is my compiled code big?
 ============================
 
-Make sure you build with ``-O3`` or ``-Os`` so code is fully optimized and
+Make sure you build with ``-O3`` or ``-Os``, so the code is fully optimized and
 minified. You should use the closure compiler, gzip compression on your
 webserver, etc., see the :ref:`section on code size in Optimizing code
 <optimizing-code-size>`.
 
 
-Why does compiling code that works on another machine gives me errors?
+Why does compiling code that works on another machine give me errors?
 ======================================================================
 
 Make sure you are using the Emscripten bundled system headers. Using :ref:`emcc
@@ -207,11 +207,11 @@ JavaScript that does not complete and return control to the browser.
 Graphical C++ apps typically have an infinite main loop in which event handling,
 processing and rendering is done, followed by a delay to keep the frame-rate
 right (``SDL_DELAY`` in :term:`SDL` apps). As the main loop does not complete
-(is infinite) it cannot return control to the browser, and the app will hang.
+(is infinite), it cannot return control to the browser, and the app will hang.
 
 Apps that use an infinite main loop should be re-coded to put the actions for a
 single iteration of the loop into a single "finite" function. In the native
-build this function can be run in an infinite loop as before. In the Emscripten
+build, this function can be run in an infinite loop as before. In the Emscripten
 build it is set as the :ref:`main loop function <faq-how-run-event-loop>` and
 will be called by the browser at a specified frequency.
 

@@ -1045,22 +1045,26 @@ var LibraryDylink = {
       }
 
       if (flags.loadAsync) {
-        return (async function() {
+        return (async () => {
+          var instance;
           if (binary instanceof WebAssembly.Module) {
 #if JSPI
             addStubImports(binary, stubs, resolveSymbol);
 #endif
-            var instance = new WebAssembly.Instance(binary, info);
-            return postInstantiation(binary, instance);
-          }
+            instance = new WebAssembly.Instance(binary, info);
+          } else {
 #if JSPI
-          var module = await WebAssembly.compile(binary);
-          addStubImports(module, stubs, resolveSymbol);
-          var instance = await WebAssembly.instantiate(module, info);
+            binary = await WebAssembly.compile(binary);
+            addStubImports(binary, stubs, resolveSymbol);
+            instance = await WebAssembly.instantiate(binary, info);
 #else
-          var {module, instance} = await WebAssembly.instantiate(binary, info);
+            // Destructuring assignment without declaration has to be wrapped
+            // with parens or parser will treat the l-value as an object
+            // literal instead.
+            ({ module: binary, instance } = await WebAssembly.instantiate(binary, info));
 #endif
-          return postInstantiation(module, instance);
+          }
+          return postInstantiation(binary, instance);
         })();
       }
       var module = binary instanceof WebAssembly.Module ? binary : new WebAssembly.Module(binary);
