@@ -15,7 +15,7 @@
 //    is up at http://kripken.github.io/emscripten-site/docs/api_reference/preamble.js.html
 
 #if RELOCATABLE
-{{{ makeModuleReceiveWithVar('dynamicLibraries', undefined, '[]', true) }}}
+{{{ makeModuleReceiveWithVar('dynamicLibraries', undefined, '[]') }}}
 #endif
 
 {{{ makeModuleReceiveWithVar('wasmBinary') }}}
@@ -643,7 +643,7 @@ async function getWasmBinary(binaryFile) {
 }
 
 #if SPLIT_MODULE
-{{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync',  true) }}}
+{{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync') }}}
 var splitModuleProxyHandler = {
   get(target, prop, receiver) {
     return (...args) => {

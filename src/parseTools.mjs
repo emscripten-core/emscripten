@@ -868,12 +868,6 @@ function isSymbolNeeded(symName) {
   return false;
 }
 
-function makeRemovedModuleAPIAssert(moduleName, localName) {
-  if (!ASSERTIONS) return '';
-  localName ||= moduleName;
-  return `legacyModuleProp('${moduleName}', '${localName}');`;
-}
-
 function checkReceiving(name) {
   // ALL_INCOMING_MODULE_JS_API contains all valid incoming module API symbols
   // so calling makeModuleReceive* with a symbol not in this list is an error
@@ -890,7 +884,6 @@ function makeModuleReceive(localName, moduleName) {
     // but sometimes they must differ.
     ret = `\nif (Module['${moduleName}']) ${localName} = Module['${moduleName}'];`;
   }
-  ret += makeRemovedModuleAPIAssert(moduleName, localName);
   return ret;
 }
 
@@ -903,7 +896,7 @@ function makeModuleReceiveExpr(name, defaultValue) {
   }
 }
 
-function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert) {
+function makeModuleReceiveWithVar(localName, moduleName, defaultValue) {
   moduleName ||= localName;
   checkReceiving(moduleName);
   let ret = `var ${localName}`;
@@ -918,9 +911,6 @@ function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert)
     } else {
       ret += ` = Module['${moduleName}'];`;
     }
-  }
-  if (!noAssert) {
-    ret += makeRemovedModuleAPIAssert(moduleName, localName);
   }
   return ret;
 }
@@ -1159,7 +1149,6 @@ addToCompileTimeContext({
   makeModuleReceiveExpr,
   makeModuleReceiveWithVar,
   makeRemovedFSAssert,
-  makeRemovedModuleAPIAssert,
   makeRetainedCompilerSettings,
   makeReturn64,
   makeSetValue,
