@@ -134,7 +134,7 @@ var ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && self.name?.startsWith('em-
 #if !MODULARIZE
 // In MODULARIZE mode _scriptName needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
-var _scriptName = (typeof document != 'undefined') ? document.currentScript?.src : undefined;
+var _scriptName = typeof document != 'undefined' ? document.currentScript?.src : undefined;
 #endif
 
 #if ENVIRONMENT_MAY_BE_NODE
@@ -145,9 +145,11 @@ if (ENVIRONMENT_IS_NODE) {
   // Under node we set `workerData` to `em-pthread` to signal that the worker
   // is hosting a pthread.
   ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && worker_threads['workerData'] == 'em-pthread'
+#if !EXPORT_ES6
   _scriptName = __filename;
-} else
 #endif
+} else
+#endif // ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_WORKER) {
   _scriptName = self.location.href;
 }
