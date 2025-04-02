@@ -871,7 +871,7 @@ var LibraryDylink = {
       }
 
       if (flags.loadAsync) {
-        return (async function() {
+        return (() => {
           var instance;
           if (binary instanceof WebAssembly.Module) {
             instance = new WebAssembly.Instance(binary, info);
