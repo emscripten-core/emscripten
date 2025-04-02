@@ -223,8 +223,8 @@ commands:
     description: "Remove linux binaries from workspace"
     steps:
       - run:
-        name: "Remove Linux binaries"
-        command: rm -rf ~/emsdk ~/vms ~/.jsvu ~/wasi-sdk
+          name: "Remove Linux binaries"
+          command: rm -rf ~/emsdk ~/vms ~/.jsvu ~/wasi-sdk
   upload-test-results:
     description: "Upload test results"
     steps:
