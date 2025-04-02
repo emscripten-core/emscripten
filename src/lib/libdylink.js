@@ -984,7 +984,6 @@ var LibraryDylink = {
     dbg(`loadDynamicLibrary: ${libName} handle: ${handle}`);
     dbg(`existing: ${Object.keys(LDSO.loadedLibsByName)}`);
 #endif
-
     // when loadDynamicLibrary did not have flags, libraries were loaded
     // globally & permanently
 
