@@ -340,7 +340,7 @@ commands:
           # costly build times.
           command: brew install --force-bottle cmake ninja pkg-config
       - attach_workspace:
-        at: ~/
+          at: ~/
       - checkout
       - remove-linux-binaries
       - run:
