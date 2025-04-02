@@ -24,7 +24,7 @@ if (ENVIRONMENT_IS_WORKER) {
 #include "deterministic.js"
 #endif
 
-{{{ exportRuntime() }}}
+{{{ exportJSSymbols() }}}
 
 #if ASSERTIONS
 var calledRun;

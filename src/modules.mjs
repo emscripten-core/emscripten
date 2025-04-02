@@ -405,17 +405,21 @@ function addMissingLibraryStubs(unusedLibSymbols) {
   return rtn;
 }
 
+function exportSymbol(name) {
+  if (MODULARIZE === 'instance') {
+    return `__exp_${name} = ${name};`;
+  }
+  return `Module['${name}'] = ${name};`;
+}
+
 // export parts of the JS runtime that the user asked for
-function exportRuntime() {
+function exportRuntimeSymbols() {
   // optionally export something.
   function maybeExport(name) {
     // If requested to be exported, export it.  HEAP objects are exported
     // separately in updateMemoryViews
     if (EXPORTED_RUNTIME_METHODS.has(name) && !name.startsWith('HEAP')) {
-      if (MODULARIZE === 'instance') {
-        return `__exp_${name} = ${name};`;
-      }
-      return `Module['${name}'] = ${name};`;
+      return exportSymbol(name);
     }
   }
 
@@ -509,6 +513,7 @@ function exportRuntime() {
   }
 
   const exports = runtimeElements.map(maybeExport);
+  exports.unshift('// Begin runtime exports');
   const results = exports.filter((name) => name);
 
   if (ASSERTIONS && !EXPORT_ALL) {
@@ -540,8 +545,23 @@ function exportRuntime() {
   return results.join('\n') + '\n';
 }
 
+function exportLibrarySymbols() {
+  const results = ['// Begin JS library exports'];
+  for (const ident of librarySymbols) {
+    if (EXPORT_ALL || EXPORTED_FUNCTIONS.has(ident)) {
+      results.push(exportSymbol(ident));
+    }
+  }
+
+  return results.join('\n') + '\n';
+}
+
+function exportJSSymbols() {
+  return exportRuntimeSymbols() + exportLibrarySymbols();
+}
+
 addToCompileTimeContext({
-  exportRuntime,
+  exportJSSymbols,
   loadStructInfo,
   LibraryManager,
   librarySymbols,
