@@ -395,16 +395,22 @@ class UnixFileLock(BaseFileLock):
         except (IOError, OSError):
             os.close(fd)
         else:
-            self._lock_file_fd = fd
+            st = os.fstat(fd);
+            if st.st_nlink == 0:
+              # We raced with another process that deleted the lock file before
+              # we called fcntl.flock. This means that lock is not valid (since
+              # another process will just lock a different file) and we need to
+              # try again.
+              # See https://stackoverflow.com/a/51070775
+              os.close(fd)
+            else:
+              self._lock_file_fd = fd
         return None
 
     def _release(self):
-        # Do not remove the lockfile:
-        #
-        #   https://github.com/benediktschmitt/py-filelock/issues/31
-        #   https://stackoverflow.com/questions/17708885/flock-removing-locked-file-without-race-condition
         fd = self._lock_file_fd
         self._lock_file_fd = None
+        os.unlink(self._lock_file)
         fcntl.flock(fd, fcntl.LOCK_UN)
         os.close(fd)
         return None
