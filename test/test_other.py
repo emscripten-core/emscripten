@@ -8993,7 +8993,11 @@ int main() {
     ret = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', '.', '--oformat=html'])
     self.assertContained('emcc: error: cannot write output file `.`: Is a directory', ret)
 
-  def test_binaryen_ctors(self):
+  @parameterized({
+    '': ([],),
+    'relocatable': (['-sRELOCATABLE'],),
+  })
+  def test_ctor_ordering(self, args):
     # ctor order must be identical to js builds, deterministically
     create_file('src.cpp', r'''
       #include <stdio.h>
@@ -9007,13 +9011,7 @@ int main() {
       B b;
       int main() {}
     ''')
-    self.run_process([EMXX, 'src.cpp'])
-    correct = self.run_js('a.out.js')
-    for args in ([], ['-sRELOCATABLE']):
-      print(args)
-      self.run_process([EMXX, 'src.cpp', '-o', 'b.out.js'] + args)
-      seen = self.run_js('b.out.js')
-      assert correct == seen, correct + '\n vs \n' + seen
+    self.do_runf('src.cpp', 'constructing A!\nconstructing B!\n', emcc_args=args)
 
   # test debug info and debuggability of JS output
   @crossplatform
