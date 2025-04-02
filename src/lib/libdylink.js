@@ -831,7 +831,7 @@ var LibraryDylink = {
       // need to import their own symbols
       var moduleExports;
 
-      function resolveSymbol(sym, allowUndefined) {
+      function resolveSymbol(sym, allowUndefined=false) {
         var resolved = resolveGlobalSymbol(sym).sym;
         if (!resolved && localScope) {
           resolved = localScope[sym];
