@@ -1021,9 +1021,9 @@ jobs:
         image: 'windows-server-2022-gui:2023.09.1'
         shell: bash.exe -eo pipefail
     working_directory: "~/path with spaces"
-    #executor:
+    executor:
     #  name: win/server-2022
-    #  shell: bash.exe -eo pipefail
+      shell: bash.exe -eo pipefail
     environment:
       PYTHONUNBUFFERED: "1"
       EMSDK_NOTTY: "1"
