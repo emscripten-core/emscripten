@@ -1,7 +1,7 @@
 version: 2.1
 
-#orbs:
-#  win: circleci/windows@5.0
+orbs:
+  win: circleci/windows@5.0
 
 executors:
   linux-node:
@@ -1015,15 +1015,10 @@ jobs:
   # windows and mac do not have separate build and test jobs, as they only run
   # a limited set of tests; it is simpler and faster to do it all in one job.
   test-windows:
-    #build:
-    resource_class: 'windows.medium'
-    machine:
-      image: 'windows-server-2022-gui:2023.09.1'
-      shell: bash.exe -eo pipefail
     working_directory: "~/path with spaces"
-    #executor:
-    #  name: win/server-2022
-    #  shell: bash.exe -eo pipefail
+    executor:
+      name: win/server-2019
+      shell: bash.exe -eo pipefail
     environment:
       PYTHONUNBUFFERED: "1"
       EMSDK_NOTTY: "1"
@@ -1038,10 +1033,7 @@ jobs:
       EMTEST_SKIP_NODE_CANARY: "1"
       EMTEST_BROWSER: "0"
     steps:
-      -  attach_workspace:
-          at: ~/
       - checkout
-      - remove-linux-binaries
       - run:
           name: Install packages
           command: |
@@ -1054,7 +1046,6 @@ jobs:
       - install-emsdk
       - pip-install:
           python: "$EMSDK_PYTHON"
-      - freeze-cache
       - run-tests:
           title: "crossplatform tests"
           test_targets: "--crossplatform-only"
@@ -1097,58 +1088,53 @@ workflows:
       - eslint
       - build-docs
       - build-linux
-      # - test-sanity:
-      #     requires:
-      #       - build-linux
-      # - test-posixtest:
-      #     requires:
-      #       - build-linux
-      # - test-core0:
-      #     requires:
-      #       - build-linux
-      # - test-core2:
-      #     requires:
-      #       - build-linux
-      # - test-core3:
-      #     requires:
-      #       - build-linux
-      # - test-wasm64:
-      #     requires:
-      #       - build-linux
-      # - test-wasm64-4gb:
-      #     requires:
-      #       - build-linux
-      # - test-wasm2js1:
-      #     requires:
-      #       - build-linux
-      # - test-other:
-      #     requires:
-      #       - build-linux
-      # - test-browser-chrome:
-      #     requires:
-      #       - build-linux
-      # - test-browser-chrome-2gb:
-      #     requires:
-      #       - build-linux
-      # - test-browser-chrome-wasm64:
-      #     requires:
-      #       - build-linux
-      # - test-browser-chrome-wasm64-4gb:
-      #     requires:
-      #       - build-linux
-      # - test-browser-firefox:
-      #     requires:
-      #       - build-linux
-      # - test-browser-firefox-wasm64
-      # - test-sockets-chrome:
-      #     requires:
-      #       - build-linux
+      - test-sanity:
+          requires:
+            - build-linux
+      - test-posixtest:
+          requires:
+            - build-linux
+      - test-core0:
+          requires:
+            - build-linux
+      - test-core2:
+          requires:
+            - build-linux
+      - test-core3:
+          requires:
+            - build-linux
+      - test-wasm64-4gb:
+          requires:
+            - build-linux
+      - test-wasm2js1:
+          requires:
+            - build-linux
+      - test-other:
+          requires:
+            - build-linux
+      - test-browser-chrome:
+          requires:
+            - build-linux
+      - test-browser-chrome-2gb:
+          requires:
+            - build-linux
+      - test-browser-chrome-wasm64:
+          requires:
+            - build-linux
+      - test-browser-chrome-wasm64-4gb:
+          requires:
+            - build-linux
+      - test-browser-firefox:
+          requires:
+            - build-linux
+      - test-browser-firefox-wasm64
+      - test-sockets-chrome:
+          requires:
+            - build-linux
       - test-jsc
       - test-spidermonkey
       - test-node-compat
-      - test-windows:
-          requires:
-            - build-linux
+      - test-windows
       - test-mac-arm64:
           requires:
             - build-linux
