@@ -406,13 +406,10 @@ function addMissingLibraryStubs(unusedLibSymbols) {
 }
 
 function exportSymbol(name) {
-  if (WASM_ESM_INTEGRATION) {
-    // In ESM integration mode symbols are exported by being included in
-    // an export { foo, bar } list so we build up the simple list of names
-    return name;
-  }
+  // In MODULARIZE=instance mode symbols are exported by being included in
+  // an export { foo, bar } list so we build up the simple list of names
   if (MODULARIZE === 'instance') {
-    return `__exp_${name} = ${name};`;
+    return name;
   }
   return `Module['${name}'] = ${name};`;
 }
@@ -423,9 +420,9 @@ function exportRuntimeSymbols() {
   function maybeExport(name) {
     // If requested to be exported, export it.
     if (EXPORTED_RUNTIME_METHODS.has(name)) {
-      // Unless we are in WASM_ESM_INTEGRATION mode then HEAP objects are
+      // Unless we are in MODULARIZE=instance mode then HEAP objects are
       // exported separately in updateMemoryViews
-      if (WASM_ESM_INTEGRATION || !name.startsWith('HEAP')) {
+      if (MODULARIZE == 'instance' || !name.startsWith('HEAP')) {
         return exportSymbol(name);
       }
     }
@@ -526,7 +523,7 @@ function exportRuntimeSymbols() {
   const exports = runtimeElements.map(maybeExport);
   const results = exports.filter((name) => name);
 
-  if (WASM_ESM_INTEGRATION) {
+  if (MODULARIZE == 'instance') {
     return '// Runtime exports\nexport { ' + results.join(', ') + ' };\n';
   }
 
@@ -562,6 +559,7 @@ function exportRuntimeSymbols() {
 }
 
 function exportLibrarySymbols() {
+  assert(!MODULARIZE != 'instance');
   const results = ['// Begin JS library exports'];
   for (const ident of librarySymbols) {
     if (EXPORT_ALL || EXPORTED_FUNCTIONS.has(ident)) {
@@ -573,9 +571,9 @@ function exportLibrarySymbols() {
 }
 
 function exportJSSymbols() {
-  // In WASM_ESM_INTEGRATION mode JS library symbols are marked with `export`
+  // In MODULARIZE=instance mode JS library symbols are marked with `export`
   // at the point of declaration.
-  if (WASM_ESM_INTEGRATION) return exportRuntimeSymbols();
+  if (MODULARIZE == 'instance') return exportRuntimeSymbols();
   return exportRuntimeSymbols() + '  ' + exportLibrarySymbols();
 }
 

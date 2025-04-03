@@ -2186,7 +2186,7 @@ def phase_final_emitting(options, target, js_target, wasm_target):
   if settings.AUDIO_WORKLET == 1:
     create_worker_file('src/audio_worklet.js', target_dir, settings.AUDIO_WORKLET_FILE, options)
 
-  if settings.MODULARIZE and not settings.WASM_ESM_INTEGRATION:
+  if settings.MODULARIZE and settings.MODULARIZE != 'instance':
     modularize()
   elif settings.USE_CLOSURE_COMPILER:
     module_export_name_substitution()
@@ -2457,21 +2457,7 @@ def modularize():
   else:
     maybe_async = ''
 
-  if settings.MODULARIZE == 'instance':
-    wrapper_function = '''
-export default %(maybe_async)s function init(moduleArg = {}) {
-  var moduleRtn;
-
-%(generated_js)s
-
-  return moduleRtn;
-}
-''' % {
-      'generated_js': generated_js,
-      'maybe_async': maybe_async,
-    }
-  else:
-    wrapper_function = '''
+  wrapper_function = '''
 %(maybe_async)sfunction(moduleArg = {}) {
   var moduleRtn;
 
@@ -2501,18 +2487,7 @@ export default %(maybe_async)s function init(moduleArg = {}) {
       script_url = "typeof document != 'undefined' ? document.currentScript?.src : undefined"
       if settings.ENVIRONMENT_MAY_BE_NODE:
         script_url_node = "if (typeof __filename != 'undefined') _scriptName = _scriptName || __filename;"
-    if settings.MODULARIZE == 'instance':
-      src = '''\
-  var _scriptName = %(script_url)s;
-  %(script_url_node)s
-  %(wrapper_function)s
-''' % {
-        'script_url': script_url,
-        'script_url_node': script_url_node,
-        'wrapper_function': wrapper_function,
-      }
-    else:
-      src = '''\
+    src = '''\
 var %(EXPORT_NAME)s = (() => {
   var _scriptName = %(script_url)s;
   %(script_url_node)s
@@ -2539,16 +2514,7 @@ var %(EXPORT_NAME)s = (() => {
 
   # Export using a UMD style export, or ES6 exports if selected
   if settings.EXPORT_ES6:
-    if settings.MODULARIZE == 'instance':
-      exports = settings.EXPORTED_FUNCTIONS + settings.EXPORTED_RUNTIME_METHODS
-      # Declare a top level var for each export so that code in the init function
-      # can assign to it and update the live module bindings.
-      src += 'var ' + ', '.join(['__exp_' + export for export in exports]) + ';\n'
-      # Export the functions with their original name.
-      exports = ['__exp_' + export + ' as ' + export for export in exports]
-      src += 'export {' + ', '.join(exports) + '};\n'
-    else:
-      src += 'export default %s;\n' % settings.EXPORT_NAME
+    src += 'export default %s;\n' % settings.EXPORT_NAME
   elif not settings.MINIMAL_RUNTIME:
     src += '''\
 if (typeof exports === 'object' && typeof module === 'object') {
