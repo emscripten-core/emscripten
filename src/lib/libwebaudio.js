@@ -183,7 +183,13 @@ let LibraryWebAudio = {
 
     // TODO: In MINIMAL_RUNTIME builds, read this file off of a preloaded Blob,
     // and/or embed from a string like with WASM_WORKERS==2 mode.
-    audioWorklet.addModule('{{{ TARGET_BASENAME }}}.aw.js').then(() => {
+    audioWorklet.addModule(
+#if MINIMAL_RUNTIME
+      '{{{ TARGET_BASENAME }}}.aw.js'
+#else
+      locateFile('{{{ TARGET_BASENAME }}}.aw.js')
+#endif
+    ).then(() => {
 #if WEBAUDIO_DEBUG
       console.log(`emscripten_start_wasm_audio_worklet_thread_async() addModule('audioworklet.js') completed`);
 #endif

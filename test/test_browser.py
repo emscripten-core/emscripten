@@ -5521,6 +5521,22 @@ Module["preRun"] = () => {
   def test_audio_worklet(self, args):
     self.btest_exit('webaudio/audioworklet.c', emcc_args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DTEST_AND_EXIT'] + args)
 
+  # Test that when using audio worklets, it is possible to use the locateFile() machinery to reroute where the .aw.js file is loaded from.
+  @requires_sound_hardware
+  def test_audio_worklet_locatefile(self):
+    # Create a locateFile() function that loads .aw.js from a subdirectory.
+    create_file('shell.html', read_file(path_from_root('src/shell.html')).replace('var Module = {', '''
+    var Module = {
+      locateFile: function(path, prefix) {
+        return path.includes('.aw.js') ? 'subdir/' + path : path;
+      },
+    '''))
+
+    self.compile_btest('webaudio/audioworklet.c', ['--shell-file', 'shell.html', '-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DTEST_AND_EXIT', '-o', 'test.html'])
+    ensure_dir('subdir')
+    shutil.move('test.aw.js', Path('subdir/test.aw.js'))
+    self.run_browser('test.html', '/report_result?exit:0')
+
   # Tests that audioworklets and workers can be used at the same time
   # Note: doesn't need audio hardware (and has no AW code that tests 2GB or wasm64)
   def test_audio_worklet_worker(self):
