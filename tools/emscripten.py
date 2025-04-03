@@ -53,11 +53,6 @@ ASAN_C_HELPERS = [
 ]
 
 
-def write_output_file(outfile, module):
-  for chunk in module:
-    outfile.write(chunk)
-
-
 def maybe_disable_filesystem(imports):
   """Disables filesystem if only a limited subset of syscalls is used.
 
@@ -412,13 +407,6 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
 
   report_missing_exports(forwarded_json['librarySymbols'])
 
-  if settings.MINIMAL_RUNTIME:
-    # In MINIMAL_RUNTIME, atinit exists in the postamble part
-    post = apply_static_code_hooks(forwarded_json, post)
-  else:
-    # In regular runtime, atinits etc. exist in the preamble part
-    pre = apply_static_code_hooks(forwarded_json, pre)
-
   asm_const_pairs = ['%s: %s' % (key, value) for key, value in asm_consts]
   if asm_const_pairs or settings.MAIN_MODULE:
     pre += 'var ASM_CONSTS = {\n  ' + ',  \n '.join(asm_const_pairs) + '\n};\n'
@@ -440,20 +428,18 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     function_exports['asyncify_start_rewind'] = webassembly.FuncType([webassembly.Type.I32], [])
     function_exports['asyncify_stop_rewind'] = webassembly.FuncType([], [])
 
-  with open(outfile_js, 'w', encoding='utf-8') as out:
-    out.write(pre)
-    pre = None
+  parts = [pre]
+  receiving = create_receiving(function_exports)
+  if settings.WASM_ESM_INTEGRATION:
+    sending = create_sending(metadata, forwarded_json['librarySymbols'])
+    parts += [sending, receiving]
+  else:
+    parts += create_module(receiving, metadata, global_exports, forwarded_json['librarySymbols'])
+  parts.append(post)
 
-    receiving = create_receiving(function_exports)
-    if settings.WASM_ESM_INTEGRATION:
-      sending = create_sending(metadata, forwarded_json['librarySymbols'])
-      module = [sending, receiving]
-    else:
-      module = create_module(receiving, metadata, global_exports, forwarded_json['librarySymbols'])
-    write_output_file(out, module)
-
-    out.write(post)
-    module = None
+  full_js_module = ''.join(parts)
+  full_js_module = apply_static_code_hooks(forwarded_json, full_js_module)
+  utils.write_file(outfile_js, full_js_module)
 
   metadata.library_definitions = forwarded_json['libraryDefinitions']
   return metadata
