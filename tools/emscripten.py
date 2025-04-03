@@ -161,15 +161,25 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
 
 
 def apply_static_code_hooks(forwarded_json, code):
-  code = shared.do_replace(code, '<<< ATPRERUNS >>>', str(forwarded_json['ATPRERUNS']))
-  code = shared.do_replace(code, '<<< ATINITS >>>', str(forwarded_json['ATINITS']))
-  code = shared.do_replace(code, '<<< ATPOSTCTORS >>>', str(forwarded_json['ATPOSTCTORS']))
+  def inject_code_hooks(name):
+    nonlocal code
+    hook_code = forwarded_json[name]
+    if hook_code:
+      hook_code = f'// Begin {name} hooks\n  {hook_code}\n  // End {name} hooks'
+    else:
+      hook_code = f'// No {name} hooks'
+    code = code.replace(f'<<< {name} >>>', hook_code)
+
+  inject_code_hooks('ATPRERUNS')
+  inject_code_hooks('ATINITS')
+  inject_code_hooks('ATPOSTCTORS')
   if settings.HAS_MAIN:
-    code = shared.do_replace(code, '<<< ATMAINS >>>', str(forwarded_json['ATMAINS']))
+    inject_code_hooks('ATMAINS')
   if not settings.MINIMAL_RUNTIME or settings.HAS_MAIN:
-    code = shared.do_replace(code, '<<< ATPOSTRUNS >>>', str(forwarded_json['ATPOSTRUNS']))
+    inject_code_hooks('ATPOSTRUNS')
     if settings.EXIT_RUNTIME:
-      code = shared.do_replace(code, '<<< ATEXITS >>>', str(forwarded_json['ATEXITS']))
+      inject_code_hooks('ATEXITS')
+
   return code
 
 

@@ -24,7 +24,7 @@ if (ENVIRONMENT_IS_WORKER) {
 #include "deterministic.js"
 #endif
 
-{{{ exportRuntime() }}}
+{{{ exportJSSymbols() }}}
 
 #if ASSERTIONS
 var calledRun;
@@ -291,7 +291,7 @@ function checkUnflushedContent() {
 if (Module['preInit']) {
   if (typeof Module['preInit'] == 'function') Module['preInit'] = [Module['preInit']];
   while (Module['preInit'].length > 0) {
-    Module['preInit'].pop()();
+    Module['preInit'].shift()();
   }
 }
 #if ASSERTIONS

@@ -23,6 +23,16 @@ See docs/process.md for more on how version tagging works.
 - Added experimental support for Wasm ESM integration with
   `-sWASM_ESM_INTEGRATION`. This is currently only supported in node behind a
   flag and not in any browsers. (#23985)
+- Runtime callbacks registered in `Module['preRun']` or `Module['postRun']`, or
+  using `addOnPreRun()`, `addOnInit()`, `addOnPostCtor()`, `addOnPreMain()`,
+  `addOnExit()`, or `addOnPostRun()`, are now enqueued and executed following
+  the order of registration (i.e. `Module['preRun'] = [a, b]`, or equivalently
+  `addOnPreRun(a); addOnPreRun(b);` will run `a` then `b`; the previous behavior
+  was to run `b` then `a`). While this might be a breaking change for some users,
+  the intention is to be more consistent by making those callbacks match the
+  behavior of `Module['preInit']` and compile time callbacks (rather than the
+  contrary, as we generally expect an array of functions to be executed left to
+  right). (#24012)
 
 4.0.6 - 03/26/25
 ----------------

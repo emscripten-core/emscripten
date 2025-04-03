@@ -21,7 +21,6 @@ assert(!FULL_ES3, 'cannot emulate both ES3 and legacy GL');
     }
     return '';
   };
-  null;
 }}}
 
 var LibraryGLEmulation = {
