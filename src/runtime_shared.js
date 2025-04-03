@@ -38,7 +38,7 @@ var wasmOffsetConverter;
 {{{
   // Helper function to export a heap symbol on the module object,
   // if requested.
-  globalThis.maybeExportHeap = (x) => {
+  const maybeExportHeap = (x) => {
     // For now, we export all heap object when not building with MINIMAL_RUNTIME
     let shouldExport = !MINIMAL_RUNTIME && !STRICT;
     if (!shouldExport) {
@@ -61,7 +61,6 @@ var wasmOffsetConverter;
     }
     return '';
   };
-  null;
 }}}
 
 function updateMemoryViews() {

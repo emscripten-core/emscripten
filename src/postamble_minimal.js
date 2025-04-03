@@ -5,7 +5,7 @@
  */
 
 // === Auto-generated postamble setup entry stuff ===
-{{{ exportRuntime() }}}
+{{{ exportJSSymbols() }}}
 
 #if HAS_MAIN // Only if user is exporting a C main(), we will generate a run() function that can be used to launch main.
 function run() {

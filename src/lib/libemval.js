@@ -19,7 +19,6 @@
 {{{
   const EMVAL_RESERVED_HANDLES = 5;
   const EMVAL_LAST_RESERVED_HANDLE = EMVAL_RESERVED_HANDLES * 2 - 1;
-  null;
 }}}
 var LibraryEmVal = {
   // Stack of handles available for reuse.

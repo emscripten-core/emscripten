@@ -220,35 +220,37 @@ def get_js_sym_info():
     input_files.append(read_file(jslib))
   content = '\n'.join(input_files)
   content_hash = hashlib.sha1(content.encode('utf-8')).hexdigest()
+  library_syms = None
 
-  def build_symbol_list(filename):
-    """Only called when there is no existing symbol list for a given content hash.
-    """
-    library_syms = generate_js_sym_info()
+  cache_file = str(cache.get_path(f'symbol_lists/{content_hash}.json'))
 
-    write_file(filename, json.dumps(library_syms, separators=(',', ':'), indent=2))
+  utils.safe_ensure_dirs(cache.get_path('symbol_lists'))
+  with filelock.FileLock(cache_file + '.lock'):
+    if os.path.exists(cache_file):
+      # Cache hit, read the file
+      library_syms = json.loads(read_file(cache_file))
+    else:
+      # Cache miss, generate the symbol list and write the file
+      library_syms = generate_js_sym_info()
+      write_file(cache_file, json.dumps(library_syms, separators=(',', ':'), indent=2))
 
-  # We need to use a separate lock here for symbol lists because, unlike with system libraries,
-  # it's normally for these file to get pruned as part of normal operation.  This means that it
-  # can be deleted between the `cache.get()` then the `read_file`.
-  with filelock.FileLock(cache.get_path('symbol_lists.lock')):
-    filename = cache.get(f'symbol_lists/{content_hash}.json', build_symbol_list)
-    library_syms = json.loads(read_file(filename))
-
-    # Limit of the overall size of the cache.
-    # This code will get test coverage since a full test run of `other` or `core`
-    # generates ~1000 unique symbol lists.
-    cache_limit = 500
-    root = cache.get_path('symbol_lists')
-    if len(os.listdir(root)) > cache_limit:
+  # Limit of the overall size of the cache.
+  # This code will get test coverage since a full test run of `other` or `core`
+  # generates ~1000 unique symbol lists.
+  cache_limit = 500
+  root = cache.get_path('symbol_lists')
+  if len([f for f in os.listdir(root) if not f.endswith('.lock')]) > cache_limit:
+    with filelock.FileLock(cache.get_path('symbol_lists.lock')):
       files = []
       for f in os.listdir(root):
-        f = os.path.join(root, f)
-        files.append((f, os.path.getmtime(f)))
+        if not f.endswith('.lock'):
+          f = os.path.join(root, f)
+          files.append((f, os.path.getmtime(f)))
       files.sort(key=lambda x: x[1])
       # Delete all but the newest N files
       for f, _ in files[:-cache_limit]:
-        delete_file(f)
+        with filelock.FileLock(f + '.lock'):
+          delete_file(f)
 
   return library_syms
 
