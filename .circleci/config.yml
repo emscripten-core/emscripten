@@ -1015,15 +1015,15 @@ jobs:
   # windows and mac do not have separate build and test jobs, as they only run
   # a limited set of tests; it is simpler and faster to do it all in one job.
   test-windows:
-    build:
-      resource_class: 'windows.medium'
-      machine:
-        image: 'windows-server-2022-gui:2023.09.1'
-        shell: bash.exe -eo pipefail
-    working_directory: "~/path with spaces"
-    executor:
-    #  name: win/server-2022
+    #build:
+    resource_class: 'windows.medium'
+    machine:
+      image: 'windows-server-2022-gui:2023.09.1'
       shell: bash.exe -eo pipefail
+    working_directory: "~/path with spaces"
+    #executor:
+    #  name: win/server-2022
+    #  shell: bash.exe -eo pipefail
     environment:
       PYTHONUNBUFFERED: "1"
       EMSDK_NOTTY: "1"
