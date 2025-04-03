@@ -737,7 +737,7 @@ function(${args}) {
       }
 
       if (MODULARIZE == 'instance' && (EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
-        // It MODULARIZE=instance mode mark JS library symbols are exported at
+        // In MODULARIZE=instance mode mark JS library symbols are exported at
         // the point of declaration.
         contentText = 'export ' + contentText;
       }

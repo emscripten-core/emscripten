@@ -559,7 +559,7 @@ function exportRuntimeSymbols() {
 }
 
 function exportLibrarySymbols() {
-  assert(!MODULARIZE != 'instance');
+  assert(MODULARIZE != 'instance');
   const results = ['// Begin JS library exports'];
   for (const ident of librarySymbols) {
     if (EXPORT_ALL || EXPORTED_FUNCTIONS.has(ident)) {
