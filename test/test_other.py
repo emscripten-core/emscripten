@@ -7697,6 +7697,137 @@ int main() {
     self.assertContained('Hello4', out)
     self.assertContained('Ok', out)
 
+  @also_with_wasmfs
+  def test_dlopen_library_path(self):
+    create_file('hello1_dep.c', r'''
+#include<stdio.h>
+
+void hello1_2() {
+  printf ("Hello1_2\n");
+  return;
+}
+''')
+    create_file('hello1.c', r'''
+#include <stdio.h>
+
+void hello1_2();
+
+void hello1() {
+  printf ("Hello1\n");
+  hello1_2();
+  return;
+}
+''')
+    create_file('pre.js', r'''
+Module.preRun = () => {
+  ENV['LD_LIBRARY_PATH']='/lib:/usr/lib:/usr/local/lib';
+};
+''')
+    create_file('main.c', r'''
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <dlfcn.h>
+
+int main() {
+  void *h;
+  void (*f)();
+  double (*f2)(double);
+
+  h = dlopen("libhello1.wasm", RTLD_NOW);
+  assert(h);
+  f = dlsym(h, "hello1");
+  assert(f);
+  f();
+  dlclose(h);
+
+  printf("Ok\n");
+
+  return 0;
+}
+''')
+    os.mkdir('subdir')
+    self.run_process([EMCC, '-o', 'subdir/libhello1_dep.so', 'hello1_dep.c', '-sSIDE_MODULE'])
+    self.run_process([EMCC, '-o', 'hello1.wasm', 'hello1.c', '-sSIDE_MODULE', 'subdir/libhello1_dep.so'])
+    self.run_process([EMCC, '--profiling-funcs', '-o', 'main.js', 'main.c', '-sMAIN_MODULE=2', '-sINITIAL_MEMORY=32Mb',
+                      '--embed-file', 'hello1.wasm@/lib/libhello1.wasm',
+                      '--embed-file', 'subdir/libhello1_dep.so@/usr/lib/libhello1_dep.so',
+                      'hello1.wasm', '-sNO_AUTOLOAD_DYLIBS',
+                      '-L./subdir', '-lhello1_dep', '--pre-js', 'pre.js'])
+    out = self.run_js('main.js')
+    self.assertContained('Hello1', out)
+    self.assertContained('Hello1_2', out)
+    self.assertContained('Ok', out)
+
+  @also_with_wasmfs
+  def test_dlopen_rpath(self):
+    create_file('hello1_dep.c', r'''
+#include<stdio.h>
+
+void hello1_2() {
+  printf ("Hello1_2\n");
+  return;
+}
+''')
+    create_file('hello1.c', r'''
+#include <stdio.h>
+
+void hello1_2();
+
+void hello1() {
+  printf ("Hello1\n");
+  hello1_2();
+  return;
+}
+''')
+    create_file('main.c', r'''
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <dlfcn.h>
+
+int main() {
+  void *h;
+  void (*f)();
+  double (*f2)(double);
+
+  h = dlopen("/usr/lib/libhello1.wasm", RTLD_NOW);
+  assert(h);
+  f = dlsym(h, "hello1");
+  assert(f);
+  f();
+  dlclose(h);
+
+  printf("Ok\n");
+
+  return 0;
+}
+''')
+    os.mkdir('subdir')
+
+    def _build(rpath_flag):
+      self.run_process([EMCC, '-o', 'subdir/libhello1_dep.so', 'hello1_dep.c', '-sSIDE_MODULE'])
+      self.run_process([EMCC, '-o', 'hello1.wasm', 'hello1.c', '-sSIDE_MODULE', 'subdir/libhello1_dep.so'] + rpath_flag)
+      self.run_process([EMCC, '--profiling-funcs', '-o', 'main.js', 'main.c', '-sMAIN_MODULE=2', '-sINITIAL_MEMORY=32Mb',
+                        '--embed-file', 'hello1.wasm@/usr/lib/libhello1.wasm',
+                        '--embed-file', 'subdir/libhello1_dep.so@/usr/lib/subdir/libhello1_dep.so',
+                        'hello1.wasm', '-sNO_AUTOLOAD_DYLIBS',
+                        '-L./subdir', '-lhello1_dep'])
+
+    # case 1) without rpath: fail to locate the library
+    _build([])
+    out = self.run_js('main.js', assert_returncode=NON_ZERO)
+    self.assertContained(r"no such file or directory, open '.*libhello1_dep\.so'", out, regex=True)
+
+    # case 2) with rpath: success
+    _build(['-Wl,-rpath,$ORIGIN/subdir'])
+    out = self.run_js('main.js')
+    self.assertContained('Hello1', out)
+    self.assertContained('Hello1_2', out)
+    self.assertContained('Ok', out)
+
   def test_dlopen_bad_flags(self):
     create_file('main.c', r'''
 #include <dlfcn.h>
