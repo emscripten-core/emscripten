@@ -993,6 +993,11 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
         var prevProgram = gl.getParameter(0x8B8D /*GL_CURRENT_PROGRAM*/);
         gl.useProgram(context.blitProgram);
+        // If prevProgram was already marked for deletion, then, since it was
+        // still bound, it was not *actually* deleted. Binding a new program
+        // just now, thus, deleted the old one. This makes it impossible to
+        // restore. Hopefully the application didn't actually need it!
+        if (!gl.isProgram(prevProgram)) prevProgram = null;
 
         var prevVB = gl.getParameter(0x8894 /*GL_ARRAY_BUFFER_BINDING*/);
         gl.bindBuffer(0x8892 /*GL_ARRAY_BUFFER*/, context.blitVB);
