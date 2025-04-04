@@ -452,6 +452,24 @@ class other(RunnerCore):
 
     self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
 
+  def test_modularize_instance_embind(self):
+    self.run_process([EMCC, test_file('modularize_instance_embind.cpp'),
+                      '-sMODULARIZE=instance',
+                      '-lembind',
+                      '-sEMBIND_AOT',
+                      '-o', 'modularize_instance_embind.mjs'])
+
+    create_file('runner.mjs', '''
+      import init, { foo, Bar } from "./modularize_instance_embind.mjs";
+      await init();
+      foo();
+      const bar = new Bar();
+      bar.print();
+      bar.delete();
+    ''')
+
+    self.assertContained('main\nfoo\nbar\n', self.run_js('runner.mjs'))
+
   def test_emcc_out_file(self):
     # Verify that "-ofile" works in addition to "-o" "file"
     self.run_process([EMCC, '-c', '-ofoo.o', test_file('hello_world.c')])
@@ -3494,7 +3512,7 @@ More info: https://emscripten.org
     # Check that TypeScript generation works and that the program is runs as
     # expected.
     self.emcc(test_file('other/embind_tsgen.cpp'),
-              ['-o', 'embind_tsgen.js', '-lembind', '--emit-tsd', 'embind_tsgen.d.ts'] + opts)
+              ['-o', 'embind_tsgen.js', '-sEMBIND_AOT', '-lembind', '--emit-tsd', 'embind_tsgen.d.ts'] + opts)
 
     # Test that the output compiles with a TS file that uses the defintions.
     shutil.copyfile(test_file('other/embind_tsgen_main.ts'), 'main.ts')
