@@ -1053,10 +1053,7 @@ var LibraryDylink = {
 #if FILESYSTEM
       var foundFile = false;
       if (libName.startsWith("/")) {
-        try {
-          FS.lookupPath(libName);
-          foundFile = true;
-        } catch(e){}
+        foundFile = !!FS.findObject(libName);
       } else if (runtimeInitialized) {
         var runtimePathsAbs = (flags.rpath?.paths || []).map((p) => replaceORIGIN(flags.rpath?.parentLibPath, p));
         withStackSave(() => {
