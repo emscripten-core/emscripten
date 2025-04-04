@@ -30,6 +30,7 @@ export default [{
     'src/runtime_*.js',
     'src/shell*.js',
     'src/preamble*.js',
+    'src/postlibrary.js',
     'src/postamble*.js',
     'src/closure-externs/',
     'src/embind/',

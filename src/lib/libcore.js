@@ -2283,7 +2283,8 @@ addToLibrary({
   $wasmTable: undefined,
 #endif
 
-  $noExitRuntime: "{{{ makeModuleReceiveExpr('noExitRuntime', !EXIT_RUNTIME) }}}",
+  $noExitRuntime__postset: () => addAtModule(makeModuleReceive('noExitRuntime')),
+  $noExitRuntime: {{{ !EXIT_RUNTIME }}},
 
   // The following addOn<X> functions are for adding runtime callbacks at
   // various executions points. Each addOn<X> function has a corresponding

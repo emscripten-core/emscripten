@@ -5,7 +5,8 @@
  */
 
 addToLibrary({
-  $preloadPlugins: "{{{ makeModuleReceiveExpr('preloadPlugins', '[]') }}}",
+  $preloadPlugins__postset: () => addAtModule(makeModuleReceive('preloadPlugins')),
+  $preloadPlugins: [],
 
 #if !MINIMAL_RUNTIME
   // Tries to handle an input byteArray using preload plugins. Returns true if
