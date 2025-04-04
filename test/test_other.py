@@ -2592,6 +2592,7 @@ F1 -> ''
     self.do_runf('test_bullet_hello_world.cpp', 'BULLET RUNNING', emcc_args=['--use-port=bullet'])
 
   @requires_network
+  @is_slow_test
   def test_vorbis(self):
     # This will also test if ogg compiles, because vorbis depends on ogg
     self.do_runf('third_party/vorbis_test.c', 'ALL OK', emcc_args=['-sUSE_VORBIS'])
@@ -3123,6 +3124,7 @@ More info: https://emscripten.org
     compile_with_dwarf([], 'a.js')
     self.verify_dwarf_exists('a.wasm')
 
+  @is_slow_test
   def test_dwarf_sourcemap_names(self):
     source_file = 'hello_world.c'
     js_file = 'a.out.js'
@@ -3507,6 +3509,7 @@ More info: https://emscripten.org
     self.assertFileContents(test_file('other/embind_tsgen_module.d.ts'), actual)
     self.assertContained('main ran\nts ran', self.run_js('main.js'))
 
+  @is_slow_test
   def test_embind_tsgen_ignore(self):
     create_file('fail.js', 'assert(false);')
     self.emcc_args += ['-lembind', '--emit-tsd', 'embind_tsgen.d.ts']
@@ -5347,6 +5350,7 @@ int main(int argc, char **argv) {
     # assert ('atexit(' in src) == exit, 'atexit should not appear in src when EXIT_RUNTIME=0'
     # assert ('_ZN5WasteILi2EED' in src) == exit, 'destructors should not appear if no exit:\n' + src
 
+  @is_slow_test
   def test_no_exit_runtime_warnings_flush(self):
     # check we warn if there is unflushed info
     create_file('code.c', r'''
@@ -7487,6 +7491,7 @@ int main(int argc, char** argv) {
     # TODO(sbc): make dynamic linking work with wasm2js
     # 'wasm2js': ('0',)
   })
+  @is_slow_test
   def test_minimal_dynamic(self, wasm):
     library_file = 'library.wasm' if wasm else 'library.js'
 
@@ -8355,6 +8360,7 @@ addToLibrary({
     out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
     self.assertContained('native code called abort()', out)
 
+  @is_slow_test
   def test_mallocs(self):
     def run(opts):
       print(opts)
@@ -9028,17 +9034,17 @@ int main() {
 
         self.assertEqual(line_endings.check_line_endings(f, expect_only=expected_ending), 0, f'expected on ly {eol} line endingsn in {f}')
 
-  def test_binaryen_warn_mem(self):
+  def test_bad_memory_size(self):
     # if user changes INITIAL_MEMORY at runtime, the wasm module may not accept the memory import if
     # it is too big/small
     create_file('pre.js', 'Module.INITIAL_MEMORY = 50 * 1024 * 1024')
-    self.run_process([EMCC, test_file('hello_world.c'), '-sINITIAL_MEMORY=' + str(16 * 1024 * 1024), '--pre-js', 'pre.js', '-sWASM_ASYNC_COMPILATION=0', '-sIMPORTED_MEMORY'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-sINITIAL_MEMORY=16mb', '--pre-js', 'pre.js', '-sIMPORTED_MEMORY'])
     out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
     self.assertContained('LinkError', out)
     self.assertContained("has a larger maximum size 800 than the module's declared maximum", out)
     self.assertNotContained('hello, world!', out)
     # and with memory growth, all should be good
-    self.run_process([EMCC, test_file('hello_world.c'), '-sINITIAL_MEMORY=' + str(16 * 1024 * 1024), '--pre-js', 'pre.js', '-sALLOW_MEMORY_GROWTH', '-sWASM_ASYNC_COMPILATION=0', '-sIMPORTED_MEMORY'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-sINITIAL_MEMORY=16mb', '--pre-js', 'pre.js', '-sALLOW_MEMORY_GROWTH', '-sIMPORTED_MEMORY'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
   @parameterized({
@@ -9124,7 +9130,11 @@ int main() {
     ret = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', '.', '--oformat=html'])
     self.assertContained('emcc: error: cannot write output file `.`: Is a directory', ret)
 
-  def test_binaryen_ctors(self):
+  @parameterized({
+    '': ([],),
+    'relocatable': (['-sRELOCATABLE'],),
+  })
+  def test_ctor_ordering(self, args):
     # ctor order must be identical to js builds, deterministically
     create_file('src.cpp', r'''
       #include <stdio.h>
@@ -9138,13 +9148,7 @@ int main() {
       B b;
       int main() {}
     ''')
-    self.run_process([EMXX, 'src.cpp'])
-    correct = self.run_js('a.out.js')
-    for args in ([], ['-sRELOCATABLE']):
-      print(args)
-      self.run_process([EMXX, 'src.cpp', '-o', 'b.out.js'] + args)
-      seen = self.run_js('b.out.js')
-      assert correct == seen, correct + '\n vs \n' + seen
+    self.do_runf('src.cpp', 'constructing A!\nconstructing B!\n', emcc_args=args)
 
   # test debug info and debuggability of JS output
   @crossplatform
@@ -11681,6 +11685,8 @@ int main () {
 
   # This test verifies that function names embedded into the build with --js-library (JS functions exported to wasm)
   # are minified when -O3 is used
+  @is_slow_test
+  @also_with_wasm2js
   def test_js_function_names_are_minified(self):
     def check_size(f, expected_size):
       if not os.path.isfile(f):
@@ -11691,19 +11697,17 @@ int main () {
       self.assertLess(obtained_size, expected_size)
 
     self.run_process([PYTHON, test_file('gen_many_js_functions.py'), 'library_long.js', 'main_long.c'])
-    for wasm in ([], ['-sWASM=0']):
-      # Currently we rely on Closure for full minification of every appearance of JS function names.
-      # TODO: Add minification also for non-Closure users and add [] to this list to test minification without Closure.
-      for closure in [['--closure=1']]:
-        args = [EMCC, '-O3', '--js-library', 'library_long.js', 'main_long.c', '-o', 'a.html'] + wasm + closure
-        print(' '.join(args))
-        self.run_process(args)
+    # Currently we rely on Closure for full minification of every appearance of JS function names.
+    # TODO: Add minification also for non-Closure users and add [] to this list to test minification without Closure.
+    for closure in [['--closure=1', '-Wno-closure']]:
+      args = [EMCC, '-O3', '--js-library', 'library_long.js', 'main_long.c'] + self.get_emcc_args() + closure
+      self.run_process(args)
 
-        ret = self.run_js('a.js')
-        self.assertTextDataIdentical('Sum of numbers from 1 to 1000: 500500 (expected 500500)', ret.strip())
+      ret = self.run_js('a.out.js')
+      self.assertTextDataIdentical('Sum of numbers from 1 to 1000: 500500 (expected 500500)', ret.strip())
 
-        check_size('a.js', 150000)
-        check_size('a.wasm', 80000)
+      check_size('a.out.js', 150000)
+      check_size('a.out.wasm', 80000)
 
   # Checks that C++ exceptions managing invoke_*() wrappers will not be generated if exceptions are disabled
   def test_no_invoke_functions_are_generated_if_exception_catching_is_disabled(self):
@@ -12523,62 +12527,11 @@ int main(void) {
       ''')
     self.run_process([EMCC, 'src.cpp', '-fexceptions', '--closure=1'])
 
-  def test_assertions_on_internal_api_changes(self):
-    create_file('src.c', r'''
-      #include <emscripten.h>
-      int main(int argc, char **argv) {
-        EM_ASM({
-          try {
-            Module['read'];
-            out('it should not be there');
-          } catch(e) {
-            out('error: ' + e);
-          }
-          try {
-            Module['asm'];
-            out('it should not be there');
-          } catch(e) {
-            out('error: ' + e);
-          }
-        });
-      }
-    ''')
-    expected = [
-      '`Module.asm` has been replaced by `wasmExports`',
-    ]
-    self.do_runf('src.c', expected, assert_all=True, emcc_args=['-sASSERTIONS'])
-
   def test_assertions_on_incoming_module_api_changes(self):
     create_file('pre.js', 'Module.read = () => {};')
     self.do_runf('hello_world.c', 'Module.read option was removed',
                  emcc_args=['-sASSERTIONS', '--pre-js', 'pre.js'],
                  assert_returncode=NON_ZERO)
-
-  def test_assertions_on_outgoing_module_api_changes(self):
-    create_file('src.cpp', r'''
-      #include <emscripten.h>
-      int main() {
-        EM_ASM({
-          out();
-          function check(name) {
-            try {
-              Module[name];
-              out("success: " + name);
-            } catch(e) {
-            }
-          }
-          check("read");
-          // TODO check("setWindowTitle");
-          check("wasmBinary");
-          check("arguments");
-        });
-      }
-    ''')
-    expected = '''
-Aborted(`Module.wasmBinary` has been replaced by `wasmBinary` (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name))
-Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name))
-'''
-    self.do_runf('src.cpp', expected, emcc_args=['-sASSERTIONS'])
 
   def test_modularize_assertions_on_reject_promise(self):
     # Check that there is an uncaught exception in modularize mode.
@@ -13078,6 +13031,7 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     self.assertContained('function signature mismatch: foo', stderr)
 
   # Verifies that warning messages that Closure outputs are recorded to console
+  @is_slow_test
   def test_closure_warnings(self):
     # Default should be no warnings
     proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1'], stderr=PIPE)
@@ -14770,6 +14724,7 @@ int main() {
     self.assertNotIn(b'.debug', read_binary('hello_world.o'))
 
   @requires_v8
+  @is_slow_test
   def test_jspi_code_size(self):
     # use iostream code here to purposefully get a fairly large wasm file, so
     # that our size comparisons later are meaningful

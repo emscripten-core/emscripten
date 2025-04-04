@@ -4197,39 +4197,31 @@ Module["preRun"] = () => {
   })
   def test_async_compile(self, opts, returncode):
     # notice when we use async compilation
-    script = '''
-    <script>
+    create_file('pre.js', '''
       // note if we do async compilation
       var real_wasm_instantiate = WebAssembly.instantiate;
       var real_wasm_instantiateStreaming = WebAssembly.instantiateStreaming;
       if (typeof real_wasm_instantiateStreaming === 'function') {
         WebAssembly.instantiateStreaming = (a, b) => {
+          err('instantiateStreaming called');
           console.log('instantiateStreaming called');
           Module.sawAsyncCompilation = true;
           return real_wasm_instantiateStreaming(a, b);
         };
       } else {
         WebAssembly.instantiate = (a, b) => {
-          console.log('instantiate called');
+          err('instantiate called');
           Module.sawAsyncCompilation = true;
           return real_wasm_instantiate(a, b);
         };
       }
-      // show stderr for the viewer's fun
-      err = (x) => {
-        out('<<< ' + x + ' >>>');
-        console.log(x);
-      };
-    </script>
-    {{{ SCRIPT }}}
-'''
-    shell_with_script('shell.html', 'shell.html', script)
-    common_args = ['--shell-file', 'shell.html']
-    self.btest_exit('test_async_compile.c', assert_returncode=returncode, emcc_args=common_args + opts)
+    ''')
+    self.emcc_args.append('--pre-js=pre.js')
+    self.btest_exit('test_async_compile.c', assert_returncode=returncode, emcc_args=opts)
     # Ensure that compilation still works and is async without instantiateStreaming available
-    no_streaming = '<script>WebAssembly.instantiateStreaming = undefined;</script>'
-    shell_with_script('shell.html', 'shell.html', no_streaming + script)
-    self.btest_exit('test_async_compile.c', assert_returncode=1, emcc_args=common_args)
+    create_file('pre0.js', 'WebAssembly.instantiateStreaming = undefined;')
+    self.emcc_args.insert(0, '--pre-js=pre0.js')
+    self.btest_exit('test_async_compile.c', assert_returncode=1)
 
   # Test that implementing Module.instantiateWasm() callback works.
   @also_with_asan
