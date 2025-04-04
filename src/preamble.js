@@ -984,7 +984,7 @@ function getWasmImports() {
   var info = getWasmImports();
 
 #if expectToReceiveOnModule('instantiateWasm')
-  // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback
+  // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback, errorCallback) callback
   // to manually instantiate the Wasm module themselves. This allows pages to
   // run the instantiation parallel to any other async startup actions they are
   // performing.
@@ -995,10 +995,10 @@ function getWasmImports() {
 #if ASSERTIONS
       try {
 #endif
-        Module['instantiateWasm'](info, (mod, inst) => {
-          receiveInstance(mod, inst);
+        Module['instantiateWasm'](info, (inst, mod) => {
+          receiveInstance(inst, mod);
           resolve(mod.exports);
-        });
+        }, reject);
 #if ASSERTIONS
       } catch(e) {
         err(`Module.instantiateWasm callback failed with error: ${e}`);
