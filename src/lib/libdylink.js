@@ -975,6 +975,11 @@ var LibraryDylink = {
                               '$lengthBytesUTF8',
                               '$stringToUTF8OnStack',
                               '$stringToUTF8',
+                              '$FS',
+#if WASMFS
+                              '_wasmfs_identify',
+                              '_wasmfs_read_file',
+#endif
 #endif
 #if DYNCALLS || !WASM_BIGINT
                               '$registerDynCallSymbols',
@@ -1053,7 +1058,15 @@ var LibraryDylink = {
 #if FILESYSTEM
       var foundFile = false;
       if (libName.startsWith("/")) {
-        foundFile = !!FS.findObject(libName);
+#if WASMFS
+        var result = withStackSave(() => __wasmfs_identify(stringToUTF8OnStack(libName)));
+        foundFile = result === {{{ cDefs.EEXIST }}};
+#else
+        try {
+          FS.lookupPath(libName);
+          foundFile = true;
+        } catch (e) {}
+#endif
       } else if (runtimeInitialized) {
         var runtimePathsAbs = (flags.rpath?.paths || []).map((p) => replaceORIGIN(flags.rpath?.parentLibPath, p));
         withStackSave(() => {
