@@ -1461,6 +1461,9 @@ module({
             assert.equal("foo", b.getValFunction());
             b.setValFunction("bar");
 
+            // get & set with templated signature
+            assert.equal("bar", b.getThisPointer().getVal());
+
             // get & set via 'callable'
             assert.equal("bar", b.getValFunctor());
             b.setValFunctor("baz");
@@ -1832,6 +1835,11 @@ module({
                 new cm.AbstractClass();
             });
             assert.equal("AbstractClass has no accessible constructor", e.message);
+        });
+
+        test("can construct class with external constructor with custom signature", function() {
+            const valHolder = new cm.ValHolder(1,2);
+            assert.equal(valHolder.getVal(), 3);
         });
 
         test("can construct class with external constructor", function() {
