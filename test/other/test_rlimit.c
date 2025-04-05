@@ -14,6 +14,10 @@ int main() {
   printf("RLIMIT_CORE: rlim_cur: %lld\n", rlim.rlim_cur);
   printf("RLIMIT_CORE: rlim_max: %lld\n", rlim.rlim_max);
 
+  assert(getrlimit(RLIMIT_STACK, &rlim) == 0);
+  printf("RLIMIT_STACK: rlim_cur: %lld\n", rlim.rlim_cur);
+  printf("RLIMIT_STACK: rlim_max: %lld\n", rlim.rlim_max);
+
   // setrlimit should always fail with EPERM
   assert(setrlimit(RLIMIT_NOFILE, &rlim) == -1);
   assert(errno == EPERM);
