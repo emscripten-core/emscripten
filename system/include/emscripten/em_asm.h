@@ -28,6 +28,9 @@ __attribute__((nothrow))
 int emscripten_asm_const_int_sync_on_main_thread(
   const char* code, const char* arg_sigs, ...);
 __attribute__((nothrow))
+int emscripten_asm_const_int_await_on_main_thread(
+  const char* code, const char* arg_sigs, ...);
+__attribute__((nothrow))
 void* emscripten_asm_const_ptr_sync_on_main_thread(
   const char* code, const char* arg_sigs, ...);
 __attribute__((nothrow))
@@ -51,6 +54,7 @@ void emscripten_asm_const_async_on_main_thread(
 #define EM_ASM_PTR(...) EM_ASM_ERROR
 #define EM_ASM_DOUBLE(...) EM_ASM_ERROR
 #define MAIN_THREAD_EM_ASM(...) EM_ASM_ERROR
+#define MAIN_THREAD_EM_ASM_AWAIT(...) EM_ASM_ERROR
 #define MAIN_THREAD_EM_ASM_INT(...) EM_ASM_ERROR
 #define MAIN_THREAD_EM_ASM_PTR(...) EM_ASM_ERROR
 #define MAIN_THREAD_EM_ASM_DOUBLE(...) EM_ASM_ERROR
@@ -249,6 +253,13 @@ const char __em_asm_sig_builder<__em_asm_type_tuple<Args...> >::buffer[] = { __e
 // functions are direct aliases to the corresponding EM_ASM*() family of
 // functions.
 #define MAIN_THREAD_EM_ASM(code, ...) ((void)emscripten_asm_const_int_sync_on_main_thread(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__)))
+
+// Runs the given Javascript code on the main browser thread.
+// It must be called from a non-main thread.
+// The code must return a promise, and this function will wait for the promise
+// to resolve or reject, essentially blocking the calling thread until then.
+// In either case the function will return an integer, which is the result of the promise.
+#define MAIN_THREAD_EM_ASM_AWAIT(code, ...) emscripten_asm_const_int_await_on_main_thread(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__))
 
 // Runs the given JavaScript code synchronously on the main browser thread, and
 // returns an integer back.
