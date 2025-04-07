@@ -9562,6 +9562,19 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_wasm_worker_wait_async(self):
     self.do_runf('atomic/test_wait_async.c', emcc_args=['-sWASM_WORKERS'])
 
+  @requires_node_canary
+  @no_wasm64("wasm64 requires wasm export wrappers")
+  def test_esm_integration(self):
+    # TODO(sbc): WASM_ESM_INTEGRATION doesn't currently work with closure.
+    # self.maybe_closure()
+    self.node_args += ['--experimental-wasm-modules', '--no-warnings']
+    self.run_process([EMCC, '-o', 'hello_world.mjs', '-sWASM_ESM_INTEGRATION', '-Wno-experimental', test_file('hello_world.c')] + self.get_emcc_args())
+    create_file('runner.mjs', '''
+      import init from "./hello_world.mjs";
+      await init();
+    ''')
+    self.assertContained('hello, world!', self.run_js('runner.mjs'))
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None,

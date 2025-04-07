@@ -367,16 +367,6 @@ class other(RunnerCore):
     self.assertContained('import source wasmModule from', read_file('hello_world.mjs'))
     self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
-  @requires_node_canary
-  def test_esm_integration(self):
-    self.node_args += ['--experimental-wasm-modules', '--no-warnings']
-    self.run_process([EMCC, '-o', 'hello_world.mjs', '-sWASM_ESM_INTEGRATION', '-Wno-experimental', test_file('hello_world.c')])
-    create_file('runner.mjs', '''
-      import init from "./hello_world.mjs";
-      await init();
-    ''')
-    self.assertContained('hello, world!', self.run_js('runner.mjs'))
-
   @parameterized({
     '': ([],),
     'node': (['-sENVIRONMENT=node'],),
@@ -2941,7 +2931,7 @@ More info: https://emscripten.org
   @parameterized({
     'minifyGlobals': (['minifyGlobals'],),
     'minifyLocals': (['minifyLocals'],),
-    'JSDCE': (['JSDCE'],),
+    'JSDCE': (['JSDCE', '--export-es6'],),
     'JSDCE-hasOwnProperty': (['JSDCE'],),
     'JSDCE-defaultArg': (['JSDCE'],),
     'JSDCE-fors': (['JSDCE'],),
