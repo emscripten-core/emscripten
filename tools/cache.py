@@ -177,6 +177,8 @@ def get(shortname, creator, what=None, force=False, quiet=False):
     logger.info(message)
     utils.safe_ensure_dirs(cachename.parent)
     creator(str(cachename))
+    if not os.getenv('EMBUILDER_PORT_BUILD_DEFERRED'):
+      assert cachename.is_file()
     if not quiet:
       logger.info(' - ok')
 
