@@ -31,6 +31,23 @@ function h(a) {
 }
 print(h(123));
 
+// ES6 exported
+export function i(a) {
+  return a+1;
+}
+
+// ES6 export via export specifier
+function j(a) {
+  return a+1;
+}
+
+export { j as k };
+
+// ES6 default export
+export default function l(a) {
+  return a+1;
+}
+
 // inner workings
 (function() {
   var x;

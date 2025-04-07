@@ -440,6 +440,23 @@ function JSDCE(ast, aggressive) {
         const name = node.name;
         ensureData(scopes[scopes.length - 1], name).use = 1;
       },
+      ExportDefaultDeclaration(node, c) {
+        const name = node.declaration.id.name;
+        ensureData(scopes[scopes.length - 1], name).use = 1;
+        c(node.declaration);
+      },
+      ExportNamedDeclaration(node, c) {
+        if (node.declaration) {
+          const name = node.declaration.id.name;
+          ensureData(scopes[scopes.length - 1], name).use = 1;
+          c(node.declaration);
+        } else {
+          for (const specifier of node.specifiers) {
+            const name = specifier.local.name;
+            ensureData(scopes[scopes.length - 1], name).use = 1;
+          }
+        }
+      },
     });
 
     // toplevel
