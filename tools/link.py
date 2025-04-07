@@ -963,12 +963,13 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.EXPORTED_RUNTIME_METHODS.extend([
       'HEAPF32',
       'HEAPF64',
-      'HEAP_DATA_VIEW',
       'HEAP8',  'HEAPU8',
       'HEAP16', 'HEAPU16',
       'HEAP32', 'HEAPU32',
       'HEAP64', 'HEAPU64',
     ])
+    if settings.SUPPORT_BIG_ENDIAN:
+      settings.EXPORTED_RUNTIME_METHODS.append('HEAP_DATA_VIEW')
 
   # Default to TEXTDECODER=2 (always use TextDecoder to decode UTF-8 strings)
   # in -Oz builds, since custom decoder for UTF-8 takes up space.

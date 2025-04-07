@@ -13,7 +13,6 @@ declare namespace RuntimeExports {
     let wasmTable: WebAssembly.Table;
     let HEAPF32: any;
     let HEAPF64: any;
-    let HEAP_DATA_VIEW: any;
     let HEAP8: any;
     let HEAPU8: any;
     let HEAP16: any;
