@@ -34,5 +34,6 @@ function processModuleArgs()
 #endif
 #endif // ASSERTIONS
 
-  {{{ exportJSSymbols() }}}
 }
+
+{{{ exportJSSymbols() }}}

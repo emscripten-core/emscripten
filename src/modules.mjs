@@ -406,6 +406,11 @@ function addMissingLibraryStubs(unusedLibSymbols) {
 }
 
 function exportSymbol(name) {
+  if (WASM_ESM_INTEGRATION) {
+    // In ESM integration mode symbols are exported by being included in
+    // an export { foo, bar } list so we build up the simple list of names
+    return name;
+  }
   if (MODULARIZE === 'instance') {
     return `__exp_${name} = ${name};`;
   }
@@ -416,10 +421,13 @@ function exportSymbol(name) {
 function exportRuntimeSymbols() {
   // optionally export something.
   function maybeExport(name) {
-    // If requested to be exported, export it.  HEAP objects are exported
-    // separately in updateMemoryViews
-    if (EXPORTED_RUNTIME_METHODS.has(name) && !name.startsWith('HEAP')) {
-      return exportSymbol(name);
+    // If requested to be exported, export it.
+    if (EXPORTED_RUNTIME_METHODS.has(name)) {
+      // Unless we are in WASM_ESM_INTEGRATION mode then HEAP objects are
+      // exported separately in updateMemoryViews
+      if (WASM_ESM_INTEGRATION || !name.startsWith('HEAP')) {
+        return exportSymbol(name);
+      }
     }
   }
 
@@ -518,6 +526,10 @@ function exportRuntimeSymbols() {
   const exports = runtimeElements.map(maybeExport);
   const results = exports.filter((name) => name);
 
+  if (WASM_ESM_INTEGRATION) {
+    return '// Runtime exports\nexport { ' + results.join(', ') + ' };\n';
+  }
+
   if (ASSERTIONS && !EXPORT_ALL) {
     // in ASSERTIONS mode we show a useful error if it is used without being
     // exported.  See `unexportedRuntimeSymbol` in runtime_debug.js.
@@ -563,7 +575,7 @@ function exportLibrarySymbols() {
 function exportJSSymbols() {
   // In WASM_ESM_INTEGRATION mode JS library symbols are marked with `export`
   // at the point of declaration.
-  if (WASM_ESM_INTEGRATION) return '';
+  if (WASM_ESM_INTEGRATION) return exportRuntimeSymbols();
   return exportRuntimeSymbols() + '  ' + exportLibrarySymbols();
 }
 
