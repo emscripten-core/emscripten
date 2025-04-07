@@ -165,6 +165,7 @@ def apply_static_code_hooks(forwarded_json, code):
       hook_code = f'// No {name} hooks'
     code = code.replace(f'<<< {name} >>>', hook_code)
 
+  inject_code_hooks('ATMODULES')
   inject_code_hooks('ATPRERUNS')
   inject_code_hooks('ATINITS')
   inject_code_hooks('ATPOSTCTORS')

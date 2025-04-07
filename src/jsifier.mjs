@@ -10,6 +10,7 @@
 import assert from 'node:assert';
 import * as fs from 'node:fs/promises';
 import {
+  ATMODULES,
   ATEXITS,
   ATINITS,
   ATPOSTCTORS,
@@ -823,6 +824,10 @@ function(${args}) {
     }
     writeOutput('// End JS library code\n');
 
+    if (!MINIMAL_RUNTIME) {
+      includeSystemFile('postlibrary.js');
+    }
+
     if (PTHREADS) {
       writeOutput(`
 // proxiedFunctionTable specifies the list of functions that can be called
@@ -864,6 +869,7 @@ var proxiedFunctionTable = [
           asyncFuncs,
           libraryDefinitions: LibraryManager.libraryDefinitions,
           ATPRERUNS: ATPRERUNS.join('\n'),
+          ATMODULES: ATMODULES.join('\n'),
           ATINITS: ATINITS.join('\n'),
           ATPOSTCTORS: ATPOSTCTORS.join('\n'),
           ATMAINS: ATMAINS.join('\n'),

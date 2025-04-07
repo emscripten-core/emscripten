@@ -24,8 +24,6 @@ if (ENVIRONMENT_IS_WORKER) {
 #include "deterministic.js"
 #endif
 
-{{{ exportJSSymbols() }}}
-
 #if ASSERTIONS
 var calledRun;
 #endif
@@ -199,7 +197,7 @@ function run() {
 #endif
 
 #if HAS_MAIN
-    {{{ makeModuleReceiveWithVar('noInitialRun', undefined, !INVOKE_RUN) }}}
+    var noInitialRun = {{{ makeModuleReceiveExpr('noInitialRun', !INVOKE_RUN) }}};
 #if MAIN_READS_PARAMS
     if (!noInitialRun) callMain(args);
 #else
@@ -287,26 +285,30 @@ function checkUnflushedContent() {
 #endif // EXIT_RUNTIME
 #endif // ASSERTIONS
 
+function preInit() {
 #if expectToReceiveOnModule('preInit')
-if (Module['preInit']) {
-  if (typeof Module['preInit'] == 'function') Module['preInit'] = [Module['preInit']];
-  while (Module['preInit'].length > 0) {
-    Module['preInit'].shift()();
+  if (Module['preInit']) {
+    if (typeof Module['preInit'] == 'function') Module['preInit'] = [Module['preInit']];
+    while (Module['preInit'].length > 0) {
+      Module['preInit'].shift()();
+    }
   }
-}
 #if ASSERTIONS
-consumedModuleProp('preInit');
+  consumedModuleProp('preInit');
 #endif
 #endif
-
+}
 
 #if WASM_ESM_INTEGRATION
 export default function init(moduleArg = {}) {
-  // TODO(sbc): moduleArg processing
+  Module = moduleArg;
   updateMemoryViews();
+  processModuleArgs();
+  preInit();
   run();
 }
 #else
+preInit();
 run();
 #endif
 
