@@ -436,7 +436,6 @@ function exportRuntimeSymbols() {
     'wasmExports',
     'HEAPF32',
     'HEAPF64',
-    'HEAP_DATA_VIEW',
     'HEAP8',
     'HEAPU8',
     'HEAP16',
@@ -446,6 +445,10 @@ function exportRuntimeSymbols() {
     'HEAP64',
     'HEAPU64',
   ];
+
+  if (SUPPORT_BIG_ENDIAN) {
+    runtimeElements.push('HEAP_DATA_VIEW');
+  }
 
   if (PTHREADS && ALLOW_MEMORY_GROWTH) {
     runtimeElements.push(
