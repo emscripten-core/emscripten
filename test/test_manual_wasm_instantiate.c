@@ -15,6 +15,10 @@ EM_ASYNC_JS(int, getResult, (), {
 int main() {
   printf("in main\n");
   int result = getResult();
+#ifdef REPORT_RESULT
+  REPORT_RESULT(result);
+#else
   assert(result);
+#endif
   return 0;
 }
