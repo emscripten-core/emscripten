@@ -4227,7 +4227,7 @@ Module["preRun"] = () => {
   @also_with_asan
   def test_manual_wasm_instantiate(self):
     self.set_setting('EXIT_RUNTIME')
-    self.compile_btest('test_manual_wasm_instantiate.c', ['-o', 'manual_wasm_instantiate.js','-sASYNCIFY'], reporting=Reporting.FULL)
+    self.compile_btest('test_manual_wasm_instantiate.c', ['-o', 'manual_wasm_instantiate.js','-sASYNCIFY'])
     shutil.copy(test_file('test_manual_wasm_instantiate.html'), '.')
     self.run_browser('test_manual_wasm_instantiate.html', '/report_result?1')
 
