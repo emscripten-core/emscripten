@@ -8,7 +8,7 @@ updates:
   - package-ecosystem: "npm"
     directory: "/" # Look for `package.json` and `lock` files in the `root` directory
     schedule:
-      interval: "weekly"
+      interval: "monthly"
     commit-message:
       prefix: "[deps]"
     groups:
@@ -20,6 +20,6 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/" # Location of package manifests
     schedule:
-      interval: "weekly"
+      interval: "monthly"
     commit-message:
       prefix: "[deps]"
