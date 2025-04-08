@@ -9577,6 +9577,38 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertContained('hello, world! (3)', self.run_js('runner.mjs'))
     self.assertFileContents(test_file('core/test_esm_integration.expected.mjs'), read_file('hello_world.mjs'))
 
+  @parameterized({
+    '': ([],),
+    'pthreads': (['-pthread'],),
+  })
+  def test_modularize_instance(self, args):
+    create_file('library.js', '''\
+    addToLibrary({
+      $baz: () => console.log('baz'),
+      $qux: () => console.log('qux'),
+    });''')
+    self.run_process([EMCC, test_file('modularize_instance.c'),
+                      '-sMODULARIZE=instance',
+                      '-Wno-experimental',
+                      '-sEXPORTED_RUNTIME_METHODS=baz,addOnExit',
+                      '-sEXPORTED_FUNCTIONS=_bar,_main,qux',
+                      '--js-library', 'library.js',
+                      '-o', 'modularize_instance.mjs'] + args)
+
+    create_file('runner.mjs', '''
+      import { strict as assert } from 'assert';
+      import init, { _foo as foo, _bar as bar, baz, qux, addOnExit, HEAP32 } from "./modularize_instance.mjs";
+      await init();
+      foo(); // exported with EMSCRIPTEN_KEEPALIVE
+      bar(); // exported with EXPORTED_FUNCTIONS
+      baz(); // exported library function with EXPORTED_RUNTIME_METHODS
+      qux(); // exported library function with EXPORTED_FUNCTIONS
+      assert(typeof addOnExit === 'function'); // exported runtime function with EXPORTED_RUNTIME_METHODS
+      assert(typeof HEAP32 === 'object'); // exported runtime value by default
+    ''')
+
+    self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None,
