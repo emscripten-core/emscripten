@@ -188,15 +188,54 @@ def setup_environment_settings():
 
 
 def generate_js_sym_info():
-  # Runs the js compiler to generate a list of all symbols available in the JS
-  # libraries.  This must be done separately for each linker invocation since the
-  # list of symbols depends on what settings are used.
-  # TODO(sbc): Find a way to optimize this.  Potentially we could add a super-set
-  # mode of the js compiler that would generate a list of all possible symbols
-  # that could be checked in.
+  """Runs the js compiler to generate a list of all symbols available in the JS
+  libraries.  This must be done separately for each linker invocation since the
+  list of symbols depends on what settings are used.
+  TODO(sbc): Find a way to optimize this.  Potentially we could add a super-set
+  mode of the js compiler that would generate a list of all possible symbols
+  that could be checked in.
+  """
   _, forwarded_data = emscripten.compile_javascript(symbols_only=True)
   # When running in symbols_only mode compiler.mjs outputs a flat list of C symbols.
   return json.loads(forwarded_data)
+
+
+def get_cached_file(filetype, filename, generator, cache_limit):
+  """This function implements a file cache which lives inside the main
+  emscripten cache directory but uses a per-file lock rather than a
+  cache-wide lock.
+
+  The cache is pruned (by removing the oldest files) if it grows above
+  a certain number of files.
+  """
+  root = cache.get_path(filetype)
+  utils.safe_ensure_dirs(root)
+
+  cache_file = os.path.join(root, filename)
+
+  with filelock.FileLock(cache_file + '.lock'):
+    if os.path.exists(cache_file):
+      # Cache hit, read the file
+      file_content = read_file(cache_file)
+    else:
+      # Cache miss, generate the symbol list and write the file
+      file_content = generator()
+      write_file(cache_file, file_content)
+
+  if len([f for f in os.listdir(root) if not f.endswith('.lock')]) > cache_limit:
+    with filelock.FileLock(cache.get_path(f'{filetype}.lock')):
+      files = []
+      for f in os.listdir(root):
+        if not f.endswith('.lock'):
+          f = os.path.join(root, f)
+          files.append((f, os.path.getmtime(f)))
+      files.sort(key=lambda x: x[1])
+      # Delete all but the newest N files
+      for f, _ in files[:-cache_limit]:
+        with filelock.FileLock(f + '.lock'):
+          delete_file(f)
+
+  return file_content
 
 
 @ToolchainProfiler.profile_block('JS symbol generation')
@@ -220,39 +259,16 @@ def get_js_sym_info():
     input_files.append(read_file(jslib))
   content = '\n'.join(input_files)
   content_hash = hashlib.sha1(content.encode('utf-8')).hexdigest()
-  library_syms = None
 
-  cache_file = str(cache.get_path(f'symbol_lists/{content_hash}.json'))
-
-  utils.safe_ensure_dirs(cache.get_path('symbol_lists'))
-  with filelock.FileLock(cache_file + '.lock'):
-    if os.path.exists(cache_file):
-      # Cache hit, read the file
-      library_syms = json.loads(read_file(cache_file))
-    else:
-      # Cache miss, generate the symbol list and write the file
-      library_syms = generate_js_sym_info()
-      write_file(cache_file, json.dumps(library_syms, separators=(',', ':'), indent=2))
+  def generate_json():
+    library_syms = generate_js_sym_info()
+    return json.dumps(library_syms, separators=(',', ':'), indent=2)
 
   # Limit of the overall size of the cache.
   # This code will get test coverage since a full test run of `other` or `core`
   # generates ~1000 unique symbol lists.
-  cache_limit = 500
-  root = cache.get_path('symbol_lists')
-  if len([f for f in os.listdir(root) if not f.endswith('.lock')]) > cache_limit:
-    with filelock.FileLock(cache.get_path('symbol_lists.lock')):
-      files = []
-      for f in os.listdir(root):
-        if not f.endswith('.lock'):
-          f = os.path.join(root, f)
-          files.append((f, os.path.getmtime(f)))
-      files.sort(key=lambda x: x[1])
-      # Delete all but the newest N files
-      for f, _ in files[:-cache_limit]:
-        with filelock.FileLock(f + '.lock'):
-          delete_file(f)
-
-  return library_syms
+  file_content = get_cached_file('symbol_lists', f'{content_hash}.json', generate_json, cache_limit=500)
+  return json.loads(file_content)
 
 
 def filter_link_flags(flags, using_lld):
