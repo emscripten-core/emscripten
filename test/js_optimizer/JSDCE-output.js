@@ -47,6 +47,8 @@ export default function l(a) {
   return a + 1;
 }
 
+export var m = a => a + 1;
+
 (function() {
   var z = fleefl();
   var zz = fleefl();
