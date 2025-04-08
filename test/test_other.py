@@ -8506,9 +8506,9 @@ int main() {
     print(first, second, third)
     assert first == second and second == third
     print('with bad ctor')
-    first  = test(1000, 2000, 3000, 0xf, 0x58f) # noqa: E221. 2 will succeed
+    first  = test(1000, 2000, 3000, 0xf, 0x58f) # noqa: E221,  2 will succeed
     second = test(3000, 1000, 2000, 0xf, 0x8f5) # 1 will succedd
-    third  = test(2000, 3000, 1000, 0xf, 0xf58) # noqa: E221. 0 will succeed
+    third  = test(2000, 3000, 1000, 0xf, 0xf58) # noqa: E221,  0 will succeed
     print(first, second, third)
     self.assertLess(first, second)
     self.assertLess(second, third)
