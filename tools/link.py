@@ -2770,19 +2770,19 @@ def map_to_js_libs(library_name):
   # Some native libraries are implemented in Emscripten as system side JS libraries
   library_map = {
     'embind': ['libembind.js', 'libemval.js'],
-    'EGL': ['libegl.js'],
+    'EGL': ['libEGL.js'],
     'GL': ['libwebgl.js', 'libhtml5_webgl.js'],
     'webgl.js': ['libwebgl.js', 'libhtml5_webgl.js'],
     'GLESv2': ['libwebgl.js'],
     # N.b. there is no GLESv3 to link to (note [f] in https://www.khronos.org/registry/implementers_guide.html)
-    'GLEW': ['libglew.js'],
+    'GLEW': ['libGLEW.js'],
     'glfw': ['libglfw.js'],
     'glfw3': ['libglfw.js'],
     'GLU': [],
     'glut': ['libglut.js'],
     'openal': ['libopenal.js'],
-    'X11': ['libxlib.js'],
-    'SDL': ['libsdl.js'],
+    'X11': ['libX11.js'],
+    'SDL': ['libSDL.js'],
     'uuid': ['libuuid.js'],
     'fetch': ['libfetch.js'],
     'websocket': ['libwebsocket.js'],
