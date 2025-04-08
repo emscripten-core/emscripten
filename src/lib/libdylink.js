@@ -203,7 +203,7 @@ var LibraryDylink = {
   },
 
   $updateGOT__internal: true,
-  $updateGOT__deps: ['$GOT', '$isInternalSym', '$addFunction', '$getFunctionAddress'],
+  $updateGOT__deps: ['$GOT', '$isInternalSym', '$addFunction'],
   $updateGOT: (exports, replace) => {
 #if DYLINK_DEBUG
     dbg("updateGOT: adding " + Object.keys(exports).length + " symbols");
@@ -871,13 +871,18 @@ var LibraryDylink = {
       }
 
       if (flags.loadAsync) {
-        if (binary instanceof WebAssembly.Module) {
-          var instance = new WebAssembly.Instance(binary, info);
-          return Promise.resolve(postInstantiation(binary, instance));
-        }
-        return WebAssembly.instantiate(binary, info).then(
-          (result) => postInstantiation(result.module, result.instance)
-        );
+        return (async () => {
+          var instance;
+          if (binary instanceof WebAssembly.Module) {
+            instance = new WebAssembly.Instance(binary, info);
+          } else {
+            // Destructuring assignment without declaration has to be wrapped
+            // with parens or parser will treat the l-value as an object
+            // literal instead.
+            ({ module: binary, instance } = await WebAssembly.instantiate(binary, info));
+          }
+          return postInstantiation(binary, instance);
+        })();
       }
 
       var module = binary instanceof WebAssembly.Module ? binary : new WebAssembly.Module(binary);
@@ -945,7 +950,7 @@ var LibraryDylink = {
   // flags.global and flags.nodelete are handled every time a load request is made.
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
   $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule',
-                              '$isInternalSym', '$mergeLibSymbols', '$newDSO',
+                              '$mergeLibSymbols', '$newDSO',
                               '$asyncLoad',
 #if FILESYSTEM
                               '$preloadedWasm',
@@ -1119,7 +1124,7 @@ var LibraryDylink = {
   },
 
   // void* dlopen(const char* filename, int flags);
-  $dlopenInternal__deps: ['$ENV', '$dlSetError', '$PATH'],
+  $dlopenInternal__deps: ['$dlSetError', '$PATH'],
   $dlopenInternal: (handle, jsflags) => {
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html

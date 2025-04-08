@@ -53,11 +53,6 @@ ASAN_C_HELPERS = [
 ]
 
 
-def write_output_file(outfile, module):
-  for chunk in module:
-    outfile.write(chunk)
-
-
 def maybe_disable_filesystem(imports):
   """Disables filesystem if only a limited subset of syscalls is used.
 
@@ -161,15 +156,26 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
 
 
 def apply_static_code_hooks(forwarded_json, code):
-  code = shared.do_replace(code, '<<< ATPRERUNS >>>', str(forwarded_json['ATPRERUNS']))
-  code = shared.do_replace(code, '<<< ATINITS >>>', str(forwarded_json['ATINITS']))
-  code = shared.do_replace(code, '<<< ATPOSTCTORS >>>', str(forwarded_json['ATPOSTCTORS']))
+  def inject_code_hooks(name):
+    nonlocal code
+    hook_code = forwarded_json[name]
+    if hook_code:
+      hook_code = f'// Begin {name} hooks\n  {hook_code}\n  // End {name} hooks'
+    else:
+      hook_code = f'// No {name} hooks'
+    code = code.replace(f'<<< {name} >>>', hook_code)
+
+  inject_code_hooks('ATMODULES')
+  inject_code_hooks('ATPRERUNS')
+  inject_code_hooks('ATINITS')
+  inject_code_hooks('ATPOSTCTORS')
   if settings.HAS_MAIN:
-    code = shared.do_replace(code, '<<< ATMAINS >>>', str(forwarded_json['ATMAINS']))
+    inject_code_hooks('ATMAINS')
   if not settings.MINIMAL_RUNTIME or settings.HAS_MAIN:
-    code = shared.do_replace(code, '<<< ATPOSTRUNS >>>', str(forwarded_json['ATPOSTRUNS']))
+    inject_code_hooks('ATPOSTRUNS')
     if settings.EXIT_RUNTIME:
-      code = shared.do_replace(code, '<<< ATEXITS >>>', str(forwarded_json['ATEXITS']))
+      inject_code_hooks('ATEXITS')
+
   return code
 
 
@@ -297,12 +303,8 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
   #     to use emscripten's wasm<->JS ABI
   #   * Use the metadata to generate the JS glue that goes with the wasm
 
-  if settings.SINGLE_FILE:
-    # placeholder strings for JS glue, to be replaced with subresource locations in do_binaryen
-    settings.WASM_BINARY_FILE = '<<< WASM_BINARY_FILE >>>'
-  else:
-    # set file locations, so that JS glue can find what it needs
-    settings.WASM_BINARY_FILE = js_manipulation.escape_for_js_string(os.path.basename(out_wasm))
+  # set file locations, so that JS glue can find what it needs
+  settings.WASM_BINARY_FILE = js_manipulation.escape_for_js_string(os.path.basename(out_wasm))
 
   if finalize:
     metadata = finalize_wasm(in_wasm, out_wasm, js_syms)
@@ -406,13 +408,6 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
 
   report_missing_exports(forwarded_json['librarySymbols'])
 
-  if settings.MINIMAL_RUNTIME:
-    # In MINIMAL_RUNTIME, atinit exists in the postamble part
-    post = apply_static_code_hooks(forwarded_json, post)
-  else:
-    # In regular runtime, atinits etc. exist in the preamble part
-    pre = apply_static_code_hooks(forwarded_json, pre)
-
   asm_const_pairs = ['%s: %s' % (key, value) for key, value in asm_consts]
   if asm_const_pairs or settings.MAIN_MODULE:
     pre += 'var ASM_CONSTS = {\n  ' + ',  \n '.join(asm_const_pairs) + '\n};\n'
@@ -434,22 +429,21 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     function_exports['asyncify_start_rewind'] = webassembly.FuncType([webassembly.Type.I32], [])
     function_exports['asyncify_stop_rewind'] = webassembly.FuncType([], [])
 
-  with open(outfile_js, 'w', encoding='utf-8') as out:
-    out.write(pre)
-    pre = None
+  parts = [pre]
+  receiving = create_receiving(function_exports)
+  if settings.WASM_ESM_INTEGRATION:
+    sending = create_sending(metadata, forwarded_json['librarySymbols'])
+    parts += [sending, receiving]
+  else:
+    parts += create_module(receiving, metadata, global_exports, forwarded_json['librarySymbols'])
+  parts.append(post)
 
-    receiving = create_receiving(function_exports)
+  full_js_module = ''.join(parts)
+  full_js_module = apply_static_code_hooks(forwarded_json, full_js_module)
+  utils.write_file(outfile_js, full_js_module)
 
-    module = create_module(receiving, metadata, global_exports, forwarded_json['librarySymbols'])
-
-    metadata.library_definitions = forwarded_json['libraryDefinitions']
-
-    write_output_file(out, module)
-
-    out.write(post)
-    module = None
-
-    return metadata
+  metadata.library_definitions = forwarded_json['libraryDefinitions']
+  return metadata
 
 
 @ToolchainProfiler.profile()
@@ -631,12 +625,16 @@ def create_tsd_exported_runtime_methods(metadata):
   js_doc_file = in_temp('jsdoc.js')
   tsc_output_file = in_temp('jsdoc.d.ts')
   utils.write_file(js_doc_file, js_doc)
-  tsc = shutil.which('tsc')
-  if tsc:
+  tsc = shared.get_npm_cmd('tsc', missing_ok=True)
+  # Prefer the npm install'd version of tsc since we know that one is compatible
+  # with emscripten output.
+  if not tsc:
+    # Fall back to tsc in the user's PATH.
+    tsc = shutil.which('tsc')
+    if not tsc:
+      exit_with_error('tsc executable not found in node_modules or in $PATH')
     # Use the full path from the which command so windows can find tsc.
     tsc = [tsc]
-  else:
-    tsc = shared.get_npm_cmd('tsc')
   cmd = tsc + ['--outFile', tsc_output_file,
                '--skipLibCheck', # Avoid checking any of the user's types e.g. node_modules/@types.
                '--declaration',
@@ -855,6 +853,13 @@ def create_sending(metadata, library_symbols):
           send_items_map[demangled] = f
 
   sorted_items = sorted(send_items_map.items())
+
+  if settings.WASM_ESM_INTEGRATION:
+    elems = []
+    for k, v in sorted_items:
+      elems.append(f'{v} as {k}')
+    return f"export {{ {', '.join(elems)} }};\n\n"
+
   prefix = ''
   if settings.MAYBE_CLOSURE_COMPILER:
     # This prevents closure compiler from minifying the field names in this
@@ -872,13 +877,7 @@ def create_sending(metadata, library_symbols):
 
 
 def can_use_await():
-  # In MODULARIZE mode we can use `await` since the factory function itself
-  # is marked as `async` and the generated code all lives inside that factory
-  # function.
-  # However, because closure does not see this (it runs only on the inner code),
-  # it sees this as a top-level-await, which it does not yet support.
-  # FIXME(https://github.com/emscripten-core/emscripten/issues/23158)
-  return settings.MODULARIZE and not settings.USE_CLOSURE_COMPILER
+  return settings.MODULARIZE
 
 
 def make_export_wrappers(function_exports):
@@ -934,6 +933,13 @@ def make_export_wrappers(function_exports):
 
 
 def create_receiving(function_exports):
+  if settings.WASM_ESM_INTEGRATION:
+    exports = [f'{f} as {asmjs_mangle(f)}' for f in function_exports]
+    exports.append('memory as wasmMemory')
+    exports.append('__indirect_function_table as wasmTable')
+    exports = ',\n  '.join(exports)
+    return f"import {{\n  {exports}\n}} from './{settings.WASM_BINARY_FILE}';\n\n"
+
   # When not declaring asm exports this section is empty and we instead programmatically export
   # symbols on the global object by calling exportWasmSymbols after initialization
   if not settings.DECLARE_ASM_MODULE_EXPORTS:
@@ -988,7 +994,10 @@ function assignWasmImports() {
     if settings.WASM_ASYNC_COMPILATION:
       if can_use_await():
         # In modularize mode the generated code is within a factory function.
-        module.append("var wasmExports = await createWasm();\n")
+        # This magic string gets replaced by `await createWasm`.  It needed to allow
+        # closure and acorn to process the module without seeing this as a top-level
+        # await.
+        module.append("var wasmExports = EMSCRIPTEN$AWAIT(createWasm());\n")
       else:
         module.append("var wasmExports;\ncreateWasm();\n")
     else:

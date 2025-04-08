@@ -220,35 +220,37 @@ def get_js_sym_info():
     input_files.append(read_file(jslib))
   content = '\n'.join(input_files)
   content_hash = hashlib.sha1(content.encode('utf-8')).hexdigest()
+  library_syms = None
 
-  def build_symbol_list(filename):
-    """Only called when there is no existing symbol list for a given content hash.
-    """
-    library_syms = generate_js_sym_info()
+  cache_file = str(cache.get_path(f'symbol_lists/{content_hash}.json'))
 
-    write_file(filename, json.dumps(library_syms, separators=(',', ':'), indent=2))
+  utils.safe_ensure_dirs(cache.get_path('symbol_lists'))
+  with filelock.FileLock(cache_file + '.lock'):
+    if os.path.exists(cache_file):
+      # Cache hit, read the file
+      library_syms = json.loads(read_file(cache_file))
+    else:
+      # Cache miss, generate the symbol list and write the file
+      library_syms = generate_js_sym_info()
+      write_file(cache_file, json.dumps(library_syms, separators=(',', ':'), indent=2))
 
-  # We need to use a separate lock here for symbol lists because, unlike with system libraries,
-  # it's normally for these file to get pruned as part of normal operation.  This means that it
-  # can be deleted between the `cache.get()` then the `read_file`.
-  with filelock.FileLock(cache.get_path('symbol_lists.lock')):
-    filename = cache.get(f'symbol_lists/{content_hash}.json', build_symbol_list)
-    library_syms = json.loads(read_file(filename))
-
-    # Limit of the overall size of the cache.
-    # This code will get test coverage since a full test run of `other` or `core`
-    # generates ~1000 unique symbol lists.
-    cache_limit = 500
-    root = cache.get_path('symbol_lists')
-    if len(os.listdir(root)) > cache_limit:
+  # Limit of the overall size of the cache.
+  # This code will get test coverage since a full test run of `other` or `core`
+  # generates ~1000 unique symbol lists.
+  cache_limit = 500
+  root = cache.get_path('symbol_lists')
+  if len([f for f in os.listdir(root) if not f.endswith('.lock')]) > cache_limit:
+    with filelock.FileLock(cache.get_path('symbol_lists.lock')):
       files = []
       for f in os.listdir(root):
-        f = os.path.join(root, f)
-        files.append((f, os.path.getmtime(f)))
+        if not f.endswith('.lock'):
+          f = os.path.join(root, f)
+          files.append((f, os.path.getmtime(f)))
       files.sort(key=lambda x: x[1])
       # Delete all but the newest N files
       for f, _ in files[:-cache_limit]:
-        delete_file(f)
+        with filelock.FileLock(f + '.lock'):
+          delete_file(f)
 
   return library_syms
 
@@ -734,9 +736,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if s in user_settings:
       diagnostics.warning('deprecated', f'{s} is deprecated ({reason}). Please open a bug if you have a continuing need for this setting')
 
-  if settings.EXTRA_EXPORTED_RUNTIME_METHODS:
-    settings.EXPORTED_RUNTIME_METHODS += settings.EXTRA_EXPORTED_RUNTIME_METHODS
-
   # If no output format was specified we try to deduce the format based on
   # the output filename extension
   if not options.oformat and (options.relocatable or (options.shared and not settings.SIDE_MODULE)):
@@ -769,6 +768,13 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if options.oformat == OFormat.MJS:
     default_setting('EXPORT_ES6', 1)
 
+  if settings.WASM_ESM_INTEGRATION:
+    diagnostics.warning('experimental', '-sWASM_ESM_INTEGRATION is still experimental and not yet supported in browsers')
+    default_setting('EXPORT_ES6', 1)
+    default_setting('MODULARIZE', 'instance')
+    if not settings.EXPORT_ES6 or settings.MODULARIZE != 'instance':
+      exit_with_error('WASM_ESM_INTEGRATION requires EXPORT_ES6 and MODULARIZE=instance')
+
   if settings.MODULARIZE and settings.MODULARIZE not in [1, 'instance']:
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
 
@@ -799,17 +805,17 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     # to js.
     settings.WASM = 1
     settings.WASM2JS = 1
-    # Wasm bigint doesn't make sense with wasm2js, since it controls how the
-    # wasm and JS interact.
-    if user_settings.get('WASM_BIGINT') and settings.WASM_BIGINT:
-      exit_with_error('WASM_BIGINT=1 is not compatible with WASM=0 (wasm2js)')
-    settings.WASM_BIGINT = 0
-    feature_matrix.disable_feature(feature_matrix.Feature.JS_BIGINT_INTEGRATION)
+
   if settings.WASM == 2:
     # Requesting both Wasm and Wasm2JS support
     settings.WASM2JS = 1
+
+  if settings.WASM2JS:
+    settings.MAYBE_WASM2JS = 1
+    # Wasm bigint doesn't make sense with wasm2js, since it controls how the
+    # wasm and JS interact.
     if user_settings.get('WASM_BIGINT') and settings.WASM_BIGINT:
-      exit_with_error('WASM_BIGINT=1 is not compatible with WASM=2 (wasm2js)')
+      exit_with_error('WASM_BIGINT=1 is not compatible with wasm2js')
     settings.WASM_BIGINT = 0
     feature_matrix.disable_feature(feature_matrix.Feature.JS_BIGINT_INTEGRATION)
 
@@ -957,12 +963,13 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.EXPORTED_RUNTIME_METHODS.extend([
       'HEAPF32',
       'HEAPF64',
-      'HEAP_DATA_VIEW',
       'HEAP8',  'HEAPU8',
       'HEAP16', 'HEAPU16',
       'HEAP32', 'HEAPU32',
       'HEAP64', 'HEAPU64',
     ])
+    if settings.SUPPORT_BIG_ENDIAN:
+      settings.EXPORTED_RUNTIME_METHODS.append('HEAP_DATA_VIEW')
 
   # Default to TEXTDECODER=2 (always use TextDecoder to decode UTF-8 strings)
   # in -Oz builds, since custom decoder for UTF-8 takes up space.
@@ -1303,10 +1310,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
         '_wasmfs_get_cwd',
       ]
 
-  if settings.DEMANGLE_SUPPORT:
-    settings.REQUIRED_EXPORTS += ['__cxa_demangle', 'free']
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$demangle', '$stackTrace']
-
   if settings.FULL_ES3:
     settings.FULL_ES2 = 1
     settings.MAX_WEBGL_VERSION = max(2, settings.MAX_WEBGL_VERSION)
@@ -1523,9 +1526,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if options.use_closure_compiler == 2 and not settings.WASM2JS:
     exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
-
-  if settings.WASM2JS:
-    settings.MAYBE_WASM2JS = 1
 
   if settings.AUTODEBUG:
     settings.REQUIRED_EXPORTS += ['_emscripten_tempret_set']
@@ -1802,7 +1802,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   # Some settings make no sense when not linking as C++
   if not settings.LINK_AS_CXX:
     cxx_only_settings = [
-      'DEMANGLE_SUPPORT',
       'EXCEPTION_DEBUG',
       'DISABLE_EXCEPTION_CATCHING',
       'EXCEPTION_CATCHING_ALLOWED',
@@ -1954,10 +1953,7 @@ def phase_emscript(in_wasm, wasm_target, js_syms, base_metadata):
   # the module is already in JS format.
   if settings.SINGLE_FILE and not settings.WASM2JS:
     settings.SUPPORT_BASE64_EMBEDDING = 1
-    if settings.MINIMAL_RUNTIME:
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$base64Decode')
-    else:
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$tryParseAsDataURI')
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$base64Decode')
 
   if shared.SKIP_SUBPROCS:
     return
@@ -1980,7 +1976,6 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
       if building.is_wasm_dylib(f):
         safe_copy(f, in_temp(''))
 
-  settings.EXPORTED_RUNTIME_METHODS = []
   # Ignore any options or settings that can conflict with running the TS
   # generation output.
   # Don't invoke the program's `main` function.
@@ -2089,13 +2084,15 @@ def phase_source_transforms(options):
 # both main code and libraries.
 # See also: `preprocess` in parseTools.js.
 def fix_es6_import_statements(js_file):
-  if not settings.EXPORT_ES6:
+  if not settings.MODULARIZE:
     return
 
   src = read_file(js_file)
   write_file(js_file, src
              .replace('EMSCRIPTEN$IMPORT$META', 'import.meta')
-             .replace('EMSCRIPTEN$AWAIT$IMPORT', 'await import'))
+             .replace('EMSCRIPTEN$AWAIT$IMPORT', 'await import')
+             .replace('EMSCRIPTEN$AWAIT(createWasm())', 'await createWasm()')
+             .replace('EMSCRIPTEN$AWAIT(', 'await ('))
   save_intermediate('es6-module')
 
 
@@ -2115,6 +2112,47 @@ def create_worker_file(input_file, target_dir, output_file, options):
   utils.convert_line_endings_in_file(output_file, options.output_eol)
 
 
+def create_esm_wrapper(wrapper_file, support_target, wasm_target):
+  wasm_exports = []
+  js_exports = []
+  for f in settings.USER_EXPORTS:
+    if f == '_main' and '__main_argc_argv' in settings.WASM_EXPORTS:
+      wasm_exports.append('__main_argc_argv as main')
+    elif f in settings.WASM_EXPORTS:
+      wasm_exports.append(shared.demangle_c_symbol_name(f))
+    else:
+      js_exports.append(f)
+  wasm_exports = ', '.join(wasm_exports)
+  js_exports = ', '.join(js_exports)
+
+  wrapper = []
+  if wasm_exports:
+    wrapper.append(f"export {{ {wasm_exports} }} from './{settings.WASM_BINARY_FILE}';")
+    # Because of the wasm ESM integration worker we need to make sure we import
+    # the wasm module here, before we import the support.js file.
+    # So, if there are no other exports we at least export the `memory`.
+  else:
+    wrapper.append('// The wasm module must be imported here first before the support file')
+    wrapper.append('// in order to avoid issues with circullr dependencies.')
+    wrapper.append(f"import * as unused from './{settings.WASM_BINARY_FILE}';")
+  support_url = f'./{os.path.basename(support_target)}'
+  if js_exports:
+    wrapper.append(f"export {{ default, {js_exports} }} from '{support_url}';")
+  else:
+    wrapper.append(f"export {{ default }} from '{support_url}';")
+  write_file(wrapper_file, '\n'.join(wrapper) + '\n')
+
+  # FIXME(sbc): This is a huge hack to rename the imports in the
+  # wasm file.  Find a better way to do this.
+  wasm_dis = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
+  mod = shared.check_call([wasm_dis, wasm_target], stdout=PIPE).stdout
+  mod = mod.replace('(import "env"', f'(import "{support_url}"')
+  mod = mod.replace('(import "wasi_snapshot_preview1"', f'(import "{support_url}"')
+
+  wasm_as = os.path.join(building.get_binaryen_bin(), 'wasm-as')
+  shared.check_call([wasm_as, '--all-features', '-o', wasm_target, '-'], input=mod)
+
+
 @ToolchainProfiler.profile_block('final emitting')
 def phase_final_emitting(options, target, js_target, wasm_target):
   global final_js
@@ -2132,7 +2170,7 @@ def phase_final_emitting(options, target, js_target, wasm_target):
   if settings.AUDIO_WORKLET == 1:
     create_worker_file('src/audio_worklet.js', target_dir, settings.AUDIO_WORKLET_FILE, options)
 
-  if settings.MODULARIZE:
+  if settings.MODULARIZE and not settings.WASM_ESM_INTEGRATION:
     modularize()
   elif settings.USE_CLOSURE_COMPILER:
     module_export_name_substitution()
@@ -2173,7 +2211,12 @@ def phase_final_emitting(options, target, js_target, wasm_target):
   js_manipulation.handle_license(final_js)
 
   # The JS is now final. Move it to its final location
-  move_file(final_js, js_target)
+  if settings.WASM_ESM_INTEGRATION:
+    support_target = unsuffixed(js_target) + '.support.mjs'
+    move_file(final_js, support_target)
+    create_esm_wrapper(js_target, support_target, wasm_target)
+  else:
+    move_file(final_js, js_target)
 
   target_basename = unsuffixed_basename(target)
 
@@ -2372,10 +2415,7 @@ def phase_binaryen(target, options, wasm_target):
   if final_js and settings.SINGLE_FILE and not settings.WASM2JS:
     js = read_file(final_js)
 
-    if settings.MINIMAL_RUNTIME:
-      js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(wasm_target))
-    else:
-      js = do_replace(js, '<<< WASM_BINARY_FILE >>>', get_subresource_location(wasm_target))
+    js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(wasm_target))
     delete_file(wasm_target)
     write_file(final_js, js)
 
@@ -2468,19 +2508,6 @@ var %(EXPORT_NAME)s = (() => {
         'script_url_node': script_url_node,
         'wrapper_function': wrapper_function,
       }
-
-  if settings.ASSERTIONS and settings.MODULARIZE != 'instance':
-    src += '''\
-(() => {
-  // Create a small, never-async wrapper around %(EXPORT_NAME)s which
-  // checks for callers incorrectly using it with `new`.
-  var real_%(EXPORT_NAME)s = %(EXPORT_NAME)s;
-  %(EXPORT_NAME)s = function(arg) {
-    if (new.target) throw new Error("%(EXPORT_NAME)s() should not be called with `new %(EXPORT_NAME)s()`");
-    return real_%(EXPORT_NAME)s(arg);
-  }
-})();
-''' % {'EXPORT_NAME': settings.EXPORT_NAME}
 
   if settings.SOURCE_PHASE_IMPORTS:
     src = f"import source wasmModule from './{settings.WASM_BINARY_FILE}';\n\n" + src

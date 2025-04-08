@@ -52,7 +52,6 @@ const pthreadWorkerOptions = `{
 #endif
 #endif
 }`;
-null
 }}}
 
 var LibraryPThread = {
@@ -69,9 +68,6 @@ var LibraryPThread = {
                    'exit',
 #if PTHREADS_DEBUG || ASSERTIONS
                    '$ptrToString',
-#endif
-#if !MINIMAL_RUNTIME
-                   '$handleException',
 #endif
                    ],
   $PThread: {
@@ -689,7 +685,7 @@ var LibraryPThread = {
   // allocations from __pthread_create_js we could also remove this.
   __pthread_create_js__noleakcheck: true,
 #endif
-  __pthread_create_js__deps: ['$spawnThread', 'pthread_self', '$pthreadCreateProxied',
+  __pthread_create_js__deps: ['$spawnThread', '$pthreadCreateProxied',
     'emscripten_has_threading_support',
 #if OFFSCREENCANVAS_SUPPORT
     'malloc',
@@ -858,7 +854,9 @@ var LibraryPThread = {
     return spawnThread(threadParams);
   },
 
+#if (ASSERTIONS || !ALLOW_BLOCKING_ON_MAIN_THREAD) && !MINIMAL_RUNTIME
   emscripten_check_blocking_allowed__deps: ['$warnOnce'],
+#endif
   emscripten_check_blocking_allowed: () => {
 #if (ASSERTIONS || !ALLOW_BLOCKING_ON_MAIN_THREAD) && !MINIMAL_RUNTIME
 #if ENVIRONMENT_MAY_BE_NODE
@@ -879,11 +877,7 @@ var LibraryPThread = {
   // that the entire process should exit.
   // This function is always called from a pthread, but is executed on the
   // main thread due the __proxy attribute.
-  $exitOnMainThread__deps: ['exit',
-#if !MINIMAL_RUNTIME
-    '$handleException',
-#endif
-  ],
+  $exitOnMainThread__deps: ['exit'],
   $exitOnMainThread__proxy: 'async',
   $exitOnMainThread: (returnCode) => {
 #if PTHREADS_DEBUG
@@ -901,7 +895,7 @@ var LibraryPThread = {
   $proxyToMainThreadPtr: (...args) => BigInt(proxyToMainThread(...args)),
 #endif
 
-  $proxyToMainThread__deps: ['$stackSave', '$stackRestore', '$stackAlloc', '_emscripten_run_on_main_thread_js', ...i53ConversionDeps],
+  $proxyToMainThread__deps: ['$stackSave', '$stackRestore', '$stackAlloc', '_emscripten_run_on_main_thread_js'],
   $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), ...number)} */',
   $proxyToMainThread: (funcIndex, emAsmAddr, sync, ...callArgs) => {
     // EM_ASM proxying is done by passing a pointer to the address of the EM_ASM
@@ -1139,7 +1133,7 @@ var LibraryPThread = {
   // TODO(sbc): Should we make a new form of __proxy attribute for JS library
   // function that run asynchronously like but blocks the caller until they are
   // done.  Perhaps "sync_with_ctx"?
-  _emscripten_dlsync_threads_async__deps: ['_emscripten_proxy_dlsync_async', 'emscripten_promise_create', '$getPromise'],
+  _emscripten_dlsync_threads_async__deps: ['_emscripten_proxy_dlsync_async', '$makePromise'],
   _emscripten_dlsync_threads_async: (caller, callback, ctx) => {
 #if PTHREADS_DEBUG
     dbg("_emscripten_dlsync_threads_async caller=" + ptrToString(caller));
@@ -1212,6 +1206,7 @@ var LibraryPThread = {
 #endif // MAIN_MODULE
 
   $checkMailbox__deps: ['$callUserCallback',
+                        'pthread_self',
                         '_emscripten_check_mailbox',
                         '_emscripten_thread_mailbox_await'],
   $checkMailbox: () => {
