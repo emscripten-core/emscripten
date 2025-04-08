@@ -2114,7 +2114,7 @@ def create_worker_file(input_file, target_dir, output_file, options):
 
 def create_esm_wrapper(wrapper_file, support_target, wasm_target):
   wasm_exports = []
-  js_exports = []
+  js_exports = list(settings.EXPORTED_RUNTIME_METHODS)
   for f in settings.USER_EXPORTS:
     if f == '_main' and '__main_argc_argv' in settings.WASM_EXPORTS:
       wasm_exports.append('__main_argc_argv as main')
