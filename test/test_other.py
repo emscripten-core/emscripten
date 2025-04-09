@@ -6750,24 +6750,24 @@ int main(int argc, char **argv) {
     self.assertContained('locale set to waka: waka',
                          self.run_js('a.out.js', args=['waka']))
 
+  @with_env_modify({'LC_ALL': 'en_US'})
   def test_browser_language_detection(self):
     # Test HTTP Accept-Language parsing by simulating navigator.languages #8751
     self.run_process([EMCC,
                       test_file('test_browser_language_detection.c')])
-    self.assertContained('C.UTF-8', self.run_js('a.out.js'))
+    # We support both "C" and "en_US" here since older versions of node do
+    # not expose navigator.languages.
+    self.assertContained('LANG=(C|en_US).UTF-8', self.run_js('a.out.js'), regex=True)
 
     # Accept-Language: fr,fr-FR;q=0.8,en-US;q=0.5,en;q=0.3
-    create_file('preamble.js', r'''navigator = {};
-      navigator.languages = [ "fr", "fr-FR", "en-US", "en" ];''')
-    self.run_process([EMCC, '--pre-js', 'preamble.js',
-                      test_file('test_browser_language_detection.c')])
-    self.assertContained('fr.UTF-8', self.run_js('a.out.js'))
+    create_file('pre.js', 'var navigator = { languages: [ "fr", "fr-FR", "en-US", "en" ] };')
+    self.run_process([EMCC, '--pre-js', 'pre.js', test_file('test_browser_language_detection.c')])
+    self.assertContained('LANG=fr.UTF-8', self.run_js('a.out.js'))
 
     # Accept-Language: fr-FR,fr;q=0.8,en-US;q=0.5,en;q=0.3
-    create_file('preamble.js', r'''navigator = {};
-      navigator.languages = [ "fr-FR", "fr", "en-US", "en" ];''')
-    self.emcc_args += ['--pre-js', 'preamble.js']
-    self.do_runf('test_browser_language_detection.c', 'fr_FR.UTF-8')
+    create_file('pre.js', r'var navigator = { languages: [ "fr-FR", "fr", "en-US", "en" ] };')
+    self.emcc_args += ['--pre-js', 'pre.js']
+    self.do_runf('test_browser_language_detection.c', 'LANG=fr_FR.UTF-8')
 
   def test_js_main(self):
     # try to add a main() from JS, at runtime. this is not supported (the
@@ -13374,7 +13374,7 @@ exec "$@"
       self.emcc_args += ['-g', '-sJSPI_EXPORTS=say_hello']
     self.emcc_args += ['-sEXPORTED_FUNCTIONS=_malloc,_free']
     output = self.do_other_test('test_split_module.c')
-    if jspi:
+    if self.js_engines == [config.V8_ENGINE]:
       # TODO remove this when https://chromium-review.googlesource.com/c/v8/v8/+/4159854
       # lands.
       # d8 doesn't support writing a file yet, so extract it from the output.
@@ -14939,8 +14939,8 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_min_node_version(self):
     node_version = shared.get_node_version(self.get_nodejs())
     node_version = '.'.join(str(x) for x in node_version)
-    self.set_setting('MIN_NODE_VERSION', 210000)
-    expected = 'This emscripten-generated code requires node v21.0.0 (detected v%s' % node_version
+    self.set_setting('MIN_NODE_VERSION', 300000)
+    expected = 'This emscripten-generated code requires node v30.0.0 (detected v%s' % node_version
     self.do_runf('hello_world.c', expected, assert_returncode=NON_ZERO)
 
   def test_deprecated_macros(self):
