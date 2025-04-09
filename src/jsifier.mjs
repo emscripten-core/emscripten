@@ -736,8 +736,8 @@ function(${args}) {
         contentText = `var ${mangled} = ${snippet};`;
       }
 
-      if (WASM_ESM_INTEGRATION && (EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
-        // It ESM integration mode we mark JS library symbols are exported at
+      if (MODULARIZE == 'instance' && (EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
+        // It MODULARIZE=instance mode mark JS library symbols are exported at
         // the point of declaration.
         contentText = 'export ' + contentText;
       }
@@ -860,7 +860,7 @@ var proxiedFunctionTable = [
       includeFile(fileName);
     }
 
-    if (MODULARIZE && !WASM_ESM_INTEGRATION) {
+    if (MODULARIZE && MODULARIZE != 'instance') {
       includeSystemFile('postamble_modularize.js');
     }
 
