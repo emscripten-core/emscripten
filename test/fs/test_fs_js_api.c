@@ -330,7 +330,7 @@ void test_fs_mmap() {
     assert(stream);
 
     var mapped = FS.mmap(stream, 12, 0, 1 | 2 /* PROT_READ | PROT_WRITE */, 1 /* MAP_SHARED */);
-    var ret = new Uint8Array(Module.HEAPU8.subarray(mapped.ptr, mapped.ptr + 12));
+    var ret = new Uint8Array(HEAPU8.subarray(mapped.ptr, mapped.ptr + 12));
     var fileContents = "";
     for (var i = 0; i < 12; i++) {
       fileContents += String.fromCharCode(ret[i]);
@@ -341,7 +341,7 @@ void test_fs_mmap() {
     ret[9] = 'x'.charCodeAt(0);
     ret[10] = 'y'.charCodeAt(0);
     ret[11] = 'z'.charCodeAt(0);
-    Module.HEAPU8.set(ret, mapped.ptr);
+    HEAPU8.set(ret, mapped.ptr);
 
     // The WasmFS msync syscall requires a pointer to the mapped memory, while the legacy JS API takes in any Uint8Array
     // buffer to write to a file.

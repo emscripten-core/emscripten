@@ -7615,7 +7615,7 @@ void* operator new(size_t size) {
     # Export things on "TheModule". This matches the typical use pattern of
     # the bound library being used as Box2D.* or Ammo.*, and we cannot rely
     # on "Module" being always present (closure may remove it).
-    self.emcc_args += ['-sEXPORTED_FUNCTIONS=_malloc,_free', '-sEXPORTED_RUNTIME_METHODS=stringToUTF8', '--post-js=glue.js', '--extern-post-js=extern-post.js']
+    self.emcc_args += ['-sEXPORTED_FUNCTIONS=_malloc,_free', '-sEXPORTED_RUNTIME_METHODS=HEAP8,stringToUTF8', '--post-js=glue.js', '--extern-post-js=extern-post.js']
     if mode == 'ALL':
       self.emcc_args += ['-sASSERTIONS']
     if allow_memory_growth:
@@ -9590,7 +9590,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.run_process([EMCC, test_file('modularize_instance.c'),
                       '-sMODULARIZE=instance',
                       '-Wno-experimental',
-                      '-sEXPORTED_RUNTIME_METHODS=baz,addOnExit',
+                      '-sEXPORTED_RUNTIME_METHODS=baz,addOnExit,HEAP32',
                       '-sEXPORTED_FUNCTIONS=_bar,_main,qux',
                       '--js-library', 'library.js',
                       '-o', 'modularize_instance.mjs'] + args)
