@@ -13,7 +13,7 @@
 
 function initMemory() {
 #if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return
+  if (ENVIRONMENT_IS_PTHREAD) return;
 #endif // PTHREADS
 
 #if expectToReceiveOnModule('wasmMemory')
