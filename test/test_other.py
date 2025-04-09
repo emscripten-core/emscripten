@@ -3336,7 +3336,7 @@ More info: https://emscripten.org
       '-Wno-deprecated-declarations',
       '-lembind',
       '-sRETAIN_COMPILER_SETTINGS',
-      '-sEXPORTED_RUNTIME_METHODS=getCompilerSetting,setDelayFunction,flushPendingDeletes,PureVirtualError',
+      '-sEXPORTED_RUNTIME_METHODS=getCompilerSetting,setDelayFunction,flushPendingDeletes,PureVirtualError,HEAP8',
       '-sWASM_ASYNC_COMPILATION=0',
       # This test uses a `CustomSmartPtr` class which has 1MB of data embedded in
       # it which means we need more stack space than normal.
@@ -4032,7 +4032,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     self.run_process([EMCC, test_file('module_exports/test.c'),
                       '-o', 'test.js', '-O2',
                       '-sEXPORTED_FUNCTIONS=_bufferTest,_malloc,_free',
-                      '-sEXPORTED_RUNTIME_METHODS=ccall,cwrap',
+                      '-sEXPORTED_RUNTIME_METHODS=ccall,cwrap,HEAPU8',
                       '-sWASM_ASYNC_COMPILATION=0'])
 
     # Check that test.js compiled without --closure=1 contains "module['exports'] = Module;"
@@ -4050,7 +4050,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     self.run_process([EMCC, test_file('module_exports/test.c'),
                       '-o', 'test.js', '-O2', '--closure=1',
                       '-sEXPORTED_FUNCTIONS=_bufferTest,_malloc,_free',
-                      '-sEXPORTED_RUNTIME_METHODS=ccall,cwrap',
+                      '-sEXPORTED_RUNTIME_METHODS=ccall,cwrap,HEAPU8',
                       '-sWASM_ASYNC_COMPILATION=0'])
 
     # Check that test.js compiled with --closure 1 contains "module.exports", we want to verify that
