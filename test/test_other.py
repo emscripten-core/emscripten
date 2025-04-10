@@ -8989,6 +8989,7 @@ int main() {
         (['-O0', '--profiling-funcs'], False, False, True, False),
         (['-O1'],        False, False, True, False),
         (['-O2'],        False, True,  False, False),
+        (['-O2', '-gz'], False, True,  False, False), # -gz means debug compression, it should not enable debugging
         (['-O2', '-g1'], False, False, True, False),
         (['-O2', '-g'],  True,  False, True, False),
         (['-O2', '--closure=1'],         False, True, False, True),
@@ -13373,12 +13374,7 @@ exec "$@"
       self.require_jspi()
       self.emcc_args += ['-g', '-sJSPI_EXPORTS=say_hello']
     self.emcc_args += ['-sEXPORTED_FUNCTIONS=_malloc,_free']
-    output = self.do_other_test('test_split_module.c')
-    if self.js_engines == [config.V8_ENGINE]:
-      # TODO remove this when https://chromium-review.googlesource.com/c/v8/v8/+/4159854
-      # lands.
-      # d8 doesn't support writing a file yet, so extract it from the output.
-      create_file('profile.data', bytearray(json.loads(output[output.find('['):output.find(']') + 1])), True)
+    self.do_other_test('test_split_module.c')
     self.assertExists('test_split_module.wasm')
     self.assertExists('test_split_module.wasm.orig')
     self.assertExists('profile.data')
@@ -15831,7 +15827,8 @@ addToLibrary({
         });
         return {}; // Compiling asynchronously, no exports.
       }''')
-    self.do_runf('test_manual_wasm_instantiate.c', emcc_args=['--pre-js=pre.js'])
+    # Test with ASYNCIFY here to ensure that that wasmExports gets set to the wrapped version of the wasm exports.
+    self.do_runf(test_file('test_manual_wasm_instantiate.c'),emcc_args=['--pre-js=pre.js','-sASYNCIFY','-DASYNCIFY_ENABLED'])
 
   def test_late_module_api_assignment(self):
     # When sync instantiation is used (or when async/await is used in MODULARIZE mode) certain
