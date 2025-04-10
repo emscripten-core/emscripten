@@ -1200,6 +1200,9 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
           settings.GENERATE_SOURCE_MAP = 1 if requested_level == 'source-map' else 2
           settings.EMIT_NAME_SECTION = 1
           newargs[i] = '-g'
+        elif requested_level == 'z':
+          # Ignore `-gz`.  We don't support debug info compression.
+          continue
         else:
           # Other non-integer levels (e.g. -gline-tables-only or -gdwarf-5) are
           # usually clang flags that emit DWARF. So we pass them through to
