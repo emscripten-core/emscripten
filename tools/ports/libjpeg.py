@@ -24,7 +24,7 @@ def get(ports, settings, shared):
     ports.write_file(os.path.join(source_path, 'jconfig.h'), jconfig_h)
     ports.install_headers(source_path)
     excludes = [
-      'ansi2knr.c', 'cjpeg.c', 'ckconfig.c', 'djpeg.c', 'example.c',
+      'ansi2knr.c', 'cjpeg.c', 'cjpegalt.c', 'ckconfig.c', 'djpeg.c', 'djpegalt.c', 'example.c',
       'jmemansi.c', 'jmemdos.c', 'jmemmac.c', 'jmemname.c',
       'jpegtran.c', 'rdjpgcom.c', 'wrjpgcom.c',
     ]
