@@ -500,6 +500,7 @@ function exportRuntimeSymbols() {
 
   // Add JS library elements such as FS, GL, ENV, etc. These are prefixed with
   // '$ which indicates they are JS methods.
+  let baseRuntimeElements = [...runtimeElements];
   let runtimeElementsSet = new Set(runtimeElements);
   for (const ident of Object.keys(LibraryManager.library)) {
     if (isJsOnlySymbol(ident) && !isDecorator(ident) && !isInternalSymbol(ident)) {
@@ -536,8 +537,8 @@ function exportRuntimeSymbols() {
     }
 
     const unexported = [];
-    for (const name of runtimeElements) {
-      if (!EXPORTED_RUNTIME_METHODS.has(name) && !unusedLibSymbols.has(name)) {
+    for (const name of baseRuntimeElements) {
+      if (!EXPORTED_RUNTIME_METHODS.has(name)) {
         unexported.push(name);
       }
     }
