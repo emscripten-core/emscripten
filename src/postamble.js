@@ -300,8 +300,8 @@ function preInit() {
 }
 
 #if MODULARIZE == 'instance'
-export default async function init(args = {}) {
-  moduleArgs = args;
+export default async function init(moduleArg = {}) {
+  Module = moduleArg;
   processModuleArgs();
 #if WASM_ESM_INTEGRATION
   updateMemoryViews();
