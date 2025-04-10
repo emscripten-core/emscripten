@@ -299,14 +299,22 @@ function preInit() {
 #endif
 }
 
-#if WASM_ESM_INTEGRATION
-export default function init(moduleArg = {}) {
+#if MODULARIZE == 'instance'
+export default async function init(moduleArg = {}) {
   Module = moduleArg;
-  updateMemoryViews();
   processModuleArgs();
+#if WASM_ESM_INTEGRATION
+  updateMemoryViews();
+#else
+  wasmExports = await createWasm();
+  assignWasmExports();
+#endif
   preInit();
   run();
 }
+#if PTHREADS
+if (ENVIRONMENT_IS_PTHREAD) await init()
+#endif
 #else
 preInit();
 run();
