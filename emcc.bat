@@ -15,7 +15,7 @@
 @set _PYTHON_SYSCONFIGDATA_NAME=
 @set EM_PY=%EMSDK_PYTHON%
 @if "%EM_PY%"=="" (
-  set EM_PY=python
+  set EM_PY=python.exe
 )
 
 :: Work around Windows bug https://github.com/microsoft/terminal/issues/15212 : If this
