@@ -6,4 +6,4 @@ interface WasmModule {
 }
 
 export type MainModule = WasmModule;
-export default function MainModuleFactory (options?: unknown): MainModule;
+export default function MainModuleFactory (moduleOverrides?: Partial<MainModule>): MainModule;
