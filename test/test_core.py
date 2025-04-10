@@ -7615,7 +7615,7 @@ void* operator new(size_t size) {
     # Export things on "TheModule". This matches the typical use pattern of
     # the bound library being used as Box2D.* or Ammo.*, and we cannot rely
     # on "Module" being always present (closure may remove it).
-    self.emcc_args += ['-sEXPORTED_FUNCTIONS=_malloc,_free', '-sEXPORTED_RUNTIME_METHODS=stringToUTF8', '--post-js=glue.js', '--extern-post-js=extern-post.js']
+    self.emcc_args += ['-sEXPORTED_FUNCTIONS=_malloc,_free', '-sEXPORTED_RUNTIME_METHODS=HEAP8,stringToUTF8', '--post-js=glue.js', '--extern-post-js=extern-post.js']
     if mode == 'ALL':
       self.emcc_args += ['-sASSERTIONS']
     if allow_memory_growth:
@@ -9568,13 +9568,46 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # TODO(sbc): WASM_ESM_INTEGRATION doesn't currently work with closure.
     # self.maybe_closure()
     self.node_args += ['--experimental-wasm-modules', '--no-warnings']
-    self.run_process([EMCC, '-o', 'hello_world.mjs', '-sEXPORTED_FUNCTIONS=_main,stringToNewUTF8', '-sWASM_ESM_INTEGRATION', '-Wno-experimental', test_file('hello_world_argv.c')] + self.get_emcc_args())
+    self.run_process([EMCC, '-o', 'hello_world.mjs', '-sEXPORTED_RUNTIME_METHODS=err', '-sEXPORTED_FUNCTIONS=_main,stringToNewUTF8', '-sWASM_ESM_INTEGRATION', '-Wno-experimental', test_file('hello_world_argv.c')] + self.get_emcc_args())
     create_file('runner.mjs', '''
-      import init, { stringToNewUTF8, main } from "./hello_world.mjs";
+      import init, { err, stringToNewUTF8, main } from "./hello_world.mjs";
       await init({arguments: ['foo', 'bar']});
-      console.log('this is a pointer:', stringToNewUTF8('hello'));
+      err('this is a pointer:', stringToNewUTF8('hello'));
     ''')
     self.assertContained('hello, world! (3)', self.run_js('runner.mjs'))
+    self.assertFileContents(test_file('core/test_esm_integration.expected.mjs'), read_file('hello_world.mjs'))
+
+  @parameterized({
+    '': ([],),
+    'pthreads': (['-pthread'],),
+  })
+  def test_modularize_instance(self, args):
+    create_file('library.js', '''\
+    addToLibrary({
+      $baz: () => console.log('baz'),
+      $qux: () => console.log('qux'),
+    });''')
+    self.run_process([EMCC, test_file('modularize_instance.c'),
+                      '-sMODULARIZE=instance',
+                      '-Wno-experimental',
+                      '-sEXPORTED_RUNTIME_METHODS=baz,addOnExit,HEAP32',
+                      '-sEXPORTED_FUNCTIONS=_bar,_main,qux',
+                      '--js-library', 'library.js',
+                      '-o', 'modularize_instance.mjs'] + args)
+
+    create_file('runner.mjs', '''
+      import { strict as assert } from 'assert';
+      import init, { _foo as foo, _bar as bar, baz, qux, addOnExit, HEAP32 } from "./modularize_instance.mjs";
+      await init();
+      foo(); // exported with EMSCRIPTEN_KEEPALIVE
+      bar(); // exported with EXPORTED_FUNCTIONS
+      baz(); // exported library function with EXPORTED_RUNTIME_METHODS
+      qux(); // exported library function with EXPORTED_FUNCTIONS
+      assert(typeof addOnExit === 'function'); // exported runtime function with EXPORTED_RUNTIME_METHODS
+      assert(typeof HEAP32 === 'object'); // exported runtime value by default
+    ''')
+
+    self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
 
 
 # Generate tests for everything

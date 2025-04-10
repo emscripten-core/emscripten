@@ -1,10 +1,14 @@
 // This file is included after the automatically-generated JS library code
 // but before the wasm module is created.
- 
-#if WASM_ESM_INTEGRATION
+
+#if MODULARIZE == 'instance'
 function processModuleArgs() 
 #endif
 {
+#if IMPORTED_MEMORY
+  initMemory();
+#endif
+
   <<< ATMODULES >>>
 
 #if ASSERTIONS
@@ -34,5 +38,6 @@ function processModuleArgs()
 #endif
 #endif // ASSERTIONS
 
-  {{{ exportJSSymbols() }}}
 }
+
+{{{ exportJSSymbols() }}}
