@@ -14,11 +14,11 @@ EM_ASYNC_JS(int, getResult, (), {
 
 int main() {
   printf("in main\n");
+#ifdef ASYNCIFY
   int result = getResult();
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
 #else
-  assert(result);
+  int result = EM_ASM_INT({return Module.testWasmInstantiationSucceeded;});
 #endif
+  assert(result);
   return 0;
 }
