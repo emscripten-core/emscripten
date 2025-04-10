@@ -433,7 +433,8 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
   receiving = create_receiving(function_exports)
   if settings.WASM_ESM_INTEGRATION:
     sending = create_sending(metadata, forwarded_json['librarySymbols'])
-    parts += [sending, receiving]
+    reexports = create_reexports()
+    parts += [sending, receiving, reexports]
   else:
     parts += create_module(receiving, metadata, global_exports, forwarded_json['librarySymbols'])
   parts.append(post)
@@ -858,7 +859,10 @@ def create_sending(metadata, library_symbols):
     elems = []
     for k, v in sorted_items:
       elems.append(f'{v} as {k}')
-    return f"export {{ {', '.join(elems)} }};\n\n"
+    elems = ',\n  '.join(elems)
+    exports = '// Export JS functions to the wasm module with demangled names.\n'
+    exports += f"export {{\n  {elems}\n}};\n\n"
+    return exports
 
   prefix = ''
   if settings.MAYBE_CLOSURE_COMPILER:
@@ -874,6 +878,21 @@ def create_sending(metadata, library_symbols):
       elems.append(f'{prefix}{k}: {v}')
 
   return '{\n  ' + ',\n  '.join(elems) + '\n}'
+
+
+def create_reexports():
+  assert settings.WASM_ESM_INTEGRATION
+  exports = '// Re-export imported wasm functions to the JS entry point. These are user-facing and underscore mangled.\n'
+  wasm_exports = []
+  for exp in building.user_requested_exports:
+    if shared.is_c_symbol(exp):
+      demangled = shared.demangle_c_symbol_name(exp)
+      if demangled in settings.WASM_EXPORTS:
+        wasm_exports.append(exp)
+      if demangled == 'main' and '__main_argc_argv' in settings.WASM_EXPORTS:
+        wasm_exports.append('_main')
+  exports += f"export {{ {', '.join(wasm_exports)} }};\n\n"
+  return exports
 
 
 def can_use_await():
