@@ -134,25 +134,25 @@ function calculateLibraries() {
       'libhtml5_webgl.js',
       'libopenal.js',
       'libglut.js',
-      'libxlib.js',
-      'libegl.js',
+      'libXLIB.js',
+      'libEGL.js',
       'libuuid.js',
-      'libglew.js',
+      'libGLEW.js',
       'libidbstore.js',
       'libasync.js',
     );
     if (USE_SDL != 2) {
-      libraries.push('libsdl.js');
+      libraries.push('libSDL.js');
     }
   } else {
     if (ASYNCIFY) {
       libraries.push('libasync.js');
     }
     if (USE_SDL == 1) {
-      libraries.push('libsdl.js');
+      libraries.push('libSDL.js');
     }
     if (USE_SDL == 2) {
-      libraries.push('libegl.js', 'libwebgl.js', 'libhtml5_webgl.js');
+      libraries.push('libEGL.js', 'libwebgl.js', 'libhtml5_webgl.js');
     }
   }
 
