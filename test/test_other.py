@@ -6750,14 +6750,15 @@ int main(int argc, char **argv) {
     self.assertContained('locale set to waka: waka',
                          self.run_js('a.out.js', args=['waka']))
 
-  @with_env_modify({'LC_ALL': 'en_US'})
+  @crossplatform
   def test_browser_language_detection(self):
     # Test HTTP Accept-Language parsing by simulating navigator.languages #8751
     self.run_process([EMCC,
                       test_file('test_browser_language_detection.c')])
     # We support both "C" and "en_US" here since older versions of node do
     # not expose navigator.languages.
-    self.assertContained('LANG=(C|en_US).UTF-8', self.run_js('a.out.js'), regex=True)
+    lang = os.environ.get('LANG', 'C.UTF-8')
+    self.assertContained(f'LANG=({lang}|C.UTF-8)', self.run_js('a.out.js'), regex=True)
 
     # Accept-Language: fr,fr-FR;q=0.8,en-US;q=0.5,en;q=0.3
     create_file('pre.js', 'var navigator = { languages: [ "fr", "fr-FR", "en-US", "en" ] };')
