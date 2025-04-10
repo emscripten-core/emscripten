@@ -14,7 +14,7 @@ EM_ASYNC_JS(int, getResult, (), {
 
 int main() {
   printf("in main\n");
-#ifdef ASYNCIFY
+#ifdef ASYNCIFY_ENABLED
   int result = getResult();
 #else
   int result = EM_ASM_INT({return Module.testWasmInstantiationSucceeded;});

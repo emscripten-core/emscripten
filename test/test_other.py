@@ -15827,7 +15827,7 @@ addToLibrary({
         return {}; // Compiling asynchronously, no exports.
       }''')
     # Test with ASYNCIFY here to ensure that that wasmExports gets set to the wrapped version of the wasm exports.
-    self.do_runf(test_file('test_manual_wasm_instantiate.c'),emcc_args=['--pre-js=pre.js','-sASYNCIFY'])
+    self.do_runf(test_file('test_manual_wasm_instantiate.c'),emcc_args=['--pre-js=pre.js','-sASYNCIFY','-DASYNCIFY_ENABLED'])
 
   def test_late_module_api_assignment(self):
     # When sync instantiation is used (or when async/await is used in MODULARIZE mode) certain
