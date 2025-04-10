@@ -13373,12 +13373,7 @@ exec "$@"
       self.require_jspi()
       self.emcc_args += ['-g', '-sJSPI_EXPORTS=say_hello']
     self.emcc_args += ['-sEXPORTED_FUNCTIONS=_malloc,_free']
-    output = self.do_other_test('test_split_module.c')
-    if self.js_engines == [config.V8_ENGINE]:
-      # TODO remove this when https://chromium-review.googlesource.com/c/v8/v8/+/4159854
-      # lands.
-      # d8 doesn't support writing a file yet, so extract it from the output.
-      create_file('profile.data', bytearray(json.loads(output[output.find('['):output.find(']') + 1])), True)
+    self.do_other_test('test_split_module.c')
     self.assertExists('test_split_module.wasm')
     self.assertExists('test_split_module.wasm.orig')
     self.assertExists('profile.data')
