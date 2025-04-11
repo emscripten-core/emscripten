@@ -351,11 +351,6 @@ var EMULATE_FUNCTION_POINTER_CASTS = false;
 // [link]
 var EXCEPTION_DEBUG = false;
 
-// If 1, export `demangle` and `stackTrace` JS library functions.
-// [link]
-// [deprecated]
-var DEMANGLE_SUPPORT = false;
-
 // Print out when we enter a library call (library*.js). You can also unset
 // runtimeDebug at runtime for logging to cease, and can set it when you want
 // it back. A simple way to set it in C++ is::
@@ -969,10 +964,6 @@ var JSPI_IMPORTS = [];
 // having "FS" in this list.
 // [link]
 var EXPORTED_RUNTIME_METHODS = [];
-
-// Deprecated, use EXPORTED_RUNTIME_METHODS instead.
-// [deprecated]
-var EXTRA_EXPORTED_RUNTIME_METHODS = [];
 
 // A list of incoming values on the Module object in JS that we care about. If
 // a value is not in this list, then we don't emit code to check if you provide
@@ -1928,12 +1919,6 @@ var MIN_CHROME_VERSION = 85;
 // feature_matrix.py).
 var MIN_NODE_VERSION = 160000;
 
-// Whether we support setting errno from JS library code.
-// In MINIMAL_RUNTIME builds, this option defaults to 0.
-// [link]
-// [deprecated]
-var SUPPORT_ERRNO = true;
-
 // If true, uses minimal sized runtime without POSIX features, Module,
 // preRun/preInit/etc., Emscripten built-in XHR loading or library_browser.js.
 // Enable this setting to target the smallest code size possible.  Set
@@ -2203,6 +2188,11 @@ var SIGNATURE_CONVERSIONS = [];
 // [link]
 var SOURCE_PHASE_IMPORTS = false;
 
+// Experimental support for wasm ESM integration.
+// Requires EXPORT_ES6 and MODULARIZE=instance
+// [link]
+var WASM_ESM_INTEGRATION = false;
+
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]
 // For removed settings (which now effectively have a fixed value and can no
@@ -2285,4 +2275,7 @@ var LEGACY_SETTINGS = [
   ['WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG', [0], 'No longer supported'],
   ['AUTO_ARCHIVE_INDEXES', [0, 1], 'No longer needed'],
   ['USE_ES6_IMPORT_META', [1], 'Disabling is no longer supported'],
+  ['EXTRA_EXPORTED_RUNTIME_METHODS', [[]], 'No longer supported, use EXPORTED_RUNTIME_METHODS'],
+  ['SUPPORT_ERRNO', [0], 'No longer supported'],
+  ['DEMANGLE_SUPPORT', [0], 'No longer supported'],
 ];

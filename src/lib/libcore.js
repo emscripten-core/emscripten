@@ -2283,7 +2283,8 @@ addToLibrary({
   $wasmTable: undefined,
 #endif
 
-  $noExitRuntime: "{{{ makeModuleReceiveExpr('noExitRuntime', !EXIT_RUNTIME) }}}",
+  $noExitRuntime__postset: () => addAtModule(makeModuleReceive('noExitRuntime')),
+  $noExitRuntime: {{{ !EXIT_RUNTIME }}},
 
   // The following addOn<X> functions are for adding runtime callbacks at
   // various executions points. Each addOn<X> function has a corresponding
@@ -2300,7 +2301,7 @@ addToLibrary({
     ATPRERUNS.unshift('callRuntimeCallbacks(onPreRuns);');
   },
   $addOnPreRun__deps: ['$onPreRuns'],
-  $addOnPreRun: (cb) => onPreRuns.unshift(cb),
+  $addOnPreRun: (cb) => onPreRuns.push(cb),
   // See ATINITS in parseTools.mjs for more information.
   $onInits: [],
   $onInits__internal: true,
@@ -2309,7 +2310,7 @@ addToLibrary({
     ATINITS.unshift('callRuntimeCallbacks(onInits);');
   },
   $addOnInit__deps: ['$onInits'],
-  $addOnInit: (cb) => onInits.unshift(cb),
+  $addOnInit: (cb) => onInits.push(cb),
   // See ATPOSTCTORS in parseTools.mjs for more information.
   $onPostCtors: [],
   $onPostCtors__internal: true,
@@ -2318,7 +2319,7 @@ addToLibrary({
     ATPOSTCTORS.unshift('callRuntimeCallbacks(onPostCtors);');
   },
   $addOnPostCtor__deps: ['$onPostCtors'],
-  $addOnPostCtor: (cb) => onPostCtors.unshift(cb),
+  $addOnPostCtor: (cb) => onPostCtors.push(cb),
   // See ATMAINS in parseTools.mjs for more information.
   $onMains: [],
   $onMains__internal: true,
@@ -2327,7 +2328,7 @@ addToLibrary({
     ATMAINS.unshift('callRuntimeCallbacks(onMains);');
   },
   $addOnPreMain__deps: ['$onMains'],
-  $addOnPreMain: (cb) => onMains.unshift(cb),
+  $addOnPreMain: (cb) => onMains.push(cb),
   // See ATEXITS in parseTools.mjs for more information.
   $onExits: [],
   $onExits__internal: true,
@@ -2336,7 +2337,7 @@ addToLibrary({
     ATEXITS.unshift('callRuntimeCallbacks(onExits);');
   },
   $addOnExit__deps: ['$onExits'],
-  $addOnExit: (cb) => onExits.unshift(cb),
+  $addOnExit: (cb) => onExits.push(cb),
   // See ATPOSTRUNS in parseTools.mjs for more information.
   $onPostRuns: [],
   $onPostRuns__internal: true,
@@ -2345,7 +2346,7 @@ addToLibrary({
     ATPOSTRUNS.unshift('callRuntimeCallbacks(onPostRuns);');
   },
   $addOnPostRun__deps: ['$onPostRuns'],
-  $addOnPostRun: (cb) => onPostRuns.unshift(cb),
+  $addOnPostRun: (cb) => onPostRuns.push(cb),
 
   // We used to define these globals unconditionally in support code.
   // Instead, we now define them here so folks can pull it in explicitly, on

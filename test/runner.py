@@ -285,7 +285,7 @@ def load_test_suites(args, modules, start_at, repeat):
         unmatched_test_names.remove(name)
       except AttributeError:
         pass
-    if len(names_in_module):
+    if names_in_module:
       loaded_tests = loader.loadTestsFromNames(sorted(names_in_module), m)
       tests = flattened_tests(loaded_tests)
       suite = suite_for_module(m, tests)

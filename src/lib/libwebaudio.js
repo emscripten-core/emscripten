@@ -163,7 +163,7 @@ let LibraryWebAudio = {
 #endif
 
     let audioWorkletCreationFailed = () => {
-#if WEBAUDIO_DEBUG
+#if ASSERTIONS || WEBAUDIO_DEBUG
       console.error(`emscripten_start_wasm_audio_worklet_thread_async() addModule() failed!`);
 #endif
       {{{ makeDynCall('viip', 'callback') }}}(contextHandle, 0/*EM_FALSE*/, userData);
@@ -171,7 +171,7 @@ let LibraryWebAudio = {
 
     // Does browser not support AudioWorklets?
     if (!audioWorklet) {
-#if WEBAUDIO_DEBUG
+#if ASSERTIONS || WEBAUDIO_DEBUG
       if (location.protocol == 'http:') {
         console.error(`AudioWorklets are not supported. This is possibly due to running the page over unsecure http:// protocol. Try running over https://, or debug via a localhost-based server, which should also allow AudioWorklets to function.`);
       } else {

@@ -15,7 +15,6 @@
     if (MIN_WEBGL_VERSION >= 2) return 'true';
     return 'GL.currentContext.version >= 2';
   }
-  null;
 }}}
 
 var LibraryGL = {
