@@ -679,7 +679,7 @@ def create_tsd(metadata, embind_tsd):
     return_type = 'MainModule'
     if settings.WASM_ASYNC_COMPILATION:
       return_type = f'Promise<{return_type}>'
-    out += f'export default function MainModuleFactory (options?: unknown): {return_type};\n'
+    out += f'export default function MainModuleFactory (moduleOverrides?: Partial<MainModule>): {return_type};\n'
   return out
 
 
