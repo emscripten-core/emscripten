@@ -5,8 +5,8 @@
 
 import os
 
-VERSION = '9c'
-HASH = 'b2affe9a1688bd49fc033f4682c4a242d4ee612f1affaef532f5adcb4602efc4433c4a52a4b3d69e7440ff1f6413b1b041b419bc90efd6d697999961a9a6afb7'
+VERSION = '9f'
+HASH = '7f733d79cf176c690dcf127352f9aa7ec48000455944f286faae606cdeada6f6865b4a3f9f01bda8947b5b1089bb3e52d2b56879b6e871279ec5cbd1829304dc'
 
 
 def needed(settings):
@@ -14,7 +14,7 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  # Archive mirrored from http://www.ijg.org/files/jpegsrc.v9c.tar.gz.
+  # Archive mirrored from http://www.ijg.org/files/jpegsrc.v9f.tar.gz.
   # We have issues where python urllib was not able to load from the www.ijg.org webserver
   # and was resulting in 403: Forbidden.
   ports.fetch_project('libjpeg', f'https://storage.googleapis.com/webassembly/emscripten-ports/jpegsrc.v{VERSION}.tar.gz', sha512hash=HASH)
@@ -24,7 +24,7 @@ def get(ports, settings, shared):
     ports.write_file(os.path.join(source_path, 'jconfig.h'), jconfig_h)
     ports.install_headers(source_path)
     excludes = [
-      'ansi2knr.c', 'cjpeg.c', 'ckconfig.c', 'djpeg.c', 'example.c',
+      'ansi2knr.c', 'cjpeg.c', 'cjpegalt.c', 'ckconfig.c', 'djpeg.c', 'djpegalt.c', 'example.c',
       'jmemansi.c', 'jmemdos.c', 'jmemmac.c', 'jmemname.c',
       'jpegtran.c', 'rdjpgcom.c', 'wrjpgcom.c',
     ]
