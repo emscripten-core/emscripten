@@ -2116,28 +2116,13 @@ def create_worker_file(input_file, target_dir, output_file, options):
 
 
 def create_esm_wrapper(wrapper_file, support_target, wasm_target):
-  wasm_exports = []
-  js_exports = list(settings.EXPORTED_RUNTIME_METHODS)
-  for f in settings.USER_EXPORTS:
-    if f == '_main' and '__main_argc_argv' in settings.WASM_EXPORTS:
-      wasm_exports.append('__main_argc_argv as main')
-    elif f in settings.WASM_EXPORTS:
-      wasm_exports.append(shared.demangle_c_symbol_name(f))
-    else:
-      js_exports.append(f)
-  wasm_exports = ', '.join(wasm_exports)
-  js_exports = ', '.join(js_exports)
+  js_exports = settings.EXPORTED_RUNTIME_METHODS + list(building.user_requested_exports)
+  js_exports = ', '.join(sorted(js_exports))
 
   wrapper = []
-  if wasm_exports:
-    wrapper.append(f"export {{ {wasm_exports} }} from './{settings.WASM_BINARY_FILE}';")
-    # Because of the wasm ESM integration worker we need to make sure we import
-    # the wasm module here, before we import the support.js file.
-    # So, if there are no other exports we at least export the `memory`.
-  else:
-    wrapper.append('// The wasm module must be imported here first before the support file')
-    wrapper.append('// in order to avoid issues with circullr dependencies.')
-    wrapper.append(f"import * as unused from './{settings.WASM_BINARY_FILE}';")
+  wrapper.append('// The wasm module must be imported here first before the support file')
+  wrapper.append('// in order to avoid issues with circular dependencies.')
+  wrapper.append(f"import * as unused from './{settings.WASM_BINARY_FILE}';")
   support_url = f'./{os.path.basename(support_target)}'
   if js_exports:
     wrapper.append(f"export {{ default, {js_exports} }} from '{support_url}';")

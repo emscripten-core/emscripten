@@ -9568,9 +9568,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # TODO(sbc): WASM_ESM_INTEGRATION doesn't currently work with closure.
     # self.maybe_closure()
     self.node_args += ['--experimental-wasm-modules', '--no-warnings']
-    self.run_process([EMCC, '-o', 'hello_world.mjs', '-sEXPORTED_RUNTIME_METHODS=err', '-sEXPORTED_FUNCTIONS=_main,stringToNewUTF8', '-sWASM_ESM_INTEGRATION', '-Wno-experimental', test_file('hello_world_argv.c')] + self.get_emcc_args())
+    self.run_process([EMCC, '-o', 'hello_world.mjs', '-sEXPORTED_RUNTIME_METHODS=err', '-sEXPORTED_FUNCTIONS=_main,stringToNewUTF8', '-sWASM_ESM_INTEGRATION', '-Wno-experimental', test_file('core/test_esm_integration.c')] + self.get_emcc_args())
     create_file('runner.mjs', '''
-      import init, { err, stringToNewUTF8, main } from "./hello_world.mjs";
+      import init, { err, stringToNewUTF8, _main, _foo } from "./hello_world.mjs";
       await init({arguments: ['foo', 'bar']});
       err('this is a pointer:', stringToNewUTF8('hello'));
     ''')
