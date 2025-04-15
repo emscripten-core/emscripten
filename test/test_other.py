@@ -7595,11 +7595,22 @@ int main(int argc, char** argv) {
   def test_ld_library_path(self, args):
     if args:
       self.setup_node_pthreads()
+    create_file('hello1_dep.c', r'''
+#include<stdio.h>
+
+void hello1_dep() {
+  printf("Hello1_dep\n");
+  return;
+}
+''')
     create_file('hello1.c', r'''
 #include <stdio.h>
 
+void hello1_dep();
+
 void hello1() {
   printf("Hello1\n");
+  hello1_dep();
   return;
 }
 ''')
@@ -7679,105 +7690,41 @@ int main() {
   return 0;
 }
 ''')
-    self.run_process([EMCC, '-o', 'hello1.wasm', 'hello1.c', '-sSIDE_MODULE'] + args)
+    os.mkdir('subdir')
+    self.run_process([EMCC, '-o', 'subdir/libhello1_dep.so', 'hello1_dep.c', '-sSIDE_MODULE'])
+    self.run_process([EMCC, '-o', 'hello1.wasm', 'hello1.c', '-sSIDE_MODULE', 'subdir/libhello1_dep.so'] + args)
     self.run_process([EMCC, '-o', 'hello2.wasm', 'hello2.c', '-sSIDE_MODULE'] + args)
     self.run_process([EMCC, '-o', 'hello3.wasm', 'hello3.c', '-sSIDE_MODULE'] + args)
     self.run_process([EMCC, '-o', 'hello4.wasm', 'hello4.c', '-sSIDE_MODULE'] + args)
-    self.run_process([EMCC, '--profiling-funcs', '-o', 'main.js', 'main.c', '-sMAIN_MODULE=2', '-sINITIAL_MEMORY=32Mb',
+    emcc_args = ['--profiling-funcs', '-sMAIN_MODULE=2', '-sINITIAL_MEMORY=32Mb',
+                      '-L./subdir',
+                      '--embed-file', 'subdir/libhello1_dep.so@/usr/lib/libhello1_dep.so',
                       '--embed-file', 'hello1.wasm@/lib/libhello1.wasm',
                       '--embed-file', 'hello2.wasm@/usr/lib/libhello2.wasm',
                       '--embed-file', 'hello3.wasm@/libhello3.wasm',
                       '--embed-file', 'hello4.wasm@/usr/local/lib/libhello4.wasm',
                       'hello1.wasm', 'hello2.wasm', 'hello3.wasm', 'hello4.wasm', '-sNO_AUTOLOAD_DYLIBS',
-                      '--pre-js', 'pre.js'] + args)
-    out = self.run_js('main.js')
-    self.assertContained('Hello1', out)
-    self.assertContained('Hello2', out)
-    self.assertContained('Hello3', out)
-    self.assertContained('Hello4', out)
-    self.assertContained('Ok', out)
-
-  @also_with_wasmfs
-  def test_dlopen_library_path(self):
-    create_file('hello1_dep.c', r'''
-#include<stdio.h>
-
-void hello1_2() {
-  printf ("Hello1_2\n");
-  return;
-}
-''')
-    create_file('hello1.c', r'''
-#include <stdio.h>
-
-void hello1_2();
-
-void hello1() {
-  printf ("Hello1\n");
-  hello1_2();
-  return;
-}
-''')
-    create_file('pre.js', r'''
-Module.preRun = () => {
-  ENV['LD_LIBRARY_PATH']='/lib:/usr/lib:/usr/local/lib';
-};
-''')
-    create_file('main.c', r'''
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <dlfcn.h>
-
-int main() {
-  void *h;
-  void (*f)();
-  double (*f2)(double);
-
-  h = dlopen("libhello1.wasm", RTLD_NOW);
-  assert(h);
-  f = dlsym(h, "hello1");
-  assert(f);
-  f();
-  dlclose(h);
-
-  printf("Ok\n");
-
-  return 0;
-}
-''')
-    os.mkdir('subdir')
-    self.run_process([EMCC, '-o', 'subdir/libhello1_dep.so', 'hello1_dep.c', '-sSIDE_MODULE'])
-    self.run_process([EMCC, '-o', 'hello1.wasm', 'hello1.c', '-sSIDE_MODULE', 'subdir/libhello1_dep.so'])
-    self.run_process([EMCC, '--profiling-funcs', '-o', 'main.js', 'main.c', '-sMAIN_MODULE=2', '-sINITIAL_MEMORY=32Mb',
-                      '--embed-file', 'hello1.wasm@/lib/libhello1.wasm',
-                      '--embed-file', 'subdir/libhello1_dep.so@/usr/lib/libhello1_dep.so',
-                      'hello1.wasm', '-sNO_AUTOLOAD_DYLIBS',
-                      '-L./subdir', '-lhello1_dep', '--pre-js', 'pre.js'])
-    out = self.run_js('main.js')
-    self.assertContained('Hello1', out)
-    self.assertContained('Hello1_2', out)
-    self.assertContained('Ok', out)
+                      '--pre-js', 'pre.js'] + args
+    self.do_runf('main.c', 'Hello1\nHello1_dep\nHello2\nHello3\nHello4\nOk\n', emcc_args=emcc_args)
 
   @also_with_wasmfs
   def test_dlopen_rpath(self):
     create_file('hello1_dep.c', r'''
 #include<stdio.h>
 
-void hello1_2() {
-  printf ("Hello1_2\n");
+void hello1_dep() {
+  printf ("Hello1_dep\n");
   return;
 }
 ''')
     create_file('hello1.c', r'''
 #include <stdio.h>
 
-void hello1_2();
+void hello1_dep();
 
 void hello1() {
   printf ("Hello1\n");
-  hello1_2();
+  hello1_dep();
   return;
 }
 ''')
@@ -7807,26 +7754,21 @@ int main() {
 ''')
     os.mkdir('subdir')
 
-    def _build(rpath_flag):
+    def _build(rpath_flag, expected, **kwds):
       self.run_process([EMCC, '-o', 'subdir/libhello1_dep.so', 'hello1_dep.c', '-sSIDE_MODULE'])
       self.run_process([EMCC, '-o', 'hello1.wasm', 'hello1.c', '-sSIDE_MODULE', 'subdir/libhello1_dep.so'] + rpath_flag)
-      self.run_process([EMCC, '--profiling-funcs', '-o', 'main.js', 'main.c', '-sMAIN_MODULE=2', '-sINITIAL_MEMORY=32Mb',
+      args = ['--profiling-funcs', '-sMAIN_MODULE=2', '-sINITIAL_MEMORY=32Mb',
                         '--embed-file', 'hello1.wasm@/usr/lib/libhello1.wasm',
                         '--embed-file', 'subdir/libhello1_dep.so@/usr/lib/subdir/libhello1_dep.so',
                         'hello1.wasm', '-sNO_AUTOLOAD_DYLIBS',
-                        '-L./subdir', '-lhello1_dep'])
+                        '-L./subdir', '-lhello1_dep']
+      self.do_runf('main.c', expected, emcc_args=args, **kwds)
 
     # case 1) without rpath: fail to locate the library
-    _build([])
-    out = self.run_js('main.js', assert_returncode=NON_ZERO)
-    self.assertContained(r"no such file or directory, open '.*libhello1_dep\.so'", out, regex=True)
+    _build([], "no such file or directory, open '.*libhello1_dep\.so'", regex=True, assert_returncode=NON_ZERO)
 
     # case 2) with rpath: success
-    _build(['-Wl,-rpath,$ORIGIN/subdir'])
-    out = self.run_js('main.js')
-    self.assertContained('Hello1', out)
-    self.assertContained('Hello1_2', out)
-    self.assertContained('Ok', out)
+    _build(['-Wl,-rpath,$ORIGIN/subdir'], "Hello1\nHello1_dep\nOk\n")
 
   def test_dlopen_bad_flags(self):
     create_file('main.c', r'''
