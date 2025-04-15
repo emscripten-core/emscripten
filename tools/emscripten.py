@@ -165,6 +165,7 @@ def apply_static_code_hooks(forwarded_json, code):
       hook_code = f'// No {name} hooks'
     code = code.replace(f'<<< {name} >>>', hook_code)
 
+  inject_code_hooks('ATMODULES')
   inject_code_hooks('ATPRERUNS')
   inject_code_hooks('ATINITS')
   inject_code_hooks('ATPOSTCTORS')
@@ -883,6 +884,7 @@ def make_export_wrappers(function_exports):
   assert not settings.MINIMAL_RUNTIME
 
   wrappers = []
+  decls = []
 
   def install_wrapper(sym):
     # The emscripten stack functions are called very early (by writeStackCookie) before
@@ -900,19 +902,22 @@ def make_export_wrappers(function_exports):
   for name, types in function_exports.items():
     nargs = len(types.params)
     mangled = asmjs_mangle(name)
-    wrapper = 'var %s = ' % mangled
+    wrapper = f'var {mangled} = '
 
     # TODO(sbc): Can we avoid exporting the dynCall_ functions on the module.
     should_export = settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS
-    if (name.startswith('dynCall_') and settings.MODULARIZE != 'instance') or should_export:
-      if settings.MODULARIZE == 'instance':
-        # Update the export declared at the top level.
-        wrapper += f" __exp_{mangled} = "
+    if name.startswith('dynCall_') and settings.MODULARIZE != 'instance':
+      should_export = True
+    exported = ''
+    if settings.MODULARIZE == 'instance':
+      if should_export:
+        decls.append(f'export var {mangled};')
       else:
-        exported = "Module['%s'] = " % mangled
-    else:
-      exported = ''
-    wrapper += exported
+        decls.append(f'var {mangled};')
+      wrapper = f'  {mangled} = '
+    elif should_export:
+      exported = "Module['%s'] = " % mangled
+      wrapper += exported
 
     if settings.ASSERTIONS and install_wrapper(name):
       # With assertions enabled we create a wrapper that are calls get routed through, for
@@ -928,6 +933,12 @@ def make_export_wrappers(function_exports):
       wrapper += f"wasmExports['{name}']"
 
     wrappers.append(wrapper)
+
+  if settings.MODULARIZE == 'instance':
+    wrappers.insert(0, 'function assignWasmExports() {')
+    wrappers.append('}')
+    wrappers = decls + wrappers
+
   return wrappers
 
 
@@ -990,7 +1001,9 @@ function assignWasmImports() {
     module.append('var wasmImports = %s;\n' % sending)
 
   if not settings.MINIMAL_RUNTIME:
-    if settings.WASM_ASYNC_COMPILATION:
+    if settings.MODULARIZE == 'instance':
+      module.append("var wasmExports;\n")
+    elif settings.WASM_ASYNC_COMPILATION:
       if can_use_await():
         # In modularize mode the generated code is within a factory function.
         # This magic string gets replaced by `await createWasm`.  It needed to allow

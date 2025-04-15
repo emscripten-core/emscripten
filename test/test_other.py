@@ -367,16 +367,6 @@ class other(RunnerCore):
     self.assertContained('import source wasmModule from', read_file('hello_world.mjs'))
     self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
-  @requires_node_canary
-  def test_esm_integration(self):
-    self.node_args += ['--experimental-wasm-modules', '--no-warnings']
-    self.run_process([EMCC, '-o', 'hello_world.mjs', '-sWASM_ESM_INTEGRATION', '-Wno-experimental', test_file('hello_world.c')])
-    create_file('runner.mjs', '''
-      import init from "./hello_world.mjs";
-      await init();
-    ''')
-    self.assertContained('hello, world!', self.run_js('runner.mjs'))
-
   @parameterized({
     '': ([],),
     'node': (['-sENVIRONMENT=node'],),
@@ -420,37 +410,6 @@ class other(RunnerCore):
   def test_esm_requires_modularize(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sMODULARIZE=0'])
     self.assertContained('EXPORT_ES6 requires MODULARIZE to be set', err)
-
-  @parameterized({
-    '': ([],),
-    'pthreads': (['-pthread'],),
-  })
-  def test_modularize_instance(self, args):
-    create_file('library.js', '''\
-    addToLibrary({
-      $baz: () => console.log('baz'),
-      $qux: () => console.log('qux'),
-    });''')
-    self.run_process([EMCC, test_file('modularize_instance.c'),
-                      '-sMODULARIZE=instance',
-                      '-sEXPORTED_RUNTIME_METHODS=baz,addOnExit',
-                      '-sEXPORTED_FUNCTIONS=_bar,_main,qux',
-                      '--js-library', 'library.js',
-                      '-o', 'modularize_instance.mjs'] + args)
-
-    create_file('runner.mjs', '''
-      import { strict as assert } from 'assert';
-      import init, { _foo as foo, _bar as bar, baz, qux, addOnExit, HEAP32 } from "./modularize_instance.mjs";
-      await init();
-      foo(); // exported with EMSCRIPTEN_KEEPALIVE
-      bar(); // exported with EXPORTED_FUNCTIONS
-      baz(); // exported library function with EXPORTED_RUNTIME_METHODS
-      qux(); // exported library function with EXPORTED_FUNCTIONS
-      assert(typeof addOnExit === 'function'); // exported runtime function with EXPORTED_RUNTIME_METHODS
-      assert(typeof HEAP32 === 'object'); // exported runtime value by default
-    ''')
-
-    self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
 
   def test_emcc_out_file(self):
     # Verify that "-ofile" works in addition to "-o" "file"
@@ -2906,6 +2865,13 @@ More info: https://emscripten.org
     self.do_runf('hello_world.c', 'pre-run\nhello, world!\npost-run\n',
                  emcc_args=['--pre-js', 'pre.js', '--pre-js', 'pre2.js'])
 
+  @requires_jspi
+  def test_prepost_jspi(self):
+    create_file('pre.js', 'Module.preRun = () => out("pre-run");')
+    create_file('pre2.js', 'Module.postRun = () => out("post-run");')
+    self.do_runf('other/hello_world_suspend.c', 'pre-run\nhello, world!\npost-run\n',
+                 emcc_args=['--pre-js', 'pre.js', '--pre-js', 'pre2.js', '-sJSPI'])
+
   def test_prepre(self):
     create_file('pre.js', '''
       Module.preRun = [() => out('pre-run-0'), () => out('pre-run-1')];
@@ -2941,7 +2907,7 @@ More info: https://emscripten.org
   @parameterized({
     'minifyGlobals': (['minifyGlobals'],),
     'minifyLocals': (['minifyLocals'],),
-    'JSDCE': (['JSDCE'],),
+    'JSDCE': (['JSDCE', '--export-es6'],),
     'JSDCE-hasOwnProperty': (['JSDCE'],),
     'JSDCE-defaultArg': (['JSDCE'],),
     'JSDCE-fors': (['JSDCE'],),
@@ -3377,7 +3343,7 @@ More info: https://emscripten.org
       '-Wno-deprecated-declarations',
       '-lembind',
       '-sRETAIN_COMPILER_SETTINGS',
-      '-sEXPORTED_RUNTIME_METHODS=getCompilerSetting,setDelayFunction,flushPendingDeletes,PureVirtualError',
+      '-sEXPORTED_RUNTIME_METHODS=getCompilerSetting,setDelayFunction,flushPendingDeletes,PureVirtualError,HEAP8',
       '-sWASM_ASYNC_COMPILATION=0',
       # This test uses a `CustomSmartPtr` class which has 1MB of data embedded in
       # it which means we need more stack space than normal.
@@ -4073,7 +4039,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     self.run_process([EMCC, test_file('module_exports/test.c'),
                       '-o', 'test.js', '-O2',
                       '-sEXPORTED_FUNCTIONS=_bufferTest,_malloc,_free',
-                      '-sEXPORTED_RUNTIME_METHODS=ccall,cwrap',
+                      '-sEXPORTED_RUNTIME_METHODS=ccall,cwrap,HEAPU8',
                       '-sWASM_ASYNC_COMPILATION=0'])
 
     # Check that test.js compiled without --closure=1 contains "module['exports'] = Module;"
@@ -4091,7 +4057,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     self.run_process([EMCC, test_file('module_exports/test.c'),
                       '-o', 'test.js', '-O2', '--closure=1',
                       '-sEXPORTED_FUNCTIONS=_bufferTest,_malloc,_free',
-                      '-sEXPORTED_RUNTIME_METHODS=ccall,cwrap',
+                      '-sEXPORTED_RUNTIME_METHODS=ccall,cwrap,HEAPU8',
                       '-sWASM_ASYNC_COMPILATION=0'])
 
     # Check that test.js compiled with --closure 1 contains "module.exports", we want to verify that
@@ -4179,6 +4145,13 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
       };
     ''')
     self.do_runf('hello_world.c', 'done', emcc_args=['--pre-js=pre.js', '-sEXPORTED_RUNTIME_METHODS=ptrToString'])
+
+    # Same again but using EXPORTED_FUNCTIONS instead.
+    self.do_runf('hello_world.c', 'done', emcc_args=['--pre-js=pre.js', '-sEXPORTED_FUNCTIONS=ptrToString,_main'])
+
+    # Check that when ptrToString is not exported we get a reasonable error message
+    err = self.do_runf('hello_world.c', assert_returncode=NON_ZERO, emcc_args=['--pre-js=pre.js'])
+    self.assertContained("Aborted('ptrToString' was not exported. add it to EXPORTED_RUNTIME_METHODS", err)
 
   @crossplatform
   def test_fs_stream_proto(self):
@@ -4984,8 +4957,8 @@ extraLibraryFuncs.push('jsfunc');
         $Foo: () => 43,
       });
       ''')
-    self.run_process([EMCC, test_file('hello_world.c'), '--js-library=lib.js', '-sEXPORTED_FUNCTIONS=Foo,_main'])
-    self.assertContained("Module['Foo'] = ", read_file('a.out.js'))
+    create_file('post.js', 'console.log("Foo:", Module.Foo())')
+    self.do_runf(test_file('hello_world.c'), emcc_args=['--post-js=post.js', '--js-library=lib.js', '-sEXPORTED_FUNCTIONS=Foo,_main'])
 
   def test_jslib_search_path(self):
     create_file('libfoo.js', '''
@@ -6791,24 +6764,25 @@ int main(int argc, char **argv) {
     self.assertContained('locale set to waka: waka',
                          self.run_js('a.out.js', args=['waka']))
 
+  @crossplatform
   def test_browser_language_detection(self):
     # Test HTTP Accept-Language parsing by simulating navigator.languages #8751
     self.run_process([EMCC,
                       test_file('test_browser_language_detection.c')])
-    self.assertContained('C.UTF-8', self.run_js('a.out.js'))
+    # We support both "C" and "en_US" here since older versions of node do
+    # not expose navigator.languages.
+    lang = os.environ.get('LANG', 'C.UTF-8')
+    self.assertContained(f'LANG=({lang}|C.UTF-8)', self.run_js('a.out.js'), regex=True)
 
     # Accept-Language: fr,fr-FR;q=0.8,en-US;q=0.5,en;q=0.3
-    create_file('preamble.js', r'''navigator = {};
-      navigator.languages = [ "fr", "fr-FR", "en-US", "en" ];''')
-    self.run_process([EMCC, '--pre-js', 'preamble.js',
-                      test_file('test_browser_language_detection.c')])
-    self.assertContained('fr.UTF-8', self.run_js('a.out.js'))
+    create_file('pre.js', 'var navigator = { languages: [ "fr", "fr-FR", "en-US", "en" ] };')
+    self.run_process([EMCC, '--pre-js', 'pre.js', test_file('test_browser_language_detection.c')])
+    self.assertContained('LANG=fr.UTF-8', self.run_js('a.out.js'))
 
     # Accept-Language: fr-FR,fr;q=0.8,en-US;q=0.5,en;q=0.3
-    create_file('preamble.js', r'''navigator = {};
-      navigator.languages = [ "fr-FR", "fr", "en-US", "en" ];''')
-    self.emcc_args += ['--pre-js', 'preamble.js']
-    self.do_runf('test_browser_language_detection.c', 'fr_FR.UTF-8')
+    create_file('pre.js', r'var navigator = { languages: [ "fr-FR", "fr", "en-US", "en" ] };')
+    self.emcc_args += ['--pre-js', 'pre.js']
+    self.do_runf('test_browser_language_detection.c', 'LANG=fr_FR.UTF-8')
 
   def test_js_main(self):
     # try to add a main() from JS, at runtime. this is not supported (the
@@ -8620,9 +8594,9 @@ int main() {
     print(first, second, third)
     assert first == second and second == third
     print('with bad ctor')
-    first  = test(1000, 2000, 3000, 0xf, 0x58f) # noqa: E221. 2 will succeed
+    first  = test(1000, 2000, 3000, 0xf, 0x58f) # noqa: E221,  2 will succeed
     second = test(3000, 1000, 2000, 0xf, 0x8f5) # 1 will succedd
-    third  = test(2000, 3000, 1000, 0xf, 0xf58) # noqa: E221. 0 will succeed
+    third  = test(2000, 3000, 1000, 0xf, 0xf58) # noqa: E221,  0 will succeed
     print(first, second, third)
     self.assertLess(first, second)
     self.assertLess(second, third)
@@ -9103,6 +9077,7 @@ int main() {
         (['-O0', '--profiling-funcs'], False, False, True, False),
         (['-O1'],        False, False, True, False),
         (['-O2'],        False, True,  False, False),
+        (['-O2', '-gz'], False, True,  False, False), # -gz means debug compression, it should not enable debugging
         (['-O2', '-g1'], False, False, True, False),
         (['-O2', '-g'],  True,  False, True, False),
         (['-O2', '--closure=1'],         False, True, False, True),
@@ -13487,12 +13462,7 @@ exec "$@"
       self.require_jspi()
       self.emcc_args += ['-g', '-sJSPI_EXPORTS=say_hello']
     self.emcc_args += ['-sEXPORTED_FUNCTIONS=_malloc,_free']
-    output = self.do_other_test('test_split_module.c')
-    if jspi:
-      # TODO remove this when https://chromium-review.googlesource.com/c/v8/v8/+/4159854
-      # lands.
-      # d8 doesn't support writing a file yet, so extract it from the output.
-      create_file('profile.data', bytearray(json.loads(output[output.find('['):output.find(']') + 1])), True)
+    self.do_other_test('test_split_module.c')
     self.assertExists('test_split_module.wasm')
     self.assertExists('test_split_module.wasm.orig')
     self.assertExists('profile.data')
@@ -15053,8 +15023,8 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_min_node_version(self):
     node_version = shared.get_node_version(self.get_nodejs())
     node_version = '.'.join(str(x) for x in node_version)
-    self.set_setting('MIN_NODE_VERSION', 210000)
-    expected = 'This emscripten-generated code requires node v21.0.0 (detected v%s' % node_version
+    self.set_setting('MIN_NODE_VERSION', 300000)
+    expected = 'This emscripten-generated code requires node v30.0.0 (detected v%s' % node_version
     self.do_runf('hello_world.c', expected, assert_returncode=NON_ZERO)
 
   def test_deprecated_macros(self):
@@ -15945,7 +15915,8 @@ addToLibrary({
         });
         return {}; // Compiling asynchronously, no exports.
       }''')
-    self.do_runf('test_manual_wasm_instantiate.c', emcc_args=['--pre-js=pre.js'])
+    # Test with ASYNCIFY here to ensure that that wasmExports gets set to the wrapped version of the wasm exports.
+    self.do_runf(test_file('test_manual_wasm_instantiate.c'),emcc_args=['--pre-js=pre.js','-sASYNCIFY','-DASYNCIFY_ENABLED'])
 
   def test_late_module_api_assignment(self):
     # When sync instantiation is used (or when async/await is used in MODULARIZE mode) certain

@@ -20,10 +20,12 @@
 // after the generated code, you will need to define   var Module = {};
 // before the code. Then that object will be used in the code, and you
 // can continue to use Module afterwards as well.
-#if WASM_ESM_INTEGRATION
-var Module = {};
-#elif MODULARIZE
+#if MODULARIZE
+#if MODULARIZE == 'instance'
+var Module;
+#else
 var Module = moduleArg;
+#endif
 #elif USE_CLOSURE_COMPILER
 /** @type{Object} */
 var Module;
@@ -403,30 +405,6 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
 
 #if ASSERTIONS
-checkIncomingModuleAPI();
-#endif
-
-// Emit code to handle expected values on the Module object. This applies Module.x
-// to the proper local x. This has two benefits: first, we only emit it if it is
-// expected to arrive, and second, by using a local everywhere else that can be
-// minified.
-{{{ makeModuleReceive('arguments_', 'arguments') }}}
-{{{ makeModuleReceive('thisProgram') }}}
-
-// perform assertions in shell.js after we set up out() and err(), as otherwise if an assertion fails it cannot print the message
-#if ASSERTIONS
-// Assertions on removed incoming Module JS APIs.
-assert(typeof Module['memoryInitializerPrefixURL'] == 'undefined', 'Module.memoryInitializerPrefixURL option was removed, use Module.locateFile instead');
-assert(typeof Module['pthreadMainPrefixURL'] == 'undefined', 'Module.pthreadMainPrefixURL option was removed, use Module.locateFile instead');
-assert(typeof Module['cdInitializerPrefixURL'] == 'undefined', 'Module.cdInitializerPrefixURL option was removed, use Module.locateFile instead');
-assert(typeof Module['filePackagePrefixURL'] == 'undefined', 'Module.filePackagePrefixURL option was removed, use Module.locateFile instead');
-assert(typeof Module['read'] == 'undefined', 'Module.read option was removed');
-assert(typeof Module['readAsync'] == 'undefined', 'Module.readAsync option was removed (modify readAsync in JS)');
-assert(typeof Module['readBinary'] == 'undefined', 'Module.readBinary option was removed (modify readBinary in JS)');
-assert(typeof Module['setWindowTitle'] == 'undefined', 'Module.setWindowTitle option was removed (modify emscripten_set_window_title in JS)');
-assert(typeof Module['TOTAL_MEMORY'] == 'undefined', 'Module.TOTAL_MEMORY has been renamed Module.INITIAL_MEMORY');
-assert(typeof Module['ENVIRONMENT'] == 'undefined', 'Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -sENVIRONMENT=web or -sENVIRONMENT=node)');
-assert(typeof Module['STACK_SIZE'] == 'undefined', 'STACK_SIZE can no longer be set at runtime.  Use -sSTACK_SIZE at link time')
 
 {{{ makeRemovedFSAssert('IDBFS') }}}
 {{{ makeRemovedFSAssert('PROXYFS') }}}
@@ -440,6 +418,8 @@ assert(typeof Module['STACK_SIZE'] == 'undefined', 'STACK_SIZE can no longer be 
 {{{ makeRemovedFSAssert('NODEFS') }}}
 #endif
 
+// perform assertions in shell.js after we set up out() and err(), as otherwise
+// if an assertion fails it cannot print the message
 #if PTHREADS
 assert(
 #if AUDIO_WORKLET

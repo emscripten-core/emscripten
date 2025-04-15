@@ -406,8 +406,10 @@ function addMissingLibraryStubs(unusedLibSymbols) {
 }
 
 function exportSymbol(name) {
+  // In MODULARIZE=instance mode symbols are exported by being included in
+  // an export { foo, bar } list so we build up the simple list of names
   if (MODULARIZE === 'instance') {
-    return `__exp_${name} = ${name};`;
+    return name;
   }
   return `Module['${name}'] = ${name};`;
 }
@@ -416,10 +418,13 @@ function exportSymbol(name) {
 function exportRuntimeSymbols() {
   // optionally export something.
   function maybeExport(name) {
-    // If requested to be exported, export it.  HEAP objects are exported
-    // separately in updateMemoryViews
-    if (EXPORTED_RUNTIME_METHODS.has(name) && !name.startsWith('HEAP')) {
-      return exportSymbol(name);
+    // If requested to be exported, export it.
+    if (EXPORTED_RUNTIME_METHODS.has(name)) {
+      // Unless we are in MODULARIZE=instance mode then HEAP objects are
+      // exported separately in updateMemoryViews
+      if (MODULARIZE == 'instance' || !name.startsWith('HEAP')) {
+        return exportSymbol(name);
+      }
     }
   }
 
@@ -436,7 +441,6 @@ function exportRuntimeSymbols() {
     'wasmExports',
     'HEAPF32',
     'HEAPF64',
-    'HEAP_DATA_VIEW',
     'HEAP8',
     'HEAPU8',
     'HEAP16',
@@ -446,6 +450,10 @@ function exportRuntimeSymbols() {
     'HEAP64',
     'HEAPU64',
   ];
+
+  if (SUPPORT_BIG_ENDIAN) {
+    runtimeElements.push('HEAP_DATA_VIEW');
+  }
 
   if (PTHREADS && ALLOW_MEMORY_GROWTH) {
     runtimeElements.push(
@@ -513,8 +521,11 @@ function exportRuntimeSymbols() {
   }
 
   const exports = runtimeElements.map(maybeExport);
-  exports.unshift('// Begin runtime exports');
   const results = exports.filter((name) => name);
+
+  if (MODULARIZE == 'instance') {
+    return '// Runtime exports\nexport { ' + results.join(', ') + ' };\n';
+  }
 
   if (ASSERTIONS && !EXPORT_ALL) {
     // in ASSERTIONS mode we show a useful error if it is used without being
@@ -526,7 +537,11 @@ function exportRuntimeSymbols() {
 
     const unexported = [];
     for (const name of runtimeElements) {
-      if (!EXPORTED_RUNTIME_METHODS.has(name) && !unusedLibSymbols.has(name)) {
+      if (
+        !EXPORTED_RUNTIME_METHODS.has(name) &&
+        !EXPORTED_FUNCTIONS.has(name) &&
+        !unusedLibSymbols.has(name)
+      ) {
         unexported.push(name);
       }
     }
@@ -542,22 +557,28 @@ function exportRuntimeSymbols() {
     }
   }
 
-  return results.join('\n') + '\n';
+  results.unshift('// Begin runtime exports');
+  results.push('// End runtime exports');
+  return results.join('\n  ') + '\n';
 }
 
 function exportLibrarySymbols() {
+  assert(MODULARIZE != 'instance');
   const results = ['// Begin JS library exports'];
   for (const ident of librarySymbols) {
     if (EXPORT_ALL || EXPORTED_FUNCTIONS.has(ident)) {
       results.push(exportSymbol(ident));
     }
   }
-
-  return results.join('\n') + '\n';
+  results.push('// End JS library exports');
+  return results.join('\n  ') + '\n';
 }
 
 function exportJSSymbols() {
-  return exportRuntimeSymbols() + exportLibrarySymbols();
+  // In MODULARIZE=instance mode JS library symbols are marked with `export`
+  // at the point of declaration.
+  if (MODULARIZE == 'instance') return exportRuntimeSymbols();
+  return exportRuntimeSymbols() + '  ' + exportLibrarySymbols();
 }
 
 addToCompileTimeContext({

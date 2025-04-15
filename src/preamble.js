@@ -158,10 +158,6 @@ assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' &
 #if IMPORTED_MEMORY
 // In non-standalone/normal mode, we create the memory here.
 #include "runtime_init_memory.js"
-#elif ASSERTIONS
-// If memory is defined in wasm, the user can't provide it, or set INITIAL_MEMORY
-assert(!Module['wasmMemory'], 'Use of `wasmMemory` detected.  Use -sIMPORTED_MEMORY to define wasmMemory externally');
-assert(!Module['INITIAL_MEMORY'], 'Detected runtime INITIAL_MEMORY setting.  Use -sIMPORTED_MEMORY to define wasmMemory dynamically');
 #endif // !IMPORTED_MEMORY && ASSERTIONS
 
 #if RELOCATABLE
@@ -461,8 +457,12 @@ var FS = {
 
   ErrnoError() { FS.error() },
 };
+{{{
+addAtModule(`
 Module['FS_createDataFile'] = FS.createDataFile;
 Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
+`);
+}}}
 #endif
 
 #if ASSERTIONS
@@ -996,8 +996,7 @@ function getWasmImports() {
       try {
 #endif
         Module['instantiateWasm'](info, (mod, inst) => {
-          receiveInstance(mod, inst);
-          resolve(mod.exports);
+          resolve(receiveInstance(mod, inst));
         });
 #if ASSERTIONS
       } catch(e) {
