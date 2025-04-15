@@ -976,7 +976,7 @@ var LibraryDylink = {
       return undefined;
     }
     var runtimePathsAbs = (rpath?.paths || []).map((p) => replaceORIGIN(rpath?.parentLibPath, p));
-    withStackSave(() => {
+    return withStackSave(() => {
       // In dylink.c we use: `char buf[2*NAME_MAX+2];` and NAME_MAX is 255.
       // So we use the same size here.
       var bufSize = 2*255 + 2;
@@ -996,7 +996,7 @@ var LibraryDylink = {
       var resLibNameC = __emscripten_find_dylib(buf, rpathC, libNameC, bufSize);
       return (resLibNameC !== libNameC) ? UTF8ToString(resLibNameC) : undefined;
     });
-  }
+  },
 
   // loadDynamicLibrary loads dynamic library @ lib URL / path and returns
   // handle for loaded DSO.
