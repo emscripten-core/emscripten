@@ -3739,6 +3739,22 @@ More info: https://emscripten.org
 
     self.assertTextDataIdentical(clean(proc.stdout), clean(proc2.stdout))
 
+  def test_file_packager_response_file(self):
+    filenames = [f'foo.{i:032}' for i in range(4096)]
+
+    create_file('src.c', 'int main() { return 0; }\n')
+    create_file('data.txt', '')
+
+    response_data = '\n'.join(f'--preload-file data.txt@{f}' for f in filenames)
+    self.assertGreater(len(response_data), (1 << 16))
+    create_file('data.rsp', response_data)
+
+    self.run_process([EMCC, 'src.c', '@data.rsp'])
+    data = read_file('a.out.js')
+
+    for f in filenames:
+      self.assertTrue(f'"/{f}"' in data)
+
   def test_file_packager_separate_metadata(self):
     # verify '--separate-metadata' option produces separate metadata file
     ensure_dir('subdir')
