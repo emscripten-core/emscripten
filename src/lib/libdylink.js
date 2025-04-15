@@ -969,7 +969,7 @@ var LibraryDylink = {
 #endif
 #if FILESYSTEM
                               '$replaceORIGIN',
-                              '_emscripten_resolve_path',
+                              '_emscripten_find_dylib',
                               '$withStackSave',
                               '$stackAlloc',
                               '$lengthBytesUTF8',
@@ -1086,7 +1086,7 @@ var LibraryDylink = {
           }
           HEAP8[cur] = 0;
           var libNameC = stringToUTF8OnStack(libName);
-          var resLibNameC = __emscripten_resolve_path(buf, rpathC, libNameC, bufSize);
+          var resLibNameC = __emscripten_find_dylib(buf, rpathC, libNameC, bufSize);
           foundFile = resLibNameC !== libNameC;
           libName = UTF8ToString(resLibNameC);
         });

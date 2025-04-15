@@ -527,7 +527,7 @@ static int path_find(const char *name, int ncandidates, const char **candidates,
 }
 
 // Resolve filename using LD_LIBRARY_PATH
-const char* _emscripten_resolve_path(char* buf, const char* rpath, const char* file, size_t buflen) {
+const char* _emscripten_find_dylib(char* buf, const char* rpath, const char* file, size_t buflen) {
   if (!strchr(file, '/')) {
     const char* env_path = getenv("LD_LIBRARY_PATH");
     int ncandidates = 2;
@@ -567,7 +567,7 @@ static struct dso* _dlopen(const char* file, int flags) {
   do_write_lock();
 
   char buf[2*NAME_MAX+2];
-  file = _emscripten_resolve_path(buf, NULL, file, sizeof buf);
+  file = _emscripten_find_dylib(buf, NULL, file, sizeof buf);
 
   struct dso* p = find_existing(file);
   if (p) {
@@ -607,7 +607,7 @@ void emscripten_dlopen(const char* filename, int flags, void* user_data,
   }
   do_write_lock();
   char buf[2*NAME_MAX+2];
-  filename = _emscripten_resolve_path(buf, NULL, filename, sizeof buf);
+  filename = _emscripten_find_dylib(buf, NULL, filename, sizeof buf);
   struct dso* p = find_existing(filename);
   if (p) {
     onsuccess(user_data, p);
