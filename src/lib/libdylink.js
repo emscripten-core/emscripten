@@ -944,6 +944,60 @@ var LibraryDylink = {
     return dso;
   },
 
+  $findLibraryFS__deps: [
+    '$replaceORIGIN',
+    '_emscripten_find_dylib',
+    '$withStackSave',
+    '$stackAlloc',
+    '$lengthBytesUTF8',
+    '$stringToUTF8OnStack',
+    '$stringToUTF8',
+    '$FS',
+#if WASMFS
+    '_wasmfs_identify',
+    '_wasmfs_read_file',
+#endif
+  ],
+  $findLibraryFS: (libName, rpath) => {
+    if (libName.startsWith("/")) {
+#if WASMFS
+      var result = withStackSave(() => __wasmfs_identify(stringToUTF8OnStack(libName)));
+      return result === {{{ cDefs.EEXIST }}} ? libName : undefined;
+#else
+      try {
+        FS.lookupPath(libName);
+        return libName;
+      } catch (e) {
+        return undefined;
+      }
+#endif
+    }
+    if (!runtimeInitialized) {
+      return undefined;
+    }
+    var runtimePathsAbs = (rpath?.paths || []).map((p) => replaceORIGIN(rpath?.parentLibPath, p));
+    withStackSave(() => {
+      // In dylink.c we use: `char buf[2*NAME_MAX+2];` and NAME_MAX is 255.
+      // So we use the same size here.
+      var bufSize = 2*255 + 2;
+      var buf = stackAlloc(bufSize);
+      var size = 0;
+      for (var str of runtimePathsAbs) {
+        size += lengthBytesUTF8(str) + 1;
+      }
+      var rpathC = stackAlloc(size);
+      var cur = rpathC
+      for (var str of runtimePathsAbs) {
+        cur += stringToUTF8(str, cur, size);
+        HEAP8[cur] = ':'.charCodeAt(0);
+      }
+      HEAP8[cur] = 0;
+      var libNameC = stringToUTF8OnStack(libName);
+      var resLibNameC = __emscripten_find_dylib(buf, rpathC, libNameC, bufSize);
+      return (resLibNameC !== libNameC) ? UTF8ToString(resLibNameC) : undefined;
+    });
+  }
+
   // loadDynamicLibrary loads dynamic library @ lib URL / path and returns
   // handle for loaded DSO.
   //
@@ -966,20 +1020,7 @@ var LibraryDylink = {
                               '$asyncLoad',
 #if FILESYSTEM
                               '$preloadedWasm',
-#endif
-#if FILESYSTEM
-                              '$replaceORIGIN',
-                              '_emscripten_find_dylib',
-                              '$withStackSave',
-                              '$stackAlloc',
-                              '$lengthBytesUTF8',
-                              '$stringToUTF8OnStack',
-                              '$stringToUTF8',
-                              '$FS',
-#if WASMFS
-                              '_wasmfs_identify',
-                              '_wasmfs_read_file',
-#endif
+                              '$findLibraryFS',
 #endif
 #if DYNCALLS || !WASM_BIGINT
                               '$registerDynCallSymbols',
@@ -1056,52 +1097,13 @@ var LibraryDylink = {
       }
 
 #if FILESYSTEM
-      var foundFile = false;
-      if (libName.startsWith("/")) {
-#if WASMFS
-        var result = withStackSave(() => __wasmfs_identify(stringToUTF8OnStack(libName)));
-        foundFile = result === {{{ cDefs.EEXIST }}};
-#else
-        try {
-          FS.lookupPath(libName);
-          foundFile = true;
-        } catch (e) {}
-#endif
-      } else if (runtimeInitialized) {
-        var runtimePathsAbs = (flags.rpath?.paths || []).map((p) => replaceORIGIN(flags.rpath?.parentLibPath, p));
-        withStackSave(() => {
-          // In dylink.c we use: `char buf[2*NAME_MAX+2];` and NAME_MAX is 255.
-          // So we use the same size here.
-          var bufSize = 2*255 + 2;
-          var buf = stackAlloc(bufSize);
-          var size = 0;
-          for (var str of runtimePathsAbs) {
-            size += lengthBytesUTF8(str) + 1;
-          }
-          var rpathC = stackAlloc(size);
-          var cur = rpathC
-          for (var str of runtimePathsAbs) {
-            cur += stringToUTF8(str, cur, size);
-            HEAP8[cur] = ':'.charCodeAt(0);
-          }
-          HEAP8[cur] = 0;
-          var libNameC = stringToUTF8OnStack(libName);
-          var resLibNameC = __emscripten_find_dylib(buf, rpathC, libNameC, bufSize);
-          foundFile = resLibNameC !== libNameC;
-          libName = UTF8ToString(resLibNameC);
-        });
-      }
+      var f = findLibraryFS(libName, flags.rpath);
 #if DYLINK_DEBUG
-      dbg(`checking filesystem: ${libName}: ${foundFile ? 'found' : 'not found'}`);
+      dbg(`checking filesystem: ${libName}: ${f ? 'found' : 'not found'}`);
 #endif
-      if (foundFile) {
-        var libData = FS.readFile(libName, {encoding: 'binary'});
-        if (libData) {
-#if DYLINK_DEBUG
-          dbg(`loaded library from filesystem: ${libName}`);
-#endif
-          return flags.loadAsync ? Promise.resolve(libData) : libData;
-        }
+      if (f) {
+        var libData = FS.readFile(f, {encoding: 'binary'});
+        return flags.loadAsync ? Promise.resolve(libData) : libData;
       }
 #endif
 
