@@ -537,7 +537,11 @@ function exportRuntimeSymbols() {
 
     const unexported = [];
     for (const name of runtimeElements) {
-      if (!EXPORTED_RUNTIME_METHODS.has(name) && !unusedLibSymbols.has(name)) {
+      if (
+        !EXPORTED_RUNTIME_METHODS.has(name) &&
+        !EXPORTED_FUNCTIONS.has(name) &&
+        !unusedLibSymbols.has(name)
+      ) {
         unexported.push(name);
       }
     }

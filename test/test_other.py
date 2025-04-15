@@ -4139,6 +4139,13 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     ''')
     self.do_runf('hello_world.c', 'done', emcc_args=['--pre-js=pre.js', '-sEXPORTED_RUNTIME_METHODS=ptrToString'])
 
+    # Same again but using EXPORTED_FUNCTIONS instead.
+    self.do_runf('hello_world.c', 'done', emcc_args=['--pre-js=pre.js', '-sEXPORTED_FUNCTIONS=ptrToString,_main'])
+
+    # Check that when ptrToString is not exported we get a reasonable error message
+    err = self.do_runf('hello_world.c', assert_returncode=NON_ZERO, emcc_args=['--pre-js=pre.js'])
+    self.assertContained("Aborted('ptrToString' was not exported. add it to EXPORTED_RUNTIME_METHODS", err)
+
   @crossplatform
   def test_fs_stream_proto(self):
     create_file('src.c', br'''
@@ -4943,8 +4950,8 @@ extraLibraryFuncs.push('jsfunc');
         $Foo: () => 43,
       });
       ''')
-    self.run_process([EMCC, test_file('hello_world.c'), '--js-library=lib.js', '-sEXPORTED_FUNCTIONS=Foo,_main'])
-    self.assertContained("Module['Foo'] = ", read_file('a.out.js'))
+    create_file('post.js', 'console.log("Foo:", Module.Foo())')
+    self.do_runf(test_file('hello_world.c'), emcc_args=['--post-js=post.js', '--js-library=lib.js', '-sEXPORTED_FUNCTIONS=Foo,_main'])
 
   def test_jslib_search_path(self):
     create_file('libfoo.js', '''
