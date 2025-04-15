@@ -901,7 +901,10 @@ var LibraryDylink = {
       return postInstantiation(module, instance);
     }
 
-    flags = Object.assign(flags, {rpath: { parentLibPath: libName, paths: metadata.runtimePaths }})
+    // We need to set rpath in flags based on the current library's rpath.
+    // We can't mutate flags or else if a depends on b and c and b depends on d,
+    // then c will be loaded with b's rpath instead of a's.
+    flags = {...flags, rpath: { parentLibPath: libName, paths: metadata.runtimePaths }}
     // now load needed libraries and the module itself.
     if (flags.loadAsync) {
       return metadata.neededDynlibs
