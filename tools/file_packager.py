@@ -84,6 +84,7 @@ __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
 from tools import shared, utils, js_manipulation
+from tools.response_file import substitute_response_files
 
 
 DEBUG = os.environ.get('EMCC_DEBUG')
@@ -368,12 +369,18 @@ def main():  # noqa: C901, PLR0912, PLR0915
   See the source for more details.''')
     return 1
 
-  data_target = sys.argv[1]
+  # read response files very early on
+  try:
+    args = substitute_response_files(sys.argv[1:])
+  except IOError as e:
+    shared.exit_with_error(e)
+
+  data_target = args[0]
   data_files = []
   plugins = []
   leading = ''
 
-  for arg in sys.argv[2:]:
+  for arg in args[1:]:
     if arg == '--preload':
       leading = 'preload'
     elif arg == '--embed':
