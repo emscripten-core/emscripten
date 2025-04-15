@@ -7709,22 +7709,22 @@ int main() {
 
   @also_with_wasmfs
   def test_dlopen_rpath(self):
-    create_file('hello1_dep.c', r'''
+    create_file('hello_dep.c', r'''
 #include<stdio.h>
 
-void hello1_dep() {
-  printf ("Hello1_dep\n");
+void hello_dep() {
+  printf ("Hello_dep\n");
   return;
 }
 ''')
-    create_file('hello1.c', r'''
+    create_file('hello.c', r'''
 #include <stdio.h>
 
-void hello1_dep();
+void hello_dep();
 
-void hello1() {
-  printf ("Hello1\n");
-  hello1_dep();
+void hello() {
+  printf ("Hello\n");
+  hello_dep();
   return;
 }
 ''')
@@ -7740,9 +7740,9 @@ int main() {
   void (*f)();
   double (*f2)(double);
 
-  h = dlopen("/usr/lib/libhello1.wasm", RTLD_NOW);
+  h = dlopen("/usr/lib/libhello.wasm", RTLD_NOW);
   assert(h);
-  f = dlsym(h, "hello1");
+  f = dlsym(h, "hello");
   assert(f);
   f();
   dlclose(h);
@@ -7755,20 +7755,20 @@ int main() {
     os.mkdir('subdir')
 
     def _build(rpath_flag, expected, **kwds):
-      self.run_process([EMCC, '-o', 'subdir/libhello1_dep.so', 'hello1_dep.c', '-sSIDE_MODULE'])
-      self.run_process([EMCC, '-o', 'hello1.wasm', 'hello1.c', '-sSIDE_MODULE', 'subdir/libhello1_dep.so'] + rpath_flag)
+      self.run_process([EMCC, '-o', 'subdir/libhello_dep.so', 'hello_dep.c', '-sSIDE_MODULE'])
+      self.run_process([EMCC, '-o', 'hello.wasm', 'hello.c', '-sSIDE_MODULE', 'subdir/libhello_dep.so'] + rpath_flag)
       args = ['--profiling-funcs', '-sMAIN_MODULE=2', '-sINITIAL_MEMORY=32Mb',
-                        '--embed-file', 'hello1.wasm@/usr/lib/libhello1.wasm',
-                        '--embed-file', 'subdir/libhello1_dep.so@/usr/lib/subdir/libhello1_dep.so',
-                        'hello1.wasm', '-sNO_AUTOLOAD_DYLIBS',
-                        '-L./subdir', '-lhello1_dep']
+                        '--embed-file', 'hello.wasm@/usr/lib/libhello.wasm',
+                        '--embed-file', 'subdir/libhello_dep.so@/usr/lib/subdir/libhello_dep.so',
+                        'hello.wasm', '-sNO_AUTOLOAD_DYLIBS',
+                        '-L./subdir', '-lhello_dep']
       self.do_runf('main.c', expected, emcc_args=args, **kwds)
 
     # case 1) without rpath: fail to locate the library
-    _build([], "no such file or directory, open '.*libhello1_dep\.so'", regex=True, assert_returncode=NON_ZERO)
+    _build([], "no such file or directory, open '.*libhello_dep\.so'", regex=True, assert_returncode=NON_ZERO)
 
     # case 2) with rpath: success
-    _build(['-Wl,-rpath,$ORIGIN/subdir'], "Hello1\nHello1_dep\nOk\n")
+    _build(['-Wl,-rpath,$ORIGIN/subdir'], "Hello\nHello_dep\nOk\n")
 
   def test_dlopen_bad_flags(self):
     create_file('main.c', r'''
