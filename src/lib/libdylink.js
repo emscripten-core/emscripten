@@ -962,6 +962,15 @@ var LibraryDylink = {
 #endif
   ],
   $findLibraryFS: (libName, rpath) => {
+    // If we're preloading a dynamic library, the runtime is not ready to call
+    // __wasmfs_identify or __emscripten_find_dylib. So just quit out.
+    //
+    // This means that DT_NEEDED for the main module and transitive dependencies
+    // of it won't work with this code path. Similarly, it means that calling
+    // loadDynamicLibrary in a preRun hook can't use this code path.
+    if (!runtimeInitialized) {
+      return undefined;
+    }
     if (libName.startsWith("/")) {
 #if WASMFS
       var result = withStackSave(() => __wasmfs_identify(stringToUTF8OnStack(libName)));
@@ -974,9 +983,6 @@ var LibraryDylink = {
         return undefined;
       }
 #endif
-    }
-    if (!runtimeInitialized) {
-      return undefined;
     }
     var runtimePathsAbs = (rpath?.paths || []).map((p) => replaceORIGIN(rpath?.parentLibPath, p));
     return withStackSave(() => {
