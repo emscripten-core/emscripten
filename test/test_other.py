@@ -7739,7 +7739,7 @@ int main() {
       self.do_runf('main.c', expected, emcc_args=args, **kwds)
 
     # case 1) without rpath: fail to locate the library
-    _build([], "no such file or directory, open '.*libhello_dep\.so'", regex=True, assert_returncode=NON_ZERO)
+    _build([], r"no such file or directory, open '.*libhello_dep\.so'", regex=True, assert_returncode=NON_ZERO)
 
     # case 2) with rpath: success
     _build(['-Wl,-rpath,$ORIGIN/subdir'], "Hello\nHello_dep\nOk\n")
