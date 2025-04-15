@@ -2865,6 +2865,13 @@ More info: https://emscripten.org
     self.do_runf('hello_world.c', 'pre-run\nhello, world!\npost-run\n',
                  emcc_args=['--pre-js', 'pre.js', '--pre-js', 'pre2.js'])
 
+  @requires_jspi
+  def test_prepost_jspi(self):
+    create_file('pre.js', 'Module.preRun = () => out("pre-run");')
+    create_file('pre2.js', 'Module.postRun = () => out("post-run");')
+    self.do_runf('other/hello_world_suspend.c', 'pre-run\nhello, world!\npost-run\n',
+                 emcc_args=['--pre-js', 'pre.js', '--pre-js', 'pre2.js', '-sJSPI'])
+
   def test_prepre(self):
     create_file('pre.js', '''
       Module.preRun = [() => out('pre-run-0'), () => out('pre-run-1')];
