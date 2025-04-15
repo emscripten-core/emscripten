@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-addToLibrary({
+var LibraryFS = {
   $FS__deps: ['$randomFill', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
     '$FS_createPreloadedFile',
     '$FS_modeStringToFlags',
@@ -38,9 +38,7 @@ addToLibrary({
     addAtExit('FS.quit();');
     return `
 FS.createPreloadedFile = FS_createPreloadedFile;
-FS.staticInit();
-// Set module methods based on EXPORTED_RUNTIME_METHODS
-{{{ EXPORTED_RUNTIME_METHODS.filter((func) => func.startsWith('FS_')).map((func) => "Module['" + func + "'] = FS." + func.slice(3) + ";\n").reduce((str, func) => str + func, '') }}}`;
+FS.staticInit();`;
   },
   $FS: {
     root: null,
@@ -1935,4 +1933,17 @@ FS.staticInit();
 
   $FS_createLazyFile__deps: ['$FS'],
   $FS_createLazyFile: 'FS.createLazyFile',
-});
+
+};
+
+// Add library aliases for all the FS.<symbol> as FS_<symbol>.
+for (let key in LibraryFS.$FS) {
+  const alias = `$FS_${key}`;
+  // Skip defining the alias if it already exists.
+  if (LibraryFS[alias]) {
+    continue;
+  }
+  LibraryFS[alias] = `FS.${key}`;
+  LibraryFS[`${alias}__deps`] = ['$FS'];
+}
+addToLibrary(LibraryFS);
