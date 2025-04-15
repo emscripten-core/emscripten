@@ -9564,6 +9564,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @requires_node_canary
   @no_wasm64("wasm64 requires wasm export wrappers")
+  def test_esm_integration_main(self):
+    self.node_args += ['--experimental-wasm-modules', '--no-warnings']
+    self.do_runf('hello_world.c', 'hello, world!', emcc_args=['-sWASM_ESM_INTEGRATION', '-Wno-experimental'], output_suffix='.mjs')
+
+  @requires_node_canary
+  @no_wasm64("wasm64 requires wasm export wrappers")
   def test_esm_integration(self):
     # TODO(sbc): WASM_ESM_INTEGRATION doesn't currently work with closure.
     # self.maybe_closure()
