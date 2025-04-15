@@ -7596,7 +7596,7 @@ int main(int argc, char** argv) {
     if args:
       self.setup_node_pthreads()
     create_file('hello1_dep.c', r'''
-#include<stdio.h>
+#include <stdio.h>
 
 void hello1_dep() {
   printf("Hello1_dep\n");
@@ -7626,7 +7626,7 @@ void hello2() {
 #include <stdio.h>
 
 void hello3() {
-  printf ("Hello3\n");
+  printf("Hello3\n");
   return;
 }
 ''')
@@ -7710,10 +7710,10 @@ int main() {
   @also_with_wasmfs
   def test_dlopen_rpath(self):
     create_file('hello_dep.c', r'''
-#include<stdio.h>
+#include <stdio.h>
 
 void hello_dep() {
-  printf ("Hello_dep\n");
+  printf("Hello_dep\n");
   return;
 }
 ''')
@@ -7723,7 +7723,7 @@ void hello_dep() {
 void hello_dep();
 
 void hello() {
-  printf ("Hello\n");
+  printf("Hello\n");
   hello_dep();
   return;
 }
