@@ -2128,6 +2128,18 @@ def create_esm_wrapper(wrapper_file, support_target, wasm_target):
     wrapper.append(f"export {{ default, {js_exports} }} from '{support_url}';")
   else:
     wrapper.append(f"export {{ default }} from '{support_url}';")
+
+  if settings.ENVIRONMENT_MAY_BE_NODE and settings.INVOKE_RUN and settings.EXPECT_MAIN:
+    wrapper.append(f'''
+// When run as the main module under node, execute main directly here
+import init from '{support_url}';
+const isNode = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string' && process.type != 'renderer';
+if (isNode) {{
+  const url = await import('url');
+  const isMainModule = url.pathToFileURL(process.argv[1]).href === import.meta.url;
+  if (isMainModule) await init();
+}}''')
+
   write_file(wrapper_file, '\n'.join(wrapper) + '\n')
 
   # FIXME(sbc): This is a huge hack to rename the imports in the

@@ -1937,21 +1937,17 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   ## Does a complete test - builds, runs, checks output, etc.
   def _build_and_run(self, filename, expected_output, args=None,
                      no_build=False,
-                     libraries=None,
-                     includes=None,
                      assert_returncode=0, assert_identical=False, assert_all=False,
-                     check_for_error=True, force_c=False, emcc_args=None,
+                     check_for_error=True,
                      interleaved_output=True,
                      regex=False,
-                     output_basename=None):
+                     **kwargs):
     logger.debug(f'_build_and_run: {filename}')
 
     if no_build:
       js_file = filename
     else:
-      js_file = self.build(filename, libraries=libraries, includes=includes,
-                           force_c=force_c, emcc_args=emcc_args,
-                           output_basename=output_basename)
+      js_file = self.build(filename, **kwargs)
     self.assertExists(js_file)
 
     engines = self.js_engines.copy()
