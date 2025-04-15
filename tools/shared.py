@@ -12,6 +12,7 @@ import logging
 import os
 import re
 import shutil
+import shlex
 import subprocess
 import signal
 import stat
@@ -95,23 +96,6 @@ diagnostics.add_warning('unused-main')
 diagnostics.add_warning('closure', enabled=False)
 
 
-# TODO(sbc): Investigate switching to shlex.quote
-def shlex_quote(arg):
-  arg = os.fspath(arg)
-  if ' ' in arg and (not (arg.startswith('"') and arg.endswith('"'))) and (not (arg.startswith("'") and arg.endswith("'"))):
-    return '"' + arg.replace('"', '\\"') + '"'
-
-  return arg
-
-
-# Switch to shlex.join once we can depend on python 3.8:
-# https://docs.python.org/3/library/shlex.html#shlex.join
-def shlex_join(cmd):
-  if type(cmd) is str:
-    return cmd
-  return ' '.join(shlex_quote(x) for x in cmd)
-
-
 def run_process(cmd, check=True, input=None, *args, **kw):
   """Runs a subprocess returning the exit code.
 
@@ -127,7 +111,7 @@ def run_process(cmd, check=True, input=None, *args, **kw):
   kw.setdefault('text', True)
   kw.setdefault('encoding', 'utf-8')
   ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
-  debug_text = '%sexecuted %s' % ('successfully ' if check else '', shlex_join(cmd))
+  debug_text = '%sexecuted %s' % ('successfully ' if check else '', shlex.join(cmd))
   logger.debug(debug_text)
   return ret
 
@@ -218,7 +202,7 @@ def run_multiple_processes(commands,
       idx = get_finished_process()
       finished_process = processes.pop(idx)
       if finished_process.returncode != 0:
-        exit_with_error('subprocess %d/%d failed (%s)! (cmdline: %s)' % (idx + 1, len(commands), returncode_to_str(finished_process.returncode), shlex_join(commands[idx])))
+        exit_with_error('subprocess %d/%d failed (%s)! (cmdline: %s)' % (idx + 1, len(commands), returncode_to_str(finished_process.returncode), shlex.join(commands[idx])))
       num_completed += 1
 
   if route_stdout_to_temp_files_suffix:
@@ -235,9 +219,9 @@ def check_call(cmd, *args, **kw):
   try:
     return run_process(cmd, *args, **kw)
   except subprocess.CalledProcessError as e:
-    exit_with_error("'%s' failed (%s)", shlex_join(cmd), returncode_to_str(e.returncode))
+    exit_with_error("'%s' failed (%s)", shlex.join(cmd), returncode_to_str(e.returncode))
   except OSError as e:
-    exit_with_error("'%s' failed: %s", shlex_join(cmd), str(e))
+    exit_with_error("'%s' failed: %s", shlex.join(cmd), str(e))
 
 
 def exec_process(cmd):
@@ -638,7 +622,7 @@ def print_compiler_stage(cmd):
     print(' ' + ' '.join([maybe_quote(a) for a in cmd]), file=sys.stderr)
     sys.stderr.flush()
   elif PRINT_SUBPROCS:
-    print(' %s %s' % (maybe_quote(cmd[0]), shlex_join(cmd[1:])), file=sys.stderr)
+    print(' %s %s' % (maybe_quote(cmd[0]), shlex.join(cmd[1:])), file=sys.stderr)
     sys.stderr.flush()
 
 

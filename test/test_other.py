@@ -11815,7 +11815,7 @@ int main () {
         raise
 
     args = [compiler_for(sources[0]), '-o', 'a.html'] + args + sources
-    print(shared.shlex_join(args))
+    print(shlex.join(args))
     self.run_process(args)
 
     # For certain tests, don't just check the output size but check

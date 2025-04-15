@@ -743,18 +743,24 @@ fi
     self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'libSDL2_image-jpg-png.a'))
     self.assertContained('error building port `sdl2_image:formats=invalid` | invalid is not a supported format', self.do([EMBUILDER, 'build', 'sdl2_image:formats=invalid', '--force']))
 
-  def test_embuilder_external_ports(self):
+  def test_embuilder_external_ports_simple(self):
     restore_and_set_up()
     simple_port_path = test_file("other/ports/simple.py")
     # embuilder handles external port target that ends with .py
     self.run_process([EMBUILDER, 'build', f'{simple_port_path}', '--force'])
     self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'lib_simple.a'))
+
+  def test_embuilder_external_ports(self):
     # embuilder handles external port target that contains port options
+    restore_and_set_up()
     external_port_path = test_file("other/ports/external.py")
     self.run_process([EMBUILDER, 'build', f'{external_port_path}:value1=12:value2=36', '--force'])
     self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'lib_external.a'))
+
+  def test_embuilder_external_ports_options(self):
     # embuilder handles external port target that contains port options (influences library name,
     # like sdl2_image:formats=png)
+    restore_and_set_up()
     external_port_path = test_file("other/ports/external.py")
     self.run_process([EMBUILDER, 'build', f'{external_port_path}:dependency=sdl2', '--force'])
     self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'lib_external-sdl2.a'))
