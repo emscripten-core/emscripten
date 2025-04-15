@@ -1499,7 +1499,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def run_js(self, filename, engine=None, args=None,
              assert_returncode=0,
-             interleaved_output=True):
+             interleaved_output=True,
+             input=None):
     # use files, as PIPE can get too full and hang us
     stdout_file = self.in_dir('stdout')
     stderr_file = None
@@ -1523,7 +1524,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       jsrun.run_js(filename, engine, args,
                    stdout=stdout,
                    stderr=stderr,
-                   assert_returncode=assert_returncode)
+                   assert_returncode=assert_returncode,
+                   input=input)
     except subprocess.TimeoutExpired as e:
       timeout_error = e
     except subprocess.CalledProcessError as e:
