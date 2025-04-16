@@ -57,7 +57,7 @@ var LibraryDylink = {
       return rpath.replace('$ORIGIN', origin);
     }
 
-    return rpath
+    return rpath;
   },
 #endif // FILESYSTEM
 
@@ -947,6 +947,7 @@ var LibraryDylink = {
     return dso;
   },
 
+#if FILESYSTEM
   $findLibraryFS__deps: [
     '$replaceORIGIN',
     '_emscripten_find_dylib',
@@ -956,6 +957,7 @@ var LibraryDylink = {
     '$stringToUTF8OnStack',
     '$stringToUTF8',
     '$FS',
+    '$PATH',
 #if WASMFS
     '_wasmfs_identify',
     '_wasmfs_read_file',
@@ -971,7 +973,7 @@ var LibraryDylink = {
     if (!runtimeInitialized) {
       return undefined;
     }
-    if (libName.startsWith("/")) {
+    if (PATH.isAbs(libName)) {
 #if WASMFS
       var result = withStackSave(() => __wasmfs_identify(stringToUTF8OnStack(libName)));
       return result === {{{ cDefs.EEXIST }}} ? libName : undefined;
@@ -984,28 +986,19 @@ var LibraryDylink = {
       }
 #endif
     }
-    var runtimePathsAbs = (rpath?.paths || []).map((p) => replaceORIGIN(rpath?.parentLibPath, p));
+    var rpathResolved = (rpath?.paths || []).map((p) => replaceORIGIN(rpath?.parentLibPath, p));
     return withStackSave(() => {
       // In dylink.c we use: `char buf[2*NAME_MAX+2];` and NAME_MAX is 255.
       // So we use the same size here.
       var bufSize = 2*255 + 2;
       var buf = stackAlloc(bufSize);
-      var size = 0;
-      for (var str of runtimePathsAbs) {
-        size += lengthBytesUTF8(str) + 1;
-      }
-      var rpathC = stackAlloc(size);
-      var cur = rpathC
-      for (var str of runtimePathsAbs) {
-        cur += stringToUTF8(str, cur, size);
-        HEAP8[cur] = ':'.charCodeAt(0);
-      }
-      HEAP8[cur] = 0;
+      var rpathC = stringToUTF8OnStack(rpathResolved.join(':'));
       var libNameC = stringToUTF8OnStack(libName);
       var resLibNameC = __emscripten_find_dylib(buf, rpathC, libNameC, bufSize);
       return (resLibNameC !== libNameC) ? UTF8ToString(resLibNameC) : undefined;
     });
   },
+#endif // FILESYSTEM
 
   // loadDynamicLibrary loads dynamic library @ lib URL / path and returns
   // handle for loaded DSO.
