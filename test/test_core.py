@@ -47,6 +47,7 @@ def esm_integration(func):
   def decorated(self, *args, **kwargs):
     self.require_node_canary()
     self.node_args += ['--experimental-wasm-modules', '--no-warnings']
+    self.emcc_args += ['-sWASM_ESM_INTEGRATION', '-Wno-experimental']
     if self.is_wasm64():
       self.skipTest('wasm64 requires wasm export wrappers')
     func(self, *args, **kwargs)
@@ -9578,13 +9579,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @esm_integration
   def test_esm_integration_main(self):
-    self.do_runf('hello_world.c', 'hello, world!', emcc_args=['-sWASM_ESM_INTEGRATION', '-Wno-experimental'], output_suffix='.mjs')
+    self.do_runf('hello_world.c', 'hello, world!')
 
   @esm_integration
   def test_esm_integration(self):
     # TODO(sbc): WASM_ESM_INTEGRATION doesn't currently work with closure.
     # self.maybe_closure()
-    self.run_process([EMCC, '-o', 'hello_world.mjs', '-sEXPORTED_RUNTIME_METHODS=err', '-sEXPORTED_FUNCTIONS=_main,stringToNewUTF8', '-sWASM_ESM_INTEGRATION', '-Wno-experimental', test_file('core/test_esm_integration.c')] + self.get_emcc_args())
+    self.run_process([EMCC, '-o', 'hello_world.mjs', '-sEXPORTED_RUNTIME_METHODS=err', '-sEXPORTED_FUNCTIONS=_main,stringToNewUTF8', test_file('core/test_esm_integration.c')] + self.get_emcc_args())
     create_file('runner.mjs', '''
       import init, { err, stringToNewUTF8, _main, _foo } from "./hello_world.mjs";
       await init({arguments: ['foo', 'bar']});

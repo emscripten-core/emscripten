@@ -1393,16 +1393,20 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       assert shared.suffix(filename) != '.c', 'force_c is not needed for source files ending in .c'
       compiler.append('-xc')
 
+    all_emcc_args = self.get_emcc_args(main_file=True)
+    if emcc_args:
+      all_emcc_args += emcc_args
     if not output_suffix:
-      output_suffix = '.mjs' if emcc_args and '-sEXPORT_ES6' in emcc_args else '.js'
+      if '-sEXPORT_ES6' in all_emcc_args or '-sWASM_ESM_INTEGRATION' in all_emcc_args:
+        output_suffix = '.mjs'
+      else:
+        output_suffix = '.js'
 
     if output_basename:
       output = output_basename + output_suffix
     else:
       output = shared.unsuffixed_basename(filename) + output_suffix
-    cmd = compiler + [filename, '-o', output] + self.get_emcc_args(main_file=True)
-    if emcc_args:
-      cmd += emcc_args
+    cmd = compiler + [filename, '-o', output] + all_emcc_args
     if libraries:
       cmd += libraries
     if includes:
