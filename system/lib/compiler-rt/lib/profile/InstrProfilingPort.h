@@ -23,14 +23,22 @@
 #define COMPILER_RT_FTRUNCATE(f,l) _chsize(_fileno(f),l)
 #define COMPILER_RT_ALWAYS_INLINE __forceinline
 #define COMPILER_RT_CLEANUP(x)
+#define COMPILER_RT_USED
 #elif __GNUC__
-#define COMPILER_RT_ALIGNAS(x) __attribute__((aligned(x)))
+#ifdef _WIN32
+#define COMPILER_RT_FTRUNCATE(f, l) _chsize(fileno(f), l)
+#define COMPILER_RT_VISIBILITY
+#define COMPILER_RT_WEAK __attribute__((selectany))
+#else
+#define COMPILER_RT_FTRUNCATE(f, l) ftruncate(fileno(f), l)
 #define COMPILER_RT_VISIBILITY __attribute__((visibility("hidden")))
 #define COMPILER_RT_WEAK __attribute__((weak))
+#endif
+#define COMPILER_RT_ALIGNAS(x) __attribute__((aligned(x)))
 #define COMPILER_RT_ALLOCA __builtin_alloca
-#define COMPILER_RT_FTRUNCATE(f,l) ftruncate(fileno(f),l)
 #define COMPILER_RT_ALWAYS_INLINE inline __attribute((always_inline))
 #define COMPILER_RT_CLEANUP(x) __attribute__((cleanup(x)))
+#define COMPILER_RT_USED __attribute__((used))
 #endif
 
 #if defined(__APPLE__)
@@ -53,9 +61,9 @@
 #endif
 
 #if COMPILER_RT_HAS_ATOMICS == 1
-#ifdef _MSC_VER
+#ifdef _WIN32
 #include <windows.h>
-#if _MSC_VER < 1900
+#if defined(_MSC_VER) && _MSC_VER < 1900
 #define snprintf _snprintf
 #endif
 #if defined(_WIN64)
@@ -73,7 +81,7 @@
   (DomType *)InterlockedExchangeAdd((LONG volatile *)&PtrVar,                  \
                                     (LONG)sizeof(DomType) * PtrIncr)
 #endif
-#else /* !defined(_MSC_VER) */
+#else /* !defined(_WIN32) */
 #define COMPILER_RT_BOOL_CMPXCHG(Ptr, OldV, NewV)                              \
   __sync_bool_compare_and_swap(Ptr, OldV, NewV)
 #define COMPILER_RT_PTR_FETCH_ADD(DomType, PtrVar, PtrIncr)                    \

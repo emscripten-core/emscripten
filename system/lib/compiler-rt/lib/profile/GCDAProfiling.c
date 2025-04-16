@@ -3,9 +3,9 @@
 |* Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 |* See https://llvm.org/LICENSE.txt for license information.
 |* SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-|* 
+|*
 |*===----------------------------------------------------------------------===*|
-|* 
+|*
 |* This file implements the call back routines for the gcov profiling
 |* instrumentation pass. Link against this library when running code through
 |* the -insert-gcov-profiling LLVM pass.
@@ -23,6 +23,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,37 +33,26 @@
 #include <windows.h>
 #include "WindowsMMap.h"
 #else
-#include <sys/mman.h>
 #include <sys/file.h>
-#endif
-
-#if defined(__FreeBSD__) && defined(__i386__)
-#define I386_FREEBSD 1
-#else
-#define I386_FREEBSD 0
-#endif
-
-#if !defined(_MSC_VER) && !I386_FREEBSD
-#include <stdint.h>
-#endif
-
-#if defined(_MSC_VER)
-typedef unsigned char uint8_t;
-typedef unsigned int uint32_t;
-typedef unsigned long long uint64_t;
-#elif I386_FREEBSD
-/* System headers define 'size_t' incorrectly on x64 FreeBSD (prior to
- * FreeBSD 10, r232261) when compiled in 32-bit mode.
- */
-typedef unsigned char uint8_t;
-typedef unsigned int uint32_t;
-typedef unsigned long long uint64_t;
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <unistd.h>
 #endif
 
 #include "InstrProfiling.h"
 #include "InstrProfilingUtil.h"
 
 /* #define DEBUG_GCDAPROFILING */
+
+enum {
+  GCOV_DATA_MAGIC = 0x67636461, // "gcda"
+
+  GCOV_TAG_FUNCTION = 0x01000000,
+  GCOV_TAG_COUNTER_ARCS = 0x01a10000,
+  // GCOV_TAG_OBJECT_SUMMARY superseded GCOV_TAG_PROGRAM_SUMMARY in GCC 9.
+  GCOV_TAG_OBJECT_SUMMARY = 0xa1000000,
+  GCOV_TAG_PROGRAM_SUMMARY = 0xa3000000,
+};
 
 /*
  * --- GCOV file format I/O primitives ---
@@ -75,7 +65,7 @@ static char *filename = NULL;
 
 /*
  * The current file we're outputting.
- */ 
+ */
 static FILE *output_file = NULL;
 
 /*
@@ -87,12 +77,13 @@ static uint64_t cur_buffer_size = 0;
 static uint64_t cur_pos = 0;
 static uint64_t file_size = 0;
 static int new_file = 0;
+static int gcov_version;
 #if defined(_WIN32)
 static HANDLE mmap_handle = NULL;
 #endif
 static int fd = -1;
 
-typedef void (*fn_ptr)();
+typedef void (*fn_ptr)(void);
 
 typedef void* dynamic_object_id;
 // The address of this variable identifies a given dynamic object.
@@ -115,9 +106,9 @@ struct fn_list {
 struct fn_list writeout_fn_list;
 
 /*
- *  A list of flush functions that our __gcov_flush() function should call, shared between all dynamic objects.
+ *  A list of reset functions, shared between all dynamic objects.
  */
-struct fn_list flush_fn_list;
+struct fn_list reset_fn_list;
 
 static void fn_list_insert(struct fn_list* list, fn_ptr fn) {
   struct fn_node* new_node = malloc(sizeof(struct fn_node));
@@ -192,18 +183,7 @@ static void write_64bit_value(uint64_t i) {
   write_32bit_value(hi);
 }
 
-static uint32_t length_of_string(const char *s) {
-  return (strlen(s) / 4) + 1;
-}
-
-static void write_string(const char *s) {
-  uint32_t len = length_of_string(s);
-  write_32bit_value(len);
-  write_bytes(s, strlen(s));
-  write_bytes("\0\0\0\0", 4 - (strlen(s) % 4));
-}
-
-static uint32_t read_32bit_value() {
+static uint32_t read_32bit_value(void) {
   uint32_t val;
 
   if (new_file)
@@ -214,19 +194,7 @@ static uint32_t read_32bit_value() {
   return val;
 }
 
-static uint32_t read_le_32bit_value() {
-  uint32_t val = 0;
-  int i;
-
-  if (new_file)
-    return (uint32_t)-1;
-
-  for (i = 0; i < 4; i++)
-    val |= write_buffer[cur_pos++] << (8*i);
-  return val;
-}
-
-static uint64_t read_64bit_value() {
+static uint64_t read_64bit_value(void) {
   // GCOV uses a lo-/hi-word format even on big-endian systems.
   // See also GCOVBuffer::readInt64 in LLVM.
   uint32_t lo = read_32bit_value();
@@ -250,12 +218,12 @@ static char *mangle_filename(const char *orig_filename) {
   return new_filename;
 }
 
-static int map_file() {
+static int map_file(void) {
   fseek(output_file, 0L, SEEK_END);
   file_size = ftell(output_file);
 
-  /* A size of 0 is invalid to `mmap'. Return a fail here, but don't issue an
-   * error message because it should "just work" for the user. */
+  /* A size of 0 means the file has been created just now (possibly by another
+   * process in lock-after-open race condition). No need to mmap. */
   if (file_size == 0)
     return -1;
 
@@ -294,13 +262,8 @@ static int map_file() {
   return 0;
 }
 
-static void unmap_file() {
+static void unmap_file(void) {
 #if defined(_WIN32)
-  if (!FlushViewOfFile(write_buffer, file_size)) {
-    fprintf(stderr, "profiling: %s: cannot flush mapped view: %lu\n", filename,
-            GetLastError());
-  }
-
   if (!UnmapViewOfFile(write_buffer)) {
     fprintf(stderr, "profiling: %s: cannot unmap mapped view: %lu\n", filename,
             GetLastError());
@@ -313,16 +276,11 @@ static void unmap_file() {
 
   mmap_handle = NULL;
 #else
-  if (msync(write_buffer, file_size, MS_SYNC) == -1) {
+  if (munmap(write_buffer, file_size) == -1) {
     int errnum = errno;
-    fprintf(stderr, "profiling: %s: cannot msync: %s\n", filename,
+    fprintf(stderr, "profiling: %s: cannot munmap: %s\n", filename,
             strerror(errnum));
   }
-
-  /* We explicitly ignore errors from unmapping because at this point the data
-   * is written and we don't care.
-   */
-  (void)munmap(write_buffer, file_size);
 #endif
 
   write_buffer = NULL;
@@ -338,30 +296,36 @@ static void unmap_file() {
  * started at a time.
  */
 COMPILER_RT_VISIBILITY
-void llvm_gcda_start_file(const char *orig_filename, const char version[4],
+void llvm_gcda_start_file(const char *orig_filename, uint32_t version,
                           uint32_t checksum) {
   const char *mode = "r+b";
   filename = mangle_filename(orig_filename);
 
   /* Try just opening the file. */
-  new_file = 0;
   fd = open(filename, O_RDWR | O_BINARY);
 
   if (fd == -1) {
-    /* Try opening the file, creating it if necessary. */
-    new_file = 1;
-    mode = "w+b";
-    fd = open(filename, O_RDWR | O_CREAT | O_BINARY, 0644);
-    if (fd == -1) {
+    /* Try creating the file. */
+    fd = open(filename, O_RDWR | O_CREAT | O_EXCL | O_BINARY, 0644);
+    if (fd != -1) {
+      mode = "w+b";
+    } else {
       /* Try creating the directories first then opening the file. */
       __llvm_profile_recursive_mkdir(filename);
-      fd = open(filename, O_RDWR | O_CREAT | O_BINARY, 0644);
-      if (fd == -1) {
-        /* Bah! It's hopeless. */
-        int errnum = errno;
-        fprintf(stderr, "profiling: %s: cannot open: %s\n", filename,
-                strerror(errnum));
-        return;
+      fd = open(filename, O_RDWR | O_CREAT | O_EXCL | O_BINARY, 0644);
+      if (fd != -1) {
+        mode = "w+b";
+      } else {
+        /* Another process may have created the file just now.
+         * Try opening it without O_CREAT and O_EXCL. */
+        fd = open(filename, O_RDWR | O_BINARY);
+        if (fd == -1) {
+          /* Bah! It's hopeless. */
+          int errnum = errno;
+          fprintf(stderr, "profiling: %s: cannot open: %s\n", filename,
+                  strerror(errnum));
+          return;
+        }
       }
     }
   }
@@ -374,27 +338,30 @@ void llvm_gcda_start_file(const char *orig_filename, const char version[4],
   output_file = fdopen(fd, mode);
 
   /* Initialize the write buffer. */
+  new_file = 0;
   write_buffer = NULL;
   cur_buffer_size = 0;
   cur_pos = 0;
 
-  if (new_file) {
+  if (map_file() == -1) {
+    /* The file has been created just now (file_size == 0) or mmap failed
+     * unexpectedly. In the latter case, try to recover by clobbering. */
+    new_file = 1;
+    write_buffer = NULL;
     resize_write_buffer(WRITE_BUFFER_SIZE);
     memset(write_buffer, 0, WRITE_BUFFER_SIZE);
-  } else {
-    if (map_file() == -1) {
-      /* mmap failed, try to recover by clobbering */
-      new_file = 1;
-      write_buffer = NULL;
-      cur_buffer_size = 0;
-      resize_write_buffer(WRITE_BUFFER_SIZE);
-      memset(write_buffer, 0, WRITE_BUFFER_SIZE);
-    }
   }
 
   /* gcda file, version, stamp checksum. */
-  write_bytes("adcg", 4);
-  write_bytes(version, 4);
+  {
+    uint8_t c3 = version >> 24;
+    uint8_t c2 = (version >> 16) & 255;
+    uint8_t c1 = (version >> 8) & 255;
+    gcov_version = c3 >= 'A' ? (c3 - 'A') * 100 + (c2 - '0') * 10 + c1 - '0'
+                             : (c3 - '0') * 10 + c1 - '0';
+  }
+  write_32bit_value(GCOV_DATA_MAGIC);
+  write_32bit_value(version);
   write_32bit_value(checksum);
 
 #ifdef DEBUG_GCDAPROFILING
@@ -402,57 +369,26 @@ void llvm_gcda_start_file(const char *orig_filename, const char version[4],
 #endif
 }
 
-/* Given an array of pointers to counters (counters), increment the n-th one,
- * where we're also given a pointer to n (predecessor).
- */
 COMPILER_RT_VISIBILITY
-void llvm_gcda_increment_indirect_counter(uint32_t *predecessor,
-                                          uint64_t **counters) {
-  uint64_t *counter;
-  uint32_t pred;
-
-  pred = *predecessor;
-  if (pred == 0xffffffff)
-    return;
-  counter = counters[pred];
-
-  /* Don't crash if the pred# is out of sync. This can happen due to threads,
-     or because of a TODO in GCOVProfiling.cpp buildEdgeLookupTable(). */
-  if (counter)
-    ++*counter;
-#ifdef DEBUG_GCDAPROFILING
-  else
-    fprintf(stderr,
-            "llvmgcda: increment_indirect_counter counters=%08llx, pred=%u\n",
-            *counter, *predecessor);
-#endif
-}
-
-COMPILER_RT_VISIBILITY
-void llvm_gcda_emit_function(uint32_t ident, const char *function_name,
-                             uint32_t func_checksum, uint8_t use_extra_checksum,
+void llvm_gcda_emit_function(uint32_t ident, uint32_t func_checksum,
                              uint32_t cfg_checksum) {
   uint32_t len = 2;
+  int use_extra_checksum = gcov_version >= 47;
 
   if (use_extra_checksum)
     len++;
 #ifdef DEBUG_GCDAPROFILING
-  fprintf(stderr, "llvmgcda: function id=0x%08x name=%s\n", ident,
-          function_name ? function_name : "NULL");
+  fprintf(stderr, "llvmgcda: function id=0x%08x\n", ident);
 #endif
   if (!output_file) return;
 
   /* function tag */
-  write_bytes("\0\0\0\1", 4);
-  if (function_name)
-    len += 1 + length_of_string(function_name);
+  write_32bit_value(GCOV_TAG_FUNCTION);
   write_32bit_value(len);
   write_32bit_value(ident);
   write_32bit_value(func_checksum);
   if (use_extra_checksum)
     write_32bit_value(cfg_checksum);
-  if (function_name)
-    write_string(function_name);
 }
 
 COMPILER_RT_VISIBILITY
@@ -464,11 +400,11 @@ void llvm_gcda_emit_arcs(uint32_t num_counters, uint64_t *counters) {
 
   if (!output_file) return;
 
-  val = read_le_32bit_value();
+  val = read_32bit_value();
 
   if (val != (uint32_t)-1) {
     /* There are counters present in the file. Merge them. */
-    if (val != 0x01a10000) {
+    if (val != GCOV_TAG_COUNTER_ARCS) {
       fprintf(stderr, "profiling: %s: cannot merge previous GCDA file: "
                       "corrupt arc tag (0x%08x)\n",
               filename, val);
@@ -491,7 +427,7 @@ void llvm_gcda_emit_arcs(uint32_t num_counters, uint64_t *counters) {
   cur_pos = save_cur_pos;
 
   /* Counter #1 (arcs) tag */
-  write_bytes("\0\0\xa1\1", 4);
+  write_32bit_value(GCOV_TAG_COUNTER_ARCS);
   write_32bit_value(num_counters * 2);
   for (i = 0; i < num_counters; ++i) {
     counters[i] += (old_ctrs ? old_ctrs[i] : 0);
@@ -508,9 +444,7 @@ void llvm_gcda_emit_arcs(uint32_t num_counters, uint64_t *counters) {
 }
 
 COMPILER_RT_VISIBILITY
-void llvm_gcda_summary_info() {
-  const uint32_t obj_summary_len = 9; /* Length for gcov compatibility. */
-  uint32_t i;
+void llvm_gcda_summary_info(void) {
   uint32_t runs = 1;
   static uint32_t run_counted = 0; // We only want to increase the run count once.
   uint32_t val = 0;
@@ -518,46 +452,53 @@ void llvm_gcda_summary_info() {
 
   if (!output_file) return;
 
-  val = read_le_32bit_value();
+  val = read_32bit_value();
 
   if (val != (uint32_t)-1) {
     /* There are counters present in the file. Merge them. */
-    if (val != 0xa1000000) {
-      fprintf(stderr, "profiling: %s: cannot merge previous run count: "
-                      "corrupt object tag (0x%08x)\n",
+    uint32_t gcov_tag =
+        gcov_version >= 90 ? GCOV_TAG_OBJECT_SUMMARY : GCOV_TAG_PROGRAM_SUMMARY;
+    if (val != gcov_tag) {
+      fprintf(stderr,
+              "profiling: %s: cannot merge previous run count: "
+              "corrupt object tag (0x%08x)\n",
               filename, val);
       return;
     }
 
     val = read_32bit_value(); /* length */
-    if (val != obj_summary_len) {
-      fprintf(stderr, "profiling: %s: cannot merge previous run count: "
-                      "mismatched object length (%d)\n",
-              filename, val);
-      return;
+    uint32_t prev_runs;
+    if (gcov_version < 90) {
+      read_32bit_value();
+      read_32bit_value();
+      prev_runs = read_32bit_value();
+    } else {
+      prev_runs = read_32bit_value();
+      read_32bit_value();
     }
-
-    read_32bit_value(); /* checksum, unused */
-    read_32bit_value(); /* num, unused */
-    uint32_t prev_runs = read_32bit_value();
+    for (uint32_t i = gcov_version < 90 ? 3 : 2; i < val; ++i)
+      read_32bit_value();
     /* Add previous run count to new counter, if not already counted before. */
     runs = run_counted ? prev_runs : prev_runs + 1;
   }
 
   cur_pos = save_cur_pos;
 
-  /* Object summary tag */
-  write_bytes("\0\0\0\xa1", 4);
-  write_32bit_value(obj_summary_len);
-  write_32bit_value(0); /* checksum, unused */
-  write_32bit_value(0); /* num, unused */
-  write_32bit_value(runs);
-  for (i = 3; i < obj_summary_len; ++i)
+  if (gcov_version >= 90) {
+    write_32bit_value(GCOV_TAG_OBJECT_SUMMARY);
+    write_32bit_value(2);
+    write_32bit_value(runs);
+    write_32bit_value(0); // sum_max
+  } else {
+    // Before gcov 4.8 (r190952), GCOV_TAG_SUMMARY_LENGTH was 9. r190952 set
+    // GCOV_TAG_SUMMARY_LENGTH to 22. We simply use the smallest length which
+    // can make gcov read "Runs:".
+    write_32bit_value(GCOV_TAG_PROGRAM_SUMMARY);
+    write_32bit_value(3);
     write_32bit_value(0);
-
-  /* Program summary tag */
-  write_bytes("\0\0\0\xa3", 4); /* tag indicates 1 program */
-  write_32bit_value(0); /* 0 length */
+    write_32bit_value(0);
+    write_32bit_value(runs);
+  }
 
   run_counted = 1;
 
@@ -567,7 +508,7 @@ void llvm_gcda_summary_info() {
 }
 
 COMPILER_RT_VISIBILITY
-void llvm_gcda_end_file() {
+void llvm_gcda_end_file(void) {
   /* Write out EOF record. */
   if (output_file) {
     write_bytes("\0\0\0\0\0\0\0\0", 8);
@@ -609,48 +550,88 @@ void llvm_writeout_files(void) {
   }
 }
 
-COMPILER_RT_VISIBILITY
-void llvm_delete_writeout_function_list(void) {
+#ifndef _WIN32
+// __attribute__((destructor)) and destructors whose priorities are greater than
+// 100 run before this function and can thus be tracked. The priority is
+// compatible with GCC 7 onwards.
+#if __GNUC__ >= 9
+#pragma GCC diagnostic ignored "-Wprio-ctor-dtor"
+#endif
+__attribute__((destructor(100)))
+#endif
+static void llvm_writeout_and_clear(void) {
+  llvm_writeout_files();
   fn_list_remove(&writeout_fn_list);
 }
 
 COMPILER_RT_VISIBILITY
-void llvm_register_flush_function(fn_ptr fn) {
-  fn_list_insert(&flush_fn_list, fn);
+void llvm_register_reset_function(fn_ptr fn) {
+  fn_list_insert(&reset_fn_list, fn);
 }
 
-void __gcov_flush() {
-  struct fn_node* curr = flush_fn_list.head;
+COMPILER_RT_VISIBILITY
+void llvm_delete_reset_function_list(void) { fn_list_remove(&reset_fn_list); }
+
+COMPILER_RT_VISIBILITY
+void llvm_reset_counters(void) {
+  struct fn_node *curr = reset_fn_list.head;
 
   while (curr) {
-    curr->fn();
+    if (curr->id == CURRENT_ID) {
+      curr->fn();
+    }
     curr = curr->next;
   }
 }
 
+#if !defined(_WIN32)
 COMPILER_RT_VISIBILITY
-void llvm_delete_flush_function_list(void) {
-  fn_list_remove(&flush_fn_list);
+pid_t __gcov_fork() {
+  pid_t parent_pid = getpid();
+  pid_t pid = fork();
+
+  if (pid == 0) {
+    pid_t child_pid = getpid();
+    if (child_pid != parent_pid) {
+      // The pid changed so we've a fork (one could have its own fork function)
+      // Just reset the counters for this child process
+      // threads.
+      llvm_reset_counters();
+    }
+  }
+  return pid;
 }
+#endif
 
 COMPILER_RT_VISIBILITY
-void llvm_gcov_init(fn_ptr wfn, fn_ptr ffn) {
+void llvm_gcov_init(fn_ptr wfn, fn_ptr rfn) {
   static int atexit_ran = 0;
 
   if (wfn)
     llvm_register_writeout_function(wfn);
 
-  if (ffn)
-    llvm_register_flush_function(ffn);
+  if (rfn)
+    llvm_register_reset_function(rfn);
 
   if (atexit_ran == 0) {
     atexit_ran = 1;
 
     /* Make sure we write out the data and delete the data structures. */
-    atexit(llvm_delete_flush_function_list);
-    atexit(llvm_delete_writeout_function_list);
-    atexit(llvm_writeout_files);
+    atexit(llvm_delete_reset_function_list);
+#ifdef _WIN32
+    atexit(llvm_writeout_and_clear);
+#endif
   }
+}
+
+void __gcov_dump(void) {
+  for (struct fn_node *f = writeout_fn_list.head; f; f = f->next)
+    f->fn();
+}
+
+void __gcov_reset(void) {
+  for (struct fn_node *f = reset_fn_list.head; f; f = f->next)
+    f->fn();
 }
 
 #endif

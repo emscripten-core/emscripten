@@ -6,6 +6,7 @@
 |*
 \*===----------------------------------------------------------------------===*/
 
+#include <assert.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,13 +18,14 @@
 
 #define INSTR_PROF_VALUE_PROF_DATA
 #define INSTR_PROF_COMMON_API_IMPL
+#define INSTR_PROF_VALUE_PROF_MEMOP_API
 #include "profile/InstrProfData.inc"
 
 static int hasStaticCounters = 1;
 static int OutOfNodesWarnings = 0;
 static int hasNonDefaultValsPerSite = 0;
 #define INSTR_PROF_MAX_VP_WARNS 10
-#define INSTR_PROF_DEFAULT_NUM_VAL_PER_SITE 16
+#define INSTR_PROF_DEFAULT_NUM_VAL_PER_SITE 24
 #define INSTR_PROF_VNODE_POOL_SIZE 1024
 
 #ifndef _MSC_VER
@@ -37,7 +39,7 @@ COMPILER_RT_VISIBILITY ValueProfNode
 COMPILER_RT_VISIBILITY uint32_t VPMaxNumValsPerSite =
     INSTR_PROF_DEFAULT_NUM_VAL_PER_SITE;
 
-COMPILER_RT_VISIBILITY void lprofSetupValueProfiler() {
+COMPILER_RT_VISIBILITY void lprofSetupValueProfiler(void) {
   const char *Str = 0;
   Str = getenv("LLVM_VP_MAX_NUM_VALS_PER_SITE");
   if (Str && Str[0]) {
@@ -57,7 +59,19 @@ COMPILER_RT_VISIBILITY void lprofSetMaxValsPerSite(uint32_t MaxVals) {
 COMPILER_RT_VISIBILITY void
 __llvm_profile_set_num_value_sites(__llvm_profile_data *Data,
                                    uint32_t ValueKind, uint16_t NumValueSites) {
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-qual"
+#elif defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcast-qual"
+#endif
   *((uint16_t *)&Data->NumValueSites[ValueKind]) = NumValueSites;
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#elif defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 }
 
 /* This method is only used in value profiler mock testing.  */
@@ -93,6 +107,8 @@ static int allocateValueProfileCounters(__llvm_profile_data *Data) {
   for (VKI = IPVK_First; VKI <= IPVK_Last; ++VKI)
     NumVSites += Data->NumValueSites[VKI];
 
+  // If NumVSites = 0, calloc is allowed to return a non-null pointer.
+  assert(NumVSites > 0 && "NumVSites can't be zero");
   ValueProfNode **Mem =
       (ValueProfNode **)calloc(NumVSites, sizeof(ValueProfNode *));
   if (!Mem)
@@ -235,38 +251,21 @@ __llvm_profile_instrument_target_value(uint64_t TargetValue, void *Data,
 }
 
 /*
- * The target values are partitioned into multiple regions/ranges. There is one
- * contiguous region which is precise -- every value in the range is tracked
- * individually. A value outside the precise region will be collapsed into one
- * value depending on the region it falls in.
- *
- * There are three regions:
- * 1. (-inf, PreciseRangeStart) and (PreciseRangeLast, LargeRangeValue) belong
- * to one region -- all values here should be mapped to one value of
- * "PreciseRangeLast + 1".
- * 2. [PreciseRangeStart, PreciseRangeLast]
- * 3. Large values: [LargeValue, +inf) maps to one value of LargeValue.
- *
- * The range for large values is optional. The default value of INT64_MIN
- * indicates it is not specified.
+ * The target values are partitioned into multiple ranges. The range spec is
+ * defined in InstrProfData.inc.
  */
-COMPILER_RT_VISIBILITY void __llvm_profile_instrument_range(
-    uint64_t TargetValue, void *Data, uint32_t CounterIndex,
-    int64_t PreciseRangeStart, int64_t PreciseRangeLast, int64_t LargeValue) {
-
-  if (LargeValue != INT64_MIN && (int64_t)TargetValue >= LargeValue)
-    TargetValue = LargeValue;
-  else if ((int64_t)TargetValue < PreciseRangeStart ||
-           (int64_t)TargetValue > PreciseRangeLast)
-    TargetValue = PreciseRangeLast + 1;
-
-  __llvm_profile_instrument_target(TargetValue, Data, CounterIndex);
+COMPILER_RT_VISIBILITY void
+__llvm_profile_instrument_memop(uint64_t TargetValue, void *Data,
+                                uint32_t CounterIndex) {
+  // Map the target value to the representative value of its range.
+  uint64_t RepValue = InstrProfGetRangeRepValue(TargetValue);
+  __llvm_profile_instrument_target(RepValue, Data, CounterIndex);
 }
 
 /*
  * A wrapper struct that represents value profile runtime data.
  * Like InstrProfRecord class which is used by profiling host tools,
- * ValueProfRuntimeRecord also implements the abstract intefaces defined in
+ * ValueProfRuntimeRecord also implements the abstract interfaces defined in
  * ValueProfRecordClosure so that the runtime data can be serialized using
  * shared C implementation.
  */
@@ -366,6 +365,6 @@ static VPDataReaderType TheVPDataReader = {
     getFirstValueProfRecord,          getNumValueDataForSiteWrapper,
     getValueProfDataSizeWrapper,      getNextNValueData};
 
-COMPILER_RT_VISIBILITY VPDataReaderType *lprofGetVPDataReader() {
+COMPILER_RT_VISIBILITY VPDataReaderType *lprofGetVPDataReader(void) {
   return &TheVPDataReader;
 }
