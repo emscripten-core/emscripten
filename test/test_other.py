@@ -7684,48 +7684,48 @@ int main() {
   @also_with_wasmfs
   def test_dlopen_rpath(self):
     create_file('hello_dep.c', r'''
-#include <stdio.h>
+    #include <stdio.h>
 
-void hello_dep() {
-  printf("Hello_dep\n");
-  return;
-}
-''')
+    void hello_dep() {
+      printf("Hello_dep\n");
+      return;
+    }
+    ''')
     create_file('hello.c', r'''
-#include <stdio.h>
+    #include <stdio.h>
 
-void hello_dep();
+    void hello_dep();
 
-void hello() {
-  printf("Hello\n");
-  hello_dep();
-  return;
-}
-''')
+    void hello() {
+      printf("Hello\n");
+      hello_dep();
+      return;
+    }
+    ''')
     create_file('main.c', r'''
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <dlfcn.h>
+    #include <assert.h>
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <string.h>
+    #include <dlfcn.h>
 
-int main() {
-  void *h;
-  void (*f)();
-  double (*f2)(double);
+    int main() {
+      void *h;
+      void (*f)();
+      double (*f2)(double);
 
-  h = dlopen("/usr/lib/libhello.wasm", RTLD_NOW);
-  assert(h);
-  f = dlsym(h, "hello");
-  assert(f);
-  f();
-  dlclose(h);
+      h = dlopen("/usr/lib/libhello.wasm", RTLD_NOW);
+      assert(h);
+      f = dlsym(h, "hello");
+      assert(f);
+      f();
+      dlclose(h);
 
-  printf("Ok\n");
+      printf("Ok\n");
 
-  return 0;
-}
-''')
+      return 0;
+    }
+    ''')
     os.mkdir('subdir')
 
     def _build(rpath_flag, expected, **kwds):
