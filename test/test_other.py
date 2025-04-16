@@ -1669,23 +1669,12 @@ int f() {
     'closure': (['-O2', '--closure=1'],),
   })
   def test_stdin(self, args):
-    create_file('in.txt', 'abcdef\nghijkl\n')
     self.set_setting('ENVIRONMENT', 'node,shell')
     self.emcc(test_file('module/test_stdin.c'), args=args, output_filename='out.js')
 
     for engine in config.JS_ENGINES:
-      engine[0] = os.path.normpath(engine[0])
-      # work around a bug in python's subprocess module
-      # (we'd use self.run_js() normally)
-      delete_file('out.txt')
-      cmd = jsrun.make_command(os.path.normpath('out.js'), engine)
-      cmd = shared.shlex_join(cmd)
-      print(cmd, file=sys.stderr)
-      if WINDOWS:
-        os.system(f'type "in.txt" | {cmd} >out.txt')
-      else: # posix
-        os.system(f'cat in.txt | {cmd} > out.txt')
-      self.assertContained('abcdef\nghijkl\neof', read_file('out.txt'))
+      output = self.run_js('out.js', engine, input='abcdef\nghijkl\n')
+      self.assertContained('abcdef\nghijkl\neof', output)
 
   @crossplatform
   def test_module_stdin(self):
