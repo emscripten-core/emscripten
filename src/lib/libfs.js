@@ -1920,14 +1920,15 @@ FS.staticInit();`;
    * @param {number=} mode Optionally, the mode to create in. Uses mkdir's
    *                       default if not set.
    */`,
-  // Defintion generated automatically below.
+   $FS_mkdirTree__deps: ['$FS'],
+   $FS_mkdirTree: (path, mode) => FS.mkdirTree(path, mode),
 };
 
 // Add library aliases for all the FS.<symbol> as FS_<symbol>.
 for (let key in LibraryFS.$FS) {
   const alias = `$FS_${key}`;
-  // Skip defining the alias if it already exists.
-  if (LibraryFS[alias]) {
+  // Skip defining the alias if it already exists or if it's not an API function.
+  if (LibraryFS[alias] || key[0] !== key[0].toLowerCase()) {
     continue;
   }
   LibraryFS[alias] = `(...args) => FS.${key}(...args)`;
