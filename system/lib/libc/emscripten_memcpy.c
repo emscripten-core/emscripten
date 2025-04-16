@@ -5,20 +5,29 @@
 #include <stdint.h>
 #include <string.h>
 #include <emscripten/emscripten.h>
+#include "libc.h"
+#include "emscripten_internal.h"
 
-// An external JS implementation that is efficient for very large copies, using
-// HEAPU8.set()
-void* emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t n) EM_IMPORT(emscripten_memcpy_big);
-
-// XXX EMSCRIPTEN ASAN: build an uninstrumented version of memcpy
-#if defined(__EMSCRIPTEN__) && defined(__has_feature)
+// Use the simple/naive version of memcpy when building with asan
 #if __has_feature(address_sanitizer)
-#define memcpy __attribute__((no_sanitize("address"))) emscripten_builtin_memcpy
-#endif
-#endif
 
-void *memcpy(void *restrict dest, const void *restrict src, size_t n)
-{
+static void *__memcpy(void *dest, const void *src, size_t n) {
+  unsigned char *d = (unsigned char *)dest;
+  const unsigned char *s = (const unsigned char *)src;
+  while(n--) *d++ = *s++;
+  return dest;
+}
+
+#elif defined(EMSCRIPTEN_OPTIMIZE_FOR_OZ)
+
+static void *__memcpy(void *restrict dest, const void *restrict src, size_t n) {
+  // TODO: Ensure this is inlined with Binaryen or inline asm
+  return _emscripten_memcpy_bulkmem(dest, src, n);
+}
+
+#else
+
+static void *__memcpy(void *restrict dest, const void *restrict src, size_t n) {
   unsigned char *d = dest;
   const unsigned char *s = src;
 
@@ -27,8 +36,8 @@ void *memcpy(void *restrict dest, const void *restrict src, size_t n)
   unsigned char *d_end;
 
   if (n >= 512) {
-    emscripten_memcpy_big(dest, src, n);
-    return dest;
+    // TODO: Re-investigate the size threshold to enable this
+    return _emscripten_memcpy_bulkmem(dest, src, n);
   }
 
   d_end = d + n;
@@ -88,3 +97,8 @@ void *memcpy(void *restrict dest, const void *restrict src, size_t n)
   }
   return dest;
 }
+
+#endif
+
+weak_alias(__memcpy, emscripten_builtin_memcpy);
+weak_alias(__memcpy, memcpy);

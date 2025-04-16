@@ -18,7 +18,6 @@
 #include "sanitizer_common.h"
 #include "sanitizer_flags.h"
 #include "sanitizer_platform_limits_netbsd.h"
-#include "sanitizer_platform_limits_openbsd.h"
 #include "sanitizer_platform_limits_posix.h"
 #include "sanitizer_platform_limits_solaris.h"
 #include "sanitizer_posix.h"
@@ -61,32 +60,30 @@ void ReleaseMemoryPagesToOS(uptr beg, uptr end) {
   uptr beg_aligned = RoundUpTo(beg, page_size);
   uptr end_aligned = RoundDownTo(end, page_size);
   if (beg_aligned < end_aligned)
-    // In the default Solaris compilation environment, madvise() is declared
-    // to take a caddr_t arg; casting it to void * results in an invalid
-    // conversion error, so use char * instead.
-    madvise((char *)beg_aligned, end_aligned - beg_aligned,
-            SANITIZER_MADVISE_DONTNEED);
+    internal_madvise(beg_aligned, end_aligned - beg_aligned,
+                     SANITIZER_MADVISE_DONTNEED);
 }
 
 void SetShadowRegionHugePageMode(uptr addr, uptr size) {
 #ifdef MADV_NOHUGEPAGE  // May not be defined on old systems.
   if (common_flags()->no_huge_pages_for_shadow)
-    madvise((char *)addr, size, MADV_NOHUGEPAGE);
+    internal_madvise(addr, size, MADV_NOHUGEPAGE);
   else
-    madvise((char *)addr, size, MADV_HUGEPAGE);
+    internal_madvise(addr, size, MADV_HUGEPAGE);
 #endif  // MADV_NOHUGEPAGE
 }
 
 bool DontDumpShadowMemory(uptr addr, uptr length) {
 #if defined(MADV_DONTDUMP)
-  return madvise((char *)addr, length, MADV_DONTDUMP) == 0;
+  return internal_madvise(addr, length, MADV_DONTDUMP) == 0;
 #elif defined(MADV_NOCORE)
-  return madvise((char *)addr, length, MADV_NOCORE) == 0;
+  return internal_madvise(addr, length, MADV_NOCORE) == 0;
 #else
   return true;
 #endif  // MADV_DONTDUMP
 }
 
+#if !SANITIZER_EMSCRIPTEN
 static rlim_t getlim(int res) {
   rlimit rlim;
   CHECK_EQ(0, getrlimit(res, &rlim));
@@ -95,12 +92,12 @@ static rlim_t getlim(int res) {
 
 static void setlim(int res, rlim_t lim) {
   struct rlimit rlim;
-  if (getrlimit(res, const_cast<struct rlimit *>(&rlim))) {
+  if (getrlimit(res, &rlim)) {
     Report("ERROR: %s getrlimit() failed %d\n", SanitizerToolName, errno);
     Die();
   }
   rlim.rlim_cur = lim;
-  if (setrlimit(res, const_cast<struct rlimit *>(&rlim))) {
+  if (setrlimit(res, &rlim)) {
     Report("ERROR: %s setrlimit() failed %d\n", SanitizerToolName, errno);
     Die();
   }
@@ -108,7 +105,27 @@ static void setlim(int res, rlim_t lim) {
 
 void DisableCoreDumperIfNecessary() {
   if (common_flags()->disable_coredump) {
-    setlim(RLIMIT_CORE, 0);
+    rlimit rlim;
+    CHECK_EQ(0, getrlimit(RLIMIT_CORE, &rlim));
+    // On Linux, if the kernel.core_pattern sysctl starts with a '|' (i.e. it
+    // is being piped to a coredump handler such as systemd-coredumpd), the
+    // kernel ignores RLIMIT_CORE (since we aren't creating a file in the file
+    // system) except for the magic value of 1, which disables coredumps when
+    // piping. 1 byte is too small for any kind of valid core dump, so it
+    // also disables coredumps if kernel.core_pattern creates files directly.
+    // While most piped coredump handlers do respect the crashing processes'
+    // RLIMIT_CORE, this is notable not the case for Debian's systemd-coredump
+    // due to a local patch that changes sysctl.d/50-coredump.conf to ignore
+    // the specified limit and instead use RLIM_INFINITY.
+    //
+    // The alternative to using RLIMIT_CORE=1 would be to use prctl() with the
+    // PR_SET_DUMPABLE flag, however that also prevents ptrace(), so makes it
+    // impossible to attach a debugger.
+    //
+    // Note: we use rlim_max in the Min() call here since that is the upper
+    // limit for what can be set without getting an EINVAL error.
+    rlim.rlim_cur = Min<rlim_t>(SANITIZER_LINUX ? 1 : 0, rlim.rlim_max);
+    CHECK_EQ(0, setrlimit(RLIMIT_CORE, &rlim));
   }
 }
 
@@ -131,14 +148,7 @@ void SetAddressSpaceUnlimited() {
   setlim(RLIMIT_AS, RLIM_INFINITY);
   CHECK(AddressSpaceIsUnlimited());
 }
-
-void SleepForSeconds(int seconds) {
-  sleep(seconds);
-}
-
-void SleepForMillis(int millis) {
-  usleep(millis * 1000);
-}
+#endif
 
 void Abort() {
 #if !SANITIZER_GO
@@ -147,7 +157,7 @@ void Abort() {
   if (GetHandleSignalMode(SIGABRT) != kHandleSignalNo) {
     struct sigaction sigact;
     internal_memset(&sigact, 0, sizeof(sigact));
-    sigact.sa_sigaction = (sa_sigaction_t)SIG_DFL;
+    sigact.sa_handler = SIG_DFL;
     internal_sigaction(SIGABRT, &sigact, nullptr);
   }
 #endif
@@ -163,13 +173,20 @@ int Atexit(void (*function)(void)) {
 #endif
 }
 
+bool CreateDir(const char *pathname) { return mkdir(pathname, 0755) == 0; }
+
 bool SupportsColoredOutput(fd_t fd) {
   return isatty(fd) != 0;
 }
 
 #if !SANITIZER_GO
 // TODO(glider): different tools may require different altstack size.
-static const uptr kAltStackSize = SIGSTKSZ * 4;  // SIGSTKSZ is not enough.
+static uptr GetAltStackSize() {
+  // Note: since GLIBC_2.31, SIGSTKSZ may be a function call, so this may be
+  // more costly that you think. However GetAltStackSize is only call 2-3 times
+  // per thread so don't cache the evaluation.
+  return SIGSTKSZ * 4;
+}
 
 void SetAlternateSignalStack() {
   stack_t altstack, oldstack;
@@ -180,10 +197,9 @@ void SetAlternateSignalStack() {
   // TODO(glider): the mapped stack should have the MAP_STACK flag in the
   // future. It is not required by man 2 sigaltstack now (they're using
   // malloc()).
-  void* base = MmapOrDie(kAltStackSize, __func__);
-  altstack.ss_sp = (char*) base;
+  altstack.ss_size = GetAltStackSize();
+  altstack.ss_sp = (char *)MmapOrDie(altstack.ss_size, __func__);
   altstack.ss_flags = 0;
-  altstack.ss_size = kAltStackSize;
   CHECK_EQ(0, sigaltstack(&altstack, nullptr));
 }
 
@@ -191,7 +207,7 @@ void UnsetAlternateSignalStack() {
   stack_t altstack, oldstack;
   altstack.ss_sp = nullptr;
   altstack.ss_flags = SS_DISABLE;
-  altstack.ss_size = kAltStackSize;  // Some sane value required on Darwin.
+  altstack.ss_size = GetAltStackSize();  // Some sane value required on Darwin.
   CHECK_EQ(0, sigaltstack(&altstack, &oldstack));
   UnmapOrDie(oldstack.ss_sp, oldstack.ss_size);
 }
@@ -304,7 +320,7 @@ bool IsAccessibleMemoryRange(uptr beg, uptr size) {
 #endif // SANITIZER_EMSCRIPTEN
 }
 
-void PlatformPrepareForSandboxing(__sanitizer_sandbox_arguments *args) {
+void PlatformPrepareForSandboxing(void *args) {
   // Some kinds of sandboxes may forbid filesystem access, so we won't be able
   // to read the file mappings from /proc/self/maps. Luckily, neither the
   // process will be able to load additional libraries, so it's fine to use the
@@ -323,9 +339,10 @@ static bool MmapFixed(uptr fixed_addr, uptr size, int additional_flags,
                 MAP_PRIVATE | MAP_FIXED | additional_flags | MAP_ANON, name);
   int reserrno;
   if (internal_iserror(p, &reserrno)) {
-    Report("ERROR: %s failed to "
-           "allocate 0x%zx (%zd) bytes at address %zx (errno: %d)\n",
-           SanitizerToolName, size, size, fixed_addr, reserrno);
+    Report(
+        "ERROR: %s failed to "
+        "allocate 0x%zx (%zd) bytes at address %p (errno: %d)\n",
+        SanitizerToolName, size, size, (void *)fixed_addr, reserrno);
     return false;
   }
   IncreaseTotalMmap(size);
@@ -399,8 +416,8 @@ SANITIZER_WEAK_ATTRIBUTE int
 real_pthread_attr_getstack(void *attr, void **addr, size_t *size);
 } // extern "C"
 
-int my_pthread_attr_getstack(void *attr, void **addr, uptr *size) {
-#if !SANITIZER_GO && !SANITIZER_MAC
+int internal_pthread_attr_getstack(void *attr, void **addr, uptr *size) {
+#if !SANITIZER_GO && !SANITIZER_APPLE
   if (&real_pthread_attr_getstack)
     return real_pthread_attr_getstack((pthread_attr_t *)attr, addr,
                                       (size_t *)size);
@@ -413,7 +430,7 @@ void AdjustStackSize(void *attr_) {
   pthread_attr_t *attr = (pthread_attr_t *)attr_;
   uptr stackaddr = 0;
   uptr stacksize = 0;
-  my_pthread_attr_getstack(attr, (void**)&stackaddr, &stacksize);
+  internal_pthread_attr_getstack(attr, (void **)&stackaddr, &stacksize);
   // GLibC will return (0 - stacksize) as the stack address in the case when
   // stacksize is set, but stackaddr is not.
   bool stack_set = (stackaddr != 0) && (stackaddr + stacksize != 0);
@@ -435,8 +452,10 @@ void AdjustStackSize(void *attr_) {
 }
 #endif // !SANITIZER_GO
 
+#if !SANITIZER_EMSCRIPTEN
 pid_t StartSubprocess(const char *program, const char *const argv[],
-                      fd_t stdin_fd, fd_t stdout_fd, fd_t stderr_fd) {
+                      const char *const envp[], fd_t stdin_fd, fd_t stdout_fd,
+                      fd_t stderr_fd) {
   auto file_closer = at_scope_exit([&] {
     if (stdin_fd != kInvalidFd) {
       internal_close(stdin_fd);
@@ -479,7 +498,8 @@ pid_t StartSubprocess(const char *program, const char *const argv[],
 
     for (int fd = sysconf(_SC_OPEN_MAX); fd > 2; fd--) internal_close(fd);
 
-    execv(program, const_cast<char **>(&argv[0]));
+    internal_execve(program, const_cast<char **>(&argv[0]),
+                    const_cast<char *const *>(envp));
     internal__exit(1);
   }
 
@@ -507,6 +527,7 @@ int WaitForProcess(pid_t pid) {
   }
   return process_status;
 }
+#endif
 
 bool IsStateDetached(int state) {
   return state == PTHREAD_CREATE_DETACHED;

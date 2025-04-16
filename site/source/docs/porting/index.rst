@@ -19,6 +19,8 @@ The topics in this section cover the main integration points that you need to co
   pthreads
   networking
   simd
+  exceptions
+  setjmp-longjmp
   asyncify
   ../compiling/Building-Projects
 

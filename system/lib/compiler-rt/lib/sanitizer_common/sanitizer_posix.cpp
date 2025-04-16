@@ -41,6 +41,8 @@ uptr GetMmapGranularity() {
   return GetPageSize();
 }
 
+bool ErrorIsOOM(error_t err) { return err == ENOMEM; }
+
 void *MmapOrDie(uptr size, const char *mem_type, bool raw_report) {
   size = RoundUpTo(size, GetPageSizeCached());
   uptr res = MmapNamed(nullptr, size, PROT_READ | PROT_WRITE,
@@ -52,14 +54,12 @@ void *MmapOrDie(uptr size, const char *mem_type, bool raw_report) {
   return (void *)res;
 }
 
-void UnmapOrDie(void *addr, uptr size) {
+void UnmapOrDie(void *addr, uptr size, bool raw_report) {
   if (!addr || !size) return;
   uptr res = internal_munmap(addr, size);
-  if (UNLIKELY(internal_iserror(res))) {
-    Report("ERROR: %s failed to deallocate 0x%zx (%zd) bytes at address %p\n",
-           SanitizerToolName, size, size, addr);
-    CHECK("unable to unmap" && 0);
-  }
+  int reserrno;
+  if (UNLIKELY(internal_iserror(res, &reserrno)))
+    ReportMunmapFailureAndDie(addr, size, reserrno, raw_report);
   DecreaseTotalMmap(size);
 }
 
@@ -85,18 +85,22 @@ void *MmapAlignedOrDieOnFatalError(uptr size, uptr alignment,
   CHECK(IsPowerOfTwo(size));
   CHECK(IsPowerOfTwo(alignment));
   uptr map_size = size + alignment;
+  // mmap maps entire pages and rounds up map_size needs to be a an integral
+  // number of pages.
+  // We need to be aware of this size for calculating end and for unmapping
+  // fragments before and after the alignment region.
+  map_size = RoundUpTo(map_size, GetPageSizeCached());
   uptr map_res = (uptr)MmapOrDieOnFatalError(map_size, mem_type);
   if (UNLIKELY(!map_res))
     return nullptr;
-  uptr map_end = map_res + map_size;
   uptr res = map_res;
   if (!IsAligned(res, alignment)) {
     res = (map_res + alignment - 1) & ~(alignment - 1);
+#ifndef SANITIZER_EMSCRIPTEN
+    // Emscripten's fake mmap doesn't support partial unmapping
     UnmapOrDie((void*)map_res, res - map_res);
+#endif
   }
-  uptr end = res + size;
-  if (end != map_end)
-    UnmapOrDie((void*)end, map_end - end);
   return (void*)res;
 }
 
@@ -122,8 +126,8 @@ static void *MmapFixedImpl(uptr fixed_addr, uptr size, bool tolerate_enomem,
     if (tolerate_enomem && reserrno == ENOMEM)
       return nullptr;
     char mem_type[40];
-    internal_snprintf(mem_type, sizeof(mem_type), "memory at address 0x%zx",
-                      fixed_addr);
+    internal_snprintf(mem_type, sizeof(mem_type), "memory at address %p",
+                      (void *)fixed_addr);
     ReportMmapFailureAndDie(size, mem_type, "allocate", reserrno);
   }
   IncreaseTotalMmap(size);
@@ -139,14 +143,30 @@ void *MmapFixedOrDieOnFatalError(uptr fixed_addr, uptr size, const char *name) {
 }
 
 bool MprotectNoAccess(uptr addr, uptr size) {
+#if SANITIZER_EMSCRIPTEN
+  return true;
+#else
   return 0 == internal_mprotect((void*)addr, size, PROT_NONE);
+#endif
 }
 
 bool MprotectReadOnly(uptr addr, uptr size) {
+#if SANITIZER_EMSCRIPTEN
+  return true;
+#else
   return 0 == internal_mprotect((void *)addr, size, PROT_READ);
+#endif
 }
 
-#if !SANITIZER_MAC
+bool MprotectReadWrite(uptr addr, uptr size) {
+#if SANITIZER_EMSCRIPTEN
+  return true;
+#else
+  return 0 == internal_mprotect((void *)addr, size, PROT_READ | PROT_WRITE);
+#endif
+}
+
+#if !SANITIZER_APPLE
 void MprotectMallocZones(void *addr, int prot) {}
 #endif
 
@@ -213,13 +233,6 @@ void *MapWritableFileToMemory(void *addr, uptr size, fd_t fd, OFF_T offset) {
   return (void *)p;
 }
 
-static inline bool IntervalsAreSeparate(uptr start1, uptr end1,
-                                        uptr start2, uptr end2) {
-  CHECK(start1 <= end1);
-  CHECK(start2 <= end2);
-  return (end1 < start2) || (end2 < start1);
-}
-
 #if SANITIZER_EMSCRIPTEN
 bool MemoryRangeIsAvailable(uptr /*range_start*/, uptr /*range_end*/) {
   // TODO: actually implement this.
@@ -230,6 +243,13 @@ void DumpProcessMap() {
   Report("Cannot dump memory map on emscripten");
 }
 #else
+static inline bool IntervalsAreSeparate(uptr start1, uptr end1,
+                                        uptr start2, uptr end2) {
+  CHECK(start1 <= end1);
+  CHECK(start2 <= end2);
+  return (end1 < start2) || (end2 < start1);
+}
+
 // FIXME: this is thread-unsafe, but should not cause problems most of the time.
 // When the shadow is mapped only a single thread usually exists (plus maybe
 // several worker threads on Mac, which aren't expected to map big chunks of
@@ -249,6 +269,7 @@ bool MemoryRangeIsAvailable(uptr range_start, uptr range_end) {
   return true;
 }
 
+#if !SANITIZER_APPLE
 void DumpProcessMap() {
   MemoryMappingLayout proc_maps(/*cache_enabled*/true);
   const sptr kBufSize = 4095;
@@ -262,6 +283,7 @@ void DumpProcessMap() {
   Report("End of process memory map.\n");
   UnmapOrDie(filename, kBufSize);
 }
+#endif
 #endif
 
 const char *GetPwd() {
@@ -288,8 +310,8 @@ bool GetCodeRangeForFile(const char *module, uptr *start, uptr *end) {
   // and thus always fails.
 #else
   MemoryMappingLayout proc_maps(/*cache_enabled*/false);
-  InternalScopedString buff(kMaxPathLength);
-  MemoryMappedSegment segment(buff.data(), kMaxPathLength);
+  InternalMmapVector<char> buff(kMaxPathLength);
+  MemoryMappedSegment segment(buff.data(), buff.size());
   while (proc_maps.Next(&segment)) {
     if (segment.IsExecutable() &&
         internal_strcmp(module, segment.filename) == 0) {
@@ -309,7 +331,7 @@ uptr SignalContext::GetAddress() const {
 
 bool SignalContext::IsMemoryAccess() const {
   auto si = static_cast<const siginfo_t *>(siginfo);
-  return si->si_signo == SIGSEGV;
+  return si->si_signo == SIGSEGV || si->si_signo == SIGBUS;
 }
 
 int SignalContext::GetType() const {
@@ -363,10 +385,18 @@ int GetNamedMappingFd(const char *name, uptr size, int *flags) {
   CHECK(internal_strlen(name) < sizeof(shmname) - 10);
   internal_snprintf(shmname, sizeof(shmname), "/dev/shm/%zu [%s]",
                     internal_getpid(), name);
+  int o_cloexec = 0;
+#if defined(O_CLOEXEC)
+  o_cloexec = O_CLOEXEC;
+#endif
   int fd = ReserveStandardFds(
-      internal_open(shmname, O_RDWR | O_CREAT | O_TRUNC | O_CLOEXEC, S_IRWXU));
+      internal_open(shmname, O_RDWR | O_CREAT | O_TRUNC | o_cloexec, S_IRWXU));
   CHECK_GE(fd, 0);
   int res = internal_ftruncate(fd, size);
+#if !defined(O_CLOEXEC)
+  res = fcntl(fd, F_SETFD, FD_CLOEXEC);
+  CHECK_EQ(0, res);
+#endif
   CHECK_EQ(0, res);
   res = internal_unlink(shmname);
   CHECK_EQ(0, res);

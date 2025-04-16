@@ -1,9 +1,0 @@
-__errno_location
-__indirect_function_table
-__wasm_call_ctors
-add
-global_val
-memory
-stackAlloc
-stackRestore
-stackSave

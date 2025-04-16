@@ -102,6 +102,11 @@ nodeBuffer.Buffer.prototype.toJSON = function() {};
 nodeBuffer.Buffer.prototype.length;
 
 /**
+ * @type {number}
+ */
+nodeBuffer.Buffer.prototype.byteOffset;
+
+/**
  * @param {nodeBuffer.Buffer} targetBuffer
  * @param {number=} targetStart
  * @param {number=} sourceStart
@@ -420,3 +425,8 @@ nodeBuffer.Buffer.prototype.binaryWrite = function(string, offset) {};
  * @return {nodeBuffer.Buffer}
  */
 nodeBuffer.Buffer.prototype.asciiWrite = function(string, offset) {};
+
+/**
+ * @type {ArrayBuffer}
+ */
+nodeBuffer.Buffer.prototype.buffer;

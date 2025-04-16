@@ -7,5 +7,5 @@ int getdtablesize(void)
 {
 	struct rlimit rl;
 	getrlimit(RLIMIT_NOFILE, &rl);
-	return rl.rlim_max < INT_MAX ? rl.rlim_max : INT_MAX;
+	return rl.rlim_cur < INT_MAX ? rl.rlim_cur : INT_MAX;
 }

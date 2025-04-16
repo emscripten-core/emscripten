@@ -1,0 +1,30 @@
+BEGIN
+no args works
+no args returning int
+    noarg_int returned: 12
+no args returning double
+    noarg_double returned: 12.250000
+  takes ints: 5
+  takes doubles: 5.0675
+  takes strings: string arg
+    stringarg returned: 7.750000
+  takes multiple ints: 5, 7
+    multi_intarg returned: 6
+  mixed arg types: 3, hello, 4.75
+    multi_mixedarg returned: 8.125000
+  ignores unused args
+    unused_args returned: 5
+  skips unused args: 7
+    skip_args returned: 6.000000
+  5.5 + 14.375
+    add_outer returned: 19.875000
+  can use <::> separator in user code
+    user_separator returned: 15
+  can have commas in user code: 1,2,3
+    user_comma returned: 2
+    return_str returned: hello from js
+    return_utf8_str returned: こんにちは
+    _prefixed: 1
+no args returning int
+    transitive: 12
+END

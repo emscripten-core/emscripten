@@ -1,9 +1,8 @@
 #include <sys/statvfs.h>
 #include <sys/statfs.h>
 #include "syscall.h"
-#include "libc.h"
 
-int __statfs(const char *path, struct statfs *buf)
+static int __statfs(const char *path, struct statfs *buf)
 {
 	*buf = (struct statfs){0};
 #ifdef SYS_statfs64
@@ -13,7 +12,7 @@ int __statfs(const char *path, struct statfs *buf)
 #endif
 }
 
-int __fstatfs(int fd, struct statfs *buf)
+static int __fstatfs(int fd, struct statfs *buf)
 {
 	*buf = (struct statfs){0};
 #ifdef SYS_fstatfs64
@@ -40,6 +39,7 @@ static void fixup(struct statvfs *out, const struct statfs *in)
 	out->f_fsid = in->f_fsid.__val[0];
 	out->f_flag = in->f_flags;
 	out->f_namemax = in->f_namelen;
+	out->f_type = in->f_type;
 }
 
 int statvfs(const char *restrict path, struct statvfs *restrict buf)
@@ -57,8 +57,3 @@ int fstatvfs(int fd, struct statvfs *buf)
 	fixup(buf, &kbuf);
 	return 0;
 }
-
-LFS64(statvfs);
-LFS64(statfs);
-LFS64(fstatvfs);
-LFS64(fstatfs);

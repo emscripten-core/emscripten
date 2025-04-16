@@ -34,6 +34,7 @@ static int getgr_r(const char *name, gid_t gid, struct group *gr, char *buf, siz
  	free(mem);
  	free(line);
 	pthread_setcancelstate(cs, 0);
+	if (rv) errno = rv;
 	return rv;
 }
 

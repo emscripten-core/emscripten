@@ -1,0 +1,26 @@
+getcwd: /
+errno: No error information
+
+chdir(file): -1
+errno: Not a directory
+
+chdir(""): -1
+errno: No such file or directory
+
+chdir(device): -1
+errno: Not a directory
+
+chdir(folder): 0
+errno: No error information
+getcwd: /folder
+
+chdir(nonexistent): -1
+errno: No such file or directory
+
+chdir(link): 0
+errno: No error information
+getcwd: /folder
+
+fchdir(/): 0
+errno: No error information
+getcwd: /

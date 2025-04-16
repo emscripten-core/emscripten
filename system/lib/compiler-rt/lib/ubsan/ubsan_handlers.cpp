@@ -1,4 +1,4 @@
-//===-- ubsan_handlers.cc -------------------------------------------------===//
+//===-- ubsan_handlers.cpp ------------------------------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -16,6 +16,7 @@
 #include "ubsan_diag.h"
 #include "ubsan_flags.h"
 #include "ubsan_monitor.h"
+#include "ubsan_value.h"
 
 #include "sanitizer_common/sanitizer_common.h"
 
@@ -36,7 +37,46 @@ bool ignoreReport(SourceLocation SLoc, ReportOptions Opts, ErrorType ET) {
   return SLoc.isDisabled() || IsPCSuppressed(ET, Opts.pc, SLoc.getFilename());
 }
 
-const char *TypeCheckKinds[] = {
+/// Situations in which we might emit a check for the suitability of a
+/// pointer or glvalue. Needs to be kept in sync with CodeGenFunction.h in
+/// clang.
+enum TypeCheckKind {
+  /// Checking the operand of a load. Must be suitably sized and aligned.
+  TCK_Load,
+  /// Checking the destination of a store. Must be suitably sized and aligned.
+  TCK_Store,
+  /// Checking the bound value in a reference binding. Must be suitably sized
+  /// and aligned, but is not required to refer to an object (until the
+  /// reference is used), per core issue 453.
+  TCK_ReferenceBinding,
+  /// Checking the object expression in a non-static data member access. Must
+  /// be an object within its lifetime.
+  TCK_MemberAccess,
+  /// Checking the 'this' pointer for a call to a non-static member function.
+  /// Must be an object within its lifetime.
+  TCK_MemberCall,
+  /// Checking the 'this' pointer for a constructor call.
+  TCK_ConstructorCall,
+  /// Checking the operand of a static_cast to a derived pointer type. Must be
+  /// null or an object within its lifetime.
+  TCK_DowncastPointer,
+  /// Checking the operand of a static_cast to a derived reference type. Must
+  /// be an object within its lifetime.
+  TCK_DowncastReference,
+  /// Checking the operand of a cast to a base object. Must be suitably sized
+  /// and aligned.
+  TCK_Upcast,
+  /// Checking the operand of a cast to a virtual base object. Must be an
+  /// object within its lifetime.
+  TCK_UpcastToVirtualBase,
+  /// Checking the value assigned to a _Nonnull pointer. Must not be null.
+  TCK_NonnullAssign,
+  /// Checking the operand of a dynamic_cast or a typeid expression.  Must be
+  /// null or an object within its lifetime.
+  TCK_DynamicOperation
+};
+
+extern const char *const TypeCheckKinds[] = {
     "load of", "store to", "reference binding to", "member access within",
     "member call on", "constructor call on", "downcast of", "downcast of",
     "upcast of", "cast to virtual base of", "_Nonnull binding to",
@@ -50,7 +90,9 @@ static void handleTypeMismatchImpl(TypeMismatchData *Data, ValueHandle Pointer,
   uptr Alignment = (uptr)1 << Data->LogAlignment;
   ErrorType ET;
   if (!Pointer)
-    ET = ErrorType::NullPointerUse;
+    ET = (Data->TypeCheckKind == TCK_NonnullAssign)
+             ? ErrorType::NullPointerUseWithNullability
+             : ErrorType::NullPointerUse;
   else if (Pointer & (Alignment - 1))
     ET = ErrorType::MisalignedPointerUse;
   else
@@ -71,6 +113,7 @@ static void handleTypeMismatchImpl(TypeMismatchData *Data, ValueHandle Pointer,
 
   switch (ET) {
   case ErrorType::NullPointerUse:
+  case ErrorType::NullPointerUseWithNullability:
     Diag(Loc, DL_Error, ET, "%0 null pointer of type %1")
         << TypeCheckKinds[Data->TypeCheckKind] << Data->Type;
     break;
@@ -512,13 +555,11 @@ static void handleImplicitConversion(ImplicitConversionData *Data,
                                      ReportOptions Opts, ValueHandle Src,
                                      ValueHandle Dst) {
   SourceLocation Loc = Data->Loc.acquire();
-  ErrorType ET = ErrorType::GenericUB;
-
   const TypeDescriptor &SrcTy = Data->FromType;
   const TypeDescriptor &DstTy = Data->ToType;
-
   bool SrcSigned = SrcTy.isSignedIntegerTy();
   bool DstSigned = DstTy.isSignedIntegerTy();
+  ErrorType ET = ErrorType::GenericUB;
 
   switch (Data->Kind) {
   case ICCK_IntegerTruncation: { // Legacy, no longer used.
@@ -551,14 +592,23 @@ static void handleImplicitConversion(ImplicitConversionData *Data,
 
   ScopedReport R(Opts, Loc, ET);
 
+  // In the case we have a bitfield, we want to explicitly say so in the
+  // error message.
   // FIXME: is it possible to dump the values as hex with fixed width?
-
-  Diag(Loc, DL_Error, ET,
-       "implicit conversion from type %0 of value %1 (%2-bit, %3signed) to "
-       "type %4 changed the value to %5 (%6-bit, %7signed)")
-      << SrcTy << Value(SrcTy, Src) << SrcTy.getIntegerBitWidth()
-      << (SrcSigned ? "" : "un") << DstTy << Value(DstTy, Dst)
-      << DstTy.getIntegerBitWidth() << (DstSigned ? "" : "un");
+  if (Data->BitfieldBits)
+    Diag(Loc, DL_Error, ET,
+         "implicit conversion from type %0 of value %1 (%2-bit, %3signed) to "
+         "type %4 changed the value to %5 (%6-bit bitfield, %7signed)")
+        << SrcTy << Value(SrcTy, Src) << SrcTy.getIntegerBitWidth()
+        << (SrcSigned ? "" : "un") << DstTy << Value(DstTy, Dst)
+        << Data->BitfieldBits << (DstSigned ? "" : "un");
+  else
+    Diag(Loc, DL_Error, ET,
+         "implicit conversion from type %0 of value %1 (%2-bit, %3signed) to "
+         "type %4 changed the value to %5 (%6-bit, %7signed)")
+        << SrcTy << Value(SrcTy, Src) << SrcTy.getIntegerBitWidth()
+        << (SrcSigned ? "" : "un") << DstTy << Value(DstTy, Dst)
+        << DstTy.getIntegerBitWidth() << (DstSigned ? "" : "un");
 }
 
 void __ubsan::__ubsan_handle_implicit_conversion(ImplicitConversionData *Data,
@@ -598,13 +648,44 @@ void __ubsan::__ubsan_handle_invalid_builtin_abort(InvalidBuiltinData *Data) {
   Die();
 }
 
+static void handleInvalidObjCCast(InvalidObjCCast *Data, ValueHandle Pointer,
+                                  ReportOptions Opts) {
+  SourceLocation Loc = Data->Loc.acquire();
+  ErrorType ET = ErrorType::InvalidObjCCast;
+
+  if (ignoreReport(Loc, Opts, ET))
+    return;
+
+  ScopedReport R(Opts, Loc, ET);
+
+  const char *GivenClass = getObjCClassName(Pointer);
+  const char *GivenClassStr = GivenClass ? GivenClass : "<unknown type>";
+
+  Diag(Loc, DL_Error, ET,
+       "invalid ObjC cast, object is a '%0', but expected a %1")
+      << GivenClassStr << Data->ExpectedType;
+}
+
+void __ubsan::__ubsan_handle_invalid_objc_cast(InvalidObjCCast *Data,
+                                               ValueHandle Pointer) {
+  GET_REPORT_OPTIONS(false);
+  handleInvalidObjCCast(Data, Pointer, Opts);
+}
+void __ubsan::__ubsan_handle_invalid_objc_cast_abort(InvalidObjCCast *Data,
+                                                     ValueHandle Pointer) {
+  GET_REPORT_OPTIONS(true);
+  handleInvalidObjCCast(Data, Pointer, Opts);
+  Die();
+}
+
 static void handleNonNullReturn(NonNullReturnData *Data, SourceLocation *LocPtr,
                                 ReportOptions Opts, bool IsAttr) {
   if (!LocPtr)
     UNREACHABLE("source location pointer is null!");
 
   SourceLocation Loc = LocPtr->acquire();
-  ErrorType ET = ErrorType::InvalidNullReturn;
+  ErrorType ET = IsAttr ? ErrorType::InvalidNullReturn
+                        : ErrorType::InvalidNullReturnWithNullability;
 
   if (ignoreReport(Loc, Opts, ET))
     return;
@@ -648,7 +729,8 @@ void __ubsan::__ubsan_handle_nullability_return_v1_abort(
 static void handleNonNullArg(NonNullArgData *Data, ReportOptions Opts,
                              bool IsAttr) {
   SourceLocation Loc = Data->Loc.acquire();
-  ErrorType ET = ErrorType::InvalidNullArgument;
+  ErrorType ET = IsAttr ? ErrorType::InvalidNullArgument
+                        : ErrorType::InvalidNullArgumentWithNullability;
 
   if (ignoreReport(Loc, Opts, ET))
     return;
@@ -819,6 +901,41 @@ void __ubsan::__ubsan_handle_cfi_check_fail_abort(CFICheckFailData *Data,
   else
     __ubsan_handle_cfi_bad_type(Data, Value, ValidVtable, Opts);
   Die();
+}
+
+static bool handleFunctionTypeMismatch(FunctionTypeMismatchData *Data,
+                                       ValueHandle Function,
+                                       ReportOptions Opts) {
+  SourceLocation CallLoc = Data->Loc.acquire();
+  ErrorType ET = ErrorType::FunctionTypeMismatch;
+  if (ignoreReport(CallLoc, Opts, ET))
+    return true;
+
+  ScopedReport R(Opts, CallLoc, ET);
+
+  SymbolizedStackHolder FLoc(getSymbolizedLocation(Function));
+  const char *FName = FLoc.get()->info.function;
+  if (!FName)
+    FName = "(unknown)";
+
+  Diag(CallLoc, DL_Error, ET,
+       "call to function %0 through pointer to incorrect function type %1")
+      << FName << Data->Type;
+  Diag(FLoc, DL_Note, ET, "%0 defined here") << FName;
+  return true;
+}
+
+void __ubsan::__ubsan_handle_function_type_mismatch(
+    FunctionTypeMismatchData *Data, ValueHandle Function) {
+  GET_REPORT_OPTIONS(false);
+  handleFunctionTypeMismatch(Data, Function, Opts);
+}
+
+void __ubsan::__ubsan_handle_function_type_mismatch_abort(
+    FunctionTypeMismatchData *Data, ValueHandle Function) {
+  GET_REPORT_OPTIONS(true);
+  if (handleFunctionTypeMismatch(Data, Function, Opts))
+    Die();
 }
 
 #endif  // CAN_SANITIZE_UB

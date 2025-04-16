@@ -15,7 +15,7 @@
 #ifndef SANITIZER_FILE_H
 #define SANITIZER_FILE_H
 
-#include "sanitizer_interface_internal.h"
+#include "sanitizer_common.h"
 #include "sanitizer_internal_defs.h"
 #include "sanitizer_libc.h"
 #include "sanitizer_mutex.h"
@@ -26,6 +26,7 @@ struct ReportFile {
   void Write(const char *buffer, uptr length);
   bool SupportsColors();
   void SetReportPath(const char *path);
+  const char *GetReportPath();
 
   // Don't use fields directly. They are only declared public to allow
   // aggregate initialization.
@@ -77,18 +78,21 @@ bool SupportsColoredOutput(fd_t fd);
 // OS
 const char *GetPwd();
 bool FileExists(const char *filename);
+bool DirExists(const char *path);
 char *FindPathToBinary(const char *name);
 bool IsPathSeparator(const char c);
 bool IsAbsolutePath(const char *path);
-// Starts a subprocess and returs its pid.
+// Returns true on success, false on failure.
+bool CreateDir(const char *pathname);
+// Starts a subprocess and returns its pid.
 // If *_fd parameters are not kInvalidFd their corresponding input/output
 // streams will be redirect to the file. The files will always be closed
 // in parent process even in case of an error.
 // The child process will close all fds after STDERR_FILENO
 // before passing control to a program.
 pid_t StartSubprocess(const char *filename, const char *const argv[],
-                      fd_t stdin_fd = kInvalidFd, fd_t stdout_fd = kInvalidFd,
-                      fd_t stderr_fd = kInvalidFd);
+                      const char *const envp[], fd_t stdin_fd = kInvalidFd,
+                      fd_t stdout_fd = kInvalidFd, fd_t stderr_fd = kInvalidFd);
 // Checks if specified process is still running
 bool IsProcessRunning(pid_t pid);
 // Waits for the process to finish and returns its exit code.

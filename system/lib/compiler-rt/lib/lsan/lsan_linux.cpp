@@ -6,21 +6,22 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file is a part of LeakSanitizer. Linux/NetBSD-specific code.
+// This file is a part of LeakSanitizer. Linux/NetBSD/Fuchsia-specific code.
 //
 //===----------------------------------------------------------------------===//
 
 #include "sanitizer_common/sanitizer_platform.h"
 
-#if SANITIZER_LINUX || SANITIZER_EMSCRIPTEN
+#if SANITIZER_LINUX || SANITIZER_NETBSD || SANITIZER_FUCHSIA || SANITIZER_EMSCRIPTEN
 
-#include "lsan_allocator.h"
+#  include "lsan_allocator.h"
+#  include "lsan_thread.h"
 
 namespace __lsan {
 
-static THREADLOCAL u32 current_thread_tid = kInvalidTid;
-u32 GetCurrentThread() { return current_thread_tid; }
-void SetCurrentThread(u32 tid) { current_thread_tid = tid; }
+static THREADLOCAL ThreadContextLsanBase *current_thread = nullptr;
+ThreadContextLsanBase *GetCurrentThread() { return current_thread; }
+void SetCurrentThread(ThreadContextLsanBase *tctx) { current_thread = tctx; }
 
 static THREADLOCAL AllocatorCache allocator_cache;
 AllocatorCache *GetAllocatorCache() { return &allocator_cache; }
@@ -29,4 +30,4 @@ void ReplaceSystemMalloc() {}
 
 } // namespace __lsan
 
-#endif // SANITIZER_LINUX
+#endif  // SANITIZER_LINUX || SANITIZER_NETBSD || SANITIZER_FUCHSIA || SANITIZER_EMSCRIPTEN

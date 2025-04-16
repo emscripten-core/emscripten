@@ -1,0 +1,51 @@
+Opened "/file.txt" with flags O_CREAT O_TRUNC O_RDWR and file size 0
+Wrote to file "/file.txt" with 12 bytes written
+Wrote to file "/file.txt" with 0 bytes written
+Seek on "/file.txt" with position 0 and whence 0
+Read 12 bytes from "/file.txt"
+Read 0 bytes from "/file.txt"
+Read 0 bytes from "/file.txt"
+Read 0 bytes from "/file.txt"
+Wrote to file "/dev/tty" with 11 bytes written
+hello world
+Wrote to file "/dev/tty" with 1 bytes written
+Closed /file.txt
+About to move "/file.txt" to "/renamed.txt"
+Moved "/file.txt" to "/renamed.txt"
+Opened "/renamed.txt" with flags O_RDONLY and file size 12
+Read 0 bytes from "/renamed.txt"
+Read 12 bytes from "/renamed.txt"
+Read 0 bytes from "/renamed.txt"
+Read 0 bytes from "/renamed.txt"
+Wrote to file "/dev/tty" with 31 bytes written
+File read returned 'hello world'
+Wrote to file "/dev/tty" with 2 bytes written
+Closed /renamed.txt
+Opened "/renamed.txt" with flags O_RDONLY and file size 12
+Closed /renamed.txt
+Opened "/renamed.txt" with flags O_WRONLY and file size 12
+Closed /renamed.txt
+Opened "/renamed.txt" with flags O_RDWR and file size 12
+Wrote to file "/renamed.txt" with 10 bytes written
+Seek on "/renamed.txt" with position 0 and whence 0
+Read 12 bytes from "/renamed.txt"
+Wrote to file "/dev/tty" with 18 bytes written
+read returned test
+Wrote to file "/dev/tty" with 1 bytes written
+Closed /renamed.txt
+Opened "/renamed.txt" with flags O_CREAT O_RDONLY and file size 12
+Closed /renamed.txt
+Opened "/renamed.txt" with flags O_EXCL O_WRONLY and file size 12
+Closed /renamed.txt
+Opened "/renamed.txt" with flags O_TRUNC O_RDONLY and file size 0
+Closed /renamed.txt
+Opened "/renamed.txt" with flags O_TRUNC O_WRONLY and file size 0
+Closed /renamed.txt
+Opened "/renamed.txt" with flags O_TRUNC O_RDWR and file size 0
+Closed /renamed.txt
+Opened "/renamed.txt" with flags O_APPEND O_RDONLY and file size 0
+Closed /renamed.txt
+About to delete "/renamed.txt"
+Deleted "/renamed.txt"
+Created directory "/home/test" with mode 16893
+Created symlink from "/renamed.txt" to "/file.txt"

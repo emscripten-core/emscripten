@@ -1,0 +1,55 @@
+read from file: 10
+data: 1234567890
+errno: 0
+
+pread past end of file: 0
+data: 
+errno: 0
+
+seek: 3
+errno: 0
+
+partial read from file: 3
+data: 456
+errno: 0
+
+seek: 8
+errno: 0
+partial read from end of file: 2
+data: 90
+errno: 0
+
+before bad seek: 10
+errno: 0
+bad seek: -1
+errno: 28
+after bad seek: 10
+errno: 0
+partial read from before start of file: 0
+data: 
+errno: 0
+
+seek: 0
+write to start of file: 3
+errno: 0
+
+seek: 10
+write to end of file: 3
+errno: 0
+
+seek: 23
+write after end of file: 8
+errno: 0
+
+pwrite to the middle of file: 3
+errno: 0
+seek: 31
+
+pwrite past end of file: 5
+errno: 0
+seek: 31
+
+seek: 0
+read after write: 37
+errno: 0
+final: wri4567890wri\0\0\0\0ite\0\0\0writeme\0\0write

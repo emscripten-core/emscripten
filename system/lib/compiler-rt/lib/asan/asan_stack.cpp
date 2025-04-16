@@ -57,7 +57,7 @@ void __sanitizer::BufferedStackTrace::UnwindImpl(
     uptr pc, uptr bp, void *context, bool request_fast, u32 max_depth) {
   using namespace __asan;
   size = 0;
-  if (UNLIKELY(!asan_inited))
+  if (UNLIKELY(!AsanInited()))
     return;
   request_fast = StackTrace::WillUseFastUnwind(request_fast);
   AsanThread *t = GetCurrentThread();
@@ -74,7 +74,8 @@ void __sanitizer::BufferedStackTrace::UnwindImpl(
   if (SANITIZER_MIPS && t &&
       !IsValidFrame(bp, t->stack_top(), t->stack_bottom()))
     return;
-  Unwind(max_depth, pc, bp, context, 0, 0, false);
+  Unwind(max_depth, pc, bp, context, t ? t->stack_top() : 0,
+         t ? t->stack_bottom() : 0, false);
 }
 
 // ------------------ Interface -------------- {{{1

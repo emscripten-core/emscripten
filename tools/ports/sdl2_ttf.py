@@ -3,59 +3,49 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import os
+TAG = 'release-2.20.2' # Latest as of 21 February 2023
+HASH = '8a625d29bef2ab7cbfe2143136a303c0fdb066ecd802d6c725de1b73ad8b056908cb524fe58f38eaee9f105471d2af50bbcb17911d46506dbcf573db218b3685'
 
-TAG = 'version_1'
-HASH = '6ce426de0411ba51dd307027c4ef00ff3de4ee396018e524265970039132ab20adb29c2d2e61576c393056374f03fd148dd96f0c4abf8dcee51853dd32f0778f'
+deps = ['freetype', 'sdl2', 'harfbuzz']
 
-deps = ['freetype', 'sdl2']
+variants = {'sdl2_ttf-mt': {'PTHREADS': 1}}
 
 
 def needed(settings):
   return settings.USE_SDL_TTF == 2
 
 
+def get_lib_name(settings):
+  return 'libSDL2_ttf' + ('-mt' if settings.PTHREADS else '') + '.a'
+
+
 def get(ports, settings, shared):
-  ports.fetch_project('sdl2_ttf', 'https://github.com/emscripten-ports/SDL2_ttf/archive/' + TAG + '.zip', 'SDL2_ttf-' + TAG, sha512hash=HASH)
-  libname = ports.get_lib_name('libSDL2_ttf')
+  ports.fetch_project('sdl2_ttf', f'https://github.com/libsdl-org/SDL_ttf/archive/{TAG}.zip', sha512hash=HASH)
 
-  def create():
-    src_root = os.path.join(ports.get_dir(), 'sdl2_ttf', 'SDL2_ttf-' + TAG)
+  def create(final):
+    src_root = ports.get_dir('sdl2_ttf', 'SDL_ttf-' + TAG)
     ports.install_headers(src_root, target='SDL2')
+    flags = ['-DTTF_USE_HARFBUZZ=1', '-sUSE_SDL=2', '-sUSE_FREETYPE', '-sUSE_HARFBUZZ']
+    if settings.PTHREADS:
+      flags += ['-pthread']
+    ports.build_port(src_root, final, 'sdl2_ttf', flags=flags, srcs=['SDL_ttf.c'])
 
-    srcs = ['SDL_ttf.c']
-    commands = []
-    o_s = []
-
-    for src in srcs:
-      o = os.path.join(ports.get_build_dir(), 'sdl2_ttf', src + '.o')
-      command = [shared.EMCC,
-                 '-c', os.path.join(src_root, src),
-                 '-O2', '-s', 'USE_SDL=2', '-s', 'USE_FREETYPE=1', '-o', o, '-w']
-      commands.append(command)
-      o_s.append(o)
-
-    shared.safe_ensure_dirs(os.path.dirname(o_s[0]))
-    ports.run_commands(commands)
-    final = os.path.join(ports.get_build_dir(), 'sdl2_ttf', libname)
-    ports.create_lib(final, o_s)
-    return final
-
-  return [shared.Cache.get(libname, create, what='port')]
+  return [shared.cache.get_lib(get_lib_name(settings), create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file(ports.get_lib_name('libSDL2_ttf'))
+  shared.cache.erase_lib(get_lib_name(settings))
 
 
 def process_dependencies(settings):
   settings.USE_SDL = 2
   settings.USE_FREETYPE = 1
+  settings.USE_HARFBUZZ = 1
 
 
 def process_args(ports):
-  return []
+  return ['-DTTF_USE_HARFBUZZ=1']
 
 
 def show():
-  return 'SDL2_ttf (USE_SDL_TTF=2; zlib license)'
+  return 'sdl2_ttf (-sUSE_SDL_TTF=2 or --use-port=sdl2_ttf; zlib license)'

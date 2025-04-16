@@ -44,6 +44,9 @@ TRACELOGGING_DEFINE_PROVIDER(g_asan_provider, "AddressSanitizerLoggingProvider",
 #define TraceLoggingUnregister(x)
 #endif
 
+// For WaitOnAddress
+#  pragma comment(lib, "synchronization.lib")
+
 // A macro to tell the compiler that this part of the code cannot be reached,
 // if the compiler supports this feature. Since we're using this in
 // code that is called when terminating the process, the expansion of the
@@ -90,8 +93,17 @@ bool FileExists(const char *filename) {
   return ::GetFileAttributesA(filename) != INVALID_FILE_ATTRIBUTES;
 }
 
+bool DirExists(const char *path) {
+  auto attr = ::GetFileAttributesA(path);
+  return (attr != INVALID_FILE_ATTRIBUTES) && (attr & FILE_ATTRIBUTE_DIRECTORY);
+}
+
 uptr internal_getpid() {
   return GetProcessId(GetCurrentProcess());
+}
+
+int internal_dlinfo(void *handle, int request, void *p) {
+  UNIMPLEMENTED();
 }
 
 // In contrast to POSIX, on Windows GetCurrentThreadId()
@@ -119,6 +131,11 @@ void GetThreadStackTopAndBottom(bool at_initialization, uptr *stack_top,
 }
 #endif  // #if !SANITIZER_GO
 
+bool ErrorIsOOM(error_t err) {
+  // TODO: This should check which `err`s correspond to OOM.
+  return false;
+}
+
 void *MmapOrDie(uptr size, const char *mem_type, bool raw_report) {
   void *rv = VirtualAlloc(0, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
   if (rv == 0)
@@ -127,7 +144,7 @@ void *MmapOrDie(uptr size, const char *mem_type, bool raw_report) {
   return rv;
 }
 
-void UnmapOrDie(void *addr, uptr size) {
+void UnmapOrDie(void *addr, uptr size, bool raw_report) {
   if (!size || !addr)
     return;
 
@@ -139,10 +156,7 @@ void UnmapOrDie(void *addr, uptr size) {
   // fails try MEM_DECOMMIT.
   if (VirtualFree(addr, 0, MEM_RELEASE) == 0) {
     if (VirtualFree(addr, size, MEM_DECOMMIT) == 0) {
-      Report("ERROR: %s failed to "
-             "deallocate 0x%zx (%zd) bytes at address %p (error code: %d)\n",
-             SanitizerToolName, size, size, addr, GetLastError());
-      CHECK("unable to unmap" && 0);
+      ReportMunmapFailureAndDie(addr, size, GetLastError(), raw_report);
     }
   }
 }
@@ -217,6 +231,17 @@ void *MmapAlignedOrDieOnFatalError(uptr size, uptr alignment,
   return (void *)mapped_addr;
 }
 
+// ZeroMmapFixedRegion zero's out a region of memory previously returned from a
+// call to one of the MmapFixed* helpers. On non-windows systems this would be
+// done with another mmap, but on windows remapping is not an option.
+// VirtualFree(DECOMMIT)+VirtualAlloc(RECOMMIT) would also be a way to zero the
+// memory, but we can't do this atomically, so instead we fall back to using
+// internal_memset.
+bool ZeroMmapFixedRegion(uptr fixed_addr, uptr size) {
+  internal_memset((void*) fixed_addr, 0, size);
+  return true;
+}
+
 bool MmapFixedNoReserve(uptr fixed_addr, uptr size, const char *name) {
   // FIXME: is this really "NoReserve"? On Win32 this does not matter much,
   // but on Win64 it does.
@@ -251,8 +276,8 @@ void *MmapFixedOrDie(uptr fixed_addr, uptr size, const char *name) {
       MEM_COMMIT, PAGE_READWRITE);
   if (p == 0) {
     char mem_type[30];
-    internal_snprintf(mem_type, sizeof(mem_type), "memory at address 0x%zx",
-                      fixed_addr);
+    internal_snprintf(mem_type, sizeof(mem_type), "memory at address %p",
+                      (void *)fixed_addr);
     ReportMmapFailureAndDie(size, mem_type, "allocate", GetLastError());
   }
   return p;
@@ -283,8 +308,8 @@ void *MmapFixedOrDieOnFatalError(uptr fixed_addr, uptr size, const char *name) {
       MEM_COMMIT, PAGE_READWRITE);
   if (p == 0) {
     char mem_type[30];
-    internal_snprintf(mem_type, sizeof(mem_type), "memory at address 0x%zx",
-                      fixed_addr);
+    internal_snprintf(mem_type, sizeof(mem_type), "memory at address %p",
+                      (void *)fixed_addr);
     return ReturnNullptrOnOOMOrDie(size, mem_type, "allocate");
   }
   return p;
@@ -329,9 +354,23 @@ bool MprotectNoAccess(uptr addr, uptr size) {
   return VirtualProtect((LPVOID)addr, size, PAGE_NOACCESS, &old_protection);
 }
 
+bool MprotectReadOnly(uptr addr, uptr size) {
+  DWORD old_protection;
+  return VirtualProtect((LPVOID)addr, size, PAGE_READONLY, &old_protection);
+}
+
+bool MprotectReadWrite(uptr addr, uptr size) {
+  DWORD old_protection;
+  return VirtualProtect((LPVOID)addr, size, PAGE_READWRITE, &old_protection);
+}
+
 void ReleaseMemoryPagesToOS(uptr beg, uptr end) {
-  // This is almost useless on 32-bits.
-  // FIXME: add madvise-analog when we move to 64-bits.
+  uptr beg_aligned = RoundDownTo(beg, GetPageSizeCached()),
+       end_aligned = RoundDownTo(end, GetPageSizeCached());
+  CHECK(beg < end);                // make sure the region is sane
+  if (beg_aligned == end_aligned)  // make sure we're freeing at least 1 page;
+    return;
+  UnmapOrDie((void *)beg, end_aligned - beg_aligned);
 }
 
 void SetShadowRegionHugePageMode(uptr addr, uptr size) {
@@ -342,6 +381,21 @@ bool DontDumpShadowMemory(uptr addr, uptr length) {
   // This is almost useless on 32-bits.
   // FIXME: add madvise-analog when we move to 64-bits.
   return true;
+}
+
+uptr MapDynamicShadow(uptr shadow_size_bytes, uptr shadow_scale,
+                      uptr min_shadow_base_alignment, UNUSED uptr &high_mem_end,
+                      uptr granularity) {
+  const uptr alignment =
+      Max<uptr>(granularity << shadow_scale, 1ULL << min_shadow_base_alignment);
+  const uptr left_padding =
+      Max<uptr>(granularity, 1ULL << min_shadow_base_alignment);
+  uptr space_size = shadow_size_bytes + left_padding;
+  uptr shadow_start = FindAvailableMemoryRange(space_size, alignment,
+                                               granularity, nullptr, nullptr);
+  CHECK_NE((uptr)0, shadow_start);
+  CHECK(IsAligned(shadow_start, alignment));
+  return shadow_start;
 }
 
 uptr FindAvailableMemoryRange(uptr size, uptr alignment, uptr left_padding,
@@ -363,6 +417,12 @@ uptr FindAvailableMemoryRange(uptr size, uptr alignment, uptr left_padding,
     // Move to the next region.
     address = (uptr)info.BaseAddress + info.RegionSize;
   }
+  return 0;
+}
+
+uptr MapDynamicShadowAndAliases(uptr shadow_size, uptr alias_size,
+                                uptr num_aliases, uptr ring_buffer_size) {
+  CHECK(false && "HWASan aliasing is unimplemented on Windows");
   return 0;
 }
 
@@ -471,8 +531,6 @@ void DumpProcessMap() {
 }
 #endif
 
-void PrintModuleMap() { }
-
 void DisableCoreDumperIfNecessary() {
   // Do nothing.
 }
@@ -481,7 +539,7 @@ void ReExec() {
   UNIMPLEMENTED();
 }
 
-void PlatformPrepareForSandboxing(__sanitizer_sandbox_arguments *args) {}
+void PlatformPrepareForSandboxing(void *args) {}
 
 bool StackSizeIsUnlimited() {
   UNIMPLEMENTED();
@@ -513,13 +571,7 @@ bool IsAbsolutePath(const char *path) {
          IsPathSeparator(path[2]);
 }
 
-void SleepForSeconds(int seconds) {
-  Sleep(seconds * 1000);
-}
-
-void SleepForMillis(int millis) {
-  Sleep(millis);
-}
+void internal_usleep(u64 useconds) { Sleep(useconds / 1000); }
 
 u64 NanoTime() {
   static LARGE_INTEGER frequency = {};
@@ -540,13 +592,17 @@ void Abort() {
   internal__exit(3);
 }
 
+bool CreateDir(const char *pathname) {
+  return CreateDirectoryA(pathname, nullptr) != 0;
+}
+
 #if !SANITIZER_GO
 // Read the file to extract the ImageBase field from the PE header. If ASLR is
 // disabled and this virtual address is available, the loader will typically
 // load the image at this address. Therefore, we call it the preferred base. Any
 // addresses in the DWARF typically assume that the object has been loaded at
 // this address.
-static uptr GetPreferredBase(const char *modname) {
+static uptr GetPreferredBase(const char *modname, char *buf, size_t buf_size) {
   fd_t fd = OpenFile(modname, RdOnly, nullptr);
   if (fd == kInvalidFd)
     return 0;
@@ -568,12 +624,10 @@ static uptr GetPreferredBase(const char *modname) {
   // IMAGE_FILE_HEADER
   // IMAGE_OPTIONAL_HEADER
   // Seek to e_lfanew and read all that data.
-  char buf[4 + sizeof(IMAGE_FILE_HEADER) + sizeof(IMAGE_OPTIONAL_HEADER)];
   if (::SetFilePointer(fd, dos_header.e_lfanew, nullptr, FILE_BEGIN) ==
       INVALID_SET_FILE_POINTER)
     return 0;
-  if (!ReadFromFile(fd, &buf[0], sizeof(buf), &bytes_read) ||
-      bytes_read != sizeof(buf))
+  if (!ReadFromFile(fd, buf, buf_size, &bytes_read) || bytes_read != buf_size)
     return 0;
 
   // Check for "PE\0\0" before the PE header.
@@ -615,6 +669,10 @@ void ListOfModules::init() {
     }
   }
 
+  InternalMmapVector<char> buf(4 + sizeof(IMAGE_FILE_HEADER) +
+                               sizeof(IMAGE_OPTIONAL_HEADER));
+  InternalMmapVector<wchar_t> modname_utf16(kMaxPathLength);
+  InternalMmapVector<char> module_name(kMaxPathLength);
   // |num_modules| is the number of modules actually present,
   size_t num_modules = bytes_required / sizeof(HMODULE);
   for (size_t i = 0; i < num_modules; ++i) {
@@ -624,15 +682,13 @@ void ListOfModules::init() {
       continue;
 
     // Get the UTF-16 path and convert to UTF-8.
-    wchar_t modname_utf16[kMaxPathLength];
     int modname_utf16_len =
-        GetModuleFileNameW(handle, modname_utf16, kMaxPathLength);
+        GetModuleFileNameW(handle, &modname_utf16[0], kMaxPathLength);
     if (modname_utf16_len == 0)
       modname_utf16[0] = '\0';
-    char module_name[kMaxPathLength];
-    int module_name_len =
-        ::WideCharToMultiByte(CP_UTF8, 0, modname_utf16, modname_utf16_len + 1,
-                              &module_name[0], kMaxPathLength, NULL, NULL);
+    int module_name_len = ::WideCharToMultiByte(
+        CP_UTF8, 0, &modname_utf16[0], modname_utf16_len + 1, &module_name[0],
+        kMaxPathLength, NULL, NULL);
     module_name[module_name_len] = '\0';
 
     uptr base_address = (uptr)mi.lpBaseOfDll;
@@ -642,15 +698,16 @@ void ListOfModules::init() {
     // RVA when computing the module offset. This helps llvm-symbolizer find the
     // right DWARF CU. In the common case that the image is loaded at it's
     // preferred address, we will now print normal virtual addresses.
-    uptr preferred_base = GetPreferredBase(&module_name[0]);
+    uptr preferred_base =
+        GetPreferredBase(&module_name[0], &buf[0], buf.size());
     uptr adjusted_base = base_address - preferred_base;
 
-    LoadedModule cur_module;
-    cur_module.set(module_name, adjusted_base);
+    modules_.push_back(LoadedModule());
+    LoadedModule &cur_module = modules_.back();
+    cur_module.set(&module_name[0], adjusted_base);
     // We add the whole module as one single address range.
     cur_module.addAddressRange(base_address, end_address, /*executable*/ true,
                                /*writable*/ true);
-    modules_.push_back(cur_module);
   }
   UnmapOrDie(hmodules, modules_buffer_size);
 }
@@ -662,13 +719,24 @@ void ListOfModules::fallbackInit() { clear(); }
 // atexit() as soon as it is ready for use (i.e. after .CRT$XIC initializers).
 InternalMmapVectorNoCtor<void (*)(void)> atexit_functions;
 
-int Atexit(void (*function)(void)) {
+static int queueAtexit(void (*function)(void)) {
   atexit_functions.push_back(function);
   return 0;
 }
 
+// If Atexit() is being called after RunAtexit() has already been run, it needs
+// to be able to call atexit() directly. Here we use a function ponter to
+// switch out its behaviour.
+// An example of where this is needed is the asan_dynamic runtime on MinGW-w64.
+// On this environment, __asan_init is called during global constructor phase,
+// way after calling the .CRT$XID initializer.
+static int (*volatile queueOrCallAtExit)(void (*)(void)) = &queueAtexit;
+
+int Atexit(void (*function)(void)) { return queueOrCallAtExit(function); }
+
 static int RunAtexit() {
   TraceLoggingUnregister(g_asan_provider);
+  queueOrCallAtExit = &atexit;
   int ret = 0;
   for (uptr i = 0; i < atexit_functions.size(); ++i) {
     ret |= atexit(atexit_functions[i]);
@@ -787,30 +855,18 @@ uptr GetRSS() {
   return counters.WorkingSetSize;
 }
 
-void *internal_start_thread(void (*func)(void *arg), void *arg) { return 0; }
+void *internal_start_thread(void *(*func)(void *arg), void *arg) { return 0; }
 void internal_join_thread(void *th) { }
 
-// ---------------------- BlockingMutex ---------------- {{{1
-
-BlockingMutex::BlockingMutex() {
-  CHECK(sizeof(SRWLOCK) <= sizeof(opaque_storage_));
-  internal_memset(this, 0, sizeof(*this));
+void FutexWait(atomic_uint32_t *p, u32 cmp) {
+  WaitOnAddress(p, &cmp, sizeof(cmp), INFINITE);
 }
 
-void BlockingMutex::Lock() {
-  AcquireSRWLockExclusive((PSRWLOCK)opaque_storage_);
-  CHECK_EQ(owner_, 0);
-  owner_ = GetThreadSelf();
-}
-
-void BlockingMutex::Unlock() {
-  CheckLocked();
-  owner_ = 0;
-  ReleaseSRWLockExclusive((PSRWLOCK)opaque_storage_);
-}
-
-void BlockingMutex::CheckLocked() {
-  CHECK_EQ(owner_, GetThreadSelf());
+void FutexWake(atomic_uint32_t *p, u32 count) {
+  if (count == 1)
+    WakeByAddressSingle(p);
+  else
+    WakeByAddressAll(p);
 }
 
 uptr GetTlsSize() {
@@ -927,44 +983,59 @@ void SignalContext::InitPcSpBp() {
   CONTEXT *context_record = (CONTEXT *)context;
 
   pc = (uptr)exception_record->ExceptionAddress;
-#ifdef _WIN64
+#  if SANITIZER_WINDOWS64
+#    if SANITIZER_ARM64
+  bp = (uptr)context_record->Fp;
+  sp = (uptr)context_record->Sp;
+#    else
   bp = (uptr)context_record->Rbp;
   sp = (uptr)context_record->Rsp;
-#else
+#    endif
+#  else
+#    if SANITIZER_ARM
+  bp = (uptr)context_record->R11;
+  sp = (uptr)context_record->Sp;
+#    else
   bp = (uptr)context_record->Ebp;
   sp = (uptr)context_record->Esp;
-#endif
+#    endif
+#  endif
 }
 
 uptr SignalContext::GetAddress() const {
   EXCEPTION_RECORD *exception_record = (EXCEPTION_RECORD *)siginfo;
-  return exception_record->ExceptionInformation[1];
+  if (exception_record->ExceptionCode == EXCEPTION_ACCESS_VIOLATION)
+    return exception_record->ExceptionInformation[1];
+  return (uptr)exception_record->ExceptionAddress;
 }
 
 bool SignalContext::IsMemoryAccess() const {
-  return GetWriteFlag() != SignalContext::UNKNOWN;
+  return ((EXCEPTION_RECORD *)siginfo)->ExceptionCode ==
+         EXCEPTION_ACCESS_VIOLATION;
 }
 
-bool SignalContext::IsTrueFaultingAddress() const {
-  // FIXME: Provide real implementation for this. See Linux and Mac variants.
-  return IsMemoryAccess();
-}
+bool SignalContext::IsTrueFaultingAddress() const { return true; }
 
 SignalContext::WriteFlag SignalContext::GetWriteFlag() const {
   EXCEPTION_RECORD *exception_record = (EXCEPTION_RECORD *)siginfo;
+
+  // The write flag is only available for access violation exceptions.
+  if (exception_record->ExceptionCode != EXCEPTION_ACCESS_VIOLATION)
+    return SignalContext::Unknown;
+
   // The contents of this array are documented at
-  // https://msdn.microsoft.com/en-us/library/windows/desktop/aa363082(v=vs.85).aspx
+  // https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-exception_record
   // The first element indicates read as 0, write as 1, or execute as 8.  The
   // second element is the faulting address.
   switch (exception_record->ExceptionInformation[0]) {
     case 0:
-      return SignalContext::READ;
+      return SignalContext::Read;
     case 1:
-      return SignalContext::WRITE;
+      return SignalContext::Write;
     case 8:
-      return SignalContext::UNKNOWN;
+      return SignalContext::Unknown;
   }
-  return SignalContext::UNKNOWN;
+  return SignalContext::Unknown;
 }
 
 void SignalContext::DumpAllRegisters(void *context) {
@@ -1019,10 +1090,24 @@ const char *SignalContext::Describe() const {
 }
 
 uptr ReadBinaryName(/*out*/char *buf, uptr buf_len) {
-  // FIXME: Actually implement this function.
-  CHECK_GT(buf_len, 0);
-  buf[0] = 0;
-  return 0;
+  if (buf_len == 0)
+    return 0;
+
+  // Get the UTF-16 path and convert to UTF-8.
+  InternalMmapVector<wchar_t> binname_utf16(kMaxPathLength);
+  int binname_utf16_len =
+      GetModuleFileNameW(NULL, &binname_utf16[0], kMaxPathLength);
+  if (binname_utf16_len == 0) {
+    buf[0] = '\0';
+    return 0;
+  }
+  int binary_name_len =
+      ::WideCharToMultiByte(CP_UTF8, 0, &binname_utf16[0], binname_utf16_len,
+                            buf, buf_len, NULL, NULL);
+  if ((unsigned)binary_name_len == buf_len)
+    --binary_name_len;
+  buf[binary_name_len] = '\0';
+  return binary_name_len;
 }
 
 uptr ReadLongProcessName(/*out*/char *buf, uptr buf_len) {
@@ -1035,10 +1120,6 @@ void CheckVMASize() {
 
 void InitializePlatformEarly() {
   // Do nothing.
-}
-
-void MaybeReexec() {
-  // No need to re-exec on Windows.
 }
 
 void CheckASLR() {
@@ -1060,7 +1141,8 @@ char **GetEnviron() {
 }
 
 pid_t StartSubprocess(const char *program, const char *const argv[],
-                      fd_t stdin_fd, fd_t stdout_fd, fd_t stderr_fd) {
+                      const char *const envp[], fd_t stdin_fd, fd_t stdout_fd,
+                      fd_t stderr_fd) {
   // FIXME: implement on this platform
   // Should be implemented based on
   // SymbolizerProcess::StarAtSymbolizerSubprocess
@@ -1076,7 +1158,7 @@ bool IsProcessRunning(pid_t pid) {
 int WaitForProcess(pid_t pid) { return -1; }
 
 // FIXME implement on this platform.
-void GetMemoryProfile(fill_profile_f cb, uptr *stats, uptr stats_size) { }
+void GetMemoryProfile(fill_profile_f cb, uptr *stats) {}
 
 void CheckNoDeepBind(const char *filename, int flag) {
   // Do nothing.
@@ -1118,6 +1200,8 @@ void LogFullErrorReport(const char *buffer) {
   }
 }
 #endif // SANITIZER_WIN_TRACE
+
+void InitializePlatformCommonFlags(CommonFlags *cf) {}
 
 }  // namespace __sanitizer
 

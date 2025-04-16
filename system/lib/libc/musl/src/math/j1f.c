@@ -74,14 +74,13 @@ float j1f(float x)
 		return 1/(x*x);
 	if (ix >= 0x40000000)  /* |x| >= 2 */
 		return common(ix, fabsf(x), 0, sign);
-	if (ix >= 0x32000000) {  /* |x| >= 2**-27 */
+	if (ix >= 0x39000000) {  /* |x| >= 2**-13 */
 		z = x*x;
 		r = z*(r00+z*(r01+z*(r02+z*r03)));
 		s = 1+z*(s01+z*(s02+z*(s03+z*(s04+z*s05))));
 		z = 0.5f + r/s;
 	} else
-		/* raise inexact if x!=0 */
-		z = 0.5f + x;
+		z = 0.5f;
 	return z*x;
 }
 
@@ -114,7 +113,7 @@ float y1f(float x)
 		return 1/x;
 	if (ix >= 0x40000000)  /* |x| >= 2.0 */
 		return common(ix,x,1,0);
-	if (ix < 0x32000000)  /* x < 2**-27 */
+	if (ix < 0x33000000)  /* x < 2**-25 */
 		return -tpi/x;
 	z = x*x;
 	u = U0[0]+z*(U0[1]+z*(U0[2]+z*(U0[3]+z*U0[4])));
@@ -205,8 +204,8 @@ static float ponef(float x)
 	GET_FLOAT_WORD(ix, x);
 	ix &= 0x7fffffff;
 	if      (ix >= 0x41000000){p = pr8; q = ps8;}
-	else if (ix >= 0x40f71c58){p = pr5; q = ps5;}
-	else if (ix >= 0x4036db68){p = pr3; q = ps3;}
+	else if (ix >= 0x409173eb){p = pr5; q = ps5;}
+	else if (ix >= 0x4036d917){p = pr3; q = ps3;}
 	else /*ix >= 0x40000000*/ {p = pr2; q = ps2;}
 	z = 1.0f/(x*x);
 	r = p[0]+z*(p[1]+z*(p[2]+z*(p[3]+z*(p[4]+z*p[5]))));
@@ -300,9 +299,9 @@ static float qonef(float x)
 
 	GET_FLOAT_WORD(ix, x);
 	ix &= 0x7fffffff;
-	if      (ix >= 0x40200000){p = qr8; q = qs8;}
-	else if (ix >= 0x40f71c58){p = qr5; q = qs5;}
-	else if (ix >= 0x4036db68){p = qr3; q = qs3;}
+	if      (ix >= 0x41000000){p = qr8; q = qs8;}
+	else if (ix >= 0x409173eb){p = qr5; q = qs5;}
+	else if (ix >= 0x4036d917){p = qr3; q = qs3;}
 	else /*ix >= 0x40000000*/ {p = qr2; q = qs2;}
 	z = 1.0f/(x*x);
 	r = p[0]+z*(p[1]+z*(p[2]+z*(p[3]+z*(p[4]+z*p[5]))));

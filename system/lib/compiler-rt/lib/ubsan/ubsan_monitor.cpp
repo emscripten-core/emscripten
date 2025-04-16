@@ -1,4 +1,4 @@
-//===-- ubsan_monitor.cc ----------------------------------------*- C++ -*-===//
+//===-- ubsan_monitor.cpp ---------------------------------------*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -17,13 +17,14 @@ using namespace __ubsan;
 UndefinedBehaviorReport::UndefinedBehaviorReport(const char *IssueKind,
                                                  Location &Loc,
                                                  InternalScopedString &Msg)
-    : IssueKind(IssueKind), Loc(Loc), Buffer(Msg.length() + 1) {
+    : IssueKind(IssueKind), Loc(Loc) {
   // We have the common sanitizer reporting lock, so it's safe to register a
   // new UB report.
   RegisterUndefinedBehaviorReport(this);
 
   // Make a copy of the diagnostic.
-  Buffer.append("%s", Msg.data());
+  if (Msg.length())
+    Buffer.Append(Msg.data());
 
   // Let the monitor know that a report is available.
   __ubsan_on_report();
@@ -52,9 +53,9 @@ void __ubsan::__ubsan_get_current_report_data(const char **OutIssueKind,
 
   // Ensure that the first character of the diagnostic text can't start with a
   // lowercase letter.
-  char FirstChar = Buf.data()[0];
+  char FirstChar = *Buf.data();
   if (FirstChar >= 'a' && FirstChar <= 'z')
-    Buf.data()[0] = FirstChar - 'a' + 'A';
+    *Buf.data() += 'A' - 'a';
 
   *OutIssueKind = CurrentUBR->IssueKind;
   *OutMessage = Buf.data();

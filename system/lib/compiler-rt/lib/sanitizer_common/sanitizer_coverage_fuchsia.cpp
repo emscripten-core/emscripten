@@ -27,14 +27,15 @@
 
 #include "sanitizer_platform.h"
 #if SANITIZER_FUCHSIA
-#include "sanitizer_atomic.h"
-#include "sanitizer_common.h"
-#include "sanitizer_internal_defs.h"
-#include "sanitizer_symbolizer_fuchsia.h"
-
 #include <zircon/process.h>
 #include <zircon/sanitizer.h>
 #include <zircon/syscalls.h>
+
+#include "sanitizer_atomic.h"
+#include "sanitizer_common.h"
+#include "sanitizer_interface_internal.h"
+#include "sanitizer_internal_defs.h"
+#  include "sanitizer_symbolizer_markup_constants.h"
 
 using namespace __sanitizer;
 
@@ -51,6 +52,8 @@ constexpr const char kSancovSinkName[] = "sancov";
 // This class relies on zero-initialization.
 class TracePcGuardController final {
  public:
+  constexpr TracePcGuardController() {}
+
   // For each PC location being tracked, there is a u32 reserved in global
   // data called the "guard".  At startup, we assign each guard slot a
   // unique index into the big results array.  Later during runtime, the
@@ -82,11 +85,12 @@ class TracePcGuardController final {
   void TracePcGuard(u32 *guard, uptr pc) {
     atomic_uint32_t *guard_ptr = reinterpret_cast<atomic_uint32_t *>(guard);
     u32 idx = atomic_exchange(guard_ptr, 0, memory_order_relaxed);
-    if (idx > 0) array_[idx] = pc;
+    if (idx > 0)
+      array_[idx] = pc;
   }
 
   void Dump() {
-    BlockingMutexLock locked(&setup_lock_);
+    Lock locked(&setup_lock_);
     if (array_) {
       CHECK_NE(vmo_, ZX_HANDLE_INVALID);
 
@@ -113,7 +117,7 @@ class TracePcGuardController final {
   // We can always spare the 32G of address space.
   static constexpr size_t MappingSize = sizeof(uptr) << 32;
 
-  BlockingMutex setup_lock_ = BlockingMutex(LINKER_INITIALIZED);
+  Mutex setup_lock_;
   uptr *array_ = nullptr;
   u32 next_index_ = 0;
   zx_handle_t vmo_ = {};
@@ -122,7 +126,7 @@ class TracePcGuardController final {
   size_t DataSize() const { return next_index_ * sizeof(uintptr_t); }
 
   u32 Setup(u32 num_guards) {
-    BlockingMutexLock locked(&setup_lock_);
+    Lock locked(&setup_lock_);
     DCHECK(common_flags()->coverage);
 
     if (next_index_ == 0) {
@@ -140,6 +144,10 @@ class TracePcGuardController final {
                         internal_getpid());
       _zx_object_set_property(vmo_, ZX_PROP_NAME, vmo_name_,
                               internal_strlen(vmo_name_));
+      uint64_t size = DataSize();
+      status = _zx_object_set_property(vmo_, ZX_PROP_VMO_CONTENT_SIZE, &size,
+                                       sizeof(size));
+      CHECK_EQ(status, ZX_OK);
 
       // Map the largest possible view we might need into the VMO.  Later
       // we might need to increase the VMO's size before we can use larger
@@ -171,6 +179,10 @@ class TracePcGuardController final {
       next_index_ += num_guards;
 
       zx_status_t status = _zx_vmo_set_size(vmo_, DataSize());
+      CHECK_EQ(status, ZX_OK);
+      uint64_t size = DataSize();
+      status = _zx_object_set_property(vmo_, ZX_PROP_VMO_CONTENT_SIZE, &size,
+                                       sizeof(size));
       CHECK_EQ(status, ZX_OK);
 
       return first_index;
@@ -204,13 +216,15 @@ SANITIZER_INTERFACE_ATTRIBUTE void __sanitizer_dump_coverage(const uptr *pcs,
 }
 
 SANITIZER_INTERFACE_WEAK_DEF(void, __sanitizer_cov_trace_pc_guard, u32 *guard) {
-  if (!*guard) return;
+  if (!*guard)
+    return;
   __sancov::pc_guard_controller.TracePcGuard(guard, GET_CALLER_PC() - 1);
 }
 
 SANITIZER_INTERFACE_WEAK_DEF(void, __sanitizer_cov_trace_pc_guard_init,
                              u32 *start, u32 *end) {
-  if (start == end || *start) return;
+  if (start == end || *start)
+    return;
   __sancov::pc_guard_controller.InitTracePcGuard(start, end);
 }
 

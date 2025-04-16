@@ -9,12 +9,12 @@
 // This file is shared between various sanitizers' runtime libraries and
 // provides definitions for OSX-specific functions.
 //===----------------------------------------------------------------------===//
-#ifndef SANITIZER_MAC_H
-#define SANITIZER_MAC_H
+#ifndef SANITIZER_APPLE_H
+#define SANITIZER_APPLE_H
 
 #include "sanitizer_common.h"
 #include "sanitizer_platform.h"
-#if SANITIZER_MAC
+#if SANITIZER_APPLE
 #include "sanitizer_posix.h"
 
 namespace __sanitizer {
@@ -30,48 +30,50 @@ struct MemoryMappingLayoutData {
   bool current_instrumented;
 };
 
-enum MacosVersion {
-  MACOS_VERSION_UNINITIALIZED = 0,
-  MACOS_VERSION_UNKNOWN,
-  MACOS_VERSION_LEOPARD,
-  MACOS_VERSION_SNOW_LEOPARD,
-  MACOS_VERSION_LION,
-  MACOS_VERSION_MOUNTAIN_LION,
-  MACOS_VERSION_MAVERICKS,
-  MACOS_VERSION_YOSEMITE,
-  MACOS_VERSION_EL_CAPITAN,
-  MACOS_VERSION_SIERRA,
-  MACOS_VERSION_HIGH_SIERRA,
-  MACOS_VERSION_HIGH_SIERRA_DOT_RELEASE_4,
-  MACOS_VERSION_MOJAVE,
-  MACOS_VERSION_CATALINA,
-  MACOS_VERSION_UNKNOWN_NEWER
+template <typename VersionType>
+struct VersionBase {
+  u16 major;
+  u16 minor;
+
+  VersionBase(u16 major, u16 minor) : major(major), minor(minor) {}
+
+  bool operator==(const VersionType &other) const {
+    return major == other.major && minor == other.minor;
+  }
+  bool operator>=(const VersionType &other) const {
+    return major > other.major ||
+           (major == other.major && minor >= other.minor);
+  }
+  bool operator<(const VersionType &other) const { return !(*this >= other); }
 };
 
-MacosVersion GetMacosVersion();
+struct MacosVersion : VersionBase<MacosVersion> {
+  MacosVersion(u16 major, u16 minor) : VersionBase(major, minor) {}
+};
+
+struct DarwinKernelVersion : VersionBase<DarwinKernelVersion> {
+  DarwinKernelVersion(u16 major, u16 minor) : VersionBase(major, minor) {}
+};
+
+MacosVersion GetMacosAlignedVersion();
+DarwinKernelVersion GetDarwinKernelVersion();
 
 char **GetEnviron();
 
 void RestrictMemoryToMaxAddress(uptr max_address);
 
+using ThreadEventCallback = void (*)(uptr thread);
+using ThreadCreateEventCallback = void (*)(uptr thread, bool gcd_worker);
+struct ThreadEventCallbacks {
+  ThreadCreateEventCallback create;
+  ThreadEventCallback start;
+  ThreadEventCallback terminate;
+  ThreadEventCallback destroy;
+};
+
+void InstallPthreadIntrospectionHook(const ThreadEventCallbacks &callbacks);
+
 }  // namespace __sanitizer
 
-extern "C" {
-static char __crashreporter_info_buff__[__sanitizer::kErrorMessageBufferSize] =
-  {};
-static const char *__crashreporter_info__ __attribute__((__used__)) =
-  &__crashreporter_info_buff__[0];
-asm(".desc ___crashreporter_info__, 0x10");
-} // extern "C"
-
-namespace __sanitizer {
-static BlockingMutex crashreporter_info_mutex(LINKER_INITIALIZED);
-
-INLINE void CRAppendCrashLogMessage(const char *msg) {
-  BlockingMutexLock l(&crashreporter_info_mutex);
-  internal_strlcat(__crashreporter_info_buff__, msg,
-                   sizeof(__crashreporter_info_buff__)); }
-}  // namespace __sanitizer
-
-#endif  // SANITIZER_MAC
-#endif  // SANITIZER_MAC_H
+#endif  // SANITIZER_APPLE
+#endif  // SANITIZER_APPLE_H

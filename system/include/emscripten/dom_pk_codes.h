@@ -5,10 +5,10 @@
  * found in the LICENSE file.
  *
  * This file was automatically generated from script
- * tools/create_dom_pk_codes.py. Edit that file to make changes here.
- * Run
+ * tools/maint/create_dom_pk_codes.py. Edit that file to make changes here.
+ * Then run:
  *
- *   tools/create_dom_pk_codes.py
+ *   tools/maint/create_dom_pk_codes.py
  *
  * in Emscripten root directory to regenerate this file.
  */

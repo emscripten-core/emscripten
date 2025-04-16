@@ -1,0 +1,21 @@
+test_mmap_read - START
+test_mmap_read - PASSED
+test_mmap_write - START
+test_mmap_write - PASSED
+test_mmap_write_private - START
+test_mmap_write_private - PASSED
+test_mmap_write_to_ro_file - START
+test_mmap_write_to_ro_file - PASSED
+test_mmap_anon - START
+test_mmap_anon - PASSED
+test_mmap_fixed - START
+test_mmap_fixed - PASSED
+test_mmap_wrong_fd - START
+test_mmap_wrong_fd - PASSED
+test_unmap_wrong_addr - START
+test_unmap_wrong_addr - PASSED
+test_unmap_zero_len - START
+test_unmap_zero_len - PASSED
+test_unmap_after_close - START
+test_unmap_after_close - PASSED
+tests_run: 10 failures: 0

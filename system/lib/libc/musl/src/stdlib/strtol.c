@@ -4,19 +4,94 @@
 #include <inttypes.h>
 #include <limits.h>
 #include <ctype.h>
-#include "libc.h"
 
+#ifdef __EMSCRIPTEN__
+#include <errno.h>
+
+// Loosely based on __intscan but simplified, and optimized for size
+// - Doesn't use FILE or getc/ungetc, just operates directly on memory
+// - Avoids lookup table
+// - Avoids special cases loops for certain bases
+// - Skips an early exit with EINVAL when char 0 is greater than base.  Its not
+//   clear this was correct, and glibc seems not do this either.
+static unsigned long long strtox(const char *s, char **p, int base, unsigned long long lim) {
+	int neg=0;
+	unsigned long long y=0;
+	const char* orig = s;
+
+	if (base > 36) {
+		errno = EINVAL;
+		return 0;
+	}
+
+	while (*s && isspace(*s)) { s++; };
+
+	// Handle sign
+	if (*s=='+' || *s=='-') {
+		neg = -(*s=='-');
+		s++;
+	}
+
+	int found_digit = 0;
+
+	// Handle hex/octal prefix 0x/00
+	if ((base == 0 || base == 16) && *s=='0') {
+		found_digit = 1;
+		s++;
+		if ((*s|32)=='x') {
+			s++;
+			base = 16;
+		} else if (base == 0) {
+			base = 8;
+		}
+	} else if (base == 0) {
+		base = 10;
+	}
+
+	int val;
+	int overflow = 0;
+	for (y=0; ; s++) {
+		if ('0' <= *s && *s <= '9') val = *s -'0';
+		else if ('a' <= *s && *s <= 'z') val = 10 + *s -'a';
+		else if ('A' <= *s && *s <= 'Z') val = 10 + *s -'A';
+		else break;
+		if (val>=base) break;
+		if (y > ULLONG_MAX/base || (base*y>ULLONG_MAX-val)) {
+			overflow = 1;
+			continue;
+		}
+		found_digit = 1;
+		y = y*base + val;
+	}
+	if (p) {
+		if (found_digit) {
+			*p = (char*)s;
+		} else {
+			*p = (char*)orig;
+		}
+	}
+	if (overflow) {
+		// We exit'd the above loop due to overflow
+		errno = ERANGE;
+		y = lim;
+		if (lim&1) neg = 0;
+	}
+	if (y>=lim) {
+		if (!(lim&1) && !neg) {
+			errno = ERANGE;
+			return lim-1;
+		} else if (y>lim) {
+			errno = ERANGE;
+			return lim;
+		}
+	}
+	return (y^neg)-neg;
+}
+#else
 static unsigned long long strtox(const char *s, char **p, int base, unsigned long long lim)
 {
-	/* FIXME: use a helper function or macro to setup the FILE */
 	FILE f;
-	f.flags = 0;
-	f.buf = f.rpos = (void *)s;
-	if ((size_t)s > (size_t)-1/2)
-		f.rend = (void *)-1;
-	else
-		f.rend = (unsigned char *)s+(size_t)-1/2;
-	f.lock = -1;
+	sh_fromstring(&f, s);
 	shlim(&f, 0);
 	unsigned long long y = __intscan(&f, base, 1, lim);
 	if (p) {
@@ -25,6 +100,7 @@ static unsigned long long strtox(const char *s, char **p, int base, unsigned lon
 	}
 	return y;
 }
+#endif
 
 unsigned long long strtoull(const char *restrict s, char **restrict p, int base)
 {

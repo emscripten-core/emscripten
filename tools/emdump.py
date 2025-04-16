@@ -12,41 +12,17 @@
 import argparse
 import os
 import re
+import shutil
 import subprocess
 import sys
+from pathlib import Path
+
 
 # If true, we are printing delta information between two data sets. If false, we are just printing symbol info for a single data set
 diffing_two_data_sets = False
 
 # Global command line options
 options = None
-
-
-# Finds the given executable 'program' in PATH. Operates like the Unix tool 'which'.
-def which(program):
-  def is_exe(fpath):
-    return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
-
-  fpath, fname = os.path.split(program)
-  if fpath:
-    if is_exe(program):
-      return program
-  else:
-    for path in os.environ["PATH"].split(os.pathsep):
-      path = path.strip('"')
-      exe_file = os.path.join(path, program)
-      if is_exe(exe_file):
-        return exe_file
-
-      if os.name == 'nt' and '.' not in fname:
-        if is_exe(exe_file + '.exe'):
-          return exe_file + '.exe'
-        if is_exe(exe_file + '.cmd'):
-          return exe_file + '.cmd'
-        if is_exe(exe_file + '.bat'):
-          return exe_file + '.bat'
-
-  return None
 
 
 # Given a string s and an index i, counts how many times character ch is repeated looking backwards at s[i], s[i-1], s[i-2], s[i-3], ...
@@ -146,14 +122,11 @@ def parse_parens(s):
 # Valid characters in Emscripten outputted JS content (in reality valid character set is much more complex, but do not need that here)
 def is_javascript_symbol_char(ch):
   i = ord(ch)
-  return (i >= 97 and i <= 122) or (i >= 65 and i <= 90) or (i >= 48 and i <= 57) or i == 36 or i == 95 # a-z, A-Z, 0-9, $, _
+  return 97 <= i <= 122 or 65 <= i <= 90 or 48 <= i <= 57 or i in {36, 95} # a-z, A-Z, 0-9, $, _
 
 
 def cxxfilt():
-  filt = which('llvm-cxxfilt')
-  if filt:
-    return filt
-  return which('c++filt')
+  return shutil.which('llvm-cxxfilt') or shutil.which('c++filt')
 
 
 # Runs the given symbols list through c++filt to demangle.
@@ -186,8 +159,8 @@ def merge_entry_to_existing(existing_data, new_entry, total_source_set_size):
   name = new_entry['unminified_name']
   if name in existing_data:
     ex = existing_data[name]
-    num_times_occurs_1 = ex['num_times_occurs'] if 'num_times_occurs' in ex else 1
-    num_times_occurs_2 = new_entry['num_times_occurs'] if 'num_times_occurs' in new_entry else 1
+    num_times_occurs_1 = ex.get('num_times_occurs', 1)
+    num_times_occurs_2 = new_entry.get('num_times_occurs', 1)
     existing_data[name] = {
       'lines': ex['lines'] + new_entry['lines'],
       'bytes': ex['bytes'] + new_entry['bytes'],
@@ -236,7 +209,7 @@ def analyze_javascript_file_contents(filename, file_contents, total_source_set_s
   if asm_start >= 0:
     asm_start_brace = file_contents.rfind('{', 0, asm_start)
     if asm_start_brace >= 0:
-      asm_end_brace = brace_map[asm_start_brace] if asm_start_brace in brace_map else file_len
+      asm_end_brace = brace_map.get(asm_start_brace, file_len)
 
   func_pos = -1
   var_pos = -1
@@ -327,7 +300,7 @@ def analyze_javascript_file_contents(filename, file_contents, total_source_set_s
         end_brace = file_contents.find(';', var_pos)
         minified_name = var_match.group(1)
 
-      # Special case ignore the 'var asm = (function(global, env, buffer) { 'use asm'; ... }; ' variable that contains all the asm.js code.
+      # Special case ignore the 'var wasmExports = (function(global, env, buffer) { 'use asm'; ... }; ' variable that contains all the asm.js code.
       # Ignoring this variable lets all the asm.js code be trated as functions in this parser, instead of assigning them to the asm variable.
       if file_contents[start_brace] == '(' and ("'use asm'" in file_contents[var_pos:end_brace] or '"use asm"' in file_contents[var_pos:end_brace] or "'almost asm'" in file_contents[var_pos:end_brace] or '"almost asm"' in file_contents[var_pos:end_brace]):
         continue
@@ -372,13 +345,13 @@ def analyze_javascript_file_contents(filename, file_contents, total_source_set_s
 
 
 def analyze_javascript_file(filename, total_source_set_size, symbol_map=None):
-  file_contents = open(filename).read()
+  file_contents = Path(filename).read_text()
   print('Analyzing JS file ' + filename + ', ' + str(len(file_contents)) + ' bytes...')
   return analyze_javascript_file_contents(filename, file_contents, total_source_set_size, symbol_map)
 
 
 def analyze_html_file(filename, total_source_set_size, symbol_map=None):
-  file_contents = open(filename).read()
+  file_contents = Path(filename).read_text()
   print('Analyzing HTML file ' + filename + ', ' + str(len(file_contents)) + ' bytes...')
   data = {}
   parse_pos = 0
@@ -540,7 +513,7 @@ def print_symbol_info(data, total_source_set_size):
       continue
     if options.only_common and (not e['in_set_1'] or not e['in_set_2']):
       continue
-    prev_bytes = e['prev_bytes'] if 'prev_bytes' in e else 0
+    prev_bytes = e.get('prev_bytes', 0)
     if max(e['bytes'], prev_bytes) < options.filter_size:
       continue
     if e['bytes'] == prev_bytes and options.only_changes:

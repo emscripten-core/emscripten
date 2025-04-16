@@ -10,6 +10,7 @@ import ctypes
 import logging
 import os
 import sys
+from typing import Dict
 
 
 WINDOWS = sys.platform.startswith('win')
@@ -155,8 +156,8 @@ def warn(msg, *args):
   diag(WARN, msg, *args)
 
 
-class WarningManager(object):
-  warnings = {}
+class WarningManager:
+  warnings: Dict[str, Dict] = {}
 
   def add_warning(self, name, enabled=True, part_of_all=True, shared=False, error=False):
     self.warnings[name] = {
@@ -239,6 +240,10 @@ def enable_warning(name, as_error=False):
 
 def disable_warning(name):
   manager.warnings[name]['enabled'] = False
+
+
+def is_enabled(name):
+  return manager.warnings[name]['enabled']
 
 
 def warning(warning_type, message, *args):

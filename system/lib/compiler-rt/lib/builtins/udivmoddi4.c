@@ -21,7 +21,7 @@
 // MSVC throws a warning about mod 0 here, disable it for builds that
 // warn-as-error
 #pragma warning(push)
-#pragma warning(disable : 4724)
+#pragma warning(disable : 4723 4724)
 #endif
 
 COMPILER_RT_ABI du_int __udivmoddi4(du_int a, du_int b, du_int *rem) {
@@ -82,12 +82,12 @@ COMPILER_RT_ABI du_int __udivmoddi4(du_int a, du_int b, du_int *rem) {
         r.s.high = n.s.high & (d.s.high - 1);
         *rem = r.all;
       }
-      return n.s.high >> __builtin_ctz(d.s.high);
+      return n.s.high >> ctzsi(d.s.high);
     }
     // K K
     // ---
     // K 0
-    sr = __builtin_clz(d.s.high) - __builtin_clz(n.s.high);
+    sr = clzsi(d.s.high) - clzsi(n.s.high);
     // 0 <= sr <= n_uword_bits - 2 or sr large
     if (sr > n_uword_bits - 2) {
       if (rem)
@@ -112,7 +112,7 @@ COMPILER_RT_ABI du_int __udivmoddi4(du_int a, du_int b, du_int *rem) {
           *rem = n.s.low & (d.s.low - 1);
         if (d.s.low == 1)
           return n.all;
-        sr = __builtin_ctz(d.s.low);
+        sr = ctzsi(d.s.low);
         q.s.high = n.s.high >> sr;
         q.s.low = (n.s.high << (n_uword_bits - sr)) | (n.s.low >> sr);
         return q.all;
@@ -120,7 +120,7 @@ COMPILER_RT_ABI du_int __udivmoddi4(du_int a, du_int b, du_int *rem) {
       // K X
       // ---
       // 0 K
-      sr = 1 + n_uword_bits + __builtin_clz(d.s.low) - __builtin_clz(n.s.high);
+      sr = 1 + n_uword_bits + clzsi(d.s.low) - clzsi(n.s.high);
       // 2 <= sr <= n_udword_bits - 1
       // q.all = n.all << (n_udword_bits - sr);
       // r.all = n.all >> sr;
@@ -145,7 +145,7 @@ COMPILER_RT_ABI du_int __udivmoddi4(du_int a, du_int b, du_int *rem) {
       // K X
       // ---
       // K K
-      sr = __builtin_clz(d.s.high) - __builtin_clz(n.s.high);
+      sr = clzsi(d.s.high) - clzsi(n.s.high);
       // 0 <= sr <= n_uword_bits - 1 or sr large
       if (sr > n_uword_bits - 1) {
         if (rem)

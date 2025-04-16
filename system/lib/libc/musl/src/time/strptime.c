@@ -11,7 +11,7 @@ char *strptime(const char *restrict s, const char *restrict f, struct tm *restri
 	int i, w, neg, adj, min, range, *dest, dummy;
 	const char *ex;
 	size_t len;
-	int want_century = 0, century = 0;
+	int want_century = 0, century = 0, relyear = 0;
 	while (*f) {
 		if (*f != '%') {
 			if (isspace(*f)) for (; *s && isspace(*s); s++);
@@ -22,8 +22,13 @@ char *strptime(const char *restrict s, const char *restrict f, struct tm *restri
 		}
 		f++;
 		if (*f == '+') f++;
-		if (isdigit(*f)) w=strtoul(f, (void *)&f, 10);
-		else w=-1;
+		if (isdigit(*f)) {
+			char *new_f;
+			w=strtoul(f, &new_f, 10);
+			f = new_f;
+		} else {
+			w=-1;
+		}
 		adj=0;
 		switch (*f++) {
 		case 'a': case 'A':
@@ -68,6 +73,7 @@ char *strptime(const char *restrict s, const char *restrict f, struct tm *restri
 			dest = &tm->tm_yday;
 			min = 1;
 			range = 366;
+			adj = 1;
 			goto numeric_range;
 		case 'm':
 			dest = &tm->tm_mon;
@@ -88,6 +94,7 @@ char *strptime(const char *restrict s, const char *restrict f, struct tm *restri
 			len = strlen(ex);
 			if (!strncasecmp(s, ex, len)) {
 				tm->tm_hour %= 12;
+				s += len;
 				break;
 			}
 			ex = nl_langinfo(PM_STR);
@@ -95,6 +102,7 @@ char *strptime(const char *restrict s, const char *restrict f, struct tm *restri
 			if (!strncasecmp(s, ex, len)) {
 				tm->tm_hour %= 12;
 				tm->tm_hour += 12;
+				s += len;
 				break;
 			}
 			return 0;
@@ -136,7 +144,7 @@ char *strptime(const char *restrict s, const char *restrict f, struct tm *restri
 			if (!s) return 0;
 			break;
 		case 'y':
-			dest = &tm->tm_year;
+			dest = &relyear;
 			w = 2;
 			want_century |= 1;
 			goto numeric_digits;
@@ -190,6 +198,7 @@ char *strptime(const char *restrict s, const char *restrict f, struct tm *restri
 		}
 	}
 	if (want_century) {
+		tm->tm_year = relyear;
 		if (want_century & 2) tm->tm_year += century * 100 - 1900;
 		else if (tm->tm_year <= 68) tm->tm_year += 100;
 	}

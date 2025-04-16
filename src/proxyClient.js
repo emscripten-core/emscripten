@@ -4,22 +4,56 @@
  * SPDX-License-Identifier: MIT
  */
 
-// proxy to/from worker
+/*
+ * Proxy events/work to/from an emscripen worker built
+ * with PROXY_TO_WORKER.  This code runs on the main
+ * thread and is not part of the main emscripten output
+ * file.
+ */
 
-if (typeof Module === 'undefined') {
+#if !PROXY_TO_WORKER
+#error "proxyClient.js should only be included in PROXY_TO_WORKER mode"
+#endif
+
+#if ENVIRONMENT_MAY_BE_NODE
+var ENVIRONMENT_IS_NODE = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string' && process.type != 'renderer';
+if (ENVIRONMENT_IS_NODE) {
+  var NodeWorker = require('worker_threads').Worker;
+  global.Worker = function(url, options) {
+    // Special handling for `data:` URL argument, to match the behaviour
+    // of the Web API.
+    if (typeof url == 'string' && url.startsWith('data:')) {
+#if EXPORT_ES6
+      // worker_threads always assume data URLs are ES6 modules
+      url = new URL(url);
+#else
+      // For class modules we decode the data URL and use `eval: true`.
+      url = Buffer.from(url.split(",")[1], 'base64').toString();
+      options ||= {}
+      options.eval = true;
+#endif
+    }
+    return new NodeWorker(url, options);
+  }
+  var Module = Module || {}
+} else
+#endif
+if (typeof Module == 'undefined') {
   console.warn('no Module object defined - cannot proxy canvas rendering and input events, etc.');
   Module = {
-    print: function(x) {
-      console.log(x);
-    },
-    printErr: function(x) {
-      console.log(x);
-    },
     canvas: {
-      addEventListener: function() {},
-      getBoundingClientRect: function() { return { bottom: 0, height: 0, left: 0, right: 0, top: 0, width: 0 } },
+      addEventListener: () => {},
+      getBoundingClientRect: () => ({ bottom: 0, height: 0, left: 0, right: 0, top: 0, width: 0 }),
     },
   };
+}
+
+if (!Module.hasOwnProperty('print')) {
+  Module['print'] = (x) => console.log(x);
+}
+
+if (!Module.hasOwnProperty('printErr')) {
+  Module['printErr'] = (x) => console.error(x);
 }
 
 // utils
@@ -28,7 +62,7 @@ function FPSTracker(text) {
   var last = 0;
   var mean = 0;
   var counter = 0;
-  this.tick = function() {
+  this.tick = () => {
     var now = Date.now();
     if (last > 0) {
       var diff = now - last;
@@ -46,7 +80,7 @@ function FPSTracker(text) {
 function GenericTracker(text) {
   var mean = 0;
   var counter = 0;
-  this.tick = function(value) {
+  this.tick = (value) => {
     mean = 0.99*mean + 0.01*value;
     if (counter++ === 60) {
       counter = 0;
@@ -69,20 +103,22 @@ function renderFrame() {
       dst[i] = renderFrameData[i];
     }
   }
-  Module.ctx.putImageData(Module.canvasData, 0, 0);
+  Module['ctx'].putImageData(Module.canvasData, 0, 0);
   renderFrameData = null;
 }
 
-window.requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame ||
-                               window.webkitRequestAnimationFrame || window.msRequestAnimationFrame ||
-                               renderFrame;
+if (typeof window != 'undefined') {
+  window.requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame ||
+                                 window.webkitRequestAnimationFrame || window.msRequestAnimationFrame ||
+                                 renderFrame;
+}
 
 /*
-(function() {
+(() => {
   var trueRAF = window.requestAnimationFrame;
   var tracker = new FPSTracker('client');
-  window.requestAnimationFrame = function(func) {
-    trueRAF(function() {
+  window.requestAnimationFrame = (func) => {
+    trueRAF(() => {
       tracker.tick();
       func();
     });
@@ -94,53 +130,47 @@ window.requestAnimationFrame = window.requestAnimationFrame || window.mozRequest
 
 // IDBStore
 
-var IDBStore = {{{ IDBStore.js }}};
+#include "IDBStore.js"
 
 // Frame throttling
 
 var frameId = 0;
 
-// Temporarily handling this at run-time pending Python preprocessor support
-
-var SUPPORT_BASE64_EMBEDDING;
-
 // Worker
 
 var filename;
-if (!filename) {
-  filename = '{{{ filename }}}';
-}
+filename ||= '<<< filename >>>';
 
-var workerURL = filename;
-if (SUPPORT_BASE64_EMBEDDING) {
-  var fileBytes = tryParseAsDataURI(filename);
-  if (fileBytes) {
-    workerURL = URL.createObjectURL(new Blob([fileBytes], {type: 'application/javascript'}));
-  }
-}
-var worker = new Worker(workerURL);
+var worker = new Worker(filename);
 
+#if ENVIRONMENT_MAY_BE_NODE
+if (ENVIRONMENT_IS_NODE) {
+  worker.postMessage({target: 'worker-init'});
+} else {
+#endif
 WebGLClient.prefetch();
 
-setTimeout(function() {
+setTimeout(() => {
   worker.postMessage({
     target: 'worker-init',
-    width: Module.canvas.width,
-    height: Module.canvas.height,
-    boundingClientRect: cloneObject(Module.canvas.getBoundingClientRect()),
+    width: Module['canvas'].width,
+    height: Module['canvas'].height,
+    boundingClientRect: cloneObject(Module['canvas'].getBoundingClientRect()),
     URL: document.URL,
     currentScriptUrl: filename,
     preMain: true });
 }, 0); // delay til next frame, to make sure html is ready
+#if ENVIRONMENT_MAY_BE_NODE
+}
+#endif
 
 var workerResponded = false;
 
-worker.onmessage = function worker_onmessage(event) {
-  //dump('\nclient got ' + JSON.stringify(event.data).substr(0, 150) + '\n');
+worker.onmessage = (event) => {
+  //dump('\nclient got ' + JSON.stringify(event.data).slice(0, 150) + '\n');
   if (!workerResponded) {
     workerResponded = true;
-    if (Module.setStatus) Module.setStatus('');
-    if (SUPPORT_BASE64_EMBEDDING && workerURL !== filename) URL.revokeObjectURL(workerURL);
+    Module.setStatus?.('');
   }
 
   var data = event.data;
@@ -160,18 +190,18 @@ worker.onmessage = function worker_onmessage(event) {
     case 'canvas': {
       switch (data.op) {
         case 'getContext': {
-          Module.ctx = Module.canvas.getContext(data.type, data.attributes);
+          Module['ctx'] = Module['canvas'].getContext(data.type, data.attributes);
           if (data.type !== '2d') {
-            // possible GL_DEBUG entry point: Module.ctx = wrapDebugGL(Module.ctx);
+            // possible GL_DEBUG entry point: Module['ctx'] = wrapDebugGL(Module['ctx']);
             Module.glClient = new WebGLClient();
           }
           break;
         }
         case 'resize': {
-          Module.canvas.width = data.width;
-          Module.canvas.height = data.height;
-          if (Module.ctx && Module.ctx.getImageData) Module.canvasData = Module.ctx.getImageData(0, 0, data.width, data.height);
-          worker.postMessage({ target: 'canvas', boundingClientRect: cloneObject(Module.canvas.getBoundingClientRect()) });
+          Module['canvas'].width = data.width;
+          Module['canvas'].height = data.height;
+          if (Module['ctx']?.getImageData) Module.canvasData = Module['ctx'].getImageData(0, 0, data.width, data.height);
+          worker.postMessage({ target: 'canvas', boundingClientRect: cloneObject(Module['canvas'].getBoundingClientRect()) });
           break;
         }
         case 'render': {
@@ -186,7 +216,7 @@ worker.onmessage = function worker_onmessage(event) {
           break;
         }
         case 'setObjectProperty': {
-          Module.canvas[data.object][data.property] = data.value;
+          Module['canvas'][data.object][data.property] = data.value;
           break;
         }
         default: throw 'eh?';
@@ -205,7 +235,7 @@ worker.onmessage = function worker_onmessage(event) {
     case 'Image': {
       assert(data.method === 'src');
       var img = new Image();
-      img.onload = function() {
+      img.onload = () => {
         assert(img.complete);
         var canvas = document.createElement('canvas');
         canvas.width = img.width;
@@ -215,7 +245,7 @@ worker.onmessage = function worker_onmessage(event) {
         var imageData = ctx.getImageData(0, 0, img.width, img.height);
         worker.postMessage({ target: 'Image', method: 'onload', id: data.id, width: img.width, height: img.height, data: imageData.data, preMain: true });
       };
-      img.onerror = function() {
+      img.onerror = () => {
         worker.postMessage({ target: 'Image', method: 'onerror', id: data.id, preMain: true });
       };
       img.src = data.src;
@@ -224,7 +254,7 @@ worker.onmessage = function worker_onmessage(event) {
     case 'IDBStore': {
       switch (data.method) {
         case 'loadBlob': {
-          IDBStore.getFile(data.db, data.id, function(error, blob) {
+          IDBStore.getFile(data.db, data.id, (error, blob) => {
             worker.postMessage({
               target: 'IDBStore',
               method: 'response',
@@ -234,7 +264,7 @@ worker.onmessage = function worker_onmessage(event) {
           break;
         }
         case 'storeBlob': {
-          IDBStore.setFile(data.db, data.id, data.blob, function(error) {
+          IDBStore.setFile(data.db, data.id, data.blob, (error) => {
             worker.postMessage({
               target: 'IDBStore',
               method: 'response',
@@ -262,8 +292,7 @@ worker.onmessage = function worker_onmessage(event) {
   }
 };
 
-function postCustomMessage(data, options) {
-  options = options || {};
+function postCustomMessage(data, options = {}) {
   worker.postMessage({ target: 'custom', userData: data, preMain: options.preMain });
 }
 
@@ -272,41 +301,49 @@ function cloneObject(event) {
   for (var x in event) {
     if (x == x.toUpperCase()) continue;
     var prop = event[x];
-    if (typeof prop === 'number' || typeof prop === 'string') ret[x] = prop;
+    if (typeof prop == 'number' || typeof prop == 'string') ret[x] = prop;
   }
   return ret;
 };
 
+#if ENVIRONMENT_MAY_BE_NODE
+if (!ENVIRONMENT_IS_NODE) {
+#endif
+
 // Only prevent default on backspace/tab because we don't want unexpected navigation.
 // Do not prevent default on the rest as we need the keypress event.
 function shouldPreventDefault(event) {
-  if (event.type === 'keydown' && event.keyCode !== 8 /* backspace */ && event.keyCode !== 9 /* tab */) {
+  if (event.type === 'keydown' && event.key != 'Backspace' && event.key != 'Tab') {
     return false; // keypress, back navigation
   } else {
     return true; // NO keypress, NO back navigation
   }
 };
 
-['keydown', 'keyup', 'keypress', 'blur', 'visibilitychange'].forEach(function(event) {
-  document.addEventListener(event, function(event) {
+
+['keydown', 'keyup', 'keypress', 'blur', 'visibilitychange'].forEach((event) => {
+  document.addEventListener(event, (event) => {
     worker.postMessage({ target: 'document', event: cloneObject(event) });
-    
+
     if (shouldPreventDefault(event)) {
       event.preventDefault();
     }
   });
 });
 
-['unload'].forEach(function(event) {
-  window.addEventListener(event, function(event) {
+['unload'].forEach((event) => {
+  window.addEventListener(event, (event) => {
     worker.postMessage({ target: 'window', event: cloneObject(event) });
   });
 });
 
-['mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'mouseout'].forEach(function(event) {
-  Module.canvas.addEventListener(event, function(event) {
+['mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'mouseout'].forEach((event) => {
+  Module['canvas'].addEventListener(event, (event) => {
     worker.postMessage({ target: 'canvas', event: cloneObject(event) });
     event.preventDefault();
   }, true);
 });
 
+#if ENVIRONMENT_MAY_BE_NODE
+}
+#endif

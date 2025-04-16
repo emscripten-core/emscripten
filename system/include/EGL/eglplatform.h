@@ -79,7 +79,7 @@ typedef HWND    EGLNativeWindowType;
 
 #elif defined(__EMSCRIPTEN__)
 
-typedef int EGLNativeDisplayType;
+typedef void* EGLNativeDisplayType;
 typedef int EGLNativePixmapType;
 typedef int EGLNativeWindowType;
 

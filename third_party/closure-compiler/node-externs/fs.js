@@ -57,6 +57,12 @@ fs.truncate = function(fd, len, callback) {};
 fs.truncateSync = function(fd, len) {};
 
 /**
+ * @param {*} fd
+ * @param {number} len
+ */
+fs.ftruncateSync = function(fd, len) {};
+
+/**
  * @param {string} path
  * @param {number} uid
  * @param {number} gid
@@ -367,9 +373,9 @@ fs.write = function(fd, buffer, offset, length, position, callback) {};
 /**
  * @param {*} fd
  * @param {*} buffer
- * @param {number} offset
- * @param {number} length
- * @param {number} position
+ * @param {number=} offset
+ * @param {number=} length
+ * @param {number=} position
  * @return {number}
  */
 fs.writeSync = function(fd, buffer, offset, length, position) {};
@@ -389,7 +395,7 @@ fs.read = function(fd, buffer, offset, length, position, callback) {};
  * @param {*} buffer
  * @param {number} offset
  * @param {number} length
- * @param {number} position
+ * @param {number=} position
  * @return {number}
  * @nosideeffects
  */

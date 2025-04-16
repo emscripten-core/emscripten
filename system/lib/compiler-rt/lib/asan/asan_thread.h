@@ -15,11 +15,12 @@
 #define ASAN_THREAD_H
 
 #include "asan_allocator.h"
-#include "asan_internal.h"
 #include "asan_fake_stack.h"
+#include "asan_internal.h"
 #include "asan_stats.h"
 #include "sanitizer_common/sanitizer_common.h"
 #include "sanitizer_common/sanitizer_libc.h"
+#include "sanitizer_common/sanitizer_thread_arg_retval.h"
 #include "sanitizer_common/sanitizer_thread_registry.h"
 
 namespace __sanitizer {
@@ -28,14 +29,11 @@ struct DTLS;
 
 namespace __asan {
 
-const u32 kInvalidTid = 0xffffff;  // Must fit into 24 bits.
-const u32 kMaxNumberOfThreads = (1 << 22);  // 4M
-
 class AsanThread;
 
 // These objects are created for every thread and are never deleted,
 // so we can find them by tid even if the thread is long dead.
-class AsanThreadContext : public ThreadContextBase {
+class AsanThreadContext final : public ThreadContextBase {
  public:
   explicit AsanThreadContext(int tid)
       : ThreadContextBase(tid), announced(false),
@@ -58,19 +56,32 @@ class AsanThreadContext : public ThreadContextBase {
 // AsanThreadContext objects are never freed, so we need many of them.
 COMPILER_CHECK(sizeof(AsanThreadContext) <= 256);
 
+#if defined(_MSC_VER) && !defined(__clang__)
+// MSVC raises a warning about a nonstandard extension being used for the 0
+// sized element in this array. Disable this for warn-as-error builds.
+#  pragma warning(push)
+#  pragma warning(disable : 4200)
+#endif
+
 // AsanThread are stored in TSD and destroyed when the thread dies.
 class AsanThread {
  public:
-  static AsanThread *Create(thread_callback_t start_routine, void *arg,
-                            u32 parent_tid, StackTrace *stack, bool detached);
+  template <typename T>
+  static AsanThread *Create(const T &data, u32 parent_tid, StackTrace *stack,
+                            bool detached) {
+    return Create(&data, sizeof(data), parent_tid, stack, detached);
+  }
+  static AsanThread *Create(u32 parent_tid, StackTrace *stack, bool detached) {
+    return Create(nullptr, 0, parent_tid, stack, detached);
+  }
   static void TSDDtor(void *tsd);
   void Destroy();
 
   struct InitOptions;
   void Init(const InitOptions *options = nullptr);
 
-  thread_return_t ThreadStart(tid_t os_id,
-                              atomic_uintptr_t *signal_thread_is_registered);
+  void ThreadStart(tid_t os_id);
+  thread_return_t RunThread();
 
   uptr stack_top();
   uptr stack_bottom();
@@ -106,17 +117,18 @@ class AsanThread {
   void FinishSwitchFiber(FakeStack *fake_stack_save, uptr *bottom_old,
                          uptr *size_old);
 
-  bool has_fake_stack() {
-    return !atomic_load(&stack_switching_, memory_order_relaxed) &&
-           (reinterpret_cast<uptr>(fake_stack_) > 1);
-  }
-
-  FakeStack *fake_stack() {
-    if (!__asan_option_detect_stack_use_after_return)
-      return nullptr;
+  FakeStack *get_fake_stack() {
     if (atomic_load(&stack_switching_, memory_order_relaxed))
       return nullptr;
-    if (!has_fake_stack())
+    if (reinterpret_cast<uptr>(fake_stack_) <= 1)
+      return nullptr;
+    return fake_stack_;
+  }
+
+  FakeStack *get_or_create_fake_stack() {
+    if (atomic_load(&stack_switching_, memory_order_relaxed))
+      return nullptr;
+    if (reinterpret_cast<uptr>(fake_stack_) <= 1)
       return AsyncSignalSafeLazyInitFakeStack();
     return fake_stack_;
   }
@@ -132,9 +144,17 @@ class AsanThread {
 
   void *extra_spill_area() { return &extra_spill_area_; }
 
+  template <typename T>
+  void GetStartData(T &data) const {
+    GetStartData(&data, sizeof(data));
+  }
+
  private:
   // NOTE: There is no AsanThread constructor. It is allocated
   // via mmap() and *must* be valid in zero-initialized state.
+
+  static AsanThread *Create(const void *start_data, uptr data_size,
+                            u32 parent_tid, StackTrace *stack, bool detached);
 
   void SetThreadStackAndTls(const InitOptions *options);
 
@@ -147,9 +167,9 @@ class AsanThread {
   };
   StackBounds GetStackBounds() const;
 
+  void GetStartData(void *out, uptr out_size) const;
+
   AsanThreadContext *context_;
-  thread_callback_t start_routine_;
-  void *arg_;
 
   uptr stack_top_;
   uptr stack_bottom_;
@@ -168,10 +188,17 @@ class AsanThread {
   AsanStats stats_;
   bool unwinding_;
   uptr extra_spill_area_;
+
+  char start_data_[];
 };
+
+#if defined(_MSC_VER) && !defined(__clang__)
+#  pragma warning(pop)
+#endif
 
 // Returns a single instance of registry.
 ThreadRegistry &asanThreadRegistry();
+ThreadArgRetval &asanThreadArgRetval();
 
 // Must be called under ThreadRegistryLock.
 AsanThreadContext *GetThreadContextByTidLocked(u32 tid);

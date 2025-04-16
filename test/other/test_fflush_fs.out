@@ -1,0 +1,2 @@
+Hey1
+warning: stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1 (see the Emscripten FAQ), or make sure to emit a newline when you printf etc.

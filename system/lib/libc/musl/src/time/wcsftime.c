@@ -2,9 +2,7 @@
 #include <time.h>
 #include <locale.h>
 #include "locale_impl.h"
-#include "libc.h"
-
-const char *__strftime_fmt_1(char (*s)[100], size_t *l, int f, const struct tm *tm, locale_t loc);
+#include "time_impl.h"
 
 size_t __wcsftime_l(wchar_t *restrict s, size_t n, const wchar_t *restrict f, const struct tm *restrict tm, locale_t loc)
 {
@@ -14,7 +12,7 @@ size_t __wcsftime_l(wchar_t *restrict s, size_t n, const wchar_t *restrict f, co
 	wchar_t *p;
 	const char *t_mb;
 	const wchar_t *t;
-	int plus;
+	int pad, plus;
 	unsigned long width;
 	for (l=0; l<n; f++) {
 		if (!*f) {
@@ -26,6 +24,8 @@ size_t __wcsftime_l(wchar_t *restrict s, size_t n, const wchar_t *restrict f, co
 			continue;
 		}
 		f++;
+		pad = 0;
+		if (*f == '-' || *f == '_' || *f == '0') pad = *f++;
 		if ((plus = (*f == '+'))) f++;
 		width = wcstoul(f, &p, 10);
 		if (*p == 'C' || *p == 'F' || *p == 'G' || *p == 'Y') {
@@ -35,7 +35,7 @@ size_t __wcsftime_l(wchar_t *restrict s, size_t n, const wchar_t *restrict f, co
 		}
 		f = p;
 		if (*f == 'E' || *f == 'O') f++;
-		t_mb = __strftime_fmt_1(&buf, &k, *f, tm, loc);
+		t_mb = __strftime_fmt_1(&buf, &k, *f, tm, loc, pad);
 		if (!t_mb) break;
 		k = mbstowcs(wbuf, t_mb, sizeof wbuf / sizeof *wbuf);
 		if (k == (size_t)-1) return 0;

@@ -18,23 +18,29 @@ void __unlist_locked_file(FILE *f)
 	}
 }
 
-int ftrylockfile(FILE *f)
+void __register_locked_file(FILE *f, pthread_t self)
 {
-	pthread_t self = __pthread_self();
-	int tid = self->tid;
-	if (f->lock == tid) {
-		if (f->lockcount == LONG_MAX)
-			return -1;
-		f->lockcount++;
-		return 0;
-	}
-	if (f->lock < 0) f->lock = 0;
-	if (f->lock || a_cas(&f->lock, 0, tid))
-		return -1;
 	f->lockcount = 1;
 	f->prev_locked = 0;
 	f->next_locked = self->stdio_locks;
 	if (f->next_locked) f->next_locked->prev_locked = f;
 	self->stdio_locks = f;
+}
+
+int ftrylockfile(FILE *f)
+{
+	pthread_t self = __pthread_self();
+	int tid = self->tid;
+	int owner = f->lock;
+	if ((owner & ~MAYBE_WAITERS) == tid) {
+		if (f->lockcount == LONG_MAX)
+			return -1;
+		f->lockcount++;
+		return 0;
+	}
+	if (owner < 0) f->lock = owner = 0;
+	if (owner || a_cas(&f->lock, 0, tid))
+		return -1;
+	__register_locked_file(f, self);
 	return 0;
 }

@@ -1,0 +1,118 @@
+BEGIN
+no args works
+int types:
+         char : 1
+  signed char : 2
+unsigned char : 3
+         short: 4
+  signed short: 5
+unsigned short: 6
+         int  : 7
+  signed int  : 8
+unsigned int  : 9
+         long : 10
+  signed long : 11
+unsigned long : 12
+    terminator: 42
+no args returning int
+  EM_ASM_INT_V returned: 12
+no args returning double
+  EM_ASM_DOUBLE_V returned: 12.250000
+no args returning int
+  EM_ASM_INT returned: 12
+no args returning double
+  EM_ASM_DOUBLE returned: 12.250000
+EM_ASM_ :
+  takes ints: 5
+    returned: 0
+  takes doubles: 5.0675
+    returned: 0
+  takes strings: string arg
+    returned: 7
+  takes multiple ints: 5, 7
+    returned: 6
+  mixed arg types: 3, hello, 4.75
+    returned: 8
+  ignores unused args
+    returned: 5
+  skips unused args: 7
+    returned: 6
+  5.5 + 14.375
+    returned: 19
+EM_ASM_INT :
+  takes ints: 5
+    returned: 0
+  takes doubles: 5.0675
+    returned: 0
+  takes strings: string arg
+    returned: 7
+  takes multiple ints: 5, 7
+    returned: 6
+  mixed arg types: 3, hello, 4.75
+    returned: 8
+  ignores unused args
+    returned: 5
+  skips unused args: 7
+    returned: 6
+  5.5 + 14.375
+    returned: 19
+EM_ASM_ARGS :
+  takes ints: 5
+    returned: 0
+  takes doubles: 5.0675
+    returned: 0
+  takes strings: string arg
+    returned: 7
+  takes multiple ints: 5, 7
+    returned: 6
+  mixed arg types: 3, hello, 4.75
+    returned: 8
+  ignores unused args
+    returned: 5
+  skips unused args: 7
+    returned: 6
+  5.5 + 14.375
+    returned: 19
+EM_ASM_DOUBLE :
+  takes ints: 5
+    returned: nan
+  takes doubles: 5.0675
+    returned: nan
+  takes strings: string arg
+    returned: 7.750000
+  takes multiple ints: 5, 7
+    returned: 6.000000
+  mixed arg types: 3, hello, 4.75
+    returned: 8.125000
+  ignores unused args
+    returned: 5.500000
+  skips unused args: 7
+    returned: 6.000000
+  5.5 + 14.375
+    returned: 19.875000
+idii
+a 1
+b 3.14159
+c 3
+d 4
+diii
+a 3.14159
+b 2
+c 3
+d 4
+iidi
+a 1
+b 2
+c 3.14159
+d 4
+ddii
+a 3.14159
+b 2.1828
+c 3
+d 4
+iddi
+a 1
+b 3.14159
+c 2.1828
+d 4
+END

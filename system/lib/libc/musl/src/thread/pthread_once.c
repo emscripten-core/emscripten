@@ -8,7 +8,7 @@ static void undo(void *control)
 		__wake(control, -1, 1);
 }
 
-int __pthread_once_full(pthread_once_t *control, void (*init)(void))
+hidden int __pthread_once_full(pthread_once_t *control, void (*init)(void))
 {
 	/* Try to enter initializing state. Four possibilities:
 	 *  0 - we're the first or the other cancelled; run init

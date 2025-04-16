@@ -1,8 +1,10 @@
 #include <stdlib.h>
 #include "locale_impl.h"
-#include "libc.h"
 
-int __loc_is_allocated(locale_t);
+#define malloc undef
+#define calloc undef
+#define realloc undef
+#define free __libc_free
 
 void freelocale(locale_t l)
 {

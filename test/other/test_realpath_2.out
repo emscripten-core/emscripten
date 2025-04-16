@@ -1,0 +1,8 @@
+Resolved: "testfile.txt" => "/testfile.txt"
+Resolved: "Folder/testfile.txt" => "/Folder/testfile.txt"
+Resolve failed: "testnonexistentfile.txt"
+Resolved: "Folder" => "/Folder"
+Resolved: "/Folder" => "/Folder"
+Resolved: "./" => "/"
+Resolve failed: ""
+Resolved: "/" => "/"

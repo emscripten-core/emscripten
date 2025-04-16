@@ -1,0 +1,6 @@
+Init: 0
+Font: 0x1
+Sum: 0
+you should see two lines of text in different colors and a blue rectangle
+SDL_Quit called (and ignored)
+done.

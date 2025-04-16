@@ -9,12 +9,12 @@
 {{{ throw "this file should not be be included when IMPORTED_MEMORY is set"; }}}
 #endif
 
-#if USE_PTHREADS
-if (ENVIRONMENT_IS_PTHREAD) {
-  wasmMemory = Module['wasmMemory'];
-  buffer = Module['buffer'];
-} else {
-#endif // USE_PTHREADS
+// check for full engine support (use string 'subarray' to avoid closure compiler confusion)
+
+function initMemory() {
+#if PTHREADS
+  if (ENVIRONMENT_IS_PTHREAD) return;
+#endif // PTHREADS
 
 #if expectToReceiveOnModule('wasmMemory')
   if (Module['wasmMemory']) {
@@ -22,45 +22,37 @@ if (ENVIRONMENT_IS_PTHREAD) {
   } else
 #endif
   {
-    wasmMemory = new WebAssembly.Memory({
-      'initial': INITIAL_MEMORY / {{{ WASM_PAGE_SIZE }}}
-#if ALLOW_MEMORY_GROWTH
-#if MAXIMUM_MEMORY != -1
-      ,
-      'maximum': {{{ MAXIMUM_MEMORY }}} / {{{ WASM_PAGE_SIZE }}}
+    var INITIAL_MEMORY = {{{ makeModuleReceiveExpr('INITIAL_MEMORY', INITIAL_MEMORY) }}}
+
+#if ASSERTIONS
+    assert(INITIAL_MEMORY >= {{{STACK_SIZE}}}, 'INITIAL_MEMORY should be larger than STACK_SIZE, was ' + INITIAL_MEMORY + '! (STACK_SIZE=' + {{{STACK_SIZE}}} + ')');
 #endif
+    /** @suppress {checkTypes} */
+#if MINIMAL_RUNTIME && WASM_WORKERS
+    wasmMemory = Module['mem'] || new WebAssembly.Memory({
 #else
-      ,
-      'maximum': INITIAL_MEMORY / {{{ WASM_PAGE_SIZE }}}
+    wasmMemory = new WebAssembly.Memory({
+#endif
+      'initial': {{{ toIndexType(`INITIAL_MEMORY / ${WASM_PAGE_SIZE}`) }}},
+#if ALLOW_MEMORY_GROWTH
+      // In theory we should not need to emit the maximum if we want "unlimited"
+      // or 4GB of memory, but VMs error on that atm, see
+      // https://github.com/emscripten-core/emscripten/issues/14130
+      // And in the pthreads case we definitely need to emit a maximum. So
+      // always emit one.
+      'maximum': {{{ toIndexType(MAXIMUM_MEMORY / WASM_PAGE_SIZE) }}},
+#else
+      'maximum': {{{ toIndexType(`INITIAL_MEMORY / ${WASM_PAGE_SIZE}`) }}},
 #endif // ALLOW_MEMORY_GROWTH
-#if USE_PTHREADS
-      ,
-      'shared': true
+#if SHARED_MEMORY
+      'shared': true,
+#endif
+#if MEMORY64 == 1
+      'address': 'i64',
 #endif
     });
-#if USE_PTHREADS
-    if (!(wasmMemory.buffer instanceof SharedArrayBuffer)) {
-      err('requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
-      if (ENVIRONMENT_IS_NODE) {
-        console.log('(on node you may need: --experimental-wasm-threads --experimental-wasm-bulk-memory and also use a recent version)');
-      }
-      throw Error('bad memory');
-    }
-#endif
   }
 
-#if USE_PTHREADS
-}
-#endif
-
-if (wasmMemory) {
-  buffer = wasmMemory.buffer;
+  updateMemoryViews();
 }
 
-// If the user provides an incorrect length, just use that length instead rather than providing the user to
-// specifically provide the memory length with Module['INITIAL_MEMORY'].
-INITIAL_MEMORY = buffer.byteLength;
-#if ASSERTIONS
-assert(INITIAL_MEMORY % {{{ WASM_PAGE_SIZE }}} === 0);
-#endif
-updateGlobalBufferAndViews(buffer);

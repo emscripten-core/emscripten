@@ -1,0 +1,12 @@
+crashing
+exception caught; runtime should be dead
+again
+program has already aborted!
+ccall
+program has already aborted!
+cwrap
+program has already aborted!
+embind
+program has already aborted!
+wasmTableMirror
+wasmTableMirror done

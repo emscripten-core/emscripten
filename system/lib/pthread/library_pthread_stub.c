@@ -1,8 +1,17 @@
+/*
+ * Copyright 2019 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <errno.h>
+#include <stdbool.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "pthread_impl.h"
 #include <emscripten/stack.h>
 #include <emscripten/threading.h>
@@ -11,10 +20,6 @@
 int emscripten_has_threading_support() { return 0; }
 
 int emscripten_num_logical_cores() { return 1; }
-
-void emscripten_force_num_logical_cores(int cores) {
-  // no-op, in singlethreaded builds we will always report exactly one core.
-}
 
 int emscripten_futex_wait(
   volatile void /*uint32_t*/* addr, uint32_t val, double maxWaitMilliseconds) {
@@ -37,23 +42,41 @@ void emscripten_current_thread_process_queued_calls() {
   // nop
 }
 
+static void dummy(double now)
+{
+}
+
+weak_alias(dummy, _emscripten_check_timers);
+
+void _emscripten_yield(double now) {
+  _emscripten_check_timers(now);
+}
+
 int pthread_mutex_init(
   pthread_mutex_t* __restrict mutex, const pthread_mutexattr_t* __restrict attr) {
   return 0;
 }
 
-int pthread_mutex_lock(pthread_mutex_t* mutex) { return 0; }
+int __pthread_mutex_lock(pthread_mutex_t* mutex) { return 0; }
 
-int pthread_mutex_unlock(pthread_mutex_t* mutex) { return 0; }
+weak_alias(__pthread_mutex_lock, pthread_mutex_lock);
 
-int pthread_mutex_trylock(pthread_mutex_t* mutex) { return 0; }
+int __pthread_mutex_unlock(pthread_mutex_t* mutex) { return 0; }
+
+weak_alias(__pthread_mutex_unlock, pthread_mutex_unlock);
+
+int __pthread_mutex_trylock(pthread_mutex_t* mutex) { return 0; }
+
+weak_alias(__pthread_mutex_trylock, pthread_mutex_trylock);
 
 struct timespec;
 
-int pthread_mutex_timedlock(
+int __pthread_mutex_timedlock(
   pthread_mutex_t* __restrict mutex, const struct timespec* __restrict t) {
   return 0;
 }
+
+weak_alias(__pthread_mutex_timedlock, pthread_mutex_timedlock);
 
 int pthread_mutex_destroy(pthread_mutex_t* mutex) { return 0; }
 
@@ -68,78 +91,80 @@ int pthread_barrier_destroy(pthread_barrier_t* mutex) { return 0; }
 
 int pthread_barrier_wait(pthread_barrier_t* mutex) { return 0; }
 
-// pthread_key_t is 32-bit, so to be able to store pointers in there, we sadly
-// have to track an array of them.
-static size_t num_tls_entries = 0;
-static size_t max_tls_entries = 0;
-struct entry_t { const void* value; int allocated; };
-static struct entry_t* tls_entries = NULL;
+int __pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg) {
+  return EAGAIN;
+}
 
-int pthread_key_create(pthread_key_t* key, void (*destructor)(void*)) {
-  if (key == 0)
+weak_alias(__pthread_create, emscripten_builtin_pthread_create);
+weak_alias(__pthread_create, pthread_create);
+
+int __pthread_join(pthread_t thread, void **retval) {
+  return EINVAL;
+}
+
+weak_alias(__pthread_join, emscripten_builtin_pthread_join);
+weak_alias(__pthread_join, pthread_join);
+
+static void* tls_entries[PTHREAD_KEYS_MAX];
+static bool tls_key_used[PTHREAD_KEYS_MAX];
+
+int __pthread_key_create(pthread_key_t* key, void (*destructor)(void*)) {
+  if (key == 0) {
     return EINVAL;
-  if (!max_tls_entries) {
-    // First time we're called, allocate entry table.
-    max_tls_entries = 4;
-    tls_entries = (struct entry_t*)malloc(max_tls_entries * sizeof(struct entry_t));
   }
   // Find empty spot.
-  size_t entry = 0;
-  for (; entry < num_tls_entries; entry++) {
-    if (!tls_entries[entry].allocated) break;
+  for (pthread_key_t entry = 0; entry < PTHREAD_KEYS_MAX; entry++) {
+    if (!tls_key_used[entry]) {
+      tls_key_used[entry] = true;
+      tls_entries[entry] = NULL;
+      *key = entry;
+      return 0;
+    }
   }
-  if (entry == max_tls_entries) {
-    // No empty spots, table full: double the table.
-    max_tls_entries *= 2;
-    tls_entries =
-      (struct entry_t*)realloc(tls_entries, max_tls_entries * sizeof(struct entry_t));
+  // No empty spots, return an error
+  return EAGAIN;
+}
+
+int __pthread_key_delete(pthread_key_t key) {
+  if (key < 0 || key >= PTHREAD_KEYS_MAX) {
+    return EINVAL;
   }
-  if (entry == num_tls_entries) {
-    // No empty spots, but table not full.
-    num_tls_entries++;
+  if (!tls_key_used[key]) {
+    return EINVAL;
   }
-  struct entry_t* e = &tls_entries[entry];
-  e->value = NULL;
-  e->allocated = 1;
-  // Key can't be zero.
-  *key = (pthread_key_t)entry + 1;
+  tls_key_used[key] = false;
+  tls_entries[key] = NULL;
   return 0;
 }
 
-int pthread_key_delete(pthread_key_t key) {
-  if (key == 0 || key > num_tls_entries)
-    return EINVAL;
-  struct entry_t* e = &tls_entries[key - 1];
-  if (!e->allocated)
-    return EINVAL;
-  e->value = NULL;
-  e->allocated = 0;
-  return 0;
-}
+weak_alias(__pthread_key_delete, pthread_key_delete);
+weak_alias(__pthread_key_create, pthread_key_create);
 
 void* pthread_getspecific(pthread_key_t key) {
-  if (key == 0 || key > num_tls_entries)
+  if (key < 0 || key >= PTHREAD_KEYS_MAX) {
     return NULL;
-  struct entry_t* e = &tls_entries[key - 1];
-  if (!e->allocated)
+  }
+  if (!tls_key_used[key]) {
     return NULL;
-  return (void*)e->value;
+  }
+  return tls_entries[key];
 }
 
 int pthread_setspecific(pthread_key_t key, const void* value) {
-  if (key == 0 || key > num_tls_entries)
+  if (key < 0 || key >= PTHREAD_KEYS_MAX) {
     return EINVAL;
-  struct entry_t* e = &tls_entries[key - 1];
-  if (!e->allocated)
+  }
+  if (!tls_key_used[key]) {
     return EINVAL;
-  e->value = value;
+  }
+  tls_entries[key] = (void*)value;
   return 0;
 }
 
 /*magic number to detect if we have not run yet*/
 #define PTHREAD_ONCE_MAGIC_ID 0x13579BDF
 
-int pthread_once(pthread_once_t* once_control, void (*init_routine)(void)) {
+int __pthread_once(pthread_once_t* once_control, void (*init_routine)(void)) {
   if (*once_control != PTHREAD_ONCE_MAGIC_ID) {
     init_routine();
     *once_control = PTHREAD_ONCE_MAGIC_ID;
@@ -147,11 +172,17 @@ int pthread_once(pthread_once_t* once_control, void (*init_routine)(void)) {
   return 0;
 }
 
+weak_alias(__pthread_once, pthread_once);
+
 int pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex) {
   return 0;
 }
 
 int pthread_cond_signal(pthread_cond_t *cond) {
+  return 0;
+}
+
+int __private_cond_signal(pthread_cond_t *c, int n) {
   return 0;
 }
 
@@ -167,9 +198,11 @@ int pthread_cond_destroy(pthread_cond_t * x) {
   return 0;
 }
 
-int pthread_cond_timedwait(pthread_cond_t *__restrict x, pthread_mutex_t *__restrict y, const struct timespec *__restrict z) {
+int __pthread_cond_timedwait(pthread_cond_t *__restrict x, pthread_mutex_t *__restrict y, const struct timespec *__restrict z) {
   return 0;
 }
+
+weak_alias(__pthread_cond_timedwait, pthread_cond_timedwait);
 
 int pthread_atfork(void (*prepare)(void), void (*parent)(void), void (*child)(void)) {
   return 0;
@@ -179,17 +212,22 @@ int pthread_cancel(pthread_t thread) {
   return 0;
 }
 
-_Noreturn void pthread_exit(void* status) {
-   exit((int)status);
+void pthread_testcancel() {}
+
+_Noreturn void __pthread_exit(void* status) {
+   exit(0);
 }
 
-int pthread_detach(pthread_t t) {
+weak_alias(__pthread_exit, emscripten_builtin_pthread_exit);
+weak_alias(__pthread_exit, pthread_exit);
+
+int __pthread_detach(pthread_t t) {
   return 0;
 }
 
-pthread_t emscripten_main_browser_thread_id() {
-  return __pthread_self();
-}
+weak_alias(__pthread_detach, emscripten_builtin_pthread_detach);
+weak_alias(__pthread_detach, pthread_detach);
+weak_alias(__pthread_detach, thrd_detach);
 
 // pthread_equal is defined as a macro in C, as a function for C++; undef it
 // here so we define the function for C++ that links to us.
@@ -238,43 +276,11 @@ int pthread_condattr_setpshared(pthread_condattr_t *attr, int shared) {
   return 0;
 }
 
-int pthread_condattr_getclock(const pthread_condattr_t *attr, clockid_t* clk) {
+int pthread_setcancelstate(int state, int* oldstate) {
   return 0;
 }
 
-int pthread_condattr_getpshared(const pthread_condattr_t *attr, int *shared) {
-  return 0;
-}
-
-int pthread_attr_init(pthread_attr_t *attr) {
-  return 0;
-}
-
-int pthread_getattr_np(pthread_t thread, pthread_attr_t *attr) {
-  return 0;
-}
-
-int pthread_attr_destroy(pthread_attr_t *attr) {
-  return 0;
-}
-
-int pthread_attr_getdetachstate(const pthread_attr_t *attr, int *detachstate) {
-  return 0;
-}
-
-int pthread_attr_getstack(const pthread_attr_t *attr, void **stackaddr, size_t *stacksize) {
-  /*FIXME: assumes that there is only one thread, and that attr is the
-    current thread*/
-  *stackaddr = (void*)emscripten_stack_get_base();
-  *stacksize = emscripten_stack_get_base() - emscripten_stack_get_end();
-  return 0;
-}
-
-int pthread_setcancelstate() {
-  return 0;
-}
-
-int pthread_setcanceltype() {
+int pthread_setcanceltype(int type, int* oldtype) {
   return 0;
 }
 
@@ -326,10 +332,6 @@ int pthread_rwlockattr_setpshared(pthread_rwlockattr_t* attr, int pshared) {
   return 0;
 }
 
-int pthread_rwlockattr_getpshared(const pthread_rwlockattr_t* attr, int *pshared) {
-  return 0;
-}
-
 int pthread_spin_init(pthread_spinlock_t *lock, int pshared) {
   return 0;
 }
@@ -347,18 +349,6 @@ int pthread_spin_trylock(pthread_spinlock_t *lock) {
 }
 
 int pthread_spin_unlock(pthread_spinlock_t *lock) {
-  return 0;
-}
-
-int pthread_attr_setdetachstate(pthread_attr_t* attr, int detachstate) {
-  return 0;
-}
-
-int pthread_attr_setschedparam(pthread_attr_t* attr, const struct sched_param* param) {
-  return 0;
-}
-
-int pthread_attr_setstacksize(pthread_attr_t *attr, size_t stacksize) {
   return 0;
 }
 
@@ -383,3 +373,22 @@ int sem_destroy(sem_t *sem) {
 }
 
 void __wait(volatile int *addr, volatile int *waiters, int val, int priv) {}
+
+void __lock(void* ptr) {}
+
+void __unlock(void* ptr) {}
+
+void __acquire_ptc() {}
+
+void __release_ptc() {}
+
+// When pthreads is not enabled, we can't use the Atomics futex api to do
+// proper sleeps, so simulate a busy spin wait loop instead.
+void emscripten_thread_sleep(double msecs) {
+  double start = emscripten_get_now();
+  double now = start;
+  do {
+    _emscripten_yield(now);
+    now = emscripten_get_now();
+  } while (now - start < msecs);
+}

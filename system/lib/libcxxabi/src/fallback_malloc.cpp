@@ -1,4 +1,4 @@
-//===------------------------ fallback_malloc.cpp -------------------------===//
+//===----------------------------------------------------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -6,18 +6,18 @@
 //
 //===----------------------------------------------------------------------===//
 
-// Define _LIBCPP_BUILDING_LIBRARY to ensure _LIBCPP_HAS_NO_LIBRARY_ALIGNED_ALLOCATION
-// is only defined when libc aligned allocation is not available.
-#define _LIBCPP_BUILDING_LIBRARY
 #include "fallback_malloc.h"
+#include "abort_message.h"
 
-#include <__threading_support>
+#include <__thread/support.h>
 #ifndef _LIBCXXABI_HAS_NO_THREADS
 #if defined(__ELF__) && defined(_LIBCXXABI_LINK_PTHREAD_LIB)
 #pragma comment(lib, "pthread")
 #endif
 #endif
 
+#include <__memory/aligned_alloc.h>
+#include <__assert>
 #include <stdlib.h> // for malloc, calloc, free
 #include <string.h> // for memset
 
@@ -35,10 +35,9 @@ namespace {
 
 // When POSIX threads are not available, make the mutex operations a nop
 #ifndef _LIBCXXABI_HAS_NO_THREADS
-_LIBCPP_SAFE_STATIC
-static std::__libcpp_mutex_t heap_mutex = _LIBCPP_MUTEX_INITIALIZER;
+static _LIBCPP_CONSTINIT std::__libcpp_mutex_t heap_mutex = _LIBCPP_MUTEX_INITIALIZER;
 #else
-static void* heap_mutex = 0;
+static _LIBCPP_CONSTINIT void* heap_mutex = 0;
 #endif
 
 class mutexor {
@@ -66,10 +65,27 @@ char heap[HEAP_SIZE] __attribute__((aligned));
 typedef unsigned short heap_offset;
 typedef unsigned short heap_size;
 
+// On both 64 and 32 bit targets heap_node should have the following properties
+// Size: 4
+// Alignment: 2
 struct heap_node {
   heap_offset next_node; // offset into heap
   heap_size len;         // size in units of "sizeof(heap_node)"
 };
+
+// All pointers returned by fallback_malloc must be at least aligned
+// as RequiredAligned. Note that RequiredAlignment can be greater than
+// alignof(std::max_align_t) on 64 bit systems compiling 32 bit code.
+struct FallbackMaxAlignType {
+} __attribute__((aligned));
+const size_t RequiredAlignment = alignof(FallbackMaxAlignType);
+
+static_assert(alignof(FallbackMaxAlignType) % sizeof(heap_node) == 0,
+              "The required alignment must be evenly divisible by the sizeof(heap_node)");
+
+// The number of heap_node's that can fit in a chunk of memory with the size
+// of the RequiredAlignment. On 64 bit targets NodesPerAlignment should be 4.
+const size_t NodesPerAlignment = alignof(FallbackMaxAlignType) / sizeof(heap_node);
 
 static const heap_node* list_end =
     (heap_node*)(&heap[HEAP_SIZE]); // one past the end of the heap
@@ -85,10 +101,23 @@ heap_offset offset_from_node(const heap_node* ptr) {
       sizeof(heap_node));
 }
 
+// Return a pointer to the first address, 'A', in `heap` that can actually be
+// used to represent a heap_node. 'A' must be aligned so that
+// '(A + sizeof(heap_node)) % RequiredAlignment == 0'. On 64 bit systems this
+// address should be 12 bytes after the first 16 byte boundary.
+heap_node* getFirstAlignedNodeInHeap() {
+  heap_node* node = (heap_node*)heap;
+  const size_t alignNBytesAfterBoundary = RequiredAlignment - sizeof(heap_node);
+  size_t boundaryOffset = reinterpret_cast<size_t>(node) % RequiredAlignment;
+  size_t requiredOffset = alignNBytesAfterBoundary - boundaryOffset;
+  size_t NElemOffset = requiredOffset / sizeof(heap_node);
+  return node + NElemOffset;
+}
+
 void init_heap() {
-  freelist = (heap_node*)heap;
+  freelist = getFirstAlignedNodeInHeap();
   freelist->next_node = offset_from_node(list_end);
-  freelist->len = HEAP_SIZE / sizeof(heap_node);
+  freelist->len = static_cast<heap_size>(list_end - freelist);
 }
 
 //  How big a chunk we allocate
@@ -112,23 +141,44 @@ void* fallback_malloc(size_t len) {
   for (p = freelist, prev = 0; p && p != list_end;
        prev = p, p = node_from_offset(p->next_node)) {
 
-    if (p->len > nelems) { //  chunk is larger, shorten, and return the tail
-      heap_node* q;
+    // Check the invariant that all heap_nodes pointers 'p' are aligned
+    // so that 'p + 1' has an alignment of at least RequiredAlignment
+    _LIBCXXABI_ASSERT(reinterpret_cast<size_t>(p + 1) % RequiredAlignment == 0, "");
 
-      p->len = static_cast<heap_size>(p->len - nelems);
-      q = p + p->len;
-      q->next_node = 0;
-      q->len = static_cast<heap_size>(nelems);
-      return (void*)(q + 1);
+    // Calculate the number of extra padding elements needed in order
+    // to split 'p' and create a properly aligned heap_node from the tail
+    // of 'p'. We calculate aligned_nelems such that 'p->len - aligned_nelems'
+    // will be a multiple of NodesPerAlignment.
+    size_t aligned_nelems = nelems;
+    if (p->len > nelems) {
+      heap_size remaining_len = static_cast<heap_size>(p->len - nelems);
+      aligned_nelems += remaining_len % NodesPerAlignment;
     }
 
-    if (p->len == nelems) { // exact size match
+    // chunk is larger and we can create a properly aligned heap_node
+    // from the tail. In this case we shorten 'p' and return the tail.
+    if (p->len > aligned_nelems) {
+      heap_node* q;
+      p->len = static_cast<heap_size>(p->len - aligned_nelems);
+      q = p + p->len;
+      q->next_node = 0;
+      q->len = static_cast<heap_size>(aligned_nelems);
+      void* ptr = q + 1;
+      _LIBCXXABI_ASSERT(reinterpret_cast<size_t>(ptr) % RequiredAlignment == 0, "");
+      return ptr;
+    }
+
+    // The chunk is the exact size or the chunk is larger but not large
+    // enough to split due to alignment constraints.
+    if (p->len >= nelems) {
       if (prev == 0)
         freelist = node_from_offset(p->next_node);
       else
         prev->next_node = p->next_node;
       p->next_node = 0;
-      return (void*)(p + 1);
+      void* ptr = p + 1;
+      _LIBCXXABI_ASSERT(reinterpret_cast<size_t>(ptr) % RequiredAlignment == 0, "");
+      return ptr;
     }
   }
   return NULL; // couldn't find a spot big enough
@@ -144,29 +194,26 @@ void fallback_free(void* ptr) {
   mutexor mtx(&heap_mutex);
 
 #ifdef DEBUG_FALLBACK_MALLOC
-  std::cout << "Freeing item at " << offset_from_node(cp) << " of size "
-            << cp->len << std::endl;
+  std::printf("Freeing item at %d of size %d\n", offset_from_node(cp), cp->len);
 #endif
 
   for (p = freelist, prev = 0; p && p != list_end;
        prev = p, p = node_from_offset(p->next_node)) {
 #ifdef DEBUG_FALLBACK_MALLOC
-    std::cout << "  p, cp, after (p), after(cp) " << offset_from_node(p) << ' '
-              << offset_from_node(cp) << ' ' << offset_from_node(after(p))
-              << ' ' << offset_from_node(after(cp)) << std::endl;
+    std::printf("  p=%d, cp=%d, after(p)=%d, after(cp)=%d\n",
+      offset_from_node(p), offset_from_node(cp),
+      offset_from_node(after(p)), offset_from_node(after(cp)));
 #endif
     if (after(p) == cp) {
 #ifdef DEBUG_FALLBACK_MALLOC
-      std::cout << "  Appending onto chunk at " << offset_from_node(p)
-                << std::endl;
+      std::printf("  Appending onto chunk at %d\n", offset_from_node(p));
 #endif
       p->len = static_cast<heap_size>(
           p->len + cp->len); // make the free heap_node larger
       return;
     } else if (after(cp) == p) { // there's a free heap_node right after
 #ifdef DEBUG_FALLBACK_MALLOC
-      std::cout << "  Appending free chunk at " << offset_from_node(p)
-                << std::endl;
+      std::printf("  Appending free chunk at %d\n", offset_from_node(p));
 #endif
       cp->len = static_cast<heap_size>(cp->len + p->len);
       if (prev == 0) {
@@ -179,8 +226,7 @@ void fallback_free(void* ptr) {
   }
 //  Nothing to merge with, add it to the start of the free list
 #ifdef DEBUG_FALLBACK_MALLOC
-  std::cout << "  Making new free list entry " << offset_from_node(cp)
-            << std::endl;
+  std::printf("  Making new free list entry %d\n", offset_from_node(cp));
 #endif
   cp->next_node = offset_from_node(freelist);
   freelist = cp;
@@ -195,11 +241,11 @@ size_t print_free_list() {
 
   for (p = freelist, prev = 0; p && p != list_end;
        prev = p, p = node_from_offset(p->next_node)) {
-    std::cout << (prev == 0 ? "" : "  ") << "Offset: " << offset_from_node(p)
-              << "\tsize: " << p->len << " Next: " << p->next_node << std::endl;
+    std::printf("%sOffset: %d\tsize: %d Next: %d\n",
+      (prev == 0 ? "" : "  "), offset_from_node(p), p->len, p->next_node);
     total_free += p->len;
   }
-  std::cout << "Total Free space: " << total_free << std::endl;
+  std::printf("Total Free space: %d\n", total_free);
   return total_free;
 }
 #endif
@@ -211,7 +257,7 @@ struct __attribute__((aligned)) __aligned_type {};
 
 void* __aligned_malloc_with_fallback(size_t size) {
 #if defined(_WIN32)
-  if (void* dest = _aligned_malloc(size, alignof(__aligned_type)))
+  if (void* dest = std::__libcpp_aligned_alloc(alignof(__aligned_type), size))
     return dest;
 #elif defined(_LIBCPP_HAS_NO_LIBRARY_ALIGNED_ALLOCATION)
   if (void* dest = ::malloc(size))
@@ -219,8 +265,7 @@ void* __aligned_malloc_with_fallback(size_t size) {
 #else
   if (size == 0)
     size = 1;
-  void* dest;
-  if (::posix_memalign(&dest, __alignof(__aligned_type), size) == 0)
+  if (void* dest = std::__libcpp_aligned_alloc(__alignof(__aligned_type), size))
     return dest;
 #endif
   return fallback_malloc(size);
@@ -241,10 +286,10 @@ void __aligned_free_with_fallback(void* ptr) {
   if (is_fallback_ptr(ptr))
     fallback_free(ptr);
   else {
-#if defined(_WIN32)
-    ::_aligned_free(ptr);
-#else
+#if defined(_LIBCPP_HAS_NO_LIBRARY_ALIGNED_ALLOCATION)
     ::free(ptr);
+#else
+    std::__libcpp_aligned_free(ptr);
 #endif
   }
 }

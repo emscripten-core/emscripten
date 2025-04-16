@@ -1,7 +1,6 @@
 #include <fcntl.h>
 #include <stdarg.h>
 #include "syscall.h"
-#include "libc.h"
 
 int openat(int fd, const char *filename, int flags, ...)
 {
@@ -16,5 +15,3 @@ int openat(int fd, const char *filename, int flags, ...)
 
 	return syscall_cp(SYS_openat, fd, filename, flags|O_LARGEFILE, mode);
 }
-
-LFS64(openat);

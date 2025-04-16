@@ -1,6 +1,5 @@
-.globl stackSave
-.globl stackRestore
-.globl stackAlloc
+.globl _emscripten_stack_restore
+.globl _emscripten_stack_alloc
 .globl emscripten_stack_get_current
 
 #ifdef __wasm64__
@@ -13,19 +12,14 @@
 
 .globaltype __stack_pointer, PTR
 
-stackSave:
-  .functype stackSave() -> (PTR)
-  global.get __stack_pointer
-  end_function
-
-stackRestore:
-  .functype stackRestore(PTR) -> ()
+_emscripten_stack_restore:
+  .functype _emscripten_stack_restore(PTR) -> ()
   local.get 0
   global.set __stack_pointer
   end_function
 
-stackAlloc:
-  .functype stackAlloc(PTR) -> (PTR)
+_emscripten_stack_alloc:
+  .functype _emscripten_stack_alloc(PTR) -> (PTR)
   .local PTR, PTR
   global.get __stack_pointer
   # Get arg 0 -> number of bytes to allocate
@@ -44,4 +38,3 @@ emscripten_stack_get_current:
   .functype emscripten_stack_get_current () -> (PTR)
   global.get __stack_pointer
   end_function
-

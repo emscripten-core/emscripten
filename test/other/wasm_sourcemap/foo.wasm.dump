@@ -1,0 +1,66 @@
+foo.wasm:	file format WASM
+
+.debug_info contents:
+0x00000000: Compile Unit: length = 0x0000003d version = 0x0004 abbr_offset = 0x0000 addr_size = 0x04 (next unit at 0x00000041)
+
+0x0000000b: DW_TAG_compile_unit
+              DW_AT_producer	("clang version 7.0.0 (trunk 333296)")
+              DW_AT_language	(DW_LANG_C99)
+              DW_AT_name	("no_main.c")
+              DW_AT_stmt_list	(0x00000000)
+              DW_AT_comp_dir	("/emscripten/test/other/wasm_sourcemap")
+              DW_AT_GNU_pubnames	(true)
+              DW_AT_low_pc	(0x0000000000000005)
+              DW_AT_high_pc	(0x0000000000000010)
+
+0x00000026:   DW_TAG_subprogram
+                DW_AT_low_pc	(0x0000000000000005)
+                DW_AT_high_pc	(0x0000000000000010)
+                DW_AT_name	("foo")
+                DW_AT_decl_file	("/emscripten/test/other/wasm_sourcemap/no_main.c")
+                DW_AT_decl_line	(3)
+                DW_AT_type	(0x00000039 "int")
+                DW_AT_external	(true)
+
+0x00000039:   DW_TAG_base_type
+                DW_AT_name	("int")
+                DW_AT_encoding	(DW_ATE_signed)
+                DW_AT_byte_size	(0x04)
+
+0x00000040:   NULL
+
+.debug_line contents:
+debug_line[0x00000000]
+Line table prologue:
+    total_length: 0x00000038
+         version: 4
+ prologue_length: 0x00000021
+ min_inst_length: 1
+max_ops_per_inst: 1
+ default_is_stmt: 1
+       line_base: -5
+      line_range: 14
+     opcode_base: 13
+standard_opcode_lengths[DW_LNS_copy] = 0
+standard_opcode_lengths[DW_LNS_advance_pc] = 1
+standard_opcode_lengths[DW_LNS_advance_line] = 1
+standard_opcode_lengths[DW_LNS_set_file] = 1
+standard_opcode_lengths[DW_LNS_set_column] = 1
+standard_opcode_lengths[DW_LNS_negate_stmt] = 0
+standard_opcode_lengths[DW_LNS_set_basic_block] = 0
+standard_opcode_lengths[DW_LNS_const_add_pc] = 0
+standard_opcode_lengths[DW_LNS_fixed_advance_pc] = 1
+standard_opcode_lengths[DW_LNS_set_prologue_end] = 0
+standard_opcode_lengths[DW_LNS_set_epilogue_begin] = 0
+standard_opcode_lengths[DW_LNS_set_isa] = 1
+file_names[  1]:
+           name: "no_main.c"
+      dir_index: 0
+       mod_time: 0x00000000
+         length: 0x00000000
+
+Address            Line   Column File   ISA Discriminator Flags
+------------------ ------ ------ ------ --- ------------- -------------
+0x0000000000000005      4      0      1   0             0  is_stmt
+0x000000000000000c      5      3      1   0             0  is_stmt prologue_end
+0x0000000000000010      5      3      1   0             0  is_stmt end_sequence

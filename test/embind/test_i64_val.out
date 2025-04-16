@@ -1,0 +1,12 @@
+start
+test:
+val(int64_t v)
+test:
+val(uint64_t v)
+test:
+val(int64_t v)
+test:
+val(typed_memory_view<uint64_t>)
+test:
+val(typed_memory_view<int64_t>)
+end

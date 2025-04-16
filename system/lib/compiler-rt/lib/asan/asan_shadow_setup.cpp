@@ -13,32 +13,14 @@
 
 #include "sanitizer_common/sanitizer_platform.h"
 
-// asan_fuchsia.cc, asan_rtems.cc and asan_emscripten.cc have their own
+// asan_fuchsia.cpp and asan_emscripten.cc have have their own
 // InitializeShadowMemory implementation.
-#if !SANITIZER_FUCHSIA && !SANITIZER_RTEMS && !SANITIZER_EMSCRIPTEN
+#if !SANITIZER_FUCHSIA && !SANITIZER_EMSCRIPTEN
 
-#include "asan_internal.h"
-#include "asan_mapping.h"
+#  include "asan_internal.h"
+#  include "asan_mapping.h"
 
 namespace __asan {
-
-// ---------------------- mmap -------------------- {{{1
-// Reserve memory range [beg, end].
-// We need to use inclusive range because end+1 may not be representable.
-void ReserveShadowMemoryRange(uptr beg, uptr end, const char *name) {
-  CHECK_EQ((beg % GetMmapGranularity()), 0);
-  CHECK_EQ(((end + 1) % GetMmapGranularity()), 0);
-  uptr size = end - beg + 1;
-  DecreaseTotalMmap(size);  // Don't count the shadow against mmap_limit_mb.
-  if (!MmapFixedSuperNoReserve(beg, size, name)) {
-    Report(
-        "ReserveShadowMemoryRange failed while trying to map 0x%zx bytes. "
-        "Perhaps you're using ulimit -v\n",
-        size);
-    Abort();
-  }
-  if (common_flags()->use_madv_dontdump) DontDumpShadowMemory(beg, size);
-}
 
 static void ProtectGap(uptr addr, uptr size) {
   if (!flags()->protect_shadow_gap) {
@@ -52,35 +34,18 @@ static void ProtectGap(uptr addr, uptr size) {
           "protect_shadow_gap=0:"
           " not protecting shadow gap, allocating gap's shadow\n"
           "|| `[%p, %p]` || ShadowGap's shadow ||\n",
-          GapShadowBeg, GapShadowEnd);
+          (void*)GapShadowBeg, (void*)GapShadowEnd);
     ReserveShadowMemoryRange(GapShadowBeg, GapShadowEnd,
                              "unprotected gap shadow");
     return;
   }
-  void *res = MmapFixedNoAccess(addr, size, "shadow gap");
-  if (addr == (uptr)res) return;
-  // A few pages at the start of the address space can not be protected.
-  // But we really want to protect as much as possible, to prevent this memory
-  // being returned as a result of a non-FIXED mmap().
-  if (addr == kZeroBaseShadowStart) {
-    uptr step = GetMmapGranularity();
-    while (size > step && addr < kZeroBaseMaxShadowStart) {
-      addr += step;
-      size -= step;
-      void *res = MmapFixedNoAccess(addr, size, "shadow gap");
-      if (addr == (uptr)res) return;
-    }
-  }
-
-  Report(
-      "ERROR: Failed to protect the shadow gap. "
-      "ASan cannot proceed correctly. ABORTING.\n");
-  DumpProcessMap();
-  Die();
+  __sanitizer::ProtectGap(addr, size, kZeroBaseShadowStart,
+                          kZeroBaseMaxShadowStart);
 }
 
 static void MaybeReportLinuxPIEBug() {
-#if SANITIZER_LINUX && (defined(__x86_64__) || defined(__aarch64__))
+#if SANITIZER_LINUX && \
+    (defined(__x86_64__) || defined(__aarch64__) || SANITIZER_RISCV64)
   Report("This might be related to ELF_ET_DYN_BASE change in Linux 4.12.\n");
   Report(
       "See https://github.com/google/sanitizers/issues/856 for possible "
@@ -99,8 +64,6 @@ void InitializeShadowMemory() {
   // |kDefaultShadowSentinel|.
   bool full_shadow_is_available = false;
   if (shadow_start == kDefaultShadowSentinel) {
-    __asan_shadow_memory_dynamic_address = 0;
-    CHECK_EQ(0, kLowShadowBeg);
     shadow_start = FindDynamicShadowStart();
     if (SANITIZER_LINUX) full_shadow_is_available = true;
   }
@@ -151,7 +114,7 @@ void InitializeShadowMemory() {
         "Shadow memory range interleaves with an existing memory mapping. "
         "ASan cannot proceed correctly. ABORTING.\n");
     Report("ASan shadow was supposed to be located in the [%p-%p] range.\n",
-           shadow_start, kHighShadowEnd);
+           (void*)shadow_start, (void*)kHighShadowEnd);
     MaybeReportLinuxPIEBug();
     DumpProcessMap();
     Die();
@@ -160,4 +123,4 @@ void InitializeShadowMemory() {
 
 }  // namespace __asan
 
-#endif  // !SANITIZER_FUCHSIA && !SANITIZER_RTEMS
+#endif  // !SANITIZER_FUCHSIA

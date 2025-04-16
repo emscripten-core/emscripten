@@ -1,0 +1,8 @@
+main: foo=10
+main: bar=11
+main: baz=42
+main: wiz=43
+side: foo=10
+side: bar=11
+side: baz=42
+side: wiz=43

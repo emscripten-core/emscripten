@@ -26,7 +26,7 @@ cause a segmentation fault, unlike traditional platforms, as 0 is just a normal
 address in a WebAssembly memory. 0 is also a normal location in a
 JavaScript Typed Array, which is an issue in the JavaScript alongside the
 WebAssembly (runtime support code, JS library methods, ``EM_ASM/EM_JS``, etc.),
-and also for the compiled code if you build with ``-s WASM=0``.
+and also for the compiled code if you build with ``-sWASM=0``.
 
 In builds with ``ASSERTIONS`` enabled, a magic cookie stored at address 0 is
 checked at the end of the program execution. That is, it will notify you if
@@ -119,19 +119,19 @@ To use ASan, simply pass ``-fsanitize=address`` to ``emcc`` or ``em++``. As
 with UBSan, you need to pass this at both the compile and link stages,
 as it affects both codegen and system libraries.
 
-You probably need to increase ``INITIAL_MEMORY`` to at least 64 MB or pass
-``-s ALLOW_MEMORY_GROWTH`` so that ASan has enough memory to start. Otherwise,
+You probably need to increase :ref:`INITIAL_MEMORY` to at least 64 MB or set
+:ref:`ALLOW_MEMORY_GROWTH` so that ASan has enough memory to start. Otherwise,
 you will receive an error message that looks something like:
 
   Cannot enlarge memory arrays to size 55152640 bytes (OOM). Either (1) compile
-  with  -s INITIAL_MEMORY=X  with X higher than the current value 50331648, (2)
-  compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at
+  with ``-sINITIAL_MEMORY=X``  with X higher than the current value 50331648, (2)
+  compile with ``-sALLOW_MEMORY_GROWTH``  which allows increasing the size at
   runtime, or (3) if you want malloc to return NULL (0) instead of this abort,
-  compile with  -s ABORTING_MALLOC=0
+  compile with ``-sABORTING_MALLOC=0``
 
 ASan fully supports multi-thread environments. ASan also operates on the JS
 support code, that is, if JS tries to read from a memory address that is not
-valid, it will be caught, just like if that access happened from wasm.
+valid, it will be caught, just like if that access happened from Wasm.
 
 Examples
 --------
@@ -154,7 +154,7 @@ Consider ``buffer_overflow.c``:
 
 .. code-block:: console
 
-  $ emcc -g4 -fsanitize=address -s ALLOW_MEMORY_GROWTH buffer_overflow.c
+  $ emcc -gsource-map -fsanitize=address -sALLOW_MEMORY_GROWTH buffer_overflow.c
   $ node a.out.js
   =================================================================
   ==42==ERROR: AddressSanitizer: stack-buffer-overflow on address 0x02965e5a at pc 0x000015f0 bp 0x02965a30 sp 0x02965a30
@@ -193,7 +193,7 @@ Consider ``use_after_free.cpp``:
 
 .. code-block:: console
 
-  $ em++ -g4 -fsanitize=address -s ALLOW_MEMORY_GROWTH use_after_free.cpp
+  $ em++ -gsource-map -fsanitize=address -sALLOW_MEMORY_GROWTH use_after_free.cpp
   $ node a.out.js
   =================================================================
   ==42==ERROR: AddressSanitizer: heap-use-after-free on address 0x03203e40 at pc 0x00000c1b bp 0x02965e70 sp 0x02965e7c
@@ -238,7 +238,7 @@ Consider ``leak.cpp``:
 
 .. code-block:: console
 
-  $ em++ -g4 -fsanitize=address -s ALLOW_MEMORY_GROWTH -s EXIT_RUNTIME leak.cpp
+  $ em++ -gsource-map -fsanitize=address -sALLOW_MEMORY_GROWTH -sEXIT_RUNTIME leak.cpp
   $ node a.out.js
 
   =================================================================
@@ -257,7 +257,7 @@ Consider ``leak.cpp``:
   SUMMARY: AddressSanitizer: 40 byte(s) leaked in 1 allocation(s).
 
 Note that since leak checks take place at program exit, you must use
-``-s EXIT_RUNTIME``, or invoke ``__lsan_do_leak_check`` or
+``-sEXIT_RUNTIME``, or invoke ``__lsan_do_leak_check`` or
 ``__lsan_do_recoverable_leak_check`` manually.
 
 You can detect that AddressSanitizer is enabled and run ``__lsan_do_leak_check``
@@ -317,7 +317,7 @@ can cause traps. Hence, it is not enabled by default.
 
 .. code-block:: console
 
-  $ emcc -g4 -fsanitize=address -s ALLOW_MEMORY_GROWTH=1 use_after_return.c
+  $ emcc -gsource-map -fsanitize=address -sALLOW_MEMORY_GROWTH use_after_return.c
   $ node a.out.js
   =================================================================
   ==42==ERROR: AddressSanitizer: stack-use-after-return on address 0x02a95010 at pc 0x00000d90 bp 0x02965f70 sp 0x02965f7c
@@ -376,11 +376,11 @@ Comparison to ``SAFE_HEAP``
 ---------------------------
 
 Emscripten provides a ``SAFE_HEAP`` mode, which can be activated by running
-``emcc`` with ``-s SAFE_HEAP``. This does several things, some of which overlap
+``emcc`` with ``-sSAFE_HEAP``. This does several things, some of which overlap
 with sanitizers.
 
 In general, ``SAFE_HEAP`` focuses on the specific pain points that come up when
-targeting wasm. The sanitizers on the other hand focus on the specific pain points that are
+targeting Wasm. The sanitizers on the other hand focus on the specific pain points that are
 involved with using languages like C/C++. Those two sets overlap, but are not
 identical. Which you should use depends on which types of problems you are
 looking for. You may want to test with all sanitizers and with ``SAFE_HEAP``
@@ -402,16 +402,16 @@ The specific things ``SAFE_HEAP`` errors on include:
   unaligned operations.
 * **Reads or writes past the top of valid memory** as managed by ``sbrk()``, that is,
   memory that was not properly allocated by ``malloc()``. This is not specific
-  to wasm, however, in JavaScript if the address is big enough to be outside the
+  to Wasm, however, in JavaScript if the address is big enough to be outside the
   Typed Array, ``undefined`` is returned which can be very confusing, which is
-  why this was added (in wasm at least an error is thrown; ``SAFE_HEAP`` still
-  helps with wasm though, by checking the area between the top of ``sbrk()``'s
-  memory and the end of the wasm Memory).
+  why this was added (in Wasm at least an error is thrown; ``SAFE_HEAP`` still
+  helps with Wasm though, by checking the area between the top of ``sbrk()``'s
+  memory and the end of the Wasm Memory).
 
 ``SAFE_HEAP`` does these checks by instrumenting every single load and store.
 That has the cost of slowing things down, but it does give a simple guarantee
 of finding *all* such problems. It can also be done after compilation, on an
-arbitrary wasm binary, while the sanitizers must be done when compiling from
+arbitrary Wasm binary, while the sanitizers must be done when compiling from
 source.
 
 In comparison, UBSan can also find null pointer reads and writes. It does not

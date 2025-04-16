@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <wchar.h>
-#include "libc.h"
 
 int vwscanf(const wchar_t *restrict fmt, va_list ap)
 {

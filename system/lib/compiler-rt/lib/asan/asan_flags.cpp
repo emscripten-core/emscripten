@@ -23,18 +23,14 @@
 #include "ubsan/ubsan_platform.h"
 
 #if SANITIZER_EMSCRIPTEN
-extern "C" void emscripten_builtin_free(void *);
-#include <emscripten/em_asm.h>
+#include <emscripten/heap.h>
+#include "emscripten_internal.h"
 #endif
 
 
 namespace __asan {
 
 Flags asan_flags_dont_use_directly;  // use via flags().
-
-static const char *MaybeCallAsanDefaultOptions() {
-  return (&__asan_default_options) ? __asan_default_options() : "";
-}
 
 static const char *MaybeUseAsanDefaultOptionsCompileDefinition() {
 #ifdef ASAN_DEFAULT_OPTIONS
@@ -101,7 +97,7 @@ void InitializeFlags() {
   RegisterCommonFlags(&ubsan_parser);
 #endif
 
-  if (SANITIZER_MAC) {
+  if (SANITIZER_APPLE) {
     // Support macOS MallocScribble and MallocPreScribble:
     // <https://developer.apple.com/library/content/documentation/Performance/
     // Conceptual/ManagingMemory/Articles/MallocDebug.html>
@@ -118,35 +114,32 @@ void InitializeFlags() {
   asan_parser.ParseString(asan_compile_def);
 
   // Override from user-specified string.
-  const char *asan_default_options = MaybeCallAsanDefaultOptions();
+  const char *asan_default_options = __asan_default_options();
   asan_parser.ParseString(asan_default_options);
 #if CAN_SANITIZE_UB
-  const char *ubsan_default_options = __ubsan::MaybeCallUbsanDefaultOptions();
+  const char *ubsan_default_options = __ubsan_default_options();
   ubsan_parser.ParseString(ubsan_default_options);
 #endif
 #if CAN_SANITIZE_LEAKS
-  const char *lsan_default_options = __lsan::MaybeCallLsanDefaultOptions();
+  const char *lsan_default_options = __lsan_default_options();
   lsan_parser.ParseString(lsan_default_options);
 #endif
 
 #if SANITIZER_EMSCRIPTEN
   char *options;
   // Override from Emscripten Module.
+  // TODO: add EM_ASM_I64 and avoid using a double for a 64-bit pointer.
 #define MAKE_OPTION_LOAD(parser, name) \
-    options = (char*) EM_ASM_INT({ \
-      return withBuiltinMalloc(function () { \
-        return allocateUTF8(Module[name] || 0); \
-      }); \
-    }); \
+    options = _emscripten_sanitizer_get_option(name); \
     parser.ParseString(options); \
     emscripten_builtin_free(options);
 
-  MAKE_OPTION_LOAD(asan_parser, 'ASAN_OPTIONS');
+  MAKE_OPTION_LOAD(asan_parser, "ASAN_OPTIONS");
 #if CAN_SANITIZE_LEAKS
-  MAKE_OPTION_LOAD(lsan_parser, 'LSAN_OPTIONS');
+  MAKE_OPTION_LOAD(lsan_parser, "LSAN_OPTIONS");
 #endif
 #if CAN_SANITIZE_UB
-  MAKE_OPTION_LOAD(ubsan_parser, 'UBSAN_OPTIONS');
+  MAKE_OPTION_LOAD(ubsan_parser, "UBSAN_OPTIONS");
 #endif
 #else
   // Override from command line.
@@ -180,9 +173,9 @@ void InitializeFlags() {
            SanitizerToolName);
     Die();
   }
-  // Ensure that redzone is at least SHADOW_GRANULARITY.
-  if (f->redzone < (int)SHADOW_GRANULARITY)
-    f->redzone = SHADOW_GRANULARITY;
+  // Ensure that redzone is at least ASAN_SHADOW_GRANULARITY.
+  if (f->redzone < (int)ASAN_SHADOW_GRANULARITY)
+    f->redzone = ASAN_SHADOW_GRANULARITY;
   // Make "strict_init_order" imply "check_initialization_order".
   // TODO(samsonov): Use a single runtime flag for an init-order checker.
   if (f->strict_init_order) {
@@ -195,10 +188,6 @@ void InitializeFlags() {
   CHECK_LE(f->max_redzone, 2048);
   CHECK(IsPowerOfTwo(f->redzone));
   CHECK(IsPowerOfTwo(f->max_redzone));
-  if (SANITIZER_RTEMS) {
-    CHECK(!f->unmap_shadow_on_exit);
-    CHECK(!f->protect_shadow_gap);
-  }
 
   // quarantine_size is deprecated but we still honor it.
   // quarantine_size can not be used together with quarantine_size_mb.

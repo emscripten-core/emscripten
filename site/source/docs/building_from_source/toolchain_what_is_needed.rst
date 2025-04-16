@@ -24,7 +24,6 @@ In general a complete Emscripten environment requires the following tools. First
 
   - :term:`Node.js` (0.8 or above; 0.10.17 or above to run websocket-using servers in node)
   - :term:`Python` (3.6 or above)
-    site/source/docs/building_from_source/toolchain_what_is_needed.rst
   - :term:`Java` (1.6.0_31 or later). Java is optional. It can be used to run the java version of term:`Closure Compiler`.
   - :term:`Git` client. Git is required if building tools from source.
   - :term:`LLVM` (LLVM, including clang and wasm-ld)
@@ -33,7 +32,7 @@ In general a complete Emscripten environment requires the following tools. First
 
 .. note: 64-bit versions of all needed dependencies are preferred, and may be required if you are building large projects.
 
-.. note:: The `Spidermonkey shell <https://developer.mozilla.org/en-US/docs/Mozilla/Projects/SpiderMonkey/Introduction_to_the_JavaScript_shell>`_ is also required if you want to run **100%** of the tests in the test suite. Most developers will not need this, and should instead use *node.js*.
+.. note:: The `d8 shell <https://v8.dev/docs/d8>`_ is also required if you want to run **100%** of the tests in the test suite (in particular, tests for extremely new features that are only present in d8 so far). Most developers will not need this, and should instead use *node.js*.
 
 .. _compiler-toolchain:
 

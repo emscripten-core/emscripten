@@ -1,0 +1,48 @@
+<html>
+  <head>
+    <title>Emscripten-Generated Code</title>
+  <body>
+    <center>
+      <canvas id='canvas' width='256' height='256'></canvas>
+    </center>
+    <hr>
+    <div id='output'></div>
+    <hr>
+    <script type='text/javascript' src='fake_events.js'></script>
+    <script type='text/javascript'>
+      /**
+       * TODO: Encapsulate this part in a reusable token such as
+       *       EMSCRIPTEN_ENVIRONMENT so that we can share code
+       *       between the default shell and custom ones.
+       */
+      // connect to canvas
+      var Module = {
+        print: (function() {
+          var element = document.getElementById('output');
+          return function(text) {
+            element.innerHTML += text.replace('\n', '<br>', 'g') + '<br>';
+          };
+        })(),
+        canvas: document.getElementById('canvas')
+      };
+
+      // Test code
+      async function reportResult(result) {
+        await fetch('http://localhost:8888/report_gl_result?' + result);
+        window.close();
+      }
+      function doTest() {
+        var firstImage = Module.canvas.toDataURL();
+        simulateKeyDown(0x25 /* DOM_VK_LEFT */);
+        setTimeout(function() {
+          var secondImage = Module.canvas.toDataURL();
+          reportResult(firstImage != secondImage);
+        }, 500);
+      }
+      Module.postRun = doTest;
+
+    </script>
+    {{{ SCRIPT }}}
+  </body>
+</html>
+

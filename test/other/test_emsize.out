@@ -1,0 +1,11 @@
+section      size   addr
+TYPE           51     10
+IMPORT         31     63
+FUNCTION       14     96
+GLOBAL          9    112
+EXPORT          9    123
+ELEM            9    134
+CODE         1556    146
+DATA           77   1704
+JS		6756	0
+Total		8512

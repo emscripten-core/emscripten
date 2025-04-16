@@ -1,5 +1,4 @@
-//=-- ubsan_signals_standalone.cc
-//------------------------------------------------===//
+//=-- ubsan_signals_standalone.cpp ----------------------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -35,7 +34,12 @@ void InitializeDeadlySignals() {}
 
 #else
 
+namespace __ubsan {
+void InitializeDeadlySignals();
+} // namespace __ubsan
+
 #define COMMON_INTERCEPT_FUNCTION(name) INTERCEPT_FUNCTION(name)
+#define SIGNAL_INTERCEPTOR_ENTER() __ubsan::InitializeDeadlySignals()
 #include "sanitizer_common/sanitizer_signal_interceptors.inc"
 
 // TODO(yln): Temporary workaround. Will be removed.
@@ -61,6 +65,11 @@ void InitializeDeadlySignals() {
     return;
   is_initialized = true;
   InitializeSignalInterceptors();
+#if SANITIZER_INTERCEPT_SIGNAL_AND_SIGACTION
+  // REAL(sigaction_symname) is nullptr in a static link. Bail out.
+  if (!REAL(sigaction_symname))
+    return;
+#endif
   InstallDeadlySignalHandlers(&UBsanOnDeadlySignal);
 }
 

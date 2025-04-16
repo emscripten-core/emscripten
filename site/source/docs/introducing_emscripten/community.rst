@@ -22,8 +22,9 @@ Feel free to ask questions, share your ideas, or just join the conversation!
 
 Emscripten also has a presence on social media:
 
-- `#emscripten <https://twitter.com/hashtag/emscripten>`_ (Emscripten Hashtag on Twitter)
-- `@kripken <https://twitter.com/kripken>`_ (an Emscripten developer's account on Twitter, mentions Emscripten updates)
+- `@emscripten on Bluesky <https://bsky.app/profile/emscripten.bsky.social>`_
+- `@emscripten on Mastodon <https://fosstodon.org/@emscripten>`_
+- `@emscripten on Twitter <https://twitter.com/emscripten>`_
 
 
 Report a bug

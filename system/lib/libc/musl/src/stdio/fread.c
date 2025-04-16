@@ -13,7 +13,7 @@ size_t fread(void *restrict destv, size_t size, size_t nmemb, FILE *restrict f)
 
 	f->mode |= f->mode-1;
 
-	if (f->rend - f->rpos > 0) {
+	if (f->rpos != f->rend) {
 		/* First exhaust the buffer. */
 		k = MIN(f->rend - f->rpos, l);
 		memcpy(dest, f->rpos, k);
@@ -25,7 +25,7 @@ size_t fread(void *restrict destv, size_t size, size_t nmemb, FILE *restrict f)
 	/* Read the remainder directly */
 	for (; l; l-=k, dest+=k) {
 		k = __toread(f) ? 0 : f->read(f, dest, l);
-		if (k+1<=1) {
+		if (!k) {
 			FUNLOCK(f);
 			return (len-l)/size;
 		}

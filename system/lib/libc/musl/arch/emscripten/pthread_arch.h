@@ -1,4 +1,4 @@
-struct pthread *__pthread_self(void);
+uintptr_t __get_tp(void);
 
 #define TP_ADJ(p) (p)
 

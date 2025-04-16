@@ -28,7 +28,7 @@ namespace __lsan {
 
 static const char kLinkerName[] = "ld";
 
-static char linker_placeholder[sizeof(LoadedModule)] ALIGNED(64);
+alignas(64) static char linker_placeholder[sizeof(LoadedModule)];
 static LoadedModule *linker = nullptr;
 
 static bool IsLinker(const LoadedModule& module) {
@@ -93,6 +93,11 @@ static int ProcessGlobalRegionsCallback(struct dl_phdr_info *info, size_t size,
   return 0;
 }
 
+#if SANITIZER_ANDROID && __ANDROID_API__ < 21
+extern "C" __attribute__((weak)) int dl_iterate_phdr(
+    int (*)(struct dl_phdr_info *, size_t, void *), void *);
+#endif
+
 // Scans global variables for heap pointers.
 void ProcessGlobalRegions(Frontier *frontier) {
   if (!flags()->use_globals) return;
@@ -117,12 +122,9 @@ void HandleLeaks() {
 
 static int LockStuffAndStopTheWorldCallback(struct dl_phdr_info *info,
                                             size_t size, void *data) {
-  LockThreadRegistry();
-  LockAllocator();
+  ScopedStopTheWorldLock lock;
   DoStopTheWorldParam *param = reinterpret_cast<DoStopTheWorldParam *>(data);
   StopTheWorld(param->callback, param->argument);
-  UnlockAllocator();
-  UnlockThreadRegistry();
   return 1;
 }
 
@@ -134,7 +136,8 @@ static int LockStuffAndStopTheWorldCallback(struct dl_phdr_info *info,
 // while holding the libdl lock in the parent thread, we can safely reenter it
 // in the tracer. The solution is to run stoptheworld from a dl_iterate_phdr()
 // callback in the parent thread.
-void LockStuffAndStopTheWorld(StopTheWorldCallback callback, void *argument) {
+void LockStuffAndStopTheWorld(StopTheWorldCallback callback,
+                              CheckForLeaksParam *argument) {
   DoStopTheWorldParam param = {callback, argument};
   dl_iterate_phdr(LockStuffAndStopTheWorldCallback, &param);
 }

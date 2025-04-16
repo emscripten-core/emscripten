@@ -3,12 +3,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import logging
 import os
-import shutil
 
-TAG = '1.70.0'
-HASH = '3ba0180a4a3c20d64727750a3233c82aadba95f265a45052297b955902741edac1befd963400958d6915e5b8d9ade48195eeaf8524f06fdb4cfe43b98677f196'
+TAG = '1.83.0'
+HASH = '82e3a64e55caac0254f9e6b179437ad9421943b8f73957285978dad16c24dcae6372c464909fdc085b9790662b6a3af5163140b1e456705e80fda51c5fe3c243'
 
 
 def needed(settings):
@@ -16,43 +14,29 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('boost_headers', 'https://github.com/emscripten-ports/boost/releases/download/boost-1.70.0/boost-headers-' + TAG + '.zip',
-                      'boost', sha512hash=HASH)
-  libname = ports.get_lib_name('libboost_headers')
+  ports.fetch_project('boost_headers',
+                      f'https://github.com/emscripten-ports/boost/releases/download/boost-{TAG}/boost-headers-{TAG}.zip',
+                      sha512hash=HASH)
 
-  def create():
-    logging.info('building port: boost_headers')
-    ports.clear_project_build('boost_headers')
-
+  def create(final):
     # includes
-    source_path_include = os.path.join(ports.get_dir(), 'boost_headers', 'boost')
-    dest_path_include = os.path.join(ports.get_include_dir(), 'boost')
-    shared.try_delete(dest_path_include)
-    shutil.copytree(source_path_include, dest_path_include)
+    source_path = ports.get_dir('boost_headers')
+    source_path_include = os.path.join(source_path, 'boost')
+    ports.install_header_dir(source_path_include, 'boost')
 
     # write out a dummy cpp file, to create an empty library
     # this is needed as emscripted ports expect this, even if it is not used
-    dummy_file = os.path.join(ports.get_build_dir(), 'boost_headers', 'dummy.cpp')
+    dummy_file = os.path.join(source_path, 'dummy.cpp')
     shared.safe_ensure_dirs(os.path.dirname(dummy_file))
-    with open(dummy_file, 'w') as f:
-      f.write('static void dummy() {}')
+    ports.write_file(dummy_file, 'static void dummy() {}')
 
-    commands = []
-    o_s = []
-    obj = dummy_file + '.o'
-    command = [shared.EMCC, '-c', dummy_file, '-o', obj]
-    commands.append(command)
-    ports.run_commands(commands)
-    final = os.path.join(ports.get_build_dir(), 'boost_headers', libname)
-    o_s.append(obj)
-    ports.create_lib(final, o_s)
-    return final
+    ports.build_port(source_path, final, 'boost_headers', srcs=['dummy.cpp'])
 
-  return [shared.Cache.get(libname, create, what='port')]
+  return [shared.cache.get_lib('libboost_headers.a', create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file(ports.get_lib_name('libboost_headers'))
+  shared.cache.erase_lib('libboost_headers.a')
 
 
 def process_args(ports):
@@ -60,4 +44,4 @@ def process_args(ports):
 
 
 def show():
-  return 'Boost headers v1.70.0 (USE_BOOST_HEADERS=1; Boost license)'
+  return f'boost_headers - Boost headers v{TAG} (-sUSE_BOOST_HEADERS=1 or --use-port=boost_headers; Boost license)'

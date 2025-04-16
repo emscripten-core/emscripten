@@ -6,8 +6,6 @@
 #include <fcntl.h>
 #include "syscall.h"
 
-void __procfdname(char *, unsigned);
-
 int fchdir(int fd)
 {
 	int ret = __syscall(SYS_fchdir, fd);

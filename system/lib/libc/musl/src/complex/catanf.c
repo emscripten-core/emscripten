@@ -53,7 +53,7 @@
  *    IEEE      -10,+10     30000        2.3e-6      5.2e-8
  */
 
-#include "libm.h"
+#include "complex_impl.h"
 
 #define MAXNUMF 1.0e38F
 
@@ -61,13 +61,15 @@ static const double DP1 = 3.140625;
 static const double DP2 = 9.67502593994140625E-4;
 static const double DP3 = 1.509957990978376432E-7;
 
+static const float float_pi = M_PI;
+
 static float _redupif(float xx)
 {
 	float x, t;
 	long i;
 
 	x = xx;
-	t = x/(float)M_PI;
+	t = x/float_pi;
 	if (t >= 0.0f)
 		t += 0.5f;
 	else
@@ -87,29 +89,17 @@ float complex catanf(float complex z)
 	x = crealf(z);
 	y = cimagf(z);
 
-	if ((x == 0.0f) && (y > 1.0f))
-		goto ovrf;
-
 	x2 = x * x;
 	a = 1.0f - x2 - (y * y);
-	if (a == 0.0f)
-		goto ovrf;
 
 	t = 0.5f * atan2f(2.0f * x, a);
 	w = _redupif(t);
 
 	t = y - 1.0f;
 	a = x2 + (t * t);
-	if (a == 0.0f)
-		goto ovrf;
 
 	t = y + 1.0f;
 	a = (x2 + (t * t))/a;
-	w = w + (0.25f * logf (a)) * I;
-	return w;
-
-ovrf:
-	// FIXME
-	w = MAXNUMF + MAXNUMF * I;
+	w = CMPLXF(w, 0.25f * logf(a));
 	return w;
 }

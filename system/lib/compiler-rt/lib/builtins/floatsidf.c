@@ -17,7 +17,7 @@
 
 #include "int_lib.h"
 
-COMPILER_RT_ABI fp_t __floatsidf(int a) {
+COMPILER_RT_ABI fp_t __floatsidf(si_int a) {
 
   const int aWidth = sizeof a * CHAR_BIT;
 
@@ -27,20 +27,21 @@ COMPILER_RT_ABI fp_t __floatsidf(int a) {
 
   // All other cases begin by extracting the sign and absolute value of a
   rep_t sign = 0;
+  su_int aAbs = (su_int)a;
   if (a < 0) {
     sign = signBit;
-    a = -a;
+    aAbs = -aAbs;
   }
 
   // Exponent of (fp_t)a is the width of abs(a).
-  const int exponent = (aWidth - 1) - __builtin_clz(a);
+  const int exponent = (aWidth - 1) - clzsi(aAbs);
   rep_t result;
 
   // Shift a into the significand field and clear the implicit bit.  Extra
   // cast to unsigned int is necessary to get the correct behavior for
   // the input INT_MIN.
   const int shift = significandBits - exponent;
-  result = (rep_t)(unsigned int)a << shift ^ implicitBit;
+  result = (rep_t)aAbs << shift ^ implicitBit;
 
   // Insert the exponent
   result += (rep_t)(exponent + exponentBias) << significandBits;
@@ -50,7 +51,7 @@ COMPILER_RT_ABI fp_t __floatsidf(int a) {
 
 #if defined(__ARM_EABI__)
 #if defined(COMPILER_RT_ARMHF_TARGET)
-AEABI_RTABI fp_t __aeabi_i2d(int a) { return __floatsidf(a); }
+AEABI_RTABI fp_t __aeabi_i2d(si_int a) { return __floatsidf(a); }
 #else
 COMPILER_RT_ALIAS(__floatsidf, __aeabi_i2d)
 #endif

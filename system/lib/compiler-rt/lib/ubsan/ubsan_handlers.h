@@ -147,6 +147,7 @@ struct ImplicitConversionData {
   const TypeDescriptor &FromType;
   const TypeDescriptor &ToType;
   /* ImplicitConversionCheckKind */ unsigned char Kind;
+  unsigned int BitfieldBits;
 };
 
 /// \brief Implict conversion that changed the value.
@@ -167,6 +168,14 @@ struct InvalidBuiltinData {
 
 /// Handle a builtin called in an invalid way.
 RECOVERABLE(invalid_builtin, InvalidBuiltinData *Data)
+
+struct InvalidObjCCast {
+  SourceLocation Loc;
+  const TypeDescriptor &ExpectedType;
+};
+
+/// Handle an invalid ObjC cast.
+RECOVERABLE(invalid_objc_cast, InvalidObjCCast *Data, ValueHandle Pointer)
 
 struct NonNullReturnData {
   SourceLocation AttrLoc;
@@ -223,6 +232,17 @@ extern "C" SANITIZER_INTERFACE_ATTRIBUTE void __ubsan_handle_cfi_bad_type(
     CFICheckFailData *Data, ValueHandle Vtable, bool ValidVtable,
     ReportOptions Opts);
 
+struct FunctionTypeMismatchData {
+  SourceLocation Loc;
+  const TypeDescriptor &Type;
+};
+
+extern "C" SANITIZER_INTERFACE_ATTRIBUTE void
+__ubsan_handle_function_type_mismatch(FunctionTypeMismatchData *Data,
+                                      ValueHandle Val);
+extern "C" SANITIZER_INTERFACE_ATTRIBUTE void
+__ubsan_handle_function_type_mismatch_abort(FunctionTypeMismatchData *Data,
+                                            ValueHandle Val);
 }
 
 #endif // UBSAN_HANDLERS_H

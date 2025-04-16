@@ -1,8 +1,8 @@
 ![emscripten logo](media/switch_logo.png)
 
-Main project page: <http://emscripten.org>
+Main project page: <https://emscripten.org>
 
-GitHub CI status: [![CircleCI](https://circleci.com/gh/emscripten-core/emscripten.svg?style=svg)](https://circleci.com/gh/emscripten-core/emscripten/tree/master)
+GitHub CI status: [![CircleCI](https://circleci.com/gh/emscripten-core/emscripten.svg?style=svg)](https://circleci.com/gh/emscripten-core/emscripten/tree/main)
 
 Chromium builder status: [emscripten-releases](https://ci.chromium.org/p/emscripten-releases)
 

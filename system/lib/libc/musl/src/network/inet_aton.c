@@ -2,7 +2,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include "libc.h"
+#include <stdlib.h>
 
 int __inet_aton(const char *s0, struct in_addr *dest)
 {

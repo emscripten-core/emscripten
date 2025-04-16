@@ -1,4 +1,4 @@
-//===-- ubsan_flags.cc ----------------------------------------------------===//
+//===-- ubsan_flags.cpp ---------------------------------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -20,16 +20,13 @@
 #include <stdlib.h>
 
 #if SANITIZER_EMSCRIPTEN
-extern "C" void emscripten_builtin_free(void *);
-#include <emscripten/em_asm.h>
+#include <emscripten/heap.h>
+#include "emscripten_internal.h"
 #endif
 
 namespace __ubsan {
 
-const char *MaybeCallUbsanDefaultOptions() {
-  return (&__ubsan_default_options) ? __ubsan_default_options() : "";
-}
-
+#if !SANITIZER_EMSCRIPTEN
 static const char *GetFlag(const char *flag) {
   // We cannot call getenv() from inside a preinit array initializer
   if (SANITIZER_CAN_USE_PREINIT_ARRAY) {
@@ -38,6 +35,7 @@ static const char *GetFlag(const char *flag) {
     return getenv(flag);
   }
 }
+#endif
 
 Flags ubsan_flags;
 
@@ -76,19 +74,14 @@ void InitializeFlags() {
   RegisterUbsanFlags(&parser, f);
 
   // Override from user-specified string.
-  parser.ParseString(MaybeCallUbsanDefaultOptions());
-
+  parser.ParseString(__ubsan_default_options());
   // Override from environment variable.
 #if SANITIZER_EMSCRIPTEN
-  char *options = (char*) EM_ASM_INT({
-    return withBuiltinMalloc(function () {
-      return allocateUTF8(Module['UBSAN_OPTIONS'] || 0);
-    });
-  });
+  char* options = _emscripten_sanitizer_get_option("UBSAN_OPTIONS");
   parser.ParseString(options);
   emscripten_builtin_free(options);
 #else
-  parser.ParseString(GetEnv("UBSAN_OPTIONS"));
+  parser.ParseStringFromEnv("UBSAN_OPTIONS");
 #endif // SANITIZER_EMSCRIPTEN
 
   InitializeCommonFlags();

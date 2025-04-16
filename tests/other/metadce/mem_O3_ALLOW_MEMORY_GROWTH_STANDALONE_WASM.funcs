@@ -1,6 +1,0 @@
-$__main_void
-$__wasm_call_ctors
-$_start
-$dlmalloc
-$emscripten_resize_heap
-$sbrk

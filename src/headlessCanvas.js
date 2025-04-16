@@ -5,11 +5,10 @@
  */
 
 function headlessCanvas() {
-  var that = this;
   var ret = {
     headless: true,
     getContext: function(which) {
-      switch(which) {
+      switch (which) {
         case 'webgl':
         case 'experimental-webgl': {
           return {
@@ -442,7 +441,7 @@ function headlessCanvas() {
             bindBuffer: function(){},
             bufferData: function(){},
             getParameter: function(pname) {
-              switch(pname) {
+              switch (pname) {
                 case /* GL_VENDOR                           */ 0x1F00: return 'FakeShellGLVendor';
                 case /* GL_RENDERER                         */ 0x1F01: return 'FakeShellGLRenderer';
                 case /* GL_VERSION                          */ 0x1F02: return '0.0.1';
@@ -465,12 +464,12 @@ function headlessCanvas() {
               var id = this.id++;
               this.items[id] = {
                 which: 'shader',
-                type: type,
+                type,
               };
               return id;
             },
             getShaderParameter: function(shader, pname) {
-              switch(pname) {
+              switch (pname) {
                 case /* GL_SHADER_TYPE    */ 0x8B4F: return this.items[shader].type;
                 case /* GL_COMPILE_STATUS */ 0x8B81: return true;
                 default: throw 'getShaderParameter ' + pname;
@@ -492,7 +491,7 @@ function headlessCanvas() {
             bindAttribLocation: function(){},
             linkProgram: function(){},
             getProgramParameter: function(program, pname) {
-              switch(pname) {
+              switch (pname) {
                 case /* LINK_STATUS     */ 0x8B82: return true;
                 case /* ACTIVE_UNIFORMS */ 0x8B86: return 4;
                 default: throw 'getProgramParameter ' + pname;
@@ -601,9 +600,7 @@ function headlessCanvas() {
     },
     requestPointerLock: function() {
       document.pointerLockElement = document.getElementById('canvas');
-      window.setTimeout(function() {
-        document.callEventListeners('pointerlockchange');
-      });
+      window.setTimeout(() => document.callEventListeners('pointerlockchange'));
     },
     exitPointerLock: function(){},
     style: {
@@ -615,9 +612,7 @@ function headlessCanvas() {
     removeEventListener: function(){},
     requestFullscreen: function() {
       document.fullscreenElement = document.getElementById('canvas');
-      window.setTimeout(function() {
-        document.callEventListeners('fullscreenchange');
-      });
+      window.setTimeout(() => document.callEventListeners('fullscreenchange'));
     },
     offsetTop: 0,
     offsetLeft: 0,

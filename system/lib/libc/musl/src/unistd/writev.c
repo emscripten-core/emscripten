@@ -1,7 +1,8 @@
 #include <sys/uio.h>
 #include "syscall.h"
-#include "libc.h"
+#if __EMSCRIPTEN__
 #include <wasi/api.h>
+#endif
 
 ssize_t writev(int fd, const struct iovec *iov, int count)
 {

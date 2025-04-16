@@ -2,7 +2,6 @@
 #include <sys/uio.h>
 #include <unistd.h>
 #include "syscall.h"
-#include "libc.h"
 
 ssize_t pwritev(int fd, const struct iovec *iov, int count, off_t ofs)
 {
@@ -17,5 +16,3 @@ ssize_t pwritev(int fd, const struct iovec *iov, int count, off_t ofs)
 		(long)(ofs), (long)(ofs>>32));
 #endif
 }
-
-LFS64(pwritev);

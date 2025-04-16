@@ -17,8 +17,9 @@ WebAssembly = {
   // Note that we do not use closure quoting (this['buffer'], etc.) on these
   // functions, as they are just meant for internal use. In other words, this is
   // not a fully general polyfill.
+  /** @constructor */
   Memory: function(opts) {
-#if USE_PTHREADS
+#if SHARED_MEMORY
     this.buffer = new SharedArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}});
 #else
     this.buffer = new ArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}});
@@ -60,11 +61,12 @@ WebAssembly = {
     // the main JS
   },
 
+  /** @constructor */
   Instance: function(module, info) {
-    // TODO: use the module and info somehow - right now the wasm2js output is embedded in
+    // TODO: use the module somehow - right now the wasm2js output is embedded in
     // the main JS
     // This will be replaced by the actual wasm2js code.
-    this.exports = Module['__wasm2jsInstantiate__'](asmLibraryArg);
+    this.exports = Module['__wasm2jsInstantiate__'](info);
   },
 
   instantiate: /** @suppress{checkTypes} */ function(binary, info) {
@@ -72,12 +74,12 @@ WebAssembly = {
       then: function(ok) {
         var module = new WebAssembly.Module(binary);
         ok({
-#if USE_PTHREADS
+#if SHARED_MEMORY
           'module': module,
 #endif
-          'instance': new WebAssembly.Instance(module)
+          'instance': new WebAssembly.Instance(module, info)
         });
-#if ASSERTIONS
+#if ASSERTIONS || WASM == 2 // see postamble_minimal.js which uses .catch
         // Emulate a simple WebAssembly.instantiate(..).then(()=>{}).catch(()=>{}) syntax.
         return { catch: function() {} };
 #endif
@@ -85,10 +87,9 @@ WebAssembly = {
     };
   },
 
-  RuntimeError: Error
-};
+  RuntimeError: Error,
 
 #if !MINIMAL_RUNTIME
-// We don't need to actually download a wasm binary, mark it as present but empty.
-wasmBinary = [];
+  isWasm2js: true,
 #endif
+};

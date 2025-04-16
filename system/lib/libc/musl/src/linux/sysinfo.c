@@ -1,6 +1,5 @@
 #include <sys/sysinfo.h>
 #include "syscall.h"
-#include "libc.h"
 
 int __lsysinfo(struct sysinfo *info)
 {

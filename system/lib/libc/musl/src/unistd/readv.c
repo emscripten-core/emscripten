@@ -1,6 +1,5 @@
 #include <sys/uio.h>
 #include "syscall.h"
-#include "libc.h"
 
 ssize_t readv(int fd, const struct iovec *iov, int count)
 {

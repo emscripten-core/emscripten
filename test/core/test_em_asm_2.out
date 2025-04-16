@@ -1,0 +1,187 @@
+EM_ASM: Simple expression without trailing semicolon
+1. expression without trailing semicolon
+2. expression without trailing semicolon
+3. expression without trailing semicolon
+4. expression without trailing semicolon
+5. expression without trailing semicolon
+
+EM_ASM: Double quotes
+1. string in double quotes
+2. string in double quotes
+3. string in double quotes
+4. string in double quotes
+5. string in double quotes
+
+EM_ASM: Double quotes inside a string
+1. this is "double" "quotes"
+2. this is "double" "quotes" without escaping
+3. this is "double" "quotes"
+4. this is "double" "quotes"
+5. this is "double" "quotes"
+6. this is "double" "quotes" without esacping
+7. this is "double" "quotes"
+
+EM_ASM: Pass a string
+1. hello world!
+2. hello world!
+3. hello world!
+4. hello world!
+5. hello world!
+
+EM_ASM: Simple expression without trailing semicolon, wrap code block in extra parentheses
+1. expression without trailing semicolon, in parentheses
+2. expression without trailing semicolon, in parentheses
+3. expression without trailing semicolon, in parentheses
+4. expression without trailing semicolon, in parentheses
+5. expression without trailing semicolon, in parentheses
+
+EM_ASM: Two statements, separated with a semicolon
+1. two
+1. statements
+2. two
+2. statements 2
+3. two
+3. statements 3
+4. two
+4. statements 4
+5. two
+5. statements 5
+
+EM_ASM: Pass an integer
+1. int 42
+2. int 43
+3. int 44
+4. int 45
+5. int 46
+
+EM_ASM: Evaluate an anonymous function
+1. evaluating anonymous function 42
+2. evaluating anonymous function 42
+3. evaluating anonymous function 42
+4. evaluating anonymous function 42
+5. evaluating anonymous function 42
+
+EM_ASM: Pass an integer and a double
+1. int and double 42 43.5
+2. int and double 42 43.5
+3. int and double 42 43.5
+4. int and double 42 43.5
+5. int and double 42 43.5
+
+EM_ASM_INT: Pass an integer, return an integer back
+1. got int 42
+1. returned int 3
+2. got int 42
+2. returned int 4
+3. got int 42
+3. returned int 5
+4. got int 42
+4. returned int 6
+5. got int 42
+5. returned int 7
+
+EM_ASM_INT: Pass an integer, return an integer back, wrap code block in extra parentheses
+1. got int, extra parentheses 42
+1. returned int, extra parentheses 3
+2. got int, extra parentheses 42
+2. returned int, extra parentheses 4
+3. got int, extra parentheses 42
+3. returned int, extra parentheses 5
+4. got int, extra parentheses 42
+4. returned int, extra parentheses 6
+5. got int, extra parentheses 42
+5. returned int, extra parentheses 7
+
+EM_ASM_INT: More imaginable ways for user to wrap in extra parentheses
+1. got int, extra extra parentheses 42
+1. returned int, extra extra parentheses 5
+2. got int, extra extra parentheses 42
+2. returned int, extra extra parentheses 6
+3. got int, extra extra extra parentheses 42
+3. returned int, extra extra extra parentheses 6
+
+EM_ASM_INT: Return an integer back.
+1. got int 42
+1. returned int 3
+2. got int 42
+2. returned int 4
+3. got int 42
+3. returned int 5
+4. got int 42
+4. returned int 6
+5. got int 42
+5. returned int 7
+
+EM_ASM_INT: Return an integer in a single brief statement.
+1. returned statement 42
+2. returned statement 43
+3. returned statement 44
+4. returned statement 45
+5. returned statement 46
+
+EM_ASM_PTR: Return a pointer back.
+1. got arg 42
+1. returned ptr 0x3
+2. got arg 42
+2. returned ptr 0x4
+3. got arg 42
+3. returned ptr 0x5
+4. got arg 42
+4. returned ptr 0x6
+5. got arg 42
+5. returned ptr 0x7
+
+EM_ASM_DOUBLE: Pass no parameters, return a double.
+1. returning double
+1. got double 3.500000
+2. returning double
+2. got double 4.500000
+3. returning double
+3. got double 5.500000
+4. returning double
+4. got double 6.500000
+5. returning double
+5. got double 7.500000
+
+EM_ASM_DOUBLE: Pass an integer, return a double.
+1. got int 42
+1. returned double 3.500000
+2. got int 42
+2. returned double 4.500000
+3. got int 42
+3. returned double 5.500000
+4. got int 42
+4. returned double 6.500000
+5. got int 42
+5. returned double 7.500000
+
+EM_ASM_DOUBLE: Pass a double and an integer, return a double.
+1. got double and int 5.5 42
+1. returned double 3.500000
+2. got double and int 5.5 42
+2. returned double 4.500000
+3. got double and int 5.5 42
+3. returned double 5.500000
+4. got double and int 5.5 42
+4. returned double 6.500000
+5. got double and int 5.5 42
+5. returned double 7.500000
+
+EM_ASM_INT: A comma character (,) inside the code block may need extra parentheses
+1. comma in em_asm
+1. returned 15
+2. comma in em_asm
+2. returned 15
+3. comma in em_asm
+3. returned 15
+4. comma in em_asm
+4. returned 15
+5. comma in em_asm
+5. returned 15
+
+EM_ASM: Expression contains a tab character
+1. the following word is delimited by tab characters: H	E	L	L	O	T	A	B	S
+2. the following word is delimited by tab characters: H	E	L	L	O	T	A	B	S
+3. the following word is delimited by tab characters: H	E	L	L	O	T	A	B	S
+4. the following word is delimited by tab characters: H	E	L	L	O	T	A	B	S
+5. the following word is delimited by tab characters: H	E	L	L	O	T	A	B	S

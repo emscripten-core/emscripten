@@ -17,9 +17,11 @@
 #include <vector>
 
 using namespace emscripten;
+using namespace internal;
 
 extern "C" {
-const char* EMSCRIPTEN_KEEPALIVE __getTypeName(const std::type_info* ti) {
+
+const char* __getTypeName(const std::type_info* ti) {
   if (has_unbound_type_names) {
 #ifdef USE_CXA_DEMANGLE
     int stat;
@@ -47,12 +49,36 @@ const char* EMSCRIPTEN_KEEPALIVE __getTypeName(const std::type_info* ti) {
     return strdup(str);
   }
 }
+
+static InitFunc* init_funcs = nullptr;
+
+void _embind_initialize_bindings() {
+  for (auto* f = init_funcs; f; f = f->next) {
+    f->init_func();
+  }
+}
+
+void _embind_register_bindings(InitFunc* f) {
+  f->next = init_funcs;
+  init_funcs = f;
+}
+
+void _emval_coro_resume(val::awaiter* awaiter, EM_VAL result) {
+  awaiter->resume_with(val::take_ownership(result));
+}
+
 }
 
 namespace {
 template <typename T> static void register_integer(const char* name) {
   using namespace internal;
   _embind_register_integer(TypeID<T>::get(), name, sizeof(T), std::numeric_limits<T>::min(),
+    std::numeric_limits<T>::max());
+}
+
+template <typename T> static void register_bigint(const char* name) {
+  using namespace internal;
+  _embind_register_bigint(TypeID<T>::get(), name, sizeof(T), std::numeric_limits<T>::min(),
     std::numeric_limits<T>::max());
 }
 
@@ -71,6 +97,9 @@ enum TypedArrayIndex {
   Uint32Array,
   Float32Array,
   Float64Array,
+  // Only available if WASM_BIGINT
+  Int64Array,
+  Uint64Array,
 };
 
 template <typename T> constexpr TypedArrayIndex getTypedArrayIndex() {
@@ -80,7 +109,8 @@ template <typename T> constexpr TypedArrayIndex getTypedArrayIndex() {
            : (sizeof(T) == 1
                  ? (std::is_signed<T>::value ? Int8Array : Uint8Array)
                  : (sizeof(T) == 2 ? (std::is_signed<T>::value ? Int16Array : Uint16Array)
-                                   : (std::is_signed<T>::value ? Int32Array : Uint32Array)));
+                                   : (sizeof(T) == 4 ? (std::is_signed<T>::value ? Int32Array : Uint32Array)
+                                                     : (std::is_signed<T>::value ? Int64Array : Uint64Array))));
 }
 
 template <typename T> static void register_memory_view(const char* name) {
@@ -89,13 +119,13 @@ template <typename T> static void register_memory_view(const char* name) {
 }
 } // namespace
 
-extern "C" {
-void EMSCRIPTEN_KEEPALIVE __embind_register_native_and_builtin_types() {
+EMSCRIPTEN_BINDINGS(builtin) {
   using namespace emscripten::internal;
 
   _embind_register_void(TypeID<void>::get(), "void");
 
-  _embind_register_bool(TypeID<bool>::get(), "bool", sizeof(bool), true, false);
+  _embind_register_bool(TypeID<bool>::get(), "bool", true, false);
+  static_assert(sizeof(bool) == 1);
 
   register_integer<char>("char");
   register_integer<signed char>("signed char");
@@ -104,19 +134,25 @@ void EMSCRIPTEN_KEEPALIVE __embind_register_native_and_builtin_types() {
   register_integer<unsigned short>("unsigned short");
   register_integer<signed int>("int");
   register_integer<unsigned int>("unsigned int");
+#if __wasm64__
+  register_bigint<signed long>("long");
+  register_bigint<unsigned long>("unsigned long");
+#else
   register_integer<signed long>("long");
   register_integer<unsigned long>("unsigned long");
+#endif
+
+  register_bigint<int64_t>("int64_t");
+  register_bigint<uint64_t>("uint64_t");
 
   register_float<float>("float");
   register_float<double>("double");
 
   _embind_register_std_string(TypeID<std::string>::get(), "std::string");
-  _embind_register_std_string(
-    TypeID<std::basic_string<unsigned char>>::get(), "std::basic_string<unsigned char>");
   _embind_register_std_wstring(TypeID<std::wstring>::get(), sizeof(wchar_t), "std::wstring");
   _embind_register_std_wstring(TypeID<std::u16string>::get(), sizeof(char16_t), "std::u16string");
   _embind_register_std_wstring(TypeID<std::u32string>::get(), sizeof(char32_t), "std::u32string");
-  _embind_register_emval(TypeID<val>::get(), "emscripten::val");
+  _embind_register_emval(TypeID<val>::get());
 
   // Some of these types are aliases for each other. Luckily,
   // embind.js's _embind_register_memory_view ignores duplicate
@@ -141,17 +177,9 @@ void EMSCRIPTEN_KEEPALIVE __embind_register_native_and_builtin_types() {
   register_memory_view<uint16_t>("emscripten::memory_view<uint16_t>");
   register_memory_view<int32_t>("emscripten::memory_view<int32_t>");
   register_memory_view<uint32_t>("emscripten::memory_view<uint32_t>");
+  register_memory_view<int64_t>("emscripten::memory_view<int64_t>");
+  register_memory_view<uint64_t>("emscripten::memory_view<uint64_t>");
 
   register_memory_view<float>("emscripten::memory_view<float>");
   register_memory_view<double>("emscripten::memory_view<double>");
-#if __SIZEOF_LONG_DOUBLE__ == __SIZEOF_DOUBLE__
-  register_memory_view<long double>("emscripten::memory_view<long double>");
-#endif
-}
-}
-
-EMSCRIPTEN_BINDINGS(native_and_builtin_types) {
-  // Normal initialization, executed through a global constructor. This
-  // happens on the main thread; pthreads will call it manually.
-  __embind_register_native_and_builtin_types();
 }

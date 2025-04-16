@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <string.h>
+#include "libc.h"
 
 FILE *__fdopen(int fd, const char *mode)
 {

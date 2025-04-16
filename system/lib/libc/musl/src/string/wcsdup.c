@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <wchar.h>
-#include "libc.h"
 
 wchar_t *wcsdup(const wchar_t *s)
 {

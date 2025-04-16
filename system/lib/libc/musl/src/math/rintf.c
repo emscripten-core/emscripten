@@ -2,6 +2,7 @@
 #include <math.h>
 #include <stdint.h>
 
+#ifndef __wasm__
 #if FLT_EVAL_METHOD==0
 #define EPS FLT_EPSILON
 #elif FLT_EVAL_METHOD==1
@@ -10,6 +11,7 @@
 #define EPS LDBL_EPSILON
 #endif
 static const float_t toint = 1/EPS;
+#endif
 
 float rintf(float x)
 {

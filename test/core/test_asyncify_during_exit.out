@@ -1,0 +1,2 @@
+during_exit 1
+Aborted(Assertion failed: Asyncify cannot be done during or after the runtime exits)

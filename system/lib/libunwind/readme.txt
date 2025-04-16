@@ -1,13 +1,23 @@
-These files are from libunwind, release 11.0.0.
+llvm's libunwind
+----------------
 
-tag: llvmorg-11.0.0
-git: 176249bd6732a8044d457092ed932768724a6f06
+These files are from the llvm-project based on release 19.1.6.
 
-Local Modification
-------------------
+We maintain a local fork of llvm-project that contains any emscripten
+specific patches:
 
-Local modifications are marked with the comment: 'XXX EMSCRIPTEN'
+  https://github.com/emscripten-core/llvm-project
 
-The following changes are not marked with 'XXX EMSCRIPTEN'.
+The current patch is based on the emscripten-libs-19 branch.
 
-1. Add Unwind-wasm.cpp, a wasm implementation for libunwind.
+Update Instructions
+-------------------
+
+Run `system/lib/update_libunwind.py path/to/llvm-project`
+
+Modifications
+-------------
+
+For a list of changes from upstream see the libunwind files that are part of:
+
+https://github.com/llvm/llvm-project/compare/llvmorg-19.1.6...emscripten-core:emscripten-libs-19

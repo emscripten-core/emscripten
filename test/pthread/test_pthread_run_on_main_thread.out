@@ -1,0 +1,54 @@
+Testing sync proxied runs:
+Hello!
+Hello 42!
+Hello 42 43!
+Hello 42 43 44!
+Hello i!
+Hello ii 42!
+Hello iii 42 43!
+Hello iiii 42 43 44!
+Testing waitable async proxied runs:
+Hello!
+Hello 42!
+Hello 42 43!
+Hello 42 43 44!
+Hello i!
+Hello ii 42!
+Hello iii 42 43!
+Hello iiii 42 43 44!
+Testing sync proxied runs:
+Hello!
+Hello 42!
+Hello 42 43!
+Hello 42 43 44!
+Hello i!
+Hello ii 42!
+Hello iii 42 43!
+Hello iiii 42 43 44!
+Testing async proxied runs:
+Hello!
+Hello 42!
+Hello 42 43!
+Hello 42 43 44!
+Hello i!
+Hello ii 42!
+Hello iii 42 43!
+Hello iiii 42 43 44!
+Testing waitable async proxied runs:
+Hello!
+Hello 42!
+Hello 42 43!
+Hello 42 43 44!
+Hello i!
+Hello ii 42!
+Hello iii 42 43!
+Hello iiii 42 43 44!
+Testing async proxied runs:
+Hello!
+Hello 42!
+Hello 42 43!
+Hello 42 43 44!
+Hello i!
+Hello ii 42!
+Hello iii 42 43!
+Hello iiii 42 43 44!

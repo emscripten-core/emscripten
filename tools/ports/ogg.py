@@ -3,9 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import logging
 import os
-import shutil
 
 TAG = 'version_1'
 HASH = '929e8d6003c06ae09593021b83323c8f1f54532b67b8ba189f4aedce52c25dc182bac474de5392c46ad5b0dea5a24928e4ede1492d52f4dd5cd58eea9be4dba7'
@@ -16,42 +14,23 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('ogg', 'https://github.com/emscripten-ports/ogg/archive/' + TAG + '.zip', 'Ogg-' + TAG, sha512hash=HASH)
-  libname = ports.get_lib_name('libogg')
+  ports.fetch_project('ogg', f'https://github.com/emscripten-ports/ogg/archive/{TAG}.zip', sha512hash=HASH)
 
-  def create():
-    logging.info('building port: ogg')
-    ports.clear_project_build('vorbis')
+  def create(final):
+    source_path = ports.get_dir('ogg', 'Ogg-' + TAG)
+    ports.write_file(os.path.join(source_path, 'include', 'ogg', 'config_types.h'), config_types_h)
+    ports.install_headers(os.path.join(source_path, 'include', 'ogg'), target='ogg')
+    ports.build_port(os.path.join(source_path, 'src'), final, 'ogg')
 
-    source_path = os.path.join(ports.get_dir(), 'ogg', 'Ogg-' + TAG)
-    dest_path = os.path.join(ports.get_build_dir(), 'ogg')
-
-    shutil.rmtree(dest_path, ignore_errors=True)
-    shutil.copytree(source_path, dest_path)
-
-    open(os.path.join(dest_path, 'include', 'ogg', 'config_types.h'), 'w').write(config_types_h)
-
-    header_dir = os.path.join(ports.get_include_dir(), 'ogg')
-    shutil.rmtree(header_dir, ignore_errors=True)
-    shutil.copytree(os.path.join(dest_path, 'include', 'ogg'), header_dir)
-
-    final = os.path.join(dest_path, libname)
-    ports.build_port(os.path.join(dest_path, 'src'), final)
-    return final
-
-  return [shared.Cache.get(libname, create)]
+  return [shared.cache.get_lib('libogg.a', create)]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file(ports.get_lib_name('libogg'))
-
-
-def process_args(ports):
-  return []
+  shared.cache.erase_lib('libogg.a')
 
 
 def show():
-  return 'ogg (USE_OGG=1; zlib license)'
+  return 'ogg (-sUSE_OGG=1 or --use-port=ogg; zlib license)'
 
 
 config_types_h = '''\

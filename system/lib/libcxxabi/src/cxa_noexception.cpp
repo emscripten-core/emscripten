@@ -1,4 +1,4 @@
-//===------------------------- cxa_exception.cpp --------------------------===//
+//===----------------------------------------------------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -49,7 +49,48 @@ __cxa_uncaught_exception() throw() { return false; }
 unsigned int
 __cxa_uncaught_exceptions() throw() { return 0; }
 
-}  // extern "C"
+#if __EMSCRIPTEN__
+// Under emscripten this code is also linked when building when
+// DISABLE_EXCEPTION_CATCHING is set but DISABLE_EXCEPTION_THROWING is not.
+// TODO(sbc): Perhaps just call std::terminate here. It could
+// just be some test code that needs updating.
+void *__cxa_allocate_exception(size_t thrown_size) throw() {
+  char* allocation = (char*)malloc(thrown_size + sizeof(__cxa_exception));
+  return allocation + sizeof(__cxa_exception);
+}
+
+static
+inline
+__cxa_exception*
+cxa_exception_from_thrown_object(void* thrown_object)
+{
+    return static_cast<__cxa_exception*>(thrown_object) - 1;
+}
+
+//  Free a __cxa_exception object allocated with __cxa_allocate_exception.
+void __cxa_free_exception(void *thrown_object) throw() {
+    // Compute the size of the padding before the header.
+    char *raw_buffer =
+        ((char *)cxa_exception_from_thrown_object(thrown_object));
+    free((void *)raw_buffer);
+}
+
+// This function is called from make_exception_ptr in libcxx unless
+// -fno-exceptions is not given. We have definitions of this function in
+// cxa_exception.cpp and cxa_exception_emscripten.cpp, but unlike other
+// platforms, we use those files only when one of Emscripten EH or Wasm EH is
+// used, and we use this cxa_noexceptions.cpp in case of -fignore-exceptions,
+// which is our default. So we add a definition here to prevent a link failure.
+__cxa_exception*
+__cxa_init_primary_exception(void* object,
+                             std::type_info* tinfo,
+                             void*(_LIBCXXABI_DTOR_FUNC* dest)(void*)) throw() {
+  __cxa_exception* exception_header = cxa_exception_from_thrown_object(object);
+  return exception_header;
+}
+#endif
+
+} // extern "C"
 
 // provide dummy implementations for the 'no exceptions' case.
 uint64_t __getExceptionClass  (const _Unwind_Exception*)           { return 0; }

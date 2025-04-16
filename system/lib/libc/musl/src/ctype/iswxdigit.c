@@ -1,5 +1,4 @@
 #include <wctype.h>
-#include "libc.h"
 
 int iswxdigit(wint_t wc)
 {

@@ -2,6 +2,8 @@
 #include <errno.h>
 #include <limits.h>
 #include <string.h>
+#include <stdlib.h>
+#include "libc.h"
 
 struct cookie {
 	char **bufp;
@@ -10,6 +12,12 @@ struct cookie {
 	char *buf;
 	size_t len;
 	size_t space;
+};
+
+struct ms_FILE {
+	FILE f;
+	struct cookie c;
+	unsigned char buf[BUFSIZ];
 };
 
 static off_t ms_seek(FILE *f, off_t off, int whence)
@@ -57,34 +65,35 @@ static int ms_close(FILE *f)
 
 FILE *open_memstream(char **bufp, size_t *sizep)
 {
-	FILE *f;
-	struct cookie *c;
+	struct ms_FILE *f;
 	char *buf;
 
-	if (!(f=malloc(sizeof *f + sizeof *c + BUFSIZ))) return 0;
+	if (!(f=malloc(sizeof *f))) return 0;
 	if (!(buf=malloc(sizeof *buf))) {
 		free(f);
 		return 0;
 	}
-	memset(f, 0, sizeof *f + sizeof *c);
-	f->cookie = c = (void *)(f+1);
+	memset(&f->f, 0, sizeof f->f);
+	memset(&f->c, 0, sizeof f->c);
+	f->f.cookie = &f->c;
 
-	c->bufp = bufp;
-	c->sizep = sizep;
-	c->pos = c->len = c->space = *sizep = 0;
-	c->buf = *bufp = buf;
+	f->c.bufp = bufp;
+	f->c.sizep = sizep;
+	f->c.pos = f->c.len = f->c.space = *sizep = 0;
+	f->c.buf = *bufp = buf;
 	*buf = 0;
 
-	f->flags = F_NORD;
-	f->fd = -1;
-	f->buf = (void *)(c+1);
-	f->buf_size = BUFSIZ;
-	f->lbf = EOF;
-	f->write = ms_write;
-	f->seek = ms_seek;
-	f->close = ms_close;
+	f->f.flags = F_NORD;
+	f->f.fd = -1;
+	f->f.buf = f->buf;
+	f->f.buf_size = sizeof f->buf;
+	f->f.lbf = EOF;
+	f->f.write = ms_write;
+	f->f.seek = ms_seek;
+	f->f.close = ms_close;
+	f->f.mode = -1;
 
-	if (!libc.threaded) f->lock = -1;
+	if (!libc.threaded) f->f.lock = -1;
 
-	return __ofl_add(f);
+	return __ofl_add(&f->f);
 }

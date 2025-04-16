@@ -167,3 +167,12 @@ process.uptime = function() {};
  * @nosideeffects
  */
 process.hrtime = function() {};
+
+/**
+ */
+process.binding = function(name) {};
+
+/**
+ * @type {number}
+ */
+process.exitCode;

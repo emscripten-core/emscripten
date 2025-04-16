@@ -1,4 +1,4 @@
-//===------------------------- cxa_exception.h ----------------------------===//
+//===----------------------------------------------------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -19,6 +19,26 @@
 
 namespace __cxxabiv1 {
 
+#ifdef __EMSCRIPTEN_EXCEPTIONS__
+
+struct _LIBCXXABI_HIDDEN __cxa_exception {
+  size_t referenceCount;
+  std::type_info *exceptionType;
+  // In wasm, destructors return 'this' as in ARM
+  void* (*exceptionDestructor)(void *);
+  uint8_t caught;
+  uint8_t rethrown;
+  void *adjustedPtr;
+  // Add padding to ensure that the size of __cxa_exception is a multiple of
+  // the maximum useful alignment for the target machine.  This ensures that
+  // the thrown object that follows has that correct alignment.
+  void *padding;
+};
+
+static_assert(sizeof(__cxa_exception) % alignof(max_align_t) == 0, "__cxa_exception must have a size that is multipl of max alignment");
+
+#else
+
 static const uint64_t kOurExceptionClass          = 0x434C4E47432B2B00; // CLNGC++\0
 static const uint64_t kOurDependentExceptionClass = 0x434C4E47432B2B01; // CLNGC++\1
 static const uint64_t get_vendor_and_language     = 0xFFFFFFFFFFFFFF00; // mask for CLNGC++
@@ -34,7 +54,7 @@ struct _LIBCXXABI_HIDDEN __cxa_exception {
     // in the beginning of the struct, rather than before unwindHeader.
     void *reserve;
 
-    // This is a new field to support C++ 0x exception_ptr.
+    // This is a new field to support C++11 exception_ptr.
     // For binary compatibility it is at the start of this
     // struct which is prepended to the object thrown in
     // __cxa_allocate_exception.
@@ -43,11 +63,11 @@ struct _LIBCXXABI_HIDDEN __cxa_exception {
 
     //  Manage the exception object itself.
     std::type_info *exceptionType;
-#ifdef __USING_WASM_EXCEPTIONS__
-    // In wasm, destructors return their argument
-    void *(*exceptionDestructor)(void *);
+#ifdef __wasm__
+    // In Wasm, a destructor returns its argument
+    void *(_LIBCXXABI_DTOR_FUNC *exceptionDestructor)(void *);
 #else
-    void (*exceptionDestructor)(void *);
+    void (_LIBCXXABI_DTOR_FUNC *exceptionDestructor)(void *);
 #endif
     std::unexpected_handler unexpectedHandler;
     std::terminate_handler  terminateHandler;
@@ -68,9 +88,9 @@ struct _LIBCXXABI_HIDDEN __cxa_exception {
 #endif
 
 #if !defined(__LP64__) && !defined(_WIN64) && !defined(_LIBCXXABI_ARM_EHABI)
-    // This is a new field to support C++ 0x exception_ptr.
+    // This is a new field to support C++11 exception_ptr.
     // For binary compatibility it is placed where the compiler
-    // previously adding padded to 64-bit align unwindHeader.
+    // previously added padding to 64-bit align unwindHeader.
     size_t referenceCount;
 #endif
     _Unwind_Exception unwindHeader;
@@ -86,7 +106,7 @@ struct _LIBCXXABI_HIDDEN __cxa_dependent_exception {
 #endif
 
     std::type_info *exceptionType;
-    void (*exceptionDestructor)(void *);
+    void (_LIBCXXABI_DTOR_FUNC *exceptionDestructor)(void *);
     std::unexpected_handler unexpectedHandler;
     std::terminate_handler terminateHandler;
 
@@ -164,6 +184,8 @@ extern "C" _LIBCXXABI_FUNC_VIS __cxa_eh_globals * __cxa_get_globals_fast ();
 extern "C" _LIBCXXABI_FUNC_VIS void * __cxa_allocate_dependent_exception ();
 extern "C" _LIBCXXABI_FUNC_VIS void __cxa_free_dependent_exception (void * dependent_exception);
 
+#endif // !__EMSCRIPTEN_EXCEPTIONS__
+
 }  // namespace __cxxabiv1
 
-#endif  // _CXA_EXCEPTION_H
+#endif // _CXA_EXCEPTION_H

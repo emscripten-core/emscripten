@@ -1,12 +1,14 @@
 #include "pthread_impl.h"
 #include <threads.h>
 
-// XXX Emscripten implements pthread_create directly rather than __pthread_create
 #ifdef __EMSCRIPTEN__
+// Fix for lsan.  Since lsan wraps calls to the public `pthread_create` function
+// if we call the internal __pthread_create function here to don't the wrapping
+// See pthread_create wrapper in compiler-rt/lib/lsan/lsan_interceptors.cpp.
 #define __pthread_create pthread_create
-#endif
-
+#else
 int __pthread_create(pthread_t *restrict, const pthread_attr_t *restrict, void *(*)(void *), void *restrict);
+#endif
 
 int thrd_create(thrd_t *thr, thrd_start_t func, void *arg)
 {

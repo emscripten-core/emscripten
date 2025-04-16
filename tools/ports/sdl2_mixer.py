@@ -4,88 +4,109 @@
 # found in the LICENSE file.
 
 import os
-import shutil
-import logging
 
-TAG = 'release-2.0.2'
-HASH = 'b9d03061d177f20f4e03f3e3553afd7bfe0c05da7b9a774312b389318e747cf9724e0475e9afff6a64ce31bab0217e2afb2619d75556753fbbb6ecafa9775219'
+TAG = 'release-2.8.0'
+HASH = '494ccd74540f74e717f7e4f1dc7f96398c0f4b1883ab00c4a76b0c7239bd2c185cb4358a35ef47819c49e7c14dac7c37b98a29c7b5237478121571f5e7ac4dfc'
+
+deps = ['sdl2']
+variants = {
+  'sdl2_mixer-mp3': {'SDL2_MIXER_FORMATS': ['mp3']},
+  'sdl2_mixer-none': {'SDL2_MIXER_FORMATS': []},
+  'sdl2_mixer-mp3-mt': {'SDL2_MIXER_FORMATS': ['mp3'], 'PTHREADS': 1},
+  'sdl2_mixer-none-mt': {'SDL2_MIXER_FORMATS': [], 'PTHREADS': 1},
+}
 
 
 def needed(settings):
   return settings.USE_SDL_MIXER == 2
 
 
-def get(ports, settings, shared):
-  sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
-  assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_mixer'
-  ports.fetch_project('sdl2_mixer', 'https://github.com/emscripten-ports/SDL2_mixer/archive/' + TAG + '.zip', 'SDL2_mixer-' + TAG, sha512hash=HASH)
-
+def get_lib_name(settings):
   settings.SDL2_MIXER_FORMATS.sort()
   formats = '-'.join(settings.SDL2_MIXER_FORMATS)
 
   libname = 'libSDL2_mixer'
   if formats != '':
-    libname += '_' + formats
-  libname = ports.get_lib_name(libname)
+    libname += '-' + formats
+  if settings.PTHREADS:
+    libname += '-mt'
+  libname += '.a'
 
-  def create():
-    logging.info('building port: sdl2_mixer')
+  return libname
 
-    source_path = os.path.join(ports.get_dir(), 'sdl2_mixer', 'SDL2_mixer-' + TAG)
-    dest_path = os.path.join(ports.get_build_dir(), 'sdl2_mixer')
 
-    shutil.rmtree(dest_path, ignore_errors=True)
-    shutil.copytree(source_path, dest_path)
+def get(ports, settings, shared):
+  ports.fetch_project('sdl2_mixer', f'https://github.com/libsdl-org/SDL_mixer/archive/{TAG}.zip', sha512hash=HASH)
+  libname = get_lib_name(settings)
 
+  def create(final):
+    source_path = ports.get_dir('sdl2_mixer', 'SDL_mixer-' + TAG)
     flags = [
-      '-s', 'USE_SDL=2',
+      '-sUSE_SDL=2',
       '-O2',
       '-DMUSIC_WAV',
     ]
 
     if "ogg" in settings.SDL2_MIXER_FORMATS:
       flags += [
-        '-s', 'USE_VORBIS=1',
+        '-sUSE_VORBIS',
         '-DMUSIC_OGG',
       ]
 
     if "mp3" in settings.SDL2_MIXER_FORMATS:
       flags += [
-        '-s', 'USE_MPG123=1',
+        '-sUSE_MPG123',
         '-DMUSIC_MP3_MPG123',
       ]
 
-    final = os.path.join(dest_path, libname)
+    if "mod" in settings.SDL2_MIXER_FORMATS:
+      flags += [
+        '-sUSE_MODPLUG',
+        '-DMUSIC_MOD_MODPLUG',
+      ]
+
+    if "mid" in settings.SDL2_MIXER_FORMATS:
+      flags += [
+        '-DMUSIC_MID_TIMIDITY',
+      ]
+
+    if settings.PTHREADS:
+      flags.append('-pthread')
+
+    include_path = os.path.join(source_path, 'include')
+    includes = [
+      include_path,
+      os.path.join(source_path, 'src'),
+      os.path.join(source_path, 'src', 'codecs')
+    ]
     ports.build_port(
-      dest_path,
+      source_path,
       final,
-      includes=[],
+      'sdl2_mixer',
       flags=flags,
       exclude_files=[
         'playmus.c',
         'playwave.c',
+        'main.c',
       ],
       exclude_dirs=[
         'native_midi',
-        'timidity',
         'external',
-      ]
+        'Xcode',
+      ],
+      includes=includes,
     )
 
-    # copy header to a location so it can be used as 'SDL2/'
-    ports.install_headers(source_path, pattern='SDL_*.h', target='SDL2')
-    return final
+    ports.install_headers(include_path, target='SDL2')
 
-  return [shared.Cache.get(libname, create, what='port')]
+  return [shared.cache.get_lib(libname, create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file(ports.get_lib_name('libSDL2_mixer'))
+  shared.cache.erase_lib(get_lib_name(settings))
 
 
 def process_dependencies(settings):
-  global deps
-  deps = ['sdl2']
   settings.USE_SDL = 2
   if "ogg" in settings.SDL2_MIXER_FORMATS:
     deps.append('vorbis')
@@ -93,11 +114,10 @@ def process_dependencies(settings):
   if "mp3" in settings.SDL2_MIXER_FORMATS:
     deps.append('mpg123')
     settings.USE_MPG123 = 1
-
-
-def process_args(ports):
-  return []
+  if "mod" in settings.SDL2_MIXER_FORMATS:
+    deps.append('libmodplug')
+    settings.USE_MODPLUG = 1
 
 
 def show():
-  return 'SDL2_mixer (USE_SDL_MIXER=2; zlib license)'
+  return 'sdl2_mixer (-sUSE_SDL_MIXER=2 or --use-port=sdl2_mixer; zlib license)'

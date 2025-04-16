@@ -1,0 +1,13 @@
+this is err
+this is out
+this is dbg
+this is dbg_backtrace
+.*
+this is err: 1
+this is out: 2
+this is dbg: 3
+this is dbg_backtrace: 4
+.*
+hel
+hell
+hello

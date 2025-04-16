@@ -1,0 +1,26 @@
+readlink: 'link'
+errno: No error information
+
+readlink: 'file'
+errno: Invalid argument
+
+readlink: 'directory'
+errno: Invalid argument
+
+symlink: '/working/directory/relative'
+buffer: 'Relative'
+
+symlink: '/working/directory/subdirectory/subrelative'
+buffer: 'Subrelative'
+
+symlink: '/working/subdirectoryrelative'
+buffer: 'Subdirectory'
+
+symlink: '/working/directory/absolute'
+buffer: 'Absolute'
+
+symlink: '/working/directory/subdirectory/subabsolute'
+buffer: 'Subabsolute'
+
+symlink: '/working/subdirectoryabsolute'
+buffer: 'Subdirectory'

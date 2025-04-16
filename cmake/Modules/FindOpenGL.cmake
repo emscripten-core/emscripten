@@ -19,16 +19,30 @@ SET(OPENGL_GLU_FOUND TRUE)
 SET(OPENGL_XMESA_FOUND FALSE)
 
 # This is the path where <GL/gl.h> is found
-SET(OPENGL_INCLUDE_DIR "${EMSCRIPTEN_ROOT_PATH}/system/include")
+SET(OPENGL_INCLUDE_DIR "${EMSCRIPTEN_SYSROOT}/include")
 
-# No library to link against for OpenGL, since Emscripten picks it up automatically from library_webgl.js,
-# but need to report something, or CMake thinks we failed in the search.
-SET(OPENGL_LIBRARIES "nul")
-SET(OPENGL_gl_LIBRARY "nul")
-SET(OPENGL_glu_LIBRARY "nul")
+SET(OPENGL_gl_LIBRARY "GL")
+SET(OPENGL_glu_LIBRARY "GLU")
+SET(OPENGL_LIBRARIES ${OPENGL_gl_LIBRARY} ${OPENGL_glu_LIBRARY})
 
 mark_as_advanced(
   OPENGL_INCLUDE_DIR
   OPENGL_glu_LIBRARY
   OPENGL_gl_LIBRARY
 )
+
+if (NOT TARGET OpenGL::GL)
+  add_library(OpenGL::GL INTERFACE IMPORTED)
+  set_target_properties(OpenGL::GL PROPERTIES
+    IMPORTED_LIBNAME "${OPENGL_gl_LIBRARY}"
+    INTERFACE_INCLUDE_DIRECTORIES "${OPENGL_INCLUDE_DIR}"
+  )
+endif()
+
+if (NOT TARGET OpenGL::GLU)
+  add_library(OpenGL::GLU INTERFACE IMPORTED)
+  set_target_properties(OpenGL::GLU PROPERTIES
+    IMPORTED_LIBNAME "${OPENGL_glu_LIBRARY}"
+    INTERFACE_LINK_LIBRARIES OpenGL::GL
+  )
+endif()

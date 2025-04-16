@@ -1,6 +1,0 @@
-- Go implementation
-- Rust implementation
-- Add sub-protocol support to upstream einaros/ws module and use that
-  instead of the patched module.
-- wstelnet: support CSI L and CSI M
-

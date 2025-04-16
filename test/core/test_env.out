@@ -1,0 +1,29 @@
+List:
+USER=web_user
+LOGNAME=web_user
+PATH=/
+PWD=/
+HOME=/home/web_user
+LANG=(C|en_US).UTF-8
+_=.*(/test_env.js|./this.program)
+
+getenv\(PATH\): /
+getenv\(NONEXISTENT\): \(null\)
+setenv/0\(PATH\) ret: 0
+getenv\(PATH\) after setenv/0: /
+setenv/1\(PATH\) ret: 0
+getenv\(PATH\) after setenv/1: test2
+setenv\(SET_VALUE\) ret: 0
+setenv\(SET_VALUE2\) ret: 0
+getenv\(SET_VALUE\): test3
+getenv\(SET_VALUE2\): test4
+putenv\(PUT_VALUE\) ret: 0
+getenv\(PUT_VALUE\): test5
+getenv\(PUT_VALUE\) after alteration: Qest5
+unsetenv\(PUT_VALUE\) ret: 0
+getenv\(PUT_VALUE\) after unsetenv: \(null\)
+setenv\(0\) ret: -1
+setenv\(''\) ret: -1
+setenv\(X=Y\) ret: -1
+unsetenv\(''\) ret: -1
+unsetenv\(X=Y\) ret: -1

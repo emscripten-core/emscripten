@@ -35,5 +35,3 @@ FILE *fopen(const char *restrict filename, const char *restrict mode)
 #endif
 	return 0;
 }
-
-LFS64(fopen);

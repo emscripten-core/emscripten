@@ -1,58 +1,46 @@
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
-extern char **__environ;
-char **__env_map;
+static void dummy(char *old, char *new) {}
+weak_alias(dummy, __env_rm_add);
 
-int __putenv(char *s, int a)
+int __putenv(char *s, size_t l, char *r)
 {
-	int i=0, j=0;
-	char *z = strchr(s, '=');
-	char **newenv = 0;
-	char **newmap = 0;
-	static char **oldenv;
-
-	if (!z) return unsetenv(s);
-	if (z==s) return -1;
-	for (; __environ[i] && memcmp(s, __environ[i], z-s+1); i++);
-	if (a) {
-		if (!__env_map) {
-			__env_map = calloc(2, sizeof(char *));
-			if (__env_map) __env_map[0] = s;
-		} else {
-			for (; __env_map[j] && __env_map[j] != __environ[i]; j++);
-			if (!__env_map[j]) {
-				newmap = realloc(__env_map, sizeof(char *)*(j+2));
-				if (newmap) {
-					__env_map = newmap;
-					__env_map[j] = s;
-					__env_map[j+1] = NULL;
-				}
-			} else {
-				free(__env_map[j]);
-				__env_map[j] = s;
+	size_t i=0;
+	if (__environ) {
+		for (char **e = __environ; *e; e++, i++)
+			if (!strncmp(s, *e, l+1)) {
+				char *tmp = *e;
+				*e = s;
+				__env_rm_add(tmp, r);
+				return 0;
 			}
-		}
 	}
-	if (!__environ[i]) {
-		newenv = malloc(sizeof(char *)*(i+2));
-		if (!newenv) {
-			if (a && __env_map) __env_map[j] = 0;
-			return -1;
-		}
-		memcpy(newenv, __environ, sizeof(char *)*i);
-		newenv[i] = s;
-		newenv[i+1] = 0;
-		__environ = newenv;
+	static char **oldenv;
+	char **newenv;
+	if (__environ == oldenv) {
+		newenv = realloc(oldenv, sizeof *newenv * (i+2));
+		if (!newenv) goto oom;
+	} else {
+		newenv = malloc(sizeof *newenv * (i+2));
+		if (!newenv) goto oom;
+		if (i) memcpy(newenv, __environ, sizeof *newenv * i);
 		free(oldenv);
-		oldenv = __environ;
 	}
-
-	__environ[i] = s;
+	newenv[i] = s;
+	newenv[i+1] = 0;
+	__environ = oldenv = newenv;
+	if (r) __env_rm_add(0, r);
 	return 0;
+oom:
+	free(r);
+	return -1;
 }
 
 int putenv(char *s)
 {
-	return __putenv(s, 0);
+	size_t l = __strchrnul(s, '=') - s;
+	if (!l || !s[l]) return unsetenv(s);
+	return __putenv(s, l, 0);
 }

@@ -12,7 +12,8 @@ void *memchr(const void *src, int c, size_t n)
 {
 	const unsigned char *s = src;
 	c = (unsigned char)c;
-#ifdef __GNUC__
+/* XXX EMSCRIPTEN: add __has_feature check */
+#if defined(__GNUC__) && !__has_feature(address_sanitizer)
 	for (; ((uintptr_t)s & ALIGN) && n && *s != c; s++, n--);
 	if (n && *s != c) {
 		typedef size_t __attribute__((__may_alias__)) word;

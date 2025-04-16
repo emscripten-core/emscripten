@@ -484,7 +484,7 @@ function WebGLWorker() {
     enabledState: {} // Stores whether various GL state via glEnable/glDisable/glIsEnabled/getParameter are enabled.
   };
   var stateDisabledByDefault = [this.BLEND, this.CULL_FACE, this.DEPTH_TEST, this.DITHER, this.POLYGON_OFFSET_FILL, this.SAMPLE_ALPHA_TO_COVERAGE, this.SAMPLE_COVERAGE, this.SCISSOR_TEST, this.STENCIL_TEST];
-  for(var i in stateDisabledByDefault) {
+  for (var i in stateDisabledByDefault) {
     bindings.enabledState[stateDisabledByDefault[i]] = false; // It will be important to distinguish between false and undefined (undefined meaning the state cap enum is unknown/unsupported).
   }
 
@@ -498,7 +498,7 @@ function WebGLWorker() {
 
   this.onmessage = function(msg) {
     //dump('worker GL got ' + JSON.stringify(msg) + '\n');
-    switch(msg.op) {
+    switch (msg.op) {
       case 'setPrefetched': {
         WebGLWorker.prototype.prefetchedParameters = msg.parameters;
         WebGLWorker.prototype.prefetchedExtensions = msg.extensions;
@@ -653,7 +653,7 @@ function WebGLWorker() {
   this.createShader = function(type) {
     var id = nextId++;
     commandBuffer.push(6, type, id);
-    return { id: id, what: 'shader', type: type };
+    return { id, what: 'shader', type };
   };
   this.deleteShader = function(shader) {
     if (!shader) return;
@@ -683,7 +683,7 @@ function WebGLWorker() {
     commandBuffer.push(12, program.id, shader.id);
   };
   this.bindAttribLocation = function(program, index, name) {
-    program.nextAttributes[name] = { what: 'attribute', name: name, size: -1, location: index, type: '?' }; // fill in size, type later
+    program.nextAttributes[name] = { what: 'attribute', name, size: -1, location: index, type: '?' }; // fill in size, type later
     program.nextAttributeVec[index] = name;
     commandBuffer.push(13, program.id, index, name);
   };
@@ -723,22 +723,22 @@ function WebGLWorker() {
       source = source.replace(/\n/g, '|\n'); // barrier between lines, to make regexing easier
       var newItems = source.match(new RegExp(type + '\\s+\\w+\\s+[\\w,\\s\[\\]]+;', 'g'));
       if (!newItems) return;
-      newItems.forEach(function(item) {
+      newItems.forEach((item) => {
         var m = new RegExp(type + '\\s+(\\w+)\\s+([\\w,\\s\[\\]]+);').exec(item);
         assert(m);
-        m[2].split(',').map(function(name) { name = name.trim(); return name.search(/\s/) >= 0 ? '' : name }).filter(function(name) { return !!name }).forEach(function(name) {
+        m[2].split(',').map((name) => { name = name.trim(); return name.search(/\s/) >= 0 ? '' : name }).filter((name) => !!name).forEach((name) => {
           var size = 1;
           var open = name.indexOf('[');
           var fullname = name;
           if (open >= 0) {
             var close = name.indexOf(']');
-            size = parseInt(name.substring(open+1, close));
-            name = name.substr(0, open);
+            size = parseInt(name.slice(open+1, close));
+            name = name.slice(0, open);
             fullname = name + '[0]';
           }
           if (!obj[name]) {
-            obj[name] = { what: type, name: fullname, size: size, location: -1, type: getTypeId(m[1]) };
-            if (vec) vec.push(name);
+            obj[name] = { what: type, name: fullname, size, location: -1, type: getTypeId(m[1]) };
+            vec?.push(name);
           }
         });
       });
@@ -754,7 +754,7 @@ function WebGLWorker() {
 
     var existingAttributes = {};
 
-    program.shaders.forEach(function(shader) {
+    program.shaders.forEach((shader) => {
       parseElementType(shader, 'uniform', program.uniforms, program.uniformVec);
       parseElementType(shader, 'attribute', existingAttributes, null);
     });
@@ -801,13 +801,13 @@ function WebGLWorker() {
     var open = name.indexOf('[');
     if (open >= 0) {
       var close = name.indexOf(']');
-      index = parseInt(name.substring(open+1, close));
-      name = name.substr(0, open);
+      index = parseInt(name.slice(open+1, close));
+      name = name.slice(0, open);
     }
     if (!(name in program.uniforms)) return null;
     var id = nextId++;
     commandBuffer.push(16, program.id, fullname, id);
-    return { what: 'location', uniform: program.uniforms[name], id: id, index: index };
+    return { what: 'location', uniform: program.uniforms[name], id, index };
   };
   this.getProgramInfoLog = function(shader) {
     return ''; // optimistic assumption of success; no proxying
@@ -867,7 +867,7 @@ function WebGLWorker() {
   };
   function duplicate(something) {
     // clone data properly: handles numbers, null, typed arrays, js arrays and array buffers
-    if (!something || typeof something === 'number') return something;
+    if (!something || typeof something == 'number') return something;
     if (something.slice) return something.slice(0); // ArrayBuffer or js array
     return new something.constructor(something); // typed array
   }
@@ -1153,8 +1153,8 @@ function WebGLWorker() {
   Browser.doSwapBuffers = postRAF;
 
   var trueRAF = window.requestAnimationFrame;
-  window.requestAnimationFrame = function(func) {
-    trueRAF(function() {
+  window.requestAnimationFrame = (func) => {
+    trueRAF(() => {
       if (preRAF() === false) {
         window.requestAnimationFrame(func); // skip this frame, do it later
         return;

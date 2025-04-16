@@ -1,4 +1,4 @@
-# from http://mxr.mozilla.org/mozilla-central/source/dom/bindings/parser/WebIDL.py
+# from https://hg.mozilla.org/mozilla-central/file/tip/dom/bindings/parser/WebIDL.py
 # rev 501baeb3a034
 
 # This Source Code Form is subject to the terms of the Mozilla Public
@@ -3443,7 +3443,8 @@ class IDLMethod(IDLInterfaceMember, IDLScope):
               identifier == "Value" or
               identifier == "Operator" or
               identifier == "Const" or
-              identifier == "WebGLHandlesContextLoss"):
+              identifier == "WebGLHandlesContextLoss" or
+              identifier == "BindTo"):
             # Known attributes that we don't need to do anything with here
             pass
         else:

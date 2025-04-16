@@ -9,6 +9,8 @@ extern "C" {
 // syscall which is unnecessary indirection for us.
 int getentropy(void *buffer, size_t length);
 
+#include_next <sys/random.h>
+
 #ifdef __cplusplus
 }
 #endif

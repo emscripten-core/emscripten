@@ -58,7 +58,7 @@
  * 2.9e-17.  See also clog().
  */
 
-#include "libm.h"
+#include "complex_impl.h"
 
 #define MAXNUM 1.0e308
 
@@ -91,29 +91,17 @@ double complex catan(double complex z)
 	x = creal(z);
 	y = cimag(z);
 
-	if (x == 0.0 && y > 1.0)
-		goto ovrf;
-
 	x2 = x * x;
 	a = 1.0 - x2 - (y * y);
-	if (a == 0.0)
-		goto ovrf;
 
 	t = 0.5 * atan2(2.0 * x, a);
 	w = _redupi(t);
 
 	t = y - 1.0;
 	a = x2 + (t * t);
-	if (a == 0.0)
-		goto ovrf;
 
 	t = y + 1.0;
 	a = (x2 + t * t)/a;
-	w = w + (0.25 * log(a)) * I;
-	return w;
-
-ovrf:
-	// FIXME
-	w = MAXNUM + MAXNUM * I;
+	w = CMPLX(w, 0.25 * log(a));
 	return w;
 }

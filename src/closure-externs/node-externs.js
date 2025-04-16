@@ -60,16 +60,6 @@ wss._socket.remotePort;
 /**
  * @suppress {duplicate}
  */
-var process;
-
-/**
- * @suppress {duplicate}
- */
-var assert;
-
-/**
- * @suppress {duplicate}
- */
 var fs;
 
 /**
@@ -80,10 +70,77 @@ var fs;
 var Buffer = function(var_args) {};
 
 /**
- * @param {ArrayBuffer|SharedArrayBuffer} arrayBuffer
- * @param {number=} byteOffset
+ * @param {ArrayBuffer|SharedArrayBuffer|string} arrayBufferOrString
+ * @param {number|string=} byteOffsetOrEncoding
  * @param {number=} length
  * @return {nodeBuffer.Buffer}
  * @nosideeffects
  */
-Buffer.from = function(arrayBuffer, byteOffset, length) {};
+Buffer.from = function(arrayBufferOrString, byteOffsetOrEncoding, length) {};
+
+/**
+ * @param {number} size
+ * @param {(string|!Buffer|number)=} fill
+ * @param {string=} encoding
+ * @return {!Buffer}
+ */
+Buffer.alloc = function(size, fill, encoding) {};
+
+/**
+ * @return {boolean}
+ * @nosideeffects
+ */
+Buffer.isBuffer = function(obj) {};
+
+/**
+ * @param {number=} start
+ * @param {number=} end
+ * @return {Buffer}
+ * @nosideeffects
+ */
+Buffer.prototype.slice = function(start, end) {};
+
+/**
+ * @param {string=} encoding
+ * @param {number=} start
+ * @param {number=} end
+ * @nosideeffects
+ */
+Buffer.prototype.toString = function(encoding, start, end) {};
+
+Worker.prototype.ref = function() {};
+Worker.prototype.unref = function() {};
+
+/**
+ * @type {number}
+ */
+fs.Stats.prototype.atimeMs;
+
+/**
+ * @type {number}
+ */
+fs.Stats.prototype.mtimeMs;
+
+/**
+ * @type {number}
+ */
+fs.Stats.prototype.ctimeMs;
+
+/**
+ * @type {number}
+ */
+fs.Stats.prototype.blksize;
+
+/**
+ * @param {string} p
+ * @return {boolean}
+ * @nosideeffects
+ */
+path.isAbsolute;
+
+/**
+ * @type {Object.<string,*>}
+ */
+path.posix;
+
+crypto.randomFillSync;

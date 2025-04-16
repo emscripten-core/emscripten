@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Custom messaging proxy test</title>
+  </head>
+  <body>
+     <div>
+      <canvas id="canvas"></canvas>
+    </div>
+    <textarea id="output" rows="8"></textarea>
+    <script type="text/javascript">
+      var WebGLCLient;
+
+      function sendResult(success) {
+        if (window.sentTestResult) return;
+        window.sentTestResult = true;
+        fetch('http://localhost:8888/report_result?' + (success ? 1 : 0))
+          .then(() => window.close());
+      }
+
+      var Module = {
+        print: (function() {
+          var element = document.getElementById('output');
+          if (element) element.value = ''; // clear browser cache
+          return function(text) {
+            console.log(text);
+            if (element) {
+              element.value += text + "\n";
+              element.scrollTop = element.scrollHeight; // focus on bottom
+            }
+          };
+        })(),
+        printErr: function(text) {
+          if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+          if (0) { // XXX disabled for safety typeof dump == 'function') {
+            dump(text + '\n'); // fast, straight to the real console
+          } else {
+            console.error(text);
+          }
+        },
+        canvas: (function() {
+          var canvas = document.getElementById('canvas');
+          // As a default initial behavior, pop up an alert when webgl context is lost. To make your
+          // application robust, you may want to override this behavior before shipping!
+          // See http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2
+          canvas.addEventListener("webglcontextlost", function(e) { alert('WebGL context lost. You will need to reload the page.'); e.preventDefault(); }, false);
+
+          return canvas;
+        })(),
+
+        onCustomMessage: function(message) {
+          var data = message.data.userData;
+          switch (data.op) {
+            case 'runningMain': {
+              Module.print('runningMain with data: ' + data.data);
+              if (data.data !== '[preMain]') {
+                sendResult(false);
+              }
+              break;
+            }
+            case 'fromMain': {
+              postCustomMessage({ op: 'finish' });
+              break;
+            }
+            case 'finishing': {
+              Module.print('terminating with data: ' + data.data);
+              sendResult(data.data === '[preMain][main][postMain][finish]');
+              break;
+            }
+            default: {
+              Module.print('unknown custom message');
+              sendResult(false);
+            }
+          }
+        }
+      };
+    </script>
+    {{{ SCRIPT }}}
+    <script type="text/javascript">
+      postCustomMessage({ op: 'postMainCustomMessage', data: '[postMain]' });
+      postCustomMessage({ op: 'preMainCustomMessage', data: '[preMain]' }, { preMain: true });
+      postCustomMessage({ op: 'runMain' }, { preMain: true });
+    </script>
+  </body>
+</html>

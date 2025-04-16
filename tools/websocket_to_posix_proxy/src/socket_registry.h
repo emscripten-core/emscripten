@@ -2,8 +2,13 @@
 
 #include "posix_sockets.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Socket Registry remembers all the sockets created by incoming proxy connections, so that those sockets can be properly
 // shut down when an incoming proxy connection disconnects.
+void InitWebSocketRegistry();
 
 // Tracks that the given socket is part of the specified proxy connection. When proxyConnection disconnects, all sockets
 // used by it are shut down.
@@ -19,3 +24,7 @@ void CloseAllSocketsByConnection(int proxyConnection);
 // This is used to gate socket connections so that two proxy connections can not access
 // each others' sockets.
 bool IsSocketPartOfConnection(int proxyConnection, SOCKET_T usedSocket);
+
+#ifdef __cplusplus
+}
+#endif

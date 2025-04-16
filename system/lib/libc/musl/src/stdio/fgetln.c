@@ -8,7 +8,7 @@ char *fgetln(FILE *f, size_t *plen)
 	ssize_t l;
 	FLOCK(f);
 	ungetc(getc_unlocked(f), f);
-	if ((z=memchr(f->rpos, '\n', f->rend - f->rpos))) {
+	if (f->rend && (z=memchr(f->rpos, '\n', f->rend - f->rpos))) {
 		ret = (char *)f->rpos;
 		*plen = ++z - ret;
 		f->rpos = (void *)z;

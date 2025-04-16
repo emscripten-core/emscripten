@@ -191,9 +191,9 @@ typedef struct tre_mem_struct {
 #define tre_mem_alloc_impl __tre_mem_alloc_impl
 #define tre_mem_destroy    __tre_mem_destroy
 
-tre_mem_t tre_mem_new_impl(int provided, void *provided_block);
-void *tre_mem_alloc_impl(tre_mem_t mem, int provided, void *provided_block,
-			 int zero, size_t size);
+hidden tre_mem_t tre_mem_new_impl(int provided, void *provided_block);
+hidden void *tre_mem_alloc_impl(tre_mem_t mem, int provided, void *provided_block,
+                                int zero, size_t size);
 
 /* Returns a new memory allocator or NULL if out of memory. */
 #define tre_mem_new()  tre_mem_new_impl(0, NULL)
@@ -222,7 +222,7 @@ void *tre_mem_alloc_impl(tre_mem_t mem, int provided, void *provided_block,
 
 
 /* Frees the memory allocator and all memory allocated with it. */
-void tre_mem_destroy(tre_mem_t mem);
+hidden void tre_mem_destroy(tre_mem_t mem);
 
 #define xmalloc malloc
 #define xcalloc calloc

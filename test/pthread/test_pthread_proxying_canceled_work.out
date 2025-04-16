@@ -1,0 +1,56 @@
+testing cancel followed by proxy
+testing exit followed by proxy
+testing proxy followed by cancel
+testing proxy followed by exit
+testing cancellation of in-progress work
+checking pattern 0
+finishing task 0
+finishing task 1
+finishing task 2
+finishing task 3
+finishing task 4
+checking pattern 1
+finishing task 4
+finishing task 3
+finishing task 2
+finishing task 1
+finishing task 0
+checking pattern 2
+checking pattern 3
+finishing task 0
+finishing task 2
+finishing task 4
+checking pattern 4
+finishing task 1
+finishing task 3
+checking pattern 5
+finishing task 4
+finishing task 1
+finishing task 2
+finishing task 0
+checking pattern 0
+finishing task 0
+finishing task 1
+finishing task 2
+finishing task 3
+finishing task 4
+checking pattern 1
+finishing task 4
+finishing task 3
+finishing task 2
+finishing task 1
+finishing task 0
+checking pattern 2
+checking pattern 3
+finishing task 0
+finishing task 2
+finishing task 4
+checking pattern 4
+finishing task 1
+finishing task 3
+checking pattern 5
+finishing task 4
+finishing task 1
+finishing task 2
+finishing task 0
+done

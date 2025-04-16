@@ -1,0 +1,42 @@
+F_DUPFD 1: 1
+errno: 0
+
+F_DUPFD 2: 1
+errno: 0
+
+F_DUPFD_CLOEXEC: 1
+errno: 0
+
+F_DUPFD/error1: -1
+errno: 8
+
+F_DUPFD/error2: -1
+errno: 28
+
+F_GETFD: 0
+errno: 0
+
+F_SETFD: 0
+errno: 0
+
+F_GETFL: 1
+errno: 0
+
+F_SETFL: 0
+errno: 0
+
+F_GETFL/2: 1
+errno: 0
+
+F_GETLK: 0
+errno: 0
+lk.l_type == F_UNLCK: 1
+
+F_SETOWN: -1
+errno: 28
+
+F_GETOWN: -1
+errno: 28
+
+INVALID: -1
+errno: 28

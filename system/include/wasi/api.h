@@ -15,7 +15,7 @@
 
 /*
  * File origin:
- *   https://github.com/CraneStation/wasi-libc/blob/master/libc-bottom-half/headers/public/wasi/api.h
+ *   https://github.com/WebAssembly/wasi-libc/blob/main/libc-bottom-half/headers/public/wasi/api.h
  * Revision:
  *   2c2fc9a2fddd0927a66f1c142e65c8dab6f5c5d7
  * License:

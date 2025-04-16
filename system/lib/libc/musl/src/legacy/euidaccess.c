@@ -1,7 +1,6 @@
 #define _GNU_SOURCE
 #include <unistd.h>
 #include <fcntl.h>
-#include "libc.h"
 
 int euidaccess(const char *filename, int amode)
 {

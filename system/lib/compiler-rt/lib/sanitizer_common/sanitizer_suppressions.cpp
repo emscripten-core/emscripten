@@ -34,7 +34,7 @@ SuppressionContext::SuppressionContext(const char *suppression_types[],
 static bool GetPathAssumingFileIsRelativeToExec(const char *file_path,
                                                 /*out*/char *new_file_path,
                                                 uptr new_file_path_size) {
-  InternalScopedString exec(kMaxPathLength);
+  InternalMmapVector<char> exec(kMaxPathLength);
   if (ReadBinaryNameCached(exec.data(), exec.size())) {
     const char *file_name_pos = StripModuleName(exec.data());
     uptr path_to_exec_len = file_name_pos - exec.data();
@@ -69,7 +69,7 @@ void SuppressionContext::ParseFromFile(const char *filename) {
   if (filename[0] == '\0')
     return;
 
-  InternalScopedString new_file_path(kMaxPathLength);
+  InternalMmapVector<char> new_file_path(kMaxPathLength);
   filename = FindFile(filename, new_file_path.data(), new_file_path.size());
 
   // Read the file.
@@ -86,6 +86,7 @@ void SuppressionContext::ParseFromFile(const char *filename) {
   }
 
   Parse(file_contents);
+  UnmapOrDie(file_contents, buffer_size);
 }
 
 bool SuppressionContext::Match(const char *str, const char *type,
@@ -137,7 +138,10 @@ void SuppressionContext::Parse(const char *str) {
         }
       }
       if (type == suppression_types_num_) {
-        Printf("%s: failed to parse suppressions\n", SanitizerToolName);
+        Printf("%s: failed to parse suppressions.\n", SanitizerToolName);
+        Printf("Supported suppression types are:\n");
+        for (type = 0; type < suppression_types_num_; type++)
+          Printf("- %s\n", suppression_types_[type]);
         Die();
       }
       Suppression s;

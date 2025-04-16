@@ -1,5 +1,6 @@
 #include "stdio_impl.h"
 #include <fcntl.h>
+#include <unistd.h>
 
 /* The basic idea of this implementation is to open a new FILE,
  * hack the necessary parts of the new FILE into the old one, then
@@ -8,8 +9,6 @@
 /* Locking IS necessary because another thread may provably hold the
  * lock, via flockfile or otherwise, when freopen is called, and in that
  * case, freopen cannot act until the lock is released. */
-
-int __dup3(int, int, int);
 
 FILE *freopen(const char *restrict filename, const char *restrict mode, FILE *restrict f)
 {
@@ -43,6 +42,8 @@ FILE *freopen(const char *restrict filename, const char *restrict mode, FILE *re
 		fclose(f2);
 	}
 
+	f->mode = 0;
+	f->locale = 0;
 	FUNLOCK(f);
 	return f;
 
@@ -52,5 +53,3 @@ fail:
 	fclose(f);
 	return NULL;
 }
-
-LFS64(freopen);

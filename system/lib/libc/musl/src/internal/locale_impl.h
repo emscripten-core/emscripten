@@ -6,7 +6,7 @@
 #include "libc.h"
 #include "pthread_impl.h"
 
-#define LOCALE_NAME_MAX 15
+#define LOCALE_NAME_MAX 23
 
 struct __locale_map {
 	const void *map;
@@ -15,17 +15,32 @@ struct __locale_map {
 	const struct __locale_map *next;
 };
 
-extern const struct __locale_map __c_dot_utf8;
-extern const struct __locale_struct __c_locale;
-extern const struct __locale_struct __c_dot_utf8_locale;
+extern hidden volatile int __locale_lock[1];
 
-const struct __locale_map *__get_locale(int, const char *);
-const char *__mo_lookup(const void *, size_t, const char *);
-const char *__lctrans(const char *, const struct __locale_map *);
-const char *__lctrans_cur(const char *);
+extern hidden const struct __locale_map __c_dot_utf8;
+extern hidden const struct __locale_struct __c_locale;
+extern hidden const struct __locale_struct __c_dot_utf8_locale;
 
+hidden const struct __locale_map *__get_locale(int, const char *);
+hidden const char *__mo_lookup(const void *, size_t, const char *);
+hidden const char *__lctrans(const char *, const struct __locale_map *);
+hidden const char *__lctrans_cur(const char *);
+hidden const char *__lctrans_impl(const char *, const struct __locale_map *);
+hidden int __loc_is_allocated(locale_t);
+hidden char *__gettextdomain(void);
+
+#define LOC_MAP_FAILED ((const struct __locale_map *)-1)
+
+#if __EMSCRIPTEN__
+// Disable message translation completely under emscripten since we don't
+// support loading any actual locale data, and even looking up the current
+// local via CURRENT_LOCALE via TLS is not free.
+#define LCTRANS(msg, lc, loc) msg
+#define LCTRANS_CUR(msg) msg
+#else
 #define LCTRANS(msg, lc, loc) __lctrans(msg, (loc)->cat[(lc)])
 #define LCTRANS_CUR(msg) __lctrans_cur(msg)
+#endif
 
 #define C_LOCALE ((locale_t)&__c_locale)
 #define UTF8_LOCALE ((locale_t)&__c_dot_utf8_locale)

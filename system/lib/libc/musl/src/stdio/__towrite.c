@@ -3,7 +3,7 @@
 int __towrite(FILE *f)
 {
 	f->mode |= f->mode-1;
-	if (f->flags & (F_NOWR)) {
+	if (f->flags & F_NOWR) {
 		f->flags |= F_ERR;
 		return EOF;
 	}
@@ -17,9 +17,7 @@ int __towrite(FILE *f)
 	return 0;
 }
 
-void __stdio_exit_needed(void);
-
-void __towrite_needs_stdio_exit()
+hidden void __towrite_needs_stdio_exit()
 {
 	__stdio_exit_needed();
 }

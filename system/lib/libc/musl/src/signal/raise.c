@@ -5,11 +5,9 @@
 
 int raise(int sig)
 {
-	int tid, ret;
 	sigset_t set;
 	__block_app_sigs(&set);
-	tid = __syscall(SYS_gettid);
-	ret = syscall(SYS_tkill, tid, sig);
+	int ret = syscall(SYS_tkill, __pthread_self()->tid, sig);
 	__restore_sigs(&set);
 	return ret;
 }

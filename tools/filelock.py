@@ -25,6 +25,10 @@
 
 # This software package was obtained from
 # https://github.com/benediktschmitt/py-filelock
+#
+# Local changes:
+# - Changed logger.info to logger.warn to avoid displaying logging
+#   information under normal emscripten usage.
 
 """
 A platform independent file lock that supports the with-statement.
@@ -115,7 +119,7 @@ class Timeout(TimeoutError):
 # automatically.
 #
 # :seealso: issue #37 (memory leak)
-class _Acquire_ReturnProxy(object):
+class _Acquire_ReturnProxy:
 
     def __init__(self, lock):
         self.lock = lock
@@ -129,7 +133,7 @@ class _Acquire_ReturnProxy(object):
         return None
 
 
-class BaseFileLock(object):
+class BaseFileLock:
     """
     Implements the base class of a file lock.
     """
@@ -274,7 +278,7 @@ class BaseFileLock(object):
                         self._acquire()
 
                 if self.is_locked:
-                    logger().info('Lock %s acquired on %s', lock_id, lock_filename)
+                    logger().debug('Lock %s acquired on %s', lock_id, lock_filename)
                     break
                 elif timeout >= 0 and time.time() - start_time > timeout:
                     logger().debug('Timeout on acquiring lock %s on %s', lock_id, lock_filename)
@@ -297,7 +301,7 @@ class BaseFileLock(object):
         """
         Releases the file lock.
 
-        Please note, that the lock is only completly released, if the lock
+        Please note, that the lock is only completely released, if the lock
         counter is 0.
 
         Also note, that the lock file itself is not automatically deleted.
@@ -318,7 +322,7 @@ class BaseFileLock(object):
                     logger().debug('Attempting to release lock %s on %s', lock_id, lock_filename)
                     self._release()
                     self._lock_counter = 0
-                    logger().info('Lock %s released on %s', lock_id, lock_filename)
+                    logger().debug('Lock %s released on %s', lock_id, lock_filename)
 
         return None
 
@@ -391,16 +395,22 @@ class UnixFileLock(BaseFileLock):
         except (IOError, OSError):
             os.close(fd)
         else:
-            self._lock_file_fd = fd
+            st = os.fstat(fd);
+            if st.st_nlink == 0:
+              # We raced with another process that deleted the lock file before
+              # we called fcntl.flock. This means that lock is not valid (since
+              # another process will just lock a different file) and we need to
+              # try again.
+              # See https://stackoverflow.com/a/51070775
+              os.close(fd)
+            else:
+              self._lock_file_fd = fd
         return None
 
     def _release(self):
-        # Do not remove the lockfile:
-        #
-        #   https://github.com/benediktschmitt/py-filelock/issues/31
-        #   https://stackoverflow.com/questions/17708885/flock-removing-locked-file-without-race-condition
         fd = self._lock_file_fd
         self._lock_file_fd = None
+        os.unlink(self._lock_file)
         fcntl.flock(fd, fcntl.LOCK_UN)
         os.close(fd)
         return None

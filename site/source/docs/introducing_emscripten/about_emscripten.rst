@@ -8,11 +8,11 @@ Emscripten is a complete :ref:`Open Source <emscripten-license>` compiler
 toolchain to WebAssembly. Using Emscripten you can:
 
 - Compile C and C++ code, or any other language that uses LLVM, into WebAssembly,
-  and run it on the Web, Node.js, or other wasm runtimes.
+  and run it on the Web, Node.js, or other Wasm runtimes.
 - Compile the C/C++ **runtimes** of other languages into WebAssembly, and then
   run code in those other languages in an *indirect* way (for example, this has
   been done for
-  `Python <https://github.com/iodide-project/pyodide>`_ and
+  `Python <https://github.com/pyodide/pyodide>`_ and
   `Lua <https://daurnimator.github.io/lua.vm.js/lua.vm.js.html>`_).
 
 Practically any **portable** C or C++ codebase can be compiled into WebAssembly

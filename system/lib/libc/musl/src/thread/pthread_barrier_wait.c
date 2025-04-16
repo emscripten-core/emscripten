@@ -87,14 +87,26 @@ int pthread_barrier_wait(pthread_barrier_t *b)
 		while (spins-- && !inst->finished)
 			a_spin();
 		a_inc(&inst->finished);
-		while (inst->finished == 1) {
 #ifdef __EMSCRIPTEN__
-			emscripten_futex_wait(&inst->finished, 1, INFINITY);
-#else
-			__syscall(SYS_futex,&inst->finished,FUTEX_WAIT|128,1,0) != -ENOSYS
-			|| __syscall(SYS_futex,&inst->finished,FUTEX_WAIT,1,0);
-#endif
+		int is_runtime_thread = emscripten_is_main_runtime_thread();
+		while (inst->finished == 1) {
+			if (is_runtime_thread) {
+				int e;
+				do {
+					// Main runtime thread may need to run proxied calls, so sleep in very small slices to be responsive.
+					e = emscripten_futex_wait(&inst->finished, 1, 1);
+				} while (e == -ETIMEDOUT);
+			} else {
+				// Can wait in one go.
+				emscripten_futex_wait(&inst->finished, 1, INFINITY);
+			}
 		}
+#else
+		while (inst->finished == 1) {
+			__syscall(SYS_futex,&inst->finished,FUTEX_WAIT|FUTEX_PRIVATE,1,0) != -ENOSYS
+			|| __syscall(SYS_futex,&inst->finished,FUTEX_WAIT,1,0);
+		}
+#endif
 		return PTHREAD_BARRIER_SERIAL_THREAD;
 	}
 

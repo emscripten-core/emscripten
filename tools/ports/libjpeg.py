@@ -4,11 +4,9 @@
 # found in the LICENSE file.
 
 import os
-import shutil
-import logging
 
-VERSION = '9c'
-HASH = '2b581c60ae401a79bbbe748ff2deeda5acd50bfd2ea22e5926e36d34b9ebcffb6580b0ff48e972c1441583e30e21e1ea821ca0423f9c67ce08a31dffabdbe6b7'
+VERSION = '9f'
+HASH = '7f733d79cf176c690dcf127352f9aa7ec48000455944f286faae606cdeada6f6865b4a3f9f01bda8947b5b1089bb3e52d2b56879b6e871279ec5cbd1829304dc'
 
 
 def needed(settings):
@@ -16,46 +14,31 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('libjpeg', 'https://dl.bintray.com/homebrew/mirror/jpeg-9c.tar.gz', 'jpeg-9c', sha512hash=HASH)
+  # Archive mirrored from http://www.ijg.org/files/jpegsrc.v9f.tar.gz.
+  # We have issues where python urllib was not able to load from the www.ijg.org webserver
+  # and was resulting in 403: Forbidden.
+  ports.fetch_project('libjpeg', f'https://storage.googleapis.com/webassembly/emscripten-ports/jpegsrc.v{VERSION}.tar.gz', sha512hash=HASH)
 
-  libname = ports.get_lib_name('libjpeg')
+  def create(final):
+    source_path = ports.get_dir('libjpeg', f'jpeg-{VERSION}')
+    ports.write_file(os.path.join(source_path, 'jconfig.h'), jconfig_h)
+    ports.install_headers(source_path)
+    excludes = [
+      'ansi2knr.c', 'cjpeg.c', 'cjpegalt.c', 'ckconfig.c', 'djpeg.c', 'djpegalt.c', 'example.c',
+      'jmemansi.c', 'jmemdos.c', 'jmemmac.c', 'jmemname.c',
+      'jpegtran.c', 'rdjpgcom.c', 'wrjpgcom.c',
+    ]
+    ports.build_port(source_path, final, 'libjpeg', exclude_files=excludes)
 
-  def create():
-    logging.info('building port: libjpeg')
-
-    source_path = os.path.join(ports.get_dir(), 'libjpeg', 'jpeg-9c')
-    dest_path = os.path.join(ports.get_build_dir(), 'libjpeg')
-
-    shutil.rmtree(dest_path, ignore_errors=True)
-    shutil.copytree(source_path, dest_path)
-
-    open(os.path.join(dest_path, 'jconfig.h'), 'w').write(jconfig_h)
-    ports.install_headers(dest_path)
-
-    final = os.path.join(ports.get_build_dir(), 'libjpeg', libname)
-    ports.build_port(
-      dest_path, final,
-      exclude_files=[
-        'ansi2knr.c', 'cjpeg.c', 'ckconfig.c', 'djpeg.c', 'example.c',
-        'jmemansi.c', 'jmemdos.c', 'jmemmac.c', 'jmemname.c',
-        'jpegtran.c', 'rdjpgcom.c', 'wrjpgcom.c',
-      ]
-    )
-    return final
-
-  return [shared.Cache.get(libname, create, what='port')]
+  return [shared.cache.get_lib('libjpeg.a', create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.Cache.erase_file(ports.get_lib_name('libjpeg'))
-
-
-def process_args(ports):
-  return []
+  shared.cache.erase_lib('libjpeg.a')
 
 
 def show():
-  return 'libjpeg (USE_LIBJPEG=1; BSD license)'
+  return 'libjpeg (-sUSE_LIBJPEG=1 or --use-port=libjpeg; BSD license)'
 
 
 jconfig_h = '''/* jconfig.h.  Generated from jconfig.cfg by configure.  */

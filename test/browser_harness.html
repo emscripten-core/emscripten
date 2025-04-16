@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Emscripten Browser Test Harness</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+    .topbar {
+      background-color: #79f;
+    }
+    .full {
+      border: none;
+      width: 100%;
+      flex: 1;
+    }
+  </style>
+  <script>
+    var COMMAND_PREFIX = 'COMMAND:';
+    var counter = 0;
+    function check() {
+      fetch('/check')
+        .then((rsp) => rsp.text())
+        .then((responseText) => {
+          if (responseText.startsWith(COMMAND_PREFIX)) {
+            var url = responseText.substr(COMMAND_PREFIX.length);
+            iframe.src = url;
+            document.getElementById('count').textContent = counter++;
+          }
+          // Polling for the next test to start: we just keep asking if we
+          // should load a new page, since the iframe doesn't currently have
+          // a way to tell us it completed (even if it did, we'd need to poll
+          // the server to know when the next test page is ready to load).
+          setTimeout(check, 10);
+        })
+        .catch(() => {
+          document.body.innerHTML = 'Tests complete. View log in console.';
+          // Attempt to close the main window.  This works on chrome
+          // but fails on firefox with: `Scripts may not close windows that
+          // were not opened by script.`
+          window.close();
+        });
+    }
+    document.addEventListener('DOMContentLoaded', check);
+  </script>
+</head>
+<body>
+  <span class="topbar">Running test <span id="count"></span>...</span>
+  <iframe class="full" id="iframe" allowfullscreen="true"></iframe>
+</body>
+</html>
+

@@ -1,7 +1,5 @@
 #include <time.h>
 
-int __clock_gettime(clockid_t, struct timespec *);
-
 /* There is no other implemented value than TIME_UTC; all other values
  * are considered erroneous. */
 int timespec_get(struct timespec * ts, int base)

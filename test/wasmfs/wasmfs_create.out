@@ -1,0 +1,12 @@
+Test
+Errno: File exists
+Errno: Not a directory
+Errno: No error information
+Read 0 bytes
+Wrote 0 bytes
+Wrote 25 bytes
+Wrote 5 bytes
+Wrote 35 bytes
+Read 0 bytes
+Read 65 bytes
+File contents: Test

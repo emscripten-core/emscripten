@@ -1,0 +1,144 @@
+Name
+
+    EMSCRIPTEN_explicit_uniform_location
+
+Name Strings
+
+    GL_EMSCRIPTEN_explicit_uniform_location
+
+Contributors
+
+    Jukka Jylänki, Unity Technologies
+    Brendan Duncan, Unity Technologies
+
+Contact
+
+    Jukka Jylänki, Unity Technologies (jukkaj 'at' unity3d.com)
+    Brendan Duncan, Unity Technologies (brendan.duncan 'at' unity3d.com)
+
+Status
+
+    Implemented in Emscripten 2.0.17 and newer for OpenGL ES 2 and
+    OpenGL ES 3 contexts. (March 2021)
+
+Version
+
+    Date: March 21, 2021
+    Revision: 1
+
+Dependencies
+
+    Emscripten 2.0.17 compiler targeting OpenGL ES 2.0 or OpenGL ES 3.0
+    versions.
+
+    Written against the OpenGL ES 2.0.25 and WebGL 1 specifications.
+
+Overview
+
+    WebGL API utilizes opaque WebGLUniformLocation interface objects to
+    represent locations of uniforms in shader programs. When translating
+    the WebGL API to be utilized from WebAssembly applications, these
+    interface objects must be tabulated to an array of integer-based locations
+    since WebAssembly programs are unable to hold references to JavaScript
+    types.
+
+    This integer mapping matches the native OpenGL and OpenGL ES utilization
+    of integers to represent locations of shader uniforms.
+
+    Further, in native OpenGL and OpenGL ES programs, applications may
+    perform integer arithmetic on the shader uniform locations to compute
+    index locations of other shader uniforms, subject to the packing rules
+    of the shader variables for arrays and structs.
+
+    For example, an array of uniforms "vec4 colors[3];" would consist of
+    three consecutive uniform index integers in the compiler shader program.
+    An application may call glGetUniformLocation() for uniform "colors[0]",
+    and then use integer arithmetic in C/C++ program code to upload data for
+    uniforms "colors[1]" and "colors[2]" individually, or choose to upload
+    a sub-range of the array collectively.
+
+    The Emscripten WebGL runtime library ensures that this kind of uniform
+    location integer arithmetic is supported, even though WebGL
+    implementation itself in browsers has no concept of this, due to the
+    opaque WebGLUniformLocation objects being employed.
+
+    In native OpenGL and OpenGL ES applications, a programmer may choose
+    to specify the integer location of a shader uniform in advance directly
+    in the submitted shader code. The GLSL directive
+
+        layout(location = x) uniform mat4 world;
+
+    specifies that the given uniform should be accessible via location 'x',
+    where x is an integer in the range [0, GL_MAX_UNIFORM_LOCATIONS-1].
+
+    Since WebGL specification does not recognize uniform locations as
+    integers, the notion of layout location qualifiers do not apply to WebGL.
+    However for WebAssembly-based applications they do, and can provide a
+    meaningful way for applications to pre-layout the uniforms in a shader to
+    simplify program structure.
+
+    This extension adds support for specifying layout location qualifiers in
+    GLSL shaders in OpenGL and OpenGL ES programs compiled via Emscripten.
+
+    The main benefit of layout location qualifiers in shaders is to enable
+    aligning shader uniforms across multiple compiled shader programs. For
+    example, if several compiler programs had a common shader uniform variable
+    "vec4 fogColor", without explicit location qualifiers, C/C++ code would
+    have to manage a mapping table that would track the uniform location of
+    fogColor in each shader program. With explicit uniform locations, all shaders
+    can be compiled to locate fogColor in the same location index, thus greatly
+    simplifying C/C++ engine code.
+
+    In sibling specifications, support for explicit uniform locations exist in
+    OpenGL ES 3.1 and Desktop OpenGL 4.3 core specifications. Additionally,
+    Desktop OpenGL 3.3 and newer may support the ARB_explicit_uniform_location
+    extension that also offers the same functionality as this extension
+    EMSCRIPTEN_explicit_uniform_location does.
+
+New Procedures and Functions
+
+    None.
+
+New Tokens
+
+        GL_MAX_UNIFORM_LOCATIONS                       0x826E
+
+Additions to Chapter 6 of the OpenGL 2.0 Specification (State and State Requests)
+
+ -- Section 6.1.1, Simple Queries
+
+    In OpenGL ES 2.0 and OpenGL ES 3.0 contexts, the GetIntegerv, entry
+    point parameter 'value' accepts the token GL_MAX_UNIFORM_LOCATIONS, which
+    returns the upper limit, exclusive, that can be specified for integer x
+    in the GLSL uniform variable qualifier "layout(location = x)".
+
+    The value returned by GL_MAX_UNIFORM_LOCATIONS must be at least 1024.
+
+Additions to OpenGL ES Shading Language 1.00 Specification
+
+    The qualifier "layout(location = x)" can be prepended to a uniform
+    variable directive to bind the integer mapping location for the given
+    uniform throughout the lifetime of the shader program:
+
+        layout(location = x) uniform mat4 world;
+
+Additions to Emscripten compiler
+
+    Instead of utilizing the runtime method WebGLRenderingContext.getExtension()
+    to coordinate enabling the extension, EMSCRIPTEN_explicit_uniform_location
+    activation is controlled at compile time by specifying the flag
+
+        -sGL_EXPLICIT_UNIFORM_LOCATION
+
+    to 'emcc' or 'em++' linker command line in the Emscripten compiler.
+
+    When this flag is passed, the extension EMSCRIPTEN_explicit_uniform_location
+    is enabled for all contexts created in the application.
+
+    The choice of compile time activation is due to the considerable increase in
+    code size that is involved in enabling this extension.
+
+Revision History
+
+    Revision 1.0, March 21, 2021: juj
+        - First version

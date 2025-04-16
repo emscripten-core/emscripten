@@ -119,7 +119,8 @@ class SizeClassAllocator32 {
   typedef SizeClassAllocator32<Params> ThisT;
   typedef SizeClassAllocator32LocalCache<ThisT> AllocatorCache;
 
-  void Init(s32 release_to_os_interval_ms) {
+  void Init(s32 release_to_os_interval_ms, uptr heap_start = 0) {
+    CHECK(!heap_start);
     possible_regions.Init();
     internal_memset(size_class_info_array, 0, sizeof(size_class_info_array));
   }
@@ -153,6 +154,7 @@ class SizeClassAllocator32 {
   }
 
   void *GetMetaData(const void *p) {
+    CHECK(kMetadataSize);
     CHECK(PointerIsMine(p));
     uptr mem = reinterpret_cast<uptr>(p);
     uptr beg = ComputeRegionBeg(mem);
@@ -187,7 +189,7 @@ class SizeClassAllocator32 {
     sci->free_list.push_front(b);
   }
 
-  bool PointerIsMine(const void *p) {
+  bool PointerIsMine(const void *p) const {
     uptr mem = reinterpret_cast<uptr>(p);
     if (SANITIZER_SIGN_EXTENDED_ADDRESSES)
       mem &= (kSpaceSize - 1);
@@ -196,8 +198,9 @@ class SizeClassAllocator32 {
     return GetSizeClass(p) != 0;
   }
 
-  uptr GetSizeClass(const void *p) {
-    return possible_regions[ComputeRegionId(reinterpret_cast<uptr>(p))];
+  uptr GetSizeClass(const void *p) const {
+    uptr id = ComputeRegionId(reinterpret_cast<uptr>(p));
+    return possible_regions.contains(id) ? possible_regions[id] : 0;
   }
 
   void *GetBlockBegin(const void *p) {
@@ -235,13 +238,13 @@ class SizeClassAllocator32 {
 
   // ForceLock() and ForceUnlock() are needed to implement Darwin malloc zone
   // introspection API.
-  void ForceLock() {
+  void ForceLock() SANITIZER_NO_THREAD_SAFETY_ANALYSIS {
     for (uptr i = 0; i < kNumClasses; i++) {
       GetSizeClassInfo(i)->mutex.Lock();
     }
   }
 
-  void ForceUnlock() {
+  void ForceUnlock() SANITIZER_NO_THREAD_SAFETY_ANALYSIS {
     for (int i = kNumClasses - 1; i >= 0; i--) {
       GetSizeClassInfo(i)->mutex.Unlock();
     }
@@ -249,9 +252,9 @@ class SizeClassAllocator32 {
 
   // Iterate over all existing chunks.
   // The allocator must be locked when calling this function.
-  void ForEachChunk(ForEachChunkCallback callback, void *arg) {
+  void ForEachChunk(ForEachChunkCallback callback, void *arg) const {
     for (uptr region = 0; region < kNumPossibleRegions; region++)
-      if (possible_regions[region]) {
+      if (possible_regions.contains(region) && possible_regions[region]) {
         uptr chunk_size = ClassIdToSize(possible_regions[region]);
         uptr max_chunks_in_region = kRegionSize / (chunk_size + kMetadataSize);
         uptr region_beg = region * kRegionSize;
@@ -275,7 +278,7 @@ class SizeClassAllocator32 {
   static const uptr kRegionSize = 1 << kRegionSizeLog;
   static const uptr kNumPossibleRegions = kSpaceSize / kRegionSize;
 
-  struct ALIGNED(SANITIZER_CACHE_LINE_SIZE) SizeClassInfo {
+  struct alignas(SANITIZER_CACHE_LINE_SIZE) SizeClassInfo {
     StaticSpinMutex mutex;
     IntrusiveList<TransferBatch> free_list;
     u32 rand_state;
@@ -290,9 +293,7 @@ class SizeClassAllocator32 {
     return res;
   }
 
-  uptr ComputeRegionBeg(uptr mem) {
-    return mem & ~(kRegionSize - 1);
-  }
+  uptr ComputeRegionBeg(uptr mem) const { return mem & ~(kRegionSize - 1); }
 
   uptr AllocateRegion(AllocatorStats *stat, uptr class_id) {
     DCHECK_LT(class_id, kNumClasses);
@@ -303,7 +304,7 @@ class SizeClassAllocator32 {
     MapUnmapCallback().OnMap(res, kRegionSize);
     stat->Add(AllocatorStatMapped, kRegionSize);
     CHECK(IsAligned(res, kRegionSize));
-    possible_regions.set(ComputeRegionId(res), static_cast<u8>(class_id));
+    possible_regions[ComputeRegionId(res)] = class_id;
     return res;
   }
 
@@ -352,7 +353,7 @@ class SizeClassAllocator32 {
     DCHECK_GT(max_count, 0);
     TransferBatch *b = nullptr;
     constexpr uptr kShuffleArraySize = 48;
-    uptr shuffle_array[kShuffleArraySize];
+    UNINITIALIZED uptr shuffle_array[kShuffleArraySize];
     uptr count = 0;
     for (uptr i = region; i < region + n_chunks * size; i += size) {
       shuffle_array[count++] = i;

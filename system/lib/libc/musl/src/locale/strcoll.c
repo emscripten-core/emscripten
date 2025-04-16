@@ -1,7 +1,6 @@
 #include <string.h>
 #include <locale.h>
 #include "locale_impl.h"
-#include "libc.h"
 
 int __strcoll_l(const char *l, const char *r, locale_t loc)
 {

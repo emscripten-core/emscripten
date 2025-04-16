@@ -12,23 +12,26 @@ char *fgets(char *restrict s, int n, FILE *restrict f)
 
 	FLOCK(f);
 
-	if (n--<=1) {
+	if (n<=1) {
 		f->mode |= f->mode-1;
 		FUNLOCK(f);
-		if (n) return 0;
+		if (n<1) return 0;
 		*s = 0;
 		return s;
 	}
+	n--;
 
 	while (n) {
-		z = memchr(f->rpos, '\n', f->rend - f->rpos);
-		k = z ? z - f->rpos + 1 : f->rend - f->rpos;
-		k = MIN(k, n);
-		memcpy(p, f->rpos, k);
-		f->rpos += k;
-		p += k;
-		n -= k;
-		if (z || !n) break;
+		if (f->rpos != f->rend) {
+			z = memchr(f->rpos, '\n', f->rend - f->rpos);
+			k = z ? z - f->rpos + 1 : f->rend - f->rpos;
+			k = MIN(k, n);
+			memcpy(p, f->rpos, k);
+			f->rpos += k;
+			p += k;
+			n -= k;
+			if (z || !n) break;
+		}
 		if ((c = getc_unlocked(f)) < 0) {
 			if (p==s || !feof(f)) s = 0;
 			break;

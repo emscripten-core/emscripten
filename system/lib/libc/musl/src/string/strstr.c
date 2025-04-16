@@ -10,16 +10,16 @@ static char *twobyte_strstr(const unsigned char *h, const unsigned char *n)
 
 static char *threebyte_strstr(const unsigned char *h, const unsigned char *n)
 {
-	uint32_t nw = n[0]<<24 | n[1]<<16 | n[2]<<8;
-	uint32_t hw = h[0]<<24 | h[1]<<16 | h[2]<<8;
+	uint32_t nw = (uint32_t)n[0]<<24 | n[1]<<16 | n[2]<<8;
+	uint32_t hw = (uint32_t)h[0]<<24 | h[1]<<16 | h[2]<<8;
 	for (h+=2; *h && hw != nw; hw = (hw|*++h)<<8);
 	return *h ? (char *)h-2 : 0;
 }
 
 static char *fourbyte_strstr(const unsigned char *h, const unsigned char *n)
 {
-	uint32_t nw = n[0]<<24 | n[1]<<16 | n[2]<<8 | n[3];
-	uint32_t hw = h[0]<<24 | h[1]<<16 | h[2]<<8 | h[3];
+	uint32_t nw = (uint32_t)n[0]<<24 | n[1]<<16 | n[2]<<8 | n[3];
+	uint32_t hw = (uint32_t)h[0]<<24 | h[1]<<16 | h[2]<<8 | h[3];
 	for (h+=3; *h && hw != nw; hw = hw<<8 | *++h);
 	return *h ? (char *)h-3 : 0;
 }
@@ -96,7 +96,7 @@ static char *twoway_strstr(const unsigned char *h, const unsigned char *n)
 	for (;;) {
 		/* Update incremental end-of-haystack pointer */
 		if (z-h < l) {
-			/* Fast estimate for MIN(l,63) */
+			/* Fast estimate for MAX(l,63) */
 			size_t grow = l | 63;
 			const unsigned char *z2 = memchr(z, 0, grow);
 			if (z2) {
@@ -108,9 +108,8 @@ static char *twoway_strstr(const unsigned char *h, const unsigned char *n)
 		/* Check last byte first; advance by shift on mismatch */
 		if (BITOP(byteset, h[l-1], &)) {
 			k = l-shift[h[l-1]];
-			//printf("adv by %zu (on %c) at [%s] (%zu;l=%zu)\n", k, h[l-1], h, shift[h[l-1]], l);
 			if (k) {
-				if (mem0 && mem && k < p) k = l-p;
+				if (k < mem) k = mem;
 				h += k;
 				mem = 0;
 				continue;

@@ -40,31 +40,41 @@ COMMON_FLAG(bool, fast_unwind_on_check, false,
 COMMON_FLAG(bool, fast_unwind_on_fatal, false,
             "If available, use the fast frame-pointer-based unwinder on fatal "
             "errors.")
-COMMON_FLAG(bool, fast_unwind_on_malloc, true,
+// ARM thumb/thumb2 frame pointer is inconsistent on GCC and Clang [1]
+// and fast-unwider is also unreliable with mixing arm and thumb code [2].
+// [1] https://gcc.gnu.org/bugzilla/show_bug.cgi?id=92172
+// [2] https://bugs.llvm.org/show_bug.cgi?id=44158
+COMMON_FLAG(bool, fast_unwind_on_malloc,
+            !(SANITIZER_LINUX && !SANITIZER_ANDROID && SANITIZER_ARM),
             "If available, use the fast frame-pointer-based unwinder on "
             "malloc/free.")
 COMMON_FLAG(bool, handle_ioctl, false, "Intercept and handle ioctl requests.")
 COMMON_FLAG(int, malloc_context_size, 1,
             "Max number of stack frames kept for each allocation/deallocation.")
 COMMON_FLAG(
-    const char *, log_path, "stderr",
+    const char *, log_path, nullptr,
     "Write logs to \"log_path.pid\". The special values are \"stdout\" and "
-    "\"stderr\". The default is \"stderr\".")
+    "\"stderr\". If unspecified, defaults to \"stderr\".")
 COMMON_FLAG(
     bool, log_exe_name, false,
     "Mention name of executable when reporting error and "
     "append executable name to logs (as in \"log_path.exe_name.pid\").")
+COMMON_FLAG(const char *, log_suffix, nullptr,
+            "String to append to log file name, e.g. \".txt\".")
 COMMON_FLAG(
-    bool, log_to_syslog, (bool)SANITIZER_ANDROID || (bool)SANITIZER_MAC,
+    bool, log_to_syslog, (bool)SANITIZER_ANDROID || (bool)SANITIZER_APPLE,
     "Write all sanitizer output to syslog in addition to other means of "
     "logging.")
 COMMON_FLAG(
     int, verbosity, 0,
     "Verbosity level (0 - silent, 1 - a bit of output, 2+ - more output).")
-COMMON_FLAG(bool, strip_env, 1,
+COMMON_FLAG(bool, strip_env, true,
             "Whether to remove the sanitizer from DYLD_INSERT_LIBRARIES to "
-            "avoid passing it to children. Default is true.")
-COMMON_FLAG(bool, detect_leaks, !SANITIZER_MAC, "Enable memory leak detection.")
+            "avoid passing it to children on Apple platforms. Default is true.")
+COMMON_FLAG(bool, verify_interceptors, true,
+            "Verify that interceptors are working on Apple platforms. Default "
+            "is true.")
+COMMON_FLAG(bool, detect_leaks, !SANITIZER_APPLE, "Enable memory leak detection.")
 COMMON_FLAG(
     bool, leak_check_at_exit, true,
     "Invoke leak checking in an atexit handler. Has no effect if "
@@ -77,8 +87,9 @@ COMMON_FLAG(bool, print_summary, true,
             "If false, disable printing error summaries in addition to error "
             "reports.")
 COMMON_FLAG(int, print_module_map, 0,
-            "OS X only (0 - don't print, 1 - print only once before process "
-            "exits, 2 - print after each report).")
+            "Print the process module map where supported (0 - don't print, "
+            "1 - print only once before process exits, 2 - print after each "
+            "report).")
 COMMON_FLAG(bool, check_printf, true, "Check printf arguments.")
 #define COMMON_FLAG_HANDLE_SIGNAL_HELP(signal) \
     "Controls custom tool's " #signal " handler (0 - do not registers the " \
@@ -152,6 +163,10 @@ COMMON_FLAG(
 COMMON_FLAG(const char *, coverage_dir, ".",
             "Target directory for coverage dumps. Defaults to the current "
             "directory.")
+COMMON_FLAG(const char *, cov_8bit_counters_out, "",
+    "If non-empty, write 8bit counters to this file. ")
+COMMON_FLAG(const char *, cov_pcs_out, "",
+    "If non-empty, write the coverage pc table to this file. ")
 COMMON_FLAG(bool, full_address_space, false,
             "Sanitize complete address space; "
             "by default kernel area on 32-bit platforms will not be sanitized")
@@ -167,6 +182,7 @@ COMMON_FLAG(bool, use_madv_dontdump, true,
           "in core file.")
 COMMON_FLAG(bool, symbolize_inline_frames, true,
             "Print inlined frames in stacktraces. Defaults to true.")
+COMMON_FLAG(bool, demangle, true, "Print demangled symbols.")
 COMMON_FLAG(bool, symbolize_vs_style, false,
             "Print file locations in Visual Studio style (e.g: "
             " file(10,42): ...")
@@ -179,6 +195,8 @@ COMMON_FLAG(const char *, stack_trace_format, "DEFAULT",
             "Format string used to render stack frames. "
             "See sanitizer_stacktrace_printer.h for the format description. "
             "Use DEFAULT to get default format.")
+COMMON_FLAG(int, compress_stack_depot, 0,
+            "Compress stack depot to save memory.")
 COMMON_FLAG(bool, no_huge_pages_for_shadow, true,
             "If true, the shadow is not allowed to use huge pages. ")
 COMMON_FLAG(bool, strict_string_checks, false,
@@ -195,6 +213,9 @@ COMMON_FLAG(bool, intercept_strtok, true,
 COMMON_FLAG(bool, intercept_strpbrk, true,
             "If set, uses custom wrappers for strpbrk function "
             "to find more errors.")
+COMMON_FLAG(
+    bool, intercept_strcmp, true,
+    "If set, uses custom wrappers for strcmp functions to find more errors.")
 COMMON_FLAG(bool, intercept_strlen, true,
             "If set, uses custom wrappers for strlen and strnlen functions "
             "to find more errors.")
@@ -227,7 +248,7 @@ COMMON_FLAG(bool, decorate_proc_maps, (bool)SANITIZER_ANDROID,
 COMMON_FLAG(int, exitcode, 1, "Override the program exit status if the tool "
                               "found an error")
 COMMON_FLAG(
-    bool, abort_on_error, (bool)SANITIZER_ANDROID || (bool)SANITIZER_MAC,
+    bool, abort_on_error, (bool)SANITIZER_ANDROID || (bool)SANITIZER_APPLE,
     "If set, the tool calls abort() instead of _exit() after printing the "
     "error report.")
 COMMON_FLAG(bool, suppress_equal_pcs, true,
@@ -248,3 +269,16 @@ COMMON_FLAG(bool, detect_write_exec, false,
 COMMON_FLAG(bool, test_only_emulate_no_memorymap, false,
             "TEST ONLY fail to read memory mappings to emulate sanitized "
             "\"init\"")
+// With static linking, dladdr((void*)pthread_join) or similar will return the
+// path to the main program. This flag will replace dlopen(<main program,...>
+// with dlopen(NULL,...), which is the correct way to get a handle to the main
+// program.
+COMMON_FLAG(bool, test_only_replace_dlopen_main_program, false,
+            "TEST ONLY replace dlopen(<main program>,...) with dlopen(NULL)")
+
+COMMON_FLAG(bool, enable_symbolizer_markup, SANITIZER_FUCHSIA,
+            "Use sanitizer symbolizer markup, available on Linux "
+            "and always set true for Fuchsia.")
+
+COMMON_FLAG(bool, detect_invalid_join, true,
+            "If set, check invalid joins of threads.")

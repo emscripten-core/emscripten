@@ -1,7 +1,7 @@
 #include <unistd.h>
 #include <errno.h>
+#include "aio_impl.h"
 #include "syscall.h"
-#include "libc.h"
 
 static int dummy(int fd)
 {

@@ -27,7 +27,7 @@ char *getpass(const char *prompt)
 
 	l = read(fd, password, sizeof password);
 	if (l >= 0) {
-		if (l > 0 && password[l-1] == '\n') l--;
+		if (l > 0 && password[l-1] == '\n' || l==sizeof password) l--;
 		password[l] = 0;
 	}
 

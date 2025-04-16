@@ -65,6 +65,14 @@
 #define crt_copysign(x, y) __builtin_copysign((x), (y))
 #define crt_copysignf(x, y) __builtin_copysignf((x), (y))
 #define crt_copysignl(x, y) __builtin_copysignl((x), (y))
+// We define __has_builtin to always return 0 for GCC versions below 10,
+// but __builtin_copysignf128 is available since version 7.
+#if __has_builtin(__builtin_copysignf128) ||                                   \
+    (defined(__GNUC__) && __GNUC__ >= 7)
+#define crt_copysignf128(x, y) __builtin_copysignf128((x), (y))
+#elif __has_builtin(__builtin_copysignq)
+#define crt_copysignf128(x, y) __builtin_copysignq((x), (y))
+#endif
 #endif
 
 #if defined(_MSC_VER) && !defined(__clang__)
@@ -75,15 +83,18 @@
 #define crt_fabs(x) __builtin_fabs((x))
 #define crt_fabsf(x) __builtin_fabsf((x))
 #define crt_fabsl(x) __builtin_fabsl((x))
+// We define __has_builtin to always return 0 for GCC versions below 10,
+// but __builtin_fabsf128 is available since version 7.
+#if __has_builtin(__builtin_fabsf128) || (defined(__GNUC__) && __GNUC__ >= 7)
+#define crt_fabsf128(x) __builtin_fabsf128((x))
+#elif __has_builtin(__builtin_fabsq)
+#define crt_fabsf128(x) __builtin_fabsq((x))
+#endif
 #endif
 
 #if defined(_MSC_VER) && !defined(__clang__)
-#define crt_fmax(x, y) __max((x), (y))
-#define crt_fmaxf(x, y) __max((x), (y))
 #define crt_fmaxl(x, y) __max((x), (y))
 #else
-#define crt_fmax(x, y) __builtin_fmax((x), (y))
-#define crt_fmaxf(x, y) __builtin_fmaxf((x), (y))
 #define crt_fmaxl(x, y) __builtin_fmaxl((x), (y))
 #endif
 
@@ -94,12 +105,8 @@
 #endif
 
 #if defined(_MSC_VER) && !defined(__clang__)
-#define crt_scalbn(x, y) scalbn((x), (y))
-#define crt_scalbnf(x, y) scalbnf((x), (y))
 #define crt_scalbnl(x, y) scalbnl((x), (y))
 #else
-#define crt_scalbn(x, y) __builtin_scalbn((x), (y))
-#define crt_scalbnf(x, y) __builtin_scalbnf((x), (y))
 #define crt_scalbnl(x, y) __builtin_scalbnl((x), (y))
 #endif
 

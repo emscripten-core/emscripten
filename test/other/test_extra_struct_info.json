@@ -1,0 +1,8 @@
+[
+    {
+        "file": "test_extra_struct_info.h",
+        "defines": [
+          "AF_INET"
+        ]
+    }
+]

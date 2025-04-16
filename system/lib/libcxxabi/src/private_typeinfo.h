@@ -1,4 +1,4 @@
-//===------------------------ private_typeinfo.h --------------------------===//
+//===----------------------------------------------------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -110,6 +110,13 @@ struct _LIBCXXABI_HIDDEN __dynamic_cast_info
     bool found_any_static_type;
     // Set whenever a search can be stopped
     bool search_done;
+
+    // Data that modifies the search mechanism.
+
+    // There is no object (seen when we throw a null pointer to object).
+    bool have_object;
+    // Virtual base
+    const void* vbase_cookie;
 };
 
 // Has no base class
@@ -248,4 +255,4 @@ public:
 
 }  // __cxxabiv1
 
-#endif  // __PRIVATE_TYPEINFO_H_
+#endif // __PRIVATE_TYPEINFO_H_

@@ -14,7 +14,7 @@
 #include "interception.h"
 
 #if SANITIZER_LINUX || SANITIZER_FREEBSD || SANITIZER_NETBSD || \
-    SANITIZER_OPENBSD || SANITIZER_SOLARIS
+    SANITIZER_SOLARIS
 
 #include <dlfcn.h>   // for dlsym() and dlvsym()
 
@@ -33,7 +33,7 @@ static int StrCmp(const char *s1, const char *s2) {
 }
 #endif
 
-static void *GetFuncAddr(const char *name, uptr wrapper_addr) {
+static void *GetFuncAddr(const char *name, uptr trampoline) {
 #if SANITIZER_NETBSD
   // FIXME: Find a better way to handle renames
   if (StrCmp(name, "sigaction"))
@@ -50,34 +50,34 @@ static void *GetFuncAddr(const char *name, uptr wrapper_addr) {
 
     // In case `name' is not loaded, dlsym ends up finding the actual wrapper.
     // We don't want to intercept the wrapper and have it point to itself.
-    if ((uptr)addr == wrapper_addr)
+    if ((uptr)addr == trampoline)
       addr = nullptr;
   }
   return addr;
 }
 
 bool InterceptFunction(const char *name, uptr *ptr_to_real, uptr func,
-                       uptr wrapper) {
-  void *addr = GetFuncAddr(name, wrapper);
+                       uptr trampoline) {
+  void *addr = GetFuncAddr(name, trampoline);
   *ptr_to_real = (uptr)addr;
-  return addr && (func == wrapper);
+  return addr && (func == trampoline);
 }
 
-// Android and Solaris do not have dlvsym
-#if !SANITIZER_ANDROID && !SANITIZER_SOLARIS && !SANITIZER_OPENBSD
+// dlvsym is a GNU extension supported by some other platforms.
+#if SANITIZER_GLIBC || SANITIZER_FREEBSD || SANITIZER_NETBSD
 static void *GetFuncAddr(const char *name, const char *ver) {
   return dlvsym(RTLD_NEXT, name, ver);
 }
 
 bool InterceptFunction(const char *name, const char *ver, uptr *ptr_to_real,
-                       uptr func, uptr wrapper) {
+                       uptr func, uptr trampoline) {
   void *addr = GetFuncAddr(name, ver);
   *ptr_to_real = (uptr)addr;
-  return addr && (func == wrapper);
+  return addr && (func == trampoline);
 }
-#endif  // !SANITIZER_ANDROID
+#  endif  // SANITIZER_GLIBC || SANITIZER_FREEBSD || SANITIZER_NETBSD
 
 }  // namespace __interception
 
 #endif  // SANITIZER_LINUX || SANITIZER_FREEBSD || SANITIZER_NETBSD ||
-        // SANITIZER_OPENBSD || SANITIZER_SOLARIS
+        // SANITIZER_SOLARIS

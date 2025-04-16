@@ -1,3 +1,9 @@
-[submodule "tests/third_party/posixtestsuite"]
-	path = tests/third_party/posixtestsuite
+[submodule "test/third_party/posixtestsuite"]
+	path = test/third_party/posixtestsuite
 	url = https://github.com/emscripten-core/posixtestsuite
+[submodule "test/third_party/googletest"]
+	path = test/third_party/googletest
+	url = https://github.com/google/googletest
+[submodule "test/third_party/wasi-test-suite"]
+	path = test/third_party/wasi-test-suite
+	url = https://github.com/khronosproject/wasi-test-suite

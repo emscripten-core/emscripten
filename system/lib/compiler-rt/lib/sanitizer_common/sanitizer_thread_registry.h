@@ -15,6 +15,7 @@
 #define SANITIZER_THREAD_REGISTRY_H
 
 #include "sanitizer_common.h"
+#include "sanitizer_dense_map.h"
 #include "sanitizer_list.h"
 #include "sanitizer_mutex.h"
 
@@ -39,8 +40,6 @@ enum class ThreadType {
 class ThreadContextBase {
  public:
   explicit ThreadContextBase(u32 tid);
-  ~ThreadContextBase();  // Should never be called.
-
   const u32 tid;  // Thread ID. Main thread should have tid = 0.
   u64 unique_id;  // Unique thread ID.
   u32 reuse_count;  // Number of times this tid was reused.
@@ -80,29 +79,32 @@ class ThreadContextBase {
   virtual void OnCreated(void *arg) {}
   virtual void OnReset() {}
   virtual void OnDetached(void *arg) {}
+
+ protected:
+  ~ThreadContextBase();
 };
 
 typedef ThreadContextBase* (*ThreadContextFactory)(u32 tid);
 
-class ThreadRegistry {
+class SANITIZER_MUTEX ThreadRegistry {
  public:
-  static const u32 kUnknownTid;
-
+  ThreadRegistry(ThreadContextFactory factory);
   ThreadRegistry(ThreadContextFactory factory, u32 max_threads,
-                 u32 thread_quarantine_size, u32 max_reuse = 0);
+                 u32 thread_quarantine_size, u32 max_reuse);
   void GetNumberOfThreads(uptr *total = nullptr, uptr *running = nullptr,
                           uptr *alive = nullptr);
   uptr GetMaxAliveThreads();
 
-  void Lock() { mtx_.Lock(); }
-  void CheckLocked() { mtx_.CheckLocked(); }
-  void Unlock() { mtx_.Unlock(); }
+  void Lock() SANITIZER_ACQUIRE() { mtx_.Lock(); }
+  void CheckLocked() const SANITIZER_CHECK_LOCKED() { mtx_.CheckLocked(); }
+  void Unlock() SANITIZER_RELEASE() { mtx_.Unlock(); }
 
   // Should be guarded by ThreadRegistryLock.
   ThreadContextBase *GetThreadLocked(u32 tid) {
-    DCHECK_LT(tid, n_contexts_);
-    return threads_[tid];
+    return threads_.empty() ? nullptr : threads_[tid];
   }
+
+  u32 NumThreadsLocked() const { return threads_.size(); }
 
   u32 CreateThread(uptr user_id, bool detached, u32 parent_tid, void *arg);
 
@@ -112,7 +114,7 @@ class ThreadRegistry {
   void RunCallbackForEachThreadLocked(ThreadCallback cb, void *arg);
 
   typedef bool (*FindThreadCallback)(ThreadContextBase *tctx, void *arg);
-  // Finds a thread using the provided callback. Returns kUnknownTid if no
+  // Finds a thread using the provided callback. Returns kInvalidTid if no
   // thread is found.
   u32 FindThread(FindThreadCallback cb, void *arg);
   // Should be guarded by ThreadRegistryLock. Return 0 if no thread
@@ -125,9 +127,16 @@ class ThreadRegistry {
   void SetThreadNameByUserId(uptr user_id, const char *name);
   void DetachThread(u32 tid, void *arg);
   void JoinThread(u32 tid, void *arg);
-  void FinishThread(u32 tid);
+  // Finishes thread and returns previous status.
+  ThreadStatus FinishThread(u32 tid);
   void StartThread(u32 tid, tid_t os_id, ThreadType thread_type, void *arg);
+  u32 ConsumeThreadUserId(uptr user_id);
   void SetThreadUserId(u32 tid, uptr user_id);
+
+  // OnFork must be called in the child process after fork to purge old
+  // threads that don't exist anymore (except for the current thread tid).
+  // Returns number of alive threads before fork.
+  u32 OnFork(u32 tid);
 
  private:
   const ThreadContextFactory context_factory_;
@@ -135,25 +144,26 @@ class ThreadRegistry {
   const u32 thread_quarantine_size_;
   const u32 max_reuse_;
 
-  BlockingMutex mtx_;
+  Mutex mtx_;
 
-  u32 n_contexts_;      // Number of created thread contexts,
-                        // at most max_threads_.
   u64 total_threads_;   // Total number of created threads. May be greater than
                         // max_threads_ if contexts were reused.
   uptr alive_threads_;  // Created or running.
   uptr max_alive_threads_;
   uptr running_threads_;
 
-  ThreadContextBase **threads_;  // Array of thread contexts is leaked.
+  InternalMmapVector<ThreadContextBase *> threads_;
   IntrusiveList<ThreadContextBase> dead_threads_;
   IntrusiveList<ThreadContextBase> invalid_threads_;
+  DenseMap<uptr, Tid> live_;
 
   void QuarantinePush(ThreadContextBase *tctx);
   ThreadContextBase *QuarantinePop();
 };
 
 typedef GenericScopedLock<ThreadRegistry> ThreadRegistryLock;
+
+ThreadRegistry *GetThreadRegistryLocked();
 
 } // namespace __sanitizer
 

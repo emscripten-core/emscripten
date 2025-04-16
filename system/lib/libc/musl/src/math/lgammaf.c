@@ -1,7 +1,5 @@
 #include <math.h>
-
-extern int __signgam;
-float __lgammaf_r(float, int *);
+#include "libm.h"
 
 float lgammaf(float x)
 {

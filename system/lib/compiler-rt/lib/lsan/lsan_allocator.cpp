@@ -27,11 +27,11 @@ extern "C" void *memset(void *ptr, int value, uptr num);
 
 namespace __lsan {
 #if defined(__i386__) || defined(__arm__) || defined(__wasm32__)
-static const uptr kMaxAllowedMallocSize = 1UL << 30;
-#elif defined(__mips64) || defined(__aarch64__)
-static const uptr kMaxAllowedMallocSize = 4UL << 30;
+static const uptr kMaxAllowedMallocSize = 1ULL << 30;
+#elif defined(__mips64) || defined(__aarch64__) || defined(__wasm64__)
+static const uptr kMaxAllowedMallocSize = 4ULL << 30;
 #else
-static const uptr kMaxAllowedMallocSize = 8UL << 30;
+static const uptr kMaxAllowedMallocSize = 1ULL << 40;
 #endif
 
 static Allocator allocator;
@@ -49,8 +49,11 @@ void InitializeAllocator() {
     max_malloc_size = kMaxAllowedMallocSize;
 }
 
+void AllocatorThreadStart() { allocator.InitCache(GetAllocatorCache()); }
+
 void AllocatorThreadFinish() {
   allocator.SwallowCache(GetAllocatorCache());
+  allocator.DestroyCache(GetAllocatorCache());
 }
 
 static ChunkMetadata *Metadata(const void *p) {
@@ -65,12 +68,14 @@ static void RegisterAllocation(const StackTrace &stack, void *p, uptr size) {
   m->stack_trace_id = StackDepotPut(stack);
   m->requested_size = size;
   atomic_store(reinterpret_cast<atomic_uint8_t *>(m), 1, memory_order_relaxed);
+  RunMallocHooks(p, size);
 }
 
 static void RegisterDeallocation(void *p) {
   if (!p) return;
   ChunkMetadata *m = Metadata(p);
   CHECK(m);
+  RunFreeHooks(p);
   atomic_store(reinterpret_cast<atomic_uint8_t *>(m), 0, memory_order_relaxed);
 }
 
@@ -88,6 +93,11 @@ void *Allocate(const StackTrace &stack, uptr size, uptr alignment,
     size = 1;
   if (size > max_malloc_size)
     return ReportAllocationSizeTooBig(size, stack);
+  if (UNLIKELY(IsRssLimitExceeded())) {
+    if (AllocatorMayReturnNull())
+      return nullptr;
+    ReportRssLimitExceeded(&stack);
+  }
   void *p = allocator.Allocate(GetAllocatorCache(), size, alignment);
   if (UNLIKELY(!p)) {
     SetAllocatorOutOfMemory();
@@ -99,8 +109,6 @@ void *Allocate(const StackTrace &stack, uptr size, uptr alignment,
   if (cleared && allocator.FromPrimary(p))
     memset(p, 0, size);
   RegisterAllocation(stack, p, size);
-  if (&__sanitizer_malloc_hook) __sanitizer_malloc_hook(p, size);
-  RunMallocHooks(p, size);
   return p;
 }
 
@@ -115,22 +123,24 @@ static void *Calloc(uptr nmemb, uptr size, const StackTrace &stack) {
 }
 
 void Deallocate(void *p) {
-  if (&__sanitizer_free_hook) __sanitizer_free_hook(p);
-  RunFreeHooks(p);
   RegisterDeallocation(p);
   allocator.Deallocate(GetAllocatorCache(), p);
 }
 
 void *Reallocate(const StackTrace &stack, void *p, uptr new_size,
                  uptr alignment) {
-  RegisterDeallocation(p);
   if (new_size > max_malloc_size) {
-    allocator.Deallocate(GetAllocatorCache(), p);
-    return ReportAllocationSizeTooBig(new_size, stack);
+    ReportAllocationSizeTooBig(new_size, stack);
+    return nullptr;
   }
-  p = allocator.Reallocate(GetAllocatorCache(), p, new_size, alignment);
-  RegisterAllocation(stack, p, new_size);
-  return p;
+  RegisterDeallocation(p);
+  void *new_p =
+      allocator.Reallocate(GetAllocatorCache(), p, new_size, alignment);
+  if (new_p)
+    RegisterAllocation(stack, new_p, new_size);
+  else if (new_size != 0)
+    RegisterAllocation(stack, p, new_size);
+  return new_p;
 }
 
 void GetAllocatorCacheRange(uptr *begin, uptr *end) {
@@ -138,10 +148,32 @@ void GetAllocatorCacheRange(uptr *begin, uptr *end) {
   *end = *begin + sizeof(AllocatorCache);
 }
 
+static const void *GetMallocBegin(const void *p) {
+  if (!p)
+    return nullptr;
+  void *beg = allocator.GetBlockBegin(p);
+  if (!beg)
+    return nullptr;
+  ChunkMetadata *m = Metadata(beg);
+  if (!m)
+    return nullptr;
+  if (!m->allocated)
+    return nullptr;
+  if (m->requested_size == 0)
+    return nullptr;
+  return (const void *)beg;
+}
+
 uptr GetMallocUsableSize(const void *p) {
+  if (!p)
+    return 0;
   ChunkMetadata *m = Metadata(p);
   if (!m) return 0;
   return m->requested_size;
+}
+
+uptr GetMallocUsableSizeFast(const void *p) {
+  return Metadata(p)->requested_size;
 }
 
 int lsan_posix_memalign(void **memptr, uptr alignment, uptr size,
@@ -266,6 +298,10 @@ uptr GetUserBegin(uptr chunk) {
   return chunk;
 }
 
+uptr GetUserAddr(uptr chunk) {
+  return chunk;
+}
+
 LsanMetadata::LsanMetadata(uptr chunk) {
   metadata_ = Metadata(reinterpret_cast<void *>(chunk));
   CHECK(metadata_);
@@ -295,7 +331,7 @@ void ForEachChunk(ForEachChunkCallback callback, void *arg) {
   allocator.ForEachChunk(callback, arg);
 }
 
-IgnoreObjectResult IgnoreObjectLocked(const void *p) {
+IgnoreObjectResult IgnoreObject(const void *p) {
   void *chunk = allocator.GetBlockBegin(p);
   if (!chunk || p < chunk) return kIgnoreObjectInvalid;
   ChunkMetadata *m = Metadata(chunk);
@@ -309,6 +345,7 @@ IgnoreObjectResult IgnoreObjectLocked(const void *p) {
     return kIgnoreObjectInvalid;
   }
 }
+
 } // namespace __lsan
 
 using namespace __lsan;
@@ -329,7 +366,7 @@ uptr __sanitizer_get_heap_size() {
 }
 
 SANITIZER_INTERFACE_ATTRIBUTE
-uptr __sanitizer_get_free_bytes() { return 0; }
+uptr __sanitizer_get_free_bytes() { return 1; }
 
 SANITIZER_INTERFACE_ATTRIBUTE
 uptr __sanitizer_get_unmapped_bytes() { return 0; }
@@ -338,23 +375,29 @@ SANITIZER_INTERFACE_ATTRIBUTE
 uptr __sanitizer_get_estimated_allocated_size(uptr size) { return size; }
 
 SANITIZER_INTERFACE_ATTRIBUTE
-int __sanitizer_get_ownership(const void *p) { return Metadata(p) != nullptr; }
+int __sanitizer_get_ownership(const void *p) {
+  return GetMallocBegin(p) != nullptr;
+}
+
+SANITIZER_INTERFACE_ATTRIBUTE
+const void * __sanitizer_get_allocated_begin(const void *p) {
+  return GetMallocBegin(p);
+}
 
 SANITIZER_INTERFACE_ATTRIBUTE
 uptr __sanitizer_get_allocated_size(const void *p) {
   return GetMallocUsableSize(p);
 }
 
-#if !SANITIZER_SUPPORTS_WEAK_HOOKS
-// Provide default (no-op) implementation of malloc hooks.
-SANITIZER_INTERFACE_ATTRIBUTE SANITIZER_WEAK_ATTRIBUTE
-void __sanitizer_malloc_hook(void *ptr, uptr size) {
-  (void)ptr;
-  (void)size;
+SANITIZER_INTERFACE_ATTRIBUTE
+uptr __sanitizer_get_allocated_size_fast(const void *p) {
+  DCHECK_EQ(p, __sanitizer_get_allocated_begin(p));
+  uptr ret = GetMallocUsableSizeFast(p);
+  DCHECK_EQ(ret, __sanitizer_get_allocated_size(p));
+  return ret;
 }
-SANITIZER_INTERFACE_ATTRIBUTE SANITIZER_WEAK_ATTRIBUTE
-void __sanitizer_free_hook(void *ptr) {
-  (void)ptr;
-}
-#endif
+
+SANITIZER_INTERFACE_ATTRIBUTE
+void __sanitizer_purge_allocator() { allocator.ForceReleaseToOS(); }
+
 } // extern "C"

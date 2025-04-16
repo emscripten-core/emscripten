@@ -8,10 +8,11 @@ struct spwd *getspnam(const char *name)
 	static char *line;
 	struct spwd *res;
 	int e;
+	int orig_errno = errno;
 
 	if (!line) line = malloc(LINE_LIM);
 	if (!line) return 0;
 	e = getspnam_r(name, &sp, line, LINE_LIM, &res);
-	if (e) errno = e;
+	errno = e ? e : orig_errno;
 	return res;
 }

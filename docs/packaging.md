@@ -6,7 +6,7 @@ linux distributions, or other downstream SDKs.
 
 Firstly, we provide an install script in `tools/install.py`.  This allows
 just the end-user parts of emscripten to be installed.  For example this avoids
-including the `tests/third_party` directory which is of that biggest parts 
+including the `test/third_party` directory which is one of the biggest parts
 of the source tree.
 
 If you prefer, you can use `make install` or `make dist` which invokes
@@ -17,13 +17,13 @@ Dependencies
 
 One important thing to note here is that emscripten doesn't currently support
 the stable LLVM releases.  It requires a build of LLVM from top-of-tree, or at
-least very close ot it.  This means that depending on a packaged version of LLVM
+least very close to it.  This means that depending on a packaged version of LLVM
 is unlikely to work.
 
 The core
 [DEPS](https://chromium.googlesource.com/emscripten-releases/+/refs/heads/master/DEPS)
 file in the `emscripten-releases` repository contains all the information about
-the various repositories that go into an emscripten release. This is the repo
+the various repositories that go into an emscripten release. These are the repos
 used by our CI to build and test emscripten.  To find out which revisions went
 into a given release you need to check out the DEPS file that the revision
 corresponding to that release.  It has lines like these:
@@ -34,7 +34,7 @@ corresponding to that release.  It has lines like these:
   'llvm_project_revision': '33ef687d94604aeb73bedbcf3050524465a3439f',
 ```
 
-These linses specify git hashes of the various repositories that make up the
+These lines specify git hashes of the various repositories that make up the
 release.
 
 In principle you can build any git hash in that repo because all updates get
@@ -46,19 +46,16 @@ Alternatively, you may want to build our official emscripten release tags, which
 are the versions the emsdk lets users install. To find the mapping between the
 emsdk versions and the revision of the emscripten-releases repository, the emsdk
 has
-[emscripten-releases-tags.txt](https://github.com/emscripten-core/emsdk/blob/master/emscripten-releases-tags.txt).
+[emscripten-releases-tags.json](https://github.com/emscripten-core/emsdk/blob/main/emscripten-releases-tags.json).
 All versions listed there should be safe to build, as we check that the CI
 was green on them.
 
 To see how our CI builds things, the relevant script is
 [build.py](https://github.com/WebAssembly/waterfall/blob/master/src/build.py).
 In general, the repos you need to build are LLVM and Binaryen (as emscripten
-itself doesn't have any binaries to build). (Note: If you are packaging the older
-fastcomp compiler backend then you must also get the fastcomp and fastcomp-clang
-repos, and build them together to get LLVM and clang.)
+itself doesn't have any binaries to build).
 
-When packaging build results, you need the following executables (when using
-the wasm backend):
+When packaging build results, you need the following executables:
 
   * From LLVM:
     * clang
@@ -69,6 +66,7 @@ the wasm backend):
     * llvm-ar
     * llvm-as
     * llvm-dis
+    * llvm-link
     * llvm-dwarfdump
   * From Binaryen:
     * wasm-emscripten-finalize
@@ -78,9 +76,6 @@ the wasm backend):
     * wasm2js
     * wasm-metadce
 
-(If you are packaging the older fastcomp backend instead of the wasm backend,
-you don't need wasm-ld or wasm2js, and you do need llvm-link and opt.)
-
 Node modules
 ------------
 
@@ -88,10 +83,10 @@ In addition to the dependencies listed above, emscripten also has node module
 dependencies specified in `package.json`.  These should be be installed by
 running `npm install` inside the emscripten directory.
 
-This will crate a `node_modules` subdirectory containing the required
+This will create a `node_modules` subdirectory containing the required
 dependencies.  This directory should be packaged along with emscripten.  We
 don't currently support these modules being installed in other locations but
-supporting system-wide node modules is something that could be added if its
+supporting system-wide node modules is something that could be added if it is
 deemed useful.
 
 
@@ -126,7 +121,7 @@ Prebuilt libraries
 
 Ideally a packaged installation can include a fully populated cache directory
 containing pre-built libraries.  If you want to do this you can use
-`./embuilder build ALL` to populate the cache directory.  You can them ship the
+`embuilder build ALL` to populate the cache directory.  You can then ship the
 `cache` directory inside the emscripten directory.  When shipping the cache
 directory on a multi-user system where users cannot modify the `cache` you need
 to be sure that all possible configurations of the libraries are built.
@@ -142,18 +137,4 @@ embuilder build ALL --pic --lto
 Existing Packages
 -----------------
 
-The following is a partial list of downstream emscripten packages.  While these
-packages are not officially supported by the emscripten developers we try to
-work with downstream packagers to ensure everything works as expected.
-
-**Homebrew**
- - package info: https://formulae.brew.sh/formula/emscripten
- - maintainer: @chenrui333
-
-**Arch Linux**
- - package info: https://github.com/archlinux/svntogit-community/tree/packages/emscripten/trunk
- - maintainer: Sven-Hendrik Haase <svenstaro@gmail.com>
-
-**Gentoo Linux** (custom overlay)
- - package info: `dev-util/emscripten` in [darthgandalf-overlay](https://github.com/DarthGandalf/gentoo-overlay)
- - maintainer: @DarthGandalf
+See https://emscripten.org/docs/getting_started/downloads.html#installation-using-packages

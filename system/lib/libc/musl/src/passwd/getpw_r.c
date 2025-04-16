@@ -27,6 +27,7 @@ static int getpw_r(const char *name, uid_t uid, struct passwd *pw, char *buf, si
 	}
  	free(line);
 	pthread_setcancelstate(cs, 0);
+	if (rv) errno = rv;
 	return rv;
 }
 

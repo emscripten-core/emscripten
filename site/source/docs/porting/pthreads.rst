@@ -4,15 +4,9 @@
 Pthreads support
 ==============================
 
-.. note:: Browsers are currently shipping SharedArrayBuffer gated behind Cross Origin Opener Policy (COOP) and Cross Origin Embedder Policy (COEP) headers. Pthreads code will not work in deployed environment unless these headers are correctly set. For more information click `this <https://web.dev/coop-coep>`_
+.. note:: Browsers `that have implemented and enabled <https://webassembly.org/roadmap/>`_ SharedArrayBuffer, are gating it behind Cross Origin Opener Policy (COOP) and Cross Origin Embedder Policy (COEP) headers. Pthreads code will not work in deployed environment unless these headers are correctly set. For more information click `this <https://web.dev/coop-coep>`_
 
 Emscripten has support for multithreading using SharedArrayBuffer in browsers. That API allows sharing memory between the main thread and web workers as well as atomic operations for synchronization, which enables Emscripten to implement support for the Pthreads (POSIX threads) API. This support is considered stable in Emscripten.
-
-.. note:: As of Sep 2019, some browsers have disabled SharedArrayBuffer due to
-          the Spectre set of vulnerabilities. Until it is restored you can still
-          experiment with it if you flip a pref in those browsers. In other
-          browsers (like Chrome on desktop), SharedArrayBuffer is fully enabled
-          by default and you don't need to flip any flags.
 
 Compiling with pthreads enabled
 ===============================
@@ -20,7 +14,7 @@ Compiling with pthreads enabled
 By default, support for pthreads is not enabled. To enable code generation for pthreads, the following command line flags exist:
 
 - Pass the compiler flag ``-pthread`` when compiling any .c/.cpp files, AND when linking to generate the final output .js file.
-- Optionally, pass the linker flag ``-s PTHREAD_POOL_SIZE=<integer>`` to specify a predefined pool of web workers to populate at page preRun time before application main() is called. This is important because if the workers do not already exist then we may need to wait for the next browser event iteration for certain things, see below.
+- Optionally, pass the linker flag ``-sPTHREAD_POOL_SIZE=<expression>`` to specify a predefined pool of web workers to populate at page ``preRun`` time before application ``main()`` is called. This is important because if the workers do not already exist then we may need to wait for the next browser event iteration for certain things, see below. ``<expression>`` can be any valid JavaScript expression, including integers like ``8`` for a fixed number of threads or, say, ``navigator.hardwareConcurrency`` to create as many threads as there are CPU cores.
 
 There should be no other changes required. In C/C++ code, the preprocessor check ``#ifdef __EMSCRIPTEN_PTHREADS__`` can be used to detect whether Emscripten is currently targeting pthreads.
 
@@ -32,7 +26,7 @@ There should be no other changes required. In C/C++ code, the preprocessor check
 Additional flags
 ================
 
-- ``-s PROXY_TO_PTHREAD``: In this mode your original ``main()`` is replaced by
+- ``-sPROXY_TO_PTHREAD``: In this mode your original ``main()`` is replaced by
   a new one that creates a pthread and runs the original ``main()`` on it. As a
   result, your application's ``main()`` is run off the browser main (UI) thread,
   which is good for responsiveness. The browser main thread does still run code
@@ -131,10 +125,10 @@ The Emscripten implementation for the pthreads API should follow the POSIX stand
 
   1. Return to the main event loop (for example, use
      ``emscripten_set_main_loop``, or Asyncify).
-  2. Use the linker flag ``-s PTHREAD_POOL_SIZE=<integer>``. Using a pool
+  2. Use the linker flag ``-sPTHREAD_POOL_SIZE=<expression>``. Using a pool
      creates the Web Workers before main is called, so they can just be used
      when ``pthread_create`` is called.
-  3. Use the linker flag ``-s PROXY_TO_PTHREAD``, which will run ``main()`` on
+  3. Use the linker flag ``-sPROXY_TO_PTHREAD``, which will run ``main()`` on
      a worker for you. When doing so, ``pthread_create`` is proxied to the
      main browser thread, where it can return to the main event loop as needed.
 
@@ -150,9 +144,25 @@ The Emscripten implementation for the pthreads API should follow the POSIX stand
 
 - Note that the function emscripten_num_logical_cores() will always return the value of navigator.hardwareConcurrency, i.e. the number of logical cores on the system, even when shared memory is not supported. This means that it is possible for emscripten_num_logical_cores() to return a value greater than 1, while at the same time emscripten_has_threading_support() can return false. The return value of emscripten_has_threading_support() denotes whether the browser has shared memory support available.
 
-- Pthreads + memory growth (``ALLOW_MEMORY_GROWTH``) is especially tricky, see `wasm design issue #1271 <https://github.com/WebAssembly/design/issues/1271>`_. This currently causes JS accessing the wasm memory to be slow - but this will likely only be noticeable if the JS does large amounts of memory reads and writes (wasm runs at full speed, so moving work over can fix this). This also requires that your JS be aware that the HEAP* views may need to be updated - JS code embedded with ``--js-library`` etc will automatically be transformed to use the ``GROWABLE_HEAP_*`` helper functions where ``HEAP*`` are used, but external code that uses ``Module.HEAP*`` directly may encounter problems with views being smaller than memory.
+- Pthreads + memory growth (``ALLOW_MEMORY_GROWTH``) is especially tricky, see `Wasm design issue #1271 <https://github.com/WebAssembly/design/issues/1271>`_. This currently causes JS accessing the Wasm memory to be slow - but this will likely only be noticeable if the JS does large amounts of memory reads and writes (Wasm runs at full speed, so moving work over can fix this). This also requires that your JS be aware that the HEAP* views may need to be updated - JS code embedded with ``--js-library`` etc will automatically be transformed to use the ``GROWABLE_HEAP_*`` helper functions where ``HEAP*`` are used, but external code that uses ``Module.HEAP*`` directly may encounter problems with views being smaller than memory.
 
-Also note that when compiling code that uses pthreads, an additional JavaScript file ``NAME.worker.js`` is generated alongside the output .js file (where ``NAME`` is the basename of the main file being emitted). That file must be deployed with the rest of the generated code files. By default, ``NAME.worker.js`` will be loaded relative to the main HTML page URL. If it is desirable to load the file from a different location e.g. in a CDN environment, then one can define the ``Module.locateFile(filename)`` function in the main HTML ``Module`` object to return the URL of the target location of the ``NAME.worker.js`` entry point. If this function is not defined in ``Module``, then the default location relative to the main HTML file is used.
+.. _Allocator_performance:
+
+Allocator performance
+=====================
+
+The default system allocator in Emscripten, ``dlmalloc``, is very efficient in a
+single-threaded program, but it has a single global lock which means if there is
+contention on ``malloc`` then you can see overhead. You can use
+`mimalloc <https://github.com/microsoft/mimalloc>`_
+instead by using ``-sMALLOC=mimalloc``, which is a more sophisticated allocator
+tuned for multithreaded performance. ``mimalloc`` has separate allocation
+contexts on each thread, allowing performance to scale a lot better under
+``malloc/free`` contention.
+
+Note that ``mimalloc`` is larger in code size than ``dlmalloc``, and also uses
+more memory at runtime (so you may need to adjust ``INITIAL_MEMORY`` to a higher
+value), so there are tradeoffs here.
 
 Running code and tests
 ======================

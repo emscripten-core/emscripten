@@ -18,23 +18,23 @@
 #include "sanitizer_stoptheworld.h"
 
 #include <signal.h>
+#include <time.h>
 
 #if SANITIZER_EMSCRIPTEN
 
 #include <emscripten.h>
 #include <emscripten/stack.h>
+#include <sys/types.h>
+
+#include "emscripten_internal.h"
 
 namespace __sanitizer {
-
-extern "C" {
-  int emscripten_get_module_name(char *buf, uptr length);
-}
 
 void ListOfModules::init() {
   modules_.Initialize(2);
 
   char name[256];
-  emscripten_get_module_name(name, 256);
+  _emscripten_get_progname(name, 256);
 
   LoadedModule main_module;
   main_module.set(name, 0);
@@ -60,28 +60,15 @@ void ListOfModules::init() {
 
 void ListOfModules::fallbackInit() { clear(); }
 
-SANITIZER_WEAK_ATTRIBUTE int
-real_sigaction(int signum, const void *act, void *oldact);
-
 int internal_sigaction(int signum, const void *act, void *oldact) {
-#if !SANITIZER_GO
-  if (&real_sigaction)
-    return real_sigaction(signum, act, oldact);
-#endif
   return sigaction(signum, (const struct sigaction *)act,
                    (struct sigaction *)oldact);
-}
-
-extern "C" {
-  uptr emscripten_builtin_mmap2(void *addr, uptr length, int prot, int flags,
-                               int fd, unsigned offset);
-  uptr emscripten_builtin_munmap(void *addr, uptr length);
 }
 
 uptr internal_mmap(void *addr, uptr length, int prot, int flags, int fd,
                    u64 offset) {
   CHECK(IsAligned(offset, 4096));
-  return emscripten_builtin_mmap2(addr, length, prot, flags, fd, offset / 4096);
+  return (uptr)emscripten_builtin_mmap(addr, length, prot, flags, fd, offset / 4096);
 }
 
 uptr internal_munmap(void *addr, uptr length) {
@@ -116,7 +103,7 @@ void GetThreadStackAndTls(bool main, uptr *stk_addr, uptr *stk_size,
   uptr stk_top;
   GetThreadStackTopAndBottom(true, &stk_top, stk_addr);
   *stk_size = stk_top - *stk_addr;
-#ifdef USE_THREADS
+#ifdef __EMSCRIPTEN_PTHREADS__
   *tls_addr = (uptr) __builtin_wasm_tls_base();
   *tls_size = __builtin_wasm_tls_size();
 #else
@@ -124,11 +111,23 @@ void GetThreadStackAndTls(bool main, uptr *stk_addr, uptr *stk_size,
 #endif
 }
 
+class SuspendedThreadsListEmscripten final : public SuspendedThreadsList {};
+
 void StopTheWorld(StopTheWorldCallback callback, void *argument) {
   // TODO: have some workable alternative, since we can't just fork and suspend
   // the parent process. This does not matter when single thread.
-  callback(SuspendedThreadsList(), argument);
+  callback(SuspendedThreadsListEmscripten(), argument);
 }
+
+void InitializePlatformCommonFlags(CommonFlags *cf) {}
+
+u64 MonotonicNanoTime() {
+  timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (u64)ts.tv_sec * (1000ULL * 1000 * 1000) + ts.tv_nsec;
+}
+
+void GetMemoryProfile(fill_profile_f cb, uptr *stats) {}
 
 } // namespace __sanitizer
 

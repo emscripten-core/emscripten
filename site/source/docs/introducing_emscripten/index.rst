@@ -1,4 +1,4 @@
-.. _introducting-emscripten-index:
+.. _introducing-emscripten-index:
 
 ======================
 Introducing Emscripten

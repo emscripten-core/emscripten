@@ -1,8 +1,6 @@
 #include <unistd.h>
 #include <crypt.h>
 
-char *__crypt_r(const char *, const char *, struct crypt_data *);
-
 char *crypt(const char *key, const char *salt)
 {
 	/* This buffer is sufficiently large for all

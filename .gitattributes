@@ -3,9 +3,8 @@
 tools/crunch-worker.js -diff
 third_party/lzma.js/lzma-decoder.js -diff
 third_party/lzma.js/lzma-full.js -diff
-tests/other/test_emsize.js -diff
-src/emscripten-source-map.min.js -diff
-tests/* linguist-vendored
+test/other/test_emsize.js -diff
+test/* linguist-vendored
 third_party/* linguist-vendored
 system/ linguist-vendored
 
