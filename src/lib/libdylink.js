@@ -995,7 +995,7 @@ var LibraryDylink = {
       var rpathC = stringToUTF8OnStack(rpathResolved.join(':'));
       var libNameC = stringToUTF8OnStack(libName);
       var resLibNameC = __emscripten_find_dylib(buf, rpathC, libNameC, bufSize);
-      return (resLibNameC !== libNameC) ? UTF8ToString(resLibNameC) : undefined;
+      return resLibNameC ? UTF8ToString(resLibNameC) : undefined;
     });
   },
 #endif // FILESYSTEM

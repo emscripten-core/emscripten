@@ -186,6 +186,7 @@ addToLibrary({
   $FS_createDevice__deps: ['$FS'],
   $FS_createDevice: 'FS.createDevice',
 
+  $FS_readFile__proxy: 'sync',
   $FS_readFile__deps: ['$FS'],
   $FS_readFile: 'FS.readFile',
 });
