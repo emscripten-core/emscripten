@@ -2535,6 +2535,7 @@ F1 -> ''
                  args=['screenshot.jpg'])
 
   @requires_network
+  @also_with_wasm64
   def test_bullet(self):
     self.do_runf('test_bullet_hello_world.cpp', 'BULLET RUNNING', emcc_args=['-sUSE_BULLET'])
     self.do_runf('test_bullet_hello_world.cpp', 'BULLET RUNNING', emcc_args=['--use-port=bullet'])
