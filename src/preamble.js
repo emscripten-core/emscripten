@@ -46,7 +46,7 @@ if (typeof WebAssembly != 'object') {
 
 // Wasm globals
 
-#if !WASM_ESM_INTEGRATION
+#if !WASM_ESM_INTEGRATION || IMPORTED_MEMORY
 var wasmMemory;
 #endif
 

@@ -964,8 +964,10 @@ def make_export_wrappers(function_exports):
 def create_receiving(function_exports):
   if settings.WASM_ESM_INTEGRATION:
     exports = [f'{f} as {asmjs_mangle(f)}' for f in function_exports]
-    exports.append('memory as wasmMemory')
-    exports.append('__indirect_function_table as wasmTable')
+    if not settings.IMPORTED_MEMORY:
+      exports.append('memory as wasmMemory')
+    if not settings.RELOCATABLE:
+      exports.append('__indirect_function_table as wasmTable')
     exports = ',\n  '.join(exports)
     return f"import {{\n  {exports}\n}} from './{settings.WASM_BINARY_FILE}';\n\n"
 

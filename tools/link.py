@@ -794,10 +794,21 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.MODULARIZE and settings.MODULARIZE not in [1, 'instance']:
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
 
+  def limit_incoming_module_api():
+    if options.oformat == OFormat.HTML and options.shell_path == DEFAULT_SHELL_HTML:
+      # Out default shell.html file has minimal set of INCOMING_MODULE_JS_API elements that it expects
+      default_setting('INCOMING_MODULE_JS_API', 'canvas,monitorRunDependencies,onAbort,onExit,print,setStatus'.split(','))
+    else:
+      default_setting('INCOMING_MODULE_JS_API', [])
+
   if settings.MODULARIZE == 'instance':
     diagnostics.warning('experimental', '-sMODULARIZE=instance is still experimental. Many features may not work or will change.')
     if options.oformat != OFormat.MJS:
       exit_with_error('emcc: MODULARIZE instance is only compatible with .mjs output files')
+    limit_incoming_module_api()
+    for s in ['wasmMemory', 'INITIAL_MEMORY']:
+      if s in settings.INCOMING_MODULE_JS_API:
+        exit_with_error(f'emcc: {s} cannot be in INCOMING_MODULE_JS_API in MODULARIZE=instance mode')
 
   if options.oformat in (OFormat.WASM, OFormat.BARE):
     if options.emit_tsd:
@@ -965,11 +976,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       # are needed in this mode.
       default_setting('AUTO_JS_LIBRARIES', 0)
       default_setting('ALLOW_UNIMPLEMENTED_SYSCALLS', 0)
-    if options.oformat == OFormat.HTML and options.shell_path == DEFAULT_SHELL_HTML:
-      # Out default shell.html file has minimal set of INCOMING_MODULE_JS_API elements that it expects
-      default_setting('INCOMING_MODULE_JS_API', 'canvas,monitorRunDependencies,onAbort,onExit,print,setStatus'.split(','))
-    else:
-      default_setting('INCOMING_MODULE_JS_API', [])
+    limit_incoming_module_api()
 
   if 'noExitRuntime' in settings.INCOMING_MODULE_JS_API:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$noExitRuntime')
