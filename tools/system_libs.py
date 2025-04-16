@@ -2083,6 +2083,16 @@ class CompilerRTLibrary(Library):
   force_object_files = True
 
 
+class libcompiler_rt_profile(CompilerRTLibrary, MTLibrary):
+  name = 'libcompiler_rt_profile'
+
+ 
+  cflags = ['-DCOMPILER_RT_HAS_UNAME=1']
+  includes = ['system/lib/libc']
+  src_dir = 'system/lib/compiler-rt/lib/profile'
+  src_files = glob_in_path(src_dir, '*.c')
+  src_files += glob_in_path(src_dir, '*.cpp')
+
 class libubsan_minimal_rt(CompilerRTLibrary, MTLibrary):
   name = 'libubsan_minimal_rt'
   never_force = True
@@ -2357,6 +2367,7 @@ def get_libs_to_link(options):
 
   if only_forced:
     add_library('libcompiler_rt')
+    add_library('libcompiler_rt_profile')    
     add_sanitizer_libs()
     add_forced_libs()
     return libs_to_link
@@ -2394,6 +2405,7 @@ def get_libs_to_link(options):
     elif settings.MALLOC != 'none':
       add_library('libmalloc')
   add_library('libcompiler_rt')
+  add_library('libcompiler_rt_profile')
   if settings.LINK_AS_CXX:
     add_library('libc++')
   if settings.LINK_AS_CXX or sanitize:

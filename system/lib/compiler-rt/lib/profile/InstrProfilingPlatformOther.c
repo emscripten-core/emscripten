@@ -26,6 +26,8 @@ static const char *VNamesFirst = NULL;
 static const char *VNamesLast = NULL;
 static char *CountersFirst = NULL;
 static char *CountersLast = NULL;
+static char *BitmapFirst = NULL;
+static char *BitmapLast = NULL;
 static uint32_t *OrderFileFirst = NULL;
 
 static const void *getMinAddr(const void *A1, const void *A2) {
@@ -53,18 +55,25 @@ void __llvm_profile_register_function(void *Data_) {
     CountersFirst = (char *)((uintptr_t)Data_ + Data->CounterPtr);
     CountersLast =
         CountersFirst + Data->NumCounters * __llvm_profile_counter_entry_size();
+    BitmapFirst = (char *)((uintptr_t)Data_ + Data->BitmapPtr);
+    BitmapLast = BitmapFirst + Data->NumBitmapBytes;
     return;
   }
 
   DataFirst = (const __llvm_profile_data *)getMinAddr(DataFirst, Data);
   CountersFirst = (char *)getMinAddr(
       CountersFirst, (char *)((uintptr_t)Data_ + Data->CounterPtr));
+  BitmapFirst = (char *)getMinAddr(
+    BitmapFirst, (char *)((uintptr_t)Data_ + Data->BitmapPtr));
 
   DataLast = (const __llvm_profile_data *)getMaxAddr(DataLast, Data + 1);
   CountersLast = (char *)getMaxAddr(
       CountersLast,
       (char *)((uintptr_t)Data_ + Data->CounterPtr) +
           Data->NumCounters * __llvm_profile_counter_entry_size());
+  BitmapLast = (char *)getMaxAddr(
+      BitmapLast,
+      (char *)((uintptr_t)Data_ + Data->CounterPtr) + Data->NumBitmapBytes);
 }
 
 COMPILER_RT_VISIBILITY
