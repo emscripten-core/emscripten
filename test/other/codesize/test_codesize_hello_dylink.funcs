@@ -22,6 +22,7 @@ $getint
 $main
 $out
 $pad
+$path_find
 $pop_arg
 $pop_arg_long_double
 $printf_core
