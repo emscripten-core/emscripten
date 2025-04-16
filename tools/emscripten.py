@@ -1144,6 +1144,7 @@ def create_pointer_conversion_wrappers(metadata):
     '_emscripten_set_offscreencanvas_size_on_thread': '_pp__',
     'fileno': '_p',
     '_emscripten_run_callback_on_thread': '_pp_pp',
+    '_emscripten_find_dylib': 'ppppp',
   }
 
   for function in settings.SIGNATURE_CONVERSIONS:
