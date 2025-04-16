@@ -484,56 +484,49 @@ static void dlopen_onerror(struct dso* dso, void* user_data) {
 }
 
 // Modified version of path_open from musl/ldso/dynlink.c
-static int path_find(const char *name, int ncandidates, const char **candidates, char *buf, size_t buf_size) {
+static int path_find(const char *name, const char *s, char *buf, size_t buf_size) {
+  if (s == NULL) {
+    return -1;
+  }
   size_t l;
   int fd;
-  for (int c = 0; c < ncandidates; c ++) {
-    const char* s = candidates[c];
-    if (s == NULL) {
-      dbg("Candidate %d is null, skipping\n", c);
-      continue;
-    }
-    dbg("Candidate %d...\n", c);
-    for (;;) {
-      s += strspn(s, ":\n");
-      l = strcspn(s, ":\n");
-      if (l-1 >= INT_MAX) return -1;
-      if (snprintf(buf, buf_size, "%.*s/%s", (int)l, s, name) < buf_size) {
-        dbg("dlopen: path_find: %s", buf);
-        struct stat statbuf;
-        dbg("Checking file: %s\n", buf);
-        if (stat(buf, &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
-          dbg(" .. found\n");
-          return 0;
-        }
-        dbg(" .. not found\n");
-        switch (errno) {
-        case ENOENT:
-        case ENOTDIR:
-        case EACCES:
-        case ENAMETOOLONG:
-          break;
-        default:
-          dbg("dlopen: path_find failed: %s", strerror(errno));
-          /* Any negative value but -1 will inhibit
-          * futher path search. */
-          return -2;
-        }
+  for (;;) {
+    s += strspn(s, ":\n");
+    l = strcspn(s, ":\n");
+    if (l-1 >= INT_MAX) return -1;
+    if (snprintf(buf, buf_size, "%.*s/%s", (int)l, s, name) < buf_size) {
+      dbg("dlopen: path_find: %s", buf);
+      struct stat statbuf;
+      if (stat(buf, &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
+        return 0;
       }
-      s += l;
+      switch (errno) {
+      case ENOENT:
+      case ENOTDIR:
+      case EACCES:
+      case ENAMETOOLONG:
+        break;
+      default:
+        dbg("dlopen: path_find failed: %s", strerror(errno));
+        /* Any negative value but -1 will inhibit
+         * futher path search. */
+        return -2;
+      }
     }
+    s += l;
   }
-  return -1;
 }
 
 // Resolve filename using LD_LIBRARY_PATH
 const char* _emscripten_find_dylib(char* buf, const char* rpath, const char* file, size_t buflen) {
   if (!strchr(file, '/')) {
     const char* env_path = getenv("LD_LIBRARY_PATH");
-    int ncandidates = 2;
-    const char* candidates[2] = {env_path, rpath};
-    if (path_find(file, ncandidates, candidates, buf, buflen) == 0) {
+    if (path_find(file, env_path, buf, buflen) == 0) {
       dbg("dlopen: found in LD_LIBRARY_PATH: %s", buf);
+      return buf;
+    }
+    if (path_find(file, rpath, buf, buflen) == 0) {
+      dbg("dlopen: found in RPATH: %s", buf);
       return buf;
     }
   }
