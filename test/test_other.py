@@ -7564,10 +7564,13 @@ int main(int argc, char** argv) {
 
   @parameterized({
     '': ([],),
+    'wasmfs': (['-sWASMFS'],),
     'pthread': (['-g', '-pthread', '-Wno-experimental', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
   def test_ld_library_path(self, args):
-    if args:
+    if '-pthread' in args:
+      self.skipTest('Problems with readFile from pthread')
+    if '-pthread' in args:
       self.setup_node_pthreads()
     create_file('hello1_dep.c', r'''
 #include <stdio.h>
