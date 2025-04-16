@@ -1920,8 +1920,7 @@ FS.staticInit();`;
    * @param {number=} mode Optionally, the mode to create in. Uses mkdir's
    *                       default if not set.
    */`,
-  $FS_mkdirTree__deps: ['$FS'],
-  $FS_mkdirTree: (path, mode) => FS.mkdirTree(path, mode),
+  // Defintion generated automatically below.
 };
 
 // Add library aliases for all the FS.<symbol> as FS_<symbol>.
