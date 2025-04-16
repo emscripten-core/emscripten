@@ -116,6 +116,11 @@ legacyFuncs = {
   // Legacy names for runtime `out`/`err` symbols.
   $print: 'out',
   $printErr: 'err',
+
+  // Converts a JS string to an integer base-10, with signaling error
+  // handling (throws a JS exception on error). E.g. jstoi_s("123abc")
+  // throws an exception.
+  $jstoi_s: 'Number',
 };
 
 if (WARN_DEPRECATED && !INCLUDE_FULL_LIBRARY) {
