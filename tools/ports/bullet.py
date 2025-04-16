@@ -39,6 +39,7 @@ def get(ports, settings, shared):
 
     flags = [
       '-Wno-single-bit-bitfield-constant-conversion',
+      '-Wno-int-to-void-pointer-cast',
       '-std=gnu++14'
     ]
 
