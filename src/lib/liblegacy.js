@@ -117,9 +117,10 @@ legacyFuncs = {
   $print: 'out',
   $printErr: 'err',
 
-  // Converts a JS string to an integer base-10, with signaling error
-  // handling (throws a JS exception on error). E.g. jstoi_s("123abc")
-  // throws an exception.
+  // Converts a JS string to an integer base-10. Despite _s, which
+  // suggests signaling error handling, this returns NaN on error.
+  // (This was a mistake in the original implementation, and kept
+  // to avoid breakage.)
   $jstoi_s: 'Number',
 };
 
