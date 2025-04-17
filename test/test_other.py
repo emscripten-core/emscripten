@@ -16009,8 +16009,7 @@ addToLibrary({
         return scriptDirectory + fileName;
       };
       ''')
-    self.run_process([EMCC, '-o', 'hello_world.mjs',
-                      '--pre-js', 'pre.js',
-                      '--extern-post-js', test_file('modularize_post_js.js'),
-                      test_file('hello_world.c')] + args)
-    self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
+    self.do_runf('hello_world.c', 'hello, world!',
+                 output_suffix='.mjs',
+                 emcc_args=['--pre-js', 'pre.js',
+                            '--extern-post-js', test_file('modularize_post_js.js')] + args)
