@@ -61,7 +61,7 @@ def get(ports, settings, shared):
               IMG_tif.c IMG_xcf.c IMG_xpm.c IMG_xv.c IMG_webp.c IMG_ImageIO.m
               IMG_avif.c IMG_jxl.c IMG_svg.c IMG_qoi.c'''.split()
 
-    flags = ['-O2', '-sUSE_SDL=2', '-Wno-format-security']
+    flags = ['-sUSE_SDL=2', '-Wno-format-security']
 
     formats = get_formats(settings)
 

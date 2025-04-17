@@ -43,7 +43,6 @@ def get(ports, settings, shared):
     source_path = ports.get_dir('sdl2_mixer', 'SDL_mixer-' + TAG)
     flags = [
       '-sUSE_SDL=2',
-      '-O2',
       '-DMUSIC_WAV',
     ]
 
