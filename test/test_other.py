@@ -355,7 +355,7 @@ class other(RunnerCore):
     self.run_process([EMCC, '-o', 'hello_world.mjs',
                       '--extern-post-js', test_file('modularize_post_js.js'),
                       test_file('hello_world.c')] + args)
-    self.assertContained('export default Module;', read_file('hello_world.mjs'))
+    self.assertContained('export default moduleFactory;', read_file('hello_world.mjs'))
     self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
   @requires_node_canary
@@ -381,7 +381,7 @@ class other(RunnerCore):
     src = read_file('subdir/hello_world.mjs')
     self.assertContained("new URL('hello_world.wasm', import.meta.url)", src)
     self.assertContained("new Worker(new URL('hello_world.mjs', import.meta.url), {", src)
-    self.assertContained('export default Module;', src)
+    self.assertContained('export default moduleFactory;', src)
     self.assertContained('hello, world!', self.run_js('subdir/hello_world.mjs'))
 
   @node_pthreads
@@ -405,11 +405,15 @@ class other(RunnerCore):
   def test_esm_implies_modularize(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6'])
     src = read_file('a.out.js')
-    self.assertContained('export default Module;', src)
+    self.assertContained('export default moduleFactory;', src)
 
   def test_esm_requires_modularize(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sMODULARIZE=0'])
     self.assertContained('EXPORT_ES6 requires MODULARIZE to be set', err)
+
+  def test_esm_ignore_export_name(self):
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sEXPORT_NAME=Foo', '-Werror'])
+    self.assertContained('emcc: error: EXPORT_NAME is not used in EXPORT_ES6 mode [-Wunused-command-line-argument] [-Werror]', err)
 
   def test_emcc_out_file(self):
     # Verify that "-ofile" works in addition to "-o" "file"
@@ -7058,8 +7062,7 @@ int main(void) {
 
   @parameterized({
     '': ([],),
-    'export_name': (['-sEXPORT_NAME=Foo'],),
-    'closure': (['-sEXPORT_NAME=Foo', '--closure=1'],),
+    'closure': (['--closure=1'],),
   })
   @crossplatform
   def test_modularize_incoming(self, args):
@@ -11160,6 +11163,7 @@ T6:(else) !ASSERTIONS""", output)
         ''')
     else:
       ext = '.js'
+      self.emcc_args += ['-sMODULARIZE', '-sEXPORT_NAME=test_module']
       create_file('moduleLoader.js', '''
         const test_module = require("./subdir/module.js");
         test_module().then((test_module_instance) => {
@@ -11169,7 +11173,7 @@ T6:(else) !ASSERTIONS""", output)
     ensure_dir('subdir')
 
     # build hello_world.c
-    self.run_process([EMCC, test_file('hello_world.c'), '-o', 'subdir/module' + ext, '-pthread', '-sPTHREAD_POOL_SIZE=2', '-sMODULARIZE', '-sEXPORT_NAME=test_module'] + self.get_emcc_args())
+    self.run_process([EMCC, test_file('hello_world.c'), '-o', 'subdir/module' + ext, '-pthread', '-sPTHREAD_POOL_SIZE=2'] + self.get_emcc_args())
 
     # run the module
     ret = self.run_js('moduleLoader' + ext)
