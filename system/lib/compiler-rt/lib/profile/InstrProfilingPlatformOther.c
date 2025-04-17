@@ -73,7 +73,7 @@ void __llvm_profile_register_function(void *Data_) {
           Data->NumCounters * __llvm_profile_counter_entry_size());
   BitmapLast = (char *)getMaxAddr(
       BitmapLast,
-      (char *)((uintptr_t)Data_ + Data->CounterPtr) + Data->NumBitmapBytes);
+      (char *)((uintptr_t)Data_ + Data->BitmapPtr) + Data->NumBitmapBytes);
 }
 
 COMPILER_RT_VISIBILITY
