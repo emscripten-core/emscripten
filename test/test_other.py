@@ -15985,6 +15985,7 @@ addToLibrary({
   @parameterized({
     '': ([],),
     'node': (['-sENVIRONMENT=node'],),
+    'pthread': (['-pthread',  '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
   def test_locate_file_abspath(self, args):
     # Verify that `scriptDirectory` is an absolute path
@@ -16013,16 +16014,3 @@ addToLibrary({
                       '--extern-post-js', test_file('modularize_post_js.js'),
                       test_file('hello_world.c')] + args)
     self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
-
-  @node_pthreads
-  def test_locate_file_abspath_pthread(self):
-    # Verify that `scriptDirectory` is an absolute path when `ENVIRONMENT_IS_WORKER`
-    self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
-    create_file('pre.js', '''
-      Module['locateFile'] = (fileName, scriptDirectory) => {
-        assert(nodePath['isAbsolute'](scriptDirectory), `scriptDirectory (${scriptDirectory}) should be an absolute path`);
-        return scriptDirectory + fileName;
-      };
-      ''')
-    self.do_runf('hello_world.c', 'hello, world!', emcc_args=['--pre-js', 'pre.js'])

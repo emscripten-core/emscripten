@@ -205,8 +205,8 @@ if (ENVIRONMENT_IS_NODE) {
   var nodePath = require('path');
 
 #if EXPORT_ES6
-  if (import.meta.url.startsWith('file:')) {
-    scriptDirectory = nodePath.dirname(require('url').fileURLToPath(import.meta.url)) + '/';
+  if (_scriptName.startsWith('file:')) {
+    scriptDirectory = nodePath.dirname(require('url').fileURLToPath(_scriptName)) + '/';
   }
 #else
   scriptDirectory = __dirname + '/';
