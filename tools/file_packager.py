@@ -21,7 +21,7 @@ data downloads.
 
 Usage:
 
-  file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node]
+  file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node] [--help]
 
   --preload  ,
   --embed    See emcc --help for more details on those options.
@@ -365,8 +365,8 @@ def main():  # noqa: C901, PLR0912, PLR0915
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
   if len(sys.argv) == 1:
-    err('''Usage: file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node]
-  See the source for more details.''')
+    err('''Usage: file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node] [--help]
+  Try 'file_packager --help' for more details.''')
     return 1
 
   # read response files very early on
@@ -374,6 +374,10 @@ def main():  # noqa: C901, PLR0912, PLR0915
     args = substitute_response_files(sys.argv[1:])
   except IOError as e:
     shared.exit_with_error(e)
+
+  if '--help' in args:
+    print(__doc__.strip())
+    return 0
 
   data_target = args[0]
   data_files = []

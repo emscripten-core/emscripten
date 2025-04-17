@@ -5,7 +5,9 @@
 function processModuleArgs() 
 #endif
 {
-#if IMPORTED_MEMORY
+#if IMPORTED_MEMORY && !WASM_ESM_INTEGRATION
+  // With WASM_ESM_INTEGRATION this has to happen at the top level and not
+  // delayed until processModuleArgs.
   initMemory();
 #endif
 

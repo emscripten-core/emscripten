@@ -347,7 +347,7 @@ var LibraryEmbind = {
       out.push('\n};\n\n');
     }
   },
-  $TsPrinter__deps: ['$OptionalType'],
+  $TsPrinter__deps: ['$OptionalType', '$ClassDefinition'],
   $TsPrinter: class {
     constructor(definitions) {
       this.definitions = definitions;

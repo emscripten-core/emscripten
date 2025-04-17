@@ -2535,6 +2535,7 @@ F1 -> ''
                  args=['screenshot.jpg'])
 
   @requires_network
+  @also_with_wasm64
   def test_bullet(self):
     self.do_runf('test_bullet_hello_world.cpp', 'BULLET RUNNING', emcc_args=['-sUSE_BULLET'])
     self.do_runf('test_bullet_hello_world.cpp', 'BULLET RUNNING', emcc_args=['--use-port=bullet'])
@@ -3557,6 +3558,11 @@ More info: https://emscripten.org
     self.run_process([EMCC, test_file('other/embind_tsgen_val.cpp'),
                       '-lembind', '--emit-tsd', 'embind_tsgen_val.d.ts'])
     self.assertExists('embind_tsgen_val.d.ts')
+
+  def test_embind_tsgen_constant_only(self):
+    self.run_process([EMCC, test_file('other/embind_tsgen_constant_only.cpp'),
+                      '-lembind', '--emit-tsd', 'out.d.ts'])
+    self.assertFileContents(test_file('other/embind_tsgen_constant_only.d.ts'), read_file('out.d.ts'))
 
   def test_embind_tsgen_bigint(self):
     args = [EMXX, test_file('other/embind_tsgen_bigint.cpp'), '-lembind', '--emit-tsd', 'embind_tsgen_bigint.d.ts']
@@ -12316,6 +12322,10 @@ int main(void) {
 
     self.do_runf('hello_world.c', 'Aborted(`Module.onRuntimeInitialized` was supplied but `onRuntimeInitialized` not included in INCOMING_MODULE_JS_API)', assert_returncode=NON_ZERO)
 
+  def test_INCOMING_MODULE_JS_API_invalid(self):
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sINCOMING_MODULE_JS_API=foo', '-Werror'])
+    self.assertContained('emcc: error: invalid entry in INCOMING_MODULE_JS_API: foo [-Wunused-command-line-argument] [-Werror]', err)
+
   def test_llvm_includes(self):
     create_file('atomics.c', '#include <stdatomic.h>')
     self.build('atomics.c')
@@ -12727,7 +12737,7 @@ int main(void) {
     stderr = self.run_process(cmd + ['-w'], stderr=PIPE).stderr
     self.assertNotContained('warning', stderr)
 
-    # -Wno-invalid-input to suppress just this one warning
+    # -Wno-emcc to suppress just this one warning
     stderr = self.run_process(cmd + ['-Wno-emcc'], stderr=PIPE).stderr
     self.assertNotContained('warning', stderr)
 
@@ -15971,3 +15981,35 @@ addToLibrary({
     # Now create foo.[m]js and the program should run as expected.
     shutil.copy(outfile, ('foo.%s' % ext))
     self.assertContained('hello, world', self.run_js(outfile))
+
+  @parameterized({
+    '': ([],),
+    'node': (['-sENVIRONMENT=node'],),
+    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
+  })
+  def test_locate_file_abspath(self, args):
+    # Verify that `scriptDirectory` is an absolute path
+    create_file('pre.js', '''
+      Module['locateFile'] = (fileName, scriptDirectory) => {
+        assert(nodePath['isAbsolute'](scriptDirectory), `scriptDirectory (${scriptDirectory}) should be an absolute path`);
+        return scriptDirectory + fileName;
+      };
+      ''')
+    self.do_runf('hello_world.c', 'hello, world!', emcc_args=['--pre-js', 'pre.js'] + args)
+
+  @parameterized({
+    '': ([],),
+    'node': (['-sENVIRONMENT=node'],),
+  })
+  def test_locate_file_abspath_esm(self, args):
+    # Verify that `scriptDirectory` is an absolute path when `EXPORT_ES6`
+    create_file('pre.js', '''
+      Module['locateFile'] = (fileName, scriptDirectory) => {
+        assert(nodePath['isAbsolute'](scriptDirectory), `scriptDirectory (${scriptDirectory}) should be an absolute path`);
+        return scriptDirectory + fileName;
+      };
+      ''')
+    self.do_runf('hello_world.c', 'hello, world!',
+                 output_suffix='.mjs',
+                 emcc_args=['--pre-js', 'pre.js',
+                            '--extern-post-js', test_file('modularize_post_js.js')] + args)

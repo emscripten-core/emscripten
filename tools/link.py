@@ -794,10 +794,21 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.MODULARIZE and settings.MODULARIZE not in [1, 'instance']:
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
 
+  def limit_incoming_module_api():
+    if options.oformat == OFormat.HTML and options.shell_path == DEFAULT_SHELL_HTML:
+      # Out default shell.html file has minimal set of INCOMING_MODULE_JS_API elements that it expects
+      default_setting('INCOMING_MODULE_JS_API', 'canvas,monitorRunDependencies,onAbort,onExit,print,setStatus'.split(','))
+    else:
+      default_setting('INCOMING_MODULE_JS_API', [])
+
   if settings.MODULARIZE == 'instance':
     diagnostics.warning('experimental', '-sMODULARIZE=instance is still experimental. Many features may not work or will change.')
     if options.oformat != OFormat.MJS:
       exit_with_error('emcc: MODULARIZE instance is only compatible with .mjs output files')
+    limit_incoming_module_api()
+    for s in ['wasmMemory', 'INITIAL_MEMORY']:
+      if s in settings.INCOMING_MODULE_JS_API:
+        exit_with_error(f'emcc: {s} cannot be in INCOMING_MODULE_JS_API in MODULARIZE=instance mode')
 
   if options.oformat in (OFormat.WASM, OFormat.BARE):
     if options.emit_tsd:
@@ -965,11 +976,11 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       # are needed in this mode.
       default_setting('AUTO_JS_LIBRARIES', 0)
       default_setting('ALLOW_UNIMPLEMENTED_SYSCALLS', 0)
-    if options.oformat == OFormat.HTML and options.shell_path == DEFAULT_SHELL_HTML:
-      # Out default shell.html file has minimal set of INCOMING_MODULE_JS_API elements that it expects
-      default_setting('INCOMING_MODULE_JS_API', 'canvas,monitorRunDependencies,onAbort,onExit,print,setStatus'.split(','))
-    else:
-      default_setting('INCOMING_MODULE_JS_API', [])
+    limit_incoming_module_api()
+
+  for prop in settings.INCOMING_MODULE_JS_API:
+    if prop not in settings.ALL_INCOMING_MODULE_JS_API:
+      diagnostics.warning('unused-command-line-argument', f'invalid entry in INCOMING_MODULE_JS_API: {prop}')
 
   if 'noExitRuntime' in settings.INCOMING_MODULE_JS_API:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$noExitRuntime')
@@ -2459,30 +2470,22 @@ def modularize():
     # document.currentScript, so a simple export declaration is enough.
     src = f'var {settings.EXPORT_NAME} = {wrapper_function};'
   else:
-    script_url_node = ''
+    script_url_web = ''
     # When MODULARIZE this JS may be executed later,
     # after document.currentScript is gone, so we save it.
-    # In EXPORT_ES6 + PTHREADS the 'thread' is actually an ES6 module
-    # webworker running in strict mode, so doesn't have access to 'document'.
-    # In this case use 'import.meta' instead.
-    if settings.EXPORT_ES6:
-      script_url = 'import.meta.url'
-    else:
-      script_url = "typeof document != 'undefined' ? document.currentScript?.src : undefined"
-      if settings.ENVIRONMENT_MAY_BE_NODE:
-        script_url_node = "if (typeof __filename != 'undefined') _scriptName = _scriptName || __filename;"
+    # In EXPORT_ES6 mode we can just use 'import.meta.url'.
+    if settings.ENVIRONMENT_MAY_BE_WEB and not settings.EXPORT_ES6:
+       script_url_web = "var _scriptName = typeof document != 'undefined' ? document.currentScript?.src : undefined;"
     src = '''\
 var %(EXPORT_NAME)s = (() => {
-  var _scriptName = %(script_url)s;
-  %(script_url_node)s
+  %(script_url_web)s
   return (%(wrapper_function)s);
 })();
 ''' % {
-        'EXPORT_NAME': settings.EXPORT_NAME,
-        'script_url': script_url,
-        'script_url_node': script_url_node,
-        'wrapper_function': wrapper_function,
-      }
+      'EXPORT_NAME': settings.EXPORT_NAME,
+      'script_url_web': script_url_web,
+      'wrapper_function': wrapper_function,
+    }
 
   if settings.SOURCE_PHASE_IMPORTS:
     src = f"import source wasmModule from './{settings.WASM_BINARY_FILE}';\n\n" + src
