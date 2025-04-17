@@ -139,24 +139,32 @@ var quit_ = (status, toThrow) => {
   throw toThrow;
 };
 
-#if SHARED_MEMORY && !MODULARIZE
+#if EXPORT_ES6
+var _scriptName = import.meta.url;
+#else
+#if ENVIRONMENT_MAY_BE_WEB
+#if !MODULARIZE
 // In MODULARIZE mode _scriptName needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
-var _scriptName = (typeof document != 'undefined') ? document.currentScript?.src : undefined;
+var _scriptName = typeof document != 'undefined' ? document.currentScript?.src : undefined;
+#endif // !MODULARIZE
+#elif ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_WORKER
+var _scriptName;
+#endif // ENVIRONMENT_MAY_BE_WEB
 
 #if ENVIRONMENT_MAY_BE_NODE
-if (ENVIRONMENT_IS_NODE) {
-#if EXPORT_ES6
-  _scriptName = typeof __filename != 'undefined' ? __filename : import.meta.url
-#else
+if (typeof __filename != 'undefined') { // Node
   _scriptName = __filename;
-#endif
 } else
 #endif // ENVIRONMENT_MAY_BE_NODE
+#if ENVIRONMENT_MAY_BE_WORKER
 if (ENVIRONMENT_IS_WORKER) {
   _scriptName = self.location.href;
 }
-#endif // SHARED_MEMORY && !MODULARIZE
+#elif ENVIRONMENT_MAY_BE_NODE
+  /*no-op*/{}
+#endif // ENVIRONMENT_MAY_BE_WORKER
+#endif // EXPORT_ES6
 
 // `/` should be present at the end if `scriptDirectory` is not empty
 var scriptDirectory = '';
@@ -197,11 +205,8 @@ if (ENVIRONMENT_IS_NODE) {
   var nodePath = require('path');
 
 #if EXPORT_ES6
-  // EXPORT_ES6 + ENVIRONMENT_IS_NODE always requires use of import.meta.url,
-  // since there's no way getting the current absolute path of the module when
-  // support for that is not available.
-  if (!import.meta.url.startsWith('data:')) {
-    scriptDirectory = nodePath.dirname(require('url').fileURLToPath(import.meta.url)) + '/';
+  if (_scriptName.startsWith('file:')) {
+    scriptDirectory = nodePath.dirname(require('url').fileURLToPath(_scriptName)) + '/';
   }
 #else
   scriptDirectory = __dirname + '/';
@@ -335,28 +340,11 @@ if (ENVIRONMENT_IS_SHELL) {
 // ENVIRONMENT_IS_NODE.
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
 if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
-  if (ENVIRONMENT_IS_WORKER) { // Check worker, not web, since window could be polyfilled
-    scriptDirectory = self.location.href;
-  } else if (typeof document != 'undefined' && document.currentScript) { // web
-    scriptDirectory = document.currentScript.src;
-  }
-#if MODULARIZE
-  // When MODULARIZE, this JS may be executed later, after document.currentScript
-  // is gone, so we saved it, and we use it here instead of any other info.
-  if (_scriptName) {
-    scriptDirectory = _scriptName;
-  }
-#endif
-  // blob urls look like blob:http://site.com/etc/etc and we cannot infer anything from them.
-  // otherwise, slice off the final part of the url to find the script directory.
-  // if scriptDirectory does not contain a slash, lastIndexOf will return -1,
-  // and scriptDirectory will correctly be replaced with an empty string.
-  // If scriptDirectory contains a query (starting with ?) or a fragment (starting with #),
-  // they are removed because they could contain a slash.
-  if (scriptDirectory.startsWith('blob:')) {
-    scriptDirectory = '';
-  } else {
-    scriptDirectory = scriptDirectory.slice(0, scriptDirectory.replace(/[?#].*/, '').lastIndexOf('/')+1);
+  try {
+    scriptDirectory = new URL('.', _scriptName).href; // includes trailing slash
+  } catch {
+    // Must be a `blob:` or `data:` URL (e.g. `blob:http://site.com/etc/etc`), we cannot
+    // infer anything from them.
   }
 
 #if ENVIRONMENT && ASSERTIONS
