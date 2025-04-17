@@ -72,7 +72,6 @@ diagnostics.add_warning('absolute-paths', enabled=False, part_of_all=False)
 # unused diagnostic flags.  TODO(sbc): remove at some point
 diagnostics.add_warning('almost-asm')
 diagnostics.add_warning('experimental')
-diagnostics.add_warning('invalid-input')
 # Don't show legacy settings warnings by default
 diagnostics.add_warning('legacy-settings', enabled=False, part_of_all=False)
 # Catch-all for other emcc warnings
