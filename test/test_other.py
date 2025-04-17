@@ -15985,7 +15985,7 @@ addToLibrary({
   @parameterized({
     '': ([],),
     'node': (['-sENVIRONMENT=node'],),
-    'pthread': (['-pthread',  '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
+    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
   def test_locate_file_abspath(self, args):
     # Verify that `scriptDirectory` is an absolute path
