@@ -847,8 +847,8 @@ var LibraryDylink = {
         }
 #endif
 #if JSPI
-        if (res.orig) {
-          res = res.orig;
+        if (resolved?.orig) {
+          resolved = resolved.orig;
         }
 #endif
         return resolved;
