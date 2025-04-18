@@ -526,7 +526,7 @@ def run(args):
     args += shlex.split(EMCC_CFLAGS)
 
   if DEBUG:
-    logger.warning(f'invocation: {shared.shlex_join(args)} (in {os.getcwd()})')
+    logger.warning(f'invocation: {shlex.join(args)} (in {os.getcwd()})')
 
   # Strip args[0] (program name)
   args = args[1:]
@@ -596,7 +596,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error(f'unable to parse output of `{cmd}`:\n{proc.stderr}')
       parts = shlex.split(lines[0].replace('\\', '\\\\'))
       parts = [x for x in parts if x not in ['-c', '-o', '-v', '-emit-llvm'] and input_file not in x and temp_target not in x]
-      print(shared.shlex_join(parts[1:]))
+      print(shlex.join(parts[1:]))
     return 0
 
   if '-dumpmachine' in args or '-print-target-triple' in args or '--print-target-triple' in args:

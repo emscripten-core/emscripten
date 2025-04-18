@@ -88,7 +88,7 @@ EMMAKE = shared.bat_suffix(path_from_root('emmake'))
 EMCMAKE = shared.bat_suffix(path_from_root('emcmake'))
 EMCONFIGURE = shared.bat_suffix(path_from_root('emconfigure'))
 EMRUN = shared.bat_suffix(shared.path_from_root('emrun'))
-WASM_DIS = Path(building.get_binaryen_bin(), 'wasm-dis')
+WASM_DIS = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
 LLVM_OBJDUMP = os.path.expanduser(shared.build_llvm_tool_path(shared.exe_suffix('llvm-objdump')))
 PYTHON = sys.executable
 if not config.NODE_JS_TEST:
@@ -1406,7 +1406,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       output = output_basename + output_suffix
     else:
       output = shared.unsuffixed_basename(filename) + output_suffix
-    cmd = compiler + [filename, '-o', output] + all_emcc_args
+    cmd = compiler + [str(filename), '-o', output] + all_emcc_args
     if libraries:
       cmd += libraries
     if includes:
@@ -1755,7 +1755,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       if check and e.returncode != 0:
         print(e.stdout)
         print(e.stderr)
-        self.fail(f'subprocess exited with non-zero return code({e.returncode}): `{shared.shlex_join(cmd)}`')
+        self.fail(f'subprocess exited with non-zero return code({e.returncode}): `{shlex.join(cmd)}`')
 
   def emcc(self, filename, args=[], output_filename=None, **kwargs):  # noqa
     compile_only = '-c' in args or '-sSIDE_MODULE' in args
