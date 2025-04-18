@@ -7066,8 +7066,8 @@ int main(void) {
     self.run_process([EMCC, test_file('hello_world.c'), '-o', 'out.mjs'] + self.get_emcc_args() + args)
     create_file('run.mjs', '''
     import Module from './out.mjs';
-    await Module({onRuntimeInitialized: () => console.log('done init')})
-      .then(() => console.log('got module'));
+    await Module({onRuntimeInitialized: () => console.log('done init')});
+    console.log('got module');
     ''')
     output = self.run_js('run.mjs')
     self.assertContained('done init\nhello, world!\ngot module\n', output)
