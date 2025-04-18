@@ -65,16 +65,18 @@ function doReftest() {
         }
       }
       // floor, to allow some margin of error for antialiasing
-      var wrong = Math.floor(total / (img.width*img.height*3));
+      var delta = Math.floor(total / (img.width*img.height*3));
+      console.log(`image delta = ${delta}`);
+      var wrong = delta > reftestSlack;
       if (wrong || reftestRebaseline) {
         // Generate a png of the actual rendered image and send it back
         // to the server.
         Module['canvas'].toBlob((blob) => {
           sendFileToServer('actual.png', blob);
-          reportResultToServer(wrong);
+          reportResultToServer(wrong ? `mismatch:${delta}` : 'match');
         })
       } else {
-        reportResultToServer(wrong);
+        reportResultToServer('match');
       }
     };
     actualImage.src = actualUrl;
