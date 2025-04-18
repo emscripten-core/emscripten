@@ -593,13 +593,13 @@ var LibraryDylink = {
     }
   },
 #endif
+
 #if JSPI
-  $getStubImportModule__postset: `
-    var stubImportModuleCache = new Map();
-  `,
+  $stubImportModuleCache: new Map(),
   $getStubImportModule__deps: [
     "$generateFuncType",
-    "$uleb128Encode"
+    "$uleb128Encode",
+    "$stubImportModuleCache",
   ],
   // We need to call out to JS to resolve the function, but then make the actual
   // onward call from WebAssembly. The JavaScript $resolve function is
@@ -715,19 +715,9 @@ var LibraryDylink = {
     }
     return sig;
   },
-  $getStubImportResolver: (name, resolveSymbol) => {
-    return function r() {
-      var res = resolveSymbol(name);
-      if (res.orig) {
-        res = res.orig;
-      }
-      return res;
-    };
-  },
   $addStubImports__deps: [
     '$getStubImportModule',
     '$wasmSigToEmscripten',
-    '$getStubImportResolver',
   ],
   $addStubImports: (mod, stubs, resolveSymbol) => {
     // Assumes --experimental-wasm-type-reflection to get type field of WebAssembly.Module.imports().
@@ -750,12 +740,13 @@ var LibraryDylink = {
 #endif
       var sig = wasmSigToEmscripten(type);
       var mod = getStubImportModule(sig);
-      const r = getStubImportResolver(name, resolveSymbol);
+      const r = () => resolveSymbol(name);
       const inst = new WebAssembly.Instance(mod, {e: {r}});
       stubs[name] = inst.exports.o;
     }
   },
-#endif
+#endif // JSPI
+
   // Loads a side module from binary data or compiled Module. Returns the module's exports or a
   // promise that resolves to its exports if the loadAsync flag is set.
   $loadWebAssemblyModule__docs: `
@@ -853,6 +844,11 @@ var LibraryDylink = {
 #if ASSERTIONS
         if (!allowUndefined) {
           assert(resolved, `undefined symbol '${sym}'. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment`);
+        }
+#endif
+#if JSPI
+        if (res.orig) {
+          res = res.orig;
         }
 #endif
         return resolved;
