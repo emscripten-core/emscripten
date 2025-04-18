@@ -993,7 +993,12 @@ def generate_js(data_target, data_files, metadata):
 
             const chunks = [];
             const headers = response.headers;
-            const total = Number(headers.get('Content-Length') ?? packageSize);
+            const contentEncoding = headers.get('Content-Encoding');
+            const isCompressed = contentEncoding === 'gzip' || contentEncoding === 'br'; 
+            let total = packageSize;
+            if (!total || (!isCompressed && headers.get('Content-Length'))) {
+              total = Number(headers.get('Content-Length'));
+            }
             let loaded = 0;
 
             const handleChunk = ({done, value}) => {
