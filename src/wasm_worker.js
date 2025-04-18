@@ -34,8 +34,11 @@ if (ENVIRONMENT_IS_NODE) {
   Object.assign(global, {
     self: global,
     require,
+#if !EXPORT_ES6
+    // `vm.runInThisContext` global scope lacks `__filename` and `__dirname`
     __filename,
     __dirname,
+#endif
     Worker: nodeWorkerThreads.Worker,
     importScripts: (f) => vm.runInThisContext(fs.readFileSync(f, 'utf8'), {filename: f}),
     postMessage: (msg) => parentPort.postMessage(msg),
@@ -68,7 +71,7 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
   importScripts(d.js);
 #if MODULARIZE
-  {{{ EXPORT_NAME }}}(d);
+  {{{ EXPORT_ES6 ? 'moduleFactory' : EXPORT_NAME }}}(d);
 #endif
   // Drop now unneeded references to from the Module object in this Worker,
   // these are not needed anymore.

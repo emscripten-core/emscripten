@@ -20,10 +20,12 @@
 // after the generated code, you will need to define   var Module = {};
 // before the code. Then that object will be used in the code, and you
 // can continue to use Module afterwards as well.
-#if WASM_ESM_INTEGRATION
-var Module = {};
-#elif MODULARIZE
+#if MODULARIZE
+#if MODULARIZE == 'instance'
+var Module;
+#else
 var Module = moduleArg;
+#endif
 #elif USE_CLOSURE_COMPILER
 /** @type{Object} */
 var Module;
@@ -137,24 +139,32 @@ var quit_ = (status, toThrow) => {
   throw toThrow;
 };
 
-#if SHARED_MEMORY && !MODULARIZE
+#if EXPORT_ES6
+var _scriptName = import.meta.url;
+#else
+#if ENVIRONMENT_MAY_BE_WEB
+#if !MODULARIZE
 // In MODULARIZE mode _scriptName needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
-var _scriptName = (typeof document != 'undefined') ? document.currentScript?.src : undefined;
+var _scriptName = typeof document != 'undefined' ? document.currentScript?.src : undefined;
+#endif // !MODULARIZE
+#elif ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_WORKER
+var _scriptName;
+#endif // ENVIRONMENT_MAY_BE_WEB
 
 #if ENVIRONMENT_MAY_BE_NODE
-if (ENVIRONMENT_IS_NODE) {
-#if EXPORT_ES6
-  _scriptName = typeof __filename != 'undefined' ? __filename : import.meta.url
-#else
+if (typeof __filename != 'undefined') { // Node
   _scriptName = __filename;
-#endif
 } else
 #endif // ENVIRONMENT_MAY_BE_NODE
+#if ENVIRONMENT_MAY_BE_WORKER
 if (ENVIRONMENT_IS_WORKER) {
   _scriptName = self.location.href;
 }
-#endif // SHARED_MEMORY && !MODULARIZE
+#elif ENVIRONMENT_MAY_BE_NODE
+  /*no-op*/{}
+#endif // ENVIRONMENT_MAY_BE_WORKER
+#endif // EXPORT_ES6
 
 // `/` should be present at the end if `scriptDirectory` is not empty
 var scriptDirectory = '';
@@ -195,11 +205,8 @@ if (ENVIRONMENT_IS_NODE) {
   var nodePath = require('path');
 
 #if EXPORT_ES6
-  // EXPORT_ES6 + ENVIRONMENT_IS_NODE always requires use of import.meta.url,
-  // since there's no way getting the current absolute path of the module when
-  // support for that is not available.
-  if (!import.meta.url.startsWith('data:')) {
-    scriptDirectory = nodePath.dirname(require('url').fileURLToPath(import.meta.url)) + '/';
+  if (_scriptName.startsWith('file:')) {
+    scriptDirectory = nodePath.dirname(require('url').fileURLToPath(_scriptName)) + '/';
   }
 #else
   scriptDirectory = __dirname + '/';
@@ -333,28 +340,11 @@ if (ENVIRONMENT_IS_SHELL) {
 // ENVIRONMENT_IS_NODE.
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
 if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
-  if (ENVIRONMENT_IS_WORKER) { // Check worker, not web, since window could be polyfilled
-    scriptDirectory = self.location.href;
-  } else if (typeof document != 'undefined' && document.currentScript) { // web
-    scriptDirectory = document.currentScript.src;
-  }
-#if MODULARIZE
-  // When MODULARIZE, this JS may be executed later, after document.currentScript
-  // is gone, so we saved it, and we use it here instead of any other info.
-  if (_scriptName) {
-    scriptDirectory = _scriptName;
-  }
-#endif
-  // blob urls look like blob:http://site.com/etc/etc and we cannot infer anything from them.
-  // otherwise, slice off the final part of the url to find the script directory.
-  // if scriptDirectory does not contain a slash, lastIndexOf will return -1,
-  // and scriptDirectory will correctly be replaced with an empty string.
-  // If scriptDirectory contains a query (starting with ?) or a fragment (starting with #),
-  // they are removed because they could contain a slash.
-  if (scriptDirectory.startsWith('blob:')) {
-    scriptDirectory = '';
-  } else {
-    scriptDirectory = scriptDirectory.slice(0, scriptDirectory.replace(/[?#].*/, '').lastIndexOf('/')+1);
+  try {
+    scriptDirectory = new URL('.', _scriptName).href; // includes trailing slash
+  } catch {
+    // Must be a `blob:` or `data:` URL (e.g. `blob:http://site.com/etc/etc`), we cannot
+    // infer anything from them.
   }
 
 #if ENVIRONMENT && ASSERTIONS
@@ -403,30 +393,6 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
 
 #if ASSERTIONS
-checkIncomingModuleAPI();
-#endif
-
-// Emit code to handle expected values on the Module object. This applies Module.x
-// to the proper local x. This has two benefits: first, we only emit it if it is
-// expected to arrive, and second, by using a local everywhere else that can be
-// minified.
-{{{ makeModuleReceive('arguments_', 'arguments') }}}
-{{{ makeModuleReceive('thisProgram') }}}
-
-// perform assertions in shell.js after we set up out() and err(), as otherwise if an assertion fails it cannot print the message
-#if ASSERTIONS
-// Assertions on removed incoming Module JS APIs.
-assert(typeof Module['memoryInitializerPrefixURL'] == 'undefined', 'Module.memoryInitializerPrefixURL option was removed, use Module.locateFile instead');
-assert(typeof Module['pthreadMainPrefixURL'] == 'undefined', 'Module.pthreadMainPrefixURL option was removed, use Module.locateFile instead');
-assert(typeof Module['cdInitializerPrefixURL'] == 'undefined', 'Module.cdInitializerPrefixURL option was removed, use Module.locateFile instead');
-assert(typeof Module['filePackagePrefixURL'] == 'undefined', 'Module.filePackagePrefixURL option was removed, use Module.locateFile instead');
-assert(typeof Module['read'] == 'undefined', 'Module.read option was removed');
-assert(typeof Module['readAsync'] == 'undefined', 'Module.readAsync option was removed (modify readAsync in JS)');
-assert(typeof Module['readBinary'] == 'undefined', 'Module.readBinary option was removed (modify readBinary in JS)');
-assert(typeof Module['setWindowTitle'] == 'undefined', 'Module.setWindowTitle option was removed (modify emscripten_set_window_title in JS)');
-assert(typeof Module['TOTAL_MEMORY'] == 'undefined', 'Module.TOTAL_MEMORY has been renamed Module.INITIAL_MEMORY');
-assert(typeof Module['ENVIRONMENT'] == 'undefined', 'Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -sENVIRONMENT=web or -sENVIRONMENT=node)');
-assert(typeof Module['STACK_SIZE'] == 'undefined', 'STACK_SIZE can no longer be set at runtime.  Use -sSTACK_SIZE at link time')
 
 {{{ makeRemovedFSAssert('IDBFS') }}}
 {{{ makeRemovedFSAssert('PROXYFS') }}}
@@ -440,6 +406,8 @@ assert(typeof Module['STACK_SIZE'] == 'undefined', 'STACK_SIZE can no longer be 
 {{{ makeRemovedFSAssert('NODEFS') }}}
 #endif
 
+// perform assertions in shell.js after we set up out() and err(), as otherwise
+// if an assertion fails it cannot print the message
 #if PTHREADS
 assert(
 #if AUDIO_WORKLET

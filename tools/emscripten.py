@@ -53,11 +53,6 @@ ASAN_C_HELPERS = [
 ]
 
 
-def write_output_file(outfile, module):
-  for chunk in module:
-    outfile.write(chunk)
-
-
 def maybe_disable_filesystem(imports):
   """Disables filesystem if only a limited subset of syscalls is used.
 
@@ -170,6 +165,7 @@ def apply_static_code_hooks(forwarded_json, code):
       hook_code = f'// No {name} hooks'
     code = code.replace(f'<<< {name} >>>', hook_code)
 
+  inject_code_hooks('ATMODULES')
   inject_code_hooks('ATPRERUNS')
   inject_code_hooks('ATINITS')
   inject_code_hooks('ATPOSTCTORS')
@@ -412,13 +408,6 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
 
   report_missing_exports(forwarded_json['librarySymbols'])
 
-  if settings.MINIMAL_RUNTIME:
-    # In MINIMAL_RUNTIME, atinit exists in the postamble part
-    post = apply_static_code_hooks(forwarded_json, post)
-  else:
-    # In regular runtime, atinits etc. exist in the preamble part
-    pre = apply_static_code_hooks(forwarded_json, pre)
-
   asm_const_pairs = ['%s: %s' % (key, value) for key, value in asm_consts]
   if asm_const_pairs or settings.MAIN_MODULE:
     pre += 'var ASM_CONSTS = {\n  ' + ',  \n '.join(asm_const_pairs) + '\n};\n'
@@ -440,20 +429,19 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     function_exports['asyncify_start_rewind'] = webassembly.FuncType([webassembly.Type.I32], [])
     function_exports['asyncify_stop_rewind'] = webassembly.FuncType([], [])
 
-  with open(outfile_js, 'w', encoding='utf-8') as out:
-    out.write(pre)
-    pre = None
+  parts = [pre]
+  receiving = create_receiving(function_exports)
+  if settings.WASM_ESM_INTEGRATION:
+    sending = create_sending(metadata, forwarded_json['librarySymbols'])
+    reexports = create_reexports()
+    parts += [sending, receiving, reexports]
+  else:
+    parts += create_module(receiving, metadata, global_exports, forwarded_json['librarySymbols'])
+  parts.append(post)
 
-    receiving = create_receiving(function_exports)
-    if settings.WASM_ESM_INTEGRATION:
-      sending = create_sending(metadata, forwarded_json['librarySymbols'])
-      module = [sending, receiving]
-    else:
-      module = create_module(receiving, metadata, global_exports, forwarded_json['librarySymbols'])
-    write_output_file(out, module)
-
-    out.write(post)
-    module = None
+  full_js_module = ''.join(parts)
+  full_js_module = apply_static_code_hooks(forwarded_json, full_js_module)
+  utils.write_file(outfile_js, full_js_module)
 
   metadata.library_definitions = forwarded_json['libraryDefinitions']
   return metadata
@@ -871,7 +859,10 @@ def create_sending(metadata, library_symbols):
     elems = []
     for k, v in sorted_items:
       elems.append(f'{v} as {k}')
-    return f"export {{ {', '.join(elems)} }};\n\n"
+    elems = ',\n  '.join(elems)
+    exports = '// Export JS functions to the wasm module with demangled names.\n'
+    exports += f"export {{\n  {elems}\n}};\n\n"
+    return exports
 
   prefix = ''
   if settings.MAYBE_CLOSURE_COMPILER:
@@ -889,6 +880,21 @@ def create_sending(metadata, library_symbols):
   return '{\n  ' + ',\n  '.join(elems) + '\n}'
 
 
+def create_reexports():
+  assert settings.WASM_ESM_INTEGRATION
+  exports = '// Re-export imported wasm functions to the JS entry point. These are user-facing and underscore mangled.\n'
+  wasm_exports = []
+  for exp in building.user_requested_exports:
+    if shared.is_c_symbol(exp):
+      demangled = shared.demangle_c_symbol_name(exp)
+      if demangled in settings.WASM_EXPORTS:
+        wasm_exports.append(exp)
+      if demangled == 'main' and '__main_argc_argv' in settings.WASM_EXPORTS:
+        wasm_exports.append('_main')
+  exports += f"export {{ {', '.join(wasm_exports)} }};\n\n"
+  return exports
+
+
 def can_use_await():
   return settings.MODULARIZE
 
@@ -897,6 +903,7 @@ def make_export_wrappers(function_exports):
   assert not settings.MINIMAL_RUNTIME
 
   wrappers = []
+  decls = []
 
   def install_wrapper(sym):
     # The emscripten stack functions are called very early (by writeStackCookie) before
@@ -914,19 +921,22 @@ def make_export_wrappers(function_exports):
   for name, types in function_exports.items():
     nargs = len(types.params)
     mangled = asmjs_mangle(name)
-    wrapper = 'var %s = ' % mangled
+    wrapper = f'var {mangled} = '
 
     # TODO(sbc): Can we avoid exporting the dynCall_ functions on the module.
     should_export = settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS
-    if (name.startswith('dynCall_') and settings.MODULARIZE != 'instance') or should_export:
-      if settings.MODULARIZE == 'instance':
-        # Update the export declared at the top level.
-        wrapper += f" __exp_{mangled} = "
+    if name.startswith('dynCall_') and settings.MODULARIZE != 'instance':
+      should_export = True
+    exported = ''
+    if settings.MODULARIZE == 'instance':
+      if should_export:
+        decls.append(f'export var {mangled};')
       else:
-        exported = "Module['%s'] = " % mangled
-    else:
-      exported = ''
-    wrapper += exported
+        decls.append(f'var {mangled};')
+      wrapper = f'  {mangled} = '
+    elif should_export:
+      exported = "Module['%s'] = " % mangled
+      wrapper += exported
 
     if settings.ASSERTIONS and install_wrapper(name):
       # With assertions enabled we create a wrapper that are calls get routed through, for
@@ -942,14 +952,22 @@ def make_export_wrappers(function_exports):
       wrapper += f"wasmExports['{name}']"
 
     wrappers.append(wrapper)
+
+  if settings.MODULARIZE == 'instance':
+    wrappers.insert(0, 'function assignWasmExports() {')
+    wrappers.append('}')
+    wrappers = decls + wrappers
+
   return wrappers
 
 
 def create_receiving(function_exports):
   if settings.WASM_ESM_INTEGRATION:
     exports = [f'{f} as {asmjs_mangle(f)}' for f in function_exports]
-    exports.append('memory as wasmMemory')
-    exports.append('__indirect_function_table as wasmTable')
+    if not settings.IMPORTED_MEMORY:
+      exports.append('memory as wasmMemory')
+    if not settings.RELOCATABLE:
+      exports.append('__indirect_function_table as wasmTable')
     exports = ',\n  '.join(exports)
     return f"import {{\n  {exports}\n}} from './{settings.WASM_BINARY_FILE}';\n\n"
 
@@ -1004,7 +1022,9 @@ function assignWasmImports() {
     module.append('var wasmImports = %s;\n' % sending)
 
   if not settings.MINIMAL_RUNTIME:
-    if settings.WASM_ASYNC_COMPILATION:
+    if settings.MODULARIZE == 'instance':
+      module.append("var wasmExports;\n")
+    elif settings.WASM_ASYNC_COMPILATION:
       if can_use_await():
         # In modularize mode the generated code is within a factory function.
         # This magic string gets replaced by `await createWasm`.  It needed to allow
@@ -1126,6 +1146,7 @@ def create_pointer_conversion_wrappers(metadata):
     '_emscripten_set_offscreencanvas_size_on_thread': '_pp__',
     'fileno': '_p',
     '_emscripten_run_callback_on_thread': '_pp_pp',
+    '_emscripten_find_dylib': 'ppppp',
   }
 
   for function in settings.SIGNATURE_CONVERSIONS:

@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.7 (in development)
+4.0.8 (in development)
 ----------------------
+
+4.0.7 - 04/15/25
+----------------
 - Added experimental support for Wasm ESM integration with
   `-sWASM_ESM_INTEGRATION`. This is currently only supported in node behind a
   flag and not in any browsers. (#23985)
@@ -33,6 +36,13 @@ See docs/process.md for more on how version tagging works.
   behavior of `Module['preInit']` and compile time callbacks (rather than the
   contrary, as we generally expect an array of functions to be executed left to
   right). (#24012)
+- The standard memory views (HEAP8, HEAP32, etc) are no longer exported by
+  default.  This matches the existing behaviour of `-sSTRICT` and
+  `-sMINIMAL_RUNTIME`.  If you need to access those from outside the module code
+  you can export them by adding them to `-sEXPORTED_RUNTIME_METHODS`.  For
+  example, `-sEXPORTED_RUNTIME_METHODS=HEAP8,HEAPU32` (if you need `HEAP8` and
+  `HEAPU32`). (#24079)
+- libjpeg port updated from 9c to 9f. (#24085)
 
 4.0.6 - 03/26/25
 ----------------

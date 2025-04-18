@@ -38,25 +38,22 @@ var wasmOffsetConverter;
 {{{
   // Helper function to export a heap symbol on the module object,
   // if requested.
-  const maybeExportHeap = (x) => {
-    // For now, we export all heap object when not building with MINIMAL_RUNTIME
-    let shouldExport = !MINIMAL_RUNTIME && !STRICT;
-    if (!shouldExport) {
-      if (MODULARIZE && EXPORT_ALL) {
-        shouldExport = true;
-      } else if (AUDIO_WORKLET && (x == 'HEAPU32' || x == 'HEAPF32')) {
-        // Export to the AudioWorkletGlobalScope the needed variables to access
-        // the heap. AudioWorkletGlobalScope is unable to access global JS vars
-        // in the compiled main JS file.
-        shouldExport = true;
-      } else if (EXPORTED_RUNTIME_METHODS.includes(x)) {
-        shouldExport = true;
-      }
+  const shouldExportHeap = (x) => {
+    let shouldExport = false;
+    if (MODULARIZE && EXPORT_ALL) {
+      shouldExport = true;
+    } else if (AUDIO_WORKLET && (x == 'HEAPU32' || x == 'HEAPF32')) {
+      // Export to the AudioWorkletGlobalScope the needed variables to access
+      // the heap. AudioWorkletGlobalScope is unable to access global JS vars
+      // in the compiled main JS file.
+      shouldExport = true;
+    } else if (EXPORTED_RUNTIME_METHODS.includes(x)) {
+      shouldExport = true;
     }
-    if (shouldExport) {
-      if (MODULARIZE === 'instance' && !WASM_ESM_INTEGRATION) {
-        return `__exp_${x} = `
-      }
+    return shouldExport;
+  }
+  const maybeExportHeap = (x) => {
+    if (shouldExportHeap(x) && MODULARIZE != 'instance') {
       return `Module['${x}'] = `;
     }
     return '';

@@ -347,7 +347,7 @@ var LibraryEmbind = {
       out.push('\n};\n\n');
     }
   },
-  $TsPrinter__deps: ['$OptionalType'],
+  $TsPrinter__deps: ['$OptionalType', '$ClassDefinition'],
   $TsPrinter: class {
     constructor(definitions) {
       this.definitions = definitions;
@@ -856,6 +856,9 @@ var LibraryEmbind = {
   $makeLegalFunctionName: () => { throw new Error('stub function should not be called'); },
   $runDestructors: () => { throw new Error('stub function should not be called'); },
   $createNamedFunction: () => { throw new Error('stub function should not be called'); },
+  $flushPendingDeletes: () => { throw new Error('stub function should not be called'); },
+  $setDelayFunction: () => { throw new Error('stub function should not be called'); },
+  $PureVirtualError: () => { throw new Error('stub function should not be called'); },
 };
 
 #if EMBIND_AOT

@@ -88,7 +88,7 @@ EMMAKE = shared.bat_suffix(path_from_root('emmake'))
 EMCMAKE = shared.bat_suffix(path_from_root('emcmake'))
 EMCONFIGURE = shared.bat_suffix(path_from_root('emconfigure'))
 EMRUN = shared.bat_suffix(shared.path_from_root('emrun'))
-WASM_DIS = Path(building.get_binaryen_bin(), 'wasm-dis')
+WASM_DIS = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
 LLVM_OBJDUMP = os.path.expanduser(shared.build_llvm_tool_path(shared.exe_suffix('llvm-objdump')))
 PYTHON = sys.executable
 if not config.NODE_JS_TEST:
@@ -1393,16 +1393,20 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       assert shared.suffix(filename) != '.c', 'force_c is not needed for source files ending in .c'
       compiler.append('-xc')
 
+    all_emcc_args = self.get_emcc_args(main_file=True)
+    if emcc_args:
+      all_emcc_args += emcc_args
     if not output_suffix:
-      output_suffix = '.mjs' if emcc_args and '-sEXPORT_ES6' in emcc_args else '.js'
+      if '-sEXPORT_ES6' in all_emcc_args or '-sWASM_ESM_INTEGRATION' in all_emcc_args:
+        output_suffix = '.mjs'
+      else:
+        output_suffix = '.js'
 
     if output_basename:
       output = output_basename + output_suffix
     else:
       output = shared.unsuffixed_basename(filename) + output_suffix
-    cmd = compiler + [filename, '-o', output] + self.get_emcc_args(main_file=True)
-    if emcc_args:
-      cmd += emcc_args
+    cmd = compiler + [str(filename), '-o', output] + all_emcc_args
     if libraries:
       cmd += libraries
     if includes:
@@ -1499,7 +1503,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def run_js(self, filename, engine=None, args=None,
              assert_returncode=0,
-             interleaved_output=True):
+             interleaved_output=True,
+             input=None):
     # use files, as PIPE can get too full and hang us
     stdout_file = self.in_dir('stdout')
     stderr_file = None
@@ -1523,7 +1528,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       jsrun.run_js(filename, engine, args,
                    stdout=stdout,
                    stderr=stderr,
-                   assert_returncode=assert_returncode)
+                   assert_returncode=assert_returncode,
+                   input=input)
     except subprocess.TimeoutExpired as e:
       timeout_error = e
     except subprocess.CalledProcessError as e:
@@ -1749,7 +1755,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       if check and e.returncode != 0:
         print(e.stdout)
         print(e.stderr)
-        self.fail(f'subprocess exited with non-zero return code({e.returncode}): `{shared.shlex_join(cmd)}`')
+        self.fail(f'subprocess exited with non-zero return code({e.returncode}): `{shlex.join(cmd)}`')
 
   def emcc(self, filename, args=[], output_filename=None, **kwargs):  # noqa
     compile_only = '-c' in args or '-sSIDE_MODULE' in args
@@ -1937,21 +1943,17 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   ## Does a complete test - builds, runs, checks output, etc.
   def _build_and_run(self, filename, expected_output, args=None,
                      no_build=False,
-                     libraries=None,
-                     includes=None,
                      assert_returncode=0, assert_identical=False, assert_all=False,
-                     check_for_error=True, force_c=False, emcc_args=None,
+                     check_for_error=True,
                      interleaved_output=True,
                      regex=False,
-                     output_basename=None):
+                     **kwargs):
     logger.debug(f'_build_and_run: {filename}')
 
     if no_build:
       js_file = filename
     else:
-      js_file = self.build(filename, libraries=libraries, includes=includes,
-                           force_c=force_c, emcc_args=emcc_args,
-                           output_basename=output_basename)
+      js_file = self.build(filename, **kwargs)
     self.assertExists(js_file)
 
     engines = self.js_engines.copy()

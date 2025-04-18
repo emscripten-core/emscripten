@@ -314,7 +314,7 @@ def get_command_with_possible_response_file(cmd):
   # subprocess can still run into the Command Line Too Long error.
   # Reduce the limit by ~1K for now to be on the safe side, but we might need to
   # adjust this in the future if it turns out not to be enough.
-  if (len(shared.shlex_join(cmd)) <= 7000 and force_response_files != '1') or force_response_files == '0':
+  if (len(shlex.join(cmd)) <= 7000 and force_response_files != '1') or force_response_files == '0':
     return cmd
 
   logger.debug('using response file for %s' % cmd[0])
@@ -473,12 +473,12 @@ def check_closure_compiler(cmd, args, env, allowed_to_fail):
     if isinstance(e, subprocess.CalledProcessError):
       sys.stderr.write(e.stdout)
     sys.stderr.write(str(e) + '\n')
-    exit_with_error('closure compiler (%s) did not execute properly!' % shared.shlex_join(cmd))
+    exit_with_error('closure compiler (%s) did not execute properly!' % shlex.join(cmd))
 
   if 'Version:' not in output:
     if allowed_to_fail:
       return False
-    exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (shared.shlex_join(cmd), output))
+    exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (shlex.join(cmd), output))
 
   return True
 
@@ -555,7 +555,7 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
   # should not minify these symbol names.
   CLOSURE_EXTERNS = [path_from_root('src/closure-externs/closure-externs.js')]
 
-  if settings.MODULARIZE:
+  if settings.MODULARIZE and settings.ENVIRONMENT_MAY_BE_WEB and not settings.EXPORT_ES6:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/modularize-externs.js')]
 
   if settings.USE_WEBGPU:
@@ -685,7 +685,7 @@ def run_closure_cmd(cmd, filename, env):
     logger.error(proc.stderr) # print list of errors (possibly long wall of text if input was minified)
 
     # Exit and print final hint to get clearer output
-    msg = f'closure compiler failed (rc: {proc.returncode}): {shared.shlex_join(cmd)}'
+    msg = f'closure compiler failed (rc: {proc.returncode}): {shlex.join(cmd)}'
     if settings.MINIFY_WHITESPACE:
       msg += ' the error message may be clearer with -g1 and EMCC_DEBUG=2 set'
     exit_with_error(msg)
@@ -755,7 +755,7 @@ def is_internal_global(name):
                                  '__start_em_lib_deps', '__stop_em_lib_deps',
                                  '__em_lib_deps'}
   internal_prefixes = ('__em_js__', '__em_lib_deps')
-  return name in internal_start_stop_symbols or any(name.startswith(p) for p in internal_prefixes)
+  return not shared.treat_as_user_export(name) or name in internal_start_stop_symbols or any(name.startswith(p) for p in internal_prefixes)
 
 
 # get the flags to pass into the very last binaryen tool invocation, that runs
@@ -861,11 +861,10 @@ def metadce(js_file, wasm_file, debug_info, last):
       if name.startswith('emcc$import$'):
         native_name = import_name_map[name]
         unused_imports.append(native_name)
-      elif name.startswith('emcc$export$'):
-        if settings.DECLARE_ASM_MODULE_EXPORTS:
-          native_name = export_name_map[name]
-          if not is_internal_global(native_name):
-            unused_exports.append(native_name)
+      elif name.startswith('emcc$export$') and settings.DECLARE_ASM_MODULE_EXPORTS:
+        native_name = export_name_map[name]
+        if not is_internal_global(native_name):
+          unused_exports.append(native_name)
   if not unused_exports and not unused_imports:
     # nothing found to be unused, so we have nothing to remove
     return js_file

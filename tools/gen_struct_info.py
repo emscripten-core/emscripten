@@ -61,6 +61,7 @@ import re
 import json
 import argparse
 import tempfile
+import shlex
 import subprocess
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
@@ -268,7 +269,7 @@ def generate_cmd(js_file_path, src_file_path, cflags):
   # TODO(sbc): Remove this one we remove the test_em_config_env_var test
   cmd += ['-Wno-deprecated']
 
-  show(shared.shlex_join(cmd))
+  show(shlex.join(cmd))
   return cmd
 
 

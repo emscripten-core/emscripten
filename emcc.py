@@ -526,7 +526,7 @@ def run(args):
     args += shlex.split(EMCC_CFLAGS)
 
   if DEBUG:
-    logger.warning(f'invocation: {shared.shlex_join(args)} (in {os.getcwd()})')
+    logger.warning(f'invocation: {shlex.join(args)} (in {os.getcwd()})')
 
   # Strip args[0] (program name)
   args = args[1:]
@@ -596,7 +596,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error(f'unable to parse output of `{cmd}`:\n{proc.stderr}')
       parts = shlex.split(lines[0].replace('\\', '\\\\'))
       parts = [x for x in parts if x not in ['-c', '-o', '-v', '-emit-llvm'] and input_file not in x and temp_target not in x]
-      print(shared.shlex_join(parts[1:]))
+      print(shlex.join(parts[1:]))
     return 0
 
   if '-dumpmachine' in args or '-print-target-triple' in args or '--print-target-triple' in args:
@@ -1200,6 +1200,9 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
           settings.GENERATE_SOURCE_MAP = 1 if requested_level == 'source-map' else 2
           settings.EMIT_NAME_SECTION = 1
           newargs[i] = '-g'
+        elif requested_level == 'z':
+          # Ignore `-gz`.  We don't support debug info compression.
+          continue
         else:
           # Other non-integer levels (e.g. -gline-tables-only or -gdwarf-5) are
           # usually clang flags that emit DWARF. So we pass them through to

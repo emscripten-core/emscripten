@@ -219,6 +219,12 @@ commands:
       - emsdk-env
       - bootstrap
       - pip-install
+  remove-linux-binaries:
+    description: "Remove linux binaries from workspace"
+    steps:
+      - run:
+          name: "Remove Linux binaries"
+          command: rm -rf ~/emsdk ~/vms ~/.jsvu ~/wasi-sdk
   upload-test-results:
     description: "Upload test results"
     steps:
@@ -333,7 +339,10 @@ commands:
           # Use --force-bottle to force homebrew use binary packages avoiding
           # costly build times.
           command: brew install --force-bottle cmake ninja pkg-config
+      - attach_workspace:
+          at: ~/
       - checkout
+      - remove-linux-binaries
       - run:
           name: submodule update
           command: git submodule update --init
@@ -721,8 +730,7 @@ jobs:
       - run-tests:
           test_targets: "
             core0.test_hello_argc
-            other.test_modularize_incoming
-            other.test_modularize_incoming_export_name"
+            other.test_modularize_incoming*"
   test-spidermonkey:
     executor: linux-python
     steps:
@@ -783,6 +791,8 @@ jobs:
             other.test_native_call_before_init
             other.test_node_unhandled_rejection
             core2.test_hello_world
+            core2.test_esm_integration
+            core0.test_esm_integration
             core0.test_pthread_join_and_asyncify
             core0.test_async_ccall_promise_jspi*
             core0.test_cubescript_jspi"
@@ -1063,6 +1073,7 @@ jobs:
     steps:
       - setup-macos
       - install-emsdk
+      - freeze-cache
       # TODO: We can't currently do pip install here since numpy and other packages
       # are currently missing arm64 macos binaries.
       - run-tests:
@@ -1125,4 +1136,6 @@ workflows:
       - test-spidermonkey
       - test-node-compat
       - test-windows
-      - test-mac-arm64
+      - test-mac-arm64:
+          requires:
+            - build-linux
