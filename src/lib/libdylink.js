@@ -607,23 +607,19 @@ var LibraryDylink = {
   // is ii, the wat for the generated module looks like this:
   //
   // (module
-  //   (type $r (func ))
   //   (type $ii (func (param i32) (result i32)))
-  //   (import "e" "t" (table 0 funcref))
-  //   (import "e" "r" (func $resolve))
-  //   (global $isResolved (mut i32) i32.const 0)
-  //
+  //   (func $resolveFunc (import "e" "r") (result (ref null $ii)))
+  //   (global $resolved (mut (ref null $ii)) (ref.null $ii))
   //   (func (export "o") (param $p1 i32) (result i32)
-  //     global.get $isResolved
-  //     i32.eqz
+  //     global.get $resolved
+  //     ref.is_null
   //     if
-  //       call $resolve
-  //       i32.const 1
-  //       global.set $isResolved
+  //       call $resolveFunc
+  //       global.set $resolved
   //     end
   //     local.get $p1
-  //     i32.const 0
-  //     call_indirect (type $ii)
+  //     global.get $resolved
+  //     call_ref $ii
   //   )
   // )
   $getStubImportModule: (sig) => {
