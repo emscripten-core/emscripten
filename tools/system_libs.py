@@ -2085,8 +2085,8 @@ class CompilerRTLibrary(Library):
 
 class libcompiler_rt_profile(CompilerRTLibrary, MTLibrary):
   name = 'libcompiler_rt_profile'
- 
-  includes = ['system/lib/libc']
+
+  includes = ['system/lib/libc', 'system/lib/compiler-rt/include']
   src_dir = 'system/lib/compiler-rt/lib/profile'
   src_files = glob_in_path(src_dir, '*.c')
   src_files += glob_in_path(src_dir, '*.cpp')
