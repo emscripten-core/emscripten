@@ -7,8 +7,4 @@
 // Avoid instantiating the module on pthreads.
 if (!isPthread)
 #endif
-#if EXPORT_ES6
-moduleFactory();
-#else
 {{{ EXPORT_NAME }}}();
-#endif

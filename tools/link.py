@@ -1796,10 +1796,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if not js_manipulation.isidentifier(settings.EXPORT_NAME):
     exit_with_error(f'EXPORT_NAME is not a valid JS identifier: `{settings.EXPORT_NAME}`')
 
-  if settings.EXPORT_ES6 and 'EXPORT_NAME' in user_settings:
-    diagnostics.warning('unused-command-line-argument', 'EXPORT_NAME is not used in EXPORT_ES6 mode')
-    settings.EXPORT_NAME = None
-
   if settings.EMSCRIPTEN_TRACING:
     add_system_js_lib('libtrace.js')
     if settings.ALLOW_MEMORY_GROWTH:
@@ -2468,15 +2464,11 @@ def modularize():
       'maybe_async': maybe_async,
       'generated_js': generated_js
     }
-  if settings.EXPORT_ES6:
-    factory_name = 'moduleFactory'
-  else:
-    factory_name = settings.EXPORT_NAME
 
   if settings.MINIMAL_RUNTIME and not settings.PTHREADS:
     # Single threaded MINIMAL_RUNTIME programs do not need access to
     # document.currentScript, so a simple export declaration is enough.
-    src = f'var {factory_name} = {wrapper_function};'
+    src = f'var {settings.EXPORT_NAME} = {wrapper_function};'
   else:
     script_url_web = ''
     # When MODULARIZE this JS may be executed later,
@@ -2485,12 +2477,12 @@ def modularize():
     if settings.ENVIRONMENT_MAY_BE_WEB and not settings.EXPORT_ES6:
        script_url_web = "var _scriptName = typeof document != 'undefined' ? document.currentScript?.src : undefined;"
     src = '''\
-var %(factory_name)s = (() => {
+var %(EXPORT_NAME)s = (() => {
   %(script_url_web)s
   return (%(wrapper_function)s);
 })();
 ''' % {
-      'factory_name': factory_name,
+      'EXPORT_NAME': settings.EXPORT_NAME,
       'script_url_web': script_url_web,
       'wrapper_function': wrapper_function,
     }
@@ -2505,11 +2497,11 @@ var %(factory_name)s = (() => {
   # Module variable name. This should happen even in MINIMAL_RUNTIME builds
   # for MODULARIZE and EXPORT_ES6 to work correctly.
   if settings.AUDIO_WORKLET:
-    src += f'globalThis.AudioWorkletModule = {factory_name};\n'
+    src += f'globalThis.AudioWorkletModule = {settings.EXPORT_NAME};\n'
 
   # Export using a UMD style export, or ES6 exports if selected
   if settings.EXPORT_ES6:
-    src += 'export default moduleFactory;\n'
+    src += 'export default %s;\n' % settings.EXPORT_NAME
   elif not settings.MINIMAL_RUNTIME:
     src += '''\
 if (typeof exports === 'object' && typeof module === 'object') {
@@ -2538,7 +2530,7 @@ if (typeof exports === 'object' && typeof module === 'object') {
     if settings.MODULARIZE == 'instance':
       src += 'isPthread && init();\n'
     else:
-      src += f'isPthread && {factory_name}();\n'
+      src += 'isPthread && %s();\n' % settings.EXPORT_NAME
 
   final_js += '.modular.js'
   write_file(final_js, src)
