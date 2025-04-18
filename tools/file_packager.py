@@ -995,11 +995,24 @@ def generate_js(data_target, data_files, metadata):
             const headers = response.headers;
             const total = Number(headers.get('Content-Length') ?? packageSize);
             let loaded = 0;
+            // Track both network size and actual decompressed size
+            let decompressedLoaded = 0;
+            const contentEncoding = headers.get('Content-Encoding');
+            const isCompressed = contentEncoding === 'gzip' || contentEncoding === 'br';
 
             const handleChunk = ({done, value}) => {
               if (!done) {
                 chunks.push(value);
-                loaded += value.length;
+                decompressedLoaded += value.length;
+                if (isCompressed) {
+                  // Estimate progress proportionally, assuming 3:1 compression ration
+                  loaded = Math.min(total, 
+                  total * (decompressedLoaded / (packageSize || total * 3)));
+                } else {
+                  // When not compressed, they're the same
+                  loaded = decompressedLoaded;
+                }
+
                 Module['dataFileDownloads'][packageName] = {loaded, total};
 
                 let totalLoaded = 0;
