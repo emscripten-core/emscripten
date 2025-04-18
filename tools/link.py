@@ -2439,9 +2439,9 @@ def node_pthread_detection():
   # Under node we detect that we are running in a pthread by checking the
   # workerData property.
   if settings.EXPORT_ES6:
-    return "(await import('worker_threads')).workerData === 'em-pthread';\n"
+    return "(await import('node:worker_threads')).workerData === 'em-pthread';\n"
   else:
-    return "require('worker_threads').workerData === 'em-pthread'\n"
+    return "require('node:worker_threads').workerData === 'em-pthread'\n"
 
 
 def modularize():

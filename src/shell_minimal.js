@@ -94,7 +94,7 @@ if (ENVIRONMENT_IS_NODE && ENVIRONMENT_IS_SHELL) {
 var defaultPrint = console.log.bind(console);
 var defaultPrintErr = console.error.bind(console);
 if (ENVIRONMENT_IS_NODE) {
-  var fs = require('fs');
+  var fs = require('node:fs');
   defaultPrint = (...args) => fs.writeSync(1, args.join(' ') + '\n');
   defaultPrintErr = (...args) => fs.writeSync(2, args.join(' ') + '\n');
 }
@@ -169,7 +169,7 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 // Wasm or Wasm2JS loading:
 
 if (ENVIRONMENT_IS_NODE) {
-  var fs = require('fs');
+  var fs = require('node:fs');
 #if WASM == 2
   if (typeof WebAssembly != 'undefined') Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
   else eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm.js')+'');

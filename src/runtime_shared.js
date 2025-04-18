@@ -88,6 +88,6 @@ if (ENVIRONMENT_IS_NODE) {
   // depends on it for accurate timing.
   // Use `global` rather than `globalThis` here since older versions of node
   // don't have `globalThis`.
-  global.performance ??= require('perf_hooks').performance;
+  global.performance ??= require('node:perf_hooks').performance;
 }
 #endif

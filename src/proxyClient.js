@@ -18,7 +18,7 @@
 #if ENVIRONMENT_MAY_BE_NODE
 var ENVIRONMENT_IS_NODE = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string' && process.type != 'renderer';
 if (ENVIRONMENT_IS_NODE) {
-  var NodeWorker = require('worker_threads').Worker;
+  var NodeWorker = require('node:worker_threads').Worker;
   global.Worker = function(url, options) {
     // Special handling for `data:` URL argument, to match the behaviour
     // of the Web API.
