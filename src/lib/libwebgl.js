@@ -1287,6 +1287,8 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     GLctx.pixelStorei(pname, param);
   },
 
+  // The allocated strings are cached and never freed.
+  glGetString__noleakcheck: true,
   glGetString__deps: ['$stringToNewUTF8', '$webglGetExtensions'],
   glGetString: (name_) => {
     var ret = GL.stringCache[name_];
