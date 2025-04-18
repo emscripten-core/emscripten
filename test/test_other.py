@@ -414,6 +414,8 @@ class other(RunnerCore):
   def test_esm_ignore_export_name(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sEXPORT_NAME=Foo', '-Werror'])
     self.assertContained('emcc: error: EXPORT_NAME is not used in EXPORT_ES6 mode [-Wunused-command-line-argument] [-Werror]', err)
+    # Without -Werror the build should succeed.
+    self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sEXPORT_NAME=Foo'])
 
   def test_emcc_out_file(self):
     # Verify that "-ofile" works in addition to "-o" "file"

@@ -1796,9 +1796,11 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if not js_manipulation.isidentifier(settings.EXPORT_NAME):
     exit_with_error(f'EXPORT_NAME is not a valid JS identifier: `{settings.EXPORT_NAME}`')
 
-  if settings.EXPORT_ES6 and 'EXPORT_NAME' in user_settings:
-    diagnostics.warning('unused-command-line-argument', 'EXPORT_NAME is not used in EXPORT_ES6 mode')
-    settings.EXPORT_NAME = None
+  if settings.EXPORT_ES6:
+    if 'EXPORT_NAME' in user_settings:
+      diagnostics.warning('unused-command-line-argument', 'EXPORT_NAME is not used in EXPORT_ES6 mode')
+    # Remove EXPORT_NAME setting.  Reading from this setting in EXPORT_ES6 mode should not happen
+    del settings.dict()['EXPORT_NAME']
 
   if settings.EMSCRIPTEN_TRACING:
     add_system_js_lib('libtrace.js')
@@ -2446,7 +2448,6 @@ def node_pthread_detection():
 
 def modularize():
   global final_js
-  logger.debug(f'Modularizing, assigning to var {settings.EXPORT_NAME}')
   generated_js = read_file(final_js)
 
   # When targetting node and ES6 we use `await import ..` in the generated code
@@ -2472,6 +2473,7 @@ def modularize():
     factory_name = 'moduleFactory'
   else:
     factory_name = settings.EXPORT_NAME
+  logger.debug(f'Modularizing, assigning to var {factory_name}')
 
   if settings.MINIMAL_RUNTIME and not settings.PTHREADS:
     # Single threaded MINIMAL_RUNTIME programs do not need access to
