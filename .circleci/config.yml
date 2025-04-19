@@ -730,7 +730,8 @@ jobs:
       - run-tests:
           test_targets: "
             core0.test_hello_argc
-            other.test_modularize_incoming*"
+            other.test_modularize_incoming
+            other.test_modularize_incoming_export_name"
   test-spidermonkey:
     executor: linux-python
     steps:

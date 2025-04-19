@@ -71,7 +71,7 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
   importScripts(d.js);
 #if MODULARIZE
-  {{{ EXPORT_ES6 ? 'moduleFactory' : EXPORT_NAME }}}(d);
+  {{{ EXPORT_NAME }}}(d);
 #endif
   // Drop now unneeded references to from the Module object in this Worker,
   // these are not needed anymore.
