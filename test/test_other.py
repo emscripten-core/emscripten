@@ -2698,6 +2698,11 @@ More info: https://emscripten.org
     cmd += ['-Wno-undefined']
     self.run_process(cmd)
 
+  def test_undefined_exported_runtime_method(self):
+    # Adding a missing symbol to EXPORTED_RUNTIME_METHODS should cause a failure
+    err = self.expect_fail([EMCC, '-sEXPORTED_RUNTIME_METHODS=foobar', test_file('hello_world.c')])
+    self.assertContained('undefined exported symbol: "foobar" in EXPORTED_RUNTIME_METHODS', err)
+
   @parameterized({
     '': ('out.js',),
     'standalone': ('out.wasm',)
@@ -14528,7 +14533,7 @@ int main() {
     self.clear_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE')
     for opt in ('-O0', '-O3'):
       err = self.expect_fail([EMCC, test_file('other/test_legacy_runtime.c'), opt] + self.get_emcc_args())
-      self.assertContained('invalid item in EXPORTED_RUNTIME_METHODS: allocate', err)
+      self.assertContained('undefined exported symbol: "allocate" in EXPORTED_RUNTIME_METHODS', err)
 
   def test_fetch_settings(self):
     create_file('pre.js', '''

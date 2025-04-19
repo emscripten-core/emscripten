@@ -43,6 +43,7 @@ See docs/process.md for more on how version tagging works.
   example, `-sEXPORTED_RUNTIME_METHODS=HEAP8,HEAPU32` (if you need `HEAP8` and
   `HEAPU32`). (#24079)
 - libjpeg port updated from 9c to 9f. (#24085)
+- Missing exports in EXPORTED_RUNTIME_METHODS will now error instead of warn.
 
 4.0.6 - 03/26/25
 ----------------

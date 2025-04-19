@@ -13,7 +13,6 @@ import {
   isJsOnlySymbol,
   error,
   readFile,
-  warn,
   pushCurrentFile,
   popCurrentFile,
   printErr,
@@ -512,11 +511,11 @@ function exportRuntimeSymbols() {
     }
   }
 
-  // check all exported things exist, warn about typos
+  // check all exported things exist, error when missing
   runtimeElementsSet = new Set(runtimeElements);
   for (const name of EXPORTED_RUNTIME_METHODS) {
     if (!runtimeElementsSet.has(name)) {
-      warn(`invalid item in EXPORTED_RUNTIME_METHODS: ${name}`);
+      error(`undefined exported symbol: "${name}" in EXPORTED_RUNTIME_METHODS`);
     }
   }
 
