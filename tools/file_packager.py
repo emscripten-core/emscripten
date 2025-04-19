@@ -992,13 +992,36 @@ def generate_js(data_target, data_files, metadata):
             });
 
             const chunks = [];
-            const headers = response.headers;
-            const total = Number(headers.get('Content-Length') ?? packageSize);
-            let loaded = 0;
-            // Track both network size and actual decompressed size
-            let decompressedLoaded = 0;
-            const contentEncoding = headers.get('Content-Encoding');
-            const isCompressed = contentEncoding === 'gzip' || contentEncoding === 'br';
+            const expectedSize = Number(response.headers.get("Content-Length") ?? packageSize);
+            let networkLoaded = 0;
+            
+            // Track compressed size with TransformStream
+            const transformStream = new TransformStream({
+                transform(chunk, controller) {
+                    networkLoaded += chunk.length; // Compressed size
+                    Module["dataFileDownloads"][packageName] = {
+                        loaded: networkLoaded,
+                        total: expectedSize
+                    };
+                    let totalLoaded = 0;
+                    let totalSize = 0;
+                    for (const download of Object.values(Module["dataFileDownloads"])) {
+                        totalLoaded += download.loaded;
+                        totalSize += download.total;
+                    }
+                    Module["setStatus"]?.(`Downloading data... (${totalLoaded}/${totalSize})`);
+                    controller.enqueue(chunk  controller.enqueue(chunk);
+                }
+            });
+            
+            const transformedStream = response.body.pipeThrough(transformStream);
+            const reader = transformedStream.getReader();
+
+            const iterate = () => reader.read().then(handleChunk).catch(cause => {
+                const error = new Error(`Unexpected error while handling: ${response.url} ${cause}`, { cause });
+                errback(error);
+                return Promise.reject(error);
+            });
 
             const handleChunk = ({done, value}) => {
               if (!done) {
