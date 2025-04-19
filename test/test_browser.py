@@ -264,11 +264,12 @@ window.close = () => {
 </body>''')
     create_file('test.html', html)
 
-  def make_reftest(self, expected):
+  def make_reftest(self, expected, reference_slack=0):
     # make sure the pngs used here have no color correction, using e.g.
     #   pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB infile outfile
     shutil.copy(expected, 'expected.png')
     create_file('reftest.js', f'''
+      const reftestSlack = {reference_slack};
       const reftestRebaseline = {common.EMTEST_REBASELINE};
     ''' + read_file(test_file('reftest.js')))
 
@@ -277,8 +278,7 @@ window.close = () => {
     """
     reference = find_browser_test_file(reference)
     assert 'expected' not in kwargs
-    expected = [str(i) for i in range(reference_slack + 1)]
-    self.make_reftest(reference)
+    self.make_reftest(reference, reference_slack)
     if '--proxy-to-worker' in self.emcc_args:
       assert 'post_build' not in kwargs
       kwargs['post_build'] = self.post_manual_reftest
@@ -289,7 +289,7 @@ window.close = () => {
       kwargs['emcc_args'] += ['--pre-js', 'reftest.js', '-sGL_TESTING']
 
     try:
-      return self.btest(filename, expected=expected, *args, **kwargs)
+      return self.btest(filename, expected='match', *args, **kwargs)
     finally:
       if common.EMTEST_REBASELINE and os.path.exists('actual.png'):
         print(f'overwriting expected image: {reference}')
