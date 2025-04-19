@@ -507,6 +507,8 @@ var LibraryEGL = {
   eglGetError: () => EGL.errorCode,
 
   // EGLAPI const char * EGLAPIENTRY eglQueryString(EGLDisplay dpy, EGLint name);
+  // The allocated strings are cached and never freed.
+  eglQueryString__noleakcheck: true,
   eglQueryString__deps: ['$stringToNewUTF8'],
   eglQueryString__proxy: 'sync',
   eglQueryString: (display, name) => {
