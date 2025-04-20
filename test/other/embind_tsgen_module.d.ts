@@ -152,4 +152,4 @@ interface EmbindModule {
 }
 
 export type MainModule = WasmModule & EmbindModule;
-export default function MainModuleFactory (options?: unknown): Promise<MainModule>;
+export default function MainModuleFactory (moduleOverrides?: Partial<MainModule>): Promise<MainModule>;
