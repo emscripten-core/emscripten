@@ -2,4 +2,9 @@ side_module_trampoline_a
 side_module_trampoline_b
 sleeping
 slept
-done 77
+okay 77
+side_module_trampoline_a
+side_module_trampoline_b
+sync
+okay 77
+done
