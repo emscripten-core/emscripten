@@ -627,7 +627,7 @@ var LibraryDylink = {
     if (cached) {
       return cached;
     }
-    const bytes = [
+    var bytes = [
       0x00, 0x61, 0x73, 0x6d, // Magic number
       0x01, 0x00, 0x00, 0x00, // version 1
       0x01, // Type section code
@@ -681,7 +681,7 @@ var LibraryDylink = {
           0x24, 0x00, // global.set 0
         0x0b, // end
     ];
-    for (let i = 0; i < sig.length - 1; i++) {
+    for (var i = 0; i < sig.length - 1; i++) {
       codeBody.push(0x20, i);
     }
 
@@ -711,35 +711,17 @@ var LibraryDylink = {
     }
     return sig;
   },
-  $addStubImports__deps: [
-    '$getStubImportModule',
-    '$wasmSigToEmscripten',
-  ],
-  $addStubImports: (mod, stubs, resolveSymbol) => {
+  $getStubImportTypes: (mod) => {
     // Assumes --experimental-wasm-type-reflection to get type field of WebAssembly.Module.imports().
     // TODO: Make this work without it.
-    for (const {name, kind, type} of WebAssembly.Module.imports(mod)) {
+    var stubTypes = {}
+    for (var {name, kind, type} of WebAssembly.Module.imports(mod)) {
       if (kind !== 'function') {
         continue;
       }
-      if (resolveSymbol(name, true)) {
-        // We only need stubs for late-binding symbols.
-        continue;
-      }
-#if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
-      if (name.startsWith("invoke_")) {
-        // JSPI + JS exceptions probably doesn't work but maybe nobody will
-        // attempt stack switch inside a try block.
-        stubs[name] = createInvokeFunction(name.split('_')[1]);
-        continue;
-      }
-#endif
-      var sig = wasmSigToEmscripten(type);
-      var mod = getStubImportModule(sig);
-      const r = () => resolveSymbol(name);
-      const inst = new WebAssembly.Instance(mod, {e: {r}});
-      stubs[name] = inst.exports.o;
+      stubTypes[name] = type;
     }
+    return stubTypes;
   },
 #endif // JSPI
 
@@ -760,7 +742,9 @@ var LibraryDylink = {
     '$wasmTable',
     '$addOnPostCtor',
 #if JSPI
-    '$addStubImports',
+    '$getStubImportModule',
+    '$wasmSigToEmscripten',
+    '$getStubImportTypes',
 #endif
   ],
   $loadWebAssemblyModule: (binary, flags, libName, localScope, handle) => {
@@ -850,6 +834,9 @@ var LibraryDylink = {
         return resolved;
       }
 
+#if JSPI
+      var stubImportTypes = {};
+#endif
       // TODO kill ↓↓↓ (except "symbols local to this module", it will likely be
       // not needed if we require that if A wants symbols from B it has to link
       // to B explicitly: similarly to -Wl,--no-undefined)
@@ -894,8 +881,12 @@ var LibraryDylink = {
           if (!(prop in stubs)) {
 #if JSPI
 #if ASSERTIONS
-            assert(prop in stubs, 'missing JSPI stub');
+            assert(prop in stubImportTypes, 'missing JSPI stub');
 #endif
+            var mod = getStubImportModule(wasmSigToEmscripten(stubImportTypes[prop]));
+            var r = () => resolveSymbol(prop);
+            var inst = new WebAssembly.Instance(mod, {e: {r}});
+            stubs[prop] = inst.exports.o;
 #else
             var resolved;
             stubs[prop] = (...args) => {
@@ -907,7 +898,7 @@ var LibraryDylink = {
           return stubs[prop];
         }
       };
-      const stubs = {};
+      var stubs = {};
       var proxy = new Proxy(stubs, proxyHandler);
       var info = {
         'GOT.mem': new Proxy({}, GOTHandler),
@@ -1052,13 +1043,13 @@ var LibraryDylink = {
           var instance;
           if (binary instanceof WebAssembly.Module) {
 #if JSPI
-            addStubImports(binary, stubs, resolveSymbol);
+            stubImportTypes = getStubImportTypes(binary);
 #endif
             instance = new WebAssembly.Instance(binary, info);
           } else {
 #if JSPI
             binary = await WebAssembly.compile(binary);
-            addStubImports(binary, stubs, resolveSymbol);
+            stubImportTypes = getStubImportTypes(binary);
             instance = await WebAssembly.instantiate(binary, info);
 #else
             // Destructuring assignment without declaration has to be wrapped
@@ -1072,7 +1063,7 @@ var LibraryDylink = {
       }
       var module = binary instanceof WebAssembly.Module ? binary : new WebAssembly.Module(binary);
 #if JSPI
-      addStubImports(module, stubs, resolveSymbol);
+      stubImportTypes = getStubImportTypes(module);
 #endif
       var instance = new WebAssembly.Instance(module, info);
       return postInstantiation(module, instance);
