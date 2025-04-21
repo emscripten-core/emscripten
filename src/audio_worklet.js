@@ -1,5 +1,5 @@
 // This file is the main bootstrap script for Wasm Audio Worklets loaded in an
-// Emscripten application.  Build with -sAUDIO_WORKLET=1 linker flag to enable
+// Emscripten application.  Build with -sAUDIO_WORKLET linker flag to enable
 // targeting Audio Worklets.
 
 // AudioWorkletGlobalScope does not have a onmessage/postMessage() functionality
