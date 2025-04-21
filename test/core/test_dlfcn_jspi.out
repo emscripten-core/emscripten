@@ -1,8 +1,10 @@
+Suspending test
 side_module_trampoline_a
 side_module_trampoline_b
 sleeping
 slept
 okay 77
+Non suspending test
 side_module_trampoline_a
 side_module_trampoline_b
 sync

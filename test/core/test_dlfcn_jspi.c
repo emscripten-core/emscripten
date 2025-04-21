@@ -51,7 +51,9 @@ EM_JS(void, js_trampoline, (), {
 })
 
 int main() {
+  printf("Suspending test\n");
   helper(test_suspending_wrapper);
+  printf("Non suspending test\n");
   js_trampoline();
   printf("done\n");
   return 0;
