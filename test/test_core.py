@@ -18,7 +18,7 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner')
 
 from tools.shared import PIPE
-from tools.shared import EMCC, EMAR, FILE_PACKAGER
+from tools.shared import EMCC, EMAR, FILE_PACKAGER, LLVM_PROFDATA, LLVM_COV 
 from tools.utils import WINDOWS, MACOS, LINUX, write_file, delete_file
 from tools import shared, building, config, utils, webassembly
 import common
@@ -9451,6 +9451,32 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # And not be translated into abort by makeAbortWrapper
     self.assertNotContained('unhandled exception', output)
     self.assertNotContained('Aborted', output)
+
+  def test_fcoverage_mapping(self):
+    expected = '''    1|       |/*
+    2|       | * Copyright 2016 The Emscripten Authors.  All rights reserved.
+    3|       | * Emscripten is available under two separate licenses, the MIT license and the
+    4|       | * University of Illinois/NCSA Open Source License.  Both these licenses can be
+    5|       | * found in the LICENSE file.
+    6|       | */
+    7|       |
+    8|       |#include <stdio.h>
+    9|      1|int main() {
+   10|      1|  printf("hello, world!\\n");
+   11|      1|  return 0;
+   12|      1|}
+
+'''
+    self.emcc_args.append('-fprofile-instr-generate')
+    self.emcc_args.append('-fcoverage-mapping')
+    self.emcc_args.append('-g')
+    self.set_setting('NODERAWFS')
+    self.set_setting('EXIT_RUNTIME')
+    self.do_core_test('test_hello_world.c')
+    self.assertExists('default.profraw')
+    self.run_process([LLVM_PROFDATA, 'merge', '-sparse', 'default.profraw', '-o', 'out.profdata'])
+    self.assertExists('out.profdata')
+    self.assertEquals(expected, self.run_process([LLVM_COV, 'show', 'test_hello_world.wasm', '-instr-profile=out.profdata'], stdout=PIPE).stdout)
 
   @node_pthreads
   @flaky('https://github.com/emscripten-core/emscripten/issues/20067')
