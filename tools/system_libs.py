@@ -2082,8 +2082,7 @@ class CompilerRTLibrary(Library):
   # restriction soon: https://reviews.llvm.org/D71738
   force_object_files = True
 
-
-class libcompiler_rt_profile(CompilerRTLibrary, MTLibrary):
+class libcompiler_rt_profile(Library):
   name = 'libcompiler_rt_profile'
 
   cflags = ['-fno-builtin', '-DCOMPILER_RT_HAS_UNAME=1']
@@ -2366,7 +2365,7 @@ def get_libs_to_link(options):
 
   if only_forced:
     add_library('libcompiler_rt')
-    add_library('libcompiler_rt_profile')    
+    add_library('libcompiler_rt_profile')
     add_sanitizer_libs()
     add_forced_libs()
     return libs_to_link
