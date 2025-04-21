@@ -4,15 +4,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-#if WASM_WORKERS == 2
-// Helpers for _wasmWorkerBlobUrl used in WASM_WORKERS == 2 mode
-{{{
-  const captureModuleArg = () => MODULARIZE ? '' : 'self.Module=d;';
-  const instantiateModule = () => MODULARIZE ? `${EXPORT_NAME}(d);` : '';
-  const instantiateWasm = () => MINIMAL_RUNTIME ? '' : 'd[`instantiateWasm`]=(i,r)=>{var n=new WebAssembly.Instance(d[`wasm`],i);return r(n,d[`wasm`]);};';
-}}}
-#endif
-
 #if WASM_WORKERS
 
 #if !SHARED_MEMORY
@@ -37,18 +28,28 @@
 {{{
   const workerSupportsFutexWait = () => AUDIO_WORKLET ? "typeof AudioWorkletGlobalScope === 'undefined'" : '1';
   const wasmWorkerJs = `
-#if WASM_WORKERS == 2
-    _wasmWorkerBlobUrl
-#elif MINIMAL_RUNTIME
+#if MINIMAL_RUNTIME
 #if ENVIRONMENT_MAY_BE_NODE
-    Module['$wb'] || './${WASM_WORKER_FILE}'
+    Module['js'] || './${TARGET_JS_NAME}'
 #else
-    Module['$wb']
+    Module['js']
 #endif
 #else
-    locateFile('${WASM_WORKER_FILE}')
+    locateFile('${TARGET_JS_NAME}')
 #endif
 `;
+  const wasmWorkerOptions = `{
+#if ENVIRONMENT_MAY_BE_NODE
+  // This is the way that we signal to the node worker that it is hosting
+  // a wasm worker.
+  'workerData': 'em-ww',
+#endif
+#if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
+  // This is the way that we signal to the Web Worker that it is hosting
+  // a pthread.
+  'name': 'em-ww',
+#endif
+}`;
 }}}
 
 #endif // ~WASM_WORKERS
@@ -92,8 +93,12 @@ addToLibrary({
   $_wasmWorkerInitializeRuntime: () => {
     let m = Module;
 #if ASSERTIONS
+    assert(m && m['$ww']);
     assert(m['sb'] % 16 == 0);
     assert(m['sz'] % 16 == 0);
+#endif
+#if RUNTIME_DEBUG
+    dbg("wasmWorkerInitializeRuntime $ww:", m['$ww']);
 #endif
 
 #if !MINIMAL_RUNTIME && isSymbolNeeded('$noExitRuntime')
@@ -149,20 +154,9 @@ addToLibrary({
 #endif
   },
 
-#if WASM_WORKERS == 2
-  // In WASM_WORKERS == 2 build mode, we create the Wasm Worker global scope
-  // script from a string bundled in the main application JS file. This
-  // simplifies the number of deployed JS files with the app, but has a downside
-  // that the generated build output will no longer be csp-eval compliant.
-  // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/script-src#unsafe_eval_expressions
-  $_wasmWorkerBlobUrl: "URL.createObjectURL(new Blob(['onmessage=function(d){onmessage=null;d=d.data;{{{ captureModuleArg() }}}{{{ instantiateWasm() }}}importScripts(d.js);{{{ instantiateModule() }}}d.wasm=d.mem=d.js=0;}'],{type:'application/javascript'}))",
-#endif
   _emscripten_create_wasm_worker__deps: [
     '$_wasmWorkers', '$_wasmWorkersID',
     '$_wasmWorkerAppendToQueue', '$_wasmWorkerRunPostMessage',
-#if WASM_WORKERS == 2
-    '$_wasmWorkerBlobUrl',
-#endif
 #if ASSERTIONS
     'emscripten_has_threading_support',
 #endif
@@ -174,7 +168,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
   && !ENVIRONMENT_IS_AUDIO_WORKLET
 #endif
   ) {
-  _wasmWorkers[0] = this;
+  _wasmWorkers[0] = globalThis;
   addEventListener("message", _wasmWorkerAppendToQueue);
 }`,
   _emscripten_create_wasm_worker: (stackLowestAddress, stackSize) => {
@@ -191,10 +185,10 @@ if (ENVIRONMENT_IS_WASM_WORKER
       var p = trustedTypes.createPolicy(
           'emscripten#workerPolicy1', { createScriptURL: (ignored) => {{{ wasmWorkerJs }}}}
       );
-      worker = _wasmWorkers[_wasmWorkersID] = new Worker(p.createScriptURL('ignored'));
+      worker = _wasmWorkers[_wasmWorkersID] = new Worker(p.createScriptURL('ignored'), {{{ wasmWorkerOptions }}});
     } else
 #endif
-    worker = _wasmWorkers[_wasmWorkersID] = new Worker({{{ wasmWorkerJs }}});
+    worker = _wasmWorkers[_wasmWorkersID] = new Worker({{{ wasmWorkerJs }}}, {{{ wasmWorkerOptions }}});
     // Craft the Module object for the Wasm Worker scope:
     worker.postMessage({
       // Signal with a non-zero value that this Worker will be a Wasm Worker,
@@ -202,17 +196,10 @@ if (ENVIRONMENT_IS_WASM_WORKER
       '$ww': _wasmWorkersID,
 #if MINIMAL_RUNTIME
       'wasm': Module['wasm'],
-#if ENVIRONMENT_MAY_BE_NODE
-      'js': Module['js'] || './{{{ TARGET_JS_NAME }}}',
-#else
-      'js': Module['js'],
-#endif
-      'mem': wasmMemory,
 #else
       'wasm': wasmModule,
-      'js': Module['mainScriptUrlOrBlob'] || _scriptName,
-      'wasmMemory': wasmMemory,
 #endif
+      'mem': wasmMemory,
       'sb': stackLowestAddress, // sb = stack bottom (lowest stack address, SP points at this when stack is full)
       'sz': stackSize,          // sz = stack size
     });

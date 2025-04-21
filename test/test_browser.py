@@ -5115,7 +5115,7 @@ Module["preRun"] = () => {
   # Tests the hello_wasm_worker.c documentation example code.
   @also_with_minimal_runtime
   def test_wasm_worker_hello(self):
-    self.btest_exit('wasm_worker/hello_wasm_worker.c', emcc_args=['-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/hello_wasm_worker.c', emcc_args=['-sWASM_WORKERS', '-sENVIRONMENT=web,worker'])
 
   def test_wasm_worker_hello_minimal_runtime_2(self):
     self.btest_exit('wasm_worker/hello_wasm_worker.c', emcc_args=['-sWASM_WORKERS', '-sMINIMAL_RUNTIME=2'])

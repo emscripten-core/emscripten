@@ -102,6 +102,12 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
 #endif
 
+#if WASM_WORKERS
+// The way we signal to a worker that it is hosting a pthread is to construct
+// it with a specific name.
+var ENVIRONMENT_IS_WASM_WORKER = globalThis.name == 'em-ww';
+#endif
+
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
 #if EXPORT_ES6
@@ -121,13 +127,12 @@ if (ENVIRONMENT_IS_NODE) {
   // is hosting a pthread.
   ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && worker_threads['workerData'] == 'em-pthread'
 #endif // PTHREADS
+#if WASM_WORKERS
+  ENVIRONMENT_IS_WASM_WORKER = ENVIRONMENT_IS_WORKER && worker_threads['workerData'] == 'em-ww'
+#endif
 #endif // PTHREADS || WASM_WORKERS
 }
 #endif // ENVIRONMENT_MAY_BE_NODE
-
-#if WASM_WORKERS
-var ENVIRONMENT_IS_WASM_WORKER = !!Module['$ww'];
-#endif
 
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)

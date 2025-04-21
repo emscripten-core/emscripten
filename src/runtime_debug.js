@@ -193,7 +193,7 @@ var runtimeDebug = true; // Switch to false at runtime to disable logging at the
 // Used by XXXXX_DEBUG settings to output debug messages.
 function dbg(...args) {
   if (!runtimeDebug && typeof runtimeDebug != 'undefined') return;
-#if ENVIRONMENT_MAY_BE_NODE && PTHREADS
+#if ENVIRONMENT_MAY_BE_NODE && (PTHREADS || WASM_WORKERS)
   // Avoid using the console for debugging in multi-threaded node applications
   // See https://github.com/emscripten-core/emscripten/issues/14804
   if (ENVIRONMENT_IS_NODE) {
