@@ -2698,6 +2698,11 @@ More info: https://emscripten.org
     cmd += ['-Wno-undefined']
     self.run_process(cmd)
 
+  def test_undefined_exported_runtime_method(self):
+    # Adding a missing symbol to EXPORTED_RUNTIME_METHODS should cause a failure
+    err = self.expect_fail([EMCC, '-sEXPORTED_RUNTIME_METHODS=foobar', test_file('hello_world.c')])
+    self.assertContained('undefined exported symbol: "foobar" in EXPORTED_RUNTIME_METHODS', err)
+
   @parameterized({
     '': ('out.js',),
     'standalone': ('out.wasm',)
@@ -4145,8 +4150,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
 
     # Check that the Module.FS_writeFile is not exported
     out = self.run_js('index.js', assert_returncode=NON_ZERO)
-    self.assertContained('undefined', out),
-    self.assertContained("Aborted('wasmExports' was not exported. add it to EXPORTED_RUNTIME_METHODS", out)
+    self.assertContained("Aborted('FS_writeFile' was not exported. add it to EXPORTED_RUNTIME_METHODS", out)
 
   def test_exported_runtime_methods_from_js_library(self):
     create_file('pre.js', '''
@@ -7067,8 +7071,8 @@ int main(void) {
     self.run_process([EMCC, test_file('hello_world.c'), '-o', 'out.mjs'] + self.get_emcc_args() + args)
     create_file('run.mjs', '''
     import Module from './out.mjs';
-    await Module({onRuntimeInitialized: () => console.log('done init')})
-      .then(() => console.log('got module'));
+    await Module({onRuntimeInitialized: () => console.log('done init')});
+    console.log('got module');
     ''')
     output = self.run_js('run.mjs')
     self.assertContained('done init\nhello, world!\ngot module\n', output)
@@ -11815,7 +11819,7 @@ int main () {
         raise
 
     args = [compiler_for(sources[0]), '-o', 'a.html'] + args + sources
-    print(shared.shlex_join(args))
+    print(shlex.join(args))
     self.run_process(args)
 
     # For certain tests, don't just check the output size but check
@@ -14529,7 +14533,7 @@ int main() {
     self.clear_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE')
     for opt in ('-O0', '-O3'):
       err = self.expect_fail([EMCC, test_file('other/test_legacy_runtime.c'), opt] + self.get_emcc_args())
-      self.assertContained('invalid item in EXPORTED_RUNTIME_METHODS: allocate', err)
+      self.assertContained('undefined exported symbol: "allocate" in EXPORTED_RUNTIME_METHODS', err)
 
   def test_fetch_settings(self):
     create_file('pre.js', '''

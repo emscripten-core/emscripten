@@ -314,7 +314,7 @@ def get_command_with_possible_response_file(cmd):
   # subprocess can still run into the Command Line Too Long error.
   # Reduce the limit by ~1K for now to be on the safe side, but we might need to
   # adjust this in the future if it turns out not to be enough.
-  if (len(shared.shlex_join(cmd)) <= 7000 and force_response_files != '1') or force_response_files == '0':
+  if (len(shlex.join(cmd)) <= 7000 and force_response_files != '1') or force_response_files == '0':
     return cmd
 
   logger.debug('using response file for %s' % cmd[0])
@@ -473,12 +473,12 @@ def check_closure_compiler(cmd, args, env, allowed_to_fail):
     if isinstance(e, subprocess.CalledProcessError):
       sys.stderr.write(e.stdout)
     sys.stderr.write(str(e) + '\n')
-    exit_with_error('closure compiler (%s) did not execute properly!' % shared.shlex_join(cmd))
+    exit_with_error('closure compiler (%s) did not execute properly!' % shlex.join(cmd))
 
   if 'Version:' not in output:
     if allowed_to_fail:
       return False
-    exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (shared.shlex_join(cmd), output))
+    exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (shlex.join(cmd), output))
 
   return True
 
@@ -685,7 +685,7 @@ def run_closure_cmd(cmd, filename, env):
     logger.error(proc.stderr) # print list of errors (possibly long wall of text if input was minified)
 
     # Exit and print final hint to get clearer output
-    msg = f'closure compiler failed (rc: {proc.returncode}): {shared.shlex_join(cmd)}'
+    msg = f'closure compiler failed (rc: {proc.returncode}): {shlex.join(cmd)}'
     if settings.MINIFY_WHITESPACE:
       msg += ' the error message may be clearer with -g1 and EMCC_DEBUG=2 set'
     exit_with_error(msg)

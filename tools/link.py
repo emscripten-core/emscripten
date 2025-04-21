@@ -469,9 +469,9 @@ def make_js_executable(script):
     # Using -S (--split-string) here means that arguments to the executable are
     # correctly parsed.  We don't do this by default because old versions of env
     # don't support -S.
-    cmd = '/usr/bin/env -S ' + shared.shlex_join(cmd)
+    cmd = '/usr/bin/env -S ' + shlex.join(cmd)
   else:
-    cmd = shared.shlex_join(cmd)
+    cmd = shlex.join(cmd)
   logger.debug('adding `#!` to JavaScript file: %s' % cmd)
   # add shebang
   with open(script, 'w') as f:

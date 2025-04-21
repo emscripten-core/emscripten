@@ -7841,7 +7841,7 @@ void* operator new(size_t size) {
     self.assertLess(get_dwarf_addr(7, 3), get_dwarf_addr(8, 3))
 
     # Get the wat, printing with -g which has binary offsets
-    wat = self.run_process([Path(building.get_binaryen_bin(), 'wasm-opt'),
+    wat = self.run_process([os.path.join(building.get_binaryen_bin(), 'wasm-opt'),
                            wasm_filename, '-g', '--print', '-all'], stdout=PIPE).stdout
 
     # We expect to see a pattern like this in optimized builds (there isn't
@@ -8352,7 +8352,7 @@ Module.onRuntimeInitialized = () => {
         return False
       create_file('wat.wat', wat)
       shutil.move(name, name + '.orig')
-      self.run_process([Path(building.get_binaryen_bin(), 'wasm-as'), 'wat.wat', '-o', name, '-g', '--all-features'])
+      self.run_process([os.path.join(building.get_binaryen_bin(), 'wasm-as'), 'wat.wat', '-o', name, '-g', '--all-features'])
       return True
 
     def verify_working(args):

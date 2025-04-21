@@ -6,6 +6,7 @@
 import common
 import logging
 import os
+import shlex
 import subprocess
 import sys
 from subprocess import PIPE, CalledProcessError
@@ -97,7 +98,7 @@ def run_js(filename, engine, args=None,
 
   command = make_command(os.path.abspath(filename), engine, args)
   if common.EMTEST_VERBOSE:
-    print(f"Running: '{shared.shlex_join(command)}'")
+    print(f"Running: '{shlex.join(command)}'")
   try:
     proc = subprocess.run(
         command,

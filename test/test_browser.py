@@ -1399,7 +1399,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
     create_file('file1.txt', 'first')
     ensure_dir('sub')
     create_file('sub/file2.txt', 'second')
-    self.run_process([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', Path('sub/file2.txt'), '--separate-metadata', '--js-output=files.js'])
+    self.run_process([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'sub/file2.txt', '--separate-metadata', '--js-output=files.js'])
     self.btest(Path('fs/test_workerfs_package.cpp'), '1', emcc_args=['-lworkerfs.js', '--proxy-to-worker', '-lworkerfs.js'])
 
   def test_fs_lz4fs_package(self):
@@ -1415,7 +1415,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
     print('emcc-normal')
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
     self.btest_exit(Path('fs/test_lz4fs.cpp'), 2, emcc_args=['-sLZ4', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt'])
-    assert os.path.getsize('file1.txt') + os.path.getsize(Path('subdir/file2.txt')) + os.path.getsize('file3.txt') == 3 * 1024 * 128 * 10 + 1
+    assert os.path.getsize('file1.txt') + os.path.getsize('subdir/file2.txt') + os.path.getsize('file3.txt') == 3 * 1024 * 128 * 10 + 1
     assert os.path.getsize('test.data') < (3 * 1024 * 128 * 10) / 2  # over half is gone
     print('    emcc-opts')
     self.btest_exit(Path('fs/test_lz4fs.cpp'), 2, emcc_args=['-sLZ4', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt', '-O2'])
@@ -5696,7 +5696,7 @@ class emrun(RunnerCore):
         ['--dump_out_directory=foo_bar', '--port', '6942'],
     ]:
       args = args_base + args + [self.in_dir('test_emrun.html'), '--', '1', '2', '--3', 'escaped space', 'with_underscore']
-      print(shared.shlex_join(args))
+      print(shlex.join(args))
       proc = self.run_process(args, check=False)
       self.assertEqual(proc.returncode, 100)
       dump_dir = 'dump_out'
