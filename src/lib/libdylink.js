@@ -685,6 +685,9 @@ var LibraryDylink = {
         if (!resolved) {
           resolved = moduleExports[sym];
         }
+        if (resolved.orig) {
+          resolved = resolved.orig;
+        }
 #if ASSERTIONS
         assert(resolved, `undefined symbol '${sym}'. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment`);
 #endif
@@ -734,10 +737,21 @@ var LibraryDylink = {
           // when first called.
           if (!(prop in stubs)) {
             var resolved;
+#if JSPI
+            var func = (...args) => {
+              resolved ||= resolveSymbol(prop);
+              try {
+                resolved = WebAssembly.promising(resolved);
+              } catch(e) {}
+              return resolved(...args);
+            }
+            stubs[prop] = new WebAssembly.Suspending(func);
+#else
             stubs[prop] = (...args) => {
               resolved ||= resolveSymbol(prop);
               return resolved(...args);
             };
+#endif
           }
           return stubs[prop];
         }
