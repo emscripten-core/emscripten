@@ -10,6 +10,7 @@
 import assert from 'node:assert';
 import * as fs from 'node:fs/promises';
 import {
+  ATMODULES,
   ATEXITS,
   ATINITS,
   ATPOSTCTORS,
@@ -734,6 +735,13 @@ function(${args}) {
         }
         contentText = `var ${mangled} = ${snippet};`;
       }
+
+      if (MODULARIZE == 'instance' && (EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
+        // In MODULARIZE=instance mode mark JS library symbols are exported at
+        // the point of declaration.
+        contentText = 'export ' + contentText;
+      }
+
       // Relocatable code needs signatures to create proper wrappers.
       if (sig && RELOCATABLE) {
         if (!WASM_BIGINT) {
@@ -823,6 +831,10 @@ function(${args}) {
     }
     writeOutput('// End JS library code\n');
 
+    if (!MINIMAL_RUNTIME) {
+      includeSystemFile('postlibrary.js');
+    }
+
     if (PTHREADS) {
       writeOutput(`
 // proxiedFunctionTable specifies the list of functions that can be called
@@ -848,7 +860,7 @@ var proxiedFunctionTable = [
       includeFile(fileName);
     }
 
-    if (MODULARIZE && !WASM_ESM_INTEGRATION) {
+    if (MODULARIZE && MODULARIZE != 'instance') {
       includeSystemFile('postamble_modularize.js');
     }
 
@@ -864,6 +876,7 @@ var proxiedFunctionTable = [
           asyncFuncs,
           libraryDefinitions: LibraryManager.libraryDefinitions,
           ATPRERUNS: ATPRERUNS.join('\n'),
+          ATMODULES: ATMODULES.join('\n'),
           ATINITS: ATINITS.join('\n'),
           ATPOSTCTORS: ATPOSTCTORS.join('\n'),
           ATMAINS: ATMAINS.join('\n'),

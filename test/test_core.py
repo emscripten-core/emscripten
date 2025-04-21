@@ -40,6 +40,21 @@ EM_SIGINT = 2
 EM_SIGABRT = 6
 
 
+def esm_integration(func):
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    self.require_node_canary()
+    self.node_args += ['--experimental-wasm-modules', '--no-warnings']
+    self.emcc_args += ['-sWASM_ESM_INTEGRATION', '-Wno-experimental']
+    if self.is_wasm64():
+      self.skipTest('wasm64 requires wasm export wrappers')
+    func(self, *args, **kwargs)
+
+  return decorated
+
+
 def wasm_simd(f):
   assert callable(f)
 
@@ -7615,7 +7630,7 @@ void* operator new(size_t size) {
     # Export things on "TheModule". This matches the typical use pattern of
     # the bound library being used as Box2D.* or Ammo.*, and we cannot rely
     # on "Module" being always present (closure may remove it).
-    self.emcc_args += ['-sEXPORTED_FUNCTIONS=_malloc,_free', '-sEXPORTED_RUNTIME_METHODS=stringToUTF8', '--post-js=glue.js', '--extern-post-js=extern-post.js']
+    self.emcc_args += ['-sEXPORTED_FUNCTIONS=_malloc,_free', '-sEXPORTED_RUNTIME_METHODS=HEAP8,stringToUTF8', '--post-js=glue.js', '--extern-post-js=extern-post.js']
     if mode == 'ALL':
       self.emcc_args += ['-sASSERTIONS']
     if allow_memory_growth:
@@ -7826,7 +7841,7 @@ void* operator new(size_t size) {
     self.assertLess(get_dwarf_addr(7, 3), get_dwarf_addr(8, 3))
 
     # Get the wat, printing with -g which has binary offsets
-    wat = self.run_process([Path(building.get_binaryen_bin(), 'wasm-opt'),
+    wat = self.run_process([os.path.join(building.get_binaryen_bin(), 'wasm-opt'),
                            wasm_filename, '-g', '--print', '-all'], stdout=PIPE).stdout
 
     # We expect to see a pattern like this in optimized builds (there isn't
@@ -8337,7 +8352,7 @@ Module.onRuntimeInitialized = () => {
         return False
       create_file('wat.wat', wat)
       shutil.move(name, name + '.orig')
-      self.run_process([Path(building.get_binaryen_bin(), 'wasm-as'), 'wat.wat', '-o', name, '-g', '--all-features'])
+      self.run_process([os.path.join(building.get_binaryen_bin(), 'wasm-as'), 'wat.wat', '-o', name, '-g', '--all-features'])
       return True
 
     def verify_working(args):
@@ -9561,6 +9576,59 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   def test_wasm_worker_wait_async(self):
     self.do_runf('atomic/test_wait_async.c', emcc_args=['-sWASM_WORKERS'])
+
+  @parameterized({
+    '': ([],),
+    'imported_memory': (['-sIMPORTED_MEMORY'],),
+  })
+  @esm_integration
+  def test_esm_integration_main(self, args):
+    self.do_runf('hello_world.c', 'hello, world!', emcc_args=args)
+
+  @esm_integration
+  def test_esm_integration(self):
+    # TODO(sbc): WASM_ESM_INTEGRATION doesn't currently work with closure.
+    # self.maybe_closure()
+    self.run_process([EMCC, '-o', 'hello_world.mjs', '-sINCOMING_MODULE_JS_API=arguments', '-sEXPORTED_RUNTIME_METHODS=err', '-sEXPORTED_FUNCTIONS=_main,stringToNewUTF8', test_file('core/test_esm_integration.c')] + self.get_emcc_args())
+    create_file('runner.mjs', '''
+      import init, { err, stringToNewUTF8, _main, _foo } from "./hello_world.mjs";
+      await init({arguments: ['foo', 'bar']});
+      err('this is a pointer:', stringToNewUTF8('hello'));
+    ''')
+    self.assertContained('hello, world! (3)', self.run_js('runner.mjs'))
+    self.assertFileContents(test_file('core/test_esm_integration.expected.mjs'), read_file('hello_world.mjs'))
+
+  @parameterized({
+    '': ([],),
+    'pthreads': (['-pthread'],),
+  })
+  def test_modularize_instance(self, args):
+    create_file('library.js', '''\
+    addToLibrary({
+      $baz: () => console.log('baz'),
+      $qux: () => console.log('qux'),
+    });''')
+    self.run_process([EMCC, test_file('modularize_instance.c'),
+                      '-sMODULARIZE=instance',
+                      '-Wno-experimental',
+                      '-sEXPORTED_RUNTIME_METHODS=baz,addOnExit,HEAP32',
+                      '-sEXPORTED_FUNCTIONS=_bar,_main,qux',
+                      '--js-library', 'library.js',
+                      '-o', 'modularize_instance.mjs'] + args)
+
+    create_file('runner.mjs', '''
+      import { strict as assert } from 'assert';
+      import init, { _foo as foo, _bar as bar, baz, qux, addOnExit, HEAP32 } from "./modularize_instance.mjs";
+      await init();
+      foo(); // exported with EMSCRIPTEN_KEEPALIVE
+      bar(); // exported with EXPORTED_FUNCTIONS
+      baz(); // exported library function with EXPORTED_RUNTIME_METHODS
+      qux(); // exported library function with EXPORTED_FUNCTIONS
+      assert(typeof addOnExit === 'function'); // exported runtime function with EXPORTED_RUNTIME_METHODS
+      assert(typeof HEAP32 === 'object'); // exported runtime value by default
+    ''')
+
+    self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
 
 
 # Generate tests for everything

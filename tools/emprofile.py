@@ -36,7 +36,7 @@ def create_profiling_graph(outfile):
   log_files = [f for f in list_files_in_directory(profiler_logs_path) if 'toolchain_profiler.pid_' in f]
 
   all_results = []
-  if len(log_files):
+  if log_files:
     print(f'Processing {len(log_files)} profile log files in {profiler_logs_path}...')
   for f in log_files:
     print(f'Processing: {f}')

@@ -188,15 +188,54 @@ def setup_environment_settings():
 
 
 def generate_js_sym_info():
-  # Runs the js compiler to generate a list of all symbols available in the JS
-  # libraries.  This must be done separately for each linker invocation since the
-  # list of symbols depends on what settings are used.
-  # TODO(sbc): Find a way to optimize this.  Potentially we could add a super-set
-  # mode of the js compiler that would generate a list of all possible symbols
-  # that could be checked in.
+  """Runs the js compiler to generate a list of all symbols available in the JS
+  libraries.  This must be done separately for each linker invocation since the
+  list of symbols depends on what settings are used.
+  TODO(sbc): Find a way to optimize this.  Potentially we could add a super-set
+  mode of the js compiler that would generate a list of all possible symbols
+  that could be checked in.
+  """
   _, forwarded_data = emscripten.compile_javascript(symbols_only=True)
   # When running in symbols_only mode compiler.mjs outputs a flat list of C symbols.
   return json.loads(forwarded_data)
+
+
+def get_cached_file(filetype, filename, generator, cache_limit):
+  """This function implements a file cache which lives inside the main
+  emscripten cache directory but uses a per-file lock rather than a
+  cache-wide lock.
+
+  The cache is pruned (by removing the oldest files) if it grows above
+  a certain number of files.
+  """
+  root = cache.get_path(filetype)
+  utils.safe_ensure_dirs(root)
+
+  cache_file = os.path.join(root, filename)
+
+  with filelock.FileLock(cache_file + '.lock'):
+    if os.path.exists(cache_file):
+      # Cache hit, read the file
+      file_content = read_file(cache_file)
+    else:
+      # Cache miss, generate the symbol list and write the file
+      file_content = generator()
+      write_file(cache_file, file_content)
+
+  if len([f for f in os.listdir(root) if not f.endswith('.lock')]) > cache_limit:
+    with filelock.FileLock(cache.get_path(f'{filetype}.lock')):
+      files = []
+      for f in os.listdir(root):
+        if not f.endswith('.lock'):
+          f = os.path.join(root, f)
+          files.append((f, os.path.getmtime(f)))
+      files.sort(key=lambda x: x[1])
+      # Delete all but the newest N files
+      for f, _ in files[:-cache_limit]:
+        with filelock.FileLock(f + '.lock'):
+          delete_file(f)
+
+  return file_content
 
 
 @ToolchainProfiler.profile_block('JS symbol generation')
@@ -220,39 +259,16 @@ def get_js_sym_info():
     input_files.append(read_file(jslib))
   content = '\n'.join(input_files)
   content_hash = hashlib.sha1(content.encode('utf-8')).hexdigest()
-  library_syms = None
 
-  cache_file = str(cache.get_path(f'symbol_lists/{content_hash}.json'))
-
-  utils.safe_ensure_dirs(cache.get_path('symbol_lists'))
-  with filelock.FileLock(cache_file + '.lock'):
-    if os.path.exists(cache_file):
-      # Cache hit, read the file
-      library_syms = json.loads(read_file(cache_file))
-    else:
-      # Cache miss, generate the symbol list and write the file
-      library_syms = generate_js_sym_info()
-      write_file(cache_file, json.dumps(library_syms, separators=(',', ':'), indent=2))
+  def generate_json():
+    library_syms = generate_js_sym_info()
+    return json.dumps(library_syms, separators=(',', ':'), indent=2)
 
   # Limit of the overall size of the cache.
   # This code will get test coverage since a full test run of `other` or `core`
   # generates ~1000 unique symbol lists.
-  cache_limit = 500
-  root = cache.get_path('symbol_lists')
-  if len([f for f in os.listdir(root) if not f.endswith('.lock')]) > cache_limit:
-    with filelock.FileLock(cache.get_path('symbol_lists.lock')):
-      files = []
-      for f in os.listdir(root):
-        if not f.endswith('.lock'):
-          f = os.path.join(root, f)
-          files.append((f, os.path.getmtime(f)))
-      files.sort(key=lambda x: x[1])
-      # Delete all but the newest N files
-      for f, _ in files[:-cache_limit]:
-        with filelock.FileLock(f + '.lock'):
-          delete_file(f)
-
-  return library_syms
+  file_content = get_cached_file('symbol_lists', f'{content_hash}.json', generate_json, cache_limit=500)
+  return json.loads(file_content)
 
 
 def filter_link_flags(flags, using_lld):
@@ -453,9 +469,9 @@ def make_js_executable(script):
     # Using -S (--split-string) here means that arguments to the executable are
     # correctly parsed.  We don't do this by default because old versions of env
     # don't support -S.
-    cmd = '/usr/bin/env -S ' + shared.shlex_join(cmd)
+    cmd = '/usr/bin/env -S ' + shlex.join(cmd)
   else:
-    cmd = shared.shlex_join(cmd)
+    cmd = shlex.join(cmd)
   logger.debug('adding `#!` to JavaScript file: %s' % cmd)
   # add shebang
   with open(script, 'w') as f:
@@ -778,10 +794,21 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.MODULARIZE and settings.MODULARIZE not in [1, 'instance']:
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
 
+  def limit_incoming_module_api():
+    if options.oformat == OFormat.HTML and options.shell_path == DEFAULT_SHELL_HTML:
+      # Out default shell.html file has minimal set of INCOMING_MODULE_JS_API elements that it expects
+      default_setting('INCOMING_MODULE_JS_API', 'canvas,monitorRunDependencies,onAbort,onExit,print,setStatus'.split(','))
+    else:
+      default_setting('INCOMING_MODULE_JS_API', [])
+
   if settings.MODULARIZE == 'instance':
     diagnostics.warning('experimental', '-sMODULARIZE=instance is still experimental. Many features may not work or will change.')
     if options.oformat != OFormat.MJS:
       exit_with_error('emcc: MODULARIZE instance is only compatible with .mjs output files')
+    limit_incoming_module_api()
+    for s in ['wasmMemory', 'INITIAL_MEMORY']:
+      if s in settings.INCOMING_MODULE_JS_API:
+        exit_with_error(f'emcc: {s} cannot be in INCOMING_MODULE_JS_API in MODULARIZE=instance mode')
 
   if options.oformat in (OFormat.WASM, OFormat.BARE):
     if options.emit_tsd:
@@ -949,26 +976,14 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       # are needed in this mode.
       default_setting('AUTO_JS_LIBRARIES', 0)
       default_setting('ALLOW_UNIMPLEMENTED_SYSCALLS', 0)
-    if options.oformat == OFormat.HTML and options.shell_path == DEFAULT_SHELL_HTML:
-      # Out default shell.html file has minimal set of INCOMING_MODULE_JS_API elements that it expects
-      default_setting('INCOMING_MODULE_JS_API', 'canvas,monitorRunDependencies,onAbort,onExit,print,setStatus'.split(','))
-    else:
-      default_setting('INCOMING_MODULE_JS_API', [])
+    limit_incoming_module_api()
+
+  for prop in settings.INCOMING_MODULE_JS_API:
+    if prop not in settings.ALL_INCOMING_MODULE_JS_API:
+      diagnostics.warning('unused-command-line-argument', f'invalid entry in INCOMING_MODULE_JS_API: {prop}')
 
   if 'noExitRuntime' in settings.INCOMING_MODULE_JS_API:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$noExitRuntime')
-
-  if not settings.MINIMAL_RUNTIME and not settings.STRICT:
-    # Export the HEAP object by default, when not running in STRICT mode
-    settings.EXPORTED_RUNTIME_METHODS.extend([
-      'HEAPF32',
-      'HEAPF64',
-      'HEAP_DATA_VIEW',
-      'HEAP8',  'HEAPU8',
-      'HEAP16', 'HEAPU16',
-      'HEAP32', 'HEAPU32',
-      'HEAP64', 'HEAPU64',
-    ])
 
   # Default to TEXTDECODER=2 (always use TextDecoder to decode UTF-8 strings)
   # in -Oz builds, since custom decoder for UTF-8 takes up space.
@@ -1975,7 +1990,6 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
       if building.is_wasm_dylib(f):
         safe_copy(f, in_temp(''))
 
-  settings.EXPORTED_RUNTIME_METHODS = []
   # Ignore any options or settings that can conflict with running the TS
   # generation output.
   # Don't invoke the program's `main` function.
@@ -2113,12 +2127,30 @@ def create_worker_file(input_file, target_dir, output_file, options):
 
 
 def create_esm_wrapper(wrapper_file, support_target, wasm_target):
-  wasm_exports = ', '.join(shared.demangle_c_symbol_name(f) for f in settings.EXPORTED_FUNCTIONS)
+  js_exports = settings.EXPORTED_RUNTIME_METHODS + list(building.user_requested_exports)
+  js_exports = ', '.join(sorted(js_exports))
+
   wrapper = []
-  if wasm_exports:
-    wrapper.append(f"export {{ {wasm_exports} }} from './{settings.WASM_BINARY_FILE}';")
+  wrapper.append('// The wasm module must be imported here first before the support file')
+  wrapper.append('// in order to avoid issues with circular dependencies.')
+  wrapper.append(f"import * as unused from './{settings.WASM_BINARY_FILE}';")
   support_url = f'./{os.path.basename(support_target)}'
-  wrapper.append(f"export {{ default }} from '{support_url}';")
+  if js_exports:
+    wrapper.append(f"export {{ default, {js_exports} }} from '{support_url}';")
+  else:
+    wrapper.append(f"export {{ default }} from '{support_url}';")
+
+  if settings.ENVIRONMENT_MAY_BE_NODE and settings.INVOKE_RUN and settings.EXPECT_MAIN:
+    wrapper.append(f'''
+// When run as the main module under node, execute main directly here
+import init from '{support_url}';
+const isNode = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string' && process.type != 'renderer';
+if (isNode) {{
+  const url = await import('url');
+  const isMainModule = url.pathToFileURL(process.argv[1]).href === import.meta.url;
+  if (isMainModule) await init();
+}}''')
+
   write_file(wrapper_file, '\n'.join(wrapper) + '\n')
 
   # FIXME(sbc): This is a huge hack to rename the imports in the
@@ -2149,7 +2181,7 @@ def phase_final_emitting(options, target, js_target, wasm_target):
   if settings.AUDIO_WORKLET == 1:
     create_worker_file('src/audio_worklet.js', target_dir, settings.AUDIO_WORKLET_FILE, options)
 
-  if settings.MODULARIZE and not settings.WASM_ESM_INTEGRATION:
+  if settings.MODULARIZE and settings.MODULARIZE != 'instance':
     modularize()
   elif settings.USE_CLOSURE_COMPILER:
     module_export_name_substitution()
@@ -2420,21 +2452,7 @@ def modularize():
   else:
     maybe_async = ''
 
-  if settings.MODULARIZE == 'instance':
-    wrapper_function = '''
-export default %(maybe_async)s function init(moduleArg = {}) {
-  var moduleRtn;
-
-%(generated_js)s
-
-  return moduleRtn;
-}
-''' % {
-      'generated_js': generated_js,
-      'maybe_async': maybe_async,
-    }
-  else:
-    wrapper_function = '''
+  wrapper_function = '''
 %(maybe_async)sfunction(moduleArg = {}) {
   var moduleRtn;
 
@@ -2452,41 +2470,22 @@ export default %(maybe_async)s function init(moduleArg = {}) {
     # document.currentScript, so a simple export declaration is enough.
     src = f'var {settings.EXPORT_NAME} = {wrapper_function};'
   else:
-    script_url_node = ''
+    script_url_web = ''
     # When MODULARIZE this JS may be executed later,
     # after document.currentScript is gone, so we save it.
-    # In EXPORT_ES6 + PTHREADS the 'thread' is actually an ES6 module
-    # webworker running in strict mode, so doesn't have access to 'document'.
-    # In this case use 'import.meta' instead.
-    if settings.EXPORT_ES6:
-      script_url = 'import.meta.url'
-    else:
-      script_url = "typeof document != 'undefined' ? document.currentScript?.src : undefined"
-      if settings.ENVIRONMENT_MAY_BE_NODE:
-        script_url_node = "if (typeof __filename != 'undefined') _scriptName = _scriptName || __filename;"
-    if settings.MODULARIZE == 'instance':
-      src = '''\
-  var _scriptName = %(script_url)s;
-  %(script_url_node)s
-  %(wrapper_function)s
-''' % {
-        'script_url': script_url,
-        'script_url_node': script_url_node,
-        'wrapper_function': wrapper_function,
-      }
-    else:
-      src = '''\
+    # In EXPORT_ES6 mode we can just use 'import.meta.url'.
+    if settings.ENVIRONMENT_MAY_BE_WEB and not settings.EXPORT_ES6:
+       script_url_web = "var _scriptName = typeof document != 'undefined' ? document.currentScript?.src : undefined;"
+    src = '''\
 var %(EXPORT_NAME)s = (() => {
-  var _scriptName = %(script_url)s;
-  %(script_url_node)s
+  %(script_url_web)s
   return (%(wrapper_function)s);
 })();
 ''' % {
-        'EXPORT_NAME': settings.EXPORT_NAME,
-        'script_url': script_url,
-        'script_url_node': script_url_node,
-        'wrapper_function': wrapper_function,
-      }
+      'EXPORT_NAME': settings.EXPORT_NAME,
+      'script_url_web': script_url_web,
+      'wrapper_function': wrapper_function,
+    }
 
   if settings.SOURCE_PHASE_IMPORTS:
     src = f"import source wasmModule from './{settings.WASM_BINARY_FILE}';\n\n" + src
@@ -2502,16 +2501,7 @@ var %(EXPORT_NAME)s = (() => {
 
   # Export using a UMD style export, or ES6 exports if selected
   if settings.EXPORT_ES6:
-    if settings.MODULARIZE == 'instance':
-      exports = settings.EXPORTED_FUNCTIONS + settings.EXPORTED_RUNTIME_METHODS
-      # Declare a top level var for each export so that code in the init function
-      # can assign to it and update the live module bindings.
-      src += 'var ' + ', '.join(['__exp_' + export for export in exports]) + ';\n'
-      # Export the functions with their original name.
-      exports = ['__exp_' + export + ' as ' + export for export in exports]
-      src += 'export {' + ', '.join(exports) + '};\n'
-    else:
-      src += 'export default %s;\n' % settings.EXPORT_NAME
+    src += 'export default %s;\n' % settings.EXPORT_NAME
   elif not settings.MINIMAL_RUNTIME:
     src += '''\
 if (typeof exports === 'object' && typeof module === 'object') {
@@ -3080,7 +3070,8 @@ def package_files(options, target):
     file_args += ['--obj-output=' + object_file]
     rtn.append(object_file)
 
-  cmd = [shared.FILE_PACKAGER, shared.replace_suffix(target, '.data')] + file_args
+  cmd = building.get_command_with_possible_response_file(
+    [shared.FILE_PACKAGER, shared.replace_suffix(target, '.data')] + file_args)
   if options.preload_files:
     # Preloading files uses --pre-js code that runs before the module is loaded.
     file_code = shared.check_call(cmd, stdout=PIPE).stdout

@@ -32,7 +32,6 @@ def get(ports, settings, shared):
     flags = [
       '-DOPT_GENERIC',
       '-DREAL_IS_FLOAT',
-      '-O2',
       '-fomit-frame-pointer',
       '-finline-functions',
       '-ffast-math',

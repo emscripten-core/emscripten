@@ -30,7 +30,6 @@ def get(ports, settings, shared):
       '-DHAVE_CONFIG_H',
       '-DSYM_VISIBILITY',
       '-std=gnu++14',
-      '-O2',
       '-fno-exceptions',
       '-ffast-math',
       '-fno-common',

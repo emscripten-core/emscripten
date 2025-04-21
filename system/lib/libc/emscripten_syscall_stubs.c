@@ -23,6 +23,7 @@
 #include <sys/utsname.h>
 #include <emscripten/console.h>
 #include <emscripten/version.h>
+#include <emscripten/stack.h>
 
 static int g_pid = 42;
 static int g_pgid = 42;
@@ -232,6 +233,13 @@ weak int __syscall_prlimit64(int pid, int resource, intptr_t new_limit, intptr_t
       // See FS.MAX_OPEN_FDS in src/lib/libfs.js
       old->rlim_cur = 4096;
       old->rlim_max = 4096;
+    } else if (resource == RLIMIT_STACK) {
+      uintptr_t end = emscripten_stack_get_end();
+      uintptr_t base = emscripten_stack_get_base();
+
+      old->rlim_cur = base - end;
+      // we can not change the stack size, so the maximum is the same as the current
+      old->rlim_max = base - end;
     } else {
       // Just report no limits
       old->rlim_cur = RLIM_INFINITY;

@@ -249,6 +249,7 @@ var LibraryHTML5 = {
     },
   },
 
+  $registerKeyEventCallback__noleakcheck: true,
   $registerKeyEventCallback__deps: ['$JSEvents', '$findEventTarget', '$stringToUTF8', 'malloc'],
   $registerKeyEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
@@ -477,6 +478,7 @@ var LibraryHTML5 = {
     HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetY / 4 }}}] = e.clientY - (rect.top  | 0);
   },
 
+  $registerMouseEventCallback__noleakcheck: true,
   $registerMouseEventCallback__deps: ['$JSEvents', '$fillMouseEventData', '$findEventTarget', 'malloc'],
   $registerMouseEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
@@ -568,6 +570,7 @@ var LibraryHTML5 = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
+  $registerWheelEventCallback__noleakcheck: true,
   $registerWheelEventCallback__deps: ['$JSEvents', '$fillMouseEventData', 'malloc'],
   $registerWheelEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
@@ -619,6 +622,7 @@ var LibraryHTML5 = {
     }
   },
 
+  $registerUiEventCallback__noleakcheck: true,
   $registerUiEventCallback__deps: ['$JSEvents', '$findEventTarget', 'malloc'],
   $registerUiEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
@@ -691,6 +695,7 @@ var LibraryHTML5 = {
   emscripten_set_scroll_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) =>
     registerUiEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_SCROLL }}}, "scroll", targetThread),
 
+  $registerFocusEventCallback__noleakcheck: true,
   $registerFocusEventCallback__deps: ['$JSEvents', '$findEventTarget', 'malloc', '$stringToUTF8'],
   $registerFocusEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
@@ -754,6 +759,7 @@ var LibraryHTML5 = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.absolute, 'e.absolute', 'i8') }}};
   },
 
+  $registerDeviceOrientationEventCallback__noleakcheck: true,
   $registerDeviceOrientationEventCallback__deps: ['$JSEvents', '$fillDeviceOrientationEventData', '$findEventTarget'],
   $registerDeviceOrientationEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
@@ -823,6 +829,7 @@ var LibraryHTML5 = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateGamma, 'rr["gamma"]', 'double') }}};
   },
 
+  $registerDeviceMotionEventCallback__noleakcheck: true,
   $registerDeviceMotionEventCallback__deps: ['$JSEvents', '$fillDeviceMotionEventData', '$findEventTarget', 'malloc'],
   $registerDeviceMotionEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
@@ -905,6 +912,7 @@ var LibraryHTML5 = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationAngle, 'orientationAngle', 'i32') }}};
   },
 
+  $registerOrientationChangeEventCallback__noleakcheck: true,
   $registerOrientationChangeEventCallback__deps: ['$JSEvents', '$fillOrientationChangeEventData', 'malloc'],
   $registerOrientationChangeEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
@@ -1017,6 +1025,7 @@ var LibraryHTML5 = {
     }
   },
 
+  $registerFullscreenChangeEventCallback__noleakcheck: true,
   $registerFullscreenChangeEventCallback__deps: ['$JSEvents', '$fillFullscreenChangeEventData', 'malloc'],
   $registerFullscreenChangeEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
@@ -1556,6 +1565,7 @@ var LibraryHTML5 = {
     stringToUTF8(id, eventStruct + {{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.id }}}, {{{ cDefs.EM_HTML5_LONG_STRING_LEN_BYTES }}});
   },
 
+  $registerPointerlockChangeEventCallback__noleakcheck: true,
   $registerPointerlockChangeEventCallback__deps: ['$JSEvents', '$fillPointerlockChangeEventData', 'malloc'],
   $registerPointerlockChangeEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
@@ -1785,6 +1795,7 @@ var LibraryHTML5 = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.visibilityState, 'visibilityState', 'i32') }}};
   },
 
+  $registerVisibilityChangeEventCallback__noleakcheck: true,
   $registerVisibilityChangeEventCallback__deps: ['$JSEvents', '$fillVisibilityChangeEventData', 'malloc'],
   $registerVisibilityChangeEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
@@ -1839,6 +1850,7 @@ var LibraryHTML5 = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
+  $registerTouchEventCallback__noleakcheck: true,
   $registerTouchEventCallback__deps: ['$JSEvents', '$findEventTarget', '$getBoundingClientRect', 'malloc'],
   $registerTouchEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
@@ -1987,6 +1999,7 @@ var LibraryHTML5 = {
     stringToUTF8(e.mapping, eventStruct + {{{ C_STRUCTS.EmscriptenGamepadEvent.mapping }}}, {{{ cDefs.EM_HTML5_MEDIUM_STRING_LEN_BYTES }}});
   },
 
+  $registerGamepadEventCallback__noleakcheck: true,
   $registerGamepadEventCallback__deps: ['$JSEvents', '$fillGamepadEventData', '$findEventTarget', 'malloc'],
   $registerGamepadEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
@@ -2127,6 +2140,7 @@ var LibraryHTML5 = {
 
   $battery: () => navigator.battery || navigator.mozBattery || navigator.webkitBattery,
 
+  $registerBatteryEventCallback__noleakcheck: true,
   $registerBatteryEventCallback__deps: ['$JSEvents', '$fillBatteryEventData', '$battery', '$findEventTarget', 'malloc'],
   $registerBatteryEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS

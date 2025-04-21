@@ -89,6 +89,7 @@ MINIMAL_TASKS = [
     'libnoexit',
     'libwebgpu',
     'libwebgpu_cpp',
+    'bullet',
 ]
 
 # Additional tasks on top of MINIMAL_TASKS that are necessary for PIC testing on
