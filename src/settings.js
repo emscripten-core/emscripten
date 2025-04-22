@@ -2193,6 +2193,14 @@ var SOURCE_PHASE_IMPORTS = false;
 // [link]
 var WASM_ESM_INTEGRATION = false;
 
+// Enable use of the JS arraybuffer-base64 API:
+// https://github.com/tc39/proposal-arraybuffer-base64
+// To run the resulting code currently requires passing `--js_base_64` to node
+// or chrome.
+// [experimental]
+// [link]
+var JS_BASE64_API = false;
+
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]
 // For removed settings (which now effectively have a fixed value and can no

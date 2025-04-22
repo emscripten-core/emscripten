@@ -784,6 +784,9 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if options.oformat == OFormat.MJS:
     default_setting('EXPORT_ES6', 1)
 
+  if settings.JS_BASE64_API:
+    diagnostics.warning('experimental', '-sJS_BASE64_API is still experimental and not yet supported in browsers')
+
   if settings.WASM_ESM_INTEGRATION:
     diagnostics.warning('experimental', '-sWASM_ESM_INTEGRATION is still experimental and not yet supported in browsers')
     default_setting('EXPORT_ES6', 1)

@@ -22,6 +22,9 @@ addToLibrary({
 `,
   $base64Decode__docs: '/** @noinline */',
   $base64Decode: (b64) => {
+#if JS_BASE64_API
+    return Uint8Array.fromBase64(b64);
+#else
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
       var buf = Buffer.from(b64, 'base64');
@@ -42,5 +45,6 @@ addToLibrary({
       output[j+2] = b2 << 6 | base64ReverseLookup[b64.charCodeAt(i+3)];
     }
     return output;
+#endif
   },
 });
