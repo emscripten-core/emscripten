@@ -96,16 +96,16 @@ var LibraryPThread = {
         ) {
           t = _pthread_self();
         }
-        return `w:${workerID},t:${ptrToString(t)}: `;
+        return `w:${workerID},t:${ptrToString(t)}:`;
       }
 
       // Prefix all err()/dbg() messages with the calling thread ID.
       var origDbg = dbg;
-      dbg = (...args) => origDbg(pthreadLogPrefix() + args.join(' '));
+      dbg = (...args) => origDbg(pthreadLogPrefix(), ...args);
 #if PTHREADS_DEBUG
       // With PTHREADS_DEBUG also prefix all err() messages.
       var origErr = err;
-      err = (...args) => origErr(pthreadLogPrefix() + args.join(' '));
+      err = (...args) => origErr(pthreadLogPrefix(), ...args);
 #endif
     },
 #endif

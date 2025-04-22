@@ -14982,12 +14982,12 @@ out.js
   @node_pthreads
   def test_dbg(self):
     create_file('pre.js', '''
-    dbg('start');
-    Module.onRuntimeInitialized = () => dbg('done init');
+    dbg('start', { foo: 1});
+    Module.onRuntimeInitialized = () => dbg('done init', { bar: 1});
     ''')
     expected = '''\
-start
-w:0,t:0x[0-9a-fA-F]+: done init
+start { foo: 1 }
+w:0,t:0x[0-9a-fA-F]+: done init { bar: 1 }
 hello, world!
 w:0,t:0x[0-9a-fA-F]+: native dbg message
 w:0,t:0x[0-9a-fA-F]+: hello
