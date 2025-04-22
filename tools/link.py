@@ -1421,8 +1421,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   default_setting('WASM_BIGINT', feature_matrix.caniuse(feature_matrix.Feature.JS_BIGINT_INTEGRATION))
 
   if settings.AUDIO_WORKLET:
-    if settings.AUDIO_WORKLET == 1:
-      settings.AUDIO_WORKLET_FILE = unsuffixed(os.path.basename(target)) + '.aw.js'
     add_system_js_lib('libwebaudio.js')
     if not settings.MINIMAL_RUNTIME:
       # If we are in the audio worklet environment, we can only access the Module object
@@ -2178,8 +2176,9 @@ def phase_final_emitting(options, target, js_target, wasm_target):
     create_worker_file('src/wasm_worker.js', target_dir, settings.WASM_WORKER_FILE, options)
 
   # Deploy the Audio Worklet module bootstrap file (*.aw.js)
-  if settings.AUDIO_WORKLET == 1:
-    create_worker_file('src/audio_worklet.js', target_dir, settings.AUDIO_WORKLET_FILE, options)
+  if settings.AUDIO_WORKLET:
+    audio_worklet_file = unsuffixed_basename(js_target) + '.aw.js'
+    create_worker_file('src/audio_worklet.js', target_dir, audio_worklet_file, options)
 
   if settings.MODULARIZE and settings.MODULARIZE != 'instance':
     modularize()
