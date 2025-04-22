@@ -16017,3 +16017,14 @@ addToLibrary({
                  output_suffix='.mjs',
                  emcc_args=['--pre-js', 'pre.js',
                             '--extern-post-js', test_file('modularize_post_js.js')] + args)
+
+  @requires_node_canary
+  def test_js_base64_api(self):
+    self.node_args += ['--js_base_64']
+    self.do_runf('hello_world.c', 'hello, world!', emcc_args=['-sSINGLE_FILE'], output_basename='baseline')
+    self.do_runf('hello_world.c', 'hello, world!', emcc_args=['-sSINGLE_FILE', '-sJS_BASE64_API', '-Wno-experimental'])
+    # We expect the resulting JS file to be smaller because it doesn't contain the
+    # base64 decoding code
+    baseline_size = os.path.getsize('baseline.js')
+    js_api_size = os.path.getsize('hello_world.js')
+    self.assertLess(js_api_size, baseline_size)
