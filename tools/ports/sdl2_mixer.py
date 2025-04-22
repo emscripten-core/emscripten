@@ -34,7 +34,7 @@ def needed(settings):
 
 
 def get_formats(settings):
-  return set(settings.SDL2_MIXER_FORMATS).union(opts['formats'])
+  return opts['formats'].union(settings.SDL2_MIXER_FORMATS)
 
 
 def get_lib_name(settings):
