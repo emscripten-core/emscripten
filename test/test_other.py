@@ -5733,7 +5733,7 @@ int main() {
         if safe:
           cmd += ['-sSAFE_HEAP']
         if emulate_casts:
-          cmd += ['-sEMULATE_FUNCTION_POINTER_CASTS', '-Wno-deprecated']
+          cmd += ['-sEMULATE_FUNCTION_POINTER_CASTS']
         if relocatable:
           cmd += ['-sRELOCATABLE'] # disables asm-optimized safe heap
         print(cmd)
@@ -12598,7 +12598,7 @@ int main(void) {
         }
       }
     ''')
-    self.do_runf('src.c', 'ok\ndone\n', emcc_args=['-Wno-deprecated', '-sEMULATE_FUNCTION_POINTER_CASTS'])
+    self.do_runf('src.c', 'ok\ndone\n', emcc_args=['-sEMULATE_FUNCTION_POINTER_CASTS'])
 
   def test_no_lto(self):
     # This used to fail because settings.LTO didn't reflect `-fno-lto`.

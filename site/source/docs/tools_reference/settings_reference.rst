@@ -467,9 +467,8 @@ sent value to memory and loaded the received type from the same memory (using
 truncs/extends/ reinterprets). This means that when types do not match the
 emulated values may not match (this is true of native too, for that matter -
 this is all undefined behavior). This approaches appears good enough to
-support Python, which is the main use case motivating this feature.
-
-.. note:: This setting is deprecated
+support Python (the original motiviation for this feature) and Glib (the
+continued motivation).
 
 Default value: false
 
