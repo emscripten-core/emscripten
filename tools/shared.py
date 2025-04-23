@@ -8,7 +8,6 @@ from .toolchain_profiler import ToolchainProfiler
 from enum import Enum, unique, auto
 from subprocess import PIPE
 import atexit
-import json
 import logging
 import os
 import re
@@ -126,7 +125,7 @@ def run_process(cmd, check=True, input=None, *args, **kw):
   # output before messages that we have already written.
   sys.stdout.flush()
   sys.stderr.flush()
-  kw.setdefault('universal_newlines', True)
+  kw.setdefault('text', True)
   kw.setdefault('encoding', 'utf-8')
   ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
   debug_text = '%sexecuted %s' % ('successfully ' if check else '', shlex_join(cmd))
@@ -263,13 +262,16 @@ def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: B006
   return check_call(command, **kw).stdout
 
 
-def get_npm_cmd(name):
+def get_npm_cmd(name, missing_ok=False):
   if WINDOWS:
     cmd = [path_from_root('node_modules/.bin', name + '.cmd')]
   else:
     cmd = config.NODE_JS + [path_from_root('node_modules/.bin', name)]
   if not os.path.exists(cmd[-1]):
-    exit_with_error(f'{name} was not found! Please run "npm install" in Emscripten root directory to set up npm dependencies')
+    if missing_ok:
+      return None
+    else:
+      exit_with_error(f'{name} was not found! Please run "npm install" in Emscripten root directory to set up npm dependencies')
   return cmd
 
 
@@ -412,7 +414,7 @@ def generate_sanity():
 
 
 @memoize
-def perform_sanity_checks():
+def perform_sanity_checks(quiet=False):
   # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
   check_node_version()
   check_llvm_version()
@@ -423,7 +425,8 @@ def perform_sanity_checks():
     logger.info('EM_IGNORE_SANITY set, ignoring sanity checks')
     return
 
-  logger.info('(Emscripten: Running sanity checks)')
+  if not quiet:
+    logger.info('(Emscripten: Running sanity checks)')
 
   if not llvm_ok:
     exit_with_error('failing sanity checks due to previous llvm failure')
@@ -437,7 +440,7 @@ def perform_sanity_checks():
 
 
 @ToolchainProfiler.profile()
-def check_sanity(force=False):
+def check_sanity(force=False, quiet=False):
   """Check that basic stuff we need (a JS engine to compile, Node.js, and Clang
   and LLVM) exists.
 
@@ -460,11 +463,11 @@ def check_sanity(force=False):
 
   if config.FROZEN_CACHE:
     if force:
-      perform_sanity_checks()
+      perform_sanity_checks(quiet)
     return
 
   if os.environ.get('EM_IGNORE_SANITY'):
-    perform_sanity_checks()
+    perform_sanity_checks(quiet)
     return
 
   expected = generate_sanity()
@@ -483,7 +486,7 @@ def check_sanity(force=False):
       # Even if the sanity file is up-to-date we still run the checks
       # when force is set.
       if force:
-        perform_sanity_checks()
+        perform_sanity_checks(quiet)
       return True # all is well
     return False
 
@@ -719,37 +722,6 @@ def safe_copy(src, dst):
   make_writable(dst)
 
 
-def read_and_preprocess(filename, expand_macros=False):
-  temp_dir = get_emscripten_temp_dir()
-  # Create a settings file with the current settings to pass to the JS preprocessor
-
-  settings_str = ''
-  for key, value in settings.external_dict().items():
-    assert key == key.upper()  # should only ever be uppercase keys in settings
-    jsoned = json.dumps(value, sort_keys=True)
-    settings_str += f'var {key} = {jsoned};\n'
-
-  settings_file = os.path.join(temp_dir, 'settings.js')
-  utils.write_file(settings_file, settings_str)
-
-  # Run the JS preprocessor
-  # N.B. We can't use the default stdout=PIPE here as it only allows 64K of output before it hangs
-  # and shell.html is bigger than that!
-  # See https://thraxil.org/users/anders/posts/2008/03/13/Subprocess-Hanging-PIPE-is-your-enemy/
-  dirname, filename = os.path.split(filename)
-  if not dirname:
-    dirname = None
-  stdout = os.path.join(temp_dir, 'stdout')
-  args = [settings_file, filename]
-  if expand_macros:
-    args += ['--expand-macros']
-
-  run_js_tool(path_from_root('tools/preprocessor.mjs'), args, stdout=open(stdout, 'w'), cwd=dirname)
-  out = utils.read_file(stdout)
-
-  return out
-
-
 def do_replace(input_, pattern, replacement):
   if pattern not in input_:
     exit_with_error('expected to find pattern in input JS: %s' % pattern)
@@ -804,8 +776,6 @@ EMCC = bat_suffix(path_from_root('emcc'))
 EMXX = bat_suffix(path_from_root('em++'))
 EMAR = bat_suffix(path_from_root('emar'))
 EMRANLIB = bat_suffix(path_from_root('emranlib'))
-EMCMAKE = bat_suffix(path_from_root('emcmake'))
-EMCONFIGURE = bat_suffix(path_from_root('emconfigure'))
 EM_NM = bat_suffix(path_from_root('emnm'))
 FILE_PACKAGER = bat_suffix(path_from_root('tools/file_packager'))
 WASM_SOURCEMAP = bat_suffix(path_from_root('tools/wasm-sourcemap'))

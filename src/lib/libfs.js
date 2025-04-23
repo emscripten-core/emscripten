@@ -59,7 +59,6 @@ FS.staticInit();
 #if FS_DEBUG
     trackingDelegate: {},
 #endif
-    ErrnoError: null, // set during init
     filesystems: null,
     syncFSRequests: 0, // we warn if there are multiple in flight at once
 #if expectToReceiveOnModule('logReadFiles')
@@ -200,7 +199,12 @@ FS.staticInit();
 
           if (parts[i] === '..') {
             current_path = PATH.dirname(current_path);
-            current = current.parent;
+            if (FS.isRoot(current)) {
+              path = current_path + '/' + parts.slice(i + 1).join('/');
+              continue linkloop;
+            } else {
+              current = current.parent;
+            }
             continue;
           }
 
@@ -747,9 +751,10 @@ FS.staticInit();
     mkdirTree(path, mode) {
       var dirs = path.split('/');
       var d = '';
-      for (var i = 0; i < dirs.length; ++i) {
-        if (!dirs[i]) continue;
-        d += '/' + dirs[i];
+      for (var dir of dirs) {
+        if (!dir) continue;
+        if (d || PATH.isAbs(path)) d += '/';
+        d += dir;
         try {
           FS.mkdir(d, mode);
         } catch(e) {
@@ -1300,24 +1305,6 @@ FS.staticInit();
 #endif
       return bytesWritten;
     },
-    allocate(stream, offset, length) {
-      if (FS.isClosed(stream)) {
-        throw new FS.ErrnoError({{{ cDefs.EBADF }}});
-      }
-      if (offset < 0 || length <= 0) {
-        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
-      }
-      if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_RDONLY}}}) {
-        throw new FS.ErrnoError({{{ cDefs.EBADF }}});
-      }
-      if (!FS.isFile(stream.node.mode) && !FS.isDir(stream.node.mode)) {
-        throw new FS.ErrnoError({{{ cDefs.ENODEV }}});
-      }
-      if (!stream.stream_ops.allocate) {
-        throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
-      }
-      stream.stream_ops.allocate(stream, offset, length);
-    },
     mmap(stream, length, position, prot, flags) {
       // User requests writing to file (prot & PROT_WRITE != 0).
       // Checking if we have permissions to write to the file unless
@@ -1569,12 +1556,10 @@ FS.staticInit();
       _fflush(0);
 #endif
       // close all of our streams
-      for (var i = 0; i < FS.streams.length; i++) {
-        var stream = FS.streams[i];
-        if (!stream) {
-          continue;
+      for (var stream of FS.streams) {
+        if (stream) {
+          FS.close(stream);
         }
-        FS.close(stream);
       }
     },
 
@@ -1626,7 +1611,7 @@ FS.staticInit();
         try {
           FS.mkdir(current);
         } catch (e) {
-          // ignore EEXIST
+          if (e.errno != {{{ cDefs.EEXIST }}}) throw e;
         }
         parent = current;
       }

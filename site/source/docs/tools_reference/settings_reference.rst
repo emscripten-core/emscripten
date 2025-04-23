@@ -23,6 +23,7 @@ Whether we should add runtime assertions. This affects both JS and how
 system libraries are built.
 ASSERTIONS == 2 gives even more runtime checks, that may be very slow. That
 includes internal dlmalloc assertions, for example.
+ASSERTIONS defaults to 0 in optimized builds (-O1 and above).
 
 Default value: 1
 
@@ -468,6 +469,8 @@ emulated values may not match (this is true of native too, for that matter -
 this is all undefined behavior). This approaches appears good enough to
 support Python, which is the main use case motivating this feature.
 
+.. note:: This setting is deprecated
+
 Default value: false
 
 .. _exception_debug:
@@ -476,17 +479,6 @@ EXCEPTION_DEBUG
 ===============
 
 Print out exceptions in emscriptened code.
-
-Default value: false
-
-.. _demangle_support:
-
-DEMANGLE_SUPPORT
-================
-
-If 1, export `demangle` and `stackTrace` JS library functions.
-
-.. note:: This setting is deprecated
 
 Default value: false
 
@@ -1439,17 +1431,6 @@ having "FS" in this list.
 
 Default value: []
 
-.. _extra_exported_runtime_methods:
-
-EXTRA_EXPORTED_RUNTIME_METHODS
-==============================
-
-Deprecated, use EXPORTED_RUNTIME_METHODS instead.
-
-.. note:: This setting is deprecated
-
-Default value: []
-
 .. _incoming_module_js_api:
 
 INCOMING_MODULE_JS_API
@@ -1977,18 +1958,6 @@ be enabled for ES6 exports and is implicitly enabled if not already set.
 This is implicitly enabled if the output suffix is set to 'mjs'.
 
 Default value: false
-
-.. _use_es6_import_meta:
-
-USE_ES6_IMPORT_META
-===================
-
-Use the ES6 Module relative import feature 'import.meta.url'
-to auto-detect WASM Module path.
-It might not be supported on old browsers / toolchains. This setting
-may not be disabled when Node.js is targeted (-sENVIRONMENT=*node*).
-
-Default value: true
 
 .. _export_name:
 
@@ -2735,7 +2704,7 @@ Default value: 0
 TEXTDECODER
 ===========
 
-Is enabled, use the JavaScript TextDecoder API for string marshalling.
+If enabled, use the JavaScript TextDecoder API for string marshalling.
 Enabled by default, set this to 0 to disable.
 If set to 2, we assume TextDecoder is present and usable, and do not emit
 any JS code to fall back if it is missing. In single threaded -Oz build modes,
@@ -2960,18 +2929,6 @@ feature_matrix.py).
 
 Default value: 160000
 
-.. _support_errno:
-
-SUPPORT_ERRNO
-=============
-
-Whether we support setting errno from JS library code.
-In MINIMAL_RUNTIME builds, this option defaults to 0.
-
-.. note:: This setting is deprecated
-
-Default value: true
-
 .. _minimal_runtime:
 
 MINIMAL_RUNTIME
@@ -3107,6 +3064,8 @@ normal wasm or that wasm2js code. For details of how to do that, see the
 test_maybe_wasm2js test.  This option can be useful for debugging and
 bisecting.
 
+.. note:: This setting is deprecated
+
 Default value: false
 
 .. _asan_shadow_size:
@@ -3141,6 +3100,21 @@ Whether we should load the WASM source map at runtime.
 This is enabled automatically when using -gsource-map with sanitizers.
 
 Default value: false
+
+.. _source_map_prefixes:
+
+SOURCE_MAP_PREFIXES
+===================
+
+List of path substitutions to apply in the "sources" field of the source map.
+Corresponds to the ``--prefix`` option used in ``tools/wasm-sourcemap.py``.
+Must be used with ``-gsource-map``.
+
+This setting allows to map path prefixes to the proper ones so that the final
+(possibly relative) URLs point to the correct locations :
+``-sSOURCE_MAP_PREFIXES=/old/path=/new/path``
+
+Default value: []
 
 .. _default_to_cxx:
 
@@ -3359,3 +3333,25 @@ Use _ for non-pointer arguments, p for pointer/i53 arguments, and P for optional
 Example use -sSIGNATURE_CONVERSIONS=someFunction:_p,anotherFunction:p
 
 Default value: []
+
+.. _source_phase_imports:
+
+SOURCE_PHASE_IMPORTS
+====================
+
+Experimental support for wasm source phase imports.
+This is only currently implemented in the pre-release/nightly version of node,
+and not yet supported by browsers.
+Requires EXPORT_ES6
+
+Default value: false
+
+.. _wasm_esm_integration:
+
+WASM_ESM_INTEGRATION
+====================
+
+Experimental support for wasm ESM integration.
+Requires EXPORT_ES6 and MODULARIZE=instance
+
+Default value: false

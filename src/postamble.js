@@ -24,8 +24,6 @@ if (ENVIRONMENT_IS_WORKER) {
 #include "deterministic.js"
 #endif
 
-{{{ exportRuntime() }}}
-
 #if ASSERTIONS
 var calledRun;
 #endif
@@ -132,12 +130,6 @@ function stackCheckInit() {
 }
 #endif
 
-#if MAIN_MODULE && PTHREADS
-// Map of modules to be shared with new threads.  This gets populated by the
-// main thread and shared with all new workers via the initial `load` message.
-var sharedModules = {};
-#endif
-
 #if MAIN_READS_PARAMS
 function run(args = arguments_) {
 #else
@@ -199,10 +191,13 @@ function run() {
 #endif
 #if expectToReceiveOnModule('onRuntimeInitialized')
     Module['onRuntimeInitialized']?.();
+#if ASSERTIONS
+    consumedModuleProp('onRuntimeInitialized');
+#endif
 #endif
 
 #if HAS_MAIN
-    {{{ makeModuleReceiveWithVar('noInitialRun', undefined, !INVOKE_RUN) }}}
+    var noInitialRun = {{{ makeModuleReceiveExpr('noInitialRun', !INVOKE_RUN) }}};
 #if MAIN_READS_PARAMS
     if (!noInitialRun) callMain(args);
 #else
@@ -290,16 +285,40 @@ function checkUnflushedContent() {
 #endif // EXIT_RUNTIME
 #endif // ASSERTIONS
 
+function preInit() {
 #if expectToReceiveOnModule('preInit')
-if (Module['preInit']) {
-  if (typeof Module['preInit'] == 'function') Module['preInit'] = [Module['preInit']];
-  while (Module['preInit'].length > 0) {
-    Module['preInit'].pop()();
+  if (Module['preInit']) {
+    if (typeof Module['preInit'] == 'function') Module['preInit'] = [Module['preInit']];
+    while (Module['preInit'].length > 0) {
+      Module['preInit'].shift()();
+    }
   }
-}
+#if ASSERTIONS
+  consumedModuleProp('preInit');
 #endif
+#endif
+}
 
+#if MODULARIZE == 'instance'
+export default async function init(moduleArg = {}) {
+  Module = moduleArg;
+  processModuleArgs();
+#if WASM_ESM_INTEGRATION
+  updateMemoryViews();
+#else
+  wasmExports = await createWasm();
+  assignWasmExports();
+#endif
+  preInit();
+  run();
+}
+#if PTHREADS
+if (ENVIRONMENT_IS_PTHREAD) await init()
+#endif
+#else
+preInit();
 run();
+#endif
 
 #if BUILD_AS_WORKER
 

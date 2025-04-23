@@ -1,6 +1,5 @@
 #include <assert.h>
 #include <string.h>
-#include <stdio.h>
 
 #include <emscripten/em_js.h>
 #include <emscripten/webaudio.h>
@@ -16,30 +15,41 @@
 
 // Callback to process and copy the audio tracks
 bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, AudioSampleFrame* outputs, int numParams, const AudioParamFrame* params, void* data) {
+#ifdef TEST_AND_EXIT
   audioProcessedCount++;
+#endif
 
-  // Twin mono in, single stereo out
+  // Twin mono in (or disabled), single stereo out
   assert(numInputs == 2 && numOutputs == 1);
-  assert(inputs[0].numberOfChannels == 1 && inputs[1].numberOfChannels == 1);
+  assert(inputs[0].numberOfChannels == 0 || inputs[0].numberOfChannels == 1);
+  assert(inputs[1].numberOfChannels == 0 || inputs[1].numberOfChannels == 1);
   assert(outputs[0].numberOfChannels == 2);
   // All with the same number of samples
   assert(inputs[0].samplesPerChannel == inputs[1].samplesPerChannel);
   assert(inputs[0].samplesPerChannel == outputs[0].samplesPerChannel);
-  // Now with all known quantities we can memcpy the data
-  int samplesPerChannel = inputs[0].samplesPerChannel;
-  memcpy(outputs[0].data, inputs[0].data, samplesPerChannel * sizeof(float));
-  memcpy(outputs[0].data + samplesPerChannel, inputs[1].data, samplesPerChannel * sizeof(float));
+  // Now with all known quantities we can memcpy the L&R data (or zero it if the
+  // channels are disabled)
+  int bytesPerChannel = outputs[0].samplesPerChannel * sizeof(float);
+  float* outputData = outputs[0].data;
+  if (inputs[0].numberOfChannels > 0) {
+    memcpy(outputData, inputs[0].data, bytesPerChannel);
+  } else {
+    memset(outputData, 0, bytesPerChannel);
+  }
+  outputData += outputs[0].samplesPerChannel;
+  if (inputs[1].numberOfChannels > 0) {
+    memcpy(outputData, inputs[1].data, bytesPerChannel);
+  } else {
+    memset(outputData, 0, bytesPerChannel);
+  }
   return true;
 }
 
 // Audio processor created, now register the audio callback
 void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
-  if (!success) {
-    printf("Audio worklet node creation failed\n");
-    return;
-  }
-  printf("Audio worklet processor created\n");
-  printf("Click to toggle audio playback\n");
+  assert(success && "Audio worklet failed in processorCreated()");
+  emscripten_out("Audio worklet processor created");
+  emscripten_out("Click to toggle audio playback");
 
   // Stereo output, two inputs
   int outputChannelCounts[2] = { 2 };
@@ -65,6 +75,13 @@ void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
   // Register a click to start playback
   emscripten_set_click_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, WA_2_VOIDP(context), false, &onClick);
 
-  // Register the counter that exits the test after one second of mixing
+#ifdef TEST_AND_EXIT
+  // Register the counter that exits the test after one second of playback
   emscripten_set_timeout_loop(&playedAndMixed, 16, NULL);
+#endif
+}
+
+// This implementation has no custom start-up requirements
+EmscriptenStartWebAudioWorkletCallback getStartCallback(void) {
+  return &initialised;
 }

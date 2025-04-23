@@ -127,7 +127,7 @@ running the tests with `--rebaseline`:
   run(['git', 'add', '-u', '.'])
   run(['git', 'commit', '-F', '-'], input=message)
 
-  return 0
+  return 2
 
 
 if __name__ == '__main__':

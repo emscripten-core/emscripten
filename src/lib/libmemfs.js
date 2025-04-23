@@ -51,7 +51,6 @@ addToLibrary({
             llseek: MEMFS.stream_ops.llseek,
             read: MEMFS.stream_ops.read,
             write: MEMFS.stream_ops.write,
-            allocate: MEMFS.stream_ops.allocate,
             mmap: MEMFS.stream_ops.mmap,
             msync: MEMFS.stream_ops.msync
           }
@@ -323,10 +322,6 @@ addToLibrary({
           throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
         }
         return position;
-      },
-      allocate(stream, offset, length) {
-        MEMFS.expandFileStorage(stream.node, offset + length);
-        stream.node.usedBytes = Math.max(stream.node.usedBytes, offset + length);
       },
       mmap(stream, length, position, prot, flags) {
         if (!FS.isFile(stream.node.mode)) {

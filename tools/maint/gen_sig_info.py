@@ -318,9 +318,10 @@ def extract_sig_info(sig_info, extra_settings=None, extra_cflags=None, cxx=False
   }
   if extra_settings:
     settings.update(extra_settings)
+  settings['JS_LIBRARIES'] = [os.path.join(utils.path_from_root('src/lib'), s) for s in settings['JS_LIBRARIES']]
   with tempfiles.get_file('.json') as settings_json:
     utils.write_file(settings_json, json.dumps(settings))
-    output = shared.run_js_tool(utils.path_from_root('src/compiler.mjs'),
+    output = shared.run_js_tool(utils.path_from_root('tools/compiler.mjs'),
                                 ['--symbols-only', settings_json],
                                 stdout=subprocess.PIPE)
   symbols = json.loads(output)['deps'].keys()

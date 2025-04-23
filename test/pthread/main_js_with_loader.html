@@ -147,28 +147,6 @@
       };
     </script>
 
-    <script>
-
-function download(url) {
-  return fetch(url).then((rsp) => rsp.blob());
-}
-
-function addToDom(scriptCodeBlob) {
-  return new Promise((resolve, reject) => {
-    var script = document.createElement('script');
-    var objectUrl = URL.createObjectURL(scriptCodeBlob);
-    script.src = objectUrl;
-    script.onload = () => {
-      Module['mainScriptUrlOrBlob'] = scriptCodeBlob;
-      URL.revokeObjectURL(objectUrl);
-      resolve();
-    }
-    document.body.appendChild(script);
-  });
-}
-
-download('hello_thread_with_blob_url.js').then(addToDom);
-
-    </script>
+    <script type="module" src="loader.mjs"></script>
   </body>
 </html>

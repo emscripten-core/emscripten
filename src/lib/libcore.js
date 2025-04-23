@@ -52,17 +52,7 @@ addToLibrary({
     return '0x' + ptr.toString(16).padStart(8, '0');
   },
 
-  $zeroMemory: (address, size) => {
-#if LEGACY_VM_SUPPORT
-    if (!HEAPU8.fill) {
-      for (var i = 0; i < size; i++) {
-        HEAPU8[address + i] = 0;
-      }
-      return;
-    }
-#endif
-    HEAPU8.fill(0, address, address + size);
-  },
+  $zeroMemory: (ptr, size) => HEAPU8.fill(0, ptr, ptr + size),
 
 #if SAFE_HEAP
   // Trivial wrappers around runtime functions that make these symbols available
@@ -212,15 +202,15 @@ addToLibrary({
   },
 
   emscripten_resize_heap__deps: [
-    '$getHeapMax',
-    '$alignMemory',
-#if ASSERTIONS == 2
-    'emscripten_get_now',
-#endif
 #if ABORTING_MALLOC
     '$abortOnCannotGrowMemory',
 #endif
 #if ALLOW_MEMORY_GROWTH
+#if ASSERTIONS == 2
+    'emscripten_get_now',
+#endif
+    '$getHeapMax',
+    '$alignMemory',
     '$growMemory',
 #endif
   ],
@@ -647,7 +637,7 @@ addToLibrary({
   },
   $inetNtop4: (addr) =>
     (addr & 0xff) + '.' + ((addr >> 8) & 0xff) + '.' + ((addr >> 16) & 0xff) + '.' + ((addr >> 24) & 0xff),
-  $inetPton6__deps: ['htons', '$jstoi_q'],
+  $inetPton6__deps: ['htons'],
   $inetPton6: (str) => {
     var words;
     var w, offset, z, i;
@@ -671,8 +661,8 @@ addToLibrary({
       // parse IPv4 embedded stress
       str = str.replace(new RegExp('[.]', 'g'), ":");
       words = str.split(":");
-      words[words.length-4] = jstoi_q(words[words.length-4]) + jstoi_q(words[words.length-3])*256;
-      words[words.length-3] = jstoi_q(words[words.length-2]) + jstoi_q(words[words.length-1])*256;
+      words[words.length-4] = Number(words[words.length-4]) + Number(words[words.length-3])*256;
+      words[words.length-3] = Number(words[words.length-2]) + Number(words[words.length-1])*256;
       words = words.slice(0, words.length-2);
     } else {
       words = str.split(":");
@@ -801,7 +791,7 @@ addToLibrary({
     return str;
   },
 
-  $readSockaddr__deps: ['$Sockets', '$inetNtop4', '$inetNtop6', 'ntohs'],
+  $readSockaddr__deps: ['$inetNtop4', '$inetNtop6', 'ntohs'],
   $readSockaddr: (sa, salen) => {
     // family / port offsets are common to both sockaddr_in and sockaddr_in6
     var family = {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_family, 'i16') }}};
@@ -835,7 +825,7 @@ addToLibrary({
     return { family: family, addr: addr, port: port };
   },
   $writeSockaddr__docs: '/** @param {number=} addrlen */',
-  $writeSockaddr__deps: ['$Sockets', '$inetPton4', '$inetPton6', '$zeroMemory', 'htons'],
+  $writeSockaddr__deps: ['$inetPton4', '$inetPton6', '$zeroMemory', 'htons'],
   $writeSockaddr: (sa, family, addr, port, addrlen) => {
     switch (family) {
       case {{{ cDefs.AF_INET }}}:
@@ -924,7 +914,7 @@ addToLibrary({
     return inetPton4(DNS.lookup_name(nameString));
   },
 
-  getaddrinfo__deps: ['$Sockets', '$DNS', '$inetPton4', '$inetNtop4', '$inetPton6', '$inetNtop6', '$writeSockaddr', 'malloc', 'htonl'],
+  getaddrinfo__deps: ['$DNS', '$inetPton4', '$inetNtop4', '$inetPton6', '$inetNtop6', '$writeSockaddr', 'malloc', 'htonl'],
   getaddrinfo__proxy: 'sync',
   getaddrinfo: (node, service, hint, out) => {
     // Note getaddrinfo currently only returns a single addrinfo with ai_next defaulting to NULL. When NULL
@@ -1095,7 +1085,7 @@ addToLibrary({
     return 0;
   },
 
-  getnameinfo__deps: ['$Sockets', '$DNS', '$readSockaddr', '$stringToUTF8'],
+  getnameinfo__deps: ['$DNS', '$readSockaddr', '$stringToUTF8'],
   getnameinfo: (sa, salen, node, nodelen, serv, servlen, flags) => {
     var info = readSockaddr(sa, salen);
     if (info.errno) {
@@ -1261,8 +1251,7 @@ addToLibrary({
   // Timers always fire on the main thread, either directly from JS (here) or
   // or when the main thread is busy waiting calling _emscripten_yield.
   _setitimer_js__proxy: 'sync',
-  _setitimer_js__deps: ['$timers', '$callUserCallback',
-                        '_emscripten_timeout', 'emscripten_get_now'],
+  _setitimer_js__deps: ['$timers', '$callUserCallback', '_emscripten_timeout', 'emscripten_get_now'],
   _setitimer_js: (which, timeout_ms) => {
 #if RUNTIME_DEBUG
     dbg(`setitimer_js ${which} timeout=${timeout_ms}`);
@@ -1341,7 +1330,7 @@ addToLibrary({
   // respective time origins.
   emscripten_get_now: () => performance.timeOrigin + {{{ getPerformanceNow() }}}(),
 #else
-#if MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 || AUDIO_WORKLET // https://caniuse.com/#feat=high-resolution-time
+#if AUDIO_WORKLET // https://github.com/WebAudio/web-audio-api/issues/2413
   emscripten_get_now: `;
     // AudioWorkletGlobalScope does not have performance.now()
     // (https://github.com/WebAudio/web-audio-api/issues/2527), so if building
@@ -1371,7 +1360,7 @@ addToLibrary({
       return 1; // nanoseconds
     }
 #endif
-#if MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
+#if AUDIO_WORKLET // https://github.com/WebAudio/web-audio-api/issues/2413
     if (typeof performance == 'object' && performance && typeof performance['now'] == 'function') {
       return 1000; // microseconds (1/1000 of a millisecond)
     }
@@ -1385,13 +1374,8 @@ addToLibrary({
   // Represents whether emscripten_get_now is guaranteed monotonic; the Date.now
   // implementation is not :(
   $nowIsMonotonic__internal: true,
-#if MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
-  $nowIsMonotonic: `
-     ((typeof performance == 'object' && performance && typeof performance['now'] == 'function')
-#if ENVIRONMENT_MAY_BE_NODE
-      || ENVIRONMENT_IS_NODE
-#endif
-    );`,
+#if AUDIO_WORKLET // // https://github.com/WebAudio/web-audio-api/issues/2413
+  $nowIsMonotonic: `((typeof performance == 'object' && performance && typeof performance['now'] == 'function'));`,
 #else
   // Modern environment where performance.now() is supported
   $nowIsMonotonic: 1,
@@ -1520,13 +1504,8 @@ addToLibrary({
   },
 #endif
 
-  $readEmAsmArgsArray: '=[]',
-  $readEmAsmArgs__deps: [
-    '$readEmAsmArgsArray',
-#if MEMORY64
-    '$readI53FromI64',
-#endif
-  ],
+  $readEmAsmArgsArray: [],
+  $readEmAsmArgs__deps: ['$readEmAsmArgsArray'],
   $readEmAsmArgs: (sigPtr, buf) => {
 #if ASSERTIONS
     // Nobody should have mutated _readEmAsmArgsArray underneath us to be something else than an array.
@@ -1793,21 +1772,28 @@ addToLibrary({
 #endif
     return f(ptr, ...args);
   },
-  $dynCall__deps: ['$dynCallLegacy', '$getWasmTableEntry'],
+#if DYNCALLS
+  $dynCall__deps: ['$dynCallLegacy'],
+#else
+  $dynCall__deps: ['$getWasmTableEntry'],
+#endif
 #endif
 
   // Used in library code to get JS function from wasm function pointer.
   // All callers should use direct table access where possible and only fall
   // back to this function if needed.
   $getDynCaller__deps: ['$dynCall'],
-  $getDynCaller: (sig, ptr) => {
+  $getDynCaller: (sig, ptr, promising = false) => {
 #if ASSERTIONS && !DYNCALLS
     assert(sig.includes('j') || sig.includes('p'), 'getDynCaller should only be called with i64 sigs')
 #endif
-    return (...args) => dynCall(sig, ptr, args);
+    return (...args) => dynCall(sig, ptr, args, promising);
   },
 
-  $dynCall: (sig, ptr, args = []) => {
+  $dynCall: (sig, ptr, args = [], promising = false) => {
+#if ASSERTIONS && (DYNCALLS || !WASM_BIGINT || !JSPI)
+    assert(!promising, 'async dynCall is not supported in this mode')
+#endif
 #if MEMORY64
     // With MEMORY64 we have an additional step to convert `p` arguments to
     // bigint. This is the runtime equivalent of the wrappers we create for wasm
@@ -1830,7 +1816,13 @@ addToLibrary({
 #if ASSERTIONS
     assert(getWasmTableEntry(ptr), `missing table entry in dynCall: ${ptr}`);
 #endif
-    var rtn = getWasmTableEntry(ptr)(...args);
+    var func = getWasmTableEntry(ptr);
+#if JSPI
+    if (promising) {
+      func = WebAssembly.promising(func);
+    }
+#endif
+    var rtn = func(...args);
 #endif
 #if MEMORY64
     return sig[0] == 'p' ? Number(rtn) : rtn;
@@ -1879,7 +1871,6 @@ addToLibrary({
 #endif
     var func = wasmTableMirror[funcPtr];
     if (!func) {
-      if (funcPtr >= wasmTableMirror.length) wasmTableMirror.length = funcPtr + 1;
       /** @suppress {checkTypes} */
       wasmTableMirror[funcPtr] = func = wasmTable.get({{{ toIndexType('funcPtr') }}});
 #if ASYNCIFY == 2
@@ -2108,7 +2099,7 @@ addToLibrary({
 #if PTHREADS
     '_emscripten_thread_exit',
 #endif
-#if RUNTIME_DEBUG
+#if RUNTIME_DEBUG >= 2
     '$runtimeKeepaliveCounter',
 #endif
   ],
@@ -2166,7 +2157,9 @@ addToLibrary({
 
   // Allocate memory for an mmap operation. This allocates space of the right
   // page-aligned size, and clears the allocated space.
+#if hasExportedSymbol('emscripten_builtin_memalign')
   $mmapAlloc__deps: ['$zeroMemory', '$alignMemory'],
+#endif
   $mmapAlloc: (size) => {
 #if hasExportedSymbol('emscripten_builtin_memalign')
     size = alignMemory(size, {{{ WASM_PAGE_SIZE }}});
@@ -2282,10 +2275,6 @@ addToLibrary({
 #endif
 #if MEMORY64 == 1
   'address': 'i64',
-   // TODO(sbc): remove this alias for 'address' once both firefox and
-   // chrome roll out the spec change.
-   // See https://github.com/WebAssembly/memory64/pull/92
-  'index': 'i64',
 #endif
   'element': 'anyfunc'
 });
@@ -2294,7 +2283,8 @@ addToLibrary({
   $wasmTable: undefined,
 #endif
 
-  $noExitRuntime: "{{{ makeModuleReceiveExpr('noExitRuntime', !EXIT_RUNTIME) }}}",
+  $noExitRuntime__postset: () => addAtModule(makeModuleReceive('noExitRuntime')),
+  $noExitRuntime: {{{ !EXIT_RUNTIME }}},
 
   // The following addOn<X> functions are for adding runtime callbacks at
   // various executions points. Each addOn<X> function has a corresponding
@@ -2311,7 +2301,7 @@ addToLibrary({
     ATPRERUNS.unshift('callRuntimeCallbacks(onPreRuns);');
   },
   $addOnPreRun__deps: ['$onPreRuns'],
-  $addOnPreRun: (cb) => onPreRuns.unshift(cb),
+  $addOnPreRun: (cb) => onPreRuns.push(cb),
   // See ATINITS in parseTools.mjs for more information.
   $onInits: [],
   $onInits__internal: true,
@@ -2320,7 +2310,7 @@ addToLibrary({
     ATINITS.unshift('callRuntimeCallbacks(onInits);');
   },
   $addOnInit__deps: ['$onInits'],
-  $addOnInit: (cb) => onInits.unshift(cb),
+  $addOnInit: (cb) => onInits.push(cb),
   // See ATPOSTCTORS in parseTools.mjs for more information.
   $onPostCtors: [],
   $onPostCtors__internal: true,
@@ -2329,7 +2319,7 @@ addToLibrary({
     ATPOSTCTORS.unshift('callRuntimeCallbacks(onPostCtors);');
   },
   $addOnPostCtor__deps: ['$onPostCtors'],
-  $addOnPostCtor: (cb) => onPostCtors.unshift(cb),
+  $addOnPostCtor: (cb) => onPostCtors.push(cb),
   // See ATMAINS in parseTools.mjs for more information.
   $onMains: [],
   $onMains__internal: true,
@@ -2338,7 +2328,7 @@ addToLibrary({
     ATMAINS.unshift('callRuntimeCallbacks(onMains);');
   },
   $addOnPreMain__deps: ['$onMains'],
-  $addOnPreMain: (cb) => onMains.unshift(cb),
+  $addOnPreMain: (cb) => onMains.push(cb),
   // See ATEXITS in parseTools.mjs for more information.
   $onExits: [],
   $onExits__internal: true,
@@ -2347,7 +2337,7 @@ addToLibrary({
     ATEXITS.unshift('callRuntimeCallbacks(onExits);');
   },
   $addOnExit__deps: ['$onExits'],
-  $addOnExit: (cb) => onExits.unshift(cb),
+  $addOnExit: (cb) => onExits.push(cb),
   // See ATPOSTRUNS in parseTools.mjs for more information.
   $onPostRuns: [],
   $onPostRuns__internal: true,
@@ -2356,7 +2346,7 @@ addToLibrary({
     ATPOSTRUNS.unshift('callRuntimeCallbacks(onPostRuns);');
   },
   $addOnPostRun__deps: ['$onPostRuns'],
-  $addOnPostRun: (cb) => onPostRuns.unshift(cb),
+  $addOnPostRun: (cb) => onPostRuns.push(cb),
 
   // We used to define these globals unconditionally in support code.
   // Instead, we now define them here so folks can pull it in explicitly, on
@@ -2427,6 +2417,7 @@ function wrapSyscallFunction(x, library, isWasi) {
   // has disabled the filesystem or we have proven some other way that this will
   // not be called in practice, and do not need that code.
   if (!SYSCALLS_REQUIRE_FILESYSTEM && t.includes('FS.')) {
+    library[x + '__deps'] = [];
     t = modifyJSFunction(t, (args, body) => {
       return `(${args}) => {\n` +
              (ASSERTIONS ? "abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');\n" : '') +

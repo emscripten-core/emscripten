@@ -33,11 +33,12 @@ import queue
 
 import clang_native
 import jsrun
-from tools.shared import EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
+import line_endings
+from tools.shared import EMCC, EMXX, DEBUG
 from tools.shared import get_canonical_temp_dir, path_from_root
 from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_binary, exit_with_error
 from tools.settings import COMPILE_TIME_SETTINGS
-from tools import shared, feature_matrix, line_endings, building, config, utils
+from tools import shared, feature_matrix, building, config, utils
 
 logger = logging.getLogger('common')
 
@@ -84,6 +85,8 @@ WEBIDL_BINDER = shared.bat_suffix(path_from_root('tools/webidl_binder'))
 
 EMBUILDER = shared.bat_suffix(path_from_root('embuilder'))
 EMMAKE = shared.bat_suffix(path_from_root('emmake'))
+EMCMAKE = shared.bat_suffix(path_from_root('emcmake'))
+EMCONFIGURE = shared.bat_suffix(path_from_root('emconfigure'))
 EMRUN = shared.bat_suffix(shared.path_from_root('emrun'))
 WASM_DIS = Path(building.get_binaryen_bin(), 'wasm-dis')
 LLVM_OBJDUMP = os.path.expanduser(shared.build_llvm_tool_path(shared.exe_suffix('llvm-objdump')))
@@ -98,6 +101,10 @@ requires_network = unittest.skipIf(os.getenv('EMTEST_SKIP_NETWORK_TESTS'), 'This
 def test_file(*path_components):
   """Construct a path relative to the emscripten "tests" directory."""
   return str(Path(TEST_ROOT, *path_components))
+
+
+def copytree(src, dest):
+  shutil.copytree(src, dest, dirs_exist_ok=True)
 
 
 # checks if browser testing is enabled
@@ -439,26 +446,26 @@ def also_with_nodefs_both(func):
 
 def with_all_fs(func):
   @wraps(func)
-  def metafunc(self, fs, *args, **kwargs):
+  def metafunc(self, wasmfs, fs, *args, **kwargs):
     if DEBUG:
       print('parameterize:fs=%s' % (fs))
+    if wasmfs:
+      self.setup_wasmfs_test()
     if fs == 'nodefs':
       self.setup_nodefs_test()
     elif fs == 'rawfs':
       self.setup_noderawfs_test()
-    elif fs == 'wasmfs':
-      self.setup_wasmfs_test()
     else:
       self.emcc_args += ['-DMEMFS']
       assert fs is None
     func(self, *args, **kwargs)
 
-  # TODO(sbc): rather than treat WASMFS as orthogonal we should
-  # probably make it combinatorial with nodefs and noderawfs.
-  parameterize(metafunc, {'': (None,),
-                          'nodefs': ('nodefs',),
-                          'rawfs': ('rawfs',),
-                          'wasmfs': ('wasmfs',)})
+  parameterize(metafunc, {'': (False, None,),
+                          'nodefs': (False, 'nodefs',),
+                          'rawfs': (False, 'rawfs',),
+                          'wasmfs': (True, None,),
+                          'wasmfs_nodefs': (True, 'nodefs',),
+                          'wasmfs_rawfs': (True, 'rawfs',)})
   return metafunc
 
 
@@ -1162,8 +1169,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
-    print('(checking sanity from test runner)') # do this after we set env stuff
-    shared.check_sanity(force=True)
+    shared.check_sanity(force=True, quiet=True)
 
   def setUp(self):
     super().setUp()
@@ -1179,6 +1185,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.ldflags = []
     # Increate stack trace limit to maximise usefulness of test failure reports
     self.node_args = ['--stack-trace-limit=50']
+    self.spidermonkey_args = ['-w']
 
     nodejs = self.get_nodejs()
     if nodejs:
@@ -1404,6 +1411,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.run_process(cmd, stderr=self.stderr_redirect if not DEBUG else None)
     self.assertExists(output)
 
+    if output_suffix in ('.js', '.mjs'):
+      # Make sure we produced correct line endings
+      self.assertEqual(line_endings.check_line_endings(output), 0)
+
     return output
 
   def get_func(self, src, name):
@@ -1504,8 +1515,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       engine = self.js_engines[0]
     if engine == config.NODE_JS_TEST:
       engine = engine + self.node_args
-    if engine == config.V8_ENGINE:
+    elif engine == config.V8_ENGINE:
       engine = engine + self.v8_args
+    elif engine == config.SPIDERMONKEY_ENGINE:
+      engine = engine + self.spidermonkey_args
     try:
       jsrun.run_js(filename, engine, args,
                    stdout=stdout,
@@ -1519,10 +1532,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       stdout.close()
       if stderr != STDOUT:
         stderr.close()
-
-    # Make sure that we produced proper line endings to the .js file we are about to run.
-    if not filename.endswith('.wasm'):
-      self.assertEqual(line_endings.check_line_endings(filename), 0)
 
     ret = read_file(stdout_file)
     if not interleaved_output:
@@ -1546,8 +1555,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       else:
         self.fail('JS subprocess failed (%s): %s (expected=%s).  Output:\n%s' % (error.cmd, error.returncode, assert_returncode, ret))
 
-    #  We should pass all strict mode checks
-    self.assertNotContained('strict warning:', ret)
     return ret
 
   def assertExists(self, filename, msg=None):
@@ -1585,10 +1592,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                                       fromfile=fromfile, tofile=tofile)
     diff = ''.join([a.rstrip() + '\n' for a in diff_lines])
     if EMTEST_VERBOSE:
-      print("Expected to have '%s' == '%s'" % (limit_size(values[0]), limit_size(y)))
-    fail_message = 'Unexpected difference:\n' + limit_size(diff)
-    if not EMTEST_VERBOSE:
-      fail_message += '\nFor full output run with --verbose.'
+      print("Expected to have '%s' == '%s'" % (values[0], y))
+    else:
+      diff = limit_size(diff)
+      diff += '\nFor full output run with --verbose.'
+    fail_message = 'Unexpected difference:\n' + diff
     if msg:
       fail_message += '\n' + msg
     self.fail(fail_message)
@@ -2029,7 +2037,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         os.path.join('third_party', 'poppler'),
         [os.path.join('utils', 'pdftoppm.o'), os.path.join('utils', 'parseargs.o'), os.path.join('poppler', '.libs', 'libpoppler.a')],
         env_init=env_init,
-        configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--disable-shared'])
+        configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--disable-shared', '--host=wasm32-emscripten'])
 
     return poppler + freetype
 
@@ -2060,8 +2068,35 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 # it this way then allows the page to close() itself when done.
 def harness_server_func(in_queue, out_queue, port):
   class TestServerHandler(SimpleHTTPRequestHandler):
+    # Request header handler for default do_GET() path in
+    # SimpleHTTPRequestHandler.do_GET(self) below.
+    def send_head(self):
+      if self.headers.get('Range'):
+        path = self.translate_path(self.path)
+        try:
+          fsize = os.path.getsize(path)
+          f = open(path, 'rb')
+        except IOError:
+          self.send_error(404, f'File not found {path}')
+          return None
+        self.send_response(206)
+        ctype = self.guess_type(path)
+        self.send_header('Content-Type', ctype)
+        pieces = self.headers.get('Range').split('=')[1].split('-')
+        start = int(pieces[0]) if pieces[0] != '' else 0
+        end = int(pieces[1]) if pieces[1] != '' else fsize - 1
+        end = min(fsize - 1, end)
+        length = end - start + 1
+        self.send_header('Content-Range', f'bytes {start}-{end}/{fsize}')
+        self.send_header('Content-Length', str(length))
+        self.end_headers()
+        return f
+      else:
+        return SimpleHTTPRequestHandler.send_head(self)
+
     # Add COOP, COEP, CORP, and no-caching headers
     def end_headers(self):
+      self.send_header('Accept-Ranges', 'bytes')
       self.send_header('Access-Control-Allow-Origin', '*')
       self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
       self.send_header('Cross-Origin-Embedder-Policy', 'require-corp')
@@ -2156,7 +2191,23 @@ def harness_server_func(in_queue, out_queue, port):
         # Use SimpleHTTPServer default file serving operation for GET.
         if DEBUG:
           print('[simple HTTP serving:', unquote_plus(self.path), ']')
-        SimpleHTTPRequestHandler.do_GET(self)
+        if self.headers.get('Range'):
+          self.send_response(206)
+          path = self.translate_path(self.path)
+          data = read_binary(path)
+          ctype = self.guess_type(path)
+          self.send_header('Content-type', ctype)
+          pieces = self.headers.get('Range').split('=')[1].split('-')
+          start = int(pieces[0]) if pieces[0] != '' else 0
+          end = int(pieces[1]) if pieces[1] != '' else len(data) - 1
+          end = min(len(data) - 1, end)
+          length = end - start + 1
+          self.send_header('Content-Length', str(length))
+          self.send_header('Content-Range', f'bytes {start}-{end}/{len(data)}')
+          self.end_headers()
+          self.wfile.write(data[start:end + 1])
+        else:
+          SimpleHTTPRequestHandler.do_GET(self)
 
     def log_request(code=0, size=0):
       # don't log; too noisy
@@ -2316,25 +2367,25 @@ class BrowserCore(RunnerCore):
       time.sleep(5)
       print('(moving on..)')
 
-  def compile_btest(self, filename, args, reporting=Reporting.FULL):
+  def compile_btest(self, filename, emcc_args, reporting=Reporting.FULL):
     # Inject support code for reporting results. This adds an include a header so testcases can
     # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
     # contains the implementation of REPORT_RESULT (we can't just include that implementation in
     # the header as there may be multiple files being compiled here).
     if reporting != Reporting.NONE:
       # For basic reporting we inject JS helper funtions to report result back to server.
-      args += ['--pre-js', test_file('browser_reporting.js')]
+      emcc_args += ['--pre-js', test_file('browser_reporting.js')]
       if reporting == Reporting.FULL:
         # If C reporting (i.e. the REPORT_RESULT macro) is required we
         # also include report_result.c and force-include report_result.h
         self.run_process([EMCC, '-c', '-I' + TEST_ROOT,
-                          test_file('report_result.c')] + self.get_emcc_args(compile_only=True) + (['-fPIC'] if '-fPIC' in args else []))
-        args += ['report_result.o', '-include', test_file('report_result.h')]
+                          test_file('report_result.c')] + self.get_emcc_args(compile_only=True) + (['-fPIC'] if '-fPIC' in emcc_args else []))
+        emcc_args += ['report_result.o', '-include', test_file('report_result.h')]
     if EMTEST_BROWSER == 'node':
-      args.append('-DEMTEST_NODE')
+      emcc_args.append('-DEMTEST_NODE')
     if not os.path.exists(filename):
       filename = test_file(filename)
-    self.run_process([compiler_for(filename), filename] + self.get_emcc_args() + args)
+    self.run_process([compiler_for(filename), filename] + self.get_emcc_args() + emcc_args)
 
   def btest_exit(self, filename, assert_returncode=0, *args, **kwargs):
     """Special case of `btest` that reports its result solely via exiting
@@ -2352,20 +2403,20 @@ class BrowserCore(RunnerCore):
 
   def btest(self, filename, expected=None,
             post_build=None,
-            args=None, url_suffix='', timeout=None,
+            emcc_args=None, url_suffix='', timeout=None,
             extra_tries=1,
             reporting=Reporting.FULL,
             output_basename='test'):
     assert expected, 'a btest must have an expected output'
-    if args is None:
-      args = []
-    args = args.copy()
+    if emcc_args is None:
+      emcc_args = []
+    emcc_args = emcc_args.copy()
     filename = find_browser_test_file(filename)
     outfile = output_basename + '.html'
-    args += ['-o', outfile]
-    # print('all args:', args)
+    emcc_args += ['-o', outfile]
+    # print('all args:', emcc_args)
     utils.delete_file(outfile)
-    self.compile_btest(filename, args, reporting=reporting)
+    self.compile_btest(filename, emcc_args, reporting=reporting)
     self.assertExists(outfile)
     if post_build:
       post_build()

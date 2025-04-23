@@ -38,37 +38,30 @@ var wasmOffsetConverter;
 {{{
   // Helper function to export a heap symbol on the module object,
   // if requested.
-  globalThis.maybeExportHeap = (x) => {
-    // For now, we export all heap object when not building with MINIMAL_RUNTIME
-    let shouldExport = !MINIMAL_RUNTIME && !STRICT;
-    if (!shouldExport) {
-      if (MODULARIZE && EXPORT_ALL) {
-        shouldExport = true;
-      } else if (AUDIO_WORKLET && (x == 'HEAPU32' || x == 'HEAPF32')) {
-        // Export to the AudioWorkletGlobalScope the needed variables to access
-        // the heap. AudioWorkletGlobalScope is unable to access global JS vars
-        // in the compiled main JS file.
-        shouldExport = true;
-      } else if (EXPORTED_RUNTIME_METHODS.includes(x)) {
-        shouldExport = true;
-      }
+  const shouldExportHeap = (x) => {
+    let shouldExport = false;
+    if (MODULARIZE && EXPORT_ALL) {
+      shouldExport = true;
+    } else if (AUDIO_WORKLET && (x == 'HEAPU32' || x == 'HEAPF32')) {
+      // Export to the AudioWorkletGlobalScope the needed variables to access
+      // the heap. AudioWorkletGlobalScope is unable to access global JS vars
+      // in the compiled main JS file.
+      shouldExport = true;
+    } else if (EXPORTED_RUNTIME_METHODS.includes(x)) {
+      shouldExport = true;
     }
-    if (shouldExport) {
-      if (MODULARIZE === 'instance') {
-        return `__exp_${x} = `
-      }
+    return shouldExport;
+  }
+  const maybeExportHeap = (x) => {
+    if (shouldExportHeap(x) && MODULARIZE != 'instance') {
       return `Module['${x}'] = `;
     }
     return '';
   };
-  null;
 }}}
 
 function updateMemoryViews() {
   var b = wasmMemory.buffer;
-#if SUPPORT_BIG_ENDIAN
-  {{{ maybeExportHeap('HEAP_DATA_VIEW') }}} HEAP_DATA_VIEW = new DataView(b);
-#endif
   {{{ maybeExportHeap('HEAP8')   }}}HEAP8 = new Int8Array(b);
   {{{ maybeExportHeap('HEAP16')  }}}HEAP16 = new Int16Array(b);
   {{{ maybeExportHeap('HEAPU8')  }}}HEAPU8 = new Uint8Array(b);
@@ -80,6 +73,10 @@ function updateMemoryViews() {
 #if WASM_BIGINT
   {{{ maybeExportHeap('HEAP64')  }}}HEAP64 = new BigInt64Array(b);
   {{{ maybeExportHeap('HEAPU64') }}}HEAPU64 = new BigUint64Array(b);
+#endif
+#if SUPPORT_BIG_ENDIAN
+  {{{ maybeExportHeap('HEAP_DATA_VIEW') }}} HEAP_DATA_VIEW = new DataView(b);
+  LE_HEAP_UPDATE();
 #endif
 }
 

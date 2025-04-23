@@ -86,8 +86,6 @@ MINIMAL_TASKS = [
     'libunwind-legacyexcept',
     'libunwind-wasmexcept',
     'libnoexit',
-    'sqlite3',
-    'sqlite3-mt',
     'libwebgpu',
     'libwebgpu_cpp',
 ]

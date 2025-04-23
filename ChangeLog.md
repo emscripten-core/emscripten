@@ -18,8 +18,70 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.3 (in development)
+4.0.7 (in development)
 ----------------------
+- Added experimental support for Wasm ESM integration with
+  `-sWASM_ESM_INTEGRATION`. This is currently only supported in node behind a
+  flag and not in any browsers. (#23985)
+- Runtime callbacks registered in `Module['preRun']` or `Module['postRun']`, or
+  using `addOnPreRun()`, `addOnInit()`, `addOnPostCtor()`, `addOnPreMain()`,
+  `addOnExit()`, or `addOnPostRun()`, are now enqueued and executed following
+  the order of registration (i.e. `Module['preRun'] = [a, b]`, or equivalently
+  `addOnPreRun(a); addOnPreRun(b);` will run `a` then `b`; the previous behavior
+  was to run `b` then `a`). While this might be a breaking change for some users,
+  the intention is to be more consistent by making those callbacks match the
+  behavior of `Module['preInit']` and compile time callbacks (rather than the
+  contrary, as we generally expect an array of functions to be executed left to
+  right). (#24012)
+- The standard memory views (HEAP8, HEAP32, etc) are no longer exported by
+  default.  This matches the existing behaviour of `-sSTRICT` and
+  `-sMINIMAL_RUNTIME`.  If you need to access those from outside the module code
+  you can export them by adding them to `-sEXPORTED_RUNTIME_METHODS`.  For
+  example, `-sEXPORTED_RUNTIME_METHODS=HEAP8,HEAPU32` (if you need `HEAP8` and
+  `HEAPU32`). (#24079)
+- libjpeg port updated from 9c to 9f. (#24085)
+
+4.0.6 - 03/26/25
+----------------
+- Added support for applying path prefix substitution to the sources of the
+  source map : use `-sSOURCE_MAP_PREFIXES=["<old>=<new>"]` with `-gsource-map`.
+  Alternatively, you can now embed the sources content into the source map file
+  using `-gsource-map=inline`. (#23741)
+- The python `__file__` builtin now works in the emscripten config file.
+  (#23973)
+- Three deprecated settings were removed.  These settings were marked as
+  deprecated for more than year:
+  - SUPPORT_ERRNO: Instead, export `__errno_location` if needed.
+  - EXTRA_EXPORTED_RUNTIME_METHODS: Instead use EXPORTED_RUNTIME_METHODS.
+  - DEMANGLE_SUPPORT: Instead use the `$demangle` JS libary function.
+  (#23975)
+
+4.0.5 - 03/12/25
+----------------
+- Added initial support for wasm source phase imports via
+  `-sSOURCE_PHASE_IMPORTS`.  This is currently experimental and not yet
+  implemented in browsers. (#23175)
+- The `FS.allocate` API was removed. This was originally intended to
+  implement the fallocate/posix_fallocate system calls, but without the ability
+  to punch holes (`FALLOC_FL_PUNCH_HOLE`) the `FS.truncate` API is sufficient
+  for resizing files.
+
+4.0.4 - 02/25/25
+----------------
+- An initial port of SDL3 was added.  Use it with `-sUSE_SDL=3`.  This port
+  is still experimental. (#23630)
+- The `--output_eol` command line flag was renamed `--output-eol` for
+  consistency with other flags. The old name continues to work as an alias.
+  (#20735)
+- Added Lua contrib port (`--use-port=contrib.lua`) to easily embed the Lua
+  scripting language in any C/C++ Emscripten project (#23682)
+- The `USE_ES6_IMPORT_META` settings was removed.  This setting was always
+  on by default, but now it cannot be disabled.  This setting was originally
+  added in 2019 as a temporary measure while engines and bundlers learned to
+  deal with `import.meta`. (#23171)
+
+4.0.3 - 02/07/25
+----------------
 - emscan-deps tools was added.  This tool wraps clang-scan-deps and injects the
   needed `--target` and `--sysroot` argument that would normally be injected by
   emcc itself.  This enables support for C++20 in cmake projects. (#21987)
@@ -31,6 +93,12 @@ See docs/process.md for more on how version tagging works.
   source maps, so it has not worked in many years, and there have been no
   requests for it. This has no impact on the source map support in browser
   devtools. (#23553)
+- The WASMFS fetch backend now fetches files in chunks using HTTP range
+  requests (if supported by the server). `wasmfs_create_fetch_backend` now
+  takes a second parameter (`uint32_t chunk_size`) to configure the size of
+  each chunk. If a file is read a few times with random accesses, a small
+  chunk size will minimize bandwidth; if a file is read in larger contiguous
+  ranges, a larger chunk size will reduce the number of requests. (#23021)
 
 4.0.2 - 01/30/25
 ----------------

@@ -5,7 +5,6 @@
  */
 
 import * as path from 'node:path';
-import * as fs from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import assert from 'node:assert';
 
@@ -15,7 +14,8 @@ import {
   error,
   readFile,
   warn,
-  setCurrentFile,
+  pushCurrentFile,
+  popCurrentFile,
   printErr,
   addToCompileTimeContext,
   runInMacroContext,
@@ -200,19 +200,14 @@ function calculateLibraries() {
     libraries.push('liblittle_endian_heap.js');
   }
 
+  // Resolve system libraries
+  libraries = libraries.map((filename) => path.join(systemLibdir, filename));
+
   // Add all user specified JS library files to the link.
   // These must be added last after all Emscripten-provided system libraries
   // above, so that users can override built-in JS library symbols in their
   // own code.
   libraries.push(...JS_LIBRARIES);
-
-  // Resolve all filenames to absolute paths
-  libraries = libraries.map((filename) => {
-    if (!path.isAbsolute(filename) && fs.existsSync(path.join(systemLibdir, filename))) {
-      filename = path.join(systemLibdir, filename);
-    }
-    return path.resolve(filename);
-  });
 
   // Deduplicate libraries to avoid processing any library file multiple times
   libraries = libraries.filter((item, pos) => libraries.indexOf(item) == pos);
@@ -275,7 +270,7 @@ export const LibraryManager = {
         origLibrary = this.library;
         this.library = userLibraryProxy;
       }
-      const oldFile = setCurrentFile(filename);
+      pushCurrentFile(filename);
       try {
         processed = processMacros(preprocess(filename), filename);
         runInMacroContext(processed, {filename: filename.replace(/\.\w+$/, '.preprocessed$&')});
@@ -295,7 +290,7 @@ export const LibraryManager = {
         }
         throw e;
       } finally {
-        setCurrentFile(oldFile);
+        popCurrentFile();
         if (origLibrary) {
           this.library = origLibrary;
         }
@@ -410,17 +405,26 @@ function addMissingLibraryStubs(unusedLibSymbols) {
   return rtn;
 }
 
+function exportSymbol(name) {
+  // In MODULARIZE=instance mode symbols are exported by being included in
+  // an export { foo, bar } list so we build up the simple list of names
+  if (MODULARIZE === 'instance') {
+    return name;
+  }
+  return `Module['${name}'] = ${name};`;
+}
+
 // export parts of the JS runtime that the user asked for
-function exportRuntime() {
+function exportRuntimeSymbols() {
   // optionally export something.
   function maybeExport(name) {
-    // If requested to be exported, export it.  HEAP objects are exported
-    // separately in updateMemoryViews
-    if (EXPORTED_RUNTIME_METHODS.has(name) && !name.startsWith('HEAP')) {
-      if (MODULARIZE === 'instance') {
-        return `__exp_${name} = ${name};`;
+    // If requested to be exported, export it.
+    if (EXPORTED_RUNTIME_METHODS.has(name)) {
+      // Unless we are in MODULARIZE=instance mode then HEAP objects are
+      // exported separately in updateMemoryViews
+      if (MODULARIZE == 'instance' || !name.startsWith('HEAP')) {
+        return exportSymbol(name);
       }
-      return `Module['${name}'] = ${name};`;
     }
   }
 
@@ -437,7 +441,6 @@ function exportRuntime() {
     'wasmExports',
     'HEAPF32',
     'HEAPF64',
-    'HEAP_DATA_VIEW',
     'HEAP8',
     'HEAPU8',
     'HEAP16',
@@ -447,6 +450,10 @@ function exportRuntime() {
     'HEAP64',
     'HEAPU64',
   ];
+
+  if (SUPPORT_BIG_ENDIAN) {
+    runtimeElements.push('HEAP_DATA_VIEW');
+  }
 
   if (PTHREADS && ALLOW_MEMORY_GROWTH) {
     runtimeElements.push(
@@ -516,6 +523,10 @@ function exportRuntime() {
   const exports = runtimeElements.map(maybeExport);
   const results = exports.filter((name) => name);
 
+  if (MODULARIZE == 'instance') {
+    return '// Runtime exports\nexport { ' + results.join(', ') + ' };\n';
+  }
+
   if (ASSERTIONS && !EXPORT_ALL) {
     // in ASSERTIONS mode we show a useful error if it is used without being
     // exported.  See `unexportedRuntimeSymbol` in runtime_debug.js.
@@ -526,7 +537,11 @@ function exportRuntime() {
 
     const unexported = [];
     for (const name of runtimeElements) {
-      if (!EXPORTED_RUNTIME_METHODS.has(name) && !unusedLibSymbols.has(name)) {
+      if (
+        !EXPORTED_RUNTIME_METHODS.has(name) &&
+        !EXPORTED_FUNCTIONS.has(name) &&
+        !unusedLibSymbols.has(name)
+      ) {
         unexported.push(name);
       }
     }
@@ -542,11 +557,32 @@ function exportRuntime() {
     }
   }
 
-  return results.join('\n') + '\n';
+  results.unshift('// Begin runtime exports');
+  results.push('// End runtime exports');
+  return results.join('\n  ') + '\n';
+}
+
+function exportLibrarySymbols() {
+  assert(MODULARIZE != 'instance');
+  const results = ['// Begin JS library exports'];
+  for (const ident of librarySymbols) {
+    if (EXPORT_ALL || EXPORTED_FUNCTIONS.has(ident)) {
+      results.push(exportSymbol(ident));
+    }
+  }
+  results.push('// End JS library exports');
+  return results.join('\n  ') + '\n';
+}
+
+function exportJSSymbols() {
+  // In MODULARIZE=instance mode JS library symbols are marked with `export`
+  // at the point of declaration.
+  if (MODULARIZE == 'instance') return exportRuntimeSymbols();
+  return exportRuntimeSymbols() + '  ' + exportLibrarySymbols();
 }
 
 addToCompileTimeContext({
-  exportRuntime,
+  exportJSSymbols,
   loadStructInfo,
   LibraryManager,
   librarySymbols,

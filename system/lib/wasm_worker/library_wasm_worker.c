@@ -105,15 +105,17 @@ void emscripten_lock_waitinf_acquire(emscripten_lock_t *lock) {
 }
 
 bool emscripten_lock_busyspin_wait_acquire(emscripten_lock_t *lock, double maxWaitMilliseconds) {
+  // TODO: we changed the performance_now calls to get_now, which can be applied
+  // to the remaining code (since all calls defer to the best internal option).
   emscripten_lock_t val = emscripten_atomic_cas_u32((void*)lock, 0, 1);
   if (!val) return true;
 
-  double t = emscripten_performance_now();
+  double t = emscripten_get_now();
   double waitEnd = t + maxWaitMilliseconds;
   while (t < waitEnd) {
     val = emscripten_atomic_cas_u32((void*)lock, 0, 1);
     if (!val) return true;
-    t = emscripten_performance_now();
+    t = emscripten_get_now();
   }
   return false;
 }

@@ -135,11 +135,16 @@ LibraryJSEventLoop = {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
         if ({{{ makeDynCall('idp', 'cb') }}}(t, userData)) {
+          {{{ runtimeKeepalivePush() }}}
           // Save a little bit of code space: modern browsers should treat
           // negative setTimeout as timeout of 0
           // (https://stackoverflow.com/questions/8430966/is-calling-settimeout-with-a-negative-delay-ok)
-          {{{ runtimeKeepalivePush() }}}
-          setTimeout(tick, n - _emscripten_get_now());
+          var remaining = n - _emscripten_get_now();
+#if ENVIRONMENT_MAY_BE_NODE
+          // Recent revsions of node, however, give TimeoutNegativeWarning
+          remaining = Math.max(0, remaining);
+#endif
+          setTimeout(tick, remaining);
         }
       });
     }
@@ -391,9 +396,6 @@ LibraryJSEventLoop = {
   $setMainLoop__deps: [
     '$MainLoop',
     'emscripten_set_main_loop_timing', 'emscripten_get_now',
-#if OFFSCREEN_FRAMEBUFFER
-    'emscripten_webgl_commit_frame',
-#endif
 #if !MINIMAL_RUNTIME
     '$maybeExit',
 #endif

@@ -68,7 +68,6 @@ JS_ONLY_SETTINGS = {
     'HEADLESS',
     'MODULARIZE',
     'EXPORT_ES6',
-    'USE_ES6_IMPORT_META',
     'EXPORT_NAME',
     'DYNAMIC_EXECUTION',
     'PTHREAD_POOL_SIZE',
@@ -118,14 +117,15 @@ COMPILE_TIME_SETTINGS = {
 #
 # At some point in the future, once folks have stopped using these
 # settings we can move them to `LEGACY_SETTINGS`.
+#
+# All settings here should be tagged as `[deprecated]` in settings.js
 DEPRECATED_SETTINGS = {
-    'SUPPORT_ERRNO': 'emscripten no longer uses the setErrNo library function',
-    'EXTRA_EXPORTED_RUNTIME_METHODS': 'please use EXPORTED_RUNTIME_METHODS instead',
-    'DEMANGLE_SUPPORT': 'mangled names no longer appear in stack traces',
     'RUNTIME_LINKED_LIBS': 'you can simply list the libraries directly on the commandline now',
     'CLOSURE_WARNINGS': 'use -Wclosure instead',
     'LEGALIZE_JS_FFI': 'to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`',
-    'ASYNCIFY_EXPORTS': 'please use JSPI_EXPORTS instead'
+    'ASYNCIFY_EXPORTS': 'please use JSPI_EXPORTS instead',
+    'EMULATE_FUNCTION_POINTER_CASTS': 'lack of usage',
+    'MAYBE_WASM2JS': 'lack of usage',
 }
 
 # Settings that don't need to be externalized when serializing to json because they
@@ -144,6 +144,7 @@ def default_setting(name, new_default):
 
 class SettingsManager:
   attrs: Dict[str, Any] = {}
+  defaults: Dict[str, tuple] = {}
   types: Dict[str, Any] = {}
   allowed_settings: Set[str] = set()
   legacy_settings: Dict[str, tuple] = {}
@@ -153,6 +154,7 @@ class SettingsManager:
   def __init__(self):
     self.attrs.clear()
     self.legacy_settings.clear()
+    self.defaults.clear()
     self.alt_names.clear()
     self.internal_settings.clear()
     self.allowed_settings.clear()
@@ -177,8 +179,9 @@ class SettingsManager:
     self.attrs.update(internal_attrs)
     self.infer_types()
 
+    strict_override = False
     if 'EMCC_STRICT' in os.environ:
-      self.attrs['STRICT'] = int(os.environ.get('EMCC_STRICT'))
+      strict_override = int(os.environ.get('EMCC_STRICT'))
 
     # Special handling for LEGACY_SETTINGS.  See src/setting.js for more
     # details
@@ -194,10 +197,16 @@ class SettingsManager:
         self.legacy_settings[name] = (fixed_values, err)
         default_value = fixed_values[0]
       assert name not in self.attrs, 'legacy setting (%s) cannot also be a regular setting' % name
-      if not self.attrs['STRICT']:
+      if not strict_override:
         self.attrs[name] = default_value
 
     self.internal_settings.update(internal_attrs.keys())
+    # Stash a deep copy of all settings in self.defaults.  This allows us to detect which settings
+    # have local mods.
+    self.defaults.update(copy.deepcopy(self.attrs))
+
+    if strict_override:
+      self.attrs['STRICT'] = strict_override
 
   def infer_types(self):
     for key, value in self.attrs.items():
@@ -207,11 +216,15 @@ class SettingsManager:
     return self.attrs
 
   def external_dict(self, skip_keys={}): # noqa
-    external_settings = {k: v for k, v in self.dict().items() if k not in INTERNAL_SETTINGS and k not in skip_keys}
-    # Only the names of the legacy settings are used by the JS compiler
-    # so we can reduce the size of serialized json by simplifying this
-    # otherwise complex value.
-    external_settings['LEGACY_SETTINGS'] = [l[0] for l in external_settings['LEGACY_SETTINGS']]
+    external_settings = {}
+    for key, value in self.dict().items():
+      if value != self.defaults.get(key) and key not in INTERNAL_SETTINGS and key not in skip_keys:
+        external_settings[key] = value # noqa: PERF403
+    if not self.attrs['STRICT']:
+      # When not running in strict mode we also externalize all legacy settings
+      # (Since the external tools do process LEGACY_SETTINGS themselves)
+      for key in self.legacy_settings:
+        external_settings[key] = self.attrs[key]
     return external_settings
 
   def keys(self):

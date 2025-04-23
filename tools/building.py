@@ -39,7 +39,7 @@ logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
-EXPECTED_BINARYEN_VERSION = 121
+EXPECTED_BINARYEN_VERSION = 123
 
 _is_ar_cache: Dict[str, bool] = {}
 # the exports the user requested
@@ -512,6 +512,7 @@ def version_split(v):
 def transpile(filename):
   config = {
     'sourceType': 'script',
+    'presets': ['@babel/preset-env'],
     'targets': {}
   }
   if settings.MIN_CHROME_VERSION != UNSUPPORTED:
@@ -529,8 +530,13 @@ def transpile(filename):
   config_file = shared.get_temp_files().get('babel_config.json').name
   logger.debug(config_json)
   utils.write_file(config_file, config_json)
-  cmd = shared.get_npm_cmd('babel') + [filename, '-o', outfile, '--presets', '@babel/preset-env', '--config-file', config_file]
-  check_call(cmd, cwd=path_from_root())
+  cmd = shared.get_npm_cmd('babel') + [filename, '-o', outfile, '--config-file', config_file]
+  # Babel needs access to `node_modules` for things like `preset-env`, but the
+  # location of the config file (and the current working directory) might not be
+  # in the emscripten tree, so we explicitly set NODE_PATH here.
+  env = os.environ.copy()
+  env['NODE_PATH'] = path_from_root('node_modules')
+  check_call(cmd, env=env)
   return outfile
 
 
@@ -1131,6 +1137,13 @@ def emit_wasm_source_map(wasm_file, map_file, final_wasm):
                    '--dwarfdump=' + LLVM_DWARFDUMP,
                    '-o',  map_file,
                    '--basepath=' + base_path]
+
+  if settings.SOURCE_MAP_PREFIXES:
+    sourcemap_cmd += ['--prefix', *settings.SOURCE_MAP_PREFIXES]
+
+  if settings.GENERATE_SOURCE_MAP == 2:
+    sourcemap_cmd += ['--sources']
+
   check_call(sourcemap_cmd)
 
 
@@ -1224,16 +1237,45 @@ def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # noqa
   return run_binaryen_command('wasm-opt', infile, outfile, args=args, **kwargs)
 
 
-def save_intermediate(src, dst):
+intermediate_counter = 0
+
+
+def new_intermediate_filename(name):
+  assert DEBUG
+  global intermediate_counter
+  basename = 'emcc-%02d-%s' % (intermediate_counter, name)
+  intermediate_counter += 1
+  filename = os.path.join(shared.CANONICAL_TEMP_DIR, basename)
+  logger.debug('saving intermediate file %s' % filename)
+  return filename
+
+
+def save_intermediate(src, name):
+  """Copy an existing file CANONICAL_TEMP_DIR"""
   if DEBUG:
-    dst = 'emcc-%02d-%s' % (save_intermediate.counter, dst)
-    save_intermediate.counter += 1
-    dst = os.path.join(shared.CANONICAL_TEMP_DIR, dst)
-    logger.debug('saving debug copy %s' % dst)
-    shutil.copyfile(src, dst)
+    shutil.copyfile(src, new_intermediate_filename(name))
 
 
-save_intermediate.counter = 0  # type: ignore
+def write_intermediate(content, name):
+  """Generate a new debug file CANONICAL_TEMP_DIR"""
+  if DEBUG:
+    utils.write_file(new_intermediate_filename(name), content)
+
+
+def read_and_preprocess(filename, expand_macros=False):
+  # Create a settings file with the current settings to pass to the JS preprocessor
+  settings_json = json.dumps(settings.external_dict(), sort_keys=True, indent=2)
+  write_intermediate(settings_json, 'settings.json')
+
+  # Run the JS preprocessor
+  dirname, filename = os.path.split(filename)
+  if not dirname:
+    dirname = None
+  args = ['-', filename]
+  if expand_macros:
+    args += ['--expand-macros']
+
+  return shared.run_js_tool(path_from_root('tools/preprocessor.mjs'), args, input=settings_json, stdout=subprocess.PIPE, cwd=dirname)
 
 
 def js_legalization_pass_flags():

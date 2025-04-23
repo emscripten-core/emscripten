@@ -211,7 +211,7 @@ def symbolize_address_sourcemap(module, address, force_file):
     print(sm.mappings)
     # Print with section offsets to easily compare against dwarf
     for k, v in sm.mappings.items():
-      print(f'{k-csoff:x}: {v}')
+      print(f'{k - csoff:x}: {v}')
   sm.lookup(address).print()
 
 

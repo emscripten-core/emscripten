@@ -7,18 +7,14 @@
 var LibraryStackTrace = {
   $jsStackTrace: () => new Error().stack.toString(),
 
-  $getCallstack__deps: ['$jsStackTrace', '$warnOnce'],
+  $getCallstack__deps: ['$jsStackTrace',
+#if ASSERTIONS
+    '$warnOnce'
+#endif
+  ],
   $getCallstack__docs: '/** @param {number=} flags */',
   $getCallstack: (flags) => {
     var callstack = jsStackTrace();
-
-    // Find the symbols in the callstack that corresponds to the functions that
-    // report callstack information, and remove everything up to these from the
-    // output.
-    var iThisFunc = callstack.lastIndexOf('_emscripten_log');
-    var iThisFunc2 = callstack.lastIndexOf('_emscripten_get_callstack');
-    var iNextLine = callstack.indexOf('\n', Math.max(iThisFunc, iThisFunc2))+1;
-    callstack = callstack.slice(iNextLine);
 
 #if ASSERTIONS
     if (flags & {{{ cDefs.EM_LOG_C_STACK }}}) {
@@ -63,6 +59,14 @@ var LibraryStackTrace = {
           callstack += line + '\n';
           continue;
         }
+      }
+
+      // Find the symbols in the callstack that corresponds to the functions that
+      // report callstack information, and remove everything up to these from the
+      // output.
+      if (symbolName == '_emscripten_log' || symbolName == '_emscripten_get_callstack') {
+        callstack = '';
+        continue;
       }
 
       if ((flags & {{{ cDefs.EM_LOG_C_STACK | cDefs.EM_LOG_JS_STACK }}})) {
@@ -271,7 +275,7 @@ var LibraryStackTrace = {
 #endif
   },
 
-  $convertPCtoSourceLocation__deps: ['$UNWIND_CACHE', '$convertFrameToPC'],
+  $convertPCtoSourceLocation__deps: ['$UNWIND_CACHE'],
   $convertPCtoSourceLocation: (pc) => {
     if (UNWIND_CACHE.last_get_source_pc == pc) return UNWIND_CACHE.last_source;
 

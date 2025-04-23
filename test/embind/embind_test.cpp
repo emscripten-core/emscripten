@@ -224,13 +224,13 @@ std::u32string get_literal_u32string() {
 
 void force_memory_growth() {
   std::size_t old_size = emscripten_get_heap_size();
-  EM_ASM({"globalThis.oldheap = HEAPU8;"});
+  EM_ASM({"globalThis.oldheap = HEAP8;"});
   assert(val::global("oldheap")["byteLength"].as<size_t>() == old_size);
   emscripten_resize_heap(old_size + EMSCRIPTEN_PAGE_SIZE);
   assert(emscripten_get_heap_size() > old_size);
-  // HEAPU8 on the module should now be rebound, and our oldheap should be
+  // HEAP8 on the module should now be rebound, and our oldheap should be
   // detached
-  assert(val::module_property("HEAPU8")["byteLength"].as<size_t>() > old_size);
+  assert(val::module_property("HEAP8")["byteLength"].as<size_t>() > old_size);
   assert(val::global("oldheap")["byteLength"].as<size_t>() == 0);
 }
 
@@ -885,6 +885,15 @@ std::map<std::string, int> embind_test_get_string_int_map() {
   return m;
 };
 
+std::map<int, std::string, std::greater<int>> embind_test_get_int_string_greater_map() {
+    std::map<int, std::string, std::greater<int>> m;
+
+    m[1] = "one";
+    m[2] = "two";
+
+    return m;
+}
+
 struct Vector {
   Vector() = delete;
 
@@ -1341,6 +1350,13 @@ int embind_test_optional_small_class_arg(std::optional<SmallClass> arg) {
 void embind_test_optional_multiple_arg(int arg1,
                                        std::optional<int> arg2,
                                        std::optional<int> arg3) {
+}
+
+struct StructWithOptionalProperty {
+  int x;
+  std::optional<int> y;
+};
+void embind_test_optional_property(const StructWithOptionalProperty &arg) {
 }
 #endif
 
@@ -2369,10 +2385,18 @@ EMSCRIPTEN_BINDINGS(tests) {
   function("embind_test_optional_string_arg", &embind_test_optional_string_arg);
   function("embind_test_optional_small_class_arg", &embind_test_optional_small_class_arg);
   function("embind_test_optional_multiple_arg", &embind_test_optional_multiple_arg);
+  value_object<StructWithOptionalProperty>("StructWithOptionalProperty")
+      .field("x", &StructWithOptionalProperty::x)
+      .field("y", &StructWithOptionalProperty::y)
+  ;
+  function("embind_test_optional_property", &embind_test_optional_property);
 #endif
 
   register_map<std::string, int>("StringIntMap");
   function("embind_test_get_string_int_map", embind_test_get_string_int_map);
+    
+  register_map<int, std::string, std::greater<int>>("IntStringMapGreater");
+  function("embind_test_get_int_string_greater_map", embind_test_get_int_string_greater_map);
 
   function("embind_test_getglobal", &embind_test_getglobal);
 

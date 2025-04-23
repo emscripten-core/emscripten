@@ -203,7 +203,7 @@ var LibraryDylink = {
   },
 
   $updateGOT__internal: true,
-  $updateGOT__deps: ['$GOT', '$isInternalSym', '$addFunction', '$getFunctionAddress'],
+  $updateGOT__deps: ['$GOT', '$isInternalSym', '$addFunction'],
   $updateGOT: (exports, replace) => {
 #if DYLINK_DEBUG
     dbg("updateGOT: adding " + Object.keys(exports).length + " symbols");
@@ -416,18 +416,20 @@ var LibraryDylink = {
       return UTF8ArrayToString(binary, offset - len, len);
     }
 
+    function getStringList() {
+      var count = getLEB();
+      var rtn = []
+      while (count--) rtn.push(getString());
+      return rtn;
+    }
+
     /** @param {string=} message */
     function failIf(condition, message) {
       if (condition) throw new Error(message);
     }
 
-    var name = 'dylink.0';
     if (binary instanceof WebAssembly.Module) {
-      var dylinkSection = WebAssembly.Module.customSections(binary, name);
-      if (dylinkSection.length === 0) {
-        name = 'dylink'
-        dylinkSection = WebAssembly.Module.customSections(binary, name);
-      }
+      var dylinkSection = WebAssembly.Module.customSections(binary, 'dylink.0');
       failIf(dylinkSection.length === 0, 'need dylink section');
       binary = new Uint8Array(dylinkSection[0]);
       end = binary.length
@@ -444,72 +446,56 @@ var LibraryDylink = {
       offset = 9;
       var section_size = getLEB(); //section size
       end = offset + section_size;
-      name = getString();
+      var name = getString();
+      failIf(name !== 'dylink.0');
     }
 
-    var customSection = { neededDynlibs: [], tlsExports: new Set(), weakImports: new Set() };
-    if (name == 'dylink') {
-      customSection.memorySize = getLEB();
-      customSection.memoryAlign = getLEB();
-      customSection.tableSize = getLEB();
-      customSection.tableAlign = getLEB();
-      // shared libraries this module needs. We need to load them first, so that
-      // current module could resolve its imports. (see tools/shared.py
-      // WebAssembly.make_shared_library() for "dylink" section extension format)
-      var neededDynlibsCount = getLEB();
-      for (var i = 0; i < neededDynlibsCount; ++i) {
-        var libname = getString();
-        customSection.neededDynlibs.push(libname);
-      }
-    } else {
-      failIf(name !== 'dylink.0');
-      var WASM_DYLINK_MEM_INFO = 0x1;
-      var WASM_DYLINK_NEEDED = 0x2;
-      var WASM_DYLINK_EXPORT_INFO = 0x3;
-      var WASM_DYLINK_IMPORT_INFO = 0x4;
-      var WASM_SYMBOL_TLS = 0x100;
-      var WASM_SYMBOL_BINDING_MASK = 0x3;
-      var WASM_SYMBOL_BINDING_WEAK = 0x1;
-      while (offset < end) {
-        var subsectionType = getU8();
-        var subsectionSize = getLEB();
-        if (subsectionType === WASM_DYLINK_MEM_INFO) {
-          customSection.memorySize = getLEB();
-          customSection.memoryAlign = getLEB();
-          customSection.tableSize = getLEB();
-          customSection.tableAlign = getLEB();
-        } else if (subsectionType === WASM_DYLINK_NEEDED) {
-          var neededDynlibsCount = getLEB();
-          for (var i = 0; i < neededDynlibsCount; ++i) {
-            libname = getString();
-            customSection.neededDynlibs.push(libname);
+    var customSection = { neededDynlibs: [], tlsExports: new Set(), weakImports: new Set(), runtimePaths: [] };
+    var WASM_DYLINK_MEM_INFO = 0x1;
+    var WASM_DYLINK_NEEDED = 0x2;
+    var WASM_DYLINK_EXPORT_INFO = 0x3;
+    var WASM_DYLINK_IMPORT_INFO = 0x4;
+    var WASM_DYLINK_RUNTIME_PATH = 0x5;
+    var WASM_SYMBOL_TLS = 0x100;
+    var WASM_SYMBOL_BINDING_MASK = 0x3;
+    var WASM_SYMBOL_BINDING_WEAK = 0x1;
+    while (offset < end) {
+      var subsectionType = getU8();
+      var subsectionSize = getLEB();
+      if (subsectionType === WASM_DYLINK_MEM_INFO) {
+        customSection.memorySize = getLEB();
+        customSection.memoryAlign = getLEB();
+        customSection.tableSize = getLEB();
+        customSection.tableAlign = getLEB();
+      } else if (subsectionType === WASM_DYLINK_NEEDED) {
+        customSection.neededDynlibs = getStringList();
+      } else if (subsectionType === WASM_DYLINK_EXPORT_INFO) {
+        var count = getLEB();
+        while (count--) {
+          var symname = getString();
+          var flags = getLEB();
+          if (flags & WASM_SYMBOL_TLS) {
+            customSection.tlsExports.add(symname);
           }
-        } else if (subsectionType === WASM_DYLINK_EXPORT_INFO) {
-          var count = getLEB();
-          while (count--) {
-            var symname = getString();
-            var flags = getLEB();
-            if (flags & WASM_SYMBOL_TLS) {
-              customSection.tlsExports.add(symname);
-            }
-          }
-        } else if (subsectionType === WASM_DYLINK_IMPORT_INFO) {
-          var count = getLEB();
-          while (count--) {
-            var modname = getString();
-            var symname = getString();
-            var flags = getLEB();
-            if ((flags & WASM_SYMBOL_BINDING_MASK) == WASM_SYMBOL_BINDING_WEAK) {
-              customSection.weakImports.add(symname);
-            }
-          }
-        } else {
-#if ASSERTIONS
-          err(`unknown dylink.0 subsection: ${subsectionType}`)
-#endif
-          // unknown subsection
-          offset += subsectionSize;
         }
+      } else if (subsectionType === WASM_DYLINK_IMPORT_INFO) {
+        var count = getLEB();
+        while (count--) {
+          var modname = getString();
+          var symname = getString();
+          var flags = getLEB();
+          if ((flags & WASM_SYMBOL_BINDING_MASK) == WASM_SYMBOL_BINDING_WEAK) {
+            customSection.weakImports.add(symname);
+          }
+        }
+      } else if (subsectionType === WASM_DYLINK_RUNTIME_PATH) {
+        customSection.runtimePaths = getStringList();
+      } else {
+#if ASSERTIONS
+        err(`unknown dylink.0 subsection: ${subsectionType}`)
+#endif
+        // unknown subsection
+        offset += subsectionSize;
       }
     }
 
@@ -627,6 +613,7 @@ var LibraryDylink = {
     // loadModule loads the wasm module after all its dependencies have been loaded.
     // can be called both sync/async.
     function loadModule() {
+#if PTHREADS
       // The first thread to load a given module needs to allocate the static
       // table and memory regions.  Later threads re-use the same table region
       // and can ignore the memory region (since memory is shared between
@@ -636,6 +623,7 @@ var LibraryDylink = {
       // locking in `dynlink.c`.
       var firstLoad = !handle || !{{{ makeGetValue('handle', C_STRUCTS.dso.mem_allocated, 'i8') }}};
       if (firstLoad) {
+#endif
         // alignments are powers of 2
         var memAlign = Math.pow(2, metadata.memoryAlign);
         // prepare memory
@@ -648,21 +636,27 @@ var LibraryDylink = {
           {{{ makeSetValue('handle', C_STRUCTS.dso.table_addr, 'tableBase', '*') }}};
           {{{ makeSetValue('handle', C_STRUCTS.dso.table_size, 'metadata.tableSize', 'i32') }}};
         }
+#if PTHREADS
       } else {
+        // Read the values for tableBase and memoryBase from shared memory. The
+        // thread that first loaded the DLL already set these values.
         memoryBase = {{{ makeGetValue('handle', C_STRUCTS.dso.mem_addr, '*') }}};
         tableBase = {{{ makeGetValue('handle', C_STRUCTS.dso.table_addr, '*') }}};
       }
-
-      var tableGrowthNeeded = tableBase + metadata.tableSize - {{{ from64Expr('wasmTable.length') }}};
-      if (tableGrowthNeeded > 0) {
-#if DYLINK_DEBUG
-        dbg("loadModule: growing table: " + tableGrowthNeeded);
 #endif
-        wasmTable.grow({{{ toIndexType('tableGrowthNeeded') }}});
+
+      if (metadata.tableSize) {
+#if ASSERTIONS
+        assert({{{ from64Expr('wasmTable.length') }}} == tableBase, `unexpected table size while loading ${libName}: ${wasmTable.length}`);
+#endif
+#if DYLINK_DEBUG
+        dbg("loadModule: growing table by: " + metadata.tableSize);
+#endif
+        wasmTable.grow({{{ toIndexType('metadata.tableSize') }}});
       }
 #if DYLINK_DEBUG
-      dbg("loadModule: memory[" + memoryBase + ":" + (memoryBase + metadata.memorySize) + "]" +
-                     " table[" + tableBase + ":" + (tableBase + metadata.tableSize) + "]");
+      dbg(`loadModule: memory[${memoryBase}:${memoryBase + metadata.memorySize}]` +
+                     ` table[${tableBasex}:${tableBase + metadata.tableSize}]`);
 #endif
 
       // This is the export map that we ultimately return.  We declare it here
@@ -877,13 +871,18 @@ var LibraryDylink = {
       }
 
       if (flags.loadAsync) {
-        if (binary instanceof WebAssembly.Module) {
-          var instance = new WebAssembly.Instance(binary, info);
-          return Promise.resolve(postInstantiation(binary, instance));
-        }
-        return WebAssembly.instantiate(binary, info).then(
-          (result) => postInstantiation(result.module, result.instance)
-        );
+        return (async () => {
+          var instance;
+          if (binary instanceof WebAssembly.Module) {
+            instance = new WebAssembly.Instance(binary, info);
+          } else {
+            // Destructuring assignment without declaration has to be wrapped
+            // with parens or parser will treat the l-value as an object
+            // literal instead.
+            ({ module: binary, instance } = await WebAssembly.instantiate(binary, info));
+          }
+          return postInstantiation(binary, instance);
+        })();
       }
 
       var module = binary instanceof WebAssembly.Module ? binary : new WebAssembly.Module(binary);
@@ -951,7 +950,7 @@ var LibraryDylink = {
   // flags.global and flags.nodelete are handled every time a load request is made.
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
   $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule',
-                              '$isInternalSym', '$mergeLibSymbols', '$newDSO',
+                              '$mergeLibSymbols', '$newDSO',
                               '$asyncLoad',
 #if FILESYSTEM
                               '$preloadedWasm',
@@ -1125,7 +1124,7 @@ var LibraryDylink = {
   },
 
   // void* dlopen(const char* filename, int flags);
-  $dlopenInternal__deps: ['$ENV', '$dlSetError', '$PATH'],
+  $dlopenInternal__deps: ['$dlSetError', '$PATH'],
   $dlopenInternal: (handle, jsflags) => {
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html

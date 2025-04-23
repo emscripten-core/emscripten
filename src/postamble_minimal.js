@@ -5,8 +5,6 @@
  */
 
 // === Auto-generated postamble setup entry stuff ===
-{{{ exportRuntime() }}}
-
 #if HAS_MAIN // Only if user is exporting a C main(), we will generate a run() function that can be used to launch main.
 function run() {
 #if MEMORYPROFILER
@@ -135,6 +133,10 @@ WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
 // precompiled WebAssembly Module.
 if (!Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM';
 #endif
+
+<<< ATMODULES >>>
+
+{{{ exportJSSymbols() }}}
 
 WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #endif

@@ -25,10 +25,33 @@
 
 {{{
 #if MEMORY64
-globalThis.MAX_PTR = Number((2n ** 64n) - 1n);
+const MAX_PTR = Number((2n ** 64n) - 1n);
 #else
-globalThis.MAX_PTR = (2 ** 32) - 1
+const MAX_PTR = (2 ** 32) - 1
 #endif
+// Use a macro to avoid duplicating pthread worker options.
+// We cannot use a normal JS variable since the vite bundler requires that worker
+// options be inline.
+// See https://github.com/emscripten-core/emscripten/issues/22394
+const pthreadWorkerOptions = `{
+#if EXPORT_ES6
+        'type': 'module',
+#endif
+#if ENVIRONMENT_MAY_BE_NODE
+        // This is the way that we signal to the node worker that it is hosting
+        // a pthread.
+        'workerData': 'em-pthread',
+#endif
+#if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
+        // This is the way that we signal to the Web Worker that it is hosting
+        // a pthread.
+#if ASSERTIONS
+        'name': 'em-pthread-' + PThread.nextWorkerID,
+#else
+        'name': 'em-pthread',
+#endif
+#endif
+}`;
 }}}
 
 var LibraryPThread = {
@@ -45,9 +68,6 @@ var LibraryPThread = {
                    'exit',
 #if PTHREADS_DEBUG || ASSERTIONS
                    '$ptrToString',
-#endif
-#if !MINIMAL_RUNTIME
-                   '$handleException',
 #endif
                    ],
   $PThread: {
@@ -203,8 +223,8 @@ var LibraryPThread = {
       // linear memory.
       __emscripten_thread_free_data(pthread_ptr);
     },
-    receiveObjectTransfer(data) {
 #if OFFSCREENCANVAS_SUPPORT
+    receiveOffscreenCanvases(data) {
       if (typeof GL != 'undefined') {
         Object.assign(GL.offscreenCanvases, data.offscreenCanvases);
         if (!Module['canvas'] && data.moduleCanvasId && GL.offscreenCanvases[data.moduleCanvasId]) {
@@ -212,8 +232,8 @@ var LibraryPThread = {
           Module['canvas'].id = data.moduleCanvasId;
         }
       }
-#endif
     },
+#endif
     // Called by worker.js each time a thread is started.
     threadInitTLS() {
 #if PTHREADS_DEBUG
@@ -266,8 +286,6 @@ var LibraryPThread = {
           }
 #endif
           onFinishedLoading(worker);
-        } else if (cmd === 'alert') {
-          alert(`Thread ${d.threadId}: ${d.text}`);
         } else if (d.target === 'setimmediate') {
           // Worker wants to postMessage() to itself to implement setImmediate()
           // emulation.
@@ -327,10 +345,6 @@ var LibraryPThread = {
           handlers.push(handler);
         }
       }
-
-#if ASSERTIONS
-      worker.workerID = PThread.nextWorkerID++;
-#endif
 
       // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
       worker.postMessage({
@@ -394,26 +408,7 @@ var LibraryPThread = {
     // Creates a new web Worker and places it in the unused worker pool to wait for its use.
     allocateUnusedWorker() {
       var worker;
-      var workerOptions = {
 #if EXPORT_ES6
-        'type': 'module',
-#endif
-#if ENVIRONMENT_MAY_BE_NODE
-        // This is the way that we signal to the node worker that it is hosting
-        // a pthread.
-        'workerData': 'em-pthread',
-#endif
-#if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
-        // This is the way that we signal to the Web Worker that it is hosting
-        // a pthread.
-#if ASSERTIONS
-        'name': 'em-pthread-' + PThread.nextWorkerID,
-#else
-        'name': 'em-pthread',
-#endif
-#endif
-      };
-#if EXPORT_ES6 && USE_ES6_IMPORT_META
       // If we're using module output, use bundler-friendly pattern.
 #if PTHREADS_DEBUG
       dbg(`Allocating a new web worker from ${import.meta.url}`);
@@ -421,21 +416,26 @@ var LibraryPThread = {
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
       if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
-        var p = trustedTypes.createPolicy(
-          'emscripten#workerPolicy1',
-          {
-            createScriptURL: (ignored) => new URL("{{{ TARGET_JS_NAME }}}", import.meta.url)
-          }
-        );
-        worker = new Worker(p.createScriptURL('ignored'), workerOptions);
+        var p = trustedTypes.createPolicy('emscripten#workerPolicy1', { createScriptURL: (ignored) => import.meta.url });
+        worker = new Worker(p.createScriptURL('ignored'), {{{ pthreadWorkerOptions }}});
       } else
+#endif
+#if expectToReceiveOnModule('mainScriptUrlOrBlob')
+        if (Module['mainScriptUrlOrBlob']) {
+          var pthreadMainJs = Module['mainScriptUrlOrBlob'];
+          if (typeof pthreadMainJs != 'string') {
+            pthreadMainJs = URL.createObjectURL(pthreadMainJs);
+          }
+          worker = new Worker(pthreadMainJs, {{{ pthreadWorkerOptions }}});
+        } else
 #endif
       // We need to generate the URL with import.meta.url as the base URL of the JS file
       // instead of just using new URL(import.meta.url) because bundler's only recognize
       // the first case in their bundling step. The latter ends up producing an invalid
       // URL to import from the server (e.g., for webpack the file:// path).
-      worker = new Worker(new URL('{{{ TARGET_JS_NAME }}}', import.meta.url), workerOptions);
-#else
+      // See https://github.com/webpack/webpack/issues/12638
+      worker = new Worker(new URL('{{{ TARGET_JS_NAME }}}', import.meta.url), {{{ pthreadWorkerOptions }}});
+#else // EXPORT_ES6
       var pthreadMainJs = _scriptName;
 #if expectToReceiveOnModule('mainScriptUrlOrBlob')
       // We can't use makeModuleReceiveWithVar here since we want to also
@@ -454,11 +454,14 @@ var LibraryPThread = {
       // Use Trusted Types compatible wrappers.
       if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
         var p = trustedTypes.createPolicy('emscripten#workerPolicy2', { createScriptURL: (ignored) => pthreadMainJs });
-        worker = new Worker(p.createScriptURL('ignored'), workerOptions);
+        worker = new Worker(p.createScriptURL('ignored'), {{{ pthreadWorkerOptions }}});
       } else
 #endif
-      worker = new Worker(pthreadMainJs, workerOptions);
-#endif // EXPORT_ES6 && USE_ES6_IMPORT_META
+      worker = new Worker(pthreadMainJs, {{{ pthreadWorkerOptions }}});
+#endif // EXPORT_ES6
+#if ASSERTIONS
+      worker.workerID = PThread.nextWorkerID++;
+#endif
       PThread.unusedWorkers.push(worker);
     },
 
@@ -682,7 +685,7 @@ var LibraryPThread = {
   // allocations from __pthread_create_js we could also remove this.
   __pthread_create_js__noleakcheck: true,
 #endif
-  __pthread_create_js__deps: ['$spawnThread', 'pthread_self', '$pthreadCreateProxied',
+  __pthread_create_js__deps: ['$spawnThread', '$pthreadCreateProxied',
     'emscripten_has_threading_support',
 #if OFFSCREENCANVAS_SUPPORT
     'malloc',
@@ -851,7 +854,9 @@ var LibraryPThread = {
     return spawnThread(threadParams);
   },
 
+#if (ASSERTIONS || !ALLOW_BLOCKING_ON_MAIN_THREAD) && !MINIMAL_RUNTIME
   emscripten_check_blocking_allowed__deps: ['$warnOnce'],
+#endif
   emscripten_check_blocking_allowed: () => {
 #if (ASSERTIONS || !ALLOW_BLOCKING_ON_MAIN_THREAD) && !MINIMAL_RUNTIME
 #if ENVIRONMENT_MAY_BE_NODE
@@ -872,11 +877,7 @@ var LibraryPThread = {
   // that the entire process should exit.
   // This function is always called from a pthread, but is executed on the
   // main thread due the __proxy attribute.
-  $exitOnMainThread__deps: ['exit',
-#if !MINIMAL_RUNTIME
-    '$handleException',
-#endif
-  ],
+  $exitOnMainThread__deps: ['exit'],
   $exitOnMainThread__proxy: 'async',
   $exitOnMainThread: (returnCode) => {
 #if PTHREADS_DEBUG
@@ -894,7 +895,7 @@ var LibraryPThread = {
   $proxyToMainThreadPtr: (...args) => BigInt(proxyToMainThread(...args)),
 #endif
 
-  $proxyToMainThread__deps: ['$stackSave', '$stackRestore', '$stackAlloc', '_emscripten_run_on_main_thread_js', ...i53ConversionDeps],
+  $proxyToMainThread__deps: ['$stackSave', '$stackRestore', '$stackAlloc', '_emscripten_run_on_main_thread_js'],
   $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), ...number)} */',
   $proxyToMainThread: (funcIndex, emAsmAddr, sync, ...callArgs) => {
     // EM_ASM proxying is done by passing a pointer to the address of the EM_ASM
@@ -940,7 +941,7 @@ var LibraryPThread = {
   },
 
   // Reuse global JS array to avoid creating JS garbage for each proxied call
-  $proxiedJSCallArgs: '=[]',
+  $proxiedJSCallArgs: [],
 
   _emscripten_receive_on_main_thread_js__deps: [
     '$proxyToMainThread',
@@ -1132,7 +1133,7 @@ var LibraryPThread = {
   // TODO(sbc): Should we make a new form of __proxy attribute for JS library
   // function that run asynchronously like but blocks the caller until they are
   // done.  Perhaps "sync_with_ctx"?
-  _emscripten_dlsync_threads_async__deps: ['_emscripten_proxy_dlsync_async', 'emscripten_promise_create', '$getPromise'],
+  _emscripten_dlsync_threads_async__deps: ['_emscripten_proxy_dlsync_async', '$makePromise'],
   _emscripten_dlsync_threads_async: (caller, callback, ctx) => {
 #if PTHREADS_DEBUG
     dbg("_emscripten_dlsync_threads_async caller=" + ptrToString(caller));
@@ -1205,6 +1206,7 @@ var LibraryPThread = {
 #endif // MAIN_MODULE
 
   $checkMailbox__deps: ['$callUserCallback',
+                        'pthread_self',
                         '_emscripten_check_mailbox',
                         '_emscripten_thread_mailbox_await'],
   $checkMailbox: () => {

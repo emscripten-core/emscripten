@@ -285,7 +285,7 @@ def load_test_suites(args, modules, start_at, repeat):
         unmatched_test_names.remove(name)
       except AttributeError:
         pass
-    if len(names_in_module):
+    if names_in_module:
       loaded_tests = loader.loadTestsFromNames(sorted(names_in_module), m)
       tests = flattened_tests(loaded_tests)
       suite = suite_for_module(m, tests)
@@ -329,8 +329,8 @@ def run_tests(options, suites):
   resultMessages = []
   num_failures = 0
 
-  print('Test suites:')
-  print([s[0] for s in suites])
+  if len(suites) > 1:
+    print('Test suites:', [s[0] for s in suites])
   # Run the discovered tests
 
   # We currently don't support xmlrunner on macOS M1 runner since

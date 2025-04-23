@@ -149,6 +149,7 @@ class DylinkType(IntEnum):
   NEEDED = 2
   EXPORT_INFO = 3
   IMPORT_INFO = 4
+  RUNTIME_PATH = 5
 
 
 class TargetFeaturePrefix(IntEnum):
@@ -165,7 +166,7 @@ Limits = namedtuple('Limits', ['flags', 'initial', 'maximum'])
 Import = namedtuple('Import', ['kind', 'module', 'field', 'type'])
 Export = namedtuple('Export', ['name', 'kind', 'index'])
 Global = namedtuple('Global', ['type', 'mutable', 'init'])
-Dylink = namedtuple('Dylink', ['mem_size', 'mem_align', 'table_size', 'table_align', 'needed', 'export_info', 'import_info'])
+Dylink = namedtuple('Dylink', ['mem_size', 'mem_align', 'table_size', 'table_align', 'needed', 'export_info', 'import_info', 'runtime_paths'])
 Table = namedtuple('Table', ['elem_type', 'limits'])
 FunctionBody = namedtuple('FunctionBody', ['offset', 'size'])
 DataSegment = namedtuple('DataSegment', ['flags', 'init', 'offset', 'size'])
@@ -313,6 +314,7 @@ class Module:
     needed = []
     export_info = {}
     import_info = {}
+    runtime_paths = []
     self.read_string()  # name
 
     if dylink_section.name == 'dylink':
@@ -359,6 +361,12 @@ class Module:
             import_info.setdefault(module, {})
             import_info[module][field] = flags
             count -= 1
+        elif subsection_type == DylinkType.RUNTIME_PATH:
+          count = self.read_uleb()
+          while count:
+            rpath = self.read_string()
+            runtime_paths.append(rpath)
+            count -= 1
         else:
           print(f'unknown subsection: {subsection_type}')
           # ignore unknown subsections
@@ -367,7 +375,7 @@ class Module:
     else:
       utils.exit_with_error('error parsing shared library')
 
-    return Dylink(mem_size, mem_align, table_size, table_align, needed, export_info, import_info)
+    return Dylink(mem_size, mem_align, table_size, table_align, needed, export_info, import_info, runtime_paths)
 
   @memoize
   def get_exports(self):
