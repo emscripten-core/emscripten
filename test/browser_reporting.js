@@ -1,3 +1,6 @@
+// Set this to true to have stdout and stderr sent back to the server
+var captureStdoutStderr = false;
+
 var hasModule = typeof Module === 'object' && Module;
 
 var reportingURL = 'http://localhost:8888/';
@@ -5,7 +8,7 @@ var reportingURL = 'http://localhost:8888/';
 async function reportResultToServer(result) {
   if (reportResultToServer.reported) {
     // Only report one result per test, even if the test misbehaves and tries to report more.
-    reportErrorToServer(`excessive reported results, sending ${result}, test will fail`);
+    reportStderrToServer(`excessive reported results, sending ${result}, test will fail`);
   }
   reportResultToServer.reported = true;
   if ((typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) || (typeof ENVIRONMENT_IS_AUDIO_WORKLET !== 'undefined' && ENVIRONMENT_IS_AUDIO_WORKLET)) {
@@ -29,11 +32,19 @@ function maybeReportResultToServer(result) {
   }
 }
 
-function reportErrorToServer(message) {
+function reportStderrToServer(message) {
   if (typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) {
     err(message);
   } else {
     fetch(`${reportingURL}?stderr=${encodeURIComponent(message)}`);
+  }
+}
+
+function reportStdoutToServer(message) {
+  if (typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) {
+    out(message);
+  } else {
+    fetch(`${reportingURL}?stdout=${encodeURIComponent(message)}`);
   }
 }
 
@@ -88,5 +99,20 @@ if (hasModule) {
       maybeReportResultToServer(`abort:${reason}`);
     }
     Module['onAbort'].proxy = true;
+  }
+
+  if (captureStdoutStderr) {
+    const origPrint = Module['print'];
+    const origPrintErr = Module['printErr'];
+
+    Module['print'] = (...args) => {
+      origPrint?.(...args);
+      reportStdoutToServer(args.join(' '));
+    };
+
+    Module['printErr'] = (...args) => {
+      origPrintErr?.(...args);
+      reportStderrToServer(args.join(' '));
+    };
   }
 }

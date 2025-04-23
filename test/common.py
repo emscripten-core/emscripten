@@ -2120,7 +2120,9 @@ def harness_server_func(in_queue, out_queue, port):
         print(f'do_POST: unexpected POST: {urlinfo.query}')
 
     def do_GET(self):
-      if self.path == '/run_harness':
+      info = urlparse(self.path)
+      query = parse_qs(info.query)
+      if info.path == '/run_harness':
         if DEBUG:
           print('[server startup]')
         self.send_response(200)
@@ -2160,18 +2162,17 @@ def harness_server_func(in_queue, out_queue, port):
         self.end_headers()
         self.wfile.write(b'OK')
 
-      elif 'stdout=' in self.path or 'stderr=' in self.path:
-        '''
-          To get logging to the console from browser tests, add this to
-          print/printErr/the exception handler in src/shell.html:
-
-            fetch(encodeURI('http://localhost:8888?stdout=' + text));
-        '''
-        print('[client logging:', unquote_plus(self.path), ']')
+      elif info.path == '/' and 'stdout' in query or 'stderr' in query:
+        # Logging reported by reportStdoutToServer / reportStderrToServer.
+        #
+        # To automatically capture stderr/stdout message from browser tests, modify
+        # `captureStdoutStderr` in `test/browser_reporting.js`.
+        for key, value in query.items():
+          print(f"[client {key}: '{value[0]}']")
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
-      elif self.path == '/check':
+      elif info.path == '/check':
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
