@@ -9568,6 +9568,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   @no_asan('ASan does not support WASM_WORKERS')
+  @also_with_minimal_runtime
   def test_wasm_worker_hello(self):
     self.do_run_in_out_file_test('wasm_worker/hello_wasm_worker.c', emcc_args=['-sWASM_WORKERS'])
 

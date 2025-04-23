@@ -37,7 +37,11 @@
 #if WASM_WORKERS == 2
     _wasmWorkerBlobUrl
 #elif MINIMAL_RUNTIME
+#if ENVIRONMENT_MAY_BE_NODE
+    Module['$wb'] || './${WASM_WORKER_FILE}'
+#else
     Module['$wb']
+#endif
 #else
     locateFile('${WASM_WORKER_FILE}')
 #endif
@@ -195,7 +199,11 @@ if (ENVIRONMENT_IS_WASM_WORKER
       '$ww': _wasmWorkersID,
 #if MINIMAL_RUNTIME
       'wasm': Module['wasm'],
+#if ENVIRONMENT_MAY_BE_NODE
+      'js': Module['js'] || './{{{ TARGET_JS_NAME }}}',
+#else
       'js': Module['js'],
+#endif
       'mem': wasmMemory,
 #else
       'wasm': wasmModule,
