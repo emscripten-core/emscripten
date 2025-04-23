@@ -1303,3 +1303,72 @@ weak void _emscripten_get_progname(char* buf, int length) {
 }
 
 weak void _emscripten_runtime_keepalive_clear() {}
+
+weak time_t timegm(struct tm *tm)
+{
+	struct tm new;
+	long long t = __tm_to_secs(tm);
+	if (__secs_to_tm(t, &new) < 0) {
+		errno = EOVERFLOW;
+		return -1;
+	}
+	*tm = new;
+	tm->tm_isdst = 0;
+	tm->__tm_gmtoff = 0;
+	tm->__tm_zone = __utc;
+	return t;
+}
+
+weak time_t mktime(struct tm *tm)
+{
+	struct tm new;
+	long opp;
+	long long t = __tm_to_secs(tm);
+
+	__secs_to_zone(t, 1, &new.tm_isdst, &new.__tm_gmtoff, &opp, &new.__tm_zone);
+
+	if (tm->tm_isdst>=0 && new.tm_isdst!=tm->tm_isdst)
+		t -= opp - new.__tm_gmtoff;
+
+	t -= new.__tm_gmtoff;
+	if ((time_t)t != t) goto error;
+
+	__secs_to_zone(t, 0, &new.tm_isdst, &new.__tm_gmtoff, &opp, &new.__tm_zone);
+
+	if (__secs_to_tm(t + new.__tm_gmtoff, &new) < 0) goto error;
+
+	*tm = new;
+	return t;
+
+error:
+	errno = EOVERFLOW;
+	return -1;
+}
+
+weak struct tm *__localtime_r(const time_t *restrict t, struct tm *restrict tm)
+{
+	/* Reject time_t values whose year would overflow int because
+	 * __secs_to_zone cannot safely handle them. */
+	if (*t < INT_MIN * 31622400LL || *t > INT_MAX * 31622400LL) {
+		errno = EOVERFLOW;
+		return 0;
+	}
+	__secs_to_zone(*t, 0, &tm->tm_isdst, &tm->__tm_gmtoff, 0, &tm->__tm_zone);
+	if (__secs_to_tm((long long)*t + tm->__tm_gmtoff, tm) < 0) {
+		errno = EOVERFLOW;
+		return 0;
+	}
+	return tm;
+}
+
+weak struct tm *__gmtime_r(const time_t *restrict t, struct tm *restrict tm)
+{
+	if (__secs_to_tm(*t, tm) < 0) {
+		errno = EOVERFLOW;
+		return 0;
+	}
+	tm->tm_isdst = 0;
+	tm->__tm_gmtoff = 0;
+	tm->__tm_zone = __utc;
+	return tm;
+}
