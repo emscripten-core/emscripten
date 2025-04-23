@@ -1556,6 +1556,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     diagnostics.warning('emcc', 'output suffix .js requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
 
   if options.sanitize:
+    if settings.WASM_WORKERS:
+      exit_with_error('WASM_WORKERS is not currently compatible with `-fsanitize` tools')
     settings.USE_OFFSET_CONVERTER = 1
     # These symbols are needed by `withBuiltinMalloc` which used to implement
     # the `__noleakcheck` attribute.  However this dependency is not yet represented in the JS

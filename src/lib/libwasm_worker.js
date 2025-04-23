@@ -204,12 +204,6 @@ if (ENVIRONMENT_IS_WASM_WORKER
 #endif
       'sb': stackLowestAddress, // sb = stack bottom (lowest stack address, SP points at this when stack is full)
       'sz': stackSize,          // sz = stack size
-#if USE_OFFSET_CONVERTER
-      'wasmOffsetData': wasmOffsetConverter,
-#endif
-#if LOAD_SOURCE_MAP
-      'wasmSourceMapData': wasmSourceMap,
-#endif
     });
     worker.onmessage = _wasmWorkerRunPostMessage;
 #if ENVIRONMENT_MAY_BE_NODE
