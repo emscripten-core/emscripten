@@ -2129,6 +2129,8 @@ def harness_server_func(in_queue, out_queue, port):
         self.end_headers()
       else:
         print(f'do_POST: unexpected POST: {urlinfo}')
+        self.send_response(404)
+        self.end_headers()
 
     def do_GET(self):
       info = urlparse(self.path)

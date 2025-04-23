@@ -797,7 +797,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   def limit_incoming_module_api():
     if options.oformat == OFormat.HTML and options.shell_path == DEFAULT_SHELL_HTML:
       # Out default shell.html file has minimal set of INCOMING_MODULE_JS_API elements that it expects
-      default_setting('INCOMING_MODULE_JS_API', 'canvas,monitorRunDependencies,onAbort,onExit,print,setStatus'.split(','))
+      default_setting('INCOMING_MODULE_JS_API', 'canvas,monitorRunDependencies,onAbort,onExit,print,printErr,setStatus'.split(','))
     else:
       default_setting('INCOMING_MODULE_JS_API', [])
 
