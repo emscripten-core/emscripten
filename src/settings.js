@@ -342,9 +342,9 @@ var SAFE_HEAP_LOG = false;
 // truncs/extends/ reinterprets). This means that when types do not match the
 // emulated values may not match (this is true of native too, for that matter -
 // this is all undefined behavior). This approaches appears good enough to
-// support Python, which is the main use case motivating this feature.
+// support Python (the original motiviation for this feature) and Glib (the
+// continued motivation).
 // [link]
-// [deprecated]
 var EMULATE_FUNCTION_POINTER_CASTS = false;
 
 // Print out exceptions in emscriptened code.
@@ -2192,6 +2192,14 @@ var SOURCE_PHASE_IMPORTS = false;
 // Requires EXPORT_ES6 and MODULARIZE=instance
 // [link]
 var WASM_ESM_INTEGRATION = false;
+
+// Enable use of the JS arraybuffer-base64 API:
+// https://github.com/tc39/proposal-arraybuffer-base64
+// To run the resulting code currently requires passing `--js_base_64` to node
+// or chrome.
+// [experimental]
+// [link]
+var JS_BASE64_API = false;
 
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]
