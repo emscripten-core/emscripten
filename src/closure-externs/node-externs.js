@@ -144,3 +144,15 @@ path.isAbsolute;
 path.posix;
 
 crypto.randomFillSync;
+
+
+// d8
+
+var os;
+
+/**
+ * @param {string} cmd
+ * @param {Array.<string>=} args
+ * @return {string}
+ */
+os.system = function (cmd, args) {};
