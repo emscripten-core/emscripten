@@ -16028,3 +16028,21 @@ addToLibrary({
     baseline_size = os.path.getsize('baseline.js')
     js_api_size = os.path.getsize('hello_world.js')
     self.assertLess(js_api_size, baseline_size)
+
+  @requires_v8
+  def test_getentropy_d8(self):
+    create_file('main.c', '''
+      #include "assert.h"
+      #include <unistd.h>
+
+      int main() {
+        char buf[100];
+        assert(getentropy(buf, sizeof(buf)) == 0);
+        return 0;
+      }
+    ''')
+
+    msg = 'randomFill not supported on d8 unless --enable-os-system is passed'
+    self.do_runf('main.c', msg, assert_returncode=1)
+    self.v8_args += ['--enable-os-system']
+    self.do_runf('main.c')
