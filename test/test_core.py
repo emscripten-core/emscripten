@@ -9569,7 +9569,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   @no_asan('ASan does not support WASM_WORKERS')
   @also_with_minimal_runtime
+  @also_with_modularize
   def test_wasm_worker_hello(self):
+    if self.is_wasm2js() and '-sMODULARIZE' in self.emcc_args:
+      self.skipTest('WASM2JS + MODULARIZE + WASM_WORKERS is not supported')
+    self.maybe_closure()
     self.do_run_in_out_file_test('wasm_worker/hello_wasm_worker.c', emcc_args=['-sWASM_WORKERS'])
 
   @node_pthreads
