@@ -23,7 +23,11 @@ async function reportResultToServer(result) {
 }
 
 function sendFileToServer(filename, contents) {
-  fetch(`${reportingURL}/?file=${encodeURIComponent(filename)}`, {method: "POST", body: contents});
+  fetch(`${reportingURL}/upload?file=${encodeURIComponent(filename)}`, { method: "POST", body: contents });
+}
+
+function logMessageToServer(filename, message) {
+  fetch(`${reportingURL}/log?file=${filename}`, { method: "POST", body: message })
 }
 
 function maybeReportResultToServer(result) {
@@ -36,7 +40,7 @@ function reportStderrToServer(message) {
   if (typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) {
     err(message);
   } else {
-    fetch(`${reportingURL}?stderr=${encodeURIComponent(message)}`);
+    logMessageToServer('stderr', message);
   }
 }
 
@@ -44,7 +48,7 @@ function reportStdoutToServer(message) {
   if (typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) {
     out(message);
   } else {
-    fetch(`${reportingURL}?stdout=${encodeURIComponent(message)}`);
+    logMessageToServer('stdout', message);
   }
 }
 
