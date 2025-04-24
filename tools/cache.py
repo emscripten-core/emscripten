@@ -177,6 +177,10 @@ def get(shortname, creator, what=None, force=False, quiet=False):
     logger.info(message)
     utils.safe_ensure_dirs(cachename.parent)
     creator(str(cachename))
+    # In embuilder/deferred building mode, the library is not actually compiled at
+    # "creation" time; instead, the ninja files are built up incrementally, and
+    # compiled all at once with a single ninja invocation. So in that case we
+    # can't assert that the library was correctly built here.
     if not os.getenv('EMBUILDER_PORT_BUILD_DEFERRED'):
       assert cachename.is_file()
     if not quiet:
