@@ -16032,7 +16032,7 @@ addToLibrary({
   @requires_v8
   def test_getentropy_d8(self):
     create_file('main.c', '''
-      #include "assert.h"
+      #include <assert.h>
       #include <unistd.h>
 
       int main() {
