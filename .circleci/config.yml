@@ -904,6 +904,12 @@ jobs:
     environment:
       EMTEST_LACKS_WEBGPU: "1"
     steps:
+      - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
+      - pip-install
+      - install-emsdk
       - run-tests-chrome:
           title: "browser"
           # Just tests that don't run in browser 2G mode
@@ -1113,9 +1119,7 @@ workflows:
       - test-other:
           requires:
             - build-linux
-      - test-browser-chrome:
-          requires:
-            - build-linux
+      - test-browser-chrome
       - test-browser-chrome-2gb:
           requires:
             - build-linux
