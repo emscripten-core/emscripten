@@ -900,10 +900,6 @@ jobs:
           # some native-dependent tests fail because of the lack of native
           # headers on emsdk-bundled clang
           test_targets: "other skip:other.test_native_link_error_message"
-          # There are tests that using libraries
-          # that are not included by "./embuilder build ALL".  For example the
-          # different variant of libSDL2_mixer is used by test_sdl2_mixer_wav
-          frozen_cache: false
   test-browser-chrome:
     executor: focal
     environment:
