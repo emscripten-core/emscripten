@@ -359,6 +359,10 @@ class sockets(BrowserCore):
     with NodeJsWebSocketEchoServerProcess():
       self.btest('sockets/test_sockets_send_while_connecting.c', emcc_args=['-DSOCKET_DEBUG'], expected='0')
 
+  def test_sockets_sendmsg_to_invalid_dest(self):
+    with NodeJsWebSocketEchoServerProcess():
+      self.btest('sockets/test_sockets_sendmsg_to_invalid_dest.c', emcc_args=['-DSOCKET_DEBUG', '-lsockfs.js'], expected='0')
+
 
 class sockets64(sockets):
   def setUp(self):

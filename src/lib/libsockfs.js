@@ -632,7 +632,7 @@ addToLibrary({
         // connect, and lie, saying the data was sent now.
         if (!dest || dest.socket.readyState !== dest.socket.OPEN) {
           // if we're not connected, open a new connection
-          if (sock.type === {{{ cDefs.SOCK_DGRAM }}}) {
+          if (!dest || sock.type === {{{ cDefs.SOCK_DGRAM }}}) {
             if (!dest || dest.socket.readyState === dest.socket.CLOSING || dest.socket.readyState === dest.socket.CLOSED) {
               dest = SOCKFS.websocket_sock_ops.createPeer(sock, addr, port);
             }
