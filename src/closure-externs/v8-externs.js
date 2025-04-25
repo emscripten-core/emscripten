@@ -33,8 +33,6 @@ var scriptArgs = [];
  */
 var quit = function(status) {};
 
-var os;
-
 /**
  * @param {string} cmd
  * @param {Array.<string>=} args
