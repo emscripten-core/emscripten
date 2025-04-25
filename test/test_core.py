@@ -7588,6 +7588,10 @@ void* operator new(size_t size) {
     self.emcc_args += ['-lembind', '-fno-rtti', '-frtti']
     self.do_run(src, '418\ndotest returned: 42\n')
 
+  @no_asan('ASan does not support WASM_WORKERS')
+  def test_embind_wasm_workers(self):
+    self.do_run_in_out_file_test('embind/test_embind_wasm_workers.cpp', emcc_args=['-lembind', '-sWASM_WORKERS'])
+
   @parameterized({
     '': ('DEFAULT', False),
     'all': ('ALL', False),
