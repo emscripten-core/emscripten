@@ -886,6 +886,7 @@ base align: 0, 0, 0, 0'''])
   def test_longjmp(self):
     self.do_core_test('test_longjmp.c')
 
+  @no_asan('ASan does not support WASM_WORKERS')
   def test_longjmp_wasm_workers(self):
     self.do_core_test('test_longjmp.c', emcc_args=['-sWASM_WORKERS'])
 
@@ -9566,14 +9567,22 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf('test_emscripten_async_load_script.c', emcc_args=['-sFORCE_FILESYSTEM'])
 
   @node_pthreads
+  @no_asan('ASan does not support WASM_WORKERS')
+  @also_with_minimal_runtime
+  @also_with_modularize
   def test_wasm_worker_hello(self):
+    if self.is_wasm2js() and '-sMODULARIZE' in self.emcc_args:
+      self.skipTest('WASM2JS + MODULARIZE + WASM_WORKERS is not supported')
+    self.maybe_closure()
     self.do_run_in_out_file_test('wasm_worker/hello_wasm_worker.c', emcc_args=['-sWASM_WORKERS'])
 
   @node_pthreads
+  @no_asan('ASan does not support WASM_WORKERS')
   def test_wasm_worker_malloc(self):
     self.do_run_in_out_file_test('wasm_worker/malloc_wasm_worker.c', emcc_args=['-sWASM_WORKERS'])
 
   @node_pthreads
+  @no_asan('ASan does not support WASM_WORKERS')
   def test_wasm_worker_wait_async(self):
     self.do_runf('atomic/test_wait_async.c', emcc_args=['-sWASM_WORKERS'])
 

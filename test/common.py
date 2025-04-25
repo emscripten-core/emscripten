@@ -2109,18 +2109,29 @@ def harness_server_func(in_queue, out_queue, port):
     def do_POST(self):
       urlinfo = urlparse(self.path)
       query = parse_qs(urlinfo.query)
-      if query['file']:
-        print('do_POST: got file: %s' % query['file'])
+      content_length = int(self.headers['Content-Length'])
+      post_data = self.rfile.read(content_length)
+      if urlinfo.path == '/log':
+        # Logging reported by reportStdoutToServer / reportStderrToServer.
+        #
+        # To automatically capture stderr/stdout message from browser tests, modify
+        # `captureStdoutStderr` in `test/browser_reporting.js`.
         filename = query['file'][0]
-        contentLength = int(self.headers['Content-Length'])
-        create_file(filename, self.rfile.read(contentLength), binary=True)
+        print(f"[client {filename}: '{post_data.decode()}']")
+        self.send_response(200)
+        self.end_headers()
+      elif urlinfo.path == '/upload':
+        filename = query['file'][0]
+        print(f'do_POST: got file: {filename}')
+        create_file(filename, post_data, binary=True)
         self.send_response(200)
         self.end_headers()
       else:
         print(f'do_POST: unexpected POST: {urlinfo.query}')
 
     def do_GET(self):
-      if self.path == '/run_harness':
+      info = urlparse(self.path)
+      if info.path == '/run_harness':
         if DEBUG:
           print('[server startup]')
         self.send_response(200)
@@ -2160,18 +2171,7 @@ def harness_server_func(in_queue, out_queue, port):
         self.end_headers()
         self.wfile.write(b'OK')
 
-      elif 'stdout=' in self.path or 'stderr=' in self.path:
-        '''
-          To get logging to the console from browser tests, add this to
-          print/printErr/the exception handler in src/shell.html:
-
-            fetch(encodeURI('http://localhost:8888?stdout=' + text));
-        '''
-        print('[client logging:', unquote_plus(self.path), ']')
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-      elif self.path == '/check':
+      elif info.path == '/check':
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()

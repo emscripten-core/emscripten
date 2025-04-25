@@ -30,6 +30,9 @@
 #if PROXY_TO_WORKER
 #error "-sPROXY_TO_WORKER is not supported with -sWASM_WORKERS"
 #endif
+#if WASM2JS && MODULARIZE
+#error "-sWASM=0 + -sMODULARIZE + -sWASM_WORKERS is not supported"
+#endif
 
 {{{
   const workerSupportsFutexWait = () => AUDIO_WORKLET ? "typeof AudioWorkletGlobalScope === 'undefined'" : '1';
@@ -37,7 +40,11 @@
 #if WASM_WORKERS == 2
     _wasmWorkerBlobUrl
 #elif MINIMAL_RUNTIME
+#if ENVIRONMENT_MAY_BE_NODE
+    Module['$wb'] || './${WASM_WORKER_FILE}'
+#else
     Module['$wb']
+#endif
 #else
     locateFile('${WASM_WORKER_FILE}')
 #endif
@@ -195,7 +202,11 @@ if (ENVIRONMENT_IS_WASM_WORKER
       '$ww': _wasmWorkersID,
 #if MINIMAL_RUNTIME
       'wasm': Module['wasm'],
+#if ENVIRONMENT_MAY_BE_NODE
+      'js': Module['js'] || './{{{ TARGET_JS_NAME }}}',
+#else
       'js': Module['js'],
+#endif
       'mem': wasmMemory,
 #else
       'wasm': wasmModule,
@@ -204,12 +215,6 @@ if (ENVIRONMENT_IS_WASM_WORKER
 #endif
       'sb': stackLowestAddress, // sb = stack bottom (lowest stack address, SP points at this when stack is full)
       'sz': stackSize,          // sz = stack size
-#if USE_OFFSET_CONVERTER
-      'wasmOffsetData': wasmOffsetConverter,
-#endif
-#if LOAD_SOURCE_MAP
-      'wasmSourceMapData': wasmSourceMap,
-#endif
     });
     worker.onmessage = _wasmWorkerRunPostMessage;
 #if ENVIRONMENT_MAY_BE_NODE

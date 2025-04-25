@@ -546,7 +546,6 @@ jobs:
             asan.test_dlfcn_basic
             asan.test_async_hello_jspi
             asan.test_cubescript
-            asan.test_wasm_worker_hello
             asan.test_externref_emjs_dynlink
             asan.test_asyncify_longjmp
             asan.test_pthread_run_on_main_thread
@@ -905,6 +904,12 @@ jobs:
     environment:
       EMTEST_LACKS_WEBGPU: "1"
     steps:
+      - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
+      - pip-install
+      - install-emsdk
       - run-tests-chrome:
           title: "browser"
           # Just tests that don't run in browser 2G mode
@@ -1114,9 +1119,7 @@ workflows:
       - test-other:
           requires:
             - build-linux
-      - test-browser-chrome:
-          requires:
-            - build-linux
+      - test-browser-chrome
       - test-browser-chrome-2gb:
           requires:
             - build-linux

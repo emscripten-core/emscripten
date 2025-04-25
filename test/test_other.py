@@ -5734,7 +5734,7 @@ int main() {
         if safe:
           cmd += ['-sSAFE_HEAP']
         if emulate_casts:
-          cmd += ['-sEMULATE_FUNCTION_POINTER_CASTS', '-Wno-deprecated']
+          cmd += ['-sEMULATE_FUNCTION_POINTER_CASTS']
         if relocatable:
           cmd += ['-sRELOCATABLE'] # disables asm-optimized safe heap
         print(cmd)
@@ -12599,7 +12599,7 @@ int main(void) {
         }
       }
     ''')
-    self.do_runf('src.c', 'ok\ndone\n', emcc_args=['-Wno-deprecated', '-sEMULATE_FUNCTION_POINTER_CASTS'])
+    self.do_runf('src.c', 'ok\ndone\n', emcc_args=['-sEMULATE_FUNCTION_POINTER_CASTS'])
 
   def test_no_lto(self):
     # This used to fail because settings.LTO didn't reflect `-fno-lto`.
@@ -14983,12 +14983,12 @@ out.js
   @node_pthreads
   def test_dbg(self):
     create_file('pre.js', '''
-    dbg('start');
-    Module.onRuntimeInitialized = () => dbg('done init');
+    dbg('start', { foo: 1});
+    Module.onRuntimeInitialized = () => dbg('done init', { bar: 1});
     ''')
     expected = '''\
-start
-w:0,t:0x[0-9a-fA-F]+: done init
+start { foo: 1 }
+w:0,t:0x[0-9a-fA-F]+: done init { bar: 1 }
 hello, world!
 w:0,t:0x[0-9a-fA-F]+: native dbg message
 w:0,t:0x[0-9a-fA-F]+: hello
@@ -16018,3 +16018,14 @@ addToLibrary({
                  output_suffix='.mjs',
                  emcc_args=['--pre-js', 'pre.js',
                             '--extern-post-js', test_file('modularize_post_js.js')] + args)
+
+  @requires_node_canary
+  def test_js_base64_api(self):
+    self.node_args += ['--js_base_64']
+    self.do_runf('hello_world.c', 'hello, world!', emcc_args=['-sSINGLE_FILE'], output_basename='baseline')
+    self.do_runf('hello_world.c', 'hello, world!', emcc_args=['-sSINGLE_FILE', '-sJS_BASE64_API', '-Wno-experimental'])
+    # We expect the resulting JS file to be smaller because it doesn't contain the
+    # base64 decoding code
+    baseline_size = os.path.getsize('baseline.js')
+    js_api_size = os.path.getsize('hello_world.js')
+    self.assertLess(js_api_size, baseline_size)
