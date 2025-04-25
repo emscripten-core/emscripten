@@ -6,7 +6,7 @@
 
 """This tool extracts native/C signature information for JS library functions
 
-It generates a file called `src/libsigs.js` which contains `__sig` declarations
+It generates a file called `src/lib/libsigs.js` which contains `__sig` declarations
 for the majority of JS library functions.
 """
 
@@ -304,8 +304,6 @@ def extract_sig_info(sig_info, extra_settings=None, extra_cflags=None, cxx=False
     'FETCH': 1,
     'PTHREADS': 1,
     'SHARED_MEMORY': 1,
-    'AUDIO_WORKLET': 1,
-    'WASM_WORKERS': 1,
     'JS_LIBRARIES': [
       'libwebsocket.js',
       'libexports.js',
@@ -377,7 +375,7 @@ def extract_sig_info(sig_info, extra_settings=None, extra_cflags=None, cxx=False
 
 def main(args):
   parser = argparse.ArgumentParser()
-  parser.add_argument('-o', '--output', default='src/libsigs.js')
+  parser.add_argument('-o', '--output', default='src/lib/libsigs.js')
   parser.add_argument('-r', '--remove', action='store_true', help='remove from JS library files any `__sig` entries that are part of the auto-generated file')
   parser.add_argument('-u', '--update', action='store_true', help='update with JS library files any `__sig` entries that are part of the auto-generated file')
   args = parser.parse_args()
@@ -391,7 +389,7 @@ def main(args):
                               'BUILD_AS_WORKER': 1,
                               'LINK_AS_CXX': 1,
                               'AUTO_JS_LIBRARIES': 0}, cxx=True)
-  extract_sig_info(sig_info, {'WASM_WORKERS': 1, 'JS_LIBRARIES': ['libwasm_worker.js']})
+  extract_sig_info(sig_info, {'AUDIO_WORKLET': 1, 'WASM_WORKERS': 1, 'JS_LIBRARIES': ['libwasm_worker.js', 'libwebaudio.js']})
   extract_sig_info(sig_info, {'USE_GLFW': 3}, ['-DGLFW3'])
   extract_sig_info(sig_info, {'JS_LIBRARIES': ['libembind.js', 'libemval.js'],
                               'USE_SDL': 0,

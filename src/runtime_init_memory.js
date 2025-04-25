@@ -12,9 +12,6 @@
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 
 function initMemory() {
-#if AUDIO_WORKLET
-  if (!ENVIRONMENT_IS_AUDIO_WORKLET)
-#endif
   {{{ runIfWorkerThread('return') }}}
 
 #if expectToReceiveOnModule('wasmMemory')

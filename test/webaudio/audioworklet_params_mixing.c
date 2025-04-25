@@ -22,7 +22,8 @@ bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, Audi
 #endif
 
   // Single stereo output
-  assert(numOutputs == 1 && outputs[0].numberOfChannels == 2);
+  assert(numOutputs == 1);
+  assert(outputs[0].numberOfChannels == 2);
   int outSamplesPerChannel = outputs[0].samplesPerChannel;
   for (int n = 0; n < numInputs; n++) {
     // And all inputs are also stereo (or disabled)

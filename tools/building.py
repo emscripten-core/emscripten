@@ -605,6 +605,7 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
   args += ['--language_out', 'NO_TRANSPILE']
   # Tell closure never to inject the 'use strict' directive.
   args += ['--emit_use_strict=false']
+  args += ['--assume_static_inheritance_is_not_used=false']
 
   if settings.IGNORE_CLOSURE_COMPILER_ERRORS:
     args.append('--jscomp_off=*')
