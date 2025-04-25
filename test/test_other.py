@@ -11794,8 +11794,6 @@ int main () {
       return ' ({:+.2f}%)'.format((actual - expected) * 100.0 / expected)
 
     outputs = ['a.html', 'a.js']
-    if '-sWASM_WORKERS' in sources:
-      outputs += ['a.ww.js']
 
     args = smallest_code_size_args[:]
 

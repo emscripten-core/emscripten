@@ -1081,10 +1081,6 @@ function getPerformanceNow() {
   }
 }
 
-function implicitSelf() {
-  return ENVIRONMENT.includes('node') ? 'self.' : '';
-}
-
 function ENVIRONMENT_IS_MAIN_THREAD() {
   return `(!${ENVIRONMENT_IS_WORKER_THREAD()})`;
 }
@@ -1143,7 +1139,6 @@ addToCompileTimeContext({
   getPerformanceNow,
   getUnsharedTextDecoderView,
   hasExportedSymbol,
-  implicitSelf,
   isSymbolNeeded,
   makeDynCall,
   makeEval,

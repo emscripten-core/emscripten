@@ -21,8 +21,30 @@
 #include "runtime_asan.js"
 #endif
 
+#if PTHREADS || WASM_WORKERS
+#if !MINIMAL_RUNTIME
+var wasmModuleReceived;
+#endif
+
+#if ENVIRONMENT_MAY_BE_NODE
+if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
+  // Create as web-worker-like an environment as we can.
+  var parentPort = worker_threads['parentPort'];
+  parentPort.on('message', (msg) => global.onmessage?.({ data: msg }));
+  Object.assign(globalThis, {
+    self: global,
+    postMessage: (msg) => parentPort['postMessage'](msg),
+  });
+}
+#endif // ENVIRONMENT_MAY_BE_NODE
+#endif
+
 #if PTHREADS
 #include "runtime_pthread.js"
+#endif
+
+#if WASM_WORKERS
+#include "wasm_worker.js"
 #endif
 
 #if LOAD_SOURCE_MAP

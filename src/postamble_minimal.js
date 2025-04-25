@@ -95,7 +95,7 @@ var wasmExports;
 var wasmModule;
 #endif
 
-#if PTHREADS
+#if PTHREADS || WASM_WORKERS
 function loadModule() {
   assignWasmImports();
 #endif
@@ -255,12 +255,12 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #endif // ASSERTIONS || WASM == 2
 );
 
-#if PTHREADS
+#if PTHREADS || WASM_WORKERS
 }
 
-if (!ENVIRONMENT_IS_PTHREAD) {
-  // When running in a pthread we delay module loading untill we have
-  // received the module via postMessage
-  loadModule();
-}
+// When running in a background thread we delay module loading until we have
+#if AUDIO_WORKLET
+if (ENVIRONMENT_IS_AUDIO_WORKLET) loadModule();
+#endif
+{{{ runIfMainThread('loadModule();') }}}
 #endif

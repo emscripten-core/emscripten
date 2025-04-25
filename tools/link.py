@@ -1405,9 +1405,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.WASM_WORKERS:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$_wasmWorkerInitializeRuntime']
-    # set location of Wasm Worker bootstrap JS file
-    if settings.WASM_WORKERS == 1:
-      settings.WASM_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.ww.js'
     add_system_js_lib('libwasm_worker.js')
 
   # Set min browser versions based on certain settings such as WASM_BIGINT,
@@ -2176,10 +2173,6 @@ def phase_final_emitting(options, target, js_target, wasm_target):
 
   target_dir = os.path.dirname(os.path.abspath(target))
 
-  # Deploy the Wasm Worker bootstrap file as an output file (*.ww.js)
-  if settings.WASM_WORKERS == 1:
-    create_worker_file('src/wasm_worker.js', target_dir, settings.WASM_WORKER_FILE, options)
-
   # Deploy the Audio Worklet module bootstrap file (*.aw.js)
   if settings.AUDIO_WORKLET:
     audio_worklet_file = unsuffixed_basename(js_target) + '.aw.js'
@@ -2444,6 +2437,15 @@ def node_pthread_detection():
     return "require('worker_threads').workerData === 'em-pthread'\n"
 
 
+def node_ww_detection():
+  # Under node we detect that we are running in a wasm worker by checking the
+  # workerData property.
+  if settings.EXPORT_ES6:
+    return "(await import('worker_threads')).workerData === 'em-ww';\n"
+  else:
+    return "require('worker_threads').workerData === 'em-ww'\n"
+
+
 def modularize():
   global final_js
   logger.debug(f'Modularizing, assigning to var {settings.EXPORT_NAME}')
@@ -2469,7 +2471,7 @@ def modularize():
       'generated_js': generated_js
     }
 
-  if settings.MINIMAL_RUNTIME and not settings.PTHREADS:
+  if settings.MINIMAL_RUNTIME and not settings.PTHREADS and not settings.WASM_WORKERS:
     # Single threaded MINIMAL_RUNTIME programs do not need access to
     # document.currentScript, so a simple export declaration is enough.
     src = f'var {settings.EXPORT_NAME} = {wrapper_function};'
@@ -2535,6 +2537,26 @@ if (typeof exports === 'object' && typeof module === 'object') {
       src += 'isPthread && init();\n'
     else:
       src += 'isPthread && %s();\n' % settings.EXPORT_NAME
+
+  if settings.WASM_WORKERS:
+    # Same as above for for WASM_WORKERS
+    # Normally this detection is done when the module is itself run but
+    # when running in MODULARIZE mode we need use this to know if we should
+    # run the module constructor on startup (true only for pthreads).
+    if settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WORKER:
+      src += "var isWW = globalThis.self?.name == 'em-ww';\n"
+      # In order to support both web and node we also need to detect node here.
+      if settings.ENVIRONMENT_MAY_BE_NODE:
+        if not settings.PTHREADS:
+          src += "var isNode = typeof globalThis.process?.versions?.node == 'string';\n"
+        src += f'if (isNode) isWW = {node_ww_detection()}\n'
+    elif settings.ENVIRONMENT_MAY_BE_NODE:
+      src += f'var isWW = {node_ww_detection()}\n'
+    src += '// When running as a wasm worker, construct a new instance on startup\n'
+    if settings.MODULARIZE == 'instance':
+      src += 'isWW && init();\n'
+    else:
+      src += 'isWW && %s();\n' % settings.EXPORT_NAME
 
   final_js += '.modular.js'
   write_file(final_js, src)

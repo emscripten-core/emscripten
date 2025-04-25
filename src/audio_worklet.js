@@ -140,6 +140,9 @@ function createWasmAudioWorkletProcessor(audioParams) {
 class BootstrapMessages extends AudioWorkletProcessor {
   constructor(arg) {
     super();
+    // Audio worklets need to show up as wasm workers.  This is the way we signal
+    // that.
+    globalThis.name = 'em-ww';
     // Initialize the global Emscripten Module object that contains e.g. the
     // Wasm Module and Memory objects.  After this we are ready to load in the
     // main application JS script, which the main thread will addModule()
