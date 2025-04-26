@@ -1,4 +1,12 @@
-side_module_trampoline
+Suspending test
+side_module_trampoline_a
+side_module_trampoline_b
 sleeping
 slept
-done 77
+okay 77
+Non suspending test
+side_module_trampoline_a
+side_module_trampoline_b
+sync
+okay 77
+done

@@ -594,6 +594,137 @@ var LibraryDylink = {
   },
 #endif
 
+#if JSPI
+  $stubImportModuleCache: new Map(),
+  $getStubImportModule__deps: [
+    "$generateFuncType",
+    "$uleb128Encode",
+    "$stubImportModuleCache",
+  ],
+  // We need to call out to JS to resolve the function, but then make the actual
+  // onward call from WebAssembly. The JavaScript $resolve function is
+  // responsible for putting the appropriate function in the table. When the sig
+  // is ii, the wat for the generated module looks like this:
+  //
+  // (module
+  //   (type $ii (func (param i32) (result i32)))
+  //   (func $resolveFunc (import "e" "r") (result (ref null $ii)))
+  //   (global $resolved (mut (ref null $ii)) (ref.null $ii))
+  //   (func (export "o") (param $p1 i32) (result i32)
+  //     global.get $resolved
+  //     ref.is_null
+  //     if
+  //       call $resolveFunc
+  //       global.set $resolved
+  //     end
+  //     local.get $p1
+  //     global.get $resolved
+  //     call_ref $ii
+  //   )
+  // )
+  $getStubImportModule: (sig) => {
+    var cached = stubImportModuleCache.get(sig);
+    if (cached) {
+      return cached;
+    }
+    var bytes = [
+      0x00, 0x61, 0x73, 0x6d, // Magic number
+      0x01, 0x00, 0x00, 0x00, // version 1
+      0x01, // Type section code
+    ];
+    var typeSectionBody = [
+      0x02, // count: 2
+    ];
+
+    // Type 0 is "sig"
+    generateFuncType(sig, typeSectionBody);
+    // Type 1 is (void) => (func ref to function of signature sig)
+    typeSectionBody.push(0x60 /* form: func */);
+    typeSectionBody.push(0x00); // 0 args
+    typeSectionBody.push(0x01, 0x63, 0x00); // (ref nullable func type 0)
+
+    uleb128Encode(typeSectionBody.length, bytes);
+    bytes.push(...typeSectionBody);
+
+    // static sections
+    bytes.push(
+      // Import section
+      0x02, 0x07,
+      0x01, // 1 import
+        0x01, 0x65, // e
+        0x01, 0x72, // r
+        0x00, 0x01, // function of type 0 ('f')
+
+      // Function section
+      0x03, 0x02,
+      0x01, 0x00,  // One function of type 0 (sig)
+
+      // Globals section
+      0x06, 0x07,
+      0x01, // one global
+      0x63, 0x00, 0x01, // (ref nullable func type 0) mutable
+      0xd0, 0x00, 0x0b, // initialized to ref.null (func type 0)
+
+      // Export section
+      0x07, 0x05,
+      0x01, // one export
+      0x01, 0x6f, // o
+      0x00, 0x01, // function at index 1
+    );
+    bytes.push(0x0a); // Code section
+    var codeBody = [
+      0x00, // 0 locals
+        0x23, 0x00, // global.get 0
+        0xd1, // ref.is_null
+        0x04, // if
+          0x40, 0x10, 0x00, // Call function 0
+          0x24, 0x00, // global.set 0
+        0x0b, // end
+    ];
+    for (var i = 0; i < sig.length - 1; i++) {
+      codeBody.push(0x20, i);
+    }
+
+    codeBody.push(
+        0x23, 0x00, // global.get 0
+        0x14, 0x00, // call_ref type 0
+      0x0b // end
+    );
+    var codeSectionBody = [0x01];
+    uleb128Encode(codeBody.length, codeSectionBody);
+    codeSectionBody.push(...codeBody);
+    uleb128Encode(codeSectionBody.length, bytes);
+    bytes.push(...codeSectionBody);
+    var result = new WebAssembly.Module(new Uint8Array(bytes));
+    stubImportModuleCache.set(sig, result);
+    return result;
+  },
+
+  $wasmSigToEmscripten: (type) => {
+    var lookup = {i32: 'i', i64: 'j', f32: 'f', f64: 'd', externref: 'e'};
+    var sig = 'v';
+    if (type.results.length) {
+      sig = lookup[type.results[0]];
+    }
+    for (var v of type.parameters) {
+      sig += lookup[v];
+    }
+    return sig;
+  },
+  $getStubImportTypes: (mod) => {
+    // Assumes --experimental-wasm-type-reflection to get type field of WebAssembly.Module.imports().
+    // TODO: Make this work without it.
+    var stubTypes = {}
+    for (var {name, kind, type} of WebAssembly.Module.imports(mod)) {
+      if (kind !== 'function') {
+        continue;
+      }
+      stubTypes[name] = type;
+    }
+    return stubTypes;
+  },
+#endif // JSPI
+
   // Loads a side module from binary data or compiled Module. Returns the module's exports or a
   // promise that resolves to its exports if the loadAsync flag is set.
   $loadWebAssemblyModule__docs: `
@@ -610,6 +741,11 @@ var LibraryDylink = {
     '$updateTableMap',
     '$wasmTable',
     '$addOnPostCtor',
+#if JSPI
+    '$getStubImportModule',
+    '$wasmSigToEmscripten',
+    '$getStubImportTypes',
+#endif
   ],
   $loadWebAssemblyModule: (binary, flags, libName, localScope, handle) => {
 #if DYLINK_DEBUG
@@ -677,20 +813,30 @@ var LibraryDylink = {
       // need to import their own symbols
       var moduleExports;
 
-      function resolveSymbol(sym) {
+      function resolveSymbol(sym, allowUndefined=false) {
         var resolved = resolveGlobalSymbol(sym).sym;
         if (!resolved && localScope) {
           resolved = localScope[sym];
         }
         if (!resolved) {
-          resolved = moduleExports[sym];
+          resolved = moduleExports?.[sym];
         }
 #if ASSERTIONS
-        assert(resolved, `undefined symbol '${sym}'. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment`);
+        if (!allowUndefined) {
+          assert(resolved, `undefined symbol '${sym}'. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment`);
+        }
+#endif
+#if JSPI
+        if (resolved?.orig) {
+          resolved = resolved.orig;
+        }
 #endif
         return resolved;
       }
 
+#if JSPI
+      var stubImportTypes = {};
+#endif
       // TODO kill ↓↓↓ (except "symbols local to this module", it will likely be
       // not needed if we require that if A wants symbols from B it has to link
       // to B explicitly: similarly to -Wl,--no-undefined)
@@ -733,16 +879,27 @@ var LibraryDylink = {
           // Return a stub function that will resolve the symbol
           // when first called.
           if (!(prop in stubs)) {
+#if JSPI
+#if ASSERTIONS
+            assert(prop in stubImportTypes, 'missing JSPI stub');
+#endif
+            var mod = getStubImportModule(wasmSigToEmscripten(stubImportTypes[prop]));
+            var r = () => resolveSymbol(prop);
+            var inst = new WebAssembly.Instance(mod, {e: {r}});
+            stubs[prop] = inst.exports.o;
+#else
             var resolved;
             stubs[prop] = (...args) => {
               resolved ||= resolveSymbol(prop);
               return resolved(...args);
             };
+#endif
           }
           return stubs[prop];
         }
       };
-      var proxy = new Proxy({}, proxyHandler);
+      var stubs = {};
+      var proxy = new Proxy(stubs, proxyHandler);
       var info = {
         'GOT.mem': new Proxy({}, GOTHandler),
         'GOT.func': new Proxy({}, GOTHandler),
@@ -885,18 +1042,29 @@ var LibraryDylink = {
         return (async () => {
           var instance;
           if (binary instanceof WebAssembly.Module) {
+#if JSPI
+            stubImportTypes = getStubImportTypes(binary);
+#endif
             instance = new WebAssembly.Instance(binary, info);
           } else {
+#if JSPI
+            binary = await WebAssembly.compile(binary);
+            stubImportTypes = getStubImportTypes(binary);
+            instance = await WebAssembly.instantiate(binary, info);
+#else
             // Destructuring assignment without declaration has to be wrapped
             // with parens or parser will treat the l-value as an object
             // literal instead.
             ({ module: binary, instance } = await WebAssembly.instantiate(binary, info));
+#endif
           }
           return postInstantiation(binary, instance);
         })();
       }
-
       var module = binary instanceof WebAssembly.Module ? binary : new WebAssembly.Module(binary);
+#if JSPI
+      stubImportTypes = getStubImportTypes(module);
+#endif
       var instance = new WebAssembly.Instance(module, info);
       return postInstantiation(module, instance);
     }
