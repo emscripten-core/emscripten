@@ -1261,6 +1261,7 @@ def run_wasm_bindgen(infile, outfile=None, args=[], **kwargs):  # noqa
     '--target',
     'emscripten',
     '--keep-lld-exports',
+    '--keep-debug',
     '--out-dir',
     bindgen_out_dir,
   ]
