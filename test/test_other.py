@@ -11725,6 +11725,7 @@ int main () {
       self.assertEqual(num_times_export_is_referenced, 1)
 
   @parameterized({
+    'audio_worklet': ('audio_worklet', False, True),
     'hello_world_wasm': ('hello_world', False, True),
     'hello_world_wasm2js': ('hello_world', True, True),
     'random_printf_wasm': ('random_printf', False),
@@ -11739,7 +11740,7 @@ int main () {
     'hello_embind': ('embind_hello', False),
   })
   @crossplatform
-  def test_minimal_runtime_code_size(self, test_name, js, compare_js_output=False):
+  def test_minimal_runtime_code_size(self, test_name, wasm2js, compare_js_output=False):
     smallest_code_size_args = ['-sMINIMAL_RUNTIME=2',
                                '-sENVIRONMENT=web',
                                '-sTEXTDECODER=2',
@@ -11763,8 +11764,6 @@ int main () {
                                '-DNDEBUG',
                                '-ffast-math']
 
-    wasm2js = ['-sWASM=0']
-
     math_sources = [test_file('code_size/math.c')]
     hello_world_sources = [test_file('small_hello_world.c'),
                            '-sMALLOC=none']
@@ -11778,6 +11777,7 @@ int main () {
                            '-sMODULARIZE']
     hello_webgl2_sources = hello_webgl_sources + ['-sMAX_WEBGL_VERSION=2']
     hello_wasm_worker_sources = [test_file('wasm_worker/wasm_worker_code_size.c'), '-sWASM_WORKERS', '-sENVIRONMENT=web,worker']
+    audio_worklet_sources = [test_file('webaudio/audioworklet.c'), '-sWASM_WORKERS', '-sAUDIO_WORKLET', '-sENVIRONMENT=web,worker', '-sTEXTDECODER=1']
     embind_hello_sources = [test_file('code_size/embind_hello_world.cpp'), '-lembind']
     embind_val_sources = [test_file('code_size/embind_val_hello_world.cpp'),
                           '-lembind',
@@ -11792,6 +11792,7 @@ int main () {
       'math': math_sources,
       'hello_webgl2': hello_webgl2_sources,
       'hello_wasm_worker': hello_wasm_worker_sources,
+      'audio_worklet': audio_worklet_sources,
       'embind_val': embind_val_sources,
       'embind_hello': embind_hello_sources,
     }[test_name]
@@ -11802,11 +11803,13 @@ int main () {
       return ' ({:+.2f}%)'.format((actual - expected) * 100.0 / expected)
 
     outputs = ['a.html', 'a.js']
+    if '-sAUDIO_WORKLET' in sources:
+      outputs += ['a.aw.js']
 
     args = smallest_code_size_args[:]
 
-    if js:
-      args += wasm2js
+    if wasm2js:
+      args += ['-sWASM=0']
       test_name += '_wasm2js'
     else:
       outputs += ['a.wasm']
