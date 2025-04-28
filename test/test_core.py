@@ -828,7 +828,7 @@ base align: 0, 0, 0, 0'''])
     self.emcc_args += [
       '-fno-builtin',
       path_from_root('system/lib/libc/sbrk.c'),
-      path_from_root('system/lib/emmalloc.c')
+      path_from_root('system/lib/emmalloc.c'),
     ]
     self.emcc_args += args
     self.do_run_in_out_file_test('core/test_emmalloc.c')
@@ -2110,7 +2110,7 @@ int main(int argc, char **argv) {
 
   @parameterized({
     'nogrow': ([],),
-    'grow': (['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=18MB'],)
+    'grow': (['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=18MB'],),
   })
   @no_asan('requires more memory when growing')
   @no_lsan('requires more memory when growing')
@@ -2124,7 +2124,7 @@ int main(int argc, char **argv) {
 
   @parameterized({
     'nogrow': (['-sABORTING_MALLOC=0'],),
-    'grow': (['-sABORTING_MALLOC=0', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=18MB'],)
+    'grow': (['-sABORTING_MALLOC=0', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=18MB'],),
   })
   @no_asan('requires more memory when growing')
   @no_lsan('requires more memory when growing')
@@ -3794,7 +3794,7 @@ ok
         "side.so",
         test_file("core/test_dlfcn_jspi_side.c"),
         "-sSIDE_MODULE",
-      ] + self.get_emcc_args()
+      ] + self.get_emcc_args(),
     )
     self.do_run_in_out_file_test("core/test_dlfcn_jspi.c", emcc_args=["side.so", "-sMAIN_MODULE=2"])
 
@@ -5812,7 +5812,7 @@ got: 10
   @no_wasmfs('wasmfs will (?) need a non-JS mechanism to ignore permissions during startup')
   @parameterized({
     '': [],
-    'minimal_runtime': ['-sMINIMAL_RUNTIME=1']
+    'minimal_runtime': ['-sMINIMAL_RUNTIME=1'],
   })
   def test_fs_no_main(self, *args):
     # library_fs.js uses hooks to enable ignoring of permisions up until ATMAINs are run.  This
@@ -5920,7 +5920,7 @@ Module.onRuntimeInitialized = () => {
 
   @parameterized({
     'sigint': (EM_SIGINT, 128 + EM_SIGINT, True),
-    'sigabrt': (EM_SIGABRT, 1, False)
+    'sigabrt': (EM_SIGABRT, 1, False),
   })
   @crossplatform
   def test_sigaction_default(self, signal, exit_code, assert_identical):
@@ -5931,7 +5931,7 @@ Module.onRuntimeInitialized = () => {
       test_file('test_sigaction_default.c'),
       args=[str(signal)],
       assert_identical=assert_identical,
-      assert_returncode=exit_code
+      assert_returncode=exit_code,
     )
 
   @crossplatform
@@ -6471,7 +6471,7 @@ void* operator new(size_t size) {
   @no_ubsan('test contains UB')
   @parameterized({
     '': ([],),
-    'nontrapping': (['-mnontrapping-fptoint'],)
+    'nontrapping': (['-mnontrapping-fptoint'],),
   })
   def test_sse1(self, args):
     src = test_file('sse/test_sse1.cpp')
@@ -6492,7 +6492,7 @@ void* operator new(size_t size) {
   @no_asan('local count too large')
   @parameterized({
     '': ([],),
-    'nontrapping': (['-mnontrapping-fptoint'],)
+    'nontrapping': (['-mnontrapping-fptoint'],),
   })
   def test_sse2(self, args):
     if self.is_wasm64():
@@ -6554,7 +6554,7 @@ void* operator new(size_t size) {
   @requires_native_clang
   @parameterized({
     '': (False,),
-    '2': (True,)
+    '2': (True,),
   })
   def test_sse4(self, use_4_2):
     msse4 = '-msse4.2' if use_4_2 else '-msse4'
@@ -6574,7 +6574,7 @@ void* operator new(size_t size) {
   @no_ubsan('local count too large')
   @parameterized({
     '': ([],),
-    'nontrapping': (['-mnontrapping-fptoint'],)
+    'nontrapping': (['-mnontrapping-fptoint'],),
   })
   def test_avx(self, args):
     src = test_file('sse/test_avx.cpp')
@@ -6593,7 +6593,7 @@ void* operator new(size_t size) {
   @no_ubsan('local count too large')
   @parameterized({
     '': ([],),
-    'nontrapping': (['-mnontrapping-fptoint'],)
+    'nontrapping': (['-mnontrapping-fptoint'],),
   })
   def test_avx2(self, args):
     src = test_file('sse/test_avx2.cpp')
@@ -6634,7 +6634,7 @@ void* operator new(size_t size) {
       self.emcc_args += ['-sFORCE_FILESYSTEM']
 
     self.add_pre_run("FS.createDataFile('/', 'font.ttf', %s, true, false, false);" % str(
-      list(bytearray(read_binary(test_file('freetype/LiberationSansBold.ttf'))))
+      list(bytearray(read_binary(test_file('freetype/LiberationSansBold.ttf')))),
     ))
 
     # Not needed for js, but useful for debugging
@@ -6686,7 +6686,7 @@ void* operator new(size_t size) {
   @is_slow_test
   @parameterized({
     'cmake': (True,),
-    'configure': (False,)
+    'configure': (False,),
   })
   def test_zlib(self, use_cmake):
     if WINDOWS and not use_cmake:
@@ -6707,7 +6707,7 @@ void* operator new(size_t size) {
   @no_ubsan('it seems that bullet contains UB')
   @parameterized({
     'cmake': (True,),
-    'autoconf': (False,)
+    'autoconf': (False,),
   })
   # Called thus so it runs late in the alphabetical cycle... it is long
   def test_bullet(self, use_cmake):
@@ -6965,7 +6965,7 @@ void* operator new(size_t size) {
       cases += [
         ('EXPORTED', []),
         ('EXPORTED_DYNAMIC_SIG', ['-sDYNCALLS', '-sEXPORTED_RUNTIME_METHODS=dynCall']),
-        ('FROM_OUTSIDE', ['-sEXPORTED_RUNTIME_METHODS=dynCall_iiji'])
+        ('FROM_OUTSIDE', ['-sEXPORTED_RUNTIME_METHODS=dynCall_iiji']),
       ]
 
     for which, extra_args in cases:
@@ -7020,7 +7020,7 @@ void* operator new(size_t size) {
 
   @parameterized({
     '': ([],),
-    'files': (['-DUSE_FILES'],)
+    'files': (['-DUSE_FILES'],),
   })
   def test_FS_exports(self, extra_args):
     # these used to be exported, but no longer are by default
@@ -7163,7 +7163,7 @@ void* operator new(size_t size) {
   @no_wasm2js('TODO: nicely printed names in wasm2js')
   @parameterized({
     'normal': ([],),
-    'noexcept': (['-fno-exceptions'],)
+    'noexcept': (['-fno-exceptions'],),
   })
   def test_demangle_stacks(self, extra_args):
     self.emcc_args += extra_args
@@ -7320,7 +7320,7 @@ void* operator new(size_t size) {
     self.emcc_args += [
       '-lembind', '--post-js', 'post.js',
       # for extra coverage, test using pthreads
-      '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'
+      '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME',
     ]
     create_file('post.js', '''
       function printLerp() {
@@ -8661,7 +8661,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'default': ([],),
     'streaming': (['-sMINIMAL_RUNTIME_STREAMING_WASM_COMPILATION'],),
     'streaming_inst': (['-sMINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION'],),
-    'no_export': (['-sDECLARE_ASM_MODULE_EXPORTS=0'],)
+    'no_export': (['-sDECLARE_ASM_MODULE_EXPORTS=0'],),
   })
   @requires_node  # TODO: Support for non-Node.js shells under MINIMAL_RUNTIME
   def test_minimal_runtime_hello_world(self, args):
@@ -8770,7 +8770,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       assert_all=True,
       expected_output=[
         '.c:3:5: runtime error: left shift of negative value -1',
-        ".c:7:5: runtime error: left shift of 16 by 29 places cannot be represented in type 'int'"
+        ".c:7:5: runtime error: left shift of 16 by 29 places cannot be represented in type 'int'",
       ])
 
   @parameterized({
@@ -8813,7 +8813,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'g4': ('-gsource-map', [
       ".cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
       'in main ',
-      '.cpp:3:8'
+      '.cpp:3:8',
     ]),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
@@ -8890,37 +8890,37 @@ NODEFS is no longer included by default; build with -lnodefs.js
       'AddressSanitizer: heap-buffer-overflow on address',
     ], ['-fno-builtin-memset']),
     'stack_buffer_overflow': ('test_asan_stack_buffer_overflow.c', [
-      'AddressSanitizer: stack-buffer-overflow'
+      'AddressSanitizer: stack-buffer-overflow',
     ], ['-fno-builtin-memset']),
     'stack_buffer_overflow_js': ('test_asan_stack_buffer_overflow_js.c', [
-      'AddressSanitizer: stack-buffer-overflow'
+      'AddressSanitizer: stack-buffer-overflow',
     ], ['-fno-builtin-memset']),
     'bitfield_unround_size': ('test_asan_bitfield_unround_size.c', [
-      'AddressSanitizer: stack-buffer-overflow'
+      'AddressSanitizer: stack-buffer-overflow',
     ], ['-fno-builtin-memset']),
     'bitfield_unround_offset': ('test_asan_bitfield_unround_offset.c', [
-      'AddressSanitizer: stack-buffer-overflow'
+      'AddressSanitizer: stack-buffer-overflow',
     ], ['-fno-builtin-memset']),
     'bitfield_round': ('test_asan_bitfield_round.c', [
-      'AddressSanitizer: stack-buffer-overflow'
+      'AddressSanitizer: stack-buffer-overflow',
     ], ['-fno-builtin-memset']),
     'memset_null': ('test_asan_memset_null.c', [
-      'AddressSanitizer: null-pointer-dereference on address 0x00000001'
+      'AddressSanitizer: null-pointer-dereference on address 0x00000001',
     ], ['-fno-builtin-memset']),
     'memset_freed': ('test_asan_memset_freed.c', [
-      'AddressSanitizer: heap-use-after-free on address'
+      'AddressSanitizer: heap-use-after-free on address',
     ], ['-fno-builtin-memset']),
     'strcpy': ('test_asan_strcpy.c', [
-      'AddressSanitizer: heap-buffer-overflow on address'
+      'AddressSanitizer: heap-buffer-overflow on address',
     ], ['-fno-builtin-strcpy']),
     'memcpy': ('test_asan_memcpy.c', [
-      'AddressSanitizer: heap-buffer-overflow on address'
+      'AddressSanitizer: heap-buffer-overflow on address',
     ], ['-fno-builtin-memcpy']),
     'memchr': ('test_asan_memchr.c', [
-      'AddressSanitizer: global-buffer-overflow on address'
+      'AddressSanitizer: global-buffer-overflow on address',
     ], ['-fno-builtin-memchr']),
     'vector': ('test_asan_vector.cpp', [
-      'AddressSanitizer: container-overflow on address'
+      'AddressSanitizer: container-overflow on address',
     ]),
   })
   def test_asan(self, name, expected_output, cflags=None):
@@ -9221,7 +9221,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @parameterized({
     '': (['-sNO_AUTOLOAD_DYLIBS'],),
-    'autoload': ([],)
+    'autoload': ([],),
   })
   @needs_dylink
   @node_pthreads
@@ -9314,7 +9314,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @with_dylink_reversed
   @parameterized({
     '': ([],),
-    'pthreads': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '-pthread', '-Wno-experimental'],)
+    'pthreads': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '-pthread', '-Wno-experimental'],),
   })
   def test_Module_dynamicLibraries(self, args):
     # test that Module.dynamicLibraries works with pthreads
@@ -9481,7 +9481,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_asan('asyncify stack operations confuse asan')
   @parameterized({
     '': ([],),
-    'no_dynamic_execution': (['-sDYNAMIC_EXECUTION=0'],)
+    'no_dynamic_execution': (['-sDYNAMIC_EXECUTION=0'],),
   })
   def test_embind_lib_with_asyncify(self, args):
     self.emcc_args += [
@@ -9514,7 +9514,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @parameterized({
     '': [False],
-    'dynlink': [True]
+    'dynlink': [True],
   })
   @requires_node
   @no_wasm2js('wasm2js does not support reference types')

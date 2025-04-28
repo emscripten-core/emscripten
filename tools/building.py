@@ -513,7 +513,7 @@ def transpile(filename):
   config = {
     'sourceType': 'script',
     'presets': ['@babel/preset-env'],
-    'targets': {}
+    'targets': {},
   }
   if settings.MIN_CHROME_VERSION != UNSUPPORTED:
     config['targets']['chrome'] = str(settings.MIN_CHROME_VERSION)

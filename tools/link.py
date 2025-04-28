@@ -1095,7 +1095,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if settings.ASYNCIFY == 1:
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
         '__asyncify_state',
-        '__asyncify_data'
+        '__asyncify_data',
       ]
 
     if settings.MINIMAL_RUNTIME:
@@ -1447,13 +1447,13 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       'FS_createPath',
       'FS_createDataFile',
       'FS_createPreloadedFile',
-      'FS_unlink'
+      'FS_unlink',
     ]
     if not settings.WASMFS:
       # The old FS has some functionality that WasmFS lacks.
       settings.EXPORTED_RUNTIME_METHODS += [
         'FS_createLazyFile',
-        'FS_createDevice'
+        'FS_createDevice',
       ]
 
     settings.EXPORTED_RUNTIME_METHODS += [
@@ -2468,7 +2468,7 @@ def modularize():
 }
 ''' % {
       'maybe_async': maybe_async,
-      'generated_js': generated_js
+      'generated_js': generated_js,
     }
 
   if settings.MINIMAL_RUNTIME and not settings.PTHREADS and not settings.WASM_WORKERS:

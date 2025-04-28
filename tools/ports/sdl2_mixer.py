@@ -76,7 +76,7 @@ def get(ports, settings, shared):
     includes = [
       include_path,
       os.path.join(source_path, 'src'),
-      os.path.join(source_path, 'src', 'codecs')
+      os.path.join(source_path, 'src', 'codecs'),
     ]
     ports.build_port(
       source_path,

@@ -22,7 +22,7 @@ from tools import shared, utils
 actions = [
   ('npm packages', [
      'package.json',
-     'package-lock.json'
+     'package-lock.json',
    ], ['npm', 'ci']),
   ('create entry points', [
      'tools/maint/create_entry_points.py',

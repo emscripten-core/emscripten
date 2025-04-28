@@ -212,7 +212,7 @@ input_strings = [
   (0xE06B, 'LaunchApp1',         'DOM_PK_LAUNCH_APP_1'),
   (0xE06C, 'LaunchMail',         'DOM_PK_LAUNCH_MAIL'),
   (0xE06D, 'LaunchMediaPlayer',  'DOM_PK_LAUNCH_MEDIA_PLAYER'),
-  (0xE06D, 'MediaSelect',        'DOM_PK_MEDIA_SELECT', 'duplicate')
+  (0xE06D, 'MediaSelect',        'DOM_PK_MEDIA_SELECT', 'duplicate'),
   #  (0xE0F1, 'Lang2', 'DOM_PK_'), Hanja key
   #  (0xE0F2, 'Lang2', 'DOM_PK_'), Han/Yeong
 ]

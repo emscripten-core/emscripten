@@ -173,7 +173,7 @@ class NativeBenchmarker(Benchmarker):
       cmd = compiler + [
         '-fno-math-errno',
         filename,
-        '-o', filename + '.native'
+        '-o', filename + '.native',
       ] + self.args + shared_args + native_args + clang_native.get_clang_native_args()
       # print(cmd)
       run_process(cmd, env=clang_native.get_clang_native_env())
@@ -199,7 +199,7 @@ def run_binaryen_opts(filename, opts):
   run_process([
     os.path.join(building.get_binaryen_bin(), 'wasm-opt', '--all-features'),
     filename,
-    '-o', filename
+    '-o', filename,
   ] + opts)
 
 
@@ -234,7 +234,7 @@ class EmscriptenBenchmarker(Benchmarker):
       OPTIMIZATIONS,
       '-sINITIAL_MEMORY=256MB',
       '-sENVIRONMENT=node,shell',
-      '-o', final
+      '-o', final,
     ] + LLVM_FEATURE_FLAGS
     if shared_args:
       cmd += shared_args
@@ -331,7 +331,7 @@ class CheerpBenchmarker(Benchmarker):
         '-cheerp-linear-heap-size=256',
         '-cheerp-secondary-output-file=' + final.replace('.js', '.wasm'),
         filename,
-        '-o', final
+        '-o', final,
       ] + shared_args
       # print(' '.join(cmd))
       run_process(cmd, stdout=PIPE, stderr=PIPE)
@@ -371,7 +371,7 @@ named_benchmarkers = {
   'cherp-v8': CheerpBenchmarker('cheerp-v8-wasm', aot_v8),
   # TODO: ensure no baseline compiler is used, see v8
   'sm': EmscriptenBenchmarker('sm', config.SPIDERMONKEY_ENGINE),
-  'cherp-sm': CheerpBenchmarker('cheerp-sm-wasm', config.SPIDERMONKEY_ENGINE)
+  'cherp-sm': CheerpBenchmarker('cheerp-sm-wasm', config.SPIDERMONKEY_ENGINE),
 }
 
 for name in EMTEST_BENCHMARKERS.split(','):
@@ -411,7 +411,7 @@ class benchmark(common.RunnerCore):
       output = {
         'version': 1,
         'git_hash': '',
-        'results': cls.stats
+        'results': cls.stats,
       }
       utils.write_file('stats.json', json.dumps(output, indent=2) + '\n')
 
@@ -469,11 +469,11 @@ class benchmark(common.RunnerCore):
     self.stats.append({
       'key': {
         'test': name,
-        'units': 'bytes'
+        'units': 'bytes',
       },
       'measurements': {
-        'stats': stats
-      }
+        'stats': stats,
+      },
     })
 
   def test_primes(self, check=True):
@@ -750,7 +750,7 @@ class benchmark(common.RunnerCore):
           case 5: n = 12; break;
           default: printf("error: %d\\n", arg); return -1;
         }
-      '''
+      ''',
     )
     assert 'switch(arg)' in src
     self.do_benchmark('fannkuch', src, 'Pfannkuchen(')

@@ -19,7 +19,7 @@ VALID_OPTION_VALUES = {
   'disableJoystick': ['true', 'false'],
   'disableMultiWindow': ['true', 'false'],
   'disableWebGL2': ['true', 'false'],
-  'optimizationLevel': ['0', '1', '2', '3', 'g', 's', 'z']  # all -OX possibilities
+  'optimizationLevel': ['0', '1', '2', '3', 'g', 's', 'z'],  # all -OX possibilities
 }
 
 OPTIONS = {
@@ -36,7 +36,7 @@ opts: Dict[str, Union[str, bool]] = {
   'disableJoystick': False,
   'disableMultiWindow': False,
   'disableWebGL2': False,
-  'optimizationLevel': '2'
+  'optimizationLevel': '2',
 }
 
 port_name = 'contrib.glfw3'
