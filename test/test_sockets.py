@@ -41,7 +41,7 @@ def clean_processes(processes):
         pass
 
 
-class WebsockifyServerHarness():
+class WebsockifyServerHarness:
   def __init__(self, filename, args, listen_port, do_server_check=True):
     self.processes = []
     self.filename = filename
@@ -81,7 +81,7 @@ class WebsockifyServerHarness():
         proxy_sock = socket.create_connection(('localhost', self.listen_port), timeout=1)
         proxy_sock.close()
         break
-      except IOError:
+      except OSError:
         time.sleep(1)
     else:
       clean_processes(self.processes)
@@ -100,7 +100,7 @@ class WebsockifyServerHarness():
     clean_processes(self.processes)
 
 
-class CompiledServerHarness():
+class CompiledServerHarness:
   def __init__(self, filename, args, listen_port):
     self.processes = []
     self.filename = filename
@@ -134,7 +134,7 @@ class CompiledServerHarness():
 
 
 # Executes a native executable server process
-class BackgroundServerProcess():
+class BackgroundServerProcess:
   def __init__(self, args):
     self.processes = []
     self.args = args

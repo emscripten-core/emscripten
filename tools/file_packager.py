@@ -158,8 +158,7 @@ def has_hidden_attribute(filepath):
     return False
 
   try:
-    attrs = ctypes.windll.kernel32.GetFileAttributesW(
-        u'%s' % filepath)
+    attrs = ctypes.windll.kernel32.GetFileAttributesW(filepath)
     assert attrs != -1
     result = bool(attrs & 2)
   except Exception:
@@ -372,7 +371,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
   # read response files very early on
   try:
     args = substitute_response_files(sys.argv[1:])
-  except IOError as e:
+  except OSError as e:
     shared.exit_with_error(e)
 
   if '--help' in args:

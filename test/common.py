@@ -2078,7 +2078,7 @@ def harness_server_func(in_queue, out_queue, port):
         try:
           fsize = os.path.getsize(path)
           f = open(path, 'rb')
-        except IOError:
+        except OSError:
           self.send_error(404, f'File not found {path}')
           return None
         self.send_response(206)

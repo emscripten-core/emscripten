@@ -20,7 +20,7 @@ import sys
 import tempfile
 
 # We depend on python 3.8 features
-if sys.version_info < (3, 8):
+if sys.version_info < (3, 8): # noqa: UP036
   print(f'error: emscripten requires python 3.8 or above ({sys.executable} {sys.version})', file=sys.stderr)
   sys.exit(1)
 

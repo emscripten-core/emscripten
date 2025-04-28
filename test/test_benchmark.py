@@ -56,7 +56,7 @@ LLVM_FEATURE_FLAGS = ['-mnontrapping-fptoint']
 EMTEST_BENCHMARKERS = os.getenv('EMTEST_BENCHMARKERS', 'clang,v8,v8-lto,v8-ctors')
 
 
-class Benchmarker():
+class Benchmarker:
   # Whether to record statistics. Set by SizeBenchmarker.
   record_stats = False
 

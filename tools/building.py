@@ -677,7 +677,7 @@ def run_closure_cmd(cmd, filename, env):
 
   # Print input file (long wall of text!)
   if DEBUG == 2 and (proc.returncode != 0 or (len(proc.stderr.strip()) > 0 and closure_warnings['enabled'])):
-    input_file = open(filename, 'r').read().splitlines()
+    input_file = open(filename).read().splitlines()
     for i in range(len(input_file)):
       sys.stderr.write(f'{i + 1}: {input_file[i]}\n')
 
