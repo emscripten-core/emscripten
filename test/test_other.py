@@ -10272,9 +10272,8 @@ end
   # Tests that ports can add closure args by using settings.CLOSURE_ARGS
   @crossplatform
   def test_closure_args_from_port(self):
-    port = test_file('test_closure_args_port.py')
     self.run_process([EMCC, test_file('hello_world.c'),
-                      f'--use-port={port}',
+                      '--use-port', test_file('test_closure_args_port.py'),
                       '--closure=1',
                       '--pre-js', test_file('test_closure_externs_pre_js.js')])
 
