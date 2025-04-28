@@ -3,7 +3,7 @@ var captureStdio = false;
 
 var hasModule = typeof Module === 'object' && Module;
 
-var reportingURL = 'http://localhost:8888/';
+var reportingURL = 'http://localhost:8888';
 
 async function reportResultToServer(result) {
   if (reportResultToServer.reported) {
