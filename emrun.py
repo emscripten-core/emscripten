@@ -4,6 +4,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+# This file needs to run on older version of python too (even python 2!) so
+# suppress these upgrade warnings:
+# ruff: noqa: UP015, UP024, UP021, UP025
+
 """emrun: Implements machinery that allows running a .html page as if it was a
 standard executable file.
 

@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright 2013 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -242,7 +241,7 @@ class browser(BrowserCore):
   def require_jspi(self):
     if not is_chrome():
       self.skipTest(f'Current browser ({EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
-    super(browser, self).require_jspi()
+    super().require_jspi()
 
   def post_manual_reftest(self):
     assert os.path.exists('reftest.js')

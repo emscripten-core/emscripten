@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright 2013 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -6710,7 +6709,7 @@ Failed to open file for writing: /tmp/file; errno=2; Permission denied
   def test_embed_file_large(self):
     # If such long files are encoded on one line,
     # they overflow the interpreter's limit
-    large_size = int(1500000)
+    large_size = 1500000
     create_file('large.txt', 'x' * large_size)
     create_file('src.c', r'''
       #include <stdio.h>

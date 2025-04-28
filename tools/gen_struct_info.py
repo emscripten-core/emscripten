@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# coding=utf-8
 # Copyright 2013 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -336,7 +335,7 @@ def inspect_code(headers, cflags):
 def parse_json(path):
   header_files = []
 
-  with open(path, 'r') as stream:
+  with open(path) as stream:
     # Remove comments before loading the JSON.
     data = json.loads(re.sub(r'//.*\n', '', stream.read()))
 

@@ -535,7 +535,7 @@ def run(args):
   # read response files very early on
   try:
     args = substitute_response_files(args)
-  except IOError as e:
+  except OSError as e:
     exit_with_error(e)
 
   if '--help' in args:

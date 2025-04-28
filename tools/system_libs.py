@@ -736,7 +736,7 @@ class MTLibrary(Library):
 
   @classmethod
   def variations(cls):
-    combos = super(MTLibrary, cls).variations()
+    combos = super().variations()
 
     # These are mutually exclusive, only one flag will be set at any give time.
     return [combo for combo in combos if not combo['is_mt'] or not combo['is_ww']]
@@ -1406,7 +1406,7 @@ class libc_optz(libc):
     # EMCC_FORCE_STDLIBS can have a similar effect of forcing all libraries.
     # In both cases, the build is not one that is hyper-focused on code size,
     # and so optz is not that important.
-    return super(libc_optz, self).can_use() and settings.SHRINK_LEVEL >= 2 and \
+    return super().can_use() and settings.SHRINK_LEVEL >= 2 and \
         not settings.LINKABLE and not os.environ.get('EMCC_FORCE_STDLIBS')
 
 
@@ -1420,7 +1420,7 @@ class libprintf_long_double(libc):
         filenames=['vfprintf.c'])
 
   def can_use(self):
-    return super(libprintf_long_double, self).can_use() and settings.PRINTF_LONG_DOUBLE
+    return super().can_use() and settings.PRINTF_LONG_DOUBLE
 
 
 class libwasm_workers(DebugLibrary):
@@ -1496,7 +1496,7 @@ class libsockets(MuslInternalLibrary, MTLibrary):
       filenames=LIBC_SOCKETS)
 
   def can_use(self):
-    return super(libsockets, self).can_use() and not settings.PROXY_POSIX_SOCKETS
+    return super().can_use() and not settings.PROXY_POSIX_SOCKETS
 
 
 class libsockets_proxy(MTLibrary):
@@ -1508,7 +1508,7 @@ class libsockets_proxy(MTLibrary):
     return [utils.path_from_root('system/lib/websocket/websocket_to_posix_socket.c')]
 
   def can_use(self):
-    return super(libsockets_proxy, self).can_use() and settings.PROXY_POSIX_SOCKETS
+    return super().can_use() and settings.PROXY_POSIX_SOCKETS
 
 
 class crt1(MuslInternalLibrary):
@@ -2240,7 +2240,7 @@ class libstandalonewasm(MuslInternalLibrary):
     return files
 
   def can_use(self):
-    return super(libstandalonewasm, self).can_use() and settings.STANDALONE_WASM
+    return super().can_use() and settings.STANDALONE_WASM
 
 
 class libjsmath(Library):
@@ -2250,7 +2250,7 @@ class libjsmath(Library):
   src_files = ['jsmath.c']
 
   def can_use(self):
-    return super(libjsmath, self).can_use() and settings.JS_MATH
+    return super().can_use() and settings.JS_MATH
 
 
 class libstubs(DebugLibrary):
