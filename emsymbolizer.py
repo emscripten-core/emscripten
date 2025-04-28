@@ -187,7 +187,7 @@ class WasmSourceMap:
     return LocationInfo(
         self.sources[info.source] if info.source is not None else None,
         info.line,
-        info.column
+        info.column,
       )
 
 

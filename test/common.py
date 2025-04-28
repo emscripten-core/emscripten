@@ -461,12 +461,12 @@ def with_all_fs(func):
       assert fs is None
     func(self, *args, **kwargs)
 
-  parameterize(metafunc, {'': (False, None,),
-                          'nodefs': (False, 'nodefs',),
-                          'rawfs': (False, 'rawfs',),
-                          'wasmfs': (True, None,),
-                          'wasmfs_nodefs': (True, 'nodefs',),
-                          'wasmfs_rawfs': (True, 'rawfs',)})
+  parameterize(metafunc, {'': (False, None),
+                          'nodefs': (False, 'nodefs'),
+                          'rawfs': (False, 'rawfs'),
+                          'wasmfs': (True, None),
+                          'wasmfs_nodefs': (True, 'nodefs'),
+                          'wasmfs_rawfs': (True, 'rawfs')})
   return metafunc
 
 
@@ -1208,7 +1208,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       emcc_min_node_version = (
         int(emcc_min_node_version_str[0:2]),
         int(emcc_min_node_version_str[2:4]),
-        int(emcc_min_node_version_str[4:6])
+        int(emcc_min_node_version_str[4:6]),
       )
       if node_version < emcc_min_node_version:
         self.emcc_args += building.get_emcc_node_flags(node_version)
@@ -1279,7 +1279,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         ignorable_file_prefixes = [
           '/tmp/tmpaddon',
           '/tmp/circleci-no-output-timeout',
-          '/tmp/wasmer'
+          '/tmp/wasmer',
         ]
 
         left_over_files = set(temp_files_after_run) - set(self.temp_files_before_run)
@@ -1652,7 +1652,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       diff = ''.join(a.rstrip() + '\n' for a in diff)
       self.fail("Expected to find '%s' in '%s', diff:\n\n%s\n%s" % (
         limit_size(values[0]), limit_size(string), limit_size(diff),
-        additional_info
+        additional_info,
       ))
 
   def assertNotContained(self, value, string):
@@ -2011,7 +2011,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     self.emcc_args += [
       '-I' + test_file('third_party/freetype/include'),
-      '-I' + test_file('third_party/poppler/include')
+      '-I' + test_file('third_party/poppler/include'),
     ]
 
     # Poppler has some pretty glaring warning.  Suppress them to keep the
@@ -2329,7 +2329,7 @@ class BrowserCore(RunnerCore):
       try:
         self.harness_in_queue.put((
           'http://localhost:%s/%s' % (self.PORT, html_file),
-          self.get_dir()
+          self.get_dir(),
         ))
         if timeout is None:
           timeout = self.BROWSER_TIMEOUT

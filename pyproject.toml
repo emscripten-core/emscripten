@@ -20,6 +20,7 @@ lint.select = [
   "ASYNC",
   "B",
   "C90",
+  "COM",
   "E",
   "F",
   "PERF",

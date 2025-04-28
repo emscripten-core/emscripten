@@ -160,10 +160,10 @@ print('add boilerplate...')
 with open(os.path.join(out_dir, first_js), 'w') as fh1:
   fh1.write(
     (Path(os.path.dirname(os.path.dirname(__file__)), 'src', 'headless.js').read_text() % (
-      window_location, window_location.split('?')[-1], on_idle or 'null', dirs_to_drop
+      window_location, window_location.split('?')[-1], on_idle or 'null', dirs_to_drop,
     ) if shell else '') +
     Path(os.path.dirname(__file__), 'reproduceriter.js').read_text() +
-    Path(in_dir, first_js).read_text() + ('\nwindow.runEventLoop();\n' if shell else '')
+    Path(in_dir, first_js).read_text() + ('\nwindow.runEventLoop();\n' if shell else ''),
   )
 
 print('done!')

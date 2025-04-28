@@ -463,7 +463,7 @@ fi
   @parameterized({
     '': [False, False],
     'response_files': [True, False],
-    'relative': [False, True]
+    'relative': [False, True],
   })
   def test_emcc_cache_flag(self, use_response_files, relative):
     restore_and_set_up()

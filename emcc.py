@@ -67,13 +67,13 @@ SOURCE_EXTENSIONS = {
   '.m', '.mi', '.mm', '.mii', # ObjC/ObjC++
   '.bc', '.ll', # LLVM IR
   '.S', # asm with preprocessor
-  os.devnull # consider the special endingless filenames like /dev/null to be C
+  os.devnull, # consider the special endingless filenames like /dev/null to be C
 } | PREPROCESSED_EXTENSIONS
 
 # These symbol names are allowed in INCOMING_MODULE_JS_API but are not part of the
 # default set.
 EXTRA_INCOMING_JS_API = [
-  'fetchSettings'
+  'fetchSettings',
 ]
 
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2']
@@ -85,7 +85,7 @@ LINK_ONLY_FLAGS = {
     '--js-transform', '--oformat', '--output_eol', '--output-eol',
     '--post-js', '--pre-js', '--preload-file', '--profiling-funcs',
     '--proxy-to-worker', '--shell-file', '--source-map-base',
-    '--threadprofiler', '--use-preload-plugins'
+    '--threadprofiler', '--use-preload-plugins',
 }
 CLANG_FLAGS_WITH_ARGS = {
     '-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
@@ -94,7 +94,7 @@ CLANG_FLAGS_WITH_ARGS = {
     '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
     '-install_name', '-compatibility_version', '-mllvm',
     '-current_version', '-I', '-L', '-include-pch', '-u',
-    '-undefined', '-target', '-Xlinker', '-Xclang', '-z'
+    '-undefined', '-target', '-Xlinker', '-Xclang', '-z',
 }
 
 
