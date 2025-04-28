@@ -142,7 +142,6 @@ class EmccOptions:
     self.requested_debug = None
     self.emit_symbol_map = False
     self.use_closure_compiler = None
-    self.closure_args = []
     self.js_transform = None
     self.pre_js = [] # before all js
     self.post_js = [] # after all js
@@ -1125,7 +1124,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       consume_arg()
     elif check_arg('--closure-args'):
       args = consume_arg()
-      options.closure_args += shlex.split(args)
+      settings.CLOSURE_ARGS += shlex.split(args)
     elif check_arg('--closure'):
       options.use_closure_compiler = int(consume_arg())
     elif check_arg('--js-transform'):
