@@ -1,5 +1,5 @@
 // Set this to true to have stdout and stderr sent back to the server
-var captureStdoutStderr = false;
+var captureStdio = false;
 
 var hasModule = typeof Module === 'object' && Module;
 
@@ -76,6 +76,12 @@ function reportTopLevelError(e) {
 }
 
 if (typeof window === 'object' && window) {
+  const urlString = window.location.search;
+  const searchParams = new URLSearchParams(urlString);
+  if (searchParams.has('capture_stdio')) {
+    captureStdio = true;
+  }
+
   window.addEventListener('error', event => {
     reportTopLevelError(event.error || event)
   });
@@ -105,7 +111,8 @@ if (hasModule) {
     Module['onAbort'].proxy = true;
   }
 
-  if (captureStdoutStderr) {
+  if (captureStdio) {
+    console.log("enabling remote stdio logging");
     const origPrint = Module['print'];
     const origPrintErr = Module['printErr'];
 

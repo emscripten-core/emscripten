@@ -71,6 +71,7 @@ EMTEST_REBASELINE = None
 # 2: Log stdout and stderr configure/make. Print out subprocess commands that were executed.
 # 3: Log stdout and stderr, and pass VERBOSE=1 to CMake/configure/make steps.
 EMTEST_BUILD_VERBOSE = int(os.getenv('EMTEST_BUILD_VERBOSE', '0'))
+EMTEST_CAPTURE_STDIO = int(os.getenv('EMTEST_CAPTURE_STDIO', '0'))
 if 'EM_BUILD_VERBOSE' in os.environ:
   exit_with_error('EM_BUILD_VERBOSE has been renamed to EMTEST_BUILD_VERBOSE')
 
@@ -2247,6 +2248,7 @@ class BrowserCore(RunnerCore):
   unresponsive_tests = 0
 
   def __init__(self, *args, **kwargs):
+    self.capture_stdio = EMTEST_CAPTURE_STDIO
     super().__init__(*args, **kwargs)
 
   @classmethod
@@ -2405,7 +2407,8 @@ class BrowserCore(RunnerCore):
 
   def btest(self, filename, expected=None,
             post_build=None,
-            emcc_args=None, url_suffix='', timeout=None,
+            emcc_args=None,
+            timeout=None,
             extra_tries=1,
             reporting=Reporting.FULL,
             output_basename='test'):
@@ -2430,7 +2433,10 @@ class BrowserCore(RunnerCore):
       output = self.run_js('test.js')
       self.assertContained('RESULT: ' + expected[0], output)
     else:
-      self.run_browser(outfile + url_suffix, expected=['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
+      url = outfile
+      if self.capture_stdio:
+        url += "?capture_stdio"
+      self.run_browser(url, expected=['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
 
 
 ###################################################################################################
