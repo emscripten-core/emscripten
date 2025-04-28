@@ -34,6 +34,11 @@ var scriptArgs = [];
 var quit = function(status) {};
 
 /**
+ * @suppress {duplicate}
+ */
+var os;
+
+/**
  * @param {string} cmd
  * @param {Array.<string>=} args
  * @return {string}
