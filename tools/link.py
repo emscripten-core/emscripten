@@ -516,9 +516,6 @@ def setup_pthreads():
     '_emscripten_thread_crashed',
   ]
 
-  if settings.EMBIND:
-    settings.REQUIRED_EXPORTS.append('_embind_initialize_bindings')
-
   if settings.MAIN_MODULE:
     settings.REQUIRED_EXPORTS += [
       '_emscripten_dlsync_self',
@@ -1381,6 +1378,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     # Workaround for embind+LTO issue:
     # https://github.com/emscripten-core/emscripten/issues/21653
     settings.REQUIRED_EXPORTS.append('__getTypeName')
+    if settings.PTHREADS or settings.WASM_WORKERS:
+      settings.REQUIRED_EXPORTS.append('_embind_initialize_bindings')
 
   if options.emit_tsd:
     settings.EMIT_TSD = True
