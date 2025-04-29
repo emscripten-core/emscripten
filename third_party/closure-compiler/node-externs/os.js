@@ -27,6 +27,7 @@
  END_NODE_INCLUDE
  */
     
+var os = {};
 
 /**
  * @return {string}
