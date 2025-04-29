@@ -81,7 +81,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
 
     Future work: measure slowness of tests and sort accordingly.
     """
-    return reversed(sorted(self, key=str))
+    return sorted(self, key=str, reverse=True)
 
   def combine_results(self, result, buffered_results):
     print()

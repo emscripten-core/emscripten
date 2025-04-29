@@ -967,7 +967,7 @@ def get_browser_build_date(filename):
       info = plistlib.readPlist(plistfile)
       # Data in Info.plists is a bit odd, this check combo gives best information on each browser.
       if 'firefox' in filename.lower():
-        return '20' + '-'.join(map((lambda x: x.zfill(2)), info['CFBundleVersion'][2:].split('.')))
+        return '20' + '-'.join(x.zfill(2) for x in info['CFBundleVersion'][2:].split('.'))
   except Exception as e:
     logv(e)
 
