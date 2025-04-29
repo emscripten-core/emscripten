@@ -2128,7 +2128,7 @@ def harness_server_func(in_queue, out_queue, port):
         self.send_response(200)
         self.end_headers()
       else:
-        print(f'do_POST: unexpected POST: {urlinfo.query}')
+        print(f'do_POST: unexpected POST: {urlinfo}')
 
     def do_GET(self):
       info = urlparse(self.path)
@@ -2317,6 +2317,10 @@ class BrowserCore(RunnerCore):
   def run_browser(self, html_file, expected=None, message=None, timeout=None, extra_tries=1):
     if not has_browser():
       return
+    assert '?' not in html_file, 'URL params not supported'
+    url = html_file
+    if self.capture_stdio:
+      url += '?capture_stdio'
     if self.skip_exec:
       self.skipTest('skipping test execution: ' + self.skip_exec)
     if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
@@ -2328,7 +2332,7 @@ class BrowserCore(RunnerCore):
     if expected is not None:
       try:
         self.harness_in_queue.put((
-          'http://localhost:%s/%s' % (self.PORT, html_file),
+          'http://localhost:%s/%s' % (self.PORT, url),
           self.get_dir(),
         ))
         if timeout is None:
@@ -2357,6 +2361,9 @@ class BrowserCore(RunnerCore):
             if extra_tries > 0:
               print('[test error (see below), automatically retrying]')
               print(e)
+              if not self.capture_stdio:
+                print('[enabling stdio/stderr reporting]')
+                self.capture_stdio = True
               return self.run_browser(html_file, expected, message, timeout, extra_tries - 1)
             else:
               raise e
@@ -2433,10 +2440,7 @@ class BrowserCore(RunnerCore):
       output = self.run_js('test.js')
       self.assertContained('RESULT: ' + expected[0], output)
     else:
-      url = outfile
-      if self.capture_stdio:
-        url += "?capture_stdio"
-      self.run_browser(url, expected=['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
+      self.run_browser(outfile, expected=['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
 
 
 ###################################################################################################
