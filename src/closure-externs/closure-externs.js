@@ -268,3 +268,6 @@ Navigator.prototype.webkitGetUserMedia = function(
  * @type {symbol}
  */
 Symbol.dispose;
+
+// Common between node-externs and v8-externs
+var os = {};

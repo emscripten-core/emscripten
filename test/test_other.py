@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright 2013 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -475,7 +474,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   @parameterized({
     'c': [EMCC, '.c'],
-    'cxx': [EMXX, '.cpp']
+    'cxx': [EMXX, '.cpp'],
   })
   def test_emcc_2(self, compiler, suffix):
     # emcc src.cpp -c    and   emcc -c src.cpp -o src.[o|foo|so] ==> should always give an object file
@@ -503,7 +502,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   @parameterized({
     'c': [EMCC, '.c'],
-    'cxx': [EMXX, '.cpp']
+    'cxx': [EMXX, '.cpp'],
   })
   def test_emcc_3(self, compiler, suffix):
     # handle singleton archives
@@ -1934,7 +1933,7 @@ Module['postRun'] = () => {
     'embed_twice': (['--embed-file', 'somefile.txt', '--embed-file', 'somefile.txt'],),
     'preload': (['--preload-file', 'somefile.txt', '-sSTRICT'],),
     'preload_closure': (['--preload-file', 'somefile.txt', '-O2', '--closure=1'],),
-    'preload_and_embed': (['--preload-file', 'somefile.txt', '--embed-file', 'hello.txt'],)
+    'preload_and_embed': (['--preload-file', 'somefile.txt', '--embed-file', 'hello.txt'],),
   })
   @requires_node
   def test_include_file(self, args):
@@ -2677,7 +2676,7 @@ More info: https://emscripten.org
 
   @parameterized({
     '': ('out.js',),
-    'standalone': ('out.wasm',)
+    'standalone': ('out.wasm',),
   })
   def test_undefined_exported_function(self, outfile):
     cmd = [EMCC, test_file('hello_world.c'), '-o', outfile]
@@ -2705,7 +2704,7 @@ More info: https://emscripten.org
 
   @parameterized({
     '': ('out.js',),
-    'standalone': ('out.wasm',)
+    'standalone': ('out.wasm',),
   })
   def test_undefined_exported_js_function(self, outfile):
     cmd = [EMXX, test_file('hello_world.cpp'), '-o', outfile]
@@ -2728,7 +2727,7 @@ More info: https://emscripten.org
   @parameterized({
     'warn': ['WARN'],
     'error': ['ERROR'],
-    'ignore': [None]
+    'ignore': [None],
   })
   def test_undefined_symbols(self, args, action):
     create_file('main.c', r'''
@@ -2956,7 +2955,7 @@ More info: https://emscripten.org
 
   @parameterized({
     'wasm2js': ('wasm2js', ['minifyNames']),
-    'constructor': ('constructor', ['minifyNames'])
+    'constructor': ('constructor', ['minifyNames']),
   })
   @crossplatform
   def test_js_optimizer_py(self, name, passes):
@@ -3171,7 +3170,7 @@ More info: https://emscripten.org
       'ENV': {
         'PKG_CONFIG_LIBDIR': '/pkg/config/libdir',
         'PKG_CONFIG_PATH': '/pkg/config/path',
-      }
+      },
     })
 
     self.run_process(['scons', '--expected-env', expected_to_propagate])
@@ -3189,7 +3188,7 @@ More info: https://emscripten.org
       'ENV': {
         'PKG_CONFIG_LIBDIR': None,
         'PKG_CONFIG_PATH': None,
-      }
+      },
     })
 
     self.run_process(['scons', '--expected-env', expected_to_propagate])
@@ -3214,7 +3213,7 @@ More info: https://emscripten.org
       'ENV': {
         'PKG_CONFIG_LIBDIR': building_env['PKG_CONFIG_LIBDIR'],
         'PKG_CONFIG_PATH': building_env['PKG_CONFIG_PATH'],
-      }
+      },
     })
 
     self.run_process([path_from_root('emscons'), 'scons', '--expected-env', expected_to_propagate])
@@ -3326,7 +3325,7 @@ More info: https://emscripten.org
     'o2': ['-O2'],
     'o2_mem_growth': ['-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')],
     'o2_closure': ['-O2', '--closure=1', '--closure-args', '--externs ' + shlex.quote(test_file('embind/underscore-externs.js')), '-sASSERTIONS=1'],
-    'strict_js': ['-sSTRICT_JS']
+    'strict_js': ['-sSTRICT_JS'],
   })
   def test_embind(self, *extra_args):
     if '-sMEMORY64' in extra_args:
@@ -3374,7 +3373,7 @@ More info: https://emscripten.org
       [EMXX,
        test_file('embind/test_finalization.cpp'),
        '--pre-js', test_file('embind/test_finalization.js'),
-       '-lembind']
+       '-lembind'],
     )
     self.node_args += ['--expose-gc']
     output = self.run_js('a.out.js')
@@ -3389,7 +3388,7 @@ More info: https://emscripten.org
 
   @parameterized({
     '': [[]],
-    'asyncify': [['-sASYNCIFY=1']]
+    'asyncify': [['-sASYNCIFY=1']],
   })
   def test_embind_long_long(self, args):
     self.do_runf('embind/test_embind_long_long.cpp', '1000000000000n\n-1000000000000n',
@@ -3429,7 +3428,7 @@ More info: https://emscripten.org
   @requires_jspi
   @parameterized({
     '': [['-sJSPI_EXPORTS=async*']],
-    'deprecated': [['-Wno-deprecated', '-sASYNCIFY_EXPORTS=async*']]
+    'deprecated': [['-Wno-deprecated', '-sASYNCIFY_EXPORTS=async*']],
   })
   def test_jspi_wildcard(self, opts):
     self.emcc_args += opts
@@ -3449,7 +3448,7 @@ More info: https://emscripten.org
   @parameterized({
     'commonjs': [['-sMODULARIZE'], ['--module', 'commonjs', '--moduleResolution', 'node']],
     'esm': [['-sEXPORT_ES6'], ['--module', 'NodeNext', '--moduleResolution', 'nodenext']],
-    'esm_with_jsgen': [['-sEXPORT_ES6', '-sEMBIND_AOT'], ['--module', 'NodeNext', '--moduleResolution', 'nodenext']]
+    'esm_with_jsgen': [['-sEXPORT_ES6', '-sEMBIND_AOT'], ['--module', 'NodeNext', '--moduleResolution', 'nodenext']],
   })
   def test_embind_tsgen_end_to_end(self, opts, tsc_opts):
     # Check that TypeScript generation works and that the program is runs as
@@ -3595,7 +3594,7 @@ More info: https://emscripten.org
 
   @parameterized({
     '': [0],
-    'legacy': [1]
+    'legacy': [1],
   })
   def test_embind_tsgen_exceptions(self, legacy):
     if not legacy and shared.get_node_version(config.NODE_JS)[0] < 22:
@@ -6506,7 +6505,7 @@ int main()
       {'env': {'LC_ALL': 'en_GB', 'TZ': 'Europe/London'}, 'expected_utc': 'UTC+0100'},
       {'env': {'LC_ALL': 'th_TH', 'TZ': 'Asia/Bangkok'}, 'expected_utc': 'UTC+0700'},
       {'env': {'LC_ALL': 'ar-AE', 'TZ': 'Asia/Dubai'}, 'expected_utc': 'UTC+0400'},
-      {'env': {'LC_ALL': 'en-US', 'TZ': 'America/Los_Angeles'}, 'expected_utc': 'UTC-0700'}
+      {'env': {'LC_ALL': 'en-US', 'TZ': 'America/Los_Angeles'}, 'expected_utc': 'UTC-0700'},
     ]
 
     for tz_lang_info in tz_lang_infos:
@@ -6710,7 +6709,7 @@ Failed to open file for writing: /tmp/file; errno=2; Permission denied
   def test_embed_file_large(self):
     # If such long files are encoded on one line,
     # they overflow the interpreter's limit
-    large_size = int(1500000)
+    large_size = 1500000
     create_file('large.txt', 'x' * large_size)
     create_file('src.c', r'''
       #include <stdio.h>
@@ -8364,8 +8363,8 @@ addToLibrary({
   @parameterized({
     # atm we only test mimalloc here, as we don't need extra coverage for
     # dlmalloc/emmalloc, and this is the main test we have for mimalloc
-    'mimalloc':          ('mimalloc', ['-DWORKERS=1'],),
-    'mimalloc_pthreads': ('mimalloc', ['-DWORKERS=4', '-pthread'],),
+    'mimalloc':          ('mimalloc', ['-DWORKERS=1']),
+    'mimalloc_pthreads': ('mimalloc', ['-DWORKERS=4', '-pthread']),
   })
   def test_malloc_multithreading(self, allocator, args):
     args = args + [
@@ -8749,7 +8748,7 @@ addToLibrary({
       ['modulePostRun 0', False], # Not supported in minimal runtime.
       ['modulePostRun 1', False], # Not supported in minimal runtime.
       ['addAtPostRun 0', False],  # not with EXIT_RUNTIME (throws an exception during _proc_exit).
-      ['addAtPostRun 1', False]   # not with EXIT_RUNTIME (throws an exception during _proc_exit).
+      ['addAtPostRun 1', False],   # not with EXIT_RUNTIME (throws an exception during _proc_exit).
     ]
     if self.get_setting('MINIMAL_RUNTIME'):
       expected_order = [item[0] for item in expected_order if item[1]]
@@ -8760,7 +8759,7 @@ addToLibrary({
       '--js-library', 'lib.js',
       '--pre-js', 'pre.js',
       '--post-js', 'post.js',
-      '-sEXIT_RUNTIME'
+      '-sEXIT_RUNTIME',
     ]
     self.do_runf('src.c', '\n'.join(expected_order))
 
@@ -9609,7 +9608,7 @@ int main() {
     'noexcept': [],
     'except_emscripten': ['-sDISABLE_EXCEPTION_CATCHING=0'],
     'except_wasm': ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0'],
-    'except_wasm_legacy': ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS']
+    'except_wasm_legacy': ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS'],
   })
   def test_lto_libcxx(self, *args):
     self.run_process([EMXX, test_file('hello_libcxx.cpp'), '-flto'] + list(args))
@@ -9984,9 +9983,9 @@ int main() {
   @is_slow_test
   @also_with_wasm2js
   @parameterized({
-    '': (False, False,),
-    'debug': (True, False,),
-    'closure': (False, True,),
+    '': (False, False),
+    'debug': (True, False),
+    'closure': (False, True),
   })
   @parameterized({
     '': (True,),
@@ -10249,7 +10248,7 @@ end
       '--closure=1',
       '-Werror=closure',
       '-sINCLUDE_FULL_LIBRARY',
-      '-sUSE_WEBGPU'
+      '-sUSE_WEBGPU',
     ])
 
   # Tests --closure-args command line flag
@@ -10268,6 +10267,14 @@ end
                         '--closure=1',
                         '--pre-js', test_file('test_closure_externs_pre_js.js')] +
                        args)
+
+  # Tests that ports can add closure args by using settings.CLOSURE_ARGS
+  @crossplatform
+  def test_closure_args_from_port(self):
+    self.run_process([EMCC, test_file('hello_world.c'),
+                      '--use-port', test_file('test_closure_args_port.py'),
+                      '--closure=1',
+                      '--pre-js', test_file('test_closure_externs_pre_js.js')])
 
   # Tests that it is possible to enable the Closure compiler via --closure=1 even if any of the input files reside in a path with unicode characters.
   def test_closure_cmdline_utf8_chars(self):
@@ -10313,7 +10320,7 @@ end
       '-sFETCH',
       '-sFETCH_SUPPORT_INDEXEDDB',
       '-Werror=closure',
-      '--post-js=post.js'
+      '--post-js=post.js',
     ])
     code = read_file('hello_world.js')
     # `bar` method is used so should not be DCE'd
@@ -10496,13 +10503,13 @@ function js() { var x = !<->5.; }
 
     with env_modify({
       'EMCC_JSOPT_MIN_CHUNK_SIZE': '1',
-      'EMCC_JSOPT_MAX_CHUNK_SIZE': '1'
+      'EMCC_JSOPT_MAX_CHUNK_SIZE': '1',
     }):
       tiny = build()
 
     with env_modify({
       'EMCC_JSOPT_MIN_CHUNK_SIZE': '4294967296',
-      'EMCC_JSOPT_MAX_CHUNK_SIZE': '4294967296'
+      'EMCC_JSOPT_MAX_CHUNK_SIZE': '4294967296',
     }):
       huge = build()
 
@@ -10578,7 +10585,7 @@ int main() {
 
   @parameterized({
     'normal': [],
-    'profiling': ['--profiling'] # -gsource-map --profiling should still emit a source map; see #8584
+    'profiling': ['--profiling'], # -gsource-map --profiling should still emit a source map; see #8584
   })
   def test_check_sourcemapurl_default(self, *args):
     if self.is_wasm2js():
@@ -10594,11 +10601,11 @@ int main() {
     '': ([], [], []),
     'prefix_wildcard': ([], ['--prefix', '=wasm-src://'], []),
     'prefix_partial': ([], ['--prefix', '/emscripten/=wasm-src:///emscripten/'], []),
-    'sources': (['--sources'], [], ['--load-prefix', '/emscripten/test/other/wasm_sourcemap=.'])
+    'sources': (['--sources'], [], ['--load-prefix', '/emscripten/test/other/wasm_sourcemap=.']),
   })
   @parameterized({
     '': ('/',),
-    'basepath': ('/emscripten/test',)
+    'basepath': ('/emscripten/test',),
   })
   def test_wasm_sourcemap(self, sources, prefix, load_prefix, basepath):
     # The no_main.c will be read from relative location if necessary (depends
@@ -10630,7 +10637,7 @@ int main() {
       '<cwd>=file:///path/to/src',
       DETERMINISTIC_PREFIX + '=file:///path/to/emscripten',
     ], 0),
-    'sources': ([], 1)
+    'sources': ([], 1),
   })
   @crossplatform
   def test_emcc_sourcemap_options(self, prefixes, sources):
@@ -10694,7 +10701,7 @@ int main() {
       infiles = [
         infile,
         os.path.abspath(infile),
-        './' + infile
+        './' + infile,
       ]
       for curr in infiles:
         print('  ', curr)
@@ -11717,6 +11724,7 @@ int main () {
       self.assertEqual(num_times_export_is_referenced, 1)
 
   @parameterized({
+    'audio_worklet': ('audio_worklet', False, True),
     'hello_world_wasm': ('hello_world', False, True),
     'hello_world_wasm2js': ('hello_world', True, True),
     'random_printf_wasm': ('random_printf', False),
@@ -11731,7 +11739,7 @@ int main () {
     'hello_embind': ('embind_hello', False),
   })
   @crossplatform
-  def test_minimal_runtime_code_size(self, test_name, js, compare_js_output=False):
+  def test_minimal_runtime_code_size(self, test_name, wasm2js, compare_js_output=False):
     smallest_code_size_args = ['-sMINIMAL_RUNTIME=2',
                                '-sENVIRONMENT=web',
                                '-sTEXTDECODER=2',
@@ -11755,8 +11763,6 @@ int main () {
                                '-DNDEBUG',
                                '-ffast-math']
 
-    wasm2js = ['-sWASM=0']
-
     math_sources = [test_file('code_size/math.c')]
     hello_world_sources = [test_file('small_hello_world.c'),
                            '-sMALLOC=none']
@@ -11770,6 +11776,7 @@ int main () {
                            '-sMODULARIZE']
     hello_webgl2_sources = hello_webgl_sources + ['-sMAX_WEBGL_VERSION=2']
     hello_wasm_worker_sources = [test_file('wasm_worker/wasm_worker_code_size.c'), '-sWASM_WORKERS', '-sENVIRONMENT=web,worker']
+    audio_worklet_sources = [test_file('webaudio/audioworklet.c'), '-sWASM_WORKERS', '-sAUDIO_WORKLET', '-sENVIRONMENT=web,worker', '-sTEXTDECODER=1']
     embind_hello_sources = [test_file('code_size/embind_hello_world.cpp'), '-lembind']
     embind_val_sources = [test_file('code_size/embind_val_hello_world.cpp'),
                           '-lembind',
@@ -11784,6 +11791,7 @@ int main () {
       'math': math_sources,
       'hello_webgl2': hello_webgl2_sources,
       'hello_wasm_worker': hello_wasm_worker_sources,
+      'audio_worklet': audio_worklet_sources,
       'embind_val': embind_val_sources,
       'embind_hello': embind_hello_sources,
     }[test_name]
@@ -11794,11 +11802,13 @@ int main () {
       return ' ({:+.2f}%)'.format((actual - expected) * 100.0 / expected)
 
     outputs = ['a.html', 'a.js']
+    if '-sAUDIO_WORKLET' in sources:
+      outputs += ['a.aw.js']
 
     args = smallest_code_size_args[:]
 
-    if js:
-      args += wasm2js
+    if wasm2js:
+      args += ['-sWASM=0']
       test_name += '_wasm2js'
     else:
       outputs += ['a.wasm']
@@ -13333,7 +13343,7 @@ exec "$@"
 
   @parameterized({
     '': [[]],
-    'trusted': [['-sTRUSTED_TYPES']]
+    'trusted': [['-sTRUSTED_TYPES']],
   })
   def test_pthread_export_es6(self, args):
     self.run_process([EMCC, test_file('hello_world.c'), '-o', 'out.mjs', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'] + args)
@@ -13380,7 +13390,7 @@ exec "$@"
   # For this test verify the different build options that generate anonymous enclosing function scopes. (DYNCALLS and MEMORY64)
   @parameterized({
     'plain': [[]],
-    'dyncalls': [['-sDYNCALLS']]
+    'dyncalls': [['-sDYNCALLS']],
   })
   def test_this_in_dyncall(self, args):
     self.do_run_in_out_file_test('no_this_in_dyncall.c', emcc_args=['--js-library', test_file('no_this_in_dyncall.js')] + args)
@@ -13465,7 +13475,7 @@ exec "$@"
     '': (False, False, False),
     'custom': (True, False, False),
     'jspi': (False, True, False),
-    'O3': (False, False, True)
+    'O3': (False, False, True),
   })
   def test_split_module(self, customLoader, jspi, opt):
     self.set_setting('SPLIT_MODULE')
@@ -14567,12 +14577,12 @@ int main() {
 
   @parameterized({
     # we will warn here since -O2 runs the optimizer and -g enables DWARF
-    'O2_g': (True, ['-O2', '-g'],),
+    'O2_g': (True, ['-O2', '-g']),
     # asyncify will force wasm-opt to run as well, so we warn here too
-    'asyncify_g': (True, ['-sASYNCIFY', '-g'],),
+    'asyncify_g': (True, ['-sASYNCIFY', '-g']),
     # with --profiling-funcs however we do not use DWARF (we just emit the
     # names section) and will not warn.
-    'O2_pfuncs': (False, ['-O2', '--profiling-funcs'],),
+    'O2_pfuncs': (False, ['-O2', '--profiling-funcs']),
   })
   def test_debug_opt_warning(self, should_fail, args):
     if should_fail:
@@ -14583,7 +14593,7 @@ int main() {
 
   @parameterized({
     '': [[]],
-    'trusted': [['-sTRUSTED_TYPES']]
+    'trusted': [['-sTRUSTED_TYPES']],
   })
   def test_wasm_worker_hello(self, args):
     self.do_runf('wasm_worker/hello_wasm_worker.c', emcc_args=['-sWASM_WORKERS'] + args)
@@ -14785,7 +14795,7 @@ int main() {
       let arr1signed = new BigInt64Array(20);
       let arr1unsigned = new BigUint64Array(20);
       delete globalThis.BigInt64Array;
-      ''' + bigint64array + test_code
+      ''' + bigint64array + test_code,
     )
     output = json.loads(self.run_js('test.js'))
     self.assertEqual(output['BigInt64Array_name'], 'createBigInt64Array')
@@ -15251,7 +15261,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
   @parameterized({
     'wasm2js': (True,),
-    '': (False,)
+    '': (False,),
   })
   def test_add_js_function(self, wasm2js):
     self.set_setting('INVOKE_RUN', 0)
@@ -15288,7 +15298,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     'memory64_wasm_function': (True, True),
     'wasm_function': (False, True),
     'memory64': (True, False),
-    '': (False, False)
+    '': (False, False),
   })
   @requires_v8
   def test_add_js_function_bigint(self, memory64, wasm_function):
@@ -15782,7 +15792,7 @@ addToLibrary({
     'default': [],
     'except': ['-sDISABLE_EXCEPTION_CATCHING=0'],
     'except_wasm': ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0'],
-    'except_wasm_legacy': ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS']
+    'except_wasm_legacy': ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS'],
   })
   def test_std_promise_link(self, *args):
     # Regression test for a bug where std::promise's destructor caused a link
@@ -15824,7 +15834,7 @@ addToLibrary({
   @requires_v8
   @parameterized({
     '': [[]],
-    'O3': [['-O3']]
+    'O3': [['-O3']],
   })
   def test_fp16(self, opts):
     self.v8_args += ['--experimental-wasm-fp16']
@@ -16026,3 +16036,21 @@ addToLibrary({
     baseline_size = os.path.getsize('baseline.js')
     js_api_size = os.path.getsize('hello_world.js')
     self.assertLess(js_api_size, baseline_size)
+
+  @requires_v8
+  def test_getentropy_d8(self):
+    create_file('main.c', '''
+      #include <assert.h>
+      #include <unistd.h>
+
+      int main() {
+        char buf[100];
+        assert(getentropy(buf, sizeof(buf)) == 0);
+        return 0;
+      }
+    ''')
+
+    msg = 'randomFill not supported on d8 unless --enable-os-system is passed'
+    self.do_runf('main.c', msg, assert_returncode=1)
+    self.v8_args += ['--enable-os-system']
+    self.do_runf('main.c')

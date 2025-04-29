@@ -22,7 +22,7 @@ opts: Dict[str, Optional[str]] = {
   'value1': None,
   'value2': None,
   'value3': "v3",
-  'dependency': None
+  'dependency': None,
 }
 
 deps = ['sdl2_image:formats=jpg']

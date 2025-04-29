@@ -227,6 +227,11 @@ var LINK_AS_CXX = false;
 // emitted in that case for closure compiler.
 var MAYBE_CLOSURE_COMPILER = false;
 
+// List of closure args for the closure compiler.
+// This list is populated from the --closure-args argument and can be extended
+// in ports using settings.CLOSURE_ARGS
+var CLOSURE_ARGS = [];
+
 // Set when some minimum browser version triggers doesn't support the minimum
 // set of JavaScript features.  This triggers transpilation using babel.
 var TRANSPILE = false;

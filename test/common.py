@@ -71,6 +71,7 @@ EMTEST_REBASELINE = None
 # 2: Log stdout and stderr configure/make. Print out subprocess commands that were executed.
 # 3: Log stdout and stderr, and pass VERBOSE=1 to CMake/configure/make steps.
 EMTEST_BUILD_VERBOSE = int(os.getenv('EMTEST_BUILD_VERBOSE', '0'))
+EMTEST_CAPTURE_STDIO = int(os.getenv('EMTEST_CAPTURE_STDIO', '0'))
 if 'EM_BUILD_VERBOSE' in os.environ:
   exit_with_error('EM_BUILD_VERBOSE has been renamed to EMTEST_BUILD_VERBOSE')
 
@@ -460,12 +461,12 @@ def with_all_fs(func):
       assert fs is None
     func(self, *args, **kwargs)
 
-  parameterize(metafunc, {'': (False, None,),
-                          'nodefs': (False, 'nodefs',),
-                          'rawfs': (False, 'rawfs',),
-                          'wasmfs': (True, None,),
-                          'wasmfs_nodefs': (True, 'nodefs',),
-                          'wasmfs_rawfs': (True, 'rawfs',)})
+  parameterize(metafunc, {'': (False, None),
+                          'nodefs': (False, 'nodefs'),
+                          'rawfs': (False, 'rawfs'),
+                          'wasmfs': (True, None),
+                          'wasmfs_nodefs': (True, 'nodefs'),
+                          'wasmfs_rawfs': (True, 'rawfs')})
   return metafunc
 
 
@@ -1207,7 +1208,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       emcc_min_node_version = (
         int(emcc_min_node_version_str[0:2]),
         int(emcc_min_node_version_str[2:4]),
-        int(emcc_min_node_version_str[4:6])
+        int(emcc_min_node_version_str[4:6]),
       )
       if node_version < emcc_min_node_version:
         self.emcc_args += building.get_emcc_node_flags(node_version)
@@ -1278,7 +1279,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         ignorable_file_prefixes = [
           '/tmp/tmpaddon',
           '/tmp/circleci-no-output-timeout',
-          '/tmp/wasmer'
+          '/tmp/wasmer',
         ]
 
         left_over_files = set(temp_files_after_run) - set(self.temp_files_before_run)
@@ -1651,7 +1652,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       diff = ''.join(a.rstrip() + '\n' for a in diff)
       self.fail("Expected to find '%s' in '%s', diff:\n\n%s\n%s" % (
         limit_size(values[0]), limit_size(string), limit_size(diff),
-        additional_info
+        additional_info,
       ))
 
   def assertNotContained(self, value, string):
@@ -2010,7 +2011,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     self.emcc_args += [
       '-I' + test_file('third_party/freetype/include'),
-      '-I' + test_file('third_party/poppler/include')
+      '-I' + test_file('third_party/poppler/include'),
     ]
 
     # Poppler has some pretty glaring warning.  Suppress them to keep the
@@ -2078,7 +2079,7 @@ def harness_server_func(in_queue, out_queue, port):
         try:
           fsize = os.path.getsize(path)
           f = open(path, 'rb')
-        except IOError:
+        except OSError:
           self.send_error(404, f'File not found {path}')
           return None
         self.send_response(206)
@@ -2127,7 +2128,7 @@ def harness_server_func(in_queue, out_queue, port):
         self.send_response(200)
         self.end_headers()
       else:
-        print(f'do_POST: unexpected POST: {urlinfo.query}')
+        print(f'do_POST: unexpected POST: {urlinfo}')
 
     def do_GET(self):
       info = urlparse(self.path)
@@ -2247,6 +2248,7 @@ class BrowserCore(RunnerCore):
   unresponsive_tests = 0
 
   def __init__(self, *args, **kwargs):
+    self.capture_stdio = EMTEST_CAPTURE_STDIO
     super().__init__(*args, **kwargs)
 
   @classmethod
@@ -2315,6 +2317,10 @@ class BrowserCore(RunnerCore):
   def run_browser(self, html_file, expected=None, message=None, timeout=None, extra_tries=1):
     if not has_browser():
       return
+    assert '?' not in html_file, 'URL params not supported'
+    url = html_file
+    if self.capture_stdio:
+      url += '?capture_stdio'
     if self.skip_exec:
       self.skipTest('skipping test execution: ' + self.skip_exec)
     if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
@@ -2326,8 +2332,8 @@ class BrowserCore(RunnerCore):
     if expected is not None:
       try:
         self.harness_in_queue.put((
-          'http://localhost:%s/%s' % (self.PORT, html_file),
-          self.get_dir()
+          'http://localhost:%s/%s' % (self.PORT, url),
+          self.get_dir(),
         ))
         if timeout is None:
           timeout = self.BROWSER_TIMEOUT
@@ -2355,6 +2361,9 @@ class BrowserCore(RunnerCore):
             if extra_tries > 0:
               print('[test error (see below), automatically retrying]')
               print(e)
+              if not self.capture_stdio:
+                print('[enabling stdio/stderr reporting]')
+                self.capture_stdio = True
               return self.run_browser(html_file, expected, message, timeout, extra_tries - 1)
             else:
               raise e
@@ -2405,7 +2414,8 @@ class BrowserCore(RunnerCore):
 
   def btest(self, filename, expected=None,
             post_build=None,
-            emcc_args=None, url_suffix='', timeout=None,
+            emcc_args=None,
+            timeout=None,
             extra_tries=1,
             reporting=Reporting.FULL,
             output_basename='test'):
@@ -2430,7 +2440,7 @@ class BrowserCore(RunnerCore):
       output = self.run_js('test.js')
       self.assertContained('RESULT: ' + expected[0], output)
     else:
-      self.run_browser(outfile + url_suffix, expected=['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
+      self.run_browser(outfile, expected=['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
 
 
 ###################################################################################################

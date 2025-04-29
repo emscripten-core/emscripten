@@ -715,7 +715,7 @@ def type_to_sig(type):
     webassembly.Type.F32: 'f',
     webassembly.Type.F64: 'd',
     webassembly.Type.EXTERNREF: 'e',
-    webassembly.Type.VOID: 'v'
+    webassembly.Type.VOID: 'v',
   }[type]
 
 
@@ -726,7 +726,7 @@ def type_to_ts_type(type):
     webassembly.Type.F32: 'number',
     webassembly.Type.F64: 'number',
     webassembly.Type.EXTERNREF: 'any',
-    webassembly.Type.VOID: 'void'
+    webassembly.Type.VOID: 'void',
   }[type]
 
 

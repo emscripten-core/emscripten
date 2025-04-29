@@ -23,6 +23,8 @@ See docs/process.md for more on how version tagging works.
 - Programs built with `-sWASM_WORKERS` no longer generate a separate `.ww.js`
   file.  This is similar to the change that was already made for pthreads in
   #21701.  This saves on complexity, code size and network requests (#24163)
+- Closure arguments can now be used from ports using `settings.CLOSURE_ARGS`
+  (#24192)
 
 4.0.7 - 04/15/25
 ----------------

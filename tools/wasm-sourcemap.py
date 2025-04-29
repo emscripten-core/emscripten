@@ -313,10 +313,10 @@ def build_sourcemap(entries, code_section_offset, options):
       if collect_sources:
         load_name = prefixes.load.resolve(file_name)
         try:
-          with open(load_name, 'r') as infile:
+          with open(load_name) as infile:
             source_content = infile.read()
           sources_content.append(source_content)
-        except IOError:
+        except OSError:
           print('Failed to read source: %s' % load_name)
           sources_content.append(None)
     else:

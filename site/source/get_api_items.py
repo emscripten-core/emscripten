@@ -65,7 +65,7 @@ def parseFiles():
             filepath = api_reference_directory + file
             print(file)
             # open file
-            with open(filepath, 'r') as infile:
+            with open(filepath) as infile:
                 for line in infile:
                     # parse line for API items
                     re.sub(r'^\.\.\s+((\w+)\:(\w+)\:\:(.*))', addapiitems, line)

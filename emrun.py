@@ -4,6 +4,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+# This file needs to run on older version of python too (even python 2!) so
+# suppress these upgrade warnings:
+# ruff: noqa: UP015, UP024, UP021, UP025
+
 """emrun: Implements machinery that allows running a .html page as if it was a
 standard executable file.
 
@@ -784,13 +788,13 @@ def get_cpu_info():
     return {'model': 'Unknown ("' + str(e) + '")',
             'physicalCores': 1,
             'logicalCores': 1,
-            'frequency': 0
+            'frequency': 0,
             }
 
   return {'model': platform.machine() + ', ' + cpu_name,
           'physicalCores': physical_cores,
           'logicalCores': logical_cores,
-          'frequency': frequency
+          'frequency': frequency,
           }
 
 
@@ -982,7 +986,7 @@ def get_browser_info(filename, format_json):
     return json.dumps({
       'name': browser_display_name(filename),
       'version': get_executable_version(filename),
-      'buildDate': get_browser_build_date(filename)
+      'buildDate': get_browser_build_date(filename),
     }, indent=2)
   else:
     return 'Browser: ' + browser_display_name(filename) + ' ' + get_executable_version(filename) + ', build ' + get_browser_build_date(filename)
@@ -1361,7 +1365,7 @@ def get_system_info(format_json):
       return json.dumps({'model': get_android_model(),
                          'os': get_android_os_version(),
                          'ram': get_system_memory(),
-                         'cpu': get_android_cpu_infoline()
+                         'cpu': get_android_cpu_infoline(),
                          }, indent=2)
     else:
       info = 'Model: ' + get_android_model() + '\n'

@@ -1092,7 +1092,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if settings.ASYNCIFY == 1:
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
         '__asyncify_state',
-        '__asyncify_data'
+        '__asyncify_data',
       ]
 
     if settings.MINIMAL_RUNTIME:
@@ -1446,13 +1446,13 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       'FS_createPath',
       'FS_createDataFile',
       'FS_createPreloadedFile',
-      'FS_unlink'
+      'FS_unlink',
     ]
     if not settings.WASMFS:
       # The old FS has some functionality that WasmFS lacks.
       settings.EXPORTED_RUNTIME_METHODS += [
         'FS_createLazyFile',
-        'FS_createDevice'
+        'FS_createDevice',
       ]
 
     settings.EXPORTED_RUNTIME_METHODS += [
@@ -2194,7 +2194,7 @@ def phase_final_emitting(options, target, js_target, wasm_target):
     # Finally, rerun Closure compile with simple optimizations. It will be able
     # to further minify the code. (n.b. it would not be safe to run in advanced
     # mode)
-    final_js = building.closure_compiler(final_js, advanced=False, extra_closure_args=options.closure_args)
+    final_js = building.closure_compiler(final_js, advanced=False, extra_closure_args=settings.CLOSURE_ARGS)
     # Run unsafe_optimizations.js once more.  This allows the cleanup of newly
     # unused things that closure compiler leaves behind (e.g `new Float64Array(x)`).
     shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.mjs'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
@@ -2334,7 +2334,7 @@ def phase_binaryen(target, options, wasm_target):
 
     if options.use_closure_compiler:
       with ToolchainProfiler.profile_block('closure_compile'):
-        final_js = building.closure_compiler(final_js, extra_closure_args=options.closure_args)
+        final_js = building.closure_compiler(final_js, extra_closure_args=settings.CLOSURE_ARGS)
       save_intermediate('closure')
 
     if settings.TRANSPILE:
@@ -2467,7 +2467,7 @@ def modularize():
 }
 ''' % {
       'maybe_async': maybe_async,
-      'generated_js': generated_js
+      'generated_js': generated_js,
     }
 
   if settings.MINIMAL_RUNTIME and not settings.PTHREADS and not settings.WASM_WORKERS:
