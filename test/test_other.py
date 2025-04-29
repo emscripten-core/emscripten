@@ -14594,6 +14594,9 @@ int main() {
   def test_wasm_worker_terminate(self):
     self.do_runf('wasm_worker/terminate_wasm_worker.c', emcc_args=['-sWASM_WORKERS'])
 
+  def test_wasm_worker_dbg(self):
+    self.do_run_in_out_file_test('wasm_worker/test_wasm_worker_dbg.c', emcc_args=['-sWASM_WORKERS'])
+
   @also_with_minimal_runtime
   def test_wasm_worker_closure(self):
     self.run_process([EMCC, test_file('wasm_worker/lock_async_acquire.c'), '-O2', '-sWASM_WORKERS', '--closure=1'])
