@@ -118,7 +118,7 @@ var imports = {
 #if ASSERTIONS && !WASM2JS
 // Module['wasm'] should contain a typed array of the Wasm object data, or a
 // precompiled WebAssembly Module.
-if (!WebAssembly.instantiateStreaming && !Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM';
+assert(WebAssembly.instantiateStreaming || Module['wasm'], 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM');
 #endif
 (WebAssembly.instantiateStreaming
   ? WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
@@ -131,7 +131,7 @@ WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
 #if ASSERTIONS && !WASM2JS
 // Module['wasm'] should contain a typed array of the Wasm object data, or a
 // precompiled WebAssembly Module.
-if (!Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM';
+assert(Module['wasm'], 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM');
 #endif
 
 <<< ATMODULES >>>
@@ -259,8 +259,5 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 }
 
 // When running in a background thread we delay module loading until we have
-#if AUDIO_WORKLET
-if (ENVIRONMENT_IS_AUDIO_WORKLET) loadModule();
-#endif
 {{{ runIfMainThread('loadModule();') }}}
 #endif

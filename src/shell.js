@@ -53,12 +53,20 @@ var readyPromise = new Promise((resolve, reject) => {
 });
 #endif
 
-// Determine the runtime environment we are in. You can customize this by
-// setting the ENVIRONMENT setting at compile time (see settings.js).
+#if WASM_WORKERS
+// The way we signal to a worker that it is hosting a pthread is to construct
+// it with a specific name.
+var ENVIRONMENT_IS_WASM_WORKER = globalThis.name == 'em-ww';
+#endif
 
 #if AUDIO_WORKLET
 var ENVIRONMENT_IS_AUDIO_WORKLET = typeof AudioWorkletGlobalScope !== 'undefined';
+// Audio worklets behave as wasm workers.
+if (ENVIRONMENT_IS_AUDIO_WORKLET) ENVIRONMENT_IS_WASM_WORKER = true;
 #endif
+
+// Determine the runtime environment we are in. You can customize this by
+// setting the ENVIRONMENT setting at compile time (see settings.js).
 
 #if ENVIRONMENT && !ENVIRONMENT.includes(',')
 var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT === 'web' }}};
@@ -100,12 +108,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
   globalThis.moduleLoaded = true;
 }
 #endif
-#endif
-
-#if WASM_WORKERS
-// The way we signal to a worker that it is hosting a pthread is to construct
-// it with a specific name.
-var ENVIRONMENT_IS_WASM_WORKER = globalThis.name == 'em-ww';
 #endif
 
 #if ENVIRONMENT_MAY_BE_NODE

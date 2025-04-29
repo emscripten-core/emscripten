@@ -47,6 +47,10 @@ if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
 #include "wasm_worker.js"
 #endif
 
+#if AUDIO_WORKLET
+#include "audio_worklet.js"
+#endif
+
 #if LOAD_SOURCE_MAP
 var wasmSourceMap;
 #include "source_map_support.js"
@@ -63,11 +67,6 @@ var wasmOffsetConverter;
   const shouldExportHeap = (x) => {
     let shouldExport = false;
     if (MODULARIZE && EXPORT_ALL) {
-      shouldExport = true;
-    } else if (AUDIO_WORKLET && (x == 'HEAPU32' || x == 'HEAPF32')) {
-      // Export to the AudioWorkletGlobalScope the needed variables to access
-      // the heap. AudioWorkletGlobalScope is unable to access global JS vars
-      // in the compiled main JS file.
       shouldExport = true;
     } else if (EXPORTED_RUNTIME_METHODS.includes(x)) {
       shouldExport = true;

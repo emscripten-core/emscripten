@@ -51,10 +51,6 @@ var ENVIRONMENT_IS_NODE = typeof process == 'object' && process.type != 'rendere
 var ENVIRONMENT_IS_SHELL = typeof read == 'function';
 #endif
 
-#if AUDIO_WORKLET
-var ENVIRONMENT_IS_AUDIO_WORKLET = typeof AudioWorkletGlobalScope !== 'undefined';
-#endif
-
 #if ASSERTIONS || PTHREADS
 #if !ENVIRONMENT_MAY_BE_NODE && !ENVIRONMENT_MAY_BE_SHELL
 var ENVIRONMENT_IS_WEB = true
@@ -86,6 +82,11 @@ if (ENVIRONMENT_IS_NODE) {
   ENVIRONMENT_IS_WASM_WORKER = worker_threads['workerData'] == 'em-ww'
 }
 #endif
+#endif
+
+#if AUDIO_WORKLET
+var ENVIRONMENT_IS_AUDIO_WORKLET = typeof AudioWorkletGlobalScope !== 'undefined';
+if (ENVIRONMENT_IS_AUDIO_WORKLET) ENVIRONMENT_IS_WASM_WORKER = true;
 #endif
 
 #if ASSERTIONS && ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_SHELL

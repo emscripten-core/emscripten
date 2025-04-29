@@ -12,24 +12,16 @@
 // the node constructor's "processorOptions" field, we can share the necessary
 // bootstrap information from the main thread to the AudioWorkletGlobalScope.
 
+if (ENVIRONMENT_IS_AUDIO_WORKLET) {
+
 function createWasmAudioWorkletProcessor(audioParams) {
   class WasmAudioWorkletProcessor extends AudioWorkletProcessor {
     constructor(args) {
       super();
 
-      // Copy needed stack allocation functions from the Module object
-      // to global scope, these will be accessed in hot paths, so maybe
-      // they'll be a bit faster to access directly, rather than referencing
-      // them as properties of the Module object.
-      globalThis.stackAlloc = Module['stackAlloc'];
-      globalThis.stackSave = Module['stackSave'];
-      globalThis.stackRestore = Module['stackRestore'];
-      globalThis.HEAPU32 = Module['HEAPU32'];
-      globalThis.HEAPF32 = Module['HEAPF32'];
-
       // Capture the Wasm function callback to invoke.
       let opts = args.processorOptions;
-      this.callbackFunction = Module['wasmTable'].get(opts['cb']);
+      this.callbackFunction = wasmTable.get(opts['cb']);
       this.userData = opts['ud'];
       // Then the samples per channel to process, fixed for the lifetime of the
       // context that created this processor. Note for when moving to Web Audio
@@ -43,6 +35,9 @@ function createWasmAudioWorkletProcessor(audioParams) {
       return audioParams;
     }
 
+    /**
+     * @param {Object} parameters
+     */
     process(inputList, outputList, parameters) {
       // Marshal all inputs and parameters to the Wasm memory on the thread stack,
       // then perform the wasm audio worklet call,
@@ -99,6 +94,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
       paramsPtr = dataPtr;
       k = paramsPtr >> 2;
       dataPtr += numParams * {{{ C_STRUCTS.AudioParamFrame.__size__ }}};
+
       for (i = 0; paramArray = parameters[i++];) {
         // Write the AudioParamFrame struct instance
         HEAPU32[k + {{{ C_STRUCTS.AudioParamFrame.length / 4 }}}] = paramArray.length;
@@ -134,28 +130,15 @@ function createWasmAudioWorkletProcessor(audioParams) {
   return WasmAudioWorkletProcessor;
 }
 
+var messagePort;
+
 // Specify a worklet processor that will be used to receive messages to this
 // AudioWorkletGlobalScope.  We never connect this initial AudioWorkletProcessor
 // to the audio graph to do any audio processing.
 class BootstrapMessages extends AudioWorkletProcessor {
   constructor(arg) {
     super();
-    // Audio worklets need to show up as wasm workers.  This is the way we signal
-    // that.
-    globalThis.name = 'em-ww';
-    // Initialize the global Emscripten Module object that contains e.g. the
-    // Wasm Module and Memory objects.  After this we are ready to load in the
-    // main application JS script, which the main thread will addModule()
-    // to this scope.
-    globalThis.Module = arg['processorOptions'];
-#if !MINIMAL_RUNTIME
-    // Default runtime relies on an injected instantiateWasm() function to
-    // initialize the Wasm Module.
-    globalThis.Module['instantiateWasm'] = (info, receiveInstance) => {
-      var instance = new WebAssembly.Instance(Module['wasm'], info);
-      return receiveInstance(instance, Module['wasm']);
-    };
-#endif
+    startWasmWorker(arg['processorOptions'])
 #if WEBAUDIO_DEBUG
     console.log('AudioWorklet global scope looks like this:');
     console.dir(globalThis);
@@ -163,24 +146,13 @@ class BootstrapMessages extends AudioWorkletProcessor {
     // Listen to messages from the main thread. These messages will ask this
     // scope to create the real AudioWorkletProcessors that call out to Wasm to
     // do audio processing.
-    let p = globalThis['messagePort'] = this.port;
-    p.onmessage = async (msg) => {
+    messagePort = this.port;
+    /** @suppress {checkTypes} */
+    messagePort.onmessage = async (msg) => {
       let d = msg.data;
       if (d['_wpn']) {
         // '_wpn' is short for 'Worklet Processor Node', using an identifier
         // that will never conflict with user messages
-#if MODULARIZE
-        // Instantiate the MODULARIZEd Module function, which is stored for us
-        // under the special global name AudioWorkletModule in
-        // MODULARIZE+AUDIO_WORKLET builds.
-        if (globalThis.AudioWorkletModule) {
-          // This populates the Module object with all the Wasm properties
-          globalThis.Module = await AudioWorkletModule(Module);
-          // We have now instantiated the Module function, can discard it from
-          // global scope
-          delete globalThis.AudioWorkletModule;
-        }
-#endif
         // Register a real AudioWorkletProcessor that will actually do audio processing.
         // 'ap' being the audio params
         registerProcessor(d['_wpn'], createWasmAudioWorkletProcessor(d['ap']));
@@ -196,14 +168,14 @@ class BootstrapMessages extends AudioWorkletProcessor {
         // 'cb' the callback function
         // 'ch' the context handle
         // 'ud' the passed user data
-        p.postMessage({'_wsc': d['cb'], 'x': [d['ch'], 1/*EM_TRUE*/, d['ud']] });
+        messagePort.postMessage({'_wsc': d['cb'], 'x': [d['ch'], 1/*EM_TRUE*/, d['ud']] });
       } else if (d['_wsc']) {
 #if MEMORY64
         var ptr = BigInt(d['_wsc']);
 #else
         var ptr = d['_wsc'];
 #endif
-        Module['wasmTable'].get(ptr)(...d['x']);
+        wasmTable.get(ptr)(...d['x']);
       };
     }
   }
@@ -220,4 +192,6 @@ class BootstrapMessages extends AudioWorkletProcessor {
 };
 
 // Register the dummy processor that will just receive messages.
-registerProcessor('message', BootstrapMessages);
+registerProcessor('em-bootstrap', BootstrapMessages);
+
+} // ENVIRONMENT_IS_AUDIO_WORKLET

@@ -1,3 +1,31 @@
+/**
+ * Called once the intiial message has been recieved from the creating thread.
+ * The `props` object is the list of properties sent via postMessage to create
+ * the worker.
+ *
+ * This function is called both in normal wasm workers and in audio worklets.
+ */
+function startWasmWorker(props) {
+#if RUNTIME_DEBUG
+  dbg('startWasmWorker', props);
+#endif
+#if MINIMAL_RUNTIME
+  Module ||= {};
+#endif
+  /** @suppress {checkTypes} */
+  Object.assign(Module, props);
+  wasmMemory = props['mem'];
+  updateMemoryViews();
+#if MINIMAL_RUNTIME
+  loadModule()
+#else
+  wasmModuleReceived(props['wasm']);
+#endif
+  // Drop now unneeded references to from the Module object in this Worker,
+  // these are not needed anymore.
+  props['wasm'] = props['mem'] = 0;
+}
+
 #if AUDIO_WORKLET
 if (ENVIRONMENT_IS_WASM_WORKER && !ENVIRONMENT_IS_AUDIO_WORKLET) {
 #else
@@ -39,22 +67,7 @@ onmessage = (d) => {
 #if RUNTIME_DEBUG
   dbg('wasm worker initial onmessage');
 #endif
-  d = d.data;
-#if MINIMAL_RUNTIME
-  Module ||= {};
-#endif
-  /** @suppress {checkTypes} */
-  Object.assign(Module, d);
-  wasmMemory = d['mem'];
-  updateMemoryViews();
-#if MINIMAL_RUNTIME
-  loadModule()
-#else
-  wasmModuleReceived(d['wasm']);
-#endif
-  // Drop now unneeded references to from the Module object in this Worker,
-  // these are not needed anymore.
-  d['wasm'] = d['mem'] = 0;
+  startWasmWorker(d.data);
 }
 
 }
