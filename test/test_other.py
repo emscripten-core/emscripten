@@ -14591,12 +14591,8 @@ int main() {
     else:
       self.run_process([EMCC, test_file('hello_world.c'), '-Werror'] + args)
 
-  @parameterized({
-    '': [[]],
-    'trusted': [['-sTRUSTED_TYPES']],
-  })
-  def test_wasm_worker_hello(self, args):
-    self.do_runf('wasm_worker/hello_wasm_worker.c', emcc_args=['-sWASM_WORKERS'] + args)
+  def test_wasm_worker_trusted_types(self):
+    self.do_run_in_out_file_test('wasm_worker/hello_wasm_worker.c', emcc_args=['-sWASM_WORKERS', '-sTRUSTED_TYPES'])
 
   def test_wasm_worker_terminate(self):
     self.do_runf('wasm_worker/terminate_wasm_worker.c', emcc_args=['-sWASM_WORKERS'])
