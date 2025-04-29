@@ -375,7 +375,7 @@ if (!ENVIRONMENT_IS_AUDIO_WORKLET)
 #endif // ASSERTIONS
 }
 
-#if ENVIRONMENT_MAY_BE_NODE && PTHREADS
+#if ENVIRONMENT_MAY_BE_NODE && (PTHREADS || WASM_WORKERS)
 // Set up the out() and err() hooks, which are how we can print to stdout or
 // stderr, respectively.
 // Normally just binding console.log/console.error here works fine, but
