@@ -10259,6 +10259,7 @@ end
     self.build('hello_world.c', emcc_args=[
       '--closure=1',
       '-Werror=closure',
+      '-Wno-error=deprecated',
       '-sINCLUDE_FULL_LIBRARY',
       '-sUSE_WEBGPU',
     ])

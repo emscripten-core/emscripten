@@ -572,8 +572,14 @@ var GL_FFP_ONLY = false;
 // [link]
 var GL_PREINITIALIZED_CONTEXT = false;
 
-// Enables support for WebGPU (via "webgpu/webgpu.h").
+// Enables the built-in implementation of ``<webgpu/webgpu.h>``.
+// Deprecated: Please try migrating to ``--use-port=contrib.emdawnwebgpu``
+// which uses a fork maintained by Dawn (but still cross-browser) that
+// implements a newer, more stable version of the standardized interface. If
+// you find issues, verify it in the latest nightly release
+// (https://github.com/google/dawn/releases) and file feedback with Dawn.
 // [link]
+// [deprecated]
 var USE_WEBGPU = false;
 
 // Enables building of stb-image, a tiny public-domain library for decoding
