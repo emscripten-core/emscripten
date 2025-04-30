@@ -14,6 +14,69 @@ addToLibrary({
   $wasmfsOPFSBlobs__deps: ["$HandleAllocator"],
   $wasmfsOPFSBlobs: "new HandleAllocator()",
 
+  $wasmOPFSGetParentDir__deps: ['$wasmfsOPFSDirectoryHandles'],
+  $wasmOPFSGetParentDir: async function(handle) {
+    const root = wasmfsOPFSDirectoryHandles.get(1);
+    let fullPath = await root.resolve(handle);
+    if (!fullPath) {
+      throw new Error("Handle not found");
+    }
+    let parent = root;
+    for (let dir of fullPath.slice(0, -1)) {
+      parent = await parent.getDirectoryHandle(dir);
+    }
+    return parent;
+  },
+
+  $wasmOPFSFileMoveWorkaround__deps: ['$wasmOPFSGetParentDir'],
+  $wasmOPFSFileMoveWorkaround: async (fileHandle, newDirHandle, name) => {
+      let newHandle = await newDirHandle.getFileHandle(name, {create: true});
+      let oldParent = await wasmOPFSGetParentDir(fileHandle);
+
+      const fileSize = fileHandle.getSize();
+      const buffer = new Uint8Array(fileSize);
+      let totalRead = 0;
+      while (totalRead < fileSize) {
+        const readBuffer = fileHandle.read(buffer, { at: totalRead });
+        if (readBuffer === 0) {
+          break;
+        }
+        totalRead += readBuffer;
+      }
+      newHandle.truncate(0);
+      await newHandle.write(buffer);
+      newHandle.flush();
+      newHandle.close();
+      fileHandle.close();
+      await oldParent.removeEntry(fileId.name);
+  },
+
+  $wasmOPFSDirMoveWorkaround__deps: ['$wasmOPFSGetParentDir'],
+  $wasmOPFSDirMoveWorkaround: async (dirHandle, newDirHandle, name) => {
+    let oldParent = await wasmOPFSGetParentDir(dirHandle);
+    let toDir = await newDirHandle.getDirectoryHandle(name, {create: true});
+    const moveDir = async (fromDir, toDir) => {
+      const entries = await fromDir.entries();
+      let curr;
+      for(curr = await entries.next(); !curr.done; curr = await entries.next() ) {
+        const [name, child] = curr.value;
+        if (child.kind === 'directory') {
+          const newSub = await toDir.getDirectoryHandle(name, {create: true});
+          await moveDir(child,newSub);
+          await fromDir.removeEntry(name);
+        } else {
+          try {
+            await child.move(toDir);
+          } catch {
+            await wasmOPFSFileMoveWorkaround(child, toDir, name);
+          }
+        }
+      }
+    };
+    await moveDir(dirHandle, toDir);
+    await oldParent.removeEntry(dirHandle.name);
+  },
+
 #if !PTHREADS
   // OPFS will only be used on modern browsers that supports JS classes.
   $FileSystemAsyncAccessHandle: class {
@@ -197,7 +260,8 @@ addToLibrary({
 
   _wasmfs_opfs_move_file__deps: ['$wasmfsOPFSFileHandles',
                                  '$wasmfsOPFSDirectoryHandles',
-                                 '$wasmfsOPFSProxyFinish'],
+                                 '$wasmfsOPFSProxyFinish',
+                                 '$wasmOPFSFileMoveWorkaround'],
   _wasmfs_opfs_move_file: async function(ctx, fileID, newParentID, namePtr, errPtr) {
     let name = UTF8ToString(namePtr);
     let fileHandle = wasmfsOPFSFileHandles.get(fileID);
@@ -206,7 +270,43 @@ addToLibrary({
       await fileHandle.move(newDirHandle, name);
     } catch {
       let err = -{{{ cDefs.EIO }}};
-      {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
+      try {
+        await wasmOPFSFileMoveWorkaround(fileHandle, newDirHandle, name);
+        wasmfsOPFSFileHandles.allocated[fileID] =
+            await newDirHandle.getFileHandle(name);
+        err = undefined;
+      } catch {
+        // nothing to do, we already set the error above
+      }
+      if (err) {
+        {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
+      }
+    }
+    wasmfsOPFSProxyFinish(ctx);
+  },
+
+  _wasmfs_opfs_move_dir__deps: ['$wasmfsOPFSDirectoryHandles',
+    '$wasmfsOPFSProxyFinish',
+    '$wasmOPFSDirMoveWorkaround'],
+
+  _wasmfs_opfs_move_dir: async function(ctx, dirID, newParentID, namePtr, errPtr) {
+    let name = UTF8ToString(namePtr);
+    let dirHandle = wasmfsOPFSDirectoryHandles.get(dirID);
+    let newDirHandle = wasmfsOPFSDirectoryHandles.get(newParentID);
+    try {
+      await dirHandle.move(newDirHandle, name);
+    } catch {
+      let err = -{{{ cDefs.EBUSY }}};
+      try {
+        await wasmOPFSDirMoveWorkaround(dirHandle, newDirHandle, name);
+        wasmfsOPFSDirectoryHandles.allocated[dirID] = await newDirHandle.getDirectoryHandle(name);
+        err = undefined;
+      } catch {
+        // nothing to do, we already set the error above
+      }
+      if (err) {
+        {{{ makeSetValue('errPtr', 0, 'err', 'i32')}}};
+      }
     }
     wasmfsOPFSProxyFinish(ctx);
   },
