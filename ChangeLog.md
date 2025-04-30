@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.8 (in development)
+4.0.9 (in development)
 ----------------------
+
+4.0.8 - 04/30/25
+----------------
 - Programs built with `-sWASM_WORKERS` and `-sAUDIO_WORKLET` no longer generate
   separate `.ww.js` and `.aw.js` files.  This is similar to the change that was
   already made for pthreads in #21701.  This saves on complexity, code size and
