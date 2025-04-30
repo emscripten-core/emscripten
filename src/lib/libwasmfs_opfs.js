@@ -48,7 +48,7 @@ addToLibrary({
       newHandle.flush();
       newHandle.close();
       fileHandle.close();
-      await oldParent.removeEntry(fileId.name);
+      await oldParent.removeEntry(fileHandle.name);
   },
 
   $wasmOPFSDirMoveWorkaround__deps: ['$wasmOPFSGetParentDir'],
@@ -58,11 +58,11 @@ addToLibrary({
     const moveDir = async (fromDir, toDir) => {
       const entries = await fromDir.entries();
       let curr;
-      for(curr = await entries.next(); !curr.done; curr = await entries.next() ) {
+      for (curr = await entries.next(); !curr.done; curr = await entries.next() ) {
         const [name, child] = curr.value;
         if (child.kind === 'directory') {
           const newSub = await toDir.getDirectoryHandle(name, {create: true});
-          await moveDir(child,newSub);
+          await moveDir(child, newSub);
           await fromDir.removeEntry(name);
         } else {
           try {
