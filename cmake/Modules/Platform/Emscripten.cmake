@@ -121,9 +121,11 @@ endif()
 file(TO_CMAKE_PATH "${_emcache_output}" _emcache_output)
 set(EMSCRIPTEN_SYSROOT "${_emcache_output}/sysroot")
 
-# Allow skipping of CMake compiler autodetection, since this is quite slow with
-# Emscripten. Pass -DEMSCRIPTEN_FORCE_COMPILERS=ON to enable
-option(EMSCRIPTEN_FORCE_COMPILERS "Force C/C++ compiler" OFF)
+# Allow skipping of CMake compiler autodetection.  On by default since this is
+# quite slow with Emscripten and also leads to issues with
+# CMAKE_C_IMPLICIT_LINK_LIBRARIES.
+# See https://github.com/emscripten-core/emscripten/issues/23944
+option(EMSCRIPTEN_FORCE_COMPILERS "Force C/C++ compiler" ON)
 if (EMSCRIPTEN_FORCE_COMPILERS)
 
   # Detect version of the 'emcc' executable. Note that for CMake, we tell it the

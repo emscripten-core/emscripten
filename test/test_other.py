@@ -920,7 +920,7 @@ f.close()
   @no_windows('Skipped on Windows because CMake does not configure native Clang builds well on Windows.')
   @parameterized({
     '': ([],),
-    'force': (['-DEMSCRIPTEN_FORCE_COMPILERS=ON'],),
+    'noforce': (['-DEMSCRIPTEN_FORCE_COMPILERS=OFF'],),
   })
   def test_cmake_compile_features(self, args):
     os.mkdir('build_native')
@@ -979,7 +979,7 @@ f.close()
   @crossplatform
   @parameterized({
     '': ([],),
-    'force': (['-DEMSCRIPTEN_FORCE_COMPILERS=ON'],),
+    'noforce': (['-DEMSCRIPTEN_FORCE_COMPILERS=OFF'],),
   })
   def test_cmake_compile_commands(self, args):
     self.run_process([EMCMAKE, 'cmake', test_file('cmake/static_lib'), '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON'] + args)
