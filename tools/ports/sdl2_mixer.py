@@ -18,14 +18,14 @@ variants = {
 }
 
 OPTIONS = {
-  'formats': 'A comma separated list of formats (ex: --use-port=sdl2_mixer:formats=ogg,mp3)'
+  'formats': 'A comma separated list of formats (ex: --use-port=sdl2_mixer:formats=ogg,mp3)',
 }
 
 SUPPORTED_FORMATS = {'ogg', 'mp3', 'mod', 'mid'}
 
 # user options (from --use-port)
 opts: Dict[str, Set] = {
-  'formats': set()
+  'formats': set(),
 }
 
 
