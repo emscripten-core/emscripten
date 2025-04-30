@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 4.0.9 (in development)
 ----------------------
+- When using cmake the EMSCRIPTEN_FORCE_COMPILERS setting was reverted to
+  being on by default due to issues that were found with disabling it. (#24223)
 
 4.0.8 - 04/30/25
 ----------------
@@ -29,8 +31,6 @@ See docs/process.md for more on how version tagging works.
   network requests. (#24163, #24190)
 - Closure arguments can now be used from ports using `settings.CLOSURE_ARGS`
   (#24192)
-- When using cmake the EMSCRIPTEN_FORCE_COMPILERS setting was reverted to
-  being on by default due to issues that were found with disabling it. (#24223)
 
 4.0.7 - 04/15/25
 ----------------
