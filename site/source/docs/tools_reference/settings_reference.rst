@@ -880,7 +880,13 @@ Default value: false
 USE_WEBGPU
 ==========
 
-Enables support for WebGPU (via "webgpu/webgpu.h").
+Enables the built-in implementation of ``<webgpu/webgpu.h>``.
+Deprecated: Please try migrating to "emdawnwebgpu", a fork maintained by Dawn
+(but still cross-browser) that implements a newer, more stable version of
+the standardized interface, and file feedback (see its package README).
+https://github.com/google/dawn/releases
+
+.. note:: This setting is deprecated
 
 Default value: false
 
