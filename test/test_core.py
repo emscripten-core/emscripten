@@ -1974,16 +1974,16 @@ int main(int argc, char **argv) {
 
   @needs_dylink
   @parameterized({
-    '': (['-sASSERTIONS'], False),
-    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'], False),
+    '': (['-sASSERTIONS']),
+    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME']),
   })
-  def test_main_thread_async_em_asm_await(self, args, force_c=False):
+  def test_main_thread_async_em_asm_await(self, args):
     if '-sPROXY_TO_PTHREAD' not in args:
       # expect runtime to error
-      output = self.do_runf('core/test_main_thread_async_em_asm_await.cpp', expected_output=None, assert_returncode=NON_ZERO, emcc_args=args)
+      output = self.do_runf('core/test_main_thread_async_em_asm_await.cpp', assert_returncode=NON_ZERO, emcc_args=args)
       self.assertContained('emscripten_asm_const_int_await_on_main_thread is not available on the main thread', output)
     else:
-      self.do_core_test('test_main_thread_async_em_asm_await.cpp', emcc_args=args, force_c=force_c)
+      self.do_core_test('test_main_thread_async_em_asm_await.cpp', emcc_args=args, force_c=False)
 
   @needs_dylink
   @parameterized({

@@ -925,7 +925,8 @@ var LibraryPThread = {
 
   _emscripten_receive_on_main_thread_js__deps: [
     '$proxyToMainThread',
-    '$proxiedJSCallArgs'],
+    '$proxiedJSCallArgs',
+    '_emscripten_proxy_promise_finish'],
   /**
    * @param {number=} promiseCtx Optionally, when set, expect func to return a Promise
    * and use promiseCtx to signal awaiting pthread.
