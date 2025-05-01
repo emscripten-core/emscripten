@@ -667,7 +667,7 @@ var LibraryDylink = {
       }
 #if DYLINK_DEBUG
       dbg(`loadModule: memory[${memoryBase}:${memoryBase + metadata.memorySize}]` +
-                     ` table[${tableBasex}:${tableBase + metadata.tableSize}]`);
+                     ` table[${tableBase}:${tableBase + metadata.tableSize}]`);
 #endif
 
       // This is the export map that we ultimately return.  We declare it here
