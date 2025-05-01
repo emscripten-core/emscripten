@@ -2217,6 +2217,7 @@ class libstandalonewasm(MuslInternalLibrary):
         path='system/lib/standalone',
         filenames=['standalone.c',
                    'standalone_wasm_stdio.c',
+                   'paths.c',
                    '__main_void.c'])
     # It is more efficient to use JS methods for time, normally.
     files += files_in_path(
