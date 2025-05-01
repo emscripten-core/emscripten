@@ -1421,6 +1421,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.AUDIO_WORKLET:
     add_system_js_lib('libwebaudio.js')
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$getWasmTableEntry')
 
   if not settings.MINIMAL_RUNTIME:
     if 'preRun' in settings.INCOMING_MODULE_JS_API:
