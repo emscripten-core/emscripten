@@ -22,9 +22,9 @@ if (q) {
             constructor(d) {
                 super();
                 d = d.processorOptions;
-                this.v = H.get(d.cb);
-                this.A = d.ud;
-                this.s = d.sc;
+                this.u = H.get(d.u);
+                this.v = d.v;
+                this.s = d.s;
             }
             static get parameterDescriptors() {
                 return c;
@@ -53,7 +53,7 @@ if (q) {
                 n += 8 * E;
                 for (l = 0; B = f[l++]; ) v[g] = B.length, v[g + 1] = n, g += 2, x.set(B, n >> 2), 
                 n += 4 * B.length;
-                if (f = this.v(m, A, w, G, E, u, this.A)) for (l of k) for (z of l) for (g = 0; g < this.s; ++g) z[g] = x[d++];
+                if (f = this.u(m, A, w, G, E, u, this.v)) for (l of k) for (z of l) for (g = 0; g < this.s; ++g) z[g] = x[d++];
                 K(V);
                 return !!f;
             }
@@ -68,10 +68,10 @@ if (q) {
             L = this.port;
             L.onmessage = async e => {
                 e = e.data;
-                e._wpn ? (registerProcessor(e._wpn, a(e.ap)), L.postMessage({
-                    _wsc: e.cb,
-                    x: [ e.ch, 1, e.ud ]
-                })) : e._wsc && H.get(e._wsc)(...e.x);
+                e._wpn ? (registerProcessor(e._wpn, a(e.C)), L.postMessage({
+                    _wsc: e.u,
+                    A: [ e.D, 1, e.v ]
+                })) : e._wsc && H.get(e._wsc)(...e.A);
             };
         }
         process() {}
@@ -143,9 +143,9 @@ var M = [], N = a => {
             numberOfOutputs: f,
             outputChannelCount: m,
             processorOptions: {
-                cb: e,
-                ud: d,
-                sc: 128
+                u: e,
+                v: d,
+                s: 128
             }
         };
     } else e = void 0;
@@ -162,27 +162,27 @@ var M = [], N = a => {
         maxValue: x[f++],
         automationRate: [ "a", "k" ][v[f++]] + "-rate"
     });
-    k = R[a].audioWorklet.u.port;
+    k = R[a].audioWorklet.B.port;
     f = k.postMessage;
     b = (b = v[b]) ? W(b) : "";
     f.call(k, {
         _wpn: b,
-        ap: d,
-        ch: a,
-        cb: c,
-        ud: e
+        C: d,
+        D: a,
+        u: c,
+        v: e
     });
 }, da = () => !1, ea = 1, fa = a => {
     a = a.data;
     let b = a._wsc;
-    b && H.get(b)(...a.x);
+    b && H.get(b)(...a.A);
 }, ha = a => J(a), ia = (a, b, c, e, d) => {
     let k = R[a], f = k.audioWorklet, m = () => {
         H.get(e)(a, 0, d);
     };
     if (!f) return m();
     f.addModule(h.js).then((() => {
-        f.u = new AudioWorkletNode(k, "em-bootstrap", {
+        f.B = new AudioWorkletNode(k, "em-bootstrap", {
             processorOptions: {
                 $ww: ea++,
                 wasm: h.wasm,
@@ -191,7 +191,7 @@ var M = [], N = a => {
                 sz: c
             }
         });
-        f.u.port.onmessage = fa;
+        f.B.port.onmessage = fa;
         H.get(e)(a, 1, d);
     })).catch(m);
 };
