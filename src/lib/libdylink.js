@@ -905,7 +905,8 @@ var LibraryDylink = {
     // We can't mutate flags or else if a depends on b and c and b depends on d,
     // then c will be loaded with b's rpath instead of a's.
     var dso = LDSO.loadedLibsByName[libName];
-    flags = {...flags, rpath: { parentLibPath: dso.path, paths: metadata.runtimePaths }}
+    var libPath = dso?.path ?? libName
+    flags = {...flags, rpath: { parentLibPath: libPath, paths: metadata.runtimePaths }}
     // now load needed libraries and the module itself.
     if (flags.loadAsync) {
       return metadata.neededDynlibs
