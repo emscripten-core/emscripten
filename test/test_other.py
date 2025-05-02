@@ -7743,7 +7743,7 @@ int main() {
       void (*f)();
       double (*f2)(double);
 
-      h = dlopen("/usr/lib/libhello.wasm", RTLD_NOW);
+      h = dlopen("/usr/lib/libhello.so", RTLD_NOW);
       assert(h);
       f = dlsym(h, "hello");
       assert(f);
@@ -7760,12 +7760,12 @@ int main() {
     def _build(rpath_flag, expected, **kwds):
       self.run_process([EMCC, '-o', 'subdir/libhello_nested_dep.so', 'hello_nested_dep.c', '-sSIDE_MODULE'])
       self.run_process([EMCC, '-o', 'subdir/libhello_dep.so', 'hello_dep.c', '-sSIDE_MODULE', 'subdir/libhello_nested_dep.so'] + rpath_flag)
-      self.run_process([EMCC, '-o', 'hello.wasm', 'hello.c', '-sSIDE_MODULE', 'subdir/libhello_dep.so'] + rpath_flag)
+      self.run_process([EMCC, '-o', 'hello.so', 'hello.c', '-sSIDE_MODULE', 'subdir/libhello_dep.so'] + rpath_flag)
       args = ['--profiling-funcs', '-sMAIN_MODULE=2', '-sINITIAL_MEMORY=32Mb',
-                        '--embed-file', 'hello.wasm@/usr/lib/libhello.wasm',
+                        '--embed-file', 'hello.so@/usr/lib/libhello.so',
                         '--embed-file', 'subdir/libhello_dep.so@/usr/lib/subdir/libhello_dep.so',
                         '--embed-file', 'subdir/libhello_nested_dep.so@/usr/lib/subdir/libhello_nested_dep.so',
-                        'hello.wasm', '-sNO_AUTOLOAD_DYLIBS',
+                        'hello.so', '-sNO_AUTOLOAD_DYLIBS',
                         '-L./subdir', '-lhello_dep', '-lhello_nested_dep']
       self.do_runf('main.c', expected, emcc_args=args, **kwds)
 
