@@ -1247,11 +1247,10 @@ var LibraryDylink = {
 #endif
   _dlopen_js: {{{ asyncIf(ASYNCIFY == 2) }}} (handle) => {
 #if ASYNCIFY
-    return Asyncify.handleSleep((wakeUp) => {
+    return Asyncify.handleAsync(() =>
       dlopenInternal(handle, { loadAsync: true })
-        .then(wakeUp)
-        .catch(() => wakeUp(0));
-    });
+      .catch(() => 0)
+    );
 #else
     return dlopenInternal(handle, { loadAsync: false });
 #endif
