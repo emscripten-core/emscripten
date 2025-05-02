@@ -8401,24 +8401,6 @@ Module.onRuntimeInitialized = () => {
     self.do_core_test('test_hello_world.c')
     self.assertNotExists('test_hello_world.js.mem')
 
-  @no_sanitize('no wasm2js support yet in sanitizers')
-  @requires_wasm2js
-  def test_maybe_wasm2js(self):
-    if self.is_wasm2js():
-      self.skipTest('redundant to test wasm2js in wasm2js* mode')
-    self.set_setting('MAYBE_WASM2JS')
-    # see that running as wasm works
-    self.do_core_test('test_hello_world.c', emcc_args=['-Wno-deprecated'])
-    # run wasm2js, bundle the code, and use the wasm2js path
-    cmd = [PYTHON, path_from_root('tools/maybe_wasm2js.py'), 'test_hello_world.js', 'test_hello_world.wasm']
-    if self.is_optimizing():
-      cmd += ['-O2']
-    self.run_process(cmd, stdout=open('do_wasm2js.js', 'w'))
-    # remove the wasm to make sure we never use it again
-    os.remove('test_hello_world.wasm')
-    # verify that it runs
-    self.assertContained('hello, world!', self.run_js('do_wasm2js.js'))
-
   @no_asan('no wasm2js support yet in asan')
   @requires_wasm2js
   @parameterized({

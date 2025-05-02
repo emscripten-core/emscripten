@@ -20,17 +20,12 @@
 
 {{{ makeModuleReceiveWithVar('wasmBinary') }}}
 
-#if WASM != 2 && MAYBE_WASM2JS
-#if !WASM2JS
-if (Module['doWasm2JS']) {
-#endif
+#if WASM2JS
+#if WASM != 2
+// WASM == 2 includes wasm2js.js separately.
 #include "wasm2js.js"
-#if !WASM2JS
-}
-#endif
 #endif
 
-#if MAYBE_WASM2JS
 if (WebAssembly.isWasm2js) {
   // We don't need to actually download a wasm binary, mark it as present but
   // empty.

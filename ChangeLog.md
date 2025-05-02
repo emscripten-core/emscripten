@@ -31,6 +31,9 @@ See docs/process.md for more on how version tagging works.
   network requests. (#24163, #24190)
 - Closure arguments can now be used from ports using `settings.CLOSURE_ARGS`
   (#24192)
+- The `-sMAYBE_WASM2JS` settings was removed.  This was originally added for
+  debugging purposes, and we now have `-sWASM=2` for folks that want to be able
+  to fall back to js if wasm fails. ()
 
 4.0.7 - 04/15/25
 ----------------
