@@ -904,19 +904,25 @@ var LibraryDylink = {
     // We need to set rpath in flags based on the current library's rpath.
     // We can't mutate flags or else if a depends on b and c and b depends on d,
     // then c will be loaded with b's rpath instead of a's.
-    var dso = LDSO.loadedLibsByName[libName];
-    var libPath = dso?.path ?? libName;
-    flags = {...flags, rpath: { parentLibPath: libPath, paths: metadata.runtimePaths }}
+    flags = {...flags, rpath: { parentLibPath: libName, paths: metadata.runtimePaths }}
     // now load needed libraries and the module itself.
     if (flags.loadAsync) {
       return metadata.neededDynlibs
-        .reduce((chain, dynNeeded) => chain.then(() =>
-          loadDynamicLibrary(dynNeeded, flags, localScope)
-        ), Promise.resolve())
+        .reduce((chain, needed) => chain.then(() => {
+#if FILESYSTEM
+          needed = findLibraryFS(needed, flags.rpath) ?? needed;
+#endif
+          return loadDynamicLibrary(needed, flags, localScope);
+        }), Promise.resolve())
         .then(loadModule);
     }
 
-    metadata.neededDynlibs.forEach((needed) => loadDynamicLibrary(needed, flags, localScope));
+    metadata.neededDynlibs.forEach((needed) => {
+#if FILESYSTEM
+      needed = findLibraryFS(needed, flags.rpath) ?? needed;
+#endif      
+      return loadDynamicLibrary(needed, flags, localScope);
+    });
     return loadModule();
   },
 
@@ -939,7 +945,6 @@ var LibraryDylink = {
     var dso = {
       refcount: Infinity,
       name,
-      path: name, // full path to the library, updated when the library is resolved in the filesystem.
       exports: syms,
       global: true,
     };
