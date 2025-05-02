@@ -262,6 +262,7 @@ var LibraryExceptions = {
   },
 
 #endif
+
 #if WASM_EXCEPTIONS || !DISABLE_EXCEPTION_CATCHING
   $getExceptionMessageCommon__deps: ['__get_exception_message', 'free', '$stackSave', '$stackRestore', '$stackAlloc'],
   $getExceptionMessageCommon: (ptr) => {
@@ -282,17 +283,23 @@ var LibraryExceptions = {
     return [type, message];
   },
 #endif
+
 #if WASM_EXCEPTIONS
+#if ASSERTIONS
+  // Try to give a more useful error message than simply `Undefined reference to `emscripten_longjmp`
+  emscripten_longjmp__deps: [() => error('undefined reference to `emscripten_longjmp`. One or more object files was not compiled with `-fwasm-exceptions`.  Build with `-sASSERTIONS=0` to have wasm-ld report which one.')],
+  emscripten_longjmp: () => {},
+#endif
+
   $getCppExceptionTag: () =>
     // In static linking, tags are defined within the wasm module and are
     // exported, whereas in dynamic linking, tags are defined in library.js in
     // JS code and wasm modules import them.
 #if RELOCATABLE
-    ___cpp_exception // defined in library.js
+    ___cpp_exception, // defined in library.js
 #else
-    wasmExports['__cpp_exception']
+    wasmExports['__cpp_exception'],
 #endif
-  ,
 
 #if EXCEPTION_STACK_TRACES
   // Throw a WebAssembly.Exception object with the C++ tag with a stack trace
