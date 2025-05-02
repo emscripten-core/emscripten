@@ -5,6 +5,8 @@
  * found in the LICENSE file.
  */
 
+#include <sys/stat.h>
+
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -14,6 +16,7 @@
 #include <emscripten.h>
 
 int main() {
+#if !defined(STANDALONE_WASM)
   EM_ASM(
     var dummy_device = FS.makedev(64, 0);
     FS.registerDevice(dummy_device, {});
@@ -23,6 +26,26 @@ int main() {
     FS.symlink('/folder', '/link');
     FS.writeFile('/file', "", { mode: 0o777 });
   );
+#else
+  {
+    int fd = open("device", O_CREAT, 0777);
+    assert(fd >= 0);
+    close(fd);
+  }
+  {
+    int rv = mkdir("folder", 0777);
+    assert(rv == 0);
+  }
+  {
+    int rv = symlink("folder", "link");
+    assert(rv == 0);
+  }
+  {
+    int fd = open("file", O_CREAT, 0777);
+    assert(fd >= 0);
+    close(fd);
+  }
+#endif
 
   char buffer[256];
 

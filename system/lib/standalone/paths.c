@@ -1,6 +1,9 @@
 #define _GNU_SOURCE
 #include "paths.h"
 
+#include <dirent.h>
+#include <fcntl.h>
+
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -9,6 +12,8 @@
 #include <string.h>
 #include <sysexits.h>
 
+#include "lock.h"
+
 /// A name and file descriptor pair.
 typedef struct preopen {
   /// The path prefix associated with the file descriptor.
@@ -16,12 +21,26 @@ typedef struct preopen {
 
   /// The file descriptor.
   __wasi_fd_t fd;
+
+  /// Device ID of device containing the file.
+  __wasi_device_t dev;
+
+  /// File serial number.
+  __wasi_inode_t ino;
 } preopen;
 
 /// A simple growable array of `preopen`.
 static preopen* preopens;
 static size_t num_preopens;
 static size_t preopen_capacity;
+
+/// cwd handling
+static bool cwd_is_root = true;
+static __wasi_fd_t cwd_fd;
+static bool cwd_fd_from_preopen;
+
+/// Access to the cwd above must be protected.
+static volatile int lock[1];
 
 #ifdef NDEBUG
 #define assert_invariants() // assertions disabled
@@ -88,7 +107,10 @@ static const char* strip_prefixes(const char* path) {
 /// Register the given preopened file descriptor under the given path.
 ///
 /// This function takes ownership of `prefix`.
-static bool register_preopened_fd(__wasi_fd_t fd, const char* relprefix) {
+static bool register_preopened_fd(__wasi_fd_t fd,
+                                  const char* relprefix,
+                                  __wasi_device_t dev,
+                                  __wasi_inode_t ino) {
   // Check preconditions.
   assert_invariants();
   assert(fd != AT_FDCWD);
@@ -103,10 +125,8 @@ static bool register_preopened_fd(__wasi_fd_t fd, const char* relprefix) {
   if (prefix == NULL) {
     return false;
   }
-  preopens[num_preopens++] = (preopen){
-    prefix,
-    fd,
-  };
+
+  preopens[num_preopens++] = (preopen){prefix, fd, dev, ino};
 
   assert_invariants();
   return true;
@@ -134,17 +154,32 @@ prefix_matches(const char* prefix, size_t prefix_len, const char* path) {
   return last == '/' || last == '\0';
 }
 
-bool __paths_resolve_path(int* resolved_dirfd, const char** path_ptr) {
+static bool resolve_path_unlocked(bool* need_unlock,
+                                  int* resolved_dirfd,
+                                  const char** path_ptr) {
   const char* path = *path_ptr;
 
   if (*resolved_dirfd != AT_FDCWD && path[0] != '/') {
+    *need_unlock = false;
     return true;
   }
+
+  bool is_absolute = path[0] == '/';
 
   // Strip leading `/` characters, the prefixes we're mataching won't have
   // them.
   while (*path == '/')
     path++;
+
+  if (!cwd_is_root && !is_absolute) {
+    assert(*resolved_dirfd == AT_FDCWD);
+
+    *need_unlock = !cwd_fd_from_preopen;
+    *resolved_dirfd = cwd_fd;
+    *path_ptr = path;
+    return true;
+  }
+
   // Search through the preopens table. Iterate in reverse so that more
   // recently added preopens take precedence over less recently addded ones.
   size_t match_len = 0;
@@ -178,9 +213,349 @@ bool __paths_resolve_path(int* resolved_dirfd, const char** path_ptr) {
   if (*computed == '\0')
     computed = ".";
 
+  *need_unlock = false;
   *resolved_dirfd = fd;
   *path_ptr = computed;
   return true;
+}
+
+bool __paths_resolve_path(bool* need_unlock,
+                          int* resolved_dirfd,
+                          const char** path_ptr) {
+  // fast path
+  if (*resolved_dirfd != AT_FDCWD && (*path_ptr)[0] != '/') {
+    *need_unlock = false;
+    return true;
+  }
+
+  LOCK(lock);
+  bool ret = resolve_path_unlocked(need_unlock, resolved_dirfd, path_ptr);
+  if (!*need_unlock) {
+    UNLOCK(lock);
+  }
+  return ret;
+}
+
+void __paths_unlock() { UNLOCK(lock); }
+
+static void change_cwd_with_fd_unlocked(int newfd,
+                                        __wasi_device_t dev,
+                                        __wasi_inode_t ino) {
+  if (cwd_is_root) {
+    cwd_is_root = false;
+  } else {
+    if (!cwd_fd_from_preopen) {
+      __wasi_fd_close(cwd_fd);
+    }
+  }
+
+  for (size_t i = 0; i < num_preopens; ++i) {
+    const preopen* pre = &preopens[i];
+
+    if (pre->dev == dev && pre->ino == ino) {
+      __wasi_fd_close(newfd);
+
+      if (*pre->prefix == '\0') {
+        cwd_is_root = true;
+      } else {
+        cwd_fd = pre->fd;
+        cwd_fd_from_preopen = true;
+      }
+
+      return;
+    }
+  }
+
+  cwd_fd = newfd;
+  cwd_fd_from_preopen = false;
+}
+
+static int change_cwd_unlocked(int dirfd, const char* path) {
+  __wasi_errno_t error;
+
+  int newdir = openat(dirfd, path, O_DIRECTORY | O_SEARCH);
+  if (newdir == -1) {
+    error = errno;
+    goto out;
+  }
+
+  __wasi_filestat_t sb;
+  error = __wasi_fd_filestat_get(newdir, &sb);
+  if (error != __WASI_ERRNO_SUCCESS) {
+    __wasi_fd_close(newdir);
+    goto out;
+  }
+
+  change_cwd_with_fd_unlocked(newdir, sb.dev, sb.ino);
+  error = __WASI_ERRNO_SUCCESS;
+
+out:
+  return error;
+}
+
+__wasi_errno_t __paths_chdir(const char* path) {
+  __wasi_errno_t error;
+
+  LOCK(lock);
+
+  int dirfd = AT_FDCWD;
+
+  bool need_unlock;
+  bool ret = resolve_path_unlocked(&need_unlock, &dirfd, &path);
+  if (!ret) {
+    error = __WASI_ERRNO_NOENT;
+    goto out;
+  }
+  (void)need_unlock;
+
+  error = change_cwd_unlocked(dirfd, path);
+
+out:
+  UNLOCK(lock);
+  return error;
+}
+
+__wasi_errno_t __paths_fchdir(int fd) {
+  if (fd == AT_FDCWD) {
+    return EBADF;
+  }
+
+  LOCK(lock);
+  __wasi_errno_t error = change_cwd_unlocked(fd, ".");
+  UNLOCK(lock);
+  return error;
+}
+
+struct buf {
+  char* buf;
+  size_t size;
+  size_t capa;
+};
+
+static __wasi_errno_t buf_prepend(struct buf* buf, const char* str) {
+  size_t str_length = strlen(str);
+  size_t newsize = buf->size + str_length;
+  if (newsize > buf->capa) {
+    size_t newcapa = buf->capa != 0 ? buf->capa : 16;
+    while (newcapa < newsize) {
+      newcapa *= 2;
+    }
+
+    char* newbuf = realloc(buf->buf, newcapa);
+    if (!newbuf) {
+      return errno;
+    }
+    buf->buf = newbuf;
+    buf->capa = newcapa;
+  }
+
+  memmove(&buf->buf[str_length], &buf->buf[0], buf->size);
+  memcpy(&buf->buf[0], str, str_length);
+  buf->size = newsize;
+
+  return __WASI_ERRNO_SUCCESS;
+}
+
+static bool buf_empty(const struct buf* buf) { return buf->size == 0; }
+
+static __wasi_errno_t
+calculate_cwd_path(char** out_buf, size_t* out_size, __wasi_fd_t fd) {
+  __wasi_errno_t error;
+  struct buf buf = {NULL, 0, 0};
+
+  int parent_for_search = -1;
+
+  for (;;) {
+    __wasi_device_t dev;
+    __wasi_inode_t ino;
+    {
+      __wasi_filestat_t sb;
+      error = __wasi_fd_filestat_get(fd, &sb);
+      if (error != __WASI_ERRNO_SUCCESS) {
+        goto out;
+      }
+      dev = sb.dev;
+      ino = sb.ino;
+    }
+
+    {
+      int new_parent = openat(fd, "..", O_DIRECTORY | O_SEARCH);
+      if (new_parent == -1) {
+        error = errno;
+        goto out;
+      }
+
+      if (parent_for_search != -1) {
+        __wasi_fd_close(parent_for_search);
+      }
+      parent_for_search = new_parent;
+    }
+
+    int parent = openat(parent_for_search, ".", O_DIRECTORY | O_RDONLY);
+    if (parent == -1) {
+      error = errno;
+      goto out;
+    }
+
+    __wasi_device_t parent_dev;
+    __wasi_inode_t parent_ino;
+    {
+      __wasi_filestat_t sb;
+      error = __wasi_fd_filestat_get(parent, &sb);
+      if (error != __WASI_ERRNO_SUCCESS) {
+        __wasi_fd_close(parent);
+        goto out;
+      }
+      parent_dev = sb.dev;
+      parent_ino = sb.ino;
+    }
+
+    if (parent_dev != dev) {
+      error = __WASI_ERRNO_NOENT;
+      __wasi_fd_close(parent);
+      goto out;
+    }
+
+    DIR* parentdir = fdopendir(parent);
+    if (!parentdir) {
+      error = errno;
+      __wasi_fd_close(parent);
+      goto out;
+    }
+
+    errno = 0;
+    struct dirent* dent;
+    bool found = false;
+    while ((dent = readdir(parentdir)) != NULL) {
+      if (dent->d_ino == ino) {
+        if (!buf_empty(&buf)) {
+          error = buf_prepend(&buf, "/");
+          if (error != __WASI_ERRNO_SUCCESS) {
+            closedir(parentdir);
+            goto out;
+          }
+        }
+
+        error = buf_prepend(&buf, dent->d_name);
+        if (error != __WASI_ERRNO_SUCCESS) {
+          closedir(parentdir);
+          goto out;
+        }
+
+        found = true;
+        break;
+      }
+    }
+    error = errno;
+    closedir(parentdir);
+    if (error != __WASI_ERRNO_SUCCESS) {
+      goto out;
+    }
+    if (!found) {
+      error = __WASI_ERRNO_NOENT;
+      goto out;
+    }
+
+    for (size_t i = 0; i < num_preopens; ++i) {
+      const preopen* pre = &preopens[i];
+      if (parent_dev == pre->dev && parent_ino == pre->ino) {
+        // We have reached a root.
+
+        error = buf_prepend(&buf, "/");
+        if (error != __WASI_ERRNO_SUCCESS) {
+          goto out;
+        }
+
+        error = buf_prepend(&buf, pre->prefix);
+        if (error != __WASI_ERRNO_SUCCESS) {
+          goto out;
+        }
+
+        if (*pre->prefix != '\0') {
+          error = buf_prepend(&buf, "/");
+        }
+        goto out;
+      }
+    }
+
+    fd = parent_for_search;
+  }
+
+out:
+  if (parent_for_search != -1) {
+    __wasi_fd_close(parent_for_search);
+  }
+  if (error != __WASI_ERRNO_SUCCESS) {
+    free(buf.buf);
+  } else {
+    *out_buf = buf.buf;
+    *out_size = buf.size;
+  }
+  return error;
+}
+
+__wasi_errno_t __paths_getcwd(char* buf, size_t* size) {
+  __wasi_errno_t error;
+
+  LOCK(lock);
+  if (cwd_is_root) {
+    if (*size < 2) {
+      error = __WASI_ERRNO_RANGE;
+      goto out;
+    }
+    buf[0] = '/';
+    buf[1] = '\0';
+    *size = 2;
+    error = __WASI_ERRNO_SUCCESS;
+    goto out;
+  }
+
+  if (cwd_fd_from_preopen) {
+    for (size_t i = 0; i < num_preopens; ++i) {
+      const preopen* pre = &preopens[i];
+      if (pre->fd == cwd_fd) {
+        size_t cwd_len = strlen(pre->prefix);
+        if (1 + cwd_len + 1 > *size) {
+          error = __WASI_ERRNO_RANGE;
+          goto out;
+        }
+
+        buf[0] = '/';
+        strcpy(&buf[1], pre->prefix);
+        *size = 1 + cwd_len + 1;
+
+        error = __WASI_ERRNO_SUCCESS;
+        goto out;
+      }
+    }
+    error = __WASI_ERRNO_NOENT;
+    assert(false);
+  } else {
+    char* cwd;
+    size_t cwd_size;
+
+    error = calculate_cwd_path(&cwd, &cwd_size, cwd_fd);
+    if (error != __WASI_ERRNO_SUCCESS) {
+      goto out;
+    }
+
+    if (cwd_size + 1 > *size) {
+      free(cwd);
+      error = __WASI_ERRNO_RANGE;
+      goto out;
+    }
+
+    memcpy(buf, cwd, cwd_size);
+    free(cwd);
+    buf[cwd_size] = '\0';
+    *size = cwd_size + 1;
+
+    error = __WASI_ERRNO_SUCCESS;
+  }
+
+out:
+  UNLOCK(lock);
+  return error;
 }
 
 // Populate WASI preopens.
@@ -209,10 +584,15 @@ static void _standalone_populate_preopens(void) {
           goto oserr;
         prefix[prestat.u.dir.pr_name_len] = '\0';
 
-        if (!register_preopened_fd(fd, prefix))
-          goto software;
-        free(prefix);
+        __wasi_filestat_t fsb_cur;
+        ret = __wasi_path_filestat_get(fd, 0, ".", 1, &fsb_cur);
+        if (ret != __WASI_ERRNO_SUCCESS)
+          goto oserr;
 
+        if (!register_preopened_fd(fd, prefix, fsb_cur.dev, fsb_cur.ino))
+          goto software;
+
+        free(prefix);
         break;
       }
       default:

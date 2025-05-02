@@ -53,8 +53,9 @@ void test() {
   dir = opendir("noexist");
   assert(!dir);
   assert(errno == ENOENT);
-// NODERAWFS tests run as root, and the root user can opendir any directory
-#ifndef NODERAWFS
+  // NODERAWFS/STANDALONE_WASM tests run as root, and the root user can opendir
+  // any directory
+#if !defined(NODERAWFS) && !defined(STANDALONE_WASM)
   dir = opendir("nocanread");
   assert(!dir);
   assert(errno == EACCES);

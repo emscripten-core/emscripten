@@ -22,6 +22,15 @@ int main() {
   assert(mkdir("working", 0777) != -1);
   assert(mkdir("/working/test", 0777) != -1);
 
+#ifdef STANDALONE_WASM
+  assert(mkdir("/dev", 0777) != -1);
+  {
+    int fd = open("/dev/file", O_CREAT, 0777);
+    assert(fd >= 0);
+    close(fd);
+  }
+#endif
+
   // Try to pass a size of 0.
   errno = 0;
   getcwd(cwd, 0);
@@ -92,7 +101,11 @@ int main() {
   printf("Current working dir: %s\n", cwd);
 
   // Try to change cwd to a file.
+#ifdef STANDALONE_WASM
+  chdir("/dev/file");
+#else
   chdir("/dev/stdout");
+#endif
   printf("Errno: %s\n", strerror(errno));
   assert(errno == ENOTDIR);
   ret = getcwd(cwd, sizeof(cwd));

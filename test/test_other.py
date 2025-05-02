@@ -14286,7 +14286,10 @@ Module.postRun = () => {{
     self.do_run_in_out_file_test('wasmfs/wasmfs_mkdir.c')
 
   @also_with_wasmfs
+  @also_with_standalone_wasm(exclude_engines=['node'])
   def test_unistd_cwd(self):
+    if self.get_setting('STANDALONE_WASM'):
+      self.emcc_args += ['-DSTANDALONE_WASM']
     self.do_run_in_out_file_test('wasmfs/wasmfs_chdir.c')
 
   def test_unistd_chown(self):

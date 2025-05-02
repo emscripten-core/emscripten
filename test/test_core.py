@@ -5532,12 +5532,15 @@ got: 10
     self.do_run(src, '3\n')
 
   @also_with_noderawfs
+  @also_with_standalone_wasm(exclude_engines=['node', 'wasmer'])
   def test_readdir(self):
     if self.get_setting('WASMFS') and self.get_setting('NODERAWFS'):
       # WasmFS + NODERAWFS lacks ino numbers in directory listings, see
       # https://github.com/emscripten-core/emscripten/issues/19418
       # We need to tell the test we are in this mode so it can ignore them.
       self.emcc_args += ['-DWASMFS_NODERAWFS']
+    if self.get_setting('STANDALONE_WASM'):
+      self.emcc_args += ['-DSTANDALONE_WASM']
     self.do_run_in_out_file_test('dirent/test_readdir.c')
 
   @also_with_wasm_bigint
@@ -5952,9 +5955,12 @@ Module.onRuntimeInitialized = () => {
       out_suffix = ''
     self.do_run_in_out_file_test('unistd/access.c', out_suffix=out_suffix)
 
+  @also_with_standalone_wasm(exclude_engines=['node', 'wasmtime', 'wasmer'])
   def test_unistd_curdir(self):
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
+    if self.get_setting('STANDALONE_WASM'):
+      self.emcc_args += ['-DSTANDALONE_WASM']
     self.do_run_in_out_file_test('unistd/curdir.c')
 
   @also_with_noderawfs
