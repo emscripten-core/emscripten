@@ -646,7 +646,7 @@ def also_with_standalone_wasm(impure=False, exclude_engines=None):
           self.wasm_engines = []
         else:
           self.wasm_engines = [engine for engine in self.wasm_engines
-            if all([not excluded in os.path.basename(engine[0]) for excluded in exclude_engines])]
+            if all(excluded not in os.path.basename(engine[0]) for excluded in exclude_engines)]
         if 'node' in exclude_engines:
           self.js_engines = []
         else:
