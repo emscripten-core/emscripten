@@ -1113,7 +1113,6 @@ var LibraryDylink = {
 #endif
       if (f) {
         var libData = FS.readFile(f, {encoding: 'binary'});
-        dso.path = f;
         return flags.loadAsync ? Promise.resolve(libData) : libData;
       }
 #endif
