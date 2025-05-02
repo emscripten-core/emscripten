@@ -31,6 +31,8 @@ See docs/process.md for more on how version tagging works.
   network requests. (#24163, #24190)
 - Closure arguments can now be used from ports using `settings.CLOSURE_ARGS`
   (#24192)
+- Embind's `val` now requires a pointer policy when using pointers. e.g.
+  `(val v(pointer, allow_raw_pointers())`.
 
 4.0.7 - 04/15/25
 ----------------
