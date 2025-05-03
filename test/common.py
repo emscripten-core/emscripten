@@ -643,17 +643,19 @@ def also_with_standalone_wasm(impure=False, exclude_engines=None):
         self.emcc_args.append('-Wno-unused-command-line-argument')
         # if we are impure, disallow all wasm engines
         if impure:
-          self.wasm_engines = []
+          wasm_engines = []
         else:
-          self.wasm_engines = [engine for engine in self.wasm_engines
+          wasm_engines = [engine for engine in self.wasm_engines
             if all(excluded not in os.path.basename(engine[0]) for excluded in exclude_engines)]
         if 'node' in exclude_engines:
           self.js_engines = []
           if not self.wasm_engines:
             self.skipTest('no WASM engines available for this test')
         else:
-          nodejs = self.require_node(allow_wasm_engines=True)
+          nodejs = self.require_node()
           self.node_args += shared.node_bigint_flags(nodejs)
+        # `self.require_node()` clears `self.wasm_engines`, so set them here.
+        self.wasm_engines = wasm_engines
         func(self)
 
     parameterize(metafunc, {'': (False,),
@@ -997,14 +999,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       return None
     return config.NODE_JS_TEST
 
-  def require_node(self, allow_wasm_engines=False):
+  def require_node(self):
     nodejs = self.get_nodejs()
     if not nodejs:
       if 'EMTEST_SKIP_NODE' in os.environ:
         self.skipTest('test requires node and EMTEST_SKIP_NODE is set')
       else:
         self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
-    self.require_engine(nodejs, allow_wasm_engines)
+    self.require_engine(nodejs)
     return nodejs
 
   def node_is_canary(self, nodejs):
@@ -1021,14 +1023,13 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     else:
       self.fail('node canary required to run this test.  Use EMTEST_SKIP_NODE_CANARY to skip')
 
-  def require_engine(self, engine, allow_wasm_engines=False):
+  def require_engine(self, engine):
     logger.debug(f'require_engine: {engine}')
     if self.required_engine and self.required_engine != engine:
       self.skipTest(f'Skipping test that requires `{engine}` when `{self.required_engine}` was previously required')
     self.required_engine = engine
     self.js_engines = [engine]
-    if not allow_wasm_engines:
-      self.wasm_engines = []
+    self.wasm_engines = []
 
   def require_wasm64(self):
     if self.is_browser_test():
