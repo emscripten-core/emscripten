@@ -112,6 +112,15 @@ def with_both_compilers(f):
   return f
 
 
+def with_debug_flags(f):
+  assert callable(f)
+
+  parameterize(f, {'': ('',),
+                  'dylink_debug': ('-sDYLINK_DEBUG',)})
+
+  return f
+
+
 def wasmfs_all_backends(f):
   assert callable(f)
 
@@ -2018,8 +2027,9 @@ Module['postRun'] = () => {
     self.run_process([EMCC, 'main.c', '--embed-file', 'tst', '--exclude-file', '*.exe'])
     self.assertEqual(self.run_js('a.out.js').strip(), '')
 
-  def test_dylink_strict(self):
-    self.do_run_in_out_file_test('hello_world.c', emcc_args=['-sSTRICT', '-sMAIN_MODULE=1'])
+  @with_debug_flags
+  def test_dylink_strict(self, dbgflag):
+    self.do_run_in_out_file_test('hello_world.c', emcc_args=['-sSTRICT', '-sMAIN_MODULE=1', dbgflag])
 
   def test_dylink_exceptions_and_assertions(self):
     # Linking side modules using the STL and exceptions should not abort with
@@ -2260,7 +2270,8 @@ Module['postRun'] = () => {
         'libside.wasm',
       ])
 
-  def test_dylink_no_autoload(self):
+  @with_debug_flags
+  def test_dylink_no_autoload(self, dbgflag):
     create_file('main.c', r'''
       #include <stdio.h>
       int sidey();
@@ -2272,13 +2283,13 @@ Module['postRun'] = () => {
     self.run_process([EMCC, '-sSIDE_MODULE', 'side.c', '-o', 'libside.wasm'])
 
     # First show everything working as expected with AUTOLOAD_DYLIBS
-    self.run_process([EMCC, '-sMAIN_MODULE=2', 'main.c', 'libside.wasm'])
+    self.run_process([EMCC, '-sMAIN_MODULE=2', 'main.c', 'libside.wasm', dbgflag])
     output = self.run_js('a.out.js')
     self.assertContained('sidey: 42\n', output)
 
     # Same again but with NO_AUTOLOAD_DYLIBS.   This time we expect the call to sidey
     # to fail at runtime.
-    self.run_process([EMCC, '-sMAIN_MODULE=2', 'main.c', 'libside.wasm', '-sNO_AUTOLOAD_DYLIBS'])
+    self.run_process([EMCC, '-sMAIN_MODULE=2', 'main.c', 'libside.wasm', '-sNO_AUTOLOAD_DYLIBS', dbgflag])
     output = self.run_js('a.out.js', assert_returncode=NON_ZERO)
     self.assertContained("external symbol 'sidey' is missing. perhaps a side module was not linked in?", output)
 
