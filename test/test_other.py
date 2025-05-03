@@ -2341,7 +2341,8 @@ Module['postRun'] = () => {
     self.run_process(cmd + ['-L.'])
     self.run_js('a.out.js')
 
-  def test_dylink_dependencies_rpath(self):
+  @with_debug_flags
+  def test_dylink_dependencies_rpath(self, dbgflag):
     create_file('side1.c', r'''
     #include <stdio.h>
     #include <stdlib.h>
@@ -2371,7 +2372,7 @@ Module['postRun'] = () => {
     ''')
     self.emcc('side2.c', ['-fPIC', '-sSIDE_MODULE', '-olibside2.so'])
     self.emcc('side1.c', ['-fPIC', '-sSIDE_MODULE', '-Wl,-rpath,$ORIGIN', '-olibside1.so', 'libside2.so'])
-    cmd = [EMCC, 'main.c', '-fPIC', '-sMAIN_MODULE=2', 'libside1.so']
+    cmd = [EMCC, 'main.c', '-fPIC', '-sMAIN_MODULE=2', 'libside1.so', dbgflag]
 
     # Unless `.` is added to the library path the libside2.so won't be found.
     err = self.expect_fail(cmd)
@@ -7720,7 +7721,8 @@ int main() {
     self.do_runf('main.c', 'Hello1\nHello1_dep\nHello2\nHello3\nHello4\nOk\n', emcc_args=emcc_args)
 
   @also_with_wasmfs
-  def test_dlopen_rpath(self):
+  @with_debug_flags
+  def test_dlopen_rpath(self, dbgflag):
     create_file('hello_dep.c', r'''
     #include <stdio.h>
 
@@ -7773,7 +7775,7 @@ int main() {
                         '--embed-file', 'hello.wasm@/usr/lib/libhello.wasm',
                         '--embed-file', 'subdir/libhello_dep.so@/usr/lib/subdir/libhello_dep.so',
                         'hello.wasm', '-sNO_AUTOLOAD_DYLIBS',
-                        '-L./subdir', '-lhello_dep']
+                        '-L./subdir', '-lhello_dep', dbgflag]
       self.do_runf('main.c', expected, emcc_args=args, **kwds)
 
     # case 1) without rpath: fail to locate the library
