@@ -116,7 +116,7 @@ def with_debug_flags(f):
   assert callable(f)
 
   parameterize(f, {'': ('',),
-                  'dylink_debug': ('-sDYLINK_DEBUG',)})
+                  'dylink_debug': ('-sDYLINK_DEBUG=1',)})
 
   return f
 
