@@ -314,9 +314,11 @@ struct allow_raw_pointer {
 struct allow_raw_pointers {
     template<typename InputType, int Index>
     struct Transform {
+        // Use decay to handle references to pointers e.g.(T*&)->(T*).
+        typedef typename std::decay<InputType>::type DecayedType;
         typedef typename std::conditional<
-            std::is_pointer<InputType>::value,
-            internal::AllowedRawPointer<typename std::remove_pointer<InputType>::type>,
+            std::is_pointer<DecayedType>::value,
+            internal::AllowedRawPointer<typename std::remove_pointer<DecayedType>::type>,
             InputType
         >::type type;
     };
@@ -2054,7 +2056,7 @@ struct VectorAccess {
         typename VectorType::size_type index
     ) {
         if (index < v.size()) {
-            return val(v[index]);
+            return val(v[index], allow_raw_pointers());
         } else {
             return val::undefined();
         }
@@ -2085,11 +2087,11 @@ class_<std::vector<T, Allocator>> register_vector(const char* name) {
     size_t (VecType::*size)() const = &VecType::size;
     return class_<std::vector<T>>(name)
         .template constructor<>()
-        .function("push_back", push_back)
-        .function("resize", resize)
+        .function("push_back", push_back, allow_raw_pointers())
+        .function("resize", resize, allow_raw_pointers())
         .function("size", size)
-        .function("get", &internal::VectorAccess<VecType>::get)
-        .function("set", &internal::VectorAccess<VecType>::set)
+        .function("get", &internal::VectorAccess<VecType>::get, allow_raw_pointers())
+        .function("set", &internal::VectorAccess<VecType>::set, allow_raw_pointers())
         ;
 }
 
@@ -2183,7 +2185,7 @@ struct BindingType<std::optional<T>> {
     template<typename ReturnPolicy = void>
     static WireType toWireType(std::optional<T> value, rvp::default_tag) {
         if (value) {
-            return ValBinding::toWireType(val(*value), rvp::default_tag{});
+            return ValBinding::toWireType(val(*value, allow_raw_pointers()), rvp::default_tag{});
         }
         return ValBinding::toWireType(val::undefined(), rvp::default_tag{});
     }

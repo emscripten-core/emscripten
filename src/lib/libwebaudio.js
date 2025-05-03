@@ -206,6 +206,7 @@ let LibraryWebAudio = {
     }).catch(audioWorkletCreationFailed);
   },
 
+  $_EmAudioDispatchProcessorCallback__deps: ['$getWasmTableEntry'],
   $_EmAudioDispatchProcessorCallback: (e) => {
     let data = e.data;
     // '_wsc' is short for 'wasm call', trying to use an identifier name that

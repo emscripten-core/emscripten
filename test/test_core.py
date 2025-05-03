@@ -7296,23 +7296,7 @@ void* operator new(size_t size) {
   })
   def test_embind_val_basics(self, args):
     self.maybe_closure()
-    create_file('test.cpp', r'''
-      #include <stdio.h>
-      #include <emscripten/val.h>
-
-      using namespace emscripten;
-
-      int main() {
-        val Math = val::global("Math");
-
-        // two ways to call Math.abs
-        printf("abs(-10): %d\n", Math.call<int>("abs", -10));
-        printf("abs(-11): %d\n", Math["abs"](-11).as<int>());
-
-        return 0;
-      }
-    ''')
-    self.do_runf('test.cpp', 'abs(-10): 10\nabs(-11): 11', emcc_args=args)
+    self.do_run_in_out_file_test('embind/test_embind_val_basics.cpp', emcc_args=args)
 
   @node_pthreads
   def test_embind_basics(self):

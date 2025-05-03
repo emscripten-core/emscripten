@@ -31,6 +31,8 @@ See docs/process.md for more on how version tagging works.
   network requests. (#24163, #24190)
 - Closure arguments can now be used from ports using `settings.CLOSURE_ARGS`
   (#24192)
+- Embind's `val` now requires a pointer policy when using pointers. e.g.
+  `(val v(pointer, allow_raw_pointers())`.
 
 4.0.7 - 04/15/25
 ----------------
@@ -878,7 +880,7 @@ See docs/process.md for more on how version tagging works.
   `ASSERTIONS` is enabled. This option is mainly for the users who want only
   exceptions' stack traces without turning `ASSERTIONS` on. (#18642 and #18535)
 - `SUPPORT_LONGJMP`'s default value now depends on the exception mode. If Wasm
-  EH (`-fwasm-exception`) is used, it defaults to `wasm`, and if Emscripten EH
+  EH (`-fwasm-exceptions`) is used, it defaults to `wasm`, and if Emscripten EH
   (`-sDISABLE_EXCEPTION_CATCHING=0`) is used or no exception support is used, it
   defaults to `emscripten`. Previously it always defaulted to `emscripten`, so
   when a user specified `-fwasm-exceptions`, it resulted in Wasm EH + Emscripten
