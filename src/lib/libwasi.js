@@ -614,6 +614,7 @@ var WasiLibrary = {
   },
 
   path_filestat_get__sig: 'iiiiii',
+  path_filestat_get__nothrow: true,
   path_filestat_get: (fd, flags, path, path_len, buf) => {
     return {{{ cDefs.ENOSYS }}};
   },
