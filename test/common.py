@@ -1523,10 +1523,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
              assert_returncode=0,
              interleaved_output=True,
              input=None,
-             run_in_tmpdir=False):
-    if run_in_tmpdir:
-      ensure_dir(self.in_dir('fs'))
-
+             cwd=None):
     # use files, as PIPE can get too full and hang us
     stdout_file = self.in_dir('stdout')
     stderr_file = None
@@ -1548,9 +1545,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       engine = engine + self.spidermonkey_args
     try:
       jsrun.run_js(filename, engine, args,
-                   cwd=self.in_dir('fs') if run_in_tmpdir else None,
                    stdout=stdout,
                    stderr=stderr,
+                   cwd=cwd,
                    assert_returncode=assert_returncode,
                    input=input)
     except subprocess.TimeoutExpired as e:
@@ -1583,9 +1580,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         self.fail('JS subprocess unexpectedly succeeded (%s):  Output:\n%s' % (error.cmd, ret))
       else:
         self.fail('JS subprocess failed (%s): %s (expected=%s).  Output:\n%s' % (error.cmd, error.returncode, assert_returncode, ret))
-
-    if run_in_tmpdir:
-      force_delete_contents(self.in_dir('fs'))
 
     return ret
 
@@ -1982,7 +1976,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       js_file = self.build(filename, **kwargs)
     self.assertExists(js_file)
 
-    engines = [(el, False) for el in self.js_engines.copy()]
+    engines = [(el, None) for el in self.js_engines.copy()]
     if len(engines) > 1 and not self.use_all_engines:
       engines = engines[:1]
     # In standalone mode, also add wasm vms as we should be able to run there too.
@@ -1991,14 +1985,17 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       # like with js engines, but for now as we bring it up, test in all of them
       if not self.wasm_engines:
         logger.warning('no wasm engine was found to run the standalone part of this test')
-      engines += [(el, True) for el in self.wasm_engines]
+      engines += [(engine, os.path.basename(engine[0])) for engine in self.wasm_engines]
     if len(engines) == 0:
       self.fail('No JS engine present to run this test with. Check %s and the paths therein.' % config.EM_CONFIG)
-    for engine, run_in_tmpdir in engines:
+    for engine, subdir in engines:
+      if subdir:
+        subdir = self.in_dir(subdir)
+        ensure_dir(subdir)
       js_output = self.run_js(js_file, engine, args,
+                              cwd=subdir,
                               assert_returncode=assert_returncode,
-                              interleaved_output=interleaved_output,
-                              run_in_tmpdir=run_in_tmpdir)
+                              interleaved_output=interleaved_output)
       js_output = js_output.replace('\r\n', '\n')
       if expected_output:
         if type(expected_output) not in [list, tuple]:
