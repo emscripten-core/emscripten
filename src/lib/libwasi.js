@@ -613,9 +613,13 @@ var WasiLibrary = {
     return 0;
   },
 
-  path_filestat_get__sig: 'iiiiii',
   path_filestat_get__nothrow: true,
   path_filestat_get: (fd, flags, path, path_len, buf) => {
+    return {{{ cDefs.ENOSYS }}};
+  },
+
+  path_create_directory__nothrow: true,
+  path_create_directory: (fd, path, path_len) => {
     return {{{ cDefs.ENOSYS }}};
   },
 };

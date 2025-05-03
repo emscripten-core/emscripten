@@ -1536,6 +1536,8 @@ sigs = {
   lineColor__sig: 'ipiiiii',
   lineRGBA__sig: 'ipiiiiiiii',
   llvm_eh_typeid_for__sig: 'vp',
+  path_create_directory__sig: 'iipp',
+  path_filestat_get__sig: 'iiippp',
   pixelRGBA__sig: 'ipiiiiii',
   proc_exit__sig: 'vi',
   random_get__sig: 'ipp',
