@@ -631,11 +631,6 @@ def also_with_standalone_wasm(impure=False, exclude_engines=None):
         self.set_setting('STANDALONE_WASM')
         if not impure:
           self.set_setting('PURE_WASI')
-        if 'node' in exclude_engines:
-          # When not running under node we don't care for any undefined symbols
-          # in the .js as we are only interested in the .wasm file.
-          self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS=0')
-          self.emcc_args.append('-Wno-js-compiler')
         # we will not legalize the JS ffi interface, so we must use BigInt
         # support in order for JS to have a chance to run this without trapping
         # when it sees an i64 on the ffi.

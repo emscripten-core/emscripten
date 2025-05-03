@@ -164,6 +164,7 @@ wasi_symbols = {
   'random_get',
   'path_filestat_get',
   'path_create_directory',
+  'path_symlink',
 }
 
 

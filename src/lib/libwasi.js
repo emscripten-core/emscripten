@@ -622,6 +622,11 @@ var WasiLibrary = {
   path_create_directory: (fd, path, path_len) => {
     return {{{ cDefs.ENOSYS }}};
   },
+
+  path_symlink__nothrow: true,
+  path_symlink: (old_path, old_path_len, fd, new_path, new_path_len) => {
+    return {{{ cDefs.ENOSYS }}};
+  },
 };
 
 for (var x in WasiLibrary) {

@@ -1538,6 +1538,7 @@ sigs = {
   llvm_eh_typeid_for__sig: 'vp',
   path_create_directory__sig: 'iipp',
   path_filestat_get__sig: 'iiippp',
+  path_symlink__sig: 'ippipp',
   pixelRGBA__sig: 'ipiiiiii',
   proc_exit__sig: 'vi',
   random_get__sig: 'ipp',
