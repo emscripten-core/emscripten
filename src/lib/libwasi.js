@@ -612,6 +612,11 @@ var WasiLibrary = {
     randomFill(HEAPU8.subarray(buffer, buffer + size));
     return 0;
   },
+
+  path_filestat_get__sig: 'iiiiii',
+  path_filestat_get: (fd, flags, path, path_len, buf) => {
+    return {{{ cDefs.ENOSYS }}};
+  },
 };
 
 for (var x in WasiLibrary) {
