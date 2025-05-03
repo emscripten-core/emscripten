@@ -939,9 +939,10 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
   # restriction soon: https://reviews.llvm.org/D71738
   force_object_files = True
 
-  cflags = ['-fno-builtin', '-DNDEBUG']
+  cflags = ['-fno-builtin', '-DNDEBUG', '-DCOMPILER_RT_HAS_UNAME=1']
   src_dir = 'system/lib/compiler-rt/lib/builtins'
-  includes = ['system/lib/libc']
+  profile_src_dir = 'system/lib/compiler-rt/lib/profile'
+  includes = ['system/lib/libc', 'system/lib/compiler-rt/include']
   excludes = [
     # gcc_personality_v0.c depends on libunwind, which don't include by default.
     'gcc_personality_v0.c',
@@ -969,6 +970,8 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
     'trunctfxf2.c',
   ]
   src_files = glob_in_path(src_dir, '*.c', excludes=excludes)
+  src_files += glob_in_path(profile_src_dir, '*.c')
+  src_files += glob_in_path(profile_src_dir, '*.cpp')
   src_files += files_in_path(
       path='system/lib/compiler-rt',
       filenames=[
@@ -2078,7 +2081,6 @@ class CompilerRTLibrary(Library):
   # compiler_rt files can't currently be part of LTO although we are hoping to remove this
   # restriction soon: https://reviews.llvm.org/D71738
   force_object_files = True
-
 
 class libubsan_minimal_rt(CompilerRTLibrary, MTLibrary):
   name = 'libubsan_minimal_rt'
