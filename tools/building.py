@@ -822,6 +822,7 @@ def metadce(js_file, wasm_file, debug_info, last):
     'path_filestat_get',
     'path_create_directory',
     'path_symlink',
+    'fd_readdir',
   }
   for item in graph:
     if 'import' in item and item['import'][1] in WASI_IMPORTS:

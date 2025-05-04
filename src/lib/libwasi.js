@@ -627,6 +627,11 @@ var WasiLibrary = {
   path_symlink: (old_path, old_path_len, fd, new_path, new_path_len) => {
     return {{{ cDefs.ENOSYS }}};
   },
+
+  fd_readdir__nothrow: true,
+  fd_readdir: (fd, buf, buf_len, cookie, bufused) => {
+    return {{{ cDefs.ENOSYS }}};
+  },
 };
 
 for (var x in WasiLibrary) {

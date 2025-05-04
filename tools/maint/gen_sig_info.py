@@ -165,6 +165,7 @@ wasi_symbols = {
   'path_filestat_get',
   'path_create_directory',
   'path_symlink',
+  'fd_readdir',
 }
 
 

@@ -969,6 +969,7 @@ sigs = {
   fd_pread__sig: 'iippjp',
   fd_pwrite__sig: 'iippjp',
   fd_read__sig: 'iippp',
+  fd_readdir__sig: 'iippjp',
   fd_seek__sig: 'iijip',
   fd_sync__sig: 'ii',
   fd_write__sig: 'iippp',

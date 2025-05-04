@@ -7,6 +7,7 @@
 
 #define _GNU_SOURCE
 #include <assert.h>
+#include <dirent.h>
 #include <errno.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -26,6 +27,7 @@
 #include <wasi/api.h>
 #include <wasi/wasi-helpers.h>
 
+#include "../src/dirent/__dirent.h"
 #include "lock.h"
 #include "emscripten_internal.h"
 #include "paths.h"
@@ -357,6 +359,178 @@ weak int __syscall_symlinkat(intptr_t target_arg, int newdirfd, intptr_t linkpat
     return -error;
   }
   return 0;
+}
+
+weak int __syscall_getdents64(int fd, intptr_t dirp, size_t count) {
+  __wasi_errno_t error;
+  intptr_t dirpointer = dirp;
+  struct dirent *de = (void *)dirpointer;
+
+  // Check if the result buffer is too small.
+  if (count / sizeof(struct dirent) == 0) {
+    return -EINVAL;
+  }
+
+  __wasi_dirent_t entry;
+
+  // Create new buffer size to save same amount of __wasi_dirent_t as dirp records.
+  size_t buffer_size = (count / sizeof(struct dirent)) * (sizeof(entry) + 256);
+  char *buffer = malloc(buffer_size);
+  if (buffer == NULL) {
+    return -errno;
+  }
+
+  size_t buffer_processed = buffer_size;
+  size_t buffer_used = buffer_size;
+  size_t dirent_processed = 0;
+
+  // We assume `dirp` always points to the buffer of a `DIR*`.
+  __wasi_dircookie_t cookie =
+    ((DIR*)((char*)dirpointer - offsetof(DIR, buf)))->tell;
+
+  for (;;) {
+    // Extract the next dirent header.
+    size_t buffer_left = buffer_used - buffer_processed;
+    if (buffer_left < sizeof(__wasi_dirent_t)) {
+      // End-of-file.
+      if (buffer_used < buffer_size) {
+        break;
+      }
+
+      goto read_entries;
+    }
+    __wasi_dirent_t entry;
+    memcpy(&entry, buffer + buffer_processed, sizeof(entry));
+
+    size_t entry_size = sizeof(__wasi_dirent_t) + entry.d_namlen;
+    if (entry.d_namlen == 0) {
+      // Invalid pathname length. Skip the entry.
+      buffer_processed += entry_size;
+      continue;
+    }
+
+    // The entire entry must be present in buffer space. If not, read
+    // the entry another time. Ensure that the read buffer is large
+    // enough to fit at least this single entry.
+    if (buffer_left < entry_size) {
+      while (buffer_size < entry_size) {
+        buffer_size *= 2;
+      }
+      char *new_buffer = realloc(buffer, buffer_size);
+      if (new_buffer == NULL) {
+        error = errno;
+        goto out;
+      }
+      buffer = new_buffer;
+      goto read_entries;
+    }
+
+    const char *name = buffer + buffer_processed + sizeof(entry);
+    buffer_processed += entry_size;
+
+    // Skip entries that do not fit in the dirent name buffer.
+    if (entry.d_namlen > sizeof de->d_name) {
+      continue;
+    }
+
+    // Skip entries having null bytes in the filename.
+    if (memchr(name, '\0', entry.d_namlen) != NULL) {
+      continue;
+    }
+
+    off_t d_ino = entry.d_ino;
+    unsigned char d_type = entry.d_type;
+
+    // Adapted from wasi-libc.
+    if (d_ino == 0 && (entry.d_namlen != 2 || memcmp(name, "..", 2) != 0)) {
+      __wasi_filestat_t sb;
+      error = __wasi_path_filestat_get(fd, 0, name, entry.d_namlen, &sb);
+      if (error == __WASI_ERRNO_NOENT) {
+        // The file disappeared before we could read it, so skip it.
+        continue;
+      }
+      if (error != __WASI_ERRNO_SUCCESS) {
+        goto out;
+      }
+
+      // Fill in the inode.
+      d_ino = sb.ino;
+
+      // In case someone raced with us and replaced the object with this name
+      // with another of a different type, update the type too.
+      d_type = sb.filetype;
+    }
+
+    de->d_ino = d_ino;
+
+    // Map the right WASI type to dirent type.
+    // I could not get the dirent.h import to work to use defines.
+    switch (d_type) {
+      case __WASI_FILETYPE_UNKNOWN:
+        de->d_type = 0;
+        break;
+      case __WASI_FILETYPE_BLOCK_DEVICE:
+        de->d_type = 6;
+        break;
+      case __WASI_FILETYPE_CHARACTER_DEVICE:
+        de->d_type = 2;
+        break;
+      case __WASI_FILETYPE_DIRECTORY:
+        de->d_type = 4;
+        break;
+      case __WASI_FILETYPE_REGULAR_FILE:
+        de->d_type = 8;
+        break;
+      case __WASI_FILETYPE_SOCKET_DGRAM:
+        de->d_type = 12;
+        break;
+      case __WASI_FILETYPE_SOCKET_STREAM:
+        de->d_type = 12;
+        break;
+      case __WASI_FILETYPE_SYMBOLIC_LINK:
+        de->d_type = 10;
+        break;
+      default:
+        de->d_type = 0;
+        break;
+    }
+
+    de->d_off = entry.d_next;
+    de->d_reclen = sizeof(struct dirent);
+    memcpy(de->d_name, name, entry.d_namlen);
+    de->d_name[entry.d_namlen] = '\0';
+    cookie = entry.d_next;
+    dirent_processed = dirent_processed + sizeof(struct dirent);
+
+    // Can't fit more in my buffer.
+    if (dirent_processed + sizeof(struct dirent) > count) {
+      break;
+    }
+
+    // Set entry to next entry in memory.
+    dirpointer = dirpointer + sizeof(struct dirent);
+    de = (void*)(dirpointer);
+
+    continue;
+
+  read_entries:
+    // Load more directory entries and continue.
+    error = __wasi_fd_readdir(
+      fd, (uint8_t*)buffer, buffer_size, cookie, &buffer_used);
+    if (error != __WASI_ERRNO_SUCCESS) {
+      goto out;
+    }
+    buffer_processed = 0;
+  }
+
+  error = __WASI_ERRNO_SUCCESS;
+
+out:
+  if (error != __WASI_ERRNO_SUCCESS) {
+    free(buffer);
+    return -error;
+  }
+  return dirent_processed;
 }
 
 // Emscripten additions
