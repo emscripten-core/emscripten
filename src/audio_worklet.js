@@ -25,7 +25,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
       assert(opts.callback)
       assert(opts.samplesPerChannel)
 #endif
-      this.callback = wasmTable.get(opts.callback);
+      this.callback = getWasmTableEntry(opts.callback);
       this.userData = opts.userData;
       // Then the samples per channel to process, fixed for the lifetime of the
       // context that created this processor. Note for when moving to Web Audio
@@ -170,12 +170,7 @@ class BootstrapMessages extends AudioWorkletProcessor {
         // conflict with user messages
         messagePort.postMessage({'_wsc': d.callback, args: [d.contextHandle, 1/*EM_TRUE*/, d.userData] });
       } else if (d['_wsc']) {
-#if MEMORY64
-        var ptr = BigInt(d['_wsc']);
-#else
-        var ptr = d['_wsc'];
-#endif
-        wasmTable.get(ptr)(...d.args);
+        getWasmTableEntry(d['_wsc'])(...d.args);
       };
     }
   }

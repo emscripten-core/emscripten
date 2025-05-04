@@ -3308,6 +3308,15 @@ More info: https://emscripten.org
     self.do_runf('main.cpp', '10\nok\n',
                  emcc_args=['--no-entry', '-lembind', '-O2', '--closure=1', '--minify=0', '--post-js=post.js'])
 
+  @parameterized({
+    'val_1': ['embind/test_embind_no_raw_pointers_val_1.cpp'],
+    'val_2': ['embind/test_embind_no_raw_pointers_val_2.cpp'],
+    'val_3': ['embind/test_embind_no_raw_pointers_val_3.cpp'],
+  })
+  def test_embind_no_raw_pointers(self, filename):
+    stderr = self.expect_fail([EMCC, '-lembind', test_file(filename)])
+    self.assertContained('Implicitly binding raw pointers is illegal.', stderr)
+
   @is_slow_test
   @parameterized({
     '': [],
