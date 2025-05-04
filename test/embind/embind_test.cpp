@@ -59,7 +59,7 @@ static DummyForPointer emval_pointer_dummy(42);
 
 val emval_test_instance_pointer() {
   DummyForPointer* p = &emval_pointer_dummy;
-  return val(p);
+  return val(p, allow_raw_pointers());
 }
 
 int emval_test_value_from_instance_pointer(val v) {

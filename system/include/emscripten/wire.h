@@ -47,7 +47,11 @@ typedef const void* TYPEID;
 // identification.
 
 template<typename T>
+static inline constexpr bool IsCanonicalized = std::is_same<T, typename std::decay<T>::type>::value;
+
+template<typename T>
 struct CanonicalizedID {
+    static_assert(IsCanonicalized<T>, "T should not be a reference or cv-qualified");
     static char c;
     static constexpr TYPEID get() {
         return &c;
@@ -65,6 +69,7 @@ struct Canonicalized {
 template<typename T>
 struct LightTypeID {
     static constexpr TYPEID get() {
+        static_assert(IsCanonicalized<T>, "T should not be a reference or cv-qualified");
         if (has_unbound_type_names) {
 #if __has_feature(cxx_rtti)
             return &typeid(T);
@@ -83,6 +88,7 @@ struct LightTypeID {
 
 template<typename T>
 constexpr TYPEID getLightTypeID(const T& value) {
+    static_assert(IsCanonicalized<T>, "T should not be a reference or cv-qualified");
     if (has_unbound_type_names) {
 #if __has_feature(cxx_rtti)
         return &typeid(value);
@@ -135,6 +141,18 @@ struct TypeID<AllowedRawPointer<T>> {
     static constexpr TYPEID get() {
         return LightTypeID<T*>::get();
     }
+};
+
+template<typename T>
+struct TypeID<const T> : TypeID<T> {
+};
+
+template<typename T>
+struct TypeID<T&> : TypeID<T> {
+};
+
+template<typename T>
+struct TypeID<T&&> : TypeID<T> {
 };
 
 // ExecutePolicies<>
@@ -321,10 +339,6 @@ struct BindingType<const T> : public BindingType<T> {
 
 template<typename T>
 struct BindingType<T&> : public BindingType<T> {
-};
-
-template<typename T>
-struct BindingType<const T&> : public BindingType<T> {
 };
 
 template<typename T>
