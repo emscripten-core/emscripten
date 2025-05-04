@@ -20,6 +20,7 @@ See docs/process.md for more on how version tagging works.
 
 4.0.9 (in development)
 ----------------------
+- libunwind was updated to LLVM 20.1.4. (#?????)
 - When using cmake the EMSCRIPTEN_FORCE_COMPILERS setting was reverted to
   being on by default due to issues that were found with disabling it. (#24223)
 
