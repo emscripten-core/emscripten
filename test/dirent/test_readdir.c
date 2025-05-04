@@ -30,9 +30,12 @@ static void create_file(const char *path, const char *buffer, int mode) {
 
 void setup() {
   int err;
+  // Make this test not rely on `chdir` for standalone WASM mode.
+#if !defined(STANDALONE_WASM)
   err = mkdir("testtmp", 0777);  // can't call it tmp, that already exists
   CHECK(!err);
   chdir("testtmp");
+#endif
   err = mkdir("nocanread", 0111);
   CHECK(!err);
   err = mkdir("foobar", 0777);
