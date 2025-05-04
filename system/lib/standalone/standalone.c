@@ -396,13 +396,8 @@ weak int __syscall_symlinkat(intptr_t target_arg, int newdirfd, intptr_t linkpat
   return 0;
 }
 
-weak int __syscall_chdir(intptr_t path_arg) {
-  const char* path = (const char*)path_arg;
-  if (*path == 0) {
-    return -ENOENT;
-  }
-
-  __wasi_errno_t error = __paths_chdir(path);
+weak int __syscall_chdir(intptr_t path) {
+  __wasi_errno_t error = __paths_chdir((const char*)path);
   if (error != 0) {
     return -error;
   }
