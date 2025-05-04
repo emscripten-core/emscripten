@@ -644,7 +644,7 @@ def also_with_standalone_wasm(impure=False, exclude_engines=None):
             if all(excluded not in os.path.basename(engine[0]) for excluded in exclude_engines)]
         if 'node' in exclude_engines:
           self.js_engines = []
-          if not self.wasm_engines:
+          if not wasm_engines:
             self.skipTest('no WASM engines available for this test')
         else:
           nodejs = self.require_node()
