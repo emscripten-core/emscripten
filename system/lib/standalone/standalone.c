@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -84,6 +85,26 @@ static void wasi_filestat_to_stat(const __wasi_filestat_t* in,
       out->st_mode |= S_IFLNK;
       break;
   }
+}
+
+static __wasi_fdflags_t fdflags_to_wasi_fdflags(int flags) {
+  __wasi_fdflags_t fs_flags = 0;
+  if (flags & O_APPEND) {
+    fs_flags |= __WASI_FDFLAGS_APPEND;
+  }
+  if (flags & O_DSYNC) {
+    fs_flags |= __WASI_FDFLAGS_DSYNC;
+  }
+  if (flags & O_NONBLOCK) {
+    fs_flags |= __WASI_FDFLAGS_NONBLOCK;
+  }
+  if (flags & O_RSYNC) {
+    fs_flags |= __WASI_FDFLAGS_RSYNC;
+  }
+  if (flags & O_SYNC) {
+    fs_flags |= __WASI_FDFLAGS_SYNC;
+  }
+  return fs_flags;
 }
 
 // mmap support is nonexistent. TODO: emulate simple mmaps using
@@ -166,22 +187,7 @@ weak int __syscall_openat(int dirfd, intptr_t path, int flags, ...) {
   }
 
   // Open file with appropriate rights.
-  __wasi_fdflags_t fs_flags = 0;
-  if (flags & O_APPEND) {
-    fs_flags |= __WASI_FDFLAGS_APPEND;
-  }
-  if (flags & O_DSYNC) {
-    fs_flags |= __WASI_FDFLAGS_DSYNC;
-  }
-  if (flags & O_NONBLOCK) {
-    fs_flags |= __WASI_FDFLAGS_NONBLOCK;
-  }
-  if (flags & O_RSYNC) {
-    fs_flags |= __WASI_FDFLAGS_RSYNC;
-  }
-  if (flags & O_SYNC) {
-    fs_flags |= __WASI_FDFLAGS_SYNC;
-  }
+  __wasi_fdflags_t fs_flags = fdflags_to_wasi_fdflags(flags);
 
   __wasi_oflags_t oflags = 0;
   if (flags & O_CREAT) {
@@ -274,7 +280,19 @@ weak int __syscall_fcntl64(int fd, int cmd, ...) {
       return oflags;
     }
     case F_SETFL: {
-      return -ENOSYS;
+      // Set new file descriptor flags.
+      va_list ap;
+      va_start(ap, cmd);
+      int flags = va_arg(ap, int);
+      va_end(ap);
+
+      __wasi_fdflags_t fs_flags = fdflags_to_wasi_fdflags(flags);
+
+      __wasi_errno_t error = __wasi_fd_fdstat_set_flags(fd, fs_flags);
+      if (error != 0) {
+        return -error;
+      }
+      return 0;
     }
     default:
       return -EINVAL;

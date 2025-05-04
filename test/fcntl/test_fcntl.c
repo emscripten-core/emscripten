@@ -47,21 +47,6 @@ int main() {
   printf("\n");
   errno = 0;
 
-  printf("F_GETFL: %d\n", !!(fcntl(f, F_GETFL) & O_RDWR));
-  printf("errno: %d\n", errno);
-  printf("\n");
-  errno = 0;
-
-  printf("F_SETFL: %d\n", fcntl(f, F_SETFL, O_APPEND));
-  printf("errno: %d\n", errno);
-  printf("\n");
-  errno = 0;
-
-  printf("F_GETFL/2: %d\n", !!(fcntl(f, F_GETFL) & (O_RDWR | O_APPEND)));
-  printf("errno: %d\n", errno);
-  printf("\n");
-  errno = 0;
-
   struct flock lk;
   lk.l_type = 42;
   printf("F_GETLK: %d\n", fcntl(f, F_GETLK, &lk));

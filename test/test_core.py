@@ -5583,6 +5583,15 @@ got: 10
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('fcntl/test_fcntl.c')
 
+  @also_with_wasmfs
+  @also_with_standalone_wasm(exclude_engines=['node', 'toywasm'])
+  def test_fcntl_fl(self):
+    if self.get_setting('STANDALONE_WASM'):
+      self.emcc_args += ['-DSTANDALONE_WASM']
+    else:
+      self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
+    self.do_run_in_out_file_test('fcntl/test_fcntl_fl.c')
+
   @crossplatform
   @also_with_nodefs_both
   @also_with_standalone_wasm(exclude_engines=['node', 'wasmer'])
