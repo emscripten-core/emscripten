@@ -5559,7 +5559,10 @@ got: 10
     self.set_setting("FORCE_FILESYSTEM")
     self.do_runf('stat/test_statx.c', 'success')
 
+  @also_with_standalone_wasm(exclude_engines=['node', 'wasmer'])
   def test_fstatat(self):
+    if self.get_setting('STANDALONE_WASM'):
+      self.emcc_args += ['-DSTANDALONE_WASM']
     self.do_runf('stat/test_fstatat.c', 'success')
 
   @crossplatform

@@ -56,7 +56,7 @@ void test() {
   assert(s.st_rdev == 0);
   assert(s.st_size);
   assert(s.st_ctime);
-#ifdef __EMSCRIPTEN__
+#if defined(__EMSCRIPTEN__) && !defined(STANDALONE_WASM)
   assert(s.st_blksize == 4096);
   // WasmFS correctly counts 512B blocks, but MEMFS counts 4kb blocks.
 #ifdef WASMFS
@@ -77,7 +77,7 @@ void test() {
   assert(s.st_rdev == 0);
   assert(s.st_size == 6);
   assert(s.st_ctime);
-#ifdef __EMSCRIPTEN__
+#if defined(__EMSCRIPTEN__) && !defined(STANDALONE_WASM)
   assert(s.st_blksize == 4096);
   assert(s.st_blocks == 1);
 #endif
@@ -113,7 +113,7 @@ void test() {
   assert(s.st_rdev == 0);
   assert(s.st_size);
   assert(s.st_ctime);
-#ifdef __EMSCRIPTEN__
+#if defined(__EMSCRIPTEN__) && !defined(STANDALONE_WASM)
   assert(s.st_blksize == 4096);
 #ifdef WASMFS
   assert(s.st_blocks == 8);
@@ -138,7 +138,7 @@ void test() {
   assert(s.st_rdev == 0);
   assert(s.st_size == 6);
   assert(s.st_ctime);
-#ifdef __EMSCRIPTEN__
+#if defined(__EMSCRIPTEN__) && !defined(STANDALONE_WASM)
   assert(s.st_blksize == 4096);
   assert(s.st_blocks == 1);
 #endif
@@ -157,7 +157,7 @@ void test() {
   assert(s.st_rdev == 0);
   assert(s.st_size == 4);
   assert(s.st_ctime);
-#ifdef __EMSCRIPTEN__
+#if defined(__EMSCRIPTEN__) && !defined(STANDALONE_WASM)
   assert(s.st_blksize == 4096);
   assert(s.st_blocks == 1);
 #endif

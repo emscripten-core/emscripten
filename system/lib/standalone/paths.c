@@ -68,6 +68,10 @@ static bool resolve_path_unlocked(bool* need_unlock,
                                   const char** path_ptr) {
   const char* path = *path_ptr;
 
+  if (path[0] == '\0') {
+    return false;
+  }
+
   if (*resolved_dirfd != AT_FDCWD && path[0] != '/') {
     *need_unlock = false;
     return true;
