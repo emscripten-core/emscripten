@@ -631,11 +631,6 @@ def also_with_standalone_wasm(impure=False, exclude_engines=None):
         self.set_setting('STANDALONE_WASM')
         if not impure:
           self.set_setting('PURE_WASI')
-        if 'node' in exclude_engines:
-          # When not running under node we don't care for any undefined symbols
-          # in the .js as we are only interested in the .wasm file.
-          self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS=0')
-          self.emcc_args.append('-Wno-js-compiler')
         # we will not legalize the JS ffi interface, so we must use BigInt
         # support in order for JS to have a chance to run this without trapping
         # when it sees an i64 on the ffi.
@@ -643,15 +638,19 @@ def also_with_standalone_wasm(impure=False, exclude_engines=None):
         self.emcc_args.append('-Wno-unused-command-line-argument')
         # if we are impure, disallow all wasm engines
         if impure:
-          self.wasm_engines = []
+          wasm_engines = []
         else:
-          self.wasm_engines = [engine for engine in self.wasm_engines
-            if all([not excluded in os.path.basename(engine[0]) for excluded in exclude_engines])]
+          wasm_engines = [engine for engine in self.wasm_engines
+            if all(excluded not in os.path.basename(engine[0]) for excluded in exclude_engines)]
         if 'node' in exclude_engines:
           self.js_engines = []
+          if not wasm_engines:
+            self.skipTest('no WASM engines available for this test')
         else:
-          nodejs = self.require_node(allow_wasm_engines=True)
+          nodejs = self.require_node()
           self.node_args += shared.node_bigint_flags(nodejs)
+        # `self.require_node()` clears `self.wasm_engines`, so set them here.
+        self.wasm_engines = wasm_engines
         func(self)
 
     parameterize(metafunc, {'': (False,),
@@ -995,14 +994,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       return None
     return config.NODE_JS_TEST
 
-  def require_node(self, allow_wasm_engines=False):
+  def require_node(self):
     nodejs = self.get_nodejs()
     if not nodejs:
       if 'EMTEST_SKIP_NODE' in os.environ:
         self.skipTest('test requires node and EMTEST_SKIP_NODE is set')
       else:
         self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
-    self.require_engine(nodejs, allow_wasm_engines)
+    self.require_engine(nodejs)
     return nodejs
 
   def node_is_canary(self, nodejs):
@@ -1019,14 +1018,13 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     else:
       self.fail('node canary required to run this test.  Use EMTEST_SKIP_NODE_CANARY to skip')
 
-  def require_engine(self, engine, allow_wasm_engines=False):
+  def require_engine(self, engine):
     logger.debug(f'require_engine: {engine}')
     if self.required_engine and self.required_engine != engine:
       self.skipTest(f'Skipping test that requires `{engine}` when `{self.required_engine}` was previously required')
     self.required_engine = engine
     self.js_engines = [engine]
-    if not allow_wasm_engines:
-      self.wasm_engines = []
+    self.wasm_engines = []
 
   def require_wasm64(self):
     if self.is_browser_test():
@@ -1521,10 +1519,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
              assert_returncode=0,
              interleaved_output=True,
              input=None,
-             run_in_tmpdir=False):
-    if run_in_tmpdir:
-      ensure_dir(self.in_dir('fs'))
-
+             cwd=None):
     # use files, as PIPE can get too full and hang us
     stdout_file = self.in_dir('stdout')
     stderr_file = None
@@ -1546,9 +1541,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       engine = engine + self.spidermonkey_args
     try:
       jsrun.run_js(filename, engine, args,
-                   cwd=self.in_dir('fs') if run_in_tmpdir else None,
                    stdout=stdout,
                    stderr=stderr,
+                   cwd=cwd,
                    assert_returncode=assert_returncode,
                    input=input)
     except subprocess.TimeoutExpired as e:
@@ -1581,9 +1576,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         self.fail('JS subprocess unexpectedly succeeded (%s):  Output:\n%s' % (error.cmd, ret))
       else:
         self.fail('JS subprocess failed (%s): %s (expected=%s).  Output:\n%s' % (error.cmd, error.returncode, assert_returncode, ret))
-
-    if run_in_tmpdir:
-      force_delete_contents(self.in_dir('fs'))
 
     return ret
 
@@ -1980,7 +1972,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       js_file = self.build(filename, **kwargs)
     self.assertExists(js_file)
 
-    engines = [(el, False) for el in self.js_engines.copy()]
+    engines = [(el, None) for el in self.js_engines.copy()]
     if len(engines) > 1 and not self.use_all_engines:
       engines = engines[:1]
     # In standalone mode, also add wasm vms as we should be able to run there too.
@@ -1989,14 +1981,17 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       # like with js engines, but for now as we bring it up, test in all of them
       if not self.wasm_engines:
         logger.warning('no wasm engine was found to run the standalone part of this test')
-      engines += [(el, True) for el in self.wasm_engines]
+      engines += [(engine, os.path.basename(engine[0])) for engine in self.wasm_engines]
     if len(engines) == 0:
       self.fail('No JS engine present to run this test with. Check %s and the paths therein.' % config.EM_CONFIG)
-    for engine, run_in_tmpdir in engines:
+    for engine, subdir in engines:
+      if subdir:
+        subdir = self.in_dir(subdir)
+        ensure_dir(subdir)
       js_output = self.run_js(js_file, engine, args,
+                              cwd=subdir,
                               assert_returncode=assert_returncode,
-                              interleaved_output=interleaved_output,
-                              run_in_tmpdir=run_in_tmpdir)
+                              interleaved_output=interleaved_output)
       js_output = js_output.replace('\r\n', '\n')
       if expected_output:
         if type(expected_output) not in [list, tuple]:

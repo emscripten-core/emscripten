@@ -32,7 +32,6 @@ typedef struct preopen {
 /// A simple growable array of `preopen`.
 static preopen* preopens;
 static size_t num_preopens;
-static size_t preopen_capacity;
 
 /// cwd handling
 static bool cwd_is_root = true;
@@ -41,96 +40,6 @@ static bool cwd_fd_from_preopen;
 
 /// Access to the cwd above must be protected.
 static volatile int lock[1];
-
-#ifdef NDEBUG
-#define assert_invariants() // assertions disabled
-#else
-static void assert_invariants(void) {
-  assert(num_preopens <= preopen_capacity);
-  assert(preopen_capacity == 0 || preopens != NULL);
-  assert(preopen_capacity == 0 ||
-         preopen_capacity * sizeof(preopen) > preopen_capacity);
-
-  for (size_t i = 0; i < num_preopens; ++i) {
-    const preopen* pre = &preopens[i];
-    assert(pre->prefix != NULL);
-    assert(pre->fd != (__wasi_fd_t)-1);
-#ifdef __wasm__
-    assert((uintptr_t)pre->prefix <
-           (__uint128_t)__builtin_wasm_memory_size(0) * PAGESIZE);
-#endif
-  }
-}
-#endif
-
-/// Allocate space for more preopens. Returns 0 on success and -1 on failure.
-static bool resize_preopens(void) {
-  size_t start_capacity = 4;
-  size_t old_capacity = preopen_capacity;
-  size_t new_capacity = old_capacity == 0 ? start_capacity : old_capacity * 2;
-
-  preopen* old_preopens = preopens;
-  preopen* new_preopens = calloc(sizeof(preopen), new_capacity);
-  if (new_preopens == NULL) {
-    return false;
-  }
-
-  memcpy(new_preopens, old_preopens, num_preopens * sizeof(preopen));
-  preopens = new_preopens;
-  preopen_capacity = new_capacity;
-  free(old_preopens);
-
-  assert_invariants();
-  return true;
-}
-
-// Normalize an absolute path. Removes leading `/` and leading `./`, so the
-// first character is the start of a directory name. This works because our
-// process always starts with a working directory of `/`. Additionally translate
-// `.` to the empty string.
-static const char* strip_prefixes(const char* path) {
-  while (1) {
-    if (path[0] == '/') {
-      path++;
-    } else if (path[0] == '.' && path[1] == '/') {
-      path += 2;
-    } else if (path[0] == '.' && path[1] == 0) {
-      path++;
-    } else {
-      break;
-    }
-  }
-
-  return path;
-}
-
-/// Register the given preopened file descriptor under the given path.
-///
-/// This function takes ownership of `prefix`.
-static bool register_preopened_fd(__wasi_fd_t fd,
-                                  const char* relprefix,
-                                  __wasi_device_t dev,
-                                  __wasi_inode_t ino) {
-  // Check preconditions.
-  assert_invariants();
-  assert(fd != AT_FDCWD);
-  assert(fd != -1);
-  assert(relprefix != NULL);
-
-  if (num_preopens == preopen_capacity && !resize_preopens()) {
-    return false;
-  }
-
-  char* prefix = strdup(strip_prefixes(relprefix));
-  if (prefix == NULL) {
-    return false;
-  }
-
-  preopens[num_preopens++] = (preopen){prefix, fd, dev, ino};
-
-  assert_invariants();
-  return true;
-}
 
 /// Are the `prefix_len` bytes pointed to by `prefix` a prefix of `path`?
 static bool
@@ -558,6 +467,100 @@ out:
   return error;
 }
 
+#if defined(EMSCRIPTEN_PURE_WASI)
+
+static size_t preopen_capacity;
+
+#ifdef NDEBUG
+#define assert_invariants() // assertions disabled
+#else
+static void assert_invariants(void) {
+  assert(num_preopens <= preopen_capacity);
+  assert(preopen_capacity == 0 || preopens != NULL);
+  assert(preopen_capacity == 0 ||
+         preopen_capacity * sizeof(preopen) > preopen_capacity);
+
+  for (size_t i = 0; i < num_preopens; ++i) {
+    const preopen* pre = &preopens[i];
+    assert(pre->prefix != NULL);
+    assert(pre->fd != (__wasi_fd_t)-1);
+#ifdef __wasm__
+    assert((uintptr_t)pre->prefix <
+           (__uint128_t)__builtin_wasm_memory_size(0) * PAGESIZE);
+#endif
+  }
+}
+#endif
+
+/// Allocate space for more preopens. Returns 0 on success and -1 on failure.
+static bool resize_preopens(void) {
+  size_t start_capacity = 4;
+  size_t old_capacity = preopen_capacity;
+  size_t new_capacity = old_capacity == 0 ? start_capacity : old_capacity * 2;
+
+  preopen* old_preopens = preopens;
+  preopen* new_preopens = calloc(sizeof(preopen), new_capacity);
+  if (new_preopens == NULL) {
+    return false;
+  }
+
+  memcpy(new_preopens, old_preopens, num_preopens * sizeof(preopen));
+  preopens = new_preopens;
+  preopen_capacity = new_capacity;
+  free(old_preopens);
+
+  assert_invariants();
+  return true;
+}
+
+// Normalize an absolute path. Removes leading `/` and leading `./`, so the
+// first character is the start of a directory name. This works because our
+// process always starts with a working directory of `/`. Additionally translate
+// `.` to the empty string.
+static const char* strip_prefixes(const char* path) {
+  while (1) {
+    if (path[0] == '/') {
+      path++;
+    } else if (path[0] == '.' && path[1] == '/') {
+      path += 2;
+    } else if (path[0] == '.' && path[1] == 0) {
+      path++;
+    } else {
+      break;
+    }
+  }
+
+  return path;
+}
+
+/// Register the given preopened file descriptor under the given path.
+///
+/// This function takes ownership of `prefix`.
+static bool register_preopened_fd(__wasi_fd_t fd,
+                                  const char* relprefix,
+                                  __wasi_device_t dev,
+                                  __wasi_inode_t ino) {
+  // Check preconditions.
+  assert_invariants();
+  assert(fd != AT_FDCWD);
+  assert(fd != -1);
+  assert(relprefix != NULL);
+
+  if (num_preopens == preopen_capacity && !resize_preopens()) {
+    return false;
+  }
+
+  char* prefix = strdup(strip_prefixes(relprefix));
+  if (prefix == NULL) {
+    return false;
+  }
+
+  preopens[num_preopens++] = (preopen){prefix, fd, dev, ino};
+
+  assert_invariants();
+  return true;
+}
+
 // Populate WASI preopens.
 __attribute__((constructor(100))) // construct this before user code
 static void _standalone_populate_preopens(void) {
@@ -606,3 +609,5 @@ oserr:
 software:
   _Exit(EX_SOFTWARE);
 }
+
+#endif

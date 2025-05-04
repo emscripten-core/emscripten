@@ -3308,6 +3308,15 @@ More info: https://emscripten.org
     self.do_runf('main.cpp', '10\nok\n',
                  emcc_args=['--no-entry', '-lembind', '-O2', '--closure=1', '--minify=0', '--post-js=post.js'])
 
+  @parameterized({
+    'val_1': ['embind/test_embind_no_raw_pointers_val_1.cpp'],
+    'val_2': ['embind/test_embind_no_raw_pointers_val_2.cpp'],
+    'val_3': ['embind/test_embind_no_raw_pointers_val_3.cpp'],
+  })
+  def test_embind_no_raw_pointers(self, filename):
+    stderr = self.expect_fail([EMCC, '-lembind', test_file(filename)])
+    self.assertContained('Implicitly binding raw pointers is illegal.', stderr)
+
   @is_slow_test
   @parameterized({
     '': [],
@@ -6446,7 +6455,8 @@ int main()
     # See https://github.com/emscripten-core/emscripten/issues/22161
     self.do_runf('hello_world.c', emcc_args=['-sWASM_BIGINT'])
 
-  @also_with_standalone_wasm()
+  # `wasmtime` hangs
+  @also_with_standalone_wasm(exclude_engines=['wasmtime'])
   def test_time(self):
     self.do_other_test('test_time.c')
 
@@ -15404,7 +15414,8 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_proxy_to_worker(self, args):
     self.do_runf('hello_world.c', emcc_args=['--proxy-to-worker'] + args)
 
-  @also_with_standalone_wasm()
+  # functions from `emscripten/console.h` only work with node
+  @also_with_standalone_wasm(impure=True)
   def test_console_out(self):
     self.do_other_test('test_console_out.c', regex=True)
 

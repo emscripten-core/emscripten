@@ -162,6 +162,9 @@ wasi_symbols = {
   'args_get',
   'args_sizes_get',
   'random_get',
+  'path_filestat_get',
+  'path_create_directory',
+  'path_symlink',
 }
 
 

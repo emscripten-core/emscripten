@@ -316,7 +316,8 @@ commands:
             # --no-sandbox because we are running as root and chrome requires
             # this flag for now: https://crbug.com/638180
             CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile --enable-experimental-web-platform-features"
-            CHROME_FLAGS_HEADLESS: "--headless=new --remote-debugging-port=1234"
+            # Increase the window size to avoid flaky sdl tests see #24236.
+            CHROME_FLAGS_HEADLESS: "--headless=new --window-size=1024,768 --remote-debugging-port=1234"
             CHROME_FLAGS_WASM: "--enable-experimental-webassembly-features --js-flags=\"--experimental-wasm-stack-switching --experimental-wasm-type-reflection\""
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
             # The runners lack sound hardware so fallback to a dummy device (and
@@ -493,7 +494,7 @@ jobs:
           name: get wasmtime
           command: |
             # use a pinned version due to https://github.com/bytecodealliance/wasmtime/issues/714
-            export VERSION=v0.33.0
+            export VERSION=v32.0.0
             wget https://github.com/bytecodealliance/wasmtime/releases/download/$VERSION/wasmtime-$VERSION-x86_64-linux.tar.xz
             tar -xf wasmtime-$VERSION-x86_64-linux.tar.xz
             cp wasmtime-$VERSION-x86_64-linux/wasmtime ~/vms
