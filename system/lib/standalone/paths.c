@@ -47,6 +47,10 @@ prefix_matches(const char* prefix, size_t prefix_len, const char* path) {
 bool __paths_resolve_path(int* resolved_dirfd, const char** path_ptr) {
   const char* path = *path_ptr;
 
+  if (path[0] == '\0') {
+    return false;
+  }
+
   if (*resolved_dirfd != AT_FDCWD && path[0] != '/') {
     return true;
   }

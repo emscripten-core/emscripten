@@ -287,7 +287,14 @@ weak int __syscall_fcntl64(int fd, int cmd, ...) {
 }
 
 weak int __syscall_fstat64(int fd, intptr_t buf) {
-  return -ENOSYS;
+  __wasi_filestat_t sb;
+  __wasi_errno_t error = __wasi_fd_filestat_get(fd, &sb);
+  if (error != __WASI_ERRNO_SUCCESS) {
+    return -error;
+  }
+
+  wasi_filestat_to_stat(&sb, (struct stat*)buf);
+  return 0;
 }
 
 weak int __syscall_stat64(intptr_t path, intptr_t buf) {
