@@ -105,9 +105,7 @@ def delete_contents(dirname, exclude=None):
     if exclude and entry in exclude:
       continue
     entry = os.path.join(dirname, entry)
-    if os.path.islink(entry):
-      os.unlink(entry)
-    elif os.path.isdir(entry):
+    if os.path.isdir(entry):
       delete_dir(entry)
     else:
       delete_file(entry)
