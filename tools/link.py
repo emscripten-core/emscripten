@@ -2060,13 +2060,13 @@ def phase_embind_aot(options, wasm_target, js_syms):
   src = do_replace(src, '<<< EMBIND_AOT_INVOKERS >>>', out['invokers'])
   if settings.MODULARIZE == 'instance':
     # Add ES module exports for the embind exports.
-    decls = [f'export var {name};' for name in out['publicSymbols']]
+    decls = '\n'.join([f'export var {name};' for name in out['publicSymbols']])
     # Assign the runtime exports from Module to the ES export.
-    assigns = [f'{name} = Module[\'{name}\'];' for name in out['publicSymbols']]
+    assigns = '\n'.join([f'{name} = Module[\'{name}\'];' for name in out['publicSymbols']])
     exports = f'''
 // start embind exports
-() => {{ {'\n'.join(assigns)} }};
-{'\n'.join(decls)}
+() => {{ {assigns} }};
+{decls}
 // end embind exports'''
     src = do_replace(src, '<<< EMBIND_AOT_ASSIGN_EXPORTS >>>',  exports)
   write_file(final_js, src)
