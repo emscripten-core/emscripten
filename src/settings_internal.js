@@ -89,9 +89,6 @@ var USE_ASAN = false;
 // Whether embind has been enabled.
 var EMBIND = false;
 
-// Symbols that embind exports. Only available when using EMBIND_AOT.
-var EMBIND_EXPORTS = [];
-
 // Whether a TypeScript definition file has been requested.
 var EMIT_TSD = false;
 
