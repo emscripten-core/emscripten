@@ -91,14 +91,14 @@ addToLibrary({
 #endif
   ],
   $_wasmWorkerInitializeRuntime: () => {
-    let m = Module;
 #if ASSERTIONS
-    assert(m && m['$ww']);
-    assert(m['sb'] % 16 == 0);
-    assert(m['sz'] % 16 == 0);
+    assert(wwParams);
+    assert(wwParams.wwID);
+    assert(wwParams.stackLowestAddress % 16 == 0);
+    assert(wwParams.stackSize % 16 == 0);
 #endif
 #if RUNTIME_DEBUG
-    dbg("wasmWorkerInitializeRuntime $ww:", m['$ww']);
+    dbg("wasmWorkerInitializeRuntime wwID:", wwParams.wwID);
 #endif
 
 #if !MINIMAL_RUNTIME && isSymbolNeeded('$noExitRuntime')
@@ -113,11 +113,12 @@ addToLibrary({
     // already exists".  So for now, invoke this function from JS side. TODO:
     // remove this in the future.  Note that this call is not exactly correct,
     // since this limit will include the TLS slot, that will be part of the
-    // region between m['sb'] and m['sz'], so we need to fix up the call below.
-    ___set_stack_limits(m['sb'] + m['sz'], m['sb']);
+    // region between wwParams.stackLowestAddress and wwParams.stackSize, so we
+    // need to fix up the call below.
+    ___set_stack_limits(wwParams.stackLowestAddress + wwParams.stackSize, wwParams.stackLowestAddress);
 #endif
     // Run the C side Worker initialization for stack and TLS.
-    __emscripten_wasm_worker_initialize(m['sb'], m['sz']);
+    __emscripten_wasm_worker_initialize(wwParams.stackLowestAddress, wwParams.stackSize);
 #if PTHREADS
     // Record the pthread configuration, and whether this Wasm Worker supports synchronous blocking in emscripten_futex_wait().
     // (regular Wasm Workers do, AudioWorklets don't)
@@ -198,15 +199,15 @@ if (ENVIRONMENT_IS_WASM_WORKER
     worker.postMessage({
       // Signal with a non-zero value that this Worker will be a Wasm Worker,
       // and not the main browser thread.
-      '$ww': _wasmWorkersID,
+      wwID: _wasmWorkersID,
 #if MINIMAL_RUNTIME
-      'wasm': Module['wasm'],
+      wasm: Module['wasm'],
 #else
-      'wasm': wasmModule,
+      wasm: wasmModule,
 #endif
-      'mem': wasmMemory,
-      'sb': stackLowestAddress, // sb = stack bottom (lowest stack address, SP points at this when stack is full)
-      'sz': stackSize,          // sz = stack size
+      wasmMemory,
+      stackLowestAddress, // sb = stack bottom (lowest stack address, SP points at this when stack is full)
+      stackSize,          // sz = stack size
     });
     worker.onmessage = _wasmWorkerRunPostMessage;
 #if ENVIRONMENT_MAY_BE_NODE
@@ -244,7 +245,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
 #endif
   },
 
-  emscripten_wasm_worker_self_id: () => Module['$ww'],
+  emscripten_wasm_worker_self_id: () => wwParams?.wwID,
 
   emscripten_wasm_worker_post_function_v: (id, funcPtr) => {
     _wasmWorkers[id].postMessage({'_wsc': funcPtr, 'x': [] }); // "WaSm Call"
