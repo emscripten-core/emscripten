@@ -24,24 +24,18 @@ var LibraryEmVal = {
   // Stack of handles available for reuse.
   $emval_freelist: [],
   // Array of alternating pairs (value, refcount).
-  $emval_handles: [],
+  // reserve 0 and some special values. These never get de-allocated.
+  $emval_handles: [
+    0, 1,
+    undefined, 1,
+    null, 1,
+    true, 1,
+    false, 1,
+  ],
+#if ASSERTIONS
+  $emval_handles__postset: 'assert(emval_handles.length === {{{ EMVAL_RESERVED_HANDLES }}} * 2)',
+#endif
   $emval_symbols: {}, // address -> string
-
-  $init_emval__deps: ['$count_emval_handles', '$emval_handles'],
-  $init_emval__postset: 'init_emval();',
-  $init_emval: () => {
-    // reserve 0 and some special values. These never get de-allocated.
-    emval_handles.push(
-      0, 1,
-      undefined, 1,
-      null, 1,
-      true, 1,
-      false, 1,
-    );
-  #if ASSERTIONS
-    assert(emval_handles.length === {{{ EMVAL_RESERVED_HANDLES }}} * 2);
-  #endif
-  },
 
   $count_emval_handles__deps: ['$emval_freelist', '$emval_handles'],
   $count_emval_handles: () => {
@@ -62,7 +56,7 @@ var LibraryEmVal = {
     return symbol;
   },
 
-  $Emval__deps: ['$emval_freelist', '$emval_handles', '$throwBindingError', '$init_emval'],
+  $Emval__deps: ['$emval_freelist', '$emval_handles', '$throwBindingError'],
   $Emval: {
     toValue: (handle) => {
       if (!handle) {
