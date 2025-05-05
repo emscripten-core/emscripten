@@ -34,10 +34,10 @@ var LibraryEmbind = {
 #if EMBIND_AOT
   $InvokerFunctions: '<<< EMBIND_AOT_INVOKERS >>>',
 #if MODULARIZE == 'instance'
-  // embindUpdateExports is called in the generated code after embind is
+  // embindAssignExports is called in the generated code after embind is
   // initialized. It will link the bindings to the ES module exports.
-  $embindUpdateExports: '<<< EMBIND_AOT_UPDATE_EXPORTS >>>',
-  $embindUpdateExports__postset: 'addOnInit(embindUpdateExports);',
+  $embindAssignExports: '<<< EMBIND_AOT_ASSIGN_EXPORTS >>>',
+  $embindAssignExports__postset: () => { addAtPostCtor('embindAssignExports();'); },
 #endif
 #endif
   // If register_type is used, emval will be registered multiple times for
@@ -2320,7 +2320,7 @@ var LibraryEmbind = {
 };
 
 #if MODULARIZE == 'instance'
-extraLibraryFuncs.push('$embindUpdateExports');
+extraLibraryFuncs.push('$embindAssignExports');
 #endif
 
 addToLibrary(LibraryEmbind);

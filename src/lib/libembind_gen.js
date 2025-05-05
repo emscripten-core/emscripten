@@ -466,15 +466,9 @@ var LibraryEmbind = {
         def.printJs(out);
       }
       out.push('}\n');
-      let updateExports = '() => {\n';
-      for (const publicSymbol of publicSymbols) {
-        updateExports += `__exp_${publicSymbol} = Module['${publicSymbol}'];\n`
-      }
-      updateExports += '}\n';
       console.log(JSON.stringify({
         'invokers': out.join(''),
         publicSymbols,
-        updateExports
       }));
     }
   },

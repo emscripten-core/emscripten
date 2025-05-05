@@ -2052,14 +2052,23 @@ def phase_emit_tsd(options, wasm_target, js_target, js_syms, metadata):
 @ToolchainProfiler.profile_block('embind aot js')
 def phase_embind_aot(options, wasm_target, js_syms):
   out = run_embind_gen(options, wasm_target, js_syms, {})
+
   if DEBUG:
     write_file(in_temp('embind_aot.json'), out)
   out = json.loads(out)
   src = read_file(final_js)
   src = do_replace(src, '<<< EMBIND_AOT_INVOKERS >>>', out['invokers'])
   if settings.MODULARIZE == 'instance':
-    settings.EMBIND_EXPORTS = out['publicSymbols']
-    src = do_replace(src, '<<< EMBIND_AOT_UPDATE_EXPORTS >>>', out['updateExports'])
+    # Add ES module exports for the embind exports.
+    decls = [f'export var {name};' for name in out['publicSymbols']]
+    # Assign the runtime exports from Module to the ES export.
+    assigns = [f'{name} = Module[\'{name}\'];' for name in out['publicSymbols']]
+    exports = f'''
+// start embind exports
+() => {{ {'\n'.join(assigns)} }};
+{'\n'.join(decls)}
+// end embind exports'''
+    src = do_replace(src, '<<< EMBIND_AOT_ASSIGN_EXPORTS >>>',  exports)
   write_file(final_js, src)
 
 
