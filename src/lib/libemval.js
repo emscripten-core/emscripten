@@ -41,7 +41,6 @@ var LibraryEmVal = {
   #if ASSERTIONS
     assert(emval_handles.length === {{{ EMVAL_RESERVED_HANDLES }}} * 2);
   #endif
-    Module['count_emval_handles'] = count_emval_handles;
   },
 
   $count_emval_handles__deps: ['$emval_freelist', '$emval_handles'],

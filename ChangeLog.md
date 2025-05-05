@@ -22,6 +22,9 @@ See docs/process.md for more on how version tagging works.
 ----------------------
 - When using cmake the EMSCRIPTEN_FORCE_COMPILERS setting was reverted to
   being on by default due to issues that were found with disabling it. (#24223)
+- Embind symbols `InternalError`, `BindingError`, and `count_emval_handles` are
+  no longer exported by default. They can be exported using
+  `-sEXPORTED_RUNTIME_METHODS=InternalError,BindingError,count_emval_handles`
 
 4.0.8 - 04/30/25
 ----------------
