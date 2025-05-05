@@ -2998,7 +2998,7 @@ little bit of code size and performance when catching exceptions.
 
 - 0: No setjmp/longjmp handling
 - 1: Default setjmp/longjmp/handling, depending on the mode of exceptions.
-  'wasm' if '-fwasm-exception' is used, 'emscripten' otherwise.
+  'wasm' if '-fwasm-exceptions' is used, 'emscripten' otherwise.
 
 [compile+link] - at compile time this enables the transformations needed for
 longjmp support at codegen time, while at link it allows linking in the

@@ -920,7 +920,7 @@ f.close()
   @no_windows('Skipped on Windows because CMake does not configure native Clang builds well on Windows.')
   @parameterized({
     '': ([],),
-    'force': (['-DEMSCRIPTEN_FORCE_COMPILERS=ON'],),
+    'noforce': (['-DEMSCRIPTEN_FORCE_COMPILERS=OFF'],),
   })
   def test_cmake_compile_features(self, args):
     os.mkdir('build_native')
@@ -979,7 +979,7 @@ f.close()
   @crossplatform
   @parameterized({
     '': ([],),
-    'force': (['-DEMSCRIPTEN_FORCE_COMPILERS=ON'],),
+    'noforce': (['-DEMSCRIPTEN_FORCE_COMPILERS=OFF'],),
   })
   def test_cmake_compile_commands(self, args):
     self.run_process([EMCMAKE, 'cmake', test_file('cmake/static_lib'), '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON'] + args)
@@ -3307,6 +3307,15 @@ More info: https://emscripten.org
     self.set_setting('NO_DYNAMIC_EXECUTION')
     self.do_runf('main.cpp', '10\nok\n',
                  emcc_args=['--no-entry', '-lembind', '-O2', '--closure=1', '--minify=0', '--post-js=post.js'])
+
+  @parameterized({
+    'val_1': ['embind/test_embind_no_raw_pointers_val_1.cpp'],
+    'val_2': ['embind/test_embind_no_raw_pointers_val_2.cpp'],
+    'val_3': ['embind/test_embind_no_raw_pointers_val_3.cpp'],
+  })
+  def test_embind_no_raw_pointers(self, filename):
+    stderr = self.expect_fail([EMCC, '-lembind', test_file(filename)])
+    self.assertContained('Implicitly binding raw pointers is illegal.', stderr)
 
   @is_slow_test
   @parameterized({

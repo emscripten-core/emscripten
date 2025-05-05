@@ -21,14 +21,18 @@ function createWasmAudioWorkletProcessor(audioParams) {
 
       // Capture the Wasm function callback to invoke.
       let opts = args.processorOptions;
-      this.callbackFunction = wasmTable.get(opts['cb']);
-      this.userData = opts['ud'];
+#if ASSERTIONS
+      assert(opts.callback)
+      assert(opts.samplesPerChannel)
+#endif
+      this.callback = getWasmTableEntry(opts.callback);
+      this.userData = opts.userData;
       // Then the samples per channel to process, fixed for the lifetime of the
       // context that created this processor. Note for when moving to Web Audio
       // 1.1: the typed array passed to process() should be the same size as this
       // 'render quantum size', and this exercise of passing in the value
-      // shouldn't be required (to be verified).
-      this.samplesPerChannel = opts['sc'];
+      // shouldn't be required (to be verified)
+      this.samplesPerChannel = opts.samplesPerChannel;
     }
 
     static get parameterDescriptors() {
@@ -106,7 +110,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
       }
 
       // Call out to Wasm callback to perform audio processing
-      if (didProduceAudio = this.callbackFunction(numInputs, inputsPtr, numOutputs, outputsPtr, numParams, paramsPtr, this.userData)) {
+      if (didProduceAudio = this.callback(numInputs, inputsPtr, numOutputs, outputsPtr, numParams, paramsPtr, this.userData)) {
         // Read back the produced audio data to all outputs and their channels.
         // (A garbage-free function TypedArray.copy(dstTypedArray, dstOffset,
         // srcTypedArray, srcOffset, count) would sure be handy..  but web does
@@ -138,7 +142,7 @@ var messagePort;
 class BootstrapMessages extends AudioWorkletProcessor {
   constructor(arg) {
     super();
-    startWasmWorker(arg['processorOptions'])
+    startWasmWorker(arg.processorOptions)
 #if WEBAUDIO_DEBUG
     console.log('AudioWorklet global scope looks like this:');
     console.dir(globalThis);
@@ -154,10 +158,9 @@ class BootstrapMessages extends AudioWorkletProcessor {
         // '_wpn' is short for 'Worklet Processor Node', using an identifier
         // that will never conflict with user messages
         // Register a real AudioWorkletProcessor that will actually do audio processing.
-        // 'ap' being the audio params
-        registerProcessor(d['_wpn'], createWasmAudioWorkletProcessor(d['ap']));
+        registerProcessor(d['_wpn'], createWasmAudioWorkletProcessor(d.audioParams));
 #if WEBAUDIO_DEBUG
-        console.log(`Registered a new WasmAudioWorkletProcessor "${d['_wpn']}" with AudioParams: ${d['ap']}`);
+        console.log(`Registered a new WasmAudioWorkletProcessor "${d['_wpn']}" with AudioParams: ${d.audioParams}`);
 #endif
         // Post a Wasm Call message back telling that we have now registered the
         // AudioWorkletProcessor, and should trigger the user onSuccess callback
@@ -165,17 +168,9 @@ class BootstrapMessages extends AudioWorkletProcessor {
         //
         // '_wsc' is short for 'wasm call', using an identifier that will never
         // conflict with user messages
-        // 'cb' the callback function
-        // 'ch' the context handle
-        // 'ud' the passed user data
-        messagePort.postMessage({'_wsc': d['cb'], 'x': [d['ch'], 1/*EM_TRUE*/, d['ud']] });
+        messagePort.postMessage({'_wsc': d.callback, args: [d.contextHandle, 1/*EM_TRUE*/, d.userData] });
       } else if (d['_wsc']) {
-#if MEMORY64
-        var ptr = BigInt(d['_wsc']);
-#else
-        var ptr = d['_wsc'];
-#endif
-        wasmTable.get(ptr)(...d['x']);
+        getWasmTableEntry(d['_wsc'])(...d.args);
       };
     }
   }
