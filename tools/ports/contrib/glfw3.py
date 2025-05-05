@@ -6,8 +6,8 @@
 import os
 from typing import Union, Dict
 
-TAG = '3.4.0.20250305'
-HASH = 'd5d1496cf1e05a640c182584a09ed0b43c8d6c42386513e5c2b1e05a2289854a0a0abe085e0a8b64c3a484836a8e63dc5ddb683ce4d2899fccbbf89536d58ee1'
+TAG = '3.4.0.20250505'
+HASH = 'f2e52b0b7489ec63cc32e4cadbc85faa9b5f09ae3f59a8335cb958706411de749f36cbe02df083b681340c0c2b8f6f3e6b631d2ac4589512f732c9593a5c10ef'
 
 # contrib port information (required)
 URL = 'https://github.com/pongasoft/emscripten-glfw'
@@ -89,8 +89,9 @@ def clear(ports, settings, shared):
 
 def linker_setup(ports, settings):
   root_path = os.path.join(ports.get_dir(), port_name)
-  source_js_path = os.path.join(root_path, 'src', 'js', 'lib_emscripten_glfw3.js')
-  settings.JS_LIBRARIES += [source_js_path]
+  source_js_path = os.path.join(root_path, 'src', 'js')
+  settings.JS_LIBRARIES += [os.path.join(source_js_path, 'lib_emscripten_glfw3.js')]
+  settings.CLOSURE_ARGS += [f'--externs={os.path.join(source_js_path, "emscripten-glfw3-externs.js")}']
   if not opts['disableWebGL2']:
     settings.MAX_WEBGL_VERSION = 2
 
