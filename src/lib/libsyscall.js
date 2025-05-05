@@ -864,7 +864,7 @@ var SyscallsLibrary = {
     var nofollow = flags & {{{ cDefs.AT_SYMLINK_NOFOLLOW }}};
     flags = flags & (~{{{ cDefs.AT_SYMLINK_NOFOLLOW }}});
 #if ASSERTIONS
-    assert(flags === 0);
+    assert(!flags);
 #endif
     path = SYSCALLS.calculateAt(dirfd, path);
     (nofollow ? FS.lchown : FS.chown)(path, owner, group);
@@ -884,12 +884,12 @@ var SyscallsLibrary = {
   __syscall_unlinkat: (dirfd, path, flags) => {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
-    if (flags === 0) {
+    if (!flags) {
       FS.unlink(path);
     } else if (flags === {{{ cDefs.AT_REMOVEDIR }}}) {
       FS.rmdir(path);
     } else {
-      abort('Invalid flags passed to unlinkat');
+      return -{{{ cDefs.EINVAL }}};
     }
     return 0;
   },
@@ -933,7 +933,7 @@ var SyscallsLibrary = {
   __syscall_faccessat: (dirfd, path, amode, flags) => {
     path = SYSCALLS.getStr(path);
 #if ASSERTIONS
-    assert(flags === 0 || flags == {{{ cDefs.AT_EACCESS }}});
+    assert(!flags || flags == {{{ cDefs.AT_EACCESS }}});
 #endif
     path = SYSCALLS.calculateAt(dirfd, path);
     if (amode & ~{{{ cDefs.S_IRWXO }}}) {
@@ -958,7 +958,7 @@ var SyscallsLibrary = {
   __syscall_utimensat: (dirfd, path, times, flags) => {
     path = SYSCALLS.getStr(path);
 #if ASSERTIONS
-    assert(flags === 0);
+    assert(!flags);
 #endif
     path = SYSCALLS.calculateAt(dirfd, path, true);
     var now = Date.now(), atime, mtime;
