@@ -285,4 +285,14 @@ const char __em_asm_sig_builder<__em_asm_type_tuple<Args...> >::buffer[] = { __e
 #define EM_ASM_INT_V(code) EM_ASM_INT(code)
 #define EM_ASM_DOUBLE_V(code) EM_ASM_DOUBLE(code)
 
+#if defined(true) && defined(false)
+#undef true
+#undef false
+// These work for both C and javascript.
+// In C !!0 ==> 0 and in javascript !!0 ==> false
+// In C !!1 ==> 1 and in javascript !!1 ==> true
+#define true (!!1)
+#define false (!!0)
+#endif
+
 #endif // !defined(__cplusplus) && defined(__STRICT_ANSI__)

@@ -72,3 +72,14 @@
 
 #define EM_ASYNC_JS(ret, name, params, ...) _EM_JS(ret, name, __asyncjs__##name, params,          \
   "{ return Asyncify.handleAsync(async () => " #__VA_ARGS__ "); }")
+
+
+#if defined(true) && defined(false)
+#undef true
+#undef false
+// These work for both C and javascript.
+// In C !!0 ==> 0 and in javascript !!0 ==> false
+// In C !!1 ==> 1 and in javascript !!1 ==> true
+#define true (!!1)
+#define false (!!0)
+#endif
