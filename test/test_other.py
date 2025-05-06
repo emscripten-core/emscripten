@@ -111,16 +111,6 @@ def with_both_compilers(f):
                    'emxx': (EMXX,)})
   return f
 
-
-def with_debug_flags(f):
-  assert callable(f)
-
-  parameterize(f, {'': ('',),
-                  'dylink_debug': ('-sDYLINK_DEBUG=1',)})
-
-  return f
-
-
 def wasmfs_all_backends(f):
   assert callable(f)
 
@@ -2027,9 +2017,8 @@ Module['postRun'] = () => {
     self.run_process([EMCC, 'main.c', '--embed-file', 'tst', '--exclude-file', '*.exe'])
     self.assertEqual(self.run_js('a.out.js').strip(), '')
 
-  @with_debug_flags
-  def test_dylink_strict(self, dbgflag):
-    self.do_run_in_out_file_test('hello_world.c', emcc_args=['-sSTRICT', '-sMAIN_MODULE=1', dbgflag])
+  def test_dylink_strict(self):
+    self.do_run_in_out_file_test('hello_world.c', emcc_args=['-sSTRICT', '-sMAIN_MODULE=1'])
 
   def test_dylink_exceptions_and_assertions(self):
     # Linking side modules using the STL and exceptions should not abort with
@@ -2270,8 +2259,7 @@ Module['postRun'] = () => {
         'libside.wasm',
       ])
 
-  @with_debug_flags
-  def test_dylink_no_autoload(self, dbgflag):
+  def test_dylink_no_autoload(self):
     create_file('main.c', r'''
       #include <stdio.h>
       int sidey();
@@ -2283,7 +2271,7 @@ Module['postRun'] = () => {
     self.run_process([EMCC, '-sSIDE_MODULE', 'side.c', '-o', 'libside.wasm'])
 
     # First show everything working as expected with AUTOLOAD_DYLIBS
-    self.run_process([EMCC, '-sMAIN_MODULE=2', 'main.c', 'libside.wasm', dbgflag])
+    self.run_process([EMCC, '-sMAIN_MODULE=2', 'main.c', 'libside.wasm'])
     output = self.run_js('a.out.js')
     self.assertContained('sidey: 42\n', output)
 
@@ -2331,7 +2319,7 @@ Module['postRun'] = () => {
     ''')
     self.emcc('side2.c', ['-fPIC', '-sSIDE_MODULE', '-olibside2.so'])
     self.emcc('side1.c', ['-fPIC', '-sSIDE_MODULE', '-olibside1.so', 'libside2.so'])
-    cmd = [EMCC, 'main.c', '-fPIC', '-sMAIN_MODULE=2', 'libside1.so']
+    cmd = [EMCC, 'main.c', '-fPIC', '-sMAIN_MODULE=2', '-sDYLINK_DEBUG', 'libside1.so']
 
     # Unless `.` is added to the library path the libside2.so won't be found.
     err = self.expect_fail(cmd)
@@ -2341,8 +2329,7 @@ Module['postRun'] = () => {
     self.run_process(cmd + ['-L.'])
     self.run_js('a.out.js')
 
-  @with_debug_flags
-  def test_dylink_dependencies_rpath(self, dbgflag):
+  def test_dylink_dependencies_rpath(self):
     create_file('side1.c', r'''
     #include <stdio.h>
     #include <stdlib.h>
@@ -2372,7 +2359,7 @@ Module['postRun'] = () => {
     ''')
     self.emcc('side2.c', ['-fPIC', '-sSIDE_MODULE', '-olibside2.so'])
     self.emcc('side1.c', ['-fPIC', '-sSIDE_MODULE', '-Wl,-rpath,$ORIGIN', '-olibside1.so', 'libside2.so'])
-    cmd = [EMCC, 'main.c', '-fPIC', '-sMAIN_MODULE=2', 'libside1.so', dbgflag]
+    cmd = [EMCC, 'main.c', '-fPIC', '-sMAIN_MODULE=2', '-sDYLINK_DEBUG', 'libside1.so']
 
     # Unless `.` is added to the library path the libside2.so won't be found.
     err = self.expect_fail(cmd)
@@ -7721,8 +7708,7 @@ int main() {
     self.do_runf('main.c', 'Hello1\nHello1_dep\nHello2\nHello3\nHello4\nOk\n', emcc_args=emcc_args)
 
   @also_with_wasmfs
-  @with_debug_flags
-  def test_dlopen_rpath(self, dbgflag):
+  def test_dlopen_rpath(self):
     create_file('hello_dep.c', r'''
     #include <stdio.h>
 
@@ -7775,7 +7761,7 @@ int main() {
                         '--embed-file', 'hello.wasm@/usr/lib/libhello.wasm',
                         '--embed-file', 'subdir/libhello_dep.so@/usr/lib/subdir/libhello_dep.so',
                         'hello.wasm', '-sNO_AUTOLOAD_DYLIBS',
-                        '-L./subdir', '-lhello_dep', dbgflag]
+                        '-L./subdir', '-lhello_dep']
       self.do_runf('main.c', expected, emcc_args=args, **kwds)
 
     # case 1) without rpath: fail to locate the library
