@@ -73,6 +73,9 @@
 #define EM_ASYNC_JS(ret, name, params, ...) _EM_JS(ret, name, __asyncjs__##name, params,          \
   "{ return Asyncify.handleAsync(async () => " #__VA_ARGS__ "); }")
 
+// Macros enabled version of EM_JS. Requires an extra layer of indirection.
+#define EM_JS_MACROS(ret, func_name, args, body...)                            \
+  EM_JS(ret, func_name, args, body)
 
 // Normally macros like `true` and `false` are not expanded inside
 // of `EM_JS` or `EM_ASM` blocks.  However, in the case then an
