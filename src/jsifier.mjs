@@ -10,6 +10,7 @@
 import assert from 'node:assert';
 import * as fs from 'node:fs/promises';
 import {
+  ATMODULES,
   ATEXITS,
   ATINITS,
   ATPOSTCTORS,
@@ -44,6 +45,10 @@ import {LibraryManager, librarySymbols} from './modules.mjs';
 const addedLibraryItems = {};
 
 const extraLibraryFuncs = [];
+
+// Experimental feature to check for invalid __deps entries.
+// See `EMCC_CHECK_DEPS` in in the environment to try it out.
+const CHECK_DEPS = process.env.EMCC_CHECK_DEPS;
 
 // Some JS-implemented library functions are proxied to be called on the main
 // browser thread, if the Emscripten runtime is executing in a Web Worker.
@@ -182,6 +187,60 @@ function preJS() {
     result += getIncludeFile(fileName);
   }
   return result;
+}
+
+// Certain library functions have specific indirect dependencies.  See the
+// comments alongside eaach of these.
+const checkDependenciesSkip = new Set([
+  '_mmap_js',
+  '_emscripten_throw_longjmp',
+  '_emscripten_receive_on_main_thread_js',
+  'emscripten_start_fetch',
+  'emscripten_start_wasm_audio_worklet_thread_async',
+]);
+
+const checkDependenciesIgnore = new Set([
+  // These are added in bulk to whole library files are so are not precise
+  '$PThread',
+  '$WebGPU',
+  '$SDL',
+  '$GLUT',
+  '$GLEW',
+  '$Browser',
+  '$AL',
+  '$GL',
+  '$IDBStore',
+  // These are added purely for their side effects
+  '$polyfillWaitAsync',
+  '$GLImmediateSetup',
+  '$emscriptenGetAudioObject',
+  // These get conservatively injected via i53ConversionDeps
+  '$bigintToI53Checked',
+  '$convertI32PairToI53Checked',
+  'setTempRet0',
+]);
+
+/**
+ * Hacky attempt to find unused `__deps` entries.  This is not enabled by default
+ * but can be enabled by setting CHECK_DEPS above.
+ * TODO: Use a more precise method such as tokenising using acorn.
+ */
+function checkDependencies(symbol, snippet, deps, postset) {
+  if (checkDependenciesSkip.has(symbol)) {
+    return;
+  }
+  for (const dep of deps) {
+    if (typeof dep === 'function') {
+      continue;
+    }
+    if (checkDependenciesIgnore.has(dep)) {
+      continue;
+    }
+    const mangled = mangleCSymbolName(dep);
+    if (!snippet.includes(mangled) && (!postset || !postset.includes(mangled))) {
+      error(`${symbol}: unused dependency: ${dep}`);
+    }
+  }
 }
 
 function addImplicitDeps(snippet, deps) {
@@ -348,9 +407,9 @@ export async function runJSify(outputFile, symbolsOnly) {
         }
         return `\
 function(${args}) {
-  if (runtimeDebug) err("[library call:${mangled}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
+  dbg("[library call:${mangled}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
   ${run_func}
-  if (runtimeDebug) err("  [     return:" + prettyPrint(ret));
+  dbg("  [     return:" + prettyPrint(ret));
   return ret;
 }`;
       });
@@ -427,7 +486,7 @@ function(${args}) {
     if (LINK_AS_CXX && !WASM_EXCEPTIONS && symbol.startsWith('__cxa_find_matching_catch_')) {
       if (DISABLE_EXCEPTION_THROWING) {
         error(
-          'DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-except (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.',
+          'DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-exceptions (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.',
         );
         return;
       }
@@ -576,6 +635,18 @@ function(${args}) {
       let isFunction = false;
       let aliasTarget;
 
+      const postsetId = symbol + '__postset';
+      const postset = LibraryManager.library[postsetId];
+      if (postset) {
+        // A postset is either code to run right now, or some text we should emit.
+        // If it's code, it may return some text to emit as well.
+        const postsetString = typeof postset == 'function' ? postset() : postset;
+        if (postsetString && !addedLibraryItems[postsetId]) {
+          addedLibraryItems[postsetId] = true;
+          postSets.push(postsetString + ';');
+        }
+      }
+
       if (typeof snippet == 'string') {
         if (snippet[0] != '=') {
           if (LibraryManager.library[snippet]) {
@@ -594,19 +665,8 @@ function(${args}) {
         isFunction = true;
         snippet = processLibraryFunction(snippet, symbol, mangled, deps, isStub);
         addImplicitDeps(snippet, deps);
-      }
-
-      const postsetId = symbol + '__postset';
-      let postset = LibraryManager.library[postsetId];
-      if (postset) {
-        // A postset is either code to run right now, or some text we should emit.
-        // If it's code, it may return some text to emit as well.
-        if (typeof postset == 'function') {
-          postset = postset();
-        }
-        if (postset && !addedLibraryItems[postsetId]) {
-          addedLibraryItems[postsetId] = true;
-          postSets.push(postset + ';');
+        if (CHECK_DEPS && !isUserSymbol) {
+          checkDependencies(symbol, snippet, deps, postset?.toString());
         }
       }
 
@@ -675,15 +735,13 @@ function(${args}) {
         }
         contentText = `var ${mangled} = ${snippet};`;
       }
-      // asm module exports are done in emscripten.py, after the asm module is ready. Here
-      // we also export library methods as necessary.
-      if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
-        if (MODULARIZE === 'instance') {
-          contentText += `\n__exp_${mangled} = ${mangled};`;
-        } else {
-          contentText += `\nModule['${mangled}'] = ${mangled};`;
-        }
+
+      if (MODULARIZE == 'instance' && (EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
+        // In MODULARIZE=instance mode mark JS library symbols are exported at
+        // the point of declaration.
+        contentText = 'export ' + contentText;
       }
+
       // Relocatable code needs signatures to create proper wrappers.
       if (sig && RELOCATABLE) {
         if (!WASM_BIGINT) {
@@ -767,8 +825,14 @@ function(${args}) {
     const preFile = MINIMAL_RUNTIME ? 'preamble_minimal.js' : 'preamble.js';
     includeSystemFile(preFile);
 
+    writeOutput('// Begin JS library code\n');
     for (const item of libraryItems.concat(postSets)) {
       writeOutput(indentify(item || '', 2));
+    }
+    writeOutput('// End JS library code\n');
+
+    if (!MINIMAL_RUNTIME) {
+      includeSystemFile('postlibrary.js');
     }
 
     if (PTHREADS) {
@@ -796,7 +860,7 @@ var proxiedFunctionTable = [
       includeFile(fileName);
     }
 
-    if (MODULARIZE) {
+    if (MODULARIZE && MODULARIZE != 'instance') {
       includeSystemFile('postamble_modularize.js');
     }
 
@@ -812,6 +876,7 @@ var proxiedFunctionTable = [
           asyncFuncs,
           libraryDefinitions: LibraryManager.libraryDefinitions,
           ATPRERUNS: ATPRERUNS.join('\n'),
+          ATMODULES: ATMODULES.join('\n'),
           ATINITS: ATINITS.join('\n'),
           ATPOSTCTORS: ATPOSTCTORS.join('\n'),
           ATMAINS: ATMAINS.join('\n'),

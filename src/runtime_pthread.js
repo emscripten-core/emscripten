@@ -14,40 +14,15 @@
 var workerID = 0;
 #endif
 
-if (ENVIRONMENT_IS_PTHREAD) {
-#if !MINIMAL_RUNTIME
-  var wasmModuleReceived;
+#if MAIN_MODULE
+// Map of modules to be shared with new threads.  This gets populated by the
+// main thread and shared with all new workers via the initial `load` message.
+var sharedModules = {};
 #endif
 
-#if ENVIRONMENT_MAY_BE_NODE
-  // Node.js support
-  if (ENVIRONMENT_IS_NODE) {
-    // Create as web-worker-like an environment as we can.
-
-    var parentPort = worker_threads['parentPort'];
-    parentPort.on('message', (msg) => onmessage({ data: msg }));
-
-    Object.assign(globalThis, {
-      self: global,
-      postMessage: (msg) => parentPort.postMessage(msg),
-    });
-  }
-#endif // ENVIRONMENT_MAY_BE_NODE
-
+if (ENVIRONMENT_IS_PTHREAD) {
   // Thread-local guard variable for one-time init of the JS state
   var initializedJS = false;
-
-  function threadPrintErr(...args) {
-    var text = args.join(' ');
-#if ENVIRONMENT_MAY_BE_NODE
-    // See https://github.com/emscripten-core/emscripten/issues/14804
-    if (ENVIRONMENT_IS_NODE) {
-      fs.writeSync(2, text + '\n');
-      return;
-    }
-#endif
-    console.error(text);
-  }
 
 #if LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER
   // When using postMessage to send an object, it is processed by the structured
@@ -60,19 +35,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
     return Object.assign(object, attrs);
   }
 #endif
-
-#if expectToReceiveOnModule('printErr')
-  if (!Module['printErr'])
-#endif
-    err = threadPrintErr;
-#if ASSERTIONS || RUNTIME_DEBUG
-  dbg = threadPrintErr;
-#endif
-  function threadAlert(...args) {
-    var text = args.join(' ');
-    postMessage({cmd: 'alert', text, threadId: _pthread_self()});
-  }
-  self.alert = threadAlert;
 
   // Turn unhandled rejected promises into errors so that the main thread will be
   // notified about them.

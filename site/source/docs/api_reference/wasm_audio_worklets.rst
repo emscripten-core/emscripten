@@ -165,7 +165,7 @@ which resumes the audio context when the user clicks on the DOM Canvas element t
     return true; // Keep the graph output going
   }
 
-And that's it! Compile the code with the linker flags ``-sAUDIO_WORKLET=1 -sWASM_WORKERS=1`` to enable targeting AudioWorklets.
+And that's it! Compile the code with the linker flags ``-sAUDIO_WORKLET -sWASM_WORKERS`` to enable targeting AudioWorklets.
 
 Synchronizing audio thread with the main thread
 ===============================================

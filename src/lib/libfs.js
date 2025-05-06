@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-addToLibrary({
+var LibraryFS = {
   $FS__deps: ['$randomFill', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
     '$FS_createPreloadedFile',
     '$FS_modeStringToFlags',
@@ -38,9 +38,7 @@ addToLibrary({
     addAtExit('FS.quit();');
     return `
 FS.createPreloadedFile = FS_createPreloadedFile;
-FS.staticInit();
-// Set module methods based on EXPORTED_RUNTIME_METHODS
-{{{ EXPORTED_RUNTIME_METHODS.filter((func) => func.startsWith('FS_')).map((func) => "Module['" + func + "'] = FS." + func.slice(3) + ";\n").reduce((str, func) => str + func, '') }}}`;
+FS.staticInit();`;
   },
   $FS: {
     root: null,
@@ -199,7 +197,12 @@ FS.staticInit();
 
           if (parts[i] === '..') {
             current_path = PATH.dirname(current_path);
-            current = current.parent;
+            if (FS.isRoot(current)) {
+              path = current_path + '/' + parts.slice(i + 1).join('/');
+              continue linkloop;
+            } else {
+              current = current.parent;
+            }
             continue;
           }
 
@@ -746,9 +749,10 @@ FS.staticInit();
     mkdirTree(path, mode) {
       var dirs = path.split('/');
       var d = '';
-      for (var i = 0; i < dirs.length; ++i) {
-        if (!dirs[i]) continue;
-        d += '/' + dirs[i];
+      for (var dir of dirs) {
+        if (!dir) continue;
+        if (d || PATH.isAbs(path)) d += '/';
+        d += dir;
         try {
           FS.mkdir(d, mode);
         } catch(e) {
@@ -1550,12 +1554,10 @@ FS.staticInit();
       _fflush(0);
 #endif
       // close all of our streams
-      for (var i = 0; i < FS.streams.length; i++) {
-        var stream = FS.streams[i];
-        if (!stream) {
-          continue;
+      for (var stream of FS.streams) {
+        if (stream) {
+          FS.close(stream);
         }
-        FS.close(stream);
       }
     },
 
@@ -1913,22 +1915,23 @@ FS.staticInit();
 #endif
   },
 
-  $FS_createDataFile__deps: ['$FS'],
-  $FS_createDataFile: (parent, name, fileData, canRead, canWrite, canOwn) => {
-    FS.createDataFile(parent, name, fileData, canRead, canWrite, canOwn);
-  },
-
-  $FS_unlink__deps: ['$FS'],
-  $FS_unlink: (path) => FS.unlink(path),
-
   $FS_mkdirTree__docs: `
   /**
    * @param {number=} mode Optionally, the mode to create in. Uses mkdir's
    *                       default if not set.
    */`,
-  $FS_mkdirTree__deps: ['$FS'],
-  $FS_mkdirTree: (path, mode) => FS.mkdirTree(path, mode),
+   $FS_mkdirTree__deps: ['$FS'],
+   $FS_mkdirTree: (path, mode) => FS.mkdirTree(path, mode),
+};
 
-  $FS_createLazyFile__deps: ['$FS'],
-  $FS_createLazyFile: 'FS.createLazyFile',
-});
+// Add library aliases for all the FS.<symbol> as FS_<symbol>.
+for (let key in LibraryFS.$FS) {
+  const alias = `$FS_${key}`;
+  // Skip defining the alias if it already exists or if it's not an API function.
+  if (LibraryFS[alias] || key[0] !== key[0].toLowerCase()) {
+    continue;
+  }
+  LibraryFS[alias] = `(...args) => FS.${key}(...args)`;
+  LibraryFS[`${alias}__deps`] = ['$FS'];
+}
+addToLibrary(LibraryFS);

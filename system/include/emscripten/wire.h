@@ -24,6 +24,7 @@
 #include <string>
 
 #define EMSCRIPTEN_ALWAYS_INLINE __attribute__((always_inline))
+#define EMBIND_VISIBILITY_DEFAULT __attribute__((visibility("default")))
 
 #ifndef EMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES
 #define EMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES 1
@@ -46,7 +47,11 @@ typedef const void* TYPEID;
 // identification.
 
 template<typename T>
+static inline constexpr bool IsCanonicalized = std::is_same<T, typename std::decay<T>::type>::value;
+
+template<typename T>
 struct CanonicalizedID {
+    static_assert(IsCanonicalized<T>, "T should not be a reference or cv-qualified");
     static char c;
     static constexpr TYPEID get() {
         return &c;
@@ -64,6 +69,7 @@ struct Canonicalized {
 template<typename T>
 struct LightTypeID {
     static constexpr TYPEID get() {
+        static_assert(IsCanonicalized<T>, "T should not be a reference or cv-qualified");
         if (has_unbound_type_names) {
 #if __has_feature(cxx_rtti)
             return &typeid(T);
@@ -82,6 +88,7 @@ struct LightTypeID {
 
 template<typename T>
 constexpr TYPEID getLightTypeID(const T& value) {
+    static_assert(IsCanonicalized<T>, "T should not be a reference or cv-qualified");
     if (has_unbound_type_names) {
 #if __has_feature(cxx_rtti)
         return &typeid(value);
@@ -134,6 +141,18 @@ struct TypeID<AllowedRawPointer<T>> {
     static constexpr TYPEID get() {
         return LightTypeID<T*>::get();
     }
+};
+
+template<typename T>
+struct TypeID<const T> : TypeID<T> {
+};
+
+template<typename T>
+struct TypeID<T&> : TypeID<T> {
+};
+
+template<typename T>
+struct TypeID<T&&> : TypeID<T> {
 };
 
 // ExecutePolicies<>
@@ -323,10 +342,6 @@ struct BindingType<T&> : public BindingType<T> {
 };
 
 template<typename T>
-struct BindingType<const T&> : public BindingType<T> {
-};
-
-template<typename T>
 struct BindingType<T&&> {
     typedef typename BindingType<T>::WireType WireType;
     static T fromWireType(WireType wt) {
@@ -430,7 +445,7 @@ constexpr bool typeSupportsMemoryView() {
 } // namespace internal
 
 template<typename ElementType>
-struct memory_view {
+struct EMBIND_VISIBILITY_DEFAULT memory_view {
     memory_view() = delete;
     explicit memory_view(size_t size, const ElementType* data)
         : size(size)

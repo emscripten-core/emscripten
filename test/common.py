@@ -71,6 +71,7 @@ EMTEST_REBASELINE = None
 # 2: Log stdout and stderr configure/make. Print out subprocess commands that were executed.
 # 3: Log stdout and stderr, and pass VERBOSE=1 to CMake/configure/make steps.
 EMTEST_BUILD_VERBOSE = int(os.getenv('EMTEST_BUILD_VERBOSE', '0'))
+EMTEST_CAPTURE_STDIO = int(os.getenv('EMTEST_CAPTURE_STDIO', '0'))
 if 'EM_BUILD_VERBOSE' in os.environ:
   exit_with_error('EM_BUILD_VERBOSE has been renamed to EMTEST_BUILD_VERBOSE')
 
@@ -88,7 +89,7 @@ EMMAKE = shared.bat_suffix(path_from_root('emmake'))
 EMCMAKE = shared.bat_suffix(path_from_root('emcmake'))
 EMCONFIGURE = shared.bat_suffix(path_from_root('emconfigure'))
 EMRUN = shared.bat_suffix(shared.path_from_root('emrun'))
-WASM_DIS = Path(building.get_binaryen_bin(), 'wasm-dis')
+WASM_DIS = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
 LLVM_OBJDUMP = os.path.expanduser(shared.build_llvm_tool_path(shared.exe_suffix('llvm-objdump')))
 PYTHON = sys.executable
 if not config.NODE_JS_TEST:
@@ -460,12 +461,12 @@ def with_all_fs(func):
       assert fs is None
     func(self, *args, **kwargs)
 
-  parameterize(metafunc, {'': (False, None,),
-                          'nodefs': (False, 'nodefs',),
-                          'rawfs': (False, 'rawfs',),
-                          'wasmfs': (True, None,),
-                          'wasmfs_nodefs': (True, 'nodefs',),
-                          'wasmfs_rawfs': (True, 'rawfs',)})
+  parameterize(metafunc, {'': (False, None),
+                          'nodefs': (False, 'nodefs'),
+                          'rawfs': (False, 'rawfs'),
+                          'wasmfs': (True, None),
+                          'wasmfs_nodefs': (True, 'nodefs'),
+                          'wasmfs_rawfs': (True, 'rawfs')})
   return metafunc
 
 
@@ -1207,7 +1208,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       emcc_min_node_version = (
         int(emcc_min_node_version_str[0:2]),
         int(emcc_min_node_version_str[2:4]),
-        int(emcc_min_node_version_str[4:6])
+        int(emcc_min_node_version_str[4:6]),
       )
       if node_version < emcc_min_node_version:
         self.emcc_args += building.get_emcc_node_flags(node_version)
@@ -1278,11 +1279,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         ignorable_file_prefixes = [
           '/tmp/tmpaddon',
           '/tmp/circleci-no-output-timeout',
-          '/tmp/wasmer'
+          '/tmp/wasmer',
         ]
 
         left_over_files = set(temp_files_after_run) - set(self.temp_files_before_run)
-        left_over_files = [f for f in left_over_files if not any([f.startswith(prefix) for prefix in ignorable_file_prefixes])]
+        left_over_files = [f for f in left_over_files if not any(f.startswith(p) for p in ignorable_file_prefixes)]
         if len(left_over_files):
           print('ERROR: After running test, there are ' + str(len(left_over_files)) + ' new temporary files/directories left behind:', file=sys.stderr)
           for f in left_over_files:
@@ -1393,16 +1394,20 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       assert shared.suffix(filename) != '.c', 'force_c is not needed for source files ending in .c'
       compiler.append('-xc')
 
+    all_emcc_args = self.get_emcc_args(main_file=True)
+    if emcc_args:
+      all_emcc_args += emcc_args
     if not output_suffix:
-      output_suffix = '.mjs' if emcc_args and '-sEXPORT_ES6' in emcc_args else '.js'
+      if '-sEXPORT_ES6' in all_emcc_args or '-sWASM_ESM_INTEGRATION' in all_emcc_args:
+        output_suffix = '.mjs'
+      else:
+        output_suffix = '.js'
 
     if output_basename:
       output = output_basename + output_suffix
     else:
       output = shared.unsuffixed_basename(filename) + output_suffix
-    cmd = compiler + [filename, '-o', output] + self.get_emcc_args(main_file=True)
-    if emcc_args:
-      cmd += emcc_args
+    cmd = compiler + [str(filename), '-o', output] + all_emcc_args
     if libraries:
       cmd += libraries
     if includes:
@@ -1499,7 +1504,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def run_js(self, filename, engine=None, args=None,
              assert_returncode=0,
-             interleaved_output=True):
+             interleaved_output=True,
+             input=None):
     # use files, as PIPE can get too full and hang us
     stdout_file = self.in_dir('stdout')
     stderr_file = None
@@ -1523,7 +1529,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       jsrun.run_js(filename, engine, args,
                    stdout=stdout,
                    stderr=stderr,
-                   assert_returncode=assert_returncode)
+                   assert_returncode=assert_returncode,
+                   input=input)
     except subprocess.TimeoutExpired as e:
       timeout_error = e
     except subprocess.CalledProcessError as e:
@@ -1592,10 +1599,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                                       fromfile=fromfile, tofile=tofile)
     diff = ''.join([a.rstrip() + '\n' for a in diff_lines])
     if EMTEST_VERBOSE:
-      print("Expected to have '%s' == '%s'" % (limit_size(values[0]), limit_size(y)))
-    fail_message = 'Unexpected difference:\n' + limit_size(diff)
-    if not EMTEST_VERBOSE:
-      fail_message += '\nFor full output run with --verbose.'
+      print("Expected to have '%s' == '%s'" % (values[0], y))
+    else:
+      diff = limit_size(diff)
+      diff += '\nFor full output run with --verbose.'
+    fail_message = 'Unexpected difference:\n' + diff
     if msg:
       fail_message += '\n' + msg
     self.fail(fail_message)
@@ -1644,7 +1652,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       diff = ''.join(a.rstrip() + '\n' for a in diff)
       self.fail("Expected to find '%s' in '%s', diff:\n\n%s\n%s" % (
         limit_size(values[0]), limit_size(string), limit_size(diff),
-        additional_info
+        additional_info,
       ))
 
   def assertNotContained(self, value, string):
@@ -1748,7 +1756,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       if check and e.returncode != 0:
         print(e.stdout)
         print(e.stderr)
-        self.fail(f'subprocess exited with non-zero return code({e.returncode}): `{shared.shlex_join(cmd)}`')
+        self.fail(f'subprocess exited with non-zero return code({e.returncode}): `{shlex.join(cmd)}`')
 
   def emcc(self, filename, args=[], output_filename=None, **kwargs):  # noqa
     compile_only = '-c' in args or '-sSIDE_MODULE' in args
@@ -1936,21 +1944,17 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   ## Does a complete test - builds, runs, checks output, etc.
   def _build_and_run(self, filename, expected_output, args=None,
                      no_build=False,
-                     libraries=None,
-                     includes=None,
                      assert_returncode=0, assert_identical=False, assert_all=False,
-                     check_for_error=True, force_c=False, emcc_args=None,
+                     check_for_error=True,
                      interleaved_output=True,
                      regex=False,
-                     output_basename=None):
+                     **kwargs):
     logger.debug(f'_build_and_run: {filename}')
 
     if no_build:
       js_file = filename
     else:
-      js_file = self.build(filename, libraries=libraries, includes=includes,
-                           force_c=force_c, emcc_args=emcc_args,
-                           output_basename=output_basename)
+      js_file = self.build(filename, **kwargs)
     self.assertExists(js_file)
 
     engines = self.js_engines.copy()
@@ -2007,7 +2011,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     self.emcc_args += [
       '-I' + test_file('third_party/freetype/include'),
-      '-I' + test_file('third_party/poppler/include')
+      '-I' + test_file('third_party/poppler/include'),
     ]
 
     # Poppler has some pretty glaring warning.  Suppress them to keep the
@@ -2075,7 +2079,7 @@ def harness_server_func(in_queue, out_queue, port):
         try:
           fsize = os.path.getsize(path)
           f = open(path, 'rb')
-        except IOError:
+        except OSError:
           self.send_error(404, f'File not found {path}')
           return None
         self.send_response(206)
@@ -2106,18 +2110,29 @@ def harness_server_func(in_queue, out_queue, port):
     def do_POST(self):
       urlinfo = urlparse(self.path)
       query = parse_qs(urlinfo.query)
-      if query['file']:
-        print('do_POST: got file: %s' % query['file'])
+      content_length = int(self.headers['Content-Length'])
+      post_data = self.rfile.read(content_length)
+      if urlinfo.path == '/log':
+        # Logging reported by reportStdoutToServer / reportStderrToServer.
+        #
+        # To automatically capture stderr/stdout message from browser tests, modify
+        # `captureStdoutStderr` in `test/browser_reporting.js`.
         filename = query['file'][0]
-        contentLength = int(self.headers['Content-Length'])
-        create_file(filename, self.rfile.read(contentLength), binary=True)
+        print(f"[client {filename}: '{post_data.decode()}']")
+        self.send_response(200)
+        self.end_headers()
+      elif urlinfo.path == '/upload':
+        filename = query['file'][0]
+        print(f'do_POST: got file: {filename}')
+        create_file(filename, post_data, binary=True)
         self.send_response(200)
         self.end_headers()
       else:
-        print(f'do_POST: unexpected POST: {urlinfo.query}')
+        print(f'do_POST: unexpected POST: {urlinfo}')
 
     def do_GET(self):
-      if self.path == '/run_harness':
+      info = urlparse(self.path)
+      if info.path == '/run_harness':
         if DEBUG:
           print('[server startup]')
         self.send_response(200)
@@ -2157,18 +2172,7 @@ def harness_server_func(in_queue, out_queue, port):
         self.end_headers()
         self.wfile.write(b'OK')
 
-      elif 'stdout=' in self.path or 'stderr=' in self.path:
-        '''
-          To get logging to the console from browser tests, add this to
-          print/printErr/the exception handler in src/shell.html:
-
-            fetch(encodeURI('http://localhost:8888?stdout=' + text));
-        '''
-        print('[client logging:', unquote_plus(self.path), ']')
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-      elif self.path == '/check':
+      elif info.path == '/check':
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
@@ -2244,6 +2248,7 @@ class BrowserCore(RunnerCore):
   unresponsive_tests = 0
 
   def __init__(self, *args, **kwargs):
+    self.capture_stdio = EMTEST_CAPTURE_STDIO
     super().__init__(*args, **kwargs)
 
   @classmethod
@@ -2312,6 +2317,10 @@ class BrowserCore(RunnerCore):
   def run_browser(self, html_file, expected=None, message=None, timeout=None, extra_tries=1):
     if not has_browser():
       return
+    assert '?' not in html_file, 'URL params not supported'
+    url = html_file
+    if self.capture_stdio:
+      url += '?capture_stdio'
     if self.skip_exec:
       self.skipTest('skipping test execution: ' + self.skip_exec)
     if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
@@ -2323,8 +2332,8 @@ class BrowserCore(RunnerCore):
     if expected is not None:
       try:
         self.harness_in_queue.put((
-          'http://localhost:%s/%s' % (self.PORT, html_file),
-          self.get_dir()
+          'http://localhost:%s/%s' % (self.PORT, url),
+          self.get_dir(),
         ))
         if timeout is None:
           timeout = self.BROWSER_TIMEOUT
@@ -2352,6 +2361,9 @@ class BrowserCore(RunnerCore):
             if extra_tries > 0:
               print('[test error (see below), automatically retrying]')
               print(e)
+              if not self.capture_stdio:
+                print('[enabling stdio/stderr reporting]')
+                self.capture_stdio = True
               return self.run_browser(html_file, expected, message, timeout, extra_tries - 1)
             else:
               raise e
@@ -2366,25 +2378,25 @@ class BrowserCore(RunnerCore):
       time.sleep(5)
       print('(moving on..)')
 
-  def compile_btest(self, filename, args, reporting=Reporting.FULL):
+  def compile_btest(self, filename, emcc_args, reporting=Reporting.FULL):
     # Inject support code for reporting results. This adds an include a header so testcases can
     # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
     # contains the implementation of REPORT_RESULT (we can't just include that implementation in
     # the header as there may be multiple files being compiled here).
     if reporting != Reporting.NONE:
       # For basic reporting we inject JS helper funtions to report result back to server.
-      args += ['--pre-js', test_file('browser_reporting.js')]
+      emcc_args += ['--pre-js', test_file('browser_reporting.js')]
       if reporting == Reporting.FULL:
         # If C reporting (i.e. the REPORT_RESULT macro) is required we
         # also include report_result.c and force-include report_result.h
         self.run_process([EMCC, '-c', '-I' + TEST_ROOT,
-                          test_file('report_result.c')] + self.get_emcc_args(compile_only=True) + (['-fPIC'] if '-fPIC' in args else []))
-        args += ['report_result.o', '-include', test_file('report_result.h')]
+                          test_file('report_result.c')] + self.get_emcc_args(compile_only=True) + (['-fPIC'] if '-fPIC' in emcc_args else []))
+        emcc_args += ['report_result.o', '-include', test_file('report_result.h')]
     if EMTEST_BROWSER == 'node':
-      args.append('-DEMTEST_NODE')
+      emcc_args.append('-DEMTEST_NODE')
     if not os.path.exists(filename):
       filename = test_file(filename)
-    self.run_process([compiler_for(filename), filename] + self.get_emcc_args() + args)
+    self.run_process([compiler_for(filename), filename] + self.get_emcc_args() + emcc_args)
 
   def btest_exit(self, filename, assert_returncode=0, *args, **kwargs):
     """Special case of `btest` that reports its result solely via exiting
@@ -2402,20 +2414,21 @@ class BrowserCore(RunnerCore):
 
   def btest(self, filename, expected=None,
             post_build=None,
-            args=None, url_suffix='', timeout=None,
+            emcc_args=None,
+            timeout=None,
             extra_tries=1,
             reporting=Reporting.FULL,
             output_basename='test'):
     assert expected, 'a btest must have an expected output'
-    if args is None:
-      args = []
-    args = args.copy()
+    if emcc_args is None:
+      emcc_args = []
+    emcc_args = emcc_args.copy()
     filename = find_browser_test_file(filename)
     outfile = output_basename + '.html'
-    args += ['-o', outfile]
-    # print('all args:', args)
+    emcc_args += ['-o', outfile]
+    # print('all args:', emcc_args)
     utils.delete_file(outfile)
-    self.compile_btest(filename, args, reporting=reporting)
+    self.compile_btest(filename, emcc_args, reporting=reporting)
     self.assertExists(outfile)
     if post_build:
       post_build()
@@ -2427,7 +2440,7 @@ class BrowserCore(RunnerCore):
       output = self.run_js('test.js')
       self.assertContained('RESULT: ' + expected[0], output)
     else:
-      self.run_browser(outfile + url_suffix, expected=['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
+      self.run_browser(outfile, expected=['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
 
 
 ###################################################################################################

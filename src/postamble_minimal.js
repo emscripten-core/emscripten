@@ -5,8 +5,6 @@
  */
 
 // === Auto-generated postamble setup entry stuff ===
-{{{ exportRuntime() }}}
-
 #if HAS_MAIN // Only if user is exporting a C main(), we will generate a run() function that can be used to launch main.
 function run() {
 #if MEMORYPROFILER
@@ -97,7 +95,7 @@ var wasmExports;
 var wasmModule;
 #endif
 
-#if PTHREADS
+#if PTHREADS || WASM_WORKERS
 function loadModule() {
   assignWasmImports();
 #endif
@@ -120,7 +118,7 @@ var imports = {
 #if ASSERTIONS && !WASM2JS
 // Module['wasm'] should contain a typed array of the Wasm object data, or a
 // precompiled WebAssembly Module.
-if (!WebAssembly.instantiateStreaming && !Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM';
+assert(WebAssembly.instantiateStreaming || Module['wasm'], 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM');
 #endif
 (WebAssembly.instantiateStreaming
   ? WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
@@ -133,8 +131,12 @@ WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
 #if ASSERTIONS && !WASM2JS
 // Module['wasm'] should contain a typed array of the Wasm object data, or a
 // precompiled WebAssembly Module.
-if (!Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM';
+assert(Module['wasm'], 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM');
 #endif
+
+<<< ATMODULES >>>
+
+{{{ exportJSSymbols() }}}
 
 WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #endif
@@ -253,12 +255,9 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #endif // ASSERTIONS || WASM == 2
 );
 
-#if PTHREADS
+#if PTHREADS || WASM_WORKERS
 }
 
-if (!ENVIRONMENT_IS_PTHREAD) {
-  // When running in a pthread we delay module loading untill we have
-  // received the module via postMessage
-  loadModule();
-}
+// When running in a background thread we delay module loading until we have
+{{{ runIfMainThread('loadModule();') }}}
 #endif

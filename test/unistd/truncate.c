@@ -19,13 +19,13 @@ void setup() {
   FILE* f = fopen("towrite", "w");
   assert(f);
   rtn = fwrite("abcdef", 6, 1, f);
-  assert(rtn = 6);
+  assert(rtn == 1);
   fclose(f);
 
   f = fopen("toread", "w");
   assert(f);
   rtn = fwrite("abcdef", 6, 1, f);
-  assert(rtn = 6);
+  assert(rtn == 1);
   fclose(f);
 
   assert(chmod("toread", 0444) == 0);

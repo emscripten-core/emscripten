@@ -48,6 +48,17 @@ var LibraryDylink = {
     registerWasmPlugin();
     `,
   $preloadedWasm: {},
+
+  $replaceORIGIN__deps: ['$PATH'],
+  $replaceORIGIN: (parentLibName, rpath) => {
+    if (rpath.startsWith('$ORIGIN')) {
+      // TODO: what to do if we only know the relative path of the file? It will return "." here.
+      var origin = PATH.dirname(parentLibName);
+      return rpath.replace('$ORIGIN', origin);
+    }
+
+    return rpath;
+  },
 #endif // FILESYSTEM
 
   $isSymbolDefined: (symName) => {
@@ -203,7 +214,7 @@ var LibraryDylink = {
   },
 
   $updateGOT__internal: true,
-  $updateGOT__deps: ['$GOT', '$isInternalSym', '$addFunction', '$getFunctionAddress'],
+  $updateGOT__deps: ['$GOT', '$isInternalSym', '$addFunction'],
   $updateGOT: (exports, replace) => {
 #if DYLINK_DEBUG
     dbg("updateGOT: adding " + Object.keys(exports).length + " symbols");
@@ -871,13 +882,18 @@ var LibraryDylink = {
       }
 
       if (flags.loadAsync) {
-        if (binary instanceof WebAssembly.Module) {
-          var instance = new WebAssembly.Instance(binary, info);
-          return Promise.resolve(postInstantiation(binary, instance));
-        }
-        return WebAssembly.instantiate(binary, info).then(
-          (result) => postInstantiation(result.module, result.instance)
-        );
+        return (async () => {
+          var instance;
+          if (binary instanceof WebAssembly.Module) {
+            instance = new WebAssembly.Instance(binary, info);
+          } else {
+            // Destructuring assignment without declaration has to be wrapped
+            // with parens or parser will treat the l-value as an object
+            // literal instead.
+            ({ module: binary, instance } = await WebAssembly.instantiate(binary, info));
+          }
+          return postInstantiation(binary, instance);
+        })();
       }
 
       var module = binary instanceof WebAssembly.Module ? binary : new WebAssembly.Module(binary);
@@ -885,6 +901,10 @@ var LibraryDylink = {
       return postInstantiation(module, instance);
     }
 
+    // We need to set rpath in flags based on the current library's rpath.
+    // We can't mutate flags or else if a depends on b and c and b depends on d,
+    // then c will be loaded with b's rpath instead of a's.
+    flags = {...flags, rpath: { parentLibPath: libName, paths: metadata.runtimePaths }}
     // now load needed libraries and the module itself.
     if (flags.loadAsync) {
       return metadata.neededDynlibs
@@ -927,6 +947,59 @@ var LibraryDylink = {
     return dso;
   },
 
+#if FILESYSTEM
+  $findLibraryFS__deps: [
+    '$replaceORIGIN',
+    '_emscripten_find_dylib',
+    '$withStackSave',
+    '$stackAlloc',
+    '$lengthBytesUTF8',
+    '$stringToUTF8OnStack',
+    '$stringToUTF8',
+    '$FS',
+    '$PATH',
+#if WASMFS
+    '_wasmfs_identify',
+    '_wasmfs_read_file',
+#endif
+  ],
+  $findLibraryFS: (libName, rpath) => {
+    // If we're preloading a dynamic library, the runtime is not ready to call
+    // __wasmfs_identify or __emscripten_find_dylib. So just quit out.
+    //
+    // This means that DT_NEEDED for the main module and transitive dependencies
+    // of it won't work with this code path. Similarly, it means that calling
+    // loadDynamicLibrary in a preRun hook can't use this code path.
+    if (!runtimeInitialized) {
+      return undefined;
+    }
+    if (PATH.isAbs(libName)) {
+#if WASMFS
+      var result = withStackSave(() => __wasmfs_identify(stringToUTF8OnStack(libName)));
+      return result === {{{ cDefs.EEXIST }}} ? libName : undefined;
+#else
+      try {
+        FS.lookupPath(libName);
+        return libName;
+      } catch (e) {
+        return undefined;
+      }
+#endif
+    }
+    var rpathResolved = (rpath?.paths || []).map((p) => replaceORIGIN(rpath?.parentLibPath, p));
+    return withStackSave(() => {
+      // In dylink.c we use: `char buf[2*NAME_MAX+2];` and NAME_MAX is 255.
+      // So we use the same size here.
+      var bufSize = 2*255 + 2;
+      var buf = stackAlloc(bufSize);
+      var rpathC = stringToUTF8OnStack(rpathResolved.join(':'));
+      var libNameC = stringToUTF8OnStack(libName);
+      var resLibNameC = __emscripten_find_dylib(buf, rpathC, libNameC, bufSize);
+      return resLibNameC ? UTF8ToString(resLibNameC) : undefined;
+    });
+  },
+#endif // FILESYSTEM
+
   // loadDynamicLibrary loads dynamic library @ lib URL / path and returns
   // handle for loaded DSO.
   //
@@ -945,10 +1018,11 @@ var LibraryDylink = {
   // flags.global and flags.nodelete are handled every time a load request is made.
   // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
   $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule',
-                              '$isInternalSym', '$mergeLibSymbols', '$newDSO',
+                              '$mergeLibSymbols', '$newDSO',
                               '$asyncLoad',
 #if FILESYSTEM
                               '$preloadedWasm',
+                              '$findLibraryFS',
 #endif
 #if DYNCALLS || !WASM_BIGINT
                               '$registerDynCallSymbols',
@@ -1023,6 +1097,17 @@ var LibraryDylink = {
           return flags.loadAsync ? Promise.resolve(libData) : libData;
         }
       }
+
+#if FILESYSTEM
+      var f = findLibraryFS(libName, flags.rpath);
+#if DYLINK_DEBUG
+      dbg(`checking filesystem: ${libName}: ${f ? 'found' : 'not found'}`);
+#endif
+      if (f) {
+        var libData = FS.readFile(f, {encoding: 'binary'});
+        return flags.loadAsync ? Promise.resolve(libData) : libData;
+      }
+#endif
 
       var libFile = locateFile(libName);
       if (flags.loadAsync) {
@@ -1119,7 +1204,7 @@ var LibraryDylink = {
   },
 
   // void* dlopen(const char* filename, int flags);
-  $dlopenInternal__deps: ['$ENV', '$dlSetError', '$PATH'],
+  $dlopenInternal__deps: ['$dlSetError', '$PATH'],
   $dlopenInternal: (handle, jsflags) => {
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html

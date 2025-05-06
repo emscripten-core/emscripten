@@ -170,7 +170,7 @@ def merge_entry_to_existing(existing_data, new_entry, total_source_set_size):
       'function_parameters': ex['function_parameters'],
       'type': ex['type'],
       'percentage': (ex['bytes'] + new_entry['bytes']) * 100.0 / total_source_set_size,
-      'num_times_occurs': num_times_occurs_1 + num_times_occurs_2
+      'num_times_occurs': num_times_occurs_1 + num_times_occurs_2,
     }
   else:
     existing_data[name] = new_entry
@@ -276,7 +276,7 @@ def analyze_javascript_file_contents(filename, file_contents, total_source_set_s
         'unminified_name': unminified_name,
         'function_parameters': function_parameters,
         'type': function_type,
-        'percentage': num_bytes * 100.0 / total_source_set_size
+        'percentage': num_bytes * 100.0 / total_source_set_size,
       }
     else: # This is a variable
       var_block_match = var_block_regex.match(file_contents[var_pos:])
@@ -322,7 +322,7 @@ def analyze_javascript_file_contents(filename, file_contents, total_source_set_s
         'unminified_name': unminified_name,
         'function_parameters': '',
         'type': var_type,
-        'percentage': num_bytes * 100.0 / total_source_set_size
+        'percentage': num_bytes * 100.0 / total_source_set_size,
       }
 
   if options.list_unaccounted:
@@ -337,7 +337,7 @@ def analyze_javascript_file_contents(filename, file_contents, total_source_set_s
       'unminified_name': unaccounted_name,
       'function_parameters': '',
       'type': '[UNKN]',
-      'percentage': unaccounted_bytes * 100.0 / total_source_set_size
+      'percentage': unaccounted_bytes * 100.0 / total_source_set_size,
     }
     merge_entry_to_existing(data, unaccounted_entry, total_source_set_size)
 
@@ -394,7 +394,7 @@ def analyze_html_file(filename, total_source_set_size, symbol_map=None):
       'unminified_name': unaccounted_name,
       'function_parameters': '',
       'type': 'HTML',
-      'percentage': unaccounted_bytes * 100.0 / total_source_set_size
+      'percentage': unaccounted_bytes * 100.0 / total_source_set_size,
     }
     merge_entry_to_existing(data, unaccounted_entry, total_source_set_size)
 

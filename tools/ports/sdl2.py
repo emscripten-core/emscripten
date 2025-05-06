@@ -70,7 +70,8 @@ def get(ports, settings, shared):
     srcs += ['thread/%s/%s' % (thread_backend, s) for s in thread_srcs]
 
     srcs = [os.path.join(src_dir, 'src', s) for s in srcs]
-    flags = ['-sUSE_SDL=0']
+    # TODO: Remove fwrapv when we update to a version which includes https://github.com/libsdl-org/SDL/pull/12581
+    flags = ['-sUSE_SDL=0', '-fwrapv-pointer']
     includes = [ports.get_include_dir('SDL2')]
     if settings.PTHREADS:
       flags += ['-pthread']

@@ -1,3 +1,6 @@
+[project]
+requires-python = ">=3.8"
+
 [tool.ruff]
 exclude = [
   "./cache/",
@@ -16,12 +19,15 @@ lint.select = [
   "ARG",
   "ASYNC",
   "B",
+  "C4",
   "C90",
+  "COM",
   "E",
   "F",
   "PERF",
   "PIE",
   "PL",
+  "UP",
   "W",
   "YTT",
 ]
@@ -42,6 +48,9 @@ lint.ignore = [
   "PLW0603",
   "PLW1510",
   "PLW2901",
+  "UP030", # TODO
+  "UP031", # TODO
+  "UP032", # TODO
 ]
 lint.per-file-ignores."emrun.py" = [ "PLE0704" ]
 lint.per-file-ignores."tools/ports/*.py" = [ "ARG001", "ARG005" ]
@@ -80,13 +89,13 @@ conf\.py |
 emrun\.py |
 site/source/_themes/ |
 tools/scons/site_scons/site_tools/emscripten/__init__\.py |
+tools/maint/create_dom_pk_codes.py |
 site/source/get_wiki\.py |
 test/parse_benchmark_output\.py
 )'''
 
 [[tool.mypy.overrides]]
 module = [
-  "tools.create_dom_pk_codes",
   "tools.webidl_binder",
   "tools.toolchain_profiler",
   "tools.filelock",

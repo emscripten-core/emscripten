@@ -40,7 +40,7 @@ export function processMacros(text, filename) {
   try {
     return text.replace(/{{{([\s\S]+?)}}}/g, (_, str) => {
       const ret = runInMacroContext(str, {filename: filename});
-      return ret !== null ? ret.toString() : '';
+      return ret?.toString() ?? '';
     });
   } finally {
     popCurrentFile();
@@ -720,6 +720,14 @@ function makeEval(code) {
   return ret;
 }
 
+// Add code that runs before the wasm modules is loaded.  This is the first
+// point at which the global `Module` object is guaranteed to exist. This hook
+// is mostly used to read incoming `Module` properties.
+export const ATMODULES = [];
+function addAtModule(code) {
+  ATMODULES.push(code);
+}
+
 // Add code to run soon after the Wasm module has been loaded. This is the first
 // injection point before all the other addAt<X> functions below. The code will
 // be executed after the runtime `onPreRuns` callbacks.
@@ -868,12 +876,6 @@ function isSymbolNeeded(symName) {
   return false;
 }
 
-function makeRemovedModuleAPIAssert(moduleName, localName) {
-  if (!ASSERTIONS) return '';
-  localName ||= moduleName;
-  return `legacyModuleProp('${moduleName}', '${localName}');`;
-}
-
 function checkReceiving(name) {
   // ALL_INCOMING_MODULE_JS_API contains all valid incoming module API symbols
   // so calling makeModuleReceive* with a symbol not in this list is an error
@@ -888,9 +890,8 @@ function makeModuleReceive(localName, moduleName) {
   if (expectToReceiveOnModule(moduleName)) {
     // Usually the local we use is the same as the Module property name,
     // but sometimes they must differ.
-    ret = `\nif (Module['${moduleName}']) ${localName} = Module['${moduleName}'];`;
+    ret = `if (Module['${moduleName}']) ${localName} = Module['${moduleName}'];`;
   }
-  ret += makeRemovedModuleAPIAssert(moduleName, localName);
   return ret;
 }
 
@@ -903,24 +904,16 @@ function makeModuleReceiveExpr(name, defaultValue) {
   }
 }
 
-function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert) {
+function makeModuleReceiveWithVar(localName, moduleName, defaultValue) {
   moduleName ||= localName;
   checkReceiving(moduleName);
   let ret = `var ${localName}`;
-  if (!expectToReceiveOnModule(moduleName)) {
-    if (defaultValue) {
-      ret += ` = ${defaultValue}`;
-    }
-    ret += ';';
-  } else {
-    if (defaultValue) {
-      ret += ` = Module['${moduleName}'] || ${defaultValue};`;
-    } else {
-      ret += ` = Module['${moduleName}'];`;
-    }
+  if (defaultValue) {
+    ret += ` = ${defaultValue}`;
   }
-  if (!noAssert) {
-    ret += makeRemovedModuleAPIAssert(moduleName, localName);
+  ret += ';';
+  if (expectToReceiveOnModule(moduleName)) {
+    addAtModule(`if (Module['${moduleName}']) ${localName} = Module['${moduleName}'];`);
   }
   return ret;
 }
@@ -1088,10 +1081,6 @@ function getPerformanceNow() {
   }
 }
 
-function implicitSelf() {
-  return ENVIRONMENT.includes('node') ? 'self.' : '';
-}
-
 function ENVIRONMENT_IS_MAIN_THREAD() {
   return `(!${ENVIRONMENT_IS_WORKER_THREAD()})`;
 }
@@ -1129,6 +1118,7 @@ addToCompileTimeContext({
   ENVIRONMENT_IS_WORKER_THREAD,
   addAtExit,
   addAtPreRun,
+  addAtModule,
   addAtInit,
   addAtPostCtor,
   addAtPreMain,
@@ -1149,7 +1139,6 @@ addToCompileTimeContext({
   getPerformanceNow,
   getUnsharedTextDecoderView,
   hasExportedSymbol,
-  implicitSelf,
   isSymbolNeeded,
   makeDynCall,
   makeEval,
@@ -1159,7 +1148,6 @@ addToCompileTimeContext({
   makeModuleReceiveExpr,
   makeModuleReceiveWithVar,
   makeRemovedFSAssert,
-  makeRemovedModuleAPIAssert,
   makeRetainedCompilerSettings,
   makeReturn64,
   makeSetValue,

@@ -3,8 +3,8 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 var LibraryEmbindShared = {
-  $InternalError: "=Module['InternalError'] = class InternalError extends Error { constructor(message) { super(message); this.name = 'InternalError'; }}",
-  $BindingError: "=Module['BindingError'] = class BindingError extends Error { constructor(message) { super(message); this.name = 'BindingError'; }}",
+  $InternalError: "= class InternalError extends Error { constructor(message) { super(message); this.name = 'InternalError'; }}",
+  $BindingError: "= class BindingError extends Error { constructor(message) { super(message); this.name = 'BindingError'; }}",
 
   $throwInternalError__deps: ['$InternalError'],
   $throwInternalError: (message) => { throw new InternalError(message); },
@@ -27,8 +27,7 @@ var LibraryEmbindShared = {
 
   $sharedRegisterType__deps: [
     '$awaitingDependencies', '$registeredTypes',
-    '$typeDependencies', '$throwBindingError',
-    '$whenDependentTypesAreResolved'],
+    '$typeDependencies', '$throwBindingError' ],
   $sharedRegisterType__docs: '/** @param {Object=} options */',
   $sharedRegisterType: function(rawType, registeredInstance, options = {}) {
     var name = registeredInstance.name;

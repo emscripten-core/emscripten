@@ -59,7 +59,7 @@ static DummyForPointer emval_pointer_dummy(42);
 
 val emval_test_instance_pointer() {
   DummyForPointer* p = &emval_pointer_dummy;
-  return val(p);
+  return val(p, allow_raw_pointers());
 }
 
 int emval_test_value_from_instance_pointer(val v) {
@@ -224,13 +224,13 @@ std::u32string get_literal_u32string() {
 
 void force_memory_growth() {
   std::size_t old_size = emscripten_get_heap_size();
-  EM_ASM({"globalThis.oldheap = HEAPU8;"});
+  EM_ASM({"globalThis.oldheap = HEAP8;"});
   assert(val::global("oldheap")["byteLength"].as<size_t>() == old_size);
   emscripten_resize_heap(old_size + EMSCRIPTEN_PAGE_SIZE);
   assert(emscripten_get_heap_size() > old_size);
-  // HEAPU8 on the module should now be rebound, and our oldheap should be
+  // HEAP8 on the module should now be rebound, and our oldheap should be
   // detached
-  assert(val::module_property("HEAPU8")["byteLength"].as<size_t>() > old_size);
+  assert(val::module_property("HEAP8")["byteLength"].as<size_t>() > old_size);
   assert(val::global("oldheap")["byteLength"].as<size_t>() == 0);
 }
 
@@ -327,8 +327,16 @@ ValHolder emval_test_return_ValHolder() {
   return val::object();
 }
 
+ValHolder valholder_from_sum(int x, int y) {
+  return val(x+y);
+}
+
 val valholder_get_value_mixin(const ValHolder& target) {
   return target.getVal();
+}
+
+ValHolder* valholder_get_this_ptr(ValHolder& target) {
+  return &target;
 }
 
 void valholder_set_value_mixin(ValHolder& target, const val& value) {
@@ -2005,6 +2013,7 @@ EMSCRIPTEN_BINDINGS(tests) {
   class_<ValHolder>("ValHolder")
     .smart_ptr<std::shared_ptr<ValHolder>>("std::shared_ptr<ValHolder>")
     .constructor<val>()
+    .constructor<ValHolder(int, int)>(&valholder_from_sum, allow_raw_pointers()) // custom signature with policy
     .function("getVal", &ValHolder::getVal)
     .function("getValNonConst", &ValHolder::getValNonConst)
     .function("getConstVal", &ValHolder::getConstVal)
@@ -2012,6 +2021,7 @@ EMSCRIPTEN_BINDINGS(tests) {
     .function("setVal", &ValHolder::setVal)
     .function("getValFunction", std::function<val(const ValHolder&)>(&valholder_get_value_mixin))
     .function("setValFunction", std::function<void(ValHolder&, const val&)>(&valholder_set_value_mixin))
+    .function<ValHolder*(ValHolder&)>("getThisPointer", std::function<ValHolder*(ValHolder&)>(&valholder_get_this_ptr), allow_raw_pointer<ret_val>())
     .function<val(const ValHolder&)>("getValFunctor", std::bind(&valholder_get_value_mixin, _1))
     .function<void(ValHolder&, const val&)>("setValFunctor", std::bind(&valholder_set_value_mixin, _1, _2))
     .property("val", &ValHolder::getVal, &ValHolder::setVal)

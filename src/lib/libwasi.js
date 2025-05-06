@@ -41,16 +41,20 @@ var WasiLibrary = {
   sched_yield__nothrow: true,
   sched_yield: () => 0,
 
-  $getEnvStrings__deps: ['$ENV', '$getExecutableName'],
+  $getEnvStrings__deps: ['$ENV',
+#if !PURE_WASI
+    '$getExecutableName'
+#endif
+  ],
   $getEnvStrings: () => {
     if (!getEnvStrings.strings) {
       // Default values.
-#if !DETERMINISTIC
-      // Browser language detection #8751
-      var lang = ((typeof navigator == 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
-#else
+#if DETERMINISTIC
       // Deterministic language detection, ignore the browser's language.
       var lang = 'C.UTF-8';
+#else
+      // Browser language detection #8751
+      var lang = ((typeof navigator == 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
 #endif
       var env = {
 #if !PURE_WASI
@@ -80,27 +84,30 @@ var WasiLibrary = {
     return getEnvStrings.strings;
   },
 
-  environ_sizes_get__deps: ['$getEnvStrings'],
+  environ_sizes_get__deps: ['$getEnvStrings', '$lengthBytesUTF8'],
   environ_sizes_get__nothrow: true,
   environ_sizes_get: (penviron_count, penviron_buf_size) => {
     var strings = getEnvStrings();
     {{{ makeSetValue('penviron_count', 0, 'strings.length', SIZE_TYPE) }}};
     var bufSize = 0;
-    strings.forEach((string) => bufSize += string.length + 1);
+    for (var string of strings) {
+      bufSize += lengthBytesUTF8(string) + 1;
+    }
     {{{ makeSetValue('penviron_buf_size', 0, 'bufSize', SIZE_TYPE) }}};
     return 0;
   },
 
-  environ_get__deps: ['$getEnvStrings', '$stringToAscii'],
+  environ_get__deps: ['$getEnvStrings', '$stringToUTF8'],
   environ_get__nothrow: true,
   environ_get: (__environ, environ_buf) => {
     var bufSize = 0;
-    getEnvStrings().forEach((string, i) => {
+    var envp = 0;
+    for (var string of getEnvStrings()) {
       var ptr = environ_buf + bufSize;
-      {{{ makeSetValue('__environ', `i*${POINTER_SIZE}`, 'ptr', POINTER_TYPE) }}};
-      stringToAscii(string, ptr);
-      bufSize += string.length + 1;
-    });
+      {{{ makeSetValue('__environ', 'envp', 'ptr', POINTER_TYPE) }}};
+      bufSize += stringToUTF8(string, ptr, Infinity) + 1;
+      envp += {{{ POINTER_SIZE }}};
+    }
     return 0;
   },
 
@@ -560,6 +567,9 @@ var WasiLibrary = {
 
   // random.h
 
+#if ENVIRONMENT_MAY_BE_SHELL
+  $initRandomFill__deps: ['$base64Decode'],
+#endif
   $initRandomFill: () => {
 #if ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 190000
     // This block is not needed on v19+ since crypto.getRandomValues is builtin
@@ -568,6 +578,18 @@ var WasiLibrary = {
       return (view) => nodeCrypto.randomFillSync(view);
     }
 #endif // ENVIRONMENT_MAY_BE_NODE
+
+#if ENVIRONMENT_MAY_BE_SHELL
+    if (ENVIRONMENT_IS_SHELL) {
+      return (view) => {
+        if (!os.system) {
+          throw new Error('randomFill not supported on d8 unless --enable-os-system is passed');
+        }
+        const b64 = os.system('sh', ['-c', `head -c${view.byteLength} /dev/urandom | base64 --wrap=0`]);
+        view.set(base64Decode(b64));
+      };
+    }
+#endif
 
 #if SHARED_MEMORY
     // like with most Web APIs, we can't use Web Crypto API directly on shared memory,

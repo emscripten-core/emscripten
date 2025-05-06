@@ -117,14 +117,14 @@ COMPILE_TIME_SETTINGS = {
 #
 # At some point in the future, once folks have stopped using these
 # settings we can move them to `LEGACY_SETTINGS`.
+#
+# All settings here should be tagged as `[deprecated]` in settings.js
 DEPRECATED_SETTINGS = {
-    'SUPPORT_ERRNO': 'emscripten no longer uses the setErrNo library function',
-    'EXTRA_EXPORTED_RUNTIME_METHODS': 'please use EXPORTED_RUNTIME_METHODS instead',
-    'DEMANGLE_SUPPORT': 'mangled names no longer appear in stack traces',
     'RUNTIME_LINKED_LIBS': 'you can simply list the libraries directly on the commandline now',
     'CLOSURE_WARNINGS': 'use -Wclosure instead',
     'LEGALIZE_JS_FFI': 'to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`',
-    'ASYNCIFY_EXPORTS': 'please use JSPI_EXPORTS instead'
+    'ASYNCIFY_EXPORTS': 'please use JSPI_EXPORTS instead',
+    'MAYBE_WASM2JS': 'lack of usage',
 }
 
 # Settings that don't need to be externalized when serializing to json because they

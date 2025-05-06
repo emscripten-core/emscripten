@@ -68,11 +68,11 @@ addToLibrary({
     // Parameters, length + signatures
     target.push(0x60 /* form: func */);
     uleb128Encode(sigParam.length, target);
-    for (var i = 0; i < sigParam.length; ++i) {
+    for (var paramType of sigParam) {
 #if ASSERTIONS
-      assert(sigParam[i] in typeCodes, 'invalid signature char: ' + sigParam[i]);
+      assert(paramType in typeCodes, `invalid signature char: ${paramType}`);
 #endif
-      target.push(typeCodes[sigParam[i]]);
+      target.push(typeCodes[paramType]);
     }
 
     // Return values, length + signatures
@@ -84,7 +84,9 @@ addToLibrary({
     }
   },
   // Wraps a JS function as a wasm function with a given signature.
+#if !WASM2JS
   $convertJsFunctionToWasm__deps: ['$uleb128Encode', '$sigToWasmTypes', '$generateFuncType'],
+#endif
   $convertJsFunctionToWasm: (func, sig) => {
 #if WASM2JS
     // return func;
@@ -192,8 +194,12 @@ addToLibrary({
   $addFunction__docs: '/** @param {string=} sig */',
   $addFunction__deps: ['$convertJsFunctionToWasm', '$getFunctionAddress',
                        '$functionsInTableMap', '$getEmptyTableSlot',
-                       '$getWasmTableEntry', '$setWasmTableEntry',
-                       '$wasmTable'],
+                       '$setWasmTableEntry',
+#if ASSERTIONS >= 2
+                       '$getWasmTableEntry', '$wasmTable',
+#endif
+  ],
+
   $addFunction: (func, sig) => {
   #if ASSERTIONS
     assert(typeof func != 'undefined');

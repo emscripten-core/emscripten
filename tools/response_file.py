@@ -13,16 +13,12 @@ from .utils import WINDOWS
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 
 
-def create_response_file(args, directory, suffix='.rsp.utf-8'):
+def create_response_file(args, directory):
   """Routes the given cmdline param list in args into a new response file and
   returns the filename to it.
-
-  By default the returned filename has a suffix '.rsp.utf-8'. Pass a suffix parameter to override.
   """
 
-  assert suffix.startswith('.')
-
-  response_fd, response_filename = tempfile.mkstemp(prefix='emscripten_', suffix=suffix, dir=directory, text=True)
+  response_fd, response_filename = tempfile.mkstemp(prefix='emscripten_', suffix='.rsp.utf-8', dir=directory, text=True)
 
   # Backslashes and other special chars need to be escaped in the response file.
   escape_chars = ['\\', '\"']
@@ -36,7 +32,7 @@ def create_response_file(args, directory, suffix='.rsp.utf-8'):
     return arg
 
   args = [escape(a) for a in args]
-  contents = ""
+  contents = ''
 
   # Arguments containing spaces need to be quoted.
   for arg in args:
@@ -44,18 +40,11 @@ def create_response_file(args, directory, suffix='.rsp.utf-8'):
       arg = '"%s"' % arg
     contents += arg + '\n'
 
-  # Decide the encoding of the generated file based on the requested file suffix
-  if suffix.count('.') == 2:
-    # Use the encoding specified in the suffix of the response file
-    encoding = suffix.split('.')[2]
-  else:
-    encoding = 'utf-8'
-
-  with os.fdopen(response_fd, 'w', encoding=encoding) as f:
+  with os.fdopen(response_fd, 'w', encoding='utf-8') as f:
     f.write(contents)
 
   if DEBUG:
-    logging.warning('Creating response file ' + response_filename + ' with following contents: ' + contents)
+    logging.warning(f'Creating response file {response_filename} with following contents: {contents}')
 
   # Register the created .rsp file to be automatically cleaned up once this
   # process finishes, so that caller does not have to remember to do it.
@@ -79,7 +68,7 @@ def read_response_file(response_filename):
     response_filename = response_filename[1:]
 
   if not os.path.exists(response_filename):
-    raise IOError("response file not found: %s" % response_filename)
+    raise OSError("response file not found: %s" % response_filename)
 
   # Guess encoding based on the file suffix
   components = os.path.basename(response_filename).split('.')
@@ -98,7 +87,7 @@ def read_response_file(response_filename):
       args = f.read()
   except (ValueError, LookupError): # UnicodeDecodeError is a subclass of ValueError, and Python raises either a ValueError or a UnicodeDecodeError on decode errors. LookupError is raised if guessed encoding is not an encoding.
     if DEBUG:
-      logging.warning(f'Failed to parse response file {response_filename} with guessed encoding "{guessed_encoding}". Trying default system encoding...')
+      logging.warning(f'failed to parse response file {response_filename} with guessed encoding "{guessed_encoding}". Trying default system encoding...')
     # If that fails, try with the Python default locale.getpreferredencoding()
     with open(response_filename) as f:
       args = f.read()
@@ -106,7 +95,7 @@ def read_response_file(response_filename):
   args = shlex.split(args)
 
   if DEBUG:
-    logging.warning('Read response file ' + response_filename + ': ' + str(args))
+    logging.warning(f'read response file {response_filename}: {args}')
 
   return args
 

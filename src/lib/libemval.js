@@ -5,7 +5,6 @@
 
 /*global Module:true, Runtime*/
 /*global HEAP32*/
-/*global newFunc*/
 /*global createNamedFunction*/
 /*global readLatin1String, stringToUTF8*/
 /*global requireRegisteredType, throwBindingError, runDestructors*/
@@ -20,31 +19,23 @@
 {{{
   const EMVAL_RESERVED_HANDLES = 5;
   const EMVAL_LAST_RESERVED_HANDLE = EMVAL_RESERVED_HANDLES * 2 - 1;
-  null;
 }}}
 var LibraryEmVal = {
   // Stack of handles available for reuse.
   $emval_freelist: [],
   // Array of alternating pairs (value, refcount).
-  $emval_handles: [],
+  // reserve 0 and some special values. These never get de-allocated.
+  $emval_handles: [
+    0, 1,
+    undefined, 1,
+    null, 1,
+    true, 1,
+    false, 1,
+  ],
+#if ASSERTIONS
+  $emval_handles__postset: 'assert(emval_handles.length === {{{ EMVAL_RESERVED_HANDLES }}} * 2)',
+#endif
   $emval_symbols: {}, // address -> string
-
-  $init_emval__deps: ['$count_emval_handles', '$emval_handles'],
-  $init_emval__postset: 'init_emval();',
-  $init_emval: () => {
-    // reserve 0 and some special values. These never get de-allocated.
-    emval_handles.push(
-      0, 1,
-      undefined, 1,
-      null, 1,
-      true, 1,
-      false, 1,
-    );
-  #if ASSERTIONS
-    assert(emval_handles.length === {{{ EMVAL_RESERVED_HANDLES }}} * 2);
-  #endif
-    Module['count_emval_handles'] = count_emval_handles;
-  },
 
   $count_emval_handles__deps: ['$emval_freelist', '$emval_handles'],
   $count_emval_handles: () => {
@@ -65,11 +56,11 @@ var LibraryEmVal = {
     return symbol;
   },
 
-  $Emval__deps: ['$emval_freelist', '$emval_handles', '$throwBindingError', '$init_emval'],
+  $Emval__deps: ['$emval_freelist', '$emval_handles', '$throwBindingError'],
   $Emval: {
     toValue: (handle) => {
       if (!handle) {
-          throwBindingError('Cannot use deleted val. handle = ' + handle);
+          throwBindingError(`Cannot use deleted val. handle = ${handle}`);
       }
   #if ASSERTIONS
       // handle 2 is supposed to be `undefined`.
@@ -295,8 +286,8 @@ var LibraryEmVal = {
   $emval_lookupTypes: (argCount, argTypes) => {
     var a = new Array(argCount);
     for (var i = 0; i < argCount; ++i) {
-      a[i] = requireRegisteredType({{{ makeGetValue('argTypes', 'i * ' + POINTER_SIZE, '*') }}},
-                                   "parameter " + i);
+      a[i] = requireRegisteredType({{{ makeGetValue('argTypes', `i*${POINTER_SIZE}`, '*') }}},
+                                   `parameter ${i}`);
     }
     return a;
   },
@@ -330,10 +321,9 @@ var LibraryEmVal = {
 
   _emval_get_method_caller__deps: [
     '$emval_addMethodCaller', '$emval_lookupTypes',
-    '$createNamedFunction',
-    '$reflectConstruct', '$emval_returnValue',
-#if DYNAMIC_EXECUTION
-    '$newFunc',
+    '$createNamedFunction', '$emval_returnValue',
+#if !DYNAMIC_EXECUTION
+    '$reflectConstruct',
 #endif
   ],
   _emval_get_method_caller: (argCount, argTypes, kind) => {
@@ -359,32 +349,31 @@ var LibraryEmVal = {
     var offset = 0;
     var argsList = []; // 'obj?, arg0, arg1, arg2, ... , argN'
     if (kind === /* FUNCTION */ 0) {
-      argsList.push("obj");
+      argsList.push('obj');
     }
-    var params = ["retType"];
+    var params = ['retType'];
     var args = [retType];
     for (var i = 0; i < argCount; ++i) {
-      argsList.push("arg" + i);
-      params.push("argType" + i);
+      argsList.push(`arg${i}`);
+      params.push(`argType${i}`);
       args.push(types[i]);
       functionBody +=
-        `  var arg${i} = argType${i}.readValueFromPointer(args${offset ? "+" + offset : ""});\n`;
+        `  var arg${i} = argType${i}.readValueFromPointer(args${offset ? '+' + offset : ''});\n`;
       offset += types[i].argPackAdvance;
     }
     var invoker = kind === /* CONSTRUCTOR */ 1 ? 'new func' : 'func.call';
     functionBody +=
-      `  var rv = ${invoker}(${argsList.join(", ")});\n`;
+      `  var rv = ${invoker}(${argsList.join(', ')});\n`;
     if (!retType.isVoid) {
-      params.push("emval_returnValue");
+      params.push('emval_returnValue');
       args.push(emval_returnValue);
       functionBody +=
-        "  return emval_returnValue(retType, destructorsRef, rv);\n";
+        '  return emval_returnValue(retType, destructorsRef, rv);\n';
     }
     functionBody +=
       "};\n";
 
-    params.push(functionBody);
-    var invokerFunction = newFunc(Function, params)(...args);
+    var invokerFunction = new Function(...params, functionBody)(...args);
 #endif
     var functionName = `methodCaller<(${types.map(t => t.name).join(', ')}) => ${retType.name}>`;
     return emval_addMethodCaller(createNamedFunction(functionName, invokerFunction));

@@ -97,7 +97,7 @@ def parse_config_file():
 
   Also check EM_<KEY> environment variables to override specific config keys.
   """
-  config = {}
+  config = {'__file__': EM_CONFIG}
   config_text = utils.read_file(EM_CONFIG)
   try:
     exec(config_text, config)

@@ -6,6 +6,7 @@
 import logging
 import hashlib
 import os
+from pathlib import Path
 import shutil
 import glob
 import importlib.util
@@ -176,7 +177,10 @@ class Ports:
 
   @staticmethod
   def build_port(src_dir, output_path, port_name, includes=[], flags=[], cxxflags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # noqa
-    build_dir = os.path.join(Ports.get_build_dir(), port_name)
+    mangled_name = str(Path(output_path).relative_to(Path(cache.get_sysroot(True)) / 'lib'))
+    mangled_name = mangled_name.replace(os.sep, '_').replace('.a', '').replace('-emscripten', '')
+    build_dir = os.path.join(Ports.get_build_dir(), port_name, mangled_name)
+    logger.debug(f'build_port: {port_name} {output_path} in {build_dir}')
     if srcs:
       srcs = [os.path.join(src_dir, s) for s in srcs]
     else:
@@ -199,7 +203,8 @@ class Ports:
       ninja_file = os.path.join(build_dir, 'build.ninja')
       system_libs.ensure_sysroot()
       system_libs.create_ninja_file(srcs, ninja_file, output_path, cflags=cflags)
-      system_libs.run_ninja(build_dir)
+      if not os.getenv('EMBUILDER_PORT_BUILD_DEFERRED'):
+        system_libs.run_ninja(build_dir)
     else:
       commands = []
       objects = []
@@ -233,7 +238,7 @@ class Ports:
 
   @staticmethod
   def get_build_dir():
-    return cache.get_path('ports-builds')
+    return system_libs.get_build_dir()
 
   name_cache: Set[str] = set()
 
@@ -356,6 +361,7 @@ class Ports:
     port = ports_by_name[name]
     port.clear(Ports, settings, shared)
     build_dir = os.path.join(Ports.get_build_dir(), name)
+    logger.debug(f'clearing port build: {name} {build_dir}')
     utils.delete_dir(build_dir)
     return build_dir
 
@@ -572,9 +578,11 @@ def add_cflags(args, settings): # noqa: U100
   needed = get_needed_ports(settings)
 
   # Now get (i.e. build) the ports in dependency order.  This is important because the
-  # headers from one ports might be needed before we can build the next.
+  # headers from one port might be needed before we can build the next.
   for port in dependency_order(needed):
-    port.get(Ports, settings, shared)
+    # When using embuilder, don't build the dependencies
+    if not os.getenv('EMBUILDER_PORT_BUILD_DEFERRED'):
+      port.get(Ports, settings, shared)
     args += port.process_args(Ports)
 
 

@@ -1,8 +1,8 @@
 {{{
   // Helper functions for code generation
-  globalThis.html5_gpu = {
-    makeImportExport: (snake_case, CamelCase) => {
-      return `
+const html5_gpu = {
+  makeImportExport: (snake_case, CamelCase) => {
+    return `
 LibraryHTML5WebGPU.emscripten_webgpu_import_${snake_case}__deps = ['$WebGPU', '$JsValStore'];
 LibraryHTML5WebGPU.emscripten_webgpu_import_${snake_case} = (handle) =>
   WebGPU.mgr${CamelCase}.create(JsValStore.get(handle));
@@ -10,9 +10,8 @@ LibraryHTML5WebGPU.emscripten_webgpu_import_${snake_case} = (handle) =>
 LibraryHTML5WebGPU.emscripten_webgpu_export_${snake_case}__deps = ['$WebGPU', '$JsValStore'];
 LibraryHTML5WebGPU.emscripten_webgpu_export_${snake_case} = (handle) =>
   JsValStore.add(WebGPU.mgr${CamelCase}.get(handle));`
-    },
-  };
-  null;
+  },
+};
 }}}
 
 

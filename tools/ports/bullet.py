@@ -39,7 +39,8 @@ def get(ports, settings, shared):
 
     flags = [
       '-Wno-single-bit-bitfield-constant-conversion',
-      '-std=gnu++14'
+      '-Wno-int-to-void-pointer-cast',
+      '-std=gnu++14',
     ]
 
     ports.build_port(src_path, final, 'bullet', includes=includes, flags=flags, exclude_dirs=['MiniCL'])

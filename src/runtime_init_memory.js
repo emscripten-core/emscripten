@@ -11,9 +11,8 @@
 
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 
-#if PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) {
-#endif // PTHREADS
+function initMemory() {
+  {{{ runIfWorkerThread('return') }}}
 
 #if expectToReceiveOnModule('wasmMemory')
   if (Module['wasmMemory']) {
@@ -21,7 +20,7 @@ if (!ENVIRONMENT_IS_PTHREAD) {
   } else
 #endif
   {
-    {{{ makeModuleReceiveWithVar('INITIAL_MEMORY', undefined, INITIAL_MEMORY) }}}
+    var INITIAL_MEMORY = {{{ makeModuleReceiveExpr('INITIAL_MEMORY', INITIAL_MEMORY) }}};
 
 #if ASSERTIONS
     assert(INITIAL_MEMORY >= {{{STACK_SIZE}}}, 'INITIAL_MEMORY should be larger than STACK_SIZE, was ' + INITIAL_MEMORY + '! (STACK_SIZE=' + {{{STACK_SIZE}}} + ')');
@@ -48,16 +47,13 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
 #if MEMORY64 == 1
       'address': 'i64',
-      // TODO(sbc): remove this alias for `address` once both firefox and
-      // chrome roll out the spec change.
-      // See https://github.com/WebAssembly/memory64/pull/92
-      'index': 'i64',
 #endif
     });
   }
 
   updateMemoryViews();
-#if PTHREADS
 }
-#endif
 
+#if WASM_ESM_INTEGRATION
+initMemory();
+#endif

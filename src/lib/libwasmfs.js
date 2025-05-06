@@ -180,10 +180,7 @@ addToLibrary({
     create: (path, mode) => FS_create(path, mode),
     close: (stream) => FS.handleError(-__wasmfs_close(stream.fd)),
     unlink: (path) => FS_unlink(path),
-    chdir: (path) => withStackSave(() => {
-      var buffer = stringToUTF8OnStack(path);
-      return __wasmfs_chdir(buffer);
-    }),
+    chdir: (path) => withStackSave(() => __wasmfs_chdir(stringToUTF8OnStack(path))),
     read(stream, buffer, offset, length, position) {
       var seeking = typeof position != 'undefined';
 
@@ -195,14 +192,12 @@ addToLibrary({
       } else {
         bytesRead = __wasmfs_read(stream.fd, dataBuffer, length);
       }
-      bytesRead = FS.handleError(bytesRead);
-
-      for (var i = 0; i < length; i++) {
-        buffer[offset + i] = {{{ makeGetValue('dataBuffer', 'i', 'i8')}}}
+      if (bytesRead > 0) {
+        buffer.set(HEAPU8.subarray(dataBuffer, dataBuffer + bytesRead), offset);
       }
 
       _free(dataBuffer);
-      return bytesRead;
+      return FS.handleError(bytesRead);
     },
     // Note that canOwn is an optimization that we ignore for now in WasmFS.
     write(stream, buffer, offset, length, position, canOwn) {
@@ -219,10 +214,8 @@ addToLibrary({
       } else {
         bytesRead = __wasmfs_write(stream.fd, dataBuffer, length);
       }
-      bytesRead = FS.handleError(bytesRead);
       _free(dataBuffer);
-
-      return bytesRead;
+      return FS.handleError(bytesRead);
     },
     writeFile: (path, data) => FS_writeFile(path, data),
     mmap: (stream, length, offset, prot, flags) => {
@@ -242,8 +235,12 @@ addToLibrary({
       __wasmfs_symlink(stringToUTF8OnStack(target), stringToUTF8OnStack(linkpath))
     )),
     readlink(path) {
-      var readBuffer = FS.handleError(withStackSave(() => __wasmfs_readlink(stringToUTF8OnStack(path))));
-      return UTF8ToString(readBuffer);
+      return withStackSave(() => {
+        var bufPtr = stackAlloc({{{ POINTER_SIZE }}});
+        FS.handleError(__wasmfs_readlink(stringToUTF8OnStack(path), bufPtr));
+        var readBuffer = {{{ makeGetValue('bufPtr', '0', '*') }}};
+        return UTF8ToString(readBuffer);
+      });
     },
     statBufToObject(statBuf) {
       // i53/u53 are enough for times and ino in practice.
@@ -263,25 +260,19 @@ addToLibrary({
           ino: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ino, "u53") }}}
       }
     },
-    stat(path) {
-      var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
-      FS.handleError(withStackSave(() =>
-        __wasmfs_stat(stringToUTF8OnStack(path), statBuf)
-      ));
-      var stats = FS.statBufToObject(statBuf);
-      _free(statBuf);
-
-      return stats;
+    stat(path) { 
+      return withStackSave(() => {
+        var statBuf = stackAlloc({{{ C_STRUCTS.stat.__size__ }}});
+        FS.handleError(__wasmfs_stat(stringToUTF8OnStack(path), statBuf));
+        return FS.statBufToObject(statBuf);
+      });
     },
     lstat(path) {
-      var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
-      FS.handleError(withStackSave(() =>
-        __wasmfs_lstat(stringToUTF8OnStack(path), statBuf)
-      ));
-      var stats = FS.statBufToObject(statBuf);
-      _free(statBuf);
-
-      return stats;
+      return withStackSave(() => {
+        var statBuf = stackAlloc({{{ C_STRUCTS.stat.__size__ }}});
+        FS.handleError(__wasmfs_lstat(stringToUTF8OnStack(path), statBuf));
+        return FS.statBufToObject(statBuf);
+      });
     },
     chmod(path, mode) {
       return FS.handleError(withStackSave(() => {
@@ -367,23 +358,23 @@ addToLibrary({
         // Devices cannot be resized.
         setSize: (file, size) => 0,
         read: (file, buffer, length, offset) => {
-          var bufferArray = Module.HEAP8.subarray(buffer, buffer + length);
+          var bufferArray = HEAP8.subarray(buffer, buffer + length);
           try {
             var bytesRead = definedOps.userRead(wasmFSDeviceStreams[file], bufferArray, 0, length, offset);
           } catch (e) {
             return -e.errno;
           }
-          Module.HEAP8.set(bufferArray, buffer);
+          HEAP8.set(bufferArray, buffer);
           return bytesRead;
         },
         write: (file, buffer, length, offset) => {
-          var bufferArray = Module.HEAP8.subarray(buffer, buffer + length);
+          var bufferArray = HEAP8.subarray(buffer, buffer + length);
           try {
             var bytesWritten = definedOps.userWrite(wasmFSDeviceStreams[file], bufferArray, 0, length, offset);
           } catch (e) {
             return -e.errno;
           }
-          Module.HEAP8.set(bufferArray, buffer);
+          HEAP8.set(bufferArray, buffer);
           return bytesWritten;
         },
       };
@@ -512,7 +503,7 @@ addToLibrary({
     return FS_mknod(path, mode, 0);
   },
 
-  $FS_writeFile__deps: ['_wasmfs_write_file', '$stackSave', '$stackRestore'],
+  $FS_writeFile__deps: ['_wasmfs_write_file', '$stackSave', '$stackRestore', 'malloc', 'free'],
   $FS_writeFile: (path, data) => {
     var sp = stackSave();
     var pathBuffer = stringToUTF8OnStack(path);
@@ -549,9 +540,10 @@ addToLibrary({
   $FS_mkdirTree: (path, mode) => {
     var dirs = path.split('/');
     var d = '';
-    for (var i = 0; i < dirs.length; ++i) {
-      if (!dirs[i]) continue;
-      d += '/' + dirs[i];
+    for (var dir of dirs) {
+      if (!dir) continue;
+      if (d || PATH.isAbs(path)) d += '/';
+      d += dir;
       try {
         FS_mkdir(d, mode);
       } catch(e) {

@@ -15,7 +15,6 @@
     if (MIN_WEBGL_VERSION >= 2) return 'true';
     return 'GL.currentContext.version >= 2';
   }
-  null;
 }}}
 
 var LibraryGL = {
@@ -994,6 +993,11 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
         var prevProgram = gl.getParameter(0x8B8D /*GL_CURRENT_PROGRAM*/);
         gl.useProgram(context.blitProgram);
+        // If prevProgram was already marked for deletion, then, since it was
+        // still bound, it was not *actually* deleted. Binding a new program
+        // just now, thus, deleted the old one. This makes it impossible to
+        // restore. Hopefully the application didn't actually need it!
+        if (!gl.isProgram(prevProgram)) prevProgram = null;
 
         var prevVB = gl.getParameter(0x8894 /*GL_ARRAY_BUFFER_BINDING*/);
         gl.bindBuffer(0x8892 /*GL_ARRAY_BUFFER*/, context.blitVB);
@@ -1283,6 +1287,8 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     GLctx.pixelStorei(pname, param);
   },
 
+  // The allocated strings are cached and never freed.
+  glGetString__noleakcheck: true,
   glGetString__deps: ['$stringToNewUTF8', '$webglGetExtensions'],
   glGetString: (name_) => {
     var ret = GL.stringCache[name_];
@@ -1737,9 +1743,12 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixelData);
   },
 
-  glReadPixels__deps: ['$emscriptenWebGLGetTexPixelData'
+  glReadPixels__deps: [
+#if INCLUDE_WEBGL1_FALLBACK
+    '$emscriptenWebGLGetTexPixelData',
+#endif
 #if MAX_WEBGL_VERSION >= 2
-                       , '$heapObjectForWebGLType', '$toTypedArrayIndex'
+    '$heapObjectForWebGLType', '$toTypedArrayIndex',
 #endif
   ],
   glReadPixels: (x, y, width, height, format, type, pixels) => {
@@ -3125,7 +3134,11 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   },
 
 #if GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING
-  glShaderSource__deps: ['$preprocess_c_code', '$remove_cpp_comments_in_shaders', '$jstoi_q', '$find_closing_parens_index'],
+  glShaderSource__deps: ['$preprocess_c_code', '$remove_cpp_comments_in_shaders',
+#if GL_EXPLICIT_UNIFORM_BINDING
+    '$find_closing_parens_index', '$jstoi_q',
+#endif
+  ],
 #endif
   glShaderSource: (shader, count, string, length) => {
 #if GL_ASSERTIONS

@@ -4,6 +4,29 @@
  * SPDX-License-Identifier: MIT
  */
 
+#if ASSERTIONS || RUNTIME_DEBUG || AUTODEBUG
+var runtimeDebug = true; // Switch to false at runtime to disable logging at the right times
+
+// Used by XXXXX_DEBUG settings to output debug messages.
+function dbg(...args) {
+  if (!runtimeDebug && typeof runtimeDebug != 'undefined') return;
+#if ENVIRONMENT_MAY_BE_NODE && (PTHREADS || WASM_WORKERS)
+  // Avoid using the console for debugging in multi-threaded node applications
+  // See https://github.com/emscripten-core/emscripten/issues/14804
+  if (ENVIRONMENT_IS_NODE) {
+    // TODO(sbc): Unify with err/out implementation in shell.sh.
+    var fs = require('fs');
+    var utils = require('util');
+    var stringify = (a) => typeof a == 'object' ? utils.inspect(a) : a;
+    fs.writeSync(1, args.map(stringify).join(' ') + '\n');
+  } else
+#endif
+  // TODO(sbc): Make this configurable somehow.  Its not always convenient for
+  // logging to show up as warnings.
+  console.warn(...args);
+}
+#endif
+
 #if ASSERTIONS
 
 // Endianness check
@@ -15,23 +38,6 @@
   if (h8[0] !== 0x73 || h8[1] !== 0x63) throw 'Runtime error: expected the system to be little-endian! (Run with -sSUPPORT_BIG_ENDIAN to bypass)';
 })();
 #endif
-
-if (Module['ENVIRONMENT']) {
-  throw new Error('Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -sENVIRONMENT=web or -sENVIRONMENT=node)');
-}
-
-function legacyModuleProp(prop, newName, incoming=true) {
-  if (!Object.getOwnPropertyDescriptor(Module, prop)) {
-    Object.defineProperty(Module, prop, {
-      configurable: true,
-      get() {
-        let extra = incoming ? ' (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name)' : '';
-        abort(`\`Module.${prop}\` has been replaced by \`${newName}\`` + extra);
-
-      }
-    });
-  }
-}
 
 function consumedModuleProp(prop) {
   if (!Object.getOwnPropertyDescriptor(Module, prop)) {
@@ -146,6 +152,45 @@ function unexportedRuntimeSymbol(sym) {
   }
 }
 
+#if WASM_WORKERS || PTHREADS
+/**
+ * Override `err`/`out`/`dbg` to report thread / worker information
+ */
+function initWorkerLogging() {
+  function getLogPrefix() {
+#if WASM_WORKERS
+    if (wwParams?.wwID) {
+      return `ww:${wwParams?.wwID}:`
+    }
+#endif
+#if PTHREADS
+    var t = 0;
+    if (runtimeInitialized && typeof _pthread_self != 'undefined'
+#if EXIT_RUNTIME
+    && !runtimeExited
+#endif
+    ) {
+      t = _pthread_self();
+    }
+    return `w:${workerID},t:${ptrToString(t)}:`;
+#else
+    return `ww:0:`;
+#endif
+  }
+
+  // Prefix all dbg() messages with the calling thread info.
+  var origDbg = dbg;
+  dbg = (...args) => origDbg(getLogPrefix(), ...args);
+#if RUNTIME_DEBUG
+  // With RUNTIME_DEBUG also prefix all err() messages.
+  var origErr = err;
+  err = (...args) => origErr(getLogPrefix(), ...args);
+#endif
+}
+
+initWorkerLogging();
+#endif
+
 #if ASSERTIONS == 2
 
 var MAX_UINT8  = (2 **  8) - 1;
@@ -178,8 +223,6 @@ var checkInt64 = (value) => checkInt(value, 64, MIN_INT64, MAX_UINT64);
 #endif // ASSERTIONS
 
 #if RUNTIME_DEBUG
-var runtimeDebug = true; // Switch to false at runtime to disable logging at the right times
-
 var printObjectList = [];
 
 function prettyPrint(arg) {
@@ -203,21 +246,5 @@ function prettyPrint(arg) {
     if (arg > 0) return ptrToString(arg) + ' (' + arg + ')';
   }
   return arg;
-}
-#endif
-
-#if ASSERTIONS || RUNTIME_DEBUG || AUTODEBUG
-// Used by XXXXX_DEBUG settings to output debug messages.
-function dbg(...args) {
-#if ENVIRONMENT_MAY_BE_NODE && PTHREADS
-  // Avoid using the console for debugging in multi-threaded node applications
-  // See https://github.com/emscripten-core/emscripten/issues/14804
-  if (ENVIRONMENT_IS_NODE && fs) {
-    fs.writeSync(2, args.join(' ') + '\n');
-  } else
-#endif
-  // TODO(sbc): Make this configurable somehow.  Its not always convenient for
-  // logging to show up as warnings.
-  console.warn(...args);
 }
 #endif

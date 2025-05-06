@@ -342,18 +342,14 @@ var SAFE_HEAP_LOG = false;
 // truncs/extends/ reinterprets). This means that when types do not match the
 // emulated values may not match (this is true of native too, for that matter -
 // this is all undefined behavior). This approaches appears good enough to
-// support Python, which is the main use case motivating this feature.
+// support Python (the original motiviation for this feature) and Glib (the
+// continued motivation).
 // [link]
 var EMULATE_FUNCTION_POINTER_CASTS = false;
 
 // Print out exceptions in emscriptened code.
 // [link]
 var EXCEPTION_DEBUG = false;
-
-// If 1, export `demangle` and `stackTrace` JS library functions.
-// [link]
-// [deprecated]
-var DEMANGLE_SUPPORT = false;
 
 // Print out when we enter a library call (library*.js). You can also unset
 // runtimeDebug at runtime for logging to cease, and can set it when you want
@@ -968,10 +964,6 @@ var JSPI_IMPORTS = [];
 // having "FS" in this list.
 // [link]
 var EXPORTED_RUNTIME_METHODS = [];
-
-// Deprecated, use EXPORTED_RUNTIME_METHODS instead.
-// [deprecated]
-var EXTRA_EXPORTED_RUNTIME_METHODS = [];
 
 // A list of incoming values on the Module object in JS that we care about. If
 // a value is not in this list, then we don't emit code to check if you provide
@@ -1645,13 +1637,9 @@ var USE_SQLITE3 = false;
 // [compile+link] - affects user code at compile and system libraries at link.
 var SHARED_MEMORY = false;
 
-// If 1, enables support for Wasm Workers. Wasm Workers enable applications
+// Enables support for Wasm Workers.  Wasm Workers enable applications
 // to create threads using a lightweight web-specific API that builds on top
-// of Wasm SharedArrayBuffer + Atomics API. When enabled, a new build output
-// file a.ww.js will be generated to bootstrap the Wasm Worker JS contexts.
-// If 2, enables support for Wasm Workers, but without using a separate a.ww.js
-// file on the side. This can simplify deployment of builds, but will have a
-// downside that the generated build will no longer be csp-eval compliant.
+// of Wasm SharedArrayBuffer + Atomics API.
 // [compile+link] - affects user code at compile and system libraries at link.
 var WASM_WORKERS = 0;
 
@@ -1927,12 +1915,6 @@ var MIN_CHROME_VERSION = 85;
 // feature_matrix.py).
 var MIN_NODE_VERSION = 160000;
 
-// Whether we support setting errno from JS library code.
-// In MINIMAL_RUNTIME builds, this option defaults to 0.
-// [link]
-// [deprecated]
-var SUPPORT_ERRNO = true;
-
 // If true, uses minimal sized runtime without POSIX features, Module,
 // preRun/preInit/etc., Emscripten built-in XHR loading or library_browser.js.
 // Enable this setting to target the smallest code size possible.  Set
@@ -1987,7 +1969,7 @@ var MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION = false;
 //
 // - 0: No setjmp/longjmp handling
 // - 1: Default setjmp/longjmp/handling, depending on the mode of exceptions.
-//   'wasm' if '-fwasm-exception' is used, 'emscripten' otherwise.
+//   'wasm' if '-fwasm-exceptions' is used, 'emscripten' otherwise.
 //
 // [compile+link] - at compile time this enables the transformations needed for
 // longjmp support at codegen time, while at link it allows linking in the
@@ -2027,6 +2009,7 @@ var MINIFY_HTML = true;
 // test_maybe_wasm2js test.  This option can be useful for debugging and
 // bisecting.
 // [link]
+// [deprecated]
 var MAYBE_WASM2JS = false;
 
 // This option is no longer used. The appropriate shadow memory size is now
@@ -2045,6 +2028,17 @@ var USE_OFFSET_CONVERTER = false;
 // Whether we should load the WASM source map at runtime.
 // This is enabled automatically when using -gsource-map with sanitizers.
 var LOAD_SOURCE_MAP = false;
+
+// List of path substitutions to apply in the "sources" field of the source map.
+// Corresponds to the ``--prefix`` option used in ``tools/wasm-sourcemap.py``.
+// Must be used with ``-gsource-map``.
+//
+// This setting allows to map path prefixes to the proper ones so that the final
+// (possibly relative) URLs point to the correct locations :
+// ``-sSOURCE_MAP_PREFIXES=/old/path=/new/path``
+//
+// [link]
+var SOURCE_MAP_PREFIXES = [];
 
 // Default to c++ mode even when run as ``emcc`` rather then ``emc++``.
 // When this is disabled ``em++`` is required linking C++ programs. Disabling
@@ -2190,6 +2184,19 @@ var SIGNATURE_CONVERSIONS = [];
 // [link]
 var SOURCE_PHASE_IMPORTS = false;
 
+// Experimental support for wasm ESM integration.
+// Requires EXPORT_ES6 and MODULARIZE=instance
+// [link]
+var WASM_ESM_INTEGRATION = false;
+
+// Enable use of the JS arraybuffer-base64 API:
+// https://github.com/tc39/proposal-arraybuffer-base64
+// To run the resulting code currently requires passing `--js_base_64` to node
+// or chrome.
+// [experimental]
+// [link]
+var JS_BASE64_API = false;
+
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]
 // For removed settings (which now effectively have a fixed value and can no
@@ -2272,4 +2279,7 @@ var LEGACY_SETTINGS = [
   ['WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG', [0], 'No longer supported'],
   ['AUTO_ARCHIVE_INDEXES', [0, 1], 'No longer needed'],
   ['USE_ES6_IMPORT_META', [1], 'Disabling is no longer supported'],
+  ['EXTRA_EXPORTED_RUNTIME_METHODS', [[]], 'No longer supported, use EXPORTED_RUNTIME_METHODS'],
+  ['SUPPORT_ERRNO', [0], 'No longer supported'],
+  ['DEMANGLE_SUPPORT', [0], 'No longer supported'],
 ];

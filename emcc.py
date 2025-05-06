@@ -67,13 +67,13 @@ SOURCE_EXTENSIONS = {
   '.m', '.mi', '.mm', '.mii', # ObjC/ObjC++
   '.bc', '.ll', # LLVM IR
   '.S', # asm with preprocessor
-  os.devnull # consider the special endingless filenames like /dev/null to be C
+  os.devnull, # consider the special endingless filenames like /dev/null to be C
 } | PREPROCESSED_EXTENSIONS
 
 # These symbol names are allowed in INCOMING_MODULE_JS_API but are not part of the
 # default set.
 EXTRA_INCOMING_JS_API = [
-  'fetchSettings'
+  'fetchSettings',
 ]
 
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2']
@@ -85,7 +85,7 @@ LINK_ONLY_FLAGS = {
     '--js-transform', '--oformat', '--output_eol', '--output-eol',
     '--post-js', '--pre-js', '--preload-file', '--profiling-funcs',
     '--proxy-to-worker', '--shell-file', '--source-map-base',
-    '--threadprofiler', '--use-preload-plugins'
+    '--threadprofiler', '--use-preload-plugins',
 }
 CLANG_FLAGS_WITH_ARGS = {
     '-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
@@ -94,7 +94,7 @@ CLANG_FLAGS_WITH_ARGS = {
     '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
     '-install_name', '-compatibility_version', '-mllvm',
     '-current_version', '-I', '-L', '-include-pch', '-u',
-    '-undefined', '-target', '-Xlinker', '-Xclang', '-z'
+    '-undefined', '-target', '-Xlinker', '-Xclang', '-z',
 }
 
 
@@ -142,7 +142,6 @@ class EmccOptions:
     self.requested_debug = None
     self.emit_symbol_map = False
     self.use_closure_compiler = None
-    self.closure_args = []
     self.js_transform = None
     self.pre_js = [] # before all js
     self.post_js = [] # after all js
@@ -526,7 +525,7 @@ def run(args):
     args += shlex.split(EMCC_CFLAGS)
 
   if DEBUG:
-    logger.warning(f'invocation: {shared.shlex_join(args)} (in {os.getcwd()})')
+    logger.warning(f'invocation: {shlex.join(args)} (in {os.getcwd()})')
 
   # Strip args[0] (program name)
   args = args[1:]
@@ -536,7 +535,7 @@ def run(args):
   # read response files very early on
   try:
     args = substitute_response_files(args)
-  except IOError as e:
+  except OSError as e:
     exit_with_error(e)
 
   if '--help' in args:
@@ -596,7 +595,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error(f'unable to parse output of `{cmd}`:\n{proc.stderr}')
       parts = shlex.split(lines[0].replace('\\', '\\\\'))
       parts = [x for x in parts if x not in ['-c', '-o', '-v', '-emit-llvm'] and input_file not in x and temp_target not in x]
-      print(shared.shlex_join(parts[1:]))
+      print(shlex.join(parts[1:]))
     return 0
 
   if '-dumpmachine' in args or '-print-target-triple' in args or '--print-target-triple' in args:
@@ -1125,7 +1124,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       consume_arg()
     elif check_arg('--closure-args'):
       args = consume_arg()
-      options.closure_args += shlex.split(args)
+      settings.CLOSURE_ARGS += shlex.split(args)
     elif check_arg('--closure'):
       options.use_closure_compiler = int(consume_arg())
     elif check_arg('--js-transform'):
@@ -1196,10 +1195,13 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
           else:
             settings.SEPARATE_DWARF = True
           settings.GENERATE_DWARF = 1
-        elif requested_level == 'source-map':
-          settings.GENERATE_SOURCE_MAP = 1
+        elif requested_level in ['source-map', 'source-map=inline']:
+          settings.GENERATE_SOURCE_MAP = 1 if requested_level == 'source-map' else 2
           settings.EMIT_NAME_SECTION = 1
           newargs[i] = '-g'
+        elif requested_level == 'z':
+          # Ignore `-gz`.  We don't support debug info compression.
+          continue
         else:
           # Other non-integer levels (e.g. -gline-tables-only or -gdwarf-5) are
           # usually clang flags that emit DWARF. So we pass them through to
