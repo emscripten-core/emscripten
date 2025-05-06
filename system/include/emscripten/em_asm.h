@@ -285,6 +285,12 @@ const char __em_asm_sig_builder<__em_asm_type_tuple<Args...> >::buffer[] = { __e
 #define EM_ASM_INT_V(code) EM_ASM_INT(code)
 #define EM_ASM_DOUBLE_V(code) EM_ASM_DOUBLE(code)
 
+
+// Normally macros like `true` and `false` are not expanded inside
+// of `EM_JS` or `EM_ASM` blocks.  However, in the case then an
+// additional macro later is added these will be expanded and we want
+// to make sure the resulting expansion doesn't break the expectations
+// of JS code
 #if defined(true) && defined(false)
 #undef true
 #undef false

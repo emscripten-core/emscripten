@@ -16061,7 +16061,12 @@ addToLibrary({
     self.v8_args += ['--enable-os-system']
     self.do_runf('main.c')
 
-  def test_js_bool_type(self):
+  def test_em_js_bool_macro_expansion(self):
+    # Normally macros like `true` and `false` are not expanded inside
+    # of `EM_JS` or `EM_ASM` blocks.  However, in the case then an
+    # additional macro later is added these will be expanded and we want
+    # to make sure the resulting expansion doesn't break the expectations
+    # of JS code.
     create_file('main.c', '''
       #include <emscripten.h>
 

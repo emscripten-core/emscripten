@@ -74,6 +74,11 @@
   "{ return Asyncify.handleAsync(async () => " #__VA_ARGS__ "); }")
 
 
+// Normally macros like `true` and `false` are not expanded inside
+// of `EM_JS` or `EM_ASM` blocks.  However, in the case then an
+// additional macro later is added these will be expanded and we want
+// to make sure the resulting expansion doesn't break the expectations
+// of JS code
 #if defined(true) && defined(false)
 #undef true
 #undef false
