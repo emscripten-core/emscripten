@@ -418,6 +418,8 @@ var LibraryEmbind = {
           '  delete(): void;\n',
           '  deleteLater(): this;\n',
           '  isDeleted(): boolean;\n',
+          '  // @ts-ignore - If targeting lower than ESNext, this symbol might not exist.\n',
+          '  [Symbol.dispose](): void;\n',
           '  clone(): this;\n',
           '}\n',
         );
