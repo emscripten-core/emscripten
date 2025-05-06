@@ -1047,6 +1047,8 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       # because that next arg could, for example, start with `-o` and we don't want
       # to confuse that with a normal `-o` flag.
       skip = True
+    elif arg == '-s' and is_dash_s_for_emcc(newargs, i):
+      skip = True
 
     def check_flag(value):
       # Check for and consume a flag
