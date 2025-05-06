@@ -969,7 +969,6 @@ def phase_compile_inputs(options, state, newargs):
       # driver to perform linking which would be big change.
       cmd += ['-Xclang', '-split-dwarf-file', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
       cmd += ['-Xclang', '-split-dwarf-output', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
-    print(" ".join(cmd))
     shared.check_call(cmd)
     if not shared.SKIP_SUBPROCS:
       assert os.path.exists(output_file)
