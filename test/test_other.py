@@ -2277,7 +2277,7 @@ Module['postRun'] = () => {
 
     # Same again but with NO_AUTOLOAD_DYLIBS.   This time we expect the call to sidey
     # to fail at runtime.
-    self.run_process([EMCC, '-sMAIN_MODULE=2', 'main.c', 'libside.wasm', '-sNO_AUTOLOAD_DYLIBS', dbgflag])
+    self.run_process([EMCC, '-sMAIN_MODULE=2', 'main.c', 'libside.wasm', '-sNO_AUTOLOAD_DYLIBS'])
     output = self.run_js('a.out.js', assert_returncode=NON_ZERO)
     self.assertContained("external symbol 'sidey' is missing. perhaps a side module was not linked in?", output)
 
