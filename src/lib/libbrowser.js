@@ -17,16 +17,6 @@ var LibraryBrowser = {
 #endif
 #endif
   ],
-  $Browser__postset: `
-    // exports
-    Module['requestFullscreen'] = Browser.requestFullscreen;
-#if ASSERTIONS
-    Module['requestFullScreen'] = Browser.requestFullScreen;
-#endif
-    Module['setCanvasSize'] = Browser.setCanvasSize;
-    Module['getUserMedia'] = Browser.getUserMedia;
-    Module['createContext'] = Browser.createContext;
-  `,
 
   $Browser: {
     useWebGL: false,
@@ -590,6 +580,14 @@ var LibraryBrowser = {
       }
     },
   },
+
+  $requestFullscreen: 'Browser.requestFullscreen',
+#if ASSERTIONS
+  $requestFullScreen: 'Browser.requestFullScreen',
+#endif
+  $setCanvasSize: 'Browser.setCanvasSize',
+  $getUserMedia: 'Browser.getUserMedia',
+  $createContext: 'Browser.createContext',
 
   emscripten_run_preload_plugins__deps: ['$PATH'],
   emscripten_run_preload_plugins__proxy: 'sync',
