@@ -16062,3 +16062,28 @@ addToLibrary({
     self.do_runf('main.c', msg, assert_returncode=1)
     self.v8_args += ['--enable-os-system']
     self.do_runf('main.c')
+
+  def test_em_js_bool_macro_expansion(self):
+    # Normally macros like `true` and `false` are not expanded inside
+    # of `EM_JS` or `EM_ASM` blocks.  However, in the case then an
+    # additional macro later is added these will be expanded and we want
+    # to make sure the resulting expansion doesn't break the expectations
+    # of JS code.
+    create_file('main.c', '''
+      #include <emscripten.h>
+
+      #define EM_JS_MACROS(ret, func_name, args, body...)    \
+        EM_JS(ret, func_name, args, body)
+
+      EM_JS_MACROS(void, check_bool_type, (void), {
+        if (typeof true !== "boolean") {
+          throw new Error("typeof true is " + typeof true + " not boolean");
+        }
+      })
+
+      int main() {
+        check_bool_type();
+        return 0;
+      }
+    ''')
+    self.do_runf('main.c')
