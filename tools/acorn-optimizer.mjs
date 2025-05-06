@@ -1731,7 +1731,7 @@ function minifyLocals(ast) {
   assert(extraInfo && extraInfo.globals);
 
   for (const fun of ast.body) {
-    if (!fun.type === 'FunctionDeclaration') {
+    if (fun.type !== 'FunctionDeclaration') {
       continue;
     }
     // Find the list of local names, including params.
