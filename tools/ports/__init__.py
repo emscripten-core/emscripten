@@ -10,6 +10,7 @@ from pathlib import Path
 import shutil
 import glob
 import importlib.util
+from inspect import signature
 import sys
 import subprocess
 from typing import Set
@@ -427,9 +428,16 @@ def dependency_order(port_list):
   return stack
 
 
-def resolve_dependencies(port_set, settings):
+def resolve_dependencies(port_set, settings, cflags_only=False):
   def add_deps(node):
-    node.process_dependencies(settings)
+    sig = signature(node.process_dependencies)
+    if len(sig.parameters) == 2:
+      # The optional second parameter here is useful for ports that want
+      # to mutate linker-only settings.  Modifying these settings during the
+      # compile phase (or in a compile-only) command generates errors.
+      node.process_dependencies(settings, cflags_only)
+    else:
+      node.process_dependencies(settings)
     for d in node.deps:
       d, _ = split_port_options(d)
       if d not in ports_by_name:
@@ -524,10 +532,10 @@ def handle_use_port_arg(settings, arg, error_handler=None):
   return name
 
 
-def get_needed_ports(settings):
+def get_needed_ports(settings, cflags_only=False):
   # Start with directly needed ports, and transitively add dependencies
   needed = OrderedSet(p for p in ports if p.needed(settings))
-  resolve_dependencies(needed, settings)
+  resolve_dependencies(needed, settings, cflags_only)
   return needed
 
 
@@ -575,7 +583,7 @@ def add_cflags(args, settings): # noqa: U100
   if settings.USE_SDL == 1:
     args += ['-I' + Ports.get_include_dir('SDL')]
 
-  needed = get_needed_ports(settings)
+  needed = get_needed_ports(settings, cflags_only=True)
 
   # Now get (i.e. build) the ports in dependency order.  This is important because the
   # headers from one port might be needed before we can build the next.
