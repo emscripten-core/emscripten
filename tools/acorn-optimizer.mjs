@@ -421,9 +421,8 @@ function JSDCE(ast, aggressive) {
       },
       MemberExpression(node, c) {
         c(node.object);
-        // Ignore a property identifier (a.X), but notice a[X] (computed
-        // is true) and a["X"] (it will be a Literal and not Identifier).
-        if (node.property.type !== 'Identifier' || node.computed) {
+        // Ignore a property identifier (a.X), but notice a[X] (computed props).
+        if (node.computed) {
           c(node.property);
         }
       },
@@ -1206,7 +1205,7 @@ function littleEndianHeap(ast) {
         node.callee.object.type === 'Identifier' &&
         node.callee.object.name === 'Atomics' &&
         node.callee.property.type === 'Identifier' &&
-        !node.computed
+        !node.callee.computed
       ) {
         makeCallExpression(
           node,
@@ -1391,7 +1390,7 @@ function unsignPointers(ast) {
         node.callee.object.type === 'Identifier' &&
         isHeap(node.callee.object.name) &&
         node.callee.property.type === 'Identifier' &&
-        !node.computed
+        !node.callee.computed
       ) {
         // This is a call on HEAP*.?. Specific things we need to fix up are
         // subarray, set, and copyWithin. TODO more?
