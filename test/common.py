@@ -522,7 +522,7 @@ def also_with_minimal_runtime(f):
       print('parameterize:minimal_runtime=%s' % with_minimal_runtime)
     assert self.get_setting('MINIMAL_RUNTIME') is None
     if with_minimal_runtime:
-      if self.get_setting('MODULARIZE') == 'instance':
+      if self.get_setting('MODULARIZE') == 'instance' or self.get_setting('WASM_ESM_INTEGRATION'):
         self.skipTest('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
       self.set_setting('MINIMAL_RUNTIME', 1)
       # This extra helper code is needed to cleanly handle calls to exit() which throw
@@ -604,6 +604,7 @@ def can_do_standalone(self, impure=False):
   return self.is_wasm() and \
       self.get_setting('STACK_OVERFLOW_CHECK', 0) < 2 and \
       not self.get_setting('MINIMAL_RUNTIME') and \
+      not self.get_setting('WASM_ESM_INTEGRATION') and \
       not self.get_setting('SAFE_HEAP') and \
       not any(a.startswith('-fsanitize=') for a in self.emcc_args)
 
@@ -1138,6 +1139,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest('wasm2js is not compatible with MEMORY64')
     if self.is_2gb() or self.is_4gb():
       self.skipTest('wasm2js does not support over 2gb of memory')
+    if self.get_setting('WASM_ESM_INTEGRATION'):
+      self.skipTest('wasm2js is not compatible with WASM_ESM_INTEGRATION')
 
   def setup_nodefs_test(self):
     self.require_node()
@@ -1160,6 +1163,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.emcc_args += ['-Wno-pthreads-mem-growth', '-pthread']
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
+    if self.get_setting('WASM_ESM_INTEGRATION'):
+      self.skipTest('pthreads not yet supported with WASM_ESM_INTEGRATION')
     nodejs = self.get_nodejs()
     self.js_engines = [nodejs]
     self.node_args += shared.node_pthread_flags(nodejs)
