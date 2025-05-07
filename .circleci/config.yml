@@ -646,7 +646,9 @@ jobs:
             wasmfs.test_fcntl_open
             wasmfs.test_fs_llseek
             wasmfs.test_fs_llseek_rawfs
-            wasmfs.test_freetype"
+            wasmfs.test_freetype
+            minimal0.test_utf
+            "
   test-wasm2js1:
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
