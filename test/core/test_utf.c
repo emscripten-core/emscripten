@@ -11,15 +11,11 @@
 
 int main() {
   char *c = "μ†ℱ ╋ℯ╳╋ 😇";
-  printf("%d %d %d %d %s\n", c[0] & 0xff, c[1] & 0xff, c[2] & 0xff, c[3] & 0xff,
-         c);
+  printf("%hhu %hhu %hhu %hhu %s\n", c[0], c[1], c[2], c[3], c);
   emscripten_run_script(
-      "var cheez = _malloc(100);"
-      "Module.stringToUTF8(\"μ†ℱ ╋ℯ╳╋ 😇\", cheez, 100);"
-      "out([UTF8ToString(cheez), Module.getValue(cheez, "
-      "'i8')&0xff, Module.getValue(cheez+1, 'i8')&0xff, "
-      "Module.getValue(cheez+2, 'i8')&0xff, Module.getValue(cheez+3, "
-      "'i8')&0xff].join(','));"
-      "_free(cheez);"
-      );
+    "var cheez = Module.stringToUTF8OnStack(\"μ†ℱ ╋ℯ╳╋ 😇\");"
+    "out(UTF8ToString(cheez), Module.getValue(cheez+0, 'i8')&0xff, "
+    "                         Module.getValue(cheez+1, 'i8')&0xff, "
+    "                         Module.getValue(cheez+2, 'i8')&0xff, "
+    "                         Module.getValue(cheez+3, 'i8')&0xff);");
 }
