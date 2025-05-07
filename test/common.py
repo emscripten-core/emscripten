@@ -614,7 +614,7 @@ def can_do_standalone(self, impure=False):
 
 # Impure means a test that cannot run in a wasm VM yet, as it is not 100%
 # standalone. We can still run them with the JS code though.
-def also_with_standalone_wasm(impure=False):
+def also_with_standalone_wasm(impure=False, exclude_engines=None):
   def decorated(func):
     @wraps(func)
     def metafunc(self, standalone):
@@ -623,6 +623,9 @@ def also_with_standalone_wasm(impure=False):
       if not standalone:
         func(self)
       else:
+        nonlocal exclude_engines
+        if exclude_engines is None:
+          exclude_engines = []
         if not can_do_standalone(self, impure):
           self.skipTest('Test configuration is not compatible with STANDALONE_WASM')
         self.set_setting('STANDALONE_WASM')
@@ -635,9 +638,19 @@ def also_with_standalone_wasm(impure=False):
         self.emcc_args.append('-Wno-unused-command-line-argument')
         # if we are impure, disallow all wasm engines
         if impure:
-          self.wasm_engines = []
-        nodejs = self.require_node()
-        self.node_args += shared.node_bigint_flags(nodejs)
+          wasm_engines = []
+        else:
+          wasm_engines = [engine for engine in self.wasm_engines
+            if all(excluded not in os.path.basename(engine[0]) for excluded in exclude_engines)]
+        if 'node' in exclude_engines:
+          self.js_engines = []
+          if not wasm_engines:
+            self.skipTest('no WASM engines available for this test')
+        else:
+          nodejs = self.require_node()
+          self.node_args += shared.node_bigint_flags(nodejs)
+        # `self.require_node()` clears `self.wasm_engines`, so set them here.
+        self.wasm_engines = wasm_engines
         func(self)
 
     parameterize(metafunc, {'': (False,),
@@ -1505,7 +1518,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def run_js(self, filename, engine=None, args=None,
              assert_returncode=0,
              interleaved_output=True,
-             input=None):
+             input=None,
+             cwd=None):
     # use files, as PIPE can get too full and hang us
     stdout_file = self.in_dir('stdout')
     stderr_file = None
@@ -1529,6 +1543,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       jsrun.run_js(filename, engine, args,
                    stdout=stdout,
                    stderr=stderr,
+                   cwd=cwd,
                    assert_returncode=assert_returncode,
                    input=input)
     except subprocess.TimeoutExpired as e:
@@ -1957,7 +1972,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       js_file = self.build(filename, **kwargs)
     self.assertExists(js_file)
 
-    engines = self.js_engines.copy()
+    engines = [(el, None) for el in self.js_engines.copy()]
     if len(engines) > 1 and not self.use_all_engines:
       engines = engines[:1]
     # In standalone mode, also add wasm vms as we should be able to run there too.
@@ -1966,11 +1981,15 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       # like with js engines, but for now as we bring it up, test in all of them
       if not self.wasm_engines:
         logger.warning('no wasm engine was found to run the standalone part of this test')
-      engines += self.wasm_engines
+      engines += [(engine, os.path.basename(engine[0])) for engine in self.wasm_engines]
     if len(engines) == 0:
       self.fail('No JS engine present to run this test with. Check %s and the paths therein.' % config.EM_CONFIG)
-    for engine in engines:
+    for engine, subdir in engines:
+      if subdir:
+        subdir = self.in_dir(subdir)
+        ensure_dir(subdir)
       js_output = self.run_js(js_file, engine, args,
+                              cwd=subdir,
                               assert_returncode=assert_returncode,
                               interleaved_output=interleaved_output)
       js_output = js_output.replace('\r\n', '\n')
