@@ -3,7 +3,8 @@
 import * as unused from './hello_world.wasm';
 export { default, _foo, _main, err, stringToNewUTF8 } from './hello_world.support.mjs';
 
-// When run as the main module under node, execute main directly here
+// When run as the main module under node, create the module directly.  This will
+// execute any startup code along with main (if it exists).
 import init from './hello_world.support.mjs';
 const isNode = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string' && process.type != 'renderer';
 if (isNode) {

@@ -691,7 +691,8 @@ var LibraryBrowser = {
         var data = await readAsync(url, false);
         eval(data);
         loadDone();
-      } catch {
+      } catch (e) {
+        err(e);
         loadError();
       }
       return;

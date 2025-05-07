@@ -22,7 +22,7 @@
 // can continue to use Module afterwards as well.
 #if MODULARIZE
 #if MODULARIZE == 'instance'
-var Module;
+var Module = {};
 #else
 var Module = moduleArg;
 #endif
@@ -276,7 +276,7 @@ if (ENVIRONMENT_IS_NODE) {
 if (ENVIRONMENT_IS_SHELL) {
 
 #if ENVIRONMENT && ASSERTIONS
-  if ((typeof process == 'object' && typeof require === 'function') || typeof window == 'object' || typeof WorkerGlobalScope != 'undefined') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
+  if ((typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string' && process.type != 'renderer') || typeof window == 'object' || typeof WorkerGlobalScope != 'undefined') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 #endif
 
 #if ENVIRONMENT_MAY_BE_SHELL

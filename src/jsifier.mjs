@@ -724,7 +724,12 @@ function(${args}) {
         if (snippet[snippet.length - 1] != ';' && snippet[snippet.length - 1] != '}')
           contentText += ';';
       } else if (typeof snippet == 'undefined') {
-        contentText = `var ${mangled};`;
+          var isDirectWasmExport = WASM_ESM_INTEGRATION && mangled == 'wasmTable';
+          if (isDirectWasmExport) {
+            contentText = '';
+          } else {
+            contentText = `var ${mangled};`;
+          }
       } else {
         // In JS libraries
         //   foo: '=[value]'

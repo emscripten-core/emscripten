@@ -522,6 +522,8 @@ def also_with_minimal_runtime(f):
       print('parameterize:minimal_runtime=%s' % with_minimal_runtime)
     assert self.get_setting('MINIMAL_RUNTIME') is None
     if with_minimal_runtime:
+      if self.get_setting('WASM_ESM_INTEGRATION'):
+        self.skipTest('WASM_ESM_INTEGRATION is not compatible with MINIMAL_RUNTIME')
       self.set_setting('MINIMAL_RUNTIME', 1)
       # This extra helper code is needed to cleanly handle calls to exit() which throw
       # an ExitCode exception.
@@ -608,6 +610,7 @@ def can_do_standalone(self, impure=False):
   return self.is_wasm() and \
       self.get_setting('STACK_OVERFLOW_CHECK', 0) < 2 and \
       not self.get_setting('MINIMAL_RUNTIME') and \
+      not self.get_setting('WASM_ESM_INTEGRATION') and \
       not self.get_setting('SAFE_HEAP') and \
       not any(a.startswith('-fsanitize=') for a in self.emcc_args)
 
@@ -957,15 +960,17 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return self.get_setting('INITIAL_MEMORY') == '2200mb'
 
   def check_dylink(self):
+    if self.get_setting('WASM_ESM_INTEGRATION'):
+      self.skipTest('dynamic linking not supported with WASM_ESM_INTEGRATION')
     if self.is_wasm2js():
-      self.skipTest('no dynamic linking support in wasm2js yet')
+      self.skipTest('dynamic linking not supported with wasm2js')
     if '-fsanitize=undefined' in self.emcc_args:
-      self.skipTest('no dynamic linking support in UBSan yet')
+      self.skipTest('dynamic linking not supported with UBSan')
     # MEMORY64=2 mode doesn't currently support dynamic linking because
     # The side modules are lowered to wasm32 when they are built, making
     # them unlinkable with wasm64 binaries.
     if self.get_setting('MEMORY64') == 2:
-      self.skipTest('MEMORY64=2 + dynamic linking is not currently supported')
+      self.skipTest('dynamic linking not supported with MEMORY64=2')
 
   def require_v8(self):
     if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
@@ -1135,6 +1140,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest('wasm2js is not compatible with MEMORY64')
     if self.is_2gb() or self.is_4gb():
       self.skipTest('wasm2js does not support over 2gb of memory')
+    if self.get_setting('WASM_ESM_INTEGRATION'):
+      self.skipTest('wasm2js is not compatible with WASM_ESM_INTEGRATION')
 
   def setup_nodefs_test(self):
     self.require_node()
@@ -1157,6 +1164,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.emcc_args += ['-Wno-pthreads-mem-growth', '-pthread']
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
+    if self.get_setting('WASM_ESM_INTEGRATION'):
+      self.skipTest('node pthreads not yet supported with WASM_ESM_INTEGRATION')
     nodejs = self.get_nodejs()
     self.js_engines = [nodejs]
     self.node_args += shared.node_pthread_flags(nodejs)

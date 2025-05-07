@@ -8,6 +8,8 @@
 
 #include <emscripten.h>
 
+EM_JS_DEPS(deps, "$jsStackTrace");
+
 namespace NameSpace {
 class Class {
  public:
