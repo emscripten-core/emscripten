@@ -9624,6 +9624,24 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
     self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
 
+  def test_modularize_instance_embind(self):
+    self.run_process([EMCC, test_file('modularize_instance_embind.cpp'),
+                      '-sMODULARIZE=instance',
+                      '-lembind',
+                      '-sEMBIND_AOT',
+                      '-o', 'modularize_instance_embind.mjs'])
+
+    create_file('runner.mjs', '''
+      import init, { foo, Bar } from "./modularize_instance_embind.mjs";
+      await init();
+      foo();
+      const bar = new Bar();
+      bar.print();
+      bar.delete();
+    ''')
+
+    self.assertContained('main\nfoo\nbar\n', self.run_js('runner.mjs'))
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None,

@@ -44,6 +44,7 @@ var LibraryEmbind = {
   },
   $FunctionDefinition__deps: ['$createJsInvoker', '$createJsInvokerSignature', '$emittedFunctions'],
   $FunctionDefinition: class {
+    hasPublicSymbol = true;
     constructor(name, returnType, argumentTypes, functionIndex, thisType = null, isNonnullReturn = false, isAsync = false) {
       this.name = name;
       this.returnType = returnType;
@@ -154,6 +155,7 @@ var LibraryEmbind = {
     }
   },
   $ClassDefinition: class {
+    hasPublicSymbol = true;
     constructor(typeId, name, base = null) {
       this.typeId = typeId;
       this.name = name;
@@ -265,6 +267,7 @@ var LibraryEmbind = {
     }
   },
   $ConstantDefinition: class {
+    hasPublicSymbol = true;
     constructor(type, name) {
       this.type = type;
       this.name = name;
@@ -275,6 +278,7 @@ var LibraryEmbind = {
     }
   },
   $EnumDefinition: class {
+    hasPublicSymbol = true;
     constructor(typeId, name) {
       this.typeId = typeId;
       this.name = name;
@@ -453,14 +457,21 @@ var LibraryEmbind = {
 
     print() {
       const out = ['{\n'];
+      const publicSymbols = [];
       for (const def of this.definitions) {
+        if (def.hasPublicSymbol) {
+          publicSymbols.push(def.name);
+        }
         if (!def.printJs) {
           continue;
         }
         def.printJs(out);
       }
-      out.push('}')
-      console.log(out.join(''));
+      out.push('}\n');
+      console.log(JSON.stringify({
+        'invokers': out.join(''),
+        publicSymbols,
+      }));
     }
   },
 

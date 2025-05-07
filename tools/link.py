@@ -1380,6 +1380,9 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.REQUIRED_EXPORTS.append('__getTypeName')
     if settings.PTHREADS or settings.WASM_WORKERS:
       settings.REQUIRED_EXPORTS.append('_embind_initialize_bindings')
+    # Needed to assign the embind exports to the ES exports.
+    if settings.MODULARIZE == 'instance':
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$addOnPostCtor']
 
   if options.emit_tsd:
     settings.EMIT_TSD = True
@@ -2053,9 +2056,22 @@ def phase_emit_tsd(options, wasm_target, js_target, js_syms, metadata):
 def phase_embind_aot(options, wasm_target, js_syms):
   out = run_embind_gen(options, wasm_target, js_syms, {})
   if DEBUG:
-    write_file(in_temp('embind_aot.js'), out)
+    write_file(in_temp('embind_aot.json'), out)
+  out = json.loads(out)
   src = read_file(final_js)
-  src = do_replace(src, '<<< EMBIND_AOT_OUTPUT >>>', out)
+  src = do_replace(src, '<<< EMBIND_AOT_INVOKERS >>>', out['invokers'])
+  if settings.MODULARIZE == 'instance':
+    # Add ES module exports for the embind exports.
+    decls = '\n'.join([f'export var {name};' for name in out['publicSymbols']])
+    # Assign the runtime exports from Module to the ES export.
+    assigns = '\n'.join([f'{name} = Module[\'{name}\'];' for name in out['publicSymbols']])
+    exports = f'''
+// start embind exports
+function assignEmbindExports() {{ {assigns} }};
+addOnPostCtor(assignEmbindExports);
+{decls}
+// end embind exports'''
+    src += exports
   write_file(final_js, src)
 
 

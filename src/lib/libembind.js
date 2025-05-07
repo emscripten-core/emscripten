@@ -32,7 +32,7 @@ var LibraryEmbind = {
   $PureVirtualError: class extends Error {},
   $GenericWireTypeSize: {{{ 2 * POINTER_SIZE }}},
 #if EMBIND_AOT
-  $InvokerFunctions: '<<< EMBIND_AOT_OUTPUT >>>',
+  $InvokerFunctions: '<<< EMBIND_AOT_INVOKERS >>>',
 #endif
   // If register_type is used, emval will be registered multiple times for
   // different type id's, but only a single type object is needed on the JS side
