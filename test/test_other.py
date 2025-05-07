@@ -111,6 +111,7 @@ def with_both_compilers(f):
                    'emxx': (EMXX,)})
   return f
 
+
 def wasmfs_all_backends(f):
   assert callable(f)
 
