@@ -2320,7 +2320,7 @@ Module['postRun'] = () => {
     ''')
     self.emcc('side2.c', ['-fPIC', '-sSIDE_MODULE', '-olibside2.so'])
     self.emcc('side1.c', ['-fPIC', '-sSIDE_MODULE', '-olibside1.so', 'libside2.so'])
-    cmd = [EMCC, 'main.c', '-fPIC', '-sMAIN_MODULE=2', 'libside1.so']
+    cmd = [EMCC, 'main.c', '-fPIC', '-sMAIN_MODULE=2', '-sDYLINK_DEBUG', 'libside1.so']
 
     # Unless `.` is added to the library path the libside2.so won't be found.
     err = self.expect_fail(cmd)
@@ -2360,7 +2360,7 @@ Module['postRun'] = () => {
     ''')
     self.emcc('side2.c', ['-fPIC', '-sSIDE_MODULE', '-olibside2.so'])
     self.emcc('side1.c', ['-fPIC', '-sSIDE_MODULE', '-Wl,-rpath,$ORIGIN', '-olibside1.so', 'libside2.so'])
-    cmd = [EMCC, 'main.c', '-fPIC', '-sMAIN_MODULE=2', 'libside1.so']
+    cmd = [EMCC, 'main.c', '-fPIC', '-sMAIN_MODULE=2', '-sDYLINK_DEBUG', 'libside1.so']
 
     # Unless `.` is added to the library path the libside2.so won't be found.
     err = self.expect_fail(cmd)
