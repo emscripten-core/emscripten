@@ -523,6 +523,7 @@ function exportRuntimeSymbols() {
   const results = exports.filter((name) => name);
 
   if (MODULARIZE == 'instance') {
+    if (results.length == 0) return '';
     return '// Runtime exports\nexport { ' + results.join(', ') + ' };\n';
   }
 
