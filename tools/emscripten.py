@@ -429,13 +429,7 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     function_exports['asyncify_stop_rewind'] = webassembly.FuncType([], [])
 
   parts = [pre]
-  receiving = create_receiving(function_exports)
-  if settings.WASM_ESM_INTEGRATION:
-    sending = create_sending(metadata, forwarded_json['librarySymbols'])
-    reexports = create_reexports()
-    parts += [sending, receiving, reexports]
-  else:
-    parts += create_module(receiving, metadata, global_exports, forwarded_json['librarySymbols'])
+  parts += create_module(metadata, function_exports, global_exports, forwarded_json['librarySymbols'])
   parts.append(post)
 
   full_js_module = ''.join(parts)
@@ -1004,44 +998,56 @@ def create_receiving(function_exports):
   return '\n'.join(receiving) + '\n'
 
 
-def create_module(receiving, metadata, global_exports, library_symbols):
-  receiving += create_global_exports(global_exports)
+def create_module(metadata, function_exports, global_exports, library_symbols):
   module = []
 
+  receiving = create_receiving(function_exports)
   sending = create_sending(metadata, library_symbols)
-  if settings.PTHREADS or settings.WASM_WORKERS:
-    sending = textwrap.indent(sending, '  ').strip()
-    module.append('''\
-var wasmImports;
-function assignWasmImports() {
-  wasmImports = %s;
-}
-''' % sending)
-  else:
-    module.append('var wasmImports = %s;\n' % sending)
 
-  if not settings.MINIMAL_RUNTIME:
-    if settings.MODULARIZE == 'instance':
-      module.append("var wasmExports;\n")
-    elif settings.WASM_ASYNC_COMPILATION:
-      if can_use_await():
-        # In modularize mode the generated code is within a factory function.
-        # This magic string gets replaced by `await createWasm`.  It needed to allow
-        # closure and acorn to process the module without seeing this as a top-level
-        # await.
-        module.append("var wasmExports = EMSCRIPTEN$AWAIT(createWasm());\n")
-      else:
-        module.append("var wasmExports;\ncreateWasm();\n")
+  if settings.WASM_ESM_INTEGRATION:
+    module.append(sending)
+  else:
+    receiving += create_global_exports(global_exports)
+
+    if settings.PTHREADS or settings.WASM_WORKERS:
+      sending = textwrap.indent(sending, '  ').strip()
+      module.append('''\
+  var wasmImports;
+  function assignWasmImports() {
+    wasmImports = %s;
+  }
+  ''' % sending)
     else:
-      module.append("var wasmExports = createWasm();\n")
+      module.append('var wasmImports = %s;\n' % sending)
+
+    if not settings.MINIMAL_RUNTIME:
+      if settings.MODULARIZE == 'instance':
+        module.append("var wasmExports;\n")
+      elif settings.WASM_ASYNC_COMPILATION:
+        if can_use_await():
+          # In modularize mode the generated code is within a factory function.
+          # This magic string gets replaced by `await createWasm`.  It needed to allow
+          # closure and acorn to process the module without seeing this as a top-level
+          # await.
+          module.append("var wasmExports = EMSCRIPTEN$AWAIT(createWasm());\n")
+        else:
+          module.append("var wasmExports;\ncreateWasm();\n")
+      else:
+        module.append("var wasmExports = createWasm();\n")
 
   module.append(receiving)
+
   if settings.SUPPORT_LONGJMP == 'emscripten' or not settings.DISABLE_EXCEPTION_CATCHING:
     module.append(create_invoke_wrappers(metadata))
   else:
     assert not metadata.invoke_funcs, "invoke_ functions exported but exceptions and longjmp are both disabled"
+
   if settings.MEMORY64 or settings.CAN_ADDRESS_2GB:
     module.append(create_pointer_conversion_wrappers(metadata))
+
+  if settings.WASM_ESM_INTEGRATION:
+    module.append(create_reexports())
+
   return module
 
 
