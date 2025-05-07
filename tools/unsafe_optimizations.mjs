@@ -4,15 +4,25 @@
     Enabled when building with -sMINIMAL_RUNTIME=2 linker flag. */
 
 import * as fs from 'node:fs';
-import * as acorn from 'acorn';
-import * as terser from '../third_party/terser/terser.js';
+import {parse} from '@babel/parser';
+import {generate} from '@babel/generator';
+import * as t from '@babel/types';
+import {parseArgs} from 'node:util';
 
-// Starting at the AST node 'root', calls the given callback function 'func' on all children and grandchildren of 'root'
-// that are of any of the type contained in array 'types'.
+/**
+ * Starting at the AST node 'root', calls the given callback function 'func' on all children and grandchildren of 'root'
+ * that are of any of the type contained in array 'types'.
+ *
+ * @template {string} T
+ * @param {t.Node} root
+ * @param {T[]} types
+ * @param {(node: t.Node & {type: T}) => (boolean | void)} func
+ * @returns
+ */
 function visitNodes(root, types, func) {
   // Visit the given node if it is of desired type.
-  if (types.includes(root.type)) {
-    const continueTraversal = func(root);
+  if (types.includes(/** @type {T} */ (root.type))) {
+    const continueTraversal = func(/** @type {t.Node & {type: T}} */ (root));
     if (continueTraversal === false) return false;
   }
 
@@ -32,22 +42,26 @@ function visitNodes(root, types, func) {
   }
 }
 
+/**
+ * @param {t.Node} ast
+ */
 function optPassSimplifyModularizeFunction(ast) {
   visitNodes(ast, ['FunctionExpression'], (node) => {
-    if (node.params.length == 1 && node.params[0].name == 'Module') {
+    if (node.params.length == 1 && t.isIdentifier(node.params[0]) && node.params[0].name == 'Module') {
       const body = node.body.body;
       // Nuke 'Module = Module || {};'
       if (
-        body[0].type == 'ExpressionStatement' &&
-        body[0].expression.type == 'AssignmentExpression' &&
-        body[0].expression.left.name == 'Module'
+        t.isExpressionStatement(body[0]) &&
+        t.isAssignmentExpression(body[0].expression) &&
+        t.isIdentifier(body[0].expression.left, {name: 'Module'})
       ) {
         body.splice(0, 1);
       }
       // Replace 'function(Module) {var f = Module;' -> 'function(f) {'
       if (
-        body[0].type == 'VariableDeclaration' &&
-        body[0].declarations[0]?.init?.name == 'Module'
+        t.isVariableDeclaration(body[0]) &&
+        t.isIdentifier(body[0].declarations[0].id) &&
+        t.isIdentifier(body[0].declarations[0].init, {name: 'Module'})
       ) {
         node.params[0].name = body[0].declarations[0].id.name;
         body[0].declarations.splice(0, 1);
@@ -60,15 +74,19 @@ function optPassSimplifyModularizeFunction(ast) {
   });
 }
 
-// Finds redundant operator new statements that are not assigned anywhere.
-// (we aren't interested in side effects of the calls if no assignment)
+/**
+ * Finds redundant operator new statements that are not assigned anywhere.
+ * (we aren't interested in side effects of the calls if no assignment).
+ *
+ * @param {t.Node} ast
+ */
 function optPassRemoveRedundantOperatorNews(ast) {
   // Remove standalone operator new statements that don't have any meaning.
   visitNodes(ast, ['BlockStatement', 'Program'], (node) => {
     const nodeArray = node.body;
     for (let i = 0; i < nodeArray.length; ++i) {
       const n = nodeArray[i];
-      if (n.type == 'ExpressionStatement' && n.expression.type == 'NewExpression') {
+      if (t.isExpressionStatement(n) && t.isNewExpression(n.expression)) {
         // Make an exception for new `new Promise` which is sometimes used
         // in emscripten with real side effects.  For example, see
         // loadWasmModuleToWorker which returns a `new Promise` that is never
@@ -77,8 +95,8 @@ function optPassRemoveRedundantOperatorNews(ast) {
         // Another exception is made for `new WebAssembly.*` since we create and
         // unused `WebAssembly.Memory` when probing for wasm64 features.
         if (
-          n.expression.callee.name !== 'Promise' &&
-          n.expression.callee.object?.name !== 'WebAssembly'
+          !t.isIdentifier(n.expression.callee, {name: 'Promise'}) &&
+          !(t.isMemberExpression(n.expression.callee) && t.isIdentifier(n.expression.callee.object, {name: 'WebAssembly'}))
         ) {
           nodeArray.splice(i--, 1);
         }
@@ -92,7 +110,7 @@ function optPassRemoveRedundantOperatorNews(ast) {
     // Delete operator news that don't have any meaning.
     for (let i = 0; i < nodeArray.length; ++i) {
       const n = nodeArray[i];
-      if (n.type == 'NewExpression') {
+      if (t.isNewExpression(n)) {
         nodeArray.splice(i--, 1);
       }
     }
@@ -108,11 +126,11 @@ function optPassMergeEmptyVarDeclarators(ast) {
     const nodeArray = node.body;
     for (let i = 0; i < nodeArray.length; ++i) {
       const n = nodeArray[i];
-      if (n.type != 'VariableDeclaration') continue;
+      if (!t.isVariableDeclaration(n)) continue;
       // Look back to find a preceding VariableDeclaration that empty declarators from this declaration could be fused to.
       for (let j = i - 1; j >= 0; --j) {
         const p = nodeArray[j];
-        if (p.type == 'VariableDeclaration') {
+        if (t.isVariableDeclaration(p)) {
           for (let k = 0; k < n.declarations.length; ++k) {
             if (!n.declarations[k].init) {
               p.declarations.push(n.declarations[k]);
@@ -139,11 +157,11 @@ function optPassMergeVarDeclarations(ast) {
     const nodeArray = node.body;
     for (let i = 0; i < nodeArray.length; ++i) {
       const n = nodeArray[i];
-      if (n.type != 'VariableDeclaration') continue;
+      if (!t.isVariableDeclaration(n)) continue;
       // Look back to find if there is a preceding VariableDeclaration that this declaration could be fused to.
       for (let j = i - 1; j >= 0; --j) {
         const p = nodeArray[j];
-        if (p.type == 'VariableDeclaration') {
+        if (t.isVariableDeclaration(p)) {
           p.declarations = p.declarations.concat(n.declarations);
           nodeArray.splice(i--, 1);
           progress = true;
@@ -160,21 +178,30 @@ function optPassMergeVarDeclarations(ast) {
 // Merges "var a,b;a = ...;" to "var b, a = ...;"
 function optPassMergeVarInitializationAssignments(ast) {
   // Tests if the assignment expression at nodeArray[i] is the first assignment to the given variable, and it was undefined before that.
+  /**
+   * @param {t.Statement[]} nodeArray
+   * @param {number} i
+   * @returns {[t.VariableDeclaration, number] | [null, null]}
+   */
   function isUndefinedBeforeThisAssignment(nodeArray, i) {
-    const name = nodeArray[i].expression.left.name;
+    const cur = nodeArray[i];
+    t.assertExpressionStatement(cur);
+    t.assertAssignmentExpression(cur.expression);
+    t.assertIdentifier(cur.expression.left);
+    const name = cur.expression.left.name;
     for (let j = i - 1; j >= 0; --j) {
       const n = nodeArray[j];
       if (
-        n.type == 'ExpressionStatement' &&
-        n.expression.type == 'AssignmentExpression' &&
-        n.expression.left.name == name
+        t.isExpressionStatement(n) &&
+        t.isAssignmentExpression(n.expression) &&
+        (!t.isIdentifier(n.expression.left) || n.expression.left.name === name)
       ) {
         return [null, null];
       }
-      if (n.type == 'VariableDeclaration') {
+      if (t.isVariableDeclaration(n)) {
         for (let k = n.declarations.length - 1; k >= 0; --k) {
           const d = n.declarations[k];
-          if (d.id.name == name) {
+          if (!t.isIdentifier(d.id) || d.id.name == name) {
             if (d.init) return [null, null];
             else return [n, k];
           }
@@ -190,14 +217,15 @@ function optPassMergeVarInitializationAssignments(ast) {
     const nodeArray = node.body;
     for (let i = 1; i < nodeArray.length; ++i) {
       const n = nodeArray[i];
-      if (n.type != 'ExpressionStatement' || n.expression.type != 'AssignmentExpression') continue;
-      if (nodeArray[i - 1].type != 'VariableDeclaration') continue;
+      if (!t.isExpressionStatement(n) || !t.isAssignmentExpression(n.expression) || !t.isIdentifier(n.expression.left)) continue;
+      const prev = nodeArray[i - 1];
+      if (!t.isVariableDeclaration(prev)) continue;
       const [declaration, declarationIndex] = isUndefinedBeforeThisAssignment(nodeArray, i);
       if (!declaration) continue;
       const declarator = declaration.declarations[declarationIndex];
       declarator.init = n.expression.right;
       declaration.declarations.splice(declarationIndex, 1);
-      nodeArray[i - 1].declarations.push(declarator);
+      prev.declarations.push(declarator);
       nodeArray.splice(i--, 1);
       progress = true;
     }
@@ -205,8 +233,12 @@ function optPassMergeVarInitializationAssignments(ast) {
   return progress;
 }
 
+/**
+ * @param {string} js
+ * @param {boolean} pretty
+ */
 function runOnJsText(js, pretty = false) {
-  const ast = acorn.parse(js, {ecmaVersion: 2021});
+  const ast = parse(js);
 
   optPassRemoveRedundantOperatorNews(ast);
 
@@ -219,18 +251,20 @@ function runOnJsText(js, pretty = false) {
 
   optPassSimplifyModularizeFunction(ast);
 
-  const terserAst = terser.AST_Node.from_mozilla_ast(ast);
-  const output = terserAst.print_to_string({
-    wrap_func_args: false,
-    beautify: pretty,
-    indent_level: pretty ? 2 : 0,
+  const output = generate(ast, {
+    minified: !pretty,
   });
 
-  return output;
+  return output.code;
 }
 
+/**
+ * @param {string} input
+ * @param {boolean} pretty
+ * @param {string} output
+ */
 function runOnFile(input, pretty = false, output = null) {
-  let js = fs.readFileSync(input).toString();
+  let js = fs.readFileSync(input, 'utf-8');
   js = runOnJsText(js, pretty);
   if (output) fs.writeFileSync(output, js);
   else console.log(js);
@@ -295,38 +329,21 @@ function runTests() {
   process.exit(numTestFailures);
 }
 
-const args = process.argv.slice(2);
-
-function readBool(arg) {
-  let ret = false;
-  for (;;) {
-    const i = args.indexOf(arg);
-    if (i >= 0) {
-      args.splice(i, 1);
-      ret = true;
-    } else {
-      return ret;
-    }
-  }
-}
-
-function readArg(arg) {
-  let ret = null;
-  for (;;) {
-    const i = args.indexOf(arg);
-    if (i >= 0) {
-      ret = args[i + 1];
-      args.splice(i, 2);
-    } else {
-      return ret;
-    }
-  }
-}
-
-const testMode = readBool('--test');
-const pretty = readBool('--pretty');
-const output = readArg('-o');
-const input = args[0];
+const {
+  values: {
+    test: testMode,
+    pretty,
+    output,
+  },
+  positionals: [input],
+} = parseArgs({
+  options: {
+    test: {type: 'boolean'},
+    pretty: {type: 'boolean'},
+    output: {type: 'string', short: 'o'},
+  },
+  allowPositionals: true,
+});
 
 if (testMode) {
   runTests();

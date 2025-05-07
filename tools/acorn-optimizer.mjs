@@ -1,45 +1,49 @@
 #!/usr/bin/env node
 
-import * as acorn from 'acorn';
-import * as terser from '../third_party/terser/terser.js';
-import * as fs from 'node:fs';
+import {readFileSync, writeFileSync} from 'node:fs';
+import {parseArgs} from 'node:util';
+import {parse} from '@babel/parser';
+import {generate} from '@babel/generator';
+import * as t from '@babel/types';
+import { codeFrameColumns } from "@babel/code-frame";
+import * as assert from 'node:assert/strict';
 
-// Utilities
+const EXTRA_INFO_PREFIX = '// EXTRA_INFO:';
 
-function print(x) {
-  process.stdout.write(x + '\n');
-}
-
-function read(x) {
-  return fs.readFileSync(x).toString();
-}
-
-function assert(condition, text) {
-  if (!condition) {
-    throw new Error(text);
+/**
+ * @param {boolean} condition
+ * @param {t.Node} node
+ * @param {string} message
+ */
+function assertAt(condition, node, message) {
+  if (condition) return;
+  if (!('EMCC_DEBUG_SAVE' in process.env)) {
+    message += ' (use EMCC_DEBUG_SAVE=1 to preserve temporary inputs)';
   }
-}
-
-function assertAt(condition, node, message = '') {
-  if (!condition) {
-    const loc = acorn.getLineInfo(input, node.start);
-    throw new Error(
-      `${infile}:${loc.line}: ${message} (use EMCC_DEBUG_SAVE=1 to preserve temporary inputs)`,
-    );
-  }
+  const err = new Error(message);
+  Error.captureStackTrace(err, assertAt);
+  err['loc'] = node.loc;
+  throw err;
 }
 
 // Visits and walks
 // (We don't use acorn-walk because it ignores x in 'x = y'.)
 
+/**
+ * @param {t.Node} node
+ * @param {(node: t.Node) => void} c
+ */
 function visitChildren(node, c) {
   // emptyOut() and temporary ignoring may mark nodes as empty,
   // while they have properties with children we should ignore.
-  if (node.type === 'EmptyStatement') {
+  if (t.isEmptyStatement(node)) {
     return;
   }
+  /**
+   * @param {t.Node} child
+   */
   function maybeChild(child) {
-    if (child && typeof child === 'object' && typeof child.type === 'string') {
+    if (t.isNode(child)) {
       c(child);
       return true;
     }
@@ -58,83 +62,85 @@ function visitChildren(node, c) {
 
 // Simple post-order walk, calling properties on an object by node type,
 // if the type exists.
+/**
+ * @param {t.Node} node
+ * @param {{ [K in t.Node['type']]?: (node: t.Node & { type: K }) => void }} cs
+ */
 function simpleWalk(node, cs) {
   visitChildren(node, (child) => simpleWalk(child, cs));
-  if (node.type in cs) {
-    cs[node.type](node);
-  }
+  cs[node.type]?.(node);
 }
 
 // Full post-order walk, calling a single function for all types. If |pre| is
 // provided, it is called in pre-order (before children).
+/**
+ * @param {t.Node} node
+ * @param {(node: t.Node) => void} c
+ * @param {(node: t.Node) => void} [pre]
+ */
 function fullWalk(node, c, pre) {
-  if (pre) {
-    pre(node);
-  }
+  pre?.(node);
   visitChildren(node, (child) => fullWalk(child, c, pre));
   c(node);
 }
 
 // Recursive post-order walk, calling properties on an object by node type,
 // if the type exists, and if so leaving recursion to that function.
+/**
+ * @param {t.Node} node
+ * @param {{ [K in t.Node['type']]?: (node: t.Node & { type: K }, c: (child: t.Node) => void) => void }} cs
+ */
 function recursiveWalk(node, cs) {
-  (function c(node) {
-    if (!(node.type in cs)) {
+  return (function c(node) {
+    const handler = cs[node.type];
+    if (!handler) {
       visitChildren(node, (child) => recursiveWalk(child, cs));
     } else {
-      cs[node.type](node, c);
+      handler(node, c);
     }
   })(node);
 }
 
 // AST Utilities
 
+/**
+ * @param {t.Node} node
+ * @returns {t.EmptyStatement}
+ */
 function emptyOut(node) {
-  node.type = 'EmptyStatement';
+  return Object.assign(node, t.emptyStatement());
 }
 
-function convertToNullStatement(node) {
-  node.type = 'ExpressionStatement';
-  node.expression = {
-    type: 'Literal',
-    value: null,
-    raw: 'null',
-    start: 0,
-    end: 0,
-  };
-  node.start = 0;
-  node.end = 0;
-}
-
-function isNull(node) {
-  return node.type === 'Literal' && node.raw === 'null';
-}
-
-function isUseStrict(node) {
-  return node.type === 'Literal' && node.value === 'use strict';
-}
-
+/**
+ * @param {t.StringLiteral} item
+ * @param {string} value
+ */
 function setLiteralValue(item, value) {
   item.value = value;
-  item.raw = "'" + value + "'";
+  item.extra = null;
 }
 
-function isLiteralString(node) {
-  return node.type === 'Literal' && (node.raw[0] === '"' || node.raw[0] === "'");
-}
-
-function dump(node, text) {
-  if (text) print(text);
-  print(JSON.stringify(node, null, ' '));
+/**
+ * @param {t.Node} node
+ */
+function dump(node) {
+  console.log(JSON.stringify(node, null, ' '));
 }
 
 // Mark inner scopes temporarily as empty statements. Returns
 // a special object that must be used to restore them.
+/**
+ * @param {t.Node} node
+ */
 function ignoreInnerScopes(node) {
+  /** @type {WeakMap<t.Node, t.Node['type']>} */
   const map = new WeakMap();
+  /**
+   * @param {t.Node} node
+   */
   function ignore(node) {
     map.set(node, node.type);
-    node.type = 'EmptyStatement';
+    emptyOut(node);
   }
   simpleWalk(node, {
     FunctionDeclaration(node) {
@@ -152,6 +158,10 @@ function ignoreInnerScopes(node) {
 }
 
 // Mark inner scopes temporarily as empty statements.
+/**
+ * @param {t.Node} node
+ * @param {WeakMap<t.Node, t.Node['type']>} map
+ */
 function restoreInnerScopes(node, map) {
   fullWalk(node, (node) => {
     if (map.has(node)) {
@@ -162,103 +172,79 @@ function restoreInnerScopes(node, map) {
   });
 }
 
-// If we empty out a var from
-//   for (var i in x) {}
-//   for (var j = 0;;) {}
-// then it will be invalid. We saved it on the side;
-// restore it here.
-function restoreForVars(node) {
-  let restored = 0;
-  function fix(init) {
-    if (init && init.type === 'EmptyStatement') {
-      assertAt(init.oldDeclarations, init);
-      init.type = 'VariableDeclaration';
-      init.declarations = init.oldDeclarations;
-      restored++;
-    }
-  }
-  simpleWalk(node, {
-    ForStatement(node) {
-      fix(node.init);
-    },
-    ForInStatement(node) {
-      fix(node.left);
-    },
-    ForOfStatement(node) {
-      fix(node.left);
-    },
-  });
-  return restored;
-}
-
+/**
+ * @param {t.Node} node
+ */
 function hasSideEffects(node) {
   // Conservative analysis.
   const map = ignoreInnerScopes(node);
-  let has = false;
-  fullWalk(node, (node) => {
-    switch (node.type) {
-      // TODO: go through all the ESTree spec
-      case 'Literal':
-      case 'Identifier':
-      case 'UnaryExpression':
-      case 'BinaryExpression':
-      case 'LogicalExpression':
-      case 'ExpressionStatement':
-      case 'UpdateOperator':
-      case 'ConditionalExpression':
-      case 'FunctionDeclaration':
-      case 'FunctionExpression':
-      case 'ArrowFunctionExpression':
-      case 'VariableDeclaration':
-      case 'VariableDeclarator':
-      case 'ObjectExpression':
-      case 'Property':
-      case 'SpreadElement':
-      case 'BlockStatement':
-      case 'ArrayExpression':
-      case 'EmptyStatement': {
-        break; // safe
+  const hasSideEffects = Symbol('hasSideEffects');
+  try {
+    fullWalk(node, (node) => {
+      if (
+        t.isPureish(node) ||
+        t.isBinary(node) ||
+        t.isUnaryLike(node) ||
+        t.isProperty(node) ||
+        t.isDeclaration(node) ||
+        t.isPatternLike(node) ||
+        t.isBlock(node)
+      ) {
+        return; // safe
       }
-      case 'MemberExpression': {
-        // safe if on Math (or other familiar objects, TODO)
-        if (node.object.type !== 'Identifier' || node.object.name !== 'Math') {
-          // console.error('because member on ' + node.object.name);
-          has = true;
+      switch (node.type) {
+        // TODO: go through all the ESTree spec
+        case 'ParenthesizedExpression':
+        case 'ExpressionStatement':
+        case 'ConditionalExpression':
+        case 'VariableDeclarator':
+        case 'ObjectExpression':
+        case 'ArrayExpression':
+        case 'EmptyStatement': {
+          return; // safe
         }
-        break;
-      }
-      case 'NewExpression': {
-        // default to unsafe, but can be safe on some familiar objects
-        if (node.callee.type === 'Identifier') {
-          const name = node.callee.name;
-          if (
-            name === 'TextDecoder' ||
-            name === 'ArrayBuffer' ||
-            name === 'Int8Array' ||
-            name === 'Uint8Array' ||
-            name === 'Int16Array' ||
-            name === 'Uint16Array' ||
-            name === 'Int32Array' ||
-            name === 'Uint32Array' ||
-            name === 'Float32Array' ||
-            name === 'Float64Array'
-          ) {
-            // no side effects, but the arguments might (we walk them in
-            // full walk as well)
-            break;
+        case 'MemberExpression':
+          // safe if on Math (or other familiar objects, TODO)
+          if (t.isIdentifier(node.object, {name: 'Math'})) {
+            return;
           }
-        }
-        // not one of the safe cases
-        has = true;
-        break;
+          break;
+        case 'NewExpression':
+          // default to unsafe, but can be safe on some familiar objects
+          if (t.isIdentifier(node.callee)) {
+            const name = node.callee.name;
+            if (
+              name === 'TextDecoder' ||
+              name === 'ArrayBuffer' ||
+              name === 'Int8Array' ||
+              name === 'Uint8Array' ||
+              name === 'Int16Array' ||
+              name === 'Uint16Array' ||
+              name === 'Int32Array' ||
+              name === 'Uint32Array' ||
+              name === 'Float32Array' ||
+              name === 'Float64Array'
+            ) {
+              // no side effects, but the arguments might (we walk them in
+              // full walk as well)
+              return;
+            }
+          }
+          break;
       }
-      default: {
-        has = true;
-      }
+      // not one of the safe cases
+      throw hasSideEffects;
+    });
+    return false;
+  } catch (err) {
+    if (err !== hasSideEffects) {
+      throw err;
     }
-  });
-  restoreInnerScopes(node, map);
-  return has;
+    // we hit a side effect, return true
+    return true;
+  } finally {
+    restoreInnerScopes(node, map);
+  }
 }
 
 // Passes
@@ -274,10 +260,20 @@ function hasSideEffects(node) {
 // as they appear (like ArrowFunctionExpression). Instead, we do a conservative
 // analysis here.
 
-function JSDCE(ast, aggressive) {
+/**
+ * @param {t.File} ast
+ * @param {boolean} aggressive
+ */
+function JSDCE(ast, aggressive = false) {
   function iteration() {
     let removed = 0;
     const scopes = [{}]; // begin with empty toplevel scope
+    /** @type {WeakMap<t.VariableDeclaration, t.For>} */
+    let forLhs = new WeakMap();
+
+    /**
+     * @param {string} name
+     */
     function ensureData(scope, name) {
       if (Object.prototype.hasOwnProperty.call(scope, name)) return scope[name];
       scope[name] = {
@@ -287,44 +283,72 @@ function JSDCE(ast, aggressive) {
       };
       return scope[name];
     }
+    /**
+     * @param {t.Node} ast
+     * @param {Set<string>} names
+     */
     function cleanUp(ast, names) {
       recursiveWalk(ast, {
+        ForStatement(node, c) {
+          if (t.isVariableDeclaration(node.init)) {
+            forLhs.set(node.init, node);
+          }
+          visitChildren(node, c);
+        },
+        ForInStatement(node, c) {
+          if (t.isVariableDeclaration(node.left)) {
+            forLhs.set(node.left, node);
+          }
+          visitChildren(node, c);
+        },
+        ForOfStatement(node, c) {
+          if (t.isVariableDeclaration(node.left)) {
+            forLhs.set(node.left, node);
+          }
+          visitChildren(node, c);
+        },
         VariableDeclaration(node, _c) {
-          const old = node.declarations;
+          // If we're in the LHS of a for-in or for-of loop, we need to keep at least one variable for the loop to remain valid.
+          const parentForLoop = forLhs.get(node);
+          const needsAtLeastOneVar = t.isForXStatement(parentForLoop);
           let removedHere = 0;
-          node.declarations = node.declarations.filter((node) => {
-            assert(node.type === 'VariableDeclarator');
+          node.declarations = node.declarations.filter((node, i) => {
+            t.assertVariableDeclarator(node);
             const id = node.id;
-            if (id.type === 'ObjectPattern' || id.type === 'ArrayPattern') {
+            if (t.isObjectPattern(id) || t.isArrayPattern(id)) {
               // TODO: DCE into object patterns, that is, things like
               //         let { a, b } = ..
               //         let [ a, b ] = ..
               return true;
             }
-            assert(id.type === 'Identifier');
+            t.assertIdentifier(id);
             const curr = id.name;
             const value = node.init;
-            const keep = !(curr in names) || (value && hasSideEffects(value));
+            const keep =
+              !names.has(curr) ||
+              (value && hasSideEffects(value)) ||
+              (needsAtLeastOneVar && i === 0);
             if (!keep) removedHere = 1;
             return keep;
           });
           removed += removedHere;
           if (node.declarations.length === 0) {
-            emptyOut(node);
-            // If this is in a for, we may need to restore it.
-            node.oldDeclarations = old;
+            if (t.isForStatement(parentForLoop)) {
+              // for (var i = 0; ...) -> for (; ...)
+              parentForLoop.init = null;
+            } else {
+              emptyOut(node);
+            }
           }
         },
         ExpressionStatement(node, _c) {
           if (aggressive && !hasSideEffects(node)) {
-            if (!isNull(node.expression) && !isUseStrict(node.expression)) {
-              convertToNullStatement(node);
-              removed++;
-            }
+            emptyOut(node);
+            removed++;
           }
         },
         FunctionDeclaration(node, _c) {
-          if (Object.prototype.hasOwnProperty.call(names, node.id.name)) {
+          if (names.has(node.id.name)) {
             removed++;
             emptyOut(node);
             return;
@@ -335,44 +359,42 @@ function JSDCE(ast, aggressive) {
         FunctionExpression() {},
         ArrowFunctionExpression() {},
       });
-      removed -= restoreForVars(ast);
     }
 
-    function handleFunction(node, c, defun) {
+    /**
+     * @param {t.Function} node
+     * @param {(node: t.Node) => void} visitExpr
+     */
+    function handleFunction(node, visitExpr) {
       // defun names matter - function names (the y in var x = function y() {..}) are just for stack traces.
-      if (defun) {
+      if (t.isFunctionDeclaration(node)) {
         ensureData(scopes[scopes.length - 1], node.id.name).def = 1;
       }
       const scope = {};
       scopes.push(scope);
-      node.params.forEach(function traverse(param) {
-        if (param.type === 'RestElement') {
-          param = param.argument;
-        }
-        if (param.type === 'AssignmentPattern') {
-          c(param.right);
-          param = param.left;
-        }
-        if (param.type === 'ArrayPattern') {
-          for (var elem of param.elements) {
-            if (elem) traverse(elem);
-          }
-        } else if (param.type === 'ObjectPattern') {
-          for (var prop of param.properties) {
-            traverse(prop.key);
-          }
-        } else {
-          assert(param.type === 'Identifier', param.type);
-          const name = param.name;
-          ensureData(scope, name).def = 1;
-          scope[name].param = 1;
-        }
-      });
-      c(node.body);
+      for (const param of node.params) {
+        recursiveWalk(param, {
+          AssignmentPattern(node, visitPat) {
+            visitPat(node.left);
+            visitExpr(node.right);
+          },
+          ObjectProperty(node, visitPat) {
+            if (node.computed) {
+              visitExpr(node.key);
+            }
+            visitPat(node.value);
+          },
+          Identifier({name}) {
+            ensureData(scope, name).def = 1;
+            scope[name].param = 1;
+          },
+        });
+      }
+      visitExpr(node.body);
       // we can ignore self-references, i.e., references to ourselves inside
       // ourselves, for named defined (defun) functions
-      const ownName = defun ? node.id.name : '';
-      const names = {};
+      const ownName = node['id']?.name;
+      const names = new Set();
       for (const name in scopes.pop()) {
         if (name === ownName) continue;
         const data = scope[name];
@@ -383,7 +405,7 @@ function JSDCE(ast, aggressive) {
         }
         if (data.def && !data.use && !data.param) {
           // this is eliminateable!
-          names[name] = 0;
+          names.add(name);
         }
       }
       cleanUp(node.body, names);
@@ -391,33 +413,36 @@ function JSDCE(ast, aggressive) {
 
     recursiveWalk(ast, {
       VariableDeclarator(node, c) {
-        function traverse(id) {
-          if (id.type === 'ObjectPattern') {
-            for (const prop of id.properties) {
-              traverse(prop.value);
+        recursiveWalk(node.id, {
+          AssignmentPattern(node, visitPat) {
+            visitPat(node.left);
+            c(node.right);
+          },
+          ObjectProperty(node, visitPat) {
+            if (node.computed) {
+              c(node.key);
             }
-          } else if (id.type === 'ArrayPattern') {
-            for (const elem of id.elements) {
-              if (elem) traverse(elem);
-            }
-          } else {
-            assertAt(id.type === 'Identifier', id, `expected Identifier but found ${id.type}`);
+            visitPat(node.value);
+          },
+          Identifier(id) {
             const name = id.name;
             ensureData(scopes[scopes.length - 1], name).def = 1;
-          }
-        }
-        traverse(node.id);
+          },
+        });
+
         if (node.init) c(node.init);
       },
-      ObjectExpression(node, c) {
-        // ignore the property identifiers
-        node.properties.forEach((node) => {
-          if (node.value) {
-            c(node.value);
-          } else if (node.argument) {
-            c(node.argument);
-          }
-        });
+      ObjectMethod(node, c) {
+        if (node.computed) {
+          c(node.key);
+        }
+        handleFunction(node, c);
+      },
+      ObjectProperty(node, c) {
+        if (node.computed) {
+          c(node.key);
+        }
+        c(node.value);
       },
       MemberExpression(node, c) {
         c(node.object);
@@ -427,7 +452,7 @@ function JSDCE(ast, aggressive) {
         }
       },
       FunctionDeclaration(node, c) {
-        handleFunction(node, c, true /* defun */);
+        handleFunction(node, c);
       },
       FunctionExpression(node, c) {
         handleFunction(node, c);
@@ -436,22 +461,23 @@ function JSDCE(ast, aggressive) {
         handleFunction(node, c);
       },
       Identifier(node, _c) {
-        const name = node.name;
-        ensureData(scopes[scopes.length - 1], name).use = 1;
+        ensureData(scopes[scopes.length - 1], node.name).use = 1;
       },
       ExportDefaultDeclaration(node, c) {
+        t.assertFunctionDeclaration(node.declaration);
         const name = node.declaration.id.name;
         ensureData(scopes[scopes.length - 1], name).use = 1;
         c(node.declaration);
       },
       ExportNamedDeclaration(node, c) {
         if (node.declaration) {
-          if (node.declaration.type == 'FunctionDeclaration') {
+          if (t.isFunctionDeclaration(node.declaration)) {
             const name = node.declaration.id.name;
             ensureData(scopes[scopes.length - 1], name).use = 1;
           } else {
-            assert(node.declaration.type == 'VariableDeclaration');
+            t.assertVariableDeclaration(node.declaration);
             for (const decl of node.declaration.declarations) {
+              t.assertIdentifier(decl.id);
               const name = decl.id.name;
               ensureData(scopes[scopes.length - 1], name).use = 1;
             }
@@ -459,6 +485,7 @@ function JSDCE(ast, aggressive) {
           c(node.declaration);
         } else {
           for (const specifier of node.specifiers) {
+            t.assertExportSpecifier(specifier);
             const name = specifier.local.name;
             ensureData(scopes[scopes.length - 1], name).use = 1;
           }
@@ -468,14 +495,14 @@ function JSDCE(ast, aggressive) {
 
     // toplevel
     const scope = scopes.pop();
-    assert(scopes.length === 0);
+    assert.equal(scopes.length, 0);
 
-    const names = {};
+    const names = new Set();
     for (const [name, data] of Object.entries(scope)) {
       if (data.def && !data.use) {
-        assert(!data.param); // can't be
+        assert.ok(!data.param); // can't be
         // this is eliminateable!
-        names[name] = 0;
+        names.add(name);
       }
     }
     cleanUp(ast, names);
@@ -485,74 +512,98 @@ function JSDCE(ast, aggressive) {
 }
 
 // Aggressive JSDCE - multiple iterations
+/**
+ * @param {t.File} ast
+ */
 function AJSDCE(ast) {
   JSDCE(ast, /* aggressive= */ true);
 }
 
+/**
+ * @param {t.Node} node
+ * @returns {node is t.AssignmentExpression & { left: t.Identifier, right: t.ObjectExpression } | t.VariableDeclaration & { declarations: [t.VariableDeclarator & { id: t.Identifier, init: t.ObjectExpression }] }}
+ */
 function isWasmImportsAssign(node) {
   // var wasmImports = ..
   //   or
   // wasmImports = ..
   if (
-    node.type === 'AssignmentExpression' &&
-    node.left.name == 'wasmImports' &&
-    node.right.type == 'ObjectExpression'
+    t.isAssignmentExpression(node) &&
+    t.isIdentifier(node.left, {name: 'wasmImports'}) &&
+    t.isObjectExpression(node.right)
   ) {
     return true;
   }
   return (
-    node.type === 'VariableDeclaration' &&
+    t.isVariableDeclaration(node) &&
     node.declarations.length === 1 &&
-    node.declarations[0].id.name === 'wasmImports' &&
-    node.declarations[0].init &&
-    node.declarations[0].init.type === 'ObjectExpression'
+    t.isIdentifier(node.declarations[0].id, {name: 'wasmImports'}) &&
+    t.isObjectExpression(node.declarations[0].init)
   );
 }
 
+/**
+ * @param {t.AssignmentExpression & { left: t.Identifier, right: t.ObjectExpression } | t.VariableDeclaration & { declarations: [t.VariableDeclarator & { id: t.Identifier, init: t.ObjectExpression }] }} node
+ */
 function getWasmImportsValue(node) {
-  if (node.declarations) {
+  if (t.isVariableDeclaration(node)) {
     return node.declarations[0].init;
   } else {
     return node.right;
   }
 }
 
+/**
+ * @param {t.Node} node
+ * @returns {node is t.MemberExpression & { object: t.Identifier, property: t.StringLiteral }}
+ */
 function isExportUse(node) {
   // Match usages of symbols on the `wasmExports` object. e.g:
   //   wasmExports['X']
   return (
-    node.type === 'MemberExpression' &&
-    node.object.type === 'Identifier' &&
-    isLiteralString(node.property) &&
+    t.isMemberExpression(node) &&
+    t.isIdentifier(node.object) &&
+    t.isStringLiteral(node.property) &&
     node.object.name === 'wasmExports'
   );
 }
 
+/**
+ * @param {t.MemberExpression & { property: t.StringLiteral }} node
+ */
 function getExportOrModuleUseName(node) {
   return node.property.value;
 }
 
+/**
+ * @param {t.Node} node
+ * @returns {node is t.MemberExpression & { object: t.Identifier, property: t.StringLiteral }}
+ */
 function isModuleUse(node) {
   return (
-    node.type === 'MemberExpression' && // Module['X']
-    node.object.type === 'Identifier' &&
-    node.object.name === 'Module' &&
-    isLiteralString(node.property)
+    t.isMemberExpression(node) && // Module['X']
+    t.isIdentifier(node.object, {name: 'Module'}) &&
+    t.isStringLiteral(node.property)
   );
 }
 
 // Apply import/export name changes (after minifying them)
+/**
+ * @param {t.Node} ast
+ */
 function applyImportAndExportNameChanges(ast) {
   const mapping = extraInfo.mapping;
   fullWalk(ast, (node) => {
     if (isWasmImportsAssign(node)) {
       const assignedObject = getWasmImportsValue(node);
       assignedObject.properties.forEach((item) => {
+        t.assertObjectProperty(item, {computed: false});
+        t.assertIdentifier(item.key);
         if (mapping[item.key.name]) {
           item.key.name = mapping[item.key.name];
         }
       });
-    } else if (node.type === 'AssignmentExpression') {
+    } else if (t.isAssignmentExpression(node)) {
       const value = node.right;
       if (isExportUse(value)) {
         const name = value.property.value;
@@ -560,7 +611,7 @@ function applyImportAndExportNameChanges(ast) {
           setLiteralValue(value.property, mapping[name]);
         }
       }
-    } else if (node.type === 'CallExpression' && isExportUse(node.callee)) {
+    } else if (t.isCallExpression(node) && isExportUse(node.callee)) {
       // wasmExports["___wasm_call_ctors"](); -> wasmExports["M"]();
       const callee = node.callee;
       const name = callee.property.value;
@@ -579,15 +630,21 @@ function applyImportAndExportNameChanges(ast) {
 
 // A static dyncall is dynCall('vii', ..), which is actually static even
 // though we call dynCall() - we see the string signature statically.
+/**
+ * @param {t.Node} node
+ * @returns {node is t.CallExpression & { arguments: [t.StringLiteral] }}
+ */
 function isStaticDynCall(node) {
   return (
-    node.type === 'CallExpression' &&
-    node.callee.type === 'Identifier' &&
-    node.callee.name === 'dynCall' &&
-    isLiteralString(node.arguments[0])
+    t.isCallExpression(node) &&
+    t.isIdentifier(node.callee, {name: 'dynCall'}) &&
+    t.isStringLiteral(node.arguments[0])
   );
 }
 
+/**
+ * @param {t.CallExpression & { arguments: [t.StringLiteral] }} node
+ */
 function getStaticDynCallName(node) {
   return 'dynCall_' + node.arguments[0].value;
 }
@@ -599,13 +656,16 @@ function getStaticDynCallName(node) {
 //   "dynCall_"
 // as that prefix means we may be constructing a dynamic dyncall name
 // (dynCall and embind's requireFunction do this internally).
+/**
+ * @param {t.Node} node
+ * @returns {node is (t.CallExpression & { callee: t.Identifier }) | t.StringLiteral}
+ */
 function isDynamicDynCall(node) {
   return (
-    (node.type === 'CallExpression' &&
-      node.callee.type === 'Identifier' &&
-      node.callee.name === 'dynCall' &&
-      !isLiteralString(node.arguments[0])) ||
-    (isLiteralString(node) && node.value === 'dynCall_')
+    (t.isCallExpression(node) &&
+      t.isIdentifier(node.callee, {name: 'dynCall'}) &&
+      !t.isStringLiteral(node.arguments[0])) ||
+    t.isStringLiteral(node, {value: 'dynCall_'})
   );
 }
 
@@ -619,18 +679,21 @@ function isDynamicDynCall(node) {
 //
 //   var _foo = (a0, a1) => (_foo = Module['_foo'] = wasmExports['foo'])(a0, a1):
 //
+/**
+ * @param {t.ArrowFunctionExpression} f
+ */
 function isExportWrapperFunction(f) {
-  if (f.body.type != 'CallExpression') return null;
+  if (!t.isCallExpression(f.body)) return null;
   let callee = f.body.callee;
-  if (callee.type == 'ParenthesizedExpression') {
+  if (t.isParenthesizedExpression(callee)) {
     callee = callee.expression;
   }
-  if (callee.type != 'AssignmentExpression') return null;
+  if (!t.isAssignmentExpression(callee)) return null;
   var rhs = callee.right;
-  if (rhs.type == 'AssignmentExpression') {
+  if (t.isAssignmentExpression(rhs)) {
     rhs = rhs.right;
   }
-  if (rhs.type != 'MemberExpression' || !isExportUse(rhs)) return null;
+  if (!t.isMemberExpression(rhs) || !isExportUse(rhs)) return null;
   return getExportOrModuleUseName(rhs);
 }
 
@@ -674,6 +737,9 @@ function isExportWrapperFunction(f) {
 //     that should be fixed. Currently the main use case here does
 //     not require that. TODO FIXME
 //
+/**
+ * @param {t.Node} ast
+ */
 function emitDCEGraph(ast) {
   // First pass: find the wasm imports and exports, and the toplevel
   // defuns, and save them on the side, removing them from the AST,
@@ -713,6 +779,10 @@ function emitDCEGraph(ast) {
   let foundWasmImportsAssign = false;
   let foundMinimalRuntimeExports = false;
 
+  /**
+   * @param {string} name
+   * @param {string} asmName
+   */
   function saveAsmExport(name, asmName) {
     // the asmName is what the wasm provides directly; the outside JS
     // name may be slightly different (extra "_" in wasm backend)
@@ -738,80 +808,84 @@ function emitDCEGraph(ast) {
       if (isWasmImportsAssign(node)) {
         const assignedObject = getWasmImportsValue(node);
         assignedObject.properties.forEach((item) => {
+          t.assertObjectProperty(item);
           let value = item.value;
-          if (value.type === 'Literal' || value.type === 'FunctionExpression') {
+          if (t.isLiteral(value) || t.isFunctionExpression(value)) {
             return; // if it's a numeric or function literal, nothing to do here
           }
-          if (value.type === 'LogicalExpression') {
+          if (t.isLogicalExpression(value)) {
             // We may have something like  wasmMemory || Module.wasmMemory  in pthreads code;
             // use the left hand identifier.
             value = value.left;
           }
-          assertAt(value.type === 'Identifier', value);
-          const nativeName = item.key.type == 'Literal' ? item.key.value : item.key.name;
-          assert(nativeName);
+          t.assertIdentifier(value);
+          const nativeName = item.computed
+            ? (t.assertStringLiteral(item.key), item.key.value)
+            : (t.assertIdentifier(item.key), item.key.name);
+          assert.ok(nativeName);
           imports.push([value.name, nativeName]);
         });
         foundWasmImportsAssign = true;
         emptyOut(node); // ignore this in the second pass; this does not root
-      } else if (node.type === 'AssignmentExpression') {
+      } else if (t.isAssignmentExpression(node)) {
         const target = node.left;
         // Ignore assignment to the wasmExports object (as happens in
         // applySignatureConversions).
         if (isExportUse(target)) {
           emptyOut(node);
         }
-      } else if (node.type === 'VariableDeclaration') {
+      } else if (t.isVariableDeclaration(node)) {
         if (node.declarations.length === 1) {
           const item = node.declarations[0];
-          const name = item.id.name;
-          const value = item.init;
-          if (value && isExportUse(value)) {
-            const asmName = getExportOrModuleUseName(value);
-            // this is:
-            //  var _x = wasmExports['x'];
-            saveAsmExport(name, asmName);
-            emptyOut(node);
-          } else if (value && value.type === 'ArrowFunctionExpression') {
-            // this is
-            //  () => (x = wasmExports['x'])(..)
-            // or
-            //  () => (x = Module['_x'] = wasmExports['x'])(..)
-            let asmName = isExportWrapperFunction(value);
-            if (asmName) {
+          if (t.isIdentifier(item.id)) {
+            const name = item.id.name;
+            const value = item.init;
+            if (value && isExportUse(value)) {
+              const asmName = getExportOrModuleUseName(value);
+              // this is:
+              //  var _x = wasmExports['x'];
               saveAsmExport(name, asmName);
               emptyOut(node);
-            }
-          } else if (value && value.type === 'AssignmentExpression') {
-            const assigned = value.left;
-            if (isModuleUse(assigned) && getExportOrModuleUseName(assigned) === name) {
+            } else if (value && t.isArrowFunctionExpression(value)) {
               // this is
-              //  var x = Module['x'] = ?
-              // which looks like a wasm export being received. confirm with the asm use
-              let found = 0;
-              let asmName;
-              fullWalk(value.right, (node) => {
-                if (isExportUse(node)) {
-                  found++;
-                  asmName = getExportOrModuleUseName(node);
-                }
-              });
-              // in the wasm backend, the asm name may have one fewer "_" prefixed
-              if (found === 1) {
-                // this is indeed an export
-                // the asmName is what the wasm provides directly; the outside JS
-                // name may be slightly different (extra "_" in wasm backend)
+              //  () => (x = wasmExports['x'])(..)
+              // or
+              //  () => (x = Module['_x'] = wasmExports['x'])(..)
+              let asmName = isExportWrapperFunction(value);
+              if (asmName) {
                 saveAsmExport(name, asmName);
-                emptyOut(node); // ignore this in the second pass; this does not root
-                return;
-              }
-              if (value.right.type === 'Literal') {
-                // this is
-                //  var x = Module['x'] = 1234;
-                // this form occurs when global addresses are exported from the
-                // module.  It doesn't constitute a usage.
-                assertAt(typeof value.right.value === 'number', value.right);
                 emptyOut(node);
+              }
+            } else if (value && t.isAssignmentExpression(value)) {
+              const assigned = value.left;
+              if (isModuleUse(assigned) && getExportOrModuleUseName(assigned) === name) {
+                // this is
+                //  var x = Module['x'] = ?
+                // which looks like a wasm export being received. confirm with the asm use
+                let found = 0;
+                let asmName;
+                fullWalk(value.right, (node) => {
+                  if (isExportUse(node)) {
+                    found++;
+                    asmName = getExportOrModuleUseName(node);
+                  }
+                });
+                // in the wasm backend, the asm name may have one fewer "_" prefixed
+                if (found === 1) {
+                  // this is indeed an export
+                  // the asmName is what the wasm provides directly; the outside JS
+                  // name may be slightly different (extra "_" in wasm backend)
+                  saveAsmExport(name, asmName);
+                  emptyOut(node); // ignore this in the second pass; this does not root
+                  return;
+                }
+                if (t.isNumericLiteral(value.right)) {
+                  // this is
+                  //  var x = Module['x'] = 1234;
+                  // this form occurs when global addresses are exported from the
+                  // module.  It doesn't constitute a usage.
+                  emptyOut(node);
+                }
               }
             }
           }
@@ -822,31 +896,27 @@ function emitDCEGraph(ast) {
         if (!node.declarations.reduce((hasInit, decl) => hasInit || !!decl.init, false)) {
           emptyOut(node);
         }
-      } else if (node.type === 'FunctionDeclaration') {
+      } else if (t.isFunctionDeclaration(node)) {
         const name = node.id.name;
         // Check if this is the minimal runtime exports function, which looks like
         //   function assignWasmExports(wasmExports)
         if (
-          name == 'assignWasmExports' &&
+          name === 'assignWasmExports' &&
           node.params.length === 1 &&
-          node.params[0].type === 'Identifier' &&
-          node.params[0].name === 'wasmExports'
+          t.isIdentifier(node.params[0], {name: 'wasmExports'})
         ) {
           // This looks very much like what we are looking for.
           const body = node.body.body;
-          assert(!foundMinimalRuntimeExports);
+          assert.ok(!foundMinimalRuntimeExports);
           foundMinimalRuntimeExports = true;
-          for (let i = 0; i < body.length; i++) {
-            const item = body[i];
+          for (const item of body) {
             if (
-              item.type === 'ExpressionStatement' &&
-              item.expression.type === 'AssignmentExpression' &&
-              item.expression.operator === '=' &&
-              item.expression.left.type === 'Identifier' &&
-              item.expression.right.type === 'MemberExpression' &&
-              item.expression.right.object.type === 'Identifier' &&
-              item.expression.right.object.name === 'wasmExports' &&
-              item.expression.right.property.type === 'Literal'
+              t.isExpressionStatement(item) &&
+              t.isAssignmentExpression(item.expression, {operator: '='}) &&
+              t.isIdentifier(item.expression.left) &&
+              t.isMemberExpression(item.expression.right) &&
+              t.isIdentifier(item.expression.right.object, {name: 'wasmExports'}) &&
+              t.isStringLiteral(item.expression.right.property)
             ) {
               const name = item.expression.left.name;
               const asmName = item.expression.right.property.value;
@@ -859,25 +929,22 @@ function emitDCEGraph(ast) {
           nameToGraphName[name] = getGraphName(name, 'defun');
           emptyOut(node); // ignore this in the second pass; we scan defuns separately
         }
-      } else if (node.type === 'ArrowFunctionExpression') {
-        assert(specialScopes > 0);
-        specialScopes--;
-      } else if (node.type === 'Property' && node.method) {
-        assert(specialScopes > 0);
+      } else if (t.isArrowFunctionExpression(node) || t.isObjectMethod(node)) {
+        assert.ok(specialScopes > 0);
         specialScopes--;
       }
     },
     (node) => {
       // Pre-walking logic. We note special scopes (see above).
-      if (node.type === 'ArrowFunctionExpression' || (node.type === 'Property' && node.method)) {
+      if (t.isArrowFunctionExpression(node) || t.isObjectMethod(node)) {
         specialScopes++;
       }
     },
   );
   // Scoping must balance out.
-  assert(specialScopes === 0);
+  assert.ok(specialScopes === 0);
   // We must have found the info we need.
-  assert(
+  assert.ok(
     foundWasmImportsAssign,
     'could not find the assignment to "wasmImports". perhaps --pre-js or --post-js code moved it out of the global scope? (things like that should be done after emcc runs, as they do not need to be run through the optimizer which is the special thing about --pre-js/--post-js code)',
   );
@@ -890,6 +957,10 @@ function emitDCEGraph(ast) {
 
   // Second pass: everything used in the toplevel scope is rooted;
   // things used in defun scopes create links
+  /**
+   * @param {string} name
+   * @param {string} what
+   */
   function getGraphName(name, what) {
     return 'emcc$' + what + '$' + name;
   }
@@ -915,11 +986,15 @@ function emitDCEGraph(ast) {
   }
   // a function that handles a node we visit, in either a defun or
   // the toplevel scope (in which case the second param is not provided)
+  /**
+   * @param {t.Node} node
+   * @param {{ name?: string; reaches: Record<string, 1>; }} defunInfo
+   */
   function visitNode(node, defunInfo) {
     // TODO: scope awareness here. for now we just assume all uses are
     //       from the top scope, which might create more uses than needed
     let reached;
-    if (node.type === 'Identifier') {
+    if (t.isIdentifier(node)) {
       const name = node.name;
       if (nameToGraphName.hasOwnProperty(name)) {
         reached = nameToGraphName[name];
@@ -943,6 +1018,9 @@ function emitDCEGraph(ast) {
       return;
     }
     if (reached) {
+      /**
+       * @param {string} reached
+       */
       function addReach(reached) {
         if (defunInfo) {
           defunInfo.reaches[reached] = 1; // defun reaches it
@@ -976,6 +1054,9 @@ function emitDCEGraph(ast) {
   fullWalk(ast, (node) => visitNode(node, null));
   // Final work: print out the graph
   // sort for determinism
+  /**
+   * @param {{}} map
+   */
   function sortedNamesFromMap(map) {
     const names = [];
     for (const name of Object.keys(map)) {
@@ -989,13 +1070,16 @@ function emitDCEGraph(ast) {
     info.reaches = sortedNamesFromMap(info.reaches);
     graph.push(info);
   });
-  print(JSON.stringify(graph, null, ' '));
+  console.log(JSON.stringify(graph, null, ' '));
 }
 
 // Apply graph removals from running wasm-metadce. This only removes imports and
 // exports from JS side, effectively disentangling the wasm and JS sides that
 // way (and we leave further DCE on the JS and wasm sides to their respective
 // optimizers, closure compiler and binaryen).
+/**
+ * @param {t.Node} ast
+ */
 function applyDCEGraphRemovals(ast) {
   const unusedExports = new Set(extraInfo.unusedExports);
   const unusedImports = new Set(extraInfo.unusedImports);
@@ -1008,6 +1092,8 @@ function applyDCEGraphRemovals(ast) {
     if (isWasmImportsAssign(node)) {
       const assignedObject = getWasmImportsValue(node);
       assignedObject.properties = assignedObject.properties.filter((item) => {
+        t.assertObjectProperty(item, {computed: false});
+        t.assertIdentifier(item.key);
         const name = item.key.name;
         const value = item.value;
         if (unusedImports.has(name)) {
@@ -1016,7 +1102,7 @@ function applyDCEGraphRemovals(ast) {
         }
         return true;
       });
-    } else if (node.type === 'VariableDeclaration') {
+    } else if (t.isVariableDeclaration(node)) {
       // Handle the various ways in which we extract wasmExports:
       //   1. var _x = wasmExports['x'];
       // or
@@ -1033,7 +1119,7 @@ function applyDCEGraphRemovals(ast) {
 
       // Look through the optional `Module['_x']`
       let realInit = init;
-      if (init.type == 'AssignmentExpression' && isModuleUse(init.left)) {
+      if (t.isAssignmentExpression(init) && isModuleUse(init.left)) {
         realInit = init.right;
       }
 
@@ -1045,7 +1131,7 @@ function applyDCEGraphRemovals(ast) {
           emptyOut(node);
           foundUnusedExports.add(export_name);
         }
-      } else if (realInit.type == 'ArrowFunctionExpression') {
+      } else if (t.isArrowFunctionExpression(realInit)) {
         const export_name = isExportWrapperFunction(realInit);
         if (unusedExports.has(export_name)) {
           // Case (3) and (4)
@@ -1054,12 +1140,16 @@ function applyDCEGraphRemovals(ast) {
           foundUnusedExports.add(export_name);
         }
       }
-    } else if (node.type === 'ExpressionStatement') {
+    } else if (t.isExpressionStatement(node)) {
       const expr = node.expression;
       // In the MINIMAL_RUNTIME code pattern we have just
       //   _x = wasmExports['x']
       // and never in a var.
-      if (expr.operator === '=' && expr.left.type === 'Identifier' && isExportUse(expr.right)) {
+      if (
+        t.isAssignmentExpression(expr, {operator: '='}) &&
+        t.isIdentifier(expr.left) &&
+        isExportUse(expr.right)
+      ) {
         const export_name = getExportOrModuleUseName(expr.right);
         if (unusedExports.has(export_name)) {
           emptyOut(node);
@@ -1070,69 +1160,58 @@ function applyDCEGraphRemovals(ast) {
   });
 
   for (const i of unusedImports) {
-    assert(foundUnusedImports.has(i), 'unused import not found: ' + i);
+    assert.ok(foundUnusedImports.has(i), 'unused import not found: ' + i);
   }
   for (const e of unusedExports) {
-    assert(foundUnusedExports.has(e), 'unused export not found: ' + e);
+    assert.ok(foundUnusedExports.has(e), 'unused export not found: ' + e);
   }
 }
 
-// Need a parser to pass to acorn.Node constructor.
-// Create it once and reuse it.
-const stubParser = new acorn.Parser({ecmaVersion: 2021});
-
-function createNode(props) {
-  const node = new acorn.Node(stubParser);
-  Object.assign(node, props);
-  return node;
-}
-
-function createLiteral(value) {
-  return createNode({
-    type: 'Literal',
-    value: value,
-    raw: '' + value,
-  });
-}
-
+/**
+ * @param {t.Node} node
+ * @param {string} name
+ * @param {(t.Expression | t.SpreadElement | t.ArgumentPlaceholder)[]} args
+ */
 function makeCallExpression(node, name, args) {
-  Object.assign(node, {
-    type: 'CallExpression',
-    callee: createNode({
-      type: 'Identifier',
-      name: name,
-    }),
-    arguments: args,
-  });
+  Object.assign(node, t.callExpression(t.identifier(name), args));
 }
 
-function isEmscriptenHEAP(name) {
+/**
+ * @param {string} name
+ */
+function parseEmscriptenHeapName(name) {
   switch (name) {
     case 'HEAP8':
+      return {type: 'I', bits: 8};
     case 'HEAPU8':
+      return {type: 'U', bits: 8};
     case 'HEAP16':
+      return {type: 'I', bits: 16};
     case 'HEAPU16':
+      return {type: 'U', bits: 16};
     case 'HEAP32':
+      return {type: 'I', bits: 32};
     case 'HEAPU32':
+      return {type: 'U', bits: 32};
     case 'HEAPF32':
-    case 'HEAPF64': {
-      return true;
-    }
-    default: {
-      return false;
-    }
+      return {type: 'F', bits: 32};
+    case 'HEAPF64':
+      return {type: 'F', bits: 64};
   }
 }
 
 // Replaces each HEAP access with function call that uses DataView to enforce
 // LE byte order for HEAP buffer
+/**
+ * @param {t.Node} ast
+ */
 function littleEndianHeap(ast) {
   recursiveWalk(ast, {
     FunctionDeclaration: (node, c) => {
       // do not recurse into LE_HEAP_STORE, LE_HEAP_LOAD functions
       if (
         !(
-          node.id.type === 'Identifier' &&
+          t.isIdentifier(node.id) &&
           (node.id.name.startsWith('LE_HEAP') || node.id.name.startsWith('LE_ATOMICS_'))
         )
       ) {
@@ -1140,7 +1219,7 @@ function littleEndianHeap(ast) {
       }
     },
     VariableDeclarator: (node, c) => {
-      if (!(node.id.type === 'Identifier' && node.id.name.startsWith('LE_ATOMICS_'))) {
+      if (!(t.isIdentifier(node.id) && node.id.name.startsWith('LE_ATOMICS_'))) {
         c(node.id);
         if (node.init) c(node.init);
       }
@@ -1149,51 +1228,16 @@ function littleEndianHeap(ast) {
       const target = node.left;
       const value = node.right;
       c(value);
-      if (!isHEAPAccess(target)) {
-        // not accessing the HEAP
-        c(target);
-      } else {
-        // replace the heap access with LE_HEAP_STORE
-        const name = target.object.name;
-        const idx = target.property;
-        switch (name) {
-          case 'HEAP8':
-          case 'HEAPU8': {
-            // no action required - storing only 1 byte
-            break;
-          }
-          case 'HEAP16': {
-            // change "name[idx] = value" to "LE_HEAP_STORE_I16(idx*2, value)"
-            makeCallExpression(node, 'LE_HEAP_STORE_I16', [multiply(idx, 2), value]);
-            break;
-          }
-          case 'HEAPU16': {
-            // change "name[idx] = value" to "LE_HEAP_STORE_U16(idx*2, value)"
-            makeCallExpression(node, 'LE_HEAP_STORE_U16', [multiply(idx, 2), value]);
-            break;
-          }
-          case 'HEAP32': {
-            // change "name[idx] = value" to "LE_HEAP_STORE_I32(idx*4, value)"
-            makeCallExpression(node, 'LE_HEAP_STORE_I32', [multiply(idx, 4), value]);
-            break;
-          }
-          case 'HEAPU32': {
-            // change "name[idx] = value" to "LE_HEAP_STORE_U32(idx*4, value)"
-            makeCallExpression(node, 'LE_HEAP_STORE_U32', [multiply(idx, 4), value]);
-            break;
-          }
-          case 'HEAPF32': {
-            // change "name[idx] = value" to "LE_HEAP_STORE_F32(idx*4, value)"
-            makeCallExpression(node, 'LE_HEAP_STORE_F32', [multiply(idx, 4), value]);
-            break;
-          }
-          case 'HEAPF64': {
-            // change "name[idx] = value" to "LE_HEAP_STORE_F64(idx*8, value)"
-            makeCallExpression(node, 'LE_HEAP_STORE_F64', [multiply(idx, 8), value]);
-            break;
-          }
-        }
+      const parsed = parseEmscriptenHeapAccess(target);
+      if (!parsed || parsed.bits === 8) {
+        // not accessing the HEAP or loading only 1 byte
+        return c(target);
       }
+      // replace the heap access with LE_HEAP_STORE
+      makeCallExpression(node, `LE_HEAP_STORE_${parsed.type}${parsed.bits}`, [
+        multiply(parsed.property, parsed.bits / 8),
+        value,
+      ]);
     },
     CallExpression: (node, c) => {
       if (node.arguments) {
@@ -1201,12 +1245,10 @@ function littleEndianHeap(ast) {
       }
       if (
         // Atomics.X(args) -> LE_ATOMICS_X(args)
-        node.callee.type === 'MemberExpression' &&
-        node.callee.object.type === 'Identifier' &&
-        node.callee.object.name === 'Atomics' &&
-        node.callee.property.type === 'Identifier' &&
-        !node.callee.computed
+        t.isMemberExpression(node.callee, {computed: false}) &&
+        t.isIdentifier(node.callee.object, {name: 'Atomics'})
       ) {
+        t.assertIdentifier(node.callee.property);
         makeCallExpression(
           node,
           'LE_ATOMICS_' + node.callee.property.name.toUpperCase(),
@@ -1218,50 +1260,15 @@ function littleEndianHeap(ast) {
     },
     MemberExpression: (node, c) => {
       c(node.property);
-      if (!isHEAPAccess(node)) {
-        // not accessing the HEAP
-        c(node.object);
-      } else {
-        // replace the heap access with LE_HEAP_LOAD
-        const idx = node.property;
-        switch (node.object.name) {
-          case 'HEAP8':
-          case 'HEAPU8': {
-            // no action required - loading only 1 byte
-            break;
-          }
-          case 'HEAP16': {
-            // change "name[idx]" to "LE_HEAP_LOAD_I16(idx*2)"
-            makeCallExpression(node, 'LE_HEAP_LOAD_I16', [multiply(idx, 2)]);
-            break;
-          }
-          case 'HEAPU16': {
-            // change "name[idx]" to "LE_HEAP_LOAD_U16(idx*2)"
-            makeCallExpression(node, 'LE_HEAP_LOAD_U16', [multiply(idx, 2)]);
-            break;
-          }
-          case 'HEAP32': {
-            // change "name[idx]" to "LE_HEAP_LOAD_I32(idx*4)"
-            makeCallExpression(node, 'LE_HEAP_LOAD_I32', [multiply(idx, 4)]);
-            break;
-          }
-          case 'HEAPU32': {
-            // change "name[idx]" to "LE_HEAP_LOAD_U32(idx*4)"
-            makeCallExpression(node, 'LE_HEAP_LOAD_U32', [multiply(idx, 4)]);
-            break;
-          }
-          case 'HEAPF32': {
-            // change "name[idx]" to "LE_HEAP_LOAD_F32(idx*4)"
-            makeCallExpression(node, 'LE_HEAP_LOAD_F32', [multiply(idx, 4)]);
-            break;
-          }
-          case 'HEAPF64': {
-            // change "name[idx]" to "LE_HEAP_LOAD_F64(idx*8)"
-            makeCallExpression(node, 'LE_HEAP_LOAD_F64', [multiply(idx, 8)]);
-            break;
-          }
-        }
+      const parsed = parseEmscriptenHeapAccess(node);
+      if (!parsed || parsed.bits === 8) {
+        // not accessing the HEAP or loading only 1 byte
+        return c(node.object);
       }
+      // replace the heap access with LE_HEAP_LOAD
+      makeCallExpression(node, `LE_HEAP_LOAD_${parsed.type}${parsed.bits}`, [
+        multiply(parsed.property, parsed.bits / 8),
+      ]);
     },
   });
 }
@@ -1269,13 +1276,16 @@ function littleEndianHeap(ast) {
 // Instrument heap accesses to call GROWABLE_HEAP_* helper functions instead, which allows
 // pthreads + memory growth to work (we check if the memory was grown on another thread
 // in each access), see #8365.
+/**
+ * @param {t.Node} ast
+ */
 function growableHeap(ast) {
   recursiveWalk(ast, {
     FunctionDeclaration(node, c) {
       // Do not recurse into to GROWABLE_HEAP_ helper functions themselves.
       if (
         !(
-          node.id.type === 'Identifier' &&
+          t.isIdentifier(node.id) &&
           (node.id.name.startsWith('GROWABLE_HEAP_') || node.id.name === 'LE_HEAP_UPDATE')
         )
       ) {
@@ -1283,7 +1293,7 @@ function growableHeap(ast) {
       }
     },
     AssignmentExpression: (node) => {
-      if (node.left.type === 'Identifier' && isEmscriptenHEAP(node.left.name)) {
+      if (t.isIdentifier(node.left) && parseEmscriptenHeapName(node.left.name)) {
         // Don't transform initial setup of the arrays.
         return;
       }
@@ -1301,42 +1311,10 @@ function growableHeap(ast) {
       });
     },
     Identifier: (node) => {
-      if (node.name.startsWith('HEAP')) {
+      const parsed = parseEmscriptenHeapName(node.name);
+      if (parsed) {
         // Turn HEAP8 into GROWABLE_HEAP_I8() etc
-        switch (node.name) {
-          case 'HEAP8': {
-            makeCallExpression(node, 'GROWABLE_HEAP_I8', []);
-            break;
-          }
-          case 'HEAPU8': {
-            makeCallExpression(node, 'GROWABLE_HEAP_U8', []);
-            break;
-          }
-          case 'HEAP16': {
-            makeCallExpression(node, 'GROWABLE_HEAP_I16', []);
-            break;
-          }
-          case 'HEAPU16': {
-            makeCallExpression(node, 'GROWABLE_HEAP_U16', []);
-            break;
-          }
-          case 'HEAP32': {
-            makeCallExpression(node, 'GROWABLE_HEAP_I32', []);
-            break;
-          }
-          case 'HEAPU32': {
-            makeCallExpression(node, 'GROWABLE_HEAP_U32', []);
-            break;
-          }
-          case 'HEAPF32': {
-            makeCallExpression(node, 'GROWABLE_HEAP_F32', []);
-            break;
-          }
-          case 'HEAPF64': {
-            makeCallExpression(node, 'GROWABLE_HEAP_F64', []);
-            break;
-          }
-        }
+        makeCallExpression(node, `GROWABLE_HEAP_${parsed.type}${parsed.bits}`, []);
       }
     },
   });
@@ -1345,53 +1323,50 @@ function growableHeap(ast) {
 // Make all JS pointers unsigned. We do this by modifying things like
 // HEAP32[X >> 2] to HEAP32[X >>> 2]. We also need to handle the case of
 // HEAP32[X] and make that HEAP32[X >>> 0], things like subarray(), etc.
+/**
+ * @param {t.Node} ast
+ */
 function unsignPointers(ast) {
   // Aside from the standard emscripten HEAP*s, also identify just "HEAP"/"heap"
   // as representing a heap. This can be used in JS library code in order
   // to get this pass to fix it up.
-  function isHeap(name) {
-    return isEmscriptenHEAP(name) || name === 'heap' || name === 'HEAP';
+  /**
+   * @param {t.Node} node
+   */
+  function isHeap(node) {
+    if (!t.isIdentifier(node)) return false;
+    const {name} = node;
+    return parseEmscriptenHeapName(name) || name === 'heap' || name === 'HEAP';
   }
 
+  /**
+   * @param {t.Expression | t.PrivateName | t.ArgumentPlaceholder | t.SpreadElement} node
+   */
   function unsign(node) {
+    t.assertExpression(node);
     // The pointer is often a >> shift, which we can just turn into >>>
-    if (node.type === 'BinaryExpression') {
+    if (t.isBinaryExpression(node)) {
       if (node.operator === '>>') {
         node.operator = '>>>';
         return node;
       }
     }
     // If nothing else worked out, add a new shift.
-    return {
-      type: 'BinaryExpression',
-      left: node,
-      operator: '>>>',
-      right: {
-        type: 'Literal',
-        value: 0,
-        raw: '0',
-        start: 0,
-        end: 0,
-      },
-      start: 0,
-      end: 0,
-    };
+    return t.binaryExpression('>>>', node, t.numericLiteral(0));
   }
 
   fullWalk(ast, (node) => {
-    if (node.type === 'MemberExpression') {
+    if (t.isMemberExpression(node, {computed: true})) {
       // Check if this is HEAP*[?]
-      if (node.object.type === 'Identifier' && isHeap(node.object.name) && node.computed) {
+      if (isHeap(node.object)) {
         node.property = unsign(node.property);
       }
-    } else if (node.type === 'CallExpression') {
+    } else if (t.isCallExpression(node)) {
       if (
-        node.callee.type === 'MemberExpression' &&
-        node.callee.object.type === 'Identifier' &&
-        isHeap(node.callee.object.name) &&
-        node.callee.property.type === 'Identifier' &&
-        !node.callee.computed
+        t.isMemberExpression(node.callee, {computed: false}) &&
+        isHeap(node.callee.object)
       ) {
+        t.assertIdentifier(node.callee.property);
         // This is a call on HEAP*.?. Specific things we need to fix up are
         // subarray, set, and copyWithin. TODO more?
         if (node.callee.property.name === 'set') {
@@ -1417,21 +1392,57 @@ function unsignPointers(ast) {
   });
 }
 
-function isHEAPAccess(node) {
-  return (
-    node.type === 'MemberExpression' &&
-    node.object.type === 'Identifier' &&
-    node.computed && // notice a[X] but not a.X
-    isEmscriptenHEAP(node.object.name)
-  );
+/**
+ * @param {t.Node} node
+ */
+function parseEmscriptenHeapAccess(node) {
+  if (
+    t.isMemberExpression(node) &&
+    t.isIdentifier(node.object) &&
+    node.computed // notice a[X] but not a.X
+  ) {
+    const parsed = parseEmscriptenHeapName(node.object.name);
+    if (parsed) {
+      t.assertExpression(node.property);
+      return Object.assign(parsed, {
+        property: node.property,
+      });
+    }
+  }
 }
 
 // Replace direct HEAP* loads/stores with calls into C, in which ASan checks
 // are applied. That lets ASan cover JS too.
+/**
+ * @param {t.Node} ast
+ */
 function asanify(ast) {
+  /**
+   * @param {t.Node} target
+   */
+  function toSuffixAndPtr(target) {
+    const parsed = parseEmscriptenHeapAccess(target);
+    if (!parsed) {
+      return;
+    }
+    let suffix = '';
+    switch (parsed.type) {
+      case 'U':
+        suffix = 'u';
+      // fallthrough
+      case 'I':
+        suffix = `${parsed.bits / 8}${suffix}`;
+        break;
+      case 'F':
+        suffix = parsed.bits === 64 ? 'd' : 'f';
+        break;
+    }
+    return {suffix, ptr: parsed.property};
+  }
+
   recursiveWalk(ast, {
     FunctionDeclaration(node, c) {
-      if (node.id.type === 'Identifier' && node.id.name.startsWith('_asan_js_')) {
+      if (t.isIdentifier(node.id) && node.id.name.startsWith('_asan_js_')) {
         // do not recurse into this js impl function, which we use during
         // startup before the wasm is ready
       } else {
@@ -1442,108 +1453,46 @@ function asanify(ast) {
       const target = node.left;
       const value = node.right;
       c(value);
-      if (isHEAPAccess(target)) {
-        // Instrument a store.
-        const ptr = target.property;
-        switch (target.object.name) {
-          case 'HEAP8': {
-            makeCallExpression(node, '_asan_js_store_1', [ptr, value]);
-            break;
-          }
-          case 'HEAPU8': {
-            makeCallExpression(node, '_asan_js_store_1u', [ptr, value]);
-            break;
-          }
-          case 'HEAP16': {
-            makeCallExpression(node, '_asan_js_store_2', [ptr, value]);
-            break;
-          }
-          case 'HEAPU16': {
-            makeCallExpression(node, '_asan_js_store_2u', [ptr, value]);
-            break;
-          }
-          case 'HEAP32': {
-            makeCallExpression(node, '_asan_js_store_4', [ptr, value]);
-            break;
-          }
-          case 'HEAPU32': {
-            makeCallExpression(node, '_asan_js_store_4u', [ptr, value]);
-            break;
-          }
-          case 'HEAPF32': {
-            makeCallExpression(node, '_asan_js_store_f', [ptr, value]);
-            break;
-          }
-          case 'HEAPF64': {
-            makeCallExpression(node, '_asan_js_store_d', [ptr, value]);
-            break;
-          }
-        }
-      } else {
-        c(target);
+      const parsed = toSuffixAndPtr(target);
+      if (!parsed) {
+        return c(target);
       }
+      // Instrument a store.
+      makeCallExpression(node, `_asan_js_store_${parsed.suffix}`, [parsed.ptr, value]);
     },
     MemberExpression(node, c) {
       c(node.property);
-      if (!isHEAPAccess(node)) {
+      const parsed = toSuffixAndPtr(node);
+      if (!parsed) {
         c(node.object);
-      } else {
-        // Instrument a load.
-        const ptr = node.property;
-        switch (node.object.name) {
-          case 'HEAP8': {
-            makeCallExpression(node, '_asan_js_load_1', [ptr]);
-            break;
-          }
-          case 'HEAPU8': {
-            makeCallExpression(node, '_asan_js_load_1u', [ptr]);
-            break;
-          }
-          case 'HEAP16': {
-            makeCallExpression(node, '_asan_js_load_2', [ptr]);
-            break;
-          }
-          case 'HEAPU16': {
-            makeCallExpression(node, '_asan_js_load_2u', [ptr]);
-            break;
-          }
-          case 'HEAP32': {
-            makeCallExpression(node, '_asan_js_load_4', [ptr]);
-            break;
-          }
-          case 'HEAPU32': {
-            makeCallExpression(node, '_asan_js_load_4u', [ptr]);
-            break;
-          }
-          case 'HEAPF32': {
-            makeCallExpression(node, '_asan_js_load_f', [ptr]);
-            break;
-          }
-          case 'HEAPF64': {
-            makeCallExpression(node, '_asan_js_load_d', [ptr]);
-            break;
-          }
+        if (node.computed) {
+          c(node.property);
         }
+        return;
       }
+      // Instrument a load.
+      makeCallExpression(node, `_asan_js_load_${parsed.suffix}`, [parsed.ptr]);
     },
   });
 }
 
+/**
+ * @param {t.Expression} value
+ * @param {number} by
+ */
 function multiply(value, by) {
-  return createNode({
-    type: 'BinaryExpression',
-    left: value,
-    operator: '*',
-    right: createLiteral(by),
-  });
+  return t.binaryExpression('*', value, t.numericLiteral(by));
 }
 
 // Replace direct heap access with SAFE_HEAP* calls.
+/**
+ * @param {t.Node} ast
+ */
 function safeHeap(ast) {
   recursiveWalk(ast, {
     FunctionDeclaration(node, c) {
       if (
-        node.id.type === 'Identifier' &&
+        t.isIdentifier(node.id) &&
         (node.id.name.startsWith('SAFE_HEAP') ||
           node.id.name === 'setValue_safe' ||
           node.id.name === 'getValue_safe')
@@ -1558,120 +1507,44 @@ function safeHeap(ast) {
       const target = node.left;
       const value = node.right;
       c(value);
-      if (isHEAPAccess(target)) {
-        // Instrument a store.
-        const ptr = target.property;
-        switch (target.object.name) {
-          case 'HEAP8':
-          case 'HEAPU8': {
-            makeCallExpression(node, 'SAFE_HEAP_STORE', [ptr, value, createLiteral(1)]);
-            break;
-          }
-          case 'HEAP16':
-          case 'HEAPU16': {
-            makeCallExpression(node, 'SAFE_HEAP_STORE', [
-              multiply(ptr, 2),
-              value,
-              createLiteral(2),
-            ]);
-            break;
-          }
-          case 'HEAP32':
-          case 'HEAPU32': {
-            makeCallExpression(node, 'SAFE_HEAP_STORE', [
-              multiply(ptr, 4),
-              value,
-              createLiteral(4),
-            ]);
-            break;
-          }
-          case 'HEAPF32': {
-            makeCallExpression(node, 'SAFE_HEAP_STORE_D', [
-              multiply(ptr, 4),
-              value,
-              createLiteral(4),
-            ]);
-            break;
-          }
-          case 'HEAPF64': {
-            makeCallExpression(node, 'SAFE_HEAP_STORE_D', [
-              multiply(ptr, 8),
-              value,
-              createLiteral(8),
-            ]);
-            break;
-          }
-        }
-      } else {
-        c(target);
+      const parsed = parseEmscriptenHeapAccess(target);
+      if (!parsed) {
+        return c(target);
       }
+      // Instrument a store.
+      let ptr = parsed.property;
+      const byteSize = parsed.bits / 8;
+      if (byteSize !== 1) {
+        ptr = multiply(ptr, byteSize);
+      }
+      makeCallExpression(node, `SAFE_HEAP_STORE${parsed.type === 'F' ? '_D' : ''}`, [
+        ptr,
+        value,
+        t.numericLiteral(byteSize),
+      ]);
     },
     MemberExpression(node, c) {
       c(node.property);
-      if (!isHEAPAccess(node)) {
-        c(node.object);
-      } else {
-        // Instrument a load.
-        const ptr = node.property;
-        switch (node.object.name) {
-          case 'HEAP8': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [ptr, createLiteral(1), createLiteral(0)]);
-            break;
-          }
-          case 'HEAPU8': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [ptr, createLiteral(1), createLiteral(1)]);
-            break;
-          }
-          case 'HEAP16': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [
-              multiply(ptr, 2),
-              createLiteral(2),
-              createLiteral(0),
-            ]);
-            break;
-          }
-          case 'HEAPU16': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [
-              multiply(ptr, 2),
-              createLiteral(2),
-              createLiteral(1),
-            ]);
-            break;
-          }
-          case 'HEAP32': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [
-              multiply(ptr, 4),
-              createLiteral(4),
-              createLiteral(0),
-            ]);
-            break;
-          }
-          case 'HEAPU32': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [
-              multiply(ptr, 4),
-              createLiteral(4),
-              createLiteral(1),
-            ]);
-            break;
-          }
-          case 'HEAPF32': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD_D', [
-              multiply(ptr, 4),
-              createLiteral(4),
-              createLiteral(0),
-            ]);
-            break;
-          }
-          case 'HEAPF64': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD_D', [
-              multiply(ptr, 8),
-              createLiteral(8),
-              createLiteral(0),
-            ]);
-            break;
-          }
-        }
+      const parsed = parseEmscriptenHeapAccess(node);
+      if (!parsed) {
+        return c(node.object);
       }
+      // Instrument a load.
+      let ptr = parsed.property;
+      const byteSize = parsed.bits / 8;
+      if (byteSize !== 1) {
+        ptr = multiply(ptr, byteSize);
+      }
+      let args = [ptr, t.numericLiteral(byteSize)];
+      switch (parsed.type) {
+        case 'U':
+          args.push(t.numericLiteral(1));
+          break;
+        case 'F':
+          args.push(t.numericLiteral(2));
+          break;
+      }
+      makeCallExpression(node, 'SAFE_HEAP_LOAD', args);
     },
   });
 }
@@ -1703,6 +1576,9 @@ const minifiedNames = [];
 const minifiedState = [0];
 
 // Make sure the nth index in minifiedNames exists. Done 100% deterministically.
+/**
+ * @param {number} n
+ */
 function ensureMinifiedNames(n) {
   while (minifiedNames.length < n + 1) {
     // generate the current name
@@ -1725,27 +1601,35 @@ function ensureMinifiedNames(n) {
   }
 }
 
+/**
+ * @param {t.File} ast
+ */
 function minifyLocals(ast) {
   // We are given a mapping of global names to their minified forms.
-  assert(extraInfo && extraInfo.globals);
+  assert.ok(extraInfo?.globals);
 
-  for (const fun of ast.body) {
-    if (fun.type !== 'FunctionDeclaration') {
+  for (const fun of ast.program.body) {
+    if (!t.isFunctionDeclaration(fun)) {
       continue;
     }
     // Find the list of local names, including params.
     const localNames = new Set();
     for (const param of fun.params) {
+      t.assertIdentifier(param);
       localNames.add(param.name);
     }
     simpleWalk(fun, {
-      VariableDeclaration(node, _c) {
+      VariableDeclaration(node) {
         for (const dec of node.declarations) {
+          t.assertIdentifier(dec.id);
           localNames.add(dec.id.name);
         }
       },
     });
 
+    /**
+     * @param {string} name
+     */
     function isLocalName(name) {
       return localNames.has(name);
     }
@@ -1765,7 +1649,7 @@ function minifyLocals(ast) {
     // Don't actually minify them yet as that might interfere with local
     // variable names; just mark them as used, and what their new name will be.
     simpleWalk(fun, {
-      Identifier(node, _c) {
+      Identifier(node) {
         const name = node.name;
         if (!isLocalName(name)) {
           const minified = extraInfo.globals[name];
@@ -1775,11 +1659,11 @@ function minifyLocals(ast) {
           }
         }
       },
-      CallExpression(node, _c) {
+      CallExpression(node) {
         // We should never call a local name, as in asm.js-style code our
         // locals are just numbers, not functions; functions are all declared
         // in the outer scope. If a local is called, that is a bug.
-        if (node.callee.type === 'Identifier') {
+        if (t.isIdentifier(node.callee)) {
           assertAt(!isLocalName(node.callee.name), node.callee, 'cannot call a local');
         }
       },
@@ -1804,6 +1688,7 @@ function minifyLocals(ast) {
 
     // Traverse and minify all names. First the function parameters.
     for (const param of fun.params) {
+      t.assertIdentifier(param);
       const minified = getNextMinifiedName();
       newNames.set(param.name, minified);
       param.name = minified;
@@ -1850,12 +1735,15 @@ function minifyLocals(ast) {
 
     // Finally, the function name, after restoring it.
     fun.id = funId;
-    assert(extraInfo.globals.hasOwnProperty(fun.id.name));
+    assert.ok(extraInfo.globals.hasOwnProperty(fun.id.name));
     fun.id.name = extraInfo.globals[fun.id.name];
   }
 }
 
-function minifyGlobals(ast) {
+/**
+ * @param {t.File} fileAst
+ */
+function minifyGlobals({program: ast}) {
   // The input is in form
   //
   //   function instantiate(wasmImports, wasmMemory, wasmTable) {
@@ -1885,13 +1773,11 @@ function minifyGlobals(ast) {
   // analysis here. FIXME
 
   // We must run on a singleton instantiate() function as described above.
-  assert(
-    ast.type === 'Program' &&
-      ast.body.length === 1 &&
-      ast.body[0].type === 'FunctionDeclaration' &&
-      ast.body[0].id.name === 'instantiate',
-  );
+  t.assertProgram(ast);
+  assert.equal(ast.body.length, 1, 'expected a single function body');
   const fun = ast.body[0];
+  t.assertFunctionDeclaration(fun);
+  assertAt(fun.id.name === 'instantiate', fun.id, 'expected instantiate() function');
 
   // Swap the function's name away so that we can then minify everything else.
   const funId = fun.id;
@@ -1909,16 +1795,19 @@ function minifyGlobals(ast) {
         declared.add(node.id.name);
       }
       for (const param of node.params) {
+        t.assertIdentifier(param);
         declared.add(param.name);
       }
     },
     FunctionExpression(node) {
       for (const param of node.params) {
+        t.assertIdentifier(param);
         declared.add(param.name);
       }
     },
     VariableDeclaration(node) {
       for (const decl of node.declarations) {
+        t.assertIdentifier(decl.id);
         declared.add(decl.id.name);
       }
     },
@@ -1943,12 +1832,16 @@ function minifyGlobals(ast) {
 
   const minified = new Map();
 
+  /**
+   * @param {string} name
+   */
   function minify(name) {
-    if (!minified.has(name)) {
-      minified.set(name, getNewMinifiedName());
+    let minifiedName = minified.get(name);
+    if (!minifiedName) {
+      minifiedName = getNewMinifiedName();
+      minified.set(name, minifiedName);
     }
-    assert(minified.get(name));
-    return minified.get(name);
+    return minifiedName;
   }
 
   // Start with the declared things in the lowest indices. Things like HEAP8
@@ -1980,148 +1873,61 @@ function minifyGlobals(ast) {
   const json = {};
   for (const x of minified.entries()) json[x[0]] = x[1];
 
-  suffix = '// EXTRA_INFO:' + JSON.stringify(json);
-}
-
-// Utilities
-
-function reattachComments(ast, commentsMap) {
-  const symbols = [];
-
-  // Collect all code symbols
-  ast.walk(
-    new terser.TreeWalker((node) => {
-      if (node.start && node.start.pos) {
-        symbols.push(node);
-      }
-    }),
-  );
-
-  // Sort them by ascending line number
-  symbols.sort((a, b) => a.start.pos - b.start.pos);
-
-  // Walk through all comments in ascending line number, and match each
-  // comment to the appropriate code block.
-  let j = 0;
-  for (const [pos, comments] of Object.entries(commentsMap)) {
-    while (j < symbols.length && symbols[j].start.pos < pos) {
-      ++j;
-    }
-    if (j >= symbols.length) {
-      trace('dropping comments: no symbol comes after them');
-      break;
-    }
-    if (symbols[j].start.pos != pos) {
-      // This comment must have been associated with a node that still
-      // exists in the AST, otherwise to drop it.
-      trace('dropping comments: not linked to any remaining AST node');
-      continue;
-    }
-    symbols[j].start.comments_before ??= [];
-    for (const comment of comments) {
-      trace('reattaching comment');
-      symbols[j].start.comments_before.push(
-        new terser.AST_Token(
-          comment.type == 'Line' ? 'comment1' : 'comment2',
-          comment.value,
-          undefined,
-          undefined,
-          false,
-          undefined,
-          undefined,
-          '0',
-        ),
-      );
-    }
-  }
+  suffix = EXTRA_INFO_PREFIX + JSON.stringify(json);
 }
 
 // Main
 
 let suffix = '';
 
-const argv = process.argv.slice(2);
-
-function getArg(arg) {
-  const index = argv.indexOf(arg);
-  if (index == -1) {
-    return false;
-  }
-  argv.splice(index, 1);
-  return true;
-}
-
-function trace(...args) {
-  if (verbose) {
-    console.warn(...args);
-  }
-}
-
-function error(...args) {
-  console.error(...args);
-  throw new Error(...args);
-}
-
 // If enabled, output retains parentheses and comments so that the
 // output can further be passed out to Closure.
-const closureFriendly = getArg('--closure-friendly');
-const exportES6 = getArg('--export-es6');
-const verbose = getArg('--verbose');
-const noPrint = getArg('--no-print');
-const minifyWhitespace = getArg('--minify-whitespace');
+const {
+  positionals: [infile, ...passes],
+  values: {
+    'closure-friendly': closureFriendly,
+    'export-es6': exportES6,
+    verbose: verbose,
+    'no-print': noPrint,
+    'minify-whitespace': minifyWhitespace,
+    'out-file': outfile,
+  },
+} = parseArgs({
+  allowPositionals: true,
+  options: {
+    'closure-friendly': {type: 'boolean'},
+    'export-es6': {type: 'boolean'},
+    verbose: {type: 'boolean'},
+    'no-print': {type: 'boolean'},
+    'minify-whitespace': {type: 'boolean'},
+    'out-file': {type: 'string', short: 'o'},
+  },
+});
 
-let outfile;
-const outfileIndex = argv.indexOf('-o');
-if (outfileIndex != -1) {
-  outfile = argv[outfileIndex + 1];
-  argv.splice(outfileIndex, 2);
-}
+const trace = verbose
+  ? console.warn
+  : () => {
+      /* no-op */
+    };
 
-const infile = argv[0];
-const passes = argv.slice(1);
-
-const input = read(infile);
-const extraInfoStart = input.lastIndexOf('// EXTRA_INFO:');
+let input = readFileSync(infile, 'utf-8');
+const extraInfoStart = input.lastIndexOf(EXTRA_INFO_PREFIX);
 let extraInfo = null;
 if (extraInfoStart > 0) {
-  extraInfo = JSON.parse(input.slice(extraInfoStart + 14));
-}
-// Collect all JS code comments to this map so that we can retain them in the
-// outputted code if --closureFriendly was requested.
-const sourceComments = {};
-const params = {
-  ecmaVersion: 'latest',
-  sourceType: exportES6 ? 'module' : 'script',
-  allowAwaitOutsideFunction: true,
-};
-if (closureFriendly) {
-  const currentComments = [];
-  Object.assign(params, {
-    preserveParens: true,
-    onToken: (token) => {
-      // Associate comments with the start position of the next token.
-      sourceComments[token.start] = currentComments.slice();
-      currentComments.length = 0;
-    },
-    onComment: currentComments,
-  });
-}
-let ast;
-try {
-  ast = acorn.parse(input, params);
-} catch (err) {
-  err.message += (() => {
-    let errorMessage = '\n' + input.split(acorn.lineBreak)[err.loc.line - 1] + '\n';
-    let column = err.loc.column;
-    while (column--) {
-      errorMessage += ' ';
-    }
-    errorMessage += '^\n';
-    return errorMessage;
-  })();
-  throw err;
+  extraInfo = JSON.parse(input.slice(extraInfoStart + EXTRA_INFO_PREFIX.length));
+  input = input.slice(0, extraInfoStart);
 }
 
+try {
+const ast = parse(input, {
+  sourceFilename: infile,
+  sourceType: exportES6 ? 'module' : 'script',
+  allowAwaitOutsideFunction: true,
+  createParenthesizedExpressions: closureFriendly,
+  attachComment: closureFriendly,
+});
+
+/** @type {Record<string, (file: t.File) => void>} */
 const registry = {
   JSDCE,
   AJSDCE,
@@ -2138,29 +1944,19 @@ const registry = {
   minifyGlobals,
 };
 
-passes.forEach((pass) => {
+for (const pass of passes) {
   trace(`running AST pass: ${pass}`);
-  if (!(pass in registry)) {
-    error(`unknown optimizer pass: ${pass}`);
-  }
-  registry[pass](ast);
-});
+  const resolvedPass = registry[pass];
+  assert.ok(resolvedPass, `unknown optimizer pass: ${pass}`);
+  resolvedPass(ast);
+}
 
 if (!noPrint) {
-  const terserAst = terser.AST_Node.from_mozilla_ast(ast);
-
-  if (closureFriendly) {
-    reattachComments(terserAst, sourceComments);
-  }
-
-  let output = terserAst.print_to_string({
-    beautify: !minifyWhitespace,
-    indent_level: minifyWhitespace ? 0 : 2,
-    keep_quoted_props: closureFriendly, // for closure
-    wrap_func_args: false, // don't add extra braces
-    comments: true, // for closure as well
-    shorthand: true, // Use object literal shorthand notation
-  });
+  let output = generate(ast, {
+    filename: outfile,
+    minified: minifyWhitespace,
+    comments: closureFriendly,
+  }).code;
 
   output += '\n';
   if (suffix) {
@@ -2168,11 +1964,26 @@ if (!noPrint) {
   }
 
   if (outfile) {
-    fs.writeFileSync(outfile, output);
+    writeFileSync(outfile, output);
   } else {
     // Simply using `fs.writeFileSync` on `process.stdout` has issues with
     // large amount of data. It can cause:
     //   Error: EAGAIN: resource temporarily unavailable, write
     process.stdout.write(output);
+  }
+}
+} catch (err) {
+  let loc = err['loc'];
+  if (loc) {
+    if ('line' in loc) {
+      loc = { start: loc };
+    }
+    console.error(codeFrameColumns(input, loc, {
+      highlightCode: true,
+      message: err.message,
+    }));
+    process.exit(1);
+  } else {
+    throw err;
   }
 }

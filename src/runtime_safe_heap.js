@@ -54,8 +54,8 @@ function SAFE_HEAP_STORE_D(dest, value, bytes) {
   return SAFE_HEAP_STORE(dest, value, bytes, true);
 }
 
-/** @param {number|boolean=} isFloat */
-function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
+/** @param {number} kind */
+function SAFE_HEAP_LOAD(dest, bytes, kind) {
 #if CAN_ADDRESS_2GB
   dest >>>= 0;
 #endif
@@ -75,16 +75,13 @@ function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
     if (brk < _emscripten_stack_get_base()) abort(`brk >= _emscripten_stack_get_base() (brk=${brk}, _emscripten_stack_get_base()=${_emscripten_stack_get_base()})`); // sbrk-managed memory must be above the stack
     if (brk > wasmMemory.buffer.byteLength) abort(`brk <= wasmMemory.buffer.byteLength (brk=${brk}, wasmMemory.buffer.byteLength=${wasmMemory.buffer.byteLength})`);
   }
-  var type = getSafeHeapType(bytes, isFloat);
+  var type = getSafeHeapType(bytes, kind === /* float */ 2);
   var ret = getValue_safe(dest, type);
-  if (unsigned) ret = unSign(ret, parseInt(type.slice(1), 10));
+  if (kind === /* unsigned */ 1) ret = unSign(ret, parseInt(type.slice(1), 10));
 #if SAFE_HEAP_LOG
-  dbg('SAFE_HEAP load: ' + [dest, ret, bytes, isFloat, unsigned, SAFE_HEAP_COUNTER++]);
+  dbg('SAFE_HEAP load: ' + [dest, ret, bytes, kind, SAFE_HEAP_COUNTER++]);
 #endif
   return ret;
-}
-function SAFE_HEAP_LOAD_D(dest, bytes, unsigned) {
-  return SAFE_HEAP_LOAD(dest, bytes, unsigned, true);
 }
 
 function SAFE_FT_MASK(value, mask) {
