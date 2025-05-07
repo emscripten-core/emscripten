@@ -20,8 +20,12 @@ See docs/process.md for more on how version tagging works.
 
 4.0.9 (in development)
 ----------------------
+- libunwind was updated to LLVM 20.1.4. (#24251)
 - When using cmake the EMSCRIPTEN_FORCE_COMPILERS setting was reverted to
   being on by default due to issues that were found with disabling it. (#24223)
+- Embind symbols `InternalError`, `BindingError`, and `count_emval_handles` are
+  no longer exported by default. They can be exported using
+  `-sEXPORTED_RUNTIME_METHODS=InternalError,BindingError,count_emval_handles`
 
 4.0.8 - 04/30/25
 ----------------
@@ -31,6 +35,8 @@ See docs/process.md for more on how version tagging works.
   network requests. (#24163, #24190)
 - Closure arguments can now be used from ports using `settings.CLOSURE_ARGS`
   (#24192)
+- Embind's `val` now requires a pointer policy when using pointers. e.g.
+  `(val v(pointer, allow_raw_pointers())`.
 
 4.0.7 - 04/15/25
 ----------------

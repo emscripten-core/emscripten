@@ -3308,6 +3308,15 @@ More info: https://emscripten.org
     self.do_runf('main.cpp', '10\nok\n',
                  emcc_args=['--no-entry', '-lembind', '-O2', '--closure=1', '--minify=0', '--post-js=post.js'])
 
+  @parameterized({
+    'val_1': ['embind/test_embind_no_raw_pointers_val_1.cpp'],
+    'val_2': ['embind/test_embind_no_raw_pointers_val_2.cpp'],
+    'val_3': ['embind/test_embind_no_raw_pointers_val_3.cpp'],
+  })
+  def test_embind_no_raw_pointers(self, filename):
+    stderr = self.expect_fail([EMCC, '-lembind', test_file(filename)])
+    self.assertContained('Implicitly binding raw pointers is illegal.', stderr)
+
   @is_slow_test
   @parameterized({
     '': [],
@@ -3338,7 +3347,7 @@ More info: https://emscripten.org
       '-Wno-deprecated-declarations',
       '-lembind',
       '-sRETAIN_COMPILER_SETTINGS',
-      '-sEXPORTED_RUNTIME_METHODS=getCompilerSetting,setDelayFunction,flushPendingDeletes,PureVirtualError,HEAP8',
+      '-sEXPORTED_RUNTIME_METHODS=getCompilerSetting,setDelayFunction,flushPendingDeletes,PureVirtualError,HEAP8,InternalError,BindingError,count_emval_handles',
       '-sWASM_ASYNC_COMPILATION=0',
       # This test uses a `CustomSmartPtr` class which has 1MB of data embedded in
       # it which means we need more stack space than normal.
@@ -13421,7 +13430,9 @@ exec "$@"
   def test_post_link(self):
     err = self.run_process([EMCC, test_file('hello_world.c'), '--oformat=bare', '-o', 'bare.wasm'], stderr=PIPE).stderr
     self.assertContained('--oformat=bare/--post-link are experimental and subject to change', err)
-    err = self.run_process([EMCC, '--post-link', 'bare.wasm'], stderr=PIPE).stderr
+    # Explicitly test with `-s RUNTIME_DEBUG`, including the space, to verify parsing of `-s` flags
+    # See https://github.com/emscripten-core/emscripten/issues/24250
+    err = self.run_process([EMCC, '--post-link', 'bare.wasm', '-s', 'RUNTIME_DEBUG'], stderr=PIPE).stderr
     self.assertContained('--oformat=bare/--post-link are experimental and subject to change', err)
     err = self.assertContained('hello, world!', self.run_js('a.out.js'))
 
@@ -16063,4 +16074,29 @@ addToLibrary({
     msg = 'randomFill not supported on d8 unless --enable-os-system is passed'
     self.do_runf('main.c', msg, assert_returncode=1)
     self.v8_args += ['--enable-os-system']
+    self.do_runf('main.c')
+
+  def test_em_js_bool_macro_expansion(self):
+    # Normally macros like `true` and `false` are not expanded inside
+    # of `EM_JS` or `EM_ASM` blocks.  However, in the case then an
+    # additional macro later is added these will be expanded and we want
+    # to make sure the resulting expansion doesn't break the expectations
+    # of JS code.
+    create_file('main.c', '''
+      #include <emscripten.h>
+
+      #define EM_JS_MACROS(ret, func_name, args, body...)    \
+        EM_JS(ret, func_name, args, body)
+
+      EM_JS_MACROS(void, check_bool_type, (void), {
+        if (typeof true !== "boolean") {
+          throw new Error("typeof true is " + typeof true + " not boolean");
+        }
+      })
+
+      int main() {
+        check_bool_type();
+        return 0;
+      }
+    ''')
     self.do_runf('main.c')

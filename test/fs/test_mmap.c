@@ -164,6 +164,11 @@ void test_mmap_shared_with_offset() {
   // assert failure if offset is not a multiple of page size
   assert(map == MAP_FAILED);
 
+  map = (char*)mmap(0, textsize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0x00ffffffffffffff);
+  // mmap offset outside MAX_SAFE_INTEGER range.
+  assert(map == MAP_FAILED);
+  assert(errno == EINVAL);
+
   map = (char*)mmap(0, textsize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offset);
   assert(map != MAP_FAILED);
 

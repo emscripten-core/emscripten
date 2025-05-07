@@ -190,15 +190,15 @@ let LibraryWebAudio = {
           // Assign the loaded AudioWorkletGlobalScope a Wasm Worker ID so that
           // it can utilized its own TLS slots, and it is recognized to not be
           // the main browser thread.
-          '$ww': _wasmWorkersID++,
+          wwID: _wasmWorkersID++,
 #if MINIMAL_RUNTIME
-          'wasm': Module['wasm'],
+          wasm: Module['wasm'],
 #else
-          'wasm': wasmModule,
+          wasm: wasmModule,
 #endif
-          'mem': wasmMemory,
-          'sb': stackLowestAddress, // sb = stack base
-          'sz': stackSize,          // sz = stack size
+          wasmMemory,
+          stackLowestAddress, // sb = stack base
+          stackSize,          // sz = stack size
         }
       });
       audioWorklet.bootstrapMessage.port.onmessage = _EmAudioDispatchProcessorCallback;

@@ -364,12 +364,12 @@ public:
     return val(internal::_emval_get_module_property(name));
   }
 
-  template<typename T>
-  explicit val(T&& value) {
+  template<typename T, typename... Policies>
+  explicit val(T&& value, Policies...) {
     using namespace internal;
-
+    typename WithPolicies<Policies...>::template ArgTypeList<T> valueType;
     WireTypePack<T> argv(std::forward<T>(value));
-    new (this) val(_emval_take_value(internal::TypeID<T>::get(), argv));
+    new (this) val(_emval_take_value(valueType.getTypes()[0], argv));
   }
 
   val() : val(EM_VAL(internal::_EMVAL_UNDEFINED)) {}
