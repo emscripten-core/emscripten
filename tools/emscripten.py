@@ -30,7 +30,6 @@ from tools import webassembly
 from tools import extract_metadata
 from tools.utils import exit_with_error, path_from_root, removeprefix
 from tools.shared import DEBUG, asmjs_mangle, in_temp
-from tools.shared import treat_as_user_export
 from tools.settings import settings, user_settings
 
 sys.path.append(path_from_root('third_party'))
@@ -282,7 +281,7 @@ def trim_asm_const_body(body):
 def create_global_exports(global_exports):
   lines = []
   for k, v in global_exports.items():
-    if building.is_internal_global(k):
+    if shared.is_internal_global(k):
       continue
 
     v = int(v)
@@ -571,7 +570,7 @@ def finalize_wasm(infile, outfile, js_syms):
   # EMSCRIPTEN_KEEPALIVE (llvm.used).
   # These are any exports that were not requested on the command line and are
   # not known auto-generated system functions.
-  unexpected_exports = [e for e in metadata.all_exports if treat_as_user_export(e)]
+  unexpected_exports = [e for e in metadata.all_exports if shared.is_user_export(e)]
   for n in unexpected_exports:
     if not n.isidentifier():
       exit_with_error(f'invalid export name: {n}')
