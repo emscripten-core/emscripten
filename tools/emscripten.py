@@ -278,6 +278,10 @@ def trim_asm_const_body(body):
   return body
 
 
+def create_other_export_declarations(tag_exports):
+  return '\n'.join(f'var {asmjs_mangle(name)};' for name in tag_exports)
+
+
 def create_global_exports(global_exports):
   lines = []
   for k, v in global_exports.items():
@@ -415,11 +419,13 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
 
   if base_metadata:
     function_exports = base_metadata.function_exports
+    tag_exports = base_metadata.tag_exports
     # We want the real values from the final metadata but we only want to
     # include names from the base_metadata.  See phase_link() in link.py.
     global_exports = {k: v for k, v in metadata.global_exports.items() if k in base_metadata.global_exports}
   else:
     function_exports = metadata.function_exports
+    tag_exports = metadata.tag_exports
     global_exports = metadata.global_exports
 
   if settings.ASYNCIFY == 1:
@@ -429,7 +435,7 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     function_exports['asyncify_stop_rewind'] = webassembly.FuncType([], [])
 
   parts = [pre]
-  parts += create_module(metadata, function_exports, global_exports, forwarded_json['librarySymbols'])
+  parts += create_module(metadata, function_exports, global_exports, tag_exports, forwarded_json['librarySymbols'])
   parts.append(post)
 
   full_js_module = ''.join(parts)
@@ -998,7 +1004,7 @@ def create_receiving(function_exports):
   return '\n'.join(receiving) + '\n'
 
 
-def create_module(metadata, function_exports, global_exports, library_symbols):
+def create_module(metadata, function_exports, global_exports, tag_exports,library_symbols):
   module = []
 
   receiving = create_receiving(function_exports)
@@ -1008,6 +1014,7 @@ def create_module(metadata, function_exports, global_exports, library_symbols):
     module.append(sending)
   else:
     receiving += create_global_exports(global_exports)
+    receiving += create_other_export_declarations(tag_exports)
 
     if settings.PTHREADS or settings.WASM_WORKERS:
       sending = textwrap.indent(sending, '  ').strip()
