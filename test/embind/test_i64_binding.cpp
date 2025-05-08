@@ -13,16 +13,17 @@
 using namespace emscripten;
 using namespace std;
 
-#define assert_js_eq(X, Y) run_js(string("const x = ") + X + ", y = " + Y + "; assert(x === y, `" + X + ": actual = ${typeof x} ${x}, expected = ${typeof y} ${y}`);")
-
 void test(string message)
 {
-  cout << "test:\n" << message << "\n";
+  printf("test: %s\n", message.c_str());
 }
 
-int run_js(string js_code)
-{
-  return emscripten_run_script_int(js_code.c_str());
+void assert_js_eq(string X, string Y) {
+  string js_code;
+  js_code += "const x = " + X + ";";
+  js_code += "const y = " + Y + ";";
+  js_code += "assert(x === y, `" + X + ": actual = ${typeof x} ${x}, expected = ${typeof y} ${y}`);";
+  emscripten_run_script(js_code.c_str());
 }
 
 EMSCRIPTEN_BINDINGS(tests) {
@@ -35,13 +36,6 @@ EMSCRIPTEN_BINDINGS(tests) {
 }
 
 extern "C" void ensure_js_throws_with_assertions_enabled(const char* js_code, const char* error_type);
-
-// Checks that the given value has correctly preserved value and sign.
-template <typename T>
-void assert_bigint_preserved(T value) {
-  val::global().set("bigint", value);
-  assert_js_eq("bigint", to_string(value) + "n");
-}
 
 int main()
 {
@@ -61,7 +55,7 @@ int main()
   assert_js_eq("v64.get(2)", "3n");
   assert_js_eq("v64.get(3)", "-4n");
 
-  run_js("v64.push_back(1234n)");
+  emscripten_run_script("v64.push_back(1234n)");
   assert_js_eq("v64.size()", "5");
   assert_js_eq("v64.get(4)", "1234n");
 
@@ -76,11 +70,11 @@ int main()
   assert_js_eq("vU64.get(2)", "3n");
   assert_js_eq("vU64.get(3)", "4n");
 
-  run_js("vU64.push_back(1234n)");
+  emscripten_run_script("vU64.push_back(1234n)");
   assert_js_eq("vU64.size()", "5");
   assert_js_eq("vU64.get(4)", "1234n");
 
-  run_js("vU64.push_back(1234)");
+  emscripten_run_script("vU64.push_back(1234)");
   assert_js_eq("vU64.size()", "6");
   assert_js_eq("vU64.get(5)", "1234n");
 

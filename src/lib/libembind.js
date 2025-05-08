@@ -319,9 +319,9 @@ var LibraryEmbind = {
   },
 
 #if ASSERTIONS
-  $assertIntegerRange: (name, value, minRange, maxRange) => {
+  $assertIntegerRange: (typeName, value, minRange, maxRange) => {
     if (value < minRange || value > maxRange) {
-      throw new TypeError(`Passing a number "${embindRepr(value)}" from JS side to C/C++ side to an argument of type "${name}", which is outside the valid range [${minRange}, ${maxRange}]!`);
+      throw new TypeError(`Passing a number "${embindRepr(value)}" from JS side to C/C++ side to an argument of type "${typeName}", which is outside the valid range [${minRange}, ${maxRange}]!`);
     }
   },
 #endif
@@ -339,7 +339,7 @@ var LibraryEmbind = {
   _embind_register_integer: (primitiveType, name, size, minRange, maxRange) => {
     name = readLatin1String(name);
 
-    const isUnsignedType = maxRange < minRange;
+    const isUnsignedType = minRange === 0;
 
     let fromWireType = (value) => value;
     if (isUnsignedType) {
@@ -380,7 +380,7 @@ var LibraryEmbind = {
   _embind_register_bigint: (primitiveType, name, size, minRange, maxRange) => {
     name = readLatin1String(name);
 
-    const isUnsignedType = maxRange < minRange;
+    const isUnsignedType = minRange === 0n;
 
     let fromWireType = (value) => value;
     if (isUnsignedType) {
