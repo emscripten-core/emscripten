@@ -27,16 +27,16 @@ HEAPU8.subarray(x >>> 0);
 
 HEAPU8.subarray(x >>> 0, y >>> 0);
 
+// something completely different
 process.versions.node;
 
-// something completely different
 insideCall(HEAP32[x >>> 2]);
 
 heap[x >>> 0];
 
 HEAP[x >>> 0];
 
+// but not this
 HeAp[x];
 
-// but not this
 HEAP64[x >>> 3] = HEAPU64[y >>> 0];

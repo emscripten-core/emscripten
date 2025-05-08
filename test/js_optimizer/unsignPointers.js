@@ -30,7 +30,8 @@ HEAPU8.subarray(x);
 
 HEAPU8.subarray(x, y);
 
-process.versions.node; // something completely different
+// something completely different
+process.versions.node;
 
 insideCall(HEAP32[x >> 2]);
 
@@ -38,6 +39,7 @@ heap[x];
 
 HEAP[x];
 
-HeAp[x]; // but not this
+// but not this
+HeAp[x];
 
 HEAP64[x >> 3] = HEAPU64[y];
