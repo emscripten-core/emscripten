@@ -46,7 +46,7 @@ function GROWABLE_HEAP_I64() {
   if (wasmMemory.buffer != HEAP8.buffer) {
     updateMemoryViews();
   }
-  return HEAPI64;
+  return HEAP64;
 }
 function GROWABLE_HEAP_U64() {
   if (wasmMemory.buffer != HEAP8.buffer) {
