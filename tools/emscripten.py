@@ -49,6 +49,7 @@ ASAN_C_HELPERS = [
   '_asan_c_store_1', '_asan_c_store_1u',
   '_asan_c_store_2', '_asan_c_store_2u',
   '_asan_c_store_4', '_asan_c_store_4u',
+  '_asan_c_store_8', '_asan_c_store_8u',
   '_asan_c_store_f', '_asan_c_store_d',
 ]
 
