@@ -37,3 +37,6 @@ heap[x >>> 0];
 HEAP[x >>> 0];
 
 HeAp[x];
+
+// but not this
+HEAP64[x >> 3] = HEAPU64[y];

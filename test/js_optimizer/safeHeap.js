@@ -7,6 +7,8 @@ HEAPU16[x] = 5;
 HEAPU32[x] = 6;
 HEAPF32[x] = 7;
 HEAPF64[x] = 8;
+HEAP64[x] = 9n;
+HEAPU64[x] = 10n;
 
 // loads
 a1 = HEAP8[x];
@@ -17,6 +19,8 @@ a5 = HEAPU16[x];
 a6 = HEAPU32[x];
 a7 = HEAPF32[x];
 a8 = HEAPF64[x];
+a9 = HEAP64[x];
+a10 = HEAPU64[x];
 
 // store return value
 foo = HEAPU8[1337] = 42;
