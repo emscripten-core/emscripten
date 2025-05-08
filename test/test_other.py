@@ -3574,7 +3574,7 @@ More info: https://emscripten.org
     args = [EMXX, test_file('other/embind_tsgen_bigint.cpp'), '-lembind', '--emit-tsd', 'embind_tsgen_bigint.d.ts']
     # Check that TypeScript generation fails when code contains bigints but their support is not enabled
     stderr = self.expect_fail(args + ['-sWASM_BIGINT=0'])
-    self.assertContained("Missing primitive type to TS type for 'int64_t", stderr)
+    self.assertContained("Missing primitive type to TS type for 'long long", stderr)
     # Check that TypeScript generation works when bigint support is enabled
     self.run_process(args)
     self.assertFileContents(test_file('other/embind_tsgen_bigint.d.ts'), read_file('embind_tsgen_bigint.d.ts'))

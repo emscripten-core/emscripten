@@ -319,6 +319,7 @@ var LibraryEmbind = {
   },
 
 #if ASSERTIONS
+  $assertIntegerRange__deps: ['$embindRepr'],
   $assertIntegerRange: (typeName, value, minRange, maxRange) => {
     if (value < minRange || value > maxRange) {
       throw new TypeError(`Passing a number "${embindRepr(value)}" from JS side to C/C++ side to an argument of type "${typeName}", which is outside the valid range [${minRange}, ${maxRange}]!`);
@@ -354,7 +355,7 @@ var LibraryEmbind = {
       'toWireType': (destructors, value) => {
 #if ASSERTIONS
         if (typeof value != "number" && typeof value != "boolean") {
-          throw new TypeError(`Cannot convert "${embindRepr(value)}" to ${toTypeName}`);
+          throw new TypeError(`Cannot convert "${embindRepr(value)}" to ${name}`);
         }
         assertIntegerRange(name, value, minRange, maxRange);
   #endif
@@ -1199,7 +1200,7 @@ var LibraryEmbind = {
   $constNoSmartPtrRawPointerToWireType__docs: '/** @suppress {globalThis} */',
   // If we know a pointer type is not going to have SmartPtr logic in it, we can
   // special-case optimize it a bit (compare to genericPointerToWireType)
-  $constNoSmartPtrRawPointerToWireType__deps: ['$throwBindingError', '$upcastPointer'],
+  $constNoSmartPtrRawPointerToWireType__deps: ['$throwBindingError', '$upcastPointer', '$embindRepr'],
   $constNoSmartPtrRawPointerToWireType: function(destructors, handle) {
     if (handle === null) {
       if (this.isReference) {
@@ -1222,7 +1223,7 @@ var LibraryEmbind = {
   $nonConstNoSmartPtrRawPointerToWireType__docs: '/** @suppress {globalThis} */',
   // An optimized version for non-const method accesses - there we must additionally restrict that
   // the pointer is not a const-pointer.
-  $nonConstNoSmartPtrRawPointerToWireType__deps: ['$throwBindingError', '$upcastPointer'],
+  $nonConstNoSmartPtrRawPointerToWireType__deps: ['$throwBindingError', '$upcastPointer', '$embindRepr'],
   $nonConstNoSmartPtrRawPointerToWireType: function(destructors, handle) {
     if (handle === null) {
       if (this.isReference) {
