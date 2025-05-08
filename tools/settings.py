@@ -125,6 +125,7 @@ DEPRECATED_SETTINGS = {
     'LEGALIZE_JS_FFI': 'to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`',
     'ASYNCIFY_EXPORTS': 'please use JSPI_EXPORTS instead',
     'MAYBE_WASM2JS': 'lack of usage',
+    'USE_WEBGPU': 'please try migrating to "emdawnwebgpu", a fork maintained by Dawn (but still cross-browser) that implements a newer, more stable version of the standardized interface, and file feedback (see its package README). https://github.com/google/dawn/releases',
 }
 
 # Settings that don't need to be externalized when serializing to json because they
