@@ -13,7 +13,7 @@
 using namespace emscripten;
 using namespace std;
 
-#define assert_js_eq(X, Y) run_js(string("const x = ") + X + ", y = " + Y + "; assert(x === y, `" + X + ": actual = ${x}, expected = ${y}`);")
+#define assert_js_eq(X, Y) run_js(string("const x = ") + X + ", y = " + Y + "; assert(x === y, `" + X + ": actual = ${typeof x} ${x}, expected = ${typeof y} ${y}`);")
 
 void test(string message)
 {
