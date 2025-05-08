@@ -14,9 +14,9 @@ SAFE_HEAP_STORE_D(x * 4, 7, 4);
 
 SAFE_HEAP_STORE_D(x * 8, 8, 8);
 
-HEAP64[x] = 9n;
+SAFE_HEAP_STORE(x * 8, 9n, 8);
 
-HEAPU64[x] = 10n;
+SAFE_HEAP_STORE(x * 8, 10n, 8);
 
 a1 = SAFE_HEAP_LOAD(x, 1, 0);
 
@@ -34,9 +34,9 @@ a7 = SAFE_HEAP_LOAD_D(x * 4, 4, 0);
 
 a8 = SAFE_HEAP_LOAD_D(x * 8, 8, 0);
 
-a9 = HEAP64[x];
+a9 = SAFE_HEAP_LOAD(x * 8, 8, 0);
 
-a10 = HEAPU64[x];
+a10 = SAFE_HEAP_LOAD(x * 8, 8, 1);
 
 foo = SAFE_HEAP_STORE(1337, 42, 1);
 

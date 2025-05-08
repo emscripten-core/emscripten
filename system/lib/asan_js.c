@@ -45,6 +45,14 @@ uint32_t _asan_c_load_4u(uintptr_t shifted) {
   uint32_t* ptr = (uint32_t*)(shifted << 2);
   return *ptr;
 }
+int64_t _asan_c_load_8(uintptr_t shifted) {
+  int64_t* ptr = (int64_t*)(shifted << 3);
+  return *ptr;
+}
+uint64_t _asan_c_load_8u(uintptr_t shifted) {
+  uint64_t* ptr = (uint64_t*)(shifted << 3);
+  return *ptr;
+}
 float _asan_c_load_f(uintptr_t shifted) {
   float* ptr = (float*)(shifted << 2);
   return *ptr;
@@ -77,6 +85,14 @@ int32_t _asan_c_store_4(uintptr_t shifted, int32_t val) {
 }
 uint32_t _asan_c_store_4u(uintptr_t shifted, uint32_t val) {
   uint32_t* ptr = (uint32_t*)(shifted << 2);
+  return *ptr = val;
+}
+int64_t _asan_c_store_8(uintptr_t shifted, int64_t val) {
+  int64_t* ptr = (int64_t*)(shifted << 3);
+  return *ptr = val;
+}
+uint64_t _asan_c_store_8u(uintptr_t shifted, uint64_t val) {
+  uint64_t* ptr = (uint64_t*)(shifted << 3);
   return *ptr = val;
 }
 float _asan_c_store_f(uintptr_t shifted, float val) {

@@ -14,9 +14,9 @@ _asan_js_store_f(x, 7);
 
 _asan_js_store_d(x, 8);
 
-HEAP64[x] = 9n;
+_asan_js_store_8(x, 9n);
 
-HEAPU64[x] = 10n;
+_asan_js_store_8u(x, 10n);
 
 a1 = _asan_js_load_1(x);
 
@@ -34,9 +34,9 @@ a7 = _asan_js_load_f(x);
 
 a8 = _asan_js_load_d(x);
 
-a9 = HEAP64[x];
+a9 = _asan_js_load_8(x);
 
-a10 = HEAPU64[x];
+a10 = _asan_js_load_8u(x);
 
 foo = _asan_js_store_1u(1337, 42);
 
