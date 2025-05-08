@@ -318,6 +318,14 @@ var LibraryEmbind = {
     }
   },
 
+#if ASSERTIONS
+  $assertIntegerRange: (name, value, minRange, maxRange) => {
+    if (value < minRange || value > maxRange) {
+      throw new TypeError(`Passing a number "${embindRepr(value)}" from JS side to C/C++ side to an argument of type "${name}", which is outside the valid range [${minRange}, ${maxRange}]!`);
+    }
+  },
+#endif
+
   _embind_register_integer__docs: '/** @suppress {globalThis} */',
   // When converting a number from JS to C++ side, the valid range of the number is
   // [minRange, maxRange], inclusive.
@@ -325,6 +333,7 @@ var LibraryEmbind = {
     '$integerReadValueFromPointer', '$readLatin1String', '$registerType',
 #if ASSERTIONS
     '$embindRepr',
+    '$assertIntegerRange',
 #endif
   ],
   _embind_register_integer: (primitiveType, name, size, minRange, maxRange) => {
@@ -347,9 +356,7 @@ var LibraryEmbind = {
         if (typeof value != "number" && typeof value != "boolean") {
           throw new TypeError(`Cannot convert "${embindRepr(value)}" to ${toTypeName}`);
         }
-        if (value < minRange || value > maxRange) {
-          throw new TypeError(`Passing a number "${embindRepr(value)}" from JS side to C/C++ side to an argument of type "${name}", which is outside the valid range [${minRange}, ${maxRange}]!`);
-        }
+        assertIntegerRange(name, value, minRange, maxRange);
   #endif
         // The VM will perform JS to Wasm value conversion, according to the spec:
         // https://www.w3.org/TR/wasm-js-api-1/#towebassemblyvalue
@@ -364,7 +371,12 @@ var LibraryEmbind = {
 #if WASM_BIGINT
   _embind_register_bigint__docs: '/** @suppress {globalThis} */',
   _embind_register_bigint__deps: [
-    '$embindRepr', '$readLatin1String', '$registerType', '$integerReadValueFromPointer'],
+    '$readLatin1String', '$registerType', '$integerReadValueFromPointer',
+#if ASSERTIONS
+    '$embindRepr',
+    '$assertIntegerRange',
+#endif
+  ],
   _embind_register_bigint: (primitiveType, name, size, minRange, maxRange) => {
     name = readLatin1String(name);
 
@@ -398,9 +410,7 @@ var LibraryEmbind = {
         else if (typeof value != "bigint") {
           throw new TypeError(`Cannot convert "${embindRepr(value)}" to ${this.name}`);
         }
-        if (value < minRange || value > maxRange) {
-          throw new TypeError(`Passing a number "${embindRepr(value)}" from JS side to C/C++ side to an argument of type "${name}", which is outside the valid range [${minRange}, ${maxRange}]!`);
-        }
+        assertIntegerRange(name, value, minRange, maxRange);
 #endif
         return value;
       },
