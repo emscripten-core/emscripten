@@ -1617,10 +1617,7 @@ function safeHeap(ast) {
         c(node.object);
       } else {
         // Instrument a load.
-        makeCallExpression(node, 'SAFE_HEAP_LOAD', [
-          node.object,
-          node.property
-        ]);
+        makeCallExpression(node, 'SAFE_HEAP_LOAD', [node.object, node.property]);
       }
     },
   });
