@@ -256,6 +256,14 @@ def get_function_exports(module):
   return rtn
 
 
+def get_tag_exports(module):
+  rtn = []
+  for e in module.get_exports():
+    if e.kind == webassembly.ExternType.TAG:
+      rtn.append(e.name)
+  return rtn
+
+
 def update_metadata(filename, metadata):
   imports = []
   invoke_funcs = []
@@ -270,6 +278,7 @@ def update_metadata(filename, metadata):
         imports.append(i.field)
 
     metadata.function_exports = get_function_exports(module)
+    metadata.tag_exports = get_tag_exports(module)
     metadata.all_exports = [utils.removeprefix(e.name, '__em_js__') for e in module.get_exports()]
 
   metadata.imports = imports
@@ -340,6 +349,7 @@ def extract_metadata(filename):
     metadata = Metadata()
     metadata.imports = import_names
     metadata.function_exports = get_function_exports(module)
+    metadata.tag_exports = get_tag_exports(module)
     metadata.all_exports = [utils.removeprefix(e.name, '__em_js__') for e in exports]
     metadata.em_asm_consts = get_section_strings(module, export_map, 'em_asm')
     metadata.js_deps = [d for d in get_section_strings(module, export_map, 'em_lib_deps').values() if d]
