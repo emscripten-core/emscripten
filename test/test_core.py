@@ -7493,9 +7493,14 @@ void* operator new(size_t size) {
     self.do_run_in_out_file_test('embind/test_dynamic_initialization.cpp')
 
   @no_wasm2js('wasm_bigint')
-  def test_embind_i64_val(self):
+  @parameterized({
+    '': ([],),
+    'safe_heap': (['-sSAFE_HEAP'],),
+  })
+  def test_embind_i64_val(self, extra_args):
     self.set_setting('WASM_BIGINT')
     self.emcc_args += ['-lembind']
+    self.emcc_args += extra_args
     self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_run_in_out_file_test('embind/test_i64_val.cpp', assert_identical=True)
 
