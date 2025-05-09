@@ -614,6 +614,9 @@ def can_do_standalone(self, impure=False):
 
 # Impure means a test that cannot run in a wasm VM yet, as it is not 100%
 # standalone. We can still run them with the JS code though.
+# "exclude_engines" is a list of engine names on which the test cannot run.
+# These are pattern that are matched against the basename of the engine
+# executable.
 def also_with_standalone_wasm(impure=False, exclude_engines=[]): # noqa: B006
   def decorated(func):
     @wraps(func)
