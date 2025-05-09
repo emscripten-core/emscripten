@@ -633,12 +633,13 @@ def also_with_standalone_wasm(impure=False, exclude_engines=[]): # noqa: B006
         # when it sees an i64 on the ffi.
         self.set_setting('WASM_BIGINT')
         self.emcc_args.append('-Wno-unused-command-line-argument')
+        wasm_engines = []
         # if we are impure, disallow all wasm engines
-        if impure:
-          wasm_engines = []
-        else:
-          wasm_engines = [engine for engine in self.wasm_engines
-            if all(excluded not in os.path.basename(engine[0]) for excluded in exclude_engines)]
+        if not impure:
+          for engine in self.wasm_engines:
+             basename = os.path.basename(engine[0])
+             if not any(pattern in basename for pattern in exclude_engines):
+               wasm_engines.append(engine)
         if 'node' in exclude_engines:
           self.js_engines = []
           if not wasm_engines:
