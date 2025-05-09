@@ -1,5 +1,11 @@
-#ifndef STANDALONE_PATHS_H
-#define STANDALONE_PATHS_H
+/*
+ * Copyright 2025 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
+#pragma once
 
 #include <stdbool.h>
 
@@ -17,5 +23,3 @@
 // Returns: `true` if resolution was successful, `false` otherwise.
 //
 bool __paths_resolve_path(int* resolved_dirfd, const char** path_ptr);
-
-#endif

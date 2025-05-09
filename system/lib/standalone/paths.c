@@ -1,3 +1,14 @@
+/*
+ * Copyright 2025 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ *
+ * The preopen code is based on wasi-libc's `preopens.c` which is licensed
+ * under a MIT style license. This license can also be found in the LICENSE
+ * file.
+ */
+
 #define _GNU_SOURCE
 #include "paths.h"
 
