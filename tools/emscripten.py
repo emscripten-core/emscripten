@@ -755,10 +755,15 @@ def create_em_js(metadata):
     arg_names = [arg.split()[-1].replace('*', '') for arg in args if arg]
     args = ','.join(arg_names)
     func = f'function {name}({args}) {body}'
+    if settings.WASM_ESM_INTEGRATION:
+      # Like JS library function EM_JS functions are exported at the point of
+      # declaration in WASM_ESM_INTEGRATION node.
+      func = f'export {func}'
+    em_js_funcs.append(func)
     if (settings.MAIN_MODULE or settings.ASYNCIFY == 2) and name in metadata.em_js_func_types:
       sig = func_type_to_sig(metadata.em_js_func_types[name])
-      func = func + f'\n{name}.sig = \'{sig}\';'
-    em_js_funcs.append(func)
+      sig = f'{name}.sig = \'{sig}\';'
+      em_js_funcs.append(sig)
 
   return em_js_funcs
 
@@ -826,7 +831,10 @@ def create_sending(metadata, library_symbols):
 
   for name in metadata.imports:
     if name in metadata.em_js_funcs:
-      send_items_map[name] = name
+      # EM_JS functions are exported directly at the declaration site in
+      # WASM_ESM_INTEGRATION mode.
+      if not settings.WASM_ESM_INTEGRATION:
+        send_items_map[name] = name
     else:
       send_items_map[name] = asmjs_mangle(name)
 
@@ -881,16 +889,18 @@ def create_sending(metadata, library_symbols):
   return '{\n  ' + ',\n  '.join(elems) + '\n}'
 
 
-def create_reexports():
+def create_reexports(metadata):
   assert settings.WASM_ESM_INTEGRATION
   exports = '// Re-export imported wasm functions to the JS entry point. These are user-facing and underscore mangled.\n'
   wasm_exports = []
   for exp in building.user_requested_exports:
     if shared.is_c_symbol(exp):
       demangled = shared.demangle_c_symbol_name(exp)
-      if demangled in settings.WASM_EXPORTS:
+      if demangled in metadata.em_js_funcs:
+        wasm_exports.append(f'{demangled} as {exp}')
+      elif demangled in settings.WASM_EXPORTS:
         wasm_exports.append(exp)
-      if demangled == 'main' and '__main_argc_argv' in settings.WASM_EXPORTS:
+      elif demangled == 'main' and '__main_argc_argv' in settings.WASM_EXPORTS:
         wasm_exports.append('_main')
   exports += f"export {{ {', '.join(wasm_exports)} }};\n\n"
   return exports
@@ -1055,7 +1065,7 @@ def create_module(metadata, function_exports, global_exports, tag_exports,librar
     module.append(create_pointer_conversion_wrappers(metadata))
 
   if settings.WASM_ESM_INTEGRATION:
-    module.append(create_reexports())
+    module.append(create_reexports(metadata))
 
   return module
 
