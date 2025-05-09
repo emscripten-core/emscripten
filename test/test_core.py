@@ -7497,10 +7497,9 @@ void* operator new(size_t size) {
     '': ([],),
     'safe_heap': (['-sSAFE_HEAP'],),
   })
-  def test_embind_i64_val(self, extra_args):
+  def test_embind_i64_val(self, args):
     self.set_setting('WASM_BIGINT')
-    self.emcc_args += ['-lembind']
-    self.emcc_args += extra_args
+    self.emcc_args += ['-lembind'] + args
     self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_run_in_out_file_test('embind/test_i64_val.cpp', assert_identical=True)
 
@@ -8970,7 +8969,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_safe_heap_user_js(self):
     self.set_setting('SAFE_HEAP')
     self.do_runf('core/test_safe_heap_user_js.c',
-                 expected_output=['Aborted(segmentation fault storing 1 bytes to address 0)'], assert_returncode=NON_ZERO)
+                 expected_output=['Aborted(segmentation fault storing 1 bytes at address 0)'], assert_returncode=NON_ZERO)
 
   def test_safe_stack(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
