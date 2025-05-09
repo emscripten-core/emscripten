@@ -906,30 +906,35 @@ class MuslInternalLibrary(Library):
   ]
 
 
-class AsanInstrumentedLibrary(Library):
+class InstrumentedLibrary(Library):
   def __init__(self, **kwargs):
     self.is_asan = kwargs.pop('is_asan', False)
+    self.is_ubsan = kwargs.pop('is_ubsan', False)
     super().__init__(**kwargs)
 
   def get_cflags(self):
     cflags = super().get_cflags()
     if self.is_asan:
       cflags += ['-fsanitize=address']
+    if self.is_ubsan:
+      cflags += ['-fsanitize=undefined']
     return cflags
 
   def get_base_name(self):
     name = super().get_base_name()
     if self.is_asan:
       name += '-asan'
+    if self.is_ubsan:
+      name += '-ubsan'
     return name
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['is_asan']
+    return super().vary_on() + ['is_asan', 'is_ubsan']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(is_asan=settings.USE_ASAN, **kwargs)
+    return super().get_default_variation(is_asan=settings.USE_ASAN, is_ubsan=settings.UBSAN_RUNTIME, **kwargs)
 
 
 # Subclass of SjLjLibrary because emscripten_setjmp.c uses SjLj support
@@ -989,7 +994,7 @@ class libnoexit(Library):
 
 class libc(MuslInternalLibrary,
            DebugLibrary,
-           AsanInstrumentedLibrary,
+           InstrumentedLibrary,
            MTLibrary):
   name = 'libc'
 
@@ -1978,7 +1983,7 @@ class libstb_image(Library):
     return [utils.path_from_root('system/lib/stb_image.c')]
 
 
-class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
+class libwasmfs(DebugLibrary, InstrumentedLibrary, MTLibrary):
   name = 'libwasmfs'
 
   cflags = ['-fno-exceptions', '-std=c++17']
