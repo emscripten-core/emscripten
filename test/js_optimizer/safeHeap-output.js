@@ -48,14 +48,6 @@ function SAFE_HEAP_FOO(ptr) {
   return HEAP8[ptr];
 }
 
-function setValue_safe(ptr) {
-  return HEAP8[ptr];
-}
-
-function getValue_safe(ptr) {
-  return HEAP8[ptr];
-}
-
 function somethingElse() {
   return SAFE_HEAP_LOAD(HEAP8, ptr);
 }

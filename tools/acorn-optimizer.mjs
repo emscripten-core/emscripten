@@ -1588,12 +1588,7 @@ function multiply(value, by) {
 function safeHeap(ast) {
   recursiveWalk(ast, {
     FunctionDeclaration(node, c) {
-      if (
-        node.id.type === 'Identifier' &&
-        (node.id.name.startsWith('SAFE_HEAP') ||
-          node.id.name === 'setValue_safe' ||
-          node.id.name === 'getValue_safe')
-      ) {
+      if (node.id.type === 'Identifier' && node.id.name.startsWith('SAFE_HEAP')) {
         // do not recurse into this js impl function, which we use during
         // startup before the wasm is ready
       } else {
