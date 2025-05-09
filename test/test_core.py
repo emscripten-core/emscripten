@@ -7494,12 +7494,15 @@ void* operator new(size_t size) {
 
   @no_wasm2js('wasm_bigint')
   @parameterized({
-    '': ([],),
-    'safe_heap': (['-sSAFE_HEAP'],),
+    '': (False,),
+    'safe_heap': (True,),
   })
-  def test_embind_i64_val(self, args):
+  def test_embind_i64_val(self, safe_heap):
     self.set_setting('WASM_BIGINT')
-    self.emcc_args += ['-lembind'] + args
+    if safe_heap and '-fsanitize=address' in self.emcc_args:
+      self.skipTest('asan does not work with SAFE_HEAP')
+    self.set_setting('SAFE_HEAP', safe_heap)
+    self.emcc_args += ['-lembind']
     self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_run_in_out_file_test('embind/test_i64_val.cpp', assert_identical=True)
 
