@@ -18,7 +18,7 @@ int main() {
     i64 = getValue($1, 'i64');
     out('i64: 0x' + i64.toString(16) + ' ' + typeof(i64));
 #endif
-    ptr = getValue($1, '*');
+    var ptr = getValue($1, '*');
     out('ptr: 0x' + ptr.toString(16) + ' ' + typeof(ptr));
 #else
     out('i32: ' + getValue($0, 'i32'));
@@ -28,7 +28,7 @@ int main() {
     i64 = Module['getValue']($1, 'i64');
     out('i64: 0x' + i64.toString(16) + ' ' + typeof(i64));
 #endif
-    ptr = Module['getValue']($1, '*');
+    var ptr = Module['getValue']($1, '*');
     out('ptr: 0x' + ptr.toString(16) + ' ' + typeof(ptr));
 #endif
 

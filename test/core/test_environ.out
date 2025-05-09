@@ -4,4 +4,4 @@ PATH=/
 PWD=/
 HOME=/home/web_user
 LANG=(C|en_US).UTF-8
-_=.*(/test_environ.js|/this.program)
+_=.*(/test_environ.m?js|/this.program)

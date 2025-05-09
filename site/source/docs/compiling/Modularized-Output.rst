@@ -108,6 +108,11 @@ found on the module object are instead exported directly.  For example:
   await init({ print: myPrint });
   _nativeMethod();
 
+Some major features still do not work in this mode:
+
+- embind
+- ``-sDYNCALLS``
+
 Source Phase Imports (experimental)
 ===================================
 
@@ -119,6 +124,12 @@ See :ref:`source_phase_imports`.
 
 This setting only works when :ref:`export_es6` is enabled.
 
+Some major features still do not work in this mode:
+
+- embind
+- ``-sDYNCALLS``
+- ``-pthread`` / ``-sWASM_WORKERS``
+- ccall
 
 ES Module Integration (experimental)
 ====================================
@@ -130,6 +141,14 @@ boilerplate code for linking up Wasm and JavaScript.
 See :ref:`wasm_esm_integration`.
 
 This setting only works when :ref:`export_es6` is enabled.
+
+Some major features still do not work in this mode:
+
+- embind
+- ``-sDYNCALLS``
+- ``-pthread`` / ``-sWASM_WORKERS``
+- ccall
+
 
 .. _Source phase imports: https://github.com/tc39/proposal-source-phase-imports
 .. _Wasm ESM integration: https://github.com/WebAssembly/esm-integration

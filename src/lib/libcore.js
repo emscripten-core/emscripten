@@ -1737,6 +1737,9 @@ addToLibrary({
 #if MINIMAL_RUNTIME
     '$dynCalls',
 #endif
+#if WASM_ESM_INTEGRATION
+    () => error('dynCallLegacy is not yet comatible with WASM_ESM_INTEGRATION'),
+#endif
   ],
   $dynCallLegacy: (sig, ptr, args) => {
     sig = sig.replace(/p/g, {{{ MEMORY64 ? "'j'" : "'i'" }}})

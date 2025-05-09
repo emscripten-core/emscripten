@@ -105,7 +105,7 @@ var LibraryStackTrace = {
     abort('Cannot use convertFrameToPC (needed by __builtin_return_address) without -sUSE_OFFSET_CONVERTER');
 #else
 #if ASSERTIONS
-    assert(wasmOffsetConverter);
+    assert(wasmOffsetConverter, 'wasmOffsetConverter global not found');
 #endif
     var match;
 

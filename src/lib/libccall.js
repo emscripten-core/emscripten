@@ -6,6 +6,10 @@
 
 addToLibrary({
   // Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
+#if WASM_ESM_INTEGRATION
+  $getCFunc__deps: [() => error('ccall is not yet comatible with WASM_ESM_INTEGRATION')],
+#endif
+  $getCFunc__internal: true,
   $getCFunc: (ident) => {
     var func = Module['_' + ident]; // closure exported function
 #if ASSERTIONS

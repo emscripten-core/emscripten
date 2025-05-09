@@ -498,6 +498,7 @@ addToLibrary({
     });
   },
 
+#if !SOURCE_PHASE_IMPORTS && !WASM_ESM_INTEGRATION
   emscripten_lazy_load_code__async: true,
   emscripten_lazy_load_code: () => Asyncify.handleSleep((wakeUp) => {
     // Update the expected wasm binary file to be the lazy one.
@@ -517,6 +518,7 @@ addToLibrary({
     var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm';
     await instantiateAsync(null, deferred, imports);
   },
+#endif
 
   $Fibers__deps: ['$Asyncify', 'emscripten_stack_set_limits', '$stackRestore'],
   $Fibers: {

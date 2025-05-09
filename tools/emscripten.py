@@ -755,10 +755,13 @@ def create_em_js(metadata):
     arg_names = [arg.split()[-1].replace('*', '') for arg in args if arg]
     args = ','.join(arg_names)
     func = f'function {name}({args}) {body}'
+    if settings.WASM_ESM_INTEGRATION:
+      func = 'export ' + func
+    em_js_funcs.append(func)
     if (settings.MAIN_MODULE or settings.ASYNCIFY == 2) and name in metadata.em_js_func_types:
       sig = func_type_to_sig(metadata.em_js_func_types[name])
-      func = func + f'\n{name}.sig = \'{sig}\';'
-    em_js_funcs.append(func)
+      sig = f'{name}.sig = \'{sig}\';'
+      em_js_funcs.append(sig)
 
   return em_js_funcs
 
@@ -826,7 +829,10 @@ def create_sending(metadata, library_symbols):
 
   for name in metadata.imports:
     if name in metadata.em_js_funcs:
-      send_items_map[name] = name
+      # EM_JS functions are exported directly at the declaration site in
+      # WASM_ESM_INTEGRATION mode.
+      if not settings.WASM_ESM_INTEGRATION:
+        send_items_map[name] = name
     else:
       send_items_map[name] = asmjs_mangle(name)
 
@@ -881,16 +887,18 @@ def create_sending(metadata, library_symbols):
   return '{\n  ' + ',\n  '.join(elems) + '\n}'
 
 
-def create_reexports():
+def create_reexports(metadata):
   assert settings.WASM_ESM_INTEGRATION
   exports = '// Re-export imported wasm functions to the JS entry point. These are user-facing and underscore mangled.\n'
   wasm_exports = []
   for exp in building.user_requested_exports:
     if shared.is_c_symbol(exp):
       demangled = shared.demangle_c_symbol_name(exp)
-      if demangled in settings.WASM_EXPORTS:
+      if demangled in metadata.em_js_funcs:
+        wasm_exports.append(f'{demangled} as {exp}')
+      elif demangled in settings.WASM_EXPORTS:
         wasm_exports.append(exp)
-      if demangled == 'main' and '__main_argc_argv' in settings.WASM_EXPORTS:
+      elif demangled == 'main' and '__main_argc_argv' in settings.WASM_EXPORTS:
         wasm_exports.append('_main')
   exports += f"export {{ {', '.join(wasm_exports)} }};\n\n"
   return exports
@@ -962,22 +970,25 @@ def make_export_wrappers(function_exports):
   return wrappers
 
 
-def create_receiving(function_exports):
+def create_receiving(function_exports, tag_exports):
+  receiving = ['// Imports from the Wasm binary.']
+
   if settings.WASM_ESM_INTEGRATION:
-    exports = [f'{f} as {asmjs_mangle(f)}' for f in function_exports]
+    exports = tag_exports + list(function_exports.keys())
+    exports = [f'{f} as {asmjs_mangle(f)}' for f in exports]
     if not settings.IMPORTED_MEMORY:
       exports.append('memory as wasmMemory')
     if not settings.RELOCATABLE:
       exports.append('__indirect_function_table as wasmTable')
-    exports = ',\n  '.join(exports)
-    return f"import {{\n  {exports}\n}} from './{settings.WASM_BINARY_FILE}';\n\n"
+    receiving.append('import {')
+    receiving.append('  ' + ',\n  '.join(exports))
+    receiving.append(f"}} from './{settings.WASM_BINARY_FILE}';")
+    return '\n'.join(receiving) + '\n\n'
 
   # When not declaring asm exports this section is empty and we instead programmatically export
   # symbols on the global object by calling exportWasmSymbols after initialization
   if not settings.DECLARE_ASM_MODULE_EXPORTS:
     return ''
-
-  receiving = []
 
   if settings.MINIMAL_RUNTIME:
     # Exports are assigned inside a function to variables
@@ -1009,13 +1020,13 @@ def create_receiving(function_exports):
 def create_module(metadata, function_exports, global_exports, tag_exports,library_symbols):
   module = []
 
-  receiving = create_receiving(function_exports)
+  receiving = create_receiving(function_exports, tag_exports)
+  receiving += create_global_exports(global_exports)
   sending = create_sending(metadata, library_symbols)
 
   if settings.WASM_ESM_INTEGRATION:
     module.append(sending)
   else:
-    receiving += create_global_exports(global_exports)
     receiving += create_other_export_declarations(tag_exports)
 
     if settings.PTHREADS or settings.WASM_WORKERS:
@@ -1055,7 +1066,7 @@ def create_module(metadata, function_exports, global_exports, tag_exports,librar
     module.append(create_pointer_conversion_wrappers(metadata))
 
   if settings.WASM_ESM_INTEGRATION:
-    module.append(create_reexports())
+    module.append(create_reexports(metadata))
 
   return module
 

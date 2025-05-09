@@ -740,6 +740,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     target = 'a.out'
   elif settings.SIDE_MODULE:
     target = 'a.out.wasm'
+  elif settings.WASM_ESM_INTEGRATION:
+    target = 'a.out.mjs'
   else:
     target = 'a.out.js'
 
@@ -790,16 +792,26 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     default_setting('MODULARIZE', 'instance')
     if not settings.EXPORT_ES6 or settings.MODULARIZE != 'instance':
       exit_with_error('WASM_ESM_INTEGRATION requires EXPORT_ES6 and MODULARIZE=instance')
+    if settings.WASM_WORKERS or settings.PTHREADS:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with multi-threading')
+    if settings.MINIMAL_RUNTIME:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with MINIMAL_RUNTIME')
+    if settings.ASYNCIFY:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
+    if settings.MAYBE_WASM2JS:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with MAYBE_WASM2JS')
+    if settings.USE_OFFSET_CONVERTER:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with USE_OFFSET_CONVERTER')
+    if not settings.WASM_ASYNC_COMPILATION:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM_ASYNC_COMPILATION')
+    if not settings.WASM:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM2JS')
 
   if settings.MODULARIZE and settings.MODULARIZE not in [1, 'instance']:
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
 
   def limit_incoming_module_api():
-    if options.oformat == OFormat.HTML and options.shell_path == DEFAULT_SHELL_HTML:
-      # Out default shell.html file has minimal set of INCOMING_MODULE_JS_API elements that it expects
-      default_setting('INCOMING_MODULE_JS_API', 'canvas,monitorRunDependencies,onAbort,onExit,print,setStatus'.split(','))
-    else:
-      default_setting('INCOMING_MODULE_JS_API', [])
+    default_setting('INCOMING_MODULE_JS_API', 'canvas,monitorRunDependencies,onRuntimeInitialized,onAbort,onExit,print,setStatus'.split(','))
 
   if settings.MODULARIZE == 'instance':
     diagnostics.warning('experimental', '-sMODULARIZE=instance is still experimental. Many features may not work or will change.')
@@ -2119,7 +2131,7 @@ def fix_es6_import_statements(js_file):
 
 def create_esm_wrapper(wrapper_file, support_target, wasm_target):
   js_exports = settings.EXPORTED_RUNTIME_METHODS + list(building.user_requested_exports)
-  js_exports = ', '.join(sorted(js_exports))
+  js_exports = ', '.join(sorted(set(js_exports)))
 
   wrapper = []
   wrapper.append('// The wasm module must be imported here first before the support file')
@@ -2131,9 +2143,10 @@ def create_esm_wrapper(wrapper_file, support_target, wasm_target):
   else:
     wrapper.append(f"export {{ default }} from '{support_url}';")
 
-  if settings.ENVIRONMENT_MAY_BE_NODE and settings.INVOKE_RUN and settings.EXPECT_MAIN:
+  if settings.ENVIRONMENT_MAY_BE_NODE:
     wrapper.append(f'''
-// When run as the main module under node, execute main directly here
+// When run as the main module under node, create the module directly.  This will
+// execute any startup code along with main (if it exists).
 import init from '{support_url}';
 const isNode = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string' && process.type != 'renderer';
 if (isNode) {{
@@ -2152,7 +2165,7 @@ if (isNode) {{
   mod = mod.replace('(import "wasi_snapshot_preview1"', f'(import "{support_url}"')
 
   wasm_as = os.path.join(building.get_binaryen_bin(), 'wasm-as')
-  shared.check_call([wasm_as, '--all-features', '-o', wasm_target, '-'], input=mod)
+  shared.check_call([wasm_as, '--all-features', '-g', '-o', wasm_target, '-'], input=mod)
 
 
 @ToolchainProfiler.profile_block('final emitting')
