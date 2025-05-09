@@ -614,7 +614,7 @@ def can_do_standalone(self, impure=False):
 
 # Impure means a test that cannot run in a wasm VM yet, as it is not 100%
 # standalone. We can still run them with the JS code though.
-def also_with_standalone_wasm(impure=False, exclude_engines=None):
+def also_with_standalone_wasm(impure=False, exclude_engines=[]): # noqa: B006
   def decorated(func):
     @wraps(func)
     def metafunc(self, standalone):
@@ -623,9 +623,6 @@ def also_with_standalone_wasm(impure=False, exclude_engines=None):
       if not standalone:
         func(self)
       else:
-        nonlocal exclude_engines
-        if exclude_engines is None:
-          exclude_engines = []
         if not can_do_standalone(self, impure):
           self.skipTest('Test configuration is not compatible with STANDALONE_WASM')
         self.set_setting('STANDALONE_WASM')
