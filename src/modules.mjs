@@ -462,6 +462,8 @@ function exportRuntimeSymbols() {
       'GROWABLE_HEAP_U16',
       'GROWABLE_HEAP_I32',
       'GROWABLE_HEAP_U32',
+      'GROWABLE_HEAP_I64',
+      'GROWABLE_HEAP_U64',
       'GROWABLE_HEAP_F32',
       'GROWABLE_HEAP_F64',
     );
@@ -523,6 +525,7 @@ function exportRuntimeSymbols() {
   const results = exports.filter((name) => name);
 
   if (MODULARIZE == 'instance') {
+    if (results.length == 0) return '';
     return '// Runtime exports\nexport { ' + results.join(', ') + ' };\n';
   }
 

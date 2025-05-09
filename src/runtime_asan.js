@@ -43,6 +43,16 @@ function _asan_js_load_4u(ptr) {
   return HEAPU32[ptr];
 }
 /** @suppress{duplicate} */
+function _asan_js_load_8(ptr) {
+  if (runtimeInitialized) return __asan_c_load_8(ptr);
+  return HEAP64[ptr];
+}
+/** @suppress{duplicate} */
+function _asan_js_load_8u(ptr) {
+  if (runtimeInitialized) return BigInt.asUintN(64, __asan_c_load_8u(ptr));
+  return HEAPU64[ptr];
+}
+/** @suppress{duplicate} */
 function _asan_js_load_f(ptr) {
   if (runtimeInitialized) return __asan_c_load_f(ptr);
   return HEAPF32[ptr];
@@ -82,6 +92,19 @@ function _asan_js_store_4(ptr, val) {
 function _asan_js_store_4u(ptr, val) {
   if (runtimeInitialized) return __asan_c_store_4u(ptr, val) >>> 0;
   return HEAPU32[ptr] = val;
+}
+/** @suppress{duplicate} */
+function _asan_js_store_8(ptr, val) {
+  if (runtimeInitialized) return __asan_c_store_8(ptr, val);
+  return HEAP64[ptr] = val;
+}
+/** @suppress{duplicate} */
+function _asan_js_store_8u(ptr, val) {
+  if (runtimeInitialized) {
+    __asan_c_store_8u(ptr, val);
+    return val;
+  }
+  return HEAPU64[ptr] = val;
 }
 /** @suppress{duplicate} */
 function _asan_js_store_f(ptr, val) {

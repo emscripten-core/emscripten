@@ -5616,11 +5616,8 @@ got: 10
   def test_futimens(self):
     self.do_runf('utime/test_futimens.c', 'success')
 
-  @no_minimal_runtime('MINIMAL_RUNTIME does not have getValue() and setValue() (TODO add it to a JS library function to get it in)')
-  @requires_node  # only node handles utf well
   def test_utf(self):
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc', '_free'])
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['getValue', 'setValue', 'UTF8ToString', 'stringToUTF8'])
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['getValue', 'setValue', 'UTF8ToString', 'stringToUTF8OnStack'])
     self.do_core_test('test_utf.c')
 
   def test_utf32(self):
@@ -9627,6 +9624,24 @@ NODEFS is no longer included by default; build with -lnodefs.js
     ''')
 
     self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
+
+  def test_modularize_instance_embind(self):
+    self.run_process([EMCC, test_file('modularize_instance_embind.cpp'),
+                      '-sMODULARIZE=instance',
+                      '-lembind',
+                      '-sEMBIND_AOT',
+                      '-o', 'modularize_instance_embind.mjs'])
+
+    create_file('runner.mjs', '''
+      import init, { foo, Bar } from "./modularize_instance_embind.mjs";
+      await init();
+      foo();
+      const bar = new Bar();
+      bar.print();
+      bar.delete();
+    ''')
+
+    self.assertContained('main\nfoo\nbar\n', self.run_js('runner.mjs'))
 
 
 # Generate tests for everything

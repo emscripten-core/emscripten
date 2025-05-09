@@ -30,7 +30,6 @@ from tools import webassembly
 from tools import extract_metadata
 from tools.utils import exit_with_error, path_from_root, removeprefix
 from tools.shared import DEBUG, asmjs_mangle, in_temp
-from tools.shared import treat_as_user_export
 from tools.settings import settings, user_settings
 
 sys.path.append(path_from_root('third_party'))
@@ -45,10 +44,12 @@ ASAN_C_HELPERS = [
   '_asan_c_load_1', '_asan_c_load_1u',
   '_asan_c_load_2', '_asan_c_load_2u',
   '_asan_c_load_4', '_asan_c_load_4u',
+  '_asan_c_load_8', '_asan_c_load_8u',
   '_asan_c_load_f', '_asan_c_load_d',
   '_asan_c_store_1', '_asan_c_store_1u',
   '_asan_c_store_2', '_asan_c_store_2u',
   '_asan_c_store_4', '_asan_c_store_4u',
+  '_asan_c_store_8', '_asan_c_store_8u',
   '_asan_c_store_f', '_asan_c_store_d',
 ]
 
@@ -279,10 +280,14 @@ def trim_asm_const_body(body):
   return body
 
 
+def create_other_export_declarations(tag_exports):
+  return '\n'.join(f'var {asmjs_mangle(name)};' for name in tag_exports)
+
+
 def create_global_exports(global_exports):
   lines = []
   for k, v in global_exports.items():
-    if building.is_internal_global(k):
+    if shared.is_internal_global(k):
       continue
 
     v = int(v)
@@ -416,11 +421,13 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
 
   if base_metadata:
     function_exports = base_metadata.function_exports
+    tag_exports = base_metadata.tag_exports
     # We want the real values from the final metadata but we only want to
     # include names from the base_metadata.  See phase_link() in link.py.
     global_exports = {k: v for k, v in metadata.global_exports.items() if k in base_metadata.global_exports}
   else:
     function_exports = metadata.function_exports
+    tag_exports = metadata.tag_exports
     global_exports = metadata.global_exports
 
   if settings.ASYNCIFY == 1:
@@ -430,13 +437,7 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     function_exports['asyncify_stop_rewind'] = webassembly.FuncType([], [])
 
   parts = [pre]
-  receiving = create_receiving(function_exports)
-  if settings.WASM_ESM_INTEGRATION:
-    sending = create_sending(metadata, forwarded_json['librarySymbols'])
-    reexports = create_reexports()
-    parts += [sending, receiving, reexports]
-  else:
-    parts += create_module(receiving, metadata, global_exports, forwarded_json['librarySymbols'])
+  parts += create_module(metadata, function_exports, global_exports, tag_exports, forwarded_json['librarySymbols'])
   parts.append(post)
 
   full_js_module = ''.join(parts)
@@ -571,7 +572,7 @@ def finalize_wasm(infile, outfile, js_syms):
   # EMSCRIPTEN_KEEPALIVE (llvm.used).
   # These are any exports that were not requested on the command line and are
   # not known auto-generated system functions.
-  unexpected_exports = [e for e in metadata.all_exports if treat_as_user_export(e)]
+  unexpected_exports = [e for e in metadata.all_exports if shared.is_user_export(e)]
   for n in unexpected_exports:
     if not n.isidentifier():
       exit_with_error(f'invalid export name: {n}')
@@ -1005,44 +1006,57 @@ def create_receiving(function_exports):
   return '\n'.join(receiving) + '\n'
 
 
-def create_module(receiving, metadata, global_exports, library_symbols):
-  receiving += create_global_exports(global_exports)
+def create_module(metadata, function_exports, global_exports, tag_exports,library_symbols):
   module = []
 
+  receiving = create_receiving(function_exports)
   sending = create_sending(metadata, library_symbols)
-  if settings.PTHREADS or settings.WASM_WORKERS:
-    sending = textwrap.indent(sending, '  ').strip()
-    module.append('''\
-var wasmImports;
-function assignWasmImports() {
-  wasmImports = %s;
-}
-''' % sending)
-  else:
-    module.append('var wasmImports = %s;\n' % sending)
 
-  if not settings.MINIMAL_RUNTIME:
-    if settings.MODULARIZE == 'instance':
-      module.append("var wasmExports;\n")
-    elif settings.WASM_ASYNC_COMPILATION:
-      if can_use_await():
-        # In modularize mode the generated code is within a factory function.
-        # This magic string gets replaced by `await createWasm`.  It needed to allow
-        # closure and acorn to process the module without seeing this as a top-level
-        # await.
-        module.append("var wasmExports = EMSCRIPTEN$AWAIT(createWasm());\n")
-      else:
-        module.append("var wasmExports;\ncreateWasm();\n")
+  if settings.WASM_ESM_INTEGRATION:
+    module.append(sending)
+  else:
+    receiving += create_global_exports(global_exports)
+    receiving += create_other_export_declarations(tag_exports)
+
+    if settings.PTHREADS or settings.WASM_WORKERS:
+      sending = textwrap.indent(sending, '  ').strip()
+      module.append('''\
+  var wasmImports;
+  function assignWasmImports() {
+    wasmImports = %s;
+  }
+  ''' % sending)
     else:
-      module.append("var wasmExports = createWasm();\n")
+      module.append('var wasmImports = %s;\n' % sending)
+
+    if not settings.MINIMAL_RUNTIME:
+      if settings.MODULARIZE == 'instance':
+        module.append("var wasmExports;\n")
+      elif settings.WASM_ASYNC_COMPILATION:
+        if can_use_await():
+          # In modularize mode the generated code is within a factory function.
+          # This magic string gets replaced by `await createWasm`.  It needed to allow
+          # closure and acorn to process the module without seeing this as a top-level
+          # await.
+          module.append("var wasmExports = EMSCRIPTEN$AWAIT(createWasm());\n")
+        else:
+          module.append("var wasmExports;\ncreateWasm();\n")
+      else:
+        module.append("var wasmExports = createWasm();\n")
 
   module.append(receiving)
+
   if settings.SUPPORT_LONGJMP == 'emscripten' or not settings.DISABLE_EXCEPTION_CATCHING:
     module.append(create_invoke_wrappers(metadata))
   else:
     assert not metadata.invoke_funcs, "invoke_ functions exported but exceptions and longjmp are both disabled"
+
   if settings.MEMORY64 or settings.CAN_ADDRESS_2GB:
     module.append(create_pointer_conversion_wrappers(metadata))
+
+  if settings.WASM_ESM_INTEGRATION:
+    module.append(create_reexports())
+
   return module
 
 

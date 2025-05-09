@@ -750,15 +750,6 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
   return js_file
 
 
-def is_internal_global(name):
-  internal_start_stop_symbols = {'__start_em_asm', '__stop_em_asm',
-                                 '__start_em_js', '__stop_em_js',
-                                 '__start_em_lib_deps', '__stop_em_lib_deps',
-                                 '__em_lib_deps'}
-  internal_prefixes = ('__em_js__', '__em_lib_deps')
-  return not shared.treat_as_user_export(name) or name in internal_start_stop_symbols or any(name.startswith(p) for p in internal_prefixes)
-
-
 # get the flags to pass into the very last binaryen tool invocation, that runs
 # the final set of optimizations
 def get_last_binaryen_opts():
@@ -867,7 +858,7 @@ def metadce(js_file, wasm_file, debug_info, last):
         unused_imports.append(native_name)
       elif name.startswith('emcc$export$') and settings.DECLARE_ASM_MODULE_EXPORTS:
         native_name = export_name_map[name]
-        if not is_internal_global(native_name):
+        if shared.is_user_export(native_name):
           unused_exports.append(native_name)
   if not unused_exports and not unused_imports:
     # nothing found to be unused, so we have nothing to remove

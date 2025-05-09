@@ -646,7 +646,9 @@ jobs:
             wasmfs.test_fcntl_open
             wasmfs.test_fs_llseek
             wasmfs.test_fs_llseek_rawfs
-            wasmfs.test_freetype"
+            wasmfs.test_freetype
+            minimal0.test_utf
+            "
   test-wasm2js1:
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
@@ -794,8 +796,8 @@ jobs:
             other.test_native_call_before_init
             other.test_node_unhandled_rejection
             core2.test_hello_world
-            core2.test_esm_integration
-            core0.test_esm_integration
+            core2.test_esm_integration*
+            core0.test_esm_integration*
             core0.test_pthread_join_and_asyncify
             core0.test_async_ccall_promise_jspi*
             core0.test_cubescript_jspi"

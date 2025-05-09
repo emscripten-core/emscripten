@@ -159,8 +159,8 @@ function unexportedRuntimeSymbol(sym) {
 function initWorkerLogging() {
   function getLogPrefix() {
 #if WASM_WORKERS
-    if (Module['$ww']) {
-      return `ww:${Module['$ww']}:`
+    if (wwParams?.wwID) {
+      return `ww:${wwParams?.wwID}:`
     }
 #endif
 #if PTHREADS

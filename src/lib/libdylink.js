@@ -667,7 +667,7 @@ var LibraryDylink = {
       }
 #if DYLINK_DEBUG
       dbg(`loadModule: memory[${memoryBase}:${memoryBase + metadata.memorySize}]` +
-                     ` table[${tableBasex}:${tableBase + metadata.tableSize}]`);
+                     ` table[${tableBase}:${tableBase + metadata.tableSize}]`);
 #endif
 
       // This is the export map that we ultimately return.  We declare it here
@@ -1245,17 +1245,19 @@ var LibraryDylink = {
 #if ASYNCIFY
   _dlopen_js__async: true,
 #endif
-  _dlopen_js: {{{ asyncIf(ASYNCIFY == 2) }}} (handle) => {
+  _dlopen_js: {{{ asyncIf(ASYNCIFY == 2) }}} (handle) =>
 #if ASYNCIFY
-    return Asyncify.handleSleep((wakeUp) => {
+    Asyncify.handleSleep((wakeUp) =>
       dlopenInternal(handle, { loadAsync: true })
-        .then(wakeUp)
-        .catch(() => wakeUp(0));
-    });
+      .then(wakeUp)
+      // Note: this currently relies on being able to catch errors even from `wakeUp` callback itself.
+      // That's why we can't refactor it to `handleAsync` at the moment.
+      .catch(() => wakeUp(0))
+    )
 #else
-    return dlopenInternal(handle, { loadAsync: false });
+    dlopenInternal(handle, { loadAsync: false })
 #endif
-  },
+    ,
 
   // Async version of dlopen.
   _emscripten_dlopen_js__deps: ['$dlopenInternal', '$callUserCallback', '$dlSetError'],
