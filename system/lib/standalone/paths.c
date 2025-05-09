@@ -20,29 +20,31 @@
 #include <string.h>
 #include <sysexits.h>
 
-/// A name and file descriptor pair.
+// A name and file descriptor pair.
 typedef struct preopen {
-  /// The path prefix associated with the file descriptor.
+  // The path prefix associated with the file descriptor.
   const char* prefix;
 
-  /// The file descriptor.
+  // The file descriptor.
   __wasi_fd_t fd;
 } preopen;
 
-/// A simple growable array of `preopen`.
+// A simple growable array of `preopen`.
 static preopen* preopens;
 static size_t num_preopens;
 
-/// Are the `prefix_len` bytes pointed to by `prefix` a prefix of `path`?
+// Are the `prefix_len` bytes pointed to by `prefix` a prefix of `path`?
 static bool
 prefix_matches(const char* prefix, size_t prefix_len, const char* path) {
   // Allow an empty string as a prefix of any relative path.
-  if (path[0] != '/' && prefix_len == 0)
+  if (path[0] != '/' && prefix_len == 0) {
     return true;
+  }
 
   // Check whether any bytes of the prefix differ.
-  if (memcmp(path, prefix, prefix_len) != 0)
+  if (memcmp(path, prefix, prefix_len) != 0) {
     return false;
+  }
 
   // Ignore trailing slashes in directory names.
   size_t i = prefix_len;
@@ -64,8 +66,9 @@ bool __paths_resolve_path(int* resolved_dirfd, const char** path_ptr) {
 
   // Strip leading `/` characters, the prefixes we're mataching won't have
   // them.
-  while (*path == '/')
+  while (*path == '/') {
     path++;
+  }
   // Search through the preopens table. Iterate in reverse so that more
   // recently added preopens take precedence over less recently addded ones.
   size_t match_len = 0;
@@ -92,12 +95,14 @@ bool __paths_resolve_path(int* resolved_dirfd, const char** path_ptr) {
   const char* computed = path + match_len;
 
   // Omit leading slashes in the relative path.
-  while (*computed == '/')
+  while (*computed == '/') {
     ++computed;
+  }
 
   // *at syscalls don't accept empty relative paths, so use "." instead.
-  if (*computed == '\0')
+  if (*computed == '\0') {
     computed = ".";
+  }
 
   *resolved_dirfd = fd;
   *path_ptr = computed;
@@ -129,7 +134,7 @@ static void assert_invariants(void) {
 }
 #endif
 
-/// Allocate space for more preopens. Returns 0 on success and -1 on failure.
+// Allocate space for more preopens. Returns 0 on success and -1 on failure.
 static bool resize_preopens(void) {
   size_t start_capacity = 4;
   size_t old_capacity = preopen_capacity;
@@ -170,9 +175,9 @@ static const char* strip_prefixes(const char* path) {
   return path;
 }
 
-/// Register the given preopened file descriptor under the given path.
-///
-/// This function takes ownership of `prefix`.
+// Register the given preopened file descriptor under the given path.
+//
+// This function takes ownership of `prefix`.
 static bool register_preopened_fd(__wasi_fd_t fd, const char* relprefix) {
   // Check preconditions.
   assert_invariants();
@@ -205,26 +210,31 @@ static void _standalone_populate_preopens(void) {
   for (__wasi_fd_t fd = 3; fd != 0; ++fd) {
     __wasi_prestat_t prestat;
     __wasi_errno_t ret = __wasi_fd_prestat_get(fd, &prestat);
-    if (ret == __WASI_ERRNO_BADF)
+    if (ret == __WASI_ERRNO_BADF) {
       break;
-    if (ret != __WASI_ERRNO_SUCCESS)
+    }
+    if (ret != __WASI_ERRNO_SUCCESS) {
       goto oserr;
+    }
     switch (prestat.pr_type) {
       case __WASI_PREOPENTYPE_DIR: {
         char* prefix = malloc(prestat.u.dir.pr_name_len + 1);
-        if (prefix == NULL)
+        if (prefix == NULL) {
           goto software;
+        }
 
         // TODO: Remove the cast on `path` once the witx is updated with
         // char8 support.
         ret = __wasi_fd_prestat_dir_name(
           fd, (uint8_t*)prefix, prestat.u.dir.pr_name_len);
-        if (ret != __WASI_ERRNO_SUCCESS)
+        if (ret != __WASI_ERRNO_SUCCESS) {
           goto oserr;
+        }
         prefix[prestat.u.dir.pr_name_len] = '\0';
 
-        if (!register_preopened_fd(fd, prefix))
+        if (!register_preopened_fd(fd, prefix)) {
           goto software;
+        }
         free(prefix);
 
         break;
