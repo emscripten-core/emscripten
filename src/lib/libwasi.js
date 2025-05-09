@@ -609,6 +609,7 @@ var WasiLibrary = {
     return 0;
   },
 
+#if ALLOW_UNIMPLEMENTED_SYSCALLS
   path_filestat_get__nothrow: true,
   path_filestat_get: (fd, flags, path, path_len, buf) => {
     return {{{ cDefs.ENOSYS }}};
@@ -623,6 +624,7 @@ var WasiLibrary = {
   path_symlink: (old_path, old_path_len, fd, new_path, new_path_len) => {
     return {{{ cDefs.ENOSYS }}};
   },
+#endif
 };
 
 for (var x in WasiLibrary) {
