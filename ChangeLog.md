@@ -28,6 +28,10 @@ See docs/process.md for more on how version tagging works.
   `requestFullScreen`, `createContext`, `getUserMedia`, `setCanvasSize`) are no
   longer exported by default. They can be exported using
   `-sEXPORTED_RUNTIME_METHODS=requestFullscreen`, for example. (#24223, #24269)
+- Embind: fixed support for unsigned 64-bit integers, which were previously
+  returned to JavaScript as their signed counterparts. (#24285)
+- Added handing for 64-bit integer access to AddressSanitizer, `-sSAFE_HEAP` and
+  `-sSUPPORT_BIG_ENDIAN` features. (#24283)
 
 4.0.8 - 04/30/25
 ----------------
