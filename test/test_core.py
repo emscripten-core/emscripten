@@ -6107,8 +6107,7 @@ Module.onRuntimeInitialized = () => {
     self.do_core_test('test_nl_types.c')
 
   def test_799(self):
-    src = test_file('799.cpp')
-    self.do_runf(src, '''Set PORT family: 0, port: 3979
+    self.do_runf('799.cpp', '''Set PORT family: 0, port: 3979
 Get PORT family: 0
 PORT: 3979
 ''')
@@ -9595,6 +9594,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     ''')
     self.assertContained('hello, world! (3)', self.run_js('runner.mjs'))
     self.assertFileContents(test_file('core/test_esm_integration.expected.mjs'), read_file('hello_world.mjs'))
+
+  def test_modularize_instance_hello(self):
+    self.do_core_test('test_hello_world.c', emcc_args=['-sMODULARIZE=instance', '-Wno-experimental'])
 
   @parameterized({
     '': ([],),
