@@ -800,7 +800,9 @@ jobs:
             core0.test_esm_integration*
             core0.test_pthread_join_and_asyncify
             core0.test_async_ccall_promise_jspi*
-            core0.test_cubescript_jspi"
+            core0.test_cubescript_jspi
+            esm_integration.test_fs_js_api*
+            "
       # Run some basic tests with the minimum version of node that we currently
       # support in the generated code.
       # Keep this in sync with `OLDEST_SUPPORTED_NODE` in `feature_matrix.py`

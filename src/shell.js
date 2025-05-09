@@ -22,7 +22,7 @@
 // can continue to use Module afterwards as well.
 #if MODULARIZE
 #if MODULARIZE == 'instance'
-var Module;
+var Module = {};
 #else
 var Module = moduleArg;
 #endif

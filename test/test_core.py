@@ -45,11 +45,7 @@ def esm_integration(func):
 
   @wraps(func)
   def decorated(self, *args, **kwargs):
-    self.require_node_canary()
-    self.node_args += ['--experimental-wasm-modules', '--no-warnings']
-    self.emcc_args += ['-sWASM_ESM_INTEGRATION', '-Wno-experimental']
-    if self.is_wasm64():
-      self.skipTest('wasm64 requires wasm export wrappers')
+    self.setup_esm_integration()
     func(self, *args, **kwargs)
 
   return decorated
@@ -348,6 +344,14 @@ class TestCoreBase(RunnerCore):
     required = ('-O2', '-Os')
     prohibited = ('-g', '--profiling')
     return all(f not in self.emcc_args for f in prohibited) and any(f in self.emcc_args for f in required)
+
+  def setup_esm_integration(self):
+    self.require_node_canary()
+    self.node_args += ['--experimental-wasm-modules', '--no-warnings']
+    self.set_setting('WASM_ESM_INTEGRATION')
+    self.emcc_args += ['-Wno-experimental']
+    if self.is_wasm64():
+      self.skipTest('wasm64 requires wasm export wrappers')
 
   # Use closure in some tests for some additional coverage
   def maybe_closure(self):
@@ -9644,11 +9648,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
 
 # Generate tests for everything
-def make_run(name, emcc_args, settings=None, env=None,
+def make_run(name, emcc_args=None, settings=None, env=None, # noqa
              require_v8=False, v8_args=None,
              require_node=False, node_args=None,
              require_wasm64=False,
              init=None):
+  if emcc_args is None:
+    emcc_args = {}
   if env is None:
     env = {}
   if settings is None:
@@ -9776,6 +9782,8 @@ core2ss = make_run('core2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK
 
 bigint = make_run('bigint', emcc_args=['--profiling-funcs'], settings={'WASM_BIGINT': 1},
                   init=lambda self: shared.node_bigint_flags(self.get_nodejs()))
+
+esm_integration = make_run('esm_integration', init=lambda self: self.setup_esm_integration())
 
 # Add DEFAULT_TO_CXX=0
 strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})
