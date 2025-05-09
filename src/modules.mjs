@@ -456,9 +456,7 @@ function exportRuntimeSymbols() {
   }
 
   if (PTHREADS && ALLOW_MEMORY_GROWTH) {
-    runtimeElements.push(
-      'GROWABLE_HEAP',
-    );
+    runtimeElements.push('GROWABLE_HEAP');
   }
   if (USE_OFFSET_CONVERTER) {
     runtimeElements.push('WasmOffsetConverter');
