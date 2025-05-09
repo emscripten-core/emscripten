@@ -40,10 +40,15 @@ def make_command(filename, engine, args=None):
   is_jsc = 'jsc' in jsengine or 'javascriptcore' in jsengine
   is_wasmer = 'wasmer' in jsengine
   is_wasmtime = 'wasmtime' in jsengine
+  is_toywasm = 'toywasm' in jsengine
   command_flags = []
   if is_wasmer:
     command_flags += ['run']
-  if is_wasmer or is_wasmtime:
+  elif is_wasmtime:
+    command_flags += ['--dir', '.', '--']
+  elif is_toywasm:
+    command_flags += ['--wasi', '--wasi-dir', '.', '--']
+  if is_wasmer or is_wasmtime or is_toywasm:
     # in a wasm runtime, run the wasm, not the js
     filename = shared.replace_suffix(filename, '.wasm')
   # Separates engine flags from script flags

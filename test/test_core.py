@@ -5586,6 +5586,7 @@ got: 10
 
   @crossplatform
   @also_with_nodefs_both
+  @also_with_standalone_wasm(exclude_engines=['node', 'wasmer'])
   def test_fcntl_open(self):
     nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
     if nodefs and WINDOWS:

@@ -608,6 +608,23 @@ var WasiLibrary = {
     randomFill(HEAPU8.subarray(buffer, buffer + size));
     return 0;
   },
+
+#if ALLOW_UNIMPLEMENTED_SYSCALLS
+  path_filestat_get__nothrow: true,
+  path_filestat_get: (fd, flags, path, path_len, buf) => {
+    return {{{ cDefs.ENOSYS }}};
+  },
+
+  path_create_directory__nothrow: true,
+  path_create_directory: (fd, path, path_len) => {
+    return {{{ cDefs.ENOSYS }}};
+  },
+
+  path_symlink__nothrow: true,
+  path_symlink: (old_path, old_path_len, fd, new_path, new_path_len) => {
+    return {{{ cDefs.ENOSYS }}};
+  },
+#endif
 };
 
 for (var x in WasiLibrary) {

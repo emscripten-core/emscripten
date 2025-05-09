@@ -12,10 +12,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <malloc.h>
 #include <syscall_arch.h>
 #include <time.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include <emscripten.h>
 #include <emscripten/heap.h>
@@ -25,6 +27,7 @@
 
 #include "lock.h"
 #include "emscripten_internal.h"
+#include "paths.h"
 
 /*
  * WASI support code. These are compiled with the program, and call out
@@ -44,6 +47,42 @@ _Static_assert(CLOCK_REALTIME == __WASI_CLOCKID_REALTIME, "must match");
 _Static_assert(CLOCK_MONOTONIC == __WASI_CLOCKID_MONOTONIC, "must match");
 _Static_assert(CLOCK_PROCESS_CPUTIME_ID == __WASI_CLOCKID_PROCESS_CPUTIME_ID, "must match");
 _Static_assert(CLOCK_THREAD_CPUTIME_ID == __WASI_CLOCKID_THREAD_CPUTIME_ID, "must match");
+
+static void wasi_filestat_to_stat(const __wasi_filestat_t* in,
+                                  struct stat* out) {
+  *out = (struct stat){
+    .st_dev = in->dev,
+    .st_ino = in->ino,
+    .st_nlink = in->nlink,
+    .st_size = in->size,
+    .st_atim = __wasi_timestamp_to_timespec(in->atim),
+    .st_mtim = __wasi_timestamp_to_timespec(in->mtim),
+    .st_ctim = __wasi_timestamp_to_timespec(in->ctim),
+  };
+
+  // Convert file type to legacy types encoded in st_mode.
+  switch (in->filetype) {
+    case __WASI_FILETYPE_BLOCK_DEVICE:
+      out->st_mode |= S_IFBLK;
+      break;
+    case __WASI_FILETYPE_CHARACTER_DEVICE:
+      out->st_mode |= S_IFCHR;
+      break;
+    case __WASI_FILETYPE_DIRECTORY:
+      out->st_mode |= S_IFDIR;
+      break;
+    case __WASI_FILETYPE_REGULAR_FILE:
+      out->st_mode |= S_IFREG;
+      break;
+    case __WASI_FILETYPE_SOCKET_DGRAM:
+    case __WASI_FILETYPE_SOCKET_STREAM:
+      out->st_mode |= S_IFSOCK;
+      break;
+    case __WASI_FILETYPE_SYMBOLIC_LINK:
+      out->st_mode |= S_IFLNK;
+      break;
+  }
+}
 
 // mmap support is nonexistent. TODO: emulate simple mmaps using
 // stdio + malloc, which is slow but may help some things?
@@ -65,21 +104,106 @@ weak int _munmap_js(
   return -ENOSYS;
 }
 
-// open(), etc. - we just support the standard streams, with no
-// corner case error checking; everything else is not permitted.
-// TODO: full file support for WASI, or an option for it
-// open()
 weak int __syscall_openat(int dirfd, intptr_t path, int flags, ...) {
-  if (!strcmp((const char*)path, "/dev/stdin")) {
+  const char* resolved_path = (const char*)path;
+
+  if (!strcmp(resolved_path, "/dev/stdin")) {
     return STDIN_FILENO;
   }
-  if (!strcmp((const char*)path, "/dev/stdout")) {
+  if (!strcmp(resolved_path, "/dev/stdout")) {
     return STDOUT_FILENO;
   }
-  if (!strcmp((const char*)path, "/dev/stderr")) {
+  if (!strcmp(resolved_path, "/dev/stderr")) {
     return STDERR_FILENO;
   }
-  return -EPERM;
+
+  if (!__paths_resolve_path(&dirfd, &resolved_path)) {
+    return -ENOENT;
+  }
+
+  // Compute rights corresponding with the access modes provided.
+  // Attempt to obtain all rights, except the ones that contradict the
+  // access mode provided to openat().
+  __wasi_rights_t max =
+    ~(__WASI_RIGHTS_FD_DATASYNC | __WASI_RIGHTS_FD_READ |
+      __WASI_RIGHTS_FD_WRITE | __WASI_RIGHTS_FD_ALLOCATE |
+      __WASI_RIGHTS_FD_READDIR | __WASI_RIGHTS_FD_FILESTAT_SET_SIZE);
+  {
+    int accmode = flags & O_ACCMODE;
+    if (accmode == O_RDONLY || accmode == O_RDWR || accmode == O_WRONLY) {
+      if (accmode == O_RDONLY || accmode == O_RDWR) {
+        max |= __WASI_RIGHTS_FD_READ | __WASI_RIGHTS_FD_READDIR;
+      }
+      if (accmode == O_WRONLY || accmode == O_RDWR) {
+        max |= __WASI_RIGHTS_FD_DATASYNC | __WASI_RIGHTS_FD_WRITE |
+               __WASI_RIGHTS_FD_ALLOCATE |
+               __WASI_RIGHTS_FD_FILESTAT_SET_SIZE;
+      }
+    } else if (accmode == O_EXEC || accmode == O_SEARCH) {
+      // Do nothing.
+    } else {
+      return -EINVAL;
+    }
+  }
+
+  // Ensure that we can actually obtain the minimal rights needed.
+  __wasi_fdstat_t fsb_cur;
+  __wasi_errno_t error = __wasi_fd_fdstat_get(dirfd, &fsb_cur);
+  if (error != __WASI_ERRNO_SUCCESS) {
+    return -error;
+  }
+
+  // Path lookup properties.
+  __wasi_lookupflags_t lookup_flags = 0;
+  if ((flags & O_NOFOLLOW) == 0) {
+    lookup_flags |= __WASI_LOOKUPFLAGS_SYMLINK_FOLLOW;
+  }
+
+  // Open file with appropriate rights.
+  __wasi_fdflags_t fs_flags = 0;
+  if (flags & O_APPEND) {
+    fs_flags |= __WASI_FDFLAGS_APPEND;
+  }
+  if (flags & O_DSYNC) {
+    fs_flags |= __WASI_FDFLAGS_DSYNC;
+  }
+  if (flags & O_NONBLOCK) {
+    fs_flags |= __WASI_FDFLAGS_NONBLOCK;
+  }
+  if (flags & O_RSYNC) {
+    fs_flags |= __WASI_FDFLAGS_RSYNC;
+  }
+  if (flags & O_SYNC) {
+    fs_flags |= __WASI_FDFLAGS_SYNC;
+  }
+
+  __wasi_oflags_t oflags = 0;
+  if (flags & O_CREAT) {
+    oflags |= __WASI_OFLAGS_CREAT;
+  }
+  if (flags & O_DIRECTORY) {
+    oflags |= __WASI_OFLAGS_DIRECTORY;
+  }
+  if (flags & O_EXCL) {
+    oflags |= __WASI_OFLAGS_EXCL;
+  }
+  if (flags & O_TRUNC) {
+    oflags |= __WASI_OFLAGS_TRUNC;
+  }
+
+  __wasi_rights_t fs_rights_base = max & fsb_cur.fs_rights_inheriting;
+  __wasi_rights_t fs_rights_inheriting = fsb_cur.fs_rights_inheriting;
+  __wasi_fd_t newfd;
+
+  error = __wasi_path_open(dirfd, lookup_flags, resolved_path, strlen(resolved_path),
+                           oflags,
+                           fs_rights_base, fs_rights_inheriting, fs_flags,
+                           &newfd);
+  if (error != __WASI_ERRNO_SUCCESS) {
+    return -error;
+  }
+
+  return newfd;
 }
 
 weak int __syscall_ioctl(int fd, int op, ...) {
@@ -95,7 +219,7 @@ weak int __syscall_fstat64(int fd, intptr_t buf) {
 }
 
 weak int __syscall_stat64(intptr_t path, intptr_t buf) {
-  return -ENOSYS;
+  return __syscall_newfstatat(AT_FDCWD, path, buf, 0);
 }
 
 weak int __syscall_dup(int fd) {
@@ -103,15 +227,66 @@ weak int __syscall_dup(int fd) {
 }
 
 weak int __syscall_mkdirat(int dirfd, intptr_t path, int mode) {
-  return -ENOSYS;
+  const char* resolved_path = (const char*)path;
+
+  if (!__paths_resolve_path(&dirfd, &resolved_path)) {
+    return -ENOENT;
+  }
+
+  __wasi_errno_t error = __wasi_path_create_directory(dirfd, resolved_path, strlen(resolved_path));
+  if (error != __WASI_ERRNO_SUCCESS) {
+    return -error;
+  }
+  return 0;
 }
 
 weak int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
-  return -ENOSYS;
+  // Convert flags to WASI.
+  __wasi_lookupflags_t lookup_flags = 0;
+  if ((flags & AT_SYMLINK_NOFOLLOW) == 0) {
+    lookup_flags |= __WASI_LOOKUPFLAGS_SYMLINK_FOLLOW;
+  }
+
+  const char* resolved_path = (const char*)path;
+
+  if (!__paths_resolve_path(&dirfd, &resolved_path)) {
+    return -ENOENT;
+  }
+
+  __wasi_filestat_t fsb_cur;
+  __wasi_errno_t error = __wasi_path_filestat_get(
+    dirfd, lookup_flags, resolved_path, strlen(resolved_path), &fsb_cur);
+  if (error != __WASI_ERRNO_SUCCESS) {
+    return -error;
+  }
+
+  wasi_filestat_to_stat(&fsb_cur, (struct stat*)buf);
+
+  return 0;
 }
 
 weak int __syscall_lstat64(intptr_t path, intptr_t buf) {
-  return -ENOSYS;
+  return __syscall_newfstatat(AT_FDCWD, path, buf, AT_SYMLINK_NOFOLLOW);
+}
+
+weak int __syscall_symlinkat(intptr_t target_arg, int newdirfd, intptr_t linkpath) {
+  const char* resolved_linkpath = (const char*)linkpath;
+
+  if (!__paths_resolve_path(&newdirfd, &resolved_linkpath)) {
+    return -ENOENT;
+  }
+
+  const char* target = (const char*)target_arg;
+
+  __wasi_errno_t error = __wasi_path_symlink(target,
+                                             strlen(target),
+                                             newdirfd,
+                                             resolved_linkpath,
+                                             strlen(resolved_linkpath));
+  if (error != __WASI_ERRNO_SUCCESS) {
+    return -error;
+  }
+  return 0;
 }
 
 // Emscripten additions
