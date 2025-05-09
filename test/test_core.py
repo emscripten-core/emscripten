@@ -9786,6 +9786,7 @@ bigint = make_run('bigint', emcc_args=['--profiling-funcs'], settings={'WASM_BIG
                   init=lambda self: shared.node_bigint_flags(self.get_nodejs()))
 
 esm_integration = make_run('esm_integration', init=lambda self: self.setup_esm_integration())
+instance = make_run('instance', emcc_args=['-Wno-experimental'], settings={'MODULARIZE': 'instance'})
 
 # Add DEFAULT_TO_CXX=0
 strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})

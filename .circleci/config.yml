@@ -802,6 +802,7 @@ jobs:
             core0.test_async_ccall_promise_jspi*
             core0.test_cubescript_jspi
             esm_integration.test_fs_js_api*
+            instance.test_hello_world
             "
       # Run some basic tests with the minimum version of node that we currently
       # support in the generated code.
