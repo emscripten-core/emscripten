@@ -1398,7 +1398,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if emcc_args:
       all_emcc_args += emcc_args
     if not output_suffix:
-      if '-sEXPORT_ES6' in all_emcc_args or '-sWASM_ESM_INTEGRATION' in all_emcc_args:
+      if any(a in all_emcc_args for a in ('-sEXPORT_ES6', '-sWASM_ESM_INTEGRATION', '-sMODULARIZE=instance')):
         output_suffix = '.mjs'
       else:
         output_suffix = '.js'
