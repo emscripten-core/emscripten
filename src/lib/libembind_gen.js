@@ -367,8 +367,8 @@ var LibraryEmbind = {
         ['unsigned long', ['bigint']],
 #endif
 #if WASM_BIGINT
-        ['int64_t', ['bigint']],
-        ['uint64_t', ['bigint']],
+        ['long long', ['bigint']],
+        ['unsigned long long', ['bigint']],
 #endif
         ['void', ['void']],
         ['std::string', [jsString, 'string']],

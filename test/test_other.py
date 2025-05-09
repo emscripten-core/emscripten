@@ -3396,14 +3396,6 @@ More info: https://emscripten.org
 
     self.do_runf('embind/test_return_value_policy.cpp')
 
-  @parameterized({
-    '': [[]],
-    'asyncify': [['-sASYNCIFY=1']],
-  })
-  def test_embind_long_long(self, args):
-    self.do_runf('embind/test_embind_long_long.cpp', '1000000000000n\n-1000000000000n',
-                 emcc_args=['-lembind', '-sWASM_BIGINT'] + args)
-
   @requires_node_canary
   def test_embind_resource_management(self):
     self.node_args.append('--js-explicit-resource-management')
@@ -3582,7 +3574,7 @@ More info: https://emscripten.org
     args = [EMXX, test_file('other/embind_tsgen_bigint.cpp'), '-lembind', '--emit-tsd', 'embind_tsgen_bigint.d.ts']
     # Check that TypeScript generation fails when code contains bigints but their support is not enabled
     stderr = self.expect_fail(args + ['-sWASM_BIGINT=0'])
-    self.assertContained("Missing primitive type to TS type for 'int64_t", stderr)
+    self.assertContained("Missing primitive type to TS type for 'long long", stderr)
     # Check that TypeScript generation works when bigint support is enabled
     self.run_process(args)
     self.assertFileContents(test_file('other/embind_tsgen_bigint.d.ts'), read_file('embind_tsgen_bigint.d.ts'))

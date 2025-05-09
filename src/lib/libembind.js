@@ -318,6 +318,15 @@ var LibraryEmbind = {
     }
   },
 
+#if ASSERTIONS
+  $assertIntegerRange__deps: ['$embindRepr'],
+  $assertIntegerRange: (typeName, value, minRange, maxRange) => {
+    if (value < minRange || value > maxRange) {
+      throw new TypeError(`Passing a number "${embindRepr(value)}" from JS side to C/C++ side to an argument of type "${typeName}", which is outside the valid range [${minRange}, ${maxRange}]!`);
+    }
+  },
+#endif
+
   _embind_register_integer__docs: '/** @suppress {globalThis} */',
   // When converting a number from JS to C++ side, the valid range of the number is
   // [minRange, maxRange], inclusive.
@@ -325,52 +334,35 @@ var LibraryEmbind = {
     '$integerReadValueFromPointer', '$readLatin1String', '$registerType',
 #if ASSERTIONS
     '$embindRepr',
+    '$assertIntegerRange',
 #endif
   ],
   _embind_register_integer: (primitiveType, name, size, minRange, maxRange) => {
     name = readLatin1String(name);
-    // LLVM doesn't have signed and unsigned 32-bit types, so u32 literals come
-    // out as 'i32 -1'. Always treat those as max u32.
-    if (maxRange === -1) {
-      maxRange = 4294967295;
-    }
 
-    var fromWireType = (value) => value;
+    const isUnsignedType = minRange === 0;
 
-    if (minRange === 0) {
+    let fromWireType = (value) => value;
+    if (isUnsignedType) {
       var bitshift = 32 - 8*size;
       fromWireType = (value) => (value << bitshift) >>> bitshift;
+      maxRange = fromWireType(maxRange);
     }
 
-    var isUnsignedType = (name.includes('unsigned'));
-    var checkAssertions = (value, toTypeName) => {
-#if ASSERTIONS
-      if (typeof value != "number" && typeof value != "boolean") {
-        throw new TypeError(`Cannot convert "${embindRepr(value)}" to ${toTypeName}`);
-      }
-      if (value < minRange || value > maxRange) {
-        throw new TypeError(`Passing a number "${embindRepr(value)}" from JS side to C/C++ side to an argument of type "${name}", which is outside the valid range [${minRange}, ${maxRange}]!`);
-      }
-#endif
-    }
-    var toWireType;
-    if (isUnsignedType) {
-      toWireType = function(destructors, value) {
-        checkAssertions(value, this.name);
-        return value >>> 0;
-      }
-    } else {
-      toWireType = function(destructors, value) {
-        checkAssertions(value, this.name);
-        // The VM will perform JS to Wasm value conversion, according to the spec:
-        // https://www.w3.org/TR/wasm-js-api-1/#towebassemblyvalue
-        return value;
-      }
-    }
     registerType(primitiveType, {
       name,
       'fromWireType': fromWireType,
-      'toWireType': toWireType,
+      'toWireType': (destructors, value) => {
+#if ASSERTIONS
+        if (typeof value != "number" && typeof value != "boolean") {
+          throw new TypeError(`Cannot convert "${embindRepr(value)}" to ${name}`);
+        }
+        assertIntegerRange(name, value, minRange, maxRange);
+  #endif
+        // The VM will perform JS to Wasm value conversion, according to the spec:
+        // https://www.w3.org/TR/wasm-js-api-1/#towebassemblyvalue
+        return value;
+      },
       argPackAdvance: GenericWireTypeSize,
       'readValueFromPointer': integerReadValueFromPointer(name, size, minRange !== 0),
       destructorFunction: null, // This type does not need a destructor
@@ -380,31 +372,46 @@ var LibraryEmbind = {
 #if WASM_BIGINT
   _embind_register_bigint__docs: '/** @suppress {globalThis} */',
   _embind_register_bigint__deps: [
-    '$embindRepr', '$readLatin1String', '$registerType', '$integerReadValueFromPointer'],
+    '$readLatin1String', '$registerType', '$integerReadValueFromPointer',
+#if ASSERTIONS
+    '$embindRepr',
+    '$assertIntegerRange',
+#endif
+  ],
   _embind_register_bigint: (primitiveType, name, size, minRange, maxRange) => {
     name = readLatin1String(name);
 
-    var isUnsignedType = (name.indexOf('u') != -1);
+    const isUnsignedType = minRange === 0n;
 
-    // maxRange comes through as -1 for uint64_t (see issue 13902). Work around that temporarily
+    let fromWireType = (value) => value;
     if (isUnsignedType) {
-      maxRange = (1n << 64n) - 1n;
+      // uint64 get converted to int64 in ABI, fix them up like we do for 32-bit integers.
+      const bitSize = size * 8;
+      fromWireType = (value) => {
+#if MEMORY64
+        // FIXME(https://github.com/emscripten-core/emscripten/issues/16975)
+        // `size_t` ends up here, but it's transferred in the ABI as a plain number instead of a bigint.
+        if (typeof value == 'number') {
+          return value >>> 0;
+        }
+#endif
+        return BigInt.asUintN(bitSize, value);
+      }
+      maxRange = fromWireType(maxRange);
     }
 
     registerType(primitiveType, {
       name,
-      'fromWireType': (value) => value,
-      'toWireType': function(destructors, value) {
-        if (typeof value != "bigint" && typeof value != "number") {
-          throw new TypeError(`Cannot convert "${embindRepr(value)}" to ${this.name}`);
-        }
+      'fromWireType': fromWireType,
+      'toWireType': (destructors, value) => {
         if (typeof value == "number") {
           value = BigInt(value);
         }
 #if ASSERTIONS
-        if (value < minRange || value > maxRange) {
-          throw new TypeError(`Passing a number "${embindRepr(value)}" from JS side to C/C++ side to an argument of type "${name}", which is outside the valid range [${minRange}, ${maxRange}]!`);
+        else if (typeof value != "bigint") {
+          throw new TypeError(`Cannot convert "${embindRepr(value)}" to ${this.name}`);
         }
+        assertIntegerRange(name, value, minRange, maxRange);
 #endif
         return value;
       },
@@ -1193,7 +1200,7 @@ var LibraryEmbind = {
   $constNoSmartPtrRawPointerToWireType__docs: '/** @suppress {globalThis} */',
   // If we know a pointer type is not going to have SmartPtr logic in it, we can
   // special-case optimize it a bit (compare to genericPointerToWireType)
-  $constNoSmartPtrRawPointerToWireType__deps: ['$throwBindingError', '$upcastPointer'],
+  $constNoSmartPtrRawPointerToWireType__deps: ['$throwBindingError', '$upcastPointer', '$embindRepr'],
   $constNoSmartPtrRawPointerToWireType: function(destructors, handle) {
     if (handle === null) {
       if (this.isReference) {
@@ -1216,7 +1223,7 @@ var LibraryEmbind = {
   $nonConstNoSmartPtrRawPointerToWireType__docs: '/** @suppress {globalThis} */',
   // An optimized version for non-const method accesses - there we must additionally restrict that
   // the pointer is not a const-pointer.
-  $nonConstNoSmartPtrRawPointerToWireType__deps: ['$throwBindingError', '$upcastPointer'],
+  $nonConstNoSmartPtrRawPointerToWireType__deps: ['$throwBindingError', '$upcastPointer', '$embindRepr'],
   $nonConstNoSmartPtrRawPointerToWireType: function(destructors, handle) {
     if (handle === null) {
       if (this.isReference) {
