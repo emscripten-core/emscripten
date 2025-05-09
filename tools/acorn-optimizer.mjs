@@ -1606,57 +1606,7 @@ function safeHeap(ast) {
       c(value);
       if (isHEAPAccess(target)) {
         // Instrument a store.
-        const ptr = target.property;
-        switch (target.object.name) {
-          case 'HEAP8':
-          case 'HEAPU8': {
-            makeCallExpression(node, 'SAFE_HEAP_STORE', [ptr, value, createLiteral(1)]);
-            break;
-          }
-          case 'HEAP16':
-          case 'HEAPU16': {
-            makeCallExpression(node, 'SAFE_HEAP_STORE', [
-              multiply(ptr, 2),
-              value,
-              createLiteral(2),
-            ]);
-            break;
-          }
-          case 'HEAP32':
-          case 'HEAPU32': {
-            makeCallExpression(node, 'SAFE_HEAP_STORE', [
-              multiply(ptr, 4),
-              value,
-              createLiteral(4),
-            ]);
-            break;
-          }
-          case 'HEAP64':
-          case 'HEAPU64': {
-            makeCallExpression(node, 'SAFE_HEAP_STORE', [
-              multiply(ptr, 8),
-              value,
-              createLiteral(8),
-            ]);
-            break;
-          }
-          case 'HEAPF32': {
-            makeCallExpression(node, 'SAFE_HEAP_STORE_D', [
-              multiply(ptr, 4),
-              value,
-              createLiteral(4),
-            ]);
-            break;
-          }
-          case 'HEAPF64': {
-            makeCallExpression(node, 'SAFE_HEAP_STORE_D', [
-              multiply(ptr, 8),
-              value,
-              createLiteral(8),
-            ]);
-            break;
-          }
-        }
+        makeCallExpression(node, 'SAFE_HEAP_STORE', [target.object, target.property, value]);
       } else {
         c(target);
       }
@@ -1667,81 +1617,10 @@ function safeHeap(ast) {
         c(node.object);
       } else {
         // Instrument a load.
-        const ptr = node.property;
-        switch (node.object.name) {
-          case 'HEAP8': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [ptr, createLiteral(1), createLiteral(0)]);
-            break;
-          }
-          case 'HEAPU8': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [ptr, createLiteral(1), createLiteral(1)]);
-            break;
-          }
-          case 'HEAP16': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [
-              multiply(ptr, 2),
-              createLiteral(2),
-              createLiteral(0),
-            ]);
-            break;
-          }
-          case 'HEAPU16': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [
-              multiply(ptr, 2),
-              createLiteral(2),
-              createLiteral(1),
-            ]);
-            break;
-          }
-          case 'HEAP32': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [
-              multiply(ptr, 4),
-              createLiteral(4),
-              createLiteral(0),
-            ]);
-            break;
-          }
-          case 'HEAPU32': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [
-              multiply(ptr, 4),
-              createLiteral(4),
-              createLiteral(1),
-            ]);
-            break;
-          }
-          case 'HEAP64': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [
-              multiply(ptr, 8),
-              createLiteral(8),
-              createLiteral(0),
-            ]);
-            break;
-          }
-          case 'HEAPU64': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [
-              multiply(ptr, 8),
-              createLiteral(8),
-              createLiteral(1),
-            ]);
-            break;
-          }
-          case 'HEAPF32': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD_D', [
-              multiply(ptr, 4),
-              createLiteral(4),
-              createLiteral(0),
-            ]);
-            break;
-          }
-          case 'HEAPF64': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD_D', [
-              multiply(ptr, 8),
-              createLiteral(8),
-              createLiteral(0),
-            ]);
-            break;
-          }
-        }
+        makeCallExpression(node, 'SAFE_HEAP_LOAD', [
+          node.object,
+          node.property
+        ]);
       }
     },
   });
