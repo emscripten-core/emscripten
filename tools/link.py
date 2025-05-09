@@ -790,6 +790,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     default_setting('MODULARIZE', 'instance')
     if not settings.EXPORT_ES6 or settings.MODULARIZE != 'instance':
       exit_with_error('WASM_ESM_INTEGRATION requires EXPORT_ES6 and MODULARIZE=instance')
+    if settings.RELOCATABLE:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with dynamic linking')
 
   if settings.MODULARIZE and settings.MODULARIZE not in [1, 'instance']:
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')

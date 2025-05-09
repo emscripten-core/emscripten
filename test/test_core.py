@@ -9511,6 +9511,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-mreference-types']
     self.node_args += shared.node_reference_types_flags(self.get_nodejs())
     if dynlink:
+      self.check_dylink()
       self.set_setting('MAIN_MODULE', 2)
     self.do_core_test('test_externref_emjs.c')
 
