@@ -66,6 +66,7 @@ sigs = {
   SDL_DestroyMutex__sig: 'vp',
   SDL_DestroyRenderer__sig: 'vp',
   SDL_DestroyWindow__sig: 'vp',
+  SDL_DisplayFormat__sig: 'pp',
   SDL_DisplayFormatAlpha__sig: 'pp',
   SDL_EnableKeyRepeat__sig: 'iii',
   SDL_EnableUNICODE__sig: 'ii',
