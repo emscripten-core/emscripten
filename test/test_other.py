@@ -12048,7 +12048,7 @@ int main () {
   def test_safe_heap_log(self):
     self.set_setting('SAFE_HEAP')
     self.set_setting('SAFE_HEAP_LOG')
-    self.do_runf('hello_world.c', 'SAFE_HEAP load: ')
+    self.do_runf('hello_world.c', 'SAFE_HEAP loading: ')
 
   def test_mini_printfs(self):
     def test(code):
