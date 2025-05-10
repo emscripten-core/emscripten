@@ -2590,6 +2590,10 @@ F1 -> ''
     # with a different contrib port when there is another one
     self.emcc(test_file('other/test_contrib_ports.cpp'), ['--use-port=contrib.glfw3'])
 
+  @requires_network
+  def test_remote_ports(self):
+    self.emcc(test_file('hello_world.c'), ['--use-port=contrib.emdawn'])
+
   @crossplatform
   def test_external_ports_simple(self):
     if config.FROZEN_CACHE:

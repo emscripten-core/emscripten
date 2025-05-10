@@ -39,11 +39,28 @@ ports_dir = os.path.dirname(os.path.abspath(__file__))
 logger = logging.getLogger('ports')
 
 
+def get_port_by_name(name):
+  port = ports_by_name[name]
+  if port.is_external:
+    load_external_port(port)
+    return ports_by_name[name]
+  else:
+    return port
+
+
 def init_port(name, port):
   ports.append(port)
   port.is_contrib = name.startswith('contrib.')
+  port.is_external = hasattr(port, 'EXTERNAL_PORT')
   port.name = name
   ports_by_name[port.name] = port
+  if port.is_external:
+    init_external_port(name, port)
+  else:
+    init_local_port(name, port)
+
+
+def init_local_port(name, port):
   if not hasattr(port, 'needed'):
     port.needed = lambda s: name in ports_needed
   else:
@@ -69,6 +86,26 @@ def init_port(name, port):
     port_variants[variant] = (port.name, extra_settings)
 
   validate_port(port)
+
+
+def load_external_port(external_port):
+  Ports.fetch_project(external_port.name, external_port.EXTERNAL_PORT, external_port.SHA512)
+  port_file = os.path.join(Ports.get_dir(), external_port.PORT_FILE)
+  module_name = f'tools.ports.external.{external_port.name}'
+  spec = importlib.util.spec_from_file_location(module_name, port_file)
+  local_port = importlib.util.module_from_spec(spec)
+  spec.loader.exec_module(local_port)
+  ports.remove(external_port)
+  init_port(external_port.name, local_port)
+  return True
+
+
+def init_external_port(name, port):
+  expected_attrs = ['SHA512', 'PORT_FILE', 'URL', 'DESCRIPTION', 'LICENSE']
+  for a in expected_attrs:
+    assert hasattr(port, a), 'port %s is missing %s' % (port, a)
+  port.needed = lambda s: name in ports_needed
+  port.show = lambda: f'{port.name} (--use-port={port.name}; {port.LICENSE})'
 
 
 def load_port(path, name=None):
@@ -359,7 +396,7 @@ class Ports:
 
   @staticmethod
   def clear_project_build(name):
-    port = ports_by_name[name]
+    port = get_port_by_name(name)
     port.clear(Ports, settings, shared)
     build_dir = os.path.join(Ports.get_build_dir(), name)
     logger.debug(f'clearing port build: {name} {build_dir}')
@@ -442,7 +479,7 @@ def resolve_dependencies(port_set, settings, cflags_only=False):
       d, _ = split_port_options(d)
       if d not in ports_by_name:
         utils.exit_with_error(f'unknown dependency `{d}` for port `{node.name}`')
-      dep = ports_by_name[d]
+      dep = get_port_by_name(d)
       if dep not in port_set:
         port_set.add(dep)
         add_deps(dep)
@@ -472,7 +509,7 @@ def show_port_help_and_exit(port):
 
 # extract dict and delegate to port.handle_options for handling (format is 'option1=value1:option2=value2')
 def handle_port_options(name, options, error_handler):
-  port = ports_by_name[name]
+  port = get_port_by_name(name)
   if options == 'help':
     show_port_help_and_exit(port)
   if not hasattr(port, 'handle_options'):
@@ -494,7 +531,7 @@ def handle_port_options(name, options, error_handler):
 
 # handle port dependencies (ex: deps=['sdl2_image:formats=jpg'])
 def handle_port_deps(name, error_handler):
-  port = ports_by_name[name]
+  port = get_port_by_name(name)
   for dep in port.deps:
     dep_name, dep_options = split_port_options(dep)
     if dep_name not in ports_by_name:
@@ -534,13 +571,13 @@ def handle_use_port_arg(settings, arg, error_handler=None):
 
 def get_needed_ports(settings, cflags_only=False):
   # Start with directly needed ports, and transitively add dependencies
-  needed = OrderedSet(p for p in ports if p.needed(settings))
+  needed = OrderedSet(get_port_by_name(p.name) for p in ports if p.needed(settings))
   resolve_dependencies(needed, settings, cflags_only)
   return needed
 
 
 def build_port(port_name, settings):
-  port = ports_by_name[port_name]
+  port = get_port_by_name(port_name)
   port_set = OrderedSet([port])
   resolve_dependencies(port_set, settings)
   for port in dependency_order(port_set):
@@ -548,7 +585,7 @@ def build_port(port_name, settings):
 
 
 def clear_port(port_name, settings):
-  port = ports_by_name[port_name]
+  port = get_port_by_name(port_name)
   port.clear(Ports, settings, shared)
 
 
