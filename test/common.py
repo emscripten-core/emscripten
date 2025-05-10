@@ -548,9 +548,7 @@ def also_with_wasm_bigint(f):
       self.set_setting('WASM_BIGINT')
       nodejs = self.require_node()
       self.node_args += shared.node_bigint_flags(nodejs)
-      f(self, *args, **kwargs)
-    else:
-      f(self, *args, **kwargs)
+    f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'bigint': (True,)})
@@ -567,9 +565,7 @@ def also_with_wasm64(f):
     if with_wasm64:
       self.require_wasm64()
       self.set_setting('MEMORY64')
-      f(self, *args, **kwargs)
-    else:
-      f(self, *args, **kwargs)
+    f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'wasm64': (True,)})
@@ -587,9 +583,7 @@ def also_with_wasm2js(f):
     if with_wasm2js:
       self.require_wasm2js()
       self.set_setting('WASM', 0)
-      f(self, *args, **kwargs)
-    else:
-      f(self, *args, **kwargs)
+    f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'wasm2js': (True,)})
@@ -617,12 +611,10 @@ def can_do_standalone(self, impure=False):
 def also_with_standalone_wasm(impure=False):
   def decorated(func):
     @wraps(func)
-    def metafunc(self, standalone):
+    def metafunc(self, standalone, *args, **kwargs):
       if DEBUG:
         print('parameterize:standalone=%s' % standalone)
-      if not standalone:
-        func(self)
-      else:
+      if standalone:
         if not can_do_standalone(self, impure):
           self.skipTest('Test configuration is not compatible with STANDALONE_WASM')
         self.set_setting('STANDALONE_WASM')
@@ -638,7 +630,7 @@ def also_with_standalone_wasm(impure=False):
           self.wasm_engines = []
         nodejs = self.require_node()
         self.node_args += shared.node_bigint_flags(nodejs)
-        func(self)
+      func(self, *args, **kwargs)
 
     parameterize(metafunc, {'': (False,),
                             'standalone': (True,)})
