@@ -9292,8 +9292,12 @@ int main() {
     self.run_codesize_test('minimal.c', *args)
 
   @node_pthreads
-  def test_codesize_minimal_pthreads(self):
-    self.run_codesize_test('minimal_main.c', ['-Oz', '-pthread', '-sPROXY_TO_PTHREAD', '-sSTRICT'])
+  @parameterized({
+    '': ([],),
+    'memgrowth': (['-sALLOW_MEMORY_GROWTH'],),
+  })
+  def test_codesize_minimal_pthreads(self, args):
+    self.run_codesize_test('minimal_main.c', ['-Oz', '-pthread', '-sPROXY_TO_PTHREAD', '-sSTRICT'] + args)
 
   @parameterized({
     'noexcept': (['-O2'],                    [], ['waka']), # noqa
@@ -10538,9 +10542,9 @@ int main() {
                       '-sMAXIMUM_MEMORY=4GB', '-sALLOW_MEMORY_GROWTH'])
     # growable-heap must not interfere with heap unsigning, and vice versa:
     # we must have both applied, that is
-    #   - GROWABLE_HEAP_I8() replaces HEAP8
+    #   - GROWABLE_HEAP() wraps HEAP8
     #   - $0 gets an >>> 0 unsigning
-    self.assertContained('GROWABLE_HEAP_I8().set([ 1, 2, 3 ], $0 >>> 0)',
+    self.assertContained('GROWABLE_HEAP(HEAP8).set([ 1, 2, 3 ], $0 >>> 0)',
                          read_file('a.out.js'))
 
   @parameterized({
