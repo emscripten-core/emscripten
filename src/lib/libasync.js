@@ -426,12 +426,10 @@ addToLibrary({
     //
     // This is particularly useful for native JS `async` functions where the
     // returned value will "just work" and be passed back to C++.
-    handleAsync(startAsync) {
-      return Asyncify.handleSleep((wakeUp) => {
-        // TODO: add error handling as a second param when handleSleep implements it.
-        startAsync().then(wakeUp);
-      });
-    },
+    handleAsync: (startAsync) => Asyncify.handleSleep((wakeUp) => {
+      // TODO: add error handling as a second param when handleSleep implements it.
+      startAsync().then(wakeUp);
+    }),
 
 #elif ASYNCIFY == 2
     //
@@ -452,9 +450,7 @@ addToLibrary({
         {{{ runtimeKeepalivePop(); }}}
       }
     },
-    handleSleep(startAsync) {
-      return Asyncify.handleAsync(() => new Promise(startAsync));
-    },
+    handleSleep: (startAsync) => Asyncify.handleAsync(() => new Promise(startAsync)),
     makeAsyncFunction(original) {
 #if ASYNCIFY_DEBUG
       dbg('asyncify: makeAsyncFunction for', original);
@@ -466,33 +462,24 @@ addToLibrary({
 
   emscripten_sleep__deps: ['$safeSetTimeout'],
   emscripten_sleep__async: true,
-  emscripten_sleep: (ms) => {
-    // emscripten_sleep() does not return a value, but we still need a |return|
-    // here for stack switching support (ASYNCIFY=2). In that mode this function
-    // returns a Promise instead of nothing, and that Promise is what tells the
-    // wasm VM to pause the stack.
-    return Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms));
-  },
+  emscripten_sleep: (ms) => Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms)),
 
   emscripten_wget_data__deps: ['$asyncLoad', 'malloc'],
   emscripten_wget_data__async: true,
-  emscripten_wget_data: (url, pbuffer, pnum, perror) => {
-    return Asyncify.handleSleep((wakeUp) => {
-      /* no need for run dependency, this is async but will not do any prepare etc. step */
-      asyncLoad(UTF8ToString(url)).then((byteArray) => {
-        // can only allocate the buffer after the wakeUp, not during an asyncing
-        var buffer = _malloc(byteArray.length); // must be freed by caller!
-        HEAPU8.set(byteArray, buffer);
-        {{{ makeSetValue('pbuffer', 0, 'buffer', '*') }}};
-        {{{ makeSetValue('pnum',  0, 'byteArray.length', 'i32') }}};
-        {{{ makeSetValue('perror',  0, '0', 'i32') }}};
-        wakeUp();
-      }, () => {
-        {{{ makeSetValue('perror',  0, '1', 'i32') }}};
-        wakeUp();
-      });
-    });
-  },
+  emscripten_wget_data: (url, pbuffer, pnum, perror) => Asyncify.handleAsync(async () => {
+    /* no need for run dependency, this is async but will not do any prepare etc. step */
+    try {
+      const byteArray = await asyncLoad(UTF8ToString(url));
+      // can only allocate the buffer after the wakeUp, not during an asyncing
+      var buffer = _malloc(byteArray.length); // must be freed by caller!
+      HEAPU8.set(byteArray, buffer);
+      {{{ makeSetValue('pbuffer', 0, 'buffer', '*') }}};
+      {{{ makeSetValue('pnum', 0, 'byteArray.length', 'i32') }}};
+      {{{ makeSetValue('perror', 0, '0', 'i32') }}};
+    } catch (err) {
+      {{{ makeSetValue('perror', 0, '1', 'i32') }}};
+    }
+  }),
 
   emscripten_scan_registers__deps: ['$safeSetTimeout'],
   emscripten_scan_registers__async: true,

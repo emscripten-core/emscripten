@@ -300,6 +300,8 @@ function preInit() {
 }
 
 #if MODULARIZE == 'instance'
+// In MODULARIZE=instance mode we delay most of the initialization work until
+// the `init` function is called.
 export default async function init(moduleArg = {}) {
   Module = moduleArg;
   processModuleArgs();
@@ -312,9 +314,21 @@ export default async function init(moduleArg = {}) {
   preInit();
   run();
 }
+
 #if PTHREADS
+// When run as a pthread we run `init` immediately.
 if (ENVIRONMENT_IS_PTHREAD) await init()
 #endif
+
+#if ENVIRONMENT_MAY_BE_NODE
+// When run as the main script under node we run `init` immediately.
+if (ENVIRONMENT_IS_NODE) {
+  const url = await import('url');
+  const isMainModule = url.pathToFileURL(process.argv[1]).href === import.meta.url;
+  if (isMainModule) await init();
+}
+#endif
+
 #else
 preInit();
 run();

@@ -421,9 +421,8 @@ function JSDCE(ast, aggressive) {
       },
       MemberExpression(node, c) {
         c(node.object);
-        // Ignore a property identifier (a.X), but notice a[X] (computed
-        // is true) and a["X"] (it will be a Literal and not Identifier).
-        if (node.property.type !== 'Identifier' || node.computed) {
+        // Ignore a property identifier (a.X), but notice a[X] (computed props).
+        if (node.computed) {
           c(node.property);
         }
       },
@@ -1115,6 +1114,8 @@ function isEmscriptenHEAP(name) {
     case 'HEAPU16':
     case 'HEAP32':
     case 'HEAPU32':
+    case 'HEAP64':
+    case 'HEAPU64':
     case 'HEAPF32':
     case 'HEAPF64': {
       return true;
@@ -1183,6 +1184,16 @@ function littleEndianHeap(ast) {
             makeCallExpression(node, 'LE_HEAP_STORE_U32', [multiply(idx, 4), value]);
             break;
           }
+          case 'HEAP64': {
+            // change "name[idx] = value" to "LE_HEAP_STORE_I64(idx*8, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_I64', [multiply(idx, 8), value]);
+            break;
+          }
+          case 'HEAPU64': {
+            // change "name[idx] = value" to "LE_HEAP_STORE_U64(idx*8, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_U64', [multiply(idx, 8), value]);
+            break;
+          }
           case 'HEAPF32': {
             // change "name[idx] = value" to "LE_HEAP_STORE_F32(idx*4, value)"
             makeCallExpression(node, 'LE_HEAP_STORE_F32', [multiply(idx, 4), value]);
@@ -1206,7 +1217,7 @@ function littleEndianHeap(ast) {
         node.callee.object.type === 'Identifier' &&
         node.callee.object.name === 'Atomics' &&
         node.callee.property.type === 'Identifier' &&
-        !node.computed
+        !node.callee.computed
       ) {
         makeCallExpression(
           node,
@@ -1249,6 +1260,16 @@ function littleEndianHeap(ast) {
           case 'HEAPU32': {
             // change "name[idx]" to "LE_HEAP_LOAD_U32(idx*4)"
             makeCallExpression(node, 'LE_HEAP_LOAD_U32', [multiply(idx, 4)]);
+            break;
+          }
+          case 'HEAP64': {
+            // change "name[idx]" to "LE_HEAP_LOAD_I64(idx*8)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_I64', [multiply(idx, 8)]);
+            break;
+          }
+          case 'HEAPU64': {
+            // change "name[idx]" to "LE_HEAP_LOAD_U64(idx*8)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_U64', [multiply(idx, 8)]);
             break;
           }
           case 'HEAPF32': {
@@ -1329,6 +1350,14 @@ function growableHeap(ast) {
             makeCallExpression(node, 'GROWABLE_HEAP_U32', []);
             break;
           }
+          case 'HEAP64': {
+            makeCallExpression(node, 'GROWABLE_HEAP_I64', []);
+            break;
+          }
+          case 'HEAPU64': {
+            makeCallExpression(node, 'GROWABLE_HEAP_U64', []);
+            break;
+          }
           case 'HEAPF32': {
             makeCallExpression(node, 'GROWABLE_HEAP_F32', []);
             break;
@@ -1391,7 +1420,7 @@ function unsignPointers(ast) {
         node.callee.object.type === 'Identifier' &&
         isHeap(node.callee.object.name) &&
         node.callee.property.type === 'Identifier' &&
-        !node.computed
+        !node.callee.computed
       ) {
         // This is a call on HEAP*.?. Specific things we need to fix up are
         // subarray, set, and copyWithin. TODO more?
@@ -1471,6 +1500,14 @@ function asanify(ast) {
             makeCallExpression(node, '_asan_js_store_4u', [ptr, value]);
             break;
           }
+          case 'HEAP64': {
+            makeCallExpression(node, '_asan_js_store_8', [ptr, value]);
+            break;
+          }
+          case 'HEAPU64': {
+            makeCallExpression(node, '_asan_js_store_8u', [ptr, value]);
+            break;
+          }
           case 'HEAPF32': {
             makeCallExpression(node, '_asan_js_store_f', [ptr, value]);
             break;
@@ -1514,6 +1551,14 @@ function asanify(ast) {
           }
           case 'HEAPU32': {
             makeCallExpression(node, '_asan_js_load_4u', [ptr]);
+            break;
+          }
+          case 'HEAP64': {
+            makeCallExpression(node, '_asan_js_load_8', [ptr]);
+            break;
+          }
+          case 'HEAPU64': {
+            makeCallExpression(node, '_asan_js_load_8u', [ptr]);
             break;
           }
           case 'HEAPF32': {
@@ -1586,6 +1631,15 @@ function safeHeap(ast) {
             ]);
             break;
           }
+          case 'HEAP64':
+          case 'HEAPU64': {
+            makeCallExpression(node, 'SAFE_HEAP_STORE', [
+              multiply(ptr, 8),
+              value,
+              createLiteral(8),
+            ]);
+            break;
+          }
           case 'HEAPF32': {
             makeCallExpression(node, 'SAFE_HEAP_STORE_D', [
               multiply(ptr, 4),
@@ -1651,6 +1705,22 @@ function safeHeap(ast) {
             makeCallExpression(node, 'SAFE_HEAP_LOAD', [
               multiply(ptr, 4),
               createLiteral(4),
+              createLiteral(1),
+            ]);
+            break;
+          }
+          case 'HEAP64': {
+            makeCallExpression(node, 'SAFE_HEAP_LOAD', [
+              multiply(ptr, 8),
+              createLiteral(8),
+              createLiteral(0),
+            ]);
+            break;
+          }
+          case 'HEAPU64': {
+            makeCallExpression(node, 'SAFE_HEAP_LOAD', [
+              multiply(ptr, 8),
+              createLiteral(8),
               createLiteral(1),
             ]);
             break;
