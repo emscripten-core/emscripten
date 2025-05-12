@@ -3976,20 +3976,19 @@ ok
     # side settings
     self.clear_setting('MAIN_MODULE')
     self.set_setting('SIDE_MODULE')
-    side_suffix = '.wasm' if self.is_wasm() else '.js'
+    so_file = os.path.join(so_dir, so_name)
     if isinstance(side, list):
-      out_file = 'liblib' + side_suffix
       # side is just a library
-      self.run_process([EMCC] + side + self.get_emcc_args() + ['-o', out_file])
+      self.run_process([EMCC] + side + self.get_emcc_args() + ['-o', so_file])
     else:
-      out_file = self.build(side, output_suffix=side_suffix)
-    shutil.move(out_file, os.path.join(so_dir, so_name))
+      out_file = self.build(side, output_suffix='.so')
+      shutil.move(out_file, so_file)
 
     # main settings
     self.set_setting('MAIN_MODULE', main_module)
     self.clear_setting('SIDE_MODULE')
     self.emcc_args += main_emcc_args
-    self.emcc_args.append(os.path.join(so_dir, so_name))
+    self.emcc_args.append(so_file)
 
     if force_c:
       self.emcc_args.append('-nostdlib++')
