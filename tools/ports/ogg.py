@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 
 import os
+import shutil
 
 TAG = 'version_1'
 HASH = '929e8d6003c06ae09593021b83323c8f1f54532b67b8ba189f4aedce52c25dc182bac474de5392c46ad5b0dea5a24928e4ede1492d52f4dd5cd58eea9be4dba7'
@@ -18,7 +19,8 @@ def get(ports, settings, shared):
 
   def create(final):
     source_path = ports.get_dir('ogg', 'Ogg-' + TAG)
-    ports.write_file(os.path.join(source_path, 'include', 'ogg', 'config_types.h'), config_types_h)
+    config_types_h = os.path.join(os.path.dirname(__file__), 'ogg/config_types.h')
+    shutil.copyfile(config_types_h, os.path.join(source_path, 'include/ogg/config_types.h'))
     ports.install_headers(os.path.join(source_path, 'include', 'ogg'), target='ogg')
     ports.build_port(os.path.join(source_path, 'src'), final, 'ogg')
 
@@ -31,32 +33,3 @@ def clear(ports, settings, shared):
 
 def show():
   return 'ogg (-sUSE_OGG=1 or --use-port=ogg; zlib license)'
-
-
-config_types_h = '''\
-#ifndef __CONFIG_TYPES_H__
-#define __CONFIG_TYPES_H__
-
-/* these are filled in by configure */
-#define INCLUDE_INTTYPES_H 1
-#define INCLUDE_STDINT_H 1
-#define INCLUDE_SYS_TYPES_H 1
-
-#if INCLUDE_INTTYPES_H
-#  include <inttypes.h>
-#endif
-#if INCLUDE_STDINT_H
-#  include <stdint.h>
-#endif
-#if INCLUDE_SYS_TYPES_H
-#  include <sys/types.h>
-#endif
-
-typedef int16_t ogg_int16_t;
-typedef uint16_t ogg_uint16_t;
-typedef int32_t ogg_int32_t;
-typedef uint32_t ogg_uint32_t;
-typedef int64_t ogg_int64_t;
-
-#endif
-'''
