@@ -1377,7 +1377,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.fail('es-check failed to verify ES5 output compliance')
 
   # Build JavaScript code from source code
-  def build(self, filename, libraries=None, includes=None, force_c=False, emcc_args=None, output_basename=None, output_suffix=None):
+  def build(self, filename, /, libraries=None, includes=None, force_c=False, emcc_args=None, output_basename=None, output_suffix=None):
     if not os.path.exists(filename):
       filename = test_file(filename)
     compiler = [compiler_for(filename, force_c)]
@@ -1737,7 +1737,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if shared.EMSCRIPTEN_TEMP_DIR:
       utils.delete_contents(shared.EMSCRIPTEN_TEMP_DIR)
 
-  def run_process(self, cmd, check=True, **args):
+  def run_process(self, cmd, /, check=True, **args):
     # Wrapper around shared.run_process.  This is desirable so that the tests
     # can fail (in the unittest sense) rather than error'ing.
     # In the long run it would nice to completely remove the dependency on
@@ -1905,7 +1905,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     ''' % locals(),
            'a: loaded\na: b (prev: (null))\na: c (prev: b)\n', emcc_args=extra_args)
 
-  def do_run(self, src, expected_output=None, force_c=False, **kwargs):
+  def do_run(self, src, expected_output=None, /, force_c=False, **kwargs):
     if 'no_build' in kwargs:
       filename = src
     else:
@@ -1934,7 +1934,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return output
 
   ## Does a complete test - builds, runs, checks output, etc.
-  def _build_and_run(self, filename, expected_output, args=None,
+  def _build_and_run(self, filename, /, expected_output, args=None,
                      no_build=False,
                      assert_returncode=0, assert_identical=False, assert_all=False,
                      check_for_error=True,
