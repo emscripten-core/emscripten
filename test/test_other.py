@@ -12232,7 +12232,7 @@ int main(void) {
   })
   @parameterized({
     '': [],
-    'memgrowth': ['-sALLOW_MEMORY_GROWTH'],
+    'memgrowth': ['-pthread', '-sALLOW_MEMORY_GROWTH', '-Wno-pthreads-mem-growth'],
   })
   @parameterized({
     '': [],
