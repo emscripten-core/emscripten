@@ -1474,49 +1474,7 @@ function asanify(ast) {
       c(value);
       if (isHEAPAccess(target)) {
         // Instrument a store.
-        const ptr = target.property;
-        switch (target.object.name) {
-          case 'HEAP8': {
-            makeCallExpression(node, '_asan_js_store_1', [ptr, value]);
-            break;
-          }
-          case 'HEAPU8': {
-            makeCallExpression(node, '_asan_js_store_1u', [ptr, value]);
-            break;
-          }
-          case 'HEAP16': {
-            makeCallExpression(node, '_asan_js_store_2', [ptr, value]);
-            break;
-          }
-          case 'HEAPU16': {
-            makeCallExpression(node, '_asan_js_store_2u', [ptr, value]);
-            break;
-          }
-          case 'HEAP32': {
-            makeCallExpression(node, '_asan_js_store_4', [ptr, value]);
-            break;
-          }
-          case 'HEAPU32': {
-            makeCallExpression(node, '_asan_js_store_4u', [ptr, value]);
-            break;
-          }
-          case 'HEAP64': {
-            makeCallExpression(node, '_asan_js_store_8', [ptr, value]);
-            break;
-          }
-          case 'HEAPU64': {
-            makeCallExpression(node, '_asan_js_store_8u', [ptr, value]);
-            break;
-          }
-          case 'HEAPF32': {
-            makeCallExpression(node, '_asan_js_store_f', [ptr, value]);
-            break;
-          }
-          case 'HEAPF64': {
-            makeCallExpression(node, '_asan_js_store_d', [ptr, value]);
-            break;
-          }
-        }
+        makeCallExpression(node, '_asan_js_store', [target.object, target.property, value]);
       } else {
         c(target);
       }
@@ -1527,49 +1485,7 @@ function asanify(ast) {
         c(node.object);
       } else {
         // Instrument a load.
-        const ptr = node.property;
-        switch (node.object.name) {
-          case 'HEAP8': {
-            makeCallExpression(node, '_asan_js_load_1', [ptr]);
-            break;
-          }
-          case 'HEAPU8': {
-            makeCallExpression(node, '_asan_js_load_1u', [ptr]);
-            break;
-          }
-          case 'HEAP16': {
-            makeCallExpression(node, '_asan_js_load_2', [ptr]);
-            break;
-          }
-          case 'HEAPU16': {
-            makeCallExpression(node, '_asan_js_load_2u', [ptr]);
-            break;
-          }
-          case 'HEAP32': {
-            makeCallExpression(node, '_asan_js_load_4', [ptr]);
-            break;
-          }
-          case 'HEAPU32': {
-            makeCallExpression(node, '_asan_js_load_4u', [ptr]);
-            break;
-          }
-          case 'HEAP64': {
-            makeCallExpression(node, '_asan_js_load_8', [ptr]);
-            break;
-          }
-          case 'HEAPU64': {
-            makeCallExpression(node, '_asan_js_load_8u', [ptr]);
-            break;
-          }
-          case 'HEAPF32': {
-            makeCallExpression(node, '_asan_js_load_f', [ptr]);
-            break;
-          }
-          case 'HEAPF64': {
-            makeCallExpression(node, '_asan_js_load_d', [ptr]);
-            break;
-          }
-        }
+        makeCallExpression(node, '_asan_js_load', [node.object, node.property]);
       }
     },
   });
