@@ -804,6 +804,13 @@ jobs:
             esm_integration.test_fs_js_api*
             instance.test_hello_world
             instance.test_dylink_basics
+            instance.test_cube2hash*
+            instance.test_exceptions_3*
+            instance.test_memorygrowth
+            instance.test_stat
+            instance.test_iostream_and_determinism
+            instance.test_fannkuch
+            instance.test_fasta
             esm_integration.test_inlinejs3
             esm_integration.test_embind_val_basics
             "
