@@ -163,6 +163,13 @@ class Ports:
     shutil.copytree(src_dir, dest, dirs_exist_ok=True, copy_function=maybe_copy)
 
   @staticmethod
+  def install_file(filename, target):
+    sysroot = cache.get_sysroot_dir()
+    target_dir = os.path.join(sysroot, os.path.dirname(target))
+    os.makedirs(target_dir, exist_ok=True)
+    maybe_copy(filename, os.path.join(sysroot, target))
+
+  @staticmethod
   def install_headers(src_dir, pattern='*.h', target=None):
     logger.debug('install_headers')
     dest = Ports.get_include_dir()

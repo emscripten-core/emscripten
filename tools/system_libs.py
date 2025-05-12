@@ -2493,10 +2493,6 @@ def install_system_headers(stamp):
   bin_dest = cache.get_sysroot_dir('bin')
   copytree_exist_ok(bin_src, bin_dest)
 
-  cmake_src = utils.path_from_root('system/lib/cmake')
-  cmake_dest = cache.get_sysroot_dir('lib/cmake')
-  copytree_exist_ok(cmake_src, cmake_dest)
-
   # Create a version header based on the emscripten-version.txt
   version_file = cache.get_include_dir('emscripten/version.h')
   utils.write_file(version_file, textwrap.dedent(f'''\
