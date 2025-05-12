@@ -2279,10 +2279,6 @@ def phase_binaryen(target, options, wasm_target):
   # after generating the wasm, do some final operations
 
   if final_js:
-    if settings.SUPPORT_BIG_ENDIAN:
-      with ToolchainProfiler.profile_block('little_endian_heap'):
-        final_js = building.little_endian_heap(final_js)
-
     # >=2GB heap support requires pointers in JS to be unsigned. rather than
     # require all pointers to be unsigned by default, which increases code size
     # a little, keep them signed, and just unsign them here if we need that.
@@ -2304,6 +2300,10 @@ def phase_binaryen(target, options, wasm_target):
 
     if settings.SAFE_HEAP:
       final_js = building.instrument_js_for_safe_heap(final_js)
+
+    if settings.SUPPORT_BIG_ENDIAN:
+      with ToolchainProfiler.profile_block('little_endian_heap'):
+        final_js = building.little_endian_heap(final_js)
 
     if settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL <= 2:
       # minify the JS. Do not minify whitespace if Closure is used, so that
