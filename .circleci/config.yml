@@ -803,6 +803,7 @@ jobs:
             core0.test_cubescript_jspi
             esm_integration.test_fs_js_api*
             instance.test_hello_world
+            instance.test_dylink_basics
             esm_integration.test_inlinejs3
             esm_integration.test_embind_val_basics
             "

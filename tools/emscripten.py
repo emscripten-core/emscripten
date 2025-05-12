@@ -1028,7 +1028,7 @@ def create_module(metadata, function_exports, global_exports, tag_exports,librar
     receiving += create_global_exports(global_exports)
     receiving += create_other_export_declarations(tag_exports)
 
-    if settings.PTHREADS or settings.WASM_WORKERS:
+    if settings.PTHREADS or settings.WASM_WORKERS or (settings.IMPORTED_MEMORY and settings.MODULARIZE == 'instance'):
       sending = textwrap.indent(sending, '  ').strip()
       module.append('''\
   var wasmImports;
