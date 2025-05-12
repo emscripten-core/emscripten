@@ -12235,6 +12235,24 @@ int main(void) {
     # https://github.com/emscripten-core/emscripten/issues/14618
     self.do_runf('other/test_asan_strncpy.c', emcc_args=['-fsanitize=address'])
 
+  @parameterized({
+    'asan': ['AddressSanitizer: null-pointer-dereference', '-fsanitize=address'],
+    'safe_heap': ['Aborted(segmentation fault storing 4 bytes at address 0)', '-sSAFE_HEAP'],
+  })
+  @parameterized({
+    '': [],
+    'memgrowth': ['-pthread', '-sALLOW_MEMORY_GROWTH', '-Wno-pthreads-mem-growth'],
+  })
+  def test_null_deref_via_js(self, expected_output, *args):
+    # Multiple JS transforms look for pattern like `HEAPxx[...]` and transform it.
+    # This test ensures that one of the transforms doesn't produce a pattern that
+    # another pass can't find anymore, that is that features can work in conjunction.
+    self.do_runf(
+      'other/test_null_deref_via_js.c',
+      emcc_args=args,
+      assert_returncode=NON_ZERO,
+      expected_output=[expected_output])
+
   @node_pthreads
   def test_proxy_to_pthread_stack(self):
     # Check that the proxied main gets run with STACK_SIZE setting and not
