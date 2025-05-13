@@ -138,7 +138,7 @@ addToLibrary({
 
 #if EMBIND
     // Embind must initialize itself on all threads, as it generates support JS.
-    __embind_initialize_bindings();
+    __embind_initialize_worker_bindings();
 #endif
 
 #if AUDIO_WORKLET

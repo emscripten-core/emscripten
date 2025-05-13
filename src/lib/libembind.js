@@ -31,6 +31,10 @@ var LibraryEmbind = {
   $UnboundTypeError: class extends Error {},
   $PureVirtualError: class extends Error {},
   $GenericWireTypeSize: {{{ 2 * POINTER_SIZE }}},
+#if PTHREADS || WASM_WORKERS
+  $postCtors: null, // Unused symbol stub for injecting post ctors call.
+  $postCtors__postset: () => { addAtPostCtor('__embind_post_ctors()'); },
+#endif
 #if EMBIND_AOT
   $InvokerFunctions: '<<< EMBIND_AOT_INVOKERS >>>',
 #endif
@@ -2319,5 +2323,9 @@ var LibraryEmbind = {
     });
   },
 };
+
+#if PTHREADS || WASM_WORKERS
+extraLibraryFuncs.push('$postCtors');
+#endif
 
 addToLibrary(LibraryEmbind);
