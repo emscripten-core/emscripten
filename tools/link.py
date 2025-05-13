@@ -712,6 +712,17 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if options.memory_profiler:
     settings.MEMORYPROFILER = 1
 
+  # Handle WASM_ESM_INTEGRATION early since it can set EXPORT_ES6 which
+  # effect the default output format below.
+  if settings.WASM_ESM_INTEGRATION:
+    default_setting('EXPORT_ES6', 1)
+    default_setting('MODULARIZE', 'instance')
+    if not settings.EXPORT_ES6 or settings.MODULARIZE != 'instance':
+      exit_with_error('WASM_ESM_INTEGRATION requires EXPORT_ES6 and MODULARIZE=instance')
+    diagnostics.warning('experimental', '-sWASM_ESM_INTEGRATION is still experimental and not yet supported in browsers')
+    if settings.RELOCATABLE:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with dynamic linking')
+
   if settings.PTHREADS_PROFILING:
     if not settings.ASSERTIONS:
       exit_with_error('PTHREADS_PROFILING only works with ASSERTIONS enabled')
@@ -740,6 +751,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     target = 'a.out'
   elif settings.SIDE_MODULE:
     target = 'a.out.wasm'
+  elif settings.EXPORT_ES6:
+    target = 'a.out.mjs'
   else:
     target = 'a.out.js'
 
@@ -783,15 +796,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.JS_BASE64_API:
     diagnostics.warning('experimental', '-sJS_BASE64_API is still experimental and not yet supported in browsers')
-
-  if settings.WASM_ESM_INTEGRATION:
-    diagnostics.warning('experimental', '-sWASM_ESM_INTEGRATION is still experimental and not yet supported in browsers')
-    default_setting('EXPORT_ES6', 1)
-    default_setting('MODULARIZE', 'instance')
-    if not settings.EXPORT_ES6 or settings.MODULARIZE != 'instance':
-      exit_with_error('WASM_ESM_INTEGRATION requires EXPORT_ES6 and MODULARIZE=instance')
-    if settings.RELOCATABLE:
-      exit_with_error('WASM_ESM_INTEGRATION is not compatible with dynamic linking')
 
   if settings.MODULARIZE and settings.MODULARIZE not in [1, 'instance']:
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')

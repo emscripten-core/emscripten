@@ -16081,3 +16081,12 @@ addToLibrary({
       }
     ''')
     self.do_runf('main.c')
+
+  @parameterized({
+    '': ([], 'a.out.js'),
+    'es6': (['-sEXPORT_ES6'], 'a.out.mjs'),
+    'esm_integration': (['-sWASM_ESM_INTEGRATION'], 'a.out.mjs'),
+  })
+  def test_default_output_name(self, args, expected_output):
+    self.run_process([EMCC, test_file('hello_world.c')] + args)
+    self.assertExists(expected_output)

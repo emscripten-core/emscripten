@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 4.0.9 (in development)
 ----------------------
+- When building with `-sEXPORT_ES6` the default name of the output of the
+  compiler is now `a.out.mjs` rather than `a.out.js`.  This only applies in the
+  absence of an explicit `-o` flag. (#24320)
 - libunwind was updated to LLVM 20.1.4. (#24251)
 - When using cmake the EMSCRIPTEN_FORCE_COMPILERS setting was reverted to
   being on by default due to issues that were found with disabling it. (#24223)
