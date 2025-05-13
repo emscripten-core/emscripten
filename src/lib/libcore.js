@@ -1818,6 +1818,8 @@ addToLibrary({
     }
 #endif
     var rtn = func(...args);
+#endif // DYNCALLS
+
     function convert(rtn) {
 #if MEMORY64
       return sig[0] == 'p' ? Number(rtn) : rtn;
@@ -1827,7 +1829,6 @@ addToLibrary({
       return rtn;
 #endif
     }
-#endif
 
 #if JSPI
     if (promising) {
