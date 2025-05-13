@@ -60,10 +60,10 @@ function initRuntime(wasmExports) {
 
 #if STACK_OVERFLOW_CHECK
   _emscripten_stack_init();
-  writeStackCookie();
 #if STACK_OVERFLOW_CHECK >= 2
   setStackLimits();
 #endif
+  writeStackCookie();
 #endif
 
 #if PTHREADS

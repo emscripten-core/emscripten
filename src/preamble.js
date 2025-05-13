@@ -199,12 +199,12 @@ function initRuntime() {
   if (ENVIRONMENT_IS_PTHREAD) return startWorker(Module);
 #endif
 
-#if STACK_OVERFLOW_CHECK
-  checkStackCookie();
-#endif
-
 #if STACK_OVERFLOW_CHECK >= 2
   setStackLimits();
+#endif
+
+#if STACK_OVERFLOW_CHECK
+  checkStackCookie();
 #endif
 
 #if RELOCATABLE
