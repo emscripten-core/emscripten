@@ -2149,16 +2149,6 @@ class libasan_rt(SanitizerLibrary):
   src_dir = 'system/lib/compiler-rt/lib/asan'
 
 
-class libasan_js(Library):
-  name = 'libasan_js'
-  never_force = True
-
-  cflags = ['-fsanitize=address']
-
-  src_dir = 'system/lib'
-  src_files = ['asan_js.c']
-
-
 # This library is used when STANDALONE_WASM is set. In that mode, we don't
 # want to depend on JS, and so this library contains implementations of
 # things that we'd normally do in JS. That includes some general things
@@ -2336,7 +2326,6 @@ def get_libs_to_link(options):
     if settings.USE_ASAN:
       force_include.append('libasan_rt')
       add_library('libasan_rt')
-      add_library('libasan_js')
     elif settings.USE_LSAN:
       force_include.append('liblsan_rt')
       add_library('liblsan_rt')

@@ -1,57 +1,57 @@
-_asan_js_store_1(x, 1);
+_asan_js_store(HEAP8, x, 1);
 
-_asan_js_store_2(x, 2);
+_asan_js_store(HEAP16, x, 2);
 
-_asan_js_store_4(x, 3);
+_asan_js_store(HEAP32, x, 3);
 
-_asan_js_store_1u(x, 4);
+_asan_js_store(HEAPU8, x, 4);
 
-_asan_js_store_2u(x, 5);
+_asan_js_store(HEAPU16, x, 5);
 
-_asan_js_store_4u(x, 6);
+_asan_js_store(HEAPU32, x, 6);
 
-_asan_js_store_f(x, 7);
+_asan_js_store(HEAPF32, x, 7);
 
-_asan_js_store_d(x, 8);
+_asan_js_store(HEAPF64, x, 8);
 
-_asan_js_store_8(x, 9n);
+_asan_js_store(HEAP64, x, 9n);
 
-_asan_js_store_8u(x, 10n);
+_asan_js_store(HEAPU64, x, 10n);
 
-a1 = _asan_js_load_1(x);
+a1 = _asan_js_load(HEAP8, x);
 
-a2 = _asan_js_load_2(x);
+a2 = _asan_js_load(HEAP16, x);
 
-a3 = _asan_js_load_4(x);
+a3 = _asan_js_load(HEAP32, x);
 
-a4 = _asan_js_load_1u(x);
+a4 = _asan_js_load(HEAPU8, x);
 
-a5 = _asan_js_load_2u(x);
+a5 = _asan_js_load(HEAPU16, x);
 
-a6 = _asan_js_load_4u(x);
+a6 = _asan_js_load(HEAPU32, x);
 
-a7 = _asan_js_load_f(x);
+a7 = _asan_js_load(HEAPF32, x);
 
-a8 = _asan_js_load_d(x);
+a8 = _asan_js_load(HEAPF64, x);
 
-a9 = _asan_js_load_8(x);
+a9 = _asan_js_load(HEAP64, x);
 
-a10 = _asan_js_load_8u(x);
+a10 = _asan_js_load(HEAPU64, x);
 
-foo = _asan_js_store_1u(1337, 42);
+foo = _asan_js_store(HEAPU8, 1337, 42);
 
-_asan_js_load_2(bar(_asan_js_load_d(5)));
+_asan_js_load(HEAP16, bar(_asan_js_load(HEAPF64, 5)));
 
-_asan_js_store_f(x, _asan_js_load_4(y));
+_asan_js_store(HEAPF32, x, _asan_js_load(HEAP32, y));
 
-function _asan_js_load_1(ptr) {
+function _asan_js_load(ptr) {
   return HEAP8[ptr];
 }
 
 function somethingElse() {
-  return _asan_js_load_1(ptr);
+  return _asan_js_load(HEAP8, ptr);
 }
 
 HEAP8.length;
 
-_asan_js_load_1(length);
+_asan_js_load(HEAP8, length);
