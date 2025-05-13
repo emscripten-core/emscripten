@@ -802,7 +802,6 @@ jobs:
             core0.test_pthread_join_and_asyncify
             core0.test_async_ccall_promise_jspi*
             core0.test_cubescript_jspi
-            esm_integration.test_fs_js_api*
             instance.test_hello_world
             instance.test_dylink_basics
             instance.test_cube2hash*
@@ -812,8 +811,10 @@ jobs:
             instance.test_iostream_and_determinism
             instance.test_fannkuch
             instance.test_fasta
+            esm_integration.test_fs_js_api*
             esm_integration.test_inlinejs3
             esm_integration.test_embind_val_basics
+            esm_integration.test_undefined_main
             "
       # Run some basic tests with the minimum version of node that we currently
       # support in the generated code.
