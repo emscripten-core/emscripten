@@ -36,6 +36,10 @@ def get(ports, settings, shared):
     source_include_path = os.path.join(src_dir, 'include')
     ports.install_headers(source_include_path, target='SDL2')
 
+    # copy sdl2-config.cmake
+    cmake_file = os.path.join(os.path.dirname(__file__), 'sdl2/sdl2-config.cmake')
+    ports.install_file(cmake_file, 'lib/cmake/SDL2/sdl2-config.cmake')
+
     # build
     srcs = '''SDL.c SDL_assert.c SDL_dataqueue.c SDL_error.c SDL_guid.c SDL_hints.c SDL_list.c SDL_log.c
     SDL_utils.c atomic/SDL_atomic.c atomic/SDL_spinlock.c audio/SDL_audio.c audio/SDL_audiocvt.c

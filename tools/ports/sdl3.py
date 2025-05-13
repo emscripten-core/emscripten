@@ -46,6 +46,10 @@ def get(ports, settings, shared):
     source_include_path = os.path.join(root_dir, 'include', 'SDL3')
     ports.install_headers(source_include_path, target='SDL3')
 
+    # copy sdl3-config.cmake
+    cmake_file = os.path.join(os.path.dirname(__file__), 'sdl3/sdl3-config.cmake')
+    ports.install_file(cmake_file, 'lib/cmake/SDL3/sdl3-config.cmake')
+
     glob_patterns = [
       # Generic sources (from SDL3's CMakeLists.txt)
       '*.c',
