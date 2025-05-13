@@ -5818,11 +5818,8 @@ got: 10
     self.do_run_in_out_file_test('fs/test_mmap.c')
 
   @no_wasmfs('wasmfs will (?) need a non-JS mechanism to ignore permissions during startup')
-  @parameterized({
-    '': [],
-    'minimal_runtime': ['-sMINIMAL_RUNTIME=1'],
-  })
-  def test_fs_no_main(self, *args):
+  @also_with_minimal_runtime
+  def test_fs_no_main(self):
     # library_fs.js uses hooks to enable ignoring of permisions up until ATMAINs are run.  This
     # test verified that they work correctly, even in programs without a main function.
     create_file('pre.js', '''
@@ -5836,7 +5833,7 @@ Module.onRuntimeInitialized = () => {
 ''')
     self.set_setting('EXPORTED_FUNCTIONS', '_foo')
     self.set_setting('FORCE_FILESYSTEM')
-    self.emcc_args += ['--pre-js', 'pre.js'] + list(args)
+    self.emcc_args += ['--pre-js', 'pre.js']
     self.do_run('int foo() { return 42; }', '', force_c=True)
 
   @also_with_noderawfs
@@ -7658,16 +7655,11 @@ void* operator new(size_t size) {
   ### Tests for tools
 
   @no_wasm2js('TODO: source maps in wasm2js')
-  @parameterized({
-    '': ([],),
-    'minimal_runtime': (['-sMINIMAL_RUNTIME'],),
-  })
+  @also_with_minimal_runtime
   @requires_node
-  def test_source_map(self, args):
+  def test_source_map(self):
     if '-g' not in self.emcc_args:
       self.emcc_args.append('-g')
-
-    self.emcc_args += args
 
     src = '''
       #include <stdio.h>
@@ -8419,16 +8411,12 @@ Module.onRuntimeInitialized = () => {
 
   @no_asan('no wasm2js support yet in asan')
   @requires_wasm2js
-  @parameterized({
-    '': ([],),
-    'minimal_runtime': (['-sMINIMAL_RUNTIME'],),
-  })
-  def test_wasm2js_fallback(self, args):
+  @also_with_minimal_runtime
+  def test_wasm2js_fallback(self):
     if self.is_wasm2js():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
 
-    cmd = [EMCC, test_file('small_hello_world.c'), '-sWASM=2'] + args
-    self.run_process(cmd)
+    self.run_process([EMCC, test_file('small_hello_world.c'), '-sWASM=2'])
 
     # First run with WebAssembly support enabled
     # Move the Wasm2js fallback away to test it is not accidentally getting loaded.
