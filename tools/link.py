@@ -1540,8 +1540,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['_load_secondary_module']
 
   # wasm side modules have suffix .wasm
-  if settings.SIDE_MODULE and shared.suffix(target) == '.js':
-    diagnostics.warning('emcc', 'output suffix .js requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
+  if settings.SIDE_MODULE and shared.suffix(target) in ('.js', '.mjs'):
+    diagnostics.warning('emcc', 'JavaScript output suffix requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
 
   if options.sanitize:
     if settings.WASM_WORKERS:

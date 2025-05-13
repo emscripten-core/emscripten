@@ -3974,6 +3974,8 @@ ok
       side += '_side' + ext
 
     # side settings
+    old_settings = dict(self.settings_mods)
+    self.clear_setting('MODULARIZE')
     self.clear_setting('MAIN_MODULE')
     self.set_setting('SIDE_MODULE')
     so_file = os.path.join(so_dir, so_name)
@@ -3985,6 +3987,7 @@ ok
       shutil.move(out_file, so_file)
 
     # main settings
+    self.settings_mods = old_settings
     self.set_setting('MAIN_MODULE', main_module)
     self.clear_setting('SIDE_MODULE')
     self.emcc_args += main_emcc_args
@@ -3995,9 +3998,10 @@ ok
 
     if isinstance(main, list):
       # main is just a library
-      delete_file('main.js')
-      self.run_process([EMCC] + main + self.get_emcc_args() + ['-o', 'main.js'])
-      self.do_run('main.js', expected, no_build=True, **kwargs)
+      outfile = self.output_name('main')
+      delete_file(outfile)
+      self.run_process([EMCC] + main + self.get_emcc_args() + ['-o', outfile])
+      self.do_run(outfile, expected, no_build=True, **kwargs)
     else:
       self.do_runf(main, expected, force_c=force_c, **kwargs)
 
@@ -4020,11 +4024,15 @@ ok
       }
     ''', 'other says 11.', 'int sidey();', force_c=True, **kwargs)
 
+  def output_name(self, basename):
+    suffix = common.get_output_suffix(self.get_emcc_args())
+    return basename + suffix
+
   @needs_dylink
   @crossplatform
   def test_dylink_basics(self):
     self.do_basic_dylink_test()
-    self.verify_in_strict_mode('main.js')
+    self.verify_in_strict_mode(self.output_name('main'))
 
   @with_dylink_reversed
   @no_wasm64('Requires table64 lowering in all cases')

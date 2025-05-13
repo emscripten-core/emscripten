@@ -868,6 +868,13 @@ def parameterized(parameters):
   return decorator
 
 
+def get_output_suffix(args):
+  if any(a in args for a in ('-sEXPORT_ES6', '-sWASM_ESM_INTEGRATION', '-sMODULARIZE=instance')):
+    return '.mjs'
+  else:
+    return '.js'
+
+
 class RunnerMeta(type):
   @classmethod
   def make_test(mcs, name, func, suffix, args):
@@ -1390,10 +1397,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if emcc_args:
       all_emcc_args += emcc_args
     if not output_suffix:
-      if any(a in all_emcc_args for a in ('-sEXPORT_ES6', '-sWASM_ESM_INTEGRATION', '-sMODULARIZE=instance')):
-        output_suffix = '.mjs'
-      else:
-        output_suffix = '.js'
+      output_suffix = get_output_suffix(all_emcc_args)
 
     if output_basename:
       output = output_basename + output_suffix

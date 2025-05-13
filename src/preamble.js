@@ -819,7 +819,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
 
 #if !WASM_ESM_INTEGRATION
 function getWasmImports() {
-#if PTHREADS || WASM_WORKERS
+#if PTHREADS || WASM_WORKERS || (IMPORTED_MEMORY && MODULARIZE == 'instance')
   assignWasmImports();
 #endif
 #if ASYNCIFY && (ASSERTIONS || ASYNCIFY == 2)
