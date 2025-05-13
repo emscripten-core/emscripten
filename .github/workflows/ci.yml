@@ -39,8 +39,6 @@ jobs:
           fetch-depth: 0 # We want access to other branches, specifically `main`
       - name: pip install
         run: |
-          which python3
-          python3 --version
           python3 -m pip install -r requirements-dev.txt
       - name: Install emsdk
         run: |
@@ -87,3 +85,20 @@ jobs:
             echo "-- This failure is only a warning and can be ignored"
             exit 1
           fi
+
+  build-docs:
+    name: Build Docs
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
+    - name: pip install
+      run: |
+        python3 -m pip install -r requirements-dev.txt
+    - run: tools/maint/update_settings_docs.py --check
+    - run: make -C site text
+    - run: tools/maint/check_emcc_help_text.py
+    - run: make -C site html
+    - uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.5
+      with:
+        name: docs
+        path: site/build/html/
