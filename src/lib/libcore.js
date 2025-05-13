@@ -1818,14 +1818,24 @@ addToLibrary({
     }
 #endif
     var rtn = func(...args);
-#endif
+#endif // DYNCALLS
+
+    function convert(rtn) {
 #if MEMORY64
-    return sig[0] == 'p' ? Number(rtn) : rtn;
+      return sig[0] == 'p' ? Number(rtn) : rtn;
 #elif CAN_ADDRESS_2GB
-    return sig[0] == 'p' ? rtn >>> 0 : rtn;
+      return sig[0] == 'p' ? rtn >>> 0 : rtn;
 #else
-    return rtn;
+      return rtn;
 #endif
+    }
+
+#if JSPI
+    if (promising) {
+      return rtn.then(convert);
+    }
+#endif
+    return convert(rtn);
   },
 
   $callRuntimeCallbacks__internal: true,
