@@ -40,12 +40,6 @@ HEAPF32[x] = HEAP32[y];
 function SAFE_HEAP_FOO(ptr) {
   return HEAP8[ptr];
 }
-function setValue_safe(ptr) {
-  return HEAP8[ptr];
-}
-function getValue_safe(ptr) {
-  return HEAP8[ptr];
-}
 
 // but do handle everything else
 function somethingElse() {
