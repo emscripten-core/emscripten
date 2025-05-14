@@ -408,6 +408,7 @@ class Ports:
         return True
       else:
         Ports.clear_project_build(name)
+        return False
 
   @staticmethod
   def clear_project_build(name):
