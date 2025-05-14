@@ -416,15 +416,16 @@ function exportSymbol(name) {
 // export parts of the JS runtime that the user asked for
 function exportRuntimeSymbols() {
   // optionally export something.
-  function maybeExport(name) {
+  function shouldExport(name) {
     // If requested to be exported, export it.
     if (EXPORTED_RUNTIME_METHODS.has(name)) {
       // Unless we are in MODULARIZE=instance mode then HEAP objects are
       // exported separately in updateMemoryViews
       if (MODULARIZE == 'instance' || !name.startsWith('HEAP')) {
-        return exportSymbol(name);
+        return true;
       }
     }
+    return false;
   }
 
   // All possible runtime elements that can be exported
@@ -521,8 +522,8 @@ function exportRuntimeSymbols() {
     }
   }
 
-  const exports = runtimeElements.map(maybeExport);
-  const results = exports.filter((name) => name);
+  const exports = runtimeElements.filter(shouldExport);
+  const results = exports.map(exportSymbol);
 
   if (MODULARIZE == 'instance') {
     if (results.length == 0) return '';
