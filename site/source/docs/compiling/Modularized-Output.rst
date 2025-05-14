@@ -125,6 +125,8 @@ fix in future releses.  Current limitations include:
 * :ref:`abort_on_wasm_exceptions` is not supported (requires wrapping wasm
   exports).
 
+* The output of file_packager is not compatible so :ref:`emcc-preload-file` and
+  :ref:`emcc-embed-file` do not work.
 
 Source Phase Imports (experimental)
 ===================================
