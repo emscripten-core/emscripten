@@ -1288,17 +1288,17 @@ function littleEndianHeap(ast) {
   });
 }
 
-// Instrument heap accesses to call GROWABLE_HEAP helper function, which allows
+// Instrument heap accesses to call maybeUpdateMemoryViews helper function, which allows
 // pthreads + memory growth to work (we check if the memory was grown on another thread
 // in each access), see #8365.
 function growableHeap(ast) {
   recursiveWalk(ast, {
     FunctionDeclaration(node, c) {
-      // Do not recurse into to GROWABLE_HEAP helper function itself.
+      // Do not recurse into the helper function itself.
       if (
         !(
           node.id.type === 'Identifier' &&
-          (node.id.name === 'GROWABLE_HEAP' || node.id.name === 'LE_HEAP_UPDATE')
+          (node.id.name === 'maybeUpdateMemoryViews' || node.id.name === 'LE_HEAP_UPDATE')
         )
       ) {
         c(node.body);
@@ -1323,8 +1323,8 @@ function growableHeap(ast) {
     },
     Identifier: (node) => {
       if (isEmscriptenHEAP(node.name)) {
-        // Transform `HEAPxx` into `(GROWABLE_HEAP(), HEAPxx)`.
-        // Important: don't just do `GROWABLE_HEAP(HEAPxx)` because `GROWABLE_HEAP` reassigns `HEAPxx`
+        // Transform `HEAPxx` into `(maybeUpdateMemoryViews(), HEAPxx)`.
+        // Important: don't just do `maybeUpdateMemoryViews(HEAPxx)` because `maybeUpdateMemoryViews` reassigns `HEAPxx`
         // and we want to get an updated value after that reassignment.
         Object.assign(node, {
           type: 'SequenceExpression',
@@ -1333,7 +1333,7 @@ function growableHeap(ast) {
               type: 'CallExpression',
               callee: createNode({
                 type: 'Identifier',
-                name: 'GROWABLE_HEAP',
+                name: 'maybeUpdateMemoryViews',
               }),
               arguments: [],
             }),
