@@ -90,14 +90,16 @@ def init_local_port(name, port):
 
 def load_external_port(external_port):
   Ports.fetch_project(external_port.name, external_port.EXTERNAL_PORT, external_port.SHA512)
-  port_file = os.path.join(Ports.get_dir(), external_port.PORT_FILE)
+  port_file = os.path.join(Ports.get_dir(), external_port.name, external_port.PORT_FILE)
   module_name = f'tools.ports.external.{external_port.name}'
   spec = importlib.util.spec_from_file_location(module_name, port_file)
   local_port = importlib.util.module_from_spec(spec)
   spec.loader.exec_module(local_port)
   ports.remove(external_port)
+  for a in ['URL', 'DESCRIPTION', 'LICENSE']:
+    if not hasattr(local_port, a):
+      setattr(local_port, a, getattr(external_port, a))
   init_port(external_port.name, local_port)
-  return True
 
 
 def init_external_port(name, port):
@@ -377,6 +379,7 @@ class Ports:
 
     # main logic. do this under a cache lock, since we don't want multiple jobs to
     # retrieve the same port at once
+    cache.ensure()
     with cache.lock('unpack port'):
       if os.path.exists(fullpath):
         # Another early out in case another process unpackage the library while we were
