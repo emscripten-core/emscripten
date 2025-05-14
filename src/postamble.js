@@ -341,6 +341,13 @@ if (ENVIRONMENT_IS_NODE
 }
 #endif
 
+#if ENVIRONMENT_MAY_BE_SHELL
+if (ENVIRONMENT_IS_SHELL) {
+  // When run in a shell we run `init` immediately.
+  await init();
+}
+#endif
+
 #else
 preInit();
 run();
