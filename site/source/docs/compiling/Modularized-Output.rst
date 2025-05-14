@@ -95,7 +95,8 @@ modularization, and not the ability to create multiple instances.  In this
 mode a module is created that exports a single instance of the program rather
 than a factory function.
 
-This setting only works when :ref:`export_es6` is enabled.
+This setting implicitly enables :ref:`export_es6` and will not work when
+:ref:`export_es6` is explictly disabled.
 
 In this mode the default export of the module is an initializer function which
 allows input parameters to be passed to the instance.  Other elements normally
@@ -108,6 +109,19 @@ found on the module object are instead exported directly.  For example:
   await init({ print: myPrint });
   _nativeMethod();
 
+Limitations
+-----------
+
+Some major features still do not work in this mode.  Many of these we hope to
+fix in future releses.  Current limitations include:
+
+* Internal usage (e.g. usage within EM_JS / JS libary code) of the `Module`
+  object does not work.  This is because symbols are exported directly using
+  ES6 module syntax rathar than using a global `Module` object.
+
+* `ccall`/`cwrap`, these depend on the internal `Module` object.
+
+
 Source Phase Imports (experimental)
 ===================================
 
@@ -117,7 +131,8 @@ the auto-generated code for finding and fetching the Wasm binary.
 
 See :ref:`source_phase_imports`.
 
-This setting only works when :ref:`export_es6` is enabled.
+This setting implicitly enables :ref:`export_es6` and will not work when
+:ref:`export_es6` is explictly disabled.
 
 
 ES Module Integration (experimental)
@@ -129,7 +144,12 @@ boilerplate code for linking up Wasm and JavaScript.
 
 See :ref:`wasm_esm_integration`.
 
-This setting only works when :ref:`export_es6` is enabled.
+Limitations
+-----------
+
+This setting implicitly enables :ref:`export_es6` and sets :ref:`MODULARIZE` to
+``instance``.  Because of this all the same limitations mentioned above for
+``-sMODULARIZE=intance`` apply.
 
 .. _Source phase imports: https://github.com/tc39/proposal-source-phase-imports
 .. _Wasm ESM integration: https://github.com/WebAssembly/esm-integration
