@@ -6,7 +6,7 @@
 
 // Support for growable heap + pthreads, where the buffer may change, so JS views
 // must be updated.
-function maybeUpdateMemoryViews() {
+function growMemViews() {
   // `updateMemoryViews` updates all the views simultaneously, so it's enough to check any of them.
   if (wasmMemory.buffer != HEAP8.buffer) {
     updateMemoryViews();

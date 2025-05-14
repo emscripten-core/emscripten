@@ -10546,7 +10546,7 @@ int main() {
     # we must have both applied, that is
     #   - GROWABLE_HEAP() runs before HEAP8
     #   - $0 gets an >>> 0 unsigning
-    self.assertContained('(maybeUpdateMemoryViews(), HEAP8).set([ 1, 2, 3 ], $0 >>> 0)',
+    self.assertContained('(growMemViews(), HEAP8).set([ 1, 2, 3 ], $0 >>> 0)',
                          read_file('a.out.js'))
 
   @parameterized({
