@@ -813,10 +813,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     diagnostics.warning('experimental', '-sMODULARIZE=instance is still experimental. Many features may not work or will change.')
     if options.oformat != OFormat.MJS:
       exit_with_error('MODULARIZE instance is only compatible with ES module output format')
-    limit_incoming_module_api()
-    for s in ['wasmMemory', 'INITIAL_MEMORY']:
-      if s in settings.INCOMING_MODULE_JS_API:
-        exit_with_error(f'{s} cannot be in INCOMING_MODULE_JS_API in MODULARIZE=instance mode')
+    if 'INCOMING_MODULE_JS_API' in user_settings:
+      for s in ['wasmMemory', 'INITIAL_MEMORY']:
+        if s in settings.INCOMING_MODULE_JS_API:
+          exit_with_error(f'{s} cannot be in INCOMING_MODULE_JS_API in MODULARIZE=instance mode')
 
   if options.oformat in (OFormat.WASM, OFormat.BARE):
     if options.emit_tsd:
