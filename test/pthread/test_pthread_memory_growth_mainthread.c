@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <emscripten/em_js.h>
+#include <stdbool.h>
 
 // We want to test that JavaScript access in a pthread automatically updates the memory views if the heap has grown on the main thread meanwhile.
 //
@@ -18,13 +19,13 @@
 // etc., not even `puts`/`printf` for logging - as all of those access the heap from JS on their own and might update the memory views too early.
 // Not using standard proxying mechanisms also means we need to drop down all the way to raw atomics.
 
-EM_JS(void, js_assert_initial_heap_state, (), {
-  console.log(`Checking initial heap state on the ${ENVIRONMENT_IS_PTHREAD ? 'worker' : 'main'} thread`);
+EM_JS(void, js_assert_initial_heap_state, (bool isWorker), {
+  console.log(`Checking initial heap state on the ${isWorker ? 'worker' : 'main'} thread`);
   assert(HEAP8.length === 32 * 1024 * 1024, "start at 32MB");
 });
 
-EM_JS(void, js_assert_final_heap_state, (const char* buffer, int finalHeapSize), {
-  console.log(`Checking final heap state on the ${ENVIRONMENT_IS_PTHREAD ? 'worker' : 'main'} thread`);
+EM_JS(void, js_assert_final_heap_state, (bool isWorker, const char* buffer, int finalHeapSize), {
+  console.log(`Checking final heap state on the ${isWorker ? 'worker' : 'main'} thread`);
   assert(HEAP8.length > finalHeapSize, "end with >64MB");
   assert(HEAP8[buffer] === 42, "readable from JS");
 });
@@ -37,32 +38,32 @@ _Atomic enum state {
 
 const char *_Atomic buffer;
 
-static void assert_initial_heap_state()
+static void assert_initial_heap_state(bool is_worker)
 {
   assert(state == INITIAL_STATE);
   assert(buffer == NULL);
-  js_assert_initial_heap_state();
+  js_assert_initial_heap_state(is_worker);
 }
 
 #define FINAL_HEAP_SIZE (64 * 1024 * 1024)
 
-static void assert_final_heap_state()
+static void assert_final_heap_state(bool is_worker)
 {
   assert(state == FINAL_STATE);
   assert(buffer != NULL);
   assert(*buffer == 42);
-  js_assert_final_heap_state(buffer, FINAL_HEAP_SIZE);
+  js_assert_final_heap_state(is_worker, buffer, FINAL_HEAP_SIZE);
 }
 
 static void *thread_start(void *arg)
 {
-  assert_initial_heap_state();
+  assert_initial_heap_state(true);
   // Tell main thread that we checked the initial state and it can allocate.
   state = THREAD_CHECKED_INITIAL_STATE;
   // Wait for the main thread to allocate memory.
   while (state != FINAL_STATE);
   // Check the final heap state.
-  assert_final_heap_state();
+  assert_final_heap_state(true);
   return NULL;
 }
 
@@ -82,14 +83,14 @@ int main()
   int res = pthread_create(&thr, NULL, thread_start, NULL);
   assert(res == 0);
   // Check initial state in both threads before allocating more memory.
-  assert_initial_heap_state();
+  assert_initial_heap_state(false);
   while (state != THREAD_CHECKED_INITIAL_STATE);
 
   // allocate more memory than we currently have, forcing a growth
   buffer = alloc_beyond_initial_heap();
   state = FINAL_STATE;
 
-  assert_final_heap_state();
+  assert_final_heap_state(false);
   res = pthread_join(thr, NULL);
   assert(res == 0);
 

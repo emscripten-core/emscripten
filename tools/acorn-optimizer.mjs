@@ -1305,11 +1305,10 @@ function growableHeap(ast) {
       }
     },
     AssignmentExpression: (node) => {
-      if (node.left.type === 'Identifier' && isEmscriptenHEAP(node.left.name)) {
+      if (node.left.type !== 'Identifier') {
         // Don't transform initial setup of the arrays.
-        return;
-      }
       growableHeap(node.left);
+      }
       growableHeap(node.right);
     },
     VariableDeclaration: (node) => {
@@ -1324,7 +1323,23 @@ function growableHeap(ast) {
     },
     Identifier: (node) => {
       if (isEmscriptenHEAP(node.name)) {
-        makeCallExpression(node, 'GROWABLE_HEAP', [{...node}]);
+        // Transform `HEAPxx` into `(GROWABLE_HEAP(), HEAPxx)`.
+        // Important: don't just do `GROWABLE_HEAP(HEAPxx)` because `GROWABLE_HEAP` reassigns `HEAPxx`
+        // and we want to get an updated value after that reassignment.
+        Object.assign(node, {
+          type: 'SequenceExpression',
+          expressions: [
+            createNode({
+              type: 'CallExpression',
+              callee: createNode({
+                type: 'Identifier',
+                name: 'GROWABLE_HEAP',
+              }),
+              arguments: [],
+            }),
+            {...node},
+          ],
+        });
       }
     },
   });

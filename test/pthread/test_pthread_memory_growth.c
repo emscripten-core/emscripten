@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <emscripten/em_js.h>
+#include <stdbool.h>
 
 // We want to test that JavaScript access in the main thread automatically updates the memory views if the heap has grown from the pthread meanwhile.
 //
@@ -18,12 +19,13 @@
 // etc., not even `puts`/`printf` for logging - as all of those access the heap from JS on their own and might update the memory views too early.
 // Not using standard proxying mechanisms also means we need to drop down all the way to raw atomics.
 
-EM_JS(void, assert_initial_heap_state, (), {
-  console.log(`Checking initial heap state on the ${ENVIRONMENT_IS_PTHREAD ? 'worker' : 'main'} thread`);
+EM_JS(void, assert_initial_heap_state, (bool isWorker), {
+  console.log(`Checking initial heap state on the ${isWorker ? 'worker' : 'main'} thread`);
   assert(HEAP8.length === 32 * 1024 * 1024, "start at 32MB");
 });
 
-EM_JS(void, assert_final_heap_state, (const char* buffer, int finalHeapSize), {
+EM_JS(void, assert_final_heap_state, (bool isWorker, const char* buffer, int finalHeapSize), {
+  console.log(`Checking final heap state on the ${isWorker ? 'worker' : 'main'} thread`);
   assert(HEAP8.length > finalHeapSize, "end with >64MB");
   assert(HEAP8[buffer] === 42, "readable from JS");
 });
@@ -32,7 +34,7 @@ EM_JS(void, assert_final_heap_state, (const char* buffer, int finalHeapSize), {
 
 static void *thread_start(void *arg)
 {
-  assert_initial_heap_state();
+  assert_initial_heap_state(true);
   // allocate more memory than we currently have, forcing a growth
   char* buffer = malloc(FINAL_HEAP_SIZE);
   assert(buffer);
@@ -40,12 +42,13 @@ static void *thread_start(void *arg)
   buffer += FINAL_HEAP_SIZE - 1;
   *buffer = 42;
   *(const char *_Atomic *)arg = buffer;
+  assert_final_heap_state(true, buffer, FINAL_HEAP_SIZE);
   return NULL;
 }
 
 int main()
 {
-  assert_initial_heap_state();
+  assert_initial_heap_state(false);
 
   pthread_t thr;
   const char *_Atomic buffer = NULL;
@@ -55,7 +58,7 @@ int main()
   while (!buffer);
 
   assert(*buffer == 42); // should see the value the thread wrote
-  assert_final_heap_state(buffer, FINAL_HEAP_SIZE);
+  assert_final_heap_state(false, buffer, FINAL_HEAP_SIZE);
 
   res = pthread_join(thr, NULL);
   assert(res == 0);
