@@ -40,18 +40,7 @@ logger = logging.getLogger('emscripten')
 # helper functions for JS to call into C to do memory operations. these
 # let us sanitize memory access from the JS side, by calling into C where
 # it has been instrumented.
-ASAN_C_HELPERS = [
-  '_asan_c_load_1', '_asan_c_load_1u',
-  '_asan_c_load_2', '_asan_c_load_2u',
-  '_asan_c_load_4', '_asan_c_load_4u',
-  '_asan_c_load_8', '_asan_c_load_8u',
-  '_asan_c_load_f', '_asan_c_load_d',
-  '_asan_c_store_1', '_asan_c_store_1u',
-  '_asan_c_store_2', '_asan_c_store_2u',
-  '_asan_c_store_4', '_asan_c_store_4u',
-  '_asan_c_store_8', '_asan_c_store_8u',
-  '_asan_c_store_f', '_asan_c_store_d',
-]
+ASAN_C_HELPERS = ['__asan_loadN', '__asan_storeN']
 
 
 def maybe_disable_filesystem(imports):
@@ -1028,7 +1017,7 @@ def create_module(metadata, function_exports, global_exports, tag_exports,librar
     receiving += create_global_exports(global_exports)
     receiving += create_other_export_declarations(tag_exports)
 
-    if settings.PTHREADS or settings.WASM_WORKERS:
+    if settings.PTHREADS or settings.WASM_WORKERS or (settings.IMPORTED_MEMORY and settings.MODULARIZE == 'instance'):
       sending = textwrap.indent(sending, '  ').strip()
       module.append('''\
   var wasmImports;
@@ -1178,7 +1167,7 @@ def create_pointer_conversion_wrappers(metadata):
     mapping[sym] = sig
 
   for f in ASAN_C_HELPERS:
-    mapping[f] = '_p'
+    mapping[f] = '_pp'
 
   wrappers = '''
 // Argument name here must shadow the `wasmExports` global so

@@ -749,6 +749,11 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if s in user_settings:
       diagnostics.warning('deprecated', f'{s} is deprecated ({reason}). Please open a bug if you have a continuing need for this setting')
 
+  # Set the EXPORT_ES6 default early since it affects the setting of the
+  # default oformat below.
+  if settings.WASM_ESM_INTEGRATION or settings.MODULARIZE == 'instance':
+    default_setting('EXPORT_ES6', 1)
+
   # If no output format was specified we try to deduce the format based on
   # the output filename extension
   if not options.oformat and (options.relocatable or (options.shared and not settings.SIDE_MODULE)):
@@ -766,10 +771,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if not options.oformat:
     if settings.SIDE_MODULE or final_suffix == '.wasm':
       options.oformat = OFormat.WASM
-    elif final_suffix == '.mjs':
-      options.oformat = OFormat.MJS
     elif final_suffix == '.html':
       options.oformat = OFormat.HTML
+    elif final_suffix == '.mjs' or settings.EXPORT_ES6:
+      options.oformat = OFormat.MJS
     else:
       options.oformat = OFormat.JS
 
@@ -786,10 +791,13 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.WASM_ESM_INTEGRATION:
     diagnostics.warning('experimental', '-sWASM_ESM_INTEGRATION is still experimental and not yet supported in browsers')
-    default_setting('EXPORT_ES6', 1)
     default_setting('MODULARIZE', 'instance')
-    if not settings.EXPORT_ES6 or settings.MODULARIZE != 'instance':
-      exit_with_error('WASM_ESM_INTEGRATION requires EXPORT_ES6 and MODULARIZE=instance')
+    if options.oformat != OFormat.MJS:
+      exit_with_error('WASM_ESM_INTEGRATION is only compatible with EM module output format')
+    if settings.MODULARIZE != 'instance':
+      exit_with_error('WASM_ESM_INTEGRATION requires MODULARIZE=instance')
+    if settings.RELOCATABLE:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with dynamic linking')
 
   if settings.MODULARIZE and settings.MODULARIZE not in [1, 'instance']:
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
@@ -804,11 +812,11 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.MODULARIZE == 'instance':
     diagnostics.warning('experimental', '-sMODULARIZE=instance is still experimental. Many features may not work or will change.')
     if options.oformat != OFormat.MJS:
-      exit_with_error('emcc: MODULARIZE instance is only compatible with .mjs output files')
+      exit_with_error('MODULARIZE instance is only compatible with ES module output format')
     limit_incoming_module_api()
     for s in ['wasmMemory', 'INITIAL_MEMORY']:
       if s in settings.INCOMING_MODULE_JS_API:
-        exit_with_error(f'emcc: {s} cannot be in INCOMING_MODULE_JS_API in MODULARIZE=instance mode')
+        exit_with_error(f'{s} cannot be in INCOMING_MODULE_JS_API in MODULARIZE=instance mode')
 
   if options.oformat in (OFormat.WASM, OFormat.BARE):
     if options.emit_tsd:
@@ -824,7 +832,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     wasm_target = get_secondary_target(target, '.wasm')
 
   if settings.SAFE_HEAP not in [0, 1, 2]:
-    exit_with_error('emcc: SAFE_HEAP must be 0, 1 or 2')
+    exit_with_error('SAFE_HEAP must be 0, 1 or 2')
 
   if not settings.WASM:
     # When the user requests non-wasm output, we enable wasm2js. that is,
@@ -1049,9 +1057,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue', '$setValue']
 
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$ExitStatus']
-
-  if not settings.BOOTSTRAPPING_STRUCT_INFO and settings.SAFE_HEAP:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue_safe', '$setValue_safe']
 
   if settings.ABORT_ON_WASM_EXCEPTIONS or settings.SPLIT_MODULE:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$wasmTable']
@@ -1543,8 +1548,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['_load_secondary_module']
 
   # wasm side modules have suffix .wasm
-  if settings.SIDE_MODULE and shared.suffix(target) == '.js':
-    diagnostics.warning('emcc', 'output suffix .js requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
+  if settings.SIDE_MODULE and shared.suffix(target) in ('.js', '.mjs'):
+    diagnostics.warning('emcc', 'JavaScript output suffix requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
 
   if options.sanitize:
     if settings.WASM_WORKERS:
@@ -1608,7 +1613,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       # do anything (as the user's list won't contain these functions), and if
       # we did add them, the pass would assert on incompatible lists, hence the
       # condition in the above if.
-      settings.ASYNCIFY_REMOVE += emscripten.ASAN_C_HELPERS
+      settings.ASYNCIFY_REMOVE.append("__asan_*")
 
     if settings.ASAN_SHADOW_SIZE != -1:
       diagnostics.warning('emcc', 'ASAN_SHADOW_SIZE is ignored and will be removed in a future release')
@@ -2131,9 +2136,10 @@ def create_esm_wrapper(wrapper_file, support_target, wasm_target):
   else:
     wrapper.append(f"export {{ default }} from '{support_url}';")
 
-  if settings.ENVIRONMENT_MAY_BE_NODE and settings.INVOKE_RUN and settings.EXPECT_MAIN:
+  if settings.ENVIRONMENT_MAY_BE_NODE:
     wrapper.append(f'''
-// When run as the main module under node, execute main directly here
+// When run as the main module under node, create the module directly.  This will
+// execute any startup code along with main (if it exists).
 import init from '{support_url}';
 const isNode = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string' && process.type != 'renderer';
 if (isNode) {{

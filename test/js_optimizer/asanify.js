@@ -37,7 +37,7 @@ HEAPF32[x] = HEAP32[y];
 // access in these functions, as then we'd get infinite recursion - this is
 // where we do actually need to still do a HEAP8[..] etc. operation without
 // any ASan instrumentation.
-function _asan_js_load_1(ptr) {
+function _asan_js_load(ptr) {
   return HEAP8[ptr];
 }
 
