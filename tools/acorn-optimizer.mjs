@@ -1307,7 +1307,7 @@ function growableHeap(ast) {
     AssignmentExpression: (node) => {
       if (node.left.type !== 'Identifier') {
         // Don't transform initial setup of the arrays.
-      growableHeap(node.left);
+        growableHeap(node.left);
       }
       growableHeap(node.right);
     },
