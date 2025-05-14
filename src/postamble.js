@@ -303,7 +303,7 @@ function preInit() {
 // In MODULARIZE=instance mode we delay most of the initialization work until
 // the `init` function is called.
 export default async function init(moduleArg = {}) {
-  Module = moduleArg;
+  Object.assign(Module, moduleArg);
   processModuleArgs();
 #if WASM_ESM_INTEGRATION
   updateMemoryViews();
