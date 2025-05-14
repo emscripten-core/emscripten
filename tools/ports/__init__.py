@@ -89,7 +89,7 @@ def init_local_port(name, port):
 
 
 def load_external_port(external_port):
-  Ports.fetch_project(external_port.name, external_port.EXTERNAL_PORT, external_port.SHA512)
+  need_clear_project_build = Ports.fetch_project(external_port.name, external_port.EXTERNAL_PORT, external_port.SHA512, True)
   port_file = os.path.join(Ports.get_dir(), external_port.name, external_port.PORT_FILE)
   module_name = f'tools.ports.external.{external_port.name}'
   spec = importlib.util.spec_from_file_location(module_name, port_file)
@@ -100,6 +100,8 @@ def load_external_port(external_port):
     if not hasattr(local_port, a):
       setattr(local_port, a, getattr(external_port, a))
   init_port(external_port.name, local_port)
+  if need_clear_project_build:
+    Ports.clear_project_build(external_port.name)
 
 
 def init_external_port(name, port):
@@ -290,7 +292,7 @@ class Ports:
   name_cache: Set[str] = set()
 
   @staticmethod
-  def fetch_project(name, url, sha512hash=None):
+  def fetch_project(name, url, sha512hash=None, delay_clear_project_build=False):
     # To compute the sha512 hash, run `curl URL | sha512sum`.
     fullname = Ports.get_dir(name)
 
@@ -382,7 +384,7 @@ class Ports:
 
     # before acquiring the lock we have an early out if the port already exists
     if up_to_date():
-      return
+      return False
 
     # main logic. do this under a cache lock, since we don't want multiple jobs to
     # retrieve the same port at once
@@ -392,7 +394,7 @@ class Ports:
         # Another early out in case another process unpackage the library while we were
         # waiting for the lock
         if up_to_date():
-          return
+          return False
         # file exists but tag is bad
         logger.warning('local copy of port is not correct, retrieving from remote server')
         utils.delete_dir(fullname)
@@ -402,7 +404,10 @@ class Ports:
       unpack()
 
       # we unpacked a new version, clear the build in the cache
-      Ports.clear_project_build(name)
+      if delay_clear_project_build:
+        return True
+      else:
+        Ports.clear_project_build(name)
 
   @staticmethod
   def clear_project_build(name):
