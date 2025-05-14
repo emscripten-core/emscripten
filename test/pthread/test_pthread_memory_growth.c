@@ -4,42 +4,61 @@
 // found in the LICENSE file.
 
 #include <pthread.h>
-#include <sys/types.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <emscripten.h>
+#include <emscripten/em_js.h>
+
+// We want to test that JavaScript access in the main thread automatically updates the memory views if the heap has grown from the pthread meanwhile.
+//
+// Checking this correctly is somewhat tricky because a lot of Emscripten APIs access heap on their own, so the memory views might be updated
+// by them before we explicitly check the state in our own JS routines below, which leads to false positives (test passing even though in
+// isolation the heap access in our own JS is not the one updating the memory views).
+//
+// To test it in isolation, we need to use only EM_JS - which is as close to a pure JS call as we can get - and not EM_ASM, pthread_join, proxying
+// etc., not even `puts`/`printf` for logging - as all of those access the heap from JS on their own and might update the memory views too early.
+// Not using standard proxying mechanisms also means we need to drop down all the way to raw atomics.
+
+EM_JS(void, assert_initial_heap_state, (), {
+  console.log(`Checking initial heap state on the ${ENVIRONMENT_IS_PTHREAD ? 'worker' : 'main'} thread`);
+  assert(HEAP8.length === 32 * 1024 * 1024, "start at 32MB");
+});
+
+EM_JS(void, assert_final_heap_state, (const char* buffer, int finalHeapSize), {
+  assert(HEAP8.length > finalHeapSize, "end with >64MB");
+  assert(HEAP8[buffer] === 42, "readable from JS");
+});
+
+#define FINAL_HEAP_SIZE (64 * 1024 * 1024)
 
 static void *thread_start(void *arg)
 {
+  assert_initial_heap_state();
   // allocate more memory than we currently have, forcing a growth
-  printf("thread_start\n");
-  char* buffer = (char*)malloc(64 * 1024 * 1024);
+  char* buffer = malloc(FINAL_HEAP_SIZE);
   assert(buffer);
+  // Write value at the end of the buffer to check that any thread can access addresses beyond the initial heap size.
+  buffer += FINAL_HEAP_SIZE - 1;
   *buffer = 42;
-  pthread_exit((void*)buffer);
+  *(const char *_Atomic *)arg = buffer;
+  return NULL;
 }
 
 int main()
 {
-  printf("prep\n");
+  assert_initial_heap_state();
 
   pthread_t thr;
+  const char *_Atomic buffer = NULL;
+  int res = pthread_create(&thr, NULL, thread_start, &buffer);
+  assert(res == 0);
 
-  printf("start\n");
-  EM_ASM({ assert(HEAP8.length === 32 * 1024 * 1024, "start at 32MB") });
+  while (!buffer);
 
-  printf("create\n");
-  int s = pthread_create(&thr, NULL, thread_start, (void*)NULL);
-  assert(s == 0);
-  void* result = NULL;
-
-  printf("join\n");
-  s = pthread_join(thr, &result);
-  assert(result != 0); // allocation should have succeeded
-  char* buffer = (char*)result;
   assert(*buffer == 42); // should see the value the thread wrote
-  EM_ASM({ assert(HEAP8.length > 64 * 1024 * 1024, "end with >64MB") });
+  assert_final_heap_state(buffer, FINAL_HEAP_SIZE);
+
+  res = pthread_join(thr, NULL);
+  assert(res == 0);
+
   return 0;
 }
-
