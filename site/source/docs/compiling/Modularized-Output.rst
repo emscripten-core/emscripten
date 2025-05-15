@@ -119,6 +119,8 @@ fix in future releses.  Current limitations include:
   global does not work.  This is because symbols are exported directly using
   ES6 module syntax rathar than using the ``Module`` global.
 
+* The ``wasmExports`` internal global does not exist.
+
 * `ccall`/`cwrap` are not supported (depends on the ``Module`` global).
 
 * :ref:`abort_on_wasm_exceptions` is not supported (requires wrapping wasm
@@ -127,6 +129,9 @@ fix in future releses.  Current limitations include:
 * :ref:`dyncalls` is not supported (depends on the ``Module`` global)
 
 * :ref:`asyncify` is not supported (depends on :ref:`dyncalls`)
+
+* :ref:`asyncify_lazy_load_code` is not supported (depends on ``wasmExports``
+  global)
 
 * The output of file_packager is not compatible so :ref:`emcc-preload-file` and
   :ref:`emcc-embed-file` do not work.
