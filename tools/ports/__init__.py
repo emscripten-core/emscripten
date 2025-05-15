@@ -407,13 +407,11 @@ class Ports:
 
       return False
 
-
   @staticmethod
   def fetch_project(name, url, sha512hash=None):
     if not Ports.fetch_port_artifact(name, url, sha512hash):
       # we unpacked a new version, clear the build in the cache
       Ports.clear_project_build(name)
-
 
   @staticmethod
   def clear_project_build(name):
