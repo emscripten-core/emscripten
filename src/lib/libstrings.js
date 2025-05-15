@@ -322,23 +322,22 @@ addToLibrary({
 #if ASSERTIONS
     assert(ptr % 2 == 0, 'Pointer passed to UTF16ToString must be aligned to two bytes!');
 #endif
+    var idx = {{{ getHeapOffset('ptr', 'u16') }}};
+    var maxIdx = idx + maxBytesToRead / 2;
 #if TEXTDECODER
-    var endPtr = ptr;
     // TextDecoder needs to know the byte length in advance, it doesn't stop on
     // null terminator by itself.
     // Also, use the length info to avoid running tiny strings through
     // TextDecoder, since .subarray() allocates garbage.
-    var idx = endPtr >> 1;
-    var maxIdx = idx + maxBytesToRead / 2;
+    var endIdx = idx;
     // If maxBytesToRead is not passed explicitly, it will be undefined, and this
     // will always evaluate to true. This saves on code size.
-    while (!(idx >= maxIdx) && HEAPU16[idx]) ++idx;
-    endPtr = idx << 1;
+    while (!(endIdx >= maxIdx) && HEAPU16[endIdx]) ++endIdx;
 
 #if TEXTDECODER != 2
-    if (endPtr - ptr > 32 && UTF16Decoder)
+    if (endIdx - idx > 16 && UTF16Decoder)
 #endif // TEXTDECODER != 2
-      return UTF16Decoder.decode({{{ getUnsharedTextDecoderView('HEAPU8', 'ptr', 'endPtr') }}});
+      return UTF16Decoder.decode({{{ getUnsharedTextDecoderView('HEAPU16', 'idx', 'endIdx') }}});
 #endif // TEXTDECODER
 
 #if TEXTDECODER != 2
@@ -348,8 +347,8 @@ addToLibrary({
     // If maxBytesToRead is not passed explicitly, it will be undefined, and the
     // for-loop's condition will always evaluate to true. The loop is then
     // terminated on the first null char.
-    for (var i = 0; !(i >= maxBytesToRead / 2); ++i) {
-      var codeUnit = {{{ makeGetValue('ptr', 'i*2', 'i16') }}};
+    for (var i = idx; !(i >= maxIdx); ++i) {
+      var codeUnit = HEAPU16[i];
       if (codeUnit == 0) break;
       // fromCharCode constructs a character from a UTF-16 code unit, so we can
       // pass the UTF16 string right through.
