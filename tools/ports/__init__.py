@@ -387,7 +387,7 @@ class Ports:
 
     # main logic. do this under a cache lock, since we don't want multiple jobs to
     # retrieve the same port at once
-    cache.ensure()
+    cache.ensure() # TODO: find a better place for this (necessary at the moment)
     with cache.lock('unpack port'):
       if os.path.exists(fullpath):
         # Another early out in case another process unpackage the library while we were
