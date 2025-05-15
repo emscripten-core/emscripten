@@ -6344,8 +6344,6 @@ int main(void) {
     self.do_run(src, '*1,0*', args=['200', '1'], force_c=True)
     self.do_run('src.js', '*400,0*', args=['400', '400'], force_c=True, no_build=True)
 
-  # node is slower, and fail on 64-bit
-  @requires_v8
   @no_asan('depends on the specifics of memory size, which for asan we are forced to increase')
   @no_lsan('depends on the specifics of memory size, which for lsan we are forced to increase')
   @no_wasmfs('wasmfs does some malloc/free during startup, fragmenting the heap, leading to differences later')
@@ -6355,28 +6353,23 @@ int main(void) {
 
     # Linked version
     self.do_runf('dlmalloc_test.c', '*1,0*', args=['200', '1'])
-    self.do_run('dlmalloc_test.js', '*400,0*', args=['400', '400'], no_build=True)
+    self.do_run(self.output_name('dlmalloc_test'), '*400,0*', args=['400', '400'], no_build=True)
 
-    # TODO: do this in other passes too, passing their opts into emcc
-    if self.emcc_args == []:
-      # emcc should build in dlmalloc automatically, and do all the sign correction etc. for it
+    self.run_process([EMCC, test_file('dlmalloc_test.c'), '-sINITIAL_MEMORY=128MB', '-o', 'src.js'] + self.get_emcc_args())
 
-      delete_file('src.js')
-      self.run_process([EMCC, test_file('dlmalloc_test.c'), '-sINITIAL_MEMORY=128MB', '-o', 'src.js'], stdout=PIPE, stderr=self.stderr_redirect)
+    self.do_run('src.js', '*1,0*', args=['200', '1'], no_build=True)
+    self.do_run('src.js', '*400,0*', args=['400', '400'], no_build=True)
 
-      self.do_run(None, '*1,0*', ['200', '1'], no_build=True)
-      self.do_run(None, '*400,0*', ['400', '400'], no_build=True)
-
-      # The same for new and all its variants
-      src = read_file(test_file('new.cpp'))
-      for new, delete in [
-        ('malloc(100)', 'free'),
-        ('new char[100]', 'delete[]'),
-        ('new Structy', 'delete'),
-        ('new int', 'delete'),
-        ('new Structy[10]', 'delete[]'),
-      ]:
-        self.do_run(src.replace('{{{ NEW }}}', new).replace('{{{ DELETE }}}', delete), '*1,0*')
+    # The same for new and all its variants
+    src = read_file(test_file('new.cpp'))
+    for new, delete in [
+      ('malloc(100)', 'free'),
+      ('new char[100]', 'delete[]'),
+      ('new Structy', 'delete'),
+      ('new int', 'delete'),
+      ('new Structy[10]', 'delete[]'),
+    ]:
+      self.do_run(src.replace('{{{ NEW }}}', new).replace('{{{ DELETE }}}', delete), '*1,0*')
 
   # Tests that a large allocation should gracefully fail
   @no_asan('the memory size limit here is too small for asan')
