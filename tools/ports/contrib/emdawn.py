@@ -13,4 +13,4 @@ PORT_FILE = 'emdawnwebgpu_pkg/emdawnwebgpu.port.py'
 # contrib port information (required)
 URL = 'https://dawn.googlesource.com/dawn'
 DESCRIPTION = 'Dawn is an open-source and cross-platform implementation of the WebGPU standard'
-LICENSE = 'BSD 3-Clause License'
+LICENSE = 'Some files: BSD 3-Clause License. Other files: Emscripten\'s license (available under both MIT License and University of Illinois/NCSA Open Source License)'
