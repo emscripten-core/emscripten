@@ -96,14 +96,17 @@ def load_port_module(module_name, port_file):
 
 
 def load_external_port(external_port):
-  Ports.fetch_project(external_port.name, external_port.EXTERNAL_PORT, external_port.SHA512, False)
-  port_file = os.path.join(Ports.get_dir(), external_port.name, external_port.PORT_FILE)
-  local_port = load_port_module(f'tools.ports.external.{external_port.name}', port_file)
+  name = external_port.name
+  up_to_date = Ports.fetch_port_artifact(name, external_port.EXTERNAL_PORT, external_port.SHA512)
+  port_file = os.path.join(Ports.get_dir(), name, external_port.PORT_FILE)
+  local_port = load_port_module(f'tools.ports.external.{name}', port_file)
   ports.remove(external_port)
   for a in ['URL', 'DESCRIPTION', 'LICENSE']:
     if not hasattr(local_port, a):
       setattr(local_port, a, getattr(external_port, a))
-  init_port(external_port.name, local_port)
+  init_port(name, local_port)
+  if not up_to_date:
+    Ports.clear_project_build(name)
 
 
 def init_external_port(name, port):
@@ -291,7 +294,8 @@ class Ports:
   name_cache: Set[str] = set()
 
   @staticmethod
-  def fetch_project(name, url, sha512hash=None, clear_project_build_on_outdated=True):
+  def fetch_port_artifact(name, url, sha512hash=None):
+    """This function only fetches the port and returns True when the port is up to date, False otherwise"""
     # To compute the sha512 hash, run `curl URL | sha512sum`.
     fullname = Ports.get_dir(name)
 
@@ -331,18 +335,17 @@ class Ports:
           # before acquiring the lock we have an early out if the port already exists
           if os.path.exists(target) and dir_is_newer(path, target):
             logger.warning(uptodate_message)
-            return
+            return True
           with cache.lock('unpack local port'):
             # Another early out in case another process unpackage the library while we were
             # waiting for the lock
             if os.path.exists(target) and not dir_is_newer(path, target):
               logger.warning(uptodate_message)
-              return
+              return True
             logger.warning(f'grabbing local port: {name} from {path} to {fullname} (subdir: {subdir})')
             utils.delete_dir(fullname)
             shutil.copytree(path, target)
-            Ports.clear_project_build(name)
-          return
+            return False
 
     url_filename = url.rsplit('/')[-1]
     ext = url_filename.split('.', 1)[1]
@@ -383,7 +386,7 @@ class Ports:
 
     # before acquiring the lock we have an early out if the port already exists
     if up_to_date():
-      return
+      return True
 
     # main logic. do this under a cache lock, since we don't want multiple jobs to
     # retrieve the same port at once
@@ -393,7 +396,7 @@ class Ports:
         # Another early out in case another process unpackage the library while we were
         # waiting for the lock
         if up_to_date():
-          return
+          return True
         # file exists but tag is bad
         logger.warning('local copy of port is not correct, retrieving from remote server')
         utils.delete_dir(fullname)
@@ -402,9 +405,15 @@ class Ports:
       retrieve()
       unpack()
 
+      return False
+
+
+  @staticmethod
+  def fetch_project(name, url, sha512hash=None):
+    if not Ports.fetch_port_artifact(name, url, sha512hash):
       # we unpacked a new version, clear the build in the cache
-      if clear_project_build_on_outdated:
-        Ports.clear_project_build(name)
+      Ports.clear_project_build(name)
+
 
   @staticmethod
   def clear_project_build(name):
