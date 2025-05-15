@@ -3910,6 +3910,7 @@ ok
     self.do_runf('main.c', 'main\nfunc_a\nfunc_sub\nfunc_b\nfunc_sub\ndone\n')
 
   @needs_dylink
+  @no_modularize_instance('uses file packager')
   def test_dlfcn_preload(self):
     # Create chain of dependencies and load the first libary with preload plugin.
     # main -> libb.so -> liba.so
