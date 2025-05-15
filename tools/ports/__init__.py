@@ -13,7 +13,7 @@ import importlib.util
 from inspect import signature
 import sys
 import subprocess
-from typing import Set
+from typing import Set, Dict
 from urllib.request import urlopen
 
 from tools import cache
@@ -26,7 +26,7 @@ from tools.toolchain_profiler import ToolchainProfiler
 
 ports = []
 
-ports_by_name = {}
+ports_by_name: Dict[str, object] = {}
 
 ports_needed = set()
 
