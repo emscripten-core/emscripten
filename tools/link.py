@@ -659,6 +659,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
 
+  setup_environment_settings()
+
   apply_library_settings(linker_args)
   linker_args += calc_extra_ldflags(options)
 
@@ -1219,8 +1221,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     default_setting('NODEJS_CATCH_EXIT', 0)
     if settings.NODEJS_CATCH_REJECTION or settings.NODEJS_CATCH_EXIT:
       exit_with_error('cannot use -sNODEJS_CATCH_REJECTION or -sNODEJS_CATCH_EXIT with -sMODULARIZE')
-
-  setup_environment_settings()
 
   if settings.POLYFILL:
     # Emscripten requires certain ES6+ constructs by default in library code
