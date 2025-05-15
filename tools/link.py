@@ -830,10 +830,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('MODULARIZE=instance is not compatible with -sASYNCIFY_LAZY_LOAD_CODE')
     if options.use_preload_plugins or len(options.preload_files):
       exit_with_error('MODULARIZE=instance is not compatible with --embed-file/--preload-file')
-    if 'INCOMING_MODULE_JS_API' in user_settings:
-      for s in ['wasmMemory', 'INITIAL_MEMORY']:
-        if s in settings.INCOMING_MODULE_JS_API:
-          exit_with_error(f'{s} cannot be in INCOMING_MODULE_JS_API in MODULARIZE=instance mode')
 
   if options.oformat in (OFormat.WASM, OFormat.BARE):
     if options.emit_tsd:

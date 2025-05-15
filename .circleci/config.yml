@@ -824,6 +824,7 @@ jobs:
             instance.test_dyncall*
             instance.test_em_asm*
             instance.test_embind*
+            instance.test_module_wasm_memory
             esm_integration.test_fs_js_api*
             esm_integration.test_inlinejs3
             esm_integration.test_embind_val_basics
