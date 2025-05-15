@@ -195,6 +195,9 @@ addToLibrary({
     sleepCallbacks: [], // functions to call every time we sleep
 
     getCallStackId(funcName) {
+#if ASSERTIONS
+      assert(funcName);
+#endif
       var id = Asyncify.callStackNameToId[funcName];
       if (id === undefined) {
         id = Asyncify.callStackId++;
@@ -264,6 +267,9 @@ addToLibrary({
 #if ASYNCIFY_DEBUG >= 2
       dbg(`ASYNCIFY: setDataRewindFunc(${ptr}), bottomOfCallStack is`, bottomOfCallStack, new Error().stack);
 #endif
+#if ASSERTIONS
+      assert(bottomOfCallStack, 'exportCallStack is empty');
+#endif
       var rewindId = Asyncify.getCallStackId(bottomOfCallStack);
       {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'rewindId', 'i32') }}};
     },
@@ -271,6 +277,9 @@ addToLibrary({
     getDataRewindFuncName(ptr) {
       var id = {{{ makeGetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'i32') }}};
       var name = Asyncify.callStackIdToName[id];
+#if ASSERTIONS
+      assert(name, `id ${id} not found in callStackIdToName`);
+#endif
       return name;
     },
 
@@ -285,6 +294,9 @@ addToLibrary({
       if (!func) {
         func = resolveGlobalSymbol(name, false).sym;
       }
+#endif
+#if ASSERTIONS
+      assert(func, `export not found: ${name}`);
 #endif
       return func;
     },
