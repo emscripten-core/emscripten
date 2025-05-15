@@ -8316,6 +8316,7 @@ Module.onRuntimeInitialized = () => {
                             '-pthread', '-sPROXY_TO_PTHREAD'])
 
   @no_asan('asyncify stack operations confuse asan')
+  @no_modularize_instance('ASYNCIFY_LAZY_LOAD_CODE is not compatible with MODULARIZE=instance')
   @no_wasm2js('TODO: lazy loading in wasm2js')
   @parameterized({
     '': (False,),
