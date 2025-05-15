@@ -339,7 +339,7 @@ def make_no_decorator_for_setting(name):
   return outer_decorator
 
 
-def maybe_with_textdecoder(f):
+def with_both_text_decoder(f):
   assert callable(f)
 
   @wraps(f)
@@ -5668,38 +5668,38 @@ got: 10
   def test_futimens(self):
     self.do_runf('utime/test_futimens.c', 'success')
 
-  @maybe_with_textdecoder
+  @with_both_text_decoder
   def test_utf(self):
     self.do_core_test('test_utf.c')
 
-  @maybe_with_textdecoder
+  @with_both_text_decoder
   def test_utf32(self):
     self.do_runf('utf32.cpp', 'OK (long).\n')
 
-  @maybe_with_textdecoder
+  @with_both_text_decoder
   @no_sanitize('requires libc to be built with -fshort-char')
   def test_utf32_short_wchar(self):
     if '-flto' in self.emcc_args or '-flto=thin' in self.emcc_args:
       self.skipTest('-fshort-wchar is not compatible with LTO (libraries would need rebuilting)')
     self.do_runf('utf32.cpp', 'OK (short).\n', emcc_args=['-fshort-wchar'])
 
-  @maybe_with_textdecoder
+  @with_both_text_decoder
   @crossplatform
   def test_utf16(self):
     self.do_runf('core/test_utf16.cpp', 'OK.')
 
-  @maybe_with_textdecoder
+  @with_both_text_decoder
   def test_utf8(self):
     self.do_runf('core/test_utf8.c', 'OK.')
 
-  @maybe_with_textdecoder
+  @with_both_text_decoder
   @also_with_wasm_bigint
   def test_utf8_bench(self):
     self.emcc_args += ['--embed-file', test_file('utf8_corpus.txt') + '@/utf8_corpus.txt']
     self.do_runf('benchmark/benchmark_utf8.c', 'OK.')
 
   # Test that invalid character in UTF8 does not cause decoding to crash.
-  @maybe_with_textdecoder
+  @with_both_text_decoder
   @also_with_minimal_runtime
   def test_utf8_invalid(self):
     self.do_runf('test_utf8_invalid.c', 'OK.')
