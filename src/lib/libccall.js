@@ -6,6 +6,10 @@
 
 addToLibrary({
   // Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
+#if MODULARIZE == 'instance'
+  $getCFunc__deps: [() => error('ccall is not yet comatible with MODULARIZE=instance')],
+#endif
+  $getCFunc__internal: true,
   $getCFunc: (ident) => {
     var func = Module['_' + ident]; // closure exported function
 #if ASSERTIONS

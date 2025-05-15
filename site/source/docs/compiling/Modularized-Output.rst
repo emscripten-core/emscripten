@@ -115,15 +115,18 @@ Limitations
 Some major features still do not work in this mode.  Many of these we hope to
 fix in future releses.  Current limitations include:
 
-* Internal usage (e.g. usage within EM_JS / JS libary code) of the `Module`
-  object does not work.  This is because symbols are exported directly using
-  ES6 module syntax rathar than using a global `Module` object.
+* Internal usage (e.g. usage within EM_JS / JS libary code) of the ``Module``
+  global does not work.  This is because symbols are exported directly using
+  ES6 module syntax rathar than using the ``Module`` global.
 
-* `ccall`/`cwrap` are not supported (these depend on the internal `Module`
-  object).
+* `ccall`/`cwrap` are not supported (depends on the ``Module`` global).
 
 * :ref:`abort_on_wasm_exceptions` is not supported (requires wrapping wasm
   exports).
+
+* :ref:`dyncalls` is not supported (depends on the ``Module`` global)
+
+* :ref:`asyncify` is not supported (depends on :ref:`dyncalls`)
 
 * The output of file_packager is not compatible so :ref:`emcc-preload-file` and
   :ref:`emcc-embed-file` do not work.
