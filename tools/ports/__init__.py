@@ -88,13 +88,17 @@ def init_local_port(name, port):
   validate_port(port)
 
 
+def load_port_module(module_name, port_file):
+  spec = importlib.util.spec_from_file_location(module_name, port_file)
+  port = importlib.util.module_from_spec(spec)
+  spec.loader.exec_module(port)
+  return port
+
+
 def load_external_port(external_port):
   need_clear_project_build = Ports.fetch_project(external_port.name, external_port.EXTERNAL_PORT, external_port.SHA512, True)
   port_file = os.path.join(Ports.get_dir(), external_port.name, external_port.PORT_FILE)
-  module_name = f'tools.ports.external.{external_port.name}'
-  spec = importlib.util.spec_from_file_location(module_name, port_file)
-  local_port = importlib.util.module_from_spec(spec)
-  spec.loader.exec_module(local_port)
+  local_port = load_port_module(f'tools.ports.external.{external_port.name}', port_file)
   ports.remove(external_port)
   for a in ['URL', 'DESCRIPTION', 'LICENSE']:
     if not hasattr(local_port, a):
@@ -117,10 +121,7 @@ def load_port(path, name=None):
     name = shared.unsuffixed_basename(path)
   if name in ports_by_name:
     utils.exit_with_error(f'port path [`{path}`] is invalid: duplicate port name `{name}`')
-  module_name = f'tools.ports.{name}'
-  spec = importlib.util.spec_from_file_location(module_name, path)
-  port = importlib.util.module_from_spec(spec)
-  spec.loader.exec_module(port)
+  port = load_port_module(f'tools.ports.{name}', path)
   init_port(name, port)
   return name
 
