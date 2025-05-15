@@ -811,6 +811,10 @@ jobs:
             instance.test_iostream_and_determinism
             instance.test_fannkuch
             instance.test_fasta
+            instance.test_EXPORTED_RUNTIME_METHODS
+            instance.test_ccall
+            instance.test_dylink_basics*
+            instance.test_Module_dynamicLibraries*
             esm_integration.test_fs_js_api*
             esm_integration.test_inlinejs3
             esm_integration.test_embind_val_basics

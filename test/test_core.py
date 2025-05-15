@@ -51,6 +51,22 @@ def esm_integration(func):
   return decorated
 
 
+def no_modularize_instance(note):
+  assert not callable(note)
+
+  def decorator(f):
+    assert callable(f)
+
+    @wraps(f)
+    def decorated(self, *args, **kwargs):
+      if self.get_setting('MODULARIZE') == 'instance' or self.get_setting('WASM_ESM_INTEGRATION'):
+        self.skipTest(note)
+      f(self, *args, **kwargs)
+    return decorated
+
+  return decorator
+
+
 def wasm_simd(f):
   assert callable(f)
 
@@ -1745,6 +1761,7 @@ int main() {
   def test_sizeof(self):
     self.do_core_test('test_sizeof.c')
 
+  @no_modularize_instance('uses Module object directly')
   def test_llvm_used(self):
     self.do_core_test('test_llvm_used.c')
 
@@ -1754,6 +1771,7 @@ int main() {
 
     self.do_core_test('test_set_align.c')
 
+  @no_modularize_instance('uses Module object directly')
   def test_emscripten_api(self):
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_save_me_aimee'])
     self.do_core_test('test_emscripten_api.c')
@@ -5347,6 +5365,7 @@ Pass: 0.000012 0.000012''')
   def test_langinfo(self):
     self.do_core_test('test_langinfo.c')
 
+  @no_modularize_instance('uses Module object directly')
   def test_files(self):
     # Use closure here, to test we don't break FS stuff
     if '-O3' in self.emcc_args and self.is_wasm2js():
@@ -6217,6 +6236,7 @@ PORT: 3979
 
   @with_env_modify({'LC_ALL': 'latin-1', 'PYTHONUTF8': '0', 'PYTHONCOERCECLOCALE': '0'})
   @crossplatform
+  @no_modularize_instance('uses MODULARIZE')
   def test_unicode_js_library(self):
     # First verify that we have correct overridden the default python file encoding.
     # The follow program should fail, assuming the above LC_CTYPE + PYTHONUTF8
@@ -6324,8 +6344,6 @@ int main(void) {
     self.do_run(src, '*1,0*', args=['200', '1'], force_c=True)
     self.do_run('src.js', '*400,0*', args=['400', '400'], force_c=True, no_build=True)
 
-  # node is slower, and fail on 64-bit
-  @requires_v8
   @no_asan('depends on the specifics of memory size, which for asan we are forced to increase')
   @no_lsan('depends on the specifics of memory size, which for lsan we are forced to increase')
   @no_wasmfs('wasmfs does some malloc/free during startup, fragmenting the heap, leading to differences later')
@@ -6335,28 +6353,23 @@ int main(void) {
 
     # Linked version
     self.do_runf('dlmalloc_test.c', '*1,0*', args=['200', '1'])
-    self.do_run('dlmalloc_test.js', '*400,0*', args=['400', '400'], no_build=True)
+    self.do_run(self.output_name('dlmalloc_test'), '*400,0*', args=['400', '400'], no_build=True)
 
-    # TODO: do this in other passes too, passing their opts into emcc
-    if self.emcc_args == []:
-      # emcc should build in dlmalloc automatically, and do all the sign correction etc. for it
+    self.run_process([EMCC, test_file('dlmalloc_test.c'), '-sINITIAL_MEMORY=128MB', '-o', 'src.js'] + self.get_emcc_args())
 
-      delete_file('src.js')
-      self.run_process([EMCC, test_file('dlmalloc_test.c'), '-sINITIAL_MEMORY=128MB', '-o', 'src.js'], stdout=PIPE, stderr=self.stderr_redirect)
+    self.do_run('src.js', '*1,0*', args=['200', '1'], no_build=True)
+    self.do_run('src.js', '*400,0*', args=['400', '400'], no_build=True)
 
-      self.do_run(None, '*1,0*', ['200', '1'], no_build=True)
-      self.do_run(None, '*400,0*', ['400', '400'], no_build=True)
-
-      # The same for new and all its variants
-      src = read_file(test_file('new.cpp'))
-      for new, delete in [
-        ('malloc(100)', 'free'),
-        ('new char[100]', 'delete[]'),
-        ('new Structy', 'delete'),
-        ('new int', 'delete'),
-        ('new Structy[10]', 'delete[]'),
-      ]:
-        self.do_run(src.replace('{{{ NEW }}}', new).replace('{{{ DELETE }}}', delete), '*1,0*')
+    # The same for new and all its variants
+    src = read_file(test_file('new.cpp'))
+    for new, delete in [
+      ('malloc(100)', 'free'),
+      ('new char[100]', 'delete[]'),
+      ('new Structy', 'delete'),
+      ('new int', 'delete'),
+      ('new Structy[10]', 'delete[]'),
+    ]:
+      self.do_run(src.replace('{{{ NEW }}}', new).replace('{{{ DELETE }}}', delete), '*1,0*')
 
   # Tests that a large allocation should gracefully fail
   @no_asan('the memory size limit here is too small for asan')
@@ -6890,6 +6903,7 @@ void* operator new(size_t size) {
   ### Integration tests
 
   @crossplatform
+  @no_modularize_instance('ccall is not compatible with WASM_ESM_INTEGRATION')
   def test_ccall(self):
     self.emcc_args.append('-Wno-return-stack-address')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap', 'STACK_SIZE'])
@@ -6934,6 +6948,7 @@ void* operator new(size_t size) {
     if self.maybe_closure():
       self.do_core_test('test_ccall.cpp')
 
+  @no_modularize_instance('ccall is not compatible with WASM_ESM_INTEGRATION')
   def test_ccall_cwrap_fast_path(self):
     self.emcc_args.append('-Wno-return-stack-address')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
@@ -6948,6 +6963,7 @@ void* operator new(size_t size) {
     self.set_setting('EXPORTED_FUNCTIONS', ['_print_bool'])
     self.do_runf('core/test_ccall.cpp', 'true')
 
+  @no_modularize_instance('uses Module object directly')
   def test_EXPORTED_RUNTIME_METHODS(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$dynCall', '$ASSERTIONS'])
     self.do_core_test('EXPORTED_RUNTIME_METHODS.c')
@@ -6985,9 +7001,12 @@ void* operator new(size_t size) {
     'legacy': (['-sDYNCALLS'],),
   })
   def test_dyncall_pointers(self, args):
+    if args:
+      self.skipTest('dynCallLegacy is not yet comatible with WASM_ESM_INTEGRATION')
     self.do_core_test('test_dyncall_pointers.c', emcc_args=args)
 
   @also_with_wasm_bigint
+  @no_modularize_instance('uses Module object directly')
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
     def test(args=None, asserts=False):
@@ -7030,6 +7049,7 @@ void* operator new(size_t size) {
     '': ([],),
     'files': (['-DUSE_FILES'],),
   })
+  @no_modularize_instance('uses Module object directly')
   def test_FS_exports(self, extra_args):
     # these used to be exported, but no longer are by default
     def test(output_prefix='', args=None, assert_returncode=0):
@@ -7052,6 +7072,7 @@ void* operator new(size_t size) {
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['FS_createDataFile'])
     test(args=['-sFORCE_FILESYSTEM'])
 
+  @no_modularize_instance('uses Module object directly')
   def test_legacy_exported_runtime_numbers(self):
     # these used to be exported, but no longer are by default
     def test(expected, args=None, assert_returncode=0):
@@ -7101,6 +7122,7 @@ void* operator new(size_t size) {
     self.run_process([EMCC, "-Wl,@rsp_file", '-o', 'response_file.o.js'] + self.get_emcc_args())
     self.do_run('response_file.o.js', 'hello, world', no_build=True)
 
+  @no_modularize_instance('uses Module object directly')
   def test_exported_response(self):
     src = r'''
       #include <stdio.h>
@@ -7124,6 +7146,7 @@ void* operator new(size_t size) {
     self.do_run(src, '''waka 5!''')
     assert 'other_function' in read_file('src.js')
 
+  @no_modularize_instance('uses Module object directly')
   def test_large_exported_response(self):
     src = r'''
       #include <stdio.h>
@@ -7899,6 +7922,7 @@ void* operator new(size_t size) {
       self.assertLessEqual(start_wat_addr, dwarf_addr)
       self.assertLessEqual(dwarf_addr, end_wat_addr)
 
+  @no_modularize_instance('uses -sMODULARIZE')
   def test_modularize_closure_pre(self):
     # test that the combination of modularize + closure + pre-js works. in that mode,
     # closure should not minify the Module object in a way that the pre-js cannot use it.
@@ -8049,6 +8073,7 @@ int main() {
   def test_async_hello_v8(self):
     self.test_async_hello()
 
+  @no_modularize_instance('ccall is not compatible with WASM_ESM_INTEGRATION')
   def test_async_ccall_bad(self):
     # check bad ccall use
     # needs to flush stdio streams
@@ -8080,6 +8105,7 @@ Module.onRuntimeInitialized = () => {
     self.do_runf('main.c', 'The call to main is running asynchronously.')
 
   @with_asyncify_and_jspi
+  @no_modularize_instance('ccall is not compatible with WASM_ESM_INTEGRATION')
   def test_async_ccall_good(self):
     # check reasonable ccall use
     self.set_setting('ASYNCIFY')
@@ -8108,6 +8134,7 @@ Module.onRuntimeInitialized = () => {
     'exit_runtime': (True,),
   })
   @with_asyncify_and_jspi
+  @no_modularize_instance('ccall is not compatible with WASM_ESM_INTEGRATION')
   def test_async_ccall_promise(self, exit_runtime):
     if self.get_setting('ASYNCIFY') == 2:
       self.set_setting('JSPI_EXPORTS', ['stringf', 'floatf'])
@@ -9550,6 +9577,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf('core/test_promise_await.c', 'Aborted(emscripten_promise_await is only available with ASYNCIFY)',
                  assert_returncode=NON_ZERO)
 
+  @no_modularize_instance('uses Module object directly')
   def test_emscripten_async_load_script(self):
     create_file('script1.js', 'Module._set(456);''')
     create_file('file1.txt', 'first')
