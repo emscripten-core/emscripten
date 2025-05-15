@@ -119,7 +119,11 @@ fix in future releses.  Current limitations include:
   object does not work.  This is because symbols are exported directly using
   ES6 module syntax rathar than using a global `Module` object.
 
-* `ccall`/`cwrap`, these depend on the internal `Module` object.
+* `ccall`/`cwrap` are not supported (these depend on the internal `Module`
+  object).
+
+* :ref:`abort_on_wasm_exceptions` is not supported (requires wrapping wasm
+  exports).
 
 
 Source Phase Imports (experimental)
