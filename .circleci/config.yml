@@ -10,6 +10,8 @@ executors:
   linux-python:
     docker:
       - image: cimg/python:3.10.7
+    environment:
+      EMCC_CORES: "4"
   focal:
     docker:
       - image: emscripten/emscripten-ci:focal
