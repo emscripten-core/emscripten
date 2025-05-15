@@ -9,15 +9,21 @@
 #include <emscripten/em_js.h>
 #include <stdbool.h>
 
-// We want to test that JavaScript access in a pthread automatically updates the memory views if the heap has grown on the main thread meanwhile.
+// We want to test that JavaScript access in a pthread automatically updates the
+// memory views if the heap has grown on the main thread meanwhile.
 //
-// Checking this correctly is somewhat tricky because a lot of Emscripten APIs access heap on their own, so the memory views might be updated
-// by them before we explicitly check the state in our own JS routines below, which leads to false positives (test passing even though in
-// isolation the heap access in our own JS is not the one updating the memory views).
+// Checking this correctly is somewhat tricky because a lot of Emscripten APIs
+// access heap on their own, so the memory views might be updated by them before
+// we explicitly check the state in our own JS routines below, which leads to
+// false positives (test passing even though in isolation the heap access in our
+// own JS is not the one updating the memory views).
 //
-// To test it in isolation, we need to use only EM_JS - which is as close to a pure JS call as we can get - and not EM_ASM, pthread_join, proxying
-// etc., not even `puts`/`printf` for logging - as all of those access the heap from JS on their own and might update the memory views too early.
-// Not using standard proxying mechanisms also means we need to drop down all the way to raw atomics.
+// To test it in isolation, we need to use only EM_JS - which is as close to a
+// pure JS call as we can get - and not EM_ASM, pthread_join, proxying etc., not
+// even `puts`/`printf` for logging - as all of those access the heap from JS on
+// their own and might update the memory views too early. Not using standard
+// proxying mechanisms also means we need to drop down all the way to raw
+// atomics.
 
 EM_JS(void, js_assert_initial_heap_state, (bool isWorker), {
   console.log(`Checking initial heap state on the ${isWorker ? 'worker' : 'main'} thread`);
