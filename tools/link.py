@@ -811,14 +811,23 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     else:
       default_setting('INCOMING_MODULE_JS_API', [])
 
+  if settings.ASYNCIFY == 1:
+    # See: https://github.com/emscripten-core/emscripten/issues/12065
+    # See: https://github.com/emscripten-core/emscripten/issues/12066
+    settings.DYNCALLS = 1
+
   if settings.MODULARIZE == 'instance':
     diagnostics.warning('experimental', 'MODULARIZE=instance is still experimental. Many features may not work or will change.')
     if not settings.EXPORT_ES6:
       exit_with_error('MODULARIZE=instance requires EXPORT_ES6')
     if settings.ABORT_ON_WASM_EXCEPTIONS:
-      exit_with_error('MODULARIZE=instance is only compatible with ABORT_ON_WASM_EXCEPTIONS')
+      exit_with_error('MODULARIZE=instance is not compatible with ABORT_ON_WASM_EXCEPTIONS')
+    if settings.ASYNCIFY == 1:
+      exit_with_error('MODULARIZE=instance is not compatible with -sASYNCIFY=1')
+    if settings.DYNCALLS:
+      exit_with_error('MODULARIZE=instance is not compatible with -sDYNCALLS')
     if options.use_preload_plugins or len(options.preload_files):
-      exit_with_error('MODULARIZE=instance is not compatile with --embed-file/--preload-file')
+      exit_with_error('MODULARIZE=instance is not compatible with --embed-file/--preload-file')
     if 'INCOMING_MODULE_JS_API' in user_settings:
       for s in ['wasmMemory', 'INITIAL_MEMORY']:
         if s in settings.INCOMING_MODULE_JS_API:
@@ -1128,11 +1137,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.ASYNCIFY_LAZY_LOAD_CODE:
     settings.ASYNCIFY = 1
-
-  if settings.ASYNCIFY == 1:
-    # See: https://github.com/emscripten-core/emscripten/issues/12065
-    # See: https://github.com/emscripten-core/emscripten/issues/12066
-    settings.DYNCALLS = 1
 
   settings.ASYNCIFY_ADD = unmangle_symbols_from_cmdline(settings.ASYNCIFY_ADD)
   settings.ASYNCIFY_REMOVE = unmangle_symbols_from_cmdline(settings.ASYNCIFY_REMOVE)
