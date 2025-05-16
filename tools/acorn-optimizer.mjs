@@ -145,35 +145,6 @@ function restoreInnerScopes(node, map) {
   });
 }
 
-// If we empty out a var from
-//   for (var i in x) {}
-//   for (var j = 0;;) {}
-// then it will be invalid. We saved it on the side;
-// restore it here.
-function restoreForVars(node) {
-  let restored = 0;
-  function fix(init) {
-    if (init && init.type === 'EmptyStatement') {
-      assertAt(init.oldDeclarations, init);
-      init.type = 'VariableDeclaration';
-      init.declarations = init.oldDeclarations;
-      restored++;
-    }
-  }
-  simpleWalk(node, {
-    ForStatement(node) {
-      fix(node.init);
-    },
-    ForInStatement(node) {
-      fix(node.left);
-    },
-    ForOfStatement(node) {
-      fix(node.left);
-    },
-  });
-  return restored;
-}
-
 function hasSideEffects(node) {
   // Conservative analysis.
   const map = ignoreInnerScopes(node);
@@ -272,8 +243,24 @@ function JSDCE(ast, aggressive) {
     }
     function cleanUp(ast, names) {
       recursiveWalk(ast, {
+        ForStatement(node, c) {
+          visitChildren(node, c);
+          // If we had `for (var x = ...; ...)` and we removed `x`, we need to change to `for (; ...)`.
+          if (node.init?.type === 'EmptyStatement') {
+            node.init = null;
+          }
+        },
+        ForInStatement(node, c) {
+          // We can't remove the var in a for-in, as that would result in an invalid syntax. Skip the LHS.
+          c(node.right);
+          c(node.body);
+        },
+        ForOfStatement(node, c) {
+          // We can't remove the var in a for-of, as that would result in an invalid syntax. Skip the LHS.
+          c(node.right);
+          c(node.body);
+        },
         VariableDeclaration(node, _c) {
-          const old = node.declarations;
           let removedHere = 0;
           node.declarations = node.declarations.filter((node) => {
             assert(node.type === 'VariableDeclarator');
@@ -294,8 +281,6 @@ function JSDCE(ast, aggressive) {
           removed += removedHere;
           if (node.declarations.length === 0) {
             emptyOut(node);
-            // If this is in a for, we may need to restore it.
-            node.oldDeclarations = old;
           }
         },
         ExpressionStatement(node, _c) {
@@ -316,7 +301,6 @@ function JSDCE(ast, aggressive) {
         FunctionExpression() {},
         ArrowFunctionExpression() {},
       });
-      removed -= restoreForVars(ast);
     }
 
     function handleFunction(node, c, defun) {
