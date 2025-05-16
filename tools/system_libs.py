@@ -1652,9 +1652,10 @@ class libcxx(ExceptionLibrary, MTLibrary):
     '-Wno-unqualified-std-cast-call',
     '-Wno-unknown-warning-option',
     '-std=c++23',
+    '-DLIBC_NAMESPACE=__llvm_libc',
   ]
 
-  includes = ['system/lib/libcxx/src']
+  includes = ['system/lib/libcxx/src', 'system/lib/llvm-libc']
 
   src_dir = 'system/lib/libcxx/src'
   src_glob = '**/*.cpp'
