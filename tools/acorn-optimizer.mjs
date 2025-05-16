@@ -105,7 +105,7 @@ function ignoreInnerScopes(node) {
   const map = new WeakMap();
   function ignore(node) {
     map.set(node, node.type);
-    node.type = 'EmptyStatement';
+    emptyOut(node);
   }
   simpleWalk(node, {
     FunctionDeclaration(node) {
