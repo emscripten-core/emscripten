@@ -1869,11 +1869,6 @@ function trace(...args) {
   }
 }
 
-function error(...args) {
-  console.error(...args);
-  throw new Error(...args);
-}
-
 // If enabled, output retains parentheses and comments so that the
 // output can further be passed out to Closure.
 const closureFriendly = getArg('--closure-friendly');
