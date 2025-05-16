@@ -110,10 +110,6 @@ function isNull(node) {
   return node.type === 'Literal' && node.raw === 'null';
 }
 
-function isUseStrict(node) {
-  return node.type === 'Literal' && node.value === 'use strict';
-}
-
 function setLiteralValue(item, value) {
   item.value = value;
   item.raw = "'" + value + "'";
@@ -197,13 +193,17 @@ function hasSideEffects(node) {
   let has = false;
   fullWalk(node, (node) => {
     switch (node.type) {
+      case 'ExpressionStatement':
+        if (node.directive) {
+          has = true;
+        }
+        break;
       // TODO: go through all the ESTree spec
       case 'Literal':
       case 'Identifier':
       case 'UnaryExpression':
       case 'BinaryExpression':
       case 'LogicalExpression':
-      case 'ExpressionStatement':
       case 'UpdateOperator':
       case 'ConditionalExpression':
       case 'FunctionDeclaration':
@@ -316,11 +316,9 @@ function JSDCE(ast, aggressive) {
           }
         },
         ExpressionStatement(node, _c) {
-          if (aggressive && !hasSideEffects(node)) {
-            if (!isNull(node.expression) && !isUseStrict(node.expression)) {
-              convertToNullStatement(node);
-              removed++;
-            }
+          if (aggressive && !hasSideEffects(node) && !isNull(node.expression)) {
+            convertToNullStatement(node);
+            removed++;
           }
         },
         FunctionDeclaration(node, _c) {
