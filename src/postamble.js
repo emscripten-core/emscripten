@@ -322,9 +322,9 @@ export default async function init(moduleArg = {}) {
   run();
 }
 
-#if PTHREADS
-// When run as a pthread we run `init` immediately.
-if (ENVIRONMENT_IS_PTHREAD) await init()
+#if PTHREADS || WASM_WORKERS
+// When run as a worker thread run `init` immediately.
+if ({{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) await init()
 #endif
 
 #if ENVIRONMENT_MAY_BE_NODE
@@ -338,6 +338,13 @@ if (ENVIRONMENT_IS_NODE
   const url = await import('url');
   const isMainModule = url.pathToFileURL(process.argv[1]).href === import.meta.url;
   if (isMainModule) await init();
+}
+#endif
+
+#if ENVIRONMENT_MAY_BE_SHELL
+if (ENVIRONMENT_IS_SHELL) {
+  // When run in a shell we run `init` immediately.
+  await init();
 }
 #endif
 

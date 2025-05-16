@@ -1737,6 +1737,9 @@ addToLibrary({
 #if MINIMAL_RUNTIME
     '$dynCalls',
 #endif
+#if MODULARIZE == 'instance'
+    () => error('dynCallLegacy is not yet compatible with MODULARIZE=instance'),
+#endif
   ],
   $dynCallLegacy: (sig, ptr, args) => {
     sig = sig.replace(/p/g, {{{ MEMORY64 ? "'j'" : "'i'" }}})

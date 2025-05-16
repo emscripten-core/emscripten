@@ -1843,6 +1843,7 @@ int main() {
     self.set_setting('RETAIN_COMPILER_SETTINGS')
     self.do_runf(src, read_file(output).replace('waka', utils.EMSCRIPTEN_VERSION))
 
+  @no_modularize_instance('MODULARIZE=instance is not compatible with ASYNCIFY=1')
   def test_emscripten_has_asyncify(self):
     src = r'''
       #include <stdio.h>
@@ -3910,6 +3911,7 @@ ok
     self.do_runf('main.c', 'main\nfunc_a\nfunc_sub\nfunc_b\nfunc_sub\ndone\n')
 
   @needs_dylink
+  @no_modularize_instance('uses file packager')
   def test_dlfcn_preload(self):
     # Create chain of dependencies and load the first libary with preload plugin.
     # main -> libb.so -> liba.so
@@ -4067,6 +4069,7 @@ ok
     self.do_basic_dylink_test()
 
   @with_dylink_reversed
+  @no_modularize_instance('DECLARE_ASM_MODULE_EXPORTS=0 is not compatible with MODULARIZE')
   def test_dylink_no_export(self):
     self.set_setting('NO_DECLARE_ASM_MODULE_EXPORTS')
     self.do_basic_dylink_test()
@@ -5146,13 +5149,8 @@ main main sees -524, -534, 72.
   @needs_dylink
   def test_dylink_argv_argc(self):
     # Verify that argc and argv can be sent to main when main is in a side module
-
-    self.emcc_args += ['--extern-pre-js', 'pre.js']
-
-    create_file('pre.js', '''
-      var Module = { arguments: ['hello', 'world!'] }
-    ''')
-
+    self.emcc_args += ['--pre-js', 'pre.js']
+    create_file('pre.js', "Module['arguments'] = ['hello', 'world!']")
     self.dylink_test(
       '', # main module is empty.
       r'''
@@ -6342,7 +6340,7 @@ int main(void) {
 
     src = read_file(path_from_root('system/lib/dlmalloc.c')) + '\n\n\n' + read_file(test_file('dlmalloc_test.c'))
     self.do_run(src, '*1,0*', args=['200', '1'], force_c=True)
-    self.do_run('src.js', '*400,0*', args=['400', '400'], force_c=True, no_build=True)
+    self.do_run(self.output_name('src'), '*400,0*', args=['400', '400'], force_c=True, no_build=True)
 
   @no_asan('depends on the specifics of memory size, which for asan we are forced to increase')
   @no_lsan('depends on the specifics of memory size, which for lsan we are forced to increase')
@@ -6355,10 +6353,11 @@ int main(void) {
     self.do_runf('dlmalloc_test.c', '*1,0*', args=['200', '1'])
     self.do_run(self.output_name('dlmalloc_test'), '*400,0*', args=['400', '400'], no_build=True)
 
-    self.run_process([EMCC, test_file('dlmalloc_test.c'), '-sINITIAL_MEMORY=128MB', '-o', 'src.js'] + self.get_emcc_args())
+    out_js = self.output_name('dlmalloc_test')
+    self.run_process([EMCC, test_file('dlmalloc_test.c'), '-sINITIAL_MEMORY=128MB', '-o', out_js] + self.get_emcc_args())
 
-    self.do_run('src.js', '*1,0*', args=['200', '1'], no_build=True)
-    self.do_run('src.js', '*400,0*', args=['400', '400'], no_build=True)
+    self.do_run(out_js, '*1,0*', args=['200', '1'], no_build=True)
+    self.do_run(out_js, '*400,0*', args=['400', '400'], no_build=True)
 
     # The same for new and all its variants
     src = read_file(test_file('new.cpp'))
@@ -6973,9 +6972,9 @@ void* operator new(size_t size) {
     self.do_core_test('EXPORTED_RUNTIME_METHODS.c')
 
   @also_with_minimal_runtime
+  @no_modularize_instance('uses dynCallLegacy')
+  @no_wasm64('not compatible with MEMORY64')
   def test_dyncall_specific(self):
-    if self.get_setting('MEMORY64'):
-      self.skipTest('not compatible with MEMORY64')
     if self.get_setting('WASM_BIGINT') != 0 and not self.is_wasm2js():
       # define DYNCALLS because this test does test calling them directly, and
       # in WASM_BIGINT mode we do not enable them by default (since we can do
@@ -7002,7 +7001,7 @@ void* operator new(size_t size) {
   })
   def test_dyncall_pointers(self, args):
     if args:
-      self.skipTest('dynCallLegacy is not yet comatible with WASM_ESM_INTEGRATION')
+      self.skipTest('dynCallLegacy is not yet compatible with WASM_ESM_INTEGRATION')
     self.do_core_test('test_dyncall_pointers.c', emcc_args=args)
 
   @also_with_wasm_bigint
@@ -7505,21 +7504,21 @@ void* operator new(size_t size) {
     self.do_runf('test_embind_val_cross_thread.cpp')
 
   def test_embind_val_coro(self):
-    create_file('post.js', r'''Module.onRuntimeInitialized = () => {
+    create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
       Module.asyncCoro().then(console.log);
     }''')
-    self.emcc_args += ['-std=c++20', '--bind', '--post-js=post.js']
+    self.emcc_args += ['-std=c++20', '--bind', '--pre-js=pre.js']
     self.do_runf('embind/test_val_coro.cpp', '34\n')
 
   def test_embind_val_coro_caught(self):
     self.set_setting('EXCEPTION_STACK_TRACES')
-    create_file('post.js', r'''Module.onRuntimeInitialized = () => {
+    create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
       Module.throwingCoro().then(
         console.log,
         err => console.error(`rejected with: ${err.stack}`)
       );
     }''')
-    self.emcc_args += ['-std=c++20', '--bind', '--post-js=post.js', '-fexceptions']
+    self.emcc_args += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fexceptions']
     self.do_runf('embind/test_val_coro.cpp', 'rejected with: std::runtime_error: bang from throwingCoro!\n')
 
   def test_embind_dynamic_initialization(self):
@@ -8317,6 +8316,7 @@ Module.onRuntimeInitialized = () => {
                             '-pthread', '-sPROXY_TO_PTHREAD'])
 
   @no_asan('asyncify stack operations confuse asan')
+  @no_modularize_instance('ASYNCIFY_LAZY_LOAD_CODE is not compatible with MODULARIZE=instance')
   @no_wasm2js('TODO: lazy loading in wasm2js')
   @parameterized({
     '': (False,),
@@ -9462,6 +9462,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-lembind', '--post-js', test_file('core/test_abort_on_exceptions_post.js')]
     self.do_core_test('test_abort_on_exceptions.cpp', interleaved_output=False)
 
+  @no_modularize_instance('ABORT_ON_WASM_EXCEPTIONS')
   def test_abort_on_exceptions_main(self):
     # The unhandled exception wrappers should not kick in for exceptions thrown during main
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
@@ -9475,6 +9476,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   @flaky('https://github.com/emscripten-core/emscripten/issues/20067')
+  @no_modularize_instance('ABORT_ON_WASM_EXCEPTIONS')
   def test_abort_on_exceptions_pthreads(self):
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
     self.set_setting('PROXY_TO_PTHREAD')
@@ -9499,6 +9501,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test('core/test_emscripten_async_call.c')
 
   @no_asan('asyncify stack operations confuse asan')
+  @no_modularize_instance('ASYNCIFY=1 requires DYNCALLS')
   @parameterized({
     '': ([],),
     'no_dynamic_execution': (['-sDYNAMIC_EXECUTION=0'],),
@@ -9516,6 +9519,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @no_asan('asyncify stack operations confuse asan')
   @with_asyncify_and_jspi
+  @no_modularize_instance('uses ccall')
   def test_em_async_js(self):
     if not self.get_setting('ASYNCIFY'):
       self.set_setting('ASYNCIFY')
