@@ -659,6 +659,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
 
+  setup_environment_settings()
+
   apply_library_settings(linker_args)
   linker_args += calc_extra_ldflags(options)
 
@@ -792,8 +794,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.WASM_ESM_INTEGRATION:
     diagnostics.warning('experimental', '-sWASM_ESM_INTEGRATION is still experimental and not yet supported in browsers')
     default_setting('MODULARIZE', 'instance')
-    if options.oformat != OFormat.MJS:
-      exit_with_error('WASM_ESM_INTEGRATION is only compatible with EM module output format')
+    if not settings.EXPORT_ES6:
+      exit_with_error('WASM_ESM_INTEGRATION requires EXPORT_ES6')
     if settings.MODULARIZE != 'instance':
       exit_with_error('WASM_ESM_INTEGRATION requires MODULARIZE=instance')
     if settings.RELOCATABLE:
@@ -809,14 +811,25 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     else:
       default_setting('INCOMING_MODULE_JS_API', [])
 
+  if settings.ASYNCIFY == 1:
+    # See: https://github.com/emscripten-core/emscripten/issues/12065
+    # See: https://github.com/emscripten-core/emscripten/issues/12066
+    settings.DYNCALLS = 1
+
   if settings.MODULARIZE == 'instance':
-    diagnostics.warning('experimental', '-sMODULARIZE=instance is still experimental. Many features may not work or will change.')
-    if options.oformat != OFormat.MJS:
-      exit_with_error('MODULARIZE instance is only compatible with ES module output format')
-    limit_incoming_module_api()
-    for s in ['wasmMemory', 'INITIAL_MEMORY']:
-      if s in settings.INCOMING_MODULE_JS_API:
-        exit_with_error(f'{s} cannot be in INCOMING_MODULE_JS_API in MODULARIZE=instance mode')
+    diagnostics.warning('experimental', 'MODULARIZE=instance is still experimental. Many features may not work or will change.')
+    if not settings.EXPORT_ES6:
+      exit_with_error('MODULARIZE=instance requires EXPORT_ES6')
+    if settings.ABORT_ON_WASM_EXCEPTIONS:
+      exit_with_error('MODULARIZE=instance is not compatible with ABORT_ON_WASM_EXCEPTIONS')
+    if settings.ASYNCIFY == 1:
+      exit_with_error('MODULARIZE=instance is not compatible with -sASYNCIFY=1')
+    if settings.DYNCALLS:
+      exit_with_error('MODULARIZE=instance is not compatible with -sDYNCALLS')
+    if settings.ASYNCIFY_LAZY_LOAD_CODE:
+      exit_with_error('MODULARIZE=instance is not compatible with -sASYNCIFY_LAZY_LOAD_CODE')
+    if options.use_preload_plugins or len(options.preload_files):
+      exit_with_error('MODULARIZE=instance is not compatible with --embed-file/--preload-file')
 
   if options.oformat in (OFormat.WASM, OFormat.BARE):
     if options.emit_tsd:
@@ -1123,11 +1136,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.ASYNCIFY_LAZY_LOAD_CODE:
     settings.ASYNCIFY = 1
 
-  if settings.ASYNCIFY == 1:
-    # See: https://github.com/emscripten-core/emscripten/issues/12065
-    # See: https://github.com/emscripten-core/emscripten/issues/12066
-    settings.DYNCALLS = 1
-
   settings.ASYNCIFY_ADD = unmangle_symbols_from_cmdline(settings.ASYNCIFY_ADD)
   settings.ASYNCIFY_REMOVE = unmangle_symbols_from_cmdline(settings.ASYNCIFY_REMOVE)
   settings.ASYNCIFY_ONLY = unmangle_symbols_from_cmdline(settings.ASYNCIFY_ONLY)
@@ -1217,8 +1225,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     default_setting('NODEJS_CATCH_EXIT', 0)
     if settings.NODEJS_CATCH_REJECTION or settings.NODEJS_CATCH_EXIT:
       exit_with_error('cannot use -sNODEJS_CATCH_REJECTION or -sNODEJS_CATCH_EXIT with -sMODULARIZE')
-
-  setup_environment_settings()
 
   if settings.POLYFILL:
     # Emscripten requires certain ES6+ constructs by default in library code

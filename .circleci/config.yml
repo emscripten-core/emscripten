@@ -10,6 +10,8 @@ executors:
   linux-python:
     docker:
       - image: cimg/python:3.10.7
+    environment:
+      EMCC_CORES: "4"
   focal:
     docker:
       - image: emscripten/emscripten-ci:focal
@@ -649,6 +651,7 @@ jobs:
             wasmfs.test_fs_llseek_rawfs
             wasmfs.test_freetype
             minimal0.test_utf
+            instance.test_async_hello_v8
             "
   test-wasm2js1:
     environment:
@@ -812,7 +815,16 @@ jobs:
             instance.test_fannkuch
             instance.test_fasta
             instance.test_EXPORTED_RUNTIME_METHODS
+            instance.test_abort_on_exceptions*
             instance.test_ccall
+            instance.test_dylink_basics*
+            instance.test_Module_dynamicLibraries*
+            instance.test_dylink_argv_argc
+            instance.test_dlmalloc*
+            instance.test_dyncall*
+            instance.test_em_asm*
+            instance.test_embind*
+            instance.test_module_wasm_memory
             esm_integration.test_fs_js_api*
             esm_integration.test_inlinejs3
             esm_integration.test_embind_val_basics
