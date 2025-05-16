@@ -1008,11 +1008,12 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   # Default to TEXTDECODER=2 (always use TextDecoder to decode UTF-8 strings)
   # in -Oz builds, since custom decoder for UTF-8 takes up space.
-  # In pthreads enabled builds, TEXTDECODER==2 may not work, see
-  # https://github.com/whatwg/encoding/issues/172
   # When supporting shell environments, do not do this as TextDecoder is not
   # widely supported there.
-  if settings.SHRINK_LEVEL >= 2 and not settings.SHARED_MEMORY and \
+  # In Audio Worklets TextDecoder API is intentionally not exposed
+  # (https://github.com/WebAudio/web-audio-api/issues/2499) so we also need to
+  # keep the JavaScript-based fallback.
+  if settings.SHRINK_LEVEL >= 2 and not settings.AUDIO_WORKLET and \
      not settings.ENVIRONMENT_MAY_BE_SHELL:
     default_setting('TEXTDECODER', 2)
 
