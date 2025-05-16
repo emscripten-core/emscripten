@@ -339,6 +339,19 @@ def make_no_decorator_for_setting(name):
   return outer_decorator
 
 
+def with_both_text_decoder(f):
+  assert callable(f)
+
+  @wraps(f)
+  def decorated(self, textdecoder, *args, **kwargs):
+    self.set_setting('TEXTDECODER', textdecoder)
+    f(self, *args, **kwargs)
+
+  parameterize(decorated, {'': (0,), 'textdecoder': (2,)})
+
+  return decorated
+
+
 no_minimal_runtime = make_no_decorator_for_setting('MINIMAL_RUNTIME')
 no_safe_heap = make_no_decorator_for_setting('SAFE_HEAP')
 
@@ -5655,40 +5668,43 @@ got: 10
   def test_futimens(self):
     self.do_runf('utime/test_futimens.c', 'success')
 
+  @with_both_text_decoder
   def test_utf(self):
     self.do_core_test('test_utf.c')
 
+  @with_both_text_decoder
   def test_utf32(self):
     self.do_runf('utf32.cpp', 'OK (long).\n')
 
+  @with_both_text_decoder
   @no_sanitize('requires libc to be built with -fshort-char')
   def test_utf32_short_wchar(self):
     if '-flto' in self.emcc_args or '-flto=thin' in self.emcc_args:
       self.skipTest('-fshort-wchar is not compatible with LTO (libraries would need rebuilting)')
     self.do_runf('utf32.cpp', 'OK (short).\n', emcc_args=['-fshort-wchar'])
 
+  @with_both_text_decoder
   @crossplatform
   def test_utf16(self):
     self.do_runf('core/test_utf16.cpp', 'OK.')
 
+  @with_both_text_decoder
   def test_utf8(self):
     self.do_runf('core/test_utf8.c', 'OK.')
 
+  @with_both_text_decoder
   @also_with_wasm_bigint
-  def test_utf8_textdecoder(self):
+  def test_utf8_bench(self):
     self.emcc_args += ['--embed-file', test_file('utf8_corpus.txt') + '@/utf8_corpus.txt']
     self.do_runf('benchmark/benchmark_utf8.c', 'OK.')
 
   # Test that invalid character in UTF8 does not cause decoding to crash.
+  @with_both_text_decoder
   @also_with_minimal_runtime
-  @parameterized({
-    '': ([],),
-    'textdecoder': (['-sTEXTDECODER'],),
-  })
-  def test_utf8_invalid(self, args):
-    self.do_runf('test_utf8_invalid.c', 'OK.', emcc_args=args)
+  def test_utf8_invalid(self):
+    self.do_runf('test_utf8_invalid.c', 'OK.')
 
-  def test_utf16_textdecoder(self):
+  def test_utf16_bench(self):
     self.emcc_args += ['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt']
     self.do_runf('benchmark/benchmark_utf16.cpp', 'OK.')
 
