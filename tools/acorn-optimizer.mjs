@@ -1108,7 +1108,7 @@ function isEmscriptenHEAP(name) {
 // LE byte order for HEAP buffer
 function littleEndianHeap(ast) {
   recursiveWalk(ast, {
-    FunctionDeclaration: (node, c) => {
+    FunctionDeclaration(node, c) {
       // do not recurse into LE_HEAP_STORE, LE_HEAP_LOAD functions
       if (
         !(
@@ -1119,13 +1119,13 @@ function littleEndianHeap(ast) {
         c(node.body);
       }
     },
-    VariableDeclarator: (node, c) => {
+    VariableDeclarator(node, c) {
       if (!(node.id.type === 'Identifier' && node.id.name.startsWith('LE_ATOMICS_'))) {
         c(node.id);
         if (node.init) c(node.init);
       }
     },
-    AssignmentExpression: (node, c) => {
+    AssignmentExpression(node, c) {
       const target = node.left;
       const value = node.right;
       c(value);
@@ -1185,7 +1185,7 @@ function littleEndianHeap(ast) {
         }
       }
     },
-    CallExpression: (node, c) => {
+    CallExpression(node, c) {
       if (node.arguments) {
         for (var a of node.arguments) c(a);
       }
@@ -1205,7 +1205,7 @@ function littleEndianHeap(ast) {
         c(node.callee);
       }
     },
-    MemberExpression: (node, c) => {
+    MemberExpression(node, c) {
       c(node.property);
       if (!isHEAPAccess(node)) {
         // not accessing the HEAP
@@ -1281,7 +1281,7 @@ function growableHeap(ast) {
         c(node.body);
       }
     },
-    AssignmentExpression: (node) => {
+    AssignmentExpression(node) {
       if (node.left.type === 'Identifier' && isEmscriptenHEAP(node.left.name)) {
         // Don't transform initial setup of the arrays.
         return;
@@ -1289,7 +1289,7 @@ function growableHeap(ast) {
       growableHeap(node.left);
       growableHeap(node.right);
     },
-    VariableDeclaration: (node) => {
+    VariableDeclaration(node) {
       // Don't transform the var declarations for HEAP8 etc
       node.declarations.forEach((decl) => {
         // but do transform anything that sets a var to
@@ -1299,7 +1299,7 @@ function growableHeap(ast) {
         }
       });
     },
-    Identifier: (node) => {
+    Identifier(node) {
       if (node.name.startsWith('HEAP')) {
         // Turn HEAP8 into GROWABLE_HEAP_I8() etc
         switch (node.name) {
@@ -1927,7 +1927,7 @@ if (closureFriendly) {
   const currentComments = [];
   Object.assign(params, {
     preserveParens: true,
-    onToken: (token) => {
+    onToken(token) {
       // Associate comments with the start position of the next token.
       sourceComments[token.start] = currentComments.slice();
       currentComments.length = 0;
