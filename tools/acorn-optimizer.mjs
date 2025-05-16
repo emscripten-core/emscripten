@@ -13,10 +13,12 @@ function read(x) {
 
 function assertAt(condition, node, message = '') {
   if (!condition) {
-    const loc = acorn.getLineInfo(input, node.start);
-    throw new Error(
-      `${infile}:${loc.line}: ${message} (use EMCC_DEBUG_SAVE=1 to preserve temporary inputs)`,
-    );
+    if (!process.env.EMCC_DEBUG_SAVE) {
+      message += ' (use EMCC_DEBUG_SAVE=1 to preserve temporary inputs)';
+    }
+    let err = new Error(message);
+    err['loc'] = acorn.getLineInfo(input, node.start);
+    throw err;
   }
 }
 
@@ -1935,21 +1937,6 @@ if (closureFriendly) {
     onComment: currentComments,
   });
 }
-let ast;
-try {
-  ast = acorn.parse(input, params);
-} catch (err) {
-  err.message += (() => {
-    let errorMessage = '\n' + input.split(acorn.lineBreak)[err.loc.line - 1] + '\n';
-    let column = err.loc.column;
-    while (column--) {
-      errorMessage += ' ';
-    }
-    errorMessage += '^\n';
-    return errorMessage;
-  })();
-  throw err;
-}
 
 const registry = {
   JSDCE,
@@ -1967,13 +1954,22 @@ const registry = {
   minifyGlobals,
 };
 
-passes.forEach((pass) => {
-  trace(`running AST pass: ${pass}`);
-  if (!(pass in registry)) {
-    error(`unknown optimizer pass: ${pass}`);
+let ast;
+try {
+  ast = acorn.parse(input, params);
+  for (let pass of passes) {
+    const resolvedPass = registry[pass];
+    assert(resolvedPass, `unknown optimizer pass: ${pass}`);
+    resolvedPass(ast);
   }
-  registry[pass](ast);
-});
+} catch (err) {
+  if (err.loc) {
+    err.message += '\n' +
+    `${input.split(acorn.lineBreak)[err.loc.line - 1]}\n` +
+    `${' '.repeat(err.loc.column)}^ ${infile}:${err.loc.line}:${err.loc.column + 1}`;
+  }
+  throw err;
+}
 
 if (!noPrint) {
   const terserAst = terser.AST_Node.from_mozilla_ast(ast);

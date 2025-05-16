@@ -10493,8 +10493,7 @@ int main() {
     stderr = self.expect_fail([EMCC, 'src.c', '-O2'] + self.get_emcc_args())
     self.assertContained(('''
 function js() { var x = !<->5.; }
-                         ^
-'''), stderr)
+                         ^ '''), stderr)
 
   @crossplatform
   def test_js_optimizer_chunk_size_determinism(self):
