@@ -2129,6 +2129,10 @@ def fix_es6_import_statements(js_file):
   save_intermediate('es6-module')
 
 
+def node_detection_code():
+  return "globalThis.process?.versions?.node && globalThis.process?.type != 'renderer'"
+
+
 def create_esm_wrapper(wrapper_file, support_target, wasm_target):
   js_exports = settings.EXPORTED_RUNTIME_METHODS + list(building.user_requested_exports)
   js_exports = ', '.join(sorted(js_exports))
@@ -2148,7 +2152,7 @@ def create_esm_wrapper(wrapper_file, support_target, wasm_target):
 // When run as the main module under node, create the module directly.  This will
 // execute any startup code along with main (if it exists).
 import init from '{support_url}';
-const isNode = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string' && process.type != 'renderer';
+const isNode = {node_detection_code()};
 if (isNode) {{
   const url = await import('url');
   const isMainModule = url.pathToFileURL(process.argv[1]).href === import.meta.url;
@@ -2516,7 +2520,7 @@ if (typeof exports === 'object' && typeof module === 'object') {
       src += "var isPthread = globalThis.self?.name?.startsWith('em-pthread');\n"
       # In order to support both web and node we also need to detect node here.
       if settings.ENVIRONMENT_MAY_BE_NODE:
-        src += "var isNode = typeof globalThis.process?.versions?.node == 'string';\n"
+        src += f'var isNode = {node_detection_code()};\n'
         src += f'if (isNode) isPthread = {node_pthread_detection()}\n'
     elif settings.ENVIRONMENT_MAY_BE_NODE:
       src += f'var isPthread = {node_pthread_detection()}\n'
@@ -2536,7 +2540,7 @@ if (typeof exports === 'object' && typeof module === 'object') {
       # In order to support both web and node we also need to detect node here.
       if settings.ENVIRONMENT_MAY_BE_NODE:
         if not settings.PTHREADS:
-          src += "var isNode = typeof globalThis.process?.versions?.node == 'string';\n"
+          src += f'var isNode = {node_detection_code()};\n'
         src += f'if (isNode) isWW = {node_ww_detection()}\n'
     elif settings.ENVIRONMENT_MAY_BE_NODE:
       src += f'var isWW = {node_ww_detection()}\n'

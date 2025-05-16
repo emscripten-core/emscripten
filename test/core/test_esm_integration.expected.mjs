@@ -6,7 +6,7 @@ export { default, _foo, _main, err, stringToNewUTF8 } from './hello_world.suppor
 // When run as the main module under node, create the module directly.  This will
 // execute any startup code along with main (if it exists).
 import init from './hello_world.support.mjs';
-const isNode = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string' && process.type != 'renderer';
+const isNode = globalThis.process?.versions?.node && globalThis.process?.type != 'renderer';
 if (isNode) {
   const url = await import('url');
   const isMainModule = url.pathToFileURL(process.argv[1]).href === import.meta.url;
