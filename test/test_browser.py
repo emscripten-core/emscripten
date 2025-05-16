@@ -4726,27 +4726,27 @@ Module["preRun"] = () => {
 
   # Tests memory growth in pthreads mode, but still on the main thread.
   @parameterized({
-    '': ([],),
-    'proxy': (['-sPROXY_TO_PTHREAD'],),
+    '': ([], 1),
+    'proxy': (['-sPROXY_TO_PTHREAD'], 2),
   })
   @no_2gb('uses INITIAL_MEMORY')
   @no_4gb('uses INITIAL_MEMORY')
-  def test_pthread_growth_mainthread(self, emcc_args):
-    self.emcc_args.remove('-Werror')
-    self.btest_exit('pthread/test_pthread_memory_growth_mainthread.c', emcc_args=['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + emcc_args)
+  def test_pthread_growth_mainthread(self, emcc_args, pthread_pool_size):
+    self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
+    self.btest_exit('pthread/test_pthread_memory_growth_mainthread.c', emcc_args=['-Wno-pthreads-mem-growth', '-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + emcc_args)
 
   # Tests memory growth in a pthread.
   @parameterized({
     '': ([],),
     'assert': (['-sASSERTIONS'],),
-    'proxy': (['-sPROXY_TO_PTHREAD'],),
+    'proxy': (['-sPROXY_TO_PTHREAD'], 2),
     'minimal': (['-sMINIMAL_RUNTIME', '-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
   })
   @no_2gb('uses INITIAL_MEMORY')
   @no_4gb('uses INITIAL_MEMORY')
-  def test_pthread_growth(self, emcc_args):
-    self.emcc_args.remove('-Werror')
-    self.btest_exit('pthread/test_pthread_memory_growth.c', emcc_args=['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB', '-g'] + emcc_args)
+  def test_pthread_growth(self, emcc_args, pthread_pool_size = 1):
+    self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
+    self.btest_exit('pthread/test_pthread_memory_growth.c', emcc_args=['-Wno-pthreads-mem-growth', '-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + emcc_args)
 
   # Tests that time in a pthread is relative to the main thread, so measurements
   # on different threads are still monotonic, as if checking a single central

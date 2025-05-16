@@ -1250,28 +1250,27 @@ function littleEndianHeap(ast) {
   });
 }
 
-// Instrument heap accesses to call GROWABLE_HEAP_* helper functions instead, which allows
+// Instrument heap accesses to call growMemViews helper function, which allows
 // pthreads + memory growth to work (we check if the memory was grown on another thread
 // in each access), see #8365.
 function growableHeap(ast) {
   recursiveWalk(ast, {
     FunctionDeclaration(node, c) {
-      // Do not recurse into to GROWABLE_HEAP_ helper functions themselves.
+      // Do not recurse into the helper function itself.
       if (
         !(
           node.id.type === 'Identifier' &&
-          (node.id.name.startsWith('GROWABLE_HEAP_') || node.id.name === 'LE_HEAP_UPDATE')
+          (node.id.name === 'growMemViews' || node.id.name === 'LE_HEAP_UPDATE')
         )
       ) {
         c(node.body);
       }
     },
     AssignmentExpression(node) {
-      if (node.left.type === 'Identifier' && isEmscriptenHEAP(node.left.name)) {
-        // Don't transform initial setup of the arrays.
-        return;
+      if (node.left.type !== 'Identifier') {
+        // Don't transform `HEAPxx =` assignments.
+        growableHeap(node.left);
       }
-      growableHeap(node.left);
       growableHeap(node.right);
     },
     VariableDeclarator(node) {
@@ -1283,50 +1282,24 @@ function growableHeap(ast) {
       }
     },
     Identifier(node) {
-      if (node.name.startsWith('HEAP')) {
-        // Turn HEAP8 into GROWABLE_HEAP_I8() etc
-        switch (node.name) {
-          case 'HEAP8': {
-            makeCallExpression(node, 'GROWABLE_HEAP_I8', []);
-            break;
-          }
-          case 'HEAPU8': {
-            makeCallExpression(node, 'GROWABLE_HEAP_U8', []);
-            break;
-          }
-          case 'HEAP16': {
-            makeCallExpression(node, 'GROWABLE_HEAP_I16', []);
-            break;
-          }
-          case 'HEAPU16': {
-            makeCallExpression(node, 'GROWABLE_HEAP_U16', []);
-            break;
-          }
-          case 'HEAP32': {
-            makeCallExpression(node, 'GROWABLE_HEAP_I32', []);
-            break;
-          }
-          case 'HEAPU32': {
-            makeCallExpression(node, 'GROWABLE_HEAP_U32', []);
-            break;
-          }
-          case 'HEAP64': {
-            makeCallExpression(node, 'GROWABLE_HEAP_I64', []);
-            break;
-          }
-          case 'HEAPU64': {
-            makeCallExpression(node, 'GROWABLE_HEAP_U64', []);
-            break;
-          }
-          case 'HEAPF32': {
-            makeCallExpression(node, 'GROWABLE_HEAP_F32', []);
-            break;
-          }
-          case 'HEAPF64': {
-            makeCallExpression(node, 'GROWABLE_HEAP_F64', []);
-            break;
-          }
-        }
+      if (isEmscriptenHEAP(node.name)) {
+        // Transform `HEAPxx` into `(growMemViews(), HEAPxx)`.
+        // Important: don't just do `growMemViews(HEAPxx)` because `growMemViews` reassigns `HEAPxx`
+        // and we want to get an updated value after that reassignment.
+        Object.assign(node, {
+          type: 'SequenceExpression',
+          expressions: [
+            createNode({
+              type: 'CallExpression',
+              callee: createNode({
+                type: 'Identifier',
+                name: 'growMemViews',
+              }),
+              arguments: [],
+            }),
+            {...node},
+          ],
+        });
       }
     },
   });
