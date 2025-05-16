@@ -948,12 +948,15 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
     # bfloat16
     'extendbfsf2.c',
     'truncdfbf2.c',
+    'truncxfbf2.c',
     'truncsfbf2.c',
+    'trunctfbf2.c',
     # We provide our own crt
     'crtbegin.c',
     'crtend.c',
     # 80-bit long double (xf_float)
     'divxc3.c',
+    'extendhfxf2.c',
     'extendxftf2.c',
     'fixxfdi.c',
     'fixxfti.c',
@@ -967,6 +970,7 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
     'mulxc3.c',
     'powixf2.c',
     'trunctfxf2.c',
+    'truncxfhf2.c',
   ]
   src_files = glob_in_path(src_dir, '*.c', excludes=excludes)
   src_files += files_in_path(
