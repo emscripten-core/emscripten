@@ -86,23 +86,6 @@ function emptyOut(node) {
   node.type = 'EmptyStatement';
 }
 
-function convertToNullStatement(node) {
-  node.type = 'ExpressionStatement';
-  node.expression = {
-    type: 'Literal',
-    value: null,
-    raw: 'null',
-    start: 0,
-    end: 0,
-  };
-  node.start = 0;
-  node.end = 0;
-}
-
-function isNull(node) {
-  return node.type === 'Literal' && node.raw === 'null';
-}
-
 function setLiteralValue(item, value) {
   item.value = value;
   item.raw = null;
@@ -308,8 +291,8 @@ function JSDCE(ast, aggressive) {
           }
         },
         ExpressionStatement(node, _c) {
-          if (aggressive && !hasSideEffects(node) && !isNull(node.expression)) {
-            convertToNullStatement(node);
+          if (aggressive && !hasSideEffects(node)) {
+            emptyOut(node);
             removed++;
           }
         },

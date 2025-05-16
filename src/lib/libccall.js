@@ -6,7 +6,7 @@
 
 addToLibrary({
   // Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
-#if MODULARIZE == 'instance'
+#if MODULARIZE == 'instance' && !INCLUDE_FULL_LIBRARY
   $getCFunc__deps: [() => error('ccall is not yet compatible with MODULARIZE=instance')],
 #endif
   $getCFunc__internal: true,
