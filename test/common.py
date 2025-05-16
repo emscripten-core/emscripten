@@ -522,6 +522,8 @@ def also_with_minimal_runtime(f):
       print('parameterize:minimal_runtime=%s' % with_minimal_runtime)
     assert self.get_setting('MINIMAL_RUNTIME') is None
     if with_minimal_runtime:
+      if self.get_setting('MODULARIZE') == 'instance':
+        self.skipTest('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
       self.set_setting('MINIMAL_RUNTIME', 1)
       # This extra helper code is needed to cleanly handle calls to exit() which throw
       # an ExitCode exception.

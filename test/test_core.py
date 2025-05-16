@@ -194,6 +194,8 @@ def with_asyncify_and_jspi(f):
       self.require_jspi()
     else:
       self.set_setting('ASYNCIFY')
+      if self.get_setting('MODULARIZE') == 'instance':
+        self.skipTest('MODULARIZE=instance is not compatible with ASYNCIFY=1')
     f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
@@ -211,6 +213,8 @@ def also_with_asyncify_and_jspi(f):
       self.require_jspi()
     elif asyncify == 1:
       self.set_setting('ASYNCIFY')
+      if self.get_setting('MODULARIZE') == 'instance':
+        self.skipTest('MODULARIZE=instance is not compatible with ASYNCIFY=1')
     else:
       assert asyncify == 0
     f(self, *args, **kwargs)
@@ -382,9 +386,10 @@ class TestCoreBase(RunnerCore):
 
   def verify_in_strict_mode(self, filename):
     js = read_file(filename)
-    filename += '.strict.js'
-    write_file(filename, '"use strict";\n' + js)
-    self.run_js(filename)
+    base, ext = os.path.split(filename)
+    strict_filename = base + '.strict' + ext
+    write_file(strict_filename, '"use strict";\n' + js)
+    self.run_js(strict_filename)
 
   def do_core_test(self, testname, **kwargs):
     self.do_run_in_out_file_test(Path('core', testname), **kwargs)
@@ -420,7 +425,8 @@ class TestCoreBase(RunnerCore):
     self.do_core_test('test_hello_world.c')
 
   def test_wasm_synchronous_compilation(self):
-    self.set_setting('STRICT_JS')
+    if self.get_setting('MODULARIZE') != 'instance':
+      self.set_setting('STRICT_JS')
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.do_core_test('test_hello_world.c')
 
@@ -1084,6 +1090,7 @@ int main()
       self.do_runf('core/test_exceptions.cpp', assert_returncode=NON_ZERO)
 
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
+  @no_modularize_instance('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
   def test_exceptions_minimal_runtime(self):
     self.maybe_closure()
     self.set_setting('MINIMAL_RUNTIME')
@@ -2009,6 +2016,7 @@ int main(int argc, char **argv) {
   # Tests that -sMINIMAL_RUNTIME builds can utilize -sALLOW_MEMORY_GROWTH option.
   @no_4gb('memory growth issues')
   @no_2gb('memory growth issues')
+  @no_modularize_instance('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
   def test_minimal_runtime_memorygrowth(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2629,6 +2637,7 @@ The current type of b is: 9
     self.emcc_args.append('-Wno-experimental')
     self.do_run_in_out_file_test('pthread/test_pthread_tls_dylink.c')
 
+  @no_modularize_instance('uses global Module objecgt')
   def test_pthread_run_script(self):
     shutil.copy(test_file('pthread/foo.js'), '.')
     self.do_runf('pthread/test_pthread_run_script.c')
@@ -5647,7 +5656,6 @@ got: 10
     self.do_runf('utime/test_futimens.c', 'success')
 
   def test_utf(self):
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['getValue', 'setValue', 'UTF8ToString', 'stringToUTF8OnStack'])
     self.do_core_test('test_utf.c')
 
   def test_utf32(self):
@@ -5753,6 +5761,7 @@ got: 10
 
   @crossplatform
   @requires_node
+  @no_modularize_instance('expects js filename')
   def test_fs_nodefs_readdir(self):
     # externally setup an existing folder structure: existing/a
     if self.get_setting('WASMFS'):
@@ -7105,21 +7114,23 @@ void* operator new(size_t size) {
     test('|1|', args=['-DDIRECT'])
 
   def test_response_file(self):
-    response_data = '-o "%s/response_file.js" "%s"' % (self.get_dir(), test_file('hello_world.cpp'))
+    out_js = self.output_name('response_file')
+    response_data = '-o "%s" "%s"' % (out_js, test_file('hello_world.cpp'))
     create_file('rsp_file', response_data.replace('\\', '\\\\'))
     self.run_process([EMCC, "@rsp_file"] + self.get_emcc_args())
-    self.do_run('response_file.js', 'hello, world', no_build=True)
+    self.do_run(out_js, 'hello, world', no_build=True)
 
     self.assertContained('response file not found: foo.txt', self.expect_fail([EMCC, '@foo.txt']))
 
   def test_linker_response_file(self):
     objfile = 'response_file.o'
+    out_js = self.output_name('response_file')
     self.run_process([EMCC, '-c', test_file('hello_world.cpp'), '-o', objfile] + self.get_emcc_args(compile_only=True))
     # This should expand into -Wl,--start-group <objfile> -Wl,--end-group
     response_data = '--start-group ' + objfile + ' --end-group'
     create_file('rsp_file', response_data.replace('\\', '\\\\'))
-    self.run_process([EMCC, "-Wl,@rsp_file", '-o', 'response_file.o.js'] + self.get_emcc_args())
-    self.do_run('response_file.o.js', 'hello, world', no_build=True)
+    self.run_process([EMCC, "-Wl,@rsp_file", '-o', out_js] + self.get_emcc_args())
+    self.do_run(out_js, 'hello, world', no_build=True)
 
   @no_modularize_instance('uses Module object directly')
   def test_exported_response(self):
@@ -7620,6 +7631,7 @@ void* operator new(size_t size) {
     'default': ('DEFAULT', False),
     'all_growth': ('ALL', True),
   })
+  @no_modularize_instance('uses Module global')
   def test_webidl(self, mode, allow_memory_growth):
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     if self.maybe_closure():
@@ -7939,6 +7951,7 @@ void* operator new(size_t size) {
     self.do_core_test('modularize_closure_pre.c')
 
   @no_wasm2js('symbol names look different wasm2js backtraces')
+  @no_modularize_instance('assumes .js output filename')
   @also_with_wasm_bigint
   def test_emscripten_log(self):
     self.emcc_args += ['-g', '-DRUN_FROM_JS_SHELL', '-Wno-deprecated-pragma']
@@ -8010,6 +8023,7 @@ void* operator new(size_t size) {
 
   # Test async sleeps in the presence of invoke_* calls, which can happen with
   # longjmp or exceptions.
+  @no_modularize_instance('MODULARIZE=instance is not compatible with ASYNCIFY=1')
   def test_asyncify_longjmp(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('STRICT')
@@ -8174,6 +8188,7 @@ Module.onRuntimeInitialized = () => {
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_runf('main.c', 'stringf: first\nsecond\n6.4')
 
+  @no_modularize_instance('MODULARIZE=instance is not compatible with ASYNCIFY=1')
   def test_fibers_asyncify(self):
     self.set_setting('ASYNCIFY')
     self.maybe_closure()
@@ -8184,6 +8199,7 @@ Module.onRuntimeInitialized = () => {
     # test a program not using asyncify, but the pref is set
     self.do_core_test('test_hello_world.c')
 
+  @no_modularize_instance('MODULARIZE=instance is not compatible with ASYNCIFY=1')
   @parameterized({
     'normal': ([], True),
     'removelist_a': (['-sASYNCIFY_REMOVE=["foo(int, double)"]'], False),
@@ -8230,6 +8246,7 @@ Module.onRuntimeInitialized = () => {
     # virt() manually, rather than have them inferred automatically.
     'add_no_prop': (['-sASYNCIFY_IGNORE_INDIRECT', '-sASYNCIFY_ADD=["__original_main","main","virt()"]', '-sASYNCIFY_PROPAGATE_ADD=0'], True),
   })
+  @no_modularize_instance('MODULARIZE=instance is not compatible with ASYNCIFY=1')
   def test_asyncify_indirect_lists(self, args, should_pass):
     self.set_setting('ASYNCIFY')
     self.emcc_args += args
@@ -8247,6 +8264,7 @@ Module.onRuntimeInitialized = () => {
         raise
 
   @with_dylink_reversed
+  @no_modularize_instance('MODULARIZE=instance is not compatible with ASYNCIFY=1')
   def test_asyncify_side_module(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('ASYNCIFY_IMPORTS', ['my_sleep'])
@@ -8276,10 +8294,12 @@ Module.onRuntimeInitialized = () => {
     ''', 'before sleep\n42\n42\nafter sleep\n', header='void my_sleep(int);', force_c=True)
 
   @no_asan('asyncify stack operations confuse asan')
+  @no_modularize_instance('MODULARIZE=instance is not compatible with ASYNCIFY=1')
   def test_emscripten_scan_registers(self):
     self.set_setting('ASYNCIFY')
     self.do_core_test('test_emscripten_scan_registers.cpp')
 
+  @no_modularize_instance('MODULARIZE=instance is not compatible with ASYNCIFY=1')
   def test_asyncify_assertions(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('ASYNCIFY_IMPORTS', ['suspend'])
@@ -8288,6 +8308,7 @@ Module.onRuntimeInitialized = () => {
 
   @no_lsan('leaks asyncify stack during exit')
   @no_asan('leaks asyncify stack during exit')
+  @no_modularize_instance('MODULARIZE=instance is not compatible with ASYNCIFY=1')
   def test_asyncify_during_exit(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('ASSERTIONS')
@@ -8423,6 +8444,7 @@ Module.onRuntimeInitialized = () => {
 
   @no_sanitize('no wasm2js support yet in sanitizers')
   @requires_wasm2js
+  @no_modularize_instance('MODULARIZE is not compatible with MAYBE_WASM2JS')
   def test_maybe_wasm2js(self):
     if self.is_wasm2js():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
@@ -8430,7 +8452,7 @@ Module.onRuntimeInitialized = () => {
     # see that running as wasm works
     self.do_core_test('test_hello_world.c', emcc_args=['-Wno-deprecated'])
     # run wasm2js, bundle the code, and use the wasm2js path
-    cmd = [PYTHON, path_from_root('tools/maybe_wasm2js.py'), 'test_hello_world.js', 'test_hello_world.wasm']
+    cmd = [PYTHON, path_from_root('tools/maybe_wasm2js.py'), self.output_name('test_hello_world'), 'test_hello_world.wasm']
     if self.is_optimizing():
       cmd += ['-O2']
     self.run_process(cmd, stdout=open('do_wasm2js.js', 'w'))
@@ -8649,15 +8671,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertContained('ThisFunctionDoesNotExist is not defined', output)
 
   def test_postrun_exit_runtime(self):
-    create_file('post.js', '''
-      addOnPostRun(() => err('post run\\n'));
-    ''')
+    create_file('pre.js', "Module['postRun'] = () => err('post run\\n');")
     self.set_setting('EXIT_RUNTIME')
-    self.emcc_args.append('--post-js=post.js')
+    self.emcc_args.append('--pre-js=pre.js')
     self.do_runf('hello_world.c', 'post run')
 
   # Tests that building with -sDECLARE_ASM_MODULE_EXPORTS=0 works
   @also_with_minimal_runtime
+  @no_modularize_instance('DECLARE_ASM_MODULE_EXPORTS=0 is not compatible with MODULARIZE')
   def test_no_declare_asm_module_exports(self):
     self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
@@ -8677,6 +8698,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   # Tests that -sMINIMAL_RUNTIME works well in different build modes
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
+  @no_modularize_instance('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
   @parameterized({
     'default': ([],),
     'streaming': (['-sMINIMAL_RUNTIME_STREAMING_WASM_COMPILATION'],),
@@ -8692,6 +8714,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   # Test that printf() works in MINIMAL_RUNTIME=1
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
+  @no_modularize_instance('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
   @parameterized({
     'fs': ('FORCE_FILESYSTEM',),
     'nofs': ('NO_FILESYSTEM',),
@@ -8708,6 +8731,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   # Tests that -sMINIMAL_RUNTIME works well with SAFE_HEAP
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
+  @no_modularize_instance('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
   @no_asan('SAFE_HEAP cannot be used with ASan')
   def test_minimal_runtime_safe_heap(self):
     self.set_setting('MINIMAL_RUNTIME')
@@ -8722,6 +8746,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   # Tests global initializer with -sMINIMAL_RUNTIME
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
+  @no_modularize_instance('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
   def test_minimal_runtime_global_initializer(self):
     self.set_setting('MINIMAL_RUNTIME')
     self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
@@ -9083,7 +9108,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # test that the node environment can be specified by itself, and that still
     # works with pthreads (even though we did not specify 'node,worker')
     self.set_setting('ENVIRONMENT', 'node')
-    self.set_setting('STRICT_JS')
     self.set_setting('STRICT')
     self.do_run_in_out_file_test('core/pthread/create.c')
 

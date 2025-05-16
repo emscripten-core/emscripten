@@ -133,6 +133,8 @@ fix in future releses.  Current limitations include:
 * :ref:`asyncify_lazy_load_code` is not supported (depends on ``wasmExports``
   global)
 
+* :ref:`minimal_runtime` is not supported.
+
 * The output of file_packager is not compatible so :ref:`emcc-preload-file` and
   :ref:`emcc-embed-file` do not work.
 
