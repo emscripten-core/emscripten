@@ -3,21 +3,12 @@
 import * as acorn from 'acorn';
 import * as terser from '../third_party/terser/terser.js';
 import * as fs from 'node:fs';
+import assert from 'node:assert';
 
 // Utilities
 
-function print(x) {
-  process.stdout.write(x + '\n');
-}
-
 function read(x) {
-  return fs.readFileSync(x).toString();
-}
-
-function assert(condition, text) {
-  if (!condition) {
-    throw new Error(text);
-  }
+  return fs.readFileSync(x, 'utf-8');
 }
 
 function assertAt(condition, node, message = '') {
@@ -39,7 +30,7 @@ function visitChildren(node, c) {
     return;
   }
   function maybeChild(child) {
-    if (child && typeof child === 'object' && typeof child.type === 'string') {
+    if (typeof child?.type === 'string') {
       c(child);
       return true;
     }
@@ -112,16 +103,15 @@ function isNull(node) {
 
 function setLiteralValue(item, value) {
   item.value = value;
-  item.raw = "'" + value + "'";
+  item.raw = null;
 }
 
 function isLiteralString(node) {
-  return node.type === 'Literal' && (node.raw[0] === '"' || node.raw[0] === "'");
+  return node.type === 'Literal' && typeof node.value === 'string';
 }
 
-function dump(node, text) {
-  if (text) print(text);
-  print(JSON.stringify(node, null, ' '));
+function dump(node) {
+  console.log(JSON.stringify(node, null, ' '));
 }
 
 // Mark inner scopes temporarily as empty statements. Returns
@@ -987,7 +977,7 @@ function emitDCEGraph(ast) {
     info.reaches = sortedNamesFromMap(info.reaches);
     graph.push(info);
   });
-  print(JSON.stringify(graph, null, ' '));
+  dump(graph);
 }
 
 // Apply graph removals from running wasm-metadce. This only removes imports and
@@ -1075,31 +1065,21 @@ function applyDCEGraphRemovals(ast) {
   }
 }
 
-// Need a parser to pass to acorn.Node constructor.
-// Create it once and reuse it.
-const stubParser = new acorn.Parser({ecmaVersion: 2021});
-
-function createNode(props) {
-  const node = new acorn.Node(stubParser);
-  Object.assign(node, props);
-  return node;
-}
-
 function createLiteral(value) {
-  return createNode({
+  return {
     type: 'Literal',
     value: value,
     raw: '' + value,
-  });
+  };
 }
 
 function makeCallExpression(node, name, args) {
   Object.assign(node, {
     type: 'CallExpression',
-    callee: createNode({
+    callee: {
       type: 'Identifier',
       name: name,
-    }),
+    },
     arguments: args,
   });
 }
@@ -1214,7 +1194,6 @@ function littleEndianHeap(ast) {
         node.callee.type === 'MemberExpression' &&
         node.callee.object.type === 'Identifier' &&
         node.callee.object.name === 'Atomics' &&
-        node.callee.property.type === 'Identifier' &&
         !node.callee.computed
       ) {
         makeCallExpression(
@@ -1397,12 +1376,7 @@ function unsignPointers(ast) {
       right: {
         type: 'Literal',
         value: 0,
-        raw: '0',
-        start: 0,
-        end: 0,
       },
-      start: 0,
-      end: 0,
     };
   }
 
@@ -1417,7 +1391,6 @@ function unsignPointers(ast) {
         node.callee.type === 'MemberExpression' &&
         node.callee.object.type === 'Identifier' &&
         isHeap(node.callee.object.name) &&
-        node.callee.property.type === 'Identifier' &&
         !node.callee.computed
       ) {
         // This is a call on HEAP*.?. Specific things we need to fix up are
@@ -1490,12 +1463,12 @@ function asanify(ast) {
 }
 
 function multiply(value, by) {
-  return createNode({
+  return {
     type: 'BinaryExpression',
     left: value,
     operator: '*',
     right: createLiteral(by),
-  });
+  };
 }
 
 // Replace direct heap access with SAFE_HEAP* calls.
@@ -1583,7 +1556,7 @@ function ensureMinifiedNames(n) {
 
 function minifyLocals(ast) {
   // We are given a mapping of global names to their minified forms.
-  assert(extraInfo && extraInfo.globals);
+  assert(extraInfo?.globals);
 
   for (const fun of ast.body) {
     if (fun.type !== 'FunctionDeclaration') {
@@ -1847,7 +1820,7 @@ function reattachComments(ast, commentsMap) {
   // Collect all code symbols
   ast.walk(
     new terser.TreeWalker((node) => {
-      if (node.start && node.start.pos) {
+      if (node.start?.pos) {
         symbols.push(node);
       }
     }),
