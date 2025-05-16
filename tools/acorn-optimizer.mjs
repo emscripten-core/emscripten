@@ -1962,9 +1962,10 @@ try {
   }
 } catch (err) {
   if (err.loc) {
-    err.message += '\n' +
-    `${input.split(acorn.lineBreak)[err.loc.line - 1]}\n` +
-    `${' '.repeat(err.loc.column)}^ ${infile}:${err.loc.line}:${err.loc.column + 1}`;
+    err.message +=
+      '\n' +
+      `${input.split(acorn.lineBreak)[err.loc.line - 1]}\n` +
+      `${' '.repeat(err.loc.column)}^ ${infile}:${err.loc.line}:${err.loc.column + 1}`;
   }
   throw err;
 }
