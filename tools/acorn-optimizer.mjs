@@ -1291,15 +1291,13 @@ function growableHeap(ast) {
       growableHeap(node.left);
       growableHeap(node.right);
     },
-    VariableDeclaration(node) {
+    VariableDeclarator(node) {
       // Don't transform the var declarations for HEAP8 etc
-      node.declarations.forEach((decl) => {
-        // but do transform anything that sets a var to
-        // something from HEAP8 etc
-        if (decl.init) {
-          growableHeap(decl.init);
-        }
-      });
+      // but do transform anything that sets a var to
+      // something from HEAP8 etc
+      if (node.init) {
+        growableHeap(node.init);
+      }
     },
     Identifier(node) {
       if (node.name.startsWith('HEAP')) {
