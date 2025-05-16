@@ -652,6 +652,7 @@ jobs:
             wasmfs.test_freetype
             minimal0.test_utf
             instance.test_async_hello_v8
+            instance.test_environment
             "
   test-wasm2js1:
     environment:

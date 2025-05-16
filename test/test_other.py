@@ -15036,7 +15036,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       test_file('third_party/googletest/googletest/src/gtest-all.cc'),
       test_file('third_party/googletest/googletest/src/gtest_main.cc'),
     ]
-    self.do_other_test('test_googletest.cc')
+    self.do_other_test('test_googletest.cc', emcc_args=['-Wno-character-conversion', '-Wno-unknown-warning-option'])
 
   def test_parseTools_legacy(self):
     create_file('post.js', '''

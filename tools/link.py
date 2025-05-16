@@ -1008,11 +1008,12 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   # Default to TEXTDECODER=2 (always use TextDecoder to decode UTF-8 strings)
   # in -Oz builds, since custom decoder for UTF-8 takes up space.
-  # In pthreads enabled builds, TEXTDECODER==2 may not work, see
-  # https://github.com/whatwg/encoding/issues/172
   # When supporting shell environments, do not do this as TextDecoder is not
   # widely supported there.
-  if settings.SHRINK_LEVEL >= 2 and not settings.SHARED_MEMORY and \
+  # In Audio Worklets TextDecoder API is intentionally not exposed
+  # (https://github.com/WebAudio/web-audio-api/issues/2499) so we also need to
+  # keep the JavaScript-based fallback.
+  if settings.SHRINK_LEVEL >= 2 and not settings.AUDIO_WORKLET and \
      not settings.ENVIRONMENT_MAY_BE_SHELL:
     default_setting('TEXTDECODER', 2)
 
@@ -2128,6 +2129,10 @@ def fix_es6_import_statements(js_file):
   save_intermediate('es6-module')
 
 
+def node_detection_code():
+  return "globalThis.process?.versions?.node && globalThis.process?.type != 'renderer'"
+
+
 def create_esm_wrapper(wrapper_file, support_target, wasm_target):
   js_exports = settings.EXPORTED_RUNTIME_METHODS + list(building.user_requested_exports)
   js_exports = ', '.join(sorted(js_exports))
@@ -2147,7 +2152,7 @@ def create_esm_wrapper(wrapper_file, support_target, wasm_target):
 // When run as the main module under node, create the module directly.  This will
 // execute any startup code along with main (if it exists).
 import init from '{support_url}';
-const isNode = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string' && process.type != 'renderer';
+const isNode = {node_detection_code()};
 if (isNode) {{
   const url = await import('url');
   const isMainModule = url.pathToFileURL(process.argv[1]).href === import.meta.url;
@@ -2515,7 +2520,7 @@ if (typeof exports === 'object' && typeof module === 'object') {
       src += "var isPthread = globalThis.self?.name?.startsWith('em-pthread');\n"
       # In order to support both web and node we also need to detect node here.
       if settings.ENVIRONMENT_MAY_BE_NODE:
-        src += "var isNode = typeof globalThis.process?.versions?.node == 'string';\n"
+        src += f'var isNode = {node_detection_code()};\n'
         src += f'if (isNode) isPthread = {node_pthread_detection()}\n'
     elif settings.ENVIRONMENT_MAY_BE_NODE:
       src += f'var isPthread = {node_pthread_detection()}\n'
@@ -2535,7 +2540,7 @@ if (typeof exports === 'object' && typeof module === 'object') {
       # In order to support both web and node we also need to detect node here.
       if settings.ENVIRONMENT_MAY_BE_NODE:
         if not settings.PTHREADS:
-          src += "var isNode = typeof globalThis.process?.versions?.node == 'string';\n"
+          src += f'var isNode = {node_detection_code()};\n'
         src += f'if (isNode) isWW = {node_ww_detection()}\n'
     elif settings.ENVIRONMENT_MAY_BE_NODE:
       src += f'var isWW = {node_ww_detection()}\n'

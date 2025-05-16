@@ -1093,6 +1093,10 @@ function ENVIRONMENT_IS_WORKER_THREAD() {
   return '(' + envs.join('||') + ')';
 }
 
+function nodeDetectionCode() {
+  return "typeof process == 'object' && process.versions?.node && process.type != 'renderer'";
+}
+
 addToCompileTimeContext({
   ATEXITS,
   ATPRERUNS,
@@ -1153,6 +1157,7 @@ addToCompileTimeContext({
   makeSetValue,
   makeThrow,
   modifyJSFunction,
+  nodeDetectionCode,
   receiveI64ParamAsI53,
   receiveI64ParamAsI53Unchecked,
   receivedSymbol,
