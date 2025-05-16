@@ -93,23 +93,6 @@ function emptyOut(node) {
   node.type = 'EmptyStatement';
 }
 
-function convertToNullStatement(node) {
-  node.type = 'ExpressionStatement';
-  node.expression = {
-    type: 'Literal',
-    value: null,
-    raw: 'null',
-    start: 0,
-    end: 0,
-  };
-  node.start = 0;
-  node.end = 0;
-}
-
-function isNull(node) {
-  return node.type === 'Literal' && node.raw === 'null';
-}
-
 function isUseStrict(node) {
   return node.type === 'Literal' && node.value === 'use strict';
 }
@@ -316,11 +299,9 @@ function JSDCE(ast, aggressive) {
           }
         },
         ExpressionStatement(node, _c) {
-          if (aggressive && !hasSideEffects(node)) {
-            if (!isNull(node.expression) && !isUseStrict(node.expression)) {
-              convertToNullStatement(node);
-              removed++;
-            }
+          if (aggressive && !hasSideEffects(node) && !isUseStrict(node.expression)) {
+            emptyOut(node);
+            removed++;
           }
         },
         FunctionDeclaration(node, _c) {
