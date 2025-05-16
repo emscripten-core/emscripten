@@ -1289,14 +1289,14 @@ function growableHeap(ast) {
         Object.assign(node, {
           type: 'SequenceExpression',
           expressions: [
-            createNode({
+            {
               type: 'CallExpression',
-              callee: createNode({
+              callee: {
                 type: 'Identifier',
                 name: 'growMemViews',
-              }),
+              },
               arguments: [],
-            }),
+            },
             {...node},
           ],
         });
