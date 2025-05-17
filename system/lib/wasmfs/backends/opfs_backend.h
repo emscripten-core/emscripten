@@ -39,6 +39,12 @@ void _wasmfs_opfs_move_file(em_proxying_ctx* ctx,
                             const char* name,
                             int* err);
 
+void _wasmfs_opfs_move_dir(em_proxying_ctx* ctx,
+                            int file_id,
+                            int new_parent_id,
+                            const char* name,
+                            int* err);
+
 void _wasmfs_opfs_remove_child(em_proxying_ctx* ctx,
                                int dir_id,
                                const char* name,

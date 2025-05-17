@@ -335,10 +335,13 @@ private:
           ctx.ctx, opfsFile->fileID, dirID, name.c_str(), &err);
       });
     } else {
-      // TODO: Support moving directories once OPFS supports that.
-      // EBUSY can be returned when the directory is "in use by the system,"
-      // which can mean whatever we want.
-      err = -EBUSY;
+      auto opfsDir = std::static_pointer_cast<OPFSDirectory>(file);
+      proxy([&](auto ctx) {
+      _wasmfs_opfs_move_dir(
+        ctx.ctx, opfsDir->dirID, dirID, name.c_str(), &err);
+      });
+      // opfs file handles are all invalid now, so have to clear the cache.
+      opfsDir->locked().removeAllCacheEntries();
     }
     return err;
   }
