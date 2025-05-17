@@ -481,17 +481,17 @@ var LibraryEmbind = {
   },
   $registerPrimitiveType__deps: ['$registerType', '$PrimitiveType'],
   $registerPrimitiveType: (id, name, destructorType) => {
-    name = readLatin1String(name);
+    name = AsciiToString(name);
     registerType(id, new PrimitiveType(id, name, destructorType));
   },
   $registerIntegerType__deps: ['$registerType', '$IntegerType'],
   $registerIntegerType: (id) => {
     registerType(id, new IntegerType(id));
   },
-  $createFunctionDefinition__deps: ['$FunctionDefinition', '$heap32VectorToArray', '$readLatin1String', '$Argument', '$whenDependentTypesAreResolved', '$getFunctionName', '$getFunctionArgsName', '$PointerDefinition', '$ClassDefinition'],
+  $createFunctionDefinition__deps: ['$FunctionDefinition', '$heap32VectorToArray', '$AsciiToString', '$Argument', '$whenDependentTypesAreResolved', '$getFunctionName', '$getFunctionArgsName', '$PointerDefinition', '$ClassDefinition'],
   $createFunctionDefinition: (name, argCount, rawArgTypesAddr, functionIndex, hasThis, isNonnullReturn, isAsync, cb) => {
     const argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
-    name = typeof name === 'string' ? name : readLatin1String(name);
+    name = typeof name === 'string' ? name : AsciiToString(name);
 
     whenDependentTypesAreResolved([], argTypes, function (argTypes) {
       const argsName = getFunctionArgsName(name);
@@ -556,9 +556,9 @@ var LibraryEmbind = {
   _embind_register_emval: (rawType) => {
     registerType(rawType, new PrimitiveType(rawType, 'emscripten::val', 'none'));
   },
-  _embind_register_user_type__deps: ['$registerType', '$readLatin1String', '$UserType'],
+  _embind_register_user_type__deps: ['$registerType', '$AsciiToString', '$UserType'],
   _embind_register_user_type: (rawType, name) => {
-    name = readLatin1String(name);
+    name = AsciiToString(name);
     registerType(rawType, new UserType(rawType, name));
   },
   _embind_register_optional__deps: ['$OptionalType'],
@@ -577,7 +577,7 @@ var LibraryEmbind = {
       moduleDefinitions.push(funcDef);
     });
   },
-  _embind_register_class__deps: ['$readLatin1String', '$ClassDefinition', '$whenDependentTypesAreResolved', '$moduleDefinitions', '$PointerDefinition'],
+  _embind_register_class__deps: ['$AsciiToString', '$ClassDefinition', '$whenDependentTypesAreResolved', '$moduleDefinitions', '$PointerDefinition'],
   _embind_register_class: function(rawType,
                                   rawPointerType,
                                   rawConstPointerType,
@@ -591,7 +591,7 @@ var LibraryEmbind = {
                                   name,
                                   destructorSignature,
                                   rawDestructor) {
-    name = readLatin1String(name);
+    name = AsciiToString(name);
     whenDependentTypesAreResolved(
       [rawType, rawPointerType, rawConstPointerType],
       baseClassRawType ? [baseClassRawType] : [],
@@ -641,7 +641,7 @@ var LibraryEmbind = {
     });
   },
   _embind_register_class_property__deps: [
-    '$readLatin1String', '$whenDependentTypesAreResolved', '$ClassProperty'],
+    '$AsciiToString', '$whenDependentTypesAreResolved', '$ClassProperty'],
   _embind_register_class_property: function(classType,
                                             fieldName,
                                             getterReturnType,
@@ -652,7 +652,7 @@ var LibraryEmbind = {
                                             setterSignature,
                                             setter,
                                             setterContext) {
-    fieldName = readLatin1String(fieldName);
+    fieldName = AsciiToString(fieldName);
     const readonly = setter === 0;
     if (!(readonly || getterReturnType === setterArgumentType)) {
       throw new error('Mismatched getter and setter types are not supported.');
@@ -687,7 +687,7 @@ var LibraryEmbind = {
     });
   },
   _embind_register_class_class_property__deps: [
-    '$readLatin1String', '$whenDependentTypesAreResolved', '$ClassProperty'],
+    '$AsciiToString', '$whenDependentTypesAreResolved', '$ClassProperty'],
   _embind_register_class_class_property: (rawClassType,
                                           fieldName,
                                           rawFieldType,
@@ -696,7 +696,7 @@ var LibraryEmbind = {
                                           getter,
                                           setterSignature,
                                           setter) => {
-    fieldName = readLatin1String(fieldName);
+    fieldName = AsciiToString(fieldName);
     whenDependentTypesAreResolved([], [rawClassType], function(classType) {
       classType = classType[0];
       whenDependentTypesAreResolved([], [rawFieldType], function(types) {
@@ -709,22 +709,22 @@ var LibraryEmbind = {
   },
   // Stub function. This is called a when extending an object and not needed for TS generation.
   _embind_create_inheriting_constructor: (constructorName, wrapperType, properties) => {},
-  _embind_register_enum__deps: ['$readLatin1String', '$EnumDefinition', '$moduleDefinitions'],
+  _embind_register_enum__deps: ['$AsciiToString', '$EnumDefinition', '$moduleDefinitions'],
   _embind_register_enum: function(rawType, name, size, isSigned) {
-    name = readLatin1String(name);
+    name = AsciiToString(name);
     const enumDef = new EnumDefinition(rawType, name);
     registerType(rawType, enumDef);
     moduleDefinitions.push(enumDef);
   },
-  _embind_register_enum_value__deps: ['$readLatin1String', '$requireRegisteredType'],
+  _embind_register_enum_value__deps: ['$AsciiToString', '$requireRegisteredType'],
   _embind_register_enum_value: function(rawEnumType, name, enumValue) {
-    name = readLatin1String(name);
+    name = AsciiToString(name);
     const enumDef = requireRegisteredType(rawEnumType, name);
     enumDef.items.push([name, enumValue]);
   },
-  _embind_register_constant__deps: ['$readLatin1String', '$ConstantDefinition', '$whenDependentTypesAreResolved', '$moduleDefinitions'],
+  _embind_register_constant__deps: ['$AsciiToString', '$ConstantDefinition', '$whenDependentTypesAreResolved', '$moduleDefinitions'],
   _embind_register_constant: function(name, typeId, value) {
-    name = readLatin1String(name);
+    name = AsciiToString(name);
     whenDependentTypesAreResolved([], [typeId], function(types) {
       const def = new ConstantDefinition(types[0], name);
       moduleDefinitions.push(def);
@@ -732,7 +732,7 @@ var LibraryEmbind = {
     });
   },
   _embind_register_value_array__deps: [
-    '$readLatin1String', '$ValueArrayDefinition', '$tupleRegistrations'],
+    '$AsciiToString', '$ValueArrayDefinition', '$tupleRegistrations'],
   _embind_register_value_array: function(
     rawType,
     name,
@@ -741,7 +741,7 @@ var LibraryEmbind = {
     destructorSignature,
     rawDestructor
   ) {
-    name = readLatin1String(name);
+    name = AsciiToString(name);
     const valueArray = new ValueArrayDefinition(rawType, name);
     tupleRegistrations[rawType] = valueArray;
   },
@@ -774,7 +774,7 @@ var LibraryEmbind = {
       return [valueArray];
     });
   },
-  _embind_register_value_object__deps: ['$readLatin1String', '$ValueObjectDefinition', '$structRegistrations'],
+  _embind_register_value_object__deps: ['$AsciiToString', '$ValueObjectDefinition', '$structRegistrations'],
   _embind_register_value_object: function(
     rawType,
     name,
@@ -783,12 +783,12 @@ var LibraryEmbind = {
     destructorSignature,
     rawDestructor
   ) {
-    name = readLatin1String(name);
+    name = AsciiToString(name);
     const valueObject = new ValueObjectDefinition(rawType, name);
     structRegistrations[rawType] = valueObject;
   },
   _embind_register_value_object_field__deps: [
-    '$readLatin1String', '$structRegistrations'],
+    '$AsciiToString', '$structRegistrations'],
   _embind_register_value_object_field: function(
     structType,
     fieldName,
@@ -807,7 +807,7 @@ var LibraryEmbind = {
     }
 
     valueObject.fieldTypeIds.push(getterReturnType);
-    valueObject.fieldNames.push(readLatin1String(fieldName));
+    valueObject.fieldNames.push(AsciiToString(fieldName));
   },
   _embind_finalize_value_object__deps: ['$moduleDefinitions', '$whenDependentTypesAreResolved', '$structRegistrations'],
   _embind_finalize_value_object: function(structType) {
