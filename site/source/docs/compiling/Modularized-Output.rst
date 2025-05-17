@@ -133,8 +133,11 @@ fix in future releses.  Current limitations include:
 * :ref:`asyncify_lazy_load_code` is not supported (depends on ``wasmExports``
   global)
 
+* :ref:`minimal_runtime` is not supported.
+
 * The output of file_packager is not compatible so :ref:`emcc-preload-file` and
   :ref:`emcc-embed-file` do not work.
+
 
 Source Phase Imports (experimental)
 ===================================
@@ -164,6 +167,15 @@ Limitations
 This setting implicitly enables :ref:`export_es6` and sets :ref:`MODULARIZE` to
 ``instance``.  Because of this all the same limitations mentioned above for
 ``-sMODULARIZE=intance`` apply.
+
+Some additional limitations are:
+
+- ``-pthread`` / :ref:`wasm_workers` are not yet supported.
+
+- Setting :ref:`wasm` to ``0`` is not supported.
+
+- Setting :ref:`wasm_async_compilation` to ``0`` is not supported.
+
 
 .. _Source phase imports: https://github.com/tc39/proposal-source-phase-imports
 .. _Wasm ESM integration: https://github.com/WebAssembly/esm-integration

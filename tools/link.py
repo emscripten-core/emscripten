@@ -800,6 +800,16 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('WASM_ESM_INTEGRATION requires MODULARIZE=instance')
     if settings.RELOCATABLE:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with dynamic linking')
+    if settings.WASM_WORKERS or settings.PTHREADS:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with multi-threading')
+    if settings.USE_OFFSET_CONVERTER:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with USE_OFFSET_CONVERTER')
+    if not settings.WASM_ASYNC_COMPILATION:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM_ASYNC_COMPILATION')
+    if not settings.WASM:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM2JS')
+    if settings.MAYBE_WASM2JS:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with MAYBE_WASM2JS')
 
   if settings.MODULARIZE and settings.MODULARIZE not in [1, 'instance']:
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
@@ -828,6 +838,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('MODULARIZE=instance is not compatible with -sDYNCALLS')
     if settings.ASYNCIFY_LAZY_LOAD_CODE:
       exit_with_error('MODULARIZE=instance is not compatible with -sASYNCIFY_LAZY_LOAD_CODE')
+    if settings.MINIMAL_RUNTIME:
+      exit_with_error('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
     if options.use_preload_plugins or len(options.preload_files):
       exit_with_error('MODULARIZE=instance is not compatible with --embed-file/--preload-file')
 
@@ -1008,11 +1020,12 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   # Default to TEXTDECODER=2 (always use TextDecoder to decode UTF-8 strings)
   # in -Oz builds, since custom decoder for UTF-8 takes up space.
-  # In pthreads enabled builds, TEXTDECODER==2 may not work, see
-  # https://github.com/whatwg/encoding/issues/172
   # When supporting shell environments, do not do this as TextDecoder is not
   # widely supported there.
-  if settings.SHRINK_LEVEL >= 2 and not settings.SHARED_MEMORY and \
+  # In Audio Worklets TextDecoder API is intentionally not exposed
+  # (https://github.com/WebAudio/web-audio-api/issues/2499) so we also need to
+  # keep the JavaScript-based fallback.
+  if settings.SHRINK_LEVEL >= 2 and not settings.AUDIO_WORKLET and \
      not settings.ENVIRONMENT_MAY_BE_SHELL:
     default_setting('TEXTDECODER', 2)
 
@@ -2128,8 +2141,12 @@ def fix_es6_import_statements(js_file):
   save_intermediate('es6-module')
 
 
+def node_detection_code():
+  return "globalThis.process?.versions?.node && globalThis.process?.type != 'renderer'"
+
+
 def create_esm_wrapper(wrapper_file, support_target, wasm_target):
-  js_exports = settings.EXPORTED_RUNTIME_METHODS + list(building.user_requested_exports)
+  js_exports = building.user_requested_exports.union(settings.EXPORTED_RUNTIME_METHODS)
   js_exports = ', '.join(sorted(js_exports))
 
   wrapper = []
@@ -2147,7 +2164,7 @@ def create_esm_wrapper(wrapper_file, support_target, wasm_target):
 // When run as the main module under node, create the module directly.  This will
 // execute any startup code along with main (if it exists).
 import init from '{support_url}';
-const isNode = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string' && process.type != 'renderer';
+const isNode = {node_detection_code()};
 if (isNode) {{
   const url = await import('url');
   const isMainModule = url.pathToFileURL(process.argv[1]).href === import.meta.url;
@@ -2164,7 +2181,10 @@ if (isNode) {{
   mod = mod.replace('(import "wasi_snapshot_preview1"', f'(import "{support_url}"')
 
   wasm_as = os.path.join(building.get_binaryen_bin(), 'wasm-as')
-  shared.check_call([wasm_as, '--all-features', '-o', wasm_target, '-'], input=mod)
+  cmd = [wasm_as, '--all-features', '-o', wasm_target, '-']
+  if settings.EMIT_NAME_SECTION:
+    cmd.append('-g')
+  shared.check_call(cmd, input=mod)
 
 
 @ToolchainProfiler.profile_block('final emitting')
@@ -2515,7 +2535,7 @@ if (typeof exports === 'object' && typeof module === 'object') {
       src += "var isPthread = globalThis.self?.name?.startsWith('em-pthread');\n"
       # In order to support both web and node we also need to detect node here.
       if settings.ENVIRONMENT_MAY_BE_NODE:
-        src += "var isNode = typeof globalThis.process?.versions?.node == 'string';\n"
+        src += f'var isNode = {node_detection_code()};\n'
         src += f'if (isNode) isPthread = {node_pthread_detection()}\n'
     elif settings.ENVIRONMENT_MAY_BE_NODE:
       src += f'var isPthread = {node_pthread_detection()}\n'
@@ -2535,7 +2555,7 @@ if (typeof exports === 'object' && typeof module === 'object') {
       # In order to support both web and node we also need to detect node here.
       if settings.ENVIRONMENT_MAY_BE_NODE:
         if not settings.PTHREADS:
-          src += "var isNode = typeof globalThis.process?.versions?.node == 'string';\n"
+          src += f'var isNode = {node_detection_code()};\n'
         src += f'if (isNode) isWW = {node_ww_detection()}\n'
     elif settings.ENVIRONMENT_MAY_BE_NODE:
       src += f'var isWW = {node_ww_detection()}\n'

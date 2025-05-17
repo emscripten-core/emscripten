@@ -961,22 +961,25 @@ def make_export_wrappers(function_exports):
   return wrappers
 
 
-def create_receiving(function_exports):
+def create_receiving(function_exports, tag_exports):
+  receiving = ['// Imports from the Wasm binary.']
+
   if settings.WASM_ESM_INTEGRATION:
-    exports = [f'{f} as {asmjs_mangle(f)}' for f in function_exports]
+    exports = tag_exports + list(function_exports.keys())
+    exports = [f'{f} as {asmjs_mangle(f)}' for f in exports]
     if not settings.IMPORTED_MEMORY:
       exports.append('memory as wasmMemory')
     if not settings.RELOCATABLE:
       exports.append('__indirect_function_table as wasmTable')
-    exports = ',\n  '.join(exports)
-    return f"import {{\n  {exports}\n}} from './{settings.WASM_BINARY_FILE}';\n\n"
+    receiving.append('import {')
+    receiving.append('  ' + ',\n  '.join(exports))
+    receiving.append(f"}} from './{settings.WASM_BINARY_FILE}';")
+    return '\n'.join(receiving) + '\n\n'
 
   # When not declaring asm exports this section is empty and we instead programmatically export
   # symbols on the global object by calling exportWasmSymbols after initialization
   if not settings.DECLARE_ASM_MODULE_EXPORTS:
     return ''
-
-  receiving = []
 
   if settings.MINIMAL_RUNTIME:
     # Exports are assigned inside a function to variables
@@ -1008,13 +1011,13 @@ def create_receiving(function_exports):
 def create_module(metadata, function_exports, global_exports, tag_exports,library_symbols):
   module = []
 
-  receiving = create_receiving(function_exports)
+  receiving = create_receiving(function_exports, tag_exports)
+  receiving += create_global_exports(global_exports)
   sending = create_sending(metadata, library_symbols)
 
   if settings.WASM_ESM_INTEGRATION:
     module.append(sending)
   else:
-    receiving += create_global_exports(global_exports)
     receiving += create_other_export_declarations(tag_exports)
 
     if settings.PTHREADS or settings.WASM_WORKERS or (settings.IMPORTED_MEMORY and settings.MODULARIZE == 'instance'):

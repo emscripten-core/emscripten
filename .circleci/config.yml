@@ -651,8 +651,29 @@ jobs:
             wasmfs.test_fs_llseek_rawfs
             wasmfs.test_freetype
             minimal0.test_utf
-            instance.test_async_hello_v8
             "
+  test-modularize-instance:
+    executor: focal
+    environment:
+      EMTEST_SKIP_NODE_CANARY: "1"
+    steps:
+      - run-tests-linux:
+          test_targets: "instance"
+  test-esm-integration:
+    # We don't use `bionic` here since its too old to run recent node versions:
+    # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
+    executor: linux-python
+    steps:
+      - prepare-for-tests
+      # The linux-python image uses /home/circleci rather than /root and jsvu
+      # hardcodes /root into its launcher scripts so we need to reinstall v8.
+      - run: rm -rf $HOME/.jsvu
+      - install-v8
+      - install-node-canary
+      - run-tests:
+          title: "esm-integration"
+          test_targets: "esm-integration"
+      - upload-test-results
   test-wasm2js1:
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
@@ -661,7 +682,7 @@ jobs:
       - run-tests-linux:
           test_targets: "wasm2js1"
   test-wasm64:
-    # We don't use `bionic` here since its tool old to run recent node versions:
+    # We don't use `bionic` here since its too old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
     executor: linux-python
     steps:
@@ -805,30 +826,6 @@ jobs:
             core0.test_pthread_join_and_asyncify
             core0.test_async_ccall_promise_jspi*
             core0.test_cubescript_jspi
-            instance.test_hello_world
-            instance.test_dylink_basics
-            instance.test_cube2hash*
-            instance.test_exceptions_3*
-            instance.test_memorygrowth
-            instance.test_stat
-            instance.test_iostream_and_determinism
-            instance.test_fannkuch
-            instance.test_fasta
-            instance.test_EXPORTED_RUNTIME_METHODS
-            instance.test_abort_on_exceptions*
-            instance.test_ccall
-            instance.test_dylink_basics*
-            instance.test_Module_dynamicLibraries*
-            instance.test_dylink_argv_argc
-            instance.test_dlmalloc*
-            instance.test_dyncall*
-            instance.test_em_asm*
-            instance.test_embind*
-            instance.test_module_wasm_memory
-            esm_integration.test_fs_js_api*
-            esm_integration.test_inlinejs3
-            esm_integration.test_embind_val_basics
-            esm_integration.test_undefined_main
             "
       # Run some basic tests with the minimum version of node that we currently
       # support in the generated code.
@@ -1151,6 +1148,12 @@ workflows:
           requires:
             - build-linux
       - test-other:
+          requires:
+            - build-linux
+      - test-modularize-instance:
+          requires:
+            - build-linux
+      - test-esm-integration:
           requires:
             - build-linux
       - test-browser-chrome
