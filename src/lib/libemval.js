@@ -6,7 +6,7 @@
 /*global Module:true, Runtime*/
 /*global HEAP32*/
 /*global createNamedFunction*/
-/*global readLatin1String, stringToUTF8*/
+/*global AsciiToString, stringToUTF8*/
 /*global requireRegisteredType, throwBindingError, runDestructors*/
 /*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 
@@ -42,16 +42,16 @@ var LibraryEmVal = {
     return emval_handles.length / 2 - {{{ EMVAL_RESERVED_HANDLES }}} - emval_freelist.length;
   },
 
-  _emval_register_symbol__deps: ['$emval_symbols', '$readLatin1String'],
+  _emval_register_symbol__deps: ['$emval_symbols', '$AsciiToString'],
   _emval_register_symbol: (address) => {
-    emval_symbols[address] = readLatin1String(address);
+    emval_symbols[address] = AsciiToString(address);
   },
 
-  $getStringOrSymbol__deps: ['$emval_symbols', '$readLatin1String'],
+  $getStringOrSymbol__deps: ['$emval_symbols', '$AsciiToString'],
   $getStringOrSymbol: (address) => {
     var symbol = emval_symbols[address];
     if (symbol === undefined) {
-      return readLatin1String(address);
+      return AsciiToString(address);
     }
     return symbol;
   },

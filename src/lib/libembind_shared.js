@@ -93,29 +93,10 @@ var LibraryEmbindShared = {
     }
   },
 
-  $embind_charCodes__deps: ['$embind_init_charCodes'],
-  $embind_charCodes__postset: "embind_init_charCodes()",
-  $embind_charCodes: undefined,
-  $embind_init_charCodes: () => {
-    var codes = new Array(256);
-    for (var i = 0; i < 256; ++i) {
-        codes[i] = String.fromCharCode(i);
-    }
-    embind_charCodes = codes;
-  },
-  $readLatin1String__deps: ['$embind_charCodes'],
-  $readLatin1String: (ptr) => {
-    var ret = "";
-    var c = ptr;
-    while (HEAPU8[c]) {
-        ret += embind_charCodes[HEAPU8[c++]];
-    }
-    return ret;
-  },
-  $getTypeName__deps: ['$readLatin1String', '__getTypeName', 'free'],
+  $getTypeName__deps: ['$AsciiToString', '__getTypeName', 'free'],
   $getTypeName: (type) => {
     var ptr = ___getTypeName(type);
-    var rv = readLatin1String(ptr);
+    var rv = AsciiToString(ptr);
     _free(ptr);
     return rv;
   },
