@@ -2594,7 +2594,7 @@ F1 -> ''
 
   @requires_network
   def test_remote_ports(self):
-    self.emcc(test_file('hello_world.c'), ['--use-port=contrib.emdawn'])
+    self.emcc(test_file('hello_world.c'), ['--use-port=contrib.emdawnwebgpu'])
 
   @crossplatform
   def test_external_ports_simple(self):

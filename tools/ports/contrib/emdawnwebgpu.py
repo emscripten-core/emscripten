@@ -4,10 +4,10 @@
 # found in the LICENSE file.
 
 
-TAG = 'v20250514.194204'
+TAG = 'v20250516.124039'
 
 EXTERNAL_PORT = f'https://github.com/google/dawn/releases/download/{TAG}/emdawnwebgpu_pkg-{TAG}.zip'
-SHA512 = '6aedbaa6a19fe91fc36b1e2cb6ca369cf6a29a3c8213c39f3b3930bd36bb7186665301f090ad91e9a99ba5999c9f6d32404ef37fd0fbb7c017ea3d9151cd22ad'
+SHA512 = '994eac4be5f69d8ec83838af9c7b4cc87f15fa22bede589517c169320dd69ab5cf164528f7bd6ec6503b1ef178da3d87df0565d16445dac2a69f98450083dd8f'
 PORT_FILE = 'emdawnwebgpu_pkg/emdawnwebgpu.port.py'
 
 # contrib port information (required)
