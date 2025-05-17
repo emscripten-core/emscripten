@@ -562,9 +562,13 @@ def finalize_wasm(infile, outfile, js_syms):
   # These are any exports that were not requested on the command line and are
   # not known auto-generated system functions.
   unexpected_exports = [e for e in metadata.all_exports if shared.is_user_export(e)]
-  for n in unexpected_exports:
-    if not n.isidentifier():
-      exit_with_error(f'invalid export name: {n}')
+  # Rust side modules may have exported symbols that are not valid
+  # identifiers. They are meant to be called from native code in the main
+  # module not from JavaScript anyways, so don't perform this check on them.
+  if not settings.SIDE_MODULE:
+    for n in unexpected_exports:
+      if not n.isidentifier():
+        exit_with_error(f'invalid export name: {n}')
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
 
