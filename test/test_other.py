@@ -3429,6 +3429,12 @@ More info: https://emscripten.org
     ''')
     self.do_runf('main.cpp', emcc_args=['-lembind'])
 
+  @node_pthreads
+  def test_embind_val_in_static_pthread(self):
+    # Test that threads wait for embind to initialize before running.
+    self.emcc_args += ['-lembind', '-sPTHREAD_POOL_SIZE=2']
+    self.do_runf('embind/test_embind_val_in_static_pthread.cpp', 'worker\ndone\n')
+
   @requires_jspi
   @parameterized({
     '': [['-sJSPI_EXPORTS=async*']],
