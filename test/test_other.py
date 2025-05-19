@@ -15936,6 +15936,14 @@ addToLibrary({
     err = self.expect_fail([EMCC, 'test.c'])
     self.assertContained('emcc: error: invalid export name: my.func', err)
 
+    # GCC (and clang) and JavaScript also allow $ in symbol names
+    create_file('valid.c', '''
+                #include <emscripten.h>
+                EMSCRIPTEN_KEEPALIVE
+                void my$func() {}
+                ''')
+    self.run_process([EMCC, 'valid.c'])
+
   @also_with_modularize
   def test_instantiate_wasm(self):
     create_file('pre.js', '''
