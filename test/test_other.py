@@ -16092,3 +16092,6 @@ addToLibrary({
       }
     ''')
     self.do_runf('main.c')
+
+  def test_getifaddrs(self):
+    self.do_other_test('test_getifaddrs.c')
