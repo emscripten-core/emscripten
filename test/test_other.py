@@ -16016,7 +16016,7 @@ addToLibrary({
     # Verify that `scriptDirectory` is an absolute path
     create_file('pre.js', '''
       Module['locateFile'] = (fileName, scriptDirectory) => {
-        assert(nodePath['isAbsolute'](scriptDirectory), `scriptDirectory (${scriptDirectory}) should be an absolute path`);
+        assert(require('path')['isAbsolute'](scriptDirectory), `scriptDirectory (${scriptDirectory}) should be an absolute path`);
         return scriptDirectory + fileName;
       };
       ''')
@@ -16030,7 +16030,7 @@ addToLibrary({
     # Verify that `scriptDirectory` is an absolute path when `EXPORT_ES6`
     create_file('pre.js', '''
       Module['locateFile'] = (fileName, scriptDirectory) => {
-        assert(nodePath['isAbsolute'](scriptDirectory), `scriptDirectory (${scriptDirectory}) should be an absolute path`);
+        assert(require('path')['isAbsolute'](scriptDirectory), `scriptDirectory (${scriptDirectory}) should be an absolute path`);
         return scriptDirectory + fileName;
       };
       ''')
