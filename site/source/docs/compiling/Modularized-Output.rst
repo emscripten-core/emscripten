@@ -126,10 +126,6 @@ fix in future releses.  Current limitations include:
 * :ref:`abort_on_wasm_exceptions` is not supported (requires wrapping wasm
   exports).
 
-* :ref:`dyncalls` is not supported (depends on the ``Module`` global)
-
-* :ref:`asyncify` is not supported (depends on :ref:`dyncalls`)
-
 * :ref:`asyncify_lazy_load_code` is not supported (depends on ``wasmExports``
   global)
 
@@ -171,6 +167,10 @@ This setting implicitly enables :ref:`export_es6` and sets :ref:`MODULARIZE` to
 Some additional limitations are:
 
 - ``-pthread`` / :ref:`wasm_workers` are not yet supported.
+
+* :ref:`dyncalls` is not supported (depends on the ``Module`` global)
+
+* :ref:`asyncify` is not supported (depends on :ref:`dyncalls`)
 
 - Setting :ref:`wasm` to ``0`` is not supported.
 

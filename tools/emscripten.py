@@ -907,6 +907,15 @@ def can_use_await():
   return settings.MODULARIZE
 
 
+def make_dyncall_assignment(sym):
+  if not sym.startswith('dynCall_'):
+    return ''
+  if not settings.DYNCALLS or '$dynCall' not in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE:
+    return ''
+  sig = sym.replace('dynCall_', '')
+  return f"dynCalls['{sig}'] = "
+
+
 def make_export_wrappers(function_exports):
   assert not settings.MINIMAL_RUNTIME
 
@@ -945,6 +954,8 @@ def make_export_wrappers(function_exports):
     elif should_export:
       exported = "Module['%s'] = " % mangled
       wrapper += exported
+
+    wrapper += make_dyncall_assignment(name)
 
     if settings.ASSERTIONS and install_wrapper(name):
       # With assertions enabled we create a wrapper that are calls get routed through, for
@@ -995,17 +1006,16 @@ def create_receiving(function_exports, tag_exports):
     # var _main;
     # function assignWasmExports(wasmExport) {
     #   _main = wasmExports["_main"];
-    generate_dyncall_assignment = settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
     exports = [x for x in function_exports if x != building.WASM_CALL_CTORS]
     receiving.append('function assignWasmExports(wasmExports) {')
     for s in exports:
       mangled = asmjs_mangle(s)
-      dynCallAssignment = ('dynCalls["' + s.replace('dynCall_', '') + '"] = ') if generate_dyncall_assignment and mangled.startswith('dynCall_') else ''
+      dyncall_assignment = make_dyncall_assignment(s)
       should_export = settings.EXPORT_ALL or (settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS)
       export_assignment = ''
       if settings.MODULARIZE and should_export:
         export_assignment = f"Module['{mangled}'] = "
-      receiving.append(f"  {export_assignment}{dynCallAssignment}{mangled} = wasmExports['{s}'];")
+      receiving.append(f"  {export_assignment}{dyncall_assignment}{mangled} = wasmExports['{s}'];")
     receiving.append('}')
     sep = ',\n  '
     mangled = [asmjs_mangle(s) for s in exports]
