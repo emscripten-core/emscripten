@@ -168,9 +168,7 @@ Some additional limitations are:
 * :ref:`abort_on_wasm_exceptions` is not supported (requires wrapping wasm
   exports).
 
-* :ref:`dyncalls` is not supported (depends on the ``Module`` global)
-
-* :ref:`asyncify` is not supported (depends on :ref:`dyncalls`)
+* :ref:`asyncify` is not supported (depends on ``wasmExports`` global)
 
 * Setting :ref:`wasm` to ``0`` is not supported.
 

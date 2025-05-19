@@ -7020,7 +7020,6 @@ void* operator new(size_t size) {
     self.do_core_test('EXPORTED_RUNTIME_METHODS.c')
 
   @also_with_minimal_runtime
-  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with DYNCALLS')
   def test_dyncall_specific(self):
     if self.get_setting('WASM_BIGINT') != 0 and not self.is_wasm2js():
       # define DYNCALLS because this test does test calling them directly, and
@@ -7047,8 +7046,6 @@ void* operator new(size_t size) {
     'legacy': (['-sDYNCALLS'],),
   })
   def test_dyncall_pointers(self, args):
-    if args and self.get_setting('WASM_ESM_INTEGRATION'):
-      self.skipTest('WASM_ESM_INTEGRATION is not compatible with DYNCALLS')
     self.do_core_test('test_dyncall_pointers.c', emcc_args=args)
 
   @also_with_wasm_bigint

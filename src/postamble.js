@@ -314,6 +314,10 @@ export default async function init(moduleArg = {}) {
   processModuleArgs();
 #if WASM_ESM_INTEGRATION
   updateMemoryViews();
+#if DYNCALLS && '$dynCalls' in addedLibraryItems
+
+  assignDynCalls();
+#endif
 #else
   wasmExports = await createWasm();
 #endif
