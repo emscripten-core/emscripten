@@ -316,7 +316,6 @@ export default async function init(moduleArg = {}) {
   updateMemoryViews();
 #else
   wasmExports = await createWasm();
-  assignWasmExports();
 #endif
   preInit();
   run();
