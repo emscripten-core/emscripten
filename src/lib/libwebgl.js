@@ -3190,7 +3190,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
 #if GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING
 #if GL_DEBUG
-    dbg(`Input shader source: ${source}`;
+    dbg(`Input shader source: ${source}`);
 #endif
 
 #if ASSERTIONS

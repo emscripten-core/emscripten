@@ -9294,8 +9294,12 @@ int main() {
     self.run_codesize_test('minimal.c', *args)
 
   @node_pthreads
-  def test_codesize_minimal_pthreads(self):
-    self.run_codesize_test('minimal_main.c', ['-Oz', '-pthread', '-sPROXY_TO_PTHREAD', '-sSTRICT'])
+  @parameterized({
+    '': ([],),
+    'memgrowth': (['-sALLOW_MEMORY_GROWTH'],),
+  })
+  def test_codesize_minimal_pthreads(self, args):
+    self.run_codesize_test('minimal_main.c', ['-Oz', '-pthread', '-sPROXY_TO_PTHREAD', '-sSTRICT'] + args)
 
   @parameterized({
     'noexcept': (['-O2'],                    [], ['waka']), # noqa
@@ -10493,8 +10497,7 @@ int main() {
     stderr = self.expect_fail([EMCC, 'src.c', '-O2'] + self.get_emcc_args())
     self.assertContained(('''
 function js() { var x = !<->5.; }
-                         ^
-'''), stderr)
+                         ^ '''), stderr)
 
   @crossplatform
   def test_js_optimizer_chunk_size_determinism(self):
@@ -10540,9 +10543,9 @@ int main() {
                       '-sMAXIMUM_MEMORY=4GB', '-sALLOW_MEMORY_GROWTH'])
     # growable-heap must not interfere with heap unsigning, and vice versa:
     # we must have both applied, that is
-    #   - GROWABLE_HEAP_I8() replaces HEAP8
+    #   - GROWABLE_HEAP() runs before HEAP8
     #   - $0 gets an >>> 0 unsigning
-    self.assertContained('GROWABLE_HEAP_I8().set([ 1, 2, 3 ], $0 >>> 0)',
+    self.assertContained('(growMemViews(), HEAP8).set([ 1, 2, 3 ], $0 >>> 0)',
                          read_file('a.out.js'))
 
   @parameterized({
@@ -15933,6 +15936,14 @@ addToLibrary({
     err = self.expect_fail([EMCC, 'test.c'])
     self.assertContained('emcc: error: invalid export name: my.func', err)
 
+    # GCC (and clang) and JavaScript also allow $ in symbol names
+    create_file('valid.c', '''
+                #include <emscripten.h>
+                EMSCRIPTEN_KEEPALIVE
+                void my$func() {}
+                ''')
+    self.run_process([EMCC, 'valid.c'])
+
   @also_with_modularize
   def test_instantiate_wasm(self):
     create_file('pre.js', '''
@@ -16005,7 +16016,7 @@ addToLibrary({
     # Verify that `scriptDirectory` is an absolute path
     create_file('pre.js', '''
       Module['locateFile'] = (fileName, scriptDirectory) => {
-        assert(nodePath['isAbsolute'](scriptDirectory), `scriptDirectory (${scriptDirectory}) should be an absolute path`);
+        assert(require('path')['isAbsolute'](scriptDirectory), `scriptDirectory (${scriptDirectory}) should be an absolute path`);
         return scriptDirectory + fileName;
       };
       ''')
@@ -16019,7 +16030,7 @@ addToLibrary({
     # Verify that `scriptDirectory` is an absolute path when `EXPORT_ES6`
     create_file('pre.js', '''
       Module['locateFile'] = (fileName, scriptDirectory) => {
-        assert(nodePath['isAbsolute'](scriptDirectory), `scriptDirectory (${scriptDirectory}) should be an absolute path`);
+        assert(require('path')['isAbsolute'](scriptDirectory), `scriptDirectory (${scriptDirectory}) should be an absolute path`);
         return scriptDirectory + fileName;
       };
       ''')
@@ -16081,3 +16092,6 @@ addToLibrary({
       }
     ''')
     self.do_runf('main.c')
+
+  def test_getifaddrs(self):
+    self.do_other_test('test_getifaddrs.c')

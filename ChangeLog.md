@@ -18,9 +18,12 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.9 (in development)
+4.0.10 (in development)
 ----------------------
 - libcxx and libcxxabi were updated to LLVM 20.1.4. (#24346)
+
+4.0.9 - 05/19/25
+----------------
 - libunwind was updated to LLVM 20.1.4. (#24251)
 - When using cmake the EMSCRIPTEN_FORCE_COMPILERS setting was reverted to
   being on by default due to issues that were found with disabling it. (#24223)

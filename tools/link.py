@@ -800,6 +800,20 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('WASM_ESM_INTEGRATION requires MODULARIZE=instance')
     if settings.RELOCATABLE:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with dynamic linking')
+    if settings.ASYNCIFY == 1:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with -sASYNCIFY=1')
+    if settings.DYNCALLS:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with DYNCALLS')
+    if settings.WASM_WORKERS or settings.PTHREADS:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with multi-threading')
+    if settings.USE_OFFSET_CONVERTER:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with USE_OFFSET_CONVERTER')
+    if not settings.WASM_ASYNC_COMPILATION:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM_ASYNC_COMPILATION')
+    if not settings.WASM:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM2JS')
+    if settings.MAYBE_WASM2JS:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with MAYBE_WASM2JS')
 
   if settings.MODULARIZE and settings.MODULARIZE not in [1, 'instance']:
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
@@ -822,12 +836,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('MODULARIZE=instance requires EXPORT_ES6')
     if settings.ABORT_ON_WASM_EXCEPTIONS:
       exit_with_error('MODULARIZE=instance is not compatible with ABORT_ON_WASM_EXCEPTIONS')
-    if settings.ASYNCIFY == 1:
-      exit_with_error('MODULARIZE=instance is not compatible with -sASYNCIFY=1')
-    if settings.DYNCALLS:
-      exit_with_error('MODULARIZE=instance is not compatible with -sDYNCALLS')
     if settings.ASYNCIFY_LAZY_LOAD_CODE:
       exit_with_error('MODULARIZE=instance is not compatible with -sASYNCIFY_LAZY_LOAD_CODE')
+    if settings.MINIMAL_RUNTIME:
+      exit_with_error('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
     if options.use_preload_plugins or len(options.preload_files):
       exit_with_error('MODULARIZE=instance is not compatible with --embed-file/--preload-file')
 
@@ -2134,7 +2146,7 @@ def node_detection_code():
 
 
 def create_esm_wrapper(wrapper_file, support_target, wasm_target):
-  js_exports = settings.EXPORTED_RUNTIME_METHODS + list(building.user_requested_exports)
+  js_exports = building.user_requested_exports.union(settings.EXPORTED_RUNTIME_METHODS)
   js_exports = ', '.join(sorted(js_exports))
 
   wrapper = []
@@ -2169,7 +2181,10 @@ if (isNode) {{
   mod = mod.replace('(import "wasi_snapshot_preview1"', f'(import "{support_url}"')
 
   wasm_as = os.path.join(building.get_binaryen_bin(), 'wasm-as')
-  shared.check_call([wasm_as, '--all-features', '-o', wasm_target, '-'], input=mod)
+  cmd = [wasm_as, '--all-features', '-o', wasm_target, '-']
+  if settings.EMIT_NAME_SECTION:
+    cmd.append('-g')
+  shared.check_call(cmd, input=mod)
 
 
 @ToolchainProfiler.profile_block('final emitting')

@@ -44,6 +44,7 @@ addToLibrary({
     return UTF8Decoder.decode(heapOrArray.buffer ? {{{ getUnsharedTextDecoderView('heapOrArray', 'idx', 'endPtr') }}} : new Uint8Array(heapOrArray.slice(idx, endPtr)));
 #else // TEXTDECODER == 2
 #if TEXTDECODER
+    // When using conditional TextDecoder, skip it for short strings as the overhead of the native call is not worth it.
     if (endPtr - idx > 16 && heapOrArray.buffer && UTF8Decoder) {
       return UTF8Decoder.decode({{{ getUnsharedTextDecoderView('heapOrArray', 'idx', 'endPtr') }}});
     }
@@ -167,18 +168,10 @@ addToLibrary({
     var startIdx = outIdx;
     var endIdx = outIdx + maxBytesToWrite - 1; // -1 for string null terminator.
     for (var i = 0; i < str.length; ++i) {
-      // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code
-      // unit, not a Unicode code point of the character! So decode
-      // UTF16->UTF32->UTF8.
-      // See http://unicode.org/faq/utf_bom.html#utf16-3
       // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description
       // and https://www.ietf.org/rfc/rfc2279.txt
       // and https://tools.ietf.org/html/rfc3629
-      var u = str.charCodeAt(i); // possibly a lead surrogate
-      if (u >= 0xD800 && u <= 0xDFFF) {
-        var u1 = str.charCodeAt(++i);
-        u = 0x10000 + ((u & 0x3FF) << 10) | (u1 & 0x3FF);
-      }
+      var u = str.codePointAt(i);
       if (u <= 0x7F) {
         if (outIdx >= endIdx) break;
         heap[outIdx++] = u;
@@ -200,6 +193,9 @@ addToLibrary({
         heap[outIdx++] = 0x80 | ((u >> 12) & 63);
         heap[outIdx++] = 0x80 | ((u >> 6) & 63);
         heap[outIdx++] = 0x80 | (u & 63);
+        // Gotcha: if codePoint is over 0xFFFF, it is represented as a surrogate pair in UTF-16.
+        // We need to manually skip over the second code unit for correct iteration.
+        i++;
       }
     }
     // Null-terminate the pointer to the buffer.
@@ -322,23 +318,22 @@ addToLibrary({
 #if ASSERTIONS
     assert(ptr % 2 == 0, 'Pointer passed to UTF16ToString must be aligned to two bytes!');
 #endif
+    var idx = {{{ getHeapOffset('ptr', 'u16') }}};
+    var maxIdx = idx + maxBytesToRead / 2;
 #if TEXTDECODER
-    var endPtr = ptr;
     // TextDecoder needs to know the byte length in advance, it doesn't stop on
     // null terminator by itself.
     // Also, use the length info to avoid running tiny strings through
     // TextDecoder, since .subarray() allocates garbage.
-    var idx = endPtr >> 1;
-    var maxIdx = idx + maxBytesToRead / 2;
+    var endIdx = idx;
     // If maxBytesToRead is not passed explicitly, it will be undefined, and this
     // will always evaluate to true. This saves on code size.
-    while (!(idx >= maxIdx) && HEAPU16[idx]) ++idx;
-    endPtr = idx << 1;
+    while (!(endIdx >= maxIdx) && HEAPU16[endIdx]) ++endIdx;
 
 #if TEXTDECODER != 2
-    if (endPtr - ptr > 32 && UTF16Decoder)
+    if (endIdx - idx > 16 && UTF16Decoder)
 #endif // TEXTDECODER != 2
-      return UTF16Decoder.decode({{{ getUnsharedTextDecoderView('HEAPU8', 'ptr', 'endPtr') }}});
+      return UTF16Decoder.decode({{{ getUnsharedTextDecoderView('HEAPU16', 'idx', 'endIdx') }}});
 #endif // TEXTDECODER
 
 #if TEXTDECODER != 2
@@ -348,8 +343,8 @@ addToLibrary({
     // If maxBytesToRead is not passed explicitly, it will be undefined, and the
     // for-loop's condition will always evaluate to true. The loop is then
     // terminated on the first null char.
-    for (var i = 0; !(i >= maxBytesToRead / 2); ++i) {
-      var codeUnit = {{{ makeGetValue('ptr', 'i*2', 'i16') }}};
+    for (var i = idx; !(i >= maxIdx); ++i) {
+      var codeUnit = HEAPU16[i];
       if (codeUnit == 0) break;
       // fromCharCode constructs a character from a UTF-16 code unit, so we can
       // pass the UTF16 string right through.
@@ -407,23 +402,13 @@ addToLibrary({
 #if ASSERTIONS
     assert(ptr % 4 == 0, 'Pointer passed to UTF32ToString must be aligned to four bytes!');
 #endif
-    var i = 0;
-
     var str = '';
     // If maxBytesToRead is not passed explicitly, it will be undefined, and this
     // will always evaluate to true. This saves on code size.
-    while (!(i >= maxBytesToRead / 4)) {
+    for (var i = 0; !(i >= maxBytesToRead / 4); i++) {
       var utf32 = {{{ makeGetValue('ptr', 'i*4', 'i32') }}};
-      if (utf32 == 0) break;
-      ++i;
-      // Gotcha: fromCharCode constructs a character from a UTF-16 encoded code (pair), not from a Unicode code point! So encode the code point to UTF-16 for constructing.
-      // See http://unicode.org/faq/utf_bom.html#utf16-3
-      if (utf32 >= 0x10000) {
-        var ch = utf32 - 0x10000;
-        str += String.fromCharCode(0xD800 | (ch >> 10), 0xDC00 | (ch & 0x3FF));
-      } else {
-        str += String.fromCharCode(utf32);
-      }
+      if (!utf32) break;
+      str += String.fromCodePoint(utf32);
     }
     return str;
   },
@@ -459,14 +444,13 @@ addToLibrary({
     var startPtr = outPtr;
     var endPtr = startPtr + maxBytesToWrite - 4;
     for (var i = 0; i < str.length; ++i) {
-      // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! We must decode the string to UTF-32 to the heap.
-      // See http://unicode.org/faq/utf_bom.html#utf16-3
-      var codeUnit = str.charCodeAt(i); // possibly a lead surrogate
-      if (codeUnit >= 0xD800 && codeUnit <= 0xDFFF) {
-        var trailSurrogate = str.charCodeAt(++i);
-        codeUnit = 0x10000 + ((codeUnit & 0x3FF) << 10) | (trailSurrogate & 0x3FF);
+      var codePoint = str.codePointAt(i);
+      // Gotcha: if codePoint is over 0xFFFF, it is represented as a surrogate pair in UTF-16.
+      // We need to manually skip over the second code unit for correct iteration.
+      if (codePoint > 0xFFFF) {
+        i++;
       }
-      {{{ makeSetValue('outPtr', 0, 'codeUnit', 'i32') }}};
+      {{{ makeSetValue('outPtr', 0, 'codePoint', 'i32') }}};
       outPtr += 4;
       if (outPtr + 4 > endPtr) break;
     }
@@ -480,10 +464,12 @@ addToLibrary({
   $lengthBytesUTF32: (str) => {
     var len = 0;
     for (var i = 0; i < str.length; ++i) {
-      // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! We must decode the string to UTF-32 to the heap.
-      // See http://unicode.org/faq/utf_bom.html#utf16-3
-      var codeUnit = str.charCodeAt(i);
-      if (codeUnit >= 0xD800 && codeUnit <= 0xDFFF) ++i; // possibly a lead surrogate, so skip over the tail surrogate.
+      var codePoint = str.codePointAt(i);
+      // Gotcha: if codePoint is over 0xFFFF, it is represented as a surrogate pair in UTF-16.
+      // We need to manually skip over the second code unit for correct iteration.
+      if (codePoint > 0xFFFF) {
+        i++;
+      }
       len += 4;
     }
 
