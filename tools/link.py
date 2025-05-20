@@ -2053,8 +2053,7 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
     dirname, basename = os.path.split(lib)
     if basename == 'libembind.js':
       settings.JS_LIBRARIES[i] = os.path.join(dirname, 'libembind_gen.js')
-  if settings.MEMORY64:
-    settings.MIN_NODE_VERSION = 160000
+  settings.MIN_NODE_VERSION = 160000 if settings.MEMORY64 else 150000
   # Source maps haven't been generated yet and aren't needed to run embind_gen.
   settings.LOAD_SOURCE_MAP = 0
   outfile_js = in_temp('tsgen.js')
