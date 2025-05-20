@@ -13,11 +13,11 @@ var _expD3 = Module["_expD3"] = wasmExports["expD3"];
 
 var _expD5 = wasmExports["expD5"];
 
-var _expI1 = Module["_expI1"] = () => (expI1 = Module["_expI1"] = wasmExports["expI1"])();
+var _expI1 = Module["_expI1"] = () => (_expI1 = Module["_expI1"] = wasmExports["expI1"])();
 
-var _expI2 = Module["_expI2"] = () => (expI2 = Module["_expI2"] = wasmExports["expI2"])();
+var _expI2 = Module["_expI2"] = () => (_expI2 = Module["_expI2"] = wasmExports["expI2"])();
 
-var _expI3 = Module["_expI3"] = () => (expI3 = Module["_expI3"] = wasmExports["expI3"])();
+var _expI3 = Module["_expI3"] = () => (_expI3 = Module["_expI3"] = wasmExports["expI3"])();
 
 var _expI5 = () => (_expI5 = wasmExports["expI5"])();
 

@@ -498,6 +498,15 @@ function isModuleUse(node) {
   );
 }
 
+function isDynCallsUse(node) {
+  return (
+    node.type === 'MemberExpression' && // Module['X']
+    node.object.type === 'Identifier' &&
+    node.object.name === 'dynCalls' &&
+    isLiteralString(node.property)
+  );
+}
+
 // Apply import/export name changes (after minifying them)
 function applyImportAndExportNameChanges(ast) {
   const mapping = extraInfo.mapping;
@@ -576,6 +585,10 @@ function isDynamicDynCall(node) {
 //
 //   var _foo = (a0, a1) => (_foo = Module['_foo'] = wasmExports['foo'])(a0, a1):
 //
+// or
+//
+//   var _foo = (a0, a1) => (_foo = Module['_foo'] = dynCalls['iii'] = wasmExports['foo'])(a0, a1):
+//
 function isExportWrapperFunction(f) {
   if (f.body.type != 'CallExpression') return null;
   let callee = f.body.callee;
@@ -584,7 +597,7 @@ function isExportWrapperFunction(f) {
   }
   if (callee.type != 'AssignmentExpression') return null;
   var rhs = callee.right;
-  if (rhs.type == 'AssignmentExpression') {
+  while (rhs.type == 'AssignmentExpression') {
     rhs = rhs.right;
   }
   if (rhs.type != 'MemberExpression' || !isExportUse(rhs)) return null;
@@ -978,11 +991,15 @@ function applyDCEGraphRemovals(ast) {
       //   1. var _x = wasmExports['x'];
       // or
       //   2. var _x = Module['_x'] = wasmExports['x'];
+      // or
+      //   3. var _x = Module['_x'] = dynCalls['xx'] = wasmExports['x'];
       //
       // Or for delayed instantiation:
-      //   3. var _x = () => (_x = wasmExports['x'])(...);
+      //   4. var _x = () => (_x = wasmExports['x'])(...);
       // or
-      //   4. var _x = Module['_x] = () => (_x = Module['_x'] = wasmExports['x'])(...);
+      //   5. var _x = Module['_x] = () => (_x = Module['_x'] = wasmExports['x'])(...);
+      // or
+      //   6. var _x = Module['_x] = dynCalls['xx'] () => (_x = Module['_x'] = dynCalls['xx'] = wasmExports['x'])(...);
       const init = node.declarations[0].init;
       if (!init) {
         return;
@@ -990,8 +1007,13 @@ function applyDCEGraphRemovals(ast) {
 
       // Look through the optional `Module['_x']`
       let realInit = init;
-      if (init.type == 'AssignmentExpression' && isModuleUse(init.left)) {
-        realInit = init.right;
+      if (realInit.type == 'AssignmentExpression' && isModuleUse(realInit.left)) {
+        realInit = realInit.right;
+      }
+
+      // Look through the optional `dynCall['xxx']`
+      if (realInit.type == 'AssignmentExpression' && isDynCallsUse(realInit.left)) {
+        realInit = realInit.right;
       }
 
       if (isExportUse(realInit)) {
