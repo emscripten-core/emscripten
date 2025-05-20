@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 4.0.10 (in development)
 ----------------------
+- `-sUSE_WEBGPU` was deprecated in favor of the external fork Emdawnwebgpu,
+  which has been added as a contrib port: `--use-port=contrib.emdawnwebgpu`.
 
 4.0.9 - 05/19/25
 ----------------
