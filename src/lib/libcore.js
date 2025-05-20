@@ -2274,6 +2274,18 @@ addToLibrary({
   $wasmTable: undefined,
 #endif
 
+  $getUniqueRunDependency: (id) => {
+#if ASSERTIONS
+    var orig = id;
+    while (1) {
+      if (!runDependencyTracking[id]) return id;
+      id = orig + Math.random();
+    }
+#else
+    return id;
+#endif
+  },
+
   $noExitRuntime__postset: () => addAtModule(makeModuleReceive('noExitRuntime')),
   $noExitRuntime: {{{ !EXIT_RUNTIME }}},
 
