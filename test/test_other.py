@@ -16099,3 +16099,23 @@ addToLibrary({
 
   def test_getifaddrs(self):
     self.do_other_test('test_getifaddrs.c')
+
+  @parameterized({
+    'web': ('web',),
+    'node': ('node',),
+  })
+  def test_unsupported_min_version_when_unsupported_env(self, env):
+    create_file('pre.js', '''
+      #preprocess
+      var MIN_NODE_VERSION = {{{ MIN_NODE_VERSION }}};
+      var MIN_CHROME_VERSION = {{{ MIN_CHROME_VERSION }}};
+      var MIN_SAFARI_VERSION = {{{ MIN_SAFARI_VERSION }}};
+      var MIN_FIREFOX_VERSION = {{{ MIN_FIREFOX_VERSION }}};
+    ''')
+    self.emcc(test_file('hello_world.c'), [f'-sENVIRONMENT={env}', '--pre-js=pre.js'])
+    src = read_file('a.out.js')
+    unsupported = 0x7FFFFFFF
+    self.assertContainedIf(f'var MIN_NODE_VERSION = {unsupported};', src, env == 'web')
+    self.assertContainedIf(f'var MIN_CHROME_VERSION = {unsupported};', src, env == 'node')
+    self.assertContainedIf(f'var MIN_SAFARI_VERSION = {unsupported};', src, env == 'node')
+    self.assertContainedIf(f'var MIN_FIREFOX_VERSION = {unsupported};', src, env == 'node')

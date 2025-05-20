@@ -171,6 +171,18 @@ def setup_environment_settings():
   settings.ENVIRONMENT_MAY_BE_NODE = not settings.ENVIRONMENT or 'node' in environments
   settings.ENVIRONMENT_MAY_BE_SHELL = not settings.ENVIRONMENT or 'shell' in environments
 
+  if not settings.ENVIRONMENT_MAY_BE_NODE:
+    if 'MIN_NODE_VERSION' in user_settings:
+      diagnostics.warning('unused-command-line-argument', 'ignoring MIN_NODE_VERSION because `node` environment is not enabled')
+    settings.MIN_NODE_VERSION = feature_matrix.UNSUPPORTED
+
+  if not (settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WEBVIEW):
+    for browser in ('FIREFOX', 'SAFARI', 'CHROME'):
+      key = f'MIN_{browser}_VERSION'
+      if key in user_settings:
+        diagnostics.warning('unused-command-line-argument', 'ignoring %s because `web` and `webview` environments are not enabled', key)
+      settings[key] = feature_matrix.UNSUPPORTED
+
   # The worker case also includes Node.js workers when pthreads are
   # enabled and Node.js is one of the supported environments for the build to
   # run on. Node.js workers are detected as a combination of
