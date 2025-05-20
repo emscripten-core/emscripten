@@ -212,6 +212,8 @@ def with_asyncify_and_jspi(f):
       self.require_jspi()
     else:
       self.set_setting('ASYNCIFY')
+      if self.get_setting('MODULARIZE') == 'instance':
+        self.skipTest('MODULARIZE=instance is not compatible with ASYNCIFY=1')
     f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
@@ -231,6 +233,8 @@ def also_with_asyncify_and_jspi(f):
       self.require_jspi()
     elif asyncify == 1:
       self.set_setting('ASYNCIFY')
+      if self.get_setting('MODULARIZE') == 'instance':
+        self.skipTest('MODULARIZE=instance is not compatible with ASYNCIFY=1')
     else:
       assert asyncify == 0
     f(self, *args, **kwargs)
@@ -1881,7 +1885,7 @@ int main() {
     self.set_setting('RETAIN_COMPILER_SETTINGS')
     self.do_runf(src, read_file(output).replace('waka', utils.EMSCRIPTEN_VERSION))
 
-  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY=1')
+  @no_modularize_instance('MODULARIZE=instance is not compatible with ASYNCIFY=1')
   def test_emscripten_has_asyncify(self):
     src = r'''
       #include <stdio.h>
@@ -6950,7 +6954,7 @@ void* operator new(size_t size) {
   ### Integration tests
 
   @crossplatform
-  @no_modularize_instance('ccall is not compatible with WASM_ESM_INTEGRATION')
+  @no_modularize_instance('ccall is not compatible with MODULARIZE=instance')
   def test_ccall(self):
     self.emcc_args.append('-Wno-return-stack-address')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap', 'STACK_SIZE'])
@@ -6995,7 +6999,7 @@ void* operator new(size_t size) {
     if self.maybe_closure():
       self.do_core_test('test_ccall.cpp')
 
-  @no_modularize_instance('ccall is not compatible with WASM_ESM_INTEGRATION')
+  @no_modularize_instance('ccall is not compatible with MODULARIZE=instance')
   def test_ccall_cwrap_fast_path(self):
     self.emcc_args.append('-Wno-return-stack-address')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
@@ -7020,7 +7024,7 @@ void* operator new(size_t size) {
     self.do_core_test('EXPORTED_RUNTIME_METHODS.c')
 
   @also_with_minimal_runtime
-  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with DYNCALLS')
+  @no_modularize_instance('uses dynCallLegacy')
   def test_dyncall_specific(self):
     if self.get_setting('WASM_BIGINT') != 0 and not self.is_wasm2js():
       # define DYNCALLS because this test does test calling them directly, and
@@ -7047,8 +7051,8 @@ void* operator new(size_t size) {
     'legacy': (['-sDYNCALLS'],),
   })
   def test_dyncall_pointers(self, args):
-    if args and self.get_setting('WASM_ESM_INTEGRATION'):
-      self.skipTest('WASM_ESM_INTEGRATION is not compatible with DYNCALLS')
+    if args and self.get_setting('MODULARIZE') == 'instance' or self.get_setting('WASM_ESM_INTEGRATION'):
+      self.skipTest('dynCallLegacy is not yet compatible with MODULARIZE=instance')
     self.do_core_test('test_dyncall_pointers.c', emcc_args=args)
 
   @also_with_wasm_bigint
@@ -8064,7 +8068,7 @@ void* operator new(size_t size) {
 
   # Test async sleeps in the presence of invoke_* calls, which can happen with
   # longjmp or exceptions.
-  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY=1')
+  @no_modularize_instance('MODULARIZE=instance is not compatible with ASYNCIFY=1')
   def test_asyncify_longjmp(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('STRICT')
@@ -8124,11 +8128,11 @@ int main() {
     self.do_runf('main.c', 'hello 0\nhello 1\nhello 2\nhello 3\nhello 4\n')
 
   @requires_v8
-  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY=1')
+  @no_modularize_instance('MODULARIZE=instance is not compatible with ASYNCIFY=1')
   def test_async_hello_v8(self):
     self.test_async_hello()
 
-  @no_modularize_instance('ccall is not compatible with WASM_ESM_INTEGRATION')
+  @no_modularize_instance('ccall is not compatible with MODULARIZE=instance')
   def test_async_ccall_bad(self):
     # check bad ccall use
     # needs to flush stdio streams
@@ -8160,7 +8164,7 @@ Module.onRuntimeInitialized = () => {
     self.do_runf('main.c', 'The call to main is running asynchronously.')
 
   @with_asyncify_and_jspi
-  @no_modularize_instance('ccall is not compatible with WASM_ESM_INTEGRATION')
+  @no_modularize_instance('ccall is not compatible with MODULARIZE=instance')
   def test_async_ccall_good(self):
     # check reasonable ccall use
     self.set_setting('ASYNCIFY')
@@ -8189,7 +8193,7 @@ Module.onRuntimeInitialized = () => {
     'exit_runtime': (True,),
   })
   @with_asyncify_and_jspi
-  @no_modularize_instance('ccall is not compatible with WASM_ESM_INTEGRATION')
+  @no_modularize_instance('ccall is not compatible with MODULARIZE=instance')
   def test_async_ccall_promise(self, exit_runtime):
     if self.get_setting('ASYNCIFY') == 2:
       self.set_setting('JSPI_EXPORTS', ['stringf', 'floatf'])
@@ -8229,7 +8233,7 @@ Module.onRuntimeInitialized = () => {
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_runf('main.c', 'stringf: first\nsecond\n6.4')
 
-  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY=1')
+  @no_modularize_instance('MODULARIZE=instance is not compatible with ASYNCIFY=1')
   def test_fibers_asyncify(self):
     self.set_setting('ASYNCIFY')
     self.maybe_closure()
@@ -8240,7 +8244,7 @@ Module.onRuntimeInitialized = () => {
     # test a program not using asyncify, but the pref is set
     self.do_core_test('test_hello_world.c')
 
-  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY=1')
+  @no_modularize_instance('MODULARIZE=instance is not compatible with ASYNCIFY=1')
   @parameterized({
     'normal': ([], True),
     'removelist_a': (['-sASYNCIFY_REMOVE=["foo(int, double)"]'], False),
@@ -8288,7 +8292,7 @@ Module.onRuntimeInitialized = () => {
     # virt() manually, rather than have them inferred automatically.
     'add_no_prop': (['-sASYNCIFY_IGNORE_INDIRECT', '-sASYNCIFY_ADD=["__original_main","main","virt()"]', '-sASYNCIFY_PROPAGATE_ADD=0'], True),
   })
-  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY=1')
+  @no_modularize_instance('MODULARIZE=instance is not compatible with ASYNCIFY=1')
   def test_asyncify_indirect_lists(self, args, should_pass):
     self.set_setting('ASYNCIFY')
     self.emcc_args += args
@@ -8306,7 +8310,7 @@ Module.onRuntimeInitialized = () => {
         raise
 
   @with_dylink_reversed
-  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY=1')
+  @no_modularize_instance('MODULARIZE=instance is not compatible with ASYNCIFY=1')
   def test_asyncify_side_module(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('ASYNCIFY_IMPORTS', ['my_sleep'])
@@ -8336,12 +8340,12 @@ Module.onRuntimeInitialized = () => {
     ''', 'before sleep\n42\n42\nafter sleep\n', header='void my_sleep(int);', force_c=True)
 
   @no_asan('asyncify stack operations confuse asan')
-  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY=1')
+  @no_modularize_instance('MODULARIZE=instance is not compatible with ASYNCIFY=1')
   def test_emscripten_scan_registers(self):
     self.set_setting('ASYNCIFY')
     self.do_core_test('test_emscripten_scan_registers.cpp')
 
-  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY=1')
+  @no_modularize_instance('MODULARIZE=instance is not compatible with ASYNCIFY=1')
   def test_asyncify_assertions(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('ASYNCIFY_IMPORTS', ['suspend'])
@@ -8350,7 +8354,7 @@ Module.onRuntimeInitialized = () => {
 
   @no_lsan('leaks asyncify stack during exit')
   @no_asan('leaks asyncify stack during exit')
-  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY=1')
+  @no_modularize_instance('MODULARIZE=instance is not compatible with ASYNCIFY=1')
   def test_asyncify_during_exit(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('ASSERTIONS')
@@ -9540,7 +9544,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('test_stack_get_free.c')
 
   # Tests settings.ABORT_ON_WASM_EXCEPTIONS
-  @no_modularize_instance('ABORT_ON_WASM_EXCEPTIONS')
+  @no_modularize_instance('ccall is not compatible with MODULARIZE=instance')
   def test_abort_on_exceptions(self):
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
     self.set_setting('ALLOW_TABLE_GROWTH')
@@ -9549,7 +9553,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-lembind', '--post-js', test_file('core/test_abort_on_exceptions_post.js')]
     self.do_core_test('test_abort_on_exceptions.cpp', interleaved_output=False)
 
-  @no_modularize_instance('ABORT_ON_WASM_EXCEPTIONS')
+  @no_esm_integration('ABORT_ON_WASM_EXCEPTIONS is not compatible with WASM_ESM_INTEGRATION')
   def test_abort_on_exceptions_main(self):
     # The unhandled exception wrappers should not kick in for exceptions thrown during main
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
@@ -9563,7 +9567,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   @flaky('https://github.com/emscripten-core/emscripten/issues/20067')
-  @no_modularize_instance('ABORT_ON_WASM_EXCEPTIONS')
+  @no_esm_integration('ABORT_ON_WASM_EXCEPTIONS is not compatible with WASM_ESM_INTEGRATION')
   def test_abort_on_exceptions_pthreads(self):
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
     self.set_setting('PROXY_TO_PTHREAD')

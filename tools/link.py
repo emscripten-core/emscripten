@@ -171,6 +171,18 @@ def setup_environment_settings():
   settings.ENVIRONMENT_MAY_BE_NODE = not settings.ENVIRONMENT or 'node' in environments
   settings.ENVIRONMENT_MAY_BE_SHELL = not settings.ENVIRONMENT or 'shell' in environments
 
+  if not settings.ENVIRONMENT_MAY_BE_NODE:
+    if 'MIN_NODE_VERSION' in user_settings:
+      diagnostics.warning('unused-command-line-argument', 'ignoring MIN_NODE_VERSION because `node` environment is not enabled')
+    settings.MIN_NODE_VERSION = feature_matrix.UNSUPPORTED
+
+  if not (settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WEBVIEW):
+    for browser in ('FIREFOX', 'SAFARI', 'CHROME'):
+      key = f'MIN_{browser}_VERSION'
+      if key in user_settings:
+        diagnostics.warning('unused-command-line-argument', 'ignoring %s because `web` and `webview` environments are not enabled', key)
+      settings[key] = feature_matrix.UNSUPPORTED
+
   # The worker case also includes Node.js workers when pthreads are
   # enabled and Node.js is one of the supported environments for the build to
   # run on. Node.js workers are detected as a combination of
@@ -800,10 +812,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('WASM_ESM_INTEGRATION requires MODULARIZE=instance')
     if settings.RELOCATABLE:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with dynamic linking')
-    if settings.ASYNCIFY == 1:
-      exit_with_error('WASM_ESM_INTEGRATION is not compatible with -sASYNCIFY=1')
-    if settings.DYNCALLS:
-      exit_with_error('WASM_ESM_INTEGRATION is not compatible with DYNCALLS')
     if settings.WASM_WORKERS or settings.PTHREADS:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with multi-threading')
     if settings.USE_OFFSET_CONVERTER:
@@ -814,6 +822,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM2JS')
     if settings.MAYBE_WASM2JS:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with MAYBE_WASM2JS')
+    if settings.ABORT_ON_WASM_EXCEPTIONS:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with ABORT_ON_WASM_EXCEPTIONS')
 
   if settings.MODULARIZE and settings.MODULARIZE not in [1, 'instance']:
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
@@ -834,8 +844,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     diagnostics.warning('experimental', 'MODULARIZE=instance is still experimental. Many features may not work or will change.')
     if not settings.EXPORT_ES6:
       exit_with_error('MODULARIZE=instance requires EXPORT_ES6')
-    if settings.ABORT_ON_WASM_EXCEPTIONS:
-      exit_with_error('MODULARIZE=instance is not compatible with ABORT_ON_WASM_EXCEPTIONS')
+    if settings.ASYNCIFY == 1:
+      exit_with_error('MODULARIZE=instance is not compatible with -sASYNCIFY=1')
+    if settings.DYNCALLS:
+      exit_with_error('MODULARIZE=instance is not compatible with -sDYNCALLS')
     if settings.ASYNCIFY_LAZY_LOAD_CODE:
       exit_with_error('MODULARIZE=instance is not compatible with -sASYNCIFY_LAZY_LOAD_CODE')
     if settings.MINIMAL_RUNTIME:
@@ -2041,8 +2053,7 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
     dirname, basename = os.path.split(lib)
     if basename == 'libembind.js':
       settings.JS_LIBRARIES[i] = os.path.join(dirname, 'libembind_gen.js')
-  if settings.MEMORY64:
-    settings.MIN_NODE_VERSION = 160000
+  settings.MIN_NODE_VERSION = 160000 if settings.MEMORY64 else 150000
   # Source maps haven't been generated yet and aren't needed to run embind_gen.
   settings.LOAD_SOURCE_MAP = 0
   outfile_js = in_temp('tsgen.js')
