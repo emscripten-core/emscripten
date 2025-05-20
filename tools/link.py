@@ -810,6 +810,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM2JS')
     if settings.MAYBE_WASM2JS:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with MAYBE_WASM2JS')
+    if settings.ABORT_ON_WASM_EXCEPTIONS:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with ABORT_ON_WASM_EXCEPTIONS')
 
   if settings.MODULARIZE and settings.MODULARIZE not in [1, 'instance']:
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
@@ -830,8 +832,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     diagnostics.warning('experimental', 'MODULARIZE=instance is still experimental. Many features may not work or will change.')
     if not settings.EXPORT_ES6:
       exit_with_error('MODULARIZE=instance requires EXPORT_ES6')
-    if settings.ABORT_ON_WASM_EXCEPTIONS:
-      exit_with_error('MODULARIZE=instance is not compatible with ABORT_ON_WASM_EXCEPTIONS')
     if settings.ASYNCIFY == 1:
       exit_with_error('MODULARIZE=instance is not compatible with -sASYNCIFY=1')
     if settings.DYNCALLS:
