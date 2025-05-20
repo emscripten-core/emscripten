@@ -15940,6 +15940,14 @@ addToLibrary({
     err = self.expect_fail([EMCC, 'test.c'])
     self.assertContained('emcc: error: invalid export name: my.func', err)
 
+    # GCC (and clang) and JavaScript also allow $ in symbol names
+    create_file('valid.c', '''
+                #include <emscripten.h>
+                EMSCRIPTEN_KEEPALIVE
+                void my$func() {}
+                ''')
+    self.run_process([EMCC, 'valid.c'])
+
   @also_with_modularize
   def test_instantiate_wasm(self):
     create_file('pre.js', '''
@@ -16012,7 +16020,7 @@ addToLibrary({
     # Verify that `scriptDirectory` is an absolute path
     create_file('pre.js', '''
       Module['locateFile'] = (fileName, scriptDirectory) => {
-        assert(nodePath['isAbsolute'](scriptDirectory), `scriptDirectory (${scriptDirectory}) should be an absolute path`);
+        assert(require('path')['isAbsolute'](scriptDirectory), `scriptDirectory (${scriptDirectory}) should be an absolute path`);
         return scriptDirectory + fileName;
       };
       ''')
@@ -16026,7 +16034,7 @@ addToLibrary({
     # Verify that `scriptDirectory` is an absolute path when `EXPORT_ES6`
     create_file('pre.js', '''
       Module['locateFile'] = (fileName, scriptDirectory) => {
-        assert(nodePath['isAbsolute'](scriptDirectory), `scriptDirectory (${scriptDirectory}) should be an absolute path`);
+        assert(require('path')['isAbsolute'](scriptDirectory), `scriptDirectory (${scriptDirectory}) should be an absolute path`);
         return scriptDirectory + fileName;
       };
       ''')
@@ -16088,3 +16096,6 @@ addToLibrary({
       }
     ''')
     self.do_runf('main.c')
+
+  def test_getifaddrs(self):
+    self.do_other_test('test_getifaddrs.c')

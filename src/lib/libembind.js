@@ -8,7 +8,7 @@
 /*global Module, asm*/
 /*global _malloc, _free, _memcpy*/
 /*global FUNCTION_TABLE, HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32, HEAPF64*/
-/*global readLatin1String*/
+/*global AsciiToString*/
 /*global Emval, emval_handle_array, __emval_decref*/
 /*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 
@@ -229,9 +229,9 @@ var LibraryEmbind = {
     return sharedRegisterType(rawType, registeredInstance, options);
   },
 
-  _embind_register_void__deps: ['$readLatin1String', '$registerType'],
+  _embind_register_void__deps: ['$AsciiToString', '$registerType'],
   _embind_register_void: (rawType, name) => {
-    name = readLatin1String(name);
+    name = AsciiToString(name);
     registerType(rawType, {
       isVoid: true, // void return values can be optimized out sometimes
       name,
@@ -243,9 +243,9 @@ var LibraryEmbind = {
   },
 
   _embind_register_bool__docs: '/** @suppress {globalThis} */',
-  _embind_register_bool__deps: ['$readLatin1String', '$registerType', '$GenericWireTypeSize'],
+  _embind_register_bool__deps: ['$AsciiToString', '$registerType', '$GenericWireTypeSize'],
   _embind_register_bool: (rawType, name, trueValue, falseValue) => {
-    name = readLatin1String(name);
+    name = AsciiToString(name);
     registerType(rawType, {
         name,
         'fromWireType': function(wt) {
@@ -331,14 +331,14 @@ var LibraryEmbind = {
   // When converting a number from JS to C++ side, the valid range of the number is
   // [minRange, maxRange], inclusive.
   _embind_register_integer__deps: [
-    '$integerReadValueFromPointer', '$readLatin1String', '$registerType',
+    '$integerReadValueFromPointer', '$AsciiToString', '$registerType',
 #if ASSERTIONS
     '$embindRepr',
     '$assertIntegerRange',
 #endif
   ],
   _embind_register_integer: (primitiveType, name, size, minRange, maxRange) => {
-    name = readLatin1String(name);
+    name = AsciiToString(name);
 
     const isUnsignedType = minRange === 0;
 
@@ -372,14 +372,14 @@ var LibraryEmbind = {
 #if WASM_BIGINT
   _embind_register_bigint__docs: '/** @suppress {globalThis} */',
   _embind_register_bigint__deps: [
-    '$readLatin1String', '$registerType', '$integerReadValueFromPointer',
+    '$AsciiToString', '$registerType', '$integerReadValueFromPointer',
 #if ASSERTIONS
     '$embindRepr',
     '$assertIntegerRange',
 #endif
   ],
   _embind_register_bigint: (primitiveType, name, size, minRange, maxRange) => {
-    name = readLatin1String(name);
+    name = AsciiToString(name);
 
     const isUnsignedType = minRange === 0n;
 
@@ -426,13 +426,13 @@ var LibraryEmbind = {
 #endif
 
   _embind_register_float__deps: [
-    '$floatReadValueFromPointer', '$readLatin1String', '$registerType',
+    '$floatReadValueFromPointer', '$AsciiToString', '$registerType',
 #if ASSERTIONS
     '$embindRepr',
 #endif
   ],
   _embind_register_float: (rawType, name, size) => {
-    name = readLatin1String(name);
+    name = AsciiToString(name);
     registerType(rawType, {
       name,
       'fromWireType': (value) => value,
@@ -458,11 +458,11 @@ var LibraryEmbind = {
   },
 
   _embind_register_std_string__deps: [
-    '$readLatin1String', '$registerType',
+    '$AsciiToString', '$registerType',
     '$readPointer', '$throwBindingError',
     '$stringToUTF8', '$lengthBytesUTF8', 'malloc', 'free'],
   _embind_register_std_string: (rawType, name) => {
-    name = readLatin1String(name);
+    name = AsciiToString(name);
     var stdStringIsUTF8
 #if EMBIND_STD_STRING_IS_UTF8
     = true;
@@ -561,12 +561,12 @@ var LibraryEmbind = {
   },
 
   _embind_register_std_wstring__deps: [
-    '$readLatin1String', '$registerType', '$readPointer',
+    '$AsciiToString', '$registerType', '$readPointer',
     '$UTF16ToString', '$stringToUTF16', '$lengthBytesUTF16',
     '$UTF32ToString', '$stringToUTF32', '$lengthBytesUTF32',
     ],
   _embind_register_std_wstring: (rawType, charSize, name) => {
-    name = readLatin1String(name);
+    name = AsciiToString(name);
     var decodeString, encodeString, readCharAt, lengthBytesUTF;
     if (charSize === 2) {
       decodeString = UTF16ToString;
@@ -646,7 +646,7 @@ var LibraryEmbind = {
     registerType(rawOptionalType, EmValOptionalType);
   },
 
-  _embind_register_memory_view__deps: ['$readLatin1String', '$registerType'],
+  _embind_register_memory_view__deps: ['$AsciiToString', '$registerType'],
   _embind_register_memory_view: (rawType, dataTypeIndex, name) => {
     var typeMapping = [
       Int8Array,
@@ -671,7 +671,7 @@ var LibraryEmbind = {
       return new TA(HEAP8.buffer, data, size);
     }
 
-    name = readLatin1String(name);
+    name = AsciiToString(name);
     registerType(rawType, {
       name,
       'fromWireType': decodeMemoryView,
@@ -844,7 +844,7 @@ var LibraryEmbind = {
     return createNamedFunction(humanName, invokerFn);
   },
 
-  $embind__requireFunction__deps: ['$readLatin1String', '$throwBindingError'
+  $embind__requireFunction__deps: ['$AsciiToString', '$throwBindingError'
 #if DYNCALLS || !WASM_BIGINT || MEMORY64 || CAN_ADDRESS_2GB
     , '$getDynCaller'
 #endif
@@ -854,7 +854,7 @@ var LibraryEmbind = {
     assert(!isAsync, 'Async bindings are only supported with JSPI.');
 #endif
 
-    signature = readLatin1String(signature);
+    signature = AsciiToString(signature);
 
     function makeDynCaller() {
 #if DYNCALLS
@@ -889,11 +889,11 @@ var LibraryEmbind = {
 
   _embind_register_function__deps: [
     '$craftInvokerFunction', '$exposePublicSymbol', '$heap32VectorToArray',
-    '$readLatin1String', '$replacePublicSymbol', '$embind__requireFunction',
+    '$AsciiToString', '$replacePublicSymbol', '$embind__requireFunction',
     '$throwUnboundTypeError', '$whenDependentTypesAreResolved', '$getFunctionName'],
   _embind_register_function: (name, argCount, rawArgTypesAddr, signature, rawInvoker, fn, isAsync, isNonnullReturn) => {
     var argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
-    name = readLatin1String(name);
+    name = AsciiToString(name);
     name = getFunctionName(name);
 
     rawInvoker = embind__requireFunction(signature, rawInvoker, isAsync);
@@ -910,7 +910,7 @@ var LibraryEmbind = {
   },
 
   _embind_register_value_array__deps: [
-    '$tupleRegistrations', '$readLatin1String', '$embind__requireFunction'],
+    '$tupleRegistrations', '$AsciiToString', '$embind__requireFunction'],
   _embind_register_value_array: (
     rawType,
     name,
@@ -920,7 +920,7 @@ var LibraryEmbind = {
     rawDestructor
   ) => {
     tupleRegistrations[rawType] = {
-      name: readLatin1String(name),
+      name: AsciiToString(name),
       rawConstructor: embind__requireFunction(constructorSignature, rawConstructor),
       rawDestructor: embind__requireFunction(destructorSignature, rawDestructor),
       elements: [],
@@ -1011,7 +1011,7 @@ var LibraryEmbind = {
   },
 
   _embind_register_value_object__deps: [
-    '$structRegistrations', '$readLatin1String', '$embind__requireFunction'],
+    '$structRegistrations', '$AsciiToString', '$embind__requireFunction'],
   _embind_register_value_object: (
     rawType,
     name,
@@ -1021,7 +1021,7 @@ var LibraryEmbind = {
     rawDestructor
   ) => {
     structRegistrations[rawType] = {
-      name: readLatin1String(name),
+      name: AsciiToString(name),
       rawConstructor: embind__requireFunction(constructorSignature, rawConstructor),
       rawDestructor: embind__requireFunction(destructorSignature, rawDestructor),
       fields: [],
@@ -1029,7 +1029,7 @@ var LibraryEmbind = {
   },
 
   _embind_register_value_object_field__deps: [
-    '$structRegistrations', '$readLatin1String', '$embind__requireFunction'],
+    '$structRegistrations', '$AsciiToString', '$embind__requireFunction'],
   _embind_register_value_object_field: (
     structType,
     fieldName,
@@ -1043,7 +1043,7 @@ var LibraryEmbind = {
     setterContext
   ) => {
     structRegistrations[structType].fields.push({
-      fieldName: readLatin1String(fieldName),
+      fieldName: AsciiToString(fieldName),
       getterReturnType,
       getter: embind__requireFunction(getterSignature, getter),
       getterContext,
@@ -1687,7 +1687,7 @@ var LibraryEmbind = {
   _embind_register_class__deps: [
     '$BindingError', '$ClassHandle', '$createNamedFunction',
     '$registeredPointers', '$exposePublicSymbol',
-    '$makeLegalFunctionName', '$readLatin1String',
+    '$makeLegalFunctionName', '$AsciiToString',
     '$RegisteredClass', '$RegisteredPointer', '$replacePublicSymbol',
     '$embind__requireFunction', '$throwUnboundTypeError',
     '$whenDependentTypesAreResolved'],
@@ -1704,7 +1704,7 @@ var LibraryEmbind = {
                            name,
                            destructorSignature,
                            rawDestructor) => {
-    name = readLatin1String(name);
+    name = AsciiToString(name);
     getActualType = embind__requireFunction(getActualTypeSignature, getActualType);
     upcast &&= embind__requireFunction(upcastSignature, upcast);
     downcast &&= embind__requireFunction(downcastSignature, downcast);
@@ -1887,7 +1887,7 @@ var LibraryEmbind = {
   },
 
   _embind_register_class_function__deps: [
-    '$craftInvokerFunction', '$heap32VectorToArray', '$readLatin1String',
+    '$craftInvokerFunction', '$heap32VectorToArray', '$AsciiToString',
     '$embind__requireFunction', '$throwUnboundTypeError',
     '$whenDependentTypesAreResolved', '$getFunctionName'],
   _embind_register_class_function: (rawClassType,
@@ -1901,7 +1901,7 @@ var LibraryEmbind = {
                                     isAsync,
                                     isNonnullReturn) => {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
-    methodName = readLatin1String(methodName);
+    methodName = AsciiToString(methodName);
     methodName = getFunctionName(methodName);
     rawInvoker = embind__requireFunction(invokerSignature, rawInvoker, isAsync);
 
@@ -1958,7 +1958,7 @@ var LibraryEmbind = {
   },
 
   _embind_register_class_property__deps: [
-    '$readLatin1String', '$embind__requireFunction', '$runDestructors',
+    '$AsciiToString', '$embind__requireFunction', '$runDestructors',
     '$throwBindingError', '$throwUnboundTypeError',
     '$whenDependentTypesAreResolved', '$validateThis'],
   _embind_register_class_property: (classType,
@@ -1971,7 +1971,7 @@ var LibraryEmbind = {
                                     setterSignature,
                                     setter,
                                     setterContext) => {
-    fieldName = readLatin1String(fieldName);
+    fieldName = AsciiToString(fieldName);
     getter = embind__requireFunction(getterSignature, getter);
 
     whenDependentTypesAreResolved([], [classType], (classType) => {
@@ -2026,7 +2026,7 @@ var LibraryEmbind = {
 
   _embind_register_class_class_function__deps: [
     '$craftInvokerFunction', '$ensureOverloadTable', '$heap32VectorToArray',
-    '$readLatin1String', '$embind__requireFunction', '$throwUnboundTypeError',
+    '$AsciiToString', '$embind__requireFunction', '$throwUnboundTypeError',
     '$whenDependentTypesAreResolved', '$getFunctionName'],
   _embind_register_class_class_function: (rawClassType,
                                           methodName,
@@ -2038,7 +2038,7 @@ var LibraryEmbind = {
                                           isAsync,
                                           isNonnullReturn) => {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
-    methodName = readLatin1String(methodName);
+    methodName = AsciiToString(methodName);
     methodName = getFunctionName(methodName);
     rawInvoker = embind__requireFunction(invokerSignature, rawInvoker, isAsync);
     whenDependentTypesAreResolved([], [rawClassType], (classType) => {
@@ -2094,7 +2094,7 @@ var LibraryEmbind = {
   },
 
   _embind_register_class_class_property__deps: [
-    '$readLatin1String', '$embind__requireFunction', '$runDestructors',
+    '$AsciiToString', '$embind__requireFunction', '$runDestructors',
     '$throwBindingError', '$throwUnboundTypeError',
     '$whenDependentTypesAreResolved'],
   _embind_register_class_class_property: (rawClassType,
@@ -2105,7 +2105,7 @@ var LibraryEmbind = {
                                           getter,
                                           setterSignature,
                                           setter) => {
-    fieldName = readLatin1String(fieldName);
+    fieldName = AsciiToString(fieldName);
     getter = embind__requireFunction(getterSignature, getter);
 
     whenDependentTypesAreResolved([], [rawClassType], (classType) => {
@@ -2158,12 +2158,12 @@ var LibraryEmbind = {
 
   _embind_create_inheriting_constructor__deps: [
     '$createNamedFunction', '$Emval',
-    '$PureVirtualError', '$readLatin1String',
+    '$PureVirtualError', '$AsciiToString',
     '$registerInheritedInstance',
     '$requireRegisteredType', '$throwBindingError',
     '$unregisterInheritedInstance', '$detachFinalizer', '$attachFinalizer'],
   _embind_create_inheriting_constructor: (constructorName, wrapperType, properties) => {
-    constructorName = readLatin1String(constructorName);
+    constructorName = AsciiToString(constructorName);
     wrapperType = requireRegisteredType(wrapperType, 'wrapper');
     properties = Emval.toValue(properties);
 
@@ -2246,7 +2246,7 @@ var LibraryEmbind = {
                                rawShare,
                                destructorSignature,
                                rawDestructor) => {
-    name = readLatin1String(name);
+    name = AsciiToString(name);
     rawGetPointee = embind__requireFunction(getPointeeSignature, rawGetPointee);
     rawConstructor = embind__requireFunction(constructorSignature, rawConstructor);
     rawShare = embind__requireFunction(shareSignature, rawShare);
@@ -2273,9 +2273,9 @@ var LibraryEmbind = {
 
   _embind_register_enum__docs: '/** @suppress {globalThis} */',
   _embind_register_enum__deps: ['$exposePublicSymbol', '$enumReadValueFromPointer',
-    '$readLatin1String', '$registerType'],
+    '$AsciiToString', '$registerType'],
   _embind_register_enum: (rawType, name, size, isSigned) => {
-    name = readLatin1String(name);
+    name = AsciiToString(name);
 
     function ctor() {}
     ctor.values = {};
@@ -2294,10 +2294,10 @@ var LibraryEmbind = {
     exposePublicSymbol(name, ctor);
   },
 
-  _embind_register_enum_value__deps: ['$createNamedFunction', '$readLatin1String', '$requireRegisteredType'],
+  _embind_register_enum_value__deps: ['$createNamedFunction', '$AsciiToString', '$requireRegisteredType'],
   _embind_register_enum_value: (rawEnumType, name, enumValue) => {
     var enumType = requireRegisteredType(rawEnumType, 'enum');
-    name = readLatin1String(name);
+    name = AsciiToString(name);
 
     var Enum = enumType.constructor;
 
@@ -2309,9 +2309,9 @@ var LibraryEmbind = {
     Enum[name] = Value;
   },
 
-  _embind_register_constant__deps: ['$readLatin1String', '$whenDependentTypesAreResolved'],
+  _embind_register_constant__deps: ['$AsciiToString', '$whenDependentTypesAreResolved'],
   _embind_register_constant: (name, type, value) => {
-    name = readLatin1String(name);
+    name = AsciiToString(name);
     whenDependentTypesAreResolved([], [type], (type) => {
       type = type[0];
       Module[name] = type['fromWireType'](value);
