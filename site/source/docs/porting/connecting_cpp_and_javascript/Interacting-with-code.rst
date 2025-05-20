@@ -364,7 +364,7 @@ used in many of Emscripten's libraries, like SDL1 and OpenGL.
 
 You can use it to write your own APIs to call from C/C++. To do this you define
 the interface, decorating with ``extern`` to mark the methods in the API as
-external symbols. You can them implement the symbols in JavaScript by simply
+external symbols. You can then implement the symbols in JavaScript by simply
 adding their definition to one of the `core JS library`_ files.  Undefined 
 native symbols will be resolved by looking for them in JavaScript library files.
 
