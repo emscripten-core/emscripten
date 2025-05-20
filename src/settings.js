@@ -573,9 +573,9 @@ var GL_FFP_ONLY = false;
 var GL_PREINITIALIZED_CONTEXT = false;
 
 // Enables the built-in implementation of ``<webgpu/webgpu.h>``.
-// Deprecated: Please try migrating to ``--use-port=contrib.emdawnwebgpu``,
+// Deprecated: Please try migrating to ``--use-port=emdawnwebgpu``,
 // which implements a newer, incompatible version of webgpu.h (see
-// tools/ports/contrib/emdawnwebgpu.py for more info).
+// tools/ports/emdawnwebgpu.py for more info).
 // [link]
 // [deprecated]
 var USE_WEBGPU = false;
