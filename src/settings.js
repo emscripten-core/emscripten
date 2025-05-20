@@ -913,6 +913,7 @@ var ASYNCIFY_ADVISE = false;
 // Allows lazy code loading: where emscripten_lazy_load_code() is written, we
 // will pause execution, load the rest of the code, and then resume.
 // [link]
+// [deprecated]
 var ASYNCIFY_LAZY_LOAD_CODE = false;
 
 // Runtime debug logging from asyncify internals.
