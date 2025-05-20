@@ -1729,13 +1729,25 @@ addToLibrary({
   },
 
 #if DYNCALLS || !WASM_BIGINT
-  $dynCalls__internal: true,
-  $dynCalls: {},
-  $dynCallLegacy__deps: ['$dynCalls'],
+#if MINIMAL_RUNTIME
+  $dynCalls: '{}',
+#endif
+  $dynCallLegacy__deps: [
+#if MINIMAL_RUNTIME
+    '$dynCalls',
+#endif
+#if MODULARIZE == 'instance'
+    () => error('dynCallLegacy is not yet compatible with MODULARIZE=instance'),
+#endif
+  ],
   $dynCallLegacy: (sig, ptr, args) => {
     sig = sig.replace(/p/g, {{{ MEMORY64 ? "'j'" : "'i'" }}})
 #if ASSERTIONS
+#if MINIMAL_RUNTIME
     assert(sig in dynCalls, `bad function pointer type - sig is not in dynCalls: '${sig}'`);
+#else
+    assert(('dynCall_' + sig) in Module, `bad function pointer type - dynCall function not found for sig '${sig}'`);
+#endif
     if (args?.length) {
 #if WASM_BIGINT
       // j (64-bit integer) is fine, and is implemented as a BigInt. Without
@@ -1750,7 +1762,11 @@ addToLibrary({
       assert(sig.length == 1);
     }
 #endif
+#if MINIMAL_RUNTIME
     var f = dynCalls[sig];
+#else
+    var f = Module['dynCall_' + sig];
+#endif
     return f(ptr, ...args);
   },
 #if DYNCALLS
