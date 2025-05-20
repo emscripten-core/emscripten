@@ -20,8 +20,13 @@ See docs/process.md for more on how version tagging works.
 
 4.0.10 (in development)
 ----------------------
-- `-sUSE_WEBGPU` was deprecated in favor of the external fork Emdawnwebgpu,
-  which has been added as a contrib port: `--use-port=contrib.emdawnwebgpu`.
+- `-sUSE_WEBGPU` was deprecated in favor of the external port Emdawnwebgpu, a
+  fork of Emscripten's original bindings, implementing a newer, more stable
+  version of the standardized `webgpu.h` interface. Please try migrating using
+  `--use-port=contrib.emdawnwebgpu`. If you find issues, verify in the [latest
+  nightly release](https://github.com/google/dawn/releases) and file feedback
+  with Dawn. (Emdawnwebgpu is maintained as part of Dawn, the open-source
+  WebGPU implementation used by Chromium, but it is still cross-browser.)
 
 4.0.9 - 05/19/25
 ----------------
