@@ -2322,10 +2322,6 @@ def phase_binaryen(target, options, wasm_target):
   # after generating the wasm, do some final operations
 
   if final_js:
-    if settings.SUPPORT_BIG_ENDIAN:
-      with ToolchainProfiler.profile_block('little_endian_heap'):
-        final_js = building.little_endian_heap(final_js)
-
     # >=2GB heap support requires pointers in JS to be unsigned. rather than
     # require all pointers to be unsigned by default, which increases code size
     # a little, keep them signed, and just unsign them here if we need that.
@@ -2333,20 +2329,26 @@ def phase_binaryen(target, options, wasm_target):
       with ToolchainProfiler.profile_block('use_unsigned_pointers_in_js'):
         final_js = building.use_unsigned_pointers_in_js(final_js)
 
-    # shared memory growth requires some additional JS fixups.
-    # note that we must do this after handling of unsigned pointers. unsigning
-    # adds some >>> 0 things, while growth will replace a HEAP8 with a call to
-    # a method to get the heap, and that call would not be recognized by the
-    # unsigning pass
-    if settings.SHARED_MEMORY and settings.ALLOW_MEMORY_GROWTH:
-      with ToolchainProfiler.profile_block('apply_wasm_memory_growth'):
-        final_js = building.apply_wasm_memory_growth(final_js)
-
     if settings.USE_ASAN:
       final_js = building.instrument_js_for_asan(final_js)
 
     if settings.SAFE_HEAP:
       final_js = building.instrument_js_for_safe_heap(final_js)
+
+    # shared memory growth requires some additional JS fixups.
+    # note that we must do this after handling of unsigned pointers. unsigning
+    # adds some >>> 0 things, while growth will replace a HEAP8 with a call to
+    # a method to get the heap, and that call would not be recognized by the
+    # unsigning pass.
+    # we also must do this after the asan or safe_heap instrumentation, as they
+    # wouldn't be able to recognize patterns produced by the growth pass.
+    if settings.SHARED_MEMORY and settings.ALLOW_MEMORY_GROWTH:
+      with ToolchainProfiler.profile_block('apply_wasm_memory_growth'):
+        final_js = building.apply_wasm_memory_growth(final_js)
+
+    if settings.SUPPORT_BIG_ENDIAN:
+      with ToolchainProfiler.profile_block('little_endian_heap'):
+        final_js = building.little_endian_heap(final_js)
 
     if settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL <= 2:
       # minify the JS. Do not minify whitespace if Closure is used, so that

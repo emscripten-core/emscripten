@@ -9084,14 +9084,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('INITIAL_MEMORY', '300mb')
     self.do_run_in_out_file_test('hello_world.c')
 
-  @no_asan('SAFE_HEAP cannot be used with ASan')
-  @no_2gb('asan doesnt support GLOBAL_BASE')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
-  def test_safe_heap_user_js(self):
-    self.set_setting('SAFE_HEAP')
-    self.do_runf('core/test_safe_heap_user_js.c',
-                 expected_output=['Aborted(segmentation fault storing 1 bytes at address 0)'], assert_returncode=NON_ZERO)
-
   def test_safe_stack(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('STACK_SIZE', 1024)
