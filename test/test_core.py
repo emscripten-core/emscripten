@@ -9724,6 +9724,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'pthreads': (['-pthread'],),
   })
   def test_modularize_instance(self, args):
+    if self.get_setting('WASM_ESM_INTEGRATION') and '-pthread' in args:
+      self.skipTest('pthread is not compatible with WASM_ESM_INTEGRATION')
     create_file('library.js', '''\
     addToLibrary({
       $baz: () => console.log('baz'),
@@ -9735,7 +9737,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
                       '-sEXPORTED_RUNTIME_METHODS=baz,addOnExit,HEAP32',
                       '-sEXPORTED_FUNCTIONS=_bar,_main,qux',
                       '--js-library', 'library.js',
-                      '-o', 'modularize_instance.mjs'] + args)
+                      '-o', 'modularize_instance.mjs'] + args + self.get_emcc_args())
 
     create_file('runner.mjs', '''
       import { strict as assert } from 'assert';
