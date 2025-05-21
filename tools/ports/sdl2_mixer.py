@@ -36,8 +36,6 @@ def get_lib_name(settings):
 
 
 def get(ports, settings, shared):
-  sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
-  assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_mixer'
   ports.fetch_project('sdl2_mixer', f'https://github.com/libsdl-org/SDL_mixer/archive/{TAG}.zip', sha512hash=HASH)
   libname = get_lib_name(settings)
 
@@ -75,7 +73,6 @@ def get(ports, settings, shared):
     if settings.PTHREADS:
       flags.append('-pthread')
 
-    build_dir = ports.clear_project_build('sdl2_mixer')
     include_path = os.path.join(source_path, 'include')
     includes = [
       include_path,
@@ -85,7 +82,7 @@ def get(ports, settings, shared):
     ports.build_port(
       source_path,
       final,
-      build_dir,
+      'sdl2_mixer',
       flags=flags,
       exclude_files=[
         'playmus.c',

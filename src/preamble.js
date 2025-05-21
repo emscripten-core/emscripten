@@ -578,13 +578,12 @@ function resetPrototype(constructor, attrs) {
 #endif
 
 #if !SOURCE_PHASE_IMPORTS
-#if SINGLE_FILE
-// In SINGLE_FILE mode the wasm binary is encoded inline here as a data: URL.
-var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
-#else
 var wasmBinaryFile;
 
 function findWasmBinary() {
+#if SINGLE_FILE && WASM == 1 && !WASM2JS
+  return base64Decode('<<< WASM_BINARY_DATA >>>');
+#else
 #if EXPORT_ES6 && !AUDIO_WORKLET
   if (Module['locateFile']) {
 #endif
@@ -599,17 +598,18 @@ function findWasmBinary() {
   // Use bundler-friendly `new URL(..., import.meta.url)` pattern; works in browsers too.
   return new URL('{{{ WASM_BINARY_FILE }}}', import.meta.url).href;
 #endif
-}
 #endif
+}
 
 function getBinarySync(file) {
+#if SINGLE_FILE && WASM == 1 && !WASM2JS
+  if (ArrayBuffer.isView(file)) {
+    return file;
+  }
+#endif
+#if expectToReceiveOnModule('wasmBinary') || MAYBE_WASM2JS
   if (file == wasmBinaryFile && wasmBinary) {
     return new Uint8Array(wasmBinary);
-  }
-#if SUPPORT_BASE64_EMBEDDING
-  var binary = tryParseAsDataURI(file);
-  if (binary) {
-    return binary;
   }
 #endif
   if (readBinary) {
@@ -1024,9 +1024,7 @@ function getWasmImports() {
   var exports = receiveInstantiationResult({instance, 'module':wasmModule});
   return exports;
 #else
-#if !SINGLE_FILE
   wasmBinaryFile ??= findWasmBinary();
-#endif
 #if WASM_ASYNC_COMPILATION
 #if RUNTIME_DEBUG
   dbg('asynchronously preparing wasm');

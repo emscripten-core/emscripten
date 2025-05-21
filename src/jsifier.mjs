@@ -45,6 +45,10 @@ const addedLibraryItems = {};
 
 const extraLibraryFuncs = [];
 
+// Experimental feature to check for invalid __deps entries.
+// See `EMCC_CHECK_DEPS` in in the environment to try it out.
+const CHECK_DEPS = process.env.EMCC_CHECK_DEPS;
+
 // Some JS-implemented library functions are proxied to be called on the main
 // browser thread, if the Emscripten runtime is executing in a Web Worker.
 // Each such proxied function is identified via an ordinal number (this is not
@@ -182,6 +186,60 @@ function preJS() {
     result += getIncludeFile(fileName);
   }
   return result;
+}
+
+// Certain library functions have specific indirect dependencies.  See the
+// comments alongside eaach of these.
+const checkDependenciesSkip = new Set([
+  '_mmap_js',
+  '_emscripten_throw_longjmp',
+  '_emscripten_receive_on_main_thread_js',
+  'emscripten_start_fetch',
+  'emscripten_start_wasm_audio_worklet_thread_async',
+]);
+
+const checkDependenciesIgnore = new Set([
+  // These are added in bulk to whole library files are so are not precise
+  '$PThread',
+  '$WebGPU',
+  '$SDL',
+  '$GLUT',
+  '$GLEW',
+  '$Browser',
+  '$AL',
+  '$GL',
+  '$IDBStore',
+  // These are added purely for their side effects
+  '$polyfillWaitAsync',
+  '$GLImmediateSetup',
+  '$emscriptenGetAudioObject',
+  // These get conservatively injected via i53ConversionDeps
+  '$bigintToI53Checked',
+  '$convertI32PairToI53Checked',
+  'setTempRet0',
+]);
+
+/**
+ * Hacky attempt to find unused `__deps` entries.  This is not enabled by default
+ * but can be enabled by setting CHECK_DEPS above.
+ * TODO: Use a more precise method such as tokenising using acorn.
+ */
+function checkDependencies(symbol, snippet, deps, postset) {
+  if (checkDependenciesSkip.has(symbol)) {
+    return;
+  }
+  for (const dep of deps) {
+    if (typeof dep === 'function') {
+      continue;
+    }
+    if (checkDependenciesIgnore.has(dep)) {
+      continue;
+    }
+    const mangled = mangleCSymbolName(dep);
+    if (!snippet.includes(mangled) && (!postset || !postset.includes(mangled))) {
+      error(`${symbol}: unused dependency: ${dep}`);
+    }
+  }
 }
 
 function addImplicitDeps(snippet, deps) {
@@ -576,6 +634,18 @@ function(${args}) {
       let isFunction = false;
       let aliasTarget;
 
+      const postsetId = symbol + '__postset';
+      const postset = LibraryManager.library[postsetId];
+      if (postset) {
+        // A postset is either code to run right now, or some text we should emit.
+        // If it's code, it may return some text to emit as well.
+        const postsetString = typeof postset == 'function' ? postset() : postset;
+        if (postsetString && !addedLibraryItems[postsetId]) {
+          addedLibraryItems[postsetId] = true;
+          postSets.push(postsetString + ';');
+        }
+      }
+
       if (typeof snippet == 'string') {
         if (snippet[0] != '=') {
           if (LibraryManager.library[snippet]) {
@@ -594,19 +664,8 @@ function(${args}) {
         isFunction = true;
         snippet = processLibraryFunction(snippet, symbol, mangled, deps, isStub);
         addImplicitDeps(snippet, deps);
-      }
-
-      const postsetId = symbol + '__postset';
-      let postset = LibraryManager.library[postsetId];
-      if (postset) {
-        // A postset is either code to run right now, or some text we should emit.
-        // If it's code, it may return some text to emit as well.
-        if (typeof postset == 'function') {
-          postset = postset();
-        }
-        if (postset && !addedLibraryItems[postsetId]) {
-          addedLibraryItems[postsetId] = true;
-          postSets.push(postset + ';');
+        if (CHECK_DEPS && !isUserSymbol) {
+          checkDependencies(symbol, snippet, deps, postset?.toString());
         }
       }
 
