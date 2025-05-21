@@ -9178,10 +9178,10 @@ int main() {
                                      test_file('other/test_unoptimized_code_size_strict.js.size'),
                                      os.path.getsize('strict.js'))
 
-  def run_codesize_test(self, filename, emcc_args, check_funcs=True):
+  def run_codesize_test(self, filename, emcc_args, check_funcs=True, check_full_js=False):
 
     # in -Os, -Oz, we remove imports wasm doesn't need
-    print('Running codesize test: %s:' % filename, emcc_args, check_funcs)
+    print('Running codesize test: %s:' % filename, emcc_args, check_funcs, check_full_js)
     filename = test_file('other/codesize', filename)
     expected_basename = test_file('other/codesize', self.id().split('.')[-1])
 
@@ -9192,6 +9192,8 @@ int main() {
     # TODO(sbc): Find a way to do that that doesn't depend on internal details of
     # the generated code.
     js = read_file('a.out.js')
+    if check_full_js:
+      self.assertFileContents(expected_basename + '.expected.js', js)
     start = js.find('wasmImports = ')
     self.assertNotEqual(start, -1)
     end = js.find('}', start)
@@ -9271,7 +9273,7 @@ int main() {
       self.assertFileContents(filename, data)
 
   @parameterized({
-    'O0': ([],),
+    'O0': ([], True),
     'O1': (['-O1'],),
     'O2': (['-O2'],),
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
@@ -9286,10 +9288,10 @@ int main() {
     'wasmfs': (['-Oz', '-sWASMFS'],),
     'esm': (['-Oz', '-sEXPORT_ES6'],),
   })
-  def test_codesize_minimal(self, args):
+  def test_codesize_minimal(self, args, check_full_js=False):
     self.set_setting('STRICT')
     self.emcc_args.append('--no-entry')
-    self.run_codesize_test('minimal.c', args)
+    self.run_codesize_test('minimal.c', args, check_full_js=check_full_js)
 
   @node_pthreads
   @parameterized({
