@@ -18,9 +18,16 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.9 (in development)
+4.0.10 (in development)
 ----------------------
 - compiler-rt was updated to LLVM 20.1.4. (#24357)
+- libcxx and libcxxabi were updated to LLVM 20.1.4. (#24346)
+- The `-sASYNCIFY_LAZY_LOAD_CODE` setting was deprecated.  This setting was
+  added as an experiment a long time ago and as far we know has no active users.
+  In addition, it cannot work with JSPI (the future of ASYNCIFY). (#24383)
+
+4.0.9 - 05/19/25
+----------------
 - libunwind was updated to LLVM 20.1.4. (#24251)
 - When using cmake the EMSCRIPTEN_FORCE_COMPILERS setting was reverted to
   being on by default due to issues that were found with disabling it. (#24223)

@@ -2592,6 +2592,10 @@ F1 -> ''
     # with a different contrib port when there is another one
     self.emcc(test_file('other/test_contrib_ports.cpp'), ['--use-port=contrib.glfw3'])
 
+  @requires_network
+  def test_remote_ports(self):
+    self.emcc(test_file('hello_world.c'), ['--use-port=contrib.emdawnwebgpu'])
+
   @crossplatform
   def test_external_ports_simple(self):
     if config.FROZEN_CACHE:
@@ -9174,21 +9178,22 @@ int main() {
                                      test_file('other/test_unoptimized_code_size_strict.js.size'),
                                      os.path.getsize('strict.js'))
 
-  def run_codesize_test(self, filename, args=[], expected_exists=[], expected_not_exists=[],  # noqa
-                        check_funcs=True):
+  def run_codesize_test(self, filename, emcc_args, check_funcs=True, check_full_js=False):
 
     # in -Os, -Oz, we remove imports wasm doesn't need
-    print('Running metadce test: %s:' % filename, args, expected_exists, expected_not_exists, check_funcs)
+    print('Running codesize test: %s:' % filename, emcc_args, check_funcs, check_full_js)
     filename = test_file('other/codesize', filename)
     expected_basename = test_file('other/codesize', self.id().split('.')[-1])
 
     # Run once without closure and parse output to find wasmImports
-    build_cmd = [compiler_for(filename), filename, '--output-eol=linux', '--emit-minification-map=minify.map'] + args + self.get_emcc_args()
+    build_cmd = [compiler_for(filename), filename, '--output-eol=linux', '--emit-minification-map=minify.map'] + emcc_args + self.get_emcc_args()
     self.run_process(build_cmd + ['-g2'])
     # find the imports we send from JS
     # TODO(sbc): Find a way to do that that doesn't depend on internal details of
     # the generated code.
     js = read_file('a.out.js')
+    if check_full_js:
+      self.assertFileContents(expected_basename + '.expected.js', js)
     start = js.find('wasmImports = ')
     self.assertNotEqual(start, -1)
     end = js.find('}', start)
@@ -9209,11 +9214,6 @@ int main() {
 
     self.run_process(build_cmd + ['--profiling-funcs', '--closure=1'])
 
-    for exists in expected_exists:
-      self.assertIn(exists, sent)
-    for not_exists in expected_not_exists:
-      self.assertNotIn(not_exists, sent)
-
     js_size = os.path.getsize('a.out.js')
     gz_size = get_file_gzipped_size('a.out.js')
     js_size_file = expected_basename + '.jssize'
@@ -9221,7 +9221,7 @@ int main() {
     self.check_expected_size_in_file('js', js_size_file, js_size)
     self.check_expected_size_in_file('gz', gz_size_file, gz_size)
 
-    if '-sSINGLE_FILE' in args:
+    if '-sSINGLE_FILE' in emcc_args:
       # No wasm file in the final output so we skip the rest of the
       # testing
       return
@@ -9273,25 +9273,25 @@ int main() {
       self.assertFileContents(filename, data)
 
   @parameterized({
-    'O0': ([],      [], ['waka']), # noqa
-    'O1': (['-O1'], [], ['waka']), # noqa
-    'O2': (['-O2'], [], ['waka']), # noqa
+    'O0': ([], True),
+    'O1': (['-O1'],),
+    'O2': (['-O2'],),
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-    'O3': (['-O3'], [], []), # noqa
-    'Os': (['-Os'], [], []), # noqa
-    'Oz': (['-Oz'], [], []), # noqa
-    'Os_mr': (['-Os', '-sMINIMAL_RUNTIME'], [], [], 74), # noqa
+    'O3': (['-O3'],), # noqa
+    'Os': (['-Os'],), # noqa
+    'Oz': (['-Oz'],), # noqa
+    'Os_mr': (['-Os', '-sMINIMAL_RUNTIME'],),
     # EVAL_CTORS also removes the __wasm_call_ctors function
-    'Oz-ctors': (['-Oz', '-sEVAL_CTORS'], [], []), # noqa
-    '64': (['-Oz', '-sMEMORY64'], [], []), # noqa
+    'Oz-ctors': (['-Oz', '-sEVAL_CTORS'],),
+    '64': (['-Oz', '-sMEMORY64'],),
     # WasmFS should not be fully linked into a minimal program.
-    'wasmfs': (['-Oz', '-sWASMFS'], [], []), # noqa
-    'esm': (['-Oz', '-sEXPORT_ES6'], [], []), # noqa
+    'wasmfs': (['-Oz', '-sWASMFS'],),
+    'esm': (['-Oz', '-sEXPORT_ES6'],),
   })
-  def test_codesize_minimal(self, *args):
+  def test_codesize_minimal(self, args, check_full_js=False):
     self.set_setting('STRICT')
     self.emcc_args.append('--no-entry')
-    self.run_codesize_test('minimal.c', *args)
+    self.run_codesize_test('minimal.c', args, check_full_js=check_full_js)
 
   @node_pthreads
   @parameterized({
@@ -9302,88 +9302,80 @@ int main() {
     self.run_codesize_test('minimal_main.c', ['-Oz', '-pthread', '-sPROXY_TO_PTHREAD', '-sSTRICT'] + args)
 
   @parameterized({
-    'noexcept': (['-O2'],                    [], ['waka']), # noqa
+    'noexcept': (['-O2'],), # noqa
     # exceptions increases code size significantly
-    'except':   (['-O2', '-fexceptions'],    [], ['waka']), # noqa
+    'except':   (['-O2', '-fexceptions'],), # noqa
     # exceptions does not pull in demangling by default, which increases code size
-    'mangle':   (['-O2', '-fexceptions',
-                  '-sEXPORTED_FUNCTIONS=_main,_free,___cxa_demangle', '-Wno-deprecated'], [], ['waka']), # noqa
+    'mangle':   (['-O2', '-fexceptions', '-sEXPORTED_FUNCTIONS=_main,_free,___cxa_demangle', '-Wno-deprecated'],), # noqa
     # Wasm EH's code size increase is smaller than that of Emscripten EH
-    'except_wasm':   (['-O2', '-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0'], [], ['waka']),
-    'except_wasm_legacy':   (['-O2', '-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS'], [], ['waka']),
+    'except_wasm': (['-O2', '-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0'],),
+    'except_wasm_legacy': (['-O2', '-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS'],),
     # eval_ctors 1 can partially optimize, but runs into getenv() for locale
     # code. mode 2 ignores those and fully optimizes out the ctors
-    'ctors1':    (['-O2', '-sEVAL_CTORS'],   [], ['waka']),
-    'ctors2':    (['-O2', '-sEVAL_CTORS=2'], [], ['waka']),
-    'wasmfs':    (['-O2', '-sWASMFS'],       [], ['waka']),
-    'lto':       (['-Oz', '-flto'],          [], ['waka']),
+    'ctors1':    (['-O2', '-sEVAL_CTORS'],),
+    'ctors2':    (['-O2', '-sEVAL_CTORS=2'],),
+    'wasmfs':    (['-O2', '-sWASMFS'],),
+    'lto':       (['-Oz', '-flto'],),
   })
-  def test_codesize_cxx(self, *args):
+  def test_codesize_cxx(self, args):
     # do not check functions in this test as there are a lot of libc++ functions
     # pulled in here, and small LLVM backend changes can affect their size and
     # lead to different inlining decisions which add or remove a function
-    self.run_codesize_test('hello_libcxx.cpp', *args, check_funcs=False)
+    self.run_codesize_test('hello_libcxx.cpp', args, check_funcs=False)
 
   @parameterized({
-    'O0': ([],      [], ['waka']),
-    'O1': (['-O1'], [], ['waka']),
-    'O2': (['-O2'], [], ['waka']),
-    'O3': (['-O3'], [], []), # in -O3, -Os and -Oz we metadce
-    'Os': (['-Os'], [], []),
-    'Oz': (['-Oz'], [], []),
+    'O0': ([],),
+    'O1': (['-O1'],),
+    'O2': (['-O2'],),
+    'O3': (['-O3'],), # in -O3, -Os and -Oz we metadce
+    'Os': (['-Os'],),
+    'Oz': (['-Oz'],),
     # finally, check what happens when we export nothing. wasm should be almost empty
-    'export_nothing': (['-Os', '-sEXPORTED_FUNCTIONS=[]'], [], []),
+    'export_nothing': (['-Os', '-sEXPORTED_FUNCTIONS=[]'],),
     # we don't metadce with linkable code! other modules may want stuff
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'dylink': (['-O3', '-sMAIN_MODULE=2'], [], []),
+    'dylink': (['-O3', '-sMAIN_MODULE=2'],),
     # WasmFS should not be fully linked into a hello world program.
-    'wasmfs': (['-O3', '-sWASMFS'], [], []),
-    'single_file': (['-O3', '-sSINGLE_FILE'], [], []), # noqa
+    'wasmfs': (['-O3', '-sWASMFS'],),
+    'single_file': (['-O3', '-sSINGLE_FILE'],), # noqa
   })
-  def test_codesize_hello(self, *args):
-    self.run_codesize_test('hello_world.c', *args)
+  def test_codesize_hello(self, args):
+    self.run_codesize_test('hello_world.c', args)
 
   @parameterized({
-    'O3':                 ('mem.c', ['-O3'],
-                           [], []),         # noqa
+    'O3':                 ('mem.c', ['-O3']),
     # argc/argv support code etc. is in the wasm
-    'O3_standalone':      ('mem.c', ['-O3', '-sSTANDALONE_WASM'],
-                           [], []),         # noqa
+    'O3_standalone':      ('mem.c', ['-O3', '-sSTANDALONE_WASM']),
     # without argc/argv, no support code for them is emitted
-    'O3_standalone_narg': ('mem_no_argv.c', ['-O3', '-sSTANDALONE_WASM'],
-                           [], []),         # noqa
+    'O3_standalone_narg': ('mem_no_argv.c', ['-O3', '-sSTANDALONE_WASM']),
     # without main, no support code for argc/argv is emitted either
-    'O3_standalone_lib':  ('mem_no_main.c', ['-O3', '-sSTANDALONE_WASM', '--no-entry'],
-                           [], []),         # noqa
+    'O3_standalone_lib':  ('mem_no_main.c', ['-O3', '-sSTANDALONE_WASM', '--no-entry']),
     # Growth support code is in JS, no significant change in the wasm
-    'O3_grow':            ('mem.c', ['-O3', '-sALLOW_MEMORY_GROWTH'],
-                           [], []),         # noqa
+    'O3_grow':            ('mem.c', ['-O3', '-sALLOW_MEMORY_GROWTH']),
     # Growth support code is in the wasm
-    'O3_grow_standalone': ('mem.c', ['-O3', '-sALLOW_MEMORY_GROWTH', '-sSTANDALONE_WASM'],
-                           [], []),         # noqa
+    'O3_grow_standalone': ('mem.c', ['-O3', '-sALLOW_MEMORY_GROWTH', '-sSTANDALONE_WASM']),
     # without argc/argv, no support code for them is emitted, even with lto
     'O3_standalone_narg_flto':
-                          ('mem_no_argv.c', ['-O3', '-sSTANDALONE_WASM', '-flto'],
-                           [], []),         # noqa
+                          ('mem_no_argv.c', ['-O3', '-sSTANDALONE_WASM', '-flto']),         # noqa
   })
-  def test_codesize_mem(self, filename, *args):
-    self.run_codesize_test(filename, *args)
+  def test_codesize_mem(self, filename, args):
+    self.run_codesize_test(filename, args)
 
   @parameterized({
-    'O3':            (['-O3'],                      [], []), # noqa
+    'O3':            (['-O3'],),
     # argc/argv support code etc. is in the wasm
-    'O3_standalone': (['-O3', '-sSTANDALONE_WASM'], [], []), # noqa
+    'O3_standalone': (['-O3', '-sSTANDALONE_WASM'],),
   })
-  def test_codesize_libcxxabi_message(self, *args):
-    self.run_codesize_test('libcxxabi_message.cpp', *args)
+  def test_codesize_libcxxabi_message(self, args):
+    self.run_codesize_test('libcxxabi_message.cpp', args)
 
   @parameterized({
-    'js_fs':  (['-O3', '-sNO_WASMFS'], [], []), # noqa
-    'wasmfs': (['-O3', '-sWASMFS'],    [], []), # noqa
+    'js_fs':  (['-O3', '-sNO_WASMFS'],), # noqa
+    'wasmfs': (['-O3', '-sWASMFS'],), # noqa
   })
-  def test_codesize_files(self, *args):
-    self.run_codesize_test('files.cpp', *args)
+  def test_codesize_files(self, args):
+    self.run_codesize_test('files.cpp', args)
 
   def test_exported_runtime_methods_metadce(self):
     exports = ['stackSave', 'stackRestore', 'stackAlloc', 'FS']
@@ -12230,6 +12222,24 @@ int main(void) {
     # Regression test for asan false positives in strncpy:
     # https://github.com/emscripten-core/emscripten/issues/14618
     self.do_runf('other/test_asan_strncpy.c', emcc_args=['-fsanitize=address'])
+
+  @parameterized({
+    'asan': ['AddressSanitizer: null-pointer-dereference', '-fsanitize=address'],
+    'safe_heap': ['Aborted(segmentation fault storing 1 bytes at address 0)', '-sSAFE_HEAP'],
+  })
+  @parameterized({
+    '': [],
+    'memgrowth': ['-pthread', '-sALLOW_MEMORY_GROWTH', '-Wno-pthreads-mem-growth'],
+  })
+  def test_null_deref_via_js(self, expected_output, *args):
+    # Multiple JS transforms look for pattern like `HEAPxx[...]` and transform it.
+    # This test ensures that one of the transforms doesn't produce a pattern that
+    # another pass can't find anymore, that is that features can work in conjunction.
+    self.do_runf(
+      'other/test_safe_heap_user_js.c',
+      emcc_args=args,
+      assert_returncode=NON_ZERO,
+      expected_output=[expected_output])
 
   @node_pthreads
   def test_proxy_to_pthread_stack(self):
@@ -15936,6 +15946,14 @@ addToLibrary({
     err = self.expect_fail([EMCC, 'test.c'])
     self.assertContained('emcc: error: invalid export name: my.func', err)
 
+    # GCC (and clang) and JavaScript also allow $ in symbol names
+    create_file('valid.c', '''
+                #include <emscripten.h>
+                EMSCRIPTEN_KEEPALIVE
+                void my$func() {}
+                ''')
+    self.run_process([EMCC, 'valid.c'])
+
   @also_with_modularize
   def test_instantiate_wasm(self):
     create_file('pre.js', '''
@@ -16008,7 +16026,7 @@ addToLibrary({
     # Verify that `scriptDirectory` is an absolute path
     create_file('pre.js', '''
       Module['locateFile'] = (fileName, scriptDirectory) => {
-        assert(nodePath['isAbsolute'](scriptDirectory), `scriptDirectory (${scriptDirectory}) should be an absolute path`);
+        assert(require('path')['isAbsolute'](scriptDirectory), `scriptDirectory (${scriptDirectory}) should be an absolute path`);
         return scriptDirectory + fileName;
       };
       ''')
@@ -16022,7 +16040,7 @@ addToLibrary({
     # Verify that `scriptDirectory` is an absolute path when `EXPORT_ES6`
     create_file('pre.js', '''
       Module['locateFile'] = (fileName, scriptDirectory) => {
-        assert(nodePath['isAbsolute'](scriptDirectory), `scriptDirectory (${scriptDirectory}) should be an absolute path`);
+        assert(require('path')['isAbsolute'](scriptDirectory), `scriptDirectory (${scriptDirectory}) should be an absolute path`);
         return scriptDirectory + fileName;
       };
       ''')
@@ -16084,3 +16102,26 @@ addToLibrary({
       }
     ''')
     self.do_runf('main.c')
+
+  def test_getifaddrs(self):
+    self.do_other_test('test_getifaddrs.c')
+
+  @parameterized({
+    'web': ('web',),
+    'node': ('node',),
+  })
+  def test_unsupported_min_version_when_unsupported_env(self, env):
+    create_file('pre.js', '''
+      #preprocess
+      var MIN_NODE_VERSION = {{{ MIN_NODE_VERSION }}};
+      var MIN_CHROME_VERSION = {{{ MIN_CHROME_VERSION }}};
+      var MIN_SAFARI_VERSION = {{{ MIN_SAFARI_VERSION }}};
+      var MIN_FIREFOX_VERSION = {{{ MIN_FIREFOX_VERSION }}};
+    ''')
+    self.emcc(test_file('hello_world.c'), [f'-sENVIRONMENT={env}', '--pre-js=pre.js'])
+    src = read_file('a.out.js')
+    unsupported = 0x7FFFFFFF
+    self.assertContainedIf(f'var MIN_NODE_VERSION = {unsupported};', src, env == 'web')
+    self.assertContainedIf(f'var MIN_CHROME_VERSION = {unsupported};', src, env == 'node')
+    self.assertContainedIf(f'var MIN_SAFARI_VERSION = {unsupported};', src, env == 'node')
+    self.assertContainedIf(f'var MIN_FIREFOX_VERSION = {unsupported};', src, env == 'node')

@@ -171,6 +171,18 @@ def setup_environment_settings():
   settings.ENVIRONMENT_MAY_BE_NODE = not settings.ENVIRONMENT or 'node' in environments
   settings.ENVIRONMENT_MAY_BE_SHELL = not settings.ENVIRONMENT or 'shell' in environments
 
+  if not settings.ENVIRONMENT_MAY_BE_NODE:
+    if 'MIN_NODE_VERSION' in user_settings:
+      diagnostics.warning('unused-command-line-argument', 'ignoring MIN_NODE_VERSION because `node` environment is not enabled')
+    settings.MIN_NODE_VERSION = feature_matrix.UNSUPPORTED
+
+  if not (settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WEBVIEW):
+    for browser in ('FIREFOX', 'SAFARI', 'CHROME'):
+      key = f'MIN_{browser}_VERSION'
+      if key in user_settings:
+        diagnostics.warning('unused-command-line-argument', 'ignoring %s because `web` and `webview` environments are not enabled', key)
+      settings[key] = feature_matrix.UNSUPPORTED
+
   # The worker case also includes Node.js workers when pthreads are
   # enabled and Node.js is one of the supported environments for the build to
   # run on. Node.js workers are detected as a combination of
@@ -810,6 +822,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM2JS')
     if settings.MAYBE_WASM2JS:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with MAYBE_WASM2JS')
+    if settings.ABORT_ON_WASM_EXCEPTIONS:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with ABORT_ON_WASM_EXCEPTIONS')
 
   if settings.MODULARIZE and settings.MODULARIZE not in [1, 'instance']:
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
@@ -822,7 +836,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       default_setting('INCOMING_MODULE_JS_API', [])
 
   if settings.ASYNCIFY == 1:
-    # See: https://github.com/emscripten-core/emscripten/issues/12065
+    # ASYNCIFY=1 wraps only wasm exports so we need to enable legacy
+    # dyncalls via dynCall_xxx exports.
     # See: https://github.com/emscripten-core/emscripten/issues/12066
     settings.DYNCALLS = 1
 
@@ -830,8 +845,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     diagnostics.warning('experimental', 'MODULARIZE=instance is still experimental. Many features may not work or will change.')
     if not settings.EXPORT_ES6:
       exit_with_error('MODULARIZE=instance requires EXPORT_ES6')
-    if settings.ABORT_ON_WASM_EXCEPTIONS:
-      exit_with_error('MODULARIZE=instance is not compatible with ABORT_ON_WASM_EXCEPTIONS')
     if settings.ASYNCIFY == 1:
       exit_with_error('MODULARIZE=instance is not compatible with -sASYNCIFY=1')
     if settings.DYNCALLS:
@@ -2015,6 +2028,8 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   # Ignore -sMODULARIZE which could otherwise effect how we run the module
   # to generate the bindings.
   settings.MODULARIZE = False
+  # Disable ESM integration to avoid enabling the experimental feature in node.
+  settings.WASM_ESM_INTEGRATION = False
   # Don't include any custom user JS or files.
   settings.PRE_JS_FILES = []
   settings.POST_JS_FILES = []
@@ -2041,8 +2056,7 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
     dirname, basename = os.path.split(lib)
     if basename == 'libembind.js':
       settings.JS_LIBRARIES[i] = os.path.join(dirname, 'libembind_gen.js')
-  if settings.MEMORY64:
-    settings.MIN_NODE_VERSION = 160000
+  settings.MIN_NODE_VERSION = 160000 if settings.MEMORY64 else 150000
   # Source maps haven't been generated yet and aren't needed to run embind_gen.
   settings.LOAD_SOURCE_MAP = 0
   outfile_js = in_temp('tsgen.js')
@@ -2097,6 +2111,9 @@ addOnPostCtor(assignEmbindExports);
 // end embind exports'''
     src += exports
   write_file(final_js, src)
+  if settings.WASM_ESM_INTEGRATION:
+    # With ESM integration the embind exports also need to be exported by the main file.
+    settings.EXPORTED_RUNTIME_METHODS.extend(out['publicSymbols'])
 
 
 # for Popen, we cannot have doublequotes, so provide functionality to
@@ -2311,10 +2328,6 @@ def phase_binaryen(target, options, wasm_target):
   # after generating the wasm, do some final operations
 
   if final_js:
-    if settings.SUPPORT_BIG_ENDIAN:
-      with ToolchainProfiler.profile_block('little_endian_heap'):
-        final_js = building.little_endian_heap(final_js)
-
     # >=2GB heap support requires pointers in JS to be unsigned. rather than
     # require all pointers to be unsigned by default, which increases code size
     # a little, keep them signed, and just unsign them here if we need that.
@@ -2322,20 +2335,26 @@ def phase_binaryen(target, options, wasm_target):
       with ToolchainProfiler.profile_block('use_unsigned_pointers_in_js'):
         final_js = building.use_unsigned_pointers_in_js(final_js)
 
-    # shared memory growth requires some additional JS fixups.
-    # note that we must do this after handling of unsigned pointers. unsigning
-    # adds some >>> 0 things, while growth will replace a HEAP8 with a call to
-    # a method to get the heap, and that call would not be recognized by the
-    # unsigning pass
-    if settings.SHARED_MEMORY and settings.ALLOW_MEMORY_GROWTH:
-      with ToolchainProfiler.profile_block('apply_wasm_memory_growth'):
-        final_js = building.apply_wasm_memory_growth(final_js)
-
     if settings.USE_ASAN:
       final_js = building.instrument_js_for_asan(final_js)
 
     if settings.SAFE_HEAP:
       final_js = building.instrument_js_for_safe_heap(final_js)
+
+    # shared memory growth requires some additional JS fixups.
+    # note that we must do this after handling of unsigned pointers. unsigning
+    # adds some >>> 0 things, while growth will replace a HEAP8 with a call to
+    # a method to get the heap, and that call would not be recognized by the
+    # unsigning pass.
+    # we also must do this after the asan or safe_heap instrumentation, as they
+    # wouldn't be able to recognize patterns produced by the growth pass.
+    if settings.SHARED_MEMORY and settings.ALLOW_MEMORY_GROWTH:
+      with ToolchainProfiler.profile_block('apply_wasm_memory_growth'):
+        final_js = building.apply_wasm_memory_growth(final_js)
+
+    if settings.SUPPORT_BIG_ENDIAN:
+      with ToolchainProfiler.profile_block('little_endian_heap'):
+        final_js = building.little_endian_heap(final_js)
 
     if settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL <= 2:
       # minify the JS. Do not minify whitespace if Closure is used, so that

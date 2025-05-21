@@ -18,7 +18,7 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner')
 
 from tools.shared import PIPE
-from tools.shared import EMCC, EMAR, FILE_PACKAGER
+from tools.shared import EMCC, EMAR, EMXX, FILE_PACKAGER
 from tools.utils import WINDOWS, MACOS, LINUX, write_file, delete_file
 from tools import shared, building, config, utils, webassembly
 import common
@@ -1329,18 +1329,18 @@ int main(int argc, char **argv) {
       #include <exception>
       struct X {
         ~X() {
-          printf("exception? %s\n", std::uncaught_exception() ? "yes" : "no");
+          printf("exception? %s\n", std::uncaught_exceptions() ? "yes" : "no");
         }
       };
       int main() {
-        printf("exception? %s\n", std::uncaught_exception() ? "yes" : "no");
+        printf("exception? %s\n", std::uncaught_exceptions() ? "yes" : "no");
         try {
           X x;
           throw 1;
         } catch(...) {
-          printf("exception? %s\n", std::uncaught_exception() ? "yes" : "no");
+          printf("exception? %s\n", std::uncaught_exceptions() ? "yes" : "no");
         }
-        printf("exception? %s\n", std::uncaught_exception() ? "yes" : "no");
+        printf("exception? %s\n", std::uncaught_exceptions() ? "yes" : "no");
         return 0;
       }
     '''
@@ -1351,7 +1351,7 @@ int main(int argc, char **argv) {
       #include <iostream>
       int main() {
         std::ofstream os("test");
-        os << std::unitbuf << "foo"; // trigger a call to std::uncaught_exception from
+        os << std::unitbuf << "foo"; // trigger a call to std::uncaught_exceptions from
                                      // std::basic_ostream::sentry::~sentry
         std::cout << "success\n";
       }
@@ -1373,8 +1373,8 @@ int main(int argc, char **argv) {
           } catch(std::exception) {}
         }
 
-        if (std::uncaught_exception())
-          std::cout << "ERROR: uncaught_exception still set.\n";
+        if (std::uncaught_exceptions())
+          std::cout << "ERROR: uncaught_exceptions still set.\n";
         else
           std::cout << "OK\n";
       }
@@ -6954,7 +6954,7 @@ void* operator new(size_t size) {
   ### Integration tests
 
   @crossplatform
-  @no_modularize_instance('ccall is not compatible with WASM_ESM_INTEGRATION')
+  @no_modularize_instance('ccall is not compatible with MODULARIZE=instance')
   def test_ccall(self):
     self.emcc_args.append('-Wno-return-stack-address')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap', 'STACK_SIZE'])
@@ -6999,7 +6999,7 @@ void* operator new(size_t size) {
     if self.maybe_closure():
       self.do_core_test('test_ccall.cpp')
 
-  @no_modularize_instance('ccall is not compatible with WASM_ESM_INTEGRATION')
+  @no_modularize_instance('ccall is not compatible with MODULARIZE=instance')
   def test_ccall_cwrap_fast_path(self):
     self.emcc_args.append('-Wno-return-stack-address')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
@@ -7051,8 +7051,8 @@ void* operator new(size_t size) {
     'legacy': (['-sDYNCALLS'],),
   })
   def test_dyncall_pointers(self, args):
-    if args:
-      self.skipTest('dynCallLegacy is not yet compatible with WASM_ESM_INTEGRATION')
+    if args and self.get_setting('MODULARIZE') == 'instance' or self.get_setting('WASM_ESM_INTEGRATION'):
+      self.skipTest('dynCallLegacy is not yet compatible with MODULARIZE=instance')
     self.do_core_test('test_dyncall_pointers.c', emcc_args=args)
 
   @also_with_wasm_bigint
@@ -8132,7 +8132,7 @@ int main() {
   def test_async_hello_v8(self):
     self.test_async_hello()
 
-  @no_modularize_instance('ccall is not compatible with WASM_ESM_INTEGRATION')
+  @no_modularize_instance('ccall is not compatible with MODULARIZE=instance')
   def test_async_ccall_bad(self):
     # check bad ccall use
     # needs to flush stdio streams
@@ -8164,7 +8164,7 @@ Module.onRuntimeInitialized = () => {
     self.do_runf('main.c', 'The call to main is running asynchronously.')
 
   @with_asyncify_and_jspi
-  @no_modularize_instance('ccall is not compatible with WASM_ESM_INTEGRATION')
+  @no_modularize_instance('ccall is not compatible with MODULARIZE=instance')
   def test_async_ccall_good(self):
     # check reasonable ccall use
     self.set_setting('ASYNCIFY')
@@ -8193,7 +8193,7 @@ Module.onRuntimeInitialized = () => {
     'exit_runtime': (True,),
   })
   @with_asyncify_and_jspi
-  @no_modularize_instance('ccall is not compatible with WASM_ESM_INTEGRATION')
+  @no_modularize_instance('ccall is not compatible with MODULARIZE=instance')
   def test_async_ccall_promise(self, exit_runtime):
     if self.get_setting('ASYNCIFY') == 2:
       self.set_setting('JSPI_EXPORTS', ['stringf', 'floatf'])
@@ -8396,7 +8396,7 @@ Module.onRuntimeInitialized = () => {
     self.set_setting('ASYNCIFY_LAZY_LOAD_CODE')
     self.set_setting('ASYNCIFY_IGNORE_INDIRECT')
     self.set_setting('MALLOC', 'emmalloc')
-    self.emcc_args += ['--profiling-funcs'] # so that we can find the functions for the changes below
+    self.emcc_args += ['-Wno-deprecated', '--profiling-funcs'] # so that we can find the functions for the changes below
     if conditional:
       self.emcc_args += ['-DCONDITIONAL']
     self.do_core_test('emscripten_lazy_load_code.c', args=['0'])
@@ -9084,14 +9084,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('INITIAL_MEMORY', '300mb')
     self.do_run_in_out_file_test('hello_world.c')
 
-  @no_asan('SAFE_HEAP cannot be used with ASan')
-  @no_2gb('asan doesnt support GLOBAL_BASE')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
-  def test_safe_heap_user_js(self):
-    self.set_setting('SAFE_HEAP')
-    self.do_runf('core/test_safe_heap_user_js.c',
-                 expected_output=['Aborted(segmentation fault storing 1 bytes at address 0)'], assert_returncode=NON_ZERO)
-
   def test_safe_stack(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('STACK_SIZE', 1024)
@@ -9544,7 +9536,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('test_stack_get_free.c')
 
   # Tests settings.ABORT_ON_WASM_EXCEPTIONS
-  @no_modularize_instance('ABORT_ON_WASM_EXCEPTIONS')
+  @no_modularize_instance('ccall is not compatible with MODULARIZE=instance')
   def test_abort_on_exceptions(self):
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
     self.set_setting('ALLOW_TABLE_GROWTH')
@@ -9553,7 +9545,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-lembind', '--post-js', test_file('core/test_abort_on_exceptions_post.js')]
     self.do_core_test('test_abort_on_exceptions.cpp', interleaved_output=False)
 
-  @no_modularize_instance('ABORT_ON_WASM_EXCEPTIONS')
+  @no_esm_integration('ABORT_ON_WASM_EXCEPTIONS is not compatible with WASM_ESM_INTEGRATION')
   def test_abort_on_exceptions_main(self):
     # The unhandled exception wrappers should not kick in for exceptions thrown during main
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
@@ -9567,7 +9559,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   @flaky('https://github.com/emscripten-core/emscripten/issues/20067')
-  @no_modularize_instance('ABORT_ON_WASM_EXCEPTIONS')
+  @no_esm_integration('ABORT_ON_WASM_EXCEPTIONS is not compatible with WASM_ESM_INTEGRATION')
   def test_abort_on_exceptions_pthreads(self):
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
     self.set_setting('PROXY_TO_PTHREAD')
@@ -9732,6 +9724,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'pthreads': (['-pthread'],),
   })
   def test_modularize_instance(self, args):
+    if self.get_setting('WASM_ESM_INTEGRATION') and '-pthread' in args:
+      self.skipTest('pthread is not compatible with WASM_ESM_INTEGRATION')
     create_file('library.js', '''\
     addToLibrary({
       $baz: () => console.log('baz'),
@@ -9743,7 +9737,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
                       '-sEXPORTED_RUNTIME_METHODS=baz,addOnExit,HEAP32',
                       '-sEXPORTED_FUNCTIONS=_bar,_main,qux',
                       '--js-library', 'library.js',
-                      '-o', 'modularize_instance.mjs'] + args)
+                      '-o', 'modularize_instance.mjs'] + args + self.get_emcc_args())
 
     create_file('runner.mjs', '''
       import { strict as assert } from 'assert';
@@ -9759,12 +9753,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
     self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
 
+  @no_4gb('EMBIND_AOT can\'t lower 4gb')
   def test_modularize_instance_embind(self):
-    self.run_process([EMCC, test_file('modularize_instance_embind.cpp'),
+    self.run_process([EMXX, test_file('modularize_instance_embind.cpp'),
                       '-sMODULARIZE=instance',
+                      '-Wno-experimental',
                       '-lembind',
                       '-sEMBIND_AOT',
-                      '-o', 'modularize_instance_embind.mjs'])
+                      '-o', 'modularize_instance_embind.mjs'] + self.get_emcc_args())
 
     create_file('runner.mjs', '''
       import init, { foo, Bar } from "./modularize_instance_embind.mjs";
@@ -9863,7 +9859,7 @@ core_2gb = make_run('core_2gb', emcc_args=['--profiling-funcs'],
                     settings={'INITIAL_MEMORY': '2200mb', 'GLOBAL_BASE': '2gb'})
 
 # MEMORY64=1
-wasm64 = make_run('wasm64', emcc_args=['-O1', '-Wno-experimental', '--profiling-funcs'],
+wasm64 = make_run('wasm64', emcc_args=['-Wno-experimental', '--profiling-funcs'],
                   settings={'MEMORY64': 1}, require_wasm64=True, require_node=True)
 wasm64_v8 = make_run('wasm64_v8', emcc_args=['-Wno-experimental', '--profiling-funcs'],
                      settings={'MEMORY64': 1}, require_wasm64=True, require_v8=True)
