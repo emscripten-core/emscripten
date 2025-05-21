@@ -2028,6 +2028,8 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   # Ignore -sMODULARIZE which could otherwise effect how we run the module
   # to generate the bindings.
   settings.MODULARIZE = False
+  # Disable ESM integration to avoid enabling the experimental feature in node.
+  settings.WASM_ESM_INTEGRATION = False
   # Don't include any custom user JS or files.
   settings.PRE_JS_FILES = []
   settings.POST_JS_FILES = []
@@ -2109,6 +2111,9 @@ addOnPostCtor(assignEmbindExports);
 // end embind exports'''
     src += exports
   write_file(final_js, src)
+  if settings.WASM_ESM_INTEGRATION:
+    # With ESM integration the embind exports also need to be exported by the main file.
+    settings.EXPORTED_RUNTIME_METHODS.extend(out['publicSymbols'])
 
 
 # for Popen, we cannot have doublequotes, so provide functionality to
