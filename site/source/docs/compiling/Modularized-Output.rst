@@ -123,9 +123,6 @@ fix in future releses.  Current limitations include:
 
 * `ccall`/`cwrap` are not supported (depends on the ``Module`` global).
 
-* :ref:`abort_on_wasm_exceptions` is not supported (requires wrapping wasm
-  exports).
-
 * :ref:`dyncalls` is not supported (depends on the ``Module`` global)
 
 * :ref:`asyncify` is not supported (depends on :ref:`dyncalls`)
@@ -170,11 +167,14 @@ This setting implicitly enables :ref:`export_es6` and sets :ref:`MODULARIZE` to
 
 Some additional limitations are:
 
-- ``-pthread`` / :ref:`wasm_workers` are not yet supported.
+* ``-pthread`` / :ref:`wasm_workers` are not yet supported.
 
-- Setting :ref:`wasm` to ``0`` is not supported.
+* :ref:`abort_on_wasm_exceptions` is not supported (requires wrapping wasm
+  exports).
 
-- Setting :ref:`wasm_async_compilation` to ``0`` is not supported.
+* Setting :ref:`wasm` to ``0`` is not supported.
+
+* Setting :ref:`wasm_async_compilation` to ``0`` is not supported.
 
 
 .. _Source phase imports: https://github.com/tc39/proposal-source-phase-imports

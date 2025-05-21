@@ -295,18 +295,6 @@ var runDependencyTracking = {};
 var runDependencyWatcher = null;
 #endif
 
-function getUniqueRunDependency(id) {
-#if ASSERTIONS
-  var orig = id;
-  while (1) {
-    if (!runDependencyTracking[id]) return id;
-    id = orig + Math.random();
-  }
-#else
-  return id;
-#endif
-}
-
 function addRunDependency(id) {
   runDependencies++;
 

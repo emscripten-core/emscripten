@@ -1372,7 +1372,10 @@ function isHEAPAccess(node) {
 function asanify(ast) {
   recursiveWalk(ast, {
     FunctionDeclaration(node, c) {
-      if (node.id.type === 'Identifier' && node.id.name.startsWith('_asan_js_')) {
+      if (
+        node.id.type === 'Identifier' &&
+        (node.id.name.startsWith('_asan_js_') || node.id.name === 'establishStackSpace')
+      ) {
         // do not recurse into this js impl function, which we use during
         // startup before the wasm is ready
       } else {

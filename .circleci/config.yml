@@ -671,8 +671,8 @@ jobs:
       - install-v8
       - install-node-canary
       - run-tests:
-          title: "esm-integration"
-          test_targets: "esm-integration"
+          title: "esm_integration"
+          test_targets: "esm_integration"
       - upload-test-results
   test-wasm2js1:
     environment:
