@@ -65,6 +65,47 @@ var wasmOffsetConverter;
 #include "wasm_offset_converter.js"
 #endif
 
+// Memory management
+
+var
+/** @type {!Int8Array} */
+  HEAP8,
+/** @type {!Uint8Array} */
+  HEAPU8,
+/** @type {!Int16Array} */
+  HEAP16,
+/** @type {!Uint16Array} */
+  HEAPU16,
+/** @type {!Int32Array} */
+  HEAP32,
+/** @type {!Uint32Array} */
+  HEAPU32,
+/** @type {!Float32Array} */
+  HEAPF32,
+#if WASM_BIGINT
+/* BigInt64Array type is not correctly defined in closure
+/** not-@type {!BigInt64Array} */
+  HEAP64,
+/* BigUint64Array type is not correctly defined in closure
+/** not-t@type {!BigUint64Array} */
+  HEAPU64,
+#endif
+/** @type {!Float64Array} */
+  HEAPF64;
+
+#if SUPPORT_BIG_ENDIAN
+/** @type {!DataView} */
+var HEAP_DATA_VIEW;
+#endif
+
+#if !MINIMAL_RUNTIME || ASSERTIONS || SAFE_HEAP || USE_ASAN || MODULARIZE
+var runtimeInitialized = false;
+#endif
+
+#if EXIT_RUNTIME
+var runtimeExited = false;
+#endif
+
 {{{
   // Helper function to export a heap symbol on the module object,
   // if requested.
@@ -116,3 +157,8 @@ if (ENVIRONMENT_IS_NODE) {
   global.performance ??= require('perf_hooks').performance;
 }
 #endif
+
+#if IMPORTED_MEMORY
+// In non-standalone/normal mode, we create the memory here.
+#include "runtime_init_memory.js"
+#endif // !IMPORTED_MEMORY && ASSERTIONS

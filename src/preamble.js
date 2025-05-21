@@ -99,44 +99,6 @@ function _free() {
 #endif // free
 #endif // ASSERTIONS
 
-// Memory management
-
-var HEAP,
-/** @type {!Int8Array} */
-  HEAP8,
-/** @type {!Uint8Array} */
-  HEAPU8,
-/** @type {!Int16Array} */
-  HEAP16,
-/** @type {!Uint16Array} */
-  HEAPU16,
-/** @type {!Int32Array} */
-  HEAP32,
-/** @type {!Uint32Array} */
-  HEAPU32,
-/** @type {!Float32Array} */
-  HEAPF32,
-#if WASM_BIGINT
-/* BigInt64Array type is not correctly defined in closure
-/** not-@type {!BigInt64Array} */
-  HEAP64,
-/* BigUint64Array type is not correctly defined in closure
-/** not-t@type {!BigUint64Array} */
-  HEAPU64,
-#endif
-/** @type {!Float64Array} */
-  HEAPF64;
-
-#if SUPPORT_BIG_ENDIAN
-var HEAP_DATA_VIEW;
-#endif
-
-var runtimeInitialized = false;
-
-#if EXIT_RUNTIME
-var runtimeExited = false;
-#endif
-
 /**
  * Indicates whether filename is delivered via file protocol (as opposed to http/https)
  * @noinline
@@ -149,11 +111,6 @@ var isFileURI = (filename) => filename.startsWith('file://');
 assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray != undefined && Int32Array.prototype.set != undefined,
        'JS engine does not provide full typed array support');
 #endif
-
-#if IMPORTED_MEMORY
-// In non-standalone/normal mode, we create the memory here.
-#include "runtime_init_memory.js"
-#endif // !IMPORTED_MEMORY && ASSERTIONS
 
 #if RELOCATABLE
 var __RELOC_FUNCS__ = [];
