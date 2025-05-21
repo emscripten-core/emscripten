@@ -67,6 +67,10 @@ var wasmOffsetConverter;
 
 // Memory management
 
+#if !WASM_ESM_INTEGRATION || IMPORTED_MEMORY
+var wasmMemory;
+#endif
+
 var
 /** @type {!Int8Array} */
   HEAP8,
@@ -82,16 +86,18 @@ var
   HEAPU32,
 /** @type {!Float32Array} */
   HEAPF32,
+/** @type {!Float64Array} */
+  HEAPF64;
+
 #if WASM_BIGINT
-/* BigInt64Array type is not correctly defined in closure
+// BigInt64Array type is not correctly defined in closure
+var
 /** not-@type {!BigInt64Array} */
   HEAP64,
 /* BigUint64Array type is not correctly defined in closure
-/** not-t@type {!BigUint64Array} */
-  HEAPU64,
+/** not-@type {!BigUint64Array} */
+  HEAPU64;
 #endif
-/** @type {!Float64Array} */
-  HEAPF64;
 
 #if SUPPORT_BIG_ENDIAN
 /** @type {!DataView} */

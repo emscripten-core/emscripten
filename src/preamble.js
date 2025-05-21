@@ -41,10 +41,6 @@ if (typeof WebAssembly != 'object') {
 
 // Wasm globals
 
-#if !WASM_ESM_INTEGRATION || IMPORTED_MEMORY
-var wasmMemory;
-#endif
-
 #if SHARED_MEMORY
 // For sending to workers.
 var wasmModule;
