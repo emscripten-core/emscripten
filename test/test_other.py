@@ -12237,7 +12237,7 @@ int main(void) {
 
   @parameterized({
     'asan': ['AddressSanitizer: null-pointer-dereference', '-fsanitize=address'],
-    'safe_heap': ['Aborted(segmentation fault storing 4 bytes at address 0)', '-sSAFE_HEAP'],
+    'safe_heap': ['Aborted(segmentation fault storing 1 bytes at address 0)', '-sSAFE_HEAP'],
   })
   @parameterized({
     '': [],
@@ -12248,7 +12248,7 @@ int main(void) {
     # This test ensures that one of the transforms doesn't produce a pattern that
     # another pass can't find anymore, that is that features can work in conjunction.
     self.do_runf(
-      'other/test_null_deref_via_js.c',
+      'other/test_safe_heap_user_js.c',
       emcc_args=args,
       assert_returncode=NON_ZERO,
       expected_output=[expected_output])
