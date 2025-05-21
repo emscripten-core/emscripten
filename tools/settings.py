@@ -124,7 +124,6 @@ DEPRECATED_SETTINGS = {
     'CLOSURE_WARNINGS': 'use -Wclosure instead',
     'LEGALIZE_JS_FFI': 'to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`',
     'ASYNCIFY_EXPORTS': 'please use JSPI_EXPORTS instead',
-    'EMULATE_FUNCTION_POINTER_CASTS': 'lack of usage',
     'MAYBE_WASM2JS': 'lack of usage',
 }
 

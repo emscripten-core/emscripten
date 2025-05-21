@@ -390,6 +390,8 @@ commands:
             # TODO: Do GL testing when https://bugzil.la/1375585 (lack of WebGL
             #       support in headless mode) resolves
             EMTEST_LACKS_GRAPHICS_HARDWARE: "1"
+            # TODO(https://github.com/emscripten-core/emscripten/issues/24205)
+            EMTEST_LACKS_SOUND_HARDWARE: "1"
             EMTEST_LACKS_WEBGPU: "1"
             # OffscreenCanvas support is not yet done in Firefox.
             EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
@@ -546,7 +548,6 @@ jobs:
             asan.test_dlfcn_basic
             asan.test_async_hello_jspi
             asan.test_cubescript
-            asan.test_wasm_worker_hello
             asan.test_externref_emjs_dynlink
             asan.test_asyncify_longjmp
             asan.test_pthread_run_on_main_thread
@@ -905,6 +906,12 @@ jobs:
     environment:
       EMTEST_LACKS_WEBGPU: "1"
     steps:
+      - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
+      - pip-install
+      - install-emsdk
       - run-tests-chrome:
           title: "browser"
           # Just tests that don't run in browser 2G mode
@@ -1114,9 +1121,7 @@ workflows:
       - test-other:
           requires:
             - build-linux
-      - test-browser-chrome:
-          requires:
-            - build-linux
+      - test-browser-chrome
       - test-browser-chrome-2gb:
           requires:
             - build-linux

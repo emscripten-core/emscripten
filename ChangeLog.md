@@ -18,8 +18,17 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.7 (in development)
+4.0.8 (in development)
 ----------------------
+- Programs built with `-sWASM_WORKERS` and `-sAUDIO_WORKLET` no longer generate
+  separate `.ww.js` and `.aw.js` files.  This is similar to the change that was
+  already made for pthreads in #21701.  This saves on complexity, code size and
+  network requests. (#24163, #24190)
+- Closure arguments can now be used from ports using `settings.CLOSURE_ARGS`
+  (#24192)
+
+4.0.7 - 04/15/25
+----------------
 - Added experimental support for Wasm ESM integration with
   `-sWASM_ESM_INTEGRATION`. This is currently only supported in node behind a
   flag and not in any browsers. (#23985)
@@ -40,6 +49,7 @@ See docs/process.md for more on how version tagging works.
   example, `-sEXPORTED_RUNTIME_METHODS=HEAP8,HEAPU32` (if you need `HEAP8` and
   `HEAPU32`). (#24079)
 - libjpeg port updated from 9c to 9f. (#24085)
+- Missing exports in EXPORTED_RUNTIME_METHODS will now error instead of warn.
 
 4.0.6 - 03/26/25
 ----------------

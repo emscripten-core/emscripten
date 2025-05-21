@@ -820,8 +820,8 @@ inline T* getContext(const T& t) {
     return ret;
 }
 
-template<typename Accessor, typename ValueType>
-struct PropertyTag {};
+template<typename Func, typename ValueTypeOrSignature>
+struct FunctionTag {};
 
 template<typename T>
 struct GetterPolicy;
@@ -887,7 +887,7 @@ struct GetterPolicy<std::function<GetterReturnType(const GetterThisType&)>> {
 };
 
 template<typename Getter, typename GetterReturnType>
-struct GetterPolicy<PropertyTag<Getter, GetterReturnType>> {
+struct GetterPolicy<FunctionTag<Getter, GetterReturnType>> {
     typedef GetterReturnType ReturnType;
     typedef Getter Context;
 
@@ -968,7 +968,7 @@ struct SetterPolicy<std::function<SetterReturnType(SetterThisType&, SetterArgume
 };
 
 template<typename Setter, typename SetterArgumentType>
-struct SetterPolicy<PropertyTag<Setter, SetterArgumentType>> {
+struct SetterPolicy<FunctionTag<Setter, SetterArgumentType>> {
     typedef SetterArgumentType ArgumentType;
     typedef Setter Context;
 
@@ -1497,9 +1497,9 @@ struct RegisterClassConstructor<std::function<ReturnType (Args...)>> {
     }
 };
 
-template<typename ReturnType, typename... Args>
-struct RegisterClassConstructor<ReturnType (Args...)> {
-    template <typename ClassType, typename Callable, typename... Policies>
+template<typename Callable, typename ReturnType, typename... Args>
+struct RegisterClassConstructor<FunctionTag<Callable, ReturnType (Args...)>> {
+    template <typename ClassType, typename... Policies>
     static void invoke(Callable& factory) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
         using ReturnPolicy = rvp::take_ownership;
@@ -1633,10 +1633,10 @@ struct RegisterClassMethod<std::function<ReturnType (ThisType, Args...)>> {
     }
 };
 
-template<typename ReturnType, typename ThisType, typename... Args>
-struct RegisterClassMethod<ReturnType (ThisType, Args...)> {
+template<typename Callable, typename ReturnType, typename ThisType, typename... Args>
+struct RegisterClassMethod<FunctionTag<Callable, ReturnType (ThisType, Args...)>> {
 
-    template <typename ClassType, typename Callable, typename... Policies>
+    template <typename ClassType, typename... Policies>
     static void invoke(const char* methodName,
                        Callable& callable) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
@@ -1739,7 +1739,7 @@ public:
         using invoker = internal::RegisterClassConstructor<
             typename std::conditional<std::is_same<Signature, internal::DeduceArgumentsTag>::value,
                                       Callable,
-                                      Signature>::type>;
+                                      internal::FunctionTag<Callable, Signature>>::type>;
 
         invoker::template invoke<ClassType, Policies...>(callable);
         return *this;
@@ -1819,7 +1819,7 @@ public:
         using invoker = internal::RegisterClassMethod<
             typename std::conditional<std::is_same<Signature, internal::DeduceArgumentsTag>::value,
                                       Callable,
-                                      Signature>::type>;
+                                      internal::FunctionTag<Callable, Signature>>::type>;
 
         invoker::template invoke<ClassType, Policies...>(methodName, callable);
         return *this;
@@ -1896,7 +1896,7 @@ public:
         typedef GetterPolicy<
             typename std::conditional<std::is_same<PropertyType, internal::DeduceArgumentsTag>::value,
                                                    Getter,
-                                                   PropertyTag<Getter, PropertyType>>::type> GP;
+                                                   FunctionTag<Getter, PropertyType>>::type> GP;
         using ReturnPolicy = GetReturnValuePolicy<typename GP::ReturnType, Policies...>::tag;
         auto gter = &GP::template get<ClassType, ReturnPolicy>;
         typename WithPolicies<Policies...>::template ArgTypeList<typename GP::ReturnType> returnType;
@@ -1930,11 +1930,11 @@ public:
         typedef GetterPolicy<
             typename std::conditional<std::is_same<PropertyType, internal::DeduceArgumentsTag>::value,
                                                    Getter,
-                                                   PropertyTag<Getter, PropertyType>>::type> GP;
+                                                   FunctionTag<Getter, PropertyType>>::type> GP;
         typedef SetterPolicy<
             typename std::conditional<std::is_same<PropertyType, internal::DeduceArgumentsTag>::value,
                                                    Setter,
-                                                   PropertyTag<Setter, PropertyType>>::type> SP;
+                                                   FunctionTag<Setter, PropertyType>>::type> SP;
 
 
         auto gter = &GP::template get<ClassType, ReturnPolicy>;

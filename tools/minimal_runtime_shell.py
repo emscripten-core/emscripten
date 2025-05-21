@@ -51,7 +51,7 @@ def generate_minimal_runtime_load_statement(target_basename):
     download_wasm = f"binary('{target_basename}.wasm')"
 
   # Main JS file always in first entry
-  files_to_load = [f"script('{target_basename}.js')"]
+  files_to_load = [f"script('{settings.TARGET_JS_NAME}')"]
 
   # Download .wasm file
   if (settings.WASM == 1 and settings.WASM2JS == 0) or not download_wasm:
@@ -63,17 +63,8 @@ def generate_minimal_runtime_load_statement(target_basename):
       files_to_load += [download_wasm]
 
   # Download wasm_worker file
-  if settings.WASM_WORKERS:
-    if settings.MODULARIZE:
-      if settings.WASM_WORKERS == 1: # '$wb': Wasm Worker Blob
-        modularize_imports += ["$wb: URL.createObjectURL(new Blob([r[%d]], { type: 'application/javascript' }))" % len(files_to_load)]
-      modularize_imports += ['js: js']
-    else:
-      if settings.WASM_WORKERS == 1:
-        then_statements += ["%s.$wb = URL.createObjectURL(new Blob([r[%d]], { type: 'application/javascript' }));" % (settings.EXPORT_NAME, len(files_to_load))]
-
-    if download_wasm and settings.WASM_WORKERS == 1:
-      files_to_load += [f"binary('{target_basename}.ww.js')"]
+  if settings.WASM_WORKERS and settings.MODULARIZE:
+    modularize_imports += ['js: js']
 
   # Download Wasm2JS code if target browser does not support WebAssembly
   if settings.WASM == 2:
@@ -164,7 +155,7 @@ def generate_minimal_runtime_load_statement(target_basename):
     else:
       save_js = ''
 
-    files_to_load[0] = f"binary('{target_basename}.js')"
+    files_to_load[0] = f"binary('{settings.TARGET_JS_NAME}')"
     if not settings.MODULARIZE:
       then_statements += ["var url = %sURL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));" % save_js,
                           script_load]
@@ -200,7 +191,7 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename):
   if re.search(r'{{{\s*SCRIPT\s*}}}', shell):
     shared.exit_with_error('--shell-file "' + options.shell_path + '": MINIMAL_RUNTIME uses a different kind of HTML page shell file than the traditional runtime! Please see $EMSCRIPTEN/src/shell_minimal_runtime.html for a template to use as a basis.')
 
-  shell = shell.replace('{{{ TARGET_BASENAME }}}', target_basename)
+  shell = shell.replace('{{{ TARGET_BASENAME }}}', settings.TARGET_BASENAME)
   shell = shell.replace('{{{ EXPORT_NAME }}}', settings.EXPORT_NAME)
   shell = shell.replace('{{{ TARGET_JS_NAME }}}', settings.TARGET_JS_NAME)
 

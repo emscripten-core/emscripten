@@ -115,7 +115,7 @@ class Minifier:
 
   def serialize(self):
     return {
-      'globals': self.globs
+      'globals': self.globs,
     }
 
 

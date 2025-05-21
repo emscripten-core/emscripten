@@ -17,7 +17,7 @@ variants = {
 }
 
 OPTIONS = {
-  'formats': 'A comma separated list of formats (ex: --use-port=sdl2_image:formats=png,jpg)'
+  'formats': 'A comma separated list of formats (ex: --use-port=sdl2_image:formats=png,jpg)',
 }
 
 SUPPORTED_FORMATS = {'avif', 'bmp', 'gif', 'jpg', 'jxl', 'lbm', 'pcx', 'png',
@@ -25,7 +25,7 @@ SUPPORTED_FORMATS = {'avif', 'bmp', 'gif', 'jpg', 'jxl', 'lbm', 'pcx', 'png',
 
 # user options (from --use-port)
 opts: Dict[str, Set] = {
-  'formats': set()
+  'formats': set(),
 }
 
 
@@ -34,7 +34,7 @@ def needed(settings):
 
 
 def get_formats(settings):
-  return set(settings.SDL2_IMAGE_FORMATS).union(opts['formats'])
+  return opts['formats'].union(settings.SDL2_IMAGE_FORMATS)
 
 
 def get_lib_name(settings):
@@ -61,7 +61,7 @@ def get(ports, settings, shared):
               IMG_tif.c IMG_xcf.c IMG_xpm.c IMG_xv.c IMG_webp.c IMG_ImageIO.m
               IMG_avif.c IMG_jxl.c IMG_svg.c IMG_qoi.c'''.split()
 
-    flags = ['-O2', '-sUSE_SDL=2', '-Wno-format-security']
+    flags = ['-sUSE_SDL=2', '-Wno-format-security']
 
     formats = get_formats(settings)
 

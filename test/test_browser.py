@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright 2013 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -242,7 +241,7 @@ class browser(BrowserCore):
   def require_jspi(self):
     if not is_chrome():
       self.skipTest(f'Current browser ({EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
-    super(browser, self).require_jspi()
+    super().require_jspi()
 
   def post_manual_reftest(self):
     assert os.path.exists('reftest.js')
@@ -854,7 +853,7 @@ If manually bisecting:
                                     ('screenshot.jpg@/assets/screenshot.jpg', '/assets', 'screenshot.jpg')]:
       self.btest_exit(src, emcc_args=[
         '-O2', '-lSDL', '-lGL',
-        '--preload-file', dest, '-DSCREENSHOT_DIRNAME="' + dirname + '"', '-DSCREENSHOT_BASENAME="' + basename + '"', '--use-preload-plugins'
+        '--preload-file', dest, '-DSCREENSHOT_DIRNAME="' + dirname + '"', '-DSCREENSHOT_BASENAME="' + basename + '"', '--use-preload-plugins',
       ])
 
   @also_with_wasmfs
@@ -886,7 +885,7 @@ If manually bisecting:
     # add testing for closure on preloaded files + ENVIRONMENT=web (we must not
     # emit any node.js code here, see
     # https://github.com/emscripten-core/emscripten/issues/14486
-    'closure_webonly': (['--closure', '1', '-sENVIRONMENT=web'],)
+    'closure_webonly': (['--closure', '1', '-sENVIRONMENT=web'],),
   })
   def test_sdl_image_prepare_data(self, args):
     # load an image file, get pixel data.
@@ -972,7 +971,7 @@ If manually bisecting:
   })
   @parameterized({
     '': (False,),
-    'delay': (True,)
+    'delay': (True,),
   })
   def test_sdl_key(self, defines, async_, delay):
     if delay:
@@ -1399,7 +1398,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
     create_file('file1.txt', 'first')
     ensure_dir('sub')
     create_file('sub/file2.txt', 'second')
-    self.run_process([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', Path('sub/file2.txt'), '--separate-metadata', '--js-output=files.js'])
+    self.run_process([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'sub/file2.txt', '--separate-metadata', '--js-output=files.js'])
     self.btest(Path('fs/test_workerfs_package.cpp'), '1', emcc_args=['-lworkerfs.js', '--proxy-to-worker', '-lworkerfs.js'])
 
   def test_fs_lz4fs_package(self):
@@ -1415,7 +1414,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
     print('emcc-normal')
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
     self.btest_exit(Path('fs/test_lz4fs.cpp'), 2, emcc_args=['-sLZ4', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt'])
-    assert os.path.getsize('file1.txt') + os.path.getsize(Path('subdir/file2.txt')) + os.path.getsize('file3.txt') == 3 * 1024 * 128 * 10 + 1
+    assert os.path.getsize('file1.txt') + os.path.getsize('subdir/file2.txt') + os.path.getsize('file3.txt') == 3 * 1024 * 128 * 10 + 1
     assert os.path.getsize('test.data') < (3 * 1024 * 128 * 10) / 2  # over half is gone
     print('    emcc-opts')
     self.btest_exit(Path('fs/test_lz4fs.cpp'), 2, emcc_args=['-sLZ4', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt', '-O2'])
@@ -1752,7 +1751,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
   @parameterized({
     '': ([],),
     # Enabling FULL_ES3 also enables ES2 automatically
-    'proxy': (['--proxy-to-worker'],)
+    'proxy': (['--proxy-to-worker'],),
   })
   def test_glgears_long(self, args):
     args += ['-DHAVE_BUILTIN_SINCOS', '-DLONGTEST', '-lGL', '-lglut', '-DANIMATE']
@@ -1819,7 +1818,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
   @parameterized({
     'normal': (['-sFULL_ES2'],),
     # Enabling FULL_ES3 also enables ES2 automatically
-    'full_es3': (['-sFULL_ES3'],)
+    'full_es3': (['-sFULL_ES3'],),
   })
   def test_gles2_emulation(self, args):
     shutil.copy(test_file('third_party/glbook/Chapter_10/MultiTexture/basemap.tga'), '.')
@@ -2325,10 +2324,10 @@ void *getBindBuffer() {
 
   def test_openal_playback(self):
     shutil.copy(test_file('sounds/audio.wav'), '.')
-    self.btest_exit('openal/test_openal_playback.c', emcc_args=['-O2', '--preload-file', 'audio.wav'],)
+    self.btest_exit('openal/test_openal_playback.c', emcc_args=['-O2', '--preload-file', 'audio.wav'])
 
   def test_openal_buffers(self):
-    self.btest_exit('openal/test_openal_buffers.c', emcc_args=['--preload-file', test_file('sounds/the_entertainer.wav') + '@/'],)
+    self.btest_exit('openal/test_openal_buffers.c', emcc_args=['--preload-file', test_file('sounds/the_entertainer.wav') + '@/'])
 
   def test_runtimelink(self):
     create_file('header.h', r'''
@@ -2470,7 +2469,7 @@ void *getBindBuffer() {
 
     for filename, extra_args, second_code in [
       ('test_runtime_misuse.c', [], 600),
-      ('test_runtime_misuse_2.c', ['--pre-js', 'pre_runtime.js'], 601) # 601, because no main means we *do* run another call after exit()
+      ('test_runtime_misuse_2.c', ['--pre-js', 'pre_runtime.js'], 601), # 601, because no main means we *do* run another call after exit()
     ]:
       print('\n', filename, extra_args)
 
@@ -2547,7 +2546,7 @@ void *getBindBuffer() {
 
   @parameterized({
     '': ([],),
-    'lz4': (['-sLZ4'],)
+    'lz4': (['-sLZ4'],),
   })
   def test_preload_module(self, args):
     create_file('library.c', r'''
@@ -2615,7 +2614,7 @@ Module["preRun"] = () => {
     'closure': (['-O2', '-g1', '--closure=1', '-sHTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=0'],),
     'pthread': (['-pthread'],),
     'proxy_to_pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
-    'legacy': (['-sMIN_FIREFOX_VERSION=0', '-sMIN_SAFARI_VERSION=0', '-sMIN_CHROME_VERSION=0', '-Wno-transpile'],)
+    'legacy': (['-sMIN_FIREFOX_VERSION=0', '-sMIN_SAFARI_VERSION=0', '-sMIN_CHROME_VERSION=0', '-Wno-transpile'],),
   })
   def test_html5_core(self, opts):
     if self.is_wasm64() and '-sMIN_CHROME_VERSION=0' in opts:
@@ -2965,7 +2964,7 @@ Module["preRun"] = () => {
         '--preload-file', dest,
         '-DSCREENSHOT_DIRNAME="' + dirname + '"',
         '-DSCREENSHOT_BASENAME="' + basename + '"',
-        '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--use-preload-plugins'
+        '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--use-preload-plugins',
       ])
 
   @requires_graphics_hardware
@@ -2974,7 +2973,7 @@ Module["preRun"] = () => {
     self.btest_exit('test_sdl2_image.c', 600, emcc_args=[
       '--preload-file', 'screenshot.jpeg',
       '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpeg"',
-      '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--use-preload-plugins'
+      '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--use-preload-plugins',
     ])
 
   @also_with_wasmfs
@@ -2986,12 +2985,12 @@ Module["preRun"] = () => {
     self.btest_exit('test_sdl2_image.c', 512, emcc_args=[
       '--preload-file', 'screenshot.png',
       '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.png"', '-DNO_PRELOADED',
-      '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '-sSDL2_IMAGE_FORMATS=png'
+      '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '-sSDL2_IMAGE_FORMATS=png',
     ])
     self.btest_exit('test_sdl2_image.c', 600, emcc_args=[
       '--preload-file', 'screenshot.jpg',
       '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpg"', '-DBITSPERPIXEL=24', '-DNO_PRELOADED',
-      '--use-port=sdl2', '--use-port=sdl2_image:formats=jpg'
+      '--use-port=sdl2', '--use-port=sdl2_image:formats=jpg',
     ])
 
   def test_sdl2_key(self):
@@ -3062,7 +3061,7 @@ Module["preRun"] = () => {
       </html>
     ''')
 
-    self.compile_btest('browser/test_sdl2_mouse.c', ['-DTEST_SDL_MOUSE_OFFSETS=1', '-O2', '--minify=0', '-o', 'sdl2_mouse.js', '--pre-js', test_file('browser/fake_events.js'), '-sUSE_SDL=2', '-sEXIT_RUNTIME'])
+    self.compile_btest('browser/test_sdl2_mouse.c', ['-DTEST_SDL_MOUSE_OFFSETS', '-O2', '--minify=0', '-o', 'sdl2_mouse.js', '--pre-js', test_file('browser/fake_events.js'), '-sUSE_SDL=2', '-sEXIT_RUNTIME'])
     self.run_browser('page.html', '', '/report_result?exit:0')
 
   def test_sdl2_threads(self):
@@ -3748,7 +3747,7 @@ Module["preRun"] = () => {
   @also_with_threads
   @parameterized({
     '': ([],),
-    'O3': (['-O3'],)
+    'O3': (['-O3'],),
   })
   def test_pthread_64bit_cxx11_atomics(self, opt):
     self.btest_exit('pthread/test_pthread_64bit_cxx11_atomics.cpp', emcc_args=opt)
@@ -3862,7 +3861,7 @@ Module["preRun"] = () => {
   # Test that a pthread can spawn another pthread of its own.
   @parameterized({
     '': ([],),
-    'modularize': (['-sMODULARIZE', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')],)
+    'modularize': (['-sMODULARIZE', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')],),
   })
   def test_pthread_create_pthread(self, args):
     self.btest_exit('pthread/test_pthread_create_pthread.c', emcc_args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=2'] + args)
@@ -4040,7 +4039,7 @@ Module["preRun"] = () => {
   # global data section of the application memory area.
   @parameterized({
     '': (['-O3'],),
-    'modularize': (['-sMODULARIZE', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')],)
+    'modularize': (['-sMODULARIZE', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')],),
   })
   def test_pthread_global_data_initialization(self, args):
     self.btest_exit('pthread/test_pthread_global_data_initialization.c', emcc_args=args + ['-pthread', '-sPROXY_TO_PTHREAD', '-sPTHREAD_POOL_SIZE'])
@@ -4386,7 +4385,7 @@ Module["preRun"] = () => {
   @requires_graphics_hardware
   @parameterized({
     '': ([],),
-    'threads': (['-pthread', '-sPROXY_TO_PTHREAD'],)
+    'threads': (['-pthread', '-sPROXY_TO_PTHREAD'],),
   })
   @parameterized({
     '': ([],),
@@ -4709,7 +4708,7 @@ Module["preRun"] = () => {
   })
   @parameterized({
     '': ([],),
-    'O3': (['-O3'],)
+    'O3': (['-O3'],),
   })
   def test_pthread_hello_thread(self, opts, modularize):
     self.btest_exit('pthread/hello_thread.c', emcc_args=['-pthread'] + modularize + opts)
@@ -4728,7 +4727,7 @@ Module["preRun"] = () => {
   # Tests memory growth in pthreads mode, but still on the main thread.
   @parameterized({
     '': ([],),
-    'proxy': (['-sPROXY_TO_PTHREAD'],)
+    'proxy': (['-sPROXY_TO_PTHREAD'],),
   })
   @no_2gb('uses INITIAL_MEMORY')
   @no_4gb('uses INITIAL_MEMORY')
@@ -4818,7 +4817,7 @@ Module["preRun"] = () => {
   @also_with_wasm2js
   @parameterized({
     '': ([],),
-    'O3': (['-O3'],)
+    'O3': (['-O3'],),
   })
   def test_minimal_runtime_single_file_html(self, opts):
     self.btest('single_file_static_initializer.cpp', '19', emcc_args=opts + ['-sMINIMAL_RUNTIME', '-sSINGLE_FILE'])
@@ -5025,7 +5024,7 @@ Module["preRun"] = () => {
   @requires_wasm2js
   @parameterized({
     '': ([],),
-    'minimal': (['-sMINIMAL_RUNTIME'],)
+    'minimal': (['-sMINIMAL_RUNTIME'],),
   })
   def test_no_declare_asm_module_exports_wasm2js(self, args):
     # TODO(sbc): Fix closure warnings with MODULARIZE + WASM=0
@@ -5060,7 +5059,7 @@ Module["preRun"] = () => {
 
   @parameterized({
     '': ([],),
-    'pthread': (['-sPROXY_TO_PTHREAD', '-pthread'],)
+    'pthread': (['-sPROXY_TO_PTHREAD', '-pthread'],),
   })
   def test_offset_converter(self, args):
     self.btest_exit('test_offset_converter.c', emcc_args=['-sUSE_OFFSET_CONVERTER', '-gsource-map'] + args)
@@ -5115,7 +5114,7 @@ Module["preRun"] = () => {
   # Tests the hello_wasm_worker.c documentation example code.
   @also_with_minimal_runtime
   def test_wasm_worker_hello(self):
-    self.btest_exit('wasm_worker/hello_wasm_worker.c', emcc_args=['-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/hello_wasm_worker.c', emcc_args=['-sWASM_WORKERS', '-sENVIRONMENT=web,worker'])
 
   def test_wasm_worker_hello_minimal_runtime_2(self):
     self.btest_exit('wasm_worker/hello_wasm_worker.c', emcc_args=['-sWASM_WORKERS', '-sMINIMAL_RUNTIME=2'])
@@ -5461,7 +5460,7 @@ Module["preRun"] = () => {
   @disabled("only run this manually, to test for race conditions")
   @parameterized({
     'normal': ([],),
-    'assertions': (['-sASSERTIONS'],)
+    'assertions': (['-sASSERTIONS'],),
   })
   def test_manual_pthread_proxy_hammer(self, args):
     # the specific symptom of the hang that was fixed is that the test hangs
@@ -5696,7 +5695,7 @@ class emrun(RunnerCore):
         ['--dump_out_directory=foo_bar', '--port', '6942'],
     ]:
       args = args_base + args + [self.in_dir('test_emrun.html'), '--', '1', '2', '--3', 'escaped space', 'with_underscore']
-      print(shared.shlex_join(args))
+      print(shlex.join(args))
       proc = self.run_process(args, check=False)
       self.assertEqual(proc.returncode, 100)
       dump_dir = 'dump_out'

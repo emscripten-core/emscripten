@@ -431,8 +431,7 @@ class Library:
     return cache.get(self.get_path(), self.do_build, force=USE_NINJA == 2, quiet=USE_NINJA)
 
   def generate(self):
-    return cache.get(self.get_path(), self.do_generate, force=USE_NINJA == 2, quiet=USE_NINJA,
-                     deferred=True)
+    return cache.get(self.get_path(), self.do_generate, force=USE_NINJA == 2, quiet=USE_NINJA)
 
   def get_link_flag(self):
     """
@@ -732,12 +731,12 @@ class MTLibrary(Library):
     return super().get_default_variation(
       is_mt=settings.PTHREADS,
       is_ww=settings.SHARED_MEMORY and not settings.PTHREADS,
-      **kwargs
+      **kwargs,
     )
 
   @classmethod
   def variations(cls):
-    combos = super(MTLibrary, cls).variations()
+    combos = super().variations()
 
     # These are mutually exclusive, only one flag will be set at any give time.
     return [combo for combo in combos if not combo['is_mt'] or not combo['is_ww']]
@@ -1102,7 +1101,7 @@ class libc(MuslInternalLibrary,
     ignore = [
         'ipc', 'passwd', 'signal', 'sched', 'time', 'linux',
         'aio', 'exit', 'legacy', 'mq', 'setjmp',
-        'ldso', 'malloc'
+        'ldso', 'malloc',
     ]
 
     # individual files
@@ -1211,9 +1210,7 @@ class libc(MuslInternalLibrary,
         ])
 
     # These files are in libc directories, but only built in libc_optz.
-    ignore += [
-      'pow_small.c', 'log_small.c', 'log2_small.c'
-    ]
+    ignore += ['pow_small.c', 'log_small.c', 'log2_small.c']
 
     ignore = set(ignore)
     for dirpath, dirnames, filenames in os.walk(musl_srcdir):
@@ -1407,7 +1404,7 @@ class libc_optz(libc):
     # EMCC_FORCE_STDLIBS can have a similar effect of forcing all libraries.
     # In both cases, the build is not one that is hyper-focused on code size,
     # and so optz is not that important.
-    return super(libc_optz, self).can_use() and settings.SHRINK_LEVEL >= 2 and \
+    return super().can_use() and settings.SHRINK_LEVEL >= 2 and \
         not settings.LINKABLE and not os.environ.get('EMCC_FORCE_STDLIBS')
 
 
@@ -1421,7 +1418,7 @@ class libprintf_long_double(libc):
         filenames=['vfprintf.c'])
 
   def can_use(self):
-    return super(libprintf_long_double, self).can_use() and settings.PRINTF_LONG_DOUBLE
+    return super().can_use() and settings.PRINTF_LONG_DOUBLE
 
 
 class libwasm_workers(DebugLibrary):
@@ -1469,7 +1466,7 @@ class libwasm_workers(DebugLibrary):
     files = []
     if self.is_stub:
       files = [
-        'library_wasm_worker_stub.c'
+        'library_wasm_worker_stub.c',
       ]
     else:
       files = [
@@ -1497,7 +1494,7 @@ class libsockets(MuslInternalLibrary, MTLibrary):
       filenames=LIBC_SOCKETS)
 
   def can_use(self):
-    return super(libsockets, self).can_use() and not settings.PROXY_POSIX_SOCKETS
+    return super().can_use() and not settings.PROXY_POSIX_SOCKETS
 
 
 class libsockets_proxy(MTLibrary):
@@ -1509,7 +1506,7 @@ class libsockets_proxy(MTLibrary):
     return [utils.path_from_root('system/lib/websocket/websocket_to_posix_socket.c')]
 
   def can_use(self):
-    return super(libsockets_proxy, self).can_use() and settings.PROXY_POSIX_SOCKETS
+    return super().can_use() and settings.PROXY_POSIX_SOCKETS
 
 
 class crt1(MuslInternalLibrary):
@@ -1631,7 +1628,7 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
       filenames += [
         'cxa_exception_storage.cpp',
         'cxa_exception.cpp',
-        'cxa_personality.cpp'
+        'cxa_personality.cpp',
       ]
     else:
       assert False
@@ -1789,7 +1786,7 @@ class libmalloc(MTLibrary):
       is_tracing=settings.EMSCRIPTEN_TRACING,
       memvalidate='memvalidate' in settings.MALLOC,
       verbose='verbose' in settings.MALLOC,
-      **kwargs
+      **kwargs,
     )
 
   @classmethod
@@ -1837,7 +1834,7 @@ class libmimalloc(MTLibrary):
     path='system/lib/mimalloc/src',
     glob_pattern='*.c',
     # mimalloc includes some files at the source level, so exclude them here.
-    excludes=['alloc-override.c', 'free.c', 'page-queue.c', 'static.c']
+    excludes=['alloc-override.c', 'free.c', 'page-queue.c', 'static.c'],
   )
   src_files += [utils.path_from_root('system/lib/mimalloc/src/prim/prim.c')]
   src_files += [utils.path_from_root('system/lib/emmalloc.c')]
@@ -1911,7 +1908,7 @@ class libGL(MTLibrary):
       is_ofb=settings.OFFSCREEN_FRAMEBUFFER,
       is_full_es3=settings.FULL_ES3,
       is_enable_get_proc_address=settings.GL_ENABLE_GET_PROC_ADDRESS,
-      **kwargs
+      **kwargs,
     )
 
 
@@ -2212,7 +2209,7 @@ class libstandalonewasm(MuslInternalLibrary):
       is_mem_grow=settings.ALLOW_MEMORY_GROWTH,
       is_pure=settings.PURE_WASI,
       nocatch=settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS,
-      **kwargs
+      **kwargs,
     )
 
   def get_files(self):
@@ -2241,7 +2238,7 @@ class libstandalonewasm(MuslInternalLibrary):
     return files
 
   def can_use(self):
-    return super(libstandalonewasm, self).can_use() and settings.STANDALONE_WASM
+    return super().can_use() and settings.STANDALONE_WASM
 
 
 class libjsmath(Library):
@@ -2251,7 +2248,7 @@ class libjsmath(Library):
   src_files = ['jsmath.c']
 
   def can_use(self):
-    return super(libjsmath, self).can_use() and settings.JS_MATH
+    return super().can_use() and settings.JS_MATH
 
 
 class libstubs(DebugLibrary):

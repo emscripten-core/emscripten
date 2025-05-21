@@ -12,9 +12,7 @@
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 
 function initMemory() {
-#if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return;
-#endif // PTHREADS
+  {{{ runIfWorkerThread('return') }}}
 
 #if expectToReceiveOnModule('wasmMemory')
   if (Module['wasmMemory']) {
@@ -22,7 +20,7 @@ function initMemory() {
   } else
 #endif
   {
-    var INITIAL_MEMORY = {{{ makeModuleReceiveExpr('INITIAL_MEMORY', INITIAL_MEMORY) }}}
+    var INITIAL_MEMORY = {{{ makeModuleReceiveExpr('INITIAL_MEMORY', INITIAL_MEMORY) }}};
 
 #if ASSERTIONS
     assert(INITIAL_MEMORY >= {{{STACK_SIZE}}}, 'INITIAL_MEMORY should be larger than STACK_SIZE, was ' + INITIAL_MEMORY + '! (STACK_SIZE=' + {{{STACK_SIZE}}} + ')');
@@ -56,3 +54,6 @@ function initMemory() {
   updateMemoryViews();
 }
 
+#if WASM_ESM_INTEGRATION
+initMemory();
+#endif

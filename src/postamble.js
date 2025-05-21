@@ -169,7 +169,7 @@ function run() {
     return;
   }
 
-  function doRun() {
+  {{{ asyncIf(ASYNCIFY == 2) }}}function doRun() {
     // run may have just been called through dependencies being fulfilled just in this very frame,
     // or while the async setStatus time below was happening
 #if ASSERTIONS
@@ -199,9 +199,9 @@ function run() {
 #if HAS_MAIN
     var noInitialRun = {{{ makeModuleReceiveExpr('noInitialRun', !INVOKE_RUN) }}};
 #if MAIN_READS_PARAMS
-    if (!noInitialRun) callMain(args);
+    if (!noInitialRun) {{{ awaitIf(ASYNCIFY == 2) }}}callMain(args);
 #else
-    if (!noInitialRun) callMain();
+    if (!noInitialRun) {{{ awaitIf(ASYNCIFY == 2) }}}callMain();
 #endif
 #else
 #if ASSERTIONS

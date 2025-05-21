@@ -21,25 +21,6 @@ var sharedModules = {};
 #endif
 
 if (ENVIRONMENT_IS_PTHREAD) {
-#if !MINIMAL_RUNTIME
-  var wasmModuleReceived;
-#endif
-
-#if ENVIRONMENT_MAY_BE_NODE
-  // Node.js support
-  if (ENVIRONMENT_IS_NODE) {
-    // Create as web-worker-like an environment as we can.
-
-    var parentPort = worker_threads['parentPort'];
-    parentPort.on('message', (msg) => onmessage({ data: msg }));
-
-    Object.assign(globalThis, {
-      self: global,
-      postMessage: (msg) => parentPort.postMessage(msg),
-    });
-  }
-#endif // ENVIRONMENT_MAY_BE_NODE
-
   // Thread-local guard variable for one-time init of the JS state
   var initializedJS = false;
 

@@ -46,7 +46,7 @@ if (typeof WebAssembly != 'object') {
 
 // Wasm globals
 
-#if !WASM_ESM_INTEGRATION
+#if !WASM_ESM_INTEGRATION || IMPORTED_MEMORY
 var wasmMemory;
 #endif
 
@@ -248,9 +248,7 @@ function exitRuntime() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-#if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
-#endif
+  {{{ runIfWorkerThread('return;') }}} // PThreads reuse the runtime from the main thread.
 #if !STANDALONE_WASM
   ___funcs_on_exit(); // Native atexit() functions
 #endif
@@ -266,9 +264,7 @@ function postRun() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-#if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
-#endif
+  {{{ runIfWorkerThread('return;') }}} // PThreads reuse the runtime from the main thread.
 
 #if expectToReceiveOnModule('postRun')
   if (Module['postRun']) {
@@ -823,7 +819,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
 
 #if !WASM_ESM_INTEGRATION
 function getWasmImports() {
-#if PTHREADS
+#if PTHREADS || WASM_WORKERS
   assignWasmImports();
 #endif
 #if ASYNCIFY && (ASSERTIONS || ASYNCIFY == 2)
@@ -1008,8 +1004,8 @@ function getWasmImports() {
   }
 #endif
 
-#if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) {
+#if PTHREADS || WASM_WORKERS
+  if ({{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
     return new Promise((resolve) => {
       wasmModuleReceived = (module) => {
         // Instantiate from the module posted from the main thread.

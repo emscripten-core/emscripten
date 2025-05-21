@@ -41,7 +41,7 @@ def clean_processes(processes):
         pass
 
 
-class WebsockifyServerHarness():
+class WebsockifyServerHarness:
   def __init__(self, filename, args, listen_port, do_server_check=True):
     self.processes = []
     self.filename = filename
@@ -81,7 +81,7 @@ class WebsockifyServerHarness():
         proxy_sock = socket.create_connection(('localhost', self.listen_port), timeout=1)
         proxy_sock.close()
         break
-      except IOError:
+      except OSError:
         time.sleep(1)
     else:
       clean_processes(self.processes)
@@ -100,7 +100,7 @@ class WebsockifyServerHarness():
     clean_processes(self.processes)
 
 
-class CompiledServerHarness():
+class CompiledServerHarness:
   def __init__(self, filename, args, listen_port):
     self.processes = []
     self.filename = filename
@@ -134,7 +134,7 @@ class CompiledServerHarness():
 
 
 # Executes a native executable server process
-class BackgroundServerProcess():
+class BackgroundServerProcess:
   def __init__(self, args):
     self.processes = []
     self.args = args
@@ -241,7 +241,7 @@ class sockets(BrowserCore):
   def test_sockets_partial(self):
     for harness in [
       WebsockifyServerHarness(test_file('sockets/test_sockets_partial_server.c'), [], 49180),
-      CompiledServerHarness(test_file('sockets/test_sockets_partial_server.c'), [], 49181)
+      CompiledServerHarness(test_file('sockets/test_sockets_partial_server.c'), [], 49181),
     ]:
       with harness:
         self.btest_exit('sockets/test_sockets_partial_client.c', assert_returncode=165, emcc_args=['-DSOCKK=%d' % harness.listen_port])
@@ -250,7 +250,7 @@ class sockets(BrowserCore):
   def test_sockets_select_server_down(self):
     for harness in [
       WebsockifyServerHarness(test_file('sockets/test_sockets_select_server_down_server.c'), [], 49190, do_server_check=False),
-      CompiledServerHarness(test_file('sockets/test_sockets_select_server_down_server.c'), [], 49191)
+      CompiledServerHarness(test_file('sockets/test_sockets_select_server_down_server.c'), [], 49191),
     ]:
       with harness:
         self.btest_exit('sockets/test_sockets_select_server_down_client.c', emcc_args=['-DSOCKK=%d' % harness.listen_port])
@@ -259,7 +259,7 @@ class sockets(BrowserCore):
   def test_sockets_select_server_closes_connection_rw(self):
     for harness in [
       WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DCLOSE_CLIENT_AFTER_ECHO'], 49200),
-      CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DCLOSE_CLIENT_AFTER_ECHO'], 49201)
+      CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DCLOSE_CLIENT_AFTER_ECHO'], 49201),
     ]:
       with harness:
         self.btest_exit('sockets/test_sockets_select_server_closes_connection_client_rw.c', emcc_args=['-DSOCKK=%d' % harness.listen_port])

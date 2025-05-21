@@ -433,7 +433,8 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
   receiving = create_receiving(function_exports)
   if settings.WASM_ESM_INTEGRATION:
     sending = create_sending(metadata, forwarded_json['librarySymbols'])
-    parts += [sending, receiving]
+    reexports = create_reexports()
+    parts += [sending, receiving, reexports]
   else:
     parts += create_module(receiving, metadata, global_exports, forwarded_json['librarySymbols'])
   parts.append(post)
@@ -715,7 +716,7 @@ def type_to_sig(type):
     webassembly.Type.F32: 'f',
     webassembly.Type.F64: 'd',
     webassembly.Type.EXTERNREF: 'e',
-    webassembly.Type.VOID: 'v'
+    webassembly.Type.VOID: 'v',
   }[type]
 
 
@@ -726,7 +727,7 @@ def type_to_ts_type(type):
     webassembly.Type.F32: 'number',
     webassembly.Type.F64: 'number',
     webassembly.Type.EXTERNREF: 'any',
-    webassembly.Type.VOID: 'void'
+    webassembly.Type.VOID: 'void',
   }[type]
 
 
@@ -859,7 +860,10 @@ def create_sending(metadata, library_symbols):
     elems = []
     for k, v in sorted_items:
       elems.append(f'{v} as {k}')
-    return f"export {{ {', '.join(elems)} }};\n\n"
+    elems = ',\n  '.join(elems)
+    exports = '// Export JS functions to the wasm module with demangled names.\n'
+    exports += f"export {{\n  {elems}\n}};\n\n"
+    return exports
 
   prefix = ''
   if settings.MAYBE_CLOSURE_COMPILER:
@@ -875,6 +879,21 @@ def create_sending(metadata, library_symbols):
       elems.append(f'{prefix}{k}: {v}')
 
   return '{\n  ' + ',\n  '.join(elems) + '\n}'
+
+
+def create_reexports():
+  assert settings.WASM_ESM_INTEGRATION
+  exports = '// Re-export imported wasm functions to the JS entry point. These are user-facing and underscore mangled.\n'
+  wasm_exports = []
+  for exp in building.user_requested_exports:
+    if shared.is_c_symbol(exp):
+      demangled = shared.demangle_c_symbol_name(exp)
+      if demangled in settings.WASM_EXPORTS:
+        wasm_exports.append(exp)
+      if demangled == 'main' and '__main_argc_argv' in settings.WASM_EXPORTS:
+        wasm_exports.append('_main')
+  exports += f"export {{ {', '.join(wasm_exports)} }};\n\n"
+  return exports
 
 
 def can_use_await():
@@ -924,7 +943,7 @@ def make_export_wrappers(function_exports):
       # With assertions enabled we create a wrapper that are calls get routed through, for
       # the lifetime of the program.
       wrapper += f"createExportWrapper('{name}', {nargs});"
-    elif (settings.WASM_ASYNC_COMPILATION and not can_use_await()) or settings.PTHREADS:
+    elif (settings.WASM_ASYNC_COMPILATION and not can_use_await()) or settings.PTHREADS or settings.WASM_WORKERS:
       # With WASM_ASYNC_COMPILATION wrapper will replace the global var and Module var on
       # first use.
       args = [f'a{i}' for i in range(nargs)]
@@ -946,8 +965,10 @@ def make_export_wrappers(function_exports):
 def create_receiving(function_exports):
   if settings.WASM_ESM_INTEGRATION:
     exports = [f'{f} as {asmjs_mangle(f)}' for f in function_exports]
-    exports.append('memory as wasmMemory')
-    exports.append('__indirect_function_table as wasmTable')
+    if not settings.IMPORTED_MEMORY:
+      exports.append('memory as wasmMemory')
+    if not settings.RELOCATABLE:
+      exports.append('__indirect_function_table as wasmTable')
     exports = ',\n  '.join(exports)
     return f"import {{\n  {exports}\n}} from './{settings.WASM_BINARY_FILE}';\n\n"
 
@@ -990,7 +1011,7 @@ def create_module(receiving, metadata, global_exports, library_symbols):
   module = []
 
   sending = create_sending(metadata, library_symbols)
-  if settings.PTHREADS:
+  if settings.PTHREADS or settings.WASM_WORKERS:
     sending = textwrap.indent(sending, '  ').strip()
     module.append('''\
 var wasmImports;
@@ -1126,6 +1147,7 @@ def create_pointer_conversion_wrappers(metadata):
     '_emscripten_set_offscreencanvas_size_on_thread': '_pp__',
     'fileno': '_p',
     '_emscripten_run_callback_on_thread': '_pp_pp',
+    '_emscripten_find_dylib': 'ppppp',
   }
 
   for function in settings.SIGNATURE_CONVERSIONS:

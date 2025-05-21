@@ -15,6 +15,7 @@ running multiple build commands in parallel, confusion can occur).
 import argparse
 import fnmatch
 import logging
+import os
 import sys
 import time
 from contextlib import contextmanager
@@ -88,6 +89,7 @@ MINIMAL_TASKS = [
     'libnoexit',
     'libwebgpu',
     'libwebgpu_cpp',
+    'bullet',
 ]
 
 # Additional tasks on top of MINIMAL_TASKS that are necessary for PIC testing on
@@ -170,8 +172,8 @@ def clear_port(port_name):
 
 
 def build_port(port_name):
-  with get_port_variant(port_name) as port_name:
-    ports.build_port(port_name, settings)
+  with get_port_variant(port_name) as port_name_base:
+    ports.build_port(port_name_base, settings)
 
 
 def get_system_tasks():
@@ -279,6 +281,9 @@ def main():
 
   if auto_tasks:
     print('Building targets: %s' % ' '.join(tasks))
+
+  if USE_NINJA:
+    os.environ['EMBUILDER_PORT_BUILD_DEFERRED'] = '1'
 
   for what in tasks:
     for old, new in legacy_prefixes.items():

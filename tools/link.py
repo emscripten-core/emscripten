@@ -470,9 +470,9 @@ def make_js_executable(script):
     # Using -S (--split-string) here means that arguments to the executable are
     # correctly parsed.  We don't do this by default because old versions of env
     # don't support -S.
-    cmd = '/usr/bin/env -S ' + shared.shlex_join(cmd)
+    cmd = '/usr/bin/env -S ' + shlex.join(cmd)
   else:
-    cmd = shared.shlex_join(cmd)
+    cmd = shlex.join(cmd)
   logger.debug('adding `#!` to JavaScript file: %s' % cmd)
   # add shebang
   with open(script, 'w') as f:
@@ -516,9 +516,6 @@ def setup_pthreads():
     '_emscripten_thread_free_data',
     '_emscripten_thread_crashed',
   ]
-
-  if settings.EMBIND:
-    settings.REQUIRED_EXPORTS.append('_embind_initialize_bindings')
 
   if settings.MAIN_MODULE:
     settings.REQUIRED_EXPORTS += [
@@ -785,6 +782,9 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if options.oformat == OFormat.MJS:
     default_setting('EXPORT_ES6', 1)
 
+  if settings.JS_BASE64_API:
+    diagnostics.warning('experimental', '-sJS_BASE64_API is still experimental and not yet supported in browsers')
+
   if settings.WASM_ESM_INTEGRATION:
     diagnostics.warning('experimental', '-sWASM_ESM_INTEGRATION is still experimental and not yet supported in browsers')
     default_setting('EXPORT_ES6', 1)
@@ -795,10 +795,21 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.MODULARIZE and settings.MODULARIZE not in [1, 'instance']:
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
 
+  def limit_incoming_module_api():
+    if options.oformat == OFormat.HTML and options.shell_path == DEFAULT_SHELL_HTML:
+      # Out default shell.html file has minimal set of INCOMING_MODULE_JS_API elements that it expects
+      default_setting('INCOMING_MODULE_JS_API', 'canvas,monitorRunDependencies,onAbort,onExit,print,setStatus'.split(','))
+    else:
+      default_setting('INCOMING_MODULE_JS_API', [])
+
   if settings.MODULARIZE == 'instance':
     diagnostics.warning('experimental', '-sMODULARIZE=instance is still experimental. Many features may not work or will change.')
     if options.oformat != OFormat.MJS:
       exit_with_error('emcc: MODULARIZE instance is only compatible with .mjs output files')
+    limit_incoming_module_api()
+    for s in ['wasmMemory', 'INITIAL_MEMORY']:
+      if s in settings.INCOMING_MODULE_JS_API:
+        exit_with_error(f'emcc: {s} cannot be in INCOMING_MODULE_JS_API in MODULARIZE=instance mode')
 
   if options.oformat in (OFormat.WASM, OFormat.BARE):
     if options.emit_tsd:
@@ -966,11 +977,11 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       # are needed in this mode.
       default_setting('AUTO_JS_LIBRARIES', 0)
       default_setting('ALLOW_UNIMPLEMENTED_SYSCALLS', 0)
-    if options.oformat == OFormat.HTML and options.shell_path == DEFAULT_SHELL_HTML:
-      # Out default shell.html file has minimal set of INCOMING_MODULE_JS_API elements that it expects
-      default_setting('INCOMING_MODULE_JS_API', 'canvas,monitorRunDependencies,onAbort,onExit,print,setStatus'.split(','))
-    else:
-      default_setting('INCOMING_MODULE_JS_API', [])
+    limit_incoming_module_api()
+
+  for prop in settings.INCOMING_MODULE_JS_API:
+    if prop not in settings.ALL_INCOMING_MODULE_JS_API:
+      diagnostics.warning('unused-command-line-argument', f'invalid entry in INCOMING_MODULE_JS_API: {prop}')
 
   if 'noExitRuntime' in settings.INCOMING_MODULE_JS_API:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$noExitRuntime')
@@ -1082,7 +1093,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if settings.ASYNCIFY == 1:
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
         '__asyncify_state',
-        '__asyncify_data'
+        '__asyncify_data',
       ]
 
     if settings.MINIMAL_RUNTIME:
@@ -1368,6 +1379,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     # Workaround for embind+LTO issue:
     # https://github.com/emscripten-core/emscripten/issues/21653
     settings.REQUIRED_EXPORTS.append('__getTypeName')
+    if settings.PTHREADS or settings.WASM_WORKERS:
+      settings.REQUIRED_EXPORTS.append('_embind_initialize_bindings')
 
   if options.emit_tsd:
     settings.EMIT_TSD = True
@@ -1392,9 +1405,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.WASM_WORKERS:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$_wasmWorkerInitializeRuntime']
-    # set location of Wasm Worker bootstrap JS file
-    if settings.WASM_WORKERS == 1:
-      settings.WASM_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.ww.js'
     add_system_js_lib('libwasm_worker.js')
 
   # Set min browser versions based on certain settings such as WASM_BIGINT,
@@ -1411,18 +1421,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   default_setting('WASM_BIGINT', feature_matrix.caniuse(feature_matrix.Feature.JS_BIGINT_INTEGRATION))
 
   if settings.AUDIO_WORKLET:
-    if settings.AUDIO_WORKLET == 1:
-      settings.AUDIO_WORKLET_FILE = unsuffixed(os.path.basename(target)) + '.aw.js'
     add_system_js_lib('libwebaudio.js')
-    if not settings.MINIMAL_RUNTIME:
-      # If we are in the audio worklet environment, we can only access the Module object
-      # and not the global scope of the main JS script. Therefore we need to export
-      # all symbols that the audio worklet scope needs onto the Module object.
-      # MINIMAL_RUNTIME exports these manually, since this export mechanism is placed
-      # in global scope that is not suitable for MINIMAL_RUNTIME loader.
-      settings.EXPORTED_RUNTIME_METHODS += ['stackSave', 'stackAlloc', 'stackRestore', 'wasmTable']
-      # The following symbols need exposing to load and bootstrap the audio worklet:
-      settings.INCOMING_MODULE_JS_API += ['instantiateWasm', 'wasm', 'wasmMemory']
 
   if not settings.MINIMAL_RUNTIME:
     if 'preRun' in settings.INCOMING_MODULE_JS_API:
@@ -1439,13 +1438,13 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       'FS_createPath',
       'FS_createDataFile',
       'FS_createPreloadedFile',
-      'FS_unlink'
+      'FS_unlink',
     ]
     if not settings.WASMFS:
       # The old FS has some functionality that WasmFS lacks.
       settings.EXPORTED_RUNTIME_METHODS += [
         'FS_createLazyFile',
-        'FS_createDevice'
+        'FS_createDevice',
       ]
 
     settings.EXPORTED_RUNTIME_METHODS += [
@@ -1545,6 +1544,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     diagnostics.warning('emcc', 'output suffix .js requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
 
   if options.sanitize:
+    if settings.WASM_WORKERS:
+      exit_with_error('WASM_WORKERS is not currently compatible with `-fsanitize` tools')
     settings.USE_OFFSET_CONVERTER = 1
     # These symbols are needed by `withBuiltinMalloc` which used to implement
     # the `__noleakcheck` attribute.  However this dependency is not yet represented in the JS
@@ -2105,50 +2106,31 @@ def fix_es6_import_statements(js_file):
   save_intermediate('es6-module')
 
 
-def create_worker_file(input_file, target_dir, output_file, options):
-  output_file = os.path.join(target_dir, output_file)
-  input_file = utils.path_from_root(input_file)
-  contents = building.read_and_preprocess(input_file, expand_macros=True)
-  write_file(output_file, contents)
-
-  fix_es6_import_statements(output_file)
-
-  # Minify the worker JS file, if JS minification is enabled.
-  if settings.MINIFY_WHITESPACE:
-    contents = building.acorn_optimizer(output_file, ['--minify-whitespace'], return_output=True, worker_js=True)
-    write_file(output_file, contents)
-
-  utils.convert_line_endings_in_file(output_file, options.output_eol)
-
-
 def create_esm_wrapper(wrapper_file, support_target, wasm_target):
-  wasm_exports = []
-  js_exports = list(settings.EXPORTED_RUNTIME_METHODS)
-  for f in settings.USER_EXPORTS:
-    if f == '_main' and '__main_argc_argv' in settings.WASM_EXPORTS:
-      wasm_exports.append('__main_argc_argv as main')
-    elif f in settings.WASM_EXPORTS:
-      wasm_exports.append(shared.demangle_c_symbol_name(f))
-    else:
-      js_exports.append(f)
-  wasm_exports = ', '.join(wasm_exports)
-  js_exports = ', '.join(js_exports)
+  js_exports = settings.EXPORTED_RUNTIME_METHODS + list(building.user_requested_exports)
+  js_exports = ', '.join(sorted(js_exports))
 
   wrapper = []
-  if wasm_exports:
-    wrapper.append(f"export {{ {wasm_exports} }} from './{settings.WASM_BINARY_FILE}';")
-    # Because of the wasm ESM integration worker we need to make sure we import
-    # the wasm module here, before we import the support.js file.
-    # So, if there are no other exports we at least export the `memory`.
-  else:
-    wrapper.append('// The wasm module must be imported here first before the support file')
-    wrapper.append('// in order to avoid issues with circullr dependencies.')
-    wrapper.append(f"import * as unused from './{settings.WASM_BINARY_FILE}';")
+  wrapper.append('// The wasm module must be imported here first before the support file')
+  wrapper.append('// in order to avoid issues with circular dependencies.')
+  wrapper.append(f"import * as unused from './{settings.WASM_BINARY_FILE}';")
   support_url = f'./{os.path.basename(support_target)}'
   if js_exports:
     wrapper.append(f"export {{ default, {js_exports} }} from '{support_url}';")
   else:
     wrapper.append(f"export {{ default }} from '{support_url}';")
+
+  if settings.ENVIRONMENT_MAY_BE_NODE and settings.INVOKE_RUN and settings.EXPECT_MAIN:
+    wrapper.append(f'''
+// When run as the main module under node, execute main directly here
+import init from '{support_url}';
+const isNode = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string' && process.type != 'renderer';
+if (isNode) {{
+  const url = await import('url');
+  const isMainModule = url.pathToFileURL(process.argv[1]).href === import.meta.url;
+  if (isMainModule) await init();
+}}''')
+
   write_file(wrapper_file, '\n'.join(wrapper) + '\n')
 
   # FIXME(sbc): This is a huge hack to rename the imports in the
@@ -2169,16 +2151,6 @@ def phase_final_emitting(options, target, js_target, wasm_target):
   if shared.SKIP_SUBPROCS:
     return
 
-  target_dir = os.path.dirname(os.path.abspath(target))
-
-  # Deploy the Wasm Worker bootstrap file as an output file (*.ww.js)
-  if settings.WASM_WORKERS == 1:
-    create_worker_file('src/wasm_worker.js', target_dir, settings.WASM_WORKER_FILE, options)
-
-  # Deploy the Audio Worklet module bootstrap file (*.aw.js)
-  if settings.AUDIO_WORKLET == 1:
-    create_worker_file('src/audio_worklet.js', target_dir, settings.AUDIO_WORKLET_FILE, options)
-
   if settings.MODULARIZE and settings.MODULARIZE != 'instance':
     modularize()
   elif settings.USE_CLOSURE_COMPILER:
@@ -2196,7 +2168,7 @@ def phase_final_emitting(options, target, js_target, wasm_target):
     # Finally, rerun Closure compile with simple optimizations. It will be able
     # to further minify the code. (n.b. it would not be safe to run in advanced
     # mode)
-    final_js = building.closure_compiler(final_js, advanced=False, extra_closure_args=options.closure_args)
+    final_js = building.closure_compiler(final_js, advanced=False, extra_closure_args=settings.CLOSURE_ARGS)
     # Run unsafe_optimizations.js once more.  This allows the cleanup of newly
     # unused things that closure compiler leaves behind (e.g `new Float64Array(x)`).
     shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.mjs'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
@@ -2336,7 +2308,7 @@ def phase_binaryen(target, options, wasm_target):
 
     if options.use_closure_compiler:
       with ToolchainProfiler.profile_block('closure_compile'):
-        final_js = building.closure_compiler(final_js, extra_closure_args=options.closure_args)
+        final_js = building.closure_compiler(final_js, extra_closure_args=settings.CLOSURE_ARGS)
       save_intermediate('closure')
 
     if settings.TRANSPILE:
@@ -2438,6 +2410,15 @@ def node_pthread_detection():
     return "require('worker_threads').workerData === 'em-pthread'\n"
 
 
+def node_ww_detection():
+  # Under node we detect that we are running in a wasm worker by checking the
+  # workerData property.
+  if settings.EXPORT_ES6:
+    return "(await import('worker_threads')).workerData === 'em-ww';\n"
+  else:
+    return "require('worker_threads').workerData === 'em-ww'\n"
+
+
 def modularize():
   global final_js
   logger.debug(f'Modularizing, assigning to var {settings.EXPORT_NAME}')
@@ -2460,50 +2441,33 @@ def modularize():
 }
 ''' % {
       'maybe_async': maybe_async,
-      'generated_js': generated_js
+      'generated_js': generated_js,
     }
 
-  if settings.MINIMAL_RUNTIME and not settings.PTHREADS:
+  if settings.MINIMAL_RUNTIME and not settings.PTHREADS and not settings.WASM_WORKERS:
     # Single threaded MINIMAL_RUNTIME programs do not need access to
     # document.currentScript, so a simple export declaration is enough.
     src = f'var {settings.EXPORT_NAME} = {wrapper_function};'
   else:
-    script_url_node = ''
+    script_url_web = ''
     # When MODULARIZE this JS may be executed later,
     # after document.currentScript is gone, so we save it.
-    # In EXPORT_ES6 + PTHREADS the 'thread' is actually an ES6 module
-    # webworker running in strict mode, so doesn't have access to 'document'.
-    # In this case use 'import.meta' instead.
-    if settings.EXPORT_ES6:
-      script_url = 'import.meta.url'
-    else:
-      script_url = "typeof document != 'undefined' ? document.currentScript?.src : undefined"
-      if settings.ENVIRONMENT_MAY_BE_NODE:
-        script_url_node = "if (typeof __filename != 'undefined') _scriptName = _scriptName || __filename;"
+    # In EXPORT_ES6 mode we can just use 'import.meta.url'.
+    if settings.ENVIRONMENT_MAY_BE_WEB and not settings.EXPORT_ES6:
+       script_url_web = "var _scriptName = typeof document != 'undefined' ? document.currentScript?.src : undefined;"
     src = '''\
 var %(EXPORT_NAME)s = (() => {
-  var _scriptName = %(script_url)s;
-  %(script_url_node)s
+  %(script_url_web)s
   return (%(wrapper_function)s);
 })();
 ''' % {
-        'EXPORT_NAME': settings.EXPORT_NAME,
-        'script_url': script_url,
-        'script_url_node': script_url_node,
-        'wrapper_function': wrapper_function,
-      }
+      'EXPORT_NAME': settings.EXPORT_NAME,
+      'script_url_web': script_url_web,
+      'wrapper_function': wrapper_function,
+    }
 
   if settings.SOURCE_PHASE_IMPORTS:
     src = f"import source wasmModule from './{settings.WASM_BINARY_FILE}';\n\n" + src
-
-  # Given the async nature of how the Module function and Module object
-  # come into existence in AudioWorkletGlobalScope, store the Module
-  # function under a different variable name so that AudioWorkletGlobalScope
-  # will be able to reference it without aliasing/conflicting with the
-  # Module variable name. This should happen even in MINIMAL_RUNTIME builds
-  # for MODULARIZE and EXPORT_ES6 to work correctly.
-  if settings.AUDIO_WORKLET:
-    src += f'globalThis.AudioWorkletModule = {settings.EXPORT_NAME};\n'
 
   # Export using a UMD style export, or ES6 exports if selected
   if settings.EXPORT_ES6:
@@ -2537,6 +2501,28 @@ if (typeof exports === 'object' && typeof module === 'object') {
       src += 'isPthread && init();\n'
     else:
       src += 'isPthread && %s();\n' % settings.EXPORT_NAME
+
+  if settings.WASM_WORKERS:
+    # Same as above for for WASM_WORKERS
+    # Normally this detection is done when the module is itself run but
+    # when running in MODULARIZE mode we need use this to know if we should
+    # run the module constructor on startup (true only for pthreads).
+    if settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WORKER:
+      src += "var isWW = globalThis.self?.name == 'em-ww';\n"
+      # In order to support both web and node we also need to detect node here.
+      if settings.ENVIRONMENT_MAY_BE_NODE:
+        if not settings.PTHREADS:
+          src += "var isNode = typeof globalThis.process?.versions?.node == 'string';\n"
+        src += f'if (isNode) isWW = {node_ww_detection()}\n'
+    elif settings.ENVIRONMENT_MAY_BE_NODE:
+      src += f'var isWW = {node_ww_detection()}\n'
+    if settings.AUDIO_WORKLET:
+      src += "isWW ||= typeof AudioWorkletGlobalScope !== 'undefined';\n"
+    src += '// When running as a wasm worker, construct a new instance on startup\n'
+    if settings.MODULARIZE == 'instance':
+      src += 'isWW && init();\n'
+    else:
+      src += 'isWW && %s();\n' % settings.EXPORT_NAME
 
   final_js += '.modular.js'
   write_file(final_js, src)
@@ -3076,7 +3062,8 @@ def package_files(options, target):
     file_args += ['--obj-output=' + object_file]
     rtn.append(object_file)
 
-  cmd = [shared.FILE_PACKAGER, shared.replace_suffix(target, '.data')] + file_args
+  cmd = building.get_command_with_possible_response_file(
+    [shared.FILE_PACKAGER, shared.replace_suffix(target, '.data')] + file_args)
   if options.preload_files:
     # Preloading files uses --pre-js code that runs before the module is loaded.
     file_code = shared.check_call(cmd, stdout=PIPE).stdout

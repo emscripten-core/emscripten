@@ -342,9 +342,9 @@ var SAFE_HEAP_LOG = false;
 // truncs/extends/ reinterprets). This means that when types do not match the
 // emulated values may not match (this is true of native too, for that matter -
 // this is all undefined behavior). This approaches appears good enough to
-// support Python, which is the main use case motivating this feature.
+// support Python (the original motiviation for this feature) and Glib (the
+// continued motivation).
 // [link]
-// [deprecated]
 var EMULATE_FUNCTION_POINTER_CASTS = false;
 
 // Print out exceptions in emscriptened code.
@@ -1637,13 +1637,9 @@ var USE_SQLITE3 = false;
 // [compile+link] - affects user code at compile and system libraries at link.
 var SHARED_MEMORY = false;
 
-// If 1, enables support for Wasm Workers. Wasm Workers enable applications
+// Enables support for Wasm Workers.  Wasm Workers enable applications
 // to create threads using a lightweight web-specific API that builds on top
-// of Wasm SharedArrayBuffer + Atomics API. When enabled, a new build output
-// file a.ww.js will be generated to bootstrap the Wasm Worker JS contexts.
-// If 2, enables support for Wasm Workers, but without using a separate a.ww.js
-// file on the side. This can simplify deployment of builds, but will have a
-// downside that the generated build will no longer be csp-eval compliant.
+// of Wasm SharedArrayBuffer + Atomics API.
 // [compile+link] - affects user code at compile and system libraries at link.
 var WASM_WORKERS = 0;
 
@@ -2196,6 +2192,14 @@ var SOURCE_PHASE_IMPORTS = false;
 // Requires EXPORT_ES6 and MODULARIZE=instance
 // [link]
 var WASM_ESM_INTEGRATION = false;
+
+// Enable use of the JS arraybuffer-base64 API:
+// https://github.com/tc39/proposal-arraybuffer-base64
+// To run the resulting code currently requires passing `--js_base_64` to node
+// or chrome.
+// [experimental]
+// [link]
+var JS_BASE64_API = false;
 
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]

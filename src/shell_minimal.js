@@ -51,10 +51,6 @@ var ENVIRONMENT_IS_NODE = typeof process == 'object' && process.type != 'rendere
 var ENVIRONMENT_IS_SHELL = typeof read == 'function';
 #endif
 
-#if AUDIO_WORKLET
-var ENVIRONMENT_IS_AUDIO_WORKLET = typeof AudioWorkletGlobalScope !== 'undefined';
-#endif
-
 #if ASSERTIONS || PTHREADS
 #if !ENVIRONMENT_MAY_BE_NODE && !ENVIRONMENT_MAY_BE_SHELL
 var ENVIRONMENT_IS_WEB = true
@@ -69,8 +65,28 @@ var ENVIRONMENT_IS_WEB = !ENVIRONMENT_IS_NODE;
 #endif
 #endif // ASSERTIONS || PTHREADS
 
+#if ENVIRONMENT_MAY_BE_NODE && (PTHREADS || WASM_WORKERS)
+if (ENVIRONMENT_IS_NODE) {
+  var worker_threads = require('worker_threads');
+  global.Worker = worker_threads.Worker;
+}
+#endif
+
 #if WASM_WORKERS
-var ENVIRONMENT_IS_WASM_WORKER = !!Module['$ww'];
+var ENVIRONMENT_IS_WASM_WORKER = globalThis.name == 'em-ww';
+
+#if ENVIRONMENT_MAY_BE_NODE
+if (ENVIRONMENT_IS_NODE) {
+  // The way we signal to a worker that it is hosting a pthread is to construct
+  // it with a specific name.
+  ENVIRONMENT_IS_WASM_WORKER = worker_threads['workerData'] == 'em-ww'
+}
+#endif
+#endif
+
+#if AUDIO_WORKLET
+var ENVIRONMENT_IS_AUDIO_WORKLET = typeof AudioWorkletGlobalScope !== 'undefined';
+if (ENVIRONMENT_IS_AUDIO_WORKLET) ENVIRONMENT_IS_WASM_WORKER = true;
 #endif
 
 #if ASSERTIONS && ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_SHELL
@@ -134,20 +150,20 @@ var ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && self.name?.startsWith('em-
 #if !MODULARIZE
 // In MODULARIZE mode _scriptName needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
-var _scriptName = (typeof document != 'undefined') ? document.currentScript?.src : undefined;
+var _scriptName = typeof document != 'undefined' ? document.currentScript?.src : undefined;
 #endif
 
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
-  var worker_threads = require('worker_threads');
-  global.Worker = worker_threads.Worker;
   ENVIRONMENT_IS_WORKER = !worker_threads.isMainThread;
   // Under node we set `workerData` to `em-pthread` to signal that the worker
   // is hosting a pthread.
   ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && worker_threads['workerData'] == 'em-pthread'
+#if !EXPORT_ES6
   _scriptName = __filename;
-} else
 #endif
+} else
+#endif // ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_WORKER) {
   _scriptName = self.location.href;
 }

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# coding=utf-8
 # Copyright 2013 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -61,6 +60,7 @@ import re
 import json
 import argparse
 import tempfile
+import shlex
 import subprocess
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
@@ -268,7 +268,7 @@ def generate_cmd(js_file_path, src_file_path, cflags):
   # TODO(sbc): Remove this one we remove the test_em_config_env_var test
   cmd += ['-Wno-deprecated']
 
-  show(shared.shlex_join(cmd))
+  show(shlex.join(cmd))
   return cmd
 
 
@@ -335,7 +335,7 @@ def inspect_code(headers, cflags):
 def parse_json(path):
   header_files = []
 
-  with open(path, 'r') as stream:
+  with open(path) as stream:
     # Remove comments before loading the JSON.
     data = json.loads(re.sub(r'//.*\n', '', stream.read()))
 
