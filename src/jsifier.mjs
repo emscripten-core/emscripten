@@ -486,7 +486,7 @@ function(${args}) {
     if (LINK_AS_CXX && !WASM_EXCEPTIONS && symbol.startsWith('__cxa_find_matching_catch_')) {
       if (DISABLE_EXCEPTION_THROWING) {
         error(
-          'DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-except (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.',
+          'DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-exceptions (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.',
         );
         return;
       }
@@ -721,10 +721,21 @@ function(${args}) {
         //  emits
         //   'var foo;[code here verbatim];'
         contentText = 'var ' + mangled + snippet;
-        if (snippet[snippet.length - 1] != ';' && snippet[snippet.length - 1] != '}')
+        if (snippet[snippet.length - 1] != ';' && snippet[snippet.length - 1] != '}') {
           contentText += ';';
+        }
       } else if (typeof snippet == 'undefined') {
-        contentText = `var ${mangled};`;
+        // wasmTable is kind of special.  In the normal configuration we export
+        // it from the wasm module under the name `__indirect_function_table`
+        // but we declare it as an 'undefined'.  It then gets assigned manually
+        // once the wasm module is available.
+        // TODO(sbc): This is kind of hacky, we should come up with a better solution.
+        var isDirectWasmExport = WASM_ESM_INTEGRATION && mangled == 'wasmTable';
+        if (isDirectWasmExport) {
+          contentText = '';
+        } else {
+          contentText = `var ${mangled};`;
+        }
       } else {
         // In JS libraries
         //   foo: '=[value]'

@@ -18,14 +18,31 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.8 (in development)
+4.0.9 (in development)
 ----------------------
+- libunwind was updated to LLVM 20.1.4. (#24251)
+- When using cmake the EMSCRIPTEN_FORCE_COMPILERS setting was reverted to
+  being on by default due to issues that were found with disabling it. (#24223)
+- Several symbols from embind (`InternalError`, `BindingError`,
+  `count_emval_handles`) and from `libbrowser.py` (`requestFullscreen`,
+  `requestFullScreen`, `createContext`, `getUserMedia`, `setCanvasSize`) are no
+  longer exported by default. They can be exported using
+  `-sEXPORTED_RUNTIME_METHODS=requestFullscreen`, for example. (#24223, #24269)
+- Embind: fixed support for unsigned 64-bit integers, which were previously
+  returned to JavaScript as their signed counterparts. (#24285)
+- Added handing for 64-bit integer access to AddressSanitizer, `-sSAFE_HEAP` and
+  `-sSUPPORT_BIG_ENDIAN` features. (#24283)
+
+4.0.8 - 04/30/25
+----------------
 - Programs built with `-sWASM_WORKERS` and `-sAUDIO_WORKLET` no longer generate
   separate `.ww.js` and `.aw.js` files.  This is similar to the change that was
   already made for pthreads in #21701.  This saves on complexity, code size and
   network requests. (#24163, #24190)
 - Closure arguments can now be used from ports using `settings.CLOSURE_ARGS`
   (#24192)
+- Embind's `val` now requires a pointer policy when using pointers. e.g.
+  `(val v(pointer, allow_raw_pointers())`.
 
 4.0.7 - 04/15/25
 ----------------
@@ -873,7 +890,7 @@ See docs/process.md for more on how version tagging works.
   `ASSERTIONS` is enabled. This option is mainly for the users who want only
   exceptions' stack traces without turning `ASSERTIONS` on. (#18642 and #18535)
 - `SUPPORT_LONGJMP`'s default value now depends on the exception mode. If Wasm
-  EH (`-fwasm-exception`) is used, it defaults to `wasm`, and if Emscripten EH
+  EH (`-fwasm-exceptions`) is used, it defaults to `wasm`, and if Emscripten EH
   (`-sDISABLE_EXCEPTION_CATCHING=0`) is used or no exception support is used, it
   defaults to `emscripten`. Previously it always defaulted to `emscripten`, so
   when a user specified `-fwasm-exceptions`, it resulted in Wasm EH + Emscripten

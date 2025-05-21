@@ -1,57 +1,57 @@
-SAFE_HEAP_STORE(x, 1, 1);
+SAFE_HEAP_STORE(HEAP8, x, 1);
 
-SAFE_HEAP_STORE(x * 2, 2, 2);
+SAFE_HEAP_STORE(HEAP16, x, 2);
 
-SAFE_HEAP_STORE(x * 4, 3, 4);
+SAFE_HEAP_STORE(HEAP32, x, 3);
 
-SAFE_HEAP_STORE(x, 4, 1);
+SAFE_HEAP_STORE(HEAPU8, x, 4);
 
-SAFE_HEAP_STORE(x * 2, 5, 2);
+SAFE_HEAP_STORE(HEAPU16, x, 5);
 
-SAFE_HEAP_STORE(x * 4, 6, 4);
+SAFE_HEAP_STORE(HEAPU32, x, 6);
 
-SAFE_HEAP_STORE_D(x * 4, 7, 4);
+SAFE_HEAP_STORE(HEAPF32, x, 7);
 
-SAFE_HEAP_STORE_D(x * 8, 8, 8);
+SAFE_HEAP_STORE(HEAPF64, x, 8);
 
-a1 = SAFE_HEAP_LOAD(x, 1, 0);
+SAFE_HEAP_STORE(HEAP64, x, 9n);
 
-a2 = SAFE_HEAP_LOAD(x * 2, 2, 0);
+SAFE_HEAP_STORE(HEAPU64, x, 10n);
 
-a3 = SAFE_HEAP_LOAD(x * 4, 4, 0);
+a1 = SAFE_HEAP_LOAD(HEAP8, x);
 
-a4 = SAFE_HEAP_LOAD(x, 1, 1);
+a2 = SAFE_HEAP_LOAD(HEAP16, x);
 
-a5 = SAFE_HEAP_LOAD(x * 2, 2, 1);
+a3 = SAFE_HEAP_LOAD(HEAP32, x);
 
-a6 = SAFE_HEAP_LOAD(x * 4, 4, 1);
+a4 = SAFE_HEAP_LOAD(HEAPU8, x);
 
-a7 = SAFE_HEAP_LOAD_D(x * 4, 4, 0);
+a5 = SAFE_HEAP_LOAD(HEAPU16, x);
 
-a8 = SAFE_HEAP_LOAD_D(x * 8, 8, 0);
+a6 = SAFE_HEAP_LOAD(HEAPU32, x);
 
-foo = SAFE_HEAP_STORE(1337, 42, 1);
+a7 = SAFE_HEAP_LOAD(HEAPF32, x);
 
-SAFE_HEAP_LOAD(bar(SAFE_HEAP_LOAD_D(5 * 8, 8, 0)) * 2, 2, 0);
+a8 = SAFE_HEAP_LOAD(HEAPF64, x);
 
-SAFE_HEAP_STORE_D(x * 4, SAFE_HEAP_LOAD(y * 4, 4, 0), 4);
+a9 = SAFE_HEAP_LOAD(HEAP64, x);
+
+a10 = SAFE_HEAP_LOAD(HEAPU64, x);
+
+foo = SAFE_HEAP_STORE(HEAPU8, 1337, 42);
+
+SAFE_HEAP_LOAD(HEAP16, bar(SAFE_HEAP_LOAD(HEAPF64, 5)));
+
+SAFE_HEAP_STORE(HEAPF32, x, SAFE_HEAP_LOAD(HEAP32, y));
 
 function SAFE_HEAP_FOO(ptr) {
   return HEAP8[ptr];
 }
 
-function setValue_safe(ptr) {
-  return HEAP8[ptr];
-}
-
-function getValue_safe(ptr) {
-  return HEAP8[ptr];
-}
-
 function somethingElse() {
-  return SAFE_HEAP_LOAD(ptr, 1, 0);
+  return SAFE_HEAP_LOAD(HEAP8, ptr);
 }
 
 HEAP8.length;
 
-SAFE_HEAP_LOAD(length, 1, 0);
+SAFE_HEAP_LOAD(HEAP8, length);

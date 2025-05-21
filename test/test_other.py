@@ -920,7 +920,7 @@ f.close()
   @no_windows('Skipped on Windows because CMake does not configure native Clang builds well on Windows.')
   @parameterized({
     '': ([],),
-    'force': (['-DEMSCRIPTEN_FORCE_COMPILERS=ON'],),
+    'noforce': (['-DEMSCRIPTEN_FORCE_COMPILERS=OFF'],),
   })
   def test_cmake_compile_features(self, args):
     os.mkdir('build_native')
@@ -979,7 +979,7 @@ f.close()
   @crossplatform
   @parameterized({
     '': ([],),
-    'force': (['-DEMSCRIPTEN_FORCE_COMPILERS=ON'],),
+    'noforce': (['-DEMSCRIPTEN_FORCE_COMPILERS=OFF'],),
   })
   def test_cmake_compile_commands(self, args):
     self.run_process([EMCMAKE, 'cmake', test_file('cmake/static_lib'), '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON'] + args)
@@ -1055,6 +1055,8 @@ f.close()
   @requires_network
   @crossplatform
   def test_cmake_find_modules(self):
+    # This test expects SDL2 and SDL3 to be installed
+    self.run_process([EMBUILDER, 'build', 'sdl2', 'sdl3'])
     output = self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_modules')], stdout=PIPE).stdout
     self.assertContained(' test: OpenGL::GL IMPORTED_LIBNAME: GL', output)
     self.assertContained(' test: OpenGL::GL INTERFACE_INCLUDE_DIRECTORIES: .+/cache/sysroot/include', output, regex=True)
@@ -2320,7 +2322,7 @@ Module['postRun'] = () => {
     ''')
     self.emcc('side2.c', ['-fPIC', '-sSIDE_MODULE', '-olibside2.so'])
     self.emcc('side1.c', ['-fPIC', '-sSIDE_MODULE', '-olibside1.so', 'libside2.so'])
-    cmd = [EMCC, 'main.c', '-fPIC', '-sMAIN_MODULE=2', 'libside1.so']
+    cmd = [EMCC, 'main.c', '-fPIC', '-sMAIN_MODULE=2', '-sDYLINK_DEBUG', 'libside1.so']
 
     # Unless `.` is added to the library path the libside2.so won't be found.
     err = self.expect_fail(cmd)
@@ -2360,7 +2362,7 @@ Module['postRun'] = () => {
     ''')
     self.emcc('side2.c', ['-fPIC', '-sSIDE_MODULE', '-olibside2.so'])
     self.emcc('side1.c', ['-fPIC', '-sSIDE_MODULE', '-Wl,-rpath,$ORIGIN', '-olibside1.so', 'libside2.so'])
-    cmd = [EMCC, 'main.c', '-fPIC', '-sMAIN_MODULE=2', 'libside1.so']
+    cmd = [EMCC, 'main.c', '-fPIC', '-sMAIN_MODULE=2', '-sDYLINK_DEBUG', 'libside1.so']
 
     # Unless `.` is added to the library path the libside2.so won't be found.
     err = self.expect_fail(cmd)
@@ -3308,6 +3310,15 @@ More info: https://emscripten.org
     self.do_runf('main.cpp', '10\nok\n',
                  emcc_args=['--no-entry', '-lembind', '-O2', '--closure=1', '--minify=0', '--post-js=post.js'])
 
+  @parameterized({
+    'val_1': ['embind/test_embind_no_raw_pointers_val_1.cpp'],
+    'val_2': ['embind/test_embind_no_raw_pointers_val_2.cpp'],
+    'val_3': ['embind/test_embind_no_raw_pointers_val_3.cpp'],
+  })
+  def test_embind_no_raw_pointers(self, filename):
+    stderr = self.expect_fail([EMCC, '-lembind', test_file(filename)])
+    self.assertContained('Implicitly binding raw pointers is illegal.', stderr)
+
   @is_slow_test
   @parameterized({
     '': [],
@@ -3338,7 +3349,7 @@ More info: https://emscripten.org
       '-Wno-deprecated-declarations',
       '-lembind',
       '-sRETAIN_COMPILER_SETTINGS',
-      '-sEXPORTED_RUNTIME_METHODS=getCompilerSetting,setDelayFunction,flushPendingDeletes,PureVirtualError,HEAP8',
+      '-sEXPORTED_RUNTIME_METHODS=getCompilerSetting,setDelayFunction,flushPendingDeletes,PureVirtualError,HEAP8,InternalError,BindingError,count_emval_handles',
       '-sWASM_ASYNC_COMPILATION=0',
       # This test uses a `CustomSmartPtr` class which has 1MB of data embedded in
       # it which means we need more stack space than normal.
@@ -3386,14 +3397,6 @@ More info: https://emscripten.org
     self.emcc_args += ['-lembind']
 
     self.do_runf('embind/test_return_value_policy.cpp')
-
-  @parameterized({
-    '': [[]],
-    'asyncify': [['-sASYNCIFY=1']],
-  })
-  def test_embind_long_long(self, args):
-    self.do_runf('embind/test_embind_long_long.cpp', '1000000000000n\n-1000000000000n',
-                 emcc_args=['-lembind', '-sWASM_BIGINT'] + args)
 
   @requires_node_canary
   def test_embind_resource_management(self):
@@ -3573,7 +3576,7 @@ More info: https://emscripten.org
     args = [EMXX, test_file('other/embind_tsgen_bigint.cpp'), '-lembind', '--emit-tsd', 'embind_tsgen_bigint.d.ts']
     # Check that TypeScript generation fails when code contains bigints but their support is not enabled
     stderr = self.expect_fail(args + ['-sWASM_BIGINT=0'])
-    self.assertContained("Missing primitive type to TS type for 'int64_t", stderr)
+    self.assertContained("Missing primitive type to TS type for 'long long", stderr)
     # Check that TypeScript generation works when bigint support is enabled
     self.run_process(args)
     self.assertFileContents(test_file('other/embind_tsgen_bigint.d.ts'), read_file('embind_tsgen_bigint.d.ts'))
@@ -9291,8 +9294,12 @@ int main() {
     self.run_codesize_test('minimal.c', *args)
 
   @node_pthreads
-  def test_codesize_minimal_pthreads(self):
-    self.run_codesize_test('minimal_main.c', ['-Oz', '-pthread', '-sPROXY_TO_PTHREAD', '-sSTRICT'])
+  @parameterized({
+    '': ([],),
+    'memgrowth': (['-sALLOW_MEMORY_GROWTH'],),
+  })
+  def test_codesize_minimal_pthreads(self, args):
+    self.run_codesize_test('minimal_main.c', ['-Oz', '-pthread', '-sPROXY_TO_PTHREAD', '-sSTRICT'] + args)
 
   @parameterized({
     'noexcept': (['-O2'],                    [], ['waka']), # noqa
@@ -10490,8 +10497,7 @@ int main() {
     stderr = self.expect_fail([EMCC, 'src.c', '-O2'] + self.get_emcc_args())
     self.assertContained(('''
 function js() { var x = !<->5.; }
-                         ^
-'''), stderr)
+                         ^ '''), stderr)
 
   @crossplatform
   def test_js_optimizer_chunk_size_determinism(self):
@@ -10537,9 +10543,9 @@ int main() {
                       '-sMAXIMUM_MEMORY=4GB', '-sALLOW_MEMORY_GROWTH'])
     # growable-heap must not interfere with heap unsigning, and vice versa:
     # we must have both applied, that is
-    #   - GROWABLE_HEAP_I8() replaces HEAP8
+    #   - GROWABLE_HEAP() runs before HEAP8
     #   - $0 gets an >>> 0 unsigning
-    self.assertContained('GROWABLE_HEAP_I8().set([ 1, 2, 3 ], $0 >>> 0)',
+    self.assertContained('(growMemViews(), HEAP8).set([ 1, 2, 3 ], $0 >>> 0)',
                          read_file('a.out.js'))
 
   @parameterized({
@@ -12047,7 +12053,7 @@ int main () {
   def test_safe_heap_log(self):
     self.set_setting('SAFE_HEAP')
     self.set_setting('SAFE_HEAP_LOG')
-    self.do_runf('hello_world.c', 'SAFE_HEAP load: ')
+    self.do_runf('hello_world.c', 'SAFE_HEAP loading: ')
 
   def test_mini_printfs(self):
     def test(code):
@@ -13408,7 +13414,9 @@ exec "$@"
   def test_post_link(self):
     err = self.run_process([EMCC, test_file('hello_world.c'), '--oformat=bare', '-o', 'bare.wasm'], stderr=PIPE).stderr
     self.assertContained('--oformat=bare/--post-link are experimental and subject to change', err)
-    err = self.run_process([EMCC, '--post-link', 'bare.wasm'], stderr=PIPE).stderr
+    # Explicitly test with `-s RUNTIME_DEBUG`, including the space, to verify parsing of `-s` flags
+    # See https://github.com/emscripten-core/emscripten/issues/24250
+    err = self.run_process([EMCC, '--post-link', 'bare.wasm', '-s', 'RUNTIME_DEBUG'], stderr=PIPE).stderr
     self.assertContained('--oformat=bare/--post-link are experimental and subject to change', err)
     err = self.assertContained('hello, world!', self.run_js('a.out.js'))
 
@@ -15031,7 +15039,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       test_file('third_party/googletest/googletest/src/gtest-all.cc'),
       test_file('third_party/googletest/googletest/src/gtest_main.cc'),
     ]
-    self.do_other_test('test_googletest.cc')
+    self.do_other_test('test_googletest.cc', emcc_args=['-Wno-character-conversion', '-Wno-unknown-warning-option'])
 
   def test_parseTools_legacy(self):
     create_file('post.js', '''
@@ -16084,4 +16092,29 @@ addToLibrary({
     msg = 'randomFill not supported on d8 unless --enable-os-system is passed'
     self.do_runf('main.c', msg, assert_returncode=1)
     self.v8_args += ['--enable-os-system']
+    self.do_runf('main.c')
+
+  def test_em_js_bool_macro_expansion(self):
+    # Normally macros like `true` and `false` are not expanded inside
+    # of `EM_JS` or `EM_ASM` blocks.  However, in the case then an
+    # additional macro later is added these will be expanded and we want
+    # to make sure the resulting expansion doesn't break the expectations
+    # of JS code.
+    create_file('main.c', '''
+      #include <emscripten.h>
+
+      #define EM_JS_MACROS(ret, func_name, args, body...)    \
+        EM_JS(ret, func_name, args, body)
+
+      EM_JS_MACROS(void, check_bool_type, (void), {
+        if (typeof true !== "boolean") {
+          throw new Error("typeof true is " + typeof true + " not boolean");
+        }
+      })
+
+      int main() {
+        check_bool_type();
+        return 0;
+      }
+    ''')
     self.do_runf('main.c')

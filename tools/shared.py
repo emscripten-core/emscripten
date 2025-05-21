@@ -636,7 +636,18 @@ def is_c_symbol(name):
   return name.startswith('_')
 
 
-def treat_as_user_export(name):
+def is_internal_global(name):
+  internal_start_stop_symbols = {'__start_em_asm', '__stop_em_asm',
+                                 '__start_em_js', '__stop_em_js',
+                                 '__start_em_lib_deps', '__stop_em_lib_deps',
+                                 '__em_lib_deps'}
+  internal_prefixes = ('__em_js__', '__em_lib_deps')
+  return name in internal_start_stop_symbols or any(name.startswith(p) for p in internal_prefixes)
+
+
+def is_user_export(name):
+  if is_internal_global(name):
+    return False
   return name not in ['__indirect_function_table', 'memory'] and not name.startswith(('dynCall_', 'orig$'))
 
 
@@ -650,7 +661,7 @@ def asmjs_mangle(name):
   # to simply `main` which is expected by the emscripten JS glue code.
   if name == '__main_argc_argv':
     name = 'main'
-  if treat_as_user_export(name):
+  if is_user_export(name):
     return '_' + name
   return name
 

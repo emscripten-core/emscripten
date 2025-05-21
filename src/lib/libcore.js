@@ -1737,6 +1737,9 @@ addToLibrary({
 #if MINIMAL_RUNTIME
     '$dynCalls',
 #endif
+#if MODULARIZE == 'instance'
+    () => error('dynCallLegacy is not yet compatible with MODULARIZE=instance'),
+#endif
   ],
   $dynCallLegacy: (sig, ptr, args) => {
     sig = sig.replace(/p/g, {{{ MEMORY64 ? "'j'" : "'i'" }}})
@@ -1818,14 +1821,24 @@ addToLibrary({
     }
 #endif
     var rtn = func(...args);
-#endif
+#endif // DYNCALLS
+
+    function convert(rtn) {
 #if MEMORY64
-    return sig[0] == 'p' ? Number(rtn) : rtn;
+      return sig[0] == 'p' ? Number(rtn) : rtn;
 #elif CAN_ADDRESS_2GB
-    return sig[0] == 'p' ? rtn >>> 0 : rtn;
+      return sig[0] == 'p' ? rtn >>> 0 : rtn;
 #else
-    return rtn;
+      return rtn;
 #endif
+    }
+
+#if JSPI
+    if (promising) {
+      return rtn.then(convert);
+    }
+#endif
+    return convert(rtn);
   },
 
   $callRuntimeCallbacks__internal: true,
@@ -2202,7 +2215,7 @@ addToLibrary({
   __asyncify_state: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, 0)",
   __asyncify_data: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true}, {{{ to64(0) }}})",
 #endif
-#endif
+#endif // RELOCATABLE
 
   _emscripten_fs_load_embedded_files__deps: ['$FS', '$PATH'],
   _emscripten_fs_load_embedded_files: (ptr) => {

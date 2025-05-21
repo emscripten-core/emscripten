@@ -314,9 +314,11 @@ struct allow_raw_pointer {
 struct allow_raw_pointers {
     template<typename InputType, int Index>
     struct Transform {
+        // Use decay to handle references to pointers e.g.(T*&)->(T*).
+        typedef typename std::decay<InputType>::type DecayedType;
         typedef typename std::conditional<
-            std::is_pointer<InputType>::value,
-            internal::AllowedRawPointer<typename std::remove_pointer<InputType>::type>,
+            std::is_pointer<DecayedType>::value,
+            internal::AllowedRawPointer<typename std::remove_pointer<DecayedType>::type>,
             InputType
         >::type type;
     };
@@ -1925,7 +1927,6 @@ public:
         typename = typename std::enable_if<!internal::isPolicy<Setter>::value>::type>
     EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, Getter getter, Setter setter, Policies...) const {
         using namespace internal;
-        using ReturnPolicy = GetReturnValuePolicy<PropertyType, Policies...>::tag;
 
         typedef GetterPolicy<
             typename std::conditional<std::is_same<PropertyType, internal::DeduceArgumentsTag>::value,
@@ -1937,17 +1938,24 @@ public:
                                                    FunctionTag<Setter, PropertyType>>::type> SP;
 
 
+        using ReturnPolicy = GetReturnValuePolicy<typename GP::ReturnType, Policies...>::tag;
         auto gter = &GP::template get<ClassType, ReturnPolicy>;
         auto ster = &SP::template set<ClassType>;
+
+        typename WithPolicies<Policies...>::template ArgTypeList<typename GP::ReturnType> returnType;
+        // XXX: This currently applies all the polices (including return value polices) to the
+        // setter function argument to allow pointers. Using return value polices doesn't really
+        // make sense on an argument, but we don't have separate argument policies yet.
+        typename WithPolicies<Policies...>::template ArgTypeList<typename SP::ArgumentType> argType;
 
         _embind_register_class_property(
             TypeID<ClassType>::get(),
             fieldName,
-            TypeID<typename GP::ReturnType>::get(),
+            returnType.getTypes()[0],
             getSignature(gter),
             reinterpret_cast<GenericFunction>(gter),
             GP::getContext(getter),
-            TypeID<typename SP::ArgumentType>::get(),
+            argType.getTypes()[0],
             getSignature(ster),
             reinterpret_cast<GenericFunction>(ster),
             SP::getContext(setter));
@@ -2054,7 +2062,7 @@ struct VectorAccess {
         typename VectorType::size_type index
     ) {
         if (index < v.size()) {
-            return val(v[index]);
+            return val(v[index], allow_raw_pointers());
         } else {
             return val::undefined();
         }
@@ -2085,11 +2093,11 @@ class_<std::vector<T, Allocator>> register_vector(const char* name) {
     size_t (VecType::*size)() const = &VecType::size;
     return class_<std::vector<T>>(name)
         .template constructor<>()
-        .function("push_back", push_back)
-        .function("resize", resize)
+        .function("push_back", push_back, allow_raw_pointers())
+        .function("resize", resize, allow_raw_pointers())
         .function("size", size)
-        .function("get", &internal::VectorAccess<VecType>::get)
-        .function("set", &internal::VectorAccess<VecType>::set)
+        .function("get", &internal::VectorAccess<VecType>::get, allow_raw_pointers())
+        .function("set", &internal::VectorAccess<VecType>::set, allow_raw_pointers())
         ;
 }
 
@@ -2183,7 +2191,7 @@ struct BindingType<std::optional<T>> {
     template<typename ReturnPolicy = void>
     static WireType toWireType(std::optional<T> value, rvp::default_tag) {
         if (value) {
-            return ValBinding::toWireType(val(*value), rvp::default_tag{});
+            return ValBinding::toWireType(val(*value, allow_raw_pointers()), rvp::default_tag{});
         }
         return ValBinding::toWireType(val::undefined(), rvp::default_tag{});
     }

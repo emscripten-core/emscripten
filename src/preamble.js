@@ -199,12 +199,12 @@ function initRuntime() {
   if (ENVIRONMENT_IS_PTHREAD) return startWorker(Module);
 #endif
 
-#if STACK_OVERFLOW_CHECK
-  checkStackCookie();
-#endif
-
 #if STACK_OVERFLOW_CHECK >= 2
   setStackLimits();
+#endif
+
+#if STACK_OVERFLOW_CHECK
+  checkStackCookie();
 #endif
 
 #if RELOCATABLE
@@ -819,7 +819,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
 
 #if !WASM_ESM_INTEGRATION
 function getWasmImports() {
-#if PTHREADS || WASM_WORKERS
+#if PTHREADS || WASM_WORKERS || (IMPORTED_MEMORY && MODULARIZE == 'instance')
   assignWasmImports();
 #endif
 #if ASYNCIFY && (ASSERTIONS || ASYNCIFY == 2)
@@ -922,6 +922,11 @@ function getWasmImports() {
 #if ASSERTIONS && !PURE_WASI
     assert(wasmTable, 'table not found in wasm exports');
 #endif
+#endif
+
+#if hasExportedSymbol('__cpp_exception') && !RELOCATABLE
+    ___cpp_exception = wasmExports['__cpp_exception'];
+    {{{ receivedSymbol('___cpp_exception') }}};
 #endif
 
 #if hasExportedSymbol('__wasm_apply_data_relocs')

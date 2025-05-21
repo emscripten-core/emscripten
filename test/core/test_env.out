@@ -5,7 +5,7 @@ PATH=/
 PWD=/
 HOME=/home/web_user
 LANG=(C|en_US).UTF-8
-_=.*(/test_env.js|./this.program)
+_=.*(/test_env.m?js|./this.program)
 
 getenv\(PATH\): /
 getenv\(NONEXISTENT\): \(null\)
