@@ -6,15 +6,15 @@
 
 // Specifies the size of the GL temp buffer pool, in bytes. Must be a multiple
 // of 9 and 16.
-{{{ GL_POOL_TEMP_BUFFERS_SIZE = 2*9*16 }}} // = 288
-
 {{{
-  globalThis.isCurrentContextWebGL2 = () => {
+  const GL_POOL_TEMP_BUFFERS_SIZE = 2*9*16 // = 288
+
+  const isCurrentContextWebGL2 = () => {
     // This function should only be called inside of `#if MAX_WEBGL_VERSION >= 2` blocks
     assert(MAX_WEBGL_VERSION >= 2, 'isCurrentContextWebGL2 called without webgl2 support');
     if (MIN_WEBGL_VERSION >= 2) return 'true';
     return 'GL.currentContext.version >= 2';
-  };
+  }
   null;
 }}}
 
@@ -23,7 +23,7 @@ var LibraryGL = {
   // glInvalidateSubFramebuffer that need to pass a short array to the WebGL
   // API, create a set of short fixed-length arrays to avoid having to generate
   // any garbage when calling those functions.
-  $tempFixedLengthArray__postset: 'for (var i = 0; i < 32; ++i) tempFixedLengthArray.push(new Array(i));',
+  $tempFixedLengthArray__postset: 'for (let i = 0; i < 32; ++i) tempFixedLengthArray.push(new Array(i));',
   $tempFixedLengthArray: [],
 
   $miniTempWebGLFloatBuffers: [],
@@ -3205,7 +3205,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #if GL_DEBUG
       console.dir(match);
 #endif
-      explicitUniformLocations[match[5]] = jstoi_q(match[1]);
+      explicitUniformLocations[match[5]] = Number(match[1]);
 #if GL_TRACK_ERRORS
       if (!(explicitUniformLocations[match[5]] >= 0 && explicitUniformLocations[match[5]] < 1048576)) {
         err(`Specified an out of range layout(location=x) directive "${explicitUniformLocations[match[5]]}"! (${match[0]})`);

@@ -5,7 +5,6 @@
  */
 
 import * as path from 'node:path';
-import * as fs from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import assert from 'node:assert';
 
@@ -15,7 +14,8 @@ import {
   error,
   readFile,
   warn,
-  setCurrentFile,
+  pushCurrentFile,
+  popCurrentFile,
   printErr,
   addToCompileTimeContext,
   runInMacroContext,
@@ -200,19 +200,14 @@ function calculateLibraries() {
     libraries.push('liblittle_endian_heap.js');
   }
 
+  // Resolve system libraries
+  libraries = libraries.map((filename) => path.join(systemLibdir, filename));
+
   // Add all user specified JS library files to the link.
   // These must be added last after all Emscripten-provided system libraries
   // above, so that users can override built-in JS library symbols in their
   // own code.
   libraries.push(...JS_LIBRARIES);
-
-  // Resolve all filenames to absolute paths
-  libraries = libraries.map((filename) => {
-    if (!path.isAbsolute(filename) && fs.existsSync(path.join(systemLibdir, filename))) {
-      filename = path.join(systemLibdir, filename);
-    }
-    return path.resolve(filename);
-  });
 
   // Deduplicate libraries to avoid processing any library file multiple times
   libraries = libraries.filter((item, pos) => libraries.indexOf(item) == pos);
@@ -275,7 +270,7 @@ export const LibraryManager = {
         origLibrary = this.library;
         this.library = userLibraryProxy;
       }
-      const oldFile = setCurrentFile(filename);
+      pushCurrentFile(filename);
       try {
         processed = processMacros(preprocess(filename), filename);
         runInMacroContext(processed, {filename: filename.replace(/\.\w+$/, '.preprocessed$&')});
@@ -295,7 +290,7 @@ export const LibraryManager = {
         }
         throw e;
       } finally {
-        setCurrentFile(oldFile);
+        popCurrentFile();
         if (origLibrary) {
           this.library = origLibrary;
         }

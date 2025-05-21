@@ -46,42 +46,36 @@ export function warningOccured() {
   return warnings;
 }
 
-let currentFile = null;
+let currentFile = [];
 
-export function setCurrentFile(f) {
-  let rtn = currentFile;
-  currentFile = f;
-  return rtn;
+export function pushCurrentFile(f) {
+  currentFile.push(f);
 }
 
-function errorPrefix() {
-  if (currentFile) {
-    return currentFile + ': ';
+export function popCurrentFile() {
+  currentFile.pop();
+}
+
+function errorPrefix(lineNo) {
+  if (!currentFile.length) return '';
+  const filename = currentFile[currentFile.length - 1];
+  if (lineNo) {
+    return `${filename}:${lineNo}: `;
   } else {
-    return '';
+    return `${filename}: `;
   }
 }
 
-export function warn(a, msg) {
+export function warn(msg, lineNo) {
   warnings = true;
-  if (!msg) {
-    msg = a;
-    a = false;
-  }
-  if (!a) {
-    printErr(`warning: ${errorPrefix()}${msg}`);
-  }
+  printErr(`warning: ${errorPrefix(lineNo)}${msg}`);
 }
 
-export function warnOnce(a, msg) {
-  if (!msg) {
-    msg = a;
-    a = false;
-  }
-  if (!a) {
-    warnOnce.msgs ||= {};
-    if (msg in warnOnce.msgs) return;
-    warnOnce.msgs[msg] = true;
+const seenWarnings = new Set();
+
+export function warnOnce(msg) {
+  if (!seenWarnings.has(msg)) {
+    seenWarnings.add(msg);
     warn(msg);
   }
 }
@@ -92,9 +86,9 @@ export function errorOccured() {
   return abortExecution;
 }
 
-export function error(msg) {
+export function error(msg, lineNo) {
   abortExecution = true;
-  printErr(`error: ${errorPrefix()}${msg}`);
+  printErr(`error: ${errorPrefix(lineNo)}${msg}`);
 }
 
 function range(size) {

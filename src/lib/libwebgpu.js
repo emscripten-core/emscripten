@@ -28,7 +28,7 @@
 
 {{{
   // Helper functions for code generation
-  globalThis.gpu = {
+  const gpu = {
     makeInitManager: function(type) {
       return `WebGPU.mgr${type} = new Manager();`;
     },
@@ -808,8 +808,8 @@ var LibraryWebGPU = {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
     {{{ gpu.makeCheckDefined('bufferWrapper') }}}
     if (bufferWrapper.onUnmap) {
-      for (var i = 0; i < bufferWrapper.onUnmap.length; ++i) {
-        bufferWrapper.onUnmap[i]();
+      for (var f of bufferWrapper.onUnmap) {
+        f();
       }
       bufferWrapper.onUnmap = undefined;
     }
@@ -2119,8 +2119,8 @@ var LibraryWebGPU = {
       return;
     }
 
-    for (var i = 0; i < bufferWrapper.onUnmap.length; ++i) {
-      bufferWrapper.onUnmap[i]();
+    for (var f of bufferWrapper.onUnmap) {
+      f();
     }
     bufferWrapper.onUnmap = undefined;
 

@@ -20,7 +20,10 @@ STAMP_DIR = os.path.join(__rootdir__, 'out')
 from tools import shared, utils
 
 actions = [
-  ('npm packages', ['package.json'], [shutil.which('npm'), 'ci']),
+  ('npm packages', [
+     'package.json',
+     'package-lock.json'
+   ], ['npm', 'ci']),
   ('create entry points', [
      'tools/maint/create_entry_points.py',
      'tools/maint/run_python.bat',
@@ -31,7 +34,7 @@ actions = [
      'test/third_party/posixtestsuite/',
      'test/third_party/googletest',
      'test/third_party/wasi-test-suite',
-   ], [shutil.which('git'), 'submodule', 'update', '--init']),
+   ], ['git', 'submodule', 'update', '--init']),
 ]
 
 
@@ -84,6 +87,11 @@ def main(args):
     if args.dry_run:
       print(' (skipping: dry run) -> %s' % ' '.join(cmd))
       continue
+    orig_exe = cmd[0]
+    if not os.path.isabs(orig_exe):
+      cmd[0] = shutil.which(orig_exe)
+      if not cmd[0]:
+        utils.exit_with_error(f'command not found: {orig_exe}')
     print(' -> %s' % ' '.join(cmd))
     shared.run_process(cmd, cwd=utils.path_from_root())
     utils.safe_ensure_dirs(STAMP_DIR)

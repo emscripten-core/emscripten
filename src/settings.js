@@ -47,6 +47,7 @@
 // system libraries are built.
 // ASSERTIONS == 2 gives even more runtime checks, that may be very slow. That
 // includes internal dlmalloc assertions, for example.
+// ASSERTIONS defaults to 0 in optimized builds (-O1 and above).
 // [link]
 var ASSERTIONS = 1;
 
@@ -1353,13 +1354,6 @@ var MODULARIZE = false;
 // [link]
 var EXPORT_ES6 = false;
 
-// Use the ES6 Module relative import feature 'import.meta.url'
-// to auto-detect WASM Module path.
-// It might not be supported on old browsers / toolchains. This setting
-// may not be disabled when Node.js is targeted (-sENVIRONMENT=*node*).
-// [link]
-var USE_ES6_IMPORT_META = true;
-
 // Global variable to export the module as for environments without a
 // standardized module loading system (e.g. the browser and SM shell).
 // [link]
@@ -1791,7 +1785,7 @@ var PTHREADS_DEBUG = false;
 // [link]
 var EVAL_CTORS = 0;
 
-// Is enabled, use the JavaScript TextDecoder API for string marshalling.
+// If enabled, use the JavaScript TextDecoder API for string marshalling.
 // Enabled by default, set this to 0 to disable.
 // If set to 2, we assume TextDecoder is present and usable, and do not emit
 // any JS code to fall back if it is missing. In single threaded -Oz build modes,
@@ -2193,6 +2187,13 @@ var SIGNATURE_CONVERSIONS = [];
 // [link]
 var WASM_BINDGEN = 0;
 
+// Experimental support for wasm source phase imports.
+// This is only currently implemented in the pre-release/nightly version of node,
+// and not yet supported by browsers.
+// Requires EXPORT_ES6
+// [link]
+var SOURCE_PHASE_IMPORTS = false;
+
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]
 // For removed settings (which now effectively have a fixed value and can no
@@ -2274,4 +2275,5 @@ var LEGACY_SETTINGS = [
   ['MIN_IE_VERSION', [0x7FFFFFFF], 'No longer supported'],
   ['WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG', [0], 'No longer supported'],
   ['AUTO_ARCHIVE_INDEXES', [0, 1], 'No longer needed'],
+  ['USE_ES6_IMPORT_META', [1], 'Disabling is no longer supported'],
 ];

@@ -13,6 +13,7 @@ permissions:
 
 jobs:
   archive:
+    name: Archive
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
@@ -21,12 +22,13 @@ jobs:
         make dist
         version=`cat emscripten-version.txt | sed s/\"//g`
         echo "VERSION=$version" >> $GITHUB_ENV
-    - uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.5
+    - uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.5
       with:
         name: emscripten-${{ env.VERSION }}
         path: emscripten-${{ env.VERSION }}.tar.bz2
 
   check-expectations:
+    name: Check Expectations
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:

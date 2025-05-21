@@ -5,7 +5,21 @@
 
 version: 2
 updates:
-  - package-ecosystem: "github-actions" # See documentation for possible values
+  - package-ecosystem: "npm"
+    directory: "/" # Look for `package.json` and `lock` files in the `root` directory
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "[deps]"
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+      development-dependencies:
+        dependency-type: "development"
+
+  - package-ecosystem: "github-actions"
     directory: "/" # Location of package manifests
     schedule:
       interval: "weekly"
+    commit-message:
+      prefix: "[deps]"

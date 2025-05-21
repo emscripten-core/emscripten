@@ -24,7 +24,7 @@ executors:
     environment:
       EMSDK_NOTTY: "1"
     macos:
-      xcode: "14.2.0"
+      xcode: "16.2.0"
     resource_class: macos.m1.medium.gen1
 
 commands:
@@ -111,7 +111,7 @@ commands:
     description: "install canary version of node"
     steps:
       - install-node-version:
-         node_version: "24.0.0-v8-canary202501036428a2737e"
+         node_version: "24.0.0-v8-canary20250303cbbb63ede3"
          canary: true
   install-v8:
     description: "install v8 using jsvu"
@@ -330,9 +330,7 @@ commands:
           name: Install brew package dependencies
           environment:
             HOMEBREW_NO_AUTO_UPDATE: "1"
-          command: |
-            brew update
-            brew install cmake ninja python3 pkg-config
+          command: brew install cmake ninja pkg-config
       - checkout
       - run:
           name: submodule update
@@ -354,14 +352,25 @@ commands:
             wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-nightly-latest-ssl&os=linux64&lang=en-US"
             tar -C ~ -xf ~/ff.tar.bz2
       - run:
+          name: Add audio dependencies
+          command: |
+            # This should add and start PulseAudio's dummy mixer. It will warn
+            # that "This program is not intended to be run as root" but it can
+            # be ignored.
+            apt-get update -y
+            apt-get install -q -y pulseaudio
+            pulseaudio --start
+      - run:
           name: configure firefox
           command: |
+            # Note: the autoplay pref allows playback without user interaction
             mkdir ~/tmp-firefox-profile/
             cat > ~/tmp-firefox-profile/user.js \<<EOF
             user_pref("gfx.offscreencanvas.enabled", true);
             user_pref("javascript.options.shared_memory", true);
             user_pref("javascript.options.wasm_memory64", true);
             user_pref("dom.postMessage.sharedArrayBuffer.bypassCOOP_COEP.insecure.enabled", true);
+            user_pref("media.autoplay.default", 0);
             EOF
       - run:
           name: run tests (<< parameters.title >>)
@@ -371,8 +380,6 @@ commands:
             #       support in headless mode) resolves
             EMTEST_LACKS_GRAPHICS_HARDWARE: "1"
             EMTEST_LACKS_WEBGPU: "1"
-            # TODO: replicate with FF the same as CHROME_FLAGS_AUDIO
-            EMTEST_LACKS_SOUND_HARDWARE: "1"
             # OffscreenCanvas support is not yet done in Firefox.
             EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
@@ -530,6 +537,7 @@ jobs:
             asan.test_asyncify_longjmp
             asan.test_pthread_run_on_main_thread
             asan.test_minimal_runtime_global_initializer
+            asan.test_fs_js_api_wasmfs
             lsan.test_dylink_dso_needed
             lsan.test_stdio_locking
             lsan.test_dlfcn_basic
@@ -581,6 +589,7 @@ jobs:
             wasmfs.test_readdir_rawfs
             wasmfs.test_utime
             wasmfs.test_unistd_unlink
+            wasmfs.test_unistd_dup
             wasmfs.test_unistd_access
             wasmfs.test_unistd_close
             wasmfs.test_unistd_truncate
@@ -619,7 +628,6 @@ jobs:
             wasmfs.test_futimens
             wasmfs.test_unistd_links
             wasmfs.test_fcntl_open
-            wasmfs.test_fs_js_api
             wasmfs.test_fs_llseek
             wasmfs.test_fs_llseek_rawfs
             wasmfs.test_freetype"
@@ -649,21 +657,12 @@ jobs:
           command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
       - run-tests:
           title: "wasm64"
-          test_targets: "
-            wasm64
-            core_2gb.test_*em_asm*
-            core_2gb.test_*embind*
-            wasm64l.test_hello_world
-            wasm64l.test_bigswitch
-            wasm64l.test_module_wasm_memory
-            wasm64l.test_longjmp2_emscripten
-            other.test_memory64_proxies
-            other.test_failing_growth_wasm64"
+          test_targets: "wasm64"
       - upload-test-results
   test-wasm64-4gb:
     environment:
       LANG: "C.UTF-8"
-      # Only run 2 tests at a time to avoid OOM (since each tests used >4gb)
+      # Only run 2 tests at a time to avoid OOM (since each test used >4gb)
       EMCC_CORES: "2"
     # We don't use `bionic` here since its too old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
@@ -683,7 +682,16 @@ jobs:
           command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
       - run-tests:
           title: "wasm64_4gb"
-          test_targets: "wasm64_4gb"
+          test_targets: "wasm64_4gb
+            core_2gb.test_*em_asm*
+            core_2gb.test_*embind*
+            core_2gb.test_fs_js_api_wasmfs
+            wasm64l.test_hello_world
+            wasm64l.test_bigswitch
+            wasm64l.test_module_wasm_memory
+            wasm64l.test_longjmp2_emscripten
+            other.test_memory64_proxies
+            other.test_failing_growth_wasm64"
       - upload-test-results
   test-jsc:
     executor: linux-python
@@ -1056,9 +1064,6 @@ workflows:
           requires:
             - build-linux
       - test-core3:
-          requires:
-            - build-linux
-      - test-wasm64:
           requires:
             - build-linux
       - test-wasm64-4gb:

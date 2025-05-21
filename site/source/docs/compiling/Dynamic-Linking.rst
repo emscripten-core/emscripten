@@ -231,7 +231,7 @@ added and these changes need to be mirrored on every thread in the process.
 Changes to the table are protected by a mutex, and before any thread returns
 from ``dlopen`` or ``dlsym`` it will wait until all other threads are sync.  In
 order to make this synchronization as seamless as possible, we hook into the
-low level primitives of `emscripten_futex_wait` and `emscirpten_yield`.
+low level primitives of `emscripten_futex_wait` and `emscripten_yield`.
 
 For most use cases all this happens under hood and no special action is needed.
 However, there there is one class of application that currently may require

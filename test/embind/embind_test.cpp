@@ -1351,6 +1351,13 @@ void embind_test_optional_multiple_arg(int arg1,
                                        std::optional<int> arg2,
                                        std::optional<int> arg3) {
 }
+
+struct StructWithOptionalProperty {
+  int x;
+  std::optional<int> y;
+};
+void embind_test_optional_property(const StructWithOptionalProperty &arg) {
+}
 #endif
 
 val embind_test_getglobal() {
@@ -2378,6 +2385,11 @@ EMSCRIPTEN_BINDINGS(tests) {
   function("embind_test_optional_string_arg", &embind_test_optional_string_arg);
   function("embind_test_optional_small_class_arg", &embind_test_optional_small_class_arg);
   function("embind_test_optional_multiple_arg", &embind_test_optional_multiple_arg);
+  value_object<StructWithOptionalProperty>("StructWithOptionalProperty")
+      .field("x", &StructWithOptionalProperty::x)
+      .field("y", &StructWithOptionalProperty::y)
+  ;
+  function("embind_test_optional_property", &embind_test_optional_property);
 #endif
 
   register_map<std::string, int>("StringIntMap");

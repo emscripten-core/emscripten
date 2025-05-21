@@ -9,7 +9,9 @@ var IDBStore = {
     if (typeof indexedDB != 'undefined') return indexedDB;
     var ret = null;
     if (typeof window == 'object') ret = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+#if ASSERTIONS
     assert(ret, 'IDBStore used, but indexedDB not supported');
+#endif
     return ret;
   },
   DB_VERSION: 22,

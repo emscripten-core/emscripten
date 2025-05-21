@@ -52,17 +52,7 @@ addToLibrary({
     return '0x' + ptr.toString(16).padStart(8, '0');
   },
 
-  $zeroMemory: (address, size) => {
-#if LEGACY_VM_SUPPORT
-    if (!HEAPU8.fill) {
-      for (var i = 0; i < size; i++) {
-        HEAPU8[address + i] = 0;
-      }
-      return;
-    }
-#endif
-    HEAPU8.fill(0, address, address + size);
-  },
+  $zeroMemory: (ptr, size) => HEAPU8.fill(0, ptr, ptr + size),
 
 #if SAFE_HEAP
   // Trivial wrappers around runtime functions that make these symbols available
@@ -647,7 +637,7 @@ addToLibrary({
   },
   $inetNtop4: (addr) =>
     (addr & 0xff) + '.' + ((addr >> 8) & 0xff) + '.' + ((addr >> 16) & 0xff) + '.' + ((addr >> 24) & 0xff),
-  $inetPton6__deps: ['htons', '$jstoi_q'],
+  $inetPton6__deps: ['htons'],
   $inetPton6: (str) => {
     var words;
     var w, offset, z, i;
@@ -671,8 +661,8 @@ addToLibrary({
       // parse IPv4 embedded stress
       str = str.replace(new RegExp('[.]', 'g'), ":");
       words = str.split(":");
-      words[words.length-4] = jstoi_q(words[words.length-4]) + jstoi_q(words[words.length-3])*256;
-      words[words.length-3] = jstoi_q(words[words.length-2]) + jstoi_q(words[words.length-1])*256;
+      words[words.length-4] = Number(words[words.length-4]) + Number(words[words.length-3])*256;
+      words[words.length-3] = Number(words[words.length-2]) + Number(words[words.length-1])*256;
       words = words.slice(0, words.length-2);
     } else {
       words = str.split(":");
@@ -1874,7 +1864,6 @@ addToLibrary({
 #endif
     var func = wasmTableMirror[funcPtr];
     if (!func) {
-      if (funcPtr >= wasmTableMirror.length) wasmTableMirror.length = funcPtr + 1;
       /** @suppress {checkTypes} */
       wasmTableMirror[funcPtr] = func = wasmTable.get({{{ toIndexType('funcPtr') }}});
 #if ASYNCIFY == 2

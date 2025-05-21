@@ -53,7 +53,7 @@ var LibraryGLFW = {
       this.title = title;
       this.monitor = monitor;
       this.share = share;
-      this.attributes = Object.assign({}, GLFW.hints);
+      this.attributes = {...GLFW.hints};
       this.inputModes = {
         0x00033001:0x00034001, // GLFW_CURSOR (GLFW_CURSOR_NORMAL)
         0x00033002:0, // GLFW_STICKY_KEYS
@@ -1064,7 +1064,7 @@ var LibraryGLFW = {
     },
 
     defaultWindowHints: () => {
-      GLFW.hints = Object.assign({}, GLFW.defaultHints);
+      GLFW.hints = {...GLFW.defaultHints};
     },
 
     createWindow: (width, height, title, monitor, share) => {
@@ -1141,12 +1141,14 @@ var LibraryGLFW = {
 #endif
 
       GLFW.windows[win.id - 1] = null;
-      if (GLFW.active.id == win.id)
+      if (GLFW.active.id == win.id) {
         GLFW.active = null;
+      }
 
       // Destroy context when no alive windows
-      for (var i = 0; i < GLFW.windows.length; i++)
-        if (GLFW.windows[i] !== null) return;
+      for (win of GLFW.windows) {
+        if (win !== null) return;
+      }
 
       delete Module['ctx'];
     },

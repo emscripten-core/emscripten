@@ -24,7 +24,7 @@ addToLibrary({
     };
     // Use this to reference our in-memory filesystem
     /** @suppress {partialAlias} */
-    var VFS = Object.assign({}, FS);
+    var VFS = {...FS};
     // Wrap the whole in-memory filesystem API with
     // our Node.js based functions
     for (var _key in NODERAWFS) {
@@ -213,9 +213,6 @@ addToLibrary({
       // update position marker when non-seeking
       if (!seeking) stream.position += bytesWritten;
       return bytesWritten;
-    },
-    allocate() {
-      throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
     },
     mmap(stream, length, position, prot, flags) {
       if (!length) {
