@@ -13,5 +13,5 @@ and will be removed. Please migrate to Emdawnwebgpu via
 > (Emdawnwebgpu is maintained as part of Dawn, the open-source WebGPU
 > implementation used by Chromium, but it is still cross-browser.)
 
-(Information about maintaining `USE_WEBGPU` has been removed, since they won't
-be maintained anymore.)
+(Information about maintaining the `USE_WEBGPU` bindings has been removed,
+since they won't be maintained anymore.)
