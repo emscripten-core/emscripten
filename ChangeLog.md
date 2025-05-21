@@ -20,8 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 4.0.10 (in development)
 ----------------------
-- compiler-rt was updated to LLVM 20.1.4. (#24357)
-- libcxx and libcxxabi were updated to LLVM 20.1.4. (#24346)
+- libcxx, libcxxabi, and compiler-rt were updated to LLVM 20.1.4. (#24346 and
+  #24357)
 - The `-sASYNCIFY_LAZY_LOAD_CODE` setting was deprecated.  This setting was
   added as an experiment a long time ago and as far we know has no active users.
   In addition, it cannot work with JSPI (the future of ASYNCIFY). (#24383)
