@@ -7051,8 +7051,8 @@ void* operator new(size_t size) {
     'legacy': (['-sDYNCALLS'],),
   })
   def test_dyncall_pointers(self, args):
-    if args:
-      self.skipTest('dynCallLegacy is not yet compatible with WASM_ESM_INTEGRATION')
+    if args and self.get_setting('MODULARIZE') == 'instance' or self.get_setting('WASM_ESM_INTEGRATION'):
+      self.skipTest('dynCallLegacy is not yet compatible with MODULARIZE=instance')
     self.do_core_test('test_dyncall_pointers.c', emcc_args=args)
 
   @also_with_wasm_bigint
@@ -8396,7 +8396,7 @@ Module.onRuntimeInitialized = () => {
     self.set_setting('ASYNCIFY_LAZY_LOAD_CODE')
     self.set_setting('ASYNCIFY_IGNORE_INDIRECT')
     self.set_setting('MALLOC', 'emmalloc')
-    self.emcc_args += ['--profiling-funcs'] # so that we can find the functions for the changes below
+    self.emcc_args += ['-Wno-deprecated', '--profiling-funcs'] # so that we can find the functions for the changes below
     if conditional:
       self.emcc_args += ['-DCONDITIONAL']
     self.do_core_test('emscripten_lazy_load_code.c', args=['0'])

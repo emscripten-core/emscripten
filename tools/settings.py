@@ -125,6 +125,7 @@ DEPRECATED_SETTINGS = {
     'LEGALIZE_JS_FFI': 'to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`',
     'ASYNCIFY_EXPORTS': 'please use JSPI_EXPORTS instead',
     'MAYBE_WASM2JS': 'lack of usage',
+    'ASYNCIFY_LAZY_LOAD_CODE': 'lack of usage',
     'USE_WEBGPU': 'please try migrating to --use-port=emdawnwebgpu, which implements a newer, incompatible version of webgpu.h (see tools/ports/emdawnwebgpu.py for more info)',
 }
 
