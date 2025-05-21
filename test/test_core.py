@@ -9635,6 +9635,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
     self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
 
+  @no_4gb('EMBIND_AOT can\'t lower 4gb')
   def test_modularize_instance_embind(self):
     self.run_process([EMXX, test_file('modularize_instance_embind.cpp'),
                       '-sMODULARIZE=instance',
