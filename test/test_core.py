@@ -1329,18 +1329,18 @@ int main(int argc, char **argv) {
       #include <exception>
       struct X {
         ~X() {
-          printf("exception? %s\n", std::uncaught_exception() ? "yes" : "no");
+          printf("exception? %s\n", std::uncaught_exceptions() ? "yes" : "no");
         }
       };
       int main() {
-        printf("exception? %s\n", std::uncaught_exception() ? "yes" : "no");
+        printf("exception? %s\n", std::uncaught_exceptions() ? "yes" : "no");
         try {
           X x;
           throw 1;
         } catch(...) {
-          printf("exception? %s\n", std::uncaught_exception() ? "yes" : "no");
+          printf("exception? %s\n", std::uncaught_exceptions() ? "yes" : "no");
         }
-        printf("exception? %s\n", std::uncaught_exception() ? "yes" : "no");
+        printf("exception? %s\n", std::uncaught_exceptions() ? "yes" : "no");
         return 0;
       }
     '''
@@ -1351,7 +1351,7 @@ int main(int argc, char **argv) {
       #include <iostream>
       int main() {
         std::ofstream os("test");
-        os << std::unitbuf << "foo"; // trigger a call to std::uncaught_exception from
+        os << std::unitbuf << "foo"; // trigger a call to std::uncaught_exceptions from
                                      // std::basic_ostream::sentry::~sentry
         std::cout << "success\n";
       }
@@ -1373,8 +1373,8 @@ int main(int argc, char **argv) {
           } catch(std::exception) {}
         }
 
-        if (std::uncaught_exception())
-          std::cout << "ERROR: uncaught_exception still set.\n";
+        if (std::uncaught_exceptions())
+          std::cout << "ERROR: uncaught_exceptions still set.\n";
         else
           std::cout << "OK\n";
       }
