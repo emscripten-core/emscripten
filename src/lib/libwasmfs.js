@@ -358,23 +358,23 @@ addToLibrary({
         // Devices cannot be resized.
         setSize: (file, size) => 0,
         read: (file, buffer, length, offset) => {
-          var bufferArray = Module.HEAP8.subarray(buffer, buffer + length);
+          var bufferArray = HEAP8.subarray(buffer, buffer + length);
           try {
             var bytesRead = definedOps.userRead(wasmFSDeviceStreams[file], bufferArray, 0, length, offset);
           } catch (e) {
             return -e.errno;
           }
-          Module.HEAP8.set(bufferArray, buffer);
+          HEAP8.set(bufferArray, buffer);
           return bytesRead;
         },
         write: (file, buffer, length, offset) => {
-          var bufferArray = Module.HEAP8.subarray(buffer, buffer + length);
+          var bufferArray = HEAP8.subarray(buffer, buffer + length);
           try {
             var bytesWritten = definedOps.userWrite(wasmFSDeviceStreams[file], bufferArray, 0, length, offset);
           } catch (e) {
             return -e.errno;
           }
-          Module.HEAP8.set(bufferArray, buffer);
+          HEAP8.set(bufferArray, buffer);
           return bytesWritten;
         },
       };
@@ -503,7 +503,7 @@ addToLibrary({
     return FS_mknod(path, mode, 0);
   },
 
-  $FS_writeFile__deps: ['_wasmfs_write_file', '$stackSave', '$stackRestore'],
+  $FS_writeFile__deps: ['_wasmfs_write_file', '$stackSave', '$stackRestore', 'malloc', 'free'],
   $FS_writeFile: (path, data) => {
     var sp = stackSave();
     var pathBuffer = stringToUTF8OnStack(path);

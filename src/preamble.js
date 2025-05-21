@@ -15,7 +15,7 @@
 //    is up at http://kripken.github.io/emscripten-site/docs/api_reference/preamble.js.html
 
 #if RELOCATABLE
-{{{ makeModuleReceiveWithVar('dynamicLibraries', undefined, '[]', true) }}}
+{{{ makeModuleReceiveWithVar('dynamicLibraries', undefined, '[]') }}}
 #endif
 
 {{{ makeModuleReceiveWithVar('wasmBinary') }}}
@@ -46,7 +46,9 @@ if (typeof WebAssembly != 'object') {
 
 // Wasm globals
 
+#if !WASM_ESM_INTEGRATION
 var wasmMemory;
+#endif
 
 #if SHARED_MEMORY
 // For sending to workers.
@@ -149,10 +151,6 @@ var isFileURI = (filename) => filename.startsWith('file://');
 #include "runtime_shared.js"
 
 #if ASSERTIONS
-assert(!Module['STACK_SIZE'], 'STACK_SIZE can no longer be set at runtime.  Use -sSTACK_SIZE at link time')
-#endif
-
-#if ASSERTIONS
 assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray != undefined && Int32Array.prototype.set != undefined,
        'JS engine does not provide full typed array support');
 #endif
@@ -160,10 +158,6 @@ assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' &
 #if IMPORTED_MEMORY
 // In non-standalone/normal mode, we create the memory here.
 #include "runtime_init_memory.js"
-#elif ASSERTIONS
-// If memory is defined in wasm, the user can't provide it, or set INITIAL_MEMORY
-assert(!Module['wasmMemory'], 'Use of `wasmMemory` detected.  Use -sIMPORTED_MEMORY to define wasmMemory externally');
-assert(!Module['INITIAL_MEMORY'], 'Detected runtime INITIAL_MEMORY setting.  Use -sIMPORTED_MEMORY to define wasmMemory dynamically');
 #endif // !IMPORTED_MEMORY && ASSERTIONS
 
 #if RELOCATABLE
@@ -220,7 +214,11 @@ function initRuntime() {
   <<< ATINITS >>>
 
 #if hasExportedSymbol('__wasm_call_ctors')
+#if WASM_ESM_INTEGRATION
+  ___wasm_call_ctors();
+#else
   wasmExports['__wasm_call_ctors']();
+#endif
 #endif
 
   <<< ATPOSTCTORS >>>
@@ -459,8 +457,12 @@ var FS = {
 
   ErrnoError() { FS.error() },
 };
+{{{
+addAtModule(`
 Module['FS_createDataFile'] = FS.createDataFile;
 Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
+`);
+}}}
 #endif
 
 #if ASSERTIONS
@@ -577,7 +579,7 @@ function resetPrototype(constructor, attrs) {
 }
 #endif
 
-#if !SOURCE_PHASE_IMPORTS
+#if !SOURCE_PHASE_IMPORTS && !WASM_ESM_INTEGRATION
 var wasmBinaryFile;
 
 function findWasmBinary() {
@@ -641,7 +643,7 @@ async function getWasmBinary(binaryFile) {
 }
 
 #if SPLIT_MODULE
-{{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync',  true) }}}
+{{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync') }}}
 var splitModuleProxyHandler = {
   get(target, prop, receiver) {
     return (...args) => {
@@ -819,6 +821,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
 #endif // WASM_ASYNC_COMPILATION
 #endif // SOURCE_PHASE_IMPORTS
 
+#if !WASM_ESM_INTEGRATION
 function getWasmImports() {
 #if PTHREADS
   assignWasmImports();
@@ -993,8 +996,7 @@ function getWasmImports() {
       try {
 #endif
         Module['instantiateWasm'](info, (mod, inst) => {
-          receiveInstance(mod, inst);
-          resolve(mod.exports);
+          resolve(receiveInstance(mod, inst));
         });
 #if ASSERTIONS
       } catch(e) {
@@ -1058,6 +1060,7 @@ function getWasmImports() {
 #endif // WASM_ASYNC_COMPILATION
 #endif // SOURCE_PHASE_IMPORTS
 }
+#endif
 
 #if !WASM_BIGINT
 // Globals used by JS i64 conversions (see makeSetValue)

@@ -10,7 +10,6 @@
   const captureModuleArg = () => MODULARIZE ? '' : 'self.Module=d;';
   const instantiateModule = () => MODULARIZE ? `${EXPORT_NAME}(d);` : '';
   const instantiateWasm = () => MINIMAL_RUNTIME ? '' : 'd[`instantiateWasm`]=(i,r)=>{var n=new WebAssembly.Instance(d[`wasm`],i);return r(n,d[`wasm`]);};';
-  null;
 }}}
 #endif
 
@@ -43,7 +42,6 @@
     locateFile('${WASM_WORKER_FILE}')
 #endif
 `;
-  null;
 }}}
 
 #endif // ~WASM_WORKERS

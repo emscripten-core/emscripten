@@ -2192,6 +2192,11 @@ var WASM_BINDGEN = 0;
 // [link]
 var SOURCE_PHASE_IMPORTS = false;
 
+// Experimental support for wasm ESM integration.
+// Requires EXPORT_ES6 and MODULARIZE=instance
+// [link]
+var WASM_ESM_INTEGRATION = false;
+
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]
 // For removed settings (which now effectively have a fixed value and can no

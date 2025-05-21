@@ -3345,3 +3345,13 @@ and not yet supported by browsers.
 Requires EXPORT_ES6
 
 Default value: false
+
+.. _wasm_esm_integration:
+
+WASM_ESM_INTEGRATION
+====================
+
+Experimental support for wasm ESM integration.
+Requires EXPORT_ES6 and MODULARIZE=instance
+
+Default value: false
