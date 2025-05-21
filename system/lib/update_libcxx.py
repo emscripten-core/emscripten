@@ -19,6 +19,13 @@ preserve_files = ('readme.txt', '__assertion_handler', '__config_site')
 # ryu_constants.h / ryu_long_double_constants.h from libc are not used
 excludes = ('CMakeLists.txt', 'ryu_constants.h', 'ryu_long_double_constants.h')
 
+libc_copy_dirs = [
+    ('hdr',),
+    ('include', 'llvm-libc-macros'),
+    ('include', 'llvm-libc-types'),
+    ('shared',),
+    ('src', '__support'),
+]
 
 def clean_dir(dirname):
   if not os.path.exists(dirname):
@@ -78,19 +85,11 @@ def main():
   assert os.path.exists(libc_upstream_dir)
   libc_local_dir = os.path.join(script_dir, 'llvm-libc')
 
-  copy_dirs = [
-      ('hdr',),
-      ('include', 'llvm-libc-macros'),
-      ('include', 'llvm-libc-types'),
-      ('shared',),
-      ('src', '__support'),
-  ]
-
-  for dirname in copy_dirs:
+  for dirname in libc_copy_dirs:
     local_dir = os.path.join(libc_local_dir, *dirname)
     clean_dir(local_dir)
 
-  for dirname in copy_dirs:
+  for dirname in libc_copy_dirs:
     upstream_dir = os.path.join(libc_upstream_dir, *dirname)
     local_dir = os.path.join(libc_local_dir, *dirname)
     copy_tree(upstream_dir, local_dir)
