@@ -8396,7 +8396,7 @@ Module.onRuntimeInitialized = () => {
     self.set_setting('ASYNCIFY_LAZY_LOAD_CODE')
     self.set_setting('ASYNCIFY_IGNORE_INDIRECT')
     self.set_setting('MALLOC', 'emmalloc')
-    self.emcc_args += ['--profiling-funcs'] # so that we can find the functions for the changes below
+    self.emcc_args += ['-Wno-deprecated', '--profiling-funcs'] # so that we can find the functions for the changes below
     if conditional:
       self.emcc_args += ['-DCONDITIONAL']
     self.do_core_test('emscripten_lazy_load_code.c', args=['0'])
