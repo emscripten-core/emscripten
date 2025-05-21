@@ -18,7 +18,7 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner')
 
 from tools.shared import PIPE
-from tools.shared import EMCC, EMAR, FILE_PACKAGER
+from tools.shared import EMCC, EMAR, EMXX, FILE_PACKAGER
 from tools.utils import WINDOWS, MACOS, LINUX, write_file, delete_file
 from tools import shared, building, config, utils, webassembly
 import common
@@ -9636,11 +9636,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
 
   def test_modularize_instance_embind(self):
-    self.run_process([EMCC, test_file('modularize_instance_embind.cpp'),
+    self.run_process([EMXX, test_file('modularize_instance_embind.cpp'),
                       '-sMODULARIZE=instance',
+                      '-Wno-experimental',
                       '-lembind',
                       '-sEMBIND_AOT',
-                      '-o', 'modularize_instance_embind.mjs'])
+                      '-o', 'modularize_instance_embind.mjs'] + self.get_emcc_args())
 
     create_file('runner.mjs', '''
       import init, { foo, Bar } from "./modularize_instance_embind.mjs";
