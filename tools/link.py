@@ -836,7 +836,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       default_setting('INCOMING_MODULE_JS_API', [])
 
   if settings.ASYNCIFY == 1:
-    # See: https://github.com/emscripten-core/emscripten/issues/12065
+    # ASYNCIFY=1 wraps only wasm exports so we need to enable legacy
+    # dyncalls via dynCall_xxx exports.
     # See: https://github.com/emscripten-core/emscripten/issues/12066
     settings.DYNCALLS = 1
 
