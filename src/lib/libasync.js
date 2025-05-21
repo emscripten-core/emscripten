@@ -35,7 +35,7 @@ addToLibrary({
     // Asyncify code that is shared between mode 1 (original) and mode 2 (JSPI).
     //
 #if ASYNCIFY == 1 && MEMORY64
-    rewindArguments: {},
+    rewindArguments: new Map(),
 #endif
     instrumentWasmImports(imports) {
 #if EMBIND_GEN_MODE
@@ -99,13 +99,54 @@ addToLibrary({
       }
     },
 #if ASYNCIFY == 1 && MEMORY64
-    saveRewindArguments(funcName, passedArguments) {
-      return Asyncify.rewindArguments[funcName] = Array.from(passedArguments)
+    saveRewindArguments(func, passedArguments) {
+      return Asyncify.rewindArguments.set(func, Array.from(passedArguments));
     },
-    restoreRewindArguments(funcName) {
-      return Asyncify.rewindArguments[funcName] || []
+    restoreRewindArguments(func) {
+#if ASSERTIONS
+      assert(Asyncify.rewindArguments.has(func));
+#endif
+      return Asyncify.rewindArguments.get(func);
     },
 #endif
+
+    instrumentFunction(original) {
+      var wrapper = (...args) => {
+#if ASYNCIFY_DEBUG >= 2
+        dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length)} try ${original}`);
+#endif
+#if ASYNCIFY == 1
+        Asyncify.exportCallStack.push(original);
+        try {
+#endif
+#if ASYNCIFY == 1 && MEMORY64
+          Asyncify.saveRewindArguments(original, args);
+#endif
+          return original(...args);
+#if ASYNCIFY == 1
+        } finally {
+          if (!ABORT) {
+            var top = Asyncify.exportCallStack.pop();
+#if ASSERTIONS
+            assert(top === original);
+#endif
+#if ASYNCIFY_DEBUG >= 2
+            dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length)} finally ${original}`);
+#endif
+            Asyncify.maybeStopUnwind();
+          }
+        }
+#endif
+      };
+#if ASYNCIFY == 1
+      Asyncify.funcWrappers.set(original, wrapper);
+#endif
+#if MAIN_MODULE || ASYNCIFY_LAZY_LOAD_CODE
+      wrapper.orig = original;
+#endif
+      return wrapper;
+    },
+
     instrumentWasmExports(exports) {
 #if EMBIND_GEN_MODE
       // Instrumenting is not needed when generating code.
@@ -121,7 +162,7 @@ addToLibrary({
       var ret = {};
       for (let [x, original] of Object.entries(exports)) {
         if (typeof original == 'function') {
-#if ASYNCIFY == 2
+ #if ASYNCIFY == 2
           // Wrap all exports with a promising WebAssembly function.
           let isAsyncifyExport = exportPattern.test(x);
           if (isAsyncifyExport) {
@@ -129,40 +170,19 @@ addToLibrary({
             original = Asyncify.makeAsyncFunction(original);
           }
 #endif
-          ret[x] = (...args) => {
-#if ASYNCIFY_DEBUG >= 2
-            dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length)} try ${x}`);
+          var wrapper = Asyncify.instrumentFunction(original);
+#if ASYNCIFY_LAZY_LOAD_CODE
+          original.exportName = x;
 #endif
-#if ASYNCIFY == 1
-            Asyncify.exportCallStack.push(x);
-            try {
-#endif
-#if ASYNCIFY == 1 && MEMORY64
-              Asyncify.saveRewindArguments(x, args);
-#endif
-              return original(...args);
-#if ASYNCIFY == 1
-            } finally {
-              if (!ABORT) {
-                var y = Asyncify.exportCallStack.pop();
-#if ASSERTIONS
-                assert(y === x);
-#endif
-#if ASYNCIFY_DEBUG >= 2
-                dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length)} finally ${x}`);
-#endif
-                Asyncify.maybeStopUnwind();
-              }
-            }
-#endif
-          };
-#if MAIN_MODULE
-          ret[x].orig = original;
-#endif
-        } else {
+          ret[x] = wrapper;
+
+       } else {
           ret[x] = original;
         }
       }
+#if ASYNCIFY_LAZY_LOAD_CODE
+      Asyncify.updateFunctionMapping(ret);
+#endif
       return ret;
     },
 
@@ -187,24 +207,54 @@ addToLibrary({
     // We must track which wasm exports are called into and
     // exited, so that we know where the call stack began,
     // which is where we must call to rewind it.
+    // This list contains the original Wasm exports.
     exportCallStack: [],
-    callStackNameToId: {},
-    callStackIdToName: {},
+    callstackFuncToId: new Map(),
+    callStackIdToFunc: new Map(),
+    // Maps wasm functions to their corresponding wrapper function.
+    funcWrappers: new Map(),
     callStackId: 0,
     asyncPromiseHandlers: null, // { resolve, reject } pair for when *all* asynchronicity is done
     sleepCallbacks: [], // functions to call every time we sleep
 
-    getCallStackId(funcName) {
-#if ASSERTIONS
-      assert(funcName);
+#if ASYNCIFY_LAZY_LOAD_CODE
+    updateFunctionMapping(newExports) {
+#if ASYNCIFY_DEBUG
+      dbg('updateFunctionMapping', Asyncify.callStackIdToFunc);
 #endif
-      var id = Asyncify.callStackNameToId[funcName];
-      if (id === undefined) {
-        id = Asyncify.callStackId++;
-        Asyncify.callStackNameToId[funcName] = id;
-        Asyncify.callStackIdToName[id] = funcName;
+#if ASSERTIONS
+      assert(!Asyncify.exportCallStack.length);
+#endif
+      Asyncify.callStackIdToFunc.forEach((func, id) => {
+#if ASSERTIONS
+        assert(func.exportName);
+        assert(newExports[func.exportName]);
+        assert(newExports[func.exportName].orig);
+#endif
+        var newFunc = newExports[func.exportName].orig;
+        Asyncify.callStackIdToFunc.set(id, newFunc)
+        Asyncify.callstackFuncToId.set(newFunc, id);
+#if MEMORY64
+        var args = Asyncify.rewindArguments.get(func);
+        if (args) {
+          Asyncify.rewindArguments.set(newFunc, args);
+          Asyncify.rewindArguments.delete(func);
+        }
+#endif
+      });
+    },
+#endif
+
+    getCallStackId(func) {
+#if ASSERTIONS
+      assert(func);
+#endif
+      if (!Asyncify.callstackFuncToId.has(func)) {
+        var id = Asyncify.callStackId++;
+        Asyncify.callstackFuncToId.set(func, id);
+        Asyncify.callStackIdToFunc.set(id, func);
       }
-      return id;
+      return Asyncify.callstackFuncToId.get(func);
     },
 
     maybeStopUnwind() {
@@ -246,7 +296,7 @@ addToLibrary({
       // An asyncify data structure has three fields:
       //  0  current stack pos
       //  4  max stack pos
-      //  8  id of function at bottom of the call stack (callStackIdToName[id] == name of js function)
+      //  8  id of function at bottom of the call stack (callStackIdToFunc[id] == wasm func)
       //
       // The Asyncify ABI only interprets the first two fields, the rest is for the runtime.
       // We also embed a stack in the same memory region here, right next to the structure.
@@ -274,38 +324,24 @@ addToLibrary({
       {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'rewindId', 'i32') }}};
     },
 
-    getDataRewindFuncName(ptr) {
+    getDataRewindFunc(ptr) {
       var id = {{{ makeGetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'i32') }}};
-      var name = Asyncify.callStackIdToName[id];
+      var func = Asyncify.callStackIdToFunc.get(id);
 #if ASSERTIONS
-      assert(name, `id ${id} not found in callStackIdToName`);
-#endif
-      return name;
-    },
-
-#if RELOCATABLE
-    getDataRewindFunc__deps: [ '$resolveGlobalSymbol' ],
-#endif
-    getDataRewindFunc(name) {
-      var func = wasmExports[name];
-#if RELOCATABLE
-      // Exported functions in side modules are not listed in `wasmExports`,
-      // So we should use `resolveGlobalSymbol` helper function, which is defined in `library_dylink.js`.
-      if (!func) {
-        func = resolveGlobalSymbol(name, false).sym;
-      }
-#endif
-#if ASSERTIONS
-      assert(func, `export not found: ${name}`);
+      assert(func, `id ${id} not found in callStackIdToFunc`);
 #endif
       return func;
     },
 
     doRewind(ptr) {
-      var name = Asyncify.getDataRewindFuncName(ptr);
-      var func = Asyncify.getDataRewindFunc(name);
+      var original = Asyncify.getDataRewindFunc(ptr);
 #if ASYNCIFY_DEBUG
-      dbg('ASYNCIFY: doRewind:', name);
+      dbg('ASYNCIFY: doRewind:', original);
+#endif
+      var func = Asyncify.funcWrappers.get(original);
+#if ASSERTIONS
+      assert(original);
+      assert(func);
 #endif
       // Once we have rewound and the stack we no longer need to artificially
       // keep the runtime alive.
@@ -315,7 +351,7 @@ addToLibrary({
       // can just call the function with no args at all since and the engine will produce zeros
       // for all arguments.  However, for i64 arguments we get `undefined cannot be converted to
       // BigInt`.
-      return func(...Asyncify.restoreRewindArguments(name));
+      return func(...Asyncify.restoreRewindArguments(original));
 #else
       return func();
 #endif
@@ -510,6 +546,7 @@ addToLibrary({
     });
   },
 
+#if ASYNCIFY_LAZY_LOAD_CODE
   emscripten_lazy_load_code__async: true,
   emscripten_lazy_load_code: () => Asyncify.handleSleep((wakeUp) => {
     // Update the expected wasm binary file to be the lazy one.
@@ -519,6 +556,7 @@ addToLibrary({
     // Load the new wasm.
     createWasm();
   }),
+#endif
 
   _load_secondary_module__sig: 'v',
   _load_secondary_module: async function() {
