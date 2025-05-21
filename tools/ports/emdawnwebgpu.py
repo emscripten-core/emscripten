@@ -13,4 +13,4 @@ PORT_FILE = 'emdawnwebgpu_pkg/emdawnwebgpu.port.py'
 # Port information (required)
 URL = 'https://dawn.googlesource.com/dawn'
 DESCRIPTION = "Emdawnwebgpu is a fork of Emscripten's original USE_WEBGPU, implementing a newer, more stable version of the standardized webgpu.h interface. If you find issues, verify in the latest nightly release (https://github.com/google/dawn/releases) and file feedback with Dawn. (Emdawnwebgpu is maintained as part of Dawn, the open-source WebGPU implementation used by Chromium, but it is still cross-browser.)"
-LICENSE = 'Some files: BSD 3-Clause License. Other files: Emscripten\'s license (available under both MIT License and University of Illinois/NCSA Open Source License)'
+LICENSE = "Some files: BSD 3-Clause License. Other files: Emscripten's license (available under both MIT License and University of Illinois/NCSA Open Source License)"
