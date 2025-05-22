@@ -504,7 +504,7 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime) {
         printf("%s(%s, %s) = %s\n", #func, str, str2, str3); \
       }
 
-#define Ret_M128_Tint_body(Ret_type, func, Tint) \
+#define Ret_M128_Tint_body(Ret_type, func, Tint) [](){ \
   for(int i = 0; i < numInterestingFloats / 4; ++i) \
     for(int k = 0; k < 4; ++k) \
     { \
@@ -513,9 +513,10 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime) {
       char str[256]; tostr(&m1, str); \
       char str2[256]; tostr(&ret, str2); \
       printf("%s(%s, %d) = %s\n", #func, str, Tint, str2); \
-    }
+    } \
+  }();
 
-#define Ret_M128d_Tint_body(Ret_type, func, Tint) \
+#define Ret_M128d_Tint_body(Ret_type, func, Tint) [](){ \
   for(int i = 0; i < numInterestingDoubles / 2; ++i) \
     for(int k = 0; k < 2; ++k) \
     { \
@@ -524,9 +525,10 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime) {
       char str[256]; tostr(&m1, str); \
       char str2[256]; tostr(&ret, str2); \
       printf("%s(%s, %d) = %s\n", #func, str, Tint, str2); \
-    }
+    } \
+  }();
 
-#define Ret_M128i_Tint_body(Ret_type, func, Tint) \
+#define Ret_M128i_Tint_body(Ret_type, func, Tint) [](){ \
   for(int i = 0; i < numInterestingInts / 4; ++i) \
     for(int k = 0; k < 4; ++k) \
     { \
@@ -535,9 +537,10 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime) {
       char str[256]; tostr(&m1, str); \
       char str2[256]; tostr(&ret, str2); \
       printf("%s(%s, %d) = %s\n", #func, str, Tint, str2); \
-    }
+    } \
+  }();
 
-#define Ret_M128i_int_Tint_body(Ret_type, func, Tint) \
+#define Ret_M128i_int_Tint_body(Ret_type, func, Tint) [](){ \
   for(int i = 0; i < numInterestingInts / 4; ++i) \
     for(int j = 0; j < numInterestingInts; ++j) \
       for(int k = 0; k < 4; ++k) \
@@ -547,9 +550,10 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime) {
         char str[256]; tostr(&m1, str); \
         char str2[256]; tostr(&ret, str2); \
         printf("%s(%s, 0x%08X, %d) = %s\n", #func, str, interesting_ints[j], Tint, str2); \
-      }
+      } \
+  }();
 
-#define Ret_M128d_M128d_Tint_body(Ret_type, func, Tint) \
+#define Ret_M128d_M128d_Tint_body(Ret_type, func, Tint) [](){ \
   for(int i = 0; i < numInterestingDoubles / 2; ++i) \
     for(int k = 0; k < 2; ++k) \
       for(int j = 0; j < numInterestingDoubles / 2; ++j) \
@@ -568,9 +572,10 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime) {
         tostr(&m2, str2); \
         tostr(&ret, str3); \
         printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3); \
-      }
+      } \
+  }();
 
-#define Ret_M128i_M128i_Tint_body(Ret_type, func, Tint) \
+#define Ret_M128i_M128i_Tint_body(Ret_type, func, Tint) [](){ \
   for(int i = 0; i < numInterestingInts / 4; ++i) \
     for(int k = 0; k < 4; ++k) \
       for(int j = 0; j < numInterestingInts / 4; ++j) \
@@ -589,9 +594,10 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime) {
         tostr(&m2, str2); \
         tostr(&ret, str3); \
         printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3); \
-      }
+      } \
+  }();
 
-#define Ret_M128_M128_Tint_body(Ret_type, func, Tint) \
+#define Ret_M128_M128_Tint_body(Ret_type, func, Tint) [](){ \
   for(int i = 0; i < numInterestingFloats / 4; ++i) \
     for(int k = 0; k < 4; ++k) \
       for(int j = 0; j < numInterestingFloats / 4; ++j) \
@@ -610,7 +616,8 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime) {
         tostr(&m2, str2); \
         tostr(&ret, str3); \
         printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3); \
-      }
+      } \
+  }();
 
 #define const_int8_unroll(Ret_type, F, func) \
   F(Ret_type, func, 0); \
