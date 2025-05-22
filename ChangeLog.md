@@ -20,7 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 4.0.10 (in development)
 ----------------------
-- libcxx and libcxxabi were updated to LLVM 20.1.4. (#24346)
+- libcxx, libcxxabi, and compiler-rt were updated to LLVM 20.1.4. (#24346 and
+  #24357)
 - Emscripten will not longer generate trampoline functions for Wasm exports
   prior to the module being instantiated.  Storing a reference to a Wasm export
   (e.g. `Module['_malloc']`) prior to instantiation will no longer work.  In
