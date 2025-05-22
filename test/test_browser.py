@@ -2395,7 +2395,11 @@ void *getBindBuffer() {
     self.btest('test_pre_run_deps.c', expected='10', emcc_args=['--pre-js', 'pre.js'])
 
   @also_with_wasm2js
-  def test_runtime_misuse(self):
+  @parameterized({
+    '': ([], '600'),
+    'no_main': (['-DNO_MAIN', '--pre-js', 'pre_runtime.js'], '601'), # 601, because no main means we *do* run another call after exit()
+  })
+  def test_runtime_misuse(self, extra_args, second_code):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall,$cwrap')
     post_prep = '''
       var expected_ok = false;
@@ -2453,7 +2457,7 @@ void *getBindBuffer() {
         setTimeout(async () => {
           out('done timeout noted = ' + Module.noted);
           assert(Module.noted);
-          await fetch('http://localhost:%s/report_result?' + HEAP32[Module.noted/4]);
+          await fetch('http://localhost:8888/report_result?' + HEAP32[Module.noted/4]);
           window.close();
         }, 0);
         // called from main, this is an ok time
@@ -2461,28 +2465,23 @@ void *getBindBuffer() {
         doCwrapCall(200);
         doDirectCall(300);
       }
-    ''' % self.PORT
+    '''
 
     create_file('pre_runtime.js', r'''
       Module.onRuntimeInitialized = myJSCallback;
     ''')
 
-    for filename, extra_args, second_code in [
-      ('test_runtime_misuse.c', [], 600),
-      ('test_runtime_misuse_2.c', ['--pre-js', 'pre_runtime.js'], 601), # 601, because no main means we *do* run another call after exit()
-    ]:
-      print('\n', filename, extra_args)
+    print('mem init, so async, call too early')
+    create_file('post.js', post_prep + post_test + post_hook)
+    self.btest('test_runtime_misuse.c', expected='600', emcc_args=['--post-js', 'post.js', '-sEXIT_RUNTIME'] + extra_args, reporting=Reporting.NONE)
 
-      print('mem init, so async, call too early')
-      create_file('post.js', post_prep + post_test + post_hook)
-      self.btest(filename, expected='600', emcc_args=['--post-js', 'post.js', '-sEXIT_RUNTIME'] + extra_args, reporting=Reporting.NONE)
-      print('sync startup, call too late')
-      create_file('post.js', post_prep + 'Module.postRun = () => { ' + post_test + ' };' + post_hook)
-      self.btest(filename, expected=str(second_code), emcc_args=['--post-js', 'post.js', '-sEXIT_RUNTIME'] + extra_args, reporting=Reporting.NONE)
+    print('sync startup, call too late')
+    create_file('post.js', post_prep + 'Module.postRun = () => { ' + post_test + ' };' + post_hook)
+    self.btest('test_runtime_misuse.c', expected=second_code, emcc_args=['--post-js', 'post.js', '-sEXIT_RUNTIME'] + extra_args, reporting=Reporting.NONE)
 
-      print('sync, runtime still alive, so all good')
-      create_file('post.js', post_prep + 'expected_ok = true; Module.postRun = () => { ' + post_test + ' };' + post_hook)
-      self.btest(filename, expected='606', emcc_args=['--post-js', 'post.js'] + extra_args, reporting=Reporting.NONE)
+    print('sync, runtime still alive, so all good')
+    create_file('post.js', post_prep + 'expected_ok = true; Module.postRun = () => { ' + post_test + ' };' + post_hook)
+    self.btest('test_runtime_misuse.c', expected='606', emcc_args=['--post-js', 'post.js'] + extra_args, reporting=Reporting.NONE)
 
   def test_cwrap_early(self):
     self.btest('browser/test_cwrap_early.c', emcc_args=['-O2', '-sASSERTIONS', '--pre-js', test_file('browser/test_cwrap_early.js'), '-sEXPORTED_RUNTIME_METHODS=cwrap'], expected='0')
