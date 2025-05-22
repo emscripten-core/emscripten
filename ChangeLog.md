@@ -21,6 +21,10 @@ See docs/process.md for more on how version tagging works.
 4.0.10 (in development)
 ----------------------
 - libcxx and libcxxabi were updated to LLVM 20.1.4. (#24346)
+- Emscripten will not longer generate trampoline functions for Wasm exports
+  prior to the module being instantiated.  Storing a reference to a Wasm export
+  (e.g. `Module['_malloc']`) prior to instantiation will no longer work.  In
+  debug builds we generate stub functions that can detect this case. (#24384)
 - The `-sASYNCIFY_LAZY_LOAD_CODE` setting was deprecated.  This setting was
   added as an experiment a long time ago and as far we know has no active users.
   In addition, it cannot work with JSPI (the future of ASYNCIFY). (#24383)
