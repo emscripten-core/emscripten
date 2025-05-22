@@ -613,29 +613,30 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime) {
       }
 
 #define const_int8_unroll(Ret_type, F, func) \
-  F(Ret_type, func, 0); \
-  F(Ret_type, func, 1); \
-  F(Ret_type, func, 2); \
-  F(Ret_type, func, 3); \
-  F(Ret_type, func, 5); \
-  F(Ret_type, func, 7); \
-  F(Ret_type, func, 11); \
-  F(Ret_type, func, 13); \
-  F(Ret_type, func, 15); \
-  F(Ret_type, func, 16); \
-  F(Ret_type, func, 17); \
-  F(Ret_type, func, 23); \
-  F(Ret_type, func, 29); \
-  F(Ret_type, func, 31); \
-  F(Ret_type, func, 37); \
-  F(Ret_type, func, 43); \
-  F(Ret_type, func, 47); \
-  F(Ret_type, func, 59); \
-  F(Ret_type, func, 127); \
-  F(Ret_type, func, 128); \
-  F(Ret_type, func, 191); \
-  F(Ret_type, func, 254); \
-  F(Ret_type, func, 255);
+  F(Ret_type, func, 0b00000000); \
+  F(Ret_type, func, 0b00000001); \
+  F(Ret_type, func, 0b00000010); \
+  F(Ret_type, func, 0b00000100); \
+  F(Ret_type, func, 0b00001000); \
+  F(Ret_type, func, 0b00010000); \
+  F(Ret_type, func, 0b00100000); \
+  F(Ret_type, func, 0b01000000); \
+  F(Ret_type, func, 0b10000000); \
+  F(Ret_type, func, 0b10101010); \
+  F(Ret_type, func, 0b01010101); \
+  F(Ret_type, func, 0b11001100); \
+  F(Ret_type, func, 0b00110011); \
+  F(Ret_type, func, 0b00001111); \
+  F(Ret_type, func, 0b11110000); \
+  F(Ret_type, func, 0b01111111); \
+  F(Ret_type, func, 0b10111111); \
+  F(Ret_type, func, 0b11011111); \
+  F(Ret_type, func, 0b11101111); \
+  F(Ret_type, func, 0b11110111); \
+  F(Ret_type, func, 0b11111011); \
+  F(Ret_type, func, 0b11111101); \
+  F(Ret_type, func, 0b11111110); \
+  F(Ret_type, func, 0b11111111);
 
 #define const_int5_full_unroll(Ret_type, F, func) \
   F(Ret_type, func, 0); \
