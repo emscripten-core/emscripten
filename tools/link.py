@@ -812,6 +812,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('WASM_ESM_INTEGRATION requires MODULARIZE=instance')
     if settings.RELOCATABLE:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with dynamic linking')
+    if settings.ASYNCIFY == 1:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with -sASYNCIFY=1')
+    if settings.DYNCALLS:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with DYNCALLS')
     if settings.WASM_WORKERS or settings.PTHREADS:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with multi-threading')
     if settings.USE_OFFSET_CONVERTER:
@@ -845,10 +849,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     diagnostics.warning('experimental', 'MODULARIZE=instance is still experimental. Many features may not work or will change.')
     if not settings.EXPORT_ES6:
       exit_with_error('MODULARIZE=instance requires EXPORT_ES6')
-    if settings.ASYNCIFY == 1:
-      exit_with_error('MODULARIZE=instance is not compatible with -sASYNCIFY=1')
-    if settings.DYNCALLS:
-      exit_with_error('MODULARIZE=instance is not compatible with -sDYNCALLS')
     if settings.ASYNCIFY_LAZY_LOAD_CODE:
       exit_with_error('MODULARIZE=instance is not compatible with -sASYNCIFY_LAZY_LOAD_CODE')
     if settings.MINIMAL_RUNTIME:
