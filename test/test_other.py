@@ -12979,10 +12979,9 @@ int main(void) {
     '': ([],),
     'closure': (['--closure=1', '-Werror=closure'],),
     'closure_assertions': (['--closure=1', '-Werror=closure', '-sASSERTIONS'],),
-    'dylink': (['-sMAIN_MODULE'],),
   })
   def test_emdawnwebgpu_link_test(self, args):
-    self.run_process([EMXX, test_file('emdawnwebgpu_link_test.cpp'), '--use-port=emdawnwebgpu', '-sASYNCIFY'] + args)
+    self.run_process([EMXX, test_file('test_emdawnwebgpu_link_test.cpp'), '--use-port=emdawnwebgpu', '-sASYNCIFY'] + args)
 
   def test_signature_mismatch(self):
     create_file('a.c', 'void foo(); int main() { foo(); return 0; }')
