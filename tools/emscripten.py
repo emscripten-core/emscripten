@@ -924,9 +924,6 @@ def install_debug_wrapper(sym):
 
 
 def should_export(sym):
-  if not settings.MINIMAL_RUNTIME and sym.startswith('dynCall_') and settings.MODULARIZE != 'instance':
-    # TODO(sbc): Can we avoid exporting the dynCall_ functions on the module.
-    return True
   return settings.EXPORT_ALL or (settings.EXPORT_KEEPALIVE and sym in settings.EXPORTED_FUNCTIONS)
 
 
@@ -955,7 +952,7 @@ def create_receiving(function_exports, tag_exports):
   # var _main;
   # function assignWasmExports(wasmExport) {
   #   _main = wasmExports["_main"];
-  generate_dyncall_assignment = settings.MINIMAL_RUNTIME and settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
+  generate_dyncall_assignment = settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
   exports = {name: sig for name, sig in function_exports.items() if name != building.WASM_CALL_CTORS}
 
   if settings.ASSERTIONS:
@@ -985,8 +982,8 @@ def create_receiving(function_exports, tag_exports):
   for sym, sig in exports.items():
     mangled = asmjs_mangle(sym)
     if generate_dyncall_assignment and mangled.startswith('dynCall_'):
-      sig = sym.replace('dynCall_', '')
-      dynCallAssignment = f"dynCalls['{sig}'] = "
+      sig_str = sym.replace('dynCall_', '')
+      dynCallAssignment = f"dynCalls['{sig_str}'] = "
     else:
       dynCallAssignment = ''
     export_assignment = ''
