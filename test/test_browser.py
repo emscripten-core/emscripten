@@ -4502,23 +4502,21 @@ Module["preRun"] = () => {
   })
   @requires_webgpu
   def test_webgpu_basic_rendering(self, args):
-    self.btest_exit('webgpu_basic_rendering.cpp', emcc_args=['-sUSE_WEBGPU'] + args)
+    self.btest_exit('webgpu_basic_rendering.cpp', emcc_args=['-Wno-error=deprecated', '-sUSE_WEBGPU'] + args)
 
   @requires_webgpu
   def test_webgpu_required_limits(self):
-    self.btest_exit('webgpu_required_limits.c', emcc_args=['-sUSE_WEBGPU', '-sASYNCIFY'])
+    self.btest_exit('webgpu_required_limits.c', emcc_args=['-Wno-error=deprecated', '-sUSE_WEBGPU', '-sASYNCIFY'])
 
-  # TODO(#19645): Extend this test to proxied WebGPU when it's re-enabled.
   @requires_webgpu
   def test_webgpu_basic_rendering_pthreads(self):
-    self.btest_exit('webgpu_basic_rendering.cpp', emcc_args=['-sUSE_WEBGPU', '-pthread', '-sOFFSCREENCANVAS_SUPPORT'])
+    self.btest_exit('webgpu_basic_rendering.cpp', emcc_args=['-Wno-error=deprecated', '-sUSE_WEBGPU', '-pthread', '-sOFFSCREENCANVAS_SUPPORT'])
 
   def test_webgpu_get_device(self):
-    self.btest_exit('webgpu_get_device.cpp', emcc_args=['-sUSE_WEBGPU', '-sASSERTIONS', '--closure=1'])
+    self.btest_exit('webgpu_get_device.cpp', emcc_args=['-Wno-error=deprecated', '-sUSE_WEBGPU', '-sASSERTIONS', '--closure=1'])
 
-  # TODO(#19645): Extend this test to proxied WebGPU when it's re-enabled.
   def test_webgpu_get_device_pthreads(self):
-    self.btest_exit('webgpu_get_device.cpp', emcc_args=['-sUSE_WEBGPU', '-pthread'])
+    self.btest_exit('webgpu_get_device.cpp', emcc_args=['-Wno-error=deprecated', '-sUSE_WEBGPU', '-pthread'])
 
   # Tests the feature that shell html page can preallocate the typed array and place it
   # to Module.buffer before loading the script page.

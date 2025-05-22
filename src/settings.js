@@ -572,8 +572,12 @@ var GL_FFP_ONLY = false;
 // [link]
 var GL_PREINITIALIZED_CONTEXT = false;
 
-// Enables support for WebGPU (via "webgpu/webgpu.h").
+// Enables the built-in implementation of ``<webgpu/webgpu.h>``.
+// Deprecated: Please try migrating to ``--use-port=emdawnwebgpu``,
+// which implements a newer, incompatible version of webgpu.h (see
+// tools/ports/emdawnwebgpu.py for more info).
 // [link]
+// [deprecated]
 var USE_WEBGPU = false;
 
 // Enables building of stb-image, a tiny public-domain library for decoding

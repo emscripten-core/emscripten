@@ -29,6 +29,13 @@ See docs/process.md for more on how version tagging works.
 - The `-sASYNCIFY_LAZY_LOAD_CODE` setting was deprecated.  This setting was
   added as an experiment a long time ago and as far we know has no active users.
   In addition, it cannot work with JSPI (the future of ASYNCIFY). (#24383)
+- `-sUSE_WEBGPU` was deprecated in favor of the external port Emdawnwebgpu, a
+  fork of Emscripten's original bindings, implementing a newer, more stable
+  version of the standardized `webgpu.h` interface. Please try migrating using
+  `--use-port=emdawnwebgpu`. If you find issues, verify in the [latest
+  nightly release](https://github.com/google/dawn/releases) and file feedback
+  with Dawn. (Emdawnwebgpu is maintained as part of Dawn, the open-source
+  WebGPU implementation used by Chromium, but it is still cross-browser.)
 
 4.0.9 - 05/19/25
 ----------------

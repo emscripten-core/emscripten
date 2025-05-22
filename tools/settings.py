@@ -126,6 +126,7 @@ DEPRECATED_SETTINGS = {
     'ASYNCIFY_EXPORTS': 'please use JSPI_EXPORTS instead',
     'MAYBE_WASM2JS': 'lack of usage',
     'ASYNCIFY_LAZY_LOAD_CODE': 'lack of usage',
+    'USE_WEBGPU': 'please try migrating to --use-port=emdawnwebgpu, which implements a newer, incompatible version of webgpu.h (see tools/ports/emdawnwebgpu.py for more info)',
 }
 
 # Settings that don't need to be externalized when serializing to json because they
