@@ -27,6 +27,14 @@
 #define align1_double double
 #endif
 
+#ifdef __GNUC__
+#define NOINLINE __attribute__((noinline))
+#elif defined(_MSC_VER)
+#define NOINLINE __declspec(noinline)
+#else
+#define NOINLINE
+#endif
+
 // Recasts floating point representation of f to an integer.
 uint32_t fcastu(float f) { return *(uint32_t*)&f; }
 uint64_t dcastu(double f) { return *(uint64_t*)&f; }
