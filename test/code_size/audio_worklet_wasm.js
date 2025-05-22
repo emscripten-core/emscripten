@@ -1,4 +1,4 @@
-var h = globalThis.Module || "undefined" != typeof Module ? Module : {}, p = "em-ww" == globalThis.name, q = "undefined" !== typeof AudioWorkletGlobalScope, r, t, v, x, y, C, I, X, Y, L, K, J, Z;
+var h = globalThis.Module || "undefined" != typeof Module ? Module : {}, p = "em-ww" == globalThis.name, q = "undefined" !== typeof AudioWorkletGlobalScope, r, t, v, x, y, C, I, X, L, K, J, Y, Z;
 
 q && (p = !0);
 
@@ -208,7 +208,7 @@ function ka(a) {
 }
 
 function G() {
-    X = {
+    Z = {
         f: ka,
         g: aa,
         d: ba,
@@ -219,22 +219,22 @@ function G() {
         a: y
     };
     WebAssembly.instantiate(h.wasm, {
-        a: X
+        a: Z
     }).then((a => {
         a = a.instance.exports;
-        Y = a.j;
+        X = a.j;
         L = a.l;
         K = a.m;
         J = a.n;
-        Z = a.o;
+        Y = a.o;
         I = a.k;
         h.stackSave = R;
         h.stackAlloc = ia;
         h.stackRestore = Q;
         h.wasmTable = I;
-        p ? (Z(C.G, C.H), "undefined" === typeof AudioWorkletGlobalScope && (removeEventListener("message", P), 
+        p ? (Y(C.G, C.H), "undefined" === typeof AudioWorkletGlobalScope && (removeEventListener("message", P), 
         N = N.forEach(O), addEventListener("message", O))) : a.i();
-        p || Y();
+        p || X();
     }));
 }
 

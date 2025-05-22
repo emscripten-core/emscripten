@@ -445,6 +445,7 @@ def eval_ctors(js_file, wasm_file, debug_info):
   num_successful = out.count('success on')
   if num_successful and has_wasm_call_ctors:
     js = js.replace(CTOR_ADD_PATTERN, '')
+    settings.WASM_EXPORTS.remove(WASM_CALL_CTORS)
   utils.write_file(js_file, js)
 
 

@@ -52,7 +52,7 @@ function w() {
 }
 
 function h() {
-    x = {
+    z = {
         b: t,
         c: u,
         d: v,
@@ -60,14 +60,14 @@ function h() {
         a: e
     };
     WebAssembly.instantiate(b.wasm, {
-        a: x
+        a: z
     }).then((a => {
         a = a.instance.exports;
-        y = a.g;
-        z = a.i;
+        x = a.g;
+        y = a.i;
         l = a.h;
-        c ? (z(f.l, f.m), removeEventListener("message", p), k = k.forEach(n), addEventListener("message", n)) : a.f();
-        c || y();
+        c ? (y(f.l, f.m), removeEventListener("message", p), k = k.forEach(n), addEventListener("message", n)) : a.f();
+        c || x();
     }));
 }
 

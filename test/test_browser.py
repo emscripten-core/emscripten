@@ -2422,7 +2422,7 @@ void *getBindBuffer() {
         doCcall(1);
         ok = true; // should fail and not reach here, runtime is not ready yet so ccall will abort
       } catch(e) {
-        out('expected fail 1: ' + e.toString());
+        out('expected fail 1:', e);
         assert(e.toString().includes('Assertion failed')); // assertion, not something else
         ABORT = false; // hackish
       }
@@ -2433,7 +2433,7 @@ void *getBindBuffer() {
         doCwrapCall(2);
         ok = true; // should fail and not reach here, runtime is not ready yet so cwrap call will abort
       } catch(e) {
-        out('expected fail 2: ' + e.toString());
+        out('expected fail 2:', e);
         assert(e.toString().includes('Assertion failed')); // assertion, not something else
         ABORT = false; // hackish
       }
@@ -2444,7 +2444,7 @@ void *getBindBuffer() {
         doDirectCall(3);
         ok = true; // should fail and not reach here, runtime is not ready yet so any code execution
       } catch(e) {
-        out('expected fail 3:' + e.toString());
+        out('expected fail 3:', e);
         assert(e.toString().includes('Assertion failed')); // assertion, not something else
         ABORT = false; // hackish
       }

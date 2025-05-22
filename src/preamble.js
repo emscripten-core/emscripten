@@ -935,6 +935,9 @@ function getWasmImports() {
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
 #endif
+#if DECLARE_ASM_MODULE_EXPORTS
+    assignWasmExports(wasmExports);
+#endif
     removeRunDependency('wasm-instantiate');
     return wasmExports;
   }
