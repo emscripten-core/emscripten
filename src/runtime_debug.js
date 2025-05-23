@@ -18,7 +18,7 @@ function dbg(...args) {
     var fs = require('fs');
     var utils = require('util');
     var stringify = (a) => typeof a == 'object' ? utils.inspect(a) : a;
-    fs.writeSync(1, args.map(stringify).join(' ') + '\n');
+    fs.writeSync(2, args.map(stringify).join(' ') + '\n');
   } else
 #endif
   // TODO(sbc): Make this configurable somehow.  Its not always convenient for
