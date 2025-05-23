@@ -2453,8 +2453,21 @@ def calculate(options):
   return ret
 
 
-def copytree_exist_ok(src, dst):
-  shutil.copytree(src, dst, dirs_exist_ok=True)
+def safe_copytree(src, dst):
+  # We cannot use `shutil.copytree` there because we need to ensure the
+  # output tree is writable, and in some cases the emscripten tree
+  # itself is readonly (e.g. NixOS).
+  # Even if we pass copy_function=safe_copy python's `shutil.copytree`
+  # will use its internal logic for copying directories and it will
+  # unconditionally copy the source directory's mode bits.
+  os.makedirs(dst, exist_ok=True)
+  for entry in os.scandir(src):
+    srcname = os.path.join(src, entry.name)
+    dstname = os.path.join(dst, entry.name)
+    if entry.is_dir():
+      safe_copytree(srcname, dstname)
+    else:
+      shared.safe_copy(srcname, dstname)
 
 
 def install_system_headers(stamp):
@@ -2477,15 +2490,15 @@ def install_system_headers(stamp):
   for src, dest in install_dirs.items():
     src = utils.path_from_root('system', *src)
     dest = os.path.join(target_include_dir, dest)
-    copytree_exist_ok(src, dest)
+    safe_copytree(src, dest)
 
   pkgconfig_src = utils.path_from_root('system/lib/pkgconfig')
   pkgconfig_dest = cache.get_sysroot_dir('lib/pkgconfig')
-  copytree_exist_ok(pkgconfig_src, pkgconfig_dest)
+  safe_copytree(pkgconfig_src, pkgconfig_dest)
 
   bin_src = utils.path_from_root('system/bin')
   bin_dest = cache.get_sysroot_dir('bin')
-  copytree_exist_ok(bin_src, bin_dest)
+  safe_copytree(bin_src, bin_dest)
 
   # Create a version header based on the emscripten-version.txt
   version_file = cache.get_include_dir('emscripten/version.h')

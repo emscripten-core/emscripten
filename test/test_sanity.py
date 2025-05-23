@@ -7,6 +7,7 @@ import glob
 import os
 import platform
 import shutil
+import stat
 import time
 import re
 import tempfile
@@ -33,6 +34,14 @@ expected_llvm_version = str(shared.EXPECTED_LLVM_VERSION) + '.0.0'
 
 def restore():
   shutil.copyfile(EM_CONFIG + '_backup', EM_CONFIG)
+
+
+def for_all_files(dir, callback):
+  for root, dirs, files in os.walk(dir):
+    for d in dirs:
+      callback(os.path.join(dir, root, d))
+    for f in files:
+      callback(os.path.join(dir, root, f))
 
 
 # restore the config file and set it up for our uses
@@ -459,6 +468,23 @@ fi
     self.assertExists(os.path.join(cache_dir_name, libname))
     # Exactly one child process should have triggered libc build!
     self.assertEqual(num_times_libc_was_built, 1)
+
+  # Test that sysroot headers can be installed from a read-only
+  # emscripten tree.
+  def test_readonly_sysroot_install(self):
+    restore_and_set_up()
+
+    def make_readonly(filename):
+      old_mode = stat.S_IMODE(os.stat(filename).st_mode)
+      os.chmod(filename, old_mode & ~(stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH))
+
+    try:
+      for_all_files(path_from_root('system/include'), make_readonly)
+
+      with env_modify({'EM_CACHE': self.in_dir('test_cache')}):
+        self.run_process([EMCC, test_file('hello_world.c'), '-c'])
+    finally:
+      for_all_files(path_from_root('system/include'), shared.make_writable)
 
   @parameterized({
     '': [False, False],
