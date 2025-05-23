@@ -9734,14 +9734,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.run_process([EMCC, test_file('modularize_instance.c'),
                       '-sMODULARIZE=instance',
                       '-Wno-experimental',
-                      '-sEXPORTED_RUNTIME_METHODS=baz,addOnExit,HEAP32',
+                      '-sEXPORTED_RUNTIME_METHODS=baz,addOnExit,HEAP32,runtimeKeepalivePush,runtimeKeepalivePop',
                       '-sEXPORTED_FUNCTIONS=_bar,_main,qux',
                       '--js-library', 'library.js',
                       '-o', 'modularize_instance.mjs'] + args + self.get_emcc_args())
 
     create_file('runner.mjs', '''
       import { strict as assert } from 'assert';
-      import init, { _foo as foo, _bar as bar, baz, qux, addOnExit, HEAP32 } from "./modularize_instance.mjs";
+      import init, { _foo as foo, _bar as bar, baz, qux, addOnExit, HEAP32, runtimeKeepalivePush, runtimeKeepalivePop } from "./modularize_instance.mjs";
+      // Keep the runtime alive for asan when EXIT_RUNTIME=1.
+      runtimeKeepalivePush();
       await init();
       foo(); // exported with EMSCRIPTEN_KEEPALIVE
       bar(); // exported with EXPORTED_FUNCTIONS
@@ -9749,6 +9751,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       qux(); // exported library function with EXPORTED_FUNCTIONS
       assert(typeof addOnExit === 'function'); // exported runtime function with EXPORTED_RUNTIME_METHODS
       assert(typeof HEAP32 === 'object'); // exported runtime value by default
+      runtimeKeepalivePop();
     ''')
 
     self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
