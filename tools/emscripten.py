@@ -928,11 +928,18 @@ def should_export(sym):
 
 
 def create_receiving(function_exports, tag_exports):
+  generate_dyncall_assignment = settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
   receiving = ['\n// Imports from the Wasm binary.']
 
   if settings.WASM_ESM_INTEGRATION:
-    exports = tag_exports + list(function_exports.keys())
-    exports = [f'{f} as {asmjs_mangle(f)}' for f in exports]
+    exported_symbols = tag_exports + list(function_exports.keys())
+    exports = []
+    for sym in exported_symbols:
+      mangled = asmjs_mangle(sym)
+      if mangled != sym:
+        exports.append(f'{sym} as {mangled}')
+      else:
+        exports.append(sym)
     if not settings.IMPORTED_MEMORY:
       exports.append('memory as wasmMemory')
     if not settings.RELOCATABLE:
@@ -940,6 +947,16 @@ def create_receiving(function_exports, tag_exports):
     receiving.append('import {')
     receiving.append('  ' + ',\n  '.join(exports))
     receiving.append(f"}} from './{settings.WASM_BINARY_FILE}';")
+
+    if generate_dyncall_assignment:
+      receiving.append('\nfunction assignDynCalls() {')
+      receiving.append('  // Construct dynCalls mapping')
+      for sym in function_exports:
+        if sym.startswith('dynCall_'):
+          sig_str = sym.replace('dynCall_', '')
+          receiving.append(f"  dynCalls['{sig_str}'] = {sym};")
+      receiving.append('}')
+
     return '\n'.join(receiving) + '\n\n'
 
   # When not declaring asm exports this section is empty and we instead programmatically export
@@ -952,7 +969,6 @@ def create_receiving(function_exports, tag_exports):
   # var _main;
   # function assignWasmExports(wasmExport) {
   #   _main = wasmExports["_main"];
-  generate_dyncall_assignment = settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
   exports = {name: sig for name, sig in function_exports.items() if name != building.WASM_CALL_CTORS}
 
   if settings.ASSERTIONS:
@@ -981,7 +997,7 @@ def create_receiving(function_exports, tag_exports):
   receiving.append('\nfunction assignWasmExports(wasmExports) {')
   for sym, sig in exports.items():
     mangled = asmjs_mangle(sym)
-    if generate_dyncall_assignment and mangled.startswith('dynCall_'):
+    if generate_dyncall_assignment and sym.startswith('dynCall_'):
       sig_str = sym.replace('dynCall_', '')
       dynCallAssignment = f"dynCalls['{sig_str}'] = "
     else:
