@@ -15029,7 +15029,11 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.emcc_args.append('--pre-js=pre.js')
     # Verify that, after initialization, dbg() messages are prefixed with
     # worker and thread ID.
-    self.do_runf('other/test_dbg.c', expected, regex=True)
+    self.do_runf('other/test_dbg.c', expected, interleaved_output=True, regex=True)
+
+    # Verify that stdout does not contain dbg() messages (interleaved_output=True
+    # means we return stdout followed by stderr)
+    self.do_runf('other/test_dbg.c', 'hello, world!\nstart { foo: 1 }\n', interleaved_output=False)
 
     # When assertions are disabled `dbg` function is not defined
     self.do_runf('other/test_dbg.c',
