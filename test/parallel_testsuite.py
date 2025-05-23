@@ -90,6 +90,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # Sort the results back into alphabetical order. Running the tests in
     # parallel causes mis-orderings, this makes the results more readable.
     results = sorted(buffered_results, key=lambda res: str(res.test))
+    result.core_time = 0
     for r in results:
       r.updateResult(result)
     return result
@@ -102,18 +103,21 @@ class BufferedParallelTestResult:
   """
   def __init__(self):
     self.buffered_result = None
+    self.test_duration = 0
 
   @property
   def test(self):
     return self.buffered_result.test
 
-  def addDuration(self, test, elapsed):
-    pass
+  def calculateDuration(self):
+    self.test_duration = time.perf_counter() - self.start_time
+    return self.test_duration
 
   def updateResult(self, result):
     result.startTest(self.test)
     self.buffered_result.updateResult(result)
     result.stopTest(self.test)
+    result.core_time += self.test_duration
 
   def startTest(self, test):
     self.start_time = time.perf_counter()
@@ -122,21 +126,21 @@ class BufferedParallelTestResult:
     # TODO(sbc): figure out a way to display this duration information again when
     # these results get passed back to the TextTestRunner/TextTestResult.
     if hasattr(time, 'perf_counter'):
-      self.buffered_result.duration = time.perf_counter() - self.start_time
+      self.buffered_result.duration = self.test_duration
 
   def addSuccess(self, test):
     if hasattr(time, 'perf_counter'):
-      print(test, '... ok (%.2fs)' % (time.perf_counter() - self.start_time), file=sys.stderr)
+      print(test, '... ok (%.2fs)' % (self.calculateDuration()), file=sys.stderr)
     self.buffered_result = BufferedTestSuccess(test)
 
   def addExpectedFailure(self, test, err):
     if hasattr(time, 'perf_counter'):
-      print(test, '... expected failure (%.2fs)' % (time.perf_counter() - self.start_time), file=sys.stderr)
+      print(test, '... expected failure (%.2fs)' % (self.calculateDuration()), file=sys.stderr)
     self.buffered_result = BufferedTestExpectedFailure(test, err)
 
   def addUnexpectedSuccess(self, test):
     if hasattr(time, 'perf_counter'):
-      print(test, '... unexpected success (%.2fs)' % (time.perf_counter() - self.start_time), file=sys.stderr)
+      print(test, '... unexpected success (%.2fs)' % (self.calculateDuration()), file=sys.stderr)
     self.buffered_result = BufferedTestUnexpectedSuccess(test)
 
   def addSkip(self, test, reason):

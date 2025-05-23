@@ -29,6 +29,7 @@ import platform
 import random
 import sys
 import unittest
+import time
 
 # Setup
 
@@ -348,6 +349,8 @@ def run_tests(options, suites):
   else:
     testRunner = unittest.TextTestRunner(verbosity=2, failfast=options.failfast)
 
+  total_core_time = 0
+  run_start_time = time.perf_counter()
   for mod_name, suite in suites:
     print('Running %s: (%s tests)' % (mod_name, suite.countTestCases()))
     res = testRunner.run(suite)
@@ -355,6 +358,11 @@ def run_tests(options, suites):
            (mod_name, res.testsRun, len(res.errors), len(res.failures), len(res.skipped)))
     num_failures += len(res.errors) + len(res.failures) + len(res.unexpectedSuccesses)
     resultMessages.append(msg)
+    if hasattr(res, 'core_time'):
+      total_core_time += res.core_time
+  total_run_time = time.perf_counter() - run_start_time
+  if total_core_time > 0:
+    print('Total core time: %.3fs. Wallclock time: %.3fs. Parallelization: %.2fx.' % (total_core_time, total_run_time, total_core_time / total_run_time))
 
   if len(resultMessages) > 1:
     print('====================')
