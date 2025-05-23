@@ -109,9 +109,11 @@ class BufferedParallelTestResult:
   def test(self):
     return self.buffered_result.test
 
-  def calculateDuration(self):
-    self.test_duration = time.perf_counter() - self.start_time
-    return self.test_duration
+  def addDuration(self, test, elapsed):
+    self.test_duration = elapsed
+
+  def calculateElapsed(self):
+    return time.perf_counter() - self.start_time
 
   def updateResult(self, result):
     result.startTest(self.test)
@@ -130,17 +132,17 @@ class BufferedParallelTestResult:
 
   def addSuccess(self, test):
     if hasattr(time, 'perf_counter'):
-      print(test, '... ok (%.2fs)' % (self.calculateDuration()), file=sys.stderr)
+      print(test, '... ok (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
     self.buffered_result = BufferedTestSuccess(test)
 
   def addExpectedFailure(self, test, err):
     if hasattr(time, 'perf_counter'):
-      print(test, '... expected failure (%.2fs)' % (self.calculateDuration()), file=sys.stderr)
+      print(test, '... expected failure (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
     self.buffered_result = BufferedTestExpectedFailure(test, err)
 
   def addUnexpectedSuccess(self, test):
     if hasattr(time, 'perf_counter'):
-      print(test, '... unexpected success (%.2fs)' % (self.calculateDuration()), file=sys.stderr)
+      print(test, '... unexpected success (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
     self.buffered_result = BufferedTestUnexpectedSuccess(test)
 
   def addSkip(self, test, reason):
