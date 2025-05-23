@@ -694,7 +694,7 @@ def get_file_suffix(filename):
 
 
 def make_writable(filename):
-  assert os.path.isfile(filename)
+  assert os.path.exists(filename)
   old_mode = stat.S_IMODE(os.stat(filename).st_mode)
   os.chmod(filename, old_mode | stat.S_IWUSR)
 
