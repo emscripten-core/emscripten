@@ -95,7 +95,7 @@ function updateMemoryViews() {
   {{{ maybeExportHeap('HEAP64')  }}}HEAP64 = new BigInt64Array(b);
   {{{ maybeExportHeap('HEAPU64') }}}HEAPU64 = new BigUint64Array(b);
 #endif
-#if SUPPORT_BIG_ENDIAN
+#if SUPPORT_BIG_ENDIAN || WASM_BINDGEN
   {{{ maybeExportHeap('HEAP_DATA_VIEW') }}} HEAP_DATA_VIEW = new DataView(b);
   LE_HEAP_UPDATE();
 #endif
