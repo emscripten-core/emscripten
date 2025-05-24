@@ -147,7 +147,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
           // Embind must initialize itself on all threads, as it generates support JS.
           // We only do this once per worker since they get reused
-          __embind_initialize_bindings();
+          __embind_initialize_worker_bindings();
 #endif // EMBIND
           initializedJS = true;
         }

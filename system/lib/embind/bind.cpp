@@ -19,6 +19,8 @@
 using namespace emscripten;
 using namespace internal;
 
+static std::atomic<bool> embind_initialized(false);
+
 extern "C" {
 
 const char* __getTypeName(const std::type_info* ti) {
@@ -52,7 +54,13 @@ const char* __getTypeName(const std::type_info* ti) {
 
 static InitFunc* init_funcs = nullptr;
 
-void _embind_initialize_bindings() {
+void _embind_post_ctors() {
+  embind_initialized = true;
+  embind_initialized.notify_all();
+}
+
+void _embind_initialize_worker_bindings() {
+  embind_initialized.wait(false);
   for (auto* f = init_funcs; f; f = f->next) {
     f->init_func();
   }
