@@ -1999,7 +1999,6 @@ int main(int argc, char **argv) {
   def test_main_thread_async_em_asm(self, args, force_c=False):
     self.do_core_test('test_main_thread_async_em_asm.cpp', cflags=args, force_c=force_c)
 
-  @needs_dylink
   @parameterized({
     '': (['-sASSERTIONS']),
     'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME']),
@@ -2012,7 +2011,6 @@ int main(int argc, char **argv) {
     else:
       self.do_core_test('test_main_thread_async_em_asm_await.cpp', emcc_args=args, force_c=False)
 
-  @needs_dylink
   @parameterized({
     'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '-sASSERTIONS'], False),
   })
