@@ -2071,9 +2071,10 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   if settings.WASM_EXCEPTIONS:
     node_args += shared.node_exception_flags(config.NODE_JS)
   # Run the generated JS file with the proper flags to generate the TypeScript bindings.
-  out = shared.run_js_tool(outfile_js, [], node_args, stdout=PIPE)
+  output_file = in_temp('embind_generated_output.js')
+  shared.run_js_tool(outfile_js, [output_file], node_args)
   settings.restore(original_settings)
-  return out
+  return read_file(output_file)
 
 
 @ToolchainProfiler.profile_block('emit tsd')
