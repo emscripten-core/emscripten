@@ -345,6 +345,7 @@ sigs = {
   _emval_decref__sig: 'vp',
   _emval_delete__sig: 'ipp',
   _emval_equals__sig: 'ipp',
+  _emval_from_current_cxa_exception__sig: 'p',
   _emval_get_global__sig: 'pp',
   _emval_get_method_caller__sig: 'pipi',
   _emval_get_module_property__sig: 'pp',
