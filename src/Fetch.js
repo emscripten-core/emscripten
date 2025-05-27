@@ -347,9 +347,13 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
     // update url if redirect happens
     if (xhr.url_ !== xhr.responseURL) {
-      ptr = _malloc(xhr.responseURL.length + 1);
-      HEAPU8.set(Uint8Array.from(xhr.responseURL.split("").map(x => x.charCodeAt()).concat(0)), ptr);
-      {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.url, 'ptr', '*') }}}
+      var urlPtr = stringToNewUTF8(xhr.responseURL);
+      if (urlPtr) {
+        if (fetch + {{{ C_STRUCTS.emscripten_fetch_t.url }}}) {
+          _free(fetch + {{{ C_STRUCTS.emscripten_fetch_t.url }}});
+        }
+        {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.url, 'urlPtr', '*') }}}
+      }
     }
   }
 
