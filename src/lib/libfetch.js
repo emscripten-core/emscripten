@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2016 The Emscripten Authors
+ * Copyright 2025 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  */
 
@@ -32,6 +32,7 @@ var LibraryFetch = {
     '$callUserCallback',
     '$writeI53ToI64',
     '$stringToUTF8',
+    '$stringToNewUTF8',
 #if FETCH_SUPPORT_INDEXEDDB
     '$fetchCacheData',
     '$fetchLoadCachedData',
