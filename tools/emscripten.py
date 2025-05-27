@@ -903,10 +903,6 @@ def create_reexports(metadata):
   return exports
 
 
-def can_use_await():
-  return settings.MODULARIZE
-
-
 def install_debug_wrapper(sym):
   if settings.MINIMAL_RUNTIME or not settings.ASSERTIONS:
     return False
@@ -1044,7 +1040,7 @@ def create_module(metadata, function_exports, global_exports, tag_exports,librar
       if settings.MODULARIZE == 'instance':
         module.append("var wasmExports;\n")
       elif settings.WASM_ASYNC_COMPILATION:
-        if can_use_await():
+        if settings.MODULARIZE:
           # In modularize mode the generated code is within a factory function.
           # This magic string gets replaced by `await createWasm`.  It needed to allow
           # closure and acorn to process the module without seeing this as a top-level
