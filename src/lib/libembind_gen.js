@@ -857,7 +857,7 @@ var LibraryEmbind = {
     }
 #if EMBIND_AOT
     const printer = new JsPrinter(moduleDefinitions);
-    #else
+#else
     const printer = new TsPrinter(moduleDefinitions);
 #endif
     const output = printer.print();
