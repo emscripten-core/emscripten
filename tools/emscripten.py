@@ -365,6 +365,10 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     logger.debug('emscript: skipping js glue generation')
     return
 
+  for e in settings.EXPORTED_FUNCTIONS:
+    if not is_valid_js_identifier(e):
+      exit_with_error(f'invalid export name: {e}')
+
   # memory and global initializers
 
   if settings.RELOCATABLE:
@@ -570,9 +574,6 @@ def finalize_wasm(infile, outfile, js_syms):
   # These are any exports that were not requested on the command line and are
   # not known auto-generated system functions.
   unexpected_exports = [e for e in metadata.all_exports if shared.is_user_export(e)]
-  for n in unexpected_exports:
-    if not is_valid_js_identifier(n):
-      exit_with_error(f'invalid export name: {n}')
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
 
