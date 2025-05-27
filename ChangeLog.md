@@ -37,7 +37,7 @@ See docs/process.md for more on how version tagging works.
   with Dawn. (Emdawnwebgpu is maintained as part of Dawn, the open-source
   WebGPU implementation used by Chromium, but it is still cross-browser.)
 - Fetch C APIs will now update the `url` field in `emscripten_fetch_t` if a
-  redirect occurred, in line with JS `XHR` and `fetch` behavior.
+  redirect occurred, in line with JS `XHR` and `fetch` behavior. (#24414)
 
 4.0.9 - 05/19/25
 ----------------
