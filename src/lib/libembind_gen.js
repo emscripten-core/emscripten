@@ -446,7 +446,7 @@ var LibraryEmbind = {
       if (this.usedEmbindString) {
         out.unshift('type EmbindString = ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string;\n');
       }
-      console.log(out.join(''));
+      return out.join('');
     }
   },
 
@@ -468,10 +468,10 @@ var LibraryEmbind = {
         def.printJs(out);
       }
       out.push('}\n');
-      console.log(JSON.stringify({
+      return JSON.stringify({
         'invokers': out.join(''),
         publicSymbols,
-      }));
+      });
     }
   },
 
@@ -843,27 +843,27 @@ var LibraryEmbind = {
     });
   },
 
+  $emitOutput__deps: ['$awaitingDependencies', '$throwBindingError', '$getTypeName', '$moduleDefinitions',
 #if EMBIND_AOT
-  $embindEmitAotJs__deps: ['$awaitingDependencies', '$throwBindingError', '$getTypeName', '$moduleDefinitions', '$JsPrinter'],
-  $embindEmitAotJs__postset: () => { addAtPostCtor('embindEmitAotJs()'); },
-  $embindEmitAotJs: () => {
-    for (const typeId in awaitingDependencies) {
-      throwBindingError(`Missing binding for type: '${getTypeName(typeId)}' typeId: ${typeId}`);
-    }
-    const printer = new JsPrinter(moduleDefinitions);
-    printer.print();
-  },
-#else // EMBIND_AOT
-  $embindEmitTypes__deps: ['$awaitingDependencies', '$throwBindingError', '$getTypeName', '$moduleDefinitions', '$TsPrinter'],
-  $embindEmitTypes__postset: () => { addAtPostCtor('embindEmitTypes()'); },
-  $embindEmitTypes: () => {
-    for (const typeId in awaitingDependencies) {
-      throwBindingError(`Missing binding for type: '${getTypeName(typeId)}' typeId: ${typeId}`);
-    }
-    const printer = new TsPrinter(moduleDefinitions);
-    printer.print();
-  },
+    '$JsPrinter',
+#else
+    '$TsPrinter',
 #endif
+  ],
+  $emitOutput__postset: () => { addAtPostCtor('emitOutput()'); },
+  $emitOutput: () => {
+    for (const typeId in awaitingDependencies) {
+      throwBindingError(`Missing binding for type: '${getTypeName(typeId)}' typeId: ${typeId}`);
+    }
+#if EMBIND_AOT
+    const printer = new JsPrinter(moduleDefinitions);
+#else
+    const printer = new TsPrinter(moduleDefinitions);
+#endif
+    const output = printer.print();
+    var fs = require('fs');
+    fs.writeFileSync(process.argv[2], output + '\n');
+  },
 
   // Stub functions used by eval, but not needed for TS generation:
   $makeLegalFunctionName: () => { throw new Error('stub function should not be called'); },
@@ -874,10 +874,6 @@ var LibraryEmbind = {
   $PureVirtualError: () => { throw new Error('stub function should not be called'); },
 };
 
-#if EMBIND_AOT
-extraLibraryFuncs.push('$embindEmitAotJs');
-#else
-extraLibraryFuncs.push('$embindEmitTypes');
-#endif
+extraLibraryFuncs.push('$emitOutput');
 
 addToLibrary(LibraryEmbind);
