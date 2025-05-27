@@ -41,7 +41,7 @@ var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64,
 #endif
   wasmMemory;
 
-#if ASSERTIONS || SAFE_HEAP || USE_ASAN
+#if ASSERTIONS || SAFE_HEAP || USE_ASAN || MODULARIZE
 var runtimeInitialized = false;
 #endif
 

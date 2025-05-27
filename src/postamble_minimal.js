@@ -46,7 +46,7 @@ function run() {
 #endif
 
 function initRuntime(wasmExports) {
-#if ASSERTIONS || SAFE_HEAP || USE_ASAN
+#if ASSERTIONS || SAFE_HEAP || USE_ASAN || MODULARIZE
   runtimeInitialized = true;
 #endif
 

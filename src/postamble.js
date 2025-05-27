@@ -147,7 +147,7 @@ function run() {
 #if PTHREADS || WASM_WORKERS
   if ({{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
 #if MODULARIZE
-    readyPromiseResolve(Module);
+    readyPromiseResolve?.(Module);
 #endif
     initRuntime();
     return;
@@ -187,7 +187,7 @@ function run() {
 #endif
 
 #if MODULARIZE
-    readyPromiseResolve(Module);
+    readyPromiseResolve?.(Module);
 #endif
 #if expectToReceiveOnModule('onRuntimeInitialized')
     Module['onRuntimeInitialized']?.();
