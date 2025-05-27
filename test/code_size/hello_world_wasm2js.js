@@ -48,8 +48,8 @@ function e(a) {
         a: a => {
             var p = console, t = p.log;
             if (a) {
-                for (var w = a + void 0, c = a; !(c >= w) && g[c]; ) ++c;
-                a = k.decode(g.subarray(a, c));
+                for (var w = a + void 0, c = a; !(c >= w) && h[c]; ) ++c;
+                a = k.decode(h.subarray(a, c));
             } else a = "";
             t.call(p, a);
         }
@@ -57,8 +57,8 @@ function e(a) {
 }).then((a => {
     a = a.instance.exports;
     l = a.d;
-    h = a.b;
-    g = new Uint8Array(h.buffer);
+    g = a.b;
+    h = new Uint8Array(g.buffer);
     a.c();
     l();
 }));
