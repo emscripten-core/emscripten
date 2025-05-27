@@ -349,9 +349,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     if (xhr.url_ !== xhr.responseURL) {
       var urlPtr = stringToNewUTF8(xhr.responseURL);
       if (urlPtr) {
-        if (fetch + {{{ C_STRUCTS.emscripten_fetch_t.url }}}) {
-          _free(fetch + {{{ C_STRUCTS.emscripten_fetch_t.url }}});
-        }
+        _free(fetch + {{{ C_STRUCTS.emscripten_fetch_t.url }}});
         {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.url, 'urlPtr', '*') }}}
       }
     }
