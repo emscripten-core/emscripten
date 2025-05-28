@@ -817,3 +817,28 @@ fi
 
     # Now the compiler should work again
     self.run_process([EMCC, test_file('hello_world.c')])
+
+  # Verify that running bootstrap.py in a first-time run scenario should not
+  # cause an exception. (A first time run scenario is before .emscripten, env.
+  # vars nor PATH has been configured)
+  def test_bootstrap_without_em_config(self):
+    # Make sure we don't have an EM_CONFIG file.
+    if os.path.isfile(EM_CONFIG):
+      os.remove(EM_CONFIG)
+
+    # Remove all environment variables that might help config.py to locate Emscripten tools.
+    env = os.environ.copy()
+    for e in ['LLVM_ROOT', 'EMSDK_NODE', 'EMSDK_PYTHON', 'EMSDK', 'EMSCRIPTEN', 'BINARYEN_ROOT', 'EMCC_SKIP_SANITY_CHECK']:
+      env.pop(e, None)
+
+    # Remove from PATH every directory that contains clang.exe so that bootstrap.py cannot
+    # accidentally succeed by virtue of locating tools in PATH.
+    new_path = [d for d in env['PATH'].split(os.pathsep) if not os.path.isfile(os.path.join(d, shared.exe_suffix('clang')))]
+    env['PATH'] = os.pathsep.join(new_path)
+
+    # Running bootstrap.py should not fail
+    try:
+      self.run_process([shared.bat_suffix(shared.path_from_root('bootstrap'))], env=env)
+    finally:
+      # Restore the deleted config file to not disturb other tests
+      restore()
