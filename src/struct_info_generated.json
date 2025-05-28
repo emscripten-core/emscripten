@@ -1573,7 +1573,7 @@
         },
         "emscripten_fetch_t": {
             "__attributes": 108,
-            "__size__": 204,
+            "__size__": 208,
             "data": 12,
             "dataOffset": 24,
             "id": 0,
