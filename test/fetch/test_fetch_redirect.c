@@ -6,7 +6,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
-#include <math.h>
+#include <stdlib.h>
 #include <emscripten/fetch.h>
 
 int fetchSync() {
@@ -34,10 +34,8 @@ void onsuccess(emscripten_fetch_t *fetch) {
 
 void onreadystatechange(emscripten_fetch_t *fetch) {
   printf("Fetch readyState %d responseUrl %s\n", fetch->readyState, fetch->responseUrl ? fetch->responseUrl : "is null");
-  if (fetch->readyState < 2 && ) {
-    if (fetch->responseUrl) {
-      assert(0 == strcmp(fetch->responseUrl, ""));
-    }
+  if (fetch->readyState < 2) {
+    assert(NULL == fetch->responseUrl);
   } else {
     assert(0 == strcmp(fetch->responseUrl, "https://httpbin.org/get"));
   }

@@ -140,6 +140,7 @@ emscripten_fetch_t* emscripten_fetch(emscripten_fetch_attr_t* fetch_attr, const 
     }
     headers[headersCount] = 0;
     fetch->__attributes.requestHeaders = headers;
+    fetch->responseUrl = NULL; // responseUrl is not set until STATE_HEADERS_RECEIVED
   }
 
   emscripten_start_fetch(fetch);

@@ -193,7 +193,8 @@ typedef struct emscripten_fetch_t {
   // For internal use only.
   emscripten_fetch_attr_t __attributes;
 
-  // The response URL set by the fetch.
+  // The response URL set by the fetch. It will be null until HEADERS_RECEIVED
+  // readyState in async, or until completion in sync.
   const char *responseUrl;
 } emscripten_fetch_t;
 

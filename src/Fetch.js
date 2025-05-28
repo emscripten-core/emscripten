@@ -349,7 +349,6 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
       // The response url pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
       // freed when emscripten_fetch_close() is called.
       var ruPtr = stringToNewUTF8(xhr.responseURL);
-      _free(fetch + {{{ C_STRUCTS.emscripten_fetch_t.responseUrl }}});
       {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.responseUrl, 'ruPtr', '*') }}}
     }
   }
@@ -437,7 +436,6 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
       // The response url pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
       // freed when emscripten_fetch_close() is called.
       var ruPtr = stringToNewUTF8(xhr.responseURL);
-      _free(fetch + {{{ C_STRUCTS.emscripten_fetch_t.responseUrl }}});
       {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.responseUrl, 'ruPtr', '*') }}}
     }
     onreadystatechange?.(fetch, xhr, e);
