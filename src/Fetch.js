@@ -201,7 +201,7 @@ function fetchCacheData(/** @type {IDBDatabase} */ db, fetch, data, onsuccess, o
 
   var fetch_attr = fetch + {{{ C_STRUCTS.emscripten_fetch_t.__attributes }}};
   var destinationPath = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.destinationPath, '*') }}};
-  destinationPath ||= {{{ makeGetValue('fetch', C_STRUCTS.emscripten_fetch_t.url, '*') }}};
+    destinationPath ||= {{{ makeGetValue('fetch', C_STRUCTS.emscripten_fetch_t.url, '*') }}};
   var destinationPathStr = UTF8ToString(destinationPath);
 
   try {
@@ -345,6 +345,12 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.readyState, 'xhr.readyState', 'i16') }}}
     {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 'xhr.status', 'i16') }}}
     if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
+    if (fetchAttrSynchronous) {
+      // The response url pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
+      // freed when emscripten_fetch_close() is called.
+      var ruPtr = stringToNewUTF8(xhr.responseURL);
+      {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.responseUrl, 'ruPtr', '*') }}}
+    }
   }
 
   xhr.onload = (e) => {
@@ -425,6 +431,12 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.readyState, 'xhr.readyState', 'i16') }}}
     if (xhr.readyState >= 2) {
       {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 'xhr.status', 'i16') }}}
+    }
+    if (!fetchAttrSynchronous && (xhr.readyState === 2 && xhr.responseURL.length > 0)) {
+      // The response url pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
+      // freed when emscripten_fetch_close() is called.
+      var ruPtr = stringToNewUTF8(xhr.responseURL);
+      {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.responseUrl, 'ruPtr', '*') }}}
     }
     onreadystatechange?.(fetch, xhr, e);
   };

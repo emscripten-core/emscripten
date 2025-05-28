@@ -39,6 +39,9 @@ See docs/process.md for more on how version tagging works.
 - The `-sMAYBE_WASM2JS` setting was removed.  This was originally added for
   debugging purposes, and we now have `-sWASM=2` for folks that want to be able
   to fall back to js if wasm fails. (#24176)
+- The field `responseUrl` is added to `emscripten_fetch_t`. This is notably
+  usable for obtaining resolved URL, in line with JS `XMLHttpRequest.responseURL`
+  field. (#24414)
 
 4.0.9 - 05/19/25
 ----------------

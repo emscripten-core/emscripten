@@ -14492,6 +14492,7 @@ myMethod: 43
     self.build('fetch/test_fetch_persist.c')
     self.build('fetch/test_fetch_idb_delete.c')
     self.build('fetch/test_fetch_idb_store.c')
+    self.build('fetch/test_fetch_redirect.c')
     self.build('fetch/test_fetch_stream_async.c')
     self.build('fetch/test_fetch_sync.c')
     self.build('fetch/test_fetch_progress.c')

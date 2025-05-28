@@ -4645,6 +4645,10 @@ Module["preRun"] = () => {
     create_file('myfile.dat', 'hello world\n')
     self.btest_exit('fetch/test_fetch_persist.c', emcc_args=['-sFETCH'])
 
+  @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
+  def test_fetch_redirect(self):
+    self.btest_exit('fetch/test_fetch_redirect.c', emcc_args=['-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
+
   @parameterized({
     '': ([],),
     'mt': (['-pthread', '-sPTHREAD_POOL_SIZE=2'],),
