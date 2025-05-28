@@ -901,7 +901,7 @@ var LibraryHTML5 = {
       }
       orientationAngle = screenOrientObj.angle;
     }
-#if MIN_SAFARI_VERSION < 0x100400
+#if MIN_SAFARI_VERSION < 160400
     else {
       // fallback for Safari earlier than 16.4 (March 2023)
       orientationAngle = window.orientation;
