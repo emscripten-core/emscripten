@@ -822,8 +822,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM_ASYNC_COMPILATION')
     if not settings.WASM:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM2JS')
-    if settings.MAYBE_WASM2JS:
-      exit_with_error('WASM_ESM_INTEGRATION is not compatible with MAYBE_WASM2JS')
     if settings.ABORT_ON_WASM_EXCEPTIONS:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with ABORT_ON_WASM_EXCEPTIONS')
 
@@ -882,7 +880,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.WASM2JS = 1
 
   if settings.WASM2JS:
-    settings.MAYBE_WASM2JS = 1
     # Wasm bigint doesn't make sense with wasm2js, since it controls how the
     # wasm and JS interact.
     if user_settings.get('WASM_BIGINT') and settings.WASM_BIGINT:

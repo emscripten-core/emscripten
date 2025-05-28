@@ -36,6 +36,9 @@ See docs/process.md for more on how version tagging works.
   nightly release](https://github.com/google/dawn/releases) and file feedback
   with Dawn. (Emdawnwebgpu is maintained as part of Dawn, the open-source
   WebGPU implementation used by Chromium, but it is still cross-browser.)
+- The `-sMAYBE_WASM2JS` setting was removed.  This was originally added for
+  debugging purposes, and we now have `-sWASM=2` for folks that want to be able
+  to fall back to js if wasm fails. (#24176)
 
 4.0.9 - 05/19/25
 ----------------
