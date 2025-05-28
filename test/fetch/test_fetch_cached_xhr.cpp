@@ -13,7 +13,7 @@ int result = 0;
 
 // Fetch file without XHRing.
 void fetchFromIndexedDB() {
-  printf("Fetching from IndexedDB...\n", fetch->numBytes);
+  printf("Fetching from IndexedDB...\n");
   emscripten_fetch_attr_t attr;
   emscripten_fetch_attr_init(&attr);
   strcpy(attr.requestMethod, "GET");

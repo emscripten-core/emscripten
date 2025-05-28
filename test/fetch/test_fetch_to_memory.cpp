@@ -11,6 +11,10 @@
 
 int result = 1;
 
+#ifndef ORIGIN_URL
+#define ORIGIN_URL "http://localhost:8888/"
+#endif
+
 // This test is run in two modes: if FILE_DOES_NOT_EXIST defined,
 // then testing an XHR of a missing file.
 // #define FILE_DOES_NOT_EXIST
@@ -28,9 +32,8 @@ int main() {
 #endif
     assert(fetch);
     printf("Finished downloading %llu bytes\n", fetch->numBytes);
-    assert(fetch->url);
-    printf("Response URL: %s\n", fetch->url);
-    assert(!strcmp(fetch->url, "gears.png"));
+    assert(fetch->url);s
+    assert(!strcmp(fetch->url, ORIGIN_URL "gears.png"));
     assert(fetch->id != 0);
     assert((uintptr_t)fetch->userData == 0x12345678);
     assert(fetch->totalBytes == 6407);

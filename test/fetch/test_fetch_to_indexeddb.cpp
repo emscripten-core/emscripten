@@ -9,6 +9,10 @@
 #include <assert.h>
 #include <emscripten/fetch.h>
 
+#ifndef ORIGIN_URL
+#define ORIGIN_URL "http://localhost:8888/"
+#endif
+
 int main() {
   emscripten_fetch_attr_t attr;
   emscripten_fetch_attr_init(&attr);
@@ -20,8 +24,7 @@ int main() {
     assert(fetch);
     printf("Finished downloading %llu bytes\n", fetch->totalBytes);
     assert(fetch->url);
-    printf("Response URL: %s\n", fetch->url);
-    assert(!strcmp(fetch->url, "gears.png"));
+    assert(!strcmp(fetch->url, ORIGIN_URL "gears.png"));
     assert(fetch->id != 0);
     assert((uintptr_t)fetch->userData == 0x12345678);
     assert(fetch->totalBytes == 6407);
