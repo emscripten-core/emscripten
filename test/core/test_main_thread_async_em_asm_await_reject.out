@@ -1,0 +1,5 @@
+Before MAIN_THREAD_EM_ASM_AWAIT
+Inside MAIN_THREAD_EM_ASM_AWAIT: 42 3.5
+Inside asyncOp
+After MAIN_THREAD_EM_ASM_AWAIT rejected
+result: 0
