@@ -1174,6 +1174,9 @@ function littleEndianHeap(ast) {
 // in each access), see #8365.
 function growableHeap(ast) {
   recursiveWalk(ast, {
+    ExportNamedDeclaration() {
+      // Do not recurse export statements since we don't want to rewrite, for example, `export { HEAP32 }`
+    },
     FunctionDeclaration(node, c) {
       // Do not recurse into the helper function itself.
       if (
