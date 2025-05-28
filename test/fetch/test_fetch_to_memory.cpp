@@ -83,7 +83,7 @@ int main() {
 #endif
     assert(fetch);
     assert(fetch->id != 0);
-    assert(!strcmp(fetch->url, "gears.png"));
+    assert(!strcmp(fetch->url, ORIGIN_URL "gears.png"));
     assert((uintptr_t)fetch->userData == 0x12345678);
 
 #ifdef FILE_DOES_NOT_EXIST
