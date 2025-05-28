@@ -411,7 +411,7 @@ function abort(what) {
   var e = new WebAssembly.RuntimeError(what);
 
 #if MODULARIZE
-  readyPromiseReject(e);
+  readyPromiseReject?.(e);
 #endif
   // Throw the error whether or not MODULARIZE is set because abort is used
   // in code paths apart from instantiation where an exception is expected
@@ -1018,22 +1018,12 @@ function getWasmImports() {
 #if RUNTIME_DEBUG
   dbg('asynchronously preparing wasm');
 #endif
-#if MODULARIZE
-  try {
-#endif
-    var result = await instantiateAsync(wasmBinary, wasmBinaryFile, info);
-    var exports = receiveInstantiationResult(result);
+  var result = await instantiateAsync(wasmBinary, wasmBinaryFile, info);
+  var exports = receiveInstantiationResult(result);
 #if LOAD_SOURCE_MAP
-    receiveSourceMapJSON(await getSourceMapAsync());
+  receiveSourceMapJSON(await getSourceMapAsync());
 #endif
-    return exports;
-#if MODULARIZE
-  } catch (e) {
-    // If instantiation fails, reject the module ready promise.
-    readyPromiseReject(e);
-    return Promise.reject(e);
-  }
-#endif
+  return exports;
 #else // WASM_ASYNC_COMPILATION
   var result = instantiateSync(wasmBinaryFile, info);
 #if PTHREADS || MAIN_MODULE

@@ -7084,6 +7084,30 @@ int main(void) {
     output = self.run_js('run.mjs')
     self.assertContained('done init\nhello, world!\ngot module\n', output)
 
+  def test_modularize_instantiation_error(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-o', 'out.mjs'] + self.get_emcc_args())
+    create_file('run.mjs', '''
+    import Module from './out.mjs';
+    try {
+      await Module({onRuntimeInitialized: () => console.log('done init')});
+      console.log('got module');
+    } catch(e) {
+      console.log('got error:', e);
+    }
+    ''')
+
+    # First run with wasm file present
+    output = self.run_js('run.mjs')
+    self.assertContained('got module', output)
+
+    # Now run again after deleting the file and we should still succeed since
+    # the factory function is wrapped in a try catch.  This verifies that there
+    # are no unhandled rejections internally in this case.
+    os.remove('out.wasm')
+    output = self.run_js('run.mjs')
+    self.assertContained('failed to asynchronously prepare wasm', output)
+    self.assertContained('got error: RuntimeError: Aborted', output)
+
   @crossplatform
   @node_pthreads
   @flaky('https://github.com/emscripten-core/emscripten/issues/19683')

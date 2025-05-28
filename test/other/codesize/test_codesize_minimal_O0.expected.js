@@ -740,9 +740,9 @@ async function createWasm() {
   var info = getWasmImports();
 
   wasmBinaryFile ??= findWasmBinary();
-    var result = await instantiateAsync(wasmBinary, wasmBinaryFile, info);
-    var exports = receiveInstantiationResult(result);
-    return exports;
+  var result = await instantiateAsync(wasmBinary, wasmBinaryFile, info);
+  var exports = receiveInstantiationResult(result);
+  return exports;
 }
 
 // end include: preamble.js

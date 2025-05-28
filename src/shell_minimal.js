@@ -34,15 +34,6 @@ var Module =
 var Module = {{{ EXPORT_NAME }}};
 #endif
 
-#if MODULARIZE && USE_READY_PROMISE
-// Set up the promise that indicates the Module is initialized
-var readyPromiseResolve, readyPromiseReject;
-var readyPromise = new Promise((resolve, reject) => {
-  readyPromiseResolve = resolve;
-  readyPromiseReject = reject;
-});
-#endif
-
 #if ENVIRONMENT_MAY_BE_NODE
 var ENVIRONMENT_IS_NODE = {{{ nodeDetectionCode() }}};
 #endif
@@ -126,7 +117,7 @@ var err = (...args) => console.error(...args);
 // the program.
 function ready() {
 #if MODULARIZE && USE_READY_PROMISE
-  readyPromiseResolve(Module);
+  readyPromiseResolve?.(Module);
 #endif // MODULARIZE
 #if INVOKE_RUN && HAS_MAIN
   {{{ runIfMainThread("run();") }}}

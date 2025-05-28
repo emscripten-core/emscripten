@@ -7,7 +7,15 @@
 #if WASM_ASYNC_COMPILATION
 
 #if USE_READY_PROMISE
-moduleRtn = readyPromise;
+if (runtimeInitialized)  {
+  moduleRtn = Module;
+} else {
+  // Set up the promise that indicates the Module is initialized
+  moduleRtn = new Promise((resolve, reject) => {
+    readyPromiseResolve = resolve;
+    readyPromiseReject = reject;
+  });
+}
 #else
 moduleRtn = {};
 #endif
