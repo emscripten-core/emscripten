@@ -1690,16 +1690,6 @@ addToLibrary({
   $getExecutableName: () => thisProgram || './this.program',
 #endif
 
-  $listenOnce: (object, event, func) =>
-#if MIN_CHROME_VERSION < 55 || MIN_FIREFOX_VERSION < 50 // https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener
-    object.addEventListener(event, function handler() {
-      func();
-      object.removeEventListener(event, handler);
-    }),
-#else
-    object.addEventListener(event, func, { 'once': true }),
-#endif
-
   // Receives a Web Audio context plus a set of elements to listen for user
   // input events on, and registers a context resume() for them. This lets
   // audio work properly in an automatic way, as browsers won't let audio run
@@ -1708,18 +1698,15 @@ addToLibrary({
   // elements, which handle common use cases.
   // TODO(sbc): Remove seemingly unused elements argument
   $autoResumeAudioContext__docs: '/** @param {Object=} elements */',
-  $autoResumeAudioContext__deps: ['$listenOnce'],
   $autoResumeAudioContext: (ctx, elements) => {
     if (!elements) {
       elements = [document, document.getElementById('canvas')];
     }
     ['keydown', 'mousedown', 'touchstart'].forEach((event) => {
       elements.forEach((element) => {
-        if (element) {
-          listenOnce(element, event, () => {
-            if (ctx.state === 'suspended') ctx.resume();
-          });
-        }
+        element?.addEventListener(event, () => {
+          if (ctx.state === 'suspended') ctx.resume();
+        }, { 'once': true });
       });
     });
   },

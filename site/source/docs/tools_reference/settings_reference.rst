@@ -2876,7 +2876,7 @@ are desired to work. Pass -sMIN_FIREFOX_VERSION=majorVersion to drop support
 for Firefox versions older than < majorVersion.
 Firefox 79 was released on 2020-07-28.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 40 which was released on 2015-09-11 (see
+Minimum supported value is 50 which was released on 2016-11-15 (see
 feature_matrix.py)
 
 Default value: 79
@@ -2912,7 +2912,7 @@ This setting also applies to modern Chromium-based Edge, which shares version
 numbers with Chrome.
 Chrome 85 was released on 2020-08-25.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 45, which was released on 2015-09-01 (see
+Minimum supported value is 55, which was released on 2016-12-01 (see
 feature_matrix.py).
 
 Default value: 85

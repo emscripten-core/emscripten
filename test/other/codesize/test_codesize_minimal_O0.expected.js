@@ -896,7 +896,6 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'readEmAsmArgs',
   'jstoi_q',
   'getExecutableName',
-  'listenOnce',
   'autoResumeAudioContext',
   'getDynCaller',
   'dynCall',
