@@ -9,6 +9,7 @@ import shutil
 
 from tools import diagnostics
 
+VERSION = '3.2.4'
 TAG = 'release-3.2.4'
 HASH = 'c26a8afeec481e3ae3b435eec405d9f99d78752ebf5118963cd56728ceff23772769f5291df581329488da7489034e835301b08d61a42c811764e24b3542a4c2'
 SUBDIR = 'SDL-' + TAG
@@ -45,6 +46,7 @@ def get(ports, settings, shared):
     # copy includes to a location so they can be used as 'SDL3/'
     source_include_path = os.path.join(root_dir, 'include', 'SDL3')
     ports.install_headers(source_include_path, target='SDL3')
+    ports.make_pkg_config('sdl3', VERSION, '-sUSE_SDL=3')
 
     # copy sdl3-config.cmake
     cmake_file = os.path.join(os.path.dirname(__file__), 'sdl3/sdl3-config.cmake')

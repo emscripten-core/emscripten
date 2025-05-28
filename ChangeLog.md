@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 4.0.10 (in development)
 ----------------------
+- Emscripten ports now install pkg-config `.pc` files so they will show up, for
+  example, when you run `pkg-config --list-all` or `pkg-config --cflags
+  <portname>`. Bare in mind that the correct PKG_CONFIG_PATH needs to be set for
+  this to work.  One way to do this is to run `emmake pkg-config`. (#24426)
 - libcxx, libcxxabi, and compiler-rt were updated to LLVM 20.1.4. (#24346 and
   #24357)
 - Emscripten will not longer generate trampoline functions for Wasm exports

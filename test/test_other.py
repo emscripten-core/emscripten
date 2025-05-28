@@ -1088,8 +1088,17 @@ f.close()
       ('sdl', '1.2.15'),
     ]
     for package, version in packages:
-        out = self.run_process([emmake, 'pkg-config', '--modversion', package], stdout=PIPE).stdout
-        self.assertContained(version, out)
+      out = self.run_process([emmake, 'pkg-config', '--modversion', package], stdout=PIPE).stdout
+      self.assertContained(version, out)
+
+  @requires_pkg_config
+  @crossplatform
+  def test_pkg_config_ports(self):
+    self.run_process([EMBUILDER, 'build', 'bullet'])
+    out = self.run_process([emmake, 'pkg-config', '--list-all'], stdout=PIPE).stdout
+    self.assertContained('bullet', out)
+    out = self.run_process([emmake, 'pkg-config', '--cflags', 'bullet'], stdout=PIPE).stdout
+    self.assertContained('-sUSE_BULLET', out)
 
   @parameterized({
     '': [None],

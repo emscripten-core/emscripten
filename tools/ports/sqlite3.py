@@ -29,6 +29,7 @@ def get(ports, settings, shared):
     source_path = ports.get_dir('sqlite3', release)
 
     ports.install_headers(source_path)
+    ports.make_pkg_config('sqlite', ','.join(str(v) for v in VERSION), '-sUSE_SQLITE3')
 
     # flags are based on sqlite-autoconf output.
     # SQLITE_HAVE_ZLIB is only used by shell.c

@@ -26,6 +26,7 @@ def get(ports, settings, shared):
     shutil.copyfile(jconfig_h, os.path.join(source_path, 'jconfig.h'))
 
     ports.install_headers(source_path)
+    ports.make_pkg_config('libjpeg', VERSION, '-sUSE_LIBJPEG')
     excludes = [
       'ansi2knr.c', 'cjpeg.c', 'cjpegalt.c', 'ckconfig.c', 'djpeg.c', 'djpegalt.c', 'example.c',
       'jmemansi.c', 'jmemdos.c', 'jmemmac.c', 'jmemname.c',
@@ -41,4 +42,4 @@ def clear(ports, settings, shared):
 
 
 def show():
-  return 'libjpeg (-sUSE_LIBJPEG=1 or --use-port=libjpeg; BSD license)'
+  return 'libjpeg (-sUSE_LIBJPEG or --use-port=libjpeg; BSD license)'
