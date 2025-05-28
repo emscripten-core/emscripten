@@ -31,6 +31,10 @@ void fetchFromIndexedDB() {
       printf("Downloading from IndexedDB.. %lld bytes complete.\n", fetch->dataOffset + fetch->numBytes);
     }
   };
+  attr.onerror = [](emscripten_fetch_t *fetch) {
+    printf("Error downloading from IndexedDB\n");
+    printf("Downloaded %llu of %llu bytes \n", fetch->numBytes, fetch->totalBytes);
+  };
   attr.attributes = EMSCRIPTEN_FETCH_APPEND | EMSCRIPTEN_FETCH_NO_DOWNLOAD;
   emscripten_fetch_t *fetch = emscripten_fetch(&attr, "gears.png");
 }

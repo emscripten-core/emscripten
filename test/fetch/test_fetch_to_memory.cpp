@@ -32,7 +32,7 @@ int main() {
 #endif
     assert(fetch);
     printf("Finished downloading %llu bytes\n", fetch->numBytes);
-    assert(fetch->url);s
+    assert(fetch->url);
     assert(!strcmp(fetch->url, ORIGIN_URL "gears.png"));
     assert(fetch->id != 0);
     assert((uintptr_t)fetch->userData == 0x12345678);
