@@ -3055,21 +3055,6 @@ disable HTML minification altogether.
 
 Default value: true
 
-.. _maybe_wasm2js:
-
-MAYBE_WASM2JS
-=============
-
-Whether we *may* be using wasm2js. This compiles to wasm normally, but lets
-you run wasm2js *later* on the wasm, and you can pick between running the
-normal wasm or that wasm2js code. For details of how to do that, see the
-test_maybe_wasm2js test.  This option can be useful for debugging and
-bisecting.
-
-.. note:: This setting is deprecated
-
-Default value: false
-
 .. _asan_shadow_size:
 
 ASAN_SHADOW_SIZE

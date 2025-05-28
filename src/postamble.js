@@ -361,7 +361,7 @@ run();
 var workerResponded = false, workerCallbackId = -1;
 
 (() => {
-  var messageBuffer = null, buffer = 0, bufferSize = 0;
+  var messageBuffer = null, buffer = 0;
 
   function flushMessages() {
     if (!messageBuffer) return;
@@ -396,11 +396,7 @@ var workerResponded = false, workerCallbackId = -1;
     var data = msg.data['data'];
     if (data) {
       if (!data.byteLength) data = new Uint8Array(data);
-      if (!buffer || bufferSize < data.length) {
-        if (buffer) _free(buffer);
-        bufferSize = data.length;
-        buffer = _malloc(data.length);
-      }
+      buffer = _realloc(buffer, data.length);
       HEAPU8.set(data, buffer);
     }
 
