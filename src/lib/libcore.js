@@ -1299,7 +1299,7 @@ addToLibrary({
   // Mark as `noleakcheck` otherwise lsan will report the last returned string
   // as a leak.
   emscripten_run_script_string__noleakcheck: true,
-  emscripten_run_script_string__deps: ['$lengthBytesUTF8', '$stringToUTF8', 'malloc'],
+  emscripten_run_script_string__deps: ['$lengthBytesUTF8', '$stringToUTF8', 'realloc'],
   emscripten_run_script_string: (ptr) => {
     {{{ makeEval("var s = eval(UTF8ToString(ptr));") }}}
     if (s == null) {
@@ -1307,12 +1307,8 @@ addToLibrary({
     }
     s += '';
     var me = _emscripten_run_script_string;
-    var len = lengthBytesUTF8(s);
-    if (!me.bufferSize || me.bufferSize < len+1) {
-      if (me.bufferSize) _free(me.buffer);
-      me.bufferSize = len+1;
-      me.buffer = _malloc(me.bufferSize);
-    }
+    me.bufferSize = lengthBytesUTF8(s) + 1;
+    me.buffer = _realloc(me.buffer ?? 0, me.bufferSize)
     stringToUTF8(s, me.buffer, me.bufferSize);
     return me.buffer;
   },

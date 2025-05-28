@@ -414,9 +414,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 'xhr.status', 'i16') }}}
     if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
     onprogress?.(fetch, xhr, e);
-    if (ptr) {
-      _free(ptr);
-    }
+    _free(ptr);
   };
   xhr.onreadystatechange = (e) => {
     // check if xhr was aborted by user and don't try to call back
