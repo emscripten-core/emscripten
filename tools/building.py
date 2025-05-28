@@ -492,7 +492,7 @@ def get_closure_compiler_and_env(user_args):
   if not native_closure_compiler_works and not any(a.startswith('--platform') for a in user_args):
     # Run with Java Closure compiler as a fallback if the native version does not work.
     # This can happen, for example, on arm64 macOS machines that do not have Rosetta installed.
-    logger.warn('falling back to java version of closure compiler')
+    logger.warning('falling back to java version of closure compiler')
     user_args.append('--platform=java')
     check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=False)
 
@@ -675,7 +675,7 @@ def run_closure_cmd(cmd, filename, env):
     if closure_warnings['error']:
       logger.error('Closure compiler completed with warnings and -Werror=closure enabled, aborting!\n')
     else:
-      logger.warn('Closure compiler completed with warnings:\n')
+      logger.warning('Closure compiler completed with warnings:\n')
 
   # Print input file (long wall of text!)
   if DEBUG == 2 and (proc.returncode != 0 or (len(proc.stderr.strip()) > 0 and closure_warnings['enabled'])):
@@ -697,13 +697,13 @@ def run_closure_cmd(cmd, filename, env):
     if closure_warnings['error']:
       logger.error(proc.stderr)
     else:
-      logger.warn(proc.stderr)
+      logger.warning(proc.stderr)
 
     # Exit and/or print final hint to get clearer output
     if settings.MINIFY_WHITESPACE:
-      logger.warn('(rerun with -g1 linker flag for an unminified output)')
+      logger.warning('(rerun with -g1 linker flag for an unminified output)')
     elif DEBUG != 2:
-      logger.warn('(rerun with EMCC_DEBUG=2 enabled to dump Closure input file)')
+      logger.warning('(rerun with EMCC_DEBUG=2 enabled to dump Closure input file)')
 
     if closure_warnings['error']:
       exit_with_error('closure compiler produced warnings and -W=error=closure enabled')
