@@ -190,7 +190,7 @@ function fetchLoadCachedData(db, fetch, onsuccess, onerror) {
   }
 }
 
-function fetchCacheData(/** @type {IDBDatabase} */ db, fetch, data, onsuccess, onerror) {
+function fetchCacheData(/** @type {IDBDatabase} */ db, fetch, dest, data, onsuccess, onerror) {
   if (!db) {
 #if FETCH_DEBUG
     dbg('fetch: IndexedDB not available!');
@@ -201,8 +201,11 @@ function fetchCacheData(/** @type {IDBDatabase} */ db, fetch, data, onsuccess, o
 
   var fetch_attr = fetch + {{{ C_STRUCTS.emscripten_fetch_t.__attributes }}};
   var destinationPath = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.destinationPath, '*') }}};
-  destinationPath ||= {{{ makeGetValue('fetch', C_STRUCTS.emscripten_fetch_t.url, '*') }}};
-  var destinationPathStr = UTF8ToString(destinationPath);
+  var destinationPathStr = dest;
+  if (destinationPath || !dest) {
+    destinationPath ||= {{{ makeGetValue('fetch', C_STRUCTS.emscripten_fetch_t.url, '*') }}};
+    destinationPathStr = UTF8ToString(destinationPath);
+  }
 
   try {
     var transaction = db.transaction(['FILES'], 'readwrite');
@@ -543,7 +546,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
         else successcb?.(fetch);
       });
     };
-    fetchCacheData(Fetch.dbInstance, fetch, xhr.response, storeSuccess, storeError);
+    fetchCacheData(Fetch.dbInstance, fetch, xhr.url_, xhr.response, storeSuccess, storeError);
   };
 
   var performCachedXhr = (fetch, xhr, e) => {
@@ -561,7 +564,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
     // TODO(?): Here we perform a clone of the data, because storing shared typed arrays to IndexedDB does not seem to be allowed.
     var ptr = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.requestData, '*') }}};
     var size = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.requestDataSize, '*') }}};
-    fetchCacheData(Fetch.dbInstance, fetch, HEAPU8.slice(ptr, ptr + size), reportSuccess, reportError);
+    fetchCacheData(Fetch.dbInstance, fetch, null, HEAPU8.slice(ptr, ptr + size), reportSuccess, reportError);
   } else if (requestMethod === 'EM_IDB_DELETE') {
     fetchDeleteCachedData(Fetch.dbInstance, fetch, reportSuccess, reportError);
   } else if (!fetchAttrReplace) {
