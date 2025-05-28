@@ -258,5 +258,6 @@ static void fetch_free(emscripten_fetch_t* fetch) {
     free((void*)fetch->__attributes.requestHeaders);
   }
   free((void*)fetch->__attributes.overriddenMimeType);
+  free((void*)fetch->responseUrl);
   free(fetch);
 }

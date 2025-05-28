@@ -354,7 +354,7 @@ Redirections
 The XHR requests issued by the Fetch API are subject to the usual browser
 redirection behavior (transparently followed except when infinitely looping).
 When this happens, the `emscripten_fetch_t` structure will contain the final URL
-after the redirection in the `url` field. Many HTTP status codes in the 3xx
+after the redirection in the `responseUrl` field. Many HTTP status codes in the 3xx
 range are used for redirection, and the Fetch API will follow these, in particular
 the 301 (Moved Permanently), 302 (Found), 303 (See Other), 307 (Temporary Redirect),
 and 308 (Permanent Redirect) status codes.

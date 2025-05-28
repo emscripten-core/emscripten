@@ -19,6 +19,6 @@ int main() {
   printf("Fetch finished with status %d\n", fetch->status);
   assert(fetch->status == 200);
   printf("Downloaded %llu bytes", fetch->numBytes);
-  assert(strcmp(fetch->url, "https://httpbin.org/get") == 0);
+  assert(strcmp(fetch->responseUrl, "https://httpbin.org/get") == 0);
   return 0;
 }

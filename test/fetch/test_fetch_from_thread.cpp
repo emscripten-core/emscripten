@@ -10,10 +10,6 @@
 #include <emscripten/fetch.h>
 #include <pthread.h>
 
-#ifndef ORIGIN_URL
-#define ORIGIN_URL "http://localhost:8888/"
-#endif
-
 int result = 0;
 void* thread_main(void* arg) {
   emscripten_fetch_attr_t attr;
@@ -26,7 +22,7 @@ void* thread_main(void* arg) {
     assert(fetch);
     printf("Finished downloading %llu bytes\n", fetch->numBytes);
     assert(fetch->url);
-    assert(!strcmp(fetch->url, ORIGIN_URL "gears.png"));
+    assert(!strcmp(fetch->url, "gears.png"));
     assert(fetch->id != 0);
     assert((uintptr_t)fetch->userData == 0x12345678);
     assert(fetch->totalBytes == 6407);

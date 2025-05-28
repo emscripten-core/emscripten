@@ -190,7 +190,7 @@ function fetchLoadCachedData(db, fetch, onsuccess, onerror) {
   }
 }
 
-function fetchCacheData(/** @type {IDBDatabase} */ db, fetch, dest, data, onsuccess, onerror) {
+function fetchCacheData(/** @type {IDBDatabase} */ db, fetch, data, onsuccess, onerror) {
   if (!db) {
 #if FETCH_DEBUG
     dbg('fetch: IndexedDB not available!');
@@ -201,11 +201,8 @@ function fetchCacheData(/** @type {IDBDatabase} */ db, fetch, dest, data, onsucc
 
   var fetch_attr = fetch + {{{ C_STRUCTS.emscripten_fetch_t.__attributes }}};
   var destinationPath = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.destinationPath, '*') }}};
-  var destinationPathStr = dest;
-  if (destinationPath || !dest) {
     destinationPath ||= {{{ makeGetValue('fetch', C_STRUCTS.emscripten_fetch_t.url, '*') }}};
-    destinationPathStr = UTF8ToString(destinationPath);
-  }
+  var destinationPathStr = UTF8ToString(destinationPath);
 
   try {
     var transaction = db.transaction(['FILES'], 'readwrite');
@@ -348,12 +345,13 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.readyState, 'xhr.readyState', 'i16') }}}
     {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 'xhr.status', 'i16') }}}
     if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
-    // update url if redirect happens
-    if (xhr.url_ !== xhr.responseURL) {
-      var urlPtr = stringToNewUTF8(xhr.responseURL);
-      if (urlPtr) {
-        _free(fetch + {{{ C_STRUCTS.emscripten_fetch_t.url }}});
-        {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.url, 'urlPtr', '*') }}}
+    if (fetchAttrSynchronous)
+      // The response url pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
+      // freed when emscripten_fetch_close() is called.
+      var ruPtr = stringToNewUTF8(xhr.responseURL);
+      if (ruPtr) {
+        _free(fetch + {{{ C_STRUCTS.emscripten_fetch_t.responseUrl }}});
+        {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.responseUrl, 'ruPtr', '*') }}}
       }
     }
   }
@@ -438,6 +436,15 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.readyState, 'xhr.readyState', 'i16') }}}
     if (xhr.readyState >= 2) {
       {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 'xhr.status', 'i16') }}}
+    }
+    if (!fetchAttrSynchronous && (xhr.readyState === 2 && xhr.responseURL.length > 0))
+      // The response url pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
+      // freed when emscripten_fetch_close() is called.
+      var ruPtr = stringToNewUTF8(xhr.responseURL);
+      if (ruPtr) {
+        _free(fetch + {{{ C_STRUCTS.emscripten_fetch_t.responseUrl }}});
+        {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.responseUrl, 'ruPtr', '*') }}}
+      }
     }
     onreadystatechange?.(fetch, xhr, e);
   };
@@ -546,7 +553,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
         else successcb?.(fetch);
       });
     };
-    fetchCacheData(Fetch.dbInstance, fetch, xhr.url_, xhr.response, storeSuccess, storeError);
+    fetchCacheData(Fetch.dbInstance, fetch, xhr.response, storeSuccess, storeError);
   };
 
   var performCachedXhr = (fetch, xhr, e) => {
@@ -564,7 +571,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
     // TODO(?): Here we perform a clone of the data, because storing shared typed arrays to IndexedDB does not seem to be allowed.
     var ptr = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.requestData, '*') }}};
     var size = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.requestDataSize, '*') }}};
-    fetchCacheData(Fetch.dbInstance, fetch, null, HEAPU8.slice(ptr, ptr + size), reportSuccess, reportError);
+    fetchCacheData(Fetch.dbInstance, fetch, HEAPU8.slice(ptr, ptr + size), reportSuccess, reportError);
   } else if (requestMethod === 'EM_IDB_DELETE') {
     fetchDeleteCachedData(Fetch.dbInstance, fetch, reportSuccess, reportError);
   } else if (!fetchAttrReplace) {
