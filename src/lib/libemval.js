@@ -303,7 +303,7 @@ var LibraryEmVal = {
     return id;
   },
 
-#if MIN_CHROME_VERSION < 49 || MIN_FIREFOX_VERSION < 42 || MIN_SAFARI_VERSION < 100101
+#if MIN_CHROME_VERSION < 49 || MIN_FIREFOX_VERSION < 42
   $reflectConstruct: null,
   $reflectConstruct__postset: `
     if (typeof Reflect != 'undefined') {
