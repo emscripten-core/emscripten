@@ -22,6 +22,7 @@ void* thread_main(void* arg) {
     assert(fetch);
     printf("Finished downloading %llu bytes\n", fetch->numBytes);
     assert(fetch->url);
+    printf("Response URL: %s\n", fetch->url);
     assert(!strcmp(fetch->url, "gears.png"));
     assert(fetch->id != 0);
     assert((uintptr_t)fetch->userData == 0x12345678);
