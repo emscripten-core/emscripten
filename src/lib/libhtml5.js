@@ -449,18 +449,9 @@ var LibraryHTML5 = {
     HEAP16[idx*2 + {{{ C_STRUCTS.EmscriptenMouseEvent.button / 2 }}}] = e.button;
     HEAP16[idx*2 + {{{ C_STRUCTS.EmscriptenMouseEvent.buttons / 2 }}}] = e.buttons;
 
-    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.movementX / 4 }}}] = e["movementX"]
-#if MIN_FIREFOX_VERSION <= 40
-      //     https://caniuse.com/#feat=mdn-api_mouseevent_movementx
-      || e["mozMovementX"]
-#endif
-      ;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.movementX / 4 }}}] = e["movementX"];
 
-    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.movementY / 4 }}}] = e["movementY"]
-#if MIN_FIREFOX_VERSION <= 40
-      || e["mozMovementY"]
-#endif
-      ;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.movementY / 4 }}}] = e["movementY"];
 
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     if (Module['canvas']) {
@@ -1687,18 +1678,10 @@ var LibraryHTML5 = {
   $requestPointerLock: (target) => {
     if (target.requestPointerLock) {
       target.requestPointerLock();
-#if MIN_FIREFOX_VERSION <= 40 // https://caniuse.com/#feat=pointerlock
-    } else if (target.mozRequestPointerLock) {
-      target.mozRequestPointerLock();
-#endif
     } else {
       // document.body is known to accept pointer lock, so use that to differentiate if the user passed a bad element,
       // or if the whole browser just doesn't support the feature.
-      if (document.body.requestPointerLock
-#if MIN_FIREFOX_VERSION <= 40 // https://caniuse.com/#feat=pointerlock
-        || document.body.mozRequestPointerLock
-#endif
-        ) {
+      if (document.body.requestPointerLock) {
         return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
       }
       return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
@@ -1718,11 +1701,7 @@ var LibraryHTML5 = {
 #endif
     target = findEventTarget(target);
     if (!target) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
-    if (!target.requestPointerLock
-#if MIN_FIREFOX_VERSION <= 40 // https://caniuse.com/#feat=pointerlock
-      && !target.mozRequestPointerLock
-#endif
-      ) {
+    if (!target.requestPointerLock) {
       return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     }
 
@@ -1750,16 +1729,8 @@ var LibraryHTML5 = {
     // Make sure no queued up calls will fire after this.
     JSEvents.removeDeferredCalls(requestPointerLock);
 #endif
-
-    if (document.exitPointerLock) {
-      document.exitPointerLock();
-#if MIN_FIREFOX_VERSION <= 40 // https://caniuse.com/#feat=pointerlock
-    } else if (document.mozExitPointerLock) {
-      document.mozExitPointerLock();
-#endif
-    } else {
-      return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
-    }
+    if (!document.exitPointerLock) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+    document.exitPointerLock();
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
