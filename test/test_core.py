@@ -6,6 +6,7 @@
 import json
 import logging
 import os
+import platform
 import random
 import re
 import shutil
@@ -134,6 +135,18 @@ def needs_dylink(func):
   @wraps(func)
   def decorated(self, *args, **kwargs):
     self.check_dylink()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
+def requires_x64_cpu(func):
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    if platform.machine().lower() not in ['x86_64', 'amd64']:
+      return self.skipTest(f'This test requires a native x64 CPU. Current CPU is {platform.machine()}.')
     return func(self, *args, **kwargs)
 
   return decorated
@@ -6537,6 +6550,7 @@ void* operator new(size_t size) {
   @wasm_simd
   @crossplatform
   @requires_native_clang
+  @requires_x64_cpu
   @no_safe_heap('has unaligned 64-bit operations in wasm')
   @no_ubsan('test contains UB')
   @parameterized({
@@ -6556,6 +6570,7 @@ void* operator new(size_t size) {
   # Tests invoking the SIMD API via x86 SSE2 emmintrin.h header (_mm_x() functions)
   @wasm_simd
   @requires_native_clang
+  @requires_x64_cpu
   @no_safe_heap('has unaligned 64-bit operations in wasm')
   @is_slow_test
   @no_ubsan('https://github.com/emscripten-core/emscripten/issues/19688')
@@ -6578,6 +6593,7 @@ void* operator new(size_t size) {
   # Tests invoking the SIMD API via x86 SSE3 pmmintrin.h header (_mm_x() functions)
   @wasm_simd
   @requires_native_clang
+  @requires_x64_cpu
   def test_sse3(self):
     src = test_file('sse/test_sse3.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse3', '-Wno-argument-outside-range', '-o', 'test_sse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6590,6 +6606,7 @@ void* operator new(size_t size) {
   # Tests invoking the SIMD API via x86 SSSE3 tmmintrin.h header (_mm_x() functions)
   @wasm_simd
   @requires_native_clang
+  @requires_x64_cpu
   def test_ssse3(self):
     src = test_file('sse/test_ssse3.cpp')
     self.run_process([shared.CLANG_CXX, src, '-mssse3', '-Wno-argument-outside-range', '-o', 'test_ssse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6603,6 +6620,7 @@ void* operator new(size_t size) {
   @no_ubsan('https://github.com/emscripten-core/emscripten/issues/19749')
   @wasm_simd
   @requires_native_clang
+  @requires_x64_cpu
   @is_slow_test
   def test_sse4_1(self):
     if self.is_wasm64():
@@ -6622,6 +6640,7 @@ void* operator new(size_t size) {
   # Tests invoking the SIMD API via x86 SSE4.2 nmmintrin.h header (_mm_x() functions)
   @wasm_simd
   @requires_native_clang
+  @requires_x64_cpu
   @parameterized({
     '': (False,),
     '2': (True,),
@@ -6639,6 +6658,7 @@ void* operator new(size_t size) {
   # Tests invoking the SIMD API via x86 AVX avxintrin.h header (_mm_x() functions)
   @wasm_simd
   @requires_native_clang
+  @requires_x64_cpu
   @is_slow_test
   @no_asan('local count too large')
   @no_ubsan('local count too large')
@@ -6658,6 +6678,7 @@ void* operator new(size_t size) {
   # Tests invoking the SIMD API via x86 AVX2 avx2intrin.h header (_mm_x()/_mm256_x() functions)
   @wasm_simd
   @requires_native_clang
+  @requires_x64_cpu
   @is_slow_test
   @no_asan('local count too large')
   @no_ubsan('local count too large')
@@ -6684,7 +6705,6 @@ void* operator new(size_t size) {
       stderr=PIPE)
     self.assertContained('Instruction emulated via slow path.', p.stderr)
 
-  @requires_native_clang
   @wasm_relaxed_simd
   def test_relaxed_simd_implies_simd128(self):
     src = test_file('sse/test_sse1.cpp')
