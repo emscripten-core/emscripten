@@ -274,6 +274,23 @@ def requires_node_canary(func):
   return decorated
 
 
+# Used to mark dependencies in various tests to npm developer dependency
+# packages, which might not be installed on Emscripten end users' systems.
+def requires_dev_dependency(package):
+  assert not callable(package)
+
+  def decorator(f):
+    assert callable(f)
+
+    @wraps(f)
+    def decorated(self, *args, **kwargs):
+      if 'EMTEST_SKIP_NODE_DEV_PACKAGES' in os.environ:
+        self.skipTest(f'test requires npm development package "{package}" and EMTEST_SKIP_NODE_DEV_PACKAGES is set')
+      f(self, *args, **kwargs)
+    return decorated
+  return decorator
+
+
 def requires_wasm64(func):
   assert callable(func)
 
