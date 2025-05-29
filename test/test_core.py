@@ -9717,8 +9717,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'pthreads': (['-pthread'],),
   })
   def test_modularize_instance(self, args):
-    if self.get_setting('WASM_ESM_INTEGRATION') and '-pthread' in args:
-      self.skipTest('pthread is not compatible with WASM_ESM_INTEGRATION')
+    if args:
+      self.setup_node_pthreads()
     create_file('library.js', '''\
     addToLibrary({
       $baz: () => console.log('baz'),
