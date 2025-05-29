@@ -6164,6 +6164,8 @@ Module.onRuntimeInitialized = () => {
     self.do_core_test('test_posixtime.c')
 
   def test_uname(self):
+    if self.get_setting('STRICT'):
+      self.emcc_args += ['-lstubs']
     self.do_core_test('test_uname.c', regex=True)
 
   def test_unary_literal(self):
@@ -6193,6 +6195,8 @@ Module.onRuntimeInitialized = () => {
     self.do_core_test('test_stddef.cpp', force_c=True)
 
   def test_getloadavg(self):
+    if self.get_setting('STRICT'):
+      self.emcc_args += ['-lstubs']
     self.do_core_test('test_getloadavg.c')
 
   def test_nl_types(self):
@@ -6768,6 +6772,8 @@ void* operator new(size_t size) {
     'pthreads': (True,),
   })
   def test_sqlite(self, use_pthreads):
+    if self.get_setting('STRICT'):
+      self.emcc_args += ['-lstubs']
     if use_pthreads:
       self.emcc_args.append('-pthread')
       self.setup_node_pthreads()
