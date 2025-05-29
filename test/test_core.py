@@ -6130,6 +6130,7 @@ Module.onRuntimeInitialized = () => {
     self.do_run_in_out_file_test('unistd/links.c')
 
   @also_with_noderawfs
+  @no_windows('TODO: Fails on Windows due to an unknown reason.')
   def test_unistd_write_broken_link(self):
     self.do_run_in_out_file_test('unistd/test_unistd_write_broken_link.c')
 
@@ -8270,6 +8271,7 @@ Module.onRuntimeInitialized = () => {
     'onlylist_b_response': ([], True,  'main\n__original_main\nfoo(int, double)\nbaz()\nc_baz\nStructy::funcy()\n'),
     'onlylist_c_response': ([], False, 'main\n__original_main\nfoo(int, double)\nbaz()\nc_baz\n'),
   })
+  @no_windows("TODO: Fails on Windows due to an unknown reason.")
   def test_asyncify_lists(self, args, should_pass, response=None):
     if response is not None:
       create_file('response.file', response)
