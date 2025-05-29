@@ -1164,7 +1164,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.get_setting('WASMFS'):
       # without this the JS setup code in setup_nodefs.js doesn't work
       self.set_setting('FORCE_FILESYSTEM')
-    self.emcc_args += ['-DNODEFS', '-lnodefs.js', '--pre-js', test_file('setup_nodefs.js')]
+    self.emcc_args += ['-DNODEFS', '-lnodefs.js', '--pre-js', test_file('setup_nodefs.js'), '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]']
 
   def setup_noderawfs_test(self):
     self.require_node()
@@ -1353,17 +1353,17 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def add_pre_run(self, code):
     assert not self.get_setting('MINIMAL_RUNTIME')
     create_file('prerun.js', 'Module.preRun = function() { %s }\n' % code)
-    self.emcc_args += ['--pre-js', 'prerun.js']
+    self.emcc_args += ['--pre-js', 'prerun.js', '-sINCOMING_MODULE_JS_API=[preRun]']
 
   def add_post_run(self, code):
     assert not self.get_setting('MINIMAL_RUNTIME')
     create_file('postrun.js', 'Module.postRun = function() { %s }\n' % code)
-    self.emcc_args += ['--pre-js', 'postrun.js']
+    self.emcc_args += ['--pre-js', 'postrun.js', '-sINCOMING_MODULE_JS_API=[postRun]']
 
   def add_on_exit(self, code):
     assert not self.get_setting('MINIMAL_RUNTIME')
     create_file('onexit.js', 'Module.onExit = function() { %s }\n' % code)
-    self.emcc_args += ['--pre-js', 'onexit.js']
+    self.emcc_args += ['--pre-js', 'onexit.js', '-sINCOMING_MODULE_JS_API=[onExit]']
 
   # returns the full list of arguments to pass to emcc
   # param @main_file whether this is the main file of the test. some arguments
