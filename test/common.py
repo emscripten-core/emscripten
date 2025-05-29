@@ -17,7 +17,6 @@ import itertools
 import logging
 import multiprocessing
 import os
-import platform
 import re
 import shlex
 import shutil
@@ -248,18 +247,6 @@ def requires_native_clang(func):
   def decorated(self, *args, **kwargs):
     if EMTEST_LACKS_NATIVE_CLANG:
       return self.skipTest('native clang tests are disabled')
-    return func(self, *args, **kwargs)
-
-  return decorated
-
-
-def requires_x64_cpu(func):
-  assert callable(func)
-
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-    if platform.machine().lower() not in ['i686', 'x86_64', 'amd64']:
-      return self.skipTest(f'This test requires a native x86-64 CPU. Current CPU is {platform.machine()}.')
     return func(self, *args, **kwargs)
 
   return decorated
