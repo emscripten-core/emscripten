@@ -1000,7 +1000,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return config.NODE_JS_TEST
 
   def get_npm(self):
-    return self.get_nodejs()[0][:-len(shared.exe_suffix('node'))] + shared.cmd_suffix('npm')
+    logger.warn(f'node_js: {self.get_nodejs()}')
+    npm = self.get_nodejs()[0][:-len(shared.exe_suffix('node'))] + shared.cmd_suffix('npm')
+    logger.warn(f'npm: {npm}')
+    return npm
 
   def require_node(self):
     nodejs = self.get_nodejs()
@@ -1025,7 +1028,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     if self.resolved_packages is None:
       npm_list = shared.run_process([self.get_npm(), 'list'], check=False, stdout=PIPE, stderr=PIPE).stdout
+      logger.warn(f'npm list: {str(npm_list)}')
       self.resolved_packages = re.findall(r'\+-- ([^@]+)@', npm_list)
+      logger.warn(f'resolved_packages: {str(self.resolved_packages)}')
 
     if package not in self.resolved_packages:
       self.fail(f'This test requires npm development package "{package}", but it is not installed. Use EMTEST_SKIP_NODE_DEV_PACKAGES to skip, or run "npm ci" to install development packages.')
