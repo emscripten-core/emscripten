@@ -9406,7 +9406,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @needs_dylink
   @node_pthreads
   def test_pthread_dylink_main_module_1(self):
-    self.emcc_args += ['-Wno-experimental', '-pthread']
+    self.emcc_args += ['-Wno-experimental', '-pthread', '-lhtml5']
     self.set_setting('MAIN_MODULE')
     self.do_runf('hello_world.c')
 
@@ -9567,7 +9567,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @needs_dylink
   def test_gl_main_module(self):
     self.set_setting('MAIN_MODULE')
-    self.emcc_args += ['-sGL_ENABLE_GET_PROC_ADDRESS']
+    self.emcc_args += ['-sGL_ENABLE_GET_PROC_ADDRESS', '-lGL']
     self.do_runf('core/test_gl_get_proc_address.c')
 
   @needs_dylink
