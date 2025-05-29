@@ -1094,6 +1094,7 @@ f.close()
   @requires_pkg_config
   @crossplatform
   def test_pkg_config_ports(self):
+    # Use bullet here because it is part of the MINIMAL set of tasks in embuilder.
     self.run_process([EMBUILDER, 'build', 'bullet'])
     out = self.run_process([emmake, 'pkg-config', '--list-all'], stdout=PIPE).stdout
     self.assertContained('bullet', out)
