@@ -6626,14 +6626,11 @@ void* operator new(size_t size) {
     if self.is_wasm64():
       self.require_node_canary()
     src = test_file('sse/test_sse4_1.cpp')
-    if not self.is_optimizing() and '-fsanitize=address' in self.emcc_args:
-      # ASan with -O0 fails with:
-      # Compiling function #69:"__original_main" failed: local count too large
-      self.emcc_args.append('-O1')
-    self.run_process([shared.CLANG_CXX, src, '-msse4.1', '-Wno-argument-outside-range', '-o', 'test_sse4_1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    # Run with inlining disabled to avoid slow LLVM behavior with lots of macro expanded loops inside a function body.
+    self.run_process([shared.CLANG_CXX, src, '-msse4.1', '-fno-inline-functions', '-Wno-argument-outside-range', '-o', 'test_sse4_1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse4_1', stdout=PIPE).stdout
 
-    self.emcc_args += ['-I' + test_file('sse'), '-msse4.1', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB']
+    self.emcc_args += ['-I' + test_file('sse'), '-msse4.1', '-fno-inline-functions', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB']
     self.maybe_closure()
     self.do_runf(src, native_result)
 
