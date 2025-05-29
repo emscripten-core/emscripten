@@ -383,6 +383,7 @@ def with_both_text_decoder(f):
 
 no_minimal_runtime = make_no_decorator_for_setting('MINIMAL_RUNTIME')
 no_safe_heap = make_no_decorator_for_setting('SAFE_HEAP')
+no_strict = make_no_decorator_for_setting('STRICT')
 
 
 def is_sanitizing(args):
@@ -7138,6 +7139,7 @@ void* operator new(size_t size) {
     test(args=['-sFORCE_FILESYSTEM'])
 
   @no_modularize_instance('uses Module object directly')
+  @no_strict('This test verifies legacy behavior that does not apply to -sSTRICT builds.')
   def test_legacy_exported_runtime_numbers(self):
     # these used to be exported, but no longer are by default
     def test(expected, args=None, assert_returncode=0):
