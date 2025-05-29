@@ -22,6 +22,7 @@ def get(ports, settings, shared):
     config_types_h = os.path.join(os.path.dirname(__file__), 'ogg/config_types.h')
     shutil.copyfile(config_types_h, os.path.join(source_path, 'include/ogg/config_types.h'))
     ports.install_headers(os.path.join(source_path, 'include', 'ogg'), target='ogg')
+    ports.make_pkg_config('ogg', TAG, '-sUSE_OGG')
     ports.build_port(os.path.join(source_path, 'src'), final, 'ogg')
 
   return [shared.cache.get_lib('libogg.a', create)]
@@ -32,4 +33,4 @@ def clear(ports, settings, shared):
 
 
 def show():
-  return 'ogg (-sUSE_OGG=1 or --use-port=ogg; zlib license)'
+  return 'ogg (-sUSE_OGG or --use-port=ogg; zlib license)'

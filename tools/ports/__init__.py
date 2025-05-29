@@ -428,6 +428,18 @@ class Ports:
       return
     utils.write_file(filename, contents)
 
+  @staticmethod
+  def make_pkg_config(name, version, flags):
+    pkgconfig_dir = cache.get_sysroot_dir('lib/pkgconfig')
+    filename = os.path.join(pkgconfig_dir, name + '.pc')
+    Ports.write_file(filename, f'''
+Name: {name}
+Description: {name} port from emscripten
+Version: {version}
+Libs: {flags}
+Cflags: {flags}
+''')
+
 
 class OrderedSet:
   """Partial implementation of OrderedSet.  Just enough for what we need here."""

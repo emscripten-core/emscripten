@@ -80,6 +80,7 @@ def get(ports, settings, shared):
 
     ports.install_headers(libmodplug_path, pattern="*.h", target='libmodplug')
     ports.install_headers(src_dir, pattern="modplug.h", target='libmodplug')
+    ports.make_pkg_config('libmodplug', TAG, '-sUSE_MODPLUG')
 
   return [shared.cache.get_lib('libmodplug.a', create, what='port')]
 
@@ -89,4 +90,4 @@ def clear(ports, settings, shared):
 
 
 def show():
-  return 'libmodplug (-sUSE_MODPLUG=1 or --use-port=libmodplug; public domain)'
+  return 'libmodplug (-sUSE_MODPLUG or --use-port=libmodplug; public domain)'
