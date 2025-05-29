@@ -25,7 +25,7 @@ import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
 from common import skip_if, no_windows, no_mac, is_slow_test, parameterized, parameterize
 from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_with_wasm_bigint
-from common import read_file, read_binary, requires_v8, requires_node, requires_npm_package, requires_wasm2js, requires_node_canary
+from common import read_file, read_binary, requires_v8, requires_node, requires_dev_dependency, requires_wasm2js, requires_node_canary
 from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime, also_with_modularize
 from common import with_all_fs, also_with_nodefs, also_with_nodefs_both, also_with_noderawfs, also_with_wasmfs
 from common import with_all_eh_sjlj, with_all_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64, requires_wasm_eh, requires_jspi
@@ -7734,7 +7734,7 @@ void* operator new(size_t size) {
   @no_wasm2js('TODO: source maps in wasm2js')
   @also_with_minimal_runtime
   @requires_node
-  @requires_npm_package('source-map')
+  @requires_dev_dependency('source-map')
   def test_source_map(self):
     if '-g' not in self.emcc_args:
       self.emcc_args.append('-g')
