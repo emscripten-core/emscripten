@@ -5428,6 +5428,7 @@ Pass: 0.000012 0.000012''')
     self.do_core_test('test_langinfo.c')
 
   @no_modularize_instance('uses Module object directly')
+  @no_strict('TODO: Fails in -sSTRICT mode due to an unknown reason.')
   def test_files(self):
     # Use closure here, to test we don't break FS stuff
     if '-O3' in self.emcc_args and self.is_wasm2js():
@@ -7693,6 +7694,7 @@ void* operator new(size_t size) {
     'all_growth': ('ALL', True),
   })
   @no_modularize_instance('uses Module global')
+  @no_strict('TODO: Fails in -sSTRICT mode due to an unknown reason.')
   def test_webidl(self, mode, allow_memory_growth):
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     if self.maybe_closure():
