@@ -1023,7 +1023,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest(f'test requires npm development package "{package}" and EMTEST_SKIP_NODE_DEV_PACKAGES is set')
       return
 
-    if self.resolved_packages == None:
+    if self.resolved_packages is None:
       npm_list = shared.run_process([self.get_npm(), 'list'], check=False, stdout=PIPE, stderr=PIPE).stdout
       self.resolved_packages = re.findall(r'\+-- ([^@]+)@', npm_list)
 
