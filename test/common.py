@@ -282,7 +282,8 @@ def requires_npm_package(package):
 
     @wraps(f)
     def decorated(self, *args, **kwargs):
-      self.require_npm_package(package)
+      if 'EMTEST_SKIP_NODE_DEV_PACKAGES' in os.environ:
+        self.skipTest(f'test requires npm development package "{package}" and EMTEST_SKIP_NODE_DEV_PACKAGES is set')
       f(self, *args, **kwargs)
     return decorated
   return decorator
@@ -1017,23 +1018,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def node_is_canary(self, nodejs):
     return nodejs and nodejs[0] and 'canary' in nodejs[0]
-
-  # Cache which packages have been resolved to avoid individual tests all re-running the same 'npm list' command.
-  resolved_packages = None
-
-  def require_npm_package(self, package):
-    if 'EMTEST_SKIP_NODE_DEV_PACKAGES' in os.environ:
-      self.skipTest(f'test requires npm development package "{package}" and EMTEST_SKIP_NODE_DEV_PACKAGES is set')
-      return
-
-    if self.resolved_packages is None:
-      npm_list = shared.run_process([self.get_npm(), 'list'], check=False, stdout=PIPE, stderr=PIPE, cwd=path_from_root()).stdout
-      logger.warn(f'npm list: {str(npm_list)}')
-      self.resolved_packages = re.findall(r'\+-- ([^@]+)@', npm_list)
-      logger.warn(f'resolved_packages: {str(self.resolved_packages)}')
-
-    if package not in self.resolved_packages:
-      self.fail(f'This test requires npm development package "{package}", but it is not installed. Use EMTEST_SKIP_NODE_DEV_PACKAGES to skip, or run "npm ci" to install development packages.')
 
   def require_node_canary(self):
     nodejs = self.get_nodejs()
