@@ -1000,12 +1000,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       return None
     return config.NODE_JS_TEST
 
-  def get_npm(self):
-    logger.warn(f'node_js: {self.get_nodejs()}')
-    npm = self.get_nodejs()[0][:-len(shared.exe_suffix('node'))] + shared.cmd_suffix('npm')
-    logger.warn(f'npm: {npm}')
-    return npm
-
   def require_node(self):
     nodejs = self.get_nodejs()
     if not nodejs:

@@ -515,10 +515,6 @@ def build_clang_tool_path(tool):
     return os.path.join(config.LLVM_ROOT, tool)
 
 
-def cmd_suffix(cmd):
-  return cmd + '.cmd' if WINDOWS else cmd
-
-
 def exe_suffix(cmd):
   return cmd + '.exe' if WINDOWS else cmd
 
