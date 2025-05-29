@@ -6726,16 +6726,16 @@ void* operator new(size_t size) {
   @needs_make('configure script')
   @is_slow_test
   def test_freetype(self):
+    # Not needed for js, but useful for debugging
+    shutil.copy(test_file('freetype/LiberationSansBold.ttf'), 'font.ttf')
+    ftlib = self.get_freetype_library()
+
     if self.get_setting('WASMFS'):
       self.emcc_args += ['-sFORCE_FILESYSTEM']
 
     self.add_pre_run("FS.createDataFile('/', 'font.ttf', %s, true, false, false);" % str(
       list(bytearray(read_binary(test_file('freetype/LiberationSansBold.ttf')))),
     ))
-
-    # Not needed for js, but useful for debugging
-    shutil.copy(test_file('freetype/LiberationSansBold.ttf'), 'font.ttf')
-    ftlib = self.get_freetype_library()
 
     # Main
     self.do_run_in_out_file_test('freetype/main.c',
