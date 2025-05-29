@@ -1000,7 +1000,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return config.NODE_JS_TEST
 
   def get_npm(self):
-    return self.get_nodejs()[0].replace(shared.exe_suffix('node'), shared.cmd_suffix('npm'))
+    return self.get_nodejs()[0][:-len(shared.exe_suffix('node'))] + shared.cmd_suffix('npm')
 
   def require_node(self):
     nodejs = self.get_nodejs()
