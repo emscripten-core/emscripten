@@ -274,6 +274,20 @@ def requires_node_canary(func):
   return decorated
 
 
+def requires_npm_package(package):
+  assert not callable(package)
+
+  def decorator(f):
+    assert callable(f)
+
+    @wraps(f)
+    def decorated(self, *args, **kwargs):
+      self.require_npm_package(package)
+      f(self, *args, **kwargs)
+    return decorated
+  return decorator
+
+
 def requires_wasm64(func):
   assert callable(func)
 
@@ -985,6 +999,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       return None
     return config.NODE_JS_TEST
 
+  def get_npm(self):
+    return self.get_nodejs()[0].replace(shared.exe_suffix('node'), shared.cmd_suffix('npm'))
+
   def require_node(self):
     nodejs = self.get_nodejs()
     if not nodejs:
@@ -997,6 +1014,21 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def node_is_canary(self, nodejs):
     return nodejs and nodejs[0] and 'canary' in nodejs[0]
+
+  # Cache which packages have been resolved to avoid individual tests all re-running the same 'npm list' command.
+  resolved_packages = None
+
+  def require_npm_package(self, package):
+    if 'EMTEST_SKIP_NODE_DEV_PACKAGES' in os.environ:
+      self.skipTest(f'test requires npm development package "{package}" and EMTEST_SKIP_NODE_DEV_PACKAGES is set')
+      return
+
+    if self.resolved_packages == None:
+      npm_list = shared.run_process([self.get_npm(), 'list'], check=False, stdout=PIPE, stderr=PIPE).stdout
+      self.resolved_packages = re.findall(r'\+-- ([^@]+)@', npm_list)
+
+    if package not in self.resolved_packages:
+      self.fail(f'This test requires npm development package "{package}", but it is not installed. Use EMTEST_SKIP_NODE_DEV_PACKAGES to skip, or run "npm ci" to install development packages.')
 
   def require_node_canary(self):
     nodejs = self.get_nodejs()
