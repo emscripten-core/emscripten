@@ -3479,6 +3479,7 @@ More info: https://emscripten.org
     self.assertContained('main ran\nts ran', self.run_js('main.js'))
 
   @is_slow_test
+  @requires_npm_package('typescript')
   def test_embind_tsgen_ignore(self):
     create_file('fail.js', 'assert(false);')
     self.emcc_args += ['-lembind', '--emit-tsd', 'embind_tsgen.d.ts']
@@ -14382,6 +14383,7 @@ Module.postRun = () => {{
     'O3': (['-O3'],),
   })
   @crossplatform
+  @requires_npm_package('es-check')
   def test_es5_transpile(self, args):
     self.emcc_args += ['-Wno-transpile'] + args
 
@@ -16023,6 +16025,7 @@ addToLibrary({
       self.do_runf('hello_world.c', expected, emcc_args=['--post-js=post.js', '-sWASM_ASYNC_COMPILATION=0'], assert_returncode=NON_ZERO)
 
   @crossplatform
+  @requires_npm_package('rollup')
   def test_rollup(self):
     copytree(test_file('rollup_node'), '.')
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sEXIT_RUNTIME', '-sENVIRONMENT=node', '-sMODULARIZE', '-o', 'hello.mjs'])
