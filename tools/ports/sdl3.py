@@ -10,9 +10,9 @@ import shutil
 from tools import diagnostics
 
 VERSION = '3.2.4'
-TAG = 'release-3.2.4'
+TAG = f'release-{VERSION}'
 HASH = 'c26a8afeec481e3ae3b435eec405d9f99d78752ebf5118963cd56728ceff23772769f5291df581329488da7489034e835301b08d61a42c811764e24b3542a4c2'
-SUBDIR = 'SDL-' + TAG
+SUBDIR = f'SDL-{TAG}'
 
 variants = {'sdl3-mt': {'PTHREADS': 1}}
 

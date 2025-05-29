@@ -6,9 +6,9 @@
 import os
 
 VERSION = '2.32.0'
-TAG = 'release-2.32.0'
+TAG = f'release-{VERSION}'
 HASH = 'd3e4ce9784152aa1194c4f2d2399829f3b01a652915afc6ddaec334068bf95d850edcb43b1a951e0202fc2ecaafc1f58e538ca39b9b16d3fdfe412af0b6aebb0'
-SUBDIR = 'SDL-' + TAG
+SUBDIR = f'SDL-{TAG}'
 
 variants = {'sdl2-mt': {'PTHREADS': 1}}
 

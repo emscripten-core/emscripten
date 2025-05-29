@@ -17,7 +17,7 @@ def get(ports, settings, shared):
   def create(final):
     source_path = ports.get_dir('giflib', f'giflib-{VERSION}')
     ports.install_headers(source_path)
-    ports.make_pkg_config('giffix', VERSION, '-sUSE_GIFLIB')
+    ports.make_pkg_config('giflib', VERSION, '-sUSE_GIFLIB')
     exclude_files = [
       'giffix.c', 'gifecho.c', 'giffilter.c', 'gifcolor.c', 'gifecho.c', 'gifinto.c',
       'gifsponge.c', 'gif2rgb.c', 'gifbg.c', 'gifbuild.c', 'gifclrmp.c', 'gifhisto.c',
