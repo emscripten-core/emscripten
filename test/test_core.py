@@ -9603,7 +9603,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$ASSERTIONS',
       '--post-js', test_file('core/embind_lib_with_asyncify.test.js'),
       '--no-entry',
-      '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]'
+      '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]',
     ]
     self.emcc_args += args
     self.do_core_test('embind_lib_with_asyncify.cpp')
