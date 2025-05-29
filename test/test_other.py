@@ -34,7 +34,7 @@ from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP,
 from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from common import env_modify, no_mac, no_windows, only_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
-from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64, requires_node_canary
+from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64, requires_node_canary, requires_npm_package
 from common import requires_wasm_eh, crossplatform, with_all_eh_sjlj, with_all_sjlj, requires_jspi
 from common import also_with_standalone_wasm, also_with_wasm2js, also_with_noderawfs
 from common import also_with_modularize, also_with_wasmfs, with_all_fs
@@ -3453,6 +3453,7 @@ More info: https://emscripten.org
       '-Wno-experimental']
     self.do_runf('other/test_jspi_add_function.c', 'done')
 
+  @requires_npm_package('typescript')
   @parameterized({
     'commonjs': [['-sMODULARIZE'], ['--module', 'commonjs', '--moduleResolution', 'node']],
     'esm': [['-sEXPORT_ES6'], ['--module', 'NodeNext', '--moduleResolution', 'nodenext']],
@@ -3624,6 +3625,7 @@ More info: https://emscripten.org
     # AOT JS generation still works correctly.
     self.do_runf('other/embind_jsgen_method_pointer_stability.cpp', 'done')
 
+  @requires_npm_package('typescript')
   def test_emit_tsd(self):
     self.run_process([EMCC, test_file('other/test_emit_tsd.c'),
                       '--emit-tsd', 'test_emit_tsd.d.ts', '-sEXPORT_ES6',
@@ -3635,6 +3637,7 @@ More info: https://emscripten.org
     cmd = shared.get_npm_cmd('tsc') + [test_file('other/test_tsd.ts'), '--noEmit']
     shared.check_call(cmd)
 
+  @requires_npm_package('typescript')
   def test_emit_tsd_sync_compilation(self):
     self.run_process([EMCC, test_file('other/test_emit_tsd.c'),
                       '--emit-tsd', 'test_emit_tsd_sync.d.ts',

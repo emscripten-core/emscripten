@@ -1027,7 +1027,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       return
 
     if self.resolved_packages is None:
-      npm_list = shared.run_process([self.get_npm(), 'list'], check=False, stdout=PIPE, stderr=PIPE).stdout
+      npm_list = shared.run_process([self.get_npm(), 'list'], check=False, stdout=PIPE, stderr=PIPE, cwd=path_from_root()).stdout
       logger.warn(f'npm list: {str(npm_list)}')
       self.resolved_packages = re.findall(r'\+-- ([^@]+)@', npm_list)
       logger.warn(f'resolved_packages: {str(self.resolved_packages)}')
