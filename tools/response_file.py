@@ -68,7 +68,7 @@ def read_response_file(response_filename):
     response_filename = response_filename[1:]
 
   if not os.path.exists(response_filename):
-    raise IOError("response file not found: %s" % response_filename)
+    raise OSError("response file not found: %s" % response_filename)
 
   # Guess encoding based on the file suffix
   components = os.path.basename(response_filename).split('.')

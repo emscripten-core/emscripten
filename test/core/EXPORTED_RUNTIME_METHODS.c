@@ -17,8 +17,8 @@ int main() {
   EM_ASM({
 #if EXPORTED
     // test for additional things being exported
-    assert(Module['addFunction']);
-    assert(Module['lengthBytesUTF8']);
+    assert(Module['addFunction'], 'missing addFunction export');
+    assert(Module['lengthBytesUTF8'], 'missing lengthBytesUTF8 export');
     Module['setTempRet0'](42);
     assert(Module['getTempRet0']() == 42);
     // the main test here
@@ -28,9 +28,9 @@ int main() {
     // stubs that show a useful error if called. So it is only meaningful
     // to check they don't exist when assertions are disabled.
     if (!ASSERTIONS) {
-      assert(!Module['addFunction']);
-      assert(!Module['lengthBytesUTF8']);
-      assert(!Module['dynCall']);
+      assert(!Module['addFunction'], 'missing addFunction export');
+      assert(!Module['lengthBytesUTF8'], 'missing lengthBytesUTF8 export');
+      assert(!Module['dynCall'], 'missing dynCall export');
     }
     dynCall('viii', $0, [1, 4, 9]);
 #endif

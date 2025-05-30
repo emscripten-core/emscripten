@@ -20,22 +20,21 @@
  {
   "name": "emcc$defun$useExportA",
   "reaches": [
-   "emcc$export$expI3"
+   "emcc$export$expD7"
   ]
  },
  {
   "name": "emcc$defun$useExportB",
   "reaches": [
-   "emcc$export$expI3"
+   "emcc$export$expD7"
   ]
  },
  {
   "name": "emcc$defun$useManySorted",
   "reaches": [
-   "emcc$export$expI1",
-   "emcc$export$expI2",
-   "emcc$export$expI3",
-   "emcc$export$expI4"
+   "emcc$export$expD7",
+   "emcc$export$expD8",
+   "emcc$export$expD9"
   ]
  },
  {
@@ -110,31 +109,23 @@
   "reaches": []
  },
  {
-  "name": "emcc$export$expI1",
-  "export": "expI1",
-  "reaches": [],
-  "root": true
- },
- {
-  "name": "emcc$export$expI2",
-  "export": "expI2",
-  "reaches": [],
-  "root": true
- },
- {
-  "name": "emcc$export$expI3",
-  "export": "expI3",
-  "reaches": [],
-  "root": true
- },
- {
-  "name": "emcc$export$expI4",
-  "export": "expI4",
+  "name": "emcc$export$expD6",
+  "export": "expD6",
   "reaches": []
  },
  {
-  "name": "emcc$export$expI5",
-  "export": "expI5",
+  "name": "emcc$export$expD7",
+  "export": "expD7",
+  "reaches": []
+ },
+ {
+  "name": "emcc$export$expD8",
+  "export": "expD8",
+  "reaches": []
+ },
+ {
+  "name": "emcc$export$expD9",
+  "export": "expD9",
   "reaches": []
  },
  {

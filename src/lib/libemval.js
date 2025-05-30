@@ -6,7 +6,7 @@
 /*global Module:true, Runtime*/
 /*global HEAP32*/
 /*global createNamedFunction*/
-/*global readLatin1String, stringToUTF8*/
+/*global AsciiToString, stringToUTF8*/
 /*global requireRegisteredType, throwBindingError, runDestructors*/
 /*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 
@@ -24,46 +24,39 @@ var LibraryEmVal = {
   // Stack of handles available for reuse.
   $emval_freelist: [],
   // Array of alternating pairs (value, refcount).
-  $emval_handles: [],
+  // reserve 0 and some special values. These never get de-allocated.
+  $emval_handles: [
+    0, 1,
+    undefined, 1,
+    null, 1,
+    true, 1,
+    false, 1,
+  ],
+#if ASSERTIONS
+  $emval_handles__postset: 'assert(emval_handles.length === {{{ EMVAL_RESERVED_HANDLES }}} * 2)',
+#endif
   $emval_symbols: {}, // address -> string
-
-  $init_emval__deps: ['$count_emval_handles', '$emval_handles'],
-  $init_emval__postset: 'init_emval();',
-  $init_emval: () => {
-    // reserve 0 and some special values. These never get de-allocated.
-    emval_handles.push(
-      0, 1,
-      undefined, 1,
-      null, 1,
-      true, 1,
-      false, 1,
-    );
-  #if ASSERTIONS
-    assert(emval_handles.length === {{{ EMVAL_RESERVED_HANDLES }}} * 2);
-  #endif
-    Module['count_emval_handles'] = count_emval_handles;
-  },
 
   $count_emval_handles__deps: ['$emval_freelist', '$emval_handles'],
   $count_emval_handles: () => {
     return emval_handles.length / 2 - {{{ EMVAL_RESERVED_HANDLES }}} - emval_freelist.length;
   },
 
-  _emval_register_symbol__deps: ['$emval_symbols', '$readLatin1String'],
+  _emval_register_symbol__deps: ['$emval_symbols', '$AsciiToString'],
   _emval_register_symbol: (address) => {
-    emval_symbols[address] = readLatin1String(address);
+    emval_symbols[address] = AsciiToString(address);
   },
 
-  $getStringOrSymbol__deps: ['$emval_symbols', '$readLatin1String'],
+  $getStringOrSymbol__deps: ['$emval_symbols', '$AsciiToString'],
   $getStringOrSymbol: (address) => {
     var symbol = emval_symbols[address];
     if (symbol === undefined) {
-      return readLatin1String(address);
+      return AsciiToString(address);
     }
     return symbol;
   },
 
-  $Emval__deps: ['$emval_freelist', '$emval_handles', '$throwBindingError', '$init_emval'],
+  $Emval__deps: ['$emval_freelist', '$emval_handles', '$throwBindingError'],
   $Emval: {
     toValue: (handle) => {
       if (!handle) {
@@ -310,28 +303,9 @@ var LibraryEmVal = {
     return id;
   },
 
-#if MIN_CHROME_VERSION < 49 || MIN_FIREFOX_VERSION < 42 || MIN_SAFARI_VERSION < 100101
-  $reflectConstruct: null,
-  $reflectConstruct__postset: `
-    if (typeof Reflect != 'undefined') {
-      reflectConstruct = Reflect.construct;
-    } else {
-      reflectConstruct = function(target, args) {
-        // limited polyfill for Reflect.construct that handles variadic args and native objects, but not new.target
-        return new (target.bind.apply(target, [null].concat(args)))();
-      };
-    }
-  `,
-#else
-  $reflectConstruct: 'Reflect.construct',
-#endif
-
   _emval_get_method_caller__deps: [
     '$emval_addMethodCaller', '$emval_lookupTypes',
     '$createNamedFunction', '$emval_returnValue',
-#if !DYNAMIC_EXECUTION
-    '$reflectConstruct',
-#endif
   ],
   _emval_get_method_caller: (argCount, argTypes, kind) => {
     var types = emval_lookupTypes(argCount, argTypes);
@@ -346,7 +320,7 @@ var LibraryEmVal = {
         argN[i] = types[i]['readValueFromPointer'](args + offset);
         offset += types[i].argPackAdvance;
       }
-      var rv = kind === /* CONSTRUCTOR */ 1 ? reflectConstruct(func, argN) : func.apply(obj, argN);
+      var rv = kind === /* CONSTRUCTOR */ 1 ? Reflect.construct(func, argN) : func.apply(obj, argN);
       return emval_returnValue(retType, destructorsRef, rv);
     };
 #else

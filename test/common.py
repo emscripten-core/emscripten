@@ -71,6 +71,7 @@ EMTEST_REBASELINE = None
 # 2: Log stdout and stderr configure/make. Print out subprocess commands that were executed.
 # 3: Log stdout and stderr, and pass VERBOSE=1 to CMake/configure/make steps.
 EMTEST_BUILD_VERBOSE = int(os.getenv('EMTEST_BUILD_VERBOSE', '0'))
+EMTEST_CAPTURE_STDIO = int(os.getenv('EMTEST_CAPTURE_STDIO', '0'))
 if 'EM_BUILD_VERBOSE' in os.environ:
   exit_with_error('EM_BUILD_VERBOSE has been renamed to EMTEST_BUILD_VERBOSE')
 
@@ -273,6 +274,23 @@ def requires_node_canary(func):
   return decorated
 
 
+# Used to mark dependencies in various tests to npm developer dependency
+# packages, which might not be installed on Emscripten end users' systems.
+def requires_dev_dependency(package):
+  assert not callable(package)
+
+  def decorator(f):
+    assert callable(f)
+
+    @wraps(f)
+    def decorated(self, *args, **kwargs):
+      if 'EMTEST_SKIP_NODE_DEV_PACKAGES' in os.environ:
+        self.skipTest(f'test requires npm development package "{package}" and EMTEST_SKIP_NODE_DEV_PACKAGES is set')
+      f(self, *args, **kwargs)
+    return decorated
+  return decorator
+
+
 def requires_wasm64(func):
   assert callable(func)
 
@@ -460,12 +478,12 @@ def with_all_fs(func):
       assert fs is None
     func(self, *args, **kwargs)
 
-  parameterize(metafunc, {'': (False, None,),
-                          'nodefs': (False, 'nodefs',),
-                          'rawfs': (False, 'rawfs',),
-                          'wasmfs': (True, None,),
-                          'wasmfs_nodefs': (True, 'nodefs',),
-                          'wasmfs_rawfs': (True, 'rawfs',)})
+  parameterize(metafunc, {'': (False, None),
+                          'nodefs': (False, 'nodefs'),
+                          'rawfs': (False, 'rawfs'),
+                          'wasmfs': (True, None),
+                          'wasmfs_nodefs': (True, 'nodefs'),
+                          'wasmfs_rawfs': (True, 'rawfs')})
   return metafunc
 
 
@@ -521,6 +539,8 @@ def also_with_minimal_runtime(f):
       print('parameterize:minimal_runtime=%s' % with_minimal_runtime)
     assert self.get_setting('MINIMAL_RUNTIME') is None
     if with_minimal_runtime:
+      if self.get_setting('MODULARIZE') == 'instance' or self.get_setting('WASM_ESM_INTEGRATION'):
+        self.skipTest('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
       self.set_setting('MINIMAL_RUNTIME', 1)
       # This extra helper code is needed to cleanly handle calls to exit() which throw
       # an ExitCode exception.
@@ -547,9 +567,7 @@ def also_with_wasm_bigint(f):
       self.set_setting('WASM_BIGINT')
       nodejs = self.require_node()
       self.node_args += shared.node_bigint_flags(nodejs)
-      f(self, *args, **kwargs)
-    else:
-      f(self, *args, **kwargs)
+    f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'bigint': (True,)})
@@ -566,9 +584,7 @@ def also_with_wasm64(f):
     if with_wasm64:
       self.require_wasm64()
       self.set_setting('MEMORY64')
-      f(self, *args, **kwargs)
-    else:
-      f(self, *args, **kwargs)
+    f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'wasm64': (True,)})
@@ -586,9 +602,7 @@ def also_with_wasm2js(f):
     if with_wasm2js:
       self.require_wasm2js()
       self.set_setting('WASM', 0)
-      f(self, *args, **kwargs)
-    else:
-      f(self, *args, **kwargs)
+    f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'wasm2js': (True,)})
@@ -607,6 +621,7 @@ def can_do_standalone(self, impure=False):
   return self.is_wasm() and \
       self.get_setting('STACK_OVERFLOW_CHECK', 0) < 2 and \
       not self.get_setting('MINIMAL_RUNTIME') and \
+      not self.get_setting('WASM_ESM_INTEGRATION') and \
       not self.get_setting('SAFE_HEAP') and \
       not any(a.startswith('-fsanitize=') for a in self.emcc_args)
 
@@ -616,12 +631,10 @@ def can_do_standalone(self, impure=False):
 def also_with_standalone_wasm(impure=False):
   def decorated(func):
     @wraps(func)
-    def metafunc(self, standalone):
+    def metafunc(self, standalone, *args, **kwargs):
       if DEBUG:
         print('parameterize:standalone=%s' % standalone)
-      if not standalone:
-        func(self)
-      else:
+      if standalone:
         if not can_do_standalone(self, impure):
           self.skipTest('Test configuration is not compatible with STANDALONE_WASM')
         self.set_setting('STANDALONE_WASM')
@@ -637,7 +650,7 @@ def also_with_standalone_wasm(impure=False):
           self.wasm_engines = []
         nodejs = self.require_node()
         self.node_args += shared.node_bigint_flags(nodejs)
-        func(self)
+      func(self, *args, **kwargs)
 
     parameterize(metafunc, {'': (False,),
                             'standalone': (True,)})
@@ -875,6 +888,13 @@ def parameterized(parameters):
   return decorator
 
 
+def get_output_suffix(args):
+  if any(a in args for a in ('-sEXPORT_ES6', '-sWASM_ESM_INTEGRATION', '-sMODULARIZE=instance')):
+    return '.mjs'
+  else:
+    return '.js'
+
+
 class RunnerMeta(type):
   @classmethod
   def make_test(mcs, name, func, suffix, args):
@@ -956,15 +976,17 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return self.get_setting('INITIAL_MEMORY') == '2200mb'
 
   def check_dylink(self):
+    if self.get_setting('WASM_ESM_INTEGRATION'):
+      self.skipTest('dynamic linking not supported with WASM_ESM_INTEGRATION')
     if self.is_wasm2js():
-      self.skipTest('no dynamic linking support in wasm2js yet')
+      self.skipTest('dynamic linking not supported with wasm2js')
     if '-fsanitize=undefined' in self.emcc_args:
-      self.skipTest('no dynamic linking support in UBSan yet')
+      self.skipTest('dynamic linking not supported with UBSan')
     # MEMORY64=2 mode doesn't currently support dynamic linking because
     # The side modules are lowered to wasm32 when they are built, making
     # them unlinkable with wasm64 binaries.
     if self.get_setting('MEMORY64') == 2:
-      self.skipTest('MEMORY64=2 + dynamic linking is not currently supported')
+      self.skipTest('dynamic linking not supported with MEMORY64=2')
 
   def require_v8(self):
     if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
@@ -1134,13 +1156,15 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest('wasm2js is not compatible with MEMORY64')
     if self.is_2gb() or self.is_4gb():
       self.skipTest('wasm2js does not support over 2gb of memory')
+    if self.get_setting('WASM_ESM_INTEGRATION'):
+      self.skipTest('wasm2js is not compatible with WASM_ESM_INTEGRATION')
 
   def setup_nodefs_test(self):
     self.require_node()
     if self.get_setting('WASMFS'):
       # without this the JS setup code in setup_nodefs.js doesn't work
       self.set_setting('FORCE_FILESYSTEM')
-    self.emcc_args += ['-DNODEFS', '-lnodefs.js', '--pre-js', test_file('setup_nodefs.js')]
+    self.emcc_args += ['-DNODEFS', '-lnodefs.js', '--pre-js', test_file('setup_nodefs.js'), '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]']
 
   def setup_noderawfs_test(self):
     self.require_node()
@@ -1156,6 +1180,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.emcc_args += ['-Wno-pthreads-mem-growth', '-pthread']
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
+    if self.get_setting('WASM_ESM_INTEGRATION'):
+      self.skipTest('pthreads not yet supported with WASM_ESM_INTEGRATION')
     nodejs = self.get_nodejs()
     self.js_engines = [nodejs]
     self.node_args += shared.node_pthread_flags(nodejs)
@@ -1207,7 +1233,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       emcc_min_node_version = (
         int(emcc_min_node_version_str[0:2]),
         int(emcc_min_node_version_str[2:4]),
-        int(emcc_min_node_version_str[4:6])
+        int(emcc_min_node_version_str[4:6]),
       )
       if node_version < emcc_min_node_version:
         self.emcc_args += building.get_emcc_node_flags(node_version)
@@ -1278,11 +1304,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         ignorable_file_prefixes = [
           '/tmp/tmpaddon',
           '/tmp/circleci-no-output-timeout',
-          '/tmp/wasmer'
+          '/tmp/wasmer',
         ]
 
         left_over_files = set(temp_files_after_run) - set(self.temp_files_before_run)
-        left_over_files = [f for f in left_over_files if not any([f.startswith(prefix) for prefix in ignorable_file_prefixes])]
+        left_over_files = [f for f in left_over_files if not any(f.startswith(p) for p in ignorable_file_prefixes)]
         if len(left_over_files):
           print('ERROR: After running test, there are ' + str(len(left_over_files)) + ' new temporary files/directories left behind:', file=sys.stderr)
           for f in left_over_files:
@@ -1327,17 +1353,17 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def add_pre_run(self, code):
     assert not self.get_setting('MINIMAL_RUNTIME')
     create_file('prerun.js', 'Module.preRun = function() { %s }\n' % code)
-    self.emcc_args += ['--pre-js', 'prerun.js']
+    self.emcc_args += ['--pre-js', 'prerun.js', '-sINCOMING_MODULE_JS_API=[preRun]']
 
   def add_post_run(self, code):
     assert not self.get_setting('MINIMAL_RUNTIME')
     create_file('postrun.js', 'Module.postRun = function() { %s }\n' % code)
-    self.emcc_args += ['--pre-js', 'postrun.js']
+    self.emcc_args += ['--pre-js', 'postrun.js', '-sINCOMING_MODULE_JS_API=[postRun]']
 
   def add_on_exit(self, code):
     assert not self.get_setting('MINIMAL_RUNTIME')
     create_file('onexit.js', 'Module.onExit = function() { %s }\n' % code)
-    self.emcc_args += ['--pre-js', 'onexit.js']
+    self.emcc_args += ['--pre-js', 'onexit.js', '-sINCOMING_MODULE_JS_API=[onExit]']
 
   # returns the full list of arguments to pass to emcc
   # param @main_file whether this is the main file of the test. some arguments
@@ -1397,10 +1423,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if emcc_args:
       all_emcc_args += emcc_args
     if not output_suffix:
-      if '-sEXPORT_ES6' in all_emcc_args or '-sWASM_ESM_INTEGRATION' in all_emcc_args:
-        output_suffix = '.mjs'
-      else:
-        output_suffix = '.js'
+      output_suffix = get_output_suffix(all_emcc_args)
 
     if output_basename:
       output = output_basename + output_suffix
@@ -1651,7 +1674,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       diff = ''.join(a.rstrip() + '\n' for a in diff)
       self.fail("Expected to find '%s' in '%s', diff:\n\n%s\n%s" % (
         limit_size(values[0]), limit_size(string), limit_size(diff),
-        additional_info
+        additional_info,
       ))
 
   def assertNotContained(self, value, string):
@@ -2010,7 +2033,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     self.emcc_args += [
       '-I' + test_file('third_party/freetype/include'),
-      '-I' + test_file('third_party/poppler/include')
+      '-I' + test_file('third_party/poppler/include'),
     ]
 
     # Poppler has some pretty glaring warning.  Suppress them to keep the
@@ -2078,7 +2101,7 @@ def harness_server_func(in_queue, out_queue, port):
         try:
           fsize = os.path.getsize(path)
           f = open(path, 'rb')
-        except IOError:
+        except OSError:
           self.send_error(404, f'File not found {path}')
           return None
         self.send_response(206)
@@ -2109,18 +2132,29 @@ def harness_server_func(in_queue, out_queue, port):
     def do_POST(self):
       urlinfo = urlparse(self.path)
       query = parse_qs(urlinfo.query)
-      if query['file']:
-        print('do_POST: got file: %s' % query['file'])
+      content_length = int(self.headers['Content-Length'])
+      post_data = self.rfile.read(content_length)
+      if urlinfo.path == '/log':
+        # Logging reported by reportStdoutToServer / reportStderrToServer.
+        #
+        # To automatically capture stderr/stdout message from browser tests, modify
+        # `captureStdoutStderr` in `test/browser_reporting.js`.
         filename = query['file'][0]
-        contentLength = int(self.headers['Content-Length'])
-        create_file(filename, self.rfile.read(contentLength), binary=True)
+        print(f"[client {filename}: '{post_data.decode()}']")
+        self.send_response(200)
+        self.end_headers()
+      elif urlinfo.path == '/upload':
+        filename = query['file'][0]
+        print(f'do_POST: got file: {filename}')
+        create_file(filename, post_data, binary=True)
         self.send_response(200)
         self.end_headers()
       else:
-        print(f'do_POST: unexpected POST: {urlinfo.query}')
+        print(f'do_POST: unexpected POST: {urlinfo}')
 
     def do_GET(self):
-      if self.path == '/run_harness':
+      info = urlparse(self.path)
+      if info.path == '/run_harness':
         if DEBUG:
           print('[server startup]')
         self.send_response(200)
@@ -2160,18 +2194,7 @@ def harness_server_func(in_queue, out_queue, port):
         self.end_headers()
         self.wfile.write(b'OK')
 
-      elif 'stdout=' in self.path or 'stderr=' in self.path:
-        '''
-          To get logging to the console from browser tests, add this to
-          print/printErr/the exception handler in src/shell.html:
-
-            fetch(encodeURI('http://localhost:8888?stdout=' + text));
-        '''
-        print('[client logging:', unquote_plus(self.path), ']')
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-      elif self.path == '/check':
+      elif info.path == '/check':
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
@@ -2247,6 +2270,7 @@ class BrowserCore(RunnerCore):
   unresponsive_tests = 0
 
   def __init__(self, *args, **kwargs):
+    self.capture_stdio = EMTEST_CAPTURE_STDIO
     super().__init__(*args, **kwargs)
 
   @classmethod
@@ -2315,6 +2339,10 @@ class BrowserCore(RunnerCore):
   def run_browser(self, html_file, expected=None, message=None, timeout=None, extra_tries=1):
     if not has_browser():
       return
+    assert '?' not in html_file, 'URL params not supported'
+    url = html_file
+    if self.capture_stdio:
+      url += '?capture_stdio'
     if self.skip_exec:
       self.skipTest('skipping test execution: ' + self.skip_exec)
     if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
@@ -2326,8 +2354,8 @@ class BrowserCore(RunnerCore):
     if expected is not None:
       try:
         self.harness_in_queue.put((
-          'http://localhost:%s/%s' % (self.PORT, html_file),
-          self.get_dir()
+          'http://localhost:%s/%s' % (self.PORT, url),
+          self.get_dir(),
         ))
         if timeout is None:
           timeout = self.BROWSER_TIMEOUT
@@ -2355,6 +2383,9 @@ class BrowserCore(RunnerCore):
             if extra_tries > 0:
               print('[test error (see below), automatically retrying]')
               print(e)
+              if not self.capture_stdio:
+                print('[enabling stdio/stderr reporting]')
+                self.capture_stdio = True
               return self.run_browser(html_file, expected, message, timeout, extra_tries - 1)
             else:
               raise e
@@ -2405,7 +2436,8 @@ class BrowserCore(RunnerCore):
 
   def btest(self, filename, expected=None,
             post_build=None,
-            emcc_args=None, url_suffix='', timeout=None,
+            emcc_args=None,
+            timeout=None,
             extra_tries=1,
             reporting=Reporting.FULL,
             output_basename='test'):
@@ -2430,7 +2462,7 @@ class BrowserCore(RunnerCore):
       output = self.run_js('test.js')
       self.assertContained('RESULT: ' + expected[0], output)
     else:
-      self.run_browser(outfile + url_suffix, expected=['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
+      self.run_browser(outfile, expected=['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
 
 
 ###################################################################################################

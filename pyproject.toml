@@ -1,3 +1,6 @@
+[project]
+requires-python = ">=3.8"
+
 [tool.ruff]
 exclude = [
   "./cache/",
@@ -16,12 +19,15 @@ lint.select = [
   "ARG",
   "ASYNC",
   "B",
+  "C4",
   "C90",
+  "COM",
   "E",
   "F",
   "PERF",
   "PIE",
   "PL",
+  "UP",
   "W",
   "YTT",
 ]
@@ -42,6 +48,9 @@ lint.ignore = [
   "PLW0603",
   "PLW1510",
   "PLW2901",
+  "UP030", # TODO
+  "UP031", # TODO
+  "UP032", # TODO
 ]
 lint.per-file-ignores."emrun.py" = [ "PLE0704" ]
 lint.per-file-ignores."tools/ports/*.py" = [ "ARG001", "ARG005" ]

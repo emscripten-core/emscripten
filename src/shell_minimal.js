@@ -34,25 +34,12 @@ var Module =
 var Module = {{{ EXPORT_NAME }}};
 #endif
 
-#if MODULARIZE && USE_READY_PROMISE
-// Set up the promise that indicates the Module is initialized
-var readyPromiseResolve, readyPromiseReject;
-var readyPromise = new Promise((resolve, reject) => {
-  readyPromiseResolve = resolve;
-  readyPromiseReject = reject;
-});
-#endif
-
 #if ENVIRONMENT_MAY_BE_NODE
-var ENVIRONMENT_IS_NODE = typeof process == 'object' && process.type != 'renderer';
+var ENVIRONMENT_IS_NODE = {{{ nodeDetectionCode() }}};
 #endif
 
 #if ENVIRONMENT_MAY_BE_SHELL
 var ENVIRONMENT_IS_SHELL = typeof read == 'function';
-#endif
-
-#if AUDIO_WORKLET
-var ENVIRONMENT_IS_AUDIO_WORKLET = typeof AudioWorkletGlobalScope !== 'undefined';
 #endif
 
 #if ASSERTIONS || PTHREADS
@@ -69,8 +56,28 @@ var ENVIRONMENT_IS_WEB = !ENVIRONMENT_IS_NODE;
 #endif
 #endif // ASSERTIONS || PTHREADS
 
+#if ENVIRONMENT_MAY_BE_NODE && (PTHREADS || WASM_WORKERS)
+if (ENVIRONMENT_IS_NODE) {
+  var worker_threads = require('worker_threads');
+  global.Worker = worker_threads.Worker;
+}
+#endif
+
 #if WASM_WORKERS
-var ENVIRONMENT_IS_WASM_WORKER = !!Module['$ww'];
+var ENVIRONMENT_IS_WASM_WORKER = globalThis.name == 'em-ww';
+
+#if ENVIRONMENT_MAY_BE_NODE
+if (ENVIRONMENT_IS_NODE) {
+  // The way we signal to a worker that it is hosting a pthread is to construct
+  // it with a specific name.
+  ENVIRONMENT_IS_WASM_WORKER = worker_threads['workerData'] == 'em-ww'
+}
+#endif
+#endif
+
+#if AUDIO_WORKLET
+var ENVIRONMENT_IS_AUDIO_WORKLET = typeof AudioWorkletGlobalScope !== 'undefined';
+if (ENVIRONMENT_IS_AUDIO_WORKLET) ENVIRONMENT_IS_WASM_WORKER = true;
 #endif
 
 #if ASSERTIONS && ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_SHELL
@@ -101,8 +108,8 @@ if (ENVIRONMENT_IS_NODE) {
 var out = defaultPrint;
 var err = defaultPrintErr;
 #else
-var out = (text) => console.log(text);
-var err = (text) => console.error(text);
+var out = (...args) => console.log(...args);
+var err = (...args) => console.error(...args);
 #endif
 
 // Override this function in a --pre-js file to get a signal for when
@@ -110,7 +117,7 @@ var err = (text) => console.error(text);
 // the program.
 function ready() {
 #if MODULARIZE && USE_READY_PROMISE
-  readyPromiseResolve(Module);
+  readyPromiseResolve?.(Module);
 #endif // MODULARIZE
 #if INVOKE_RUN && HAS_MAIN
   {{{ runIfMainThread("run();") }}}
@@ -139,8 +146,6 @@ var _scriptName = typeof document != 'undefined' ? document.currentScript?.src :
 
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
-  var worker_threads = require('worker_threads');
-  global.Worker = worker_threads.Worker;
   ENVIRONMENT_IS_WORKER = !worker_threads.isMainThread;
   // Under node we set `workerData` to `em-pthread` to signal that the worker
   // is hosting a pthread.

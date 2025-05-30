@@ -10,6 +10,8 @@ executors:
   linux-python:
     docker:
       - image: cimg/python:3.10.7
+    environment:
+      EMCC_CORES: "4"
   focal:
     docker:
       - image: emscripten/emscripten-ci:focal
@@ -316,7 +318,8 @@ commands:
             # --no-sandbox because we are running as root and chrome requires
             # this flag for now: https://crbug.com/638180
             CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile --enable-experimental-web-platform-features"
-            CHROME_FLAGS_HEADLESS: "--headless=new --remote-debugging-port=1234"
+            # Increase the window size to avoid flaky sdl tests see #24236.
+            CHROME_FLAGS_HEADLESS: "--headless=new --window-size=1024,768 --remote-debugging-port=1234"
             CHROME_FLAGS_WASM: "--enable-experimental-webassembly-features --js-flags=\"--experimental-wasm-stack-switching --experimental-wasm-type-reflection\""
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
             # The runners lack sound hardware so fallback to a dummy device (and
@@ -390,6 +393,8 @@ commands:
             # TODO: Do GL testing when https://bugzil.la/1375585 (lack of WebGL
             #       support in headless mode) resolves
             EMTEST_LACKS_GRAPHICS_HARDWARE: "1"
+            # TODO(https://github.com/emscripten-core/emscripten/issues/24205)
+            EMTEST_LACKS_SOUND_HARDWARE: "1"
             EMTEST_LACKS_WEBGPU: "1"
             # OffscreenCanvas support is not yet done in Firefox.
             EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
@@ -536,6 +541,7 @@ jobs:
           title: "asan+lsan"
           test_targets: "
             asan.test_stat
+            asan.test_stack
             asan.test_float_builtins
             asan.test_embind*
             asan.test_abort_on_exceptions
@@ -546,12 +552,12 @@ jobs:
             asan.test_dlfcn_basic
             asan.test_async_hello_jspi
             asan.test_cubescript
-            asan.test_wasm_worker_hello
             asan.test_externref_emjs_dynlink
             asan.test_asyncify_longjmp
             asan.test_pthread_run_on_main_thread
             asan.test_minimal_runtime_global_initializer
             asan.test_fs_js_api_wasmfs
+            asan.test_modularize_instance_pthreads
             lsan.test_dylink_dso_needed
             lsan.test_stdio_locking
             lsan.test_dlfcn_basic
@@ -644,7 +650,31 @@ jobs:
             wasmfs.test_fcntl_open
             wasmfs.test_fs_llseek
             wasmfs.test_fs_llseek_rawfs
-            wasmfs.test_freetype"
+            wasmfs.test_freetype
+            minimal0.test_utf
+            "
+  test-modularize-instance:
+    executor: focal
+    environment:
+      EMTEST_SKIP_NODE_CANARY: "1"
+    steps:
+      - run-tests-linux:
+          test_targets: "instance"
+  test-esm-integration:
+    # We don't use `bionic` here since its too old to run recent node versions:
+    # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
+    executor: linux-python
+    steps:
+      - prepare-for-tests
+      # The linux-python image uses /home/circleci rather than /root and jsvu
+      # hardcodes /root into its launcher scripts so we need to reinstall v8.
+      - run: rm -rf $HOME/.jsvu
+      - install-v8
+      - install-node-canary
+      - run-tests:
+          title: "esm_integration"
+          test_targets: "esm_integration"
+      - upload-test-results
   test-wasm2js1:
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
@@ -653,7 +683,7 @@ jobs:
       - run-tests-linux:
           test_targets: "wasm2js1"
   test-wasm64:
-    # We don't use `bionic` here since its tool old to run recent node versions:
+    # We don't use `bionic` here since its too old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
     executor: linux-python
     steps:
@@ -792,11 +822,12 @@ jobs:
             other.test_native_call_before_init
             other.test_node_unhandled_rejection
             core2.test_hello_world
-            core2.test_esm_integration
-            core0.test_esm_integration
+            core2.test_esm_integration*
+            core0.test_esm_integration*
             core0.test_pthread_join_and_asyncify
             core0.test_async_ccall_promise_jspi*
-            core0.test_cubescript_jspi"
+            core0.test_cubescript_jspi
+            "
       # Run some basic tests with the minimum version of node that we currently
       # support in the generated code.
       # Keep this in sync with `OLDEST_SUPPORTED_NODE` in `feature_matrix.py`
@@ -905,6 +936,12 @@ jobs:
     environment:
       EMTEST_LACKS_WEBGPU: "1"
     steps:
+      - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
+      - pip-install
+      - install-emsdk
       - run-tests-chrome:
           title: "browser"
           # Just tests that don't run in browser 2G mode
@@ -1114,9 +1151,13 @@ workflows:
       - test-other:
           requires:
             - build-linux
-      - test-browser-chrome:
+      - test-modularize-instance:
           requires:
             - build-linux
+      - test-esm-integration:
+          requires:
+            - build-linux
+      - test-browser-chrome
       - test-browser-chrome-2gb:
           requires:
             - build-linux

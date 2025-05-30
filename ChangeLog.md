@@ -18,8 +18,64 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.8 (in development)
+4.0.10 (in development)
 ----------------------
+- Emscripten ports now install pkg-config `.pc` files so they will show up, for
+  example, when you run `pkg-config --list-all` or `pkg-config --cflags
+  <portname>`. Bare in mind that the correct PKG_CONFIG_PATH needs to be set for
+  this to work.  One way to do this is to run `emmake pkg-config`. (#24426)
+- libcxx, libcxxabi, and compiler-rt were updated to LLVM 20.1.4. (#24346 and
+  #24357)
+- Emscripten will not longer generate trampoline functions for Wasm exports
+  prior to the module being instantiated.  Storing a reference to a Wasm export
+  (e.g. `Module['_malloc']`) prior to instantiation will no longer work.  In
+  debug builds we generate stub functions that can detect this case. (#24384)
+- The `-sASYNCIFY_LAZY_LOAD_CODE` setting was deprecated.  This setting was
+  added as an experiment a long time ago and as far we know has no active users.
+  In addition, it cannot work with JSPI (the future of ASYNCIFY). (#24383)
+- `-sUSE_WEBGPU` was deprecated in favor of the external port Emdawnwebgpu, a
+  fork of Emscripten's original bindings, implementing a newer, more stable
+  version of the standardized `webgpu.h` interface. Please try migrating using
+  `--use-port=emdawnwebgpu`. If you find issues, verify in the [latest
+  nightly release](https://github.com/google/dawn/releases) and file feedback
+  with Dawn. (Emdawnwebgpu is maintained as part of Dawn, the open-source
+  WebGPU implementation used by Chromium, but it is still cross-browser.)
+- The `-sMAYBE_WASM2JS` setting was removed.  This was originally added for
+  debugging purposes, and we now have `-sWASM=2` for folks that want to be able
+  to fall back to js if wasm fails. (#24176)
+- The field `responseUrl` is added to `emscripten_fetch_t`. This is notably
+  usable for obtaining resolved URL, in line with JS `XMLHttpRequest.responseURL`
+  field. (#24414)
+
+4.0.9 - 05/19/25
+----------------
+- cmake will not longer detect SDL2 or SDL3 as being present until they are
+  installed in the sysroot.  This means that they now need to be installed,
+  either indirectly (e.g. by running any emcc command with `-sUSE_SDL=2`) or
+  directly (e.g. by running `./embuilder build sdl2`). (#24306)
+- libunwind was updated to LLVM 20.1.4. (#24251)
+- When using cmake the EMSCRIPTEN_FORCE_COMPILERS setting was reverted to
+  being on by default due to issues that were found with disabling it. (#24223)
+- Several symbols from embind (`InternalError`, `BindingError`,
+  `count_emval_handles`) and from `libbrowser.py` (`requestFullscreen`,
+  `requestFullScreen`, `createContext`, `getUserMedia`, `setCanvasSize`) are no
+  longer exported by default. They can be exported using
+  `-sEXPORTED_RUNTIME_METHODS=requestFullscreen`, for example. (#24223, #24269)
+- Embind: fixed support for unsigned 64-bit integers, which were previously
+  returned to JavaScript as their signed counterparts. (#24285)
+- Added handing for 64-bit integer access to AddressSanitizer, `-sSAFE_HEAP` and
+  `-sSUPPORT_BIG_ENDIAN` features. (#24283)
+
+4.0.8 - 04/30/25
+----------------
+- Programs built with `-sWASM_WORKERS` and `-sAUDIO_WORKLET` no longer generate
+  separate `.ww.js` and `.aw.js` files.  This is similar to the change that was
+  already made for pthreads in #21701.  This saves on complexity, code size and
+  network requests. (#24163, #24190)
+- Closure arguments can now be used from ports using `settings.CLOSURE_ARGS`
+  (#24192)
+- Embind's `val` now requires a pointer policy when using pointers. e.g.
+  `(val v(pointer, allow_raw_pointers())`.
 
 4.0.7 - 04/15/25
 ----------------
@@ -867,7 +923,7 @@ See docs/process.md for more on how version tagging works.
   `ASSERTIONS` is enabled. This option is mainly for the users who want only
   exceptions' stack traces without turning `ASSERTIONS` on. (#18642 and #18535)
 - `SUPPORT_LONGJMP`'s default value now depends on the exception mode. If Wasm
-  EH (`-fwasm-exception`) is used, it defaults to `wasm`, and if Emscripten EH
+  EH (`-fwasm-exceptions`) is used, it defaults to `wasm`, and if Emscripten EH
   (`-sDISABLE_EXCEPTION_CATCHING=0`) is used or no exception support is used, it
   defaults to `emscripten`. Previously it always defaulted to `emscripten`, so
   when a user specified `-fwasm-exceptions`, it resulted in Wasm EH + Emscripten

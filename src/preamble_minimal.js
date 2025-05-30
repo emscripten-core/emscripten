@@ -22,14 +22,9 @@ var tempDouble;
 var tempI64;
 #endif
 
-#if WASM != 2 && MAYBE_WASM2JS
-#if !WASM2JS
-if (Module['doWasm2JS']) {
-#endif
+#if WASM2JS && WASM != 2
+// WASM == 2 includes wasm2js.js separately.
 #include "wasm2js.js"
-#if !WASM2JS
-}
-#endif
 #endif
 
 var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64,
@@ -41,7 +36,7 @@ var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64,
 #endif
   wasmMemory;
 
-#if ASSERTIONS || SAFE_HEAP || USE_ASAN
+#if ASSERTIONS || SAFE_HEAP || USE_ASAN || MODULARIZE
 var runtimeInitialized = false;
 #endif
 

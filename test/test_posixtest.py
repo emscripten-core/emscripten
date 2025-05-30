@@ -32,7 +32,7 @@ def filter_tests(all_tests):
     'pthread_',
     'strftime',
     'asctime',
-    'gmtime'
+    'gmtime',
   ]
 
   def enable_test(t):

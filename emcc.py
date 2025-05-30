@@ -67,13 +67,13 @@ SOURCE_EXTENSIONS = {
   '.m', '.mi', '.mm', '.mii', # ObjC/ObjC++
   '.bc', '.ll', # LLVM IR
   '.S', # asm with preprocessor
-  os.devnull # consider the special endingless filenames like /dev/null to be C
+  os.devnull, # consider the special endingless filenames like /dev/null to be C
 } | PREPROCESSED_EXTENSIONS
 
 # These symbol names are allowed in INCOMING_MODULE_JS_API but are not part of the
 # default set.
 EXTRA_INCOMING_JS_API = [
-  'fetchSettings'
+  'fetchSettings',
 ]
 
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2']
@@ -85,7 +85,7 @@ LINK_ONLY_FLAGS = {
     '--js-transform', '--oformat', '--output_eol', '--output-eol',
     '--post-js', '--pre-js', '--preload-file', '--profiling-funcs',
     '--proxy-to-worker', '--shell-file', '--source-map-base',
-    '--threadprofiler', '--use-preload-plugins'
+    '--threadprofiler', '--use-preload-plugins',
 }
 CLANG_FLAGS_WITH_ARGS = {
     '-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
@@ -94,7 +94,7 @@ CLANG_FLAGS_WITH_ARGS = {
     '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
     '-install_name', '-compatibility_version', '-mllvm',
     '-current_version', '-I', '-L', '-include-pch', '-u',
-    '-undefined', '-target', '-Xlinker', '-Xclang', '-z'
+    '-undefined', '-target', '-Xlinker', '-Xclang', '-z',
 }
 
 
@@ -142,7 +142,6 @@ class EmccOptions:
     self.requested_debug = None
     self.emit_symbol_map = False
     self.use_closure_compiler = None
-    self.closure_args = []
     self.js_transform = None
     self.pre_js = [] # before all js
     self.post_js = [] # after all js
@@ -536,7 +535,7 @@ def run(args):
   # read response files very early on
   try:
     args = substitute_response_files(args)
-  except IOError as e:
+  except OSError as e:
     exit_with_error(e)
 
   if '--help' in args:
@@ -1048,6 +1047,8 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       # because that next arg could, for example, start with `-o` and we don't want
       # to confuse that with a normal `-o` flag.
       skip = True
+    elif arg == '-s' and is_dash_s_for_emcc(newargs, i):
+      skip = True
 
     def check_flag(value):
       # Check for and consume a flag
@@ -1125,7 +1126,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       consume_arg()
     elif check_arg('--closure-args'):
       args = consume_arg()
-      options.closure_args += shlex.split(args)
+      settings.CLOSURE_ARGS += shlex.split(args)
     elif check_arg('--closure'):
       options.use_closure_compiler = int(consume_arg())
     elif check_arg('--js-transform'):

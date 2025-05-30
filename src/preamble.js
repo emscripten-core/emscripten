@@ -20,17 +20,12 @@
 
 {{{ makeModuleReceiveWithVar('wasmBinary') }}}
 
-#if WASM != 2 && MAYBE_WASM2JS
-#if !WASM2JS
-if (Module['doWasm2JS']) {
-#endif
+#if WASM2JS
+#if WASM != 2
+// WASM == 2 includes wasm2js.js separately.
 #include "wasm2js.js"
-#if !WASM2JS
-}
-#endif
 #endif
 
-#if MAYBE_WASM2JS
 if (WebAssembly.isWasm2js) {
   // We don't need to actually download a wasm binary, mark it as present but
   // empty.
@@ -199,12 +194,12 @@ function initRuntime() {
   if (ENVIRONMENT_IS_PTHREAD) return startWorker(Module);
 #endif
 
-#if STACK_OVERFLOW_CHECK
-  checkStackCookie();
-#endif
-
 #if STACK_OVERFLOW_CHECK >= 2
   setStackLimits();
+#endif
+
+#if STACK_OVERFLOW_CHECK
+  checkStackCookie();
 #endif
 
 #if RELOCATABLE
@@ -248,9 +243,7 @@ function exitRuntime() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-#if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
-#endif
+  {{{ runIfWorkerThread('return;') }}} // PThreads reuse the runtime from the main thread.
 #if !STANDALONE_WASM
   ___funcs_on_exit(); // Native atexit() functions
 #endif
@@ -266,9 +259,7 @@ function postRun() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-#if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
-#endif
+  {{{ runIfWorkerThread('return;') }}} // PThreads reuse the runtime from the main thread.
 
 #if expectToReceiveOnModule('postRun')
   if (Module['postRun']) {
@@ -298,18 +289,6 @@ var dependenciesFulfilled = null; // overridden to take different actions when a
 var runDependencyTracking = {};
 var runDependencyWatcher = null;
 #endif
-
-function getUniqueRunDependency(id) {
-#if ASSERTIONS
-  var orig = id;
-  while (1) {
-    if (!runDependencyTracking[id]) return id;
-    id = orig + Math.random();
-  }
-#else
-  return id;
-#endif
-}
 
 function addRunDependency(id) {
   runDependencies++;
@@ -432,7 +411,7 @@ function abort(what) {
   var e = new WebAssembly.RuntimeError(what);
 
 #if MODULARIZE
-  readyPromiseReject(e);
+  readyPromiseReject?.(e);
 #endif
   // Throw the error whether or not MODULARIZE is set because abort is used
   // in code paths apart from instantiation where an exception is expected
@@ -609,7 +588,7 @@ function getBinarySync(file) {
     return file;
   }
 #endif
-#if expectToReceiveOnModule('wasmBinary') || MAYBE_WASM2JS
+#if expectToReceiveOnModule('wasmBinary') || WASM2JS
   if (file == wasmBinaryFile && wasmBinary) {
     return new Uint8Array(wasmBinary);
   }
@@ -823,7 +802,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
 
 #if !WASM_ESM_INTEGRATION
 function getWasmImports() {
-#if PTHREADS
+#if PTHREADS || WASM_WORKERS || (IMPORTED_MEMORY && MODULARIZE == 'instance')
   assignWasmImports();
 #endif
 #if ASYNCIFY && (ASSERTIONS || ASYNCIFY == 2)
@@ -928,6 +907,11 @@ function getWasmImports() {
 #endif
 #endif
 
+#if hasExportedSymbol('__cpp_exception') && !RELOCATABLE
+    ___cpp_exception = wasmExports['__cpp_exception'];
+    {{{ receivedSymbol('___cpp_exception') }}};
+#endif
+
 #if hasExportedSymbol('__wasm_apply_data_relocs')
     __RELOC_FUNCS__.push(wasmExports['__wasm_apply_data_relocs']);
 #endif
@@ -945,6 +929,9 @@ function getWasmImports() {
 #if PTHREADS || WASM_WORKERS
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
+#endif
+#if DECLARE_ASM_MODULE_EXPORTS
+    assignWasmExports(wasmExports);
 #endif
     removeRunDependency('wasm-instantiate');
     return wasmExports;
@@ -1008,8 +995,8 @@ function getWasmImports() {
   }
 #endif
 
-#if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) {
+#if PTHREADS || WASM_WORKERS
+  if ({{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
     return new Promise((resolve) => {
       wasmModuleReceived = (module) => {
         // Instantiate from the module posted from the main thread.
@@ -1031,22 +1018,12 @@ function getWasmImports() {
 #if RUNTIME_DEBUG
   dbg('asynchronously preparing wasm');
 #endif
-#if MODULARIZE
-  try {
-#endif
-    var result = await instantiateAsync(wasmBinary, wasmBinaryFile, info);
-    var exports = receiveInstantiationResult(result);
+  var result = await instantiateAsync(wasmBinary, wasmBinaryFile, info);
+  var exports = receiveInstantiationResult(result);
 #if LOAD_SOURCE_MAP
-    receiveSourceMapJSON(await getSourceMapAsync());
+  receiveSourceMapJSON(await getSourceMapAsync());
 #endif
-    return exports;
-#if MODULARIZE
-  } catch (e) {
-    // If instantiation fails, reject the module ready promise.
-    readyPromiseReject(e);
-    return Promise.reject(e);
-  }
-#endif
+  return exports;
 #else // WASM_ASYNC_COMPILATION
   var result = instantiateSync(wasmBinaryFile, info);
 #if PTHREADS || MAIN_MODULE

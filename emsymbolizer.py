@@ -31,7 +31,7 @@ class Error(BaseException):
 
 
 # Class to treat location info in a uniform way across information sources.
-class LocationInfo(object):
+class LocationInfo:
   def __init__(self, source=None, line=0, column=0, func=None):
     self.source = source
     self.line = line
@@ -98,8 +98,8 @@ def get_sourceMappingURL_section(module):
   return None
 
 
-class WasmSourceMap(object):
-  class Location(object):
+class WasmSourceMap:
+  class Location:
     def __init__(self, source=None, line=0, column=0, func=None):
       self.source = source
       self.line = line
@@ -187,7 +187,7 @@ class WasmSourceMap(object):
     return LocationInfo(
         self.sources[info.source] if info.source is not None else None,
         info.line,
-        info.column
+        info.column,
       )
 
 

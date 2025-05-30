@@ -12,9 +12,7 @@
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 
 function initMemory() {
-#if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return;
-#endif // PTHREADS
+  {{{ runIfWorkerThread('return') }}}
 
 #if expectToReceiveOnModule('wasmMemory')
   if (Module['wasmMemory']) {

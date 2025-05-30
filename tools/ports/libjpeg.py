@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 
 import os
+import shutil
 
 VERSION = '9f'
 HASH = '7f733d79cf176c690dcf127352f9aa7ec48000455944f286faae606cdeada6f6865b4a3f9f01bda8947b5b1089bb3e52d2b56879b6e871279ec5cbd1829304dc'
@@ -21,8 +22,11 @@ def get(ports, settings, shared):
 
   def create(final):
     source_path = ports.get_dir('libjpeg', f'jpeg-{VERSION}')
-    ports.write_file(os.path.join(source_path, 'jconfig.h'), jconfig_h)
+    jconfig_h = os.path.join(os.path.dirname(__file__), 'libjpeg/jconfig.h')
+    shutil.copyfile(jconfig_h, os.path.join(source_path, 'jconfig.h'))
+
     ports.install_headers(source_path)
+    ports.make_pkg_config('libjpeg', VERSION, '-sUSE_LIBJPEG')
     excludes = [
       'ansi2knr.c', 'cjpeg.c', 'cjpegalt.c', 'ckconfig.c', 'djpeg.c', 'djpegalt.c', 'example.c',
       'jmemansi.c', 'jmemdos.c', 'jmemmac.c', 'jmemname.c',
@@ -38,67 +42,4 @@ def clear(ports, settings, shared):
 
 
 def show():
-  return 'libjpeg (-sUSE_LIBJPEG=1 or --use-port=libjpeg; BSD license)'
-
-
-jconfig_h = '''/* jconfig.h.  Generated from jconfig.cfg by configure.  */
-/* jconfig.cfg --- source file edited by configure script */
-/* see jconfig.txt for explanations */
-
-#define HAVE_PROTOTYPES 1
-#define HAVE_UNSIGNED_CHAR 1
-#define HAVE_UNSIGNED_SHORT 1
-/* #undef void */
-/* #undef const */
-/* #undef CHAR_IS_UNSIGNED */
-#define HAVE_STDDEF_H 1
-#define HAVE_STDLIB_H 1
-#define HAVE_LOCALE_H 1
-/* #undef NEED_BSD_STRINGS */
-/* #undef NEED_SYS_TYPES_H */
-/* #undef NEED_FAR_POINTERS */
-/* #undef NEED_SHORT_EXTERNAL_NAMES */
-/* Define this if you get warnings about undefined structures. */
-/* #undef INCOMPLETE_TYPES_BROKEN */
-
-/* Define "boolean" as unsigned char, not enum, on Windows systems. */
-#ifdef _WIN32
-#ifndef __RPCNDR_H__		/* don't conflict if rpcndr.h already read */
-typedef unsigned char boolean;
-#endif
-#ifndef FALSE			/* in case these macros already exist */
-#define FALSE	0		/* values of boolean */
-#endif
-#ifndef TRUE
-#define TRUE	1
-#endif
-#define HAVE_BOOLEAN		/* prevent jmorecfg.h from redefining it */
-#endif
-
-#ifdef JPEG_INTERNALS
-
-/* #undef RIGHT_SHIFT_IS_UNSIGNED */
-#define INLINE __inline__
-/* These are for configuring the JPEG memory manager. */
-/* #undef DEFAULT_MAX_MEM */
-/* #undef NO_MKTEMP */
-
-#endif /* JPEG_INTERNALS */
-
-#ifdef JPEG_CJPEG_DJPEG
-
-#define BMP_SUPPORTED		/* BMP image file format */
-#define GIF_SUPPORTED		/* GIF image file format */
-#define PPM_SUPPORTED		/* PBMPLUS PPM/PGM image file format */
-/* #undef RLE_SUPPORTED */
-#define TARGA_SUPPORTED		/* Targa image file format */
-
-/* #undef TWO_FILE_COMMANDLINE */
-/* #undef NEED_SIGNAL_CATCHER */
-/* #undef DONT_USE_B_MODE */
-
-/* Define this if you want percent-done progress reports from cjpeg/djpeg. */
-/* #undef PROGRESS_REPORT */
-
-#endif /* JPEG_CJPEG_DJPEG */
-'''
+  return 'libjpeg (-sUSE_LIBJPEG or --use-port=libjpeg; BSD license)'

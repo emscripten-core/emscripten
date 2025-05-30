@@ -431,8 +431,7 @@ class Library:
     return cache.get(self.get_path(), self.do_build, force=USE_NINJA == 2, quiet=USE_NINJA)
 
   def generate(self):
-    return cache.get(self.get_path(), self.do_generate, force=USE_NINJA == 2, quiet=USE_NINJA,
-                     deferred=True)
+    return cache.get(self.get_path(), self.do_generate, force=USE_NINJA == 2, quiet=USE_NINJA)
 
   def get_link_flag(self):
     """
@@ -732,12 +731,12 @@ class MTLibrary(Library):
     return super().get_default_variation(
       is_mt=settings.PTHREADS,
       is_ww=settings.SHARED_MEMORY and not settings.PTHREADS,
-      **kwargs
+      **kwargs,
     )
 
   @classmethod
   def variations(cls):
-    combos = super(MTLibrary, cls).variations()
+    combos = super().variations()
 
     # These are mutually exclusive, only one flag will be set at any give time.
     return [combo for combo in combos if not combo['is_mt'] or not combo['is_ww']]
@@ -950,12 +949,15 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
     # bfloat16
     'extendbfsf2.c',
     'truncdfbf2.c',
+    'truncxfbf2.c',
     'truncsfbf2.c',
+    'trunctfbf2.c',
     # We provide our own crt
     'crtbegin.c',
     'crtend.c',
     # 80-bit long double (xf_float)
     'divxc3.c',
+    'extendhfxf2.c',
     'extendxftf2.c',
     'fixxfdi.c',
     'fixxfti.c',
@@ -969,6 +971,7 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
     'mulxc3.c',
     'powixf2.c',
     'trunctfxf2.c',
+    'truncxfhf2.c',
   ]
   src_files = glob_in_path(src_dir, '*.c', excludes=excludes)
   src_files += glob_in_path(profile_src_dir, '*.c')
@@ -1105,7 +1108,7 @@ class libc(MuslInternalLibrary,
     ignore = [
         'ipc', 'passwd', 'signal', 'sched', 'time', 'linux',
         'aio', 'exit', 'legacy', 'mq', 'setjmp',
-        'ldso', 'malloc'
+        'ldso', 'malloc',
     ]
 
     # individual files
@@ -1214,9 +1217,7 @@ class libc(MuslInternalLibrary,
         ])
 
     # These files are in libc directories, but only built in libc_optz.
-    ignore += [
-      'pow_small.c', 'log_small.c', 'log2_small.c'
-    ]
+    ignore += ['pow_small.c', 'log_small.c', 'log2_small.c']
 
     ignore = set(ignore)
     for dirpath, dirnames, filenames in os.walk(musl_srcdir):
@@ -1410,7 +1411,7 @@ class libc_optz(libc):
     # EMCC_FORCE_STDLIBS can have a similar effect of forcing all libraries.
     # In both cases, the build is not one that is hyper-focused on code size,
     # and so optz is not that important.
-    return super(libc_optz, self).can_use() and settings.SHRINK_LEVEL >= 2 and \
+    return super().can_use() and settings.SHRINK_LEVEL >= 2 and \
         not settings.LINKABLE and not os.environ.get('EMCC_FORCE_STDLIBS')
 
 
@@ -1424,7 +1425,7 @@ class libprintf_long_double(libc):
         filenames=['vfprintf.c'])
 
   def can_use(self):
-    return super(libprintf_long_double, self).can_use() and settings.PRINTF_LONG_DOUBLE
+    return super().can_use() and settings.PRINTF_LONG_DOUBLE
 
 
 class libwasm_workers(DebugLibrary):
@@ -1472,7 +1473,7 @@ class libwasm_workers(DebugLibrary):
     files = []
     if self.is_stub:
       files = [
-        'library_wasm_worker_stub.c'
+        'library_wasm_worker_stub.c',
       ]
     else:
       files = [
@@ -1500,7 +1501,7 @@ class libsockets(MuslInternalLibrary, MTLibrary):
       filenames=LIBC_SOCKETS)
 
   def can_use(self):
-    return super(libsockets, self).can_use() and not settings.PROXY_POSIX_SOCKETS
+    return super().can_use() and not settings.PROXY_POSIX_SOCKETS
 
 
 class libsockets_proxy(MTLibrary):
@@ -1512,7 +1513,7 @@ class libsockets_proxy(MTLibrary):
     return [utils.path_from_root('system/lib/websocket/websocket_to_posix_socket.c')]
 
   def can_use(self):
-    return super(libsockets_proxy, self).can_use() and settings.PROXY_POSIX_SOCKETS
+    return super().can_use() and settings.PROXY_POSIX_SOCKETS
 
 
 class crt1(MuslInternalLibrary):
@@ -1634,7 +1635,7 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
       filenames += [
         'cxa_exception_storage.cpp',
         'cxa_exception.cpp',
-        'cxa_personality.cpp'
+        'cxa_personality.cpp',
       ]
     else:
       assert False
@@ -1658,9 +1659,10 @@ class libcxx(ExceptionLibrary, MTLibrary):
     '-Wno-unqualified-std-cast-call',
     '-Wno-unknown-warning-option',
     '-std=c++23',
+    '-DLIBC_NAMESPACE=__llvm_libc',
   ]
 
-  includes = ['system/lib/libcxx/src']
+  includes = ['system/lib/libcxx/src', 'system/lib/llvm-libc']
 
   src_dir = 'system/lib/libcxx/src'
   src_glob = '**/*.cpp'
@@ -1792,7 +1794,7 @@ class libmalloc(MTLibrary):
       is_tracing=settings.EMSCRIPTEN_TRACING,
       memvalidate='memvalidate' in settings.MALLOC,
       verbose='verbose' in settings.MALLOC,
-      **kwargs
+      **kwargs,
     )
 
   @classmethod
@@ -1840,7 +1842,7 @@ class libmimalloc(MTLibrary):
     path='system/lib/mimalloc/src',
     glob_pattern='*.c',
     # mimalloc includes some files at the source level, so exclude them here.
-    excludes=['alloc-override.c', 'free.c', 'page-queue.c', 'static.c']
+    excludes=['alloc-override.c', 'free.c', 'page-queue.c', 'static.c'],
   )
   src_files += [utils.path_from_root('system/lib/mimalloc/src/prim/prim.c')]
   src_files += [utils.path_from_root('system/lib/emmalloc.c')]
@@ -1914,7 +1916,7 @@ class libGL(MTLibrary):
       is_ofb=settings.OFFSCREEN_FRAMEBUFFER,
       is_full_es3=settings.FULL_ES3,
       is_enable_get_proc_address=settings.GL_ENABLE_GET_PROC_ADDRESS,
-      **kwargs
+      **kwargs,
     )
 
 
@@ -2154,16 +2156,6 @@ class libasan_rt(SanitizerLibrary):
   src_dir = 'system/lib/compiler-rt/lib/asan'
 
 
-class libasan_js(Library):
-  name = 'libasan_js'
-  never_force = True
-
-  cflags = ['-fsanitize=address']
-
-  src_dir = 'system/lib'
-  src_files = ['asan_js.c']
-
-
 # This library is used when STANDALONE_WASM is set. In that mode, we don't
 # want to depend on JS, and so this library contains implementations of
 # things that we'd normally do in JS. That includes some general things
@@ -2214,7 +2206,7 @@ class libstandalonewasm(MuslInternalLibrary):
       is_mem_grow=settings.ALLOW_MEMORY_GROWTH,
       is_pure=settings.PURE_WASI,
       nocatch=settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS,
-      **kwargs
+      **kwargs,
     )
 
   def get_files(self):
@@ -2243,7 +2235,7 @@ class libstandalonewasm(MuslInternalLibrary):
     return files
 
   def can_use(self):
-    return super(libstandalonewasm, self).can_use() and settings.STANDALONE_WASM
+    return super().can_use() and settings.STANDALONE_WASM
 
 
 class libjsmath(Library):
@@ -2253,7 +2245,7 @@ class libjsmath(Library):
   src_files = ['jsmath.c']
 
   def can_use(self):
-    return super(libjsmath, self).can_use() and settings.JS_MATH
+    return super().can_use() and settings.JS_MATH
 
 
 class libstubs(DebugLibrary):
@@ -2341,7 +2333,6 @@ def get_libs_to_link(options):
     if settings.USE_ASAN:
       force_include.append('libasan_rt')
       add_library('libasan_rt')
-      add_library('libasan_js')
     elif settings.USE_LSAN:
       force_include.append('liblsan_rt')
       add_library('liblsan_rt')
@@ -2464,8 +2455,21 @@ def calculate(options):
   return ret
 
 
-def copytree_exist_ok(src, dst):
-  shutil.copytree(src, dst, dirs_exist_ok=True)
+def safe_copytree(src, dst):
+  # We cannot use `shutil.copytree` there because we need to ensure the
+  # output tree is writable, and in some cases the emscripten tree
+  # itself is readonly (e.g. NixOS).
+  # Even if we pass copy_function=safe_copy python's `shutil.copytree`
+  # will use its internal logic for copying directories and it will
+  # unconditionally copy the source directory's mode bits.
+  os.makedirs(dst, exist_ok=True)
+  for entry in os.scandir(src):
+    srcname = os.path.join(src, entry.name)
+    dstname = os.path.join(dst, entry.name)
+    if entry.is_dir():
+      safe_copytree(srcname, dstname)
+    else:
+      shared.safe_copy(srcname, dstname)
 
 
 def install_system_headers(stamp):
@@ -2488,19 +2492,15 @@ def install_system_headers(stamp):
   for src, dest in install_dirs.items():
     src = utils.path_from_root('system', *src)
     dest = os.path.join(target_include_dir, dest)
-    copytree_exist_ok(src, dest)
+    safe_copytree(src, dest)
 
   pkgconfig_src = utils.path_from_root('system/lib/pkgconfig')
   pkgconfig_dest = cache.get_sysroot_dir('lib/pkgconfig')
-  copytree_exist_ok(pkgconfig_src, pkgconfig_dest)
+  safe_copytree(pkgconfig_src, pkgconfig_dest)
 
   bin_src = utils.path_from_root('system/bin')
   bin_dest = cache.get_sysroot_dir('bin')
-  copytree_exist_ok(bin_src, bin_dest)
-
-  cmake_src = utils.path_from_root('system/lib/cmake')
-  cmake_dest = cache.get_sysroot_dir('lib/cmake')
-  copytree_exist_ok(cmake_src, cmake_dest)
+  safe_copytree(bin_src, bin_dest)
 
   # Create a version header based on the emscripten-version.txt
   version_file = cache.get_include_dir('emscripten/version.h')

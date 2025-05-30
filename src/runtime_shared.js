@@ -21,8 +21,38 @@
 #include "runtime_asan.js"
 #endif
 
+#if MODULARIZE && USE_READY_PROMISE
+var readyPromiseResolve, readyPromiseReject;
+#endif
+
+#if PTHREADS || WASM_WORKERS
+#if !MINIMAL_RUNTIME
+var wasmModuleReceived;
+#endif
+
+#if ENVIRONMENT_MAY_BE_NODE
+if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
+  // Create as web-worker-like an environment as we can.
+  var parentPort = worker_threads['parentPort'];
+  parentPort.on('message', (msg) => global.onmessage?.({ data: msg }));
+  Object.assign(globalThis, {
+    self: global,
+    postMessage: (msg) => parentPort['postMessage'](msg),
+  });
+}
+#endif // ENVIRONMENT_MAY_BE_NODE
+#endif
+
 #if PTHREADS
 #include "runtime_pthread.js"
+#endif
+
+#if WASM_WORKERS
+#include "wasm_worker.js"
+#endif
+
+#if AUDIO_WORKLET
+#include "audio_worklet.js"
 #endif
 
 #if LOAD_SOURCE_MAP
@@ -41,11 +71,6 @@ var wasmOffsetConverter;
   const shouldExportHeap = (x) => {
     let shouldExport = false;
     if (MODULARIZE && EXPORT_ALL) {
-      shouldExport = true;
-    } else if (AUDIO_WORKLET && (x == 'HEAPU32' || x == 'HEAPF32')) {
-      // Export to the AudioWorkletGlobalScope the needed variables to access
-      // the heap. AudioWorkletGlobalScope is unable to access global JS vars
-      // in the compiled main JS file.
       shouldExport = true;
     } else if (EXPORTED_RUNTIME_METHODS.includes(x)) {
       shouldExport = true;

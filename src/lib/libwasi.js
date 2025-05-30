@@ -544,11 +544,7 @@ var WasiLibrary = {
         return;
       }
       mount.type.syncfs(mount, false, (err) => {
-        if (err) {
-          wakeUp({{{ cDefs.EIO }}});
-          return;
-        }
-        wakeUp(0);
+        wakeUp(err ? {{{ cDefs.EIO }}} : 0);
       });
     });
 #else
@@ -567,6 +563,9 @@ var WasiLibrary = {
 
   // random.h
 
+#if ENVIRONMENT_MAY_BE_SHELL
+  $initRandomFill__deps: ['$base64Decode'],
+#endif
   $initRandomFill: () => {
 #if ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 190000
     // This block is not needed on v19+ since crypto.getRandomValues is builtin
@@ -575,6 +574,18 @@ var WasiLibrary = {
       return (view) => nodeCrypto.randomFillSync(view);
     }
 #endif // ENVIRONMENT_MAY_BE_NODE
+
+#if ENVIRONMENT_MAY_BE_SHELL
+    if (ENVIRONMENT_IS_SHELL) {
+      return (view) => {
+        if (!os.system) {
+          throw new Error('randomFill not supported on d8 unless --enable-os-system is passed');
+        }
+        const b64 = os.system('sh', ['-c', `head -c${view.byteLength} /dev/urandom | base64 --wrap=0`]);
+        view.set(base64Decode(b64));
+      };
+    }
+#endif
 
 #if SHARED_MEMORY
     // like with most Web APIs, we can't use Web Crypto API directly on shared memory,

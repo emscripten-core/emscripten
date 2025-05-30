@@ -147,7 +147,7 @@ function run() {
 #if PTHREADS || WASM_WORKERS
   if ({{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
 #if MODULARIZE
-    readyPromiseResolve(Module);
+    readyPromiseResolve?.(Module);
 #endif
     initRuntime();
     return;
@@ -187,7 +187,7 @@ function run() {
 #endif
 
 #if MODULARIZE
-    readyPromiseResolve(Module);
+    readyPromiseResolve?.(Module);
 #endif
 #if expectToReceiveOnModule('onRuntimeInitialized')
     Module['onRuntimeInitialized']?.();
@@ -300,21 +300,57 @@ function preInit() {
 }
 
 #if MODULARIZE == 'instance'
+// In MODULARIZE=instance mode we delay most of the initialization work until
+// the `init` function is called.
+#if ASSERTIONS
+var initCalled = false;
+#endif
 export default async function init(moduleArg = {}) {
-  Module = moduleArg;
+#if ASSERTIONS
+  assert(!initCalled);
+  initCalled = true;
+#endif
+  Object.assign(Module, moduleArg);
   processModuleArgs();
 #if WASM_ESM_INTEGRATION
   updateMemoryViews();
+#if DYNCALLS && '$dynCalls' in addedLibraryItems
+
+  assignDynCalls();
+#endif
 #else
   wasmExports = await createWasm();
-  assignWasmExports();
 #endif
   preInit();
   run();
 }
-#if PTHREADS
-if (ENVIRONMENT_IS_PTHREAD) await init()
+
+#if PTHREADS || WASM_WORKERS
+// When run as a worker thread run `init` immediately.
+if ({{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) await init()
 #endif
+
+#if ENVIRONMENT_MAY_BE_NODE
+// When run as the main script under node we run `init` immediately.
+if (ENVIRONMENT_IS_NODE
+#if PTHREADS || WASM_WORKERS
+&& !{{{ ENVIRONMENT_IS_WORKER_THREAD() }}}
+#endif
+)
+{
+  const url = await import('url');
+  const isMainModule = url.pathToFileURL(process.argv[1]).href === import.meta.url;
+  if (isMainModule) await init();
+}
+#endif
+
+#if ENVIRONMENT_MAY_BE_SHELL
+if (ENVIRONMENT_IS_SHELL) {
+  // When run in a shell we run `init` immediately.
+  await init();
+}
+#endif
+
 #else
 preInit();
 run();
@@ -325,7 +361,7 @@ run();
 var workerResponded = false, workerCallbackId = -1;
 
 (() => {
-  var messageBuffer = null, buffer = 0, bufferSize = 0;
+  var messageBuffer = null, buffer = 0;
 
   function flushMessages() {
     if (!messageBuffer) return;
@@ -360,11 +396,7 @@ var workerResponded = false, workerCallbackId = -1;
     var data = msg.data['data'];
     if (data) {
       if (!data.byteLength) data = new Uint8Array(data);
-      if (!buffer || bufferSize < data.length) {
-        if (buffer) _free(buffer);
-        bufferSize = data.length;
-        buffer = _malloc(data.length);
-      }
+      buffer = _realloc(buffer, data.length);
       HEAPU8.set(data, buffer);
     }
 

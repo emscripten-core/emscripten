@@ -1196,7 +1196,8 @@
                 "readyState",
                 "status",
                 "statusText",
-                "__attributes"
+                "__attributes",
+                "responseUrl"
             ]
         },
         "defines": [

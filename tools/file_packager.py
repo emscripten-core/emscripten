@@ -158,8 +158,7 @@ def has_hidden_attribute(filepath):
     return False
 
   try:
-    attrs = ctypes.windll.kernel32.GetFileAttributesW(
-        u'%s' % filepath)
+    attrs = ctypes.windll.kernel32.GetFileAttributesW(filepath)
     assert attrs != -1
     result = bool(attrs & 2)
   except Exception:
@@ -319,8 +318,6 @@ def generate_object_file(data_files):
       # A list of triples of:
       # (file_name_ptr, file_data_size, file_data_ptr)
       # The list in null terminate with a single 0
-      .globl __emscripten_embedded_file_data
-      .export_name __emscripten_embedded_file_data, __emscripten_embedded_file_data
       .section .rodata.__emscripten_embedded_file_data,"",@
       __emscripten_embedded_file_data:
       .p2align {align}
@@ -372,7 +369,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
   # read response files very early on
   try:
     args = substitute_response_files(sys.argv[1:])
-  except IOError as e:
+  except OSError as e:
     shared.exit_with_error(e)
 
   if '--help' in args:

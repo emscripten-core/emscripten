@@ -134,12 +134,6 @@ var USER_EXPORTS = [];
 // name of the file containing wasm binary, if relevant
 var WASM_BINARY_FILE = '';
 
-// name of the file containing the Wasm Worker *.ww.js, if relevant
-var WASM_WORKER_FILE = '';
-
-// name of the file containing the Audio Worklet *.aw.js, if relevant
-var AUDIO_WORKLET_FILE = '';
-
 // Base URL the source mapfile, if relevant
 var SOURCE_MAP_BASE = '';
 
@@ -232,6 +226,11 @@ var LINK_AS_CXX = false;
 // might run it after emcc. Either way, some JS changes and annotations must be
 // emitted in that case for closure compiler.
 var MAYBE_CLOSURE_COMPILER = false;
+
+// List of closure args for the closure compiler.
+// This list is populated from the --closure-args argument and can be extended
+// in ports using settings.CLOSURE_ARGS
+var CLOSURE_ARGS = [];
 
 // Set when some minimum browser version triggers doesn't support the minimum
 // set of JavaScript features.  This triggers transpilation using babel.

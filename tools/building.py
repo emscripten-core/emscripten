@@ -445,6 +445,7 @@ def eval_ctors(js_file, wasm_file, debug_info):
   num_successful = out.count('success on')
   if num_successful and has_wasm_call_ctors:
     js = js.replace(CTOR_ADD_PATTERN, '')
+    settings.WASM_EXPORTS.remove(WASM_CALL_CTORS)
   utils.write_file(js_file, js)
 
 
@@ -491,7 +492,7 @@ def get_closure_compiler_and_env(user_args):
   if not native_closure_compiler_works and not any(a.startswith('--platform') for a in user_args):
     # Run with Java Closure compiler as a fallback if the native version does not work.
     # This can happen, for example, on arm64 macOS machines that do not have Rosetta installed.
-    logger.warn('falling back to java version of closure compiler')
+    logger.warning('falling back to java version of closure compiler')
     user_args.append('--platform=java')
     check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=False)
 
@@ -513,7 +514,7 @@ def transpile(filename):
   config = {
     'sourceType': 'script',
     'presets': ['@babel/preset-env'],
-    'targets': {}
+    'targets': {},
   }
   if settings.MIN_CHROME_VERSION != UNSUPPORTED:
     config['targets']['chrome'] = str(settings.MIN_CHROME_VERSION)
@@ -605,6 +606,7 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
   args += ['--language_out', 'NO_TRANSPILE']
   # Tell closure never to inject the 'use strict' directive.
   args += ['--emit_use_strict=false']
+  args += ['--assume_static_inheritance_is_not_used=false']
 
   if settings.IGNORE_CLOSURE_COMPILER_ERRORS:
     args.append('--jscomp_off=*')
@@ -673,11 +675,11 @@ def run_closure_cmd(cmd, filename, env):
     if closure_warnings['error']:
       logger.error('Closure compiler completed with warnings and -Werror=closure enabled, aborting!\n')
     else:
-      logger.warn('Closure compiler completed with warnings:\n')
+      logger.warning('Closure compiler completed with warnings:\n')
 
   # Print input file (long wall of text!)
   if DEBUG == 2 and (proc.returncode != 0 or (len(proc.stderr.strip()) > 0 and closure_warnings['enabled'])):
-    input_file = open(filename, 'r').read().splitlines()
+    input_file = open(filename).read().splitlines()
     for i in range(len(input_file)):
       sys.stderr.write(f'{i + 1}: {input_file[i]}\n')
 
@@ -695,13 +697,13 @@ def run_closure_cmd(cmd, filename, env):
     if closure_warnings['error']:
       logger.error(proc.stderr)
     else:
-      logger.warn(proc.stderr)
+      logger.warning(proc.stderr)
 
     # Exit and/or print final hint to get clearer output
     if settings.MINIFY_WHITESPACE:
-      logger.warn('(rerun with -g1 linker flag for an unminified output)')
+      logger.warning('(rerun with -g1 linker flag for an unminified output)')
     elif DEBUG != 2:
-      logger.warn('(rerun with EMCC_DEBUG=2 enabled to dump Closure input file)')
+      logger.warning('(rerun with EMCC_DEBUG=2 enabled to dump Closure input file)')
 
     if closure_warnings['error']:
       exit_with_error('closure compiler produced warnings and -W=error=closure enabled')
@@ -747,15 +749,6 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
                                                   minify_exports=settings.MINIFY_WASM_EXPORT_NAMES,
                                                   debug_info=debug_info)
   return js_file
-
-
-def is_internal_global(name):
-  internal_start_stop_symbols = {'__start_em_asm', '__stop_em_asm',
-                                 '__start_em_js', '__stop_em_js',
-                                 '__start_em_lib_deps', '__stop_em_lib_deps',
-                                 '__em_lib_deps'}
-  internal_prefixes = ('__em_js__', '__em_lib_deps')
-  return not shared.treat_as_user_export(name) or name in internal_start_stop_symbols or any(name.startswith(p) for p in internal_prefixes)
 
 
 # get the flags to pass into the very last binaryen tool invocation, that runs
@@ -863,7 +856,7 @@ def metadce(js_file, wasm_file, debug_info, last):
         unused_imports.append(native_name)
       elif name.startswith('emcc$export$') and settings.DECLARE_ASM_MODULE_EXPORTS:
         native_name = export_name_map[name]
-        if not is_internal_global(native_name):
+        if shared.is_user_export(native_name):
           unused_exports.append(native_name)
   if not unused_exports and not unused_imports:
     # nothing found to be unused, so we have nothing to remove

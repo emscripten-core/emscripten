@@ -171,6 +171,18 @@ def setup_environment_settings():
   settings.ENVIRONMENT_MAY_BE_NODE = not settings.ENVIRONMENT or 'node' in environments
   settings.ENVIRONMENT_MAY_BE_SHELL = not settings.ENVIRONMENT or 'shell' in environments
 
+  if not settings.ENVIRONMENT_MAY_BE_NODE:
+    if 'MIN_NODE_VERSION' in user_settings:
+      diagnostics.warning('unused-command-line-argument', 'ignoring MIN_NODE_VERSION because `node` environment is not enabled')
+    settings.MIN_NODE_VERSION = feature_matrix.UNSUPPORTED
+
+  if not (settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WEBVIEW):
+    for browser in ('FIREFOX', 'SAFARI', 'CHROME'):
+      key = f'MIN_{browser}_VERSION'
+      if key in user_settings:
+        diagnostics.warning('unused-command-line-argument', 'ignoring %s because `web` and `webview` environments are not enabled', key)
+      settings[key] = feature_matrix.UNSUPPORTED
+
   # The worker case also includes Node.js workers when pthreads are
   # enabled and Node.js is one of the supported environments for the build to
   # run on. Node.js workers are detected as a combination of
@@ -516,9 +528,6 @@ def setup_pthreads():
     '_emscripten_thread_crashed',
   ]
 
-  if settings.EMBIND:
-    settings.REQUIRED_EXPORTS.append('_embind_initialize_bindings')
-
   if settings.MAIN_MODULE:
     settings.REQUIRED_EXPORTS += [
       '_emscripten_dlsync_self',
@@ -662,6 +671,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
 
+  setup_environment_settings()
+
   apply_library_settings(linker_args)
   linker_args += calc_extra_ldflags(options)
 
@@ -752,6 +763,11 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if s in user_settings:
       diagnostics.warning('deprecated', f'{s} is deprecated ({reason}). Please open a bug if you have a continuing need for this setting')
 
+  # Set the EXPORT_ES6 default early since it affects the setting of the
+  # default oformat below.
+  if settings.WASM_ESM_INTEGRATION or settings.MODULARIZE == 'instance':
+    default_setting('EXPORT_ES6', 1)
+
   # If no output format was specified we try to deduce the format based on
   # the output filename extension
   if not options.oformat and (options.relocatable or (options.shared and not settings.SIDE_MODULE)):
@@ -769,10 +785,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if not options.oformat:
     if settings.SIDE_MODULE or final_suffix == '.wasm':
       options.oformat = OFormat.WASM
-    elif final_suffix == '.mjs':
-      options.oformat = OFormat.MJS
     elif final_suffix == '.html':
       options.oformat = OFormat.HTML
+    elif final_suffix == '.mjs' or settings.EXPORT_ES6:
+      options.oformat = OFormat.MJS
     else:
       options.oformat = OFormat.JS
 
@@ -784,12 +800,30 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if options.oformat == OFormat.MJS:
     default_setting('EXPORT_ES6', 1)
 
+  if settings.JS_BASE64_API:
+    diagnostics.warning('experimental', '-sJS_BASE64_API is still experimental and not yet supported in browsers')
+
   if settings.WASM_ESM_INTEGRATION:
     diagnostics.warning('experimental', '-sWASM_ESM_INTEGRATION is still experimental and not yet supported in browsers')
-    default_setting('EXPORT_ES6', 1)
     default_setting('MODULARIZE', 'instance')
-    if not settings.EXPORT_ES6 or settings.MODULARIZE != 'instance':
-      exit_with_error('WASM_ESM_INTEGRATION requires EXPORT_ES6 and MODULARIZE=instance')
+    if not settings.EXPORT_ES6:
+      exit_with_error('WASM_ESM_INTEGRATION requires EXPORT_ES6')
+    if settings.MODULARIZE != 'instance':
+      exit_with_error('WASM_ESM_INTEGRATION requires MODULARIZE=instance')
+    if settings.RELOCATABLE:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with dynamic linking')
+    if settings.ASYNCIFY == 1:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with -sASYNCIFY=1')
+    if settings.WASM_WORKERS or settings.PTHREADS:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with multi-threading')
+    if settings.USE_OFFSET_CONVERTER:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with USE_OFFSET_CONVERTER')
+    if not settings.WASM_ASYNC_COMPILATION:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM_ASYNC_COMPILATION')
+    if not settings.WASM:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM2JS')
+    if settings.ABORT_ON_WASM_EXCEPTIONS:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with ABORT_ON_WASM_EXCEPTIONS')
 
   if settings.MODULARIZE and settings.MODULARIZE not in [1, 'instance']:
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
@@ -801,14 +835,22 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     else:
       default_setting('INCOMING_MODULE_JS_API', [])
 
+  if settings.ASYNCIFY == 1:
+    # ASYNCIFY=1 wraps only wasm exports so we need to enable legacy
+    # dyncalls via dynCall_xxx exports.
+    # See: https://github.com/emscripten-core/emscripten/issues/12066
+    settings.DYNCALLS = 1
+
   if settings.MODULARIZE == 'instance':
-    diagnostics.warning('experimental', '-sMODULARIZE=instance is still experimental. Many features may not work or will change.')
-    if options.oformat != OFormat.MJS:
-      exit_with_error('emcc: MODULARIZE instance is only compatible with .mjs output files')
-    limit_incoming_module_api()
-    for s in ['wasmMemory', 'INITIAL_MEMORY']:
-      if s in settings.INCOMING_MODULE_JS_API:
-        exit_with_error(f'emcc: {s} cannot be in INCOMING_MODULE_JS_API in MODULARIZE=instance mode')
+    diagnostics.warning('experimental', 'MODULARIZE=instance is still experimental. Many features may not work or will change.')
+    if not settings.EXPORT_ES6:
+      exit_with_error('MODULARIZE=instance requires EXPORT_ES6')
+    if settings.ASYNCIFY_LAZY_LOAD_CODE:
+      exit_with_error('MODULARIZE=instance is not compatible with -sASYNCIFY_LAZY_LOAD_CODE')
+    if settings.MINIMAL_RUNTIME:
+      exit_with_error('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
+    if options.use_preload_plugins or len(options.preload_files):
+      exit_with_error('MODULARIZE=instance is not compatible with --embed-file/--preload-file')
 
   if options.oformat in (OFormat.WASM, OFormat.BARE):
     if options.emit_tsd:
@@ -824,7 +866,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     wasm_target = get_secondary_target(target, '.wasm')
 
   if settings.SAFE_HEAP not in [0, 1, 2]:
-    exit_with_error('emcc: SAFE_HEAP must be 0, 1 or 2')
+    exit_with_error('SAFE_HEAP must be 0, 1 or 2')
 
   if not settings.WASM:
     # When the user requests non-wasm output, we enable wasm2js. that is,
@@ -838,7 +880,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.WASM2JS = 1
 
   if settings.WASM2JS:
-    settings.MAYBE_WASM2JS = 1
     # Wasm bigint doesn't make sense with wasm2js, since it controls how the
     # wasm and JS interact.
     if user_settings.get('WASM_BIGINT') and settings.WASM_BIGINT:
@@ -987,11 +1028,12 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   # Default to TEXTDECODER=2 (always use TextDecoder to decode UTF-8 strings)
   # in -Oz builds, since custom decoder for UTF-8 takes up space.
-  # In pthreads enabled builds, TEXTDECODER==2 may not work, see
-  # https://github.com/whatwg/encoding/issues/172
   # When supporting shell environments, do not do this as TextDecoder is not
   # widely supported there.
-  if settings.SHRINK_LEVEL >= 2 and not settings.SHARED_MEMORY and \
+  # In Audio Worklets TextDecoder API is intentionally not exposed
+  # (https://github.com/WebAudio/web-audio-api/issues/2499) so we also need to
+  # keep the JavaScript-based fallback.
+  if settings.SHRINK_LEVEL >= 2 and not settings.AUDIO_WORKLET and \
      not settings.ENVIRONMENT_MAY_BE_SHELL:
     default_setting('TEXTDECODER', 2)
 
@@ -1050,9 +1092,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$ExitStatus']
 
-  if not settings.BOOTSTRAPPING_STRUCT_INFO and settings.SAFE_HEAP:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue_safe', '$setValue_safe']
-
   if settings.ABORT_ON_WASM_EXCEPTIONS or settings.SPLIT_MODULE:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$wasmTable']
 
@@ -1092,7 +1131,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if settings.ASYNCIFY == 1:
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
         '__asyncify_state',
-        '__asyncify_data'
+        '__asyncify_data',
       ]
 
     if settings.MINIMAL_RUNTIME:
@@ -1117,11 +1156,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.ASYNCIFY_LAZY_LOAD_CODE:
     settings.ASYNCIFY = 1
-
-  if settings.ASYNCIFY == 1:
-    # See: https://github.com/emscripten-core/emscripten/issues/12065
-    # See: https://github.com/emscripten-core/emscripten/issues/12066
-    settings.DYNCALLS = 1
 
   settings.ASYNCIFY_ADD = unmangle_symbols_from_cmdline(settings.ASYNCIFY_ADD)
   settings.ASYNCIFY_REMOVE = unmangle_symbols_from_cmdline(settings.ASYNCIFY_REMOVE)
@@ -1213,8 +1247,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if settings.NODEJS_CATCH_REJECTION or settings.NODEJS_CATCH_EXIT:
       exit_with_error('cannot use -sNODEJS_CATCH_REJECTION or -sNODEJS_CATCH_EXIT with -sMODULARIZE')
 
-  setup_environment_settings()
-
   if settings.POLYFILL:
     # Emscripten requires certain ES6+ constructs by default in library code
     # - (various ES6 operators available in all browsers listed below)
@@ -1231,15 +1263,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
                           settings.MIN_CHROME_VERSION < 85 or
                           settings.MIN_SAFARI_VERSION < 140000 or
                           settings.MIN_NODE_VERSION < 160000)
-
-  # https://caniuse.com/class: FF:45 CHROME:49 SAFARI:9
-  supports_es6_classes = (settings.MIN_FIREFOX_VERSION >= 45 and
-                          settings.MIN_CHROME_VERSION >= 49 and
-                          settings.MIN_SAFARI_VERSION >= 90000)
-
-  if not settings.DISABLE_EXCEPTION_CATCHING and settings.EXCEPTION_STACK_TRACES and not supports_es6_classes:
-    diagnostics.warning('transpile', '-sEXCEPTION_STACK_TRACES requires an engine that support ES6 classes.')
-    settings.EXCEPTION_STACK_TRACES = 0
 
   if settings.STB_IMAGE:
     settings.EXPORTED_FUNCTIONS += ['_stbi_load', '_stbi_load_from_memory', '_stbi_image_free']
@@ -1378,6 +1401,11 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     # Workaround for embind+LTO issue:
     # https://github.com/emscripten-core/emscripten/issues/21653
     settings.REQUIRED_EXPORTS.append('__getTypeName')
+    if settings.PTHREADS or settings.WASM_WORKERS:
+      settings.REQUIRED_EXPORTS.append('_embind_initialize_bindings')
+    # Needed to assign the embind exports to the ES exports.
+    if settings.MODULARIZE == 'instance':
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$addOnPostCtor']
 
   if options.emit_tsd:
     settings.EMIT_TSD = True
@@ -1402,9 +1430,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.WASM_WORKERS:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$_wasmWorkerInitializeRuntime']
-    # set location of Wasm Worker bootstrap JS file
-    if settings.WASM_WORKERS == 1:
-      settings.WASM_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.ww.js'
     add_system_js_lib('libwasm_worker.js')
 
   # Set min browser versions based on certain settings such as WASM_BIGINT,
@@ -1421,18 +1446,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   default_setting('WASM_BIGINT', feature_matrix.caniuse(feature_matrix.Feature.JS_BIGINT_INTEGRATION))
 
   if settings.AUDIO_WORKLET:
-    if settings.AUDIO_WORKLET == 1:
-      settings.AUDIO_WORKLET_FILE = unsuffixed(os.path.basename(target)) + '.aw.js'
     add_system_js_lib('libwebaudio.js')
-    if not settings.MINIMAL_RUNTIME:
-      # If we are in the audio worklet environment, we can only access the Module object
-      # and not the global scope of the main JS script. Therefore we need to export
-      # all symbols that the audio worklet scope needs onto the Module object.
-      # MINIMAL_RUNTIME exports these manually, since this export mechanism is placed
-      # in global scope that is not suitable for MINIMAL_RUNTIME loader.
-      settings.EXPORTED_RUNTIME_METHODS += ['stackSave', 'stackAlloc', 'stackRestore', 'wasmTable']
-      # The following symbols need exposing to load and bootstrap the audio worklet:
-      settings.INCOMING_MODULE_JS_API += ['instantiateWasm', 'wasm', 'wasmMemory']
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$getWasmTableEntry')
 
   if not settings.MINIMAL_RUNTIME:
     if 'preRun' in settings.INCOMING_MODULE_JS_API:
@@ -1449,13 +1464,13 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       'FS_createPath',
       'FS_createDataFile',
       'FS_createPreloadedFile',
-      'FS_unlink'
+      'FS_unlink',
     ]
     if not settings.WASMFS:
       # The old FS has some functionality that WasmFS lacks.
       settings.EXPORTED_RUNTIME_METHODS += [
         'FS_createLazyFile',
-        'FS_createDevice'
+        'FS_createDevice',
       ]
 
     settings.EXPORTED_RUNTIME_METHODS += [
@@ -1551,10 +1566,12 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['_load_secondary_module']
 
   # wasm side modules have suffix .wasm
-  if settings.SIDE_MODULE and shared.suffix(target) == '.js':
-    diagnostics.warning('emcc', 'output suffix .js requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
+  if settings.SIDE_MODULE and shared.suffix(target) in ('.js', '.mjs'):
+    diagnostics.warning('emcc', 'JavaScript output suffix requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
 
   if options.sanitize:
+    if settings.WASM_WORKERS:
+      exit_with_error('WASM_WORKERS is not currently compatible with `-fsanitize` tools')
     settings.USE_OFFSET_CONVERTER = 1
     # These symbols are needed by `withBuiltinMalloc` which used to implement
     # the `__noleakcheck` attribute.  However this dependency is not yet represented in the JS
@@ -1614,7 +1631,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       # do anything (as the user's list won't contain these functions), and if
       # we did add them, the pass would assert on incompatible lists, hence the
       # condition in the above if.
-      settings.ASYNCIFY_REMOVE += emscripten.ASAN_C_HELPERS
+      settings.ASYNCIFY_REMOVE.append("__asan_*")
 
     if settings.ASAN_SHADOW_SIZE != -1:
       diagnostics.warning('emcc', 'ASAN_SHADOW_SIZE is ignored and will be removed in a future release')
@@ -1723,9 +1740,9 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     # need to be able to call these explicitly.
     settings.REQUIRED_EXPORTS += ['__funcs_on_exit']
 
-  # The worker code in src/postamble.js depends on malloc/free being exported
+  # The worker code in src/postamble.js depends on realloc
   if settings.BUILD_AS_WORKER:
-    settings.REQUIRED_EXPORTS += ['malloc', 'free']
+    settings.REQUIRED_EXPORTS += ['realloc']
 
   if not settings.DISABLE_EXCEPTION_CATCHING:
     settings.REQUIRED_EXPORTS += [
@@ -1997,6 +2014,8 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   # Ignore -sMODULARIZE which could otherwise effect how we run the module
   # to generate the bindings.
   settings.MODULARIZE = False
+  # Disable ESM integration to avoid enabling the experimental feature in node.
+  settings.WASM_ESM_INTEGRATION = False
   # Don't include any custom user JS or files.
   settings.PRE_JS_FILES = []
   settings.POST_JS_FILES = []
@@ -2023,8 +2042,7 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
     dirname, basename = os.path.split(lib)
     if basename == 'libembind.js':
       settings.JS_LIBRARIES[i] = os.path.join(dirname, 'libembind_gen.js')
-  if settings.MEMORY64:
-    settings.MIN_NODE_VERSION = 160000
+  settings.MIN_NODE_VERSION = 160000 if settings.MEMORY64 else 150000
   # Source maps haven't been generated yet and aren't needed to run embind_gen.
   settings.LOAD_SOURCE_MAP = 0
   outfile_js = in_temp('tsgen.js')
@@ -2041,9 +2059,10 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   if settings.WASM_EXCEPTIONS:
     node_args += shared.node_exception_flags(config.NODE_JS)
   # Run the generated JS file with the proper flags to generate the TypeScript bindings.
-  out = shared.run_js_tool(outfile_js, [], node_args, stdout=PIPE)
+  output_file = in_temp('embind_generated_output.js')
+  shared.run_js_tool(outfile_js, [output_file], node_args)
   settings.restore(original_settings)
-  return out
+  return read_file(output_file)
 
 
 @ToolchainProfiler.profile_block('emit tsd')
@@ -2062,10 +2081,26 @@ def phase_emit_tsd(options, wasm_target, js_target, js_syms, metadata):
 def phase_embind_aot(options, wasm_target, js_syms):
   out = run_embind_gen(options, wasm_target, js_syms, {})
   if DEBUG:
-    write_file(in_temp('embind_aot.js'), out)
+    write_file(in_temp('embind_aot.json'), out)
+  out = json.loads(out)
   src = read_file(final_js)
-  src = do_replace(src, '<<< EMBIND_AOT_OUTPUT >>>', out)
+  src = do_replace(src, '<<< EMBIND_AOT_INVOKERS >>>', out['invokers'])
+  if settings.MODULARIZE == 'instance':
+    # Add ES module exports for the embind exports.
+    decls = '\n'.join([f'export var {name};' for name in out['publicSymbols']])
+    # Assign the runtime exports from Module to the ES export.
+    assigns = '\n'.join([f'{name} = Module[\'{name}\'];' for name in out['publicSymbols']])
+    exports = f'''
+// start embind exports
+function assignEmbindExports() {{ {assigns} }};
+addOnPostCtor(assignEmbindExports);
+{decls}
+// end embind exports'''
+    src += exports
   write_file(final_js, src)
+  if settings.WASM_ESM_INTEGRATION:
+    # With ESM integration the embind exports also need to be exported by the main file.
+    settings.EXPORTED_RUNTIME_METHODS.extend(out['publicSymbols'])
 
 
 # for Popen, we cannot have doublequotes, so provide functionality to
@@ -2110,24 +2145,12 @@ def fix_es6_import_statements(js_file):
   save_intermediate('es6-module')
 
 
-def create_worker_file(input_file, target_dir, output_file, options):
-  output_file = os.path.join(target_dir, output_file)
-  input_file = utils.path_from_root(input_file)
-  contents = building.read_and_preprocess(input_file, expand_macros=True)
-  write_file(output_file, contents)
-
-  fix_es6_import_statements(output_file)
-
-  # Minify the worker JS file, if JS minification is enabled.
-  if settings.MINIFY_WHITESPACE:
-    contents = building.acorn_optimizer(output_file, ['--minify-whitespace'], return_output=True, worker_js=True)
-    write_file(output_file, contents)
-
-  utils.convert_line_endings_in_file(output_file, options.output_eol)
+def node_detection_code():
+  return "globalThis.process?.versions?.node && globalThis.process?.type != 'renderer'"
 
 
 def create_esm_wrapper(wrapper_file, support_target, wasm_target):
-  js_exports = settings.EXPORTED_RUNTIME_METHODS + list(building.user_requested_exports)
+  js_exports = building.user_requested_exports.union(settings.EXPORTED_RUNTIME_METHODS)
   js_exports = ', '.join(sorted(js_exports))
 
   wrapper = []
@@ -2140,11 +2163,12 @@ def create_esm_wrapper(wrapper_file, support_target, wasm_target):
   else:
     wrapper.append(f"export {{ default }} from '{support_url}';")
 
-  if settings.ENVIRONMENT_MAY_BE_NODE and settings.INVOKE_RUN and settings.EXPECT_MAIN:
+  if settings.ENVIRONMENT_MAY_BE_NODE:
     wrapper.append(f'''
-// When run as the main module under node, execute main directly here
+// When run as the main module under node, create the module directly.  This will
+// execute any startup code along with main (if it exists).
 import init from '{support_url}';
-const isNode = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string' && process.type != 'renderer';
+const isNode = {node_detection_code()};
 if (isNode) {{
   const url = await import('url');
   const isMainModule = url.pathToFileURL(process.argv[1]).href === import.meta.url;
@@ -2161,7 +2185,10 @@ if (isNode) {{
   mod = mod.replace('(import "wasi_snapshot_preview1"', f'(import "{support_url}"')
 
   wasm_as = os.path.join(building.get_binaryen_bin(), 'wasm-as')
-  shared.check_call([wasm_as, '--all-features', '-o', wasm_target, '-'], input=mod)
+  cmd = [wasm_as, '--all-features', '-o', wasm_target, '-']
+  if settings.EMIT_NAME_SECTION:
+    cmd.append('-g')
+  shared.check_call(cmd, input=mod)
 
 
 @ToolchainProfiler.profile_block('final emitting')
@@ -2170,16 +2197,6 @@ def phase_final_emitting(options, target, js_target, wasm_target):
 
   if shared.SKIP_SUBPROCS:
     return
-
-  target_dir = os.path.dirname(os.path.abspath(target))
-
-  # Deploy the Wasm Worker bootstrap file as an output file (*.ww.js)
-  if settings.WASM_WORKERS == 1:
-    create_worker_file('src/wasm_worker.js', target_dir, settings.WASM_WORKER_FILE, options)
-
-  # Deploy the Audio Worklet module bootstrap file (*.aw.js)
-  if settings.AUDIO_WORKLET == 1:
-    create_worker_file('src/audio_worklet.js', target_dir, settings.AUDIO_WORKLET_FILE, options)
 
   if settings.MODULARIZE and settings.MODULARIZE != 'instance':
     modularize()
@@ -2198,7 +2215,7 @@ def phase_final_emitting(options, target, js_target, wasm_target):
     # Finally, rerun Closure compile with simple optimizations. It will be able
     # to further minify the code. (n.b. it would not be safe to run in advanced
     # mode)
-    final_js = building.closure_compiler(final_js, advanced=False, extra_closure_args=options.closure_args)
+    final_js = building.closure_compiler(final_js, advanced=False, extra_closure_args=settings.CLOSURE_ARGS)
     # Run unsafe_optimizations.js once more.  This allows the cleanup of newly
     # unused things that closure compiler leaves behind (e.g `new Float64Array(x)`).
     shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.mjs'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
@@ -2298,10 +2315,6 @@ def phase_binaryen(target, options, wasm_target):
   # after generating the wasm, do some final operations
 
   if final_js:
-    if settings.SUPPORT_BIG_ENDIAN:
-      with ToolchainProfiler.profile_block('little_endian_heap'):
-        final_js = building.little_endian_heap(final_js)
-
     # >=2GB heap support requires pointers in JS to be unsigned. rather than
     # require all pointers to be unsigned by default, which increases code size
     # a little, keep them signed, and just unsign them here if we need that.
@@ -2309,20 +2322,26 @@ def phase_binaryen(target, options, wasm_target):
       with ToolchainProfiler.profile_block('use_unsigned_pointers_in_js'):
         final_js = building.use_unsigned_pointers_in_js(final_js)
 
-    # shared memory growth requires some additional JS fixups.
-    # note that we must do this after handling of unsigned pointers. unsigning
-    # adds some >>> 0 things, while growth will replace a HEAP8 with a call to
-    # a method to get the heap, and that call would not be recognized by the
-    # unsigning pass
-    if settings.SHARED_MEMORY and settings.ALLOW_MEMORY_GROWTH:
-      with ToolchainProfiler.profile_block('apply_wasm_memory_growth'):
-        final_js = building.apply_wasm_memory_growth(final_js)
-
     if settings.USE_ASAN:
       final_js = building.instrument_js_for_asan(final_js)
 
     if settings.SAFE_HEAP:
       final_js = building.instrument_js_for_safe_heap(final_js)
+
+    # shared memory growth requires some additional JS fixups.
+    # note that we must do this after handling of unsigned pointers. unsigning
+    # adds some >>> 0 things, while growth will replace a HEAP8 with a call to
+    # a method to get the heap, and that call would not be recognized by the
+    # unsigning pass.
+    # we also must do this after the asan or safe_heap instrumentation, as they
+    # wouldn't be able to recognize patterns produced by the growth pass.
+    if settings.SHARED_MEMORY and settings.ALLOW_MEMORY_GROWTH:
+      with ToolchainProfiler.profile_block('apply_wasm_memory_growth'):
+        final_js = building.apply_wasm_memory_growth(final_js)
+
+    if settings.SUPPORT_BIG_ENDIAN:
+      with ToolchainProfiler.profile_block('little_endian_heap'):
+        final_js = building.little_endian_heap(final_js)
 
     if settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL <= 2:
       # minify the JS. Do not minify whitespace if Closure is used, so that
@@ -2338,7 +2357,7 @@ def phase_binaryen(target, options, wasm_target):
 
     if options.use_closure_compiler:
       with ToolchainProfiler.profile_block('closure_compile'):
-        final_js = building.closure_compiler(final_js, extra_closure_args=options.closure_args)
+        final_js = building.closure_compiler(final_js, extra_closure_args=settings.CLOSURE_ARGS)
       save_intermediate('closure')
 
     if settings.TRANSPILE:
@@ -2440,6 +2459,15 @@ def node_pthread_detection():
     return "require('worker_threads').workerData === 'em-pthread'\n"
 
 
+def node_ww_detection():
+  # Under node we detect that we are running in a wasm worker by checking the
+  # workerData property.
+  if settings.EXPORT_ES6:
+    return "(await import('worker_threads')).workerData === 'em-ww';\n"
+  else:
+    return "require('worker_threads').workerData === 'em-ww'\n"
+
+
 def modularize():
   global final_js
   logger.debug(f'Modularizing, assigning to var {settings.EXPORT_NAME}')
@@ -2462,10 +2490,10 @@ def modularize():
 }
 ''' % {
       'maybe_async': maybe_async,
-      'generated_js': generated_js
+      'generated_js': generated_js,
     }
 
-  if settings.MINIMAL_RUNTIME and not settings.PTHREADS:
+  if settings.MINIMAL_RUNTIME and not settings.PTHREADS and not settings.WASM_WORKERS:
     # Single threaded MINIMAL_RUNTIME programs do not need access to
     # document.currentScript, so a simple export declaration is enough.
     src = f'var {settings.EXPORT_NAME} = {wrapper_function};'
@@ -2490,15 +2518,6 @@ var %(EXPORT_NAME)s = (() => {
   if settings.SOURCE_PHASE_IMPORTS:
     src = f"import source wasmModule from './{settings.WASM_BINARY_FILE}';\n\n" + src
 
-  # Given the async nature of how the Module function and Module object
-  # come into existence in AudioWorkletGlobalScope, store the Module
-  # function under a different variable name so that AudioWorkletGlobalScope
-  # will be able to reference it without aliasing/conflicting with the
-  # Module variable name. This should happen even in MINIMAL_RUNTIME builds
-  # for MODULARIZE and EXPORT_ES6 to work correctly.
-  if settings.AUDIO_WORKLET:
-    src += f'globalThis.AudioWorkletModule = {settings.EXPORT_NAME};\n'
-
   # Export using a UMD style export, or ES6 exports if selected
   if settings.EXPORT_ES6:
     src += 'export default %s;\n' % settings.EXPORT_NAME
@@ -2522,7 +2541,7 @@ if (typeof exports === 'object' && typeof module === 'object') {
       src += "var isPthread = globalThis.self?.name?.startsWith('em-pthread');\n"
       # In order to support both web and node we also need to detect node here.
       if settings.ENVIRONMENT_MAY_BE_NODE:
-        src += "var isNode = typeof globalThis.process?.versions?.node == 'string';\n"
+        src += f'var isNode = {node_detection_code()};\n'
         src += f'if (isNode) isPthread = {node_pthread_detection()}\n'
     elif settings.ENVIRONMENT_MAY_BE_NODE:
       src += f'var isPthread = {node_pthread_detection()}\n'
@@ -2531,6 +2550,28 @@ if (typeof exports === 'object' && typeof module === 'object') {
       src += 'isPthread && init();\n'
     else:
       src += 'isPthread && %s();\n' % settings.EXPORT_NAME
+
+  if settings.WASM_WORKERS:
+    # Same as above for for WASM_WORKERS
+    # Normally this detection is done when the module is itself run but
+    # when running in MODULARIZE mode we need use this to know if we should
+    # run the module constructor on startup (true only for pthreads).
+    if settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WORKER:
+      src += "var isWW = globalThis.self?.name == 'em-ww';\n"
+      # In order to support both web and node we also need to detect node here.
+      if settings.ENVIRONMENT_MAY_BE_NODE:
+        if not settings.PTHREADS:
+          src += f'var isNode = {node_detection_code()};\n'
+        src += f'if (isNode) isWW = {node_ww_detection()}\n'
+    elif settings.ENVIRONMENT_MAY_BE_NODE:
+      src += f'var isWW = {node_ww_detection()}\n'
+    if settings.AUDIO_WORKLET:
+      src += "isWW ||= typeof AudioWorkletGlobalScope !== 'undefined';\n"
+    src += '// When running as a wasm worker, construct a new instance on startup\n'
+    if settings.MODULARIZE == 'instance':
+      src += 'isWW && init();\n'
+    else:
+      src += 'isWW && %s();\n' % settings.EXPORT_NAME
 
   final_js += '.modular.js'
   write_file(final_js, src)

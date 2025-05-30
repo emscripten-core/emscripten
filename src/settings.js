@@ -342,9 +342,9 @@ var SAFE_HEAP_LOG = false;
 // truncs/extends/ reinterprets). This means that when types do not match the
 // emulated values may not match (this is true of native too, for that matter -
 // this is all undefined behavior). This approaches appears good enough to
-// support Python, which is the main use case motivating this feature.
+// support Python (the original motiviation for this feature) and Glib (the
+// continued motivation).
 // [link]
-// [deprecated]
 var EMULATE_FUNCTION_POINTER_CASTS = false;
 
 // Print out exceptions in emscriptened code.
@@ -572,8 +572,12 @@ var GL_FFP_ONLY = false;
 // [link]
 var GL_PREINITIALIZED_CONTEXT = false;
 
-// Enables support for WebGPU (via "webgpu/webgpu.h").
+// Enables the built-in implementation of ``<webgpu/webgpu.h>``.
+// Deprecated: Please try migrating to ``--use-port=emdawnwebgpu``,
+// which implements a newer, incompatible version of webgpu.h (see
+// tools/ports/emdawnwebgpu.py for more info).
 // [link]
+// [deprecated]
 var USE_WEBGPU = false;
 
 // Enables building of stb-image, a tiny public-domain library for decoding
@@ -913,6 +917,7 @@ var ASYNCIFY_ADVISE = false;
 // Allows lazy code loading: where emscripten_lazy_load_code() is written, we
 // will pause execution, load the rest of the code, and then resume.
 // [link]
+// [deprecated]
 var ASYNCIFY_LAZY_LOAD_CODE = false;
 
 // Runtime debug logging from asyncify internals.
@@ -1637,13 +1642,9 @@ var USE_SQLITE3 = false;
 // [compile+link] - affects user code at compile and system libraries at link.
 var SHARED_MEMORY = false;
 
-// If 1, enables support for Wasm Workers. Wasm Workers enable applications
+// Enables support for Wasm Workers.  Wasm Workers enable applications
 // to create threads using a lightweight web-specific API that builds on top
-// of Wasm SharedArrayBuffer + Atomics API. When enabled, a new build output
-// file a.ww.js will be generated to bootstrap the Wasm Worker JS contexts.
-// If 2, enables support for Wasm Workers, but without using a separate a.ww.js
-// file on the side. This can simplify deployment of builds, but will have a
-// downside that the generated build will no longer be csp-eval compliant.
+// of Wasm SharedArrayBuffer + Atomics API.
 // [compile+link] - affects user code at compile and system libraries at link.
 var WASM_WORKERS = 0;
 
@@ -1880,7 +1881,7 @@ var AUTO_NATIVE_LIBRARIES = true;
 // for Firefox versions older than < majorVersion.
 // Firefox 79 was released on 2020-07-28.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// Minimum supported value is 40 which was released on 2015-09-11 (see
+// Minimum supported value is 50 which was released on 2016-11-15 (see
 // feature_matrix.py)
 // [link]
 var MIN_FIREFOX_VERSION = 79;
@@ -1906,7 +1907,7 @@ var MIN_SAFARI_VERSION = 150000;
 // numbers with Chrome.
 // Chrome 85 was released on 2020-08-25.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// Minimum supported value is 45, which was released on 2015-09-01 (see
+// Minimum supported value is 55, which was released on 2016-12-01 (see
 // feature_matrix.py).
 // [link]
 var MIN_CHROME_VERSION = 85;
@@ -1973,7 +1974,7 @@ var MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION = false;
 //
 // - 0: No setjmp/longjmp handling
 // - 1: Default setjmp/longjmp/handling, depending on the mode of exceptions.
-//   'wasm' if '-fwasm-exception' is used, 'emscripten' otherwise.
+//   'wasm' if '-fwasm-exceptions' is used, 'emscripten' otherwise.
 //
 // [compile+link] - at compile time this enables the transformations needed for
 // longjmp support at codegen time, while at link it allows linking in the
@@ -2006,15 +2007,6 @@ var HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS = true;
 // disable HTML minification altogether.
 // [link]
 var MINIFY_HTML = true;
-
-// Whether we *may* be using wasm2js. This compiles to wasm normally, but lets
-// you run wasm2js *later* on the wasm, and you can pick between running the
-// normal wasm or that wasm2js code. For details of how to do that, see the
-// test_maybe_wasm2js test.  This option can be useful for debugging and
-// bisecting.
-// [link]
-// [deprecated]
-var MAYBE_WASM2JS = false;
 
 // This option is no longer used. The appropriate shadow memory size is now
 // calculated from INITIAL_MEMORY and MAXIMUM_MEMORY. Will be removed in a
@@ -2193,6 +2185,14 @@ var SOURCE_PHASE_IMPORTS = false;
 // [link]
 var WASM_ESM_INTEGRATION = false;
 
+// Enable use of the JS arraybuffer-base64 API:
+// https://github.com/tc39/proposal-arraybuffer-base64
+// To run the resulting code currently requires passing `--js_base_64` to node
+// or chrome.
+// [experimental]
+// [link]
+var JS_BASE64_API = false;
+
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]
 // For removed settings (which now effectively have a fixed value and can no
@@ -2278,4 +2278,5 @@ var LEGACY_SETTINGS = [
   ['EXTRA_EXPORTED_RUNTIME_METHODS', [[]], 'No longer supported, use EXPORTED_RUNTIME_METHODS'],
   ['SUPPORT_ERRNO', [0], 'No longer supported'],
   ['DEMANGLE_SUPPORT', [0], 'No longer supported'],
+  ['MAYBE_WASM2JS', [0], 'No longer supported (use -sWASM=2)'],
 ];

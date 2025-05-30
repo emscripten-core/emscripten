@@ -118,7 +118,7 @@ addToLibrary({
     if (keepRuntimeAlive() && !implicit) {
       var msg = `program exited (with status: ${status}), but keepRuntimeAlive() is set (counter=${runtimeKeepaliveCounter}) due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)`;
 #if MODULARIZE
-      readyPromiseReject(msg);
+      readyPromiseReject?.(msg);
 #endif // MODULARIZE
       err(msg);
     }
@@ -425,7 +425,6 @@ addToLibrary({
   },
 #endif
 
-  $withStackSave__internal: true,
   $withStackSave__deps: ['$stackSave', '$stackRestore'],
   $withStackSave: (f) => {
     var stack = stackSave();
@@ -1300,7 +1299,7 @@ addToLibrary({
   // Mark as `noleakcheck` otherwise lsan will report the last returned string
   // as a leak.
   emscripten_run_script_string__noleakcheck: true,
-  emscripten_run_script_string__deps: ['$lengthBytesUTF8', '$stringToUTF8', 'malloc'],
+  emscripten_run_script_string__deps: ['$lengthBytesUTF8', '$stringToUTF8', 'realloc'],
   emscripten_run_script_string: (ptr) => {
     {{{ makeEval("var s = eval(UTF8ToString(ptr));") }}}
     if (s == null) {
@@ -1308,12 +1307,8 @@ addToLibrary({
     }
     s += '';
     var me = _emscripten_run_script_string;
-    var len = lengthBytesUTF8(s);
-    if (!me.bufferSize || me.bufferSize < len+1) {
-      if (me.bufferSize) _free(me.buffer);
-      me.bufferSize = len+1;
-      me.buffer = _malloc(me.bufferSize);
-    }
+    me.bufferSize = lengthBytesUTF8(s) + 1;
+    me.buffer = _realloc(me.buffer ?? 0, me.bufferSize)
     stringToUTF8(s, me.buffer, me.bufferSize);
     return me.buffer;
   },
@@ -1695,16 +1690,6 @@ addToLibrary({
   $getExecutableName: () => thisProgram || './this.program',
 #endif
 
-  $listenOnce: (object, event, func) =>
-#if MIN_CHROME_VERSION < 55 || MIN_FIREFOX_VERSION < 50 // https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener
-    object.addEventListener(event, function handler() {
-      func();
-      object.removeEventListener(event, handler);
-    }),
-#else
-    object.addEventListener(event, func, { 'once': true }),
-#endif
-
   // Receives a Web Audio context plus a set of elements to listen for user
   // input events on, and registers a context resume() for them. This lets
   // audio work properly in an automatic way, as browsers won't let audio run
@@ -1713,39 +1698,27 @@ addToLibrary({
   // elements, which handle common use cases.
   // TODO(sbc): Remove seemingly unused elements argument
   $autoResumeAudioContext__docs: '/** @param {Object=} elements */',
-  $autoResumeAudioContext__deps: ['$listenOnce'],
   $autoResumeAudioContext: (ctx, elements) => {
     if (!elements) {
       elements = [document, document.getElementById('canvas')];
     }
     ['keydown', 'mousedown', 'touchstart'].forEach((event) => {
       elements.forEach((element) => {
-        if (element) {
-          listenOnce(element, event, () => {
-            if (ctx.state === 'suspended') ctx.resume();
-          });
-        }
+        element?.addEventListener(event, () => {
+          if (ctx.state === 'suspended') ctx.resume();
+        }, { 'once': true });
       });
     });
   },
 
 #if DYNCALLS || !WASM_BIGINT
-#if MINIMAL_RUNTIME
-  $dynCalls: '{}',
-#endif
-  $dynCallLegacy__deps: [
-#if MINIMAL_RUNTIME
-    '$dynCalls',
-#endif
-  ],
+  $dynCalls__internal: true,
+  $dynCalls: {},
+  $dynCallLegacy__deps: ['$dynCalls'],
   $dynCallLegacy: (sig, ptr, args) => {
     sig = sig.replace(/p/g, {{{ MEMORY64 ? "'j'" : "'i'" }}})
 #if ASSERTIONS
-#if MINIMAL_RUNTIME
     assert(sig in dynCalls, `bad function pointer type - sig is not in dynCalls: '${sig}'`);
-#else
-    assert(('dynCall_' + sig) in Module, `bad function pointer type - dynCall function not found for sig '${sig}'`);
-#endif
     if (args?.length) {
 #if WASM_BIGINT
       // j (64-bit integer) is fine, and is implemented as a BigInt. Without
@@ -1760,11 +1733,7 @@ addToLibrary({
       assert(sig.length == 1);
     }
 #endif
-#if MINIMAL_RUNTIME
     var f = dynCalls[sig];
-#else
-    var f = Module['dynCall_' + sig];
-#endif
     return f(ptr, ...args);
   },
 #if DYNCALLS
@@ -1818,14 +1787,24 @@ addToLibrary({
     }
 #endif
     var rtn = func(...args);
-#endif
+#endif // DYNCALLS
+
+    function convert(rtn) {
 #if MEMORY64
-    return sig[0] == 'p' ? Number(rtn) : rtn;
+      return sig[0] == 'p' ? Number(rtn) : rtn;
 #elif CAN_ADDRESS_2GB
-    return sig[0] == 'p' ? rtn >>> 0 : rtn;
+      return sig[0] == 'p' ? rtn >>> 0 : rtn;
 #else
-    return rtn;
+      return rtn;
 #endif
+    }
+
+#if JSPI
+    if (promising) {
+      return rtn.then(convert);
+    }
+#endif
+    return convert(rtn);
   },
 
   $callRuntimeCallbacks__internal: true,
@@ -2202,7 +2181,7 @@ addToLibrary({
   __asyncify_state: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, 0)",
   __asyncify_data: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true}, {{{ to64(0) }}})",
 #endif
-#endif
+#endif // RELOCATABLE
 
   _emscripten_fs_load_embedded_files__deps: ['$FS', '$PATH'],
   _emscripten_fs_load_embedded_files: (ptr) => {
@@ -2277,6 +2256,18 @@ addToLibrary({
 #else
   $wasmTable: undefined,
 #endif
+
+  $getUniqueRunDependency: (id) => {
+#if ASSERTIONS
+    var orig = id;
+    while (1) {
+      if (!runDependencyTracking[id]) return id;
+      id = orig + Math.random();
+    }
+#else
+    return id;
+#endif
+  },
 
   $noExitRuntime__postset: () => addAtModule(makeModuleReceive('noExitRuntime')),
   $noExitRuntime: {{{ !EXIT_RUNTIME }}},

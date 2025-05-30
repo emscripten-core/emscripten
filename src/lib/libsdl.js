@@ -483,7 +483,7 @@ var LibrarySDL = {
 
       var info = SDL.surfaces[surf];
       if (!info.usePageCanvas && info.canvas) SDL.canvasPool.push(info.canvas);
-      if (info.buffer) _free(info.buffer);
+      _free(info.buffer);
       _free(info.pixelFormat);
       _free(surf);
       SDL.surfaces[surf] = null;
@@ -1484,15 +1484,19 @@ var LibrarySDL = {
   SDL_SetVideoMode__deps: ['$GL'],
   SDL_SetVideoMode__proxy: 'sync',
   SDL_SetVideoMode: (width, height, depth, flags) => {
+    var canvas = Browser.getCanvas();
+#if ASSERTIONS
+    assert(canvas, 'no canvas found');
+ #endif
+
     ['touchstart', 'touchend', 'touchmove',
      'mousedown', 'mouseup', 'mousemove',
      'mousewheel', 'wheel', 'mouseout',
      'DOMMouseScroll',
-    ].forEach((e) => Browser.getCanvas().addEventListener(e, SDL.receiveEvent, true));
+    ].forEach((e) => canvas.addEventListener(e, SDL.receiveEvent, true));
 
     // (0,0) means 'use fullscreen' in native; in Emscripten, use the current canvas size.
     if (width == 0 && height == 0) {
-      var canvas = Browser.getCanvas();
       width = canvas.width;
       height = canvas.height;
     }
@@ -1892,6 +1896,9 @@ var LibrarySDL = {
     newData.ctx.globalCompositeOperation = oldData.ctx.globalCompositeOperation;
     return ret;
   },
+
+  SDL_DisplayFormat__deps: ['SDL_ConvertSurface'],
+  SDL_DisplayFormat: (surf) => _SDL_ConvertSurface(surf, 0, 0),
 
   SDL_DisplayFormatAlpha__deps: ['SDL_ConvertSurface'],
   SDL_DisplayFormatAlpha: (surf) => _SDL_ConvertSurface(surf, 0, 0),

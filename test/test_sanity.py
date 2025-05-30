@@ -7,6 +7,7 @@ import glob
 import os
 import platform
 import shutil
+import stat
 import time
 import re
 import tempfile
@@ -33,6 +34,14 @@ expected_llvm_version = str(shared.EXPECTED_LLVM_VERSION) + '.0.0'
 
 def restore():
   shutil.copyfile(EM_CONFIG + '_backup', EM_CONFIG)
+
+
+def for_all_files(dir, callback):
+  for root, dirs, files in os.walk(dir):
+    for d in dirs:
+      callback(os.path.join(dir, root, d))
+    for f in files:
+      callback(os.path.join(dir, root, f))
 
 
 # restore the config file and set it up for our uses
@@ -460,10 +469,27 @@ fi
     # Exactly one child process should have triggered libc build!
     self.assertEqual(num_times_libc_was_built, 1)
 
+  # Test that sysroot headers can be installed from a read-only
+  # emscripten tree.
+  def test_readonly_sysroot_install(self):
+    restore_and_set_up()
+
+    def make_readonly(filename):
+      old_mode = stat.S_IMODE(os.stat(filename).st_mode)
+      os.chmod(filename, old_mode & ~(stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH))
+
+    try:
+      for_all_files(path_from_root('system/include'), make_readonly)
+
+      with env_modify({'EM_CACHE': self.in_dir('test_cache')}):
+        self.run_process([EMCC, test_file('hello_world.c'), '-c'])
+    finally:
+      for_all_files(path_from_root('system/include'), shared.make_writable)
+
   @parameterized({
     '': [False, False],
     'response_files': [True, False],
-    'relative': [False, True]
+    'relative': [False, True],
   })
   def test_emcc_cache_flag(self, use_response_files, relative):
     restore_and_set_up()
@@ -791,3 +817,20 @@ fi
 
     # Now the compiler should work again
     self.run_process([EMCC, test_file('hello_world.c')])
+
+  # Verify that running bootstrap.py in a first-time run scenario should not
+  # cause an exception. (A first time run scenario is before .emscripten, env.
+  # vars nor PATH has been configured)
+  def test_bootstrap_without_em_config(self):
+    # Remove all environment variables that might help config.py to locate Emscripten tools.
+    env = os.environ.copy()
+    for e in ['LLVM_ROOT', 'EMSDK_NODE', 'EMSDK_PYTHON', 'EMSDK', 'EMSCRIPTEN', 'BINARYEN_ROOT', 'EMCC_SKIP_SANITY_CHECK', 'EM_CONFIG']:
+      env.pop(e, None)
+
+    # Remove from PATH every directory that contains clang.exe so that bootstrap.py cannot
+    # accidentally succeed by virtue of locating tools in PATH.
+    new_path = [d for d in env['PATH'].split(os.pathsep) if not os.path.isfile(os.path.join(d, shared.exe_suffix('clang')))]
+    env['PATH'] = os.pathsep.join(new_path)
+
+    # Running bootstrap.py should not fail
+    self.run_process([shared.bat_suffix(shared.path_from_root('bootstrap'))], env=env)
