@@ -537,6 +537,9 @@ def transpile(filename):
   # in the emscripten tree, so we explicitly set NODE_PATH here.
   env = os.environ.copy()
   env['NODE_PATH'] = path_from_root('node_modules')
+  # Babel expects to see 'node' executable in PATH, but it might not exist there
+  # if we are running Emscripten from Emsdk (which does not add Node/Python to PATH)
+  env['PATH'] = f'{shared.get_node_directory()}{os.pathsep}{env['PATH']}'
   check_call(cmd, env=env)
   return outfile
 
