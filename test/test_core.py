@@ -26,7 +26,7 @@ import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
 from common import skip_if, no_windows, no_mac, is_slow_test, parameterized, parameterize
 from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_with_wasm_bigint
-from common import read_file, read_binary, requires_v8, requires_node, requires_dev_dependency, requires_wasm2js, requires_node_canary
+from common import read_file, read_binary, requires_v8, requires_node, requires_dev_dependency, requires_wasm2js
 from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime, also_with_modularize
 from common import with_all_fs, also_with_nodefs, also_with_nodefs_both, also_with_noderawfs, also_with_wasmfs
 from common import with_all_eh_sjlj, with_all_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64, requires_wasm_eh, requires_jspi
@@ -409,7 +409,11 @@ class TestCoreBase(RunnerCore):
     return all(f not in self.emcc_args for f in prohibited) and any(f in self.emcc_args for f in required)
 
   def setup_esm_integration(self):
-    self.require_node_canary()
+    if not self.try_require_node_version(24):
+      if 'EMTEST_SKIP_ESM_INTEGRATION' in os.environ:
+        self.skipTest(f'test requires node v24 and EMTEST_SKIP_ESM_INTEGRATION is set')
+      else:
+        self.fail(f'node v24 required to run this test.  Use EMTEST_SKIP_ESM_INTEGRATION to skip')
     self.node_args += ['--experimental-wasm-modules', '--no-warnings']
     self.set_setting('WASM_ESM_INTEGRATION')
     self.emcc_args += ['-Wno-experimental']
@@ -8397,7 +8401,6 @@ Module.onRuntimeInitialized = () => {
     self.do_core_test('test_hello_world.c')
 
   # Test that pthread_join works correctly with asyncify.
-  @requires_node_canary
   @node_pthreads
   def test_pthread_join_and_asyncify(self):
     # TODO Test with ASYNCIFY=1 https://github.com/emscripten-core/emscripten/issues/17552
