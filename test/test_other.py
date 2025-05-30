@@ -11886,7 +11886,7 @@ int main () {
       # terser expects to see 'node' executable in PATH, but it might not exist there
       # if we are running Emscripten from Emsdk (which does not add Node/Python to PATH)
       env = os.environ.copy()
-      env['PATH'] = f'{shared.get_node_directory()}{os.pathsep}{env['PATH']}'
+      env['PATH'] = f'{shared.get_node_directory()}{os.pathsep}{env["PATH"]}'
       self.run_process(terser + ['-b', 'beautify=true', 'a.js', '-o', 'pretty.js'], env=env)
       self.assertFileContents(js_out, read_file('pretty.js'))
 
