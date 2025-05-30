@@ -17,6 +17,25 @@ extern "C" {
 
 #define _EM_INLINE static __inline__ __attribute__((always_inline, nodebug))
 
+// Returns true if the current environment is able to spawn threads and
+// the program was built with threading support enabled. If this returns 0,
+// calls to pthread_create() or the creation of wasm workers will fail.
+int emscripten_has_threading_support(void);
+
+// Returns the number of logical cores on the system.
+int emscripten_num_logical_cores(void);
+
+// Alias for emscripten_num_logical_cores
+#define emscripten_navigator_hardware_concurrency emscripten_num_logical_cores
+
+// Returns the value of the expression "Atomics.isLockFree(byteWidth)": true if
+// the given memory access width can be accessed atomically, and false
+// otherwise. Generally will return true on 1, 2 and 4 byte accesses. On 8 byte
+// accesses, behavior differs across browsers, see
+//  - https://bugzilla.mozilla.org/show_bug.cgi?id=1246139
+//  - https://bugs.chromium.org/p/chromium/issues/detail?id=1167449
+bool emscripten_atomics_is_lock_free(int byteWidth);
+
 // Note on 64bit atomics ops: All 64-bit atomic ops defined here, while single
 // instruction under wasm, will be emulated by using locks in wasm2js mode.
 // This is also true for C/C++ native atomics as well as intrinsics.
