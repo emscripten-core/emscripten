@@ -2087,6 +2087,7 @@ class CompilerRTLibrary(Library):
   # restriction soon: https://reviews.llvm.org/D71738
   force_object_files = True
 
+
 class libubsan_minimal_rt(CompilerRTLibrary, MTLibrary):
   name = 'libubsan_minimal_rt'
   never_force = True
