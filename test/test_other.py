@@ -11883,7 +11883,11 @@ int main () {
       # N.b. this requires node in PATH, it does not run against NODE from
       # Emscripten config file. If you have this line fail, make sure 'node' is
       # visible in PATH.
-      self.run_process(terser + ['-b', 'beautify=true', 'a.js', '-o', 'pretty.js'])
+      # terser expects to see 'node' executable in PATH, but it might not exist there
+      # if we are running Emscripten from Emsdk (which does not add Node/Python to PATH)
+      env = os.environ.copy()
+      env['PATH'] = f'{shared.get_node_directory()}{os.pathsep}{env['PATH']}'
+      self.run_process(terser + ['-b', 'beautify=true', 'a.js', '-o', 'pretty.js'], env=env)
       self.assertFileContents(js_out, read_file('pretty.js'))
 
     obtained_results = {}
