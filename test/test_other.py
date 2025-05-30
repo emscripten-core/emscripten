@@ -6813,12 +6813,12 @@ int main(int argc, char **argv) {
     self.assertContained(f'LANG=({lang}|en_US.UTF-8|C.UTF-8)', self.run_js('a.out.js'), regex=True)
 
     # Accept-Language: fr,fr-FR;q=0.8,en-US;q=0.5,en;q=0.3
-    create_file('pre.js', 'var navigator = { languages: [ "fr", "fr-FR", "en-US", "en" ] };')
+    create_file('pre.js', 'var navigator = { language: "fr" };')
     self.run_process([EMCC, '--pre-js', 'pre.js', test_file('test_browser_language_detection.c')])
     self.assertContained('LANG=fr.UTF-8', self.run_js('a.out.js'))
 
     # Accept-Language: fr-FR,fr;q=0.8,en-US;q=0.5,en;q=0.3
-    create_file('pre.js', r'var navigator = { languages: [ "fr-FR", "fr", "en-US", "en" ] };')
+    create_file('pre.js', r'var navigator = { language: "fr-FR" };')
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_runf('test_browser_language_detection.c', 'LANG=fr_FR.UTF-8')
 
