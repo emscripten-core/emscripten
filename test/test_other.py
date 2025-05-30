@@ -818,6 +818,7 @@ f.close()
     create_file('myconfig.py', f'''
       LLVM_ROOT = r'{config.LLVM_ROOT}'
       BINARYEN_ROOT = r'{config.BINARYEN_ROOT}'
+      NODE_JS = r'{config.NODE_JS[0]}'
       CACHE = r'{os.path.abspath("cache")}'
       print("filename", __file__)
     ''')
