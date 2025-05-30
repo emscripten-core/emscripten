@@ -108,7 +108,7 @@ commands:
     description: "install latest version of node"
     steps:
       - install-node-version:
-         node_version: "19.0.0"
+         node_version: "24.1.0"
   install-node-canary:
     description: "install canary version of node"
     steps:
@@ -670,7 +670,7 @@ jobs:
       # hardcodes /root into its launcher scripts so we need to reinstall v8.
       - run: rm -rf $HOME/.jsvu
       - install-v8
-      - install-node-canary
+      - install-node-latest
       - run-tests:
           title: "esm_integration"
           test_targets: "esm_integration"
@@ -692,7 +692,7 @@ jobs:
       # hardcodes /root into its launcher scripts so we need to reinstall v8.
       - run: rm -rf $HOME/.jsvu
       - install-v8
-      - install-node-canary
+      - install-node-latest
       # When running wasm64 tests we need to make sure we use the testing
       # version of node (node canary) when running the compiler output (e.g.
       # in configure tests.
@@ -717,7 +717,7 @@ jobs:
       # hardcodes /root into its launcher scripts so we need to reinstall v8.
       - run: rm -rf $HOME/.jsvu
       - install-v8
-      - install-node-canary
+      - install-node-latest
       # When running wasm64 tests we need to make sure we use the testing
       # version of node (node canary) when running the compiler output (e.g.
       # in configure tests.

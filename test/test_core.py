@@ -409,7 +409,7 @@ class TestCoreBase(RunnerCore):
     return all(f not in self.emcc_args for f in prohibited) and any(f in self.emcc_args for f in required)
 
   def setup_esm_integration(self):
-    self.require_node_canary()
+    self.require_node_version((24, 0, 0), 'NODE24')
     self.node_args += ['--experimental-wasm-modules', '--no-warnings']
     self.set_setting('WASM_ESM_INTEGRATION')
     self.emcc_args += ['-Wno-experimental']
