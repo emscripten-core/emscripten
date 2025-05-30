@@ -853,7 +853,7 @@ function getWasmImports() {
 #endif
 
 #if ASYNCIFY
-    wasmExports = Asyncify.instrumentWasmExports(wasmExports);
+    Asyncify.instrumentWasmExports(wasmExports);
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS

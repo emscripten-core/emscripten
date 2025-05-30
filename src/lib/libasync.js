@@ -150,7 +150,7 @@ addToLibrary({
     instrumentWasmExports(exports) {
 #if EMBIND_GEN_MODE
       // Instrumenting is not needed when generating code.
-      return exports;
+      return;
 #endif
 #if ASYNCIFY_DEBUG
       dbg('asyncify instrumenting exports');
@@ -159,31 +159,24 @@ addToLibrary({
       var exportPattern = {{{ new RegExp(`^(${ASYNCIFY_EXPORTS.join('|').replace(/\*/g, '.*')})$`) }}};
       Asyncify.asyncExports = new Set();
 #endif
-      var ret = {};
       for (let [x, original] of Object.entries(exports)) {
         if (typeof original == 'function') {
- #if ASYNCIFY == 2
+          var wrapper = Asyncify.instrumentFunction(original);
+#if ASYNCIFY == 2
           // Wrap all exports with a promising WebAssembly function.
           let isAsyncifyExport = exportPattern.test(x);
           if (isAsyncifyExport) {
             Asyncify.asyncExports.add(original);
             original = Asyncify.makeAsyncFunction(original);
+            exports[x] = wrapper;
           }
-#endif
-          var wrapper = Asyncify.instrumentFunction(original);
-#if ASYNCIFY_LAZY_LOAD_CODE
-          original.exportName = x;
-#endif
-          ret[x] = wrapper;
-
+#else
+          exports[x] = wrapper;
        } else {
-          ret[x] = original;
+          exports[x] = original;
+#endif
         }
       }
-#if ASYNCIFY_LAZY_LOAD_CODE
-      Asyncify.updateFunctionMapping(ret);
-#endif
-      return ret;
     },
 
 #if ASYNCIFY == 1
