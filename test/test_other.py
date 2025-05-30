@@ -6810,7 +6810,7 @@ int main(int argc, char **argv) {
     # We support both "C" and "en_US" here since older versions of node do
     # not expose navigator.languages.
     lang = os.environ.get('LANG', 'C.UTF-8')
-    self.assertContained(f'LANG=({lang}|C.UTF-8)', self.run_js('a.out.js'), regex=True)
+    self.assertContained(f'LANG=({lang}|en_US.UTF-8|C.UTF-8)', self.run_js('a.out.js'), regex=True)
 
     # Accept-Language: fr,fr-FR;q=0.8,en-US;q=0.5,en;q=0.3
     create_file('pre.js', 'var navigator = { languages: [ "fr", "fr-FR", "en-US", "en" ] };')
