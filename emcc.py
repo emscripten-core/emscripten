@@ -1295,6 +1295,8 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('cannot --separate-asm with the wasm backend, since not emitting asm.js')
     elif arg.startswith(('-I', '-L')):
       path_name = arg[2:]
+      # Look for '/' explicitly so that we can also diagnose identically if -I/foo/bar is passed on Windows.
+      # Python since 3.13 does not treat '/foo/bar' as an absolute path on Windows.
       if (path_name.startswith('/') or os.path.isabs(path_name)) and not is_valid_abspath(options, path_name):
         # Of course an absolute path to a non-system-specific library or header
         # is fine, and you can ignore this warning. The danger are system headers
