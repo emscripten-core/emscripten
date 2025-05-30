@@ -13806,7 +13806,11 @@ exec "$@"
     self.run_process([EMCC, '-o', 'hello.wasm', '--oformat=js', test_file('hello_world.c')])
     self.assertExists('hello.wasm')
     self.assertExists('hello_.wasm')
-    self.assertContained('hello, world!', self.run_js('hello.wasm'))
+    self.assertFalse(building.is_wasm('hello.wasm'))
+    self.assertTrue(building.is_wasm('hello_.wasm'))
+    # Node cannot actually run the generated JS if it's in a file with the .wasm extension
+    os.rename('hello.wasm', 'hello.js')
+    self.assertContained('hello, world!', self.run_js('hello.js'))
 
   def test_main_module_no_undefined(self):
     # Test that ERROR_ON_UNDEFINED_SYMBOLS works with MAIN_MODULE.
