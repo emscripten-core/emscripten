@@ -19,7 +19,7 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner')
 
 from tools.shared import PIPE
-from tools.shared import EMCC, EMAR, EMXX, FILE_PACKAGER, LLVM_PROFDATA, LLVM_COV 
+from tools.shared import EMCC, EMAR, EMXX, FILE_PACKAGER, LLVM_PROFDATA, LLVM_COV
 from tools.utils import WINDOWS, MACOS, LINUX, write_file, delete_file
 from tools import shared, building, config, utils, webassembly
 import common
@@ -9594,7 +9594,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertExists('default.profraw')
     self.run_process([LLVM_PROFDATA, 'merge', '-sparse', 'default.profraw', '-o', 'out.profdata'])
     self.assertExists('out.profdata')
-    self.assertEquals(expected, self.run_process([LLVM_COV, 'show', 'test_hello_world.wasm', '-instr-profile=out.profdata'], stdout=PIPE).stdout)
+    self.assertEqual(expected, self.run_process([LLVM_COV, 'show', 'test_hello_world.wasm', '-instr-profile=out.profdata'], stdout=PIPE).stdout)
 
   @node_pthreads
   @flaky('https://github.com/emscripten-core/emscripten/issues/20067')
