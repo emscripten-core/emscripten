@@ -818,6 +818,7 @@ f.close()
     create_file('myconfig.py', f'''
       LLVM_ROOT = r'{config.LLVM_ROOT}'
       BINARYEN_ROOT = r'{config.BINARYEN_ROOT}'
+      NODE_JS = r'{config.NODE_JS[0]}'
       CACHE = r'{os.path.abspath("cache")}'
       print("filename", __file__)
     ''')
@@ -11882,7 +11883,7 @@ int main () {
       # N.b. this requires node in PATH, it does not run against NODE from
       # Emscripten config file. If you have this line fail, make sure 'node' is
       # visible in PATH.
-      self.run_process(terser + ['-b', 'beautify=true', 'a.js', '-o', 'pretty.js'])
+      self.run_process(terser + ['-b', 'beautify=true', 'a.js', '-o', 'pretty.js'], env=shared.env_with_node_in_path())
       self.assertFileContents(js_out, read_file('pretty.js'))
 
     obtained_results = {}
