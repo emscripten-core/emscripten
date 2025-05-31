@@ -54,7 +54,7 @@ var WasiLibrary = {
       var lang = 'C.UTF-8';
 #else
       // Browser language detection #8751
-      var lang = ((typeof navigator == 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
+      var lang = ((typeof navigator == 'object' && navigator.language) || 'C').replace('-', '_') + '.UTF-8';
 #endif
       var env = {
 #if !PURE_WASI
@@ -544,11 +544,7 @@ var WasiLibrary = {
         return;
       }
       mount.type.syncfs(mount, false, (err) => {
-        if (err) {
-          wakeUp({{{ cDefs.EIO }}});
-          return;
-        }
-        wakeUp(0);
+        wakeUp(err ? {{{ cDefs.EIO }}} : 0);
       });
     });
 #else

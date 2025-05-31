@@ -40,6 +40,8 @@ if (ENVIRONMENT_IS_NODE) {
   // Weak map of handle functions to their wrapper. Used to implement
   // addEventListener/removeEventListener.
   var wrappedHandlers = new WeakMap();
+  /** @suppress {checkTypes} */
+  globalThis.onmessage = null;
   function wrapMsgHandler(h) {
     var f = wrappedHandlers.get(h)
     if (!f) {

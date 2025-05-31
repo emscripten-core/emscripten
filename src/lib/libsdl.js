@@ -483,7 +483,7 @@ var LibrarySDL = {
 
       var info = SDL.surfaces[surf];
       if (!info.usePageCanvas && info.canvas) SDL.canvasPool.push(info.canvas);
-      if (info.buffer) _free(info.buffer);
+      _free(info.buffer);
       _free(info.pixelFormat);
       _free(surf);
       SDL.surfaces[surf] = null;
@@ -1896,6 +1896,9 @@ var LibrarySDL = {
     newData.ctx.globalCompositeOperation = oldData.ctx.globalCompositeOperation;
     return ret;
   },
+
+  SDL_DisplayFormat__deps: ['SDL_ConvertSurface'],
+  SDL_DisplayFormat: (surf) => _SDL_ConvertSurface(surf, 0, 0),
 
   SDL_DisplayFormatAlpha__deps: ['SDL_ConvertSurface'],
   SDL_DisplayFormatAlpha: (surf) => _SDL_ConvertSurface(surf, 0, 0),

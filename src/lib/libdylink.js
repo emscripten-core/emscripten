@@ -29,7 +29,7 @@ var LibraryDylink = {
           () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true}, name, {})).then(
             (exports) => {
 #if DYLINK_DEBUG
-              dbg(`registering preloadedWasm: ${name}`);
+              dbg('registering preloadedWasm:', name);
 #endif
               preloadedWasm[name] = exports;
               onload(byteArray);
@@ -217,7 +217,7 @@ var LibraryDylink = {
   $updateGOT__deps: ['$GOT', '$isInternalSym', '$addFunction'],
   $updateGOT: (exports, replace) => {
 #if DYLINK_DEBUG
-    dbg("updateGOT: adding " + Object.keys(exports).length + " symbols");
+    dbg(`updateGOT: adding ${Object.keys(exports).length} symbols`);
 #endif
     for (var symName in exports) {
       if (isInternalSym(symName)) {
@@ -304,7 +304,7 @@ var LibraryDylink = {
         if (!value && !entry.required) {
           // Ignore undefined symbols that are imported as weak.
 #if DYLINK_DEBUG
-          dbg(`ignoring undefined weak symbol: ${symName}`);
+          dbg('ignoring undefined weak symbol:', symName);
 #endif
           continue;
         }
@@ -357,7 +357,7 @@ var LibraryDylink = {
   $dlSetError__deps: ['__dl_seterr', '$stringToUTF8OnStack', '$stackSave', '$stackRestore'],
   $dlSetError: (msg) => {
 #if DYLINK_DEBUG
-    dbg(`dlSetError: ${msg}`);
+    dbg('dlSetError:', msg);
 #endif
     var sp = stackSave();
     var cmsg = stringToUTF8OnStack(msg);
@@ -503,7 +503,7 @@ var LibraryDylink = {
         customSection.runtimePaths = getStringList();
       } else {
 #if ASSERTIONS
-        err(`unknown dylink.0 subsection: ${subsectionType}`)
+        err('unknown dylink.0 subsection:', subsectionType)
 #endif
         // unknown subsection
         offset += subsectionSize;
@@ -517,7 +517,7 @@ var LibraryDylink = {
 #endif
 
 #if DYLINK_DEBUG
-    dbg(`dylink needed:${customSection.neededDynlibs}`);
+    dbg('dylink needed:', customSection.neededDynlibs);
 #endif
 
     return customSection;
@@ -613,7 +613,7 @@ var LibraryDylink = {
   ],
   $loadWebAssemblyModule: (binary, flags, libName, localScope, handle) => {
 #if DYLINK_DEBUG
-    dbg(`loadWebAssemblyModule: ${libName}`);
+    dbg('loadWebAssemblyModule:', libName);
 #endif
     var metadata = getDylinkMetadata(binary);
     currentModuleWeakSymbols = metadata.weakImports;
@@ -667,7 +667,7 @@ var LibraryDylink = {
       }
 #if DYLINK_DEBUG
       dbg(`loadModule: memory[${memoryBase}:${memoryBase + metadata.memorySize}]` +
-                     ` table[${tableBasex}:${tableBase + metadata.tableSize}]`);
+                     ` table[${tableBase}:${tableBase + metadata.tableSize}]`);
 #endif
 
       // This is the export map that we ultimately return.  We declare it here
@@ -758,7 +758,7 @@ var LibraryDylink = {
 #if PTHREADS
         if (!ENVIRONMENT_IS_PTHREAD && libName) {
 #if DYLINK_DEBUG
-          dbg(`registering sharedModules: ${libName}`)
+          dbg('registering sharedModules:', libName)
 #endif
           // cache all loaded modules in `sharedModules`, which gets passed
           // to new workers when they are created.
@@ -797,7 +797,7 @@ var LibraryDylink = {
           args = args.join(',');
           var func = `(${args}) => { ${body} };`;
 #if DYLINK_DEBUG
-          dbg(`adding new EM_ASM constant at: ${ptrToString(start)}`);
+          dbg('adding new EM_ASM constant at:', ptrToString(start));
 #endif
           {{{ makeEval('ASM_CONSTS[start] = eval(func)') }}};
         }
@@ -1044,7 +1044,7 @@ var LibraryDylink = {
   $loadDynamicLibrary: function(libName, flags = {global: true, nodelete: true}, localScope, handle) {
 #if DYLINK_DEBUG
     dbg(`loadDynamicLibrary: ${libName} handle: ${handle}`);
-    dbg(`existing: ${Object.keys(LDSO.loadedLibsByName)}`);
+    dbg('existing:', Object.keys(LDSO.loadedLibsByName));
 #endif
     // when loadDynamicLibrary did not have flags, libraries were loaded
     // globally & permanently
@@ -1192,7 +1192,7 @@ var LibraryDylink = {
     }
 
 #if DYLINK_DEBUG
-    dbg(`loadDylibs: ${dynamicLibraries}`);
+    dbg('loadDylibs:', dynamicLibraries);
 #endif
 
     // Load binaries asynchronously
@@ -1219,7 +1219,7 @@ var LibraryDylink = {
     var filename = UTF8ToString(handle + {{{ C_STRUCTS.dso.name }}});
     var flags = {{{ makeGetValue('handle', C_STRUCTS.dso.flags, 'i32') }}};
 #if DYLINK_DEBUG
-    dbg(`dlopenInternal: ${filename}`);
+    dbg('dlopenInternal:', filename);
 #endif
     filename = PATH.normalize(filename);
     var searchpaths = [];
@@ -1253,17 +1253,19 @@ var LibraryDylink = {
 #if ASYNCIFY
   _dlopen_js__async: true,
 #endif
-  _dlopen_js: {{{ asyncIf(ASYNCIFY == 2) }}} (handle) => {
+  _dlopen_js: {{{ asyncIf(ASYNCIFY == 2) }}} (handle) =>
 #if ASYNCIFY
-    return Asyncify.handleSleep((wakeUp) => {
+    Asyncify.handleSleep((wakeUp) =>
       dlopenInternal(handle, { loadAsync: true })
-        .then(wakeUp)
-        .catch(() => wakeUp(0));
-    });
+      .then(wakeUp)
+      // Note: this currently relies on being able to catch errors even from `wakeUp` callback itself.
+      // That's why we can't refactor it to `handleAsync` at the moment.
+      .catch(() => wakeUp(0))
+    )
 #else
-    return dlopenInternal(handle, { loadAsync: false });
+    dlopenInternal(handle, { loadAsync: false })
 #endif
-  },
+    ,
 
   // Async version of dlopen.
   _emscripten_dlopen_js__deps: ['$dlopenInternal', '$callUserCallback', '$dlSetError'],
@@ -1311,7 +1313,7 @@ var LibraryDylink = {
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlsym.html
     symbol = UTF8ToString(symbol);
 #if DYLINK_DEBUG
-    dbg(`dlsym_js: ${symbol}`);
+    dbg('dlsym_js:', symbol);
 #endif
     var result;
     var newSymIndex;
@@ -1349,7 +1351,7 @@ var LibraryDylink = {
       var addr = getFunctionAddress(result);
       if (addr) {
 #if DYLINK_DEBUG
-        dbg(`symbol already exists in table: ${symbol}`);
+        dbg('symbol already exists in table:', symbol);
 #endif
         result = addr;
       } else {
@@ -1359,7 +1361,7 @@ var LibraryDylink = {
         // `<func>__sig` specified in library JS file.
         result = addFunction(result, result.sig);
 #if DYLINK_DEBUG
-        dbg(`adding symbol to table: ${symbol}`);
+        dbg('adding symbol to table:',  symbol);
 #endif
         {{{ makeSetValue('symbolIndex', 0, 'newSymIndex', '*') }}};
       }

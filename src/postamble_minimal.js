@@ -46,7 +46,7 @@ function run() {
 #endif
 
 function initRuntime(wasmExports) {
-#if ASSERTIONS || SAFE_HEAP || USE_ASAN
+#if ASSERTIONS || SAFE_HEAP || USE_ASAN || MODULARIZE
   runtimeInitialized = true;
 #endif
 
@@ -60,10 +60,10 @@ function initRuntime(wasmExports) {
 
 #if STACK_OVERFLOW_CHECK
   _emscripten_stack_init();
-  writeStackCookie();
 #if STACK_OVERFLOW_CHECK >= 2
   setStackLimits();
 #endif
+  writeStackCookie();
 #endif
 
 #if PTHREADS
@@ -111,10 +111,7 @@ var imports = {
 
 #if MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
 // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
-// Firefox 52 added Wasm support, but only Firefox 58 added instantiateStreaming.
-// Chrome 57 added Wasm support, but only Chrome 61 added instantiateStreaming.
-// Node.js and Safari do not support instantiateStreaming.
-#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || ENVIRONMENT_MAY_BE_NODE || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
+#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || MIN_NODE_VERSION < 180100 || MIN_SAFARI_VERSION < 150000
 #if ASSERTIONS && !WASM2JS
 // Module['wasm'] should contain a typed array of the Wasm object data, or a
 // precompiled WebAssembly Module.
@@ -154,12 +151,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
   // Depending on the build mode, Module['wasm'] can mean a different thing.
 #if MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION || MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION || PTHREADS
   // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
-  // Firefox 52 added Wasm support, but only Firefox 58 added compileStreaming &
-  // instantiateStreaming.
-  // Chrome 57 added Wasm support, but only Chrome 61 added compileStreaming &
-  // instantiateStreaming.
-  // Node.js and Safari do not support compileStreaming or instantiateStreaming.
-#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || ENVIRONMENT_MAY_BE_NODE || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED || PTHREADS
+#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || MIN_SAFARI_VERSION < 150000 || ENVIRONMENT_MAY_BE_NODE || PTHREADS
   // In pthreads, Module['wasm'] is an already compiled WebAssembly.Module. In
   // that case, 'output' is a WebAssembly.Instance.
   // In main thread, Module['wasm'] is either a typed array or a fetch stream.

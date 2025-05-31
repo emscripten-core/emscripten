@@ -21,6 +21,10 @@
 #include "runtime_asan.js"
 #endif
 
+#if MODULARIZE && USE_READY_PROMISE
+var readyPromiseResolve, readyPromiseReject;
+#endif
+
 #if PTHREADS || WASM_WORKERS
 #if !MINIMAL_RUNTIME
 var wasmModuleReceived;

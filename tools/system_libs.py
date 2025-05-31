@@ -948,12 +948,15 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
     # bfloat16
     'extendbfsf2.c',
     'truncdfbf2.c',
+    'truncxfbf2.c',
     'truncsfbf2.c',
+    'trunctfbf2.c',
     # We provide our own crt
     'crtbegin.c',
     'crtend.c',
     # 80-bit long double (xf_float)
     'divxc3.c',
+    'extendhfxf2.c',
     'extendxftf2.c',
     'fixxfdi.c',
     'fixxfti.c',
@@ -967,6 +970,7 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
     'mulxc3.c',
     'powixf2.c',
     'trunctfxf2.c',
+    'truncxfhf2.c',
   ]
   src_files = glob_in_path(src_dir, '*.c', excludes=excludes)
   src_files += files_in_path(
@@ -1652,9 +1656,10 @@ class libcxx(ExceptionLibrary, MTLibrary):
     '-Wno-unqualified-std-cast-call',
     '-Wno-unknown-warning-option',
     '-std=c++23',
+    '-DLIBC_NAMESPACE=__llvm_libc',
   ]
 
-  includes = ['system/lib/libcxx/src']
+  includes = ['system/lib/libcxx/src', 'system/lib/llvm-libc']
 
   src_dir = 'system/lib/libcxx/src'
   src_glob = '**/*.cpp'
@@ -2149,16 +2154,6 @@ class libasan_rt(SanitizerLibrary):
   src_dir = 'system/lib/compiler-rt/lib/asan'
 
 
-class libasan_js(Library):
-  name = 'libasan_js'
-  never_force = True
-
-  cflags = ['-fsanitize=address']
-
-  src_dir = 'system/lib'
-  src_files = ['asan_js.c']
-
-
 # This library is used when STANDALONE_WASM is set. In that mode, we don't
 # want to depend on JS, and so this library contains implementations of
 # things that we'd normally do in JS. That includes some general things
@@ -2336,7 +2331,6 @@ def get_libs_to_link(options):
     if settings.USE_ASAN:
       force_include.append('libasan_rt')
       add_library('libasan_rt')
-      add_library('libasan_js')
     elif settings.USE_LSAN:
       force_include.append('liblsan_rt')
       add_library('liblsan_rt')
@@ -2459,8 +2453,21 @@ def calculate(options):
   return ret
 
 
-def copytree_exist_ok(src, dst):
-  shutil.copytree(src, dst, dirs_exist_ok=True)
+def safe_copytree(src, dst):
+  # We cannot use `shutil.copytree` there because we need to ensure the
+  # output tree is writable, and in some cases the emscripten tree
+  # itself is readonly (e.g. NixOS).
+  # Even if we pass copy_function=safe_copy python's `shutil.copytree`
+  # will use its internal logic for copying directories and it will
+  # unconditionally copy the source directory's mode bits.
+  os.makedirs(dst, exist_ok=True)
+  for entry in os.scandir(src):
+    srcname = os.path.join(src, entry.name)
+    dstname = os.path.join(dst, entry.name)
+    if entry.is_dir():
+      safe_copytree(srcname, dstname)
+    else:
+      shared.safe_copy(srcname, dstname)
 
 
 def install_system_headers(stamp):
@@ -2483,19 +2490,15 @@ def install_system_headers(stamp):
   for src, dest in install_dirs.items():
     src = utils.path_from_root('system', *src)
     dest = os.path.join(target_include_dir, dest)
-    copytree_exist_ok(src, dest)
+    safe_copytree(src, dest)
 
   pkgconfig_src = utils.path_from_root('system/lib/pkgconfig')
   pkgconfig_dest = cache.get_sysroot_dir('lib/pkgconfig')
-  copytree_exist_ok(pkgconfig_src, pkgconfig_dest)
+  safe_copytree(pkgconfig_src, pkgconfig_dest)
 
   bin_src = utils.path_from_root('system/bin')
   bin_dest = cache.get_sysroot_dir('bin')
-  copytree_exist_ok(bin_src, bin_dest)
-
-  cmake_src = utils.path_from_root('system/lib/cmake')
-  cmake_dest = cache.get_sysroot_dir('lib/cmake')
-  copytree_exist_ok(cmake_src, cmake_dest)
+  safe_copytree(bin_src, bin_dest)
 
   # Create a version header based on the emscripten-version.txt
   version_file = cache.get_include_dir('emscripten/version.h')

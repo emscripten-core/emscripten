@@ -3,29 +3,22 @@
 import * as acorn from 'acorn';
 import * as terser from '../third_party/terser/terser.js';
 import * as fs from 'node:fs';
+import assert from 'node:assert';
 
 // Utilities
 
-function print(x) {
-  process.stdout.write(x + '\n');
-}
-
 function read(x) {
-  return fs.readFileSync(x).toString();
-}
-
-function assert(condition, text) {
-  if (!condition) {
-    throw new Error(text);
-  }
+  return fs.readFileSync(x, 'utf-8');
 }
 
 function assertAt(condition, node, message = '') {
   if (!condition) {
-    const loc = acorn.getLineInfo(input, node.start);
-    throw new Error(
-      `${infile}:${loc.line}: ${message} (use EMCC_DEBUG_SAVE=1 to preserve temporary inputs)`,
-    );
+    if (!process.env.EMCC_DEBUG_SAVE) {
+      message += ' (use EMCC_DEBUG_SAVE=1 to preserve temporary inputs)';
+    }
+    let err = new Error(message);
+    err['loc'] = acorn.getLineInfo(input, node.start);
+    throw err;
   }
 }
 
@@ -39,7 +32,7 @@ function visitChildren(node, c) {
     return;
   }
   function maybeChild(child) {
-    if (child && typeof child === 'object' && typeof child.type === 'string') {
+    if (typeof child?.type === 'string') {
       c(child);
       return true;
     }
@@ -93,39 +86,17 @@ function emptyOut(node) {
   node.type = 'EmptyStatement';
 }
 
-function convertToNullStatement(node) {
-  node.type = 'ExpressionStatement';
-  node.expression = {
-    type: 'Literal',
-    value: null,
-    raw: 'null',
-    start: 0,
-    end: 0,
-  };
-  node.start = 0;
-  node.end = 0;
-}
-
-function isNull(node) {
-  return node.type === 'Literal' && node.raw === 'null';
-}
-
-function isUseStrict(node) {
-  return node.type === 'Literal' && node.value === 'use strict';
-}
-
 function setLiteralValue(item, value) {
   item.value = value;
-  item.raw = "'" + value + "'";
+  item.raw = null;
 }
 
 function isLiteralString(node) {
-  return node.type === 'Literal' && (node.raw[0] === '"' || node.raw[0] === "'");
+  return node.type === 'Literal' && typeof node.value === 'string';
 }
 
-function dump(node, text) {
-  if (text) print(text);
-  print(JSON.stringify(node, null, ' '));
+function dump(node) {
+  console.log(JSON.stringify(node, null, ' '));
 }
 
 // Mark inner scopes temporarily as empty statements. Returns
@@ -134,7 +105,7 @@ function ignoreInnerScopes(node) {
   const map = new WeakMap();
   function ignore(node) {
     map.set(node, node.type);
-    node.type = 'EmptyStatement';
+    emptyOut(node);
   }
   simpleWalk(node, {
     FunctionDeclaration(node) {
@@ -162,48 +133,23 @@ function restoreInnerScopes(node, map) {
   });
 }
 
-// If we empty out a var from
-//   for (var i in x) {}
-//   for (var j = 0;;) {}
-// then it will be invalid. We saved it on the side;
-// restore it here.
-function restoreForVars(node) {
-  let restored = 0;
-  function fix(init) {
-    if (init && init.type === 'EmptyStatement') {
-      assertAt(init.oldDeclarations, init);
-      init.type = 'VariableDeclaration';
-      init.declarations = init.oldDeclarations;
-      restored++;
-    }
-  }
-  simpleWalk(node, {
-    ForStatement(node) {
-      fix(node.init);
-    },
-    ForInStatement(node) {
-      fix(node.left);
-    },
-    ForOfStatement(node) {
-      fix(node.left);
-    },
-  });
-  return restored;
-}
-
 function hasSideEffects(node) {
   // Conservative analysis.
   const map = ignoreInnerScopes(node);
   let has = false;
   fullWalk(node, (node) => {
     switch (node.type) {
+      case 'ExpressionStatement':
+        if (node.directive) {
+          has = true;
+        }
+        break;
       // TODO: go through all the ESTree spec
       case 'Literal':
       case 'Identifier':
       case 'UnaryExpression':
       case 'BinaryExpression':
       case 'LogicalExpression':
-      case 'ExpressionStatement':
       case 'UpdateOperator':
       case 'ConditionalExpression':
       case 'FunctionDeclaration':
@@ -289,8 +235,24 @@ function JSDCE(ast, aggressive) {
     }
     function cleanUp(ast, names) {
       recursiveWalk(ast, {
+        ForStatement(node, c) {
+          visitChildren(node, c);
+          // If we had `for (var x = ...; ...)` and we removed `x`, we need to change to `for (; ...)`.
+          if (node.init?.type === 'EmptyStatement') {
+            node.init = null;
+          }
+        },
+        ForInStatement(node, c) {
+          // We can't remove the var in a for-in, as that would result in an invalid syntax. Skip the LHS.
+          c(node.right);
+          c(node.body);
+        },
+        ForOfStatement(node, c) {
+          // We can't remove the var in a for-of, as that would result in an invalid syntax. Skip the LHS.
+          c(node.right);
+          c(node.body);
+        },
         VariableDeclaration(node, _c) {
-          const old = node.declarations;
           let removedHere = 0;
           node.declarations = node.declarations.filter((node) => {
             assert(node.type === 'VariableDeclarator');
@@ -311,16 +273,12 @@ function JSDCE(ast, aggressive) {
           removed += removedHere;
           if (node.declarations.length === 0) {
             emptyOut(node);
-            // If this is in a for, we may need to restore it.
-            node.oldDeclarations = old;
           }
         },
         ExpressionStatement(node, _c) {
           if (aggressive && !hasSideEffects(node)) {
-            if (!isNull(node.expression) && !isUseStrict(node.expression)) {
-              convertToNullStatement(node);
-              removed++;
-            }
+            emptyOut(node);
+            removed++;
           }
         },
         FunctionDeclaration(node, _c) {
@@ -335,7 +293,6 @@ function JSDCE(ast, aggressive) {
         FunctionExpression() {},
         ArrowFunctionExpression() {},
       });
-      removed -= restoreForVars(ast);
     }
 
     function handleFunction(node, c, defun) {
@@ -610,31 +567,6 @@ function isDynamicDynCall(node) {
 }
 
 //
-// Matches the wasm export wrappers generated by emcc (see make_export_wrappers
-// in emscripten.py). For example, the right hand side of these assignments:
-//
-//   var _foo = (a0, a1) => (_foo = wasmExports['foo'])(a0, a1):
-//
-// or
-//
-//   var _foo = (a0, a1) => (_foo = Module['_foo'] = wasmExports['foo'])(a0, a1):
-//
-function isExportWrapperFunction(f) {
-  if (f.body.type != 'CallExpression') return null;
-  let callee = f.body.callee;
-  if (callee.type == 'ParenthesizedExpression') {
-    callee = callee.expression;
-  }
-  if (callee.type != 'AssignmentExpression') return null;
-  var rhs = callee.right;
-  if (rhs.type == 'AssignmentExpression') {
-    rhs = rhs.right;
-  }
-  if (rhs.type != 'MemberExpression' || !isExportUse(rhs)) return null;
-  return getExportOrModuleUseName(rhs);
-}
-
-//
 // Emit the DCE graph, to help optimize the combined JS+wasm.
 // This finds where JS depends on wasm, and where wasm depends
 // on JS, and prints that out.
@@ -772,16 +704,6 @@ function emitDCEGraph(ast) {
             //  var _x = wasmExports['x'];
             saveAsmExport(name, asmName);
             emptyOut(node);
-          } else if (value && value.type === 'ArrowFunctionExpression') {
-            // this is
-            //  () => (x = wasmExports['x'])(..)
-            // or
-            //  () => (x = Module['_x'] = wasmExports['x'])(..)
-            let asmName = isExportWrapperFunction(value);
-            if (asmName) {
-              saveAsmExport(name, asmName);
-              emptyOut(node);
-            }
           } else if (value && value.type === 'AssignmentExpression') {
             const assigned = value.left;
             if (isModuleUse(assigned) && getExportOrModuleUseName(assigned) === name) {
@@ -989,7 +911,7 @@ function emitDCEGraph(ast) {
     info.reaches = sortedNamesFromMap(info.reaches);
     graph.push(info);
   });
-  print(JSON.stringify(graph, null, ' '));
+  dump(graph);
 }
 
 // Apply graph removals from running wasm-metadce. This only removes imports and
@@ -1016,49 +938,19 @@ function applyDCEGraphRemovals(ast) {
         }
         return true;
       });
-    } else if (node.type === 'VariableDeclaration') {
-      // Handle the various ways in which we extract wasmExports:
-      //   1. var _x = wasmExports['x'];
-      // or
-      //   2. var _x = Module['_x'] = wasmExports['x'];
-      //
-      // Or for delayed instantiation:
-      //   3. var _x = () => (_x = wasmExports['x'])(...);
-      // or
-      //   4. var _x = Module['_x] = () => (_x = Module['_x'] = wasmExports['x'])(...);
-      const init = node.declarations[0].init;
-      if (!init) {
-        return;
-      }
-
-      // Look through the optional `Module['_x']`
-      let realInit = init;
-      if (init.type == 'AssignmentExpression' && isModuleUse(init.left)) {
-        realInit = init.right;
-      }
-
-      if (isExportUse(realInit)) {
-        const export_name = getExportOrModuleUseName(realInit);
-        if (unusedExports.has(export_name)) {
-          // Case (1) and (2)
-          trace('found unused export:', export_name);
-          emptyOut(node);
-          foundUnusedExports.add(export_name);
-        }
-      } else if (realInit.type == 'ArrowFunctionExpression') {
-        const export_name = isExportWrapperFunction(realInit);
-        if (unusedExports.has(export_name)) {
-          // Case (3) and (4)
-          trace('found unused export:', export_name);
-          emptyOut(node);
-          foundUnusedExports.add(export_name);
-        }
-      }
     } else if (node.type === 'ExpressionStatement') {
-      const expr = node.expression;
-      // In the MINIMAL_RUNTIME code pattern we have just
+      let expr = node.expression;
+      // Inside the assignWasmExports function we have
+      //
       //   _x = wasmExports['x']
-      // and never in a var.
+      //
+      // or:
+      //
+      //   Module['_x'] = _x = wasmExports['x']
+      //
+      if (expr.type == 'AssignmentExpression' && expr.right.type == 'AssignmentExpression') {
+        expr = expr.right;
+      }
       if (expr.operator === '=' && expr.left.type === 'Identifier' && isExportUse(expr.right)) {
         const export_name = getExportOrModuleUseName(expr.right);
         if (unusedExports.has(export_name)) {
@@ -1077,31 +969,21 @@ function applyDCEGraphRemovals(ast) {
   }
 }
 
-// Need a parser to pass to acorn.Node constructor.
-// Create it once and reuse it.
-const stubParser = new acorn.Parser({ecmaVersion: 2021});
-
-function createNode(props) {
-  const node = new acorn.Node(stubParser);
-  Object.assign(node, props);
-  return node;
-}
-
 function createLiteral(value) {
-  return createNode({
+  return {
     type: 'Literal',
     value: value,
     raw: '' + value,
-  });
+  };
 }
 
 function makeCallExpression(node, name, args) {
   Object.assign(node, {
     type: 'CallExpression',
-    callee: createNode({
+    callee: {
       type: 'Identifier',
       name: name,
-    }),
+    },
     arguments: args,
   });
 }
@@ -1114,6 +996,8 @@ function isEmscriptenHEAP(name) {
     case 'HEAPU16':
     case 'HEAP32':
     case 'HEAPU32':
+    case 'HEAP64':
+    case 'HEAPU64':
     case 'HEAPF32':
     case 'HEAPF64': {
       return true;
@@ -1128,7 +1012,7 @@ function isEmscriptenHEAP(name) {
 // LE byte order for HEAP buffer
 function littleEndianHeap(ast) {
   recursiveWalk(ast, {
-    FunctionDeclaration: (node, c) => {
+    FunctionDeclaration(node, c) {
       // do not recurse into LE_HEAP_STORE, LE_HEAP_LOAD functions
       if (
         !(
@@ -1139,13 +1023,13 @@ function littleEndianHeap(ast) {
         c(node.body);
       }
     },
-    VariableDeclarator: (node, c) => {
+    VariableDeclarator(node, c) {
       if (!(node.id.type === 'Identifier' && node.id.name.startsWith('LE_ATOMICS_'))) {
         c(node.id);
         if (node.init) c(node.init);
       }
     },
-    AssignmentExpression: (node, c) => {
+    AssignmentExpression(node, c) {
       const target = node.left;
       const value = node.right;
       c(value);
@@ -1182,6 +1066,16 @@ function littleEndianHeap(ast) {
             makeCallExpression(node, 'LE_HEAP_STORE_U32', [multiply(idx, 4), value]);
             break;
           }
+          case 'HEAP64': {
+            // change "name[idx] = value" to "LE_HEAP_STORE_I64(idx*8, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_I64', [multiply(idx, 8), value]);
+            break;
+          }
+          case 'HEAPU64': {
+            // change "name[idx] = value" to "LE_HEAP_STORE_U64(idx*8, value)"
+            makeCallExpression(node, 'LE_HEAP_STORE_U64', [multiply(idx, 8), value]);
+            break;
+          }
           case 'HEAPF32': {
             // change "name[idx] = value" to "LE_HEAP_STORE_F32(idx*4, value)"
             makeCallExpression(node, 'LE_HEAP_STORE_F32', [multiply(idx, 4), value]);
@@ -1195,7 +1089,7 @@ function littleEndianHeap(ast) {
         }
       }
     },
-    CallExpression: (node, c) => {
+    CallExpression(node, c) {
       if (node.arguments) {
         for (var a of node.arguments) c(a);
       }
@@ -1204,7 +1098,6 @@ function littleEndianHeap(ast) {
         node.callee.type === 'MemberExpression' &&
         node.callee.object.type === 'Identifier' &&
         node.callee.object.name === 'Atomics' &&
-        node.callee.property.type === 'Identifier' &&
         !node.callee.computed
       ) {
         makeCallExpression(
@@ -1216,7 +1109,7 @@ function littleEndianHeap(ast) {
         c(node.callee);
       }
     },
-    MemberExpression: (node, c) => {
+    MemberExpression(node, c) {
       c(node.property);
       if (!isHEAPAccess(node)) {
         // not accessing the HEAP
@@ -1250,6 +1143,16 @@ function littleEndianHeap(ast) {
             makeCallExpression(node, 'LE_HEAP_LOAD_U32', [multiply(idx, 4)]);
             break;
           }
+          case 'HEAP64': {
+            // change "name[idx]" to "LE_HEAP_LOAD_I64(idx*8)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_I64', [multiply(idx, 8)]);
+            break;
+          }
+          case 'HEAPU64': {
+            // change "name[idx]" to "LE_HEAP_LOAD_U64(idx*8)"
+            makeCallExpression(node, 'LE_HEAP_LOAD_U64', [multiply(idx, 8)]);
+            break;
+          }
           case 'HEAPF32': {
             // change "name[idx]" to "LE_HEAP_LOAD_F32(idx*4)"
             makeCallExpression(node, 'LE_HEAP_LOAD_F32', [multiply(idx, 4)]);
@@ -1266,77 +1169,59 @@ function littleEndianHeap(ast) {
   });
 }
 
-// Instrument heap accesses to call GROWABLE_HEAP_* helper functions instead, which allows
+// Instrument heap accesses to call growMemViews helper function, which allows
 // pthreads + memory growth to work (we check if the memory was grown on another thread
 // in each access), see #8365.
 function growableHeap(ast) {
   recursiveWalk(ast, {
+    ExportNamedDeclaration() {
+      // Do not recurse export statements since we don't want to rewrite, for example, `export { HEAP32 }`
+    },
     FunctionDeclaration(node, c) {
-      // Do not recurse into to GROWABLE_HEAP_ helper functions themselves.
+      // Do not recurse into the helper function itself.
       if (
         !(
           node.id.type === 'Identifier' &&
-          (node.id.name.startsWith('GROWABLE_HEAP_') || node.id.name === 'LE_HEAP_UPDATE')
+          (node.id.name === 'growMemViews' || node.id.name === 'LE_HEAP_UPDATE')
         )
       ) {
         c(node.body);
       }
     },
-    AssignmentExpression: (node) => {
-      if (node.left.type === 'Identifier' && isEmscriptenHEAP(node.left.name)) {
-        // Don't transform initial setup of the arrays.
-        return;
+    AssignmentExpression(node) {
+      if (node.left.type !== 'Identifier') {
+        // Don't transform `HEAPxx =` assignments.
+        growableHeap(node.left);
       }
-      growableHeap(node.left);
       growableHeap(node.right);
     },
-    VariableDeclaration: (node) => {
+    VariableDeclarator(node) {
       // Don't transform the var declarations for HEAP8 etc
-      node.declarations.forEach((decl) => {
-        // but do transform anything that sets a var to
-        // something from HEAP8 etc
-        if (decl.init) {
-          growableHeap(decl.init);
-        }
-      });
+      // but do transform anything that sets a var to
+      // something from HEAP8 etc
+      if (node.init) {
+        growableHeap(node.init);
+      }
     },
-    Identifier: (node) => {
-      if (node.name.startsWith('HEAP')) {
-        // Turn HEAP8 into GROWABLE_HEAP_I8() etc
-        switch (node.name) {
-          case 'HEAP8': {
-            makeCallExpression(node, 'GROWABLE_HEAP_I8', []);
-            break;
-          }
-          case 'HEAPU8': {
-            makeCallExpression(node, 'GROWABLE_HEAP_U8', []);
-            break;
-          }
-          case 'HEAP16': {
-            makeCallExpression(node, 'GROWABLE_HEAP_I16', []);
-            break;
-          }
-          case 'HEAPU16': {
-            makeCallExpression(node, 'GROWABLE_HEAP_U16', []);
-            break;
-          }
-          case 'HEAP32': {
-            makeCallExpression(node, 'GROWABLE_HEAP_I32', []);
-            break;
-          }
-          case 'HEAPU32': {
-            makeCallExpression(node, 'GROWABLE_HEAP_U32', []);
-            break;
-          }
-          case 'HEAPF32': {
-            makeCallExpression(node, 'GROWABLE_HEAP_F32', []);
-            break;
-          }
-          case 'HEAPF64': {
-            makeCallExpression(node, 'GROWABLE_HEAP_F64', []);
-            break;
-          }
-        }
+    Identifier(node) {
+      if (isEmscriptenHEAP(node.name)) {
+        // Transform `HEAPxx` into `(growMemViews(), HEAPxx)`.
+        // Important: don't just do `growMemViews(HEAPxx)` because `growMemViews` reassigns `HEAPxx`
+        // and we want to get an updated value after that reassignment.
+        Object.assign(node, {
+          type: 'SequenceExpression',
+          expressions: [
+            {
+              type: 'CallExpression',
+              callee: {
+                type: 'Identifier',
+                name: 'growMemViews',
+              },
+              arguments: [],
+            },
+            {...node},
+          ],
+        });
       }
     },
   });
@@ -1369,12 +1254,7 @@ function unsignPointers(ast) {
       right: {
         type: 'Literal',
         value: 0,
-        raw: '0',
-        start: 0,
-        end: 0,
       },
-      start: 0,
-      end: 0,
     };
   }
 
@@ -1389,7 +1269,6 @@ function unsignPointers(ast) {
         node.callee.type === 'MemberExpression' &&
         node.callee.object.type === 'Identifier' &&
         isHeap(node.callee.object.name) &&
-        node.callee.property.type === 'Identifier' &&
         !node.callee.computed
       ) {
         // This is a call on HEAP*.?. Specific things we need to fix up are
@@ -1431,122 +1310,9 @@ function isHEAPAccess(node) {
 function asanify(ast) {
   recursiveWalk(ast, {
     FunctionDeclaration(node, c) {
-      if (node.id.type === 'Identifier' && node.id.name.startsWith('_asan_js_')) {
-        // do not recurse into this js impl function, which we use during
-        // startup before the wasm is ready
-      } else {
-        c(node.body);
-      }
-    },
-    AssignmentExpression(node, c) {
-      const target = node.left;
-      const value = node.right;
-      c(value);
-      if (isHEAPAccess(target)) {
-        // Instrument a store.
-        const ptr = target.property;
-        switch (target.object.name) {
-          case 'HEAP8': {
-            makeCallExpression(node, '_asan_js_store_1', [ptr, value]);
-            break;
-          }
-          case 'HEAPU8': {
-            makeCallExpression(node, '_asan_js_store_1u', [ptr, value]);
-            break;
-          }
-          case 'HEAP16': {
-            makeCallExpression(node, '_asan_js_store_2', [ptr, value]);
-            break;
-          }
-          case 'HEAPU16': {
-            makeCallExpression(node, '_asan_js_store_2u', [ptr, value]);
-            break;
-          }
-          case 'HEAP32': {
-            makeCallExpression(node, '_asan_js_store_4', [ptr, value]);
-            break;
-          }
-          case 'HEAPU32': {
-            makeCallExpression(node, '_asan_js_store_4u', [ptr, value]);
-            break;
-          }
-          case 'HEAPF32': {
-            makeCallExpression(node, '_asan_js_store_f', [ptr, value]);
-            break;
-          }
-          case 'HEAPF64': {
-            makeCallExpression(node, '_asan_js_store_d', [ptr, value]);
-            break;
-          }
-        }
-      } else {
-        c(target);
-      }
-    },
-    MemberExpression(node, c) {
-      c(node.property);
-      if (!isHEAPAccess(node)) {
-        c(node.object);
-      } else {
-        // Instrument a load.
-        const ptr = node.property;
-        switch (node.object.name) {
-          case 'HEAP8': {
-            makeCallExpression(node, '_asan_js_load_1', [ptr]);
-            break;
-          }
-          case 'HEAPU8': {
-            makeCallExpression(node, '_asan_js_load_1u', [ptr]);
-            break;
-          }
-          case 'HEAP16': {
-            makeCallExpression(node, '_asan_js_load_2', [ptr]);
-            break;
-          }
-          case 'HEAPU16': {
-            makeCallExpression(node, '_asan_js_load_2u', [ptr]);
-            break;
-          }
-          case 'HEAP32': {
-            makeCallExpression(node, '_asan_js_load_4', [ptr]);
-            break;
-          }
-          case 'HEAPU32': {
-            makeCallExpression(node, '_asan_js_load_4u', [ptr]);
-            break;
-          }
-          case 'HEAPF32': {
-            makeCallExpression(node, '_asan_js_load_f', [ptr]);
-            break;
-          }
-          case 'HEAPF64': {
-            makeCallExpression(node, '_asan_js_load_d', [ptr]);
-            break;
-          }
-        }
-      }
-    },
-  });
-}
-
-function multiply(value, by) {
-  return createNode({
-    type: 'BinaryExpression',
-    left: value,
-    operator: '*',
-    right: createLiteral(by),
-  });
-}
-
-// Replace direct heap access with SAFE_HEAP* calls.
-function safeHeap(ast) {
-  recursiveWalk(ast, {
-    FunctionDeclaration(node, c) {
       if (
         node.id.type === 'Identifier' &&
-        (node.id.name.startsWith('SAFE_HEAP') ||
-          node.id.name === 'setValue_safe' ||
-          node.id.name === 'getValue_safe')
+        (node.id.name.startsWith('_asan_js_') || node.id.name === 'establishStackSpace')
       ) {
         // do not recurse into this js impl function, which we use during
         // startup before the wasm is ready
@@ -1560,48 +1326,7 @@ function safeHeap(ast) {
       c(value);
       if (isHEAPAccess(target)) {
         // Instrument a store.
-        const ptr = target.property;
-        switch (target.object.name) {
-          case 'HEAP8':
-          case 'HEAPU8': {
-            makeCallExpression(node, 'SAFE_HEAP_STORE', [ptr, value, createLiteral(1)]);
-            break;
-          }
-          case 'HEAP16':
-          case 'HEAPU16': {
-            makeCallExpression(node, 'SAFE_HEAP_STORE', [
-              multiply(ptr, 2),
-              value,
-              createLiteral(2),
-            ]);
-            break;
-          }
-          case 'HEAP32':
-          case 'HEAPU32': {
-            makeCallExpression(node, 'SAFE_HEAP_STORE', [
-              multiply(ptr, 4),
-              value,
-              createLiteral(4),
-            ]);
-            break;
-          }
-          case 'HEAPF32': {
-            makeCallExpression(node, 'SAFE_HEAP_STORE_D', [
-              multiply(ptr, 4),
-              value,
-              createLiteral(4),
-            ]);
-            break;
-          }
-          case 'HEAPF64': {
-            makeCallExpression(node, 'SAFE_HEAP_STORE_D', [
-              multiply(ptr, 8),
-              value,
-              createLiteral(8),
-            ]);
-            break;
-          }
-        }
+        makeCallExpression(node, '_asan_js_store', [target.object, target.property, value]);
       } else {
         c(target);
       }
@@ -1612,65 +1337,50 @@ function safeHeap(ast) {
         c(node.object);
       } else {
         // Instrument a load.
-        const ptr = node.property;
-        switch (node.object.name) {
-          case 'HEAP8': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [ptr, createLiteral(1), createLiteral(0)]);
-            break;
-          }
-          case 'HEAPU8': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [ptr, createLiteral(1), createLiteral(1)]);
-            break;
-          }
-          case 'HEAP16': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [
-              multiply(ptr, 2),
-              createLiteral(2),
-              createLiteral(0),
-            ]);
-            break;
-          }
-          case 'HEAPU16': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [
-              multiply(ptr, 2),
-              createLiteral(2),
-              createLiteral(1),
-            ]);
-            break;
-          }
-          case 'HEAP32': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [
-              multiply(ptr, 4),
-              createLiteral(4),
-              createLiteral(0),
-            ]);
-            break;
-          }
-          case 'HEAPU32': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD', [
-              multiply(ptr, 4),
-              createLiteral(4),
-              createLiteral(1),
-            ]);
-            break;
-          }
-          case 'HEAPF32': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD_D', [
-              multiply(ptr, 4),
-              createLiteral(4),
-              createLiteral(0),
-            ]);
-            break;
-          }
-          case 'HEAPF64': {
-            makeCallExpression(node, 'SAFE_HEAP_LOAD_D', [
-              multiply(ptr, 8),
-              createLiteral(8),
-              createLiteral(0),
-            ]);
-            break;
-          }
-        }
+        makeCallExpression(node, '_asan_js_load', [node.object, node.property]);
+      }
+    },
+  });
+}
+
+function multiply(value, by) {
+  return {
+    type: 'BinaryExpression',
+    left: value,
+    operator: '*',
+    right: createLiteral(by),
+  };
+}
+
+// Replace direct heap access with SAFE_HEAP* calls.
+function safeHeap(ast) {
+  recursiveWalk(ast, {
+    FunctionDeclaration(node, c) {
+      if (node.id.type === 'Identifier' && node.id.name.startsWith('SAFE_HEAP')) {
+        // do not recurse into this js impl function, which we use during
+        // startup before the wasm is ready
+      } else {
+        c(node.body);
+      }
+    },
+    AssignmentExpression(node, c) {
+      const target = node.left;
+      const value = node.right;
+      c(value);
+      if (isHEAPAccess(target)) {
+        // Instrument a store.
+        makeCallExpression(node, 'SAFE_HEAP_STORE', [target.object, target.property, value]);
+      } else {
+        c(target);
+      }
+    },
+    MemberExpression(node, c) {
+      c(node.property);
+      if (!isHEAPAccess(node)) {
+        c(node.object);
+      } else {
+        // Instrument a load.
+        makeCallExpression(node, 'SAFE_HEAP_LOAD', [node.object, node.property]);
       }
     },
   });
@@ -1727,7 +1437,7 @@ function ensureMinifiedNames(n) {
 
 function minifyLocals(ast) {
   // We are given a mapping of global names to their minified forms.
-  assert(extraInfo && extraInfo.globals);
+  assert(extraInfo?.globals);
 
   for (const fun of ast.body) {
     if (fun.type !== 'FunctionDeclaration') {
@@ -1991,7 +1701,7 @@ function reattachComments(ast, commentsMap) {
   // Collect all code symbols
   ast.walk(
     new terser.TreeWalker((node) => {
-      if (node.start && node.start.pos) {
+      if (node.start?.pos) {
         symbols.push(node);
       }
     }),
@@ -2057,11 +1767,6 @@ function trace(...args) {
   }
 }
 
-function error(...args) {
-  console.error(...args);
-  throw new Error(...args);
-}
-
 // If enabled, output retains parentheses and comments so that the
 // output can further be passed out to Closure.
 const closureFriendly = getArg('--closure-friendly');
@@ -2098,28 +1803,13 @@ if (closureFriendly) {
   const currentComments = [];
   Object.assign(params, {
     preserveParens: true,
-    onToken: (token) => {
+    onToken(token) {
       // Associate comments with the start position of the next token.
       sourceComments[token.start] = currentComments.slice();
       currentComments.length = 0;
     },
     onComment: currentComments,
   });
-}
-let ast;
-try {
-  ast = acorn.parse(input, params);
-} catch (err) {
-  err.message += (() => {
-    let errorMessage = '\n' + input.split(acorn.lineBreak)[err.loc.line - 1] + '\n';
-    let column = err.loc.column;
-    while (column--) {
-      errorMessage += ' ';
-    }
-    errorMessage += '^\n';
-    return errorMessage;
-  })();
-  throw err;
 }
 
 const registry = {
@@ -2138,13 +1828,23 @@ const registry = {
   minifyGlobals,
 };
 
-passes.forEach((pass) => {
-  trace(`running AST pass: ${pass}`);
-  if (!(pass in registry)) {
-    error(`unknown optimizer pass: ${pass}`);
+let ast;
+try {
+  ast = acorn.parse(input, params);
+  for (let pass of passes) {
+    const resolvedPass = registry[pass];
+    assert(resolvedPass, `unknown optimizer pass: ${pass}`);
+    resolvedPass(ast);
   }
-  registry[pass](ast);
-});
+} catch (err) {
+  if (err.loc) {
+    err.message +=
+      '\n' +
+      `${input.split(acorn.lineBreak)[err.loc.line - 1]}\n` +
+      `${' '.repeat(err.loc.column)}^ ${infile}:${err.loc.line}:${err.loc.column + 1}`;
+  }
+  throw err;
+}
 
 if (!noPrint) {
   const terserAst = terser.AST_Node.from_mozilla_ast(ast);
