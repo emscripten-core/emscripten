@@ -908,13 +908,21 @@ var LibraryDylink = {
     // now load needed libraries and the module itself.
     if (flags.loadAsync) {
       return metadata.neededDynlibs
-        .reduce((chain, dynNeeded) => chain.then(() =>
-          loadDynamicLibrary(dynNeeded, flags, localScope)
-        ), Promise.resolve())
+        .reduce((chain, needed) => chain.then(() => {
+#if FILESYSTEM
+          needed = findLibraryFS(needed, flags.rpath) ?? needed;
+#endif
+          return loadDynamicLibrary(needed, flags, localScope);
+        }), Promise.resolve())
         .then(loadModule);
     }
 
-    metadata.neededDynlibs.forEach((needed) => loadDynamicLibrary(needed, flags, localScope));
+    metadata.neededDynlibs.forEach((needed) => {
+#if FILESYSTEM
+      needed = findLibraryFS(needed, flags.rpath) ?? needed;
+#endif      
+      return loadDynamicLibrary(needed, flags, localScope);
+    });
     return loadModule();
   },
 
@@ -1041,7 +1049,10 @@ var LibraryDylink = {
     // when loadDynamicLibrary did not have flags, libraries were loaded
     // globally & permanently
 
-    var dso = LDSO.loadedLibsByName[libName];
+    // Extract the filename part if libName is an absolute path
+    // This is to avoid problem when the same library is loaded from multiple folders.
+    var basename = libName.split('/').pop();
+    var dso = LDSO.loadedLibsByName[basename];
     if (dso) {
       // the library is being loaded or has been loaded already.
 #if ASSERTIONS
@@ -1072,7 +1083,7 @@ var LibraryDylink = {
     }
 
     // allocate new DSO
-    dso = newDSO(libName, handle, 'loading');
+    dso = newDSO(basename, handle, 'loading');
     dso.refcount = flags.nodelete ? Infinity : 1;
     dso.global = flags.global;
 
