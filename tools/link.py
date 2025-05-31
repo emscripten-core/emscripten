@@ -1945,15 +1945,20 @@ def phase_post_link(options, in_wasm, wasm_target, target, js_syms, base_metadat
 
   target_basename = unsuffixed_basename(target)
 
+  if settings.EXPORT_ES6:
+    js_extension = '.mjs'
+  else:
+    js_extension = '.js'
+
   if options.oformat != OFormat.WASM:
-    final_js = in_temp(target_basename + '.js')
+    final_js = in_temp(target_basename + js_extension)
 
   settings.TARGET_BASENAME = unsuffixed_basename(target)
 
   if options.oformat in (OFormat.JS, OFormat.MJS):
     js_target = target
   else:
-    js_target = get_secondary_target(target, '.js')
+    js_target = get_secondary_target(target, js_extension)
 
   settings.TARGET_JS_NAME = os.path.basename(js_target)
 
