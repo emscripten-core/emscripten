@@ -65,7 +65,7 @@ addToLibrary({
             chunks: [wholeFileData],
             chunkSize: wholeFileData.byteLength
           };
-          return Promise.resolve();
+          return;
         }
       }
       var firstChunk = (offset / chunkSize) | 0;
@@ -84,7 +84,7 @@ addToLibrary({
       if (allPresent) {
         // The data is already here, so nothing to do before we continue on to
         // the actual read.
-        return Promise.resolve();
+        return;
       }
       // This is the first time we want the chunks' data.  We'll make
       // one request for all the chunks we need, rather than one
@@ -100,20 +100,15 @@ addToLibrary({
       for (i = firstChunk; i <= lastChunk; i++) {
         wasmFS$JSMemoryRanges[file].chunks[i] = bytes.slice(i*chunkSize-start,(i+1)*chunkSize-start);
       }
-      return Promise.resolve();
     }
 
     wasmFS$backends[backend] = {
       // alloc/free operations are not actually async. Just forward to the
       // parent class, but we must return a Promise as the caller expects.
-      allocFile: async (file) => {
-        // nop
-        return Promise.resolve();
-      },
+      allocFile: async (file) => { /* nop */ },
       freeFile: async (file) => {
         // free memory
         wasmFS$JSMemoryRanges[file] = undefined;
-        return Promise.resolve();
       },
 
       write: async (file, buffer, length, offset) => {
