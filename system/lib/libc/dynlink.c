@@ -656,12 +656,14 @@ em_promise_t emscripten_dlopen_promise(const char* filename, int flags) {
   // Create a promise that is resolved (and destroyed) once the operation
   // succeeds.
   em_promise_t p = emscripten_promise_create();
-  emscripten_dlopen(filename, flags, p, promise_onsuccess, promise_onerror);
-
   // Create a second promise bound the first one to return the caller.  It's
   // then up to the caller to destroy this promise.
   em_promise_t ret = emscripten_promise_create();
+  
+  // The order matters here. Calling emscripten_dlopen before resolving the second promise
+  // may destroy the first promise before resolving the value.
   emscripten_promise_resolve(ret, EM_PROMISE_MATCH, p);
+  emscripten_dlopen(filename, flags, p, promise_onsuccess, promise_onerror);
   return ret;
 }
 
