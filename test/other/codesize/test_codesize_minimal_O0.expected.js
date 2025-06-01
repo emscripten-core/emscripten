@@ -417,6 +417,7 @@ function unexportedRuntimeSymbol(sym) {
 // end include: runtime_debug.js
 // Memory management
 
+/** @type {!WebAssembly.Memory} */
 var wasmMemory;
 
 var
