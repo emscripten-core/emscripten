@@ -7,7 +7,6 @@
 #include "runtime_stack_check.js"
 #include "runtime_exceptions.js"
 #include "runtime_debug.js"
-#include "memoryprofiler.js"
 
 #if SAFE_HEAP
 #include "runtime_safe_heap.js"
@@ -168,3 +167,5 @@ if (ENVIRONMENT_IS_NODE) {
 // In non-standalone/normal mode, we create the memory here.
 #include "runtime_init_memory.js"
 #endif // !IMPORTED_MEMORY && ASSERTIONS
+
+#include "memoryprofiler.js"
