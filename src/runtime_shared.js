@@ -67,6 +67,7 @@ var wasmOffsetConverter;
 // Memory management
 
 #if !WASM_ESM_INTEGRATION || IMPORTED_MEMORY
+/** @type {!WebAssembly.Memory} */
 var wasmMemory;
 #endif
 
