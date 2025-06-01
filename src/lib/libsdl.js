@@ -20,7 +20,7 @@ var LibrarySDL = {
     '$PATH', '$Browser', 'SDL_GetTicks', 'SDL_LockSurface',
     '$MainLoop',
     // For makeCEvent().
-    '$intArrayFromString',
+    '$stringToUTF8',
     // Many SDL functions depend on malloc/free
     'malloc', 'free',
     'memcpy',
@@ -964,10 +964,7 @@ var LibrarySDL = {
         case 'keypress': {
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_TextInputEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
           // Not filling in windowID for now
-          var cStr = intArrayFromString(String.fromCharCode(event.charCode));
-          for (var i = 0; i < cStr.length; ++i) {
-            {{{ makeSetValue('ptr', C_STRUCTS.SDL_TextInputEvent.text + ' + i', 'cStr[i]', 'i8') }}};
-          }
+          stringToUTF8(String.fromCharCode(event.charCode), ptr + C_STRUCTS.SDL_TextInputEvent.text, 4);
           break;
         }
         case 'mousedown': case 'mouseup': case 'mousemove': {
@@ -2904,8 +2901,8 @@ var LibrarySDL = {
       audio.frequency = info.audio.frequency;
     }
     audio['onended'] = function() { // TODO: cache these
-      if (channelInfo.audio === this || channelInfo.audio.webAudioNode === this) { 
-        channelInfo.audio.paused = true; channelInfo.audio = null; 
+      if (channelInfo.audio === this || channelInfo.audio.webAudioNode === this) {
+        channelInfo.audio.paused = true; channelInfo.audio = null;
       }
       if (SDL.channelFinished) {{{ makeDynCall('vi', 'SDL.channelFinished') }}}(channel);
     }

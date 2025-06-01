@@ -919,9 +919,8 @@ var SyscallsLibrary = {
     if (bufsize <= 0) return -{{{ cDefs.EINVAL }}};
     var ret = FS.readlink(path);
 
-    var len = Math.min(bufsize, lengthBytesUTF8(ret));
     var endChar = HEAP8[buf+len];
-    stringToUTF8(ret, buf, bufsize+1);
+    stringToUTF8(ret, buf, bufsize);
     // readlink is one of the rare functions that write out a C string, but does never append a null to the output buffer(!)
     // stringToUTF8() always appends a null byte, so restore the character under the null byte after the write.
     HEAP8[buf+len] = endChar;

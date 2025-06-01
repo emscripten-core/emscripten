@@ -442,7 +442,7 @@ var WasiLibrary = {
       return {{{ cDefs.EBADF }}};
     }
     var preopen_path = preopens[fd];
-    stringToUTF8Array(preopen_path, HEAP8, path, path_len)
+    stringToUTF8(preopen_path, path, path_len)
 #if SYSCALL_DEBUG
     dbg(`fd_prestat_dir_name -> "${preopen_path}"`);
 #endif
