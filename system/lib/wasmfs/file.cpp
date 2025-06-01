@@ -134,6 +134,18 @@ Directory::Handle::insertSymlink(const std::string& name,
   return child;
 }
 
+void Directory::Handle::removeAllCacheEntries() {
+  auto& dcache = getDir()->dcache;
+  for (const auto& [key, value] : dcache) {
+    if ((value.kind == DCacheKind::Normal) && (value.file->kind == DirectoryKind)) {
+      // Recursively remove all entries from child directories.
+      std::shared_ptr<Directory> childDir = value.file->cast<Directory>();
+      childDir->locked().removeAllCacheEntries();
+    }
+  }
+  dcache.clear();
+}
+
 // TODO: consider moving this to be `Backend::move` to avoid asymmetry between
 // the source and destination directories and/or taking `Directory::Handle`
 // arguments to prove that the directories have already been locked.
