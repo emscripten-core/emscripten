@@ -1049,10 +1049,7 @@ var LibraryDylink = {
     // when loadDynamicLibrary did not have flags, libraries were loaded
     // globally & permanently
 
-    // Extract the filename part if libName is an absolute path
-    // This is to avoid problem when the same library is loaded from multiple folders.
-    var basename = libName.split('/').pop();
-    var dso = LDSO.loadedLibsByName[basename];
+    var dso = LDSO.loadedLibsByName[libName];
     if (dso) {
       // the library is being loaded or has been loaded already.
 #if ASSERTIONS
@@ -1083,7 +1080,7 @@ var LibraryDylink = {
     }
 
     // allocate new DSO
-    dso = newDSO(basename, handle, 'loading');
+    dso = newDSO(libName, handle, 'loading');
     dso.refcount = flags.nodelete ? Infinity : 1;
     dso.global = flags.global;
 
