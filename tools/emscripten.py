@@ -546,7 +546,8 @@ def finalize_wasm(infile, outfile, js_syms):
   if not need_name_section:
     strip_sections += ['name']
 
-  if strip_sections or not settings.GENERATE_DWARF:
+  # TODO(walkingeyerobot): make this work. it appears to not like the wasm file from wasm-bindgen
+  if not settings.WASM_BINDGEN and (strip_sections or not settings.GENERATE_DWARF):
     building.save_intermediate(outfile, 'strip.wasm')
     building.strip(infile, outfile, debug=not settings.GENERATE_DWARF,
                    sections=strip_sections)
