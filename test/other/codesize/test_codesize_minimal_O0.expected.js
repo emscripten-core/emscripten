@@ -415,8 +415,6 @@ function unexportedRuntimeSymbol(sym) {
 }
 
 // end include: runtime_debug.js
-// include: memoryprofiler.js
-// end include: memoryprofiler.js
 // Memory management
 
 var wasmMemory;
@@ -465,6 +463,8 @@ function updateMemoryViews() {
   HEAPU64 = new BigUint64Array(b);
 }
 
+// include: memoryprofiler.js
+// end include: memoryprofiler.js
 // end include: runtime_shared.js
 assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray != undefined && Int32Array.prototype.set != undefined,
        'JS engine does not provide full typed array support');
