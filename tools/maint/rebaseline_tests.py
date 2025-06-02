@@ -39,6 +39,8 @@ all_deltas = []
 
 
 def process_changed_file(filename):
+  if os.path.splitext(filename)[1] != '.json':
+    return f'{filename} updated\n'
   content = open(filename).read()
   old_content = run(['git', 'show', f'HEAD:{filename}'])
   print(f'processing {filename}')
@@ -50,7 +52,7 @@ def process_changed_file(filename):
       current_json = json.loads(content)
       old_json = json.loads(old_content)
     except Exception:
-      print(f'{filename}: Unable to parse json content. Unsupported file format?')
+      print(f'{filename}: Unable to parse json content')
       sys.exit(1)
     size = current_json['total']
     old_size = old_json['total']
@@ -114,7 +116,8 @@ running the tests with `--rebaseline`:
   for file in filenames:
     message += process_changed_file(file)
 
-  message += f'\nAverage change: {statistics.mean(all_deltas):+.2f}% ({min(all_deltas):+.2f}% - {max(all_deltas):+.2f}%)\n'
+  if all_deltas:
+    message += f'\nAverage change: {statistics.mean(all_deltas):+.2f}% ({min(all_deltas):+.2f}% - {max(all_deltas):+.2f}%)\n'
 
   message += '```\n'
 
