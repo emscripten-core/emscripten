@@ -2,19 +2,19 @@
   "private": true,
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
-    "@eslint/js": "^9.24.0",
-    "es-check": "^8.0.2",
-    "eslint": "^9.24.0",
-    "eslint-config-prettier": "^10.1.1",
-    "globals": "^16.0.0",
+    "@eslint/js": "^9.28.0",
+    "es-check": "^9.1.2",
+    "eslint": "^9.28.0",
+    "eslint-config-prettier": "^10.1.5",
+    "globals": "^16.2.0",
     "prettier": "^3.5.3",
-    "rollup": "^4.39.0",
+    "rollup": "^4.41.1",
     "source-map": "0.7.4",
     "typescript": "^5.8.3",
-    "vite": "^6.2.3",
-    "webpack": "^5.99.3",
+    "vite": "^6.3.5",
+    "webpack": "^5.99.9",
     "webpack-cli": "^6.0.1",
-    "ws": "^8.18.1"
+    "ws": "^8.18.2"
   },
   "dependencies": {
     "@babel/cli": "^7.27.0",
