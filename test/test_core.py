@@ -6590,8 +6590,6 @@ void* operator new(size_t size) {
     'nontrapping': (['-mnontrapping-fptoint'],),
   })
   def test_sse2(self, args):
-    if self.is_wasm64():
-      self.require_node_canary()
     src = test_file('sse/test_sse2.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse2', stdout=PIPE).stdout
@@ -6633,8 +6631,6 @@ void* operator new(size_t size) {
   @requires_x64_cpu
   @is_slow_test
   def test_sse4_1(self):
-    if self.is_wasm64():
-      self.require_node_canary()
     src = test_file('sse/test_sse4_1.cpp')
     # Run with inlining disabled to avoid slow LLVM behavior with lots of macro expanded loops inside a function body.
     self.run_process([shared.CLANG_CXX, src, '-msse4.1', '-fno-inline-functions', '-Wno-argument-outside-range', '-o', 'test_sse4_1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
