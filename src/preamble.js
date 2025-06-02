@@ -101,7 +101,7 @@ function _free() {
  */
 var isFileURI = (filename) => filename.startsWith('file://');
 
-#include "runtime_shared.js"
+#include "runtime_common.js"
 
 #if ASSERTIONS
 assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray != undefined && Int32Array.prototype.set != undefined,
