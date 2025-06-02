@@ -1038,12 +1038,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.is_browser_test():
       return
 
-    nodejs = self.get_nodejs()
-    if nodejs:
-      version = shared.get_node_version(nodejs)
-      if version >= (24, 0, 0):
-        self.js_engines = [nodejs]
-        return
+    if self.try_require_node_version(24):
+      return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
       self.emcc_args.append('-sENVIRONMENT=shell')
@@ -1055,16 +1051,23 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     else:
       self.fail('either d8 or node >= 24 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
 
+  def try_require_node_version(self, major, minor = 0, revision = 0):
+    nodejs = self.get_nodejs()
+    if not nodejs:
+      self.skipTest('Test requires nodejs to run')
+    version = shared.get_node_version(nodejs)
+    if version < (major, minor, revision):
+      return False
+
+    self.js_engines = [nodejs]
+    return True
+
   def require_simd(self):
     if self.is_browser_test():
       return
 
-    nodejs = self.get_nodejs()
-    if nodejs:
-      version = shared.get_node_version(nodejs)
-      if version >= (16, 0, 0):
-        self.js_engines = [nodejs]
-        return
+    if self.try_require_node_version(16):
+      return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
       self.emcc_args.append('-sENVIRONMENT=shell')
@@ -1078,12 +1081,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def require_wasm_legacy_eh(self):
     self.set_setting('WASM_LEGACY_EXCEPTIONS')
-    nodejs = self.get_nodejs()
-    if nodejs:
-      version = shared.get_node_version(nodejs)
-      if version >= (17, 0, 0):
-        self.js_engines = [nodejs]
-        return
+    if self.try_require_node_version(17):
+      return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
       self.emcc_args.append('-sENVIRONMENT=shell')
