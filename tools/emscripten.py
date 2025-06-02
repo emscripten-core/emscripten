@@ -811,6 +811,8 @@ def add_standard_wasm_imports(send_items_map):
       'store_val_i64',
       'store_val_f32',
       'store_val_f64',
+      'memory_grow_pre',
+      'memory_grow_post',
     ]
 
   if settings.SPLIT_MODULE and settings.ASYNCIFY == 2:
