@@ -54,6 +54,6 @@ function initMemory() {
   updateMemoryViews();
 }
 
-#if WASM_ESM_INTEGRATION
+#if WASM_ESM_INTEGRATION || MINIMAL_RUNTIME
 initMemory();
 #endif
