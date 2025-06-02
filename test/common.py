@@ -302,17 +302,6 @@ def requires_wasm64(func):
   return decorated
 
 
-def requires_wasm_legacy_eh(func):
-  assert callable(func)
-
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-    self.require_wasm_legacy_eh()
-    return func(self, *args, **kwargs)
-
-  return decorated
-
-
 def requires_wasm_eh(func):
   assert callable(func)
 
@@ -711,8 +700,6 @@ def with_all_eh_sjlj(f):
       self.set_setting('SUPPORT_LONGJMP', 'wasm')
       if mode == 'wasm':
         self.require_wasm_eh()
-      if mode == 'wasm_legacy':
-        self.require_wasm_legacy_eh()
       f(self, *args, **kwargs)
     else:
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
@@ -743,8 +730,6 @@ def with_all_sjlj(f):
       self.set_setting('SUPPORT_LONGJMP', 'wasm')
       if mode == 'wasm':
         self.require_wasm_eh()
-      if mode == 'wasm_legacy':
-        self.require_wasm_legacy_eh()
       f(self, *args, **kwargs)
     else:
       self.set_setting('SUPPORT_LONGJMP', 'emscripten')
@@ -1054,46 +1039,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest('test requires node >= 24 or d8 (and EMTEST_SKIP_WASM64 is set)')
     else:
       self.fail('either d8 or node >= 24 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
-
-  def require_simd(self):
-    if self.is_browser_test():
-      return
-
-    nodejs = self.get_nodejs()
-    if nodejs:
-      version = shared.get_node_version(nodejs)
-      if version >= (16, 0, 0):
-        self.js_engines = [nodejs]
-        return
-
-    if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
-      self.emcc_args.append('-sENVIRONMENT=shell')
-      self.js_engines = [config.V8_ENGINE]
-      return
-
-    if 'EMTEST_SKIP_SIMD' in os.environ:
-      self.skipTest('test requires node >= 16 or d8 (and EMTEST_SKIP_SIMD is set)')
-    else:
-      self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_SIMD to skip')
-
-  def require_wasm_legacy_eh(self):
-    self.set_setting('WASM_LEGACY_EXCEPTIONS')
-    nodejs = self.get_nodejs()
-    if nodejs:
-      version = shared.get_node_version(nodejs)
-      if version >= (17, 0, 0):
-        self.js_engines = [nodejs]
-        return
-
-    if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
-      self.emcc_args.append('-sENVIRONMENT=shell')
-      self.js_engines = [config.V8_ENGINE]
-      return
-
-    if 'EMTEST_SKIP_EH' in os.environ:
-      self.skipTest('test requires node >= 17 or d8 (and EMTEST_SKIP_EH is set)')
-    else:
-      self.fail('either d8 or node >= 17 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
 
   def require_wasm_eh(self):
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)

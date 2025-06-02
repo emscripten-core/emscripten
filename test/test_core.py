@@ -89,7 +89,6 @@ def wasm_simd(f):
 
   @wraps(f)
   def decorated(self, *args, **kwargs):
-    self.require_simd()
     if self.get_setting('MEMORY64') == 2:
       self.skipTest('https://github.com/WebAssembly/binaryen/issues/4638')
     if self.is_wasm2js():
@@ -98,7 +97,6 @@ def wasm_simd(f):
       self.skipTest('SIMD tests are too slow with -O3 in the new LLVM pass manager, https://github.com/emscripten-core/emscripten/issues/13427')
     self.emcc_args.append('-msimd128')
     self.emcc_args.append('-fno-lax-vector-conversions')
-    self.v8_args.append('--experimental-wasm-simd')
     f(self, *args, **kwargs)
   return decorated
 

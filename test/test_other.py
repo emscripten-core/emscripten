@@ -9731,14 +9731,6 @@ int main() {
       'at (src.wasm.)?foo',
       'at (src.wasm.)?main']
 
-    if '-fwasm-exceptions' in self.emcc_args:
-      # FIXME Node v18.13 (LTS as of Jan 2023) has not yet implemented the new
-      # optional 'traceStack' option in WebAssembly.Exception constructor
-      # (https://developer.mozilla.org/en-US/docs/WebAssembly/JavaScript_interface/Exception/Exception)
-      # and embeds stack traces unconditionally. Change this back to
-      # self.require_wasm_legacy_eh() if this issue is fixed later.
-      self.require_v8()
-
     # Stack traces are enabled when either of ASSERTIONS or
     # EXCEPTION_STACK_TRACES is enabled. You can't disable
     # EXCEPTION_STACK_TRACES when ASSERTIONS is enabled.
@@ -9772,13 +9764,6 @@ int main() {
   @with_all_eh_sjlj
   def test_exceptions_rethrow_stack_trace_and_message(self):
     self.emcc_args += ['-g']
-    if '-fwasm-exceptions' in self.emcc_args:
-      # FIXME Node v18.13 (LTS as of Jan 2023) has not yet implemented the new
-      # optional 'traceStack' option in WebAssembly.Exception constructor
-      # (https://developer.mozilla.org/en-US/docs/WebAssembly/JavaScript_interface/Exception/Exception)
-      # and embeds stack traces unconditionally. Change this back to
-      # self.require_wasm_legacy_eh() if this issue is fixed later.
-      self.require_v8()
     # Rethrowing exception currently loses the stack trace before the rethrowing
     # due to how rethrowing is implemented. So in the examples below we don't
     # print 'bar' at the moment.
