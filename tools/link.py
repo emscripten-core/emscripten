@@ -33,9 +33,10 @@ from . import system_libs
 from . import utils
 from . import webassembly
 from . import extract_metadata
+from .cmdline import OFormat
 from .utils import read_file, write_file, delete_file
 from .utils import removeprefix, exit_with_error
-from .shared import in_temp, safe_copy, do_replace, OFormat
+from .shared import in_temp, safe_copy, do_replace
 from .shared import DEBUG, WINDOWS, DYLIB_EXTENSIONS
 from .shared import unsuffixed, unsuffixed_basename, get_file_suffix
 from .settings import settings, default_setting, user_settings, JS_ONLY_SETTINGS, DEPRECATED_SETTINGS

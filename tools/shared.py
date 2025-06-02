@@ -5,7 +5,6 @@
 
 from .toolchain_profiler import ToolchainProfiler
 
-from enum import Enum, unique, auto
 from subprocess import PIPE
 import atexit
 import logging
@@ -732,18 +731,6 @@ def get_llvm_target():
 def init():
   set_version_globals()
   setup_temp_dirs()
-
-
-@unique
-class OFormat(Enum):
-  # Output a relocatable object file.  We use this
-  # today for `-r` and `-shared`.
-  OBJECT = auto()
-  WASM = auto()
-  JS = auto()
-  MJS = auto()
-  HTML = auto()
-  BARE = auto()
 
 
 # ============================================================================
