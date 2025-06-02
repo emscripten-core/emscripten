@@ -9781,16 +9781,20 @@ NODEFS is no longer included by default; build with -lnodefs.js
                       '-sMODULARIZE=instance',
                       '-Wno-experimental',
                       '-lembind',
+                      '-sEXPORTED_RUNTIME_METHODS=runtimeKeepalivePush,runtimeKeepalivePop',
                       '-sEMBIND_AOT',
                       '-o', 'modularize_instance_embind.mjs'] + self.get_emcc_args())
 
     create_file('runner.mjs', '''
-      import init, { foo, Bar } from "./modularize_instance_embind.mjs";
+      import init, { foo, Bar, runtimeKeepalivePush, runtimeKeepalivePop } from "./modularize_instance_embind.mjs";
+      // Keep the runtime alive for asan when EXIT_RUNTIME=1
+      runtimeKeepalivePush();
       await init();
       foo();
       const bar = new Bar();
       bar.print();
       bar.delete();
+      runtimeKeepalivePop();
     ''')
 
     self.assertContained('main\nfoo\nbar\n', self.run_js('runner.mjs'))
