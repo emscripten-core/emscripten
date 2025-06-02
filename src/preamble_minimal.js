@@ -30,4 +30,4 @@ var tempI64;
 #endif
 #endif
 
-#include "runtime_shared.js"
+#include "runtime_common.js"
