@@ -7598,13 +7598,13 @@ void* operator new(size_t size) {
 
   def test_embind_val_coro_propogate_js_error(self):
     self.set_setting('EXCEPTION_STACK_TRACES')
-    create_file('post.js', r'''Module.onRuntimeInitialized = () => {
+    create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
       Module.failingPromise().then(
         console.log,
         err => console.error(`rejected with: ${err.message}`)
       );
     }''')
-    self.emcc_args += ['-std=c++20', '--bind', '--post-js=post.js', '-fexceptions']
+    self.emcc_args += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fexceptions']
     self.do_runf('embind/test_val_coro.cpp', 'rejected with: bang from JS promise!\n')
 
   def test_embind_dynamic_initialization(self):
