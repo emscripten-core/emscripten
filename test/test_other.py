@@ -16186,3 +16186,6 @@ addToLibrary({
     self.assertContainedIf(f'var MIN_CHROME_VERSION = {unsupported};', src, env == 'node')
     self.assertContainedIf(f'var MIN_SAFARI_VERSION = {unsupported};', src, env == 'node')
     self.assertContainedIf(f'var MIN_FIREFOX_VERSION = {unsupported};', src, env == 'node')
+
+  def test_queue_microtask(self):
+    self.do_other_test('test_queue_microtask.c')

@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 4.0.10 (in development)
 ----------------------
+- New `emscripten_queue_microtask` API was added to reflect the `queueMicrotask`
+  Web API. (#24483)
 - Emscripten ports now install pkg-config `.pc` files so they will show up, for
   example, when you run `pkg-config --list-all` or `pkg-config --cflags
   <portname>`. Bare in mind that the correct PKG_CONFIG_PATH needs to be set for

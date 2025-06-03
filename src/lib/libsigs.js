@@ -733,6 +733,7 @@ sigs = {
   emscripten_promise_race__sig: 'ppp',
   emscripten_promise_resolve__sig: 'vpip',
   emscripten_promise_then__sig: 'ppppp',
+  emscripten_queue_microtask__sig: 'ipp',
   emscripten_random__sig: 'f',
   emscripten_request_animation_frame__sig: 'ipp',
   emscripten_request_animation_frame_loop__sig: 'vpp',
