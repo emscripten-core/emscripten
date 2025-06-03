@@ -1096,12 +1096,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def require_wasm_eh(self):
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
-    nodejs = self.get_nodejs()
-    if nodejs:
-      if self.node_is_canary(nodejs):
-        self.js_engines = [nodejs]
-        self.node_args.append('--experimental-wasm-exnref')
-        return
+    if self.try_require_node_version(24):
+      self.node_args.append('--experimental-wasm-exnref')
+      return
 
     if self.is_browser_test():
       return
@@ -1113,9 +1110,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       return
 
     if 'EMTEST_SKIP_EH' in os.environ:
-      self.skipTest('test requires canary or d8 (and EMTEST_SKIP_EH is set)')
+      self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_EH is set)')
     else:
-      self.fail('either d8 or node canary required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
+      self.fail('either d8 or node v24 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
 
   def require_jspi(self):
     # emcc warns about stack switching being experimental, and we build with
@@ -1131,13 +1128,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       return
 
     exp_args = ['--experimental-wasm-stack-switching', '--experimental-wasm-type-reflection']
-    nodejs = self.get_nodejs()
-    if nodejs:
-      # Support for JSPI came earlier than 22, but the new API changes are not yet in any node
-      if self.node_is_canary(nodejs):
-        self.js_engines = [nodejs]
-        self.node_args += exp_args
-        return
+    # Support for JSPI came earlier than 22, but the new API changes require v24
+    if self.try_require_node_version(24):
+      self.node_args += exp_args
+      return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
       self.emcc_args.append('-sENVIRONMENT=shell')
@@ -1146,9 +1140,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       return
 
     if 'EMTEST_SKIP_JSPI' in os.environ:
-      self.skipTest('test requires node canary or d8 (and EMTEST_SKIP_JSPI is set)')
+      self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_JSPI is set)')
     else:
-      self.fail('either d8 or node canary required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
+      self.fail('either d8 or node v24 required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
 
   def require_wasm2js(self):
     if self.is_wasm64():
