@@ -247,20 +247,20 @@ var LibraryEmbind = {
   _embind_register_bool: (rawType, name, trueValue, falseValue) => {
     name = AsciiToString(name);
     registerType(rawType, {
-        name,
-        'fromWireType': function(wt) {
-            // ambiguous emscripten ABI: sometimes return values are
-            // true or false, and sometimes integers (0 or 1)
-            return !!wt;
-        },
-        'toWireType': function(destructors, o) {
-            return o ? trueValue : falseValue;
-        },
-        argPackAdvance: GenericWireTypeSize,
-        'readValueFromPointer': function(pointer) {
-            return this['fromWireType'](HEAPU8[pointer]);
-        },
-        destructorFunction: null, // This type does not need a destructor
+      name,
+      'fromWireType': function(wt) {
+        // ambiguous emscripten ABI: sometimes return values are
+        // true or false, and sometimes integers (0 or 1)
+        return !!wt;
+      },
+      'toWireType': function(destructors, o) {
+        return o ? trueValue : falseValue;
+      },
+      argPackAdvance: GenericWireTypeSize,
+      'readValueFromPointer': function(pointer) {
+        return this['fromWireType'](HEAPU8[pointer]);
+      },
+      destructorFunction: null, // This type does not need a destructor
     });
   },
 
@@ -268,53 +268,53 @@ var LibraryEmbind = {
   $integerReadValueFromPointer: (name, width, signed) => {
     // integers are quite common, so generate very specialized functions
     switch (width) {
-        case 1: return signed ?
-            (pointer) => {{{ makeGetValue('pointer', 0, 'i8') }}} :
-            (pointer) => {{{ makeGetValue('pointer', 0, 'u8') }}};
-        case 2: return signed ?
-            (pointer) => {{{ makeGetValue('pointer', 0, 'i16') }}} :
-            (pointer) => {{{ makeGetValue('pointer', 0, 'u16') }}}
-        case 4: return signed ?
-            (pointer) => {{{ makeGetValue('pointer', 0, 'i32') }}} :
-            (pointer) => {{{ makeGetValue('pointer', 0, 'u32') }}}
+      case 1: return signed ?
+        (pointer) => {{{ makeGetValue('pointer', 0, 'i8') }}} :
+        (pointer) => {{{ makeGetValue('pointer', 0, 'u8') }}};
+      case 2: return signed ?
+        (pointer) => {{{ makeGetValue('pointer', 0, 'i16') }}} :
+        (pointer) => {{{ makeGetValue('pointer', 0, 'u16') }}}
+      case 4: return signed ?
+        (pointer) => {{{ makeGetValue('pointer', 0, 'i32') }}} :
+        (pointer) => {{{ makeGetValue('pointer', 0, 'u32') }}}
 #if WASM_BIGINT
-        case 8: return signed ?
-            (pointer) => {{{ makeGetValue('pointer', 0, 'i64') }}} :
-            (pointer) => {{{ makeGetValue('pointer', 0, 'u64') }}}
+      case 8: return signed ?
+        (pointer) => {{{ makeGetValue('pointer', 0, 'i64') }}} :
+        (pointer) => {{{ makeGetValue('pointer', 0, 'u64') }}}
 #endif
-        default:
-            throw new TypeError(`invalid integer width (${width}): ${name}`);
+      default:
+        throw new TypeError(`invalid integer width (${width}): ${name}`);
     }
   },
 
   $enumReadValueFromPointer__deps: [],
   $enumReadValueFromPointer: (name, width, signed) => {
     switch (width) {
-        case 1: return signed ?
-            function(pointer) { return this['fromWireType']({{{ makeGetValue('pointer', 0, 'i8') }}}) } :
-            function(pointer) { return this['fromWireType']({{{ makeGetValue('pointer', 0, 'u8') }}}) };
-        case 2: return signed ?
-            function(pointer) { return this['fromWireType']({{{ makeGetValue('pointer', 0, 'i16') }}}) } :
-            function(pointer) { return this['fromWireType']({{{ makeGetValue('pointer', 0, 'u16') }}}) };
-        case 4: return signed ?
-            function(pointer) { return this['fromWireType']({{{ makeGetValue('pointer', 0, 'i32') }}}) } :
-            function(pointer) { return this['fromWireType']({{{ makeGetValue('pointer', 0, 'u32') }}}) };
-        default:
-            throw new TypeError(`invalid integer width (${width}): ${name}`);
+      case 1: return signed ?
+        function(pointer) { return this['fromWireType']({{{ makeGetValue('pointer', 0, 'i8') }}}) } :
+        function(pointer) { return this['fromWireType']({{{ makeGetValue('pointer', 0, 'u8') }}}) };
+      case 2: return signed ?
+        function(pointer) { return this['fromWireType']({{{ makeGetValue('pointer', 0, 'i16') }}}) } :
+        function(pointer) { return this['fromWireType']({{{ makeGetValue('pointer', 0, 'u16') }}}) };
+      case 4: return signed ?
+        function(pointer) { return this['fromWireType']({{{ makeGetValue('pointer', 0, 'i32') }}}) } :
+        function(pointer) { return this['fromWireType']({{{ makeGetValue('pointer', 0, 'u32') }}}) };
+      default:
+        throw new TypeError(`invalid integer width (${width}): ${name}`);
     }
   },
 
   $floatReadValueFromPointer__deps: [],
   $floatReadValueFromPointer: (name, width) => {
     switch (width) {
-        case 4: return function(pointer) {
-            return this['fromWireType']({{{ makeGetValue('pointer', 0, 'float') }}});
-        };
-        case 8: return function(pointer) {
-            return this['fromWireType']({{{ makeGetValue('pointer', 0, 'double') }}});
-        };
-        default:
-            throw new TypeError(`invalid float width (${width}): ${name}`);
+      case 4: return function(pointer) {
+        return this['fromWireType']({{{ makeGetValue('pointer', 0, 'float') }}});
+      };
+      case 8: return function(pointer) {
+        return this['fromWireType']({{{ makeGetValue('pointer', 0, 'double') }}});
+      };
+      default:
+        throw new TypeError(`invalid float width (${width}): ${name}`);
     }
   },
 
@@ -1239,7 +1239,7 @@ var LibraryEmbind = {
       throwBindingError(`Cannot pass deleted object as a pointer of type ${this.name}`);
     }
     if (handle.$$.ptrType.isConst) {
-        throwBindingError(`Cannot convert argument of type ${handle.$$.ptrType.name} to parameter type ${this.name}`);
+      throwBindingError(`Cannot convert argument of type ${handle.$$.ptrType.name} to parameter type ${this.name}`);
     }
     var handleClass = handle.$$.ptrType.registeredClass;
     var ptr = upcastPointer(handle.$$.ptr, handleClass, this.registeredClass);
