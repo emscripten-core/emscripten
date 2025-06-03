@@ -734,7 +734,6 @@ jobs:
             wasm64l.test_bigswitch
             wasm64l.test_module_wasm_memory
             wasm64l.test_longjmp2_emscripten
-            other.test_memory64_proxies
             other.test_failing_growth_wasm64"
       - upload-test-results
   test-jsc:
