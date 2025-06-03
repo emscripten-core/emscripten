@@ -9570,6 +9570,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertNotContained('unhandled exception', output)
     self.assertNotContained('Aborted', output)
 
+  @no_wasm64('TODO: profiler in memory64')
   def test_fcoverage_mapping(self):
     expected = '''    1|       |/*
     2|       | * Copyright 2016 The Emscripten Authors.  All rights reserved.
