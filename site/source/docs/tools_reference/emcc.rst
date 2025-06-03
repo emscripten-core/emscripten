@@ -449,20 +449,6 @@ Options that are modified or new in *emcc* are listed below:
   Runs Emscripten's internal sanity checks and reports any issues with the
   current configuration.
 
-.. _emcc-cache:
-
-``--cache <directory>``
-  [general]
-  Sets the directory to use as the Emscripten cache. The Emscripten cache
-  is used to store pre-built versions of ``libc``, ``libcxx`` and other
-  libraries.
-
-  If using this in combination with ``--clear-cache``, be sure to specify
-  this argument first.
-
-  The Emscripten cache defaults to ``emscripten/cache`` but can be overridden
-  using the ``EM_CACHE`` environment variable or ``CACHE`` config setting.
-
 .. _emcc-clear-cache:
 
 ``--clear-cache``
