@@ -141,7 +141,9 @@ var LibraryEmVal = {
     return Emval.toHandle(v);
   },
 
-#if !DYNAMIC_EXECUTION
+#if SUPPORTS_GLOBALTHIS
+  $emval_get_global: () => globalThis,
+#elif !DYNAMIC_EXECUTION
   $emval_get_global: () => {
     if (typeof globalThis == 'object') {
       return globalThis;
