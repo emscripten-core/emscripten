@@ -1461,8 +1461,8 @@ addToLibrary({
   // When lsan or asan is enabled withBuiltinMalloc temporarily replaces calls
   // to malloc, calloc, free, and memalign.
   $withBuiltinMalloc__deps: [
-    'malloc', 'calloc', 'free', 'memalign',
-    'emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign', 'emscripten_builtin_calloc'
+    'malloc', 'calloc', 'free', 'memalign', 'realloc',
+    'emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign', 'emscripten_builtin_calloc', 'emscripten_builtin_realloc'
   ],
   $withBuiltinMalloc__docs: '/** @suppress{checkTypes} */',
   $withBuiltinMalloc: (func) => {
@@ -1470,10 +1470,12 @@ addToLibrary({
     var prev_calloc = typeof _calloc != 'undefined' ? _calloc : undefined;
     var prev_memalign = typeof _memalign != 'undefined' ? _memalign : undefined;
     var prev_free = typeof _free != 'undefined' ? _free : undefined;
+    var prev_realloc = typeof _realloc != 'undefined' ? _realloc : undefined;
     _malloc = _emscripten_builtin_malloc;
     _calloc = _emscripten_builtin_calloc;
     _memalign = _emscripten_builtin_memalign;
     _free = _emscripten_builtin_free;
+    _realloc = _emscripten_builtin_realloc;
     try {
       return func();
     } finally {
@@ -1481,6 +1483,7 @@ addToLibrary({
       _calloc = prev_calloc;
       _memalign = prev_memalign;
       _free = prev_free;
+      _realloc = prev_realloc;
     }
   },
 
