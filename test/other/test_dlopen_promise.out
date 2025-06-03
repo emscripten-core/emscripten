@@ -1,3 +1,5 @@
 returning from main
-onsuccess
+onsuccess: 0
+foo = 42
+onsuccess: 1
 foo = 42
