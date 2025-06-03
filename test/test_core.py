@@ -6402,8 +6402,6 @@ int main(void) {
   def test_whets(self):
     self.do_runf('third_party/whets.c', 'Single Precision C Whetstone Benchmark')
 
-  # node is slower, and fail on 64-bit
-  @requires_v8
   @no_asan('depends on the specifics of memory size, which for asan we are forced to increase')
   @no_lsan('depends on the specifics of memory size, which for lsan we are forced to increase')
   def test_dlmalloc_inline(self):
