@@ -62,6 +62,7 @@ import argparse
 import tempfile
 import shlex
 import subprocess
+import typing
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
@@ -127,80 +128,64 @@ def show(msg):
 #     },
 #     'outer': 0.999
 #   }
-def c_set(name, type_, value, code):
-  code.append('printf("K' + name + '\\n");')
-  code.append('printf("V' + type_ + '\\n", ' + value + ');')
+class Scope:
+  def __init__(self, code: list[str]):
+    self.code = code
+    self.has_data = False
 
+  def __enter__(self):
+    self.code.append('puts("{");')
+    return self
 
-def c_descent(name, code):
-  code.append('printf("D' + name + '\\n");')
+  def __exit__(self, exc_type, exc_val, exc_tb):
+    if self.has_data:
+      self.code.append('puts("");')
+    self.code.append('printf("}");')
 
-
-def c_ascent(code):
-  code.append('printf("A\\n");')
-
-
-def parse_c_output(lines):
-  result = {}
-  cur_level = result
-  parent = []
-  key = None
-
-  for line in lines:
-    arg = line[1:].strip()
-    if '::' in arg:
-      arg = arg.split('::', 1)[1]
-    if line[0] == 'K':
-      # This is a key
-      key = arg
-    elif line[0] == 'V':
-      # A value
-      if arg[0] == 'i':
-        arg = int(arg[1:])
-      elif arg[0] == 'f':
-        arg = float(arg[1:])
-      elif arg[0] == 's':
-        arg = arg[1:]
-
-      cur_level[key] = arg
-    elif line[0] == 'D':
-      # Remember the current level as the last parent.
-      parent.append(cur_level)
-
-      # We descend one level.
-      cur_level[arg] = {}
-      cur_level = cur_level[arg]
-    elif line[0] == 'A':
-      # We return to the parent dict. (One level up.)
-      cur_level = parent.pop()
-
-  return result
-
-
-def gen_inspect_code(path, struct, code):
-  if path[0][-1] == '#':
-    path[0] = path[0].rstrip('#')
-    prefix = ''
-  else:
-    prefix = 'struct '
-
-  c_descent(path[-1], code)
-
-  if len(path) == 1:
-    c_set('__size__', 'i%zu', 'sizeof (' + prefix + path[0] + ')', code)
-  else:
-    c_set('__size__', 'i%zu', 'sizeof ((' + prefix + path[0] + ' *)0)->' + '.'.join(path[1:]), code)
-    # c_set('__offset__', 'i%zu', 'offsetof(' + prefix + path[0] + ', ' + '.'.join(path[1:]) + ')', code)
-
-  for field in struct:
-    if isinstance(field, dict):
-      # We have to recurse to inspect the nested dict.
-      fname = list(field.keys())[0]
-      gen_inspect_code(path + [fname], field[fname], code)
+  def _start_child(self, name: str):
+    if self.has_data:
+      self.code.append('puts(",");')
     else:
-      c_set(field, 'i%zu', 'offsetof(' + prefix + path[0] + ', ' + '.'.join(path[1:] + [field]) + ')', code)
+      self.has_data = True
+    if '::' in name:
+      name = name.split('::', 1)[1]
+    self.code.append(fr'printf("\"{name}\": ");')
 
-  c_ascent(code)
+  def child(self, name: str):
+    self._start_child(name)
+    return Scope(self.code)
+
+  def set(self, name: str, type_: str, value: str):
+    self._start_child(name)
+
+    assert type_.startswith('%')
+    # We only support numeric defines as they are directly compatible with JSON.
+    # Extend to string escaping if we ever need that in the future.
+    assert type_[-1] in {'d', 'i', 'u', 'f', 'F', 'e', 'E'}
+
+    self.code.append(f'printf("{type_}", {value});')
+
+  def gen_inspect_code(self, path: list[str], struct: list[typing.Union[str, dict]]):
+    if path[0][-1] == '#':
+      path[0] = path[0].rstrip('#')
+      prefix = ''
+    else:
+      prefix = 'struct '
+
+    with self.child(path[-1]) as scope:
+      if len(path) == 1:
+        scope.set('__size__', '%zu', 'sizeof (' + prefix + path[0] + ')')
+      else:
+        scope.set('__size__', '%zu', 'sizeof ((' + prefix + path[0] + ' *)0)->' + '.'.join(path[1:]))
+        # scope.set('__offset__', '%zu', 'offsetof(' + prefix + path[0] + ', ' + '.'.join(path[1:]) + ')')
+
+      for field in struct:
+        if isinstance(field, dict):
+          # We have to recurse to inspect the nested dict.
+          fname = list(field.keys())[0]
+          self.gen_inspect_code(path + [fname], field[fname])
+        else:
+          scope.set(field, '%zu', 'offsetof(' + prefix + path[0] + ', ' + '.'.join(path[1:] + [field]) + ')')
 
 
 def generate_c_code(headers):
@@ -209,28 +194,21 @@ def generate_c_code(headers):
   code.extend(f'''#include "{header['name']}"''' for header in headers)
 
   code.append('int main() {')
-  c_descent('structs', code)
-  for header in headers:
-    for name, struct in header['structs'].items():
-      gen_inspect_code([name], struct, code)
 
-  c_ascent(code)
-  c_descent('defines', code)
-  for header in headers:
-    for name, type_ in header['defines'].items():
-      # Add the necessary python type, if missing.
-      if '%' not in type_:
-        if type_[-1] in {'d', 'i', 'u'}:
-          # integer
-          type_ = 'i%' + type_
-        elif type_[-1] in {'f', 'F', 'e', 'E', 'g', 'G'}:
-          # float
-          type_ = 'f%' + type_
-        elif type_[-1] in {'x', 'X', 'a', 'A', 'c', 's'}:
-          # hexadecimal or string
-          type_ = 's%' + type_
+  with Scope(code) as root:
+    with root.child('structs') as structs:
+      for header in headers:
+        for name, struct in header['structs'].items():
+          structs.gen_inspect_code([name], struct)
 
-      c_set(name, type_, name, code)
+    with root.child('defines') as defines:
+      for header in headers:
+        for name, type_ in header['defines'].items():
+          # Add the necessary python type, if missing.
+          if '%' not in type_:
+            type_ = f'%{type_}'
+
+          defines.set(name, type_, name)
 
   code.append('return 0;')
   code.append('}')
@@ -295,7 +273,7 @@ def inspect_headers(headers, cflags):
   # Run the compiled program.
   show('Calling generated program... ' + js_file_path)
   node_args = shared.node_bigint_flags(config.NODE_JS)
-  info = shared.run_js_tool(js_file_path, node_args=node_args, stdout=shared.PIPE).splitlines()
+  info = shared.run_js_tool(js_file_path, node_args=node_args, stdout=shared.PIPE)
 
   if not DEBUG:
     # Remove all temporary files.
@@ -307,7 +285,7 @@ def inspect_headers(headers, cflags):
       os.unlink(wasm_file_path)
 
   # Parse the output of the program into a dict.
-  return parse_c_output(info)
+  return json.loads(info)
 
 
 def merge_info(target, src):
