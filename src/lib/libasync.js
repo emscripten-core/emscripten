@@ -150,7 +150,7 @@ addToLibrary({
     instrumentWasmExports(exports) {
 #if EMBIND_GEN_MODE
       // Instrumenting is not needed when generating code.
-      return;
+      return exports;
 #endif
 #if ASYNCIFY_DEBUG
       dbg('asyncify instrumenting exports');
@@ -159,24 +159,25 @@ addToLibrary({
       var exportPattern = {{{ new RegExp(`^(${ASYNCIFY_EXPORTS.join('|').replace(/\*/g, '.*')})$`) }}};
       Asyncify.asyncExports = new Set();
 #endif
+      var ret = {};
       for (let [x, original] of Object.entries(exports)) {
+        ret[x] = original;
+
         if (typeof original == 'function') {
-          var wrapper = Asyncify.instrumentFunction(original);
 #if ASYNCIFY == 2
           // Wrap all exports with a promising WebAssembly function.
           let isAsyncifyExport = exportPattern.test(x);
           if (isAsyncifyExport) {
             Asyncify.asyncExports.add(original);
             original = Asyncify.makeAsyncFunction(original);
-            exports[x] = wrapper;
+            ret[x] = Asyncify.instrumentFunction(original);
           }
 #else
-          exports[x] = wrapper;
-       } else {
-          exports[x] = original;
-#endif
+          ret[x] = Asyncify.instrumentFunction(original);
         }
+#endif
       }
+      return ret;
     },
 
 #if ASYNCIFY == 1
