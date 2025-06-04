@@ -5,7 +5,7 @@ WebAssembly.instantiate(d.wasm, {
         a: a => {
             var c = console, k = c.log;
             if (a) {
-                for (var l = a + void 0, b = a; !(b >= l) && f[b]; ) ++b;
+                for (var b = a, l = f, m = b + void 0; l[b] && !(b >= m); ) ++b;
                 a = g.decode(f.subarray(a, b));
             } else a = "";
             k.call(c, a);

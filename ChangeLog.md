@@ -51,6 +51,9 @@ See docs/process.md for more on how version tagging works.
   (#24486)
 - `--closure=1` can now be used while preserving readable function names with
   `-g2` or `-g`.
+- Functions `UTF8ToString`, `UTF16ToString` and `UTF32ToString` take a new
+  optional `ignoreNul` parameter that allows to ignore the NUL characters and
+  read the entire string up to the specific byte length. (#24487)
 
 4.0.9 - 05/19/25
 ----------------
