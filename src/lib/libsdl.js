@@ -964,7 +964,7 @@ var LibrarySDL = {
         case 'keypress': {
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_TextInputEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
           // Not filling in windowID for now
-          stringToUTF8(String.fromCharCode(event.charCode), ptr + C_STRUCTS.SDL_TextInputEvent.text, 4);
+          stringToUTF8(String.fromCharCode(event.charCode), ptr + {{{ C_STRUCTS.SDL_TextInputEvent.text }}}, 4);
           break;
         }
         case 'mousedown': case 'mouseup': case 'mousemove': {
