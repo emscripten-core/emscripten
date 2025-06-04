@@ -170,7 +170,7 @@ addToLibrary({
     // Coordinated Universal Time (UTC) and local standard time."), the same
     // as returned by stdTimezoneOffset.
     // See http://pubs.opengroup.org/onlinepubs/009695399/functions/tzset.html
-    {{{ makeSetValue('timezone', '0', 'stdTimezoneOffset * 60', POINTER_TYPE) }}};
+    {{{ makeSetValue('timezone', '0', 'stdTimezoneOffset * 60', '*') }}};
 
     {{{ makeSetValue('daylight', '0', 'Number(winterOffset != summerOffset)', 'i32') }}};
 
