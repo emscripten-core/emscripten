@@ -146,7 +146,7 @@ Use the commands above, replacing ``latest`` with the version you want, for exam
 (you may need to do ``./emsdk update`` before).
 
 Each release also has an *asserts version* which is built with more runtime
-checks. This can be useful if you think you have encountered a bug. The names of
+checks in LLVM and Binaryen. This can be useful if you think you have encountered a bug in one of these tools. The names of
 asserts versions are the same as release versions, with an added suffix of
 ``-asserts``, e.g. ``4.0.7-asserts``, which you can use with: ::
 
