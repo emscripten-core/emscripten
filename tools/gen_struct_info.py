@@ -129,7 +129,7 @@ def show(msg):
 #     'outer': 0.999
 #   }
 class Scope:
-  def __init__(self, code: list[str]):
+  def __init__(self, code: typing.List[str]):
     self.code = code
     self.has_data = False
 
@@ -165,7 +165,7 @@ class Scope:
 
     self.code.append(f'printf("{type_}", {value});')
 
-  def gen_inspect_code(self, path: list[str], struct: list[typing.Union[str, dict]]):
+  def gen_inspect_code(self, path: typing.List[str], struct: typing.List[typing.Union[str, dict]]):
     if path[0][-1] == '#':
       path[0] = path[0].rstrip('#')
       prefix = ''
