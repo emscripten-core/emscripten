@@ -2089,7 +2089,10 @@ def phase_emit_tsd(options, wasm_target, js_target, js_syms, metadata):
   embind_tsd = ''
   if settings.EMBIND:
     embind_tsd = run_embind_gen(options, wasm_target, js_syms, {'EMBIND_AOT': False})
-  all_tsd = emscripten.create_tsd(metadata, embind_tsd)
+  bindgen_ts_files = glob.glob(get_emscripten_temp_dir() + "/bindgen_out/*.d.ts", recursive=False)
+  # This list comprehension then filters out any files that end with .wasm.d.ts.
+  bindgen_ts_files = [file for file in bindgen_ts_files if not file.endswith('.wasm.d.ts')]
+  all_tsd = emscripten.create_tsd(metadata, embind_tsd, bindgen_ts_files)
   out_file = os.path.join(os.path.dirname(js_target), filename)
   write_file(out_file, all_tsd)
 
