@@ -1643,9 +1643,9 @@ simulateKeyUp(100, undefined, 'Numpad4');
     self.run_browser('main.html', '/report_result?hello from worker, and :' + ('data for w' if file_data else '') + ':')
 
     # code should run standalone too
-    # To great memories >4gb we need the canary version of node
+    # To create memories >4gb we need a recent version of node
     if self.is_4gb():
-      self.require_node_canary()
+      self.require_node_version(24)
     self.assertContained('you should not see this text when in a worker!', self.run_js('worker.js'))
 
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/19608')

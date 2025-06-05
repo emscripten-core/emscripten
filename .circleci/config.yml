@@ -524,7 +524,7 @@ jobs:
   test-core0:
     executor: focal
     environment:
-      EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_NODE24: "1"
     steps:
       - run-tests-linux:
           test_targets: "core0"
@@ -532,7 +532,7 @@ jobs:
     executor: focal
     environment:
       EMTEST_BROWSER: "node"
-      EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_NODE24: "1"
     steps:
       - run-tests-linux:
           # also run a few asan tests.  Run these with frozen_cache disabled
@@ -577,7 +577,7 @@ jobs:
   test-core3:
     executor: focal
     environment:
-      EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_NODE24: "1"
     steps:
       - run-tests-linux:
           frozen_cache: false
@@ -656,7 +656,7 @@ jobs:
   test-modularize-instance:
     executor: focal
     environment:
-      EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_NODE24: "1"
     steps:
       - run-tests-linux:
           test_targets: "instance"
@@ -677,7 +677,7 @@ jobs:
       - upload-test-results
   test-wasm2js1:
     environment:
-      EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_NODE24: "1"
     executor: focal
     steps:
       - run-tests-linux:
@@ -920,7 +920,7 @@ jobs:
   test-other:
     executor: focal
     environment:
-      EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_NODE24: "1"
       EMTEST_SKIP_RUST: "1"
       EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_NEW_CMAKE: "1"
@@ -997,7 +997,7 @@ jobs:
     executor: focal
     environment:
       EMTEST_LACKS_WEBGPU: "1"
-      EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_NODE24: "1"
     steps:
       - run-tests-chrome:
           title: "browser64_4gb"
@@ -1069,7 +1069,7 @@ jobs:
       EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SCONS: "1"
       EMTEST_SKIP_RUST: "1"
-      EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_NODE24: "1"
       EMTEST_BROWSER: "0"
     steps:
       - checkout

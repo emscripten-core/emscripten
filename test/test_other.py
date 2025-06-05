@@ -34,7 +34,7 @@ from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP,
 from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from common import env_modify, no_mac, no_windows, only_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
-from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64, requires_node_canary, requires_dev_dependency
+from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64, requires_node_version, requires_dev_dependency
 from common import requires_wasm_eh, crossplatform, with_all_eh_sjlj, with_all_sjlj, requires_jspi
 from common import also_with_standalone_wasm, also_with_wasm2js, also_with_noderawfs
 from common import also_with_modularize, also_with_wasmfs, with_all_fs
@@ -357,7 +357,7 @@ class other(RunnerCore):
     self.assertContained('export default Module;', read_file('hello_world.mjs'))
     self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
-  @requires_node_canary
+  @requires_node_version(24)
   def test_esm_source_phase_imports(self):
     self.node_args += ['--experimental-wasm-modules', '--no-warnings']
     self.run_process([EMCC, '-o', 'hello_world.mjs', '-sSOURCE_PHASE_IMPORTS',
@@ -3414,7 +3414,7 @@ More info: https://emscripten.org
 
     self.do_runf('embind/test_return_value_policy.cpp')
 
-  @requires_node_canary
+  @requires_node_version(24)
   def test_embind_resource_management(self):
     self.node_args.append('--js-explicit-resource-management')
 
@@ -7471,7 +7471,6 @@ int main() {
     self.assertContained('done', self.run_js('a.out.js'))
 
   @requires_wasm64
-  @requires_node_canary
   def test_failing_growth_wasm64(self):
     self.require_wasm64()
     create_file('test.c', r'''
@@ -15501,7 +15500,6 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.do_other_test('test_quick_exit.c')
 
   @requires_wasm64
-  @requires_node_canary
   def test_memory64_proxies(self):
     self.run_process([EMCC, test_file('hello_world.c'),
                       '-sMEMORY64=1',
@@ -16110,7 +16108,7 @@ addToLibrary({
                  emcc_args=['--pre-js', 'pre.js',
                             '--extern-post-js', test_file('modularize_post_js.js')] + args)
 
-  @requires_node_canary
+  @requires_node_version(24)
   def test_js_base64_api(self):
     self.node_args += ['--js_base_64']
     self.do_runf('hello_world.c', 'hello, world!', emcc_args=['-sSINGLE_FILE'], output_basename='baseline')
