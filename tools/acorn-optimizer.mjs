@@ -266,7 +266,7 @@ function JSDCE(ast, aggressive) {
             assert(id.type === 'Identifier');
             const curr = id.name;
             const value = node.init;
-            const keep = !(curr in names) || (value && hasSideEffects(value));
+            const keep = !names.has(curr) || (value && hasSideEffects(value));
             if (!keep) removedHere = 1;
             return keep;
           });
@@ -282,7 +282,7 @@ function JSDCE(ast, aggressive) {
           }
         },
         FunctionDeclaration(node, _c) {
-          if (Object.prototype.hasOwnProperty.call(names, node.id.name)) {
+          if (names.has(node.id.name)) {
             removed++;
             emptyOut(node);
             return;
@@ -329,7 +329,7 @@ function JSDCE(ast, aggressive) {
       // we can ignore self-references, i.e., references to ourselves inside
       // ourselves, for named defined (defun) functions
       const ownName = defun ? node.id.name : '';
-      const names = {};
+      const names = new Set();
       for (const name in scopes.pop()) {
         if (name === ownName) continue;
         const data = scope[name];
@@ -340,7 +340,7 @@ function JSDCE(ast, aggressive) {
         }
         if (data.def && !data.use && !data.param) {
           // this is eliminateable!
-          names[name] = 0;
+          names.add(name);
         }
       }
       cleanUp(node.body, names);
@@ -427,12 +427,12 @@ function JSDCE(ast, aggressive) {
     const scope = scopes.pop();
     assert(scopes.length === 0);
 
-    const names = {};
+    const names = new Set();
     for (const [name, data] of Object.entries(scope)) {
       if (data.def && !data.use) {
         assert(!data.param); // can't be
         // this is eliminateable!
-        names[name] = 0;
+        names.add(name);
       }
     }
     cleanUp(ast, names);
