@@ -25,6 +25,8 @@ libc_copy_dirs = [
     ('include', 'llvm-libc-types'),
     ('shared',),
     ('src', '__support'),
+    ('src', 'string'),
+    ('src', 'errno'),
 ]
 
 def clean_dir(dirname):

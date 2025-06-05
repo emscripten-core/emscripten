@@ -1832,7 +1832,7 @@ int main() {
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_save_me_aimee'])
     self.do_core_test('test_emscripten_api.c')
 
-    # Sanitizers are not compatible with LINKABLE (dynamic linking.
+    # Sanitizers are not compatible with LINKABLE (dynamic linking).
     if not is_sanitizing(self.emcc_args) and not self.is_wasm64():
       # test EXPORT_ALL
       self.clear_setting('EXPORTED_FUNCTIONS')
@@ -9956,6 +9956,7 @@ asani = make_run('asani', emcc_args=['-fsanitize=address', '--profiling', '--pre
 
 # Experimental modes (not tested by CI)
 minimal0 = make_run('minimal0', emcc_args=['-g'], settings={'MINIMAL_RUNTIME': 1})
+llvmlibc = make_run('llvmlibc', emcc_args=['-lllvmlibc'])
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
 del TestCoreBase # noqa
