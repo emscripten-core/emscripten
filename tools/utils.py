@@ -49,6 +49,7 @@ def removeprefix(string, prefix):
 
 def convert_line_endings_in_file(filename, to_eol):
   if to_eol == os.linesep:
+    assert os.path.exists(filename)
     return # No conversion needed
 
   text = read_file(filename)

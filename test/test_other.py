@@ -9001,14 +9001,23 @@ int main() {
   @parameterized({
     '': ([],),
     'proxy_to_worker': (['--proxy-to-worker'],),
+    'single_file': (['-sSINGLE_FILE'],),
     'proxy_to_worker_wasm2js': (['--proxy-to-worker', '-sWASM=0'],),
   })
   def test_output_eol(self, params):
     for eol in ('windows', 'linux'):
       self.clear()
       print('checking eol: ', eol)
-      self.run_process([EMCC, test_file('hello_world.c'), '-o', 'a.html', '--output-eol', eol] + params)
-      for f in ['a.html', 'a.js']:
+      if '-sSINGLE_FILE' not in params:
+        params.append('-oa.out.html')
+      self.run_process([EMCC, test_file('hello_world.c'), '--output-eol', eol] + params)
+      out_files = ['a.out.js']
+      html_file = 'a.out.html'
+      if '-sSINGLE_FILE' in params:
+        self.assertNotExists(html_file)
+      else:
+        out_files.append(html_file)
+      for f in out_files:
         self.assertExists(f)
         if eol == 'linux':
           expected_ending = '\n'
