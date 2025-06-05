@@ -158,13 +158,11 @@ class Scope:
       prefix = ''
     else:
       prefix = 'struct '
+    prefix += path[0]
 
     with self.child(path[-1]) as scope:
-      if len(path) == 1:
-        scope.set('__size__', '%zu', 'sizeof (' + prefix + path[0] + ')')
-      else:
-        scope.set('__size__', '%zu', 'sizeof ((' + prefix + path[0] + ' *)0)->' + '.'.join(path[1:]))
-        # scope.set('__offset__', '%zu', 'offsetof(' + prefix + path[0] + ', ' + '.'.join(path[1:]) + ')')
+      path_for_sizeof = [f'({prefix}){{}}'] + path[1:]
+      scope.set('__size__', '%zu', f'sizeof ({".".join(path_for_sizeof)})')
 
       for field in struct:
         if isinstance(field, dict):
@@ -172,7 +170,7 @@ class Scope:
           fname = list(field.keys())[0]
           self.gen_inspect_code(path + [fname], field[fname])
         else:
-          scope.set(field, '%zu', 'offsetof(' + prefix + path[0] + ', ' + '.'.join(path[1:] + [field]) + ')')
+          scope.set(field, '%zu', f'offsetof({prefix}, {".".join(path[1:] + [field])})')
 
 
 def generate_c_code(headers):
