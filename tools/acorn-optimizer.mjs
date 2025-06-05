@@ -266,7 +266,7 @@ function JSDCE(ast, aggressive) {
             assert(id.type === 'Identifier');
             const curr = id.name;
             const value = node.init;
-            const keep = !(curr in names) || (value && hasSideEffects(value));
+            const keep = !names.has(curr) || (value && hasSideEffects(value));
             if (!keep) removedHere = 1;
             return keep;
           });
@@ -282,7 +282,7 @@ function JSDCE(ast, aggressive) {
           }
         },
         FunctionDeclaration(node, _c) {
-          if (Object.prototype.hasOwnProperty.call(names, node.id.name)) {
+          if (names.has(node.id.name)) {
             removed++;
             emptyOut(node);
             return;
@@ -329,7 +329,7 @@ function JSDCE(ast, aggressive) {
       // we can ignore self-references, i.e., references to ourselves inside
       // ourselves, for named defined (defun) functions
       const ownName = defun ? node.id.name : '';
-      const names = {};
+      const names = new Set();
       for (const name in scopes.pop()) {
         if (name === ownName) continue;
         const data = scope[name];
@@ -340,7 +340,7 @@ function JSDCE(ast, aggressive) {
         }
         if (data.def && !data.use && !data.param) {
           // this is eliminateable!
-          names[name] = 0;
+          names.add(name);
         }
       }
       cleanUp(node.body, names);
@@ -427,12 +427,12 @@ function JSDCE(ast, aggressive) {
     const scope = scopes.pop();
     assert(scopes.length === 0);
 
-    const names = {};
+    const names = new Set();
     for (const [name, data] of Object.entries(scope)) {
       if (data.def && !data.use) {
         assert(!data.param); // can't be
         // this is eliminateable!
-        names[name] = 0;
+        names.add(name);
       }
     }
     cleanUp(ast, names);
@@ -641,7 +641,6 @@ function emitDCEGraph(ast) {
   const nameToGraphName = {};
   const modulePropertyToGraphName = {};
   const exportNameToGraphName = {}; // identical to wasmExports['..'] nameToGraphName
-  const graph = [];
   let foundWasmImportsAssign = false;
   let foundMinimalRuntimeExports = false;
 
@@ -821,10 +820,10 @@ function emitDCEGraph(ast) {
     const info = (infos[name] = {
       name: name,
       import: ['env', nativeName],
-      reaches: {},
+      reaches: new Set(),
     });
     if (nameToGraphName.hasOwnProperty(jsName)) {
-      info.reaches[nameToGraphName[jsName]] = 1;
+      info.reaches.add(nameToGraphName[jsName]);
     } // otherwise, it's a number, ignore
   }
   for (const [e, _] of Object.entries(exportNameToGraphName)) {
@@ -832,7 +831,7 @@ function emitDCEGraph(ast) {
     infos[name] = {
       name: name,
       export: e,
-      reaches: {},
+      reaches: new Set(),
     };
   }
   // a function that handles a node we visit, in either a defun or
@@ -867,7 +866,7 @@ function emitDCEGraph(ast) {
     if (reached) {
       function addReach(reached) {
         if (defunInfo) {
-          defunInfo.reaches[reached] = 1; // defun reaches it
+          defunInfo.reaches.add(reached); // defun reaches it
         } else {
           if (infos[reached]) {
             infos[reached].root = true; // in global scope, root it
@@ -891,26 +890,19 @@ function emitDCEGraph(ast) {
     const name = getGraphName(defun.id.name, 'defun');
     const info = (infos[name] = {
       name: name,
-      reaches: {},
+      reaches: new Set(),
     });
     fullWalk(defun.body, (node) => visitNode(node, info));
   });
   fullWalk(ast, (node) => visitNode(node, null));
   // Final work: print out the graph
   // sort for determinism
-  function sortedNamesFromMap(map) {
-    const names = [];
-    for (const name of Object.keys(map)) {
-      names.push(name);
-    }
-    names.sort();
-    return names;
-  }
-  sortedNamesFromMap(infos).forEach((name) => {
-    const info = infos[name];
-    info.reaches = sortedNamesFromMap(info.reaches);
-    graph.push(info);
-  });
+  const graph = Object.entries(infos)
+    .sort(([name1], [name2]) => (name1 > name2 ? 1 : -1))
+    .map(([_name, info]) => ({
+      ...info,
+      reaches: Array.from(info.reaches).sort(),
+    }));
   dump(graph);
 }
 
