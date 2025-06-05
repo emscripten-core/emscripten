@@ -1417,11 +1417,18 @@ addToLibrary({
     }
   },
 
-  emscripten_log__deps: ['$formatString', '$emscriptenLog'],
+  emscripten_log__deps: ['vasprintf', '$emscriptenLog', 'free'],
   emscripten_log: (flags, format, varargs) => {
-    var result = formatString(format, varargs);
-    var str = UTF8ArrayToString(result);
-    emscriptenLog(flags, str);
+    var bufPtrPtr = stackAlloc(POINTER_SIZE);
+    var len = vasprintf(bufPtrPtr, format, varargs);
+    assert(len > 0);
+    var bufPtr = {{{ makeGetValue('bufPtrPtr', 0, '*') }}};
+    try {
+      var str = UTF8ToString(bufPtr, len);
+      emscriptenLog(flags, str);
+    } finally {
+      free(bufPtr);
+    }
   },
 
   // We never free the return values of this function so we need to allocate
