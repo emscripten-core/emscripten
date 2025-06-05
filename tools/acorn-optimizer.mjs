@@ -641,7 +641,6 @@ function emitDCEGraph(ast) {
   const nameToGraphName = {};
   const modulePropertyToGraphName = {};
   const exportNameToGraphName = {}; // identical to wasmExports['..'] nameToGraphName
-  const graph = [];
   let foundWasmImportsAssign = false;
   let foundMinimalRuntimeExports = false;
 
