@@ -33,28 +33,19 @@ addToLibrary({
     quit_(1, e);
   },
 
-  // printf/puts implementations for when musl is not pulled in - very
-  // partial, but enough for bootstrapping structInfo
-  printf__deps: ['$formatString', '$intArrayToString'],
-  printf__sig: 'ipp',
-  printf: (format, varargs) => {
-    // int printf(const char *restrict format, ...);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
-    // extra effort to support printf, even without a filesystem. very partial, very hackish
-    var result = formatString(format, varargs);
-    var string = intArrayToString(result);
-    if (string.endsWith('\n')) string = string.slice(0, -1); // remove a final \n, as Module.print will do that
-    out(string);
-    return result.length;
-  },
-
-  puts__sig: 'ip',
-  puts: (s) => {
-    // extra effort to support puts, even without a filesystem. very partial, very hackish
-    var result = UTF8ToString(s);
-    var string = result;
-    if (string.endsWith('\n')) string = string.slice(0, -1); // remove a final \n, as Module.print will do that
-    out(string);
-    return result.length;
+  fd_write__sig: 'iippp',
+  fd_write: (fd, iov, iovcnt, pnum) => {
+    // implementation almost copied from libwasi.js one for SYSCALLS_REQUIRE_FILESYSTEM=0
+    // (the only difference is that we can't use C_STRUCTS here)
+    var num = 0;
+    for (var i = 0; i < iovcnt; i++) {
+      var ptr = {{{ makeGetValue('iov', 0, '*') }}};
+      var len = {{{ makeGetValue('iov', POINTER_SIZE, '*') }}};
+      iov += {{{ POINTER_SIZE }}} * 2;
+      process.stdout.write(HEAPU8.subarray(ptr, ptr + len));
+      num += len;
+    }
+    {{{ makeSetValue('pnum', 0, 'num', '*') }}};
+    return 0;
   },
 });
