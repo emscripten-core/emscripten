@@ -297,11 +297,7 @@ function runTests() {
 }
 
 const {
-  values: {
-    test: testMode,
-    pretty,
-    output,
-  },
+  values: {test: testMode, pretty, output},
   positionals: [input],
 } = parseArgs({
   options: {
