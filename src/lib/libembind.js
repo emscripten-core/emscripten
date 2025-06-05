@@ -556,7 +556,10 @@ var LibraryEmbind = {
       decodeString = UTF16ToString;
       encodeString = stringToUTF16;
       lengthBytesUTF = lengthBytesUTF16;
-    } else if (charSize === 4) {
+    } else {
+#if ASSERTIONS
+      assert(charSize === 4, 'only 2-byte and 4-byte strings are currently supported');
+#endif
       decodeString = UTF32ToString;
       encodeString = stringToUTF32;
       lengthBytesUTF = lengthBytesUTF32;
