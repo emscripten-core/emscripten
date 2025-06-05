@@ -104,7 +104,7 @@ var WasiLibrary = {
     var envp = 0;
     for (var string of getEnvStrings()) {
       var ptr = environ_buf + bufSize;
-      {{{ makeSetValue('__environ', 'envp', 'ptr', POINTER_TYPE) }}};
+      {{{ makeSetValue('__environ', 'envp', 'ptr', '*') }}};
       bufSize += stringToUTF8(string, ptr, Infinity) + 1;
       envp += {{{ POINTER_SIZE }}};
     }
@@ -134,7 +134,7 @@ var WasiLibrary = {
     var bufSize = 0;
     mainArgs.forEach((arg, i) => {
       var ptr = argv_buf + bufSize;
-      {{{ makeSetValue('argv', `i*${POINTER_SIZE}`, 'ptr', POINTER_TYPE) }}};
+      {{{ makeSetValue('argv', `i*${POINTER_SIZE}`, 'ptr', '*') }}};
       stringToAscii(arg, ptr);
       bufSize += arg.length + 1;
     });
