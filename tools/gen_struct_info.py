@@ -108,26 +108,13 @@ def show(msg):
     sys.stderr.write('gen_struct_info: %s\n' % msg)
 
 
-# The following three functions generate C code. The output of the compiled code will be
-# parsed later on and then put back together into a dict structure by parse_c_output().
+# The Scope class generates C code which, in turn, outputs JSON.
 #
 # Example:
-#   c_descent('test1', code)
-#   c_set('item', 'i%i', '111', code)
-#   c_set('item2', 'i%i', '9', code)
-#   c_set('item3', 's%s', '"Hello"', code)
-#   c_ascent(code)
-#   c_set('outer', 'f%f', '0.999', code)
-#
-# Will result in:
-#   {
-#     'test1': {
-#       'item': 111,
-#       'item2': 9,
-#       'item3': 'Hello',
-#     },
-#     'outer': 0.999
-#   }
+#   with Scope(code) as scope: # generates code that outputs beginning of a JSON object '{\n'
+#     scope.set('item', '%i', '111') # generates code that outputs '"item": 111'
+#     scope.set('item2', '%f', '4.2') # generates code that outputs ',\n"item2": 4.2'
+#   # once the scope is exited, it generates code that outputs the end of the JSON object '\n}'
 class Scope:
   def __init__(self, code: typing.List[str]):
     self.code = code
