@@ -195,6 +195,8 @@ def generate_c_code(headers):
 
           defines.set(name, type_, name)
 
+  code.append('puts("");')  # Add a newline after the JSON output to flush it.
+
   code.append('return 0;')
   code.append('}')
 
@@ -217,7 +219,6 @@ def generate_cmd(js_file_path, src_file_path, cflags):
                                '-O0',
                                '-Werror',
                                '-Wno-format',
-                               '-nolibc',
                                '-sBOOTSTRAPPING_STRUCT_INFO',
                                '-sINCOMING_MODULE_JS_API=',
                                '-sSTRICT',
