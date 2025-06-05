@@ -9363,6 +9363,7 @@ int main() {
     # lead to different inlining decisions which add or remove a function
     self.run_codesize_test('hello_libcxx.cpp', args, check_funcs=False)
 
+  @crossplatform
   @parameterized({
     'O0': ([],),
     'O1': (['-O1'],),
