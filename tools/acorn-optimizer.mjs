@@ -4,6 +4,7 @@ import * as acorn from 'acorn';
 import * as terser from '../third_party/terser/terser.js';
 import * as fs from 'node:fs';
 import assert from 'node:assert';
+import {parseArgs} from 'node:util';
 
 // Utilities
 
@@ -1742,16 +1743,27 @@ function reattachComments(ast, commentsMap) {
 
 let suffix = '';
 
-const argv = process.argv.slice(2);
-
-function getArg(arg) {
-  const index = argv.indexOf(arg);
-  if (index == -1) {
-    return false;
-  }
-  argv.splice(index, 1);
-  return true;
-}
+const {
+  values: {
+    'closure-friendly': closureFriendly,
+    'export-es6': exportES6,
+    verbose,
+    'no-print': noPrint,
+    'minify-whitespace': minifyWhitespace,
+    outfile,
+  },
+  positionals: [infile, ...passes],
+} = parseArgs({
+  options: {
+    'closure-friendly': {type: 'boolean'},
+    'export-es6': {type: 'boolean'},
+    verbose: {type: 'boolean'},
+    'no-print': {type: 'boolean'},
+    'minify-whitespace': {type: 'boolean'},
+    outfile: {type: 'string', short: 'o'},
+  },
+  allowPositionals: true,
+});
 
 function trace(...args) {
   if (verbose) {
@@ -1761,21 +1773,6 @@ function trace(...args) {
 
 // If enabled, output retains parentheses and comments so that the
 // output can further be passed out to Closure.
-const closureFriendly = getArg('--closure-friendly');
-const exportES6 = getArg('--export-es6');
-const verbose = getArg('--verbose');
-const noPrint = getArg('--no-print');
-const minifyWhitespace = getArg('--minify-whitespace');
-
-let outfile;
-const outfileIndex = argv.indexOf('-o');
-if (outfileIndex != -1) {
-  outfile = argv[outfileIndex + 1];
-  argv.splice(outfileIndex, 2);
-}
-
-const infile = argv[0];
-const passes = argv.slice(1);
 
 const input = read(infile);
 const extraInfoStart = input.lastIndexOf('// EXTRA_INFO:');
