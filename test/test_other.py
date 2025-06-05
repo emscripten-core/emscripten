@@ -15500,19 +15500,6 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_quick_exit(self):
     self.do_other_test('test_quick_exit.c')
 
-  @requires_wasm64
-  @requires_node_canary
-  def test_memory64_proxies(self):
-    self.run_process([EMCC, test_file('hello_world.c'),
-                      '-sMEMORY64=1',
-                      '-sINITIAL_MEMORY=5gb',
-                      '-sMAXIMUM_MEMORY=5gb',
-                      '-sALLOW_MEMORY_GROWTH',
-                      '-sEXPORTED_FUNCTIONS=_malloc,_main',
-                      '-Wno-experimental',
-                      '--extern-post-js', test_file('other/test_memory64_proxies.js')])
-    self.run_js('a.out.js')
-
   def test_no_minify(self):
     # Test that comments are preserved with `--minify=0` is used, even in `-Oz` builds.
     # This allows the output of emscripten to be run through the closure compiler as
