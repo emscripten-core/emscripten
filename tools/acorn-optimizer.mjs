@@ -898,7 +898,7 @@ function emitDCEGraph(ast) {
   // Final work: print out the graph
   // sort for determinism
   const graph = Object.entries(infos)
-    .sort(([name1], [name2]) => name1 > name2 ? 1 : -1)
+    .sort(([name1], [name2]) => (name1 > name2 ? 1 : -1))
     .map(([_name, info]) => ({
       ...info,
       reaches: Array.from(info.reaches).sort(),
