@@ -821,10 +821,10 @@ function emitDCEGraph(ast) {
     const info = (infos[name] = {
       name: name,
       import: ['env', nativeName],
-      reaches: {},
+      reaches: new Set(),
     });
     if (nameToGraphName.hasOwnProperty(jsName)) {
-      info.reaches[nameToGraphName[jsName]] = 1;
+      info.reaches.add(nameToGraphName[jsName]);
     } // otherwise, it's a number, ignore
   }
   for (const [e, _] of Object.entries(exportNameToGraphName)) {
@@ -832,7 +832,7 @@ function emitDCEGraph(ast) {
     infos[name] = {
       name: name,
       export: e,
-      reaches: {},
+      reaches: new Set(),
     };
   }
   // a function that handles a node we visit, in either a defun or
@@ -867,7 +867,7 @@ function emitDCEGraph(ast) {
     if (reached) {
       function addReach(reached) {
         if (defunInfo) {
-          defunInfo.reaches[reached] = 1; // defun reaches it
+          defunInfo.reaches.add(reached); // defun reaches it
         } else {
           if (infos[reached]) {
             infos[reached].root = true; // in global scope, root it
@@ -891,26 +891,19 @@ function emitDCEGraph(ast) {
     const name = getGraphName(defun.id.name, 'defun');
     const info = (infos[name] = {
       name: name,
-      reaches: {},
+      reaches: new Set(),
     });
     fullWalk(defun.body, (node) => visitNode(node, info));
   });
   fullWalk(ast, (node) => visitNode(node, null));
   // Final work: print out the graph
   // sort for determinism
-  function sortedNamesFromMap(map) {
-    const names = [];
-    for (const name of Object.keys(map)) {
-      names.push(name);
-    }
-    names.sort();
-    return names;
-  }
-  sortedNamesFromMap(infos).forEach((name) => {
-    const info = infos[name];
-    info.reaches = sortedNamesFromMap(info.reaches);
-    graph.push(info);
-  });
+  const graph = Object.entries(infos)
+    .sort(([name1], [name2]) => name1.localeCompare(name2))
+    .map(([_name, info]) => ({
+      ...info,
+      reaches: Array.from(info.reaches).sort(),
+    }));
   dump(graph);
 }
 
