@@ -134,7 +134,7 @@ function restoreInnerScopes(node, map) {
   });
 }
 
-// Traverse a pattern node invoking onExpr on any nested expressions and onBoundIdent on any bound identifiers.
+// Traverse a pattern node (identifier, object/array pattern, etc) invoking onExpr on any nested expressions and onBoundIdent on any bound identifiers.
 function walkPattern(node, onExpr, onBoundIdent) {
   recursiveWalk(node, {
     AssignmentPattern(node, c) {
