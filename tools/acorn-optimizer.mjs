@@ -60,13 +60,13 @@ function simpleWalk(node, cs) {
 }
 
 // Full post-order walk, calling a single function for all types. If |pre| is
-// provided, it is called in pre-order (before children).
+// provided, it is called in pre-order (before children). If |pre| returns
+// `false`, the node and its children will be skipped.
 function fullWalk(node, c, pre) {
-  if (pre) {
-    pre(node);
+  if (pre?.(node) !== false) {
+    visitChildren(node, (child) => fullWalk(child, c, pre));
+    c(node);
   }
-  visitChildren(node, (child) => fullWalk(child, c, pre));
-  c(node);
 }
 
 // Recursive post-order walk, calling properties on an object by node type,
@@ -100,111 +100,78 @@ function dump(node) {
   console.log(JSON.stringify(node, null, ' '));
 }
 
-// Mark inner scopes temporarily as empty statements. Returns
-// a special object that must be used to restore them.
-function ignoreInnerScopes(node) {
-  const map = new WeakMap();
-  function ignore(node) {
-    map.set(node, node.type);
-    emptyOut(node);
-  }
-  simpleWalk(node, {
-    FunctionDeclaration(node) {
-      ignore(node);
-    },
-    FunctionExpression(node) {
-      ignore(node);
-    },
-    ArrowFunctionExpression(node) {
-      ignore(node);
-    },
-    // TODO: arrow etc.
-  });
-  return map;
-}
-
-// Mark inner scopes temporarily as empty statements.
-function restoreInnerScopes(node, map) {
-  fullWalk(node, (node) => {
-    if (map.has(node)) {
-      node.type = map.get(node);
-      map.delete(node);
-      restoreInnerScopes(node, map);
-    }
-  });
-}
-
 function hasSideEffects(node) {
   // Conservative analysis.
-  const map = ignoreInnerScopes(node);
   let has = false;
-  fullWalk(node, (node) => {
-    switch (node.type) {
-      case 'ExpressionStatement':
-        if (node.directive) {
-          has = true;
-        }
-        break;
-      // TODO: go through all the ESTree spec
-      case 'Literal':
-      case 'Identifier':
-      case 'UnaryExpression':
-      case 'BinaryExpression':
-      case 'LogicalExpression':
-      case 'UpdateOperator':
-      case 'ConditionalExpression':
-      case 'FunctionDeclaration':
-      case 'FunctionExpression':
-      case 'ArrowFunctionExpression':
-      case 'VariableDeclaration':
-      case 'VariableDeclarator':
-      case 'ObjectExpression':
-      case 'Property':
-      case 'SpreadElement':
-      case 'BlockStatement':
-      case 'ArrayExpression':
-      case 'EmptyStatement': {
-        break; // safe
-      }
-      case 'MemberExpression': {
-        // safe if on Math (or other familiar objects, TODO)
-        if (node.object.type !== 'Identifier' || node.object.name !== 'Math') {
-          // console.error('because member on ' + node.object.name);
-          has = true;
-        }
-        break;
-      }
-      case 'NewExpression': {
-        // default to unsafe, but can be safe on some familiar objects
-        if (node.callee.type === 'Identifier') {
-          const name = node.callee.name;
-          if (
-            name === 'TextDecoder' ||
-            name === 'ArrayBuffer' ||
-            name === 'Int8Array' ||
-            name === 'Uint8Array' ||
-            name === 'Int16Array' ||
-            name === 'Uint16Array' ||
-            name === 'Int32Array' ||
-            name === 'Uint32Array' ||
-            name === 'Float32Array' ||
-            name === 'Float64Array'
-          ) {
-            // no side effects, but the arguments might (we walk them in
-            // full walk as well)
-            break;
+  fullWalk(
+    node,
+    (node) => {
+      switch (node.type) {
+        case 'ExpressionStatement':
+          if (node.directive) {
+            has = true;
           }
+          break;
+        // TODO: go through all the ESTree spec
+        case 'Literal':
+        case 'Identifier':
+        case 'UnaryExpression':
+        case 'BinaryExpression':
+        case 'LogicalExpression':
+        case 'UpdateOperator':
+        case 'ConditionalExpression':
+        case 'VariableDeclaration':
+        case 'VariableDeclarator':
+        case 'ObjectExpression':
+        case 'Property':
+        case 'SpreadElement':
+        case 'BlockStatement':
+        case 'ArrayExpression':
+        case 'EmptyStatement': {
+          break; // safe
         }
-        // not one of the safe cases
-        has = true;
-        break;
+        case 'MemberExpression': {
+          // safe if on Math (or other familiar objects, TODO)
+          if (node.object.type !== 'Identifier' || node.object.name !== 'Math') {
+            // console.error('because member on ' + node.object.name);
+            has = true;
+          }
+          break;
+        }
+        case 'NewExpression': {
+          // default to unsafe, but can be safe on some familiar objects
+          if (node.callee.type === 'Identifier') {
+            const name = node.callee.name;
+            if (
+              name === 'TextDecoder' ||
+              name === 'ArrayBuffer' ||
+              name === 'Int8Array' ||
+              name === 'Uint8Array' ||
+              name === 'Int16Array' ||
+              name === 'Uint16Array' ||
+              name === 'Int32Array' ||
+              name === 'Uint32Array' ||
+              name === 'Float32Array' ||
+              name === 'Float64Array'
+            ) {
+              // no side effects, but the arguments might (we walk them in
+              // full walk as well)
+              break;
+            }
+          }
+          // not one of the safe cases
+          has = true;
+          break;
+        }
+        default: {
+          has = true;
+        }
       }
-      default: {
-        has = true;
-      }
-    }
-  });
-  restoreInnerScopes(node, map);
+    },
+    (node) =>
+      // Ignore inner scopes.
+      !['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression'].includes(node.type),
+  );
   return has;
 }
 
