@@ -1756,7 +1756,7 @@ const {
     'closure-friendly': closureFriendly,
     'export-es6': exportES6,
     verbose,
-    print = true,
+    'no-print': noPrint,
     'minify-whitespace': minifyWhitespace,
     outfile,
   },
@@ -1766,12 +1766,11 @@ const {
     'closure-friendly': {type: 'boolean'},
     'export-es6': {type: 'boolean'},
     verbose: {type: 'boolean'},
-    print: {type: 'boolean'},
+    'no-print': {type: 'boolean'},
     'minify-whitespace': {type: 'boolean'},
     outfile: {type: 'string', short: 'o'},
   },
   allowPositionals: true,
-  allowNegative: true,
 });
 
 function trace(...args) {
@@ -1844,7 +1843,7 @@ try {
   throw err;
 }
 
-if (print) {
+if (!noPrint) {
   const terserAst = terser.AST_Node.from_mozilla_ast(ast);
 
   if (closureFriendly) {
