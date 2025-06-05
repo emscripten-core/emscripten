@@ -169,6 +169,7 @@ function hasSideEffects(node) {
       }
     },
     (node) =>
+      // Ignore inner scopes.
       !['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression'].includes(node.type),
   );
   return has;
