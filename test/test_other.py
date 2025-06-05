@@ -9014,8 +9014,7 @@ int main() {
           expected_ending = '\n'
         else:
           expected_ending = '\r\n'
-
-        self.assertEqual(line_endings.check_line_endings(f, expect_only=expected_ending), 0, f'expected on ly {eol} line endingsn in {f}')
+        self.assertEqual(line_endings.check_line_endings(f, expect_only=expected_ending), 0, f'expected only {eol} line endings in {f}')
 
   def test_bad_memory_size(self):
     # if user changes INITIAL_MEMORY at runtime, the wasm module may not accept the memory import if
