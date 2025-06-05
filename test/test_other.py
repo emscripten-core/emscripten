@@ -2146,45 +2146,47 @@ Module['postRun'] = () => {
     #   the memory is zero-initialized only once (and not once per thread).
     # * The global object must have a constructor to make sure that it is
     #   constructed only once (and not once per thread).
-    create_file('side.cpp', r'''
-      struct Data {
-          Data() : value(42) {}
-          int value;
-      } data;
-      int * get_address() {
-          return &data.value;
+    create_file('side.c', r'''
+      int value = 0;
+
+      __attribute__((constructor)) void ctor(void) {
+        value = 42;
+      }
+
+      int* get_address() {
+        return &value;
       }
       ''')
-    self.run_process([
-      EMCC,
-      '-o', 'side.wasm',
-      'side.cpp',
-      '-pthread', '-Wno-experimental',
-      '-sSIDE_MODULE'])
+    self.run_process([EMCC, '-o', 'side.wasm', 'side.c', '-pthread', '-Wno-experimental', '-sSIDE_MODULE'])
 
-    create_file('main.cpp', r'''
+    create_file('main.c', r'''
+      #include <assert.h>
       #include <stdio.h>
-      #include <thread>
-      int * get_address();
-      int main(void) {
-          *get_address() = 123;
-          std::thread([]{
-            printf("%d\n", *get_address());
-          }).join();
-          return 0;
+      #include <pthread.h>
+
+      int* get_address();
+
+      void* thread_main(void* arg) {
+        assert(*get_address() == 123);
+        printf("%d\n", *get_address());
+        return NULL;
+      }
+
+      int main() {
+        assert(*get_address() == 42);
+        *get_address() = 123;
+        pthread_t t;
+        pthread_create(&t, NULL, thread_main, NULL);
+        pthread_join(t, NULL);
+        return 0;
       }
       ''')
 
-    self.do_runf(
-      'main.cpp',
-      '123',
-      emcc_args=[
-        '-pthread', '-Wno-experimental',
-        '-sPROXY_TO_PTHREAD',
-        '-sEXIT_RUNTIME',
-        '-sMAIN_MODULE=2',
-        'side.wasm',
-      ])
+    self.do_runf('main.c', '123', emcc_args=['-pthread', '-Wno-experimental',
+                                             '-sPROXY_TO_PTHREAD',
+                                             '-sEXIT_RUNTIME',
+                                             '-sMAIN_MODULE=2',
+                                             'side.wasm'])
 
   def test_dylink_pthread_warning(self):
     err = self.expect_fail([EMCC, '-Werror', '-sMAIN_MODULE', '-pthread', test_file('hello_world.c')])
