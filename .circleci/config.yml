@@ -139,8 +139,8 @@ commands:
             tar -C ~ -xf ~/emsdk-main.tar.gz
             mv ~/emsdk-main ~/emsdk
             cd ~/emsdk
-            ./emsdk install tot
-            ./emsdk activate tot
+            ./emsdk install latest
+            ./emsdk activate latest
             # Remove the emsdk version of emscripten to save space in the
             # persistent workspace and to avoid any confusion with the version
             # we are trying to test.
