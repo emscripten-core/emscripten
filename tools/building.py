@@ -615,6 +615,9 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
     args += ['--externs', e]
   args += user_args
 
+  if settings.DEBUG_LEVEL > 1:
+    args += ['--debug']
+
   cmd = closure_cmd + args
   return run_closure_cmd(cmd, filename, env)
 

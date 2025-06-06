@@ -49,6 +49,8 @@ See docs/process.md for more on how version tagging works.
 - `emscripten_fetch_get_response_headers_length` now excludes the trailing
   null character from the length calculation to match the documented behaviour.
   (#24486)
+- `--closure=1` can now be used while preserving readable function names with
+  `-g2` or `-g`.
 
 4.0.9 - 05/19/25
 ----------------

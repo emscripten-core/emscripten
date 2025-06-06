@@ -12806,27 +12806,27 @@ int main(void) {
 
   def test_warning_flags(self):
     self.run_process([EMCC, '-c', '-o', 'hello.o', test_file('hello_world.c')])
-    cmd = [EMCC, 'hello.o', '-o', 'a.js', '-g', '--closure=1']
+    cmd = [EMCC, 'hello.o', '-o', 'a.js', '-g', '--llvm-opts=""']
 
     # warning that is enabled by default
     stderr = self.run_process(cmd, stderr=PIPE).stderr
-    self.assertContained('emcc: warning: disabling closure because debug info was requested [-Wemcc]', stderr)
+    self.assertContained('emcc: warning: --llvm-opts is deprecated.  All non-emcc args are passed through to clang. [-Wdeprecated]', stderr)
 
     # -w to suppress warnings
     stderr = self.run_process(cmd + ['-w'], stderr=PIPE).stderr
     self.assertNotContained('warning', stderr)
 
     # -Wno-emcc to suppress just this one warning
-    stderr = self.run_process(cmd + ['-Wno-emcc'], stderr=PIPE).stderr
+    stderr = self.run_process(cmd + ['-Wno-deprecated'], stderr=PIPE).stderr
     self.assertNotContained('warning', stderr)
 
     # with -Werror should fail
     stderr = self.expect_fail(cmd + ['-Werror'])
-    self.assertContained('error: disabling closure because debug info was requested [-Wemcc] [-Werror]', stderr)
+    self.assertContained('error: --llvm-opts is deprecated.  All non-emcc args are passed through to clang. [-Wdeprecated] [-Werror]', stderr)
 
     # with -Werror + -Wno-error=<type> should only warn
-    stderr = self.run_process(cmd + ['-Werror', '-Wno-error=emcc'], stderr=PIPE).stderr
-    self.assertContained('emcc: warning: disabling closure because debug info was requested [-Wemcc]', stderr)
+    stderr = self.run_process(cmd + ['-Werror', '-Wno-error=deprecated'], stderr=PIPE).stderr
+    self.assertContained('emcc: warning: --llvm-opts is deprecated.  All non-emcc args are passed through to clang. [-Wdeprecated]', stderr)
 
     # check that `-Werror=foo` also enales foo
     stderr = self.expect_fail(cmd + ['-Werror=legacy-settings', '-sTOTAL_MEMORY'])
@@ -15596,6 +15596,11 @@ addToLibrary({
 
   def test_strict_closure(self):
     self.emcc(test_file('hello_world.c'), ['-sSTRICT', '--closure=1'])
+
+  def test_closure_debug(self):
+    self.emcc(test_file('hello_world.c'), ['-sSTRICT', '--closure=1', '-g'])
+    src = read_file('a.out.js')
+    self.assertContained('$Module$$', src)
 
   def test_arguments_global(self):
     self.emcc(test_file('hello_world_argv.c'), ['-sENVIRONMENT=web', '-sSTRICT', '--closure=1', '-O2'])

@@ -1047,10 +1047,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   # Use settings
 
-  if settings.DEBUG_LEVEL > 1 and options.use_closure_compiler:
-    diagnostics.warning('emcc', 'disabling closure because debug info was requested')
-    options.use_closure_compiler = False
-
   if settings.WASM == 2 and settings.SINGLE_FILE:
     exit_with_error('cannot have both WASM=2 and SINGLE_FILE enabled at the same time')
 
