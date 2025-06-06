@@ -11794,6 +11794,7 @@ int main () {
     smallest_code_size_args = ['-sMINIMAL_RUNTIME=2',
                                '-sENVIRONMENT=web',
                                '-sTEXTDECODER=2',
+                               '-sDYNAMIC_EXECUTION=0',
                                '-sABORTING_MALLOC=0',
                                '-sALLOW_MEMORY_GROWTH=0',
                                '-sDECLARE_ASM_MODULE_EXPORTS',
