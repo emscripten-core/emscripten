@@ -1693,12 +1693,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def check_expected_size_in_file(self, desc, filename, size):
     if EMTEST_REBASELINE:
       create_file(filename, f'{size}\n', absolute=True)
-    size_slack = 0.05
     expected_size = int(read_file(filename).strip())
     delta = size - expected_size
     ratio = abs(delta) / float(expected_size)
     print('  seen %s size: %d (expected: %d) (delta: %d), ratio to expected: %f' % (desc, size, expected_size, delta, ratio))
-    self.assertLess(ratio, size_slack)
+    self.assertEqual(size, expected_size)
 
   library_cache: Dict[str, Tuple[str, object]] = {}
 
