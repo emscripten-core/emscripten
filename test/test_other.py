@@ -104,6 +104,22 @@ def uses_canonical_tmp(func):
   return decorated
 
 
+def also_with_llvm_libc(f):
+  assert callable(f)
+
+  @wraps(f)
+  def metafunc(self, llvm_libc, *args, **kwargs):
+    if shared.DEBUG:
+      print('parameterize:llvm_libc=%d' % llvm_libc)
+    if llvm_libc:
+      self.emcc_args += ['-lllvmlibc']
+    f(self, *args, **kwargs)
+
+  parameterize(metafunc, {'': (False,),
+                          'llvm_libc': (True,)})
+  return metafunc
+
+
 def with_both_compilers(f):
   assert callable(f)
 
@@ -15690,6 +15706,7 @@ addToLibrary({
   def test_llrint(self):
     self.do_other_test('test_llrint.c')
 
+  @also_with_llvm_libc
   def test_strings(self):
     self.do_other_test('test_strings.c', args=['wowie', 'too', '74'])
 
