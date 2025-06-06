@@ -100,6 +100,25 @@ function dump(node) {
   console.log(JSON.stringify(node, null, ' '));
 }
 
+// Traverse a pattern node (identifier, object/array pattern, etc) invoking onExpr on any nested expressions and onBoundIdent on any bound identifiers.
+function walkPattern(node, onExpr, onBoundIdent) {
+  recursiveWalk(node, {
+    AssignmentPattern(node, c) {
+      c(node.left);
+      onExpr(node.right);
+    },
+    Property(node, c) {
+      if (node.computed) {
+        onExpr(node.key);
+      }
+      c(node.value);
+    },
+    Identifier({name}) {
+      onBoundIdent(name);
+    },
+  });
+}
+
 function hasSideEffects(node) {
   // Conservative analysis.
   let has = false;
@@ -270,29 +289,12 @@ function JSDCE(ast, aggressive) {
       }
       const scope = {};
       scopes.push(scope);
-      node.params.forEach(function traverse(param) {
-        if (param.type === 'RestElement') {
-          param = param.argument;
-        }
-        if (param.type === 'AssignmentPattern') {
-          c(param.right);
-          param = param.left;
-        }
-        if (param.type === 'ArrayPattern') {
-          for (var elem of param.elements) {
-            if (elem) traverse(elem);
-          }
-        } else if (param.type === 'ObjectPattern') {
-          for (var prop of param.properties) {
-            traverse(prop.key);
-          }
-        } else {
-          assert(param.type === 'Identifier', param.type);
-          const name = param.name;
+      for (const param of node.params) {
+        walkPattern(param, c, (name) => {
           ensureData(scope, name).def = 1;
           scope[name].param = 1;
-        }
-      });
+        });
+      }
       c(node.body);
       // we can ignore self-references, i.e., references to ourselves inside
       // ourselves, for named defined (defun) functions
@@ -316,22 +318,9 @@ function JSDCE(ast, aggressive) {
 
     recursiveWalk(ast, {
       VariableDeclarator(node, c) {
-        function traverse(id) {
-          if (id.type === 'ObjectPattern') {
-            for (const prop of id.properties) {
-              traverse(prop.value);
-            }
-          } else if (id.type === 'ArrayPattern') {
-            for (const elem of id.elements) {
-              if (elem) traverse(elem);
-            }
-          } else {
-            assertAt(id.type === 'Identifier', id, `expected Identifier but found ${id.type}`);
-            const name = id.name;
-            ensureData(scopes[scopes.length - 1], name).def = 1;
-          }
-        }
-        traverse(node.id);
+        walkPattern(node.id, c, (name) => {
+          ensureData(scopes[scopes.length - 1], name).def = 1;
+        });
         if (node.init) c(node.init);
       },
       ObjectExpression(node, c) {
