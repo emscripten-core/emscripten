@@ -10,6 +10,7 @@
 
 #include <emscripten.h>
 #include <emscripten/console.h>
+#include "emscripten_internal.h"
 
 static void vlogf(const char* fmt, va_list ap, void (*callback)(const char*)) {
   va_list ap2;
@@ -78,8 +79,6 @@ void emscripten_dbg_backtracef(const char* fmt, ...) {
   va_end(ap);
 }
 #endif
-
-void _emscripten_log_formatted(int flags, const char* str);
 
 void emscripten_log(int flags, const char* fmt, ...) {
   va_list ap;
