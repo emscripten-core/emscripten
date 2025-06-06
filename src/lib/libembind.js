@@ -475,33 +475,17 @@ var LibraryEmbind = {
       // For some method names we use string keys here since they are part of
       // the public/external API and/or used by the runtime-generated code.
       'fromWireType'(value) {
-        var length = {{{ makeGetValue('value', '0', SIZE_TYPE) }}};
+        var length = {{{ makeGetValue('value', '0', '*') }}};
         var payload = value + {{{ POINTER_SIZE }}};
 
         var str;
         if (stdStringIsUTF8) {
-          var decodeStartPtr = payload;
-          // Looping here to support possible embedded '0' bytes
-          for (var i = 0; i <= length; ++i) {
-            var currentBytePtr = payload + i;
-            if (i == length || HEAPU8[currentBytePtr] == 0) {
-              var maxRead = currentBytePtr - decodeStartPtr;
-              var stringSegment = UTF8ToString(decodeStartPtr, maxRead);
-              if (str === undefined) {
-                str = stringSegment;
-              } else {
-                str += String.fromCharCode(0);
-                str += stringSegment;
-              }
-              decodeStartPtr = currentBytePtr + 1;
-            }
-          }
+          str = UTF8ToString(payload, length, true);
         } else {
-          var a = new Array(length);
+          str = '';
           for (var i = 0; i < length; ++i) {
-            a[i] = String.fromCharCode(HEAPU8[payload + i]);
+            str += String.fromCharCode(HEAPU8[payload + i]);
           }
-          str = a.join('');
         }
 
         _free(value);
@@ -567,41 +551,25 @@ var LibraryEmbind = {
     ],
   _embind_register_std_wstring: (rawType, charSize, name) => {
     name = AsciiToString(name);
-    var decodeString, encodeString, readCharAt, lengthBytesUTF;
+    var decodeString, encodeString, lengthBytesUTF;
     if (charSize === 2) {
       decodeString = UTF16ToString;
       encodeString = stringToUTF16;
       lengthBytesUTF = lengthBytesUTF16;
-      readCharAt = (pointer) => {{{ makeGetValue('pointer', 0, 'u16') }}};
-    } else if (charSize === 4) {
+    } else {
+#if ASSERTIONS
+      assert(charSize === 4, 'only 2-byte and 4-byte strings are currently supported');
+#endif
       decodeString = UTF32ToString;
       encodeString = stringToUTF32;
       lengthBytesUTF = lengthBytesUTF32;
-      readCharAt = (pointer) => {{{ makeGetValue('pointer', 0, 'u32') }}};
     }
     registerType(rawType, {
       name,
       'fromWireType': (value) => {
         // Code mostly taken from _embind_register_std_string fromWireType
         var length = {{{ makeGetValue('value', 0, '*') }}};
-        var str;
-
-        var decodeStartPtr = value + {{{ POINTER_SIZE }}};
-        // Looping here to support possible embedded '0' bytes
-        for (var i = 0; i <= length; ++i) {
-          var currentBytePtr = value + {{{ POINTER_SIZE }}} + i * charSize;
-          if (i == length || readCharAt(currentBytePtr) == 0) {
-            var maxReadBytes = currentBytePtr - decodeStartPtr;
-            var stringSegment = decodeString(decodeStartPtr, maxReadBytes);
-            if (str === undefined) {
-              str = stringSegment;
-            } else {
-              str += String.fromCharCode(0);
-              str += stringSegment;
-            }
-            decodeStartPtr = currentBytePtr + charSize;
-          }
-        }
+        var str = decodeString(value + {{{ POINTER_SIZE }}}, length * charSize, true);
 
         _free(value);
 

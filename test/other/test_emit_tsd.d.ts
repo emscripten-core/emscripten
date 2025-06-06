@@ -7,9 +7,10 @@ declare namespace RuntimeExports {
      * heapOrArray is either a regular array, or a JavaScript typed array view.
      * @param {number=} idx
      * @param {number=} maxBytesToRead
+     * @param {boolean=} ignoreNul - If true, the function will not stop on a NUL character.
      * @return {string}
      */
-    function UTF8ArrayToString(heapOrArray: any, idx?: number | undefined, maxBytesToRead?: number | undefined): string;
+    function UTF8ArrayToString(heapOrArray: any, idx?: number | undefined, maxBytesToRead?: number | undefined, ignoreNul?: boolean | undefined): string;
     let wasmTable: WebAssembly.Table;
 }
 interface WasmModule {

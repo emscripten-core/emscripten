@@ -1,21 +1,21 @@
 var d = Module, g, h, k = new TextDecoder, l;
 
 function e(a) {
-    this.exports = function(p) {
-        function t(q, b, f) {
-            for (var u, n = 0, r = b, v = f.length, x = b + (3 * v >> 2) - ("=" == f[v - 2]) - ("=" == f[v - 1]); n < v; n += 4) b = c[f.charCodeAt(n + 1)], 
-            u = c[f.charCodeAt(n + 2)], q[r++] = c[f.charCodeAt(n)] << 2 | b >> 4, r < x && (q[r++] = b << 4 | u >> 2), 
-            r < x && (q[r++] = u << 6 | c[f.charCodeAt(n + 3)]);
-            return q;
+    this.exports = function(q) {
+        function u(r, b, m) {
+            for (var v, p = 0, t = b, w = m.length, x = b + (3 * w >> 2) - ("=" == m[w - 2]) - ("=" == m[w - 1]); p < w; p += 4) b = c[m.charCodeAt(p + 1)], 
+            v = c[m.charCodeAt(p + 2)], r[t++] = c[m.charCodeAt(p)] << 2 | b >> 4, t < x && (r[t++] = b << 4 | v >> 2), 
+            t < x && (r[t++] = v << 6 | c[m.charCodeAt(p + 3)]);
+            return r;
         }
-        for (var w, c = new Uint8Array(123), m = 25; 0 <= m; --m) c[48 + m] = 52 + m, c[65 + m] = m, 
-        c[97 + m] = 26 + m;
+        for (var n, c = new Uint8Array(123), f = 25; 0 <= f; --f) c[48 + f] = 52 + f, c[65 + f] = f, 
+        c[97 + f] = 26 + f;
         c[43] = 62;
         c[47] = 63;
-        return function(q) {
-            var b = new ArrayBuffer(16908288), f = new Uint8Array(b), u = q.a.a;
-            w = f;
-            t(w, 1024, "aGVsbG8h");
+        return function(r) {
+            var b = new ArrayBuffer(16908288), m = new Uint8Array(b), v = r.a.a;
+            n = m;
+            u(n, 1024, "aGVsbG8h");
             return {
                 b: Object.create(Object.prototype, {
                     grow: {},
@@ -26,32 +26,32 @@ function e(a) {
                     }
                 }),
                 c: function() {},
-                d: function(n, r) {
-                    u(1024);
+                d: function(p, t) {
+                    v(1024);
                     return 0;
                 }
             };
-        }(p);
+        }(q);
     }(a);
 }
 
-(function(a, p) {
+(function(a, q) {
     return {
-        then: function(t) {
-            t({
-                instance: new e(p)
+        then: function(u) {
+            u({
+                instance: new e(q)
             });
         }
     };
 })(d.wasm, {
     a: {
         a: a => {
-            var p = console, t = p.log;
+            var q = console, u = q.log;
             if (a) {
-                for (var w = a + void 0, c = a; !(c >= w) && h[c]; ) ++c;
-                a = k.decode(h.subarray(a, c));
+                for (var n = a, c = h, f = n + void 0; c[n] && !(n >= f); ) ++n;
+                a = k.decode(h.subarray(a, n));
             } else a = "";
-            t.call(p, a);
+            u.call(q, a);
         }
     }
 }).then((a => {
