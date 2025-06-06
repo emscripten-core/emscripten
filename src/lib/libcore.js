@@ -1419,15 +1419,15 @@ addToLibrary({
 
   emscripten_log__deps: ['$stackAlloc', 'vasprintf', '$emscriptenLog', 'free'],
   emscripten_log: (flags, format, varargs) => {
-    var bufPtrPtr = stackAlloc(POINTER_SIZE);
-    var len = vasprintf(bufPtrPtr, format, varargs);
+    var bufPtrPtr = stackAlloc({{{ POINTER_SIZE }}});
+    var len = _vasprintf(bufPtrPtr, format, varargs);
     assert(len > 0);
     var bufPtr = {{{ makeGetValue('bufPtrPtr', 0, '*') }}};
     try {
       var str = UTF8ToString(bufPtr, len);
       emscriptenLog(flags, str);
     } finally {
-      free(bufPtr);
+      _free(bufPtr);
     }
   },
 
