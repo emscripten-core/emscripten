@@ -39,23 +39,22 @@ all_deltas = []
 
 
 def process_changed_file(filename):
-  if os.path.splitext(filename)[1] != '.json':
-    return f'{filename} updated\n'
   content = open(filename).read()
   old_content = run(['git', 'show', f'HEAD:{filename}'])
   print(f'processing {filename}')
-  if len(content.splitlines()) == 1:
+
+  ext = os.path.splitext(filename)[1]
+  if ext == '.size':
     size = int(content.strip())
     old_size = int(old_content.strip())
-  else:
-    try:
-      current_json = json.loads(content)
-      old_json = json.loads(old_content)
-    except Exception:
-      print(f'{filename}: Unable to parse json content')
-      sys.exit(1)
+  elif ext == '.json':
+    current_json = json.loads(content)
+    old_json = json.loads(old_content)
     size = current_json['total']
     old_size = old_json['total']
+  else:
+    # Unhandled file type
+    return f'{filename} updated\n'
 
   filename = utils.removeprefix(filename, 'test/')
   delta = size - old_size
