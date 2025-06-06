@@ -6855,8 +6855,8 @@ void* operator new(size_t size) {
     ''')
     self.emcc_args += ['--pre-js', 'pre.js', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$unSign', '-sINCOMING_MODULE_JS_API=[preRun, postRun]']
 
-    ppm_data = str(list(bytearray(read_binary(test_file('poppler/ref.ppm')))))
-    self.do_run('', ppm_data.replace(' ', ''),
+    ppm_data = str(list(read_binary(test_file('poppler/ref.ppm'))))
+    self.do_run('', 'Data: ' + ppm_data.replace(' ', ''),
                 libraries=poppler,
                 args=['-scale-to', '512', 'paper.pdf', 'filename'])
 
