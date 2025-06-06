@@ -1779,7 +1779,7 @@ var LibrarySDL = {
   SDL_GetKeyState: () => _SDL_GetKeyboardState(0),
 
   SDL_GetKeyName__proxy: 'sync',
-  SDL_GetKeyName__deps: ['$stringToUTF8', 'realloc'],
+  SDL_GetKeyName__deps: ['$lengthBytesUTF8', '$stringToUTF8', 'realloc'],
   SDL_GetKeyName: (key) => {
     var name = '';
     /* ASCII A-Z or 0-9 */
