@@ -1417,7 +1417,7 @@ addToLibrary({
     }
   },
 
-  emscripten_log__deps: ['vasprintf', '$emscriptenLog', 'free'],
+  emscripten_log__deps: ['$stackAlloc', 'vasprintf', '$emscriptenLog', 'free'],
   emscripten_log: (flags, format, varargs) => {
     var bufPtrPtr = stackAlloc(POINTER_SIZE);
     var len = vasprintf(bufPtrPtr, format, varargs);
