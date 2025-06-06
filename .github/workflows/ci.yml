@@ -83,7 +83,7 @@ jobs:
             echo "Test expectations are out-of-date on the PR branch."
             echo "You can run './tools/maint/rebaseline_tests.py' to"
             echo "create a commit updating the expectations."
-            echo "Be sure to have `emsdk install tot` first."
+            echo "Be sure to have 'emsdk install tot' first."
             echo "-- This failure is only a warning and can be ignored"
             exit 1
           fi
