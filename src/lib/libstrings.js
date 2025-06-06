@@ -112,10 +112,7 @@ addToLibrary({
    *   maximum number of bytes to read. You can omit this parameter to scan the
    *   string until the first 0 byte. If maxBytesToRead is passed, and the string
    *   at [ptr, ptr+maxBytesToReadr[ contains a null byte in the middle, then the
-   *   string will cut short at that byte index (i.e. maxBytesToRead will not
-   *   produce a string of exact length [ptr, ptr+maxBytesToRead[) N.B. mixing
-   *   frequent uses of UTF8ToString() with and without maxBytesToRead may throw
-   *   JS JIT optimizations off, so it is worth to consider consistently using one
+   *   string will cut short at that byte index.
    * @param {boolean=} ignoreNul - If true, the function will not stop on a NUL character.
    * @return {string}
    */`,
