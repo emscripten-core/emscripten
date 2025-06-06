@@ -141,8 +141,7 @@ addToLibrary({
 
       // Default return type is binary.
       // The buffer contents exist 8 bytes after the returned pointer.
-      var ret = new Uint8Array(HEAPU8.subarray(buf, buf + length));
-      return opts.encoding === 'utf8' ? UTF8ArrayToString(ret) : ret;
+      return opts.encoding === 'utf8' ? UTF8ToString(buf, length) : HEAPU8.slice(buf, buf + length);
     },
 #endif
 
@@ -260,7 +259,7 @@ addToLibrary({
           ino: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ino, "u53") }}}
       }
     },
-    stat(path) { 
+    stat(path) {
       return withStackSave(() => {
         var statBuf = stackAlloc({{{ C_STRUCTS.stat.__size__ }}});
         FS.handleError(__wasmfs_stat(stringToUTF8OnStack(path), statBuf));
@@ -507,19 +506,17 @@ addToLibrary({
   $FS_writeFile: (path, data) => {
     var sp = stackSave();
     var pathBuffer = stringToUTF8OnStack(path);
-    if (typeof data == 'string') {
-      var buf = new Uint8Array(lengthBytesUTF8(data) + 1);
-      var actualNumBytes = stringToUTF8Array(data, buf, 0, buf.length);
-      data = buf.slice(0, actualNumBytes);
-    }
-    var dataBuffer = _malloc(data.length);
+    var len = typeof data == 'string' ? lengthBytesUTF8(data) + 1 : data.length;
+    var dataBuffer = _malloc(len);
 #if ASSERTIONS
     assert(dataBuffer);
 #endif
-    for (var i = 0; i < data.length; i++) {
-      {{{ makeSetValue('dataBuffer', 'i', 'data[i]', 'i8') }}};
+    if (typeof data == 'string') {
+      len = stringToUTF8(data, dataBuffer, len);
+    } else {
+      HEAPU8.set(data, dataBuffer);
     }
-    var ret = __wasmfs_write_file(pathBuffer, dataBuffer, data.length);
+    var ret = __wasmfs_write_file(pathBuffer, dataBuffer, len);
     _free(dataBuffer);
     stackRestore(sp);
     return ret;

@@ -584,14 +584,12 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
 }
 
 function fetchGetResponseHeadersLength(id) {
-  return lengthBytesUTF8(Fetch.xhrs.get(id).getAllResponseHeaders()) + 1;
+  return lengthBytesUTF8(Fetch.xhrs.get(id).getAllResponseHeaders());
 }
 
 function fetchGetResponseHeaders(id, dst, dstSizeBytes) {
   var responseHeaders = Fetch.xhrs.get(id).getAllResponseHeaders();
-  var lengthBytes = lengthBytesUTF8(responseHeaders) + 1;
-  stringToUTF8(responseHeaders, dst, dstSizeBytes);
-  return Math.min(lengthBytes, dstSizeBytes);
+  return stringToUTF8(responseHeaders, dst, dstSizeBytes) + 1;
 }
 
 //Delete the xhr JS object, allowing it to be garbage collected.

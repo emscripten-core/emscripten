@@ -10,8 +10,6 @@ var LibraryFS = {
     '$FS_modeStringToFlags',
     '$FS_getMode',
     '$intArrayFromString',
-    '$stringToUTF8Array',
-    '$lengthBytesUTF8',
 #if LibraryManager.has('libidbfs.js')
     '$IDBFS',
 #endif
@@ -1347,28 +1345,24 @@ FS.staticInit();`;
       if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
         throw new Error(`Invalid encoding type "${opts.encoding}"`);
       }
-      var ret;
       var stream = FS.open(path, opts.flags);
       var stat = FS.stat(path);
       var length = stat.size;
       var buf = new Uint8Array(length);
       FS.read(stream, buf, 0, length, 0);
       if (opts.encoding === 'utf8') {
-        ret = UTF8ArrayToString(buf);
-      } else if (opts.encoding === 'binary') {
-        ret = buf;
+        buf = UTF8ArrayToString(buf);
       }
       FS.close(stream);
-      return ret;
+      return buf;
     },
     writeFile(path, data, opts = {}) {
       opts.flags = opts.flags || {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}};
       var stream = FS.open(path, opts.flags, opts.mode);
       if (typeof data == 'string') {
-        var buf = new Uint8Array(lengthBytesUTF8(data)+1);
-        var actualNumBytes = stringToUTF8Array(data, buf, 0, buf.length);
-        FS.write(stream, buf, 0, actualNumBytes, undefined, opts.canOwn);
-      } else if (ArrayBuffer.isView(data)) {
+        data = new Uint8Array(intArrayFromString(data, true));
+      }
+      if (ArrayBuffer.isView(data)) {
         FS.write(stream, data, 0, data.byteLength, undefined, opts.canOwn);
       } else {
         throw new Error('Unsupported data type');

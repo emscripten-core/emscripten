@@ -46,6 +46,9 @@ See docs/process.md for more on how version tagging works.
 - The field `responseUrl` is added to `emscripten_fetch_t`. This is notably
   usable for obtaining resolved URL, in line with JS `XMLHttpRequest.responseURL`
   field. (#24414)
+- `emscripten_fetch_get_response_headers_length` now excludes the trailing
+  null character from the length calculation to match the documented behaviour.
+  (#24486)
 
 4.0.9 - 05/19/25
 ----------------
