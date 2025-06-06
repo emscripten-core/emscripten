@@ -1391,8 +1391,10 @@ addToLibrary({
     }
   },
 
-  $emscriptenLog__deps: ['$getCallstack'],
-  $emscriptenLog: (flags, str) => {
+  _emscripten_log_formatted__deps: ['$getCallstack'],
+  _emscripten_log_formatted: (flags, str) => {
+    str = UTF8ToString(str);
+
     if (flags & {{{ cDefs.EM_LOG_C_STACK | cDefs.EM_LOG_JS_STACK }}}) {
       str = str.replace(/\s+$/, ''); // Ensure the message and the callstack are joined cleanly with exactly one newline.
       str += (str.length > 0 ? '\n' : '') + getCallstack(flags);
@@ -1414,20 +1416,6 @@ addToLibrary({
       err(str);
     } else {
       out(str);
-    }
-  },
-
-  emscripten_log__deps: ['$stackAlloc', 'vasprintf', '$emscriptenLog', 'free'],
-  emscripten_log: (flags, format, varargs) => {
-    var bufPtrPtr = stackAlloc({{{ POINTER_SIZE }}});
-    var len = _vasprintf(bufPtrPtr, format, varargs);
-    assert(len > 0);
-    var bufPtr = {{{ makeGetValue('bufPtrPtr', 0, '*') }}};
-    try {
-      var str = UTF8ToString(bufPtr, len);
-      emscriptenLog(flags, str);
-    } finally {
-      _free(bufPtr);
     }
   },
 
