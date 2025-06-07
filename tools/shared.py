@@ -752,6 +752,8 @@ LLVM_DWARFDUMP = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dwarfd
 LLVM_OBJCOPY = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-objcopy')))
 LLVM_STRIP = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-strip')))
 WASM_LD = os.path.expanduser(build_llvm_tool_path(exe_suffix('wasm-ld')))
+LLVM_PROFDATA = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-profdata')))
+LLVM_COV = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-cov')))
 
 EMCC = bat_suffix(path_from_root('emcc'))
 EMXX = bat_suffix(path_from_root('em++'))
