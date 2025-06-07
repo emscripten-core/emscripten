@@ -3,18 +3,6 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-/*global Module:true, Runtime*/
-/*global HEAP32*/
-/*global createNamedFunction*/
-/*global AsciiToString, stringToUTF8*/
-/*global requireRegisteredType, throwBindingError, runDestructors*/
-/*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
-
-// -- jshint doesn't understand library syntax, so we need to mark the symbols exposed here
-/*global getStringOrSymbol, emval_freelist, emval_handles, Emval, __emval_unregister, count_emval_handles, emval_symbols, __emval_decref*/
-/*global emval_addMethodCaller, emval_methodCallers, addToLibrary, global, emval_lookupTypes, makeLegalFunctionName*/
-/*global emval_get_global*/
-
 // Number of handles reserved for non-use (0) or common values w/o refcount.
 {{{
   const EMVAL_RESERVED_HANDLES = 5;
@@ -170,7 +158,6 @@ var LibraryEmVal = {
     throw Error('unable to get global object.');
   },
 #else
-  // appease jshint (technically this code uses eval)
   $emval_get_global: () => {
     if (typeof globalThis == 'object') {
       return globalThis;
