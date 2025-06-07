@@ -331,7 +331,7 @@ var LibraryEmVal = {
 
     var offset = 0;
     var argsList = []; // 'obj?, arg0, arg1, arg2, ... , argN'
-    if (kind === /* FUNCTION */ 0) {
+    if (kind === {{{ cDefs['internal::EM_METHOD_CALLER_KIND::FUNCTION'] }}}) {
       argsList.push('obj');
     }
     var params = ['retType'];
@@ -344,7 +344,7 @@ var LibraryEmVal = {
         `  var arg${i} = argType${i}.readValueFromPointer(args${offset ? '+' + offset : ''});\n`;
       offset += types[i].argPackAdvance;
     }
-    var invoker = kind === /* CONSTRUCTOR */ 1 ? 'new func' : 'func.call';
+    var invoker = kind === {{{ cDefs['internal::EM_METHOD_CALLER_KIND::CONSTRUCTOR'] }}} ? 'new func' : 'func.call';
     functionBody +=
       `  var rv = ${invoker}(${argsList.join(', ')});\n`;
     if (!retType.isVoid) {
