@@ -18,9 +18,12 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.10 (in development)
+4.0.11 (in development)
 ----------------------
-- Emscripten ports now install pkg-config `.pc` files so they will show up, for
+
+
+4.0.10 - 06/07/25
+------------------ Emscripten ports now install pkg-config `.pc` files so they will show up, for
   example, when you run `pkg-config --list-all` or `pkg-config --cflags
   <portname>`. Bare in mind that the correct PKG_CONFIG_PATH needs to be set for
   this to work.  One way to do this is to run `emmake pkg-config`. (#24426)
