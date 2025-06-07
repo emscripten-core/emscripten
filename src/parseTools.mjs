@@ -225,12 +225,11 @@ export const POINTER_SIZE = MEMORY64 ? 8 : 4;
 const POINTER_MAX = MEMORY64 ? 'Number.MAX_SAFE_INTEGER' : '0xFFFFFFFF';
 const STACK_ALIGN = 16;
 const POINTER_BITS = POINTER_SIZE * 8;
-const POINTER_TYPE = `u${POINTER_BITS}`;
+const POINTER_TYPE = '*'
 const POINTER_JS_TYPE = MEMORY64 ? "'bigint'" : "'number'";
 const POINTER_SHIFT = MEMORY64 ? '3' : '2';
 const POINTER_HEAP = MEMORY64 ? 'HEAP64' : 'HEAP32';
 const LONG_TYPE = `i${POINTER_BITS}`;
-
 const SIZE_TYPE = POINTER_TYPE;
 
 // Similar to POINTER_TYPE, but this is the actual wasm type that is
