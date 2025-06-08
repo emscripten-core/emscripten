@@ -1398,7 +1398,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     # https://github.com/emscripten-core/emscripten/issues/21653
     settings.REQUIRED_EXPORTS.append('__getTypeName')
     if settings.PTHREADS or settings.WASM_WORKERS:
-      settings.REQUIRED_EXPORTS.append('_embind_initialize_bindings')
+      settings.REQUIRED_EXPORTS += ['_embind_initialize_worker_bindings', '_embind_post_ctors']
     # Needed to assign the embind exports to the ES exports.
     if settings.MODULARIZE == 'instance':
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$addOnPostCtor']
