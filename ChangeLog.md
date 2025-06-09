@@ -22,8 +22,8 @@ See docs/process.md for more on how version tagging works.
 -----------------------
 
 ----------------------
-- The `ENVIRONMENT` setting will now be automatically updated to include worker
-  if multi-threading is enabled. (#24525)
+- The `ENVIRONMENT` setting will now be automatically updated to include
+  `worker` if multi-threading is enabled. (#24525)
 
 4.0.10 - 06/07/25
 -----------------
