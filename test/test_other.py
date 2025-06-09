@@ -16208,3 +16208,14 @@ addToLibrary({
     self.assertContainedIf(f'var MIN_CHROME_VERSION = {unsupported};', src, env == 'node')
     self.assertContainedIf(f'var MIN_SAFARI_VERSION = {unsupported};', src, env == 'node')
     self.assertContainedIf(f'var MIN_FIREFOX_VERSION = {unsupported};', src, env == 'node')
+
+  @parameterized({
+    'web': ('web',),
+    'node': ('node',),
+  })
+  @parameterized({
+    'pthread': (['-pthread'],),
+    'wasm_workers': (['-sWASM_WORKERS'],),
+  })
+  def test_automatic_env_worker(self, env, emcc_args):
+    self.emcc(test_file('hello_world.c'), [f'-sENVIRONMENT={env}'] + emcc_args)
