@@ -28,7 +28,11 @@ def update_changelog(release_version, new_version):
   marker = f'{release_version} (in development)'
   pos = changelog.find(marker)
   assert pos != -1
-  pos += 2 * len(marker) + 1
+  pos += len(marker) + 1
+  # Skip the next line which should just be hyphens
+  assert changelog[pos] == '-'
+  pos = changelog.find('\n', pos)
+  assert pos != -1
 
   # Add new entry
   today = datetime.now().strftime('%m/%d/%y')
