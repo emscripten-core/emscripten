@@ -297,6 +297,8 @@ var LibraryEmVal = {
     '$createNamedFunction', '$emval_returnValue',
   ],
   _emval_get_method_caller: (argCount, argTypes, kind) => {
+    var GenericWireTypeSize = {{{ 2 * POINTER_SIZE }}};
+
     var types = emval_lookupTypes(argCount, argTypes);
     var retType = types.shift();
     argCount--; // remove the shifted off return type
@@ -307,7 +309,7 @@ var LibraryEmVal = {
       var offset = 0;
       for (var i = 0; i < argCount; ++i) {
         argN[i] = types[i]['readValueFromPointer'](args + offset);
-        offset += types[i].argPackAdvance;
+        offset += GenericWireTypeSize;
       }
       var rv = kind === /* CONSTRUCTOR */ 1 ? Reflect.construct(func, argN) : func.apply(obj, argN);
       return emval_returnValue(retType, destructorsRef, rv);
@@ -329,7 +331,7 @@ var LibraryEmVal = {
       args.push(types[i]);
       functionBody +=
         `  var arg${i} = argType${i}.readValueFromPointer(args${offset ? '+' + offset : ''});\n`;
-      offset += types[i].argPackAdvance;
+      offset += GenericWireTypeSize;
     }
     var invoker = kind === /* CONSTRUCTOR */ 1 ? 'new func' : 'func.call';
     functionBody +=
