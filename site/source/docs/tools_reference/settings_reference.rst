@@ -998,7 +998,7 @@ are:
 - 'shell'   - a JS shell like d8, js, or jsc.
 
 This setting can be a comma-separated list of these environments, e.g.,
-"web,worker". If this is the empty string, then all environments are
+"web,node". If this is the empty string, then all environments are
 supported.
 
 Note that the set of environments recognized here is not identical to the
