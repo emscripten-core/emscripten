@@ -1,3 +1,11 @@
+# Copyright 2025 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
+
+from tools.toolchain_profiler import ToolchainProfiler
+
+import json
 import logging
 import os
 import re
@@ -9,7 +17,7 @@ from subprocess import PIPE
 from tools import shared, utils, ports, diagnostics, config
 from tools import cache, feature_matrix, colored_logger
 from tools.shared import exit_with_error
-from tools.settings import settings
+from tools.settings import settings, user_settings, MEM_SIZE_SETTINGS
 from tools.utils import removeprefix, read_file
 
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2']
@@ -23,6 +31,11 @@ CLANG_FLAGS_WITH_ARGS = {
     '-current_version', '-I', '-L', '-include-pch', '-u',
     '-undefined', '-target', '-Xlinker', '-Xclang', '-z',
 }
+# These symbol names are allowed in INCOMING_MODULE_JS_API but are not part of the
+# default set.
+EXTRA_INCOMING_JS_API = [
+  'fetchSettings',
+]
 
 logger = logging.getLogger('args')
 
@@ -626,3 +639,241 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
 
   newargs = [a for a in newargs if a]
   return options, settings_changes, user_js_defines, newargs
+
+
+def expand_byte_size_suffixes(value):
+  """Given a string with KB/MB size suffixes, such as "32MB", computes how
+  many bytes that is and returns it as an integer.
+  """
+  value = value.strip()
+  match = re.match(r'^(\d+)\s*([kmgt]?b)?$', value, re.I)
+  if not match:
+    exit_with_error("invalid byte size `%s`.  Valid suffixes are: kb, mb, gb, tb" % value)
+  value, suffix = match.groups()
+  value = int(value)
+  if suffix:
+    size_suffixes = {suffix: 1024 ** i for i, suffix in enumerate(['b', 'kb', 'mb', 'gb', 'tb'])}
+    value *= size_suffixes[suffix.lower()]
+  return value
+
+
+def parse_symbol_list_file(contents):
+  """Parse contents of one-symbol-per-line response file.  This format can by used
+  with, for example, -sEXPORTED_FUNCTIONS=@filename and avoids the need for any
+  kind of quoting or escaping.
+  """
+  values = contents.splitlines()
+  return [v.strip() for v in values if not v.startswith('#')]
+
+
+def parse_value(text, expected_type):
+  # Note that using response files can introduce whitespace, if the file
+  # has a newline at the end. For that reason, we rstrip() in relevant
+  # places here.
+  def parse_string_value(text):
+    first = text[0]
+    if first in {"'", '"'}:
+      text = text.rstrip()
+      if text[-1] != text[0] or len(text) < 2:
+         raise ValueError(f'unclosed quoted string. expected final character to be "{text[0]}" and length to be greater than 1 in "{text[0]}"')
+      return text[1:-1]
+    return text
+
+  def parse_string_list_members(text):
+    sep = ','
+    values = text.split(sep)
+    result = []
+    index = 0
+    while True:
+      current = values[index].lstrip() # Cannot safely rstrip for cases like: "HERE-> ,"
+      if not len(current):
+        raise ValueError('empty value in string list')
+      first = current[0]
+      if first not in {"'", '"'}:
+        result.append(current.rstrip())
+      else:
+        start = index
+        while True: # Continue until closing quote found
+          if index >= len(values):
+            raise ValueError(f"unclosed quoted string. expected final character to be '{first}' in '{values[start]}'")
+          new = values[index].rstrip()
+          if new and new[-1] == first:
+            if start == index:
+              result.append(current.rstrip()[1:-1])
+            else:
+              result.append((current + sep + new)[1:-1])
+            break
+          else:
+            current += sep + values[index]
+            index += 1
+
+      index += 1
+      if index >= len(values):
+        break
+    return result
+
+  def parse_string_list(text):
+    text = text.rstrip()
+    if text and text[0] == '[':
+      if text[-1] != ']':
+        raise ValueError('unterminated string list. expected final character to be "]"')
+      text = text[1:-1]
+    if text.strip() == "":
+      return []
+    return parse_string_list_members(text)
+
+  if expected_type == list or (text and text[0] == '['):
+    # if json parsing fails, we fall back to our own parser, which can handle a few
+    # simpler syntaxes
+    try:
+      parsed = json.loads(text)
+    except ValueError:
+      return parse_string_list(text)
+
+    # if we succeeded in parsing as json, check some properties of it before returning
+    if type(parsed) not in (str, list):
+      raise ValueError(f'settings must be strings or lists (not ${type(parsed)})')
+    if type(parsed) is list:
+      for elem in parsed:
+        if type(elem) is not str:
+          raise ValueError(f'list members in settings must be strings (not ${type(elem)})')
+
+    return parsed
+
+  if expected_type == float:
+    try:
+      return float(text)
+    except ValueError:
+      pass
+
+  try:
+    if text.startswith('0x'):
+      base = 16
+    else:
+      base = 10
+    return int(text, base)
+  except ValueError:
+    return parse_string_value(text)
+
+
+def apply_user_settings():
+  """Take a map of users settings {NAME: VALUE} and apply them to the global
+  settings object.
+  """
+
+  # Stash a copy of all available incoming APIs before the user can potentially override it
+  settings.ALL_INCOMING_MODULE_JS_API = settings.INCOMING_MODULE_JS_API + EXTRA_INCOMING_JS_API
+
+  for key, value in user_settings.items():
+    if key in settings.internal_settings:
+      exit_with_error('%s is an internal setting and cannot be set from command line', key)
+
+    # map legacy settings which have aliases to the new names
+    # but keep the original key so errors are correctly reported via the `setattr` below
+    user_key = key
+    if key in settings.legacy_settings and key in settings.alt_names:
+      key = settings.alt_names[key]
+
+    # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
+    if key in MEM_SIZE_SETTINGS:
+      value = str(expand_byte_size_suffixes(value))
+
+    filename = None
+    if value and value[0] == '@':
+      filename = removeprefix(value, '@')
+      if not os.path.isfile(filename):
+        exit_with_error('%s: file not found parsing argument: %s=%s' % (filename, key, value))
+      value = read_file(filename).strip()
+    else:
+      value = value.replace('\\', '\\\\')
+
+    expected_type = settings.types.get(key)
+
+    if filename and expected_type == list and value.strip()[0] != '[':
+      # Prefer simpler one-line-per value parser
+      value = parse_symbol_list_file(value)
+    else:
+      try:
+        value = parse_value(value, expected_type)
+      except Exception as e:
+        exit_with_error(f'error parsing "-s" setting "{key}={value}": {e}')
+
+    setattr(settings, user_key, value)
+
+    if key == 'EXPORTED_FUNCTIONS':
+      # used for warnings in emscripten.py
+      settings.USER_EXPORTS = settings.EXPORTED_FUNCTIONS.copy()
+
+    # TODO(sbc): Remove this legacy way.
+    if key == 'WASM_OBJECT_FILES':
+      settings.LTO = 0 if value else 'full'
+
+    if key == 'JSPI':
+      settings.ASYNCIFY = 2
+    if key == 'JSPI_IMPORTS':
+      settings.ASYNCIFY_IMPORTS = value
+    if key == 'JSPI_EXPORTS':
+      settings.ASYNCIFY_EXPORTS = value
+
+
+def normalize_boolean_setting(name, value):
+  # boolean NO_X settings are aliases for X
+  # (note that *non*-boolean setting values have special meanings,
+  # and we can't just flip them, so leave them as-is to be
+  # handled in a special way later)
+  if name.startswith('NO_') and value in ('0', '1'):
+    name = removeprefix(name, 'NO_')
+    value = str(1 - int(value))
+  return name, value
+
+
+@ToolchainProfiler.profile()
+def parse_arguments(args):
+  newargs = list(args)
+
+  # Scan and strip emscripten specific cmdline warning flags.
+  # This needs to run before other cmdline flags have been parsed, so that
+  # warnings are properly printed during arg parse.
+  newargs = diagnostics.capture_warnings(newargs)
+
+  if not diagnostics.is_enabled('deprecated'):
+    settings.WARN_DEPRECATED = 0
+
+  for i in range(len(newargs)):
+    if newargs[i] in ('-l', '-L', '-I', '-z', '--js-library', '-o', '-x', '-u'):
+      # Scan for flags that can be written as either one or two arguments
+      # and normalize them to the single argument form.
+      if newargs[i] == '--js-library':
+        newargs[i] += '='
+      if len(newargs) <= i + 1:
+        exit_with_error(f"option '{newargs[i]}' requires an argument")
+      newargs[i] += newargs[i + 1]
+      newargs[i + 1] = ''
+
+  options, settings_changes, user_js_defines, newargs = parse_args(newargs)
+
+  if options.post_link or options.oformat == OFormat.BARE:
+    diagnostics.warning('experimental', '--oformat=bare/--post-link are experimental and subject to change.')
+
+  explicit_settings_changes, newargs = parse_s_args(newargs)
+  settings_changes += explicit_settings_changes
+
+  for s in settings_changes:
+    key, value = s.split('=', 1)
+    key, value = normalize_boolean_setting(key, value)
+    user_settings[key] = value
+
+  # STRICT is used when applying settings so it needs to be applied first before
+  # calling `apply_user_settings`.
+  strict_cmdline = user_settings.get('STRICT')
+  if strict_cmdline:
+    settings.STRICT = int(strict_cmdline)
+
+  # Apply user -jsD settings
+  for s in user_js_defines:
+    settings[s[0]] = s[1]
+
+  # Apply -s settings in newargs here (after optimization levels, so they can override them)
+  apply_user_settings()
+
+  return options, newargs
