@@ -81,7 +81,7 @@ inline bool _mi_bitmap_try_find_claim_field(mi_bitmap_t bitmap, size_t idx, cons
       // on to the next bit range
 #ifdef MI_HAVE_FAST_BITSCAN
       mi_assert_internal(mapm != 0);
-      const size_t shift = (count == 1 ? 1 : (MI_INTPTR_BITS - mi_clz(mapm) - bitidx));
+      const size_t shift = (count == 1 ? 1 : (MI_SIZE_BITS - mi_clz(mapm) - bitidx));
       mi_assert_internal(shift > 0 && shift <= count);
 #else
       const size_t shift = 1;
@@ -164,7 +164,7 @@ static bool mi_bitmap_is_claimedx(mi_bitmap_t bitmap, size_t bitmap_fields, size
   return ((field & mask) == mask);
 }
 
-// Try to set `count` bits at `bitmap_idx` from 0 to 1 atomically. 
+// Try to set `count` bits at `bitmap_idx` from 0 to 1 atomically.
 // Returns `true` if successful when all previous `count` bits were 0.
 bool _mi_bitmap_try_claim(mi_bitmap_t bitmap, size_t bitmap_fields, size_t count, mi_bitmap_index_t bitmap_idx) {
   const size_t idx = mi_bitmap_index_field(bitmap_idx);
@@ -172,9 +172,9 @@ bool _mi_bitmap_try_claim(mi_bitmap_t bitmap, size_t bitmap_fields, size_t count
   const size_t mask = mi_bitmap_mask_(count, bitidx);
   mi_assert_internal(bitmap_fields > idx); MI_UNUSED(bitmap_fields);
   size_t expected = mi_atomic_load_relaxed(&bitmap[idx]);
-  do  {    
+  do  {
     if ((expected & mask) != 0) return false;
-  } 
+  }
   while (!mi_atomic_cas_strong_acq_rel(&bitmap[idx], &expected, expected | mask));
   mi_assert_internal((expected & mask) == 0);
   return true;
@@ -200,7 +200,7 @@ bool _mi_bitmap_is_any_claimed(mi_bitmap_t bitmap, size_t bitmap_fields, size_t 
 // Try to atomically claim a sequence of `count` bits starting from the field
 // at `idx` in `bitmap` and crossing into subsequent fields. Returns `true` on success.
 // Only needs to consider crossing into the next fields (see `mi_bitmap_try_find_from_claim_across`)
-static bool mi_bitmap_try_find_claim_field_across(mi_bitmap_t bitmap, size_t bitmap_fields, size_t idx, const size_t count, const size_t retries, mi_bitmap_index_t* bitmap_idx, mi_stats_t* stats)
+static bool mi_bitmap_try_find_claim_field_across(mi_bitmap_t bitmap, size_t bitmap_fields, size_t idx, const size_t count, const size_t retries, mi_bitmap_index_t* bitmap_idx)
 {
   mi_assert_internal(bitmap_idx != NULL);
 
@@ -212,7 +212,7 @@ static bool mi_bitmap_try_find_claim_field_across(mi_bitmap_t bitmap, size_t bit
   if (initial == 0)     return false;
   if (initial >= count) return _mi_bitmap_try_find_claim_field(bitmap, idx, count, bitmap_idx);    // no need to cross fields (this case won't happen for us)
   if (_mi_divide_up(count - initial, MI_BITMAP_FIELD_BITS) >= (bitmap_fields - idx)) return false; // not enough entries
-  
+
   // scan ahead
   size_t found = initial;
   size_t mask = 0;     // mask bits for the final field
@@ -260,7 +260,6 @@ static bool mi_bitmap_try_find_claim_field_across(mi_bitmap_t bitmap, size_t bit
   } while (!mi_atomic_cas_strong_acq_rel(field, &map, newmap));
 
   // claimed!
-  mi_stat_counter_increase(stats->arena_crossover_count,1);
   *bitmap_idx = mi_bitmap_index_create(idx, initial_idx);
   return true;
 
@@ -280,10 +279,10 @@ rollback:
       newmap = (map & ~initial_mask);
     } while (!mi_atomic_cas_strong_acq_rel(field, &map, newmap));
   }
-  mi_stat_counter_increase(stats->arena_rollback_count,1);
+  mi_stat_counter_increase(_mi_stats_main.arena_rollback_count,1);
   // retry? (we make a recursive call instead of goto to be able to use const declarations)
   if (retries <= 2) {
-    return mi_bitmap_try_find_claim_field_across(bitmap, bitmap_fields, idx, count, retries+1, bitmap_idx, stats);
+    return mi_bitmap_try_find_claim_field_across(bitmap, bitmap_fields, idx, count, retries+1, bitmap_idx);
   }
   else {
     return false;
@@ -293,7 +292,7 @@ rollback:
 
 // Find `count` bits of zeros and set them to 1 atomically; returns `true` on success.
 // Starts at idx, and wraps around to search in all `bitmap_fields` fields.
-bool _mi_bitmap_try_find_from_claim_across(mi_bitmap_t bitmap, const size_t bitmap_fields, const size_t start_field_idx, const size_t count, mi_bitmap_index_t* bitmap_idx, mi_stats_t* stats) {
+bool _mi_bitmap_try_find_from_claim_across(mi_bitmap_t bitmap, const size_t bitmap_fields, const size_t start_field_idx, const size_t count, mi_bitmap_index_t* bitmap_idx) {
   mi_assert_internal(count > 0);
   if (count <= 2) {
     // we don't bother with crossover fields for small counts
@@ -313,7 +312,7 @@ bool _mi_bitmap_try_find_from_claim_across(mi_bitmap_t bitmap, const size_t bitm
     }
     */
     // if that fails, then try to claim across fields
-    if (mi_bitmap_try_find_claim_field_across(bitmap, bitmap_fields, idx, count, 0, bitmap_idx, stats)) {
+    if (mi_bitmap_try_find_claim_field_across(bitmap, bitmap_fields, idx, count, 0, bitmap_idx)) {
       return true;
     }
   }
@@ -370,7 +369,7 @@ bool _mi_bitmap_unclaim_across(mi_bitmap_t bitmap, size_t bitmap_fields, size_t 
 
 // Set `count` bits at `bitmap_idx` to 1 atomically
 // Returns `true` if all `count` bits were 0 previously. `any_zero` is `true` if there was at least one zero bit.
-bool _mi_bitmap_claim_across(mi_bitmap_t bitmap, size_t bitmap_fields, size_t count, mi_bitmap_index_t bitmap_idx, bool* pany_zero) {
+bool _mi_bitmap_claim_across(mi_bitmap_t bitmap, size_t bitmap_fields, size_t count, mi_bitmap_index_t bitmap_idx, bool* pany_zero, size_t* already_set) {
   size_t idx = mi_bitmap_index_field(bitmap_idx);
   size_t pre_mask;
   size_t mid_mask;
@@ -378,28 +377,31 @@ bool _mi_bitmap_claim_across(mi_bitmap_t bitmap, size_t bitmap_fields, size_t co
   size_t mid_count = mi_bitmap_mask_across(bitmap_idx, bitmap_fields, count, &pre_mask, &mid_mask, &post_mask);
   bool all_zero = true;
   bool any_zero = false;
+  size_t one_count = 0;
   _Atomic(size_t)*field = &bitmap[idx];
   size_t prev = mi_atomic_or_acq_rel(field++, pre_mask);
-  if ((prev & pre_mask) != 0) all_zero = false;
+  if ((prev & pre_mask) != 0) { all_zero = false; one_count += mi_popcount(prev & pre_mask); }
   if ((prev & pre_mask) != pre_mask) any_zero = true;
   while (mid_count-- > 0) {
     prev = mi_atomic_or_acq_rel(field++, mid_mask);
-    if ((prev & mid_mask) != 0) all_zero = false;
+    if ((prev & mid_mask) != 0) { all_zero = false; one_count += mi_popcount(prev & mid_mask); }
     if ((prev & mid_mask) != mid_mask) any_zero = true;
   }
   if (post_mask!=0) {
     prev = mi_atomic_or_acq_rel(field, post_mask);
-    if ((prev & post_mask) != 0) all_zero = false;
+    if ((prev & post_mask) != 0) { all_zero = false; one_count += mi_popcount(prev & post_mask); }
     if ((prev & post_mask) != post_mask) any_zero = true;
   }
   if (pany_zero != NULL) { *pany_zero = any_zero; }
+  if (already_set != NULL) { *already_set = one_count; };
+  mi_assert_internal(all_zero ? one_count == 0 : one_count <= count);
   return all_zero;
 }
 
 
 // Returns `true` if all `count` bits were 1.
 // `any_ones` is `true` if there was at least one bit set to one.
-static bool mi_bitmap_is_claimedx_across(mi_bitmap_t bitmap, size_t bitmap_fields, size_t count, mi_bitmap_index_t bitmap_idx, bool* pany_ones) {
+static bool mi_bitmap_is_claimedx_across(mi_bitmap_t bitmap, size_t bitmap_fields, size_t count, mi_bitmap_index_t bitmap_idx, bool* pany_ones, size_t* already_set) {
   size_t idx = mi_bitmap_index_field(bitmap_idx);
   size_t pre_mask;
   size_t mid_mask;
@@ -407,30 +409,33 @@ static bool mi_bitmap_is_claimedx_across(mi_bitmap_t bitmap, size_t bitmap_field
   size_t mid_count = mi_bitmap_mask_across(bitmap_idx, bitmap_fields, count, &pre_mask, &mid_mask, &post_mask);
   bool all_ones = true;
   bool any_ones = false;
+  size_t one_count = 0;
   mi_bitmap_field_t* field = &bitmap[idx];
   size_t prev = mi_atomic_load_relaxed(field++);
   if ((prev & pre_mask) != pre_mask) all_ones = false;
-  if ((prev & pre_mask) != 0) any_ones = true;
+  if ((prev & pre_mask) != 0) { any_ones = true; one_count += mi_popcount(prev & pre_mask); }
   while (mid_count-- > 0) {
     prev = mi_atomic_load_relaxed(field++);
     if ((prev & mid_mask) != mid_mask) all_ones = false;
-    if ((prev & mid_mask) != 0) any_ones = true;
+    if ((prev & mid_mask) != 0) { any_ones = true; one_count += mi_popcount(prev & mid_mask); }
   }
   if (post_mask!=0) {
     prev = mi_atomic_load_relaxed(field);
     if ((prev & post_mask) != post_mask) all_ones = false;
-    if ((prev & post_mask) != 0) any_ones = true;
+    if ((prev & post_mask) != 0) { any_ones = true; one_count += mi_popcount(prev & post_mask); }
   }
   if (pany_ones != NULL) { *pany_ones = any_ones; }
+  if (already_set != NULL) { *already_set = one_count; }
+  mi_assert_internal(all_ones ? one_count == count : one_count < count);
   return all_ones;
 }
 
-bool _mi_bitmap_is_claimed_across(mi_bitmap_t bitmap, size_t bitmap_fields, size_t count, mi_bitmap_index_t bitmap_idx) {
-  return mi_bitmap_is_claimedx_across(bitmap, bitmap_fields, count, bitmap_idx, NULL);
+bool _mi_bitmap_is_claimed_across(mi_bitmap_t bitmap, size_t bitmap_fields, size_t count, mi_bitmap_index_t bitmap_idx, size_t* already_set) {
+  return mi_bitmap_is_claimedx_across(bitmap, bitmap_fields, count, bitmap_idx, NULL, already_set);
 }
 
 bool _mi_bitmap_is_any_claimed_across(mi_bitmap_t bitmap, size_t bitmap_fields, size_t count, mi_bitmap_index_t bitmap_idx) {
   bool any_ones;
-  mi_bitmap_is_claimedx_across(bitmap, bitmap_fields, count, bitmap_idx, &any_ones);
+  mi_bitmap_is_claimedx_across(bitmap, bitmap_fields, count, bitmap_idx, &any_ones, NULL);
   return any_ones;
 }
