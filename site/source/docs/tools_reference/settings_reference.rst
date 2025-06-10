@@ -1841,20 +1841,6 @@ testing.  See test_chunked_synchronous_xhr in runner.py and library.js.
 
 Default value: false
 
-.. _headless:
-
-HEADLESS
-========
-
-If 1, will include shim code that tries to 'fake' a browser environment, in
-order to let you run a browser program (say, using SDL) in the shell.
-Obviously nothing is rendered, but this can be useful for benchmarking and
-debugging if actual rendering is not the issue. Note that the shim code is
-very partial - it is hard to fake a whole browser! - so keep your
-expectations low for this to work.
-
-Default value: false
-
 .. _deterministic:
 
 DETERMINISTIC
