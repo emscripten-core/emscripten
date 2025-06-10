@@ -1665,7 +1665,7 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
         filenames=filenames)
 
 
-class libcxx(ExceptionLibrary, MTLibrary):
+class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
   name = 'libc++'
 
   cflags = [
