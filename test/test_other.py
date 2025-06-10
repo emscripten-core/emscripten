@@ -11840,8 +11840,8 @@ int main () {
                            '-lGL',
                            '-sMODULARIZE']
     hello_webgl2_sources = hello_webgl_sources + ['-sMAX_WEBGL_VERSION=2']
-    hello_wasm_worker_sources = [test_file('wasm_worker/wasm_worker_code_size.c'), '-sWASM_WORKERS', '-sENVIRONMENT=web,worker']
-    audio_worklet_sources = [test_file('webaudio/audioworklet.c'), '-sWASM_WORKERS', '-sAUDIO_WORKLET', '-sENVIRONMENT=web,worker', '-sTEXTDECODER=1']
+    hello_wasm_worker_sources = [test_file('wasm_worker/wasm_worker_code_size.c'), '-sWASM_WORKERS', '-sENVIRONMENT=web']
+    audio_worklet_sources = [test_file('webaudio/audioworklet.c'), '-sWASM_WORKERS', '-sAUDIO_WORKLET', '-sENVIRONMENT=web', '-sTEXTDECODER=1']
     embind_hello_sources = [test_file('code_size/embind_hello_world.cpp'), '-lembind']
     embind_val_sources = [test_file('code_size/embind_val_hello_world.cpp'),
                           '-lembind',
@@ -16204,3 +16204,14 @@ addToLibrary({
     self.assertContainedIf(f'var MIN_CHROME_VERSION = {unsupported};', src, env == 'node')
     self.assertContainedIf(f'var MIN_SAFARI_VERSION = {unsupported};', src, env == 'node')
     self.assertContainedIf(f'var MIN_FIREFOX_VERSION = {unsupported};', src, env == 'node')
+
+  @parameterized({
+    'web': ('web',),
+    'node': ('node',),
+  })
+  @parameterized({
+    'pthread': (['-pthread'],),
+    'wasm_workers': (['-sWASM_WORKERS'],),
+  })
+  def test_automatic_env_worker(self, env, emcc_args):
+    self.emcc(test_file('hello_world.c'), [f'-sENVIRONMENT={env}'] + emcc_args)

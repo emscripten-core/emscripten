@@ -162,6 +162,12 @@ def will_metadce():
 
 
 def setup_environment_settings():
+  # The worker environment is automatically added if any of the pthread or Worker features are used.
+  # Note: we need to actually modify ENVIRONMENTS variable here before the parsing,
+  # because some JS code reads it back so modifying parsed info alone is not sufficient.
+  if settings.SHARED_MEMORY and settings.ENVIRONMENT:
+    settings.ENVIRONMENT += ',worker'
+
   # Environment setting based on user input
   environments = settings.ENVIRONMENT.split(',')
   if any(x for x in environments if x not in VALID_ENVIRONMENTS):
@@ -171,6 +177,7 @@ def setup_environment_settings():
   settings.ENVIRONMENT_MAY_BE_WEBVIEW = not settings.ENVIRONMENT or 'webview' in environments
   settings.ENVIRONMENT_MAY_BE_NODE = not settings.ENVIRONMENT or 'node' in environments
   settings.ENVIRONMENT_MAY_BE_SHELL = not settings.ENVIRONMENT or 'shell' in environments
+  settings.ENVIRONMENT_MAY_BE_WORKER = not settings.ENVIRONMENT or 'worker' in environments
 
   if not settings.ENVIRONMENT_MAY_BE_NODE:
     if 'MIN_NODE_VERSION' in user_settings:
@@ -183,21 +190,6 @@ def setup_environment_settings():
       if key in user_settings:
         diagnostics.warning('unused-command-line-argument', 'ignoring %s because `web` and `webview` environments are not enabled', key)
       settings[key] = feature_matrix.UNSUPPORTED
-
-  # The worker case also includes Node.js workers when pthreads are
-  # enabled and Node.js is one of the supported environments for the build to
-  # run on. Node.js workers are detected as a combination of
-  # ENVIRONMENT_IS_WORKER and ENVIRONMENT_IS_NODE.
-  settings.ENVIRONMENT_MAY_BE_WORKER = \
-      not settings.ENVIRONMENT or \
-      'worker' in environments or \
-      (settings.ENVIRONMENT_MAY_BE_NODE and settings.PTHREADS)
-
-  if not settings.ENVIRONMENT_MAY_BE_WORKER and settings.PROXY_TO_WORKER:
-    exit_with_error('if you specify --proxy-to-worker and specify a "-sENVIRONMENT=" directive, it must include "worker" as a target! (Try e.g. -sENVIRONMENT=web,worker)')
-
-  if not settings.ENVIRONMENT_MAY_BE_WORKER and settings.SHARED_MEMORY:
-    exit_with_error('when building with multithreading enabled and a "-sENVIRONMENT=" directive is specified, it must include "worker" as a target! (Try e.g. -sENVIRONMENT=web,worker)')
 
 
 def generate_js_sym_info():
@@ -2016,8 +2008,7 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   settings.PRE_JS_FILES = []
   settings.POST_JS_FILES = []
   # Force node since that is where the tool runs.
-  # When SHARED_MEMORY or PROXY_TO_WORKER are enabled, add the required 'worker' environment.
-  settings.ENVIRONMENT = 'node' + (',worker' if settings.SHARED_MEMORY or settings.PROXY_TO_WORKER else '')
+  settings.ENVIRONMENT = 'node'
   settings.MINIMAL_RUNTIME = 0
   # Required function to trigger TS generation.
   settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks']

@@ -20,7 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 4.0.11 (in development)
 -----------------------
-- Removed `-sHEADLESS` option. It tried to simulate a minimal browser-like
+- The `ENVIRONMENT` setting will now be automatically updated to include
+  `worker` if multi-threading is enabled. (#24525)
+- Removed the `HEADLESS` option. It tried to simulate a minimal browser-like
   environment before browser engines had real headless modes. For headless
   testing, users are now encouraged to use
   [Playwright](https://playwright.dev/), [Puppeteer](https://pptr.dev/) or

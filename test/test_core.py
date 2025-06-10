@@ -9176,8 +9176,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   # @also_with_standalone_wasm(impure=True)
   @node_pthreads
   def test_pthread_create(self):
-    # test that the node environment can be specified by itself, and that still
-    # works with pthreads (even though we did not specify 'node,worker')
     self.set_setting('ENVIRONMENT', 'node')
     self.set_setting('STRICT')
     self.do_run_in_out_file_test('core/pthread/create.c')
@@ -9194,8 +9192,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PTHREADS_DEBUG')
     if not self.has_changed_setting('INITIAL_MEMORY'):
       self.set_setting('INITIAL_MEMORY', '64mb')
-    # test that the node and worker environments can be specified
-    self.set_setting('ENVIRONMENT', 'node,worker')
+    self.set_setting('ENVIRONMENT', 'node')
     self.do_run_in_out_file_test('pthread/test_pthread_c11_threads.c')
 
   @node_pthreads
