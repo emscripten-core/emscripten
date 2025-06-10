@@ -101,7 +101,7 @@ def write_file(f):
       # Format:
       #   var NAME = DEFAULT;
       # Split it and strip the final ';'.
-      _, setting_name, _, setting_default = line.strip(';').split()
+      _, setting_name, _, setting_default = line.strip(';').split(None, 3)
       comment = '\n'.join(current_comment).strip()
       write_setting(f, setting_name, setting_default, comment, current_tags)
       current_comment = []
