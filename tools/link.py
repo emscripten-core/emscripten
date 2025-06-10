@@ -2479,27 +2479,24 @@ def modularize():
       'generated_js': generated_js,
     }
 
-  if settings.MINIMAL_RUNTIME and not settings.PTHREADS and not settings.WASM_WORKERS:
-    # Single threaded MINIMAL_RUNTIME programs do not need access to
-    # document.currentScript, so a simple export declaration is enough.
+  # In MODULARIZE mode this JS may be executed later, after
+  # document.currentScript is gone, so we need to capture it on load using a
+  # closure. In EXPORT_ES6 mode we can just use 'import.meta.url'.
+  capture_currentScript = settings.ENVIRONMENT_MAY_BE_WEB and not settings.EXPORT_ES6
+  # Single threaded MINIMAL_RUNTIME programs do not need access to
+  # document.currentScript, so a simple export declaration is enough.
+  if settings.MINIMAL_RUNTIME and not settings.PTHREADS:
+    capture_currentScript = False
+
+  if not capture_currentScript:
     src = f'var {settings.EXPORT_NAME} = {wrapper_function};'
   else:
-    script_url_web = ''
-    # When MODULARIZE this JS may be executed later,
-    # after document.currentScript is gone, so we save it.
-    # In EXPORT_ES6 mode we can just use 'import.meta.url'.
-    if settings.ENVIRONMENT_MAY_BE_WEB and not settings.EXPORT_ES6:
-       script_url_web = "var _scriptName = typeof document != 'undefined' ? document.currentScript?.src : undefined;"
-    src = '''\
-var %(EXPORT_NAME)s = (() => {
-  %(script_url_web)s
-  return (%(wrapper_function)s);
-})();
-''' % {
-      'EXPORT_NAME': settings.EXPORT_NAME,
-      'script_url_web': script_url_web,
-      'wrapper_function': wrapper_function,
-    }
+    src = f'''\
+var {settings.EXPORT_NAME} = (() => {{
+  var _scriptName = typeof document != 'undefined' ? document.currentScript?.src : undefined;
+  return ({wrapper_function});
+}})();
+'''
 
   if settings.SOURCE_PHASE_IMPORTS:
     src = f"import source wasmModule from './{settings.WASM_BINARY_FILE}';\n\n" + src
