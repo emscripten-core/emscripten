@@ -20,7 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 4.0.11 (in development)
 -----------------------
-
+- Removed `-sHEADLESS` option. It tried to simulate a minimal browser-like
+  environment before browser engines had real headless modes. For headless
+  testing, users are now encouraged to use
+  [Playwright](https://playwright.dev/), [Puppeteer](https://pptr.dev/) or
+  Node.js with [JSDOM](https://github.com/jsdom/jsdom) instead.
 
 4.0.10 - 06/07/25
 -----------------

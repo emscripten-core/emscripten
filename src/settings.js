@@ -1245,15 +1245,6 @@ var ERROR_ON_UNDEFINED_SYMBOLS = true;
 // [link]
 var SMALL_XHR_CHUNKS = false;
 
-// If 1, will include shim code that tries to 'fake' a browser environment, in
-// order to let you run a browser program (say, using SDL) in the shell.
-// Obviously nothing is rendered, but this can be useful for benchmarking and
-// debugging if actual rendering is not the issue. Note that the shim code is
-// very partial - it is hard to fake a whole browser! - so keep your
-// expectations low for this to work.
-// [link]
-var HEADLESS = false;
-
 // If 1, we force Date.now(), Math.random, etc. to return deterministic results.
 // This also tries to make execution deterministic across machines and
 // environments, for example, not doing anything different based on the
@@ -2279,4 +2270,5 @@ var LEGACY_SETTINGS = [
   ['SUPPORT_ERRNO', [0], 'No longer supported'],
   ['DEMANGLE_SUPPORT', [0], 'No longer supported'],
   ['MAYBE_WASM2JS', [0], 'No longer supported (use -sWASM=2)'],
+  ['HEADLESS', [0], 'No longer supported, use headless browsers or Node.js with JSDOM'],
 ];

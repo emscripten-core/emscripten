@@ -3959,10 +3959,6 @@ More info: https://emscripten.org
     result = self.run_js('a.out.js')
     self.assertContained('|hello world|', result)
 
-  def test_sdl_headless(self):
-    shutil.copy(test_file('screenshot.png'), 'example.png')
-    self.do_other_test('test_sdl_headless.c', emcc_args=['-sHEADLESS'])
-
   def test_preprocess(self):
     # Pass -Werror to prevent regressions such as https://github.com/emscripten-core/emscripten/pull/9661
     out = self.run_process([EMCC, test_file('hello_world.c'), '-E', '-Werror'], stdout=PIPE).stdout

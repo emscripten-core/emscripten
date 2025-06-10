@@ -46,8 +46,6 @@ export default [{
     'src/cpuprofiler.js',
     'src/memoryprofiler.js',
     'src/gl-matrix.js',
-    'src/headless.js',
-    'src/headlessCanvas.js',
     'src/source_map_support.js',
     'src/Fetch.js',
     'src/settings.js',
