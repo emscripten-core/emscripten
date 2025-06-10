@@ -1,7 +1,8 @@
+var wwParams;
+
 /**
  * Called once the intiial message has been recieved from the creating thread.
- * The `props` object is the list of properties sent via postMessage to create
- * the worker.
+ * The `props` object is property bag sent via postMessage to create the worker.
  *
  * This function is called both in normal wasm workers and in audio worklets.
  */
@@ -9,21 +10,19 @@ function startWasmWorker(props) {
 #if RUNTIME_DEBUG
   dbg('startWasmWorker', props);
 #endif
-#if MINIMAL_RUNTIME
-  Module ||= {};
-#endif
-  /** @suppress {checkTypes} */
-  Object.assign(Module, props);
-  wasmMemory = props['mem'];
+  wwParams = props;
+  wasmMemory = props.wasmMemory;
   updateMemoryViews();
 #if MINIMAL_RUNTIME
+  Module ||= {};
+  Module['wasm'] = props.wasm;
   loadModule()
 #else
-  wasmModuleReceived(props['wasm']);
+  wasmModuleReceived(props.wasm);
 #endif
   // Drop now unneeded references to from the Module object in this Worker,
   // these are not needed anymore.
-  props['wasm'] = props['mem'] = 0;
+  props.wasm = props.memMemory = 0;
 }
 
 #if AUDIO_WORKLET
@@ -41,6 +40,8 @@ if (ENVIRONMENT_IS_NODE) {
   // Weak map of handle functions to their wrapper. Used to implement
   // addEventListener/removeEventListener.
   var wrappedHandlers = new WeakMap();
+  /** @suppress {checkTypes} */
+  globalThis.onmessage = null;
   function wrapMsgHandler(h) {
     var f = wrappedHandlers.get(h)
     if (!f) {

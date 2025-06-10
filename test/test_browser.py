@@ -2395,7 +2395,11 @@ void *getBindBuffer() {
     self.btest('test_pre_run_deps.c', expected='10', emcc_args=['--pre-js', 'pre.js'])
 
   @also_with_wasm2js
-  def test_runtime_misuse(self):
+  @parameterized({
+    '': ([], '600'),
+    'no_main': (['-DNO_MAIN', '--pre-js', 'pre_runtime.js'], '601'), # 601, because no main means we *do* run another call after exit()
+  })
+  def test_runtime_misuse(self, extra_args, second_code):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall,$cwrap')
     post_prep = '''
       var expected_ok = false;
@@ -2418,7 +2422,7 @@ void *getBindBuffer() {
         doCcall(1);
         ok = true; // should fail and not reach here, runtime is not ready yet so ccall will abort
       } catch(e) {
-        out('expected fail 1: ' + e.toString());
+        out('expected fail 1:', e);
         assert(e.toString().includes('Assertion failed')); // assertion, not something else
         ABORT = false; // hackish
       }
@@ -2429,7 +2433,7 @@ void *getBindBuffer() {
         doCwrapCall(2);
         ok = true; // should fail and not reach here, runtime is not ready yet so cwrap call will abort
       } catch(e) {
-        out('expected fail 2: ' + e.toString());
+        out('expected fail 2:', e);
         assert(e.toString().includes('Assertion failed')); // assertion, not something else
         ABORT = false; // hackish
       }
@@ -2440,7 +2444,7 @@ void *getBindBuffer() {
         doDirectCall(3);
         ok = true; // should fail and not reach here, runtime is not ready yet so any code execution
       } catch(e) {
-        out('expected fail 3:' + e.toString());
+        out('expected fail 3:', e);
         assert(e.toString().includes('Assertion failed')); // assertion, not something else
         ABORT = false; // hackish
       }
@@ -2453,7 +2457,7 @@ void *getBindBuffer() {
         setTimeout(async () => {
           out('done timeout noted = ' + Module.noted);
           assert(Module.noted);
-          await fetch('http://localhost:%s/report_result?' + HEAP32[Module.noted/4]);
+          await fetch('http://localhost:8888/report_result?' + HEAP32[Module.noted/4]);
           window.close();
         }, 0);
         // called from main, this is an ok time
@@ -2461,28 +2465,23 @@ void *getBindBuffer() {
         doCwrapCall(200);
         doDirectCall(300);
       }
-    ''' % self.PORT
+    '''
 
     create_file('pre_runtime.js', r'''
       Module.onRuntimeInitialized = myJSCallback;
     ''')
 
-    for filename, extra_args, second_code in [
-      ('test_runtime_misuse.c', [], 600),
-      ('test_runtime_misuse_2.c', ['--pre-js', 'pre_runtime.js'], 601), # 601, because no main means we *do* run another call after exit()
-    ]:
-      print('\n', filename, extra_args)
+    print('mem init, so async, call too early')
+    create_file('post.js', post_prep + post_test + post_hook)
+    self.btest('test_runtime_misuse.c', expected='600', emcc_args=['--post-js', 'post.js', '-sEXIT_RUNTIME'] + extra_args, reporting=Reporting.NONE)
 
-      print('mem init, so async, call too early')
-      create_file('post.js', post_prep + post_test + post_hook)
-      self.btest(filename, expected='600', emcc_args=['--post-js', 'post.js', '-sEXIT_RUNTIME'] + extra_args, reporting=Reporting.NONE)
-      print('sync startup, call too late')
-      create_file('post.js', post_prep + 'Module.postRun = () => { ' + post_test + ' };' + post_hook)
-      self.btest(filename, expected=str(second_code), emcc_args=['--post-js', 'post.js', '-sEXIT_RUNTIME'] + extra_args, reporting=Reporting.NONE)
+    print('sync startup, call too late')
+    create_file('post.js', post_prep + 'Module.postRun = () => { ' + post_test + ' };' + post_hook)
+    self.btest('test_runtime_misuse.c', expected=second_code, emcc_args=['--post-js', 'post.js', '-sEXIT_RUNTIME'] + extra_args, reporting=Reporting.NONE)
 
-      print('sync, runtime still alive, so all good')
-      create_file('post.js', post_prep + 'expected_ok = true; Module.postRun = () => { ' + post_test + ' };' + post_hook)
-      self.btest(filename, expected='606', emcc_args=['--post-js', 'post.js'] + extra_args, reporting=Reporting.NONE)
+    print('sync, runtime still alive, so all good')
+    create_file('post.js', post_prep + 'expected_ok = true; Module.postRun = () => { ' + post_test + ' };' + post_hook)
+    self.btest('test_runtime_misuse.c', expected='606', emcc_args=['--post-js', 'post.js'] + extra_args, reporting=Reporting.NONE)
 
   def test_cwrap_early(self):
     self.btest('browser/test_cwrap_early.c', emcc_args=['-O2', '-sASSERTIONS', '--pre-js', test_file('browser/test_cwrap_early.js'), '-sEXPORTED_RUNTIME_METHODS=cwrap'], expected='0')
@@ -3924,7 +3923,7 @@ Module["preRun"] = () => {
 
   # Test against a certain thread exit time handling bug by spawning tons of threads.
   def test_pthread_spawns(self):
-    self.btest_exit('pthread/test_pthread_spawns.cpp', emcc_args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '--closure=1', '-sENVIRONMENT=web,worker'])
+    self.btest_exit('pthread/test_pthread_spawns.cpp', emcc_args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '--closure=1', '-sENVIRONMENT=web'])
 
   # It is common for code to flip volatile global vars for thread control. This is a bit lax, but nevertheless, test whether that
   # kind of scheme will work with Emscripten as well.
@@ -4275,7 +4274,7 @@ Module["preRun"] = () => {
     self.assertGreater(just_fallback, td_without_fallback)
 
   def test_small_js_flags(self):
-    self.btest('browser_test_hello_world.c', '0', emcc_args=['-O3', '--closure=1', '-sINCOMING_MODULE_JS_API=[]', '-sENVIRONMENT=web'])
+    self.btest('browser_test_hello_world.c', '0', emcc_args=['-O3', '--closure=1', '-sINCOMING_MODULE_JS_API=[]', '-sENVIRONMENT=web', '--output-eol=linux'])
     # Check an absolute js code size, with some slack.
     size = os.path.getsize('test.js')
     print('size:', size)
@@ -4503,23 +4502,21 @@ Module["preRun"] = () => {
   })
   @requires_webgpu
   def test_webgpu_basic_rendering(self, args):
-    self.btest_exit('webgpu_basic_rendering.cpp', emcc_args=['-sUSE_WEBGPU'] + args)
+    self.btest_exit('webgpu_basic_rendering.cpp', emcc_args=['-Wno-error=deprecated', '-sUSE_WEBGPU'] + args)
 
   @requires_webgpu
   def test_webgpu_required_limits(self):
-    self.btest_exit('webgpu_required_limits.c', emcc_args=['-sUSE_WEBGPU', '-sASYNCIFY'])
+    self.btest_exit('webgpu_required_limits.c', emcc_args=['-Wno-error=deprecated', '-sUSE_WEBGPU', '-sASYNCIFY'])
 
-  # TODO(#19645): Extend this test to proxied WebGPU when it's re-enabled.
   @requires_webgpu
   def test_webgpu_basic_rendering_pthreads(self):
-    self.btest_exit('webgpu_basic_rendering.cpp', emcc_args=['-sUSE_WEBGPU', '-pthread', '-sOFFSCREENCANVAS_SUPPORT'])
+    self.btest_exit('webgpu_basic_rendering.cpp', emcc_args=['-Wno-error=deprecated', '-sUSE_WEBGPU', '-pthread', '-sOFFSCREENCANVAS_SUPPORT'])
 
   def test_webgpu_get_device(self):
-    self.btest_exit('webgpu_get_device.cpp', emcc_args=['-sUSE_WEBGPU', '-sASSERTIONS', '--closure=1'])
+    self.btest_exit('webgpu_get_device.cpp', emcc_args=['-Wno-error=deprecated', '-sUSE_WEBGPU', '-sASSERTIONS', '--closure=1'])
 
-  # TODO(#19645): Extend this test to proxied WebGPU when it's re-enabled.
   def test_webgpu_get_device_pthreads(self):
-    self.btest_exit('webgpu_get_device.cpp', emcc_args=['-sUSE_WEBGPU', '-pthread'])
+    self.btest_exit('webgpu_get_device.cpp', emcc_args=['-Wno-error=deprecated', '-sUSE_WEBGPU', '-pthread'])
 
   # Tests the feature that shell html page can preallocate the typed array and place it
   # to Module.buffer before loading the script page.
@@ -4648,6 +4645,10 @@ Module["preRun"] = () => {
     create_file('myfile.dat', 'hello world\n')
     self.btest_exit('fetch/test_fetch_persist.c', emcc_args=['-sFETCH'])
 
+  @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
+  def test_fetch_redirect(self):
+    self.btest_exit('fetch/test_fetch_redirect.c', emcc_args=['-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
+
   @parameterized({
     '': ([],),
     'mt': (['-pthread', '-sPTHREAD_POOL_SIZE=2'],),
@@ -4726,27 +4727,27 @@ Module["preRun"] = () => {
 
   # Tests memory growth in pthreads mode, but still on the main thread.
   @parameterized({
-    '': ([],),
-    'proxy': (['-sPROXY_TO_PTHREAD'],),
+    '': ([], 1),
+    'proxy': (['-sPROXY_TO_PTHREAD'], 2),
   })
   @no_2gb('uses INITIAL_MEMORY')
   @no_4gb('uses INITIAL_MEMORY')
-  def test_pthread_growth_mainthread(self, emcc_args):
-    self.emcc_args.remove('-Werror')
-    self.btest_exit('pthread/test_pthread_memory_growth_mainthread.c', emcc_args=['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + emcc_args)
+  def test_pthread_growth_mainthread(self, emcc_args, pthread_pool_size):
+    self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
+    self.btest_exit('pthread/test_pthread_memory_growth_mainthread.c', emcc_args=['-Wno-pthreads-mem-growth', '-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + emcc_args)
 
   # Tests memory growth in a pthread.
   @parameterized({
     '': ([],),
     'assert': (['-sASSERTIONS'],),
-    'proxy': (['-sPROXY_TO_PTHREAD'],),
+    'proxy': (['-sPROXY_TO_PTHREAD'], 2),
     'minimal': (['-sMINIMAL_RUNTIME', '-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
   })
   @no_2gb('uses INITIAL_MEMORY')
   @no_4gb('uses INITIAL_MEMORY')
-  def test_pthread_growth(self, emcc_args):
-    self.emcc_args.remove('-Werror')
-    self.btest_exit('pthread/test_pthread_memory_growth.c', emcc_args=['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB', '-g'] + emcc_args)
+  def test_pthread_growth(self, emcc_args, pthread_pool_size = 1):
+    self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
+    self.btest_exit('pthread/test_pthread_memory_growth.c', emcc_args=['-Wno-pthreads-mem-growth', '-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + emcc_args)
 
   # Tests that time in a pthread is relative to the main thread, so measurements
   # on different threads are still monotonic, as if checking a single central
@@ -5114,7 +5115,7 @@ Module["preRun"] = () => {
   # Tests the hello_wasm_worker.c documentation example code.
   @also_with_minimal_runtime
   def test_wasm_worker_hello(self):
-    self.btest_exit('wasm_worker/hello_wasm_worker.c', emcc_args=['-sWASM_WORKERS', '-sENVIRONMENT=web,worker'])
+    self.btest_exit('wasm_worker/hello_wasm_worker.c', emcc_args=['-sWASM_WORKERS', '-sENVIRONMENT=web'])
 
   def test_wasm_worker_hello_minimal_runtime_2(self):
     self.btest_exit('wasm_worker/hello_wasm_worker.c', emcc_args=['-sWASM_WORKERS', '-sMINIMAL_RUNTIME=2'])
@@ -5582,7 +5583,7 @@ Module["preRun"] = () => {
     else:
       copytree(test_file('webpack'), '.')
       outfile = 'src/hello.js'
-    self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web,worker', '-o', outfile])
+    self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web', '-o', outfile])
     self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool'])
     # Webpack doesn't bundle the wasm file by default so we need to copy it
     # TODO(sbc): Look into plugins that do bundling.
@@ -5592,14 +5593,14 @@ Module["preRun"] = () => {
   @also_with_threads
   def test_vite(self):
     copytree(test_file('vite'), '.')
-    self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sENVIRONMENT=web,worker', '-o', 'hello.mjs'])
+    self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sENVIRONMENT=web', '-o', 'hello.mjs'])
     self.run_process(shared.get_npm_cmd('vite') + ['build'])
     self.run_browser('dist/index.html', '/report_result?exit:0')
 
   @also_with_threads
   def test_rollup(self):
     copytree(test_file('rollup'), '.')
-    self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-o', 'hello.mjs'])
+    self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sENVIRONMENT=web', '-o', 'hello.mjs'])
     self.run_process(shared.get_npm_cmd('rollup') + ['--config'])
     # Rollup doesn't bundle the wasm file by default so we need to copy it
     # TODO(sbc): Look into plugins that do bundling.

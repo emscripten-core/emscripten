@@ -105,7 +105,7 @@ var LibraryStackTrace = {
     abort('Cannot use convertFrameToPC (needed by __builtin_return_address) without -sUSE_OFFSET_CONVERTER');
 #else
 #if ASSERTIONS
-    assert(wasmOffsetConverter);
+    assert(wasmOffsetConverter, 'wasmOffsetConverter global not found');
 #endif
     var match;
 
@@ -269,7 +269,7 @@ var LibraryStackTrace = {
     } else {
       name = wasmOffsetConverter.getName(pc);
     }
-    if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
+    _free(_emscripten_pc_get_function.ret ?? 0);
     _emscripten_pc_get_function.ret = stringToNewUTF8(name);
     return _emscripten_pc_get_function.ret;
 #endif
@@ -311,7 +311,7 @@ var LibraryStackTrace = {
     var result = convertPCtoSourceLocation(pc);
     if (!result) return 0;
 
-    if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
+    _free(_emscripten_pc_get_file.ret ?? 0);
     _emscripten_pc_get_file.ret = stringToNewUTF8(result.file);
     return _emscripten_pc_get_file.ret;
   },

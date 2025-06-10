@@ -40,10 +40,19 @@ int main() {
 
   err = posix_fallocate(f, -1, 7);
   printf("posix_fallocate 3: %s\n", strerror(err));
-  printf("\n");
 
   err = posix_fallocate(f, 3, -1);
   printf("posix_fallocate 4: %s\n", strerror(err));
+
+  // Values over 2^53 are not representable in JS and
+  // should result in EOVERFLOW.
+  err = posix_fallocate(f, 1, 0x00ffffffffffffff);
+  assert(err == EOVERFLOW);
+  printf("posix_fallocate 5: %s\n", strerror(err));
+
+  err = posix_fallocate(f, 0x00ffffffffffffff, 1);
+  assert(err == EOVERFLOW);
+  printf("posix_fallocate 6: %s\n", strerror(err));
 
   return 0;
 }

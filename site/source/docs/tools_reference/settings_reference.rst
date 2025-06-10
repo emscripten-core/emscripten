@@ -880,7 +880,12 @@ Default value: false
 USE_WEBGPU
 ==========
 
-Enables support for WebGPU (via "webgpu/webgpu.h").
+Enables the built-in implementation of ``<webgpu/webgpu.h>``.
+Deprecated: Please try migrating to ``--use-port=emdawnwebgpu``,
+which implements a newer, incompatible version of webgpu.h (see
+tools/ports/emdawnwebgpu.py for more info).
+
+.. note:: This setting is deprecated
 
 Default value: false
 
@@ -1348,6 +1353,8 @@ ASYNCIFY_LAZY_LOAD_CODE
 
 Allows lazy code loading: where emscripten_lazy_load_code() is written, we
 will pause execution, load the rest of the code, and then resume.
+
+.. note:: This setting is deprecated
 
 Default value: false
 
@@ -2869,7 +2876,7 @@ are desired to work. Pass -sMIN_FIREFOX_VERSION=majorVersion to drop support
 for Firefox versions older than < majorVersion.
 Firefox 79 was released on 2020-07-28.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 40 which was released on 2015-09-11 (see
+Minimum supported value is 50 which was released on 2016-11-15 (see
 feature_matrix.py)
 
 Default value: 79
@@ -2905,7 +2912,7 @@ This setting also applies to modern Chromium-based Edge, which shares version
 numbers with Chrome.
 Chrome 85 was released on 2020-08-25.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 45, which was released on 2015-09-01 (see
+Minimum supported value is 55, which was released on 2016-12-01 (see
 feature_matrix.py).
 
 Default value: 85
@@ -3047,21 +3054,6 @@ least -O1 or -Os to be used. Pass -sMINIFY_HTML=0 to explicitly choose to
 disable HTML minification altogether.
 
 Default value: true
-
-.. _maybe_wasm2js:
-
-MAYBE_WASM2JS
-=============
-
-Whether we *may* be using wasm2js. This compiles to wasm normally, but lets
-you run wasm2js *later* on the wasm, and you can pick between running the
-normal wasm or that wasm2js code. For details of how to do that, see the
-test_maybe_wasm2js test.  This option can be useful for debugging and
-bisecting.
-
-.. note:: This setting is deprecated
-
-Default value: false
 
 .. _asan_shadow_size:
 

@@ -44,7 +44,6 @@ function calculateLibraries() {
     'libsigs.js',
     'libccall.js',
     'libaddfunction.js',
-    'libformatString.js',
     'libgetvalue.js',
     'libmath.js',
     'libpath.js',
@@ -192,7 +191,7 @@ function calculateLibraries() {
   }
 
   if (BOOTSTRAPPING_STRUCT_INFO) {
-    libraries = ['libbootstrap.js', 'libformatString.js', 'libstrings.js', 'libint53.js'];
+    libraries = ['libbootstrap.js', 'libstrings.js', 'libint53.js'];
   }
 
   if (SUPPORT_BIG_ENDIAN) {
@@ -416,15 +415,16 @@ function exportSymbol(name) {
 // export parts of the JS runtime that the user asked for
 function exportRuntimeSymbols() {
   // optionally export something.
-  function maybeExport(name) {
+  function shouldExport(name) {
     // If requested to be exported, export it.
     if (EXPORTED_RUNTIME_METHODS.has(name)) {
       // Unless we are in MODULARIZE=instance mode then HEAP objects are
       // exported separately in updateMemoryViews
       if (MODULARIZE == 'instance' || !name.startsWith('HEAP')) {
-        return exportSymbol(name);
+        return true;
       }
     }
+    return false;
   }
 
   // All possible runtime elements that can be exported
@@ -454,18 +454,6 @@ function exportRuntimeSymbols() {
     runtimeElements.push('HEAP_DATA_VIEW');
   }
 
-  if (PTHREADS && ALLOW_MEMORY_GROWTH) {
-    runtimeElements.push(
-      'GROWABLE_HEAP_I8',
-      'GROWABLE_HEAP_U8',
-      'GROWABLE_HEAP_I16',
-      'GROWABLE_HEAP_U16',
-      'GROWABLE_HEAP_I32',
-      'GROWABLE_HEAP_U32',
-      'GROWABLE_HEAP_F32',
-      'GROWABLE_HEAP_F64',
-    );
-  }
   if (USE_OFFSET_CONVERTER) {
     runtimeElements.push('WasmOffsetConverter');
   }
@@ -519,10 +507,11 @@ function exportRuntimeSymbols() {
     }
   }
 
-  const exports = runtimeElements.map(maybeExport);
-  const results = exports.filter((name) => name);
+  const exports = runtimeElements.filter(shouldExport);
+  const results = exports.map(exportSymbol);
 
   if (MODULARIZE == 'instance') {
+    if (results.length == 0) return '';
     return '// Runtime exports\nexport { ' + results.join(', ') + ' };\n';
   }
 

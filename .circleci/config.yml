@@ -10,6 +10,8 @@ executors:
   linux-python:
     docker:
       - image: cimg/python:3.10.7
+    environment:
+      EMCC_CORES: "4"
   focal:
     docker:
       - image: emscripten/emscripten-ci:focal
@@ -111,7 +113,7 @@ commands:
     description: "install canary version of node"
     steps:
       - install-node-version:
-         node_version: "24.0.0-v8-canary20250303cbbb63ede3"
+         node_version: "25.0.0-v8-canary2025053097d65d1dc1"
          canary: true
   install-v8:
     description: "install v8 using jsvu"
@@ -539,6 +541,7 @@ jobs:
           title: "asan+lsan"
           test_targets: "
             asan.test_stat
+            asan.test_stack
             asan.test_float_builtins
             asan.test_embind*
             asan.test_abort_on_exceptions
@@ -554,6 +557,7 @@ jobs:
             asan.test_pthread_run_on_main_thread
             asan.test_minimal_runtime_global_initializer
             asan.test_fs_js_api_wasmfs
+            asan.test_modularize_instance_pthreads
             lsan.test_dylink_dso_needed
             lsan.test_stdio_locking
             lsan.test_dlfcn_basic
@@ -646,7 +650,31 @@ jobs:
             wasmfs.test_fcntl_open
             wasmfs.test_fs_llseek
             wasmfs.test_fs_llseek_rawfs
-            wasmfs.test_freetype"
+            wasmfs.test_freetype
+            minimal0.test_utf
+            "
+  test-modularize-instance:
+    executor: focal
+    environment:
+      EMTEST_SKIP_NODE_CANARY: "1"
+    steps:
+      - run-tests-linux:
+          test_targets: "instance"
+  test-esm-integration:
+    # We don't use `bionic` here since its too old to run recent node versions:
+    # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
+    executor: linux-python
+    steps:
+      - prepare-for-tests
+      # The linux-python image uses /home/circleci rather than /root and jsvu
+      # hardcodes /root into its launcher scripts so we need to reinstall v8.
+      - run: rm -rf $HOME/.jsvu
+      - install-v8
+      - install-node-canary
+      - run-tests:
+          title: "esm_integration"
+          test_targets: "esm_integration"
+      - upload-test-results
   test-wasm2js1:
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
@@ -655,7 +683,7 @@ jobs:
       - run-tests-linux:
           test_targets: "wasm2js1"
   test-wasm64:
-    # We don't use `bionic` here since its tool old to run recent node versions:
+    # We don't use `bionic` here since its too old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
     executor: linux-python
     steps:
@@ -706,7 +734,6 @@ jobs:
             wasm64l.test_bigswitch
             wasm64l.test_module_wasm_memory
             wasm64l.test_longjmp2_emscripten
-            other.test_memory64_proxies
             other.test_failing_growth_wasm64"
       - upload-test-results
   test-jsc:
@@ -794,11 +821,12 @@ jobs:
             other.test_native_call_before_init
             other.test_node_unhandled_rejection
             core2.test_hello_world
-            core2.test_esm_integration
-            core0.test_esm_integration
+            core2.test_esm_integration*
+            core0.test_esm_integration*
             core0.test_pthread_join_and_asyncify
             core0.test_async_ccall_promise_jspi*
-            core0.test_cubescript_jspi"
+            core0.test_cubescript_jspi
+            "
       # Run some basic tests with the minimum version of node that we currently
       # support in the generated code.
       # Keep this in sync with `OLDEST_SUPPORTED_NODE` in `feature_matrix.py`
@@ -1120,6 +1148,12 @@ workflows:
           requires:
             - build-linux
       - test-other:
+          requires:
+            - build-linux
+      - test-modularize-instance:
+          requires:
+            - build-linux
+      - test-esm-integration:
           requires:
             - build-linux
       - test-browser-chrome

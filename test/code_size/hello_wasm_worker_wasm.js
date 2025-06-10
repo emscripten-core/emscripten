@@ -1,75 +1,74 @@
-var b = Module, c = "em-ww" == globalThis.name, e, k, w, x, y;
+var b = Module, c = "em-ww" == globalThis.name, e, f, l, x, y, z;
 
 c && (onmessage = a => {
     onmessage = null;
-    a = a.data;
-    b ||= {};
-    Object.assign(b, a);
-    e = a.mem;
-    f();
+    e = a = a.data;
+    f = a.o;
     g();
-    a.wasm = a.mem = 0;
+    b ||= {};
+    b.wasm = a.j;
+    h();
+    a.j = a.s = 0;
 });
 
-function f() {}
+function g() {}
 
-c || (e = b.mem || new WebAssembly.Memory({
+c || (f = b.mem || new WebAssembly.Memory({
     initial: 256,
     maximum: 256,
     shared: !0
-}), f());
+}), g());
 
-var h = [], m = a => {
+var k = [], n = a => {
     a = a.data;
     let d = a._wsc;
-    d && k.get(d)(...a.x);
-}, n = a => {
-    h.push(a);
-}, p = {}, q = 1, r = (a, d) => {
-    let l = p[q] = new Worker(b.js, {
+    d && l.get(d)(...a.x);
+}, p = a => {
+    k.push(a);
+}, q = {}, r = 1, t = (a, d) => {
+    let m = q[r] = new Worker(b.js, {
         name: "em-ww"
     });
-    l.postMessage({
-        $ww: q,
-        wasm: b.wasm,
-        mem: e,
-        sb: a,
-        sz: d
+    m.postMessage({
+        u: r,
+        j: b.wasm,
+        o: f,
+        l: a,
+        m: d
     });
-    l.onmessage = m;
-    return q++;
-}, t = () => !1, u = (a, d) => {
-    p[a].postMessage({
+    m.onmessage = n;
+    return r++;
+}, u = () => !1, v = (a, d) => {
+    q[a].postMessage({
         _wsc: d,
         x: []
     });
 };
 
-c && (p[0] = globalThis, addEventListener("message", n));
+c && (q[0] = globalThis, addEventListener("message", p));
 
-function v() {
+function w() {
     console.log("Hello from wasm worker!");
 }
 
-function g() {
-    w = {
-        b: r,
-        c: t,
-        d: u,
-        e: v,
-        a: e
+function h() {
+    z = {
+        b: t,
+        c: u,
+        d: v,
+        e: w,
+        a: f
     };
     WebAssembly.instantiate(b.wasm, {
-        a: w
+        a: z
     }).then((a => {
         a = a.instance.exports;
         x = a.g;
         y = a.i;
-        k = a.h;
-        c ? (a = b, y(a.sb, a.sz), removeEventListener("message", n), h = h.forEach(m), 
-        addEventListener("message", m)) : a.f();
+        l = a.h;
+        c ? (y(e.l, e.m), removeEventListener("message", p), k = k.forEach(n), addEventListener("message", n)) : a.f();
         c || x();
     }));
 }
 
-c || g();
+c || h();

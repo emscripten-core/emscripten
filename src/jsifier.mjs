@@ -721,10 +721,21 @@ function(${args}) {
         //  emits
         //   'var foo;[code here verbatim];'
         contentText = 'var ' + mangled + snippet;
-        if (snippet[snippet.length - 1] != ';' && snippet[snippet.length - 1] != '}')
+        if (snippet[snippet.length - 1] != ';' && snippet[snippet.length - 1] != '}') {
           contentText += ';';
+        }
       } else if (typeof snippet == 'undefined') {
-        contentText = `var ${mangled};`;
+        // wasmTable is kind of special.  In the normal configuration we export
+        // it from the wasm module under the name `__indirect_function_table`
+        // but we declare it as an 'undefined'.  It then gets assigned manually
+        // once the wasm module is available.
+        // TODO(sbc): This is kind of hacky, we should come up with a better solution.
+        var isDirectWasmExport = WASM_ESM_INTEGRATION && mangled == 'wasmTable';
+        if (isDirectWasmExport) {
+          contentText = '';
+        } else {
+          contentText = `var ${mangled};`;
+        }
       } else {
         // In JS libraries
         //   foo: '=[value]'

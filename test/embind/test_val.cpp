@@ -164,8 +164,15 @@ int main() {
 
   test("bool isNull()");
   EM_ASM(
-    a = null;
-    b = false;
+    globalThis.a = null;
+    globalThis.b = false;
+    globalThis.c = null;
+    globalThis.d = null;
+    globalThis.e = null;
+    globalThis.f = null;
+    globalThis.g = null;
+    globalThis.h = null;
+    globalThis.i = null;
   );
   ensure(val::global("a").isNull());
   ensure_not(val::global("b").isNull());
@@ -384,7 +391,7 @@ int main() {
 
   test("template<typename... Args> val new_(Args&&... args)");
   EM_ASM(
-    A = function() {
+    globalThis.A = function() {
       this.value = 2;
     }
   );
@@ -392,7 +399,7 @@ int main() {
   ensure_js("a instanceof A");
   ensure_js("a.value == 2");
   EM_ASM(
-    A = function(arg1, arg2) {
+    globalThis.A = function(arg1, arg2) {
       this.arg1 = arg1;
       this.arg2 = arg2;
     }
@@ -441,10 +448,10 @@ int main() {
   ensure(val::global("f")().as<int>() == 2);
   ensure_not(val::global("f")().as<int>() == 3);
   EM_ASM(
-    f1 = function(arg1, arg2) {
+    globalThis.f1 = function(arg1, arg2) {
       return arg1;
     };
-    f2 = function(arg1, arg2) {
+    globalThis.f2 = function(arg1, arg2) {
       return arg2;
     };
   );
@@ -453,14 +460,14 @@ int main() {
 
   test("template<typename ReturnValue, typename... Args> ReturnValue call(const char* name, Args&&... args)");
   EM_ASM(
-    C = function() {
+    globalThis.C = function() {
       this.method = function() { return this; };
     };
     c = new C;
   );
   ensure(val::global("c").call<val>("method") == val::global("c"));
   EM_ASM(
-    C = function() {
+    globalThis.C = function() {
       this.method = function(arg) { return arg; };
     };
     c = new C;
@@ -536,8 +543,8 @@ int main() {
 
   test("bool instanceof(const val& v)");
   EM_ASM(
-    A = function() {};
-    B = function() {};
+    globalThis.A = function() {};
+    globalThis.B = function() {};
     a = new A;
   );
   ensure(val::global("a").instanceof(val::global("A")));
@@ -583,15 +590,11 @@ int main() {
 
   test("void throw_() const");
   EM_ASM(
-    test_val_throw_ = function(error)
-    {
-      try
-      {
+    globalThis.test_val_throw_ = function(error) {
+      try {
         Module.throw_js_error(error);
         return false;
-      }
-      catch(error_thrown)
-      {
+      } catch(error_thrown) {
         if (error_thrown != error)
           throw error_thrown;
       }

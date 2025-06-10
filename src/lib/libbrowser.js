@@ -17,16 +17,6 @@ var LibraryBrowser = {
 #endif
 #endif
   ],
-  $Browser__postset: `
-    // exports
-    Module['requestFullscreen'] = Browser.requestFullscreen;
-#if ASSERTIONS
-    Module['requestFullScreen'] = Browser.requestFullScreen;
-#endif
-    Module['setCanvasSize'] = Browser.setCanvasSize;
-    Module['getUserMedia'] = Browser.getUserMedia;
-    Module['createContext'] = Browser.createContext;
-  `,
 
   $Browser: {
     useWebGL: false,
@@ -591,6 +581,14 @@ var LibraryBrowser = {
     },
   },
 
+  $requestFullscreen: 'Browser.requestFullscreen',
+#if ASSERTIONS
+  $requestFullScreen: 'Browser.requestFullScreen',
+#endif
+  $setCanvasSize: 'Browser.setCanvasSize',
+  $getUserMedia: 'Browser.getUserMedia',
+  $createContext: 'Browser.createContext',
+
   emscripten_run_preload_plugins__deps: ['$PATH'],
   emscripten_run_preload_plugins__proxy: 'sync',
   emscripten_run_preload_plugins: (file, onload, onerror) => {
@@ -693,7 +691,8 @@ var LibraryBrowser = {
         var data = await readAsync(url, false);
         eval(data);
         loadDone();
-      } catch {
+      } catch (e) {
+        err(e);
         loadError();
       }
       return;
@@ -755,7 +754,7 @@ var LibraryBrowser = {
 
   // To avoid creating worker parent->child chains, always proxies to execute on the main thread.
   emscripten_create_worker__proxy: 'sync',
-  emscripten_create_worker__deps: ['$UTF8ToString', 'malloc', 'free'],
+  emscripten_create_worker__deps: ['$UTF8ToString', 'realloc'],
   emscripten_create_worker: (url) => {
     url = UTF8ToString(url);
     var id = Browser.workers.length;
@@ -764,7 +763,6 @@ var LibraryBrowser = {
       callbacks: [],
       awaited: 0,
       buffer: 0,
-      bufferSize: 0
     };
     info.worker.onmessage = function info_worker_onmessage(msg) {
       if (ABORT) return;
@@ -782,11 +780,7 @@ var LibraryBrowser = {
       var data = msg.data['data'];
       if (data) {
         if (!data.byteLength) data = new Uint8Array(data);
-        if (!info.buffer || info.bufferSize < data.length) {
-          if (info.buffer) _free(info.buffer);
-          info.bufferSize = data.length;
-          info.buffer = _malloc(data.length);
-        }
+        info.buffer = _realloc(info.buffer, data.length);
         HEAPU8.set(data, info.buffer);
         callbackInfo.func(info.buffer, data.length, callbackInfo.arg);
       } else {
@@ -802,7 +796,7 @@ var LibraryBrowser = {
   emscripten_destroy_worker: (id) => {
     var info = Browser.workers[id];
     info.worker.terminate();
-    if (info.buffer) _free(info.buffer);
+    _free(info.buffer);
     Browser.workers[id] = null;
   },
 

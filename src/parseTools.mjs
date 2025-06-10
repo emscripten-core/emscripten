@@ -240,7 +240,7 @@ const SIZE_TYPE = POINTER_TYPE;
 const POINTER_WASM_TYPE = `i${POINTER_BITS}`;
 
 function isPointerType(type) {
-  return type[type.length - 1] == '*';
+  return type.endsWith('*');
 }
 
 // Given an expression like (VALUE=VALUE*2,VALUE<10?VALUE:t+1) , this will
@@ -327,7 +327,7 @@ function getNativeTypeSize(type) {
     case 'float': return 4;
     case 'double': return 8;
     default: {
-      if (type[type.length - 1] === '*') {
+      if (type.endsWith('*')) {
         return POINTER_SIZE;
       }
       if (type[0] === 'i') {
@@ -1093,6 +1093,10 @@ function ENVIRONMENT_IS_WORKER_THREAD() {
   return '(' + envs.join('||') + ')';
 }
 
+function nodeDetectionCode() {
+  return "typeof process == 'object' && process.versions?.node && process.type != 'renderer'";
+}
+
 addToCompileTimeContext({
   ATEXITS,
   ATPRERUNS,
@@ -1153,6 +1157,7 @@ addToCompileTimeContext({
   makeSetValue,
   makeThrow,
   modifyJSFunction,
+  nodeDetectionCode,
   receiveI64ParamAsI53,
   receiveI64ParamAsI53Unchecked,
   receivedSymbol,

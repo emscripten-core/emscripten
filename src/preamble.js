@@ -20,17 +20,12 @@
 
 {{{ makeModuleReceiveWithVar('wasmBinary') }}}
 
-#if WASM != 2 && MAYBE_WASM2JS
-#if !WASM2JS
-if (Module['doWasm2JS']) {
-#endif
+#if WASM2JS
+#if WASM != 2
+// WASM == 2 includes wasm2js.js separately.
 #include "wasm2js.js"
-#if !WASM2JS
-}
-#endif
 #endif
 
-#if MAYBE_WASM2JS
 if (WebAssembly.isWasm2js) {
   // We don't need to actually download a wasm binary, mark it as present but
   // empty.
@@ -45,10 +40,6 @@ if (typeof WebAssembly != 'object') {
 #endif
 
 // Wasm globals
-
-#if !WASM_ESM_INTEGRATION || IMPORTED_MEMORY
-var wasmMemory;
-#endif
 
 #if SHARED_MEMORY
 // For sending to workers.
@@ -104,61 +95,18 @@ function _free() {
 #endif // free
 #endif // ASSERTIONS
 
-// Memory management
-
-var HEAP,
-/** @type {!Int8Array} */
-  HEAP8,
-/** @type {!Uint8Array} */
-  HEAPU8,
-/** @type {!Int16Array} */
-  HEAP16,
-/** @type {!Uint16Array} */
-  HEAPU16,
-/** @type {!Int32Array} */
-  HEAP32,
-/** @type {!Uint32Array} */
-  HEAPU32,
-/** @type {!Float32Array} */
-  HEAPF32,
-#if WASM_BIGINT
-/* BigInt64Array type is not correctly defined in closure
-/** not-@type {!BigInt64Array} */
-  HEAP64,
-/* BigUint64Array type is not correctly defined in closure
-/** not-t@type {!BigUint64Array} */
-  HEAPU64,
-#endif
-/** @type {!Float64Array} */
-  HEAPF64;
-
-#if SUPPORT_BIG_ENDIAN
-var HEAP_DATA_VIEW;
-#endif
-
-var runtimeInitialized = false;
-
-#if EXIT_RUNTIME
-var runtimeExited = false;
-#endif
-
 /**
  * Indicates whether filename is delivered via file protocol (as opposed to http/https)
  * @noinline
  */
 var isFileURI = (filename) => filename.startsWith('file://');
 
-#include "runtime_shared.js"
+#include "runtime_common.js"
 
 #if ASSERTIONS
 assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray != undefined && Int32Array.prototype.set != undefined,
        'JS engine does not provide full typed array support');
 #endif
-
-#if IMPORTED_MEMORY
-// In non-standalone/normal mode, we create the memory here.
-#include "runtime_init_memory.js"
-#endif // !IMPORTED_MEMORY && ASSERTIONS
 
 #if RELOCATABLE
 var __RELOC_FUNCS__ = [];
@@ -199,12 +147,12 @@ function initRuntime() {
   if (ENVIRONMENT_IS_PTHREAD) return startWorker(Module);
 #endif
 
-#if STACK_OVERFLOW_CHECK
-  checkStackCookie();
-#endif
-
 #if STACK_OVERFLOW_CHECK >= 2
   setStackLimits();
+#endif
+
+#if STACK_OVERFLOW_CHECK
+  checkStackCookie();
 #endif
 
 #if RELOCATABLE
@@ -294,18 +242,6 @@ var dependenciesFulfilled = null; // overridden to take different actions when a
 var runDependencyTracking = {};
 var runDependencyWatcher = null;
 #endif
-
-function getUniqueRunDependency(id) {
-#if ASSERTIONS
-  var orig = id;
-  while (1) {
-    if (!runDependencyTracking[id]) return id;
-    id = orig + Math.random();
-  }
-#else
-  return id;
-#endif
-}
 
 function addRunDependency(id) {
   runDependencies++;
@@ -428,7 +364,7 @@ function abort(what) {
   var e = new WebAssembly.RuntimeError(what);
 
 #if MODULARIZE
-  readyPromiseReject(e);
+  readyPromiseReject?.(e);
 #endif
   // Throw the error whether or not MODULARIZE is set because abort is used
   // in code paths apart from instantiation where an exception is expected
@@ -605,7 +541,7 @@ function getBinarySync(file) {
     return file;
   }
 #endif
-#if expectToReceiveOnModule('wasmBinary') || MAYBE_WASM2JS
+#if expectToReceiveOnModule('wasmBinary') || WASM2JS
   if (file == wasmBinaryFile && wasmBinary) {
     return new Uint8Array(wasmBinary);
   }
@@ -819,7 +755,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
 
 #if !WASM_ESM_INTEGRATION
 function getWasmImports() {
-#if PTHREADS || WASM_WORKERS
+#if PTHREADS || WASM_WORKERS || (IMPORTED_MEMORY && MODULARIZE == 'instance')
   assignWasmImports();
 #endif
 #if ASYNCIFY && (ASSERTIONS || ASYNCIFY == 2)
@@ -924,6 +860,11 @@ function getWasmImports() {
 #endif
 #endif
 
+#if hasExportedSymbol('__cpp_exception') && !RELOCATABLE
+    ___cpp_exception = wasmExports['__cpp_exception'];
+    {{{ receivedSymbol('___cpp_exception') }}};
+#endif
+
 #if hasExportedSymbol('__wasm_apply_data_relocs')
     __RELOC_FUNCS__.push(wasmExports['__wasm_apply_data_relocs']);
 #endif
@@ -941,6 +882,9 @@ function getWasmImports() {
 #if PTHREADS || WASM_WORKERS
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
+#endif
+#if DECLARE_ASM_MODULE_EXPORTS
+    assignWasmExports(wasmExports);
 #endif
     removeRunDependency('wasm-instantiate');
     return wasmExports;
@@ -1027,22 +971,12 @@ function getWasmImports() {
 #if RUNTIME_DEBUG
   dbg('asynchronously preparing wasm');
 #endif
-#if MODULARIZE
-  try {
-#endif
-    var result = await instantiateAsync(wasmBinary, wasmBinaryFile, info);
-    var exports = receiveInstantiationResult(result);
+  var result = await instantiateAsync(wasmBinary, wasmBinaryFile, info);
+  var exports = receiveInstantiationResult(result);
 #if LOAD_SOURCE_MAP
-    receiveSourceMapJSON(await getSourceMapAsync());
+  receiveSourceMapJSON(await getSourceMapAsync());
 #endif
-    return exports;
-#if MODULARIZE
-  } catch (e) {
-    // If instantiation fails, reject the module ready promise.
-    readyPromiseReject(e);
-    return Promise.reject(e);
-  }
-#endif
+  return exports;
 #else // WASM_ASYNC_COMPILATION
   var result = instantiateSync(wasmBinaryFile, info);
 #if PTHREADS || MAIN_MODULE

@@ -34,17 +34,8 @@ var Module =
 var Module = {{{ EXPORT_NAME }}};
 #endif
 
-#if MODULARIZE && USE_READY_PROMISE
-// Set up the promise that indicates the Module is initialized
-var readyPromiseResolve, readyPromiseReject;
-var readyPromise = new Promise((resolve, reject) => {
-  readyPromiseResolve = resolve;
-  readyPromiseReject = reject;
-});
-#endif
-
 #if ENVIRONMENT_MAY_BE_NODE
-var ENVIRONMENT_IS_NODE = typeof process == 'object' && process.type != 'renderer';
+var ENVIRONMENT_IS_NODE = {{{ nodeDetectionCode() }}};
 #endif
 
 #if ENVIRONMENT_MAY_BE_SHELL
@@ -117,8 +108,8 @@ if (ENVIRONMENT_IS_NODE) {
 var out = defaultPrint;
 var err = defaultPrintErr;
 #else
-var out = (text) => console.log(text);
-var err = (text) => console.error(text);
+var out = (...args) => console.log(...args);
+var err = (...args) => console.error(...args);
 #endif
 
 // Override this function in a --pre-js file to get a signal for when
@@ -126,7 +117,7 @@ var err = (text) => console.error(text);
 // the program.
 function ready() {
 #if MODULARIZE && USE_READY_PROMISE
-  readyPromiseResolve(Module);
+  readyPromiseResolve?.(Module);
 #endif // MODULARIZE
 #if INVOKE_RUN && HAS_MAIN
   {{{ runIfMainThread("run();") }}}

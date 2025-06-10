@@ -159,12 +159,14 @@ addToLibrary({
   _wasmfs_node_truncate__i53abi: true,
   _wasmfs_node_truncate__deps : ['$wasmfsTry'],
   _wasmfs_node_truncate : (path_p, len) => {
+    if (isNaN(len)) return -{{{ cDefs.EOVERFLOW }}};
     return wasmfsTry(() => fs.truncateSync(UTF8ToString(path_p), len));
   },
 
   _wasmfs_node_ftruncate__i53abi: true,
   _wasmfs_node_ftruncate__deps : ['$wasmfsTry'],
   _wasmfs_node_ftruncate : (fd, len) => {
+    if (isNaN(len)) return -{{{ cDefs.EOVERFLOW }}};
     return wasmfsTry(() => fs.ftruncateSync(fd, len));
   },
 
