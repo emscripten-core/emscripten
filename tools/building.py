@@ -618,6 +618,13 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
   if settings.DEBUG_LEVEL > 1:
     args += ['--debug']
 
+  # Now that we have run closure compiler once, we have stripped all the closure compiler
+  # annotations from the source code and we no longer need to worry about generating closure
+  # friendly code.
+  # This means all the calls to acorn_optimizer that come after this will now run without
+  # --closure-friendly
+  settings.MAYBE_CLOSURE_COMPILER = False
+
   cmd = closure_cmd + args
   return run_closure_cmd(cmd, filename, env)
 
