@@ -16219,3 +16219,20 @@ addToLibrary({
   })
   def test_automatic_env_worker(self, env, emcc_args):
     self.emcc(test_file('hello_world.c'), [f'-sENVIRONMENT={env}'] + emcc_args)
+
+  def test_libcxx_errors(self):
+    create_file('main.cpp', '''
+    #include <thread>
+    void func() {
+    }
+
+    int main() {
+      std::thread t(func);
+      t.join();
+    }
+    ''')
+
+    # Since we are building without -pthread the thread constructor will fail,
+    # and in debug mode at least we expect to see the error message from libc++
+    expected = 'system_error was thrown in -fno-exceptions mode with error 6 and message "thread constructor failed"'
+    self.do_runf('main.cpp', expected, assert_returncode=NON_ZERO)
