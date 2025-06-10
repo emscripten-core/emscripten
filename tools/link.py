@@ -162,6 +162,12 @@ def will_metadce():
 
 
 def setup_environment_settings():
+  # The worker environment is automatically added if any of the pthread or Worker features are used.
+  # Note: we need to actually modify ENVIRONMENTS variable here before the parsing,
+  # because some JS code reads it back so modifying parsed info alone is not sufficient.
+  if settings.SHARED_MEMORY and settings.ENVIRONMENT:
+    settings.ENVIRONMENT += ',worker'
+
   # Environment setting based on user input
   environments = settings.ENVIRONMENT.split(',')
   if any(x for x in environments if x not in VALID_ENVIRONMENTS):
@@ -171,6 +177,7 @@ def setup_environment_settings():
   settings.ENVIRONMENT_MAY_BE_WEBVIEW = not settings.ENVIRONMENT or 'webview' in environments
   settings.ENVIRONMENT_MAY_BE_NODE = not settings.ENVIRONMENT or 'node' in environments
   settings.ENVIRONMENT_MAY_BE_SHELL = not settings.ENVIRONMENT or 'shell' in environments
+  settings.ENVIRONMENT_MAY_BE_WORKER = not settings.ENVIRONMENT or 'worker' in environments
 
   if not settings.ENVIRONMENT_MAY_BE_NODE:
     if 'MIN_NODE_VERSION' in user_settings:
@@ -183,9 +190,6 @@ def setup_environment_settings():
       if key in user_settings:
         diagnostics.warning('unused-command-line-argument', 'ignoring %s because `web` and `webview` environments are not enabled', key)
       settings[key] = feature_matrix.UNSUPPORTED
-
-  # The worker environment is also automatically enabled if any of the pthread or Worker features are used.
-  settings.ENVIRONMENT_MAY_BE_WORKER = not settings.ENVIRONMENT or 'worker' in environments or settings.SHARED_MEMORY
 
 
 def generate_js_sym_info():
