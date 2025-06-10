@@ -164,7 +164,7 @@ var ABORTING_MALLOC = true;
 // for imported memories (e.g. when dynamic linking is used).
 //
 // [link]
-var INITIAL_HEAP = 16777216;
+var INITIAL_HEAP = 128 << 20;
 
 // The initial amount of memory to use. Using more memory than this will
 // cause us to expand the heap, which can be costly with typed arrays:
