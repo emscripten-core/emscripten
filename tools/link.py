@@ -2561,6 +2561,9 @@ if (typeof exports === 'object' && typeof module === 'object') {
   shared.get_temp_files().note(final_js)
   save_intermediate('modularized')
 
+  if settings.MINIFY_WHITESPACE:
+    final_js = building.acorn_optimizer(final_js, ['--minify-whitespace'])
+
 
 def module_export_name_substitution():
   assert not settings.MODULARIZE
