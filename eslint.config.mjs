@@ -29,6 +29,7 @@ export default [{
     'src/lib/',
     'src/runtime_*.js',
     'src/shell*.js',
+    'src/modularize.js',
     'src/preamble*.js',
     'src/postlibrary.js',
     'src/postamble*.js',
