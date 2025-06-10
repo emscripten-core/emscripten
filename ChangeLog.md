@@ -22,6 +22,7 @@ See docs/process.md for more on how version tagging works.
 -----------------------
 - The `ENVIRONMENT` setting will now be automatically updated to include
   `worker` if multi-threading is enabled. (#24525)
+- mimalloc was updated to 2.2.4. (#24542)
 
 4.0.10 - 06/07/25
 -----------------
