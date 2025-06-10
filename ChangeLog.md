@@ -26,7 +26,12 @@ See docs/process.md for more on how version tagging works.
   environment before browser engines had real headless modes. For headless
   testing, users are now encouraged to use
   [Playwright](https://playwright.dev/), [Puppeteer](https://pptr.dev/) or
-  Node.js with [JSDOM](https://github.com/jsdom/jsdom) instead.
+  Node.js with [JSDOM](https://github.com/jsdom/jsdom) instead. You can also
+  use browser headless mode with `emrun` as follows:
+    emrun --browser=chrome --browser-args=--headless [..]
+  for chrome, or
+    emrun --browser=firefox --browser-args=-headless [..]
+  for firefox. (#24537)
 
 4.0.10 - 06/07/25
 -----------------
