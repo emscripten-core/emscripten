@@ -24,7 +24,7 @@ class posixtest(RunnerCore):
 
   This class get populated dynamically below.
   """
-  pass
+  pass  # noqa: PIE790
 
 
 def filter_tests(all_tests):
@@ -32,7 +32,7 @@ def filter_tests(all_tests):
     'pthread_',
     'strftime',
     'asctime',
-    'gmtime'
+    'gmtime',
   ]
 
   def enable_test(t):

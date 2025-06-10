@@ -1,36 +1,27 @@
 var d = Module, g, h, k = new TextDecoder, l;
 
-function e(b) {
-    this.exports = function(r) {
-        function u(c) {
-            c.set = function(a, f) {
-                this[a] = f;
-            };
-            c.get = function(a) {
-                return this[a];
-            };
-            return c;
+function e(a) {
+    this.exports = function(q) {
+        function u(r, b, m) {
+            for (var v, p = 0, t = b, w = m.length, x = b + (3 * w >> 2) - ("=" == m[w - 2]) - ("=" == m[w - 1]); p < w; p += 4) b = c[m.charCodeAt(p + 1)], 
+            v = c[m.charCodeAt(p + 2)], r[t++] = c[m.charCodeAt(p)] << 2 | b >> 4, t < x && (r[t++] = b << 4 | v >> 2), 
+            t < x && (r[t++] = v << 6 | c[m.charCodeAt(p + 3)]);
+            return r;
         }
-        function x(c, a, f) {
-            for (var v, p = 0, t = a, w = f.length, y = a + (3 * w >> 2) - ("=" == f[w - 2]) - ("=" == f[w - 1]); p < w; p += 4) a = m[f.charCodeAt(p + 1)], 
-            v = m[f.charCodeAt(p + 2)], c[t++] = m[f.charCodeAt(p)] << 2 | a >> 4, t < y && (c[t++] = a << 4 | v >> 2), 
-            t < y && (c[t++] = v << 6 | m[f.charCodeAt(p + 3)]);
-        }
-        for (var q, m = new Uint8Array(123), n = 25; 0 <= n; --n) m[48 + n] = 52 + n, m[65 + n] = n, 
-        m[97 + n] = 26 + n;
-        m[43] = 62;
-        m[47] = 63;
-        return function(c) {
-            var a = new ArrayBuffer(16908288), f = new Uint8Array(a), v = c.a.a;
-            q = f;
-            x(q, 1024, "aGVsbG8h");
-            c = u([]);
+        for (var n, c = new Uint8Array(123), f = 25; 0 <= f; --f) c[48 + f] = 52 + f, c[65 + f] = f, 
+        c[97 + f] = 26 + f;
+        c[43] = 62;
+        c[47] = 63;
+        return function(r) {
+            var b = new ArrayBuffer(16908288), m = new Uint8Array(b), v = r.a.a;
+            n = m;
+            u(n, 1024, "aGVsbG8h");
             return {
                 b: Object.create(Object.prototype, {
                     grow: {},
                     buffer: {
                         get: function() {
-                            return a;
+                            return b;
                         }
                     }
                 }),
@@ -38,37 +29,36 @@ function e(b) {
                 d: function(p, t) {
                     v(1024);
                     return 0;
-                },
-                e: c
+                }
             };
-        }(r);
-    }(b);
+        }(q);
+    }(a);
 }
 
-(function(b, r) {
+(function(a, q) {
     return {
         then: function(u) {
             u({
-                instance: new e(r)
+                instance: new e(q)
             });
         }
     };
 })(d.wasm, {
     a: {
-        a: b => {
-            var r = console, u = r.log;
-            if (b) {
-                for (var x = b + void 0, q = b; !(q >= x) && g[q]; ) ++q;
-                b = k.decode(g.subarray(b, q));
-            } else b = "";
-            u.call(r, b);
+        a: a => {
+            var q = console, u = q.log;
+            if (a) {
+                for (var n = a, c = h, f = n + void 0; c[n] && !(n >= f); ) ++n;
+                a = k.decode(h.subarray(a, n));
+            } else a = "";
+            u.call(q, a);
         }
     }
-}).then((b => {
-    b = b.instance.exports;
-    l = b.d;
-    h = b.b;
-    g = new Uint8Array(h.buffer);
-    b.c();
+}).then((a => {
+    a = a.instance.exports;
+    l = a.d;
+    g = a.b;
+    h = new Uint8Array(g.buffer);
+    a.c();
     l();
 }));

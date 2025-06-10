@@ -31,7 +31,7 @@ class Error(BaseException):
 
 
 # Class to treat location info in a uniform way across information sources.
-class LocationInfo(object):
+class LocationInfo:
   def __init__(self, source=None, line=0, column=0, func=None):
     self.source = source
     self.line = line
@@ -98,8 +98,8 @@ def get_sourceMappingURL_section(module):
   return None
 
 
-class WasmSourceMap(object):
-  class Location(object):
+class WasmSourceMap:
+  class Location:
     def __init__(self, source=None, line=0, column=0, func=None):
       self.source = source
       self.line = line
@@ -121,10 +121,8 @@ class WasmSourceMap(object):
     self.version = source_map_json['version']
     self.sources = source_map_json['sources']
 
-    vlq_map = {}
     chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
-    for i, c in enumerate(chars):
-      vlq_map[c] = i
+    vlq_map = {c: i for i, c in enumerate(chars)}
 
     def decodeVLQ(string):
       result = []
@@ -133,8 +131,8 @@ class WasmSourceMap(object):
       for c in string:
         try:
           integer = vlq_map[c]
-        except ValueError:
-          raise Error(f'Invalid character ({c}) in VLQ')
+        except ValueError as e:
+          raise Error(f'Invalid character ({c}) in VLQ') from e
         value += (integer & 31) << shift
         if integer & 32:
           shift += 5
@@ -189,7 +187,7 @@ class WasmSourceMap(object):
     return LocationInfo(
         self.sources[info.source] if info.source is not None else None,
         info.line,
-        info.column
+        info.column,
       )
 
 
@@ -213,7 +211,7 @@ def symbolize_address_sourcemap(module, address, force_file):
     print(sm.mappings)
     # Print with section offsets to easily compare against dwarf
     for k, v in sm.mappings.items():
-      print(f'{k-csoff:x}: {v}')
+      print(f'{k - csoff:x}: {v}')
   sm.lookup(address).print()
 
 

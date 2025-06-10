@@ -631,7 +631,7 @@ function createSwimlaneChart(data) {
           .duration(500)
           .style("opacity", 0);
     }
-    // upate the item rects
+    // update the item rects
     var rects = itemRects.selectAll('rect')
       .data(visItems, function (d) { return d.id; })
       .attr('x', function(d) { return x1(d.start); })

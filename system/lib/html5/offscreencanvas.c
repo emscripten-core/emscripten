@@ -10,16 +10,18 @@ typedef struct set_cavas_size_t {
 
 static void do_set_size(void* arg) {
   set_cavas_size_t* args = (set_cavas_size_t*)arg;
-  _emscripten_set_offscreencanvas_size(args->target, args->width, args->height);
+  emscripten_set_canvas_element_size(args->target, args->width, args->height);
+  free((char *) args->target);
   free(arg);
 }
 
+// This function takes ownership of the "target" string.
 void _emscripten_set_offscreencanvas_size_on_thread(pthread_t t,
                                                     const char* target,
                                                     int width,
                                                     int height) {
   set_cavas_size_t* arg = malloc(sizeof(set_cavas_size_t));
-  arg->target = target;
+  arg->target = target; // taking ownership: will be freed in do_set_size
   arg->width = width;
   arg->height = height;
 

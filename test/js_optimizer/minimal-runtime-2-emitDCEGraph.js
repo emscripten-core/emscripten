@@ -65,11 +65,14 @@ var imports = {
  }
 };
 var _main, _unused, wasmExports;
-WebAssembly.instantiate(Module["wasm"], imports).then(((output) => {
- wasmExports = output.instance.exports;
+function assignWasmExports(wasmExports) {
  _main = wasmExports["b"];
  _unused = wasmExports["c"];
- initRuntime();
+}
+WebAssembly.instantiate(Module["wasm"], imports).then(((output) => {
+ wasmExports = output.instance.exports;
+ assignWasmExports(wasmExports);
+ initRuntime(wasmExports);
  ready();
 }));
 

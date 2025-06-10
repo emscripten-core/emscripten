@@ -5,6 +5,8 @@
  * found in the LICENSE file.
  */
 
+#include <stdbool.h>
+
 #pragma once
 
 #include <stdbool.h>
@@ -31,9 +33,11 @@ typedef void (*em_callback_func)(void);
 typedef void (*em_arg_callback_func)(void*);
 typedef void (*em_str_callback_func)(const char *);
 
+/* Legacy EM_BOOL type. Emscripten no longer uses this */
 #define EM_BOOL bool
-#define EM_TRUE 1
-#define EM_FALSE 0
+#define EM_TRUE true
+#define EM_FALSE false
+
 #define EM_UTF8 char
 
 #define EMSCRIPTEN_RESULT int

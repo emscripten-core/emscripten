@@ -3,8 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-// This file defines the JS file backend and JS file of the new file system.
-// See https://github.com/emscripten-core/emscripten/issues/15041.
+// This file defines the JS file backend.
 
 #include "js_file_backend.h"
 #include "backend.h"

@@ -89,11 +89,7 @@ int main() {
   int fd5 = open("/dev/stdout/foo", O_RDWR);
   printf("Errno: %s\n", strerror(errno));
   // Both errors are valid, but in WasmFS, ENOTDIR is returned first.
-#ifdef WASMFS
   assert(errno == ENOTDIR);
-#else
-  assert(errno == ENOENT);
-#endif
 
   errno = 0;
   // Attempt to open and write to the root directory.

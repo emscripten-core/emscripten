@@ -10,33 +10,29 @@
 #include <emscripten.h>
 
 int bar(void) {
-    return 42;
+  return 42;
 }
 
 int foo(void) __attribute__((alias("bar")));
 
-int main()
-{
-    EM_ASM({
-        FS.mkdir('/working');
-        FS.mount(NODEFS, { root: '.' }, '/working');
-    });
-    void *handle = dlopen("/working/side.wasm", RTLD_NOW);
-    if (!handle) {
-        printf("dlopen failed: %s", dlerror());
-        return 1;
-    }
+int main() {
+  void *handle = dlopen("side.wasm", RTLD_NOW);
+  if (!handle) {
+    printf("dlopen failed: %s", dlerror());
+    return 1;
+  }
 
-    typedef int (*func_type)(void);
-    func_type exportedfn = (func_type)dlsym(handle, "callAlias");
-    if (!exportedfn) {
-        const char *err = dlerror();
-        printf("ERROR: dlsym failed: for callAlias: %s", err);
-        return 1;
-    }
-    if (exportedfn() != 42)
-      return 1;
-    dlclose(handle);
-    printf("success\n");
-    return 0;
+  typedef int (*func_type)(void);
+  func_type exportedfn = (func_type)dlsym(handle, "callAlias");
+  if (!exportedfn) {
+    const char *err = dlerror();
+    printf("ERROR: dlsym failed: for callAlias: %s", err);
+    return 1;
+  }
+  if (exportedfn() != 42) {
+    return 1;
+  }
+  dlclose(handle);
+  printf("success\n");
+  return 0;
 }

@@ -15,8 +15,7 @@ int result = 1;
 EMSCRIPTEN_KEEPALIVE void one() {
   SDL_Event event;
   while (SDL_PollEvent(&event)) {
-    printf("got event %d\n", event.type);
-    switch(event.type) {
+    switch (event.type) {
       case SDL_KEYDOWN:
         break;
       case SDL_KEYUP:
@@ -24,15 +23,20 @@ EMSCRIPTEN_KEEPALIVE void one() {
         if (event.key.keysym.sym == SDLK_LCTRL ||
             event.key.keysym.sym == SDLK_LSHIFT ||
             event.key.keysym.sym == SDLK_LALT) {
+          printf("got modifier: %d\n", event.key.keysym.sym);
           return;
         }
+        printf("got SDL_KEYUP: ");
         if ((event.key.keysym.mod & KMOD_LCTRL) || (event.key.keysym.mod & KMOD_RCTRL)) {
+          printf("CTRL + ");
           result *= 2;
         }
         if ((event.key.keysym.mod & KMOD_LSHIFT) || (event.key.keysym.mod & KMOD_RSHIFT)) {
+          printf("SHIFT + ");
           result *= 3;
         }
         if ((event.key.keysym.mod & KMOD_LALT) || (event.key.keysym.mod & KMOD_RALT)) {
+          printf("ALT + ");
           result *= 5;
         }
         switch (event.key.keysym.sym) {
@@ -52,7 +56,8 @@ EMSCRIPTEN_KEEPALIVE void one() {
         }
         break;
       default: /* Report an unhandled event */
-        printf("I don't know what this event is!\n");
+        printf("I don't know what this event is! (%d)\n", event.type);
+        emscripten_force_exit(1);
     }
   }
 }

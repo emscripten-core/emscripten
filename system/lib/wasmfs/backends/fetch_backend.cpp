@@ -3,8 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-// This file defines the JS file backend and JS file of the new file system.
-// See https://github.com/emscripten-core/emscripten/issues/15041.
+// This file defines the fetch backend.
 
 #include "fetch_backend.h"
 #include "backend.h"
@@ -13,17 +12,39 @@
 
 namespace wasmfs {
 
+const uint32_t DEFAULT_CHUNK_SIZE = 16*1024*1024;
+
+class FetchBackend : public wasmfs::ProxiedAsyncJSBackend {
+  std::string baseUrl;
+  uint32_t chunkSize;
+ public:
+  FetchBackend(const std::string& baseUrl,
+               uint32_t chunkSize,
+               std::function<void(backend_t)> setupOnThread)
+    : ProxiedAsyncJSBackend(setupOnThread), baseUrl(baseUrl), chunkSize(chunkSize) {}
+  std::shared_ptr<DataFile> createFile(mode_t mode) override;
+  std::shared_ptr<Directory> createDirectory(mode_t mode) override;
+  const std::string getFileURL(const std::string& filePath);
+  uint32_t getChunkSize();
+};
+
+
 class FetchFile : public ProxiedAsyncJSImplFile {
   std::string filePath;
+  std::string fileUrl;
 
 public:
   FetchFile(const std::string& path,
             mode_t mode,
             backend_t backend,
             emscripten::ProxyWorker& proxy)
-    : ProxiedAsyncJSImplFile(mode, backend, proxy), filePath(path) {}
+    : ProxiedAsyncJSImplFile(mode, backend, proxy), filePath(path) {
+    this->fileUrl = dynamic_cast<FetchBackend*>(getBackend())->getFileURL(filePath);
+  }
 
   const std::string& getPath() const { return filePath; }
+  const std::string& getURL() const { return fileUrl; }
+  const uint32_t getChunkSize() const { return dynamic_cast<FetchBackend*>(getBackend())->getChunkSize(); }
 };
 
 class FetchDirectory : public MemoryDirectory {
@@ -58,40 +79,53 @@ public:
   std::string getChildPath(const std::string& name) const {
     return dirPath + '/' + name;
   }
-};
 
-class FetchBackend : public ProxiedAsyncJSBackend {
-  std::string baseUrl;
-
-public:
-  FetchBackend(const std::string& baseUrl,
-               std::function<void(backend_t)> setupOnThread)
-    : ProxiedAsyncJSBackend(setupOnThread), baseUrl(baseUrl) {}
-
-  std::shared_ptr<DataFile> createFile(mode_t mode) override {
-    return std::make_shared<FetchFile>(baseUrl, mode, this, proxy);
-  }
-
-  std::shared_ptr<Directory> createDirectory(mode_t mode) override {
-    return std::make_shared<FetchDirectory>(baseUrl, mode, this, proxy);
+  std::shared_ptr<File> getChild(const std::string& name) override {
+    return MemoryDirectory::getChild(name);
   }
 };
+
+std::shared_ptr<DataFile> FetchBackend::createFile(mode_t mode) {
+  return std::make_shared<FetchFile>("", mode, this, proxy);
+}
+
+std::shared_ptr<Directory> FetchBackend::createDirectory(mode_t mode) {
+  return std::make_shared<FetchDirectory>("", mode, this, proxy);
+}
+
+const std::string FetchBackend::getFileURL(const std::string& filePath) {
+  if (filePath == "") {
+    return baseUrl;
+  }
+  return baseUrl + "/" + filePath;
+}
+
+uint32_t FetchBackend::getChunkSize() {
+  return chunkSize;
+}
 
 extern "C" {
-backend_t wasmfs_create_fetch_backend(const char* base_url) {
+  backend_t wasmfs_create_fetch_backend(const char* base_url, uint32_t chunkSize) {
   // ProxyWorker cannot safely be synchronously spawned from the main browser
   // thread. See comment in thread_utils.h for more details.
   assert(!emscripten_is_main_browser_thread() &&
          "Cannot safely create fetch backend on main browser thread");
   return wasmFS.addBackend(std::make_unique<FetchBackend>(
     base_url ? base_url : "",
+    chunkSize ? chunkSize : DEFAULT_CHUNK_SIZE,
     [](backend_t backend) { _wasmfs_create_fetch_backend_js(backend); }));
+  }
+
+const char* _wasmfs_fetch_get_file_url(void* ptr) {
+  auto* file = reinterpret_cast<wasmfs::FetchFile*>(ptr);
+  return file ? file->getURL().data() : nullptr;
 }
 
-const char* EMSCRIPTEN_KEEPALIVE _wasmfs_fetch_get_file_path(void* ptr) {
+uint32_t _wasmfs_fetch_get_chunk_size(void* ptr) {
   auto* file = reinterpret_cast<wasmfs::FetchFile*>(ptr);
-  return file ? file->getPath().data() : nullptr;
+  return file ? file->getChunkSize() : DEFAULT_CHUNK_SIZE;
 }
+
 }
 
 } // namespace wasmfs

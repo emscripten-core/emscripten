@@ -96,7 +96,7 @@ Examples
    make a browser build, record a trace, then make a shell build and copy the trace
    there so you can run it.
 
-   The last parameter specifies what to do when the event loop is idle: We fire an event and then set onIdle (which was this function) to null, so this is a one-time occurence.
+   The last parameter specifies what to do when the event loop is idle: We fire an event and then set onIdle (which was this function) to null, so this is a one-time occurrence.
 
 Notes
 
@@ -108,7 +108,6 @@ Notes
 
 '''
 
-from __future__ import print_function
 import os
 import re
 import sys
@@ -125,7 +124,7 @@ first_js = sys.argv[3]
 window_location = sys.argv[4] if len(sys.argv) >= 5 else ''
 on_idle = sys.argv[5] if len(sys.argv) >= 6 else ''
 
-shell = not not window_location
+shell = bool(window_location)
 
 dirs_to_drop = 0 if not os.path.dirname(first_js) else len(os.path.dirname(first_js).split('/'))
 
@@ -161,10 +160,10 @@ print('add boilerplate...')
 with open(os.path.join(out_dir, first_js), 'w') as fh1:
   fh1.write(
     (Path(os.path.dirname(os.path.dirname(__file__)), 'src', 'headless.js').read_text() % (
-      window_location, window_location.split('?')[-1], on_idle or 'null', dirs_to_drop
+      window_location, window_location.split('?')[-1], on_idle or 'null', dirs_to_drop,
     ) if shell else '') +
     Path(os.path.dirname(__file__), 'reproduceriter.js').read_text() +
-    Path(in_dir, first_js).read_text() + ('\nwindow.runEventLoop();\n' if shell else '')
+    Path(in_dir, first_js).read_text() + ('\nwindow.runEventLoop();\n' if shell else ''),
   )
 
 print('done!')

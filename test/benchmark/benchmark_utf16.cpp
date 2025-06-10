@@ -54,7 +54,6 @@ unsigned short *randomString(int len) {
 }
 
 int main() {
-  srand(time(NULL));
   double t = 0;
   double t2 = emscripten_get_now();
   for(int i = 0; i < 10; ++i) {

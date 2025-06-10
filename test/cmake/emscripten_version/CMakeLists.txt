@@ -1,3 +1,5 @@
+cmake_minimum_required(VERSION 3.16)
+
 project(emscripten_version)
 
 # EMSCRIPTEN_VERSION CMake variable is introduced in Emscripten version 1.38.6,

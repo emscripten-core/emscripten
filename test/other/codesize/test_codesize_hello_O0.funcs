@@ -23,11 +23,9 @@ $__unlockfile
 $__vfprintf_internal
 $__wasi_syscall_ret
 $__wasm_call_ctors
+$_emscripten_memcpy_bulkmem
 $_emscripten_stack_alloc
 $_emscripten_stack_restore
-$_emscripten_tempret_get
-$_emscripten_tempret_set
-$dynCall_jiji
 $emscripten_stack_get_base
 $emscripten_stack_get_current
 $emscripten_stack_get_end
@@ -42,7 +40,6 @@ $frexp
 $getint
 $getpid
 $init_pthread_self
-$legalstub$dynCall_jiji
 $main
 $memchr
 $out

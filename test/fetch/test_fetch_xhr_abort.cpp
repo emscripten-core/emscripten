@@ -7,6 +7,7 @@
 #include <string.h>
 #include <assert.h>
 #include <emscripten/fetch.h>
+#include <emscripten/em_asm.h>
 
 void handleSuccess(emscripten_fetch_t *fetch) {
   assert(false && "Should not succeed");

@@ -17,22 +17,20 @@ int get_memory_size() {
 }
 
 int main() {
-
-  // INITIAL_MEMORY=64Mb
   // STACK_SIZE=1Mb
-  // MAXIMUM_MEMORY=130Mb
+  // INITIAL_MEMORY=32Mb
+  // MAXIMUM_MEMORY=64Mb
   // MEMORY_GROWTH_LINEAR_STEP=1Mb
 
   // Because the stack is 1Mb, the first increase will take place
-  // in i = 63, which attempts to grow the heap to 64Mb + 1Mb of stack > 64Mb INITIAL_MEMORY
-  // We should get exactly to 130MB at i == 128
+  // when i = 30, which attempts to grow the memory to 32Mb + 1Mb of stack > 32Mb
+  // We should get to exactly 64MB at i == 62
 
   const int MB = 1024 * 1024;
-  const int totalMemory = get_memory_size();
+  const int initialMemory = get_memory_size();
   int printedOnce = 0;
 
   for (int i = 0; 1; i++) {
-
     printf("%d %d %d\n", i, get_memory_size(), get_memory_size() / MB);
     volatile long sink = (long)malloc(MB);
 
@@ -41,16 +39,17 @@ int main() {
       // i ==  63 > growth to 65MB failed
       // i == 128 > growth to 130MB failed
       // i == 129 > growth to 131MB failed
-      assert(i >= 128);
+      assert(i == 62);
       break;
     }
 
-    if (get_memory_size() > totalMemory && !printedOnce) {
+    if (get_memory_size() > initialMemory && !printedOnce) {
       printf("memory growth started at %d %d %d\n", i, get_memory_size(), get_memory_size() / MB);
       printedOnce = 1;
+      assert(i == 30);
     }
 
-    assert(i < 130); // the wasm mem max limit, we must not get there
+    assert(i < 64); // the wasm mem max limit, we must not get there
   }
 
   printf("grew memory ok.\n");

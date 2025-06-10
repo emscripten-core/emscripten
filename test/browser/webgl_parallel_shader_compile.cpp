@@ -50,7 +50,7 @@ std::vector<std::pair<GLuint, double> > pendingLinks;
 
 int parallel_shader_compile_is_working = 0;
 
-EM_BOOL tick(double, void*)
+bool tick(double, void*)
 {
   for(size_t i = 0; i < pendingLinks.size(); ++i)
   {
@@ -77,7 +77,7 @@ EM_BOOL tick(double, void*)
   }
 
   ++numRafFramesElapsed;
-  return EM_TRUE;
+  return true;
 }
 
 int main()
@@ -88,7 +88,7 @@ int main()
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
   emscripten_webgl_make_context_current(ctx);
 
-  EM_BOOL supported = emscripten_webgl_enable_extension(ctx, "KHR_parallel_shader_compile");
+  bool supported = emscripten_webgl_enable_extension(ctx, "KHR_parallel_shader_compile");
   if (!supported)
   {
     printf("Skipping test, KHR_parallel_shader_compile WebGL extension is not supported.\n");

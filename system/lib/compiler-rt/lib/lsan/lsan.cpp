@@ -112,10 +112,10 @@ extern "C" void __lsan_init() {
   CacheBinaryName();
   AvoidCVE_2016_2143();
   InitializeFlags();
+  InitializePlatformEarly();
   InitCommonLsan();
   InitializeAllocator();
   ReplaceSystemMalloc();
-  InitTlsSize();
   InitializeInterceptors();
   InitializeThreads();
 #if !SANITIZER_EMSCRIPTEN

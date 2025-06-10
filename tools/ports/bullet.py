@@ -39,9 +39,10 @@ def get(ports, settings, shared):
 
     flags = [
       '-Wno-single-bit-bitfield-constant-conversion',
-      '-std=gnu++14'
+      '-Wno-int-to-void-pointer-cast',
+      '-std=gnu++14',
     ]
-
+    ports.make_pkg_config('bullet', TAG, '-sUSE_BULLET')
     ports.build_port(src_path, final, 'bullet', includes=includes, flags=flags, exclude_dirs=['MiniCL'])
 
   return [shared.cache.get_lib('libbullet.a', create)]
@@ -56,4 +57,4 @@ def process_args(ports):
 
 
 def show():
-  return 'bullet (-sUSE_BULLET=1 or --use-port=bullet; zlib license)'
+  return 'bullet (-sUSE_BULLET or --use-port=bullet; zlib license)'

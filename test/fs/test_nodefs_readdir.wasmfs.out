@@ -1,0 +1,14 @@
+listing contents of dir=/
+.
+..
+dev
+tmp
+listing contents of dir=/working
+.
+..
+existing
+named_pipe
+stdout
+test_nodefs_readdir.js
+test_nodefs_readdir.wasm
+success

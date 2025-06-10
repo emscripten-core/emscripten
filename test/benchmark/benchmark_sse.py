@@ -134,14 +134,14 @@ def run_benchmark(benchmark_file, results_file, build_args):
     total_time_html_scalar = 0
     total_time_html_simd = 0
 
-    for chart_name in charts_native.keys():
+    for chart_name, chart_native_results in charts_native.items():
         # Extract data for each chart.
         categories = []
         nativeScalarResults = []
         nativeSimdResults = []
         htmlScalarResults = []
         htmlSimdResults = []
-        native_results = charts_native[chart_name]
+        native_results = chart_native_results
         wasm_results = charts_html[chart_name]
         textual_results_native = '<p>'
         textual_results_html = '<p>'

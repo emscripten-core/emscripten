@@ -29,7 +29,6 @@ const bool USE_MEMORY = true;
 const bool USE_SHIFTS = false;
 
 void randoms() {
-  srandom(1);
   size_t before = (size_t)sbrk(0);
   double sum_sbrk = 0;
   size_t max_sbrk = before;

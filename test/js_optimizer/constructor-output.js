@@ -40,17 +40,17 @@ function u(a) {
     };
   }
   return m({
-    Int8Array: Int8Array,
-    Int16Array: Int16Array,
-    Int32Array: Int32Array,
-    Uint8Array: Uint8Array,
-    Uint16Array: Uint16Array,
-    Uint32Array: Uint32Array,
-    Float32Array: Float32Array,
-    Float64Array: Float64Array,
-    NaN: NaN,
+    Int8Array,
+    Int16Array,
+    Int32Array,
+    Uint8Array,
+    Uint16Array,
+    Uint32Array,
+    Float32Array,
+    Float64Array,
+    NaN,
     Infinity: Infinity,
-    Math: Math
+    Math
   }, q, r.buffer);
 }
 // EMSCRIPTEN_END_ASM

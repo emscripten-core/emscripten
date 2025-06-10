@@ -10,13 +10,9 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
-#ifdef __EMSCRIPTEN__
-#include <emscripten.h>
-#endif
 
 static void create_file(const char *path, const char *buffer, int mode) {
   printf("creating: %s\n", path);
@@ -31,13 +27,6 @@ static void create_file(const char *path, const char *buffer, int mode) {
 
 void setup() {
   mkdir("working", 0777);
-#ifdef __EMSCRIPTEN__
-  EM_ASM(
-#if NODEFS
-    FS.mount(NODEFS, { root: '.' }, 'working');
-#endif
-  );
-#endif
   chdir("working");
   create_file("file", "test", 0777);
   create_file("file1", "test", 0777);
@@ -57,26 +46,6 @@ void setup() {
   chmod("file-readonly", 0555);
   mkdir("dir-full", 0777);
   create_file("dir-full/anotherfile", "test", 0777);
-}
-
-void cleanup() {
-  unlink("file");
-  unlink("file1");
-#ifndef NO_SYMLINK
-  unlink("file1-link");
-#endif
-  rmdir("dir-empty");
-#ifndef NO_SYMLINK
-  unlink("dir-empty-link");
-#endif
-  chmod("dir-readonly", 0777);
-  chmod("file-readonly", 0777);
-  unlink("file-readonly");
-  unlink("dir-readonly/anotherfile");
-  rmdir("dir-readonly/anotherdir");
-  rmdir("dir-readonly");
-  unlink("dir-full/anotherfile");
-  rmdir("dir-full");
 }
 
 void test() {
@@ -169,8 +138,10 @@ void test() {
   // WASMFS behaviour will match the native FS.
 #ifndef __APPLE__
   getcwd(buffer, sizeof(buffer));
+  printf("CWD: %s\n", buffer);
   err = rmdir(buffer);
   assert(err == -1);
+  printf("rmdir: %s\n", strerror(errno));
 #if defined(NODERAWFS) || defined(WASMFS)
   assert(errno == ENOTEMPTY);
 #else
@@ -201,10 +172,8 @@ void test() {
 }
 
 int main() {
-  atexit(cleanup);
-  signal(SIGABRT, cleanup);
   setup();
   test();
 
-  return EXIT_SUCCESS;
+  return 0;
 }

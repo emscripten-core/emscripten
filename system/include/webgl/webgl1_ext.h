@@ -78,7 +78,7 @@
 #ifndef EMSCRIPTEN_GL_OES_vertex_array_object
 #define EMSCRIPTEN_GL_OES_vertex_array_object 1
 // To enable: call
-EM_BOOL emscripten_webgl_enable_OES_vertex_array_object(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
+bool emscripten_webgl_enable_OES_vertex_array_object(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 // or link with -sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=1 and
 // call emscripten_webgl_enable_extension(ctx, "OES_vertex_array_object");
 #define GL_VERTEX_ARRAY_BINDING_OES 0x85B5
@@ -155,7 +155,7 @@ WEBGL_APICALL GLboolean GL_APIENTRY glIsVertexArrayOES(GLuint array);
 #ifndef EMSCRIPTEN_GL_WEBGL_draw_buffers
 #define EMSCRIPTEN_GL_WEBGL_draw_buffers 1
 // To enable: call 
-EM_BOOL emscripten_webgl_enable_WEBGL_draw_buffers(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
+bool emscripten_webgl_enable_WEBGL_draw_buffers(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 // or link with -sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=1 and
 // call emscripten_webgl_enable_extension(ctx, "WEBGL_draw_buffers");
 #define GL_COLOR_ATTACHMENT0_WEBGL 0x8CE0
@@ -200,7 +200,7 @@ WEBGL_APICALL void GL_APIENTRY glDrawBuffersWEBGL(GLsizei n, const GLenum *buffe
 #ifndef EMSCRIPTEN_GL_ANGLE_instanced_arrays
 #define EMSCRIPTEN_GL_ANGLE_instanced_arrays 1
 // To enable: call
-EM_BOOL emscripten_webgl_enable_ANGLE_instanced_arrays(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
+bool emscripten_webgl_enable_ANGLE_instanced_arrays(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 // or link with -sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=1 and
 // call emscripten_webgl_enable_extension(ctx, "ANGLE_instanced_arrays");
 #define GL_VERTEX_ATTRIB_ARRAY_DIVISOR_ANGLE 0x88FE
@@ -412,7 +412,7 @@ WEBGL_APICALL void GL_APIENTRY glGetQueryObjectui64vEXT(GLuint id, GLenum pname,
 #ifndef EMSCRIPTEN_GL_WEBGL_multi_draw
 #define EMSCRIPTEN_GL_WEBGL_multi_draw 1
 // To enable: call
-EM_BOOL emscripten_webgl_enable_WEBGL_multi_draw(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
+bool emscripten_webgl_enable_WEBGL_multi_draw(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 // or link with -sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=1 and
 // call emscripten_webgl_enable_extension(ctx, "WEBGL_multi_draw");
 WEBGL_APICALL void GL_APIENTRY emscripten_glMultiDrawArraysWEBGL(GLenum mode,
@@ -493,7 +493,7 @@ WEBGL_APICALL void GL_APIENTRY glMultiDrawElementsInstancedWEBGL(GLenum mode,
 #ifndef EMSCRIPTEN_GL_EXT_polygon_offset_clamp
 #define EMSCRIPTEN_GL_EXT_polygon_offset_clamp 1
 // To enable: call
-EM_BOOL emscripten_webgl_enable_EXT_polygon_offset_clamp(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
+bool emscripten_webgl_enable_EXT_polygon_offset_clamp(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 // or link with -sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=1 and
 // call emscripten_webgl_enable_extension(ctx, "EXT_polygon_offset_clamp");
 #define GL_POLYGON_OFFSET_CLAMP_EXT 0x8E1B
@@ -505,7 +505,7 @@ WEBGL_APICALL void GL_APIENTRY glPolygonOffsetClampEXT(GLfloat factor, GLfloat u
 #ifndef EMSCRIPTEN_GL_EXT_clip_control
 #define EMSCRIPTEN_GL_EXT_clip_control 1
 // To enable: call
-EM_BOOL emscripten_webgl_enable_EXT_clip_control(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
+bool emscripten_webgl_enable_EXT_clip_control(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 // or link with -sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=1 and
 // call emscripten_webgl_enable_extension(ctx, "EXT_clip_control");
 #define GL_LOWER_LEFT_EXT          0x8CA1
@@ -530,7 +530,7 @@ WEBGL_APICALL void GL_APIENTRY glClipControlEXT(GLenum origin, GLenum depth);
 #ifndef EMSCRIPTEN_GL_WEBGL_polygon_mode
 #define EMSCRIPTEN_GL_WEBGL_polygon_mode 1
 // To enable: call
-EM_BOOL emscripten_webgl_enable_WEBGL_polygon_mode(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
+bool emscripten_webgl_enable_WEBGL_polygon_mode(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 // or link with -sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=1 and
 // call emscripten_webgl_enable_extension(ctx, "WEBGL_polygon_mode");
 #define GL_POLYGON_MODE_WEBGL 0x0B40

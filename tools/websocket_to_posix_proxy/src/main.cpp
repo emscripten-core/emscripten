@@ -5,6 +5,7 @@
 #include <memory.h>
 #include <vector>
 #include <sys/types.h>
+#include <inttypes.h>
 
 #include "posix_sockets.h"
 #include "threads.h"
@@ -110,7 +111,7 @@ bool WebSocketValidateMessageSize(uint8_t *data, uint64_t obtainedNumBytes) {
   uint64_t expectedNumBytes = WebSocketFullMessageSize(data, obtainedNumBytes);
 
   if (expectedNumBytes != obtainedNumBytes) {
-    printf("Corrupt WebSocket message size! (got %lu bytes, expected %lu bytes)\n", obtainedNumBytes, expectedNumBytes);
+    printf("Corrupt WebSocket message size! (got %" PRIu64 " bytes, expected %" PRIu64 " bytes)\n", obtainedNumBytes, expectedNumBytes);
     printf("Received data:");
     for (size_t i = 0; i < obtainedNumBytes; ++i)
       printf(" %02X", data[i]);
@@ -187,14 +188,14 @@ void DumpWebSocketMessage(uint8_t *data, uint64_t numBytes) {
   uint64_t payloadLength = WebSocketMessagePayloadLength(data, numBytes);
   uint8_t *payload = WebSocketMessageData(data, numBytes);
 
-  printf("Received: FIN: %d, opcode: %s, mask: 0x%08X, payload length: %lu bytes, unmasked payload:", header->fin, WebSocketOpcodeToString(header->opcode),
+  printf("Received: FIN: %d, opcode: %s, mask: 0x%08X, payload length: %" PRIu64 " bytes, unmasked payload:", header->fin, WebSocketOpcodeToString(header->opcode),
     WebSocketMessageMaskingKey(data, numBytes), payloadLength);
   for (uint64_t i = 0; i < payloadLength; ++i) {
     if (i%16 == 0) printf("\n");
     if (i%8==0) printf(" ");
     printf(" %02X", payload[i]);
     if (i >= 63 && payloadLength > 64) {
-      printf("\n   ... (%lu more bytes)", payloadLength-i);
+      printf("\n   ... (%" PRIu64 " more bytes)", payloadLength-i);
       break;
     }
   }
@@ -317,8 +318,15 @@ THREAD_RETURN_T connection_thread(void *arg) {
 // case, expected to only be proxying one connection at a time - if this proxy
 // bridge is expected to be used for hundreds of connections simultaneously,
 // this mutex should be refactored to be per-connection)
-MUTEX_T webSocketSendLock;
-MUTEX_T socketRegistryLock;
+static MUTEX_T webSocketSendLock;
+
+extern "C" void lock_websocket_send_lock() {
+  LOCK_MUTEX(&webSocketSendLock);
+}
+
+extern "C" void unlock_websocket_send_lock() {
+  UNLOCK_MUTEX(&webSocketSendLock);
+}
 
 int main(int argc, char *argv[]) {
   if (argc < 2) on_error("websocket_to_posix_proxy creates a bridge that allows WebSocket connections on a web page to proxy out to perform TCP/UDP connections.\nUsage: %s [port]\n", argv[0]);
@@ -355,7 +363,7 @@ int main(int argc, char *argv[]) {
   printf("websocket_to_posix_proxy server is now listening for WebSocket connections to ws://localhost:%d/\n", port);
 
   CREATE_MUTEX(&webSocketSendLock);
-  CREATE_MUTEX(&socketRegistryLock);
+  InitWebSocketRegistry();
 
   while (1) {
     SOCKET_T client_fd = accept(server_fd, 0, 0);

@@ -73,11 +73,11 @@ Typically you will have a small section with ``#ifdef __EMSCRIPTEN__`` for the t
   // Our "main loop" function. This callback receives the current time as
   // reported by the browser, and the user data we provide in the call to
   // emscripten_request_animation_frame_loop().
-  EM_BOOL one_iter(double time, void* userData) {
+  bool one_iter(double time, void* userData) {
     // Can render to the screen here, etc.
     puts("one iteration");
     // Return true to keep the loop running.
-    return EM_TRUE;
+    return true;
   }
 
   int main() {

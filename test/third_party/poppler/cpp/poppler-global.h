@@ -79,7 +79,7 @@ typedef unsigned int /* time_t */ time_type;
 #pragma warning(push)
 #pragma warning(disable: 4251) /* class 'A' needs to have dll interface for to be used by clients of class 'B'. */
 #endif
-class POPPLER_CPP_EXPORT ustring : public std::basic_string<unsigned short>
+class POPPLER_CPP_EXPORT ustring : public std::basic_string<char16_t>
 {
 public:
     ustring();

@@ -19,7 +19,7 @@ static int result = 1;
 // Therefore where we expect the keypress callback to be prevented for '\b'
 // but not for 'A'.
 
-EM_BOOL keydown_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData) {
+bool keydown_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData) {
   printf("got keydown: %d\n", e->keyCode);
   if ((e->keyCode == 'A') || (e->keyCode == '\b')) {
     result *= 2;
@@ -30,7 +30,7 @@ EM_BOOL keydown_callback(int eventType, const EmscriptenKeyboardEvent *e, void *
   return 0;
 }
 
-EM_BOOL keypress_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData) {
+bool keypress_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData) {
   printf("got keypress: %d\n", e->keyCode);
   // preventDefault should have been set for the backspace key so we should
   // never get that here.
@@ -39,7 +39,7 @@ EM_BOOL keypress_callback(int eventType, const EmscriptenKeyboardEvent *e, void 
   return 0;
 }
 
-EM_BOOL keyup_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData) {
+bool keyup_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData) {
   printf("got keyup: %d\n", e->keyCode);
   if ((e->keyCode == 'A') || (e->keyCode == '\b')) {
     result *= 5;

@@ -87,7 +87,7 @@ var SYSCALLS = {
     printChar: (function(stream, curr) {
         var buffer = SYSCALLS.buffers[stream];
         if (curr === 0 || curr === 10) {
-            (stream === 1 ? out : err)(UTF8ArrayToString(buffer, 0));
+            (stream === 1 ? out : err)(UTF8ArrayToString(buffer));
             buffer.length = 0
         } else {
             buffer.push(curr)

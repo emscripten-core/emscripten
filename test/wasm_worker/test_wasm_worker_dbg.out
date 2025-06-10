@@ -1,0 +1,6 @@
+err from main thread
+ww:0: dbg from main thread
+Hello from wasm worker!
+err from wasm worker
+ww:1: dbg from wasm worker
+do_exit

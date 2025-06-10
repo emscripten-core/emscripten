@@ -39,6 +39,9 @@ def get(ports, settings, shared):
         # TODO: investigate why this is needed and remove
         '-Wno-macro-redefined',
         '-Wno-deprecated-declarations',
+        '-Wno-array-compare',
+        '-Wno-unknown-warning-option',
+        '-Wno-unnecessary-virtual-specifier',
         # usage of 'using namespace icu' is deprecated: icu v61
         '-DU_USING_ICU_NAMESPACE=0',
         # make explicit inclusion of utf header: ref utf.h
@@ -49,7 +52,7 @@ def get(ports, settings, shared):
         # generate static
         '-DU_STATIC_IMPLEMENTATION',
         # CXXFLAGS
-        '-std=c++11'
+        '-std=c++11',
     ]
     if settings.PTHREADS:
       additional_build_flags.append('-pthread')
@@ -61,6 +64,7 @@ def get(ports, settings, shared):
     prepare_build()
     lib_src = os.path.join(icu_source_path, 'common')
     ports.install_headers(os.path.join(lib_src, 'unicode'), target='unicode')
+    ports.make_pkg_config('ici', VERSION, '-sUSE_ICU')
     build_lib(lib_output, lib_src, [], ['-DU_COMMON_IMPLEMENTATION=1'])
 
   # creator for libicu_stubdata
@@ -88,7 +92,7 @@ def get(ports, settings, shared):
       shared.cache.get_lib(get_lib_name(libname_libicu_common, settings), create_libicu_common), # this also prepares the build
       shared.cache.get_lib(get_lib_name(libname_libicu_stubdata, settings), create_libicu_stubdata),
       shared.cache.get_lib(get_lib_name(libname_libicu_i18n, settings), create_libicu_i18n),
-      shared.cache.get_lib(get_lib_name(libname_libicu_io, settings), create_libicu_io)
+      shared.cache.get_lib(get_lib_name(libname_libicu_io, settings), create_libicu_io),
   ]
 
 
@@ -100,4 +104,4 @@ def clear(ports, settings, shared):
 
 
 def show():
-  return 'icu (-sUSE_ICU=1 or --use-port=icu; Unicode License)'
+  return 'icu (-sUSE_ICU or --use-port=icu; Unicode License)'

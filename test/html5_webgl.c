@@ -28,7 +28,7 @@ int main() {
   emscripten_webgl_init_context_attributes(&attrs);
   attrs.majorVersion = 2;
   attrs.proxyContextToMainThread = EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK;
-  attrs.renderViaOffscreenBackBuffer = EM_TRUE;
+  attrs.renderViaOffscreenBackBuffer = true;
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("#canvas", &attrs);
   emscripten_webgl_make_context_current(context);
 

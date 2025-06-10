@@ -38,7 +38,6 @@ int main()
 {
   // Create data
   uint8_t *data = (uint8_t*)malloc(10240);
-  srand(time(NULL));
   for(int i = 0; i < 10240; ++i) data[i] = (uint8_t)rand();
 
   persistFileToIndexedDB("outputfile.dat", data, 10240);

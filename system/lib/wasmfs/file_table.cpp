@@ -2,9 +2,8 @@
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
-// This file defines the open file table of the new file system.
-// Current Status: Work in Progress.
-// See https://github.com/emscripten-core/emscripten/issues/15041.
+
+// This file defines the open file table.
 
 #include "file_table.h"
 #include "special_files.h"
@@ -34,6 +33,7 @@ std::shared_ptr<DataFile>
 FileTable::Handle::setEntry(__wasi_fd_t fd,
                             std::shared_ptr<OpenFileState> openFile) {
   assert(fd >= 0);
+  assert(fd < WASMFS_FD_MAX);
   if (fd >= fileTable.entries.size()) {
     fileTable.entries.resize(fd + 1);
   }
@@ -51,7 +51,7 @@ FileTable::Handle::setEntry(__wasi_fd_t fd,
 __wasi_fd_t
 FileTable::Handle::addEntry(std::shared_ptr<OpenFileState> openFileState) {
   // TODO: add freelist to avoid linear lookup time.
-  for (__wasi_fd_t i = 0;; i++) {
+  for (__wasi_fd_t i = 0; i < WASMFS_FD_MAX; i++) {
     if (!getEntry(i)) {
       (void)setEntry(i, openFileState);
       return i;

@@ -4,7 +4,7 @@
 #include <emscripten.h>
 
 int main() {
-  srand(time(NULL));
+  srand(0);
 
   printf("hello: a random string: %s, an integer: %d, a float: %f. Time now: %f\n",
     emscripten_random() > 0.5 ? "test" : "test2",

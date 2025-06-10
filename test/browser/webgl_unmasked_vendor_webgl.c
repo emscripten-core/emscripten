@@ -21,7 +21,7 @@ int main()
   assert(glGetError());
   assert(!glGetError()); // One error is enough
 
-  EM_BOOL success = emscripten_webgl_enable_extension(ctx, "WEBGL_debug_renderer_info");
+  bool success = emscripten_webgl_enable_extension(ctx, "WEBGL_debug_renderer_info");
   if (!success)
   {
     // Browser does not have WEBGL_debug_renderer_info, skip remainder and return success.

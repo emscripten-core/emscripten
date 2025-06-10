@@ -8,9 +8,10 @@
 #pragma once
 
 #include <limits.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <emscripten/html5.h>
+#include <emscripten/em_types.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -88,7 +89,7 @@ typedef struct emscripten_fetch_attr_t {
 
   // Indicates whether cross-site access control requests should be made using
   // credentials.
-  EM_BOOL withCredentials;
+  bool withCredentials;
 
   // Specifies the destination path in IndexedDB where to store the downloaded
   // content body. If this is empty, the transfer is not stored to IndexedDB at
@@ -141,7 +142,7 @@ typedef struct emscripten_fetch_t {
   // Custom data that can be tagged along the process.
   void *userData;
 
-  // The remote URL that is being downloaded.
+  // The remote URL set in the original request.
   const char *url;
 
   // In onsuccess() handler:
@@ -191,6 +192,10 @@ typedef struct emscripten_fetch_t {
 
   // For internal use only.
   emscripten_fetch_attr_t __attributes;
+
+  // The response URL set by the fetch. It will be null until HEADERS_RECEIVED
+  // readyState in async, or until completion in sync.
+  const char *responseUrl;
 } emscripten_fetch_t;
 
 // Clears the fields of an emscripten_fetch_attr_t structure to their default

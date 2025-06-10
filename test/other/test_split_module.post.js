@@ -5,12 +5,14 @@ function saveProfileData() {
     var offset = _malloc(len);
     var actualLen = __write_profile(offset, len);
     var profile_data = HEAPU8.subarray(offset, offset + len);
-    if (typeof fs === 'undefined') {
-      // TODO: Use D8's writeFile when
-      // https://chromium-review.googlesource.com/c/v8/v8/+/4159854 lands.
-      console.log(JSON.stringify(Array.from(profile_data)));
-    } else {
+    if (typeof writeFile !== 'undefined') {
+      console.log('using writeFile')
+      writeFile('profile.data', profile_data);
+    } else if (typeof fs !== 'undefined') {
+      console.log('using fs.writeFileSync')
       fs.writeFileSync('profile.data', profile_data);
+    } else {
+      console.log(JSON.stringify(Array.from(profile_data)));
     }
     console.log('profile size is', actualLen, 'bytes (allocated', len, 'bytes)');
     console.log('wrote profile data')

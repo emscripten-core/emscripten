@@ -45,34 +45,34 @@ typedef struct EmscriptenWebSocketOpenEvent {
   EMSCRIPTEN_WEBSOCKET_T socket;
 } EmscriptenWebSocketOpenEvent;
 
-typedef EM_BOOL (*em_websocket_open_callback_func)(int eventType, const EmscriptenWebSocketOpenEvent *websocketEvent __attribute__((nonnull)), void *userData);
+typedef bool (*em_websocket_open_callback_func)(int eventType, const EmscriptenWebSocketOpenEvent *websocketEvent __attribute__((nonnull)), void *userData);
 EMSCRIPTEN_RESULT emscripten_websocket_set_onopen_callback_on_thread(EMSCRIPTEN_WEBSOCKET_T socket, void *userData, em_websocket_open_callback_func callback, pthread_t targetThread);
 
 typedef struct EmscriptenWebSocketMessageEvent {
   EMSCRIPTEN_WEBSOCKET_T socket;
   uint8_t *data;
   uint32_t numBytes;
-  EM_BOOL isText;
+  bool isText;
 } EmscriptenWebSocketMessageEvent;
 
-typedef EM_BOOL (*em_websocket_message_callback_func)(int eventType, const EmscriptenWebSocketMessageEvent *websocketEvent __attribute__((nonnull)), void *userData);
+typedef bool (*em_websocket_message_callback_func)(int eventType, const EmscriptenWebSocketMessageEvent *websocketEvent __attribute__((nonnull)), void *userData);
 EMSCRIPTEN_RESULT emscripten_websocket_set_onmessage_callback_on_thread(EMSCRIPTEN_WEBSOCKET_T socket, void *userData, em_websocket_message_callback_func callback, pthread_t targetThread);
 
 typedef struct EmscriptenWebSocketErrorEvent {
   EMSCRIPTEN_WEBSOCKET_T socket;
 } EmscriptenWebSocketErrorEvent;
 
-typedef EM_BOOL (*em_websocket_error_callback_func)(int eventType, const EmscriptenWebSocketErrorEvent *websocketEvent __attribute__((nonnull)), void *userData);
+typedef bool (*em_websocket_error_callback_func)(int eventType, const EmscriptenWebSocketErrorEvent *websocketEvent __attribute__((nonnull)), void *userData);
 EMSCRIPTEN_RESULT emscripten_websocket_set_onerror_callback_on_thread(EMSCRIPTEN_WEBSOCKET_T socket, void *userData, em_websocket_error_callback_func callback, pthread_t targetThread);
 
 typedef struct EmscriptenWebSocketCloseEvent {
   EMSCRIPTEN_WEBSOCKET_T socket;
-  EM_BOOL wasClean;
+  bool wasClean;
   unsigned short code;
   char reason[512]; // WebSockets spec enforces this can be max 123 characters, so as UTF-8 at most 123*4 bytes < 512.
 } EmscriptenWebSocketCloseEvent;
 
-typedef EM_BOOL (*em_websocket_close_callback_func)(int eventType, const EmscriptenWebSocketCloseEvent *websocketEvent __attribute__((nonnull)), void *userData);
+typedef bool (*em_websocket_close_callback_func)(int eventType, const EmscriptenWebSocketCloseEvent *websocketEvent __attribute__((nonnull)), void *userData);
 EMSCRIPTEN_RESULT emscripten_websocket_set_onclose_callback_on_thread(EMSCRIPTEN_WEBSOCKET_T socket, void *userData, em_websocket_close_callback_func callback, pthread_t targetThread);
 
 #define emscripten_websocket_set_onopen_callback(socket, userData, callback)    emscripten_websocket_set_onopen_callback_on_thread(   (socket), (userData), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
@@ -93,14 +93,14 @@ typedef struct EmscriptenWebSocketCreateAttributes {
   // pthread that you create the socket, set createOnMainThread to true. If the created WebSocket only needs to be accessible on the thread
   // that created it, and the creating thread is an event based thread (meaning it regularly yields back to the browser event loop), then
   // it is more efficient to set this to false.
-  EM_BOOL createOnMainThread;
+  bool createOnMainThread;
 } EmscriptenWebSocketCreateAttributes;
 
 //extern void emscripten_websocket_init_create_attributes(EmscriptenWebSocketCreateAttributes *attributes);
 #define emscripten_websocket_init_create_attributes(attributes) do { memset((attributes), 0, sizeof(EmscriptenWebSocketCreateAttributes)); } while(0)
 
 // Returns true if WebSockets are supported by the current browser
-EM_BOOL emscripten_websocket_is_supported(void);
+bool emscripten_websocket_is_supported(void);
 
 // Creates a new WebSocket and connects it to the given remote host.
 // If the return value of this function is > 0, the function has succeeded and the return value represents a handle to the WebSocket object.

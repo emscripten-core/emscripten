@@ -114,7 +114,7 @@ int main() {
     std::vector<std::string> exts = split(extensions, ' ');
     for(size_t i = 0; i < exts.size(); ++i)
     {
-      EM_BOOL supported = emscripten_webgl_enable_extension(context, exts[i].c_str());
+      bool supported = emscripten_webgl_enable_extension(context, exts[i].c_str());
       printf("%s\n", exts[i].c_str());
       assert(supported);
     }
@@ -155,8 +155,14 @@ int main() {
     printf("\n");
 
     // Test bug https://github.com/emscripten-core/emscripten/issues/1330:
+
+#if FULL_ES2
+    // Test bug https://github.com/emscripten-core/emscripten/issues/18886
+    unsigned vb = 100;
+#else
     unsigned vb;
     glGenBuffers(1, &vb);
+#endif
     glBindBuffer(GL_ARRAY_BUFFER, vb);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
@@ -180,6 +186,9 @@ int main() {
     glGetVertexAttribiv(0, GL_VERTEX_ATTRIB_ARRAY_ENABLED, &enabled);
     assert(enabled == 0);
 
+#if FULL_ES2
+    glDeleteBuffers(1, &vb);
+#endif
     // Test that deleting the context works.
     res = emscripten_webgl_destroy_context(context);
     assert(res == 0);

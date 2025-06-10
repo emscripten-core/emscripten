@@ -1,3 +1,5 @@
+cmake_minimum_required(VERSION 3.16)
+
 project(emscripten_system_processor)
 
 # Test that EMSCRIPTEN_SYSTEM_PROCESSOR can be overridden, and that

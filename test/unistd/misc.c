@@ -12,15 +12,11 @@
 #include <fcntl.h>
 #include <grp.h>
 #include <assert.h>
-#include <emscripten.h>
+#include <sys/stat.h>
+
 
 int main() {
-  EM_ASM(
-    FS.mkdir('working');
-#if NODEFS
-    FS.mount(NODEFS, { root: '.' }, 'working');
-#endif
-  );
+  mkdir("working", 0777);
 
   int f = open("working", O_RDONLY);
   assert(f);

@@ -12,7 +12,7 @@ toolchain to WebAssembly. Using Emscripten you can:
 - Compile the C/C++ **runtimes** of other languages into WebAssembly, and then
   run code in those other languages in an *indirect* way (for example, this has
   been done for
-  `Python <https://github.com/iodide-project/pyodide>`_ and
+  `Python <https://github.com/pyodide/pyodide>`_ and
   `Lua <https://daurnimator.github.io/lua.vm.js/lua.vm.js.html>`_).
 
 Practically any **portable** C or C++ codebase can be compiled into WebAssembly

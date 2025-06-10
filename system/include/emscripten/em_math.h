@@ -29,7 +29,7 @@ extern "C" {
 // Math.ceil -> f32.ceil and f64.ceil (ceil() and ceilf() in math.h)
 // Math.clz32(x) -> i32.clz and i64.clz (call __builtin_clz() and __builtin_clzll())
 // Math.floor -> f32.floor and f64.floor (floor() and floorf() in math.h)
-// Math.fround -> f64.promote_f32(f32.demote_f64()) (call double d = (double)(float)someDouble;)
+// Math.fround -> f64.promote_f32(f32.demote_f64()) (double d = (double)(float)someDouble;)
 // Math.imul(x, y) -> i32.mul and i64.mul (directly multiply two signed integers)
 // Math.min -> f32.min and f64.min (fminf() and fmin() in math.h)
 // Math.max -> f32.max and f64.max (fmaxf() and fmax() in math.h)

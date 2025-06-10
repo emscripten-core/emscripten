@@ -172,15 +172,22 @@ Options that are modified or new in *emcc* are listed below:
 
 .. _emcc-gsource-map:
 
-``-gsource-map``
+``-gsource-map[=inline]``
   [link]
   Generate a source map using LLVM debug information (which must
   be present in object files, i.e., they should have been compiled with ``-g``).
+
   When this option is provided, the **.wasm** file is updated to have a
   ``sourceMappingURL`` section. The resulting URL will have format:
   ``<base-url>`` + ``<wasm-file-name>`` + ``.map``. ``<base-url>`` defaults
   to being empty (which means the source map is served from the same directory
   as the Wasm file). It can be changed using :ref:`--source-map-base <emcc-source-map-base>`.
+
+  Path substitution can be applied to the referenced sources using the
+  ``-sSOURCE_MAP_PREFIXES`` (:ref:`link <source_map_prefixes>`).
+  If ``inline`` is specified, the sources content is embedded in the source map
+  (in this case you don't need path substitution, but it comes with the cost of
+  having a large source map file).
 
 .. _emcc-gN:
 
@@ -262,7 +269,7 @@ Options that are modified or new in *emcc* are listed below:
   [link]
   Runs the :term:`Closure Compiler`. Possible values are:
 
-    - ``0``: No closure compiler (default in ``-O2`` and below).
+    - ``0``: No closure compiler (default).
     - ``1``: Run closure compiler. This greatly reduces the size of the support JavaScript code (everything but the WebAssembly or asm.js). Note that this increases compile time significantly.
     - ``2``: Run closure compiler on *all* the emitted code, even on **asm.js** output in **asm.js** mode. This can further reduce code size, but does prevent a significant amount of **asm.js** optimizations, so it is not recommended unless you want to reduce code size at all costs.
 
@@ -270,7 +277,6 @@ Options that are modified or new in *emcc* are listed below:
 
     - Consider using ``-sMODULARIZE`` when using closure, as it minifies globals to names that might conflict with others in the global scope. ``MODULARIZE`` puts all the output into a function (see ``src/settings.js``).
     - Closure will minify the name of `Module` itself, by default! Using ``MODULARIZE`` will solve that as well. Another solution is to make sure a global variable called `Module` already exists before the closure-compiled code runs, because then it will reuse that variable.
-    - Closure is only run if JavaScript opts are being done (``-O2`` or above).
 
 ``--closure-args=<args>``
    [link]
@@ -567,9 +573,9 @@ Options that are modified or new in *emcc* are listed below:
   [compile]
   Tells *emcc* to emit an object file which can then be linked with other object files to produce an executable.
 
-``--output_eol windows|linux``
+``--output-eol windows|linux``
   [link]
-  Specifies the line ending to generate for the text files that are outputted. If "--output_eol windows" is passed, the final output files will have Windows \r\n line endings in them. With "--output_eol linux", the final generated files will be written with Unix \n line endings.
+  Specifies the line ending to generate for the text files that are outputted. If "--output-eol windows" is passed, the final output files will have Windows ``\r\n`` line endings in them. With "--output-eol linux", the final generated files will be written with Unix ``\n`` line endings.
 
 ``--cflags``
   [other]

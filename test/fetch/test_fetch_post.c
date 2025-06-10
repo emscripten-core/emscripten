@@ -35,7 +35,7 @@ void doGet() {
   attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
   attr.onsuccess = onGetSuccess;
   attr.onerror = onError;
-  emscripten_fetch(&attr, "dump_out/newfile.txt");
+  emscripten_fetch(&attr, "newfile.txt");
 }
 
 void onPostSuccess(emscripten_fetch_t *fetch) {
@@ -57,7 +57,7 @@ int main() {
   attr.onerror = onError;
   attr.requestData = "Hello, world!";
   attr.requestDataSize = strlen(attr.requestData);
-  emscripten_fetch(&attr, "?file=newfile.txt");
+  emscripten_fetch(&attr, "upload?file=newfile.txt");
 
   // This return code should be ignored
   return 99;

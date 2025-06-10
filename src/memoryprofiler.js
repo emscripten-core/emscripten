@@ -82,8 +82,8 @@ var emscriptenMemoryProfiler = {
   // Converts number f to string with at most two decimals, without redundant trailing zeros.
   truncDec(f = 0) {
     var str = f.toFixed(2);
-    if (str.includes('.00', str.length-3)) return str.substr(0, str.length-3);
-    else if (str.includes('0', str.length-1)) return str.substr(0, str.length-1);
+    if (str.includes('.00', str.length-3)) return str.slice(0, -3);
+    else if (str.includes('0', str.length-1)) return str.slice(0, -1);
     else return str;
   },
 
@@ -262,10 +262,10 @@ var emscriptenMemoryProfiler = {
     }
 
     if (location.search.toLowerCase().includes('trackbytes=')) {
-      emscriptenMemoryProfiler.trackedCallstackMinSizeBytes = parseInt(location.search.substr(location.search.toLowerCase().indexOf('trackbytes=') + 'trackbytes='.length), undefined /* https://github.com/google/closure-compiler/issues/3230 / https://github.com/google/closure-compiler/issues/3548 */);
+      emscriptenMemoryProfiler.trackedCallstackMinSizeBytes = parseInt(location.search.slice(location.search.toLowerCase().indexOf('trackbytes=') + 'trackbytes='.length), undefined /* https://github.com/google/closure-compiler/issues/3230 / https://github.com/google/closure-compiler/issues/3548 */);
     }
     if (location.search.toLowerCase().includes('trackcount=')) {
-      emscriptenMemoryProfiler.trackedCallstackMinAllocCount = parseInt(location.search.substr(location.search.toLowerCase().indexOf('trackcount=') + 'trackcount='.length), undefined);
+      emscriptenMemoryProfiler.trackedCallstackMinAllocCount = parseInt(location.search.slice(location.search.toLowerCase().indexOf('trackcount=') + 'trackcount='.length), undefined);
     }
 
     emscriptenMemoryProfiler.memoryprofiler_summary = document.getElementById('memoryprofiler_summary');
@@ -406,7 +406,7 @@ var emscriptenMemoryProfiler = {
     if (i != -1) {
       var end = callstack.indexOf('<br />', i);
       if (end != -1) {
-        return callstack.substr(0, end);
+        return callstack.slice(0, end);
       }
     }
     return callstack;
@@ -416,7 +416,7 @@ var emscriptenMemoryProfiler = {
     // Do not show Memoryprofiler's own callstacks in the callstack prints.
     var i = callstack.indexOf('emscripten_trace_record_');
     if (i != -1) {
-      callstack = callstack.substr(callstack.indexOf('\n', i)+1);
+      callstack = callstack.slice(callstack.indexOf('\n', i)+1);
     }
     return emscriptenMemoryProfiler.filterURLsFromCallstack(callstack);
   },
@@ -427,7 +427,7 @@ var emscriptenMemoryProfiler = {
     var j = callstack.indexOf('growMemory');
     i = (i == -1) ? j : (j == -1 ? i : Math.min(i, j));
     if (i != -1) {
-      callstack = callstack.substr(callstack.indexOf('\n', i)+1);
+      callstack = callstack.slice(callstack.indexOf('\n', i)+1);
     }
     callstack = callstack.replace(/(wasm-function\[\d+\]):0x[0-9a-f]+/g, "$1");
     return emscriptenMemoryProfiler.filterURLsFromCallstack(callstack);
@@ -503,7 +503,7 @@ var emscriptenMemoryProfiler = {
     html += '<br />STACK memory area used now (should be zero): ' + self.formatBytes(stackBase - stackCurrent) + '.' + colorBar('#FFFF00') + ' STACK watermark highest seen usage (approximate lower-bound!): ' + self.formatBytes(stackBase - self.stackTopWatermark);
 
     var heap_base = Module['___heap_base'];
-    var heap_end = _sbrk();
+    var heap_end = _sbrk({{{ to64('0') }}});
     html += "<br />DYNAMIC memory area size: " + self.formatBytes(heap_end - heap_base);
     html += ". start: " + toHex(heap_base, width);
     html += ". end: " + toHex(heap_end, width) + ".";
@@ -612,8 +612,8 @@ var emscriptenMemoryProfiler = {
             calls.sort((a,b) => b[sortIdx] - a[sortIdx]);
           }
           html += '<h4>Allocation sites with more than ' + self.formatBytes(self.trackedCallstackMinSizeBytes) + ' of accumulated allocations, or more than ' + self.trackedCallstackMinAllocCount + ' simultaneously outstanding allocations:</h4>'
-          for (var i in calls) {
-            html += "<b>" + self.formatBytes(calls[i][1]) + '/' + calls[i][0] + " allocs</b>: " + calls[i][2] + "<br />";
+          for (var call of calls) {
+            html += "<b>" + self.formatBytes(call[1]) + '/' + call[0] + " allocs</b>: " + call[2] + "<br />";
           }
         }
       }

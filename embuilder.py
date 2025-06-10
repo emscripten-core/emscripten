@@ -15,6 +15,7 @@ running multiple build commands in parallel, confusion can occur).
 import argparse
 import fnmatch
 import logging
+import os
 import sys
 import time
 from contextlib import contextmanager
@@ -28,11 +29,11 @@ from tools.settings import settings
 from tools.system_libs import USE_NINJA
 
 
-# Minimal subset of targets used by CI systems to build enough to useful
+# Minimal subset of targets used by CI systems to build enough to be useful
 MINIMAL_TASKS = [
-    'libbulkmemory',
     'libcompiler_rt',
-    'libcompiler_rt-wasm-sjlj',
+    'libcompiler_rt-legacysjlj',
+    'libcompiler_rt-wasmsjlj',
     'libcompiler_rt-ww',
     'libc',
     'libc-debug',
@@ -40,14 +41,17 @@ MINIMAL_TASKS = [
     'libc_optz',
     'libc_optz-debug',
     'libc++abi',
-    'libc++abi-except',
+    'libc++abi-legacyexcept',
+    'libc++abi-wasmexcept',
     'libc++abi-noexcept',
     'libc++abi-debug',
-    'libc++abi-debug-except',
+    'libc++abi-debug-legacyexcept',
+    'libc++abi-debug-wasmexcept',
     'libc++abi-debug-noexcept',
     'libc++abi-debug-ww-noexcept',
     'libc++',
-    'libc++-except',
+    'libc++-legacyexcept',
+    'libc++-wasmexcept',
     'libc++-noexcept',
     'libc++-ww-noexcept',
     'libal',
@@ -55,6 +59,7 @@ MINIMAL_TASKS = [
     'libdlmalloc-tracing',
     'libdlmalloc-debug',
     'libdlmalloc-ww',
+    'libdlmalloc-ww-debug',
     'libembind',
     'libembind-rtti',
     'libemmalloc',
@@ -79,12 +84,12 @@ MINIMAL_TASKS = [
     'crt1',
     'crt1_proxy_main',
     'crtbegin',
-    'libunwind-except',
+    'libunwind-legacyexcept',
+    'libunwind-wasmexcept',
     'libnoexit',
-    'sqlite3',
-    'sqlite3-mt',
     'libwebgpu',
     'libwebgpu_cpp',
+    'bullet',
 ]
 
 # Additional tasks on top of MINIMAL_TASKS that are necessary for PIC testing on
@@ -102,6 +107,7 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'libc++-mt',
     'libc++-mt-noexcept',
     'libdlmalloc-mt',
+    'libdlmalloc-mt-debug',
     'libGL-emu',
     'libGL-emu-webgl2-getprocaddr',
     'libGL-mt-getprocaddr',
@@ -113,7 +119,7 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'crtbegin',
     'libsanitizer_common_rt',
     'libubsan_rt',
-    'libwasm_workers_stub-debug',
+    'libwasm_workers-debug-stub',
     'libfetch',
     'libfetch-mt',
     'libwasmfs',
@@ -166,8 +172,8 @@ def clear_port(port_name):
 
 
 def build_port(port_name):
-  with get_port_variant(port_name) as port_name:
-    ports.build_port(port_name, settings)
+  with get_port_variant(port_name) as port_name_base:
+    ports.build_port(port_name_base, settings)
 
 
 def get_system_tasks():
@@ -276,6 +282,9 @@ def main():
   if auto_tasks:
     print('Building targets: %s' % ' '.join(tasks))
 
+  if USE_NINJA:
+    os.environ['EMBUILDER_PORT_BUILD_DEFERRED'] = '1'
+
   for what in tasks:
     for old, new in legacy_prefixes.items():
       if what.startswith(old):
@@ -293,7 +302,7 @@ def main():
         if USE_NINJA:
           library.generate()
         else:
-          library.build(deterministic_paths=True)
+          library.build()
     elif what == 'sysroot':
       if do_clear:
         cache.erase_file('sysroot_install.stamp')

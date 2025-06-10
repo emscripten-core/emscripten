@@ -38,8 +38,6 @@ void loop() {
   }
 }
 
-void main_2();
-
 int main() {
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Surface *screen = SDL_SetVideoMode(600, 450, 32, SDL_HWSURFACE);

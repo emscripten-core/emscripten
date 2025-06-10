@@ -20,18 +20,10 @@ logger = logging.getLogger('config')
 # See parse_config_file below.
 EMSCRIPTEN_ROOT = __rootpath__
 NODE_JS = None
-NODE_JS_TEST = None
 BINARYEN_ROOT = None
-SPIDERMONKEY_ENGINE = None
-V8_ENGINE: Optional[List[str]] = None
-LLVM_ROOT = None
 LLVM_ADD_VERSION = None
 CLANG_ADD_VERSION = None
 CLOSURE_COMPILER = None
-JS_ENGINES: List[List[str]] = []
-WASMER = None
-WASMTIME = None
-WASM_ENGINES: List[List[str]] = []
 FROZEN_CACHE = None
 CACHE = None
 PORTS = None
@@ -39,6 +31,17 @@ COMPILER_WRAPPER = None
 
 # Set by init()
 EM_CONFIG = None
+
+# Settings that are only used for testing.  emcc itself does not use
+# any of these.
+NODE_JS_TEST = None
+SPIDERMONKEY_ENGINE = None
+V8_ENGINE: Optional[List[str]] = None
+LLVM_ROOT = None
+JS_ENGINES: List[List[str]] = []
+WASMER = None
+WASMTIME = None
+WASM_ENGINES: List[List[str]] = []
 
 
 def listify(x):
@@ -55,10 +58,6 @@ def fix_js_engine(old, new):
   return new
 
 
-def root_is_writable():
-  return os.access(__rootpath__, os.W_OK)
-
-
 def normalize_config_settings():
   global CACHE, PORTS, LLVM_ADD_VERSION, CLANG_ADD_VERSION, CLOSURE_COMPILER
   global NODE_JS, NODE_JS_TEST, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
@@ -67,12 +66,7 @@ def normalize_config_settings():
   if not JS_ENGINES:
     JS_ENGINES = [NODE_JS]
 
-  # Engine tweaks
-  if SPIDERMONKEY_ENGINE:
-    new_spidermonkey = SPIDERMONKEY_ENGINE
-    if '-w' not in str(new_spidermonkey):
-      new_spidermonkey += ['-w']
-    SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
+  SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, listify(SPIDERMONKEY_ENGINE))
   NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
   NODE_JS_TEST = fix_js_engine(NODE_JS_TEST, listify(NODE_JS_TEST))
   V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
@@ -80,16 +74,7 @@ def normalize_config_settings():
   WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
   CLOSURE_COMPILER = listify(CLOSURE_COMPILER)
   if not CACHE:
-    if FROZEN_CACHE or root_is_writable():
-      CACHE = path_from_root('cache')
-    else:
-      # Use the legacy method of putting the cache in the user's home directory
-      # if the emscripten root is not writable.
-      # This is useful mostly for read-only installation and perhaps could
-      # be removed in the future since such installations should probably be
-      # setting a specific cache location.
-      logger.debug('Using home-directory for emscripten cache due to read-only root')
-      CACHE = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
+    CACHE = path_from_root('cache')
   if not PORTS:
     PORTS = os.path.join(CACHE, 'ports')
 
@@ -112,7 +97,7 @@ def parse_config_file():
 
   Also check EM_<KEY> environment variables to override specific config keys.
   """
-  config = {}
+  config = {'__file__': EM_CONFIG}
   config_text = utils.read_file(EM_CONFIG)
   try:
     exec(config_text, config)
@@ -147,8 +132,11 @@ def parse_config_file():
       if env_value in ('', '0'):
         env_value = None
       # Unlike the other keys these two should always be lists.
-      if key in ('JS_ENGINES', 'WASM_ENGINES'):
+      if env_var in ('EM_JS_ENGINES', 'EM_WASM_ENGINES'):
         env_value = env_value.split(',')
+      if env_var in ('EM_CONFIG', 'EM_CACHE', 'EM_PORTS', 'EM_LLVM_ROOT', 'EM_BINARYEN_ROOT'):
+        if not os.path.isabs(env_value):
+          exit_with_error(f'environment variable {env_var} must be an absolute path: {env_value}')
       globals()[key] = env_value
     elif key in config:
       globals()[key] = config[key]
@@ -274,10 +262,6 @@ def find_config_file():
     return emsdk_embedded_config
 
   if os.path.isfile(user_home_config):
-    return user_home_config
-
-  # No config file found.  Return the default location.
-  if not root_is_writable():
     return user_home_config
 
   return embedded_config

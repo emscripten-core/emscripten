@@ -10,7 +10,7 @@
 *.swp
 
 # Compiled python files
-*.pyc
+__pycache__
 
 # Default emscripten cache
 /cache

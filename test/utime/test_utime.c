@@ -22,17 +22,12 @@ void setup() {
   mkdir("unwriteable", 0111);
 }
 
-void cleanup() {
-  rmdir("writeable");
-  rmdir("unwriteable");
-}
-
 void test() {
   struct stat s;
   // currently, the most recent timestamp is shared for atime,
   // ctime and mtime. using unique values for each in the test
   // will fail
-  struct utimbuf t = {1000000000, 1000000000};
+  struct utimbuf t = {1000000000, 2000000000};
 
   errno = 0;
   int rv = utime("writeable", &t);
@@ -59,7 +54,7 @@ void test() {
 
   // write permissions aren't checked when setting node
   // attributes unless the user uid isn't the owner (so
-  // therefor, this should work fine)
+  // therefore, this should work fine)
   rv = utime("unwriteable", &t);
   assert(rv == 0);
   assert(!errno);
@@ -73,9 +68,7 @@ void test() {
 }
 
 int main() {
-  atexit(cleanup);
-  signal(SIGABRT, cleanup);
   setup();
   test();
-  return EXIT_SUCCESS;
+  return 0;
 }

@@ -1,0 +1,6 @@
+link result: 0
+source_fd: 3, errno: 0 No error information
+target_fd: 3, errno: 0 No error information
+buf: 'abc'
+target_fd: 3, errno: 0 No error information
+buf: 'abc'

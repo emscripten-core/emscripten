@@ -47,7 +47,7 @@ void emscripten_resume_audio_context_sync(EMSCRIPTEN_WEBAUDIO_T audioContext);
 // Returns the current AudioContext state.
 AUDIO_CONTEXT_STATE emscripten_audio_context_state(EMSCRIPTEN_WEBAUDIO_T audioContext);
 
-typedef void (*EmscriptenStartWebAudioWorkletCallback)(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOOL success, void *userData2);
+typedef void (*EmscriptenStartWebAudioWorkletCallback)(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData2);
 
 // Calls .suspend() on the given AudioContext and releases the JS object table
 // reference to the given audio context. The specified handle is invalid
@@ -62,7 +62,7 @@ void emscripten_destroy_web_audio_node(EMSCRIPTEN_WEBAUDIO_T objectHandle);
 // Create Wasm AudioWorklet thread. Call this function once at application startup to establish an AudioWorkletGlobalScope for your app.
 // After the scope has been initialized, the given callback will fire.
 // audioContext: The Web Audio context object to initialize the Wasm AudioWorklet thread on. Each AudioContext can have only one AudioWorklet
-//               thread running, so do not call this function a multiple times on the same AudioContext.
+//               thread running, so do not call this function multiple times on the same AudioContext.
 // stackLowestAddress: The base address for the thread's stack. Must be aligned to 16 bytes. Use e.g. memalign(16, 1024) to allocate a 1KB stack for the thread.
 // stackSize: The size of the thread's stack. Must be a multiple of 16 bytes.
 // callback: The callback function that will be run when thread creation either succeeds or fails.
@@ -76,8 +76,8 @@ typedef int WEBAUDIO_PARAM_AUTOMATION_RATE;
 typedef struct WebAudioParamDescriptor
 {
 	float defaultValue; // Default == 0.0
-	float minValue; // Default = -3.4028235e38;
-	float maxValue; // Default = 3.4028235e38;
+	float minValue; // Default = -3.4028235e38
+	float maxValue; // Default = 3.4028235e38
 	WEBAUDIO_PARAM_AUTOMATION_RATE automationRate; // Either WEBAUDIO_PARAM_A_RATE or WEBAUDIO_PARAM_K_RATE. Default = WEBAUDIO_PARAM_A_RATE
 } WebAudioParamDescriptor;
 
@@ -89,31 +89,39 @@ typedef struct WebAudioWorkletProcessorCreateOptions
 	const WebAudioParamDescriptor *audioParamDescriptors;
 } WebAudioWorkletProcessorCreateOptions;
 
-typedef void (*EmscriptenWorkletProcessorCreatedCallback)(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOOL success, void *userData3);
+typedef void (*EmscriptenWorkletProcessorCreatedCallback)(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData3);
 
 // Creates a new AudioWorkletProcessor with the given name and specified set of control parameters.
 // userData3: A custom userdata pointer to pass to the callback function. This value will be passed on to the call to the given EmscriptenWorkletProcessorCreatedCallback callback function.
 void emscripten_create_wasm_audio_worklet_processor_async(EMSCRIPTEN_WEBAUDIO_T audioContext, const WebAudioWorkletProcessorCreateOptions *options, EmscriptenWorkletProcessorCreatedCallback callback, void *userData3);
 
+// Returns the number of samples processed per channel in an AudioSampleFrame, fixed at 128 in the Web Audio API 1.0 specification, and valid for the lifetime of the audio context.
+// For this to change from the default 128, the context would need to be created with a yet unexposed WebAudioWorkletProcessorCreateOptions renderSizeHint, part of the 1.1 Web Audio API.
+int emscripten_audio_context_quantum_size(EMSCRIPTEN_WEBAUDIO_T audioContext);
+
 typedef int EMSCRIPTEN_AUDIO_WORKLET_NODE_T;
 
 typedef struct AudioSampleFrame
 {
+	// Number of audio channels to process (multiplied by samplesPerChannel gives the elements in data)
 	const int numberOfChannels;
-	// An array of length numberOfChannels*128 elements, where data[channelIndex*128+i] locates the data of the i'th sample of channel channelIndex.
+	// Number of samples per channel in data
+	const int samplesPerChannel;
+	// An array of length numberOfChannels*samplesPerChannel elements. Samples are always arranged in a planar fashion,
+	// where data[channelIndex*samplesPerChannel+i] locates the data of the i'th sample of channel channelIndex.
 	float *data;
 } AudioSampleFrame;
 
 typedef struct AudioParamFrame
 {
 	// Specifies the length of the input array data (in float elements). This will be guaranteed to either have
-	// a value of 1 or 128, depending on whether the audio parameter changed during this frame.
+	// a value of 1, for a parameter valid for the entire frame, or emscripten_audio_context_quantum_size() for a parameter that changes per sample during the frame.
 	int length;
 	// An array of length specified in 'length'.
 	float *data;
 } AudioParamFrame;
 
-typedef EM_BOOL (*EmscriptenWorkletNodeProcessCallback)(int numInputs, const AudioSampleFrame *inputs, int numOutputs, AudioSampleFrame *outputs, int numParams, const AudioParamFrame *params, void *userData4);
+typedef bool (*EmscriptenWorkletNodeProcessCallback)(int numInputs, const AudioSampleFrame *inputs, int numOutputs, AudioSampleFrame *outputs, int numParams, const AudioParamFrame *params, void *userData4);
 
 typedef struct EmscriptenAudioWorkletNodeCreateOptions
 {
@@ -129,22 +137,26 @@ typedef struct EmscriptenAudioWorkletNodeCreateOptions
 // userData4: A custom userdata pointer to pass to the callback function. This value will be passed on to the call to the given EmscriptenWorkletNodeProcessCallback callback function.
 EMSCRIPTEN_AUDIO_WORKLET_NODE_T emscripten_create_wasm_audio_worklet_node(EMSCRIPTEN_WEBAUDIO_T audioContext, const char *name, const EmscriptenAudioWorkletNodeCreateOptions *options, EmscriptenWorkletNodeProcessCallback processCallback, void *userData4);
 
-// Returns EM_TRUE if the current thread is executing a Wasm AudioWorklet, EM_FALSE otherwise.
+// Connects a node's output to a target, e.g., connect the worklet node to the context.
+// For outputIndex and inputIndex, see the AudioNode.connect() documentation (setting 0 as the default values)
+void emscripten_audio_node_connect(EMSCRIPTEN_WEBAUDIO_T source, EMSCRIPTEN_WEBAUDIO_T destination, int outputIndex, int inputIndex);
+
+// Returns true if the current thread is executing a Wasm AudioWorklet, false otherwise.
 // Note that calling this function can be relatively slow as it incurs a Wasm->JS transition,
 // so avoid calling it in hot paths.
-EM_BOOL emscripten_current_thread_is_audio_worklet(void);
+bool emscripten_current_thread_is_audio_worklet(void);
 
 #define EMSCRIPTEN_AUDIO_MAIN_THREAD 0
 
-/* emscripten_audio_worklet_function_*: Post a pointer to a C/C++ function to be executed either
-  on the Audio Worklet thread of the given Web Audio context. Notes:
+/* emscripten_audio_worklet_function_*: Post a pointer to a C/C++ function to be executed on the Audio Worklet 
+   thread of the given Web Audio context. Notes:
  - If running inside an Audio Worklet thread, specify ID EMSCRIPTEN_AUDIO_MAIN_THREAD (== 0) to pass a message
    from the audio worklet to the main thread.
  - When specifying non-zero ID, the Audio Context denoted by the ID must have been created by the calling thread.
  - Passing messages between audio thread and main thread with this family of functions is relatively slow and has
    a really high latency cost compared to direct coordination using atomics and synchronization primitives like
-   mutexes and synchronization primitives. Additionally these functions will generate garbage on the JS heap.
-   Therefore avoid using these functions where performance is critical. */
+   mutexes. Additionally these functions will generate garbage on the JS heap. Therefore avoid using these
+   functions where performance is critical. */
 void emscripten_audio_worklet_post_function_v(EMSCRIPTEN_WEBAUDIO_T id, void (*funcPtr)(void));
 void emscripten_audio_worklet_post_function_vi(EMSCRIPTEN_WEBAUDIO_T id, void (*funcPtr)(int), int arg0);
 void emscripten_audio_worklet_post_function_vii(EMSCRIPTEN_WEBAUDIO_T id, void (*funcPtr)(int, int), int arg0, int arg1);

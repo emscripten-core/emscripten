@@ -67,6 +67,10 @@ void _emval_coro_resume(val::awaiter* awaiter, EM_VAL result) {
   awaiter->resume_with(val::take_ownership(result));
 }
 
+void _emval_coro_reject(val::awaiter* awaiter, EM_VAL error) {
+  awaiter->reject_with(val::take_ownership(error));
+}
+
 }
 
 namespace {
@@ -142,15 +146,13 @@ EMSCRIPTEN_BINDINGS(builtin) {
   register_integer<unsigned long>("unsigned long");
 #endif
 
-  register_bigint<int64_t>("int64_t");
-  register_bigint<uint64_t>("uint64_t");
+  register_bigint<signed long long>("long long");
+  register_bigint<unsigned long long>("unsigned long long");
 
   register_float<float>("float");
   register_float<double>("double");
 
   _embind_register_std_string(TypeID<std::string>::get(), "std::string");
-  _embind_register_std_string(
-    TypeID<std::basic_string<unsigned char>>::get(), "std::basic_string<unsigned char>");
   _embind_register_std_wstring(TypeID<std::wstring>::get(), sizeof(wchar_t), "std::wstring");
   _embind_register_std_wstring(TypeID<std::u16string>::get(), sizeof(char16_t), "std::u16string");
   _embind_register_std_wstring(TypeID<std::u32string>::get(), sizeof(char32_t), "std::u32string");

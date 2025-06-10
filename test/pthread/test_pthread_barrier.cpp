@@ -57,7 +57,6 @@ int main(int argc, char **argv)
 
     // Create the matrix and compute the expected result.
     int expectedTotalSum = 0;
-    srand(time(NULL));
     for(int i = 0; i < N; ++i)
         for(int j = 0; j < N; ++j)
         {
