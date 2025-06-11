@@ -3484,6 +3484,34 @@ More info: https://emscripten.org
       '-Wno-experimental']
     self.do_runf('other/test_jspi_add_function.c', 'done')
 
+  @requires_jspi
+  def test_jspi_async_function(self):
+    # Make sure async library functions are not automatically JSPI'd.
+    create_file('lib.js', r'''
+      addToLibrary({
+       foo: async function(f) { await Promise.resolve(); },
+      });
+      ''')
+    create_file('main.c', r'''
+        #include <emscripten.h>
+        extern void foo();
+        EMSCRIPTEN_KEEPALIVE void test() {
+          foo();
+        }
+      ''')
+    create_file('post.js', r'''
+        Module.onRuntimeInitialized = () => {
+          _test()
+          console.log('done');
+        };
+      ''')
+    self.emcc_args += [
+      '-sJSPI',
+      '--js-library=lib.js',
+      '-Wno-experimental',
+      '--post-js=post.js']
+    self.do_runf('main.c', 'done')
+
   @requires_dev_dependency('typescript')
   @parameterized({
     'commonjs': [['-sMODULARIZE'], ['--module', 'commonjs', '--moduleResolution', 'node']],
