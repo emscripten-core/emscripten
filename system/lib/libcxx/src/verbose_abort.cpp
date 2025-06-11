@@ -35,7 +35,7 @@ _LIBCPP_WEAK void __libcpp_verbose_abort(char const* format, ...) _LIBCPP_VERBOS
     // passed to __libcpp_verbose_abort. The _LIBCPP_VERBOSE_ABORT macro seems to never use
     // newlines, but _LIBCPP_ASSERTION_HANDLER does include a newline.
     if (format[strlen(format) - 1] != '\n') {
-      std::fprintf(stderr, "\n");
+      std::fputc('\n', stderr);
     }
     va_end(list);
   }
