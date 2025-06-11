@@ -429,12 +429,7 @@ var LibraryEmbind = {
     '$stringToUTF8', '$lengthBytesUTF8', 'malloc', 'free'],
   _embind_register_std_string: (rawType, name) => {
     name = AsciiToString(name);
-    var stdStringIsUTF8
-#if EMBIND_STD_STRING_IS_UTF8
-    = true;
-#else
-    = false;
-#endif
+    var stdStringIsUTF8 = {{{ EMBIND_STD_STRING_IS_UTF8 }}};
 
     registerType(rawType, {
       name,
