@@ -1011,9 +1011,9 @@ ones we identify at runtime using ``ENVIRONMENT_IS_*``. Specifically:
   at compile time, there is no runtime behavior change.
 
 Note that by default we do not include the 'shell' environment since direct
-usage of d8, js, jsc is extremely rare.
+usage of d8, spidermonkey and jsc is extremely rare.
 
-Default value: 'web,webview,worker,node'
+Default value: ['web', 'webview', 'worker', 'node']
 
 .. _lz4:
 
