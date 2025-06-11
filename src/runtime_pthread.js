@@ -104,8 +104,10 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
         }
 
+#if !WASM_ESM_INTEGRATION
         wasmMemory = msgData.wasmMemory;
         updateMemoryViews();
+#endif
 
 #if LOAD_SOURCE_MAP
         wasmSourceMap = resetPrototype(WasmSourceMap, msgData.wasmSourceMap);
@@ -114,6 +116,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
         wasmOffsetConverter = resetPrototype(WasmOffsetConverter, msgData.wasmOffsetConverter);
 #endif
 
+#if !WASM_ESM_INTEGRATION
 #if MINIMAL_RUNTIME
         // Pass the shared Wasm module in the Module object for MINIMAL_RUNTIME.
         Module['wasm'] = msgData.wasmModule;
@@ -121,6 +124,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #else
         wasmModuleReceived(msgData.wasmModule);
 #endif // MINIMAL_RUNTIME
+#endif
       } else if (cmd === 'run') {
 #if ASSERTIONS
         assert(msgData.pthread_ptr);

@@ -810,8 +810,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with dynamic linking')
     if settings.ASYNCIFY:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with -sASYNCIFY')
-    if settings.WASM_WORKERS or settings.PTHREADS:
-      exit_with_error('WASM_ESM_INTEGRATION is not compatible with multi-threading')
+    if settings.WASM_WORKERS:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
     if settings.USE_OFFSET_CONVERTER:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with USE_OFFSET_CONVERTER')
     if not settings.WASM_ASYNC_COMPILATION:
@@ -2233,6 +2233,11 @@ def phase_final_emitting(options, target, js_target, wasm_target):
     support_target = unsuffixed(js_target) + '.support.mjs'
     move_file(final_js, support_target)
     create_esm_wrapper(js_target, support_target, wasm_target)
+    if settings.PTHREADS:
+      support_target = unsuffixed(js_target) + '.pthread.mjs'
+      pthread_code = building.read_and_preprocess(utils.path_from_root('src/pthread_esm_startup.mjs'), expand_macros=True)
+      write_file(support_target, pthread_code)
+      fix_es6_import_statements(support_target)
   else:
     move_file(final_js, js_target)
 

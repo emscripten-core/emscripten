@@ -7761,6 +7761,7 @@ void* operator new(size_t size) {
   # PTHREAD_POOL_DELAY_LOAD=1 adds a pthreadPoolReady promise that users
   # can wait on for pthread initialization.
   @node_pthreads
+  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_ASYNC_COMPILATION')
   def test_embind_sync_if_pthread_delayed(self):
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.set_setting('PTHREAD_POOL_DELAY_LOAD', 1)
@@ -9283,6 +9284,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
   @also_with_modularize
+  @no_esm_integration('USE_OFFSET_CONVERTER')
   def test_pthread_offset_converter(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
@@ -9703,6 +9705,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_sanitize('sanitizers do not support WASM_WORKERS')
   @also_with_minimal_runtime
   @also_with_modularize
+  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
   def test_wasm_worker_hello(self):
     if self.is_wasm2js() and '-sMODULARIZE' in self.emcc_args:
       self.skipTest('WASM2JS + MODULARIZE + WASM_WORKERS is not supported')
@@ -9711,11 +9714,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   @no_sanitize('sanitizers do not support WASM_WORKERS')
+  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
   def test_wasm_worker_malloc(self):
     self.do_run_in_out_file_test('wasm_worker/malloc_wasm_worker.c', emcc_args=['-sWASM_WORKERS'])
 
   @node_pthreads
   @no_sanitize('sanitizers do not support WASM_WORKERS')
+  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
   def test_wasm_worker_wait_async(self):
     self.do_runf('atomic/test_wait_async.c', emcc_args=['-sWASM_WORKERS'])
 

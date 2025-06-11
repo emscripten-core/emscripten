@@ -683,6 +683,8 @@ def also_with_modularize(f):
   @wraps(f)
   def metafunc(self, modularize, *args, **kwargs):
     if modularize:
+      if '-sWASM_ESM_INTEGRATION':
+        self.skipTest('also_with_modularize is not compatible with WASM_ESM_INTEGRATION')
       self.emcc_args += ['--extern-post-js', test_file('modularize_post_js.js'), '-sMODULARIZE']
     f(self, *args, **kwargs)
 
@@ -1177,8 +1179,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.emcc_args += ['-Wno-pthreads-mem-growth', '-pthread']
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
-    if self.get_setting('WASM_ESM_INTEGRATION'):
-      self.skipTest('pthreads not yet supported with WASM_ESM_INTEGRATION')
     nodejs = self.get_nodejs()
     self.js_engines = [nodejs]
     self.node_args += shared.node_pthread_flags(nodejs)
