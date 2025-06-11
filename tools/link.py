@@ -757,7 +757,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   # Set the EXPORT_ES6 default early since it affects the setting of the
   # default oformat below.
-  if settings.WASM_ESM_INTEGRATION or settings.MODULARIZE == 'instance':
+  if settings.WASM_ESM_INTEGRATION or settings.SOURCE_PHASE_IMPORTS or settings.MODULARIZE == 'instance':
     default_setting('EXPORT_ES6', 1)
 
   # If no output format was specified we try to deduce the format based on
@@ -794,6 +794,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.JS_BASE64_API:
     diagnostics.warning('experimental', '-sJS_BASE64_API is still experimental and not yet supported in browsers')
+
+  if settings.SOURCE_PHASE_IMPORTS:
+    if not settings.EXPORT_ES6:
+      exit_with_error('SOURCE_PHASE_IMPORTS requires EXPORT_ES6')
 
   if settings.WASM_ESM_INTEGRATION:
     diagnostics.warning('experimental', '-sWASM_ESM_INTEGRATION is still experimental and not yet supported in browsers')
