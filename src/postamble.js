@@ -6,13 +6,6 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
-#if HEADLESS
-if (!ENVIRONMENT_IS_WEB) {
-#include "headlessCanvas.js"
-#include "headless.js"
-}
-#endif
-
 #if PROXY_TO_WORKER
 if (ENVIRONMENT_IS_WORKER) {
 #include "webGLWorker.js'
@@ -147,7 +140,7 @@ function run() {
 #if PTHREADS || WASM_WORKERS
   if ({{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
 #if MODULARIZE
-    readyPromiseResolve(Module);
+    readyPromiseResolve?.(Module);
 #endif
     initRuntime();
     return;
@@ -187,7 +180,7 @@ function run() {
 #endif
 
 #if MODULARIZE
-    readyPromiseResolve(Module);
+    readyPromiseResolve?.(Module);
 #endif
 #if expectToReceiveOnModule('onRuntimeInitialized')
     Module['onRuntimeInitialized']?.();
@@ -314,9 +307,12 @@ export default async function init(moduleArg = {}) {
   processModuleArgs();
 #if WASM_ESM_INTEGRATION
   updateMemoryViews();
+#if DYNCALLS && '$dynCalls' in addedLibraryItems
+
+  assignDynCalls();
+#endif
 #else
   wasmExports = await createWasm();
-  assignWasmExports();
 #endif
   preInit();
   run();
@@ -358,7 +354,7 @@ run();
 var workerResponded = false, workerCallbackId = -1;
 
 (() => {
-  var messageBuffer = null, buffer = 0, bufferSize = 0;
+  var messageBuffer = null, buffer = 0;
 
   function flushMessages() {
     if (!messageBuffer) return;
@@ -393,11 +389,7 @@ var workerResponded = false, workerCallbackId = -1;
     var data = msg.data['data'];
     if (data) {
       if (!data.byteLength) data = new Uint8Array(data);
-      if (!buffer || bufferSize < data.length) {
-        if (buffer) _free(buffer);
-        bufferSize = data.length;
-        buffer = _malloc(data.length);
-      }
+      buffer = _realloc(buffer, data.length);
       HEAPU8.set(data, buffer);
     }
 

@@ -948,12 +948,15 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
     # bfloat16
     'extendbfsf2.c',
     'truncdfbf2.c',
+    'truncxfbf2.c',
     'truncsfbf2.c',
+    'trunctfbf2.c',
     # We provide our own crt
     'crtbegin.c',
     'crtend.c',
     # 80-bit long double (xf_float)
     'divxc3.c',
+    'extendhfxf2.c',
     'extendxftf2.c',
     'fixxfdi.c',
     'fixxfti.c',
@@ -967,6 +970,7 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
     'mulxc3.c',
     'powixf2.c',
     'trunctfxf2.c',
+    'truncxfhf2.c',
   ]
   src_files = glob_in_path(src_dir, '*.c', excludes=excludes)
   src_files += files_in_path(
@@ -985,6 +989,29 @@ class libnoexit(Library):
   name = 'libnoexit'
   src_dir = 'system/lib/libc'
   src_files = ['atexit_dummy.c']
+
+
+class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
+  name = 'libllvmlibc'
+  never_force = True
+  includes = ['system/lib/llvm-libc']
+  cflags = ['-Os', '-DLIBC_NAMESPACE=__llvm_libc', '-DLIBC_COPT_PUBLIC_PACKAGING']
+
+  def get_files(self):
+    files = glob_in_path('system/lib/llvm-libc/src/string', '**/*.cpp')
+    files += glob_in_path('system/lib/llvm-libc/src/intypes', '*.cpp')
+    files += glob_in_path('system/lib/llvm-libc/src/strings', '**/*.cpp')
+    files += glob_in_path('system/lib/llvm-libc/src/errno', '**/*.cpp')
+    files += glob_in_path('system/lib/llvm-libc/src/math', '*.cpp')
+    files += glob_in_path('system/lib/llvm-libc/src/stdlib', '*.cpp', excludes=['at_quick_exit.cpp',
+                                                                                'quick_exit.cpp',
+                                                                                'atexit.cpp',
+                                                                                'exit.cpp',
+                                                                                '_Exit.cpp',
+                                                                                'getenv.cpp'])
+    files += glob_in_path('system/lib/llvm-libc/src/math/generic', '**/*.cpp', excludes=['atan2l.cpp', 'exp_utils.cpp'])
+    files += glob_in_path('system/lib/llvm-libc/src/__support/StringUtil', '**/*.cpp')
+    return files
 
 
 class libc(MuslInternalLibrary,
@@ -1638,7 +1665,7 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
         filenames=filenames)
 
 
-class libcxx(ExceptionLibrary, MTLibrary):
+class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
   name = 'libc++'
 
   cflags = [
@@ -1652,9 +1679,10 @@ class libcxx(ExceptionLibrary, MTLibrary):
     '-Wno-unqualified-std-cast-call',
     '-Wno-unknown-warning-option',
     '-std=c++23',
+    '-DLIBC_NAMESPACE=__llvm_libc',
   ]
 
-  includes = ['system/lib/libcxx/src']
+  includes = ['system/lib/libcxx/src', 'system/lib/llvm-libc']
 
   src_dir = 'system/lib/libcxx/src'
   src_glob = '**/*.cpp'
@@ -1927,7 +1955,7 @@ class libwebgpu_cpp(MTLibrary):
   src_files = ['webgpu_cpp.cpp']
 
 
-class libembind(Library):
+class libembind(MTLibrary):
   name = 'libembind'
   never_force = True
 
@@ -2421,7 +2449,6 @@ def get_libs_to_link(options):
 
 
 def calculate(options):
-
   libs_to_link = get_libs_to_link(options)
 
   # When LINKABLE is set the entire link command line is wrapped in --whole-archive by
@@ -2448,8 +2475,21 @@ def calculate(options):
   return ret
 
 
-def copytree_exist_ok(src, dst):
-  shutil.copytree(src, dst, dirs_exist_ok=True)
+def safe_copytree(src, dst):
+  # We cannot use `shutil.copytree` there because we need to ensure the
+  # output tree is writable, and in some cases the emscripten tree
+  # itself is readonly (e.g. NixOS).
+  # Even if we pass copy_function=safe_copy python's `shutil.copytree`
+  # will use its internal logic for copying directories and it will
+  # unconditionally copy the source directory's mode bits.
+  os.makedirs(dst, exist_ok=True)
+  for entry in os.scandir(src):
+    srcname = os.path.join(src, entry.name)
+    dstname = os.path.join(dst, entry.name)
+    if entry.is_dir():
+      safe_copytree(srcname, dstname)
+    else:
+      shared.safe_copy(srcname, dstname)
 
 
 def install_system_headers(stamp):
@@ -2472,15 +2512,15 @@ def install_system_headers(stamp):
   for src, dest in install_dirs.items():
     src = utils.path_from_root('system', *src)
     dest = os.path.join(target_include_dir, dest)
-    copytree_exist_ok(src, dest)
+    safe_copytree(src, dest)
 
   pkgconfig_src = utils.path_from_root('system/lib/pkgconfig')
   pkgconfig_dest = cache.get_sysroot_dir('lib/pkgconfig')
-  copytree_exist_ok(pkgconfig_src, pkgconfig_dest)
+  safe_copytree(pkgconfig_src, pkgconfig_dest)
 
   bin_src = utils.path_from_root('system/bin')
   bin_dest = cache.get_sysroot_dir('bin')
-  copytree_exist_ok(bin_src, bin_dest)
+  safe_copytree(bin_src, bin_dest)
 
   # Create a version header based on the emscripten-version.txt
   version_file = cache.get_include_dir('emscripten/version.h')

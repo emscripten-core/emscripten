@@ -34,15 +34,6 @@ var Module =
 var Module = {{{ EXPORT_NAME }}};
 #endif
 
-#if MODULARIZE && USE_READY_PROMISE
-// Set up the promise that indicates the Module is initialized
-var readyPromiseResolve, readyPromiseReject;
-var readyPromise = new Promise((resolve, reject) => {
-  readyPromiseResolve = resolve;
-  readyPromiseReject = reject;
-});
-#endif
-
 #if ENVIRONMENT_MAY_BE_NODE
 var ENVIRONMENT_IS_NODE = {{{ nodeDetectionCode() }}};
 #endif
@@ -54,8 +45,8 @@ var ENVIRONMENT_IS_SHELL = typeof read == 'function';
 #if ASSERTIONS || PTHREADS
 #if !ENVIRONMENT_MAY_BE_NODE && !ENVIRONMENT_MAY_BE_SHELL
 var ENVIRONMENT_IS_WEB = true
-#elif ENVIRONMENT && !ENVIRONMENT.includes(',')
-var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT === 'web' }}};
+#elif ENVIRONMENT.length == 1
+var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT[0] === 'web' }}};
 #elif ENVIRONMENT_MAY_BE_SHELL && ENVIRONMENT_MAY_BE_NODE
 var ENVIRONMENT_IS_WEB = !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_SHELL;
 #elif ENVIRONMENT_MAY_BE_SHELL
@@ -126,7 +117,7 @@ var err = (...args) => console.error(...args);
 // the program.
 function ready() {
 #if MODULARIZE && USE_READY_PROMISE
-  readyPromiseResolve(Module);
+  readyPromiseResolve?.(Module);
 #endif // MODULARIZE
 #if INVOKE_RUN && HAS_MAIN
   {{{ runIfMainThread("run();") }}}

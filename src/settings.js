@@ -572,8 +572,12 @@ var GL_FFP_ONLY = false;
 // [link]
 var GL_PREINITIALIZED_CONTEXT = false;
 
-// Enables support for WebGPU (via "webgpu/webgpu.h").
+// Enables the built-in implementation of ``<webgpu/webgpu.h>``.
+// Deprecated: Please try migrating to ``--use-port=emdawnwebgpu``,
+// which implements a newer, incompatible version of webgpu.h (see
+// tools/ports/emdawnwebgpu.py for more info).
 // [link]
+// [deprecated]
 var USE_WEBGPU = false;
 
 // Enables building of stb-image, a tiny public-domain library for decoding
@@ -658,9 +662,9 @@ var LEGACY_VM_SUPPORT = false;
 //   at compile time, there is no runtime behavior change.
 //
 // Note that by default we do not include the 'shell' environment since direct
-// usage of d8, js, jsc is extremely rare.
+// usage of d8, spidermonkey and jsc is extremely rare.
 // [link]
-var ENVIRONMENT = 'web,webview,worker,node';
+var ENVIRONMENT = ['web', 'webview', 'worker', 'node'];
 
 // Enable this to support lz4-compressed file packages. They are stored compressed in memory, and
 // decompressed on the fly, avoiding storing the entire decompressed data in memory at once.
@@ -1240,15 +1244,6 @@ var ERROR_ON_UNDEFINED_SYMBOLS = true;
 // testing.  See test_chunked_synchronous_xhr in runner.py and library.js.
 // [link]
 var SMALL_XHR_CHUNKS = false;
-
-// If 1, will include shim code that tries to 'fake' a browser environment, in
-// order to let you run a browser program (say, using SDL) in the shell.
-// Obviously nothing is rendered, but this can be useful for benchmarking and
-// debugging if actual rendering is not the issue. Note that the shim code is
-// very partial - it is hard to fake a whole browser! - so keep your
-// expectations low for this to work.
-// [link]
-var HEADLESS = false;
 
 // If 1, we force Date.now(), Math.random, etc. to return deterministic results.
 // This also tries to make execution deterministic across machines and
@@ -1877,7 +1872,7 @@ var AUTO_NATIVE_LIBRARIES = true;
 // for Firefox versions older than < majorVersion.
 // Firefox 79 was released on 2020-07-28.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// Minimum supported value is 40 which was released on 2015-09-11 (see
+// Minimum supported value is 50 which was released on 2016-11-15 (see
 // feature_matrix.py)
 // [link]
 var MIN_FIREFOX_VERSION = 79;
@@ -1903,7 +1898,7 @@ var MIN_SAFARI_VERSION = 150000;
 // numbers with Chrome.
 // Chrome 85 was released on 2020-08-25.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// Minimum supported value is 45, which was released on 2015-09-01 (see
+// Minimum supported value is 55, which was released on 2016-12-01 (see
 // feature_matrix.py).
 // [link]
 var MIN_CHROME_VERSION = 85;
@@ -2003,15 +1998,6 @@ var HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS = true;
 // disable HTML minification altogether.
 // [link]
 var MINIFY_HTML = true;
-
-// Whether we *may* be using wasm2js. This compiles to wasm normally, but lets
-// you run wasm2js *later* on the wasm, and you can pick between running the
-// normal wasm or that wasm2js code. For details of how to do that, see the
-// test_maybe_wasm2js test.  This option can be useful for debugging and
-// bisecting.
-// [link]
-// [deprecated]
-var MAYBE_WASM2JS = false;
 
 // This option is no longer used. The appropriate shadow memory size is now
 // calculated from INITIAL_MEMORY and MAXIMUM_MEMORY. Will be removed in a
@@ -2287,4 +2273,6 @@ var LEGACY_SETTINGS = [
   ['EXTRA_EXPORTED_RUNTIME_METHODS', [[]], 'No longer supported, use EXPORTED_RUNTIME_METHODS'],
   ['SUPPORT_ERRNO', [0], 'No longer supported'],
   ['DEMANGLE_SUPPORT', [0], 'No longer supported'],
+  ['MAYBE_WASM2JS', [0], 'No longer supported (use -sWASM=2)'],
+  ['HEADLESS', [0], 'No longer supported, use headless browsers or Node.js with JSDOM'],
 ];

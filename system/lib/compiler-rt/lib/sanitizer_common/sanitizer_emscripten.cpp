@@ -98,16 +98,15 @@ uptr GetTlsSize() {
 
 void InitTlsSize() {}
 
-void GetThreadStackAndTls(bool main, uptr *stk_addr, uptr *stk_size,
-                          uptr *tls_addr, uptr *tls_size) {
-  uptr stk_top;
-  GetThreadStackTopAndBottom(true, &stk_top, stk_addr);
-  *stk_size = stk_top - *stk_addr;
+void GetThreadStackAndTls(bool main, uptr *stk_begin, uptr *stk_end,
+                          uptr *tls_begin, uptr *tls_end) {
+  GetThreadStackTopAndBottom(true, stk_end, stk_begin);
 #ifdef __EMSCRIPTEN_PTHREADS__
-  *tls_addr = (uptr) __builtin_wasm_tls_base();
-  *tls_size = __builtin_wasm_tls_size();
+  *tls_begin = (uptr) __builtin_wasm_tls_base();
+  uptr tls_size = __builtin_wasm_tls_size();
+  *tls_end = *tls_begin + tls_size;
 #else
-  *tls_addr = *tls_size = 0;
+  *tls_begin = *tls_end = 0;
 #endif
 }
 

@@ -3,18 +3,6 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-/*global Module:true, Runtime*/
-/*global HEAP32*/
-/*global createNamedFunction*/
-/*global AsciiToString, stringToUTF8*/
-/*global requireRegisteredType, throwBindingError, runDestructors*/
-/*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
-
-// -- jshint doesn't understand library syntax, so we need to mark the symbols exposed here
-/*global getStringOrSymbol, emval_freelist, emval_handles, Emval, __emval_unregister, count_emval_handles, emval_symbols, __emval_decref*/
-/*global emval_addMethodCaller, emval_methodCallers, addToLibrary, global, emval_lookupTypes, makeLegalFunctionName*/
-/*global emval_get_global*/
-
 // Number of handles reserved for non-use (0) or common values w/o refcount.
 {{{
   const EMVAL_RESERVED_HANDLES = 5;
@@ -141,7 +129,9 @@ var LibraryEmVal = {
     return Emval.toHandle(v);
   },
 
-#if !DYNAMIC_EXECUTION
+#if SUPPORTS_GLOBALTHIS
+  $emval_get_global: () => globalThis,
+#elif !DYNAMIC_EXECUTION
   $emval_get_global: () => {
     if (typeof globalThis == 'object') {
       return globalThis;
@@ -168,7 +158,6 @@ var LibraryEmVal = {
     throw Error('unable to get global object.');
   },
 #else
-  // appease jshint (technically this code uses eval)
   $emval_get_global: () => {
     if (typeof globalThis == 'object') {
       return globalThis;
@@ -303,30 +292,13 @@ var LibraryEmVal = {
     return id;
   },
 
-#if MIN_CHROME_VERSION < 49 || MIN_FIREFOX_VERSION < 42 || MIN_SAFARI_VERSION < 100101
-  $reflectConstruct: null,
-  $reflectConstruct__postset: `
-    if (typeof Reflect != 'undefined') {
-      reflectConstruct = Reflect.construct;
-    } else {
-      reflectConstruct = function(target, args) {
-        // limited polyfill for Reflect.construct that handles variadic args and native objects, but not new.target
-        return new (target.bind.apply(target, [null].concat(args)))();
-      };
-    }
-  `,
-#else
-  $reflectConstruct: 'Reflect.construct',
-#endif
-
   _emval_get_method_caller__deps: [
     '$emval_addMethodCaller', '$emval_lookupTypes',
     '$createNamedFunction', '$emval_returnValue',
-#if !DYNAMIC_EXECUTION
-    '$reflectConstruct',
-#endif
   ],
   _emval_get_method_caller: (argCount, argTypes, kind) => {
+    var GenericWireTypeSize = {{{ 2 * POINTER_SIZE }}};
+
     var types = emval_lookupTypes(argCount, argTypes);
     var retType = types.shift();
     argCount--; // remove the shifted off return type
@@ -337,9 +309,9 @@ var LibraryEmVal = {
       var offset = 0;
       for (var i = 0; i < argCount; ++i) {
         argN[i] = types[i]['readValueFromPointer'](args + offset);
-        offset += types[i].argPackAdvance;
+        offset += GenericWireTypeSize;
       }
-      var rv = kind === /* CONSTRUCTOR */ 1 ? reflectConstruct(func, argN) : func.apply(obj, argN);
+      var rv = kind === /* CONSTRUCTOR */ 1 ? Reflect.construct(func, argN) : func.apply(obj, argN);
       return emval_returnValue(retType, destructorsRef, rv);
     };
 #else
@@ -348,7 +320,7 @@ var LibraryEmVal = {
 
     var offset = 0;
     var argsList = []; // 'obj?, arg0, arg1, arg2, ... , argN'
-    if (kind === /* FUNCTION */ 0) {
+    if (kind === {{{ cDefs['internal::EM_METHOD_CALLER_KIND::FUNCTION'] }}}) {
       argsList.push('obj');
     }
     var params = ['retType'];
@@ -359,9 +331,9 @@ var LibraryEmVal = {
       args.push(types[i]);
       functionBody +=
         `  var arg${i} = argType${i}.readValueFromPointer(args${offset ? '+' + offset : ''});\n`;
-      offset += types[i].argPackAdvance;
+      offset += GenericWireTypeSize;
     }
-    var invoker = kind === /* CONSTRUCTOR */ 1 ? 'new func' : 'func.call';
+    var invoker = kind === {{{ cDefs['internal::EM_METHOD_CALLER_KIND::CONSTRUCTOR'] }}} ? 'new func' : 'func.call';
     functionBody +=
       `  var rv = ${invoker}(${argsList.join(', ')});\n`;
     if (!retType.isVoid) {
@@ -456,32 +428,32 @@ var LibraryEmVal = {
     return result.done ? 0 : Emval.toHandle(result.value);
   },
 
-  _emval_coro_suspend__deps: ['$Emval', '_emval_coro_resume'],
-  _emval_coro_suspend: async (promiseHandle, awaiterPtr) => {
-    var result = await Emval.toValue(promiseHandle);
-    __emval_coro_resume(awaiterPtr, Emval.toHandle(result));
+  _emval_coro_suspend__deps: ['$Emval', '_emval_coro_resume',  '_emval_coro_reject'],
+  _emval_coro_suspend: (promiseHandle, awaiterPtr) => {
+    Emval.toValue(promiseHandle)
+      .then((result) => __emval_coro_resume(awaiterPtr, Emval.toHandle(result)),
+            (error) => __emval_coro_reject(awaiterPtr, Emval.toHandle(error)));
   },
 
-  _emval_coro_make_promise__deps: ['$Emval', '__cxa_rethrow'],
+  _emval_coro_make_promise__deps: ['$Emval'],
   _emval_coro_make_promise: (resolveHandlePtr, rejectHandlePtr) => {
     return Emval.toHandle(new Promise((resolve, reject) => {
-      const rejectWithCurrentException = () => {
-        try {
-          // Use __cxa_rethrow which already has mechanism for generating
-          // user-friendly error message and stacktrace from C++ exception
-          // if EXCEPTION_STACK_TRACES is enabled and numeric exception
-          // with metadata optimised out otherwise.
-          ___cxa_rethrow();
-        } catch (e) {
-          // But catch it so that it rejects the promise instead of throwing
-          // in an unpredictable place during async execution.
-          reject(e);
-        }
-      };
-
       {{{ makeSetValue('resolveHandlePtr', '0', 'Emval.toHandle(resolve)', '*') }}};
-      {{{ makeSetValue('rejectHandlePtr', '0', 'Emval.toHandle(rejectWithCurrentException)', '*') }}};
+      {{{ makeSetValue('rejectHandlePtr', '0', 'Emval.toHandle(reject)', '*') }}};
     }));
+  },
+
+  _emval_from_current_cxa_exception__deps: ['$Emval', '__cxa_rethrow'],
+  _emval_from_current_cxa_exception: () => {
+    try {
+      // Use __cxa_rethrow which already has mechanism for generating
+      // user-friendly error message and stacktrace from C++ exception
+      // if EXCEPTION_STACK_TRACES is enabled and numeric exception
+      // with metadata optimised out otherwise.
+      ___cxa_rethrow();
+    } catch (e) {
+      return Emval.toHandle(e);
+    }
   },
 };
 

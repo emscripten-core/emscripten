@@ -31,6 +31,7 @@ def get(ports, settings, shared):
 
     # copy header to a location so it can be used as 'MPG123/'
     ports.install_headers(libmpg123_path, pattern="*123.h", target='')
+    ports.make_pkg_config('mpg123', TAG, '-sUSE_MPG123')
 
     flags = [
       '-DOPT_GENERIC',
@@ -83,4 +84,4 @@ def clear(ports, settings, shared):
 
 
 def show():
-  return 'mpg123 (-sUSE_MPG123=1 or --use-port=mpg123; zlib license)'
+  return 'mpg123 (-sUSE_MPG123 or --use-port=mpg123; zlib license)'

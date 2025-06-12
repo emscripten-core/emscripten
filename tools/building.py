@@ -474,6 +474,7 @@ def eval_ctors(js_file, wasm_file, debug_info):
   num_successful = out.count('success on')
   if num_successful and has_wasm_call_ctors:
     js = js.replace(CTOR_ADD_PATTERN, '')
+    settings.WASM_EXPORTS.remove(WASM_CALL_CTORS)
   utils.write_file(js_file, js)
 
 
@@ -520,7 +521,7 @@ def get_closure_compiler_and_env(user_args):
   if not native_closure_compiler_works and not any(a.startswith('--platform') for a in user_args):
     # Run with Java Closure compiler as a fallback if the native version does not work.
     # This can happen, for example, on arm64 macOS machines that do not have Rosetta installed.
-    logger.warn('falling back to java version of closure compiler')
+    logger.warning('falling back to java version of closure compiler')
     user_args.append('--platform=java')
     check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=False)
 
@@ -563,7 +564,7 @@ def transpile(filename):
   # Babel needs access to `node_modules` for things like `preset-env`, but the
   # location of the config file (and the current working directory) might not be
   # in the emscripten tree, so we explicitly set NODE_PATH here.
-  env = os.environ.copy()
+  env = shared.env_with_node_in_path()
   env['NODE_PATH'] = path_from_root('node_modules')
   check_call(cmd, env=env)
   return outfile
@@ -643,6 +644,16 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
     args += ['--externs', e]
   args += user_args
 
+  if settings.DEBUG_LEVEL > 1:
+    args += ['--debug']
+
+  # Now that we have run closure compiler once, we have stripped all the closure compiler
+  # annotations from the source code and we no longer need to worry about generating closure
+  # friendly code.
+  # This means all the calls to acorn_optimizer that come after this will now run without
+  # --closure-friendly
+  settings.MAYBE_CLOSURE_COMPILER = False
+
   cmd = closure_cmd + args
   return run_closure_cmd(cmd, filename, env)
 
@@ -703,7 +714,7 @@ def run_closure_cmd(cmd, filename, env):
     if closure_warnings['error']:
       logger.error('Closure compiler completed with warnings and -Werror=closure enabled, aborting!\n')
     else:
-      logger.warn('Closure compiler completed with warnings:\n')
+      logger.warning('Closure compiler completed with warnings:\n')
 
   # Print input file (long wall of text!)
   if DEBUG == 2 and (proc.returncode != 0 or (len(proc.stderr.strip()) > 0 and closure_warnings['enabled'])):
@@ -725,13 +736,13 @@ def run_closure_cmd(cmd, filename, env):
     if closure_warnings['error']:
       logger.error(proc.stderr)
     else:
-      logger.warn(proc.stderr)
+      logger.warning(proc.stderr)
 
     # Exit and/or print final hint to get clearer output
     if settings.MINIFY_WHITESPACE:
-      logger.warn('(rerun with -g1 linker flag for an unminified output)')
+      logger.warning('(rerun with -g1 linker flag for an unminified output)')
     elif DEBUG != 2:
-      logger.warn('(rerun with EMCC_DEBUG=2 enabled to dump Closure input file)')
+      logger.warning('(rerun with EMCC_DEBUG=2 enabled to dump Closure input file)')
 
     if closure_warnings['error']:
       exit_with_error('closure compiler produced warnings and -W=error=closure enabled')

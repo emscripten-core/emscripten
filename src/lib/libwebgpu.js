@@ -7,9 +7,8 @@
 /*
  * WebGPU support.
  *
- * IMPORTANT NOTICE:
- * These bindings are in a temporary **breaking-change freeze**.
- * Bugfixes and small feature additions are still welcome.
+ * **IMPORTANT NOTICE:**
+ * These bindings are **deprecated and unmaintained** and will be removed.
  * Please see system/include/webgpu/README.md for more information.
  *
  * This file and system/lib/webgpu/webgpu.cpp together implement the

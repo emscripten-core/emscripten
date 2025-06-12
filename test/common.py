@@ -274,6 +274,23 @@ def requires_node_canary(func):
   return decorated
 
 
+# Used to mark dependencies in various tests to npm developer dependency
+# packages, which might not be installed on Emscripten end users' systems.
+def requires_dev_dependency(package):
+  assert not callable(package)
+
+  def decorator(f):
+    assert callable(f)
+
+    @wraps(f)
+    def decorated(self, *args, **kwargs):
+      if 'EMTEST_SKIP_NODE_DEV_PACKAGES' in os.environ:
+        self.skipTest(f'test requires npm development package "{package}" and EMTEST_SKIP_NODE_DEV_PACKAGES is set')
+      f(self, *args, **kwargs)
+    return decorated
+  return decorator
+
+
 def requires_wasm64(func):
   assert callable(func)
 
@@ -961,6 +978,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def check_dylink(self):
     if self.get_setting('WASM_ESM_INTEGRATION'):
       self.skipTest('dynamic linking not supported with WASM_ESM_INTEGRATION')
+    if '-lllvmlibc' in self.emcc_args:
+      self.skipTest('dynamic linking not supported with llvm-libc')
     if self.is_wasm2js():
       self.skipTest('dynamic linking not supported with wasm2js')
     if '-fsanitize=undefined' in self.emcc_args:
@@ -1021,12 +1040,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.is_browser_test():
       return
 
-    nodejs = self.get_nodejs()
-    if nodejs:
-      version = shared.get_node_version(nodejs)
-      if version >= (24, 0, 0):
-        self.js_engines = [nodejs]
-        return
+    if self.try_require_node_version(24):
+      return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
       self.emcc_args.append('-sENVIRONMENT=shell')
@@ -1038,16 +1053,23 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     else:
       self.fail('either d8 or node >= 24 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
 
+  def try_require_node_version(self, major, minor = 0, revision = 0):
+    nodejs = self.get_nodejs()
+    if not nodejs:
+      self.skipTest('Test requires nodejs to run')
+    version = shared.get_node_version(nodejs)
+    if version < (major, minor, revision):
+      return False
+
+    self.js_engines = [nodejs]
+    return True
+
   def require_simd(self):
     if self.is_browser_test():
       return
 
-    nodejs = self.get_nodejs()
-    if nodejs:
-      version = shared.get_node_version(nodejs)
-      if version >= (16, 0, 0):
-        self.js_engines = [nodejs]
-        return
+    if self.try_require_node_version(16):
+      return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
       self.emcc_args.append('-sENVIRONMENT=shell')
@@ -1061,12 +1083,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def require_wasm_legacy_eh(self):
     self.set_setting('WASM_LEGACY_EXCEPTIONS')
-    nodejs = self.get_nodejs()
-    if nodejs:
-      version = shared.get_node_version(nodejs)
-      if version >= (17, 0, 0):
-        self.js_engines = [nodejs]
-        return
+    if self.try_require_node_version(17):
+      return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
       self.emcc_args.append('-sENVIRONMENT=shell')
@@ -1080,12 +1098,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def require_wasm_eh(self):
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
-    nodejs = self.get_nodejs()
-    if nodejs:
-      if self.node_is_canary(nodejs):
-        self.js_engines = [nodejs]
-        self.node_args.append('--experimental-wasm-exnref')
-        return
+    if self.try_require_node_version(24):
+      self.node_args.append('--experimental-wasm-exnref')
+      return
 
     if self.is_browser_test():
       return
@@ -1097,9 +1112,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       return
 
     if 'EMTEST_SKIP_EH' in os.environ:
-      self.skipTest('test requires canary or d8 (and EMTEST_SKIP_EH is set)')
+      self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_EH is set)')
     else:
-      self.fail('either d8 or node canary required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
+      self.fail('either d8 or node v24 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
 
   def require_jspi(self):
     # emcc warns about stack switching being experimental, and we build with
@@ -1115,13 +1130,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       return
 
     exp_args = ['--experimental-wasm-stack-switching', '--experimental-wasm-type-reflection']
-    nodejs = self.get_nodejs()
-    if nodejs:
-      # Support for JSPI came earlier than 22, but the new API changes are not yet in any node
-      if self.node_is_canary(nodejs):
-        self.js_engines = [nodejs]
-        self.node_args += exp_args
-        return
+    # Support for JSPI came earlier than 22, but the new API changes require v24
+    if self.try_require_node_version(24):
+      self.node_args += exp_args
+      return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
       self.emcc_args.append('-sENVIRONMENT=shell')
@@ -1130,9 +1142,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       return
 
     if 'EMTEST_SKIP_JSPI' in os.environ:
-      self.skipTest('test requires node canary or d8 (and EMTEST_SKIP_JSPI is set)')
+      self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_JSPI is set)')
     else:
-      self.fail('either d8 or node canary required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
+      self.fail('either d8 or node v24 required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
 
   def require_wasm2js(self):
     if self.is_wasm64():
@@ -1147,7 +1159,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.get_setting('WASMFS'):
       # without this the JS setup code in setup_nodefs.js doesn't work
       self.set_setting('FORCE_FILESYSTEM')
-    self.emcc_args += ['-DNODEFS', '-lnodefs.js', '--pre-js', test_file('setup_nodefs.js')]
+    self.emcc_args += ['-DNODEFS', '-lnodefs.js', '--pre-js', test_file('setup_nodefs.js'), '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]']
 
   def setup_noderawfs_test(self):
     self.require_node()
@@ -1336,17 +1348,17 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def add_pre_run(self, code):
     assert not self.get_setting('MINIMAL_RUNTIME')
     create_file('prerun.js', 'Module.preRun = function() { %s }\n' % code)
-    self.emcc_args += ['--pre-js', 'prerun.js']
+    self.emcc_args += ['--pre-js', 'prerun.js', '-sINCOMING_MODULE_JS_API=[preRun]']
 
   def add_post_run(self, code):
     assert not self.get_setting('MINIMAL_RUNTIME')
     create_file('postrun.js', 'Module.postRun = function() { %s }\n' % code)
-    self.emcc_args += ['--pre-js', 'postrun.js']
+    self.emcc_args += ['--pre-js', 'postrun.js', '-sINCOMING_MODULE_JS_API=[postRun]']
 
   def add_on_exit(self, code):
     assert not self.get_setting('MINIMAL_RUNTIME')
     create_file('onexit.js', 'Module.onExit = function() { %s }\n' % code)
-    self.emcc_args += ['--pre-js', 'onexit.js']
+    self.emcc_args += ['--pre-js', 'onexit.js', '-sINCOMING_MODULE_JS_API=[onExit]']
 
   # returns the full list of arguments to pass to emcc
   # param @main_file whether this is the main file of the test. some arguments
@@ -1354,7 +1366,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   #                  libraries, for example
   def get_emcc_args(self, main_file=False, compile_only=False, asm_only=False):
     def is_ldflag(f):
-      return any(f.startswith(s) for s in ['-sEXPORT_ES6', '--proxy-to-worker', '-sGL_TESTING', '-sPROXY_TO_WORKER', '-sPROXY_TO_PTHREAD', '-sENVIRONMENT=', '--pre-js=', '--post-js=', '-sPTHREAD_POOL_SIZE='])
+      return f.startswith('-l') or any(f.startswith(s) for s in ['-sEXPORT_ES6', '--proxy-to-worker', '-sGL_TESTING', '-sPROXY_TO_WORKER', '-sPROXY_TO_PTHREAD', '-sENVIRONMENT=', '--pre-js=', '--post-js=', '-sPTHREAD_POOL_SIZE='])
 
     args = self.serialize_settings(compile_only or asm_only) + self.emcc_args
     if asm_only:
@@ -1683,12 +1695,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def check_expected_size_in_file(self, desc, filename, size):
     if EMTEST_REBASELINE:
       create_file(filename, f'{size}\n', absolute=True)
-    size_slack = 0.05
     expected_size = int(read_file(filename).strip())
     delta = size - expected_size
     ratio = abs(delta) / float(expected_size)
     print('  seen %s size: %d (expected: %d) (delta: %d), ratio to expected: %f' % (desc, size, expected_size, delta, ratio))
-    self.assertLess(ratio, size_slack)
+    self.assertEqual(size, expected_size)
 
   library_cache: Dict[str, Tuple[str, object]] = {}
 
