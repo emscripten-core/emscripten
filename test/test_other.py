@@ -15312,7 +15312,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   @only_windows('This test verifies Windows batch script behavior against bug https://github.com/microsoft/terminal/issues/15212')
   @with_env_modify({'PATH': path_from_root() + os.pathsep + os.getenv('PATH')})
   def test_windows_batch_file_dp0_expansion_bug(self):
-    create_file('build_with_quotes.bat',  f'@"emcc" {test_file("hello_world.c")}')
+    create_file('build_with_quotes.bat',  f'@"emcc" "{test_file("hello_world.c")}"')
     self.run_process(['build_with_quotes.bat'])
 
   @only_windows('Check that directory permissions are properly retrieved on Windows')
