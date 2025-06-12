@@ -6314,9 +6314,12 @@ PORT: 3979
     # are having the desired effect.
     # This means that files open()'d by emscripten without an explicit encoding will
     # cause this test to file, hopefully catching any places where we forget to do this.
-    create_file('expect_fail.py', 'print(len(open(r"%s").read()))' % test_file('unicode_library.js'))
-    err = self.expect_fail([PYTHON, 'expect_fail.py'], expect_traceback=True)
-    self.assertContained('UnicodeDecodeError', err)
+
+    # On Windows when Unicode support is enabled, this test code does not fail.
+    if not (WINDOWS and self.run_process(['chcp'], stdout=PIPE, shell=True).stdout.strip() == 'Active code page: 65001'):
+      create_file('expect_fail.py', 'print(len(open(r"%s").read()))' % test_file('unicode_library.js'))
+      err = self.expect_fail([PYTHON, 'expect_fail.py'], expect_traceback=True)
+      self.assertContained('UnicodeDecodeError', err)
 
     self.emcc_args += ['-sMODULARIZE', '--js-library', test_file('unicode_library.js'), '--extern-post-js', test_file('modularize_post_js.js'), '--post-js', test_file('unicode_postjs.js')]
     self.do_run_in_out_file_test('test_unicode_js_library.c')
