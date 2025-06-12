@@ -243,17 +243,16 @@ function JSDCE(ast, aggressive) {
           let removedHere = 0;
           node.declarations = node.declarations.filter((node) => {
             assert(node.type === 'VariableDeclarator');
-            const id = node.id;
-            if (id.type === 'ObjectPattern' || id.type === 'ArrayPattern') {
-              // TODO: DCE into object patterns, that is, things like
-              //         let { a, b } = ..
-              //         let [ a, b ] = ..
-              return true;
-            }
-            assert(id.type === 'Identifier');
-            const curr = id.name;
-            const value = node.init;
-            const keep = !names.has(curr) || (value && hasSideEffects(value));
+            let keep = node.init && hasSideEffects(node.init);
+            walkPattern(
+              node.id,
+              (value) => {
+                keep ||= hasSideEffects(value);
+              },
+              (boundName) => {
+                keep ||= !names.has(boundName);
+              },
+            );
             if (!keep) removedHere = 1;
             return keep;
           });
