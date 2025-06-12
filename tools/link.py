@@ -2442,15 +2442,25 @@ def phase_binaryen(target, options, wasm_target):
 def modularize():
   global final_js
   logger.debug(f'Modularizing, creating factory function called `{settings.EXPORT_NAME}`')
-  src = building.read_and_preprocess(utils.path_from_root('src/modularize.js'), expand_macros=True)
-  src = do_replace(src, '<<< INNER_JS_CODE >>>', read_file(final_js))
+  modularize_src = building.read_and_preprocess(utils.path_from_root('src/modularize.js'), expand_macros=True)
+  if settings.MINIFY_WHITESPACE:
+    with shared.get_temp_files().get_file(suffix='.js') as tmp:
+      write_file(tmp, modularize_src)
+      minified_file = building.acorn_optimizer(tmp, ['--minify-whitespace'])
+      modularize_src = read_file(minified_file)
+
+  # Replace INNER_JS_CODE in the minified code
+  full_src = do_replace(modularize_src, '"<<< INNER_JS_CODE >>>"', read_file(final_js))
   final_js += '.modular.js'
-  write_file(final_js, src)
+  write_file(final_js, full_src)
   shared.get_temp_files().note(final_js)
   save_intermediate('modularized')
 
-  if settings.MINIFY_WHITESPACE:
-    final_js = building.acorn_optimizer(final_js, ['--minify-whitespace'])
+  # FIXME(https://github.com/emscripten-core/emscripten/issues/24558): Running acorn at this
+  # late phase seems to cause OOM (some kind of inifite loop perhaps) in node.
+  # Instead we minify src/modularize.js in isolation above.
+  #if settings.MINIFY_WHITESPACE:
+  #  final_js = building.acorn_optimizer(final_js, ['--minify-whitespace'])
 
 
 def module_export_name_substitution():
