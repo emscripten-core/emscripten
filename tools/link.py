@@ -808,8 +808,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('WASM_ESM_INTEGRATION requires MODULARIZE=instance')
     if settings.RELOCATABLE:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with dynamic linking')
-    if settings.ASYNCIFY == 1:
-      exit_with_error('WASM_ESM_INTEGRATION is not compatible with -sASYNCIFY=1')
+    if settings.ASYNCIFY:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with -sASYNCIFY')
     if settings.WASM_WORKERS or settings.PTHREADS:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with multi-threading')
     if settings.USE_OFFSET_CONVERTER:
