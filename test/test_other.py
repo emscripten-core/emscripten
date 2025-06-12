@@ -3489,28 +3489,26 @@ More info: https://emscripten.org
     # Make sure async library functions are not automatically JSPI'd.
     create_file('lib.js', r'''
       addToLibrary({
-       foo: async function(f) { await Promise.resolve(); },
+        foo: async function(f) { await Promise.resolve(); },
       });
-      ''')
+    ''')
     create_file('main.c', r'''
-        #include <emscripten.h>
-        extern void foo();
-        EMSCRIPTEN_KEEPALIVE void test() {
-          foo();
-        }
-      ''')
+      #include <emscripten.h>
+      extern void foo();
+      EMSCRIPTEN_KEEPALIVE void test() {
+        foo();
+      }
+    ''')
     create_file('post.js', r'''
-        Module.onRuntimeInitialized = () => {
-          _test()
-          console.log('done');
-        };
-      ''')
-    self.emcc_args += [
-      '-sJSPI',
-      '--js-library=lib.js',
-      '-Wno-experimental',
-      '--post-js=post.js']
-    self.do_runf('main.c', 'done')
+      Module.onRuntimeInitialized = () => {
+        _test()
+        console.log('done');
+      };
+    ''')
+    self.do_runf('main.c', 'done', emcc_args=['-sJSPI',
+                                              '--js-library=lib.js',
+                                              '-Wno-experimental',
+                                              '--post-js=post.js'])
 
   @requires_dev_dependency('typescript')
   @parameterized({
