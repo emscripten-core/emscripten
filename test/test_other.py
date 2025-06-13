@@ -10757,7 +10757,7 @@ int main() {
     ensure_dir('build')
 
     def test(infile, source_map_added_dir=''):
-      expected_source_map_path = 'a.cpp'
+      expected_source_map_path = 'A ä☃ö Z.cpp'
       if source_map_added_dir:
         expected_source_map_path = source_map_added_dir + '/' + expected_source_map_path
       print(infile, expected_source_map_path)
@@ -10778,10 +10778,10 @@ int main() {
         self.run_process([EMCC, 'a.o', '-gsource-map'], cwd='build')
         self.assertIn('"../%s"' % expected_source_map_path, read_file('build/a.out.wasm.map'))
 
-    test('a.cpp')
+    test('A ä☃ö Z.cpp')
 
-    ensure_dir('inner')
-    test('inner/a.cpp', 'inner')
+    ensure_dir('inner Z ö☃ä A')
+    test('inner Z ö☃ä A/A ä☃ö Z.cpp', 'inner Z ö☃ä A')
 
   def test_wasm_sourcemap_extract_comp_dir_map(self):
     wasm_sourcemap = importlib.import_module('tools.wasm-sourcemap')
