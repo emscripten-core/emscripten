@@ -22,7 +22,7 @@ var {{{ EXPORT_NAME }}} = (() => {
   return {{{ asyncIf(WASM_ASYNC_COMPILATION || (EXPORT_ES6 && ENVIRONMENT_MAY_BE_NODE)) }}}function(moduleArg = {}) {
     var moduleRtn;
 
-<<< INNER_JS_CODE >>>
+"<<< INNER_JS_CODE >>>"
 
     return moduleRtn;
   };
@@ -33,7 +33,7 @@ var {{{ EXPORT_NAME }}} = (() => {
 {{{ asyncIf(WASM_ASYNC_COMPILATION || (EXPORT_ES6 && ENVIRONMENT_MAY_BE_NODE)) }}}function {{{ EXPORT_NAME }}}(moduleArg = {}) {
   var moduleRtn;
 
-<<< INNER_JS_CODE >>>
+"<<< INNER_JS_CODE >>>"
 
   return moduleRtn;
 }
