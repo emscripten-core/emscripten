@@ -204,13 +204,16 @@ def decode_octal_encoded_utf8(str):
   i = 0
   o = 0
   final_length = len(str)
+  in_escape = False
   while i < len(str):
-    if str[i] == '\\' and (str[i + 1] == '2' or str[i + 1] == '3'):
+    if not in_escape and str[i] == '\\' and (str[i + 1] == '2' or str[i + 1] == '3'):
       out[o] = int(str[i + 1:i + 4], 8)
       i += 4
       final_length -= 3
+      in_escape = False
     else:
       out[o] = ord(str[i])
+      in_escape = False if in_escape else (str[i] == '\\')
       i += 1
     o += 1
   return out[:final_length].decode('utf-8')

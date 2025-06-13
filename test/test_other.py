@@ -10780,8 +10780,10 @@ int main() {
 
     test('A ä☃ö Z.cpp')
 
-    ensure_dir('inner Z ö☃ä A')
-    test('inner Z ö☃ä A/A ä☃ö Z.cpp', 'inner Z ö☃ä A')
+    # Explicitly test the case of spaces, UTF-8 chars, and a tricky case of a path consisting
+    # of only two digits (that could be confused for an octal escape sequence)
+    ensure_dir('inner Z ö☃ä A/21')
+    test('inner Z ö☃ä A/21/A ä☃ö Z.cpp', 'inner Z ö☃ä A/21')
 
   def test_wasm_sourcemap_extract_comp_dir_map(self):
     wasm_sourcemap = importlib.import_module('tools.wasm-sourcemap')
