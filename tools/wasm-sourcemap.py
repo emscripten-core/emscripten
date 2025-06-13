@@ -197,6 +197,25 @@ def remove_dead_entries(entries):
     block_start = cur_entry
 
 
+# Given a string that has non-ASCII UTF-8 bytes 128-255 stored as octal sequences (\200 - \377), decode
+# the sequences back to UTF-8. E.g. "C:\\\303\244 \303\266\\emsdk\\emscripten\\main" -> "C:\\ä ö\\emsdk\\emscripten\\main"
+def decode_octal_encoded_utf8(str):
+  out = bytearray(len(str))
+  i = 0
+  o = 0
+  final_length = len(str)
+  while i < len(str):
+    if str[i] == '\\' and (str[i+1] == '2' or str[i+1] == '3'):
+      out[o] = int(str[i+1:i+4], 8)
+      i += 4
+      final_length -= 3
+    else:
+      out[o] = ord(str[i])
+      i += 1
+    o += 1
+  return out[:final_length].decode('utf-8')
+
+
 def extract_comp_dir_map(text):
   map_stmt_list_to_comp_dir = {}
   chunks = re.split(r"0x[0-9a-f]*: DW_TAG_compile_unit", text)
@@ -205,7 +224,7 @@ def extract_comp_dir_map(text):
     if stmt_list_match is not None:
       stmt_list = stmt_list_match.group(1)
       comp_dir_match = re.search(r"DW_AT_comp_dir\s+\(\"([^\"]+)\"\)", chunk)
-      comp_dir = comp_dir_match.group(1) if comp_dir_match is not None else ''
+      comp_dir = decode_octal_encoded_utf8(comp_dir_match.group(1)) if comp_dir_match is not None else ''
       map_stmt_list_to_comp_dir[stmt_list] = comp_dir
   return map_stmt_list_to_comp_dir
 
@@ -251,12 +270,12 @@ def read_dwarf_entries(wasm, options):
 
     include_directories = {'0': comp_dir}
     for dir in re.finditer(r"include_directories\[\s*(\d+)\] = \"([^\"]*)", line_chunk):
-      include_directories[dir.group(1)] = os.path.join(comp_dir, dir.group(2))
+      include_directories[dir.group(1)] = os.path.join(comp_dir, decode_octal_encoded_utf8(dir.group(2)))
 
     files = {}
     for file in re.finditer(r"file_names\[\s*(\d+)\]:\s+name: \"([^\"]*)\"\s+dir_index: (\d+)", line_chunk):
       dir = include_directories[file.group(3)]
-      file_path = os.path.join(dir, file.group(2))
+      file_path = os.path.join(dir, decode_octal_encoded_utf8(file.group(2)))
       files[file.group(1)] = file_path
 
     for line in re.finditer(r"\n0x([0-9a-f]+)\s+(\d+)\s+(\d+)\s+(\d+)(.*?end_sequence)?", line_chunk):
@@ -352,8 +371,8 @@ def main():
 
   logger.debug('Saving to %s' % options.output)
   map = build_sourcemap(entries, code_section_offset, options)
-  with open(options.output, 'w') as outfile:
-    json.dump(map, outfile, separators=(',', ':'))
+  with open(options.output, 'w', encoding='utf-8') as outfile:
+    json.dump(map, outfile, separators=(',', ':'), ensure_ascii=False)
 
   if options.strip:
     wasm = strip_debug_sections(wasm)
