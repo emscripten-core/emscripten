@@ -10780,6 +10780,8 @@ int main() {
 
     test('A ä☃ö Z.cpp')
 
+    # Explicitly test the case of spaces, UTF-8 chars, and a tricky case of a path consisting
+    # of only two digits (that could be confused for an octal escape sequence)
     ensure_dir('inner Z ö☃ä A/21')
     test('inner Z ö☃ä A/21/A ä☃ö Z.cpp', 'inner Z ö☃ä A/21')
 
