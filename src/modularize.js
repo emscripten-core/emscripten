@@ -8,7 +8,7 @@
 // JS program code (INNER_JS_CODE) and wrapping it in a factory function.
 
 #if SOURCE_PHASE_IMPORTS
-import source wasmModule from './{settings.WASM_BINARY_FILE}';
+import source wasmModule from './{{{ WASM_BINARY_FILE }}}';
 #endif
 
 #if ENVIRONMENT_MAY_BE_WEB && !EXPORT_ES6 && !(MINIMAL_RUNTIME && !PTHREADS)

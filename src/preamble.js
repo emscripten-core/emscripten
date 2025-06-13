@@ -990,7 +990,7 @@ function getWasmImports() {
 #endif // WASM_ASYNC_COMPILATION
 #endif // SOURCE_PHASE_IMPORTS
 }
-#endif
+#endif // WASM_ESM_INTEGRATION
 
 #if !WASM_BIGINT
 // Globals used by JS i64 conversions (see makeSetValue)

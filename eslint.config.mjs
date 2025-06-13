@@ -35,6 +35,7 @@ export default [{
     'src/postamble*.js',
     'src/closure-externs/',
     'src/embind/',
+    'src/pthread_esm_startup.mjs',
     'src/emrun_postjs.js',
     'src/wasm_worker.js',
     'src/audio_worklet.js',

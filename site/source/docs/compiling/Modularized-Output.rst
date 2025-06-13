@@ -163,7 +163,7 @@ This setting implicitly enables :ref:`export_es6` and sets :ref:`MODULARIZE` to
 
 Some additional limitations are:
 
-* ``-pthread`` / :ref:`wasm_workers` are not yet supported.
+* :ref:`wasm_workers` is not yet supported.
 
 * :ref:`abort_on_wasm_exceptions` is not supported (requires wrapping wasm
   exports).
