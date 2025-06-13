@@ -20,6 +20,8 @@ var workerID = 0;
 var sharedModules = {};
 #endif
 
+var startWorker;
+
 if (ENVIRONMENT_IS_PTHREAD) {
   // Thread-local guard variable for one-time init of the JS state
   var initializedJS = false;
@@ -58,7 +60,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
         self.onmessage = (e) => messageQueue.push(e);
 
         // And add a callback for when the runtime is initialized.
-        self.startWorker = (instance) => {
+        startWorker = () => {
           // Notify the main thread that this thread has loaded.
           postMessage({ cmd: 'loaded' });
           // Process any messages that were queued before the thread was ready.

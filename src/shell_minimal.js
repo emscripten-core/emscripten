@@ -127,7 +127,7 @@ function ready() {
 #if PTHREADS
   // This Worker is now ready to host pthreads, tell the main thread we can proceed.
   if (ENVIRONMENT_IS_PTHREAD) {
-    startWorker(Module);
+    startWorker();
   }
 #endif
 }
