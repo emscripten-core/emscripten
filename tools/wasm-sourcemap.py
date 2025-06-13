@@ -205,8 +205,8 @@ def decode_octal_encoded_utf8(str):
   o = 0
   final_length = len(str)
   while i < len(str):
-    if str[i] == '\\' and (str[i+1] == '2' or str[i+1] == '3'):
-      out[o] = int(str[i+1:i+4], 8)
+    if str[i] == '\\' and (str[i + 1] == '2' or str[i + 1] == '3'):
+      out[o] = int(str[i + 1:i + 4], 8)
       i += 4
       final_length -= 3
     else:
