@@ -21,6 +21,8 @@
 struct em_proxying_queue {
   // Protects all accesses to em_task_queues, size, and capacity.
   pthread_mutex_t mutex;
+  // If the mutex is locked this is the thread that is using it.
+  pthread_t active_thread;
   // `size` task queue pointers stored in an array of size `capacity`.
   em_task_queue** task_queues;
   int size;
@@ -30,6 +32,7 @@ struct em_proxying_queue {
 // The system proxying queue.
 static em_proxying_queue system_proxying_queue = {
   .mutex = PTHREAD_MUTEX_INITIALIZER,
+  .active_thread = NULL,
   .task_queues = NULL,
   .size = 0,
   .capacity = 0,
@@ -47,6 +50,7 @@ em_proxying_queue* em_proxying_queue_create(void) {
   }
   *q = (em_proxying_queue){
     .mutex = PTHREAD_MUTEX_INITIALIZER,
+    .active_thread = NULL,
     .task_queues = NULL,
     .size = 0,
     .capacity = 0,
@@ -124,6 +128,16 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
     executing_system_queue = true;
   }
 
+  // When the current thread is adding tasks it locks the queue, but we can
+  // potentially try to execute the queue during the add (from
+  // emscripten_yield). This will deadlock the thread, so only try to take the
+  // lock if the current thread is not adding to the queue. We then hope the
+  // queue is executed later when it is unlocked.
+  // XXX: This could leave to starvation if we never process the queue.
+  if (q->active_thread == pthread_self()) {
+    return;
+  }
+
   pthread_mutex_lock(&q->mutex);
   em_task_queue* tasks = get_tasks_for_thread(q, pthread_self());
   pthread_mutex_unlock(&q->mutex);
@@ -141,7 +155,9 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
 static int do_proxy(em_proxying_queue* q, pthread_t target_thread, task t) {
   assert(q != NULL);
   pthread_mutex_lock(&q->mutex);
+  q->active_thread = pthread_self();
   em_task_queue* tasks = get_or_add_tasks_for_thread(q, target_thread);
+  q->active_thread = NULL;
   pthread_mutex_unlock(&q->mutex);
   if (tasks == NULL) {
     return 0;
