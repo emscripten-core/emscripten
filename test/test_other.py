@@ -10780,8 +10780,8 @@ int main() {
 
     test('A ä☃ö Z.cpp')
 
-    ensure_dir('inner Z ö☃ä A')
-    test('inner Z ö☃ä A/A ä☃ö Z.cpp', 'inner Z ö☃ä A')
+    ensure_dir('inner Z ö☃ä A/21')
+    test('inner Z ö☃ä A/21/A ä☃ö Z.cpp', 'inner Z ö☃ä A/21')
 
   def test_wasm_sourcemap_extract_comp_dir_map(self):
     wasm_sourcemap = importlib.import_module('tools.wasm-sourcemap')
