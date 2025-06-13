@@ -11,6 +11,7 @@
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 
 #ifdef __BIONIC__
 #  include <syslog.h>
@@ -30,6 +31,12 @@ _LIBCPP_WEAK void __libcpp_verbose_abort(char const* format, ...) _LIBCPP_VERBOS
     va_list list;
     va_start(list, format);
     std::vfprintf(stderr, format, list);
+    // TODO(sbc): Add newline here unconditionally. libc++ seems inconsistent about strings
+    // passed to __libcpp_verbose_abort. The _LIBCPP_VERBOSE_ABORT macro seems to never use
+    // newlines, but _LIBCPP_ASSERTION_HANDLER does include a newline.
+    if (format[strlen(format) - 1] != '\n') {
+      std::fputc('\n', stderr);
+    }
     va_end(list);
   }
 

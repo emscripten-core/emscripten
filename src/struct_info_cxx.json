@@ -23,5 +23,13 @@
             "wasmfs::File::DirectoryKind",
             "wasmfs::File::SymlinkKind"
         ]
+    },
+    // Embind
+    {
+        "file": "emscripten/val.h",
+        "defines": [
+            "emscripten::internal::EM_METHOD_CALLER_KIND::FUNCTION",
+            "emscripten::internal::EM_METHOD_CALLER_KIND::CONSTRUCTOR"
+        ]
     }
 ]

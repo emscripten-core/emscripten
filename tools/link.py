@@ -162,15 +162,21 @@ def will_metadce():
 
 
 def setup_environment_settings():
+  # The worker environment is automatically added if any of the pthread or Worker features are used.
+  # Note: we need to actually modify ENVIRONMENTS variable here before the parsing,
+  # because some JS code reads it back so modifying parsed info alone is not sufficient.
+  if settings.SHARED_MEMORY and settings.ENVIRONMENT:
+    settings.ENVIRONMENT.append('worker')
+
   # Environment setting based on user input
-  environments = settings.ENVIRONMENT.split(',')
-  if any(x for x in environments if x not in VALID_ENVIRONMENTS):
+  if any(x for x in settings.ENVIRONMENT if x not in VALID_ENVIRONMENTS):
     exit_with_error(f'Invalid environment specified in "ENVIRONMENT": {settings.ENVIRONMENT}. Should be one of: {",".join(VALID_ENVIRONMENTS)}')
 
-  settings.ENVIRONMENT_MAY_BE_WEB = not settings.ENVIRONMENT or 'web' in environments
-  settings.ENVIRONMENT_MAY_BE_WEBVIEW = not settings.ENVIRONMENT or 'webview' in environments
-  settings.ENVIRONMENT_MAY_BE_NODE = not settings.ENVIRONMENT or 'node' in environments
-  settings.ENVIRONMENT_MAY_BE_SHELL = not settings.ENVIRONMENT or 'shell' in environments
+  settings.ENVIRONMENT_MAY_BE_WEB = not settings.ENVIRONMENT or 'web' in settings.ENVIRONMENT
+  settings.ENVIRONMENT_MAY_BE_WEBVIEW = not settings.ENVIRONMENT or 'webview' in settings.ENVIRONMENT
+  settings.ENVIRONMENT_MAY_BE_NODE = not settings.ENVIRONMENT or 'node' in settings.ENVIRONMENT
+  settings.ENVIRONMENT_MAY_BE_SHELL = not settings.ENVIRONMENT or 'shell' in settings.ENVIRONMENT
+  settings.ENVIRONMENT_MAY_BE_WORKER = not settings.ENVIRONMENT or 'worker' in settings.ENVIRONMENT
 
   if not settings.ENVIRONMENT_MAY_BE_NODE:
     if 'MIN_NODE_VERSION' in user_settings:
@@ -183,21 +189,6 @@ def setup_environment_settings():
       if key in user_settings:
         diagnostics.warning('unused-command-line-argument', 'ignoring %s because `web` and `webview` environments are not enabled', key)
       settings[key] = feature_matrix.UNSUPPORTED
-
-  # The worker case also includes Node.js workers when pthreads are
-  # enabled and Node.js is one of the supported environments for the build to
-  # run on. Node.js workers are detected as a combination of
-  # ENVIRONMENT_IS_WORKER and ENVIRONMENT_IS_NODE.
-  settings.ENVIRONMENT_MAY_BE_WORKER = \
-      not settings.ENVIRONMENT or \
-      'worker' in environments or \
-      (settings.ENVIRONMENT_MAY_BE_NODE and settings.PTHREADS)
-
-  if not settings.ENVIRONMENT_MAY_BE_WORKER and settings.PROXY_TO_WORKER:
-    exit_with_error('if you specify --proxy-to-worker and specify a "-sENVIRONMENT=" directive, it must include "worker" as a target! (Try e.g. -sENVIRONMENT=web,worker)')
-
-  if not settings.ENVIRONMENT_MAY_BE_WORKER and settings.SHARED_MEMORY:
-    exit_with_error('when building with multithreading enabled and a "-sENVIRONMENT=" directive is specified, it must include "worker" as a target! (Try e.g. -sENVIRONMENT=web,worker)')
 
 
 def generate_js_sym_info():
@@ -766,7 +757,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   # Set the EXPORT_ES6 default early since it affects the setting of the
   # default oformat below.
-  if settings.WASM_ESM_INTEGRATION or settings.MODULARIZE == 'instance':
+  if settings.WASM_ESM_INTEGRATION or settings.SOURCE_PHASE_IMPORTS or settings.MODULARIZE == 'instance':
     default_setting('EXPORT_ES6', 1)
 
   # If no output format was specified we try to deduce the format based on
@@ -803,6 +794,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.JS_BASE64_API:
     diagnostics.warning('experimental', '-sJS_BASE64_API is still experimental and not yet supported in browsers')
+
+  if settings.SOURCE_PHASE_IMPORTS:
+    if not settings.EXPORT_ES6:
+      exit_with_error('SOURCE_PHASE_IMPORTS requires EXPORT_ES6')
 
   if settings.WASM_ESM_INTEGRATION:
     diagnostics.warning('experimental', '-sWASM_ESM_INTEGRATION is still experimental and not yet supported in browsers')
@@ -2016,8 +2011,7 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   settings.PRE_JS_FILES = []
   settings.POST_JS_FILES = []
   # Force node since that is where the tool runs.
-  # When SHARED_MEMORY or PROXY_TO_WORKER are enabled, add the required 'worker' environment.
-  settings.ENVIRONMENT = 'node' + (',worker' if settings.SHARED_MEMORY or settings.PROXY_TO_WORKER else '')
+  settings.ENVIRONMENT = ['node']
   settings.MINIMAL_RUNTIME = 0
   # Required function to trigger TS generation.
   settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks']
@@ -2445,133 +2439,18 @@ def phase_binaryen(target, options, wasm_target):
     write_file(final_js, js)
 
 
-def node_pthread_detection():
-  # Under node we detect that we are running in a pthread by checking the
-  # workerData property.
-  if settings.EXPORT_ES6:
-    return "(await import('worker_threads')).workerData === 'em-pthread';\n"
-  else:
-    return "require('worker_threads').workerData === 'em-pthread'\n"
-
-
-def node_ww_detection():
-  # Under node we detect that we are running in a wasm worker by checking the
-  # workerData property.
-  if settings.EXPORT_ES6:
-    return "(await import('worker_threads')).workerData === 'em-ww';\n"
-  else:
-    return "require('worker_threads').workerData === 'em-ww'\n"
-
-
 def modularize():
   global final_js
-  logger.debug(f'Modularizing, assigning to var {settings.EXPORT_NAME}')
-  generated_js = read_file(final_js)
-
-  # When targetting node and ES6 we use `await import ..` in the generated code
-  # so the outer function needs to be marked as async.
-  if settings.WASM_ASYNC_COMPILATION or (settings.EXPORT_ES6 and settings.ENVIRONMENT_MAY_BE_NODE):
-    maybe_async = 'async '
-  else:
-    maybe_async = ''
-
-  wrapper_function = '''
-%(maybe_async)sfunction(moduleArg = {}) {
-  var moduleRtn;
-
-%(generated_js)s
-
-  return moduleRtn;
-}
-''' % {
-      'maybe_async': maybe_async,
-      'generated_js': generated_js,
-    }
-
-  if settings.MINIMAL_RUNTIME and not settings.PTHREADS and not settings.WASM_WORKERS:
-    # Single threaded MINIMAL_RUNTIME programs do not need access to
-    # document.currentScript, so a simple export declaration is enough.
-    src = f'var {settings.EXPORT_NAME} = {wrapper_function};'
-  else:
-    script_url_web = ''
-    # When MODULARIZE this JS may be executed later,
-    # after document.currentScript is gone, so we save it.
-    # In EXPORT_ES6 mode we can just use 'import.meta.url'.
-    if settings.ENVIRONMENT_MAY_BE_WEB and not settings.EXPORT_ES6:
-       script_url_web = "var _scriptName = typeof document != 'undefined' ? document.currentScript?.src : undefined;"
-    src = '''\
-var %(EXPORT_NAME)s = (() => {
-  %(script_url_web)s
-  return (%(wrapper_function)s);
-})();
-''' % {
-      'EXPORT_NAME': settings.EXPORT_NAME,
-      'script_url_web': script_url_web,
-      'wrapper_function': wrapper_function,
-    }
-
-  if settings.SOURCE_PHASE_IMPORTS:
-    src = f"import source wasmModule from './{settings.WASM_BINARY_FILE}';\n\n" + src
-
-  # Export using a UMD style export, or ES6 exports if selected
-  if settings.EXPORT_ES6:
-    src += 'export default %s;\n' % settings.EXPORT_NAME
-  elif not settings.MINIMAL_RUNTIME:
-    src += '''\
-if (typeof exports === 'object' && typeof module === 'object') {
-  module.exports = %(EXPORT_NAME)s;
-  // This default export looks redundant, but it allows TS to import this
-  // commonjs style module.
-  module.exports.default = %(EXPORT_NAME)s;
-} else if (typeof define === 'function' && define['amd'])
-  define([], () => %(EXPORT_NAME)s);
-''' % {'EXPORT_NAME': settings.EXPORT_NAME}
-
-  if settings.PTHREADS:
-    # Create code for detecting if we are running in a pthread.
-    # Normally this detection is done when the module is itself run but
-    # when running in MODULARIZE mode we need use this to know if we should
-    # run the module constructor on startup (true only for pthreads).
-    if settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WORKER:
-      src += "var isPthread = globalThis.self?.name?.startsWith('em-pthread');\n"
-      # In order to support both web and node we also need to detect node here.
-      if settings.ENVIRONMENT_MAY_BE_NODE:
-        src += f'var isNode = {node_detection_code()};\n'
-        src += f'if (isNode) isPthread = {node_pthread_detection()}\n'
-    elif settings.ENVIRONMENT_MAY_BE_NODE:
-      src += f'var isPthread = {node_pthread_detection()}\n'
-    src += '// When running as a pthread, construct a new instance on startup\n'
-    if settings.MODULARIZE == 'instance':
-      src += 'isPthread && init();\n'
-    else:
-      src += 'isPthread && %s();\n' % settings.EXPORT_NAME
-
-  if settings.WASM_WORKERS:
-    # Same as above for for WASM_WORKERS
-    # Normally this detection is done when the module is itself run but
-    # when running in MODULARIZE mode we need use this to know if we should
-    # run the module constructor on startup (true only for pthreads).
-    if settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WORKER:
-      src += "var isWW = globalThis.self?.name == 'em-ww';\n"
-      # In order to support both web and node we also need to detect node here.
-      if settings.ENVIRONMENT_MAY_BE_NODE:
-        if not settings.PTHREADS:
-          src += f'var isNode = {node_detection_code()};\n'
-        src += f'if (isNode) isWW = {node_ww_detection()}\n'
-    elif settings.ENVIRONMENT_MAY_BE_NODE:
-      src += f'var isWW = {node_ww_detection()}\n'
-    if settings.AUDIO_WORKLET:
-      src += "isWW ||= typeof AudioWorkletGlobalScope !== 'undefined';\n"
-    src += '// When running as a wasm worker, construct a new instance on startup\n'
-    if settings.MODULARIZE == 'instance':
-      src += 'isWW && init();\n'
-    else:
-      src += 'isWW && %s();\n' % settings.EXPORT_NAME
-
+  logger.debug(f'Modularizing, creating factory function called `{settings.EXPORT_NAME}`')
+  src = building.read_and_preprocess(utils.path_from_root('src/modularize.js'), expand_macros=True)
+  src = do_replace(src, '<<< INNER_JS_CODE >>>', read_file(final_js))
   final_js += '.modular.js'
   write_file(final_js, src)
   shared.get_temp_files().note(final_js)
   save_intermediate('modularized')
+
+  if settings.MINIFY_WHITESPACE:
+    final_js = building.acorn_optimizer(final_js, ['--minify-whitespace'])
 
 
 def module_export_name_substitution():

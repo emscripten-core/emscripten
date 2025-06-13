@@ -3,18 +3,6 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-/*global Module:true, Runtime*/
-/*global HEAP32*/
-/*global createNamedFunction*/
-/*global AsciiToString, stringToUTF8*/
-/*global requireRegisteredType, throwBindingError, runDestructors*/
-/*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
-
-// -- jshint doesn't understand library syntax, so we need to mark the symbols exposed here
-/*global getStringOrSymbol, emval_freelist, emval_handles, Emval, __emval_unregister, count_emval_handles, emval_symbols, __emval_decref*/
-/*global emval_addMethodCaller, emval_methodCallers, addToLibrary, global, emval_lookupTypes, makeLegalFunctionName*/
-/*global emval_get_global*/
-
 // Number of handles reserved for non-use (0) or common values w/o refcount.
 {{{
   const EMVAL_RESERVED_HANDLES = 5;
@@ -170,7 +158,6 @@ var LibraryEmVal = {
     throw Error('unable to get global object.');
   },
 #else
-  // appease jshint (technically this code uses eval)
   $emval_get_global: () => {
     if (typeof globalThis == 'object') {
       return globalThis;
@@ -310,6 +297,8 @@ var LibraryEmVal = {
     '$createNamedFunction', '$emval_returnValue',
   ],
   _emval_get_method_caller: (argCount, argTypes, kind) => {
+    var GenericWireTypeSize = {{{ 2 * POINTER_SIZE }}};
+
     var types = emval_lookupTypes(argCount, argTypes);
     var retType = types.shift();
     argCount--; // remove the shifted off return type
@@ -320,7 +309,7 @@ var LibraryEmVal = {
       var offset = 0;
       for (var i = 0; i < argCount; ++i) {
         argN[i] = types[i]['readValueFromPointer'](args + offset);
-        offset += types[i].argPackAdvance;
+        offset += GenericWireTypeSize;
       }
       var rv = kind === /* CONSTRUCTOR */ 1 ? Reflect.construct(func, argN) : func.apply(obj, argN);
       return emval_returnValue(retType, destructorsRef, rv);
@@ -331,7 +320,7 @@ var LibraryEmVal = {
 
     var offset = 0;
     var argsList = []; // 'obj?, arg0, arg1, arg2, ... , argN'
-    if (kind === /* FUNCTION */ 0) {
+    if (kind === {{{ cDefs['internal::EM_METHOD_CALLER_KIND::FUNCTION'] }}}) {
       argsList.push('obj');
     }
     var params = ['retType'];
@@ -342,9 +331,9 @@ var LibraryEmVal = {
       args.push(types[i]);
       functionBody +=
         `  var arg${i} = argType${i}.readValueFromPointer(args${offset ? '+' + offset : ''});\n`;
-      offset += types[i].argPackAdvance;
+      offset += GenericWireTypeSize;
     }
-    var invoker = kind === /* CONSTRUCTOR */ 1 ? 'new func' : 'func.call';
+    var invoker = kind === {{{ cDefs['internal::EM_METHOD_CALLER_KIND::CONSTRUCTOR'] }}} ? 'new func' : 'func.call';
     functionBody +=
       `  var rv = ${invoker}(${argsList.join(', ')});\n`;
     if (!retType.isVoid) {

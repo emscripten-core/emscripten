@@ -3,41 +3,18 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-/*global addToLibrary*/
-
-/*global Module, asm*/
-/*global _malloc, _free, _memcpy*/
-/*global FUNCTION_TABLE, HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32, HEAPF64*/
-/*global AsciiToString*/
-/*global Emval, emval_handle_array, __emval_decref*/
-/*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
-
-// -- jshint doesn't understand library syntax, so we need to specifically tell it about the symbols we define
-/*global typeDependencies, flushPendingDeletes, getTypeName, getBasestPointer, throwBindingError, UnboundTypeError, embindRepr, registeredInstances, registeredTypes*/
-/*global ensureOverloadTable, embind__requireFunction, awaitingDependencies, makeLegalFunctionName, embind_charCodes:true, registerType, createNamedFunction, RegisteredPointer, throwInternalError*/
-/*global floatReadValueFromPointer, integerReadValueFromPointer, enumReadValueFromPointer, replacePublicSymbol, craftInvokerFunction, tupleRegistrations*/
-/*global finalizationRegistry, attachFinalizer, detachFinalizer, releaseClassHandle, runDestructor*/
-/*global ClassHandle, makeClassHandle, structRegistrations, whenDependentTypesAreResolved, BindingError, deletionQueue, delayFunction:true, upcastPointer*/
-/*global exposePublicSymbol, heap32VectorToArray, char_0, char_9*/
-/*global getInheritedInstanceCount, getLiveInheritedInstances, setDelayFunction, InternalError, runDestructors*/
-/*global requireRegisteredType, unregisterInheritedInstance, registerInheritedInstance, PureVirtualError, throwUnboundTypeError*/
-/*global assert, validateThis, downcastPointer, registeredPointers, RegisteredClass, getInheritedInstance */
-/*global throwInstanceAlreadyDeleted, shallowCopyInternalPointer*/
-/*global RegisteredPointer_fromWireType, constNoSmartPtrRawPointerToWireType, nonConstNoSmartPtrRawPointerToWireType, genericPointerToWireType*/
-
 #include "libembind_shared.js"
 
 var LibraryEmbind = {
   $UnboundTypeError: class extends Error {},
   $PureVirtualError: class extends Error {},
-  $GenericWireTypeSize: {{{ 2 * POINTER_SIZE }}},
 #if EMBIND_AOT
   $InvokerFunctions: '<<< EMBIND_AOT_INVOKERS >>>',
 #endif
   // If register_type is used, emval will be registered multiple times for
   // different type id's, but only a single type object is needed on the JS side
   // for all of them. Store the type for reuse.
-  $EmValType__deps: ['_emval_decref', '$Emval', '$readPointer', '$GenericWireTypeSize'],
+  $EmValType__deps: ['_emval_decref', '$Emval', '$readPointer'],
   $EmValType: `{
     name: 'emscripten::val',
     'fromWireType': (handle) => {
@@ -46,7 +23,6 @@ var LibraryEmbind = {
       return rv;
     },
     'toWireType': (destructors, value) => Emval.toHandle(value),
-    argPackAdvance: GenericWireTypeSize,
     'readValueFromPointer': readPointer,
     destructorFunction: null, // This type does not need a destructor
 
@@ -221,11 +197,6 @@ var LibraryEmbind = {
   $registerType__deps: ['$sharedRegisterType'],
   $registerType__docs: '/** @param {Object=} options */',
   $registerType: function(rawType, registeredInstance, options = {}) {
-#if ASSERTIONS
-    if (registeredInstance.argPackAdvance === undefined) {
-      throw new TypeError('registerType registeredInstance requires argPackAdvance');
-    }
-#endif
     return sharedRegisterType(rawType, registeredInstance, options);
   },
 
@@ -235,7 +206,6 @@ var LibraryEmbind = {
     registerType(rawType, {
       isVoid: true, // void return values can be optimized out sometimes
       name,
-      argPackAdvance: 0,
       'fromWireType': () => undefined,
       // TODO: assert if anything else is given?
       'toWireType': (destructors, o) => undefined,
@@ -243,7 +213,7 @@ var LibraryEmbind = {
   },
 
   _embind_register_bool__docs: '/** @suppress {globalThis} */',
-  _embind_register_bool__deps: ['$AsciiToString', '$registerType', '$GenericWireTypeSize'],
+  _embind_register_bool__deps: ['$AsciiToString', '$registerType'],
   _embind_register_bool: (rawType, name, trueValue, falseValue) => {
     name = AsciiToString(name);
     registerType(rawType, {
@@ -256,7 +226,6 @@ var LibraryEmbind = {
       'toWireType': function(destructors, o) {
         return o ? trueValue : falseValue;
       },
-      argPackAdvance: GenericWireTypeSize,
       'readValueFromPointer': function(pointer) {
         return this['fromWireType'](HEAPU8[pointer]);
       },
@@ -363,7 +332,6 @@ var LibraryEmbind = {
         // https://www.w3.org/TR/wasm-js-api-1/#towebassemblyvalue
         return value;
       },
-      argPackAdvance: GenericWireTypeSize,
       'readValueFromPointer': integerReadValueFromPointer(name, size, minRange !== 0),
       destructorFunction: null, // This type does not need a destructor
     });
@@ -415,7 +383,6 @@ var LibraryEmbind = {
 #endif
         return value;
       },
-      argPackAdvance: GenericWireTypeSize,
       'readValueFromPointer': integerReadValueFromPointer(name, size, !isUnsignedType),
       destructorFunction: null, // This type does not need a destructor
     });
@@ -446,7 +413,6 @@ var LibraryEmbind = {
         // https://www.w3.org/TR/wasm-js-api-1/#towebassemblyvalue
         return value;
       },
-      argPackAdvance: GenericWireTypeSize,
       'readValueFromPointer': floatReadValueFromPointer(name, size),
       destructorFunction: null, // This type does not need a destructor
     });
@@ -463,12 +429,7 @@ var LibraryEmbind = {
     '$stringToUTF8', '$lengthBytesUTF8', 'malloc', 'free'],
   _embind_register_std_string: (rawType, name) => {
     name = AsciiToString(name);
-    var stdStringIsUTF8
-#if EMBIND_STD_STRING_IS_UTF8
-    = true;
-#else
-    = false;
-#endif
+    var stdStringIsUTF8 = {{{ EMBIND_STD_STRING_IS_UTF8 }}};
 
     registerType(rawType, {
       name,
@@ -536,7 +497,6 @@ var LibraryEmbind = {
         }
         return base;
       },
-      argPackAdvance: GenericWireTypeSize,
       'readValueFromPointer': readPointer,
       destructorFunction(ptr) {
         _free(ptr);
@@ -592,7 +552,6 @@ var LibraryEmbind = {
         }
         return ptr;
       },
-      argPackAdvance: GenericWireTypeSize,
       'readValueFromPointer': readPointer,
       destructorFunction(ptr) {
         _free(ptr);
@@ -643,7 +602,6 @@ var LibraryEmbind = {
     registerType(rawType, {
       name,
       'fromWireType': decodeMemoryView,
-      argPackAdvance: GenericWireTypeSize,
       'readValueFromPointer': decodeMemoryView,
     }, {
       ignoreDuplicateRegistrations: true,
@@ -971,7 +929,6 @@ var LibraryEmbind = {
           }
           return ptr;
         },
-        argPackAdvance: GenericWireTypeSize,
         'readValueFromPointer': readPointer,
         destructorFunction: rawDestructor,
       }];
@@ -1082,7 +1039,6 @@ var LibraryEmbind = {
           }
           return ptr;
         },
-        argPackAdvance: GenericWireTypeSize,
         'readValueFromPointer': readPointer,
         destructorFunction: rawDestructor,
       }];
@@ -1218,7 +1174,6 @@ var LibraryEmbind = {
     '$RegisteredPointer',
     '$readPointer',
     '$RegisteredPointer_fromWireType',
-    '$GenericWireTypeSize',
   ],
   $init_RegisteredPointer: () => {
     Object.assign(RegisteredPointer.prototype, {
@@ -1231,7 +1186,6 @@ var LibraryEmbind = {
       destructor(ptr) {
         this.rawDestructor?.(ptr);
       },
-      argPackAdvance: GenericWireTypeSize,
       'readValueFromPointer': readPointer,
       'fromWireType': RegisteredPointer_fromWireType,
     });
@@ -2255,7 +2209,6 @@ var LibraryEmbind = {
         return this.constructor.values[c];
       },
       'toWireType': (destructors, c) => c.value,
-      argPackAdvance: GenericWireTypeSize,
       'readValueFromPointer': enumReadValueFromPointer(name, size, isSigned),
       destructorFunction: null,
     });

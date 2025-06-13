@@ -19,11 +19,23 @@ to browse the changes between the tags.
 See docs/process.md for more on how version tagging works.
 
 4.0.11 (in development)
-----------------------
-
+-----------------------
+- The `ENVIRONMENT` setting will now be automatically updated to include
+  `worker` if multi-threading is enabled. (#24525)
+- Removed the `HEADLESS` option. It tried to simulate a minimal browser-like
+  environment before browser engines had real headless modes. For headless
+  testing, users are now encouraged to use
+  [Playwright](https://playwright.dev/), [Puppeteer](https://pptr.dev/) or
+  Node.js with [JSDOM](https://github.com/jsdom/jsdom) instead. You can also
+  use browser headless mode with `emrun` as follows:
+    emrun --browser=chrome --browser-args=--headless [..]
+  for chrome, or
+    emrun --browser=firefox --browser-args=-headless [..]
+  for firefox. (#24537)
 
 4.0.10 - 06/07/25
------------------- Emscripten ports now install pkg-config `.pc` files so they will show up, for
+-----------------
+- Emscripten ports now install pkg-config `.pc` files so they will show up, for
   example, when you run `pkg-config --list-all` or `pkg-config --cflags
   <portname>`. Bare in mind that the correct PKG_CONFIG_PATH needs to be set for
   this to work.  One way to do this is to run `emmake pkg-config`. (#24426)

@@ -3959,10 +3959,6 @@ More info: https://emscripten.org
     result = self.run_js('a.out.js')
     self.assertContained('|hello world|', result)
 
-  def test_sdl_headless(self):
-    shutil.copy(test_file('screenshot.png'), 'example.png')
-    self.do_other_test('test_sdl_headless.c', emcc_args=['-sHEADLESS'])
-
   def test_preprocess(self):
     # Pass -Werror to prevent regressions such as https://github.com/emscripten-core/emscripten/pull/9661
     out = self.run_process([EMCC, test_file('hello_world.c'), '-E', '-Werror'], stdout=PIPE).stdout
@@ -11844,8 +11840,8 @@ int main () {
                            '-lGL',
                            '-sMODULARIZE']
     hello_webgl2_sources = hello_webgl_sources + ['-sMAX_WEBGL_VERSION=2']
-    hello_wasm_worker_sources = [test_file('wasm_worker/wasm_worker_code_size.c'), '-sWASM_WORKERS', '-sENVIRONMENT=web,worker']
-    audio_worklet_sources = [test_file('webaudio/audioworklet.c'), '-sWASM_WORKERS', '-sAUDIO_WORKLET', '-sENVIRONMENT=web,worker', '-sTEXTDECODER=1']
+    hello_wasm_worker_sources = [test_file('wasm_worker/wasm_worker_code_size.c'), '-sWASM_WORKERS', '-sENVIRONMENT=web']
+    audio_worklet_sources = [test_file('webaudio/audioworklet.c'), '-sWASM_WORKERS', '-sAUDIO_WORKLET', '-sENVIRONMENT=web', '-sTEXTDECODER=1']
     embind_hello_sources = [test_file('code_size/embind_hello_world.cpp'), '-lembind']
     embind_val_sources = [test_file('code_size/embind_val_hello_world.cpp'),
                           '-lembind',
@@ -15316,7 +15312,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   @only_windows('This test verifies Windows batch script behavior against bug https://github.com/microsoft/terminal/issues/15212')
   @with_env_modify({'PATH': path_from_root() + os.pathsep + os.getenv('PATH')})
   def test_windows_batch_file_dp0_expansion_bug(self):
-    create_file('build_with_quotes.bat',  f'@"emcc" {test_file("hello_world.c")}')
+    create_file('build_with_quotes.bat',  f'@"emcc" "{test_file("hello_world.c")}"')
     self.run_process(['build_with_quotes.bat'])
 
   @only_windows('Check that directory permissions are properly retrieved on Windows')
@@ -16208,3 +16204,31 @@ addToLibrary({
     self.assertContainedIf(f'var MIN_CHROME_VERSION = {unsupported};', src, env == 'node')
     self.assertContainedIf(f'var MIN_SAFARI_VERSION = {unsupported};', src, env == 'node')
     self.assertContainedIf(f'var MIN_FIREFOX_VERSION = {unsupported};', src, env == 'node')
+
+  @parameterized({
+    'web': ('web',),
+    'node': ('node',),
+  })
+  @parameterized({
+    'pthread': (['-pthread'],),
+    'wasm_workers': (['-sWASM_WORKERS'],),
+  })
+  def test_automatic_env_worker(self, env, emcc_args):
+    self.emcc(test_file('hello_world.c'), [f'-sENVIRONMENT={env}'] + emcc_args)
+
+  def test_libcxx_errors(self):
+    create_file('main.cpp', '''
+    #include <thread>
+    void func() {
+    }
+
+    int main() {
+      std::thread t(func);
+      t.join();
+    }
+    ''')
+
+    # Since we are building without -pthread the thread constructor will fail,
+    # and in debug mode at least we expect to see the error message from libc++
+    expected = 'system_error was thrown in -fno-exceptions mode with error 6 and message "thread constructor failed"'
+    self.do_runf('main.cpp', expected, assert_returncode=NON_ZERO)

@@ -16,6 +16,52 @@ sys.path.insert(0, root_dir)
 from tools import utils
 
 
+def update_version_txt(release_version, new_version):
+  version_file = os.path.join(root_dir, 'emscripten-version.txt')
+  old_content = utils.read_file(version_file)
+  utils.write_file(version_file, old_content.replace(release_version, new_version))
+
+
+def update_changelog(release_version, new_version):
+  changelog_file = os.path.join(root_dir, 'ChangeLog.md')
+  changelog = utils.read_file(changelog_file)
+  marker = f'{release_version} (in development)'
+  pos = changelog.find(marker)
+  assert pos != -1
+  pos += len(marker) + 1
+  # Skip the next line which should just be hyphens
+  assert changelog[pos] == '-'
+  pos = changelog.find('\n', pos)
+  assert pos != -1
+
+  # Add new entry
+  today = datetime.now().strftime('%m/%d/%y')
+  new_entry = f'{release_version} - {today}'
+  new_entry = '\n\n' + new_entry + '\n' + ('-' * len(new_entry))
+  changelog = changelog[:pos] + new_entry + changelog[pos:]
+
+  # Update the "in development" entry
+  changelog = changelog.replace(f'{release_version} (in development)', f'{new_version} (in development)')
+
+  utils.write_file(changelog_file, changelog)
+
+
+def create_git_branch(release_version):
+  branch_name = 'version_' + release_version
+
+  # Create a new git branch
+  subprocess.check_call(['git', 'checkout', '-b', branch_name, 'upstream/main'], cwd=root_dir)
+
+  # Create auto-generated changes to the new git branch
+  subprocess.check_call(['git', 'add', '-u', '.'], cwd=root_dir)
+  subprocess.check_call(['git', 'commit', '-m', f'Mark {release_version} as released'], cwd=root_dir)
+  print('New release created in branch: `%s`' % branch_name)
+
+  if '-n' not in sys.argv:
+    # Push new branch to upstream
+    subprocess.check_call(['git', 'push', 'upstream', branch_name], cwd=root_dir)
+
+
 def main(argv):
   if subprocess.check_output(['git', 'status', '-uno', '--porcelain'], cwd=root_dir).strip():
     print('tree is not clean')
@@ -33,49 +79,18 @@ def main(argv):
   release_version = '.'.join(str(v) for v in release_version)
   new_dev_version = '.'.join(str(v) for v in new_dev_version)
 
+  update_version_txt(release_version, new_dev_version)
+  update_changelog(release_version, new_dev_version)
+
   print('Creating new release: %s' % release_version)
-
-  version_file = os.path.join(root_dir, 'emscripten-version.txt')
-  changelog_file = os.path.join(root_dir, 'ChangeLog.md')
-
-  old_content = utils.read_file(version_file)
-  utils.write_file(version_file, old_content.replace(release_version, new_dev_version))
-
-  changelog = utils.read_file(changelog_file)
-  marker = f'{release_version} (in development)'
-  pos = changelog.find(marker)
-  assert pos != -1
-  pos += 2 * len(marker) + 1
-
-  # Add new entry
-  today = datetime.now().strftime('%m/%d/%y')
-  new_entry = f'{release_version} - {today}'
-  new_entry = '\n\n' + new_entry + '\n' + ('-' * len(new_entry))
-  changelog = changelog[:pos] + new_entry + changelog[pos:]
-
-  # Update the "in development" entry
-  changelog = changelog.replace(f'{release_version} (in development)', f'{new_dev_version} (in development)')
-
-  utils.write_file(changelog_file, changelog)
-
-  branch_name = 'version_' + release_version
 
   if is_github_runner: # For GitHub Actions workflows
     with open(os.environ['GITHUB_ENV'], 'a') as f:
       f.write(f'RELEASE_VERSION={release_version}')
   else: # Local use
-    # Create a new git branch
-    subprocess.check_call(['git', 'checkout', '-b', branch_name, 'upstream/main'], cwd=root_dir)
+    create_git_branch(release_version)
+    # TODO(sbc): Maybe create the tag too
 
-    # Create auto-generated changes to the new git branch
-    subprocess.check_call(['git', 'add', '-u', '.'], cwd=root_dir)
-    subprocess.check_call(['git', 'commit', '-m', f'Mark {release_version} as released'], cwd=root_dir)
-    print('New release created in branch: `%s`' % branch_name)
-
-    # Push new branch to upstream
-    subprocess.check_call(['git', 'push', 'upstream', branch_name], cwd=root_dir)
-
-  # TODO(sbc): Maybe create the tag too
   return 0
 
 

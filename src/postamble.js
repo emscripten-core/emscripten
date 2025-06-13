@@ -6,13 +6,6 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
-#if HEADLESS
-if (!ENVIRONMENT_IS_WEB) {
-#include "headlessCanvas.js"
-#include "headless.js"
-}
-#endif
-
 #if PROXY_TO_WORKER
 if (ENVIRONMENT_IS_WORKER) {
 #include "webGLWorker.js'

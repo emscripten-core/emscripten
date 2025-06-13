@@ -397,13 +397,17 @@ fi
 
     # Building a file that *does* need something *should* trigger cache
     # generation, but only the first time
-    libname = cache.get_lib_name('libc++.a')
     for i in range(3):
       print(i)
       self.clear()
       output = self.do([EMCC, '-O' + str(i), test_file('hello_libcxx.cpp'), '-sDISABLE_EXCEPTION_CATCHING=0'])
-      print('\n\n\n', output)
-      self.assertContainedIf(BUILDING_MESSAGE % libname, output, i == 0)
+      if i == 0:
+        libname = cache.get_lib_name('libc++-debug.a')
+      else:
+        libname = cache.get_lib_name('libc++.a')
+      # -O0 and -O1 will each build a version of libc++.a, but higher level will re-use the
+      # one built at -O1.
+      self.assertContainedIf(BUILDING_MESSAGE % libname, output, i < 2)
       self.assertContained('hello, world!', self.run_js('a.out.js'))
       self.assertExists(cache.cachedir)
       self.assertExists(os.path.join(cache.cachedir, libname))
