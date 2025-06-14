@@ -16234,3 +16234,18 @@ addToLibrary({
     # and in debug mode at least we expect to see the error message from libc++
     expected = 'system_error was thrown in -fno-exceptions mode with error 6 and message "thread constructor failed"'
     self.do_runf('main.cpp', expected, assert_returncode=NON_ZERO)
+
+  def test_parsetools_make_removed_fs_assert(self):
+    """
+    This tests that parseTools.mjs `makeRemovedFSAssert()` works as intended,
+    if it creates a stub when a builtin library isn't included, but not when
+    it is.
+    """
+
+    removed_fs_assert_content = "IDBFS is no longer included by default"
+
+    self.emcc(test_file('hello_world.c'), output_filename='hello_world.js')
+    self.assertContained(removed_fs_assert_content, read_file('hello_world.js'))
+
+    self.emcc(test_file('hello_world.c'), ['-lidbfs.js'], output_filename='hello_world.js')
+    self.assertNotContained(removed_fs_assert_content, read_file('hello_world.js'))
