@@ -6595,7 +6595,7 @@ void* operator new(size_t size) {
     self.run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse2', stdout=PIPE).stdout
 
-    self.emcc_args += ['-I' + test_file('sse'), '-msse2', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB'] + args
+    self.emcc_args += ['-I' + test_file('sse'), '-msse2', '-fno-inline-functions', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB'] + args
     self.maybe_closure()
     self.do_runf(src, native_result)
 
