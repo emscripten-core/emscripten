@@ -546,7 +546,8 @@ def finalize_wasm(infile, outfile, js_syms):
   if not need_name_section:
     strip_sections += ['name']
 
-  if strip_sections or not settings.GENERATE_DWARF:
+  # TODO(walkingeyerobot): make this work. it appears to not like the wasm file from wasm-bindgen
+  if not settings.WASM_BINDGEN and (strip_sections or not settings.GENERATE_DWARF):
     building.save_intermediate(outfile, 'strip.wasm')
     building.strip(infile, outfile, debug=not settings.GENERATE_DWARF,
                    sections=strip_sections)
@@ -643,7 +644,7 @@ def create_tsd_exported_runtime_methods(metadata):
   return utils.read_file(tsc_output_file)
 
 
-def create_tsd(metadata, embind_tsd):
+def create_tsd(metadata, embind_tsd, bindgen_tsd = None):
   out = '// TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.\n'
   if settings.EXPORTED_RUNTIME_METHODS:
     out += create_tsd_exported_runtime_methods(metadata)
@@ -673,6 +674,15 @@ def create_tsd(metadata, embind_tsd):
   # Add in embind definitions.
   if embind_tsd:
     export_interfaces += ' & EmbindModule'
+  if settings.WASM_BINDGEN and bindgen_tsd:
+    out += 'interface BindgenModule {\n'
+    for file_path in bindgen_tsd:
+      indent = "  "
+      with open(file_path, 'r') as file:
+          for line in file:
+            out += f'{indent}{line}'
+    out += '}\n\n'
+    export_interfaces += ' & BindgenModule'
   out += f'export type MainModule = {export_interfaces};\n'
   if settings.MODULARIZE:
     return_type = 'MainModule'
