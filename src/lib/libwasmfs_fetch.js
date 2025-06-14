@@ -90,6 +90,12 @@ addToLibrary({
       // one request for all the chunks we need, rather than one
       // request per chunk.
       var start = firstChunk * chunkSize;
+
+      // Out of bounds. No request necessary.
+      if (start >= wasmFS$JSMemoryRanges[file].size) {
+        return Promise.resolve();
+      }
+
       // We must fetch *up to* the last byte of the last chunk.
       var end = (lastChunk+1) * chunkSize;
       var response = await fetch(url, {headers:{'Range': `bytes=${start}-${end-1}`}});
