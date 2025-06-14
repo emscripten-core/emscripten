@@ -423,6 +423,7 @@ public:
 
   [[nodiscard]] ssize_t getNumEntries();
   [[nodiscard]] MaybeEntries getEntries();
+  void removeAllCacheEntries();  
 };
 
 inline File::Handle File::locked() { return Handle(shared_from_this()); }

@@ -434,6 +434,7 @@ sigs = {
   _wasmfs_opfs_init_root_directory__sig: 'vp',
   _wasmfs_opfs_insert_directory__sig: 'vpipp',
   _wasmfs_opfs_insert_file__sig: 'vpipp',
+  _wasmfs_opfs_move_dir__sig: 'vpiipp',
   _wasmfs_opfs_move_file__sig: 'vpiipp',
   _wasmfs_opfs_open_access__sig: 'vpip',
   _wasmfs_opfs_open_blob__sig: 'vpip',

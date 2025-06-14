@@ -202,15 +202,35 @@ int main(int argc, char* argv[]) {
   assert(err == 0);
   emscripten_console_log("moved file");
 
+  fd = open("/opfs/working/foo.txt", O_RDWR | O_CREAT | O_EXCL, 0777);
+  assert(fd > 0);
+  emscripten_console_log("created second OPFS file");
+  close(fd);
+
+
+  err = rename("/opfs/working", "/opfs/working2");
+  assert(err == 0);
+  err = access("/opfs/working", F_OK);
+  assert(err == -1);
+  err = access("/opfs/working2", F_OK);
+  assert(err == 0);
+  emscripten_console_log("moved directory");
+  
+  err = access("/opfs/working2/foo.txt", F_OK);
+  assert(err == 0);
+
+  err = unlink("/opfs/working2/foo.txt");
+  assert(err == 0);
+
   err = unlink("/opfs/foo.txt");
   assert(err == 0);
   err = access("/opfs/foo.txt", F_OK);
   assert(err == -1);
   emscripten_console_log("removed OPFS file");
 
-  err = rmdir("/opfs/working");
+  err = rmdir("/opfs/working2");
   assert(err == 0);
-  err = access("/opfs/working", F_OK);
+  err = access("/opfs/working2", F_OK);
   assert(err == -1);
   emscripten_console_log("removed OPFS directory");
 
@@ -224,9 +244,11 @@ void cleanup(void) {
 
   unlink("/opfs/working/foo.txt");
   rmdir("/opfs/working");
+  rmdir("/opfs/working2");
   unlink("/opfs/foo.txt");
 
   assert(access("/opfs/working/foo.txt", F_OK) != 0);
   assert(access("/opfs/working", F_OK) != 0);
+  assert(access("/opfs/working2", F_OK) != 0);
   assert(access("/opfs/foo.txt", F_OK) != 0);
 }
