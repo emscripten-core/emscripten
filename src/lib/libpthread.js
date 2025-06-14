@@ -1026,6 +1026,9 @@ var LibraryPThread = {
     '$runtimeKeepaliveCounter',
 #endif
   ],
+#if ASYNCIFY
+  $invokeEntryPoint__async: true,
+#endif
   $invokeEntryPoint: {{{ asyncIf(ASYNCIFY == 2) }}}(ptr, arg) => {
 #if PTHREADS_DEBUG
     dbg(`invokeEntryPoint: ${ptrToString(ptr)}`);

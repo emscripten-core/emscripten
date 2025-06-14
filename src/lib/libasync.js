@@ -559,6 +559,7 @@ addToLibrary({
 #endif
 
   _load_secondary_module__sig: 'v',
+  _load_secondary_module__async: true,
   _load_secondary_module: async function() {
     // Mark the module as loading for the wasm module (so it doesn't try to load it again).
     wasmExports['load_secondary_module_status'].value = 1;
