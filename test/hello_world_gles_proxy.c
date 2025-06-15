@@ -766,7 +766,7 @@ main(int argc, char *argv[])
    // Don't trigger the reftest immediately after main finishes,
    // this test uses rAF to perform rendering, so let it trigger
    // the reftest after having rendered some frames.
-   EM_ASM({ delete Module['postRun']; });
+   EM_ASM({ if (typeof doReftest !== 'undefined' && Module['postRun'] == doReftest) delete Module['postRun']; });
 #endif
 
    /* Initialize the window */

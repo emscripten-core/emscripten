@@ -739,7 +739,7 @@ main(int argc, char *argv[])
 #ifdef __EMSCRIPTEN__
    // This test kicks off an asynchronous glutMainLoop(), so do not perform a synchronous
    // reftest immediately after falling out from main.
-   EM_ASM({ delete Module['postRun']; });
+   EM_ASM({ if (typeof doReftest !== 'undefined' && Module['postRun'] == doReftest) delete Module['postRun']; });
 #endif
    glutMainLoop();
 
