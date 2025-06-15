@@ -2181,7 +2181,7 @@ void *getBindBuffer() {
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_row_length(self):
-    self.reftest('third_party/cubegeom/cubegeom_pre_vao_es.c', 'third_party/cubegeom/cubegeom_pre_vao.png', emcc_args=['-sFULL_ES2', '-lGL', '-lSDL', '-DUSE_UNPACK_ROW_LENGTH'])
+    self.reftest('third_party/cubegeom/cubegeom_pre_vao_es.c', 'third_party/cubegeom/cubegeom_pre_vao.png', emcc_args=['-sFULL_ES2', '-lGL', '-lSDL', '-DUSE_UNPACK_ROW_LENGTH', '-sMIN_WEBGL_VERSION=2'])
 
   @requires_graphics_hardware
   def test_cubegeom_u4fv_2(self):
