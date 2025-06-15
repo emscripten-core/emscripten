@@ -2236,6 +2236,9 @@ def harness_server_func(in_queue, out_queue, port):
 
   # allows streaming compilation to work
   SimpleHTTPRequestHandler.extensions_map['.wasm'] = 'application/wasm'
+  # Firefox browser security does not allow loading .mjs files if they
+  # do not have the correct MIME type
+  SimpleHTTPRequestHandler.extensions_map['.mjs'] = 'text/javascript'
 
   httpd = HTTPServer(('localhost', port), TestServerHandler)
   httpd.serve_forever() # test runner will kill us
@@ -2323,9 +2326,10 @@ class BrowserCore(RunnerCore):
 
   def assert_out_queue_empty(self, who):
     if not self.harness_out_queue.empty():
+      responses = []
       while not self.harness_out_queue.empty():
-        self.harness_out_queue.get()
-      raise Exception('excessive responses from %s' % who)
+        responses += [self.harness_out_queue.get()]
+      raise Exception('excessive responses from %s: %s' % (who, '\n'.join(responses)))
 
   # @param extra_tries: how many more times to try this test, if it fails. browser tests have
   #                     many more causes of flakiness (in particular, they do not run
