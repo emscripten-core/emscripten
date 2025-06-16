@@ -7,15 +7,14 @@
 addToLibrary({
   // This gives correct answers for everything less than 2^{14} = 16384
   // I hope nobody is contemplating functions with 16384 arguments...
-  $uleb128Encode: (n, target) => {
+  $uleb128EncodeWithLen: (arr) => {
+    const n = arr.length;
 #if ASSERTIONS
     assert(n < 16384);
 #endif
-    if (n < 128) {
-      target.push(n);
-    } else {
-      target.push((n % 128) | 128, n >> 7);
-    }
+    // Note: this LEB128 length encoding produces extra byte for n < 128,
+    // but we don't care as it's only used in a temporary representation.
+    return [(n % 128) | 128, n >> 7, ...arr];
   },
 #if WASM_JS_TYPES
   // Converts a signature like 'vii' into a description of the wasm types, like
@@ -49,49 +48,36 @@ addToLibrary({
     return type;
   },
 #endif
-  $generateFuncType__deps: ['$uleb128Encode'],
-  $generateFuncType: (sig, target) => {
-    var sigRet = sig.slice(0, 1);
-    var sigParam = sig.slice(1);
-    var typeCodes = {
-      'i': 0x7f, // i32
+  $wasmTypeCodes: {
+    'i': 0x7f, // i32
 #if MEMORY64
-      'p': 0x7e, // i64
+    'p': 0x7e, // i64
 #else
-      'p': 0x7f, // i32
+    'p': 0x7f, // i32
 #endif
-      'j': 0x7e, // i64
-      'f': 0x7d, // f32
-      'd': 0x7c, // f64
-      'e': 0x6f, // externref
-    };
-
-    // Parameters, length + signatures
-    target.push(0x60 /* form: func */);
-    uleb128Encode(sigParam.length, target);
-    for (var paramType of sigParam) {
-#if ASSERTIONS
-      assert(paramType in typeCodes, `invalid signature char: ${paramType}`);
-#endif
-      target.push(typeCodes[paramType]);
-    }
-
-    // Return values, length + signatures
-    // With no multi-return in MVP, either 0 (void) or 1 (anything else)
-    if (sigRet == 'v') {
-      target.push(0x00);
-    } else {
-      target.push(0x01, typeCodes[sigRet]);
-    }
+    'j': 0x7e, // i64
+    'f': 0x7d, // f32
+    'd': 0x7c, // f64
+    'e': 0x6f, // externref
   },
+
+  $generateTypePack__deps: ['$uleb128EncodeWithLen', '$wasmTypeCodes'],
+  $generateTypePack: (types) => uleb128EncodeWithLen(Array.from(types, type => {
+    var code = wasmTypeCodes[type];
+#if ASSERTIONS
+  assert(code, `invalid signature char: ${type}`);
+#endif
+    return code;
+  })),
+
   // Wraps a JS function as a wasm function with a given signature.
 #if !WASM2JS
   $convertJsFunctionToWasm__deps: [
-    '$uleb128Encode',
+    '$uleb128EncodeWithLen',
 #if WASM_JS_TYPES
     '$sigToWasmTypes',
 #endif
-    '$generateFuncType'
+    '$generateTypePack'
   ],
 #endif
   $convertJsFunctionToWasm: (func, sig) => {
@@ -111,25 +97,23 @@ addToLibrary({
       return new WebAssembly.Function(sigToWasmTypes(sig), func);
     }
 #endif
-    // The module is static, with the exception of the type section, which is
-    // generated based on the signature passed in.
-    var typeSectionBody = [
-      0x01, // count: 1
-    ];
-    generateFuncType(sig, typeSectionBody);
 
     // Rest of the module is static
-    var bytes = [
+    var bytes = Uint8Array.of(
       0x00, 0x61, 0x73, 0x6d, // magic ("\0asm")
       0x01, 0x00, 0x00, 0x00, // version: 1
       0x01, // Type section code
-    ];
-    // Write the overall length of the type section followed by the body
-    uleb128Encode(typeSectionBody.length, bytes);
-    bytes.push(...typeSectionBody);
-
-    // The rest of the module is static
-    bytes.push(
+        // The module is static, with the exception of the type section, which is
+        // generated based on the signature passed in.
+        ...uleb128EncodeWithLen([
+          0x01, // count: 1
+          0x60 /* form: func */,
+          // param types
+          ...generateTypePack(sig.slice(1)),
+          // return types (for now only supporting [] if `void` and single [T] otherwise)
+          ...generateTypePack(sig[0] === 'v' ? '' : sig[0])
+        ]),
+      // The rest of the module is static
       0x02, 0x07, // import section
         // (import "e" "f" (func 0 (type 0)))
         0x01, 0x01, 0x65, 0x01, 0x66, 0x00, 0x00,
@@ -140,7 +124,7 @@ addToLibrary({
 
     // We can compile this wasm module synchronously because it is very small.
     // This accepts an import (at "e.f"), that it reroutes to an export (at "f")
-    var module = new WebAssembly.Module(new Uint8Array(bytes));
+    var module = new WebAssembly.Module(bytes);
     var instance = new WebAssembly.Instance(module, { 'e': { 'f': func } });
     var wrappedFunc = instance.exports['f'];
     return wrappedFunc;
