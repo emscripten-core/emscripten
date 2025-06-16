@@ -9577,35 +9577,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertNotContained('unhandled exception', output)
     self.assertNotContained('Aborted', output)
 
-  @no_esm_integration('fcoverage is not compatible with WASM_ESM_INTEGRATION')
-  @no_wasm64('TODO: fcoverage in memory64')
-  @no_wasm2js('wasm binary required to produce code coverage results with llvm-cov')
-  def test_fcoverage_mapping(self):
-    expected = '''    1|       |/*
-    2|       | * Copyright 2016 The Emscripten Authors.  All rights reserved.
-    3|       | * Emscripten is available under two separate licenses, the MIT license and the
-    4|       | * University of Illinois/NCSA Open Source License.  Both these licenses can be
-    5|       | * found in the LICENSE file.
-    6|       | */
-    7|       |
-    8|       |#include <stdio.h>
-    9|      1|int main() {
-   10|      1|  printf("hello, world!\\n");
-   11|      1|  return 0;
-   12|      1|}
-
-'''
-    self.emcc_args.append('-fprofile-instr-generate')
-    self.emcc_args.append('-fcoverage-mapping')
-    self.emcc_args.append('-g')
-    self.set_setting('NODERAWFS')
-    self.set_setting('EXIT_RUNTIME')
-    self.do_core_test('test_hello_world.c')
-    self.assertExists('default.profraw')
-    self.run_process([LLVM_PROFDATA, 'merge', '-sparse', 'default.profraw', '-o', 'out.profdata'])
-    self.assertExists('out.profdata')
-    self.assertEqual(expected, self.run_process([LLVM_COV, 'show', 'test_hello_world.wasm', '-instr-profile=out.profdata'], stdout=PIPE).stdout)
-
   @node_pthreads
   @flaky('https://github.com/emscripten-core/emscripten/issues/20067')
   @no_esm_integration('ABORT_ON_WASM_EXCEPTIONS is not compatible with WASM_ESM_INTEGRATION')
@@ -9838,6 +9809,32 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
     self.assertContained('main\nfoo\nbar\n', self.run_js('runner.mjs'))
 
+  @no_esm_integration('fcoverage is not compatible with WASM_ESM_INTEGRATION')
+  @no_wasm64('TODO: fcoverage in memory64')
+  @no_wasm2js('wasm binary required to produce code coverage results with llvm-cov')
+  def test_fcoverage_mapping(self):
+    expected = '''\
+    1|       |/*
+    2|       | * Copyright 2016 The Emscripten Authors.  All rights reserved.
+    3|       | * Emscripten is available under two separate licenses, the MIT license and the
+    4|       | * University of Illinois/NCSA Open Source License.  Both these licenses can be
+    5|       | * found in the LICENSE file.
+    6|       | */
+    7|       |
+    8|       |#include <stdio.h>
+    9|      1|int main() {
+   10|      1|  printf("hello, world!\\n");
+   11|      1|  return 0;
+   12|      1|}
+
+'''
+    self.set_setting('NODERAWFS')
+    self.set_setting('EXIT_RUNTIME')
+    self.do_core_test('test_hello_world.c', emcc_args=['-fprofile-instr-generate', '-fcoverage-mapping', '-g'])
+    self.assertExists('default.profraw')
+    self.run_process([LLVM_PROFDATA, 'merge', '-sparse', 'default.profraw', '-o', 'out.profdata'])
+    self.assertExists('out.profdata')
+    self.assertEqual(expected, self.run_process([LLVM_COV, 'show', 'test_hello_world.wasm', '-instr-profile=out.profdata'], stdout=PIPE).stdout)
 
 # Generate tests for everything
 def make_run(name, emcc_args=None, settings=None, env=None, # noqa
