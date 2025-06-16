@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 4.0.11 (in development)
 -----------------------
+- Add support for [Source-based Code Coverage](https://clang.llvm.org/docs/SourceBasedCodeCoverage.html)
+  To build with coverage enabled use `-fprofile-instr-generate -fcoverage-mapping`. (#24160)
 - The `ENVIRONMENT` setting will now be automatically updated to include
   `worker` if multi-threading is enabled. (#24525)
 - Removed the `HEADLESS` option. It tried to simulate a minimal browser-like
