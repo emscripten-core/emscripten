@@ -144,7 +144,7 @@ function initRuntime() {
 #endif
 
 #if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return startWorker(Module);
+  if (ENVIRONMENT_IS_PTHREAD) return startWorker();
 #endif
 
 #if STACK_OVERFLOW_CHECK >= 2
@@ -990,7 +990,7 @@ function getWasmImports() {
 #endif // WASM_ASYNC_COMPILATION
 #endif // SOURCE_PHASE_IMPORTS
 }
-#endif
+#endif // WASM_ESM_INTEGRATION
 
 #if !WASM_BIGINT
 // Globals used by JS i64 conversions (see makeSetValue)

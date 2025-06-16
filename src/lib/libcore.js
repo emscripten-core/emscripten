@@ -174,13 +174,10 @@ addToLibrary({
   // Grows the wasm memory to the given byte size, and updates the JS views to
   // it. Returns 1 on success, 0 on error.
   $growMemory: (size) => {
-    var b = wasmMemory.buffer;
-    var pages = ((size - b.byteLength + {{{ WASM_PAGE_SIZE - 1 }}}) / {{{ WASM_PAGE_SIZE }}}) | 0;
+    var oldHeapSize = wasmMemory.buffer.byteLength;
+    var pages = ((size - oldHeapSize + {{{ WASM_PAGE_SIZE - 1 }}}) / {{{ WASM_PAGE_SIZE }}}) | 0;
 #if RUNTIME_DEBUG
-    dbg(`growMemory: ${size} (+${size - b.byteLength} bytes / ${pages} pages)`);
-#endif
-#if MEMORYPROFILER
-    var oldHeapSize = b.byteLength;
+    dbg(`growMemory: ${size} (+${size - oldHeapSize} bytes / ${pages} pages)`);
 #endif
     try {
       // round size grow request up to wasm page size (fixed 64KB per spec)
@@ -188,13 +185,13 @@ addToLibrary({
       updateMemoryViews();
 #if MEMORYPROFILER
       if (typeof emscriptenMemoryProfiler != 'undefined') {
-        emscriptenMemoryProfiler.onMemoryResize(oldHeapSize, b.byteLength);
+        emscriptenMemoryProfiler.onMemoryResize(oldHeapSize, wasmMemory.buffer.byteLength);
       }
 #endif
       return 1 /*success*/;
     } catch(e) {
 #if ASSERTIONS
-      err(`growMemory: Attempted to grow heap from ${b.byteLength} bytes to ${size} bytes, but got error: ${e}`);
+      err(`growMemory: Attempted to grow heap from ${oldHeapSize} bytes to ${size} bytes, but got error: ${e}`);
 #endif
     }
     // implicit 0 return to save code size (caller will cast "undefined" into 0
@@ -1154,14 +1151,14 @@ addToLibrary({
         var alias = aliases[i];
         var aliasBuf = _malloc(alias.length + 1);
         stringToAscii(alias, aliasBuf);
-        {{{ makeSetValue('aliasListBuf', 'j', 'aliasBuf', POINTER_TYPE) }}};
+        {{{ makeSetValue('aliasListBuf', 'j', 'aliasBuf', '*') }}};
       }
-      {{{ makeSetValue('aliasListBuf', 'j', '0', POINTER_TYPE) }}}; // Terminating NULL pointer.
+      {{{ makeSetValue('aliasListBuf', 'j', '0', '*') }}}; // Terminating NULL pointer.
 
       // generate protoent
       var pe = _malloc({{{ C_STRUCTS.protoent.__size__ }}});
-      {{{ makeSetValue('pe', C_STRUCTS.protoent.p_name, 'nameBuf', POINTER_TYPE) }}};
-      {{{ makeSetValue('pe', C_STRUCTS.protoent.p_aliases, 'aliasListBuf', POINTER_TYPE) }}};
+      {{{ makeSetValue('pe', C_STRUCTS.protoent.p_name, 'nameBuf', '*') }}};
+      {{{ makeSetValue('pe', C_STRUCTS.protoent.p_aliases, 'aliasListBuf', '*') }}};
       {{{ makeSetValue('pe', C_STRUCTS.protoent.p_proto, 'proto', 'i32') }}};
       return pe;
     };
@@ -1391,8 +1388,10 @@ addToLibrary({
     }
   },
 
-  $emscriptenLog__deps: ['$getCallstack'],
-  $emscriptenLog: (flags, str) => {
+  _emscripten_log_formatted__deps: ['$getCallstack'],
+  _emscripten_log_formatted: (flags, str) => {
+    str = UTF8ToString(str);
+
     if (flags & {{{ cDefs.EM_LOG_C_STACK | cDefs.EM_LOG_JS_STACK }}}) {
       str = str.replace(/\s+$/, ''); // Ensure the message and the callstack are joined cleanly with exactly one newline.
       str += (str.length > 0 ? '\n' : '') + getCallstack(flags);
@@ -1415,13 +1414,6 @@ addToLibrary({
     } else {
       out(str);
     }
-  },
-
-  emscripten_log__deps: ['$formatString', '$emscriptenLog'],
-  emscripten_log: (flags, format, varargs) => {
-    var result = formatString(format, varargs);
-    var str = UTF8ArrayToString(result);
-    emscriptenLog(flags, str);
   },
 
   // We never free the return values of this function so we need to allocate

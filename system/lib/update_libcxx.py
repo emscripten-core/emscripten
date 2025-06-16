@@ -16,15 +16,23 @@ local_src = os.path.join(local_root, 'src')
 local_inc = os.path.join(local_root, 'include')
 
 preserve_files = ('readme.txt', '__assertion_handler', '__config_site')
-# ryu_constants.h / ryu_long_double_constants.h from libc are not used
-excludes = ('CMakeLists.txt', 'ryu_constants.h', 'ryu_long_double_constants.h')
+# ryu_long_double_constants.h from libc is unused (and very large)
+excludes = ('CMakeLists.txt', 'ryu_long_double_constants.h')
 
 libc_copy_dirs = [
-    ('hdr',),
-    ('include', 'llvm-libc-macros'),
-    ('include', 'llvm-libc-types'),
-    ('shared',),
-    ('src', '__support'),
+    'hdr',
+    'include/llvm-libc-macros',
+    'include/llvm-libc-types',
+    'shared',
+    'config',
+    'src/__support',
+    'src/string',
+    'src/strings',
+    'src/errno',
+    'src/math',
+    'src/stdlib',
+    'src/inttypes',
+    'src/stdio/printf_core',
 ]
 
 def clean_dir(dirname):
@@ -86,12 +94,12 @@ def main():
   libc_local_dir = os.path.join(script_dir, 'llvm-libc')
 
   for dirname in libc_copy_dirs:
-    local_dir = os.path.join(libc_local_dir, *dirname)
+    local_dir = os.path.join(libc_local_dir, dirname)
     clean_dir(local_dir)
 
   for dirname in libc_copy_dirs:
-    upstream_dir = os.path.join(libc_upstream_dir, *dirname)
-    local_dir = os.path.join(libc_local_dir, *dirname)
+    upstream_dir = os.path.join(libc_upstream_dir, dirname)
+    local_dir = os.path.join(libc_local_dir, dirname)
     copy_tree(upstream_dir, local_dir)
 
   shutil.copy2(os.path.join(libc_upstream_dir, 'LICENSE.TXT'), libc_local_dir)

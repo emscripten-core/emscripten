@@ -615,6 +615,16 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
     args += ['--externs', e]
   args += user_args
 
+  if settings.DEBUG_LEVEL > 1:
+    args += ['--debug']
+
+  # Now that we have run closure compiler once, we have stripped all the closure compiler
+  # annotations from the source code and we no longer need to worry about generating closure
+  # friendly code.
+  # This means all the calls to acorn_optimizer that come after this will now run without
+  # --closure-friendly
+  settings.MAYBE_CLOSURE_COMPILER = False
+
   cmd = closure_cmd + args
   return run_closure_cmd(cmd, filename, env)
 
@@ -627,7 +637,7 @@ def run_closure_cmd(cmd, filename, env):
   tempfiles = shared.get_temp_files()
 
   def move_to_safe_7bit_ascii_filename(filename):
-    if filename.isascii():
+    if os.path.abspath(filename).isascii():
       return os.path.abspath(filename)
     safe_filename = tempfiles.get('.js').name  # Safe 7-bit filename
     shutil.copyfile(filename, safe_filename)

@@ -683,6 +683,8 @@ def also_with_modularize(f):
   @wraps(f)
   def metafunc(self, modularize, *args, **kwargs):
     if modularize:
+      if '-sWASM_ESM_INTEGRATION':
+        self.skipTest('also_with_modularize is not compatible with WASM_ESM_INTEGRATION')
       self.emcc_args += ['--extern-post-js', test_file('modularize_post_js.js'), '-sMODULARIZE']
     f(self, *args, **kwargs)
 
@@ -978,6 +980,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def check_dylink(self):
     if self.get_setting('WASM_ESM_INTEGRATION'):
       self.skipTest('dynamic linking not supported with WASM_ESM_INTEGRATION')
+    if '-lllvmlibc' in self.emcc_args:
+      self.skipTest('dynamic linking not supported with llvm-libc')
     if self.is_wasm2js():
       self.skipTest('dynamic linking not supported with wasm2js')
     if '-fsanitize=undefined' in self.emcc_args:
@@ -1121,6 +1125,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.set_setting('JSPI')
     if self.is_wasm2js():
       self.skipTest('JSPI is not currently supported for WASM2JS')
+    if self.get_setting('WASM_ESM_INTEGRATION'):
+      self.skipTest('WASM_ESM_INTEGRATION is not compatible with JSPI')
 
     if self.is_browser_test():
       if 'EMTEST_SKIP_JSPI' in os.environ:
@@ -1173,8 +1179,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.emcc_args += ['-Wno-pthreads-mem-growth', '-pthread']
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
-    if self.get_setting('WASM_ESM_INTEGRATION'):
-      self.skipTest('pthreads not yet supported with WASM_ESM_INTEGRATION')
     nodejs = self.get_nodejs()
     self.js_engines = [nodejs]
     self.node_args += shared.node_pthread_flags(nodejs)
@@ -1364,7 +1368,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   #                  libraries, for example
   def get_emcc_args(self, main_file=False, compile_only=False, asm_only=False):
     def is_ldflag(f):
-      return any(f.startswith(s) for s in ['-sEXPORT_ES6', '--proxy-to-worker', '-sGL_TESTING', '-sPROXY_TO_WORKER', '-sPROXY_TO_PTHREAD', '-sENVIRONMENT=', '--pre-js=', '--post-js=', '-sPTHREAD_POOL_SIZE='])
+      return f.startswith('-l') or any(f.startswith(s) for s in ['-sEXPORT_ES6', '--proxy-to-worker', '-sGL_TESTING', '-sPROXY_TO_WORKER', '-sPROXY_TO_PTHREAD', '-sENVIRONMENT=', '--pre-js=', '--post-js=', '-sPTHREAD_POOL_SIZE='])
 
     args = self.serialize_settings(compile_only or asm_only) + self.emcc_args
     if asm_only:
@@ -1693,12 +1697,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def check_expected_size_in_file(self, desc, filename, size):
     if EMTEST_REBASELINE:
       create_file(filename, f'{size}\n', absolute=True)
-    size_slack = 0.05
     expected_size = int(read_file(filename).strip())
     delta = size - expected_size
     ratio = abs(delta) / float(expected_size)
     print('  seen %s size: %d (expected: %d) (delta: %d), ratio to expected: %f' % (desc, size, expected_size, delta, ratio))
-    self.assertLess(ratio, size_slack)
+    self.assertEqual(size, expected_size)
 
   library_cache: Dict[str, Tuple[str, object]] = {}
 

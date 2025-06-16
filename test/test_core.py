@@ -1832,7 +1832,7 @@ int main() {
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_save_me_aimee'])
     self.do_core_test('test_emscripten_api.c')
 
-    # Sanitizers are not compatible with LINKABLE (dynamic linking.
+    # Sanitizers are not compatible with LINKABLE (dynamic linking).
     if not is_sanitizing(self.emcc_args) and not self.is_wasm64():
       # test EXPORT_ALL
       self.clear_setting('EXPORTED_FUNCTIONS')
@@ -6314,9 +6314,12 @@ PORT: 3979
     # are having the desired effect.
     # This means that files open()'d by emscripten without an explicit encoding will
     # cause this test to file, hopefully catching any places where we forget to do this.
-    create_file('expect_fail.py', 'print(len(open(r"%s").read()))' % test_file('unicode_library.js'))
-    err = self.expect_fail([PYTHON, 'expect_fail.py'], expect_traceback=True)
-    self.assertContained('UnicodeDecodeError', err)
+
+    # On Windows when Unicode support is enabled, this test code does not fail.
+    if not (WINDOWS and self.run_process(['chcp'], stdout=PIPE, shell=True).stdout.strip() == 'Active code page: 65001'):
+      create_file('expect_fail.py', 'print(len(open(r"%s").read()))' % test_file('unicode_library.js'))
+      err = self.expect_fail([PYTHON, 'expect_fail.py'], expect_traceback=True)
+      self.assertContained('UnicodeDecodeError', err)
 
     self.emcc_args += ['-sMODULARIZE', '--js-library', test_file('unicode_library.js'), '--extern-post-js', test_file('modularize_post_js.js'), '--post-js', test_file('unicode_postjs.js')]
     self.do_run_in_out_file_test('test_unicode_js_library.c')
@@ -6402,8 +6405,6 @@ int main(void) {
   def test_whets(self):
     self.do_runf('third_party/whets.c', 'Single Precision C Whetstone Benchmark')
 
-  # node is slower, and fail on 64-bit
-  @requires_v8
   @no_asan('depends on the specifics of memory size, which for asan we are forced to increase')
   @no_lsan('depends on the specifics of memory size, which for lsan we are forced to increase')
   def test_dlmalloc_inline(self):
@@ -6594,7 +6595,7 @@ void* operator new(size_t size) {
     self.run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse2', stdout=PIPE).stdout
 
-    self.emcc_args += ['-I' + test_file('sse'), '-msse2', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB'] + args
+    self.emcc_args += ['-I' + test_file('sse'), '-msse2', '-fno-inline-functions', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB'] + args
     self.maybe_closure()
     self.do_runf(src, native_result)
 
@@ -6674,7 +6675,7 @@ void* operator new(size_t size) {
     self.run_process([shared.CLANG_CXX, src, '-mavx', '-Wno-argument-outside-range', '-Wpedantic', '-o', 'test_avx', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_avx', stdout=PIPE).stdout
 
-    self.emcc_args += ['-I' + test_file('sse'), '-mavx', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB'] + args
+    self.emcc_args += ['-I' + test_file('sse'), '-mavx', '-fno-inline-functions', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB'] + args
     self.maybe_closure()
     self.do_runf(src, native_result)
 
@@ -6852,13 +6853,13 @@ void* operator new(size_t size) {
     };
     Module.postRun = () => {
       var FileData = Array.from(MEMFS.getFileDataAsTypedArray(FS.root.contents['filename-1.ppm']));
-      out("Data: " + JSON.stringify(FileData.map(function(x) { return unSign(x, 8) })));
+      out("Data: " + JSON.stringify(FileData));
     };
     ''')
     self.emcc_args += ['--pre-js', 'pre.js', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$unSign', '-sINCOMING_MODULE_JS_API=[preRun, postRun]']
 
-    ppm_data = str(list(bytearray(read_binary(test_file('poppler/ref.ppm')))))
-    self.do_run('', ppm_data.replace(' ', ''),
+    ppm_data = str(list(read_binary(test_file('poppler/ref.ppm'))))
+    self.do_run('', 'Data: ' + ppm_data.replace(' ', ''),
                 libraries=poppler,
                 args=['-scale-to', '512', 'paper.pdf', 'filename'])
 
@@ -7585,7 +7586,7 @@ void* operator new(size_t size) {
     self.emcc_args += ['-std=c++20', '--bind', '--pre-js=pre.js', '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]', '--no-entry']
     self.do_runf('embind/test_val_coro.cpp', '34\n')
 
-  def test_embind_val_coro_caught(self):
+  def test_embind_val_coro_propogate_cpp_exception(self):
     self.set_setting('EXCEPTION_STACK_TRACES')
     create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
       Module.throwingCoro().then(
@@ -7595,6 +7596,17 @@ void* operator new(size_t size) {
     }''')
     self.emcc_args += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fexceptions', '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]', '--no-entry']
     self.do_runf('embind/test_val_coro.cpp', 'rejected with: std::runtime_error: bang from throwingCoro!\n')
+
+  def test_embind_val_coro_propogate_js_error(self):
+    self.set_setting('EXCEPTION_STACK_TRACES')
+    create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
+      Module.failingPromise().then(
+        console.log,
+        err => console.error(`rejected with: ${err.message}`)
+      );
+    }''')
+    self.emcc_args += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fexceptions']
+    self.do_runf('embind/test_val_coro.cpp', 'rejected with: bang from JS promise!\n')
 
   def test_embind_dynamic_initialization(self):
     self.emcc_args += ['-lembind']
@@ -7749,6 +7761,7 @@ void* operator new(size_t size) {
   # PTHREAD_POOL_DELAY_LOAD=1 adds a pthreadPoolReady promise that users
   # can wait on for pthread initialization.
   @node_pthreads
+  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_ASYNC_COMPILATION')
   def test_embind_sync_if_pthread_delayed(self):
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.set_setting('PTHREAD_POOL_DELAY_LOAD', 1)
@@ -9167,8 +9180,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   # @also_with_standalone_wasm(impure=True)
   @node_pthreads
   def test_pthread_create(self):
-    # test that the node environment can be specified by itself, and that still
-    # works with pthreads (even though we did not specify 'node,worker')
     self.set_setting('ENVIRONMENT', 'node')
     self.set_setting('STRICT')
     self.do_run_in_out_file_test('core/pthread/create.c')
@@ -9185,8 +9196,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PTHREADS_DEBUG')
     if not self.has_changed_setting('INITIAL_MEMORY'):
       self.set_setting('INITIAL_MEMORY', '64mb')
-    # test that the node and worker environments can be specified
-    self.set_setting('ENVIRONMENT', 'node,worker')
+    self.set_setting('ENVIRONMENT', 'node')
     self.do_run_in_out_file_test('pthread/test_pthread_c11_threads.c')
 
   @node_pthreads
@@ -9274,6 +9284,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
   @also_with_modularize
+  @no_esm_integration('USE_OFFSET_CONVERTER')
   def test_pthread_offset_converter(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
@@ -9720,6 +9731,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_sanitize('sanitizers do not support WASM_WORKERS')
   @also_with_minimal_runtime
   @also_with_modularize
+  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
   def test_wasm_worker_hello(self):
     if self.is_wasm2js() and '-sMODULARIZE' in self.emcc_args:
       self.skipTest('WASM2JS + MODULARIZE + WASM_WORKERS is not supported')
@@ -9728,11 +9740,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @node_pthreads
   @no_sanitize('sanitizers do not support WASM_WORKERS')
+  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
   def test_wasm_worker_malloc(self):
     self.do_run_in_out_file_test('wasm_worker/malloc_wasm_worker.c', emcc_args=['-sWASM_WORKERS'])
 
   @node_pthreads
   @no_sanitize('sanitizers do not support WASM_WORKERS')
+  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
   def test_wasm_worker_wait_async(self):
     self.do_runf('atomic/test_wait_async.c', emcc_args=['-sWASM_WORKERS'])
 
@@ -9973,6 +9987,7 @@ asani = make_run('asani', emcc_args=['-fsanitize=address', '--profiling', '--pre
 
 # Experimental modes (not tested by CI)
 minimal0 = make_run('minimal0', emcc_args=['-g'], settings={'MINIMAL_RUNTIME': 1})
+llvmlibc = make_run('llvmlibc', emcc_args=['-lllvmlibc'])
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
 del TestCoreBase # noqa

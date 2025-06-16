@@ -19,6 +19,7 @@ import {
   runInMacroContext,
   pushCurrentFile,
   popCurrentFile,
+  localFile,
   warn,
   srcDir,
 } from './utility.mjs';
@@ -921,7 +922,7 @@ function makeModuleReceiveWithVar(localName, moduleName, defaultValue) {
 function makeRemovedFSAssert(fsName) {
   assert(ASSERTIONS);
   const lower = fsName.toLowerCase();
-  if (JS_LIBRARIES.includes(path.resolve(path.join('lib', `lib${lower}.js`)))) return '';
+  if (JS_LIBRARIES.includes(localFile(path.join('lib', `lib${lower}.js`)))) return '';
   return `var ${fsName} = '${fsName} is no longer included by default; build with -l${lower}.js';`;
 }
 
@@ -1097,6 +1098,26 @@ function nodeDetectionCode() {
   return "typeof process == 'object' && process.versions?.node && process.type != 'renderer'";
 }
 
+function nodePthreadDetection() {
+  // Under node we detect that we are running in a pthread by checking the
+  // workerData property.
+  if (EXPORT_ES6) {
+    return "(await import('worker_threads')).workerData === 'em-pthread'";
+  } else {
+    return "require('worker_threads').workerData === 'em-pthread'";
+  }
+}
+
+function nodeWWDetection() {
+  // Under node we detect that we are running in a wasm worker by checking the
+  // workerData property.
+  if (EXPORT_ES6) {
+    return "(await import('worker_threads')).workerData === 'em-ww'";
+  } else {
+    return "require('worker_threads').workerData === 'em-ww'";
+  }
+}
+
 addToCompileTimeContext({
   ATEXITS,
   ATPRERUNS,
@@ -1169,4 +1190,6 @@ addToCompileTimeContext({
   storeException,
   to64,
   toIndexType,
+  nodePthreadDetection,
+  nodeWWDetection,
 });

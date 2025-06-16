@@ -26,7 +26,7 @@
   },
   "scripts": {
     "lint": "eslint .",
-    "fmt": "prettier --write src/*.mjs tools/*.mjs",
-    "check": "prettier --check src/*.mjs tools/*.mjs"
+    "fmt": "prettier --write src/*.mjs tools/*.mjs --ignore-path src/pthread_esm_startup.mjs",
+    "check": "prettier --check src/*.mjs tools/*.mjs --ignore-path src/pthread_esm_startup.mjs"
   }
 }

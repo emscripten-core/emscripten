@@ -18,8 +18,23 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.10 (in development)
-----------------------
+4.0.11 (in development)
+-----------------------
+- The `ENVIRONMENT` setting will now be automatically updated to include
+  `worker` if multi-threading is enabled. (#24525)
+- Removed the `HEADLESS` option. It tried to simulate a minimal browser-like
+  environment before browser engines had real headless modes. For headless
+  testing, users are now encouraged to use
+  [Playwright](https://playwright.dev/), [Puppeteer](https://pptr.dev/) or
+  Node.js with [JSDOM](https://github.com/jsdom/jsdom) instead. You can also
+  use browser headless mode with `emrun` as follows:
+    emrun --browser=chrome --browser-args=--headless [..]
+  for chrome, or
+    emrun --browser=firefox --browser-args=-headless [..]
+  for firefox. (#24537)
+
+4.0.10 - 06/07/25
+-----------------
 - Emscripten ports now install pkg-config `.pc` files so they will show up, for
   example, when you run `pkg-config --list-all` or `pkg-config --cflags
   <portname>`. Bare in mind that the correct PKG_CONFIG_PATH needs to be set for
@@ -46,6 +61,14 @@ See docs/process.md for more on how version tagging works.
 - The field `responseUrl` is added to `emscripten_fetch_t`. This is notably
   usable for obtaining resolved URL, in line with JS `XMLHttpRequest.responseURL`
   field. (#24414)
+- `emscripten_fetch_get_response_headers_length` now excludes the trailing
+  null character from the length calculation to match the documented behaviour.
+  (#24486)
+- `--closure=1` can now be used while preserving readable function names with
+  `-g2` or `-g`.
+- Functions `UTF8ToString`, `UTF16ToString` and `UTF32ToString` take a new
+  optional `ignoreNul` parameter that allows to ignore the NUL characters and
+  read the entire string up to the specific byte length. (#24487)
 
 4.0.9 - 05/19/25
 ----------------

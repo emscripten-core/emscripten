@@ -994,6 +994,29 @@ class libnoexit(Library):
   src_files = ['atexit_dummy.c']
 
 
+class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
+  name = 'libllvmlibc'
+  never_force = True
+  includes = ['system/lib/llvm-libc']
+  cflags = ['-Os', '-DLIBC_NAMESPACE=__llvm_libc', '-DLIBC_COPT_PUBLIC_PACKAGING']
+
+  def get_files(self):
+    files = glob_in_path('system/lib/llvm-libc/src/string', '**/*.cpp')
+    files += glob_in_path('system/lib/llvm-libc/src/intypes', '*.cpp')
+    files += glob_in_path('system/lib/llvm-libc/src/strings', '**/*.cpp')
+    files += glob_in_path('system/lib/llvm-libc/src/errno', '**/*.cpp')
+    files += glob_in_path('system/lib/llvm-libc/src/math', '*.cpp')
+    files += glob_in_path('system/lib/llvm-libc/src/stdlib', '*.cpp', excludes=['at_quick_exit.cpp',
+                                                                                'quick_exit.cpp',
+                                                                                'atexit.cpp',
+                                                                                'exit.cpp',
+                                                                                '_Exit.cpp',
+                                                                                'getenv.cpp'])
+    files += glob_in_path('system/lib/llvm-libc/src/math/generic', '**/*.cpp', excludes=['atan2l.cpp', 'exp_utils.cpp'])
+    files += glob_in_path('system/lib/llvm-libc/src/__support/StringUtil', '**/*.cpp')
+    return files
+
+
 class libc(MuslInternalLibrary,
            DebugLibrary,
            AsanInstrumentedLibrary,
@@ -1645,7 +1668,7 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
         filenames=filenames)
 
 
-class libcxx(ExceptionLibrary, MTLibrary):
+class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
   name = 'libc++'
 
   cflags = [
@@ -1935,7 +1958,7 @@ class libwebgpu_cpp(MTLibrary):
   src_files = ['webgpu_cpp.cpp']
 
 
-class libembind(Library):
+class libembind(MTLibrary):
   name = 'libembind'
   never_force = True
 
@@ -2429,7 +2452,6 @@ def get_libs_to_link(options):
 
 
 def calculate(options):
-
   libs_to_link = get_libs_to_link(options)
 
   # When LINKABLE is set the entire link command line is wrapped in --whole-archive by

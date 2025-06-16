@@ -1011,9 +1011,9 @@ ones we identify at runtime using ``ENVIRONMENT_IS_*``. Specifically:
   at compile time, there is no runtime behavior change.
 
 Note that by default we do not include the 'shell' environment since direct
-usage of d8, js, jsc is extremely rare.
+usage of d8, spidermonkey and jsc is extremely rare.
 
-Default value: 'web,webview,worker,node'
+Default value: ['web', 'webview', 'worker', 'node']
 
 .. _lz4:
 
@@ -1838,20 +1838,6 @@ SMALL_XHR_CHUNKS
 
 Use small chunk size for binary synchronous XHR's in Web Workers.  Used for
 testing.  See test_chunked_synchronous_xhr in runner.py and library.js.
-
-Default value: false
-
-.. _headless:
-
-HEADLESS
-========
-
-If 1, will include shim code that tries to 'fake' a browser environment, in
-order to let you run a browser program (say, using SDL) in the shell.
-Obviously nothing is rendered, but this can be useful for benchmarking and
-debugging if actual rendering is not the issue. Note that the shim code is
-very partial - it is hard to fake a whole browser! - so keep your
-expectations low for this to work.
 
 Default value: false
 

@@ -3923,7 +3923,7 @@ Module["preRun"] = () => {
 
   # Test against a certain thread exit time handling bug by spawning tons of threads.
   def test_pthread_spawns(self):
-    self.btest_exit('pthread/test_pthread_spawns.cpp', emcc_args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '--closure=1', '-sENVIRONMENT=web,worker'])
+    self.btest_exit('pthread/test_pthread_spawns.cpp', emcc_args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '--closure=1', '-sENVIRONMENT=web'])
 
   # It is common for code to flip volatile global vars for thread control. This is a bit lax, but nevertheless, test whether that
   # kind of scheme will work with Emscripten as well.
@@ -4274,7 +4274,7 @@ Module["preRun"] = () => {
     self.assertGreater(just_fallback, td_without_fallback)
 
   def test_small_js_flags(self):
-    self.btest('browser_test_hello_world.c', '0', emcc_args=['-O3', '--closure=1', '-sINCOMING_MODULE_JS_API=[]', '-sENVIRONMENT=web'])
+    self.btest('browser_test_hello_world.c', '0', emcc_args=['-O3', '--closure=1', '-sINCOMING_MODULE_JS_API=[]', '-sENVIRONMENT=web', '--output-eol=linux'])
     # Check an absolute js code size, with some slack.
     size = os.path.getsize('test.js')
     print('size:', size)
@@ -5115,7 +5115,7 @@ Module["preRun"] = () => {
   # Tests the hello_wasm_worker.c documentation example code.
   @also_with_minimal_runtime
   def test_wasm_worker_hello(self):
-    self.btest_exit('wasm_worker/hello_wasm_worker.c', emcc_args=['-sWASM_WORKERS', '-sENVIRONMENT=web,worker'])
+    self.btest_exit('wasm_worker/hello_wasm_worker.c', emcc_args=['-sWASM_WORKERS', '-sENVIRONMENT=web'])
 
   def test_wasm_worker_hello_minimal_runtime_2(self):
     self.btest_exit('wasm_worker/hello_wasm_worker.c', emcc_args=['-sWASM_WORKERS', '-sMINIMAL_RUNTIME=2'])
@@ -5583,7 +5583,7 @@ Module["preRun"] = () => {
     else:
       copytree(test_file('webpack'), '.')
       outfile = 'src/hello.js'
-    self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web,worker', '-o', outfile])
+    self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web', '-o', outfile])
     self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool'])
     # Webpack doesn't bundle the wasm file by default so we need to copy it
     # TODO(sbc): Look into plugins that do bundling.
@@ -5593,14 +5593,14 @@ Module["preRun"] = () => {
   @also_with_threads
   def test_vite(self):
     copytree(test_file('vite'), '.')
-    self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sENVIRONMENT=web,worker', '-o', 'hello.mjs'])
+    self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sENVIRONMENT=web', '-o', 'hello.mjs'])
     self.run_process(shared.get_npm_cmd('vite') + ['build'])
     self.run_browser('dist/index.html', '/report_result?exit:0')
 
   @also_with_threads
   def test_rollup(self):
     copytree(test_file('rollup'), '.')
-    self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-o', 'hello.mjs'])
+    self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sENVIRONMENT=web', '-o', 'hello.mjs'])
     self.run_process(shared.get_npm_cmd('rollup') + ['--config'])
     # Rollup doesn't bundle the wasm file by default so we need to copy it
     # TODO(sbc): Look into plugins that do bundling.
