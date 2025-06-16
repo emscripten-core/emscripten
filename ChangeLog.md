@@ -34,6 +34,10 @@ See docs/process.md for more on how version tagging works.
   for chrome, or
     emrun --browser=firefox --browser-args=-headless [..]
   for firefox. (#24537)
+- When JSPI is enabled `async` library functions are no longer automatically
+  wrapped with `WebAssembly.Suspending` functions. To automatically wrap library
+  functions for use with JSPI they must now explicitly set
+  `myLibraryFunction__async: true`.
 
 4.0.10 - 06/07/25
 -----------------
