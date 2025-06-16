@@ -103,6 +103,21 @@ def wasm_simd(f):
   return decorated
 
 
+def asan(f):
+  assert callable(f)
+
+  @wraps(f)
+  @no_safe_heap('asan does not work with SAFE_HEAP')
+  @no_wasm2js('TODO: ASAN in wasm2js')
+  @no_wasm64('TODO: ASAN in memory64')
+  @no_2gb('asan doesnt support GLOBAL_BASE')
+  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
+  def decorated(self, *args, **kwargs):
+    f(self, *args, **kwargs)
+
+  return decorated
+
+
 def wasm_relaxed_simd(f):
   assert callable(f)
 
@@ -4122,7 +4137,6 @@ ok
     self.verify_in_strict_mode(self.output_name('main'))
 
   @with_dylink_reversed
-  @no_wasm64('Requires table64 lowering in all cases')
   def test_dylink_basics_no_modify(self):
     if self.is_optimizing():
       self.skipTest('no modify mode only works with non-optimizing builds')
@@ -8971,11 +8985,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-std=c++17']
     self.do_core_test('test_template_class_deduction.cpp')
 
-  @no_wasm2js('TODO: ASAN in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
-  @no_safe_heap('asan does not work with SAFE_HEAP')
-  @no_wasm64('TODO: ASAN in memory64')
-  @no_2gb('asan doesnt support GLOBAL_BASE')
+  @asan
   @parameterized({
     'c': ['test_asan_no_error.c'],
     'cpp': ['test_asan_no_error.cpp'],
@@ -8990,10 +9000,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   # clang optimizing things away. for example, a memset might be optimized into
   # stores, and then the stores identified as dead, which leaves nothing for
   # asan to test. here we want to test asan itself, so we work around that.
-  @no_safe_heap('asan does not work with SAFE_HEAP')
-  @no_wasm64('TODO: ASAN in memory64')
-  @no_2gb('asan doesnt support GLOBAL_BASE')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
+  @asan
   @parameterized({
     'use_after_free_c': ('test_asan_use_after_free.c', [
       'AddressSanitizer: heap-use-after-free on address',
@@ -9051,9 +9058,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     if '-Oz' in self.emcc_args:
       self.skipTest('-Oz breaks source maps')
 
-    if self.is_wasm2js():
-      self.skipTest('wasm2js has no ASan support')
-
     self.emcc_args.append('-fsanitize=address')
     self.set_setting('ALLOW_MEMORY_GROWTH')
     self.set_setting('INITIAL_MEMORY', '300mb')
@@ -9063,33 +9067,20 @@ NODEFS is no longer included by default; build with -lnodefs.js
                  expected_output=expected_output, assert_all=True,
                  check_for_error=False, assert_returncode=NON_ZERO)
 
-  @no_safe_heap('asan does not work with SAFE_HEAP')
-  @no_wasm2js('TODO: ASAN in wasm2js')
-  @no_wasm64('TODO: ASAN in memory64')
-  @no_2gb('asan doesnt support GLOBAL_BASE')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
+  @asan
   def test_asan_js_stack_op(self):
     self.emcc_args.append('-fsanitize=address')
     self.set_setting('ALLOW_MEMORY_GROWTH')
     self.set_setting('INITIAL_MEMORY', '300mb')
-    self.do_runf('core/test_asan_js_stack_op.c',
-                 expected_output='Hello, World!')
+    self.do_runf('core/test_asan_js_stack_op.c', 'Hello, World!')
 
-  @no_safe_heap('asan does not work with SAFE_HEAP')
-  @no_wasm2js('TODO: ASAN in wasm2js')
-  @no_wasm64('TODO: ASAN in memory64')
-  @no_2gb('asan doesnt support GLOBAL_BASE')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
+  @asan
   def test_asan_api(self):
     self.emcc_args.append('-fsanitize=address')
     self.set_setting('INITIAL_MEMORY', '300mb')
     self.do_core_test('test_asan_api.c')
 
-  @no_safe_heap('asan does not work with SAFE_HEAP')
-  @no_wasm2js('TODO: ASAN in wasm2js')
-  @no_wasm64('TODO: ASAN in memory64')
-  @no_2gb('asan doesnt support GLOBAL_BASE')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
+  @asan
   def test_asan_modularized_with_closure(self):
     # the bug is that createModule() returns undefined, instead of the
     # proper Promise object.
