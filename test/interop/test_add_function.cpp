@@ -27,9 +27,12 @@ int main(int argc, char **argv) {
   EM_ASM({
     // Get an export that isn't in the table (we never took its address in C).
     var baz = wasmExports["baz"];
-    var tableSizeBefore = wasmTable.length;
+    var beforeFreeIndices =  freeTableIndexesLength.reduce((accu, curval) => accu + curval);
+    var tableSizeBefore = wasmTable.length - beforeFreeIndices;
     var bazIndex = addFunction(baz);
-    assert(bazIndex >= tableSizeBefore, "we actually added it");
+    var afterFreeIndices =  freeTableIndexesLength.reduce((accu, curval) => accu + curval);
+   
+    assert(wasmTable.length - afterFreeIndices >= tableSizeBefore, "we actually added it");
     assert(addFunction(baz) === bazIndex, "we never add it again");
   });
 #endif
@@ -44,12 +47,14 @@ int main(int argc, char **argv) {
 
   // We can reuse indexes
   EM_ASM({
-    var beforeLength = wasmTable.length;
+    var beforeFreeIndices =  freeTableIndexesLength.reduce((accu, curval) => accu + curval);
+    var beforeLength = wasmTable.length - beforeFreeIndices;
     for (var i = 0; i < 10; i++) {
       var index = addFunction(function(){}, 'v');
       removeFunction(index);
     }
-    assert(wasmTable.length === beforeLength);
+    var afterFreeIndices =  freeTableIndexesLength.reduce((accu, curval) => accu + curval);
+    assert(wasmTable.length - afterFreeIndices === beforeLength);
   });
 
   // We guarantee index uniqueness for each function.
