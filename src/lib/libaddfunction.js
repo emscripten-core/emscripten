@@ -17,7 +17,7 @@ addToLibrary({
       target.push((n % 128) | 128, n >> 7);
     }
   },
-
+#if WASM_JS_TYPES
   // Converts a signature like 'vii' into a description of the wasm types, like
   // { parameters: ['i32', 'i32'], results: [] }.
   $sigToWasmTypes: (sig) => {
@@ -48,6 +48,7 @@ addToLibrary({
     }
     return type;
   },
+#endif
   $generateFuncType__deps: ['$uleb128Encode'],
   $generateFuncType: (sig, target) => {
     var sigRet = sig.slice(0, 1);
@@ -85,7 +86,13 @@ addToLibrary({
   },
   // Wraps a JS function as a wasm function with a given signature.
 #if !WASM2JS
-  $convertJsFunctionToWasm__deps: ['$uleb128Encode', '$sigToWasmTypes', '$generateFuncType'],
+  $convertJsFunctionToWasm__deps: [
+    '$uleb128Encode',
+#if WASM_JS_TYPES
+    '$sigToWasmTypes',
+#endif
+    '$generateFuncType'
+  ],
 #endif
   $convertJsFunctionToWasm: (func, sig) => {
 #if WASM2JS
@@ -95,7 +102,7 @@ addToLibrary({
 #if ASSERTIONS && !WASM_BIGINT
     assert(!sig.includes('j'), 'i64 not permitted in function signatures when WASM_BIGINT is disabled');
 #endif
-
+#if WASM_JS_TYPES
     // If the type reflection proposal is available, use the new
     // "WebAssembly.Function" constructor.
     // Otherwise, construct a minimal wasm module importing the JS function and
@@ -103,7 +110,7 @@ addToLibrary({
     if (typeof WebAssembly.Function == "function") {
       return new WebAssembly.Function(sigToWasmTypes(sig), func);
     }
-
+#endif
     // The module is static, with the exception of the type section, which is
     // generated based on the signature passed in.
     var typeSectionBody = [
@@ -252,4 +259,3 @@ addToLibrary({
     freeTableIndexes.push(index);
   },
 });
-

@@ -3342,3 +3342,14 @@ or chrome.
 .. note:: This is an experimental setting
 
 Default value: false
+
+.. _wasm_js_types:
+
+WASM_JS_TYPES
+=============
+
+Experimental support for WebAssembly js-types proposal.
+It's currently only available under a flag in certain browsers,
+so we disable it by default to save on code size.
+
+Default value: false
