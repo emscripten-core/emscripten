@@ -1,0 +1,4 @@
+WasmFS Mounted Directory CWD Test
+Initial CWD: /
+CWD after chdir("/tfs"): /tfs
+CWD after chdir("/tfs/subdir"): /tfs/subdir
