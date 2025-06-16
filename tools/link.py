@@ -821,6 +821,9 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if settings.ABORT_ON_WASM_EXCEPTIONS:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with ABORT_ON_WASM_EXCEPTIONS')
 
+  if settings.WASM_JS_TYPES:
+    diagnostics.warning('experimental', '-sWASM_JS_TYPES is only supported under a flag in certain browsers')
+
   if settings.MODULARIZE and settings.MODULARIZE not in [1, 'instance']:
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
 
