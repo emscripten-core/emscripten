@@ -16084,3 +16084,19 @@ addToLibrary({
       }
     ''')
     self.do_runf('main.c')
+
+  def test_stat_many_dotdot(self):
+    path = "/".join([".."] * 75)
+    create_file('main.c', '''
+      #include <stdio.h>
+      #include <errno.h>
+      #include <sys/stat.h>
+
+      int main() {
+        struct stat path_stat;
+      '''
+        f'return stat("{path}", &path_stat);'
+      '''
+      }
+    ''')
+    self.do_runf('main.c')
