@@ -26,6 +26,7 @@ Makefile
 .git
 cache
 cache.lock
+out
 bootstrap.py
 '''.split()]
 

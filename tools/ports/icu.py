@@ -64,6 +64,7 @@ def get(ports, settings, shared):
     prepare_build()
     lib_src = os.path.join(icu_source_path, 'common')
     ports.install_headers(os.path.join(lib_src, 'unicode'), target='unicode')
+    ports.make_pkg_config('ici', VERSION, '-sUSE_ICU')
     build_lib(lib_output, lib_src, [], ['-DU_COMMON_IMPLEMENTATION=1'])
 
   # creator for libicu_stubdata
@@ -103,4 +104,4 @@ def clear(ports, settings, shared):
 
 
 def show():
-  return 'icu (-sUSE_ICU=1 or --use-port=icu; Unicode License)'
+  return 'icu (-sUSE_ICU or --use-port=icu; Unicode License)'

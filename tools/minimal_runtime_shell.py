@@ -10,7 +10,6 @@ sys.path.insert(0, __rootdir__)
 from . import building
 from . import shared
 from . import utils
-from . import feature_matrix
 from .settings import settings
 
 logger = logging.getLogger('minimal_runtime_shell')
@@ -29,11 +28,8 @@ def generate_minimal_runtime_load_statement(target_basename):
   # Expand {{{ DOWNLOAD_WASM }}} block from here (if we added #define support, this could be done in
   # the template directly)
   if settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION:
-    if settings.MIN_SAFARI_VERSION != feature_matrix.UNSUPPORTED or settings.ENVIRONMENT_MAY_BE_NODE or settings.MIN_FIREFOX_VERSION < 58 or settings.MIN_CHROME_VERSION < 61:
-      # Firefox 52 added Wasm support, but only Firefox 58 added compileStreaming.
-      # Chrome 57 added Wasm support, but only Chrome 61 added compileStreaming.
+    if settings.MIN_SAFARI_VERSION < 150000 or settings.MIN_NODE_VERSION < 180100 or settings.MIN_FIREFOX_VERSION < 58 or settings.MIN_CHROME_VERSION < 61:
       # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/compileStreaming
-      # In Safari and Node.js, WebAssembly.compileStreaming() is not supported, in which case fall back to regular download.
       download_wasm = f"WebAssembly.compileStreaming ? WebAssembly.compileStreaming(fetch('{target_basename}.wasm')) : binary('{target_basename}.wasm')"
     else:
       # WebAssembly.compileStreaming() is unconditionally supported:
@@ -41,7 +37,7 @@ def generate_minimal_runtime_load_statement(target_basename):
   elif settings.MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION:
     # Same compatibility story as above for
     # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
-    if settings.MIN_SAFARI_VERSION != feature_matrix.UNSUPPORTED or settings.ENVIRONMENT_MAY_BE_NODE or settings.MIN_FIREFOX_VERSION < 58 or settings.MIN_CHROME_VERSION < 61:
+    if settings.MIN_SAFARI_VERSION < 150000 or settings.MIN_NODE_VERSION < 180100 or settings.MIN_FIREFOX_VERSION < 58 or settings.MIN_CHROME_VERSION < 61:
       download_wasm = f"!WebAssembly.instantiateStreaming && binary('{target_basename}.wasm')"
     else:
       # WebAssembly.instantiateStreaming() is unconditionally supported, so we do not download wasm

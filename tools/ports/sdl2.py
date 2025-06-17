@@ -5,9 +5,10 @@
 
 import os
 
-TAG = 'release-2.32.0'
+VERSION = '2.32.0'
+TAG = f'release-{VERSION}'
 HASH = 'd3e4ce9784152aa1194c4f2d2399829f3b01a652915afc6ddaec334068bf95d850edcb43b1a951e0202fc2ecaafc1f58e538ca39b9b16d3fdfe412af0b6aebb0'
-SUBDIR = 'SDL-' + TAG
+SUBDIR = f'SDL-{TAG}'
 
 variants = {'sdl2-mt': {'PTHREADS': 1}}
 
@@ -35,6 +36,7 @@ def get(ports, settings, shared):
     src_dir = ports.get_dir('sdl2', SUBDIR)
     source_include_path = os.path.join(src_dir, 'include')
     ports.install_headers(source_include_path, target='SDL2')
+    ports.make_pkg_config('sdl2', VERSION, '-sUSE_SDL=2')
 
     # copy sdl2-config.cmake
     cmake_file = os.path.join(os.path.dirname(__file__), 'sdl2/sdl2-config.cmake')

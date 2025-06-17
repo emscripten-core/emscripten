@@ -118,7 +118,7 @@ addToLibrary({
     if (keepRuntimeAlive() && !implicit) {
       var msg = `program exited (with status: ${status}), but keepRuntimeAlive() is set (counter=${runtimeKeepaliveCounter}) due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)`;
 #if MODULARIZE
-      readyPromiseReject(msg);
+      readyPromiseReject?.(msg);
 #endif // MODULARIZE
       err(msg);
     }
@@ -174,13 +174,10 @@ addToLibrary({
   // Grows the wasm memory to the given byte size, and updates the JS views to
   // it. Returns 1 on success, 0 on error.
   $growMemory: (size) => {
-    var b = wasmMemory.buffer;
-    var pages = ((size - b.byteLength + {{{ WASM_PAGE_SIZE - 1 }}}) / {{{ WASM_PAGE_SIZE }}}) | 0;
+    var oldHeapSize = wasmMemory.buffer.byteLength;
+    var pages = ((size - oldHeapSize + {{{ WASM_PAGE_SIZE - 1 }}}) / {{{ WASM_PAGE_SIZE }}}) | 0;
 #if RUNTIME_DEBUG
-    dbg(`growMemory: ${size} (+${size - b.byteLength} bytes / ${pages} pages)`);
-#endif
-#if MEMORYPROFILER
-    var oldHeapSize = b.byteLength;
+    dbg(`growMemory: ${size} (+${size - oldHeapSize} bytes / ${pages} pages)`);
 #endif
     try {
       // round size grow request up to wasm page size (fixed 64KB per spec)
@@ -188,13 +185,13 @@ addToLibrary({
       updateMemoryViews();
 #if MEMORYPROFILER
       if (typeof emscriptenMemoryProfiler != 'undefined') {
-        emscriptenMemoryProfiler.onMemoryResize(oldHeapSize, b.byteLength);
+        emscriptenMemoryProfiler.onMemoryResize(oldHeapSize, wasmMemory.buffer.byteLength);
       }
 #endif
       return 1 /*success*/;
     } catch(e) {
 #if ASSERTIONS
-      err(`growMemory: Attempted to grow heap from ${b.byteLength} bytes to ${size} bytes, but got error: ${e}`);
+      err(`growMemory: Attempted to grow heap from ${oldHeapSize} bytes to ${size} bytes, but got error: ${e}`);
 #endif
     }
     // implicit 0 return to save code size (caller will cast "undefined" into 0
@@ -1154,14 +1151,14 @@ addToLibrary({
         var alias = aliases[i];
         var aliasBuf = _malloc(alias.length + 1);
         stringToAscii(alias, aliasBuf);
-        {{{ makeSetValue('aliasListBuf', 'j', 'aliasBuf', POINTER_TYPE) }}};
+        {{{ makeSetValue('aliasListBuf', 'j', 'aliasBuf', '*') }}};
       }
-      {{{ makeSetValue('aliasListBuf', 'j', '0', POINTER_TYPE) }}}; // Terminating NULL pointer.
+      {{{ makeSetValue('aliasListBuf', 'j', '0', '*') }}}; // Terminating NULL pointer.
 
       // generate protoent
       var pe = _malloc({{{ C_STRUCTS.protoent.__size__ }}});
-      {{{ makeSetValue('pe', C_STRUCTS.protoent.p_name, 'nameBuf', POINTER_TYPE) }}};
-      {{{ makeSetValue('pe', C_STRUCTS.protoent.p_aliases, 'aliasListBuf', POINTER_TYPE) }}};
+      {{{ makeSetValue('pe', C_STRUCTS.protoent.p_name, 'nameBuf', '*') }}};
+      {{{ makeSetValue('pe', C_STRUCTS.protoent.p_aliases, 'aliasListBuf', '*') }}};
       {{{ makeSetValue('pe', C_STRUCTS.protoent.p_proto, 'proto', 'i32') }}};
       return pe;
     };
@@ -1299,7 +1296,7 @@ addToLibrary({
   // Mark as `noleakcheck` otherwise lsan will report the last returned string
   // as a leak.
   emscripten_run_script_string__noleakcheck: true,
-  emscripten_run_script_string__deps: ['$lengthBytesUTF8', '$stringToUTF8', 'malloc'],
+  emscripten_run_script_string__deps: ['$lengthBytesUTF8', '$stringToUTF8', 'realloc'],
   emscripten_run_script_string: (ptr) => {
     {{{ makeEval("var s = eval(UTF8ToString(ptr));") }}}
     if (s == null) {
@@ -1307,12 +1304,8 @@ addToLibrary({
     }
     s += '';
     var me = _emscripten_run_script_string;
-    var len = lengthBytesUTF8(s);
-    if (!me.bufferSize || me.bufferSize < len+1) {
-      if (me.bufferSize) _free(me.buffer);
-      me.bufferSize = len+1;
-      me.buffer = _malloc(me.bufferSize);
-    }
+    me.bufferSize = lengthBytesUTF8(s) + 1;
+    me.buffer = _realloc(me.buffer ?? 0, me.bufferSize)
     stringToUTF8(s, me.buffer, me.bufferSize);
     return me.buffer;
   },
@@ -1395,8 +1388,10 @@ addToLibrary({
     }
   },
 
-  $emscriptenLog__deps: ['$getCallstack'],
-  $emscriptenLog: (flags, str) => {
+  _emscripten_log_formatted__deps: ['$getCallstack'],
+  _emscripten_log_formatted: (flags, str) => {
+    str = UTF8ToString(str);
+
     if (flags & {{{ cDefs.EM_LOG_C_STACK | cDefs.EM_LOG_JS_STACK }}}) {
       str = str.replace(/\s+$/, ''); // Ensure the message and the callstack are joined cleanly with exactly one newline.
       str += (str.length > 0 ? '\n' : '') + getCallstack(flags);
@@ -1419,13 +1414,6 @@ addToLibrary({
     } else {
       out(str);
     }
-  },
-
-  emscripten_log__deps: ['$formatString', '$emscriptenLog'],
-  emscripten_log: (flags, format, varargs) => {
-    var result = formatString(format, varargs);
-    var str = UTF8ArrayToString(result);
-    emscriptenLog(flags, str);
   },
 
   // We never free the return values of this function so we need to allocate
@@ -1465,8 +1453,8 @@ addToLibrary({
   // When lsan or asan is enabled withBuiltinMalloc temporarily replaces calls
   // to malloc, calloc, free, and memalign.
   $withBuiltinMalloc__deps: [
-    'malloc', 'calloc', 'free', 'memalign',
-    'emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign', 'emscripten_builtin_calloc'
+    'malloc', 'calloc', 'free', 'memalign', 'realloc',
+    'emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign', 'emscripten_builtin_calloc', 'emscripten_builtin_realloc'
   ],
   $withBuiltinMalloc__docs: '/** @suppress{checkTypes} */',
   $withBuiltinMalloc: (func) => {
@@ -1474,10 +1462,12 @@ addToLibrary({
     var prev_calloc = typeof _calloc != 'undefined' ? _calloc : undefined;
     var prev_memalign = typeof _memalign != 'undefined' ? _memalign : undefined;
     var prev_free = typeof _free != 'undefined' ? _free : undefined;
+    var prev_realloc = typeof _realloc != 'undefined' ? _realloc : undefined;
     _malloc = _emscripten_builtin_malloc;
     _calloc = _emscripten_builtin_calloc;
     _memalign = _emscripten_builtin_memalign;
     _free = _emscripten_builtin_free;
+    _realloc = _emscripten_builtin_realloc;
     try {
       return func();
     } finally {
@@ -1485,6 +1475,7 @@ addToLibrary({
       _calloc = prev_calloc;
       _memalign = prev_memalign;
       _free = prev_free;
+      _realloc = prev_realloc;
     }
   },
 
@@ -1694,16 +1685,6 @@ addToLibrary({
   $getExecutableName: () => thisProgram || './this.program',
 #endif
 
-  $listenOnce: (object, event, func) =>
-#if MIN_CHROME_VERSION < 55 || MIN_FIREFOX_VERSION < 50 // https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener
-    object.addEventListener(event, function handler() {
-      func();
-      object.removeEventListener(event, handler);
-    }),
-#else
-    object.addEventListener(event, func, { 'once': true }),
-#endif
-
   // Receives a Web Audio context plus a set of elements to listen for user
   // input events on, and registers a context resume() for them. This lets
   // audio work properly in an automatic way, as browsers won't let audio run
@@ -1712,42 +1693,27 @@ addToLibrary({
   // elements, which handle common use cases.
   // TODO(sbc): Remove seemingly unused elements argument
   $autoResumeAudioContext__docs: '/** @param {Object=} elements */',
-  $autoResumeAudioContext__deps: ['$listenOnce'],
   $autoResumeAudioContext: (ctx, elements) => {
     if (!elements) {
       elements = [document, document.getElementById('canvas')];
     }
     ['keydown', 'mousedown', 'touchstart'].forEach((event) => {
       elements.forEach((element) => {
-        if (element) {
-          listenOnce(element, event, () => {
-            if (ctx.state === 'suspended') ctx.resume();
-          });
-        }
+        element?.addEventListener(event, () => {
+          if (ctx.state === 'suspended') ctx.resume();
+        }, { 'once': true });
       });
     });
   },
 
 #if DYNCALLS || !WASM_BIGINT
-#if MINIMAL_RUNTIME
-  $dynCalls: '{}',
-#endif
-  $dynCallLegacy__deps: [
-#if MINIMAL_RUNTIME
-    '$dynCalls',
-#endif
-#if MODULARIZE == 'instance'
-    () => error('dynCallLegacy is not yet compatible with MODULARIZE=instance'),
-#endif
-  ],
+  $dynCalls__internal: true,
+  $dynCalls: {},
+  $dynCallLegacy__deps: ['$dynCalls'],
   $dynCallLegacy: (sig, ptr, args) => {
     sig = sig.replace(/p/g, {{{ MEMORY64 ? "'j'" : "'i'" }}})
 #if ASSERTIONS
-#if MINIMAL_RUNTIME
     assert(sig in dynCalls, `bad function pointer type - sig is not in dynCalls: '${sig}'`);
-#else
-    assert(('dynCall_' + sig) in Module, `bad function pointer type - dynCall function not found for sig '${sig}'`);
-#endif
     if (args?.length) {
 #if WASM_BIGINT
       // j (64-bit integer) is fine, and is implemented as a BigInt. Without
@@ -1762,11 +1728,7 @@ addToLibrary({
       assert(sig.length == 1);
     }
 #endif
-#if MINIMAL_RUNTIME
     var f = dynCalls[sig];
-#else
-    var f = Module['dynCall_' + sig];
-#endif
     return f(ptr, ...args);
   },
 #if DYNCALLS
@@ -2289,6 +2251,18 @@ addToLibrary({
 #else
   $wasmTable: undefined,
 #endif
+
+  $getUniqueRunDependency: (id) => {
+#if ASSERTIONS
+    var orig = id;
+    while (1) {
+      if (!runDependencyTracking[id]) return id;
+      id = orig + Math.random();
+    }
+#else
+    return id;
+#endif
+  },
 
   $noExitRuntime__postset: () => addAtModule(makeModuleReceive('noExitRuntime')),
   $noExitRuntime: {{{ !EXIT_RUNTIME }}},

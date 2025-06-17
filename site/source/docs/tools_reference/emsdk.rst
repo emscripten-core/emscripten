@@ -121,9 +121,11 @@ The following topics explain how to perform both common and advanced maintenance
 .. _emsdk-get-latest-sdk:
 
 
-How do I just get the latest SDK?
----------------------------------
-Use the ``update`` argument to fetch the current registry of available tools, and then specify the ``latest`` install target to get the most recent SDK: ::
+How do I just get the latest SDK release?
+-----------------------------------------
+
+Use the ``update`` argument to fetch the current registry of available tools,
+and then specify the ``latest`` install target to get the most recent SDK: ::
 
   # Fetch the latest registry of available tools.
   ./emsdk update
@@ -134,7 +136,25 @@ Use the ``update`` argument to fetch the current registry of available tools, an
   # Set up the compiler configuration to point to the "latest" SDK.
   ./emsdk activate latest
 
+How do I install a specific version?
+------------------------------------
 
+Use the commands above, replacing ``latest`` with the version you want, for
+example: ::
+
+  ./emsdk install 4.0.7
+  ./emsdk activate 4.0.7
+
+(you may need to do ``./emsdk update`` before).
+
+Each release also has an *asserts version* which is built with more runtime
+checks in LLVM and Binaryen. This can be useful if you think you have
+encountered a bug in one of these tools. The names of asserts versions are the
+same as release versions, with an added suffix of ``-asserts``, e.g.,
+``4.0.7-asserts``, which you can use with: ::
+
+  ./emsdk install 4.0.7-asserts
+  ./emsdk activate 4.0.7-asserts
 
 How do I use emsdk?
 -------------------

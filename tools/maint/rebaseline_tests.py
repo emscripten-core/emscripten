@@ -42,18 +42,19 @@ def process_changed_file(filename):
   content = open(filename).read()
   old_content = run(['git', 'show', f'HEAD:{filename}'])
   print(f'processing {filename}')
-  if len(content.splitlines()) == 1:
+
+  ext = os.path.splitext(filename)[1]
+  if ext == '.size':
     size = int(content.strip())
     old_size = int(old_content.strip())
-  else:
-    try:
-      current_json = json.loads(content)
-      old_json = json.loads(old_content)
-    except Exception:
-      print(f'{filename}: Unable to parse json content. Unsupported file format?')
-      sys.exit(1)
+  elif ext == '.json':
+    current_json = json.loads(content)
+    old_json = json.loads(old_content)
     size = current_json['total']
     old_size = old_json['total']
+  else:
+    # Unhandled file type
+    return f'{filename} updated\n'
 
   filename = utils.removeprefix(filename, 'test/')
   delta = size - old_size
@@ -114,7 +115,8 @@ running the tests with `--rebaseline`:
   for file in filenames:
     message += process_changed_file(file)
 
-  message += f'\nAverage change: {statistics.mean(all_deltas):+.2f}% ({min(all_deltas):+.2f}% - {max(all_deltas):+.2f}%)\n'
+  if all_deltas:
+    message += f'\nAverage change: {statistics.mean(all_deltas):+.2f}% ({min(all_deltas):+.2f}% - {max(all_deltas):+.2f}%)\n'
 
   message += '```\n'
 

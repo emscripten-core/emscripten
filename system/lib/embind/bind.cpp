@@ -67,6 +67,10 @@ void _emval_coro_resume(val::awaiter* awaiter, EM_VAL result) {
   awaiter->resume_with(val::take_ownership(result));
 }
 
+void _emval_coro_reject(val::awaiter* awaiter, EM_VAL error) {
+  awaiter->reject_with(val::take_ownership(error));
+}
+
 }
 
 namespace {

@@ -24,7 +24,7 @@ addToLibrary({
   /**
    * @param {string|null=} returnType
    * @param {Array=} argTypes
-   * @param {Arguments|Array=} args
+   * @param {Array=} args
    * @param {Object=} opts
    */`,
   $ccall: (ident, returnType, argTypes, args, opts) => {

@@ -44,7 +44,6 @@ function calculateLibraries() {
     'libsigs.js',
     'libccall.js',
     'libaddfunction.js',
-    'libformatString.js',
     'libgetvalue.js',
     'libmath.js',
     'libpath.js',
@@ -192,7 +191,7 @@ function calculateLibraries() {
   }
 
   if (BOOTSTRAPPING_STRUCT_INFO) {
-    libraries = ['libbootstrap.js', 'libformatString.js', 'libstrings.js', 'libint53.js'];
+    libraries = ['libbootstrap.js', 'libstrings.js', 'libint53.js'];
   }
 
   if (SUPPORT_BIG_ENDIAN) {

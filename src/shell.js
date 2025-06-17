@@ -44,15 +44,6 @@ var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {
 #endif
 #endif // POLYFILL
 
-#if MODULARIZE
-// Set up the promise that indicates the Module is initialized
-var readyPromiseResolve, readyPromiseReject;
-var readyPromise = new Promise((resolve, reject) => {
-  readyPromiseResolve = resolve;
-  readyPromiseReject = reject;
-});
-#endif
-
 #if WASM_WORKERS
 // The way we signal to a worker that it is hosting a pthread is to construct
 // it with a specific name.
@@ -68,16 +59,16 @@ if (ENVIRONMENT_IS_AUDIO_WORKLET) ENVIRONMENT_IS_WASM_WORKER = true;
 // Determine the runtime environment we are in. You can customize this by
 // setting the ENVIRONMENT setting at compile time (see settings.js).
 
-#if ENVIRONMENT && !ENVIRONMENT.includes(',')
-var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT === 'web' }}};
+#if ENVIRONMENT.length == 1
+var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT[0] === 'web' }}};
 #if PTHREADS && ENVIRONMENT_MAY_BE_NODE
 // node+pthreads always supports workers; detect which we are at runtime
 var ENVIRONMENT_IS_WORKER = typeof WorkerGlobalScope != 'undefined';
 #else
-var ENVIRONMENT_IS_WORKER = {{{ ENVIRONMENT === 'worker' }}};
+var ENVIRONMENT_IS_WORKER = {{{ ENVIRONMENT[0] === 'worker' }}};
 #endif
-var ENVIRONMENT_IS_NODE = {{{ ENVIRONMENT === 'node' }}};
-var ENVIRONMENT_IS_SHELL = {{{ ENVIRONMENT === 'shell' }}};
+var ENVIRONMENT_IS_NODE = {{{ ENVIRONMENT[0] === 'node' }}};
+var ENVIRONMENT_IS_SHELL = {{{ ENVIRONMENT[0] === 'shell' }}};
 #else // ENVIRONMENT
 // Attempt to auto-detect the environment
 var ENVIRONMENT_IS_WEB = typeof window == 'object';
@@ -110,7 +101,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
 #endif
 
-#if ENVIRONMENT_MAY_BE_NODE
+#if ENVIRONMENT_MAY_BE_NODE && (EXPORT_ES6 || PTHREADS || WASM_WORKERS)
 if (ENVIRONMENT_IS_NODE) {
 #if EXPORT_ES6
   // When building an ES module `require` is not normally available.
@@ -192,7 +183,7 @@ var readAsync, readBinary;
 
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
-#if ENVIRONMENT && ASSERTIONS
+#if ENVIRONMENT.length && ASSERTIONS
   const isNode = {{{ nodeDetectionCode() }}};
   if (!isNode) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 #endif
@@ -201,7 +192,6 @@ if (ENVIRONMENT_IS_NODE) {
   var nodeVersion = process.versions.node;
   var numericVersion = nodeVersion.split('.').slice(0, 3);
   numericVersion = (numericVersion[0] * 10000) + (numericVersion[1] * 100) + (numericVersion[2].split('-')[0] * 1);
-  var minVersion = {{{ MIN_NODE_VERSION }}};
   if (numericVersion < {{{ MIN_NODE_VERSION }}}) {
     throw new Error('This emscripten-generated code requires node {{{ formattedMinNodeVersion() }}} (detected v' + nodeVersion + ')');
   }
@@ -210,11 +200,10 @@ if (ENVIRONMENT_IS_NODE) {
   // These modules will usually be used on Node.js. Load them eagerly to avoid
   // the complexity of lazy-loading.
   var fs = require('fs');
-  var nodePath = require('path');
 
 #if EXPORT_ES6
   if (_scriptName.startsWith('file:')) {
-    scriptDirectory = nodePath.dirname(require('url').fileURLToPath(_scriptName)) + '/';
+    scriptDirectory = require('path').dirname(require('url').fileURLToPath(_scriptName)) + '/';
   }
 #else
   scriptDirectory = __dirname + '/';
@@ -276,7 +265,7 @@ if (ENVIRONMENT_IS_NODE) {
 #if ENVIRONMENT_MAY_BE_SHELL || ASSERTIONS
 if (ENVIRONMENT_IS_SHELL) {
 
-#if ENVIRONMENT && ASSERTIONS
+#if ENVIRONMENT.length && ASSERTIONS
   const isNode = {{{ nodeDetectionCode() }}};
   if (isNode || typeof window == 'object' || typeof WorkerGlobalScope != 'undefined') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 #endif
@@ -356,7 +345,7 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
     // infer anything from them.
   }
 
-#if ENVIRONMENT && ASSERTIONS
+#if ENVIRONMENT.length && ASSERTIONS
   if (!(typeof window == 'object' || typeof WorkerGlobalScope != 'undefined')) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 #endif
 
