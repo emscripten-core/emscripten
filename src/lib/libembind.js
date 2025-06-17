@@ -474,7 +474,7 @@ var LibraryEmbind = {
         // assumes POINTER_SIZE alignment
         var base = _malloc({{{ POINTER_SIZE }}} + length + 1);
         var ptr = base + {{{ POINTER_SIZE }}};
-        {{{ makeSetValue('base', '0', 'length', SIZE_TYPE) }}};
+        {{{ makeSetValue('base', '0', 'length', '*') }}};
         if (valueIsOfTypeString) {
           if (stdStringIsUTF8) {
             stringToUTF8(value, ptr, length + 1);
@@ -543,7 +543,7 @@ var LibraryEmbind = {
         // assumes POINTER_SIZE alignment
         var length = lengthBytesUTF(value);
         var ptr = _malloc({{{ POINTER_SIZE }}} + length + charSize);
-        {{{ makeSetValue('ptr', '0', 'length / charSize', SIZE_TYPE) }}};
+        {{{ makeSetValue('ptr', '0', 'length / charSize', '*') }}};
 
         encodeString(value, ptr + {{{ POINTER_SIZE }}}, length + charSize);
 

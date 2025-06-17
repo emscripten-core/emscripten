@@ -91,7 +91,7 @@ addToLibrary({
     assert(wasmFS$backends[backend]);
 #endif
     var result = await wasmFS$backends[backend].write(file, buffer, length, offset);
-    {{{ makeSetValue('result_p', 0, 'result', SIZE_TYPE) }}};
+    {{{ makeSetValue('result_p', 0, 'result', '*') }}};
     _emscripten_proxy_finish(ctx);
   },
 
@@ -102,7 +102,7 @@ addToLibrary({
     assert(wasmFS$backends[backend]);
 #endif
     var result = await wasmFS$backends[backend].read(file, buffer, length, offset);
-    {{{ makeSetValue('result_p', 0, 'result', SIZE_TYPE) }}};
+    {{{ makeSetValue('result_p', 0, 'result', '*') }}};
     _emscripten_proxy_finish(ctx);
   },
 

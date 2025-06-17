@@ -88,12 +88,12 @@ var WasiLibrary = {
   environ_sizes_get__nothrow: true,
   environ_sizes_get: (penviron_count, penviron_buf_size) => {
     var strings = getEnvStrings();
-    {{{ makeSetValue('penviron_count', 0, 'strings.length', SIZE_TYPE) }}};
+    {{{ makeSetValue('penviron_count', 0, 'strings.length', '*') }}};
     var bufSize = 0;
     for (var string of strings) {
       bufSize += lengthBytesUTF8(string) + 1;
     }
-    {{{ makeSetValue('penviron_buf_size', 0, 'bufSize', SIZE_TYPE) }}};
+    {{{ makeSetValue('penviron_buf_size', 0, 'bufSize', '*') }}};
     return 0;
   },
 
@@ -117,12 +117,12 @@ var WasiLibrary = {
   args_sizes_get__nothrow: true,
   args_sizes_get: (pargc, pargv_buf_size) => {
 #if MAIN_READS_PARAMS
-    {{{ makeSetValue('pargc', 0, 'mainArgs.length', SIZE_TYPE) }}};
+    {{{ makeSetValue('pargc', 0, 'mainArgs.length', '*') }}};
     var bufSize = 0;
     mainArgs.forEach((arg) => bufSize += arg.length + 1);
-    {{{ makeSetValue('pargv_buf_size', 0, 'bufSize', SIZE_TYPE) }}};
+    {{{ makeSetValue('pargv_buf_size', 0, 'bufSize', '*') }}};
 #else
-    {{{ makeSetValue('pargc', 0, '0', SIZE_TYPE) }}};
+    {{{ makeSetValue('pargc', 0, '0', '*') }}};
 #endif
     return 0;
   },
@@ -284,7 +284,7 @@ var WasiLibrary = {
       num += len;
     }
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
-    {{{ makeSetValue('pnum', 0, 'num', SIZE_TYPE) }}};
+    {{{ makeSetValue('pnum', 0, 'num', '*') }}};
     return 0;
   },
 
@@ -297,7 +297,7 @@ var WasiLibrary = {
     if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
     var stream = SYSCALLS.getStreamFromFD(fd)
     var num = doWritev(stream, iov, iovcnt, offset);
-    {{{ makeSetValue('pnum', 0, 'num', SIZE_TYPE) }}};
+    {{{ makeSetValue('pnum', 0, 'num', '*') }}};
     return 0;
 #elif ASSERTIONS
     abort('fd_pwrite called without SYSCALLS_REQUIRE_FILESYSTEM');
@@ -332,7 +332,7 @@ var WasiLibrary = {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
     var num = doReadv(stream, iov, iovcnt);
-    {{{ makeSetValue('pnum', 0, 'num', SIZE_TYPE) }}};
+    {{{ makeSetValue('pnum', 0, 'num', '*') }}};
     return 0;
 #elif ASSERTIONS
     abort('fd_read called without SYSCALLS_REQUIRE_FILESYSTEM');
@@ -350,7 +350,7 @@ var WasiLibrary = {
     if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
     var stream = SYSCALLS.getStreamFromFD(fd)
     var num = doReadv(stream, iov, iovcnt, offset);
-    {{{ makeSetValue('pnum', 0, 'num', SIZE_TYPE) }}};
+    {{{ makeSetValue('pnum', 0, 'num', '*') }}};
     return 0;
 #elif ASSERTIONS
     abort('fd_pread called without SYSCALLS_REQUIRE_FILESYSTEM');
