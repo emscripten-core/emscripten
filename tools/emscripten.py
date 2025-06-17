@@ -1131,7 +1131,7 @@ def create_pointer_conversion_wrappers(metadata):
     '_wasmfs_read_file': '_ppp',
     '_wasmfs_node_record_dirent': '_pp_',
     '__dl_seterr': '_pp',
-    '_emscripten_run_on_main_thread_js': '__p_p_',
+    '_emscripten_run_js_on_main_thread': '__p_p_',
     '_emscripten_proxy_execute_task_queue': '_p',
     '_emscripten_thread_exit': '_p',
     '_emscripten_thread_init': '_p_____',

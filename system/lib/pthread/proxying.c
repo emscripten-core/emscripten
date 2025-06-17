@@ -603,7 +603,7 @@ static void run_js_func(void* arg) {
   }
 }
 
-double _emscripten_run_on_main_thread_js(int func_index,
+double _emscripten_run_js_on_main_thread(int func_index,
                                          void* em_asm_addr,
                                          int num_args,
                                          double* buffer,
