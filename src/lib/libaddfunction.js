@@ -144,15 +144,13 @@ addToLibrary({
     }
     // Grow the table
     try {
-      /** @suppress {checkTypes} */
-      wasmTable.grow({{{ toIndexType('1') }}});
+      return wasmTable.grow({{{ toIndexType('1') }}});
     } catch (err) {
       if (!(err instanceof RangeError)) {
         throw err;
       }
       throw 'Unable to grow wasm table. Set ALLOW_TABLE_GROWTH.';
     }
-    return {{{ from64Expr('wasmTable.length') }}} - 1;
   },
 
   $updateTableMap__deps: ['$getWasmTableEntry'],
