@@ -3505,10 +3505,10 @@ More info: https://emscripten.org
         console.log('done');
       };
     ''')
-    self.do_runf('main.c', 'done', emcc_args=['-sJSPI',
-                                              '--js-library=lib.js',
-                                              '-Wno-experimental',
-                                              '--post-js=post.js'])
+    self.do_runf('main.c', 'done', cflags=['-sJSPI',
+                                           '--js-library=lib.js',
+                                           '-Wno-experimental',
+                                           '--post-js=post.js'])
 
   @requires_dev_dependency('typescript')
   @parameterized({
