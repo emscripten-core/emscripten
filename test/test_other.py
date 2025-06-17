@@ -6009,6 +6009,21 @@ int main(int argc, char **argv) {
     self.assertContained(r'ok', self.run_js('a.out.js', args=['123', 'abc']))
     self.assertContained(r'Failed to symlink paths: abc, ; errno=44', self.run_js('a.out.js', args=['abc', '']))
 
+  def test_stat_many_dotdot(self):
+    path = "/".join([".."] * 75)
+    create_file('main.c', '''
+      #include <stdio.h>
+      #include <errno.h>
+      #include <sys/stat.h>
+
+      int main() {
+        struct stat path_stat;
+        return stat("%s", &path_stat);
+      }
+    ''' % path)
+    self.do_runf('main.c')
+
+
   def test_rename_silly(self):
     create_file('src.c', r'''
 #include <stdio.h>
@@ -16081,22 +16096,6 @@ addToLibrary({
       int main() {
         check_bool_type();
         return 0;
-      }
-    ''')
-    self.do_runf('main.c')
-
-  def test_stat_many_dotdot(self):
-    path = "/".join([".."] * 75)
-    create_file('main.c', '''
-      #include <stdio.h>
-      #include <errno.h>
-      #include <sys/stat.h>
-
-      int main() {
-        struct stat path_stat;
-      '''
-        f'return stat("{path}", &path_stat);'
-      '''
       }
     ''')
     self.do_runf('main.c')
