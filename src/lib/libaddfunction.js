@@ -142,15 +142,19 @@ addToLibrary({
     if (freeTableIndexes.length) {
       return freeTableIndexes.pop();
     }
+#if ASSERTIONS
     // Grow the table
     try {
+#endif
       return wasmTable.grow({{{ toIndexType('1') }}});
+#if ASSERTIONS
     } catch (err) {
       if (!(err instanceof RangeError)) {
         throw err;
       }
       throw 'Unable to grow wasm table. Set ALLOW_TABLE_GROWTH.';
     }
+#endif
   },
 
   $updateTableMap__deps: ['$getWasmTableEntry'],
