@@ -7,6 +7,7 @@
 addToLibrary({
   // This gives correct answers for everything less than 2^{14} = 16384
   // I hope nobody is contemplating functions with 16384 arguments...
+  $uleb128EncodeWithLen__internal: true,
   $uleb128EncodeWithLen: (arr) => {
     const n = arr.length;
 #if ASSERTIONS
@@ -19,6 +20,7 @@ addToLibrary({
 #if WASM_JS_TYPES
   // Converts a signature like 'vii' into a description of the wasm types, like
   // { parameters: ['i32', 'i32'], results: [] }.
+  $sigToWasmTypes__internal: true,
   $sigToWasmTypes: (sig) => {
 #if ASSERTIONS && !WASM_BIGINT
     assert(!sig.includes('j'), 'i64 not permitted in function signatures when WASM_BIGINT is disabled');
@@ -48,6 +50,7 @@ addToLibrary({
     return type;
   },
 #endif
+  $wasmTypeCodes__internal: true,
   $wasmTypeCodes: {
     'i': 0x7f, // i32
 #if MEMORY64
@@ -61,11 +64,12 @@ addToLibrary({
     'e': 0x6f, // externref
   },
 
+  $generateTypePack__internal: true,
   $generateTypePack__deps: ['$uleb128EncodeWithLen', '$wasmTypeCodes'],
-  $generateTypePack: (types) => uleb128EncodeWithLen(Array.from(types, type => {
+  $generateTypePack: (types) => uleb128EncodeWithLen(Array.from(types, (type) => {
     var code = wasmTypeCodes[type];
 #if ASSERTIONS
-  assert(code, `invalid signature char: ${type}`);
+    assert(code, `invalid signature char: ${type}`);
 #endif
     return code;
   })),
@@ -143,9 +147,9 @@ addToLibrary({
       return freeTableIndexes.pop();
     }
 #if ASSERTIONS
-    // Grow the table
     try {
-#endif
+  #endif
+      // Grow the table
       return wasmTable.grow({{{ toIndexType('1') }}});
 #if ASSERTIONS
     } catch (err) {
