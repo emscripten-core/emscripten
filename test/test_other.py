@@ -6009,6 +6009,7 @@ int main(int argc, char **argv) {
     self.assertContained(r'ok', self.run_js('a.out.js', args=['123', 'abc']))
     self.assertContained(r'Failed to symlink paths: abc, ; errno=44', self.run_js('a.out.js', args=['abc', '']))
 
+  @with_all_fs
   def test_stat_many_dotdot(self):
     path = "/".join([".."] * 75)
     create_file('main.c', '''
