@@ -6024,7 +6024,6 @@ int main(int argc, char **argv) {
     ''' % path)
     self.do_runf('main.c')
 
-
   def test_rename_silly(self):
     create_file('src.c', r'''
 #include <stdio.h>
