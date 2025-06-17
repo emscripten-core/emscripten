@@ -864,8 +864,8 @@ addToLibrary({
   $DNS: {
     address_map: {
       id: 1,
-      addrs: {},
-      names: {}
+      addrs: { localhost: "127.0.0.1" },
+      names: { "127.0.0.1": "localhost" },
     },
 
     lookup_name(name) {
