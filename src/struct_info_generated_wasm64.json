@@ -516,8 +516,10 @@
         "__WASI_RIGHTS_PATH_UNLINK_FILE": 67108864,
         "__WASI_RIGHTS_POLL_FD_READWRITE": 134217728,
         "__WASI_RIGHTS_SOCK_SHUTDOWN": 268435456,
-        "internal::EM_METHOD_CALLER_KIND::CONSTRUCTOR": 1,
-        "internal::EM_METHOD_CALLER_KIND::FUNCTION": 0
+        "internal::EM_INVOKER_KIND::CAST": 3,
+        "internal::EM_INVOKER_KIND::CONSTRUCTOR": 2,
+        "internal::EM_INVOKER_KIND::FUNCTION": 0,
+        "internal::EM_INVOKER_KIND::METHOD": 1
     },
     "structs": {
         "AudioParamFrame": {

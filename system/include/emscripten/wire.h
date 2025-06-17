@@ -300,7 +300,15 @@ EMSCRIPTEN_DEFINE_NATIVE_BINDING_TYPE(uint64_t);
 
 template<>
 struct BindingType<void> {
-    typedef void WireType;
+    // Using empty struct instead of void is ABI-compatible, but makes it easier
+    // to work with wire types in a generic template context, as void can't be
+    // stored in local variables or passed around but empty struct can.
+    // TODO: switch to std::monostate when we require C++17.
+    struct WireType {};
+
+    static void fromWireType(WireType) {
+        // No-op, as void has no value.
+    }
 };
 
 template<>
