@@ -3891,17 +3891,10 @@ ok
 
   @requires_jspi
   @needs_dylink
+  @no_asan('https://github.com/emscripten-core/emscripten/issues/24589')
   def test_dlfcn_jspi(self):
-    self.run_process(
-      [
-        EMCC,
-        "-o",
-        "side.so",
-        test_file("core/test_dlfcn_jspi_side.c"),
-        "-sSIDE_MODULE",
-      ] + self.get_cflags(),
-    )
-    self.do_run_in_out_file_test("core/test_dlfcn_jspi.c", cflags=["side.so", "-sMAIN_MODULE=2"])
+    self.run_process([EMCC, '-o', 'side.so', test_file('core/test_dlfcn_jspi_side.c'), '-sSIDE_MODULE'] + self.get_cflags())
+    self.do_core_test('test_dlfcn_jspi.c', cflags=['side.so', '-sMAIN_MODULE=2'])
 
   @needs_dylink
   def test_dlfcn_rtld_local(self):
