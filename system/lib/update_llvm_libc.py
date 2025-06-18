@@ -8,12 +8,10 @@ import os
 import sys
 import shutil
 import glob
-import subprocess
 
 script_dir = os.path.abspath(os.path.dirname(__file__))
 emscripten_root = os.path.dirname(os.path.dirname(script_dir))
 default_llvm_dir = os.path.join(os.path.dirname(emscripten_root), 'llvm-project')
-emscripten_patches = os.path.join(script_dir, "llvm-libc", "patches", "*.patch")
 
 preserve_files = ('readme.txt', '__assertion_handler', '__config_site')
 # ryu_long_double_constants.h from libc is unused (and very large)
@@ -68,30 +66,13 @@ def copy_tree(upstream_dir, local_dir):
         full = os.path.join(root, f)
         os.remove(full)
 
-def apply_patch(patch_file):
-  try:
-    command = ["git", "apply", "-p2", "--directory=system/lib/llvm-libc/", patch_file]
-
-    result = subprocess.run(
-        command,
-        capture_output=True,
-        text=True,
-        check=True
-    )
-
-  except subprocess.CalledProcessError as e:
-    print(f"Error applying patch: {e}")
-    print("STDOUT:", e.stdout)
-    print("STDERR:", e.stderr)
 
 def main():
   if len(sys.argv) > 1:
     llvm_dir = os.path.abspath(sys.argv[1])
   else:
     llvm_dir = default_llvm_dir
-  libcxx_dir = os.path.join(llvm_dir, 'libcxx')
 
-  # libcxx includes headers from LLVM's libc
   libc_upstream_dir = os.path.join(llvm_dir, 'libc')
   assert os.path.exists(libc_upstream_dir)
   libc_local_dir = os.path.join(script_dir, 'llvm-libc')
@@ -110,10 +91,6 @@ def main():
     files_to_exclude = glob.glob(os.path.join(libc_local_dir, excludsion_pattern))
     for file in files_to_exclude:
         os.remove(file)
-
-  patches_to_apply = glob.glob(emscripten_patches)
-  for patch in patches_to_apply:
-    apply_patch(patch)
 
 if __name__ == '__main__':
   main()
