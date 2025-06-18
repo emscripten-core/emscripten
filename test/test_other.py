@@ -12947,6 +12947,12 @@ int main(void) {
   def test_pthread_hello(self, args):
     self.do_other_test('test_pthread_hello.c', args)
 
+  @crossplatform
+  @node_pthreads
+  def test_pthread_mutex_deadlock(self):
+    self.do_runf('other/test_pthread_mutex_deadlock.c', 'pthread mutex deadlock detected',
+                 cflags=['-g'], assert_returncode=NON_ZERO)
+
   @node_pthreads
   def test_pthread_relocatable(self):
     self.do_run_in_out_file_test('hello_world.c', cflags=['-sRELOCATABLE'])
