@@ -22,7 +22,7 @@
 #include <optional>
 #endif
 
-#include <emscripten/em_macros.h>
+#include <emscripten/em_asm.h>
 #include <emscripten/val.h>
 #include <emscripten/wire.h>
 
@@ -565,97 +565,35 @@ struct FunctorInvoker<ReturnPolicy, FunctorType, void, Args...> {
 
 namespace internal {
 
-template<typename T>
-struct SignatureCode {};
+// TODO: this is a historical default, but we should probably use 'p' instead,
+// and only enable it for smart_ptr_trait<> descendants.
+template<typename T, typename = decltype(__em_asm_sig<int>::value)>
+struct SignatureCode : __em_asm_sig<int> {};
 
+template<typename T>
+struct SignatureCode<T, decltype(__em_asm_sig<T>::value)> : __em_asm_sig<T> {};
+
+// TODO: should we add this override to em_asm?
+// Most places, including Embind, use `p` for `size_t` (aka `unsigned long`) but
+// `em_asm` uses platform-specific code instead which represents `unsigned long`
+// as a JavaScript `number` on wasm32 and as a `BigInt` on wasm64.
 template<>
-struct SignatureCode<int> {
-    static constexpr char get() {
-        return 'i';
-    }
-};
+struct SignatureCode<size_t> : __em_asm_sig<void*> {};
+
+template<typename T>
+struct SignatureCode<T&> : SignatureCode<T*> {};
 
 template<>
 struct SignatureCode<void> {
-    static constexpr char get() {
-        return 'v';
-    }
+    static constexpr char value = 'v';
 };
-
-template<>
-struct SignatureCode<float> {
-    static constexpr char get() {
-        return 'f';
-    }
-};
-
-template<>
-struct SignatureCode<double> {
-    static constexpr char get() {
-        return 'd';
-    }
-};
-
-template<>
-struct SignatureCode<void*> {
-    static constexpr char get() {
-        return 'p';
-    }
-};
-template<>
-struct SignatureCode<size_t> {
-    static constexpr char get() {
-        return 'p';
-    }
-};
-
-template<>
-struct SignatureCode<long long> {
-    static constexpr char get() {
-        return 'j';
-    }
-};
-
-#ifdef __wasm64__
-template<>
-struct SignatureCode<long> {
-    static constexpr char get() {
-        return 'j';
-    }
-};
-#endif
 
 template<typename... Args>
-const char* getGenericSignature() {
-    static constexpr char signature[] = { SignatureCode<Args>::get()..., 0 };
-    return signature;
-}
-
-template<typename T> struct SignatureTranslator { using type = int; };
-template<> struct SignatureTranslator<void> { using type = void; };
-template<> struct SignatureTranslator<float> { using type = float; };
-template<> struct SignatureTranslator<double> { using type = double; };
-#ifdef __wasm64__
-template<> struct SignatureTranslator<long> { using type = long; };
-#endif
-template<> struct SignatureTranslator<long long> { using type = long long; };
-template<> struct SignatureTranslator<unsigned long long> { using type = long long; };
-template<> struct SignatureTranslator<size_t> { using type = size_t; };
-template<typename PtrType>
-struct SignatureTranslator<PtrType*> { using type = void*; };
-template<typename PtrType>
-struct SignatureTranslator<PtrType&> { using type = void*; };
-template<typename ReturnType, typename... Args>
-struct SignatureTranslator<ReturnType (*)(Args...)> { using type = void*; };
-
-template<typename... Args>
-EMSCRIPTEN_ALWAYS_INLINE const char* getSpecificSignature() {
-    return getGenericSignature<typename SignatureTranslator<Args>::type...>();
-}
+constexpr const char Signature[] = { SignatureCode<Args>::value..., 0 };
 
 template<typename Return, typename... Args>
-EMSCRIPTEN_ALWAYS_INLINE const char* getSignature(Return (*)(Args...)) {
-    return getSpecificSignature<Return, Args...>();
+constexpr const char* getSignature(Return (*)(Args...)) {
+    return Signature<Return, Args...>;
 }
 
 } // end namespace internal
@@ -2159,7 +2097,7 @@ struct MapAccess {
 
 } // end namespace internal
 
-template<typename K, typename V, class Compare = std::less<K>, 
+template<typename K, typename V, class Compare = std::less<K>,
     class Allocator = std::allocator<std::pair<const K, V>>>
 class_<std::map<K, V, Compare, Allocator>> register_map(const char* name) {
     typedef std::map<K,V, Compare, Allocator> MapType;
