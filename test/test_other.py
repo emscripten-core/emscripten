@@ -16295,6 +16295,6 @@ addToLibrary({
   def test_install(self):
     self.run_process([PYTHON, path_from_root('tools/install.py'), 'newdir'])
     self.assertExists('newdir/emcc')
-    # Some files, such as as maintanance tools shoudl not be part of the
+    # Some files, such as as maintenance tools should not be part of the
     # install.
     self.assertNotExists('newdir/tools/maint/')
