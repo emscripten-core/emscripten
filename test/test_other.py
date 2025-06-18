@@ -16289,3 +16289,12 @@ addToLibrary({
 
     self.emcc(test_file('hello_world.c'), ['-lidbfs.js'], output_filename='hello_world.js')
     self.assertNotContained(removed_fs_assert_content, read_file('hello_world.js'))
+
+  @is_slow_test
+  @crossplatform
+  def test_install(self):
+    self.run_process([PYTHON, path_from_root('tools/install.py'), 'newdir'])
+    self.assertExists('newdir/emcc')
+    # Some files, such as as maintanance tools shoudl not be part of the
+    # install.
+    self.assertNotExists('newdir/tools/maint/')

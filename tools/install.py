@@ -85,7 +85,7 @@ def copy_emscripten(target):
 
 
 def npm_install(target):
-  subprocess.check_call(['npm', 'ci', '--omit=dev'], cwd=target)
+  subprocess.check_call([shutil.which('npm'), 'ci', '--omit=dev'], cwd=target)
 
 
 def main():
