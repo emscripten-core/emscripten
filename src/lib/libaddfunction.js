@@ -51,7 +51,10 @@ addToLibrary({
   },
 #endif
   $wasmTypeCodes__internal: true,
-  $wasmTypeCodes: {
+  // Note: using template literal here instead of plain object
+  // because jsify serializes objects w/o quotes and Closure will then
+  // incorrectly mangle the properties.
+  $wasmTypeCodes: `{
     'i': 0x7f, // i32
 #if MEMORY64
     'p': 0x7e, // i64
@@ -62,7 +65,7 @@ addToLibrary({
     'f': 0x7d, // f32
     'd': 0x7c, // f64
     'e': 0x6f, // externref
-  },
+  }`,
 
   $generateTypePack__internal: true,
   $generateTypePack__deps: ['$uleb128EncodeWithLen', '$wasmTypeCodes'],
