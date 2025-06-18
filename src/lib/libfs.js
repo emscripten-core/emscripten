@@ -197,6 +197,9 @@ FS.staticInit();`;
             current_path = PATH.dirname(current_path);
             if (FS.isRoot(current)) {
               path = current_path + '/' + parts.slice(i + 1).join('/');
+              // We're making progress here, don't let many consecutive ..'s
+              // lead to ELOOP
+              nlinks--;
               continue linkloop;
             } else {
               current = current.parent;
