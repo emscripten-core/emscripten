@@ -921,7 +921,7 @@ base align: 0, 0, 0, 0'''])
       path_from_root('system/lib/emmalloc.c'),
     ]
     self.cflags += args
-    self.do_run_in_out_file_test('core/test_emmalloc.c')
+    self.do_core_test('test_emmalloc.c')
 
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
@@ -1122,7 +1122,7 @@ int main()
   def test_exceptions(self):
     self.set_setting('EXCEPTION_DEBUG')
     self.maybe_closure()
-    self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
+    self.do_core_test('test_exceptions.cpp', out_suffix='_caught')
 
   @requires_wasm_eh
   def test_exceptions_with_and_without_longjmp(self):
@@ -1132,7 +1132,7 @@ int main()
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     for support_longjmp in (0, 'emscripten'):
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
-      self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
+      self.do_core_test('test_exceptions.cpp', out_suffix='_caught')
     # Wasm EH with and without Wasm SjLj support
     self.clear_setting('DISABLE_EXCEPTION_CATCHING')
     if self.is_wasm2js():
@@ -1145,7 +1145,7 @@ int main()
       self.set_setting('WASM_LEGACY_EXCEPTIONS', legacy)
       for support_longjmp in (0, 'wasm'):
         self.set_setting('SUPPORT_LONGJMP', support_longjmp)
-        self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
+        self.do_core_test('test_exceptions.cpp', out_suffix='_caught')
 
   def test_exceptions_off(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING')
@@ -1163,11 +1163,11 @@ int main()
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
 
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-      self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
+      self.do_core_test('test_exceptions.cpp', out_suffix='_caught')
 
       self.set_setting('EXCEPTION_DEBUG')
       self.set_setting('DISABLE_EXCEPTION_CATCHING')
-      self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_uncaught', assert_returncode=NON_ZERO)
+      self.do_core_test('test_exceptions.cpp', out_suffix='_uncaught', assert_returncode=NON_ZERO)
 
   @with_all_eh_sjlj
   def test_exceptions_custom(self):
@@ -1274,21 +1274,21 @@ int main(int argc, char **argv) {
     # check that an empty allow list works properly (as in, same as exceptions disabled)
 
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', [])
-    self.do_run_in_out_file_test('core/test_exceptions_allowed.cpp', out_suffix='_empty', assert_returncode=NON_ZERO)
+    self.do_core_test('test_exceptions_allowed.cpp', out_suffix='_empty', assert_returncode=NON_ZERO)
     empty_size = os.path.getsize(js_out)
     if self.is_wasm():
       empty_size += os.path.getsize('test_exceptions_allowed.wasm')
     shutil.copy(js_out, 'empty.js')
 
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', ['fake'])
-    self.do_run_in_out_file_test('core/test_exceptions_allowed.cpp', out_suffix='_empty', assert_returncode=NON_ZERO)
+    self.do_core_test('test_exceptions_allowed.cpp', out_suffix='_empty', assert_returncode=NON_ZERO)
     fake_size = os.path.getsize(js_out)
     if self.is_wasm():
       fake_size += os.path.getsize('test_exceptions_allowed.wasm')
     shutil.copy(js_out, 'fake.js')
 
     self.clear_setting('EXCEPTION_CATCHING_ALLOWED')
-    self.do_run_in_out_file_test('core/test_exceptions_allowed.cpp', out_suffix='_empty', assert_returncode=NON_ZERO)
+    self.do_core_test('test_exceptions_allowed.cpp', out_suffix='_empty', assert_returncode=NON_ZERO)
     disabled_size = os.path.getsize(js_out)
     if self.is_wasm():
       disabled_size += os.path.getsize('test_exceptions_allowed.wasm')
@@ -7097,10 +7097,10 @@ void* operator new(size_t size) {
         if self.get_setting('WASM_BIGINT'):
           out_suffix += '_bigint'
       assert_returncode = 0 if not asserts else NON_ZERO
-      self.do_run_in_out_file_test('core/test_getValue_setValue.cpp',
-                                   out_suffix=out_suffix,
-                                   assert_returncode=assert_returncode,
-                                   cflags=args)
+      self.do_core_test('test_getValue_setValue.cpp',
+                        out_suffix=out_suffix,
+                        assert_returncode=assert_returncode,
+                        cflags=args)
 
     if self.get_setting('WASM_BIGINT'):
       self.cflags += ['-DWASM_BIGINT']
@@ -7774,7 +7774,7 @@ void* operator new(size_t size) {
     self.set_setting('PTHREAD_POOL_DELAY_LOAD', 1)
     self.set_setting('PTHREAD_POOL_SIZE', 1)
     self.cflags += ['-lembind', '--post-js=' + test_file('core/pthread/test_embind_sync_if_pthread_delayed.post.js')]
-    self.do_run_in_out_file_test('core/pthread/test_embind_sync_if_pthread_delayed.cpp')
+    self.do_core_test('pthread/test_embind_sync_if_pthread_delayed.cpp')
 
   ### Tests for tools
 
@@ -8098,13 +8098,13 @@ void* operator new(size_t size) {
     self.do_runf('test_minmax.c', 'NAN != NAN\nSuccess!')
 
   def test_localeconv(self):
-    self.do_run_in_out_file_test('core/test_localeconv.c')
+    self.do_core_test('test_localeconv.c')
 
   def test_newlocale(self):
-    self.do_run_in_out_file_test('core/test_newlocale.c')
+    self.do_core_test('test_newlocale.c')
 
   def test_setlocale(self):
-    self.do_run_in_out_file_test('core/test_setlocale.c')
+    self.do_core_test('test_setlocale.c')
 
   def test_vswprintf_utf8(self):
     self.do_core_test('test_vswprintf_utf8.c')
@@ -9166,7 +9166,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_pthread_create(self):
     self.set_setting('ENVIRONMENT', 'node')
     self.set_setting('STRICT')
-    self.do_run_in_out_file_test('core/pthread/create.c')
+    self.do_core_test('pthread/create.c')
 
   @flaky('https://github.com/emscripten-core/emscripten/issues/22617')
   @node_pthreads
@@ -9212,7 +9212,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # with a pool, we can synchronously depend on workers being available
     self.set_setting('PTHREAD_POOL_SIZE', 2)
     self.cflags += ['-DALLOW_SYNC']
-    self.do_run_in_out_file_test('core/pthread/create.c')
+    self.do_core_test('pthread/create.c')
 
   @node_pthreads
   def test_pthread_create_proxy(self):
@@ -9220,42 +9220,42 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.cflags += ['-DALLOW_SYNC']
-    self.do_run_in_out_file_test('core/pthread/create.c')
+    self.do_core_test('pthread/create.c')
 
   @node_pthreads
   def test_pthread_create_embind_stack_check(self):
     # embind should work with stack overflow checks (see #12356)
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.cflags += ['-lembind']
-    self.do_run_in_out_file_test('core/pthread/create.c', cflags=['-sDEFAULT_TO_CXX'])
+    self.do_core_test('pthread/create.c', cflags=['-sDEFAULT_TO_CXX'])
 
   @node_pthreads
   def test_pthread_exceptions(self):
     self.set_setting('PTHREAD_POOL_SIZE', 2)
     self.cflags += ['-fexceptions']
-    self.do_run_in_out_file_test('core/pthread/exceptions.cpp')
+    self.do_core_test('pthread/exceptions.cpp')
 
   @node_pthreads
   def test_pthread_exit_process(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.cflags += ['-DEXIT_RUNTIME', '--pre-js', test_file('core/pthread/test_pthread_exit_runtime.pre.js'), '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized, onExit]']
-    self.do_run_in_out_file_test('core/pthread/test_pthread_exit_runtime.c', assert_returncode=42)
+    self.do_core_test('pthread/test_pthread_exit_runtime.c', assert_returncode=42)
 
   @node_pthreads
   def test_pthread_keepalive(self):
-    self.do_run_in_out_file_test('core/pthread/test_pthread_keepalive.c')
+    self.do_core_test('pthread/test_pthread_keepalive.c')
 
   @node_pthreads
   def test_pthread_weak_ref(self):
-    self.do_run_in_out_file_test('core/pthread/test_pthread_weak_ref.c')
+    self.do_core_test('pthread/test_pthread_weak_ref.c')
 
   @node_pthreads
   def test_pthread_exit_main(self):
-    self.do_run_in_out_file_test('core/pthread/test_pthread_exit_main.c')
+    self.do_core_test('pthread/test_pthread_exit_main.c')
 
   def test_pthread_exit_main_stub(self):
-    self.do_run_in_out_file_test('core/pthread/test_pthread_exit_main.c')
+    self.do_core_test('pthread/test_pthread_exit_main.c')
 
   @node_pthreads
   def test_pthread_unhandledrejection(self):
@@ -9280,23 +9280,23 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf('core/test_return_address.c', 'passed')
 
   def test_emscripten_atomics_stub(self):
-    self.do_run_in_out_file_test('core/pthread/emscripten_atomics.c')
+    self.do_core_test('pthread/emscripten_atomics.c')
 
   @node_pthreads
   def test_emscripten_atomics(self):
     self.cflags.append('-pthread')
-    self.do_run_in_out_file_test('core/pthread/emscripten_atomics.c')
+    self.do_core_test('pthread/emscripten_atomics.c')
 
   @node_pthreads
   def test_emscripten_futexes(self):
     self.cflags.append('-pthread')
     self.cflags += ['-Wno-nonnull'] # This test explicitly checks behavior of passing NULL to emscripten_futex_wake().
-    self.do_run_in_out_file_test('core/pthread/emscripten_futexes.c')
+    self.do_core_test('pthread/emscripten_futexes.c')
 
   @node_pthreads
   def test_stdio_locking(self):
     self.set_setting('PTHREAD_POOL_SIZE', '2')
-    self.do_run_in_out_file_test('core/test_stdio_locking.c')
+    self.do_core_test('test_stdio_locking.c')
 
   @with_dylink_reversed
   @node_pthreads
@@ -9589,7 +9589,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_emscripten_async_call(self):
     # Depends on `atexit`
     self.set_setting('EXIT_RUNTIME')
-    self.do_run_in_out_file_test('core/test_emscripten_async_call.c')
+    self.do_core_test('test_emscripten_async_call.c')
 
   @no_asan('asyncify stack operations confuse asan')
   @no_modularize_instance('ASYNCIFY=1 requires DYNCALLS')

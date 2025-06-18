@@ -101,29 +101,29 @@ var LibraryStackTrace = {
   $convertFrameToPC__docs: '/** @returns {number} */',
   $convertFrameToPC__internal: true,
   $convertFrameToPC: (frame) => {
-#if !USE_OFFSET_CONVERTER
-    abort('Cannot use convertFrameToPC (needed by __builtin_return_address) without -sUSE_OFFSET_CONVERTER');
-#else
-#if ASSERTIONS
-    assert(wasmOffsetConverter, 'wasmOffsetConverter global not found');
-#endif
     var match;
 
     if (match = /\bwasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame)) {
       // some engines give the binary offset directly, so we use that as return address
       return +match[1];
     } else if (match = /\bwasm-function\[(\d+)\]:(\d+)/.exec(frame)) {
-      // other engines only give function index and offset in the function,
+      // Older versions of v8 give function index and offset in the function,
       // so we try using the offset converter. If that doesn't work,
       // we pack index and offset into a "return address"
+#if !USE_OFFSET_CONVERTER
+      abort('Legacy backtrace format detected but -sUSE_OFFSET_CONVERTER not present.')
+#else
+#if ASSERTIONS
+      assert(wasmOffsetConverter, 'wasmOffsetConverter global not found');
+#endif
       return wasmOffsetConverter.convert(+match[1], +match[2]);
+#endif
     } else if (match = /:(\d+):\d+(?:\)|$)/.exec(frame)) {
       // If we are in js, we can use the js line number as the "return address".
       // This should work for wasm2js.  We tag the high bit to distinguish this
       // from wasm addresses.
       return 0x80000000 | +match[1];
     }
-#endif
     // return 0 if we can't find any
     return 0;
   },
@@ -242,16 +242,10 @@ var LibraryStackTrace = {
   },
 
   // Look up the function name from our stack frame cache with our PC representation.
-#if USE_OFFSET_CONVERTER
   emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'free', '$stringToNewUTF8'],
   // Don't treat allocation of _emscripten_pc_get_function.ret as a leak
   emscripten_pc_get_function__noleakcheck: true,
-#endif
   emscripten_pc_get_function: (pc) => {
-#if !USE_OFFSET_CONVERTER
-    abort('Cannot use emscripten_pc_get_function without -sUSE_OFFSET_CONVERTER');
-    return 0;
-#else
     var name;
     if (pc & 0x80000000) {
       // If this is a JavaScript function, try looking it up in the unwind cache.
@@ -267,12 +261,16 @@ var LibraryStackTrace = {
         return 0;
       }
     } else {
+#if !USE_OFFSET_CONVERTER
+      abort('Cannot use emscripten_pc_get_function on native functions without -sUSE_OFFSET_CONVERTER');
+      return 0;
+#else
       name = wasmOffsetConverter.getName(pc);
+#endif
     }
     _free(_emscripten_pc_get_function.ret ?? 0);
     _emscripten_pc_get_function.ret = stringToNewUTF8(name);
     return _emscripten_pc_get_function.ret;
-#endif
   },
 
   $convertPCtoSourceLocation__deps: ['$UNWIND_CACHE'],

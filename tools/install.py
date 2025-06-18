@@ -84,6 +84,10 @@ def copy_emscripten(target):
       shutil.copy2(full, os.path.join(target, root, f), follow_symlinks=False)
 
 
+def npm_install(target):
+  subprocess.check_call(['npm', 'ci', '--omit=dev'], cwd=target)
+
+
 def main():
   parser = argparse.ArgumentParser(description=__doc__)
   parser.add_argument('-v', '--verbose', action='store_true', help='verbose',
@@ -97,6 +101,7 @@ def main():
   logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
   os.makedirs(target)
   copy_emscripten(target)
+  npm_install(target)
   if os.path.isdir('.git'):
     # Add revision flag only if the source directory is a Git repository
     # and not a source archive

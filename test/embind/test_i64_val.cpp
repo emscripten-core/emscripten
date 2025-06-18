@@ -33,6 +33,20 @@ string compare_a_64_js(T value) {
   return ss.str();
 }
 
+template <typename T>
+void test_value(T&& value) {
+  cout << "  testing value " << value << endl;
+  cout << "    setting properties preserves the expected value" << endl;
+  val::global().set("a", val(value));
+  ensure_js(compare_a_64_js(value));
+  cout << "    getting properties returns the original value intact" << endl;
+  assert(val::global()["a"].as<T>() == value);
+  cout << "    function calls roundtrip the value correctly" << endl;
+  assert(val::global("BigInt")(value).template as<T>() == value);
+  cout << "    method calls roundtrip the value correctly" << endl;
+  assert(val::global().call<T>("BigInt", value) == value);
+}
+
 int main() {
   const int64_t max_int64_t = numeric_limits<int64_t>::max();
   const int64_t min_int64_t = numeric_limits<int64_t>::min();
@@ -43,33 +57,16 @@ int main() {
   printf("start\n");
   EM_ASM({globalThis.a = null});
 
-  test("val(int64_t v)");
-  val::global().set("a", val(int64_t(1234)));
-  ensure_js("a === 1234n");
-
-  val::global().set("a", val(int64_t(-4321)));
-  ensure_js("a === -4321n");
-
-  val::global().set("a", val(int64_t(0x12345678aabbccddL)));
-  ensure_js("a === 1311768467732155613n");
-  assert(val::global()["a"].as<int64_t>() == 0x12345678aabbccddL);
-
   test("val(uint64_t v)");
-  val::global().set("a", val(uint64_t(1234)));
-  ensure_js("a === 1234n");
-
-  val::global().set("a", val(max_uint64_t));
-  ensure_js(compare_a_64_js(max_uint64_t));
-  assert(val::global()["a"].as<uint64_t>() == max_uint64_t);
+  test_value(uint64_t(1234));
+  test_value(max_uint64_t);
 
   test("val(int64_t v)");
-  val::global().set("a", val(max_int64_t));
-  ensure_js(compare_a_64_js(max_int64_t));
-  assert(val::global()["a"].as<int64_t>() == max_int64_t);
-
-  val::global().set("a", val(min_int64_t));
-  ensure_js(compare_a_64_js(min_int64_t));
-  assert(val::global()["a"].as<int64_t>() == min_int64_t);
+  test_value(int64_t(1234));
+  test_value(int64_t(-4321));
+  test_value(int64_t(0x12345678aabbccddL));
+  test_value(min_int64_t);
+  test_value(max_int64_t);
 
   test("val(typed_memory_view<uint64_t>)");
   val::global().set("a", val(typed_memory_view(uint64Array.size(), uint64Array.data())));
