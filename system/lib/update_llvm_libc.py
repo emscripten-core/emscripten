@@ -72,7 +72,6 @@ def main():
     llvm_dir = os.path.abspath(sys.argv[1])
   else:
     llvm_dir = default_llvm_dir
-
   libc_upstream_dir = os.path.join(llvm_dir, 'libc')
   assert os.path.exists(libc_upstream_dir)
   libc_local_dir = os.path.join(script_dir, 'llvm-libc')
