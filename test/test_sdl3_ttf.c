@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 The Emscripten Authors.  All rights reserved.
+ * Copyright 2025 The Emscripten Authors.  All rights reserved.
  * Emscripten is available under two separate licenses, the MIT license and the
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
@@ -13,15 +13,15 @@
 #include <unistd.h>
 
 int main() {
-    SDL_Init(SDL_INIT_VIDEO);
+  SDL_Init(SDL_INIT_VIDEO);
 
-    if (!TTF_Init()) {
-        printf("TTF_Init: %s\n", SDL_GetError());
-        return 1;
-    }
+  if (!TTF_Init()) {
+    printf("TTF_Init: %s\n", SDL_GetError());
+    return 1;
+  }
 
-    TTF_Quit();
-    SDL_Quit();
+  TTF_Quit();
+  SDL_Quit();
 
-    return 0;
+  return 0;
 }

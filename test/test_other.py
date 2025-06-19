@@ -2618,6 +2618,12 @@ F1 -> ''
     self.emcc(test_file('browser/test_sdl2_ttf.c'), args=['--use-port=sdl2', '--use-port=sdl2_ttf'], output_filename='a.out.js')
 
   @requires_network
+  def test_sdl3_ttf(self):
+    # A compile-only test that checks if sdl3-ttf, and dependencies freetype and harfbuzz, are buildable.
+    self.emcc(test_file('browser/test_sdl3_ttf.c'), args=['-sUSE_SDL=3', '-sUSE_SDL_TTF=3'], output_filename='a.out.js')
+    self.emcc(test_file('browser/test_sdl3_ttf.c'), args=['--use-port=sdl3', '--use-port=sdl3_ttf'], output_filename='a.out.js')
+
+  @requires_network
   def test_contrib_ports(self):
     # Verify that contrib ports can be used (using the only contrib port available ATM, but can be replaced
     # with a different contrib port when there is another one

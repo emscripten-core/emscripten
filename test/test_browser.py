@@ -2247,6 +2247,14 @@ void *getBindBuffer() {
   def test_sdl_ttf_render_text_solid(self):
     self.reftest('test_sdl_ttf_render_text_solid.c', 'test_sdl_ttf_render_text_solid.png', cflags=['-O2', '-lSDL', '-lGL'])
 
+  def test_sdl3_ttf_render_text_solid(self):
+    self.cflags.append('-Wno-experimental')
+    shutil.copy2(test_file('freetype/LiberationSansBold.ttf'), self.get_dir())
+    self.reftest('test_sdl3_ttf_render_text_solid.c', 'test_sdl3_ttf_render_text_solid.png',
+                 cflags=[
+                  '-O2', '-sUSE_SDL=3', '-sUSE_SDL_TTF=3', '-lGL',
+                  '--embed-file', 'LiberationSansBold.ttf'])
+
   def test_sdl_alloctext(self):
     self.btest_exit('test_sdl_alloctext.c', cflags=['-lSDL', '-lGL'])
 
@@ -3210,6 +3218,12 @@ Module["preRun"] = () => {
     shutil.copy2(test_file('freetype/LiberationSansBold.ttf'), self.get_dir())
     self.reftest('test_sdl2_ttf.c', 'test_sdl2_ttf.png',
                  cflags=['-O2', '-sUSE_SDL=2', '-sUSE_SDL_TTF=2', '--embed-file', 'LiberationSansBold.ttf'])
+
+  @requires_graphics_hardware
+  def test_sdl3_ttf(self):
+    shutil.copy2(test_file('freetype/LiberationSansBold.ttf'), self.get_dir())
+    self.reftest('test_sdl3_ttf.c', 'test_sdl3_ttf.png',
+                 cflags=['-O2', '-sUSE_SDL=3', '-sUSE_SDL_TTF=3', '--embed-file', 'LiberationSansBold.ttf'])
 
   @requires_graphics_hardware
   def test_sdl2_ttf_rtl(self):
