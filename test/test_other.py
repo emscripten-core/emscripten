@@ -6076,6 +6076,21 @@ int main(int argc, char **argv) {
     self.assertContained(r'ok', self.run_js('a.out.js', args=['123', 'abc']))
     self.assertContained(r'Failed to symlink paths: abc, ; errno=44', self.run_js('a.out.js', args=['abc', '']))
 
+  @with_all_fs
+  def test_stat_many_dotdot(self):
+    path = "/".join([".."] * 75)
+    create_file('main.c', '''
+      #include <stdio.h>
+      #include <errno.h>
+      #include <sys/stat.h>
+
+      int main() {
+        struct stat path_stat;
+        return stat("%s", &path_stat);
+      }
+    ''' % path)
+    self.do_runf('main.c')
+
   def test_rename_silly(self):
     create_file('src.c', r'''
 #include <stdio.h>
@@ -16280,3 +16295,12 @@ addToLibrary({
 
     self.emcc(test_file('hello_world.c'), ['-lidbfs.js'], output_filename='hello_world.js')
     self.assertNotContained(removed_fs_assert_content, read_file('hello_world.js'))
+
+  @is_slow_test
+  @crossplatform
+  def test_install(self):
+    self.run_process([PYTHON, path_from_root('tools/install.py'), 'newdir'])
+    self.assertExists('newdir/emcc')
+    # Some files, such as as maintenance tools should not be part of the
+    # install.
+    self.assertNotExists('newdir/tools/maint/')
