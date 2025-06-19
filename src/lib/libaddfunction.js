@@ -153,7 +153,7 @@ addToLibrary({
     try {
   #endif
       // Grow the table
-      return wasmTable.grow({{{ toIndexType('1') }}});
+      return wasmTable['grow']({{{ toIndexType('1') }}});
 #if ASSERTIONS
     } catch (err) {
       if (!(err instanceof RangeError)) {
