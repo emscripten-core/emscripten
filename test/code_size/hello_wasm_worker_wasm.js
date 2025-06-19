@@ -2,8 +2,8 @@ var b = Module, c = "em-ww" == globalThis.name, e, f, l, x, y, z;
 
 c && (onmessage = a => {
     onmessage = null;
-    f = a = a.data;
-    e = a.o;
+    e = a = a.data;
+    f = a.o;
     g();
     b ||= {};
     b.wasm = a.j;
@@ -13,7 +13,7 @@ c && (onmessage = a => {
 
 function g() {}
 
-c || (e = b.mem || new WebAssembly.Memory({
+c || (f = b.mem || new WebAssembly.Memory({
     initial: 256,
     maximum: 256,
     shared: !0
@@ -32,7 +32,7 @@ var k = [], n = a => {
     m.postMessage({
         u: r,
         j: b.wasm,
-        o: e,
+        o: f,
         l: a,
         m: d
     });
@@ -52,22 +52,22 @@ function w() {
 }
 
 function h() {
-    x = {
+    z = {
         b: t,
         c: u,
         d: v,
         e: w,
-        a: e
+        a: f
     };
     WebAssembly.instantiate(b.wasm, {
-        a: x
+        a: z
     }).then((a => {
         a = a.instance.exports;
-        y = a.g;
-        z = a.i;
+        x = a.g;
+        y = a.i;
         l = a.h;
-        c ? (z(f.l, f.m), removeEventListener("message", p), k = k.forEach(n), addEventListener("message", n)) : a.f();
-        c || y();
+        c ? (y(e.l, e.m), removeEventListener("message", p), k = k.forEach(n), addEventListener("message", n)) : a.f();
+        c || x();
     }));
 }
 

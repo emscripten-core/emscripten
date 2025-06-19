@@ -5,7 +5,6 @@
 
 from .toolchain_profiler import ToolchainProfiler
 
-from enum import Enum, unique, auto
 from subprocess import PIPE
 import atexit
 import logging
@@ -694,7 +693,7 @@ def get_file_suffix(filename):
 
 
 def make_writable(filename):
-  assert os.path.isfile(filename)
+  assert os.path.exists(filename)
   old_mode = stat.S_IMODE(os.stat(filename).st_mode)
   os.chmod(filename, old_mode | stat.S_IWUSR)
 
@@ -734,18 +733,6 @@ def init():
   setup_temp_dirs()
 
 
-@unique
-class OFormat(Enum):
-  # Output a relocatable object file.  We use this
-  # today for `-r` and `-shared`.
-  OBJECT = auto()
-  WASM = auto()
-  JS = auto()
-  MJS = auto()
-  HTML = auto()
-  BARE = auto()
-
-
 # ============================================================================
 # End declarations.
 # ============================================================================
@@ -765,6 +752,8 @@ LLVM_DWARFDUMP = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dwarfd
 LLVM_OBJCOPY = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-objcopy')))
 LLVM_STRIP = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-strip')))
 WASM_LD = os.path.expanduser(build_llvm_tool_path(exe_suffix('wasm-ld')))
+LLVM_PROFDATA = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-profdata')))
+LLVM_COV = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-cov')))
 
 EMCC = bat_suffix(path_from_root('emcc'))
 EMXX = bat_suffix(path_from_root('em++'))

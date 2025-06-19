@@ -44,7 +44,15 @@ addToLibrary({
       return FS.createNode(null, '/', {{{ cDefs.S_IFDIR | 0o777 }}}, 0);
     },
     createSocket(family, type, protocol) {
+      // Emscripten only supports AF_INET
+      if (family != {{{ cDefs.AF_INET }}}) {
+        throw new FS.ErrnoError({{{ cDefs.EAFNOSUPPORT }}});
+      }
       type &= ~{{{ cDefs.SOCK_CLOEXEC | cDefs.SOCK_NONBLOCK }}}; // Some applications may pass it; it makes no sense for a single process.
+      // Emscripten only supports SOCK_STREAM and SOCK_DGRAM
+      if (type != {{{ cDefs.SOCK_STREAM }}} && type != {{{ cDefs.SOCK_DGRAM }}}) {
+        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+      }
       var streaming = type == {{{ cDefs.SOCK_STREAM }}};
       if (streaming && protocol && protocol != {{{ cDefs.IPPROTO_TCP }}}) {
         throw new FS.ErrnoError({{{ cDefs.EPROTONOSUPPORT }}}); // if SOCK_STREAM, must be tcp or 0.

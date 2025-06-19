@@ -8,7 +8,9 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+#include <emscripten.h>
 #include <emscripten/console.h>
+#include "emscripten_internal.h"
 
 static void vlogf(const char* fmt, va_list ap, void (*callback)(const char*)) {
   va_list ap2;
@@ -77,3 +79,20 @@ void emscripten_dbg_backtracef(const char* fmt, ...) {
   va_end(ap);
 }
 #endif
+
+void emscripten_log(int flags, const char* fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  // Note: we have to inline `vlogf` here instead of using it, because
+  // `_emscripten_log_formatted` has a different signature than the
+  // `callback` parameter of `vlogf`, and we can't use it without a callback
+  // as we need `alloca` to remain on stack.
+  va_list ap2;
+  va_copy(ap2, ap);
+  size_t len = vsnprintf(0, 0, fmt, ap2);
+  va_end(ap2);
+  char* buf = alloca(len + 1);
+  vsnprintf(buf, len + 1, fmt, ap);
+  va_end(ap);
+  _emscripten_log_formatted(flags, buf);
+}

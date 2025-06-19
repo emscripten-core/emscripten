@@ -113,7 +113,7 @@ commands:
     description: "install canary version of node"
     steps:
       - install-node-version:
-         node_version: "24.0.0-v8-canary20250303cbbb63ede3"
+         node_version: "25.0.0-v8-canary2025053097d65d1dc1"
          canary: true
   install-v8:
     description: "install v8 using jsvu"
@@ -557,6 +557,7 @@ jobs:
             asan.test_pthread_run_on_main_thread
             asan.test_minimal_runtime_global_initializer
             asan.test_fs_js_api_wasmfs
+            asan.test_modularize_instance_pthreads
             lsan.test_dylink_dso_needed
             lsan.test_stdio_locking
             lsan.test_dlfcn_basic
@@ -733,7 +734,6 @@ jobs:
             wasm64l.test_bigswitch
             wasm64l.test_module_wasm_memory
             wasm64l.test_longjmp2_emscripten
-            other.test_memory64_proxies
             other.test_failing_growth_wasm64"
       - upload-test-results
   test-jsc:

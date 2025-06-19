@@ -274,6 +274,23 @@ def requires_node_canary(func):
   return decorated
 
 
+# Used to mark dependencies in various tests to npm developer dependency
+# packages, which might not be installed on Emscripten end users' systems.
+def requires_dev_dependency(package):
+  assert not callable(package)
+
+  def decorator(f):
+    assert callable(f)
+
+    @wraps(f)
+    def decorated(self, *args, **kwargs):
+      if 'EMTEST_SKIP_NODE_DEV_PACKAGES' in os.environ:
+        self.skipTest(f'test requires npm development package "{package}" and EMTEST_SKIP_NODE_DEV_PACKAGES is set')
+      f(self, *args, **kwargs)
+    return decorated
+  return decorator
+
+
 def requires_wasm64(func):
   assert callable(func)
 
@@ -400,7 +417,7 @@ def also_with_wasmfs(f):
     if wasmfs:
       self.setup_wasmfs_test()
     else:
-      self.emcc_args += ['-DMEMFS']
+      self.cflags += ['-DMEMFS']
     f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
@@ -416,7 +433,7 @@ def also_with_nodefs(func):
     if fs == 'nodefs':
       self.setup_nodefs_test()
     else:
-      self.emcc_args += ['-DMEMFS']
+      self.cflags += ['-DMEMFS']
       assert fs is None
     func(self, *args, **kwargs)
 
@@ -435,7 +452,7 @@ def also_with_nodefs_both(func):
     elif fs == 'rawfs':
       self.setup_noderawfs_test()
     else:
-      self.emcc_args += ['-DMEMFS']
+      self.cflags += ['-DMEMFS']
       assert fs is None
     func(self, *args, **kwargs)
 
@@ -457,7 +474,7 @@ def with_all_fs(func):
     elif fs == 'rawfs':
       self.setup_noderawfs_test()
     else:
-      self.emcc_args += ['-DMEMFS']
+      self.cflags += ['-DMEMFS']
       assert fs is None
     func(self, *args, **kwargs)
 
@@ -480,7 +497,7 @@ def also_with_noderawfs(func):
     if rawfs:
       self.setup_noderawfs_test()
     else:
-      self.emcc_args += ['-DMEMFS']
+      self.cflags += ['-DMEMFS']
     func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
@@ -527,7 +544,7 @@ def also_with_minimal_runtime(f):
       self.set_setting('MINIMAL_RUNTIME', 1)
       # This extra helper code is needed to cleanly handle calls to exit() which throw
       # an ExitCode exception.
-      self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
+      self.cflags += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
     f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
@@ -606,7 +623,7 @@ def can_do_standalone(self, impure=False):
       not self.get_setting('MINIMAL_RUNTIME') and \
       not self.get_setting('WASM_ESM_INTEGRATION') and \
       not self.get_setting('SAFE_HEAP') and \
-      not any(a.startswith('-fsanitize=') for a in self.emcc_args)
+      not any(a.startswith('-fsanitize=') for a in self.cflags)
 
 
 # Impure means a test that cannot run in a wasm VM yet, as it is not 100%
@@ -627,7 +644,7 @@ def also_with_standalone_wasm(impure=False):
         # support in order for JS to have a chance to run this without trapping
         # when it sees an i64 on the ffi.
         self.set_setting('WASM_BIGINT')
-        self.emcc_args.append('-Wno-unused-command-line-argument')
+        self.cflags.append('-Wno-unused-command-line-argument')
         # if we are impure, disallow all wasm engines
         if impure:
           self.wasm_engines = []
@@ -652,7 +669,7 @@ def also_with_asan(f):
         self.skipTest('TODO: ASAN in memory64')
       if self.is_2gb() or self.is_4gb():
         self.skipTest('asan doesnt support GLOBAL_BASE')
-      self.emcc_args.append('-fsanitize=address')
+      self.cflags.append('-fsanitize=address')
     f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
@@ -666,7 +683,9 @@ def also_with_modularize(f):
   @wraps(f)
   def metafunc(self, modularize, *args, **kwargs):
     if modularize:
-      self.emcc_args += ['--extern-post-js', test_file('modularize_post_js.js'), '-sMODULARIZE']
+      if '-sWASM_ESM_INTEGRATION':
+        self.skipTest('also_with_modularize is not compatible with WASM_ESM_INTEGRATION')
+      self.cflags += ['--extern-post-js', test_file('modularize_post_js.js'), '-sMODULARIZE']
     f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
@@ -690,7 +709,7 @@ def with_all_eh_sjlj(f):
       # Wasm EH is currently supported only in wasm backend and V8
       if self.is_wasm2js():
         self.skipTest('wasm2js does not support wasm EH/SjLj')
-      self.emcc_args.append('-fwasm-exceptions')
+      self.cflags.append('-fwasm-exceptions')
       self.set_setting('SUPPORT_LONGJMP', 'wasm')
       if mode == 'wasm':
         self.require_wasm_eh()
@@ -961,9 +980,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def check_dylink(self):
     if self.get_setting('WASM_ESM_INTEGRATION'):
       self.skipTest('dynamic linking not supported with WASM_ESM_INTEGRATION')
+    if '-lllvmlibc' in self.cflags:
+      self.skipTest('dynamic linking not supported with llvm-libc')
     if self.is_wasm2js():
       self.skipTest('dynamic linking not supported with wasm2js')
-    if '-fsanitize=undefined' in self.emcc_args:
+    if '-fsanitize=undefined' in self.cflags:
       self.skipTest('dynamic linking not supported with UBSan')
     # MEMORY64=2 mode doesn't currently support dynamic linking because
     # The side modules are lowered to wasm32 when they are built, making
@@ -978,7 +999,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       else:
         self.fail('d8 required to run this test.  Use EMTEST_SKIP_V8 to skip')
     self.require_engine(config.V8_ENGINE)
-    self.emcc_args.append('-sENVIRONMENT=shell')
+    self.cflags.append('-sENVIRONMENT=shell')
 
   def get_nodejs(self):
     if config.NODE_JS_TEST not in self.js_engines:
@@ -1021,15 +1042,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.is_browser_test():
       return
 
-    nodejs = self.get_nodejs()
-    if nodejs:
-      version = shared.get_node_version(nodejs)
-      if version >= (24, 0, 0):
-        self.js_engines = [nodejs]
-        return
+    if self.try_require_node_version(24):
+      return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
-      self.emcc_args.append('-sENVIRONMENT=shell')
+      self.cflags.append('-sENVIRONMENT=shell')
       self.js_engines = [config.V8_ENGINE]
       return
 
@@ -1038,19 +1055,26 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     else:
       self.fail('either d8 or node >= 24 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
 
+  def try_require_node_version(self, major, minor = 0, revision = 0):
+    nodejs = self.get_nodejs()
+    if not nodejs:
+      self.skipTest('Test requires nodejs to run')
+    version = shared.get_node_version(nodejs)
+    if version < (major, minor, revision):
+      return False
+
+    self.js_engines = [nodejs]
+    return True
+
   def require_simd(self):
     if self.is_browser_test():
       return
 
-    nodejs = self.get_nodejs()
-    if nodejs:
-      version = shared.get_node_version(nodejs)
-      if version >= (16, 0, 0):
-        self.js_engines = [nodejs]
-        return
+    if self.try_require_node_version(16):
+      return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
-      self.emcc_args.append('-sENVIRONMENT=shell')
+      self.cflags.append('-sENVIRONMENT=shell')
       self.js_engines = [config.V8_ENGINE]
       return
 
@@ -1061,15 +1085,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def require_wasm_legacy_eh(self):
     self.set_setting('WASM_LEGACY_EXCEPTIONS')
-    nodejs = self.get_nodejs()
-    if nodejs:
-      version = shared.get_node_version(nodejs)
-      if version >= (17, 0, 0):
-        self.js_engines = [nodejs]
-        return
+    if self.try_require_node_version(17):
+      return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
-      self.emcc_args.append('-sENVIRONMENT=shell')
+      self.cflags.append('-sENVIRONMENT=shell')
       self.js_engines = [config.V8_ENGINE]
       return
 
@@ -1080,34 +1100,33 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def require_wasm_eh(self):
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
-    nodejs = self.get_nodejs()
-    if nodejs:
-      if self.node_is_canary(nodejs):
-        self.js_engines = [nodejs]
-        self.node_args.append('--experimental-wasm-exnref')
-        return
+    if self.try_require_node_version(24):
+      self.node_args.append('--experimental-wasm-exnref')
+      return
 
     if self.is_browser_test():
       return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
-      self.emcc_args.append('-sENVIRONMENT=shell')
+      self.cflags.append('-sENVIRONMENT=shell')
       self.js_engines = [config.V8_ENGINE]
       self.v8_args.append('--experimental-wasm-exnref')
       return
 
     if 'EMTEST_SKIP_EH' in os.environ:
-      self.skipTest('test requires canary or d8 (and EMTEST_SKIP_EH is set)')
+      self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_EH is set)')
     else:
-      self.fail('either d8 or node canary required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
+      self.fail('either d8 or node v24 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
 
   def require_jspi(self):
     # emcc warns about stack switching being experimental, and we build with
     # warnings-as-errors, so disable that warning
-    self.emcc_args += ['-Wno-experimental']
+    self.cflags += ['-Wno-experimental']
     self.set_setting('JSPI')
     if self.is_wasm2js():
       self.skipTest('JSPI is not currently supported for WASM2JS')
+    if self.get_setting('WASM_ESM_INTEGRATION'):
+      self.skipTest('WASM_ESM_INTEGRATION is not compatible with JSPI')
 
     if self.is_browser_test():
       if 'EMTEST_SKIP_JSPI' in os.environ:
@@ -1115,24 +1134,21 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       return
 
     exp_args = ['--experimental-wasm-stack-switching', '--experimental-wasm-type-reflection']
-    nodejs = self.get_nodejs()
-    if nodejs:
-      # Support for JSPI came earlier than 22, but the new API changes are not yet in any node
-      if self.node_is_canary(nodejs):
-        self.js_engines = [nodejs]
-        self.node_args += exp_args
-        return
+    # Support for JSPI came earlier than 22, but the new API changes require v24
+    if self.try_require_node_version(24):
+      self.node_args += exp_args
+      return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
-      self.emcc_args.append('-sENVIRONMENT=shell')
+      self.cflags.append('-sENVIRONMENT=shell')
       self.js_engines = [config.V8_ENGINE]
       self.v8_args += exp_args
       return
 
     if 'EMTEST_SKIP_JSPI' in os.environ:
-      self.skipTest('test requires node canary or d8 (and EMTEST_SKIP_JSPI is set)')
+      self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_JSPI is set)')
     else:
-      self.fail('either d8 or node canary required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
+      self.fail('either d8 or node v24 required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
 
   def require_wasm2js(self):
     if self.is_wasm64():
@@ -1147,24 +1163,22 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.get_setting('WASMFS'):
       # without this the JS setup code in setup_nodefs.js doesn't work
       self.set_setting('FORCE_FILESYSTEM')
-    self.emcc_args += ['-DNODEFS', '-lnodefs.js', '--pre-js', test_file('setup_nodefs.js')]
+    self.cflags += ['-DNODEFS', '-lnodefs.js', '--pre-js', test_file('setup_nodefs.js'), '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]']
 
   def setup_noderawfs_test(self):
     self.require_node()
-    self.emcc_args += ['-DNODERAWFS']
+    self.cflags += ['-DNODERAWFS']
     self.set_setting('NODERAWFS')
 
   def setup_wasmfs_test(self):
     self.set_setting('WASMFS')
-    self.emcc_args += ['-DWASMFS']
+    self.cflags += ['-DWASMFS']
 
   def setup_node_pthreads(self):
     self.require_node()
-    self.emcc_args += ['-Wno-pthreads-mem-growth', '-pthread']
+    self.cflags += ['-Wno-pthreads-mem-growth', '-pthread']
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
-    if self.get_setting('WASM_ESM_INTEGRATION'):
-      self.skipTest('pthreads not yet supported with WASM_ESM_INTEGRATION')
     nodejs = self.get_nodejs()
     self.js_engines = [nodejs]
     self.node_args += shared.node_pthread_flags(nodejs)
@@ -1185,7 +1199,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.js_engines = config.JS_ENGINES.copy()
     self.settings_mods = {}
     self.skip_exec = None
-    self.emcc_args = ['-Wclosure', '-Werror', '-Wno-limited-postlink-optimizations']
+    self.cflags = ['-Wclosure', '-Werror', '-Wno-limited-postlink-optimizations']
     # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
     # For historical reasons emcc compiles and links as C++ by default.
     # However we want to run our tests in a more strict manner.  We can
@@ -1219,10 +1233,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         int(emcc_min_node_version_str[4:6]),
       )
       if node_version < emcc_min_node_version:
-        self.emcc_args += building.get_emcc_node_flags(node_version)
-        self.emcc_args.append('-Wno-transpile')
+        self.cflags += building.get_emcc_node_flags(node_version)
+        self.cflags.append('-Wno-transpile')
       if node_version[0] < feature_matrix.min_browser_versions[feature_matrix.Feature.JS_BIGINT_INTEGRATION]['node'] / 10000:
-        self.emcc_args.append('-sWASM_BIGINT=0')
+        self.cflags.append('-sWASM_BIGINT=0')
 
     self.v8_args = ['--wasm-staging']
     self.env = {}
@@ -1336,27 +1350,27 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def add_pre_run(self, code):
     assert not self.get_setting('MINIMAL_RUNTIME')
     create_file('prerun.js', 'Module.preRun = function() { %s }\n' % code)
-    self.emcc_args += ['--pre-js', 'prerun.js']
+    self.cflags += ['--pre-js', 'prerun.js', '-sINCOMING_MODULE_JS_API=[preRun]']
 
   def add_post_run(self, code):
     assert not self.get_setting('MINIMAL_RUNTIME')
     create_file('postrun.js', 'Module.postRun = function() { %s }\n' % code)
-    self.emcc_args += ['--pre-js', 'postrun.js']
+    self.cflags += ['--pre-js', 'postrun.js', '-sINCOMING_MODULE_JS_API=[postRun]']
 
   def add_on_exit(self, code):
     assert not self.get_setting('MINIMAL_RUNTIME')
     create_file('onexit.js', 'Module.onExit = function() { %s }\n' % code)
-    self.emcc_args += ['--pre-js', 'onexit.js']
+    self.cflags += ['--pre-js', 'onexit.js', '-sINCOMING_MODULE_JS_API=[onExit]']
 
   # returns the full list of arguments to pass to emcc
   # param @main_file whether this is the main file of the test. some arguments
   #                  (like --pre-js) do not need to be passed when building
   #                  libraries, for example
-  def get_emcc_args(self, main_file=False, compile_only=False, asm_only=False):
+  def get_cflags(self, main_file=False, compile_only=False, asm_only=False):
     def is_ldflag(f):
-      return any(f.startswith(s) for s in ['-sEXPORT_ES6', '--proxy-to-worker', '-sGL_TESTING', '-sPROXY_TO_WORKER', '-sPROXY_TO_PTHREAD', '-sENVIRONMENT=', '--pre-js=', '--post-js=', '-sPTHREAD_POOL_SIZE='])
+      return f.startswith('-l') or any(f.startswith(s) for s in ['-sEXPORT_ES6', '--proxy-to-worker', '-sGL_TESTING', '-sPROXY_TO_WORKER', '-sPROXY_TO_PTHREAD', '-sENVIRONMENT=', '--pre-js=', '--post-js=', '-sPTHREAD_POOL_SIZE='])
 
-    args = self.serialize_settings(compile_only or asm_only) + self.emcc_args
+    args = self.serialize_settings(compile_only or asm_only) + self.cflags
     if asm_only:
       args = [a for a in args if not a.startswith('-O')]
     if compile_only or asm_only:
@@ -1393,7 +1407,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.fail('es-check failed to verify ES5 output compliance')
 
   # Build JavaScript code from source code
-  def build(self, filename, libraries=None, includes=None, force_c=False, emcc_args=None, output_basename=None, output_suffix=None):
+  def build(self, filename, libraries=None, includes=None, force_c=False, cflags=None, output_basename=None, output_suffix=None):
     if not os.path.exists(filename):
       filename = test_file(filename)
     compiler = [compiler_for(filename, force_c)]
@@ -1402,17 +1416,17 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       assert shared.suffix(filename) != '.c', 'force_c is not needed for source files ending in .c'
       compiler.append('-xc')
 
-    all_emcc_args = self.get_emcc_args(main_file=True)
-    if emcc_args:
-      all_emcc_args += emcc_args
+    all_cflags = self.get_cflags(main_file=True)
+    if cflags:
+      all_cflags += cflags
     if not output_suffix:
-      output_suffix = get_output_suffix(all_emcc_args)
+      output_suffix = get_output_suffix(all_cflags)
 
     if output_basename:
       output = output_basename + output_suffix
     else:
       output = shared.unsuffixed_basename(filename) + output_suffix
-    cmd = compiler + [str(filename), '-o', output] + all_emcc_args
+    cmd = compiler + [str(filename), '-o', output] + all_cflags
     if libraries:
       cmd += libraries
     if includes:
@@ -1683,12 +1697,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def check_expected_size_in_file(self, desc, filename, size):
     if EMTEST_REBASELINE:
       create_file(filename, f'{size}\n', absolute=True)
-    size_slack = 0.05
     expected_size = int(read_file(filename).strip())
     delta = size - expected_size
     ratio = abs(delta) / float(expected_size)
     print('  seen %s size: %d (expected: %d) (delta: %d), ratio to expected: %f' % (desc, size, expected_size, delta, ratio))
-    self.assertLess(ratio, size_slack)
+    self.assertEqual(size, expected_size)
 
   library_cache: Dict[str, Tuple[str, object]] = {}
 
@@ -1710,15 +1723,15 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     build_dir = self.get_build_dir()
 
-    emcc_args = []
+    cflags = []
     if not native:
       # get_library() is used to compile libraries, and not link executables,
       # so we don't want to pass linker flags here (emscripten warns if you
       # try to pass linker settings when compiling).
-      emcc_args = self.get_emcc_args(compile_only=True)
+      cflags = self.get_cflags(compile_only=True)
 
-    hash_input = (str(emcc_args) + ' $ ' + str(env_init)).encode('utf-8')
-    cache_name = name + ','.join([opt for opt in emcc_args if len(opt) < 7]) + '_' + hashlib.md5(hash_input).hexdigest() + cache_name_extra
+    hash_input = (str(cflags) + ' $ ' + str(env_init)).encode('utf-8')
+    cache_name = name + ','.join([opt for opt in cflags if len(opt) < 7]) + '_' + hashlib.md5(hash_input).hexdigest() + cache_name_extra
 
     valid_chars = "_%s%s" % (string.ascii_letters, string.digits)
     cache_name = ''.join([(c if c in valid_chars else '_') for c in cache_name])
@@ -1738,7 +1751,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       configure = list(configure)
       configure += configure_args
 
-    cflags = ' '.join(emcc_args)
+    cflags = ' '.join(cflags)
     env_init.setdefault('CFLAGS', cflags)
     env_init.setdefault('CXXFLAGS', cflags)
     return build_library(name, build_dir, generated_libs, configure,
@@ -1765,7 +1778,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def emcc(self, filename, args=[], output_filename=None, **kwargs):  # noqa
     compile_only = '-c' in args or '-sSIDE_MODULE' in args
-    cmd = [compiler_for(filename), filename] + self.get_emcc_args(compile_only=compile_only) + args
+    cmd = [compiler_for(filename), filename] + self.get_cflags(compile_only=compile_only) + args
     if output_filename:
       cmd += ['-o', output_filename]
     self.run_process(cmd, **kwargs)
@@ -1859,7 +1872,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     so = '.wasm' if self.is_wasm() else '.js'
 
     def ccshared(src, linkto=None):
-      cmdv = [EMCC, src, '-o', shared.unsuffixed(src) + so, '-sSIDE_MODULE'] + self.get_emcc_args()
+      cmdv = [EMCC, src, '-o', shared.unsuffixed(src) + so, '-sSIDE_MODULE'] + self.get_cflags()
       if linkto:
         cmdv += linkto
       self.run_process(cmdv)
@@ -1886,7 +1899,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         return 0;
       }
       ''',
-           'a: loaded\na: b (prev: (null))\na: c (prev: b)\n', emcc_args=extra_args)
+           'a: loaded\na: b (prev: (null))\na: c (prev: b)\n', cflags=extra_args)
 
     extra_args = []
     for libname in ('liba', 'libb', 'libc'):
@@ -1916,7 +1929,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         return 0;
       }
     ''' % locals(),
-           'a: loaded\na: b (prev: (null))\na: c (prev: b)\n', emcc_args=extra_args)
+           'a: loaded\na: b (prev: (null))\na: c (prev: b)\n', cflags=extra_args)
 
   def do_run(self, src, expected_output=None, force_c=False, **kwargs):
     if 'no_build' in kwargs:
@@ -1998,7 +2011,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return js_output
 
   def get_freetype_library(self):
-    self.emcc_args += [
+    self.cflags += [
       '-Wno-misleading-indentation',
       '-Wno-unused-but-set-variable',
       '-Wno-pointer-bool-conversion',
@@ -2014,14 +2027,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def get_poppler_library(self, env_init=None):
     freetype = self.get_freetype_library()
 
-    self.emcc_args += [
+    self.cflags += [
       '-I' + test_file('third_party/freetype/include'),
       '-I' + test_file('third_party/poppler/include'),
     ]
 
     # Poppler has some pretty glaring warning.  Suppress them to keep the
     # test output readable.
-    self.emcc_args += [
+    self.cflags += [
       '-Wno-sentinel',
       '-Wno-logical-not-parentheses',
       '-Wno-unused-private-field',
@@ -2052,14 +2065,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def get_zlib_library(self, cmake):
     assert cmake or not WINDOWS, 'on windows, get_zlib_library only supports cmake'
 
-    old_args = self.emcc_args.copy()
+    old_args = self.cflags.copy()
     # inflate.c does -1L << 16
-    self.emcc_args.append('-Wno-shift-negative-value')
+    self.cflags.append('-Wno-shift-negative-value')
     # adler32.c uses K&R sytyle function declarations
-    self.emcc_args.append('-Wno-deprecated-non-prototype')
+    self.cflags.append('-Wno-deprecated-non-prototype')
     # Work around configure-script error. TODO: remove when
     # https://github.com/emscripten-core/emscripten/issues/16908 is fixed
-    self.emcc_args.append('-Wno-pointer-sign')
+    self.cflags.append('-Wno-pointer-sign')
     if cmake:
       rtn = self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'),
                              configure=['cmake', '.'],
@@ -2067,7 +2080,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                              make_args=[])
     else:
       rtn = self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'), make_args=['libz.a'])
-    self.emcc_args = old_args
+    self.cflags = old_args
     return rtn
 
 
@@ -2223,6 +2236,9 @@ def harness_server_func(in_queue, out_queue, port):
 
   # allows streaming compilation to work
   SimpleHTTPRequestHandler.extensions_map['.wasm'] = 'application/wasm'
+  # Firefox browser security does not allow loading .mjs files if they
+  # do not have the correct MIME type
+  SimpleHTTPRequestHandler.extensions_map['.mjs'] = 'text/javascript'
 
   httpd = HTTPServer(('localhost', port), TestServerHandler)
   httpd.serve_forever() # test runner will kill us
@@ -2310,9 +2326,10 @@ class BrowserCore(RunnerCore):
 
   def assert_out_queue_empty(self, who):
     if not self.harness_out_queue.empty():
+      responses = []
       while not self.harness_out_queue.empty():
-        self.harness_out_queue.get()
-      raise Exception('excessive responses from %s' % who)
+        responses += [self.harness_out_queue.get()]
+      raise Exception('excessive responses from %s: %s' % (who, '\n'.join(responses)))
 
   # @param extra_tries: how many more times to try this test, if it fails. browser tests have
   #                     many more causes of flakiness (in particular, they do not run
@@ -2383,25 +2400,25 @@ class BrowserCore(RunnerCore):
       time.sleep(5)
       print('(moving on..)')
 
-  def compile_btest(self, filename, emcc_args, reporting=Reporting.FULL):
+  def compile_btest(self, filename, cflags, reporting=Reporting.FULL):
     # Inject support code for reporting results. This adds an include a header so testcases can
     # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
     # contains the implementation of REPORT_RESULT (we can't just include that implementation in
     # the header as there may be multiple files being compiled here).
     if reporting != Reporting.NONE:
       # For basic reporting we inject JS helper funtions to report result back to server.
-      emcc_args += ['--pre-js', test_file('browser_reporting.js')]
+      cflags += ['--pre-js', test_file('browser_reporting.js')]
       if reporting == Reporting.FULL:
         # If C reporting (i.e. the REPORT_RESULT macro) is required we
         # also include report_result.c and force-include report_result.h
         self.run_process([EMCC, '-c', '-I' + TEST_ROOT,
-                          test_file('report_result.c')] + self.get_emcc_args(compile_only=True) + (['-fPIC'] if '-fPIC' in emcc_args else []))
-        emcc_args += ['report_result.o', '-include', test_file('report_result.h')]
+                          test_file('report_result.c')] + self.get_cflags(compile_only=True) + (['-fPIC'] if '-fPIC' in cflags else []))
+        cflags += ['report_result.o', '-include', test_file('report_result.h')]
     if EMTEST_BROWSER == 'node':
-      emcc_args.append('-DEMTEST_NODE')
+      cflags.append('-DEMTEST_NODE')
     if not os.path.exists(filename):
       filename = test_file(filename)
-    self.run_process([compiler_for(filename), filename] + self.get_emcc_args() + emcc_args)
+    self.run_process([compiler_for(filename), filename] + self.get_cflags() + cflags)
 
   def btest_exit(self, filename, assert_returncode=0, *args, **kwargs):
     """Special case of `btest` that reports its result solely via exiting
@@ -2419,21 +2436,21 @@ class BrowserCore(RunnerCore):
 
   def btest(self, filename, expected=None,
             post_build=None,
-            emcc_args=None,
+            cflags=None,
             timeout=None,
             extra_tries=1,
             reporting=Reporting.FULL,
             output_basename='test'):
     assert expected, 'a btest must have an expected output'
-    if emcc_args is None:
-      emcc_args = []
-    emcc_args = emcc_args.copy()
+    if cflags is None:
+      cflags = []
+    cflags = cflags.copy()
     filename = find_browser_test_file(filename)
     outfile = output_basename + '.html'
-    emcc_args += ['-o', outfile]
-    # print('all args:', emcc_args)
+    cflags += ['-o', outfile]
+    # print('cflags:', cflags)
     utils.delete_file(outfile)
-    self.compile_btest(filename, emcc_args, reporting=reporting)
+    self.compile_btest(filename, cflags, reporting=reporting)
     self.assertExists(outfile)
     if post_build:
       post_build()

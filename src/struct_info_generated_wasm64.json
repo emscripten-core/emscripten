@@ -515,7 +515,9 @@
         "__WASI_RIGHTS_PATH_SYMLINK": 16777216,
         "__WASI_RIGHTS_PATH_UNLINK_FILE": 67108864,
         "__WASI_RIGHTS_POLL_FD_READWRITE": 134217728,
-        "__WASI_RIGHTS_SOCK_SHUTDOWN": 268435456
+        "__WASI_RIGHTS_SOCK_SHUTDOWN": 268435456,
+        "internal::EM_METHOD_CALLER_KIND::CONSTRUCTOR": 1,
+        "internal::EM_METHOD_CALLER_KIND::FUNCTION": 0
     },
     "structs": {
         "AudioParamFrame": {
@@ -1573,12 +1575,13 @@
         },
         "emscripten_fetch_t": {
             "__attributes": 128,
-            "__size__": 272,
+            "__size__": 280,
             "data": 24,
             "dataOffset": 40,
             "id": 0,
             "numBytes": 32,
             "readyState": 56,
+            "responseUrl": 272,
             "status": 58,
             "statusText": 60,
             "totalBytes": 48,

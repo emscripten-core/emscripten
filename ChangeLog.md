@@ -18,8 +18,70 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.9 (in development)
-----------------------
+4.0.11 (in development)
+-----------------------
+- Add support for [Source-based Code Coverage](https://clang.llvm.org/docs/SourceBasedCodeCoverage.html)
+  To build with coverage enabled use `-fprofile-instr-generate -fcoverage-mapping`. (#24160)
+- The `ENVIRONMENT` setting will now be automatically updated to include
+  `worker` if multi-threading is enabled. (#24525)
+- Removed the `HEADLESS` option. It tried to simulate a minimal browser-like
+  environment before browser engines had real headless modes. For headless
+  testing, users are now encouraged to use
+  [Playwright](https://playwright.dev/), [Puppeteer](https://pptr.dev/) or
+  Node.js with [JSDOM](https://github.com/jsdom/jsdom) instead. You can also
+  use browser headless mode with `emrun` as follows:
+    emrun --browser=chrome --browser-args=--headless [..]
+  for chrome, or
+    emrun --browser=firefox --browser-args=-headless [..]
+  for firefox. (#24537)
+- When JSPI is enabled `async` library functions are no longer automatically
+  wrapped with `WebAssembly.Suspending` functions. To automatically wrap library
+  functions for use with JSPI they must now explicitly set
+  `myLibraryFunction__async: true`.
+
+4.0.10 - 06/07/25
+-----------------
+- Emscripten ports now install pkg-config `.pc` files so they will show up, for
+  example, when you run `pkg-config --list-all` or `pkg-config --cflags
+  <portname>`. Bare in mind that the correct PKG_CONFIG_PATH needs to be set for
+  this to work.  One way to do this is to run `emmake pkg-config`. (#24426)
+- libcxx, libcxxabi, and compiler-rt were updated to LLVM 20.1.4. (#24346 and
+  #24357)
+- Emscripten will not longer generate trampoline functions for Wasm exports
+  prior to the module being instantiated.  Storing a reference to a Wasm export
+  (e.g. `Module['_malloc']`) prior to instantiation will no longer work.  In
+  debug builds we generate stub functions that can detect this case. (#24384)
+- The `-sASYNCIFY_LAZY_LOAD_CODE` setting was deprecated.  This setting was
+  added as an experiment a long time ago and as far we know has no active users.
+  In addition, it cannot work with JSPI (the future of ASYNCIFY). (#24383)
+- `-sUSE_WEBGPU` was deprecated in favor of the external port Emdawnwebgpu, a
+  fork of Emscripten's original bindings, implementing a newer, more stable
+  version of the standardized `webgpu.h` interface. Please try migrating using
+  `--use-port=emdawnwebgpu`. If you find issues, verify in the [latest
+  nightly release](https://github.com/google/dawn/releases) and file feedback
+  with Dawn. (Emdawnwebgpu is maintained as part of Dawn, the open-source
+  WebGPU implementation used by Chromium, but it is still cross-browser.)
+- The `-sMAYBE_WASM2JS` setting was removed.  This was originally added for
+  debugging purposes, and we now have `-sWASM=2` for folks that want to be able
+  to fall back to js if wasm fails. (#24176)
+- The field `responseUrl` is added to `emscripten_fetch_t`. This is notably
+  usable for obtaining resolved URL, in line with JS `XMLHttpRequest.responseURL`
+  field. (#24414)
+- `emscripten_fetch_get_response_headers_length` now excludes the trailing
+  null character from the length calculation to match the documented behaviour.
+  (#24486)
+- `--closure=1` can now be used while preserving readable function names with
+  `-g2` or `-g`.
+- Functions `UTF8ToString`, `UTF16ToString` and `UTF32ToString` take a new
+  optional `ignoreNul` parameter that allows to ignore the NUL characters and
+  read the entire string up to the specific byte length. (#24487)
+
+4.0.9 - 05/19/25
+----------------
+- cmake will not longer detect SDL2 or SDL3 as being present until they are
+  installed in the sysroot.  This means that they now need to be installed,
+  either indirectly (e.g. by running any emcc command with `-sUSE_SDL=2`) or
+  directly (e.g. by running `./embuilder build sdl2`). (#24306)
 - libunwind was updated to LLVM 20.1.4. (#24251)
 - When using cmake the EMSCRIPTEN_FORCE_COMPILERS setting was reverted to
   being on by default due to issues that were found with disabling it. (#24223)

@@ -47,6 +47,7 @@ addToLibrary({
     '$asyncLoad',
     '$PATH_FS',
     '$FS_createDataFile',
+    '$getUniqueRunDependency',
 #if !MINIMAL_RUNTIME
     '$FS_handledByPreloadPlugin',
 #endif
