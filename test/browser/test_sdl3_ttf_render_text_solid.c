@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
   int height = 48;
 
   SDL_Init(SDL_INIT_VIDEO);
-  SDL_Window *window = SDL_CreateWindow("SDL3 TTF Render Text Solid", width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+  SDL_Window *window = SDL_CreateWindow("SDL3 TTF Render Text Solid", width, height, 0);
   SDL_Surface *screen = SDL_GetWindowSurface(window);
   
   TTF_Init();
