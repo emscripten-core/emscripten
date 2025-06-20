@@ -226,13 +226,10 @@ def llvm_nm(file):
   return symbols
 
 
-def get_file_gzipped_size(f):
-  f_gz = f + '.gz'
-  with gzip.open(f_gz, 'wb') as gzf:
-    gzf.write(read_binary(f))
-  size = os.path.getsize(f_gz)
-  delete_file(f_gz)
-  return size
+def get_file_and_gz_sizes(f):
+  contents = read_binary(f)
+  gz_contents = gzip.compress(contents)
+  return len(contents), len(gz_contents)
 
 
 def deminify_syms(names, minification_map):
@@ -9322,8 +9319,7 @@ int main() {
 
     self.run_process(build_cmd + ['--profiling-funcs', '--closure=1'])
 
-    js_size = os.path.getsize('a.out.js')
-    gz_size = get_file_gzipped_size('a.out.js')
+    js_size, gz_size = get_file_and_gz_sizes('a.out.js')
     js_size_file = expected_basename + '.jssize'
     gz_size_file = expected_basename + '.gzsize'
     self.check_expected_size_in_file('js', js_size_file, js_size)
@@ -11962,8 +11958,7 @@ int main () {
       f_gz = f + '.gz'
       expected_size = expected_results[f] if f in expected_results else float('inf')
       expected_size_gz = expected_results[f_gz] if f_gz in expected_results else float('inf')
-      size = os.path.getsize(f)
-      size_gz = get_file_gzipped_size(f)
+      size, size_gz = get_file_and_gz_sizes(f)
 
       obtained_results[f] = size
       obtained_results[f_gz] = size_gz
