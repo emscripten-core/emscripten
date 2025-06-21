@@ -1543,7 +1543,7 @@ var LibraryHTML5 = {
 
   $fillPointerlockChangeEventData__deps: ['$JSEvents', '$stringToUTF8'],
   $fillPointerlockChangeEventData: (eventStruct) => {
-    var pointerLockElement = document.pointerLockElement || document.mozPointerLockElement || document.webkitPointerLockElement || document.msPointerLockElement;
+    var pointerLockElement = document.pointerLockElement;
     var isPointerlocked = !!pointerLockElement;
 #if !SAFE_HEAP
     // Assigning a boolean to HEAP32 with expected type coercion.
@@ -1595,10 +1595,8 @@ var LibraryHTML5 = {
     '$specialHTMLTargets'
 #endif
   ],
-  emscripten_set_pointerlockchange_callback_on_thread__docs: '/** @suppress {missingProperties} */', // Closure does not see document.body.mozRequestPointerLock etc.
   emscripten_set_pointerlockchange_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) => {
-    // TODO: Currently not supported in pthreads or in --proxy-to-worker mode. (In pthreads mode, document object is not defined)
-    if (!document || !document.body || (!document.body.requestPointerLock && !document.body.mozRequestPointerLock && !document.body.webkitRequestPointerLock && !document.body.msRequestPointerLock)) {
+    if (!document.body?.requestPointerLock) {
       return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     }
 
@@ -1608,9 +1606,6 @@ var LibraryHTML5 = {
     target = target ? findEventTarget(target) : specialHTMLTargets[{{{ cDefs.EMSCRIPTEN_EVENT_TARGET_DOCUMENT }}}]; // Pointer lock change events need to be captured from 'document' by default instead of 'window'
 #endif
     if (!target) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
-    registerPointerlockChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_POINTERLOCKCHANGE }}}, "mozpointerlockchange", targetThread);
-    registerPointerlockChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_POINTERLOCKCHANGE }}}, "webkitpointerlockchange", targetThread);
-    registerPointerlockChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_POINTERLOCKCHANGE }}}, "mspointerlockchange", targetThread);
     return registerPointerlockChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_POINTERLOCKCHANGE }}}, "pointerlockchange", targetThread);
   },
 
@@ -1644,10 +1639,8 @@ var LibraryHTML5 = {
     '$specialHTMLTargets'
 #endif
   ],
-  emscripten_set_pointerlockerror_callback_on_thread__docs: '/** @suppress {missingProperties} */', // Closure does not see document.body.mozRequestPointerLock etc.
   emscripten_set_pointerlockerror_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) => {
-    // TODO: Currently not supported in pthreads or in --proxy-to-worker mode. (In pthreads mode, document object is not defined)
-    if (!document || !document.body.requestPointerLock && !document.body.mozRequestPointerLock && !document.body.webkitRequestPointerLock && !document.body.msRequestPointerLock) {
+    if (!document.body?.requestPointerLock) {
       return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     }
 
@@ -1658,18 +1651,14 @@ var LibraryHTML5 = {
 #endif
 
     if (!target) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
-    registerPointerlockErrorEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_POINTERLOCKERROR }}}, "mozpointerlockerror", targetThread);
-    registerPointerlockErrorEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_POINTERLOCKERROR }}}, "webkitpointerlockerror", targetThread);
-    registerPointerlockErrorEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_POINTERLOCKERROR }}}, "mspointerlockerror", targetThread);
     return registerPointerlockErrorEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_POINTERLOCKERROR }}}, "pointerlockerror", targetThread);
   },
 
   emscripten_get_pointerlock_status__proxy: 'sync',
   emscripten_get_pointerlock_status__deps: ['$fillPointerlockChangeEventData'],
-  emscripten_get_pointerlock_status__docs: '/** @suppress {missingProperties} */', // Closure does not see document.body.mozRequestPointerLock etc.
   emscripten_get_pointerlock_status: (pointerlockStatus) => {
     if (pointerlockStatus) fillPointerlockChangeEventData(pointerlockStatus);
-    if (!document.body || (!document.body.requestPointerLock && !document.body.mozRequestPointerLock && !document.body.webkitRequestPointerLock && !document.body.msRequestPointerLock)) {
+    if (!document.body?.requestPointerLock) {
       return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     }
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};

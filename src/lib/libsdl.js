@@ -1826,7 +1826,7 @@ var LibrarySDL = {
         // else return SDL_ENABLE to indicate the failure
         return 1;
       case 1: // SDL_ENABLE
-        Browser.getCanvas().exitPointerLock();
+        document.exitPointerLock();
         return 1;
       case -1: // SDL_QUERY
         return !Browser.pointerLock;
