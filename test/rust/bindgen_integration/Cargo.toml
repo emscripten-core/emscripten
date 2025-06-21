@@ -1,0 +1,9 @@
+[package]
+name = "bindgen_integration"
+edition = "2021"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+wasm-bindgen = { path = "../../../wasm-bindgen" }
