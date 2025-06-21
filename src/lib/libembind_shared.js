@@ -229,19 +229,20 @@ var LibraryEmbindShared = {
     }
 
     var dtorStack = needsDestructorStack ? "destructors" : "null";
-    var args1 = ["humanName", "throwBindingError", "invoker", "fn", "runDestructors", "retType", "classParam"];
+    var args1 = ["humanName", "throwBindingError", "invoker", "fn", "runDestructors", "fromRetWire", "toClassParamWire"];
 
 #if EMSCRIPTEN_TRACING
     args1.push("Module");
 #endif
 
     if (isClassMethodFunc) {
-      invokerFnBody += `var thisWired = classParam['toWireType'](${dtorStack}, this);\n`;
+      invokerFnBody += `var thisWired = toClassParamWire(${dtorStack}, this);\n`;
     }
 
     for (var i = 0; i < argCount; ++i) {
-      invokerFnBody += `var arg${i}Wired = argType${i}['toWireType'](${dtorStack}, arg${i});\n`;
-      args1.push(`argType${i}`);
+      var argName = `toArg${i}Wire`;
+      invokerFnBody += `var arg${i}Wired = ${argName}(${dtorStack}, arg${i});\n`;
+      args1.push(argName);
     }
 
     invokerFnBody += (returns || isAsync ? "var rv = ":"") + `invoker(${argsListWired});\n`;
@@ -267,7 +268,7 @@ var LibraryEmbindShared = {
     }
 
     if (returns) {
-      invokerFnBody += "var ret = retType['fromWireType'](rv);\n" +
+      invokerFnBody += "var ret = fromRetWire(rv);\n" +
 #if EMSCRIPTEN_TRACING
                        "Module.emscripten_trace_exit_context();\n" +
 #endif

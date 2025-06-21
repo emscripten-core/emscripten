@@ -192,9 +192,9 @@ var LibraryEmVal = {
   },
 
   $emval_returnValue__deps: ['$Emval'],
-  $emval_returnValue: (returnType, destructorsRef, handle) => {
+  $emval_returnValue: (toReturnWire, destructorsRef, handle) => {
     var destructors = [];
-    var result = returnType['toWireType'](destructors, handle);
+    var result = toReturnWire(destructors, handle);
     if (destructors.length) {
       // void, primitives and any other types w/o destructors don't need to allocate a handle
       {{{ makeSetValue('destructorsRef', '0', 'Emval.toHandle(destructors)', '*') }}};
@@ -262,19 +262,20 @@ var LibraryEmVal = {
     '$createNamedFunction', '$emval_returnValue',
     '$Emval', '$getStringOrSymbol',
   ],
-  _emval_create_invoker: (argCount, argTypes, kind) => {
+  _emval_create_invoker: (argCount, argTypesPtr, kind) => {
     var GenericWireTypeSize = {{{ 2 * POINTER_SIZE }}};
 
-    var types = emval_lookupTypes(argCount, argTypes);
-    var retType = types.shift();
-    argCount--; // remove the shifted off return type
+    var [retType, ...argTypes] = emval_lookupTypes(argCount, argTypesPtr);
+    var toReturnWire = retType.toWireType.bind(retType);
+    var argFromPtr = argTypes.map(type => type.readValueFromPointer.bind(type));
+    argCount--; // remove the extracted return type
 
 #if !DYNAMIC_EXECUTION
     var argN = new Array(argCount);
     var invokerFunction = (handle, methodName, destructorsRef, args) => {
       var offset = 0;
       for (var i = 0; i < argCount; ++i) {
-        argN[i] = types[i]['readValueFromPointer'](args + offset);
+        argN[i] = argFromPtr[i](args + offset);
         offset += GenericWireTypeSize;
       }
       var rv;
@@ -293,7 +294,7 @@ var LibraryEmVal = {
           rv = Emval.toValue(handle)[getStringOrSymbol(methodName)](...argN);
           break;
       }
-      return emval_returnValue(retType, destructorsRef, rv);
+      return emval_returnValue(toReturnWire, destructorsRef, rv);
     };
 #else
     var functionBody =
@@ -301,14 +302,14 @@ var LibraryEmVal = {
 
     var offset = 0;
     var argsList = []; // 'arg0, arg1, arg2, ... , argN'
-    var params = ['toValue', 'retType'];
-    var args = [Emval.toValue, retType];
+    var params = ['toValue'];
+    var args = [Emval.toValue];
     for (var i = 0; i < argCount; ++i) {
       argsList.push(`arg${i}`);
-      params.push(`argType${i}`);
-      args.push(types[i]);
+      params.push(`argFromPtr${i}`);
+      args.push(argFromPtr[i]);
       functionBody +=
-        `  var arg${i} = argType${i}.readValueFromPointer(args${offset ? '+' + offset : ''});\n`;
+        `  var arg${i} = argFromPtr${i}(args${offset ? '+' + offset : ''});\n`;
       offset += GenericWireTypeSize;
     }
     var invoker;
@@ -331,17 +332,17 @@ var LibraryEmVal = {
     functionBody +=
       `  var rv = ${invoker}(${argsList.join(', ')});\n`;
     if (!retType.isVoid) {
-      params.push('emval_returnValue');
-      args.push(emval_returnValue);
+      params.push('toReturnWire', 'emval_returnValue');
+      args.push(toReturnWire, emval_returnValue);
       functionBody +=
-        '  return emval_returnValue(retType, destructorsRef, rv);\n';
+        '  return emval_returnValue(toReturnWire, destructorsRef, rv);\n';
     }
     functionBody +=
       "};\n";
 
     var invokerFunction = new Function(...params, functionBody)(...args);
 #endif
-    var functionName = `methodCaller<(${types.map(t => t.name).join(', ')}) => ${retType.name}>`;
+    var functionName = `methodCaller<(${argTypes.map(t => t.name).join(', ')}) => ${retType.name}>`;
     return emval_addMethodCaller(createNamedFunction(functionName, invokerFunction));
   },
 
