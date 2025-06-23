@@ -534,9 +534,7 @@ function(${args}) {
       if (ASYNCIFY) {
         const original = LibraryManager.library[symbol];
         if (typeof original == 'function') {
-          isAsyncFunction =
-            LibraryManager.library[symbol + '__async'] ||
-            original.constructor.name == 'AsyncFunction';
+          isAsyncFunction = LibraryManager.library[symbol + '__async'];
         }
         if (isAsyncFunction) {
           asyncFuncs.push(symbol);

@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 4.0.11 (in development)
 -----------------------
+- Add support for [Source-based Code Coverage](https://clang.llvm.org/docs/SourceBasedCodeCoverage.html)
+  To build with coverage enabled use `-fprofile-instr-generate -fcoverage-mapping`. (#24160)
 - The `ENVIRONMENT` setting will now be automatically updated to include
   `worker` if multi-threading is enabled. (#24525)
 - Removed the `HEADLESS` option. It tried to simulate a minimal browser-like
@@ -32,6 +34,10 @@ See docs/process.md for more on how version tagging works.
   for chrome, or
     emrun --browser=firefox --browser-args=-headless [..]
   for firefox. (#24537)
+- When JSPI is enabled `async` library functions are no longer automatically
+  wrapped with `WebAssembly.Suspending` functions. To automatically wrap library
+  functions for use with JSPI they must now explicitly set
+  `myLibraryFunction__async: true`.
 
 4.0.10 - 06/07/25
 -----------------

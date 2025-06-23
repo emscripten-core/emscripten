@@ -306,6 +306,9 @@ export default async function init(moduleArg = {}) {
   Object.assign(Module, moduleArg);
   processModuleArgs();
 #if WASM_ESM_INTEGRATION
+#if PTHREADS
+  registerTLSInit(__emscripten_tls_init);
+#endif
   updateMemoryViews();
 #if DYNCALLS && '$dynCalls' in addedLibraryItems
 
@@ -318,7 +321,7 @@ export default async function init(moduleArg = {}) {
   run();
 }
 
-#if PTHREADS || WASM_WORKERS
+#if (WASM_WORKERS || PTHREADS) && !WASM_ESM_INTEGRATION
 // When run as a worker thread run `init` immediately.
 if ({{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) await init()
 #endif

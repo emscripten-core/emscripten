@@ -28,8 +28,10 @@
     {
         "file": "emscripten/val.h",
         "defines": [
-            "emscripten::internal::EM_METHOD_CALLER_KIND::FUNCTION",
-            "emscripten::internal::EM_METHOD_CALLER_KIND::CONSTRUCTOR"
+            "emscripten::internal::EM_INVOKER_KIND::FUNCTION",
+            "emscripten::internal::EM_INVOKER_KIND::METHOD",
+            "emscripten::internal::EM_INVOKER_KIND::CONSTRUCTOR",
+            "emscripten::internal::EM_INVOKER_KIND::CAST"
         ]
     }
 ]

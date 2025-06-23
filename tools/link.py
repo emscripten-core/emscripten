@@ -808,10 +808,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('WASM_ESM_INTEGRATION requires MODULARIZE=instance')
     if settings.RELOCATABLE:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with dynamic linking')
-    if settings.ASYNCIFY == 1:
-      exit_with_error('WASM_ESM_INTEGRATION is not compatible with -sASYNCIFY=1')
-    if settings.WASM_WORKERS or settings.PTHREADS:
-      exit_with_error('WASM_ESM_INTEGRATION is not compatible with multi-threading')
+    if settings.ASYNCIFY:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with -sASYNCIFY')
+    if settings.WASM_WORKERS:
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
     if settings.USE_OFFSET_CONVERTER:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with USE_OFFSET_CONVERTER')
     if not settings.WASM_ASYNC_COMPILATION:
@@ -820,6 +820,9 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM2JS')
     if settings.ABORT_ON_WASM_EXCEPTIONS:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with ABORT_ON_WASM_EXCEPTIONS')
+
+  if settings.WASM_JS_TYPES:
+    diagnostics.warning('experimental', '-sWASM_JS_TYPES is only supported under a flag in certain browsers')
 
   if settings.MODULARIZE and settings.MODULARIZE not in [1, 'instance']:
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
@@ -2233,6 +2236,11 @@ def phase_final_emitting(options, target, js_target, wasm_target):
     support_target = unsuffixed(js_target) + '.support.mjs'
     move_file(final_js, support_target)
     create_esm_wrapper(js_target, support_target, wasm_target)
+    if settings.PTHREADS:
+      support_target = unsuffixed(js_target) + '.pthread.mjs'
+      pthread_code = building.read_and_preprocess(utils.path_from_root('src/pthread_esm_startup.mjs'), expand_macros=True)
+      write_file(support_target, pthread_code)
+      fix_es6_import_statements(support_target)
   else:
     move_file(final_js, js_target)
 
@@ -2442,15 +2450,25 @@ def phase_binaryen(target, options, wasm_target):
 def modularize():
   global final_js
   logger.debug(f'Modularizing, creating factory function called `{settings.EXPORT_NAME}`')
-  src = building.read_and_preprocess(utils.path_from_root('src/modularize.js'), expand_macros=True)
-  src = do_replace(src, '<<< INNER_JS_CODE >>>', read_file(final_js))
+  modularize_src = building.read_and_preprocess(utils.path_from_root('src/modularize.js'), expand_macros=True)
+  if settings.MINIFY_WHITESPACE:
+    with shared.get_temp_files().get_file(suffix='.js') as tmp:
+      write_file(tmp, modularize_src)
+      minified_file = building.acorn_optimizer(tmp, ['--minify-whitespace'])
+      modularize_src = read_file(minified_file)
+
+  # Replace INNER_JS_CODE in the minified code
+  full_src = do_replace(modularize_src, '"<<< INNER_JS_CODE >>>"', read_file(final_js))
   final_js += '.modular.js'
-  write_file(final_js, src)
+  write_file(final_js, full_src)
   shared.get_temp_files().note(final_js)
   save_intermediate('modularized')
 
-  if settings.MINIFY_WHITESPACE:
-    final_js = building.acorn_optimizer(final_js, ['--minify-whitespace'])
+  # FIXME(https://github.com/emscripten-core/emscripten/issues/24558): Running acorn at this
+  # late phase seems to cause OOM (some kind of inifite loop perhaps) in node.
+  # Instead we minify src/modularize.js in isolation above.
+  #if settings.MINIFY_WHITESPACE:
+  #  final_js = building.acorn_optimizer(final_js, ['--minify-whitespace'])
 
 
 def module_export_name_substitution():

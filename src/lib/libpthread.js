@@ -29,6 +29,13 @@ const MAX_PTR = Number((2n ** 64n) - 1n);
 #else
 const MAX_PTR = (2 ** 32) - 1
 #endif
+
+#if WASM_ESM_INTEGRATION
+const pthreadWorkerScript = TARGET_BASENAME + '.pthread.mjs';
+#else
+const pthreadWorkerScript = TARGET_JS_NAME;
+#endif
+
 // Use a macro to avoid duplicating pthread worker options.
 // We cannot use a normal JS variable since the vite bundler requires that worker
 // options be inline.
@@ -295,7 +302,9 @@ var LibraryPThread = {
 
 #if ASSERTIONS
       assert(wasmMemory instanceof WebAssembly.Memory, 'WebAssembly memory should have been loaded by now!');
+#if !WASM_ESM_INTEGRATION
       assert(wasmModule instanceof WebAssembly.Module, 'WebAssembly Module should have been loaded by now!');
+#endif
 #endif
 
       // When running on a pthread, none of the incoming parameters on the module
@@ -333,7 +342,9 @@ var LibraryPThread = {
 #else // WASM2JS
         wasmMemory,
 #endif // WASM2JS
+#if !WASM_ESM_INTEGRATION
         wasmModule,
+#endif
 #if LOAD_SOURCE_MAP
         wasmSourceMap,
 #endif
@@ -391,7 +402,7 @@ var LibraryPThread = {
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
       if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
-        var p = trustedTypes.createPolicy('emscripten#workerPolicy1', { createScriptURL: (ignored) => import.meta.url });
+        var p = trustedTypes.createPolicy('emscripten#workerPolicy1', { createScriptURL: (ignored) => new URL('{{{ pthreadWorkerScript }}}', import.meta.url) });
         worker = new Worker(p.createScriptURL('ignored'), {{{ pthreadWorkerOptions }}});
       } else
 #endif
@@ -409,7 +420,7 @@ var LibraryPThread = {
       // the first case in their bundling step. The latter ends up producing an invalid
       // URL to import from the server (e.g., for webpack the file:// path).
       // See https://github.com/webpack/webpack/issues/12638
-      worker = new Worker(new URL('{{{ TARGET_JS_NAME }}}', import.meta.url), {{{ pthreadWorkerOptions }}});
+      worker = new Worker(new URL('{{{ pthreadWorkerScript }}}', import.meta.url), {{{ pthreadWorkerOptions }}});
 #else // EXPORT_ES6
       var pthreadMainJs = _scriptName;
 #if expectToReceiveOnModule('mainScriptUrlOrBlob')
@@ -870,7 +881,7 @@ var LibraryPThread = {
   $proxyToMainThreadPtr: (...args) => BigInt(proxyToMainThread(...args)),
 #endif
 
-  $proxyToMainThread__deps: ['$stackSave', '$stackRestore', '$stackAlloc', '_emscripten_run_on_main_thread_js'],
+  $proxyToMainThread__deps: ['$stackSave', '$stackRestore', '$stackAlloc', '_emscripten_run_js_on_main_thread'],
   $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), ...number)} */',
   $proxyToMainThread: (funcIndex, emAsmAddr, sync, ...callArgs) => {
     // EM_ASM proxying is done by passing a pointer to the address of the EM_ASM
@@ -910,7 +921,7 @@ var LibraryPThread = {
       HEAPF64[b + i] = arg;
 #endif
     }
-    var rtn = __emscripten_run_on_main_thread_js(funcIndex, emAsmAddr, serializedNumCallArgs, args, sync);
+    var rtn = __emscripten_run_js_on_main_thread(funcIndex, emAsmAddr, serializedNumCallArgs, args, sync);
     stackRestore(sp);
     return rtn;
   },
@@ -1015,6 +1026,9 @@ var LibraryPThread = {
     '$runtimeKeepaliveCounter',
 #endif
   ],
+#if ASYNCIFY
+  $invokeEntryPoint__async: true,
+#endif
   $invokeEntryPoint: {{{ asyncIf(ASYNCIFY == 2) }}}(ptr, arg) => {
 #if PTHREADS_DEBUG
     dbg(`invokeEntryPoint: ${ptrToString(ptr)}`);

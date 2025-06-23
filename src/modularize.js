@@ -8,7 +8,7 @@
 // JS program code (INNER_JS_CODE) and wrapping it in a factory function.
 
 #if SOURCE_PHASE_IMPORTS
-import source wasmModule from './{settings.WASM_BINARY_FILE}';
+import source wasmModule from './{{{ WASM_BINARY_FILE }}}';
 #endif
 
 #if ENVIRONMENT_MAY_BE_WEB && !EXPORT_ES6 && !(MINIMAL_RUNTIME && !PTHREADS)
@@ -22,7 +22,7 @@ var {{{ EXPORT_NAME }}} = (() => {
   return {{{ asyncIf(WASM_ASYNC_COMPILATION || (EXPORT_ES6 && ENVIRONMENT_MAY_BE_NODE)) }}}function(moduleArg = {}) {
     var moduleRtn;
 
-<<< INNER_JS_CODE >>>
+"<<< INNER_JS_CODE >>>"
 
     return moduleRtn;
   };
@@ -33,7 +33,7 @@ var {{{ EXPORT_NAME }}} = (() => {
 {{{ asyncIf(WASM_ASYNC_COMPILATION || (EXPORT_ES6 && ENVIRONMENT_MAY_BE_NODE)) }}}function {{{ EXPORT_NAME }}}(moduleArg = {}) {
   var moduleRtn;
 
-<<< INNER_JS_CODE >>>
+"<<< INNER_JS_CODE >>>"
 
   return moduleRtn;
 }

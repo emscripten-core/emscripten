@@ -106,6 +106,8 @@ static em_task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
   return tasks;
 }
 
+static _Thread_local bool executing_system_queue = false;
+
 void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   assert(q != NULL);
   assert(pthread_self());
@@ -114,13 +116,12 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   // pthread_lock call below that executes the system queue. The per-task_queue
   // recursion lock can't catch these recursions because it can only be checked
   // after the lock has been acquired.
-  static _Thread_local int executing_system_queue = 0;
-  int is_system_queue = q == &system_proxying_queue;
+  bool is_system_queue = q == &system_proxying_queue;
   if (is_system_queue) {
     if (executing_system_queue) {
       return;
     }
-    executing_system_queue = 1;
+    executing_system_queue = true;
   }
 
   pthread_mutex_lock(&q->mutex);
@@ -133,7 +134,7 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   }
 
   if (is_system_queue) {
-    executing_system_queue = 0;
+    executing_system_queue = false;
   }
 }
 
@@ -603,11 +604,11 @@ static void run_js_func(void* arg) {
   }
 }
 
-double _emscripten_run_on_main_thread_js(int func_index,
+double _emscripten_run_js_on_main_thread(int func_index,
                                          void* em_asm_addr,
                                          int num_args,
                                          double* buffer,
-                                         int sync) {
+                                         bool sync) {
   proxied_js_func_t f = {
     .funcIndex = func_index,
     .emAsmAddr = em_asm_addr,

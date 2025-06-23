@@ -2184,6 +2184,11 @@ var WASM_ESM_INTEGRATION = false;
 // [link]
 var JS_BASE64_API = false;
 
+// Experimental support for WebAssembly js-types proposal.
+// It's currently only available under a flag in certain browsers,
+// so we disable it by default to save on code size.
+var WASM_JS_TYPES = false;
+
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]
 // For removed settings (which now effectively have a fixed value and can no
