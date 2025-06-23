@@ -34,7 +34,7 @@ string compare_a_64_js(T value) {
 }
 
 template <typename T>
-void test_value(T&& value) {
+void test_value(T value) {
   cout << "  testing value " << value << endl;
   cout << "    setting properties preserves the expected value" << endl;
   val::global().set("a", val(value));

@@ -925,8 +925,6 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'ASSERTIONS',
   'ccall',
   'cwrap',
-  'uleb128Encode',
-  'generateFuncType',
   'convertJsFunctionToWasm',
   'getEmptyTableSlot',
   'updateTableMap',
