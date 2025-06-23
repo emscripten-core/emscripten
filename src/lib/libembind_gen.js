@@ -134,13 +134,13 @@ var LibraryEmbind = {
       for (const argType of this.argumentTypes) {
         argTypes.push(this.convertToEmbindType(argType.type));
       }
-      const signature = createJsInvokerSignature(argTypes, !!this.thisType, this.returnType.name !== 'void', this.isAsync)
+      const signature = createJsInvokerSignature(argTypes, !!this.thisType, !this.returnType.isVoid, this.isAsync)
       if (emittedFunctions.has(signature)) {
         return;
       }
       emittedFunctions.add(signature);
-      let [args, body] = createJsInvoker(argTypes, !!this.thisType, this.returnType.name !== 'void', this.isAsync);
-      out.push(`'${signature}': function(${args.join(',')}) {\n${body}},`);
+      let invokerFactory = createJsInvoker(argTypes, !!this.thisType, !this.returnType.isVoid, this.isAsync);
+      out.push(`'${signature}': ${invokerFactory},`);
     }
   },
   $PointerDefinition: class {

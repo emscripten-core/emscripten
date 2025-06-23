@@ -293,7 +293,7 @@ var LibraryEmbindShared = {
     args1.push('checkArgCount', 'minArgs', 'maxArgs');
     invokerFnBody = `if (arguments.length !== ${args1.length}){ throw new Error(humanName + "Expected ${args1.length} closure arguments " + arguments.length + " given."); }\n${invokerFnBody}`;
 #endif
-    return [args1, invokerFnBody];
+    return new Function(args1, invokerFnBody);
   }
 };
 
