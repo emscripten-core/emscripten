@@ -675,13 +675,10 @@ def create_tsd(metadata, embind_tsd, bindgen_tsd = None):
   if embind_tsd:
     export_interfaces += ' & EmbindModule'
   if settings.WASM_BINDGEN and bindgen_tsd:
-    out += 'interface BindgenModule {\n'
     for file_path in bindgen_tsd:
-      indent = "  "
       with open(file_path, 'r') as file:
           for line in file:
-            out += f'{indent}{line}'
-    out += '}\n\n'
+              out += f'{line}'
     export_interfaces += ' & BindgenModule'
   out += f'export type MainModule = {export_interfaces};\n'
   if settings.MODULARIZE:
