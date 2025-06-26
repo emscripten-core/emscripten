@@ -294,7 +294,7 @@ def create_test_run_sorter():
       # N.b. it is important to sandwich all skipped tests between fails and successes. This is to maximize the chances that when
       # a failing test is detected, then the other cores will fail-fast as well. (successful tests are run slowest-first to help
       # scheduling)
-      order_by_result = { 'errored': 0, 'failed': 1, 'expected failure': 2, 'unexpected success': 3, 'skipped': 4, 'success': 5 }
+      order_by_result = {'errored': 0, 'failed': 1, 'expected failure': 2, 'unexpected success': 3, 'skipped': 4, 'success': 5}
       x_result = order_by_result[X['result']]
       y_result = order_by_result[Y['result']]
       if x_result != y_result:
