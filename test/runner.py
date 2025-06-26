@@ -21,6 +21,7 @@ import argparse
 import atexit
 import fnmatch
 import glob
+import json
 import logging
 import math
 import operator
@@ -30,6 +31,7 @@ import random
 import sys
 import unittest
 import time
+from functools import cmp_to_key
 
 # Setup
 
@@ -270,8 +272,54 @@ def error_on_legacy_suite_names(args):
       utils.exit_with_error('`%s` test suite has been replaced with `%s`', a, new)
 
 
-def load_test_suites(args, modules, start_at, repeat):
-  found_start = not start_at
+def create_test_run_sorter():
+  try:
+    previous_test_run_results = json.load(open(f'__previous_test_run_results.json', 'r'))
+  except FileNotFoundError:
+    previous_test_run_results = {}
+
+  def sort_tests_failing_and_slowest_first_comparator(x, y):
+    x = str(x)
+    y = str(y)
+
+    if x in previous_test_run_results:
+      X = previous_test_run_results[x]
+
+      # if test Y has not been run even once, run Y before X
+      if y not in previous_test_run_results:
+        return 1
+      Y = previous_test_run_results[y]
+
+      # If both X and Y have been run before, order the tests based on what the previous result was (failures first, skips very last)
+      # N.b. it is important to sandwich all skipped tests between fails and successes. This is to maximize the chances that when
+      # a failing test is detected, then the other cores will fail-fast as well. (successful tests are run slowest-first to help
+      # scheduling)
+      order_by_result = { 'errored': 0, 'failed': 1, 'expected failure': 2, 'unexpected success': 3, 'skipped': 4, 'success': 5 }
+      x_result = order_by_result[X['result']]
+      y_result = order_by_result[Y['result']]
+      if x_result != y_result:
+        return x_result - y_result #x_result < y_result
+
+      if X['duration'] != Y['duration']:
+        # If both tests were successful tests, then run the longer test first to improve parallelism
+        if X['result'] == 'success':
+          return Y['duration'] - X['duration']
+        else:
+          # If both tests were failing tests, run the quicker test first to improve --failfast detection time
+          return X['duration'] - Y['duration']
+
+    # if test X has not been run even once, but Y has, run X before Y
+    if y in previous_test_run_results:
+      return -1
+
+    # Neither test have been run before, so run them in alphabetical order
+    return (x > y) - (x < y)
+
+  return sort_tests_failing_and_slowest_first_comparator
+
+
+def load_test_suites(args, modules, options):
+  found_start = not options.start_at
 
   loader = unittest.TestLoader()
   error_on_legacy_suite_names(args)
@@ -291,20 +339,22 @@ def load_test_suites(args, modules, start_at, repeat):
     if names_in_module:
       loaded_tests = loader.loadTestsFromNames(sorted(names_in_module), m)
       tests = flattened_tests(loaded_tests)
-      suite = suite_for_module(m, tests)
+      suite = suite_for_module(m, tests, options)
+      if options.failing_and_slow_first:
+        tests = sorted(tests, key=cmp_to_key(create_test_run_sorter()))
       for test in tests:
         if not found_start:
           # Skip over tests until we find the start
-          if test.id().endswith(start_at):
+          if test.id().endswith(options.start_at):
             found_start = True
           else:
             continue
-        for _x in range(repeat):
+        for _x in range(options.repeat):
           total_tests += 1
           suite.addTest(test)
       suites.append((m.__name__, suite))
   if not found_start:
-    utils.exit_with_error(f'unable to find --start-at test: {start_at}')
+    utils.exit_with_error(f'unable to find --start-at test: {options.start_at}')
   if total_tests == 1 or parallel_testsuite.num_cores() == 1:
     # TODO: perhaps leave it at 2 if it was 2 before?
     common.EMTEST_SAVE_DIR = 1
@@ -318,13 +368,13 @@ def flattened_tests(loaded_tests):
   return tests
 
 
-def suite_for_module(module, tests):
+def suite_for_module(module, tests, options):
   suite_supported = module.__name__ in ('test_core', 'test_other', 'test_posixtest')
   if not common.EMTEST_SAVE_DIR and not shared.DEBUG:
     has_multiple_tests = len(tests) > 1
     has_multiple_cores = parallel_testsuite.num_cores() > 1
     if suite_supported and has_multiple_tests and has_multiple_cores:
-      return parallel_testsuite.ParallelTestSuite(len(tests))
+      return parallel_testsuite.ParallelTestSuite(len(tests), options)
   return unittest.TestSuite()
 
 
@@ -394,6 +444,7 @@ def parse_args():
                       help='Command to launch web browser in which to run browser tests.')
   parser.add_argument('tests', nargs='*')
   parser.add_argument('--failfast', action='store_true')
+  parser.add_argument('--failing-and-slow-first', action='store_true', help='Run failing tests first, then sorted by slowest first. Combine with --failfast for fast fail-early CI runs.')
   parser.add_argument('--start-at', metavar='NAME', help='Skip all tests up until <NAME>')
   parser.add_argument('--continue', dest='_continue', action='store_true',
                       help='Resume from the last run test.'
@@ -488,7 +539,7 @@ def main():
     if os.path.exists(common.LAST_TEST):
       options.start_at = utils.read_file(common.LAST_TEST).strip()
 
-  suites, unmatched_tests = load_test_suites(tests, modules, options.start_at, options.repeat)
+  suites, unmatched_tests = load_test_suites(tests, modules, options)
   if unmatched_tests:
     print('ERROR: could not find the following tests: ' + ' '.join(unmatched_tests))
     return 1

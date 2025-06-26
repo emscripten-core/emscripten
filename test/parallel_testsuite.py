@@ -3,6 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+import json
 import multiprocessing
 import os
 import sys
@@ -19,7 +20,12 @@ NUM_CORES = None
 seen_class = set()
 
 
-def run_test(test):
+def run_test(test, failfast_event):
+  # If failfast mode is in effect and any of the tests have failed,
+  # and then we should abort executing further tests immediately.
+  if failfast_event is not None and failfast_event.is_set():
+    return None
+
   olddir = os.getcwd()
   result = BufferedParallelTestResult()
   temp_dir = tempfile.mkdtemp(prefix='emtest_')
@@ -29,10 +35,16 @@ def run_test(test):
       seen_class.add(test.__class__)
       test.__class__.setUpClass()
     test(result)
+
+    # Alert all other multiprocess pool runners that they need to stop executing further tests.
+    if failfast_event is not None and result.test_result != 'success' and result.test_result != 'skipped':
+      failfast_event.set()
   except unittest.SkipTest as e:
     result.addSkip(test, e)
   except Exception as e:
     result.addError(test, e)
+    if failfast_event is not None:
+      failfast_event.set()
   # Before attempting to delete the tmp dir make sure the current
   # working directory is not within it.
   os.chdir(olddir)
@@ -46,9 +58,11 @@ class ParallelTestSuite(unittest.BaseTestSuite):
   Creates worker threads, manages the task queue, and combines the results.
   """
 
-  def __init__(self, max_cores):
+  def __init__(self, max_cores, options):
     super().__init__()
     self.max_cores = max_cores
+    self.failfast = options.failfast
+    self.failing_and_slow_first = options.failing_and_slow_first
 
   def addTest(self, test):
     super().addTest(test)
@@ -61,12 +75,32 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # inherited by the child process, but can lead to hard-to-debug windows-only
     # issues.
     # multiprocessing.set_start_method('spawn')
-    tests = list(self.reversed_tests())
+
+    # If we are running with --failing-and-slow-first, then the test list has been
+    # pre-sorted based on previous test run results. Otherwise run the tests in
+    # reverse alphabetical order.
+    tests = list(self if self.failing_and_slow_first else self.reversed_tests())
     use_cores = cap_max_workers_in_pool(min(self.max_cores, len(tests), num_cores()))
     print('Using %s parallel test processes' % use_cores)
-    pool = multiprocessing.Pool(use_cores)
-    results = [pool.apply_async(run_test, (t,)) for t in tests]
-    results = [r.get() for r in results]
+    with multiprocessing.Manager() as manager:
+      pool = multiprocessing.Pool(use_cores)
+      failfast_event = manager.Event() if self.failfast else None
+      results = [pool.apply_async(run_test, (t, failfast_event)) for t in tests]
+      results = [r.get() for r in results]
+      results = [r for r in results if r is not None]
+
+    try:
+      previous_test_run_results = json.load(open(f'__previous_test_run_results.json', 'r'))
+    except FileNotFoundError:
+      previous_test_run_results = {}
+
+    if self.failing_and_slow_first:
+      for r in results:
+        previous_test_run_results[r.test_name] = {
+          'result': r.test_result,
+          'duration': r.test_duration
+        }
+      json.dump(previous_test_run_results, open(f'__previous_test_run_results.json', 'w'), indent=2)
     pool.close()
     pool.join()
     return self.combine_results(result, results)
@@ -104,6 +138,8 @@ class BufferedParallelTestResult:
   def __init__(self):
     self.buffered_result = None
     self.test_duration = 0
+    self.test_result = 'errored'
+    self.test_name = ''
 
   @property
   def test(self):
@@ -122,6 +158,7 @@ class BufferedParallelTestResult:
     result.core_time += self.test_duration
 
   def startTest(self, test):
+    self.test_name = str(test)
     self.start_time = time.perf_counter()
 
   def stopTest(self, test):
@@ -134,28 +171,34 @@ class BufferedParallelTestResult:
     if hasattr(time, 'perf_counter'):
       print(test, '... ok (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
     self.buffered_result = BufferedTestSuccess(test)
+    self.test_result = 'success'
 
   def addExpectedFailure(self, test, err):
     if hasattr(time, 'perf_counter'):
       print(test, '... expected failure (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
     self.buffered_result = BufferedTestExpectedFailure(test, err)
+    self.test_result = 'expected failure'
 
   def addUnexpectedSuccess(self, test):
     if hasattr(time, 'perf_counter'):
       print(test, '... unexpected success (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
     self.buffered_result = BufferedTestUnexpectedSuccess(test)
+    self.test_result = 'unexpected success'
 
   def addSkip(self, test, reason):
     print(test, "... skipped '%s'" % reason, file=sys.stderr)
     self.buffered_result = BufferedTestSkip(test, reason)
+    self.test_result = 'skipped'
 
   def addFailure(self, test, err):
     print(test, '... FAIL', file=sys.stderr)
     self.buffered_result = BufferedTestFailure(test, err)
+    self.test_result = 'failed'
 
   def addError(self, test, err):
     print(test, '... ERROR', file=sys.stderr)
     self.buffered_result = BufferedTestError(test, err)
+    self.test_result = 'errored'
 
 
 class BufferedTestBase:
