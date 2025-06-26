@@ -37,7 +37,7 @@ def run_test(test, failfast_event):
     test(result)
 
     # Alert all other multiprocess pool runners that they need to stop executing further tests.
-    if failfast_event is not None and result.test_result != 'success' and result.test_result != 'skipped':
+    if failfast_event is not None and result.test_result not in ['success', 'skipped']:
       failfast_event.set()
   except unittest.SkipTest as e:
     result.addSkip(test, e)
@@ -90,7 +90,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
       results = [r for r in results if r is not None]
 
     try:
-      previous_test_run_results = json.load(open(f'__previous_test_run_results.json', 'r'))
+      previous_test_run_results = json.load(open('__previous_test_run_results.json'))
     except FileNotFoundError:
       previous_test_run_results = {}
 
@@ -98,9 +98,9 @@ class ParallelTestSuite(unittest.BaseTestSuite):
       for r in results:
         previous_test_run_results[r.test_name] = {
           'result': r.test_result,
-          'duration': r.test_duration
+          'duration': r.test_duration,
         }
-      json.dump(previous_test_run_results, open(f'__previous_test_run_results.json', 'w'), indent=2)
+      json.dump(previous_test_run_results, open('__previous_test_run_results.json', 'w'), indent=2)
     pool.close()
     pool.join()
     return self.combine_results(result, results)

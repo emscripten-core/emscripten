@@ -274,7 +274,7 @@ def error_on_legacy_suite_names(args):
 
 def create_test_run_sorter():
   try:
-    previous_test_run_results = json.load(open(f'__previous_test_run_results.json', 'r'))
+    previous_test_run_results = json.load(open('__previous_test_run_results.json'))
   except FileNotFoundError:
     previous_test_run_results = {}
 
