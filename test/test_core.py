@@ -9949,7 +9949,7 @@ bulkmem2 = make_run('bulkmem2', cflags=['-O2', '-mbulk-memory'])
 wasmfs = make_run('wasmfs', cflags=['-O2', '-DWASMFS'], settings={'WASMFS': 1})
 
 # SAFE_HEAP/STACK_OVERFLOW_CHECK
-core0s = make_run('core2s', cflags=['-g'], settings={'SAFE_HEAP': 1})
+core0s = make_run('core0s', cflags=['-g'], settings={'SAFE_HEAP': 1})
 core2s = make_run('core2s', cflags=['-O2'], settings={'SAFE_HEAP': 1})
 core2ss = make_run('core2ss', cflags=['-O2'], settings={'STACK_OVERFLOW_CHECK': 2})
 
