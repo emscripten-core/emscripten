@@ -11,7 +11,9 @@
 #ifndef GOOLIKELY_H
 #define GOOLIKELY_H
 
-#if defined(__GNUC__) && (__GNUC__ > 2) && defined(__OPTIMIZE__)
+// XXX EMSCRIPTEN: Remove gcc-specific detection of __builtin_expect.
+// #if defined(__GNUC__) && (__GNUC__ > 2) && defined(__OPTIMIZE__)
+#ifdef __EMSCRIPTEN__
 # define likely(x)      __builtin_expect((x), 1)
 # define unlikely(x)    __builtin_expect((x), 0)
 #else
