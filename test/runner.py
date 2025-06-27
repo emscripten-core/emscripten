@@ -278,9 +278,29 @@ def create_test_run_sorter(failfast):
   except FileNotFoundError:
     previous_test_run_results = {}
 
+  def read_approx_fail_freq(test_name):
+    if test_name in previous_test_run_results and 'fail_frequency' in previous_test_run_results[test_name]:
+      # Quantize the float value to relatively fine-grained buckets for sorting
+      return round(previous_test_run_results[test_name]['fail_frequency'] * 20) / 20
+    return 0
+
   def sort_tests_failing_and_slowest_first_comparator(x, y):
     x = str(x)
     y = str(y)
+
+    # Look at the number of times this test has failed, and order by failures count first
+    # Only do this in --failfast, if we are looking to fail early. (otherwise sorting by last test run duration is more productive)
+    if failfast:
+      x_fail_freq = read_approx_fail_freq(x)
+      y_fail_freq = read_approx_fail_freq(y)
+      if x_fail_freq != y_fail_freq:
+        return y_fail_freq - x_fail_freq
+
+      # Look at the number of times this test has failed overall in any other suite, and order by failures count first
+      x_fail_freq = read_approx_fail_freq(x.split(' ')[0])
+      y_fail_freq = read_approx_fail_freq(y.split(' ')[0])
+      if x_fail_freq != y_fail_freq:
+        return y_fail_freq - x_fail_freq
 
     if x in previous_test_run_results:
       X = previous_test_run_results[x]
@@ -300,14 +320,6 @@ def create_test_run_sorter(failfast):
       if x_result != y_result:
         return x_result - y_result
 
-      # Look at the number of times this test has failed overall in any other suite, and order by failures count first
-      # Only do this in --failfast, if we are looking to fail early. (otherwise sorting by last test run duration is more productive)
-      if failfast:
-        x_in_any_suite = x.split(' ')[0]
-        y_in_any_suite = y.split(' ')[0]
-        if previous_test_run_results[x_in_any_suite]['num_failures'] != previous_test_run_results[y_in_any_suite]['num_failures']:
-          return previous_test_run_results[y_in_any_suite]['num_failures'] - previous_test_run_results[x_in_any_suite]['num_failures']
-
       # Finally, order by test duration from last run
       if X['duration'] != Y['duration']:
         if X['result'] == 'success':
@@ -320,15 +332,6 @@ def create_test_run_sorter(failfast):
     # if test X has not been run even once, but Y has, run X before Y
     if y in previous_test_run_results:
       return -1
-
-    # Look at the number of times this test has failed overall in any other suite, and order by failures count first
-    if failfast:
-      x_in_any_suite = x.split(' ')[0]
-      y_in_any_suite = y.split(' ')[0]
-      x_failures = previous_test_run_results[x_in_any_suite]['num_failures'] if x_in_any_suite in previous_test_run_results else 0
-      y_failures = previous_test_run_results[y_in_any_suite]['num_failures'] if y_in_any_suite in previous_test_run_results else 0
-      if x_failures != y_failures:
-        return y_failures - x_failures
 
     # Neither test have been run before, so run them in alphabetical order
     return (x > y) - (x < y)
