@@ -96,10 +96,26 @@ class ParallelTestSuite(unittest.BaseTestSuite):
 
     if self.failing_and_slow_first:
       for r in results:
+        # Save a test result record with the specific suite name (e.g. "core0.test_foo")
+        test_failed = r.test_result not in ['success', 'skipped']
+        num_failures = previous_test_run_results[r.test_name]['num_failures'] if r.test_name in previous_test_run_results else 0
+        num_failures += 1 if test_failed else 0
         previous_test_run_results[r.test_name] = {
           'result': r.test_result,
           'duration': r.test_duration,
+          'num_failures': num_failures
         }
+        # Also save a test result record without suite name (e.g. just "test_foo"). This enables different suite runs to order tests
+        # for quick --failfast termination, in case a test fails in multiple suites
+        test_in_any_suite = r.test_name.split(' ')[0]
+        num_failures = previous_test_run_results[test_in_any_suite]['num_failures'] if test_in_any_suite in previous_test_run_results else 0
+        num_failures += 1 if test_failed else 0
+        previous_test_run_results[test_in_any_suite] = {
+          'result': r.test_result,
+          'duration': r.test_duration,
+          'num_failures': num_failures
+        }
+
       json.dump(previous_test_run_results, open('__previous_test_run_results.json', 'w'), indent=2)
     pool.close()
     pool.join()

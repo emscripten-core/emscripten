@@ -272,7 +272,7 @@ def error_on_legacy_suite_names(args):
       utils.exit_with_error('`%s` test suite has been replaced with `%s`', a, new)
 
 
-def create_test_run_sorter():
+def create_test_run_sorter(failfast):
   try:
     previous_test_run_results = json.load(open('__previous_test_run_results.json'))
   except FileNotFoundError:
@@ -298,11 +298,20 @@ def create_test_run_sorter():
       x_result = order_by_result[X['result']]
       y_result = order_by_result[Y['result']]
       if x_result != y_result:
-        return x_result - y_result #x_result < y_result
+        return x_result - y_result
 
+      # Look at the number of times this test has failed overall in any other suite, and order by failures count first
+      # Only do this in --failfast, if we are looking to fail early. (otherwise sorting by last test run duration is more productive)
+      if failfast:
+        x_in_any_suite = x.split(' ')[0]
+        y_in_any_suite = y.split(' ')[0]
+        if previous_test_run_results[x_in_any_suite]['num_failures'] != previous_test_run_results[y_in_any_suite]['num_failures']:
+          return previous_test_run_results[y_in_any_suite]['num_failures'] - previous_test_run_results[x_in_any_suite]['num_failures']
+
+      # Finally, order by test duration from last run
       if X['duration'] != Y['duration']:
-        # If both tests were successful tests, then run the longer test first to improve parallelism
         if X['result'] == 'success':
+          # If both tests were successful tests, run the slower test first to improve parallelism
           return Y['duration'] - X['duration']
         else:
           # If both tests were failing tests, run the quicker test first to improve --failfast detection time
@@ -311,6 +320,15 @@ def create_test_run_sorter():
     # if test X has not been run even once, but Y has, run X before Y
     if y in previous_test_run_results:
       return -1
+
+    # Look at the number of times this test has failed overall in any other suite, and order by failures count first
+    if failfast:
+      x_in_any_suite = x.split(' ')[0]
+      y_in_any_suite = y.split(' ')[0]
+      x_failures = previous_test_run_results[x_in_any_suite]['num_failures'] if x_in_any_suite in previous_test_run_results else 0
+      y_failures = previous_test_run_results[y_in_any_suite]['num_failures'] if y_in_any_suite in previous_test_run_results else 0
+      if x_failures != y_failures:
+        return y_failures - x_failures
 
     # Neither test have been run before, so run them in alphabetical order
     return (x > y) - (x < y)
@@ -341,7 +359,7 @@ def load_test_suites(args, modules, options):
       tests = flattened_tests(loaded_tests)
       suite = suite_for_module(m, tests, options)
       if options.failing_and_slow_first:
-        tests = sorted(tests, key=cmp_to_key(create_test_run_sorter()))
+        tests = sorted(tests, key=cmp_to_key(create_test_run_sorter(options.failfast)))
       for test in tests:
         if not found_start:
           # Skip over tests until we find the start
