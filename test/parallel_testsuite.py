@@ -103,7 +103,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
         previous_test_run_results[r.test_name] = {
           'result': r.test_result,
           'duration': r.test_duration,
-          'fail_frequency': fail_frequency
+          'fail_frequency': fail_frequency,
         }
         # Also save a test result record without suite name (e.g. just "test_foo"). This enables different suite runs to order tests
         # for quick --failfast termination, in case a test fails in multiple suites
@@ -113,7 +113,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
         previous_test_run_results[test_in_any_suite] = {
           'result': r.test_result,
           'duration': r.test_duration,
-          'fail_frequency': fail_frequency
+          'fail_frequency': fail_frequency,
         }
 
       json.dump(previous_test_run_results, open('__previous_test_run_results.json', 'w'), indent=2)
