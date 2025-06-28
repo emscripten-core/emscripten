@@ -3644,11 +3644,16 @@ More info: https://emscripten.org
     self.run_process(args)
     self.assertFileContents(test_file('other/embind_tsgen_bigint.d.ts'), read_file('embind_tsgen_bigint.d.ts'))
 
+  @parameterized({
+    '': [[]],
+    'pthread': [['-pthread']],
+  })
   @requires_wasm64
-  def test_embind_tsgen_memory64(self):
+  def test_embind_tsgen_memory64(self, args):
     # Check that when memory64 is enabled longs & unsigned longs are mapped to bigint in the generated TS bindings
     self.run_process([EMXX, test_file('other/embind_tsgen_memory64.cpp'),
                       '-lembind', '--emit-tsd', 'embind_tsgen_memory64.d.ts', '-sMEMORY64'] +
+                     args +
                      self.get_cflags())
     self.assertFileContents(test_file('other/embind_tsgen_memory64.d.ts'), read_file('embind_tsgen_memory64.d.ts'))
 

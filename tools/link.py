@@ -2036,6 +2036,12 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
     if basename == 'libembind.js':
       settings.JS_LIBRARIES[i] = os.path.join(dirname, 'libembind_gen.js')
   settings.MIN_NODE_VERSION = 160000 if settings.MEMORY64 else 150000
+  # The final version of the memory64 proposal is not implemented until node
+  # v24, so we need to lower it away in order to execute the binary at build
+  # time.
+  # TODO Remove lowering when emsdk version of node is >= 24 and just require it.
+  if settings.MEMORY64:
+    settings.MEMORY64 = 2
   # Source maps haven't been generated yet and aren't needed to run embind_gen.
   settings.LOAD_SOURCE_MAP = 0
   outfile_js = in_temp('tsgen.js')
@@ -2045,9 +2051,7 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   # Build the flags needed by Node.js to properly run the output file.
   node_args = []
   if settings.MEMORY64:
-    # The final version of the memory64 proposal is not yet implemented in any
-    # shipping version of node, so we need to lower it away in order to
-    # execute the binary at built time.
+    # See comment above about lowering memory64.
     building.run_wasm_opt(outfile_wasm, outfile_wasm, ['--memory64-lowering', '--table64-lowering'])
   if settings.WASM_EXCEPTIONS:
     node_args += shared.node_exception_flags(config.NODE_JS)
