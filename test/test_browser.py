@@ -2992,6 +2992,48 @@ Module["preRun"] = () => {
       '--use-port=sdl2', '--use-port=sdl2_image:formats=jpg',
     ])
 
+  @requires_graphics_hardware
+  @also_with_wasm2js
+  def test_sdl3_image(self):
+    # Same test as for SDL2, but with SDL3.
+    shutil.copy(test_file('screenshot.jpg'), '.')
+
+    for dest, dirname, basename in [('screenshot.jpg', '/', 'screenshot.jpg'),
+                                    ('screenshot.jpg@/assets/screenshot.jpg', '/assets', 'screenshot.jpg')]:
+      self.btest_exit('test_sdl3_image.c', 600, cflags=[
+        '-O2',
+        '--preload-file', dest,
+        '-DSCREENSHOT_DIRNAME="' + dirname + '"',
+        '-DSCREENSHOT_BASENAME="' + basename + '"',
+        '-sUSE_SDL=3', '-sUSE_SDL_IMAGE=3', '--use-preload-plugins',
+      ])
+
+  @requires_graphics_hardware
+  def test_sdl3_image_jpeg(self):
+    shutil.copy(test_file('screenshot.jpg'), 'screenshot.jpeg')
+    self.btest_exit('test_sdl3_image.c', 600, cflags=[
+      '--preload-file', 'screenshot.jpeg',
+      '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpeg"',
+      '-sUSE_SDL=3', '-sUSE_SDL_IMAGE=3', '--use-preload-plugins',
+    ])
+
+  @also_with_wasmfs
+  @requires_graphics_hardware
+  @with_all_sjlj
+  def test_sdl3_image_formats(self):
+    shutil.copy(test_file('screenshot.png'), '.')
+    shutil.copy(test_file('screenshot.jpg'), '.')
+    self.btest_exit('test_sdl3_image.c', 512, cflags=[
+      '--preload-file', 'screenshot.png',
+      '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.png"', '-DNO_PRELOADED',
+      '-sUSE_SDL=3', '-sUSE_SDL_IMAGE=3', '-sSDL3_IMAGE_FORMATS=png',
+    ])
+    self.btest_exit('test_sdl3_image.c', 600, cflags=[
+      '--preload-file', 'screenshot.jpg',
+      '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpg"', '-DBITSPERPIXEL=24', '-DNO_PRELOADED',
+      '--use-port=sdl3', '--use-port=sdl3_image:formats=jpg',
+    ])
+
   def test_sdl2_key(self):
     self.btest_exit('test_sdl2_key.c', 37182145, cflags=['-sUSE_SDL=2', '--pre-js', test_file('browser/fake_events.js')])
 
