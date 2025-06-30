@@ -2148,6 +2148,25 @@ def harness_server_func(in_queue, out_queue, port):
         create_file(filename, post_data, binary=True)
         self.send_response(200)
         self.end_headers()
+      elif urlinfo.path.startswith('/status/'):
+        code_str = urlinfo.path[len('/status/'):]
+        try:
+          code = int(code_str)
+        except ValueError:
+          self.send_error(400, 'Invalid status code')
+          return
+        if code in (301, 302, 303, 307, 308):
+          self.send_response(code)
+          self.send_header('Location', '/status/200')
+          self.end_headers()
+        elif code == 200:
+          self.send_response(200)
+          self.send_header('Content-type', 'text/plain')
+          self.end_headers()
+          self.wfile.write(b'OK')
+        else:
+          self.send_error(code)
+        return
       else:
         print(f'do_POST: unexpected POST: {urlinfo}')
 
@@ -2160,6 +2179,25 @@ def harness_server_func(in_queue, out_queue, port):
         self.send_header('Content-type', 'text/html')
         self.end_headers()
         self.wfile.write(read_binary(test_file('browser_harness.html')))
+      elif info.path.startswith('/status/'):
+        code_str = info.path[len('/status/'):]
+        try:
+          code = int(code_str)
+        except ValueError:
+          self.send_error(400, 'Invalid status code')
+          return
+        if code in (301, 302, 303, 307, 308):
+          # Redirect to /status/200
+          self.send_response(code)
+          self.send_header('Location', '/status/200')
+          self.end_headers()
+        elif code == 200:
+          self.send_response(200)
+          self.send_header('Content-type', 'text/plain')
+          self.end_headers()
+          self.wfile.write(b'OK')
+        else:
+          self.send_error(code)
       elif 'report_' in self.path:
         # the test is reporting its result. first change dir away from the
         # test dir, as it will be deleted now that the test is finishing, and
@@ -2466,109 +2504,3 @@ class BrowserCore(RunnerCore):
       self.assertContained('RESULT: ' + expected[0], output)
     else:
       self.run_browser(outfile, expected=['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
-
-
-###################################################################################################
-
-
-def build_library(name,
-                  build_dir,
-                  generated_libs,
-                  configure,
-                  make,
-                  make_args,
-                  cache,
-                  cache_name,
-                  env_init,
-                  native):
-  """Build a library and cache the result.  We build the library file
-  once and cache it for all our tests. (We cache in memory since the test
-  directory is destroyed and recreated for each test. Note that we cache
-  separately for different compilers).  This cache is just during the test
-  runner. There is a different concept of caching as well, see |Cache|.
-  """
-
-  if type(generated_libs) is not list:
-    generated_libs = [generated_libs]
-  source_dir = test_file(name.replace('_native', ''))
-
-  project_dir = Path(build_dir, name)
-  if os.path.exists(project_dir):
-    shutil.rmtree(project_dir)
-  # Useful in debugging sometimes to comment this out, and two lines above
-  shutil.copytree(source_dir, project_dir)
-
-  generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
-
-  if native:
-    env = clang_native.get_clang_native_env()
-  else:
-    env = os.environ.copy()
-  env.update(env_init)
-
-  if not native:
-    # Inject emcmake, emconfigure or emmake accordingly, but only if we are
-    # cross compiling.
-    if configure:
-      if configure[0] == 'cmake':
-        configure = [EMCMAKE] + configure
-      else:
-        configure = [EMCONFIGURE] + configure
-    else:
-      make = [EMMAKE] + make
-
-  if configure:
-    try:
-      with open(os.path.join(project_dir, 'configure_out'), 'w') as out:
-        with open(os.path.join(project_dir, 'configure_err'), 'w') as err:
-          stdout = out if EMTEST_BUILD_VERBOSE < 2 else None
-          stderr = err if EMTEST_BUILD_VERBOSE < 1 else None
-          shared.run_process(configure, env=env, stdout=stdout, stderr=stderr,
-                             cwd=project_dir)
-    except subprocess.CalledProcessError:
-      print('-- configure stdout --')
-      print(read_file(Path(project_dir, 'configure_out')))
-      print('-- end configure stdout --')
-      print('-- configure stderr --')
-      print(read_file(Path(project_dir, 'configure_err')))
-      print('-- end configure stderr --')
-      raise
-    # if we run configure or cmake we don't then need any kind
-    # of special env when we run make below
-    env = None
-
-  def open_make_out(mode='r'):
-    return open(os.path.join(project_dir, 'make.out'), mode)
-
-  def open_make_err(mode='r'):
-    return open(os.path.join(project_dir, 'make.err'), mode)
-
-  if EMTEST_BUILD_VERBOSE >= 3:
-    # VERBOSE=1 is cmake and V=1 is for autoconf
-    make_args += ['VERBOSE=1', 'V=1']
-
-  try:
-    with open_make_out('w') as make_out:
-      with open_make_err('w') as make_err:
-        stdout = make_out if EMTEST_BUILD_VERBOSE < 2 else None
-        stderr = make_err if EMTEST_BUILD_VERBOSE < 1 else None
-        shared.run_process(make + make_args, stdout=stdout, stderr=stderr, env=env,
-                           cwd=project_dir)
-  except subprocess.CalledProcessError:
-    with open_make_out() as f:
-      print('-- make stdout --')
-      print(f.read())
-      print('-- end make stdout --')
-    with open_make_err() as f:
-      print('-- make stderr --')
-      print(f.read())
-      print('-- end stderr --')
-    raise
-
-  if cache is not None:
-    cache[cache_name] = []
-    for f in generated_libs:
-      basename = os.path.basename(f)
-      cache[cache_name].append((basename, read_binary(f)))
-
-  return generated_libs
