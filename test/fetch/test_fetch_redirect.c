@@ -11,6 +11,11 @@
 
 #define SERVER "http://localhost:8888"
 
+// 301: Moved Permanently                      - https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/301
+// 302: Found (Previously "Moved Temporarily") - https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/302
+// 303: See Other                              - https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/303
+// 307: Temporary Redirect                     - https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/307
+// 308: Permanent Redirect                     - https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/308
 const int redirect_codes[] = {301, 302, 303, 307, 308};
 const int num_codes = sizeof(redirect_codes) / sizeof(redirect_codes[0]);
 
@@ -56,7 +61,7 @@ void onreadystatechange(emscripten_fetch_t *fetch) {
   if (fetch->readyState < 2) {
     assert(NULL == fetch->responseUrl);
   } else {
-    assert(0 == strcmp(fetch->responseUrl, "https://httpbin.org/get"));
+    assert(0 == strcmp(fetch->responseUrl, SERVER "/status/200"));
   }
 }
 
