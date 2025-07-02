@@ -112,18 +112,18 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   assert(q != NULL);
   assert(pthread_self());
 
-  // Below is a recursion and deadlock guard:
-  // The recursion guard is to avoid infinite recursion when we arrive here from
-  // the pthread_lock call below that executes the system queue. The
-  // per-task_queue recursion lock can't catch these recursions because it can
-  // only be checked after the lock has been acquired.
-  // 
+  // Below is a recursion and deadlock guard: The recursion guard is to avoid
+  // infinite recursion when we arrive here from the pthread_lock call below
+  // that executes the system queue. The per-task_queue recursion lock can't
+  // catch these recursions because it can only be checked after the lock has
+  // been acquired.
+  //
   // This also guards against deadlocks when adding to the system queue. When
   // the current thread is adding tasks, it locks the queue, but we can
-  // potentially try to execute the queue during the add (from
-  // emscripten_yield). This will deadlock the thread, so only try to take the
-  // lock if the current thread is not using the queue. We then hope the
-  // queue is executed later when it is unlocked.
+  // potentially try to execute the queue during the add (from emscripten_yield
+  // when malloc takes a lock). This will deadlock the thread, so only try to
+  // take the lock if the current thread is not using the queue. We then hope
+  // the queue is executed later when it is unlocked.
   int is_system_queue = q == &system_proxying_queue;
   if (is_system_queue) {
     if (system_queue_in_use) {
