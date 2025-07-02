@@ -51,10 +51,8 @@ function initRuntime(wasmExports) {
 #endif
 
 #if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) {
-    PThread.tlsInitFunctions.push(wasmExports['_emscripten_tls_init']);
-    return;
-  }
+  PThread.tlsInitFunctions.push(wasmExports['_emscripten_tls_init']);
+  if (ENVIRONMENT_IS_PTHREAD) return;
 #endif
 
 #if WASM_WORKERS
