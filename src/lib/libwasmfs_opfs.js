@@ -474,5 +474,25 @@ addToLibrary({
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     wasmfsOPFSProxyFinish(ctx);
-  }
+  },
+
+ _wasmfs_opfs_close_all__deps: ['$wasmfsOPFSAccessHandles', '$wasmfsOPFSProxyFinish'],
+ _wasmfs_opfs_close_all__async: {{{ !PTHREADS }}},
+ _wasmfs_opfs_close_all: async function(ctx) {
+    for (const i = 0; i < wasmfsOPFSAccessHandles.allocated.length; i++)
+    {
+      const handle = wasmfsOPFSAccessHandles.allocated[i];
+      if (handle && handle.close)
+      {
+        try {
+          await handle.close();
+        } catch (e) {
+          let err = -{{{ cDefs.EIO }}};
+          {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
+        }
+        wasmfsOPFSAccessHandles.free(i);
+      }
+    }
+    wasmfsOPFSProxyFinish(ctx);
+ }
 });
