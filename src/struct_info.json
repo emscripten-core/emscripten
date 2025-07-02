@@ -312,6 +312,7 @@
     {
         "file": "bits/ioctl.h",
         "defines": [
+            "FIONBIO",
             "FIONREAD",
             "TCGETA",
             "TCGETS",
