@@ -2993,7 +2993,6 @@ Module["preRun"] = () => {
     ])
 
   @requires_graphics_hardware
-  @also_with_wasm2js
   def test_sdl3_image(self):
     # Same test as for SDL2, but with SDL3.
     shutil.copy(test_file('screenshot.jpg'), '.')
@@ -3017,9 +3016,7 @@ Module["preRun"] = () => {
       '-sUSE_SDL=3', '-sUSE_SDL_IMAGE=3', '--use-preload-plugins',
     ])
 
-  @also_with_wasmfs
   @requires_graphics_hardware
-  @with_all_sjlj
   def test_sdl3_image_formats(self):
     shutil.copy(test_file('screenshot.png'), '.')
     shutil.copy(test_file('screenshot.jpg'), '.')
