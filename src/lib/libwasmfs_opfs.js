@@ -479,7 +479,7 @@ addToLibrary({
  _wasmfs_opfs_close_all__deps: ['$wasmfsOPFSAccessHandles', '$wasmfsOPFSProxyFinish'],
  _wasmfs_opfs_close_all__async: {{{ !PTHREADS }}},
  _wasmfs_opfs_close_all: async function(ctx) {
-    for (const i = 0; i < wasmfsOPFSAccessHandles.allocated.length; i++)
+    for (let i = 0; i < wasmfsOPFSAccessHandles.allocated.length; i++)
     {
       const handle = wasmfsOPFSAccessHandles.allocated[i];
       if (handle && handle.close)
