@@ -393,6 +393,10 @@ public:
     // Symlinks not supported.
     return nullptr;
   }
+
+  void closeAll() {
+    proxy([](auto ctx) { _wasmfs_opfs_close_all(ctx.ctx); });
+  }
 };
 
 } // anonymous namespace
@@ -413,6 +417,12 @@ backend_t wasmfs_create_opfs_backend() {
 void EMSCRIPTEN_KEEPALIVE _wasmfs_opfs_record_entry(
   std::vector<Directory::Entry>* entries, const char* name, int type) {
   entries->push_back({name, File::FileKind(type), 0});
+}
+
+void wasmfs_close_opfs_backend(backend_t backend) {
+  auto opfsBackend = static_cast<OPFSBackend*>(backend);
+  assert(opfsBackend && "Invalid OPFS backend");
+  opfsBackend->closeAll();
 }
 
 } // extern "C"

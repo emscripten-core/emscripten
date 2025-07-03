@@ -91,6 +91,8 @@ backend_t wasmfs_create_node_backend(const char* root __attribute__((nonnull)));
 // thread.
 backend_t wasmfs_create_opfs_backend(void);
 
+void wasmfs_close_opfs_backend(backend_t backend);
+
 // Creates a generic JSIMPL backend
 backend_t wasmfs_create_jsimpl_backend(void);
 
