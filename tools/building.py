@@ -163,9 +163,11 @@ def lld_flags_for_executable(external_symbols):
   # wasm-ld can strip debug info for us. this strips both the Names
   # section and DWARF, so we can only use it when we don't need any of
   # those things.
-  if settings.DEBUG_LEVEL < 2 and (not settings.EMIT_SYMBOL_MAP and
-                                   not settings.EMIT_NAME_SECTION and
-                                   not settings.ASYNCIFY):
+  if   (not settings.GENERATE_DWARF and
+        not settings.EMIT_SYMBOL_MAP and
+        not settings.GENERATE_SOURCE_MAP and
+        not settings.EMIT_NAME_SECTION and
+        not settings.ASYNCIFY):
     cmd.append('--strip-debug')
 
   if settings.LINKABLE:
