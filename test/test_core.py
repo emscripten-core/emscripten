@@ -2637,6 +2637,13 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_thread_local_storage.cpp')
 
   @node_pthreads
+  @also_with_minimal_runtime
+  def test_pthread_c_thread_local(self):
+    if self.get_setting('MINIMAL_RUNTIME') and is_sanitizing(self.cflags):
+      self.skipTest('MINIMAL_RUNTIME + threads + asan does not work')
+    self.do_run_in_out_file_test('pthread/test_pthread_c_thread_local.c')
+
+  @node_pthreads
   def test_pthread_cleanup(self):
     self.set_setting('PTHREAD_POOL_SIZE', 4)
     self.do_run_in_out_file_test('pthread/test_pthread_cleanup.c')
