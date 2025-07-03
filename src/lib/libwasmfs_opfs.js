@@ -487,8 +487,9 @@ addToLibrary({
         try {
           await handle.close();
         } catch (e) {
-          let err = -{{{ cDefs.EIO }}};
-          {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
+#if ASSERTIONS
+      err('unexpected error:', e, e.stack);
+#endif
         }
         wasmfsOPFSAccessHandles.free(i);
       }
