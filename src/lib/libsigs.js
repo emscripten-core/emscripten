@@ -439,7 +439,7 @@ sigs = {
   _wasmfs_opfs_set_size_access__sig: 'vpijp',
   _wasmfs_opfs_set_size_file__sig: 'vpijp',
   _wasmfs_opfs_write_access__sig: 'iipij',
-  _wasmfs_opfs_close_all__sig: 'v',
+  _wasmfs_opfs_close_all__sig: 'vp',
   _wasmfs_stdin_get_char__sig: 'i',
   _wasmfs_thread_utils_heartbeat__sig: 'vp',
   alBuffer3f__sig: 'viifff',

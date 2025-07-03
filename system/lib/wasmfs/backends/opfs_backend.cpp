@@ -421,6 +421,7 @@ void EMSCRIPTEN_KEEPALIVE _wasmfs_opfs_record_entry(
 
 void wasmfs_close_opfs_backend(backend_t backend) {
   auto opfsBackend = static_cast<OPFSBackend*>(backend);
+  assert(opfsBackend && "Invalid OPFS backend");
   opfsBackend->closeAll();
 }
 
