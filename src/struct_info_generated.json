@@ -292,6 +292,7 @@
         "EWOULDBLOCK": 6,
         "EXDEV": 75,
         "EXFULL": 115,
+        "FIONBIO": 21537,
         "FIONREAD": 21531,
         "F_DUPFD": 0,
         "F_GETFD": 1,

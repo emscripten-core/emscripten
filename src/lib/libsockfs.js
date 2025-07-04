@@ -438,6 +438,14 @@ addToLibrary({
             }
             {{{ makeSetValue('arg', '0', 'bytes', 'i32') }}};
             return 0;
+          case {{{ cDefs.FIONBIO }}}:
+            var on = {{{ makeGetValue('arg', '0', 'i32') }}};
+            if (on) {
+              sock.stream.flags |= {{{ cDefs.O_NONBLOCK }}};
+            } else {
+              sock.stream.flags &= ~{{{ cDefs.O_NONBLOCK }}};
+            }
+            return 0;
           default:
             return {{{ cDefs.EINVAL }}};
         }
