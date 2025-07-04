@@ -51,7 +51,8 @@ function initRuntime(wasmExports) {
 #endif
 
 #if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return
+  PThread.tlsInitFunctions.push(wasmExports['_emscripten_tls_init']);
+  if (ENVIRONMENT_IS_PTHREAD) return;
 #endif
 
 #if WASM_WORKERS
@@ -64,10 +65,6 @@ function initRuntime(wasmExports) {
   setStackLimits();
 #endif
   writeStackCookie();
-#endif
-
-#if PTHREADS
-  PThread.tlsInitFunctions.push(wasmExports['_emscripten_tls_init']);
 #endif
 
   <<< ATINITS >>>

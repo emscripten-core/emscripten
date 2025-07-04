@@ -284,6 +284,7 @@ var SyscallsLibrary = {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
         return -{{{ cDefs.EINVAL }}}; // not supported
       }
+      case {{{ cDefs.FIONBIO }}}:
       case {{{ cDefs.FIONREAD }}}: {
         var argp = syscallGetVarargP();
         return FS.ioctl(stream, op, argp);
