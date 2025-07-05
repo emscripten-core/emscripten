@@ -35,7 +35,7 @@ separate and isolated instances of the same program.
 By default, the factory function is called ``Module``, but it can be given a
 unique name via the ``-sEXPORT_NAME`` setting.
 
-For example, a program is built using ``-sMODUARLIZE -sEXPORT_NAME=Foo`` can
+For example, a program is built using ``-sMODULARIZE -sEXPORT_NAME=Foo`` can
 be instantiated using:
 
 ::
