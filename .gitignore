@@ -35,3 +35,6 @@ coverage.xml
 # ...except the templates.
 !/tools/run_python.ps1
 !/tools/run_python_compiler.ps1
+
+# Test runner previous run results for sorting the next run
+__previous_test_run_results.json
