@@ -209,7 +209,6 @@ document.createElement = (what) => {
         right: canvas.boundingClientRect.right
       });
       canvas.style = new PropertyBag();
-      canvas.exitPointerLock = () => {};
 
       canvas.width_ ||= 0;
       canvas.height_ ||= 0;
@@ -283,6 +282,8 @@ document.styleSheets = [{
 }];
 
 document.URL = 'http://worker.not.yet.ready.wait.for.window.onload?fake';
+
+document.exitPointerLock = () => {};
 
 function Audio() {
   warnOnce('faking Audio elements, no actual sound will play');
