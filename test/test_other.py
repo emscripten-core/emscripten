@@ -16069,7 +16069,11 @@ addToLibrary({
   def test_invalid_export_name(self):
     create_file('test.c', '__attribute__((export_name("my.func"))) void myfunc() {}')
     err = self.expect_fail([EMCC, 'test.c'])
-    self.assertContained('emcc: error: invalid export name: my.func', err)
+    self.assertContained('emcc: error: invalid export name: _my.func', err)
+
+    # When we are generating only wasm and not JS we don't need exports to
+    # be valid JS symbols.
+    self.run_process([EMCC, 'test.c', '--no-entry', '-o', 'out.wasm'])
 
     # GCC (and clang) and JavaScript also allow $ in symbol names
     create_file('valid.c', '''
