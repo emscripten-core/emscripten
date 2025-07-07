@@ -4068,7 +4068,7 @@ Module["preRun"] = () => {
 
   # Test that real `thread_local` works.
   def test_pthread_tls(self):
-    self.btest_exit('pthread/test_pthread_tls.cpp', cflags=['-sPROXY_TO_PTHREAD', '-pthread'])
+    self.btest_exit('pthread/test_pthread_tls.c', cflags=['-sPROXY_TO_PTHREAD', '-pthread'])
 
   # Test that real `thread_local` works in main thread without PROXY_TO_PTHREAD.
   def test_pthread_tls_main(self):
