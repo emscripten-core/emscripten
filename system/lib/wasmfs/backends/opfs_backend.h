@@ -104,4 +104,6 @@ void _wasmfs_opfs_set_size_file(em_proxying_ctx* ctx,
 
 void _wasmfs_opfs_flush_access(em_proxying_ctx* ctx, int access_id, int* err);
 
+void _wasmfs_opfs_close_all(em_proxying_ctx* ctx);
+
 } // extern "C"
