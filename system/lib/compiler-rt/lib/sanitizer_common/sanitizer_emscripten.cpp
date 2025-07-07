@@ -31,8 +31,6 @@
 
 #include <emscripten.h>
 #include <emscripten/stack.h>
-#include <wasi/api.h>
-#include <wasi/wasi-helpers.h>
 
 #include "emscripten_internal.h"
 
@@ -141,7 +139,7 @@ int internal_madvise(uptr addr, uptr length, int advice) {
 }
 
 uptr internal_close(fd_t fd) {
-  return __wasi_fd_close(fd);
+  return close(fd);
 }
 
 uptr internal_open(const char *filename, int flags) {
@@ -153,21 +151,11 @@ uptr internal_open(const char *filename, int flags, u32 mode) {
 }
 
 uptr internal_read(fd_t fd, void *buf, uptr count) {
-  __wasi_iovec_t iov = { (uint8_t*)buf, count };
-  size_t num;
-  if (__wasi_syscall_ret(__wasi_fd_read(fd, &iov, 1, &num))) {
-    return -1;
-  }
-  return num;
+  return read(fd, buf, count);
 }
 
 uptr internal_write(fd_t fd, const void *buf, uptr count) {
-  __wasi_ciovec_t iov = { (const uint8_t*)buf, count };
-  size_t num;
-  if (__wasi_syscall_ret(__wasi_fd_write(fd, &iov, 1, &num))) {
-    return -1;
-  }
-  return num;
+  return write(fd, buf, count);
 }
 
 uptr internal_stat(const char *path, void *buf) {
@@ -211,7 +199,7 @@ void internal_usleep(u64 useconds) {
 }
 
 void internal__exit(int exitcode) {
-  __wasi_proc_exit(exitcode);
+  _exit(exitcode);
 }
 
 tid_t GetTid() {
