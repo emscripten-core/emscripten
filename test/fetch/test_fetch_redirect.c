@@ -94,8 +94,6 @@ void start_next_async_fetch() {
 }
 
 int main() {
-  async_code_idx = 0;
-  async_method_idx = 0;
   start_next_async_fetch();
   return 99;
 }

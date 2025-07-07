@@ -2150,11 +2150,7 @@ def harness_server_func(in_queue, out_queue, port):
         self.end_headers()
       elif urlinfo.path.startswith('/status/'):
         code_str = urlinfo.path[len('/status/'):]
-        try:
-          code = int(code_str)
-        except ValueError:
-          self.send_error(400, 'Invalid status code')
-          return
+        code = int(code_str)
         if code in (301, 302, 303, 307, 308):
           self.send_response(code)
           self.send_header('Location', '/status/200')
@@ -2165,8 +2161,7 @@ def harness_server_func(in_queue, out_queue, port):
           self.end_headers()
           self.wfile.write(b'OK')
         else:
-          self.send_error(code)
-        return
+          self.send_error(400, f'Not implemented for {code}')
       else:
         print(f'do_POST: unexpected POST: {urlinfo}')
 
@@ -2181,11 +2176,7 @@ def harness_server_func(in_queue, out_queue, port):
         self.wfile.write(read_binary(test_file('browser_harness.html')))
       elif info.path.startswith('/status/'):
         code_str = info.path[len('/status/'):]
-        try:
-          code = int(code_str)
-        except ValueError:
-          self.send_error(400, 'Invalid status code')
-          return
+        code = int(code_str)
         if code in (301, 302, 303, 307, 308):
           # Redirect to /status/200
           self.send_response(code)
@@ -2197,7 +2188,7 @@ def harness_server_func(in_queue, out_queue, port):
           self.end_headers()
           self.wfile.write(b'OK')
         else:
-          self.send_error(code)
+          self.send_error(400, f'Not implemented for {code}')
       elif 'report_' in self.path:
         # the test is reporting its result. first change dir away from the
         # test dir, as it will be deleted now that the test is finishing, and
