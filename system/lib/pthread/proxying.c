@@ -35,7 +35,7 @@ static em_proxying_queue system_proxying_queue = {
   .capacity = 0,
 };
 
-static _Thread_local int system_queue_in_use = 0;
+static _Thread_local bool system_queue_in_use = false;
 
 em_proxying_queue* emscripten_proxy_get_system_queue(void) {
   return &system_proxying_queue;
@@ -151,11 +151,11 @@ static int do_proxy(em_proxying_queue* q, pthread_t target_thread, task t) {
   pthread_mutex_lock(&q->mutex);
   int is_system_queue = q == &system_proxying_queue;
   if (is_system_queue) {
-    system_queue_in_use = 1;
+    system_queue_in_use = true;
   }
   em_task_queue* tasks = get_or_add_tasks_for_thread(q, target_thread);
   if (is_system_queue) {
-    system_queue_in_use = 0;
+    system_queue_in_use = false;
   }
   pthread_mutex_unlock(&q->mutex);
   if (tasks == NULL) {
