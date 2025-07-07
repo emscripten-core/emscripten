@@ -2030,9 +2030,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.cflags += [
       '-I' + test_file('third_party/freetype/include'),
       '-I' + test_file('third_party/poppler/include'),
-      # Poppler's configure script emits -O2 for gcc, and nothing for other
-      # compilers, including emcc, so set opts manually.
-      "-O2",
     ]
 
     # Poppler has some pretty glaring warning.  Suppress them to keep the
