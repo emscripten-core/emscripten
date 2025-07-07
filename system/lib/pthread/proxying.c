@@ -124,7 +124,7 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   // when malloc takes a lock). This will deadlock the thread, so only try to
   // take the lock if the current thread is not using the queue. We then hope
   // the queue is executed later when it is unlocked.
-  int is_system_queue = q == &system_proxying_queue;
+  bool is_system_queue = q == &system_proxying_queue;
   if (is_system_queue) {
     if (system_queue_in_use) {
       return;
@@ -149,7 +149,7 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
 static int do_proxy(em_proxying_queue* q, pthread_t target_thread, task t) {
   assert(q != NULL);
   pthread_mutex_lock(&q->mutex);
-  int is_system_queue = q == &system_proxying_queue;
+  bool is_system_queue = q == &system_proxying_queue;
   if (is_system_queue) {
     system_queue_in_use = true;
   }
