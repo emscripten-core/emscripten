@@ -290,10 +290,7 @@ uptr internal_close_range(fd_t lowfd, fd_t highfd, int flags) {
   return internal_syscall(SYSCALL(close_range), lowfd, highfd, flags);
 }
 #    endif
-
-uptr internal_close(fd_t fd) {
-  return internal_syscall(SYSCALL(close), fd);
-}
+uptr internal_close(fd_t fd) { return internal_syscall(SYSCALL(close), fd); }
 
 uptr internal_open(const char *filename, int flags) {
 #    if SANITIZER_LINUX
@@ -582,9 +579,7 @@ uptr internal_rename(const char *oldpath, const char *newpath) {
 #    endif
 }
 
-uptr internal_sched_yield() {
-  return internal_syscall(SYSCALL(sched_yield));
-}
+uptr internal_sched_yield() { return internal_syscall(SYSCALL(sched_yield)); }
 
 void internal_usleep(u64 useconds) {
   struct timespec ts;
