@@ -162,7 +162,7 @@ var LibraryWget = {
     return handle;
   },
 
-  emscripten_async_wget2_data__deps: ['$wget', 'malloc', 'free'],
+  emscripten_async_wget2_data__deps: ['$wget', 'malloc', 'free', '$stringToUTF8OnStack'],
   emscripten_async_wget2_data__proxy: 'sync',
   emscripten_async_wget2_data: (url, request, param, userdata, free, onload, onerror, onprogress) => {
     var _url = UTF8ToString(url);
