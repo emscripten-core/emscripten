@@ -2726,6 +2726,10 @@ The current type of b is: 9
     self.do_runf('pthread/test_pthread_run_script.c')
 
   @node_pthreads
+  def test_pthread_mutex_robust(self):
+    self.do_run_in_out_file_test('pthread/test_pthread_mutex_robust.c')
+
+  @node_pthreads
   def test_pthread_wait32_notify(self):
     self.do_run_in_out_file_test('atomic/test_wait32_notify.c')
 

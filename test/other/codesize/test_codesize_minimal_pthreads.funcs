@@ -18,6 +18,8 @@ $__timedwait
 $__timedwait_cp
 $__tl_lock
 $__tl_unlock
+$__vm_lock
+$__vm_unlock
 $__wait
 $__wake
 $__wake
