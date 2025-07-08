@@ -39,14 +39,12 @@ $_emscripten_tls_init
 $_emscripten_yield
 $_main_thread
 $a_cas
-$a_cas
 $a_cas_p
 $a_dec
 $a_fetch_add
 $a_fetch_add
 $a_inc
 $a_store
-$a_swap
 $add
 $call_callback_then_free_ctx
 $call_cancel_then_free_ctx
