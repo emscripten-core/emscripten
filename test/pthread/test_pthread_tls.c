@@ -1,15 +1,15 @@
-#include <thread>
-#include <cstdio>
-#include <cassert>
+#include <pthread.h>
+#include <stdio.h>
+#include <assert.h>
 
-thread_local int tls;
-thread_local struct {
+_Thread_local int tls;
+_Thread_local struct {
   int a;
   double b;
 } data = {1, 2};
-thread_local int array[10];
+_Thread_local int array[10];
 
-void thread(void) {
+void* thread_main(void* arg) {
   ++tls;
   data.a = 3;
   data.b = 4;
@@ -17,12 +17,14 @@ void thread(void) {
   assert(data.a == 3);
   assert(data.b == 4);
   assert(array[9] == 0);
+  return NULL;
 }
 
 int main(void) {
   array[9] = 1337;
-  std::thread t(thread);
-  t.join();
+  pthread_t t;
+  pthread_create(&t, NULL, thread_main, NULL);
+  pthread_join(t, NULL);
   assert(tls == 0);
   assert(data.a == 1);
   assert(data.b == 2);
