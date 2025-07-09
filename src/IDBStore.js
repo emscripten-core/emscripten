@@ -6,13 +6,10 @@
 
 var IDBStore = {
   indexedDB() {
-    if (typeof indexedDB != 'undefined') return indexedDB;
-    var ret = null;
-    if (typeof window == 'object') ret = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
 #if ASSERTIONS
-    assert(ret, 'IDBStore used, but indexedDB not supported');
+    assert(typeof indexedDB != 'undefined', 'IDBStore used, but indexedDB not supported');
 #endif
-    return ret;
+    return indexedDB;
   },
   DB_VERSION: 22,
   DB_STORE_NAME: 'FILE_DATA',

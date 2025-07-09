@@ -13,13 +13,10 @@ addToLibrary({
   $IDBFS: {
     dbs: {},
     indexedDB: () => {
-      if (typeof indexedDB != 'undefined') return indexedDB;
-      var ret = null;
-      if (typeof window == 'object') ret = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
 #if ASSERTIONS
-      assert(ret, 'IDBFS used, but indexedDB not supported');
+      assert(typeof indexedDB != 'undefined', 'IDBFS used, but indexedDB not supported');
 #endif
-      return ret;
+      return indexedDB;
     },
     DB_VERSION: 21,
     DB_STORE_NAME: 'FILE_DATA',
