@@ -11,9 +11,6 @@
 #include <emscripten/proxying.h>
 #include <emscripten/threading.h>
 
-bool should_quit = false;
-pthread_t looper;
-
 // In the actual implementation of malloc the system queue may be executed
 // non-deterministically if malloc is waiting on a mutex. This wraps malloc and
 // executes the system queue during every allocation to make the behavior
@@ -26,22 +23,18 @@ void *malloc(size_t size) {
   return ptr;
 }
 
-void run_on_looper(void* arg) {
-  emscripten_out("run_on_looper\n");
-  should_quit = true;
-}
-
-void* looper_main(void* arg) {
-  while (!should_quit) {
-    emscripten_proxy_execute_queue(emscripten_proxy_get_system_queue());
-    sched_yield();
-  }
-  return NULL;
+void task(void* arg) {
+  emscripten_out("task\n");
 }
 
 int main() {
-  pthread_create(&looper, NULL, looper_main, NULL);
-  emscripten_proxy_async(emscripten_proxy_get_system_queue(), looper, run_on_looper, NULL);
-  pthread_join(looper, NULL);
+  // Tests for a deadlock scenario that can occur when sending a task.
+  // The sequence of events is:
+  // 1. Sending a task locks the queue.
+  // 2. Allocating a new task queue calls malloc.
+  // 3. Malloc then attempts to execute and lock the already-locked queue,
+  //    causing a deadlock.
+  // This test ensures our implementation prevents this re-entrant lock.
+  emscripten_proxy_async(emscripten_proxy_get_system_queue(), pthread_self(), task, NULL);
   emscripten_out("done\n");
 }
