@@ -55,7 +55,7 @@ success:
 
 #if defined(__EMSCRIPTEN__) || !defined(NDEBUG)
 	// We can get here for normal mutexes too, but only in debug builds
-	// (where we track ownership purely for debug purposed).
+	// (where we track ownership purely for debug purposes).
 	if ((type & 15) == PTHREAD_MUTEX_NORMAL) return 0;
 #endif
 
