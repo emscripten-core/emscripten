@@ -1,4 +1,4 @@
-var b = Module, c = "em-ww" == globalThis.name, e, f, l, x, y, z;
+var b = Module, c = globalThis.name == "em-ww", e, f, l, x, y, z;
 
 c && (onmessage = a => {
     onmessage = null;
@@ -8,7 +8,7 @@ c && (onmessage = a => {
     b ||= {};
     b.wasm = a.j;
     h();
-    a.j = a.s = 0;
+    a.j = a.u = 0;
 });
 
 function g() {}
@@ -30,7 +30,7 @@ var k = [], n = a => {
         name: "em-ww"
     });
     m.postMessage({
-        u: r,
+        v: r,
         j: b.wasm,
         o: f,
         l: a,
