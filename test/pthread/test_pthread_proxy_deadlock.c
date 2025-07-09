@@ -19,7 +19,7 @@ pthread_t looper;
 // executes the system queue during every allocation to make the behavior
 // deterministic.
 void *malloc(size_t size) {
-  if (emscripten_proxy_get_system_queue() && emscripten_is_main_runtime_thread()) {
+  if (emscripten_is_main_runtime_thread()) {
     emscripten_proxy_execute_queue(emscripten_proxy_get_system_queue());
   }
   void *ptr = emscripten_builtin_malloc(size);
