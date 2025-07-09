@@ -3424,6 +3424,17 @@ Module["preRun"] = () => {
     ''' % code)
     self.run_browser('a.html', '/report_result?0')
 
+  @no_firefox('source phase imports not implemented yet in firefox')
+  def test_source_phase_imports(self):
+    self.compile_btest('browser_test_hello_world.c', ['-sEXPORT_ES6', '-sSOURCE_PHASE_IMPORTS', '-Wno-experimental', '-o', 'out.mjs'])
+    create_file('a.html', '''
+      <script type="module">
+        import Module from "./out.mjs"
+        const mod = await Module();
+      </script>
+    ''')
+    self.run_browser('a.html', '/report_result?0')
+
   def test_modularize_network_error(self):
     self.compile_btest('browser_test_hello_world.c', ['-sMODULARIZE', '-sEXPORT_NAME=createModule'], reporting=Reporting.NONE)
     shutil.copy(test_file('browser_reporting.js'), '.')

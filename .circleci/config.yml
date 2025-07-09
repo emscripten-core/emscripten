@@ -317,7 +317,7 @@ commands:
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
             # --no-sandbox because we are running as root and chrome requires
             # this flag for now: https://crbug.com/638180
-            CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile --enable-experimental-web-platform-features"
+            CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile --enable-experimental-web-platform-features --enable-features=JavaScriptSourcePhaseImports"
             # Increase the window size to avoid flaky sdl tests see #24236.
             CHROME_FLAGS_HEADLESS: "--headless=new --window-size=1024,768 --remote-debugging-port=1234"
             CHROME_FLAGS_WASM: "--enable-experimental-webassembly-features --js-flags=\"--experimental-wasm-stack-switching --experimental-wasm-type-reflection\""
