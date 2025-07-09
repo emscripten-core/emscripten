@@ -38,6 +38,8 @@ See docs/process.md for more on how version tagging works.
   wrapped with `WebAssembly.Suspending` functions. To automatically wrap library
   functions for use with JSPI they must now explicitly set
   `myLibraryFunction__async: true`.
+- On wasm64 Embind will now pass `size_t` as a `bigint` instead of `number` to
+  match behaviour of other bindings like `EM_ASM`.
 
 4.0.10 - 06/07/25
 -----------------

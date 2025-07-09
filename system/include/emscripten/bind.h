@@ -573,13 +573,6 @@ struct SignatureCode : __em_asm_sig<int> {};
 template<typename T>
 struct SignatureCode<T, decltype(__em_asm_sig<T>::value)> : __em_asm_sig<T> {};
 
-// TODO: should we add this override to em_asm?
-// Most places, including Embind, use `p` for `size_t` (aka `unsigned long`) but
-// `em_asm` uses platform-specific code instead which represents `unsigned long`
-// as a JavaScript `number` on wasm32 and as a `BigInt` on wasm64.
-template<>
-struct SignatureCode<size_t> : __em_asm_sig<void*> {};
-
 template<typename T>
 struct SignatureCode<T&> : SignatureCode<T*> {};
 
@@ -1986,7 +1979,7 @@ struct VectorAccess {
 #if __cplusplus >= 201703L
     static std::optional<typename VectorType::value_type> get(
         const VectorType& v,
-        typename VectorType::size_type index
+        unsigned int index
     ) {
         if (index < v.size()) {
             return v[index];
@@ -1997,7 +1990,7 @@ struct VectorAccess {
 #else
     static val get(
         const VectorType& v,
-        typename VectorType::size_type index
+        unsigned int index
     ) {
         if (index < v.size()) {
             return val(v[index], allow_raw_pointers());
@@ -2009,11 +2002,30 @@ struct VectorAccess {
 
     static bool set(
         VectorType& v,
-        typename VectorType::size_type index,
+        unsigned int index,
         const typename VectorType::value_type& value
     ) {
         v[index] = value;
         return true;
+    }
+
+    static unsigned int size(const VectorType& v) {
+        return v.size();
+    }
+
+    static void resize(
+        VectorType& v,
+        unsigned int len,
+        const typename VectorType::value_type& value
+    ) {
+        v.resize(len, value);
+    }
+
+    static void push_back(
+        VectorType& v,
+        typename VectorType::value_type&& value
+    ) {
+        v.push_back(std::move(value));
     }
 };
 
@@ -2026,16 +2038,13 @@ class_<std::vector<T, Allocator>> register_vector(const char* name) {
     register_optional<T>();
 #endif
 
-    void (VecType::*push_back)(const T&) = &VecType::push_back;
-    void (VecType::*resize)(const size_t, const T&) = &VecType::resize;
-    size_t (VecType::*size)() const = &VecType::size;
-    return class_<std::vector<T>>(name)
+    return class_<VecType>(name)
         .template constructor<>()
-        .function("push_back", push_back, allow_raw_pointers())
-        .function("resize", resize, allow_raw_pointers())
-        .function("size", size)
-        .function("get", &internal::VectorAccess<VecType>::get, allow_raw_pointers())
-        .function("set", &internal::VectorAccess<VecType>::set, allow_raw_pointers())
+        .function("push_back", internal::VectorAccess<VecType>::push_back)
+        .function("resize", internal::VectorAccess<VecType>::resize)
+        .function("size", internal::VectorAccess<VecType>::size)
+        .function("get", internal::VectorAccess<VecType>::get)
+        .function("set", internal::VectorAccess<VecType>::set)
         ;
 }
 
@@ -2093,6 +2102,10 @@ struct MapAccess {
       }
       return keys;
     }
+
+    static unsigned int size(const MapType& m) {
+        return m.size();
+    }
 };
 
 } // end namespace internal
@@ -2105,10 +2118,9 @@ class_<std::map<K, V, Compare, Allocator>> register_map(const char* name) {
     register_optional<V>();
 #endif
 
-    size_t (MapType::*size)() const = &MapType::size;
     return class_<MapType>(name)
         .template constructor<>()
-        .function("size", size)
+        .function("size", internal::MapAccess<MapType>::size)
         .function("get", internal::MapAccess<MapType>::get)
         .function("set", internal::MapAccess<MapType>::set)
         .function("keys", internal::MapAccess<MapType>::keys)
