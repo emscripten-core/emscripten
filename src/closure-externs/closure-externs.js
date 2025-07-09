@@ -74,12 +74,6 @@ Atomics.store = function() {};
  */
 var WebAssembly = {};
 /**
- * @constructor
- * @param {Object} globalDescriptor
- * @param {*=} value
- */
-WebAssembly.Global = function(globalDescriptor, value) {};
-/**
  * @param {!WebAssembly.Tag} tag
  * @param {number} index
  */
