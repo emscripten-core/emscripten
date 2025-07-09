@@ -2288,16 +2288,6 @@ Default value: false
 
 .. _use_giflib:
 
-USE_LIBSQUASHFS
-========
-
-1 = use libsquashfs from emscripten-ports
-Alternate syntax: --use-port=libsquashfs
-
-.. note:: Applicable during both linking and compilation
-
-Default value: false
-
 USE_GIFLIB
 ==========
 
@@ -2327,6 +2317,18 @@ USE_LIBPNG
 
 1 = use libpng from emscripten-ports
 Alternate syntax: --use-port=libpng
+
+.. note:: Applicable during both linking and compilation
+
+Default value: false
+
+.. _use_libsquashfs:
+
+USE_LIBSQUASHFS
+===============
+
+1 = use libsquashfs from emscripten-ports
+Alternate syntax: --use-port=libsquashfs
 
 .. note:: Applicable during both linking and compilation
 
