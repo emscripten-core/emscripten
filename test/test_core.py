@@ -1851,7 +1851,8 @@ int main() {
     self.do_core_test('test_emscripten_api.c')
 
     # Sanitizers are not compatible with LINKABLE (dynamic linking).
-    if not is_sanitizing(self.cflags) and not self.is_wasm64():
+    # LLVM-libc overlay mode is not compatible with whole-archive (LINKABLE)
+    if not is_sanitizing(self.cflags) and not self.is_wasm64() and '-lllvmlibc' not in self.cflags:
       # test EXPORT_ALL
       self.clear_setting('EXPORTED_FUNCTIONS')
       self.set_setting('EXPORT_ALL')
