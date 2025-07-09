@@ -2051,6 +2051,7 @@ class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
                    'js_file_backend.cpp',
                    'memory_backend.cpp',
                    'node_backend.cpp',
+                   'squashfs_backend.cpp',
                    'opfs_backend.cpp'])
     return backends + files_in_path(
         path='system/lib/wasmfs',

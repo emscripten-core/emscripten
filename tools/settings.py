@@ -33,6 +33,7 @@ PORTS_SETTINGS = {
     'USE_LIBPNG',
     'USE_BULLET',
     'USE_ZLIB',
+    'USE_LIBSQUASHFS',
     'USE_BZIP2',
     'USE_VORBIS',
     'USE_COCOS2D',

@@ -1560,6 +1560,11 @@ var USE_LIBJPEG = false;
 // [compile+link]
 var USE_LIBPNG = false;
 
+// 1 = use libsquashfs from emscripten-ports
+// Alternate syntax: --use-port=libsquashfs
+// [compile+link]
+var USE_LIBSQUASHFS = false;
+
 // 1 = use Regal from emscripten-ports
 // Alternate syntax: --use-port=regal
 // [compile+link]
