@@ -3343,6 +3343,19 @@ or chrome.
 
 Default value: false
 
+.. _growable_arraybuffers:
+
+GROWABLE_ARRAYBUFFERS
+=====================
+
+Enable support for GrowableSharedArrayBuffer.
+This features is only available behind a flag in recent versions of
+node/chrome.
+
+.. note:: This is an experimental setting
+
+Default value: false
+
 .. _wasm_js_types:
 
 WASM_JS_TYPES
