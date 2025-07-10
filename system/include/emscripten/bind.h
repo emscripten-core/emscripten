@@ -2040,11 +2040,11 @@ class_<std::vector<T, Allocator>> register_vector(const char* name) {
 
     return class_<VecType>(name)
         .template constructor<>()
-        .function("push_back", internal::VectorAccess<VecType>::push_back)
-        .function("resize", internal::VectorAccess<VecType>::resize)
-        .function("size", internal::VectorAccess<VecType>::size)
-        .function("get", internal::VectorAccess<VecType>::get)
-        .function("set", internal::VectorAccess<VecType>::set)
+        .function("push_back", internal::VectorAccess<VecType>::push_back, allow_raw_pointers())
+        .function("resize", internal::VectorAccess<VecType>::resize, allow_raw_pointers())
+        .function("size", internal::VectorAccess<VecType>::size, allow_raw_pointers())
+        .function("get", internal::VectorAccess<VecType>::get, allow_raw_pointers())
+        .function("set", internal::VectorAccess<VecType>::set, allow_raw_pointers())
         ;
 }
 
