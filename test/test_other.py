@@ -14286,6 +14286,28 @@ void foo() {}
   def test_pthread_kill(self):
     self.do_run_in_out_file_test('pthread/test_pthread_kill.c')
 
+  # Tests memory growth in pthreads mode, but still on the main thread.
+  @node_pthreads
+  @parameterized({
+    '': ([], 1),
+    'proxy': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'], 2),
+  })
+  def test_pthread_growth_mainthread(self, cflags, pthread_pool_size):
+    self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
+    self.do_runf('pthread/test_pthread_memory_growth_mainthread.c', cflags=['-Wno-pthreads-mem-growth', '-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
+
+  # Tests memory growth in a pthread.
+  @node_pthreads
+  @parameterized({
+    '': ([],),
+    'assert': (['-sASSERTIONS'],),
+    'proxy': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'], 2),
+    'minimal': (['-sMINIMAL_RUNTIME', '-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
+  })
+  def test_pthread_growth(self, cflags, pthread_pool_size = 1):
+    self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
+    self.do_runf('pthread/test_pthread_memory_growth.c', cflags=['-Wno-pthreads-mem-growth', '-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
+
   @node_pthreads
   def test_emscripten_set_interval(self):
     self.do_runf('emscripten_set_interval.c', args=['-pthread', '-sPROXY_TO_PTHREAD'])
