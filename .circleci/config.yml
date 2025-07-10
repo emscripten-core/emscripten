@@ -320,7 +320,7 @@ commands:
             CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile --enable-experimental-web-platform-features --enable-features=JavaScriptSourcePhaseImports"
             # Increase the window size to avoid flaky sdl tests see #24236.
             CHROME_FLAGS_HEADLESS: "--headless=new --window-size=1024,768 --remote-debugging-port=1234"
-            CHROME_FLAGS_WASM: "--enable-experimental-webassembly-features --js-flags=\"--experimental-wasm-stack-switching --experimental-wasm-type-reflection\""
+            CHROME_FLAGS_WASM: "--enable-experimental-webassembly-features --js-flags=\"--experimental-wasm-stack-switching --experimental-wasm-type-reflection --experimental-wasm-rab-integration\""
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
             # The runners lack sound hardware so fallback to a dummy device (and
             # bypass the user gesture so audio tests work without interaction)
@@ -820,6 +820,7 @@ jobs:
             other.test_gen_struct_info
             other.test_native_call_before_init
             other.test_node_unhandled_rejection
+            other.test_*growable_arraybuffers
             core2.test_hello_world
             core2.test_esm_integration*
             core0.test_esm_integration*
@@ -1023,6 +1024,7 @@ jobs:
             skip:browser.test_webgl_offscreen_canvas_in_pthread
             skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
             skip:browser.test_glut_glutget
+            skip:browser.test_*_growable_arraybuffers
             "
   test-browser-firefox-wasm64:
     executor: focal
