@@ -2564,6 +2564,12 @@ The current type of b is: 9
   def test_pthread_cancel_async(self):
     self.do_run_in_out_file_test('pthread/test_pthread_cancel_async.c')
 
+  @no_asan('cannot replace malloc/free with ASan')
+  @no_lsan('cannot replace malloc/free with LSan')
+  @node_pthreads
+  def test_pthread_proxy_deadlock(self):
+    self.do_runf('pthread/test_pthread_proxy_deadlock.c')
+
   @no_asan('test relies on null pointer reads')
   def test_pthread_specific(self):
     self.do_run_in_out_file_test('pthread/specific.c')
