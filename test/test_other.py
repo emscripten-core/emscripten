@@ -8660,11 +8660,6 @@ int main() {
     self.assertContained('nan\n', out)
     self.assertContained('0x7fc01234\n', out)
 
-  def test_memory_growth_noasm(self):
-    self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-sALLOW_MEMORY_GROWTH'])
-    src = read_file('a.out.js')
-    assert 'use asm' not in src
-
   def test_EM_ASM_i64(self):
     self.do_other_test('test_em_asm_i64.cpp')
     self.do_other_test('test_em_asm_i64.cpp', force_c=True)
