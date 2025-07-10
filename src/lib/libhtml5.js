@@ -2091,18 +2091,19 @@ var LibraryHTML5 = {
     return registerBeforeUnloadEventCallback({{{ cDefs.EMSCRIPTEN_EVENT_TARGET_WINDOW }}}, userData, true, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_BEFOREUNLOAD }}}, "beforeunload");
   },
 
-  $fillBatteryEventData: (eventStruct, e) => {
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.chargingTime, 'e.chargingTime', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.dischargingTime, 'e.dischargingTime', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.level, 'e.level', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.charging, 'e.charging', 'i8') }}};
+  $fillBatteryEventData: (eventStruct, battery) => {
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.chargingTime, 'battery.chargingTime', 'double') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.dischargingTime, 'battery.dischargingTime', 'double') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.level, 'battery.level', 'double') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.charging, 'battery.charging', 'i8') }}};
   },
 
-  $battery: () => navigator.battery || navigator.mozBattery || navigator.webkitBattery,
+  $hasBatteryAPI: () => typeof navigator != 'undefined' && navigator.getBattery,
+  $hasBatteryAPI__internal: true,
 
   $registerBatteryEventCallback__noleakcheck: true,
-  $registerBatteryEventCallback__deps: ['$JSEvents', '$fillBatteryEventData', '$battery', '$findEventTarget', 'malloc'],
-  $registerBatteryEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
+  $registerBatteryEventCallback__deps: ['$JSEvents', '$fillBatteryEventData', 'malloc'],
+  $registerBatteryEventCallback: (battery, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
@@ -2114,7 +2115,7 @@ var LibraryHTML5 = {
 #else
       var batteryEvent = JSEvents.batteryEvent;
 #endif
-      fillBatteryEventData(batteryEvent, battery());
+      fillBatteryEventData(batteryEvent, battery);
 
 #if PTHREADS
       if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, batteryEvent, userData);
@@ -2124,7 +2125,7 @@ var LibraryHTML5 = {
     };
 
     var eventHandler = {
-      target: findEventTarget(target),
+      target: battery,
       eventTypeString,
       callbackfunc,
       handlerFunc: batteryEventHandlerFunc,
@@ -2134,24 +2135,37 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_batterychargingchange_callback_on_thread__proxy: 'sync',
-  emscripten_set_batterychargingchange_callback_on_thread__deps: ['$registerBatteryEventCallback', '$battery'],
+  emscripten_set_batterychargingchange_callback_on_thread__deps: ['$registerBatteryEventCallback', '$hasBatteryAPI'],
   emscripten_set_batterychargingchange_callback_on_thread: (userData, callbackfunc, targetThread) => {
-    if (!battery()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
-    return registerBatteryEventCallback(battery(), userData, true, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_BATTERYCHARGINGCHANGE }}}, "chargingchange", targetThread);
+    if (!hasBatteryAPI()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+    navigator.getBattery().then((b) => {
+      registerBatteryEventCallback(b, userData, true, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_BATTERYCHARGINGCHANGE }}}, "chargingchange", targetThread);
+    });
   },
 
   emscripten_set_batterylevelchange_callback_on_thread__proxy: 'sync',
-  emscripten_set_batterylevelchange_callback_on_thread__deps: ['$registerBatteryEventCallback', '$battery'],
+  emscripten_set_batterylevelchange_callback_on_thread__deps: ['$registerBatteryEventCallback', '$hasBatteryAPI'],
   emscripten_set_batterylevelchange_callback_on_thread: (userData, callbackfunc, targetThread) => {
-    if (!battery()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
-    return registerBatteryEventCallback(battery(), userData, true, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_BATTERYLEVELCHANGE }}}, "levelchange", targetThread);
+    if (!hasBatteryAPI()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+    navigator.getBattery().then((b) => {
+      registerBatteryEventCallback(b, userData, true, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_BATTERYLEVELCHANGE }}}, "levelchange", targetThread);
+    });
   },
 
+  $batteryManager: undefined,
+  $batteryManager__internal: true,
+
   emscripten_get_battery_status__proxy: 'sync',
-  emscripten_get_battery_status__deps: ['$fillBatteryEventData', '$battery'],
+  emscripten_get_battery_status__deps: ['$fillBatteryEventData', '$hasBatteryAPI', '$batteryManager'],
   emscripten_get_battery_status: (batteryState) => {
-    if (!battery()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
-    fillBatteryEventData(batteryState, battery());
+    if (!hasBatteryAPI()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+    if (!batteryManager) {
+      navigator.getBattery().then((b) => {
+        batteryManager = b;
+      });
+      return {{{ cDefs.EMSCRIPTEN_RESULT_NO_DATA }}};
+    }
+    fillBatteryEventData(batteryState, batteryManager);
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
