@@ -15182,6 +15182,15 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     err = self.expect_fail(base_cmd + ['-sMEMORY_GROWTH_LINEAR_STEP=1mb'])
     self.assertContained('error: MEMORY_GROWTH_LINEAR_STEP is not compatible with STANDALONE_WASM', err)
 
+  def test_standalone_imports(self):
+    # Ensure standalone binary will not have __throw_exception_with_stack_trace
+    # debug helper dependency, caused by exception-related code.
+    src_path = test_file('core/test_exceptions.cpp')
+    self.run_process([EMXX, '-O0', '-fwasm-exceptions', '-sSTANDALONE_WASM', src_path])
+    imports = self.parse_wasm('a.out.wasm')[0]
+    for name in imports:
+      self.assertTrue(name.startswith('wasi_'), 'Unexpected import %s' % name)
+
   @is_slow_test
   def test_googletest(self):
     # TODO(sbc): Should we package gtest as an emscripten "port"?  I guess we should if
