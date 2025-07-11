@@ -7,7 +7,7 @@
 """
 
 from collections import namedtuple
-from enum import IntEnum
+from enum import IntEnum, IntFlag
 from functools import wraps
 import logging
 import os
@@ -33,6 +33,9 @@ HEADER_SIZE = 8
 LIMITS_HAS_MAX = 0x1
 
 SEG_PASSIVE = 0x1
+SEG_EXPLICIT_INDEX = 0x2
+SEG_DECLARED = 0x3
+SEG_USE_ELEM_EXPRS = 0x4
 
 PREFIX_MATH = 0xfc
 PREFIX_THREADS = 0xfe
@@ -157,6 +160,49 @@ class TargetFeaturePrefix(IntEnum):
   DISALLOWED = 0x2d
 
 
+class SymbolKind(IntEnum):
+  FUNCTION = 0
+  DATA = 1
+  GLOBAL = 2
+  SECTION = 3
+  TAG = 4
+  TABLE = 5
+
+
+class SymbolFlags(IntFlag):
+  BINDING_WEAK = 1
+  BINDING_LOCAL = 2
+  VISIBILITY_HIDDEN = 4
+  SYM_UNDEFINED = 0x10
+  SYM_EXPORTED = 0x20
+  SYM_EXPLICIT_NAME = 0x40
+  SYM_NO_STRIP = 0x80
+  SYM_TLS = 0x100
+  SYM_ABSOLUTE = 0x200
+
+
+class RelocType(IntEnum):
+  FUNCTION_INDEX_LEB = 0
+  TABLE_INDEX_SLEB = 1
+  TABLE_INDEX_I32 = 2
+  MEMORY_ADDR_LEB = 3
+  MEMORY_ADDR_SLEB = 4
+  MEMORY_ADDR_I32 = 5
+  TYPE_INDEX_LEB = 6
+  GLOBAL_INDEX_LEB = 7
+  FUNCTION_OFFSET_I32 = 8
+  SECTION_OFFSET_I32 = 9
+  TAG_INDEX_LEB = 10
+  GLOBAL_INDEX_I32 = 13
+  MEMORY_ADDR_LEB64 = 14
+  MEMORY_ADDR_SLEB64 = 15
+  MEMORY_ADDR_I64 = 16
+  TABLE_INDEX_SLEB64 = 18
+  TABLE_INDEX_I64 = 19
+  TABLE_NUMBER_LEB = 20
+  FUNCTION_OFFSET_I64 = 22
+
+
 class InvalidWasmError(BaseException):
   pass
 
@@ -169,9 +215,15 @@ Global = namedtuple('Global', ['type', 'mutable', 'init'])
 Dylink = namedtuple('Dylink', ['mem_size', 'mem_align', 'table_size', 'table_align', 'needed', 'export_info', 'import_info', 'runtime_paths'])
 Table = namedtuple('Table', ['elem_type', 'limits'])
 FunctionBody = namedtuple('FunctionBody', ['offset', 'size'])
+# 'offset' is the offset in the file. TODO: maybe it should be the offset in the data section?
 DataSegment = namedtuple('DataSegment', ['flags', 'init', 'offset', 'size'])
+ElemSegment = namedtuple('ElemSegment', ['flags', 'init', 'offset', 'count', 'elems'])
 FuncType = namedtuple('FuncType', ['params', 'returns'])
 
+# 'index' is the wasm segment index, 'offset' is the offset within that segment
+SymInfo = namedtuple('SymInfo', ['kind', 'flags', 'index', 'name', 'offset', 'size'])
+# 'offset' is the offset (in the relevant section) of the value to rewrite
+Reloc = namedtuple('Reloc', ['target_type', 'reloc_type', 'offset', 'index'])
 
 class Module:
   """Extremely minimal wasm module reader.  Currently only used
@@ -510,6 +562,31 @@ class Module:
     return tables
 
   @memoize
+  def get_elem_segments(self):
+    segments = []
+    elem_section = self.get_section(SecType.ELEM)
+    print(elem_section)
+    self.seek(elem_section.offset)
+    num_segments = self.read_uleb()
+    for _ in range(num_segments):
+      flags = self.read_uleb()
+      if (flags & SEG_PASSIVE):
+        init = None
+      else:
+        init = self.read_init()
+      assert not flags & SEG_DECLARED, "I only understand MVP+PASSIVE segments"
+      count = self.read_uleb()
+      offset = self.tell()
+      func_indexes = []
+      for _ in range(count):
+        func_index = self.read_uleb()
+        func_indexes.append(func_index)
+
+      segments.append(ElemSegment(flags, init, offset, count, func_indexes))
+      # self.seek(offset + size)
+    return segments
+
+  @memoize
   def get_function_types(self):
     function_section = self.get_section(SecType.FUNCTION)
     if not function_section:
@@ -519,8 +596,116 @@ class Module:
     num_types = self.read_uleb()
     return [self.read_uleb() for _ in range(num_types)]
 
+  @memoize
+  def get_names(self) -> dict[int, str]:
+    name_section = self.get_custom_section('name')
+    if not name_section:
+      return {}
+
+    self.seek(name_section.offset)
+    sec_name = self.read_string()
+    assert sec_name == 'name', 'unexpected name section name'
+    names = {}
+    while self.tell() < name_section.offset + name_section.size:
+      name_type = self.read_uleb()
+      subsection_size = self.read_uleb()
+      # print(f'name_type: {name_type}, subsection_size: {subsection_size}')
+      if name_type != 1: # Function names
+        self.seek(self.tell() + subsection_size)
+        continue
+
+      num_names = self.read_uleb()
+      # print(f'{num_names} names')
+      names = {}
+      for _ in range(num_names):
+        func_index = self.read_uleb()
+        name = self.read_string()
+        names[func_index] = name
+        # print(f'{func_index}:{name}')
+    return names
+
   def has_name_section(self):
     return self.get_custom_section('name') is not None
+
+  @memoize
+  def get_symtab(self) -> list[SymInfo]:
+    self._calc_indexes()
+    linking_section = self.get_custom_section('linking')
+    if not linking_section:
+      return None
+
+    self.seek(linking_section.offset)
+    sec_name = self.read_string()
+    assert sec_name == 'linking', 'unexpected linking section name'
+
+    sec_version = self.read_uleb()
+    assert sec_version == 2, 'unexpected linking section version'
+
+    symtab = []
+
+    while self.tell() < linking_section.offset + linking_section.size:
+      subsec_type = self.read_uleb()
+      payload_len = self.read_uleb()
+
+      if subsec_type != 8: # symbol table
+        self.seek(self.tell() + payload_len)
+        continue
+
+      num_symbols = self.read_uleb()
+      for _ in range(num_symbols):
+        sym_kind = SymbolKind(self.read_uleb())
+        sym_flags = SymbolFlags(self.read_uleb())
+        sym_name = '<implicit>'
+        sym_index = None
+        sym_offset = None
+        sym_size = None
+        if (sym_kind == SymbolKind.FUNCTION or sym_kind == SymbolKind.GLOBAL or
+            sym_kind == SymbolKind.TAG or sym_kind == SymbolKind.TABLE):
+          sym_index = self.read_uleb()
+          if ((sym_flags & SymbolFlags.SYM_UNDEFINED) == 0 or
+              (sym_flags & SymbolFlags.SYM_EXPLICIT_NAME) != 0):
+            sym_name = self.read_string()
+          elif sym_flags & SymbolFlags.SYM_EXPLICIT_NAME == 0:
+            import_type = {
+              SymbolKind.FUNCTION: ExternType.FUNC,
+              SymbolKind.GLOBAL: ExternType.GLOBAL,
+              SymbolKind.TAG: ExternType.TAG,
+              SymbolKind.TABLE: ExternType.TABLE}[sym_kind]
+            sym_name = self.imports_by_kind[import_type][sym_index].field
+        elif sym_kind == SymbolKind.DATA:
+          sym_name = self.read_string()
+          if sym_flags & SymbolFlags.SYM_UNDEFINED == 0:
+            sym_index = self.read_uleb()
+            sym_offset = self.read_uleb()
+            sym_size = self.read_uleb()
+        elif sym_kind == SymbolKind.SECTION:
+          sym_index = self.read_uleb()
+        info = SymInfo(sym_kind, sym_flags, sym_index, sym_name, sym_offset, sym_size)
+        symtab.append(info)
+    return symtab
+
+  @memoize
+  def get_relocs(self, section: str) -> list[Reloc]:
+    reloc_section = self.get_custom_section('reloc.' + section)
+    if not reloc_section:
+      return []
+    self.seek(reloc_section.offset)
+    sec_name = self.read_string()
+    assert sec_name == 'reloc.' + section, 'unexpected reloc section name'
+    target_sec_index = self.read_uleb()
+    num_relocs = self.read_uleb()
+    print(f'target_sec_index: {target_sec_index}, num_relocs: {num_relocs}')
+    relocs = []
+    for _ in range(num_relocs):
+      reloc_type = RelocType(self.read_uleb())
+      reloc_offset = self.read_uleb()
+      reloc_index = self.read_uleb()
+
+      if 'MEMORY_ADDR' in reloc_type.name or 'OFFSET' in reloc_type.name:
+        addend = self.read_uleb()
+      relocs.append(Reloc(target_sec_index, reloc_type, reloc_offset, reloc_index))
+    return relocs
+
 
   @once
   def _calc_indexes(self):
