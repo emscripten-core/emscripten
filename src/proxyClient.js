@@ -107,12 +107,6 @@ function renderFrame() {
   renderFrameData = null;
 }
 
-if (typeof window != 'undefined') {
-  window.requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame ||
-                                 window.webkitRequestAnimationFrame || window.msRequestAnimationFrame ||
-                                 renderFrame;
-}
-
 /*
 (() => {
   var trueRAF = window.requestAnimationFrame;
