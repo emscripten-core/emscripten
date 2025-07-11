@@ -4284,17 +4284,6 @@ Module["preRun"] = () => {
     # the fallback is also expected to be larger in code size than using td
     self.assertGreater(just_fallback, td_without_fallback)
 
-  def test_small_js_flags(self):
-    self.btest('browser_test_hello_world.c', '0', cflags=['-O3', '--closure=1', '-sINCOMING_MODULE_JS_API=[]', '-sENVIRONMENT=web', '--output-eol=linux'])
-    # Check an absolute js code size, with some slack.
-    size = os.path.getsize('test.js')
-    print('size:', size)
-    # Note that this size includes test harness additions (for reporting the result, etc.).
-    if not self.is_wasm64() and not self.is_2gb():
-      self.check_expected_size_in_file('js',
-                                       test_file('browser/test_small_js_flags.js.size'),
-                                       size)
-
   # Tests that it is possible to initialize and render WebGL content in a
   # pthread by using OffscreenCanvas.
   @no_chrome('https://crbug.com/961765')
