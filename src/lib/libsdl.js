@@ -1352,7 +1352,7 @@ var LibrarySDL = {
       if (!navigator.getGamepads) {
         return [];
       }
-      return navigator.getGamepads()
+      return navigator.getGamepads();
     },
 
     // Helper function: Returns the gamepad if available, or null if not.
