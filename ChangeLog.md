@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 4.0.11 (in development)
 -----------------------
+- `emdump` tool/script was removed.  This tool was mostly useful for analyzing
+  asm.js code, which emscripten has not generated in a long time now.
 - Add support for [Source-based Code Coverage](https://clang.llvm.org/docs/SourceBasedCodeCoverage.html)
   To build with coverage enabled use `-fprofile-instr-generate -fcoverage-mapping`. (#24160)
 - The `ENVIRONMENT` setting will now be automatically updated to include

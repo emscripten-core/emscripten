@@ -37,7 +37,6 @@ emranlib
 emrun
 emscons
 emsize
-emdump
 emprofile
 emdwp
 emnm
@@ -55,7 +54,6 @@ test/runner
 # For some tools the entry point doesn't live alongside the python
 # script.
 entry_remap = {
-  'emdump': 'tools/emdump',
   'emprofile': 'tools/emprofile',
   'emdwp': 'tools/emdwp',
   'emnm': 'tools/emnm',
