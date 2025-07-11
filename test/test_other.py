@@ -2207,16 +2207,14 @@ Module['postRun'] = () => {
     self.assertContained('error: -sMAIN_MODULE + pthreads is experimental', err)
 
   @node_pthreads
-  def test_dylink_pthread_bigint_em_asm(self):
+  def test_dylink_pthread_em_asm(self):
     self.set_setting('MAIN_MODULE', 2)
-    self.set_setting('WASM_BIGINT')
     self.cflags += ['-Wno-experimental', '-pthread']
     self.do_runf('hello_world_em_asm.c', 'hello, world')
 
   @node_pthreads
-  def test_dylink_pthread_bigint_em_js(self):
+  def test_dylink_pthread_em_js(self):
     self.set_setting('MAIN_MODULE', 2)
-    self.set_setting('WASM_BIGINT')
     self.set_setting('EXPORTED_FUNCTIONS', '_malloc,_main')
     self.cflags += ['-Wno-experimental', '-pthread']
     self.do_runf('core/test_em_js.cpp')
@@ -3158,7 +3156,7 @@ More info: https://emscripten.org
       (['-g', '-gsource-map'], True, True, True),
       (['-g2', '-gsource-map'], False, True, True),
       (['-gsplit-dwarf', '-gsource-map'], True, True, True),
-      (['-gsource-map', '-sWASM_BIGINT', '-sERROR_ON_WASM_CHANGES_AFTER_LINK'], False, True, True),
+      (['-gsource-map', '-sERROR_ON_WASM_CHANGES_AFTER_LINK'], False, True, True),
     ]:
       print(flags, expect_dwarf, expect_sourcemap, expect_names)
       self.emcc(test_file(source_file), flags, js_file)
@@ -5731,7 +5729,7 @@ EM_ASM({ _middle() });
     '': [[]],
     # bigint support is interesting to test here because it changes which
     # binaryen tools get run, which can affect how debug info is kept around
-    'bigint': [['-sWASM_BIGINT']],
+    'nobigint': [['-sWASM_BIGINT=0']],
   })
   def test_symbol_map_output_size(self, args):
     # build with and without a symbol map and verify that the sizes are the
@@ -6524,8 +6522,6 @@ int main()
   @with_env_modify({'EMCC_FORCE_STDLIBS': '1'})
   def test_force_stdlibs(self):
     self.do_runf('hello_world.c')
-    # See https://github.com/emscripten-core/emscripten/issues/22161
-    self.do_runf('hello_world.c', cflags=['-sWASM_BIGINT'])
 
   @also_with_standalone_wasm()
   def test_time(self):
@@ -10280,7 +10276,7 @@ end
     '': [[]],
     # bigint support is interesting to test here because it changes which
     # binaryen tools get run, which can affect how debug info is kept around
-    'bigint': [['-sWASM_BIGINT']],
+    'nobigint': [['-sWASM_BIGINT=0']],
     'pthread': [['-pthread', '-Wno-experimental']],
     'pthread_offscreen': [['-pthread', '-Wno-experimental', '-sOFFSCREEN_FRAMEBUFFER']],
     'wasmfs': [['-sWASMFS']],
@@ -11082,9 +11078,9 @@ int main() {
 
   @parameterized({
     '':       ([],),
-    # in some modes we skip wasm-emscripten-finalize, which normally strips the
+    # in some modes we run wasm-emscripten-finalize, which normally strips the
     # features section for us, so add testing for those
-    'bigint': (['-sWASM_BIGINT'],),
+    'nobigint': (['-sWASM_BIGINT=0'],),
     'wasm64': (['-sMEMORY64'],),
   })
   def test_wasm_features_section(self, args):
@@ -12542,7 +12538,7 @@ int main(void) {
     'compile_only': (['-fexceptions'], [], False),
     # just link isn't enough as codegen didn't emit exceptions support
     'link_only': ([], ['-fexceptions'], False),
-    'standalone': (['-fexceptions'], ['-fexceptions', '-sSTANDALONE_WASM', '-sWASM_BIGINT'], True),
+    'standalone': (['-fexceptions'], ['-fexceptions', '-sSTANDALONE_WASM'], True),
   })
   def test_f_exception(self, compile_flags, link_flags, expect_caught):
     create_file('src.cpp', r'''
@@ -13529,9 +13525,10 @@ exec "$@"
 
   # Tests that dynCalls are produced in Closure-safe way in DYNCALLS mode when no actual dynCalls are used
   @parameterized({
-    'plain': [[]],
+    '': [[]],
     'asyncify': [['-sASYNCIFY']],
-    'asyncify_bigint': [['-sASYNCIFY', '-sWASM_BIGINT']]})
+    'asyncify_nobigint': [['-sASYNCIFY', '-sWASM_BIGINT=0']],
+  })
   def test_closure_safe(self, args):
     self.run_process([EMCC, test_file('hello_world.c'), '--closure=1'] + args)
 
