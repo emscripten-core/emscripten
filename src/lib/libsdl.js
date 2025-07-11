@@ -1349,12 +1349,10 @@ var LibrarySDL = {
     },
 
     getGamepads() {
-      var fcn = navigator.getGamepads || navigator.webkitGamepads || navigator.mozGamepads || navigator.gamepads || navigator.webkitGetGamepads;
-      if (fcn !== undefined) {
-        // The function must be applied on the navigator object.
-        return fcn.apply(navigator);
+      if (!navigator.getGamepads) {
+        return [];
       }
-      return [];
+      return navigator.getGamepads();
     },
 
     // Helper function: Returns the gamepad if available, or null if not.
