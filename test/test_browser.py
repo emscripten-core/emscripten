@@ -4739,7 +4739,7 @@ Module["preRun"] = () => {
   # Tests memory growth in pthreads mode, but still on the main thread.
   @parameterized({
     '': ([], 1),
-    'proxy': (['-sPROXY_TO_PTHREAD'], 2),
+    'proxy': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'], 2),
   })
   @no_2gb('uses INITIAL_MEMORY')
   @no_4gb('uses INITIAL_MEMORY')

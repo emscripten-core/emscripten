@@ -44,8 +44,7 @@ _Atomic enum state {
 
 const char *_Atomic buffer;
 
-static void assert_initial_heap_state(bool is_worker)
-{
+void assert_initial_heap_state(bool is_worker) {
   assert(state == INITIAL_STATE);
   assert(buffer == NULL);
   js_assert_initial_heap_state(is_worker);
@@ -53,16 +52,14 @@ static void assert_initial_heap_state(bool is_worker)
 
 #define FINAL_HEAP_SIZE (64 * 1024 * 1024)
 
-static void assert_final_heap_state(bool is_worker)
-{
+void assert_final_heap_state(bool is_worker) {
   assert(state == FINAL_STATE);
   assert(buffer != NULL);
   assert(*buffer == 42);
   js_assert_final_heap_state(is_worker, buffer, FINAL_HEAP_SIZE);
 }
 
-static void *thread_start(void *arg)
-{
+void *thread_start(void *arg) {
   assert_initial_heap_state(true);
   // Tell main thread that we checked the initial state and it can allocate.
   state = THREAD_CHECKED_INITIAL_STATE;
@@ -73,8 +70,7 @@ static void *thread_start(void *arg)
   return NULL;
 }
 
-static char *alloc_beyond_initial_heap()
-{
+char *alloc_beyond_initial_heap() {
   char *buffer = malloc(FINAL_HEAP_SIZE);
   assert(buffer);
   // Write value at the end of the buffer to check that any thread can access addresses beyond the initial heap size.
@@ -83,13 +79,13 @@ static char *alloc_beyond_initial_heap()
   return buffer;
 }
 
-int main()
-{
+int main() {
+  // Check initial state in both threads before allocating more memory.
+  assert_initial_heap_state(false);
+
   pthread_t thr;
   int res = pthread_create(&thr, NULL, thread_start, NULL);
   assert(res == 0);
-  // Check initial state in both threads before allocating more memory.
-  assert_initial_heap_state(false);
   while (state != THREAD_CHECKED_INITIAL_STATE);
 
   // allocate more memory than we currently have, forcing a growth
