@@ -509,7 +509,7 @@ def setup_pthreads():
       diagnostics.warning('experimental', '-sMAIN_MODULE + pthreads is experimental')
     elif settings.LINKABLE:
       diagnostics.warning('experimental', '-sLINKABLE + pthreads is experimental')
-  if settings.ALLOW_MEMORY_GROWTH:
+  if settings.ALLOW_MEMORY_GROWTH and not settings.GROWABLE_ARRAYBUFFERS:
     diagnostics.warning('pthreads-mem-growth', '-pthread + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
 
   default_setting('DEFAULT_PTHREAD_STACK_SIZE', settings.STACK_SIZE)
@@ -794,6 +794,9 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.JS_BASE64_API:
     diagnostics.warning('experimental', '-sJS_BASE64_API is still experimental and not yet supported in browsers')
+
+  if settings.GROWABLE_ARRAYBUFFERS:
+    diagnostics.warning('experimental', '-sGROWABLE_ARRAYBUFFERS is still experimental and not yet supported in browsers')
 
   if settings.SOURCE_PHASE_IMPORTS:
     if not settings.EXPORT_ES6:
@@ -2330,7 +2333,7 @@ def phase_binaryen(target, options, wasm_target):
     # unsigning pass.
     # we also must do this after the asan or safe_heap instrumentation, as they
     # wouldn't be able to recognize patterns produced by the growth pass.
-    if settings.SHARED_MEMORY and settings.ALLOW_MEMORY_GROWTH:
+    if settings.SHARED_MEMORY and settings.ALLOW_MEMORY_GROWTH and not settings.GROWABLE_ARRAYBUFFERS:
       with ToolchainProfiler.profile_block('apply_wasm_memory_growth'):
         final_js = building.apply_wasm_memory_growth(final_js)
 
