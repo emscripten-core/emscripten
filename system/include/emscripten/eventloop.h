@@ -26,6 +26,8 @@ void emscripten_set_immediate_loop(bool (*cb)(void *user_data), void *user_data)
 int emscripten_set_interval(void (*cb)(void *user_data) __attribute__((nonnull)), double interval_ms, void *user_data);
 void emscripten_clear_interval(int id);
 
+int emscripten_queue_microtask(void (*cb)(void *user_data) __attribute__((nonnull)), void *user_data);
+
 void emscripten_runtime_keepalive_push(void);
 void emscripten_runtime_keepalive_pop(void);
 bool emscripten_runtime_keepalive_check(void);
