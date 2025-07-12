@@ -2,7 +2,7 @@ import os
 
 deps = ['libsquashfs']
 
-port_name = 'emscripten-wasmfs-squashfs'
+port_name = 'emscripten_wasmfs_squashfs'
 
 root_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -29,6 +29,7 @@ def get(ports, settings, shared):
 def clear(ports, settings, shared):
     shared.cache.erase_lib(get_lib_name(settings))
 
-
+def show():
+  return 'emscripten_wasmfs_squashfs (-sUSE_EMSCRIPTEN_WASMFS_SQUASHFS or --use-port=emscripten-wasmfs-squashfs; some files emscripten original license but uses libsquashfs with LGPL-3.0-or-later license)'
 
 
