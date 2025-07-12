@@ -1565,6 +1565,11 @@ var USE_LIBPNG = false;
 // [compile+link]
 var USE_LIBSQUASHFS = false;
 
+// 1 = use emscripten_wasmfs_sqaushfs from emscripten-ports
+// Alternate syntax: --use-port=emscripten_wasmfs_sqaushfs
+// [compile+link]
+var USE_EMSCRIPTEN_WASMFS_SQUASHFS = false;
+
 // 1 = use Regal from emscripten-ports
 // Alternate syntax: --use-port=regal
 // [compile+link]

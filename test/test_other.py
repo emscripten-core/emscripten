@@ -14442,7 +14442,7 @@ Module.postRun = () => {{
 
   def test_wasmfs_squashfs(self):
     self.set_setting('WASMFS')
-    self.set_setting('USE_LIBSQUASHFS')
+    self.set_setting('USE_EMSCRIPTEN_WASMFS_SQUASHFS')
     shutil.copy(test_file('wasmfs/squashfs_example.sqshfs'), '.')
     self.do_run_in_out_file_test('wasmfs/wasmfs_squashfs.c',
                                  cflags=['--embed-file', 'squashfs_example.sqshfs'])
