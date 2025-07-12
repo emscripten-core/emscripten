@@ -6,8 +6,10 @@ port_name = 'emscripten-wasmfs-squashfs'
 
 root_path = os.path.dirname(os.path.realpath(__file__))
 
+
 def needed(settings):
   return settings.USE_EMSCRIPTEN_WASMFS_SQUASHFS
+
 
 def get_lib_name(settings):
     return 'emscripten_wasmfs_squashfs.a'
