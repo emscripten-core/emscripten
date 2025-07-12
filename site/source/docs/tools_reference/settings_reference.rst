@@ -2337,10 +2337,10 @@ Default value: false
 .. _use_emscripten_wasmfs_squashfs:
 
 USE_EMSCRIPTEN_WASMFS_SQUASHFS
-===============
+==============================
 
-1 = use squashfs based wasmgfs based on libsquashfs
-Alternate syntax: --use-port=emscripten_wasmfs_squashfs
+1 = use emscripten_wasmfs_sqaushfs from emscripten-ports
+Alternate syntax: --use-port=emscripten_wasmfs_sqaushfs
 
 .. note:: Applicable during both linking and compilation
 

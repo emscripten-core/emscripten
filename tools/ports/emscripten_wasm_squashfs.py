@@ -12,6 +12,7 @@ def needed(settings):
 def get_lib_name(settings):
     return 'emscripten_wasmfs_squashfs.a'
 
+
 def get(ports, settings, shared):
     def create(final):
         emscripten_root = shared.path_from_root()
@@ -21,6 +22,7 @@ def get(ports, settings, shared):
         flags = ['-sUSE_LIBSQUASHFS']
         ports.build_port(source_path, final, port_name, includes=source_include_paths, srcs=srcs, flags=flags)
     return [shared.cache.get_lib(get_lib_name(settings), create, what='port')]
+
 
 def clear(ports, settings, shared):
     shared.cache.erase_lib(get_lib_name(settings))
