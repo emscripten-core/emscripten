@@ -113,6 +113,8 @@ public:
     return nullptr;
   }
 
+  bool isInited() { return inited; }
+
 private:
   sqfs_file_t* fsFile;
   sqfs_super_t superBlock;
@@ -343,7 +345,13 @@ std::shared_ptr<Directory> SquashFSBackend::createDirectory(mode_t mode) {
 extern "C" {
 
 backend_t wasmfs_create_squashfs_backend(const char* squashFSFile) {
-  return wasmFS.addBackend(std::make_unique<SquashFSBackend>(squashFSFile));
+  std::unique_ptr<SquashFSBackend> sqFSBackend =
+    std::make_unique<SquashFSBackend>(squashFSFile);
+  if (sqFSBackend->isInited()) {
+    return wasmFS.addBackend(std::move(sqFSBackend));
+  } else {
+    return nullptr;
+  }
 }
 
 } // extern "C"
