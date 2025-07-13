@@ -15458,7 +15458,6 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     'memory64': (True, False),
     '': (False, False),
   })
-  @requires_v8
   def test_add_js_function_bigint(self, memory64, wasm_function):
     self.set_setting('WASM_BIGINT')
 
@@ -15486,6 +15485,36 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
         });
         assert(f(26) == 26 + 4294967296);
         assert(f(493921253191) == 493921253191 + 4294967296);
+      }
+    ''')
+
+    self.do_runf('main.c', '')
+
+  @requires_wasm64
+  def test_add_js_function_pointers_wasm64(self):
+    self.set_setting('MEMORY64')
+    self.set_setting('ALLOW_TABLE_GROWTH')
+
+    create_file('main.c', r'''
+      #include <emscripten.h>
+      #include <assert.h>
+
+      EM_JS_DEPS(deps, "$addFunction");
+
+      typedef void* (functype)(void*);
+
+      int main() {
+        functype* f = EM_ASM_PTR({
+          return addFunction((ptr) => {
+              return ptr + 1;
+          }, 'pp');
+        });
+
+        void* p1 = (void*)26;
+        assert(f(p1) == p1 + 1);
+
+        void* p2 = (void*)493921253191;
+        assert(f(p2) == p2 + 1);
       }
     ''')
 
