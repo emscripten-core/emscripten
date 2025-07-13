@@ -226,13 +226,10 @@ def llvm_nm(file):
   return symbols
 
 
-def get_file_gzipped_size(f):
-  f_gz = f + '.gz'
-  with gzip.open(f_gz, 'wb') as gzf:
-    gzf.write(read_binary(f))
-  size = os.path.getsize(f_gz)
-  delete_file(f_gz)
-  return size
+def get_file_and_gz_sizes(f):
+  contents = read_binary(f)
+  gz_contents = gzip.compress(contents)
+  return len(contents), len(gz_contents)
 
 
 def deminify_syms(names, minification_map):
@@ -2210,16 +2207,14 @@ Module['postRun'] = () => {
     self.assertContained('error: -sMAIN_MODULE + pthreads is experimental', err)
 
   @node_pthreads
-  def test_dylink_pthread_bigint_em_asm(self):
+  def test_dylink_pthread_em_asm(self):
     self.set_setting('MAIN_MODULE', 2)
-    self.set_setting('WASM_BIGINT')
     self.cflags += ['-Wno-experimental', '-pthread']
     self.do_runf('hello_world_em_asm.c', 'hello, world')
 
   @node_pthreads
-  def test_dylink_pthread_bigint_em_js(self):
+  def test_dylink_pthread_em_js(self):
     self.set_setting('MAIN_MODULE', 2)
-    self.set_setting('WASM_BIGINT')
     self.set_setting('EXPORTED_FUNCTIONS', '_malloc,_main')
     self.cflags += ['-Wno-experimental', '-pthread']
     self.do_runf('core/test_em_js.cpp')
@@ -3161,7 +3156,7 @@ More info: https://emscripten.org
       (['-g', '-gsource-map'], True, True, True),
       (['-g2', '-gsource-map'], False, True, True),
       (['-gsplit-dwarf', '-gsource-map'], True, True, True),
-      (['-gsource-map', '-sWASM_BIGINT', '-sERROR_ON_WASM_CHANGES_AFTER_LINK'], False, True, True),
+      (['-gsource-map', '-sERROR_ON_WASM_CHANGES_AFTER_LINK'], False, True, True),
     ]:
       print(flags, expect_dwarf, expect_sourcemap, expect_names)
       self.emcc(test_file(source_file), flags, js_file)
@@ -5734,7 +5729,7 @@ EM_ASM({ _middle() });
     '': [[]],
     # bigint support is interesting to test here because it changes which
     # binaryen tools get run, which can affect how debug info is kept around
-    'bigint': [['-sWASM_BIGINT']],
+    'nobigint': [['-sWASM_BIGINT=0']],
   })
   def test_symbol_map_output_size(self, args):
     # build with and without a symbol map and verify that the sizes are the
@@ -6527,8 +6522,6 @@ int main()
   @with_env_modify({'EMCC_FORCE_STDLIBS': '1'})
   def test_force_stdlibs(self):
     self.do_runf('hello_world.c')
-    # See https://github.com/emscripten-core/emscripten/issues/22161
-    self.do_runf('hello_world.c', cflags=['-sWASM_BIGINT'])
 
   @also_with_standalone_wasm()
   def test_time(self):
@@ -8663,11 +8656,6 @@ int main() {
     self.assertContained('nan\n', out)
     self.assertContained('0x7fc01234\n', out)
 
-  def test_memory_growth_noasm(self):
-    self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-sALLOW_MEMORY_GROWTH'])
-    src = read_file('a.out.js')
-    assert 'use asm' not in src
-
   def test_EM_ASM_i64(self):
     self.do_other_test('test_em_asm_i64.cpp')
     self.do_other_test('test_em_asm_i64.cpp', force_c=True)
@@ -9322,8 +9310,7 @@ int main() {
 
     self.run_process(build_cmd + ['--profiling-funcs', '--closure=1'])
 
-    js_size = os.path.getsize('a.out.js')
-    gz_size = get_file_gzipped_size('a.out.js')
+    js_size, gz_size = get_file_and_gz_sizes('a.out.js')
     js_size_file = expected_basename + '.jssize'
     gz_size_file = expected_basename + '.gzsize'
     self.check_expected_size_in_file('js', js_size_file, js_size)
@@ -10289,7 +10276,7 @@ end
     '': [[]],
     # bigint support is interesting to test here because it changes which
     # binaryen tools get run, which can affect how debug info is kept around
-    'bigint': [['-sWASM_BIGINT']],
+    'nobigint': [['-sWASM_BIGINT=0']],
     'pthread': [['-pthread', '-Wno-experimental']],
     'pthread_offscreen': [['-pthread', '-Wno-experimental', '-sOFFSCREEN_FRAMEBUFFER']],
     'wasmfs': [['-sWASMFS']],
@@ -11091,9 +11078,9 @@ int main() {
 
   @parameterized({
     '':       ([],),
-    # in some modes we skip wasm-emscripten-finalize, which normally strips the
+    # in some modes we run wasm-emscripten-finalize, which normally strips the
     # features section for us, so add testing for those
-    'bigint': (['-sWASM_BIGINT'],),
+    'nobigint': (['-sWASM_BIGINT=0'],),
     'wasm64': (['-sMEMORY64'],),
   })
   def test_wasm_features_section(self, args):
@@ -11890,11 +11877,7 @@ int main () {
     hello_wasm_worker_sources = [test_file('wasm_worker/wasm_worker_code_size.c'), '-sWASM_WORKERS', '-sENVIRONMENT=web']
     audio_worklet_sources = [test_file('webaudio/audioworklet.c'), '-sWASM_WORKERS', '-sAUDIO_WORKLET', '-sENVIRONMENT=web', '-sTEXTDECODER=1']
     embind_hello_sources = [test_file('code_size/embind_hello_world.cpp'), '-lembind']
-    embind_val_sources = [test_file('code_size/embind_val_hello_world.cpp'),
-                          '-lembind',
-                          '-fno-rtti',
-                          '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0',
-                          '-sDYNAMIC_EXECUTION=0']
+    embind_val_sources = [test_file('code_size/embind_val_hello_world.cpp'), '-lembind']
 
     sources = {
       'hello_world': hello_world_sources,
@@ -11966,8 +11949,7 @@ int main () {
       f_gz = f + '.gz'
       expected_size = expected_results[f] if f in expected_results else float('inf')
       expected_size_gz = expected_results[f_gz] if f_gz in expected_results else float('inf')
-      size = os.path.getsize(f)
-      size_gz = get_file_gzipped_size(f)
+      size, size_gz = get_file_and_gz_sizes(f)
 
       obtained_results[f] = size
       obtained_results[f_gz] = size_gz
@@ -12556,7 +12538,7 @@ int main(void) {
     'compile_only': (['-fexceptions'], [], False),
     # just link isn't enough as codegen didn't emit exceptions support
     'link_only': ([], ['-fexceptions'], False),
-    'standalone': (['-fexceptions'], ['-fexceptions', '-sSTANDALONE_WASM', '-sWASM_BIGINT'], True),
+    'standalone': (['-fexceptions'], ['-fexceptions', '-sSTANDALONE_WASM'], True),
   })
   def test_f_exception(self, compile_flags, link_flags, expect_caught):
     create_file('src.cpp', r'''
@@ -12950,6 +12932,12 @@ int main(void) {
   @node_pthreads
   def test_pthread_hello(self, args):
     self.do_other_test('test_pthread_hello.c', args)
+
+  @crossplatform
+  @node_pthreads
+  def test_pthread_mutex_deadlock(self):
+    self.do_runf('other/test_pthread_mutex_deadlock.c', 'pthread mutex deadlock detected',
+                 cflags=['-g'], assert_returncode=NON_ZERO)
 
   @node_pthreads
   def test_pthread_relocatable(self):
@@ -13537,9 +13525,10 @@ exec "$@"
 
   # Tests that dynCalls are produced in Closure-safe way in DYNCALLS mode when no actual dynCalls are used
   @parameterized({
-    'plain': [[]],
+    '': [[]],
     'asyncify': [['-sASYNCIFY']],
-    'asyncify_bigint': [['-sASYNCIFY', '-sWASM_BIGINT']]})
+    'asyncify_nobigint': [['-sASYNCIFY', '-sWASM_BIGINT=0']],
+  })
   def test_closure_safe(self, args):
     self.run_process([EMCC, test_file('hello_world.c'), '--closure=1'] + args)
 
@@ -14288,6 +14277,28 @@ void foo() {}
   @node_pthreads
   def test_pthread_kill(self):
     self.do_run_in_out_file_test('pthread/test_pthread_kill.c')
+
+  # Tests memory growth in pthreads mode, but still on the main thread.
+  @node_pthreads
+  @parameterized({
+    '': ([], 1),
+    'proxy': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'], 2),
+  })
+  def test_pthread_growth_mainthread(self, cflags, pthread_pool_size):
+    self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
+    self.do_runf('pthread/test_pthread_memory_growth_mainthread.c', cflags=['-Wno-pthreads-mem-growth', '-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
+
+  # Tests memory growth in a pthread.
+  @node_pthreads
+  @parameterized({
+    '': ([],),
+    'assert': (['-sASSERTIONS'],),
+    'proxy': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'], 2),
+    'minimal': (['-sMINIMAL_RUNTIME', '-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
+  })
+  def test_pthread_growth(self, cflags, pthread_pool_size = 1):
+    self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
+    self.do_runf('pthread/test_pthread_memory_growth.c', cflags=['-Wno-pthreads-mem-growth', '-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
 
   @node_pthreads
   def test_emscripten_set_interval(self):

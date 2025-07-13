@@ -146,32 +146,14 @@ var LibraryBrowser = {
 
       function pointerLockChange() {
         var canvas = Browser.getCanvas();
-        Browser.pointerLock = document['pointerLockElement'] === canvas ||
-                              document['mozPointerLockElement'] === canvas ||
-                              document['webkitPointerLockElement'] === canvas ||
-                              document['msPointerLockElement'] === canvas;
+        Browser.pointerLock = document.pointerLockElement === canvas;
       }
       var canvas = Browser.getCanvas();
       if (canvas) {
         // forced aspect ratio can be enabled by defining 'forcedAspectRatio' on Module
         // Module['forcedAspectRatio'] = 4 / 3;
 
-        canvas.requestPointerLock = canvas['requestPointerLock'] ||
-                                    canvas['mozRequestPointerLock'] ||
-                                    canvas['webkitRequestPointerLock'] ||
-                                    canvas['msRequestPointerLock'] ||
-                                    (() => {});
-        canvas.exitPointerLock = document['exitPointerLock'] ||
-                                 document['mozExitPointerLock'] ||
-                                 document['webkitExitPointerLock'] ||
-                                 document['msExitPointerLock'] ||
-                                 (() => {}); // no-op if function does not exist
-        canvas.exitPointerLock = canvas.exitPointerLock.bind(document);
-
         document.addEventListener('pointerlockchange', pointerLockChange, false);
-        document.addEventListener('mozpointerlockchange', pointerLockChange, false);
-        document.addEventListener('webkitpointerlockchange', pointerLockChange, false);
-        document.addEventListener('mspointerlockchange', pointerLockChange, false);
 
         if (Module['elementPointerLock']) {
           canvas.addEventListener("click", (ev) => {

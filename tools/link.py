@@ -1477,12 +1477,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   set_initial_memory()
 
-  if settings.EXPORT_ES6 and not settings.MODULARIZE:
-    # EXPORT_ES6 requires output to be a module
-    if 'MODULARIZE' in user_settings:
-      exit_with_error('EXPORT_ES6 requires MODULARIZE to be set')
-    settings.MODULARIZE = 1
-
   if settings.MODULARIZE and not settings.DECLARE_ASM_MODULE_EXPORTS:
     # When MODULARIZE option is used, currently requires declaring all module exports
     # individually - TODO: this could be optimized

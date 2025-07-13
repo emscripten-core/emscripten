@@ -942,7 +942,7 @@ var LibraryGLFW = {
             case 0x00034001: { // GLFW_CURSOR_NORMAL
               win.inputModes[mode] = value;
               canvas.removeEventListener('click', GLFW.onClickRequestPointerLock, true);
-              canvas.exitPointerLock();
+              document.exitPointerLock();
               break;
             }
             case 0x00034002: { // GLFW_CURSOR_HIDDEN

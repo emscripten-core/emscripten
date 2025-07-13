@@ -18,6 +18,8 @@ $__timedwait
 $__timedwait_cp
 $__tl_lock
 $__tl_unlock
+$__vm_lock
+$__vm_unlock
 $__wait
 $__wake
 $__wake
@@ -39,14 +41,12 @@ $_emscripten_tls_init
 $_emscripten_yield
 $_main_thread
 $a_cas
-$a_cas
 $a_cas_p
 $a_dec
 $a_fetch_add
 $a_fetch_add
 $a_inc
 $a_store
-$a_swap
 $add
 $call_callback_then_free_ctx
 $call_cancel_then_free_ctx
@@ -72,6 +72,7 @@ $emscripten_futex_wake
 $emscripten_stack_get_current
 $emscripten_stack_set_limits
 $free_ctx
+$get_or_add_tasks_for_thread
 $get_tasks_for_thread
 $init_active_ctxs
 $init_file_lock
