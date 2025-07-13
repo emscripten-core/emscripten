@@ -368,6 +368,8 @@ public:
     }
   }
 
+  val(val& v) : val(static_cast<const val&>(v)) {}
+
   ~val() {
     if (uses_ref_count()) {
       internal::_emval_decref(as_handle());
