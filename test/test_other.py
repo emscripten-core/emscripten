@@ -14282,23 +14282,52 @@ void foo() {}
   @node_pthreads
   @parameterized({
     '': ([], 1),
+    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'], 1),
     'proxy': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'], 2),
   })
   def test_pthread_growth_mainthread(self, cflags, pthread_pool_size):
+    if '-sGROWABLE_ARRAYBUFFERS' in cflags:
+      self.node_args.append('--experimental-wasm-rab-integration')
+      self.v8_args.append('--experimental-wasm-rab-integration')
+      self.require_node_canary()
+    else:
+      self.cflags.append('-Wno-pthreads-mem-growth')
     self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
-    self.do_runf('pthread/test_pthread_memory_growth_mainthread.c', cflags=['-Wno-pthreads-mem-growth', '-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
+    self.do_runf('pthread/test_pthread_memory_growth_mainthread.c', cflags=['-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
+
+  @requires_node_canary
+  def test_growable_arraybuffers(self):
+    self.node_args.append('--experimental-wasm-rab-integration')
+    self.v8_args.append('--experimental-wasm-rab-integration')
+    self.do_runf('hello_world.c',
+                 cflags=['-O2', '-pthread', '-sALLOW_MEMORY_GROWTH', '-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'],
+                 output_basename='growable')
+    self.do_runf('hello_world.c',
+                 cflags=['-O2', '-pthread', '-sALLOW_MEMORY_GROWTH', '-Wno-pthreads-mem-growth'],
+                 output_basename='no_growable')
+    growable_size = os.path.getsize('growable.js')
+    no_growable_size = os.path.getsize('no_growable.js')
+    print('growable:', growable_size, 'no_growable:', no_growable_size)
+    self.assertLess(growable_size, no_growable_size)
 
   # Tests memory growth in a pthread.
   @node_pthreads
   @parameterized({
     '': ([],),
+    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'],),
     'assert': (['-sASSERTIONS'],),
     'proxy': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'], 2),
     'minimal': (['-sMINIMAL_RUNTIME', '-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
   })
   def test_pthread_growth(self, cflags, pthread_pool_size = 1):
     self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
-    self.do_runf('pthread/test_pthread_memory_growth.c', cflags=['-Wno-pthreads-mem-growth', '-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
+    if '-sGROWABLE_ARRAYBUFFERS' in cflags:
+      self.node_args.append('--experimental-wasm-rab-integration')
+      self.v8_args.append('--experimental-wasm-rab-integration')
+      self.require_node_canary()
+    else:
+      self.cflags.append('-Wno-pthreads-mem-growth')
+    self.do_runf('pthread/test_pthread_memory_growth.c', cflags=['-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
 
   @node_pthreads
   def test_emscripten_set_interval(self):
