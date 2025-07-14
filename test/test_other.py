@@ -16323,3 +16323,34 @@ addToLibrary({
     # Some files, such as as maintenance tools should not be part of the
     # install.
     self.assertNotExists('newdir/tools/maint/')
+
+  @requires_node
+  @parameterized({
+    '': ([],),
+    'pthreads': (['-pthread'],),
+  })
+  @parameterized({
+    '': ([],),
+    'closure': (['--closure=1'],),
+  })
+  def test_TextDecoder(self, args1, args2):
+    self.cflags += args1 + args2
+
+    self.do_runf('hello_world.c', cflags=['-sTEXTDECODER=0'])
+    just_fallback = os.path.getsize('hello_world.js')
+    print('just_fallback:\t%s' % just_fallback)
+
+    self.do_runf('hello_world.c')
+    td_with_fallback = os.path.getsize('hello_world.js')
+    print('td_with_fallback:\t%s' % td_with_fallback)
+
+    self.do_runf('hello_world.c', cflags=['-sTEXTDECODER=2'])
+    td_without_fallback = os.path.getsize('hello_world.js')
+    print('td_without_fallback:\t%s' % td_without_fallback)
+
+    # td_with_fallback should always be largest of all three in terms of code side
+    self.assertGreater(td_with_fallback, td_without_fallback)
+    self.assertGreater(td_with_fallback, just_fallback)
+
+    # the fallback is also expected to be larger in code size than using td
+    self.assertGreater(just_fallback, td_without_fallback)
