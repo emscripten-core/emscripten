@@ -5905,7 +5905,7 @@ got: 10
   def test_fs_write(self):
     if self.get_setting('WASMFS'):
       self.set_setting("FORCE_FILESYSTEM")
-    self.do_run_in_out_file_test('fs/test_write.cpp')
+    self.do_run_in_out_file_test('fs/test_fs_write.c')
 
   @also_with_noderawfs
   def test_fs_emptyPath(self):
