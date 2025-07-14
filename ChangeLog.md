@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.11 (in development)
+4.0.12 (in development)
 -----------------------
+
+4.0.11 - 07/14/25
+-----------------
 - `emdump` tool/script was removed.  This tool was mostly useful for analyzing
   asm.js code, which emscripten has not generated in a long time now.
 - Add support for [Source-based Code Coverage](https://clang.llvm.org/docs/SourceBasedCodeCoverage.html)
