@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 4.0.12 (in development)
 -----------------------
+- Support for `-sTEXT_DECODER=0` was removed, due to widespread support for
+  `TextDecoder`.  The remaining valid values for this setting are `=1`
+  (conditional use of `TextDecoder` with fallback) and `=2` (unconditional use
+  of `TextDecoder`). (#24700)
 
 4.0.11 - 07/14/25
 -----------------

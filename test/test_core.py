@@ -391,7 +391,7 @@ def with_both_text_decoder(f):
     self.set_setting('TEXTDECODER', textdecoder)
     f(self, *args, **kwargs)
 
-  parameterize(decorated, {'': (0,), 'textdecoder': (2,)})
+  parameterize(decorated, {'': (1,), 'force_textdecoder': (2,)})
 
   return decorated
 
