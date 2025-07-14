@@ -39,7 +39,12 @@ addToLibrary({
    * @param {boolean=} ignoreNul - If true, the function will not stop on a NUL character.
    * @return {string}
    */`,
-  $UTF8ArrayToString__deps: ['$UTF8Decoder', '$findStringEnd'],
+  $UTF8ArrayToString__deps: [
+    '$UTF8Decoder', '$findStringEnd',
+#if ASSERTIONS
+    '$warnOnce',
+#endif
+  ],
   $UTF8ArrayToString: (heapOrArray, idx = 0, maxBytesToRead, ignoreNul) => {
 #if CAN_ADDRESS_2GB
     idx >>>= 0;
@@ -142,6 +147,9 @@ addToLibrary({
    *                                   terminator.
    * @return {number} The number of bytes written, EXCLUDING the null terminator.
    */
+#if ASSERTIONS
+  $stringToUTF8Array__deps: ['$warnOnce'],
+#endif
   $stringToUTF8Array: (str, heap, outIdx, maxBytesToWrite) => {
 #if CAN_ADDRESS_2GB
     outIdx >>>= 0;
