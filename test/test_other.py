@@ -16364,10 +16364,6 @@ addToLibrary({
   def test_TextDecoder(self, args1, args2):
     self.cflags += args1 + args2
 
-    self.do_runf('hello_world.c', cflags=['-sTEXTDECODER=0'])
-    just_fallback = os.path.getsize('hello_world.js')
-    print('just_fallback:\t%s' % just_fallback)
-
     self.do_runf('hello_world.c')
     td_with_fallback = os.path.getsize('hello_world.js')
     print('td_with_fallback:\t%s' % td_with_fallback)
@@ -16378,7 +16374,10 @@ addToLibrary({
 
     # td_with_fallback should always be largest of all three in terms of code side
     self.assertGreater(td_with_fallback, td_without_fallback)
-    self.assertGreater(td_with_fallback, just_fallback)
 
-    # the fallback is also expected to be larger in code size than using td
-    self.assertGreater(just_fallback, td_without_fallback)
+  def test_TextDecoder_invalid(self):
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sTEXTDECODER=0'])
+    self.assertContained('#error "TEXTDECODER must be either 1 or 2"', err)
+
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sTEXTDECODER=3'])
+    self.assertContained('#error "TEXTDECODER must be either 1 or 2"', err)
