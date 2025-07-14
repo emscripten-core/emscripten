@@ -2695,8 +2695,10 @@ TEXTDECODER
 If enabled, use the JavaScript TextDecoder API for string marshalling.
 Enabled by default, set this to 0 to disable.
 If set to 2, we assume TextDecoder is present and usable, and do not emit
-any JS code to fall back if it is missing. In single threaded -Oz build modes,
-TEXTDECODER defaults to value == 2 to save code size.
+any JS code to fall back if it is missing.
+Note: In -Oz builds, the default value of TEXTDECODER is set to 2, to save on
+code size (except when AUDIO_WORKLET is specified, or when `shell` is part
+of ENVIRONMENT since TextDecoder is not available in those environments).
 
 Default value: 1
 
