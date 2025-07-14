@@ -112,20 +112,12 @@ weak pid_t __syscall_setsid() {
   return 0; // no-op
 }
 
-struct kusage {
-  long utime_tv_sec;
-  long utime_tv_usec;
-  long stime_tv_sec;
-  long stime_tv_usec;
-};
-
 weak int __syscall_getrusage(int who, struct rusage *usage) {
   REPORT(getrusage);
-  struct kusage *u = (struct kusage*)usage;
-  u->utime_tv_sec = 1;
-  u->utime_tv_usec = 2;
-  u->stime_tv_sec = 3;
-  u->stime_tv_usec = 4;
+  usage->ru_utime = (struct timeval)
+    { .tv_sec = 1, .tv_usec = 2 };
+  usage->ru_stime = (struct timeval)
+    { .tv_sec = 3, .tv_usec = 4 };
   return 0;
 }
 
