@@ -15185,9 +15185,8 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_standalone_imports(self):
     # Ensure standalone binary will not have __throw_exception_with_stack_trace
     # debug helper dependency, caused by exception-related code.
-    src_path = test_file('core/test_exceptions.cpp')
-    self.run_process([EMXX, '-O0', '-fwasm-exceptions', '-sSTANDALONE_WASM', src_path])
-    imports = self.parse_wasm('a.out.wasm')[0]
+    self.do_runf('core/test_exceptions.cpp', cflags=['-fwasm-exceptions', '-sSTANDALONE_WASM'])
+    imports = self.parse_wasm('test_exceptions.wasm')[0]
     for name in imports:
       self.assertTrue(name.startswith('wasi_'), 'Unexpected import %s' % name)
 
