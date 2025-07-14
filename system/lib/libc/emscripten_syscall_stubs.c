@@ -251,7 +251,7 @@ weak int __syscall_setsockopt(int sockfd, int level, int optname, const void *op
   return -ENOPROTOOPT; // The option is unknown at the level indicated.
 }
 
-weak pid_t __syscall_wait4(pid_t pid, int *wstatus, int options, struct rusage *rusage) {
+weak pid_t __syscall_wait4(pid_t pid, int *wstatus, int options, void *rusage) {
   REPORT(wait4);
   return (pid_t)-1;
 }
@@ -259,7 +259,7 @@ weak pid_t __syscall_wait4(pid_t pid, int *wstatus, int options, struct rusage *
 UNIMPLEMENTED(acct, (const char *filename))
 UNIMPLEMENTED(mincore, (void *addr, size_t length, unsigned char *vec))
 UNIMPLEMENTED(pipe2, (int pipefd[2], int flags))
-UNIMPLEMENTED(pselect6, (int nfds, fd_set *rfds, fd_set *wfds, fd_set *efds, const struct timespec *ts, const void *mask))
+UNIMPLEMENTED(pselect6, (int nfds, fd_set *rfds, fd_set *wfds, fd_set *efds, const long ts[2], const void *mask))
 UNIMPLEMENTED(recvmmsg, (int sockfd, struct mmsghdr *msgvec, unsigned int vlen, unsigned int flags, struct timespec *timeout))
 UNIMPLEMENTED(sendmmsg, (int sockfd, struct mmsghdr *msgvec, unsigned int vlen, unsigned int flags))
 UNIMPLEMENTED(shutdown, (int sockfd, int how, ...))
