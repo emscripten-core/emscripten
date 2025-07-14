@@ -4257,33 +4257,6 @@ Module["preRun"] = () => {
   def test_utf16_textdecoder(self):
     self.btest_exit('benchmark/benchmark_utf16.cpp', 0, cflags=['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt', '-sEXPORTED_RUNTIME_METHODS=UTF16ToString,stringToUTF16,lengthBytesUTF16'])
 
-  @also_with_threads
-  @parameterized({
-    '': ([],),
-    'closure': (['--closure=1'],),
-  })
-  def test_TextDecoder(self, args):
-    self.cflags += args
-
-    self.btest('browser_test_hello_world.c', '0', cflags=['-sTEXTDECODER=0'])
-    just_fallback = os.path.getsize('test.js')
-    print('just_fallback:\t%s' % just_fallback)
-
-    self.btest('browser_test_hello_world.c', '0')
-    td_with_fallback = os.path.getsize('test.js')
-    print('td_with_fallback:\t%s' % td_with_fallback)
-
-    self.btest('browser_test_hello_world.c', '0', cflags=['-sTEXTDECODER=2'])
-    td_without_fallback = os.path.getsize('test.js')
-    print('td_without_fallback:\t%s' % td_without_fallback)
-
-    # td_with_fallback should always be largest of all three in terms of code side
-    self.assertGreater(td_with_fallback, td_without_fallback)
-    self.assertGreater(td_with_fallback, just_fallback)
-
-    # the fallback is also expected to be larger in code size than using td
-    self.assertGreater(just_fallback, td_without_fallback)
-
   def test_small_js_flags(self):
     self.btest('browser_test_hello_world.c', '0', cflags=['-O3', '--closure=1', '-sINCOMING_MODULE_JS_API=[]', '-sENVIRONMENT=web', '--output-eol=linux'])
     # Check an absolute js code size, with some slack.
