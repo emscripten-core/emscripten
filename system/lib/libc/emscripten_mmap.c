@@ -102,7 +102,7 @@ int __syscall_msync(void *addr, size_t len, int flags) {
   return _msync_js(addr, len, map->prot, map->flags, map->fd, map->offset);
 }
 
-void *__syscall_mmap2(void *addr, size_t len, int prot, int flags, int fd, off_t offset) {
+intptr_t __syscall_mmap2(void *addr, size_t len, int prot, int flags, int fd, off_t offset) {
   if (addr != 0) {
     // We don't currently support location hints for the address of the mapping
     return -EINVAL;
@@ -147,5 +147,5 @@ void *__syscall_mmap2(void *addr, size_t len, int prot, int flags, int fd, off_t
   mappings = new_map;
   UNLOCK(lock);
 
-  return new_map->addr;
+  return (intptr_t)new_map->addr;
 }

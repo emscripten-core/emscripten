@@ -900,7 +900,9 @@ int wasmfs_unmount(const char* path) {
   return lockedParent.removeChild(childName);
 }
 
-int __syscall_getdents64(int fd, struct dirent* dirp, size_t count) {
+int __syscall_getdents64(int fd, void* dirp, size_t count) {
+  dirent* result = (dirent*)dirp;
+
   // Check if the result buffer is too small.
   if (count / sizeof(dirent) == 0) {
     return -EINVAL;
@@ -933,29 +935,29 @@ int __syscall_getdents64(int fd, struct dirent* dirp, size_t count) {
   for (; index < dirents.size() && bytesRead + sizeof(dirent) <= count;
        index++) {
     const auto& entry = dirents[index];
-    dirp->d_ino = entry.ino;
-    dirp->d_off = index + 1;
-    dirp->d_reclen = sizeof(dirent);
+    result->d_ino = entry.ino;
+    result->d_off = index + 1;
+    result->d_reclen = sizeof(dirent);
     switch (entry.kind) {
       case File::UnknownKind:
-        dirp->d_type = DT_UNKNOWN;
+        result->d_type = DT_UNKNOWN;
         break;
       case File::DataFileKind:
-        dirp->d_type = DT_REG;
+        result->d_type = DT_REG;
         break;
       case File::DirectoryKind:
-        dirp->d_type = DT_DIR;
+        result->d_type = DT_DIR;
         break;
       case File::SymlinkKind:
-        dirp->d_type = DT_LNK;
+        result->d_type = DT_LNK;
         break;
       default:
-        dirp->d_type = DT_UNKNOWN;
+        result->d_type = DT_UNKNOWN;
         break;
     }
-    assert(entry.name.size() + 1 <= sizeof(dirp->d_name));
-    strcpy(dirp->d_name, entry.name.c_str());
-    ++dirp;
+    assert(entry.name.size() + 1 <= sizeof(result->d_name));
+    strcpy(result->d_name, entry.name.c_str());
+    ++result;
     bytesRead += sizeof(dirent);
   }
 
@@ -1772,7 +1774,7 @@ int __syscall__newselect(int nfds,
                          fd_set* readfds_,
                          fd_set* writefds_,
                          fd_set* exceptfds_,
-                         struct timeval* timeout_) {
+                         long _timeout[2]) {
   // TODO: Implement this syscall. For now, we return an error code,
   //       specifically ENOMEM which is valid per the docs:
   //          ENOMEM Unable to allocate memory for internal tables

@@ -119,13 +119,14 @@ weak mode_t __syscall_umask(mode_t mask) {
   return old;
 }
 
-weak int __syscall_getrusage(int who, struct rusage *usage) {
+weak int __syscall_getrusage(int who, void *usage) {
   REPORT(getrusage);
-  memset(usage, 0, sizeof(*usage));
-  usage->ru_utime.tv_sec = 1;
-  usage->ru_utime.tv_usec = 2;
-  usage->ru_stime.tv_sec = 3;
-  usage->ru_stime.tv_usec = 4;
+  struct rusage *u = (struct rusage *)usage;
+  memset(u, 0, sizeof(*u));
+  u->ru_utime.tv_sec = 1;
+  u->ru_utime.tv_usec = 2;
+  u->ru_stime.tv_sec = 3;
+  u->ru_stime.tv_usec = 4;
   return 0;
 }
 
@@ -247,10 +248,10 @@ weak int __syscall_setsockopt(int sockfd, int level, int optname, const void *op
 UNIMPLEMENTED(acct, (const char *filename))
 UNIMPLEMENTED(mincore, (void *addr, size_t length, unsigned char *vec))
 UNIMPLEMENTED(pipe2, (int pipefd[2], int flags))
-UNIMPLEMENTED(pselect6, (int nfds, fd_set *rfds, fd_set *wfds, fd_set *efds, const struct timespec *ts, const void *mask))
+UNIMPLEMENTED(pselect6, (int nfds, fd_set *rfds, fd_set *wfds, fd_set *efds, const long ts[2], const void *mask))
 UNIMPLEMENTED(recvmmsg, (int sockfd, struct mmsghdr *msgvec, unsigned int vlen, unsigned int flags, struct timespec *timeout))
 UNIMPLEMENTED(sendmmsg, (int sockfd, struct mmsghdr *msgvec, unsigned int vlen, unsigned int flags))
 UNIMPLEMENTED(shutdown, (int sockfd, int how, ...))
 UNIMPLEMENTED(socketpair, (int domain, int type, int protocol, int fd[2], ...))
 UNIMPLEMENTED(socketcall, (int call, long args[6]))
-UNIMPLEMENTED(wait4, (pid_t pid, int *wstatus, int options, struct rusage *rusage))
+UNIMPLEMENTED(wait4, (pid_t pid, int *wstatus, int options, void *rusage))
