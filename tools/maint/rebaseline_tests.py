@@ -23,8 +23,7 @@ sys.path.insert(0, root_dir)
 from tools import utils
 
 TESTS = [
-  'browser.test_small_js_flags',
-  'other.test_INCOMING_MODULE_JS_API',
+  'other.test_small_js_flags',
   'other.*code_size*',
   'other.*codesize*',
   'skip:other.test_jspi_code_size',
