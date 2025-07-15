@@ -249,6 +249,13 @@ var LibraryHTML5 = {
     },
   },
 
+  $getFullscreenElement__internal: true,
+  $getFullscreenElement() {
+    return document.fullscreenElement || document.mozFullScreenElement ||
+           document.webkitFullscreenElement || document.webkitCurrentFullScreenElement ||
+           document.msFullscreenElement;
+  },
+
   $registerKeyEventCallback__noleakcheck: true,
   $registerKeyEventCallback__deps: ['$JSEvents', '$findEventTarget', '$stringToUTF8', 'malloc'],
   $registerKeyEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
@@ -990,9 +997,9 @@ var LibraryHTML5 = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  $fillFullscreenChangeEventData__deps: ['$JSEvents', '$stringToUTF8'],
+  $fillFullscreenChangeEventData__deps: ['$JSEvents', '$stringToUTF8', '$getFullscreenElement'],
   $fillFullscreenChangeEventData: (eventStruct) => {
-    var fullscreenElement = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+    var fullscreenElement = getFullscreenElement();
     var isFullscreen = !!fullscreenElement;
 #if !SAFE_HEAP
     // Assigning a boolean to HEAP32 with expected type coercion.
@@ -1204,15 +1211,7 @@ var LibraryHTML5 = {
     var oldImageRendering = canvas.style.imageRendering;
 
     function restoreOldStyle() {
-      var fullscreenElement = document.fullscreenElement
-#if MIN_FIREFOX_VERSION <= 63 // https://caniuse.com/#feat=mdn-api_documentorshadowroot_fullscreenelement
-        || document.mozFullScreenElement
-#endif
-#if MIN_CHROME_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED // https://caniuse.com/#feat=mdn-api_documentorshadowroot_fullscreenelement
-        || document.webkitFullscreenElement
-#endif
-        ;
-      if (!fullscreenElement) {
+      if (!getFullscreenElement()) {
         document.removeEventListener('fullscreenchange', restoreOldStyle);
 
 #if MIN_FIREFOX_VERSION <= 63 // https://caniuse.com/#feat=mdn-api_element_fullscreenchange_event
