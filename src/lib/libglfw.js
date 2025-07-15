@@ -87,6 +87,7 @@ var LibraryGLFW = {
     'malloc', 'free',
     '$MainLoop',
     '$stringToNewUTF8',
+    '$getFullscreenElement',
     'emscripten_set_window_title',
 #if FILESYSTEM
     '$FS',
@@ -1168,9 +1169,7 @@ var LibraryGLFW = {
       function fullscreenChange() {
         Browser.isFullscreen = false;
         var canvasContainer = canvas.parentNode;
-        if ((document['fullscreenElement'] || document['mozFullScreenElement'] ||
-          document['msFullscreenElement'] || document['webkitFullscreenElement'] ||
-          document['webkitCurrentFullScreenElement']) === canvasContainer) {
+        if (getFullscreenElement() === canvasContainer) {
           canvas.exitFullscreen = Browser.exitFullscreen;
           if (Browser.lockPointer) canvas.requestPointerLock();
           Browser.isFullscreen = true;
@@ -1239,9 +1238,7 @@ var LibraryGLFW = {
           h = Math.round(w / Module['forcedAspectRatio']);
         }
       }
-      if (((document['fullscreenElement'] || document['mozFullScreenElement'] ||
-        document['msFullscreenElement'] || document['webkitFullscreenElement'] ||
-        document['webkitCurrentFullScreenElement']) === canvas.parentNode) && (typeof screen != 'undefined')) {
+      if ((getFullscreenElement() === canvas.parentNode) && (typeof screen != 'undefined')) {
         var factor = Math.min(screen.width / w, screen.height / h);
         w = Math.round(w * factor);
         h = Math.round(h * factor);
