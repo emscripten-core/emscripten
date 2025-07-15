@@ -25,8 +25,8 @@ function createWasmAudioWorkletProcessor(audioParams) {
       assert(opts.callback)
       assert(opts.samplesPerChannel)
 #endif
-      this.callback = getWasmTableEntry(opts.callback);
-      this.userData = opts.userData;
+      this.callback = getWasmTableEntry({{{ toIndexType("opts.callback") }}});
+      this.userData = {{{ toIndexType("opts.userData") }}};
       // Then the samples per channel to process, fixed for the lifetime of the
       // context that created this processor. Note for when moving to Web Audio
       // 1.1: the typed array passed to process() should be the same size as this
@@ -82,13 +82,16 @@ function createWasmAudioWorkletProcessor(audioParams) {
 
       // Copy output audio descriptor structs to Wasm
       outputsPtr = dataPtr;
-      k = outputsPtr >> 2;
-      outputDataPtr = (dataPtr += numOutputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}}) >> 2;
+      k = {{{ getHeapOffset('outputsPtr', 'u32') }}};
+      outputDataPtr = (dataPtr += numOutputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}});
       for (i of outputList) {
         // Write the AudioSampleFrame struct instance
         HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.numberOfChannels / 4 }}}] = i.length;
         HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.samplesPerChannel / 4 }}}] = this.samplesPerChannel;
         HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.data / 4 }}}] = dataPtr;
+#if MEMORY64
+        HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.data / 4 + 1 }}}] = dataPtr / 0x100000000;
+#endif
         k += {{{ C_STRUCTS.AudioSampleFrame.__size__ / 4 }}};
         // Reserve space for the output data
         dataPtr += bytesPerChannel * i.length;
@@ -110,11 +113,12 @@ function createWasmAudioWorkletProcessor(audioParams) {
       }
 
       // Call out to Wasm callback to perform audio processing
-      if (didProduceAudio = this.callback(numInputs, inputsPtr, numOutputs, outputsPtr, numParams, paramsPtr, this.userData)) {
+      if (didProduceAudio = this.callback(numInputs, {{{ toIndexType('inputsPtr') }}}, numOutputs, {{{ toIndexType('outputsPtr') }}}, numParams, {{{ toIndexType('paramsPtr') }}}, this.userData)) {
         // Read back the produced audio data to all outputs and their channels.
         // (A garbage-free function TypedArray.copy(dstTypedArray, dstOffset,
         // srcTypedArray, srcOffset, count) would sure be handy..  but web does
         // not have one, so manually copy all bytes in)
+        outputDataPtr = {{{ getHeapOffset('outputDataPtr', 'float') }}};
         for (i of outputList) {
           for (j of i) {
             for (k = 0; k < this.samplesPerChannel; ++k) {
@@ -168,9 +172,9 @@ class BootstrapMessages extends AudioWorkletProcessor {
         //
         // '_wsc' is short for 'wasm call', using an identifier that will never
         // conflict with user messages
-        messagePort.postMessage({'_wsc': d.callback, args: [d.contextHandle, 1/*EM_TRUE*/, d.userData] });
+        messagePort.postMessage({'_wsc': {{{ toIndexType("d.callback") }}}, args: [d.contextHandle, 1/*EM_TRUE*/, {{{ toIndexType("d.userData") }}}] });
       } else if (d['_wsc']) {
-        getWasmTableEntry(d['_wsc'])(...d.args);
+        getWasmTableEntry({{{ toIndexType("d['_wsc']") }}})(...d.args);
       };
     }
   }
