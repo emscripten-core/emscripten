@@ -13381,8 +13381,9 @@ int main () {
       'malloc() called but not included in the build - add `_malloc` to EXPORTED_FUNCTIONS',
       'free() called but not included in the build - add `_free` to EXPORTED_FUNCTIONS'), assert_all=True)
 
+  @also_with_asan
   def test_getrusage(self):
-    self.do_runf('other/test_getrusage.c')
+    self.do_other_test('test_getrusage.c')
 
   @with_env_modify({'EMMAKEN_COMPILER': shared.CLANG_CC})
   def test_emmaken_compiler(self):
