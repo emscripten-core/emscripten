@@ -251,7 +251,10 @@ var LibraryPThread = {
         } else if (cmd === 'spawnThread') {
           spawnThread(d);
         } else if (cmd === 'cleanupThread') {
-          cleanupThread(d.thread);
+          // Cleanup can potentially execute the queue mailbox and trigger an
+          // ExitStatus exception, so we must wrap cleanup with callUserCallback
+          // to handle the exception.
+          callUserCallback(() => cleanupThread(d.thread));
 #if MAIN_MODULE
         } else if (cmd === 'markAsFinished') {
           markAsFinished(d.thread);
