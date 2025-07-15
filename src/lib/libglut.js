@@ -300,13 +300,11 @@ var LibraryGLUT = {
       _glutPostRedisplay();
     },
 
-    reshapeHandler: () => {
-      // Use clientWidth and clientHeight, which include CSS scaling of the canvas
+    // Resize callback stage 1: update canvas by setCanvasSize, which notifies resizeListeners including GLUT.reshapeFunc
+    onResize: () => {
+      // Update canvas size to clientWidth and clientHeight, which include CSS scaling
       var canvas = Browser.getCanvas();
-      Browser.setCanvasSize(canvas.clientWidth, canvas.clientHeight, true);
-      if (GLUT.reshapeFunc) {
-        {{{ makeDynCall('vii', 'GLUT.reshapeFunc') }}}(canvas.clientWidth, canvas.clientHeight);
-      }
+      Browser.setCanvasSize(canvas.clientWidth, canvas.clientHeight, /*noUpdates*/false);
     }
   },
 
@@ -345,7 +343,15 @@ var LibraryGLUT = {
     // Firefox
     window.addEventListener('DOMMouseScroll', GLUT.onMouseWheel, true);
 
-    window.addEventListener('resize', GLUT.reshapeHandler, true);
+    // Resize callback stage 1: update canvas which notifies resizeListeners
+    window.addEventListener('resize', GLUT.onResize, true);
+
+    // Resize callback stage 2: updateResizeListeners notifies reshapeFunc
+    Browser.resizeListeners.push((width, height) => {
+      if (GLUT.reshapeFunc) {
+        {{{ makeDynCall('vii', 'GLUT.reshapeFunc') }}}(width, height);
+      }
+    });       
 
     addOnExit(() => {
       if (isTouchDevice) {
@@ -364,7 +370,7 @@ var LibraryGLUT = {
       // Firefox
       window.removeEventListener('DOMMouseScroll', GLUT.onMouseWheel, true);
 
-      window.removeEventListener('resize', GLUT.reshapeHandler, true);
+      window.removeEventListener('resize', GLUT.onResize, true);
 
       var canvas = Browser.getCanvas();
       canvas.width = canvas.height = 1;
@@ -642,7 +648,7 @@ var LibraryGLUT = {
   glutMainLoop__proxy: 'sync',
   glutMainLoop__deps: ['$GLUT', 'glutPostRedisplay'],
   glutMainLoop: () => {
-    GLUT.reshapeHandler();
+    GLUT.onResize();
     _glutPostRedisplay();
     throw 'unwind';
   },
