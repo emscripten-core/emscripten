@@ -1512,15 +1512,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
     settings.MINIFY_WASM_IMPORTED_MODULES = 1
 
-  if settings.MINIMAL_RUNTIME and settings.ASSERTIONS:
-    # In ASSERTIONS-builds, functions UTF8ArrayToString() and stringToUTF8Array()
-    # (which are not JS library functions), both use warnOnce(), which in
-    # MINIMAL_RUNTIME is a JS library function, so explicitly have to mark
-    # dependency to warnOnce() in that case. If string functions are turned to
-    # library functions in the future, then JS dependency tracking can be
-    # used and this special directive can be dropped.
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$warnOnce']
-
   if settings.MODULARIZE and not (settings.EXPORT_ES6 and not settings.SINGLE_FILE) and \
      settings.EXPORT_NAME == 'Module' and options.oformat == OFormat.HTML and \
      (options.shell_path == DEFAULT_SHELL_HTML or options.shell_path == utils.path_from_root('src/shell_minimal.html')):
