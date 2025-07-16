@@ -437,6 +437,9 @@ class TestCoreBase(RunnerCore):
   def maybe_closure(self):
     if '--closure=1' not in self.cflags and self.should_use_closure():
       self.cflags += ['--closure=1']
+      if self.is_wasm2js():
+        # wasm2js output currently contains closure warnings
+        self.cflags += ['-Wno-closure']
       logger.debug('using closure compiler..')
       return True
     return False
