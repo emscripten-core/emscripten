@@ -1056,7 +1056,10 @@ jobs:
   # windows and mac do not have separate build and test jobs, as they only run
   # a limited set of tests; it is simpler and faster to do it all in one job.
   test-windows:
-    working_directory: "~/path with spaces"
+    # Use spaces and other special chars in the path to emsdk to flush out
+    # issues with windows.  In particular, the .bat file launches can have
+    # trouble with these.
+    working_directory: "~/path with spaces ()/"
     executor:
       name: win/server-2019
       shell: bash.exe -eo pipefail
