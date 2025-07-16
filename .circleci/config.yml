@@ -600,6 +600,7 @@ jobs:
             core2s.test_module_wasm_memory
             cores.test_minimal_runtime_safe_heap
             wasm2js3.test_memorygrowth_2
+            wasm2js2.test_pthread_proxying
             wasmfs.test_hello_world
             wasmfs.test_unistd_links*
             wasmfs.test_atexit_standalone
