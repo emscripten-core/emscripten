@@ -15035,6 +15035,10 @@ int main() {
     # c++20 for ends_with().
     self.do_other_test('test_fs_icase.cpp', cflags=['-sCASE_INSENSITIVE_FS', '-std=c++20'])
 
+  @with_all_fs
+  def test_std_filesystem(self):
+    self.do_other_test('test_std_filesystem.cpp')
+
   def test_strict_js_closure(self):
     self.do_runf('hello_world.c', cflags=['-sSTRICT_JS', '-Werror=closure', '--closure=1', '-O3'])
 
