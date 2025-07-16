@@ -2151,7 +2151,6 @@ Module['postRun'] = () => {
 
   @node_pthreads
   @also_with_modularize
-  @flaky('https://github.com/emscripten-core/emscripten/issues/24500')
   def test_dylink_pthread_static_data(self):
     # Test that a side module uses the same static data region for global objects across all threads
 
