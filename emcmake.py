@@ -47,7 +47,7 @@ variables so that emcc etc. are used. Typical usage:
 
   # Print a better error if we have no CMake executable on the PATH
   if not os.path.dirname(args[0]) and not shutil.which(args[0]):
-    print(f'emcmake: cmake executable not found on PATH: `{args[0]}`')
+    print(f'emcmake: cmake executable not found on PATH: `{args[0]}`', file=sys.stderr)
     return 1
 
   # On Windows specify MinGW Makefiles or ninja if we have them and no other
