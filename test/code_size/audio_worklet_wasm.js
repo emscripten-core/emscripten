@@ -1,15 +1,15 @@
-var k = globalThis.Module || "undefined" != typeof Module ? Module : {}, p = "em-ww" == globalThis.name, q = "undefined" !== typeof AudioWorkletGlobalScope, r, v, L, M, G, I, C, X, J, E, D, Y, Z;
+var k = globalThis.Module || typeof Module != "undefined" ? Module : {}, p = globalThis.name == "em-ww", q = typeof AudioWorkletGlobalScope !== "undefined", r, v, L, M, G, I, C, X, J, E, D, Y, Z;
 
 q && (p = !0);
 
 function u(a) {
     r = a;
-    v = a.I;
+    v = a.J;
     x();
     k ||= {};
-    k.wasm = a.C;
+    k.wasm = a.D;
     y();
-    a.C = a.J = 0;
+    a.D = a.K = 0;
 }
 
 p && !q && (onmessage = a => {
@@ -23,38 +23,38 @@ if (q) {
             constructor(e) {
                 super();
                 e = e.processorOptions;
-                this.u = C.get(e.u);
-                this.v = e.v;
-                this.s = e.s;
+                this.v = C.get(e.v);
+                this.A = e.A;
+                this.u = e.u;
             }
             static get parameterDescriptors() {
                 return c;
             }
             process(e, h, f) {
-                let m = e.length, w = h.length, F = 0, l, z, n, t = 4 * this.s, g = 12 * (m + w), W = D(), A, H, B;
+                let m = e.length, w = h.length, F = 0, l, z, n, t = this.u * 4, g = (m + w) * 12, W = D(), A, H, B;
                 for (l of e) g += l.length * t;
                 for (l of h) g += l.length * t;
                 for (l in f) g += f[l].byteLength + 8, ++F;
                 A = E(g);
                 g = A >> 2;
-                n = A + 12 * m;
+                n = A + m * 12;
                 for (l of e) {
                     G[g] = l.length;
-                    G[g + 1] = this.s;
+                    G[g + 1] = this.u;
                     G[g + 2] = n;
                     g += 3;
                     for (z of l) I.set(z, n >> 2), n += t;
                 }
                 H = n;
                 g = H >> 2;
-                e = (n += 12 * w) >> 2;
-                for (l of h) G[g] = l.length, G[g + 1] = this.s, G[g + 2] = n, g += 3, n += t * l.length;
+                e = (n += w * 12) >> 2;
+                for (l of h) G[g] = l.length, G[g + 1] = this.u, G[g + 2] = n, g += 3, n += t * l.length;
                 t = n;
                 g = t >> 2;
-                n += 8 * F;
+                n += F * 8;
                 for (l = 0; B = f[l++]; ) G[g] = B.length, G[g + 1] = n, g += 2, I.set(B, n >> 2), 
-                n += 4 * B.length;
-                if (f = this.u(m, A, w, H, F, t, this.v)) for (l of h) for (z of l) for (g = 0; g < this.s; ++g) z[g] = I[e++];
+                n += B.length * 4;
+                if (f = this.v(m, A, w, H, F, t, this.A)) for (l of h) for (z of l) for (g = 0; g < this.u; ++g) z[g] = I[e++];
                 J(W);
                 return !!f;
             }
@@ -69,10 +69,10 @@ if (q) {
             K = this.port;
             K.onmessage = async d => {
                 d = d.data;
-                d._wpn ? (registerProcessor(d._wpn, a(d.D)), K.postMessage({
-                    _wsc: d.u,
-                    A: [ d.F, 1, d.v ]
-                })) : d._wsc && C.get(d._wsc)(...d.A);
+                d._wpn ? (registerProcessor(d._wpn, a(d.F)), K.postMessage({
+                    _wsc: d.v,
+                    B: [ d.G, 1, d.A ]
+                })) : d._wsc && C.get(d._wsc)(...d.B);
             };
         }
         process() {}
@@ -103,17 +103,17 @@ var N = [], O = a => {
 }, Q = a => J(a), R = () => D(), aa = (a, b, c, d) => {
     b = S[b];
     S[a].connect(b.destination || b, c, d);
-}, S = {}, T = 0, U = "undefined" != typeof TextDecoder ? new TextDecoder : void 0, V = (a = 0) => {
+}, S = {}, T = 0, U = typeof TextDecoder != "undefined" ? new TextDecoder : void 0, V = (a = 0) => {
     for (var b = L, c = a, d = c + void 0; b[c] && !(c >= d); ) ++c;
-    if (16 < c - a && b.buffer && U) return U.decode(b.slice(a, c));
+    if (c - a > 16 && b.buffer && U) return U.decode(b.slice(a, c));
     for (d = ""; a < c; ) {
         var e = b[a++];
         if (e & 128) {
             var h = b[a++] & 63;
-            if (192 == (e & 224)) d += String.fromCharCode((e & 31) << 6 | h); else {
+            if ((e & 224) == 192) d += String.fromCharCode((e & 31) << 6 | h); else {
                 var f = b[a++] & 63;
-                e = 224 == (e & 240) ? (e & 15) << 12 | h << 6 | f : (e & 7) << 18 | h << 12 | f << 6 | b[a++] & 63;
-                65536 > e ? d += String.fromCharCode(e) : (e -= 65536, d += String.fromCharCode(55296 | e >> 10, 56320 | e & 1023));
+                e = (e & 240) == 224 ? (e & 15) << 12 | h << 6 | f : (e & 7) << 18 | h << 12 | f << 6 | b[a++] & 63;
+                e < 65536 ? d += String.fromCharCode(e) : (e -= 65536, d += String.fromCharCode(55296 | e >> 10, 56320 | e & 1023));
             }
         } else d += String.fromCharCode(e);
     }
@@ -144,9 +144,9 @@ var N = [], O = a => {
             numberOfOutputs: f,
             outputChannelCount: m,
             processorOptions: {
-                u: d,
-                v: e,
-                s: 128
+                v: d,
+                A: e,
+                u: 128
             }
         };
     } else d = void 0;
@@ -163,36 +163,36 @@ var N = [], O = a => {
         maxValue: I[f++],
         automationRate: [ "a", "k" ][G[f++]] + "-rate"
     });
-    h = S[a].audioWorklet.B.port;
+    h = S[a].audioWorklet.C.port;
     f = h.postMessage;
     b = (b = G[b]) ? V(b) : "";
     f.call(h, {
         _wpn: b,
-        D: e,
-        F: a,
-        u: c,
-        v: d
+        F: e,
+        G: a,
+        v: c,
+        A: d
     });
 }, ea = () => !1, fa = 1, ha = a => {
     a = a.data;
     let b = a._wsc;
-    b && C.get(b)(...a.A);
+    b && C.get(b)(...a.B);
 }, ia = a => E(a), ja = (a, b, c, d, e) => {
     let h = S[a], f = h.audioWorklet, m = () => {
         C.get(d)(a, 0, e);
     };
     if (!f) return m();
     f.addModule(k.js).then((() => {
-        f.B = new AudioWorkletNode(h, "em-bootstrap", {
+        f.C = new AudioWorkletNode(h, "em-bootstrap", {
             processorOptions: {
-                K: fa++,
-                C: k.wasm,
-                I: v,
-                G: b,
-                H: c
+                L: fa++,
+                D: k.wasm,
+                J: v,
+                H: b,
+                I: c
             }
         });
-        f.B.port.onmessage = ha;
+        f.C.port.onmessage = ha;
         C.get(d)(a, 1, e);
     })).catch(m);
 };
@@ -203,7 +203,7 @@ function ka(a) {
     document.body.appendChild(b);
     a = S[a];
     b.onclick = () => {
-        "running" != a.state ? a.resume() : a.suspend();
+        a.state != "running" ? a.resume() : a.suspend();
     };
 }
 
@@ -232,7 +232,7 @@ function y() {
         k.stackAlloc = ia;
         k.stackRestore = Q;
         k.wasmTable = C;
-        p ? (Y(r.G, r.H), "undefined" === typeof AudioWorkletGlobalScope && (removeEventListener("message", P), 
+        p ? (Y(r.H, r.I), typeof AudioWorkletGlobalScope === "undefined" && (removeEventListener("message", P), 
         N = N.forEach(O), addEventListener("message", O))) : a.i();
         p || X();
     }));
