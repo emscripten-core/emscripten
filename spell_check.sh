@@ -1,0 +1,128 @@
+#!/bin/bash
+
+# List of common misspellings
+misspellings=(
+    "definately"
+    "seperate"
+    "occured"
+    "recieve"
+    "untill"
+    "wich"
+    "acheive"
+    "succesful"
+    "arguement"
+    "completly"
+    "enviornment"
+    "goverment"
+    "independant"
+    "knowlege"
+    "neccessary"
+    "paralel"
+    "peice"
+    "personel"
+    "publically"
+    "reccomend"
+    "refered",
+    "suprise",
+    "wierd",
+    "unforseen",
+    "definately",
+    "seperate",
+    "occured",
+    "recieve",
+    "untill",
+    "wich",
+    "acheive",
+    "succesful",
+    "arguement",
+    "completly",
+    "enviornment",
+    "goverment",
+    "independant",
+    "knowlege",
+    "neccessary",
+    "paralel",
+    "peice",
+    "personel",
+    "publically",
+    "reccomend",
+    "refered",
+    "wierd",
+    "unforseen",
+    "adress",
+    "accomodate",
+    "acknowledgment",
+    "appearence",
+    "beleive",
+    "calender",
+    "cemetary",
+    "collegue",
+    "commitee",
+    "concious",
+    "curiousity",
+    "definate",
+    "dilemna",
+    "embarass",
+    "existance",
+    "firey",
+    "foriegn",
+    "freind",
+    "futher",
+    "garantee",
+    "grammer",
+    "harrass",
+    "heirarchy",
+    "humourous",
+    " imediately",
+    "incidently",
+    "interupt",
+    "irresistable",
+    "jewlery",
+    "judgement",
+    "leisure",
+    "liason",
+    "maintainance",
+    "mischevious",
+    "misspell",
+    "noticable",
+    "occasionaly",
+    "occurence",
+    "ommision",
+    "pasionate",
+    "pasttime",
+    "pavillion",
+    "percieve",
+    "posession",
+    "potatos",
+    "priviledge",
+    "pronounciation",
+    "questionaire",
+    "rythm",
+    "seige",
+    "seize",
+    "seperable",
+    "sincerly",
+    "succede",
+    "sucess",
+    "tatoo",
+    "tendancy",
+    "threshhold",
+    "tommorrow",
+    "tounge",
+    "truely",
+    "unecesary",
+    "untill",
+    "vacume",
+    "visious",
+    "wether"
+)
+
+# Find all .rst files
+files=$(find site/source/docs -name "*.rst")
+
+# Check for misspellings
+for file in $files; do
+    for word in "${misspellings[@]}"; do
+        grep -i -n "$word" "$file"
+    done
+done
