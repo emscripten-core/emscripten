@@ -509,7 +509,7 @@ def setup_pthreads():
       diagnostics.warning('experimental', '-sMAIN_MODULE + pthreads is experimental')
     elif settings.LINKABLE:
       diagnostics.warning('experimental', '-sLINKABLE + pthreads is experimental')
-  if settings.ALLOW_MEMORY_GROWTH:
+  if settings.ALLOW_MEMORY_GROWTH and not settings.GROWABLE_ARRAYBUFFERS:
     diagnostics.warning('pthreads-mem-growth', '-pthread + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
 
   default_setting('DEFAULT_PTHREAD_STACK_SIZE', settings.STACK_SIZE)
@@ -794,6 +794,9 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.JS_BASE64_API:
     diagnostics.warning('experimental', '-sJS_BASE64_API is still experimental and not yet supported in browsers')
+
+  if settings.GROWABLE_ARRAYBUFFERS:
+    diagnostics.warning('experimental', '-sGROWABLE_ARRAYBUFFERS is still experimental and not yet supported in browsers')
 
   if settings.SOURCE_PHASE_IMPORTS:
     if not settings.EXPORT_ES6:
@@ -1477,12 +1480,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   set_initial_memory()
 
-  if settings.EXPORT_ES6 and not settings.MODULARIZE:
-    # EXPORT_ES6 requires output to be a module
-    if 'MODULARIZE' in user_settings:
-      exit_with_error('EXPORT_ES6 requires MODULARIZE to be set')
-    settings.MODULARIZE = 1
-
   if settings.MODULARIZE and not settings.DECLARE_ASM_MODULE_EXPORTS:
     # When MODULARIZE option is used, currently requires declaring all module exports
     # individually - TODO: this could be optimized
@@ -1514,15 +1511,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
           settings.MINIFY_WASM_EXPORT_NAMES:
     settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
     settings.MINIFY_WASM_IMPORTED_MODULES = 1
-
-  if settings.MINIMAL_RUNTIME and settings.ASSERTIONS:
-    # In ASSERTIONS-builds, functions UTF8ArrayToString() and stringToUTF8Array()
-    # (which are not JS library functions), both use warnOnce(), which in
-    # MINIMAL_RUNTIME is a JS library function, so explicitly have to mark
-    # dependency to warnOnce() in that case. If string functions are turned to
-    # library functions in the future, then JS dependency tracking can be
-    # used and this special directive can be dropped.
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$warnOnce']
 
   if settings.MODULARIZE and not (settings.EXPORT_ES6 and not settings.SINGLE_FILE) and \
      settings.EXPORT_NAME == 'Module' and options.oformat == OFormat.HTML and \
@@ -2036,6 +2024,12 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
     if basename == 'libembind.js':
       settings.JS_LIBRARIES[i] = os.path.join(dirname, 'libembind_gen.js')
   settings.MIN_NODE_VERSION = 160000 if settings.MEMORY64 else 150000
+  # The final version of the memory64 proposal is not implemented until node
+  # v24, so we need to lower it away in order to execute the binary at build
+  # time.
+  # TODO Remove lowering when emsdk version of node is >= 24 and just require it.
+  if settings.MEMORY64:
+    settings.MEMORY64 = 2
   # Source maps haven't been generated yet and aren't needed to run embind_gen.
   settings.LOAD_SOURCE_MAP = 0
   outfile_js = in_temp('tsgen.js')
@@ -2045,9 +2039,7 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   # Build the flags needed by Node.js to properly run the output file.
   node_args = []
   if settings.MEMORY64:
-    # The final version of the memory64 proposal is not yet implemented in any
-    # shipping version of node, so we need to lower it away in order to
-    # execute the binary at built time.
+    # See comment above about lowering memory64.
     building.run_wasm_opt(outfile_wasm, outfile_wasm, ['--memory64-lowering', '--table64-lowering'])
   if settings.WASM_EXCEPTIONS:
     node_args += shared.node_exception_flags(config.NODE_JS)
@@ -2332,7 +2324,7 @@ def phase_binaryen(target, options, wasm_target):
     # unsigning pass.
     # we also must do this after the asan or safe_heap instrumentation, as they
     # wouldn't be able to recognize patterns produced by the growth pass.
-    if settings.SHARED_MEMORY and settings.ALLOW_MEMORY_GROWTH:
+    if settings.SHARED_MEMORY and settings.ALLOW_MEMORY_GROWTH and not settings.GROWABLE_ARRAYBUFFERS:
       with ToolchainProfiler.profile_block('apply_wasm_memory_growth'):
         final_js = building.apply_wasm_memory_growth(final_js)
 

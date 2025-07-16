@@ -1061,6 +1061,7 @@ def little_endian_heap(js_file):
 
 
 def apply_wasm_memory_growth(js_file):
+  assert not settings.GROWABLE_ARRAYBUFFERS
   logger.debug('supporting wasm memory growth with pthreads')
   return acorn_optimizer(js_file, ['growableHeap'])
 

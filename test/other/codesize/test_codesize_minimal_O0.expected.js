@@ -986,7 +986,6 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'registerGamepadEventCallback',
   'registerBeforeUnloadEventCallback',
   'fillBatteryEventData',
-  'battery',
   'registerBatteryEventCallback',
   'setCanvasElementSize',
   'getCanvasElementSize',

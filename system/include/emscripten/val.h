@@ -368,6 +368,11 @@ public:
     }
   }
 
+  // Add an explicit overload for `val&` as well.
+  // Without it, C++ will try to use the `T&&` constructor instead of the more
+  // efficient `val(const val&)` when trying to copy a `val` instance.
+  val(val& v) : val(static_cast<const val&>(v)) {}
+
   ~val() {
     if (uses_ref_count()) {
       internal::_emval_decref(as_handle());

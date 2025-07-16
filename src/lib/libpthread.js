@@ -251,7 +251,10 @@ var LibraryPThread = {
         } else if (cmd === 'spawnThread') {
           spawnThread(d);
         } else if (cmd === 'cleanupThread') {
-          cleanupThread(d.thread);
+          // cleanupThread needs to be run via callUserCallback since it calls
+          // back into user code to free thread data. Without this it's possible
+          // the unwind or ExitStatus exception could escape here.
+          callUserCallback(() => cleanupThread(d.thread));
 #if MAIN_MODULE
         } else if (cmd === 'markAsFinished') {
           markAsFinished(d.thread);

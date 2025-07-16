@@ -2692,11 +2692,14 @@ Default value: 0
 TEXTDECODER
 ===========
 
-If enabled, use the JavaScript TextDecoder API for string marshalling.
-Enabled by default, set this to 0 to disable.
+The default value or 1 means the generated code will use TextDecoder if
+available and fall back to custom decoder code when not available.
 If set to 2, we assume TextDecoder is present and usable, and do not emit
-any JS code to fall back if it is missing. In single threaded -Oz build modes,
-TEXTDECODER defaults to value == 2 to save code size.
+any JS code to fall back if it is missing. Setting this zero to avoid even
+conditional usage of TextDecoder is no longer supported.
+Note: In -Oz builds, the default value of TEXTDECODER is set to 2, to save on
+code size (except when AUDIO_WORKLET is specified, or when `shell` is part
+of ENVIRONMENT since TextDecoder is not available in those environments).
 
 Default value: 1
 
@@ -3338,6 +3341,19 @@ Enable use of the JS arraybuffer-base64 API:
 https://github.com/tc39/proposal-arraybuffer-base64
 To run the resulting code currently requires passing `--js_base_64` to node
 or chrome.
+
+.. note:: This is an experimental setting
+
+Default value: false
+
+.. _growable_arraybuffers:
+
+GROWABLE_ARRAYBUFFERS
+=====================
+
+Enable support for GrowableSharedArrayBuffer.
+This features is only available behind a flag in recent versions of
+node/chrome.
 
 .. note:: This is an experimental setting
 

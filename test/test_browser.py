@@ -3424,6 +3424,17 @@ Module["preRun"] = () => {
     ''' % code)
     self.run_browser('a.html', '/report_result?0')
 
+  @no_firefox('source phase imports not implemented yet in firefox')
+  def test_source_phase_imports(self):
+    self.compile_btest('browser_test_hello_world.c', ['-sEXPORT_ES6', '-sSOURCE_PHASE_IMPORTS', '-Wno-experimental', '-o', 'out.mjs'])
+    create_file('a.html', '''
+      <script type="module">
+        import Module from "./out.mjs"
+        const mod = await Module();
+      </script>
+    ''')
+    self.run_browser('a.html', '/report_result?0')
+
   def test_modularize_network_error(self):
     self.compile_btest('browser_test_hello_world.c', ['-sMODULARIZE', '-sEXPORT_NAME=createModule'], reporting=Reporting.NONE)
     shutil.copy(test_file('browser_reporting.js'), '.')
@@ -4068,7 +4079,7 @@ Module["preRun"] = () => {
 
   # Test that real `thread_local` works.
   def test_pthread_tls(self):
-    self.btest_exit('pthread/test_pthread_tls.cpp', cflags=['-sPROXY_TO_PTHREAD', '-pthread'])
+    self.btest_exit('pthread/test_pthread_tls.c', cflags=['-sPROXY_TO_PTHREAD', '-pthread'])
 
   # Test that real `thread_local` works in main thread without PROXY_TO_PTHREAD.
   def test_pthread_tls_main(self):
@@ -4245,33 +4256,6 @@ Module["preRun"] = () => {
   @also_with_threads
   def test_utf16_textdecoder(self):
     self.btest_exit('benchmark/benchmark_utf16.cpp', 0, cflags=['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt', '-sEXPORTED_RUNTIME_METHODS=UTF16ToString,stringToUTF16,lengthBytesUTF16'])
-
-  @also_with_threads
-  @parameterized({
-    '': ([],),
-    'closure': (['--closure=1'],),
-  })
-  def test_TextDecoder(self, args):
-    self.cflags += args
-
-    self.btest('browser_test_hello_world.c', '0', cflags=['-sTEXTDECODER=0'])
-    just_fallback = os.path.getsize('test.js')
-    print('just_fallback:\t%s' % just_fallback)
-
-    self.btest('browser_test_hello_world.c', '0')
-    td_with_fallback = os.path.getsize('test.js')
-    print('td_with_fallback:\t%s' % td_with_fallback)
-
-    self.btest('browser_test_hello_world.c', '0', cflags=['-sTEXTDECODER=2'])
-    td_without_fallback = os.path.getsize('test.js')
-    print('td_without_fallback:\t%s' % td_without_fallback)
-
-    # td_with_fallback should always be largest of all three in terms of code side
-    self.assertGreater(td_with_fallback, td_without_fallback)
-    self.assertGreater(td_with_fallback, just_fallback)
-
-    # the fallback is also expected to be larger in code size than using td
-    self.assertGreater(just_fallback, td_without_fallback)
 
   def test_small_js_flags(self):
     self.btest('browser_test_hello_world.c', '0', cflags=['-O3', '--closure=1', '-sINCOMING_MODULE_JS_API=[]', '-sENVIRONMENT=web', '--output-eol=linux'])
@@ -4728,17 +4712,21 @@ Module["preRun"] = () => {
   # Tests memory growth in pthreads mode, but still on the main thread.
   @parameterized({
     '': ([], 1),
-    'proxy': (['-sPROXY_TO_PTHREAD'], 2),
+    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'], 1),
+    'proxy': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'], 2),
   })
   @no_2gb('uses INITIAL_MEMORY')
   @no_4gb('uses INITIAL_MEMORY')
   def test_pthread_growth_mainthread(self, cflags, pthread_pool_size):
     self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
-    self.btest_exit('pthread/test_pthread_memory_growth_mainthread.c', cflags=['-Wno-pthreads-mem-growth', '-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
+    if '-sGROWABLE_ARRAYBUFFERS' not in cflags:
+      self.cflags.append('-Wno-pthreads-mem-growth')
+    self.btest_exit('pthread/test_pthread_memory_growth_mainthread.c', cflags=['-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
 
   # Tests memory growth in a pthread.
   @parameterized({
     '': ([],),
+    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'],),
     'assert': (['-sASSERTIONS'],),
     'proxy': (['-sPROXY_TO_PTHREAD'], 2),
     'minimal': (['-sMINIMAL_RUNTIME', '-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
@@ -4747,7 +4735,9 @@ Module["preRun"] = () => {
   @no_4gb('uses INITIAL_MEMORY')
   def test_pthread_growth(self, cflags, pthread_pool_size = 1):
     self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
-    self.btest_exit('pthread/test_pthread_memory_growth.c', cflags=['-Wno-pthreads-mem-growth', '-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
+    if '-sGROWABLE_ARRAYBUFFERS' not in cflags:
+      self.cflags.append('-Wno-pthreads-mem-growth')
+    self.btest_exit('pthread/test_pthread_memory_growth.c', cflags=['-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
 
   # Tests that time in a pthread is relative to the main thread, so measurements
   # on different threads are still monotonic, as if checking a single central

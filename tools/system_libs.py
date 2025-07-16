@@ -2125,9 +2125,7 @@ class libubsan_minimal_rt(CompilerRTLibrary, MTLibrary):
 
 class libsanitizer_common_rt(CompilerRTLibrary, MTLibrary):
   name = 'libsanitizer_common_rt'
-  # TODO(sbc): We should not need musl-internal headers here.
-  includes = ['system/lib/libc/musl/src/internal',
-              'system/lib/compiler-rt/lib',
+  includes = ['system/lib/compiler-rt/lib',
               'system/lib/libc']
   never_force = True
   cflags = [
@@ -2231,7 +2229,7 @@ class libstandalonewasm(MuslInternalLibrary):
   def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
       is_mem_grow=settings.ALLOW_MEMORY_GROWTH,
-      is_pure=settings.PURE_WASI,
+      is_pure=settings.PURE_WASI or settings.GROWABLE_ARRAYBUFFERS,
       nocatch=settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS,
       **kwargs,
     )

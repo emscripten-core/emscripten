@@ -317,10 +317,10 @@ commands:
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
             # --no-sandbox because we are running as root and chrome requires
             # this flag for now: https://crbug.com/638180
-            CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile --enable-experimental-web-platform-features"
+            CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile --enable-experimental-web-platform-features --enable-features=JavaScriptSourcePhaseImports"
             # Increase the window size to avoid flaky sdl tests see #24236.
             CHROME_FLAGS_HEADLESS: "--headless=new --window-size=1024,768 --remote-debugging-port=1234"
-            CHROME_FLAGS_WASM: "--enable-experimental-webassembly-features --js-flags=\"--experimental-wasm-stack-switching --experimental-wasm-type-reflection\""
+            CHROME_FLAGS_WASM: "--enable-experimental-webassembly-features --js-flags=\"--experimental-wasm-stack-switching --experimental-wasm-type-reflection --experimental-wasm-rab-integration\""
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
             # The runners lack sound hardware so fallback to a dummy device (and
             # bypass the user gesture so audio tests work without interaction)
@@ -600,6 +600,7 @@ jobs:
             core2s.test_module_wasm_memory
             cores.test_minimal_runtime_safe_heap
             wasm2js3.test_memorygrowth_2
+            wasm2js2.test_pthread_proxying
             wasmfs.test_hello_world
             wasmfs.test_unistd_links*
             wasmfs.test_atexit_standalone
@@ -820,6 +821,7 @@ jobs:
             other.test_gen_struct_info
             other.test_native_call_before_init
             other.test_node_unhandled_rejection
+            other.test_*growable_arraybuffers
             core2.test_hello_world
             core2.test_esm_integration*
             core0.test_esm_integration*
@@ -1023,6 +1025,7 @@ jobs:
             skip:browser.test_webgl_offscreen_canvas_in_pthread
             skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
             skip:browser.test_glut_glutget
+            skip:browser.test_*_growable_arraybuffers
             "
   test-browser-firefox-wasm64:
     executor: focal
@@ -1053,7 +1056,10 @@ jobs:
   # windows and mac do not have separate build and test jobs, as they only run
   # a limited set of tests; it is simpler and faster to do it all in one job.
   test-windows:
-    working_directory: "~/path with spaces"
+    # Use spaces and other special chars in the path to emsdk to flush out
+    # issues with windows.  In particular, the .bat file launchers can have
+    # trouble with these.
+    working_directory: "~/path with spaces ()/"
     executor:
       name: win/server-2019
       shell: bash.exe -eo pipefail

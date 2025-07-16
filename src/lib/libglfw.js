@@ -87,6 +87,7 @@ var LibraryGLFW = {
     'malloc', 'free',
     '$MainLoop',
     '$stringToNewUTF8',
+    '$getFullscreenElement',
     'emscripten_set_window_title',
 #if FILESYSTEM
     '$FS',
@@ -631,7 +632,7 @@ var LibraryGLFW = {
       var resizeNeeded = false;
 
       // If the client is requesting fullscreen mode
-      if (document["fullscreen"] || document["fullScreen"] || document["mozFullScreen"] || document["webkitIsFullScreen"]) {
+      if (getFullscreenElement()) {
         if (!GLFW.active.fullscreen) {
           resizeNeeded = width != screen.width || height != screen.height;
           GLFW.active.storedX = GLFW.active.x;
@@ -942,7 +943,7 @@ var LibraryGLFW = {
             case 0x00034001: { // GLFW_CURSOR_NORMAL
               win.inputModes[mode] = value;
               canvas.removeEventListener('click', GLFW.onClickRequestPointerLock, true);
-              canvas.exitPointerLock();
+              document.exitPointerLock();
               break;
             }
             case 0x00034002: { // GLFW_CURSOR_HIDDEN
@@ -1168,9 +1169,7 @@ var LibraryGLFW = {
       function fullscreenChange() {
         Browser.isFullscreen = false;
         var canvasContainer = canvas.parentNode;
-        if ((document['fullscreenElement'] || document['mozFullScreenElement'] ||
-          document['msFullscreenElement'] || document['webkitFullscreenElement'] ||
-          document['webkitCurrentFullScreenElement']) === canvasContainer) {
+        if (getFullscreenElement() === canvasContainer) {
           canvas.exitFullscreen = Browser.exitFullscreen;
           if (Browser.lockPointer) canvas.requestPointerLock();
           Browser.isFullscreen = true;
@@ -1239,9 +1238,7 @@ var LibraryGLFW = {
           h = Math.round(w / Module['forcedAspectRatio']);
         }
       }
-      if (((document['fullscreenElement'] || document['mozFullScreenElement'] ||
-        document['msFullscreenElement'] || document['webkitFullscreenElement'] ||
-        document['webkitCurrentFullScreenElement']) === canvas.parentNode) && (typeof screen != 'undefined')) {
+      if ((getFullscreenElement() === canvas.parentNode) && (typeof screen != 'undefined')) {
         var factor = Math.min(screen.width / w, screen.height / h);
         w = Math.round(w * factor);
         h = Math.round(h * factor);

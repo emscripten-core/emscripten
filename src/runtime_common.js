@@ -12,7 +12,7 @@
 #include "runtime_safe_heap.js"
 #endif
 
-#if SHARED_MEMORY && ALLOW_MEMORY_GROWTH
+#if SHARED_MEMORY && ALLOW_MEMORY_GROWTH && !GROWABLE_ARRAYBUFFERS
 #include "growableHeap.js"
 #endif
 
@@ -132,7 +132,11 @@ var runtimeExited = false;
 }}}
 
 function updateMemoryViews() {
+#if GROWABLE_ARRAYBUFFERS
+  var b = wasmMemory.toResizableBuffer();
+#else
   var b = wasmMemory.buffer;
+#endif
   {{{ maybeExportHeap('HEAP8')   }}}HEAP8 = new Int8Array(b);
   {{{ maybeExportHeap('HEAP16')  }}}HEAP16 = new Int16Array(b);
   {{{ maybeExportHeap('HEAPU8')  }}}HEAPU8 = new Uint8Array(b);

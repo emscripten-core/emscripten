@@ -18,8 +18,17 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.11 (in development)
+4.0.12 (in development)
 -----------------------
+- Support for `-sTEXT_DECODER=0` was removed, due to widespread support for
+  `TextDecoder`.  The remaining valid values for this setting are `=1`
+  (conditional use of `TextDecoder` with fallback) and `=2` (unconditional use
+  of `TextDecoder`). (#24700)
+
+4.0.11 - 07/14/25
+-----------------
+- `emdump` tool/script was removed.  This tool was mostly useful for analyzing
+  asm.js code, which emscripten has not generated in a long time now.
 - Add support for [Source-based Code Coverage](https://clang.llvm.org/docs/SourceBasedCodeCoverage.html)
   To build with coverage enabled use `-fprofile-instr-generate -fcoverage-mapping`. (#24160)
 - The `ENVIRONMENT` setting will now be automatically updated to include
@@ -38,6 +47,10 @@ See docs/process.md for more on how version tagging works.
   wrapped with `WebAssembly.Suspending` functions. To automatically wrap library
   functions for use with JSPI they must now explicitly set
   `myLibraryFunction__async: true`.
+- Removed special casing for `size_t` in Embind, since it was also inadvertently
+  affecting `unsigned long` on wasm64. Both will now match the behaviour of
+  other 64-bit integers on wasm64 and will be passed as `bigint` instead of
+  `number` to the JavaScript code. (#24678)
 
 4.0.10 - 06/07/25
 -----------------
