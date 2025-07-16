@@ -9186,6 +9186,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('pthread/create.c')
 
   @node_pthreads
+  def test_pthread_proxy_wasm0(self):
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('WASM', 0)
+    self.do_core_test('pthread/test_pthread_proxy_wasm0.c')
+
+  @node_pthreads
   @parameterized({
     '': ([],),
     'pooled': (['-sPTHREAD_POOL_SIZE=1'],),

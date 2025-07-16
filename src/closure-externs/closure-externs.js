@@ -69,6 +69,11 @@ Atomics.load = function() {};
 Atomics.store = function() {};
 
 /**
+ * @type {Object}
+ */
+Module['PThread'] = {};
+
+/**
  * @const
  * @suppress {duplicate, checkTypes}
  */
