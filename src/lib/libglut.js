@@ -351,7 +351,7 @@ var LibraryGLUT = {
       if (GLUT.reshapeFunc) {
         {{{ makeDynCall('vii', 'GLUT.reshapeFunc') }}}(width, height);
       }
-    });       
+    });
 
     addOnExit(() => {
       if (isTouchDevice) {
