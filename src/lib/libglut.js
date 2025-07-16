@@ -5,7 +5,7 @@
  */
 
 var LibraryGLUT = {
-  $GLUT__deps: ['$Browser', 'glutPostRedisplay'],
+  $GLUT__deps: ['$Browser', '$getFullscreenElement', 'glutPostRedisplay'],
   $GLUT: {
     initTime: null,
     idleFunc: null,
@@ -279,7 +279,7 @@ var LibraryGLUT = {
     onFullscreenEventChange: (event) => {
       var width;
       var height;
-      if (document["fullscreen"] || document["fullScreen"] || document["mozFullScreen"] || document["webkitIsFullScreen"]) {
+      if (getFullscreenElement()) {
         width = screen["width"];
         height = screen["height"];
       } else {
