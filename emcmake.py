@@ -46,7 +46,7 @@ variables so that emcc etc. are used. Typical usage:
     args.append(f'-DCMAKE_CROSSCOMPILING_EMULATOR={node_js}')
 
   # Print a better error if we have no CMake executable on the PATH
-  if not os.path.isabs(args[0]) and not shutil.which(args[0]):
+  if not os.path.dirname(args[0]) and not shutil.which(args[0]):
     print(f'emcmake: cmake executable not found on PATH: `{args[0]}`')
     return 1
 
