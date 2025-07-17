@@ -20,8 +20,21 @@
 #include "runtime_asan.js"
 #endif
 
-#if MODULARIZE && USE_READY_PROMISE
-var readyPromiseResolve, readyPromiseReject;
+#if USE_READY_PROMISE
+var readyPromise, readyPromiseResolve, readyPromiseReject;
+function createReadyPromise() {
+#if ASSERTIONS
+  assert(!readyPromise, 'Ready promise already initialized.');
+#endif
+  return new Promise((resolve, reject) => {
+    readyPromiseResolve = resolve;
+    readyPromiseReject = reject;
+  });
+}
+#if !MODULARIZE
+// Modularize mode handles initializing the ready promise.
+readyPromise = createReadyPromise();
+#endif
 #endif
 
 #if PTHREADS || WASM_WORKERS

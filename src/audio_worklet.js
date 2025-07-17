@@ -153,6 +153,8 @@ class BootstrapMessages extends AudioWorkletProcessor {
     messagePort = this.port;
     /** @suppress {checkTypes} */
     messagePort.onmessage = async (msg) => {
+      // Wait for the Wasm module to be instantiated.
+      await readyPromise;
       let d = msg.data;
       if (d['_wpn']) {
         // '_wpn' is short for 'Worklet Processor Node', using an identifier
@@ -170,6 +172,8 @@ class BootstrapMessages extends AudioWorkletProcessor {
         // conflict with user messages
         messagePort.postMessage({'_wsc': d.callback, args: [d.contextHandle, 1/*EM_TRUE*/, d.userData] });
       } else if (d['_wsc']) {
+        // Wait for the Wasm module to be instantiated.
+        await readyPromise;
         getWasmTableEntry(d['_wsc'])(...d.args);
       };
     }
