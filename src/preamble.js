@@ -363,7 +363,7 @@ function abort(what) {
   /** @suppress {checkTypes} */
   var e = new WebAssembly.RuntimeError(what);
 
-#if MODULARIZE
+#if USE_READY_PROMISE
   readyPromiseReject?.(e);
 #endif
   // Throw the error whether or not MODULARIZE is set because abort is used

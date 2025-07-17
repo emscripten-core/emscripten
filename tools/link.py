@@ -1221,15 +1221,20 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.STACK_OVERFLOW_CHECK >= 2:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$setStackLimits']
 
-  if settings.MODULARIZE:
-    if settings.PROXY_TO_WORKER:
+  if settings.MODULARIZE and settings.PROXY_TO_WORKER:
       exit_with_error('-sMODULARIZE is not compatible with --proxy-to-worker (if you want to run in a worker with -sMODULARIZE, you likely want to do the worker side setup manually)')
-    # in MINIMAL_RUNTIME we may not need to emit the Promise code, as the
-    # HTML output creates a singleton instance, and it does so without the
-    # Promise. However, in Pthreads mode the Promise is used for worker
-    # creation.
-    if settings.MINIMAL_RUNTIME and options.oformat == OFormat.HTML and not settings.PTHREADS:
-      settings.USE_READY_PROMISE = 0
+
+  if settings.AUDIO_WORKLET:
+    # The audio worklet needs to wait for the Wasm module to be instantiated
+    # before it begins processing.
+    settings.USE_READY_PROMISE = 1
+  elif settings.MODULARIZE and (not settings.MINIMAL_RUNTIME or options.oformat != OFormat.HTML or settings.PTHREADS):
+    # Modularize usually requires the ready promise code, but in certain cases
+    # can be omitted. In MINIMAL_RUNTIME we may not need to emit the Promise
+    # code, as the HTML output creates a singleton instance, and it does so
+    # without the Promise. However, in Pthreads mode the Promise is used for
+    # worker creation.
+    settings.USE_READY_PROMISE = 1
 
   check_browser_versions()
 
