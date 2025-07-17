@@ -31,7 +31,7 @@ addToLibrary({
     if (wasmfsNodeIsWindows) {
       // Node.js on Windows never represents permission bit 'x', so
       // propagate read bits to execute bits
-      stat.mode |= (stat.mode & {{{ cDefs.S_IRUSR | cDefs.S_IRGRP | cDefs.S_IROTH }}}) >> 2;
+      stat.mode |= (stat.mode & {{{ cDefs.S_IRUGO }}}) >> 2;
     }
     return stat;
   },
