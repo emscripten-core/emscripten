@@ -9430,6 +9430,7 @@ int main() {
     # we don't metadce with linkable code! other modules may want stuff
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
+    'dylink_all': (['-O3', '-sMAIN_MODULE'],),
     'dylink': (['-O3', '-sMAIN_MODULE=2'],),
     # WasmFS should not be fully linked into a hello world program.
     'wasmfs': (['-O3', '-sWASMFS'],),
