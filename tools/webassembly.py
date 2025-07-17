@@ -542,6 +542,12 @@ class Module:
     assert idx >= self.num_imported_funcs()
     return self.get_functions()[idx - self.num_imported_funcs()]
 
+  def iter_functions_by_index(self):
+    self._calc_indexes()
+    for idx in range(self.num_imported_funcs(),
+                     self.num_imported_funcs() + len(self.get_functions())):
+      yield idx, self.get_function(idx)
+
   def get_global(self, idx):
     self._calc_indexes()
     assert idx >= self.num_imported_globals()
