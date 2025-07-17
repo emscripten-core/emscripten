@@ -31,11 +31,12 @@ libc_copy_dirs = [
     'src/stdlib',
     'src/inttypes',
     'src/stdio/printf_core',
+    'src/wchar',
 ]
 
 libc_exclusion_patterns = [
     'src/math/generic/*f16*', # float16 is unsupported in Emscripten.
-    'src/strings/str*casecmp_l*' # locale_t is unsupported in Overlay Mode.
+    'src/strings/str*casecmp_l*', # locale_t is unsupported in Overlay Mode.
 ]
 
 def clean_dir(dirname):
