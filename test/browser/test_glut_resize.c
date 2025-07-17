@@ -7,12 +7,13 @@
 
 #include <stdio.h>
 #include <assert.h>
+#include <stdint.h>
 #include <emscripten/emscripten.h>
 #include <GL/glut.h>
 
 typedef struct {
-  int width;
-  int height;
+  int32_t width;
+  int32_t height;
 } rect_size_t;
 
 static rect_size_t browser_window_size = { 0, 0 };
@@ -47,18 +48,18 @@ int equal_size(rect_size_t rect_1, rect_size_t rect_2) {
 /**
  * Obtain various dimensions
  */
-EM_JS(void, get_browser_window_size, (int* width, int* height), {
+EM_JS(void, get_browser_window_size, (int32_t* width, int32_t* height), {
   setValue(width, window.innerWidth, 'i32');
   setValue(height, window.innerHeight, 'i32');
 });
 
-EM_JS(void, get_canvas_client_size, (int* width, int* height), {
+EM_JS(void, get_canvas_client_size, (int32_t* width, int32_t* height), {
   const canvas = Module.canvas;
   setValue(width, canvas.clientWidth, 'i32');
   setValue(height, canvas.clientHeight, 'i32');
 });
 
-EM_JS(void, get_canvas_size, (int* width, int* height), {
+EM_JS(void, get_canvas_size, (int32_t* width, int32_t* height), {
   const canvas = Module.canvas;
   setValue(width, canvas.width, 'i32');
   setValue(height, canvas.height, 'i32');
@@ -176,8 +177,8 @@ void start_tests() {
  * Reshape callback - record latest size, verify and run next test if async
  */
 void reshape(int w, int h) {
-  glut_reshape_size.width = w;
-  glut_reshape_size.height = h;
+  glut_reshape_size.width = (int32_t)w;
+  glut_reshape_size.height = (int32_t)h;
 
   if (run_async_verification) {
     run_async_verification = 0; /* Only one verification per test */
