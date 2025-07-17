@@ -2411,7 +2411,7 @@ def phase_binaryen(target, options, wasm_target):
       building.handle_final_wasm_symbols(wasm_file=wasm_target, symbols_file=symbols_file, debug_info=intermediate_debug_info)
       save_intermediate_with_wasm('symbolmap', wasm_target)
 
-  if settings.DEBUG_LEVEL >= 3 and settings.SEPARATE_DWARF and generating_wasm:
+  if settings.GENERATE_DWARF and settings.SEPARATE_DWARF and generating_wasm:
     # if the dwarf filename wasn't provided, use the default target + a suffix
     wasm_file_with_dwarf = settings.SEPARATE_DWARF
     if wasm_file_with_dwarf is True:

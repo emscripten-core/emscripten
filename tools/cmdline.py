@@ -409,6 +409,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
           settings.EMIT_NAME_SECTION = 1
         # In all cases set the emscripten debug level to 3 so that we do not
         # strip during link (during compile, this does not make a difference).
+        # TODO: possibly decouple some of these flags from the final debug level (#20462)
         settings.DEBUG_LEVEL = 3
     elif check_flag('-profiling') or check_flag('--profiling'):
       settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 2)
