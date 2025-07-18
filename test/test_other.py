@@ -15042,6 +15042,8 @@ int main() {
     self.do_other_test('test_fs_icase.cpp', cflags=['-sCASE_INSENSITIVE_FS', '-std=c++20'])
 
   @with_all_fs
+  @no_windows('Rawfs directory removal works only on Linux')
+  @no_mac('Rawfs directory removal works only on Linux')
   def test_std_filesystem(self):
     self.do_other_test('test_std_filesystem.cpp')
 
