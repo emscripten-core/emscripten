@@ -160,7 +160,7 @@ def has_hidden_attribute(filepath):
 
   try:
     attrs = ctypes.windll.kernel32.GetFileAttributesW(
-        u'%s' % filepath)
+        '%s' % filepath)
     assert attrs != -1
     result = bool(attrs & 2)
   except Exception:
@@ -633,7 +633,7 @@ def generate_js(data_target, data_files, metadata):
   ret +=  '''
   Module['expectedDataFileDownloads'] ??= 0;
   Module['expectedDataFileDownloads']++;'''
-  
+
   if not options.modularize and not options.from_emcc:
     ret +=  '''
   (() => {'''
@@ -1169,7 +1169,7 @@ def generate_js(data_target, data_files, metadata):
     ret += '''
     }
     loadPackage(%s);\n''' % json.dumps(metadata)
-  
+
   if options.modularize and not options.from_emcc:
     ret += '''
     });'''
@@ -1182,7 +1182,7 @@ def generate_js(data_target, data_files, metadata):
   (() => {
   var real_createModule = createModule;
 
-  createModule = function (moduleArg) { 
+  createModule = function (moduleArg) {
     if (new.target) throw new Error("createModule() should not be called with `new createModule()`");
     return real_createModule(moduleArg);
   }
