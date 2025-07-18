@@ -647,7 +647,7 @@ def is_internal_global(name):
 def is_user_export(name):
   if is_internal_global(name):
     return False
-  return name not in ['__indirect_function_table', 'memory'] and not name.startswith(('dynCall_', 'orig$'))
+  return name not in ['__indirect_function_table', 'memory'] and not name.startswith(('dynCall_', 'orig$', '_Z'))
 
 
 def asmjs_mangle(name):
