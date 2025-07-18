@@ -72,7 +72,7 @@ def symbolize_address_symbolizer(module, address, is_dwarf):
   cmd = [LLVM_SYMBOLIZER, '-e', module.filename, f'--adjust-vma={vma_adjust}',
          str(address)]
   if shared.DEBUG:
-    print(f'Running {' '.join(cmd)}')
+    print(f'Running {" ".join(cmd)}')
   out = shared.run_process(cmd, stdout=subprocess.PIPE).stdout.strip()
   out_lines = out.splitlines()
 

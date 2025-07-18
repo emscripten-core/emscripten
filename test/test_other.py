@@ -10968,7 +10968,6 @@ int main() {
     # The name section will not show bar, as it's inlined into main
     check_symbolmap_info(unreachable_addr, '__original_main')
 
-
   def test_separate_dwarf(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-g'])
     self.assertExists('a.out.wasm')
