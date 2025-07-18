@@ -21,7 +21,7 @@ data downloads.
 
 Usage:
 
-  file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node]
+  file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node] [--help]
 
   --preload  ,
   --embed    See emcc --help for more details on those options.
@@ -84,6 +84,7 @@ __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
 from tools import shared, utils, js_manipulation
+from tools.response_file import substitute_response_files
 
 
 DEBUG = os.environ.get('EMCC_DEBUG')
@@ -128,7 +129,6 @@ class Options:
     self.use_preload_plugins = False
     self.support_node = True
     self.wasm64 = False
-    self.modularize = False
 
 
 class DataFile:
@@ -158,8 +158,7 @@ def has_hidden_attribute(filepath):
     return False
 
   try:
-    attrs = ctypes.windll.kernel32.GetFileAttributesW(
-        '%s' % filepath)
+    attrs = ctypes.windll.kernel32.GetFileAttributesW(filepath)
     assert attrs != -1
     result = bool(attrs & 2)
   except Exception:
@@ -319,8 +318,6 @@ def generate_object_file(data_files):
       # A list of triples of:
       # (file_name_ptr, file_data_size, file_data_ptr)
       # The list in null terminate with a single 0
-      .globl __emscripten_embedded_file_data
-      .export_name __emscripten_embedded_file_data, __emscripten_embedded_file_data
       .section .rodata.__emscripten_embedded_file_data,"",@
       __emscripten_embedded_file_data:
       .p2align {align}
@@ -365,16 +362,26 @@ def main():  # noqa: C901, PLR0912, PLR0915
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
   if len(sys.argv) == 1:
-    err('''Usage: file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node]
-  See the source for more details.''')
+    err('''Usage: file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node] [--help]
+  Try 'file_packager --help' for more details.''')
     return 1
 
-  data_target = sys.argv[1]
+  # read response files very early on
+  try:
+    args = substitute_response_files(sys.argv[1:])
+  except OSError as e:
+    shared.exit_with_error(e)
+
+  if '--help' in args:
+    print(__doc__.strip())
+    return 0
+
+  data_target = args[0]
   data_files = []
   plugins = []
   leading = ''
 
-  for arg in sys.argv[2:]:
+  for arg in args[1:]:
     if arg == '--preload':
       leading = 'preload'
     elif arg == '--embed':
@@ -623,19 +630,19 @@ def generate_js(data_target, data_files, metadata):
       ret = '''
   var Module = typeof %(EXPORT_NAME)s != 'undefined' ? %(EXPORT_NAME)s : {};\n''' % {"EXPORT_NAME": options.export_name}
 
-  ret +=  '''
+  ret += '''
   Module['expectedDataFileDownloads'] ??= 0;
   Module['expectedDataFileDownloads']++;'''
 
   if not options.modularize:
-    ret +=  '''
+    ret += '''
   (() => {'''
 
-  ret +=  '''
-  // Do not attempt to redownload the virtual filesystem data when in a pthread or a Wasm Worker context.
-  var isPthread = typeof ENVIRONMENT_IS_PTHREAD != 'undefined' && ENVIRONMENT_IS_PTHREAD;
-  var isWasmWorker = typeof ENVIRONMENT_IS_WASM_WORKER != 'undefined' && ENVIRONMENT_IS_WASM_WORKER;
-  if (isPthread || isWasmWorker) return;\n'''
+  ret += '''
+    // Do not attempt to redownload the virtual filesystem data when in a pthread or a Wasm Worker context.
+    var isPthread = typeof ENVIRONMENT_IS_PTHREAD != 'undefined' && ENVIRONMENT_IS_PTHREAD;
+    var isWasmWorker = typeof ENVIRONMENT_IS_WASM_WORKER != 'undefined' && ENVIRONMENT_IS_WASM_WORKER;
+    if (isPthread || isWasmWorker) return;\n'''
 
   if options.support_node:
     ret += "    var isNode = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string';\n"
@@ -816,13 +823,7 @@ def generate_js(data_target, data_files, metadata):
               return errback();
             }'''
       code += '''
-          var indexedDB;
-          if (typeof window === 'object') {
-            indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
-          } else if (typeof location !== 'undefined') {
-            // worker
-            indexedDB = self.indexedDB;
-          } else {
+          if (typeof indexedDB == 'undefined') {
             throw 'using IndexedDB to cache data can only be done on a web page or in a web worker';
           }
           try {
