@@ -10956,7 +10956,6 @@ int main() {
     self.assertExists('test_dwarf.js.symbols')
 
     def check_symbolmap_info(address, func):
-      print (f'check {address}, {func}')
       out = self.run_process([emsymbolizer, '--source=symbolmap', '-f', 'test_dwarf.js.symbols', 'test_dwarf.wasm', address], stdout=PIPE).stdout
       self.assertIn(func, out)
 

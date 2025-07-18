@@ -11,7 +11,7 @@
 # If there is an emscripten symbol map, we can use that to get the symbol name
 # If there is a name section or symbol table, llvm-symbolizer can show the
 #  symbol name.
-# Separate DWARF and emscripten symbol maps are not supported yet.
+# Separate DWARF is not supported yet.
 
 import argparse
 import json
@@ -71,6 +71,8 @@ def symbolize_address_symbolizer(module, address, is_dwarf):
     vma_adjust = 0
   cmd = [LLVM_SYMBOLIZER, '-e', module.filename, f'--adjust-vma={vma_adjust}',
          str(address)]
+  if shared.DEBUG:
+    print(f'Running {' '.join(cmd)}')
   out = shared.run_process(cmd, stdout=subprocess.PIPE).stdout.strip()
   out_lines = out.splitlines()
 
