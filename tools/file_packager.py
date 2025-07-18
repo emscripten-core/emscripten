@@ -21,7 +21,7 @@ data downloads.
 
 Usage:
 
-  file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node] [--help]
+  file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node]
 
   --preload  ,
   --embed    See emcc --help for more details on those options.
@@ -84,7 +84,6 @@ __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
 from tools import shared, utils, js_manipulation
-from tools.response_file import substitute_response_files
 
 
 DEBUG = os.environ.get('EMCC_DEBUG')
@@ -129,6 +128,7 @@ class Options:
     self.use_preload_plugins = False
     self.support_node = True
     self.wasm64 = False
+    self.modularize = False
 
 
 class DataFile:
@@ -158,7 +158,8 @@ def has_hidden_attribute(filepath):
     return False
 
   try:
-    attrs = ctypes.windll.kernel32.GetFileAttributesW(filepath)
+    attrs = ctypes.windll.kernel32.GetFileAttributesW(
+        u'%s' % filepath)
     assert attrs != -1
     result = bool(attrs & 2)
   except Exception:
@@ -284,7 +285,7 @@ def generate_object_file(data_files):
       # The name of file
       {f.c_symbol_name}_name:
       .asciz "{dstpath}"
-      .size {f.c_symbol_name}_name, {len(dstpath) + 1}
+      .size {f.c_symbol_name}_name, {len(dstpath)+1}
 
       # The size of the file followed by the content itself
       {f.c_symbol_name}:
@@ -318,6 +319,8 @@ def generate_object_file(data_files):
       # A list of triples of:
       # (file_name_ptr, file_data_size, file_data_ptr)
       # The list in null terminate with a single 0
+      .globl __emscripten_embedded_file_data
+      .export_name __emscripten_embedded_file_data, __emscripten_embedded_file_data
       .section .rodata.__emscripten_embedded_file_data,"",@
       __emscripten_embedded_file_data:
       .p2align {align}
@@ -362,26 +365,16 @@ def main():  # noqa: C901, PLR0912, PLR0915
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
   if len(sys.argv) == 1:
-    err('''Usage: file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node] [--help]
-  Try 'file_packager --help' for more details.''')
+    err('''Usage: file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node]
+  See the source for more details.''')
     return 1
 
-  # read response files very early on
-  try:
-    args = substitute_response_files(sys.argv[1:])
-  except OSError as e:
-    shared.exit_with_error(e)
-
-  if '--help' in args:
-    print(__doc__.strip())
-    return 0
-
-  data_target = args[0]
+  data_target = sys.argv[1]
   data_files = []
   plugins = []
   leading = ''
 
-  for arg in args[1:]:
+  for arg in sys.argv[2:]:
     if arg == '--preload':
       leading = 'preload'
     elif arg == '--embed':
@@ -390,6 +383,9 @@ def main():  # noqa: C901, PLR0912, PLR0915
       leading = 'exclude'
     elif arg == '--no-force':
       options.force = False
+      leading = ''
+    elif arg == '--modularize':
+      options.modularize = True
       leading = ''
     elif arg == '--use-preload-cache':
       options.use_preload_cache = True
@@ -599,6 +595,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
         f.write(escape_for_makefile(dependency))
         f.write(' \\\n')
 
+
   return 0
 
 
@@ -616,17 +613,30 @@ def generate_js(data_target, data_files, metadata):
   if options.from_emcc:
     ret = ''
   else:
-    ret = '''
+    if options.modularize:
+      ret = '''
+  var createModule = (() => {
+
+  return (async function(moduleArg = {}) {
+    var Module = moduleArg;
+                              '''
+    else:
+      ret = '''
   var Module = typeof %(EXPORT_NAME)s != 'undefined' ? %(EXPORT_NAME)s : {};\n''' % {"EXPORT_NAME": options.export_name}
 
-  ret += '''
+  ret +=  '''
   Module['expectedDataFileDownloads'] ??= 0;
-  Module['expectedDataFileDownloads']++;
-  (() => {
-    // Do not attempt to redownload the virtual filesystem data when in a pthread or a Wasm Worker context.
-    var isPthread = typeof ENVIRONMENT_IS_PTHREAD != 'undefined' && ENVIRONMENT_IS_PTHREAD;
-    var isWasmWorker = typeof ENVIRONMENT_IS_WASM_WORKER != 'undefined' && ENVIRONMENT_IS_WASM_WORKER;
-    if (isPthread || isWasmWorker) return;\n'''
+  Module['expectedDataFileDownloads']++;'''
+  
+  if not options.modularize and not options.from_emcc:
+    ret +=  '''
+  (() => {'''
+
+  ret +=  '''
+  // Do not attempt to redownload the virtual filesystem data when in a pthread or a Wasm Worker context.
+  var isPthread = typeof ENVIRONMENT_IS_PTHREAD != 'undefined' && ENVIRONMENT_IS_PTHREAD;
+  var isWasmWorker = typeof ENVIRONMENT_IS_WASM_WORKER != 'undefined' && ENVIRONMENT_IS_WASM_WORKER;
+  if (isPthread || isWasmWorker) return;\n'''
 
   if options.support_node:
     ret += "    var isNode = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string';\n"
@@ -807,7 +817,13 @@ def generate_js(data_target, data_files, metadata):
               return errback();
             }'''
       code += '''
-          if (typeof indexedDB == 'undefined') {
+          var indexedDB;
+          if (typeof window === 'object') {
+            indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+          } else if (typeof location !== 'undefined') {
+            // worker
+            indexedDB = self.indexedDB;
+          } else {
             throw 'using IndexedDB to cache data can only be done on a web page or in a web worker';
           }
           try {
@@ -1147,9 +1163,26 @@ def generate_js(data_target, data_files, metadata):
     ret += '''
     }
     loadPackage(%s);\n''' % json.dumps(metadata)
+  
+  if options.modularize and not options.from_emcc:
+    ret += '''
+    });'''
 
   ret += '''
   })();\n'''
+
+  if options.modularize and not options.from_emcc:
+    ret +=  '''
+  (() => {
+  var real_createModule = createModule;
+
+  createModule = function (moduleArg) { 
+    if (new.target) throw new Error("createModule() should not be called with `new createModule()`");
+    return real_createModule(moduleArg);
+  }
+  })();
+
+  export default createModule;'''
 
   return ret
 
