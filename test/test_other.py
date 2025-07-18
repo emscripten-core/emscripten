@@ -3919,6 +3919,11 @@ More info: https://emscripten.org
     err = self.expect_fail([FILE_PACKAGER, 'test.data', '--js-output=test.data'])
     self.assertContained(MESSAGE, err)
 
+  def test_file_packager_returns_error_if_emcc_and_export_es6(self):
+    MESSAGE = 'error: Can\'t use --export-es6 option together with --from-emcc since the code should be embedded within emcc\'s code'
+    err = self.expect_fail([FILE_PACKAGER, 'test.data', '--export-es6', '--from-emcc'])
+    self.assertContained(MESSAGE, err)
+
   def test_file_packager_embed(self):
     create_file('data.txt', 'hello data')
 
@@ -3943,6 +3948,43 @@ More info: https://emscripten.org
     ''')
     self.run_process([EMCC, 'test.c', 'data.o', '-sFORCE_FILESYSTEM'])
     output = self.run_js('a.out.js')
+    self.assertContained('hello data', output)
+
+  def test_file_packager_export_es6(self):
+    create_file('smth.txt', 'hello data')
+    self.run_process([FILE_PACKAGER, 'test.data', '--export-es6', '--preload', 'smth.txt', '--js-output=dataFileLoader.js'])
+
+    create_file('test.c', '''
+    #include <stdio.h>
+    #include <emscripten.h>
+
+    EMSCRIPTEN_KEEPALIVE int test_fun() {
+      FILE* f = fopen("smth.txt", "r");
+      char buf[64] = {0};
+      int rtn = fread(buf, 1, 64, f);
+      buf[rtn] = '\\0';
+      fclose(f);
+      printf("%s\\n", buf);
+      return 0;
+    }
+    ''')
+    self.run_process([EMCC, 'test.c', '-sFORCE_FILESYSTEM', '-sMODULARIZE', '-sEXPORT_ES6', '-o', 'moduleFile.js'])
+
+    create_file('run.js', '''
+    import loadDataFile from './dataFileLoader.js'
+    import {default as loadModule} from './moduleFile.js'
+
+    loadModule().then((module) => {
+      loadDataFile(module)
+        .catch((cause) => Promise.reject(cause))
+        .then(() => {
+          module._test_fun();
+        }
+      );
+    });
+    ''')
+
+    output = self.run_js('run.js')
     self.assertContained('hello data', output)
 
   @crossplatform

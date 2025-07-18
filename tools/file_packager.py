@@ -21,7 +21,7 @@ data downloads.
 
 Usage:
 
-  file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node] [--help]
+  file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node] [--export-es6] [--help]
 
   --preload  ,
   --embed    See emcc --help for more details on those options.
@@ -40,6 +40,8 @@ Usage:
   --wasm64 When used with `--obj-output` create a wasm64 object file
 
   --export-name=EXPORT_NAME Use custom export name (default is `Module`)
+
+  --export-es6 Wrap generated code inside ES6 exported function
 
   --no-force Don't create output if no valid input file is specified.
 
@@ -129,6 +131,7 @@ class Options:
     self.use_preload_plugins = False
     self.support_node = True
     self.wasm64 = False
+    self.export_es6 = False
 
 
 class DataFile:
@@ -362,7 +365,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
   if len(sys.argv) == 1:
-    err('''Usage: file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node] [--help]
+    err('''Usage: file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node] [--export-es6] [--help]
   Try 'file_packager --help' for more details.''')
     return 1
 
@@ -390,6 +393,9 @@ def main():  # noqa: C901, PLR0912, PLR0915
       leading = 'exclude'
     elif arg == '--no-force':
       options.force = False
+      leading = ''
+    elif arg == '--export-es6':
+      options.export_es6 = True
       leading = ''
     elif arg == '--use-preload-cache':
       options.use_preload_cache = True
@@ -483,6 +489,11 @@ def main():  # noqa: C901, PLR0912, PLR0915
 
   if options.jsoutput and os.path.abspath(options.jsoutput) == os.path.abspath(data_target):
     diagnostics.error('TARGET should not be the same value of --js-output')
+    return 1
+
+  if options.from_emcc and options.export_es6:
+    diagnostics.error('Can\'t use --export-es6 option together with --from-emcc since the code should be embedded '
+        'within emcc\'s code')
     return 1
 
   walked.append(__file__)
@@ -621,13 +632,21 @@ def generate_js(data_target, data_files, metadata):
   if options.from_emcc:
     ret = ''
   else:
-    ret = '''
+    if options.export_es6:
+      ret = 'export default async function loadDataFile(Module) {\n'
+    else:
+      ret = '''
   var Module = typeof %(EXPORT_NAME)s != 'undefined' ? %(EXPORT_NAME)s : {};\n''' % {"EXPORT_NAME": options.export_name}
 
   ret += '''
   Module['expectedDataFileDownloads'] ??= 0;
-  Module['expectedDataFileDownloads']++;
-  (() => {
+  Module['expectedDataFileDownloads']++;'''
+
+  if not options.export_es6:
+    ret += '''
+  (() => {'''
+
+  ret += '''
     // Do not attempt to redownload the virtual filesystem data when in a pthread or a Wasm Worker context.
     var isPthread = typeof ENVIRONMENT_IS_PTHREAD != 'undefined' && ENVIRONMENT_IS_PTHREAD;
     var isWasmWorker = typeof ENVIRONMENT_IS_WASM_WORKER != 'undefined' && ENVIRONMENT_IS_WASM_WORKER;
@@ -635,6 +654,16 @@ def generate_js(data_target, data_files, metadata):
 
   if options.support_node:
     ret += "    var isNode = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string';\n"
+
+  if options.support_node and options.export_es6:
+        ret += '''if (isNode) {
+    const { createRequire } = await import('module');
+    /** @suppress{duplicate} */
+    var require = createRequire(import.meta.url);
+  }\n'''
+
+  if options.export_es6:
+    ret += 'return new Promise((loadDataResolve, loadDataReject) => {\n'
   ret += '    async function loadPackage(metadata) {\n'
 
   code = '''
@@ -687,6 +716,8 @@ def generate_js(data_target, data_files, metadata):
     create_data = '''// canOwn this data in the filesystem, it is a slice into the heap that will never change
           Module['FS_createDataFile'](this.name, null, byteArray, true, true, true);
           Module['removeRunDependency'](`fp ${that.name}`);'''
+    ready_promise = '''
+          loadDataResolve();'''
 
     if not options.lz4:
       # Data requests - for getting a block of data out of the big archive - have
@@ -713,14 +744,14 @@ def generate_js(data_target, data_files, metadata):
         finish: async function(byteArray) {
           var that = this;
           %s
-          this.requests[this.name] = null;
+          this.requests[this.name] = null;%s
         }
       };
 
       var files = metadata['files'];
       for (var i = 0; i < files.length; ++i) {
         new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio'] || 0).open('GET', files[i]['filename']);
-      }\n''' % (create_preloaded if options.use_preload_plugins else create_data)
+      }\n''' % (create_preloaded if options.use_preload_plugins else create_data, ready_promise if options.export_es6 else '')
 
   if options.has_embedded and not options.obj_output:
     diagnostics.warn('--obj-output is recommended when using --embed.  This outputs an object file for linking directly into your application is more efficient than JS encoding')
@@ -961,6 +992,9 @@ def generate_js(data_target, data_files, metadata):
           return contents.buffer;
         }'''.strip()
 
+    reject_promise = '''
+          loadDataReject();'''
+
     ret += '''
       async function fetchRemotePackage(packageName, packageSize) {
         %(node_support_code)s
@@ -1131,7 +1165,14 @@ def generate_js(data_target, data_files, metadata):
     }
     loadPackage(%s);\n''' % json.dumps(metadata)
 
-  ret += '''
+  if options.export_es6:
+    ret += '''
+  });
+}
+// END the loadDataFile function
+'''
+  else:
+    ret += '''
   })();\n'''
 
   return ret
