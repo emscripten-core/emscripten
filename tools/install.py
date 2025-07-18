@@ -17,15 +17,6 @@ import shutil
 import subprocess
 import sys
 
-__scriptdir__ = os.path.dirname(os.path.abspath(__file__))
-__rootdir__ = os.path.dirname(__scriptdir__)
-sys.path.insert(0, __rootdir__)
-
-# Before we can install emscripten we need to at least have bootstrapped
-# this checkout
-import bootstrap
-bootstrap.check()
-
 EXCLUDES = [os.path.normpath(x) for x in '''
 test/third_party
 tools/maint
