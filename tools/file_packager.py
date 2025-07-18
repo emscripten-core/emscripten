@@ -627,7 +627,7 @@ def generate_js(data_target, data_files, metadata):
   Module['expectedDataFileDownloads'] ??= 0;
   Module['expectedDataFileDownloads']++;'''
 
-  if not options.modularize and not options.from_emcc:
+  if not options.modularize:
     ret +=  '''
   (() => {'''
 
