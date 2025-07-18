@@ -29,7 +29,7 @@ JavaScript and compiled C or C++:
 
 
 - :ref:`Access compiled code memory from JavaScript <interacting-with-code-access-memory>`.
-- :ref:`Affect execution behaviour <interacting-with-code-execution-behaviour>`.
+- :ref:`Affect execution behavior <interacting-with-code-execution-behaviour>`.
 - :ref:`Access environment variables <interacting-with-code-environment-variables>`.
 
 This article explains each of the methods listed above, and provides links
@@ -37,7 +37,7 @@ to more detailed information.
 
 .. note:: For information on how compiled code interacts with the browser
    environment, see :ref:`emscripten-runtime-environment`. For file system
-   related manners, see the :ref:`file-system-overview`.
+   related matters, see the :ref:`file-system-overview`.
 
 .. note:: Before you can call your code, the runtime environment may need
    to load a memory initialization file, preload files, or
