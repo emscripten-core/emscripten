@@ -15061,6 +15061,8 @@ int main() {
 
   @with_all_fs
   def test_std_filesystem(self):
+    if (WINDOWS or MACOS) and self.get_setting('NODERAWFS'):
+      self.skipTest('Rawfs directory removal works only on Linux')
     self.do_other_test('test_std_filesystem.cpp')
 
   def test_strict_js_closure(self):
