@@ -129,6 +129,7 @@ class Options:
     self.use_preload_plugins = False
     self.support_node = True
     self.wasm64 = False
+    self.modularize = False
 
 
 class DataFile:
