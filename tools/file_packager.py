@@ -285,7 +285,7 @@ def generate_object_file(data_files):
       # The name of file
       {f.c_symbol_name}_name:
       .asciz "{dstpath}"
-      .size {f.c_symbol_name}_name, {len(dstpath)+1}
+      .size {f.c_symbol_name}_name, {len(dstpath) + 1}
 
       # The size of the file followed by the content itself
       {f.c_symbol_name}:
@@ -594,7 +594,6 @@ def main():  # noqa: C901, PLR0912, PLR0915
       for dependency in walked:
         f.write(escape_for_makefile(dependency))
         f.write(' \\\n')
-
 
   return 0
 
