@@ -11,7 +11,7 @@
 # If there is an emscripten symbol map, we can use that to get the symbol name
 # If there is a name section or symbol table, llvm-symbolizer can show the
 #  symbol name.
-# Separate DWARF and emscripten symbol maps are not supported yet.
+# Separate DWARF is not supported yet.
 
 import argparse
 import json
@@ -21,6 +21,7 @@ import subprocess
 import sys
 from tools import shared
 from tools import webassembly
+
 
 LLVM_SYMBOLIZER = os.path.expanduser(
     shared.build_llvm_tool_path(shared.exe_suffix('llvm-symbolizer')))
@@ -70,6 +71,8 @@ def symbolize_address_symbolizer(module, address, is_dwarf):
     vma_adjust = 0
   cmd = [LLVM_SYMBOLIZER, '-e', module.filename, f'--adjust-vma={vma_adjust}',
          str(address)]
+  if shared.DEBUG:
+    print(f'Running {" ".join(cmd)}')
   out = shared.run_process(cmd, stdout=subprocess.PIPE).stdout.strip()
   out_lines = out.splitlines()
 
@@ -215,6 +218,31 @@ def symbolize_address_sourcemap(module, address, force_file):
   sm.lookup(address).print()
 
 
+def symbolize_address_symbolmap(module, address, symbol_map_file):
+  """Symbolize using a symbol map file."""
+  func_names = {}
+
+  with open(symbol_map_file) as f:
+    lines = f.read().splitlines()
+    for line in lines:
+      index, name = line.split(':')
+      func_names[int(index)] = name
+
+  func_index = -1
+  for i, func in module.iter_functions_by_index():
+    if shared.DEBUG:
+      print(f'Func {i}: {hex(func.offset)}, {func_names[i]}')
+    if func.offset > address:
+      if i > 0:
+        func_index = i - 1
+        break
+      else:
+        print("Address is before the first function")
+        return
+
+  LocationInfo(func=func_names[func_index]).print()
+
+
 def main(args):
   with webassembly.Module(args.wasm_file) as module:
     base = 16 if args.address.lower().startswith('0x') else 10
@@ -235,6 +263,8 @@ def main(args):
     elif ((has_linking_section(module) and not args.source) or
           'symtab' in args.source):
       symbolize_address_symbolizer(module, address, is_dwarf=False)
+    elif (args.source == 'symbolmap'):
+      symbolize_address_symbolmap(module, address, args.file)
     else:
       raise Error('No .debug_line or sourceMappingURL section found in '
                   f'{module.filename}.'
@@ -244,7 +274,7 @@ def main(args):
 def get_args():
   parser = argparse.ArgumentParser()
   parser.add_argument('-s', '--source', choices=['dwarf', 'sourcemap',
-                                                 'names', 'symtab'],
+                                                 'names', 'symtab', 'symbolmap'],
                       help='Force debug info source type', default=())
   parser.add_argument('-f', '--file', action='store',
                       help='Force debug info source file')

@@ -10950,6 +10950,24 @@ int main() {
     # The name section will not show bar, as it's inlined into main
     check_func_info('test_dwarf.wasm', unreachable_addr, '__original_main')
 
+    # 2. Test symbol map
+    self.run_process([EMCC, test_file('core/test_dwarf.c'),
+                      '-O1', '--emit-symbol-map', '-o', 'test_dwarf.js'])
+    self.assertExists('test_dwarf.js.symbols')
+
+    def check_symbolmap_info(address, func):
+      out = self.run_process([emsymbolizer, '--source=symbolmap', '-f', 'test_dwarf.js.symbols', 'test_dwarf.wasm', address], stdout=PIPE).stdout
+      self.assertIn(func, out)
+
+    # Same tests as name section above.
+    # Address of out_to_js(0) within foo(), uninlined
+    out_to_js_call_addr = self.get_instr_addr('call\t0', 'test_dwarf.wasm')
+    # Address of __builtin_trap() within bar(), inlined into main()
+    unreachable_addr = self.get_instr_addr('unreachable', 'test_dwarf.wasm')
+    check_symbolmap_info(out_to_js_call_addr, 'foo')
+    # The name section will not show bar, as it's inlined into main
+    check_symbolmap_info(unreachable_addr, '__original_main')
+
   def test_separate_dwarf(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-g'])
     self.assertExists('a.out.wasm')
