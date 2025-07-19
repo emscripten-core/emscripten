@@ -10474,7 +10474,12 @@ end
     err = self.expect_fail(base + ['--embed-file', 'somefile'])
     self.assertContained(expected, err)
 
-  def test_noderawfs_access_abspath(self):
+  @crossplatform
+  @parameterized({
+    '': ([],),
+    'wasmfs': (['-sWASMFS'],),
+  })
+  def test_noderawfs_access_abspath(self, args):
     create_file('foo', 'bar')
     create_file('access.c', r'''
       #include <unistd.h>
@@ -10482,7 +10487,26 @@ end
         return access(argv[1], F_OK);
       }
     ''')
-    self.run_process([EMCC, 'access.c', '-sNODERAWFS'])
+    self.run_process([EMCC, 'access.c', '-sNODERAWFS'] + args)
+    self.run_js('a.out.js', args=[os.path.abspath('foo')])
+
+  @crossplatform
+  @parameterized({
+    '': ([],),
+    'wasmfs': (['-sWASMFS'],),
+  })
+  def test_noderawfs_open_abspath(self, args):
+    create_file('foo', 'bar')
+    create_file('open.c', r'''
+      #include <fcntl.h>
+      #include <unistd.h>
+      int main(int argc, char** argv) {
+        int fd = open(argv[1], O_RDONLY, 0644);
+        if (fd == -1) return 1;
+        return close(fd) == -1;
+      }
+    ''')
+    self.run_process([EMCC, 'open.c', '-sNODERAWFS'] + args)
     self.run_js('a.out.js', args=[os.path.abspath('foo')])
 
   def test_noderawfs_readfile_prerun(self):
