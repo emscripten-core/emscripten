@@ -45,6 +45,11 @@ variables so that emcc etc. are used. Typical usage:
     # See https://github.com/emscripten-core/emscripten/issues/15522
     args.append(f'-DCMAKE_CROSSCOMPILING_EMULATOR={node_js}')
 
+  # Print a better error if we have no CMake executable on the PATH
+  if not os.path.dirname(args[0]) and not shutil.which(args[0]):
+    print(f'emcmake: cmake executable not found on PATH: `{args[0]}`', file=sys.stderr)
+    return 1
+
   # On Windows specify MinGW Makefiles or ninja if we have them and no other
   # toolchain was specified, to keep CMake from pulling in a native Visual
   # Studio, or Unix Makefiles.
