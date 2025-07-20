@@ -7,8 +7,8 @@
 
 #include <queue>
 
-#include "file.h"
-#include "support.h"
+#include <emscripten/wasmfs_internal/file.h>
+#include <emscripten/wasmfs_internal/support.h>
 
 namespace wasmfs {
 

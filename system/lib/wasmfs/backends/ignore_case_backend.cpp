@@ -13,10 +13,10 @@
 // See the comment in virtual.h for an explanation of why DataFiles and Symlinks
 // must have no-op wrappers.
 
-#include "backend.h"
-#include "file.h"
+#include <emscripten/wasmfs_internal/backend.h>
+#include <emscripten/wasmfs_internal/file.h>
 #include "virtual.h"
-#include "wasmfs.h"
+#include <emscripten/wasmfs_internal/wasmfs.h>
 
 namespace {
 

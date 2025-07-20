@@ -26,13 +26,13 @@
 #include <vector>
 #include <wasi/api.h>
 
-#include "backend.h"
-#include "file.h"
-#include "file_table.h"
+#include <emscripten/wasmfs_internal/backend.h>
+#include <emscripten/wasmfs_internal/file.h>
+#include <emscripten/wasmfs_internal/file_table.h>
 #include "paths.h"
 #include "pipe_backend.h"
 #include "special_files.h"
-#include "wasmfs.h"
+#include <emscripten/wasmfs_internal/wasmfs.h>
 
 // File permission macros for wasmfs.
 // Used to improve readability compared to those in stat.h

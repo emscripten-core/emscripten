@@ -4,12 +4,13 @@
 // found in the LICENSE file.
 
 // This file defines the global state.
+// The declarations from this files should only be used by file system implementers
 
 #pragma once
 
-#include "backend.h"
-#include "file.h"
-#include "file_table.h"
+#include <emscripten/wasmfs_internal/backend.h>
+#include <emscripten/wasmfs_internal/file.h>
+#include <emscripten/wasmfs_internal/file_table.h>
 #include <assert.h>
 #include <emscripten/html5.h>
 #include <mutex>

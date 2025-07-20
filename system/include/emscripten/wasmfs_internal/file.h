@@ -4,10 +4,11 @@
 // found in the LICENSE file.
 
 // This file defines the file object.
+// The declarations from this files should only be used by file system implementers
 
 #pragma once
 
-#include "support.h"
+#include <emscripten/wasmfs_internal/support.h>
 #include <assert.h>
 #include <emscripten.h>
 #include <emscripten/html5.h>

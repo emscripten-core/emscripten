@@ -10,7 +10,7 @@
 #include "memory_backend.h"
 #include "paths.h"
 #include "special_files.h"
-#include "wasmfs.h"
+#include <emscripten/wasmfs_internal/wasmfs.h>
 #include "wasmfs_internal.h"
 
 namespace wasmfs {

@@ -5,9 +5,9 @@
 
 #include <string_view>
 
-#include "file.h"
+#include <emscripten/wasmfs_internal/file.h>
 #include "paths.h"
-#include "wasmfs.h"
+#include <emscripten/wasmfs_internal/wasmfs.h>
 
 namespace wasmfs::path {
 

@@ -15,7 +15,7 @@
 
 #pragma once
 
-#include "file.h"
+#include <emscripten/wasmfs_internal/file.h>
 
 namespace wasmfs {
 

@@ -5,10 +5,10 @@
 
 // This file defines the fetch backend.
 
-#include "fetch_backend.h"
-#include "backend.h"
+#include "fetch_backend.h" 
+#include <emscripten/wasmfs_internal/backend.h>
 #include "proxied_async_js_impl_backend.h"
-#include "wasmfs.h"
+#include <emscripten/wasmfs_internal/wasmfs.h>
 
 namespace wasmfs {
 
