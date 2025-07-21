@@ -648,6 +648,7 @@ var LibraryGLUT = {
   glutMainLoop__proxy: 'sync',
   glutMainLoop__deps: ['$GLUT', 'glutPostRedisplay'],
   glutMainLoop: () => {
+    // Do an initial resize, since there's no window resize event on startup
     GLUT.onResize();
     _glutPostRedisplay();
     throw 'unwind';
