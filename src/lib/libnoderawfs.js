@@ -166,7 +166,8 @@ addToLibrary({
     },
     close(stream) {
       VFS.closeStream(stream.fd);
-      if (!stream.stream_ops && --stream.shared.refcnt <= 0) {
+      // Don't close stdin/stdout/stderr since they are used by node itself.
+      if (!stream.stream_ops && --stream.shared.refcnt <= 0 && stream.nfd > 2) {
         // This stream is created by our Node.js filesystem, close the
         // native file descriptor when its reference count drops to 0.
         fs.closeSync(stream.nfd);
