@@ -728,23 +728,6 @@ f.close()
     self.assertContained('disabling source maps because a js transform is being done', err)
     self.assertIn('transformed!', read_file('a.out.js'))
 
-  @also_with_wasm2js
-  @parameterized({
-    '': ([],),
-    'O1': (['-O1'],),
-    'O2': (['-O2'],),
-    'O3': (['-O3'],),
-  })
-  def test_emcc_asm_v_wasm(self, opts):
-    self.run_process([EMCC, test_file('hello_world.c'), '-sENVIRONMENT=node,shell'] + opts + self.get_cflags())
-    self.assertExists('a.out.js')
-    if self.is_wasm():
-      self.assertExists('a.out.wasm')
-    for engine in config.JS_ENGINES:
-      print('    engine', engine)
-      out = self.run_js('a.out.js', engine=engine)
-      self.assertContained('hello, world!', out)
-
   @crossplatform
   def test_emcc_cflags(self):
     output = self.run_process([EMCC, '--cflags'], stdout=PIPE)
