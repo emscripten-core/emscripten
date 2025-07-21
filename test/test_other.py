@@ -104,6 +104,16 @@ def uses_canonical_tmp(func):
   return decorated
 
 
+def requires_git_checkout(func):
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    if not os.path.exists(utils.path_from_root('.git')):
+      self.skipTest('test requires git checkout of emscripten')
+    func(self, *args, **kwargs)
+
+  return decorated
+
+
 def also_with_llvm_libc(f):
   assert callable(f)
 
@@ -16373,8 +16383,8 @@ addToLibrary({
     self.emcc(test_file('hello_world.c'), ['-lidbfs.js'], output_filename='hello_world.js')
     self.assertNotContained(removed_fs_assert_content, read_file('hello_world.js'))
 
-  @is_slow_test
   @crossplatform
+  @requires_git_checkout
   def test_install(self):
     self.run_process([PYTHON, path_from_root('tools/install.py'), 'newdir'])
     self.assertExists('newdir/emcc')
