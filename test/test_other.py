@@ -14433,7 +14433,7 @@ void foo() {}
   def test_unistd_fstatfs(self):
     if '-DNODERAWFS' in self.cflags and WINDOWS:
       self.skipTest('Cannot look up /dev/stdout on windows')
-    self.do_run_in_out_file_test('unistd/fstatfs.c')
+    self.do_run_in_out_file_test('unistd/fstatfs.c', cflags=['-sASSERTIONS=2'])
 
   @no_windows("test is Linux-specific")
   @no_mac("test is Linux-specific")
