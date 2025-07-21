@@ -1,0 +1,7 @@
+#!/bin/sh
+#
+# Git pre-push script that runs some quick/simple tests.
+#
+# This script can be installed using `./boostrap -i`.
+
+exec ruff check -q

@@ -5,6 +5,8 @@
 #
 # The bootstrap script itself is smart enough to basically do nothing unless
 # one of the relevant files was updated (e.g. package.json).
+#
+# This script can be installed using `./boostrap -i`.
 
 # Test for the existence of the bootstrap script itself to handle branches
 # that predate its existence.
