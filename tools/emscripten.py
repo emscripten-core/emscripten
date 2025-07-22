@@ -16,7 +16,6 @@ import json
 import subprocess
 import logging
 import pprint
-import re
 import shutil
 import sys
 import textwrap
@@ -456,13 +455,6 @@ def get_metadata(infile, outfile, modify_wasm, args):
   return metadata
 
 
-def is_valid_js_identifier(ident):
-  # See https://developer.mozilla.org/en-US/docs/Glossary/Identifier
-  if ident[0].isdigit():
-    return False
-  return re.fullmatch(r'[0-9a-zA-Z_\$]+', ident)
-
-
 def finalize_wasm(infile, outfile, js_syms):
   building.save_intermediate(infile, 'base.wasm')
   args = []
@@ -571,8 +563,8 @@ def finalize_wasm(infile, outfile, js_syms):
   # not known auto-generated system functions.
   unexpected_exports = [e for e in metadata.all_exports if shared.is_user_export(e)]
   for n in unexpected_exports:
-    if not is_valid_js_identifier(n):
-      exit_with_error(f'invalid export name: {n}')
+    if not js_manipulation.isidentifier(n):
+      exit_with_error(f'invalid export name: "{n}"')
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
 
