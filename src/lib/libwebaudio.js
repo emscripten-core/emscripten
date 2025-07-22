@@ -234,7 +234,7 @@ let LibraryWebAudio = {
         defaultValue: {{{ makeGetValue('audioParamDescriptors', C_STRUCTS.WebAudioParamDescriptor.defaultValue, 'float') }}},
         minValue: {{{ makeGetValue('audioParamDescriptors', C_STRUCTS.WebAudioParamDescriptor.minValue, 'float') }}},
         maxValue: {{{ makeGetValue('audioParamDescriptors', C_STRUCTS.WebAudioParamDescriptor.maxValue, 'float') }}},
-        automationRate: ({{{ makeGetValue('audioParamDescriptors', C_STRUCTS.WebAudioParamDescriptor.automationRate, 'i32') }}} ? 'k' : 'a') + '-rate'
+        automationRate: ({{{ makeGetValue('audioParamDescriptors', C_STRUCTS.WebAudioParamDescriptor.automationRate, 'i32') }}} ? 'k' : 'a') + '-rate',
       });
       audioParamDescriptors += {{{ C_STRUCTS.WebAudioParamDescriptor.__size__ }}};
     }
