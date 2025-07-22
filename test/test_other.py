@@ -16143,7 +16143,7 @@ addToLibrary({
   def test_invalid_export_name(self):
     create_file('test.c', '__attribute__((export_name("my.func"))) void myfunc() {}')
     err = self.expect_fail([EMCC, 'test.c'])
-    self.assertContained('emcc: error: invalid export name: my.func', err)
+    self.assertContained('emcc: error: invalid export name: "my.func"', err)
 
     # GCC (and clang) and JavaScript also allow $ in symbol names
     create_file('valid.c', '''
