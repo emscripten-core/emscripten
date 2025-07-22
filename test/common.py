@@ -9,7 +9,7 @@ from pathlib import Path
 from subprocess import PIPE, STDOUT
 from typing import Dict, Tuple
 from urllib.parse import unquote, unquote_plus, urlparse, parse_qs
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 import contextlib
 import difflib
 import hashlib
@@ -2290,7 +2290,7 @@ def harness_server_func(in_queue, out_queue, port):
   # do not have the correct MIME type
   SimpleHTTPRequestHandler.extensions_map['.mjs'] = 'text/javascript'
 
-  httpd = HTTPServer(('localhost', port), TestServerHandler)
+  httpd = ThreadingHTTPServer(('localhost', port), TestServerHandler)
   httpd.serve_forever() # test runner will kill us
 
 
