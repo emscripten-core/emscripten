@@ -172,8 +172,6 @@ class BootstrapMessages extends AudioWorkletProcessor {
         // conflict with user messages
         messagePort.postMessage({'_wsc': d.callback, args: [d.contextHandle, 1/*EM_TRUE*/, d.userData] });
       } else if (d['_wsc']) {
-        // Wait for the Wasm module to be instantiated.
-        await readyPromise;
         getWasmTableEntry(d['_wsc'])(...d.args);
       };
     }

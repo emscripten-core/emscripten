@@ -119,7 +119,7 @@ addToLibrary({
       var msg = `program exited (with status: ${status}), but keepRuntimeAlive() is set (counter=${runtimeKeepaliveCounter}) due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)`;
 #if USE_READY_PROMISE
       readyPromiseReject?.(msg);
-#endif // MODULARIZE
+#endif
       err(msg);
     }
 #endif // ASSERTIONS
