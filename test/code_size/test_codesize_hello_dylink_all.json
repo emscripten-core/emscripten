@@ -1,10 +1,7 @@
 {
   "a.out.js": 246743,
-  "a.out.js.gz": 81085,
   "a.out.nodebug.wasm": 597771,
-  "a.out.nodebug.wasm.gz": 330177,
   "total": 844514,
-  "total_gz": 411262,
   "sent": [
     "IMG_Init",
     "IMG_Load",

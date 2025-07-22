@@ -9248,7 +9248,7 @@ int main() {
 
     self.check_output_sizes('hello_world.js', 'hello_world.wasm', 'no_asserts.js', 'no_asserts.wasm', 'strict.js', 'strict.wasm')
 
-  def run_codesize_test(self, filename, cflags, check_funcs=True, check_full_js=False):
+  def run_codesize_test(self, filename, cflags, check_funcs=True, check_full_js=False, skip_gz=False):
     # in -Os, -Oz, we remove imports wasm doesn't need
     print('Running codesize test: %s:' % filename, cflags, check_funcs, check_full_js)
     filename = test_file('other/codesize', filename)
@@ -9319,7 +9319,7 @@ int main() {
         funcs.sort()
         info['funcs'] = [strip_numeric_suffixes(f) for f in funcs]
 
-    self.check_output_sizes(*outputs, **info)
+    self.check_output_sizes(*outputs, metadata=info, skip_gz=skip_gz)
 
   @parameterized({
     'O0': ([], True),
@@ -9385,14 +9385,16 @@ int main() {
     # we don't metadce with linkable code! other modules may want stuff
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'dylink_all': (['-O3', '-sMAIN_MODULE'],),
+    # This test seems to produce different results under gzip on macOS and Windows machines
+    # so skip the gzip size reporting here.
+    'dylink_all': (['-O3', '-sMAIN_MODULE'], {'skip_gz': True}),
     'dylink': (['-O3', '-sMAIN_MODULE=2'],),
     # WasmFS should not be fully linked into a hello world program.
     'wasmfs': (['-O3', '-sWASMFS'],),
-    'single_file': (['-O3', '-sSINGLE_FILE'],), # noqa
+    'single_file': (['-O3', '-sSINGLE_FILE'],),
   })
-  def test_codesize_hello(self, args):
-    self.run_codesize_test('hello_world.c', args)
+  def test_codesize_hello(self, args, kwargs={}): # noqa
+    self.run_codesize_test('hello_world.c', args, **kwargs)
 
   @parameterized({
     'O3':                 ('mem.c', ['-O3']),
@@ -11904,7 +11906,7 @@ int main () {
 
     self.check_output_sizes(*outputs)
 
-  def check_output_sizes(self, *outputs: str, **metadata):
+  def check_output_sizes(self, *outputs: str, metadata=None, skip_gz=False):
     test_name = self.id().split('.')[-1]
     results_file = test_file('code_size', test_name + '.json')
 
@@ -11942,18 +11944,21 @@ int main () {
       total_output_size += size
       total_expected_size += expected_size
 
-      f_gz = f + '.gz'
-      size_gz = len(gzip.compress(contents))
-      expected_size_gz = expected_results.get(f_gz, inf)
-      update_and_print_diff(f_gz, size_gz, expected_size_gz)
-      total_output_size_gz += size_gz
-      total_expected_size_gz += expected_size_gz
+      if not skip_gz:
+        f_gz = f + '.gz'
+        size_gz = len(gzip.compress(contents))
+        expected_size_gz = expected_results.get(f_gz, inf)
+        update_and_print_diff(f_gz, size_gz, expected_size_gz)
+        total_output_size_gz += size_gz
+        total_expected_size_gz += expected_size_gz
 
     if len(outputs) > 1:
       update_and_print_diff('total', total_output_size, total_expected_size)
-      update_and_print_diff('total_gz', total_output_size_gz, total_expected_size_gz)
+      if not skip_gz:
+        update_and_print_diff('total_gz', total_output_size_gz, total_expected_size_gz)
 
-    obtained_results.update(metadata)
+    if metadata:
+      obtained_results.update(metadata)
 
     obtained_results_json = json.dumps(obtained_results, indent=2)
     expected_results_json = json.dumps(expected_results, indent=2)
@@ -11967,7 +11972,7 @@ int main () {
       if total_output_size < total_expected_size:
         print(f'Hey amazing, overall generated code size was improved by {total_expected_size - total_output_size} bytes!')
         print('If this is expected, rerun the test with --rebaseline to update the expected sizes')
-      self.assertTextDataIdentical(obtained_results_json, expected_results_json)
+      self.assertTextDataIdentical(expected_results_json, obtained_results_json)
 
   # Tests the library_c_preprocessor.js functionality.
   @crossplatform
