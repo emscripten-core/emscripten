@@ -10451,9 +10451,12 @@ end
 
   @also_with_wasmfs
   @crossplatform
-  def test_noderawfs(self):
-    self.run_process([EMXX, test_file('fs/test_fopen_write.cpp'), '-sNODERAWFS'] + self.get_cflags())
-    self.assertContained("read 11 bytes. Result: Hello data!", self.run_js('a.out.js'))
+  @parameterized({
+    '': ([],),
+    'runtime_debug': (['-sRUNTIME_DEBUG', '-sEXIT_RUNTIME', '-pthread'],),
+  })
+  def test_noderawfs_basics(self, args):
+    self.do_runf('fs/test_fopen_write.cpp', 'read 11 bytes. Result: Hello data!', cflags=['-sNODERAWFS'] + args)
 
     # NODERAWFS should directly write on OS file system
     self.assertEqual("Hello data!", read_file('hello_file.txt'))
@@ -14426,7 +14429,7 @@ void foo() {}
   def test_unistd_fstatfs(self):
     if '-DNODERAWFS' in self.cflags and WINDOWS:
       self.skipTest('Cannot look up /dev/stdout on windows')
-    self.do_run_in_out_file_test('unistd/fstatfs.c')
+    self.do_run_in_out_file_test('unistd/fstatfs.c', cflags=['-sASSERTIONS=2'])
 
   @no_windows("test is Linux-specific")
   @no_mac("test is Linux-specific")
