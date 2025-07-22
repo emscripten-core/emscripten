@@ -399,7 +399,7 @@ Functions
 
 
   .. note::
-    - Main loop blockers block the main loop from running, and can be counted to show progress. In contrast, ``emscripten_async_calls`` are not counted, do not block the main loop, and can fire at specific time in the future.
+    - Main loop blockers block the main loop from running, and can be counted to show progress. In contrast, :c:func:`emscripten_async_call` is not counted, does not block the main loop, and can fire at a specific time in the future.
 
   :param em_arg_callback_func func: The main loop blocker function. The function signature must have a ``void*`` parameter for passing the ``arg`` value.
   :param void* arg: User-defined arguments to pass to the blocker function.
