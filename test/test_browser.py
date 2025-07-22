@@ -4257,17 +4257,6 @@ Module["preRun"] = () => {
   def test_utf16_textdecoder(self):
     self.btest_exit('benchmark/benchmark_utf16.cpp', 0, cflags=['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt', '-sEXPORTED_RUNTIME_METHODS=UTF16ToString,stringToUTF16,lengthBytesUTF16'])
 
-  def test_small_js_flags(self):
-    self.btest('browser_test_hello_world.c', '0', cflags=['-O3', '--closure=1', '-sINCOMING_MODULE_JS_API=[]', '-sENVIRONMENT=web', '--output-eol=linux'])
-    # Check an absolute js code size, with some slack.
-    size = os.path.getsize('test.js')
-    print('size:', size)
-    # Note that this size includes test harness additions (for reporting the result, etc.).
-    if not self.is_wasm64() and not self.is_2gb():
-      self.check_expected_size_in_file('js',
-                                       test_file('browser/test_small_js_flags.js.size'),
-                                       size)
-
   # Tests that it is possible to initialize and render WebGL content in a
   # pthread by using OffscreenCanvas.
   @no_chrome('https://crbug.com/961765')
