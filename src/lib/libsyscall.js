@@ -66,11 +66,11 @@ var SyscallsLibrary = {
     writeStatFs(buf, stats) {
       {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bsize, 'stats.bsize', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.statfs.f_frsize, 'stats.bsize', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_blocks, 'stats.blocks', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bfree, 'stats.bfree', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bavail, 'stats.bavail', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_files, 'stats.files', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_ffree, 'stats.ffree', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_blocks, 'stats.blocks', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bfree, 'stats.bfree', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bavail, 'stats.bavail', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_files, 'stats.files', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_ffree, 'stats.ffree', 'i64') }}};
       {{{ makeSetValue('buf', C_STRUCTS.statfs.f_fsid, 'stats.fsid', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.statfs.f_flags, 'stats.flags', 'i32') }}};  // ST_NOSUID
       {{{ makeSetValue('buf', C_STRUCTS.statfs.f_namelen, 'stats.namelen', 'i32') }}};
