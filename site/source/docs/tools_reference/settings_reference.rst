@@ -125,7 +125,7 @@ What malloc()/free() to use, out of:
   - emmalloc-verbose - use emmalloc with assertions + verbose logging.
   - emmalloc-memvalidate-verbose - use emmalloc with assertions + heap
     consistency checking + verbose logging.
-  - mimalloc - a powerful mulithreaded allocator. This is recommended in
+  - mimalloc - a powerful multithreaded allocator. This is recommended in
     large applications that have malloc() contention, but it is
     larger and uses more memory.
   - none - no malloc() implementation is provided, but you must implement
@@ -3164,7 +3164,7 @@ overhead for the extra instrumented function indirection.  Enable this if you
 want Emscripten to handle unhandled exceptions nicely at the cost of a few
 bytes extra.
 Exceptions that occur within the ``main`` function are already handled via an
-alternative mechanimsm.
+alternative mechanism.
 
 Default value: false
 
