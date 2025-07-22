@@ -9,10 +9,11 @@ from pathlib import Path
 from subprocess import PIPE, STDOUT
 from typing import Dict, Tuple
 from urllib.parse import unquote, unquote_plus, urlparse, parse_qs
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 import contextlib
 import difflib
 import hashlib
+import io
 import itertools
 import logging
 import multiprocessing
@@ -1694,15 +1695,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.assertEqual(read_binary(file1),
                      read_binary(file2))
 
-  def check_expected_size_in_file(self, desc, filename, size):
-    if EMTEST_REBASELINE:
-      create_file(filename, f'{size}\n', absolute=True)
-    expected_size = int(read_file(filename).strip())
-    delta = size - expected_size
-    ratio = abs(delta) / float(expected_size)
-    print('  seen %s size: %d (expected: %d) (delta: %d), ratio to expected: %f' % (desc, size, expected_size, delta, ratio))
-    self.assertEqual(size, expected_size)
-
   library_cache: Dict[str, Tuple[str, object]] = {}
 
   def get_build_dir(self):
@@ -1763,18 +1755,35 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if shared.EMSCRIPTEN_TEMP_DIR:
       utils.delete_contents(shared.EMSCRIPTEN_TEMP_DIR)
 
-  def run_process(self, cmd, check=True, **args):
+  def run_process(self, cmd, check=True, **kwargs):
     # Wrapper around shared.run_process.  This is desirable so that the tests
     # can fail (in the unittest sense) rather than error'ing.
     # In the long run it would nice to completely remove the dependency on
     # core emscripten code (shared.py) here.
+
+    # Handle buffering for subprocesses.  The python unittest buffering mechanism
+    # will only buffer output from the current process (by overwriding sys.stdout
+    # and sys.stderr), not from sub-processes.
+    stdout_buffering = 'stdout' not in kwargs and isinstance(sys.stdout, io.StringIO)
+    stderr_buffering = 'stderr' not in kwargs and isinstance(sys.stderr, io.StringIO)
+    if stdout_buffering:
+      kwargs['stdout'] = PIPE
+    if stderr_buffering:
+      kwargs['stderr'] = PIPE
+
     try:
-      return shared.run_process(cmd, check=check, **args)
+      rtn = shared.run_process(cmd, check=check, **kwargs)
     except subprocess.CalledProcessError as e:
       if check and e.returncode != 0:
         print(e.stdout)
         print(e.stderr)
         self.fail(f'subprocess exited with non-zero return code({e.returncode}): `{shlex.join(cmd)}`')
+
+    if stdout_buffering:
+      sys.stdout.write(rtn.stdout)
+    if stderr_buffering:
+      sys.stderr.write(rtn.stderr)
+    return rtn
 
   def emcc(self, filename, args=[], output_filename=None, **kwargs):  # noqa
     compile_only = '-c' in args or '-sSIDE_MODULE' in args
@@ -2272,7 +2281,7 @@ def harness_server_func(in_queue, out_queue, port):
   # do not have the correct MIME type
   SimpleHTTPRequestHandler.extensions_map['.mjs'] = 'text/javascript'
 
-  httpd = HTTPServer(('localhost', port), TestServerHandler)
+  httpd = ThreadingHTTPServer(('localhost', port), TestServerHandler)
   httpd.serve_forever() # test runner will kill us
 
 

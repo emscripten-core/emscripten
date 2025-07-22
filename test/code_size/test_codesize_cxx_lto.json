@@ -1,0 +1,42 @@
+{
+  "a.out.js": 19506,
+  "a.out.js.gz": 8014,
+  "a.out.nodebug.wasm": 121757,
+  "a.out.nodebug.wasm.gz": 48787,
+  "total": 141263,
+  "total_gz": 56801,
+  "sent": [
+    "a (emscripten_resize_heap)",
+    "b (_tzset_js)",
+    "c (_setitimer_js)",
+    "d (_emscripten_runtime_keepalive_clear)",
+    "e (_abort_js)",
+    "f (proc_exit)",
+    "g (fd_write)",
+    "h (fd_seek)",
+    "i (fd_read)",
+    "j (fd_close)",
+    "k (environ_sizes_get)",
+    "l (environ_get)"
+  ],
+  "imports": [
+    "a (emscripten_resize_heap)",
+    "b (_tzset_js)",
+    "c (_setitimer_js)",
+    "d (_emscripten_runtime_keepalive_clear)",
+    "e (_abort_js)",
+    "f (proc_exit)",
+    "g (fd_write)",
+    "h (fd_seek)",
+    "i (fd_read)",
+    "j (fd_close)",
+    "k (environ_sizes_get)",
+    "l (environ_get)"
+  ],
+  "exports": [
+    "m (memory)",
+    "n (__wasm_call_ctors)",
+    "o (main)",
+    "p (_emscripten_timeout)"
+  ]
+}

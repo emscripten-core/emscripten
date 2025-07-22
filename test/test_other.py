@@ -12,6 +12,7 @@ import gzip
 import importlib
 import itertools
 import json
+from math import inf
 import os
 import re
 import select
@@ -234,12 +235,6 @@ def llvm_nm(file):
       symbols['defs'].add(symbol)
 
   return symbols
-
-
-def get_file_and_gz_sizes(f):
-  contents = read_binary(f)
-  gz_contents = gzip.compress(contents)
-  return len(contents), len(gz_contents)
 
 
 def deminify_syms(names, minification_map):
@@ -9248,30 +9243,12 @@ int main() {
     # changes to the size of the unoptimized and unminified code size.
     # Run with `--rebase` when this test fails.
     self.build('hello_world.c', cflags=['-O0', '--output-eol=linux'])
-    self.check_expected_size_in_file('wasm',
-                                     test_file('other/test_unoptimized_code_size.wasm.size'),
-                                     os.path.getsize('hello_world.wasm'))
-    self.check_expected_size_in_file('js',
-                                     test_file('other/test_unoptimized_code_size.js.size'),
-                                     os.path.getsize('hello_world.js'))
-
     self.build('hello_world.c', cflags=['-O0', '--output-eol=linux', '-sASSERTIONS=0'], output_basename='no_asserts')
-    self.check_expected_size_in_file('wasm',
-                                     test_file('other/test_unoptimized_code_size_no_asserts.wasm.size'),
-                                     os.path.getsize('no_asserts.wasm'))
-    self.check_expected_size_in_file('js',
-                                     test_file('other/test_unoptimized_code_size_no_asserts.js.size'),
-                                     os.path.getsize('no_asserts.js'))
-
     self.build('hello_world.c', cflags=['-O0', '--output-eol=linux', '-sSTRICT'], output_basename='strict')
-    self.check_expected_size_in_file('wasm',
-                                     test_file('other/test_unoptimized_code_size_strict.wasm.size'),
-                                     os.path.getsize('strict.wasm'))
-    self.check_expected_size_in_file('js',
-                                     test_file('other/test_unoptimized_code_size_strict.js.size'),
-                                     os.path.getsize('strict.js'))
 
-  def run_codesize_test(self, filename, cflags, check_funcs=True, check_full_js=False):
+    self.check_output_sizes('hello_world.js', 'hello_world.wasm', 'no_asserts.js', 'no_asserts.wasm', 'strict.js', 'strict.wasm')
+
+  def run_codesize_test(self, filename, cflags, check_funcs=True, check_full_js=False, skip_gz=False):
     # in -Os, -Oz, we remove imports wasm doesn't need
     print('Running codesize test: %s:' % filename, cflags, check_funcs, check_full_js)
     filename = test_file('other/codesize', filename)
@@ -9306,62 +9283,43 @@ int main() {
 
     self.run_process(build_cmd + ['--profiling-funcs', '--closure=1'])
 
-    js_size, gz_size = get_file_and_gz_sizes('a.out.js')
-    js_size_file = expected_basename + '.jssize'
-    gz_size_file = expected_basename + '.gzsize'
-    self.check_expected_size_in_file('js', js_size_file, js_size)
-    self.check_expected_size_in_file('gz', gz_size_file, gz_size)
+    outputs = ['a.out.js']
+    info = {'sent': sent}
 
-    if '-sSINGLE_FILE' in cflags:
-      # No wasm file in the final output so we skip the rest of the
-      # testing
-      return
+    if '-sSINGLE_FILE' not in cflags:
+      # measure the wasm size without the name section
+      building.strip('a.out.wasm', 'a.out.nodebug.wasm', sections=['name'])
+      outputs.append('a.out.nodebug.wasm')
 
-    # measure the wasm size without the name section
-    building.strip('a.out.wasm', 'a.out.nodebug.wasm', sections=['name'])
-    wasm_size = os.path.getsize('a.out.nodebug.wasm')
-    size_file = expected_basename + '.size'
-    self.check_expected_size_in_file('wasm', size_file, wasm_size)
+      imports, exports, funcs = self.parse_wasm('a.out.wasm')
+      # Deminify the imports/export lists, if minification occured
+      if os.path.exists('minify.map'):
+        exports = deminify_syms(exports, 'minify.map')
+        imports = [i.split('.', 1)[1] for i in imports]
+        imports = deminify_syms(imports, 'minify.map')
 
-    imports, exports, funcs = self.parse_wasm('a.out.wasm')
-    # Deminify the imports/export lists, if minification occured
-    if os.path.exists('minify.map'):
-      exports = deminify_syms(exports, 'minify.map')
-      imports = [i.split('.', 1)[1] for i in imports]
-      imports = deminify_syms(imports, 'minify.map')
-    imports.sort()
-    exports.sort()
-    funcs.sort()
+      imports.sort()
+      info['imports'] = imports
 
-    # filter out _NNN suffixed that can be the result of bitcode linking when
-    # internal symbol names collide.
-    def strip_numeric_suffixes(funcname):
-      parts = funcname.split('_')
-      while parts:
-        if parts[-1].isdigit():
-          parts.pop()
-        else:
-          break
-      return '_'.join(parts)
+      exports.sort()
+      info['exports'] = exports
 
-    funcs = [strip_numeric_suffixes(f) for f in funcs]
+      if check_funcs:
+        # filter out _NNN suffixed that can be the result of bitcode linking when
+        # internal symbol names collide.
+        def strip_numeric_suffixes(funcname):
+          parts = funcname.split('_')
+          while parts:
+            if parts[-1].isdigit():
+              parts.pop()
+            else:
+              break
+          return '_'.join(parts)
 
-    sent_file = expected_basename + '.sent'
-    sent_data = '\n'.join(sent) + '\n'
-    self.assertFileContents(sent_file, sent_data)
+        funcs.sort()
+        info['funcs'] = [strip_numeric_suffixes(f) for f in funcs]
 
-    filename = expected_basename + '.imports'
-    data = '\n'.join(imports) + '\n'
-    self.assertFileContents(filename, data)
-
-    filename = expected_basename + '.exports'
-    data = '\n'.join(exports) + '\n'
-    self.assertFileContents(filename, data)
-
-    if check_funcs:
-      filename = expected_basename + '.funcs'
-      data = '\n'.join(funcs) + '\n'
-      self.assertFileContents(filename, data)
+    self.check_output_sizes(*outputs, metadata=info, skip_gz=skip_gz)
 
   @parameterized({
     'O0': ([], True),
@@ -9427,14 +9385,16 @@ int main() {
     # we don't metadce with linkable code! other modules may want stuff
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'dylink_all': (['-O3', '-sMAIN_MODULE'],),
+    # This test seems to produce different results under gzip on macOS and Windows machines
+    # so skip the gzip size reporting here.
+    'dylink_all': (['-O3', '-sMAIN_MODULE'], {'skip_gz': True}),
     'dylink': (['-O3', '-sMAIN_MODULE=2'],),
     # WasmFS should not be fully linked into a hello world program.
     'wasmfs': (['-O3', '-sWASMFS'],),
-    'single_file': (['-O3', '-sSINGLE_FILE'],), # noqa
+    'single_file': (['-O3', '-sSINGLE_FILE'],),
   })
-  def test_codesize_hello(self, args):
-    self.run_codesize_test('hello_world.c', args)
+  def test_codesize_hello(self, args, kwargs={}): # noqa
+    self.run_codesize_test('hello_world.c', args, **kwargs)
 
   @parameterized({
     'O3':                 ('mem.c', ['-O3']),
@@ -11909,11 +11869,6 @@ int main () {
       'embind_hello': embind_hello_sources,
     }[test_name]
 
-    def print_percent(actual, expected):
-      if actual == expected:
-        return ''
-      return ' ({:+.2f}%)'.format((actual - expected) * 100.0 / expected)
-
     outputs = ['a.html', 'a.js']
     args = smallest_code_size_args[:]
 
@@ -11926,15 +11881,6 @@ int main () {
 
     if '-sSINGLE_FILE' in sources:
       outputs = ['a.html']
-
-    results_file = test_file('code_size', test_name + '.json')
-
-    expected_results = {}
-    try:
-      expected_results = json.loads(read_file(results_file))
-    except Exception:
-      if not common.EMTEST_REBASELINE:
-        raise
 
     args = [compiler_for(sources[0]), '-o', 'a.html'] + args + sources
     print(shlex.join(args))
@@ -11958,42 +11904,67 @@ int main () {
       self.run_process(terser + ['-b', 'beautify=true', 'a.js', '-o', 'pretty.js'], env=shared.env_with_node_in_path())
       self.assertFileContents(js_out, read_file('pretty.js'))
 
+    self.check_output_sizes(*outputs)
+
+  def check_output_sizes(self, *outputs: str, metadata=None, skip_gz=False):
+    test_name = self.id().split('.')[-1]
+    results_file = test_file('code_size', test_name + '.json')
+
+    expected_results: dict = {}
+    try:
+      expected_results = json.loads(read_file(results_file))
+    except Exception:
+      if not common.EMTEST_REBASELINE:
+        raise
+
     obtained_results = {}
+
+    def update_and_print_diff(key, actual, expected):
+      obtained_results[key] = actual
+      diff = actual - expected
+      s = f'{key}: size={actual}, expected={expected}'
+      if diff:
+        s += f', delta={diff} ({diff * 100.0 / expected:+.2f}%)'
+      print(s)
+      return diff
+
     total_output_size = 0
     total_expected_size = 0
     total_output_size_gz = 0
     total_expected_size_gz = 0
+
     for f in outputs:
-      f_gz = f + '.gz'
-      expected_size = expected_results[f] if f in expected_results else float('inf')
-      expected_size_gz = expected_results[f_gz] if f_gz in expected_results else float('inf')
-      size, size_gz = get_file_and_gz_sizes(f)
+      contents = read_binary(f)
 
-      obtained_results[f] = size
-      obtained_results[f_gz] = size_gz
-
-      if size != expected_size and (f.endswith(('.js', '.html'))):
-        print('Contents of ' + f + ': ')
-        print(read_file(f))
-
-      print('size of ' + f + ' == ' + str(size) + ', expected ' + str(expected_size) + ', delta=' + str(size - expected_size) + print_percent(size, expected_size))
-      print('size of ' + f_gz + ' == ' + str(size_gz) + ', expected ' + str(expected_size_gz) + ', delta=' + str(size_gz - expected_size_gz) + print_percent(size_gz, expected_size_gz))
-
-      # N.B. even though the test code above prints out gzip compressed sizes, regression testing is done against uncompressed sizes
-      # this is because optimizing for compressed sizes can be unpredictable and sometimes counterproductive
+      size = len(contents)
+      expected_size = expected_results.get(f, inf)
+      if update_and_print_diff(f, size, expected_size) and common.EMTEST_VERBOSE and not common.EMTEST_REBASELINE and f.endswith(('.js', '.html')):
+        print(f'Contents of {f}:')
+        print(contents.decode('utf-8', errors='replace'))
       total_output_size += size
       total_expected_size += expected_size
 
-      total_output_size_gz += size_gz
-      total_expected_size_gz += expected_size_gz
+      if not skip_gz:
+        f_gz = f + '.gz'
+        size_gz = len(gzip.compress(contents))
+        expected_size_gz = expected_results.get(f_gz, inf)
+        update_and_print_diff(f_gz, size_gz, expected_size_gz)
+        total_output_size_gz += size_gz
+        total_expected_size_gz += expected_size_gz
 
-    obtained_results['total'] = total_output_size
-    obtained_results['total_gz'] = total_output_size_gz
-    print('Total output size=' + str(total_output_size) + ' bytes, expected total size=' + str(total_expected_size) + ', delta=' + str(total_output_size - total_expected_size) + print_percent(total_output_size, total_expected_size))
-    print('Total output size gzipped=' + str(total_output_size_gz) + ' bytes, expected total size gzipped=' + str(total_expected_size_gz) + ', delta=' + str(total_output_size_gz - total_expected_size_gz) + print_percent(total_output_size_gz, total_expected_size_gz))
+    if len(outputs) > 1:
+      update_and_print_diff('total', total_output_size, total_expected_size)
+      if not skip_gz:
+        update_and_print_diff('total_gz', total_output_size_gz, total_expected_size_gz)
+
+    if metadata:
+      obtained_results.update(metadata)
+
+    obtained_results_json = json.dumps(obtained_results, indent=2)
+    expected_results_json = json.dumps(expected_results, indent=2)
 
     if common.EMTEST_REBASELINE:
-      create_file(results_file, json.dumps(obtained_results, indent=2) + '\n', absolute=True)
+      create_file(results_file, obtained_results_json + '\n', absolute=True)
     else:
       if total_output_size > total_expected_size:
         print(f'Oops, overall generated code size regressed by {total_output_size - total_expected_size} bytes!')
@@ -12001,7 +11972,7 @@ int main () {
       if total_output_size < total_expected_size:
         print(f'Hey amazing, overall generated code size was improved by {total_expected_size - total_output_size} bytes!')
         print('If this is expected, rerun the test with --rebaseline to update the expected sizes')
-      self.assertEqual(total_output_size, total_expected_size)
+      self.assertTextDataIdentical(expected_results_json, obtained_results_json)
 
   # Tests the library_c_preprocessor.js functionality.
   @crossplatform
@@ -12433,6 +12404,10 @@ int main(void) {
     # otherwise in such a trivial program).
     self.assertLess(no, 0.95 * yes)
 
+  def test_small_js_flags(self):
+    self.emcc(test_file('browser_test_hello_world.c'), ['-O3', '--closure=1', '-sINCOMING_MODULE_JS_API=[]', '-sENVIRONMENT=web', '--output-eol=linux'])
+    self.check_output_sizes('a.out.js')
+
   def test_INCOMING_MODULE_JS_API(self):
     def test(args):
       self.run_process([EMCC, test_file('hello_world.c'), '-O3', '--closure=1', '-sENVIRONMENT=node,shell', '--output-eol=linux'] + args)
@@ -12444,10 +12419,6 @@ int main(void) {
     print('sizes', normal, changed)
     # Changing this option to [] should decrease code size.
     self.assertLess(changed, normal)
-    # Check an absolute code size as well, with some slack.
-    self.check_expected_size_in_file('js',
-                                     test_file('other/test_INCOMING_MODULE_JS_API.js.size'),
-                                     changed)
 
   def test_INCOMING_MODULE_JS_API_missing(self):
     create_file('pre.js', 'Module.onRuntimeInitialized = () => out("initialized");')
@@ -16143,7 +16114,7 @@ addToLibrary({
   def test_invalid_export_name(self):
     create_file('test.c', '__attribute__((export_name("my.func"))) void myfunc() {}')
     err = self.expect_fail([EMCC, 'test.c'])
-    self.assertContained('emcc: error: invalid export name: my.func', err)
+    self.assertContained('emcc: error: invalid export name: "my.func"', err)
 
     # GCC (and clang) and JavaScript also allow $ in symbol names
     create_file('valid.c', '''
