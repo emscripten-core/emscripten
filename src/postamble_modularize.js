@@ -4,8 +4,6 @@
 // We assign to the `moduleRtn` global here and configure closure to see
 // this as and extern so it won't get minified.
 
-#if WASM_ASYNC_COMPILATION
-
 #if USE_READY_PROMISE
 if (runtimeInitialized)  {
   moduleRtn = Module;
@@ -19,12 +17,6 @@ if (runtimeInitialized)  {
 #else
 moduleRtn = {};
 #endif
-
-#else  // WASM_ASYNC_COMPILATION
-
-moduleRtn = Module;
-
-#endif // WASM_ASYNC_COMPILATION
 
 #if ASSERTIONS
 // Assertion for attempting to access module properties on the incoming
