@@ -84,11 +84,18 @@ addToLibrary({
       var stream = FS.getStreamChecked(fd);
       return fs.fstatSync(stream.nfd);
     },
-    statfsStream(stream) {
-      return fs.statfsSync(stream.path);
+    statfs(path) {
+      // Node's fs.statfsSync API doesn't provide these attributes so include
+      // some defaults.
+      var defaults = {
+        fsid: 42,
+        flags: 2,
+        namelen: 255,
+      }
+      return Object.assign(defaults, fs.statfsSync(path));
     },
-    statfsNode(node) {
-      return fs.statfsSync(node.path);
+    statfsStream(stream) {
+      return FS.statfs(stream.path);
     },
     chmod(path, mode, dontFollow) {
       mode &= {{{ cDefs.S_IALLUGO }}};
