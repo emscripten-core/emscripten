@@ -11955,8 +11955,11 @@ int main () {
 
     obtained_results.update(metadata)
 
+    obtained_results_json = json.dumps(obtained_results, indent=2)
+    expected_results_json = json.dumps(expected_results, indent=2)
+
     if common.EMTEST_REBASELINE:
-      create_file(results_file, json.dumps(obtained_results, indent=2) + '\n', absolute=True)
+      create_file(results_file, obtained_results_json + '\n', absolute=True)
     else:
       if total_output_size > total_expected_size:
         print(f'Oops, overall generated code size regressed by {total_output_size - total_expected_size} bytes!')
@@ -11964,7 +11967,7 @@ int main () {
       if total_output_size < total_expected_size:
         print(f'Hey amazing, overall generated code size was improved by {total_expected_size - total_output_size} bytes!')
         print('If this is expected, rerun the test with --rebaseline to update the expected sizes')
-      self.assertEqual(obtained_results, expected_results)
+      self.assertTextDataIdentical(obtained_results_json, expected_results_json)
 
   # Tests the library_c_preprocessor.js functionality.
   @crossplatform
