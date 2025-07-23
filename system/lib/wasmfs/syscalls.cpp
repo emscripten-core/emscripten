@@ -1695,28 +1695,27 @@ int __syscall_accept4(int sockfd,
                       intptr_t addr,
                       intptr_t addrlen,
                       int flags,
-                      int dummy1,
-                      int dummy2) {
+                      ...) {
   return -ENOSYS;
 }
 
 int __syscall_bind(
-  int sockfd, intptr_t addr, socklen_t alen, int dummy, int dummy2, int dummy3) {
+  int sockfd, intptr_t addr, socklen_t alen, ...) {
   return -ENOSYS;
 }
 
 int __syscall_connect(
-  int sockfd, intptr_t addr, socklen_t len, int dummy, int dummy2, int dummy3) {
+  int sockfd, intptr_t addr, socklen_t len, ...) {
   return -ENOSYS;
 }
 
 int __syscall_socket(
-  int domain, int type, int protocol, int dummy1, int dummy2, int dummy3) {
+  int domain, int type, int protocol, ...) {
   return -ENOSYS;
 }
 
 int __syscall_listen(
-  int sockfd, int backlock, int dummy1, int dummy2, int dummy3, int dummy4) {
+  int sockfd, int backlog, ...) {
   return -ENOSYS;
 }
 
@@ -1725,41 +1724,41 @@ int __syscall_getsockopt(int sockfd,
                          int optname,
                          intptr_t optval,
                          intptr_t optlen,
-                         int dummy) {
+                         ...) {
   return -ENOSYS;
 }
 
-int __syscall_getsockname(
-  int sockfd, intptr_t addr, intptr_t len, int dummy, int dummy2, int dummy3) {
+int __syscall_getsockname(int sockfd, intptr_t addr, intptr_t len, ...) {
   return -ENOSYS;
 }
 
-int __syscall_getpeername(
-  int sockfd, intptr_t addr, intptr_t len, int dummy, int dummy2, int dummy3) {
+int __syscall_getpeername(int sockfd, intptr_t addr, intptr_t len, ...) {
   return -ENOSYS;
 }
 
-ssize_t __syscall_sendto(
-  int sockfd, intptr_t msg, size_t len, int flags, intptr_t addr, socklen_t alen) {
+ssize_t __syscall_sendto(int sockfd,
+                         intptr_t buf,
+                         size_t len,
+                         int flags,
+                         intptr_t addr,
+                         socklen_t alen) {
   return -ENOSYS;
 }
 
-ssize_t __syscall_sendmsg(
-  int sockfd, intptr_t msg, int flags, intptr_t addr, size_t alen, int dummy) {
+ssize_t __syscall_sendmsg(int sockfd, intptr_t msg, int flags, ...) {
   return -ENOSYS;
 }
 
 ssize_t __syscall_recvfrom(int sockfd,
-                           intptr_t msg,
-                           size_t len,
+                           intptr_t buf,
+                      	   size_t len,
                            int flags,
-                           intptr_t addr,
-                           intptr_t alen) {
+                       	   intptr_t addr,
+                       	   intptr_t alen) {
   return -ENOSYS;
 }
 
-ssize_t __syscall_recvmsg(
-  int sockfd, intptr_t msg, int flags, int dummy, int dummy2, int dummy3) {
+ssize_t __syscall_recvmsg(int sockfd, intptr_t msg, int flags, ...) {
   return -ENOSYS;
 }
 

@@ -98,24 +98,25 @@ int __syscall_utimensat(int dirfd, intptr_t path, intptr_t times, int flags);
 int __syscall_fallocate(int fd, int mode, off_t offset, off_t len);
 int __syscall_dup3(int fd, int suggestfd, int flags);
 int __syscall_pipe2(intptr_t fds, int flags);
-int __syscall_recvmmsg(int sockfd, intptr_t msgvec, unsigned int vlen, unsigned int flags, ...);
+int __syscall_recvmmsg(int sockfd, intptr_t msgvec, unsigned int vlen, unsigned int flags, intptr_t timeout);
 int __syscall_prlimit64(pid_t pid, int resource, intptr_t new_limit, intptr_t old_limit);
-int __syscall_sendmmsg(int sockfd, intptr_t msgvec, unsigned int vlen, unsigned int flags, ...);
-int __syscall_socket(int domain, int type, int protocol, int dummy1, int dummy2, int dummy3);
-int __syscall_socketpair(int domain, int type, int protocol, intptr_t fds, int dummy, int dummy2);
-int __syscall_bind(int sockfd, intptr_t addr, socklen_t alen, int dummy, int dummy2, int dummy3);
-int __syscall_connect(int sockfd, intptr_t addr, socklen_t len, int dummy, int dummy2, int dummy3);
-int __syscall_listen(int sockfd, int backlock, int dummy1, int dummy2, int dummy3, int dummy4);
-int __syscall_accept4(int sockfd, intptr_t addr, intptr_t addrlen, int flags, int dummy1, int dummy2);
-int __syscall_getsockopt(int sockfd, int level, int optname, intptr_t optval, intptr_t optlen, int dummy);
-int __syscall_setsockopt(int sockfd, int level, int optname, intptr_t optval, socklen_t optlen, int dummy);
-int __syscall_getsockname(int sockfd, intptr_t addr, intptr_t len, int dummy, int dummy2, int dummy3);
-int __syscall_getpeername(int sockfd, intptr_t addr, intptr_t len, int dummy, int dummy2, int dummy3);
-ssize_t __syscall_sendto(int sockfd, intptr_t msg, size_t len, int flags, intptr_t addr, socklen_t alen);
-ssize_t __syscall_sendmsg(int sockfd, intptr_t msg , int flags, intptr_t addr, size_t alen, int dummy);
-ssize_t __syscall_recvfrom(int sockfd, intptr_t msg, size_t len, int flags, intptr_t addr, intptr_t alen);
-ssize_t __syscall_recvmsg(int sockfd, intptr_t msg, int flags, int dummy, int dummy2, int dummy3);
-int __syscall_shutdown(int sockfd, int how, int dummy, int dummy2, int dummy3, int dummy4);
+int __syscall_sendmmsg(int sockfd, intptr_t msgvec, unsigned int vlen, unsigned int flags);
+int __syscall_socket(int domain, int type, int protocol, ...);
+int __syscall_socketpair(int domain, int type, int protocol, intptr_t fds, ...);
+int __syscall_bind(int sockfd, intptr_t addr, socklen_t len, ...);
+int __syscall_connect(int sockfd, intptr_t addr, socklen_t len, ...);
+int __syscall_listen(int sockfd, int backlog, ...);
+int __syscall_accept4(int sockfd, intptr_t addr, intptr_t addrlen, int flags, ...);
+int __syscall_getsockopt(int sockfd, int level, int optname, intptr_t optval, intptr_t optlen, ...);
+int __syscall_setsockopt(int sockfd, int level, int optname, intptr_t optval, socklen_t optlen, ...);
+int __syscall_getsockname(int sockfd, intptr_t addr, intptr_t len, ...);
+int __syscall_getpeername(int sockfd, intptr_t addr, intptr_t len, ...);
+ssize_t __syscall_sendto(int sockfd, intptr_t buf, size_t len, int flags, intptr_t addr, socklen_t alen);
+ssize_t __syscall_sendmsg(int sockfd, intptr_t msg, int flags, ...);
+ssize_t __syscall_recvfrom(int sockfd, intptr_t buf, size_t len, int flags, intptr_t addr, intptr_t alen);
+ssize_t __syscall_recvmsg(int sockfd, intptr_t msg, int flags, ...);
+int __syscall_shutdown(int sockfd, int how, ...);
+
 
 #ifdef __cplusplus
 }
