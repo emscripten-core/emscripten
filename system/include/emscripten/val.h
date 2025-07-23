@@ -14,10 +14,12 @@
 #include <cstdint> // uintptr_t
 #include <vector>
 #include <type_traits>
+#include <typeinfo>
 #include <pthread.h>
 #if __cplusplus >= 202002L
 #include <coroutine>
 #include <exception>
+#include <functional>
 #include <variant>
 #endif
 
@@ -253,6 +255,17 @@ private:
   std::array<GenericWireType, PackSize<Args...>::value> elements;
 };
 
+#if __cplusplus >= 202002L
+using identity = std::identity;
+#else
+struct identity {
+  template<typename T>
+  constexpr T&& operator()(T&& t) const noexcept {
+    return std::forward<T>(t);
+  }
+};
+#endif
+
 } // end namespace internal
 
 #define EMSCRIPTEN_SYMBOL(name)                                         \
@@ -337,6 +350,14 @@ public:
   static val module_property(const char* name) {
     return val(internal::_emval_get_module_property(name));
   }
+
+#if __has_feature(cxx_rtti)
+  // Create a `val` from a user-defined dynamic `type` that is ABI-compatible with static type `T`:
+  template<typename T>
+  static val dyn(const std::type_info& type, T&& value) {
+    return internalDynCast<val>(internal::TypeID<val>::get(), &type, nullptr, std::forward<T>(value), internal::identity());
+  }
+#endif
 
   template<typename T, typename... Policies>
   explicit val(T&& value, Policies...) {
@@ -513,6 +534,14 @@ public:
     return internalCallWithPolicy<EM_INVOKER_KIND::CAST, WithPolicies<Policies...>, T>(as_handle(), nullptr, *this);
   }
 
+#if __has_feature(cxx_rtti)
+  // Retrieve a user-defined dynamic `type` that is ABI-compatible with static type `T`:
+  template<typename T, typename TransformFn>
+  auto dyn_as(const std::type_info& type, TransformFn transform) const {
+    return internalDynCast<T>(&type, internal::TypeID<val>::get(), as_handle(), *this, transform);
+  }
+#endif
+
 // Prefer calling val::typeOf() over val::typeof(), since this form works in both C++11 and GNU++11 build modes. "typeof" is a reserved word in GNU++11 extensions.
   val typeOf() const {
     return val(internal::_emval_typeof(as_handle()));
@@ -570,6 +599,34 @@ private:
   template<typename WrapperType>
   friend val internal::wrapped_extend(const std::string& , const val& );
 
+  template<typename Ret, typename... Args>
+  static auto internalDoCall(internal::EM_INVOKER caller, EM_VAL handle, const char* methodName, internal::EM_DESTRUCTORS* destructors, Args&&... args) {
+    using namespace internal;
+
+    using RetWire = BindingType<Ret>::WireType;
+
+    WireTypePack<Args...> argv(std::forward<Args>(args)...);
+
+    RetWire result;
+    if constexpr (std::is_integral<RetWire>::value && sizeof(RetWire) == 8) {
+      // 64-bit integers can't go through "generic wire type" because double and int64 have different ABI.
+      result = static_cast<RetWire>(_emval_invoke_i64(
+        caller,
+        handle,
+        methodName,
+        destructors,
+        argv));
+    } else {
+      result = GenericWireTypeConverter<RetWire>::from(_emval_invoke(
+        caller,
+        handle,
+        methodName,
+        destructors,
+        argv));
+    }
+    return result;
+  }
+
   template<internal::EM_INVOKER_KIND Kind, typename Ret, typename... Args>
   static Ret internalCall(EM_VAL handle, const char *methodName, Args&&... args) {
     using namespace internal;
@@ -594,33 +651,31 @@ private:
   static Ret internalCallWithPolicy(EM_VAL handle, const char *methodName, Args&&... args) {
     using namespace internal;
 
-    using RetWire = BindingType<Ret>::WireType;
-
     static constexpr typename Policy::template ArgTypeList<Ret, Args...> argTypes;
     thread_local EM_INVOKER mc = _emval_create_invoker(argTypes.getCount(), argTypes.getTypes(), Kind);
 
-    WireTypePack<Args...> argv(std::forward<Args>(args)...);
     EM_DESTRUCTORS destructors = nullptr;
 
-    RetWire result;
-    if constexpr (std::is_integral<RetWire>::value && sizeof(RetWire) == 8) {
-      // 64-bit integers can't go through "generic wire type" because double and int64 have different ABI.
-      result = static_cast<RetWire>(_emval_invoke_i64(
-        mc,
-        handle,
-        methodName,
-        &destructors,
-        argv));
-    } else {
-      result = GenericWireTypeConverter<RetWire>::from(_emval_invoke(
-        mc,
-        handle,
-        methodName,
-        &destructors,
-        argv));
-    }
+    auto result = internalDoCall<Ret>(mc, handle, methodName, &destructors, std::forward<Args>(args)...);
     DestructorsRunner rd(destructors);
     return BindingType<Ret>::fromWireType(result);
+  }
+
+  template<typename Ret, typename Arg, typename TransformFn>
+  static auto internalDynCast(internal::TYPEID retType, internal::TYPEID argType, EM_VAL handle, Arg&& arg, TransformFn transform) {
+    static_assert(!std::is_lvalue_reference<Ret>::value,
+                  "Cannot create a lvalue reference out of a JS value.");
+
+    using namespace internal;
+
+    TYPEID const argTypes[2] { retType, argType };
+    EM_INVOKER mc = _emval_create_invoker(2, argTypes, EM_INVOKER_KIND::CAST);
+
+    EM_DESTRUCTORS destructors = nullptr;
+
+    auto result = internalDoCall<Ret>(mc, handle, nullptr, &destructors, std::forward<Arg>(arg));
+    DestructorsRunner rd(destructors);
+    return transform(BindingType<Ret>::fromWireType(result));
   }
 
   template<typename T, typename... Policies>
