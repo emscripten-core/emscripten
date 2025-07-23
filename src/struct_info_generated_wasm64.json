@@ -1699,17 +1699,17 @@
             "st_uid": 16
         },
         "statfs": {
-            "__size__": 104,
-            "f_bavail": 24,
-            "f_bfree": 20,
+            "__size__": 120,
+            "f_bavail": 32,
+            "f_bfree": 24,
             "f_blocks": 16,
             "f_bsize": 8,
-            "f_ffree": 32,
-            "f_files": 28,
-            "f_flags": 64,
-            "f_frsize": 56,
-            "f_fsid": 36,
-            "f_namelen": 48
+            "f_ffree": 48,
+            "f_files": 40,
+            "f_flags": 80,
+            "f_frsize": 72,
+            "f_fsid": 56,
+            "f_namelen": 64
         },
         "termios": {
             "__c_ispeed": 52,
