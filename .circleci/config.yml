@@ -38,10 +38,12 @@ commands:
           command: |
             # TODO: Make these part of the base image
             apt-get install -q -y libu2f-udev libvulkan1 xdg-utils
-            # wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
+            # TODO: Switch by to unstable once
+            # https://github.com/emscripten-core/emscripten/issues/24780 os
+            # resolved
+            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
             # If that download link breaks, temporarily use this URL instead:
             # wget -O ~/chrome.deb https://storage.googleapis.com/webassembly/chrome/google-chrome-stable_current_amd64.deb
-            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-unstable_current_amd64.deb
             dpkg -i ~/chrome.deb
   emsdk-env:
     description: "emsdk_env.sh"
@@ -317,7 +319,7 @@ commands:
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
             # --no-sandbox because we are running as root and chrome requires
             # this flag for now: https://crbug.com/638180
-            CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile --enable-experimental-web-platform-features --enable-features=JavaScriptSourcePhaseImports"
+            CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader  --user-data-dir=/tmp/chrome-emscripten-profile --enable-experimental-web-platform-features --enable-features=JavaScriptSourcePhaseImports"
             # Increase the window size to avoid flaky sdl tests see #24236.
             CHROME_FLAGS_HEADLESS: "--headless=new --window-size=1024,768 --remote-debugging-port=1234"
             CHROME_FLAGS_WASM: "--enable-experimental-webassembly-features --js-flags=\"--experimental-wasm-stack-switching --experimental-wasm-type-reflection --experimental-wasm-rab-integration\""
