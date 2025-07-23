@@ -1,10 +1,10 @@
 {
   "a.out.js": 4112,
   "a.out.js.gz": 1954,
-  "a.out.nodebug.wasm": 5478,
-  "a.out.nodebug.wasm.gz": 2525,
-  "total": 9590,
-  "total_gz": 4479,
+  "a.out.nodebug.wasm": 5474,
+  "a.out.nodebug.wasm.gz": 2524,
+  "total": 9586,
+  "total_gz": 4478,
   "sent": [
     "args_get",
     "args_sizes_get",
@@ -20,7 +20,6 @@
     "memory"
   ],
   "funcs": [
-    "$__wasm_call_ctors",
     "$_start",
     "$sbrk"
   ]
