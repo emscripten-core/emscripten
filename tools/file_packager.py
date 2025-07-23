@@ -627,11 +627,11 @@ def generate_js(data_target, data_files, metadata):
   else:
     if options.modularize:
       ret = '''
-  var createModule = (() => {
+  var %(EXPORT_NAME)s = (() => {
 
   return (async function(moduleArg = {}) {
     var Module = moduleArg;
-                              '''
+                              ''' % {"EXPORT_NAME": options.export_name}
     else:
       ret = '''
   var Module = typeof %(EXPORT_NAME)s != 'undefined' ? %(EXPORT_NAME)s : {};\n''' % {"EXPORT_NAME": options.export_name}
@@ -1170,16 +1170,7 @@ def generate_js(data_target, data_files, metadata):
 
   if options.modularize and not options.from_emcc:
     ret +=  '''
-  (() => {
-  var real_createModule = createModule;
-
-  createModule = function (moduleArg) {
-    if (new.target) throw new Error("createModule() should not be called with `new createModule()`");
-    return real_createModule(moduleArg);
-  }
-  })();
-
-  export default createModule;'''
+  export default %(EXPORT_NAME)s;''' % {"EXPORT_NAME": options.export_name}
 
   return ret
 
