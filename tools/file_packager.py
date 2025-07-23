@@ -627,11 +627,10 @@ def generate_js(data_target, data_files, metadata):
   else:
     if options.modularize:
       ret = '''
-  var %(EXPORT_NAME)s = (() => {
-
-  return (async function(moduleArg = {}) {
+  export default function loadDataFile(moduleArg = {}) {
     var Module = moduleArg;
-                              ''' % {"EXPORT_NAME": options.export_name}
+                            '''
+
     else:
       ret = '''
   var Module = typeof %(EXPORT_NAME)s != 'undefined' ? %(EXPORT_NAME)s : {};\n''' % {"EXPORT_NAME": options.export_name}
@@ -1172,14 +1171,10 @@ def generate_js(data_target, data_files, metadata):
 
   if options.modularize and not options.from_emcc:
     ret += '''
-    });'''
-
-  ret += '''
+    };'''
+  else:
+    ret += '''
   })();\n'''
-
-  if options.modularize and not options.from_emcc:
-    ret +=  '''
-  export default %(EXPORT_NAME)s;''' % {"EXPORT_NAME": options.export_name}
 
   return ret
 
