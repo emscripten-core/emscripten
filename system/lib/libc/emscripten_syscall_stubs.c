@@ -248,7 +248,7 @@ weak int __syscall_prlimit64(pid_t pid, int resource, intptr_t new_limit, intptr
   return 0;
 }
 
-weak int __syscall_setsockopt(int sockfd, int level, int optname, intptr_t optval, socklen_t optlen, int dummy) {
+weak int __syscall_setsockopt(int sockfd, int level, int optname, intptr_t optval, socklen_t optlen, int unused) {
   REPORT(setsockopt);
   return -ENOPROTOOPT; // The option is unknown at the level indicated.
 }
@@ -260,7 +260,7 @@ weak pid_t __syscall_wait4(pid_t pid, intptr_t wstatus, int options, int rusage)
 
 UNIMPLEMENTED(acct, (intptr_t filename))
 UNIMPLEMENTED(mincore, (intptr_t addr, size_t length, intptr_t vec))
-UNIMPLEMENTED(recvmmsg, (int sockfd, intptr_t msgvec, unsigned int vlen, unsigned int flags, ...))
-UNIMPLEMENTED(sendmmsg, (int sockfd, intptr_t msgvec, unsigned int vlen, unsigned int flags, ...))
-UNIMPLEMENTED(shutdown, (int sockfd, int how, int dummy, int dummy2, int dummy3, int dummy4))
-UNIMPLEMENTED(socketpair, (int domain, int type, int protocol, intptr_t fds, int dummy, int dummy2))
+UNIMPLEMENTED(recvmmsg, (int sockfd, intptr_t msgvec, unsigned int vlen, unsigned int flags, intptr_t timeout))
+UNIMPLEMENTED(sendmmsg, (int sockfd, intptr_t msgvec, unsigned int vlen, unsigned int flags))
+UNIMPLEMENTED(shutdown, (int sockfd, int how, int unused1, int unused2, int unused3, int unused4))
+UNIMPLEMENTED(socketpair, (int domain, int type, int protocol, intptr_t fds, int unused1, int unused2))
