@@ -1322,12 +1322,14 @@ class libc(MuslInternalLibrary,
           'sigfillset.c',
           'sigismember.c',
           'siginterrupt.c',
+          'siglongjmp.c',
           'signal.c',
           'sigprocmask.c',
           'sigrtmax.c',
           'sigrtmin.c',
           'sigwait.c',
           'sigwaitinfo.c',
+          'sigsetjmp.c',
         ])
 
     libc_files += files_in_path(
