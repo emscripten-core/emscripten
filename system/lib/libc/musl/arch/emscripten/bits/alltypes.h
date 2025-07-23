@@ -265,12 +265,12 @@ typedef int blkcnt_t;
 #endif
 
 #if defined(__NEED_fsblkcnt_t) && !defined(__DEFINED_fsblkcnt_t)
-typedef unsigned int fsblkcnt_t;
+typedef unsigned _Int64 fsblkcnt_t;
 #define __DEFINED_fsblkcnt_t
 #endif
 
 #if defined(__NEED_fsfilcnt_t) && !defined(__DEFINED_fsfilcnt_t)
-typedef unsigned int fsfilcnt_t;
+typedef unsigned _Int64 fsfilcnt_t;
 #define __DEFINED_fsfilcnt_t
 #endif
 

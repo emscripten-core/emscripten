@@ -1,10 +1,10 @@
 {
   "a.out.js": 3654,
   "a.out.js.gz": 1718,
-  "a.out.nodebug.wasm": 4084,
-  "a.out.nodebug.wasm.gz": 2006,
-  "total": 7738,
-  "total_gz": 3724,
+  "a.out.nodebug.wasm": 4080,
+  "a.out.nodebug.wasm.gz": 2001,
+  "total": 7734,
+  "total_gz": 3719,
   "sent": [
     "proc_exit"
   ],
@@ -16,7 +16,6 @@
     "memory"
   ],
   "funcs": [
-    "$__wasm_call_ctors",
     "$_start",
     "$sbrk"
   ]
