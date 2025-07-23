@@ -9,11 +9,13 @@
 #define __BYTE_ORDER 1234
 #define __LONG_MAX __LONG_MAX__
 
+#ifndef __cplusplus
 #if defined(__NEED_wchar_t) && !defined(__DEFINED_wchar_t)
 typedef __WCHAR_TYPE__ wchar_t;
 #define __DEFINED_wchar_t
 #endif
 
+#endif
 #if defined(__NEED_wint_t) && !defined(__DEFINED_wint_t)
 typedef __WINT_TYPE__ wint_t;
 #define __DEFINED_wint_t
