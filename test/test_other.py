@@ -5801,13 +5801,13 @@ int main() {
           self.assertContained('function signature mismatch', output)
 
   def test_bad_export(self):
-    for m in ('', ' '):
+    for exports in ('_main', '_main,foo'):
       self.clear()
-      cmd = [EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=["' + m + '_main"]']
+      cmd = [EMCC, test_file('hello_world.c'), f'-sEXPORTED_FUNCTIONS={exports}']
       print(cmd)
       stderr = self.run_process(cmd, stderr=PIPE, check=False).stderr
-      if m:
-        self.assertContained('undefined exported symbol: " _main"', stderr)
+      if 'foo' in exports:
+        self.assertContained('undefined exported symbol: "foo"', stderr)
       else:
         self.assertContained('hello, world!', self.run_js('a.out.js'))
 
@@ -7141,6 +7141,22 @@ int main(void) {
     ''')
     output = self.run_js('run.mjs')
     self.assertContained('done init\nhello, world!\ngot module\n', output)
+
+  def test_modularize_run_dependency(self):
+    # Ensure that dependencies are fulfilled before the module promise is resolved.
+    create_file('pre.js', '''
+    Module.preRun = () => { dbg("add-dep"); addRunDependency("my dep"); }
+    // Remove the run dependency in 100 milliseconds
+    setTimeout(() => { dbg("remove-dep"); removeRunDependency("my dep") }, 100);
+    ''')
+    create_file('run.mjs', '''
+    import Module from './hello_world.mjs';
+    await Module();
+    console.log('got module');
+    ''')
+    self.cflags += ['-sEXPORT_ES6', '-sMODULARIZE', '-sWASM_ASYNC_COMPILATION=0', '--pre-js=pre.js']
+    self.emcc(test_file('hello_world.c'), output_filename='hello_world.mjs')
+    self.assertContained('add-dep\nremove-dep\nhello, world!\ngot module\n', self.run_js('run.mjs'))
 
   def test_modularize_instantiation_error(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-o', 'out.mjs'] + self.get_cflags())
@@ -11350,13 +11366,13 @@ _d
       # Simple one-per-line response file format
       ("EXPORTED_FUNCTIONS=@response.txt", ''),
       # stray slash
-      ("EXPORTED_FUNCTIONS=['_a', '_b', \\'_c', '_d']", '''undefined exported symbol: "\\\\'_c'"'''),
+      ("EXPORTED_FUNCTIONS=['_a', '_b', \\'_c', '_d']", '''invalid export name: "\\\\'_c'"'''),
       # stray slash
-      ("EXPORTED_FUNCTIONS=['_a', '_b',\\ '_c', '_d']", '''undefined exported symbol: "\\\\ '_c'"'''),
+      ("EXPORTED_FUNCTIONS=['_a', '_b',\\ '_c', '_d']", '''invalid export name: "\\\\ '_c'"'''),
       # stray slash
-      ('EXPORTED_FUNCTIONS=["_a", "_b", \\"_c", "_d"]', 'undefined exported symbol: "\\\\"_c""'),
+      ('EXPORTED_FUNCTIONS=["_a", "_b", \\"_c", "_d"]', 'invalid export name: "\\\\"_c""'),
       # stray slash
-      ('EXPORTED_FUNCTIONS=["_a", "_b",\\ "_c", "_d"]', 'undefined exported symbol: "\\\\ "_c"'),
+      ('EXPORTED_FUNCTIONS=["_a", "_b",\\ "_c", "_d"]', 'invalid export name: "\\\\ "_c"'),
       # missing comma
       ('EXPORTED_FUNCTIONS=["_a", "_b" "_c", "_d"]', 'wasm-ld: error: symbol exported via --export not found: b" "_c'),
     ]:
@@ -16114,7 +16130,11 @@ addToLibrary({
   def test_invalid_export_name(self):
     create_file('test.c', '__attribute__((export_name("my.func"))) void myfunc() {}')
     err = self.expect_fail([EMCC, 'test.c'])
-    self.assertContained('emcc: error: invalid export name: "my.func"', err)
+    self.assertContained('emcc: error: invalid export name: "_my.func"', err)
+
+    # When we are generating only wasm and not JS we don't need exports to
+    # be valid JS symbols.
+    self.run_process([EMCC, 'test.c', '--no-entry', '-o', 'out.wasm'])
 
     # GCC (and clang) and JavaScript also allow $ in symbol names
     create_file('valid.c', '''
