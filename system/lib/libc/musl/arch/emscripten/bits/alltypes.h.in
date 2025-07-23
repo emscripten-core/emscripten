@@ -9,13 +9,7 @@
 #define __BYTE_ORDER 1234
 #define __LONG_MAX __LONG_MAX__
 
-#ifndef __cplusplus
-#ifdef __WCHAR_TYPE__
 TYPEDEF __WCHAR_TYPE__ wchar_t;
-#else
-TYPEDEF long wchar_t;
-#endif
-#endif
 TYPEDEF __WINT_TYPE__ wint_t;
 
 // XXX EMSCRIPTEN: ensure it's always 32-bits even in wasm64
@@ -28,13 +22,8 @@ TYPEDEF int suseconds_t;
 TYPEDEF unsigned int fsfilcnt_t;
 TYPEDEF unsigned int wctype_t;
 
-#if defined(__FLT_EVAL_METHOD__) && __FLT_EVAL_METHOD__ == 0
 TYPEDEF float float_t;
 TYPEDEF double double_t;
-#else
-TYPEDEF long double float_t;
-TYPEDEF long double double_t;
-#endif
 
 #ifndef __cplusplus
 TYPEDEF struct { _Alignas(8) long long __ll; long double __ld; } max_align_t;

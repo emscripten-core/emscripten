@@ -9,21 +9,11 @@
 #define __BYTE_ORDER 1234
 #define __LONG_MAX __LONG_MAX__
 
-#ifndef __cplusplus
-#ifdef __WCHAR_TYPE__
 #if defined(__NEED_wchar_t) && !defined(__DEFINED_wchar_t)
 typedef __WCHAR_TYPE__ wchar_t;
 #define __DEFINED_wchar_t
 #endif
 
-#else
-#if defined(__NEED_wchar_t) && !defined(__DEFINED_wchar_t)
-typedef long wchar_t;
-#define __DEFINED_wchar_t
-#endif
-
-#endif
-#endif
 #if defined(__NEED_wint_t) && !defined(__DEFINED_wint_t)
 typedef __WINT_TYPE__ wint_t;
 #define __DEFINED_wint_t
@@ -72,7 +62,6 @@ typedef unsigned int wctype_t;
 #endif
 
 
-#if defined(__FLT_EVAL_METHOD__) && __FLT_EVAL_METHOD__ == 0
 #if defined(__NEED_float_t) && !defined(__DEFINED_float_t)
 typedef float float_t;
 #define __DEFINED_float_t
@@ -83,18 +72,6 @@ typedef double double_t;
 #define __DEFINED_double_t
 #endif
 
-#else
-#if defined(__NEED_float_t) && !defined(__DEFINED_float_t)
-typedef long double float_t;
-#define __DEFINED_float_t
-#endif
-
-#if defined(__NEED_double_t) && !defined(__DEFINED_double_t)
-typedef long double double_t;
-#define __DEFINED_double_t
-#endif
-
-#endif
 
 #ifndef __cplusplus
 #if defined(__NEED_max_align_t) && !defined(__DEFINED_max_align_t)
