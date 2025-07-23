@@ -3,8 +3,8 @@ llvm's libc
 
 These files are from llvm-project's HEAD.
 
-Currently in producgtion, we do not use LLVM's libc directly yet, but libcxx
-uses a subset of headers from libc. So libcxx directly depends on the following
+Currently in production, we do not use LLVM's libc directly yet, but libcxx uses
+a subset of headers from libc. So libcxx directly depends on the following
 directories:
 - libc/hdr
 - libc/include/llvm-libc-macros
