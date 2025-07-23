@@ -9380,7 +9380,8 @@ int main() {
     'ctors1':    (['-O2', '-sEVAL_CTORS'],),
     'ctors2':    (['-O2', '-sEVAL_CTORS=2'],),
     'wasmfs':    (['-O2', '-sWASMFS'],),
-    'lto':       (['-Oz', '-flto'],),
+    # Disabled until https://github.com/WebAssembly/binaryen/pull/7748 lands
+    #'lto':       (['-Oz', '-flto'],),
   })
   def test_codesize_cxx(self, args):
     # do not check functions in this test as there are a lot of libc++ functions
