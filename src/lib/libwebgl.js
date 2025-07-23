@@ -663,12 +663,24 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       var contextHandle = glCtx.canvas.GLctxObject.handle;
       glCtx[f] = function(...args) {
         var ret = orig.apply(this, args);
-        // Some GL functions take a view of the entire linear memory.  Replace
-        // such arguments with the string 'HEAP' to avoid serializing all of
-        // memory.
         for (var i in args) {
-          if (ArrayBuffer.isView(args[i]) && args[i].byteLength === HEAPU8.byteLength) {
-            args[i] = 'HEAP';
+          if (ArrayBuffer.isView(args[i])) {
+            // Some GL functions take a view of the entire linear memory.  Replace
+            // such arguments with the string 'HEAP' to avoid serializing all of
+            // memory.
+            if (args[i].byteLength === HEAPU8.byteLength) {
+              args[i] = 'HEAP';
+              continue;
+            }
+            // For large arrays just take the first N elements.
+            const MAX_ARRAY_ELEMS = 30;
+            if (args[i].length > MAX_ARRAY_ELEMS) {
+              const notShown = args[i].length - MAX_ARRAY_ELEMS;
+              args[i] = args[i].subarray(0, MAX_ARRAY_ELEMS);
+              args[i] = `[${args[i]}, ... <${notShown} more elements not shown>]`;
+            } else {
+              args[i] = `[${args[i]}]`;
+            }
           }
         }
 #if PTHREADS
