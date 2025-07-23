@@ -1295,6 +1295,10 @@ class libc(MuslInternalLibrary,
         filenames=['getdents.c', 'gettid.c', 'utimes.c', 'statx.c', 'wait4.c', 'wait3.c'])
 
     libc_files += files_in_path(
+        path='system/lib/libc/musl/src/malloc',
+        filenames=['reallocarray.c'])
+
+    libc_files += files_in_path(
         path='system/lib/libc/musl/src/sched',
         filenames=['sched_yield.c'])
 
