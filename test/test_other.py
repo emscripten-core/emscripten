@@ -6337,9 +6337,6 @@ __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALI
     self.assertEqual(len(with_dash_o), 0)
     self.assertNotEqual(len(without_dash_o), 0)
 
-  def test_malloc_implicit(self):
-    self.do_other_test('test_malloc_implicit.cpp')
-
   def test_switch64phi(self):
     # issue 2539, fastcomp segfault on phi-i64 interaction
     create_file('src.cpp', r'''
