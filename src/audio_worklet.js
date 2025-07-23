@@ -12,6 +12,7 @@
 // the node constructor's "processorOptions" field, we can share the necessary
 // bootstrap information from the main thread to the AudioWorkletGlobalScope.
 
+var instantiatePromise;
 if (ENVIRONMENT_IS_AUDIO_WORKLET) {
 
 function createWasmAudioWorkletProcessor(audioParams) {
@@ -161,6 +162,10 @@ class BootstrapMessages extends AudioWorkletProcessor {
     messagePort = this.port;
     /** @suppress {checkTypes} */
     messagePort.onmessage = async (msg) => {
+#if MINIMAL_RUNTIME
+      // Wait for the module instantiation before processing messages.
+      await instantiatePromise;
+#endif
       let d = msg.data;
       if (d['_wpn']) {
         // '_wpn' is short for 'Worklet Processor Node', using an identifier
