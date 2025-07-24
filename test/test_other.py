@@ -16395,3 +16395,6 @@ addToLibrary({
 
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sTEXTDECODER=3'])
     self.assertContained('#error "TEXTDECODER must be either 1 or 2"', err)
+
+  def test_reallocarray(self):
+    self.do_other_test('test_reallocarray.c')
