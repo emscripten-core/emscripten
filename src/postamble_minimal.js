@@ -116,7 +116,7 @@ assert(WebAssembly.instantiateStreaming || Module['wasm'], 'Must load WebAssembl
 #endif
 (WebAssembly.instantiateStreaming
 #if ENVIRONMENT_MAY_BE_NODE
-  // Node's fetch API cannot by used for local files, so we cannot use instantiateStreaming
+  // Node's fetch API cannot be used for local files, so we cannot use instantiateStreaming
   && !ENVIRONMENT_IS_NODE
 #endif
   ? WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
