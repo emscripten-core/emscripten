@@ -8805,7 +8805,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.cflags = args
     self.set_setting('MINIMAL_RUNTIME')
     self.maybe_closure()
-    self.do_runf('small_hello_world.c', 'hello')
+    self.do_runf('small_hello_world.c', 'hello!')
 
   # Test that printf() works in MINIMAL_RUNTIME=1
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
