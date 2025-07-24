@@ -19,9 +19,7 @@ TYPEDEF int blkcnt_t;
 TYPEDEF int blksize_t;
 TYPEDEF int clock_t;
 TYPEDEF unsigned int dev_t;
-TYPEDEF unsigned int fsblkcnt_t;
 TYPEDEF int suseconds_t;
-TYPEDEF unsigned int fsfilcnt_t;
 TYPEDEF unsigned int wctype_t;
 
 TYPEDEF float float_t;
