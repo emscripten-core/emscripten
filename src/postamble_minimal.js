@@ -92,6 +92,8 @@ var wasmExports;
 var wasmModule;
 #endif
 
+var instantiatePromise;
+
 #if PTHREADS || WASM_WORKERS
 function loadModule() {
   assignWasmImports();
@@ -114,11 +116,11 @@ var imports = {
 // precompiled WebAssembly Module.
 assert(WebAssembly.instantiateStreaming || Module['wasm'], 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM');
 #endif
-(WebAssembly.instantiateStreaming
+instantiatePromise = (WebAssembly.instantiateStreaming
   ? WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
   : WebAssembly.instantiate(Module['wasm'], imports)).then((output) => {
 #else
-WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports).then((output) => {
+instantiatePromise = WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports).then((output) => {
 #endif
 
 #else // Non-streaming instantiation
@@ -132,7 +134,7 @@ assert(Module['wasm'], 'Must load WebAssembly Module in to variable Module.wasm 
 
 {{{ exportJSSymbols() }}}
 
-WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
+instantiatePromise = WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #endif
 
 #if !LibraryManager.has('libexports.js')
