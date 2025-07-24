@@ -15779,6 +15779,12 @@ addToLibrary({
     create_file('b.cpp', '#include <emscripten/bind.h>')
     self.run_process([EMXX, '-std=c++23', '-lembind', 'a.cpp', 'b.cpp'])
 
+  def test_embind_no_exceptions(self):
+    # Test disabling exceptions and redefining try/catch with preprocessor
+    # macros.
+    create_file('a.cpp', '#define try\n#define catch if (0)\n#include <emscripten/bind.h>')
+    self.run_process([EMXX, '-fno-exceptions', '-std=c++23', '-lembind', 'a.cpp'])
+
   def test_no_pthread(self):
     self.do_runf('hello_world.c', cflags=['-pthread', '-no-pthread'])
     self.assertExists('hello_world.js')
