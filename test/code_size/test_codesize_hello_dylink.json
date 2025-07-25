@@ -1,10 +1,10 @@
 {
-  "a.out.js": 27022,
-  "a.out.js.gz": 11469,
+  "a.out.js": 27021,
+  "a.out.js.gz": 11470,
   "a.out.nodebug.wasm": 18561,
   "a.out.nodebug.wasm.gz": 9167,
-  "total": 45583,
-  "total_gz": 20636,
+  "total": 45582,
+  "total_gz": 20637,
   "sent": [
     "__heap_base",
     "__indirect_function_table",
