@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 4.0.12 (in development)
 -----------------------
+- In `-sMODULARIZE` mode the factory function will now always return a promise,
+  even when `WASM_ASYNC_COMPILATION` is disabled.  This is because emscripten
+  has other features that might also return async module creation (e.g. loading
+  files over the network, or other users of the `addRunDependency` API).  For
+  consistency and simplicity we now *always* return a promise here. (#24727)
 - libcxx, libcxxabi, libunwind, and compiler-rt were updated to LLVM 20.1.8.
   (#24757)
 - The `fsblkcnt_t` and `fsfilcnt_t` types used by `statfs`/`statvfs` were

@@ -7243,16 +7243,19 @@ m();
     self.assertContained('error: customizing EXPORT_NAME requires that the HTML be customized to use that name', err)
 
   def test_modularize_sync_compilation(self):
+    # Verify that, even when WASM_ASYNC_COMPILATION is disabled, the module factory
+    # still returns a promise.   This behaviour was changed in #24727.
     create_file('post.js', r'''
 console.log('before');
 var result = Module();
 // It should be an object.
 console.log('typeof result: ' + typeof result);
-// And it should have the exports that Module has, showing it is Module in fact.
-console.log('typeof _main: ' + typeof result._main);
-// And it should not be a Promise.
 console.log('typeof result.then: ' + typeof result.then);
-console.log('after');
+result.then((inst) => {
+  // And it should have the exports that Module has, showing it is Module in fact.
+  console.log('typeof inst._main: ' + typeof inst._main);
+  console.log('after');
+});
 ''')
     self.run_process([EMCC, test_file('hello_world.c'),
                       '-sMODULARIZE',
@@ -7262,8 +7265,8 @@ console.log('after');
 before
 hello, world!
 typeof result: object
-typeof _main: function
-typeof result.then: undefined
+typeof result.then: function
+typeof inst._main: function
 after
 ''', self.run_js('a.out.js'))
 
