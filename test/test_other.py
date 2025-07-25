@@ -9377,8 +9377,7 @@ int main() {
     'ctors1':    (['-O2', '-sEVAL_CTORS'],),
     'ctors2':    (['-O2', '-sEVAL_CTORS=2'],),
     'wasmfs':    (['-O2', '-sWASMFS'],),
-    # Disabled until https://github.com/WebAssembly/binaryen/pull/7748 lands
-    #'lto':       (['-Oz', '-flto'],),
+    'lto':       (['-Oz', '-flto'],),
   })
   def test_codesize_cxx(self, args):
     # do not check functions in this test as there are a lot of libc++ functions
@@ -16396,3 +16395,6 @@ addToLibrary({
 
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sTEXTDECODER=3'])
     self.assertContained('#error "TEXTDECODER must be either 1 or 2"', err)
+
+  def test_reallocarray(self):
+    self.do_other_test('test_reallocarray.c')

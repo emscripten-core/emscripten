@@ -108,13 +108,17 @@ var imports = {
 
 #if MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
 // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
-#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || MIN_NODE_VERSION < 180100 || MIN_SAFARI_VERSION < 150000
+#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || MIN_SAFARI_VERSION < 150000 || ENVIRONMENT_MAY_BE_NODE
 #if ASSERTIONS && !WASM2JS
 // Module['wasm'] should contain a typed array of the Wasm object data, or a
 // precompiled WebAssembly Module.
 assert(WebAssembly.instantiateStreaming || Module['wasm'], 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM');
 #endif
 (WebAssembly.instantiateStreaming
+#if ENVIRONMENT_MAY_BE_NODE
+  // Node's fetch API cannot be used for local files, so we cannot use instantiateStreaming
+  && !ENVIRONMENT_IS_NODE
+#endif
   ? WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
   : WebAssembly.instantiate(Module['wasm'], imports)).then((output) => {
 #else
@@ -221,13 +225,12 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #endif
 }
 
-#if ASSERTIONS || WASM == 2
+#if WASM == 2
 , (error) => {
 #if ASSERTIONS
   console.error(error);
 #endif
 
-#if WASM == 2
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
   if (typeof location != 'undefined') {
 #endif
@@ -239,9 +242,8 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
   }
 #endif
-#endif // WASM == 2
 }
-#endif // ASSERTIONS || WASM == 2
+#endif // WASM == 2
 );
 
 #if PTHREADS || WASM_WORKERS
