@@ -792,6 +792,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if options.oformat == OFormat.MJS:
     default_setting('EXPORT_ES6', 1)
 
+  settings.OUTPUT_FORMAT = options.oformat.name
+
   if settings.JS_BASE64_API:
     diagnostics.warning('experimental', '-sJS_BASE64_API is still experimental and not yet supported in browsers')
 
@@ -2504,17 +2506,11 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
     script.src = base_js_target
 
   if settings.SINGLE_FILE:
-    # In SINGLE_FILE mode we either inline the script, or in the case
-    # of SHARED_MEMORY convert the entire thing into a data URL.
-    if settings.SHARED_MEMORY:
-      assert not script.inline
-      script.src = get_subresource_location(js_target)
-    else:
-      js_contents = script.inline or ''
-      if script.src:
-        js_contents += read_file(js_target)
-      script.src = None
-      script.inline = read_file(js_target)
+    js_contents = script.inline or ''
+    if script.src:
+      js_contents += read_file(js_target)
+    script.src = None
+    script.inline = read_file(js_target)
     delete_file(js_target)
   else:
     if not settings.WASM_ASYNC_COMPILATION:
@@ -2810,12 +2806,8 @@ class ScriptSource:
     """Returns the script tag to replace the {{{ SCRIPT }}} tag in the target"""
     assert (self.src or self.inline) and not (self.src and self.inline)
     if self.src:
-      src = self.src
-      if src.startswith('data:'):
-        filename = src
-      else:
-        src = quote(self.src)
-        filename = f'./{src}'
+      src = quote(self.src)
+      filename = f'./{src}'
       if settings.EXPORT_ES6:
         return f'''
         <script type="module">
@@ -2826,7 +2818,7 @@ class ScriptSource:
       else:
         return f'<script async type="text/javascript" src="{src}"></script>'
     else:
-      return '<script>\n%s\n</script>' % self.inline
+      return f'<script id="mainScript">\n{self.inline}\n</script>'
 
 
 def filter_out_fake_dynamic_libs(options, inputs):
