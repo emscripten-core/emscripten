@@ -1,30 +1,28 @@
-#ifdef __EMSCRIPTEN__
-#include <math.h>
-#include <emscripten/threading.h>
-#endif
-
 #include "pthread_impl.h"
 
 void __wait(volatile int *addr, volatile int *waiters, int val, int priv)
 {
 	int spins=100;
+#ifndef __EMSCRIPTEN__
 	if (priv) priv = FUTEX_PRIVATE;
+#endif
 	while (spins-- && (!waiters || !*waiters)) {
 		if (*addr==val) a_spin();
 		else return;
 	}
 	if (waiters) a_inc(waiters);
 #ifdef __EMSCRIPTEN__
+	pthread_t self = __pthread_self();
 	int is_runtime_thread = emscripten_is_main_runtime_thread();
 
 	// Main runtime thread may need to run proxied calls, so sleep in very small slices to be responsive.
 	double max_ms_slice_to_sleep = is_runtime_thread ? 1 : 100;
 
 	while (*addr==val) {
-		if (is_runtime_thread || pthread_self()->cancelasync == PTHREAD_CANCEL_ASYNCHRONOUS) {
+		if (is_runtime_thread || self->cancelasync) {
 			int e;
 			do {
-				if (pthread_self()->cancel) {
+				if (self->cancel) {
 					if (waiters) a_dec(waiters);
 					return;
 				}

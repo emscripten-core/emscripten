@@ -3,7 +3,7 @@
 
 ssize_t pread(int fd, void *buf, size_t size, off_t ofs)
 {
-#if __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__
 	__wasi_iovec_t iov = {
 		.buf = buf,
 		.buf_len = size

@@ -9,7 +9,7 @@
 int fchdir(int fd)
 {
 	int ret = __syscall(SYS_fchdir, fd);
-#if __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__
 	if (ret != -EBADF || !__wasi_fd_is_valid(fd))
 		return __syscall_ret(ret);
 #else

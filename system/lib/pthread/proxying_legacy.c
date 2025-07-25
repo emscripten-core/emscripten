@@ -526,24 +526,19 @@ em_queued_call* emscripten_async_waitable_run_in_main_runtime_thread_(
 }
 
 EMSCRIPTEN_RESULT emscripten_wait_for_call_v(em_queued_call* call, double timeoutMSecs) {
-  int r;
+  emscripten_set_current_thread_status(EM_THREAD_STATUS_WAITPROXY);
 
-  int done = atomic_load(&call->operationDone);
-  if (!done) {
-    double now = emscripten_get_now();
-    double waitEndTime = now + timeoutMSecs;
-    emscripten_set_current_thread_status(EM_THREAD_STATUS_WAITPROXY);
-    while (!done && now < waitEndTime) {
-      r = emscripten_futex_wait(&call->operationDone, 0, waitEndTime - now);
-      done = atomic_load(&call->operationDone);
-      now = emscripten_get_now();
-    }
-    emscripten_set_current_thread_status(EM_THREAD_STATUS_RUNNING);
-  }
-  if (done)
-    return EMSCRIPTEN_RESULT_SUCCESS;
-  else
-    return EMSCRIPTEN_RESULT_TIMED_OUT;
+  int r;
+  double target = emscripten_get_now() + timeoutMSecs;
+  do {
+    r = -emscripten_futex_wait(&call->operationDone, 0, timeoutMSecs);
+
+    timeoutMSecs = target - emscripten_get_now();
+  } while (r == ETIMEDOUT && timeoutMSecs > 0);
+
+  emscripten_set_current_thread_status(EM_THREAD_STATUS_RUNNING);
+
+  return r == ETIMEDOUT ? EMSCRIPTEN_RESULT_TIMED_OUT : EMSCRIPTEN_RESULT_SUCCESS;
 }
 
 EMSCRIPTEN_RESULT emscripten_wait_for_call_i(

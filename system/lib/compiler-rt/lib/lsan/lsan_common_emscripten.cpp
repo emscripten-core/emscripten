@@ -119,11 +119,12 @@ void LockStuffAndStopTheWorld(StopTheWorldCallback callback,
 // Finally, we can only obtain the stack pointer for the current thread,
 // so we scan the full stack for other threads.
 static void ProcessThreadsCallback(ThreadContextBase *tctx, void *arg) {
+  tid_t os_id = tctx->os_id;
+  LOG_THREADS("Processing thread %llu\n", os_id);
   if (tctx->status != ThreadStatusRunning)
     return;
 
   Frontier *frontier = reinterpret_cast<Frontier *>(arg);
-  tid_t os_id = tctx->os_id;
 
   uptr stack_begin, stack_end, tls_begin, tls_end, cache_begin, cache_end;
   DTLS *dtls;
@@ -154,6 +155,7 @@ static void ProcessThreadsCallback(ThreadContextBase *tctx, void *arg) {
     }
 
     ScanRangeForPointers(stack_begin, stack_end, frontier, "STACK", kReachable);
+    //ForEachExtraStackRange(os_id, ForEachExtraStackRangeCb, frontier);
   }
 
   if (flags()->use_tls && tls_begin) {

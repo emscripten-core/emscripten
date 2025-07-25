@@ -2,13 +2,11 @@
 #include <time.h>
 #include <errno.h>
 #ifdef __EMSCRIPTEN__
-#include <math.h>
-#include <emscripten/threading.h>
-#include <emscripten/emscripten.h>
+#include <emscripten/emscripten.h>  // for emscripten_get_now()
 #else
 #include "futex.h"
-#endif
 #include "syscall.h"
+#endif
 #include "pthread_impl.h"
 
 #ifndef __EMSCRIPTEN__
@@ -32,10 +30,10 @@ static int __futex4_cp(volatile void *addr, int op, int val, const struct timesp
 	if (r != -ENOSYS) return r;
 	return __syscall_cp(SYS_futex, addr, op & ~FUTEX_PRIVATE, val, to);
 }
-#endif
 
 static volatile int dummy = 0;
 weak_alias(dummy, __eintr_valid_flag);
+#endif
 
 int __timedwait_cp(volatile int *addr, int val,
 	clockid_t clk, const struct timespec *at, int priv)
@@ -43,7 +41,9 @@ int __timedwait_cp(volatile int *addr, int val,
 	int r;
 	struct timespec to, *top=0;
 
+#ifndef __EMSCRIPTEN__
 	if (priv) priv = FUTEX_PRIVATE;
+#endif
 
 	if (at) {
 		if (at->tv_nsec >= 1000000000UL) return EINVAL;
@@ -56,23 +56,23 @@ int __timedwait_cp(volatile int *addr, int val,
 		if (to.tv_sec < 0) return ETIMEDOUT;
 		top = &to;
 	}
-
 #ifdef __EMSCRIPTEN__
-	double msecsToSleep = top ? (top->tv_sec * 1000 + top->tv_nsec / 1000000.0) : INFINITY;
+	pthread_t self = __pthread_self();
+	double msecsToSleep = top ? (top->tv_sec * 1000.0 + top->tv_nsec / 1000000.0) : INFINITY;
 	int is_runtime_thread = emscripten_is_main_runtime_thread();
 
 	// Main runtime thread may need to run proxied calls, so sleep in very small slices to be responsive.
 	double max_ms_slice_to_sleep = is_runtime_thread ? 1 : 100;
 
 	// cp suffix in the function name means "cancellation point", so this wait can be cancelled
-	// by the users unless current threads cancelability is set to PTHREAD_CANCEL_DISABLE
+	// by the users unless current threads cancellability is set to PTHREAD_CANCEL_DISABLE
 	// which may be either done by the user of __timedwait() function.
 	if (is_runtime_thread ||
-	    pthread_self()->canceldisable != PTHREAD_CANCEL_DISABLE ||
-	    pthread_self()->cancelasync) {
+		self->canceldisable != PTHREAD_CANCEL_DISABLE ||
+		self->cancelasync) {
 		double sleepUntilTime = emscripten_get_now() + msecsToSleep;
 		do {
-			if (pthread_self()->cancel) {
+			if (self->cancel) {
 				// The thread was canceled by pthread_cancel().
 				// In the case of cancelasync or PTHREAD_CANCEL_ENABLE we can just call
 				// __pthread_testcancel(), which won't return at all.
@@ -101,11 +101,13 @@ int __timedwait_cp(volatile int *addr, int val,
 	r = -__futex4_cp(addr, FUTEX_WAIT|priv, val, top);
 #endif
 	if (r != EINTR && r != ETIMEDOUT && r != ECANCELED) r = 0;
+#ifndef __EMSCRIPTEN__ // XXX Emscripten revert musl commit a63c0104e496f7ba78b64be3cd299b41e8cd427f
 	/* Mitigate bug in old kernels wrongly reporting EINTR for non-
 	 * interrupting (SA_RESTART) signal handlers. This is only practical
 	 * when NO interrupting signal handlers have been installed, and
 	 * works by sigaction tracking whether that's the case. */
 	if (r == EINTR && !__eintr_valid_flag) r = 0;
+#endif
 
 	return r;
 }

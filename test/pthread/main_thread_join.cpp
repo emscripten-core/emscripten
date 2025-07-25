@@ -33,7 +33,7 @@ void *ThreadMain(void *arg) {
   // succeeding.
   while (tries.load() < EXPECTED_TRIES) {}
 #endif
-	pthread_exit((void*)0);
+  pthread_exit((void*)0);
 }
 
 pthread_t CreateThread() {
