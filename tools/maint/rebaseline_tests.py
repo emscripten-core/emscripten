@@ -37,6 +37,16 @@ def run(cmd, **args):
 all_deltas = []
 
 
+def read_size_from_json(content):
+  json_data = json.loads(content)
+  if 'total' in json_data:
+    return json_data['total']
+  # If `total` if not in the json dict then just use the first key.  This happens when only one
+  # file size is reported (in this case we don't calculate or store the `total`).
+  first_key = list(json_data.keys())[0]
+  return json_data[first_key]
+
+
 def process_changed_file(filename):
   content = open(filename).read()
   old_content = run(['git', 'show', f'HEAD:{filename}'])
@@ -47,10 +57,8 @@ def process_changed_file(filename):
     size = int(content.strip())
     old_size = int(old_content.strip())
   elif ext == '.json':
-    current_json = json.loads(content)
-    old_json = json.loads(old_content)
-    size = current_json['total']
-    old_size = old_json['total']
+    size = read_size_from_json(content)
+    old_size = read_size_from_json(old_content)
   else:
     # Unhandled file type
     return f'{filename} updated\n'

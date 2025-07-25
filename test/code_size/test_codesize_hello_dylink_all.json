@@ -1,7 +1,7 @@
 {
-  "a.out.js": 246788,
-  "a.out.nodebug.wasm": 597789,
-  "total": 844577,
+  "a.out.js": 246735,
+  "a.out.nodebug.wasm": 597855,
+  "total": 844590,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -2962,6 +2962,7 @@
     "readv",
     "realloc",
     "realloc_in_place",
+    "reallocarray",
     "realpath",
     "recv",
     "recvfrom",
@@ -4656,6 +4657,7 @@
     "$readlink",
     "$readlinkat",
     "$readv",
+    "$reallocarray",
     "$realpath",
     "$recv",
     "$recvfrom",
