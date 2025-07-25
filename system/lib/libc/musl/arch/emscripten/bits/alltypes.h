@@ -104,6 +104,11 @@ typedef struct { union { int __i[6]; volatile int __vi[6]; volatile void * /*vol
 #define __DEFINED_mtx_t
 #endif
 
+
+// END EMSCRIPTEN-SPECIFIC DEFINITIONS
+//
+// Below here are the shared musl definitions.  The emscripten-specific definitions above will take precedence
+// due to the `__DEFINED_` macro system.
 #define __LITTLE_ENDIAN 1234
 #define __BIG_ENDIAN 4321
 #define __USE_TIME_BITS64 1

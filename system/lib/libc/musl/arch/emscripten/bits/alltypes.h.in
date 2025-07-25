@@ -40,3 +40,8 @@ TYPEDEF struct { union { int __i[10]; volatile int __vi[10]; unsigned long __s[1
 // TODO(kleisauke): Remove these two typedefs.
 TYPEDEF struct { union { int __i[6]; volatile int __vi[6]; volatile void * /*volatile*/__p[6]; } __u; } pthread_mutex_t;
 TYPEDEF struct { union { int __i[6]; volatile int __vi[6]; volatile void * /*volatile*/__p[6]; } __u; } mtx_t;
+
+// END EMSCRIPTEN-SPECIFIC DEFINITIONS
+//
+// Below here are the shared musl definitions.  The emscripten-specific definitions above will take precedence
+// due to the `__DEFINED_` macro system.
