@@ -11,7 +11,7 @@
 #include <string_view>
 #include <variant>
 
-#include "file.h"
+#include <emscripten/wasmfs_internal/file.h>
 
 namespace wasmfs::path {
 

@@ -5,8 +5,8 @@
 
 // This file defines the file object.
 
-#include "file.h"
-#include "wasmfs.h"
+#include <emscripten/wasmfs_internal/file.h>
+#include <emscripten/wasmfs_internal/wasmfs.h>
 #include "wasmfs_internal.h"
 #include <emscripten/threading.h>
 

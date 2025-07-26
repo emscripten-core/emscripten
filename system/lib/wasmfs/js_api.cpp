@@ -8,8 +8,8 @@
 #include <unistd.h>
 #include <emscripten/wasmfs.h>
 
-#include "backend.h"
-#include "file.h"
+#include <emscripten/wasmfs_internal/backend.h>
+#include <emscripten/wasmfs_internal/file.h>
 #include "paths.h"
 
 // Some APIs return data using a thread-local allocation that is never freed.

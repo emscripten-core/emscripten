@@ -6,12 +6,12 @@
 #include <emscripten/threading.h>
 #include <stdlib.h>
 
-#include "backend.h"
-#include "file.h"
+#include <emscripten/wasmfs_internal/backend.h>
+#include <emscripten/wasmfs_internal/file.h>
 #include "opfs_backend.h"
-#include "support.h"
+#include <emscripten/wasmfs_internal/support.h>
 #include "thread_utils.h"
-#include "wasmfs.h"
+#include <emscripten/wasmfs_internal/wasmfs.h>
 
 using namespace wasmfs;
 

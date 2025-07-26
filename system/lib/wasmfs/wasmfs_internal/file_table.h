@@ -4,6 +4,7 @@
 // found in the LICENSE file.
 
 // This file defines the open file table.
+// The declarations from this files should only be used by file system implementers
 
 #pragma once
 

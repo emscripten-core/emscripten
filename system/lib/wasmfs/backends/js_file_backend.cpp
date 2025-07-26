@@ -6,9 +6,9 @@
 // This file defines the JS file backend.
 
 #include "js_file_backend.h"
-#include "backend.h"
+#include <emscripten/wasmfs_internal/backend.h>
 #include "js_impl_backend.h"
-#include "wasmfs.h"
+#include <emscripten/wasmfs_internal/wasmfs.h>
 
 namespace wasmfs {
 

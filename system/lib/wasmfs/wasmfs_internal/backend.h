@@ -4,6 +4,7 @@
 // found in the LICENSE file.
 
 // This file defines the modular backend abstract class.
+// The declarations from this files should only be used by file system implementers
 
 #pragma once
 

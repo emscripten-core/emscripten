@@ -10,7 +10,7 @@
 #include <iostream>
 #endif
 
-#include "support.h"
+#include <emscripten/wasmfs_internal/support.h>
 
 namespace wasmfs {
 

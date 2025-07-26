@@ -3,7 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-#include "wasmfs.h"
+#include <emscripten/wasmfs_internal/wasmfs.h>
 
 extern "C" {
 // See library_wasmfs_fetch.js

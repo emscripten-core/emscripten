@@ -5,7 +5,7 @@
 
 // This file defines the open file table.
 
-#include "file_table.h"
+#include <emscripten/wasmfs_internal/file_table.h>
 #include "special_files.h"
 
 namespace wasmfs {

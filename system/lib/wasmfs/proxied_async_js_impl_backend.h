@@ -5,11 +5,11 @@
 
 #pragma once
 
-#include "backend.h"
+#include <emscripten/wasmfs_internal/backend.h>
 #include "memory_backend.h"
-#include "support.h"
+#include <emscripten/wasmfs_internal/support.h>
 #include "thread_utils.h"
-#include "wasmfs.h"
+#include <emscripten/wasmfs_internal/wasmfs.h>
 
 //
 // Similar to JSImplBackend, but proxies to another thread where the JS can be

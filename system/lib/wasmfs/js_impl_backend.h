@@ -5,10 +5,10 @@
 
 #pragma once
 
-#include "backend.h"
+#include <emscripten/wasmfs_internal/backend.h>
 #include "memory_backend.h"
-#include "support.h"
-#include "wasmfs.h"
+#include <emscripten/wasmfs_internal/support.h>
+#include <emscripten/wasmfs_internal/wasmfs.h>
 
 //
 // A JS Impl backend has files that are implemented by JS code. Each backend
