@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include <emscripten/wasmfs_internal/file.h>
+#include "file.h"
 #include <assert.h>
 #include <fcntl.h>
 #include <mutex>

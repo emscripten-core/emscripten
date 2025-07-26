@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include <emscripten/wasmfs_internal/file.h>
+#include "file.h"
 
 namespace wasmfs {
 // A backend (or modular backend) provides a base to extend WasmFS with new

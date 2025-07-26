@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include <emscripten/wasmfs_internal/support.h>
+#include "support.h"
 #include <assert.h>
 #include <emscripten.h>
 #include <emscripten/html5.h>
