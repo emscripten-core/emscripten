@@ -603,8 +603,7 @@ function handleWebGLProxying(funcs) {
         funcs[i + '__deps'].push('$' + i + '_before_on_calling_thread');
         funcBody = `${i}_before_on_calling_thread(${funcArgsString}); ` + funcBody;
       }
-      funcArgs.push(funcBody);
-      funcs[i] = new (Function.prototype.bind.call(Function, Function, ...funcArgs));
+      funcs[i] = new Function(...funcArgs, funcBody);
     } else if (targetingOffscreenFramebuffer) {
       // When targeting only OFFSCREEN_FRAMEBUFFER, unconditionally proxy all GL calls to
       // main thread.
