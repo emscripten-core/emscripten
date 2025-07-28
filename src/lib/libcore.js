@@ -1738,7 +1738,11 @@ addToLibrary({
 #if DYNCALLS
   $dynCall__deps: ['$dynCallLegacy'],
 #else
+#if !WASM_BIGINT
+  $dynCall__deps: ['$dynCallLegacy', '$getWasmTableEntry'],
+#else
   $dynCall__deps: ['$getWasmTableEntry'],
+#endif
 #endif
 #endif
 
