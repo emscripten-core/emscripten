@@ -20,8 +20,8 @@ OPTIONS = {
   'formats': 'A comma separated list of formats (ex: --use-port=sdl2_image:formats=png,jpg)',
 }
 
-SUPPORTED_FORMATS = {'avif', 'bmp', 'gif', 'jpg', 'jxl', 'lbm', 'pcx', 'png',
-                     'pnm', 'qoi', 'svg', 'tga', 'tif', 'webp', 'xcf', 'xpm', 'xv'}
+SUPPORTED_FORMATS = {'bmp', 'gif', 'jpg', 'lbm', 'pcx', 'png',
+                     'pnm', 'qoi', 'svg', 'tga', 'xcf', 'xpm', 'xv'}
 
 # user options (from --use-port)
 opts: Dict[str, Set] = {

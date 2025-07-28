@@ -391,7 +391,7 @@ def with_both_text_decoder(f):
     self.set_setting('TEXTDECODER', textdecoder)
     f(self, *args, **kwargs)
 
-  parameterize(decorated, {'': (0,), 'textdecoder': (2,)})
+  parameterize(decorated, {'': (1,), 'force_textdecoder': (2,)})
 
   return decorated
 
@@ -437,6 +437,9 @@ class TestCoreBase(RunnerCore):
   def maybe_closure(self):
     if '--closure=1' not in self.cflags and self.should_use_closure():
       self.cflags += ['--closure=1']
+      if self.is_wasm2js():
+        # wasm2js output currently contains closure warnings
+        self.cflags += ['-Wno-closure']
       logger.debug('using closure compiler..')
       return True
     return False
@@ -1848,7 +1851,8 @@ int main() {
     self.do_core_test('test_emscripten_api.c')
 
     # Sanitizers are not compatible with LINKABLE (dynamic linking).
-    if not is_sanitizing(self.cflags) and not self.is_wasm64():
+    # LLVM-libc overlay mode is not compatible with whole-archive (LINKABLE)
+    if not is_sanitizing(self.cflags) and not self.is_wasm64() and '-lllvmlibc' not in self.cflags:
       # test EXPORT_ALL
       self.clear_setting('EXPORTED_FUNCTIONS')
       self.set_setting('EXPORT_ALL')
@@ -2564,6 +2568,12 @@ The current type of b is: 9
   def test_pthread_cancel_async(self):
     self.do_run_in_out_file_test('pthread/test_pthread_cancel_async.c')
 
+  @no_asan('cannot replace malloc/free with ASan')
+  @no_lsan('cannot replace malloc/free with LSan')
+  @node_pthreads
+  def test_pthread_proxy_deadlock(self):
+    self.do_runf('pthread/test_pthread_proxy_deadlock.c')
+
   @no_asan('test relies on null pointer reads')
   def test_pthread_specific(self):
     self.do_run_in_out_file_test('pthread/specific.c')
@@ -2637,13 +2647,6 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_thread_local_storage.cpp')
 
   @node_pthreads
-  @also_with_minimal_runtime
-  def test_pthread_c_thread_local(self):
-    if self.get_setting('MINIMAL_RUNTIME') and is_sanitizing(self.cflags):
-      self.skipTest('MINIMAL_RUNTIME + threads + asan does not work')
-    self.do_run_in_out_file_test('pthread/test_pthread_c_thread_local.c')
-
-  @node_pthreads
   def test_pthread_cleanup(self):
     self.set_setting('PTHREAD_POOL_SIZE', 4)
     self.do_run_in_out_file_test('pthread/test_pthread_cleanup.c')
@@ -2714,6 +2717,13 @@ The current type of b is: 9
     self.cflags.append('-Wno-experimental')
     self.do_run_in_out_file_test('pthread/test_pthread_tls_dylink.c')
 
+  @node_pthreads
+  @also_with_minimal_runtime
+  def test_pthread_tls(self):
+    if self.get_setting('MINIMAL_RUNTIME') and is_sanitizing(self.cflags):
+      self.skipTest('MINIMAL_RUNTIME + threads + asan does not work')
+    self.do_runf('pthread/test_pthread_tls.c')
+
   @no_modularize_instance('uses global Module objecgt')
   def test_pthread_run_script(self):
     shutil.copy(test_file('pthread/foo.js'), '.')
@@ -2724,6 +2734,10 @@ The current type of b is: 9
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.do_runf('pthread/test_pthread_run_script.c')
+
+  @node_pthreads
+  def test_pthread_mutex_robust(self):
+    self.do_run_in_out_file_test('pthread/test_pthread_mutex_robust.c')
 
   @node_pthreads
   def test_pthread_wait32_notify(self):
@@ -5895,7 +5909,7 @@ got: 10
   def test_fs_write(self):
     if self.get_setting('WASMFS'):
       self.set_setting("FORCE_FILESYSTEM")
-    self.do_run_in_out_file_test('fs/test_write.cpp')
+    self.do_run_in_out_file_test('fs/test_fs_write.c')
 
   @also_with_noderawfs
   def test_fs_emptyPath(self):
@@ -8791,7 +8805,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.cflags = args
     self.set_setting('MINIMAL_RUNTIME')
     self.maybe_closure()
-    self.do_runf('small_hello_world.c', 'hello')
+    self.do_runf('small_hello_world.c', 'hello!')
 
   # Test that printf() works in MINIMAL_RUNTIME=1
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
@@ -9175,7 +9189,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('STRICT')
     self.do_core_test('pthread/create.c')
 
-  @flaky('https://github.com/emscripten-core/emscripten/issues/22617')
   @node_pthreads
   @parameterized({
     '': ([],),

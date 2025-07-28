@@ -1,4 +1,0 @@
-b (memory)
-c (__wasm_call_ctors)
-d (__main_argc_argv)
-e (_emscripten_stack_alloc)

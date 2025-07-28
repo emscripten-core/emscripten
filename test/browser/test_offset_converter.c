@@ -10,7 +10,7 @@ void magic_test_function(void) {
   int result = EM_ASM_INT({
     function report(x) {
       out(x);
-      fetch('http://localhost:8888?stdout=' + encodeURIComponent(x));
+      reportStdoutToServer(x);
     }
     report('magic_test_function: input=' + $0);
     var converted = wasmOffsetConverter.getName($0);

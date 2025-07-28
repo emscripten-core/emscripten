@@ -61,8 +61,9 @@ jobs:
           echo "Checking out ${{ github.base_ref }}"
           git checkout ${{ github.base_ref }}
           git rev-parse HEAD
-          # Hack to honor changes to rebaseline_tests.py in the current PR
-          git checkout - ./tools/maint/rebaseline_tests.py
+          # Uncomment this like to pull the rebaseline_tests.py from the
+          # current branch:
+          # git checkout - ./tools/maint/rebaseline_tests.py
           ./bootstrap
           if ! ./tools/maint/rebaseline_tests.py --check-only; then
             echo "Test expectations are out-of-date on the target branch."

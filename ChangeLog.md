@@ -18,8 +18,26 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.11 (in development)
+4.0.12 (in development)
 -----------------------
+- In `-sMODULARIZE` mode the factory function will now always return a promise,
+  even when `WASM_ASYNC_COMPILATION` is disabled.  This is because emscripten
+  has other features that might also return async module creation (e.g. loading
+  files over the network, or other users of the `addRunDependency` API).  For
+  consistency and simplicity we now *always* return a promise here. (#24727)
+- libcxx, libcxxabi, libunwind, and compiler-rt were updated to LLVM 20.1.8.
+  (#24757)
+- The `fsblkcnt_t` and `fsfilcnt_t` types used by `statfs`/`statvfs` were
+  changed from 32-bit to 64-bit. (#24769)
+- Support for `-sTEXT_DECODER=0` was removed, due to widespread support for
+  `TextDecoder`.  The remaining valid values for this setting are `=1`
+  (conditional use of `TextDecoder` with fallback) and `=2` (unconditional use
+  of `TextDecoder`). (#24700)
+
+4.0.11 - 07/14/25
+-----------------
+- `emdump` tool/script was removed.  This tool was mostly useful for analyzing
+  asm.js code, which emscripten has not generated in a long time now.
 - Add support for [Source-based Code Coverage](https://clang.llvm.org/docs/SourceBasedCodeCoverage.html)
   To build with coverage enabled use `-fprofile-instr-generate -fcoverage-mapping`. (#24160)
 - The `ENVIRONMENT` setting will now be automatically updated to include
@@ -38,6 +56,10 @@ See docs/process.md for more on how version tagging works.
   wrapped with `WebAssembly.Suspending` functions. To automatically wrap library
   functions for use with JSPI they must now explicitly set
   `myLibraryFunction__async: true`.
+- Removed special casing for `size_t` in Embind, since it was also inadvertently
+  affecting `unsigned long` on wasm64. Both will now match the behaviour of
+  other 64-bit integers on wasm64 and will be passed as `bigint` instead of
+  `number` to the JavaScript code. (#24678)
 
 4.0.10 - 06/07/25
 -----------------

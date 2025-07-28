@@ -509,7 +509,7 @@ def setup_pthreads():
       diagnostics.warning('experimental', '-sMAIN_MODULE + pthreads is experimental')
     elif settings.LINKABLE:
       diagnostics.warning('experimental', '-sLINKABLE + pthreads is experimental')
-  if settings.ALLOW_MEMORY_GROWTH:
+  if settings.ALLOW_MEMORY_GROWTH and not settings.GROWABLE_ARRAYBUFFERS:
     diagnostics.warning('pthreads-mem-growth', '-pthread + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
 
   default_setting('DEFAULT_PTHREAD_STACK_SIZE', settings.STACK_SIZE)
@@ -794,6 +794,9 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.JS_BASE64_API:
     diagnostics.warning('experimental', '-sJS_BASE64_API is still experimental and not yet supported in browsers')
+
+  if settings.GROWABLE_ARRAYBUFFERS:
+    diagnostics.warning('experimental', '-sGROWABLE_ARRAYBUFFERS is still experimental and not yet supported in browsers')
 
   if settings.SOURCE_PHASE_IMPORTS:
     if not settings.EXPORT_ES6:
@@ -1477,12 +1480,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   set_initial_memory()
 
-  if settings.EXPORT_ES6 and not settings.MODULARIZE:
-    # EXPORT_ES6 requires output to be a module
-    if 'MODULARIZE' in user_settings:
-      exit_with_error('EXPORT_ES6 requires MODULARIZE to be set')
-    settings.MODULARIZE = 1
-
   if settings.MODULARIZE and not settings.DECLARE_ASM_MODULE_EXPORTS:
     # When MODULARIZE option is used, currently requires declaring all module exports
     # individually - TODO: this could be optimized
@@ -1514,15 +1511,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
           settings.MINIFY_WASM_EXPORT_NAMES:
     settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
     settings.MINIFY_WASM_IMPORTED_MODULES = 1
-
-  if settings.MINIMAL_RUNTIME and settings.ASSERTIONS:
-    # In ASSERTIONS-builds, functions UTF8ArrayToString() and stringToUTF8Array()
-    # (which are not JS library functions), both use warnOnce(), which in
-    # MINIMAL_RUNTIME is a JS library function, so explicitly have to mark
-    # dependency to warnOnce() in that case. If string functions are turned to
-    # library functions in the future, then JS dependency tracking can be
-    # used and this special directive can be dropped.
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$warnOnce']
 
   if settings.MODULARIZE and not (settings.EXPORT_ES6 and not settings.SINGLE_FILE) and \
      settings.EXPORT_NAME == 'Module' and options.oformat == OFormat.HTML and \
@@ -2336,7 +2324,7 @@ def phase_binaryen(target, options, wasm_target):
     # unsigning pass.
     # we also must do this after the asan or safe_heap instrumentation, as they
     # wouldn't be able to recognize patterns produced by the growth pass.
-    if settings.SHARED_MEMORY and settings.ALLOW_MEMORY_GROWTH:
+    if settings.SHARED_MEMORY and settings.ALLOW_MEMORY_GROWTH and not settings.GROWABLE_ARRAYBUFFERS:
       with ToolchainProfiler.profile_block('apply_wasm_memory_growth'):
         final_js = building.apply_wasm_memory_growth(final_js)
 
@@ -2423,7 +2411,7 @@ def phase_binaryen(target, options, wasm_target):
       building.handle_final_wasm_symbols(wasm_file=wasm_target, symbols_file=symbols_file, debug_info=intermediate_debug_info)
       save_intermediate_with_wasm('symbolmap', wasm_target)
 
-  if settings.DEBUG_LEVEL >= 3 and settings.SEPARATE_DWARF and generating_wasm:
+  if settings.GENERATE_DWARF and settings.SEPARATE_DWARF and generating_wasm:
     # if the dwarf filename wasn't provided, use the default target + a suffix
     wasm_file_with_dwarf = settings.SEPARATE_DWARF
     if wasm_file_with_dwarf is True:
