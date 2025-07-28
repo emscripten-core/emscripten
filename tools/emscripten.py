@@ -918,8 +918,8 @@ def should_export(sym):
   return settings.EXPORT_ALL or (settings.EXPORT_KEEPALIVE and sym in settings.EXPORTED_FUNCTIONS)
 
 
-def create_receiving(function_exports, tag_exports):
-  generate_dyncall_assignment = settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
+def create_receiving(function_exports, tag_exports, library_symbols):
+  generate_dyncall_assignment = 'dynCalls' in library_symbols
   receiving = ['\n// Imports from the Wasm binary.']
 
   if settings.WASM_ESM_INTEGRATION:
@@ -1006,10 +1006,10 @@ def create_receiving(function_exports, tag_exports):
   return '\n'.join(receiving) + '\n'
 
 
-def create_module(metadata, function_exports, global_exports, tag_exports,library_symbols):
+def create_module(metadata, function_exports, global_exports, tag_exports, library_symbols):
   module = []
 
-  receiving = create_receiving(function_exports, tag_exports)
+  receiving = create_receiving(function_exports, tag_exports, library_symbols)
   receiving += create_global_exports(global_exports)
   sending = create_sending(metadata, library_symbols)
 

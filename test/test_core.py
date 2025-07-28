@@ -4495,12 +4495,16 @@ res64 - external 64\n''', header='''\
     ''', force_c=True)
 
   @parameterized({
-    '': (False,),
-    'rtld_local': (True,),
+    '': [False],
+    'rtld_local': [True],
+  })
+  @parameterized({
+    '': [[]],
+    'nobigint': [['-sWASM_BIGINT=0']],
   })
   @needs_dylink
-  @also_with_wasm_bigint
-  def test_dylink_i64_invoke(self, rtld_local):
+  def test_dylink_i64_invoke(self, rtld_local, args):
+    self.cflags += args
     if rtld_local:
       self.set_setting('NO_AUTOLOAD_DYLIBS')
       self.cflags.append('-DUSE_DLOPEN')
