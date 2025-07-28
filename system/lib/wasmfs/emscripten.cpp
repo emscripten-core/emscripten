@@ -16,9 +16,9 @@
 
 #include <string>
 
-#include "file.h"
-#include "file_table.h"
-#include "wasmfs.h"
+#include <emscripten/wasmfs_internal/file.h>
+#include <emscripten/wasmfs_internal/file_table.h>
+#include <emscripten/wasmfs_internal/wasmfs.h>
 
 namespace wasmfs {
 

@@ -2504,6 +2504,7 @@ def safe_copytree(src, dst):
 def install_system_headers(stamp):
   install_dirs = {
     ('include',): '',
+    ('lib','wasmfs', 'wasmfs_internal'): 'emscripten/wasmfs_internal',
     ('lib', 'compiler-rt', 'include'): '',
     ('lib', 'libunwind', 'include'): '',
     # Copy the generic arch files first then

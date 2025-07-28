@@ -2,7 +2,7 @@
 
 #include <emscripten/proxying.h>
 
-#include "backend.h"
+#include <emscripten/wasmfs_internal/backend.h>
 
 using namespace wasmfs;
 

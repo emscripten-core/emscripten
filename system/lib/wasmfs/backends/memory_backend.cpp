@@ -6,8 +6,8 @@
 // This file defines the memory file backend.
 
 #include "memory_backend.h"
-#include "backend.h"
-#include "wasmfs.h"
+#include <emscripten/wasmfs_internal/backend.h>
+#include <emscripten/wasmfs_internal/wasmfs.h>
 
 namespace wasmfs {
 

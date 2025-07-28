@@ -5,11 +5,11 @@
 
 #include <memory>
 
-#include "backend.h"
-#include "file.h"
+#include <emscripten/wasmfs_internal/backend.h>
+#include <emscripten/wasmfs_internal/file.h>
 #include "node_backend.h"
-#include "support.h"
-#include "wasmfs.h"
+#include <emscripten/wasmfs_internal/support.h>
+#include <emscripten/wasmfs_internal/wasmfs.h>
 
 namespace wasmfs {
 

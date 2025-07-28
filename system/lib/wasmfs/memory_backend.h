@@ -8,8 +8,8 @@
 
 #pragma once
 
-#include "backend.h"
-#include "file.h"
+#include <emscripten/wasmfs_internal/backend.h>
+#include <emscripten/wasmfs_internal/file.h>
 #include <emscripten/threading.h>
 
 namespace wasmfs {
