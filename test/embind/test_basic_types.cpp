@@ -69,21 +69,21 @@ EMSCRIPTEN_BINDINGS(TestClasses) {
 int main() {
   EM_ASM(
     // Instantiate then get/set
-    function runTest(cls) {
+    function runTest(cls, val1, val2) {
       out('Testing: ' + cls.name);
-      var c = new cls(Math.PI);
-      c.setVal(Math.SQRT2);
+      var c = new cls(val1);
+      c.setVal(val2);
       out('getVal: ' + c.getVal());
-      c.val = Math.PI;
+      c.val = val1;
       out('val: ' + c.val);
       c.delete();
     }
-    runTest(Module.TestClassFloat);
-    runTest(Module.TestClassDouble);
-    runTest(Module.TestClassChar);
-    runTest(Module.TestClassShort);
-    runTest(Module.TestClassInt);
-    runTest(Module.TestClassLong);
+    runTest(Module.TestClassFloat, Math.PI, Math.SQRT2);
+    runTest(Module.TestClassDouble, Math.PI, Math.SQRT2);
+    runTest(Module.TestClassChar, 42, 99);
+    runTest(Module.TestClassShort, 42, 99);
+    runTest(Module.TestClassInt, 42, 99);
+    runTest(Module.TestClassLong, 42, 99);
   );
   return 0;
 }
