@@ -5,7 +5,7 @@ var hasModule = typeof Module === 'object' && Module;
 
 var reportingURL = 'http://localhost:8888';
 
-async function reportResultToServer(result) {
+async function reportResultToServer(result, extra = '') {
   if (reportResultToServer.reported) {
     // Only report one result per test, even if the test misbehaves and tries to report more.
     reportStderrToServer(`excessive reported results, sending ${result}, test will fail`);
@@ -14,7 +14,7 @@ async function reportResultToServer(result) {
   if ((typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) || (typeof ENVIRONMENT_IS_AUDIO_WORKLET !== 'undefined' && ENVIRONMENT_IS_AUDIO_WORKLET)) {
     out(`RESULT: ${result}`);
   } else {
-    await fetch(`${reportingURL}/report_result?${encodeURIComponent(result)}`);
+    await fetch(`${reportingURL}/report_result?${extra}${encodeURIComponent(result)}`);
     if (typeof window === 'object' && window && hasModule && !Module['pageThrewException']) {
       /* for easy debugging, don't close window on failure */
       window.close();
@@ -50,6 +50,11 @@ function reportStdoutToServer(message) {
   } else {
     logMessageToServer('stdout', message);
   }
+}
+
+async function skipTest(message) {
+  skipTest.skipped = true;
+  await reportResultToServer(message, 'skipped:');
 }
 
 function reportTopLevelError(e) {

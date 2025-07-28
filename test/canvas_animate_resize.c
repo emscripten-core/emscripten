@@ -126,8 +126,7 @@ int main()
   if (!ctx) {
     if (!emscripten_supports_offscreencanvas()) {
       EM_ASM({
-        fetch("http://localhost:8888/report_result?skipped:%20OffscreenCanvas%20is%20not%20supported!")
-        .then(() => window.close());
+        skipTest('OffscreenCanvas is not supported!');
       });
     }
     return 0;
