@@ -4982,6 +4982,15 @@ Module["preRun"] = () => {
 
     self.btest('embind_with_asyncify.cpp', '1', cflags=['-lembind'] + args)
 
+  # Tests embind's basic argument types
+  @parameterized({
+    '': ([],),
+    'dyncalls': (['-sDYNCALLS=1'],),
+    'asyncify': (['-sASYNCIFY=1'],),
+  })
+  def test_embind_basic_types(self, args):
+    self.btest_exit('embind/test_basic_types.cpp', cflags=['-lembind'] + args)
+
   # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
   def test_emscripten_console_log(self):
     self.btest_exit('emscripten_console_log.c', cflags=['--pre-js', test_file('emscripten_console_log_pre.js')])
