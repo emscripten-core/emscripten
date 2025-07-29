@@ -2413,11 +2413,11 @@ class BrowserCore(RunnerCore):
           # the browser harness reported an error already, and sent a None to tell
           # us to also fail the test
           self.fail('browser harness error')
+        output = unquote(output)
         if output.startswith('/report_result?skipped:'):
           self.skipTest(unquote(output[len('/report_result?skipped:'):]).strip())
         else:
           # verify the result, and try again if we should do so
-          output = unquote(output)
           try:
             self.assertContained(expected, output)
           except self.failureException as e:
