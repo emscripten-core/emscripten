@@ -149,7 +149,7 @@ void emscripten_asm_const_async_on_main_thread(
 // use std::tuple or std::integral_constant. Using C++11 features is only a
 // warning in modern Clang, which are ignored in system headers.
 template<typename, typename = void> struct __em_asm_sig {};
-template<> struct __em_asm_sig<float> { static const char value = 'd'; };
+template<> struct __em_asm_sig<float> { static const char value = 'f'; };
 template<> struct __em_asm_sig<double> { static const char value = 'd'; };
 template<> struct __em_asm_sig<char> { static const char value = 'i'; };
 template<> struct __em_asm_sig<signed char> { static const char value = 'i'; };
