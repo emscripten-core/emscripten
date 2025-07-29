@@ -53,7 +53,6 @@ function reportStdoutToServer(message) {
 }
 
 async function skipTest(message) {
-  skipTest.skipped = true;
   await reportResultToServer(`skipped:${message}`);
 }
 
