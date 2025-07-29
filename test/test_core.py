@@ -25,7 +25,7 @@ from tools import shared, building, config, utils, webassembly
 import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
 from common import skip_if, no_windows, no_mac, is_slow_test, parameterized, parameterize
-from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_with_wasm_bigint
+from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_without_bigint
 from common import read_file, read_binary, requires_v8, requires_node, requires_dev_dependency, requires_wasm2js, requires_node_canary
 from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime, also_with_modularize
 from common import with_all_fs, also_with_nodefs, also_with_nodefs_both, also_with_noderawfs, also_with_wasmfs
@@ -4442,7 +4442,7 @@ ok
     ''', 'other says -1311768467750121224.\nmy fp says: 43.\nmy second fp says: 43.', force_c=True)
 
   @with_dylink_reversed
-  @also_with_wasm_bigint
+  @also_without_bigint
   def test_dylink_i64_c(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -4494,17 +4494,13 @@ res64 - external 64\n''', header='''\
       EMSCRIPTEN_KEEPALIVE int64_t function_ret_64(int32_t i, int32_t j, int32_t k);
     ''', force_c=True)
 
+  @also_without_bigint
   @parameterized({
-    '': [False],
-    'rtld_local': [True],
-  })
-  @parameterized({
-    '': [[]],
-    'nobigint': [['-sWASM_BIGINT=0']],
+    '': (False,),
+    'rtld_local': (True,),
   })
   @needs_dylink
-  def test_dylink_i64_invoke(self, rtld_local, args):
-    self.cflags += args
+  def test_dylink_i64_invoke(self, rtld_local):
     if rtld_local:
       self.set_setting('NO_AUTOLOAD_DYLIBS')
       self.cflags.append('-DUSE_DLOPEN')
@@ -5668,7 +5664,7 @@ got: 10
       self.cflags += ['-DWASMFS_NODERAWFS']
     self.do_run_in_out_file_test('dirent/test_readdir.c')
 
-  @also_with_wasm_bigint
+  @also_without_bigint
   def test_readdir_empty(self):
     self.do_run_in_out_file_test('dirent/test_readdir_empty.c')
 
@@ -5718,7 +5714,7 @@ got: 10
       self.skipTest('noderawfs fails here under non-linux')
     self.do_run_in_out_file_test('fcntl/test_fcntl_open.c')
 
-  @also_with_wasm_bigint
+  @also_without_bigint
   def test_fcntl_misc(self):
     if self.get_setting('WASMFS'):
       self.cflags += ['-sFORCE_FILESYSTEM']
@@ -5768,7 +5764,7 @@ got: 10
     self.do_runf('core/test_utf8.c', 'OK.')
 
   @with_both_text_decoder
-  @also_with_wasm_bigint
+  @also_without_bigint
   def test_utf8_bench(self):
     self.cflags += ['--embed-file', test_file('utf8_corpus.txt') + '@/utf8_corpus.txt']
     self.do_runf('benchmark/benchmark_utf8.c', 'OK.')
@@ -6180,7 +6176,7 @@ Module.onRuntimeInitialized = () => {
     self.cflags += ['-lnodefs.js']
     self.do_run_in_out_file_test('unistd/symlink_on_nodefs.c')
 
-  @also_with_wasm_bigint
+  @also_without_bigint
   @also_with_nodefs
   def test_unistd_io(self):
     if self.get_setting('WASMFS'):
@@ -7108,7 +7104,7 @@ void* operator new(size_t size) {
   def test_dyncall_pointers(self, args):
     self.do_core_test('test_dyncall_pointers.c', cflags=args)
 
-  @also_with_wasm_bigint
+  @also_without_bigint
   @no_modularize_instance('uses Module object directly')
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
@@ -7541,7 +7537,7 @@ void* operator new(size_t size) {
   def test_embind_negative_constants(self):
     self.do_run_in_out_file_test('embind/test_negative_constants.cpp', cflags=['-lembind'])
 
-  @also_with_wasm_bigint
+  @also_without_bigint
   @no_esm_integration('embind is not compatible with WASM_ESM_INTEGRATION')
   def test_embind_unsigned(self):
     self.do_run_in_out_file_test('embind/test_unsigned.cpp', cflags=['-lembind'])
@@ -8065,7 +8061,7 @@ void* operator new(size_t size) {
 
   @no_wasm2js('symbol names look different wasm2js backtraces')
   @no_modularize_instance('assumes .js output filename')
-  @also_with_wasm_bigint
+  @also_without_bigint
   def test_emscripten_log(self):
     self.cflags += ['-g', '-DRUN_FROM_JS_SHELL', '-Wno-deprecated-pragma']
     if self.maybe_closure():
@@ -9671,7 +9667,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_syscall_intercept(self):
     self.do_core_test('test_syscall_intercept.c')
 
-  @also_with_wasm_bigint
+  @also_without_bigint
   def test_jslib_i64_params(self):
     # Tests the defineI64Param and receiveI64ParamAsI53 helpers that are
     # used to recieve i64 argument in syscalls.
