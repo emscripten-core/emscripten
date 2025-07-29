@@ -57,6 +57,8 @@ Usage:
 
   --no-node Whether to support Node.js. By default we do, which emits some extra code.
 
+  --preload-size-limit Max size of preloaded .data file, once limit is reach additional files will be generated
+
   --quiet Suppress reminder about using `FORCE_FILESYSTEM`
 
 Notes:
@@ -458,7 +460,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
         return 1
     elif leading == 'exclude':
       excluded_patterns.append(arg)
-    elif leading == 'preload-limit':
+    elif leading == 'preload-size-limit':
       options.preload_size_limit = int(arg.split('=', 1)[1] if '=' in arg else arg)
     else:
       err('Unknown parameter:', arg)
