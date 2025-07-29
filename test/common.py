@@ -275,6 +275,15 @@ def requires_node_canary(func):
   return decorated
 
 
+def node_bigint_flags(node_version):
+  # The --experimental-wasm-bigint flag was added in v12, and then removed (enabled by default)
+  # in v16.
+  if node_version and node_version < (16, 0, 0) and node_version >= (12, 0, 0):
+    return ['--experimental-wasm-bigint']
+  else:
+    return []
+
+
 # Used to mark dependencies in various tests to npm developer dependency
 # packages, which might not be installed on Emscripten end users' systems.
 def requires_dev_dependency(package):
@@ -1214,7 +1223,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           # Opt in to node v15 default behaviour:
           # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
           self.node_args.append('--unhandled-rejections=throw')
-      self.node_args += shared.node_bigint_flags(nodejs)
+      self.node_args += node_bigint_flags(node_version)
 
       # If the version we are running tests in is lower than the version that
       # emcc targets then we need to tell emcc to target that older version.

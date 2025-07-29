@@ -467,8 +467,6 @@ def get_binaryen_passes():
 def make_js_executable(script):
   src = read_file(script)
   cmd = config.NODE_JS
-  if settings.WASM_BIGINT:
-    cmd += shared.node_bigint_flags(config.NODE_JS)
   if len(cmd) > 1 or not os.path.isabs(cmd[0]):
     # Using -S (--split-string) here means that arguments to the executable are
     # correctly parsed.  We don't do this by default because old versions of env
