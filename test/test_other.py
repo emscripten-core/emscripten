@@ -12377,7 +12377,8 @@ int main(void) {
     returncode, output = self.run_on_pty([EMCC, 'src.c'])
     self.assertNotEqual(returncode, 0)
     self.assertIn(b"\x1b[1msrc.c:1:13: \x1b[0m\x1b[0;1;31merror: \x1b[0m\x1b[1mexpected '}'\x1b[0m", output)
-    self.assertIn(b"\x1b[31merror: ", output)
+    # Verify that emcc errors show up as red and bold
+    self.assertIn(b"emcc: \x1b[31m\x1b[1m", output)
 
   @parameterized({
     'fno_diagnostics_color': ['-fno-diagnostics-color'],
