@@ -466,6 +466,11 @@ def main():  # noqa: C901, PLR0912, PLR0915
   options.has_preloaded = any(f.mode == 'preload' for f in data_files)
   options.has_embedded = any(f.mode == 'embed' for f in data_files)
 
+  if options.has_preloaded and options.has_embedded:
+    diagnostics.warn('support for using --preload and --embed in the same command is scheduled '
+        'for deprecation.  If you need this feature please comment at '
+        'https://github.com/emscripten-core/emscripten/issues/24803')
+
   if options.separate_metadata:
     if not options.has_preloaded or not options.jsoutput:
       err('cannot separate-metadata without both --preloaded files '
