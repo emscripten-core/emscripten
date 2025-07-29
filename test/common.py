@@ -39,7 +39,7 @@ from tools.shared import EMCC, EMXX, DEBUG
 from tools.shared import get_canonical_temp_dir, path_from_root
 from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_binary, exit_with_error
 from tools.settings import COMPILE_TIME_SETTINGS
-from tools import shared, feature_matrix, building, config, utils
+from tools import shared, building, config, utils
 
 logger = logging.getLogger('common')
 
@@ -1204,16 +1204,15 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     nodejs = self.get_nodejs()
     if nodejs:
       node_version = shared.get_node_version(nodejs)
-      if node_version < (11, 0, 0):
+      if node_version < (15, 0, 0):
+        # The default behaviour changes in v15:
+        # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
         self.node_args.append('--unhandled-rejections=strict')
+      if node_version < (11, 0, 0):
         self.node_args.append('--experimental-wasm-se')
       else:
         # Include backtrace for all uncuaght exceptions (not just Error).
         self.node_args.append('--trace-uncaught')
-        if node_version < (15, 0, 0):
-          # Opt in to node v15 default behaviour:
-          # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
-          self.node_args.append('--unhandled-rejections=throw')
       self.node_args += shared.node_bigint_flags(nodejs)
 
       # If the version we are running tests in is lower than the version that
@@ -1227,11 +1226,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       if node_version < emcc_min_node_version:
         self.cflags += building.get_emcc_node_flags(node_version)
         self.cflags.append('-Wno-transpile')
-
-      # This allows much of the test suite to be run on older versions of node that don't
-      # support wasm bigint integration
-      if node_version[0] < feature_matrix.min_browser_versions[feature_matrix.Feature.JS_BIGINT_INTEGRATION]['node'] / 10000:
-        self.cflags.append('-sWASM_BIGINT=0')
 
     self.v8_args = ['--wasm-staging']
     self.env = {}
