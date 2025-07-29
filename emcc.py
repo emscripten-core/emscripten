@@ -323,8 +323,7 @@ def run(args):
 
   # Additional compiler flags that we treat as if they were passed to us on the
   # commandline
-  EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS')
-  if EMCC_CFLAGS:
+  if EMCC_CFLAGS := os.environ.get('EMCC_CFLAGS'):
     args += shlex.split(EMCC_CFLAGS)
 
   if DEBUG:
