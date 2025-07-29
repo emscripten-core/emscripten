@@ -70,9 +70,9 @@ EM_JS(void, get_canvas_size, (int32_t* width, int32_t* height), {
  */
 EM_JS(void, test_resize_with_CSS, (const char* position, const char* width, const char* height), {
   const canvas = Module.canvas;
-  canvas.style.position = UTF8ToString(position);
-  canvas.style.width = UTF8ToString(width);
-  canvas.style.height = UTF8ToString(height);
+  canvas.style.position = UTF8ToString(Number(position));
+  canvas.style.width = UTF8ToString(Number(width));
+  canvas.style.height = UTF8ToString(Number(height));
 
   window.dispatchEvent(new UIEvent('resize'));
 });
