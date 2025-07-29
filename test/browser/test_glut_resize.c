@@ -21,19 +21,19 @@ static rect_size_t glut_init_size =      { 0, 0 };
 static rect_size_t glut_reshape_size =   { 0, 0 };
 static rect_size_t target_size =         { 0, 0 };
 
-/* 
+/*
  * Set run_async_verification to 0 for sync test cases, and 1 for async tests.
  *
  * Callback sequence for test case 1 & 2 (synchronous):
  * glutMainLoop -> GLUT.onSize -> Browser.setCanvasSize -> updateResizeListeners -> GLUT.reshapeFunc
  * glutResizeWindow -> Browser.setCanvasSize -> updateResizeListeners -> GLUT.reshapeFunc
- *  
+ *
  * Callback sequence for test cases 3-5 (async):
  * window resize -> async update -> GLUT.onSize -> Browser.setCanvasSize -> updateResizeListeners -> GLUT.reshapeFunc
- * 
+ *
  * Because window resize does not immediately call GLUT.onSize, we wait to run verification of a test until we get
  * confirmation in GLUT.reshapeFunc.  And after verification is done, we move on to the next test.
- * 
+ *
  */
 static int run_async_verification = 0;
 
@@ -73,7 +73,7 @@ EM_JS(void, test_resize_with_CSS, (const char* position, const char* width, cons
   canvas.style.position = UTF8ToString(position);
   canvas.style.width = UTF8ToString(width);
   canvas.style.height = UTF8ToString(height);
- 
+
   window.dispatchEvent(new UIEvent('resize'));
 });
 
@@ -132,7 +132,7 @@ void run_next_test() {
       /* 100% scale CSS */
       target_size = browser_window_size;
       print_size_test(test_num, "100% window scale CSS: canvas == glutReshapeFunc == browser window size", target_size);
-      run_async_verification = 1;   
+      run_async_verification = 1;
       test_resize_with_CSS("fixed", "100%", "100%"); /* fixed, so canvas is driven by window size */
       break;
     }
@@ -144,7 +144,7 @@ void run_next_test() {
       char css_width[16], css_height[16];
       snprintf (css_width, 16, "%dpx", target_size.width);
       snprintf (css_height, 16, "%dpx", target_size.height);
-      run_async_verification = 1;   
+      run_async_verification = 1;
       test_resize_with_CSS("static", css_width, css_height); /* static, canvas is driven by CSS size */
       break;
     }
@@ -153,7 +153,7 @@ void run_next_test() {
       target_size.width = browser_window_size.width;
       target_size.height = 100;
       print_size_test(test_num, "100% width, 100px height CSS: canvas == glutReshapeFunc == CSS mixed size", target_size);
-      run_async_verification = 1;   
+      run_async_verification = 1;
       test_resize_with_CSS("fixed", "100%", "100px"); /* fixed, canvas width is driven by window size */
       break;
     }
@@ -192,7 +192,7 @@ int main(int argc, char *argv[]) {
   /* Make glut initial canvas size be 1/2 of browser window */
   glut_init_size.width = browser_window_size.width / 2;
   glut_init_size.height = browser_window_size.height / 2;
-  
+
   glutInit(&argc, argv);
   glutInitWindowSize(glut_init_size.width, glut_init_size.height);
   glutInitDisplayMode(GLUT_RGB);
