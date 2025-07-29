@@ -478,7 +478,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
   if not options.from_emcc and not options.quiet:
     err('Remember to build the main file with `-sFORCE_FILESYSTEM` '
         'so that it includes support for loading this file package')
-  
+
   if options.jsoutput and os.path.abspath(options.jsoutput) == os.path.abspath(data_target):
     err('error: TARGET should not be the same value of --js-output')
     return 1
