@@ -49,20 +49,20 @@ int equal_size(rect_size_t rect_1, rect_size_t rect_2) {
  * Obtain various dimensions
  */
 EM_JS(void, get_browser_window_size, (int32_t* width, int32_t* height), {
-  setValue(width, window.innerWidth, 'i32');
-  setValue(height, window.innerHeight, 'i32');
+  setValue(Number(width), window.innerWidth, 'i32');
+  setValue(Number(height), window.innerHeight, 'i32');
 });
 
 EM_JS(void, get_canvas_client_size, (int32_t* width, int32_t* height), {
   const canvas = Module.canvas;
-  setValue(width, canvas.clientWidth, 'i32');
-  setValue(height, canvas.clientHeight, 'i32');
+  setValue(Number(width), canvas.clientWidth, 'i32');
+  setValue(Number(height), canvas.clientHeight, 'i32');
 });
 
 EM_JS(void, get_canvas_size, (int32_t* width, int32_t* height), {
   const canvas = Module.canvas;
-  setValue(width, canvas.width, 'i32');
-  setValue(height, canvas.height, 'i32');
+  setValue(Number(width), canvas.width, 'i32');
+  setValue(Number(height), canvas.height, 'i32');
 });
 
 /**
