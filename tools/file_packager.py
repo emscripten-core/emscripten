@@ -107,8 +107,6 @@ walked = []
 class Options:
   def __init__(self):
     self.export_name = 'Module'
-    self.has_preloaded = False
-    self.has_embedded = False
     self.jsoutput = None
     self.obj_output = None
     self.depfile = None
@@ -129,6 +127,7 @@ class Options:
     self.use_preload_plugins = False
     self.support_node = True
     self.wasm64 = False
+    self.preload_size_limit = 1024 * 1024 * 1024
 
 
 class DataFile:
@@ -459,15 +458,17 @@ def main():  # noqa: C901, PLR0912, PLR0915
         return 1
     elif leading == 'exclude':
       excluded_patterns.append(arg)
+    elif leading == 'preload-limit':
+      options.preload_size_limit = int(arg.split('=', 1)[1] if '=' in arg else arg)
     else:
       err('Unknown parameter:', arg)
       return 1
 
-  options.has_preloaded = any(f.mode == 'preload' for f in data_files)
-  options.has_embedded = any(f.mode == 'embed' for f in data_files)
+  has_preloaded = any(f.mode == 'preload' for f in data_files)
+  has_embedded = any(f.mode == 'embed' for f in data_files)
 
   if options.separate_metadata:
-    if not options.has_preloaded or not options.jsoutput:
+    if not has_preloaded or not options.jsoutput:
       err('cannot separate-metadata without both --preloaded files '
           'and a specified --js-output')
       return 1
@@ -475,7 +476,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
   if not options.from_emcc and not options.quiet:
     err('Remember to build the main file with `-sFORCE_FILESYSTEM` '
         'so that it includes support for loading this file package')
-
+  
   if options.jsoutput and os.path.abspath(options.jsoutput) == os.path.abspath(data_target):
     err('error: TARGET should not be the same value of --js-output')
     return 1
@@ -560,37 +561,57 @@ def main():  # noqa: C901, PLR0912, PLR0915
     for plugin in plugins:
       plugin(file_)
 
-  metadata = {'files': []}
 
   if options.obj_output:
-    if not options.has_embedded:
+    if not has_embedded:
       err('--obj-output is only applicable when embedding files')
       return 1
     generate_object_file(data_files)
-    if not options.has_preloaded:
+    if not has_preloaded:
       return 0
 
-  ret = generate_js(data_target, data_files, metadata)
-
-  if options.force or len(data_files):
-    if options.jsoutput is None:
-      print(ret)
-    else:
-      # Overwrite the old jsoutput file (if exists) only when its content
-      # differs from the current generated one, otherwise leave the file
-      # untouched preserving its old timestamp
-      if os.path.isfile(options.jsoutput):
-        old = utils.read_file(options.jsoutput)
-        if old != ret:
-          utils.write_file(options.jsoutput, ret)
+  file_chunks = [[]]
+  current_size = 0
+  for file_ in data_files:
+    if file_.mode == 'preload':
+      fsize = os.path.getsize(file_.srcpath)
+      if current_size + fsize <= options.preload_size_limit:
+        file_chunks[-1].append(file_)
+        current_size += fsize
       else:
-        utils.write_file(options.jsoutput, ret)
-      if options.separate_metadata:
-        utils.write_file(options.jsoutput + '.metadata', json.dumps(metadata, separators=(',', ':')))
+        current_size = fsize
+        file_chunks.append([file_])
+    else:
+        file_chunks[-1].append(file_)
+
+  if len(file_chunks) > 1:
+    err('warning: file packager is splitting bundle into %d chunks', len(file_chunks))
+
+  targets = []
+  for counter, data_files in enumerate(file_chunks):
+    metadata = {'files': []}
+    targets.append(f'{data_target}_{counter}' if counter else data_target)
+    ret = generate_js(targets[-1], data_files, metadata)
+    if options.force or len(data_files):
+      if options.jsoutput is None:
+        print(ret)
+      else:
+        # Overwrite the old jsoutput file (if exists) only when its content
+        # differs from the current generated one, otherwise leave the file
+        # untouched preserving its old timestamp
+        targets.append(f'{options.jsoutput}_{counter}' if counter else options.jsoutput)
+        if os.path.isfile(targets[-1]):
+          old = utils.read_file(targets[-1])
+          if old != ret:
+            utils.write_file(targets[-1], ret)
+        else:
+          utils.write_file(targets[-1], ret)
+        if options.separate_metadata:
+          utils.write_file(targets[-1] + '.metadata', json.dumps(metadata, separators=(',', ':')))
 
   if options.depfile:
     with open(options.depfile, 'w') as f:
-      for target in (data_target, options.jsoutput):
+      for target in targets:
         if target:
           f.write(escape_for_makefile(target))
           f.write(' \\\n')
@@ -650,20 +671,22 @@ def generate_js(data_target, data_files, metadata):
           code += ('''Module['FS_createPath'](%s, %s, true, true);\n'''
                    % (json.dumps('/' + '/'.join(parts[:i])), json.dumps(parts[i])))
           partial_dirs.append(partial)
-
-  if options.has_preloaded:
+  has_preloaded = any(f.mode == 'preload' for f in data_files)
+  has_embedded = any(f.mode == 'embed' for f in data_files)
+  if has_preloaded:
     # Bundle all datafiles into one archive. Avoids doing lots of simultaneous
     # XHRs which has overhead.
     start = 0
     with open(data_target, 'wb') as data:
-      for file_ in data_files:
-        file_.data_start = start
-        curr = utils.read_binary(file_.srcpath)
-        file_.data_end = start + len(curr)
-        if AV_WORKAROUND:
-            curr += '\x00'
-        start += len(curr)
-        data.write(curr)
+      if file_.mode == 'preload':
+        for file_ in data_files:
+          file_.data_start = start
+          curr = utils.read_binary(file_.srcpath)
+          file_.data_end = start + len(curr)
+          if AV_WORKAROUND:
+              curr += '\x00'
+          start += len(curr)
+          data.write(curr)
 
     if start > 256 * 1024 * 1024:
       err('warning: file packager is creating an asset bundle of %d MB. '
@@ -714,7 +737,7 @@ def generate_js(data_target, data_files, metadata):
         new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio'] || 0).open('GET', files[i]['filename']);
       }\n''' % (create_preloaded if options.use_preload_plugins else create_data)
 
-  if options.has_embedded and not options.obj_output:
+  if has_embedded and not options.obj_output:
     err('--obj-output is recommended when using --embed.  This outputs an object file for linking directly into your application is more efficient than JS encoding')
 
   for counter, file_ in enumerate(data_files):
@@ -743,7 +766,7 @@ def generate_js(data_target, data_files, metadata):
     else:
       assert 0
 
-  if options.has_preloaded:
+  if has_preloaded:
     if not options.lz4:
       # Get the big archive and split it up
       use_data = '''// Reuse the bytearray from the XHR as the source for file reads.
