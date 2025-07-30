@@ -1343,13 +1343,12 @@ simulateKeyUp(100, undefined, 'Numpad4');
     '': ([],),
     'extra': (['-DEXTRA_WORK'],),
     'autopersist': (['-DIDBFS_AUTO_PERSIST'],),
-    'force_exit': (['-sEXIT_RUNTIME', '-DFORCE_EXIT'],),
   })
   def test_fs_idbfs_sync(self, args):
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
     secret = str(time.time())
-    self.btest('fs/test_idbfs_sync.c', '1', cflags=['-lidbfs.js', f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_test,_report_result', '-lidbfs.js'] + args + ['-DFIRST'])
-    self.btest('fs/test_idbfs_sync.c', '1', cflags=['-lidbfs.js', f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_test,_report_result', '-lidbfs.js'] + args)
+    self.btest_exit('fs/test_idbfs_sync.c', cflags=['-lidbfs.js', f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_test,_finish', '-lidbfs.js'] + args + ['-DFIRST'])
+    print('done first half')
+    self.btest_exit('fs/test_idbfs_sync.c', cflags=['-lidbfs.js', f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_test,_finish', '-lidbfs.js'] + args)
 
   def test_fs_idbfs_fsync(self):
     # sync from persisted state into memory before main()
