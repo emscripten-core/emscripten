@@ -23,6 +23,7 @@ function reftestUnblock() {
 function doReftest() {
   if (reftestBlocked) return;
   if (doReftest.done) return;
+  if (reportResultToServer.reported) return;
   doReftest.done = true;
   var img = new Image();
   img.onload = () => {

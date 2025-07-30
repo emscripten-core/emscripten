@@ -526,8 +526,11 @@ var LibraryDylink = {
 #if DYNCALLS || !WASM_BIGINT
   $registerDynCallSymbols: (exports) => {
     for (var [sym, exp] of Object.entries(exports)) {
-      if (sym.startsWith('dynCall_') && !Module.hasOwnProperty(sym)) {
-        Module[sym] = exp;
+      if (sym.startsWith('dynCall_')) {
+        var sig = sym.substring(8);
+        if (!dynCalls.hasOwnProperty(sig)) {
+          dynCalls[sig] = exp;
+        }
       }
     }
   },
