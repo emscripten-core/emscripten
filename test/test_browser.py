@@ -1348,7 +1348,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
   def test_fs_idbfs_sync(self, args):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
     secret = str(time.time())
-    self.btest('fs/test_idbfs_sync.c', '1', cflags=['-lidbfs.js', f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_test,_report_result', '-lidbfs.js'] + args + ['-DFIRST'])
+    self.btest('fs/test_idbfs_sync.c', '1', cflags=['-lidbfs.js', f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_test,_test2,_report_result', '-lidbfs.js'] + args + ['-DFIRST'])
     self.btest('fs/test_idbfs_sync.c', '1', cflags=['-lidbfs.js', f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_test,_report_result', '-lidbfs.js'] + args)
 
   def test_fs_idbfs_fsync(self):
