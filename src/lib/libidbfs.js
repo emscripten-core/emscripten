@@ -85,10 +85,12 @@ addToLibrary({
             if (n.memfs_stream_ops.close) return n.memfs_stream_ops.close(stream);
           };
 
+          // Persist the node we just created to IndexedDB
+          IDBFS.queuePersist(mnt.mount);
+
           return node;
         };
         // Also kick off persisting the filesystem on other operations that modify the filesystem.
-        mnt.node_ops.mkdir   = (...args) => (IDBFS.queuePersist(mnt.mount), memfs_node_ops.mkdir(...args));
         mnt.node_ops.rmdir   = (...args) => (IDBFS.queuePersist(mnt.mount), memfs_node_ops.rmdir(...args));
         mnt.node_ops.symlink = (...args) => (IDBFS.queuePersist(mnt.mount), memfs_node_ops.symlink(...args));
         mnt.node_ops.unlink  = (...args) => (IDBFS.queuePersist(mnt.mount), memfs_node_ops.unlink(...args));

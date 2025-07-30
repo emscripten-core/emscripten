@@ -67,11 +67,31 @@ void test() {
       result = -11000 - errno;
   }
 
-  // a directory
+  // a directory that we will later recreate from scratch before loading from IDB
   if ((stat("/working1/dir", &st) != -1) || (errno != ENOENT))
     result = -12000 - errno;
   else if (mkdir("/working1/dir", 0777) != 0)
     result = -13000 - errno;
+
+  EM_ASM(
+    setTimeout(() => {
+      // Run the remainder of the test after all already scheduled JavaScript
+      // tasks have executed (such as the one scheduled by IDBFS.queuePersist).
+      // This is to ensure that mkdir also triggers a call to queuePersist and
+      // to isolate mkdir from queuePersist invocations made by other syscalls.
+      ccall('test2', 'v');
+    }, 0);
+  );
+}
+
+void test2() {
+  struct stat st;
+
+  // a directory using which we will check if auto-persistence is working
+  if ((stat("/working1/dir2", &st) != -1) || (errno != ENOENT))
+    result = -30000 - errno;
+  else if (mkdir("/working1/dir2", 0777) != 0)
+    result = -31000 - errno;
 
 #else
 
@@ -131,6 +151,16 @@ void test() {
       result = -29000 - errno;
   }
 
+  // does the other directory exist?
+  if (stat("/working1/dir2", &st) != 0) {
+    result = -32000 - errno;
+  } else {
+    if (!S_ISDIR(st.st_mode))
+      result = -33000;
+    if (rmdir("/working1/dir2") != 0)
+      result = -34000 - errno;
+  }
+
 #endif
 
   // If the test failed, then delete test files from IndexedDB so that the test
@@ -141,6 +171,7 @@ void test() {
     unlink("/working1/waka.txt");
     unlink("/working1/moar.txt");
     rmdir("/working1/dir");
+    rmdir("/working1/dir2");
     EM_ASM(FS.syncfs(function(){})); // And persist deleted changes
   }
 
