@@ -114,7 +114,7 @@ def reset_color_windows():
 def output_color(color):
   if WINDOWS:
     return output_color_windows(color)
-  return '\033[1m\033[3%sm' % color
+  return '\033[3%sm' % color
 
 
 def bold():
