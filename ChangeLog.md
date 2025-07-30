@@ -22,8 +22,8 @@ See docs/process.md for more on how version tagging works.
 -----------------------
 - The `#!` line that emscripten, under some circumstances, will add to the
   generated JS code no longer injects the `--experimental-wasm-bigint` node
-  flag.  This flag is not needed on recent versions of node, so its not possible
-  to know if its safe to include. (#24808)
+  flag.  This flag is not needed on recent versions of node, and in fact
+  errors there, so it's not possible to know if it's safe to include. (#24808)
 - In `-sMODULARIZE` mode the factory function will now always return a promise,
   even when `WASM_ASYNC_COMPILATION` is disabled.  This is because emscripten
   has other features that might also return async module creation (e.g. loading
