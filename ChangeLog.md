@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 4.0.12 (in development)
 -----------------------
+- The oldest supported node version was bumped from 10.19.0 to 12.22.9.  Ths
+  means the smallest value that can now be passed to `-sMIN_NODE_VERSION` is
+  `122209`.
 - In `-sMODULARIZE` mode the factory function will now always return a promise,
   even when `WASM_ASYNC_COMPILATION` is disabled.  This is because emscripten
   has other features that might also return async module creation (e.g. loading
