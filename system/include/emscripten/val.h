@@ -478,9 +478,9 @@ public:
     return val(internal::_emval_get_property(as_handle(), val_ref(key).as_handle()));
   }
 
-  template<typename K, typename V>
-  void set(const K& key, const V& value) {
-    internal::_emval_set_property(as_handle(), val_ref(key).as_handle(), val_ref(value).as_handle());
+  template<typename K, typename V, typename... Policies>
+  void set(const K& key, const V& value, Policies... policies) {
+    internal::_emval_set_property(as_handle(), val_ref(key).as_handle(), val_ref(value, policies...).as_handle());
   }
 
   template<typename T>
@@ -609,9 +609,9 @@ private:
     return BindingType<Ret>::fromWireType(result);
   }
 
-  template<typename T>
-  val val_ref(const T& v) const {
-    return val(v);
+  template<typename T, typename... Policies>
+  val val_ref(const T& v, Policies... policies) const {
+    return val(v, policies...);
   }
 
   const val& val_ref(const val& v) const {
