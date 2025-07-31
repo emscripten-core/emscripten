@@ -346,7 +346,7 @@ public:
   explicit val(T&& value, Policies...) {
     using namespace internal;
 
-    new (this) val(internalCall<EM_INVOKER_KIND::CAST, WithPolicies<Policies...>, val>(nullptr, nullptr, std::forward<T>(value)));
+    new (this) val(internalCallWithPolicy<EM_INVOKER_KIND::CAST, WithPolicies<Policies...>, val>(nullptr, nullptr, std::forward<T>(value)));
   }
 
   val() : val(EM_VAL(internal::_EMVAL_UNDEFINED)) {}
@@ -493,28 +493,28 @@ public:
   val new_(Args&&... args) const {
     using namespace internal;
 
-    return internalCall<EM_INVOKER_KIND::CONSTRUCTOR, WithPolicies<>, val>(as_handle(), nullptr, std::forward<Args>(args)...);
+    return internalCall<EM_INVOKER_KIND::CONSTRUCTOR, val>(as_handle(), nullptr, std::forward<Args>(args)...);
   }
 
   template<typename... Args>
   val operator()(Args&&... args) const {
     using namespace internal;
 
-    return internalCall<EM_INVOKER_KIND::FUNCTION, WithPolicies<>, val>(as_handle(), nullptr, std::forward<Args>(args)...);
+    return internalCall<EM_INVOKER_KIND::FUNCTION, val>(as_handle(), nullptr, std::forward<Args>(args)...);
   }
 
   template<typename ReturnValue, typename... Args>
   ReturnValue call(const char* name, Args&&... args) const {
     using namespace internal;
 
-    return internalCall<EM_INVOKER_KIND::METHOD, WithPolicies<>, ReturnValue>(as_handle(), name, std::forward<Args>(args)...);
+    return internalCall<EM_INVOKER_KIND::METHOD, ReturnValue>(as_handle(), name, std::forward<Args>(args)...);
   }
 
   template<typename T, typename ...Policies>
   T as(Policies...) const {
     using namespace internal;
 
-    return internalCall<EM_INVOKER_KIND::CAST, WithPolicies<Policies...>, T>(as_handle(), nullptr, *this);
+    return internalCallWithPolicy<EM_INVOKER_KIND::CAST, WithPolicies<Policies...>, T>(as_handle(), nullptr, *this);
   }
 
 // Prefer calling val::typeOf() over val::typeof(), since this form works in both C++11 and GNU++11 build modes. "typeof" is a reserved word in GNU++11 extensions.
@@ -574,8 +574,27 @@ private:
   template<typename WrapperType>
   friend val internal::wrapped_extend(const std::string& , const val& );
 
-  template<internal::EM_INVOKER_KIND Kind, typename Policy, typename Ret, typename... Args>
+  template<internal::EM_INVOKER_KIND Kind, typename Ret, typename... Args>
   static Ret internalCall(EM_VAL handle, const char *methodName, Args&&... args) {
+    using namespace internal;
+#if __cplusplus >= 201703L
+    using Policy = WithPolicies<FilterTypes<isPolicy, Args...>>;
+    auto filteredArgs = Filter<isNotPolicy>(args...);
+    return std::apply(
+        [&](auto&&... filteredArgs) {
+          return internalCallWithPolicy<Kind, Policy, Ret>(handle, methodName, std::forward<decltype(filteredArgs)>(filteredArgs)...);
+        },
+        filteredArgs
+    );
+#else
+    // When std::apply is not available allow pointers by default. std::apply
+    // could be polyfilled, but it requires a lot of code.
+    return internalCallWithPolicy<Kind, WithPolicies<allow_raw_pointers>, Ret>(handle, methodName, std::forward<decltype(args)>(args)...);
+#endif
+  }
+
+  template<internal::EM_INVOKER_KIND Kind, typename Policy, typename Ret, typename... Args>
+  static Ret internalCallWithPolicy(EM_VAL handle, const char *methodName, Args&&... args) {
     static_assert(!std::is_lvalue_reference<Ret>::value,
                   "Cannot create a lvalue reference out of a JS value.");
 

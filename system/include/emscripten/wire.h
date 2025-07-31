@@ -265,6 +265,9 @@ struct WithPolicies {
     };
 };
 
+template<typename... Policies>
+struct WithPolicies<std::tuple<Policies...>> : WithPolicies<Policies...> {};
+
 // BindingType<T>
 
 // The second typename is an unused stub so it's possible to
@@ -671,6 +674,34 @@ using isAsync = disjunction<std::is_same<async, Policies>...>;
 
 template<typename... Policies>
 using isNonnullReturn = disjunction<std::is_same<nonnull<ret_val>, Policies>...>;
+
+// Build a tuple type that contains all the types where the predicate is true.
+// e.g. FilterTypes<std::is_integral, int, char, float> would return std::tuple<int, char>.
+template <template <class> class Predicate, class... T>
+using FilterTypes = decltype(std::tuple_cat(
+        std::declval<
+            typename std::conditional<
+                Predicate<T>::value,
+                std::tuple<T>,
+                std::tuple<>
+            >::type
+        >()...
+    ));
+
+#if __cplusplus >= 201402L
+// Build a tuple that contains all the args where the predicate is true.
+template<template <class> class Predicate, typename... Args>
+auto Filter(Args&&... args) {
+    return std::tuple_cat(
+        std::get<Predicate<typename std::decay_t<Args>>::value ? 0 : 1>(
+            std::make_tuple(
+                [](auto&& arg) { return std::forward_as_tuple(std::forward<decltype(arg)>(arg)); },
+                [](auto&&) { return std::tuple<>(); }
+            )
+        )(std::forward<Args>(args))...
+    );
+}
+#endif
 
 } // namespace internal
 
