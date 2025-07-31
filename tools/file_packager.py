@@ -57,8 +57,6 @@ Usage:
 
   --no-node Whether to support Node.js. By default we do, which emits some extra code.
 
-  --preload-size-limit Max size of preloaded .data file, once limit is reach additional files will be generated
-
   --quiet Suppress reminder about using `FORCE_FILESYSTEM`
 
 Notes:
@@ -96,7 +94,7 @@ AUDIO_SUFFIXES = ('.ogg', '.wav', '.mp3')
 AUDIO_MIMETYPES = {'ogg': 'audio/ogg', 'wav': 'audio/wav', 'mp3': 'audio/mpeg'}
 
 DDS_HEADER_SIZE = 128
-
+PRELOAD_DATA_FILE_LIMIT = 2**31 - 1
 # Set to 1 to randomize file order and add some padding,
 # to work around silly av false positives
 AV_WORKAROUND = 0
@@ -129,7 +127,6 @@ class Options:
     self.use_preload_plugins = False
     self.support_node = True
     self.wasm64 = False
-    self.preload_size_limit = 1024 * 1024 * 1024
 
 
 class DataFile:
@@ -460,8 +457,6 @@ def main():  # noqa: C901, PLR0912, PLR0915
         return 1
     elif leading == 'exclude':
       excluded_patterns.append(arg)
-    elif leading == 'preload-size-limit':
-      options.preload_size_limit = int(arg.split('=', 1)[1] if '=' in arg else arg)
     else:
       err('Unknown parameter:', arg)
       return 1
@@ -577,7 +572,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
   for file_ in data_files:
     if file_.mode == 'preload':
       fsize = os.path.getsize(file_.srcpath)
-      if current_size + fsize <= options.preload_size_limit:
+      if current_size + fsize <= PRELOAD_DATA_FILE_LIMIT:
         file_chunks[-1].append(file_)
         current_size += fsize
       else:
