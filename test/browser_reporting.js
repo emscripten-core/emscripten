@@ -52,6 +52,10 @@ function reportStdoutToServer(message) {
   }
 }
 
+async function skipTest(message) {
+  await reportResultToServer(`skipped:${message}`);
+}
+
 function reportTopLevelError(e) {
   // MINIMAL_RUNTIME doesn't handle exit or call the below onExit handler
   // so we detect the exit by parsing the uncaught exception message.

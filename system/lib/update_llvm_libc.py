@@ -24,19 +24,26 @@ libc_copy_dirs = [
     'shared',
     'config',
     'src/__support',
+    'src/assert',
+    'src/complex',
+    'src/errno',
+    'src/inttypes',
+    'src/math',
+    'src/setjmp',
+    'src/stdio/printf_core',
+    'src/stdlib',
     'src/string',
     'src/strings',
-    'src/errno',
-    'src/math',
-    'src/stdlib',
-    'src/inttypes',
-    'src/stdio/printf_core',
     'src/wchar',
 ]
 
 libc_exclusion_patterns = [
-    'src/math/generic/*f16*', # float16 is unsupported in Emscripten.
-    'src/strings/str*casecmp_l*', # locale_t is unsupported in Overlay Mode.
+     # float16 is unsupported in Emscripten.
+    'src/complex/**/*f16*',
+    'src/math/generic/*f16*',
+
+    'src/setjmp/**/*',  # setjmp in Emscripten is implemented by the clang backend.
+    'src/strings/str*casecmp_l*',  # locale_t is unsupported in Overlay Mode.
 ]
 
 def clean_dir(dirname):

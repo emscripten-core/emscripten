@@ -135,8 +135,7 @@ var N = [], O = a => {
         if (G[c + 2]) {
             var m = G[c + 2] >> 2;
             c = M[c + 1];
-            let w = [];
-            for (;c--; ) w.push(G[m++]);
+            for (var w = []; c--; ) w.push(G[m++]);
             m = w;
         } else m = void 0;
         d = {
@@ -155,8 +154,7 @@ var N = [], O = a => {
     return T;
 }, da = (a, b, c, d) => {
     b >>= 2;
-    let e = [], h = G[b + 1], f = G[b + 2] >> 2, m = 0;
-    for (;h--; ) e.push({
+    for (var e = [], h = G[b + 1], f = G[b + 2] >> 2, m = 0; h--; ) e.push({
         name: m++,
         defaultValue: I[f++],
         minValue: I[f++],
@@ -175,10 +173,10 @@ var N = [], O = a => {
     });
 }, ea = () => !1, fa = 1, ha = a => {
     a = a.data;
-    let b = a._wsc;
+    var b = a._wsc;
     b && C.get(b)(...a.A);
 }, ia = a => E(a), ja = (a, b, c, d, e) => {
-    let h = S[a], f = h.audioWorklet, m = () => {
+    var h = S[a], f = h.audioWorklet, m = () => {
         C.get(d)(a, 0, e);
     };
     if (!f) return m();

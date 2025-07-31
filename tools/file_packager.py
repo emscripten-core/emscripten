@@ -83,7 +83,7 @@ __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
-from tools import shared, utils, js_manipulation
+from tools import shared, utils, js_manipulation, diagnostics
 from tools.response_file import substitute_response_files
 
 
@@ -107,6 +107,8 @@ walked = []
 class Options:
   def __init__(self):
     self.export_name = 'Module'
+    self.has_preloaded = False
+    self.has_embedded = False
     self.jsoutput = None
     self.obj_output = None
     self.depfile = None
@@ -396,7 +398,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
       options.indexeddb_name = arg.split('=', 1)[1] if '=' in arg else None
       leading = ''
     elif arg == '--no-heap-copy':
-      err('ignoring legacy flag --no-heap-copy (that is the only mode supported now)')
+      diagnostics.warn('ignoring legacy flag --no-heap-copy (that is the only mode supported now)')
       leading = ''
     elif arg == '--separate-metadata':
       options.separate_metadata = True
@@ -453,29 +455,34 @@ def main():  # noqa: C901, PLR0912, PLR0915
         data_files.append(DataFile(srcpath=srcpath, dstpath=dstpath, mode=mode,
                                    explicit_dst_path=uses_at_notation))
       else:
-        err('error: ' + arg + ' does not exist')
+        diagnostics.error(f'${arg} does not exist')
         return 1
     elif leading == 'exclude':
       excluded_patterns.append(arg)
     else:
-      err('Unknown parameter:', arg)
+      diagnostics.error('Unknown parameter:', arg)
       return 1
 
-  has_preloaded = any(f.mode == 'preload' for f in data_files)
-  has_embedded = any(f.mode == 'embed' for f in data_files)
+  options.has_preloaded = any(f.mode == 'preload' for f in data_files)
+  options.has_embedded = any(f.mode == 'embed' for f in data_files)
+
+  if options.has_preloaded and options.has_embedded:
+    diagnostics.warn('support for using --preload and --embed in the same command is scheduled '
+        'for deprecation.  If you need this feature please comment at '
+        'https://github.com/emscripten-core/emscripten/issues/24803')
 
   if options.separate_metadata:
-    if not has_preloaded or not options.jsoutput:
+    if not options.has_preloaded or not options.jsoutput:
       err('cannot separate-metadata without both --preloaded files '
           'and a specified --js-output')
       return 1
 
   if not options.from_emcc and not options.quiet:
-    err('Remember to build the main file with `-sFORCE_FILESYSTEM` '
+    diagnostics.warn('Remember to build the main file with `-sFORCE_FILESYSTEM` '
         'so that it includes support for loading this file package')
 
   if options.jsoutput and os.path.abspath(options.jsoutput) == os.path.abspath(data_target):
-    err('error: TARGET should not be the same value of --js-output')
+    diagnostics.error('TARGET should not be the same value of --js-output')
     return 1
 
   walked.append(__file__)
@@ -489,7 +496,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
   data_files = [file_ for file_ in new_data_files
                 if not os.path.isdir(file_.srcpath)]
   if len(data_files) == 0:
-    err('Nothing to do!')
+    diagnostics.error('Nothing to do!')
     sys.exit(1)
 
   # Absolutize paths, and check that they make sense
@@ -517,7 +524,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
         sys.exit(1)
       file_.dstpath = abspath[len(curr_abspath) + 1:]
       if os.path.isabs(path):
-        err('Warning: Embedding an absolute file/directory name "%s" to the '
+        diagnostics.warn('Embedding an absolute file/directory name "%s" to the '
             'virtual filesystem. The file will be made available in the '
             'relative path "%s". You can use the `--preload-file srcpath@dstpath` '
             'syntax to explicitly specify the target location the absolute source '
@@ -560,11 +567,11 @@ def main():  # noqa: C901, PLR0912, PLR0915
 
 
   if options.obj_output:
-    if not has_embedded:
-      err('--obj-output is only applicable when embedding files')
+    if not options.has_embedded:
+      diagnostics.error('--obj-output is only applicable when embedding files')
       return 1
     generate_object_file(data_files)
-    if not has_preloaded:
+    if not options.has_preloaded:
       return 0
 
   file_chunks = [[]]
@@ -668,9 +675,8 @@ def generate_js(data_target, data_files, metadata):
           code += ('''Module['FS_createPath'](%s, %s, true, true);\n'''
                    % (json.dumps('/' + '/'.join(parts[:i])), json.dumps(parts[i])))
           partial_dirs.append(partial)
-  has_preloaded = any(f.mode == 'preload' for f in data_files)
-  has_embedded = any(f.mode == 'embed' for f in data_files)
-  if has_preloaded:
+
+  if options.has_preloaded:
     # Bundle all datafiles into one archive. Avoids doing lots of simultaneous
     # XHRs which has overhead.
     start = 0
@@ -686,7 +692,7 @@ def generate_js(data_target, data_files, metadata):
           data.write(curr)
 
     if start > 256 * 1024 * 1024:
-      err('warning: file packager is creating an asset bundle of %d MB. '
+      diagnostics.warn('file packager is creating an asset bundle of %d MB. '
           'this is very large, and browsers might have trouble loading it. '
           'see https://hacks.mozilla.org/2015/02/synchronous-execution-and-filesystem-access-in-emscripten/'
           % (start / (1024 * 1024)))
@@ -734,8 +740,8 @@ def generate_js(data_target, data_files, metadata):
         new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio'] || 0).open('GET', files[i]['filename']);
       }\n''' % (create_preloaded if options.use_preload_plugins else create_data)
 
-  if has_embedded and not options.obj_output:
-    err('--obj-output is recommended when using --embed.  This outputs an object file for linking directly into your application is more efficient than JS encoding')
+  if options.has_embedded and not options.obj_output:
+    diagnostics.warn('--obj-output is recommended when using --embed.  This outputs an object file for linking directly into your application is more efficient than JS encoding')
 
   for counter, file_ in enumerate(data_files):
     filename = file_.dstpath
@@ -763,7 +769,7 @@ def generate_js(data_target, data_files, metadata):
     else:
       assert 0
 
-  if has_preloaded:
+  if options.has_preloaded:
     if not options.lz4:
       # Get the big archive and split it up
       use_data = '''// Reuse the bytearray from the XHR as the source for file reads.

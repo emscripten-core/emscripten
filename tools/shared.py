@@ -344,15 +344,6 @@ def check_node_version():
   return version
 
 
-def node_bigint_flags(nodejs):
-  node_version = get_node_version(nodejs)
-  # wasm bigint was enabled by default in node v16.
-  if node_version and node_version < (16, 0, 0):
-    return ['--experimental-wasm-bigint']
-  else:
-    return []
-
-
 def node_reference_types_flags(nodejs):
   node_version = get_node_version(nodejs)
   # reference types were enabled by default in node v18.

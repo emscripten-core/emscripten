@@ -1001,15 +1001,19 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
   name = 'libllvmlibc'
   never_force = True
   includes = ['system/lib/llvm-libc']
-  cflags = ['-Os', '-DLIBC_NAMESPACE=__llvm_libc', '-DLIBC_COPT_PUBLIC_PACKAGING']
+  cflags = ['-Os', '-DLIBC_NAMESPACE=__llvm_libc', '-DLLVM_LIBC', '-DLIBC_COPT_PUBLIC_PACKAGING']
 
   def get_files(self):
-    files = glob_in_path('system/lib/llvm-libc/src/string', '**/*.cpp')
+    files = glob_in_path('system/lib/llvm-libc/src/assert', '*.cpp')
+    files += glob_in_path('system/lib/llvm-libc/src/complex', '**/*.cpp')
+    files += glob_in_path('system/lib/llvm-libc/src/string', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/intypes', '*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/strings', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/errno', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/math', '*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/wchar', '*.cpp')
+    files += glob_in_path('system/lib/llvm-libc/src/setjmp', '*.cpp')
+    files += glob_in_path('system/lib/llvm-libc/src/setjmp', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/stdlib', '*.cpp', excludes=['at_quick_exit.cpp',
                                                                                 'quick_exit.cpp',
                                                                                 'atexit.cpp',

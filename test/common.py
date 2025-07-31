@@ -275,6 +275,15 @@ def requires_node_canary(func):
   return decorated
 
 
+def node_bigint_flags(node_version):
+  # The --experimental-wasm-bigint flag was added in v12, and then removed (enabled by default)
+  # in v16.
+  if node_version and node_version < (16, 0, 0) and node_version >= (12, 0, 0):
+    return ['--experimental-wasm-bigint']
+  else:
+    return []
+
+
 # Used to mark dependencies in various tests to npm developer dependency
 # packages, which might not be installed on Emscripten end users' systems.
 def requires_dev_dependency(package):
@@ -553,25 +562,21 @@ def also_with_minimal_runtime(f):
   return metafunc
 
 
-def also_with_wasm_bigint(f):
+def also_without_bigint(f):
   assert callable(f)
 
   @wraps(f)
-  def metafunc(self, with_bigint, *args, **kwargs):
+  def metafunc(self, no_bigint, *args, **kwargs):
     if DEBUG:
-      print('parameterize:bigint=%s' % with_bigint)
-    if with_bigint:
-      if self.is_wasm2js():
-        self.skipTest('wasm2js does not support WASM_BIGINT')
+      print('parameterize:no_bigint=%s' % no_bigint)
+    if no_bigint:
       if self.get_setting('WASM_BIGINT') is not None:
         self.skipTest('redundant in bigint test config')
-      self.set_setting('WASM_BIGINT')
-      nodejs = self.require_node()
-      self.node_args += shared.node_bigint_flags(nodejs)
+      self.set_setting('WASM_BIGINT', 0)
     f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
-                          'bigint': (True,)})
+                          'no_bigint': (True,)})
   return metafunc
 
 
@@ -641,16 +646,10 @@ def also_with_standalone_wasm(impure=False):
         self.set_setting('STANDALONE_WASM')
         if not impure:
           self.set_setting('PURE_WASI')
-        # we will not legalize the JS ffi interface, so we must use BigInt
-        # support in order for JS to have a chance to run this without trapping
-        # when it sees an i64 on the ffi.
-        self.set_setting('WASM_BIGINT')
         self.cflags.append('-Wno-unused-command-line-argument')
         # if we are impure, disallow all wasm engines
         if impure:
           self.wasm_engines = []
-        nodejs = self.require_node()
-        self.node_args += shared.node_bigint_flags(nodejs)
       func(self, *args, **kwargs)
 
     parameterize(metafunc, {'': (False,),
@@ -1224,6 +1223,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           # Opt in to node v15 default behaviour:
           # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
           self.node_args.append('--unhandled-rejections=throw')
+      self.node_args += node_bigint_flags(node_version)
 
       # If the version we are running tests in is lower than the version that
       # emcc targets then we need to tell emcc to target that older version.
@@ -1236,6 +1236,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       if node_version < emcc_min_node_version:
         self.cflags += building.get_emcc_node_flags(node_version)
         self.cflags.append('-Wno-transpile')
+
+      # This allows much of the test suite to be run on older versions of node that don't
+      # support wasm bigint integration
       if node_version[0] < feature_matrix.min_browser_versions[feature_matrix.Feature.JS_BIGINT_INTEGRATION]['node'] / 10000:
         self.cflags.append('-sWASM_BIGINT=0')
 
@@ -2413,11 +2416,11 @@ class BrowserCore(RunnerCore):
           # the browser harness reported an error already, and sent a None to tell
           # us to also fail the test
           self.fail('browser harness error')
+        output = unquote(output)
         if output.startswith('/report_result?skipped:'):
           self.skipTest(unquote(output[len('/report_result?skipped:'):]).strip())
         else:
           # verify the result, and try again if we should do so
-          output = unquote(output)
           try:
             self.assertContained(expected, output)
           except self.failureException as e:
