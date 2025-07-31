@@ -1135,6 +1135,9 @@ simulateKeyUp(100, undefined, 'Numpad4');
     self.btest_exit('glut_glutget.c', cflags=['-lglut', '-lGL'])
     self.btest_exit('glut_glutget.c', cflags=['-lglut', '-lGL', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED'])
 
+  def test_glut_resize(self):
+    self.btest_exit('test_glut_resize.c')
+
   def test_sdl_joystick_1(self):
     # Generates events corresponding to the Working Draft of the HTML5 Gamepad API.
     # http://www.w3.org/TR/2012/WD-gamepad-20120529/#gamepad-interface
@@ -1343,13 +1346,12 @@ simulateKeyUp(100, undefined, 'Numpad4');
     '': ([],),
     'extra': (['-DEXTRA_WORK'],),
     'autopersist': (['-DIDBFS_AUTO_PERSIST'],),
-    'force_exit': (['-sEXIT_RUNTIME', '-DFORCE_EXIT'],),
   })
   def test_fs_idbfs_sync(self, args):
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
     secret = str(time.time())
-    self.btest('fs/test_idbfs_sync.c', '1', cflags=['-lidbfs.js', f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_test,_report_result', '-lidbfs.js'] + args + ['-DFIRST'])
-    self.btest('fs/test_idbfs_sync.c', '1', cflags=['-lidbfs.js', f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_test,_report_result', '-lidbfs.js'] + args)
+    self.btest_exit('fs/test_idbfs_sync.c', cflags=['-lidbfs.js', f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_test,_finish', '-lidbfs.js'] + args + ['-DFIRST'])
+    print('done first half')
+    self.btest_exit('fs/test_idbfs_sync.c', cflags=['-lidbfs.js', f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_test,_finish', '-lidbfs.js'] + args)
 
   def test_fs_idbfs_fsync(self):
     # sync from persisted state into memory before main()

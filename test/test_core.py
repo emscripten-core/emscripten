@@ -602,9 +602,7 @@ class TestCoreBase(RunnerCore):
   @no_wasm2js('wasm_bigint')
   @requires_node
   def test_i64_invoke_bigint(self):
-    self.set_setting('WASM_BIGINT')
     self.cflags += ['-fexceptions']
-    self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_core_test('test_i64_invoke_bigint.cpp')
 
   @only_wasm2js('tests va_arg()')
@@ -2073,7 +2071,6 @@ int main(int argc, char **argv) {
   def test_em_js_i64(self):
     err = self.expect_fail([EMCC, '-Werror', '-sWASM_BIGINT=0', test_file('core/test_em_js_i64.c')])
     self.assertContained('emcc: error: using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `foo`', err)
-    self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_core_test('test_em_js_i64.c')
 
   def test_em_js_address_taken(self):
@@ -7646,19 +7643,15 @@ void* operator new(size_t size) {
     'safe_heap': (True,),
   })
   def test_embind_i64_val(self, safe_heap):
-    self.set_setting('WASM_BIGINT')
     if safe_heap and '-fsanitize=address' in self.cflags:
       self.skipTest('asan does not work with SAFE_HEAP')
     self.set_setting('SAFE_HEAP', safe_heap)
     self.cflags += ['-lembind']
-    self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_run_in_out_file_test('embind/test_i64_val.cpp', assert_identical=True)
 
   @no_wasm2js('wasm_bigint')
   def test_embind_i64_binding(self):
-    self.set_setting('WASM_BIGINT')
     self.cflags += ['-lembind', '--js-library', test_file('embind/test_i64_binding.js')]
-    self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_run_in_out_file_test('embind/test_i64_binding.cpp', assert_identical=True)
 
   def test_embind_no_rtti(self):
@@ -9936,8 +9929,7 @@ wasm64_4gb = make_run('wasm64_4gb', cflags=['-Wno-experimental', '--profiling-fu
                       require_wasm64=True)
 # MEMORY64=2, or "lowered"
 wasm64l = make_run('wasm64l', cflags=['-O1', '-Wno-experimental', '--profiling-funcs'],
-                   settings={'MEMORY64': 2},
-                   init=lambda self: shared.node_bigint_flags(self.get_nodejs()))
+                   settings={'MEMORY64': 2})
 
 lto0 = make_run('lto0', cflags=['-flto', '-O0'])
 lto1 = make_run('lto1', cflags=['-flto', '-O1'])
@@ -9972,9 +9964,6 @@ wasmfs = make_run('wasmfs', cflags=['-O2', '-DWASMFS'], settings={'WASMFS': 1})
 core0s = make_run('core0s', cflags=['-g'], settings={'SAFE_HEAP': 1})
 core2s = make_run('core2s', cflags=['-O2'], settings={'SAFE_HEAP': 1})
 core2ss = make_run('core2ss', cflags=['-O2'], settings={'STACK_OVERFLOW_CHECK': 2})
-
-bigint = make_run('bigint', cflags=['--profiling-funcs'], settings={'WASM_BIGINT': 1},
-                  init=lambda self: shared.node_bigint_flags(self.get_nodejs()))
 
 esm_integration = make_run('esm_integration', init=lambda self: self.setup_esm_integration())
 instance = make_run('instance', cflags=['-Wno-experimental'], settings={'MODULARIZE': 'instance'})

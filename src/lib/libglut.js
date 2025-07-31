@@ -298,6 +298,13 @@ var LibraryGLUT = {
         {{{ makeDynCall('vii', 'GLUT.reshapeFunc') }}}(width, height);
       }
       _glutPostRedisplay();
+    },
+
+    // Resize callback stage 1: update canvas by setCanvasSize, which notifies resizeListeners including GLUT.reshapeFunc
+    onResize: () => {
+      // Update canvas size to clientWidth and clientHeight, which include CSS scaling
+      var canvas = Browser.getCanvas();
+      Browser.setCanvasSize(canvas.clientWidth, canvas.clientHeight, /*noUpdates*/false);
     }
   },
 
@@ -336,6 +343,10 @@ var LibraryGLUT = {
     // Firefox
     window.addEventListener('DOMMouseScroll', GLUT.onMouseWheel, true);
 
+    // Resize callback stage 1: update canvas which notifies resizeListeners
+    window.addEventListener('resize', GLUT.onResize, true);
+
+    // Resize callback stage 2: updateResizeListeners notifies reshapeFunc
     Browser.resizeListeners.push((width, height) => {
       if (GLUT.reshapeFunc) {
         {{{ makeDynCall('vii', 'GLUT.reshapeFunc') }}}(width, height);
@@ -358,6 +369,8 @@ var LibraryGLUT = {
       window.removeEventListener('mousewheel', GLUT.onMouseWheel, true);
       // Firefox
       window.removeEventListener('DOMMouseScroll', GLUT.onMouseWheel, true);
+
+      window.removeEventListener('resize', GLUT.onResize, true);
 
       var canvas = Browser.getCanvas();
       canvas.width = canvas.height = 1;
@@ -633,10 +646,10 @@ var LibraryGLUT = {
   },
 
   glutMainLoop__proxy: 'sync',
-  glutMainLoop__deps: ['$GLUT', 'glutReshapeWindow', 'glutPostRedisplay'],
+  glutMainLoop__deps: ['$GLUT', 'glutPostRedisplay'],
   glutMainLoop: () => {
-    var canvas = Browser.getCanvas();
-    _glutReshapeWindow(canvas.width, canvas.height);
+    // Do an initial resize, since there's no window resize event on startup
+    GLUT.onResize();
     _glutPostRedisplay();
     throw 'unwind';
   },
