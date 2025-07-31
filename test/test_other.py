@@ -12407,7 +12407,15 @@ int main(void) {
     output = self.expect_fail([EMCC, '-fansi-escape-codes', flag, 'src.c'])
     self.assertIn("\x1b[1msrc.c:1:13: \x1b[0m\x1b[0;1;31merror: \x1b[0m\x1b[1mexpected '}'\x1b[0m", output)
     # Verify that emcc errors show up as red and bold
-    self.assertIn("emcc: \x1b[31m\x1b[1m", output)
+    self.assertIn('emcc: \x1b[31m\x1b[1m', output)
+
+    if WINDOWS:
+      # Also test without -fansi-escape-codes on windows.
+      # In those mode the code will use kernel calls such as SetConsoleTextAttribute to
+      # change the output color.  We cannot detect this in the output, but we can at least
+      # get coverage of the code path in the diagnositics.py.
+      output = self.expect_fail([EMCC, flag, 'src.c'])
+      self.assertNotIn('\x1b', output)
 
   def test_sanitizer_color(self):
     create_file('src.c', '''
