@@ -95,6 +95,7 @@ AUDIO_MIMETYPES = {'ogg': 'audio/ogg', 'wav': 'audio/wav', 'mp3': 'audio/mpeg'}
 
 DDS_HEADER_SIZE = 128
 PRELOAD_DATA_FILE_LIMIT = 2**31 - 1
+
 # Set to 1 to randomize file order and add some padding,
 # to work around silly av false positives
 AV_WORKAROUND = 0
