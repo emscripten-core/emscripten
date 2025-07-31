@@ -116,7 +116,8 @@ def reset_color_windows():
 
 def output_color(color):
   if WINDOWS and not force_ansi:
-    return output_color_windows(color)
+    output_color_windows(color)
+    return ''
   return '\033[3%sm' % color
 
 
@@ -129,7 +130,8 @@ def bold():
 
 def reset_color():
   if WINDOWS and not force_ansi:
-    return reset_color_windows()
+    reset_color_windows()
+    return ''
   return '\033[0m'
 
 
