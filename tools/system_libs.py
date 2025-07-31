@@ -1004,7 +1004,9 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
   cflags = ['-Os', '-DLIBC_NAMESPACE=__llvm_libc', '-DLLVM_LIBC', '-DLIBC_COPT_PUBLIC_PACKAGING']
 
   def get_files(self):
-    files = glob_in_path('system/lib/llvm-libc/src/string', '**/*.cpp')
+    files = glob_in_path('system/lib/llvm-libc/src/assert', '*.cpp')
+    files += glob_in_path('system/lib/llvm-libc/src/complex', '**/*.cpp')
+    files += glob_in_path('system/lib/llvm-libc/src/string', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/intypes', '*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/strings', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/errno', '**/*.cpp')
