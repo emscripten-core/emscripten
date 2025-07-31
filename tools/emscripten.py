@@ -323,8 +323,8 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
         c_sig = []
       else:
         c_sig = c_sig.split(',')
-      signature = metadata.em_js_func_types[em_js_func]
-      if len(signature.params) != len(c_sig):
+      signature = metadata.em_js_func_types.get(em_js_func)
+      if signature and len(signature.params) != len(c_sig):
         diagnostics.warning('em-js-i64', 'using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `%s` (%s, %s)', em_js_func, c_sig, signature.params)
 
   asm_consts = create_asm_consts(metadata)
