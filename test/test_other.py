@@ -14,6 +14,7 @@ import itertools
 import json
 from math import inf
 import os
+import random
 import re
 import select
 import shlex
@@ -10433,7 +10434,7 @@ end
     'runtime_debug': (['-sRUNTIME_DEBUG', '-sEXIT_RUNTIME', '-pthread'],),
   })
   def test_noderawfs_basics(self, args):
-    self.do_runf('fs/test_fopen_write.cpp', 'read 11 bytes. Result: Hello data!', cflags=['-sNODERAWFS'] + args)
+    self.do_runf('fs/test_fopen_write.c', 'read 11 bytes. Result: Hello data!', cflags=['-sNODERAWFS'] + args)
 
     # NODERAWFS should directly write on OS file system
     self.assertEqual("Hello data!", read_file('hello_file.txt'))
@@ -16064,6 +16065,20 @@ addToLibrary({
   def test_fs_writev_partial_write(self):
     self.set_setting('FORCE_FILESYSTEM')
     self.do_run_in_out_file_test('fs/test_writev_partial_write.c')
+
+  def test_fs_lzfs(self):
+    # generate data
+    ensure_dir('subdir')
+    create_file('file1.txt', '0123456789' * (1024 * 128))
+    create_file('subdir/file2.txt', '1234567890' * (1024 * 128))
+    random_data = bytearray(random.randint(0, 255) for x in range(1024 * 128 * 10 + 1))
+    random_data[17] = ord('X')
+    create_file('file3.txt', random_data, binary=True)
+
+    # compress in emcc, -sLZ4 tells it to tell the file packager
+    self.do_runf('fs/test_lz4fs.c', cflags=['-sLZ4', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt'])
+    self.assertEqual(os.path.getsize('file1.txt') + os.path.getsize('subdir/file2.txt') + os.path.getsize('file3.txt'), 3 * 1024 * 128 * 10 + 1)
+    self.assertLess(os.path.getsize('test_lz4fs.data'), (3 * 1024 * 128 * 10) / 2)  # over half is gone
 
   @requires_v8
   @parameterized({

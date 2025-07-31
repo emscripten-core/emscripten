@@ -1396,12 +1396,11 @@ simulateKeyUp(100, undefined, 'Numpad4');
     self.btest_exit('fs/test_workerfs_read.c', cflags=['-lworkerfs.js', '--pre-js', 'pre.js', f'-DSECRET="{secret}"', f'-DSECRET2="{secret2}"', '--proxy-to-worker', '-lworkerfs.js'])
 
   def test_fs_workerfs_package(self):
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
     create_file('file1.txt', 'first')
     ensure_dir('sub')
     create_file('sub/file2.txt', 'second')
     self.run_process([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'sub/file2.txt', '--separate-metadata', '--js-output=files.js'])
-    self.btest(Path('fs/test_workerfs_package.cpp'), '1', cflags=['-lworkerfs.js', '--proxy-to-worker', '-lworkerfs.js'])
+    self.btest('fs/test_workerfs_package.c', '1', cflags=['-lworkerfs.js', '--proxy-to-worker', '-lworkerfs.js'])
 
   def test_fs_lz4fs_package(self):
     # generate data
@@ -1414,52 +1413,52 @@ simulateKeyUp(100, undefined, 'Numpad4');
 
     # compress in emcc, -sLZ4 tells it to tell the file packager
     print('emcc-normal')
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
-    self.btest_exit(Path('fs/test_lz4fs.cpp'), 2, cflags=['-sLZ4', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt'])
+    self.btest_exit('fs/test_lz4fs.c', 0, cflags=['-sLZ4', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt'])
     assert os.path.getsize('file1.txt') + os.path.getsize('subdir/file2.txt') + os.path.getsize('file3.txt') == 3 * 1024 * 128 * 10 + 1
     assert os.path.getsize('test.data') < (3 * 1024 * 128 * 10) / 2  # over half is gone
     print('    emcc-opts')
-    self.btest_exit(Path('fs/test_lz4fs.cpp'), 2, cflags=['-sLZ4', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt', '-O2'])
+    self.btest_exit('fs/test_lz4fs.c', 0, cflags=['-sLZ4', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt', '-O2'])
 
-    # compress in the file packager, on the server. the client receives compressed data and can just use it. this is typical usage
+    # compress in the file packager, on the server. the client receives compressed data and can just
+    # use it. this is typical usage
     print('normal')
     out = subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--lz4'])
     create_file('files.js', out, binary=True)
-    self.btest_exit('fs/test_lz4fs.cpp', 2, cflags=['--pre-js', 'files.js', '-sLZ4', '-sFORCE_FILESYSTEM'])
+    self.btest_exit('fs/test_lz4fs.c', 0, cflags=['--pre-js', 'files.js', '-sLZ4', '-sFORCE_FILESYSTEM'])
     print('    opts')
-    self.btest_exit('fs/test_lz4fs.cpp', 2, cflags=['--pre-js', 'files.js', '-sLZ4', '-sFORCE_FILESYSTEM', '-O2'])
+    self.btest_exit('fs/test_lz4fs.c', 0, cflags=['--pre-js', 'files.js', '-sLZ4', '-sFORCE_FILESYSTEM', '-O2'])
     print('    modularize')
-    self.compile_btest('fs/test_lz4fs.cpp', ['--pre-js', 'files.js', '-sLZ4', '-sFORCE_FILESYSTEM', '-sMODULARIZE', '-sEXIT_RUNTIME'])
+    self.compile_btest('fs/test_lz4fs.c', ['--pre-js', 'files.js', '-sLZ4', '-sFORCE_FILESYSTEM', '-sMODULARIZE', '-sEXIT_RUNTIME'])
     create_file('a.html', '''
       <script src="a.out.js"></script>
       <script>
         Module()
       </script>
     ''')
-    self.run_browser('a.html', '/report_result?exit:2')
+    self.run_browser('a.html', '/report_result?exit:0')
 
-    # load the data into LZ4FS manually at runtime. This means we compress on the client. This is generally not recommended
+    # load the data into LZ4FS manually at runtime. This means we compress on the client. This is
+    # generally not recommended
     print('manual')
     subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--separate-metadata', '--js-output=files.js'])
-    self.btest_exit('fs/test_lz4fs.cpp', 1, cflags=['-DLOAD_MANUALLY', '-sLZ4', '-sFORCE_FILESYSTEM'])
+    self.btest_exit('fs/test_lz4fs.c', 1, cflags=['-DLOAD_MANUALLY', '-sLZ4', '-sFORCE_FILESYSTEM'])
     print('    opts')
-    self.btest_exit('fs/test_lz4fs.cpp', 1, cflags=['-DLOAD_MANUALLY', '-sLZ4', '-sFORCE_FILESYSTEM', '-O2'])
+    self.btest_exit('fs/test_lz4fs.c', 1, cflags=['-DLOAD_MANUALLY', '-sLZ4', '-sFORCE_FILESYSTEM', '-O2'])
     print('    opts+closure')
-    self.btest_exit('fs/test_lz4fs.cpp', 1, cflags=['-DLOAD_MANUALLY', '-sLZ4',
-                                                       '-sFORCE_FILESYSTEM', '-O2',
-                                                       '--closure=1', '-g1', '-Wno-closure'])
+    self.btest_exit('fs/test_lz4fs.c', 1, cflags=['-DLOAD_MANUALLY', '-sLZ4',
+                                                  '-sFORCE_FILESYSTEM', '-O2',
+                                                  '--closure=1', '-g1', '-Wno-closure'])
 
-    '''# non-lz4 for comparison
-    try:
-      os.mkdir('files')
-    except OSError:
-      pass
-    shutil.copy('file1.txt', 'files/'))
-    shutil.copy('file2.txt', 'files/'))
-    shutil.copy('file3.txt', 'files/'))
-    out = subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'files/file1.txt', 'files/file2.txt', 'files/file3.txt'])
-    create_file('files.js', out, binary=True)
-    self.btest_exit('fs/test_lz4fs.cpp', 2, cflags=['--pre-js', 'files.js'])'''
+    # non-lz4 for comparison
+    # try:
+    #   os.mkdir('files')
+    # except OSError:
+    #   pass
+    # shutil.copy('file1.txt', 'files/'))
+    # shutil.copy('file2.txt', 'files/'))
+    # shutil.copy('file3.txt', 'files/'))
+    # out = subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'files/file1.txt', 'files/file2.txt', 'files/file3.txt'])
+    # create_file('files.js', out, binary=True)
 
   def test_separate_metadata_later(self):
     # see issue #6654 - we need to handle separate-metadata both when we run before
