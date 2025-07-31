@@ -12370,8 +12370,9 @@ int main(void) {
     self.set_setting('LOAD_SOURCE_MAP')
     self.do_runf('other/test_offset_converter.c', 'ok', cflags=['-gsource-map', '-DUSE_SOURCE_MAP'] + args)
 
+  @crossplatform
   @no_windows('ptys and select are not available on windows')
-  def test_build_error_color(self):
+  def test_color_diagnostics(self):
     create_file('src.c', 'int main() {')
     returncode, output = self.run_on_pty([EMCC, 'src.c'])
     self.assertNotEqual(returncode, 0)
@@ -12379,17 +12380,34 @@ int main(void) {
     # Verify that emcc errors show up as red and bold
     self.assertIn(b"emcc: \x1b[31m\x1b[1m", output)
 
+  @crossplatform
   @parameterized({
-    'fno_diagnostics_color': ['-fno-diagnostics-color'],
-    'fdiagnostics_color_never': ['-fdiagnostics-color=never'],
+    '': ['-fno-diagnostics-color'],
+    'never': ['-fdiagnostics-color=never'],
   })
   @no_windows('ptys and select are not available on windows')
-  def test_pty_no_color(self, flag):
+  def test_color_diagnostics_disable(self, flag):
     create_file('src.c', 'int main() {')
 
     returncode, output = self.run_on_pty([EMCC, flag, 'src.c'])
     self.assertNotEqual(returncode, 0)
     self.assertNotIn(b'\x1b', output)
+
+  @crossplatform
+  #  There are 3 different ways for force color output in clang
+  @parameterized({
+    '': ['-fcolor-diagnostics'],
+    'alt': ['-fdiagnostics-color'],
+    'always': ['-fdiagnostics-color=always'],
+  })
+  def test_color_diagnostics_force(self, flag):
+    create_file('src.c', 'int main() {')
+    # -fansi-escape-codes is needed here to make this test work on windows, which doesn't
+    # use ansi codes by default
+    output = self.expect_fail([EMCC, '-fansi-escape-codes', flag, 'src.c'])
+    self.assertIn("\x1b[1msrc.c:1:13: \x1b[0m\x1b[0;1;31merror: \x1b[0m\x1b[1mexpected '}'\x1b[0m", output)
+    # Verify that emcc errors show up as red and bold
+    self.assertIn("emcc: \x1b[31m\x1b[1m", output)
 
   def test_sanitizer_color(self):
     create_file('src.c', '''

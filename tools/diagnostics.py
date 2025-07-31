@@ -12,12 +12,12 @@ import os
 import sys
 from typing import Dict
 
-
 WINDOWS = sys.platform.startswith('win')
 
 logger = logging.getLogger('diagnostics')
 color_enabled = sys.stderr.isatty()
 tool_name = os.path.splitext(os.path.basename(sys.argv[0]))[0]
+force_ansi = False
 
 # diagnostic levels
 WARN = 1
@@ -49,6 +49,7 @@ STD_OUTPUT_HANDLE = -11
 
 
 def output_color_windows(color):
+  assert not force_ansi
   # TODO(sbc): This code is duplicated in colored_logger.py.  Refactor.
   # wincon.h
   FOREGROUND_BLACK     = 0x0000 # noqa
@@ -76,6 +77,7 @@ def output_color_windows(color):
 
 
 def get_color_windows():
+  assert not force_ansi
   SHORT = ctypes.c_short
   WORD = ctypes.c_ushort
 
@@ -106,26 +108,27 @@ def get_color_windows():
 
 
 def reset_color_windows():
+  assert not force_ansi
   sys.stderr.flush()
   hdl = ctypes.windll.kernel32.GetStdHandle(STD_OUTPUT_HANDLE)
   ctypes.windll.kernel32.SetConsoleTextAttribute(hdl, default_color)
 
 
 def output_color(color):
-  if WINDOWS:
+  if WINDOWS and not force_ansi:
     return output_color_windows(color)
   return '\033[3%sm' % color
 
 
 def bold():
-  if WINDOWS:
+  if WINDOWS and not force_ansi:
     # AFAICT there is no way to enable bold output on windows
     return ''
   return '\033[1m'
 
 
 def reset_color():
-  if WINDOWS:
+  if WINDOWS and not force_ansi:
     return reset_color_windows()
   return '\033[0m'
 
