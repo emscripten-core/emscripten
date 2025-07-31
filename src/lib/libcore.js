@@ -1735,11 +1735,14 @@ addToLibrary({
     var f = dynCalls[sig];
     return f(ptr, ...args);
   },
-#if DYNCALLS
-  $dynCall__deps: ['$dynCallLegacy'],
-#else
-  $dynCall__deps: ['$getWasmTableEntry'],
+  $dynCall__deps: [
+#if DYNCALLS || !WASM_BIGINT
+    '$dynCallLegacy',
 #endif
+#if !DYNCALLS
+    '$getWasmTableEntry',
+#endif
+  ],
 #endif
 
   // Used in library code to get JS function from wasm function pointer.

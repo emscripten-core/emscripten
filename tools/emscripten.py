@@ -317,26 +317,15 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     update_settings_glue(out_wasm, metadata, base_metadata)
 
   if not settings.WASM_BIGINT and metadata.em_js_funcs:
-    import_map = {}
-
-    with webassembly.Module(in_wasm) as module:
-      types = module.get_types()
-      for imp in module.get_imports():
-        if imp.module not in ('GOT.mem', 'GOT.func'):
-          import_map[imp.field] = imp
-
     for em_js_func, raw in metadata.em_js_funcs.items():
       c_sig = raw.split('<::>')[0].strip('()')
       if not c_sig or c_sig == 'void':
         c_sig = []
       else:
         c_sig = c_sig.split(',')
-      if em_js_func in import_map:
-        imp = import_map[em_js_func]
-        assert imp.kind == webassembly.ExternType.FUNC
-        signature = types[imp.type]
-        if len(signature.params) != len(c_sig):
-          diagnostics.warning('em-js-i64', 'using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `%s` (%s, %s)', em_js_func, c_sig, signature.params)
+      signature = metadata.em_js_func_types.get(em_js_func)
+      if signature and len(signature.params) != len(c_sig):
+        diagnostics.warning('em-js-i64', 'using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `%s` (%s, %s)', em_js_func, c_sig, signature.params)
 
   asm_consts = create_asm_consts(metadata)
   em_js_funcs = create_em_js(metadata)
@@ -918,8 +907,8 @@ def should_export(sym):
   return settings.EXPORT_ALL or (settings.EXPORT_KEEPALIVE and sym in settings.EXPORTED_FUNCTIONS)
 
 
-def create_receiving(function_exports, tag_exports):
-  generate_dyncall_assignment = settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
+def create_receiving(function_exports, tag_exports, library_symbols):
+  generate_dyncall_assignment = 'dynCalls' in library_symbols
   receiving = ['\n// Imports from the Wasm binary.']
 
   if settings.WASM_ESM_INTEGRATION:
@@ -1006,10 +995,10 @@ def create_receiving(function_exports, tag_exports):
   return '\n'.join(receiving) + '\n'
 
 
-def create_module(metadata, function_exports, global_exports, tag_exports,library_symbols):
+def create_module(metadata, function_exports, global_exports, tag_exports, library_symbols):
   module = []
 
-  receiving = create_receiving(function_exports, tag_exports)
+  receiving = create_receiving(function_exports, tag_exports, library_symbols)
   receiving += create_global_exports(global_exports)
   sending = create_sending(metadata, library_symbols)
 

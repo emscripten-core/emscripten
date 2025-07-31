@@ -39,7 +39,7 @@ from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires
 from common import requires_wasm_eh, crossplatform, with_all_eh_sjlj, with_all_sjlj, requires_jspi
 from common import also_with_standalone_wasm, also_with_wasm2js, also_with_noderawfs
 from common import also_with_modularize, also_with_wasmfs, with_all_fs
-from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64, also_with_asan, flaky
+from common import also_with_minimal_runtime, also_without_bigint, also_with_wasm64, also_with_asan, flaky
 from common import EMTEST_BUILD_VERBOSE, PYTHON, WEBIDL_BINDER, EMCMAKE, EMCONFIGURE
 from common import requires_network, parameterize, copytree
 from tools import shared, building, utils, response_file, cache
@@ -3356,6 +3356,8 @@ More info: https://emscripten.org
     'o2_mem_growth': ['-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')],
     'o2_closure': ['-O2', '--closure=1', '--closure-args', '--externs ' + shlex.quote(test_file('embind/underscore-externs.js')), '-sASSERTIONS=1'],
     'strict_js': ['-sSTRICT_JS'],
+    # DYNCALLS tests the legacy native function API (ASYNCIFY implicitly enables DYNCALLS)
+    'dyncalls': ['-sDYNCALLS=1'],
   })
   def test_embind(self, *extra_args):
     if '-sMEMORY64' in extra_args:
@@ -6508,7 +6510,7 @@ int main()
   def test_force_stdlibs(self):
     self.do_runf('hello_world.c')
 
-  @also_with_standalone_wasm()
+  @also_with_standalone_wasm(impure=True)
   def test_time(self):
     self.do_other_test('test_time.c')
 
@@ -7243,16 +7245,19 @@ m();
     self.assertContained('error: customizing EXPORT_NAME requires that the HTML be customized to use that name', err)
 
   def test_modularize_sync_compilation(self):
+    # Verify that, even when WASM_ASYNC_COMPILATION is disabled, the module factory
+    # still returns a promise.   This behaviour was changed in #24727.
     create_file('post.js', r'''
 console.log('before');
 var result = Module();
 // It should be an object.
 console.log('typeof result: ' + typeof result);
-// And it should have the exports that Module has, showing it is Module in fact.
-console.log('typeof _main: ' + typeof result._main);
-// And it should not be a Promise.
 console.log('typeof result.then: ' + typeof result.then);
-console.log('after');
+result.then((inst) => {
+  // And it should have the exports that Module has, showing it is Module in fact.
+  console.log('typeof inst._main: ' + typeof inst._main);
+  console.log('after');
+});
 ''')
     self.run_process([EMCC, test_file('hello_world.c'),
                       '-sMODULARIZE',
@@ -7262,8 +7267,8 @@ console.log('after');
 before
 hello, world!
 typeof result: object
-typeof _main: function
-typeof result.then: undefined
+typeof result.then: function
+typeof inst._main: function
 after
 ''', self.run_js('a.out.js'))
 
@@ -8507,7 +8512,6 @@ addToLibrary({
     ''')
 
     # Run the test and confirm the output is as expected.
-    self.node_args += shared.node_bigint_flags(self.get_nodejs())
     out = self.run_js('testrun.js')
     self.assertContained('''\
 input = 0xaabbccdd11223344
@@ -12372,7 +12376,8 @@ int main(void) {
     returncode, output = self.run_on_pty([EMCC, 'src.c'])
     self.assertNotEqual(returncode, 0)
     self.assertIn(b"\x1b[1msrc.c:1:13: \x1b[0m\x1b[0;1;31merror: \x1b[0m\x1b[1mexpected '}'\x1b[0m", output)
-    self.assertIn(b"\x1b[31merror: ", output)
+    # Verify that emcc errors show up as red and bold
+    self.assertIn(b"emcc: \x1b[31m\x1b[1m", output)
 
   @parameterized({
     'fno_diagnostics_color': ['-fno-diagnostics-color'],
@@ -14895,7 +14900,7 @@ int main() {
     err = self.expect_fail([EMCC, '-fsanitize=cfi', '-flto', test_file('hello_world.c')])
     self.assertContained('emcc: error: emscripten does not currently support -fsanitize=cfi', err)
 
-  @also_with_wasm_bigint
+  @also_without_bigint
   def test_parseTools(self):
     # Suppress js compiler warnings because we deliberately use legacy parseTools functions
     self.cflags += ['-Wno-js-compiler', '--js-library', test_file('other/test_parseTools.js')]
@@ -15314,7 +15319,6 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def run_wasi_test_suite_test(self, name):
     if not os.path.exists(path_from_root('test/third_party/wasi-test-suite')):
       self.fail('wasi-testsuite not found; run `git submodule update --init`')
-    self.node_args += shared.node_bigint_flags(self.get_nodejs())
     wasm = path_from_root('test', 'third_party', 'wasi-test-suite', name + '.wasm')
     with open(path_from_root('test', 'third_party', 'wasi-test-suite', name + '.json')) as f:
       config = json.load(f)
@@ -15609,7 +15613,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_proxy_to_worker(self, args):
     self.do_runf('hello_world.c', cflags=['--proxy-to-worker'] + args)
 
-  @also_with_standalone_wasm()
+  @also_with_standalone_wasm(impure=True)
   def test_console_out(self):
     self.do_other_test('test_console_out.c', regex=True)
 
@@ -15775,6 +15779,12 @@ addToLibrary({
     create_file('a.cpp', '#include <emscripten/bind.h>')
     create_file('b.cpp', '#include <emscripten/bind.h>')
     self.run_process([EMXX, '-std=c++23', '-lembind', 'a.cpp', 'b.cpp'])
+
+  def test_embind_no_exceptions(self):
+    # Test disabling exceptions and redefining try/catch with preprocessor
+    # macros.
+    create_file('a.cpp', '#define try\n#define catch if (0)\n#include <emscripten/bind.h>')
+    self.run_process([EMXX, '-fno-exceptions', '-std=c++23', '-lembind', 'a.cpp'])
 
   def test_no_pthread(self):
     self.do_runf('hello_world.c', cflags=['-pthread', '-no-pthread'])

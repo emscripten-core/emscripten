@@ -117,6 +117,13 @@ def output_color(color):
   return '\033[3%sm' % color
 
 
+def bold():
+  if WINDOWS:
+    # AFAICT there is no way to enable bold output on windows
+    return ''
+  return '\033[1m'
+
+
 def reset_color():
   if WINDOWS:
     return reset_color_windows()
@@ -130,14 +137,14 @@ def diag(level, msg, *args):
   sys.stderr.write(tool_name + ': ')
 
   if color_enabled:
-    output = output_color(level_colors[level])
+    output = output_color(level_colors[level]) + bold()
     if output:
       sys.stderr.write(output)
 
   sys.stderr.write(level_prefixes[level])
 
   if color_enabled:
-    output = reset_color()
+    output = reset_color() + bold()
     if output:
       sys.stderr.write(output)
 
@@ -145,6 +152,11 @@ def diag(level, msg, *args):
     msg = msg % args
   sys.stderr.write(str(msg))
   sys.stderr.write('\n')
+
+  if color_enabled:
+    output = reset_color()
+    if output:
+      sys.stderr.write(output)
 
 
 def error(msg, *args):

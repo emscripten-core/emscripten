@@ -25,7 +25,7 @@ from tools import shared, building, config, utils, webassembly
 import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
 from common import skip_if, no_windows, no_mac, is_slow_test, parameterized, parameterize
-from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_with_wasm_bigint
+from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_without_bigint
 from common import read_file, read_binary, requires_v8, requires_node, requires_dev_dependency, requires_wasm2js, requires_node_canary
 from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime, also_with_modularize
 from common import with_all_fs, also_with_nodefs, also_with_nodefs_both, also_with_noderawfs, also_with_wasmfs
@@ -602,9 +602,7 @@ class TestCoreBase(RunnerCore):
   @no_wasm2js('wasm_bigint')
   @requires_node
   def test_i64_invoke_bigint(self):
-    self.set_setting('WASM_BIGINT')
     self.cflags += ['-fexceptions']
-    self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_core_test('test_i64_invoke_bigint.cpp')
 
   @only_wasm2js('tests va_arg()')
@@ -2073,7 +2071,6 @@ int main(int argc, char **argv) {
   def test_em_js_i64(self):
     err = self.expect_fail([EMCC, '-Werror', '-sWASM_BIGINT=0', test_file('core/test_em_js_i64.c')])
     self.assertContained('emcc: error: using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `foo`', err)
-    self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_core_test('test_em_js_i64.c')
 
   def test_em_js_address_taken(self):
@@ -4442,7 +4439,7 @@ ok
     ''', 'other says -1311768467750121224.\nmy fp says: 43.\nmy second fp says: 43.', force_c=True)
 
   @with_dylink_reversed
-  @also_with_wasm_bigint
+  @also_without_bigint
   def test_dylink_i64_c(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -4494,12 +4491,12 @@ res64 - external 64\n''', header='''\
       EMSCRIPTEN_KEEPALIVE int64_t function_ret_64(int32_t i, int32_t j, int32_t k);
     ''', force_c=True)
 
+  @also_without_bigint
   @parameterized({
     '': (False,),
     'rtld_local': (True,),
   })
   @needs_dylink
-  @also_with_wasm_bigint
   def test_dylink_i64_invoke(self, rtld_local):
     if rtld_local:
       self.set_setting('NO_AUTOLOAD_DYLIBS')
@@ -5664,7 +5661,7 @@ got: 10
       self.cflags += ['-DWASMFS_NODERAWFS']
     self.do_run_in_out_file_test('dirent/test_readdir.c')
 
-  @also_with_wasm_bigint
+  @also_without_bigint
   def test_readdir_empty(self):
     self.do_run_in_out_file_test('dirent/test_readdir_empty.c')
 
@@ -5714,7 +5711,7 @@ got: 10
       self.skipTest('noderawfs fails here under non-linux')
     self.do_run_in_out_file_test('fcntl/test_fcntl_open.c')
 
-  @also_with_wasm_bigint
+  @also_without_bigint
   def test_fcntl_misc(self):
     if self.get_setting('WASMFS'):
       self.cflags += ['-sFORCE_FILESYSTEM']
@@ -5764,7 +5761,7 @@ got: 10
     self.do_runf('core/test_utf8.c', 'OK.')
 
   @with_both_text_decoder
-  @also_with_wasm_bigint
+  @also_without_bigint
   def test_utf8_bench(self):
     self.cflags += ['--embed-file', test_file('utf8_corpus.txt') + '@/utf8_corpus.txt']
     self.do_runf('benchmark/benchmark_utf8.c', 'OK.')
@@ -6176,7 +6173,7 @@ Module.onRuntimeInitialized = () => {
     self.cflags += ['-lnodefs.js']
     self.do_run_in_out_file_test('unistd/symlink_on_nodefs.c')
 
-  @also_with_wasm_bigint
+  @also_without_bigint
   @also_with_nodefs
   def test_unistd_io(self):
     if self.get_setting('WASMFS'):
@@ -7104,7 +7101,7 @@ void* operator new(size_t size) {
   def test_dyncall_pointers(self, args):
     self.do_core_test('test_dyncall_pointers.c', cflags=args)
 
-  @also_with_wasm_bigint
+  @also_without_bigint
   @no_modularize_instance('uses Module object directly')
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
@@ -7537,7 +7534,7 @@ void* operator new(size_t size) {
   def test_embind_negative_constants(self):
     self.do_run_in_out_file_test('embind/test_negative_constants.cpp', cflags=['-lembind'])
 
-  @also_with_wasm_bigint
+  @also_without_bigint
   @no_esm_integration('embind is not compatible with WASM_ESM_INTEGRATION')
   def test_embind_unsigned(self):
     self.do_run_in_out_file_test('embind/test_unsigned.cpp', cflags=['-lembind'])
@@ -7646,19 +7643,15 @@ void* operator new(size_t size) {
     'safe_heap': (True,),
   })
   def test_embind_i64_val(self, safe_heap):
-    self.set_setting('WASM_BIGINT')
     if safe_heap and '-fsanitize=address' in self.cflags:
       self.skipTest('asan does not work with SAFE_HEAP')
     self.set_setting('SAFE_HEAP', safe_heap)
     self.cflags += ['-lembind']
-    self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_run_in_out_file_test('embind/test_i64_val.cpp', assert_identical=True)
 
   @no_wasm2js('wasm_bigint')
   def test_embind_i64_binding(self):
-    self.set_setting('WASM_BIGINT')
     self.cflags += ['-lembind', '--js-library', test_file('embind/test_i64_binding.js')]
-    self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_run_in_out_file_test('embind/test_i64_binding.cpp', assert_identical=True)
 
   def test_embind_no_rtti(self):
@@ -8061,7 +8054,7 @@ void* operator new(size_t size) {
 
   @no_wasm2js('symbol names look different wasm2js backtraces')
   @no_modularize_instance('assumes .js output filename')
-  @also_with_wasm_bigint
+  @also_without_bigint
   def test_emscripten_log(self):
     self.cflags += ['-g', '-DRUN_FROM_JS_SHELL', '-Wno-deprecated-pragma']
     if self.maybe_closure():
@@ -9667,7 +9660,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_syscall_intercept(self):
     self.do_core_test('test_syscall_intercept.c')
 
-  @also_with_wasm_bigint
+  @also_without_bigint
   def test_jslib_i64_params(self):
     # Tests the defineI64Param and receiveI64ParamAsI53 helpers that are
     # used to recieve i64 argument in syscalls.
@@ -9936,8 +9929,7 @@ wasm64_4gb = make_run('wasm64_4gb', cflags=['-Wno-experimental', '--profiling-fu
                       require_wasm64=True)
 # MEMORY64=2, or "lowered"
 wasm64l = make_run('wasm64l', cflags=['-O1', '-Wno-experimental', '--profiling-funcs'],
-                   settings={'MEMORY64': 2},
-                   init=lambda self: shared.node_bigint_flags(self.get_nodejs()))
+                   settings={'MEMORY64': 2})
 
 lto0 = make_run('lto0', cflags=['-flto', '-O0'])
 lto1 = make_run('lto1', cflags=['-flto', '-O1'])
@@ -9972,9 +9964,6 @@ wasmfs = make_run('wasmfs', cflags=['-O2', '-DWASMFS'], settings={'WASMFS': 1})
 core0s = make_run('core0s', cflags=['-g'], settings={'SAFE_HEAP': 1})
 core2s = make_run('core2s', cflags=['-O2'], settings={'SAFE_HEAP': 1})
 core2ss = make_run('core2ss', cflags=['-O2'], settings={'STACK_OVERFLOW_CHECK': 2})
-
-bigint = make_run('bigint', cflags=['--profiling-funcs'], settings={'WASM_BIGINT': 1},
-                  init=lambda self: shared.node_bigint_flags(self.get_nodejs()))
 
 esm_integration = make_run('esm_integration', init=lambda self: self.setup_esm_integration())
 instance = make_run('instance', cflags=['-Wno-experimental'], settings={'MODULARIZE': 'instance'})

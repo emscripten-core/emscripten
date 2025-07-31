@@ -1257,14 +1257,9 @@ var DETERMINISTIC = false;
 // By default we emit all code in a straightforward way into the output
 // .js file. That means that if you load that in a script tag in a web
 // page, it will use the global scope. With ``MODULARIZE`` set, we instead emit
-// the code wrapped in a function that returns a promise. The promise is
-// resolved with the module instance when it is safe to run the compiled code,
-// similar to the ``onRuntimeInitialized`` callback. You do not need to use the
-// ``onRuntimeInitialized`` callback when using ``MODULARIZE``.
-//
-// (If WASM_ASYNC_COMPILATION is off, that is, if compilation is
-// *synchronous*, then it would not make sense to return a Promise, and instead
-// the Module object itself is returned, which is ready to be used.)
+// the code wrapped in an async function. This function returns a promise that
+// resolves to a module instance once it is safe to run the compiled code
+// (similar to the ``onRuntimeInitialized`` callback).
 //
 // The default name of the function is ``Module``, but can be changed using the
 // ``EXPORT_NAME`` option. We recommend renaming it to a more typical name for a
