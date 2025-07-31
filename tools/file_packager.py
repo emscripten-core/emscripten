@@ -574,10 +574,11 @@ def main():  # noqa: C901, PLR0912, PLR0915
     if not options.has_preloaded:
       return 0
 
-  file_chunks = [[]]
-  current_size = 0
-  for file_ in data_files:
-    if file_.mode == 'preload':
+  file_chunks = [data_files]
+  if options.has_preloaded and not options.has_embedded:
+    file_chunks = [[]]
+    current_size = 0
+    for file_ in data_files:
       fsize = os.path.getsize(file_.srcpath)
       if current_size + fsize <= PRELOAD_DATA_FILE_LIMIT:
         file_chunks[-1].append(file_)
@@ -585,8 +586,6 @@ def main():  # noqa: C901, PLR0912, PLR0915
       else:
         current_size = fsize
         file_chunks.append([file_])
-    else:
-        file_chunks[-1].append(file_)
 
   if len(file_chunks) > 1:
     err('warning: file packager is splitting bundle into %d chunks', len(file_chunks))
