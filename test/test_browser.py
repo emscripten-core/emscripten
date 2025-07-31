@@ -1135,6 +1135,9 @@ simulateKeyUp(100, undefined, 'Numpad4');
     self.btest_exit('glut_glutget.c', cflags=['-lglut', '-lGL'])
     self.btest_exit('glut_glutget.c', cflags=['-lglut', '-lGL', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED'])
 
+  def test_glut_resize(self):
+    self.btest_exit('test_glut_resize.c')
+
   def test_sdl_joystick_1(self):
     # Generates events corresponding to the Working Draft of the HTML5 Gamepad API.
     # http://www.w3.org/TR/2012/WD-gamepad-20120529/#gamepad-interface
