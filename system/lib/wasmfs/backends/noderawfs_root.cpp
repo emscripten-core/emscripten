@@ -8,7 +8,7 @@
 namespace wasmfs {
 
 backend_t wasmfs_create_root_dir(void) {
-  return wasmfs_create_node_backend(".");
+  return wasmfs_create_node_backend("/");
 }
 
 } // namespace wasmfs

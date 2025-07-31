@@ -10447,16 +10447,22 @@ end
     err = self.expect_fail(base + ['--embed-file', 'somefile'])
     self.assertContained(expected, err)
 
+  @also_with_wasmfs
   def test_noderawfs_access_abspath(self):
     create_file('foo', 'bar')
     create_file('access.c', r'''
+      #include <stdio.h>
+      #include <assert.h>
       #include <unistd.h>
+
       int main(int argc, char** argv) {
-        return access(argv[1], F_OK);
+        printf("testing access to %s\n", argv[1]);
+        int rtn = access(argv[1], F_OK);
+        assert(rtn == 0);
+        return 0;
       }
     ''')
-    self.run_process([EMCC, 'access.c', '-sNODERAWFS'])
-    self.run_js('a.out.js', args=[os.path.abspath('foo')])
+    self.do_runf('access.c', cflags=['-sNODERAWFS'], args=[os.path.abspath('foo')])
 
   def test_noderawfs_readfile_prerun(self):
     create_file('foo', 'bar')
