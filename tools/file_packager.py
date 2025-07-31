@@ -566,7 +566,6 @@ def main():  # noqa: C901, PLR0912, PLR0915
     for plugin in plugins:
       plugin(file_)
 
-
   if options.obj_output:
     if not options.has_embedded:
       diagnostics.error('--obj-output is only applicable when embedding files')
