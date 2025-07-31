@@ -69,6 +69,7 @@ def main(args):
   parser.add_argument('-n', '--dry-run', action='store_true', help='dry run', default=False)
   parser.add_argument('-i', '--install-git-hooks', action='store_true', help='install emscripten git hooks', default=False)
   args = parser.parse_args()
+  print("BOOTSTRAP", sys.stderr.isatty())
 
   if args.install_git_hooks:
     if not os.path.exists(utils.path_from_root('.git')):
