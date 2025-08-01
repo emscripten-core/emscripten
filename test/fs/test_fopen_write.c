@@ -9,8 +9,7 @@
 #include <string.h>
 #include <emscripten/emscripten.h>
 
-void create_file()
-{
+void create_file() {
   FILE *file = fopen("hello_file.txt", "wb");
   assert(file);
   const char *data = "Hello world";
@@ -24,8 +23,7 @@ void create_file()
   fclose(file);
 }
 
-void read_file()
-{
+void read_file() {
   FILE *file = fopen("hello_file.txt", "rb");
   char buffer[128] = {};
   size_t read = fread(buffer, 1, sizeof(buffer), file);
@@ -34,8 +32,7 @@ void read_file()
   assert(!strcmp(buffer, "Hello data!"));
 }
 
-int main()
-{
+int main() {
   create_file();
   read_file();
   return 0;

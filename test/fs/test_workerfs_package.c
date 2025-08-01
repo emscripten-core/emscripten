@@ -9,7 +9,7 @@
 
 #include <emscripten.h>
 
-extern "C" {
+EM_JS_DEPS(deps, "$ccall");
 
 void EMSCRIPTEN_KEEPALIVE finish() {
   // load some file data, SYNCHRONOUSLY :)
@@ -37,8 +37,6 @@ void EMSCRIPTEN_KEEPALIVE finish() {
   // all done
   printf("success\n");
   REPORT_RESULT(1);
-}
-
 }
 
 int main() {
