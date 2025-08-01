@@ -1,25 +1,47 @@
+/*
+ * The .h version of this file is generated from the .h.in.
+ * See update_alltypes.sh.
+ */
 #define _Addr __PTRDIFF_TYPE__
 #define _Int64 __INT64_TYPE__
 #define _Reg __PTRDIFF_TYPE__
 
-TYPEDEF __builtin_va_list va_list;
-TYPEDEF __builtin_va_list __isoc_va_list;
+#define __BYTE_ORDER 1234
+#define __LONG_MAX __LONG_MAX__
 
 #ifndef __cplusplus
-TYPEDEF unsigned wchar_t;
+TYPEDEF __WCHAR_TYPE__ wchar_t;
 #endif
-TYPEDEF unsigned wint_t;
+TYPEDEF __WINT_TYPE__ wint_t;
+
+// XXX EMSCRIPTEN: ensure it's always 32-bits even in wasm64
+TYPEDEF int blkcnt_t;
+TYPEDEF int blksize_t;
+TYPEDEF int clock_t;
+TYPEDEF unsigned int dev_t;
+TYPEDEF int suseconds_t;
+TYPEDEF unsigned int wctype_t;
 
 TYPEDEF float float_t;
 TYPEDEF double double_t;
 
-TYPEDEF struct { long long __ll; long double __ld; } max_align_t;
-TYPEDEF long time_t;
-TYPEDEF long suseconds_t;
+#ifndef __cplusplus
+TYPEDEF struct { _Alignas(8) long long __ll; long double __ld; } max_align_t;
+#elif defined(__GNUC__)
+TYPEDEF struct { __attribute__((__aligned__(8))) long long __ll; long double __ld; } max_align_t;
+#else
+TYPEDEF struct { alignas(8) long long __ll; long double __ld; } max_align_t;
+#endif
 
-TYPEDEF struct { union { int __i[10]; unsigned __s[10]; } __u; } pthread_attr_t;
-TYPEDEF struct { union { int __i[7]; void *__p[7]; } __u; } pthread_mutex_t;
-TYPEDEF struct { union { int __i[12]; void *__p[12]; } __u; } pthread_cond_t;
-TYPEDEF struct { union { int __i[8]; void *__p[8]; } __u; } pthread_rwlock_t;
-TYPEDEF struct { union { int __i[5]; void *__p[5]; } __u; } pthread_barrier_t;
+// For canvas transfer implementation in Emscripten, use an extra control field
+// to pass a pointer to a string denoting the WebGL canvases to transfer.
+TYPEDEF struct { union { int __i[10]; volatile int __vi[10]; unsigned long __s[10]; } __u; const char *_a_transferredcanvases; } pthread_attr_t;
 
+// TODO(kleisauke): Remove these two typedefs.
+TYPEDEF struct { union { int __i[6]; volatile int __vi[6]; volatile void * /*volatile*/__p[6]; } __u; } pthread_mutex_t;
+TYPEDEF struct { union { int __i[6]; volatile int __vi[6]; volatile void * /*volatile*/__p[6]; } __u; } mtx_t;
+
+// END EMSCRIPTEN-SPECIFIC DEFINITIONS
+//
+// Below here are the shared musl definitions.  The emscripten-specific definitions above will take precedence
+// due to the `__DEFINED_` macro system.
