@@ -37,10 +37,6 @@ TYPEDEF struct { alignas(8) long long __ll; long double __ld; } max_align_t;
 // to pass a pointer to a string denoting the WebGL canvases to transfer.
 TYPEDEF struct { union { int __i[10]; volatile int __vi[10]; unsigned long __s[10]; } __u; const char *_a_transferredcanvases; } pthread_attr_t;
 
-// TODO(kleisauke): Remove these two typedefs.
-TYPEDEF struct { union { int __i[6]; volatile int __vi[6]; volatile void * /*volatile*/__p[6]; } __u; } pthread_mutex_t;
-TYPEDEF struct { union { int __i[6]; volatile int __vi[6]; volatile void * /*volatile*/__p[6]; } __u; } mtx_t;
-
 // END EMSCRIPTEN-SPECIFIC DEFINITIONS
 //
 // Below here are the shared musl definitions.  The emscripten-specific definitions above will take precedence
