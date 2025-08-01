@@ -1938,6 +1938,7 @@ var MINIMAL_RUNTIME = 0;
 // for faster startup speeds. However this setting is disabled by default
 // since it requires server side configuration and for really small pages there
 // is no observable difference (also has a ~100 byte impact to code size)
+// This setting is only compatible with html output.
 // [link]
 var MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION = false;
 
