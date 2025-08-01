@@ -1057,6 +1057,15 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and settings.MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION:
     exit_with_error('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION are mutually exclusive!')
 
+  if settings.MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION and not settings.MINIMAL_RUNTIME:
+    exit_with_error('MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION requires MINIMAL_RUNTIME')
+
+  if settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and not settings.MINIMAL_RUNTIME:
+    exit_with_error('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION requires MINIMAL_RUNTIME')
+
+  if settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and options.oformat != OFormat.HTML:
+    exit_with_error('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION is only compatible with html output')
+
   if options.use_closure_compiler:
     settings.USE_CLOSURE_COMPILER = 1
 

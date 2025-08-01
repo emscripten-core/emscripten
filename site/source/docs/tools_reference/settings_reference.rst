@@ -2954,6 +2954,7 @@ For large .wasm modules and production environments, this should be set to 1
 for faster startup speeds. However this setting is disabled by default
 since it requires server side configuration and for really small pages there
 is no observable difference (also has a ~100 byte impact to code size)
+This setting is only compatible with html output.
 
 Default value: false
 
