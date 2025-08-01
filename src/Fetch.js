@@ -415,9 +415,10 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.dataOffset }}}, e.loaded - ptrLen);
     writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.totalBytes }}}, e.total);
     {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.readyState, 'xhr.readyState', 'i16') }}}
+    var status = xhr.status;
     // If loading files from a source that does not give HTTP status code, assume success if we get data bytes
-    if (xhr.readyState >= 3 && xhr.status === 0 && e.loaded > 0) xhr.status = 200;
-    {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 'xhr.status', 'i16') }}}
+    if (xhr.readyState >= 3 && xhr.status === 0 && e.loaded > 0) status = 200;
+    {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 'status', 'i16') }}}
     if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
     onprogress?.(fetch, xhr, e);
     _free(ptr);
