@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.12 (in development)
+4.0.13 (in development)
 -----------------------
+
+4.0.12 - 08/01/25
+-----------------
 - The `#!` line that emscripten, under some circumstances, will add to the
   generated JS code no longer injects the `--experimental-wasm-bigint` node
   flag.  This flag is not needed on recent versions of node, and in fact
