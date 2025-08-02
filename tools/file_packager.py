@@ -41,6 +41,8 @@ Usage:
 
   --export-name=EXPORT_NAME Use custom export name (default is `Module`)
 
+  --modularize Wrap generated code inside ES6 exported function
+
   --no-force Don't create output if no valid input file is specified.
 
   --use-preload-cache Stores package in IndexedDB so that subsequent loads don't need to do XHR. Checks package version.
@@ -129,6 +131,7 @@ class Options:
     self.use_preload_plugins = False
     self.support_node = True
     self.wasm64 = False
+    self.modularize = False
 
 
 class DataFile:
@@ -391,6 +394,9 @@ def main():  # noqa: C901, PLR0912, PLR0915
     elif arg == '--no-force':
       options.force = False
       leading = ''
+    elif arg == '--modularize':
+      options.modularize = True
+      leading = ''
     elif arg == '--use-preload-cache':
       options.use_preload_cache = True
       leading = ''
@@ -621,13 +627,25 @@ def generate_js(data_target, data_files, metadata):
   if options.from_emcc:
     ret = ''
   else:
-    ret = '''
+    if options.modularize:
+      ret = '''
+  export default function loadDataFile(moduleArg = {}) {
+    var Module = moduleArg;
+                            '''
+
+    else:
+      ret = '''
   var Module = typeof %(EXPORT_NAME)s != 'undefined' ? %(EXPORT_NAME)s : {};\n''' % {"EXPORT_NAME": options.export_name}
 
   ret += '''
   Module['expectedDataFileDownloads'] ??= 0;
-  Module['expectedDataFileDownloads']++;
-  (() => {
+  Module['expectedDataFileDownloads']++;'''
+
+  if not options.modularize:
+    ret += '''
+  (() => {'''
+
+  ret += '''
     // Do not attempt to redownload the virtual filesystem data when in a pthread or a Wasm Worker context.
     var isPthread = typeof ENVIRONMENT_IS_PTHREAD != 'undefined' && ENVIRONMENT_IS_PTHREAD;
     var isWasmWorker = typeof ENVIRONMENT_IS_WASM_WORKER != 'undefined' && ENVIRONMENT_IS_WASM_WORKER;
@@ -1153,7 +1171,11 @@ def generate_js(data_target, data_files, metadata):
     }
     loadPackage(%s);\n''' % json.dumps(metadata)
 
-  ret += '''
+  if options.modularize and not options.from_emcc:
+    ret += '''
+    };'''
+  else:
+    ret += '''
   })();\n'''
 
   return ret
