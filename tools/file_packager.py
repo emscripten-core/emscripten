@@ -41,6 +41,8 @@ Usage:
 
   --export-name=EXPORT_NAME Use custom export name (default is `Module`)
 
+  --modularize Wrap generated code inside ES6 exported function
+
   --no-force Don't create output if no valid input file is specified.
 
   --use-preload-cache Stores package in IndexedDB so that subsequent loads don't need to do XHR. Checks package version.
