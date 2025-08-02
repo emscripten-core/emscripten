@@ -113,7 +113,7 @@ function(__check_type_size_impl type var map builtin language)
   configure_file(${__check_type_size_dir}/CheckTypeSize.c.in ${src} @ONLY)
   try_compile(HAVE_${var} ${CMAKE_BINARY_DIR} ${src}
     COMPILE_DEFINITIONS ${CMAKE_REQUIRED_DEFINITIONS}
-    LINK_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES} "--oformat=wasm" "-sWASM=1"
+    LINK_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES} "--oformat=bare" "-sWASM=1"
     CMAKE_FLAGS
       "-DCOMPILE_DEFINITIONS:STRING=${CMAKE_REQUIRED_FLAGS}"
       "-DINCLUDE_DIRECTORIES:STRING=${CMAKE_REQUIRED_INCLUDES}"
