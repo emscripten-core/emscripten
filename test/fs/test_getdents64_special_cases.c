@@ -56,7 +56,8 @@ int main() {
 #ifndef WASMFS // The JS FS truncates filenames automatically, which is incorrect. Wasmfs and Linux do not.
   // File name exceeds the limit of 255 chars and is truncated.
   char longName[300];
-  memset(longName, 1, sizeof(longName));
+  memset(longName, '1', sizeof(longName));
+  longName[sizeof(longName) - 1] = '\0';
   doTest("test_dir2", longName);
 #endif
 }
