@@ -1001,15 +1001,19 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
   name = 'libllvmlibc'
   never_force = True
   includes = ['system/lib/llvm-libc']
-  cflags = ['-Os', '-DLIBC_NAMESPACE=__llvm_libc', '-DLIBC_COPT_PUBLIC_PACKAGING']
+  cflags = ['-Os', '-DLIBC_NAMESPACE=__llvm_libc', '-DLLVM_LIBC', '-DLIBC_COPT_PUBLIC_PACKAGING']
 
   def get_files(self):
-    files = glob_in_path('system/lib/llvm-libc/src/string', '**/*.cpp')
+    files = glob_in_path('system/lib/llvm-libc/src/assert', '*.cpp')
+    files += glob_in_path('system/lib/llvm-libc/src/complex', '**/*.cpp')
+    files += glob_in_path('system/lib/llvm-libc/src/string', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/intypes', '*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/strings', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/errno', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/math', '*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/wchar', '*.cpp')
+    files += glob_in_path('system/lib/llvm-libc/src/setjmp', '*.cpp')
+    files += glob_in_path('system/lib/llvm-libc/src/setjmp', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/stdlib', '*.cpp', excludes=['at_quick_exit.cpp',
                                                                                 'quick_exit.cpp',
                                                                                 'atexit.cpp',
@@ -1293,6 +1297,10 @@ class libc(MuslInternalLibrary,
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/linux',
         filenames=['getdents.c', 'gettid.c', 'utimes.c', 'statx.c', 'wait4.c', 'wait3.c'])
+
+    libc_files += files_in_path(
+        path='system/lib/libc/musl/src/malloc',
+        filenames=['reallocarray.c'])
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/sched',
@@ -2480,7 +2488,7 @@ def calculate(options):
   return ret
 
 
-def safe_copytree(src, dst):
+def safe_copytree(src, dst, excludes=None):
   # We cannot use `shutil.copytree` there because we need to ensure the
   # output tree is writable, and in some cases the emscripten tree
   # itself is readonly (e.g. NixOS).
@@ -2489,35 +2497,37 @@ def safe_copytree(src, dst):
   # unconditionally copy the source directory's mode bits.
   os.makedirs(dst, exist_ok=True)
   for entry in os.scandir(src):
+    if excludes and entry.name in excludes:
+      continue
     srcname = os.path.join(src, entry.name)
     dstname = os.path.join(dst, entry.name)
     if entry.is_dir():
-      safe_copytree(srcname, dstname)
+      safe_copytree(srcname, dstname, excludes)
     else:
       shared.safe_copy(srcname, dstname)
 
 
 def install_system_headers(stamp):
   install_dirs = {
-    ('include',): '',
-    ('lib', 'compiler-rt', 'include'): '',
-    ('lib', 'libunwind', 'include'): '',
+    'system/include': '',
+    'system/lib/compiler-rt/include': '',
+    'system/lib/libunwind/include': '',
     # Copy the generic arch files first then
-    ('lib', 'libc', 'musl', 'arch', 'generic'): '',
+    'system/lib/libc/musl/arch/generic': '',
     # Then overlay the emscripten directory on top.
     # This mimics how musl itself installs its headers.
-    ('lib', 'libc', 'musl', 'arch', 'emscripten'): '',
-    ('lib', 'libc', 'musl', 'include'): '',
-    ('lib', 'libcxx', 'include'): os.path.join('c++', 'v1'),
-    ('lib', 'libcxxabi', 'include'): os.path.join('c++', 'v1'),
-    ('lib', 'mimalloc', 'include'): '',
+    'system/lib/libc/musl/arch/emscripten': '',
+    'system/lib/libc/musl/include': '',
+    'system/lib/libcxx/include': 'c++/v1',
+    'system/lib/libcxxabi/include': 'c++/v1',
+    'system/lib/mimalloc/include': '',
   }
 
   target_include_dir = cache.get_include_dir()
   for src, dest in install_dirs.items():
-    src = utils.path_from_root('system', *src)
+    src = utils.path_from_root(src)
     dest = os.path.join(target_include_dir, dest)
-    safe_copytree(src, dest)
+    safe_copytree(src, dest, excludes={'alltypes.h.in'})
 
   pkgconfig_src = utils.path_from_root('system/lib/pkgconfig')
   pkgconfig_dest = cache.get_sysroot_dir('lib/pkgconfig')

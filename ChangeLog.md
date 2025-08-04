@@ -18,8 +18,24 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.12 (in development)
+4.0.13 (in development)
 -----------------------
+
+4.0.12 - 08/01/25
+-----------------
+- The `#!` line that emscripten, under some circumstances, will add to the
+  generated JS code no longer injects the `--experimental-wasm-bigint` node
+  flag.  This flag is not needed on recent versions of node, and in fact
+  errors there, so it's not possible to know if it's safe to include. (#24808)
+- In `-sMODULARIZE` mode the factory function will now always return a promise,
+  even when `WASM_ASYNC_COMPILATION` is disabled.  This is because emscripten
+  has other features that might also return async module creation (e.g. loading
+  files over the network, or other users of the `addRunDependency` API).  For
+  consistency and simplicity we now *always* return a promise here. (#24727)
+- libcxx, libcxxabi, libunwind, and compiler-rt were updated to LLVM 20.1.8.
+  (#24757)
+- The `fsblkcnt_t` and `fsfilcnt_t` types used by `statfs`/`statvfs` were
+  changed from 32-bit to 64-bit. (#24769)
 - Support for `-sTEXT_DECODER=0` was removed, due to widespread support for
   `TextDecoder`.  The remaining valid values for this setting are `=1`
   (conditional use of `TextDecoder` with fallback) and `=2` (unconditional use

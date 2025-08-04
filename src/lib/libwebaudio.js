@@ -8,7 +8,7 @@
 #error "-sAUDIO_WORKLET does not support -sSINGLE_FILE"
 #endif
 
-let LibraryWebAudio = {
+var LibraryWebAudio = {
   $EmAudio: {},
   $EmAudioCounter: 0,
 
@@ -54,16 +54,16 @@ let LibraryWebAudio = {
   // this avoids the user needing to manually add the dependency on the command line.
   emscripten_create_audio_context__deps: ['$emscriptenRegisterAudioObject', '$emscriptenGetAudioObject'],
   emscripten_create_audio_context: (options) => {
-    let ctx = window.AudioContext || window.webkitAudioContext;
+    var ctx = window.AudioContext || window.webkitAudioContext;
 #if ASSERTIONS
     if (!ctx) console.error('emscripten_create_audio_context failed! Web Audio is not supported.');
 #endif
     options >>= 2;
 
-    let opts = options ? {
-      latencyHint: HEAPU32[options] ? UTF8ToString(HEAPU32[options]) : void 0,
-      sampleRate: HEAP32[options+1] || void 0
-    } : void 0;
+    var opts = options ? {
+      latencyHint: HEAPU32[options] ? UTF8ToString(HEAPU32[options]) : undefined,
+      sampleRate: HEAP32[options+1] || undefined
+    } : undefined;
 
 #if WEBAUDIO_DEBUG
     console.log(`Creating new WebAudio context with parameters:`);
@@ -146,8 +146,8 @@ let LibraryWebAudio = {
     assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_start_wasm_audio_worklet_thread_async() on a context handle ${contextHandle} that is not an AudioContext, but of type ${typeof EmAudio[contextHandle]}`);
 #endif
 
-    let audioContext = EmAudio[contextHandle],
-      audioWorklet = audioContext.audioWorklet;
+    var audioContext = EmAudio[contextHandle];
+    var audioWorklet = audioContext.audioWorklet;
 
 #if ASSERTIONS
     assert(stackLowestAddress != 0, 'AudioWorklets require a dedicated stack space for audio data marshalling between Wasm and JS!');
@@ -162,7 +162,7 @@ let LibraryWebAudio = {
     console.log(`emscripten_start_wasm_audio_worklet_thread_async() adding audioworklet.js...`);
 #endif
 
-    let audioWorkletCreationFailed = () => {
+    var audioWorkletCreationFailed = () => {
 #if ASSERTIONS || WEBAUDIO_DEBUG
       console.error(`emscripten_start_wasm_audio_worklet_thread_async() addModule() failed!`);
 #endif
@@ -208,10 +208,10 @@ let LibraryWebAudio = {
 
   $_EmAudioDispatchProcessorCallback__deps: ['$getWasmTableEntry'],
   $_EmAudioDispatchProcessorCallback: (e) => {
-    let data = e.data;
+    var data = e.data;
     // '_wsc' is short for 'wasm call', trying to use an identifier name that
     // will never conflict with user code
-    let wasmCall = data['_wsc'];
+    var wasmCall = data['_wsc'];
     wasmCall && getWasmTableEntry(wasmCall)(...data.args);
   },
 
@@ -265,15 +265,15 @@ let LibraryWebAudio = {
 #endif
 
     function readChannelCountArray(heapIndex, numOutputs) {
-      if (!heapIndex) return void 0;
+      if (!heapIndex) return undefined;
       heapIndex = {{{ getHeapOffset('heapIndex', 'i32') }}};
-      let channelCounts = [];
+      var channelCounts = [];
       while (numOutputs--) channelCounts.push(HEAPU32[heapIndex++]);
       return channelCounts;
     }
 
-    let optionsOutputs = options ? {{{ makeGetValue('options', C_STRUCTS.EmscriptenAudioWorkletNodeCreateOptions.numberOfOutputs, 'i32') }}} : 0;
-    let opts = options ? {
+    var optionsOutputs = options ? {{{ makeGetValue('options', C_STRUCTS.EmscriptenAudioWorkletNodeCreateOptions.numberOfOutputs, 'i32') }}} : 0;
+    var opts = options ? {
       numberOfInputs: {{{ makeGetValue('options', C_STRUCTS.EmscriptenAudioWorkletNodeCreateOptions.numberOfInputs, 'i32') }}},
       numberOfOutputs: optionsOutputs,
       outputChannelCount: readChannelCountArray({{{ makeGetValue('options', C_STRUCTS.EmscriptenAudioWorkletNodeCreateOptions.outputChannelCounts, 'i32*') }}}, optionsOutputs),
@@ -282,7 +282,7 @@ let LibraryWebAudio = {
         userData,
         samplesPerChannel: emscriptenGetContextQuantumSize(contextHandle),
       }
-    } : void 0;
+    } : undefined;
 
 #if WEBAUDIO_DEBUG
     console.log(`Creating AudioWorkletNode "${UTF8ToString(name)}" on context=${contextHandle} with options:`);
