@@ -65,17 +65,14 @@ function createWasmAudioWorkletProcessor(audioParams) {
       inputsPtr = stackAlloc(stackMemoryNeeded);
 
       // Copy input audio descriptor structs and data to Wasm
-      k = {{{ getHeapOffset('inputsPtr', 'u32') }}};
+      k = inputsPtr;
       dataPtr = inputsPtr + numInputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
       for (i of inputList) {
         // Write the AudioSampleFrame struct instance
-        HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.numberOfChannels / 4 }}}] = i.length;
-        HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.samplesPerChannel / 4 }}}] = this.samplesPerChannel;
-        HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.data / 4 }}}] = dataPtr;
-#if MEMORY64
-        HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.data / 4 + 1 }}}] = dataPtr / 0x100000000;
-#endif
-        k += {{{ C_STRUCTS.AudioSampleFrame.__size__ / 4 }}};
+        {{{ makeSetValue('k', C_STRUCTS.AudioSampleFrame.numberOfChannels, 'i.length', 'u32') }}};
+        {{{ makeSetValue('k', C_STRUCTS.AudioSampleFrame.samplesPerChannel, 'this.samplesPerChannel', 'u32') }}};
+        {{{ makeSetValue('k', C_STRUCTS.AudioSampleFrame.data, 'dataPtr', '*') }}};
+        k += {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
         // Marshal the input audio sample data for each audio channel of this input
         for (j of i) {
           HEAPF32.set(j, {{{ getHeapOffset('dataPtr', 'float') }}});
