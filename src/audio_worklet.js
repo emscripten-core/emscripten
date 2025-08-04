@@ -178,7 +178,7 @@ class BootstrapMessages extends AudioWorkletProcessor {
         //
         // '_wsc' is short for 'wasm call', using an identifier that will never
         // conflict with user messages
-        messagePort.postMessage({'_wsc': d.callback, args: [d.contextHandle, 1/*EM_TRUE*/, {{{ to64("d.userData") }}}] });
+        messagePort.postMessage({'_wsc': d.callback, args: [d.contextHandle, 1/*EM_TRUE*/, {{{ to64('d.userData') }}}] });
       } else if (d['_wsc']) {
         getWasmTableEntry(d['_wsc'])(...d.args);
       };
