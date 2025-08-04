@@ -25,8 +25,8 @@ function createWasmAudioWorkletProcessor(audioParams) {
       assert(opts.callback)
       assert(opts.samplesPerChannel)
 #endif
-      this.callback = getWasmTableEntry({{{ toIndexType("opts.callback") }}});
-      this.userData = {{{ toIndexType("opts.userData") }}};
+      this.callback = getWasmTableEntry(opts.callback);
+      this.userData = opts.userData;
       // Then the samples per channel to process, fixed for the lifetime of the
       // context that created this processor. Note for when moving to Web Audio
       // 1.1: the typed array passed to process() should be the same size as this
@@ -119,7 +119,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
       }
 
       // Call out to Wasm callback to perform audio processing
-      if (didProduceAudio = this.callback(numInputs, {{{ toIndexType('inputsPtr') }}}, numOutputs, {{{ toIndexType('outputsPtr') }}}, numParams, {{{ toIndexType('paramsPtr') }}}, this.userData)) {
+      if (didProduceAudio = this.callback(numInputs, {{{ to64('inputsPtr') }}}, numOutputs, {{{ to64('outputsPtr') }}}, numParams, {{{ to64('paramsPtr') }}}, {{{ to64('this.userData') }}})) {
         // Read back the produced audio data to all outputs and their channels.
         // (A garbage-free function TypedArray.copy(dstTypedArray, dstOffset,
         // srcTypedArray, srcOffset, count) would sure be handy..  but web does
@@ -178,9 +178,9 @@ class BootstrapMessages extends AudioWorkletProcessor {
         //
         // '_wsc' is short for 'wasm call', using an identifier that will never
         // conflict with user messages
-        messagePort.postMessage({'_wsc': {{{ toIndexType("d.callback") }}}, args: [d.contextHandle, 1/*EM_TRUE*/, {{{ toIndexType("d.userData") }}}] });
+        messagePort.postMessage({'_wsc': d.callback, args: [d.contextHandle, 1/*EM_TRUE*/, {{{ to64("d.userData") }}}] });
       } else if (d['_wsc']) {
-        getWasmTableEntry({{{ toIndexType("d['_wsc']") }}})(...d.args);
+        getWasmTableEntry(d['_wsc'])(...d.args);
       };
     }
   }
