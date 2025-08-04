@@ -8,25 +8,24 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <assert.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
 
-#define BUF_SIZE (sizeof(dirent)*2)
+#define BUF_SIZE (sizeof(struct dirent)*2)
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   int fd = open(".", O_RDONLY | O_DIRECTORY);
   assert(fd > 0);
 
-  printf("sizeof(dirent): %zu, sizeof(buffer): %zu\n", sizeof(dirent), BUF_SIZE);
+  printf("sizeof(dirent): %zu, sizeof(buffer): %zu\n", sizeof(struct dirent), BUF_SIZE);
 
   bool first = true;
 
-  for(;;)
-  {
+  while (1) {
     char buf[BUF_SIZE];
-    int nread = getdents(fd, (dirent*)buf, BUF_SIZE);
+    int nread = getdents(fd, (struct dirent*)buf, BUF_SIZE);
     assert(nread != -1);
     if (nread == 0)
       break;
@@ -39,9 +38,8 @@ int main(int argc, char *argv[])
     printf("--------------- nread=%d ---------------\n", nread);
     printf("i-node#  file type  d_reclen  d_off   d_name\n");
     int bpos = 0;
-    while(bpos < nread)
-    {
-      dirent *d = (dirent *)(buf + bpos);
+    while (bpos < nread) {
+      struct dirent *d = (struct dirent *)(buf + bpos);
       printf("%8ld  ", (long)d->d_ino);
       char d_type = *(buf + bpos + d->d_reclen - 1);
       printf("%-10s ", (d_type == DT_REG) ?  "regular" :

@@ -14,6 +14,7 @@ import itertools
 import json
 from math import inf
 import os
+import random
 import re
 import select
 import shlex
@@ -10433,7 +10434,7 @@ end
     'runtime_debug': (['-sRUNTIME_DEBUG', '-sEXIT_RUNTIME', '-pthread'],),
   })
   def test_noderawfs_basics(self, args):
-    self.do_runf('fs/test_fopen_write.cpp', 'read 11 bytes. Result: Hello data!', cflags=['-sNODERAWFS'] + args)
+    self.do_runf('fs/test_fopen_write.c', 'read 11 bytes. Result: Hello data!', cflags=['-sNODERAWFS'] + args)
 
     # NODERAWFS should directly write on OS file system
     self.assertEqual("Hello data!", read_file('hello_file.txt'))
@@ -12370,8 +12371,9 @@ int main(void) {
     self.set_setting('LOAD_SOURCE_MAP')
     self.do_runf('other/test_offset_converter.c', 'ok', cflags=['-gsource-map', '-DUSE_SOURCE_MAP'] + args)
 
+  @crossplatform
   @no_windows('ptys and select are not available on windows')
-  def test_build_error_color(self):
+  def test_color_diagnostics(self):
     create_file('src.c', 'int main() {')
     returncode, output = self.run_on_pty([EMCC, 'src.c'])
     self.assertNotEqual(returncode, 0)
@@ -12379,17 +12381,42 @@ int main(void) {
     # Verify that emcc errors show up as red and bold
     self.assertIn(b"emcc: \x1b[31m\x1b[1m", output)
 
+  @crossplatform
   @parameterized({
-    'fno_diagnostics_color': ['-fno-diagnostics-color'],
-    'fdiagnostics_color_never': ['-fdiagnostics-color=never'],
+    '': ['-fno-diagnostics-color'],
+    'never': ['-fdiagnostics-color=never'],
   })
   @no_windows('ptys and select are not available on windows')
-  def test_pty_no_color(self, flag):
+  def test_color_diagnostics_disable(self, flag):
     create_file('src.c', 'int main() {')
 
     returncode, output = self.run_on_pty([EMCC, flag, 'src.c'])
     self.assertNotEqual(returncode, 0)
     self.assertNotIn(b'\x1b', output)
+
+  @crossplatform
+  #  There are 3 different ways for force color output in clang
+  @parameterized({
+    '': ['-fcolor-diagnostics'],
+    'alt': ['-fdiagnostics-color'],
+    'always': ['-fdiagnostics-color=always'],
+  })
+  def test_color_diagnostics_force(self, flag):
+    create_file('src.c', 'int main() {')
+    # -fansi-escape-codes is needed here to make this test work on windows, which doesn't
+    # use ansi codes by default
+    output = self.expect_fail([EMCC, '-fansi-escape-codes', flag, 'src.c'])
+    self.assertIn("\x1b[1msrc.c:1:13: \x1b[0m\x1b[0;1;31merror: \x1b[0m\x1b[1mexpected '}'\x1b[0m", output)
+    # Verify that emcc errors show up as red and bold
+    self.assertIn('emcc: \x1b[31m\x1b[1m', output)
+
+    if WINDOWS:
+      # Also test without -fansi-escape-codes on windows.
+      # In those mode the code will use kernel calls such as SetConsoleTextAttribute to
+      # change the output color.  We cannot detect this in the output, but we can at least
+      # get coverage of the code path in the diagnositics.py.
+      output = self.expect_fail([EMCC, flag, 'src.c'])
+      self.assertNotIn('\x1b', output)
 
   def test_sanitizer_color(self):
     create_file('src.c', '''
@@ -16038,6 +16065,20 @@ addToLibrary({
   def test_fs_writev_partial_write(self):
     self.set_setting('FORCE_FILESYSTEM')
     self.do_run_in_out_file_test('fs/test_writev_partial_write.c')
+
+  def test_fs_lzfs(self):
+    # generate data
+    ensure_dir('subdir')
+    create_file('file1.txt', '0123456789' * (1024 * 128))
+    create_file('subdir/file2.txt', '1234567890' * (1024 * 128))
+    random_data = bytearray(random.randint(0, 255) for x in range(1024 * 128 * 10 + 1))
+    random_data[17] = ord('X')
+    create_file('file3.txt', random_data, binary=True)
+
+    # compress in emcc, -sLZ4 tells it to tell the file packager
+    self.do_runf('fs/test_lz4fs.c', cflags=['-sLZ4', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt'])
+    self.assertEqual(os.path.getsize('file1.txt') + os.path.getsize('subdir/file2.txt') + os.path.getsize('file3.txt'), 3 * 1024 * 128 * 10 + 1)
+    self.assertLess(os.path.getsize('test_lz4fs.data'), (3 * 1024 * 128 * 10) / 2)  # over half is gone
 
   @requires_v8
   @parameterized({

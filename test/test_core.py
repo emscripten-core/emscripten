@@ -5530,13 +5530,13 @@ got: 10
     self.do_runf('fs/test_mount.c', 'success')
 
   def test_getdents64(self):
-    self.do_runf('fs/test_getdents64.cpp', '..')
+    self.do_runf('fs/test_getdents64.c', '..')
 
   def test_getdents64_special_cases(self):
-    self.do_run_in_out_file_test('fs/test_getdents64_special_cases.cpp')
+    self.do_run_in_out_file_test('fs/test_getdents64_special_cases.c')
 
   def test_getcwd_with_non_ascii_name(self):
-    self.do_run_in_out_file_test('fs/test_getcwd_with_non_ascii_name.cpp')
+    self.do_run_in_out_file_test('fs/test_getcwd_with_non_ascii_name.c')
 
   @no_wasmfs('no support for /proc/self/fd/, see https://github.com/emscripten-core/emscripten/issues/19430')
   def test_proc_self_fd(self):

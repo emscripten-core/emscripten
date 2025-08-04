@@ -14,9 +14,11 @@
 
 #define TOTAL_SIZE (10*1024*128)
 
+EM_JS_DEPS(deps, "$ccall");
+
 double before_it_all;
 
-extern "C" void EMSCRIPTEN_KEEPALIVE finish() {
+void EMSCRIPTEN_KEEPALIVE finish() {
   // load some file data, SYNCHRONOUSLY :)
   char buffer[100];
   int num;
@@ -130,7 +132,7 @@ extern "C" void EMSCRIPTEN_KEEPALIVE finish() {
 #if LOAD_MANUALLY
   result = 1;
 #else
-  result = 2;
+  result = 0;
 #endif
   emscripten_force_exit(result);
 }
