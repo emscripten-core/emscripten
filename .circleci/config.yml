@@ -503,7 +503,7 @@ commands:
             echo "-----"
             echo "Running browser tests (EMTEST_BROWSER=$EMTEST_BROWSER)"
             echo "-----"
-            test/runner.bat << parameters.test_targets >>
+            test/runner.exe << parameters.test_targets >>
       - upload-test-results
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
@@ -1248,6 +1248,28 @@ jobs:
     steps:
       - test-sockets-chrome
 
+  build-windows-launcher:
+    executor:
+      name: win/server-2022
+      shell: cmd.exe
+    steps:
+      - checkout
+      - run: call .circleci\setup_vs2022.bat && cd tools\pylauncher && call build.bat
+      - store_artifacts:
+          path: tools/pylauncher/pylauncher.exe
+          destination: pylauncher.exe
+      - install-emsdk
+      - pip-install:
+          python: "$EMSDK_PYTHON"
+      - run:
+          name: "create_entry_points"
+          shell: bash.exe -eo pipefail
+          command: tools/maint/create_entry_points.py --exe-files
+      - run:
+          name: "crossplatform tests"
+          command: test/runner.exe core0.test_hello_world
+
+
   # windows and mac do not have separate build and test jobs, as they only run
   # a limited set of tests; it is simpler and faster to do it all in one job.
   test-windows:
@@ -1275,6 +1297,10 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Build launcher
+          command: call .circleci\setup_vs2019.bat && cd tools\pylauncher && call build.bat
+          shell: cmd.exe
+      - run:
           name: Install packages
           command: |
             choco install -y cmake.portable ninja pkgconfiglite
@@ -1283,16 +1309,15 @@ jobs:
       - install-emsdk
       - pip-install:
           python: "$EMSDK_PYTHON"
-      # run-tests depends on the ./test/runner script which is normally only
-      # created on UNIX systems (windows uses runner.bat)
-      - run: $EMSDK_PYTHON tools/maint/create_entry_points.py --all
       - run:
           name: "crossplatform tests"
+          shell: cmd.exe
           command: test/runner.bat --crossplatform-only
       - upload-test-results
       # Run a single websockify-based test to ensure it works on windows.
       - run:
           name: "sockets.test_nodejs_sockets_echo*"
+          shell: cmd.exe
           command: "test/runner.bat sockets.test_nodejs_sockets_echo*"
       - upload-test-results
 
@@ -1390,6 +1415,7 @@ workflows:
       - test-node-compat
       - test-windows
       - test-windows-browser-firefox
+      - build-windows-launcher
       - test-mac-arm64:
           requires:
             - build-linux
