@@ -491,6 +491,11 @@ def main():  # noqa: C901, PLR0912, PLR0915
     diagnostics.error('TARGET should not be the same value of --js-output')
     return 1
 
+  if options.from_emcc and options.modularize:
+    diagnostics.error('Can\'t use modularize option together with --from-emcc since the code should be embedded'
+        'within emcc\'s code')
+    return 1
+
   walked.append(__file__)
   for file_ in data_files:
     if not should_ignore(file_.srcpath):
@@ -629,8 +634,7 @@ def generate_js(data_target, data_files, metadata):
   else:
     if options.modularize:
       ret = '''
-  export default function loadDataFile(moduleArg = {}) {
-    var Module = moduleArg;
+  export default function loadDataFile(Module) {
                             '''
 
     else:
@@ -1162,7 +1166,7 @@ def generate_js(data_target, data_files, metadata):
     }
     loadPackage(%s);\n''' % json.dumps(metadata)
 
-  if options.modularize and not options.from_emcc:
+  if options.modularize:
     ret += '''
     };'''
   else:
