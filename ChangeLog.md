@@ -34,6 +34,8 @@ See docs/process.md for more on how version tagging works.
 - emcc will now error if `MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION` or
   `MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION` are used with `SINGLE_FILE`.
   These are fundamentally incompatible but were previously ignored. (#24849)
+- `--modularize` flag was added to `file_packager.py` available when run 
+  standalone, to enable ES6 imports of generated JavaScript code
 
 4.0.12 - 08/01/25
 -----------------

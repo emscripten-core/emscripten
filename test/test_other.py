@@ -3804,20 +3804,33 @@ More info: https://emscripten.org
     stderr = self.expect_fail([FILE_PACKAGER, 'test.data', '--quiet', '--preload', '../data1.txt'])
     self.assertContained('which is not contained within the current directory', stderr)
 
+    stderr = self.expect_fail([FILE_PACKAGER, 'test.data', '--quiet', '--preload', '../data1.txt', '--modularize'])
+    self.assertContained('which is not contained within the current directory', stderr)
+
     # relative path that ends up under us is cool
     proc = self.run_process([FILE_PACKAGER, 'test.data', '--quiet', '--preload', '../subdir/data2.txt'], stderr=PIPE, stdout=PIPE)
     self.assertEqual(proc.stderr, '')
     check(proc.stdout)
+
+    proc = self.run_process([FILE_PACKAGER, 'test.data', '--quiet', '--preload', '../subdir/data2.txt', '--modularize'], stderr=PIPE, stdout=PIPE)
+    self.assertEqual(proc.stderr, '')
+    check(proc.stdout)
+
+    def clean(txt):
+      lines = txt.splitlines()
+      lines = [l for l in lines if 'PACKAGE_UUID' not in l and 'loadPackage({' not in l]
+      return ''.join(lines)
 
     # direct path leads to the same code being generated - relative path does not make us do anything different
     proc2 = self.run_process([FILE_PACKAGER, 'test.data', '--quiet', '--preload', 'data2.txt'], stderr=PIPE, stdout=PIPE)
     check(proc2.stdout)
     self.assertEqual(proc2.stderr, '')
 
-    def clean(txt):
-      lines = txt.splitlines()
-      lines = [l for l in lines if 'PACKAGE_UUID' not in l and 'loadPackage({' not in l]
-      return ''.join(lines)
+    self.assertTextDataIdentical(clean(proc.stdout), clean(proc2.stdout))
+
+    proc2 = self.run_process([FILE_PACKAGER, 'test.data', '--quiet', '--preload', 'data2.txt', '--modularize'], stderr=PIPE, stdout=PIPE)
+    check(proc2.stdout)
+    self.assertEqual(proc2.stderr, '')
 
     self.assertTextDataIdentical(clean(proc.stdout), clean(proc2.stdout))
 
@@ -3919,6 +3932,11 @@ More info: https://emscripten.org
     err = self.expect_fail([FILE_PACKAGER, 'test.data', '--js-output=test.data'])
     self.assertContained(MESSAGE, err)
 
+  def test_file_packager_returns_error_if_emcc_and_modularize(self):
+    MESSAGE = 'error: Can\'t use modularize option together with --from-emcc since the code should be embedded within emcc\'s code'
+    err = self.expect_fail([FILE_PACKAGER, 'test.data', '--modularize', '--from-emcc'])
+    self.assertEqual(MESSAGE, err)
+
   def test_file_packager_embed(self):
     create_file('data.txt', 'hello data')
 
@@ -3944,6 +3962,21 @@ More info: https://emscripten.org
     self.run_process([EMCC, 'test.c', 'data.o', '-sFORCE_FILESYSTEM'])
     output = self.run_js('a.out.js')
     self.assertContained('hello data', output)
+
+  def test_filepackager_standalone_modularize(self):
+    MESSAGE = 'Remember to build the main file with `-sFORCE_FILESYSTEM` so that it includes support for loading this file package'
+
+    create_file('data.txt', 'hello data')
+    err = self.run_process([FILE_PACKAGER, 'test.data', '--modularize', '--preload', 'data.txt', '--js-output=data.js'], stderr=PIPE).stderr
+    self.assertEqual(MESSAGE, err)
+
+    generated_content = read_file('data.js')
+
+    expected_opening = "export default function loadDataFile(Module) {"
+    expected_closing = "\n};\n// END the loadDataFile function"
+
+    self.assertContained(expected_opening, generated_content)
+    self.assertContained(expected_closing, generated_content)
 
   @crossplatform
   def test_file_packager_depfile(self):

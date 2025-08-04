@@ -492,7 +492,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
     return 1
 
   if options.from_emcc and options.modularize:
-    diagnostics.error('Can\'t use modularize option together with --from-emcc since the code should be embedded'
+    diagnostics.error('Can\'t use modularize option together with --from-emcc since the code should be embedded '
         'within emcc\'s code')
     return 1
 
