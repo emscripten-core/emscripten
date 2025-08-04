@@ -133,7 +133,7 @@ var N = [], O = a => {
     if (c = b) b = new b(a), S[++T] = b, c = T;
     return c;
 }, ca = (a, b, c, e, d) => {
-    let g = c ? M[c + 4 >> 2] : 0;
+    var g = c ? M[c + 4 >> 2] : 0;
     if (c) {
         var h = M[c >> 2];
         c = G[c + 8 >> 2];
@@ -179,7 +179,7 @@ var N = [], O = a => {
     var b = a._wsc;
     b && C.get(b)(...a.A);
 }, ia = a => E(a), ja = (a, b, c, e, d) => {
-    let g = S[a], h = g.audioWorklet, p = () => {
+    var g = S[a], h = g.audioWorklet, p = () => {
         C.get(e)(a, 0, d);
     };
     if (!h) return p();
