@@ -1165,7 +1165,7 @@ def generate_js(data_target, data_files, metadata):
     loadPackage(%s);\n''' % json.dumps(metadata)
 
   if options.modularize:
-    ret += '\n};\n// END the loadDataFile function'
+    ret += '\n};\n// END the loadDataFile function\n'
   else:
     ret += '''
   })();\n'''

@@ -3963,20 +3963,46 @@ More info: https://emscripten.org
     output = self.run_js('a.out.js')
     self.assertContained('hello data', output)
 
-  def test_filepackager_standalone_modularize(self):
+  def test_file_packager_standalone_modularize(self):
     MESSAGE = 'Remember to build the main file with `-sFORCE_FILESYSTEM` so that it includes support for loading this file package'
 
     create_file('data.txt', 'hello data')
-    err = self.run_process([FILE_PACKAGER, 'test.data', '--modularize', '--preload', 'data.txt', '--js-output=data.js'], stderr=PIPE).stderr
+    err = self.run_process([FILE_PACKAGER, 'test.data', '--modularize', '--preload', 'data.txt', '--js-output=dataFileLoader.mjs'], stderr=PIPE).stderr
     self.assertEqual(MESSAGE, err)
 
-    generated_content = read_file('data.js')
+    create_file('test.cpp', '''
+    #include <stdio.h>
+    #include <emscripten/bind.h>
 
-    expected_opening = "export default function loadDataFile(Module) {"
-    expected_closing = "\n};\n// END the loadDataFile function"
+    int test_fun() {
+      FILE* f = fopen("data.txt", "r");
+      char buf[64];
+      int rtn = fread(buf, 1, 64, f);
+      buf[rtn] = '\\0';
+      fclose(f);
+      printf("%s\\n", buf);
+      return 0;
+    }
 
-    self.assertContained(expected_opening, generated_content)
-    self.assertContained(expected_closing, generated_content)
+    EMSCRIPTEN_BINDINGS(my_module) {
+        emscripten::function("TestFun", &test_fun);
+    }
+    ''')
+    self.run_process([EMCC, 'test.cpp', '-sFORCE_FILESYSTEM', '-sMODULARIZE', '-sEXPORT_ES6', '-o', 'moduleFile.mjs', '-lembind'])
+
+    create_file('run.js', '''
+    import loadDataFile from 'dataFileLoader.mjs'
+    import {default as loadModule} from 'moduleFile.mjs'
+
+    var module = loadModule();
+    module.then((mod) => {
+      loadDataFile(mod);
+      mod.TestFun();
+    });
+    ''')
+
+    output = self.run_js('run.js')
+    self.assertContained('hello data', output)
 
   @crossplatform
   def test_file_packager_depfile(self):
