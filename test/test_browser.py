@@ -5487,8 +5487,6 @@ Module["preRun"] = () => {
     'es6': (['-sEXPORT_ES6'],),
     'strict': (['-sSTRICT'],),
   })
-  @no_wasm64('https://github.com/emscripten-core/emscripten/pull/23508')
-  @no_2gb('https://github.com/emscripten-core/emscripten/pull/23508')
   @requires_sound_hardware
   def test_audio_worklet(self, args):
     self.btest_exit('webaudio/audioworklet.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DTEST_AND_EXIT'] + args)
@@ -5511,8 +5509,6 @@ Module["preRun"] = () => {
     '': ([],),
     'closure': (['--closure', '1', '-Oz'],),
   })
-  @no_wasm64('https://github.com/emscripten-core/emscripten/pull/23508')
-  @no_2gb('https://github.com/emscripten-core/emscripten/pull/23508')
   @requires_sound_hardware
   def test_audio_worklet_modularize(self, args):
     self.btest_exit('webaudio/audioworklet.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sMODULARIZE=1', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html'), '-DTEST_AND_EXIT'] + args)
@@ -5524,8 +5520,6 @@ Module["preRun"] = () => {
     '': ([],),
     'minimal_with_closure': (['-sMINIMAL_RUNTIME', '--closure=1', '-Oz'],),
   })
-  @no_wasm64('https://github.com/emscripten-core/emscripten/pull/23508')
-  @no_2gb('https://github.com/emscripten-core/emscripten/pull/23508')
   @requires_sound_hardware
   def test_audio_worklet_params_mixing(self, args):
     os.mkdir('audio_files')
@@ -5534,8 +5528,6 @@ Module["preRun"] = () => {
     self.btest_exit('webaudio/audioworklet_params_mixing.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DTEST_AND_EXIT'] + args)
 
   # Tests AudioWorklet with emscripten_lock_busyspin_wait_acquire() and friends
-  @no_wasm64('https://github.com/emscripten-core/emscripten/pull/23508')
-  @no_2gb('https://github.com/emscripten-core/emscripten/pull/23508')
   @requires_sound_hardware
   @also_with_minimal_runtime
   def test_audio_worklet_emscripten_locks(self):

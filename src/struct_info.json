@@ -1266,6 +1266,17 @@
     {
         "file": "emscripten/webaudio.h",
         "structs": {
+           "WebAudioParamDescriptor": [
+              "defaultValue",
+              "minValue",
+              "maxValue",
+              "automationRate"
+            ],
+            "WebAudioWorkletProcessorCreateOptions": [
+              "name",
+              "numAudioParams",
+              "audioParamDescriptors"
+            ],
             "AudioSampleFrame": [
               "numberOfChannels",
               "samplesPerChannel",
@@ -1274,6 +1285,11 @@
             "AudioParamFrame": [
               "length",
               "data"
+            ],
+            "EmscriptenAudioWorkletNodeCreateOptions": [
+              "numberOfInputs",
+              "numberOfOutputs",
+              "outputChannelCounts"
             ]
         }
     },
