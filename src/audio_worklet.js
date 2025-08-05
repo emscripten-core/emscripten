@@ -170,7 +170,7 @@ class BootstrapMessages extends AudioWorkletProcessor {
         // '_wsc' is short for 'wasm call', using an identifier that will never
         // conflict with user messages.
         //
-        // Note: we convert the pointer arg manually here since the callsite
+        // Note: we convert the pointer arg manually here since the call site
         // ($_EmAudioDispatchProcessorCallback) is used with various signatures
         // and we do not know the types in advance.
         messagePort.postMessage({'_wsc': d.callback, args: [d.contextHandle, 1/*EM_TRUE*/, {{{ to64('d.userData') }}}] });
