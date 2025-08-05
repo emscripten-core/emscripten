@@ -8788,13 +8788,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
   @no_modularize_instance('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
   @parameterized({
-    'default': ([],),
+    '': ([],),
     'streaming_inst': (['-sMINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION'],),
     'no_export': (['-sDECLARE_ASM_MODULE_EXPORTS=0'],),
   })
   @requires_node  # TODO: Support for non-Node.js shells under MINIMAL_RUNTIME
   def test_minimal_runtime_hello_world(self, args):
     self.maybe_closure()
+    self.cflags += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
     self.do_runf('small_hello_world.c', 'hello!', cflags=['-sMINIMAL_RUNTIME'] + args)
 
   # Test that printf() works in MINIMAL_RUNTIME=1
