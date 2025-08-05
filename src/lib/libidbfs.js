@@ -54,7 +54,7 @@ addToLibrary({
       // If the automatic IDBFS persistence option has been selected, then automatically persist
       // all modifications to the filesystem as they occur.
       if (mount?.opts?.autoPersist) {
-        mnt.idbPersistState = 0; // IndexedDB sync starts in idle state
+        mount.idbPersistState = 0; // IndexedDB sync starts in idle state
         var memfs_node_ops = mnt.node_ops;
         mnt.node_ops = {...mnt.node_ops}; // Clone node_ops to inject write tracking
         mnt.node_ops.mknod = (parent, name, mode, dev) => {
