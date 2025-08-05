@@ -557,6 +557,7 @@ jobs:
             asan.test_minimal_runtime_global_initializer
             asan.test_fs_js_api_wasmfs
             asan.test_modularize_instance_pthreads
+            asan.test_minimal_runtime_hello_world
             lsan.test_dylink_dso_needed
             lsan.test_stdio_locking
             lsan.test_dlfcn_basic
