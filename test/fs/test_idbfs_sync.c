@@ -20,6 +20,7 @@ EM_JS_DEPS(deps, "$callUserCallback");
 
 bool test_complete = false;
 
+EMSCRIPTEN_KEEPALIVE
 void finish() {
   printf("finish\n");
   test_complete = true;
@@ -38,6 +39,7 @@ void cleanup() {
   EM_ASM(FS.syncfs(function(){})); // And persist deleted changes
 }
 
+EMSCRIPTEN_KEEPALIVE
 void test() {
   int fd, res;
   struct stat st;
