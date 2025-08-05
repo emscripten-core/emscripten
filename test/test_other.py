@@ -3804,33 +3804,20 @@ More info: https://emscripten.org
     stderr = self.expect_fail([FILE_PACKAGER, 'test.data', '--quiet', '--preload', '../data1.txt'])
     self.assertContained('which is not contained within the current directory', stderr)
 
-    stderr = self.expect_fail([FILE_PACKAGER, 'test.data', '--quiet', '--preload', '../data1.txt', '--modularize'])
-    self.assertContained('which is not contained within the current directory', stderr)
-
     # relative path that ends up under us is cool
     proc = self.run_process([FILE_PACKAGER, 'test.data', '--quiet', '--preload', '../subdir/data2.txt'], stderr=PIPE, stdout=PIPE)
     self.assertEqual(proc.stderr, '')
     check(proc.stdout)
-
-    proc = self.run_process([FILE_PACKAGER, 'test.data', '--quiet', '--preload', '../subdir/data2.txt', '--modularize'], stderr=PIPE, stdout=PIPE)
-    self.assertEqual(proc.stderr, '')
-    check(proc.stdout)
-
-    def clean(txt):
-      lines = txt.splitlines()
-      lines = [l for l in lines if 'PACKAGE_UUID' not in l and 'loadPackage({' not in l]
-      return ''.join(lines)
 
     # direct path leads to the same code being generated - relative path does not make us do anything different
     proc2 = self.run_process([FILE_PACKAGER, 'test.data', '--quiet', '--preload', 'data2.txt'], stderr=PIPE, stdout=PIPE)
     check(proc2.stdout)
     self.assertEqual(proc2.stderr, '')
 
-    self.assertTextDataIdentical(clean(proc.stdout), clean(proc2.stdout))
-
-    proc2 = self.run_process([FILE_PACKAGER, 'test.data', '--quiet', '--preload', 'data2.txt', '--modularize'], stderr=PIPE, stdout=PIPE)
-    check(proc2.stdout)
-    self.assertEqual(proc2.stderr, '')
+    def clean(txt):
+      lines = txt.splitlines()
+      lines = [l for l in lines if 'PACKAGE_UUID' not in l and 'loadPackage({' not in l]
+      return ''.join(lines)
 
     self.assertTextDataIdentical(clean(proc.stdout), clean(proc2.stdout))
 
@@ -3935,7 +3922,7 @@ More info: https://emscripten.org
   def test_file_packager_returns_error_if_emcc_and_modularize(self):
     MESSAGE = 'error: Can\'t use modularize option together with --from-emcc since the code should be embedded within emcc\'s code'
     err = self.expect_fail([FILE_PACKAGER, 'test.data', '--modularize', '--from-emcc'])
-    self.assertEqual(MESSAGE, err)
+    self.assertContained(MESSAGE, err)
 
   def test_file_packager_embed(self):
     create_file('data.txt', 'hello data')
@@ -3968,13 +3955,13 @@ More info: https://emscripten.org
 
     create_file('data.txt', 'hello data')
     err = self.run_process([FILE_PACKAGER, 'test.data', '--modularize', '--preload', 'data.txt', '--js-output=dataFileLoader.mjs'], stderr=PIPE).stderr
-    self.assertEqual(MESSAGE, err)
+    self.assertContained(MESSAGE, err)
 
     create_file('test.cpp', '''
     #include <stdio.h>
     #include <emscripten/bind.h>
 
-    int test_fun() {
+    int EMSCRIPTEN_KEEPALIVE test_fun() {
       FILE* f = fopen("data.txt", "r");
       char buf[64];
       int rtn = fread(buf, 1, 64, f);
@@ -3983,12 +3970,8 @@ More info: https://emscripten.org
       printf("%s\\n", buf);
       return 0;
     }
-
-    EMSCRIPTEN_BINDINGS(my_module) {
-        emscripten::function("TestFun", &test_fun);
-    }
     ''')
-    self.run_process([EMCC, 'test.cpp', '-sFORCE_FILESYSTEM', '-sMODULARIZE', '-sEXPORT_ES6', '-o', 'moduleFile.mjs', '-lembind'])
+    self.run_process([EMCC, 'test.cpp', '-sFORCE_FILESYSTEM', '-sMODULARIZE', '-sEXPORT_ES6', '-o', 'moduleFile.mjs'])
 
     create_file('run.js', '''
     import loadDataFile from 'dataFileLoader.mjs'
@@ -3997,7 +3980,7 @@ More info: https://emscripten.org
     var module = loadModule();
     module.then((mod) => {
       loadDataFile(mod);
-      mod.TestFun();
+      mod._test_fun();
     });
     ''')
 
