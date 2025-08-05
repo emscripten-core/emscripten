@@ -1349,9 +1349,9 @@ simulateKeyUp(100, undefined, 'Numpad4');
   })
   def test_fs_idbfs_sync(self, args):
     secret = str(time.time())
-    self.btest_exit('fs/test_idbfs_sync.c', cflags=['-lidbfs.js', f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_test,_finish', '-lidbfs.js'] + args + ['-DFIRST'])
+    self.btest_exit('fs/test_idbfs_sync.c', cflags=['-lidbfs.js', f'-DSECRET="{secret}"', '-lidbfs.js'] + args + ['-DFIRST'])
     print('done first half')
-    self.btest_exit('fs/test_idbfs_sync.c', cflags=['-lidbfs.js', f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_test,_finish', '-lidbfs.js'] + args)
+    self.btest_exit('fs/test_idbfs_sync.c', cflags=['-lidbfs.js', f'-DSECRET="{secret}"', '-lidbfs.js'] + args)
 
   def test_fs_idbfs_fsync(self):
     # sync from persisted state into memory before main()
