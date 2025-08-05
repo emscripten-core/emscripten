@@ -1651,6 +1651,22 @@ int f() {
     ''')
     self.assertContained('libf1\nlibf2\n', self.run_js('main.mjs'))
 
+  def test_minimal_runtime_errors(self):
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', 'out.html', '-sMINIMAL_RUNTIME_STREAMING_WASM_COMPILATION'])
+    self.assertContained('emcc: error: MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION requires MINIMAL_RUNTIME', err)
+
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', 'our.html', '-sMINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION'])
+    self.assertContained('emcc: error: MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION requires MINIMAL_RUNTIME', err)
+
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMINIMAL_RUNTIME', '-sMINIMAL_RUNTIME_STREAMING_WASM_COMPILATION'])
+    self.assertContained('emcc: error: MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION is only compatible with html output', err)
+
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMINIMAL_RUNTIME', '-sMINIMAL_RUNTIME_STREAMING_WASM_COMPILATION', '-oout.html', '-sSINGLE_FILE'])
+    self.assertContained('emcc: error: MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION is not compatible with SINGLE_FILE', err)
+
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMINIMAL_RUNTIME', '-sMINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION', '-oout.html', '-sSINGLE_FILE'])
+    self.assertContained('emcc: error: MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION is not compatible with SINGLE_FILE', err)
+
   def test_export_all_and_exported_functions(self):
     # EXPORT_ALL should not export library functions by default.
     # This means that to export library function you also need to explicitly
@@ -13517,7 +13533,7 @@ exec "$@"
     for arg in ('-sMAIN_MODULE', '-sSIDE_MODULE', '-sRELOCATABLE'):
       print(arg)
       err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sWASM=0', arg])
-      self.assertContained('WASM2JS is not compatible with relocatable output', err)
+      self.assertContained('emcc: error: WASM2JS is not compatible with RELOCATABLE', err)
 
   def test_wasm2js_standalone(self):
     self.do_run_in_out_file_test('hello_world.c', cflags=['-sSTANDALONE_WASM', '-sWASM=0'])
@@ -14045,7 +14061,7 @@ kill -9 $$
 
   def test_offset_convertor_plus_wasm2js(self):
     err = self.expect_fail([EMCC, '-sUSE_OFFSET_CONVERTER', '-sWASM=0', test_file('hello_world.c')])
-    self.assertContained('wasm2js is not compatible with USE_OFFSET_CONVERTER', err)
+    self.assertContained('emcc: error: WASM2JS is not compatible with USE_OFFSET_CONVERTER (see #14630)', err)
 
   def test_standard_library_mapping(self):
     # Test the `-l` flags on the command line get mapped the correct libraries variant
@@ -15245,7 +15261,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     base_cmd = [EMCC, test_file('hello_world.c'), '-sSTANDALONE_WASM']
 
     err = self.expect_fail(base_cmd + ['-sMINIMAL_RUNTIME'])
-    self.assertContained('error: MINIMAL_RUNTIME reduces JS size, and is incompatible with STANDALONE_WASM which focuses on ignoring JS anyhow and being 100% wasm', err)
+    self.assertContained('emcc: error: STANDALONE_WASM is not compatible with MINIMAL_RUNTIME', err)
 
     err = self.expect_fail(base_cmd + ['-sMEMORY_GROWTH_GEOMETRIC_CAP=1mb'])
     self.assertContained('error: MEMORY_GROWTH_GEOMETRIC_CAP is not compatible with STANDALONE_WASM', err)
