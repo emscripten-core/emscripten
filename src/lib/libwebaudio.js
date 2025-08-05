@@ -210,7 +210,8 @@ var LibraryWebAudio = {
   $_EmAudioDispatchProcessorCallback: (e) => {
     var data = e.data;
     // '_wsc' is short for 'wasm call', trying to use an identifier name that
-    // will never conflict with user code
+    // will never conflict with user code. This is used to call both the 3-param
+    // call (handle, true, userData) and the variable argument post functions.
     var wasmCall = data['_wsc'];
     wasmCall && getWasmTableEntry(wasmCall)(...data.args);
   },

@@ -25,7 +25,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
       assert(opts.callback)
       assert(opts.samplesPerChannel)
 #endif
-      this.callback = getWasmTableEntry(opts.callback);
+      this.callback = {{{ makeDynCall('bipipipp', 'opts.callback') }}};
       this.userData = opts.userData;
       // Then the samples per channel to process, fixed for the lifetime of the
       // context that created this processor. Note for when moving to Web Audio
@@ -110,7 +110,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
       }
 
       // Call out to Wasm callback to perform audio processing
-      if (didProduceAudio = this.callback(numInputs, {{{ to64('inputsPtr') }}}, numOutputs, {{{ to64('outputsPtr') }}}, numParams, {{{ to64('paramsPtr') }}}, {{{ to64('this.userData') }}})) {
+      if (didProduceAudio = this.callback(numInputs, inputsPtr, numOutputs, outputsPtr, numParams, paramsPtr, this.userData)) {
         // Read back the produced audio data to all outputs and their channels.
         // (A garbage-free function TypedArray.copy(dstTypedArray, dstOffset,
         // srcTypedArray, srcOffset, count) would sure be handy..  but web does
