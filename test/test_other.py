@@ -3954,16 +3954,15 @@ More info: https://emscripten.org
     MESSAGE = 'Remember to build the main file with `-sFORCE_FILESYSTEM` so that it includes support for loading this file package'
 
     create_file('data.txt', 'hello data')
-    err = self.run_process([FILE_PACKAGER, 'test.data', '--modularize', '--preload', 'data.txt', '--js-output=dataFileLoader.mjs'], stderr=PIPE).stderr
+    err = self.run_process([FILE_PACKAGER, 'test.data', '--modularize', '--preload', 'data.txt', '--js-output=dataFileLoader.js', '--no-node'], stderr=PIPE).stderr
     self.assertContained(MESSAGE, err)
 
-    create_file('test.cpp', '''
+    create_file('test.c', '''
     #include <stdio.h>
-    #include <emscripten/bind.h>
 
-    int EMSCRIPTEN_KEEPALIVE test_fun() {
+    int main() {
       FILE* f = fopen("data.txt", "r");
-      char buf[64];
+      char buf[64] = {0};
       int rtn = fread(buf, 1, 64, f);
       buf[rtn] = '\\0';
       fclose(f);
@@ -3971,16 +3970,18 @@ More info: https://emscripten.org
       return 0;
     }
     ''')
-    self.run_process([EMCC, 'test.cpp', '-sFORCE_FILESYSTEM', '-sMODULARIZE', '-sEXPORT_ES6', '-o', 'moduleFile.mjs'])
+    self.run_process([EMCC, 'test.c', '-sFORCE_FILESYSTEM', '-sMODULARIZE', '-sEXPORT_ES6', '-o', 'moduleFile.js'])
 
     create_file('run.js', '''
-    import loadDataFile from 'dataFileLoader.mjs'
-    import {default as loadModule} from 'moduleFile.mjs'
+    import loadDataFile from './dataFileLoader.js'
+    import {default as loadModule} from './moduleFile.js'
 
+    const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay))
     var module = loadModule();
-    module.then((mod) => {
-      loadDataFile(mod);
-      mod._test_fun();
+    module.then(async (module) => {
+      loadDataFile(module);
+      await sleep(1000);
+      module._test_fun();
     });
     ''')
 
