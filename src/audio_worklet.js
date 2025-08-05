@@ -25,7 +25,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
       assert(opts.callback)
       assert(opts.samplesPerChannel)
 #endif
-      this.callback = {{{ makeDynCall('bipipipp', 'opts.callback') }}};
+      this.callback = {{{ makeDynCall('iipipipp', 'opts.callback') }}};
       this.userData = opts.userData;
       // Then the samples per channel to process, fixed for the lifetime of the
       // context that created this processor. Note for when moving to Web Audio
