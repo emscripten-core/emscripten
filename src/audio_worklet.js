@@ -82,37 +82,31 @@ function createWasmAudioWorkletProcessor(audioParams) {
 
       // Copy output audio descriptor structs to Wasm
       outputsPtr = dataPtr;
-      k = {{{ getHeapOffset('outputsPtr', 'u32') }}};
+      k = outputsPtr;
       outputDataPtr = (dataPtr += numOutputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}});
       for (i of outputList) {
         // Write the AudioSampleFrame struct instance
-        HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.numberOfChannels / 4 }}}] = i.length;
-        HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.samplesPerChannel / 4 }}}] = this.samplesPerChannel;
-        HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.data / 4 }}}] = dataPtr;
-#if MEMORY64
-        HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.data / 4 + 1 }}}] = dataPtr / 0x100000000;
-#endif
-        k += {{{ C_STRUCTS.AudioSampleFrame.__size__ / 4 }}};
+        {{{ makeSetValue('k', C_STRUCTS.AudioSampleFrame.numberOfChannels, 'i.length', 'u32') }}};
+        {{{ makeSetValue('k', C_STRUCTS.AudioSampleFrame.samplesPerChannel, 'this.samplesPerChannel', 'u32') }}};
+        {{{ makeSetValue('k', C_STRUCTS.AudioSampleFrame.data, 'dataPtr', '*') }}};
+        k += {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
         // Reserve space for the output data
         dataPtr += bytesPerChannel * i.length;
       }
 
       // Copy parameters descriptor structs and data to Wasm
       paramsPtr = dataPtr;
-      k = {{{ getHeapOffset('paramsPtr', 'u32') }}};
+      k = paramsPtr;
       dataPtr += numParams * {{{ C_STRUCTS.AudioParamFrame.__size__ }}};
 
       for (i = 0; paramArray = parameters[i++];) {
         // Write the AudioParamFrame struct instance
-        HEAPU32[k + {{{ C_STRUCTS.AudioParamFrame.length / 4 }}}] = paramArray.length;
-        HEAPU32[k + {{{ C_STRUCTS.AudioParamFrame.data / 4 }}}] = dataPtr;
-#if MEMORY64
-        HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.data / 4 + 1 }}}] = dataPtr / 0x100000000;
-#endif
-        k += {{{ C_STRUCTS.AudioParamFrame.__size__ / 4 }}};
+        {{{ makeSetValue('k', C_STRUCTS.AudioParamFrame.length, 'paramArray.length', 'u32') }}};
+        {{{ makeSetValue('k', C_STRUCTS.AudioParamFrame.data, 'dataPtr', '*') }}};
+        k += {{{ C_STRUCTS.AudioParamFrame.__size__ }}};
         // Marshal the audio parameters array
         HEAPF32.set(paramArray, {{{ getHeapOffset('dataPtr', 'float') }}});
-        dataPtr += paramArray.length*4;
+        dataPtr += paramArray.length * {{{ getNativeTypeSize('float') }}};
       }
 
       // Call out to Wasm callback to perform audio processing
