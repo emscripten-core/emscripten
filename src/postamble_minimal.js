@@ -88,11 +88,9 @@ Module['wasm'] = base64Decode('<<< WASM_BINARY_DATA >>>');
 var wasmExports;
 #endif
 
-#if PTHREADS
-var wasmModule;
-#endif
-
 #if PTHREADS || WASM_WORKERS
+var wasmModule;
+
 function loadModule() {
   assignWasmImports();
 #endif
@@ -152,12 +150,14 @@ WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProp
   // output.module objects. But if Module['wasm'] is an already compiled
   // WebAssembly module, then output is the WebAssembly instance itself.
   // Depending on the build mode, Module['wasm'] can mean a different thing.
-#if PTHREADS
-  // In pthreads, Module['wasm'] is an already compiled WebAssembly.Module. In
-  // that case, 'output' is a WebAssembly.Instance.
+#if PTHREADS || WASM_WORKERS
+  // In pthreads and wasm workers, Module['wasm'] is a compiled
+  // WebAssembly.Module. In that case, 'output' is a WebAssembly.Instance.
   // In main thread, Module['wasm'] is either a typed array or a fetch stream.
   // In that case, 'output.instance' is the WebAssembly.Instance.
   wasmExports = (output.instance || output).exports;
+  // Stash the Wasm module for future worker creation.
+  wasmModule = output.module || Module['wasm'];
 #elif MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION
   // In MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION mode, Module['wasm'] is the
   // compiled module so we just get the instance back.
@@ -217,9 +217,8 @@ WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProp
   <<< ATPRERUNS >>>
 
   initRuntime(wasmExports);
+
 #if PTHREADS
-  // Export Wasm module for pthread creation to access.
-  wasmModule = output.module || Module['wasm'];
   PThread.loadWasmModuleToAllWorkers(ready);
 #else
   ready();
