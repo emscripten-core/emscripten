@@ -25,7 +25,7 @@ See docs/process.md for more on how version tagging works.
   ignored. (#24849)
 - emcc will now error if `MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION` or
   `MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION` are used with `SINGLE_FILE`.
-  These are fundamtnally incompatible but were previously ignored. (#24849)
+  These are fundamentally incompatible but were previously ignored. (#24849)
 
 4.0.12 - 08/01/25
 -----------------
