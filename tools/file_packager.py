@@ -638,7 +638,6 @@ def generate_js(data_target, data_files, metadata):
   ret += '''
     function handleError(error) {
       console.error('package error:', error);
-      return error;
     };
 
     function loadPackage(metadata) {\n'''
@@ -1119,7 +1118,7 @@ def generate_js(data_target, data_files, metadata):
         if (isNode) {
           require('fs').readFile(metadataUrl, 'utf8', (err, contents) => {
             if (err) {
-              return handleError(err);
+              handleError(err);
             } else {
               loadPackage(JSON.parse(contents));
             }
@@ -1140,8 +1139,8 @@ def generate_js(data_target, data_files, metadata):
         if (response.ok) {
           return response.json();
         }
-        return handleError(new Error(`${response.status}: ${response.url}`));
       })
+      .catch((cause) => handleError(new Error(`Network Error: ${packageName}`, {cause}))) // If fetch fails, rewrite the error to include the failing URL & the cause.
       .then(loadPackage);
   }
 
