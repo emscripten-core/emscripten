@@ -641,7 +641,7 @@ def generate_js(data_target, data_files, metadata):
       return error;
     };
       
-    function loadPackage(metadata) {\n''''
+    function loadPackage(metadata) {\n'''
 
   code = '''
       function assert(check, msg) {
