@@ -220,7 +220,7 @@ function y() {
     WebAssembly.instantiate(l.wasm, {
         a: Z
     }).then((a => {
-        a = a.instance.exports;
+        a = (a.instance || a).exports;
         X = a.j;
         I = a.l;
         D = a.m;
