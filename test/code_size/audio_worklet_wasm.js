@@ -121,11 +121,11 @@ var M = [], N = a => {
     return e;
 }, ba = a => {
     var b = window.AudioContext || window.webkitAudioContext;
-    if (a >>= 2) {
-        var c = F[a] ? (c = F[a]) ? V(c) : "" : void 0;
+    if (a) {
+        var c = F[a >> 2];
         a = {
-            latencyHint: c,
-            sampleRate: L[a + 1] || void 0
+            latencyHint: (c ? V(c) : "") || void 0,
+            sampleRate: F[a + 4 >> 2] || void 0
         };
     } else a = void 0;
     if (c = b) b = new b(a), S[++T] = b, c = T;

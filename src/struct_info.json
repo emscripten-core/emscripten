@@ -1266,7 +1266,11 @@
     {
         "file": "emscripten/webaudio.h",
         "structs": {
-           "WebAudioParamDescriptor": [
+            "EmscriptenWebAudioCreateAttributes": [
+              "latencyHint",
+              "sampleRate"
+            ],
+            "WebAudioParamDescriptor": [
               "defaultValue",
               "minValue",
               "maxValue",

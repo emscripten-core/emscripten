@@ -58,11 +58,10 @@ var LibraryWebAudio = {
 #if ASSERTIONS
     if (!ctx) console.error('emscripten_create_audio_context failed! Web Audio is not supported.');
 #endif
-    options >>= 2;
 
     var opts = options ? {
-      latencyHint: HEAPU32[options] ? UTF8ToString(HEAPU32[options]) : undefined,
-      sampleRate: HEAP32[options+1] || undefined
+      latencyHint: UTF8ToString({{{ makeGetValue('options', C_STRUCTS.EmscriptenWebAudioCreateAttributes.latencyHint, '*') }}}) || undefined,
+      sampleRate: {{{ makeGetValue('options', C_STRUCTS.EmscriptenWebAudioCreateAttributes.sampleRate, 'u32') }}} || undefined
     } : undefined;
 
 #if WEBAUDIO_DEBUG
