@@ -635,12 +635,12 @@ def generate_js(data_target, data_files, metadata):
 
   if options.support_node:
     ret += "    var isNode = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string';\n"
-  ret += ''' 
+  ret += '''
     function handleError(error) {
       console.error('package error:', error);
       return error;
     };
-      
+
     function loadPackage(metadata) {\n'''
 
   code = '''
