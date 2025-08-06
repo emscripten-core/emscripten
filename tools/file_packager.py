@@ -41,7 +41,7 @@ Usage:
 
   --export-name=EXPORT_NAME Use custom export name (default is `Module`)
 
-  --modularize Wrap generated code inside ES6 exported function
+  --export-es6 Wrap generated code inside ES6 exported function
 
   --no-force Don't create output if no valid input file is specified.
 
@@ -131,7 +131,7 @@ class Options:
     self.use_preload_plugins = False
     self.support_node = True
     self.wasm64 = False
-    self.modularize = False
+    self.export_es6 = False
 
 
 class DataFile:
@@ -394,8 +394,8 @@ def main():  # noqa: C901, PLR0912, PLR0915
     elif arg == '--no-force':
       options.force = False
       leading = ''
-    elif arg == '--modularize':
-      options.modularize = True
+    elif arg == '--export-es6':
+      options.export_es6 = True
       leading = ''
     elif arg == '--use-preload-cache':
       options.use_preload_cache = True
@@ -491,8 +491,8 @@ def main():  # noqa: C901, PLR0912, PLR0915
     diagnostics.error('TARGET should not be the same value of --js-output')
     return 1
 
-  if options.from_emcc and options.modularize:
-    diagnostics.error('Can\'t use modularize option together with --from-emcc since the code should be embedded '
+  if options.from_emcc and options.export_es6:
+    diagnostics.error('Can\'t use --export-es6 option together with --from-emcc since the code should be embedded '
         'within emcc\'s code')
     return 1
 
@@ -632,7 +632,7 @@ def generate_js(data_target, data_files, metadata):
   if options.from_emcc:
     ret = ''
   else:
-    if options.modularize:
+    if options.export_es6:
       ret = 'export default function loadDataFile(Module) {'
 
     else:
@@ -643,7 +643,7 @@ def generate_js(data_target, data_files, metadata):
   Module['expectedDataFileDownloads'] ??= 0;
   Module['expectedDataFileDownloads']++;'''
 
-  if not options.modularize:
+  if not options.export_es6:
     ret += '''
   (() => {'''
 
@@ -1164,7 +1164,7 @@ def generate_js(data_target, data_files, metadata):
     }
     loadPackage(%s);\n''' % json.dumps(metadata)
 
-  if options.modularize:
+  if options.export_es6:
     ret += '\n};\n// END the loadDataFile function\n'
   else:
     ret += '''

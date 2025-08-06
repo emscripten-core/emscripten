@@ -3954,7 +3954,7 @@ More info: https://emscripten.org
     MESSAGE = 'Remember to build the main file with `-sFORCE_FILESYSTEM` so that it includes support for loading this file package'
 
     create_file('data.txt', 'hello data')
-    err = self.run_process([FILE_PACKAGER, 'test.data', '--modularize', '--preload', 'data.txt', '--js-output=dataFileLoader.js', '--no-node'], stderr=PIPE).stderr
+    err = self.run_process([FILE_PACKAGER, 'test.data', '--export-es6', '--preload', 'data.txt', '--js-output=dataFileLoader.js', '--no-node'], stderr=PIPE).stderr
     self.assertContained(MESSAGE, err)
 
     create_file('test.c', '''
@@ -3980,7 +3980,8 @@ More info: https://emscripten.org
     var module = loadModule();
     module.then(async (module) => {
       loadDataFile(module);
-      await sleep(1000);
+      // sleep so we don't have to use monitorRunDependencies logic
+      await sleep(2000);
       module._test_fun();
     });
     ''')

@@ -36,6 +36,8 @@ See docs/process.md for more on how version tagging works.
   These are fundamentally incompatible but were previously ignored. (#24849)
 - `--modularize` flag was added to `file_packager.py` available when run 
   standalone, to enable ES6 imports of generated JavaScript code
+- `--export-es6` flag was added to `file_packager.py` available when run 
+  standalone, to enable ES6 imports of generated JavaScript code (#24737)
 
 4.0.12 - 08/01/25
 -----------------
