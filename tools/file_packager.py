@@ -635,7 +635,13 @@ def generate_js(data_target, data_files, metadata):
 
   if options.support_node:
     ret += "    var isNode = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string';\n"
-  ret += '    function loadPackage(metadata) {\n'
+  ret += ''' 
+    function handleError(error) {
+      console.error('package error:', error);
+      return error;
+    };
+      
+    function loadPackage(metadata) {\n''''
 
   code = '''
       function assert(check, msg) {
@@ -1022,10 +1028,6 @@ def generate_js(data_target, data_files, metadata):
             Module['setStatus']?.('Downloading data...');
             return iterate();
           });
-      };
-
-      function handleError(error) {
-        console.error('package error:', error);
       };\n''' % {'node_support_code': node_support_code}
 
     code += '''
@@ -1117,7 +1119,7 @@ def generate_js(data_target, data_files, metadata):
         if (isNode) {
           require('fs').readFile(metadataUrl, 'utf8', (err, contents) => {
             if (err) {
-              return Promise.reject(err);
+              return handleError(err);
             } else {
               loadPackage(JSON.parse(contents));
             }
@@ -1138,7 +1140,7 @@ def generate_js(data_target, data_files, metadata):
         if (response.ok) {
           return response.json();
         }
-        return Promise.reject(new Error(`${response.status}: ${response.url}`));
+        return handleError(new Error(`${response.status}: ${response.url}`));
       })
       .then(loadPackage);
   }
