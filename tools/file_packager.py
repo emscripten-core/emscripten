@@ -972,10 +972,10 @@ def generate_js(data_target, data_files, metadata):
         %(node_support_code)s
         Module['dataFileDownloads'] ??= {};
         fetch(packageName)
-          .catch((cause) => Promise.reject(new Error(`Network Error: ${packageName}`, {cause}))) // If fetch fails, rewrite the error to include the failing URL & the cause.
+          .catch((cause) => errback(new Error(`Network Error: ${packageName}`, {cause}))) // If fetch fails, rewrite the error to include the failing URL & the cause.
           .then((response) => {
             if (!response.ok) {
-              return Promise.reject(new Error(`${response.status}: ${response.url}`));
+              return errback(new Error(`${response.status}: ${response.url}`));
             }
 
             if (!response.body && response.arrayBuffer) { // If we're using the polyfill, readers won't be available...
@@ -984,7 +984,7 @@ def generate_js(data_target, data_files, metadata):
 
             const reader = response.body.getReader();
             const iterate = () => reader.read().then(handleChunk).catch((cause) => {
-              return Promise.reject(new Error(`Unexpected error while handling : ${response.url} ${cause}`, {cause}));
+              return errback(new Error(`Unexpected error while handling : ${response.url} ${cause}`, {cause}));
             });
 
             const chunks = [];
