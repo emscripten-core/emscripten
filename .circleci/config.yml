@@ -445,6 +445,7 @@ jobs:
       - run: tools/maint/check_emcc_help_text.py
       - run: make -C site html
   ruff:
+    # Keep in sync with ruff commands in tools/maint/pre-push
     executor: focal
     steps:
       - checkout
