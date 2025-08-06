@@ -1353,6 +1353,19 @@ simulateKeyUp(100, undefined, 'Numpad4');
     print('done first half')
     self.btest_exit('fs/test_idbfs_sync.c', cflags=['-lidbfs.js', f'-DSECRET="{secret}"', '-lidbfs.js'] + args)
 
+  @parameterized({
+    'open': ('TEST_CASE_OPEN', 2),
+    'close': ('TEST_CASE_CLOSE', 3),
+    'symlink': ('TEST_CASE_SYMLINK', 3),
+    'unlink': ('TEST_CASE_UNLINK', 3),
+    'rename': ('TEST_CASE_RENAME', 3),
+    'mkdir': ('TEST_CASE_MKDIR', 2),
+  })
+  def test_fs_idbfs_autopersist(self, test_case, phase_count):
+    self.cflags += ['-lidbfs.js', f'-DTEST_CASE={test_case}']
+    for phase in range(phase_count):
+      self.btest_exit('fs/test_idbfs_autopersist.c', cflags=[f'-DTEST_PHASE={phase + 1}'])
+
   def test_fs_idbfs_fsync(self):
     # sync from persisted state into memory before main()
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
