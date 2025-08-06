@@ -4,4 +4,8 @@
 #
 # This script can be installed using `./boostrap -i`.
 
-exec ruff check -q
+set -o errexit
+
+# Keep these check in sync with `ruff` rule in  .circleci/config.yml
+ruff check -q
+ruff check --preview --select=E20,E30,E221,E225,E226
