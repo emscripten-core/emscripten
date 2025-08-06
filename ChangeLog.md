@@ -20,6 +20,14 @@ See docs/process.md for more on how version tagging works.
 
 4.0.13 (in development)
 -----------------------
+- The `-sMODULARIZE` setting generates a factory function that must be called
+  before the program is instantiated that run.  However, emscripten previously
+  had very special case where this instantiation would happen automatically
+  (with no parameterization) under certain specific circumstances: When
+  `-sMINIMAL_RUNTIME`, `-sSINGLE_FILE` and `-sMODULARIZE` were used in
+  combination with default html output.  This special case was removed.  If you
+  want to instantiate the module on startup you can still do so by adding a call
+  the factory function in `--extern-post-js`. (#24874)
 - emcc will now error if `MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION` is used
   when not generating html output.  This was always incompatible but previously
   ignored. (#24849)

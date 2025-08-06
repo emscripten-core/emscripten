@@ -20,7 +20,7 @@
 #include "runtime_asan.js"
 #endif
 
-#if MODULARIZE && USE_READY_PROMISE
+#if MODULARIZE
 var readyPromiseResolve, readyPromiseReject;
 #endif
 
