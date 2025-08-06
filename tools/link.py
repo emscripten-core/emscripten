@@ -1257,14 +1257,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.STACK_OVERFLOW_CHECK >= 2:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$setStackLimits']
 
-  if settings.MODULARIZE:
-    # in MINIMAL_RUNTIME we may not need to emit the Promise code, as the
-    # HTML output creates a singleton instance, and it does so without the
-    # Promise. However, in Pthreads mode the Promise is used for worker
-    # creation.
-    if settings.MINIMAL_RUNTIME and options.oformat == OFormat.HTML and not settings.PTHREADS:
-      settings.USE_READY_PROMISE = 0
-
   check_browser_versions()
 
   if settings.MIN_NODE_VERSION >= 150000:

@@ -4,7 +4,6 @@
 // We assign to the `moduleRtn` global here and configure closure to see
 // this as and extern so it won't get minified.
 
-#if USE_READY_PROMISE
 if (runtimeInitialized)  {
   moduleRtn = Module;
 } else {
@@ -14,9 +13,6 @@ if (runtimeInitialized)  {
     readyPromiseReject = reject;
   });
 }
-#else
-moduleRtn = {};
-#endif
 
 #if ASSERTIONS
 // Assertion for attempting to access module properties on the incoming

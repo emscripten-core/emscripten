@@ -191,10 +191,6 @@ var WASM_EXCEPTIONS = false;
 // EXPORTED_FUNCTIONS then this gets set to 0.
 var EXPECT_MAIN = true;
 
-// Return a "ready" Promise from the MODULARIZE factory function.
-// We disable this under some circumstance if we know its not needed.
-var USE_READY_PROMISE = true;
-
 // If true, building against Emscripten's wasm heap memory profiler.
 var MEMORYPROFILER = false;
 
