@@ -638,6 +638,8 @@ def generate_js(data_target, data_files, metadata):
   ret += '''
     function handleError(error) {
       console.error('package error:', error);
+
+      return Promise.reject(error);
     };
 
     function loadPackage(metadata) {\n'''
@@ -924,8 +926,7 @@ def generate_js(data_target, data_files, metadata):
             var getRequest = packages.get(`package/${packageName}/${chunkId}`);
             getRequest.onsuccess = (event) => {
               if (!event.target.result) {
-                errback(new Error(`CachedPackageNotFound for: ${packageName}`));
-                return;
+                return errback(new Error(`CachedPackageNotFound for: ${packageName}`));
               }
               // If there's only 1 chunk, there's nothing to concatenate it with so we can just return it now
               if (chunkCount == 1) {
@@ -964,7 +965,7 @@ def generate_js(data_target, data_files, metadata):
         if (isNode) {
           require('fs').readFile(packageName, (err, contents) => {
             if (err) {
-              errback(err);
+              return errback(err);
             } else {
               callback(contents.buffer);
             }
@@ -1118,7 +1119,7 @@ def generate_js(data_target, data_files, metadata):
         if (isNode) {
           require('fs').readFile(metadataUrl, 'utf8', (err, contents) => {
             if (err) {
-              handleError(err);
+              return handleError(err);
             } else {
               loadPackage(JSON.parse(contents));
             }
@@ -1140,7 +1141,9 @@ def generate_js(data_target, data_files, metadata):
           return response.json();
         }
       })
-      .catch((cause) => handleError(new Error(`Network Error: ${packageName}`, {cause}))) // If fetch fails, rewrite the error to include the failing URL & the cause.
+      .catch((cause) => {
+        return handleError(new Error(`Network Error: ${packageName}`, {cause})
+      })) // If fetch fails, rewrite the error to include the failing URL & the cause.
       .then(loadPackage);
   }
 
