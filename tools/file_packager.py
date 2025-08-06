@@ -636,10 +636,8 @@ def generate_js(data_target, data_files, metadata):
   if options.support_node:
     ret += "    var isNode = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string';\n"
   ret += '''
-    function handleError(error) {
-      console.error('package error:', error);
-
-      return Promise.reject(error);
+    function throwPackageError(error) {
+      throw error;
     };
 
     function loadPackage(metadata) {\n'''
@@ -1050,7 +1048,7 @@ def generate_js(data_target, data_files, metadata):
         function preloadFallback(error) {
           console.error(error);
           console.error('falling back to default preload behavior');
-          fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, processPackageData, handleError);
+          fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, processPackageData, throwPackageError);
         };
 
         openDatabase(
@@ -1090,7 +1088,7 @@ def generate_js(data_target, data_files, metadata):
         } else {
           fetched = data;
         }
-      }, handleError);\n'''
+      }, throwPackageError);\n'''
 
       code += '''
       Module['preloadResults'][PACKAGE_NAME] = {fromCache: false};
