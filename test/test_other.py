@@ -11306,6 +11306,15 @@ T6:(else) !ASSERTIONS""", output)
     ret = self.run_js('workerLoader.js')
     self.assertContained('hello, world!\ndone\n', ret)
 
+  @crossplatform
+  def test_html_preprocess_error(self):
+    create_file('shell.html', '''
+      #error this is an error
+      {{{ SCRIPT }}}
+    ''')
+    err = self.expect_fail([EMCC, '-o', 'out.html', test_file('hello_world.c'), '--shell-file=shell.html'])
+    self.assertContained('error: shell.html:2: #error this is an error', err)
+
   @no_windows('node system() does not seem to work, see https://github.com/emscripten-core/emscripten/pull/10547')
   @requires_node
   def test_system_node_js(self):
