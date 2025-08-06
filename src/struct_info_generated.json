@@ -695,6 +695,11 @@
             "hidden": 0,
             "visibilityState": 4
         },
+        "EmscriptenWebAudioCreateAttributes": {
+            "__size__": 8,
+            "latencyHint": 0,
+            "sampleRate": 4
+        },
         "EmscriptenWebGLContextAttributes": {
             "__size__": 36,
             "alpha": 0,
