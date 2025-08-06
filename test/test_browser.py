@@ -5045,8 +5045,8 @@ Module["preRun"] = () => {
   # Tests that -sMINIMAL_RUNTIME works well in different build modes
   @parameterized({
     '': ([],),
-    'streaming': (['-sMINIMAL_RUNTIME_STREAMING_WASM_COMPILATION', '--closure=1'],),
-    'streaming_inst': (['-sMINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION', '--closure=1'],),
+    'streaming_compile': (['-sMINIMAL_RUNTIME_STREAMING_WASM_COMPILATION', '-sENVIRONMENT=web', '--closure=1'],),
+    'streaming_inst': (['-sMINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION', '-sENVIRONMENT=web', '--closure=1'],),
   })
   def test_minimal_runtime_hello_world(self, args):
     self.btest_exit('small_hello_world.c', cflags=args + ['-sMINIMAL_RUNTIME'])
