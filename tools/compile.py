@@ -12,7 +12,7 @@ get_target_flags(): Defines just `-target` flags and should always be
 used when calling clang, or any other llvm tool.
 
 get_clang_flags(): In addution to the target flags this function return all the
-required clang clang.
+required compiler flags.
 
 get_cflags(): In addtion to clang flags this function also return pre-processor
 flags. For example, include paths and macro defintions.
