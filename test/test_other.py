@@ -3951,15 +3951,15 @@ More info: https://emscripten.org
     self.assertContained('hello data', output)
 
   def test_file_packager_export_es6(self):
-    create_file('data.txt', 'hello data')
-    self.run_process([FILE_PACKAGER, 'test.data', '--export-es6', '--preload', 'data.txt', '--js-output=dataFileLoader.js', '--no-node'])
+    create_file('smth.txt', 'hello data')
+    self.run_process([FILE_PACKAGER, 'test.data', '--export-es6', '--preload', 'smth.txt', '--js-output=dataFileLoader.js'])
 
     create_file('test.c', '''
     #include <stdio.h>
     #include <emscripten.h>
 
     EMSCRIPTEN_KEEPALIVE int test_fun() {
-      FILE* f = fopen("data.txt", "r");
+      FILE* f = fopen("smth.txt", "r");
       char buf[64] = {0};
       int rtn = fread(buf, 1, 64, f);
       buf[rtn] = '\\0';

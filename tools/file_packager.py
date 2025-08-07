@@ -634,11 +634,7 @@ def generate_js(data_target, data_files, metadata):
   else:
     if options.export_es6:
       ret = '''export default function loadDataFile(Module) {
-  var readyPromiseResolve, readyPromiseReject;
-  var readyPromise = new Promise((resolve, reject) => {
-    readyPromiseResolve = resolve;
-    readyPromiseReject = reject;
-  });'''
+  return new Promise((loadDataResolve, loadDataReject) => {'''
 
     else:
       ret = '''
@@ -710,7 +706,7 @@ def generate_js(data_target, data_files, metadata):
           Module['FS_createDataFile'](this.name, null, byteArray, true, true, true);
           Module['removeRunDependency'](`fp ${that.name}`);'''
     ready_promise = '''
-          readyPromiseResolve();'''
+          loadDataResolve();'''
 
     if not options.lz4:
       # Data requests - for getting a block of data out of the big archive - have
@@ -991,7 +987,7 @@ def generate_js(data_target, data_files, metadata):
         }'''.strip()
 
     reject_promise = '''
-          readyPromiseReject();'''
+          loadDataReject();'''
 
     ret += '''
       function fetchRemotePackage(packageName, packageSize, callback, errback) {
@@ -1176,7 +1172,7 @@ def generate_js(data_target, data_files, metadata):
 
   if options.export_es6:
     ret += '''
-  return readyPromise;
+  });
 }
 // END the loadDataFile function
 '''
