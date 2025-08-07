@@ -4,7 +4,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""The function in this file define the compiler flags that emcc passed to clang.
+"""The functions in this file define the compiler flags that emcc passes to clang.
 
 There are three different levels of flags, each one a superset of the next:
 
