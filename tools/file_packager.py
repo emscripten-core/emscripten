@@ -709,7 +709,7 @@ def generate_js(data_target, data_files, metadata):
     create_data = '''// canOwn this data in the filesystem, it is a slide into the heap that will never change
           Module['FS_createDataFile'](this.name, null, byteArray, true, true, true);
           Module['removeRunDependency'](`fp ${that.name}`);'''
-    ready_promise = '''         
+    ready_promise = '''
           readyPromiseResolve();'''
 
     if not options.lz4:
@@ -990,7 +990,7 @@ def generate_js(data_target, data_files, metadata):
           return;
         }'''.strip()
 
-    reject_promise = '''         
+    reject_promise = '''
           readyPromiseReject();'''
 
     ret += '''

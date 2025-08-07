@@ -3959,8 +3959,9 @@ More info: https://emscripten.org
 
     create_file('test.c', '''
     #include <stdio.h>
+    #include <emscripten.h>
 
-    int main() {
+    EMSCRIPTEN_KEEPALIVE int test_fun() {
       FILE* f = fopen("data.txt", "r");
       char buf[64] = {0};
       int rtn = fread(buf, 1, 64, f);
@@ -3976,9 +3977,10 @@ More info: https://emscripten.org
     import loadDataFile from './dataFileLoader.js'
     import {default as loadModule} from './moduleFile.js'
 
-    const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay))
-    loadModule().then(async (module) => {
-      loadDataFile(module).then(() => {
+    loadModule().then((module) => {
+      loadDataFile(module)
+        .catch((cause) => Promise.reject(cause))
+        .then(() => {
           module._test_fun();
         }
       );
