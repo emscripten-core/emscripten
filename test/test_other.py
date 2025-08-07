@@ -3919,9 +3919,9 @@ More info: https://emscripten.org
     err = self.expect_fail([FILE_PACKAGER, 'test.data', '--js-output=test.data'])
     self.assertContained(MESSAGE, err)
 
-  def test_file_packager_returns_error_if_emcc_and_modularize(self):
-    MESSAGE = 'error: Can\'t use modularize option together with --from-emcc since the code should be embedded within emcc\'s code'
-    err = self.expect_fail([FILE_PACKAGER, 'test.data', '--modularize', '--from-emcc'])
+  def test_file_packager_returns_error_if_emcc_and_export_es6(self):
+    MESSAGE = 'error: Can\'t use --export-es6 option together with --from-emcc since the code should be embedded within emcc\'s code'
+    err = self.expect_fail([FILE_PACKAGER, 'test.data', '--export-es6', '--from-emcc'])
     self.assertContained(MESSAGE, err)
 
   def test_file_packager_embed(self):
@@ -3950,7 +3950,7 @@ More info: https://emscripten.org
     output = self.run_js('a.out.js')
     self.assertContained('hello data', output)
 
-  def test_file_packager_standalone_modularize(self):
+  def test_file_packager_export_es6(self):
     MESSAGE = 'Remember to build the main file with `-sFORCE_FILESYSTEM` so that it includes support for loading this file package'
 
     create_file('data.txt', 'hello data')

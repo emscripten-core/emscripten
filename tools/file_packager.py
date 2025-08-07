@@ -21,7 +21,7 @@ data downloads.
 
 Usage:
 
-  file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node] [--help]
+  file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node] [--export-es6] [--help]
 
   --preload  ,
   --embed    See emcc --help for more details on those options.
@@ -365,7 +365,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
   if len(sys.argv) == 1:
-    err('''Usage: file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node] [--help]
+    err('''Usage: file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node] [--export-es6] [--help]
   Try 'file_packager --help' for more details.''')
     return 1
 
@@ -1177,7 +1177,7 @@ def generate_js(data_target, data_files, metadata):
   if options.export_es6:
     ret += '''
   return readyPromise;
-};
+}
 // END the loadDataFile function
 '''
   else:
