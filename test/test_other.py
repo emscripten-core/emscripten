@@ -3977,12 +3977,11 @@ More info: https://emscripten.org
     import {default as loadModule} from './moduleFile.js'
 
     const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay))
-    var module = loadModule();
-    module.then(async (module) => {
-      loadDataFile(module);
-      // sleep so we don't have to use monitorRunDependencies logic
-      await sleep(2000);
-      module._test_fun();
+    loadModule().then(async (module) => {
+      loadDataFile(module).then(() => {
+          module._test_fun();
+        }
+      );
     });
     ''')
 

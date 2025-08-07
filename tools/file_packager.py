@@ -633,7 +633,12 @@ def generate_js(data_target, data_files, metadata):
     ret = ''
   else:
     if options.export_es6:
-      ret = 'export default function loadDataFile(Module) {'
+      ret = '''export default function loadDataFile(Module) {
+  var readyPromiseResolve, readyPromiseReject;
+  var readyPromise = new Promise((resolve, reject) => {
+    readyPromiseResolve = resolve;
+    readyPromiseReject = reject;
+  });'''
 
     else:
       ret = '''
@@ -704,6 +709,8 @@ def generate_js(data_target, data_files, metadata):
     create_data = '''// canOwn this data in the filesystem, it is a slide into the heap that will never change
           Module['FS_createDataFile'](this.name, null, byteArray, true, true, true);
           Module['removeRunDependency'](`fp ${that.name}`);'''
+    ready_promise = '''         
+          readyPromiseResolve();'''
 
     if not options.lz4:
       # Data requests - for getting a block of data out of the big archive - have
@@ -730,14 +737,14 @@ def generate_js(data_target, data_files, metadata):
         finish: function(byteArray) {
           var that = this;
           %s
-          this.requests[this.name] = null;
+          this.requests[this.name] = null;%s
         }
       };
 
       var files = metadata['files'];
       for (var i = 0; i < files.length; ++i) {
         new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio'] || 0).open('GET', files[i]['filename']);
-      }\n''' % (create_preloaded if options.use_preload_plugins else create_data)
+      }\n''' % (create_preloaded if options.use_preload_plugins else create_data, ready_promise if options.export_es6 else '')
 
   if options.has_embedded and not options.obj_output:
     diagnostics.warn('--obj-output is recommended when using --embed.  This outputs an object file for linking directly into your application is more efficient than JS encoding')
@@ -983,6 +990,9 @@ def generate_js(data_target, data_files, metadata):
           return;
         }'''.strip()
 
+    reject_promise = '''         
+          readyPromiseReject();'''
+
     ret += '''
       function fetchRemotePackage(packageName, packageSize, callback, errback) {
         %(node_support_code)s
@@ -1041,8 +1051,8 @@ def generate_js(data_target, data_files, metadata):
       };
 
       function handleError(error) {
-        console.error('package error:', error);
-      };\n''' % {'node_support_code': node_support_code}
+        console.error('package error:', error);%(reject_promise)s
+      };\n''' % {'node_support_code': node_support_code, 'reject_promise': reject_promise if options.export_es6 else ''}
 
     code += '''
       function processPackageData(arrayBuffer) {
@@ -1165,7 +1175,11 @@ def generate_js(data_target, data_files, metadata):
     loadPackage(%s);\n''' % json.dumps(metadata)
 
   if options.export_es6:
-    ret += '\n};\n// END the loadDataFile function\n'
+    ret += '''
+  return readyPromise;
+};
+// END the loadDataFile function
+'''
   else:
     ret += '''
   })();\n'''
