@@ -10,8 +10,8 @@ This script acts as a frontend replacement for clang-scan-deps.
 """
 
 import sys
-import emcc
-from tools import shared, cmdline
+
+from tools import shared, cmdline, compile
 
 argv = sys.argv[1:]
 
@@ -19,6 +19,6 @@ argv = sys.argv[1:]
 newargs = cmdline.parse_arguments(argv)[1]
 
 # Add any clang flags that emcc would add.
-newargs += emcc.get_cflags(tuple(argv))
+newargs += compile.get_cflags(tuple(argv))
 
 shared.exec_process([shared.CLANG_SCAN_DEPS] + newargs)
