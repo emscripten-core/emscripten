@@ -1,4 +1,4 @@
-var l = globalThis.Module || "undefined" != typeof Module ? Module : {}, n = "em-ww" == globalThis.name, q = "undefined" !== typeof AudioWorkletGlobalScope, t, v, J, K, F, G, A, X, H, C, B, Y, Z;
+var l = globalThis.Module || "undefined" != typeof Module ? Module : {}, n = "em-ww" == globalThis.name, q = "undefined" !== typeof AudioWorkletGlobalScope, t, v, J, K, E, F, A, X, H, C, B, Y, Z;
 
 q && (n = !0);
 
@@ -31,30 +31,32 @@ if (q) {
                 return c;
             }
             process(d, g, h) {
-                var p = d.length, w = g.length, D = 0, k, r, x = 4 * this.s, f = 12 * (p + w), E, O, V = B();
+                var p = d.length, w = g.length, k, r, x = 4 * this.s, f = 12 * (p + w), D = 0;
                 for (k of d) f += k.length * x;
                 for (k of g) f += k.length * x;
                 for (k in h) f += h[k].byteLength + 8, ++D;
-                f = E = C(f);
-                var m = E + 12 * p;
+                var V = B(), G = C(f);
+                f = G;
+                var m = G + 12 * p;
                 for (k of d) {
-                    F[f >> 2] = k.length;
-                    F[f + 4 >> 2] = this.s;
-                    F[f + 8 >> 2] = m;
+                    E[f >> 2] = k.length;
+                    E[f + 4 >> 2] = this.s;
+                    E[f + 8 >> 2] = m;
                     f += 12;
-                    for (r of k) G.set(r, m >> 2), m += x;
+                    for (r of k) F.set(r, m >> 2), m += x;
                 }
-                f = O = m;
+                var O = m;
+                f = O;
                 d = m += 12 * w;
-                for (k of g) F[f >> 2] = k.length, F[f + 4 >> 2] = this.s, F[f + 8 >> 2] = m, f += 12, 
+                for (k of g) E[f >> 2] = k.length, E[f + 4 >> 2] = this.s, E[f + 8 >> 2] = m, f += 12, 
                 m += x * k.length;
                 f = x = m;
                 m += 8 * D;
-                for (k = 0; r = h[k++]; ) F[f >> 2] = r.length, F[f + 4 >> 2] = m, f += 8, G.set(r, m >> 2), 
+                for (k = 0; r = h[k++]; ) E[f >> 2] = r.length, E[f + 4 >> 2] = m, f += 8, F.set(r, m >> 2), 
                 m += 4 * r.length;
-                if (h = this.u(p, E, w, O, D, x, this.v)) {
+                if (h = this.u(p, G, w, O, D, x, this.v)) {
                     d >>= 2;
-                    for (k of g) for (r of k) for (f = 0; f < this.s; ++f) r[f] = G[d++];
+                    for (k of g) for (r of k) for (f = 0; f < this.s; ++f) r[f] = F[d++];
                 }
                 H(V);
                 return !!h;
@@ -85,8 +87,8 @@ function y() {
     var a = v.buffer;
     J = new Uint8Array(a);
     K = new Int32Array(a);
-    F = new Uint32Array(a);
-    G = new Float32Array(a);
+    E = new Uint32Array(a);
+    F = new Float32Array(a);
 }
 
 n || (v = l.mem || new WebAssembly.Memory({
@@ -122,10 +124,10 @@ var L = [], M = a => {
 }, aa = a => {
     var b = window.AudioContext || window.webkitAudioContext;
     if (a) {
-        var c = F[a >> 2];
+        var c = E[a >> 2];
         a = {
             latencyHint: (c ? W(c) : "") || void 0,
-            sampleRate: F[a + 4 >> 2] || void 0
+            sampleRate: E[a + 4 >> 2] || void 0
         };
     } else a = void 0;
     if (c = b) b = new b(a), R[++T] = b, c = T;
@@ -134,11 +136,11 @@ var L = [], M = a => {
     var g = c ? K[c + 4 >> 2] : 0;
     if (c) {
         var h = K[c >> 2];
-        c = F[c + 8 >> 2];
+        c = E[c + 8 >> 2];
         var p = g;
         if (c) {
             c >>= 2;
-            for (var w = []; p--; ) w.push(F[c++]);
+            for (var w = []; p--; ) w.push(E[c++]);
             c = w;
         } else c = void 0;
         e = {
@@ -156,13 +158,13 @@ var L = [], M = a => {
     R[++T] = a;
     return T;
 }, ca = (a, b, c, e) => {
-    var d = [], g = (g = F[b >> 2]) ? W(g) : "", h = K[b + 4 >> 2];
-    b = F[b + 8 >> 2];
+    var d = [], g = (g = E[b >> 2]) ? W(g) : "", h = K[b + 4 >> 2];
+    b = E[b + 8 >> 2];
     for (var p = 0; h--; ) d.push({
         name: p++,
-        defaultValue: G[b >> 2],
-        minValue: G[b + 4 >> 2],
-        maxValue: G[b + 8 >> 2],
+        defaultValue: F[b >> 2],
+        minValue: F[b + 4 >> 2],
+        maxValue: F[b + 8 >> 2],
         automationRate: (K[b + 12 >> 2] ? "k" : "a") + "-rate"
     }), b += 16;
     R[a].audioWorklet.B.port.postMessage({

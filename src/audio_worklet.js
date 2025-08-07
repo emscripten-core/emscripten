@@ -49,20 +49,14 @@ function createWasmAudioWorkletProcessor(audioParams) {
 
       var numInputs = inputList.length;
       var numOutputs = outputList.length;
-      var numParams = 0;
 
       var entry; // reused list entry or index
       var subentry; // reused channel or other array in each list entry or index
-      var structPtr; // working start to each struct record
-      var dataPtr; // start of the data section, usually after all structs
-
-      var bytesPerChannel = this.samplesPerChannel * {{{ getNativeTypeSize('float') }}};
-      var stackMemoryNeeded = (numInputs + numOutputs) * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
-      var inputsPtr, outputsPtr, outputDataPtr, paramsPtr; // pointers passed to callback()
-
-      var oldStackPtr = stackSave();
 
       // Calculate how much stack space is needed.
+      var bytesPerChannel = this.samplesPerChannel * {{{ getNativeTypeSize('float') }}};
+      var stackMemoryNeeded = (numInputs + numOutputs) * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
+      var numParams = 0;
       for (entry of inputList) stackMemoryNeeded += entry.length * bytesPerChannel;
       for (entry of outputList) stackMemoryNeeded += entry.length * bytesPerChannel;
       for (entry in parameters) {
@@ -71,11 +65,14 @@ function createWasmAudioWorkletProcessor(audioParams) {
       }
 
       // Allocate the necessary stack space.
-      inputsPtr = stackAlloc(stackMemoryNeeded);
+      var oldStackPtr = stackSave();
+      var inputsPtr = stackAlloc(stackMemoryNeeded);
 
-      // Copy input audio descriptor structs and data to Wasm
-      structPtr = inputsPtr;
-      dataPtr = inputsPtr + numInputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
+      // Copy input audio descriptor structs and data to Wasm ('structPtr' is
+      // reused as the working start to each struct record, 'dataPtr' start of
+      // the data section, usually after all structs).
+      var structPtr = inputsPtr;
+      var dataPtr = inputsPtr + numInputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
       for (entry of inputList) {
         // Write the AudioSampleFrame struct instance
         {{{ makeSetValue('structPtr', C_STRUCTS.AudioSampleFrame.numberOfChannels, 'entry.length', 'u32') }}};
@@ -90,9 +87,9 @@ function createWasmAudioWorkletProcessor(audioParams) {
       }
 
       // Copy output audio descriptor structs to Wasm
-      outputsPtr = dataPtr;
+      var outputsPtr = dataPtr;
       structPtr = outputsPtr;
-      outputDataPtr = (dataPtr += numOutputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}});
+      var outputDataPtr = (dataPtr += numOutputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}});
       for (entry of outputList) {
         // Write the AudioSampleFrame struct instance
         {{{ makeSetValue('structPtr', C_STRUCTS.AudioSampleFrame.numberOfChannels, 'entry.length', 'u32') }}};
@@ -104,7 +101,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
       }
 
       // Copy parameters descriptor structs and data to Wasm
-      paramsPtr = dataPtr;
+      var paramsPtr = dataPtr;
       structPtr = paramsPtr;
       dataPtr += numParams * {{{ C_STRUCTS.AudioParamFrame.__size__ }}};
       for (entry = 0; subentry = parameters[entry++];) {
