@@ -805,15 +805,9 @@ def generate_js(data_target, data_files, metadata):
         var DB_VERSION = 1;
         var METADATA_STORE_NAME = 'METADATA';
         var PACKAGE_STORE_NAME = 'PACKAGES';
-        function openDatabase(callback, errback) {'''
-      if options.support_node:
-        code += '''
-            if (isNode) {
-              return errback();
-            }'''
-      code += '''
+        function openDatabase(callback, errback) {
           if (typeof indexedDB == 'undefined') {
-            throw 'using IndexedDB to cache data can only be done on a web page or in a web worker';
+            return errback('using IndexedDB to cache data can only be done on a web page or in a web worker');
           }
           try {
             var openRequest = indexedDB.open(DB_NAME, DB_VERSION);
