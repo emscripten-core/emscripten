@@ -47,79 +47,86 @@ function createWasmAudioWorkletProcessor(audioParams) {
       // then perform the wasm audio worklet call,
       // and finally marshal audio output data back.
 
-      let numInputs = inputList.length,
-        numOutputs = outputList.length,
-        numParams = 0, i, j, k, dataPtr,
-        bytesPerChannel = this.samplesPerChannel * 4,
-        stackMemoryNeeded = (numInputs + numOutputs) * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}},
-        oldStackPtr = stackSave(),
-        inputsPtr, outputsPtr, outputDataPtr, paramsPtr,
-        didProduceAudio, paramArray;
+      var numInputs = inputList.length;
+      var numOutputs = outputList.length;
+
+      var entry; // reused list entry or index
+      var subentry; // reused channel or other array in each list entry or index
 
       // Calculate how much stack space is needed.
-      for (i of inputList) stackMemoryNeeded += i.length * bytesPerChannel;
-      for (i of outputList) stackMemoryNeeded += i.length * bytesPerChannel;
-      for (i in parameters) stackMemoryNeeded += parameters[i].byteLength + {{{ C_STRUCTS.AudioParamFrame.__size__ }}}, ++numParams;
+      var bytesPerChannel = this.samplesPerChannel * {{{ getNativeTypeSize('float') }}};
+      var stackMemoryNeeded = (numInputs + numOutputs) * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
+      var numParams = 0;
+      for (entry of inputList) stackMemoryNeeded += entry.length * bytesPerChannel;
+      for (entry of outputList) stackMemoryNeeded += entry.length * bytesPerChannel;
+      for (entry in parameters) {
+        stackMemoryNeeded += parameters[entry].byteLength + {{{ C_STRUCTS.AudioParamFrame.__size__ }}};
+        ++numParams;
+      }
 
       // Allocate the necessary stack space.
-      inputsPtr = stackAlloc(stackMemoryNeeded);
+      var oldStackPtr = stackSave();
+      var inputsPtr = stackAlloc(stackMemoryNeeded);
 
-      // Copy input audio descriptor structs and data to Wasm
-      k = inputsPtr;
-      dataPtr = inputsPtr + numInputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
-      for (i of inputList) {
+      // Copy input audio descriptor structs and data to Wasm ('structPtr' is
+      // reused as the working start to each struct record, 'dataPtr' start of
+      // the data section, usually after all structs).
+      var structPtr = inputsPtr;
+      var dataPtr = inputsPtr + numInputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
+      for (entry of inputList) {
         // Write the AudioSampleFrame struct instance
-        {{{ makeSetValue('k', C_STRUCTS.AudioSampleFrame.numberOfChannels, 'i.length', 'u32') }}};
-        {{{ makeSetValue('k', C_STRUCTS.AudioSampleFrame.samplesPerChannel, 'this.samplesPerChannel', 'u32') }}};
-        {{{ makeSetValue('k', C_STRUCTS.AudioSampleFrame.data, 'dataPtr', '*') }}};
-        k += {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
+        {{{ makeSetValue('structPtr', C_STRUCTS.AudioSampleFrame.numberOfChannels, 'entry.length', 'u32') }}};
+        {{{ makeSetValue('structPtr', C_STRUCTS.AudioSampleFrame.samplesPerChannel, 'this.samplesPerChannel', 'u32') }}};
+        {{{ makeSetValue('structPtr', C_STRUCTS.AudioSampleFrame.data, 'dataPtr', '*') }}};
+        structPtr += {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
         // Marshal the input audio sample data for each audio channel of this input
-        for (j of i) {
-          HEAPF32.set(j, {{{ getHeapOffset('dataPtr', 'float') }}});
+        for (subentry of entry) {
+          HEAPF32.set(subentry, {{{ getHeapOffset('dataPtr', 'float') }}});
           dataPtr += bytesPerChannel;
         }
       }
 
       // Copy output audio descriptor structs to Wasm
-      outputsPtr = dataPtr;
-      k = outputsPtr;
-      outputDataPtr = (dataPtr += numOutputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}});
-      for (i of outputList) {
+      var outputsPtr = dataPtr;
+      structPtr = outputsPtr;
+      var outputDataPtr = (dataPtr += numOutputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}});
+      for (entry of outputList) {
         // Write the AudioSampleFrame struct instance
-        {{{ makeSetValue('k', C_STRUCTS.AudioSampleFrame.numberOfChannels, 'i.length', 'u32') }}};
-        {{{ makeSetValue('k', C_STRUCTS.AudioSampleFrame.samplesPerChannel, 'this.samplesPerChannel', 'u32') }}};
-        {{{ makeSetValue('k', C_STRUCTS.AudioSampleFrame.data, 'dataPtr', '*') }}};
-        k += {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
+        {{{ makeSetValue('structPtr', C_STRUCTS.AudioSampleFrame.numberOfChannels, 'entry.length', 'u32') }}};
+        {{{ makeSetValue('structPtr', C_STRUCTS.AudioSampleFrame.samplesPerChannel, 'this.samplesPerChannel', 'u32') }}};
+        {{{ makeSetValue('structPtr', C_STRUCTS.AudioSampleFrame.data, 'dataPtr', '*') }}};
+        structPtr += {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
         // Reserve space for the output data
-        dataPtr += bytesPerChannel * i.length;
+        dataPtr += bytesPerChannel * entry.length;
       }
 
       // Copy parameters descriptor structs and data to Wasm
-      paramsPtr = dataPtr;
-      k = paramsPtr;
+      var paramsPtr = dataPtr;
+      structPtr = paramsPtr;
       dataPtr += numParams * {{{ C_STRUCTS.AudioParamFrame.__size__ }}};
-
-      for (i = 0; paramArray = parameters[i++];) {
+      for (entry = 0; subentry = parameters[entry++];) {
         // Write the AudioParamFrame struct instance
-        {{{ makeSetValue('k', C_STRUCTS.AudioParamFrame.length, 'paramArray.length', 'u32') }}};
-        {{{ makeSetValue('k', C_STRUCTS.AudioParamFrame.data, 'dataPtr', '*') }}};
-        k += {{{ C_STRUCTS.AudioParamFrame.__size__ }}};
+        {{{ makeSetValue('structPtr', C_STRUCTS.AudioParamFrame.length, 'subentry.length', 'u32') }}};
+        {{{ makeSetValue('structPtr', C_STRUCTS.AudioParamFrame.data, 'dataPtr', '*') }}};
+        structPtr += {{{ C_STRUCTS.AudioParamFrame.__size__ }}};
         // Marshal the audio parameters array
-        HEAPF32.set(paramArray, {{{ getHeapOffset('dataPtr', 'float') }}});
-        dataPtr += paramArray.length * {{{ getNativeTypeSize('float') }}};
+        HEAPF32.set(subentry, {{{ getHeapOffset('dataPtr', 'float') }}});
+        dataPtr += subentry.length * {{{ getNativeTypeSize('float') }}};
       }
 
       // Call out to Wasm callback to perform audio processing
-      if (didProduceAudio = this.callback(numInputs, inputsPtr, numOutputs, outputsPtr, numParams, paramsPtr, this.userData)) {
+      var didProduceAudio = this.callback(numInputs, inputsPtr, numOutputs, outputsPtr, numParams, paramsPtr, this.userData);
+      if (didProduceAudio) {
         // Read back the produced audio data to all outputs and their channels.
         // (A garbage-free function TypedArray.copy(dstTypedArray, dstOffset,
         // srcTypedArray, srcOffset, count) would sure be handy..  but web does
         // not have one, so manually copy all bytes in)
         outputDataPtr = {{{ getHeapOffset('outputDataPtr', 'float') }}};
-        for (i of outputList) {
-          for (j of i) {
-            for (k = 0; k < this.samplesPerChannel; ++k) {
-              j[k] = HEAPF32[outputDataPtr++];
+        for (entry of outputList) {
+          for (subentry of entry) {
+            // repurposing structPtr for now
+            for (structPtr = 0; structPtr < this.samplesPerChannel; ++structPtr) {
+              subentry[structPtr] = HEAPF32[outputDataPtr++];
             }
           }
         }
