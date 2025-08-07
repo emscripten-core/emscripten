@@ -8,7 +8,7 @@
 
 There are three different levels of flags, each one a superset of the next:
 
-get_target_flags(): Defines just `-target` flags and should always be used be
+get_target_flags(): Defines just `-target` flags and should always be
 used when calling clang, or any other llvm tool.
 
 get_clang_flags(): In addution to the target flags this function return all the
