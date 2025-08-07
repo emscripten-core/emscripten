@@ -1115,32 +1115,25 @@ def generate_js(data_target, data_files, metadata):
     if options.support_node:
       node_support_code = '''
         if (isNode) {
-          require('fs').readFile(metadataUrl, 'utf8', (err, contents) => {
-            if (err) {
-              return Promise.reject(err);
-            } else {
-              loadPackage(JSON.parse(contents));
-            }
-          });
-          return;
+          var fsPromises = require('fs/promises');
+          var contents = await fsPromises.readFile(metadataUrl, 'utf8');
+          return loadPackage(JSON.parse(contents));
         }'''.strip()
 
     ret += '''
     Module['removeRunDependency']('%(metadata_file)s');
   }
 
-  function runMetaWithFS() {
+  async function runMetaWithFS() {
     Module['addRunDependency']('%(metadata_file)s');
     var metadataUrl = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
     %(node_support_code)s
-    fetch(metadataUrl)
-      .then((response) => {
-        if (response.ok) {
-          return response.json();
-        }
-        return Promise.reject(new Error(`${response.status}: ${response.url}`));
-      })
-      .then(loadPackage);
+    var response = await fetch(metadataUrl);
+    if (!response.ok) {
+      throw new Error(`${response.status}: ${response.url}`);
+    }
+    var json = await response.json();
+    return loadPackage(json);
   }
 
   if (Module['calledRun']) {
