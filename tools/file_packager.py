@@ -977,7 +977,12 @@ def generate_js(data_target, data_files, metadata):
         %(node_support_code)s
         Module['dataFileDownloads'] ??= {};
         fetch(packageName)
-          .catch((cause) => errback(new Error(`Network Error: ${packageName}`, {cause}))) // If fetch fails, rewrite the error to include the failing URL & the cause.
+          .catch((cause) => {
+            errback(new Error(`Network Error: ${packageName}`, {cause}));
+            // We want to be sure to cancel promise chain because we sometimes call this function with method
+            // which doesn't throw error hance promise chain is not broken
+            return Promise.reject(new Error(`Network Error: ${packageName}`, {cause}));
+          }) // If fetch fails, rewrite the error to include the failing URL & the cause.
           .then((response) => {
             if (!response.ok) {
               return errback(new Error(`${response.status}: ${response.url}`));
