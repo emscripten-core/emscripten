@@ -14,7 +14,7 @@ used when calling clang, or any other llvm tool.
 get_clang_flags(): In addition to the target flags this function returns all the
 required compiler flags.
 
-get_cflags(): In addtion to clang flags this function also return pre-processor
+get_cflags(): In addition to compiler flags this function also returns pre-processor
 flags. For example, include paths and macro defintions.
 """
 
