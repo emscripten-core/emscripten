@@ -24,7 +24,7 @@ from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
 from common import read_file, EMRUN, no_wasm64, no_2gb, no_4gb, copytree
 from common import requires_wasm2js, parameterize, find_browser_test_file, with_all_sjlj
-from common import also_with_minimal_runtime, also_with_wasm2js, also_with_asan
+from common import also_with_minimal_runtime, also_with_wasm2js, also_with_asan, also_with_wasmfs
 from tools import shared
 from tools import ports
 from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE, DEBUG
@@ -75,26 +75,6 @@ def test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
   httpd = HTTPServer(('localhost', 11111), ChunkedServerHandler)
   for _ in range(expectedConns + 1):
     httpd.handle_request()
-
-
-def also_with_wasmfs(f):
-  assert callable(f)
-
-  @wraps(f)
-  def metafunc(self, wasmfs, *args, **kwargs):
-    if DEBUG:
-      print('parameterize:wasmfs=%d' % wasmfs)
-    if wasmfs:
-      self.set_setting('WASMFS')
-      self.cflags = self.cflags.copy() + ['-DWASMFS']
-      f(self, *args, **kwargs)
-    else:
-      f(self, *args, **kwargs)
-
-  parameterize(metafunc, {'': (False,),
-                          'wasmfs': (True,)})
-
-  return metafunc
 
 
 def also_with_proxying(f):
