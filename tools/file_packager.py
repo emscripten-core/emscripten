@@ -988,9 +988,9 @@ def generate_js(data_target, data_files, metadata):
             }
 
             const reader = response.body.getReader();
-            const iterate = () => reader.read().then(handleChunk).catch((cause) => {
-              return errback(new Error(`Unexpected error while handling : ${response.url} ${cause}`, {cause}));
-            });
+            const iterate = () => reader.read().then(handleChunk).catch((cause) =>
+              errback(new Error(`Unexpected error while handling : ${response.url} ${cause}`, {cause}))
+            );
 
             const chunks = [];
             const headers = response.headers;
@@ -1135,14 +1135,15 @@ def generate_js(data_target, data_files, metadata):
     var metadataUrl = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
     %(node_support_code)s
     fetch(metadataUrl)
+      .catch((cause) =>
+        throwPackageError(new Error(`Network Error: ${packageName}`, {cause}))
+      ) // If fetch fails, rewrite the error to include the failing URL & the cause.
       .then((response) => {
         if (response.ok) {
           return response.json();
         }
+        throwPackageError(new Error(`Response error: ${response}`));
       })
-      .catch((cause) =>
-        throwPackageError(new Error(`Network Error: ${packageName}`, {cause}))
-      ) // If fetch fails, rewrite the error to include the failing URL & the cause.
       .then(loadPackage);
   }
 
