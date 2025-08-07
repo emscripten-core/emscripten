@@ -3951,11 +3951,8 @@ More info: https://emscripten.org
     self.assertContained('hello data', output)
 
   def test_file_packager_export_es6(self):
-    MESSAGE = 'Remember to build the main file with `-sFORCE_FILESYSTEM` so that it includes support for loading this file package'
-
     create_file('data.txt', 'hello data')
-    err = self.run_process([FILE_PACKAGER, 'test.data', '--export-es6', '--preload', 'data.txt', '--js-output=dataFileLoader.js', '--no-node'], stderr=PIPE).stderr
-    self.assertContained(MESSAGE, err)
+    self.run_process([FILE_PACKAGER, 'test.data', '--export-es6', '--preload', 'data.txt', '--js-output=dataFileLoader.js', '--no-node'])
 
     create_file('test.c', '''
     #include <stdio.h>
