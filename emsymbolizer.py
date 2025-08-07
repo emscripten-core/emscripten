@@ -15,7 +15,6 @@
 
 import argparse
 import json
-import os
 import re
 import subprocess
 import sys
@@ -23,8 +22,7 @@ from tools import shared
 from tools import webassembly
 
 
-LLVM_SYMBOLIZER = os.path.expanduser(
-    shared.build_llvm_tool_path(shared.exe_suffix('llvm-symbolizer')))
+LLVM_SYMBOLIZER = shared.llvm_tool_path('llvm-symbolizer')
 
 
 class Error(BaseException):

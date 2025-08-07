@@ -91,7 +91,7 @@ EMCMAKE = shared.bat_suffix(path_from_root('emcmake'))
 EMCONFIGURE = shared.bat_suffix(path_from_root('emconfigure'))
 EMRUN = shared.bat_suffix(shared.path_from_root('emrun'))
 WASM_DIS = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
-LLVM_OBJDUMP = os.path.expanduser(shared.build_llvm_tool_path(shared.exe_suffix('llvm-objdump')))
+LLVM_OBJDUMP = shared.llvm_tool_path('llvm-objdump')
 PYTHON = sys.executable
 if not config.NODE_JS_TEST:
   config.NODE_JS_TEST = config.NODE_JS
