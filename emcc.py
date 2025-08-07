@@ -688,13 +688,14 @@ def phase_compile_inputs(options, state, newargs):
   def compile_source_file(input_file):
     logger.debug(f'compiling source file: {input_file}')
     output_file = get_object_filename(input_file)
-    if get_file_suffix(input_file) in ASSEMBLY_EXTENSIONS:
+    ext = get_file_suffix(input_file)
+    if ext in ASSEMBLY_EXTENSIONS:
       cmd = get_clang_command_asm()
-    elif get_file_suffix(input_file) in PREPROCESSED_EXTENSIONS:
+    elif ext in PREPROCESSED_EXTENSIONS:
       cmd = get_clang_command_preprocessed()
     else:
       cmd = get_clang_command()
-      if get_file_suffix(input_file) in ['.pcm']:
+      if ext == '.pcm':
         cmd = [c for c in cmd if not c.startswith('-fprebuilt-module-path=')]
     cmd += compile_args + ['-c', input_file, '-o', output_file]
     if options.requested_debug == '-gsplit-dwarf':
