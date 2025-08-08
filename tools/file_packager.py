@@ -805,34 +805,32 @@ def generate_js(data_target, data_files, metadata):
         var DB_VERSION = 1;
         var METADATA_STORE_NAME = 'METADATA';
         var PACKAGE_STORE_NAME = 'PACKAGES';
-        function openDatabase(callback, errback) {
+        async function openDatabase() {
           if (typeof indexedDB == 'undefined') {
             return errback('using IndexedDB to cache data can only be done on a web page or in a web worker');
           }
-          try {
+          return new Promise((resolve, reject) => {
             var openRequest = indexedDB.open(DB_NAME, DB_VERSION);
-          } catch (e) {
-            return errback(e);
-          }
-          openRequest.onupgradeneeded = (event) => {
-            var db = /** @type {IDBDatabase} */ (event.target.result);
+            openRequest.onupgradeneeded = (event) => {
+              var db = /** @type {IDBDatabase} */ (event.target.result);
 
-            if (db.objectStoreNames.contains(PACKAGE_STORE_NAME)) {
-              db.deleteObjectStore(PACKAGE_STORE_NAME);
-            }
-            var packages = db.createObjectStore(PACKAGE_STORE_NAME);
+              if (db.objectStoreNames.contains(PACKAGE_STORE_NAME)) {
+                db.deleteObjectStore(PACKAGE_STORE_NAME);
+              }
+              var packages = db.createObjectStore(PACKAGE_STORE_NAME);
 
-            if (db.objectStoreNames.contains(METADATA_STORE_NAME)) {
-              db.deleteObjectStore(METADATA_STORE_NAME);
-            }
-            var metadata = db.createObjectStore(METADATA_STORE_NAME);
-          };
-          openRequest.onsuccess = (event) => {
-            var db = /** @type {IDBDatabase} */ (event.target.result);
-            callback(db);
-          };
-          openRequest.onerror = (error) => errback(error);
-        };
+              if (db.objectStoreNames.contains(METADATA_STORE_NAME)) {
+                db.deleteObjectStore(METADATA_STORE_NAME);
+              }
+              var metadata = db.createObjectStore(METADATA_STORE_NAME);
+            };
+            openRequest.onsuccess = (event) => {
+              var db = /** @type {IDBDatabase} */ (event.target.result);
+              resolve(db);
+            };
+            openRequest.onerror = reject;
+          });
+        }
 
         // This is needed as chromium has a limit on per-entry files in IndexedDB
         // https://cs.chromium.org/chromium/src/content/renderer/indexed_db/webidbdatabase_impl.cc?type=cs&sq=package:chromium&g=0&l=177
@@ -1045,8 +1043,8 @@ def generate_js(data_target, data_files, metadata):
           fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, processPackageData, handleError);
         };
 
-        openDatabase(
-          (db) => checkCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME,
+        openDatabase()
+          .then((db) => checkCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME,
               (useCached, metadata) => {
                 Module['preloadResults'][PACKAGE_NAME] = {fromCache: useCached};
                 if (useCached) {
@@ -1062,8 +1060,8 @@ def generate_js(data_target, data_files, metadata):
                     }
                   , preloadFallback);
                 }
-              }, preloadFallback)
-        , preloadFallback);
+              }, preloadFallback))
+          .catch(preloadFallback);
 
         Module['setStatus']?.('Downloading...');\n'''
     else:
