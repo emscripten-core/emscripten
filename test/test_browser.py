@@ -2379,11 +2379,11 @@ void *getBindBuffer() {
     # Adding a dependency in preRun will delay run
     create_file('pre.js', '''
       Module.preRun = () => {
-        addRunDependency();
+        addRunDependency('foo');
         out('preRun called, added a dependency...');
         setTimeout(function() {
           Module.okk = 10;
-          removeRunDependency()
+          removeRunDependency('foo')
         }, 2000);
       };
     ''')
