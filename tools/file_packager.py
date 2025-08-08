@@ -629,15 +629,15 @@ def escape_for_makefile(fpath):
 def generate_js(data_target, data_files, metadata):
   # emcc will add this to the output itself, so it is only needed for
   # standalone calls
-  if options.from_emcc:
-    ret = ''
-  else:
+  ret = ''
+  if not options.from_emcc:
     if options.export_es6:
-      ret = '''export default function loadDataFile(Module) {
+      if options.support_node:
+        ret += 'import { createRequire } from \'module\';\n\n'
+      ret += '''export default function loadDataFile(Module) {
   return new Promise((loadDataResolve, loadDataReject) => {'''
-
     else:
-      ret = '''
+      ret += '''
   var Module = typeof %(EXPORT_NAME)s != 'undefined' ? %(EXPORT_NAME)s : {};\n''' % {"EXPORT_NAME": options.export_name}
 
   ret += '''
@@ -662,6 +662,11 @@ def generate_js(data_target, data_files, metadata):
       function assert(check, msg) {
         if (!check) throw msg + new Error().stack;
       }\n'''
+
+  if options.support_node and options.export_es6:
+    ret += '''if (isNode) {
+      var require = createRequire(import.meta.url);
+    }'''
 
   # Set up folders
   partial_dirs = []
