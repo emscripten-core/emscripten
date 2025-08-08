@@ -91,12 +91,6 @@ var LibraryBrowser = {
           Browser.preloadedAudios[name] = audio;
           onload?.(byteArray);
         }
-        function fail() {
-          if (done) return;
-          done = true;
-          Browser.preloadedAudios[name] = new Audio(); // empty shim
-          onerror?.();
-        }
         var b = new Blob([byteArray], { type: Browser.getMimetype(name) });
         var url = URL.createObjectURL(b); // XXX we never revoke this!
 #if ASSERTIONS
