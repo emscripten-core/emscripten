@@ -109,9 +109,10 @@ function createWasmAudioWorkletProcessor(audioParams) {
       // bytes; 'dataPtr' is the start of the data section, and advances as
       // space for structs and data is taken; 'structPtr' is reused as the
       // working start to each struct record.
-      // Here 'dataPtr' will be 16-byte aligned, from _emscripten_stack_alloc(),
-      // as were the output views, so we round up and advance the required bytes
-      // to ensure the addresses all work out at the end.
+      // Ordinarily 'dataPtr' would be 16-byte aligned, from the internal
+      // _emscripten_stack_alloc(), as were the output views, but we further
+      // round up the requested size and advance the required bytes to ensure
+      // the addresses finish at the stacktop in the end.
       entry = (stackMemoryNeeded + 15) & ~15;
       var dataPtr = stackAlloc(entry) + (entry - stackMemoryNeeded);
 
