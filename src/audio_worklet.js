@@ -113,8 +113,8 @@ function createWasmAudioWorkletProcessor(audioParams) {
       // _emscripten_stack_alloc(), as were the output views, and so to ensure
       // the views fall on the correct addresses (and we finish at the stacktop)
       // bytes are added and the start advanced.
-      entry = (stackMemoryNeeded + 15) & ~15;
-      var dataPtr = stackAlloc(entry) + (entry - stackMemoryNeeded);
+      var alignedNeededStack = (stackMemoryNeeded + 15) & ~15;
+      var dataPtr = stackAlloc(alignedNeededStack);
 
       // Copy input audio descriptor structs and data to Wasm (recall, structs
       // first, audio data after). 'inputsPtr' is the start of the C callback's
@@ -149,6 +149,12 @@ function createWasmAudioWorkletProcessor(audioParams) {
         HEAPF32.set(subentry, {{{ getHeapOffset('dataPtr', 'float') }}});
         dataPtr += subentry.length * {{{ getNativeTypeSize('float') }}};
       }
+
+      // TODO: why does Chrome wasm64 (Chrome has weird rules for params) need
+      // the manual alignment here? An off-by-one somewhere? outputsPtr is
+      // getting clobbered otherwise, is the struct correctly aligned? Do more
+      // stack allocs instead? Probably needs alignments between struct writes?
+      dataPtr += alignedNeededStack - stackMemoryNeeded;
 
       // Copy output audio descriptor structs to Wasm. 'outputsPtr' is the start
       // of the C callback's output AudioSampleFrame.
