@@ -807,7 +807,7 @@ def generate_js(data_target, data_files, metadata):
         var PACKAGE_STORE_NAME = 'PACKAGES';
         async function openDatabase() {
           if (typeof indexedDB == 'undefined') {
-            return errback('using IndexedDB to cache data can only be done on a web page or in a web worker');
+            throw 'using IndexedDB to cache data can only be done on a web page or in a web worker';
           }
           return new Promise((resolve, reject) => {
             var openRequest = indexedDB.open(DB_NAME, DB_VERSION);
