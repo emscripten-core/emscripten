@@ -106,9 +106,9 @@ function createWasmAudioWorkletProcessor(audioParams) {
 
       var oldStackPtr = stackSave();
       // Allocate the necessary stack space. All pointer variables are always in
-      // bytes; 'dataPtr' is the start of the data section, and advances as
-      // space for structs and data is taken; 'structPtr' is reused as the
-      // working start to each struct record.
+      // bytes; 'dataPtr' is the start of the data section, advancing as space
+      // for structs and data is taken; 'structPtr' is reused as the working
+      // start to each struct record.
       // Ordinarily 'dataPtr' would be 16-byte aligned, from the internal
       // _emscripten_stack_alloc(), as were the output views, but we further
       // round up the requested size and advance the required bytes to ensure
