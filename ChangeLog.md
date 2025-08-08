@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 4.0.13 (in development)
 -----------------------
+- The `addRunDependency`/`removeRunDependency` now assert in debug builds if
+  they are not passed an `id` parameter.  We have been issuing warnings in
+  this case since 2012 (f67ad60), so it seems highly unlikely anyone is not
+  passing IDs here. (#24890).
 - The `-sMODULARIZE` setting generates a factory function that must be called
   before the program is instantiated that run.  However, emscripten previously
   had very special case where this instantiation would happen automatically
