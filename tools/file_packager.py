@@ -1023,7 +1023,6 @@ def generate_js(data_target, data_files, metadata):
             });
           });
       }
-       
 
       function handleError(error) {
         console.error('package error:', error);
