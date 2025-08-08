@@ -617,7 +617,7 @@ If manually bisecting:
 
   def test_preload_caching_indexeddb_name(self):
     self.set_setting('EXIT_RUNTIME')
-    create_file('somefile.txt', '''load me right before running the code please''')
+    create_file('somefile.txt', 'load me right before running the code please')
 
     def make_main(path):
       print(path)
@@ -640,20 +640,21 @@ If manually bisecting:
           int result = 0;
 
           assert(strcmp("load me right before", buf) == 0);
-          return checkPreloadResults();
+          int num_cached = checkPreloadResults();
+          printf("got %%d preloadResults from cache\n", num_cached);
+          return num_cached;
         }
       ''' % path)
 
     create_file('test.js', '''
       addToLibrary({
-        checkPreloadResults: function() {
+        checkPreloadResults: () => {
           var cached = 0;
-          var packages = Object.keys(Module['preloadResults']);
-          packages.forEach(function(package) {
-            var fromCache = Module['preloadResults'][package]['fromCache'];
-            if (fromCache)
-              ++ cached;
-          });
+          for (var result of Object.values(Module['preloadResults'])) {
+            if (result['fromCache']) {
+              cached++;
+            }
+          }
           return cached;
         }
       });
@@ -663,6 +664,7 @@ If manually bisecting:
     self.run_process([FILE_PACKAGER, 'somefile.data', '--use-preload-cache', '--indexedDB-name=testdb', '--preload', 'somefile.txt', '--js-output=' + 'somefile.js'])
     self.compile_btest('main.c', ['--js-library', 'test.js', '--pre-js', 'somefile.js', '-o', 'page.html', '-sFORCE_FILESYSTEM'], reporting=Reporting.JS_ONLY)
     self.run_browser('page.html', '/report_result?exit:0')
+    print("Re-running ..")
     self.run_browser('page.html', '/report_result?exit:1')
 
   def test_multifile(self):
