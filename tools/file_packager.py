@@ -948,73 +948,82 @@ def generate_js(data_target, data_files, metadata):
     node_support_code = ''
     if options.support_node:
       node_support_code = '''
-        if (isNode) {
-          require('fs').readFile(packageName, (err, contents) => {
-            if (err) {
-              errback(err);
-            } else {
-              callback(contents.buffer);
-            }
-          });
-          return;
-        }'''.strip()
+          if (isNode) {
+            require('fs').readFile(packageName, (err, contents) => {
+              if (err) {
+                fetchPackageReject(err);
+              } else {
+                fetchPackageResolve(contents.buffer);
+              }
+            });
+            return;
+          }'''.strip()
 
     ret += '''
-      function fetchRemotePackage(packageName, packageSize, callback, errback) {
-        %(node_support_code)s
-        Module['dataFileDownloads'] ??= {};
-        fetch(packageName)
-          .catch((cause) => Promise.reject(new Error(`Network Error: ${packageName}`, {cause}))) // If fetch fails, rewrite the error to include the failing URL & the cause.
-          .then((response) => {
-            if (!response.ok) {
-              return Promise.reject(new Error(`${response.status}: ${response.url}`));
-            }
-
-            if (!response.body && response.arrayBuffer) { // If we're using the polyfill, readers won't be available...
-              return response.arrayBuffer().then(callback);
-            }
-
-            const reader = response.body.getReader();
-            const iterate = () => reader.read().then(handleChunk).catch((cause) => {
-              return Promise.reject(new Error(`Unexpected error while handling : ${response.url} ${cause}`, {cause}));
-            });
-
-            const chunks = [];
-            const headers = response.headers;
-            const total = Number(headers.get('Content-Length') ?? packageSize);
-            let loaded = 0;
-
-            const handleChunk = ({done, value}) => {
-              if (!done) {
-                chunks.push(value);
-                loaded += value.length;
-                Module['dataFileDownloads'][packageName] = {loaded, total};
-
-                let totalLoaded = 0;
-                let totalSize = 0;
-
-                for (const download of Object.values(Module['dataFileDownloads'])) {
-                  totalLoaded += download.loaded;
-                  totalSize += download.total;
-                }
-
-                Module['setStatus']?.(`Downloading data... (${totalLoaded}/${totalSize})`);
-                return iterate();
-              } else {
-                const packageData = new Uint8Array(chunks.map((c) => c.length).reduce((a, b) => a + b, 0));
-                let offset = 0;
-                for (const chunk of chunks) {
-                  packageData.set(chunk, offset);
-                  offset += chunk.length;
-                }
-                callback(packageData.buffer);
+      function fetchRemotePackage(packageName, packageSize) {
+        return new Promise((fetchPackageResolve, fetchPackageReject) => {
+          %(node_support_code)s
+          Module['dataFileDownloads'] ??= {};
+          fetch(packageName)
+            .then((response) => {
+              if (!response.ok) {
+                fetchPackageReject(new Error(`${response.status}: ${response.url}`));
+                return;
               }
-            };
 
-            Module['setStatus']?.('Downloading data...');
-            return iterate();
+              if (!response.body && response.arrayBuffer) { // If we're using the polyfill, readers won't be available...
+                fetchPackageResolve(response.arrayBuffer());
+                return;
+              }
+
+              const reader = response.body.getReader();
+              const iterate = () => reader.read().then(handleChunk).catch((cause) => {
+                fetchPackageReject(new Error(`Unexpected error while handling : ${response.url} ${cause}`, {cause}));
+                return;
+              });
+
+              const chunks = [];
+              const headers = response.headers;
+              const total = Number(headers.get('Content-Length') ?? packageSize);
+              let loaded = 0;
+
+              const handleChunk = ({done, value}) => {
+                if (!done) {
+                  chunks.push(value);
+                  loaded += value.length;
+                  Module['dataFileDownloads'][packageName] = {loaded, total};
+
+                  let totalLoaded = 0;
+                  let totalSize = 0;
+
+                  for (const download of Object.values(Module['dataFileDownloads'])) {
+                    totalLoaded += download.loaded;
+                    totalSize += download.total;
+                  }
+
+                  Module['setStatus']?.(`Downloading data... (${totalLoaded}/${totalSize})`);
+                  return iterate();
+                } else {
+                  const packageData = new Uint8Array(chunks.map((c) => c.length).reduce((a, b) => a + b, 0));
+                  let offset = 0;
+                  for (const chunk of chunks) {
+                    packageData.set(chunk, offset);
+                    offset += chunk.length;
+                  }
+                  fetchPackageResolve(packageData.buffer);
+                }
+              };
+
+              Module['setStatus']?.('Downloading data...');
+              return iterate();
+            })
+            .catch((cause) => {
+              // If fetch fails, rewrite the error to include the failing URL & the cause.
+              fetchPackageReject(new Error(`Network Error: ${packageName}`, {cause}));
+            });
           });
-      };
+      }
+       
 
       function handleError(error) {
         console.error('package error:', error);
@@ -1040,7 +1049,7 @@ def generate_js(data_target, data_files, metadata):
         function preloadFallback(error) {
           console.error(error);
           console.error('falling back to default preload behavior');
-          fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, processPackageData, handleError);
+          fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE).then(processPackageData).catch(handleError);
         };
 
         openDatabase()
@@ -1050,15 +1059,16 @@ def generate_js(data_target, data_files, metadata):
                 if (useCached) {
                   fetchCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME, metadata, processPackageData, preloadFallback);
                 } else {
-                  fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE,
+                  fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE)
+                  .then(
                     (packageData) => {
                       cacheRemotePackage(db, PACKAGE_PATH + PACKAGE_NAME, packageData, {uuid:PACKAGE_UUID}, processPackageData,
                         (error) => {
                           console.error(error);
                           processPackageData(packageData);
                         });
-                    }
-                  , preloadFallback);
+                  })
+                  .catch(preloadFallback);
                 }
               }, preloadFallback))
           .catch(preloadFallback);
@@ -1080,7 +1090,7 @@ def generate_js(data_target, data_files, metadata):
         } else {
           fetched = data;
         }
-      }, handleError);\n'''
+      }).catch(handleError);\n'''
 
       code += '''
       Module['preloadResults'][PACKAGE_NAME] = {fromCache: false};
