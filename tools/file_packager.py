@@ -635,7 +635,7 @@ def generate_js(data_target, data_files, metadata):
 
   if options.support_node:
     ret += "    var isNode = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string';\n"
-  ret += '    function loadPackage(metadata) {\n'
+  ret += '    async function loadPackage(metadata) {\n'
 
   code = '''
       function assert(check, msg) {
@@ -953,76 +953,62 @@ def generate_js(data_target, data_files, metadata):
     if options.support_node:
       node_support_code = '''
         if (isNode) {
-          require('fs').readFile(packageName, (err, contents) => {
-            if (err) {
-              errback(err);
-            } else {
-              callback(contents.buffer);
-            }
-          });
-          return;
+          var fsPromises = require('fs/promises');
+          var contents = await fsPromises.readFile(packageName);
+          return contents.buffer;
         }'''.strip()
 
     ret += '''
-      function fetchRemotePackage(packageName, packageSize, callback, errback) {
+      async function fetchRemotePackage(packageName, packageSize) {
         %(node_support_code)s
         Module['dataFileDownloads'] ??= {};
-        fetch(packageName)
-          .catch((cause) => Promise.reject(new Error(`Network Error: ${packageName}`, {cause}))) // If fetch fails, rewrite the error to include the failing URL & the cause.
-          .then((response) => {
-            if (!response.ok) {
-              return Promise.reject(new Error(`${response.status}: ${response.url}`));
-            }
+        var response = await fetch(packageName);
+        if (!response.ok) {
+          throw `${response.status}: ${response.url}`;
+        }
 
-            if (!response.body && response.arrayBuffer) { // If we're using the polyfill, readers won't be available...
-              return response.arrayBuffer().then(callback);
-            }
+        if (!response.body && response.arrayBuffer) { // If we're using the polyfill, readers won't be available...
+          return response.arrayBuffer();
+        }
 
-            const reader = response.body.getReader();
-            const iterate = () => reader.read().then(handleChunk).catch((cause) => {
-              return Promise.reject(new Error(`Unexpected error while handling : ${response.url} ${cause}`, {cause}));
-            });
+        const chunks = [];
+        const headers = response.headers;
+        const total = Number(headers.get('Content-Length') ?? packageSize);
+        let loaded = 0;
 
-            const chunks = [];
-            const headers = response.headers;
-            const total = Number(headers.get('Content-Length') ?? packageSize);
-            let loaded = 0;
+        Module['setStatus']?.('Downloading data...');
+        const reader = response.body.getReader();
 
-            const handleChunk = ({done, value}) => {
-              if (!done) {
-                chunks.push(value);
-                loaded += value.length;
-                Module['dataFileDownloads'][packageName] = {loaded, total};
+        while (1) {
+          var {done, value} = await reader.read();
+          if (done) break;
+          chunks.push(value);
+          loaded += value.length;
+          Module['dataFileDownloads'][packageName] = {loaded, total};
 
-                let totalLoaded = 0;
-                let totalSize = 0;
+          let totalLoaded = 0;
+          let totalSize = 0;
 
-                for (const download of Object.values(Module['dataFileDownloads'])) {
-                  totalLoaded += download.loaded;
-                  totalSize += download.total;
-                }
+          for (const download of Object.values(Module['dataFileDownloads'])) {
+            totalLoaded += download.loaded;
+            totalSize += download.total;
+          }
 
-                Module['setStatus']?.(`Downloading data... (${totalLoaded}/${totalSize})`);
-                return iterate();
-              } else {
-                const packageData = new Uint8Array(chunks.map((c) => c.length).reduce((a, b) => a + b, 0));
-                let offset = 0;
-                for (const chunk of chunks) {
-                  packageData.set(chunk, offset);
-                  offset += chunk.length;
-                }
-                callback(packageData.buffer);
-              }
-            };
+          Module['setStatus']?.(`Downloading data... (${totalLoaded}/${totalSize})`);
+        }
 
-            Module['setStatus']?.('Downloading data...');
-            return iterate();
-          });
-      };
+        const packageData = new Uint8Array(chunks.map((c) => c.length).reduce((a, b) => a + b, 0));
+        let offset = 0;
+        for (const chunk of chunks) {
+          packageData.set(chunk, offset);
+          offset += chunk.length;
+        }
+        return packageData.buffer;
+      }
 
       function handleError(error) {
         console.error('package error:', error);
-      };\n''' % {'node_support_code': node_support_code}
+      }\n''' % {'node_support_code': node_support_code}
 
     code += '''
       function processPackageData(arrayBuffer) {
@@ -1031,7 +1017,7 @@ def generate_js(data_target, data_files, metadata):
         var byteArray = new Uint8Array(arrayBuffer);
         var curr;
         %s
-      };
+      }
       Module['addRunDependency']('datafile_%s');\n''' % (use_data, js_manipulation.escape_for_js_string(data_target))
     # use basename because from the browser's point of view,
     # we need to find the datafile in the same dir as the html file
@@ -1041,33 +1027,35 @@ def generate_js(data_target, data_files, metadata):
 
     if options.use_preload_cache:
       code += '''
-        function preloadFallback(error) {
+        async function preloadFallback(error) {
           console.error(error);
           console.error('falling back to default preload behavior');
-          fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, processPackageData, handleError);
-        };
+          try {
+            processPackageData(await fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE));
+          } catch (e) {
+            handleError(e);
+          }
+        }
 
-        openDatabase()
-          .then((db) => {
-            checkCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME)
-            .then((cachedData) => {
-              Module['preloadResults'][PACKAGE_NAME] = {fromCache: !!cachedData};
-              if (cachedData) {
-                fetchCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME, cachedData).then(processPackageData);
-              } else {
-                fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE,
-                  (packageData) => {
-                    cacheRemotePackage(db, PACKAGE_PATH + PACKAGE_NAME, packageData, {uuid:PACKAGE_UUID})
-                      .then(processPackageData)
-                      .catch((error) => {
-                        console.error(error);
-                        processPackageData(packageData);
-                      });
-                  }
-                , preloadFallback);
-              }
-            })
-          }).catch(preloadFallback);
+        try {
+          var db = await openDatabase();
+          var pkgMetadata = await checkCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME);
+          var useCached = !!pkgMetadata;
+          Module['preloadResults'][PACKAGE_NAME] = {fromCache: useCached};
+          if (useCached) {
+            processPackageData(await fetchCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME, pkgMetadata));
+          } else {
+            var packageData = await fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE);
+            try {
+              processPackageData(await cacheRemotePackage(db, PACKAGE_PATH + PACKAGE_NAME, packageData, {uuid:PACKAGE_UUID}))
+            } catch (error) {
+              console.error(error);
+              processPackageData(packageData);
+            }
+          }
+        } catch(e) {
+          await preloadFallback(e);
+        }
 
         Module['setStatus']?.('Downloading...');\n'''
     else:
@@ -1079,14 +1067,20 @@ def generate_js(data_target, data_files, metadata):
       var fetchedCallback = null;
       var fetched = Module['getPreloadedPackage'] ? Module['getPreloadedPackage'](REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE) : null;
 
-      if (!fetched) fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, (data) => {
-        if (fetchedCallback) {
-          fetchedCallback(data);
-          fetchedCallback = null;
-        } else {
-          fetched = data;
-        }
-      }, handleError);\n'''
+      if (!fetched) {
+        // Note that we don't use await here because we want to execute the
+        // the rest of this function immediately.
+        fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE)
+          .then((data) => {
+            if (fetchedCallback) {
+              fetchedCallback(data);
+              fetchedCallback = null;
+            } else {
+              fetched = data;
+            }
+          })
+          .catch(handleError);
+      }\n'''
 
       code += '''
       Module['preloadResults'][PACKAGE_NAME] = {fromCache: false};
@@ -1098,7 +1092,7 @@ def generate_js(data_target, data_files, metadata):
       }\n'''
 
   ret += '''
-    function runWithFS(Module) {\n'''
+    async function runWithFS(Module) {\n'''
   ret += code
   ret += '''
     }
@@ -1128,7 +1122,7 @@ def generate_js(data_target, data_files, metadata):
     %(node_support_code)s
     var response = await fetch(metadataUrl);
     if (!response.ok) {
-      throw new Error(`${response.status}: ${response.url}`);
+      throw `${response.status}: ${response.url}`;
     }
     var json = await response.json();
     return loadPackage(json);
