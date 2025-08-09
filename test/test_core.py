@@ -9158,11 +9158,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.cflags.append('-fPIC')
     self.do_core_test('test_hello_world.c')
 
-  # Marked as impure since we don't have a wasi-threads is still
-  # a WIP.
-  # Test is disabled on standalone because of flakes, see
-  # https://github.com/emscripten-core/emscripten/issues/18405
-  # @also_with_standalone_wasm(impure=True)
+  @also_with_standalone_wasm(impure=True)
   @node_pthreads
   def test_pthread_create(self):
     self.set_setting('ENVIRONMENT', 'node')
