@@ -2850,21 +2850,19 @@ More info: https://emscripten.org
   })
   def test_prepost(self, no_initial_run, run_dep):
     create_file('pre.js', '''
-      var Module = {
-        preRun: () => out('pre-run'),
-        postRun: () => out('post-run')
+      Module = {
+        "preRun": () => out('pre-run'),
+        "postRun": () => out('post-run')
       };
       ''')
 
-    self.run_process([EMCC, test_file('hello_world.c'), '--pre-js', 'pre.js', '-sWASM_ASYNC_COMPILATION=0'])
-    self.assertContained('pre-run\nhello, world!\npost-run\n', self.run_js('a.out.js'))
+    self.do_runf('hello_world.c', 'pre-run\nhello, world!\npost-run\n', cflags=['--pre-js', 'pre.js', '-sWASM_ASYNC_COMPILATION=0'])
 
     # addRunDependency during preRun should prevent main, and post-run from
     # running.
     with open('pre.js', 'a') as f:
-      f.write('Module.preRun = () => { out("add-dep"); addRunDependency(); }\n')
-    self.run_process([EMCC, test_file('hello_world.c'), '--pre-js', 'pre.js', '-sWASM_ASYNC_COMPILATION=0'])
-    output = self.run_js('a.out.js')
+      f.write('Module["preRun"] = () => { out("add-dep"); addRunDependency("dep"); }\n')
+    output = self.do_runf('hello_world.c', cflags=['--pre-js', 'pre.js', '-sRUNTIME_DEBUG', '-sWASM_ASYNC_COMPILATION=0', '-O2', '--closure=1'])
     self.assertContained('add-dep\n', output)
     self.assertNotContained('hello, world!\n', output)
     self.assertNotContained('post-run\n', output)
@@ -2874,21 +2872,20 @@ More info: https://emscripten.org
     if no_initial_run:
       args += ['-sINVOKE_RUN=0']
     if run_dep:
-      create_file('pre.js', 'Module.preRun = () => addRunDependency("test");')
+      create_file('pre.js', 'Module["preRun"] = () => addRunDependency("test");')
       create_file('post.js', 'removeRunDependency("test");')
       args += ['--pre-js', 'pre.js', '--post-js', 'post.js']
 
-    self.run_process([EMCC, test_file('hello_world.c')] + args)
-    output = self.run_js('a.out.js')
+    output = self.do_runf('hello_world.c', cflags=args)
     self.assertContainedIf('hello, world!', output, not no_initial_run)
 
     if no_initial_run:
       # Calling main later should still work, filesystem etc. must be set up.
       print('call main later')
-      src = read_file('a.out.js')
+      src = read_file('hello_world.js')
       src += '\nout("callMain -> " + Module.callMain());\n'
-      create_file('a.out.js', src)
-      self.assertContained('hello, world!\ncallMain -> 0\n', self.run_js('a.out.js'))
+      create_file('hello_world.js', src)
+      self.assertContained('hello, world!\ncallMain -> 0\n', self.run_js('hello_world.js'))
 
   def test_prepost2(self):
     create_file('pre.js', 'Module.preRun = () => out("pre-run");')
