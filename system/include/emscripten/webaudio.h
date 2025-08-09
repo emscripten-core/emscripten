@@ -18,6 +18,7 @@ extern "C" {
 #endif
 
 typedef int EMSCRIPTEN_WEBAUDIO_T;
+typedef int EMSCRIPTEN_AUDIO_WORKLET_NODE_T;
 
 typedef struct EmscriptenWebAudioCreateAttributes
 {
@@ -57,7 +58,7 @@ void emscripten_destroy_audio_context(EMSCRIPTEN_WEBAUDIO_T audioContext);
 // Disconnects the given audio node from its audio graph, and then releases
 // the JS object table reference to the given audio node. The specified handle
 // is invalid after calling this function.
-void emscripten_destroy_web_audio_node(EMSCRIPTEN_WEBAUDIO_T objectHandle);
+void emscripten_destroy_web_audio_node(EMSCRIPTEN_AUDIO_WORKLET_NODE_T objectHandle);
 
 // Create Wasm AudioWorklet thread. Call this function once at application startup to establish an AudioWorkletGlobalScope for your app.
 // After the scope has been initialized, the given callback will fire.
@@ -99,8 +100,6 @@ void emscripten_create_wasm_audio_worklet_processor_async(EMSCRIPTEN_WEBAUDIO_T 
 // For this to change from the default 128, the context would need to be created with a yet unexposed WebAudioWorkletProcessorCreateOptions renderSizeHint, part of the 1.1 Web Audio API.
 int emscripten_audio_context_quantum_size(EMSCRIPTEN_WEBAUDIO_T audioContext);
 
-typedef int EMSCRIPTEN_AUDIO_WORKLET_NODE_T;
-
 typedef struct AudioSampleFrame
 {
 	// Number of audio channels to process (multiplied by samplesPerChannel gives the elements in data)
@@ -139,7 +138,7 @@ EMSCRIPTEN_AUDIO_WORKLET_NODE_T emscripten_create_wasm_audio_worklet_node(EMSCRI
 
 // Connects a node's output to a target, e.g., connect the worklet node to the context.
 // For outputIndex and inputIndex, see the AudioNode.connect() documentation (setting 0 as the default values)
-void emscripten_audio_node_connect(EMSCRIPTEN_WEBAUDIO_T source, EMSCRIPTEN_WEBAUDIO_T destination, int outputIndex, int inputIndex);
+void emscripten_audio_node_connect(EMSCRIPTEN_AUDIO_WORKLET_NODE_T source, EMSCRIPTEN_WEBAUDIO_T destination, int outputIndex, int inputIndex);
 
 // Returns true if the current thread is executing a Wasm AudioWorklet, false otherwise.
 // Note that calling this function can be relatively slow as it incurs a Wasm->JS transition,
