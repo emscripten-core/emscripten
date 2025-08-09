@@ -251,6 +251,9 @@ function addRunDependency(id) {
 #endif
 
 #if ASSERTIONS
+#if RUNTIME_DEBUG
+  dbg('addRunDependency', id);
+#endif
   assert(id, 'addRunDependency requires an ID')
   assert(!runDependencyTracking[id]);
   runDependencyTracking[id] = 1;
@@ -274,6 +277,11 @@ function addRunDependency(id) {
         err('(end of list)');
       }
     }, 10000);
+#if ENVIRONMENT_MAY_BE_NODE
+    // Prevent this timer from keeping the runtime alive if nothing
+    // else is.
+    runDependencyWatcher.unref?.()
+#endif
   }
 #endif
 }
@@ -286,6 +294,9 @@ function removeRunDependency(id) {
 #endif
 
 #if ASSERTIONS
+#if RUNTIME_DEBUG
+  dbg('removeRunDependency', id);
+#endif
   assert(id, 'removeRunDependency requires an ID');
   assert(runDependencyTracking[id]);
   delete runDependencyTracking[id];

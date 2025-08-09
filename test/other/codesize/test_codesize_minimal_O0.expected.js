@@ -531,6 +531,9 @@ function addRunDependency(id) {
         err('(end of list)');
       }
     }, 10000);
+    // Prevent this timer from keeping the runtime alive if nothing
+    // else is.
+    runDependencyWatcher.unref?.()
   }
 }
 
