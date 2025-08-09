@@ -25,7 +25,10 @@ errno: 0
 F_SETFL: 0
 errno: 0
 
-F_GETFL/2: 1
+F_SETFL/2: 0
+errno: 0
+
+F_GETFL/2: 0
 errno: 0
 
 F_GETLK: 0
