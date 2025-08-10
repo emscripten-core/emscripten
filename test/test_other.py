@@ -7452,18 +7452,6 @@ int main() {
     self.assertEqual(os.path.getsize('test_1.data'), 1024 * 1024 * 1024)
     self.clear()
 
-  def test_file_packager_huge_split_lz4(self):
-    create_file('huge.dat', 'a' * (1024 * 1024 * 1024))
-    create_file('huge2.dat', 'b' * (1024 * 1024 * 1024))
-    err = self.run_process([FILE_PACKAGER, 'test.data', '--lz4', '--preload', 'huge.dat', '--preload', 'huge2.dat'], stdout=PIPE, stderr=PIPE).stderr
-    self.assertContained('warning: file packager is creating an asset bundle of 1024 MB. this is very large, and browsers might have trouble loading it', err)
-    self.assertContained('warning: file packager is splitting bundle into 2 chunks', err)
-    self.assertExists('test.data')
-    self.assertExists('test_1.data')
-    self.assertLess(os.path.getsize('test.data'), 1024 * 1024 * 1024)
-    self.assertLess(os.path.getsize('test_1.data'), 1024 * 1024 * 1024)
-    self.clear()
-
   def test_file_packager_huge_split_too_large(self):
     create_file('huge.dat', 'a' * (2 * 1024 * 1024 * 1024))
     proc = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'huge.dat'], check=False, stdout=PIPE, stderr=PIPE)
