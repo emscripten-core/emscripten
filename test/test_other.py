@@ -7414,7 +7414,7 @@ int main() {
     err = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'huge.dat'], stdout=PIPE, stderr=PIPE).stderr
     self.assertContained(MESSAGE, err)
     self.clear()
-    
+
   def test_file_packager_huge_no_split(self):
     create_file('huge.dat', 'a' * (1024 * 1024 * 1024))
     create_file('huge2.dat', 'b' * ((1024 * 1024 * 1024) - 1))
@@ -7423,7 +7423,7 @@ int main() {
     self.assertExists('test.data')
     self.assertEqual(os.path.getsize('test.data'), (1024 * 1024 * 1024 * 2) - 1)
     self.clear()
-    
+
   def test_file_packager_huge_split(self):
     create_file('huge.dat', 'a' * (1024 * 1024 * 1024))
     create_file('huge2.dat', 'b' * (1024 * 1024 * 1024))
@@ -7435,7 +7435,7 @@ int main() {
     self.assertEqual(os.path.getsize('test.data'), 1024 * 1024 * 1024)
     self.assertEqual(os.path.getsize('test_1.data'), 1024 * 1024 * 1024)
     self.clear()
-    
+
   def test_file_packager_huge_split_metadata(self):
     create_file('huge.dat', 'a' * (1024 * 1024 * 1024))
     create_file('huge2.dat', 'b' * (1024 * 1024 * 1024))
@@ -7451,7 +7451,7 @@ int main() {
     self.assertEqual(os.path.getsize('test.data'), 1024 * 1024 * 1024)
     self.assertEqual(os.path.getsize('test_1.data'), 1024 * 1024 * 1024)
     self.clear()
-    
+
   def test_file_packager_huge_split_lz4(self):
     create_file('huge.dat', 'a' * (1024 * 1024 * 1024))
     create_file('huge2.dat', 'b' * (1024 * 1024 * 1024))
