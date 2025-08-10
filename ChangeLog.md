@@ -20,6 +20,24 @@ See docs/process.md for more on how version tagging works.
 
 4.0.13 (in development)
 -----------------------
+- The `addRunDependency`/`removeRunDependency` now assert in debug builds if
+  they are not passed an `id` parameter.  We have been issuing warnings in
+  this case since 2012 (f67ad60), so it seems highly unlikely anyone is not
+  passing IDs here. (#24890).
+- The `-sMODULARIZE` setting generates a factory function that must be called
+  before the program is instantiated that run.  However, emscripten previously
+  had very special case where this instantiation would happen automatically
+  (with no parameterization) under certain specific circumstances: When
+  `-sMINIMAL_RUNTIME`, `-sSINGLE_FILE` and `-sMODULARIZE` were used in
+  combination with default html output.  This special case was removed.  If you
+  want to instantiate the module on startup you can still do so by adding a call
+  the factory function in `--extern-post-js`. (#24874)
+- emcc will now error if `MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION` is used
+  when not generating html output.  This was always incompatible but previously
+  ignored. (#24849)
+- emcc will now error if `MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION` or
+  `MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION` are used with `SINGLE_FILE`.
+  These are fundamentally incompatible but were previously ignored. (#24849)
 
 4.0.12 - 08/01/25
 -----------------

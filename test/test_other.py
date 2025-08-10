@@ -1651,6 +1651,22 @@ int f() {
     ''')
     self.assertContained('libf1\nlibf2\n', self.run_js('main.mjs'))
 
+  def test_minimal_runtime_errors(self):
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', 'out.html', '-sMINIMAL_RUNTIME_STREAMING_WASM_COMPILATION'])
+    self.assertContained('emcc: error: MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION requires MINIMAL_RUNTIME', err)
+
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', 'our.html', '-sMINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION'])
+    self.assertContained('emcc: error: MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION requires MINIMAL_RUNTIME', err)
+
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMINIMAL_RUNTIME', '-sMINIMAL_RUNTIME_STREAMING_WASM_COMPILATION'])
+    self.assertContained('emcc: error: MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION is only compatible with html output', err)
+
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMINIMAL_RUNTIME', '-sMINIMAL_RUNTIME_STREAMING_WASM_COMPILATION', '-oout.html', '-sSINGLE_FILE'])
+    self.assertContained('emcc: error: MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION is not compatible with SINGLE_FILE', err)
+
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMINIMAL_RUNTIME', '-sMINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION', '-oout.html', '-sSINGLE_FILE'])
+    self.assertContained('emcc: error: MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION is not compatible with SINGLE_FILE', err)
+
   def test_export_all_and_exported_functions(self):
     # EXPORT_ALL should not export library functions by default.
     # This means that to export library function you also need to explicitly
@@ -2834,21 +2850,19 @@ More info: https://emscripten.org
   })
   def test_prepost(self, no_initial_run, run_dep):
     create_file('pre.js', '''
-      var Module = {
-        preRun: () => out('pre-run'),
-        postRun: () => out('post-run')
+      Module = {
+        "preRun": () => out('pre-run'),
+        "postRun": () => out('post-run')
       };
       ''')
 
-    self.run_process([EMCC, test_file('hello_world.c'), '--pre-js', 'pre.js', '-sWASM_ASYNC_COMPILATION=0'])
-    self.assertContained('pre-run\nhello, world!\npost-run\n', self.run_js('a.out.js'))
+    self.do_runf('hello_world.c', 'pre-run\nhello, world!\npost-run\n', cflags=['--pre-js', 'pre.js', '-sWASM_ASYNC_COMPILATION=0'])
 
     # addRunDependency during preRun should prevent main, and post-run from
     # running.
     with open('pre.js', 'a') as f:
-      f.write('Module.preRun = () => { out("add-dep"); addRunDependency(); }\n')
-    self.run_process([EMCC, test_file('hello_world.c'), '--pre-js', 'pre.js', '-sWASM_ASYNC_COMPILATION=0'])
-    output = self.run_js('a.out.js')
+      f.write('Module["preRun"] = () => { out("add-dep"); addRunDependency("dep"); }\n')
+    output = self.do_runf('hello_world.c', cflags=['--pre-js', 'pre.js', '-sRUNTIME_DEBUG', '-sWASM_ASYNC_COMPILATION=0', '-O2', '--closure=1'])
     self.assertContained('add-dep\n', output)
     self.assertNotContained('hello, world!\n', output)
     self.assertNotContained('post-run\n', output)
@@ -2858,21 +2872,20 @@ More info: https://emscripten.org
     if no_initial_run:
       args += ['-sINVOKE_RUN=0']
     if run_dep:
-      create_file('pre.js', 'Module.preRun = () => addRunDependency("test");')
+      create_file('pre.js', 'Module["preRun"] = () => addRunDependency("test");')
       create_file('post.js', 'removeRunDependency("test");')
       args += ['--pre-js', 'pre.js', '--post-js', 'post.js']
 
-    self.run_process([EMCC, test_file('hello_world.c')] + args)
-    output = self.run_js('a.out.js')
+    output = self.do_runf('hello_world.c', cflags=args)
     self.assertContainedIf('hello, world!', output, not no_initial_run)
 
     if no_initial_run:
       # Calling main later should still work, filesystem etc. must be set up.
       print('call main later')
-      src = read_file('a.out.js')
+      src = read_file('hello_world.js')
       src += '\nout("callMain -> " + Module.callMain());\n'
-      create_file('a.out.js', src)
-      self.assertContained('hello, world!\ncallMain -> 0\n', self.run_js('a.out.js'))
+      create_file('hello_world.js', src)
+      self.assertContained('hello, world!\ncallMain -> 0\n', self.run_js('hello_world.js'))
 
   def test_prepost2(self):
     create_file('pre.js', 'Module.preRun = () => out("pre-run");')
@@ -9531,11 +9544,11 @@ int main() {
     text = re.sub(r'\$var\$*.', '', text)
     text = re.sub(r'param \$\d+', 'param ', text)
     text = re.sub(r' +', ' ', text)
-    e_add_f32 = re.search(r'func \$add_f \(param f32\) \(param f32\) \(result f32\)', text)
+    e_add_f32 = re.search(r'func \$add_f (\(type .*\) )?\(param f32\) \(param f32\) \(result f32\)', text)
     assert e_add_f32, 'add_f export missing'
     i_i64_i32 = re.search(r'import "env" "import_ll" .*\(param i32 i32\) \(result i32\)', text)
     i_i64_i64 = re.search(r'import "env" "import_ll" .*\(param i64\) \(result i64\)', text)
-    e_i64_i32 = re.search(r'func \$legalstub\$add_ll \(param i32\) \(param i32\) \(param i32\) \(param i32\) \(result i32\)', text)
+    e_i64_i32 = re.search(r'func \$legalstub\$add_ll (\(type .*\) )?\(param i32\) \(param i32\) \(param i32\) \(param i32\) \(result i32\)', text)
     if js_ffi:
       assert i_i64_i32,     'i64 not converted to i32 in imports'
       assert not i_i64_i64, 'i64 not converted to i32 in imports'
@@ -11346,6 +11359,15 @@ T6:(else) !ASSERTIONS""", output)
     ret = self.run_js('workerLoader.js')
     self.assertContained('hello, world!\ndone\n', ret)
 
+  @crossplatform
+  def test_html_preprocess_error(self):
+    create_file('shell.html', '''
+      #error this is an error
+      {{{ SCRIPT }}}
+    ''')
+    err = self.expect_fail([EMCC, '-o', 'out.html', test_file('hello_world.c'), '--shell-file=shell.html'])
+    self.assertContained('error: shell.html:2: #error this is an error', err)
+
   @no_windows('node system() does not seem to work, see https://github.com/emscripten-core/emscripten/pull/10547')
   @requires_node
   def test_system_node_js(self):
@@ -11492,7 +11514,7 @@ _d
     self.assertContained('[asyncify] i can', out)
 
   def test_asyncify_stack_overflow(self):
-    self.cflags = ['-sASYNCIFY', '-sASYNCIFY_STACK_SIZE=4', '-sASYNCIFY_DEBUG=2']
+    self.cflags += ['-sASYNCIFY', '-sASYNCIFY_STACK_SIZE=4', '-sASYNCIFY_DEBUG=2']
 
     # The unreachable error on small stack sizes is not super-helpful. Try at
     # least to hint at increasing the stack size.
@@ -13573,7 +13595,7 @@ exec "$@"
     for arg in ('-sMAIN_MODULE', '-sSIDE_MODULE', '-sRELOCATABLE'):
       print(arg)
       err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sWASM=0', arg])
-      self.assertContained('WASM2JS is not compatible with relocatable output', err)
+      self.assertContained('emcc: error: WASM2JS is not compatible with RELOCATABLE', err)
 
   def test_wasm2js_standalone(self):
     self.do_run_in_out_file_test('hello_world.c', cflags=['-sSTANDALONE_WASM', '-sWASM=0'])
@@ -14101,7 +14123,7 @@ kill -9 $$
 
   def test_offset_convertor_plus_wasm2js(self):
     err = self.expect_fail([EMCC, '-sUSE_OFFSET_CONVERTER', '-sWASM=0', test_file('hello_world.c')])
-    self.assertContained('wasm2js is not compatible with USE_OFFSET_CONVERTER', err)
+    self.assertContained('emcc: error: WASM2JS is not compatible with USE_OFFSET_CONVERTER (see #14630)', err)
 
   def test_standard_library_mapping(self):
     # Test the `-l` flags on the command line get mapped the correct libraries variant
@@ -15301,7 +15323,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     base_cmd = [EMCC, test_file('hello_world.c'), '-sSTANDALONE_WASM']
 
     err = self.expect_fail(base_cmd + ['-sMINIMAL_RUNTIME'])
-    self.assertContained('error: MINIMAL_RUNTIME reduces JS size, and is incompatible with STANDALONE_WASM which focuses on ignoring JS anyhow and being 100% wasm', err)
+    self.assertContained('emcc: error: STANDALONE_WASM is not compatible with MINIMAL_RUNTIME', err)
 
     err = self.expect_fail(base_cmd + ['-sMEMORY_GROWTH_GEOMETRIC_CAP=1mb'])
     self.assertContained('error: MEMORY_GROWTH_GEOMETRIC_CAP is not compatible with STANDALONE_WASM', err)
@@ -16146,7 +16168,7 @@ addToLibrary({
     # TODO Remove this. Liftoff is currently broken for this test.
     # https://chromium-review.googlesource.com/c/v8/v8/+/5842546
     self.v8_args += ['--no-liftoff']
-    self.cflags = ['-msimd128', '-mfp16', '-sENVIRONMENT=shell'] + opts
+    self.cflags += ['-msimd128', '-mfp16', '-sENVIRONMENT=shell'] + opts
     self.do_runf('test_fp16.c')
 
   def test_embool(self):

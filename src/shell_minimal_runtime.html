@@ -19,12 +19,6 @@ var {{{ EXPORT_NAME }}} = {}
 #if SINGLE_FILE
 // If we are doing a SINGLE_FILE=1 build, inlined JS runtime code follows here:
 {{{ JS_CONTENTS_IN_SINGLE_FILE_BUILD }}}
-
-#if MODULARIZE
-// Launch the MODULARIZEd build.
-{{{ EXPORT_NAME }}}({});
-#endif
-
 #endif
 
 </script>

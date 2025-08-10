@@ -11,8 +11,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+char* lastLongString;
+
 char* makeLongStr(const char* str, int strCount) {
-  char* result = malloc((strCount * strlen(str)) + 1);
+  char* result = lastLongString = realloc(lastLongString, (strCount * strlen(str)) + 1);;
   result[0] = '\0';
 
   for (int i = 0; i < strCount; ++i) {
@@ -72,4 +74,6 @@ int main() {
 
   // The negative test passes a half-sized buffer to getcwd and makes sure that it fails.
   doNegativeTest(makeLongStr(u8"abcde", 10));
+
+  free(lastLongString);
 }

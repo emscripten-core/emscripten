@@ -830,40 +830,33 @@ def generate_js(data_target, data_files, metadata):
         var DB_VERSION = 1;
         var METADATA_STORE_NAME = 'METADATA';
         var PACKAGE_STORE_NAME = 'PACKAGES';
-        function openDatabase(callback, errback) {'''
-      if options.support_node:
-        code += '''
-            if (isNode) {
-              return errback();
-            }'''
-      code += '''
+
+        async function openDatabase() {
           if (typeof indexedDB == 'undefined') {
             throw 'using IndexedDB to cache data can only be done on a web page or in a web worker';
           }
-          try {
+          return new Promise((resolve, reject) => {
             var openRequest = indexedDB.open(DB_NAME, DB_VERSION);
-          } catch (e) {
-            return errback(e);
-          }
-          openRequest.onupgradeneeded = (event) => {
-            var db = /** @type {IDBDatabase} */ (event.target.result);
+            openRequest.onupgradeneeded = (event) => {
+              var db = /** @type {IDBDatabase} */ (event.target.result);
 
-            if (db.objectStoreNames.contains(PACKAGE_STORE_NAME)) {
-              db.deleteObjectStore(PACKAGE_STORE_NAME);
-            }
-            var packages = db.createObjectStore(PACKAGE_STORE_NAME);
+              if (db.objectStoreNames.contains(PACKAGE_STORE_NAME)) {
+                db.deleteObjectStore(PACKAGE_STORE_NAME);
+              }
+              var packages = db.createObjectStore(PACKAGE_STORE_NAME);
 
-            if (db.objectStoreNames.contains(METADATA_STORE_NAME)) {
-              db.deleteObjectStore(METADATA_STORE_NAME);
-            }
-            var metadata = db.createObjectStore(METADATA_STORE_NAME);
-          };
-          openRequest.onsuccess = (event) => {
-            var db = /** @type {IDBDatabase} */ (event.target.result);
-            callback(db);
-          };
-          openRequest.onerror = (error) => errback(error);
-        };
+              if (db.objectStoreNames.contains(METADATA_STORE_NAME)) {
+                db.deleteObjectStore(METADATA_STORE_NAME);
+              }
+              var metadata = db.createObjectStore(METADATA_STORE_NAME);
+            };
+            openRequest.onsuccess = (event) => {
+              var db = /** @type {IDBDatabase} */ (event.target.result);
+              resolve(db);
+            };
+            openRequest.onerror = reject;
+          });
+        }
 
         // This is needed as chromium has a limit on per-entry files in IndexedDB
         // https://cs.chromium.org/chromium/src/content/renderer/indexed_db/webidbdatabase_impl.cc?type=cs&sq=package:chromium&g=0&l=177
@@ -871,67 +864,68 @@ def generate_js(data_target, data_files, metadata):
         // We set the chunk size to 64MB to stay well-below the limit
         var CHUNK_SIZE = 64 * 1024 * 1024;
 
-        function cacheRemotePackage(
-          db,
-          packageName,
-          packageData,
-          packageMeta,
-          callback,
-          errback
-        ) {
+        async function cacheRemotePackage(db, packageName, packageData, packageMeta) {
           var transactionPackages = db.transaction([PACKAGE_STORE_NAME], IDB_RW);
           var packages = transactionPackages.objectStore(PACKAGE_STORE_NAME);
           var chunkSliceStart = 0;
           var nextChunkSliceStart = 0;
           var chunkCount = Math.ceil(packageData.byteLength / CHUNK_SIZE);
           var finishedChunks = 0;
-          for (var chunkId = 0; chunkId < chunkCount; chunkId++) {
-            nextChunkSliceStart += CHUNK_SIZE;
-            var putPackageRequest = packages.put(
-              packageData.slice(chunkSliceStart, nextChunkSliceStart),
-              `package/${packageName}/${chunkId}`
-            );
-            chunkSliceStart = nextChunkSliceStart;
-            putPackageRequest.onsuccess = (event) => {
-              finishedChunks++;
-              if (finishedChunks == chunkCount) {
-                var transaction_metadata = db.transaction(
-                  [METADATA_STORE_NAME],
-                  IDB_RW
-                );
-                var metadata = transaction_metadata.objectStore(METADATA_STORE_NAME);
-                var putMetadataRequest = metadata.put(
-                  {
-                    'uuid': packageMeta.uuid,
-                    'chunkCount': chunkCount
-                  },
-                  `metadata/${packageName}`
-                );
-                putMetadataRequest.onsuccess = (event) =>  callback(packageData);
-                putMetadataRequest.onerror = (error) => errback(error);
-              }
-            };
-            putPackageRequest.onerror = (error) => errback(error);
-          }
+
+          return new Promise((resolve, reject) => {
+            for (var chunkId = 0; chunkId < chunkCount; chunkId++) {
+              nextChunkSliceStart += CHUNK_SIZE;
+              var putPackageRequest = packages.put(
+                packageData.slice(chunkSliceStart, nextChunkSliceStart),
+                `package/${packageName}/${chunkId}`
+              );
+              chunkSliceStart = nextChunkSliceStart;
+              putPackageRequest.onsuccess = (event) => {
+                finishedChunks++;
+                if (finishedChunks == chunkCount) {
+                  var transaction_metadata = db.transaction(
+                    [METADATA_STORE_NAME],
+                    IDB_RW
+                  );
+                  var metadata = transaction_metadata.objectStore(METADATA_STORE_NAME);
+                  var putMetadataRequest = metadata.put(
+                    {
+                      'uuid': packageMeta.uuid,
+                      'chunkCount': chunkCount
+                    },
+                    `metadata/${packageName}`
+                  );
+                  putMetadataRequest.onsuccess = (event) => resolve(packageData);
+                  putMetadataRequest.onerror = reject;
+                }
+              };
+              putPackageRequest.onerror = reject;
+            }
+          });
         }
 
-        /* Check if there's a cached package, and if so whether it's the latest available */
-        function checkCachedPackage(db, packageName, callback, errback) {
+        /*
+         * Check if there's a cached package, and if so whether it's the latest available.
+         * Resolves to the cached metadata, or `null` if it is missing or out-of-date.
+         */
+        async function checkCachedPackage(db, packageName) {
           var transaction = db.transaction([METADATA_STORE_NAME], IDB_RO);
           var metadata = transaction.objectStore(METADATA_STORE_NAME);
           var getRequest = metadata.get(`metadata/${packageName}`);
-          getRequest.onsuccess = (event) => {
-            var result = event.target.result;
-            if (!result) {
-              return callback(false, null);
-            } else {
-              return callback(PACKAGE_UUID === result['uuid'], result);
+          return new Promise((resolve, reject) => {
+            getRequest.onsuccess = (event) => {
+              var result = event.target.result;
+              if (result && PACKAGE_UUID === result['uuid']) {
+                resolve(result);
+              } else {
+                resolve(null);
+              }
             }
-          };
-          getRequest.onerror = (error) => errback(error);
+            getRequest.onerror = reject;
+          });
         }
 
-        function fetchCachedPackage(db, packageName, metadata, callback, errback) {
+        async function fetchCachedPackage(db, packageName, metadata) {
           var transaction = db.transaction([PACKAGE_STORE_NAME], IDB_RO);
           var packages = transaction.objectStore(PACKAGE_STORE_NAME);
 
@@ -940,41 +934,43 @@ def generate_js(data_target, data_files, metadata):
           var chunkCount = metadata['chunkCount'];
           var chunks = new Array(chunkCount);
 
-          for (var chunkId = 0; chunkId < chunkCount; chunkId++) {
-            var getRequest = packages.get(`package/${packageName}/${chunkId}`);
-            getRequest.onsuccess = (event) => {
-              if (!event.target.result) {
-                errback(new Error(`CachedPackageNotFound for: ${packageName}`));
-                return;
-              }
-              // If there's only 1 chunk, there's nothing to concatenate it with so we can just return it now
-              if (chunkCount == 1) {
-                callback(event.target.result);
-              } else {
-                chunksDone++;
-                totalSize += event.target.result.byteLength;
-                chunks.push(event.target.result);
-                if (chunksDone == chunkCount) {
-                  if (chunksDone == 1) {
-                    callback(event.target.result);
-                  } else {
-                    var tempTyped = new Uint8Array(totalSize);
-                    var byteOffset = 0;
-                    for (var chunkId in chunks) {
-                      var buffer = chunks[chunkId];
-                      tempTyped.set(new Uint8Array(buffer), byteOffset);
-                      byteOffset += buffer.byteLength;
-                      buffer = undefined;
+          return new Promise((resolve, reject) => {
+            for (var chunkId = 0; chunkId < chunkCount; chunkId++) {
+              var getRequest = packages.get(`package/${packageName}/${chunkId}`);
+              getRequest.onsuccess = (event) => {
+                if (!event.target.result) {
+                  reject(`CachedPackageNotFound for: ${packageName}`);
+                  return;
+                }
+                // If there's only 1 chunk, there's nothing to concatenate it with so we can just return it now
+                if (chunkCount == 1) {
+                  resolve(event.target.result);
+                } else {
+                  chunksDone++;
+                  totalSize += event.target.result.byteLength;
+                  chunks.push(event.target.result);
+                  if (chunksDone == chunkCount) {
+                    if (chunksDone == 1) {
+                      resolve(event.target.result);
+                    } else {
+                      var tempTyped = new Uint8Array(totalSize);
+                      var byteOffset = 0;
+                      for (var chunkId in chunks) {
+                        var buffer = chunks[chunkId];
+                        tempTyped.set(new Uint8Array(buffer), byteOffset);
+                        byteOffset += buffer.byteLength;
+                        buffer = undefined;
+                      }
+                      chunks = undefined;
+                      resolve(tempTyped.buffer);
+                      tempTyped = undefined;
                     }
-                    chunks = undefined;
-                    callback(tempTyped.buffer);
-                    tempTyped = undefined;
                   }
                 }
-              }
-            };
-            getRequest.onerror = (error) => errback(error);
-          }
+              };
+              getRequest.onerror = reject;
+            }
+          });
         }\n'''
 
     # add Node.js support code, if necessary
@@ -1076,25 +1072,27 @@ def generate_js(data_target, data_files, metadata):
           fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, processPackageData, handleError);
         };
 
-        openDatabase(
-          (db) => checkCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME,
-              (useCached, metadata) => {
-                Module['preloadResults'][PACKAGE_NAME] = {fromCache: useCached};
-                if (useCached) {
-                  fetchCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME, metadata, processPackageData, preloadFallback);
-                } else {
-                  fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE,
-                    (packageData) => {
-                      cacheRemotePackage(db, PACKAGE_PATH + PACKAGE_NAME, packageData, {uuid:PACKAGE_UUID}, processPackageData,
-                        (error) => {
-                          console.error(error);
-                          processPackageData(packageData);
-                        });
-                    }
-                  , preloadFallback);
-                }
-              }, preloadFallback)
-        , preloadFallback);
+        openDatabase()
+          .then((db) => {
+            checkCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME)
+            .then((cachedData) => {
+              Module['preloadResults'][PACKAGE_NAME] = {fromCache: !!cachedData};
+              if (cachedData) {
+                fetchCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME, cachedData).then(processPackageData);
+              } else {
+                fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE,
+                  (packageData) => {
+                    cacheRemotePackage(db, PACKAGE_PATH + PACKAGE_NAME, packageData, {uuid:PACKAGE_UUID})
+                      .then(processPackageData)
+                      .catch((error) => {
+                        console.error(error);
+                        processPackageData(packageData);
+                      });
+                  }
+                , preloadFallback);
+              }
+            })
+          }).catch(preloadFallback);
 
         Module['setStatus']?.('Downloading...');\n'''
     else:
@@ -1140,32 +1138,25 @@ def generate_js(data_target, data_files, metadata):
     if options.support_node:
       node_support_code = '''
         if (isNode) {
-          require('fs').readFile(metadataUrl, 'utf8', (err, contents) => {
-            if (err) {
-              return Promise.reject(err);
-            } else {
-              loadPackage(JSON.parse(contents));
-            }
-          });
-          return;
+          var fsPromises = require('fs/promises');
+          var contents = await fsPromises.readFile(metadataUrl, 'utf8');
+          return loadPackage(JSON.parse(contents));
         }'''.strip()
 
     ret += '''
     Module['removeRunDependency']('%(metadata_file)s');
   }
 
-  function runMetaWithFS() {
+  async function runMetaWithFS() {
     Module['addRunDependency']('%(metadata_file)s');
     var metadataUrl = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
     %(node_support_code)s
-    fetch(metadataUrl)
-      .then((response) => {
-        if (response.ok) {
-          return response.json();
-        }
-        return Promise.reject(new Error(`${response.status}: ${response.url}`));
-      })
-      .then(loadPackage);
+    var response = await fetch(metadataUrl);
+    if (!response.ok) {
+      throw new Error(`${response.status}: ${response.url}`);
+    }
+    var json = await response.json();
+    return loadPackage(json);
   }
 
   if (Module['calledRun']) {
