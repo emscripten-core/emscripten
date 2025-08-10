@@ -3909,7 +3909,7 @@ More info: https://emscripten.org
     self.assertContained(MESSAGE, err)
     # do not mention from emcc
     err = self.run_process([EMCC, test_file('hello_world.c'), '--preload-file', 'data.txt'], stdout=PIPE, stderr=PIPE).stderr
-    self.assertEqual(len(err), 0, err)
+    self.assertEqual(len(err), 0)
 
   def test_file_packager_returns_error_if_target_equal_to_jsoutput(self):
     MESSAGE = 'error: TARGET should not be the same value of --js-output'
