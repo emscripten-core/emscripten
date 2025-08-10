@@ -583,17 +583,21 @@ def main():  # noqa: C901, PLR0912, PLR0915
       if current_size + fsize <= PRELOAD_DATA_FILE_LIMIT:
         file_chunks[-1].append(file_)
         current_size += fsize
+      elif fsize > PRELOAD_DATA_FILE_LIMIT:
+        diagnostics.error(f'error: cannot package file greater than %d MB does not exist' % (PRELOAD_DATA_FILE_LIMIT / (1024 * 1024)))
+        return 1
       else:
         current_size = fsize
         file_chunks.append([file_])
 
   if len(file_chunks) > 1:
-    err('warning: file packager is splitting bundle into %d chunks', len(file_chunks))
+    err(f'warning: file packager is splitting bundle into %d chunks' % len(file_chunks))
 
   targets = []
   for counter, data_files in enumerate(file_chunks):
     metadata = {'files': []}
-    targets.append(f'{data_target}_{counter}' if counter else data_target)
+    base, ext = data_target.rsplit('.', 1); 
+    targets.append(f"{base}{f'_{counter}' if counter else ''}.{ext}")
     ret = generate_js(targets[-1], data_files, metadata)
     if options.force or len(data_files):
       if options.jsoutput is None:
@@ -602,7 +606,8 @@ def main():  # noqa: C901, PLR0912, PLR0915
         # Overwrite the old jsoutput file (if exists) only when its content
         # differs from the current generated one, otherwise leave the file
         # untouched preserving its old timestamp
-        targets.append(f'{options.jsoutput}_{counter}' if counter else options.jsoutput)
+        base, ext = options.jsoutput.rsplit('.', 1); 
+        targets.append(f"{base}{f'_{counter}' if counter else ''}.{ext}")
         if os.path.isfile(targets[-1]):
           old = utils.read_file(targets[-1])
           if old != ret:
