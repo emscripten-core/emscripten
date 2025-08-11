@@ -953,18 +953,12 @@ def generate_js(data_target, data_files, metadata):
     if options.support_node:
       node_support_code = '''
         if (isNode) {
-          require('fs').readFile(packageName, (err, contents) => {
-            if (err) {
-              errback(err);
-            } else {
-              callback(contents.buffer);
-            }
-          });
+          require('fs/promises').readFile(packageName).then((contents) => callback(contents.buffer));
           return;
         }'''.strip()
 
     ret += '''
-      function fetchRemotePackage(packageName, packageSize, callback, errback) {
+      function fetchRemotePackage(packageName, packageSize, callback) {
         %(node_support_code)s
         Module['dataFileDownloads'] ??= {};
         fetch(packageName)
@@ -1040,7 +1034,7 @@ def generate_js(data_target, data_files, metadata):
         function preloadFallback(error) {
           console.error(error);
           console.error('falling back to default preload behavior');
-          fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, processPackageData, handleError);
+          fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, processPackageData);
         };
 
         openDatabase()
@@ -1059,8 +1053,7 @@ def generate_js(data_target, data_files, metadata):
                         console.error(error);
                         processPackageData(packageData);
                       });
-                  }
-                , preloadFallback);
+                  });
               }
             })
           }).catch(preloadFallback);
@@ -1082,7 +1075,7 @@ def generate_js(data_target, data_files, metadata):
         } else {
           fetched = data;
         }
-      }, handleError);\n'''
+      });\n'''
 
       code += '''
       Module['preloadResults'][PACKAGE_NAME] = {fromCache: false};
