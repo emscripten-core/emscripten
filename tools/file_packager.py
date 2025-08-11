@@ -974,10 +974,6 @@ def generate_js(data_target, data_files, metadata):
               return Promise.reject(new Error(`${response.status}: ${response.url}`));
             }
 
-            if (!response.body && response.arrayBuffer) { // If we're using the polyfill, readers won't be available...
-              return response.arrayBuffer().then(callback);
-            }
-
             const reader = response.body.getReader();
             const iterate = () => reader.read().then(handleChunk).catch((cause) => {
               return Promise.reject(new Error(`Unexpected error while handling : ${response.url} ${cause}`, {cause}));
