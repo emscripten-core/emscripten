@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 4.0.13 (in development)
 -----------------------
+- `sdl-config` and `sdl2-config` scripts were simplified to avoid using python
+  and the `.bat` file versions were removed, matching upstream SDL. (#24907)
 - The `addRunDependency`/`removeRunDependency` now assert in debug builds if
   they are not passed an `id` parameter.  We have been issuing warnings in
   this case since 2012 (f67ad60), so it seems highly unlikely anyone is not
