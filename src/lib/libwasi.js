@@ -67,6 +67,10 @@ var WasiLibrary = {
         '_': getExecutableName()
 #endif
       };
+      // Forward the Node ones, if any.
+      if (ENVIRONMENT_IS_NODE) {
+        env = {...env, ...process.env};
+      }
       // Apply the user-provided values, if any.
       for (var x in ENV) {
         // x is a key in ENV; if ENV[x] is undefined, that means it was
