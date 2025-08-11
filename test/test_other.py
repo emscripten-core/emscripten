@@ -7355,6 +7355,7 @@ print(os.environ.get('NM'))
     self.run_process([emmake, PYTHON, test_file('emmake/make.py')])
 
   @crossplatform
+  @no_windows('sdl2-config is a shell script and cannot run on windows')
   def test_sdl2_config(self):
     for args, expected in [
       [['--version'], '2.0.10'],
