@@ -893,6 +893,9 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if options.use_preload_plugins or len(options.preload_files):
       exit_with_error('MODULARIZE=instance is not compatible with --embed-file/--preload-file')
 
+  if settings.MINIMAL_RUNTIME and len(options.preload_files):
+    exit_with_error('MINIMAL_RUNTIME is not compatible with --preload-file')
+
   if options.oformat in (OFormat.WASM, OFormat.BARE):
     if options.emit_tsd:
       exit_with_error('Wasm only output is not compatible --emit-tsd')

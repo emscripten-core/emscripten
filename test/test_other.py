@@ -1667,6 +1667,9 @@ int f() {
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMINIMAL_RUNTIME', '-sMINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION', '-oout.html', '-sSINGLE_FILE'])
     self.assertContained('emcc: error: MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION is not compatible with SINGLE_FILE', err)
 
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMINIMAL_RUNTIME', '--preload-file', 'foo'])
+    self.assertContained('emcc: error: MINIMAL_RUNTIME is not compatible with --preload-file', err)
+
   def test_export_all_and_exported_functions(self):
     # EXPORT_ALL should not export library functions by default.
     # This means that to export library function you also need to explicitly
@@ -16472,3 +16475,21 @@ addToLibrary({
 
   def test_reallocarray(self):
     self.do_other_test('test_reallocarray.c')
+
+  def test_create_preloaded_file(self):
+    # Test that the FS.createPreloadedFile API works
+    create_file('post.js', "FS.createPreloadedFile('/', 'someotherfile.txt', 'somefile.txt', true, false);")
+    create_file('somefile.txt', 'hello')
+    create_file('main.c', r'''
+      #include <stdio.h>
+      #include <assert.h>
+      #include <sys/stat.h>
+
+      int main() {
+        struct stat buf;
+        int rtn = stat("someotherfile.txt", &buf);
+        assert(rtn == 0);
+        printf("done\n");
+        return 0;
+      }''')
+    self.do_runf('main.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '--post-js=post.js'])

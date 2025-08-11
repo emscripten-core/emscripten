@@ -2104,6 +2104,14 @@ addToLibrary({
     }
   },
 
+  $asyncLoad: async (url) => {
+    var arrayBuffer = await readAsync(url);
+  #if ASSERTIONS
+    assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
+  #endif
+    return new Uint8Array(arrayBuffer);
+  },
+
 #else // MINIMAL_RUNTIME
   // MINIMAL_RUNTIME doesn't support the runtimeKeepalive stuff
   $callUserCallback: (func) => func(),
@@ -2114,14 +2122,6 @@ addToLibrary({
       x = 'main';
     }
     return x.startsWith('dynCall_') ? x : '_' + x;
-  },
-
-  $asyncLoad: async (url) => {
-    var arrayBuffer = await readAsync(url);
-  #if ASSERTIONS
-    assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
-  #endif
-    return new Uint8Array(arrayBuffer);
   },
 
   $alignMemory: (size, alignment) => {
