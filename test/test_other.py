@@ -7416,6 +7416,50 @@ int main() {
     self.assertContained(MESSAGE, err)
     self.clear()
 
+  def test_file_packager_huge_no_split(self):
+    create_file('huge.dat', 'a' * (1024 * 1024 * 1024))
+    create_file('huge2.dat', 'b' * ((1024 * 1024 * 1024) - 1))
+    err = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'huge.dat', '--preload', 'huge2.dat'], stdout=PIPE, stderr=PIPE).stderr
+    self.assertContained('warning: file packager is creating an asset bundle of 2047 MB. this is very large, and browsers might have trouble loading it', err)
+    self.assertExists('test.data')
+    self.assertEqual(os.path.getsize('test.data'), (1024 * 1024 * 1024 * 2) - 1)
+    self.clear()
+
+  def test_file_packager_huge_split(self):
+    create_file('huge.dat', 'a' * (1024 * 1024 * 1024))
+    create_file('huge2.dat', 'b' * (1024 * 1024 * 1024))
+    err = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'huge.dat', '--preload', 'huge2.dat'], stdout=PIPE, stderr=PIPE).stderr
+    self.assertContained('warning: file packager is creating an asset bundle of 1024 MB. this is very large, and browsers might have trouble loading it', err)
+    self.assertContained('warning: file packager is splitting bundle into 2 chunks', err)
+    self.assertExists('test.data')
+    self.assertExists('test_1.data')
+    self.assertEqual(os.path.getsize('test.data'), 1024 * 1024 * 1024)
+    self.assertEqual(os.path.getsize('test_1.data'), 1024 * 1024 * 1024)
+    self.clear()
+
+  def test_file_packager_huge_split_metadata(self):
+    create_file('huge.dat', 'a' * (1024 * 1024 * 1024))
+    create_file('huge2.dat', 'b' * (1024 * 1024 * 1024))
+    err = self.run_process([FILE_PACKAGER, 'test.data', '--separate-metadata', '--js-output=immutable.js', '--preload', 'huge.dat', '--preload', 'huge2.dat'], stdout=PIPE, stderr=PIPE).stderr
+    self.assertContained('warning: file packager is creating an asset bundle of 1024 MB. this is very large, and browsers might have trouble loading it', err)
+    self.assertContained('warning: file packager is splitting bundle into 2 chunks', err)
+    self.assertExists('test.data')
+    self.assertExists('immutable.js')
+    self.assertExists('immutable.js.metadata')
+    self.assertExists('test_1.data')
+    self.assertExists('immutable_1.js')
+    self.assertExists('immutable_1.js.metadata')
+    self.assertEqual(os.path.getsize('test.data'), 1024 * 1024 * 1024)
+    self.assertEqual(os.path.getsize('test_1.data'), 1024 * 1024 * 1024)
+    self.clear()
+
+  def test_file_packager_huge_split_too_large(self):
+    create_file('huge.dat', 'a' * (2 * 1024 * 1024 * 1024))
+    proc = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'huge.dat'], check=False, stdout=PIPE, stderr=PIPE)
+    self.assertEqual(proc.returncode, 1)
+    self.assertContained('error: cannot package file greater than 2047 MB does not exist', proc.stderr)
+    self.clear()
+
   @parameterized({
     '': (True,),
     'wasm2js': (False,),
