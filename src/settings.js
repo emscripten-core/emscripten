@@ -184,8 +184,8 @@ var INITIAL_MEMORY = -1;
 // INITIAL_MEMORY is the final size of memory anyhow.
 //
 // Note that the default value here is 2GB-64KB, which means that by default if
-// you enable memory growth then we can grow up the signed 32-bit int limit.
-// This is a natural limit for several reasons:
+// you enable memory growth then we can grow up to one page short of the signed
+// 32-bit int limit. This is a natural limit for several reasons:
 //
 //   * If the maximum heap size is > 2GB, then pointers must be unsigned in
 //     JavaScript, which increases code size. We don't want memory growth builds
