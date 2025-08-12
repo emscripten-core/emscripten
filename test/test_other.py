@@ -9135,8 +9135,7 @@ int main() {
 #include <emscripten/heap.h>
 #include <stdio.h>
 int main() { printf("Heap size: 0x%lx\n", (unsigned long)emscripten_get_heap_size()); }''')
-    self.run_process([EMXX, 'test.cpp', '-sINITIAL_MEMORY=2GB'])
-    self.assertContained('Heap size: 0x7fff0000', self.run_js('a.out.js'))
+    self.do_runf('test.cpp', 'Heap size: 0x7fff0000', cflags=['-sINITIAL_MEMORY=2GB'])
 
   # When user asks max 2GB heap size, they intend to run in a Wasm VM
   # that supports max 2GB ArrayBuffers. Verify that this works for -sMAXIMUM_MEMORY.
