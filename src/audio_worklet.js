@@ -72,56 +72,60 @@ function createWasmAudioWorkletProcessor(audioParams) {
     }
 
     /**
+     * Marshals all inputs and parameters to the Wasm memory on the thread's
+     * stack, then performs the wasm audio worklet call, and finally marshals
+     * audio output data back.
+     *
      * @param {Object} parameters
      */
     process(inputList, outputList, parameters) {
-      // Marshal all inputs and parameters to the Wasm memory on the thread stack,
-      // then perform the wasm audio worklet call,
-      // and finally marshal audio output data back.
-
       var numInputs = inputList.length;
       var numOutputs = outputList.length;
 
       var entry; // reused list entry or index
       var subentry; // reused channel or other array in each list entry or index
 
-      // Calculate the required stack and output buffer views
-      var stackMemoryNeeded = (numInputs + numOutputs) * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
+      // Calculate the required stack and output buffer views (stack is further
+      // split into aligned structs and the raw float data).
+      var stackMemoryStruct = (numInputs + numOutputs) * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
+      var stackMemoryData = 0;
       for (entry of inputList) {
-        stackMemoryNeeded += entry.length * this.bytesPerChannel;
+        stackMemoryData += entry.length * this.bytesPerChannel;
       }
+      // Collect the total number of output channels (mapped to array views)
       var outputViewsNeeded = 0;
       for (entry of outputList) {
         outputViewsNeeded += entry.length;
       }
-      stackMemoryNeeded += outputViewsNeeded * this.bytesPerChannel;
+      stackMemoryData += outputViewsNeeded * this.bytesPerChannel;
       var numParams = 0;
       for (entry in parameters) {
-        stackMemoryNeeded += parameters[entry].byteLength + {{{ C_STRUCTS.AudioParamFrame.__size__ }}};
         ++numParams;
+        stackMemoryStruct += {{{ C_STRUCTS.AudioParamFrame.__size__ }}};
+        stackMemoryData += parameters[entry].byteLength;
       }
 #if ASSERTIONS
       console.assert(outputViewsNeeded <= this.outputViews.length, `Too many AudioWorklet outputs (need ${outputViewsNeeded} but have stack space for ${this.outputViews.length})`);
 #endif
 
       var oldStackPtr = stackSave();
-      // Allocate the necessary stack space. All pointer variables are always in
-      // bytes; 'dataPtr' is the start of the data section, advancing as space
-      // for structs and data is taken; 'structPtr' is reused as the working
-      // start to each struct record.
-      // Ordinarily 'dataPtr' would be 16-byte aligned, from the internal
-      // _emscripten_stack_alloc(), as were the output views, and so to ensure
-      // the views fall on the correct addresses (and we finish at the stacktop)
-      // bytes are added and the start advanced.
-      var alignedNeededStack = (stackMemoryNeeded + 15) & ~15;
-      var dataPtr = stackAlloc(alignedNeededStack);
+      // Allocate the necessary stack space. All pointer variables are in bytes;
+      // 'structPtr' starts at the first struct entry (all run sequentially)
+      // and is the working start to each record; 'dataPtr' is the same for the
+      // audio/params data, starting after *all* the structs.
+      // 'structPtr' begins 16-byte aligned, allocated from the internal
+      // _emscripten_stack_alloc(), as are the output views, and so to ensure
+      // the views fall on the correct addresses (and we finish at stacktop) we
+      // request additional bytes, taking this alignment into account, then
+      // offset `dataPtr` by the difference.
+      var stackMemoryAligned = (stackMemoryStruct + stackMemoryData + 15) & ~15;
+      var structPtr = stackAlloc(stackMemoryAligned);
+      var dataPtr = structPtr + (stackMemoryAligned - stackMemoryData);
 
       // Copy input audio descriptor structs and data to Wasm (recall, structs
       // first, audio data after). 'inputsPtr' is the start of the C callback's
       // input AudioSampleFrame.
-      var /*const*/ inputsPtr = dataPtr;
-      var structPtr = inputsPtr;
-      dataPtr += numInputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
+      var /*const*/ inputsPtr = structPtr;
       for (entry of inputList) {
         // Write the AudioSampleFrame struct instance
         {{{ makeSetValue('structPtr', C_STRUCTS.AudioSampleFrame.numberOfChannels, 'entry.length', 'u32') }}};
@@ -137,9 +141,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
 
       // Copy parameters descriptor structs and data to Wasm. 'paramsPtr' is the
       // start of the C callback's input AudioParamFrame.
-      var /*const*/ paramsPtr = dataPtr;
-      structPtr = paramsPtr;
-      dataPtr += numParams * {{{ C_STRUCTS.AudioParamFrame.__size__ }}};
+      var /*const*/ paramsPtr = structPtr;
       for (entry = 0; subentry = parameters[entry++];) {
         // Write the AudioParamFrame struct instance
         {{{ makeSetValue('structPtr', C_STRUCTS.AudioParamFrame.length, 'subentry.length', 'u32') }}};
@@ -150,18 +152,10 @@ function createWasmAudioWorkletProcessor(audioParams) {
         dataPtr += subentry.length * {{{ getNativeTypeSize('float') }}};
       }
 
-      // TODO: why does Chrome wasm64 (Chrome has weird rules for params) need
-      // the manual alignment here? An off-by-one somewhere? outputsPtr is
-      // getting clobbered otherwise, is the struct correctly aligned? Do more
-      // stack allocs instead? Probably needs alignments between struct writes?
-      dataPtr += alignedNeededStack - stackMemoryNeeded;
-
       // Copy output audio descriptor structs to Wasm. 'outputsPtr' is the start
-      // of the C callback's output AudioSampleFrame.
-      // Note: dataPtr after the struct offsets should now be 16-byte aligned.
-      var /*const*/ outputsPtr = dataPtr;
-      structPtr = outputsPtr;
-      dataPtr += numOutputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
+      // of the C callback's output AudioSampleFrame. 'dataPtr' will now be
+      // aligned with the output views, ending at stacktop.
+      var /*const*/ outputsPtr = structPtr;
       for (entry of outputList) {
         // Write the AudioSampleFrame struct instance
         {{{ makeSetValue('structPtr', C_STRUCTS.AudioSampleFrame.numberOfChannels, 'entry.length', 'u32') }}};
