@@ -3987,10 +3987,7 @@ More info: https://emscripten.org
 
     create_file('post.js', 'MyModule(Module).then(() => console.log("done"));')
 
-    self.run_process([EMCC, 'main.c', '--extern-pre-js=embed.js', '--extern-post-js=post.js', '-sMODULARIZE', '-sEXPORT_NAME=MyModule', '-sFORCE_FILESYSTEM'])
-
-    result = self.run_js('a.out.js')
-    self.assertContained('|hello world|', result)
+    self.do_runf('main.c', '|hello world|', cflags=['--extern-pre-js=embed.js', '--extern-post-js=post.js', '-sMODULARIZE', '-sEXPORT_NAME=MyModule', '-sFORCE_FILESYSTEM'])
 
   def test_preprocess(self):
     # Pass -Werror to prevent regressions such as https://github.com/emscripten-core/emscripten/pull/9661
