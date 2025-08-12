@@ -492,8 +492,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
     return 1
 
   if options.from_emcc and options.export_es6:
-    diagnostics.error('Can\'t use --export-es6 option together with --from-emcc since the code should be embedded '
-        'within emcc\'s code')
+    diagnostics.error('Can\'t use --export-es6 option together with --from-emcc since the code should be embedded within emcc\'s code')
     return 1
 
   walked.append(__file__)

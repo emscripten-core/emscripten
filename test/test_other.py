@@ -3973,10 +3973,9 @@ More info: https://emscripten.org
     create_file('run.js', '''
     import loadDataFile from './dataFileLoader.js'
     import {default as loadModule} from './moduleFile.js'
-
+    
     loadModule().then((module) => {
       loadDataFile(module)
-        .catch((cause) => Promise.reject(cause))
         .then(() => {
           module._test_fun();
         }
@@ -3984,8 +3983,7 @@ More info: https://emscripten.org
     });
     ''')
 
-    output = self.run_js('run.js')
-    self.assertContained('hello data', output)
+    self.assertContained('hello data', self.run_js('run.js'))
 
   @crossplatform
   def test_file_packager_depfile(self):
