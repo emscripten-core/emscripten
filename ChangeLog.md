@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 4.0.13 (in development)
 -----------------------
+- Support for Windows 7 and the `EM_WORKAROUND_WIN7_BAD_ERRORLEVEL_BUG`
+  environment variable was removed.
 - `sdl-config` and `sdl2-config` scripts were simplified to avoid using python
   and the `.bat` file versions were removed, matching upstream SDL. (#24907)
 - The `addRunDependency`/`removeRunDependency` now assert in debug builds if

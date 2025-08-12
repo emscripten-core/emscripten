@@ -45,42 +45,18 @@
 :: EM_WORKAROUND_PYTHON_BUG_34780 is defined, invoke python with '< NUL' stdin to avoid
 :: sharing the parent's stdin handle to it, avoiding the hang.
 
-:: On Windows 7, the compiler batch scripts are observed to exit with a non-zero errorlevel,
-:: even when the python executable above did succeed and quit with errorlevel 0 above.
-:: On Windows 8 and newer, this issue has not been observed. It is possible that this
-:: issue is related to the above python bug, but this has not been conclusively confirmed,
-:: so using a separate env. var EM_WORKAROUND_WIN7_BAD_ERRORLEVEL_BUG to enable the known
-:: workaround this issue, which is to explicitly quit the calling process with the previous
-:: errorlevel from the above command.
-
 :: Also must use goto to jump to the command dispatch, since we cannot invoke emcc from
 :: inside a if() block, because if a cmdline param would contain a char '(' or ')', that
 :: would throw off the parsing of the cmdline arg.
 @if "%EM_WORKAROUND_PYTHON_BUG_34780%"=="" (
-  @if "%EM_WORKAROUND_WIN7_BAD_ERRORLEVEL_BUG%"=="" (
-    goto NORMAL
-  ) else (
-    goto NORMAL_EXIT
-  )
+  goto NORMAL
 ) else (
-  @if "%EM_WORKAROUND_WIN7_BAD_ERRORLEVEL_BUG%"=="" (
-    goto MUTE_STDIN
-  ) else (
-    goto MUTE_STDIN_EXIT
-  )
+  goto MUTE_STDIN
 )
-
-:NORMAL_EXIT
-@"%EM_PY%" -E "%MYDIR%%~n0.py" %*
-@exit %ERRORLEVEL%
 
 :MUTE_STDIN
 @"%EM_PY%" -E "%MYDIR%%~n0.py" %* < NUL
 @exit /b %ERRORLEVEL%
-
-:MUTE_STDIN_EXIT
-@"%EM_PY%" -E "%MYDIR%%~n0.py" %* < NUL
-@exit %ERRORLEVEL%
 
 :NORMAL
 @"%EM_PY%" -E "%MYDIR%%~n0.py" %*
