@@ -9159,7 +9159,7 @@ int main()
   def test_memory_size(self):
     for args, expect_initial, expect_max in [
         ([], 320, 320),
-        (['-sALLOW_MEMORY_GROWTH'], 320, 32768),
+        (['-sALLOW_MEMORY_GROWTH'], 320, 32767),
         (['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=40MB'], 320, 640),
       ]:
       cmd = [EMCC, test_file('hello_world.c'), '-O2', '-sINITIAL_MEMORY=20MB'] + args
@@ -9570,8 +9570,8 @@ int main()
 
     run([], 258)
     run(['-sINITIAL_MEMORY=32MB'], 512)
-    run(['-sINITIAL_MEMORY=32MB', '-sALLOW_MEMORY_GROWTH'], (2 * 1024 * 1024 * 1024) // webassembly.WASM_PAGE_SIZE)
-    run(['-sINITIAL_MEMORY=32MB', '-sALLOW_MEMORY_GROWTH', '-sWASM=0'], (2 * 1024 * 1024 * 1024) // webassembly.WASM_PAGE_SIZE)
+    run(['-sINITIAL_MEMORY=32MB', '-sALLOW_MEMORY_GROWTH'], (2 * 1024 * 1024 * 1024 - webassembly.WASM_PAGE_SIZE) // webassembly.WASM_PAGE_SIZE)
+    run(['-sINITIAL_MEMORY=32MB', '-sALLOW_MEMORY_GROWTH', '-sWASM=0'], (2 * 1024 * 1024 * 1024 - webassembly.WASM_PAGE_SIZE) // webassembly.WASM_PAGE_SIZE)
 
   def test_wasm_target_and_STANDALONE_WASM(self):
     # STANDALONE_WASM means we never minify imports and exports.
@@ -14021,7 +14021,7 @@ exec "$@"
     self.assertContained('emcc: error: EMMAKEN_NO_SDK is no longer supported', err)
 
   @parameterized({
-    'default': ('', '2147483648'),
+    'default': ('', '2147418112'),
     '1GB': ('-sMAXIMUM_MEMORY=1GB', '1073741824'),
     # for 4GB we return 1 wasm page less than 4GB, as 4GB cannot fit in a 32bit
     # integer
