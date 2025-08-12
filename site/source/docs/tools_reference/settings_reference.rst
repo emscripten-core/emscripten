@@ -212,19 +212,19 @@ Set the maximum size of memory in the wasm module (in bytes). This is only
 relevant when ALLOW_MEMORY_GROWTH is set, as without growth, the size of
 INITIAL_MEMORY is the final size of memory anyhow.
 
-Note that the default value here is 2GB, which means that by default if you
-enable memory growth then we can grow up to 2GB but no higher. 2GB is a
-natural limit for several reasons:
+Note that the default value here is 2GB-64KB, which means that by default if
+you enable memory growth then we can grow up to one page short of the signed
+32-bit int limit. This is a natural limit for several reasons:
 
-  * If the maximum heap size is over 2GB, then pointers must be unsigned in
+  * If the maximum heap size is > 2GB, then pointers must be unsigned in
     JavaScript, which increases code size. We don't want memory growth builds
-    to be larger unless someone explicitly opts in to >2GB+ heaps.
-  * Historically no VM has supported more >2GB+, and only recently (Mar 2020)
+    to be larger unless someone explicitly opts in to > 2GB heaps.
+  * Historically no VM has supported >= 2GB, and only recently (Mar 2020)
     has support started to appear. As support is limited, it's safer for
-    people to opt into >2GB+ heaps rather than get a build that may not
+    people to opt into >= 2GB heaps rather than get a build that may not
     work on all VMs.
 
-To use more than 2GB, set this to something higher, like 4GB.
+To use >= 2GB, set this to something higher, like 4GB.
 
 (This option was formerly called WASM_MEM_MAX and BINARYEN_MEM_MAX.)
 
