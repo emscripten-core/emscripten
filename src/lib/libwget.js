@@ -20,7 +20,7 @@ var LibraryWget = {
     '$PATH_FS', '$callUserCallback', '$Browser',
     '$withStackSave', '$stringToUTF8OnStack',
     '$FS_mkdirTree',
-    '$FS_createPreloadedFile',
+    '$FS_preloadFile',
     '$FS_unlink',
   ],
   emscripten_async_wget__proxy: 'sync',
@@ -37,12 +37,10 @@ var LibraryWget = {
       }
     }
     var destinationDirectory = PATH.dirname(_file);
-    FS_createPreloadedFile(
+    FS_preloadFile(
       destinationDirectory,
       PATH.basename(_file),
       _url, true, true,
-      () => doCallback(onload),
-      () => doCallback(onerror),
       false, // dontCreateFile
       false, // canOwn
       () => { // preFinish
@@ -53,7 +51,7 @@ var LibraryWget = {
         // if the destination directory does not yet exist, create it
         FS_mkdirTree(destinationDirectory);
       }
-    );
+    ).then(() => doCallback(onload)).catch(() => doCallback(onerror));
   },
 
   emscripten_async_wget_data__deps: ['$asyncLoad', 'malloc', 'free', '$callUserCallback'],

@@ -32,6 +32,12 @@ addToLibrary({
     return byteArray;
   },
 
+  // Legacy version of FS_preloadFile that uses callback rather than async
+  $FS_createPreloadedFile__deps: ['$FS_preloadFile'],
+  $FS_createPreloadedFile: (parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) => {
+    FS_preloadFile(parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish).then(onload).catch(onerror);
+  },
+
   // Preloads a file asynchronously. You can call this before run, for example in
   // preRun. run will be delayed until this file arrives and is set up.
   // If you call it after run(), you may want to pause the main loop until it
@@ -44,39 +50,33 @@ addToLibrary({
   // You can also call this with a typed array instead of a url. It will then
   // do preloading for the Image/Audio part, as if the typed array were the
   // result of an XHR that you did manually.
-  $FS_createPreloadedFile__deps: [
+  $FS_preloadFile__deps: [
     '$asyncLoad',
     '$PATH_FS',
     '$FS_createDataFile',
     '$getUniqueRunDependency',
     '$FS_handledByPreloadPlugin',
   ],
-  $FS_createPreloadedFile: (parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) => {
+  $FS_preloadFile: async (parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish) => {
     // TODO we should allow people to just pass in a complete filename instead
     // of parent and name being that we just join them anyways
     var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
     var dep = getUniqueRunDependency(`cp ${fullname}`); // might have several active requests for the same fullname
-    function processData(byteArray) {
-      FS_handledByPreloadPlugin(byteArray, fullname)
-        .then((byteArray) => {
-          preFinish?.();
-          if (!dontCreateFile) {
-            FS_createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
-          }
-          onload?.();
-          removeRunDependency(dep);
-        })
-        .catch(() =>  {
-          onerror?.();
-          removeRunDependency(dep);
-        });
-    }
-
     addRunDependency(dep);
-    if (typeof url == 'string') {
-      asyncLoad(url).then(processData, onerror);
-    } else {
-      processData(url);
+
+    try {
+      var byteArray = url;
+      if (typeof url == 'string') {
+        byteArray = await asyncLoad(url);
+      }
+
+      byteArray = await FS_handledByPreloadPlugin(byteArray, fullname);
+      preFinish?.();
+      if (!dontCreateFile) {
+        FS_createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
+      }
+    } finally {
+      removeRunDependency(dep);
     }
   },
 #endif

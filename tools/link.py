@@ -1484,7 +1484,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.EXPORTED_RUNTIME_METHODS += [
       'FS_createPath',
       'FS_createDataFile',
-      'FS_createPreloadedFile',
+      'FS_preloadFile',
       'FS_unlink',
     ]
     if not settings.WASMFS:
