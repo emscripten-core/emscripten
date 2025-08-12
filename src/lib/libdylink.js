@@ -14,10 +14,10 @@ var LibraryDylink = {
 #if FILESYSTEM
   $registerWasmPlugin__deps: ['$preloadPlugins'],
   $registerWasmPlugin: () => {
-    // Use string keys here to avoid minification since the plugin consumer
-    // also uses string keys.
+    // Use string keys here for public methods to avoid minification since the
+    // plugin consumer also uses string keys.
     var wasmPlugin = {
-      'promiseChainEnd': Promise.resolve(),
+      promiseChainEnd: Promise.resolve(),
       'canHandle': (name) => {
         return !Module['noWasmDecoding'] && name.endsWith('.so')
       },
@@ -25,7 +25,7 @@ var LibraryDylink = {
         // loadWebAssemblyModule can not load modules out-of-order, so rather
         // than just running the promises in parallel, this makes a chain of
         // promises to run in series.
-        wasmPlugin['promiseChainEnd'] = wasmPlugin['promiseChainEnd'].then(
+        wasmPlugin.promiseChainEnd = wasmPlugin.promiseChainEnd.then(
           () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true}, name, {})).then(
             (exports) => {
 #if DYLINK_DEBUG
