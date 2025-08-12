@@ -14411,11 +14411,8 @@ void foo() {}
   def test_emscripten_set_timeout_loop(self):
     self.do_runf('emscripten_set_timeout_loop.c', args=['-pthread', '-sPROXY_TO_PTHREAD'])
 
-  # Verify that we are able to successfully compile a script when the Windows 7
-  # and Python workaround env. vars are enabled.
-  # See https://bugs.python.org/issue34780
-  @with_env_modify({'EM_WORKAROUND_PYTHON_BUG_34780': '1',
-                    'EM_WORKAROUND_WIN7_BAD_ERRORLEVEL_BUG': '1'})
+  # Verify that we are able to successfully compile a script when Python workaround env. var is set
+  @with_env_modify({'EM_WORKAROUND_PYTHON_BUG_34780': '1'})
   def test_windows_batch_script_workaround(self):
     self.run_process([EMCC, test_file('hello_world.c')])
     self.assertExists('a.out.js')
