@@ -60,7 +60,7 @@ endif()
 # Locate where the Emscripten compiler resides in relative to this toolchain file.
 if (NOT DEFINED EMSCRIPTEN_ROOT_PATH)
   get_filename_component(GUESS_EMSCRIPTEN_ROOT_PATH "${CMAKE_CURRENT_LIST_DIR}/../../../" ABSOLUTE)
-  if (EXISTS "${GUESS_EMSCRIPTEN_ROOT_PATH}/emranlib")
+  if (EXISTS "${GUESS_EMSCRIPTEN_ROOT_PATH}/emranlib.py")
     set(EMSCRIPTEN_ROOT_PATH "${GUESS_EMSCRIPTEN_ROOT_PATH}")
   else()
     # If not found by above search, locate using the EMSCRIPTEN environment variable.
