@@ -29,7 +29,6 @@ addToLibrary({
     });
     return handled;
   },
-#endif
 
   // Preloads a file asynchronously. You can call this before run, for example in
   // preRun. run will be delayed until this file arrives and is set up.
@@ -48,9 +47,7 @@ addToLibrary({
     '$PATH_FS',
     '$FS_createDataFile',
     '$getUniqueRunDependency',
-#if !MINIMAL_RUNTIME
     '$FS_handledByPreloadPlugin',
-#endif
   ],
   $FS_createPreloadedFile: (parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) => {
     // TODO we should allow people to just pass in a complete filename instead
@@ -66,15 +63,12 @@ addToLibrary({
         onload?.();
         removeRunDependency(dep);
       }
-#if !MINIMAL_RUNTIME
-      if (FS_handledByPreloadPlugin(byteArray, fullname, finish, () => {
+      if (!FS_handledByPreloadPlugin(byteArray, fullname, finish, () => {
         onerror?.();
         removeRunDependency(dep);
       })) {
-        return;
+        finish(byteArray);
       }
-#endif
-      finish(byteArray);
     }
     addRunDependency(dep);
     if (typeof url == 'string') {
@@ -83,6 +77,8 @@ addToLibrary({
       processData(url);
     }
   },
+#endif
+
   // convert the 'r', 'r+', etc. to it's corresponding set of O_* flags
   $FS_modeStringToFlags: (str) => {
     var flagModes = {
