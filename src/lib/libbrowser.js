@@ -54,9 +54,6 @@ var LibraryBrowser = {
           b = new Blob([(new Uint8Array(byteArray)).buffer], { type: Browser.getMimetype(name) });
         }
         var url = URL.createObjectURL(b);
-#if ASSERTIONS
-        assert(typeof url == 'string', 'createObjectURL must return a url as a string');
-#endif
         var img = new Image();
         img.onload = () => {
 #if ASSERTIONS
@@ -93,9 +90,6 @@ var LibraryBrowser = {
         }
         var b = new Blob([byteArray], { type: Browser.getMimetype(name) });
         var url = URL.createObjectURL(b); // XXX we never revoke this!
-#if ASSERTIONS
-        assert(typeof url == 'string', 'createObjectURL must return a url as a string');
-#endif
         var audio = new Audio();
         audio.addEventListener('canplaythrough', () => finish(audio), false); // use addEventListener due to chromium bug 124926
         audio.onerror = function audio_onerror(event) {
