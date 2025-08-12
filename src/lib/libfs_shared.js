@@ -19,15 +19,13 @@ addToLibrary({
     if (typeof Browser != 'undefined') Browser.init();
 #endif
 
-    var handled = false;
-    preloadPlugins.forEach((plugin) => {
-      if (handled) return;
+    for (var plugin of preloadPlugins) {
       if (plugin['canHandle'](fullname)) {
         plugin['handle'](byteArray, fullname, finish, onerror);
-        handled = true;
+        return true;
       }
-    });
-    return handled;
+    }
+    return false;
   },
 
   // Preloads a file asynchronously. You can call this before run, for example in

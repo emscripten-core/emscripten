@@ -15594,10 +15594,11 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
   @parameterized({
     '': ([],),
+    'lz4': (['-sLZ4'],),
     'pthread': (['-g', '-pthread', '-Wno-experimental', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
   def test_preload_module(self, args):
-    if args:
+    if '-pthread' in args:
       self.setup_node_pthreads()
     # TODO(sbc): This test is copyied from test_browser.py.  Perhaps find a better way to
     # share code between them.
@@ -15647,7 +15648,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       }
     ''')
     expected = 'done\n'
-    if args:
+    if '-pthread' in args:
       expected = "sharedModules: { '/library.so': Module [WebAssembly.Module] {} }\ndone\n"
     self.do_runf('main.c', expected, cflags=['-sMAIN_MODULE=2', '--preload-file', 'tmp.so@library.so', '--use-preload-plugins'] + args)
 
