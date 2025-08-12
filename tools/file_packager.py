@@ -644,7 +644,7 @@ def generate_js(data_target, data_files, metadata):
 
   if not options.export_es6:
     ret += '''
-  (() => {'''
+  (async () => {'''
 
   ret += '''
     // Do not attempt to redownload the virtual filesystem data when in a pthread or a Wasm Worker context.
@@ -662,8 +662,6 @@ def generate_js(data_target, data_files, metadata):
     var require = createRequire(import.meta.url);
   }\n'''
 
-  if options.export_es6:
-    ret += 'return new Promise((loadDataResolve, loadDataReject) => {\n'
   ret += '    async function loadPackage(metadata) {\n'
 
   code = '''
@@ -716,8 +714,6 @@ def generate_js(data_target, data_files, metadata):
     create_data = '''// canOwn this data in the filesystem, it is a slice into the heap that will never change
           Module['FS_createDataFile'](this.name, null, byteArray, true, true, true);
           Module['removeRunDependency'](`fp ${that.name}`);'''
-    ready_promise = '''
-          loadDataResolve();'''
 
     if not options.lz4:
       # Data requests - for getting a block of data out of the big archive - have
@@ -744,14 +740,14 @@ def generate_js(data_target, data_files, metadata):
         finish: async function(byteArray) {
           var that = this;
           %s
-          this.requests[this.name] = null;%s
+          this.requests[this.name] = null;
         }
       };
 
       var files = metadata['files'];
       for (var i = 0; i < files.length; ++i) {
         new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio'] || 0).open('GET', files[i]['filename']);
-      }\n''' % (create_preloaded if options.use_preload_plugins else create_data, ready_promise if options.export_es6 else '')
+      }\n''' % (create_preloaded if options.use_preload_plugins else create_data)
 
   if options.has_embedded and not options.obj_output:
     diagnostics.warn('--obj-output is recommended when using --embed.  This outputs an object file for linking directly into your application is more efficient than JS encoding')
@@ -992,9 +988,6 @@ def generate_js(data_target, data_files, metadata):
           return contents.buffer;
         }'''.strip()
 
-    reject_promise = '''
-          loadDataReject();'''
-
     ret += '''
       async function fetchRemotePackage(packageName, packageSize) {
         %(node_support_code)s
@@ -1099,14 +1092,13 @@ def generate_js(data_target, data_files, metadata):
       if (!fetched) {
         // Note that we don't use await here because we want to execute the
         // the rest of this function immediately.
-        fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE).then((data) => {
-          if (fetchedCallback) {
-            fetchedCallback(data);
-            fetchedCallback = null;
-          } else {
-            fetched = data;
-          }
-        })
+        let packageData = await fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE);
+        if (fetchedCallback) {
+          fetchedCallback(packageData);
+          fetchedCallback = null;
+        } else {
+          fetched = packageData;
+        }
       }\n'''
 
       code += '''
@@ -1124,7 +1116,7 @@ def generate_js(data_target, data_files, metadata):
   ret += '''
     }
     if (Module['calledRun']) {
-      runWithFS(Module);
+      await runWithFS(Module);
     } else {
       (Module['preRun'] ??= []).push(runWithFS); // FS is not initialized yet, wait for it
     }\n'''
@@ -1163,11 +1155,10 @@ def generate_js(data_target, data_files, metadata):
   else:
     ret += '''
     }
-    loadPackage(%s);\n''' % json.dumps(metadata)
+    await loadPackage(%s);\n''' % json.dumps(metadata)
 
   if options.export_es6:
     ret += '''
-  });
 }
 // END the loadDataFile function
 '''
