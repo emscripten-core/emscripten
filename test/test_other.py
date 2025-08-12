@@ -3973,14 +3973,10 @@ More info: https://emscripten.org
     create_file('run.js', '''
     import loadDataFile from './dataFileLoader.js'
     import {default as loadModule} from './moduleFile.js'
-    
-    loadModule().then((module) => {
-      loadDataFile(module)
-        .then(() => {
-          module._test_fun();
-        }
-      );
-    });
+
+    var module = await loadModule();
+    await loadDataFile(module);
+    module._test_fun();
     ''')
 
     self.assertContained('hello data', self.run_js('run.js'))
