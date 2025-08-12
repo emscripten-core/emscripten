@@ -492,7 +492,8 @@ def main():  # noqa: C901, PLR0912, PLR0915
     return 1
 
   if options.from_emcc and options.export_es6:
-    diagnostics.error('Can\'t use --export-es6 option together with --from-emcc since the code should be embedded within emcc\'s code')
+    diagnostics.error('Can\'t use --export-es6 option together with --from-emcc since the code should be embedded '
+        'within emcc\'s code')
     return 1
 
   walked.append(__file__)
@@ -643,7 +644,7 @@ def generate_js(data_target, data_files, metadata):
 
   if not options.export_es6:
     ret += '''
-  (async () => {'''
+  (() => {'''
 
   ret += '''
     // Do not attempt to redownload the virtual filesystem data when in a pthread or a Wasm Worker context.
@@ -661,6 +662,8 @@ def generate_js(data_target, data_files, metadata):
     var require = createRequire(import.meta.url);
   }\n'''
 
+  if options.export_es6:
+    ret += 'return new Promise((loadDataResolve, loadDataReject) => {\n'
   ret += '    async function loadPackage(metadata) {\n'
 
   code = '''
@@ -713,6 +716,8 @@ def generate_js(data_target, data_files, metadata):
     create_data = '''// canOwn this data in the filesystem, it is a slice into the heap that will never change
           Module['FS_createDataFile'](this.name, null, byteArray, true, true, true);
           Module['removeRunDependency'](`fp ${that.name}`);'''
+    ready_promise = '''
+          loadDataResolve();'''
 
     if not options.lz4:
       # Data requests - for getting a block of data out of the big archive - have
@@ -739,14 +744,14 @@ def generate_js(data_target, data_files, metadata):
         finish: async function(byteArray) {
           var that = this;
           %s
-          this.requests[this.name] = null;
+          this.requests[this.name] = null;%s
         }
       };
 
       var files = metadata['files'];
       for (var i = 0; i < files.length; ++i) {
         new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio'] || 0).open('GET', files[i]['filename']);
-      }\n''' % (create_preloaded if options.use_preload_plugins else create_data)
+      }\n''' % (create_preloaded if options.use_preload_plugins else create_data, ready_promise if options.export_es6 else '')
 
   if options.has_embedded and not options.obj_output:
     diagnostics.warn('--obj-output is recommended when using --embed.  This outputs an object file for linking directly into your application is more efficient than JS encoding')
@@ -1049,6 +1054,10 @@ def generate_js(data_target, data_files, metadata):
 
     code += '''
       Module['preloadResults'] ??= {};\n'''
+    catch_case = '''
+          .catch((error) => {
+            loadDataReject(error);
+          })'''
 
     if options.use_preload_cache:
       code += '''
@@ -1075,10 +1084,10 @@ def generate_js(data_target, data_files, metadata):
             }
           }
         } catch(e) {
-          await preloadFallback(e);
+          await preloadFallback(e)%s;
         }
 
-        Module['setStatus']?.('Downloading...');\n'''
+        Module['setStatus']?.('Downloading...');\n''' % (catch_case if options.export_es6 else '')
     else:
       # Not using preload cache, so we might as well start the xhr ASAP,
       # potentially before JS parsing of the main codebase if it's after us.
@@ -1091,14 +1100,16 @@ def generate_js(data_target, data_files, metadata):
       if (!fetched) {
         // Note that we don't use await here because we want to execute the
         // the rest of this function immediately.
-        let packageData = await fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE);
-        if (fetchedCallback) {
-          fetchedCallback(packageData);
-          fetchedCallback = null;
-        } else {
-          fetched = packageData;
-        }
-      }\n'''
+        fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE)
+          .then((data) => {
+            if (fetchedCallback) {
+              fetchedCallback(data);
+              fetchedCallback = null;
+            } else {
+              fetched = data;
+            }
+          })%s;
+      }\n''' % (catch_case if options.export_es6 else '')
 
       code += '''
       Module['preloadResults'][PACKAGE_NAME] = {fromCache: false};
@@ -1115,10 +1126,10 @@ def generate_js(data_target, data_files, metadata):
   ret += '''
     }
     if (Module['calledRun']) {
-      await runWithFS(Module);
+      runWithFS(Module)%s;
     } else {
       (Module['preRun'] ??= []).push(runWithFS); // FS is not initialized yet, wait for it
-    }\n'''
+    }\n''' % (catch_case if options.export_es6 else '')
 
   if options.separate_metadata:
     node_support_code = ''
@@ -1154,10 +1165,11 @@ def generate_js(data_target, data_files, metadata):
   else:
     ret += '''
     }
-    await loadPackage(%s);\n''' % json.dumps(metadata)
+    loadPackage(%s);\n''' % json.dumps(metadata)
 
   if options.export_es6:
     ret += '''
+  });
 }
 // END the loadDataFile function
 '''
