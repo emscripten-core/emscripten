@@ -20,6 +20,7 @@ See docs/process.md for more on how version tagging works.
 
 4.0.13 (in development)
 -----------------------
+- SDL2 updated from 2.32.0 to 2.32.8. (#24912/)
 - `sdl-config` and `sdl2-config` scripts were simplified to avoid using python
   and the `.bat` file versions were removed, matching upstream SDL. (#24907)
 - The `addRunDependency`/`removeRunDependency` now assert in debug builds if
