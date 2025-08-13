@@ -27,7 +27,7 @@ if (q) {
                 this.A = d.A;
                 this.u = d.u;
                 this.s = 4 * this.u;
-                this.F = Math.min((t.D - 16) / this.s | 0, 16);
+                this.F = Math.min((t.D - 16) / this.s | 0, 64);
                 d = A();
                 var f = B(this.F * this.s) >> 2;
                 this.G = [];
