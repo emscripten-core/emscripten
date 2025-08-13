@@ -13,7 +13,7 @@ addToLibrary({
   // it was handled.
   $FS_handledByPreloadPlugin__internal: true,
   $FS_handledByPreloadPlugin__deps: ['$preloadPlugins'],
-  $FS_handledByPreloadPlugin: (byteArray, fullname, finish, onerror) => {
+  $FS_handledByPreloadPlugin: async (byteArray, fullname) => {
 #if LibraryManager.has('libbrowser.js')
     // Ensure plugins are ready.
     if (typeof Browser != 'undefined') Browser.init();
@@ -21,11 +21,15 @@ addToLibrary({
 
     for (var plugin of preloadPlugins) {
       if (plugin['canHandle'](fullname)) {
-        plugin['handle'](byteArray, fullname, finish, onerror);
-        return true;
+#if ASSERTIONS
+        assert(plugin['handle'].constructor.name === 'AsyncFunction', 'Filesystem plugin handlers must be async functions (See #24914)')
+#endif
+        return plugin['handle'](byteArray, fullname);
       }
     }
-    return false;
+    // In no plugin handled this file then return the original/unmodified
+    // byteArray.
+    return byteArray;
   },
 
   // Preloads a file asynchronously. You can call this before run, for example in
@@ -53,21 +57,21 @@ addToLibrary({
     var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
     var dep = getUniqueRunDependency(`cp ${fullname}`); // might have several active requests for the same fullname
     function processData(byteArray) {
-      function finish(byteArray) {
-        preFinish?.();
-        if (!dontCreateFile) {
-          FS_createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
-        }
-        onload?.();
-        removeRunDependency(dep);
-      }
-      if (!FS_handledByPreloadPlugin(byteArray, fullname, finish, () => {
-        onerror?.();
-        removeRunDependency(dep);
-      })) {
-        finish(byteArray);
-      }
+      FS_handledByPreloadPlugin(byteArray, fullname)
+        .then((byteArray) => {
+          preFinish?.();
+          if (!dontCreateFile) {
+            FS_createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
+          }
+          onload?.();
+          removeRunDependency(dep);
+        })
+        .catch(() =>  {
+          onerror?.();
+          removeRunDependency(dep);
+        });
     }
+
     addRunDependency(dep);
     if (typeof url == 'string') {
       asyncLoad(url).then(processData, onerror);

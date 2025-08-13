@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 4.0.13 (in development)
 -----------------------
+- The `handle` callback on the `preloadPlugins` used by `--use-preload-plugins`
+  (and `FS_createPreloadedFile` API`) was converted from callbacks to async.
+  Any externally managed plugins would need to be updated accordingly.  An
+  assertion will detect any such non-async plugins in the wild. (#24914)
 - SDL2 updated from 2.32.0 to 2.32.8. (#24912/)
 - `sdl-config` and `sdl2-config` scripts were simplified to avoid using python
   and the `.bat` file versions were removed, matching upstream SDL. (#24907)

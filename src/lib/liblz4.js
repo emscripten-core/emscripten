@@ -56,7 +56,10 @@ addToLibrary({
               addRunDependency(dep);
               var finish = () => removeRunDependency(dep);
               var byteArray = FS.readFile(fullname);
-              plugin['handle'](byteArray, fullname, finish, finish);
+#if ASSERTIONS
+              assert(plugin['handle'].constructor.name === 'AsyncFunction', 'Filesystem plugin handlers must be async functions (See #24914)')
+#endif
+              plugin['handle'](byteArray, fullname).then(finish).catch(finish);
               break;
             }
           }
