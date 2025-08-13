@@ -668,7 +668,7 @@ var LibraryEmbind = {
     // TODO: Remove this completely once all function invokers are being dynamically generated.
     var needsDestructorStack = usesDestructorStack(argTypes);
 
-    var returns = (argTypes[0].name !== 'void');
+    var returns = !argTypes[0].isVoid;
 
     var expectedArgCount = argCount - 2;
 #if ASSERTIONS
@@ -766,8 +766,8 @@ var LibraryEmbind = {
     var invokerFn = InvokerFunctions[signature](...closureArgs);
 #else
 
-    let [args, invokerFnBody] = createJsInvoker(argTypes, isClassMethodFunc, returns, isAsync);
-    var invokerFn = new Function(...args, invokerFnBody)(...closureArgs);
+    let invokerFactory = createJsInvoker(argTypes, isClassMethodFunc, returns, isAsync);
+    var invokerFn = invokerFactory(...closureArgs);
 #endif
 #endif
     return createNamedFunction(humanName, invokerFn);

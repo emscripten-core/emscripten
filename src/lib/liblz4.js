@@ -30,7 +30,7 @@ addToLibrary({
                                                                       compressedData['cachedOffset'] + (i+1)*LZ4.CHUNK_SIZE);
         assert(compressedData['cachedChunks'][i].length === LZ4.CHUNK_SIZE);
       }
-      pack['metadata'].files.forEach((file) => {
+      for (var file of pack['metadata'].files) {
         var dir = PATH.dirname(file.filename);
         var name = PATH.basename(file.filename);
         FS.createPath('', dir, true, true);
@@ -40,7 +40,7 @@ addToLibrary({
           start: file.start,
           end: file.end,
         });
-      });
+      }
       // Preload files if necessary. This code is largely similar to
       // createPreloadedFile in library_fs.js. However, a main difference here
       // is that we only decompress the file if it can be preloaded.
@@ -48,21 +48,22 @@ addToLibrary({
       // worth.
       if (preloadPlugin) {
         Browser.init();
-        pack['metadata'].files.forEach((file) => {
-          var handled = false;
+        for (var file of pack['metadata'].files) {
           var fullname = file.filename;
-          preloadPlugins.forEach((plugin) => {
-            if (handled) return;
+          for (var plugin of preloadPlugins) {
             if (plugin['canHandle'](fullname)) {
               var dep = getUniqueRunDependency('fp ' + fullname);
               addRunDependency(dep);
               var finish = () => removeRunDependency(dep);
               var byteArray = FS.readFile(fullname);
-              plugin['handle'](byteArray, fullname, finish, finish);
-              handled = true;
+#if ASSERTIONS
+              assert(plugin['handle'].constructor.name === 'AsyncFunction', 'Filesystem plugin handlers must be async functions (See #24914)')
+#endif
+              plugin['handle'](byteArray, fullname).then(finish).catch(finish);
+              break;
             }
-          });
-        });
+          }
+        }
       }
     },
     createNode(parent, name, mode, dev, contents, mtime) {

@@ -1257,14 +1257,9 @@ var DETERMINISTIC = false;
 // By default we emit all code in a straightforward way into the output
 // .js file. That means that if you load that in a script tag in a web
 // page, it will use the global scope. With ``MODULARIZE`` set, we instead emit
-// the code wrapped in a function that returns a promise. The promise is
-// resolved with the module instance when it is safe to run the compiled code,
-// similar to the ``onRuntimeInitialized`` callback. You do not need to use the
-// ``onRuntimeInitialized`` callback when using ``MODULARIZE``.
-//
-// (If WASM_ASYNC_COMPILATION is off, that is, if compilation is
-// *synchronous*, then it would not make sense to return a Promise, and instead
-// the Module object itself is returned, which is ready to be used.)
+// the code wrapped in an async function. This function returns a promise that
+// resolves to a module instance once it is safe to run the compiled code
+// (similar to the ``onRuntimeInitialized`` callback).
 //
 // The default name of the function is ``Module``, but can be changed using the
 // ``EXPORT_NAME`` option. We recommend renaming it to a more typical name for a
@@ -1769,11 +1764,14 @@ var PTHREADS_DEBUG = false;
 // [link]
 var EVAL_CTORS = 0;
 
-// If enabled, use the JavaScript TextDecoder API for string marshalling.
-// Enabled by default, set this to 0 to disable.
+// The default value or 1 means the generated code will use TextDecoder if
+// available and fall back to custom decoder code when not available.
 // If set to 2, we assume TextDecoder is present and usable, and do not emit
-// any JS code to fall back if it is missing. In single threaded -Oz build modes,
-// TEXTDECODER defaults to value == 2 to save code size.
+// any JS code to fall back if it is missing. Setting this zero to avoid even
+// conditional usage of TextDecoder is no longer supported.
+// Note: In -Oz builds, the default value of TEXTDECODER is set to 2, to save on
+// code size (except when AUDIO_WORKLET is specified, or when `shell` is part
+// of ENVIRONMENT since TextDecoder is not available in those environments).
 // [link]
 var TEXTDECODER = 1;
 
@@ -1940,6 +1938,7 @@ var MINIMAL_RUNTIME = 0;
 // for faster startup speeds. However this setting is disabled by default
 // since it requires server side configuration and for really small pages there
 // is no observable difference (also has a ~100 byte impact to code size)
+// This setting is only compatible with html output.
 // [link]
 var MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION = false;
 
@@ -2183,6 +2182,13 @@ var WASM_ESM_INTEGRATION = false;
 // [experimental]
 // [link]
 var JS_BASE64_API = false;
+
+// Enable support for GrowableSharedArrayBuffer.
+// This features is only available behind a flag in recent versions of
+// node/chrome.
+// [experimental]
+// [link]
+var GROWABLE_ARRAYBUFFERS = false;
 
 // Experimental support for WebAssembly js-types proposal.
 // It's currently only available under a flag in certain browsers,

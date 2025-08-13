@@ -35,7 +35,7 @@ static mode_t g_umask = S_IWGRP | S_IWOTH;
 #define REPORT(name)
 #else
 #define REPORT(name) \
-  emscripten_err("warning: unsupported syscall: __syscall_" #name "\n");
+  emscripten_err("warning: unsupported syscall: __syscall_" #name);
 #endif
 
 #define UNIMPLEMENTED(name, args) \
@@ -127,14 +127,20 @@ weak int __syscall_umask(int mask) {
   return old;
 }
 
+struct kusage {
+  long utime_tv_sec;
+  long utime_tv_usec;
+  long stime_tv_sec;
+  long stime_tv_usec;
+};
+
 weak int __syscall_getrusage(int who, intptr_t usage) {
   REPORT(getrusage);
-  struct rusage *u = (struct rusage *)usage;
-  memset(u, 0, sizeof(*u));
-  u->ru_utime.tv_sec = 1;
-  u->ru_utime.tv_usec = 2;
-  u->ru_stime.tv_sec = 3;
-  u->ru_stime.tv_usec = 4;
+  struct kusage *u = (struct kusage*)usage;
+  u->utime_tv_sec = 1;
+  u->utime_tv_usec = 2;
+  u->stime_tv_sec = 3;
+  u->stime_tv_usec = 4;
   return 0;
 }
 

@@ -24,7 +24,7 @@ from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
 from common import read_file, EMRUN, no_wasm64, no_2gb, no_4gb, copytree
 from common import requires_wasm2js, parameterize, find_browser_test_file, with_all_sjlj
-from common import also_with_minimal_runtime, also_with_wasm2js, also_with_asan
+from common import also_with_minimal_runtime, also_with_wasm2js, also_with_asan, also_with_wasmfs
 from tools import shared
 from tools import ports
 from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE, DEBUG
@@ -75,26 +75,6 @@ def test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
   httpd = HTTPServer(('localhost', 11111), ChunkedServerHandler)
   for _ in range(expectedConns + 1):
     httpd.handle_request()
-
-
-def also_with_wasmfs(f):
-  assert callable(f)
-
-  @wraps(f)
-  def metafunc(self, wasmfs, *args, **kwargs):
-    if DEBUG:
-      print('parameterize:wasmfs=%d' % wasmfs)
-    if wasmfs:
-      self.set_setting('WASMFS')
-      self.cflags = self.cflags.copy() + ['-DWASMFS']
-      f(self, *args, **kwargs)
-    else:
-      f(self, *args, **kwargs)
-
-  parameterize(metafunc, {'': (False,),
-                          'wasmfs': (True,)})
-
-  return metafunc
 
 
 def also_with_proxying(f):
@@ -637,7 +617,7 @@ If manually bisecting:
 
   def test_preload_caching_indexeddb_name(self):
     self.set_setting('EXIT_RUNTIME')
-    create_file('somefile.txt', '''load me right before running the code please''')
+    create_file('somefile.txt', 'load me right before running the code please')
 
     def make_main(path):
       print(path)
@@ -660,20 +640,21 @@ If manually bisecting:
           int result = 0;
 
           assert(strcmp("load me right before", buf) == 0);
-          return checkPreloadResults();
+          int num_cached = checkPreloadResults();
+          printf("got %%d preloadResults from cache\n", num_cached);
+          return num_cached;
         }
       ''' % path)
 
     create_file('test.js', '''
       addToLibrary({
-        checkPreloadResults: function() {
+        checkPreloadResults: () => {
           var cached = 0;
-          var packages = Object.keys(Module['preloadResults']);
-          packages.forEach(function(package) {
-            var fromCache = Module['preloadResults'][package]['fromCache'];
-            if (fromCache)
-              ++ cached;
-          });
+          for (var result of Object.values(Module['preloadResults'])) {
+            if (result['fromCache']) {
+              cached++;
+            }
+          }
           return cached;
         }
       });
@@ -683,6 +664,7 @@ If manually bisecting:
     self.run_process([FILE_PACKAGER, 'somefile.data', '--use-preload-cache', '--indexedDB-name=testdb', '--preload', 'somefile.txt', '--js-output=' + 'somefile.js'])
     self.compile_btest('main.c', ['--js-library', 'test.js', '--pre-js', 'somefile.js', '-o', 'page.html', '-sFORCE_FILESYSTEM'], reporting=Reporting.JS_ONLY)
     self.run_browser('page.html', '/report_result?exit:0')
+    print("Re-running ..")
     self.run_browser('page.html', '/report_result?exit:1')
 
   def test_multifile(self):
@@ -769,24 +751,26 @@ If manually bisecting:
     self.run_browser('test.html', '/report_result?exit:0')
 
   def test_missing_data_throws_error(self):
+    create_file('data.txt', 'data')
+    create_file('main.c', r'''
+      #include <stdio.h>
+      #include <string.h>
+      #include <emscripten.h>
+      int main() {
+        // This code should never be executed in terms of missing required dependency file.
+        return 0;
+      }
+    ''')
+
     def setup(assetLocalization):
-      self.clear()
-      create_file('data.txt', 'data')
-      create_file('main.c', r'''
-        #include <stdio.h>
-        #include <string.h>
-        #include <emscripten.h>
-        int main() {
-          // This code should never be executed in terms of missing required dependency file.
-          return 0;
-        }
-      ''')
       create_file('on_window_error_shell.html', r'''
       <html>
+        <body>
           <center><canvas id='canvas' width='256' height='256'></canvas></center>
           <hr><div id='output'></div><hr>
           <script type='text/javascript'>
-            const handler = async (event) => {
+            const errorHandler = async (event) => {
+              if (window.disableErrorReporting) return;
               event.stopImmediatePropagation();
               const error = String(event instanceof ErrorEvent ? event.message : (event.reason || event));
               window.disableErrorReporting = true;
@@ -795,14 +779,20 @@ If manually bisecting:
               await fetch('http://localhost:8888/report_result?' + result);
               window.close();
             }
-            window.addEventListener('error', handler);
-            window.addEventListener('unhandledrejection', handler);
+            window.addEventListener('error', errorHandler);
+            window.addEventListener('unhandledrejection', errorHandler);
+            const outputElem = document.getElementById('output');
             var Module = {
-              locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "''' + assetLocalization + r'''" + path;}},
-              print: (function() {
-                var element = document.getElementById('output');
-                return function(text) { element.innerHTML += text.replace('\n', '<br>', 'g') + '<br>';};
-              })(),
+              locateFile: (path, prefix) => {
+                if (path.endsWith('.wasm')) {
+                  return prefix + path;
+                } else {
+                  return "''' + assetLocalization + r'''" + path;
+                }
+              },
+              print: () => {
+                outputElem.innerHTML += text.replace('\n', '<br>', 'g') + '<br>';
+              },
               canvas: document.getElementById('canvas')
             };
           </script>
@@ -810,24 +800,21 @@ If manually bisecting:
         </body>
       </html>''')
 
-    def test():
-      # test test missing file should run xhr.onload with status different than 200, 304 or 206
-      setup("")
-      self.compile_btest('main.c', ['--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html'])
-      shutil.move('test.data', 'missing.data')
-      self.run_browser('test.html', '/report_result?1')
+    # test test missing file should run xhr.onload with status different than 200, 304 or 206
+    setup("")
+    self.compile_btest('main.c', ['--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html'])
+    shutil.move('test.data', 'missing.data')
+    self.run_browser('test.html', '/report_result?1')
 
-      # test unknown protocol should go through xhr.onerror
-      setup("unknown_protocol://")
-      self.compile_btest('main.c', ['--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html'])
-      self.run_browser('test.html', '/report_result?1')
+    # test unknown protocol should go through xhr.onerror
+    setup("unknown_protocol://")
+    self.compile_btest('main.c', ['--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html'])
+    self.run_browser('test.html', '/report_result?1')
 
-      # test wrong protocol and port
-      setup("https://localhost:8800/")
-      self.compile_btest('main.c', ['--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html'])
-      self.run_browser('test.html', '/report_result?1')
-
-    test()
+    # test wrong protocol and port
+    setup("https://localhost:8800/")
+    self.compile_btest('main.c', ['--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html'])
+    self.run_browser('test.html', '/report_result?1')
 
     # TODO: CORS, test using a full url for locateFile
     # create_file('shell.html', read_file(path_from_root('src/shell.html')).replace('var Module = {', 'var Module = { locateFile: function (path) {return "http:/localhost:8888/cdn/" + path;}, '))
@@ -1135,6 +1122,9 @@ simulateKeyUp(100, undefined, 'Numpad4');
     self.btest_exit('glut_glutget.c', cflags=['-lglut', '-lGL'])
     self.btest_exit('glut_glutget.c', cflags=['-lglut', '-lGL', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED'])
 
+  def test_glut_resize(self):
+    self.btest_exit('test_glut_resize.c')
+
   def test_sdl_joystick_1(self):
     # Generates events corresponding to the Working Draft of the HTML5 Gamepad API.
     # http://www.w3.org/TR/2012/WD-gamepad-20120529/#gamepad-interface
@@ -1343,13 +1333,25 @@ simulateKeyUp(100, undefined, 'Numpad4');
     '': ([],),
     'extra': (['-DEXTRA_WORK'],),
     'autopersist': (['-DIDBFS_AUTO_PERSIST'],),
-    'force_exit': (['-sEXIT_RUNTIME', '-DFORCE_EXIT'],),
   })
   def test_fs_idbfs_sync(self, args):
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
     secret = str(time.time())
-    self.btest('fs/test_idbfs_sync.c', '1', cflags=['-lidbfs.js', f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_test,_report_result', '-lidbfs.js'] + args + ['-DFIRST'])
-    self.btest('fs/test_idbfs_sync.c', '1', cflags=['-lidbfs.js', f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_test,_report_result', '-lidbfs.js'] + args)
+    self.btest_exit('fs/test_idbfs_sync.c', cflags=['-lidbfs.js', f'-DSECRET="{secret}"', '-lidbfs.js'] + args + ['-DFIRST'])
+    print('done first half')
+    self.btest_exit('fs/test_idbfs_sync.c', cflags=['-lidbfs.js', f'-DSECRET="{secret}"', '-lidbfs.js'] + args)
+
+  @parameterized({
+    'open': ('TEST_CASE_OPEN', 2),
+    'close': ('TEST_CASE_CLOSE', 3),
+    'symlink': ('TEST_CASE_SYMLINK', 3),
+    'unlink': ('TEST_CASE_UNLINK', 3),
+    'rename': ('TEST_CASE_RENAME', 3),
+    'mkdir': ('TEST_CASE_MKDIR', 2),
+  })
+  def test_fs_idbfs_autopersist(self, test_case, phase_count):
+    self.cflags += ['-lidbfs.js', f'-DTEST_CASE={test_case}']
+    for phase in range(phase_count):
+      self.btest_exit('fs/test_idbfs_autopersist.c', cflags=[f'-DTEST_PHASE={phase + 1}'])
 
   def test_fs_idbfs_fsync(self):
     # sync from persisted state into memory before main()
@@ -1394,12 +1396,11 @@ simulateKeyUp(100, undefined, 'Numpad4');
     self.btest_exit('fs/test_workerfs_read.c', cflags=['-lworkerfs.js', '--pre-js', 'pre.js', f'-DSECRET="{secret}"', f'-DSECRET2="{secret2}"', '--proxy-to-worker', '-lworkerfs.js'])
 
   def test_fs_workerfs_package(self):
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
     create_file('file1.txt', 'first')
     ensure_dir('sub')
     create_file('sub/file2.txt', 'second')
     self.run_process([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'sub/file2.txt', '--separate-metadata', '--js-output=files.js'])
-    self.btest(Path('fs/test_workerfs_package.cpp'), '1', cflags=['-lworkerfs.js', '--proxy-to-worker', '-lworkerfs.js'])
+    self.btest('fs/test_workerfs_package.c', '1', cflags=['-lworkerfs.js', '--proxy-to-worker', '-lworkerfs.js'])
 
   def test_fs_lz4fs_package(self):
     # generate data
@@ -1412,52 +1413,52 @@ simulateKeyUp(100, undefined, 'Numpad4');
 
     # compress in emcc, -sLZ4 tells it to tell the file packager
     print('emcc-normal')
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
-    self.btest_exit(Path('fs/test_lz4fs.cpp'), 2, cflags=['-sLZ4', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt'])
+    self.btest_exit('fs/test_lz4fs.c', 0, cflags=['-sLZ4', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt'])
     assert os.path.getsize('file1.txt') + os.path.getsize('subdir/file2.txt') + os.path.getsize('file3.txt') == 3 * 1024 * 128 * 10 + 1
     assert os.path.getsize('test.data') < (3 * 1024 * 128 * 10) / 2  # over half is gone
     print('    emcc-opts')
-    self.btest_exit(Path('fs/test_lz4fs.cpp'), 2, cflags=['-sLZ4', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt', '-O2'])
+    self.btest_exit('fs/test_lz4fs.c', 0, cflags=['-sLZ4', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt', '-O2'])
 
-    # compress in the file packager, on the server. the client receives compressed data and can just use it. this is typical usage
+    # compress in the file packager, on the server. the client receives compressed data and can just
+    # use it. this is typical usage
     print('normal')
     out = subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--lz4'])
     create_file('files.js', out, binary=True)
-    self.btest_exit('fs/test_lz4fs.cpp', 2, cflags=['--pre-js', 'files.js', '-sLZ4', '-sFORCE_FILESYSTEM'])
+    self.btest_exit('fs/test_lz4fs.c', 0, cflags=['--pre-js', 'files.js', '-sLZ4', '-sFORCE_FILESYSTEM'])
     print('    opts')
-    self.btest_exit('fs/test_lz4fs.cpp', 2, cflags=['--pre-js', 'files.js', '-sLZ4', '-sFORCE_FILESYSTEM', '-O2'])
+    self.btest_exit('fs/test_lz4fs.c', 0, cflags=['--pre-js', 'files.js', '-sLZ4', '-sFORCE_FILESYSTEM', '-O2'])
     print('    modularize')
-    self.compile_btest('fs/test_lz4fs.cpp', ['--pre-js', 'files.js', '-sLZ4', '-sFORCE_FILESYSTEM', '-sMODULARIZE', '-sEXIT_RUNTIME'])
+    self.compile_btest('fs/test_lz4fs.c', ['--pre-js', 'files.js', '-sLZ4', '-sFORCE_FILESYSTEM', '-sMODULARIZE', '-sEXIT_RUNTIME'])
     create_file('a.html', '''
       <script src="a.out.js"></script>
       <script>
         Module()
       </script>
     ''')
-    self.run_browser('a.html', '/report_result?exit:2')
+    self.run_browser('a.html', '/report_result?exit:0')
 
-    # load the data into LZ4FS manually at runtime. This means we compress on the client. This is generally not recommended
+    # load the data into LZ4FS manually at runtime. This means we compress on the client. This is
+    # generally not recommended
     print('manual')
     subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--separate-metadata', '--js-output=files.js'])
-    self.btest_exit('fs/test_lz4fs.cpp', 1, cflags=['-DLOAD_MANUALLY', '-sLZ4', '-sFORCE_FILESYSTEM'])
+    self.btest_exit('fs/test_lz4fs.c', 1, cflags=['-DLOAD_MANUALLY', '-sLZ4', '-sFORCE_FILESYSTEM'])
     print('    opts')
-    self.btest_exit('fs/test_lz4fs.cpp', 1, cflags=['-DLOAD_MANUALLY', '-sLZ4', '-sFORCE_FILESYSTEM', '-O2'])
+    self.btest_exit('fs/test_lz4fs.c', 1, cflags=['-DLOAD_MANUALLY', '-sLZ4', '-sFORCE_FILESYSTEM', '-O2'])
     print('    opts+closure')
-    self.btest_exit('fs/test_lz4fs.cpp', 1, cflags=['-DLOAD_MANUALLY', '-sLZ4',
-                                                       '-sFORCE_FILESYSTEM', '-O2',
-                                                       '--closure=1', '-g1', '-Wno-closure'])
+    self.btest_exit('fs/test_lz4fs.c', 1, cflags=['-DLOAD_MANUALLY', '-sLZ4',
+                                                  '-sFORCE_FILESYSTEM', '-O2',
+                                                  '--closure=1', '-g1', '-Wno-closure'])
 
-    '''# non-lz4 for comparison
-    try:
-      os.mkdir('files')
-    except OSError:
-      pass
-    shutil.copy('file1.txt', 'files/'))
-    shutil.copy('file2.txt', 'files/'))
-    shutil.copy('file3.txt', 'files/'))
-    out = subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'files/file1.txt', 'files/file2.txt', 'files/file3.txt'])
-    create_file('files.js', out, binary=True)
-    self.btest_exit('fs/test_lz4fs.cpp', 2, cflags=['--pre-js', 'files.js'])'''
+    # non-lz4 for comparison
+    # try:
+    #   os.mkdir('files')
+    # except OSError:
+    #   pass
+    # shutil.copy('file1.txt', 'files/'))
+    # shutil.copy('file2.txt', 'files/'))
+    # shutil.copy('file3.txt', 'files/'))
+    # out = subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'files/file1.txt', 'files/file2.txt', 'files/file3.txt'])
+    # create_file('files.js', out, binary=True)
 
   def test_separate_metadata_later(self):
     # see issue #6654 - we need to handle separate-metadata both when we run before
@@ -2383,11 +2384,11 @@ void *getBindBuffer() {
     # Adding a dependency in preRun will delay run
     create_file('pre.js', '''
       Module.preRun = () => {
-        addRunDependency();
+        addRunDependency('foo');
         out('preRun called, added a dependency...');
         setTimeout(function() {
           Module.okk = 10;
-          removeRunDependency()
+          removeRunDependency('foo')
         }, 2000);
       };
     ''')
@@ -3236,7 +3237,6 @@ Module["preRun"] = () => {
     '': (['-sUSE_SDL=2', '-sUSE_SDL_MIXER=2'],),
     'dash_l': (['-lSDL2', '-lSDL2_mixer'],),
   })
-  @no_wasm64('https://github.com/libsdl-org/SDL/pull/12332')
   @requires_sound_hardware
   def test_sdl2_mixer_wav(self, flags):
     shutil.copy(test_file('sounds/the_entertainer.wav'), 'sound.wav')
@@ -3250,7 +3250,6 @@ Module["preRun"] = () => {
     # TODO: need to source freepats.cfg and a midi file
     # 'mod': (['mid'],    'MIX_INIT_MID', 'midi.mid'),
   })
-  @no_wasm64('https://github.com/libsdl-org/SDL/pull/12332')
   @requires_sound_hardware
   def test_sdl2_mixer_music(self, formats, flags, music_name):
     shutil.copy(test_file('sounds', music_name), '.')
@@ -3422,6 +3421,17 @@ Module["preRun"] = () => {
         %s
       </script>
     ''' % code)
+    self.run_browser('a.html', '/report_result?0')
+
+  @no_firefox('source phase imports not implemented yet in firefox')
+  def test_source_phase_imports(self):
+    self.compile_btest('browser_test_hello_world.c', ['-sEXPORT_ES6', '-sSOURCE_PHASE_IMPORTS', '-Wno-experimental', '-o', 'out.mjs'])
+    create_file('a.html', '''
+      <script type="module">
+        import Module from "./out.mjs"
+        const mod = await Module();
+      </script>
+    ''')
     self.run_browser('a.html', '/report_result?0')
 
   def test_modularize_network_error(self):
@@ -3699,7 +3709,7 @@ Module["preRun"] = () => {
   @no_4gb('uses INITIAL_MEMORY')
   def test_memory_growth_during_startup(self):
     create_file('data.dat', 'X' * (30 * 1024 * 1024))
-    self.btest('browser_test_hello_world.c', '0', cflags=['-sASSERTIONS', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=16MB', '-sSTACK_SIZE=16384', '--preload-file', 'data.dat'])
+    self.btest_exit('browser_test_hello_world.c', cflags=['-sASSERTIONS', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=16MB', '-sSTACK_SIZE=16384', '--preload-file', 'data.dat'])
 
   # pthreads tests
 
@@ -4068,7 +4078,7 @@ Module["preRun"] = () => {
 
   # Test that real `thread_local` works.
   def test_pthread_tls(self):
-    self.btest_exit('pthread/test_pthread_tls.cpp', cflags=['-sPROXY_TO_PTHREAD', '-pthread'])
+    self.btest_exit('pthread/test_pthread_tls.c', cflags=['-sPROXY_TO_PTHREAD', '-pthread'])
 
   # Test that real `thread_local` works in main thread without PROXY_TO_PTHREAD.
   def test_pthread_tls_main(self):
@@ -4245,44 +4255,6 @@ Module["preRun"] = () => {
   @also_with_threads
   def test_utf16_textdecoder(self):
     self.btest_exit('benchmark/benchmark_utf16.cpp', 0, cflags=['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt', '-sEXPORTED_RUNTIME_METHODS=UTF16ToString,stringToUTF16,lengthBytesUTF16'])
-
-  @also_with_threads
-  @parameterized({
-    '': ([],),
-    'closure': (['--closure=1'],),
-  })
-  def test_TextDecoder(self, args):
-    self.cflags += args
-
-    self.btest('browser_test_hello_world.c', '0', cflags=['-sTEXTDECODER=0'])
-    just_fallback = os.path.getsize('test.js')
-    print('just_fallback:\t%s' % just_fallback)
-
-    self.btest('browser_test_hello_world.c', '0')
-    td_with_fallback = os.path.getsize('test.js')
-    print('td_with_fallback:\t%s' % td_with_fallback)
-
-    self.btest('browser_test_hello_world.c', '0', cflags=['-sTEXTDECODER=2'])
-    td_without_fallback = os.path.getsize('test.js')
-    print('td_without_fallback:\t%s' % td_without_fallback)
-
-    # td_with_fallback should always be largest of all three in terms of code side
-    self.assertGreater(td_with_fallback, td_without_fallback)
-    self.assertGreater(td_with_fallback, just_fallback)
-
-    # the fallback is also expected to be larger in code size than using td
-    self.assertGreater(just_fallback, td_without_fallback)
-
-  def test_small_js_flags(self):
-    self.btest('browser_test_hello_world.c', '0', cflags=['-O3', '--closure=1', '-sINCOMING_MODULE_JS_API=[]', '-sENVIRONMENT=web', '--output-eol=linux'])
-    # Check an absolute js code size, with some slack.
-    size = os.path.getsize('test.js')
-    print('size:', size)
-    # Note that this size includes test harness additions (for reporting the result, etc.).
-    if not self.is_wasm64() and not self.is_2gb():
-      self.check_expected_size_in_file('js',
-                                       test_file('browser/test_small_js_flags.js.size'),
-                                       size)
 
   # Tests that it is possible to initialize and render WebGL content in a
   # pthread by using OffscreenCanvas.
@@ -4728,17 +4700,21 @@ Module["preRun"] = () => {
   # Tests memory growth in pthreads mode, but still on the main thread.
   @parameterized({
     '': ([], 1),
-    'proxy': (['-sPROXY_TO_PTHREAD'], 2),
+    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'], 1),
+    'proxy': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'], 2),
   })
   @no_2gb('uses INITIAL_MEMORY')
   @no_4gb('uses INITIAL_MEMORY')
   def test_pthread_growth_mainthread(self, cflags, pthread_pool_size):
     self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
-    self.btest_exit('pthread/test_pthread_memory_growth_mainthread.c', cflags=['-Wno-pthreads-mem-growth', '-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
+    if '-sGROWABLE_ARRAYBUFFERS' not in cflags:
+      self.cflags.append('-Wno-pthreads-mem-growth')
+    self.btest_exit('pthread/test_pthread_memory_growth_mainthread.c', cflags=['-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
 
   # Tests memory growth in a pthread.
   @parameterized({
     '': ([],),
+    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'],),
     'assert': (['-sASSERTIONS'],),
     'proxy': (['-sPROXY_TO_PTHREAD'], 2),
     'minimal': (['-sMINIMAL_RUNTIME', '-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
@@ -4747,7 +4723,9 @@ Module["preRun"] = () => {
   @no_4gb('uses INITIAL_MEMORY')
   def test_pthread_growth(self, cflags, pthread_pool_size = 1):
     self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
-    self.btest_exit('pthread/test_pthread_memory_growth.c', cflags=['-Wno-pthreads-mem-growth', '-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
+    if '-sGROWABLE_ARRAYBUFFERS' not in cflags:
+      self.cflags.append('-Wno-pthreads-mem-growth')
+    self.btest_exit('pthread/test_pthread_memory_growth.c', cflags=['-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
 
   # Tests that time in a pthread is relative to the main thread, so measurements
   # on different threads are still monotonic, as if checking a single central
@@ -5052,8 +5030,8 @@ Module["preRun"] = () => {
   # Tests that -sMINIMAL_RUNTIME works well in different build modes
   @parameterized({
     '': ([],),
-    'streaming': (['-sMINIMAL_RUNTIME_STREAMING_WASM_COMPILATION', '--closure=1'],),
-    'streaming_inst': (['-sMINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION', '--closure=1'],),
+    'streaming_compile': (['-sMINIMAL_RUNTIME_STREAMING_WASM_COMPILATION', '-sENVIRONMENT=web', '--closure=1'],),
+    'streaming_inst': (['-sMINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION', '-sENVIRONMENT=web', '--closure=1'],),
   })
   def test_minimal_runtime_hello_world(self, args):
     self.btest_exit('small_hello_world.c', cflags=args + ['-sMINIMAL_RUNTIME'])
@@ -5507,8 +5485,6 @@ Module["preRun"] = () => {
     'es6': (['-sEXPORT_ES6'],),
     'strict': (['-sSTRICT'],),
   })
-  @no_wasm64('https://github.com/emscripten-core/emscripten/pull/23508')
-  @no_2gb('https://github.com/emscripten-core/emscripten/pull/23508')
   @requires_sound_hardware
   def test_audio_worklet(self, args):
     self.btest_exit('webaudio/audioworklet.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DTEST_AND_EXIT'] + args)
@@ -5531,8 +5507,6 @@ Module["preRun"] = () => {
     '': ([],),
     'closure': (['--closure', '1', '-Oz'],),
   })
-  @no_wasm64('https://github.com/emscripten-core/emscripten/pull/23508')
-  @no_2gb('https://github.com/emscripten-core/emscripten/pull/23508')
   @requires_sound_hardware
   def test_audio_worklet_modularize(self, args):
     self.btest_exit('webaudio/audioworklet.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sMODULARIZE=1', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html'), '-DTEST_AND_EXIT'] + args)
@@ -5544,8 +5518,6 @@ Module["preRun"] = () => {
     '': ([],),
     'minimal_with_closure': (['-sMINIMAL_RUNTIME', '--closure=1', '-Oz'],),
   })
-  @no_wasm64('https://github.com/emscripten-core/emscripten/pull/23508')
-  @no_2gb('https://github.com/emscripten-core/emscripten/pull/23508')
   @requires_sound_hardware
   def test_audio_worklet_params_mixing(self, args):
     os.mkdir('audio_files')
@@ -5554,8 +5526,6 @@ Module["preRun"] = () => {
     self.btest_exit('webaudio/audioworklet_params_mixing.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DTEST_AND_EXIT'] + args)
 
   # Tests AudioWorklet with emscripten_lock_busyspin_wait_acquire() and friends
-  @no_wasm64('https://github.com/emscripten-core/emscripten/pull/23508')
-  @no_2gb('https://github.com/emscripten-core/emscripten/pull/23508')
   @requires_sound_hardware
   @also_with_minimal_runtime
   def test_audio_worklet_emscripten_locks(self):

@@ -83,7 +83,7 @@ __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
-from tools import shared, utils, js_manipulation
+from tools import shared, utils, js_manipulation, diagnostics
 from tools.response_file import substitute_response_files
 
 
@@ -398,7 +398,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
       options.indexeddb_name = arg.split('=', 1)[1] if '=' in arg else None
       leading = ''
     elif arg == '--no-heap-copy':
-      err('ignoring legacy flag --no-heap-copy (that is the only mode supported now)')
+      diagnostics.warn('ignoring legacy flag --no-heap-copy (that is the only mode supported now)')
       leading = ''
     elif arg == '--separate-metadata':
       options.separate_metadata = True
@@ -455,16 +455,21 @@ def main():  # noqa: C901, PLR0912, PLR0915
         data_files.append(DataFile(srcpath=srcpath, dstpath=dstpath, mode=mode,
                                    explicit_dst_path=uses_at_notation))
       else:
-        err('error: ' + arg + ' does not exist')
+        diagnostics.error(f'${arg} does not exist')
         return 1
     elif leading == 'exclude':
       excluded_patterns.append(arg)
     else:
-      err('Unknown parameter:', arg)
+      diagnostics.error('Unknown parameter:', arg)
       return 1
 
   options.has_preloaded = any(f.mode == 'preload' for f in data_files)
   options.has_embedded = any(f.mode == 'embed' for f in data_files)
+
+  if options.has_preloaded and options.has_embedded:
+    diagnostics.warn('support for using --preload and --embed in the same command is scheduled '
+        'for deprecation.  If you need this feature please comment at '
+        'https://github.com/emscripten-core/emscripten/issues/24803')
 
   if options.separate_metadata:
     if not options.has_preloaded or not options.jsoutput:
@@ -473,11 +478,11 @@ def main():  # noqa: C901, PLR0912, PLR0915
       return 1
 
   if not options.from_emcc and not options.quiet:
-    err('Remember to build the main file with `-sFORCE_FILESYSTEM` '
+    diagnostics.warn('Remember to build the main file with `-sFORCE_FILESYSTEM` '
         'so that it includes support for loading this file package')
 
   if options.jsoutput and os.path.abspath(options.jsoutput) == os.path.abspath(data_target):
-    err('error: TARGET should not be the same value of --js-output')
+    diagnostics.error('TARGET should not be the same value of --js-output')
     return 1
 
   walked.append(__file__)
@@ -491,7 +496,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
   data_files = [file_ for file_ in new_data_files
                 if not os.path.isdir(file_.srcpath)]
   if len(data_files) == 0:
-    err('Nothing to do!')
+    diagnostics.error('Nothing to do!')
     sys.exit(1)
 
   # Absolutize paths, and check that they make sense
@@ -519,7 +524,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
         sys.exit(1)
       file_.dstpath = abspath[len(curr_abspath) + 1:]
       if os.path.isabs(path):
-        err('Warning: Embedding an absolute file/directory name "%s" to the '
+        diagnostics.warn('Embedding an absolute file/directory name "%s" to the '
             'virtual filesystem. The file will be made available in the '
             'relative path "%s". You can use the `--preload-file srcpath@dstpath` '
             'syntax to explicitly specify the target location the absolute source '
@@ -564,7 +569,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
 
   if options.obj_output:
     if not options.has_embedded:
-      err('--obj-output is only applicable when embedding files')
+      diagnostics.error('--obj-output is only applicable when embedding files')
       return 1
     generate_object_file(data_files)
     if not options.has_preloaded:
@@ -630,11 +635,11 @@ def generate_js(data_target, data_files, metadata):
 
   if options.support_node:
     ret += "    var isNode = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string';\n"
-  ret += '    function loadPackage(metadata) {\n'
+  ret += '    async function loadPackage(metadata) {\n'
 
   code = '''
       function assert(check, msg) {
-        if (!check) throw msg + new Error().stack;
+        if (!check) throw new Error(msg);
       }\n'''
 
   # Set up folders
@@ -666,7 +671,7 @@ def generate_js(data_target, data_files, metadata):
         data.write(curr)
 
     if start > 256 * 1024 * 1024:
-      err('warning: file packager is creating an asset bundle of %d MB. '
+      diagnostics.warn('file packager is creating an asset bundle of %d MB. '
           'this is very large, and browsers might have trouble loading it. '
           'see https://hacks.mozilla.org/2015/02/synchronous-execution-and-filesystem-access-in-emscripten/'
           % (start / (1024 * 1024)))
@@ -715,7 +720,7 @@ def generate_js(data_target, data_files, metadata):
       }\n''' % (create_preloaded if options.use_preload_plugins else create_data)
 
   if options.has_embedded and not options.obj_output:
-    err('--obj-output is recommended when using --embed.  This outputs an object file for linking directly into your application is more efficient than JS encoding')
+    diagnostics.warn('--obj-output is recommended when using --embed.  This outputs an object file for linking directly into your application is more efficient than JS encoding')
 
   for counter, file_ in enumerate(data_files):
     filename = file_.dstpath
@@ -800,46 +805,33 @@ def generate_js(data_target, data_files, metadata):
         var DB_VERSION = 1;
         var METADATA_STORE_NAME = 'METADATA';
         var PACKAGE_STORE_NAME = 'PACKAGES';
-        function openDatabase(callback, errback) {'''
-      if options.support_node:
-        code += '''
-            if (isNode) {
-              return errback();
-            }'''
-      code += '''
-          var indexedDB;
-          if (typeof window === 'object') {
-            indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
-          } else if (typeof location !== 'undefined') {
-            // worker
-            indexedDB = self.indexedDB;
-          } else {
-            throw 'using IndexedDB to cache data can only be done on a web page or in a web worker';
+
+        async function openDatabase() {
+          if (typeof indexedDB == 'undefined') {
+            throw new Error('using IndexedDB to cache data can only be done on a web page or in a web worker');
           }
-          try {
+          return new Promise((resolve, reject) => {
             var openRequest = indexedDB.open(DB_NAME, DB_VERSION);
-          } catch (e) {
-            return errback(e);
-          }
-          openRequest.onupgradeneeded = (event) => {
-            var db = /** @type {IDBDatabase} */ (event.target.result);
+            openRequest.onupgradeneeded = (event) => {
+              var db = /** @type {IDBDatabase} */ (event.target.result);
 
-            if (db.objectStoreNames.contains(PACKAGE_STORE_NAME)) {
-              db.deleteObjectStore(PACKAGE_STORE_NAME);
-            }
-            var packages = db.createObjectStore(PACKAGE_STORE_NAME);
+              if (db.objectStoreNames.contains(PACKAGE_STORE_NAME)) {
+                db.deleteObjectStore(PACKAGE_STORE_NAME);
+              }
+              var packages = db.createObjectStore(PACKAGE_STORE_NAME);
 
-            if (db.objectStoreNames.contains(METADATA_STORE_NAME)) {
-              db.deleteObjectStore(METADATA_STORE_NAME);
-            }
-            var metadata = db.createObjectStore(METADATA_STORE_NAME);
-          };
-          openRequest.onsuccess = (event) => {
-            var db = /** @type {IDBDatabase} */ (event.target.result);
-            callback(db);
-          };
-          openRequest.onerror = (error) => errback(error);
-        };
+              if (db.objectStoreNames.contains(METADATA_STORE_NAME)) {
+                db.deleteObjectStore(METADATA_STORE_NAME);
+              }
+              var metadata = db.createObjectStore(METADATA_STORE_NAME);
+            };
+            openRequest.onsuccess = (event) => {
+              var db = /** @type {IDBDatabase} */ (event.target.result);
+              resolve(db);
+            };
+            openRequest.onerror = reject;
+          });
+        }
 
         // This is needed as chromium has a limit on per-entry files in IndexedDB
         // https://cs.chromium.org/chromium/src/content/renderer/indexed_db/webidbdatabase_impl.cc?type=cs&sq=package:chromium&g=0&l=177
@@ -847,67 +839,68 @@ def generate_js(data_target, data_files, metadata):
         // We set the chunk size to 64MB to stay well-below the limit
         var CHUNK_SIZE = 64 * 1024 * 1024;
 
-        function cacheRemotePackage(
-          db,
-          packageName,
-          packageData,
-          packageMeta,
-          callback,
-          errback
-        ) {
+        async function cacheRemotePackage(db, packageName, packageData, packageMeta) {
           var transactionPackages = db.transaction([PACKAGE_STORE_NAME], IDB_RW);
           var packages = transactionPackages.objectStore(PACKAGE_STORE_NAME);
           var chunkSliceStart = 0;
           var nextChunkSliceStart = 0;
           var chunkCount = Math.ceil(packageData.byteLength / CHUNK_SIZE);
           var finishedChunks = 0;
-          for (var chunkId = 0; chunkId < chunkCount; chunkId++) {
-            nextChunkSliceStart += CHUNK_SIZE;
-            var putPackageRequest = packages.put(
-              packageData.slice(chunkSliceStart, nextChunkSliceStart),
-              `package/${packageName}/${chunkId}`
-            );
-            chunkSliceStart = nextChunkSliceStart;
-            putPackageRequest.onsuccess = (event) => {
-              finishedChunks++;
-              if (finishedChunks == chunkCount) {
-                var transaction_metadata = db.transaction(
-                  [METADATA_STORE_NAME],
-                  IDB_RW
-                );
-                var metadata = transaction_metadata.objectStore(METADATA_STORE_NAME);
-                var putMetadataRequest = metadata.put(
-                  {
-                    'uuid': packageMeta.uuid,
-                    'chunkCount': chunkCount
-                  },
-                  `metadata/${packageName}`
-                );
-                putMetadataRequest.onsuccess = (event) =>  callback(packageData);
-                putMetadataRequest.onerror = (error) => errback(error);
-              }
-            };
-            putPackageRequest.onerror = (error) => errback(error);
-          }
+
+          return new Promise((resolve, reject) => {
+            for (var chunkId = 0; chunkId < chunkCount; chunkId++) {
+              nextChunkSliceStart += CHUNK_SIZE;
+              var putPackageRequest = packages.put(
+                packageData.slice(chunkSliceStart, nextChunkSliceStart),
+                `package/${packageName}/${chunkId}`
+              );
+              chunkSliceStart = nextChunkSliceStart;
+              putPackageRequest.onsuccess = (event) => {
+                finishedChunks++;
+                if (finishedChunks == chunkCount) {
+                  var transaction_metadata = db.transaction(
+                    [METADATA_STORE_NAME],
+                    IDB_RW
+                  );
+                  var metadata = transaction_metadata.objectStore(METADATA_STORE_NAME);
+                  var putMetadataRequest = metadata.put(
+                    {
+                      'uuid': packageMeta.uuid,
+                      'chunkCount': chunkCount
+                    },
+                    `metadata/${packageName}`
+                  );
+                  putMetadataRequest.onsuccess = (event) => resolve(packageData);
+                  putMetadataRequest.onerror = reject;
+                }
+              };
+              putPackageRequest.onerror = reject;
+            }
+          });
         }
 
-        /* Check if there's a cached package, and if so whether it's the latest available */
-        function checkCachedPackage(db, packageName, callback, errback) {
+        /*
+         * Check if there's a cached package, and if so whether it's the latest available.
+         * Resolves to the cached metadata, or `null` if it is missing or out-of-date.
+         */
+        async function checkCachedPackage(db, packageName) {
           var transaction = db.transaction([METADATA_STORE_NAME], IDB_RO);
           var metadata = transaction.objectStore(METADATA_STORE_NAME);
           var getRequest = metadata.get(`metadata/${packageName}`);
-          getRequest.onsuccess = (event) => {
-            var result = event.target.result;
-            if (!result) {
-              return callback(false, null);
-            } else {
-              return callback(PACKAGE_UUID === result['uuid'], result);
+          return new Promise((resolve, reject) => {
+            getRequest.onsuccess = (event) => {
+              var result = event.target.result;
+              if (result && PACKAGE_UUID === result['uuid']) {
+                resolve(result);
+              } else {
+                resolve(null);
+              }
             }
-          };
-          getRequest.onerror = (error) => errback(error);
+            getRequest.onerror = reject;
+          });
         }
 
-        function fetchCachedPackage(db, packageName, metadata, callback, errback) {
+        async function fetchCachedPackage(db, packageName, metadata) {
           var transaction = db.transaction([PACKAGE_STORE_NAME], IDB_RO);
           var packages = transaction.objectStore(PACKAGE_STORE_NAME);
 
@@ -916,41 +909,43 @@ def generate_js(data_target, data_files, metadata):
           var chunkCount = metadata['chunkCount'];
           var chunks = new Array(chunkCount);
 
-          for (var chunkId = 0; chunkId < chunkCount; chunkId++) {
-            var getRequest = packages.get(`package/${packageName}/${chunkId}`);
-            getRequest.onsuccess = (event) => {
-              if (!event.target.result) {
-                errback(new Error(`CachedPackageNotFound for: ${packageName}`));
-                return;
-              }
-              // If there's only 1 chunk, there's nothing to concatenate it with so we can just return it now
-              if (chunkCount == 1) {
-                callback(event.target.result);
-              } else {
-                chunksDone++;
-                totalSize += event.target.result.byteLength;
-                chunks.push(event.target.result);
-                if (chunksDone == chunkCount) {
-                  if (chunksDone == 1) {
-                    callback(event.target.result);
-                  } else {
-                    var tempTyped = new Uint8Array(totalSize);
-                    var byteOffset = 0;
-                    for (var chunkId in chunks) {
-                      var buffer = chunks[chunkId];
-                      tempTyped.set(new Uint8Array(buffer), byteOffset);
-                      byteOffset += buffer.byteLength;
-                      buffer = undefined;
+          return new Promise((resolve, reject) => {
+            for (var chunkId = 0; chunkId < chunkCount; chunkId++) {
+              var getRequest = packages.get(`package/${packageName}/${chunkId}`);
+              getRequest.onsuccess = (event) => {
+                if (!event.target.result) {
+                  reject(`CachedPackageNotFound for: ${packageName}`);
+                  return;
+                }
+                // If there's only 1 chunk, there's nothing to concatenate it with so we can just return it now
+                if (chunkCount == 1) {
+                  resolve(event.target.result);
+                } else {
+                  chunksDone++;
+                  totalSize += event.target.result.byteLength;
+                  chunks.push(event.target.result);
+                  if (chunksDone == chunkCount) {
+                    if (chunksDone == 1) {
+                      resolve(event.target.result);
+                    } else {
+                      var tempTyped = new Uint8Array(totalSize);
+                      var byteOffset = 0;
+                      for (var chunkId in chunks) {
+                        var buffer = chunks[chunkId];
+                        tempTyped.set(new Uint8Array(buffer), byteOffset);
+                        byteOffset += buffer.byteLength;
+                        buffer = undefined;
+                      }
+                      chunks = undefined;
+                      resolve(tempTyped.buffer);
+                      tempTyped = undefined;
                     }
-                    chunks = undefined;
-                    callback(tempTyped.buffer);
-                    tempTyped = undefined;
                   }
                 }
-              }
-            };
-            getRequest.onerror = (error) => errback(error);
-          }
+              };
+              getRequest.onerror = reject;
+            }
+          });
         }\n'''
 
     # add Node.js support code, if necessary
@@ -958,76 +953,58 @@ def generate_js(data_target, data_files, metadata):
     if options.support_node:
       node_support_code = '''
         if (isNode) {
-          require('fs').readFile(packageName, (err, contents) => {
-            if (err) {
-              errback(err);
-            } else {
-              callback(contents.buffer);
-            }
-          });
-          return;
+          var fsPromises = require('fs/promises');
+          var contents = await fsPromises.readFile(packageName);
+          return contents.buffer;
         }'''.strip()
 
     ret += '''
-      function fetchRemotePackage(packageName, packageSize, callback, errback) {
+      async function fetchRemotePackage(packageName, packageSize) {
         %(node_support_code)s
         Module['dataFileDownloads'] ??= {};
-        fetch(packageName)
-          .catch((cause) => Promise.reject(new Error(`Network Error: ${packageName}`, {cause}))) // If fetch fails, rewrite the error to include the failing URL & the cause.
-          .then((response) => {
-            if (!response.ok) {
-              return Promise.reject(new Error(`${response.status}: ${response.url}`));
-            }
+        try {
+          var response = await fetch(packageName);
+        } catch (e) {
+          throw new Error(`Network Error: ${packageName}`, {e});
+        }
+        if (!response.ok) {
+          throw new Error(`${response.status}: ${response.url}`);
+        }
 
-            if (!response.body && response.arrayBuffer) { // If we're using the polyfill, readers won't be available...
-              return response.arrayBuffer().then(callback);
-            }
+        const chunks = [];
+        const headers = response.headers;
+        const total = Number(headers.get('Content-Length') ?? packageSize);
+        let loaded = 0;
 
-            const reader = response.body.getReader();
-            const iterate = () => reader.read().then(handleChunk).catch((cause) => {
-              return Promise.reject(new Error(`Unexpected error while handling : ${response.url} ${cause}`, {cause}));
-            });
+        Module['setStatus']?.('Downloading data...');
+        const reader = response.body.getReader();
 
-            const chunks = [];
-            const headers = response.headers;
-            const total = Number(headers.get('Content-Length') ?? packageSize);
-            let loaded = 0;
+        while (1) {
+          var {done, value} = await reader.read();
+          if (done) break;
+          chunks.push(value);
+          loaded += value.length;
+          Module['dataFileDownloads'][packageName] = {loaded, total};
 
-            const handleChunk = ({done, value}) => {
-              if (!done) {
-                chunks.push(value);
-                loaded += value.length;
-                Module['dataFileDownloads'][packageName] = {loaded, total};
+          let totalLoaded = 0;
+          let totalSize = 0;
 
-                let totalLoaded = 0;
-                let totalSize = 0;
+          for (const download of Object.values(Module['dataFileDownloads'])) {
+            totalLoaded += download.loaded;
+            totalSize += download.total;
+          }
 
-                for (const download of Object.values(Module['dataFileDownloads'])) {
-                  totalLoaded += download.loaded;
-                  totalSize += download.total;
-                }
+          Module['setStatus']?.(`Downloading data... (${totalLoaded}/${totalSize})`);
+        }
 
-                Module['setStatus']?.(`Downloading data... (${totalLoaded}/${totalSize})`);
-                return iterate();
-              } else {
-                const packageData = new Uint8Array(chunks.map((c) => c.length).reduce((a, b) => a + b, 0));
-                let offset = 0;
-                for (const chunk of chunks) {
-                  packageData.set(chunk, offset);
-                  offset += chunk.length;
-                }
-                callback(packageData.buffer);
-              }
-            };
-
-            Module['setStatus']?.('Downloading data...');
-            return iterate();
-          });
-      };
-
-      function handleError(error) {
-        console.error('package error:', error);
-      };\n''' % {'node_support_code': node_support_code}
+        const packageData = new Uint8Array(chunks.map((c) => c.length).reduce((a, b) => a + b, 0));
+        let offset = 0;
+        for (const chunk of chunks) {
+          packageData.set(chunk, offset);
+          offset += chunk.length;
+        }
+        return packageData.buffer;
+      }\n''' % {'node_support_code': node_support_code}
 
     code += '''
       function processPackageData(arrayBuffer) {
@@ -1036,7 +1013,7 @@ def generate_js(data_target, data_files, metadata):
         var byteArray = new Uint8Array(arrayBuffer);
         var curr;
         %s
-      };
+      }
       Module['addRunDependency']('datafile_%s');\n''' % (use_data, js_manipulation.escape_for_js_string(data_target))
     # use basename because from the browser's point of view,
     # we need to find the datafile in the same dir as the html file
@@ -1046,31 +1023,31 @@ def generate_js(data_target, data_files, metadata):
 
     if options.use_preload_cache:
       code += '''
-        function preloadFallback(error) {
+        async function preloadFallback(error) {
           console.error(error);
           console.error('falling back to default preload behavior');
-          fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, processPackageData, handleError);
-        };
+          processPackageData(await fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE));
+        }
 
-        openDatabase(
-          (db) => checkCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME,
-              (useCached, metadata) => {
-                Module['preloadResults'][PACKAGE_NAME] = {fromCache: useCached};
-                if (useCached) {
-                  fetchCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME, metadata, processPackageData, preloadFallback);
-                } else {
-                  fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE,
-                    (packageData) => {
-                      cacheRemotePackage(db, PACKAGE_PATH + PACKAGE_NAME, packageData, {uuid:PACKAGE_UUID}, processPackageData,
-                        (error) => {
-                          console.error(error);
-                          processPackageData(packageData);
-                        });
-                    }
-                  , preloadFallback);
-                }
-              }, preloadFallback)
-        , preloadFallback);
+        try {
+          var db = await openDatabase();
+          var pkgMetadata = await checkCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME);
+          var useCached = !!pkgMetadata;
+          Module['preloadResults'][PACKAGE_NAME] = {fromCache: useCached};
+          if (useCached) {
+            processPackageData(await fetchCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME, pkgMetadata));
+          } else {
+            var packageData = await fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE);
+            try {
+              processPackageData(await cacheRemotePackage(db, PACKAGE_PATH + PACKAGE_NAME, packageData, {uuid:PACKAGE_UUID}))
+            } catch (error) {
+              console.error(error);
+              processPackageData(packageData);
+            }
+          }
+        } catch(e) {
+          await preloadFallback(e);
+        }
 
         Module['setStatus']?.('Downloading...');\n'''
     else:
@@ -1082,14 +1059,18 @@ def generate_js(data_target, data_files, metadata):
       var fetchedCallback = null;
       var fetched = Module['getPreloadedPackage'] ? Module['getPreloadedPackage'](REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE) : null;
 
-      if (!fetched) fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, (data) => {
-        if (fetchedCallback) {
-          fetchedCallback(data);
-          fetchedCallback = null;
-        } else {
-          fetched = data;
-        }
-      }, handleError);\n'''
+      if (!fetched) {
+        // Note that we don't use await here because we want to execute the
+        // the rest of this function immediately.
+        fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE).then((data) => {
+          if (fetchedCallback) {
+            fetchedCallback(data);
+            fetchedCallback = null;
+          } else {
+            fetched = data;
+          }
+        })
+      }\n'''
 
       code += '''
       Module['preloadResults'][PACKAGE_NAME] = {fromCache: false};
@@ -1101,7 +1082,7 @@ def generate_js(data_target, data_files, metadata):
       }\n'''
 
   ret += '''
-    function runWithFS(Module) {\n'''
+    async function runWithFS(Module) {\n'''
   ret += code
   ret += '''
     }
@@ -1116,32 +1097,25 @@ def generate_js(data_target, data_files, metadata):
     if options.support_node:
       node_support_code = '''
         if (isNode) {
-          require('fs').readFile(metadataUrl, 'utf8', (err, contents) => {
-            if (err) {
-              return Promise.reject(err);
-            } else {
-              loadPackage(JSON.parse(contents));
-            }
-          });
-          return;
+          var fsPromises = require('fs/promises');
+          var contents = await fsPromises.readFile(metadataUrl, 'utf8');
+          return loadPackage(JSON.parse(contents));
         }'''.strip()
 
     ret += '''
     Module['removeRunDependency']('%(metadata_file)s');
   }
 
-  function runMetaWithFS() {
+  async function runMetaWithFS() {
     Module['addRunDependency']('%(metadata_file)s');
     var metadataUrl = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
     %(node_support_code)s
-    fetch(metadataUrl)
-      .then((response) => {
-        if (response.ok) {
-          return response.json();
-        }
-        return Promise.reject(new Error(`${response.status}: ${response.url}`));
-      })
-      .then(loadPackage);
+    var response = await fetch(metadataUrl);
+    if (!response.ok) {
+      throw new Error(`${response.status}: ${response.url}`);
+    }
+    var json = await response.json();
+    return loadPackage(json);
   }
 
   if (Module['calledRun']) {

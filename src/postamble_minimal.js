@@ -51,7 +51,8 @@ function initRuntime(wasmExports) {
 #endif
 
 #if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return
+  PThread.tlsInitFunctions.push(wasmExports['_emscripten_tls_init']);
+  if (ENVIRONMENT_IS_PTHREAD) return;
 #endif
 
 #if WASM_WORKERS
@@ -64,10 +65,6 @@ function initRuntime(wasmExports) {
   setStackLimits();
 #endif
   writeStackCookie();
-#endif
-
-#if PTHREADS
-  PThread.tlsInitFunctions.push(wasmExports['_emscripten_tls_init']);
 #endif
 
   <<< ATINITS >>>
@@ -91,11 +88,9 @@ Module['wasm'] = base64Decode('<<< WASM_BINARY_DATA >>>');
 var wasmExports;
 #endif
 
-#if PTHREADS
-var wasmModule;
-#endif
-
 #if PTHREADS || WASM_WORKERS
+var wasmModule;
+
 function loadModule() {
   assignWasmImports();
 #endif
@@ -111,13 +106,17 @@ var imports = {
 
 #if MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
 // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
-#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || MIN_NODE_VERSION < 180100 || MIN_SAFARI_VERSION < 150000
+#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || MIN_SAFARI_VERSION < 150000 || ENVIRONMENT_MAY_BE_NODE
 #if ASSERTIONS && !WASM2JS
 // Module['wasm'] should contain a typed array of the Wasm object data, or a
 // precompiled WebAssembly Module.
 assert(WebAssembly.instantiateStreaming || Module['wasm'], 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM');
 #endif
 (WebAssembly.instantiateStreaming
+#if ENVIRONMENT_MAY_BE_NODE
+  // Node's fetch API cannot be used for local files, so we cannot use instantiateStreaming
+  && !ENVIRONMENT_IS_NODE
+#endif
   ? WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
   : WebAssembly.instantiate(Module['wasm'], imports)).then((output) => {
 #else
@@ -135,7 +134,9 @@ assert(Module['wasm'], 'Must load WebAssembly Module in to variable Module.wasm 
 
 {{{ exportJSSymbols() }}}
 
-WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
+// Add missingProperties supression here because closure compiler doesn't know that
+// WebAssembly.instantiate is polymorphic in its return value.
+WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProperties} */ (output) => {
 #endif
 
 #if !LibraryManager.has('libexports.js')
@@ -149,17 +150,18 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
   // output.module objects. But if Module['wasm'] is an already compiled
   // WebAssembly module, then output is the WebAssembly instance itself.
   // Depending on the build mode, Module['wasm'] can mean a different thing.
-#if MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION || MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION || PTHREADS
-  // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
-#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || MIN_SAFARI_VERSION < 150000 || ENVIRONMENT_MAY_BE_NODE || PTHREADS
-  // In pthreads, Module['wasm'] is an already compiled WebAssembly.Module. In
-  // that case, 'output' is a WebAssembly.Instance.
+#if PTHREADS || WASM_WORKERS
+  // In pthreads and wasm workers, Module['wasm'] is a compiled
+  // WebAssembly.Module. In that case, 'output' is a WebAssembly.Instance.
   // In main thread, Module['wasm'] is either a typed array or a fetch stream.
   // In that case, 'output.instance' is the WebAssembly.Instance.
   wasmExports = (output.instance || output).exports;
-#else
+  // Stash the Wasm module for future worker creation.
+  wasmModule = output.module || Module['wasm'];
+#elif MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION
+  // In MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION mode, Module['wasm'] is the
+  // compiled module so we just get the instance back.
   wasmExports = output.exports;
-#endif
 #else
   wasmExports = output.instance.exports;
 #endif
@@ -215,22 +217,20 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
   <<< ATPRERUNS >>>
 
   initRuntime(wasmExports);
+
 #if PTHREADS
-  // Export Wasm module for pthread creation to access.
-  wasmModule = output.module || Module['wasm'];
   PThread.loadWasmModuleToAllWorkers(ready);
 #else
   ready();
 #endif
 }
 
-#if ASSERTIONS || WASM == 2
+#if WASM == 2
 , (error) => {
 #if ASSERTIONS
   console.error(error);
 #endif
 
-#if WASM == 2
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
   if (typeof location != 'undefined') {
 #endif
@@ -242,9 +242,8 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
   }
 #endif
-#endif // WASM == 2
 }
-#endif // ASSERTIONS || WASM == 2
+#endif // WASM == 2
 );
 
 #if PTHREADS || WASM_WORKERS

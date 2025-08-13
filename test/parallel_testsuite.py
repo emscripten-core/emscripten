@@ -90,7 +90,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
       results = [r for r in results if r is not None]
 
     try:
-      previous_test_run_results = json.load(open('__previous_test_run_results.json'))
+      previous_test_run_results = json.load(open('out/__previous_test_run_results.json'))
     except FileNotFoundError:
       previous_test_run_results = {}
 
@@ -116,7 +116,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
           'fail_frequency': fail_frequency,
         }
 
-      json.dump(previous_test_run_results, open('__previous_test_run_results.json', 'w'), indent=2)
+      json.dump(previous_test_run_results, open('out/__previous_test_run_results.json', 'w'), indent=2)
     pool.close()
     pool.join()
     return self.combine_results(result, results)
@@ -180,24 +180,20 @@ class BufferedParallelTestResult:
   def stopTest(self, test):
     # TODO(sbc): figure out a way to display this duration information again when
     # these results get passed back to the TextTestRunner/TextTestResult.
-    if hasattr(time, 'perf_counter'):
-      self.buffered_result.duration = self.test_duration
+    self.buffered_result.duration = self.test_duration
 
   def addSuccess(self, test):
-    if hasattr(time, 'perf_counter'):
-      print(test, '... ok (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
+    print(test, '... ok (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
     self.buffered_result = BufferedTestSuccess(test)
     self.test_result = 'success'
 
   def addExpectedFailure(self, test, err):
-    if hasattr(time, 'perf_counter'):
-      print(test, '... expected failure (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
+    print(test, '... expected failure (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
     self.buffered_result = BufferedTestExpectedFailure(test, err)
     self.test_result = 'expected failure'
 
   def addUnexpectedSuccess(self, test):
-    if hasattr(time, 'perf_counter'):
-      print(test, '... unexpected success (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
+    print(test, '... unexpected success (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
     self.buffered_result = BufferedTestUnexpectedSuccess(test)
     self.test_result = 'unexpected success'
 

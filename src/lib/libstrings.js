@@ -4,11 +4,15 @@
  * SPDX-License-Identifier: MIT
  */
 
+#if TEXTDECODER != 1 && TEXTDECODER != 2
+#error "TEXTDECODER must be either 1 or 2"
+#endif
+
 addToLibrary({
   // TextDecoder constructor defaults to UTF-8
 #if TEXTDECODER == 2
   $UTF8Decoder: "new TextDecoder()",
-#elif TEXTDECODER == 1
+#else
   $UTF8Decoder: "typeof TextDecoder != 'undefined' ? new TextDecoder() : undefined",
 #endif
 
@@ -35,49 +39,33 @@ addToLibrary({
    * @param {boolean=} ignoreNul - If true, the function will not stop on a NUL character.
    * @return {string}
    */`,
-#if TEXTDECODER
-  $UTF8ArrayToString__deps: ['$UTF8Decoder', '$findStringEnd'],
+  $UTF8ArrayToString__deps: [
+    '$UTF8Decoder', '$findStringEnd',
+#if ASSERTIONS
+    '$warnOnce',
 #endif
+  ],
   $UTF8ArrayToString: (heapOrArray, idx = 0, maxBytesToRead, ignoreNul) => {
 #if CAN_ADDRESS_2GB
     idx >>>= 0;
 #endif
 
-#if TEXTDECODER
     var endPtr = findStringEnd(heapOrArray, idx, maxBytesToRead, ignoreNul);
-#else
-    var endIdx = idx + maxBytesToRead;
-#endif
 
 #if TEXTDECODER == 2
     return UTF8Decoder.decode(heapOrArray.buffer ? {{{ getUnsharedTextDecoderView('heapOrArray', 'idx', 'endPtr') }}} : new Uint8Array(heapOrArray.slice(idx, endPtr)));
 #else // TEXTDECODER == 2
-#if TEXTDECODER
     // When using conditional TextDecoder, skip it for short strings as the overhead of the native call is not worth it.
     if (endPtr - idx > 16 && heapOrArray.buffer && UTF8Decoder) {
       return UTF8Decoder.decode({{{ getUnsharedTextDecoderView('heapOrArray', 'idx', 'endPtr') }}});
     }
-#endif // TEXTDECODER
     var str = '';
-#if TEXTDECODER
-    // If building with TextDecoder, we have already computed the string length
-    // above, so test loop end condition against that
     while (idx < endPtr) {
-#else
-    while (!(idx >= endIdx)) {
-#endif
       // For UTF8 byte structure, see:
       // http://en.wikipedia.org/wiki/UTF-8#Description
       // https://www.ietf.org/rfc/rfc2279.txt
       // https://tools.ietf.org/html/rfc3629
       var u0 = heapOrArray[idx++];
-#if !TEXTDECODER
-      // If not building with TextDecoder enabled, we don't know the string
-      // length, so scan for \0 byte.
-      // If building with TextDecoder, we know exactly at what byte index the
-      // string ends, so checking for nulls here would be redundant.
-      if (!u0 && !ignoreNul) return str;
-#endif
       if (!(u0 & 0x80)) { str += String.fromCharCode(u0); continue; }
       var u1 = heapOrArray[idx++] & 63;
       if ((u0 & 0xE0) == 0xC0) { str += String.fromCharCode(((u0 & 31) << 6) | u1); continue; }
@@ -159,6 +147,9 @@ addToLibrary({
    *                                   terminator.
    * @return {number} The number of bytes written, EXCLUDING the null terminator.
    */
+#if ASSERTIONS
+  $stringToUTF8Array__deps: ['$warnOnce'],
+#endif
   $stringToUTF8Array: (str, heap, outIdx, maxBytesToWrite) => {
 #if CAN_ADDRESS_2GB
     outIdx >>>= 0;
@@ -310,22 +301,19 @@ addToLibrary({
 
 #if TEXTDECODER == 2
   $UTF16Decoder: "new TextDecoder('utf-16le');",
-#elif TEXTDECODER == 1
+#else
   $UTF16Decoder: "typeof TextDecoder != 'undefined' ? new TextDecoder('utf-16le') : undefined;",
 #endif
 
   // Given a pointer 'ptr' to a null-terminated UTF16LE-encoded string in the
   // emscripten HEAP, returns a copy of that string as a Javascript String
   // object.
-#if TEXTDECODER
   $UTF16ToString__deps: ['$UTF16Decoder', '$findStringEnd'],
-#endif
   $UTF16ToString: (ptr, maxBytesToRead, ignoreNul) => {
 #if ASSERTIONS
     assert(ptr % 2 == 0, 'Pointer passed to UTF16ToString must be aligned to two bytes!');
 #endif
     var idx = {{{ getHeapOffset('ptr', 'u16') }}};
-#if TEXTDECODER
     var endIdx = findStringEnd(HEAPU16, idx, maxBytesToRead / 2, ignoreNul);
 
 #if TEXTDECODER != 2
@@ -333,9 +321,6 @@ addToLibrary({
     if (endIdx - idx > 16 && UTF16Decoder)
 #endif // TEXTDECODER != 2
       return UTF16Decoder.decode({{{ getUnsharedTextDecoderView('HEAPU16', 'idx', 'endIdx') }}});
-#else
-    var maxIdx = idx + maxBytesToRead / 2;
-#endif // TEXTDECODER
 
 #if TEXTDECODER != 2
     // Fallback: decode without UTF16Decoder
@@ -344,25 +329,8 @@ addToLibrary({
     // If maxBytesToRead is not passed explicitly, it will be undefined, and the
     // for-loop's condition will always evaluate to true. The loop is then
     // terminated on the first null char.
-    for (
-      var i = idx;
-#if TEXTDECODER
-      // If building with TextDecoder, we have already computed the string length
-      // above, so test loop end condition against that
-      i < endIdx;
-#else
-      !(i >= maxIdx);
-#endif
-      ++i
-    ) {
+    for (var i = idx; i < endIdx; ++i) {
       var codeUnit = HEAPU16[i];
-#if !TEXTDECODER
-      // If not building with TextDecoder enabled, we don't know the string
-      // length, so scan for \0 character.
-      // If building with TextDecoder, we know exactly at what index the
-      // string ends, so checking for nulls here would be redundant.
-      if (!codeUnit && !ignoreNul) break;
-#endif
       // fromCharCode constructs a character from a UTF-16 code unit, so we can
       // pass the UTF16 string right through.
       str += String.fromCharCode(codeUnit);

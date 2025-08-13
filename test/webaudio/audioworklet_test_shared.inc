@@ -94,7 +94,11 @@ int main(void) {
   emscripten_outf("Audio worklet stack at 0x%p", workletStack);
   assert(workletStack);
 
-  EMSCRIPTEN_WEBAUDIO_T context = emscripten_create_audio_context(NULL);
+  // Set at least the latency hint to test the attribute setting
+  EmscriptenWebAudioCreateAttributes attrs = {
+    .latencyHint = "balanced"
+  };
+  EMSCRIPTEN_WEBAUDIO_T context = emscripten_create_audio_context(&attrs);
   emscripten_start_wasm_audio_worklet_thread_async(context, workletStack, AUDIO_STACK_SIZE, getStartCallback(), NULL);
 
 #ifdef TEST_AND_EXIT

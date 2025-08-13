@@ -88,6 +88,7 @@ export function errorOccured() {
 
 export function error(msg, lineNo) {
   abortExecution = true;
+  process.exitCode = 1;
   printErr(`error: ${errorPrefix(lineNo)}${msg}`);
 }
 

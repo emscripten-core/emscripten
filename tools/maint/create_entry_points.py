@@ -37,15 +37,12 @@ emranlib
 emrun
 emscons
 emsize
-emdump
 emprofile
 emdwp
 emnm
 emstrip
 emsymbolizer
 emscan-deps
-system/bin/sdl-config
-system/bin/sdl2-config
 tools/file_packager
 tools/webidl_binder
 test/runner
@@ -55,14 +52,17 @@ test/runner
 # For some tools the entry point doesn't live alongside the python
 # script.
 entry_remap = {
-  'emdump': 'tools/emdump',
   'emprofile': 'tools/emprofile',
   'emdwp': 'tools/emdwp',
   'emnm': 'tools/emnm',
 }
 
 
-def main():
+def main(all_platforms):
+  is_windows = sys.platform.startswith('win')
+  do_unix = all_platforms or not is_windows
+  do_windows = all_platforms or is_windows
+
   def generate_entry_points(cmd, path):
     sh_file = path + '.sh'
     bat_file = path + '.bat'
@@ -83,20 +83,22 @@ def main():
         bat_data = bat_data.replace('%~n0', entry_remap[entry_point].replace('/', '\\'))
         ps1_data = ps1_data.replace(r"$MyInvocation.MyCommand.Path -replace '\.ps1$', '.py'", fr'"$PSScriptRoot/{entry_remap[entry_point]}.py"')
 
-      out_sh_file = os.path.join(__rootdir__, entry_point)
-      with open(out_sh_file, 'w') as f:
-        f.write(sh_data)
-      os.chmod(out_sh_file, stat.S_IMODE(os.stat(out_sh_file).st_mode) | stat.S_IXUSR)
+      if do_unix:
+        out_sh_file = os.path.join(__rootdir__, entry_point)
+        with open(out_sh_file, 'w') as f:
+          f.write(sh_data)
+        os.chmod(out_sh_file, stat.S_IMODE(os.stat(out_sh_file).st_mode) | stat.S_IXUSR)
 
-      with open(os.path.join(__rootdir__, entry_point + '.bat'), 'w') as f:
-        f.write(bat_data)
+      if do_windows:
+        with open(os.path.join(__rootdir__, entry_point + '.bat'), 'w') as f:
+          f.write(bat_data)
 
-      with open(os.path.join(__rootdir__, entry_point + '.ps1'), 'w') as f:
-        f.write(ps1_data)
+        with open(os.path.join(__rootdir__, entry_point + '.ps1'), 'w') as f:
+          f.write(ps1_data)
 
   generate_entry_points(entry_points, os.path.join(__scriptdir__, 'run_python'))
   generate_entry_points(compiler_entry_points, os.path.join(__scriptdir__, 'run_python_compiler'))
 
 
 if __name__ == '__main__':
-  sys.exit(main())
+  sys.exit(main('--all' in sys.argv))

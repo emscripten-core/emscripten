@@ -467,8 +467,6 @@ def get_binaryen_passes():
 def make_js_executable(script):
   src = read_file(script)
   cmd = config.NODE_JS
-  if settings.WASM_BIGINT:
-    cmd += shared.node_bigint_flags(config.NODE_JS)
   if len(cmd) > 1 or not os.path.isabs(cmd[0]):
     # Using -S (--split-string) here means that arguments to the executable are
     # correctly parsed.  We don't do this by default because old versions of env
@@ -509,7 +507,7 @@ def setup_pthreads():
       diagnostics.warning('experimental', '-sMAIN_MODULE + pthreads is experimental')
     elif settings.LINKABLE:
       diagnostics.warning('experimental', '-sLINKABLE + pthreads is experimental')
-  if settings.ALLOW_MEMORY_GROWTH:
+  if settings.ALLOW_MEMORY_GROWTH and not settings.GROWABLE_ARRAYBUFFERS:
     diagnostics.warning('pthreads-mem-growth', '-pthread + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
 
   default_setting('DEFAULT_PTHREAD_STACK_SIZE', settings.STACK_SIZE)
@@ -652,13 +650,58 @@ def add_system_js_lib(lib):
   settings.JS_LIBRARIES.append(lib)
 
 
+def report_incompatible_settings():
+  # List of incompatible settings, of the form (SETTINGS_A, SETTING_B, OPTIONAL_REASON_FOR_INCOMPAT)
+  incompatible_settings = [
+    ('MINIMAL_RUNTIME', 'RELOCATABLE', None),
+    ('WASM2JS', 'RELOCATABLE', None),
+    ('MODULARIZE', 'PROXY_TO_WORKER', 'if you want to run in a worker with -sMODULARIZE, you likely want to do the worker side setup manually'),
+    ('MODULARIZE', 'NO_DECLARE_ASM_MODULE_EXPORTS', None),
+    ('EVAL_CTORS', 'WASM2JS', None),
+    ('EVAL_CTORS', 'RELOCATABLE', 'movable segments'),
+    # In Asyncify exports can be called more than once, and this seems to not
+    # work properly yet (see test_emscripten_scan_registers).
+    ('EVAL_CTORS', 'ASYNCIFY', None),
+    ('PTHREADS_PROFILING', 'NO_ASSERTIONS', 'only works with ASSERTIONS enabled'),
+    ('SOURCE_PHASE_IMPORTS', 'NO_EXPORT_ES6', None),
+    ('STANDALONE_WASM', 'MINIMAL_RUNTIME', None),
+    ('STRICT_JS', 'MODULARIZE', None),
+    ('STRICT_JS', 'EXPORT_ES6', None),
+    ('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION', 'MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION', 'they are mutually exclusive'),
+    ('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION', 'SINGLE_FILE', None),
+    ('MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION', 'SINGLE_FILE', None),
+    ('SEPARATE_DWARF', 'WASM2JS', 'as there is no wasm file'),
+    ('GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS', 'NO_GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS', None),
+    ('MODULARIZE', 'NODEJS_CATCH_REJECTION', None),
+    ('MODULARIZE', 'NODEJS_CATCH_EXIT', None),
+    ('WASM2JS', 'USE_OFFSET_CONVERTER', 'see #14630'),
+  ]
+
+  for a, b, reason in incompatible_settings:
+    invert_b = b.startswith('NO_')
+    if invert_b:
+      b = b[3:]
+
+    b_val = getattr(settings, b)
+    if invert_b:
+      b_val = not b_val
+
+    if getattr(settings, a) and b_val:
+      msg = f'{a} is not compatible with {b}'
+      if invert_b:
+        msg += '=0'
+      if reason:
+        msg += f' ({reason})'
+      exit_with_error(msg)
+
+
 @ToolchainProfiler.profile_block('linker_setup')
 def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   """Future modifications should consider refactoring to reduce complexity.
 
-  * The McCabe cyclomatiic complexity is currently 251 vs 10 recommended.
-  * There are currently 262 branches vs 12 recommended.
-  * There are currently 578 statements vs 50 recommended.
+  * The McCabe cyclomatiic complexity is currently 244 vs 10 recommended.
+  * There are currently 252 branches vs 12 recommended.
+  * There are currently 563 statements vs 50 recommended.
 
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
@@ -719,8 +762,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.MEMORYPROFILER = 1
 
   if settings.PTHREADS_PROFILING:
-    if not settings.ASSERTIONS:
-      exit_with_error('PTHREADS_PROFILING only works with ASSERTIONS enabled')
     options.post_js.append(utils.path_from_root('src/threadprofiler.js'))
     settings.REQUIRED_EXPORTS.append('emscripten_main_runtime_thread_id')
     # threadprofiler.js needs these library functions.
@@ -792,12 +833,13 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if options.oformat == OFormat.MJS:
     default_setting('EXPORT_ES6', 1)
 
+  settings.OUTPUT_FORMAT = options.oformat.name
+
   if settings.JS_BASE64_API:
     diagnostics.warning('experimental', '-sJS_BASE64_API is still experimental and not yet supported in browsers')
 
-  if settings.SOURCE_PHASE_IMPORTS:
-    if not settings.EXPORT_ES6:
-      exit_with_error('SOURCE_PHASE_IMPORTS requires EXPORT_ES6')
+  if settings.GROWABLE_ARRAYBUFFERS:
+    diagnostics.warning('experimental', '-sGROWABLE_ARRAYBUFFERS is still experimental and not yet supported in browsers')
 
   if settings.WASM_ESM_INTEGRATION:
     diagnostics.warning('experimental', '-sWASM_ESM_INTEGRATION is still experimental and not yet supported in browsers')
@@ -850,6 +892,9 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
     if options.use_preload_plugins or len(options.preload_files):
       exit_with_error('MODULARIZE=instance is not compatible with --embed-file/--preload-file')
+
+  if settings.MINIMAL_RUNTIME and len(options.preload_files):
+    exit_with_error('MINIMAL_RUNTIME is not compatible with --preload-file')
 
   if options.oformat in (OFormat.WASM, OFormat.BARE):
     if options.emit_tsd:
@@ -943,8 +988,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('MEMORY_GROWTH_LINEAR_STEP is not compatible with STANDALONE_WASM')
     if 'MEMORY_GROWTH_GEOMETRIC_CAP' in user_settings:
       exit_with_error('MEMORY_GROWTH_GEOMETRIC_CAP is not compatible with STANDALONE_WASM')
-    if settings.MINIMAL_RUNTIME:
-      exit_with_error('MINIMAL_RUNTIME reduces JS size, and is incompatible with STANDALONE_WASM which focuses on ignoring JS anyhow and being 100% wasm')
 
   # Note the exports the user requested
   building.user_requested_exports.update(settings.EXPORTED_FUNCTIONS)
@@ -994,9 +1037,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if 'MODULARIZE' in user_settings:
       exit_with_error('EXPORT_ES6 requires MODULARIZE to be set')
     settings.MODULARIZE = 1
-
-  if settings.STRICT_JS and (settings.MODULARIZE or settings.EXPORT_ES6):
-    exit_with_error("STRICT_JS doesn't work with MODULARIZE or EXPORT_ES6")
 
   if not options.shell_path:
     # Minimal runtime uses a different default shell file
@@ -1048,11 +1088,17 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.WASM == 2 and settings.SINGLE_FILE:
     exit_with_error('cannot have both WASM=2 and SINGLE_FILE enabled at the same time')
 
-  if settings.SEPARATE_DWARF and settings.WASM2JS:
-    exit_with_error('cannot have both SEPARATE_DWARF and WASM2JS at the same time (as there is no wasm file)')
+  if settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and options.oformat != OFormat.HTML:
+    exit_with_error('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION is only compatible with html output')
 
-  if settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and settings.MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION:
-    exit_with_error('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION are mutually exclusive!')
+  if settings.MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION and not settings.MINIMAL_RUNTIME:
+    exit_with_error('MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION requires MINIMAL_RUNTIME')
+
+  if settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and not settings.MINIMAL_RUNTIME:
+    exit_with_error('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION requires MINIMAL_RUNTIME')
+
+  if settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and options.oformat != OFormat.HTML:
+    exit_with_error('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION is only compatible with html output')
 
   if options.use_closure_compiler:
     settings.USE_CLOSURE_COMPILER = 1
@@ -1129,10 +1175,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
         '__asyncify_data',
       ]
 
-    if settings.MINIMAL_RUNTIME:
-      exit_with_error('MINIMAL_RUNTIME is not compatible with relocatable output')
-    if settings.WASM2JS:
-      exit_with_error('WASM2JS is not compatible with relocatable output')
     # shared modules need memory utilities to allocate their memory
     settings.ALLOW_TABLE_GROWTH = 1
 
@@ -1218,16 +1260,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.STACK_OVERFLOW_CHECK >= 2:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$setStackLimits']
 
-  if settings.MODULARIZE:
-    if settings.PROXY_TO_WORKER:
-      exit_with_error('-sMODULARIZE is not compatible with --proxy-to-worker (if you want to run in a worker with -sMODULARIZE, you likely want to do the worker side setup manually)')
-    # in MINIMAL_RUNTIME we may not need to emit the Promise code, as the
-    # HTML output creates a singleton instance, and it does so without the
-    # Promise. However, in Pthreads mode the Promise is used for worker
-    # creation.
-    if settings.MINIMAL_RUNTIME and options.oformat == OFormat.HTML and not settings.PTHREADS:
-      settings.USE_READY_PROMISE = 0
-
   check_browser_versions()
 
   if settings.MIN_NODE_VERSION >= 150000:
@@ -1239,8 +1271,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.MODULARIZE:
     default_setting('NODEJS_CATCH_REJECTION', 0)
     default_setting('NODEJS_CATCH_EXIT', 0)
-    if settings.NODEJS_CATCH_REJECTION or settings.NODEJS_CATCH_EXIT:
-      exit_with_error('cannot use -sNODEJS_CATCH_REJECTION or -sNODEJS_CATCH_EXIT with -sMODULARIZE')
 
   if settings.POLYFILL:
     # Emscripten requires certain ES6+ constructs by default in library code
@@ -1271,9 +1301,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.MIN_WEBGL_VERSION > settings.MAX_WEBGL_VERSION:
     exit_with_error('MIN_WEBGL_VERSION must be smaller or equal to MAX_WEBGL_VERSION!')
-
-  if not settings.GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS and settings.GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS:
-    exit_with_error('-sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0 only makes sense with -sGL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=0!')
 
   if options.use_preload_plugins or len(options.preload_files) or len(options.embed_files):
     if settings.NODERAWFS:
@@ -1477,17 +1504,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   set_initial_memory()
 
-  if settings.EXPORT_ES6 and not settings.MODULARIZE:
-    # EXPORT_ES6 requires output to be a module
-    if 'MODULARIZE' in user_settings:
-      exit_with_error('EXPORT_ES6 requires MODULARIZE to be set')
-    settings.MODULARIZE = 1
-
-  if settings.MODULARIZE and not settings.DECLARE_ASM_MODULE_EXPORTS:
-    # When MODULARIZE option is used, currently requires declaring all module exports
-    # individually - TODO: this could be optimized
-    exit_with_error('DECLARE_ASM_MODULE_EXPORTS=0 is not compatible with MODULARIZE')
-
   # When not declaring wasm module exports in outer scope one by one, disable minifying
   # wasm module export names so that the names can be passed directly to the outer scope.
   # Also, if using libexports.js API, disable minification so that the feature can work.
@@ -1515,15 +1531,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
     settings.MINIFY_WASM_IMPORTED_MODULES = 1
 
-  if settings.MINIMAL_RUNTIME and settings.ASSERTIONS:
-    # In ASSERTIONS-builds, functions UTF8ArrayToString() and stringToUTF8Array()
-    # (which are not JS library functions), both use warnOnce(), which in
-    # MINIMAL_RUNTIME is a JS library function, so explicitly have to mark
-    # dependency to warnOnce() in that case. If string functions are turned to
-    # library functions in the future, then JS dependency tracking can be
-    # used and this special directive can be dropped.
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$warnOnce']
-
   if settings.MODULARIZE and not (settings.EXPORT_ES6 and not settings.SINGLE_FILE) and \
      settings.EXPORT_NAME == 'Module' and options.oformat == OFormat.HTML and \
      (options.shell_path == DEFAULT_SHELL_HTML or options.shell_path == utils.path_from_root('src/shell_minimal.html')):
@@ -1535,17 +1542,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.SINGLE_FILE and settings.GENERATE_SOURCE_MAP:
     diagnostics.warning('emcc', 'SINGLE_FILE disables source map support (which requires a .map file)')
     settings.GENERATE_SOURCE_MAP = 0
-
-  if settings.EVAL_CTORS:
-    if settings.WASM2JS:
-      # code size/memory and correctness issues TODO
-      exit_with_error('EVAL_CTORS is not compatible with wasm2js yet')
-    elif settings.RELOCATABLE:
-      exit_with_error('EVAL_CTORS is not compatible with relocatable yet (movable segments)')
-    elif settings.ASYNCIFY:
-      # In Asyncify exports can be called more than once, and this seems to not
-      # work properly yet (see test_emscripten_scan_registers).
-      exit_with_error('EVAL_CTORS is not compatible with asyncify yet')
 
   if options.use_closure_compiler == 2 and not settings.WASM2JS:
     exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
@@ -1593,8 +1589,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       inc_initial_memory(50 * 1024 * 1024)
 
   if settings.USE_OFFSET_CONVERTER:
-    if settings.WASM2JS:
-      exit_with_error('wasm2js is not compatible with USE_OFFSET_CONVERTER (see #14630)')
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$UTF8ArrayToString')
 
   if options.sanitize & UBSAN_SANITIZERS:
@@ -1888,6 +1882,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.USE_CLOSURE_COMPILER or not settings.MINIFY_WHITESPACE:
     settings.MAYBE_CLOSURE_COMPILER = 1
 
+  report_incompatible_settings()
+
   return target, wasm_target
 
 
@@ -2036,6 +2032,12 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
     if basename == 'libembind.js':
       settings.JS_LIBRARIES[i] = os.path.join(dirname, 'libembind_gen.js')
   settings.MIN_NODE_VERSION = 160000 if settings.MEMORY64 else 150000
+  # The final version of the memory64 proposal is not implemented until node
+  # v24, so we need to lower it away in order to execute the binary at build
+  # time.
+  # TODO Remove lowering when emsdk version of node is >= 24 and just require it.
+  if settings.MEMORY64:
+    settings.MEMORY64 = 2
   # Source maps haven't been generated yet and aren't needed to run embind_gen.
   settings.LOAD_SOURCE_MAP = 0
   outfile_js = in_temp('tsgen.js')
@@ -2045,9 +2047,7 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   # Build the flags needed by Node.js to properly run the output file.
   node_args = []
   if settings.MEMORY64:
-    # The final version of the memory64 proposal is not yet implemented in any
-    # shipping version of node, so we need to lower it away in order to
-    # execute the binary at built time.
+    # See comment above about lowering memory64.
     building.run_wasm_opt(outfile_wasm, outfile_wasm, ['--memory64-lowering', '--table64-lowering'])
   if settings.WASM_EXCEPTIONS:
     node_args += shared.node_exception_flags(config.NODE_JS)
@@ -2332,7 +2332,7 @@ def phase_binaryen(target, options, wasm_target):
     # unsigning pass.
     # we also must do this after the asan or safe_heap instrumentation, as they
     # wouldn't be able to recognize patterns produced by the growth pass.
-    if settings.SHARED_MEMORY and settings.ALLOW_MEMORY_GROWTH:
+    if settings.SHARED_MEMORY and settings.ALLOW_MEMORY_GROWTH and not settings.GROWABLE_ARRAYBUFFERS:
       with ToolchainProfiler.profile_block('apply_wasm_memory_growth'):
         final_js = building.apply_wasm_memory_growth(final_js)
 
@@ -2419,7 +2419,7 @@ def phase_binaryen(target, options, wasm_target):
       building.handle_final_wasm_symbols(wasm_file=wasm_target, symbols_file=symbols_file, debug_info=intermediate_debug_info)
       save_intermediate_with_wasm('symbolmap', wasm_target)
 
-  if settings.DEBUG_LEVEL >= 3 and settings.SEPARATE_DWARF and generating_wasm:
+  if settings.GENERATE_DWARF and settings.SEPARATE_DWARF and generating_wasm:
     # if the dwarf filename wasn't provided, use the default target + a suffix
     wasm_file_with_dwarf = settings.SEPARATE_DWARF
     if wasm_file_with_dwarf is True:
@@ -2512,17 +2512,11 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
     script.src = base_js_target
 
   if settings.SINGLE_FILE:
-    # In SINGLE_FILE mode we either inline the script, or in the case
-    # of SHARED_MEMORY convert the entire thing into a data URL.
-    if settings.SHARED_MEMORY:
-      assert not script.inline
-      script.src = get_subresource_location(js_target)
-    else:
-      js_contents = script.inline or ''
-      if script.src:
-        js_contents += read_file(js_target)
-      script.src = None
-      script.inline = read_file(js_target)
+    js_contents = script.inline or ''
+    if script.src:
+      js_contents += read_file(js_target)
+    script.src = None
+    script.inline = read_file(js_target)
     delete_file(js_target)
   else:
     if not settings.WASM_ASYNC_COMPILATION:
@@ -2818,12 +2812,8 @@ class ScriptSource:
     """Returns the script tag to replace the {{{ SCRIPT }}} tag in the target"""
     assert (self.src or self.inline) and not (self.src and self.inline)
     if self.src:
-      src = self.src
-      if src.startswith('data:'):
-        filename = src
-      else:
-        src = quote(self.src)
-        filename = f'./{src}'
+      src = quote(self.src)
+      filename = f'./{src}'
       if settings.EXPORT_ES6:
         return f'''
         <script type="module">
@@ -2834,7 +2824,7 @@ class ScriptSource:
       else:
         return f'<script async type="text/javascript" src="{src}"></script>'
     else:
-      return '<script>\n%s\n</script>' % self.inline
+      return f'<script id="mainScript">\n{self.inline}\n</script>'
 
 
 def filter_out_fake_dynamic_libs(options, inputs):

@@ -5,6 +5,9 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
+#include <stdbool.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <emscripten.h>
 #include <fcntl.h>
@@ -13,136 +16,129 @@
 #include <errno.h>
 #include <string.h>
 
-int result = 1;
+EM_JS_DEPS(deps, "$callUserCallback");
 
-void report_result() {
-  REPORT_RESULT(result);
-#ifdef FORCE_EXIT
+bool test_complete = false;
+
+EMSCRIPTEN_KEEPALIVE
+void finish() {
+  printf("finish\n");
+  test_complete = true;
   emscripten_force_exit(0);
-#endif
 }
 
+void cleanup() {
+  // If the test failed, then delete test files from IndexedDB so that the test
+  // runner will not leak test state to subsequent tests that reuse this same
+  // file.
+  printf("cleaning up test files\n");
+  unlink("/working1/empty.txt");
+  unlink("/working1/waka.txt");
+  unlink("/working1/moar.txt");
+  rmdir("/working1/dir");
+  EM_ASM(FS.syncfs(function(){})); // And persist deleted changes
+}
+
+EMSCRIPTEN_KEEPALIVE
 void test() {
-  int fd;
+  int fd, res;
   struct stat st;
 
 #if FIRST
+  printf("running test FIRST half ..\n");
+
+  // Run cleanup first in case a previous test failed half way through.
+  cleanup();
 
   // for each file, we first make sure it doesn't currently exist
   // (we delete it at the end of !FIRST).  We then test an empty
   // file plus two files each with a small amount of content
 
   // the empty file
-  if ((stat("/working1/empty.txt", &st) != -1) || (errno != ENOENT))
-    result = -1000 - errno;
+  res = stat("/working1/empty.txt", &st);
+  assert(res == -1 && errno == ENOENT);
+
   fd = open("/working1/empty.txt", O_RDWR | O_CREAT, 0666);
-  if (fd == -1)
-    result = -2000 - errno;
-  else if (close(fd) != 0)
-    result = -3000 - errno;
+  assert(fd != -1);
+  res = close(fd);
+  assert(res == 0);
 
   // a file whose contents are just 'az'
-  if ((stat("/working1/waka.txt", &st) != -1) || (errno != ENOENT))
-    result = -4000 - errno;
+  res = stat("/working1/waka.txt", &st);
+  assert(res == -1 && errno == ENOENT);
   fd = open("/working1/waka.txt", O_RDWR | O_CREAT, 0666);
-  if (fd == -1)
-    result = -5000 - errno;
-  else {
-    if (write(fd,"az",2) != 2)
-      result = -6000 - errno;
-    if (close(fd) != 0)
-      result = -7000 - errno;
-  }
+  assert(fd != -1);
+  res = write(fd, "az", 2);
+  assert(res == 2);
+  res = close(fd);
+  assert(res == 0);
 
   // a file whose contents are random-ish string set by the test_browser.py file
-  if ((stat("/working1/moar.txt", &st) != -1) || (errno != ENOENT))
-    result = -8000 - errno;
+  res = stat("/working1/moar.txt", &st);
+  assert(res == -1 && errno == ENOENT);
   fd = open("/working1/moar.txt", O_RDWR | O_CREAT, 0666);
-  if (fd == -1)
-    result = -9000 - errno;
-  else {
-    if (write(fd, SECRET, strlen(SECRET)) != strlen(SECRET))
-      result = -10000 - errno;
-    if (close(fd) != 0)
-      result = -11000 - errno;
-  }
+  assert(fd != -1);
+  res = write(fd, SECRET, strlen(SECRET));
+  assert(res == strlen(SECRET));
+  res = close(fd);
+  assert(res == 0);
 
   // a directory
-  if ((stat("/working1/dir", &st) != -1) || (errno != ENOENT))
-    result = -12000 - errno;
-  else if (mkdir("/working1/dir", 0777) != 0)
-    result = -13000 - errno;
+  res = stat("/working1/dir", &st);
+  assert(res == -1 && errno == ENOENT);
+  res = mkdir("/working1/dir", 0777);
+  assert(res == 0);
 
 #else
+  printf("running test SECOND half ..\n");
 
   // does the empty file exist?
   fd = open("/working1/empty.txt", O_RDONLY);
-  if (fd == -1)
-    result = -14000 - errno;
-  else if (close(fd) != 0)
-    result = -15000 - errno;
-  if (unlink("/working1/empty.txt") != 0)
-    result = -16000 - errno;
+  assert(fd != -1);
+  res = close(fd);
+  assert(res == 0);
+  res = unlink("/working1/empty.txt");
+  assert(res == 0);
 
   // does the 'az' file exist, and does it contain 'az'?
   fd = open("/working1/waka.txt", O_RDONLY);
-  if (fd == -1)
-    result = -17000 - errno;
-  else {
+  assert(fd != -1);
+  {
     char bf[4];
     int bytes_read = read(fd,&bf[0],sizeof(bf));
-    if (bytes_read != 2)
-      result = -18000;
-    else if ((bf[0] != 'a') || (bf[1] != 'z'))
-      result = -19000;
-    if (close(fd) != 0)
-      result = -20000 - errno;
-    if (unlink("/working1/waka.txt") != 0)
-      result = -21000 - errno;
+    assert(bytes_read == 2);
+    assert(bf[0] == 'a' && bf[1] == 'z');
   }
+  res = close(fd);
+  assert(res == 0);
+  res = unlink("/working1/waka.txt");
+  assert(res == 0);
 
   // does the random-ish file exist and does it contain SECRET?
   fd = open("/working1/moar.txt", O_RDONLY);
-  if (fd == -1) {
-    result = -22000 - errno;
-  } else {
+  assert(fd != -1);
+  {
     char bf[256];
     int bytes_read = read(fd,&bf[0],sizeof(bf));
-    if (bytes_read != strlen(SECRET)) {
-      result = -23000;
-    } else {
-      bf[strlen(SECRET)] = 0;
-      if (strcmp(bf,SECRET) != 0)
-        result = -24000;
-    }
-    if (close(fd) != 0)
-      result = -25000 - errno;
-    if (unlink("/working1/moar.txt") != 0)
-      result = -26000 - errno;
+    assert(bytes_read == strlen(SECRET));
+    bf[strlen(SECRET)] = 0;
+    assert(strcmp(bf, SECRET) == 0);
   }
+  res = close(fd);
+  assert(res == 0);
+  res = unlink("/working1/moar.txt");
+  assert(res == 0);
 
   // does the directory exist?
-  if (stat("/working1/dir", &st) != 0) {
-    result = -27000 - errno;
-  } else {
-    if (!S_ISDIR(st.st_mode))
-      result = -28000;
-    if (rmdir("/working1/dir") != 0)
-      result = -29000 - errno;
-  }
+  res = stat("/working1/dir", &st);
+  assert(res == 0);
+  assert(S_ISDIR(st.st_mode));
+  res = rmdir("/working1/dir");
+  assert(res == 0);
 
 #endif
 
-  // If the test failed, then delete test files from IndexedDB so that the test
-  // runner will not leak test state to subsequent tests that reuse this same
-  // file.
-  if (result != 1) {
-    unlink("/working1/empty.txt");
-    unlink("/working1/waka.txt");
-    unlink("/working1/moar.txt");
-    rmdir("/working1/dir");
-    EM_ASM(FS.syncfs(function(){})); // And persist deleted changes
-  }
+  printf("done test ..\n");
 
 #if EXTRA_WORK && !FIRST
   EM_ASM(
@@ -156,27 +152,29 @@ void test() {
 #endif
 
 #ifdef IDBFS_AUTO_PERSIST
-  report_result();
+  finish();
 #else
   // sync from memory state to persisted and then
-  // run 'report_result'
-  EM_ASM(
+  // run 'finish'
+  EM_ASM({
     // Ensure IndexedDB is closed at exit.
-    Module['onExit'] = function() {
+    var orig = Module['onExit'];
+    Module['onExit'] = (status) => {
       assert(Object.keys(IDBFS.dbs).length == 0);
+      orig(status);
     };
-    FS.syncfs(function (err) {
+    FS.syncfs((err) => {
       assert(!err);
-      ccall('report_result', 'v');
+      callUserCallback(_finish);
     });
-  );
+    });
 #endif
 }
 
 int main() {
   EM_ASM(
     FS.mkdir('/working1');
-    FS.mount(IDBFS, { 
+    FS.mount(IDBFS, {
 #ifdef IDBFS_AUTO_PERSIST
       autoPersist: true
 #endif
@@ -191,7 +189,7 @@ int main() {
     // run the 'test' function
     FS.syncfs(true, function (err) {
       assert(!err);
-      ccall('test', 'v');
+      callUserCallback(_test);
     });
   );
 

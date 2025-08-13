@@ -18,8 +18,58 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.11 (in development)
+4.0.13 (in development)
 -----------------------
+- The `handle` callback on the `preloadPlugins` used by `--use-preload-plugins`
+  (and `FS_createPreloadedFile` API`) was converted from callbacks to async.
+  Any externally managed plugins would need to be updated accordingly.  An
+  assertion will detect any such non-async plugins in the wild. (#24914)
+- SDL2 updated from 2.32.0 to 2.32.8. (#24912/)
+- `sdl-config` and `sdl2-config` scripts were simplified to avoid using python
+  and the `.bat` file versions were removed, matching upstream SDL. (#24907)
+- The `addRunDependency`/`removeRunDependency` now assert in debug builds if
+  they are not passed an `id` parameter.  We have been issuing warnings in
+  this case since 2012 (f67ad60), so it seems highly unlikely anyone is not
+  passing IDs here. (#24890).
+- The `-sMODULARIZE` setting generates a factory function that must be called
+  before the program is instantiated that run.  However, emscripten previously
+  had very special case where this instantiation would happen automatically
+  (with no parameterization) under certain specific circumstances: When
+  `-sMINIMAL_RUNTIME`, `-sSINGLE_FILE` and `-sMODULARIZE` were used in
+  combination with default html output.  This special case was removed.  If you
+  want to instantiate the module on startup you can still do so by adding a call
+  the factory function in `--extern-post-js`. (#24874)
+- emcc will now error if `MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION` is used
+  when not generating html output.  This was always incompatible but previously
+  ignored. (#24849)
+- emcc will now error if `MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION` or
+  `MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION` are used with `SINGLE_FILE`.
+  These are fundamentally incompatible but were previously ignored. (#24849)
+
+4.0.12 - 08/01/25
+-----------------
+- The `#!` line that emscripten, under some circumstances, will add to the
+  generated JS code no longer injects the `--experimental-wasm-bigint` node
+  flag.  This flag is not needed on recent versions of node, and in fact
+  errors there, so it's not possible to know if it's safe to include. (#24808)
+- In `-sMODULARIZE` mode the factory function will now always return a promise,
+  even when `WASM_ASYNC_COMPILATION` is disabled.  This is because emscripten
+  has other features that might also return async module creation (e.g. loading
+  files over the network, or other users of the `addRunDependency` API).  For
+  consistency and simplicity we now *always* return a promise here. (#24727)
+- libcxx, libcxxabi, libunwind, and compiler-rt were updated to LLVM 20.1.8.
+  (#24757)
+- The `fsblkcnt_t` and `fsfilcnt_t` types used by `statfs`/`statvfs` were
+  changed from 32-bit to 64-bit. (#24769)
+- Support for `-sTEXT_DECODER=0` was removed, due to widespread support for
+  `TextDecoder`.  The remaining valid values for this setting are `=1`
+  (conditional use of `TextDecoder` with fallback) and `=2` (unconditional use
+  of `TextDecoder`). (#24700)
+
+4.0.11 - 07/14/25
+-----------------
+- `emdump` tool/script was removed.  This tool was mostly useful for analyzing
+  asm.js code, which emscripten has not generated in a long time now.
 - Add support for [Source-based Code Coverage](https://clang.llvm.org/docs/SourceBasedCodeCoverage.html)
   To build with coverage enabled use `-fprofile-instr-generate -fcoverage-mapping`. (#24160)
 - The `ENVIRONMENT` setting will now be automatically updated to include
@@ -38,6 +88,10 @@ See docs/process.md for more on how version tagging works.
   wrapped with `WebAssembly.Suspending` functions. To automatically wrap library
   functions for use with JSPI they must now explicitly set
   `myLibraryFunction__async: true`.
+- Removed special casing for `size_t` in Embind, since it was also inadvertently
+  affecting `unsigned long` on wasm64. Both will now match the behaviour of
+  other 64-bit integers on wasm64 and will be passed as `bigint` instead of
+  `number` to the JavaScript code. (#24678)
 
 4.0.10 - 06/07/25
 -----------------

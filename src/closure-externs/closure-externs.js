@@ -104,6 +104,10 @@ WebAssembly.Instance.prototype.exports;
  */
 WebAssembly.Memory.prototype.buffer;
 /**
+ * @returns {ArrayBuffer}
+ */
+WebAssembly.Memory.prototype.toResizableBuffer = function() {};
+/**
  * @type {number}
  */
 WebAssembly.Table.prototype.length;
