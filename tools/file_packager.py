@@ -677,11 +677,14 @@ def generate_js(data_target, data_files, metadata):
           % (start / (1024 * 1024)))
 
     create_preloaded = '''
-          Module['FS_createPreloadedFile'](this.name, null, byteArray, true, true,
-            () => Module['removeRunDependency'](`fp ${that.name}`),
-            () => err(`Preloading file ${that.name} failed`),
-            false, true); // canOwn this data in the filesystem, it is a slide into the heap that will never change\n'''
-    create_data = '''// canOwn this data in the filesystem, it is a slide into the heap that will never change
+          try {
+            // canOwn this data in the filesystem, it is a slice into the heap that will never change
+            await Module['FS_preloadFile'](this.name, null, byteArray, true, true, false, true);
+            Module['removeRunDependency'](`fp ${that.name}`);
+          } catch (e) {
+            err(`Preloading file ${that.name} failed`);
+          }\n'''
+    create_data = '''// canOwn this data in the filesystem, it is a slice into the heap that will never change
           Module['FS_createDataFile'](this.name, null, byteArray, true, true, true);
           Module['removeRunDependency'](`fp ${that.name}`);'''
 
@@ -707,7 +710,7 @@ def generate_js(data_target, data_files, metadata):
           var byteArray = this.byteArray.subarray(this.start, this.end);
           this.finish(byteArray);
         },
-        finish: function(byteArray) {
+        finish: async function(byteArray) {
           var that = this;
           %s
           this.requests[this.name] = null;
