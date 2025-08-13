@@ -17,6 +17,7 @@ import io
 import itertools
 import logging
 import multiprocessing
+import threading
 import os
 import re
 import shlex
@@ -2102,8 +2103,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 # Run a server and a web page. When a test runs, we tell the server about it,
 # which tells the web page, which then opens a window with the test. Doing
 # it this way then allows the page to close() itself when done.
-def harness_server_func(in_queue, out_queue, port):
+def harness_server_func(in_queue, out_queue, port, base_path):
   class TestServerHandler(SimpleHTTPRequestHandler):
+    def translate_path(self, path):
+      path = SimpleHTTPRequestHandler.translate_path(self, path)
+      relpath = os.path.relpath(path, os.getcwd())
+      fullpath = os.path.join(base_path, relpath)
+      return fullpath
+
     # Request header handler for default do_GET() path in
     # SimpleHTTPRequestHandler.do_GET(self) below.
     def send_head(self):
@@ -2178,6 +2185,7 @@ def harness_server_func(in_queue, out_queue, port):
         print(f'do_POST: unexpected POST: {urlinfo}')
 
     def do_GET(self):
+      nonlocal base_path
       info = urlparse(self.path)
       if info.path == '/run_harness':
         if DEBUG:
@@ -2205,7 +2213,7 @@ def harness_server_func(in_queue, out_queue, port):
         # the test is reporting its result. first change dir away from the
         # test dir, as it will be deleted now that the test is finishing, and
         # if we got a ping at that time, we'd return an error
-        os.chdir(path_from_root())
+        base_path = path_from_root()
         # for debugging, tests may encode the result and their own url (window.location) as result|url
         if '|' in self.path:
           path, url = self.path.split('|', 1)
@@ -2248,7 +2256,7 @@ def harness_server_func(in_queue, out_queue, port):
           # tell the browser to load the test
           self.wfile.write(b'COMMAND:' + url.encode('utf-8'))
           # move us to the right place to serve the files for the new test
-          os.chdir(dir)
+          base_path = dir
         else:
           # the browser must keep polling
           self.wfile.write(b'(wait)')
@@ -2284,8 +2292,22 @@ def harness_server_func(in_queue, out_queue, port):
   # do not have the correct MIME type
   SimpleHTTPRequestHandler.extensions_map['.mjs'] = 'text/javascript'
 
-  httpd = ThreadingHTTPServer(('localhost', port), TestServerHandler)
-  httpd.serve_forever() # test runner will kill us
+  return ThreadingHTTPServer(('localhost', port), TestServerHandler)
+
+
+class ServerThread(threading.Thread):
+  def __init__(self, in_queue, out_queue, port):
+    super().__init__()
+    self.in_queue = in_queue
+    self.out_queue = out_queue
+    self.port = port
+
+  def stop(self):
+    self.server.shutdown()
+
+  def run(self):
+    self.server = harness_server_func(self.in_queue, self.out_queue, self.port, os.getcwd())
+    self.server.serve_forever()
 
 
 class Reporting(Enum):
@@ -2306,9 +2328,11 @@ class BrowserCore(RunnerCore):
   # suite early, as otherwise we will wait for the timeout on every
   # single test (hundreds of minutes)
   MAX_UNRESPONSIVE_TESTS = 10
-  PORT = 8888
+  PORT = 8889
   HARNESS_URL = 'http://localhost:%s/run_harness' % PORT
   BROWSER_TIMEOUT = 60
+  # In parallel mode this ID contains which pool worker this process is.
+  WORKER_ID = 0
 
   unresponsive_tests = 0
 
@@ -2317,9 +2341,8 @@ class BrowserCore(RunnerCore):
     super().__init__(*args, **kwargs)
 
   @classmethod
-  def browser_restart(cls):
+  def browser_terminate(cls):
     # Kill existing browser
-    logger.info('Restarting browser process')
     cls.browser_proc.terminate()
     # If the browser doesn't shut down gracefully (in response to SIGTERM)
     # after 2 seconds kill it with force (SIGKILL).
@@ -2329,6 +2352,11 @@ class BrowserCore(RunnerCore):
       logger.info('Browser did not respond to `terminate`.  Using `kill`')
       cls.browser_proc.kill()
       cls.browser_proc.wait()
+
+  @classmethod
+  def browser_restart(cls):
+    logger.info('Restarting browser process')
+    cls.browser_terminate()
     cls.browser_open(cls.HARNESS_URL)
 
   @classmethod
@@ -2338,6 +2366,10 @@ class BrowserCore(RunnerCore):
       logger.info('No EMTEST_BROWSER set. Defaulting to `google-chrome`')
       EMTEST_BROWSER = 'google-chrome'
     browser_args = shlex.split(EMTEST_BROWSER)
+    for i, arg in enumerate(browser_args):
+      if arg.startswith('--user-data-dir='):
+        browser_args[i] = arg + '-' + str(cls.WORKER_ID)
+        break
     logger.info('Launching browser: %s', str(browser_args))
     cls.browser_proc = subprocess.Popen(browser_args + [url])
 
@@ -2346,11 +2378,22 @@ class BrowserCore(RunnerCore):
     super().setUpClass()
     if not has_browser() or EMTEST_BROWSER == 'node':
       return
-    cls.harness_in_queue = multiprocessing.Queue()
-    cls.harness_out_queue = multiprocessing.Queue()
-    cls.harness_server = multiprocessing.Process(target=harness_server_func, args=(cls.harness_in_queue, cls.harness_out_queue, cls.PORT))
+
+    cls.harness_in_queue = queue.Queue()
+    cls.harness_out_queue = queue.Queue()
+    current = multiprocessing.current_process()
+    if current.name != "MainProcess":
+      worker_id_str = current.name.split('-')[-1]
+      worker_id_int = int(worker_id_str)
+      cls.PORT += worker_id_int
+      cls.WORKER_ID = worker_id_int
+
+    cls.SERVER_URL = f'http://localhost:{cls.PORT}'
+    cls.HARNESS_URL = f'{cls.SERVER_URL}/run_harness'
+    cls.harness_server = ServerThread(cls.harness_in_queue, cls.harness_out_queue, cls.PORT)
     cls.harness_server.start()
-    print('[Browser harness server on process %d]' % cls.harness_server.pid)
+
+    print(f'[Browser harness server on thread {cls.harness_server.name}]')
     cls.browser_open(cls.HARNESS_URL)
 
   @classmethod
@@ -2358,8 +2401,10 @@ class BrowserCore(RunnerCore):
     super().tearDownClass()
     if not has_browser() or EMTEST_BROWSER == 'node':
       return
-    cls.harness_server.terminate()
-    print('[Browser harness server terminated]')
+    cls.harness_server.stop()
+    cls.harness_server.join()
+    cls.browser_terminate()
+
     if WINDOWS:
       # On Windows, shutil.rmtree() in tearDown() raises this exception if we do not wait a bit:
       # WindowsError: [Error 32] The process cannot access the file because it is being used by another process.
@@ -2367,6 +2412,11 @@ class BrowserCore(RunnerCore):
 
   def is_browser_test(self):
     return True
+
+  def copy_browser_reporting(self):
+    contents = read_file(test_file('browser_reporting.js'))
+    contents = contents.replace('{{{REPORTING_URL}}}', self.SERVER_URL)
+    create_file('browser_reporting.js', contents)
 
   def assert_out_queue_empty(self, who):
     if not self.harness_out_queue.empty():
@@ -2451,7 +2501,8 @@ class BrowserCore(RunnerCore):
     # the header as there may be multiple files being compiled here).
     if reporting != Reporting.NONE:
       # For basic reporting we inject JS helper funtions to report result back to server.
-      cflags += ['--pre-js', test_file('browser_reporting.js')]
+      self.copy_browser_reporting()
+      cflags += ['--pre-js', 'browser_reporting.js']
       if reporting == Reporting.FULL:
         # If C reporting (i.e. the REPORT_RESULT macro) is required we
         # also include report_result.c and force-include report_result.h
@@ -2463,6 +2514,7 @@ class BrowserCore(RunnerCore):
     if not os.path.exists(filename):
       filename = test_file(filename)
     self.run_process([compiler_for(filename), filename] + self.get_cflags() + cflags)
+    utils.delete_file('browser_reporting.js')
 
   def btest_exit(self, filename, assert_returncode=0, *args, **kwargs):
     """Special case of `btest` that reports its result solely via exiting

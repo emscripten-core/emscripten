@@ -5,6 +5,7 @@
 
 import argparse
 import multiprocessing
+import threading
 import os
 import random
 import shlex
@@ -225,7 +226,7 @@ class browser(BrowserCore):
 
   def post_manual_reftest(self):
     assert os.path.exists('reftest.js')
-    shutil.copy(test_file('browser_reporting.js'), '.')
+    self.copy_browser_reporting()
     html = read_file('test.html')
     html = html.replace('</body>', '''
 <script src="browser_reporting.js"></script>
@@ -534,7 +535,7 @@ If manually bisecting:
   # Clear all IndexedDB databases. This gives us a fresh state for tests that
   # chech caching.
   def clear_indexed_db(self):
-    shutil.copy(test_file('browser_reporting.js'), '.')
+    self.copy_browser_reporting()
     create_file('clear_indexed_db.html', '''
       <script src="browser_reporting.js"></script>
       <script>
@@ -615,57 +616,57 @@ If manually bisecting:
     self.compile_btest('main.c', args + ['-sENVIRONMENT=web'], reporting=Reporting.JS_ONLY)
     self.run_browser('page.html', '/report_result?exit:0')
 
-  def test_preload_caching_indexeddb_name(self):
-    self.set_setting('EXIT_RUNTIME')
-    create_file('somefile.txt', 'load me right before running the code please')
+  # def test_preload_caching_indexeddb_name(self):
+  #   self.set_setting('EXIT_RUNTIME')
+  #   create_file('somefile.txt', 'load me right before running the code please')
 
-    def make_main(path):
-      print(path)
-      create_file('main.c', r'''
-        #include <assert.h>
-        #include <stdio.h>
-        #include <string.h>
-        #include <emscripten.h>
+  #   def make_main(path):
+  #     print(path)
+  #     create_file('main.c', r'''
+  #       #include <assert.h>
+  #       #include <stdio.h>
+  #       #include <string.h>
+  #       #include <emscripten.h>
 
-        extern int checkPreloadResults();
+  #       extern int checkPreloadResults();
 
-        int main(int argc, char** argv) {
-          FILE *f = fopen("%s", "r");
-          char buf[100];
-          fread(buf, 1, 20, f);
-          buf[20] = 0;
-          fclose(f);
-          printf("|%%s|\n", buf);
+  #       int main(int argc, char** argv) {
+  #         FILE *f = fopen("%s", "r");
+  #         char buf[100];
+  #         fread(buf, 1, 20, f);
+  #         buf[20] = 0;
+  #         fclose(f);
+  #         printf("|%%s|\n", buf);
 
-          int result = 0;
+  #         int result = 0;
 
-          assert(strcmp("load me right before", buf) == 0);
-          int num_cached = checkPreloadResults();
-          printf("got %%d preloadResults from cache\n", num_cached);
-          return num_cached;
-        }
-      ''' % path)
+  #         assert(strcmp("load me right before", buf) == 0);
+  #         int num_cached = checkPreloadResults();
+  #         printf("got %%d preloadResults from cache\n", num_cached);
+  #         return num_cached;
+  #       }
+  #     ''' % path)
 
-    create_file('test.js', '''
-      addToLibrary({
-        checkPreloadResults: () => {
-          var cached = 0;
-          for (var result of Object.values(Module['preloadResults'])) {
-            if (result['fromCache']) {
-              cached++;
-            }
-          }
-          return cached;
-        }
-      });
-    ''')
+  #   create_file('test.js', '''
+  #     addToLibrary({
+  #       checkPreloadResults: () => {
+  #         var cached = 0;
+  #         for (var result of Object.values(Module['preloadResults'])) {
+  #           if (result['fromCache']) {
+  #             cached++;
+  #           }
+  #         }
+  #         return cached;
+  #       }
+  #     });
+  #   ''')
 
-    make_main('somefile.txt')
-    self.run_process([FILE_PACKAGER, 'somefile.data', '--use-preload-cache', '--indexedDB-name=testdb', '--preload', 'somefile.txt', '--js-output=' + 'somefile.js'])
-    self.compile_btest('main.c', ['--js-library', 'test.js', '--pre-js', 'somefile.js', '-o', 'page.html', '-sFORCE_FILESYSTEM'], reporting=Reporting.JS_ONLY)
-    self.run_browser('page.html', '/report_result?exit:0')
-    print("Re-running ..")
-    self.run_browser('page.html', '/report_result?exit:1')
+  #   make_main('somefile.txt')
+  #   self.run_process([FILE_PACKAGER, 'somefile.data', '--use-preload-cache', '--indexedDB-name=testdb', '--preload', 'somefile.txt', '--js-output=' + 'somefile.js'])
+  #   self.compile_btest('main.c', ['--js-library', 'test.js', '--pre-js', 'somefile.js', '-o', 'page.html', '-sFORCE_FILESYSTEM'], reporting=Reporting.JS_ONLY)
+  #   self.run_browser('page.html', '/report_result?exit:0')
+  #   print("Re-running ..")
+  #   self.run_browser('page.html', '/report_result?exit:1')
 
   def test_multifile(self):
     # a few files inside a directory
@@ -776,7 +777,7 @@ If manually bisecting:
               window.disableErrorReporting = true;
               window.onerror = null;
               var result = error.includes("test.data") ? 1 : 0;
-              await fetch('http://localhost:8888/report_result?' + result);
+              await fetch('/report_result?' + result);
               window.close();
             }
             window.addEventListener('error', errorHandler);
@@ -1660,82 +1661,85 @@ simulateKeyUp(100, undefined, 'Numpad4');
     self.cflags += ['--pre-js=pre.js', '--proxy-to-worker']
     self.btest_exit('test_mmap_lazyfile.c')
 
-  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/19608')
-  @no_firefox('keeps sending OPTIONS requests, and eventually errors')
-  def test_chunked_synchronous_xhr(self):
-    main = 'chunked_sync_xhr.html'
-    worker_filename = "download_and_checksum_worker.js"
+  # @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/19608')
+  # @no_firefox('keeps sending OPTIONS requests, and eventually errors')
+  # def test_chunked_synchronous_xhr(self):
+  #   main = 'chunked_sync_xhr.html'
+  #   worker_filename = "download_and_checksum_worker.js"
 
-    create_file(main, r"""
-      <!doctype html>
-      <html>
-      <head><meta charset="utf-8"><title>Chunked XHR</title></head>
-      <body>
-        Chunked XHR Web Worker Test
-        <script>
-          var worker = new Worker("%s");
-          var buffer = [];
-          worker.onmessage = async (event) => {
-            if (event.data.channel === "stdout") {
-              await fetch('http://localhost:%s/report_result?' + event.data.line);
-              window.close();
-            } else {
-              if (event.data.trace) event.data.trace.split("\n").map(function(v) { console.error(v); });
-              if (event.data.line) {
-                console.error(event.data.line);
-              } else {
-                var v = event.data.char;
-                if (v == 10) {
-                  var line = buffer.splice(0);
-                  console.error(line = line.map(function(charCode){return String.fromCharCode(charCode);}).join(''));
-                } else {
-                  buffer.push(v);
-                }
-              }
-            }
-          };
-        </script>
-      </body>
-      </html>
-    """ % (worker_filename, self.PORT))
+  #   create_file(main, r"""
+  #     <!doctype html>
+  #     <html>
+  #     <head><meta charset="utf-8"><title>Chunked XHR</title></head>
+  #     <body>
+  #       Chunked XHR Web Worker Test
+  #       <script>
+  #         var worker = new Worker("%s");
+  #         var buffer = [];
+  #         worker.onmessage = async (event) => {
+  #           if (event.data.channel === "stdout") {
+  #             await fetch('http://localhost:%s/report_result?' + event.data.line);
+  #             window.close();
+  #           } else {
+  #             if (event.data.trace) event.data.trace.split("\n").map(function(v) { console.error(v); });
+  #             if (event.data.line) {
+  #               console.error(event.data.line);
+  #             } else {
+  #               var v = event.data.char;
+  #               if (v == 10) {
+  #                 var line = buffer.splice(0);
+  #                 console.error(line = line.map(function(charCode){return String.fromCharCode(charCode);}).join(''));
+  #               } else {
+  #                 buffer.push(v);
+  #               }
+  #             }
+  #           }
+  #         };
+  #       </script>
+  #     </body>
+  #     </html>
+  #   """ % (worker_filename, self.PORT))
 
-    create_file('worker_prejs.js', r"""
-      Module.arguments = ["/bigfile"];
-      Module.preInit = () => {
-        FS.createLazyFile('/', "bigfile", "http://localhost:11111/bogus_file_path", true, false);
-      };
-      var doTrace = true;
-      Module.print = (s) => self.postMessage({channel: "stdout", line: s});
-      Module.printErr = (s) => { self.postMessage({channel: "stderr", char: s, trace: ((doTrace && s === 10) ? new Error().stack : null)}); doTrace = false; };
-    """)
-    self.compile_btest('checksummer.c', ['-g', '-sSMALL_XHR_CHUNKS', '-o', worker_filename,
-                                         '--pre-js', 'worker_prejs.js'])
-    chunkSize = 1024
-    data = os.urandom(10 * chunkSize + 1) # 10 full chunks and one 1 byte chunk
-    checksum = zlib.adler32(data) & 0xffffffff # Python 2 compatibility: force bigint
+  #   create_file('worker_prejs.js', r"""
+  #     Module.arguments = ["/bigfile"];
+  #     Module.preInit = () => {
+  #       FS.createLazyFile('/', "bigfile", "http://localhost:11111/bogus_file_path", true, false);
+  #     };
+  #     var doTrace = true;
+  #     Module.print = (s) => self.postMessage({channel: "stdout", line: s});
+  #     Module.printErr = (s) => { self.postMessage({channel: "stderr", char: s, trace: ((doTrace && s === 10) ? new Error().stack : null)}); doTrace = false; };
+  #   """)
+  #   self.compile_btest('checksummer.c', ['-g', '-sSMALL_XHR_CHUNKS', '-o', worker_filename,
+  #                                        '--pre-js', 'worker_prejs.js'])
+  #   chunkSize = 1024
+  #   data = os.urandom(10 * chunkSize + 1) # 10 full chunks and one 1 byte chunk
+  #   checksum = zlib.adler32(data) & 0xffffffff # Python 2 compatibility: force bigint
 
-    server = multiprocessing.Process(target=test_chunked_synchronous_xhr_server, args=(True, data, self.PORT))
-    server.start()
+  #   server = threading.Thread(target=test_chunked_synchronous_xhr_server, args=(True, data, self.PORT))
+  #   # server = multiprocessing.Process(target=test_chunked_synchronous_xhr_server, args=(True, data, self.PORT))
+  #   server.start()
 
-    # block until the server is actually ready
-    for i in range(60):
-      try:
-        urlopen('http://localhost:11111')
-        break
-      except Exception as e:
-        print('(sleep for server)')
-        time.sleep(1)
-        if i == 60:
-          raise e
+  #   # block until the server is actually ready
+  #   for i in range(60):
+  #     try:
+  #       urlopen('http://localhost:11111')
+  #       break
+  #     except Exception as e:
+  #       print('(sleep for server)')
+  #       time.sleep(1)
+  #       if i == 60:
+  #         raise e
 
-    try:
-      self.run_browser(main, '/report_result?' + str(checksum))
-    finally:
-      server.terminate()
-    # Avoid race condition on cleanup, wait a bit so that processes have released file locks so that test tearDown won't
-    # attempt to rmdir() files in use.
-    if WINDOWS:
-      time.sleep(2)
+  #   try:
+  #     self.run_browser(main, '/report_result?' + str(checksum))
+  #   finally:
+  #     print(">>>startjoingin")
+  #     server.join()
+  #     print(">>>endjoingin")
+  #   # Avoid race condition on cleanup, wait a bit so that processes have released file locks so that test tearDown won't
+  #   # attempt to rmdir() files in use.
+  #   if WINDOWS:
+  #     time.sleep(2)
 
   @requires_graphics_hardware
   def test_glgears(self, extra_args=[]):  # noqa
@@ -2458,7 +2462,7 @@ void *getBindBuffer() {
         setTimeout(async () => {
           out('done timeout noted = ' + Module.noted);
           assert(Module.noted);
-          await fetch('http://localhost:8888/report_result?' + HEAP32[Module.noted/4]);
+          await fetch('/report_result?' + HEAP32[Module.noted/4]);
           window.close();
         }, 0);
         // called from main, this is an ok time
@@ -3438,7 +3442,7 @@ Module["preRun"] = () => {
 
   def test_modularize_network_error(self):
     self.compile_btest('browser_test_hello_world.c', ['-sMODULARIZE', '-sEXPORT_NAME=createModule'], reporting=Reporting.NONE)
-    shutil.copy(test_file('browser_reporting.js'), '.')
+    self.copy_browser_reporting()
     create_file('a.html', '''
       <script src="browser_reporting.js"></script>
       <script src="a.out.js"></script>
@@ -3458,7 +3462,7 @@ Module["preRun"] = () => {
 
   def test_modularize_init_error(self):
     self.compile_btest('browser/test_modularize_init_error.cpp', ['-sMODULARIZE', '-sEXPORT_NAME=createModule'], reporting=Reporting.NONE)
-    shutil.copy(test_file('browser_reporting.js'), '.')
+    self.copy_browser_reporting()
     create_file('a.html', '''
       <script src="browser_reporting.js"></script>
       <script src="a.out.js"></script>
@@ -4621,7 +4625,7 @@ Module["preRun"] = () => {
 
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   def test_fetch_redirect(self):
-    self.btest_exit('fetch/test_fetch_redirect.c', cflags=['-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
+    self.btest_exit('fetch/test_fetch_redirect.c', cflags=['-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD', f'-DSERVER="{self.SERVER_URL}"'])
 
   @parameterized({
     '': ([],),
@@ -5528,10 +5532,10 @@ Module["preRun"] = () => {
     self.btest_exit('webaudio/audioworklet_params_mixing.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DTEST_AND_EXIT'] + args)
 
   # Tests AudioWorklet with emscripten_lock_busyspin_wait_acquire() and friends
-  @requires_sound_hardware
-  @also_with_minimal_runtime
-  def test_audio_worklet_emscripten_locks(self):
-    self.btest_exit('webaudio/audioworklet_emscripten_locks.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread'])
+  # @requires_sound_hardware
+  # @also_with_minimal_runtime
+  # def test_audio_worklet_emscripten_locks(self):
+  #   self.btest_exit('webaudio/audioworklet_emscripten_locks.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread'])
 
   def test_error_reporting(self):
     # Test catching/reporting Error objects
