@@ -786,9 +786,9 @@ def generate_js(data_target, data_files, metadata):
       }
       var PACKAGE_NAME = '%s';
       var REMOTE_PACKAGE_BASE = '%s';
-      var REMOTE_PACKAGE_NAME = Module['locateFile'] ? Module['locateFile'](REMOTE_PACKAGE_BASE, '') : REMOTE_PACKAGE_BASE;\n''' % (js_manipulation.escape_for_js_string(data_target), js_manipulation.escape_for_js_string(remote_package_name))
+      var REMOTE_PACKAGE_NAME = Module['locateFile']?.(REMOTE_PACKAGE_BASE, '') ?? REMOTE_PACKAGE_BASE;\n''' % (js_manipulation.escape_for_js_string(data_target), js_manipulation.escape_for_js_string(remote_package_name))
     metadata['remote_package_size'] = remote_package_size
-    ret += '''var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];\n'''
+    ret += "      var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];\n"
 
     if options.use_preload_cache:
       # Set the id to a hash of the preloaded data, so that caches survive over multiple builds
@@ -1056,8 +1056,8 @@ def generate_js(data_target, data_files, metadata):
       # Only tricky bit is the fetch is async, but also when runWithFS is called
       # is async, so we handle both orderings.
       ret += '''
-      var fetchedCallback = null;
-      var fetched = Module['getPreloadedPackage'] ? Module['getPreloadedPackage'](REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE) : null;
+      var fetchedCallback;
+      var fetched = Module['getPreloadedPackage']?.(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE);
 
       if (!fetched) {
         // Note that we don't use await here because we want to execute the
@@ -1108,7 +1108,7 @@ def generate_js(data_target, data_files, metadata):
 
   async function runMetaWithFS() {
     Module['addRunDependency']('%(metadata_file)s');
-    var metadataUrl = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
+    var metadataUrl = Module['locateFile']?.('%(metadata_file)s', '') ?? '%(metadata_file)s';
     %(node_support_code)s
     var response = await fetch(metadataUrl);
     if (!response.ok) {
