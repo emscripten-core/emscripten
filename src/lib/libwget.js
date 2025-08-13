@@ -18,7 +18,7 @@ var LibraryWget = {
 
   emscripten_async_wget__deps: [
     '$PATH_FS', '$callUserCallback', '$Browser',
-    '$stackRestore', '$stringToUTF8OnStack',
+    '$withStackSave', '$stringToUTF8OnStack',
     '$FS_mkdirTree',
     '$FS_createPreloadedFile',
     '$FS_unlink',
@@ -33,11 +33,7 @@ var LibraryWget = {
     function doCallback(callback) {
       if (callback) {
         {{{ runtimeKeepalivePop() }}}
-        callUserCallback(() => {
-          var sp = stackSave();
-          {{{ makeDynCall('vp', 'callback') }}}(stringToUTF8OnStack(_file));
-          stackRestore(sp);
-        });
+        callUserCallback(() => withStackSave(() => {{{ makeDynCall('vp', 'callback') }}}(stringToUTF8OnStack(_file))));
       }
     }
     var destinationDirectory = PATH.dirname(_file);
