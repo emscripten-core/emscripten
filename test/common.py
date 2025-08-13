@@ -2307,7 +2307,8 @@ class BrowserCore(RunnerCore):
   # single test (hundreds of minutes)
   MAX_UNRESPONSIVE_TESTS = 10
   PORT = 8888
-  HARNESS_URL = 'http://localhost:%s/run_harness' % PORT
+  SERVER_URL = f'http://localhost:{PORT}'
+  HARNESS_URL = f'{SERVER_URL}/run_harness'
   BROWSER_TIMEOUT = 60
 
   unresponsive_tests = 0
@@ -2367,6 +2368,11 @@ class BrowserCore(RunnerCore):
 
   def is_browser_test(self):
     return True
+
+  def add_browser_reporting(self):
+    contents = read_file(test_file('browser_reporting.js'))
+    contents = contents.replace('{{{REPORTING_URL}}}', BrowserCore.SERVER_URL)
+    create_file('browser_reporting.js', contents)
 
   def assert_out_queue_empty(self, who):
     if not self.harness_out_queue.empty():
@@ -2451,7 +2457,8 @@ class BrowserCore(RunnerCore):
     # the header as there may be multiple files being compiled here).
     if reporting != Reporting.NONE:
       # For basic reporting we inject JS helper funtions to report result back to server.
-      cflags += ['--pre-js', test_file('browser_reporting.js')]
+      self.add_browser_reporting()
+      cflags += ['--pre-js', 'browser_reporting.js']
       if reporting == Reporting.FULL:
         # If C reporting (i.e. the REPORT_RESULT macro) is required we
         # also include report_result.c and force-include report_result.h
@@ -2463,6 +2470,9 @@ class BrowserCore(RunnerCore):
     if not os.path.exists(filename):
       filename = test_file(filename)
     self.run_process([compiler_for(filename), filename] + self.get_cflags() + cflags)
+    # Remove the file since some tests have assertions for how many files are in
+    # the output directory.
+    utils.delete_file('browser_reporting.js')
 
   def btest_exit(self, filename, assert_returncode=0, *args, **kwargs):
     """Special case of `btest` that reports its result solely via exiting
