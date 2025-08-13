@@ -716,8 +716,10 @@ def generate_js(data_target, data_files, metadata):
     create_data = '''// canOwn this data in the filesystem, it is a slice into the heap that will never change
           Module['FS_createDataFile'](this.name, null, byteArray, true, true, true);
           Module['removeRunDependency'](`fp ${that.name}`);'''
-    ready_promise = '''
-          loadDataResolve();'''
+
+    finish_handler = create_preloaded if options.use_preload_plugins else create_data
+    if options.export_es6:
+      finish_handler += '\nloadDataResolve();'
 
     if not options.lz4:
       # Data requests - for getting a block of data out of the big archive - have
@@ -744,14 +746,14 @@ def generate_js(data_target, data_files, metadata):
         finish: async function(byteArray) {
           var that = this;
           %s
-          this.requests[this.name] = null;%s
+          this.requests[this.name] = null;
         }
       };
 
       var files = metadata['files'];
       for (var i = 0; i < files.length; ++i) {
         new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio'] || 0).open('GET', files[i]['filename']);
-      }\n''' % (create_preloaded if options.use_preload_plugins else create_data, ready_promise if options.export_es6 else '')
+      }\n''' % finish_handler
 
   if options.has_embedded and not options.obj_output:
     diagnostics.warn('--obj-output is recommended when using --embed.  This outputs an object file for linking directly into your application is more efficient than JS encoding')
@@ -1054,10 +1056,13 @@ def generate_js(data_target, data_files, metadata):
 
     code += '''
       Module['preloadResults'] ??= {};\n'''
-    catch_case = '''
-          .catch((error) => {
-            loadDataReject(error);
-          })'''
+
+  catch_handler = ''
+  if options.export_es6:
+    catch_handler += '''
+        .catch((error) => {
+          loadDataReject(error);
+        })'''
 
     if options.use_preload_cache:
       code += '''
@@ -1087,7 +1092,7 @@ def generate_js(data_target, data_files, metadata):
           await preloadFallback(e)%s;
         }
 
-        Module['setStatus']?.('Downloading...');\n''' % (catch_case if options.export_es6 else '')
+        Module['setStatus']?.('Downloading...');\n''' % catch_handler
     else:
       # Not using preload cache, so we might as well start the xhr ASAP,
       # potentially before JS parsing of the main codebase if it's after us.
@@ -1109,7 +1114,7 @@ def generate_js(data_target, data_files, metadata):
               fetched = data;
             }
           })%s;
-      }\n''' % (catch_case if options.export_es6 else '')
+      }\n''' % catch_handler
 
       code += '''
       Module['preloadResults'][PACKAGE_NAME] = {fromCache: false};
@@ -1129,7 +1134,7 @@ def generate_js(data_target, data_files, metadata):
       runWithFS(Module)%s;
     } else {
       (Module['preRun'] ??= []).push(runWithFS); // FS is not initialized yet, wait for it
-    }\n''' % (catch_case if options.export_es6 else '')
+    }\n''' % catch_handler
 
   if options.separate_metadata:
     node_support_code = ''
