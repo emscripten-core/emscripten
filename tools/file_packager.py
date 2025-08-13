@@ -758,6 +758,13 @@ def generate_js(data_target, data_files, metadata):
   if options.has_embedded and not options.obj_output:
     diagnostics.warn('--obj-output is recommended when using --embed.  This outputs an object file for linking directly into your application is more efficient than JS encoding')
 
+  catch_handler = ''
+  if options.export_es6:
+    catch_handler += '''
+        .catch((error) => {
+          loadDataReject(error);
+        })'''
+
   for counter, file_ in enumerate(data_files):
     filename = file_.dstpath
     dirname = os.path.dirname(filename)
@@ -1056,13 +1063,6 @@ def generate_js(data_target, data_files, metadata):
 
     code += '''
       Module['preloadResults'] ??= {};\n'''
-
-  catch_handler = ''
-  if options.export_es6:
-    catch_handler += '''
-        .catch((error) => {
-          loadDataReject(error);
-        })'''
 
     if options.use_preload_cache:
       code += '''
