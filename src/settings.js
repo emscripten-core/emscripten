@@ -2195,6 +2195,16 @@ var GROWABLE_ARRAYBUFFERS = false;
 // so we disable it by default to save on code size.
 var WASM_JS_TYPES = false;
 
+// The level of debuggability of the JS code. This is the JS side of the -gX
+// flags, and by default it will match them, so -g3 implies JS_DEBUG_LEVEL=3.
+// Setting this is a way to alter the JS debug level while not affecting other
+// optimizations in LLVM and Binaryen.
+//
+// This can be useful with source maps, e.g. -O3 -gsource-map -sJS_DEBUG_LEVEL=0
+// will produce an optimized build, with a source map, and with JS that is still
+// optimized despite -gsource-map (which sets the general debug level to 3).
+var JS_DEBUG_LEVEL = 0;
+
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]
 // For removed settings (which now effectively have a fixed value and can no

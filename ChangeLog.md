@@ -47,6 +47,12 @@ See docs/process.md for more on how version tagging works.
   These are fundamentally incompatible but were previously ignored. (#24849)
 - `--export-es6` flag was added to `file_packager.py` available when run 
   standalone, to enable ES6 imports of generated JavaScript code (#24737)
+- The new `JS_DEBUG_LEVEL` setting allows controlling the level of JavaScript/
+  HTML debuggability. Default debuggability of JS is set by `-gX`, so -`g3`
+  causes JS's debug level to be 3 as well, but this new flag allows e.g.
+  `-O3 -gsource-map -sJS_DEBUG_LEVEL=0` which produces an optimized build with a
+  source map for the wasm, and the JS is still fully optimized (`-gsource-map`
+  sets `-g3`, which would otherwise cause the JS to be debuggable). (#XXX)
 
 4.0.12 - 08/01/25
 -----------------
