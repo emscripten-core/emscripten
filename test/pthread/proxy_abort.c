@@ -26,12 +26,8 @@ int might_throw(void(*func)()) {
   return threw;
 }
 
-void test() {
-  proxied_js_function();
-}
-
 void *thread_main(void *arg) {
-  REPORT_RESULT(might_throw(test));
+  REPORT_RESULT(might_throw(proxied_js_function));
   return 0;
 }
 
