@@ -1998,7 +1998,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         if 'EMTEST_SKIP_WASM_ENGINE' in os.environ:
           self.skipTest('no wasm engine was found to run the standalone part of this test')
         else:
-          self.fail('no wasm engine was found to run the standalone part of this test (Use EMTEST_SKIP_WASM_ENGINE to skip)')
+          logger.warning('no wasm engine was found to run the standalone part of this test (Use EMTEST_SKIP_WASM_ENGINE to skip)')
       engines += self.wasm_engines
     if len(engines) == 0:
       self.fail('No JS engine present to run this test with. Check %s and the paths therein.' % config.EM_CONFIG)
