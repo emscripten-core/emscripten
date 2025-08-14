@@ -52,6 +52,8 @@ See docs/process.md for more on how version tagging works.
   Use these proxying directives to annotate JS functions that should not be
   getting called from Workers. (#22648)
 
+- `--export-es6` flag was added to `file_packager.py` available when run 
+  standalone, to enable ES6 imports of generated JavaScript code (#24737)
 
 4.0.12 - 08/01/25
 -----------------
