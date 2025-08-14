@@ -7,13 +7,8 @@
 // wasm2js.js - enough of a polyfill for the WebAssembly object so that we can load
 // wasm2js code that way.
 
-// Emit "var WebAssembly" if definitely using wasm2js. Otherwise, in MAYBE_WASM2JS
-// mode, we can't use a "var" since it would prevent normal wasm from working.
 /** @suppress{duplicate, const} */
-#if WASM2JS || WASM == 2
-var
-#endif
-WebAssembly = {
+var WebAssembly = {
   // Note that we do not use closure quoting (this['buffer'], etc.) on these
   // functions, as they are just meant for internal use. In other words, this is
   // not a fully general polyfill.

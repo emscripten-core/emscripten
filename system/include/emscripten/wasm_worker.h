@@ -12,6 +12,11 @@ extern "C" {
 #define emscripten_wasm_worker_t int
 #define EMSCRIPTEN_WASM_WORKER_ID_PARENT 0
 
+// Similar to emscripten_async_wait_callback_t but with a volatile first
+// argument.
+typedef void (*emscripten_async_wait_volatile_callback_t)(volatile void* address, uint32_t value, ATOMICS_WAIT_RESULT_T waitResult, void* userData);
+
+
 // Creates a new Worker() that is attached to executing this
 // WebAssembly.Instance and WebAssembly.Memory.
 //
@@ -56,10 +61,10 @@ void emscripten_terminate_wasm_worker(emscripten_wasm_worker_t id);
 // (-sWASM_WORKERS=0)
 void emscripten_terminate_all_wasm_workers(void);
 
-// Returns EM_TRUE if the current thread is executing a Wasm Worker, EM_FALSE
+// Returns true if the current thread is executing a Wasm Worker, false
 // otherwise.  Note that calling this function can be relatively slow as it
 // incurs a Wasm->JS transition, so avoid calling it in hot paths.
-EM_BOOL emscripten_current_thread_is_wasm_worker(void);
+bool emscripten_current_thread_is_wasm_worker(void);
 
 // Returns a unique ID that identifies the calling Wasm Worker. Similar to
 // pthread_self().  The main browser thread will return 0 as the ID. First Wasm
@@ -78,9 +83,9 @@ uint32_t emscripten_wasm_worker_self_id(void);
 // never be called.
 // Passing messages between threads with this family of functions is relatively
 // slow and has a really high latency cost compared to direct coordination using
-// atomics and synchronization primitives like mutexes and synchronization
-// primitives. Additionally these functions will generate garbage on the JS
-// heap.  Therefore avoid using these functions where performance is critical.
+// atomics and synchronization primitives like mutexes. Additionally these 
+// functions will generate garbage on the JS heap.  Therefore avoid using these 
+// functions where performance is critical.
 void emscripten_wasm_worker_post_function_v(emscripten_wasm_worker_t id, void (*funcPtr)(void) __attribute__((nonnull)));
 void emscripten_wasm_worker_post_function_vi(emscripten_wasm_worker_t id, void (*funcPtr)(int) __attribute__((nonnull)), int arg0);
 void emscripten_wasm_worker_post_function_vii(emscripten_wasm_worker_t id, void (*funcPtr)(int, int) __attribute__((nonnull)), int arg0, int arg1);
@@ -120,17 +125,17 @@ int emscripten_atomics_is_lock_free(int byteWidth);
 void emscripten_lock_init(emscripten_lock_t *lock __attribute__((nonnull)));
 
 // Attempts to acquire the specified lock. If the lock is free, then this
-// function acquires the lock and immediately returns EM_TRUE. If the lock is
+// function acquires the lock and immediately returns true. If the lock is
 // not free at the time of the call, the calling thread is set to synchronously
 // sleep for at most maxWaitNanoseconds long, until another thread releases the
 // lock. If the lock is acquired within that period, the function returns
-// EM_TRUE. If the lock is not acquired within the specified period, then the
-// wait times out and EM_FALSE is returned.
+// true. If the lock is not acquired within the specified period, then the
+// wait times out and false is returned.
 // NOTE: This function can be only called in a Worker, and not on the main
 //       browser thread, because the main browser thread cannot synchronously
 //       sleep to wait for locks.
 
-EM_BOOL emscripten_lock_wait_acquire(emscripten_lock_t *lock __attribute__((nonnull)), int64_t maxWaitNanoseconds);
+bool emscripten_lock_wait_acquire(emscripten_lock_t *lock __attribute__((nonnull)), int64_t maxWaitNanoseconds);
 
 // Similar to emscripten_lock_wait_acquire(), but instead of waiting for at most
 // a specified timeout value, the thread will wait indefinitely long until the
@@ -153,7 +158,7 @@ void emscripten_lock_waitinf_acquire(emscripten_lock_t *lock __attribute__((nonn
 //       reasonable max wait value, or otherwise a "slow script dialog"
 //       notification can pop up, and can cause the browser to stop executing
 //       the page.
-EM_BOOL emscripten_lock_busyspin_wait_acquire(emscripten_lock_t *lock __attribute__((nonnull)), double maxWaitMilliseconds);
+bool emscripten_lock_busyspin_wait_acquire(emscripten_lock_t *lock __attribute__((nonnull)), double maxWaitMilliseconds);
 
 // Similar to emscripten_lock_wait_acquire(), but instead of placing the calling
 // thread to sleep until the lock can be acquired, this function will burn CPU
@@ -184,15 +189,15 @@ void emscripten_lock_busyspin_waitinf_acquire(emscripten_lock_t *lock __attribut
 //       use this API in Worker, you cannot utilise an infinite loop programming
 //       model.
 void emscripten_lock_async_acquire(emscripten_lock_t *lock __attribute__((nonnull)),
-                                   void (*asyncWaitFinished)(volatile void *address, uint32_t value, ATOMICS_WAIT_RESULT_T waitResult, void *userData) __attribute__((nonnull)),
+                                   emscripten_async_wait_volatile_callback_t asyncWaitFinished __attribute__((nonnull)),
                                    void *userData,
                                    double maxWaitMilliseconds);
 
-// Attempts to acquire a lock, returning EM_TRUE if successful. If the lock is
+// Attempts to acquire a lock, returning true if successful. If the lock is
 // already held, this function will not sleep to wait until the lock is
-// released, but immediately returns EM_FALSE.
+// released, but immediately returns false.
 // This function can be called on both main thread and in Workers.
-EM_BOOL emscripten_lock_try_acquire(emscripten_lock_t *lock __attribute__((nonnull)));
+bool emscripten_lock_try_acquire(emscripten_lock_t *lock __attribute__((nonnull)));
 
 // Unlocks the specified lock for another thread to access. Note that locks are
 // extremely lightweight, there is no "lock owner" tracking: this function does
@@ -218,7 +223,7 @@ int emscripten_semaphore_try_acquire(emscripten_semaphore_t *sem __attribute__((
 // acquired. If you use this API in Worker, you cannot run an infinite loop.
 void emscripten_semaphore_async_acquire(emscripten_semaphore_t *sem __attribute__((nonnull)),
                                         int num,
-                                        void (*asyncWaitFinished)(volatile void *address, uint32_t idx, ATOMICS_WAIT_RESULT_T result, void *userData) __attribute__((nonnull)),
+                                        emscripten_async_wait_volatile_callback_t asyncWaitFinished __attribute__((nonnull)),
                                         void *userData,
                                         double maxWaitMilliseconds);
 
@@ -262,17 +267,17 @@ void emscripten_condvar_waitinf(emscripten_condvar_t *condvar __attribute__((non
 
 // Same as the above, except that an attempt to wait for the condition variable
 // to become true is only performed for a maximum duration.
-// On success (no timeout), this function will return EM_TRUE. If the wait times
-// out, this function will return EM_FALSE. In this case,
+// On success (no timeout), this function will return true. If the wait times
+// out, this function will return false. In this case,
 // the calling thread will not try to reacquire the lock.
-EM_BOOL emscripten_condvar_wait(emscripten_condvar_t *condvar __attribute__((nonnull)), emscripten_lock_t *lock __attribute__((nonnull)), int64_t maxWaitNanoseconds);
+bool emscripten_condvar_wait(emscripten_condvar_t *condvar __attribute__((nonnull)), emscripten_lock_t *lock __attribute__((nonnull)), int64_t maxWaitNanoseconds);
 
 // Asynchronously wait for the given condition variable to signal.
 ATOMICS_WAIT_TOKEN_T emscripten_condvar_wait_async(emscripten_condvar_t *condvar __attribute__((nonnull)),
-                                                  emscripten_lock_t *lock __attribute__((nonnull)),
-                                                  void (*asyncWaitFinished)(int32_t *address, uint32_t value, ATOMICS_WAIT_RESULT_T waitResult, void *userData) __attribute__((nonnull)),
-                                                  void *userData,
-                                                  double maxWaitMilliseconds);
+                                                   emscripten_lock_t *lock __attribute__((nonnull)),
+                                                   emscripten_async_wait_callback_t asyncWaitFinished __attribute__((nonnull)),
+                                                   void *userData,
+                                                   double maxWaitMilliseconds);
 
 // Signals the given number of waiters on the specified condition variable.
 // Pass numWaitersToSignal == EMSCRIPTEN_NOTIFY_ALL_WAITERS to wake all waiters

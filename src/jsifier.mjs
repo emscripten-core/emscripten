@@ -7,10 +7,16 @@
 // Convert analyzed data to javascript. Everything has already been calculated
 // before this stage, which just does the final conversion to JavaScript.
 
+import assert from 'node:assert';
+import * as fs from 'node:fs/promises';
 import {
+  ATMODULES,
   ATEXITS,
   ATINITS,
+  ATPOSTCTORS,
+  ATPRERUNS,
   ATMAINS,
+  ATPOSTRUNS,
   defineI64Param,
   indentify,
   makeReturn64,
@@ -21,24 +27,28 @@ import {
 } from './parseTools.mjs';
 import {
   addToCompileTimeContext,
-  assert,
   error,
   errorOccured,
   isDecorator,
   isJsOnlySymbol,
   compileTimeContext,
-  print,
   printErr,
-  read,
+  readFile,
+  runInMacroContext,
   warn,
   warnOnce,
   warningOccured,
+  localFile,
 } from './utility.mjs';
 import {LibraryManager, librarySymbols} from './modules.mjs';
 
 const addedLibraryItems = {};
 
 const extraLibraryFuncs = [];
+
+// Experimental feature to check for invalid __deps entries.
+// See `EMCC_CHECK_DEPS` in in the environment to try it out.
+const CHECK_DEPS = process.env.EMCC_CHECK_DEPS;
 
 // Some JS-implemented library functions are proxied to be called on the main
 // browser thread, if the Emscripten runtime is executing in a Web Worker.
@@ -51,7 +61,7 @@ function mangleCSymbolName(f) {
   if (f === '__main_argc_argv') {
     f = 'main';
   }
-  return f[0] == '$' ? f.substr(1) : '_' + f;
+  return f[0] == '$' ? f.slice(1) : '_' + f;
 }
 
 // Splits out items that pass filter. Returns also the original sans the filtered
@@ -75,12 +85,25 @@ function stringifyWithFunctions(obj) {
   if (Array.isArray(obj)) {
     return '[' + obj.map(stringifyWithFunctions).join(',') + ']';
   }
+
+  // preserve the type of the object if it is one of [Map, Set, WeakMap, WeakSet].
+  const builtinContainers = runInMacroContext('[Map, Set, WeakMap, WeakSet]', {
+    filename: '<internal>',
+  });
+  for (const container of builtinContainers) {
+    if (obj instanceof container) {
+      const className = container.name;
+      assert(!obj.size, `cannot stringify ${className} with data`);
+      return `new ${className}`;
+    }
+  }
+
   var rtn = '{\n';
   for (const [key, value] of Object.entries(obj)) {
     var str = stringifyWithFunctions(value);
     // Handle JS method syntax where the function property starts with its own
-    // name. e.g.  foo(a) {},
-    if (typeof value === 'function' && str.startsWith(key)) {
+    // name. e.g.  `foo(a) {}` (or `async foo(a) {}`)
+    if (typeof value === 'function' && (str.startsWith(key) || str.startsWith('async ' + key))) {
       rtn += str + ',\n';
     } else {
       rtn += escapeJSONKey(key) + ':' + str + ',\n';
@@ -112,7 +135,7 @@ function resolveAlias(symbol) {
   return symbol;
 }
 
-function getTransitiveDeps(symbol, debug) {
+function getTransitiveDeps(symbol) {
   // TODO(sbc): Use some kind of cache to avoid quadratic behaviour here.
   const transitiveDeps = new Set();
   const seen = new Set();
@@ -137,36 +160,207 @@ function getTransitiveDeps(symbol, debug) {
 }
 
 function shouldPreprocess(fileName) {
-  var content = read(fileName).trim();
+  var content = readFile(fileName).trim();
   return content.startsWith('#preprocess\n') || content.startsWith('#preprocess\r\n');
 }
 
-function getIncludeFile(fileName, needsPreprocess) {
-  let result = `// include: ${fileName}\n`;
-  if (needsPreprocess) {
+function getIncludeFile(fileName, alwaysPreprocess, shortName) {
+  shortName ??= fileName;
+  let result = `// include: ${shortName}\n`;
+  const doPreprocess = alwaysPreprocess || shouldPreprocess(fileName);
+  if (doPreprocess) {
     result += processMacros(preprocess(fileName), fileName);
   } else {
-    result += read(fileName);
+    result += readFile(fileName);
   }
-  result += `// end include: ${fileName}\n`;
+  result += `// end include: ${shortName}\n`;
   return result;
+}
+
+function getSystemIncludeFile(fileName) {
+  return getIncludeFile(localFile(fileName), /*alwaysPreprocess=*/ true, /*shortName=*/ fileName);
 }
 
 function preJS() {
   let result = '';
   for (const fileName of PRE_JS_FILES) {
-    result += getIncludeFile(fileName, shouldPreprocess(fileName));
+    result += getIncludeFile(fileName);
   }
   return result;
 }
 
-export function runJSify(symbolsOnly) {
+// Certain library functions have specific indirect dependencies.  See the
+// comments alongside eaach of these.
+const checkDependenciesSkip = new Set([
+  '_mmap_js',
+  '_emscripten_throw_longjmp',
+  '_emscripten_receive_on_main_thread_js',
+  'emscripten_start_fetch',
+  'emscripten_start_wasm_audio_worklet_thread_async',
+]);
+
+const checkDependenciesIgnore = new Set([
+  // These are added in bulk to whole library files are so are not precise
+  '$PThread',
+  '$WebGPU',
+  '$SDL',
+  '$GLUT',
+  '$GLEW',
+  '$Browser',
+  '$AL',
+  '$GL',
+  '$IDBStore',
+  // These are added purely for their side effects
+  '$polyfillWaitAsync',
+  '$GLImmediateSetup',
+  '$emscriptenGetAudioObject',
+  // These get conservatively injected via i53ConversionDeps
+  '$bigintToI53Checked',
+  '$convertI32PairToI53Checked',
+  'setTempRet0',
+]);
+
+/**
+ * Hacky attempt to find unused `__deps` entries.  This is not enabled by default
+ * but can be enabled by setting CHECK_DEPS above.
+ * TODO: Use a more precise method such as tokenising using acorn.
+ */
+function checkDependencies(symbol, snippet, deps, postset) {
+  if (checkDependenciesSkip.has(symbol)) {
+    return;
+  }
+  for (const dep of deps) {
+    if (typeof dep === 'function') {
+      continue;
+    }
+    if (checkDependenciesIgnore.has(dep)) {
+      continue;
+    }
+    const mangled = mangleCSymbolName(dep);
+    if (!snippet.includes(mangled) && (!postset || !postset.includes(mangled))) {
+      error(`${symbol}: unused dependency: ${dep}`);
+    }
+  }
+}
+
+function addImplicitDeps(snippet, deps) {
+  // There are some common dependencies that we inject automatically by
+  // conservatively scanning the input functions for their usage.
+  // Specifically, these are dependencies that are very common and would be
+  // burdensome to add manually to all functions.
+  // The first four are deps that are automatically/conditionally added
+  // by the {{{ makeDynCall }}}, and {{{ runtimeKeepalivePush/Pop }}} macros.
+  const autoDeps = [
+    'getDynCaller',
+    'getWasmTableEntry',
+    'runtimeKeepalivePush',
+    'runtimeKeepalivePop',
+    'UTF8ToString',
+  ];
+  for (const dep of autoDeps) {
+    if (snippet.includes(dep + '(')) {
+      deps.push('$' + dep);
+    }
+  }
+}
+
+function handleI64Signatures(symbol, snippet, sig, i53abi) {
+  // Handle i64 parameters and return values.
+  //
+  // When WASM_BIGINT is enabled these arrive as BigInt values which we
+  // convert to int53 JS numbers.  If necessary, we also convert the return
+  // value back into a BigInt.
+  //
+  // When WASM_BIGINT is not enabled we receive i64 values as a pair of i32
+  // numbers which is converted to single int53 number.  In necessary, we also
+  // split the return value into a pair of i32 numbers.
+  return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
+    let argLines = args.split('\n');
+    argLines = argLines.map((line) => line.split('//')[0]);
+    const argNames = argLines
+      .join(' ')
+      .split(',')
+      .map((name) => name.trim());
+    const newArgs = [];
+    let argConversions = '';
+    if (sig.length > argNames.length + 1) {
+      error(`handleI64Signatures: signature too long for ${symbol}`);
+      return snippet;
+    }
+    for (let i = 0; i < argNames.length; i++) {
+      const name = argNames[i];
+      // If sig is shorter than argNames list then argType will be undefined
+      // here, which will result in the default case below.
+      const argType = sig[i + 1];
+      if (WASM_BIGINT && ((MEMORY64 && argType == 'p') || (i53abi && argType == 'j'))) {
+        argConversions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
+      } else {
+        if (argType == 'j' && i53abi) {
+          argConversions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
+          newArgs.push(defineI64Param(name));
+        } else if (argType == 'p' && CAN_ADDRESS_2GB) {
+          argConversions += `  ${name} >>>= 0;\n`;
+          newArgs.push(name);
+        } else {
+          newArgs.push(name);
+        }
+      }
+    }
+
+    if (!WASM_BIGINT) {
+      args = newArgs.join(',');
+    }
+
+    if ((sig[0] == 'j' && i53abi) || (sig[0] == 'p' && MEMORY64)) {
+      const await_ = async_ ? 'await ' : '';
+      // For functions that where we need to mutate the return value, we
+      // also need to wrap the body in an inner function.
+      if (oneliner) {
+        if (argConversions) {
+          return `${async_}(${args}) => {
+${argConversions}
+return ${makeReturn64(await_ + body)};
+}`;
+        }
+        return `${async_}(${args}) => ${makeReturn64(await_ + body)};`;
+      }
+      return `\
+${async_}function(${args}) {
+${argConversions}
+var ret = (() => { ${body} })();
+return ${makeReturn64(await_ + 'ret')};
+}`;
+    }
+
+    // Otherwise no inner function is needed and we covert the arguments
+    // before executing the function body.
+    if (oneliner) {
+      body = `return ${body}`;
+    }
+    return `\
+${async_}function(${args}) {
+${argConversions}
+${body};
+}`;
+  });
+}
+
+export async function runJSify(outputFile, symbolsOnly) {
   const libraryItems = [];
   const symbolDeps = {};
   const asyncFuncs = [];
   let postSets = [];
 
   LibraryManager.load();
+
+  let outputHandle = process.stdout;
+  if (outputFile) {
+    outputHandle = await fs.open(outputFile, 'w');
+  }
+
+  async function writeOutput(str) {
+    await outputHandle.write(str + '\n');
+  }
 
   const symbolsNeeded = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
   symbolsNeeded.push(...extraLibraryFuncs);
@@ -182,86 +376,6 @@ export function runJSify(symbolsOnly) {
         symbolsNeeded.push(key);
       }
     }
-  }
-
-  function handleI64Signatures(symbol, snippet, sig, i53abi) {
-    // Handle i64 parameters and return values.
-    //
-    // When WASM_BIGINT is enabled these arrive as BigInt values which we
-    // convert to int53 JS numbers.  If necessary, we also convert the return
-    // value back into a BigInt.
-    //
-    // When WASM_BIGINT is not enabled we receive i64 values as a pair of i32
-    // numbers which is converted to single int53 number.  In necessary, we also
-    // split the return value into a pair of i32 numbers.
-    return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
-      let argLines = args.split('\n');
-      argLines = argLines.map((line) => line.split('//')[0]);
-      const argNames = argLines
-        .join(' ')
-        .split(',')
-        .map((name) => name.trim());
-      const newArgs = [];
-      let argConversions = '';
-      if (sig.length > argNames.length + 1) {
-        error(`handleI64Signatures: signature too long for ${symbol}`);
-        return snippet;
-      }
-      for (let i = 0; i < argNames.length; i++) {
-        const name = argNames[i];
-        // If sig is shorter than argNames list then argType will be undefined
-        // here, which will result in the default case below.
-        const argType = sig[i + 1];
-        if (WASM_BIGINT && ((MEMORY64 && argType == 'p') || (i53abi && argType == 'j'))) {
-          argConversions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
-        } else {
-          if (argType == 'j' && i53abi) {
-            argConversions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
-            newArgs.push(defineI64Param(name));
-          } else if (argType == 'p' && CAN_ADDRESS_2GB) {
-            argConversions += `  ${name} >>>= 0;\n`;
-            newArgs.push(name);
-          } else {
-            newArgs.push(name);
-          }
-        }
-      }
-
-      if (!WASM_BIGINT) {
-        args = newArgs.join(',');
-      }
-
-      if ((sig[0] == 'j' && i53abi) || (sig[0] == 'p' && MEMORY64)) {
-        // For functions that where we need to mutate the return value, we
-        // also need to wrap the body in an inner function.
-        if (oneliner) {
-          if (argConversions) {
-            return `${async_}(${args}) => {
-${argConversions}
-  return ${makeReturn64(body)};
-}`;
-          }
-          return `${async_}(${args}) => ${makeReturn64(body)};`;
-        }
-        return `\
-${async_}function(${args}) {
-${argConversions}
-  var ret = (() => { ${body} })();
-  return ${makeReturn64('ret')};
-}`;
-      }
-
-      // Otherwise no inner function is needed and we covert the arguments
-      // before executing the function body.
-      if (oneliner) {
-        body = `return ${body}`;
-      }
-      return `\
-${async_}function(${args}) {
-${argConversions}
-  ${body};
-}`;
-    });
   }
 
   function processLibraryFunction(snippet, symbol, mangled, deps, isStub) {
@@ -284,17 +398,21 @@ ${argConversions}
 
     // apply LIBRARY_DEBUG if relevant
     if (LIBRARY_DEBUG && !isJsOnlySymbol(symbol)) {
-      snippet = modifyJSFunction(
-        snippet,
-        (args, body, async) => `\
+      snippet = modifyJSFunction(snippet, (args, body, _async, oneliner) => {
+        var run_func;
+        if (oneliner) {
+          run_func = `var ret = ${body}`;
+        } else {
+          run_func = `var ret = (() => { ${body} })();`;
+        }
+        return `\
 function(${args}) {
-  var ret = (() => { if (runtimeDebug) err("[library call:${mangled}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
-  ${body}
-  })();
-  if (runtimeDebug && typeof ret != "undefined") err("  [     return:" + prettyPrint(ret));
+  dbg("[library call:${mangled}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
+  ${run_func}
+  dbg("  [     return:" + prettyPrint(ret));
   return ret;
-}`,
-      );
+}`;
+      });
     }
 
     const sig = LibraryManager.library[symbol + '__sig'];
@@ -323,7 +441,7 @@ function(${args}) {
       if (!possibleProxyingModes.includes(proxyingMode)) {
         throw new Error(`Invalid proxyingMode ${symbol}__proxy: '${proxyingMode}' specified! Possible modes: ${possibleProxyingModes.join(',')}`);
       }
-      if (SHARED_MEMORY) {
+      if (SHARED_MEMORY && proxyingMode != 'none') {
         snippet = modifyJSFunction(snippet, (args, body, async_, oneliner) => {
           if (oneliner) {
             body = `return ${body}`;
@@ -348,7 +466,7 @@ function(${args}) {
             prefix = `assert(!${insideWorker}, "Attempted to call function '${mangled}' inside a pthread/Wasm Worker, but by using the proxying directive '${proxyingMode}', this function has been declared to only be callable from the main browser thread");`;
           }
 
-          return `function(${args}) {
+          return `${async_}function(${args}) {
 ${prefix}
 ${body}
 }\n`;
@@ -360,27 +478,6 @@ ${body}
     return snippet;
   }
 
-  function addImplicitDeps(snippet, deps) {
-    // There are some common dependencies that we inject automatically by
-    // conservatively scanning the input functions for their usage.
-    // Specifically, these are dependencies that are very common and would be
-    // burdensome to add manually to all functions.
-    // The first four are deps that are automatically/conditionally added
-    // by the {{{ makeDynCall }}}, and {{{ runtimeKeepalivePush/Pop }}} macros.
-    const autoDeps = [
-      'getDynCaller',
-      'getWasmTableEntry',
-      'runtimeKeepalivePush',
-      'runtimeKeepalivePop',
-      'UTF8ToString',
-    ];
-    for (const dep of autoDeps) {
-      if (snippet.includes(dep + '(')) {
-        deps.push('$' + dep);
-      }
-    }
-  }
-
   function symbolHandler(symbol) {
     // In LLVM, exceptions generate a set of functions of form
     // __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.  where
@@ -390,7 +487,7 @@ ${body}
     if (LINK_AS_CXX && !WASM_EXCEPTIONS && symbol.startsWith('__cxa_find_matching_catch_')) {
       if (DISABLE_EXCEPTION_THROWING) {
         error(
-          'DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-except (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.',
+          'DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-exceptions (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.',
         );
         return;
       }
@@ -438,9 +535,7 @@ ${body}
       if (ASYNCIFY) {
         const original = LibraryManager.library[symbol];
         if (typeof original == 'function') {
-          isAsyncFunction =
-            LibraryManager.library[symbol + '__async'] ||
-            original.constructor.name == 'AsyncFunction';
+          isAsyncFunction = LibraryManager.library[symbol + '__async'];
         }
         if (isAsyncFunction) {
           asyncFuncs.push(symbol);
@@ -539,6 +634,18 @@ ${body}
       let isFunction = false;
       let aliasTarget;
 
+      const postsetId = symbol + '__postset';
+      const postset = LibraryManager.library[postsetId];
+      if (postset) {
+        // A postset is either code to run right now, or some text we should emit.
+        // If it's code, it may return some text to emit as well.
+        const postsetString = typeof postset == 'function' ? postset() : postset;
+        if (postsetString && !addedLibraryItems[postsetId]) {
+          addedLibraryItems[postsetId] = true;
+          postSets.push(postsetString + ';');
+        }
+      }
+
       if (typeof snippet == 'string') {
         if (snippet[0] != '=') {
           if (LibraryManager.library[snippet]) {
@@ -557,19 +664,8 @@ ${body}
         isFunction = true;
         snippet = processLibraryFunction(snippet, symbol, mangled, deps, isStub);
         addImplicitDeps(snippet, deps);
-      }
-
-      const postsetId = symbol + '__postset';
-      let postset = LibraryManager.library[postsetId];
-      if (postset) {
-        // A postset is either code to run right now, or some text we should emit.
-        // If it's code, it may return some text to emit as well.
-        if (typeof postset == 'function') {
-          postset = postset();
-        }
-        if (postset && !addedLibraryItems[postsetId]) {
-          addedLibraryItems[postsetId] = true;
-          postSets.push(postset + ';');
+        if (CHECK_DEPS && !isUserSymbol) {
+          checkDependencies(symbol, snippet, deps, postset?.toString());
         }
       }
 
@@ -582,7 +678,7 @@ ${body}
           return dep();
         }
         // $noExitRuntime is special since there are conditional usages of it
-        // in library.js and library_pthread.js.  These happen before deps are
+        // in libcore.js and libpthread.js.  These happen before deps are
         // processed so depending on it via `__deps` doesn't work.
         if (dep === '$noExitRuntime') {
           error(
@@ -624,25 +720,38 @@ ${body}
         //  emits
         //   'var foo;[code here verbatim];'
         contentText = 'var ' + mangled + snippet;
-        if (snippet[snippet.length - 1] != ';' && snippet[snippet.length - 1] != '}')
+        if (snippet[snippet.length - 1] != ';' && snippet[snippet.length - 1] != '}') {
           contentText += ';';
+        }
       } else if (typeof snippet == 'undefined') {
-        contentText = `var ${mangled};`;
+        // wasmTable is kind of special.  In the normal configuration we export
+        // it from the wasm module under the name `__indirect_function_table`
+        // but we declare it as an 'undefined'.  It then gets assigned manually
+        // once the wasm module is available.
+        // TODO(sbc): This is kind of hacky, we should come up with a better solution.
+        var isDirectWasmExport = WASM_ESM_INTEGRATION && mangled == 'wasmTable';
+        if (isDirectWasmExport) {
+          contentText = '';
+        } else {
+          contentText = `var ${mangled};`;
+        }
       } else {
         // In JS libraries
         //   foo: '=[value]'
         //  emits
         //   'var foo = [value];'
         if (typeof snippet == 'string' && snippet[0] == '=') {
-          snippet = snippet.substr(1);
+          snippet = snippet.slice(1);
         }
         contentText = `var ${mangled} = ${snippet};`;
       }
-      // asm module exports are done in emscripten.py, after the asm module is ready. Here
-      // we also export library methods as necessary.
-      if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
-        contentText += `\nModule['${mangled}'] = ${mangled};`;
+
+      if (MODULARIZE == 'instance' && (EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
+        // In MODULARIZE=instance mode mark JS library symbols are exported at
+        // the point of declaration.
+        contentText = 'export ' + contentText;
       }
+
       // Relocatable code needs signatures to create proper wrappers.
       if (sig && RELOCATABLE) {
         if (!WASM_BIGINT) {
@@ -690,8 +799,12 @@ ${body}
     libraryItems.push(JS);
   }
 
-  function includeFile(fileName, needsPreprocess = true) {
-    print(getIncludeFile(fileName, needsPreprocess));
+  function includeSystemFile(fileName) {
+    writeOutput(getSystemIncludeFile(fileName));
+  }
+
+  function includeFile(fileName) {
+    writeOutput(getIncludeFile(fileName));
   }
 
   function finalCombiner() {
@@ -717,17 +830,23 @@ ${body}
     postSets.push(...orderedPostSets);
 
     const shellFile = MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js';
-    includeFile(shellFile);
+    includeSystemFile(shellFile);
 
     const preFile = MINIMAL_RUNTIME ? 'preamble_minimal.js' : 'preamble.js';
-    includeFile(preFile);
+    includeSystemFile(preFile);
 
+    writeOutput('// Begin JS library code\n');
     for (const item of libraryItems.concat(postSets)) {
-      print(indentify(item || '', 2));
+      writeOutput(indentify(item || '', 2));
+    }
+    writeOutput('// End JS library code\n');
+
+    if (!MINIMAL_RUNTIME) {
+      includeSystemFile('postlibrary.js');
     }
 
     if (PTHREADS) {
-      print(`
+      writeOutput(`
 // proxiedFunctionTable specifies the list of functions that can be called
 // either synchronously or asynchronously from other threads in postMessage()d
 // or internally queued events. This way a pthread in a Worker can synchronously
@@ -738,36 +857,40 @@ var proxiedFunctionTable = [
 `);
     }
 
-    if (errorOccured()) {
-      throw Error('Aborting compilation due to previous errors');
-    }
-
     // This is the main 'post' pass. Print out the generated code
     // that we have here, together with the rest of the output
     // that we started to print out earlier (see comment on the
     // "Final shape that will be created").
-    print('// EMSCRIPTEN_END_FUNCS\n');
+    writeOutput('// EMSCRIPTEN_END_FUNCS\n');
 
     const postFile = MINIMAL_RUNTIME ? 'postamble_minimal.js' : 'postamble.js';
-    includeFile(postFile);
+    includeSystemFile(postFile);
 
     for (const fileName of POST_JS_FILES) {
-      includeFile(fileName, shouldPreprocess(fileName));
+      includeFile(fileName);
     }
 
-    if (MODULARIZE) {
-      includeFile('postamble_modularize.js');
+    if (MODULARIZE && MODULARIZE != 'instance') {
+      includeSystemFile('postamble_modularize.js');
     }
 
-    print(
+    if (errorOccured()) {
+      throw Error('Aborting compilation due to previous errors');
+    }
+
+    writeOutput(
       '//FORWARDED_DATA:' +
         JSON.stringify({
           librarySymbols,
           warnings: warningOccured(),
           asyncFuncs,
           libraryDefinitions: LibraryManager.libraryDefinitions,
+          ATPRERUNS: ATPRERUNS.join('\n'),
+          ATMODULES: ATMODULES.join('\n'),
           ATINITS: ATINITS.join('\n'),
-          ATMAINS: STRICT ? '' : ATMAINS.join('\n'),
+          ATPOSTCTORS: ATPOSTCTORS.join('\n'),
+          ATMAINS: ATMAINS.join('\n'),
+          ATPOSTRUNS: ATPOSTRUNS.join('\n'),
           ATEXITS: ATEXITS.join('\n'),
         }),
     );
@@ -778,7 +901,7 @@ var proxiedFunctionTable = [
   }
 
   if (symbolsOnly) {
-    print(
+    writeOutput(
       JSON.stringify({
         deps: symbolDeps,
         asyncFuncs,
@@ -792,6 +915,8 @@ var proxiedFunctionTable = [
   if (errorOccured()) {
     throw Error('Aborting compilation due to previous errors');
   }
+
+  if (outputFile) await outputHandle.close();
 }
 
 addToCompileTimeContext({

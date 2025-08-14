@@ -7,9 +7,10 @@
 #if MODULARIZE
 var Module = moduleArg;
 #elif USE_CLOSURE_COMPILER
+/** @type{Object} */
+var Module;
 // if (!Module)` is crucial for Closure Compiler here as it will
 // otherwise replace every `Module` occurrence with the object below
-var /** @type{Object} */ Module;
 if (!Module) /** @suppress{checkTypes}*/Module = 
 #if AUDIO_WORKLET
   globalThis.{{{ EXPORT_NAME }}} || 
@@ -33,35 +34,19 @@ var Module =
 var Module = {{{ EXPORT_NAME }}};
 #endif
 
-#if MODULARIZE && USE_READY_PROMISE
-// Set up the promise that indicates the Module is initialized
-var readyPromiseResolve, readyPromiseReject;
-var readyPromise = new Promise((resolve, reject) => {
-  readyPromiseResolve = resolve;
-  readyPromiseReject = reject;
-});
-#if ASSERTIONS
-{{{ addReadyPromiseAssertions() }}}
-#endif
-#endif
-
 #if ENVIRONMENT_MAY_BE_NODE
-var ENVIRONMENT_IS_NODE = typeof process == 'object' && process.type != 'renderer';
+var ENVIRONMENT_IS_NODE = {{{ nodeDetectionCode() }}};
 #endif
 
 #if ENVIRONMENT_MAY_BE_SHELL
 var ENVIRONMENT_IS_SHELL = typeof read == 'function';
 #endif
 
-#if AUDIO_WORKLET
-var ENVIRONMENT_IS_AUDIO_WORKLET = typeof AudioWorkletGlobalScope !== 'undefined';
-#endif
-
 #if ASSERTIONS || PTHREADS
 #if !ENVIRONMENT_MAY_BE_NODE && !ENVIRONMENT_MAY_BE_SHELL
 var ENVIRONMENT_IS_WEB = true
-#elif ENVIRONMENT && !ENVIRONMENT.includes(',')
-var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT === 'web' }}};
+#elif ENVIRONMENT.length == 1
+var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT[0] === 'web' }}};
 #elif ENVIRONMENT_MAY_BE_SHELL && ENVIRONMENT_MAY_BE_NODE
 var ENVIRONMENT_IS_WEB = !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_SHELL;
 #elif ENVIRONMENT_MAY_BE_SHELL
@@ -71,8 +56,28 @@ var ENVIRONMENT_IS_WEB = !ENVIRONMENT_IS_NODE;
 #endif
 #endif // ASSERTIONS || PTHREADS
 
+#if ENVIRONMENT_MAY_BE_NODE && (PTHREADS || WASM_WORKERS)
+if (ENVIRONMENT_IS_NODE) {
+  var worker_threads = require('worker_threads');
+  global.Worker = worker_threads.Worker;
+}
+#endif
+
 #if WASM_WORKERS
-var ENVIRONMENT_IS_WASM_WORKER = Module['$ww'];
+var ENVIRONMENT_IS_WASM_WORKER = globalThis.name == 'em-ww';
+
+#if ENVIRONMENT_MAY_BE_NODE
+if (ENVIRONMENT_IS_NODE) {
+  // The way we signal to a worker that it is hosting a pthread is to construct
+  // it with a specific name.
+  ENVIRONMENT_IS_WASM_WORKER = worker_threads['workerData'] == 'em-ww'
+}
+#endif
+#endif
+
+#if AUDIO_WORKLET
+var ENVIRONMENT_IS_AUDIO_WORKLET = typeof AudioWorkletGlobalScope !== 'undefined';
+if (ENVIRONMENT_IS_AUDIO_WORKLET) ENVIRONMENT_IS_WASM_WORKER = true;
 #endif
 
 #if ASSERTIONS && ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_SHELL
@@ -103,16 +108,16 @@ if (ENVIRONMENT_IS_NODE) {
 var out = defaultPrint;
 var err = defaultPrintErr;
 #else
-var out = (text) => console.log(text);
-var err = (text) => console.error(text);
+var out = (...args) => console.log(...args);
+var err = (...args) => console.error(...args);
 #endif
 
 // Override this function in a --pre-js file to get a signal for when
 // compilation is ready. In that callback, call the function run() to start
 // the program.
 function ready() {
-#if MODULARIZE && USE_READY_PROMISE
-  readyPromiseResolve(Module);
+#if MODULARIZE
+  readyPromiseResolve?.(Module);
 #endif // MODULARIZE
 #if INVOKE_RUN && HAS_MAIN
   {{{ runIfMainThread("run();") }}}
@@ -122,41 +127,34 @@ function ready() {
 #if PTHREADS
   // This Worker is now ready to host pthreads, tell the main thread we can proceed.
   if (ENVIRONMENT_IS_PTHREAD) {
-    startWorker(Module);
+    startWorker();
   }
 #endif
 }
 
-#if POLYFILL
-// See https://caniuse.com/mdn-javascript_builtins_object_assign
-#if MIN_CHROME_VERSION < 45 || MIN_FIREFOX_VERSION < 34 || MIN_SAFARI_VERSION < 90000
-#include "polyfill/objassign.js"
-#endif
-#endif
-
 #if PTHREADS
 // MINIMAL_RUNTIME does not support --proxy-to-worker option, so Worker and Pthread environments
 // coincide.
-var ENVIRONMENT_IS_WORKER = typeof importScripts == 'function';
-var ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && self.name == 'em-pthread';
+var ENVIRONMENT_IS_WORKER = typeof WorkerGlobalScope != 'undefined';
+var ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && self.name?.startsWith('em-pthread');
 
 #if !MODULARIZE
 // In MODULARIZE mode _scriptName needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
-var _scriptName = (typeof document != 'undefined') ? document.currentScript?.src : undefined;
+var _scriptName = typeof document != 'undefined' ? document.currentScript?.src : undefined;
 #endif
 
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
-  var worker_threads = require('worker_threads');
-  global.Worker = worker_threads.Worker;
   ENVIRONMENT_IS_WORKER = !worker_threads.isMainThread;
   // Under node we set `workerData` to `em-pthread` to signal that the worker
   // is hosting a pthread.
   ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && worker_threads['workerData'] == 'em-pthread'
+#if !EXPORT_ES6
   _scriptName = __filename;
-} else
 #endif
+} else
+#endif // ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_WORKER) {
   _scriptName = self.location.href;
 }

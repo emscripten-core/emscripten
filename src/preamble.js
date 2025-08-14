@@ -15,22 +15,17 @@
 //    is up at http://kripken.github.io/emscripten-site/docs/api_reference/preamble.js.html
 
 #if RELOCATABLE
-{{{ makeModuleReceiveWithVar('dynamicLibraries', undefined, '[]', true) }}}
+{{{ makeModuleReceiveWithVar('dynamicLibraries', undefined, '[]') }}}
 #endif
 
 {{{ makeModuleReceiveWithVar('wasmBinary') }}}
 
-#if WASM != 2 && MAYBE_WASM2JS
-#if !WASM2JS
-if (Module['doWasm2JS']) {
-#endif
+#if WASM2JS
+#if WASM != 2
+// WASM == 2 includes wasm2js.js separately.
 #include "wasm2js.js"
-#if !WASM2JS
-}
-#endif
 #endif
 
-#if MAYBE_WASM2JS
 if (WebAssembly.isWasm2js) {
   // We don't need to actually download a wasm binary, mark it as present but
   // empty.
@@ -44,21 +39,7 @@ if (typeof WebAssembly != 'object') {
 }
 #endif
 
-#if SAFE_HEAP
-#include "runtime_safe_heap.js"
-#endif
-
-#if USE_ASAN
-#include "runtime_asan.js"
-#endif
-
-#if SUPPORT_BASE64_EMBEDDING || FORCE_FILESYSTEM
-#include "base64Utils.js"
-#endif
-
 // Wasm globals
-
-var wasmMemory;
 
 #if SHARED_MEMORY
 // For sending to workers.
@@ -114,80 +95,21 @@ function _free() {
 #endif // free
 #endif // ASSERTIONS
 
-// Memory management
+/**
+ * Indicates whether filename is delivered via file protocol (as opposed to http/https)
+ * @noinline
+ */
+var isFileURI = (filename) => filename.startsWith('file://');
 
-var HEAP,
-/** @type {!Int8Array} */
-  HEAP8,
-/** @type {!Uint8Array} */
-  HEAPU8,
-/** @type {!Int16Array} */
-  HEAP16,
-/** @type {!Uint16Array} */
-  HEAPU16,
-/** @type {!Int32Array} */
-  HEAP32,
-/** @type {!Uint32Array} */
-  HEAPU32,
-/** @type {!Float32Array} */
-  HEAPF32,
-#if WASM_BIGINT
-/* BigInt64Array type is not correctly defined in closure
-/** not-@type {!BigInt64Array} */
-  HEAP64,
-/* BigUint64Array type is not correctly defined in closure
-/** not-t@type {!BigUint64Array} */
-  HEAPU64,
-#endif
-/** @type {!Float64Array} */
-  HEAPF64;
-
-#if SUPPORT_BIG_ENDIAN
-var HEAP_DATA_VIEW;
-#endif
-
-#include "runtime_shared.js"
-
-#if PTHREADS
-#include "runtime_pthread.js"
-#endif
-
-#if ASSERTIONS
-assert(!Module['STACK_SIZE'], 'STACK_SIZE can no longer be set at runtime.  Use -sSTACK_SIZE at link time')
-#endif
+#include "runtime_common.js"
 
 #if ASSERTIONS
 assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray != undefined && Int32Array.prototype.set != undefined,
        'JS engine does not provide full typed array support');
 #endif
 
-#if IMPORTED_MEMORY
-// In non-standalone/normal mode, we create the memory here.
-#include "runtime_init_memory.js"
-#elif ASSERTIONS
-// If memory is defined in wasm, the user can't provide it, or set INITIAL_MEMORY
-assert(!Module['wasmMemory'], 'Use of `wasmMemory` detected.  Use -sIMPORTED_MEMORY to define wasmMemory externally');
-assert(!Module['INITIAL_MEMORY'], 'Detected runtime INITIAL_MEMORY setting.  Use -sIMPORTED_MEMORY to define wasmMemory dynamically');
-#endif // !IMPORTED_MEMORY && ASSERTIONS
-
-#include "runtime_stack_check.js"
-
-var __ATPRERUN__  = []; // functions called before the runtime is initialized
-var __ATINIT__    = []; // functions called during startup
-#if HAS_MAIN
-var __ATMAIN__    = []; // functions called when main() is to be run
-#endif
-var __ATEXIT__    = []; // functions called during shutdown
-var __ATPOSTRUN__ = []; // functions called after the main() is called
-
 #if RELOCATABLE
 var __RELOC_FUNCS__ = [];
-#endif
-
-var runtimeInitialized = false;
-
-#if EXIT_RUNTIME
-var runtimeExited = false;
 #endif
 
 function preRun() {
@@ -201,8 +123,11 @@ function preRun() {
       addOnPreRun(Module['preRun'].shift());
     }
   }
+#if ASSERTIONS
+  consumedModuleProp('preRun');
 #endif
-  callRuntimeCallbacks(__ATPRERUN__);
+#endif
+  <<< ATPRERUNS >>>
 }
 
 function initRuntime() {
@@ -219,22 +144,32 @@ function initRuntime() {
 #endif
 
 #if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return;
-#endif
-
-#if STACK_OVERFLOW_CHECK
-  checkStackCookie();
+  if (ENVIRONMENT_IS_PTHREAD) return startWorker();
 #endif
 
 #if STACK_OVERFLOW_CHECK >= 2
   setStackLimits();
 #endif
 
+#if STACK_OVERFLOW_CHECK
+  checkStackCookie();
+#endif
+
 #if RELOCATABLE
   callRuntimeCallbacks(__RELOC_FUNCS__);
 #endif
+
   <<< ATINITS >>>
-  callRuntimeCallbacks(__ATINIT__);
+
+#if hasExportedSymbol('__wasm_call_ctors')
+#if WASM_ESM_INTEGRATION
+  ___wasm_call_ctors();
+#else
+  wasmExports['__wasm_call_ctors']();
+#endif
+#endif
+
+  <<< ATPOSTCTORS >>>
 }
 
 #if HAS_MAIN
@@ -242,11 +177,7 @@ function preMain() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-#if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
-#endif
   <<< ATMAINS >>>
-  callRuntimeCallbacks(__ATMAIN__);
 }
 #endif
 
@@ -265,13 +196,10 @@ function exitRuntime() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-#if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
-#endif
+  {{{ runIfWorkerThread('return;') }}} // PThreads reuse the runtime from the main thread.
 #if !STANDALONE_WASM
   ___funcs_on_exit(); // Native atexit() functions
 #endif
-  callRuntimeCallbacks(__ATEXIT__);
   <<< ATEXITS >>>
 #if PTHREADS
   PThread.terminateAllThreads();
@@ -284,9 +212,7 @@ function postRun() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-#if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
-#endif
+  {{{ runIfWorkerThread('return;') }}} // PThreads reuse the runtime from the main thread.
 
 #if expectToReceiveOnModule('postRun')
   if (Module['postRun']) {
@@ -295,36 +221,13 @@ function postRun() {
       addOnPostRun(Module['postRun'].shift());
     }
   }
+#if ASSERTIONS
+  consumedModuleProp('postRun');
+#endif
 #endif
 
-  callRuntimeCallbacks(__ATPOSTRUN__);
+  <<< ATPOSTRUNS >>>
 }
-
-function addOnPreRun(cb) {
-  __ATPRERUN__.unshift(cb);
-}
-
-function addOnInit(cb) {
-  __ATINIT__.unshift(cb);
-}
-
-#if HAS_MAIN
-function addOnPreMain(cb) {
-  __ATMAIN__.unshift(cb);
-}
-#endif
-
-function addOnExit(cb) {
-#if EXIT_RUNTIME
-  __ATEXIT__.unshift(cb);
-#endif
-}
-
-function addOnPostRun(cb) {
-  __ATPOSTRUN__.unshift(cb);
-}
-
-#include "runtime_math.js"
 
 // A counter of dependencies for calling run(). If we need to
 // do asynchronous work before running, increment this and
@@ -334,23 +237,11 @@ function addOnPostRun(cb) {
 // it happens right before run - run will be postponed until
 // the dependencies are met.
 var runDependencies = 0;
-var runDependencyWatcher = null;
 var dependenciesFulfilled = null; // overridden to take different actions when all run dependencies are fulfilled
 #if ASSERTIONS
 var runDependencyTracking = {};
+var runDependencyWatcher = null;
 #endif
-
-function getUniqueRunDependency(id) {
-#if ASSERTIONS
-  var orig = id;
-  while (1) {
-    if (!runDependencyTracking[id]) return id;
-    id = orig + Math.random();
-  }
-#else
-  return id;
-#endif
-}
 
 function addRunDependency(id) {
   runDependencies++;
@@ -360,32 +251,37 @@ function addRunDependency(id) {
 #endif
 
 #if ASSERTIONS
-  if (id) {
-    assert(!runDependencyTracking[id]);
-    runDependencyTracking[id] = 1;
-    if (runDependencyWatcher === null && typeof setInterval != 'undefined') {
-      // Check for missing dependencies every few seconds
-      runDependencyWatcher = setInterval(() => {
-        if (ABORT) {
-          clearInterval(runDependencyWatcher);
-          runDependencyWatcher = null;
-          return;
+#if RUNTIME_DEBUG
+  dbg('addRunDependency', id);
+#endif
+  assert(id, 'addRunDependency requires an ID')
+  assert(!runDependencyTracking[id]);
+  runDependencyTracking[id] = 1;
+  if (runDependencyWatcher === null && typeof setInterval != 'undefined') {
+    // Check for missing dependencies every few seconds
+    runDependencyWatcher = setInterval(() => {
+      if (ABORT) {
+        clearInterval(runDependencyWatcher);
+        runDependencyWatcher = null;
+        return;
+      }
+      var shown = false;
+      for (var dep in runDependencyTracking) {
+        if (!shown) {
+          shown = true;
+          err('still waiting on run dependencies:');
         }
-        var shown = false;
-        for (var dep in runDependencyTracking) {
-          if (!shown) {
-            shown = true;
-            err('still waiting on run dependencies:');
-          }
-          err(`dependency: ${dep}`);
-        }
-        if (shown) {
-          err('(end of list)');
-        }
-      }, 10000);
-    }
-  } else {
-    err('warning: run dependency added without ID');
+        err(`dependency: ${dep}`);
+      }
+      if (shown) {
+        err('(end of list)');
+      }
+    }, 10000);
+#if ENVIRONMENT_MAY_BE_NODE
+    // Prevent this timer from keeping the runtime alive if nothing
+    // else is.
+    runDependencyWatcher.unref?.()
+#endif
   }
 #endif
 }
@@ -398,18 +294,20 @@ function removeRunDependency(id) {
 #endif
 
 #if ASSERTIONS
-  if (id) {
-    assert(runDependencyTracking[id]);
-    delete runDependencyTracking[id];
-  } else {
-    err('warning: run dependency removed without ID');
-  }
+#if RUNTIME_DEBUG
+  dbg('removeRunDependency', id);
+#endif
+  assert(id, 'removeRunDependency requires an ID');
+  assert(runDependencyTracking[id]);
+  delete runDependencyTracking[id];
 #endif
   if (runDependencies == 0) {
+#if ASSERTIONS
     if (runDependencyWatcher !== null) {
       clearInterval(runDependencyWatcher);
       runDependencyWatcher = null;
     }
+#endif
     if (dependenciesFulfilled) {
       var callback = dependenciesFulfilled;
       dependenciesFulfilled = null;
@@ -471,15 +369,13 @@ function abort(what) {
   var e = new WebAssembly.RuntimeError(what);
 
 #if MODULARIZE
-  readyPromiseReject(e);
+  readyPromiseReject?.(e);
 #endif
   // Throw the error whether or not MODULARIZE is set because abort is used
   // in code paths apart from instantiation where an exception is expected
   // to be thrown when abort is called.
   throw e;
 }
-
-#include "memoryprofiler.js"
 
 #if ASSERTIONS && !('$FS' in addedLibraryItems)
 // show errors on likely calls to FS when it was not included
@@ -498,11 +394,13 @@ var FS = {
 
   ErrnoError() { FS.error() },
 };
+{{{
+addAtModule(`
 Module['FS_createDataFile'] = FS.createDataFile;
 Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
+`);
+}}}
 #endif
-
-#include "URIUtils.js"
 
 #if ASSERTIONS
 function createExportWrapper(name, nargs) {
@@ -519,8 +417,6 @@ function createExportWrapper(name, nargs) {
   };
 }
 #endif
-
-#include "runtime_exceptions.js"
 
 #if ABORT_ON_WASM_EXCEPTIONS
 // `abortWrapperDepth` counts the recursion level of the wrapper function so
@@ -588,7 +484,7 @@ function instrumentWasmTableWithAbort() {
   var realGet = wasmTable.get;
   var wrapperCache = {};
   wasmTable.get = (i) => {
-    var func = realGet.call(wasmTable, i);
+    var func = realGet.call(wasmTable, {{{ toIndexType('i') }}});
     var cached = wrapperCache[i];
     if (!cached || cached.func !== func) {
       cached = wrapperCache[i] = {
@@ -601,38 +497,58 @@ function instrumentWasmTableWithAbort() {
 }
 #endif
 
+#if LOAD_SOURCE_MAP
+function receiveSourceMapJSON(sourceMap) {
+  wasmSourceMap = new WasmSourceMap(sourceMap);
+  {{{ runIfMainThread("removeRunDependency('source-map');") }}}
+}
+#endif
+
+#if (PTHREADS || WASM_WORKERS) && (LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER)
+// When using postMessage to send an object, it is processed by the structured
+// clone algorithm.  The prototype, and hence methods, on that object is then
+// lost. This function adds back the lost prototype.  This does not work with
+// nested objects that has prototypes, but it suffices for WasmSourceMap and
+// WasmOffsetConverter.
+function resetPrototype(constructor, attrs) {
+  var object = Object.create(constructor.prototype);
+  return Object.assign(object, attrs);
+}
+#endif
+
+#if !SOURCE_PHASE_IMPORTS && !WASM_ESM_INTEGRATION
+var wasmBinaryFile;
+
 function findWasmBinary() {
-#if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE && !AUDIO_WORKLET
+#if SINGLE_FILE && WASM == 1 && !WASM2JS
+  return base64Decode('<<< WASM_BINARY_DATA >>>');
+#else
+#if EXPORT_ES6 && !AUDIO_WORKLET
   if (Module['locateFile']) {
 #endif
-    var f = '{{{ WASM_BINARY_FILE }}}';
-#if !SINGLE_FILE
-    if (!isDataURI(f)) {
-      return locateFile(f);
-    }
-#endif
-    return f;
-#if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE && !AUDIO_WORKLET // In single-file mode, repeating WASM_BINARY_FILE would emit the contents again. For an Audio Worklet, we cannot use `new URL()`.
+    return locateFile('{{{ WASM_BINARY_FILE }}}');
+#if EXPORT_ES6 && !AUDIO_WORKLET // For an Audio Worklet, we cannot use `new URL()`.
   }
 #if ENVIRONMENT_MAY_BE_SHELL
-  if (ENVIRONMENT_IS_SHELL)
+  if (ENVIRONMENT_IS_SHELL) {
     return '{{{ WASM_BINARY_FILE }}}';
+  }
 #endif
   // Use bundler-friendly `new URL(..., import.meta.url)` pattern; works in browsers too.
   return new URL('{{{ WASM_BINARY_FILE }}}', import.meta.url).href;
 #endif
+#endif
 }
 
-var wasmBinaryFile;
-
 function getBinarySync(file) {
+#if SINGLE_FILE && WASM == 1 && !WASM2JS
+  if (ArrayBuffer.isView(file)) {
+    return file;
+  }
+#endif
+#if expectToReceiveOnModule('wasmBinary') || WASM2JS
   if (file == wasmBinaryFile && wasmBinary) {
     return new Uint8Array(wasmBinary);
-  }
-#if SUPPORT_BASE64_EMBEDDING
-  var binary = tryParseAsDataURI(file);
-  if (binary) {
-    return binary;
   }
 #endif
   if (readBinary) {
@@ -645,39 +561,26 @@ function getBinarySync(file) {
 #endif
 }
 
-function getBinaryPromise(binaryFile) {
+async function getWasmBinary(binaryFile) {
 #if !SINGLE_FILE
   // If we don't have the binary yet, load it asynchronously using readAsync.
-  if (!wasmBinary
-#if SUPPORT_BASE64_EMBEDDING
-      || isDataURI(binaryFile)
-#endif
-      ) {
+  if (!wasmBinary) {
     // Fetch the binary using readAsync
-    return readAsync(binaryFile).then(
-      (response) => new Uint8Array(/** @type{!ArrayBuffer} */(response)),
-      // Fall back to getBinarySync if readAsync fails
-      () => getBinarySync(binaryFile)
-    );
+    try {
+      var response = await readAsync(binaryFile);
+      return new Uint8Array(response);
+    } catch {
+      // Fall back to getBinarySync below;
+    }
   }
 #endif
 
   // Otherwise, getBinarySync should be able to get it synchronously
-  return Promise.resolve().then(() => getBinarySync(binaryFile));
+  return getBinarySync(binaryFile);
 }
 
-#if LOAD_SOURCE_MAP
-var wasmSourceMap;
-#include "source_map_support.js"
-#endif
-
-#if USE_OFFSET_CONVERTER
-var wasmOffsetConverter;
-#include "wasm_offset_converter.js"
-#endif
-
 #if SPLIT_MODULE
-{{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync',  true) }}}
+{{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync') }}}
 var splitModuleProxyHandler = {
   get(target, prop, receiver) {
     return (...args) => {
@@ -702,13 +605,6 @@ var splitModuleProxyHandler = {
     }
   }
 };
-#endif
-
-#if LOAD_SOURCE_MAP
-function receiveSourceMapJSON(sourceMap) {
-  wasmSourceMap = new WasmSourceMap(sourceMap);
-  {{{ runIfMainThread("removeRunDependency('source-map');") }}}
-}
 #endif
 
 #if SPLIT_MODULE || !WASM_ASYNC_COMPILATION
@@ -758,38 +654,19 @@ function instantiateSync(file, info) {
 }
 #endif
 
-#if (PTHREADS || WASM_WORKERS) && (LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER)
-// When using postMessage to send an object, it is processed by the structured
-// clone algorithm.  The prototype, and hence methods, on that object is then
-// lost. This function adds back the lost prototype.  This does not work with
-// nested objects that has prototypes, but it suffices for WasmSourceMap and
-// WasmOffsetConverter.
-function resetPrototype(constructor, attrs) {
-  var object = Object.create(constructor.prototype);
-  return Object.assign(object, attrs);
-}
-#endif
-
 #if WASM_ASYNC_COMPILATION
-function instantiateArrayBuffer(binaryFile, imports, receiver) {
+async function instantiateArrayBuffer(binaryFile, imports) {
+  try {
+    var binary = await getWasmBinary(binaryFile);
+    var instance = await WebAssembly.instantiate(binary, imports);
 #if USE_OFFSET_CONVERTER
-  var savedBinary;
+    // wasmOffsetConverter needs to be assigned before calling resolve.
+    // See comments below in instantiateAsync.
+    wasmOffsetConverter = new WasmOffsetConverter(binary, instance.module);
 #endif
-  return getBinaryPromise(binaryFile).then((binary) => {
-#if USE_OFFSET_CONVERTER
-    savedBinary = binary;
-#endif
-    return WebAssembly.instantiate(binary, imports);
-#if USE_OFFSET_CONVERTER
-  }).then((instance) => {
-    // wasmOffsetConverter needs to be assigned before calling the receiver
-    // (receiveInstantiationResult).  See comments below in instantiateAsync.
-    wasmOffsetConverter = new WasmOffsetConverter(savedBinary, instance.module);
     return instance;
-#endif
-  }).then(receiver, (reason) => {
+  } catch (reason) {
     err(`failed to asynchronously prepare wasm: ${reason}`);
-
 #if WASM == 2
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
     if (typeof location != 'undefined') {
@@ -797,11 +674,11 @@ function instantiateArrayBuffer(binaryFile, imports, receiver) {
       // WebAssembly compilation failed, try running the JS fallback instead.
       var search = location.search;
       if (search.indexOf('_rwasm=0') < 0) {
+        // Reload the page with the `_rwasm=0` argument
         location.href += (search ? search + '&' : '?') + '_rwasm=0';
-        // Return here to avoid calling abort() below.  The application
-        // still has a chance to start successfully do we don't want to
-        // trigger onAbort or onExit handlers.
-        return;
+        // Return a promise that never resolves.  We don't want to
+        // call abort below, or return an error to our caller.
+        return new Promise(() => {});
       }
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
     }
@@ -815,17 +692,19 @@ function instantiateArrayBuffer(binaryFile, imports, receiver) {
     }
 #endif
     abort(reason);
-  });
+  }
 }
 
-function instantiateAsync(binary, binaryFile, imports, callback) {
+async function instantiateAsync(binary, binaryFile, imports) {
 #if !SINGLE_FILE
-  if (!binary &&
-      typeof WebAssembly.instantiateStreaming == 'function' &&
-      !isDataURI(binaryFile) &&
+  if (!binary
+#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || MIN_SAFARI_VERSION < 150000
+      // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
+      && WebAssembly.instantiateStreaming
+#endif
 #if ENVIRONMENT_MAY_BE_WEBVIEW
       // Don't use streaming for file:// delivered objects in a webview, fetch them synchronously.
-      !isFileURI(binaryFile) &&
+      && !isFileURI(binaryFile)
 #endif
 #if ENVIRONMENT_MAY_BE_NODE
       // Avoid instantiateStreaming() on Node.js environment for now, as while
@@ -834,17 +713,15 @@ function instantiateAsync(binary, binaryFile, imports, callback) {
       //
       // Reference:
       //   https://github.com/emscripten-core/emscripten/pull/16917
-      !ENVIRONMENT_IS_NODE &&
+      && !ENVIRONMENT_IS_NODE
 #endif
-      typeof fetch == 'function') {
-    return fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}}).then((response) => {
-      // Suppress closure warning here since the upstream definition for
-      // instantiateStreaming only allows Promise<Repsponse> rather than
-      // an actual Response.
-      // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure is fixed.
-      /** @suppress {checkTypes} */
-      var result = WebAssembly.instantiateStreaming(response, imports);
-
+#if ENVIRONMENT_MAY_BE_SHELL
+      // Shell environments don't have fetch.
+      && !ENVIRONMENT_IS_SHELL
+#endif
+     ) {
+    try {
+      var response = fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}});
 #if USE_OFFSET_CONVERTER
       // We need the wasm binary for the offset converter. Clone the response
       // in order to get its arrayBuffer (cloning should be more efficient
@@ -852,46 +729,42 @@ function instantiateAsync(binary, binaryFile, imports, callback) {
       // (We must clone the response now in order to use it later, as if we
       // try to clone it asynchronously lower down then we will get a
       // "response was already consumed" error.)
-      var clonedResponsePromise = response.clone().arrayBuffer();
+      var clonedResponse = (await response).clone();
 #endif
-
-      return result.then(
-#if !USE_OFFSET_CONVERTER
-        callback,
-#else
-        function(instantiationResult) {
-          // When using the offset converter, we must interpose here. First,
-          // the instantiation result must arrive (if it fails, the error
-          // handling later down will handle it). Once it arrives, we can
-          // initialize the offset converter. And only then is it valid to
-          // call receiveInstantiationResult, as that function will use the
-          // offset converter (in the case of pthreads, it will create the
-          // pthreads and send them the offsets along with the wasm instance).
-
-          clonedResponsePromise.then((arrayBufferResult) => {
-              wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(arrayBufferResult), instantiationResult.module);
-              callback(instantiationResult);
-            },
-            (reason) => err(`failed to initialize offset-converter: ${reason}`)
-          );
-        },
+      var instantiationResult = await WebAssembly.instantiateStreaming(response, imports);
+#if USE_OFFSET_CONVERTER
+      // When using the offset converter, we must interpose here. First,
+      // the instantiation result must arrive (if it fails, the error
+      // handling later down will handle it). Once it arrives, we can
+      // initialize the offset converter. And only then is it valid to
+      // call receiveInstantiationResult, as that function will use the
+      // offset converter (in the case of pthreads, it will create the
+      // pthreads and send them the offsets along with the wasm instance).
+      var arrayBufferResult = await clonedResponse.arrayBuffer();
+      try {
+        wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(arrayBufferResult), instantiationResult.module);
+      } catch (reason) {
+        err(`failed to initialize offset-converter: ${reason}`);
+      }
 #endif
-        function(reason) {
-          // We expect the most common failure cause to be a bad MIME type for the binary,
-          // in which case falling back to ArrayBuffer instantiation should work.
-          err(`wasm streaming compile failed: ${reason}`);
-          err('falling back to ArrayBuffer instantiation');
-          return instantiateArrayBuffer(binaryFile, imports, callback);
-        });
-    });
+      return instantiationResult;
+    } catch (reason) {
+      // We expect the most common failure cause to be a bad MIME type for the binary,
+      // in which case falling back to ArrayBuffer instantiation should work.
+      err(`wasm streaming compile failed: ${reason}`);
+      err('falling back to ArrayBuffer instantiation');
+      // fall back of instantiateArrayBuffer below
+    };
   }
 #endif
-  return instantiateArrayBuffer(binaryFile, imports, callback);
+  return instantiateArrayBuffer(binaryFile, imports);
 }
 #endif // WASM_ASYNC_COMPILATION
+#endif // SOURCE_PHASE_IMPORTS
 
+#if !WASM_ESM_INTEGRATION
 function getWasmImports() {
-#if PTHREADS
+#if PTHREADS || WASM_WORKERS || (IMPORTED_MEMORY && MODULARIZE == 'instance')
   assignWasmImports();
 #endif
 #if ASYNCIFY && (ASSERTIONS || ASYNCIFY == 2)
@@ -929,8 +802,7 @@ function getWasmImports() {
 
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
-function createWasm() {
-  var info = getWasmImports();
+{{{ asyncIf(WASM_ASYNC_COMPILATION) }}}function createWasm() {
   // Load the wasm module and create an instance of using native support in the JS engine.
   // handle a generated wasm instance, receiving its exports and
   // performing other necessary setup
@@ -997,8 +869,9 @@ function createWasm() {
 #endif
 #endif
 
-#if hasExportedSymbol('__wasm_call_ctors')
-    addOnInit(wasmExports['__wasm_call_ctors']);
+#if hasExportedSymbol('__cpp_exception') && !RELOCATABLE
+    ___cpp_exception = wasmExports['__cpp_exception'];
+    {{{ receivedSymbol('___cpp_exception') }}};
 #endif
 
 #if hasExportedSymbol('__wasm_apply_data_relocs')
@@ -1018,6 +891,9 @@ function createWasm() {
 #if PTHREADS || WASM_WORKERS
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
+#endif
+#if DECLARE_ASM_MODULE_EXPORTS
+    assignWasmExports(wasmExports);
 #endif
     removeRunDependency('wasm-instantiate');
     return wasmExports;
@@ -1045,14 +921,16 @@ function createWasm() {
     trueModule = null;
 #endif
 #if SHARED_MEMORY || RELOCATABLE
-    receiveInstance(result['instance'], result['module']);
+    return receiveInstance(result['instance'], result['module']);
 #else
     // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.
     // When the regression is fixed, can restore the above PTHREADS-enabled path.
-    receiveInstance(result['instance']);
+    return receiveInstance(result['instance']);
 #endif
   }
 #endif // WASM_ASYNC_COMPILATION
+
+  var info = getWasmImports();
 
 #if expectToReceiveOnModule('instantiateWasm')
   // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback
@@ -1062,37 +940,53 @@ function createWasm() {
   // Also pthreads and wasm workers initialize the wasm instance through this
   // path.
   if (Module['instantiateWasm']) {
-    try {
-      return Module['instantiateWasm'](info, receiveInstance);
-    } catch(e) {
-      err(`Module.instantiateWasm callback failed with error: ${e}`);
-      #if MODULARIZE
-        // If instantiation fails, reject the module ready promise.
-        readyPromiseReject(e);
-      #else
-        return false;
-      #endif
-    }
+    return new Promise((resolve, reject) => {
+#if ASSERTIONS
+      try {
+#endif
+        Module['instantiateWasm'](info, (mod, inst) => {
+          resolve(receiveInstance(mod, inst));
+        });
+#if ASSERTIONS
+      } catch(e) {
+        err(`Module.instantiateWasm callback failed with error: ${e}`);
+        reject(e);
+      }
+#endif
+    });
   }
 #endif
 
-  wasmBinaryFile ??= findWasmBinary();
+#if PTHREADS || WASM_WORKERS
+  if ({{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
+    return new Promise((resolve) => {
+      wasmModuleReceived = (module) => {
+        // Instantiate from the module posted from the main thread.
+        // We can just use sync instantiation in the worker.
+        var instance = new WebAssembly.Instance(module, getWasmImports());
+        resolve(receiveInstance(instance, module));
+      };
+    });
+  }
+#endif
 
+#if SOURCE_PHASE_IMPORTS
+  var instance = await WebAssembly.instantiate(wasmModule, info);
+  var exports = receiveInstantiationResult({instance, 'module':wasmModule});
+  return exports;
+#else
+  wasmBinaryFile ??= findWasmBinary();
 #if WASM_ASYNC_COMPILATION
 #if RUNTIME_DEBUG
   dbg('asynchronously preparing wasm');
 #endif
-#if MODULARIZE
-  // If instantiation fails, reject the module ready promise.
-  instantiateAsync(wasmBinary, wasmBinaryFile, info, receiveInstantiationResult).catch(readyPromiseReject);
-#else
-  instantiateAsync(wasmBinary, wasmBinaryFile, info, receiveInstantiationResult);
-#endif
+  var result = await instantiateAsync(wasmBinary, wasmBinaryFile, info);
+  var exports = receiveInstantiationResult(result);
 #if LOAD_SOURCE_MAP
-  getSourceMapPromise().then(receiveSourceMapJSON);
+  receiveSourceMapJSON(await getSourceMapAsync());
 #endif
-  return {}; // no exports yet; we'll fill them in later
-#else
+  return exports;
+#else // WASM_ASYNC_COMPILATION
   var result = instantiateSync(wasmBinaryFile, info);
 #if PTHREADS || MAIN_MODULE
   return receiveInstance(result[0], result[1]);
@@ -1102,16 +996,16 @@ function createWasm() {
   // When the regression is fixed, we can remove this if/else.
   return receiveInstance(result[0]);
 #endif
-#endif
+#endif // WASM_ASYNC_COMPILATION
+#endif // SOURCE_PHASE_IMPORTS
 }
+#endif // WASM_ESM_INTEGRATION
 
 #if !WASM_BIGINT
 // Globals used by JS i64 conversions (see makeSetValue)
 var tempDouble;
 var tempI64;
 #endif
-
-#include "runtime_debug.js"
 
 #if RETAIN_COMPILER_SETTINGS
 var compilerSettings = {{{ JSON.stringify(makeRetainedCompilerSettings()) }}} ;
@@ -1130,5 +1024,3 @@ function getCompilerSetting(name) {
 // dynamic linker as symbols are loaded.
 var asyncifyStubs = {};
 #endif
-
-// === Body ===

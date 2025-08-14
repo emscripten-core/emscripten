@@ -13,8 +13,6 @@ import * as fs from 'node:fs';
 import * as vm from 'node:vm';
 import assert from 'node:assert';
 
-export {assert};
-
 export function safeQuote(x) {
   return x.replace(/"/g, '\\"').replace(/'/g, "\\'");
 }
@@ -48,42 +46,36 @@ export function warningOccured() {
   return warnings;
 }
 
-let currentFile = null;
+let currentFile = [];
 
-export function setCurrentFile(f) {
-  let rtn = currentFile;
-  currentFile = f;
-  return rtn;
+export function pushCurrentFile(f) {
+  currentFile.push(f);
 }
 
-function errorPrefix() {
-  if (currentFile) {
-    return currentFile + ': ';
+export function popCurrentFile() {
+  currentFile.pop();
+}
+
+function errorPrefix(lineNo) {
+  if (!currentFile.length) return '';
+  const filename = currentFile[currentFile.length - 1];
+  if (lineNo) {
+    return `${filename}:${lineNo}: `;
   } else {
-    return '';
+    return `${filename}: `;
   }
 }
 
-export function warn(a, msg) {
+export function warn(msg, lineNo) {
   warnings = true;
-  if (!msg) {
-    msg = a;
-    a = false;
-  }
-  if (!a) {
-    printErr(`warning: ${errorPrefix()}${msg}`);
-  }
+  printErr(`warning: ${errorPrefix(lineNo)}${msg}`);
 }
 
-export function warnOnce(a, msg) {
-  if (!msg) {
-    msg = a;
-    a = false;
-  }
-  if (!a) {
-    warnOnce.msgs ||= {};
-    if (msg in warnOnce.msgs) return;
-    warnOnce.msgs[msg] = true;
+const seenWarnings = new Set();
+
+export function warnOnce(msg) {
+  if (!seenWarnings.has(msg)) {
+    seenWarnings.add(msg);
     warn(msg);
   }
 }
@@ -94,9 +86,10 @@ export function errorOccured() {
   return abortExecution;
 }
 
-export function error(msg) {
+export function error(msg, lineNo) {
   abortExecution = true;
-  printErr(`error: ${errorPrefix()}${msg}`);
+  process.exitCode = 1;
+  printErr(`error: ${errorPrefix(lineNo)}${msg}`);
 }
 
 function range(size) {
@@ -180,7 +173,6 @@ export function mergeInto(obj, other, options = null) {
           __sig: 'string',
           __proxy: 'string',
           __asm: 'boolean',
-          __inline: 'boolean',
           __postset: ['string', 'function'],
           __docs: 'string',
           __nothrow: 'boolean',
@@ -201,11 +193,6 @@ export function mergeInto(obj, other, options = null) {
   return Object.assign(obj, other);
 }
 
-export function isNumber(x) {
-  // XXX this does not handle 0xabc123 etc. We should likely also do x == parseInt(x) (which handles that), and remove hack |// handle 0x... as well|
-  return x == parseFloat(x) || (typeof x == 'string' && x.match(/^-?\d+$/)) || x == 'NaN';
-}
-
 // Symbols that start with '$' are not exported to the wasm module.
 // They are intended to be called exclusively by JS code.
 export function isJsOnlySymbol(symbol) {
@@ -217,7 +204,6 @@ export function isDecorator(ident) {
     '__sig',
     '__proxy',
     '__asm',
-    '__inline',
     '__deps',
     '__postset',
     '__docs',
@@ -231,31 +217,29 @@ export function isDecorator(ident) {
   return suffixes.some((suffix) => ident.endsWith(suffix));
 }
 
-export function isPowerOfTwo(x) {
-  return x > 0 && (x & (x - 1)) == 0;
+export function readFile(filename) {
+  return fs.readFileSync(filename, 'utf8');
 }
 
-export function read(filename) {
-  const absolute = find(filename);
-  return fs.readFileSync(absolute).toString();
+// Use import.meta.dirname here once we drop support for node v18.
+const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
+
+export const srcDir = __dirname;
+
+// Returns an absolute path for a file, resolving it relative to this script
+// (i.e. relative to the src/ directory).
+export function localFile(filename) {
+  assert(!path.isAbsolute(filename));
+  return path.join(srcDir, filename);
 }
 
-export function find(filename) {
-  const dirname = url.fileURLToPath(new URL('.', import.meta.url));
-  const prefixes = [process.cwd(), path.join(dirname, '..', 'src')];
-  for (let i = 0; i < prefixes.length; ++i) {
-    const combined = path.join(prefixes[i], filename);
-    if (fs.existsSync(combined)) {
-      return combined;
-    }
+// Helper function for JS library files that can be used to read files
+// relative to the src/ directory.
+function read(filename) {
+  if (!path.isAbsolute(filename)) {
+    filename = localFile(filename);
   }
-  return filename;
-}
-
-// Anything needed by the script that we load below must be added to the
-// global object.  These, for example, are all needed by parseTools.js.
-export function print(x) {
-  process.stdout.write(x + '\n');
+  return readFile(filename);
 }
 
 export function printErr(x) {
@@ -322,9 +306,16 @@ export function applySettings(obj) {
 }
 
 export function loadSettingsFile(f) {
-  var settings = {};
-  vm.runInNewContext(read(f), settings, {filename: find(f)});
+  const settings = {};
+  vm.runInNewContext(readFile(f), settings, {filename: f});
   applySettings(settings);
+  return settings;
+}
+
+export function loadDefaultSettings() {
+  const rtn = loadSettingsFile(localFile('settings.js'));
+  Object.assign(rtn, loadSettingsFile(localFile('settings_internal.js')));
+  return rtn;
 }
 
 export function runInMacroContext(code, options) {

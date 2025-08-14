@@ -21,14 +21,15 @@
 // before the code. Then that object will be used in the code, and you
 // can continue to use Module afterwards as well.
 #if MODULARIZE
+#if MODULARIZE == 'instance'
+var Module = {};
+#else
 var Module = moduleArg;
+#endif
 #elif USE_CLOSURE_COMPILER
+/** @type{Object} */
+var Module;
 // if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with a string
-var /** @type {{
-  canvas: HTMLCanvasElement,
-  ctx: Object,
-}}
- */ Module;
 if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
 #elif AUDIO_WORKLET
 var Module = globalThis.Module || (typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {});
@@ -37,78 +38,50 @@ var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {
 #endif // USE_CLOSURE_COMPILER
 
 #if POLYFILL
-#if ((MAYBE_WASM2JS && WASM != 2) || MODULARIZE) && (MIN_CHROME_VERSION < 33 || MIN_FIREFOX_VERSION < 29 || MIN_SAFARI_VERSION < 80000)
-// Include a Promise polyfill for legacy browsers. This is needed either for
-// wasm2js, where we polyfill the wasm API which needs Promises, or when using
-// modularize which creates a Promise for when the module is ready.
-// See https://caniuse.com/#feat=promises
-#include "polyfill/promise.js"
-#endif
-
-#if MIN_CHROME_VERSION < 45 || MIN_FIREFOX_VERSION < 34 || MIN_SAFARI_VERSION < 90000
-// See https://caniuse.com/mdn-javascript_builtins_object_assign
-#include "polyfill/objassign.js"
-#endif
-
 #if WASM_BIGINT && MIN_SAFARI_VERSION < 150000
 // See https://caniuse.com/mdn-javascript_builtins_bigint64array
 #include "polyfill/bigint64array.js"
 #endif
-
-#if MIN_CHROME_VERSION < 40 || MIN_FIREFOX_VERSION < 39 || MIN_SAFARI_VERSION < 103000
-// See https://caniuse.com/fetch
-#include "polyfill/fetch.js"
-#endif
 #endif // POLYFILL
 
-#if MODULARIZE
-// Set up the promise that indicates the Module is initialized
-var readyPromiseResolve, readyPromiseReject;
-var readyPromise = new Promise((resolve, reject) => {
-  readyPromiseResolve = resolve;
-  readyPromiseReject = reject;
-});
-#if ASSERTIONS
-{{{ addReadyPromiseAssertions() }}}
+#if WASM_WORKERS
+// The way we signal to a worker that it is hosting a pthread is to construct
+// it with a specific name.
+var ENVIRONMENT_IS_WASM_WORKER = globalThis.name == 'em-ww';
 #endif
+
+#if AUDIO_WORKLET
+var ENVIRONMENT_IS_AUDIO_WORKLET = typeof AudioWorkletGlobalScope !== 'undefined';
+// Audio worklets behave as wasm workers.
+if (ENVIRONMENT_IS_AUDIO_WORKLET) ENVIRONMENT_IS_WASM_WORKER = true;
 #endif
 
 // Determine the runtime environment we are in. You can customize this by
 // setting the ENVIRONMENT setting at compile time (see settings.js).
 
-#if AUDIO_WORKLET
-var ENVIRONMENT_IS_AUDIO_WORKLET = typeof AudioWorkletGlobalScope !== 'undefined';
-#endif
-
-#if ENVIRONMENT && !ENVIRONMENT.includes(',')
-var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT === 'web' }}};
+#if ENVIRONMENT.length == 1
+var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT[0] === 'web' }}};
 #if PTHREADS && ENVIRONMENT_MAY_BE_NODE
 // node+pthreads always supports workers; detect which we are at runtime
-var ENVIRONMENT_IS_WORKER = typeof importScripts == 'function';
+var ENVIRONMENT_IS_WORKER = typeof WorkerGlobalScope != 'undefined';
 #else
-var ENVIRONMENT_IS_WORKER = {{{ ENVIRONMENT === 'worker' }}};
+var ENVIRONMENT_IS_WORKER = {{{ ENVIRONMENT[0] === 'worker' }}};
 #endif
-var ENVIRONMENT_IS_NODE = {{{ ENVIRONMENT === 'node' }}};
-var ENVIRONMENT_IS_SHELL = {{{ ENVIRONMENT === 'shell' }}};
+var ENVIRONMENT_IS_NODE = {{{ ENVIRONMENT[0] === 'node' }}};
+var ENVIRONMENT_IS_SHELL = {{{ ENVIRONMENT[0] === 'shell' }}};
 #else // ENVIRONMENT
 // Attempt to auto-detect the environment
 var ENVIRONMENT_IS_WEB = typeof window == 'object';
-var ENVIRONMENT_IS_WORKER = typeof importScripts == 'function';
+var ENVIRONMENT_IS_WORKER = typeof WorkerGlobalScope != 'undefined';
 // N.b. Electron.js environment is simultaneously a NODE-environment, but
 // also a web environment.
-var ENVIRONMENT_IS_NODE = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string' && process.type != 'renderer';
+var ENVIRONMENT_IS_NODE = {{{ nodeDetectionCode() }}};
 #if AUDIO_WORKLET
 var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER && !ENVIRONMENT_IS_AUDIO_WORKLET;
 #else
 var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
 #endif
 #endif // ENVIRONMENT
-
-#if ASSERTIONS
-if (Module['ENVIRONMENT']) {
-  throw new Error('Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -sENVIRONMENT=web or -sENVIRONMENT=node)');
-}
-#endif
 
 #if PTHREADS
 // Three configurations we can be running in:
@@ -118,7 +91,7 @@ if (Module['ENVIRONMENT']) {
 
 // The way we signal to a worker that it is hosting a pthread is to construct
 // it with a specific name.
-var ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && self.name == 'em-pthread';
+var ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && self.name?.startsWith('em-pthread');
 
 #if MODULARIZE && ASSERTIONS
 if (ENVIRONMENT_IS_PTHREAD) {
@@ -128,20 +101,14 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
 #endif
 
-#if ENVIRONMENT_MAY_BE_NODE
+#if ENVIRONMENT_MAY_BE_NODE && (EXPORT_ES6 || PTHREADS || WASM_WORKERS)
 if (ENVIRONMENT_IS_NODE) {
-  // `require()` is no-op in an ESM module, use `createRequire()` to construct
-  // the require()` function.  This is only necessary for multi-environment
-  // builds, `-sENVIRONMENT=node` emits a static import declaration instead.
-  // TODO: Swap all `require()`'s with `import()`'s?
-#if EXPORT_ES6 && ENVIRONMENT_MAY_BE_WEB
+#if EXPORT_ES6
+  // When building an ES module `require` is not normally available.
+  // We need to use `createRequire()` to construct the require()` function.
   const { createRequire } = await import('module');
-  let dirname = import.meta.url;
-  if (dirname.startsWith("data:")) {
-    dirname = '/';
-  }
   /** @suppress{duplicate} */
-  var require = createRequire(dirname);
+  var require = createRequire(import.meta.url);
 #endif
 
 #if PTHREADS || WASM_WORKERS
@@ -153,24 +120,16 @@ if (ENVIRONMENT_IS_NODE) {
   // is hosting a pthread.
   ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && worker_threads['workerData'] == 'em-pthread'
 #endif // PTHREADS
+#if WASM_WORKERS
+  ENVIRONMENT_IS_WASM_WORKER = ENVIRONMENT_IS_WORKER && worker_threads['workerData'] == 'em-ww'
+#endif
 #endif // PTHREADS || WASM_WORKERS
 }
 #endif // ENVIRONMENT_MAY_BE_NODE
 
-#if WASM_WORKERS
-var ENVIRONMENT_IS_WASM_WORKER = Module['$ww'];
-#endif
-
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
 {{{ preJS() }}}
-
-// Sometimes an existing Module object exists with properties
-// meant to overwrite the default module functionality. Here
-// we collect those properties and reapply _after_ we configure
-// the current environment's defaults to avoid having to be so
-// defensive during initialization.
-var moduleOverrides = Object.assign({}, Module);
 
 var arguments_ = [];
 var thisProgram = './this.program';
@@ -178,24 +137,36 @@ var quit_ = (status, toThrow) => {
   throw toThrow;
 };
 
-#if SHARED_MEMORY && !MODULARIZE
+#if EXPORT_ES6
+var _scriptName = import.meta.url;
+#else
+#if ENVIRONMENT_MAY_BE_WEB
+#if !MODULARIZE
 // In MODULARIZE mode _scriptName needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
-var _scriptName = (typeof document != 'undefined') ? document.currentScript?.src : undefined;
+#if SINGLE_FILE && OUTPUT_FORMAT == 'HTML'
+var _scriptName = typeof document != 'undefined' ? URL.createObjectURL(new Blob([document.getElementById('mainScript').textContent], { "type" : "text/javascript" })) : undefined;
+#else
+var _scriptName = typeof document != 'undefined' ? document.currentScript?.src : undefined;
+#endif
+#endif // !MODULARIZE
+#elif ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_WORKER
+var _scriptName;
+#endif // ENVIRONMENT_MAY_BE_WEB
 
 #if ENVIRONMENT_MAY_BE_NODE
-if (ENVIRONMENT_IS_NODE) {
-#if EXPORT_ES6
-  _scriptName = typeof __filename != 'undefined' ? __filename : import.meta.url
-#else
+if (typeof __filename != 'undefined') { // Node
   _scriptName = __filename;
-#endif
 } else
 #endif // ENVIRONMENT_MAY_BE_NODE
+#if ENVIRONMENT_MAY_BE_WORKER
 if (ENVIRONMENT_IS_WORKER) {
   _scriptName = self.location.href;
 }
-#endif // SHARED_MEMORY && !MODULARIZE
+#elif ENVIRONMENT_MAY_BE_NODE
+  /*no-op*/{}
+#endif // ENVIRONMENT_MAY_BE_WORKER
+#endif // EXPORT_ES6
 
 // `/` should be present at the end if `scriptDirectory` is not empty
 var scriptDirectory = '';
@@ -216,15 +187,15 @@ var readAsync, readBinary;
 
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
-#if ENVIRONMENT && ASSERTIONS
-  if (typeof process == 'undefined' || !process.release || process.release.name !== 'node') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
+#if ENVIRONMENT.length && ASSERTIONS
+  const isNode = {{{ nodeDetectionCode() }}};
+  if (!isNode) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 #endif
 
 #if ASSERTIONS
   var nodeVersion = process.versions.node;
   var numericVersion = nodeVersion.split('.').slice(0, 3);
   numericVersion = (numericVersion[0] * 10000) + (numericVersion[1] * 100) + (numericVersion[2].split('-')[0] * 1);
-  var minVersion = {{{ MIN_NODE_VERSION }}};
   if (numericVersion < {{{ MIN_NODE_VERSION }}}) {
     throw new Error('This emscripten-generated code requires node {{{ formattedMinNodeVersion() }}} (detected v' + nodeVersion + ')');
   }
@@ -233,14 +204,10 @@ if (ENVIRONMENT_IS_NODE) {
   // These modules will usually be used on Node.js. Load them eagerly to avoid
   // the complexity of lazy-loading.
   var fs = require('fs');
-  var nodePath = require('path');
 
 #if EXPORT_ES6
-  // EXPORT_ES6 + ENVIRONMENT_IS_NODE always requires use of import.meta.url,
-  // since there's no way getting the current absolute path of the module when
-  // support for that is not available.
-  if (!import.meta.url.startsWith('data:')) {
-    scriptDirectory = nodePath.dirname(require('url').fileURLToPath(import.meta.url)) + '/';
+  if (_scriptName.startsWith('file:')) {
+    scriptDirectory = require('path').dirname(require('url').fileURLToPath(_scriptName)) + '/';
   }
 #else
   scriptDirectory = __dirname + '/';
@@ -248,15 +215,14 @@ if (ENVIRONMENT_IS_NODE) {
 
 #include "node_shell_read.js"
 
-  if (!Module['thisProgram'] && process.argv.length > 1) {
+  if (process.argv.length > 1) {
     thisProgram = process.argv[1].replace(/\\/g, '/');
   }
 
   arguments_ = process.argv.slice(2);
 
-#if MODULARIZE
+#if !MODULARIZE
   // MODULARIZE will export the module in the proper place outside, we don't need to export here
-#else
   if (typeof module != 'undefined') {
     module['exports'] = Module;
   }
@@ -303,8 +269,9 @@ if (ENVIRONMENT_IS_NODE) {
 #if ENVIRONMENT_MAY_BE_SHELL || ASSERTIONS
 if (ENVIRONMENT_IS_SHELL) {
 
-#if ENVIRONMENT && ASSERTIONS
-  if ((typeof process == 'object' && typeof require === 'function') || typeof window == 'object' || typeof importScripts == 'function') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
+#if ENVIRONMENT.length && ASSERTIONS
+  const isNode = {{{ nodeDetectionCode() }}};
+  if (isNode || typeof window == 'object' || typeof WorkerGlobalScope != 'undefined') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 #endif
 
 #if ENVIRONMENT_MAY_BE_SHELL
@@ -317,26 +284,15 @@ if (ENVIRONMENT_IS_SHELL) {
     return data;
   };
 
-  readAsync = (f) => {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => resolve(readBinary(f)));
-    });
-  };
+  readAsync = async (f) => readBinary(f);
 
-  if (typeof clearTimeout == 'undefined') {
-    globalThis.clearTimeout = (id) => {};
-  }
+  globalThis.clearTimeout ??= (id) => {};
 
-  if (typeof setTimeout == 'undefined') {
-    // spidermonkey lacks setTimeout but we use it above in readAsync.
-    globalThis.setTimeout = (f) => (typeof f == 'function') ? f() : abort();
-  }
+  // spidermonkey lacks setTimeout but we use it above in readAsync.
+  globalThis.setTimeout ??= (f) => f();
 
-  if (typeof scriptArgs != 'undefined') {
-    arguments_ = scriptArgs;
-  } else if (typeof arguments != 'undefined') {
-    arguments_ = arguments;
-  }
+  // v8 uses `arguments_` whereas spidermonkey uses `scriptArgs`
+  arguments_ = globalThis.arguments || globalThis.scriptArgs;
 
   if (typeof quit == 'function') {
     quit_ = (status, toThrow) => {
@@ -365,9 +321,9 @@ if (ENVIRONMENT_IS_SHELL) {
 
   if (typeof print != 'undefined') {
     // Prefer to use print/printErr where they exist, as they usually work better.
-    if (typeof console == 'undefined') console = /** @type{!Console} */({});
+    globalThis.console ??= /** @type{!Console} */({});
     console.log = /** @type{!function(this:Console, ...*): undefined} */ (print);
-    console.warn = console.error = /** @type{!function(this:Console, ...*): undefined} */ (typeof printErr != 'undefined' ? printErr : print);
+    console.warn = console.error = /** @type{!function(this:Console, ...*): undefined} */ (globalThis.printErr ?? print);
   }
 
 #if WASM == 2
@@ -386,32 +342,15 @@ if (ENVIRONMENT_IS_SHELL) {
 // ENVIRONMENT_IS_NODE.
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
 if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
-  if (ENVIRONMENT_IS_WORKER) { // Check worker, not web, since window could be polyfilled
-    scriptDirectory = self.location.href;
-  } else if (typeof document != 'undefined' && document.currentScript) { // web
-    scriptDirectory = document.currentScript.src;
-  }
-#if MODULARIZE
-  // When MODULARIZE, this JS may be executed later, after document.currentScript
-  // is gone, so we saved it, and we use it here instead of any other info.
-  if (_scriptName) {
-    scriptDirectory = _scriptName;
-  }
-#endif
-  // blob urls look like blob:http://site.com/etc/etc and we cannot infer anything from them.
-  // otherwise, slice off the final part of the url to find the script directory.
-  // if scriptDirectory does not contain a slash, lastIndexOf will return -1,
-  // and scriptDirectory will correctly be replaced with an empty string.
-  // If scriptDirectory contains a query (starting with ?) or a fragment (starting with #),
-  // they are removed because they could contain a slash.
-  if (scriptDirectory.startsWith('blob:')) {
-    scriptDirectory = '';
-  } else {
-    scriptDirectory = scriptDirectory.substr(0, scriptDirectory.replace(/[?#].*/, '').lastIndexOf('/')+1);
+  try {
+    scriptDirectory = new URL('.', _scriptName).href; // includes trailing slash
+  } catch {
+    // Must be a `blob:` or `data:` URL (e.g. `blob:http://site.com/etc/etc`), we cannot
+    // infer anything from them.
   }
 
-#if ENVIRONMENT && ASSERTIONS
-  if (!(typeof window == 'object' || typeof importScripts == 'function')) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
+#if ENVIRONMENT.length && ASSERTIONS
+  if (!(typeof window == 'object' || typeof WorkerGlobalScope != 'undefined')) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 #endif
 
 #if PTHREADS && ENVIRONMENT_MAY_BE_NODE
@@ -433,7 +372,7 @@ if (!ENVIRONMENT_IS_AUDIO_WORKLET)
 #endif // ASSERTIONS
 }
 
-#if ENVIRONMENT_MAY_BE_NODE && PTHREADS
+#if ENVIRONMENT_MAY_BE_NODE && (PTHREADS || WASM_WORKERS)
 // Set up the out() and err() hooks, which are how we can print to stdout or
 // stderr, respectively.
 // Normally just binding console.log/console.error here works fine, but
@@ -443,48 +382,20 @@ if (!ENVIRONMENT_IS_AUDIO_WORKLET)
 var defaultPrint = console.log.bind(console);
 var defaultPrintErr = console.error.bind(console);
 if (ENVIRONMENT_IS_NODE) {
-  defaultPrint = (...args) => fs.writeSync(1, args.join(' ') + '\n');
-  defaultPrintErr = (...args) => fs.writeSync(2, args.join(' ') + '\n');
+  var utils = require('util');
+  var stringify = (a) => typeof a == 'object' ? utils.inspect(a) : a;
+  defaultPrint = (...args) => fs.writeSync(1, args.map(stringify).join(' ') + '\n');
+  defaultPrintErr = (...args) => fs.writeSync(2, args.map(stringify).join(' ') + '\n');
 }
-{{{ makeModuleReceiveWithVar('out', 'print',    'defaultPrint',    true) }}}
-{{{ makeModuleReceiveWithVar('err', 'printErr', 'defaultPrintErr', true) }}}
+{{{ makeModuleReceiveWithVar('out', 'print',    'defaultPrint') }}}
+{{{ makeModuleReceiveWithVar('err', 'printErr', 'defaultPrintErr') }}}
 #else
-{{{ makeModuleReceiveWithVar('out', 'print',    'console.log.bind(console)',  true) }}}
-{{{ makeModuleReceiveWithVar('err', 'printErr', 'console.error.bind(console)', true) }}}
+{{{ makeModuleReceiveWithVar('out', 'print',    'console.log.bind(console)') }}}
+{{{ makeModuleReceiveWithVar('err', 'printErr', 'console.error.bind(console)') }}}
 #endif
 
-// Merge back in the overrides
-Object.assign(Module, moduleOverrides);
-// Free the object hierarchy contained in the overrides, this lets the GC
-// reclaim data used.
-moduleOverrides = null;
 #if ASSERTIONS
-checkIncomingModuleAPI();
-#endif
 
-// Emit code to handle expected values on the Module object. This applies Module.x
-// to the proper local x. This has two benefits: first, we only emit it if it is
-// expected to arrive, and second, by using a local everywhere else that can be
-// minified.
-{{{ makeModuleReceive('arguments_', 'arguments') }}}
-{{{ makeModuleReceive('thisProgram') }}}
-
-// perform assertions in shell.js after we set up out() and err(), as otherwise if an assertion fails it cannot print the message
-#if ASSERTIONS
-// Assertions on removed incoming Module JS APIs.
-assert(typeof Module['memoryInitializerPrefixURL'] == 'undefined', 'Module.memoryInitializerPrefixURL option was removed, use Module.locateFile instead');
-assert(typeof Module['pthreadMainPrefixURL'] == 'undefined', 'Module.pthreadMainPrefixURL option was removed, use Module.locateFile instead');
-assert(typeof Module['cdInitializerPrefixURL'] == 'undefined', 'Module.cdInitializerPrefixURL option was removed, use Module.locateFile instead');
-assert(typeof Module['filePackagePrefixURL'] == 'undefined', 'Module.filePackagePrefixURL option was removed, use Module.locateFile instead');
-assert(typeof Module['read'] == 'undefined', 'Module.read option was removed');
-assert(typeof Module['readAsync'] == 'undefined', 'Module.readAsync option was removed (modify readAsync in JS)');
-assert(typeof Module['readBinary'] == 'undefined', 'Module.readBinary option was removed (modify readBinary in JS)');
-assert(typeof Module['setWindowTitle'] == 'undefined', 'Module.setWindowTitle option was removed (modify emscripten_set_window_title in JS)');
-assert(typeof Module['TOTAL_MEMORY'] == 'undefined', 'Module.TOTAL_MEMORY has been renamed Module.INITIAL_MEMORY');
-{{{ makeRemovedModuleAPIAssert('asm', 'wasmExports', false) }}}
-{{{ makeRemovedModuleAPIAssert('readAsync') }}}
-{{{ makeRemovedModuleAPIAssert('readBinary') }}}
-{{{ makeRemovedModuleAPIAssert('setWindowTitle') }}}
 {{{ makeRemovedFSAssert('IDBFS') }}}
 {{{ makeRemovedFSAssert('PROXYFS') }}}
 {{{ makeRemovedFSAssert('WORKERFS') }}}
@@ -497,6 +408,8 @@ assert(typeof Module['TOTAL_MEMORY'] == 'undefined', 'Module.TOTAL_MEMORY has be
 {{{ makeRemovedFSAssert('NODEFS') }}}
 #endif
 
+// perform assertions in shell.js after we set up out() and err(), as otherwise
+// if an assertion fails it cannot print the message
 #if PTHREADS
 assert(
 #if AUDIO_WORKLET

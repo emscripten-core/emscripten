@@ -16,7 +16,7 @@
 #endif
 
 #if ENVIRONMENT_MAY_BE_NODE
-var ENVIRONMENT_IS_NODE = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string' && process.type != 'renderer';
+var ENVIRONMENT_IS_NODE = {{{ nodeDetectionCode() }}};
 if (ENVIRONMENT_IS_NODE) {
   var NodeWorker = require('worker_threads').Worker;
   global.Worker = function(url, options) {
@@ -103,14 +103,8 @@ function renderFrame() {
       dst[i] = renderFrameData[i];
     }
   }
-  Module.ctx.putImageData(Module.canvasData, 0, 0);
+  Module['ctx'].putImageData(Module.canvasData, 0, 0);
   renderFrameData = null;
-}
-
-if (typeof window != 'undefined') {
-  window.requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame ||
-                                 window.webkitRequestAnimationFrame || window.msRequestAnimationFrame ||
-                                 renderFrame;
 }
 
 /*
@@ -153,9 +147,9 @@ WebGLClient.prefetch();
 setTimeout(() => {
   worker.postMessage({
     target: 'worker-init',
-    width: Module.canvas.width,
-    height: Module.canvas.height,
-    boundingClientRect: cloneObject(Module.canvas.getBoundingClientRect()),
+    width: Module['canvas'].width,
+    height: Module['canvas'].height,
+    boundingClientRect: cloneObject(Module['canvas'].getBoundingClientRect()),
     URL: document.URL,
     currentScriptUrl: filename,
     preMain: true });
@@ -167,7 +161,7 @@ setTimeout(() => {
 var workerResponded = false;
 
 worker.onmessage = (event) => {
-  //dump('\nclient got ' + JSON.stringify(event.data).substr(0, 150) + '\n');
+  //dump('\nclient got ' + JSON.stringify(event.data).slice(0, 150) + '\n');
   if (!workerResponded) {
     workerResponded = true;
     Module.setStatus?.('');
@@ -190,18 +184,18 @@ worker.onmessage = (event) => {
     case 'canvas': {
       switch (data.op) {
         case 'getContext': {
-          Module.ctx = Module.canvas.getContext(data.type, data.attributes);
+          Module['ctx'] = Module['canvas'].getContext(data.type, data.attributes);
           if (data.type !== '2d') {
-            // possible GL_DEBUG entry point: Module.ctx = wrapDebugGL(Module.ctx);
+            // possible GL_DEBUG entry point: Module['ctx'] = wrapDebugGL(Module['ctx']);
             Module.glClient = new WebGLClient();
           }
           break;
         }
         case 'resize': {
-          Module.canvas.width = data.width;
-          Module.canvas.height = data.height;
-          if (Module.ctx?.getImageData) Module.canvasData = Module.ctx.getImageData(0, 0, data.width, data.height);
-          worker.postMessage({ target: 'canvas', boundingClientRect: cloneObject(Module.canvas.getBoundingClientRect()) });
+          Module['canvas'].width = data.width;
+          Module['canvas'].height = data.height;
+          if (Module['ctx']?.getImageData) Module.canvasData = Module['ctx'].getImageData(0, 0, data.width, data.height);
+          worker.postMessage({ target: 'canvas', boundingClientRect: cloneObject(Module['canvas'].getBoundingClientRect()) });
           break;
         }
         case 'render': {
@@ -216,7 +210,7 @@ worker.onmessage = (event) => {
           break;
         }
         case 'setObjectProperty': {
-          Module.canvas[data.object][data.property] = data.value;
+          Module['canvas'][data.object][data.property] = data.value;
           break;
         }
         default: throw 'eh?';
@@ -313,7 +307,7 @@ if (!ENVIRONMENT_IS_NODE) {
 // Only prevent default on backspace/tab because we don't want unexpected navigation.
 // Do not prevent default on the rest as we need the keypress event.
 function shouldPreventDefault(event) {
-  if (event.type === 'keydown' && event.keyCode !== 8 /* backspace */ && event.keyCode !== 9 /* tab */) {
+  if (event.type === 'keydown' && event.key != 'Backspace' && event.key != 'Tab') {
     return false; // keypress, back navigation
   } else {
     return true; // NO keypress, NO back navigation
@@ -338,7 +332,7 @@ function shouldPreventDefault(event) {
 });
 
 ['mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'mouseout'].forEach((event) => {
-  Module.canvas.addEventListener(event, (event) => {
+  Module['canvas'].addEventListener(event, (event) => {
     worker.postMessage({ target: 'canvas', event: cloneObject(event) });
     event.preventDefault();
   }, true);

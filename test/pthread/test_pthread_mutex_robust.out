@@ -1,0 +1,6 @@
+[original owner] Setting lock...
+[original owner] Locked. Now exiting without unlocking.
+[main] Attempting to lock the robust mutex.
+[main] pthread_mutex_lock -> Previous owner died.
+[main] Now make the mutex consistent
+[main] Mutex is now consistent; unlocking

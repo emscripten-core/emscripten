@@ -14,8 +14,6 @@ int main(int argc, char* argv[]) {
   struct dirent *entry;
   while ((entry = readdir(d))) {
     printf("entry: %s\n", entry->d_name);
-    printf("unexpected success reading directory!");
-    return 1;
   }
   closedir(d);
 

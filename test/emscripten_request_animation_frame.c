@@ -4,9 +4,9 @@
 int func1Executed = 0;
 int func2Executed = 0;
 
-EM_BOOL func1(double time, void *userData);
+bool func1(double time, void *userData);
 
-EM_BOOL func2(double time, void *userData) {
+bool func2(double time, void *userData) {
   assert((long)userData == 2);
   assert(time > 0);
   ++func2Executed;
@@ -24,7 +24,7 @@ EM_BOOL func2(double time, void *userData) {
   return 0;
 }
 
-EM_BOOL func1(double time, void *userData) {
+bool func1(double time, void *userData) {
   assert((long)userData == 1);
   assert(time > 0);
   ++func1Executed;

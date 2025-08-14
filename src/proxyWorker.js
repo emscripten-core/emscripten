@@ -209,7 +209,6 @@ document.createElement = (what) => {
         right: canvas.boundingClientRect.right
       });
       canvas.style = new PropertyBag();
-      canvas.exitPointerLock = () => {};
 
       canvas.width_ ||= 0;
       canvas.height_ ||= 0;
@@ -261,14 +260,14 @@ document.createElement = (what) => {
 
 document.getElementById = (id) => {
   if (id === 'canvas' || id === 'application-canvas') {
-    return Module.canvas;
+    return Module['canvas'];
   }
   throw 'document.getElementById failed on ' + id;
 };
 
 document.querySelector = (id) => {
   if (id === '#canvas' || id === '#application-canvas' || id === 'canvas' || id === 'application-canvas') {
-    return Module.canvas;
+    return Module['canvas'];
   }
   throw 'document.querySelector failed on ' + id;
 };
@@ -283,6 +282,8 @@ document.styleSheets = [{
 }];
 
 document.URL = 'http://worker.not.yet.ready.wait.for.window.onload?fake';
+
+document.exitPointerLock = () => {};
 
 function Audio() {
   warnOnce('faking Audio elements, no actual sound will play');
@@ -324,7 +325,7 @@ var screen = {
   height: 0
 };
 
-Module.canvas = document.createElement('canvas');
+Module['canvas'] = document.createElement('canvas');
 
 Module.setStatus = () => {};
 
@@ -400,7 +401,7 @@ function onMessageFromMainEmscriptenThread(message) {
     clearTimeout(messageResenderTimeout);
     messageResender();
   }
-  //dump('worker got ' + JSON.stringify(message.data).substr(0, 150) + '\n');
+  //dump('worker got ' + JSON.stringify(message.data).slice(0, 150) + '\n');
   switch (message.data.target) {
     case 'document': {
       document.fireEvent(message.data.event);
@@ -412,9 +413,9 @@ function onMessageFromMainEmscriptenThread(message) {
     }
     case 'canvas': {
       if (message.data.event) {
-        Module.canvas.fireEvent(message.data.event);
+        Module['canvas'].fireEvent(message.data.event);
       } else if (message.data.boundingClientRect) {
-        Module.canvas.boundingClientRect = message.data.boundingClientRect;
+        Module['canvas'].boundingClientRect = message.data.boundingClientRect;
       } else throw 'ey?';
       break;
     }
@@ -451,10 +452,10 @@ function onMessageFromMainEmscriptenThread(message) {
       break;
     }
     case 'worker-init': {
-      Module.canvas = document.createElement('canvas');
-      screen.width = Module.canvas.width_ = message.data.width;
-      screen.height = Module.canvas.height_ = message.data.height;
-      Module.canvas.boundingClientRect = message.data.boundingClientRect;
+      Module['canvas'] = document.createElement('canvas');
+      screen.width = Module['canvas'].width_ = message.data.width;
+      screen.height = Module['canvas'].height_ = message.data.height;
+      Module['canvas'].boundingClientRect = message.data.boundingClientRect;
 #if ENVIRONMENT_MAY_BE_NODE
       if (ENVIRONMENT_IS_NODE)
 #endif

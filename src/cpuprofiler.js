@@ -225,7 +225,7 @@ var emscriptenCpuProfiler = {
           if (i != 2) cs += ' <- ';
           var fn = funcs[i];
           var at = fn.indexOf('@');
-          if (at != -1) fn = fn.substr(0, at);
+          if (at != -1) fn = fn.slice(0, at);
           fn = fn.trim();
           cs += '"' + fn + '"';
         }
@@ -593,7 +593,7 @@ var emscriptenCpuProfiler = {
   detectWebGLContext() {
     if (Module['canvas']?.GLctxObject?.GLctx) return Module['canvas'].GLctxObject.GLctx;
     else if (typeof GLctx != 'undefined') return GLctx;
-    else if (Module.ctx) return Module.ctx;
+    else if (Module['ctx']) return Module['ctx'];
     return null;
   },
 

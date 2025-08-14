@@ -140,6 +140,7 @@ emscripten_fetch_t* emscripten_fetch(emscripten_fetch_attr_t* fetch_attr, const 
     }
     headers[headersCount] = 0;
     fetch->__attributes.requestHeaders = headers;
+    fetch->responseUrl = NULL; // responseUrl is not set until STATE_HEADERS_RECEIVED
   }
 
   emscripten_start_fetch(fetch);
@@ -197,6 +198,9 @@ char **emscripten_fetch_unpack_response_headers(const char *headersString) {
     numHeaders++;
   }
   char **unpackedHeaders = (char**)malloc(sizeof(char*) * ((numHeaders * 2) + 1));
+  if (!unpackedHeaders) {
+    return NULL;
+  }
   unpackedHeaders[numHeaders * 2] = NULL;
 
   // Allocate each header.
@@ -206,16 +210,23 @@ char **emscripten_fetch_unpack_response_headers(const char *headersString) {
     const char *split = strchr(rowStart, ':');
     size_t headerSize = (size_t)split - (size_t)rowStart;
     char* header = (char*)malloc(headerSize + 1);
+    unpackedHeaders[headerNum] = header;
+    if (!header) {
+      emscripten_fetch_free_unpacked_response_headers(unpackedHeaders);
+      return NULL;
+    }
     strncpy(header, rowStart, headerSize);
     header[headerSize] = '\0';
 
     size_t valueSize = (size_t)rowEnd - (size_t)split;
     char* value = (char*)malloc(valueSize + 1);
+    unpackedHeaders[headerNum+1] = value;
+    if (!value) {
+      emscripten_fetch_free_unpacked_response_headers(unpackedHeaders);
+      return NULL;
+    }
     strncpy(value, split + 1, valueSize);
     value[valueSize] = '\0';
-
-    unpackedHeaders[headerNum] = header;
-    unpackedHeaders[headerNum+1] = value;
 
     rowStart = rowEnd + 1;
     rowEnd = strchr(rowStart, '\n');
@@ -233,10 +244,6 @@ void emscripten_fetch_free_unpacked_response_headers(char **unpackedHeaders) {
   }
 }
 
-void emscripten_fetch_free(unsigned int id) {
-  return _emscripten_fetch_free(id);
-}
-
 static void fetch_free(emscripten_fetch_t* fetch) {
   emscripten_fetch_free(fetch->id);
   fetch->id = 0;
@@ -252,5 +259,6 @@ static void fetch_free(emscripten_fetch_t* fetch) {
     free((void*)fetch->__attributes.requestHeaders);
   }
   free((void*)fetch->__attributes.overriddenMimeType);
+  free((void*)fetch->responseUrl);
   free(fetch);
 }

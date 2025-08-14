@@ -7,4 +7,8 @@
 // Avoid instantiating the module on pthreads.
 if (!isPthread)
 #endif
+#if WASM_WORKERS
+// Avoid instantiating the module on pthreads.
+if (!isWW)
+#endif
 {{{ EXPORT_NAME }}}();

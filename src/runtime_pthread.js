@@ -14,83 +14,27 @@
 var workerID = 0;
 #endif
 
+#if MAIN_MODULE
+// Map of modules to be shared with new threads.  This gets populated by the
+// main thread and shared with all new workers via the initial `load` message.
+var sharedModules = {};
+#endif
+
+var startWorker;
+
 if (ENVIRONMENT_IS_PTHREAD) {
-#if !MINIMAL_RUNTIME
-  var wasmPromiseResolve;
-  var wasmPromiseReject;
-#endif
-  var receivedWasmModule;
-
-#if ENVIRONMENT_MAY_BE_NODE
-  // Node.js support
-  if (ENVIRONMENT_IS_NODE) {
-    // Create as web-worker-like an environment as we can.
-
-    var parentPort = worker_threads['parentPort'];
-    parentPort.on('message', (data) => onmessage({ data: data }));
-
-    Object.assign(globalThis, {
-      self: global,
-      // Dummy importScripts.  The presence of this global is used
-      // to detect that we are running on a Worker.
-      // TODO(sbc): Find another way?
-      importScripts: () => {
-#if ASSERTIONS
-        assert(false, 'dummy importScripts called');
-#endif
-      },
-      postMessage: (msg) => parentPort.postMessage(msg),
-    });
-  }
-#endif // ENVIRONMENT_MAY_BE_NODE
-
   // Thread-local guard variable for one-time init of the JS state
   var initializedJS = false;
 
-  function threadPrintErr(...args) {
-    var text = args.join(' ');
-#if ENVIRONMENT_MAY_BE_NODE
-    // See https://github.com/emscripten-core/emscripten/issues/14804
-    if (ENVIRONMENT_IS_NODE) {
-      fs.writeSync(2, text + '\n');
-      return;
-    }
-#endif
-    console.error(text);
-  }
-
-#if expectToReceiveOnModule('printErr')
-  if (!Module['printErr'])
-#endif
-    err = threadPrintErr;
-#if ASSERTIONS || RUNTIME_DEBUG
-  dbg = threadPrintErr;
-#endif
-  function threadAlert(...args) {
-    var text = args.join(' ');
-    postMessage({cmd: 'alert', text, threadId: _pthread_self()});
-  }
-  self.alert = threadAlert;
-
-#if !MINIMAL_RUNTIME
-  Module['instantiateWasm'] = (info, receiveInstance) => {
-    return new Promise((resolve, reject) => {
-      wasmPromiseResolve = (module) => {
-        // Instantiate from the module posted from the main thread.
-        // We can just use sync instantiation in the worker.
-        var instance = new WebAssembly.Instance(module, getWasmImports());
-#if RELOCATABLE || MAIN_MODULE
-        receiveInstance(instance, module);
-#else
-        // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193,
-        // the above line no longer optimizes out down to the following line.
-        // When the regression is fixed, we can remove this if/else.
-        receiveInstance(instance);
-#endif
-        resolve();
-      };
-      wasmPromiseReject = reject;
-    });
+#if LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER
+  // When using postMessage to send an object, it is processed by the structured
+  // clone algorithm.  The prototype, and hence methods, on that object is then
+  // lost. This function adds back the lost prototype.  This does not work with
+  // nested objects that has prototypes, but it suffices for WasmSourceMap and
+  // WasmOffsetConverter.
+  function resetPrototype(constructor, attrs) {
+    var object = Object.create(constructor.prototype);
+    return Object.assign(object, attrs);
   }
 #endif
 
@@ -98,7 +42,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
   // notified about them.
   self.onunhandledrejection = (e) => { throw e.reason || e; };
 
-  function handleMessage(e) {
+  {{{ asyncIf(ASYNCIFY == 2) }}}function handleMessage(e) {
     try {
       var msgData = e['data'];
       //dbg('msgData: ' + Object.keys(msgData));
@@ -116,7 +60,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
         self.onmessage = (e) => messageQueue.push(e);
 
         // And add a callback for when the runtime is initialized.
-        self.startWorker = (instance) => {
+        startWorker = () => {
           // Notify the main thread that this thread has loaded.
           postMessage({ cmd: 'loaded' });
           // Process any messages that were queued before the thread was ready.
@@ -160,8 +104,10 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
         }
 
+#if !WASM_ESM_INTEGRATION
         wasmMemory = msgData.wasmMemory;
         updateMemoryViews();
+#endif
 
 #if LOAD_SOURCE_MAP
         wasmSourceMap = resetPrototype(WasmSourceMap, msgData.wasmSourceMap);
@@ -170,13 +116,15 @@ if (ENVIRONMENT_IS_PTHREAD) {
         wasmOffsetConverter = resetPrototype(WasmOffsetConverter, msgData.wasmOffsetConverter);
 #endif
 
+#if !WASM_ESM_INTEGRATION
 #if MINIMAL_RUNTIME
         // Pass the shared Wasm module in the Module object for MINIMAL_RUNTIME.
         Module['wasm'] = msgData.wasmModule;
         loadModule();
 #else
-        wasmPromiseResolve(msgData.wasmModule);
+        wasmModuleReceived(msgData.wasmModule);
 #endif // MINIMAL_RUNTIME
+#endif
       } else if (cmd === 'run') {
 #if ASSERTIONS
         assert(msgData.pthread_ptr);
@@ -189,7 +137,9 @@ if (ENVIRONMENT_IS_PTHREAD) {
         // Pass the thread address to wasm to store it for fast access.
         __emscripten_thread_init(msgData.pthread_ptr, /*is_main=*/0, /*is_runtime=*/0, /*can_block=*/1, 0, 0);
 
-        PThread.receiveObjectTransfer(msgData);
+#if OFFSCREENCANVAS_SUPPORT
+        PThread.receiveOffscreenCanvases(msgData);
+#endif
         PThread.threadInitTLS();
 
         // Await mailbox notifications with `Atomics.waitAsync` so we can start
@@ -209,7 +159,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
         }
 
         try {
-          invokeEntryPoint(msgData.start_routine, msgData.arg);
+          {{{ awaitIf(ASYNCIFY == 2) }}}invokeEntryPoint(msgData.start_routine, msgData.arg);
         } catch(ex) {
           if (ex != 'unwind') {
             // The pthread "crashed".  Do not call `_emscripten_thread_exit` (which

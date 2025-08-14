@@ -6,8 +6,13 @@
  * found in the LICENSE file.
  */
 
-Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': 256, 'maximum': 256,
-#if MEMORY64
-  'index': 'i64'
+Module['wasmMemory'] = new WebAssembly.Memory({
+#if MEMORY64 == 1
+  'initial': 256n,
+  'maximum': 256n,
+  'address': 'i64',
+#else
+  'initial': 256,
+  'maximum': 256,
 #endif
 });

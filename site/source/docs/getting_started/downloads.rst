@@ -8,7 +8,7 @@ Download and install
    <installing-from-source>` if you prefer that to downloading binaries using
    the emsdk.
 
-.. tip:: if you'd like to install emscripten using the **unofficial** packages
+.. tip:: If you'd like to install emscripten using the **unofficial** packages
    instead of the **officially supported** emsdk, see the bottom of the page.
 
 .. _sdk-installation-instructions:
@@ -16,12 +16,12 @@ Download and install
 Installation instructions using the emsdk (recommended)
 =======================================================
 
-First check the :ref:`Platform-specific notes
+First, check the :ref:`Platform-specific notes
 <platform-notes-installation_instructions-SDK>` below and install any
 prerequisites.
 
 The core Emscripten SDK (emsdk) driver is a Python script. You can get it for
-the first time with
+the first time with:
 
   ::
 
@@ -52,6 +52,8 @@ GitHub and set them as :term:`active <Active Tool/SDK>`:
     # Activate PATH and other environment variables in the current terminal
     source ./emsdk_env.sh
 
+  .. tip:: If you want to avoid executing `source ./emsdk_env.sh` every time you open a new terminal, you can follow the instructions given by the `emsdk activate` command above to add this command to your startup scripts.
+
   .. note:: On Windows, run ``emsdk.bat`` instead of ``./emsdk``, and ``emsdk_env.bat`` instead of ``source ./emsdk_env.sh``.
 
   .. note:: On Windows, if you use the ``activate`` command, the step of ``emsdk_env.bat`` is optional. If you want to know more, see :ref:`activate SDK version <emsdk-set-active-tools>`.
@@ -65,7 +67,7 @@ commands.
 Emsdk install targets
 ---------------------
 
-In the description above we asked the emsdk to install and activate ``latest``,
+In the description above, we asked the emsdk to install and activate ``latest``,
 which is the latest tagged release. That is often what you want.
 
 You can also install a specific version by specifying it, for example,
@@ -99,7 +101,7 @@ target, and note that you must specify the backend explicitly,
     # Get a tip-of-tree 
     ./emsdk install tot
 
-(In the above examples we installed the various targets; remember to also
+(In the above examples, we installed the various targets; remember to also
 ``activate`` them as in the full example from earlier.)
 
 .. _platform-notes-installation_instructions-SDK:
@@ -110,7 +112,7 @@ Platform-specific notes
 Windows
 +++++++
 
-#. Install Python 3.6 or newer (older versions may not work due to `a GitHub change with SSL <https://github.com/emscripten-core/emscripten/issues/6275>`_).
+#. Install Python 3.8 or newer.
 
   .. note:: Instead of running emscripten on Windows directly, you can use the
      Windows Subsystem for Linux to run it in a Linux environment.
@@ -120,8 +122,8 @@ macOS
 
 .. note:: Emscripten requires macOS 10.14 Mojave or above.
 
-If you use the Emscripten SDK it includes a bundled version of Python 3.
-Otherwise you will need to manually install and use Python 3.6 or newer.
+If you use the Emscripten SDK, it includes a bundled version of Python 3.
+Otherwise, you will need to manually install and use Python 3.8 or newer.
 
 These instructions explain how to install **all** the :ref:`required tools
 <toolchain-what-you-need>`. You can :ref:`test whether some of these are already

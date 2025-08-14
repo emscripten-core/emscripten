@@ -36,7 +36,7 @@ const char *emscripten_result_to_string(EMSCRIPTEN_RESULT result) {
 
 #define TEST_RESULT(x) if (ret != EMSCRIPTEN_RESULT_SUCCESS) printf("%s returned %s.\n", #x, emscripten_result_to_string(ret));
 
-EM_BOOL gamepad_callback(int eventType, const EmscriptenGamepadEvent *e, void *userData) {
+bool gamepad_callback(int eventType, const EmscriptenGamepadEvent *e, void *userData) {
   printf("%s: timeStamp: %g, connected: %d, index: %d, numAxes: %d, numButtons: %d, id: \"%s\", mapping: \"%s\"\n",
     eventType != 0 ? emscripten_event_type_to_string(eventType) : "Gamepad state", e->timestamp, e->connected, e->index,
     e->numAxes, e->numButtons, e->id, e->mapping);

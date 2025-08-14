@@ -23,8 +23,10 @@ terms of the MIT license. A copy of the license can be found in the file
 #define  _Atomic(tp)            std::atomic<tp>
 #define  mi_atomic(name)        std::atomic_##name
 #define  mi_memory_order(name)  std::memory_order_##name
-#if !defined(ATOMIC_VAR_INIT) || (__cplusplus >= 202002L) // c++20, see issue #571
- #define MI_ATOMIC_VAR_INIT(x)  x
+#if (__cplusplus >= 202002L)    // c++20, see issue #571
+#define MI_ATOMIC_VAR_INIT(x)  x
+#elif !defined(ATOMIC_VAR_INIT)
+#define MI_ATOMIC_VAR_INIT(x)  x
 #else
  #define MI_ATOMIC_VAR_INIT(x)  ATOMIC_VAR_INIT(x)
 #endif
@@ -39,7 +41,9 @@ terms of the MIT license. A copy of the license can be found in the file
 #include <stdatomic.h>
 #define  mi_atomic(name)        atomic_##name
 #define  mi_memory_order(name)  memory_order_##name
-#if !defined(ATOMIC_VAR_INIT) || (__STDC_VERSION__ >= 201710L) // c17, see issue #735
+#if (__STDC_VERSION__ >= 201710L) // c17, see issue #735
+ #define MI_ATOMIC_VAR_INIT(x) x
+#elif !defined(ATOMIC_VAR_INIT)
  #define MI_ATOMIC_VAR_INIT(x) x
 #else
  #define MI_ATOMIC_VAR_INIT(x) ATOMIC_VAR_INIT(x)
@@ -128,8 +132,10 @@ static inline void mi_atomic_maxi64_relaxed(volatile int64_t* p, int64_t x) {
 
 #elif defined(_MSC_VER)
 
-// MSVC C compilation wrapper that uses Interlocked operations to model C11 atomics.
+// Legacy MSVC plain C compilation wrapper that uses Interlocked operations to model C11 atomics.
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 #include <intrin.h>
 #ifdef _WIN64
@@ -195,7 +201,7 @@ static inline uintptr_t mi_atomic_load_explicit(_Atomic(uintptr_t) const* p, mi_
 #else
   uintptr_t x = *p;
   if (mo > mi_memory_order_relaxed) {
-    while (!mi_atomic_compare_exchange_weak_explicit(p, &x, x, mo, mi_memory_order_relaxed)) { /* nothing */ };
+    while (!mi_atomic_compare_exchange_weak_explicit((_Atomic(uintptr_t)*)p, &x, x, mo, mi_memory_order_relaxed)) { /* nothing */ };
   }
   return x;
 #endif
@@ -323,7 +329,9 @@ static inline void mi_atomic_yield(void) {
   std::this_thread::yield();
 }
 #elif defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 static inline void mi_atomic_yield(void) {
   YieldProcessor();

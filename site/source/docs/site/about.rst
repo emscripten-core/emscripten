@@ -4,7 +4,7 @@
 About this site
 ===============
 
-The site is built using `Sphinx <https://www.sphinx-doc.org/en/master/>`_ (2.4.4), the open source tool used to create the official Python documentation and many other sites. This is a very mature and stable tool, and was selected for, among other reasons, its support for defining API items and linking to them from code.
+The site is built using `Sphinx <https://www.sphinx-doc.org/en/master/>`_ (7.1.2), the open source tool used to create the official Python documentation and many other sites. This is a very mature and stable tool, and was selected for, among other reasons, its support for defining API items and linking to them from code.
 
 The site uses a custom theme, which is based on the :ref:`read-the-docs-theme`.
 

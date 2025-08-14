@@ -56,7 +56,7 @@ LLVM_FEATURE_FLAGS = ['-mnontrapping-fptoint']
 EMTEST_BENCHMARKERS = os.getenv('EMTEST_BENCHMARKERS', 'clang,v8,v8-lto,v8-ctors')
 
 
-class Benchmarker():
+class Benchmarker:
   # Whether to record statistics. Set by SizeBenchmarker.
   record_stats = False
 
@@ -173,7 +173,7 @@ class NativeBenchmarker(Benchmarker):
       cmd = compiler + [
         '-fno-math-errno',
         filename,
-        '-o', filename + '.native'
+        '-o', filename + '.native',
       ] + self.args + shared_args + native_args + clang_native.get_clang_native_args()
       # print(cmd)
       run_process(cmd, env=clang_native.get_clang_native_env())
@@ -199,7 +199,7 @@ def run_binaryen_opts(filename, opts):
   run_process([
     os.path.join(building.get_binaryen_bin(), 'wasm-opt', '--all-features'),
     filename,
-    '-o', filename
+    '-o', filename,
   ] + opts)
 
 
@@ -234,7 +234,7 @@ class EmscriptenBenchmarker(Benchmarker):
       OPTIMIZATIONS,
       '-sINITIAL_MEMORY=256MB',
       '-sENVIRONMENT=node,shell',
-      '-o', final
+      '-o', final,
     ] + LLVM_FEATURE_FLAGS
     if shared_args:
       cmd += shared_args
@@ -331,7 +331,7 @@ class CheerpBenchmarker(Benchmarker):
         '-cheerp-linear-heap-size=256',
         '-cheerp-secondary-output-file=' + final.replace('.js', '.wasm'),
         filename,
-        '-o', final
+        '-o', final,
       ] + shared_args
       # print(' '.join(cmd))
       run_process(cmd, stdout=PIPE, stderr=PIPE)
@@ -371,7 +371,7 @@ named_benchmarkers = {
   'cherp-v8': CheerpBenchmarker('cheerp-v8-wasm', aot_v8),
   # TODO: ensure no baseline compiler is used, see v8
   'sm': EmscriptenBenchmarker('sm', config.SPIDERMONKEY_ENGINE),
-  'cherp-sm': CheerpBenchmarker('cheerp-sm-wasm', config.SPIDERMONKEY_ENGINE)
+  'cherp-sm': CheerpBenchmarker('cheerp-sm-wasm', config.SPIDERMONKEY_ENGINE),
 }
 
 for name in EMTEST_BENCHMARKERS.split(','):
@@ -411,7 +411,7 @@ class benchmark(common.RunnerCore):
       output = {
         'version': 1,
         'git_hash': '',
-        'results': cls.stats
+        'results': cls.stats,
       }
       utils.write_file('stats.json', json.dumps(output, indent=2) + '\n')
 
@@ -469,11 +469,11 @@ class benchmark(common.RunnerCore):
     self.stats.append({
       'key': {
         'test': name,
-        'units': 'bytes'
+        'units': 'bytes',
       },
       'measurements': {
-        'stats': stats
-      }
+        'stats': stats,
+      },
     })
 
   def test_primes(self, check=True):
@@ -736,7 +736,7 @@ class benchmark(common.RunnerCore):
     self.do_benchmark('conditionals', src, 'ok', reps=TEST_REPS)
 
   def test_fannkuch(self):
-    src = read_file(test_file('fannkuch.cpp')).replace(
+    src = read_file(test_file('third_party/fannkuch.c')).replace(
       'int n = argc > 1 ? atoi(argv[1]) : 0;',
       '''
         int n;
@@ -750,7 +750,7 @@ class benchmark(common.RunnerCore):
           case 5: n = 12; break;
           default: printf("error: %d\\n", arg); return -1;
         }
-      '''
+      ''',
     )
     assert 'switch(arg)' in src
     self.do_benchmark('fannkuch', src, 'Pfannkuchen(')
@@ -823,7 +823,7 @@ class benchmark(common.RunnerCore):
     self.do_benchmark('corrections64', src, 'final:')
 
   def fasta(self, name, double_rep):
-    src = read_file(test_file('fasta.cpp')).replace('double', double_rep)
+    src = read_file(test_file('third_party/fasta.cpp')).replace('double', double_rep)
     src = src.replace('   const size_t n = ( argc > 1 ) ? atoi( argv[1] ) : 512;', '''
       int n;
       int arg = argc > 1 ? argv[1][0] - '0' : 3;
@@ -852,13 +852,13 @@ class benchmark(common.RunnerCore):
     self.do_benchmark('skinning', src, 'blah=0.000000')
 
   def test_havlak(self):
-    src = read_file(test_file('havlak.cpp'))
+    src = read_file(test_file('third_party/havlak.cpp'))
     # This runs many recursive calls (DFS) and thus needs a larger stack
     self.do_benchmark('havlak', src, 'Found', shared_args=['-std=c++11'],
                       emcc_args=['-sSTACK_SIZE=1MB'])
 
   def test_base64(self):
-    src = read_file(test_file('base64.cpp'))
+    src = read_file(test_file('benchmark/base64.c'))
     self.do_benchmark('base64', src, 'decode')
 
   @non_core
@@ -977,7 +977,7 @@ class benchmark(common.RunnerCore):
     self.do_benchmark('matrix_multiply', read_file(test_file('matrix_multiply.cpp')), 'Total elapsed:', output_parser=output_parser, shared_args=['-I' + test_file('benchmark')])
 
   def lua(self, benchmark, expected, output_parser=None, args_processor=None):
-    self.emcc_args.remove('-Werror')
+    self.cflags.remove('-Werror')
     shutil.copyfile(test_file(f'third_party/lua/{benchmark}.lua'), benchmark + '.lua')
 
     def lib_builder(name, native, env_init):
@@ -1002,7 +1002,7 @@ class benchmark(common.RunnerCore):
     self.lua('binarytrees', 'long lived tree of depth')
 
   def test_zzz_zlib(self):
-    self.emcc_args.remove('-Werror')
+    self.cflags.remove('-Werror')
     src = read_file(test_file('benchmark/test_zlib_benchmark.c'))
 
     def lib_builder(name, native, env_init):
@@ -1032,8 +1032,8 @@ class benchmark(common.RunnerCore):
     self.do_benchmark('box2d', src, 'frame averages', shared_args=['-I' + test_file('third_party/box2d')], lib_builder=lib_builder)
 
   def test_zzz_bullet(self):
-    self.emcc_args.remove('-Werror')
-    self.emcc_args += ['-Wno-c++11-narrowing', '-Wno-deprecated-register', '-Wno-writable-strings']
+    self.cflags.remove('-Werror')
+    self.cflags += ['-Wno-c++11-narrowing', '-Wno-deprecated-register', '-Wno-writable-strings']
     src = read_file(test_file('third_party/bullet/Demos/Benchmarks/BenchmarkDemo.cpp'))
     src += read_file(test_file('third_party/bullet/Demos/Benchmarks/main.cpp'))
 
@@ -1109,7 +1109,7 @@ class benchmark(common.RunnerCore):
       }
     ''' % DEFAULT_ARG)
 
-    def lib_builder(name, native, env_init):
+    def lib_builder(name, native, env_init):  # noqa
       return self.get_poppler_library(env_init=env_init)
 
     # TODO: Fix poppler native build and remove skip_native=True

@@ -15,21 +15,23 @@ var emscriptenThreadProfiler = {
 
   // Installs startup hook and periodic UI update timer.
   initialize() {
-    this.threadProfilerDiv = document.getElementById('threadprofiler');
-    if (!this.threadProfilerDiv) {
+    var self = emscriptenThreadProfiler;
+    self.threadProfilerDiv = document.getElementById('threadprofiler');
+    if (!self.threadProfilerDiv) {
       var div = document.createElement("div");
       div.innerHTML = "<div id='threadprofiler' style='margin: 20px; border: solid 1px black;'></div>";
       document.body.appendChild(div);
-      this.threadProfilerDiv = document.getElementById('threadprofiler');
+      self.threadProfilerDiv = document.getElementById('threadprofiler');
     }
-    var i = setInterval(function() { emscriptenThreadProfiler.updateUi() }, this.uiUpdateIntervalMsecs);
+    var i = setInterval(() => self.updateUi(), self.uiUpdateIntervalMsecs);
     addOnExit(() => clearInterval(i));
   },
 
   initializeNode() {
     addOnInit(() => {
-      emscriptenThreadProfiler.dumpState();
-      var i = setInterval(function() { emscriptenThreadProfiler.dumpState() }, this.uiUpdateIntervalMsecs);
+      var self = emscriptenThreadProfiler;
+      self.dumpState();
+      var i = setInterval(() => self.dumpState(), self.uiUpdateIntervalMsecs);
       addOnExit(() => clearInterval(i));
     });
   },
@@ -38,11 +40,10 @@ var emscriptenThreadProfiler = {
     var mainThread = _emscripten_main_runtime_thread_id();
 
     var threads = [mainThread];
-    for (var i in PThread.pthreads) {
-      threads.push(PThread.pthreads[i].pthread_ptr);
+    for (var thread of Object.values(PThread.pthreads)) {
+      threads.push(thread.pthread_ptr);
     }
-    for (var i = 0; i < threads.length; ++i) {
-      var threadPtr = threads[i];
+    for (var threadPtr of threads) {
       var threadName = PThread.getThreadName(threadPtr);
       if (threadName) {
         threadName = `"${threadName}" (${ptrToString(threadPtr)})`;
@@ -60,16 +61,18 @@ var emscriptenThreadProfiler = {
       // initialized yet, ignore updating.
       return;
     }
+    if (!runtimeInitialized) {
+      return;
+    }
     var str = '';
     var mainThread = _emscripten_main_runtime_thread_id();
 
     var threads = [mainThread];
-    for (var i in PThread.pthreads) {
-      threads.push(PThread.pthreads[i].pthread_ptr);
+    for (var thread of Object.values(PThread.pthreads)) {
+      threads.push(thread.pthread_ptr);
     }
 
-    for (var i = 0; i < threads.length; ++i) {
-      var threadPtr = threads[i];
+    for (var threadPtr of threads) {
       var profilerBlock = Atomics.load({{{ getHeapForType('*') }}}, {{{ getHeapOffset('threadPtr + ' + C_STRUCTS.pthread.profilerBlock, '*') }}});
 #if MEMORY64
       profilerBlock = Number(profilerBlock);
@@ -100,7 +103,7 @@ var emscriptenThreadProfiler = {
       if (recent.length > 0) str += `Recent activity: ${recent}`;
       str += '<br />';
     }
-    this.threadProfilerDiv.innerHTML = str;
+    emscriptenThreadProfiler.threadProfilerDiv.innerHTML = str;
   }
 };
 

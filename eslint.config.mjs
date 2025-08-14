@@ -1,16 +1,22 @@
 import globals from 'globals';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import js from '@eslint/js';
 import { FlatCompat } from '@eslint/eslintrc';
+import { loadDefaultSettings } from './src/utility.mjs';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 const compat = new FlatCompat({
-  baseDirectory: __dirname,
+  baseDirectory: import.meta.dirname,
   recommendedConfig: js.configs.recommended,
   allConfig: js.configs.all
 });
+
+
+// Emscripten settings are made available to the compiler as global
+// variables.  Make sure eslint knows about them.
+const settings = loadDefaultSettings();
+const settingsGlobals = {};
+for (const name of Object.keys(settings)) {
+  settingsGlobals[name] = 'writable';
+}
 
 export default [{
   ignores: [
@@ -20,13 +26,16 @@ export default [{
     '**/third_party/',
     '**/test/',
     'src/polyfill/',
-    'src/library*.js',
+    'src/lib/',
     'src/runtime_*.js',
     'src/shell*.js',
+    'src/modularize.js',
     'src/preamble*.js',
+    'src/postlibrary.js',
     'src/postamble*.js',
     'src/closure-externs/',
     'src/embind/',
+    'src/pthread_esm_startup.mjs',
     'src/emrun_postjs.js',
     'src/wasm_worker.js',
     'src/audio_worklet.js',
@@ -39,31 +48,26 @@ export default [{
     'src/cpuprofiler.js',
     'src/memoryprofiler.js',
     'src/gl-matrix.js',
-    'src/headless.js',
-    'src/headlessCanvas.js',
-    'src/emscripten-source-map.min.js',
     'src/source_map_support.js',
     'src/Fetch.js',
     'src/settings.js',
     'src/settings_internal.js',
-    'src/arrayUtils.js',
+    'src/emrun_prejs.js',
     'src/deterministic.js',
-    'src/base64Utils.js',
-    'src/base64Decode.js',
     'src/proxyWorker.js',
     'src/proxyClient.js',
     'src/IDBStore.js',
-    'src/URIUtils.js',
     'tools/experimental',
   ],
-}, ...compat.extends('prettier'), {
+}, ...compat.extends('prettier'), js.configs.recommended, {
   languageOptions: {
     globals: {
       ...globals.browser,
       ...globals.node,
+      ...settingsGlobals,
     },
 
-    ecmaVersion: 13,
+    ecmaVersion: 'latest',
     sourceType: 'module',
   },
 
@@ -73,6 +77,7 @@ export default [{
     'require-jsdoc': 'off',
     'arrow-body-style': ['error', 'as-needed'],
     'space-infix-ops': 'error',
+    'no-prototype-builtins': 'off',
 
     quotes: ['error', 'single', {
       avoidEscape: true,
@@ -83,9 +88,7 @@ export default [{
 
   rules: {
     'no-unused-vars': ['error', {
-      vars: 'all',
-      args: 'none',
-      ignoreRestSiblings: false,
+      argsIgnorePattern: '^_',
       destructuredArrayIgnorePattern: '^_',
     }],
   },

@@ -8,7 +8,7 @@
 EMSCRIPTEN_WEBSOCKET_T sock1;
 EMSCRIPTEN_WEBSOCKET_T sock2;
 
-EM_BOOL WebSocketOpen(int eventType, const EmscriptenWebSocketOpenEvent *e, void *userData) {
+bool WebSocketOpen(int eventType, const EmscriptenWebSocketOpenEvent *e, void *userData) {
   printf("open(socket=%d, eventType=%d, userData=%p)\n", e->socket, eventType, userData);
 
   emscripten_websocket_send_utf8_text(e->socket, "hello on the other side");
@@ -19,7 +19,7 @@ EM_BOOL WebSocketOpen(int eventType, const EmscriptenWebSocketOpenEvent *e, void
   return 0;
 }
 
-EM_BOOL WebSocketClose(int eventType, const EmscriptenWebSocketCloseEvent *e, void *userData) {
+bool WebSocketClose(int eventType, const EmscriptenWebSocketCloseEvent *e, void *userData) {
   printf("close(socket=%d, eventType=%d, wasClean=%d, code=%d, reason=%s, userData=%p)\n", e->socket, eventType, e->wasClean, e->code, e->reason, userData);
   assert(e->wasClean == 1);
   assert(e->code == 1005 /* No Status Rcvd */);
@@ -36,12 +36,12 @@ EM_BOOL WebSocketClose(int eventType, const EmscriptenWebSocketCloseEvent *e, vo
   return 0;
 }
 
-EM_BOOL WebSocketError(int eventType, const EmscriptenWebSocketErrorEvent *e, void *userData) {
+bool WebSocketError(int eventType, const EmscriptenWebSocketErrorEvent *e, void *userData) {
   printf("error(socket=%d, eventType=%d, userData=%p)\n", e->socket, eventType, userData);
   return 0;
 }
 
-EM_BOOL WebSocketMessage(int eventType, const EmscriptenWebSocketMessageEvent *e, void *userData) {
+bool WebSocketMessage(int eventType, const EmscriptenWebSocketMessageEvent *e, void *userData) {
   printf("message(socket=%d, eventType=%d, userData=%p data=%p, numBytes=%d, isText=%d)\n", e->socket, eventType, userData, e->data, e->numBytes, e->isText);
   static int text_received = 0;
   assert(e->socket == sock1 || e->socket == sock2);

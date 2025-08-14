@@ -9,7 +9,6 @@
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <emscripten.h>
 #include <assert.h>
 #include <string.h>
 
@@ -21,7 +20,10 @@ int main() {
   f = open("/", O_RDONLY);
   f2 = open("/", O_RDONLY);
   f3 = dup(f);
-  printf("errno: %d\n", errno);
+  printf("errno: %s\n", strerror(errno));
+  assert(f != -1);
+  assert(f2 != -1);
+  assert(f3 != -1);
   printf("f: %d\n", f != f2 && f != f3);
   printf("f2,f3: %d\n", f2 != f3);
   printf("close(f1): %d\n", close(f));
@@ -34,7 +36,10 @@ int main() {
   f = open("/", O_RDONLY);
   f2 = open("/", O_RDONLY);
   f3 = dup2(f, f2);
-  printf("errno: %d\n", errno);
+  assert(f != -1);
+  assert(f2 != -1);
+  assert(f3 != -1);
+  printf("errno: %s\n", strerror(errno));
   printf("f: %d\n", f != f2 && f != f3);
   printf("f2,f3: %d\n", f2 == f3);
   printf("close(f1): %d\n", close(f));
@@ -45,20 +50,24 @@ int main() {
 
   printf("DUP2 bad fds\n");
   f = dup2(-2, -2);
-  printf("f: %d\n", f == -1);
-  printf("errno: %d\n", errno);
+  printf("f: %d\n", f);
+  assert(f == -1);
+  printf("errno: %s\n", strerror(errno));
   printf("close(f): %d\n", close(f));
   printf("\n");
   errno = 0;
 
   printf("DUP2 bad newfd\n");
   f = open("/", O_RDONLY);
+  assert(f != -1);
   f3 = dup2(f, -1);
   printf("f3: %d\n", f3);
-  printf("errno: %d\n", errno);
+  assert(f3 == -1);
+  printf("errno: %s\n", strerror(errno));
   f3 = dup2(f, 256000);
   printf("f3: %d\n", f3);
-  printf("errno: %d\n", errno);
+  assert(f3 == -1);
+  printf("errno: %s\n", strerror(errno));
   printf("close(f1): %d\n", close(f));
   printf("\n");
   errno = 0;
@@ -67,6 +76,7 @@ int main() {
   int p[2];
   pipe(p);
   int g = dup2(p[0], 7);
+  assert(g != -1);
   int rtn = write(p[1], "abc", 3);
   assert(rtn == 3);
   char buf[5] = {0};
@@ -79,6 +89,8 @@ int main() {
   printf("DUP shared seek position\n");
   f = open("./blah.txt", O_RDWR | O_CREAT | O_EXCL, 0600);
   f2 = dup(f);
+  assert(f != -1);
+  assert(f2 != -1);
   rtn = write(f2, "abcabc\n", 7);
   assert(rtn == 7);
   assert(lseek(f, 0, SEEK_CUR) == 7);
@@ -89,7 +101,9 @@ int main() {
 
   printf("DUP truncate\n");
   f = open("./blah.txt", O_RDWR, 0600);
+  assert(f != -1);
   f2 = dup(f);
+  assert(f2 != -1);
   rtn = ftruncate(f2, 0);
   assert(rtn == 0);
   assert(lseek(f, 0, SEEK_END) == 0);

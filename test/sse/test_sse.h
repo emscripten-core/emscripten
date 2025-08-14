@@ -27,6 +27,14 @@
 #define align1_double double
 #endif
 
+#ifdef __GNUC__
+#define NOINLINE __attribute__((noinline))
+#elif defined(_MSC_VER)
+#define NOINLINE __declspec(noinline)
+#else
+#define NOINLINE
+#endif
+
 // Recasts floating point representation of f to an integer.
 uint32_t fcastu(float f) { return *(uint32_t*)&f; }
 uint64_t dcastu(double f) { return *(uint64_t*)&f; }
@@ -496,7 +504,7 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime) {
         printf("%s(%s, %s) = %s\n", #func, str, str2, str3); \
       }
 
-#define Ret_M128_Tint_body(Ret_type, func, Tint) \
+#define Ret_M128_Tint_body(Ret_type, func, Tint) [](){ \
   for(int i = 0; i < numInterestingFloats / 4; ++i) \
     for(int k = 0; k < 4; ++k) \
     { \
@@ -505,9 +513,10 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime) {
       char str[256]; tostr(&m1, str); \
       char str2[256]; tostr(&ret, str2); \
       printf("%s(%s, %d) = %s\n", #func, str, Tint, str2); \
-    }
+    } \
+  }();
 
-#define Ret_M128d_Tint_body(Ret_type, func, Tint) \
+#define Ret_M128d_Tint_body(Ret_type, func, Tint) [](){ \
   for(int i = 0; i < numInterestingDoubles / 2; ++i) \
     for(int k = 0; k < 2; ++k) \
     { \
@@ -516,9 +525,10 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime) {
       char str[256]; tostr(&m1, str); \
       char str2[256]; tostr(&ret, str2); \
       printf("%s(%s, %d) = %s\n", #func, str, Tint, str2); \
-    }
+    } \
+  }();
 
-#define Ret_M128i_Tint_body(Ret_type, func, Tint) \
+#define Ret_M128i_Tint_body(Ret_type, func, Tint) [](){ \
   for(int i = 0; i < numInterestingInts / 4; ++i) \
     for(int k = 0; k < 4; ++k) \
     { \
@@ -527,9 +537,10 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime) {
       char str[256]; tostr(&m1, str); \
       char str2[256]; tostr(&ret, str2); \
       printf("%s(%s, %d) = %s\n", #func, str, Tint, str2); \
-    }
+    } \
+  }();
 
-#define Ret_M128i_int_Tint_body(Ret_type, func, Tint) \
+#define Ret_M128i_int_Tint_body(Ret_type, func, Tint) [](){ \
   for(int i = 0; i < numInterestingInts / 4; ++i) \
     for(int j = 0; j < numInterestingInts; ++j) \
       for(int k = 0; k < 4; ++k) \
@@ -539,9 +550,10 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime) {
         char str[256]; tostr(&m1, str); \
         char str2[256]; tostr(&ret, str2); \
         printf("%s(%s, 0x%08X, %d) = %s\n", #func, str, interesting_ints[j], Tint, str2); \
-      }
+      } \
+  }();
 
-#define Ret_M128d_M128d_Tint_body(Ret_type, func, Tint) \
+#define Ret_M128d_M128d_Tint_body(Ret_type, func, Tint) [](){ \
   for(int i = 0; i < numInterestingDoubles / 2; ++i) \
     for(int k = 0; k < 2; ++k) \
       for(int j = 0; j < numInterestingDoubles / 2; ++j) \
@@ -560,9 +572,10 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime) {
         tostr(&m2, str2); \
         tostr(&ret, str3); \
         printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3); \
-      }
+      } \
+  }();
 
-#define Ret_M128i_M128i_Tint_body(Ret_type, func, Tint) \
+#define Ret_M128i_M128i_Tint_body(Ret_type, func, Tint) [](){ \
   for(int i = 0; i < numInterestingInts / 4; ++i) \
     for(int k = 0; k < 4; ++k) \
       for(int j = 0; j < numInterestingInts / 4; ++j) \
@@ -581,9 +594,10 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime) {
         tostr(&m2, str2); \
         tostr(&ret, str3); \
         printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3); \
-      }
+      } \
+  }();
 
-#define Ret_M128_M128_Tint_body(Ret_type, func, Tint) \
+#define Ret_M128_M128_Tint_body(Ret_type, func, Tint) [](){ \
   for(int i = 0; i < numInterestingFloats / 4; ++i) \
     for(int k = 0; k < 4; ++k) \
       for(int j = 0; j < numInterestingFloats / 4; ++j) \
@@ -602,32 +616,34 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime) {
         tostr(&m2, str2); \
         tostr(&ret, str3); \
         printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3); \
-      }
+      } \
+  }();
 
 #define const_int8_unroll(Ret_type, F, func) \
-  F(Ret_type, func, 0); \
-  F(Ret_type, func, 1); \
-  F(Ret_type, func, 2); \
-  F(Ret_type, func, 3); \
-  F(Ret_type, func, 5); \
-  F(Ret_type, func, 7); \
-  F(Ret_type, func, 11); \
-  F(Ret_type, func, 13); \
-  F(Ret_type, func, 15); \
-  F(Ret_type, func, 16); \
-  F(Ret_type, func, 17); \
-  F(Ret_type, func, 23); \
-  F(Ret_type, func, 29); \
-  F(Ret_type, func, 31); \
-  F(Ret_type, func, 37); \
-  F(Ret_type, func, 43); \
-  F(Ret_type, func, 47); \
-  F(Ret_type, func, 59); \
-  F(Ret_type, func, 127); \
-  F(Ret_type, func, 128); \
-  F(Ret_type, func, 191); \
-  F(Ret_type, func, 254); \
-  F(Ret_type, func, 255);
+  F(Ret_type, func, 0b00000000); \
+  F(Ret_type, func, 0b00000001); \
+  F(Ret_type, func, 0b00000010); \
+  F(Ret_type, func, 0b00000100); \
+  F(Ret_type, func, 0b00001000); \
+  F(Ret_type, func, 0b00010000); \
+  F(Ret_type, func, 0b00100000); \
+  F(Ret_type, func, 0b01000000); \
+  F(Ret_type, func, 0b10000000); \
+  F(Ret_type, func, 0b10101010); \
+  F(Ret_type, func, 0b01010101); \
+  F(Ret_type, func, 0b11001100); \
+  F(Ret_type, func, 0b00110011); \
+  F(Ret_type, func, 0b00001111); \
+  F(Ret_type, func, 0b11110000); \
+  F(Ret_type, func, 0b01111111); \
+  F(Ret_type, func, 0b10111111); \
+  F(Ret_type, func, 0b11011111); \
+  F(Ret_type, func, 0b11101111); \
+  F(Ret_type, func, 0b11110111); \
+  F(Ret_type, func, 0b11111011); \
+  F(Ret_type, func, 0b11111101); \
+  F(Ret_type, func, 0b11111110); \
+  F(Ret_type, func, 0b11111111);
 
 #define const_int5_full_unroll(Ret_type, F, func) \
   F(Ret_type, func, 0); \
@@ -967,16 +983,20 @@ double *getTempOutDoubleStore(int alignmentBytes) { return (double*)getTempOutFl
     printf("%s(%s) = %s\n", #func, str, str2); \
   }
 
-#define Ret_FloatPtr_M128i(Ret_type, func, numElemsAccessed, inc) \
-  for(int i = 0; i+numElemsAccessed <= numInterestingFloats; i += inc) \
-    for(int j = 0; j < numInterestingInts / 4; ++j) \
-    { \
-      float *ptr = interesting_floats + i; \
-      __m128i m1 = (__m128i)E1_Int(interesting_ints, j*4, numInterestingInts); \
-      Ret_type ret = func(ptr, m1); \
-      char str[256]; tostr(ptr, numElemsAccessed, str); \
-      char str2[256]; tostr(&ret, str2); \
-      printf("%s(%s) = %s\n", #func, str, str2); \
+#define Ret_FloatPtr_M128i(Ret_type, func, numElemsAccessed, inc)              \
+  for (int i = 0; i + numElemsAccessed <= numInterestingFloats; i += inc)      \
+    for (int j = 0; j < numInterestingInts / 4; ++j) {                         \
+      float* ptr = interesting_floats + i;                                     \
+      __m128i m1 =                                                             \
+        (__m128i)E1_Int(interesting_ints, j * 4, numInterestingInts);          \
+      Ret_type ret = func(ptr, m1);                                            \
+      char str[256];                                                           \
+      tostr(ptr, numElemsAccessed, str);                                       \
+      char str2[256];                                                          \
+      tostr(&m1, str2);                                                        \
+      char str3[256];                                                          \
+      tostr(&ret, str3);                                                       \
+      printf("%s(%s, %s) = %s\n", #func, str, str2, str3);                     \
     }
 
 #define Ret_Float4(Ret_type, func, inc) \
@@ -1559,8 +1579,10 @@ void tostr_approx(__m256* m, char* outstr, bool approximate) {
       char str[256];                                                           \
       tostr(ptr, numElemsAccessed, str);                                       \
       char str2[256];                                                          \
-      tostr(&ret, str2);                                                       \
-      printf("%s(%s) = %s\n", #func, str, str2);                               \
+      tostr(&m1, str2);                                                        \
+      char str3[256];                                                          \
+      tostr(&ret, str3);                                                       \
+      printf("%s(%s, %s) = %s\n", #func, str, str2, str3);                     \
     }
 
 #define Ret_FloatPtr_M256i(Ret_type, func, numElemsAccessed, inc)              \
@@ -2155,5 +2177,869 @@ void tostr_approx(__m256* m, char* outstr, bool approximate) {
     tostr(&ret, str2);                                                         \
     printf("%s(%s) = %s\n", #func, str, str2);                                 \
   }
+
+#endif
+
+#ifdef __AVX2__
+
+#define Ret_M256i_M256i_M256i(Ret_type, func)                                  \
+  for (int i = 0; i < numInterestingInts / 4; ++i)                             \
+    for (int k = 0; k < 4; ++k)                                                \
+      for (int j = 0; j < numInterestingInts / 4; ++j)                         \
+        for (int l = 0; l < numInterestingInts / 4; ++l) {                     \
+          __m128i tmp =                                                        \
+            (__m128i)E1_Int(interesting_ints, i * 4 + k, numInterestingInts);  \
+          __m256i m1 = _mm256_set_m128i(tmp, tmp);                             \
+          tmp = (__m128i)E2_Int(interesting_ints, j * 4, numInterestingInts);  \
+          __m256i m2 = _mm256_set_m128i(tmp, tmp);                             \
+          tmp = (__m128i)E1_Int(interesting_ints, l * 4, numInterestingInts);  \
+          __m256i m3 = _mm256_set_m128i(tmp, tmp);                             \
+          Ret_type ret = func(m1, m2, m3);                                     \
+          char str[256];                                                       \
+          tostr(&m1, str);                                                     \
+          char str2[256];                                                      \
+          tostr(&m2, str2);                                                    \
+          char str3[256];                                                      \
+          tostr(&m3, str3);                                                    \
+          char str4[256];                                                      \
+          tostr(&ret, str4);                                                   \
+          printf("%s(%s, %s, %s) = %s\n", #func, str, str2, str3, str4);       \
+        }
+
+#define Ret_M256i_M128i(Ret_type, func)                                        \
+  for (int i = 0; i < numInterestingInts / 4; ++i)                             \
+    for (int k = 0; k < 4; ++k)                                                \
+      for (int j = 0; j < numInterestingInts / 4; ++j) {                       \
+        __m128i tmp =                                                          \
+          (__m128i)E1_Int(interesting_ints, i * 4 + k, numInterestingInts);    \
+        __m256i m1 = _mm256_set_m128i(tmp, tmp);                               \
+        __m128i m2 =                                                           \
+          (__m128i)E2_Int(interesting_ints, j * 4, numInterestingInts);        \
+        Ret_type ret = func(m1, m2);                                           \
+        char str[256];                                                         \
+        tostr(&m1, str);                                                       \
+        char str2[256];                                                        \
+        tostr(&m2, str2);                                                      \
+        char str3[256];                                                        \
+        tostr(&ret, str3);                                                     \
+        printf("%s(%s, %s) = %s\n", #func, str, str2, str3);                   \
+      }
+
+#define Ret_IntPtr_M128i(Ret_type, func, Ptr_type, numElemsAccessed, inc)      \
+  for (int i = 0; i + numElemsAccessed <= numInterestingInts; i += inc)        \
+    for (int j = 0; j < numInterestingInts / 4; ++j) {                         \
+      uint32_t* ptr = interesting_ints + i;                                    \
+      __m128i m1 =                                                             \
+        (__m128i)E1_Int(interesting_ints, j * 4, numInterestingInts);          \
+      Ret_type ret = func((Ptr_type)ptr, m1);                                  \
+      char str[256];                                                           \
+      tostr((int*)ptr, numElemsAccessed, str);                                 \
+      char str2[256];                                                          \
+      tostr(&m1, str2);                                                        \
+      char str3[256];                                                          \
+      tostr(&ret, str3);                                                       \
+      printf("%s(%s, %s) = %s\n", #func, str, str2, str3);                     \
+    }
+
+#define Ret_IntPtr_M256i(Ret_type, func, Ptr_type, numElemsAccessed, inc)      \
+  for (int i = 0; i + numElemsAccessed <= numInterestingInts; i += inc)        \
+    for (int j = 0; j < numInterestingInts / 4; ++j) {                         \
+      uint32_t* ptr = interesting_ints + i;                                    \
+      __m128i tmp =                                                            \
+        (__m128i)E1_Int(interesting_ints, j * 4, numInterestingInts);          \
+      __m256i m1 = _mm256_set_m128i(tmp, tmp);                                 \
+      Ret_type ret = func((Ptr_type)ptr, m1);                                  \
+      char str[256];                                                           \
+      tostr((int*)ptr, numElemsAccessed, str);                                 \
+      char str2[256];                                                          \
+      tostr(&m1, str2);                                                        \
+      char str3[256];                                                          \
+      tostr(&ret, str3);                                                       \
+      printf("%s(%s, %s) = %s\n", #func, str, str2, str3);                     \
+    }
+
+#define void_OutIntPtr_M128i_M128i(                                            \
+  func, Ptr_type, numBytesWritten, alignmentBytes)                             \
+  for (int i = 0; i < numInterestingInts / 4; ++i)                             \
+    for (int j = 0; j < numInterestingInts / 4; ++j)                           \
+      for (int offset = 0; offset < numBytesWritten; offset += alignmentBytes) \
+        for (int k = 0; k < 4; ++k) {                                          \
+          uintptr_t base = (uintptr_t)getTempOutIntStore(16);                  \
+          __m128i m1 =                                                         \
+            (__m128i)E1_Int(interesting_ints, j * 4, numInterestingInts);      \
+          __m128i m2 =                                                         \
+            (__m128i)E1_Int(interesting_ints, i * 4 + k, numInterestingInts);  \
+          align1_int* out = (align1_int*)(base + offset);                      \
+          func((Ptr_type)out, m1, m2);                                         \
+          char str[256];                                                       \
+          tostr(&m1, str);                                                     \
+          char str2[256];                                                      \
+          tostr(&m2, str2);                                                    \
+          char str3[256];                                                      \
+          tostr(out, (numBytesWritten + sizeof(int) - 1) / sizeof(int), str3); \
+          printf(                                                              \
+            "%s(p:align=%d, %s, %s) = %s\n", #func, offset, str, str2, str3);  \
+        }
+
+#define void_OutIntPtr_M256i_M256i(                                            \
+  func, Ptr_type, numBytesWritten, alignmentBytes)                             \
+  for (int i = 0; i < numInterestingInts / 4; ++i)                             \
+    for (int j = 0; j < numInterestingInts / 4; ++j)                           \
+      for (int offset = 0; offset < numBytesWritten; offset += alignmentBytes) \
+        for (int k = 0; k < 4; ++k) {                                          \
+          uintptr_t base = (uintptr_t)getTempOutIntStore(16);                  \
+          __m128i tmp =                                                        \
+            (__m128i)E1_Int(interesting_ints, j * 4, numInterestingInts);      \
+          __m256i m1 = _mm256_set_m128i(tmp, tmp);                             \
+          tmp =                                                                \
+            (__m128i)E1_Int(interesting_ints, i * 4 + k, numInterestingInts);  \
+          __m256i m2 = _mm256_set_m128i(tmp, tmp);                             \
+          align1_int* out = (align1_int*)(base + offset);                      \
+          func((Ptr_type)out, m1, m2);                                         \
+          char str[256];                                                       \
+          tostr(&m1, str);                                                     \
+          char str2[256];                                                      \
+          tostr(&m2, str2);                                                    \
+          char str3[256];                                                      \
+          tostr(out, (numBytesWritten + sizeof(int) - 1) / sizeof(int), str3); \
+          printf(                                                              \
+            "%s(p:align=%d, %s, %s) = %s\n", #func, offset, str, str2, str3);  \
+        }
+
+// Generate random 32x4 index
+__m128i GenRandom32BitIndex(int i, int n, int prime) {
+  return _mm_set_epi32((i * prime) % n,
+                       ((i + 1) * prime) % n,
+                       ((i + 2) * prime) % n,
+                       ((i + 3) * prime) % n);
+}
+
+// Generate random 64x2 index
+__m128i GenRandom64BitIndex(int i, int n, int prime) {
+  return _mm_set_epi64x((i * prime) % n, ((i + 3) * prime) % n);
+}
+
+#define Ret_DoublePtr_I32x4_Tint_body(Ret_type, func, Tint)                    \
+  for (int j = 0; j < 4096; ++j) {                                             \
+    double* ptr = interesting_doubles;                                         \
+    __m128i m1 = GenRandom32BitIndex(j, numInterestingDoubles, 1787);          \
+    Ret_type ret = func(ptr, m1, Tint);                                        \
+    char str[256];                                                             \
+    tostr(ptr, 4, str);                                                        \
+    char str2[256];                                                            \
+    tostr(&m1, str2);                                                          \
+    char str3[256];                                                            \
+    tostr(&ret, str3);                                                         \
+    printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3);             \
+  }
+
+#define Ret_DoublePtr_I64x2_Tint_body(Ret_type, func, Tint)                    \
+  for (int j = 0; j < 4096; ++j) {                                             \
+    double* ptr = interesting_doubles;                                         \
+    __m128i m1 = GenRandom64BitIndex(j, numInterestingDoubles, 1787);          \
+    Ret_type ret = func(ptr, m1, Tint);                                        \
+    char str[256];                                                             \
+    tostr(ptr, 4, str);                                                        \
+    char str2[256];                                                            \
+    tostr(&m1, str2);                                                          \
+    char str3[256];                                                            \
+    tostr(&ret, str3);                                                         \
+    printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3);             \
+  }
+
+#define Ret_DoublePtr_I64x4_Tint_body(Ret_type, func, Tint)                    \
+  for (int j = 0; j < 4096; ++j) {                                             \
+    double* ptr = interesting_doubles;                                         \
+    __m128i tmp = GenRandom64BitIndex(j, numInterestingDoubles, 1787);         \
+    __m256i m1 = _mm256_set_m128i(tmp, tmp);                                   \
+    Ret_type ret = func(ptr, m1, Tint);                                        \
+    char str[256];                                                             \
+    tostr(ptr, 4, str);                                                        \
+    char str2[256];                                                            \
+    tostr(&m1, str2);                                                          \
+    char str3[256];                                                            \
+    tostr(&ret, str3);                                                         \
+    printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3);             \
+  }
+
+#define Ret_FloatPtr_I32x4_Tint_body(Ret_type, func, Tint)                     \
+  for (int j = 0; j < 4096; ++j) {                                             \
+    float* ptr = interesting_floats;                                           \
+    __m128i m1 = GenRandom32BitIndex(j, numInterestingFloats, 1787);           \
+    Ret_type ret = func(ptr, m1, Tint);                                        \
+    char str[256];                                                             \
+    tostr(ptr, 4, str);                                                        \
+    char str2[256];                                                            \
+    tostr(&m1, str2);                                                          \
+    char str3[256];                                                            \
+    tostr(&ret, str3);                                                         \
+    printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3);             \
+  }
+
+#define Ret_FloatPtr_I32x8_Tint_body(Ret_type, func, Tint)                     \
+  for (int j = 0; j < 4096; ++j) {                                             \
+    float* ptr = interesting_floats;                                           \
+    __m128i tmp = GenRandom32BitIndex(j, numInterestingFloats, 1787);          \
+    __m256i m1 = _mm256_set_m128i(tmp, tmp);                                   \
+    Ret_type ret = func(ptr, m1, Tint);                                        \
+    char str[256];                                                             \
+    tostr(ptr, 4, str);                                                        \
+    char str2[256];                                                            \
+    tostr(&m1, str2);                                                          \
+    char str3[256];                                                            \
+    tostr(&ret, str3);                                                         \
+    printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3);             \
+  }
+
+#define Ret_FloatPtr_I64x2_Tint_body(Ret_type, func, Tint)                     \
+  for (int j = 0; j < 4096; ++j) {                                             \
+    float* ptr = interesting_floats;                                           \
+    __m128i m1 = GenRandom64BitIndex(j, numInterestingFloats, 1787);           \
+    Ret_type ret = func(ptr, m1, Tint);                                        \
+    char str[256];                                                             \
+    tostr(ptr, 4, str);                                                        \
+    char str2[256];                                                            \
+    tostr(&m1, str2);                                                          \
+    char str3[256];                                                            \
+    tostr(&ret, str3);                                                         \
+    printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3);             \
+  }
+
+#define Ret_FloatPtr_I64x4_Tint_body(Ret_type, func, Tint)                     \
+  for (int j = 0; j < 4096; ++j) {                                             \
+    float* ptr = interesting_floats;                                           \
+    __m128i tmp = GenRandom64BitIndex(j, numInterestingFloats, 1787);          \
+    __m256i m1 = _mm256_set_m128i(tmp, tmp);                                   \
+    Ret_type ret = func(ptr, m1, Tint);                                        \
+    char str[256];                                                             \
+    tostr(ptr, 4, str);                                                        \
+    char str2[256];                                                            \
+    tostr(&m1, str2);                                                          \
+    char str3[256];                                                            \
+    tostr(&ret, str3);                                                         \
+    printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3);             \
+  }
+
+#define Ret_IntPtr_I32x4_Tint_body(Ret_type, func, Tint)                       \
+  for (int j = 0; j < 4096; ++j) {                                             \
+    int32_t* ptr = (int32_t*)interesting_ints;                                 \
+    __m128i m1 = GenRandom32BitIndex(j, numInterestingInts, 1787);             \
+    Ret_type ret = func(ptr, m1, Tint);                                        \
+    char str[256];                                                             \
+    tostr(ptr, 4, str);                                                        \
+    char str2[256];                                                            \
+    tostr(&m1, str2);                                                          \
+    char str3[256];                                                            \
+    tostr(&ret, str3);                                                         \
+    printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3);             \
+  }
+
+#define Ret_IntPtr_I32x8_Tint_body(Ret_type, func, Tint)                       \
+  for (int j = 0; j < 4096; ++j) {                                             \
+    int32_t* ptr = (int32_t*)interesting_ints;                                 \
+    __m128i tmp = GenRandom32BitIndex(j, numInterestingInts, 1787);            \
+    __m256i m1 = _mm256_set_m128i(tmp, tmp);                                   \
+    Ret_type ret = func(ptr, m1, Tint);                                        \
+    char str[256];                                                             \
+    tostr(ptr, 4, str);                                                        \
+    char str2[256];                                                            \
+    tostr(&m1, str2);                                                          \
+    char str3[256];                                                            \
+    tostr(&ret, str3);                                                         \
+    printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3);             \
+  }
+
+#define Ret_IntPtr_I64x2_Tint_body(Ret_type, func, Tint)                       \
+  for (int j = 0; j < 4096; ++j) {                                             \
+    int32_t* ptr = (int32_t*)interesting_ints;                                 \
+    __m128i m1 = GenRandom64BitIndex(j, numInterestingInts, 1787);             \
+    Ret_type ret = func(ptr, m1, Tint);                                        \
+    char str[256];                                                             \
+    tostr(ptr, 4, str);                                                        \
+    char str2[256];                                                            \
+    tostr(&m1, str2);                                                          \
+    char str3[256];                                                            \
+    tostr(&ret, str3);                                                         \
+    printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3);             \
+  }
+
+#define Ret_IntPtr_I64x4_Tint_body(Ret_type, func, Tint)                       \
+  for (int j = 0; j < 4096; ++j) {                                             \
+    int32_t* ptr = (int*)interesting_ints;                                     \
+    __m128i tmp = GenRandom64BitIndex(j, numInterestingInts, 1787);            \
+    __m256i m1 = _mm256_set_m128i(tmp, tmp);                                   \
+    Ret_type ret = func(ptr, m1, Tint);                                        \
+    char str[256];                                                             \
+    tostr(ptr, 4, str);                                                        \
+    char str2[256];                                                            \
+    tostr(&m1, str2);                                                          \
+    char str3[256];                                                            \
+    tostr(&ret, str3);                                                         \
+    printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3);             \
+  }
+
+#define Ret_Int64Ptr_I32x4_Tint_body(Ret_type, func, Tint)                     \
+  for (int j = 0; j < 4096; ++j) {                                             \
+    int64_t* ptr = (int64_t*)interesting_ints;                                 \
+    __m128i m1 = GenRandom32BitIndex(j, numInterestingInts / 2, 1787);         \
+    Ret_type ret = func(ptr, m1, Tint);                                        \
+    char str[256];                                                             \
+    tostr(ptr, 4, str);                                                        \
+    char str2[256];                                                            \
+    tostr(&m1, str2);                                                          \
+    char str3[256];                                                            \
+    tostr(&ret, str3);                                                         \
+    printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3);             \
+  }
+
+#define Ret_Int64Ptr_I64x2_Tint_body(Ret_type, func, Tint)                     \
+  for (int j = 0; j < 4096; ++j) {                                             \
+    int64_t* ptr = (int64_t*)interesting_ints;                                 \
+    __m128i m1 = GenRandom64BitIndex(j, numInterestingInts / 2, 1787);         \
+    Ret_type ret = func(ptr, m1, Tint);                                        \
+    char str[256];                                                             \
+    tostr(ptr, 4, str);                                                        \
+    char str2[256];                                                            \
+    tostr(&m1, str2);                                                          \
+    char str3[256];                                                            \
+    tostr(&ret, str3);                                                         \
+    printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3);             \
+  }
+
+#define Ret_Int64Ptr_I64x4_Tint_body(Ret_type, func, Tint)                     \
+  for (int j = 0; j < 4096; ++j) {                                             \
+    int64_t* ptr = (int64_t*)interesting_ints;                                 \
+    __m128i tmp = GenRandom64BitIndex(j, numInterestingInts / 2, 1787);        \
+    __m256i m1 = _mm256_set_m128i(tmp, tmp);                                   \
+    Ret_type ret = func(ptr, m1, Tint);                                        \
+    char str[256];                                                             \
+    tostr(ptr, 4, str);                                                        \
+    char str2[256];                                                            \
+    tostr(&m1, str2);                                                          \
+    char str3[256];                                                            \
+    tostr(&ret, str3);                                                         \
+    printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3);             \
+  }
+
+#define Ret_M128d_DoublePtr_I32x4_M128d_Tint_body(Ret_type, func, Tint)        \
+  for (int i = 0; i < numInterestingDoubles / 2; ++i)                          \
+    for (int k = 0; k < 2; ++k)                                                \
+      for (int j = 0; j < 100; ++j)                                            \
+        for (int l = 0; l < numInterestingDoubles / 2; ++l) {                  \
+          double* ptr = interesting_doubles;                                   \
+          __m128d m1 =                                                         \
+            E1_Double(interesting_doubles, i * 2 + k, numInterestingDoubles);  \
+          __m128i m2 = GenRandom32BitIndex(j, numInterestingDoubles, 1787);    \
+          __m128d m3 =                                                         \
+            E2_Double(interesting_doubles, l * 2, numInterestingDoubles);      \
+          Ret_type ret = func(m1, ptr, m2, m3, Tint);                          \
+          char str[256];                                                       \
+          tostr(&m1, str);                                                     \
+          char str2[256];                                                      \
+          tostr(ptr, 4, str2);                                                 \
+          char str3[256];                                                      \
+          tostr(&m2, str3);                                                    \
+          char str4[256];                                                      \
+          tostr(&m3, str4);                                                    \
+          char str5[256];                                                      \
+          tostr(&ret, str5);                                                   \
+          printf("%s(%s, %s, %s, %s %d) = %s\n",                               \
+                 #func,                                                        \
+                 str,                                                          \
+                 str2,                                                         \
+                 str3,                                                         \
+                 str4,                                                         \
+                 Tint,                                                         \
+                 str5);                                                        \
+        }
+
+#define Ret_M256d_DoublePtr_I32x4_M256d_Tint_body(Ret_type, func, Tint)        \
+  for (int i = 0; i < numInterestingDoubles / 2; ++i)                          \
+    for (int k = 0; k < 2; ++k)                                                \
+      for (int j = 0; j < 100; ++j)                                            \
+        for (int l = 0; l < numInterestingDoubles / 2; ++l) {                  \
+          double* ptr = interesting_doubles;                                   \
+          __m128d tmp =                                                        \
+            E1_Double(interesting_doubles, i * 2 + k, numInterestingDoubles);  \
+          __m256d m1 = _mm256_set_m128d(tmp, tmp);                             \
+          __m128i m2 = GenRandom32BitIndex(j, numInterestingDoubles, 1787);    \
+          tmp = E2_Double(interesting_doubles, l * 2, numInterestingDoubles);  \
+          __m256d m3 = _mm256_set_m128d(tmp, tmp);                             \
+          Ret_type ret = func(m1, ptr, m2, m3, Tint);                          \
+          char str[256];                                                       \
+          tostr(&m1, str);                                                     \
+          char str2[256];                                                      \
+          tostr(ptr, 4, str2);                                                 \
+          char str3[256];                                                      \
+          tostr(&m2, str3);                                                    \
+          char str4[256];                                                      \
+          tostr(&m3, str4);                                                    \
+          char str5[256];                                                      \
+          tostr(&ret, str5);                                                   \
+          printf("%s(%s, %s, %s, %s %d) = %s\n",                               \
+                 #func,                                                        \
+                 str,                                                          \
+                 str2,                                                         \
+                 str3,                                                         \
+                 str4,                                                         \
+                 Tint,                                                         \
+                 str5);                                                        \
+        }
+
+#define Ret_M128d_DoublePtr_I64x2_M128d_Tint_body(Ret_type, func, Tint)        \
+  for (int i = 0; i < numInterestingDoubles / 2; ++i)                          \
+    for (int k = 0; k < 2; ++k)                                                \
+      for (int j = 0; j < 100; ++j)                                            \
+        for (int l = 0; l < numInterestingDoubles / 2; ++l) {                  \
+          double* ptr = interesting_doubles;                                   \
+          __m128d m1 =                                                         \
+            E1_Double(interesting_doubles, i * 2 + k, numInterestingDoubles);  \
+          __m128i m2 = GenRandom64BitIndex(j, numInterestingDoubles, 1787);    \
+          __m128d m3 =                                                         \
+            E2_Double(interesting_doubles, l * 2, numInterestingDoubles);      \
+          Ret_type ret = func(m1, ptr, m2, m3, Tint);                          \
+          char str[256];                                                       \
+          tostr(&m1, str);                                                     \
+          char str2[256];                                                      \
+          tostr(ptr, 4, str2);                                                 \
+          char str3[256];                                                      \
+          tostr(&m2, str3);                                                    \
+          char str4[256];                                                      \
+          tostr(&m3, str4);                                                    \
+          char str5[256];                                                      \
+          tostr(&ret, str5);                                                   \
+          printf("%s(%s, %s, %s, %s %d) = %s\n",                               \
+                 #func,                                                        \
+                 str,                                                          \
+                 str2,                                                         \
+                 str3,                                                         \
+                 str4,                                                         \
+                 Tint,                                                         \
+                 str5);                                                        \
+        }
+
+#define Ret_M256d_DoublePtr_I64x4_M256d_Tint_body(Ret_type, func, Tint)        \
+  for (int i = 0; i < numInterestingDoubles / 2; ++i)                          \
+    for (int k = 0; k < 2; ++k)                                                \
+      for (int j = 0; j < 100; ++j)                                            \
+        for (int l = 0; l < numInterestingDoubles / 2; ++l) {                  \
+          double* ptr = interesting_doubles;                                   \
+          __m128d tmp =                                                        \
+            E1_Double(interesting_doubles, i * 2 + k, numInterestingDoubles);  \
+          __m256d m1 = _mm256_set_m128d(tmp, tmp);                             \
+          __m128i tmp2 = GenRandom64BitIndex(j, numInterestingDoubles, 1787);  \
+          __m256i m2 = _mm256_set_m128i(tmp2, tmp2);                           \
+          tmp = E2_Double(interesting_doubles, l * 2, numInterestingDoubles);  \
+          __m256d m3 = _mm256_set_m128d(tmp, tmp);                             \
+          Ret_type ret = func(m1, ptr, m2, m3, Tint);                          \
+          char str[256];                                                       \
+          tostr(&m1, str);                                                     \
+          char str2[256];                                                      \
+          tostr(ptr, 4, str2);                                                 \
+          char str3[256];                                                      \
+          tostr(&m2, str3);                                                    \
+          char str4[256];                                                      \
+          tostr(&m3, str4);                                                    \
+          char str5[256];                                                      \
+          tostr(&ret, str5);                                                   \
+          printf("%s(%s, %s, %s, %s %d) = %s\n",                               \
+                 #func,                                                        \
+                 str,                                                          \
+                 str2,                                                         \
+                 str3,                                                         \
+                 str4,                                                         \
+                 Tint,                                                         \
+                 str5);                                                        \
+        }
+
+#define Ret_M128_FloatPtr_I32x4_M128_Tint_body(Ret_type, func, Tint)           \
+  for (int i = 0; i < numInterestingFloats / 4; ++i)                           \
+    for (int k = 0; k < 4; ++k)                                                \
+      for (int j = 0; j < 100; ++j)                                            \
+        for (int l = 0; l < numInterestingFloats / 4; ++l) {                   \
+          float* ptr = interesting_floats;                                     \
+          __m128 m1 = E1(interesting_floats, i * 4 + k, numInterestingFloats); \
+          __m128i m2 = GenRandom32BitIndex(j, numInterestingFloats, 1787);     \
+          __m128 m3 = E2(interesting_floats, l * 4, numInterestingFloats);     \
+          Ret_type ret = func(m1, ptr, m2, m3, Tint);                          \
+          char str[256];                                                       \
+          tostr(&m1, str);                                                     \
+          char str2[256];                                                      \
+          tostr(ptr, 4, str2);                                                 \
+          char str3[256];                                                      \
+          tostr(&m2, str3);                                                    \
+          char str4[256];                                                      \
+          tostr(&m3, str4);                                                    \
+          char str5[256];                                                      \
+          tostr(&ret, str5);                                                   \
+          printf("%s(%s, %s, %s, %s %d) = %s\n",                               \
+                 #func,                                                        \
+                 str,                                                          \
+                 str2,                                                         \
+                 str3,                                                         \
+                 str4,                                                         \
+                 Tint,                                                         \
+                 str5);                                                        \
+        }
+
+#define Ret_M256_FloatPtr_I32x8_M256_Tint_body(Ret_type, func, Tint)           \
+  for (int i = 0; i < numInterestingFloats / 4; ++i)                           \
+    for (int k = 0; k < 4; ++k)                                                \
+      for (int j = 0; j < 100; ++j)                                            \
+        for (int l = 0; l < numInterestingFloats / 4; ++l) {                   \
+          float* ptr = interesting_floats;                                     \
+          __m128 tmp =                                                         \
+            E1(interesting_floats, i * 4 + k, numInterestingFloats);           \
+          __m256 m1 = _mm256_set_m128(tmp, tmp);                               \
+          __m128i tmp2 = GenRandom32BitIndex(j, numInterestingFloats, 1787);   \
+          __m256i m2 = _mm256_set_m128i(tmp2, tmp2);                           \
+          __m128 tmp3 = E2(interesting_floats, l * 4, numInterestingFloats);   \
+          __m256 m3 = _mm256_set_m128(tmp3, tmp3);                             \
+          Ret_type ret = func(m1, ptr, m2, m3, Tint);                          \
+          char str[256];                                                       \
+          tostr(&m1, str);                                                     \
+          char str2[256];                                                      \
+          tostr(ptr, 4, str2);                                                 \
+          char str3[256];                                                      \
+          tostr(&m2, str3);                                                    \
+          char str4[256];                                                      \
+          tostr(&m3, str4);                                                    \
+          char str5[256];                                                      \
+          tostr(&ret, str5);                                                   \
+          printf("%s(%s, %s, %s, %s %d) = %s\n",                               \
+                 #func,                                                        \
+                 str,                                                          \
+                 str2,                                                         \
+                 str3,                                                         \
+                 str4,                                                         \
+                 Tint,                                                         \
+                 str5);                                                        \
+        }
+
+#define Ret_M128_FloatPtr_I64x2_M128_Tint_body(Ret_type, func, Tint)           \
+  for (int i = 0; i < numInterestingFloats / 4; ++i)                           \
+    for (int k = 0; k < 4; ++k)                                                \
+      for (int j = 0; j < 100; ++j)                                            \
+        for (int l = 0; l < numInterestingFloats / 4; ++l) {                   \
+          float* ptr = interesting_floats;                                     \
+          __m128 m1 = E1(interesting_floats, i * 4 + k, numInterestingFloats); \
+          __m128i m2 = GenRandom64BitIndex(j, numInterestingFloats, 1787);     \
+          __m128 m3 = E2(interesting_floats, l * 4, numInterestingFloats);     \
+          Ret_type ret = func(m1, ptr, m2, m3, Tint);                          \
+          char str[256];                                                       \
+          tostr(&m1, str);                                                     \
+          char str2[256];                                                      \
+          tostr(ptr, 4, str2);                                                 \
+          char str3[256];                                                      \
+          tostr(&m2, str3);                                                    \
+          char str4[256];                                                      \
+          tostr(&m3, str4);                                                    \
+          char str5[256];                                                      \
+          tostr(&ret, str5);                                                   \
+          printf("%s(%s, %s, %s, %s %d) = %s\n",                               \
+                 #func,                                                        \
+                 str,                                                          \
+                 str2,                                                         \
+                 str3,                                                         \
+                 str4,                                                         \
+                 Tint,                                                         \
+                 str5);                                                        \
+        }
+
+#define Ret_M128_FloatPtr_I64x4_M128_Tint_body(Ret_type, func, Tint)           \
+  for (int i = 0; i < numInterestingFloats / 4; ++i)                           \
+    for (int k = 0; k < 4; ++k)                                                \
+      for (int j = 0; j < 100; ++j)                                            \
+        for (int l = 0; l < numInterestingFloats / 4; ++l) {                   \
+          float* ptr = interesting_floats;                                     \
+          __m128 m1 = E1(interesting_floats, i * 4 + k, numInterestingFloats); \
+          __m128i tmp = GenRandom64BitIndex(j, numInterestingFloats, 1787);    \
+          __m256i m2 = _mm256_set_m128i(tmp, tmp);                             \
+          __m128 m3 = E2(interesting_floats, l * 4, numInterestingFloats);     \
+          Ret_type ret = func(m1, ptr, m2, m3, Tint);                          \
+          char str[256];                                                       \
+          tostr(&m1, str);                                                     \
+          char str2[256];                                                      \
+          tostr(ptr, 4, str2);                                                 \
+          char str3[256];                                                      \
+          tostr(&m2, str3);                                                    \
+          char str4[256];                                                      \
+          tostr(&m3, str4);                                                    \
+          char str5[256];                                                      \
+          tostr(&ret, str5);                                                   \
+          printf("%s(%s, %s, %s, %s %d) = %s\n",                               \
+                 #func,                                                        \
+                 str,                                                          \
+                 str2,                                                         \
+                 str3,                                                         \
+                 str4,                                                         \
+                 Tint,                                                         \
+                 str5);                                                        \
+        }
+
+#define Ret_M128i_Int32Ptr_I32x4_M128i_Tint_body(Ret_type, func, Tint)         \
+  for (int i = 0; i < numInterestingInts / 4; ++i)                             \
+    for (int k = 0; k < 4; ++k)                                                \
+      for (int j = 0; j < 100; ++j)                                            \
+        for (int l = 0; l < numInterestingInts / 4; ++l) {                     \
+          int32_t* ptr = (int32_t*)interesting_ints;                           \
+          __m128i m1 =                                                         \
+            (__m128i)E1_Int(interesting_ints, i * 4 + k, numInterestingInts);  \
+          __m128i m2 = GenRandom32BitIndex(j, numInterestingInts, 1787);       \
+          __m128i m3 =                                                         \
+            (__m128i)E2_Int(interesting_ints, l * 4, numInterestingInts);      \
+          Ret_type ret = func(m1, ptr, m2, m3, Tint);                          \
+          char str[256];                                                       \
+          tostr(&m1, str);                                                     \
+          char str2[256];                                                      \
+          tostr(ptr, 4, str2);                                                 \
+          char str3[256];                                                      \
+          tostr(&m2, str3);                                                    \
+          char str4[256];                                                      \
+          tostr(&m3, str4);                                                    \
+          char str5[256];                                                      \
+          tostr(&ret, str5);                                                   \
+          printf("%s(%s, %s, %s, %s %d) = %s\n",                               \
+                 #func,                                                        \
+                 str,                                                          \
+                 str2,                                                         \
+                 str3,                                                         \
+                 str4,                                                         \
+                 Tint,                                                         \
+                 str5);                                                        \
+        }
+
+#define Ret_M256i_Int32Ptr_I32x8_M256i_Tint_body(Ret_type, func, Tint)         \
+  for (int i = 0; i < numInterestingInts / 4; ++i)                             \
+    for (int k = 0; k < 4; ++k)                                                \
+      for (int j = 0; j < 100; ++j)                                            \
+        for (int l = 0; l < numInterestingInts / 4; ++l) {                     \
+          int32_t* ptr = (int32_t*)interesting_ints;                           \
+          __m128i tmp1 =                                                       \
+            (__m128i)E1_Int(interesting_ints, i * 4 + k, numInterestingInts);  \
+          __m256i m1 = _mm256_set_m128i(tmp1, tmp1);                           \
+          __m128i tmp2 = GenRandom32BitIndex(j, numInterestingInts, 1787);     \
+          __m256i m2 = _mm256_set_m128i(tmp2, tmp2);                           \
+          __m128i tmp3 =                                                       \
+            (__m128i)E2_Int(interesting_ints, l * 4, numInterestingInts);      \
+          __m256i m3 = _mm256_set_m128i(tmp3, tmp3);                           \
+          Ret_type ret = func(m1, ptr, m2, m3, Tint);                          \
+          char str[256];                                                       \
+          tostr(&m1, str);                                                     \
+          char str2[256];                                                      \
+          tostr(ptr, 4, str2);                                                 \
+          char str3[256];                                                      \
+          tostr(&m2, str3);                                                    \
+          char str4[256];                                                      \
+          tostr(&m3, str4);                                                    \
+          char str5[256];                                                      \
+          tostr(&ret, str5);                                                   \
+          printf("%s(%s, %s, %s, %s %d) = %s\n",                               \
+                 #func,                                                        \
+                 str,                                                          \
+                 str2,                                                         \
+                 str3,                                                         \
+                 str4,                                                         \
+                 Tint,                                                         \
+                 str5);                                                        \
+        }
+
+#define Ret_M128i_Int32Ptr_I64x2_M128i_Tint_body(Ret_type, func, Tint)         \
+  for (int i = 0; i < numInterestingInts / 4; ++i)                             \
+    for (int k = 0; k < 4; ++k)                                                \
+      for (int j = 0; j < 100; ++j)                                            \
+        for (int l = 0; l < numInterestingInts / 4; ++l) {                     \
+          int32_t* ptr = (int32_t*)interesting_ints;                           \
+          __m128i m1 =                                                         \
+            (__m128i)E1_Int(interesting_ints, i * 4 + k, numInterestingInts);  \
+          __m128i m2 = GenRandom64BitIndex(j, numInterestingInts, 1787);       \
+          __m128i m3 =                                                         \
+            (__m128i)E2_Int(interesting_ints, l * 4, numInterestingInts);      \
+          Ret_type ret = func(m1, ptr, m2, m3, Tint);                          \
+          char str[256];                                                       \
+          tostr(&m1, str);                                                     \
+          char str2[256];                                                      \
+          tostr(ptr, 4, str2);                                                 \
+          char str3[256];                                                      \
+          tostr(&m2, str3);                                                    \
+          char str4[256];                                                      \
+          tostr(&m3, str4);                                                    \
+          char str5[256];                                                      \
+          tostr(&ret, str5);                                                   \
+          printf("%s(%s, %s, %s, %s %d) = %s\n",                               \
+                 #func,                                                        \
+                 str,                                                          \
+                 str2,                                                         \
+                 str3,                                                         \
+                 str4,                                                         \
+                 Tint,                                                         \
+                 str5);                                                        \
+        }
+
+#define Ret_M128i_Int32Ptr_I64x4_M128i_Tint_body(Ret_type, func, Tint)         \
+  for (int i = 0; i < numInterestingInts / 4; ++i)                             \
+    for (int k = 0; k < 4; ++k)                                                \
+      for (int j = 0; j < 100; ++j)                                            \
+        for (int l = 0; l < numInterestingInts / 4; ++l) {                     \
+          int32_t* ptr = (int32_t*)interesting_ints;                           \
+          __m128i m1 =                                                         \
+            (__m128i)E1_Int(interesting_ints, i * 4 + k, numInterestingInts);  \
+          __m128i tmp = GenRandom64BitIndex(j, numInterestingInts, 1787);      \
+          __m256i m2 = _mm256_set_m128i(tmp, tmp);                             \
+          __m128i m3 =                                                         \
+            (__m128i)E2_Int(interesting_ints, l * 4, numInterestingInts);      \
+          Ret_type ret = func(m1, ptr, m2, m3, Tint);                          \
+          char str[256];                                                       \
+          tostr(&m1, str);                                                     \
+          char str2[256];                                                      \
+          tostr(ptr, 4, str2);                                                 \
+          char str3[256];                                                      \
+          tostr(&m2, str3);                                                    \
+          char str4[256];                                                      \
+          tostr(&m3, str4);                                                    \
+          char str5[256];                                                      \
+          tostr(&ret, str5);                                                   \
+          printf("%s(%s, %s, %s, %s %d) = %s\n",                               \
+                 #func,                                                        \
+                 str,                                                          \
+                 str2,                                                         \
+                 str3,                                                         \
+                 str4,                                                         \
+                 Tint,                                                         \
+                 str5);                                                        \
+        }
+
+#define Ret_M128i_Int64Ptr_I32x4_M128i_Tint_body(Ret_type, func, Tint)         \
+  for (int i = 0; i < numInterestingInts / 4; ++i)                             \
+    for (int k = 0; k < 4; ++k)                                                \
+      for (int j = 0; j < 100; ++j)                                            \
+        for (int l = 0; l < numInterestingInts / 4; ++l) {                     \
+          int64_t* ptr = (int64_t*)interesting_ints;                           \
+          __m128i m1 =                                                         \
+            (__m128i)E1_Int(interesting_ints, i * 4 + k, numInterestingInts);  \
+          __m128i m2 = GenRandom32BitIndex(j, numInterestingInts / 2, 1787);   \
+          __m128i m3 =                                                         \
+            (__m128i)E2_Int(interesting_ints, l * 4, numInterestingInts);      \
+          Ret_type ret = func(m1, ptr, m2, m3, Tint);                          \
+          char str[256];                                                       \
+          tostr(&m1, str);                                                     \
+          char str2[256];                                                      \
+          tostr(ptr, 4, str2);                                                 \
+          char str3[256];                                                      \
+          tostr(&m2, str3);                                                    \
+          char str4[256];                                                      \
+          tostr(&m3, str4);                                                    \
+          char str5[256];                                                      \
+          tostr(&ret, str5);                                                   \
+          printf("%s(%s, %s, %s, %s %d) = %s\n",                               \
+                 #func,                                                        \
+                 str,                                                          \
+                 str2,                                                         \
+                 str3,                                                         \
+                 str4,                                                         \
+                 Tint,                                                         \
+                 str5);                                                        \
+        }
+
+#define Ret_M256i_Int64Ptr_I32x4_M256i_Tint_body(Ret_type, func, Tint)         \
+  for (int i = 0; i < numInterestingInts / 4; ++i)                             \
+    for (int k = 0; k < 4; ++k)                                                \
+      for (int j = 0; j < 100; ++j)                                            \
+        for (int l = 0; l < numInterestingInts / 4; ++l) {                     \
+          int64_t* ptr = (int64_t*)interesting_ints;                           \
+          __m128i tmp1 =                                                       \
+            (__m128i)E1_Int(interesting_ints, i * 4 + k, numInterestingInts);  \
+          __m256i m1 = _mm256_set_m128i(tmp1, tmp1);                           \
+          __m128i m2 = GenRandom32BitIndex(j, numInterestingInts / 2, 1787);   \
+          __m128i tmp3 =                                                       \
+            (__m128i)E2_Int(interesting_ints, l * 4, numInterestingInts);      \
+          __m256i m3 = _mm256_set_m128i(tmp3, tmp3);                           \
+          Ret_type ret = func(m1, ptr, m2, m3, Tint);                          \
+          char str[256];                                                       \
+          tostr(&m1, str);                                                     \
+          char str2[256];                                                      \
+          tostr(ptr, 4, str2);                                                 \
+          char str3[256];                                                      \
+          tostr(&m2, str3);                                                    \
+          char str4[256];                                                      \
+          tostr(&m3, str4);                                                    \
+          char str5[256];                                                      \
+          tostr(&ret, str5);                                                   \
+          printf("%s(%s, %s, %s, %s %d) = %s\n",                               \
+                 #func,                                                        \
+                 str,                                                          \
+                 str2,                                                         \
+                 str3,                                                         \
+                 str4,                                                         \
+                 Tint,                                                         \
+                 str5);                                                        \
+        }
+
+#define Ret_M128i_Int64Ptr_I64x2_M128i_Tint_body(Ret_type, func, Tint)         \
+  for (int i = 0; i < numInterestingInts / 4; ++i)                             \
+    for (int k = 0; k < 4; ++k)                                                \
+      for (int j = 0; j < 100; ++j)                                            \
+        for (int l = 0; l < numInterestingInts / 4; ++l) {                     \
+          int64_t* ptr = (int64_t*)interesting_ints;                           \
+          __m128i m1 =                                                         \
+            (__m128i)E1_Int(interesting_ints, i * 4 + k, numInterestingInts);  \
+          __m128i m2 = GenRandom64BitIndex(j, numInterestingInts / 2, 1787);   \
+          __m128i m3 =                                                         \
+            (__m128i)E2_Int(interesting_ints, l * 4, numInterestingInts);      \
+          Ret_type ret = func(m1, ptr, m2, m3, Tint);                          \
+          char str[256];                                                       \
+          tostr(&m1, str);                                                     \
+          char str2[256];                                                      \
+          tostr(ptr, 4, str2);                                                 \
+          char str3[256];                                                      \
+          tostr(&m2, str3);                                                    \
+          char str4[256];                                                      \
+          tostr(&m3, str4);                                                    \
+          char str5[256];                                                      \
+          tostr(&ret, str5);                                                   \
+          printf("%s(%s, %s, %s, %s %d) = %s\n",                               \
+                 #func,                                                        \
+                 str,                                                          \
+                 str2,                                                         \
+                 str3,                                                         \
+                 str4,                                                         \
+                 Tint,                                                         \
+                 str5);                                                        \
+        }
+
+#define Ret_M256i_Int64Ptr_I64x4_M256i_Tint_body(Ret_type, func, Tint)         \
+  for (int i = 0; i < numInterestingInts / 4; ++i)                             \
+    for (int k = 0; k < 4; ++k)                                                \
+      for (int j = 0; j < 100; ++j)                                            \
+        for (int l = 0; l < numInterestingInts / 4; ++l) {                     \
+          int64_t* ptr = (int64_t*)interesting_ints;                           \
+          __m128i tmp1 =                                                       \
+            (__m128i)E1_Int(interesting_ints, i * 4 + k, numInterestingInts);  \
+          __m256i m1 = _mm256_set_m128i(tmp1, tmp1);                           \
+          __m128i tmp2 = GenRandom64BitIndex(j, numInterestingInts / 2, 1787); \
+          __m256i m2 = _mm256_set_m128i(tmp2, tmp2);                           \
+          __m128i tmp3 =                                                       \
+            (__m128i)E2_Int(interesting_ints, l * 4, numInterestingInts);      \
+          __m256i m3 = _mm256_set_m128i(tmp3, tmp3);                           \
+          Ret_type ret = func(m1, ptr, m2, m3, Tint);                          \
+          char str[256];                                                       \
+          tostr(&m1, str);                                                     \
+          char str2[256];                                                      \
+          tostr(ptr, 4, str2);                                                 \
+          char str3[256];                                                      \
+          tostr(&m2, str3);                                                    \
+          char str4[256];                                                      \
+          tostr(&m3, str4);                                                    \
+          char str5[256];                                                      \
+          tostr(&ret, str5);                                                   \
+          printf("%s(%s, %s, %s, %s %d) = %s\n",                               \
+                 #func,                                                        \
+                 str,                                                          \
+                 str2,                                                         \
+                 str3,                                                         \
+                 str4,                                                         \
+                 Tint,                                                         \
+                 str5);                                                        \
+        }
 
 #endif

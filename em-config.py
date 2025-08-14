@@ -24,7 +24,7 @@ def main():
     not re.match(r"^[\w\W_][\w\W_\d]*$", sys.argv[1]) or \
     not hasattr(config, sys.argv[1]):
     print('Usage: em-config VAR_NAME', file=sys.stderr)
-    exit(1)
+    sys.exit(1)
 
   print(getattr(config, sys.argv[1]))
   return 0

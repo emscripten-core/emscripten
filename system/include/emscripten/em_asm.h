@@ -149,7 +149,7 @@ void emscripten_asm_const_async_on_main_thread(
 // use std::tuple or std::integral_constant. Using C++11 features is only a
 // warning in modern Clang, which are ignored in system headers.
 template<typename, typename = void> struct __em_asm_sig {};
-template<> struct __em_asm_sig<float> { static const char value = 'd'; };
+template<> struct __em_asm_sig<float> { static const char value = 'f'; };
 template<> struct __em_asm_sig<double> { static const char value = 'd'; };
 template<> struct __em_asm_sig<char> { static const char value = 'i'; };
 template<> struct __em_asm_sig<signed char> { static const char value = 'i'; };
@@ -284,5 +284,21 @@ const char __em_asm_sig_builder<__em_asm_type_tuple<Args...> >::buffer[] = { __e
 #define EM_ASM_ARGS(code, ...) emscripten_asm_const_int(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__))
 #define EM_ASM_INT_V(code) EM_ASM_INT(code)
 #define EM_ASM_DOUBLE_V(code) EM_ASM_DOUBLE(code)
+
+
+// Normally macros like `true` and `false` are not expanded inside
+// of `EM_JS` or `EM_ASM` blocks.  However, in the case then an
+// additional macro later is added these will be expanded and we want
+// to make sure the resulting expansion doesn't break the expectations
+// of JS code
+#if defined(true) && defined(false)
+#undef true
+#undef false
+// These work for both C and javascript.
+// In C !!0 ==> 0 and in javascript !!0 ==> false
+// In C !!1 ==> 1 and in javascript !!1 ==> true
+#define true (!!1)
+#define false (!!0)
+#endif
 
 #endif // !defined(__cplusplus) && defined(__STRICT_ANSI__)

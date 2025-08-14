@@ -23,7 +23,8 @@ MEM_SIZE_SETTINGS = {
     'MEMORY_GROWTH_GEOMETRIC_CAP',
     'GL_MAX_TEMP_BUFFER_SIZE',
     'MAXIMUM_MEMORY',
-    'DEFAULT_PTHREAD_STACK_SIZE'
+    'DEFAULT_PTHREAD_STACK_SIZE',
+    'ASYNCIFY_STACK_SIZE',
 }
 
 PORTS_SETTINGS = {
@@ -64,10 +65,8 @@ JS_ONLY_SETTINGS = {
     'BUILD_AS_WORKER',
     'STRICT_JS',
     'SMALL_XHR_CHUNKS',
-    'HEADLESS',
     'MODULARIZE',
     'EXPORT_ES6',
-    'USE_ES6_IMPORT_META',
     'EXPORT_NAME',
     'DYNAMIC_EXECUTION',
     'PTHREAD_POOL_SIZE',
@@ -83,6 +82,7 @@ COMPILE_TIME_SETTINGS = {
     'INLINING_LIMIT',
     'DISABLE_EXCEPTION_CATCHING',
     'DISABLE_EXCEPTION_THROWING',
+    'WASM_LEGACY_EXCEPTIONS',
     'MAIN_MODULE',
     'SIDE_MODULE',
     'RELOCATABLE',
@@ -116,14 +116,15 @@ COMPILE_TIME_SETTINGS = {
 #
 # At some point in the future, once folks have stopped using these
 # settings we can move them to `LEGACY_SETTINGS`.
+#
+# All settings here should be tagged as `[deprecated]` in settings.js
 DEPRECATED_SETTINGS = {
-    'SUPPORT_ERRNO': 'emscripten no longer uses the setErrNo library function',
-    'EXTRA_EXPORTED_RUNTIME_METHODS': 'please use EXPORTED_RUNTIME_METHODS instead',
-    'DEMANGLE_SUPPORT': 'mangled names no longer appear in stack traces',
     'RUNTIME_LINKED_LIBS': 'you can simply list the libraries directly on the commandline now',
     'CLOSURE_WARNINGS': 'use -Wclosure instead',
     'LEGALIZE_JS_FFI': 'to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`',
-    'ASYNCIFY_EXPORTS': 'please use JSPI_EXPORTS instead'
+    'ASYNCIFY_EXPORTS': 'please use JSPI_EXPORTS instead',
+    'ASYNCIFY_LAZY_LOAD_CODE': 'lack of usage',
+    'USE_WEBGPU': 'please try migrating to --use-port=emdawnwebgpu, which implements a newer, incompatible version of webgpu.h (see tools/ports/emdawnwebgpu.py for more info)',
 }
 
 # Settings that don't need to be externalized when serializing to json because they
@@ -142,6 +143,7 @@ def default_setting(name, new_default):
 
 class SettingsManager:
   attrs: Dict[str, Any] = {}
+  defaults: Dict[str, tuple] = {}
   types: Dict[str, Any] = {}
   allowed_settings: Set[str] = set()
   legacy_settings: Dict[str, tuple] = {}
@@ -151,6 +153,7 @@ class SettingsManager:
   def __init__(self):
     self.attrs.clear()
     self.legacy_settings.clear()
+    self.defaults.clear()
     self.alt_names.clear()
     self.internal_settings.clear()
     self.allowed_settings.clear()
@@ -160,7 +163,7 @@ class SettingsManager:
       with open(filename) as fh:
         settings = fh.read()
       # Use a bunch of regexs to convert the file from JS to python
-      # TODO(sbc): This is kind hacky and we should probably covert
+      # TODO(sbc): This is kind hacky and we should probably convert
       # this file in format that python can read directly (since we
       # no longer read this file from JS at all).
       settings = settings.replace('//', '#')
@@ -175,8 +178,9 @@ class SettingsManager:
     self.attrs.update(internal_attrs)
     self.infer_types()
 
+    strict_override = False
     if 'EMCC_STRICT' in os.environ:
-      self.attrs['STRICT'] = int(os.environ.get('EMCC_STRICT'))
+      strict_override = int(os.environ.get('EMCC_STRICT'))
 
     # Special handling for LEGACY_SETTINGS.  See src/setting.js for more
     # details
@@ -192,10 +196,16 @@ class SettingsManager:
         self.legacy_settings[name] = (fixed_values, err)
         default_value = fixed_values[0]
       assert name not in self.attrs, 'legacy setting (%s) cannot also be a regular setting' % name
-      if not self.attrs['STRICT']:
+      if not strict_override:
         self.attrs[name] = default_value
 
     self.internal_settings.update(internal_attrs.keys())
+    # Stash a deep copy of all settings in self.defaults.  This allows us to detect which settings
+    # have local mods.
+    self.defaults.update(copy.deepcopy(self.attrs))
+
+    if strict_override:
+      self.attrs['STRICT'] = strict_override
 
   def infer_types(self):
     for key, value in self.attrs.items():
@@ -205,11 +215,15 @@ class SettingsManager:
     return self.attrs
 
   def external_dict(self, skip_keys={}): # noqa
-    external_settings = {k: v for k, v in self.dict().items() if k not in INTERNAL_SETTINGS and k not in skip_keys}
-    # Only the names of the legacy settings are used by the JS compiler
-    # so we can reduce the size of serialized json by simplifying this
-    # otherwise complex value.
-    external_settings['LEGACY_SETTINGS'] = [l[0] for l in external_settings['LEGACY_SETTINGS']]
+    external_settings = {}
+    for key, value in self.dict().items():
+      if value != self.defaults.get(key) and key not in INTERNAL_SETTINGS and key not in skip_keys:
+        external_settings[key] = value # noqa: PERF403
+    if not self.attrs['STRICT']:
+      # When not running in strict mode we also externalize all legacy settings
+      # (Since the external tools do process LEGACY_SETTINGS themselves)
+      for key in self.legacy_settings:
+        external_settings[key] = self.attrs[key]
     return external_settings
 
   def keys(self):
@@ -267,12 +281,13 @@ class SettingsManager:
     self.attrs[name] = value
 
   def check_type(self, name, value):
-    if name in ('SUPPORT_LONGJMP', 'PTHREAD_POOL_SIZE', 'SEPARATE_DWARF', 'LTO'):
+    # These settings have a variable type so cannot be easily type checked.
+    if name in ('SUPPORT_LONGJMP', 'PTHREAD_POOL_SIZE', 'SEPARATE_DWARF', 'LTO', 'MODULARIZE'):
       return
     expected_type = self.types.get(name)
     if not expected_type:
       return
-    # Allow itegers 1 and 0 for type `bool`
+    # Allow integers 1 and 0 for type `bool`
     if expected_type == bool:
       if value in (1, 0):
         value = bool(value)

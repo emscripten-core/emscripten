@@ -32,7 +32,7 @@ static void fail(const char *msg) {
   emscripten_force_exit(1);
 }
 
-static EM_BOOL mouseup(int eventType,
+static bool mouseup(int eventType,
                      const EmscriptenMouseEvent *keyEvent, void *userData) {
   if (eventType == EMSCRIPTEN_EVENT_MOUSEUP) {
     switch (state) {

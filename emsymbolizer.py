@@ -11,19 +11,18 @@
 # If there is an emscripten symbol map, we can use that to get the symbol name
 # If there is a name section or symbol table, llvm-symbolizer can show the
 #  symbol name.
-# Separate DWARF and emscripten symbol maps are not supported yet.
+# Separate DWARF is not supported yet.
 
 import argparse
 import json
-import os
 import re
 import subprocess
 import sys
 from tools import shared
 from tools import webassembly
 
-LLVM_SYMBOLIZER = os.path.expanduser(
-    shared.build_llvm_tool_path(shared.exe_suffix('llvm-symbolizer')))
+
+LLVM_SYMBOLIZER = shared.llvm_tool_path('llvm-symbolizer')
 
 
 class Error(BaseException):
@@ -31,7 +30,7 @@ class Error(BaseException):
 
 
 # Class to treat location info in a uniform way across information sources.
-class LocationInfo(object):
+class LocationInfo:
   def __init__(self, source=None, line=0, column=0, func=None):
     self.source = source
     self.line = line
@@ -70,6 +69,8 @@ def symbolize_address_symbolizer(module, address, is_dwarf):
     vma_adjust = 0
   cmd = [LLVM_SYMBOLIZER, '-e', module.filename, f'--adjust-vma={vma_adjust}',
          str(address)]
+  if shared.DEBUG:
+    print(f'Running {" ".join(cmd)}')
   out = shared.run_process(cmd, stdout=subprocess.PIPE).stdout.strip()
   out_lines = out.splitlines()
 
@@ -98,8 +99,8 @@ def get_sourceMappingURL_section(module):
   return None
 
 
-class WasmSourceMap(object):
-  class Location(object):
+class WasmSourceMap:
+  class Location:
     def __init__(self, source=None, line=0, column=0, func=None):
       self.source = source
       self.line = line
@@ -121,10 +122,8 @@ class WasmSourceMap(object):
     self.version = source_map_json['version']
     self.sources = source_map_json['sources']
 
-    vlq_map = {}
     chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
-    for i, c in enumerate(chars):
-      vlq_map[c] = i
+    vlq_map = {c: i for i, c in enumerate(chars)}
 
     def decodeVLQ(string):
       result = []
@@ -133,8 +132,8 @@ class WasmSourceMap(object):
       for c in string:
         try:
           integer = vlq_map[c]
-        except ValueError:
-          raise Error(f'Invalid character ({c}) in VLQ')
+        except ValueError as e:
+          raise Error(f'Invalid character ({c}) in VLQ') from e
         value += (integer & 31) << shift
         if integer & 32:
           shift += 5
@@ -189,7 +188,7 @@ class WasmSourceMap(object):
     return LocationInfo(
         self.sources[info.source] if info.source is not None else None,
         info.line,
-        info.column
+        info.column,
       )
 
 
@@ -213,8 +212,33 @@ def symbolize_address_sourcemap(module, address, force_file):
     print(sm.mappings)
     # Print with section offsets to easily compare against dwarf
     for k, v in sm.mappings.items():
-      print(f'{k-csoff:x}: {v}')
+      print(f'{k - csoff:x}: {v}')
   sm.lookup(address).print()
+
+
+def symbolize_address_symbolmap(module, address, symbol_map_file):
+  """Symbolize using a symbol map file."""
+  func_names = {}
+
+  with open(symbol_map_file) as f:
+    lines = f.read().splitlines()
+    for line in lines:
+      index, name = line.split(':')
+      func_names[int(index)] = name
+
+  func_index = -1
+  for i, func in module.iter_functions_by_index():
+    if shared.DEBUG:
+      print(f'Func {i}: {hex(func.offset)}, {func_names[i]}')
+    if func.offset > address:
+      if i > 0:
+        func_index = i - 1
+        break
+      else:
+        print("Address is before the first function")
+        return
+
+  LocationInfo(func=func_names[func_index]).print()
 
 
 def main(args):
@@ -237,6 +261,8 @@ def main(args):
     elif ((has_linking_section(module) and not args.source) or
           'symtab' in args.source):
       symbolize_address_symbolizer(module, address, is_dwarf=False)
+    elif (args.source == 'symbolmap'):
+      symbolize_address_symbolmap(module, address, args.file)
     else:
       raise Error('No .debug_line or sourceMappingURL section found in '
                   f'{module.filename}.'
@@ -246,7 +272,7 @@ def main(args):
 def get_args():
   parser = argparse.ArgumentParser()
   parser.add_argument('-s', '--source', choices=['dwarf', 'sourcemap',
-                                                 'names', 'symtab'],
+                                                 'names', 'symtab', 'symbolmap'],
                       help='Force debug info source type', default=())
   parser.add_argument('-f', '--file', action='store',
                       help='Force debug info source file')

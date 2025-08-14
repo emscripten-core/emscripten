@@ -1,49 +1,62 @@
+// Set this to true to have stdout and stderr sent back to the server
+var captureStdio = false;
+
 var hasModule = typeof Module === 'object' && Module;
 
-/**
- * @param {number=} port
- */
-function reportResultToServer(result, port) {
-  port = port || 8888;
+var reportingURL = 'http://localhost:8888';
+
+async function reportResultToServer(result) {
   if (reportResultToServer.reported) {
     // Only report one result per test, even if the test misbehaves and tries to report more.
-    reportErrorToServer(`excessive reported results, sending ${result}, test will fail`);
+    reportStderrToServer(`excessive reported results, sending ${result}, test will fail`);
   }
   reportResultToServer.reported = true;
   if ((typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) || (typeof ENVIRONMENT_IS_AUDIO_WORKLET !== 'undefined' && ENVIRONMENT_IS_AUDIO_WORKLET)) {
     out(`RESULT: ${result}`);
   } else {
-    let doFetch = typeof origFetch != 'undefined' ? origFetch : fetch;
-    doFetch(`http://localhost:${port}/report_result?${result}`).then(() => {
-      if (typeof window === 'object' && window && hasModule && !Module['pageThrewException']) {
-        /* for easy debugging, don't close window on failure */
-        window.close();
-      }
-    });
+    await fetch(`${reportingURL}/report_result?${encodeURIComponent(result)}`);
+    if (typeof window === 'object' && window && hasModule && !Module['pageThrewException']) {
+      /* for easy debugging, don't close window on failure */
+      window.close();
+    }
   }
 }
 
 function sendFileToServer(filename, contents) {
-  fetch(`http://localhost:8888/?file=${filename}`, {method: "POST", body: contents});
+  fetch(`${reportingURL}/upload?file=${encodeURIComponent(filename)}`, { method: "POST", body: contents });
 }
 
-/**
- * @param {number=} port
- */
-function maybeReportResultToServer(result, port) {
-  if (reportResultToServer.reported) return;
-  reportResultToServer(result, port);
+function logMessageToServer(filename, message) {
+  fetch(`${reportingURL}/log?file=${filename}`, { method: "POST", body: message })
 }
 
-function reportErrorToServer(message) {
-  if (typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) {
-    err(message);
-  } else {
-    fetch(encodeURI(`http://localhost:8888?stderr=${message}`));
+function maybeReportResultToServer(result) {
+  if (!reportResultToServer.reported) {
+    reportResultToServer(result);
   }
 }
 
-function report_error(e) {
+function reportStderrToServer(message) {
+  if (typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) {
+    err(message);
+  } else {
+    logMessageToServer('stderr', message);
+  }
+}
+
+function reportStdoutToServer(message) {
+  if (typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) {
+    out(message);
+  } else {
+    logMessageToServer('stdout', message);
+  }
+}
+
+async function skipTest(message) {
+  await reportResultToServer(`skipped:${message}`);
+}
+
+function reportTopLevelError(e) {
   // MINIMAL_RUNTIME doesn't handle exit or call the below onExit handler
   // so we detect the exit by parsing the uncaught exception message.
   var message = e.message || e;
@@ -67,10 +80,16 @@ function report_error(e) {
 }
 
 if (typeof window === 'object' && window) {
+  const urlString = window.location.search;
+  const searchParams = new URLSearchParams(urlString);
+  if (searchParams.has('capture_stdio')) {
+    captureStdio = true;
+  }
+
   window.addEventListener('error', event => {
-    report_error(event.error || event)
+    reportTopLevelError(event.error || event)
   });
-  window.addEventListener('unhandledrejection', event => report_error(event.reason));
+  window.addEventListener('unhandledrejection', event => reportTopLevelError(event.reason));
 }
 
 if (hasModule) {
@@ -94,5 +113,21 @@ if (hasModule) {
       maybeReportResultToServer(`abort:${reason}`);
     }
     Module['onAbort'].proxy = true;
+  }
+
+  if (captureStdio) {
+    console.log("enabling remote stdio logging");
+    const origPrint = Module['print'];
+    const origPrintErr = Module['printErr'];
+
+    Module['print'] = (...args) => {
+      origPrint?.(...args);
+      reportStdoutToServer(args.join(' '));
+    };
+
+    Module['printErr'] = (...args) => {
+      origPrintErr?.(...args);
+      reportStderrToServer(args.join(' '));
+    };
   }
 }
