@@ -550,7 +550,7 @@ gears_draw(void)
 
    glutSwapBuffers();
 #ifdef __EMSCRIPTEN__
-   EM_ASM({if (typeof doReftest !== 'undefined') doReftest();}); // All done, perform the JS side image comparison reftest.
+   EM_ASM({if (typeof reftestUnblock !== 'undefined') reftestUnblock()}); // All done, perform the JS side image comparison reftest.
 #endif
 
 #ifdef LONGTEST
@@ -779,7 +779,7 @@ main(int argc, char *argv[])
 #ifdef __EMSCRIPTEN__
    // This test kicks off an asynchronous glutMainLoop(), so do not perform a synchronous
    // reftest immediately after falling out from main.
-   EM_ASM({ if (typeof doReftest !== 'undefined' && Module['postRun'] == doReftest) delete Module['postRun']; });
+   EM_ASM({if (typeof reftestBlock !== 'undefined') reftestBlock()});
 #endif
    glutMainLoop();
 

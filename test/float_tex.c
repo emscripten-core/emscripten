@@ -103,7 +103,7 @@ static void glut_draw_callback(void) {
     glDrawArrays(GL_POINTS, 0, NUM_NODES);
     glutSwapBuffers();
 #ifdef __EMSCRIPTEN__
-    EM_ASM(doReftest()); // All done, perform the JS side image comparison reftest.
+    EM_ASM({reftestUnblock()}); // All done, perform the JS side image comparison reftest.
 #endif
 }
 
@@ -169,7 +169,7 @@ int main(int argc, char *argv[]) {
 #ifdef __EMSCRIPTEN__
     // This test kicks off an asynchronous glutMainLoop(), so do not perform a synchronous
     // reftest immediately after falling out from main.
-    EM_ASM({ delete Module['postRun']; });
+    EM_ASM({reftestBlock()});
 #endif
     glutMainLoop();
     return 0;
