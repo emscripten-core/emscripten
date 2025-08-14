@@ -15,12 +15,14 @@ logger = logging.getLogger('feature_matrix')
 
 UNSUPPORTED = 0x7FFFFFFF
 
-# Oldest support browser versions.  These have been set somewhat
-# arbitrarily for now.
+# Oldest support browser versions.
+# Emscripten unconditionally requires support for:
+# - DedicatedWorkerGlobalScope.name parameter for multithreading support, which
+#   landed first in Chrome 70, Firefox 55 and Safari 12.2.
 # TODO(sbc): Design a of policy for managing these values.
-OLDEST_SUPPORTED_CHROME = 55  # December 1, 2016
-OLDEST_SUPPORTED_FIREFOX = 50  # November 15, 2016
-OLDEST_SUPPORTED_SAFARI = 101000  # September 20, 2016
+OLDEST_SUPPORTED_CHROME = 70  # October 16, 2018
+OLDEST_SUPPORTED_FIREFOX = 55  # August 08, 2017
+OLDEST_SUPPORTED_SAFARI = 120200  # March 25, 2019
 # 10.19.0 is the oldest version of node that we do any testing with.
 # Keep this in sync with the test-node-compat in .circleci/config.yml.
 OLDEST_SUPPORTED_NODE = 101900
