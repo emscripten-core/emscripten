@@ -719,7 +719,6 @@ async function createWasm() {
     removeRunDependency('wasm-instantiate');
     return wasmExports;
   }
-  // wait for the pthread pool (if any)
   addRunDependency('wasm-instantiate');
 
   // Prefer streaming instantiation if available.
@@ -1311,8 +1310,8 @@ var _global_val = Module['_global_val'] = 65536;var wasmImports = {
 
 var wasmExports;
 
-// With async instantation wasmExports is assigned asyncronously when the
-// the instance is received.
+// With async instantation wasmExports is assigned asynchronously when the
+// instance is received.
 createWasm();
 
 var calledRun;
