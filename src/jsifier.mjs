@@ -17,6 +17,7 @@ import {
   ATPRERUNS,
   ATMAINS,
   ATPOSTRUNS,
+  ENVIRONMENT_IS_WORKER_THREAD,
   defineI64Param,
   indentify,
   makeReturn64,
@@ -460,10 +461,8 @@ function(${args}) {
               prefix += `\nassert(!ENVIRONMENT_IS_WASM_WORKER, "Attempted to call proxied function '${mangled}' in a Wasm Worker, but in Wasm Worker enabled builds, proxied function architecture is not available!");`;
             }
           } else if (proxyingMode == 'abort' || (proxyingMode == 'abort_debug' && ASSERTIONS)) {
-            const insideWorker = (PTHREADS && WASM_WORKERS)
-              ? '(ENVIRONMENT_IS_PTHREAD || ENVIRONMENT_IS_WASM_WORKER)'
-              : (PTHREADS ? 'ENVIRONMENT_IS_PTHREAD' : 'ENVIRONMENT_IS_WASM_WORKER');
-            prefix = `assert(!${insideWorker}, "Attempted to call function '${mangled}' inside a pthread/Wasm Worker, but by using the proxying directive '${proxyingMode}', this function has been declared to only be callable from the main browser thread");`;
+            const insideWorker = ENVIRONMENT_IS_WORKER_THREAD();
+            prefix = `if (${insideWorker}) abort("Attempted to call function '${mangled}' inside a pthread/Wasm Worker, but by using the proxying directive '${proxyingMode}', this function has been declared to only be callable from the main browser thread");`;
           }
 
           return `${async_}function(${args}) {

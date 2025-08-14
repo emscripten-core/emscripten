@@ -1086,7 +1086,7 @@ function ENVIRONMENT_IS_MAIN_THREAD() {
   return `(!${ENVIRONMENT_IS_WORKER_THREAD()})`;
 }
 
-function ENVIRONMENT_IS_WORKER_THREAD() {
+export function ENVIRONMENT_IS_WORKER_THREAD() {
   assert(PTHREADS || WASM_WORKERS);
   var envs = [];
   if (PTHREADS) envs.push('ENVIRONMENT_IS_PTHREAD');

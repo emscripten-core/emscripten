@@ -8,12 +8,10 @@ void proxied_js_function(void);
 
 int might_throw(void(*func)()) {
   int threw = EM_ASM_INT({
-    // Patch over assert() so that it does not abort execution on assert failure, but instead
-    // throws a catchable exception.
-    assert = function(condition, text) {
-      if (!condition) {
-        throw 'Assertion failed' + (text ? ": " + text : "");
-      }
+    // Patch over abort() so that we can gracefully finish the test without
+    // an unhandled exception hanging the test.
+    abort = function(text) {
+      throw text;
     };
 
     try {
