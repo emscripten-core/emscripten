@@ -35,24 +35,37 @@ function createWasmAudioWorkletProcessor(audioParams) {
       this.samplesPerChannel = opts.samplesPerChannel;
       this.bytesPerChannel = this.samplesPerChannel * {{{ getNativeTypeSize('float') }}};
 
-      // Create up-front as many typed views for marshalling the output data as
-      // may be required (with an arbitrary maximum of 64, for the case where a
-      // multi-MB stack is passed), allocated at the *top* of the worklet's
-      // stack (and whose addresses are fixed). The 'minimum alloc' firstly
-      // stops STACK_OVERFLOW_CHECK failing (since the stack will be full, and
-      // 16 being the minimum allocation size due to alignments) and leaves room
-      // for a single AudioSampleFrame as a minumum.
+      // Creates the output views (see createOutputViews() docs)
       this.maxBuffers = Math.min(((wwParams.stackSize - /*minimum alloc*/ 16) / this.bytesPerChannel) | 0, /*sensible limit*/ 64);
+      this.outputViews = [];
 #if ASSERTIONS
       console.assert(this.maxBuffers > 0, `AudioWorklet needs more stack allocating (at least ${this.bytesPerChannel})`);
 #endif
+      this.createOutputViews();
+
+#if ASSERTIONS
+      // Explicitly verify this later in process()
+      this.ctorOldStackPtr = stackSave();
+#endif
+    }
+
+    /**
+     * Create up-front as many typed views for marshalling the output data as
+     * may be required (with an arbitrary maximum of 64, for the case where a
+     * multi-MB stack is passed), allocated at the *top* of the worklet's stack
+     * (and whose addresses are fixed). The 'minimum alloc' firstly stops
+     * STACK_OVERFLOW_CHECK failing (since the stack will be full, and 16 bytes
+     * being the minimum allocation size due to alignments) and leaves room for
+     * a single AudioSampleFrame as a minumum.
+     */
+    createOutputViews() {
       // These are still alloc'd to take advantage of the overflow checks, etc.
       var oldStackPtr = stackSave();
       var viewDataIdx = {{{ getHeapOffset('stackAlloc(this.maxBuffers * this.bytesPerChannel)', 'float') }}};
 #if WEBAUDIO_DEBUG
       console.log(`AudioWorklet creating ${this.maxBuffers} buffer one-time views (for a stack size of ${wwParams.stackSize} at address 0x${(viewDataIdx * 4).toString(16)})`);
 #endif
-      this.outputViews = [];
+      this.outputViews.length = 0;
       for (var n = this.maxBuffers; n > 0; n--) {
         // Added in reverse so the lowest indices are closest to the stack top
         this.outputViews.unshift(
@@ -60,11 +73,6 @@ function createWasmAudioWorkletProcessor(audioParams) {
         );
       }
       stackRestore(oldStackPtr);
-
-#if ASSERTIONS
-      // Explicitly verify this later in process()
-      this.ctorOldStackPtr = oldStackPtr;
-#endif
     }
 
     static get parameterDescriptors() {
@@ -79,6 +87,9 @@ function createWasmAudioWorkletProcessor(audioParams) {
      * @param {Object} parameters
      */
     process(inputList, outputList, parameters) {
+      if (HEAPF32.buffer != this.outputViews[0].buffer) {
+        this.createOutputViews();
+      }
       var numInputs = inputList.length;
       var numOutputs = outputList.length;
 
