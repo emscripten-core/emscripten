@@ -19,10 +19,12 @@ UNSUPPORTED = 0x7FFFFFFF
 # Emscripten unconditionally requires support for:
 # - DedicatedWorkerGlobalScope.name parameter for multithreading support, which
 #   landed first in Chrome 70, Firefox 55 and Safari 12.2.
-# TODO(sbc): Design a of policy for managing these values.
-OLDEST_SUPPORTED_CHROME = 70  # October 16, 2018
-OLDEST_SUPPORTED_FIREFOX = 55  # August 08, 2017
-OLDEST_SUPPORTED_SAFARI = 120200  # March 25, 2019
+
+# N.b. when modifying these values, update comments in src/settings.js on
+# MIN_x_VERSION fields to match accordingly.
+OLDEST_SUPPORTED_CHROME = 70  # Released on 2018-10-16
+OLDEST_SUPPORTED_FIREFOX = 55  # Released on 2017-08-08
+OLDEST_SUPPORTED_SAFARI = 120200  # Released on 2019-03-25
 # 10.19.0 is the oldest version of node that we do any testing with.
 # Keep this in sync with the test-node-compat in .circleci/config.yml.
 OLDEST_SUPPORTED_NODE = 101900

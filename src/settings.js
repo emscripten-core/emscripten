@@ -1870,7 +1870,7 @@ var AUTO_NATIVE_LIBRARIES = true;
 // for Firefox versions older than < majorVersion.
 // Firefox 79 was released on 2020-07-28.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// Minimum supported value is 50 which was released on 2016-11-15 (see
+// Minimum supported value is 55 which was released on 2017-08-08 (see
 // feature_matrix.py)
 // [link]
 var MIN_FIREFOX_VERSION = 79;
@@ -1885,7 +1885,7 @@ var MIN_FIREFOX_VERSION = 79;
 // older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
 // see https://github.com/emscripten-core/emscripten/pull/7191.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// Minimum supported value is 101000 which was released in 2016-09 (see
+// Minimum supported value is 120200 which was released on 2019-03-25 (see
 // feature_matrix.py).
 // [link]
 var MIN_SAFARI_VERSION = 150000;
@@ -1896,7 +1896,7 @@ var MIN_SAFARI_VERSION = 150000;
 // numbers with Chrome.
 // Chrome 85 was released on 2020-08-25.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// Minimum supported value is 55, which was released on 2016-12-01 (see
+// Minimum supported value is 70, which was released on 2018-10-16 (see
 // feature_matrix.py).
 // [link]
 var MIN_CHROME_VERSION = 85;
