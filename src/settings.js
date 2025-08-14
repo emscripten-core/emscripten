@@ -1884,6 +1884,8 @@ var MIN_FIREFOX_VERSION = 79;
 // NOTE: Emscripten is unable to produce code that would work in iOS 9.3.5 and
 // older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
 // see https://github.com/emscripten-core/emscripten/pull/7191.
+// Multithreaded Emscripten code will need Safari 12.2 (iPhone 5s+) at minimum,
+// with support for DedicatedWorkerGlobalScope.name parameter.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // Minimum supported value is 120200 which was released on 2019-03-25 (see
 // feature_matrix.py).
