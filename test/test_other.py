@@ -9251,7 +9251,6 @@ int main() {
   @crossplatform
   def test_binaryen_debug(self):
     for args, expect_clean_js, expect_whitespace_js, expect_closured in [
-        None,
         (['-O0'], False, True, False),
         (['-O0', '-g1'], False, True, False),
         (['-O0', '-g2'], False, True, False), # in -g2+, we emit -g to asm2wasm so function names are saved
