@@ -53,19 +53,29 @@ bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, Audi
   return true;
 }
 
+void doGrow() {
+  size_t max = emscripten_get_heap_max();
+  size_t preGrow = emscripten_get_heap_size();
+  // Note we're leaking this on purpose
+  if (!malloc((preGrow / 3) * 2)) {
+    emscripten_out("Failed to malloc()");
+  }
+  emscripten_outf("Heap was %zu, now %zu (of %zu)", preGrow, emscripten_get_heap_size(), max);
+}
+
 // Registered keypress event to grow the heap by 2/3
 bool onPress(int type, const EmscriptenKeyboardEvent* e, void* data) {
   if (!e->repeat) {
-    size_t max = emscripten_get_heap_max();
     size_t size = emscripten_get_heap_size();
-    if (max == size) {
+    if (emscripten_get_heap_max() == size) {
       emscripten_outf("Cannot grow heap, rebuild with ALLOW_MEMORY_GROWTH? Heap is already %zu", size);
     } else {
-      // Note we're leaking this on purpose
-      if (!malloc((size / 3) * 2)) {
-        emscripten_out("Failed to malloc()");
+      if (e->charCode == 32) {
+        emscripten_out("Growing from audio worklet (see Console)");
+        emscripten_audio_worklet_post_function_v(VOIDP_2_WA(data), &doGrow);
+      } else {
+        doGrow();
       }
-      emscripten_outf("Heap was %zu, now %zu (of %zu)", size, emscripten_get_heap_size(), max);
     }
   }
   return false;
@@ -76,7 +86,7 @@ void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
   assert(success && "Audio worklet failed in processorCreated()");
   emscripten_out("Audio worklet processor created");
   emscripten_out("Click to toggle audio playback");
-  emscripten_out("Keypress to grow the heap");
+  emscripten_out("Keypress to grow the heap, [space] to grow from the audio worklet's thread");
 
   // Stereo output, two inputs
   int outputChannelCounts[1] = { 2 };
@@ -102,7 +112,7 @@ void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
   // Register a click to start playback
   emscripten_set_click_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, WA_2_VOIDP(context), false, &onClick);
   // And a keypress to alloc (and leak) to grow the heap
-  emscripten_set_keypress_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, NULL, false, &onPress);
+  emscripten_set_keypress_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, WA_2_VOIDP(context), false, &onPress);
 
 #ifdef TEST_AND_EXIT
   // Register the counter that exits the test after one second of mixing
