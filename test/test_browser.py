@@ -5270,10 +5270,10 @@ Module["preRun"] = () => {
   # Tests that the proxying directives foo__proxy: 'abort' and foo__proxy: 'abort_debug' work.
   @also_with_minimal_runtime
   @parameterized({
-    '': ('1', ['--js-library', test_file('wasm_worker/proxy_abort.js')],),
-    'no_assertions': ('1', ['--js-library', test_file('wasm_worker/proxy_abort.js'), '-sASSERTIONS=0'],),
-    'debug': ('1', ['--js-library', test_file('wasm_worker/proxy_abort_debug.js'), '-sASSERTIONS'],),
-    'debug_no_assertions': ('0', ['--js-library', test_file('wasm_worker/proxy_abort_debug.js'), '-sASSERTIONS=0'],),
+    '': ('1', ['--js-library', test_file('wasm_worker/proxy_abort.js')]),
+    'no_assertions': ('1', ['--js-library', test_file('wasm_worker/proxy_abort.js'), '-sASSERTIONS=0']),
+    'debug': ('1', ['--js-library', test_file('wasm_worker/proxy_abort_debug.js'), '-sASSERTIONS']),
+    'debug_no_assertions': ('0', ['--js-library', test_file('wasm_worker/proxy_abort_debug.js'), '-sASSERTIONS=0']),
   })
   def test_proxy_abort(self, expect_result, args):
     self.btest('pthread/proxy_abort.c', expected=expect_result, cflags=args + ['-pthread', '-sPTHREAD_POOL_SIZE=1'])
