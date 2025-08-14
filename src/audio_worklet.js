@@ -63,7 +63,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
       var oldStackPtr = stackSave();
       var viewDataIdx = {{{ getHeapOffset('stackAlloc(this.maxBuffers * this.bytesPerChannel)', 'float') }}};
 #if WEBAUDIO_DEBUG
-      console.log(`AudioWorklet creating ${this.maxBuffers} buffer one-time views (for a stack size of ${wwParams.stackSize} at address 0x${(viewDataIdx * 4).toString(16)})`);
+      console.log(`AudioWorklet creating ${this.maxBuffers} buffer one-time views (for a stack size of ${wwParams.stackSize} at address ${ptrToString(viewDataIdx * 4)})`);
 #endif
       this.outputViews.length = 0;
       for (var n = this.maxBuffers; n > 0; n--) {
