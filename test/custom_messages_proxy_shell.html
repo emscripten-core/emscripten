@@ -16,7 +16,7 @@
       function sendResult(success) {
         if (window.sentTestResult) return;
         window.sentTestResult = true;
-        fetch('http://localhost:8888/report_result?' + (success ? 1 : 0))
+        fetch('/report_result?' + (success ? 1 : 0))
           .then(() => window.close());
       }
 
