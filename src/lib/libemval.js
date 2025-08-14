@@ -122,13 +122,6 @@ var LibraryEmVal = {
   _emval_new_u16string__deps: ['$Emval'],
   _emval_new_u16string: (v) => Emval.toHandle(UTF16ToString(v)),
 
-  _emval_take_value__deps: ['$Emval', '$requireRegisteredType'],
-  _emval_take_value: (type, arg) => {
-    type = requireRegisteredType(type, '_emval_take_value');
-    var v = type['readValueFromPointer'](arg);
-    return Emval.toHandle(v);
-  },
-
 #if SUPPORTS_GLOBALTHIS
   $emval_get_global: () => globalThis,
 #elif !DYNAMIC_EXECUTION
@@ -199,35 +192,14 @@ var LibraryEmVal = {
   },
 
   $emval_returnValue__deps: ['$Emval'],
-  $emval_returnValue: (returnType, destructorsRef, handle) => {
+  $emval_returnValue: (toReturnWire, destructorsRef, handle) => {
     var destructors = [];
-    var result = returnType['toWireType'](destructors, handle);
+    var result = toReturnWire(destructors, handle);
     if (destructors.length) {
       // void, primitives and any other types w/o destructors don't need to allocate a handle
       {{{ makeSetValue('destructorsRef', '0', 'Emval.toHandle(destructors)', '*') }}};
     }
     return result;
-  },
-
-  _emval_as__deps: ['$Emval', '$requireRegisteredType', '$emval_returnValue'],
-  _emval_as: (handle, returnType, destructorsRef) => {
-    handle = Emval.toValue(handle);
-    returnType = requireRegisteredType(returnType, 'emval::as');
-    return emval_returnValue(returnType, destructorsRef, handle);
-  },
-
-  _emval_as_int64__deps: ['$Emval', '$requireRegisteredType'],
-  _emval_as_int64: (handle, returnType) => {
-    handle = Emval.toValue(handle);
-    returnType = requireRegisteredType(returnType, 'emval::as');
-    return returnType['toWireType'](null, handle);
-  },
-
-  _emval_as_uint64__deps: ['$Emval', '$requireRegisteredType'],
-  _emval_as_uint64: (handle, returnType) => {
-    handle = Emval.toValue(handle);
-    returnType = requireRegisteredType(returnType, 'emval::as');
-    return returnType['toWireType'](null, handle);
   },
 
   _emval_equals__deps: ['$Emval'],
@@ -264,13 +236,6 @@ var LibraryEmVal = {
     return !object;
   },
 
-  _emval_call__deps: ['$emval_methodCallers', '$Emval'],
-  _emval_call: (caller, handle, destructorsRef, args) => {
-    caller = emval_methodCallers[caller];
-    handle = Emval.toValue(handle);
-    return caller(null, handle, destructorsRef, args);
-  },
-
   $emval_lookupTypes__deps: ['$requireRegisteredType'],
   $emval_lookupTypes: (argCount, argTypes) => {
     var a = new Array(argCount);
@@ -292,72 +257,93 @@ var LibraryEmVal = {
     return id;
   },
 
-  _emval_get_method_caller__deps: [
+  _emval_create_invoker__deps: [
     '$emval_addMethodCaller', '$emval_lookupTypes',
     '$createNamedFunction', '$emval_returnValue',
+    '$Emval', '$getStringOrSymbol',
   ],
-  _emval_get_method_caller: (argCount, argTypes, kind) => {
+  _emval_create_invoker: (argCount, argTypesPtr, kind) => {
     var GenericWireTypeSize = {{{ 2 * POINTER_SIZE }}};
 
-    var types = emval_lookupTypes(argCount, argTypes);
-    var retType = types.shift();
-    argCount--; // remove the shifted off return type
+    var [retType, ...argTypes] = emval_lookupTypes(argCount, argTypesPtr);
+    var toReturnWire = retType.toWireType.bind(retType);
+    var argFromPtr = argTypes.map(type => type.readValueFromPointer.bind(type));
+    argCount--; // remove the extracted return type
 
 #if !DYNAMIC_EXECUTION
     var argN = new Array(argCount);
-    var invokerFunction = (obj, func, destructorsRef, args) => {
+    var invokerFunction = (handle, methodName, destructorsRef, args) => {
       var offset = 0;
       for (var i = 0; i < argCount; ++i) {
-        argN[i] = types[i]['readValueFromPointer'](args + offset);
+        argN[i] = argFromPtr[i](args + offset);
         offset += GenericWireTypeSize;
       }
-      var rv = kind === /* CONSTRUCTOR */ 1 ? Reflect.construct(func, argN) : func.apply(obj, argN);
-      return emval_returnValue(retType, destructorsRef, rv);
+      var rv;
+      switch (kind) {
+        case {{{ cDefs['internal::EM_INVOKER_KIND::FUNCTION'] }}}:
+          rv = Emval.toValue(handle).apply(null, argN);
+          break;
+        case {{{ cDefs['internal::EM_INVOKER_KIND::CONSTRUCTOR'] }}}:
+          rv = Reflect.construct(Emval.toValue(handle), argN);
+          break;
+        case {{{ cDefs['internal::EM_INVOKER_KIND::CAST'] }}}:
+          // no-op, just return the argument
+          rv = argN[0];
+          break;
+        case {{{ cDefs['internal::EM_INVOKER_KIND::METHOD'] }}}:
+          rv = Emval.toValue(handle)[getStringOrSymbol(methodName)](...argN);
+          break;
+      }
+      return emval_returnValue(toReturnWire, destructorsRef, rv);
     };
 #else
-    var functionBody =
-      `return function (obj, func, destructorsRef, args) {\n`;
-
-    var offset = 0;
-    var argsList = []; // 'obj?, arg0, arg1, arg2, ... , argN'
-    if (kind === {{{ cDefs['internal::EM_METHOD_CALLER_KIND::FUNCTION'] }}}) {
-      argsList.push('obj');
+    var captures = {'toValue': Emval.toValue};
+    var args = argFromPtr.map((argFromPtr, i) => {
+      var captureName = `argFromPtr${i}`;
+      captures[captureName] = argFromPtr;
+      return `${captureName}(args${i ? '+' + i * GenericWireTypeSize : ''})`;
+    });
+    var functionBody;
+    switch (kind){
+      case {{{ cDefs['internal::EM_INVOKER_KIND::FUNCTION'] }}}:
+        functionBody = 'toValue(handle)';
+        break;
+      case {{{ cDefs['internal::EM_INVOKER_KIND::CONSTRUCTOR'] }}}:
+        functionBody = 'new (toValue(handle))';
+        break;
+      case {{{ cDefs['internal::EM_INVOKER_KIND::CAST'] }}}:
+        functionBody = '';
+        break;
+      case {{{ cDefs['internal::EM_INVOKER_KIND::METHOD'] }}}:
+        captures['getStringOrSymbol'] = getStringOrSymbol;
+        functionBody = 'toValue(handle)[getStringOrSymbol(methodName)]';
+        break;
     }
-    var params = ['retType'];
-    var args = [retType];
-    for (var i = 0; i < argCount; ++i) {
-      argsList.push(`arg${i}`);
-      params.push(`argType${i}`);
-      args.push(types[i]);
-      functionBody +=
-        `  var arg${i} = argType${i}.readValueFromPointer(args${offset ? '+' + offset : ''});\n`;
-      offset += GenericWireTypeSize;
-    }
-    var invoker = kind === {{{ cDefs['internal::EM_METHOD_CALLER_KIND::CONSTRUCTOR'] }}} ? 'new func' : 'func.call';
-    functionBody +=
-      `  var rv = ${invoker}(${argsList.join(', ')});\n`;
+    functionBody += `(${args})`;
     if (!retType.isVoid) {
-      params.push('emval_returnValue');
-      args.push(emval_returnValue);
-      functionBody +=
-        '  return emval_returnValue(retType, destructorsRef, rv);\n';
+      captures['toReturnWire'] = toReturnWire;
+      captures['emval_returnValue'] = emval_returnValue;
+      functionBody = `return emval_returnValue(toReturnWire, destructorsRef, ${functionBody})`;
     }
-    functionBody +=
-      "};\n";
+    functionBody = `return function (handle, methodName, destructorsRef, args) {
+${functionBody}
+}`;
 
-    var invokerFunction = new Function(...params, functionBody)(...args);
+    var invokerFunction = new Function(Object.keys(captures), functionBody)(...Object.values(captures));
 #endif
-    var functionName = `methodCaller<(${types.map(t => t.name).join(', ')}) => ${retType.name}>`;
+    var functionName = `methodCaller<(${argTypes.map(t => t.name)}) => ${retType.name}>`;
     return emval_addMethodCaller(createNamedFunction(functionName, invokerFunction));
   },
 
-  _emval_call_method__deps: ['$getStringOrSymbol', '$emval_methodCallers', '$Emval'],
-  _emval_call_method: (caller, objHandle, methodName, destructorsRef, args) => {
-    caller = emval_methodCallers[caller];
-    objHandle = Emval.toValue(objHandle);
-    methodName = getStringOrSymbol(methodName);
-    return caller(objHandle, objHandle[methodName], destructorsRef, args);
+  _emval_invoke__deps: ['$getStringOrSymbol', '$emval_methodCallers', '$Emval'],
+  _emval_invoke: (caller, handle, methodName, destructorsRef, args) => {
+    return emval_methodCallers[caller](handle, methodName, destructorsRef, args);
   },
+
+  // Same as `_emval_invoke`, just imported into Wasm under a different return type.
+  // TODO: remove this if/when https://github.com/emscripten-core/emscripten/issues/20478 is fixed.
+  _emval_invoke_i64__deps: ['_emval_invoke'],
+  _emval_invoke_i64: '=__emval_invoke',
 
   _emval_typeof__deps: ['$Emval'],
   _emval_typeof: (handle) => {

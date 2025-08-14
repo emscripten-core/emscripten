@@ -857,7 +857,7 @@ module({
             assert.equal(2147483648, cm.load_unsigned_int());
 
             cm.store_unsigned_long(2147483648);
-            assert.equal(2147483648, cm.load_unsigned_long());
+            assert.equal(cm.getCompilerSetting('MEMORY64') ? 2147483648n : 2147483648, cm.load_unsigned_long());
         });
 
         if (cm.getCompilerSetting('ASSERTIONS')) {

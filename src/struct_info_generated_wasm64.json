@@ -292,6 +292,7 @@
         "EWOULDBLOCK": 6,
         "EXDEV": 75,
         "EXFULL": 115,
+        "FIONBIO": 21537,
         "FIONREAD": 21531,
         "F_DUPFD": 0,
         "F_GETFD": 1,
@@ -516,8 +517,10 @@
         "__WASI_RIGHTS_PATH_UNLINK_FILE": 67108864,
         "__WASI_RIGHTS_POLL_FD_READWRITE": 134217728,
         "__WASI_RIGHTS_SOCK_SHUTDOWN": 268435456,
-        "internal::EM_METHOD_CALLER_KIND::CONSTRUCTOR": 1,
-        "internal::EM_METHOD_CALLER_KIND::FUNCTION": 0
+        "internal::EM_INVOKER_KIND::CAST": 3,
+        "internal::EM_INVOKER_KIND::CONSTRUCTOR": 2,
+        "internal::EM_INVOKER_KIND::FUNCTION": 0,
+        "internal::EM_INVOKER_KIND::METHOD": 1
     },
     "structs": {
         "AudioParamFrame": {
@@ -530,6 +533,12 @@
             "data": 8,
             "numberOfChannels": 0,
             "samplesPerChannel": 4
+        },
+        "EmscriptenAudioWorkletNodeCreateOptions": {
+            "__size__": 16,
+            "numberOfInputs": 0,
+            "numberOfOutputs": 4,
+            "outputChannelCounts": 8
         },
         "EmscriptenBatteryEvent": {
             "__size__": 32,
@@ -685,6 +694,11 @@
             "__size__": 8,
             "hidden": 0,
             "visibilityState": 4
+        },
+        "EmscriptenWebAudioCreateAttributes": {
+            "__size__": 16,
+            "latencyHint": 0,
+            "sampleRate": 8
         },
         "EmscriptenWebGLContextAttributes": {
             "__size__": 36,
@@ -1476,6 +1490,19 @@
             "module": 8,
             "nextInChain": 0
         },
+        "WebAudioParamDescriptor": {
+            "__size__": 16,
+            "automationRate": 12,
+            "defaultValue": 0,
+            "maxValue": 8,
+            "minValue": 4
+        },
+        "WebAudioWorkletProcessorCreateOptions": {
+            "__size__": 24,
+            "audioParamDescriptors": 16,
+            "name": 0,
+            "numAudioParams": 8
+        },
         "__cxa_exception": {
             "__size__": 48,
             "adjustedPtr": 32,
@@ -1696,17 +1723,17 @@
             "st_uid": 16
         },
         "statfs": {
-            "__size__": 104,
-            "f_bavail": 24,
-            "f_bfree": 20,
+            "__size__": 120,
+            "f_bavail": 32,
+            "f_bfree": 24,
             "f_blocks": 16,
             "f_bsize": 8,
-            "f_ffree": 32,
-            "f_files": 28,
-            "f_flags": 64,
-            "f_frsize": 56,
-            "f_fsid": 36,
-            "f_namelen": 48
+            "f_ffree": 48,
+            "f_files": 40,
+            "f_flags": 80,
+            "f_frsize": 72,
+            "f_fsid": 56,
+            "f_namelen": 64
         },
         "termios": {
             "__c_ispeed": 52,

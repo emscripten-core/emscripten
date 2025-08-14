@@ -16,7 +16,6 @@ import json
 import subprocess
 import logging
 import pprint
-import re
 import shutil
 import sys
 import textwrap
@@ -318,26 +317,15 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     update_settings_glue(out_wasm, metadata, base_metadata)
 
   if not settings.WASM_BIGINT and metadata.em_js_funcs:
-    import_map = {}
-
-    with webassembly.Module(in_wasm) as module:
-      types = module.get_types()
-      for imp in module.get_imports():
-        if imp.module not in ('GOT.mem', 'GOT.func'):
-          import_map[imp.field] = imp
-
     for em_js_func, raw in metadata.em_js_funcs.items():
       c_sig = raw.split('<::>')[0].strip('()')
       if not c_sig or c_sig == 'void':
         c_sig = []
       else:
         c_sig = c_sig.split(',')
-      if em_js_func in import_map:
-        imp = import_map[em_js_func]
-        assert imp.kind == webassembly.ExternType.FUNC
-        signature = types[imp.type]
-        if len(signature.params) != len(c_sig):
-          diagnostics.warning('em-js-i64', 'using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `%s` (%s, %s)', em_js_func, c_sig, signature.params)
+      signature = metadata.em_js_func_types.get(em_js_func)
+      if signature and len(signature.params) != len(c_sig):
+        diagnostics.warning('em-js-i64', 'using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `%s` (%s, %s)', em_js_func, c_sig, signature.params)
 
   asm_consts = create_asm_consts(metadata)
   em_js_funcs = create_em_js(metadata)
@@ -364,6 +352,10 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     report_missing_exports_wasm_only(metadata)
     logger.debug('emscript: skipping js glue generation')
     return
+
+  for e in settings.EXPORTED_FUNCTIONS:
+    if not js_manipulation.isidentifier(e):
+      exit_with_error(f'invalid export name: "{e}"')
 
   # memory and global initializers
 
@@ -454,13 +446,6 @@ def get_metadata(infile, outfile, modify_wasm, args):
   if DEBUG:
     logger.debug("Metadata: " + pprint.pformat(metadata.__dict__))
   return metadata
-
-
-def is_valid_js_identifier(ident):
-  # See https://developer.mozilla.org/en-US/docs/Glossary/Identifier
-  if ident[0].isdigit():
-    return False
-  return re.fullmatch(r'[0-9a-zA-Z_\$]+', ident)
 
 
 def finalize_wasm(infile, outfile, js_syms):
@@ -570,9 +555,6 @@ def finalize_wasm(infile, outfile, js_syms):
   # These are any exports that were not requested on the command line and are
   # not known auto-generated system functions.
   unexpected_exports = [e for e in metadata.all_exports if shared.is_user_export(e)]
-  for n in unexpected_exports:
-    if not is_valid_js_identifier(n):
-      exit_with_error(f'invalid export name: {n}')
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
 
@@ -925,8 +907,8 @@ def should_export(sym):
   return settings.EXPORT_ALL or (settings.EXPORT_KEEPALIVE and sym in settings.EXPORTED_FUNCTIONS)
 
 
-def create_receiving(function_exports, tag_exports):
-  generate_dyncall_assignment = settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
+def create_receiving(function_exports, tag_exports, library_symbols):
+  generate_dyncall_assignment = 'dynCalls' in library_symbols
   receiving = ['\n// Imports from the Wasm binary.']
 
   if settings.WASM_ESM_INTEGRATION:
@@ -1013,10 +995,10 @@ def create_receiving(function_exports, tag_exports):
   return '\n'.join(receiving) + '\n'
 
 
-def create_module(metadata, function_exports, global_exports, tag_exports,library_symbols):
+def create_module(metadata, function_exports, global_exports, tag_exports, library_symbols):
   module = []
 
-  receiving = create_receiving(function_exports, tag_exports)
+  receiving = create_receiving(function_exports, tag_exports, library_symbols)
   receiving += create_global_exports(global_exports)
   sending = create_sending(metadata, library_symbols)
 
@@ -1131,7 +1113,7 @@ def create_pointer_conversion_wrappers(metadata):
     '_wasmfs_read_file': '_ppp',
     '_wasmfs_node_record_dirent': '_pp_',
     '__dl_seterr': '_pp',
-    '_emscripten_run_on_main_thread_js': '__p_p_',
+    '_emscripten_run_js_on_main_thread': '__p_p_',
     '_emscripten_proxy_execute_task_queue': '_p',
     '_emscripten_thread_exit': '_p',
     '_emscripten_thread_init': '_p_____',

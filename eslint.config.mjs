@@ -52,7 +52,6 @@ export default [{
     'src/Fetch.js',
     'src/settings.js',
     'src/settings_internal.js',
-    'src/growableHeap.js',
     'src/emrun_prejs.js',
     'src/deterministic.js',
     'src/proxyWorker.js',

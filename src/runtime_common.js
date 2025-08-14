@@ -12,15 +12,22 @@
 #include "runtime_safe_heap.js"
 #endif
 
-#if SHARED_MEMORY && ALLOW_MEMORY_GROWTH
-#include "growableHeap.js"
+#if SHARED_MEMORY && ALLOW_MEMORY_GROWTH && !GROWABLE_ARRAYBUFFERS
+// Support for growable heap + pthreads, where the buffer may change, so JS views
+// must be updated.
+function growMemViews() {
+  // `updateMemoryViews` updates all the views simultaneously, so it's enough to check any of them.
+  if (wasmMemory.buffer != HEAP8.buffer) {
+    updateMemoryViews();
+  }
+}
 #endif
 
 #if USE_ASAN
 #include "runtime_asan.js"
 #endif
 
-#if MODULARIZE && USE_READY_PROMISE
+#if MODULARIZE
 var readyPromiseResolve, readyPromiseReject;
 #endif
 
@@ -132,7 +139,11 @@ var runtimeExited = false;
 }}}
 
 function updateMemoryViews() {
+#if GROWABLE_ARRAYBUFFERS
+  var b = wasmMemory.toResizableBuffer();
+#else
   var b = wasmMemory.buffer;
+#endif
   {{{ maybeExportHeap('HEAP8')   }}}HEAP8 = new Int8Array(b);
   {{{ maybeExportHeap('HEAP16')  }}}HEAP16 = new Int16Array(b);
   {{{ maybeExportHeap('HEAPU8')  }}}HEAPU8 = new Uint8Array(b);

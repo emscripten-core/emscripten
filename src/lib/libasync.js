@@ -20,7 +20,7 @@ addToLibrary({
   },
 
 #if ASYNCIFY
-  $Asyncify__deps: ['$runAndAbortIfError', '$callUserCallback', '$sigToWasmTypes',
+  $Asyncify__deps: ['$runAndAbortIfError', '$callUserCallback',
 #if !MINIMAL_RUNTIME
     '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
@@ -551,14 +551,13 @@ addToLibrary({
   emscripten_lazy_load_code: () => Asyncify.handleSleep((wakeUp) => {
     // Update the expected wasm binary file to be the lazy one.
     wasmBinaryFile += '.lazy.wasm';
-    // Add a callback for when all run dependencies are fulfilled, which happens when async wasm loading is done.
-    dependenciesFulfilled = wakeUp;
-    // Load the new wasm.
-    createWasm();
+    // Load the new wasm. The resulting Promise will resolve once the async loading is done.
+    createWasm().then(() => wakeUp());
   }),
 #endif
 
   _load_secondary_module__sig: 'v',
+  _load_secondary_module__async: true,
   _load_secondary_module: async function() {
     // Mark the module as loading for the wasm module (so it doesn't try to load it again).
     wasmExports['load_secondary_module_status'].value = 1;

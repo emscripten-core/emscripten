@@ -182,7 +182,9 @@ addToLibrary({
     try {
       // round size grow request up to wasm page size (fixed 64KB per spec)
       wasmMemory.grow({{{ toIndexType('pages') }}}); // .grow() takes a delta compared to the previous size
+#if !GROWABLE_ARRAYBUFFERS
       updateMemoryViews();
+#endif
 #if MEMORYPROFILER
       if (typeof emscriptenMemoryProfiler != 'undefined') {
         emscriptenMemoryProfiler.onMemoryResize(oldHeapSize, wasmMemory.buffer.byteLength);
@@ -320,6 +322,7 @@ addToLibrary({
 #endif // ALLOW_MEMORY_GROWTH
   },
 
+#if !GROWABLE_ARRAYBUFFERS
   // Called after wasm grows memory. At that time we need to update the views.
   // Without this notification, we'd need to check the buffer in JS every time
   // we return from any wasm, which adds overhead. See
@@ -330,6 +333,7 @@ addToLibrary({
 #endif
     updateMemoryViews();
   },
+#endif
 
   _emscripten_system: (command) => {
 #if ENVIRONMENT_MAY_BE_NODE
@@ -1731,11 +1735,14 @@ addToLibrary({
     var f = dynCalls[sig];
     return f(ptr, ...args);
   },
-#if DYNCALLS
-  $dynCall__deps: ['$dynCallLegacy'],
-#else
-  $dynCall__deps: ['$getWasmTableEntry'],
+  $dynCall__deps: [
+#if DYNCALLS || !WASM_BIGINT
+    '$dynCallLegacy',
 #endif
+#if !DYNCALLS
+    '$getWasmTableEntry',
+#endif
+  ],
 #endif
 
   // Used in library code to get JS function from wasm function pointer.
@@ -2097,6 +2104,14 @@ addToLibrary({
     }
   },
 
+  $asyncLoad: async (url) => {
+    var arrayBuffer = await readAsync(url);
+  #if ASSERTIONS
+    assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
+  #endif
+    return new Uint8Array(arrayBuffer);
+  },
+
 #else // MINIMAL_RUNTIME
   // MINIMAL_RUNTIME doesn't support the runtimeKeepalive stuff
   $callUserCallback: (func) => func(),
@@ -2107,14 +2122,6 @@ addToLibrary({
       x = 'main';
     }
     return x.startsWith('dynCall_') ? x : '_' + x;
-  },
-
-  $asyncLoad: async (url) => {
-    var arrayBuffer = await readAsync(url);
-  #if ASSERTIONS
-    assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
-  #endif
-    return new Uint8Array(arrayBuffer);
   },
 
   $alignMemory: (size, alignment) => {
@@ -2415,7 +2422,7 @@ function wrapSyscallFunction(x, library, isWasi) {
 
   library[x + '__deps'] ??= [];
 
-#if PURE_WASI
+#if PURE_WASI && !GROWABLE_ARRAYBUFFERS
   // In PURE_WASI mode we can't assume the wasm binary was built by emscripten
   // and politely notify us on memory growth.  Instead we have to check for
   // possible memory growth on each syscall.

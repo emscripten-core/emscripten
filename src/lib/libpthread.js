@@ -251,7 +251,10 @@ var LibraryPThread = {
         } else if (cmd === 'spawnThread') {
           spawnThread(d);
         } else if (cmd === 'cleanupThread') {
-          cleanupThread(d.thread);
+          // cleanupThread needs to be run via callUserCallback since it calls
+          // back into user code to free thread data. Without this it's possible
+          // the unwind or ExitStatus exception could escape here.
+          callUserCallback(() => cleanupThread(d.thread));
 #if MAIN_MODULE
         } else if (cmd === 'markAsFinished') {
           markAsFinished(d.thread);
@@ -881,7 +884,7 @@ var LibraryPThread = {
   $proxyToMainThreadPtr: (...args) => BigInt(proxyToMainThread(...args)),
 #endif
 
-  $proxyToMainThread__deps: ['$stackSave', '$stackRestore', '$stackAlloc', '_emscripten_run_on_main_thread_js'],
+  $proxyToMainThread__deps: ['$stackSave', '$stackRestore', '$stackAlloc', '_emscripten_run_js_on_main_thread'],
   $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), ...number)} */',
   $proxyToMainThread: (funcIndex, emAsmAddr, sync, ...callArgs) => {
     // EM_ASM proxying is done by passing a pointer to the address of the EM_ASM
@@ -921,7 +924,7 @@ var LibraryPThread = {
       HEAPF64[b + i] = arg;
 #endif
     }
-    var rtn = __emscripten_run_on_main_thread_js(funcIndex, emAsmAddr, serializedNumCallArgs, args, sync);
+    var rtn = __emscripten_run_js_on_main_thread(funcIndex, emAsmAddr, serializedNumCallArgs, args, sync);
     stackRestore(sp);
     return rtn;
   },
@@ -1026,6 +1029,9 @@ var LibraryPThread = {
     '$runtimeKeepaliveCounter',
 #endif
   ],
+#if ASYNCIFY
+  $invokeEntryPoint__async: true,
+#endif
   $invokeEntryPoint: {{{ asyncIf(ASYNCIFY == 2) }}}(ptr, arg) => {
 #if PTHREADS_DEBUG
     dbg(`invokeEntryPoint: ${ptrToString(ptr)}`);

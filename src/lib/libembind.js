@@ -17,13 +17,13 @@ var LibraryEmbind = {
   $EmValType__deps: ['_emval_decref', '$Emval', '$readPointer'],
   $EmValType: `{
     name: 'emscripten::val',
-    'fromWireType': (handle) => {
+    fromWireType: (handle) => {
       var rv = Emval.toValue(handle);
       __emval_decref(handle);
       return rv;
     },
-    'toWireType': (destructors, value) => Emval.toHandle(value),
-    'readValueFromPointer': readPointer,
+    toWireType: (destructors, value) => Emval.toHandle(value),
+    readValueFromPointer: readPointer,
     destructorFunction: null, // This type does not need a destructor
 
     // TODO: do we need a deleteObject here?  write a test where
@@ -206,9 +206,9 @@ var LibraryEmbind = {
     registerType(rawType, {
       isVoid: true, // void return values can be optimized out sometimes
       name,
-      'fromWireType': () => undefined,
+      fromWireType: () => undefined,
       // TODO: assert if anything else is given?
-      'toWireType': (destructors, o) => undefined,
+      toWireType: (destructors, o) => undefined,
     });
   },
 
@@ -218,16 +218,16 @@ var LibraryEmbind = {
     name = AsciiToString(name);
     registerType(rawType, {
       name,
-      'fromWireType': function(wt) {
+      fromWireType: function(wt) {
         // ambiguous emscripten ABI: sometimes return values are
         // true or false, and sometimes integers (0 or 1)
         return !!wt;
       },
-      'toWireType': function(destructors, o) {
+      toWireType: function(destructors, o) {
         return o ? trueValue : falseValue;
       },
-      'readValueFromPointer': function(pointer) {
-        return this['fromWireType'](HEAPU8[pointer]);
+      readValueFromPointer: function(pointer) {
+        return this.fromWireType(HEAPU8[pointer]);
       },
       destructorFunction: null, // This type does not need a destructor
     });
@@ -260,14 +260,14 @@ var LibraryEmbind = {
   $enumReadValueFromPointer: (name, width, signed) => {
     switch (width) {
       case 1: return signed ?
-        function(pointer) { return this['fromWireType']({{{ makeGetValue('pointer', 0, 'i8') }}}) } :
-        function(pointer) { return this['fromWireType']({{{ makeGetValue('pointer', 0, 'u8') }}}) };
+        function(pointer) { return this.fromWireType({{{ makeGetValue('pointer', 0, 'i8') }}}) } :
+        function(pointer) { return this.fromWireType({{{ makeGetValue('pointer', 0, 'u8') }}}) };
       case 2: return signed ?
-        function(pointer) { return this['fromWireType']({{{ makeGetValue('pointer', 0, 'i16') }}}) } :
-        function(pointer) { return this['fromWireType']({{{ makeGetValue('pointer', 0, 'u16') }}}) };
+        function(pointer) { return this.fromWireType({{{ makeGetValue('pointer', 0, 'i16') }}}) } :
+        function(pointer) { return this.fromWireType({{{ makeGetValue('pointer', 0, 'u16') }}}) };
       case 4: return signed ?
-        function(pointer) { return this['fromWireType']({{{ makeGetValue('pointer', 0, 'i32') }}}) } :
-        function(pointer) { return this['fromWireType']({{{ makeGetValue('pointer', 0, 'u32') }}}) };
+        function(pointer) { return this.fromWireType({{{ makeGetValue('pointer', 0, 'i32') }}}) } :
+        function(pointer) { return this.fromWireType({{{ makeGetValue('pointer', 0, 'u32') }}}) };
       default:
         throw new TypeError(`invalid integer width (${width}): ${name}`);
     }
@@ -277,10 +277,10 @@ var LibraryEmbind = {
   $floatReadValueFromPointer: (name, width) => {
     switch (width) {
       case 4: return function(pointer) {
-        return this['fromWireType']({{{ makeGetValue('pointer', 0, 'float') }}});
+        return this.fromWireType({{{ makeGetValue('pointer', 0, 'float') }}});
       };
       case 8: return function(pointer) {
-        return this['fromWireType']({{{ makeGetValue('pointer', 0, 'double') }}});
+        return this.fromWireType({{{ makeGetValue('pointer', 0, 'double') }}});
       };
       default:
         throw new TypeError(`invalid float width (${width}): ${name}`);
@@ -320,8 +320,8 @@ var LibraryEmbind = {
 
     registerType(primitiveType, {
       name,
-      'fromWireType': fromWireType,
-      'toWireType': (destructors, value) => {
+      fromWireType: fromWireType,
+      toWireType: (destructors, value) => {
 #if ASSERTIONS
         if (typeof value != "number" && typeof value != "boolean") {
           throw new TypeError(`Cannot convert "${embindRepr(value)}" to ${name}`);
@@ -332,7 +332,7 @@ var LibraryEmbind = {
         // https://www.w3.org/TR/wasm-js-api-1/#towebassemblyvalue
         return value;
       },
-      'readValueFromPointer': integerReadValueFromPointer(name, size, minRange !== 0),
+      readValueFromPointer: integerReadValueFromPointer(name, size, minRange !== 0),
       destructorFunction: null, // This type does not need a destructor
     });
   },
@@ -370,8 +370,8 @@ var LibraryEmbind = {
 
     registerType(primitiveType, {
       name,
-      'fromWireType': fromWireType,
-      'toWireType': (destructors, value) => {
+      fromWireType: fromWireType,
+      toWireType: (destructors, value) => {
         if (typeof value == "number") {
           value = BigInt(value);
         }
@@ -383,7 +383,7 @@ var LibraryEmbind = {
 #endif
         return value;
       },
-      'readValueFromPointer': integerReadValueFromPointer(name, size, !isUnsignedType),
+      readValueFromPointer: integerReadValueFromPointer(name, size, !isUnsignedType),
       destructorFunction: null, // This type does not need a destructor
     });
   },
@@ -402,8 +402,8 @@ var LibraryEmbind = {
     name = AsciiToString(name);
     registerType(rawType, {
       name,
-      'fromWireType': (value) => value,
-      'toWireType': (destructors, value) => {
+      fromWireType: (value) => value,
+      toWireType: (destructors, value) => {
 #if ASSERTIONS
         if (typeof value != "number" && typeof value != "boolean") {
           throw new TypeError(`Cannot convert ${embindRepr(value)} to ${this.name}`);
@@ -413,14 +413,14 @@ var LibraryEmbind = {
         // https://www.w3.org/TR/wasm-js-api-1/#towebassemblyvalue
         return value;
       },
-      'readValueFromPointer': floatReadValueFromPointer(name, size),
+      readValueFromPointer: floatReadValueFromPointer(name, size),
       destructorFunction: null, // This type does not need a destructor
     });
   },
 
   $readPointer__docs: '/** @suppress {globalThis} */',
   $readPointer: function(pointer) {
-    return this['fromWireType']({{{ makeGetValue('pointer', '0', '*') }}});
+    return this.fromWireType({{{ makeGetValue('pointer', '0', '*') }}});
   },
 
   _embind_register_std_string__deps: [
@@ -435,7 +435,7 @@ var LibraryEmbind = {
       name,
       // For some method names we use string keys here since they are part of
       // the public/external API and/or used by the runtime-generated code.
-      'fromWireType'(value) {
+      fromWireType(value) {
         var length = {{{ makeGetValue('value', '0', '*') }}};
         var payload = value + {{{ POINTER_SIZE }}};
 
@@ -453,7 +453,7 @@ var LibraryEmbind = {
 
         return str;
       },
-      'toWireType'(destructors, value) {
+      toWireType(destructors, value) {
         if (value instanceof ArrayBuffer) {
           value = new Uint8Array(value);
         }
@@ -497,7 +497,7 @@ var LibraryEmbind = {
         }
         return base;
       },
-      'readValueFromPointer': readPointer,
+      readValueFromPointer: readPointer,
       destructorFunction(ptr) {
         _free(ptr);
       },
@@ -526,7 +526,7 @@ var LibraryEmbind = {
     }
     registerType(rawType, {
       name,
-      'fromWireType': (value) => {
+      fromWireType: (value) => {
         // Code mostly taken from _embind_register_std_string fromWireType
         var length = {{{ makeGetValue('value', 0, '*') }}};
         var str = decodeString(value + {{{ POINTER_SIZE }}}, length * charSize, true);
@@ -535,7 +535,7 @@ var LibraryEmbind = {
 
         return str;
       },
-      'toWireType': (destructors, value) => {
+      toWireType: (destructors, value) => {
         if (!(typeof value == 'string')) {
           throwBindingError(`Cannot pass non-string to C++ string type ${name}`);
         }
@@ -552,7 +552,7 @@ var LibraryEmbind = {
         }
         return ptr;
       },
-      'readValueFromPointer': readPointer,
+      readValueFromPointer: readPointer,
       destructorFunction(ptr) {
         _free(ptr);
       }
@@ -601,8 +601,8 @@ var LibraryEmbind = {
     name = AsciiToString(name);
     registerType(rawType, {
       name,
-      'fromWireType': decodeMemoryView,
-      'readValueFromPointer': decodeMemoryView,
+      fromWireType: decodeMemoryView,
+      readValueFromPointer: decodeMemoryView,
     }, {
       ignoreDuplicateRegistrations: true,
     });
@@ -668,7 +668,7 @@ var LibraryEmbind = {
     // TODO: Remove this completely once all function invokers are being dynamically generated.
     var needsDestructorStack = usesDestructorStack(argTypes);
 
-    var returns = (argTypes[0].name !== 'void');
+    var returns = !argTypes[0].isVoid;
 
     var expectedArgCount = argCount - 2;
 #if ASSERTIONS
@@ -690,11 +690,11 @@ var LibraryEmbind = {
       invokerFuncArgs.length = isClassMethodFunc ? 2 : 1;
       invokerFuncArgs[0] = cppTargetFunc;
       if (isClassMethodFunc) {
-        thisWired = argTypes[1]['toWireType'](destructors, this);
+        thisWired = argTypes[1].toWireType(destructors, this);
         invokerFuncArgs[1] = thisWired;
       }
       for (var i = 0; i < expectedArgCount; ++i) {
-        argsWired[i] = argTypes[i + 2]['toWireType'](destructors, args[i]);
+        argsWired[i] = argTypes[i + 2].toWireType(destructors, args[i]);
         invokerFuncArgs.push(argsWired[i]);
       }
 
@@ -717,7 +717,7 @@ var LibraryEmbind = {
   #endif
 
         if (returns) {
-          return argTypes[0]['fromWireType'](rv);
+          return argTypes[0].fromWireType(rv);
         }
       }
 
@@ -736,12 +736,15 @@ var LibraryEmbind = {
 #else
     // Builld the arguments that will be passed into the closure around the invoker
     // function.
-    var closureArgs = [humanName, throwBindingError, cppInvokerFunc, cppTargetFunc, runDestructors, argTypes[0], argTypes[1]];
+    var retType = argTypes[0];
+    var instType = argTypes[1];
+    var closureArgs = [humanName, throwBindingError, cppInvokerFunc, cppTargetFunc, runDestructors, retType.fromWireType.bind(retType), instType?.toWireType.bind(instType)];
 #if EMSCRIPTEN_TRACING
     closureArgs.push(Module);
 #endif
-    for (var i = 0; i < argCount - 2; ++i) {
-      closureArgs.push(argTypes[i+2]);
+    for (var i = 2; i < argCount; ++i) {
+      var argType = argTypes[i];
+      closureArgs.push(argType.toWireType.bind(argType));
     }
 #if ASYNCIFY == 1
     closureArgs.push(Asyncify);
@@ -763,8 +766,8 @@ var LibraryEmbind = {
     var invokerFn = InvokerFunctions[signature](...closureArgs);
 #else
 
-    let [args, invokerFnBody] = createJsInvoker(argTypes, isClassMethodFunc, returns, isAsync);
-    var invokerFn = new Function(...args, invokerFnBody)(...closureArgs);
+    let invokerFactory = createJsInvoker(argTypes, isClassMethodFunc, returns, isAsync);
+    var invokerFn = invokerFactory(...closureArgs);
 #endif
 #endif
     return createNamedFunction(humanName, invokerFn);
@@ -898,17 +901,17 @@ var LibraryEmbind = {
         var setterArgumentType = elementTypes[i + elementsLength];
         var setter = elt.setter;
         var setterContext = elt.setterContext;
-        elt.read = (ptr) => getterReturnType['fromWireType'](getter(getterContext, ptr));
+        elt.read = (ptr) => getterReturnType.fromWireType(getter(getterContext, ptr));
         elt.write = (ptr, o) => {
           var destructors = [];
-          setter(setterContext, ptr, setterArgumentType['toWireType'](destructors, o));
+          setter(setterContext, ptr, setterArgumentType.toWireType(destructors, o));
           runDestructors(destructors);
         };
       });
 
       return [{
         name: reg.name,
-        'fromWireType': (ptr) => {
+        fromWireType: (ptr) => {
           var rv = new Array(elementsLength);
           for (var i = 0; i < elementsLength; ++i) {
             rv[i] = elements[i].read(ptr);
@@ -916,7 +919,7 @@ var LibraryEmbind = {
           rawDestructor(ptr);
           return rv;
         },
-        'toWireType': (destructors, o) => {
+        toWireType: (destructors, o) => {
           if (elementsLength !== o.length) {
             throw new TypeError(`Incorrect number of tuple elements for ${reg.name}: expected=${elementsLength}, actual=${o.length}`);
           }
@@ -929,7 +932,7 @@ var LibraryEmbind = {
           }
           return ptr;
         },
-        'readValueFromPointer': readPointer,
+        readValueFromPointer: readPointer,
         destructorFunction: rawDestructor,
       }];
     });
@@ -1002,10 +1005,10 @@ var LibraryEmbind = {
         var setter = field.setter;
         var setterContext = field.setterContext;
         fields[fieldName] = {
-          read: (ptr) => getterReturnType['fromWireType'](getter(getterContext, ptr)),
+          read: (ptr) => getterReturnType.fromWireType(getter(getterContext, ptr)),
           write: (ptr, o) => {
             var destructors = [];
-            setter(setterContext, ptr, setterArgumentType['toWireType'](destructors, o));
+            setter(setterContext, ptr, setterArgumentType.toWireType(destructors, o));
             runDestructors(destructors);
           },
           optional,
@@ -1014,7 +1017,7 @@ var LibraryEmbind = {
 
       return [{
         name: reg.name,
-        'fromWireType': (ptr) => {
+        fromWireType: (ptr) => {
           var rv = {};
           for (var i in fields) {
             rv[i] = fields[i].read(ptr);
@@ -1022,7 +1025,7 @@ var LibraryEmbind = {
           rawDestructor(ptr);
           return rv;
         },
-        'toWireType': (destructors, o) => {
+        toWireType: (destructors, o) => {
           // todo: Here we have an opportunity for -O3 level "unsafe" optimizations:
           // assume all fields are present without checking.
           for (var fieldName in fields) {
@@ -1039,7 +1042,7 @@ var LibraryEmbind = {
           }
           return ptr;
         },
-        'readValueFromPointer': readPointer,
+        readValueFromPointer: readPointer,
         destructorFunction: rawDestructor,
       }];
     });
@@ -1186,8 +1189,8 @@ var LibraryEmbind = {
       destructor(ptr) {
         this.rawDestructor?.(ptr);
       },
-      'readValueFromPointer': readPointer,
-      'fromWireType': RegisteredPointer_fromWireType,
+      readValueFromPointer: readPointer,
+      fromWireType: RegisteredPointer_fromWireType,
     });
   },
 
@@ -1234,14 +1237,14 @@ var LibraryEmbind = {
 
     if (!isSmartPointer && registeredClass.baseClass === undefined) {
       if (isConst) {
-        this['toWireType'] = constNoSmartPtrRawPointerToWireType;
+        this.toWireType = constNoSmartPtrRawPointerToWireType;
         this.destructorFunction = null;
       } else {
-        this['toWireType'] = nonConstNoSmartPtrRawPointerToWireType;
+        this.toWireType = nonConstNoSmartPtrRawPointerToWireType;
         this.destructorFunction = null;
       }
     } else {
-      this['toWireType'] = genericPointerToWireType;
+      this.toWireType = genericPointerToWireType;
       // Here we must leave this.destructorFunction undefined, since whether genericPointerToWireType returns
       // a pointer that needs to be freed up is runtime-dependent, and cannot be evaluated at registration time.
       // TODO: Create an alternative mechanism that allows removing the use of var destructors = []; array in
@@ -1922,7 +1925,7 @@ var LibraryEmbind = {
         var desc = {
           get() {
             var ptr = validateThis(this, classType, humanName + ' getter');
-            return getterReturnType['fromWireType'](getter(getterContext, ptr));
+            return getterReturnType.fromWireType(getter(getterContext, ptr));
           },
           enumerable: true
         };
@@ -1933,7 +1936,7 @@ var LibraryEmbind = {
           desc.set = function(v) {
             var ptr = validateThis(this, classType, humanName + ' setter');
             var destructors = [];
-            setter(setterContext, ptr, setterArgumentType['toWireType'](destructors, v));
+            setter(setterContext, ptr, setterArgumentType.toWireType(destructors, v));
             runDestructors(destructors);
           };
         }
@@ -2056,7 +2059,7 @@ var LibraryEmbind = {
         fieldType = fieldType[0];
         var desc = {
           get() {
-            return fieldType['fromWireType'](getter(rawFieldPtr));
+            return fieldType.fromWireType(getter(rawFieldPtr));
           },
           enumerable: true
         };
@@ -2065,7 +2068,7 @@ var LibraryEmbind = {
           setter = embind__requireFunction(setterSignature, setter);
           desc.set = (v) => {
             var destructors = [];
-            setter(rawFieldPtr, fieldType['toWireType'](destructors, v));
+            setter(rawFieldPtr, fieldType.toWireType(destructors, v));
             runDestructors(destructors);
           };
         }
@@ -2205,11 +2208,11 @@ var LibraryEmbind = {
     registerType(rawType, {
       name,
       constructor: ctor,
-      'fromWireType': function(c) {
+      fromWireType: function(c) {
         return this.constructor.values[c];
       },
-      'toWireType': (destructors, c) => c.value,
-      'readValueFromPointer': enumReadValueFromPointer(name, size, isSigned),
+      toWireType: (destructors, c) => c.value,
+      readValueFromPointer: enumReadValueFromPointer(name, size, isSigned),
       destructorFunction: null,
     });
     exposePublicSymbol(name, ctor);
@@ -2235,7 +2238,7 @@ var LibraryEmbind = {
     name = AsciiToString(name);
     whenDependentTypesAreResolved([], [type], (type) => {
       type = type[0];
-      Module[name] = type['fromWireType'](value);
+      Module[name] = type.fromWireType(value);
       return [];
     });
   },

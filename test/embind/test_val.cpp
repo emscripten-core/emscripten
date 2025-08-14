@@ -676,6 +676,13 @@ int main() {
   val::global().set("a", val::u16string(s));
   ensure_js("a == '😃 = \U0001F603 is :-D'");
 
+  test("val set() with policy");
+  Dummy *dummy = new Dummy();
+  val::global().set("a", dummy, allow_raw_pointers());
+  ensure_js("a instanceof Module.Dummy");
+  val::global().set("a", val::null());
+  delete dummy;
+
   printf("end\n");
   return 0;
 }
