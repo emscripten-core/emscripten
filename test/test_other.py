@@ -9457,6 +9457,11 @@ int main() {
     'O3': (['-O3'],), # in -O3, -Os and -Oz we metadce
     'Os': (['-Os'],),
     'Oz': (['-Oz'],),
+    # Enabling source maps + setting JS_DEBUG_LEVEl to 1 still produces a fully
+    # optimized wasm, including metadce (we set 1 and not 0 here, as this test
+    # wants to scan the JS, and 0 breaks it; but if 1 still preserves the wasm's
+    # optimizations, 0 surely does).
+    'O3_sm_opt': (['-O3', '-gsource-map', '-sJS_DEBUG_LEVEL=1'],),
     # finally, check what happens when we export nothing. wasm should be almost empty
     'export_nothing': (['-Os', '-sEXPORTED_FUNCTIONS=[]'],),
     # we don't metadce with linkable code! other modules may want stuff
