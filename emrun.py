@@ -570,7 +570,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
 
 # Processes HTTP request back to the browser.
 class HTTPHandler(SimpleHTTPRequestHandler):
-  def send_head(self):
+  def send_headers(self):
     self.protocol_version = 'HTTP/1.1'
     global page_last_served_time
     path = self.translate_path(self.path)
@@ -650,6 +650,15 @@ class HTTPHandler(SimpleHTTPRequestHandler):
     page_last_served_time = tick()
     return f
 
+  def send_head(self): # Override from parent class
+    try:
+      return self.send_headers()
+    except ConnectionAbortedError as e:
+      # Ignore ConnectionAbortedError when sending messages, since the web page
+      # may just have been closed.
+      logv('Failed to send headers, connection has been aborted.')
+      logv(str(e))
+
   def log_request(self, code):
     # Filter out 200 OK messages to remove noise.
     if code != 200:
@@ -707,10 +716,21 @@ class HTTPHandler(SimpleHTTPRequestHandler):
         have_received_messages = True
       elif data.startswith('^exit^'):
         if not emrun_options.serve_after_exit:
-          page_exit_code = int(data[6:])
+          # Emrun callers
+          try:
+            # Treat sending 'undefined' (i.e. EXITSTATUS = undefined) as exit code zero...
+            page_exit_code = (0 if data == '^exit^undefined' else int(data[6:]))
+          except Exception:
+            # ... but any other exit status as an error.
+            logv(f'Unexpected page exit result {data} received.')
+            page_exit_code = -1
           logv('Web page has quit with a call to exit() with return code ' + str(page_exit_code) + '. Shutting down web server. Pass --serve-after-exit to keep serving even after the page terminates with exit().')
           # Set server socket to nonblocking on shutdown to avoid sporadic deadlocks
-          self.server.socket.setblocking(False)
+          try:
+            self.server.socket.setblocking(False)
+          except OSError:
+            # But avoid errors, if the socket may have already been closed by peer.
+            pass
           self.server.shutdown()
           return
       else:
