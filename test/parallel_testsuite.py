@@ -89,12 +89,8 @@ class ParallelTestSuite(unittest.BaseTestSuite):
       results = [r.get() for r in results]
       results = [r for r in results if r is not None]
 
-    try:
-      previous_test_run_results = json.load(open('out/__previous_test_run_results.json'))
-    except FileNotFoundError:
-      previous_test_run_results = {}
-
     if self.failing_and_slow_first:
+      previous_test_run_results = common.load_previous_test_run_results()
       for r in results:
         # Save a test result record with the specific suite name (e.g. "core0.test_foo")
         test_failed = r.test_result not in ['success', 'skipped']
@@ -116,7 +112,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
           'fail_frequency': fail_frequency,
         }
 
-      json.dump(previous_test_run_results, open('out/__previous_test_run_results.json', 'w'), indent=2)
+      json.dump(previous_test_run_results, open(common.PREVIOUS_TEST_RUN_RESULTS_FILE, 'w'), indent=2)
     pool.close()
     pool.join()
     return self.combine_results(result, results)

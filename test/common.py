@@ -15,6 +15,7 @@ import difflib
 import hashlib
 import io
 import itertools
+import json
 import logging
 import multiprocessing
 import os
@@ -82,6 +83,7 @@ NON_ZERO = -1
 
 TEST_ROOT = path_from_root('test')
 LAST_TEST = path_from_root('out/last_test.txt')
+PREVIOUS_TEST_RUN_RESULTS_FILE = path_from_root('out/previous_test_run_results.json')
 
 WEBIDL_BINDER = shared.bat_suffix(path_from_root('tools/webidl_binder'))
 
@@ -99,6 +101,12 @@ if not config.NODE_JS_TEST:
 
 requires_network = unittest.skipIf(os.getenv('EMTEST_SKIP_NETWORK_TESTS'), 'This test requires network access')
 
+
+def load_previous_test_run_results():
+  try:
+    return json.load(open(PREVIOUS_TEST_RUN_RESULTS_FILE))
+  except FileNotFoundError:
+    return {}
 
 def test_file(*path_components):
   """Construct a path relative to the emscripten "tests" directory."""

@@ -273,10 +273,7 @@ def error_on_legacy_suite_names(args):
 
 
 def create_test_run_sorter(failfast):
-  try:
-    previous_test_run_results = json.load(open('out/__previous_test_run_results.json'))
-  except FileNotFoundError:
-    previous_test_run_results = {}
+  previous_test_run_results = common.load_previous_test_run_results()
 
   def read_approx_fail_freq(test_name):
     if test_name in previous_test_run_results and 'fail_frequency' in previous_test_run_results[test_name]:
