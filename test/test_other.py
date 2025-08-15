@@ -15232,8 +15232,8 @@ out.js
     self.assertTextDataIdentical(expected, response)
 
   def test_min_browser_version(self):
-    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-sWASM_BIGINT', '-sMIN_SAFARI_VERSION=120000'])
-    self.assertContained('emcc: error: MIN_SAFARI_VERSION=120000 is not compatible with WASM_BIGINT (150000 or above required)', err)
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-sWASM_BIGINT', '-sMIN_SAFARI_VERSION=130000'])
+    self.assertContained('emcc: error: MIN_SAFARI_VERSION=130000 is not compatible with WASM_BIGINT (150000 or above required)', err)
 
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-pthread', '-sMIN_CHROME_VERSION=73'])
     self.assertContained('emcc: error: MIN_CHROME_VERSION=73 is not compatible with pthreads (74 or above required)', err)
@@ -15247,7 +15247,7 @@ out.js
     self.assertNotContained('--signext-lowering', err)
 
     # Specifying an older browser version should trigger the lowering pass
-    err = self.run_process(cmd + ['-sMIN_SAFARI_VERSION=120000'], stderr=subprocess.PIPE).stderr
+    err = self.run_process(cmd + ['-sMIN_SAFARI_VERSION=120200'], stderr=subprocess.PIPE).stderr
     self.assertContained('--signext-lowering', err)
     err = self.run_process(cmd + ['-sMIN_FIREFOX_VERSION=61'], stderr=subprocess.PIPE).stderr
     self.assertContained('--signext-lowering', err)
@@ -15997,7 +15997,7 @@ addToLibrary({
 
   def test_browser_too_old(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMIN_CHROME_VERSION=10'])
-    self.assertContained('emcc: error: MIN_CHROME_VERSION older than 55 is not supported', err)
+    self.assertContained('emcc: error: MIN_CHROME_VERSION older than 70 is not supported', err)
 
   def test_js_only_settings(self):
     err = self.run_process([EMCC, test_file('hello_world.c'), '-o', 'foo.wasm', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=emscripten_get_heap_max'], stderr=PIPE).stderr
