@@ -9,7 +9,6 @@
 
 #if EXIT_RUNTIME
 function exitRuntime(ret) {
-  callRuntimeCallbacks(__ATEXIT__);
   <<< ATEXITS >>>
 #if PTHREADS
   PThread.terminateAllThreads();
