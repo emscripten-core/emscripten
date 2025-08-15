@@ -87,9 +87,13 @@ function createWasmAudioWorkletProcessor(audioParams) {
      * @param {Object} parameters
      */
     process(inputList, outputList, parameters) {
+#if ALLOW_MEMORY_GROWTH
+      // recreate the output views if the heap has changed
       if (HEAPF32.buffer != this.outputViews[0].buffer) {
         this.createOutputViews();
       }
+#endif
+
       var numInputs = inputList.length;
       var numOutputs = outputList.length;
 
@@ -205,7 +209,8 @@ function createWasmAudioWorkletProcessor(audioParams) {
       if (didProduceAudio) {
         // Read back the produced audio data to all outputs and their channels.
         // The preallocated 'outputViews' already have the correct offsets and
-        // sizes into the stack (recall from the ctor that they run backwards).
+        // sizes into the stack (recall from createOutputViews() that they run
+        // backwards).
         for (entry of outputList) {
           for (subentry of entry) {
             subentry.set(this.outputViews[--outputViewsNeeded]);
