@@ -39,6 +39,9 @@
 #endif
 `;
   const wasmWorkerOptions = `{
+#if EXPORT_ES6
+  'type': 'module',
+#endif
 #if ENVIRONMENT_MAY_BE_NODE
   // This is the way that we signal to the node worker that it is hosting
   // a wasm worker.
@@ -200,11 +203,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
       // Signal with a non-zero value that this Worker will be a Wasm Worker,
       // and not the main browser thread.
       wwID: _wasmWorkersID,
-#if MINIMAL_RUNTIME
-      wasm: Module['wasm'],
-#else
       wasm: wasmModule,
-#endif
       wasmMemory,
       stackLowestAddress, // sb = stack bottom (lowest stack address, SP points at this when stack is full)
       stackSize,          // sz = stack size

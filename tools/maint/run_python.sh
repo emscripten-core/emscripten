@@ -11,8 +11,8 @@
 # To make modifications to this file, edit `tools/run_python.sh` and then run
 # `tools/maint/create_entry_points.py`
 
-# $PYTHON -E will not ignore _PYTHON_SYSCONFIGDATA_NAME an internal
-# of cpython used in cross compilation via setup.py.
+# $PYTHON -E does not ignore _PYTHON_SYSCONFIGDATA_NAME, an internal of cpython
+# used in cross compilation via setup.py, so we unset it explicitly here.
 unset _PYTHON_SYSCONFIGDATA_NAME
 
 if [ -z "$PYTHON" ]; then

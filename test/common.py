@@ -91,7 +91,7 @@ EMCMAKE = shared.bat_suffix(path_from_root('emcmake'))
 EMCONFIGURE = shared.bat_suffix(path_from_root('emconfigure'))
 EMRUN = shared.bat_suffix(shared.path_from_root('emrun'))
 WASM_DIS = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
-LLVM_OBJDUMP = os.path.expanduser(shared.build_llvm_tool_path(shared.exe_suffix('llvm-objdump')))
+LLVM_OBJDUMP = shared.llvm_tool_path('llvm-objdump')
 PYTHON = sys.executable
 if not config.NODE_JS_TEST:
   config.NODE_JS_TEST = config.NODE_JS
@@ -1995,7 +1995,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       # TODO once standalone wasm support is more stable, apply use_all_engines
       # like with js engines, but for now as we bring it up, test in all of them
       if not self.wasm_engines:
-        logger.warning('no wasm engine was found to run the standalone part of this test')
+        if 'EMTEST_SKIP_WASM_ENGINE' in os.environ:
+          self.skipTest('no wasm engine was found to run the standalone part of this test')
+        else:
+          logger.warning('no wasm engine was found to run the standalone part of this test (Use EMTEST_SKIP_WASM_ENGINE to skip)')
       engines += self.wasm_engines
     if len(engines) == 0:
       self.fail('No JS engine present to run this test with. Check %s and the paths therein.' % config.EM_CONFIG)

@@ -2315,8 +2315,6 @@ Success!''')
 
   @no_ubsan('local count too large for VMs')
   def test_indirectbr(self):
-    self.cflags = [x for x in self.cflags if x != '-g']
-
     self.do_core_test('test_indirectbr.c')
 
   @no_asan('local count too large for VMs')
@@ -6549,9 +6547,8 @@ void* operator new(size_t size) {
   @also_with_asyncify_and_jspi
   def test_cubescript(self):
     # uses register keyword
-    self.cflags += ['-std=c++03', '-Wno-dynamic-class-memaccess']
+    self.cflags += ['-std=c++03', '-Wno-dynamic-class-memaccess', '-I', test_file('third_party/cubescript')]
     self.maybe_closure()
-    self.cflags += ['-I', test_file('third_party/cubescript')]
     # Test code contains memory leaks
     if '-fsanitize=address' in self.cflags:
       self.cflags += ['--pre-js', test_file('asan-no-leak.js')]
@@ -6564,23 +6561,20 @@ void* operator new(size_t size) {
     self.do_core_test('test_relocatable_void_function.c')
 
   @wasm_simd
-  def test_wasm_intrinsics_simd(self):
-    def run():
-      self.do_runf('test_wasm_intrinsics_simd.c', 'Success!')
-    # Improves test readability
-    self.cflags.append('-Wno-c++11-narrowing')
-    self.cflags = ['-Wpedantic', '-Werror', '-Wall', '-xc++'] + self.cflags
-    run()
-    self.cflags.append('-funsigned-char')
-    run()
+  @parameterized({
+    '': ([],),
+    'unsigned_char': (['-funsigned-char'],),
+  })
+  def test_wasm_intrinsics_simd(self, args):
+    # These flags need to go first so that they comebore any existing `-Wno-..` flags
+    self.cflags.insert(0, '-Wpedantic')
+    self.cflags.insert(0, '-Wall')
+    self.do_runf('test_wasm_intrinsics_simd.c', 'Success!', cflags=args)
 
   # Tests invoking the NEON SIMD API via arm_neon.h header
   @wasm_simd
   def test_neon_wasm_simd(self):
-    self.cflags.append('-Wno-c++11-narrowing')
-    self.cflags.append('-mfpu=neon')
-    self.cflags.append('-msimd128')
-    self.do_runf('neon/test_neon_wasm_simd.cpp', 'Success!')
+    self.do_runf('neon/test_neon_wasm_simd.cpp', 'Success!', cflags=['-Wno-c++11-narrowing', '-mfpu=neon', '-msimd128'])
 
   # Tests invoking the SIMD API via x86 SSE1 xmmintrin.h header (_mm_x() functions)
   @wasm_simd
@@ -6598,10 +6592,8 @@ void* operator new(size_t size) {
     self.run_process([shared.CLANG_CXX, src, '-msse', '-o', 'test_sse1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse1', stdout=PIPE).stdout
 
-    self.cflags += ['-I' + test_file('sse'), '-msse'] + args
     self.maybe_closure()
-
-    self.do_runf(src, native_result)
+    self.do_runf(src, native_result, cflags=['-I' + test_file('sse'), '-msse'] + args)
 
   # Tests invoking the SIMD API via x86 SSE2 emmintrin.h header (_mm_x() functions)
   @wasm_simd
@@ -6904,9 +6896,6 @@ void* operator new(size_t size) {
           counter += 1
 
       return out
-
-    # remove -g, so we have one test without it by default
-    self.cflags = [x for x in self.cflags if x != '-g']
 
     original_j2k = test_file('openjpeg/syntensity_lobby_s.j2k')
     image_bytes = list(bytearray(read_binary(original_j2k)))
@@ -8788,17 +8777,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
   @no_modularize_instance('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
   @parameterized({
-    'default': ([],),
-    'streaming': (['-sMINIMAL_RUNTIME_STREAMING_WASM_COMPILATION'],),
+    '': ([],),
     'streaming_inst': (['-sMINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION'],),
     'no_export': (['-sDECLARE_ASM_MODULE_EXPORTS=0'],),
   })
   @requires_node  # TODO: Support for non-Node.js shells under MINIMAL_RUNTIME
   def test_minimal_runtime_hello_world(self, args):
-    self.cflags = args
-    self.set_setting('MINIMAL_RUNTIME')
     self.maybe_closure()
-    self.do_runf('small_hello_world.c', 'hello!')
+    self.cflags += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
+    self.do_runf('small_hello_world.c', 'hello!', cflags=['-sMINIMAL_RUNTIME'] + args)
 
   # Test that printf() works in MINIMAL_RUNTIME=1
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
@@ -9176,11 +9163,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
   # Test is disabled on standalone because of flakes, see
   # https://github.com/emscripten-core/emscripten/issues/18405
   # @also_with_standalone_wasm(impure=True)
+  @parameterized({
+    '': ([],),
+    'sync_instantiation': (['-sWASM_ASYNC_COMPILATION=0'],),
+  })
   @node_pthreads
-  def test_pthread_create(self):
+  def test_pthread_create(self, args):
     self.set_setting('ENVIRONMENT', 'node')
     self.set_setting('STRICT')
-    self.do_core_test('pthread/create.c')
+    self.do_core_test('pthread/create.c', cflags=args)
 
   @node_pthreads
   @parameterized({

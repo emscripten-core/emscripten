@@ -14,31 +14,29 @@ var LibraryDylink = {
 #if FILESYSTEM
   $registerWasmPlugin__deps: ['$preloadPlugins'],
   $registerWasmPlugin: () => {
-    // Use string keys here to avoid minification since the plugin consumer
-    // also uses string keys.
+    // Use string keys here for public methods to avoid minification since the
+    // plugin consumer also uses string keys.
     var wasmPlugin = {
-      'promiseChainEnd': Promise.resolve(),
+      promiseChainEnd: Promise.resolve(),
       'canHandle': (name) => {
         return !Module['noWasmDecoding'] && name.endsWith('.so')
       },
-      'handle': (byteArray, name, onload, onerror) => {
+      'handle': async (byteArray, name) =>
         // loadWebAssemblyModule can not load modules out-of-order, so rather
         // than just running the promises in parallel, this makes a chain of
         // promises to run in series.
-        wasmPlugin['promiseChainEnd'] = wasmPlugin['promiseChainEnd'].then(
-          () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true}, name, {})).then(
-            (exports) => {
+        wasmPlugin.promiseChainEnd = wasmPlugin.promiseChainEnd.then(async () => {
+          try {
+            var exports = await loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true}, name, {});
+          } catch (error) {
+            throw new Error(`failed to instantiate wasm: ${name}: ${error}`);
+          }
 #if DYLINK_DEBUG
-              dbg('registering preloadedWasm:', name);
+          dbg('registering preloadedWasm:', name);
 #endif
-              preloadedWasm[name] = exports;
-              onload(byteArray);
-            },
-            (error) => {
-              err(`failed to instantiate wasm: ${name}: ${error}`);
-              onerror();
-            });
-      }
+          preloadedWasm[name] = exports;
+          return byteArray;
+        })
     };
     preloadPlugins.push(wasmPlugin);
   },
