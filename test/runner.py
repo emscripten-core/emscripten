@@ -21,7 +21,6 @@ import argparse
 import atexit
 import fnmatch
 import glob
-import json
 import logging
 import math
 import operator
