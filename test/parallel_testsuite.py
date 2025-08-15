@@ -94,23 +94,21 @@ class ParallelTestSuite(unittest.BaseTestSuite):
       for r in results:
         # Save a test result record with the specific suite name (e.g. "core0.test_foo")
         test_failed = r.test_result not in ['success', 'skipped']
-        fail_frequency = previous_test_run_results[r.test_name]['fail_frequency'] if r.test_name in previous_test_run_results else int(test_failed)
-        fail_frequency = (fail_frequency + int(test_failed)) / 2
-        previous_test_run_results[r.test_name] = {
-          'result': r.test_result,
-          'duration': r.test_duration,
-          'fail_frequency': fail_frequency,
-        }
+
+        def apply_test_results_to(test_name):
+          fail_frequency = previous_test_run_results[test_name]['fail_frequency'] if test_name in previous_test_run_results else int(test_failed)
+          # Apply exponential moving average with 50% weighting to merge previous fail frequency with new fail frequency
+          fail_frequency = (fail_frequency + int(test_failed)) / 2
+          previous_test_run_results[test_name] = {
+            'result': r.test_result,
+            'duration': r.test_duration,
+            'fail_frequency': fail_frequency,
+          }
+
+        apply_test_results_to(r.test_name)
         # Also save a test result record without suite name (e.g. just "test_foo"). This enables different suite runs to order tests
         # for quick --failfast termination, in case a test fails in multiple suites
-        test_in_any_suite = r.test_name.split(' ')[0]
-        fail_frequency = previous_test_run_results[test_in_any_suite]['fail_frequency'] if test_in_any_suite in previous_test_run_results else int(test_failed)
-        fail_frequency = (fail_frequency + int(test_failed)) / 2
-        previous_test_run_results[test_in_any_suite] = {
-          'result': r.test_result,
-          'duration': r.test_duration,
-          'fail_frequency': fail_frequency,
-        }
+        apply_test_results_to(r.test_name.split(' ')[0])
 
       json.dump(previous_test_run_results, open(common.PREVIOUS_TEST_RUN_RESULTS_FILE, 'w'), indent=2)
     pool.close()
