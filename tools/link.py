@@ -857,7 +857,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if settings.USE_OFFSET_CONVERTER:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with USE_OFFSET_CONVERTER')
     if not settings.WASM_ASYNC_COMPILATION:
-      exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM_ASYNC_COMPILATION')
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM_ASYNC_COMPILATION=0')
     if not settings.WASM:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM2JS')
     if settings.ABORT_ON_WASM_EXCEPTIONS:
