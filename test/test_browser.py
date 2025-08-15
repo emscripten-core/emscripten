@@ -5095,6 +5095,9 @@ Module["preRun"] = () => {
   def test_wasm_worker_hello(self):
     self.btest_exit('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS', '-sENVIRONMENT=web'])
 
+  def test_wasm_worker_hello_export_es6(self):
+    self.btest_exit('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS', '-sENVIRONMENT=web', '-sEXPORT_ES6'])
+
   def test_wasm_worker_hello_minimal_runtime_2(self):
     self.btest_exit('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS', '-sMINIMAL_RUNTIME=2'])
 
