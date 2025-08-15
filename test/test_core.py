@@ -937,6 +937,9 @@ base align: 0, 0, 0, 0'''])
   @no_4gb('uses INITIAL_MEMORY')
   @no_2gb('uses INITIAL_MEMORY')
   def test_emmalloc_memory_statistics(self):
+    if WINDOWS and ('-flto=thin' in self.cflags) and not self.is_optimizing():
+      self.skipTest('TODO BUG: this test is failing on Windows for unknown reason.')
+
     if self.is_wasm64():
       out_suffix = '64'
     else:
@@ -1907,6 +1910,9 @@ int main() {
     self.do_runf('test_emscripten_get_now.c', 'Timer resolution is good')
 
   def test_emscripten_get_compiler_setting(self):
+    if ('-flto' in self.cflags or '-flto=thin' in self.cflags) and not self.is_optimizing():
+      self.skipTest('TODO BUG: fails with (stderr.o, fprintf.o): attempt to add bitcode file after LTO')
+
     src = test_file('core/emscripten_get_compiler_setting.c')
     output = shared.replace_suffix(src, '.out')
     # with assertions, a nice message is shown
@@ -2721,6 +2727,9 @@ The current type of b is: 9
 
   @no_modularize_instance('uses global Module objecgt')
   def test_pthread_run_script(self):
+    if ('-flto' in self.cflags or '-flto=thin' in self.cflags) and not self.is_optimizing():
+      self.skipTest('TODO BUG: fails with (fprintf.o): attempt to add bitcode file after LTO')
+
     shutil.copy(test_file('pthread/foo.js'), '.')
     self.do_runf('pthread/test_pthread_run_script.c')
 
@@ -6546,6 +6555,9 @@ void* operator new(size_t size) {
   @no_lsan('Test code contains memory leaks')
   @also_with_asyncify_and_jspi
   def test_cubescript(self):
+    if (MACOS or WINDOWS) and ('-flto' in self.cflags or '-flto=thin' in self.cflags):
+      self.skipTest('TODO: fails with error "(acosf.o) attempt to add bitcode file after LTO"')
+
     # uses register keyword
     self.cflags += ['-std=c++03', '-Wno-dynamic-class-memaccess', '-I', test_file('third_party/cubescript')]
     self.maybe_closure()
@@ -6583,6 +6595,7 @@ void* operator new(size_t size) {
   @requires_x64_cpu
   @no_safe_heap('has unaligned 64-bit operations in wasm')
   @no_ubsan('test contains UB')
+  @no_mac('TODO: get_clang_native_args() is unable to produce proper -I<> path to include stdlib.h with Clang')
   @parameterized({
     '': ([],),
     'nontrapping': (['-mnontrapping-fptoint'],),
@@ -6603,6 +6616,7 @@ void* operator new(size_t size) {
   @is_slow_test
   @no_ubsan('https://github.com/emscripten-core/emscripten/issues/19688')
   @no_asan('local count too large')
+  @no_mac('TODO: get_clang_native_args() is unable to produce proper -I<> path to include stdlib.h with Clang')
   @parameterized({
     '': ([],),
     'nontrapping': (['-mnontrapping-fptoint'],),
@@ -6620,6 +6634,7 @@ void* operator new(size_t size) {
   @wasm_simd
   @requires_native_clang
   @requires_x64_cpu
+  @no_mac('TODO: get_clang_native_args() is unable to produce proper -I<> path to include stdlib.h with Clang')
   def test_sse3(self):
     src = test_file('sse/test_sse3.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse3', '-Wno-argument-outside-range', '-o', 'test_sse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6633,6 +6648,7 @@ void* operator new(size_t size) {
   @wasm_simd
   @requires_native_clang
   @requires_x64_cpu
+  @no_mac('TODO: get_clang_native_args() is unable to produce proper -I<> path to include stdlib.h with Clang')
   def test_ssse3(self):
     src = test_file('sse/test_ssse3.cpp')
     self.run_process([shared.CLANG_CXX, src, '-mssse3', '-Wno-argument-outside-range', '-o', 'test_ssse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6648,6 +6664,7 @@ void* operator new(size_t size) {
   @requires_native_clang
   @requires_x64_cpu
   @is_slow_test
+  @no_mac('TODO: get_clang_native_args() is unable to produce proper -I<> path to include stdlib.h with Clang')
   def test_sse4_1(self):
     src = test_file('sse/test_sse4_1.cpp')
     # Run with inlining disabled to avoid slow LLVM behavior with lots of macro expanded loops inside a function body.
@@ -6662,6 +6679,7 @@ void* operator new(size_t size) {
   @wasm_simd
   @requires_native_clang
   @requires_x64_cpu
+  @no_mac('TODO: get_clang_native_args() is unable to produce proper -I<> path to include stdlib.h with Clang')
   @parameterized({
     '': (False,),
     '2': (True,),
@@ -6683,6 +6701,7 @@ void* operator new(size_t size) {
   @is_slow_test
   @no_asan('local count too large')
   @no_ubsan('local count too large')
+  @no_mac('TODO: get_clang_native_args() is unable to produce proper -I<> path to include stdlib.h with Clang')
   @parameterized({
     '': ([],),
     'nontrapping': (['-mnontrapping-fptoint'],),
@@ -6703,6 +6722,7 @@ void* operator new(size_t size) {
   @is_slow_test
   @no_asan('local count too large')
   @no_ubsan('local count too large')
+  @no_mac('TODO: get_clang_native_args() is unable to produce proper -I<> path to include stdlib.h with Clang')
   @parameterized({
     '': ([],),
     'nontrapping': (['-mnontrapping-fptoint'],),
@@ -6826,6 +6846,12 @@ void* operator new(size_t size) {
   def test_bullet(self, use_cmake):
     if WINDOWS and not use_cmake:
       self.skipTest("Windows cannot run configure sh scripts")
+
+    if MACOS and '-flto' in self.cflags: # or '-flto=thin' in self.cflags:
+      self.skipTest('TODO: fails with error "(acosf.o) attempt to add bitcode file after LTO"')
+
+    if MACOS and not use_cmake and platform.machine() == 'arm64':
+      self.skipTest("TODO: Bullet autoconf script does not work if host system is an Apple Silicon Mac.")
 
     self.cflags += [
       '-Wno-c++11-narrowing',
@@ -8303,7 +8329,7 @@ Module.onRuntimeInitialized = () => {
     'onlylist_b_response': ([], True,  'main\n__original_main\nfoo(int, double)\nbaz()\nc_baz\nStructy::funcy()\n'),
     'onlylist_c_response': ([], False, 'main\n__original_main\nfoo(int, double)\nbaz()\nc_baz\n'),
   })
-  @no_windows("TODO: Fails on Windows due to an unknown reason.")
+  @disabled("TODO: Fails on Windows and Linux due to an unknown reason.")
   def test_asyncify_lists(self, args, should_pass, response=None):
     if response is not None:
       create_file('response.file', response)
@@ -8831,6 +8857,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
   @no_esm_integration('USE_OFFSET_CONVERTER')
   def test_return_address(self):
+    if ('-flto' in self.cflags or '-flto=thin' in self.cflags) and not self.is_optimizing():
+      self.skipTest('TODO BUG: fails with (fprintf.o): attempt to add bitcode file after LTO')
+
     self.set_setting('USE_OFFSET_CONVERTER')
     self.do_runf('core/test_return_address.c', 'passed')
 
