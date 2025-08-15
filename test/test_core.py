@@ -9169,7 +9169,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   })
   @node_pthreads
   def test_pthread_create(self, args):
-    if self.get_setting('WASM_ESM_INTEGRATION') and args:
+    if self.get_setting('WASM_ESM_INTEGRATION') and '-sWASM_ASYNC_COMPILATION=0' in args:
       self.skipTest('WASM_ESM_INTEGRATION is not compatible with WASM_ASYNC_COMPILATION=0')
     self.set_setting('ENVIRONMENT', 'node')
     self.set_setting('STRICT')
