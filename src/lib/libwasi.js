@@ -262,6 +262,10 @@ var WasiLibrary = {
     if (printCharBuffers[1].length) printChar(1, {{{ charCode("\n") }}});
     if (printCharBuffers[2].length) printChar(2, {{{ charCode("\n") }}});
   },
+  // When we don't have a filesystem enabled, we do not need to proxy fd_write
+  // to the main thread, because all we do is log out() and err() calls.
+  // This enables printf() to work from Wasm Workers.
+  fd_write__proxy: 'none',
   fd_write__deps: ['$flush_NO_FILESYSTEM', '$printChar'],
   fd_write__postset: () => addAtExit('flush_NO_FILESYSTEM()'),
 #else
