@@ -108,6 +108,7 @@ def load_previous_test_run_results():
   except FileNotFoundError:
     return {}
 
+
 def test_file(*path_components):
   """Construct a path relative to the emscripten "tests" directory."""
   return str(Path(TEST_ROOT, *path_components))
