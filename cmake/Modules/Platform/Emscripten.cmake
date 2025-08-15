@@ -60,7 +60,7 @@ endif()
 # Locate where the Emscripten compiler resides in relative to this toolchain file.
 if (NOT DEFINED EMSCRIPTEN_ROOT_PATH)
   get_filename_component(GUESS_EMSCRIPTEN_ROOT_PATH "${CMAKE_CURRENT_LIST_DIR}/../../../" ABSOLUTE)
-  if (EXISTS "${GUESS_EMSCRIPTEN_ROOT_PATH}/emranlib")
+  if (EXISTS "${GUESS_EMSCRIPTEN_ROOT_PATH}/emranlib.py")
     set(EMSCRIPTEN_ROOT_PATH "${GUESS_EMSCRIPTEN_ROOT_PATH}")
   else()
     # If not found by above search, locate using the EMSCRIPTEN environment variable.
@@ -93,6 +93,7 @@ set(CMAKE_C_COMPILER_AR "${CMAKE_AR}")
 set(CMAKE_CXX_COMPILER_AR "${CMAKE_AR}")
 set(CMAKE_C_COMPILER_RANLIB "${CMAKE_RANLIB}")
 set(CMAKE_CXX_COMPILER_RANLIB "${CMAKE_RANLIB}")
+set(CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS "${EMSCRIPTEN_ROOT_PATH}/emscan-deps")
 
 # Capture the Emscripten version to EMSCRIPTEN_VERSION variable.
 if (NOT EMSCRIPTEN_VERSION)
@@ -110,10 +111,20 @@ if (NOT EMSCRIPTEN_VERSION)
   set(EMSCRIPTEN_VERSION "${CMAKE_MATCH_1}")
 endif()
 
-# Don't allow CMake to autodetect the compiler, since this is quite slow with
-# Emscripten.
-# Pass -DEMSCRIPTEN_FORCE_COMPILERS=OFF to disable (sensible mostly only for
-# testing/debugging purposes).
+execute_process(COMMAND "${EMSCRIPTEN_ROOT_PATH}/em-config${EMCC_SUFFIX}" "CACHE"
+  RESULT_VARIABLE _emcache_result
+  OUTPUT_VARIABLE _emcache_output
+  OUTPUT_STRIP_TRAILING_WHITESPACE)
+if (NOT _emcache_result EQUAL 0)
+  message(FATAL_ERROR "Failed to find emscripten cache directory with command \"'${EMSCRIPTEN_ROOT_PATH}/em-config${EMCC_SUFFIX}' CACHE\"! Process returned with error code ${_emcache_result}.")
+endif()
+file(TO_CMAKE_PATH "${_emcache_output}" _emcache_output)
+set(EMSCRIPTEN_SYSROOT "${_emcache_output}/sysroot")
+
+# Allow skipping of CMake compiler autodetection.  On by default since this is
+# quite slow with Emscripten and also leads to issues with
+# CMAKE_C_IMPLICIT_LINK_LIBRARIES.
+# See https://github.com/emscripten-core/emscripten/issues/23944
 option(EMSCRIPTEN_FORCE_COMPILERS "Force C/C++ compiler" ON)
 if (EMSCRIPTEN_FORCE_COMPILERS)
 
@@ -159,57 +170,56 @@ if (EMSCRIPTEN_FORCE_COMPILERS)
   set(CMAKE_C_PLATFORM_ID "emscripten")
   set(CMAKE_CXX_PLATFORM_ID "emscripten")
 
+  if (NOT DEFINED CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES)
+    set(CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES "${EMSCRIPTEN_SYSROOT}/include")
+  endif()
+  if (NOT DEFINED CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES)
+    set(CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES "${EMSCRIPTEN_SYSROOT}/include;${EMSCRIPTEN_SYSROOT}/include/c++/v1")
+  endif()
+
+  set(CXX_COMPILE_FEATURES_BASE "cxx_std_98;cxx_template_template_parameters;cxx_std_11;cxx_alias_templates;cxx_alignas;cxx_alignof;cxx_attributes;cxx_auto_type;cxx_constexpr;cxx_decltype;cxx_decltype_incomplete_return_types;cxx_default_function_template_args;cxx_defaulted_functions;cxx_defaulted_move_initializers;cxx_delegating_constructors;cxx_deleted_functions;cxx_enum_forward_declarations;cxx_explicit_conversions;cxx_extended_friend_declarations;cxx_extern_templates;cxx_final;cxx_func_identifier;cxx_generalized_initializers;cxx_inheriting_constructors;cxx_inline_namespaces;cxx_lambdas;cxx_local_type_template_args;cxx_long_long_type;cxx_noexcept;cxx_nonstatic_member_init;cxx_nullptr;cxx_override;cxx_range_for;cxx_raw_string_literals;cxx_reference_qualified_functions;cxx_right_angle_brackets;cxx_rvalue_references;cxx_sizeof_member;cxx_static_assert;cxx_strong_enums;cxx_thread_local;cxx_trailing_return_types;cxx_unicode_literals;cxx_uniform_initialization;cxx_unrestricted_unions;cxx_user_literals;cxx_variadic_macros;cxx_variadic_templates;cxx_std_14;cxx_aggregate_default_initializers;cxx_attribute_deprecated;cxx_binary_literals;cxx_contextual_conversions;cxx_decltype_auto;cxx_digit_separators;cxx_generic_lambdas;cxx_lambda_init_captures;cxx_relaxed_constexpr;cxx_return_type_deduction;cxx_variable_templates;cxx_std_17")
+  set(CXX11_COMPILE_FEATURES_BASE "cxx_alias_templates;cxx_alignas;cxx_alignof;cxx_attributes;cxx_auto_type;cxx_constexpr;cxx_decltype;cxx_decltype_incomplete_return_types;cxx_default_function_template_args;cxx_defaulted_functions;cxx_defaulted_move_initializers;cxx_delegating_constructors;cxx_deleted_functions;cxx_enum_forward_declarations;cxx_explicit_conversions;cxx_extended_friend_declarations;cxx_extern_templates;cxx_final;cxx_func_identifier;cxx_generalized_initializers;cxx_inheriting_constructors;cxx_inline_namespaces;cxx_lambdas;cxx_local_type_template_args;cxx_long_long_type;cxx_noexcept;cxx_nonstatic_member_init;cxx_nullptr;cxx_override;cxx_range_for;cxx_raw_string_literals;cxx_reference_qualified_functions;cxx_right_angle_brackets;cxx_rvalue_references;cxx_sizeof_member;cxx_static_assert;cxx_strong_enums;cxx_thread_local;cxx_trailing_return_types;cxx_unicode_literals;cxx_uniform_initialization;cxx_unrestricted_unions;cxx_user_literals;cxx_variadic_macros;cxx_variadic_templates")
+  set(CXX14_COMPILE_FEATURES_BASE "cxx_aggregate_default_initializers;cxx_attribute_deprecated;cxx_binary_literals;cxx_contextual_conversions;cxx_decltype_auto;cxx_digit_separators;cxx_generic_lambdas;cxx_lambda_init_captures;cxx_relaxed_constexpr;cxx_return_type_deduction;cxx_variable_templates")
+
   if ("${CMAKE_VERSION}" VERSION_LESS "3.8")
     set(CMAKE_C_COMPILE_FEATURES "c_function_prototypes;c_restrict;c_variadic_macros;c_static_assert")
     set(CMAKE_C90_COMPILE_FEATURES "c_function_prototypes")
     set(CMAKE_C99_COMPILE_FEATURES "c_restrict;c_variadic_macros")
     set(CMAKE_C11_COMPILE_FEATURES "c_static_assert")
 
-    set(CMAKE_CXX_COMPILE_FEATURES "cxx_template_template_parameters;cxx_alias_templates;cxx_alignas;cxx_alignof;cxx_attributes;cxx_auto_type;cxx_constexpr;cxx_decltype;cxx_decltype_incomplete_return_types;cxx_default_function_template_args;cxx_defaulted_functions;cxx_defaulted_move_initializers;cxx_delegating_constructors;cxx_deleted_functions;cxx_enum_forward_declarations;cxx_explicit_conversions;cxx_extended_friend_declarations;cxx_extern_templates;cxx_final;cxx_func_identifier;cxx_generalized_initializers;cxx_inheriting_constructors;cxx_inline_namespaces;cxx_lambdas;cxx_local_type_template_args;cxx_long_long_type;cxx_noexcept;cxx_nonstatic_member_init;cxx_nullptr;cxx_override;cxx_range_for;cxx_raw_string_literals;cxx_reference_qualified_functions;cxx_right_angle_brackets;cxx_rvalue_references;cxx_sizeof_member;cxx_static_assert;cxx_strong_enums;cxx_thread_local;cxx_trailing_return_types;cxx_unicode_literals;cxx_uniform_initialization;cxx_unrestricted_unions;cxx_user_literals;cxx_variadic_macros;cxx_variadic_templates;cxx_aggregate_default_initializers;cxx_attribute_deprecated;cxx_binary_literals;cxx_contextual_conversions;cxx_decltype_auto;cxx_digit_separators;cxx_generic_lambdas;cxx_lambda_init_captures;cxx_relaxed_constexpr;cxx_return_type_deduction;cxx_variable_templates")
+    set(CMAKE_CXX_COMPILE_FEATURES "cxx_template_template_parameters;${CXX11_COMPILE_FEATURES_BASE};${CXX14_COMPILE_FEATURES_BASE}")
     set(CMAKE_CXX98_COMPILE_FEATURES "cxx_template_template_parameters")
-    set(CMAKE_CXX11_COMPILE_FEATURES "cxx_alias_templates;cxx_alignas;cxx_alignof;cxx_attributes;cxx_auto_type;cxx_constexpr;cxx_decltype;cxx_decltype_incomplete_return_types;cxx_default_function_template_args;cxx_defaulted_functions;cxx_defaulted_move_initializers;cxx_delegating_constructors;cxx_deleted_functions;cxx_enum_forward_declarations;cxx_explicit_conversions;cxx_extended_friend_declarations;cxx_extern_templates;cxx_final;cxx_func_identifier;cxx_generalized_initializers;cxx_inheriting_constructors;cxx_inline_namespaces;cxx_lambdas;cxx_local_type_template_args;cxx_long_long_type;cxx_noexcept;cxx_nonstatic_member_init;cxx_nullptr;cxx_override;cxx_range_for;cxx_raw_string_literals;cxx_reference_qualified_functions;cxx_right_angle_brackets;cxx_rvalue_references;cxx_sizeof_member;cxx_static_assert;cxx_strong_enums;cxx_thread_local;cxx_trailing_return_types;cxx_unicode_literals;cxx_uniform_initialization;cxx_unrestricted_unions;cxx_user_literals;cxx_variadic_macros;cxx_variadic_templates")
-    set(CMAKE_CXX14_COMPILE_FEATURES "cxx_aggregate_default_initializers;cxx_attribute_deprecated;cxx_binary_literals;cxx_contextual_conversions;cxx_decltype_auto;cxx_digit_separators;cxx_generic_lambdas;cxx_lambda_init_captures;cxx_relaxed_constexpr;cxx_return_type_deduction;cxx_variable_templates")
+    set(CMAKE_CXX11_COMPILE_FEATURES "${CXX11_COMPILE_FEATURES_BASE}")
+    set(CMAKE_CXX14_COMPILE_FEATURES "${CXX14_COMPILE_FEATURES_BASE}")
   else() # 3.8+
+    set(CMAKE_C_COMPILE_FEATURES "c_std_90;c_function_prototypes;c_std_99;c_restrict;c_variadic_macros;c_std_11;c_static_assert")
+    set(CMAKE_CXX_COMPILE_FEATURES "${CXX_COMPILE_FEATURES_BASE}")
     set(CMAKE_C90_COMPILE_FEATURES "c_std_90;c_function_prototypes")
     set(CMAKE_C99_COMPILE_FEATURES "c_std_99;c_restrict;c_variadic_macros")
     set(CMAKE_C11_COMPILE_FEATURES "c_std_11;c_static_assert")
 
     set(CMAKE_CXX98_COMPILE_FEATURES "cxx_std_98;cxx_template_template_parameters")
-    set(CMAKE_CXX11_COMPILE_FEATURES "cxx_std_11;cxx_alias_templates;cxx_alignas;cxx_alignof;cxx_attributes;cxx_auto_type;cxx_constexpr;cxx_decltype;cxx_decltype_incomplete_return_types;cxx_default_function_template_args;cxx_defaulted_functions;cxx_defaulted_move_initializers;cxx_delegating_constructors;cxx_deleted_functions;cxx_enum_forward_declarations;cxx_explicit_conversions;cxx_extended_friend_declarations;cxx_extern_templates;cxx_final;cxx_func_identifier;cxx_generalized_initializers;cxx_inheriting_constructors;cxx_inline_namespaces;cxx_lambdas;cxx_local_type_template_args;cxx_long_long_type;cxx_noexcept;cxx_nonstatic_member_init;cxx_nullptr;cxx_override;cxx_range_for;cxx_raw_string_literals;cxx_reference_qualified_functions;cxx_right_angle_brackets;cxx_rvalue_references;cxx_sizeof_member;cxx_static_assert;cxx_strong_enums;cxx_thread_local;cxx_trailing_return_types;cxx_unicode_literals;cxx_uniform_initialization;cxx_unrestricted_unions;cxx_user_literals;cxx_variadic_macros;cxx_variadic_templates")
-    set(CMAKE_CXX14_COMPILE_FEATURES "cxx_std_14;cxx_aggregate_default_initializers;cxx_attribute_deprecated;cxx_binary_literals;cxx_contextual_conversions;cxx_decltype_auto;cxx_digit_separators;cxx_generic_lambdas;cxx_lambda_init_captures;cxx_relaxed_constexpr;cxx_return_type_deduction;cxx_variable_templates")
+    set(CMAKE_CXX11_COMPILE_FEATURES "cxx_std_11;${CXX11_COMPILE_FEATURES_BASE}")
+    set(CMAKE_CXX14_COMPILE_FEATURES "cxx_std_14;${CXX14_COMPILE_FEATURES_BASE}")
     set(CMAKE_CXX17_COMPILE_FEATURES "cxx_std_17")
-    if ("${CMAKE_VERSION}" VERSION_LESS "3.12") # [3.8, 3.12)
-      set(CMAKE_C_COMPILE_FEATURES "c_std_90;c_function_prototypes;c_std_99;c_restrict;c_variadic_macros;c_std_11;c_static_assert")
-      set(CMAKE_CXX_COMPILE_FEATURES "cxx_std_98;cxx_template_template_parameters;cxx_std_11;cxx_alias_templates;cxx_alignas;cxx_alignof;cxx_attributes;cxx_auto_type;cxx_constexpr;cxx_decltype;cxx_decltype_incomplete_return_types;cxx_default_function_template_args;cxx_defaulted_functions;cxx_defaulted_move_initializers;cxx_delegating_constructors;cxx_deleted_functions;cxx_enum_forward_declarations;cxx_explicit_conversions;cxx_extended_friend_declarations;cxx_extern_templates;cxx_final;cxx_func_identifier;cxx_generalized_initializers;cxx_inheriting_constructors;cxx_inline_namespaces;cxx_lambdas;cxx_local_type_template_args;cxx_long_long_type;cxx_noexcept;cxx_nonstatic_member_init;cxx_nullptr;cxx_override;cxx_range_for;cxx_raw_string_literals;cxx_reference_qualified_functions;cxx_right_angle_brackets;cxx_rvalue_references;cxx_sizeof_member;cxx_static_assert;cxx_strong_enums;cxx_thread_local;cxx_trailing_return_types;cxx_unicode_literals;cxx_uniform_initialization;cxx_unrestricted_unions;cxx_user_literals;cxx_variadic_macros;cxx_variadic_templates;cxx_std_14;cxx_aggregate_default_initializers;cxx_attribute_deprecated;cxx_binary_literals;cxx_contextual_conversions;cxx_decltype_auto;cxx_digit_separators;cxx_generic_lambdas;cxx_lambda_init_captures;cxx_relaxed_constexpr;cxx_return_type_deduction;cxx_variable_templates;cxx_std_17")
-    else() # 3.12+
+    if ("${CMAKE_VERSION}" VERSION_GREATER_EQUAL "3.12") # 3.12+
       set(CMAKE_CXX20_COMPILE_FEATURES "cxx_std_20")
-      if ("${CMAKE_VERSION}" VERSION_LESS "3.20") # [3.12, 3.20)
-        set(CMAKE_C_COMPILE_FEATURES "c_std_90;c_function_prototypes;c_std_99;c_restrict;c_variadic_macros;c_std_11;c_static_assert")
-        set(CMAKE_CXX_COMPILE_FEATURES "cxx_std_98;cxx_template_template_parameters;cxx_std_11;cxx_alias_templates;cxx_alignas;cxx_alignof;cxx_attributes;cxx_auto_type;cxx_constexpr;cxx_decltype;cxx_decltype_incomplete_return_types;cxx_default_function_template_args;cxx_defaulted_functions;cxx_defaulted_move_initializers;cxx_delegating_constructors;cxx_deleted_functions;cxx_enum_forward_declarations;cxx_explicit_conversions;cxx_extended_friend_declarations;cxx_extern_templates;cxx_final;cxx_func_identifier;cxx_generalized_initializers;cxx_inheriting_constructors;cxx_inline_namespaces;cxx_lambdas;cxx_local_type_template_args;cxx_long_long_type;cxx_noexcept;cxx_nonstatic_member_init;cxx_nullptr;cxx_override;cxx_range_for;cxx_raw_string_literals;cxx_reference_qualified_functions;cxx_right_angle_brackets;cxx_rvalue_references;cxx_sizeof_member;cxx_static_assert;cxx_strong_enums;cxx_thread_local;cxx_trailing_return_types;cxx_unicode_literals;cxx_uniform_initialization;cxx_unrestricted_unions;cxx_user_literals;cxx_variadic_macros;cxx_variadic_templates;cxx_std_14;cxx_aggregate_default_initializers;cxx_attribute_deprecated;cxx_binary_literals;cxx_contextual_conversions;cxx_decltype_auto;cxx_digit_separators;cxx_generic_lambdas;cxx_lambda_init_captures;cxx_relaxed_constexpr;cxx_return_type_deduction;cxx_variable_templates;cxx_std_17;cxx_std_20")
-      else() # 3.20+
+      set(CMAKE_CXX_COMPILE_FEATURES "${CMAKE_CXX_COMPILE_FEATURES};cxx_std_20")
+      if ("${CMAKE_VERSION}" VERSION_GREATER_EQUAL "3.20") # 3.20+
         set(CMAKE_CXX23_COMPILE_FEATURES "cxx_std_23")
-        set(CMAKE_CXX_COMPILE_FEATURES "cxx_std_98;cxx_template_template_parameters;cxx_std_11;cxx_alias_templates;cxx_alignas;cxx_alignof;cxx_attributes;cxx_auto_type;cxx_constexpr;cxx_decltype;cxx_decltype_incomplete_return_types;cxx_default_function_template_args;cxx_defaulted_functions;cxx_defaulted_move_initializers;cxx_delegating_constructors;cxx_deleted_functions;cxx_enum_forward_declarations;cxx_explicit_conversions;cxx_extended_friend_declarations;cxx_extern_templates;cxx_final;cxx_func_identifier;cxx_generalized_initializers;cxx_inheriting_constructors;cxx_inline_namespaces;cxx_lambdas;cxx_local_type_template_args;cxx_long_long_type;cxx_noexcept;cxx_nonstatic_member_init;cxx_nullptr;cxx_override;cxx_range_for;cxx_raw_string_literals;cxx_reference_qualified_functions;cxx_right_angle_brackets;cxx_rvalue_references;cxx_sizeof_member;cxx_static_assert;cxx_strong_enums;cxx_thread_local;cxx_trailing_return_types;cxx_unicode_literals;cxx_uniform_initialization;cxx_unrestricted_unions;cxx_user_literals;cxx_variadic_macros;cxx_variadic_templates;cxx_std_14;cxx_aggregate_default_initializers;cxx_attribute_deprecated;cxx_binary_literals;cxx_contextual_conversions;cxx_decltype_auto;cxx_digit_separators;cxx_generic_lambdas;cxx_lambda_init_captures;cxx_relaxed_constexpr;cxx_return_type_deduction;cxx_variable_templates;cxx_std_17;cxx_std_20;cxx_std_23")
-        if ("${CMAKE_VERSION}" VERSION_LESS "3.21") # 3.20
-          set(CMAKE_C_COMPILE_FEATURES "c_std_90;c_function_prototypes;c_std_99;c_restrict;c_variadic_macros;c_std_11;c_static_assert")
-        else() # 3.21+
+        set(CMAKE_CXX_COMPILE_FEATURES "${CMAKE_CXX_COMPILE_FEATURES};cxx_std_23")
+        if ("${CMAKE_VERSION}" VERSION_GREATER_EQUAL "3.25") # 3.25+
+          set(CMAKE_CXX_COMPILE_FEATURES "${CMAKE_CXX_COMPILE_FEATURES};cxx_std_26")
+        endif()
+        if ("${CMAKE_VERSION}" VERSION_GREATER_EQUAL "3.21")
           set(CMAKE_C17_COMPILE_FEATURES "c_std_17")
           set(CMAKE_C23_COMPILE_FEATURES "c_std_23")
-          set(CMAKE_C_COMPILE_FEATURES "c_std_90;c_function_prototypes;c_std_99;c_restrict;c_variadic_macros;c_std_11;c_static_assert;c_std_17;c_std_23")
+          set(CMAKE_C_COMPILE_FEATURES "${CMAKE_C_COMPILE_FEATURES};c_std_17;c_std_23")
         endif()
       endif()
     endif()
   endif()
 endif()
-
-execute_process(COMMAND "${EMSCRIPTEN_ROOT_PATH}/em-config${EMCC_SUFFIX}" "CACHE"
-  RESULT_VARIABLE _emcache_result
-  OUTPUT_VARIABLE _emcache_output
-  OUTPUT_STRIP_TRAILING_WHITESPACE)
-if (NOT _emcache_result EQUAL 0)
-  message(FATAL_ERROR "Failed to find emscripten cache directory with command \"'${EMSCRIPTEN_ROOT_PATH}/em-config${EMCC_SUFFIX}' CACHE\"! Process returned with error code ${_emcache_result}.")
-endif()
-file(TO_CMAKE_PATH "${_emcache_output}" _emcache_output)
-set(EMSCRIPTEN_SYSROOT "${_emcache_output}/sysroot")
 
 list(APPEND CMAKE_FIND_ROOT_PATH "${EMSCRIPTEN_SYSROOT}")
 list(APPEND CMAKE_SYSTEM_PREFIX_PATH /)
@@ -278,6 +288,10 @@ set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_INCLUDES 1)
 
 set(CMAKE_C_RESPONSE_FILE_LINK_FLAG "@")
 set(CMAKE_CXX_RESPONSE_FILE_LINK_FLAG "@")
+
+# Enable $<LINK_LIBRARY:WHOLE_ARCHIVE,static_lib> for CMake 3.24+
+set(CMAKE_LINK_LIBRARY_USING_WHOLE_ARCHIVE "-Wl,--whole-archive" "<LINK_ITEM>" "-Wl,--no-whole-archive")
+set(CMAKE_LINK_LIBRARY_USING_WHOLE_ARCHIVE_SUPPORTED True)
 
 # Set a global EMSCRIPTEN variable that can be used in client CMakeLists.txt to
 # detect when building using Emscripten.
@@ -361,12 +375,4 @@ endif()
 # No-op on CMAKE_CROSSCOMPILING_EMULATOR so older versions of cmake do not
 # complain about unused CMake variable.
 if (CMAKE_CROSSCOMPILING_EMULATOR)
-endif()
-
-# TODO: CMake appends <sysroot>/usr/include to implicit includes; switching to use usr/include will make this redundant.
-if (NOT DEFINED CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES)
-  set(CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES "${EMSCRIPTEN_SYSROOT}/include")
-endif()
-if (NOT DEFINED CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES)
-  set(CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES "${EMSCRIPTEN_SYSROOT}/include")
 endif()

@@ -23,12 +23,19 @@ cachelock = None
 cachelock_name = None
 
 
+def is_writable(path):
+  return os.access(path, os.W_OK)
+
+
 def acquire_cache_lock(reason):
   global acquired_count
   if config.FROZEN_CACHE:
     # Raise an exception here rather than exit_with_error since in practice this
     # should never happen
     raise Exception('Attempt to lock the cache but FROZEN_CACHE is set')
+
+  if not is_writable(cachedir):
+    utils.exit_with_error(f'cache directory "{cachedir}" is not writable while accessing cache for: {reason} (see https://emscripten.org/docs/tools_reference/emcc.html for info on setting the cache directory)')
 
   if acquired_count == 0:
     logger.debug(f'PID {os.getpid()} acquiring multiprocess file lock to Emscripten cache at {cachedir}')
@@ -67,7 +74,11 @@ def lock(reason):
 
 def ensure():
   ensure_setup()
-  utils.safe_ensure_dirs(cachedir)
+  if not os.path.isdir(cachedir):
+    try:
+      utils.safe_ensure_dirs(cachedir)
+    except Exception as e:
+      utils.exit_with_error(f'unable to create cache directory "{cachedir}": {e} (see https://emscripten.org/docs/tools_reference/emcc.html for info on setting the cache directory)')
 
 
 def erase():
@@ -141,7 +152,7 @@ def get_lib(libname, *args, **kwargs):
 
 # Request a cached file. If it isn't in the cache, it will be created with
 # the given creator function
-def get(shortname, creator, what=None, force=False, quiet=False, deferred=False):
+def get(shortname, creator, what=None, force=False, quiet=False):
   ensure_setup()
   cachename = Path(cachedir, shortname)
   # Check for existence before taking the lock in case we can avoid the
@@ -166,8 +177,12 @@ def get(shortname, creator, what=None, force=False, quiet=False, deferred=False)
     logger.info(message)
     utils.safe_ensure_dirs(cachename.parent)
     creator(str(cachename))
-    if not deferred:
-      assert cachename.exists()
+    # In embuilder/deferred building mode, the library is not actually compiled at
+    # "creation" time; instead, the ninja files are built up incrementally, and
+    # compiled all at once with a single ninja invocation. So in that case we
+    # can't assert that the library was correctly built here.
+    if not os.getenv('EMBUILDER_PORT_BUILD_DEFERRED'):
+      assert cachename.is_file()
     if not quiet:
       logger.info(' - ok')
 

@@ -101,7 +101,7 @@ var SYSCALLS = {
   printChar: function(stream, curr) {
     var buffer = SYSCALLS.buffers[stream];
     if (curr === 0 || curr === 10) {
-      (stream === 1 ? out : err)(UTF8ArrayToString(buffer, 0));
+      (stream === 1 ? out : err)(UTF8ArrayToString(buffer));
       buffer.length = 0;
     } else {
       buffer.push(curr);
@@ -246,9 +246,9 @@ env["__memory_base"] = STATIC_BASE;
 env["__table_base"] = 0;
 
 var imports = {
-  env: env,
+  env,
   global: {
-    NaN: NaN,
+    NaN,
     Infinity: Infinity
   },
   "global.Math": Math,

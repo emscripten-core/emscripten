@@ -16,6 +16,7 @@ from tools.shared import cap_max_workers_in_pool
 
 
 NUM_CORES = None
+seen_class = set()
 
 
 def run_test(test):
@@ -24,6 +25,9 @@ def run_test(test):
   temp_dir = tempfile.mkdtemp(prefix='emtest_')
   test.set_temp_dir(temp_dir)
   try:
+    if test.__class__ not in seen_class:
+      seen_class.add(test.__class__)
+      test.__class__.setUpClass()
     test(result)
   except unittest.SkipTest as e:
     result.addSkip(test, e)
@@ -77,7 +81,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
 
     Future work: measure slowness of tests and sort accordingly.
     """
-    return reversed(sorted(self, key=str))
+    return sorted(self, key=str, reverse=True)
 
   def combine_results(self, result, buffered_results):
     print()
@@ -86,27 +90,36 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # Sort the results back into alphabetical order. Running the tests in
     # parallel causes mis-orderings, this makes the results more readable.
     results = sorted(buffered_results, key=lambda res: str(res.test))
+    result.core_time = 0
     for r in results:
       r.updateResult(result)
     return result
 
 
-class BufferedParallelTestResult():
+class BufferedParallelTestResult:
   """A picklable struct used to communicate test results across processes
 
   Fulfills the interface for unittest.TestResult
   """
   def __init__(self):
     self.buffered_result = None
+    self.test_duration = 0
 
   @property
   def test(self):
     return self.buffered_result.test
 
+  def addDuration(self, test, elapsed):
+    self.test_duration = elapsed
+
+  def calculateElapsed(self):
+    return time.perf_counter() - self.start_time
+
   def updateResult(self, result):
     result.startTest(self.test)
     self.buffered_result.updateResult(result)
     result.stopTest(self.test)
+    result.core_time += self.test_duration
 
   def startTest(self, test):
     self.start_time = time.perf_counter()
@@ -114,22 +127,18 @@ class BufferedParallelTestResult():
   def stopTest(self, test):
     # TODO(sbc): figure out a way to display this duration information again when
     # these results get passed back to the TextTestRunner/TextTestResult.
-    if hasattr(time, 'perf_counter'):
-      self.buffered_result.duration = time.perf_counter() - self.start_time
+    self.buffered_result.duration = self.test_duration
 
   def addSuccess(self, test):
-    if hasattr(time, 'perf_counter'):
-      print(test, '... ok (%.2fs)' % (time.perf_counter() - self.start_time), file=sys.stderr)
+    print(test, '... ok (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
     self.buffered_result = BufferedTestSuccess(test)
 
   def addExpectedFailure(self, test, err):
-    if hasattr(time, 'perf_counter'):
-      print(test, '... expected failure (%.2fs)' % (time.perf_counter() - self.start_time), file=sys.stderr)
+    print(test, '... expected failure (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
     self.buffered_result = BufferedTestExpectedFailure(test, err)
 
   def addUnexpectedSuccess(self, test):
-    if hasattr(time, 'perf_counter'):
-      print(test, '... unexpected success (%.2fs)' % (time.perf_counter() - self.start_time), file=sys.stderr)
+    print(test, '... unexpected success (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
     self.buffered_result = BufferedTestUnexpectedSuccess(test)
 
   def addSkip(self, test, reason):
@@ -145,7 +154,7 @@ class BufferedParallelTestResult():
     self.buffered_result = BufferedTestError(test, err)
 
 
-class BufferedTestBase():
+class BufferedTestBase:
   """Abstract class that holds test result data, split by type of result."""
   def __init__(self, test, err=None):
     self.test = test
@@ -209,7 +218,7 @@ class BufferedTestUnexpectedSuccess(BufferedTestBase):
     result.addUnexpectedSuccess(self.test)
 
 
-class FakeTraceback():
+class FakeTraceback:
   """A fake version of a traceback object that is picklable across processes.
 
   Python's traceback objects contain hidden stack information that isn't able
@@ -228,14 +237,14 @@ class FakeTraceback():
     self.tb_lasti = tb.tb_lasti
 
 
-class FakeFrame():
+class FakeFrame:
   def __init__(self, f):
     self.f_code = FakeCode(f.f_code)
     # f.f_globals is not picklable, not used in stack traces, and needs to be iterable
     self.f_globals = []
 
 
-class FakeCode():
+class FakeCode:
   def __init__(self, co):
     self.co_filename = co.co_filename
     self.co_name = co.co_name

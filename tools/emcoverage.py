@@ -37,6 +37,7 @@ import uuid
 from glob import glob
 
 import coverage.cmdline # type: ignore
+import contextlib
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -62,10 +63,8 @@ def main():
   if sys.argv[1] in ('html', 'report', 'xml'):
     old_argv = sys.argv
     sys.argv = ['coverage', 'combine'] + glob(os.path.join(store, '*'))
-    try:
+    with contextlib.suppress(SystemExit):
       coverage.cmdline.main()
-    except SystemExit:
-      pass
     sys.argv = old_argv + ['-i']
     return coverage.cmdline.main()
 

@@ -6,6 +6,7 @@
 import * as fs from 'node:fs';
 import * as acorn from 'acorn';
 import * as terser from '../third_party/terser/terser.js';
+import {parseArgs} from 'node:util';
 
 // Starting at the AST node 'root', calls the given callback function 'func' on all children and grandchildren of 'root'
 // that are of any of the type contained in array 'types'.
@@ -73,7 +74,13 @@ function optPassRemoveRedundantOperatorNews(ast) {
         // in emscripten with real side effects.  For example, see
         // loadWasmModuleToWorker which returns a `new Promise` that is never
         // referenced (a least in some builds).
-        if (n.expression.callee.name !== 'Promise') {
+        //
+        // Another exception is made for `new WebAssembly.*` since we create and
+        // unused `WebAssembly.Memory` when probing for wasm64 features.
+        if (
+          n.expression.callee.name !== 'Promise' &&
+          n.expression.callee.object?.name !== 'WebAssembly'
+        ) {
           nodeArray.splice(i--, 1);
         }
       }
@@ -217,7 +224,7 @@ function runOnJsText(js, pretty = false) {
   const output = terserAst.print_to_string({
     wrap_func_args: false,
     beautify: pretty,
-    indent_level: pretty ? 1 : 0,
+    indent_level: pretty ? 2 : 0,
   });
 
   return output;
@@ -289,38 +296,17 @@ function runTests() {
   process.exit(numTestFailures);
 }
 
-const args = process.argv.slice(2);
-
-function readBool(arg) {
-  let ret = false;
-  for (;;) {
-    const i = args.indexOf(arg);
-    if (i >= 0) {
-      args.splice(i, 1);
-      ret = true;
-    } else {
-      return ret;
-    }
-  }
-}
-
-function readArg(arg) {
-  let ret = null;
-  for (;;) {
-    const i = args.indexOf(arg);
-    if (i >= 0) {
-      ret = args[i + 1];
-      args.splice(i, 2);
-    } else {
-      return ret;
-    }
-  }
-}
-
-const testMode = readBool('--test');
-const pretty = readBool('--pretty');
-const output = readArg('-o');
-const input = args[0];
+const {
+  values: {test: testMode, pretty, output},
+  positionals: [input],
+} = parseArgs({
+  options: {
+    test: {type: 'boolean'},
+    pretty: {type: 'boolean'},
+    output: {type: 'string', short: 'o'},
+  },
+  allowPositionals: true,
+});
 
 if (testMode) {
   runTests();

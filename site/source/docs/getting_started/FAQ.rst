@@ -18,7 +18,7 @@ Why do I get errors building basic code and the tests?
 
 All the tests in the :ref:`Emscripten test suite <emscripten-test-suite>` are
 known to build and pass on our test infrastructure, so if you see failures
-locally it is likely that there is some problem with your environment. (Rarely,
+locally, it is likely that there is some problem with your environment. (Rarely,
 there may be temporary breakage, but never on a tagged release version.)
 
 First call ``emcc --check``, which runs basic sanity checks and prints out
@@ -105,13 +105,13 @@ compilation time).
 Why is my compiled code big?
 ============================
 
-Make sure you build with ``-O3`` or ``-Os`` so code is fully optimized and
+Make sure you build with ``-O3`` or ``-Os``, so the code is fully optimized and
 minified. You should use the closure compiler, gzip compression on your
 webserver, etc., see the :ref:`section on code size in Optimizing code
 <optimizing-code-size>`.
 
 
-Why does compiling code that works on another machine gives me errors?
+Why does compiling code that works on another machine give me errors?
 ======================================================================
 
 Make sure you are using the Emscripten bundled system headers. Using :ref:`emcc
@@ -207,11 +207,11 @@ JavaScript that does not complete and return control to the browser.
 Graphical C++ apps typically have an infinite main loop in which event handling,
 processing and rendering is done, followed by a delay to keep the frame-rate
 right (``SDL_DELAY`` in :term:`SDL` apps). As the main loop does not complete
-(is infinite) it cannot return control to the browser, and the app will hang.
+(is infinite), it cannot return control to the browser, and the app will hang.
 
 Apps that use an infinite main loop should be re-coded to put the actions for a
 single iteration of the loop into a single "finite" function. In the native
-build this function can be run in an infinite loop as before. In the Emscripten
+build, this function can be run in an infinite loop as before. In the Emscripten
 build it is set as the :ref:`main loop function <faq-how-run-event-loop>` and
 will be called by the browser at a specified frequency.
 
@@ -360,23 +360,16 @@ The crucial thing is that ``Module`` exists, and has the property
 ``onRuntimeInitialized``, before the script containing emscripten output
 (``my_project.js`` in this example) is loaded.
 
-Another option is to use the ``MODULARIZE`` option, using ``-sMODULARIZE``.
-That puts all of the generated JavaScript into a factory function, which you can
-call to create an instance of your module. The factory function returns a
-Promise that resolves with the module instance. The promise is resolved once
-it's safe to call the compiled code, i.e. after the compiled code has been
-downloaded and instantiated. For example, if you build with ``-sMODULARIZE -s
-'EXPORT_NAME="createMyModule"'``, then you can do this:
+When using the ``MODULARIZE`` is it sufficient to await the returned promise
+from the factory function.  For example:
 
 ::
 
-    createMyModule(/* optional default settings */).then(function(Module) {
+    createMyModule(/* optional default settings */).then((myModule) => {
       // this is reached when everything is ready, and you can call methods on Module
     });
 
-Note that in ``MODULARIZE`` mode we do not look for a global Module object for
-default values. Default values must be passed as a parameter to the factory
-function.  (see details in settings.js)
+See :ref:`Modularized-Output` for more this.
 
 
 .. _faq-NO_EXIT_RUNTIME:

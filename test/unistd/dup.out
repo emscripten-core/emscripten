@@ -1,5 +1,5 @@
 DUP
-errno: 0
+errno: No error information
 f: 1
 f2,f3: 1
 close(f1): 0
@@ -7,7 +7,7 @@ close(f2): 0
 close(f3): 0
 
 DUP2
-errno: 0
+errno: No error information
 f: 1
 f2,f3: 1
 close(f1): 0
@@ -15,15 +15,15 @@ close(f2): 0
 close(f3): -1
 
 DUP2 bad fds
-f: 1
-errno: 8
+f: -1
+errno: Bad file descriptor
 close(f): -1
 
 DUP2 bad newfd
 f3: -1
-errno: 8
+errno: Bad file descriptor
 f3: -1
-errno: 8
+errno: Bad file descriptor
 close(f1): 0
 
 DUP2 pipe

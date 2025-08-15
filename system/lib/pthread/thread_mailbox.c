@@ -108,8 +108,7 @@ void emscripten_thread_mailbox_send(pthread_t thread, task t) {
     if (thread->waiting_async) {
       __builtin_wasm_memory_atomic_notify((int*)thread, -1);
     } else {
-      _emscripten_notify_mailbox_postmessage(
-        thread, pthread_self(), emscripten_main_runtime_thread_id());
+      _emscripten_notify_mailbox_postmessage(thread, pthread_self());
     }
   }
 }

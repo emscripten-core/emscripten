@@ -6,6 +6,7 @@
  */
 
 #include <assert.h>
+#include <fcntl.h>
 #include <dirent.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/wasmfs.h>
@@ -42,7 +43,7 @@ void check_file(int fd, const char* content) {
 void test_url_relative() {
   printf("Running %s...\n", __FUNCTION__);
 
-  backend_t backend2 = wasmfs_create_fetch_backend("test.txt");
+  backend_t backend2 = wasmfs_create_fetch_backend("test.txt", 0);
   int fd = wasmfs_create_file("/file_rel", 0777, backend2);
   check_file(fd, "fetch 2");
   assert(close(fd) == 0);
@@ -56,7 +57,7 @@ void test_url_absolute() {
   char url[200];
   snprintf(url, sizeof(url), "%s%s", url_orig, file_name);
 
-  backend_t backend = wasmfs_create_fetch_backend(url);
+  backend_t backend = wasmfs_create_fetch_backend(url, 0);
   int fd = wasmfs_create_file(file_name, 0777, backend);
   check_file(fd, "fetch 2");
   assert(close(fd) == 0);
@@ -69,7 +70,7 @@ void test_directory_abs() {
   char url[200];
   snprintf(url, sizeof(url), "%s%s", url_orig, dir_path);
 
-  backend_t backend = wasmfs_create_fetch_backend(url);
+  backend_t backend = wasmfs_create_fetch_backend(url, 0);
   int res = wasmfs_create_directory(dir_path, 0777, backend);
   if (errno)
     perror("wasmfs_create_directory");
@@ -100,7 +101,7 @@ void test_directory_abs() {
 
 void test_default() {
   printf("Running %s...\n", __FUNCTION__);
-  backend_t backend = wasmfs_create_fetch_backend("data.dat");
+  backend_t backend = wasmfs_create_fetch_backend("data.dat", 0);
 
   // Create a file in that backend.
   int fd = wasmfs_create_file("/testfile", 0777, backend);
@@ -129,6 +130,15 @@ void test_default() {
   assert(close(fd2) == 0);
 }
 
+void read_chunks_check(int fd, char *buf, unsigned size, unsigned read_by) {
+  for (size_t i = 0; i < size; i+=read_by) {
+    int read_now = read(fd, buf + i, read_by);
+    assert(read_now > 0);
+    assert(read_now <= read_by);
+    printf("read %d bytes\n", read_now);
+  }
+}
+
 void test_small_reads() {
   // Read the file in small amounts.
   printf("Running %s...\n", __FUNCTION__);
@@ -136,16 +146,91 @@ void test_small_reads() {
   char expected[] = "hello";
   size_t size = 5;
 
-  backend_t backend = wasmfs_create_fetch_backend("small.dat");
+  backend_t backend = wasmfs_create_fetch_backend("small.dat", 0);
   int fd = wasmfs_create_file("/testfile3", 0777, backend);
   char buf[size + 1];
-  for (size_t i = 0; i < size; i++) {
-    int read_now = read(fd, buf + i, 1);
-    assert(read_now == 1);
-    printf("read one byte\n");
-  }
+  read_chunks_check(fd, buf, size, 1);
   buf[size] = 0;
   assert(strcmp(buf, "hello") == 0);
+
+  assert(close(fd) == 0);
+}
+
+void test_small_chunks() {
+  // Read the file in small amounts.
+  printf("Running %s...\n", __FUNCTION__);
+
+  char expected[] = "hello";
+  size_t size = 5;
+
+  backend_t backend = wasmfs_create_fetch_backend("small.dat", 2);
+  int fd;
+  char buf[size + 1];
+  fd = wasmfs_create_file("/testfile4", 0777, backend);
+  read_chunks_check(fd, buf, size, 1);
+  buf[size] = 0;
+  printf("buf %s\n",buf);
+  assert(strcmp(buf, "hello") == 0);
+  assert(read(fd, buf, 1024) == 0);
+
+  assert(close(fd) == 0);
+
+  fd = wasmfs_create_file("/testfile5", 0777, backend);
+  read_chunks_check(fd, buf, size, 2);
+  buf[size] = 0;
+  printf("buf %s\n",buf);
+  assert(strcmp(buf, "hello") == 0);
+
+  assert(close(fd) == 0);
+
+  fd = wasmfs_create_file("/testfile6", 0777, backend);
+  read_chunks_check(fd, buf, size, 5);
+  buf[size] = 0;
+  printf("buf %s\n",buf);
+  assert(strcmp(buf, "hello") == 0);
+
+  assert(close(fd) == 0);
+}
+
+void test_small_chunks_divisor_of_size() {
+  printf("Running %s...\n", __FUNCTION__);
+
+  char expected[] = "hello, fetch";
+  size_t size = 12;
+
+  backend_t backend = wasmfs_create_fetch_backend("data.dat",4);
+  int fd;
+  char buf[size + 1];
+  fd = wasmfs_create_file("/testfile7", 0777, backend);
+  read_chunks_check(fd, buf, size, 3);
+  buf[size] = 0;
+  printf("buf %s\n",buf);
+  assert(strcmp(buf, "hello, fetch") == 0);
+  assert(close(fd) == 0);
+
+  fd = wasmfs_create_file("/testfile8", 0777, backend);
+  read_chunks_check(fd, buf, size, 4);
+  buf[size] = 0;
+  printf("buf %s\n",buf);
+  assert(strcmp(buf, "hello, fetch") == 0);
+
+  assert(close(fd) == 0);
+
+  fd = wasmfs_create_file("/testfile9", 0777, backend);
+  read_chunks_check(fd, buf, size, 5);
+  buf[size] = 0;
+  printf("buf %s\n",buf);
+  assert(strcmp(buf, "hello, fetch") == 0);
+
+  assert(close(fd) == 0);
+
+  fd = wasmfs_create_file("/testfile10", 0777, backend);
+  int read_now = read(fd, buf, 12);
+  assert(read_now == 12);
+  printf("read some bytes much greater than chunk size\n");
+  buf[size] = 0;
+  printf("buf %s\n",buf);
+  assert(strcmp(buf, "hello, fetch") == 0);
 
   assert(close(fd) == 0);
 }
@@ -178,6 +263,23 @@ void test_nonexistent() {
   assert(close(fd) == 0);
 }
 
+void test_big_chunks() {
+  printf("Running %s...\n", __FUNCTION__);
+
+  char expected[] = "hello";
+  size_t size = 5;
+
+  backend_t backend = wasmfs_create_fetch_backend("small.dat", 16);
+  int fd;
+  char buf[size + 1];
+  fd = wasmfs_create_file("/testfile11", 0777, backend);
+  read_chunks_check(fd, buf, size, 2);
+  buf[size] = 0;
+  printf("buf %s\n",buf);
+  assert(strcmp(buf, "hello") == 0);
+  assert(close(fd) == 0);
+}
+
 int main() {
   getUrlOrigin(url_orig, sizeof(url_orig));
   test_default();
@@ -185,7 +287,10 @@ int main() {
   test_url_absolute();
   test_directory_abs();
   test_small_reads();
+  test_small_chunks();
+  test_small_chunks_divisor_of_size();
   test_nonexistent();
+  test_big_chunks();
 
   return 0;
 }

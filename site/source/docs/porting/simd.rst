@@ -1,4 +1,4 @@
-.. Porting SIMD code:
+.. _Porting SIMD code:
 
 .. role:: raw-html(raw)
     :format: html
@@ -12,7 +12,7 @@ Emscripten supports the `WebAssembly SIMD <https://github.com/webassembly/simd/>
 1. Enable LLVM/Clang SIMD autovectorizer to automatically target WebAssembly SIMD, without requiring changes to C/C++ source code.
 2. Write SIMD code using the GCC/Clang SIMD Vector Extensions (``__attribute__((vector_size(16)))``)
 3. Write SIMD code using the WebAssembly SIMD intrinsics (``#include <wasm_simd128.h>``)
-4. Compile existing SIMD code that uses the x86 SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2 or 128-bit subset of the AVX intrinsics (``#include <*mmintrin.h>``)
+4. Compile existing SIMD code that uses the x86 SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX or AVX2 intrinsics (``#include <*mmintrin.h>``)
 5. Compile existing SIMD code that uses the ARM NEON intrinsics (``#include <arm_neon.h>``)
 
 These techniques can be freely combined in a single program.
@@ -97,6 +97,7 @@ When developing SIMD code to use WebAssembly SIMD, implementors should be aware 
 .. list-table:: WebAssembly SIMD instructions with performance implications
    :widths: 10 10 30
    :header-rows: 1
+   :class: wrap-table-content
 
    * - WebAssembly SIMD instruction
      - Arch
@@ -152,8 +153,9 @@ Emscripten supports compiling existing codebases that use x86 SSE instructions b
 * **SSE4.1**: pass ``-msse4.1`` and ``#include <smmintrin.h>``. Use ``#ifdef __SSE4_1__`` to gate code.
 * **SSE4.2**: pass ``-msse4.2`` and ``#include <nmmintrin.h>``. Use ``#ifdef __SSE4_2__`` to gate code.
 * **AVX**: pass ``-mavx`` and ``#include <immintrin.h>``. Use ``#ifdef __AVX__`` to gate code.
+* **AVX2**: pass ``-mavx2`` and ``#include <immintrin.h>``. Use ``#ifdef __AVX2__`` to gate code.
 
-Currently only the SSE1, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, and 128-bit AVX instruction sets are supported. Each of these instruction sets add on top of the previous ones, so e.g. when targeting SSE3, the instruction sets SSE1 and SSE2 are also available.
+Currently only the SSE1, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, and AVX instruction sets are supported. Each of these instruction sets add on top of the previous ones, so e.g. when targeting SSE3, the instruction sets SSE1 and SSE2 are also available.
 
 The following tables highlight the availability and expected performance of different SSE* intrinsics. This can be useful for understanding the performance limitations that the Wasm SIMD specification has when running on x86 hardware.
 
@@ -176,6 +178,7 @@ In addition to consulting the tables below, you can turn on diagnostics for slow
 .. list-table:: x86 SSE intrinsics available via #include <xmmintrin.h> and -msse
    :widths: 20 30
    :header-rows: 1
+   :class: wrap-table-content
 
    * - Intrinsic name
      - WebAssembly SIMD support
@@ -410,6 +413,7 @@ The following table highlights the availability and expected performance of diff
 .. list-table:: x86 SSE2 intrinsics available via #include <emmintrin.h> and -msse2
    :widths: 20 30
    :header-rows: 1
+   :class: wrap-table-content
 
    * - Intrinsic name
      - WebAssembly SIMD support
@@ -862,6 +866,7 @@ The following table highlights the availability and expected performance of diff
 .. list-table:: x86 SSE3 intrinsics available via #include <pmmintrin.h> and -msse3
    :widths: 20 30
    :header-rows: 1
+   :class: wrap-table-content
 
    * - Intrinsic name
      - WebAssembly SIMD support
@@ -901,6 +906,7 @@ The following table highlights the availability and expected performance of diff
 .. list-table:: x86 SSSE3 intrinsics available via #include <tmmintrin.h> and -mssse3
    :widths: 20 30
    :header-rows: 1
+   :class: wrap-table-content
 
    * - Intrinsic name
      - WebAssembly SIMD support
@@ -947,6 +953,7 @@ The following table highlights the availability and expected performance of diff
 .. list-table:: x86 SSE4.1 intrinsics available via #include <smmintrin.h> and -msse4.1
    :widths: 20 30
    :header-rows: 1
+   :class: wrap-table-content
 
    * - Intrinsic name
      - WebAssembly SIMD support
@@ -1051,9 +1058,9 @@ The following table highlights the availability and expected performance of diff
    * - _mm_packus_epi32
      - ✅ wasm_u16x8_narrow_i32x4
    * - _mm_round_pd
-     - ✅ wasm_f64x2_ceil/wasm_f64x2_floor/wasm_f64x2_nearest/wasm_f64x2_trunc
+     - ✅ wasm_f64x2_ceil, wasm_f64x2_floor, wasm_f64x2_nearest, wasm_f64x2_trunc
    * - _mm_round_ps
-     - ✅ wasm_f32x4_ceil/wasm_f32x4_floor/wasm_f32x4_nearest/wasm_f32x4_trunc
+     - ✅ wasm_f32x4_ceil, wasm_f32x4_floor, wasm_f32x4_nearest, wasm_f32x4_trunc
    * - _mm_round_sd
      - ⚠️ emulated with a shuffle
    * - _mm_round_ss
@@ -1094,6 +1101,7 @@ The following table highlights the availability and expected performance of diff
 .. list-table:: x86 AVX intrinsics available via #include <immintrin.h> and -mavx
    :widths: 20 30
    :header-rows: 1
+   :class: wrap-table-content
 
    * - Intrinsic name
      - WebAssembly SIMD support
@@ -1136,8 +1144,92 @@ The following table highlights the availability and expected performance of diff
    * - _mm_testz_ps
      - 💣 emulated with complex SIMD+scalar sequence
 
-Only the 128-bit wide instructions from AVX instruction set are available. 256-bit wide AVX instructions are not provided.
+Only the 128-bit wide instructions from AVX instruction set are listed. The 256-bit wide AVX instructions are emulated by two 128-bit wide instructions.
 
+The following table highlights the availability and expected performance of different AVX2 intrinsics. Refer to `Intel Intrinsics Guide on AVX2 <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#avxnewtechs=AVX2>`_.
+
+.. list-table:: x86 AVX2 intrinsics available via #include <immintrin.h> and -mavx2
+   :widths: 20 30
+   :header-rows: 1
+
+   * - Intrinsic name
+     - WebAssembly SIMD support
+   * - _mm_broadcastss_ps
+     - 💡 emulated with a general shuffle
+   * - _mm_broadcastsd_pd
+     - 💡 emulated with a general shuffle
+   * - _mm_blend_epi32
+     - 💡 emulated with a general shuffle
+   * - _mm_broadcastb_epi8
+     - 💡 emulated with a general shuffle
+   * - _mm_broadcastw_epi16
+     - 💡 emulated with a general shuffle
+   * - _mm_broadcastd_epi32
+     - 💡 emulated with a general shuffle
+   * - _mm_broadcastq_epi64
+     - 💡 emulated with a general shuffle
+   * - _mm256_permutevar8x32_epi32
+     - ❌ scalarized
+   * - _mm256_permute4x64_pd
+     - 💡 emulated with two general shuffle
+   * - _mm256_permutevar8x32_ps
+     - ❌ scalarized
+   * - _mm256_permute4x64_epi64
+     - 💡 emulated with two general shuffle
+   * - _mm_maskload_epi32
+     - ❌ scalarized
+   * - _mm_maskload_epi64
+     - ❌ scalarized
+   * - _mm_maskstore_epi32
+     - ❌ scalarized
+   * - _mm_maskstore_epi64
+     - ❌ scalarized
+   * - _mm_sllv_epi32
+     - ❌ scalarized
+   * - _mm_sllv_epi64
+     - ❌ scalarized
+   * - _mm_srav_epi32
+     - ❌ scalarized
+   * - _mm_srlv_epi32
+     - ❌ scalarized
+   * - _mm_srlv_epi64
+     - ❌ scalarized
+   * - _mm_mask_i32gather_pd
+     - ❌ scalarized
+   * - _mm_mask_i64gather_pd
+     - ❌ scalarized
+   * - _mm_mask_i32gather_ps
+     - ❌ scalarized
+   * - _mm_mask_i64gather_ps
+     - ❌ scalarized
+   * - _mm_mask_i32gather_epi32
+     - ❌ scalarized
+   * - _mm_mask_i64gather_epi32
+     - ❌ scalarized
+   * - _mm_mask_i32gather_epi64
+     - ❌ scalarized
+   * - _mm_mask_i64gather_epi64
+     - ❌ scalarized
+   * - _mm_i32gather_pd
+     - ❌ scalarized
+   * - _mm_i64gather_pd
+     - ❌ scalarized
+   * - _mm_i32gather_ps
+     - ❌ scalarized
+   * - _mm_i64gather_ps
+     - ❌ scalarized
+   * - _mm_i32gather_epi32
+     - ❌ scalarized
+   * - _mm_i64gather_epi32
+     - ❌ scalarized
+   * - _mm_i32gather_epi64
+     - ❌ scalarized
+   * - _mm_i64gather_epi64
+     - ❌ scalarized
+
+All the 128-bit wide instructions from AVX2 instruction set are listed.
+Only a small part of the 256-bit AVX2 instruction set are listed, most of the
+256-bit wide AVX2 instructions are emulated by two 128-bit wide instructions.
 
 ====================================================== 
 Compiling SIMD code targeting ARM NEON instruction set
@@ -1175,6 +1267,7 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
 .. list-table:: NEON Intrinsics
    :widths: 20 30
    :header-rows: 1
+   :class: wrap-table-content
 
    * - Intrinsic name
      - Wasm SIMD Support

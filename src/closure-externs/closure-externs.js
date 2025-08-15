@@ -14,15 +14,10 @@
 // Special placeholder for `import.meta` and `await import`.
 var EMSCRIPTEN$IMPORT$META;
 var EMSCRIPTEN$AWAIT$IMPORT;
+var EMSCRIPTEN$AWAIT;
 
 // Don't minify createRequire
 var createRequire;
-
-// Don't minify startWorker which we use to start workers once the runtime is ready.
-/**
- * @param {Object} Module
- */
-var startWorker = function(Module) {};
 
 // Closure externs used by library_sockfs.js
 
@@ -108,6 +103,10 @@ WebAssembly.Instance.prototype.exports;
  * @type {!ArrayBuffer}
  */
 WebAssembly.Memory.prototype.buffer;
+/**
+ * @returns {ArrayBuffer}
+ */
+WebAssembly.Memory.prototype.toResizableBuffer = function() {};
 /**
  * @type {number}
  */
@@ -261,3 +260,14 @@ var moduleRtn;
  */
 Navigator.prototype.webkitGetUserMedia = function(
     constraints, successCallback, errorCallback) {};
+
+/**
+ * A symbol from the explicit resource management proposal that isn't yet part of Closure.
+ * @type {symbol}
+ */
+Symbol.dispose;
+
+// Common between node-externs and v8-externs
+var os = {};
+
+AudioWorkletProcessor.parameterDescriptors;

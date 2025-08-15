@@ -7,12 +7,14 @@ import glob
 import os
 import platform
 import shutil
+import stat
 import time
 import re
 import tempfile
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 
+import common
 from common import RunnerCore, path_from_root, env_modify, test_file
 from common import create_file, ensure_dir, make_executable, with_env_modify
 from common import crossplatform, parameterized, EMBUILDER
@@ -32,6 +34,14 @@ expected_llvm_version = str(shared.EXPECTED_LLVM_VERSION) + '.0.0'
 
 def restore():
   shutil.copyfile(EM_CONFIG + '_backup', EM_CONFIG)
+
+
+def for_all_files(dir, callback):
+  for root, dirs, files in os.walk(dir):
+    for d in dirs:
+      callback(os.path.join(dir, root, d))
+    for f in files:
+      callback(os.path.join(dir, root, f))
 
 
 # restore the config file and set it up for our uses
@@ -203,7 +213,7 @@ class sanity(RunnerCore):
     self.assertNotContained('}}}', config_data)
     self.assertContained('{{{', template_data)
     self.assertContained('}}}', template_data)
-    for content in ['LLVM_ROOT', 'NODE_JS', 'JS_ENGINES']:
+    for content in ('LLVM_ROOT', 'NODE_JS', 'JS_ENGINES'):
       self.assertContained(content, config_data)
 
     # The guessed config should be ok
@@ -214,7 +224,7 @@ class sanity(RunnerCore):
 
     for command in commands:
       # Second run, with bad EM_CONFIG
-      for settings in ['blah', 'LLVM_ROOT="blarg"; JS_ENGINES=[]; NODE_JS=[]; SPIDERMONKEY_ENGINE=[]']:
+      for settings in ('blah', 'LLVM_ROOT="blarg"; JS_ENGINES=[]; NODE_JS=[]; SPIDERMONKEY_ENGINE=[]'):
         try:
           utils.write_file(default_config, settings)
           output = self.do(command)
@@ -282,12 +292,13 @@ class sanity(RunnerCore):
 
     ensure_dir('fake')
 
-    for version, succeed in [('v0.8.0', False),
+    for version, succeed in (('v0.8.0', False),
                              ('v4.1.0', False),
                              ('v10.18.0', False),
-                             ('v16.20.0', True),
-                             ('v16.20.1-pre', True),
-                             ('cheez', False)]:
+                             ('v16.20.0', False),
+                             ('v18.3.0', True),
+                             ('v18.3.1-pre', True),
+                             ('cheez', False)):
       print(version, succeed)
       delete_file(SANITY_FILE)
       utils.write_file(self.in_dir('fake', 'nodejs'), '''#!/bin/sh
@@ -386,13 +397,17 @@ fi
 
     # Building a file that *does* need something *should* trigger cache
     # generation, but only the first time
-    libname = cache.get_lib_name('libc++.a')
     for i in range(3):
       print(i)
       self.clear()
       output = self.do([EMCC, '-O' + str(i), test_file('hello_libcxx.cpp'), '-sDISABLE_EXCEPTION_CATCHING=0'])
-      print('\n\n\n', output)
-      self.assertContainedIf(BUILDING_MESSAGE % libname, output, i == 0)
+      if i == 0:
+        libname = cache.get_lib_name('libc++-debug.a')
+      else:
+        libname = cache.get_lib_name('libc++.a')
+      # -O0 and -O1 will each build a version of libc++.a, but higher level will re-use the
+      # one built at -O1.
+      self.assertContainedIf(BUILDING_MESSAGE % libname, output, i < 2)
       self.assertContained('hello, world!', self.run_js('a.out.js'))
       self.assertExists(cache.cachedir)
       self.assertExists(os.path.join(cache.cachedir, libname))
@@ -438,20 +453,13 @@ fi
   def test_emcc_multiprocess_cache_access(self):
     restore_and_set_up()
 
-    create_file('test.c', r'''
-      #include <stdio.h>
-      int main() {
-        printf("hello, world!\n");
-        return 0;
-      }
-      ''')
     cache_dir_name = self.in_dir('test_cache')
     libname = cache.get_lib_name('libc.a')
     with env_modify({'EM_CACHE': cache_dir_name}):
       tasks = []
       num_times_libc_was_built = 0
       for i in range(3):
-        p = self.run_process([EMCC, 'test.c', '-O2', '-o', '%d.js' % i], stderr=STDOUT, stdout=PIPE)
+        p = self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-o', '%d.js' % i], stderr=STDOUT, stdout=PIPE)
         tasks += [p]
       for p in tasks:
         print('stdout:\n', p.stdout)
@@ -465,10 +473,27 @@ fi
     # Exactly one child process should have triggered libc build!
     self.assertEqual(num_times_libc_was_built, 1)
 
+  # Test that sysroot headers can be installed from a read-only
+  # emscripten tree.
+  def test_readonly_sysroot_install(self):
+    restore_and_set_up()
+
+    def make_readonly(filename):
+      old_mode = stat.S_IMODE(os.stat(filename).st_mode)
+      os.chmod(filename, old_mode & ~(stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH))
+
+    try:
+      for_all_files(path_from_root('system/include'), make_readonly)
+
+      with env_modify({'EM_CACHE': self.in_dir('test_cache')}):
+        self.run_process([EMCC, test_file('hello_world.c'), '-c'])
+    finally:
+      for_all_files(path_from_root('system/include'), shared.make_writable)
+
   @parameterized({
     '': [False, False],
     'response_files': [True, False],
-    'relative': [False, True]
+    'relative': [False, True],
   })
   def test_emcc_cache_flag(self, use_response_files, relative):
     restore_and_set_up()
@@ -478,19 +503,12 @@ fi
     else:
       cache_dir_name = self.in_dir('emscripten_cache')
     self.assertFalse(os.path.exists(cache_dir_name))
-    create_file('test.c', r'''
-      #include <stdio.h>
-      int main() {
-        printf("hello, world!\n");
-        return 0;
-      }
-      ''')
     args = ['--cache', cache_dir_name]
     if use_response_files:
       rsp = response_file.create_response_file(args, shared.TEMP_DIR)
       args = ['@' + rsp]
 
-    self.run_process([EMCC, 'test.c'] + args, stderr=PIPE)
+    self.run_process([EMCC, test_file('hello_world.c')] + args, stderr=PIPE)
     if use_response_files:
       os.remove(rsp)
 
@@ -515,7 +533,7 @@ fi
 
     temp_dir = tempfile.mkdtemp(prefix='emscripten_temp_')
 
-    with utils.chdir(temp_dir):
+    with common.chdir(temp_dir):
       self.run_process([EMCC, '--em-config', custom_config_filename] + MINIMAL_HELLO_WORLD + ['-O2'])
       result = self.run_js('a.out.js')
 
@@ -541,7 +559,7 @@ fi
 
     PORTS_DIR = ports.Ports.get_dir()
 
-    for i in [0, 1]:
+    for i in (0, 1):
       self.do([EMCC, '--clear-cache'])
       print(i)
       if i == 0:
@@ -752,21 +770,27 @@ fi
   def test_embuilder_with_use_port_syntax(self):
     restore_and_set_up()
     self.run_process([EMBUILDER, 'build', 'sdl2_image:formats=png,jpg', '--force'])
-    self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'libSDL2_image_jpg-png.a'))
+    self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'libSDL2_image-jpg-png.a'))
     self.assertContained('error building port `sdl2_image:formats=invalid` | invalid is not a supported format', self.do([EMBUILDER, 'build', 'sdl2_image:formats=invalid', '--force']))
 
-  def test_embuilder_external_ports(self):
+  def test_embuilder_external_ports_simple(self):
     restore_and_set_up()
     simple_port_path = test_file("other/ports/simple.py")
     # embuilder handles external port target that ends with .py
     self.run_process([EMBUILDER, 'build', f'{simple_port_path}', '--force'])
     self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'lib_simple.a'))
+
+  def test_embuilder_external_ports(self):
     # embuilder handles external port target that contains port options
+    restore_and_set_up()
     external_port_path = test_file("other/ports/external.py")
     self.run_process([EMBUILDER, 'build', f'{external_port_path}:value1=12:value2=36', '--force'])
     self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'lib_external.a'))
+
+  def test_embuilder_external_ports_options(self):
     # embuilder handles external port target that contains port options (influences library name,
     # like sdl2_image:formats=png)
+    restore_and_set_up()
     external_port_path = test_file("other/ports/external.py")
     self.run_process([EMBUILDER, 'build', f'{external_port_path}:dependency=sdl2', '--force'])
     self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'lib_external-sdl2.a'))
@@ -777,10 +801,10 @@ fi
       f.write('\nBINARYEN_ROOT = "' + self.in_dir('fake') + '"')
 
     make_fake_tool(self.in_dir('fake', 'bin', 'wasm-opt'), 'foo')
-    self.check_working([EMCC, test_file('hello_world.c')], 'error parsing binaryen version (wasm-opt version foo). Please check your binaryen installation')
+    self.check_working([EMCC, test_file('hello_world.c'), '-O2'], 'error parsing binaryen version (wasm-opt version foo). Please check your binaryen installation')
 
     make_fake_tool(self.in_dir('fake', 'bin', 'wasm-opt'), '70')
-    self.check_working([EMCC, test_file('hello_world.c')], 'unexpected binaryen version: 70 (expected ')
+    self.check_working([EMCC, test_file('hello_world.c'), '-O2'], 'unexpected binaryen version: 70 (expected ')
 
   def test_bootstrap(self):
     restore_and_set_up()
@@ -797,3 +821,20 @@ fi
 
     # Now the compiler should work again
     self.run_process([EMCC, test_file('hello_world.c')])
+
+  # Verify that running bootstrap.py in a first-time run scenario should not
+  # cause an exception. (A first time run scenario is before .emscripten, env.
+  # vars nor PATH has been configured)
+  def test_bootstrap_without_em_config(self):
+    # Remove all environment variables that might help config.py to locate Emscripten tools.
+    env = os.environ.copy()
+    for e in ['LLVM_ROOT', 'EMSDK_NODE', 'EMSDK_PYTHON', 'EMSDK', 'EMSCRIPTEN', 'BINARYEN_ROOT', 'EMCC_SKIP_SANITY_CHECK', 'EM_CONFIG']:
+      env.pop(e, None)
+
+    # Remove from PATH every directory that contains clang.exe so that bootstrap.py cannot
+    # accidentally succeed by virtue of locating tools in PATH.
+    new_path = [d for d in env['PATH'].split(os.pathsep) if not os.path.isfile(os.path.join(d, shared.exe_suffix('clang')))]
+    env['PATH'] = os.pathsep.join(new_path)
+
+    # Running bootstrap.py should not fail
+    self.run_process([shared.bat_suffix(shared.path_from_root('bootstrap'))], env=env)

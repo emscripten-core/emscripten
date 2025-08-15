@@ -1,0 +1,10 @@
+count(*) = 2
+
+a = 1
+b = 13153
+c = thirteen thousand one hundred fifty three
+
+a = 1
+b = 987
+c = some other number
+

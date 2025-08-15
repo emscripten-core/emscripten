@@ -225,6 +225,11 @@ void doCopyTestMappedAtCreation(bool useRange) {
         dst = device.CreateBuffer(&descriptor);
     }
 
+    // Write some random data to the buffer, just to verify that
+    // wgpuQueueWriteBuffer works.
+    char data[4];
+    queue.WriteBuffer(dst, 0, data, sizeof(data));
+
     wgpu::CommandBuffer commands;
     {
         wgpu::CommandEncoder encoder = device.CreateCommandEncoder();

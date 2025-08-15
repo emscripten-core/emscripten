@@ -24,7 +24,7 @@ class posixtest(RunnerCore):
 
   This class get populated dynamically below.
   """
-  pass
+  pass  # noqa: PIE790
 
 
 def filter_tests(all_tests):
@@ -32,7 +32,7 @@ def filter_tests(all_tests):
     'pthread_',
     'strftime',
     'asctime',
-    'gmtime'
+    'gmtime',
   ]
 
   def enable_test(t):
@@ -172,7 +172,7 @@ def make_test(name, testfile, browser):
     if browser:
       self.btest_exit(testfile, args=args)
     else:
-      self.do_runf(testfile, emcc_args=args, output_basename=name)
+      self.do_runf(testfile, cflags=args, output_basename=name)
 
   if name in expect_fail:
     f = unittest.expectedFailure(f)

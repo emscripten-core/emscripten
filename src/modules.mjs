@@ -5,19 +5,21 @@
  */
 
 import * as path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import assert from 'node:assert';
 
 import {
   isDecorator,
-  assert,
   isJsOnlySymbol,
   error,
-  read,
-  warn,
-  setCurrentFile,
+  readFile,
+  pushCurrentFile,
+  popCurrentFile,
   printErr,
   addToCompileTimeContext,
   runInMacroContext,
   mergeInto,
+  localFile,
 } from './utility.mjs';
 import {preprocess, processMacros} from './parseTools.mjs';
 
@@ -25,6 +27,191 @@ import {preprocess, processMacros} from './parseTools.mjs';
 
 // List of symbols that were added from the library.
 export const librarySymbols = [];
+
+const srcDir = fileURLToPath(new URL('.', import.meta.url));
+const systemLibdir = path.join(srcDir, 'lib');
+
+function isBeneath(childPath, parentPath) {
+  const relativePath = path.relative(parentPath, childPath);
+  return !relativePath.startsWith('..') && !path.isAbsolute(relativePath);
+}
+
+function calculateLibraries() {
+  // Core system libraries (always linked against)
+  let libraries = [
+    'libint53.js',
+    'libcore.js',
+    'libsigs.js',
+    'libccall.js',
+    'libaddfunction.js',
+    'libgetvalue.js',
+    'libmath.js',
+    'libpath.js',
+    'libstrings.js',
+    'libhtml5.js',
+    'libstack_trace.js',
+    'libwasi.js',
+    'libeventloop.js',
+    'libpromise.js',
+  ];
+
+  if (LINK_AS_CXX) {
+    if (DISABLE_EXCEPTION_THROWING && !WASM_EXCEPTIONS) {
+      libraries.push('libexceptions_stub.js');
+    } else {
+      libraries.push('libexceptions.js');
+    }
+  }
+
+  if (!MINIMAL_RUNTIME) {
+    libraries.push('libbrowser.js');
+    libraries.push('libwget.js');
+  }
+
+  if (!STANDALONE_WASM) {
+    libraries.push('libtime.js');
+  }
+
+  if (EMSCRIPTEN_TRACING) {
+    libraries.push('libmemoryprofiler.js');
+  }
+
+  if (SUPPORT_BASE64_EMBEDDING || ENVIRONMENT_MAY_BE_SHELL) {
+    libraries.push('libbase64.js');
+  }
+
+  if (AUTODEBUG) {
+    libraries.push('libautodebug.js');
+  }
+
+  if (!WASMFS) {
+    libraries.push('libsyscall.js');
+  }
+
+  if (RELOCATABLE) {
+    libraries.push('libdylink.js');
+  }
+
+  if (FILESYSTEM) {
+    libraries.push('libfs_shared.js');
+    if (WASMFS) {
+      libraries.push(
+        'libwasmfs.js',
+        'libwasmfs_js_file.js',
+        'libwasmfs_jsimpl.js',
+        'libwasmfs_fetch.js',
+        'libwasmfs_node.js',
+        'libwasmfs_opfs.js',
+      );
+    } else {
+      // Core filesystem libraries (always linked against, unless -sFILESYSTEM=0 is specified)
+      libraries.push(
+        'libfs.js',
+        'libmemfs.js',
+        'libtty.js',
+        'libpipefs.js', // ok to include it by default since it's only used if the syscall is used
+        'libsockfs.js', // ok to include it by default since it's only used if the syscall is used
+      );
+
+      if (NODERAWFS) {
+        // NODERAWFS requires NODEFS
+        if (!JS_LIBRARIES.includes('libnodefs.js')) {
+          libraries.push('libnodefs.js');
+        }
+        libraries.push('libnoderawfs.js');
+        // NODERAWFS overwrites libpath.js
+        libraries.push('libnodepath.js');
+      }
+    }
+  }
+
+  // Additional JS libraries (without AUTO_JS_LIBRARIES, link to these explicitly via -lxxx.js)
+  if (AUTO_JS_LIBRARIES) {
+    libraries.push(
+      'libwebgl.js',
+      'libhtml5_webgl.js',
+      'libopenal.js',
+      'libglut.js',
+      'libxlib.js',
+      'libegl.js',
+      'libuuid.js',
+      'libglew.js',
+      'libidbstore.js',
+      'libasync.js',
+    );
+    if (USE_SDL != 2) {
+      libraries.push('libsdl.js');
+    }
+  } else {
+    if (ASYNCIFY) {
+      libraries.push('libasync.js');
+    }
+    if (USE_SDL == 1) {
+      libraries.push('libsdl.js');
+    }
+    if (USE_SDL == 2) {
+      libraries.push('libegl.js', 'libwebgl.js', 'libhtml5_webgl.js');
+    }
+  }
+
+  if (USE_GLFW) {
+    libraries.push('libglfw.js');
+  }
+
+  if (LZ4) {
+    libraries.push('liblz4.js');
+  }
+
+  if (SHARED_MEMORY) {
+    libraries.push('libatomic.js');
+  }
+
+  if (MAX_WEBGL_VERSION >= 2) {
+    // libwebgl2.js must be included only after libwebgl.js, so if we are
+    // about to include libwebgl2.js, first squeeze in libwebgl.js.
+    libraries.push('libwebgl.js');
+    libraries.push('libwebgl2.js');
+  }
+
+  if (GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING) {
+    libraries.push('libc_preprocessor.js');
+  }
+
+  if (LEGACY_GL_EMULATION) {
+    libraries.push('libglemu.js');
+  }
+
+  if (USE_WEBGPU) {
+    libraries.push('libwebgpu.js');
+    libraries.push('libhtml5_webgpu.js');
+  }
+
+  if (!STRICT) {
+    libraries.push('liblegacy.js');
+  }
+
+  if (BOOTSTRAPPING_STRUCT_INFO) {
+    libraries = ['libbootstrap.js', 'libstrings.js', 'libint53.js'];
+  }
+
+  if (SUPPORT_BIG_ENDIAN) {
+    libraries.push('liblittle_endian_heap.js');
+  }
+
+  // Resolve system libraries
+  libraries = libraries.map((filename) => path.join(systemLibdir, filename));
+
+  // Add all user specified JS library files to the link.
+  // These must be added last after all Emscripten-provided system libraries
+  // above, so that users can override built-in JS library symbols in their
+  // own code.
+  libraries.push(...JS_LIBRARIES);
+
+  // Deduplicate libraries to avoid processing any library file multiple times
+  libraries = libraries.filter((item, pos) => libraries.indexOf(item) == pos);
+
+  return libraries;
+}
 
 export const LibraryManager = {
   library: {},
@@ -35,191 +222,37 @@ export const LibraryManager = {
   libraries: [],
 
   has(name) {
+    if (!path.isAbsolute(name)) {
+      // Our libraries used to be called `library_xxx.js` rather than
+      // `lib_xx.js`.  In case we have external code using this function
+      // we check for the old form too.
+      if (name.startsWith('library_')) {
+        name = name.replace('library_', 'lib');
+      }
+      name = path.join(systemLibdir, name);
+    }
     return this.libraries.includes(name);
   },
 
   load() {
     assert(!this.loaded);
     this.loaded = true;
-
-    // Core system libraries (always linked against)
-    let libraries = [
-      'library_int53.js',
-      'library.js',
-      'library_sigs.js',
-      'library_ccall.js',
-      'library_addfunction.js',
-      'library_formatString.js',
-      'library_getvalue.js',
-      'library_math.js',
-      'library_path.js',
-      'library_strings.js',
-      'library_html5.js',
-      'library_stack_trace.js',
-      'library_wasi.js',
-      'library_makeDynCall.js',
-      'library_eventloop.js',
-      'library_promise.js',
-    ];
-
-    if (LINK_AS_CXX) {
-      if (DISABLE_EXCEPTION_THROWING && !WASM_EXCEPTIONS) {
-        libraries.push('library_exceptions_stub.js');
-      } else {
-        libraries.push('library_exceptions.js');
-      }
-    }
-
-    if (!MINIMAL_RUNTIME) {
-      libraries.push('library_browser.js');
-      libraries.push('library_wget.js');
-    }
-
-    if (!STANDALONE_WASM) {
-      libraries.push('library_time.js');
-    }
-
-    if (EMSCRIPTEN_TRACING) {
-      libraries.push('library_memoryprofiler.js');
-    }
-
-    if (AUTODEBUG) {
-      libraries.push('library_autodebug.js');
-    }
-
-    if (!WASMFS) {
-      libraries.push('library_syscall.js');
-    }
-
-    if (RELOCATABLE) {
-      libraries.push('library_dylink.js');
-    }
-
-    if (FILESYSTEM) {
-      libraries.push('library_fs_shared.js');
-      if (WASMFS) {
-        libraries.push(
-          'library_wasmfs.js',
-          'library_wasmfs_js_file.js',
-          'library_wasmfs_jsimpl.js',
-          'library_wasmfs_fetch.js',
-          'library_wasmfs_node.js',
-          'library_wasmfs_opfs.js',
-        );
-      } else {
-        // Core filesystem libraries (always linked against, unless -sFILESYSTEM=0 is specified)
-        libraries.push(
-          'library_fs.js',
-          'library_memfs.js',
-          'library_tty.js',
-          'library_pipefs.js', // ok to include it by default since it's only used if the syscall is used
-          'library_sockfs.js', // ok to include it by default since it's only used if the syscall is used
-        );
-
-        if (NODERAWFS) {
-          // NODERAWFS requires NODEFS
-          if (!JS_LIBRARIES.includes('library_nodefs.js')) {
-            libraries.push('library_nodefs.js');
-          }
-          libraries.push('library_noderawfs.js');
-          // NODERAWFS overwrites library_path.js
-          libraries.push('library_nodepath.js');
-        }
-      }
-    }
-
-    // Additional JS libraries (without AUTO_JS_LIBRARIES, link to these explicitly via -lxxx.js)
-    if (AUTO_JS_LIBRARIES) {
-      libraries.push(
-        'library_webgl.js',
-        'library_html5_webgl.js',
-        'library_openal.js',
-        'library_glut.js',
-        'library_xlib.js',
-        'library_egl.js',
-        'library_uuid.js',
-        'library_glew.js',
-        'library_idbstore.js',
-        'library_async.js',
-      );
-      if (USE_SDL != 2) {
-        libraries.push('library_sdl.js');
-      }
-    } else {
-      if (ASYNCIFY) {
-        libraries.push('library_async.js');
-      }
-      if (USE_SDL == 1) {
-        libraries.push('library_sdl.js');
-      }
-      if (USE_SDL == 2) {
-        libraries.push('library_egl.js', 'library_webgl.js', 'library_html5_webgl.js');
-      }
-    }
-
-    if (USE_GLFW) {
-      libraries.push('library_glfw.js');
-    }
-
-    if (LZ4) {
-      libraries.push('library_lz4.js');
-    }
-
-    if (SHARED_MEMORY) {
-      libraries.push('library_atomic.js');
-    }
-
-    if (MAX_WEBGL_VERSION >= 2) {
-      // library_webgl2.js must be included only after library_webgl.js, so if we are
-      // about to include library_webgl2.js, first squeeze in library_webgl.js.
-      libraries.push('library_webgl.js');
-      libraries.push('library_webgl2.js');
-    }
-
-    if (GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING) {
-      libraries.push('library_c_preprocessor.js');
-    }
-
-    if (LEGACY_GL_EMULATION) {
-      libraries.push('library_glemu.js');
-    }
-
-    if (USE_WEBGPU) {
-      libraries.push('library_webgpu.js');
-      libraries.push('library_html5_webgpu.js');
-    }
-
-    if (!STRICT) {
-      libraries.push('library_legacy.js');
-    }
-
-    if (BOOTSTRAPPING_STRUCT_INFO) {
-      libraries = [
-        'library_bootstrap.js',
-        'library_formatString.js',
-        'library_strings.js',
-        'library_int53.js',
-      ];
-    }
-
-    if (SUPPORT_BIG_ENDIAN) {
-      libraries.push('library_little_endian_heap.js');
-    }
-
-    // Add all user specified --js-library files to the link.
-    // These must be added last after all Emscripten-provided system libraries
-    // above, so that users can override built-in JS library symbols in their
-    // own code.
-    libraries.push(...JS_LIBRARIES);
-
-    // Deduplicate libraries to avoid processing any library file multiple times
-    libraries = libraries.filter((item, pos) => libraries.indexOf(item) == pos);
-
     // Save the list for has() queries later.
-    this.libraries = libraries;
+    this.libraries = calculateLibraries();
 
-    for (const filename of libraries) {
-      const isUserLibrary = path.isAbsolute(filename);
+    const userLibraryProxy = new Proxy(this.library, {
+      set(target, prop, value) {
+        target[prop] = value;
+        if (!isDecorator(prop)) {
+          target[prop + '__user'] = true;
+        }
+        return true;
+      },
+    });
+
+    for (let filename of this.libraries) {
+      const isUserLibrary = !isBeneath(filename, systemLibdir);
+
       if (VERBOSE) {
         if (isUserLibrary) {
           printErr('processing user library: ' + filename);
@@ -233,24 +266,16 @@ export const LibraryManager = {
       // on each element so that we can distinguish them later.
       if (isUserLibrary) {
         origLibrary = this.library;
-        this.library = new Proxy(this.library, {
-          set(target, prop, value) {
-            target[prop] = value;
-            if (!isDecorator(prop)) {
-              target[prop + '__user'] = true;
-            }
-            return true;
-          },
-        });
+        this.library = userLibraryProxy;
       }
-      const oldFile = setCurrentFile(filename);
+      pushCurrentFile(filename);
       try {
         processed = processMacros(preprocess(filename), filename);
         runInMacroContext(processed, {filename: filename.replace(/\.\w+$/, '.preprocessed$&')});
       } catch (e) {
         error(`failure to execute js library "${filename}":`);
         if (VERBOSE) {
-          const orig = read(filename);
+          const orig = readFile(filename);
           if (processed) {
             error(
               `preprocessed source (you can run a js engine on this to get a clearer error message sometimes):\n=============\n${processed}\n=============`,
@@ -263,7 +288,7 @@ export const LibraryManager = {
         }
         throw e;
       } finally {
-        setCurrentFile(oldFile);
+        popCurrentFile();
         if (origLibrary) {
           this.library = origLibrary;
         }
@@ -294,7 +319,7 @@ let defines = {};
  * that can then be used in JavaScript via macros.
  */
 function loadStructInfo(filename) {
-  const temp = JSON.parse(read(filename));
+  const temp = JSON.parse(readFile(filename));
   Object.assign(structs, temp.structs);
   Object.assign(defines, temp.defines);
 }
@@ -302,19 +327,19 @@ function loadStructInfo(filename) {
 if (!BOOTSTRAPPING_STRUCT_INFO) {
   // Load struct and define information.
   if (MEMORY64) {
-    loadStructInfo('struct_info_generated_wasm64.json');
+    loadStructInfo(localFile('struct_info_generated_wasm64.json'));
   } else {
-    loadStructInfo('struct_info_generated.json');
+    loadStructInfo(localFile('struct_info_generated.json'));
   }
 }
 
 // Use proxy objects for C_DEFINES and C_STRUCTS so that we can give useful
 // error messages.
 const C_STRUCTS = new Proxy(structs, {
-  get(target, prop, receiver) {
+  get(target, prop) {
     if (!(prop in target)) {
       throw new Error(
-        `Missing C struct ${prop}! If you just added it to struct_info.json, you need to run ./tools/maint/gen_struct_info.py (then run a second time with --wasm64)`,
+        `Missing C struct ${prop}! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py (then run a second time with --wasm64)`,
       );
     }
     return target[prop];
@@ -322,10 +347,10 @@ const C_STRUCTS = new Proxy(structs, {
 });
 
 const C_DEFINES = new Proxy(defines, {
-  get(target, prop, receiver) {
+  get(target, prop) {
     if (!(prop in target)) {
       throw new Error(
-        `Missing C define ${prop}! If you just added it to struct_info.json, you need to run ./tools/maint/gen_struct_info.py (then run a second time with --wasm64)`,
+        `Missing C define ${prop}! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py (then run a second time with --wasm64)`,
       );
     }
     return target[prop];
@@ -351,7 +376,7 @@ function getUnusedLibrarySymbols() {
   for (const [ident, value] of Object.entries(LibraryManager.library)) {
     if (typeof value === 'function' || typeof value === 'number') {
       if (isJsOnlySymbol(ident) && !isDecorator(ident) && !isInternalSymbol(ident)) {
-        const name = ident.substr(1);
+        const name = ident.slice(1);
         if (!librarySymbolSet.has(name)) {
           missingSyms.add(name);
         }
@@ -378,25 +403,33 @@ function addMissingLibraryStubs(unusedLibSymbols) {
   return rtn;
 }
 
+function exportSymbol(name) {
+  // In MODULARIZE=instance mode symbols are exported by being included in
+  // an export { foo, bar } list so we build up the simple list of names
+  if (MODULARIZE === 'instance') {
+    return name;
+  }
+  return `Module['${name}'] = ${name};`;
+}
+
 // export parts of the JS runtime that the user asked for
-function exportRuntime() {
+function exportRuntimeSymbols() {
   // optionally export something.
-  function maybeExport(name) {
-    // If requested to be exported, export it.  HEAP objects are exported
-    // separately in updateMemoryViews
-    if (EXPORTED_RUNTIME_METHODS.has(name) && !name.startsWith('HEAP')) {
-      return `Module['${name}'] = ${name};`;
+  function shouldExport(name) {
+    // If requested to be exported, export it.
+    if (EXPORTED_RUNTIME_METHODS.has(name)) {
+      // Unless we are in MODULARIZE=instance mode then HEAP objects are
+      // exported separately in updateMemoryViews
+      if (MODULARIZE == 'instance' || !name.startsWith('HEAP')) {
+        return true;
+      }
     }
+    return false;
   }
 
   // All possible runtime elements that can be exported
   let runtimeElements = [
     'run',
-    'addOnPreRun',
-    'addOnInit',
-    'addOnPreMain',
-    'addOnExit',
-    'addOnPostRun',
     'addRunDependency',
     'removeRunDependency',
     'out',
@@ -407,7 +440,6 @@ function exportRuntime() {
     'wasmExports',
     'HEAPF32',
     'HEAPF64',
-    'HEAP_DATA_VIEW',
     'HEAP8',
     'HEAPU8',
     'HEAP16',
@@ -418,18 +450,10 @@ function exportRuntime() {
     'HEAPU64',
   ];
 
-  if (PTHREADS && ALLOW_MEMORY_GROWTH) {
-    runtimeElements.push(
-      'GROWABLE_HEAP_I8',
-      'GROWABLE_HEAP_U8',
-      'GROWABLE_HEAP_I16',
-      'GROWABLE_HEAP_U16',
-      'GROWABLE_HEAP_I32',
-      'GROWABLE_HEAP_U32',
-      'GROWABLE_HEAP_F32',
-      'GROWABLE_HEAP_F64',
-    );
+  if (SUPPORT_BIG_ENDIAN) {
+    runtimeElements.push('HEAP_DATA_VIEW');
   }
+
   if (USE_OFFSET_CONVERTER) {
     runtimeElements.push('WasmOffsetConverter');
   }
@@ -441,11 +465,6 @@ function exportRuntime() {
   if (STACK_OVERFLOW_CHECK) {
     runtimeElements.push('writeStackCookie');
     runtimeElements.push('checkStackCookie');
-  }
-
-  if (SUPPORT_BASE64_EMBEDDING) {
-    runtimeElements.push('intArrayFromBase64');
-    runtimeElements.push('tryParseAsDataURI');
   }
 
   if (RETAIN_COMPILER_SETTINGS) {
@@ -471,7 +490,7 @@ function exportRuntime() {
   let runtimeElementsSet = new Set(runtimeElements);
   for (const ident of Object.keys(LibraryManager.library)) {
     if (isJsOnlySymbol(ident) && !isDecorator(ident) && !isInternalSymbol(ident)) {
-      const jsname = ident.substr(1);
+      const jsname = ident.slice(1);
       // Note that this assertion may be hit when a function is moved into the
       // JS library. In that case the function should be removed from the list
       // of runtime elements above.
@@ -480,16 +499,21 @@ function exportRuntime() {
     }
   }
 
-  // check all exported things exist, warn about typos
+  // check all exported things exist, error when missing
   runtimeElementsSet = new Set(runtimeElements);
   for (const name of EXPORTED_RUNTIME_METHODS) {
     if (!runtimeElementsSet.has(name)) {
-      warn(`invalid item in EXPORTED_RUNTIME_METHODS: ${name}`);
+      error(`undefined exported symbol: "${name}" in EXPORTED_RUNTIME_METHODS`);
     }
   }
 
-  const exports = runtimeElements.map(maybeExport);
-  const results = exports.filter((name) => name);
+  const exports = runtimeElements.filter(shouldExport);
+  const results = exports.map(exportSymbol);
+
+  if (MODULARIZE == 'instance') {
+    if (results.length == 0) return '';
+    return '// Runtime exports\nexport { ' + results.join(', ') + ' };\n';
+  }
 
   if (ASSERTIONS && !EXPORT_ALL) {
     // in ASSERTIONS mode we show a useful error if it is used without being
@@ -501,7 +525,11 @@ function exportRuntime() {
 
     const unexported = [];
     for (const name of runtimeElements) {
-      if (!EXPORTED_RUNTIME_METHODS.has(name) && !unusedLibSymbols.has(name)) {
+      if (
+        !EXPORTED_RUNTIME_METHODS.has(name) &&
+        !EXPORTED_FUNCTIONS.has(name) &&
+        !unusedLibSymbols.has(name)
+      ) {
         unexported.push(name);
       }
     }
@@ -517,11 +545,32 @@ function exportRuntime() {
     }
   }
 
-  return results.join('\n') + '\n';
+  results.unshift('// Begin runtime exports');
+  results.push('// End runtime exports');
+  return results.join('\n  ') + '\n';
+}
+
+function exportLibrarySymbols() {
+  assert(MODULARIZE != 'instance');
+  const results = ['// Begin JS library exports'];
+  for (const ident of librarySymbols) {
+    if (EXPORT_ALL || EXPORTED_FUNCTIONS.has(ident)) {
+      results.push(exportSymbol(ident));
+    }
+  }
+  results.push('// End JS library exports');
+  return results.join('\n  ') + '\n';
+}
+
+function exportJSSymbols() {
+  // In MODULARIZE=instance mode JS library symbols are marked with `export`
+  // at the point of declaration.
+  if (MODULARIZE == 'instance') return exportRuntimeSymbols();
+  return exportRuntimeSymbols() + '  ' + exportLibrarySymbols();
 }
 
 addToCompileTimeContext({
-  exportRuntime,
+  exportJSSymbols,
   loadStructInfo,
   LibraryManager,
   librarySymbols,
