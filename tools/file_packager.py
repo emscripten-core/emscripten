@@ -21,7 +21,7 @@ data downloads.
 
 Usage:
 
-  file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node] [--help]
+  file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node] [--export-es6] [--help]
 
   --preload  ,
   --embed    See emcc --help for more details on those options.
@@ -40,6 +40,8 @@ Usage:
   --wasm64 When used with `--obj-output` create a wasm64 object file
 
   --export-name=EXPORT_NAME Use custom export name (default is `Module`)
+
+  --export-es6 Wrap generated code inside ES6 exported function
 
   --no-force Don't create output if no valid input file is specified.
 
@@ -129,6 +131,7 @@ class Options:
     self.use_preload_plugins = False
     self.support_node = True
     self.wasm64 = False
+    self.export_es6 = False
 
 
 class DataFile:
@@ -362,7 +365,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
   if len(sys.argv) == 1:
-    err('''Usage: file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node] [--help]
+    err('''Usage: file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node] [--export-es6] [--help]
   Try 'file_packager --help' for more details.''')
     return 1
 
@@ -390,6 +393,9 @@ def main():  # noqa: C901, PLR0912, PLR0915
       leading = 'exclude'
     elif arg == '--no-force':
       options.force = False
+      leading = ''
+    elif arg == '--export-es6':
+      options.export_es6 = True
       leading = ''
     elif arg == '--use-preload-cache':
       options.use_preload_cache = True
@@ -483,6 +489,11 @@ def main():  # noqa: C901, PLR0912, PLR0915
 
   if options.jsoutput and os.path.abspath(options.jsoutput) == os.path.abspath(data_target):
     diagnostics.error('TARGET should not be the same value of --js-output')
+    return 1
+
+  if options.from_emcc and options.export_es6:
+    diagnostics.error('Can\'t use --export-es6 option together with --from-emcc since the code should be embedded '
+        'within emcc\'s code')
     return 1
 
   walked.append(__file__)
@@ -621,13 +632,21 @@ def generate_js(data_target, data_files, metadata):
   if options.from_emcc:
     ret = ''
   else:
-    ret = '''
+    if options.export_es6:
+      ret = 'export default async function loadDataFile(Module) {\n'
+    else:
+      ret = '''
   var Module = typeof %(EXPORT_NAME)s != 'undefined' ? %(EXPORT_NAME)s : {};\n''' % {"EXPORT_NAME": options.export_name}
 
   ret += '''
   Module['expectedDataFileDownloads'] ??= 0;
-  Module['expectedDataFileDownloads']++;
-  (() => {
+  Module['expectedDataFileDownloads']++;'''
+
+  if not options.export_es6:
+    ret += '''
+  (() => {'''
+
+  ret += '''
     // Do not attempt to redownload the virtual filesystem data when in a pthread or a Wasm Worker context.
     var isPthread = typeof ENVIRONMENT_IS_PTHREAD != 'undefined' && ENVIRONMENT_IS_PTHREAD;
     var isWasmWorker = typeof ENVIRONMENT_IS_WASM_WORKER != 'undefined' && ENVIRONMENT_IS_WASM_WORKER;
@@ -635,6 +654,16 @@ def generate_js(data_target, data_files, metadata):
 
   if options.support_node:
     ret += "    var isNode = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string';\n"
+
+  if options.support_node and options.export_es6:
+        ret += '''if (isNode) {
+    const { createRequire } = await import('module');
+    /** @suppress{duplicate} */
+    var require = createRequire(import.meta.url);
+  }\n'''
+
+  if options.export_es6:
+    ret += 'return new Promise((loadDataResolve, loadDataReject) => {\n'
   ret += '    async function loadPackage(metadata) {\n'
 
   code = '''
@@ -677,13 +706,20 @@ def generate_js(data_target, data_files, metadata):
           % (start / (1024 * 1024)))
 
     create_preloaded = '''
-          Module['FS_createPreloadedFile'](this.name, null, byteArray, true, true,
-            () => Module['removeRunDependency'](`fp ${that.name}`),
-            () => err(`Preloading file ${that.name} failed`),
-            false, true); // canOwn this data in the filesystem, it is a slide into the heap that will never change\n'''
-    create_data = '''// canOwn this data in the filesystem, it is a slide into the heap that will never change
+          try {
+            // canOwn this data in the filesystem, it is a slice into the heap that will never change
+            await Module['FS_preloadFile'](this.name, null, byteArray, true, true, false, true);
+            Module['removeRunDependency'](`fp ${that.name}`);
+          } catch (e) {
+            err(`Preloading file ${that.name} failed`);
+          }\n'''
+    create_data = '''// canOwn this data in the filesystem, it is a slice into the heap that will never change
           Module['FS_createDataFile'](this.name, null, byteArray, true, true, true);
           Module['removeRunDependency'](`fp ${that.name}`);'''
+
+    finish_handler = create_preloaded if options.use_preload_plugins else create_data
+    if options.export_es6:
+      finish_handler += '\nloadDataResolve();'
 
     if not options.lz4:
       # Data requests - for getting a block of data out of the big archive - have
@@ -707,7 +743,7 @@ def generate_js(data_target, data_files, metadata):
           var byteArray = this.byteArray.subarray(this.start, this.end);
           this.finish(byteArray);
         },
-        finish: function(byteArray) {
+        finish: async function(byteArray) {
           var that = this;
           %s
           this.requests[this.name] = null;
@@ -717,10 +753,17 @@ def generate_js(data_target, data_files, metadata):
       var files = metadata['files'];
       for (var i = 0; i < files.length; ++i) {
         new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio'] || 0).open('GET', files[i]['filename']);
-      }\n''' % (create_preloaded if options.use_preload_plugins else create_data)
+      }\n''' % finish_handler
 
   if options.has_embedded and not options.obj_output:
     diagnostics.warn('--obj-output is recommended when using --embed.  This outputs an object file for linking directly into your application is more efficient than JS encoding')
+
+  catch_handler = ''
+  if options.export_es6:
+    catch_handler += '''
+        .catch((error) => {
+          loadDataReject(error);
+        })'''
 
   for counter, file_ in enumerate(data_files):
     filename = file_.dstpath
@@ -786,9 +829,9 @@ def generate_js(data_target, data_files, metadata):
       }
       var PACKAGE_NAME = '%s';
       var REMOTE_PACKAGE_BASE = '%s';
-      var REMOTE_PACKAGE_NAME = Module['locateFile'] ? Module['locateFile'](REMOTE_PACKAGE_BASE, '') : REMOTE_PACKAGE_BASE;\n''' % (js_manipulation.escape_for_js_string(data_target), js_manipulation.escape_for_js_string(remote_package_name))
+      var REMOTE_PACKAGE_NAME = Module['locateFile']?.(REMOTE_PACKAGE_BASE, '') ?? REMOTE_PACKAGE_BASE;\n''' % (js_manipulation.escape_for_js_string(data_target), js_manipulation.escape_for_js_string(remote_package_name))
     metadata['remote_package_size'] = remote_package_size
-    ret += '''var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];\n'''
+    ret += "      var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];\n"
 
     if options.use_preload_cache:
       # Set the id to a hash of the preloaded data, so that caches survive over multiple builds
@@ -1046,31 +1089,32 @@ def generate_js(data_target, data_files, metadata):
             }
           }
         } catch(e) {
-          await preloadFallback(e);
+          await preloadFallback(e)%s;
         }
 
-        Module['setStatus']?.('Downloading...');\n'''
+        Module['setStatus']?.('Downloading...');\n''' % catch_handler
     else:
       # Not using preload cache, so we might as well start the xhr ASAP,
       # potentially before JS parsing of the main codebase if it's after us.
       # Only tricky bit is the fetch is async, but also when runWithFS is called
       # is async, so we handle both orderings.
       ret += '''
-      var fetchedCallback = null;
-      var fetched = Module['getPreloadedPackage'] ? Module['getPreloadedPackage'](REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE) : null;
+      var fetchedCallback;
+      var fetched = Module['getPreloadedPackage']?.(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE);
 
       if (!fetched) {
         // Note that we don't use await here because we want to execute the
         // the rest of this function immediately.
-        fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE).then((data) => {
-          if (fetchedCallback) {
-            fetchedCallback(data);
-            fetchedCallback = null;
-          } else {
-            fetched = data;
-          }
-        })
-      }\n'''
+        fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE)
+          .then((data) => {
+            if (fetchedCallback) {
+              fetchedCallback(data);
+              fetchedCallback = null;
+            } else {
+              fetched = data;
+            }
+          })%s;
+      }\n''' % catch_handler
 
       code += '''
       Module['preloadResults'][PACKAGE_NAME] = {fromCache: false};
@@ -1087,10 +1131,10 @@ def generate_js(data_target, data_files, metadata):
   ret += '''
     }
     if (Module['calledRun']) {
-      runWithFS(Module);
+      runWithFS(Module)%s;
     } else {
       (Module['preRun'] ??= []).push(runWithFS); // FS is not initialized yet, wait for it
-    }\n'''
+    }\n''' % catch_handler
 
   if options.separate_metadata:
     node_support_code = ''
@@ -1108,7 +1152,7 @@ def generate_js(data_target, data_files, metadata):
 
   async function runMetaWithFS() {
     Module['addRunDependency']('%(metadata_file)s');
-    var metadataUrl = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
+    var metadataUrl = Module['locateFile']?.('%(metadata_file)s', '') ?? '%(metadata_file)s';
     %(node_support_code)s
     var response = await fetch(metadataUrl);
     if (!response.ok) {
@@ -1128,7 +1172,14 @@ def generate_js(data_target, data_files, metadata):
     }
     loadPackage(%s);\n''' % json.dumps(metadata)
 
-  ret += '''
+  if options.export_es6:
+    ret += '''
+  });
+}
+// END the loadDataFile function
+'''
+  else:
+    ret += '''
   })();\n'''
 
   return ret

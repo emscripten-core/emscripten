@@ -80,6 +80,11 @@ export function preprocess(filename) {
       .replace(/\bimport\.meta\b/g, 'EMSCRIPTEN$IMPORT$META')
       .replace(/\bawait import\b/g, 'EMSCRIPTEN$AWAIT$IMPORT');
   }
+  if (MODULARIZE) {
+    // Same for out use of "top-level-await" which is not actually top level
+    // in the case of MODULARIZE.
+    text = text.replace(/\bawait createWasm\(\)/g, 'EMSCRIPTEN$AWAIT(createWasm())');
+  }
   // Remove windows line endings, if any
   text = text.replace(/\r\n/g, '\n');
 

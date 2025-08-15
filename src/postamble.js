@@ -6,6 +6,26 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
+#if MODULARIZE == 'instance'
+var wasmExports;
+#elif WASM_ASYNC_COMPILATION
+
+#if MODULARIZE
+// In modularize mode the generated code is within a factory function so we
+// can use await here (since it's not top-level-await).
+var wasmExports = await createWasm();
+#else
+// With async instantation wasmExports is assigned asyncronously when the
+// the instance is received.
+var wasmExports;
+createWasm();
+#endif
+
+#else
+// With sync compilation wasmExports is directly returned from createWasm()
+var wasmExports = createWasm();
+#endif
+
 #if PROXY_TO_WORKER
 if (ENVIRONMENT_IS_WORKER) {
 #include "webGLWorker.js'
@@ -406,8 +426,4 @@ var workerResponded = false, workerCallbackId = -1;
   }
 })();
 
-#endif
-
-#if STANDALONE_WASM && ASSERTIONS && !WASM_BIGINT
-err('warning: running JS from STANDALONE_WASM without WASM_BIGINT will fail if a syscall with i64 is used (in standalone mode we cannot legalize syscalls)');
 #endif

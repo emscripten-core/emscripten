@@ -39,6 +39,7 @@ var LibraryFS = {
     return `
 #if !MINIMAL_RUNTIME
 FS.createPreloadedFile = FS_createPreloadedFile;
+FS.preloadFile = FS_preloadFile;
 #endif
 FS.staticInit();`;
   },

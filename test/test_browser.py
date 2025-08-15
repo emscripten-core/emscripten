@@ -3296,8 +3296,10 @@ Module["preRun"] = () => {
 
   @parameterized({
     'asyncify': (['-sASYNCIFY=1'],),
+    'asyncify_minimal_runtime': (['-sMINIMAL_RUNTIME', '-sASYNCIFY=1'],),
     'jspi': (['-sASYNCIFY=2', '-Wno-experimental'],),
     'jspi_wasm_bigint': (['-sASYNCIFY=2', '-sWASM_BIGINT', '-Wno-experimental'],),
+    'jspi_wasm_bigint_minimal_runtime': (['-sMINIMAL_RUNTIME', '-sASYNCIFY=2', '-sWASM_BIGINT', '-Wno-experimental'],),
   })
   def test_async(self, args):
     if is_jspi(args) and not is_chrome():
@@ -5094,6 +5096,9 @@ Module["preRun"] = () => {
   @also_with_minimal_runtime
   def test_wasm_worker_hello(self):
     self.btest_exit('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS', '-sENVIRONMENT=web'])
+
+  def test_wasm_worker_hello_export_es6(self):
+    self.btest_exit('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS', '-sENVIRONMENT=web', '-sEXPORT_ES6'])
 
   def test_wasm_worker_hello_minimal_runtime_2(self):
     self.btest_exit('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS', '-sMINIMAL_RUNTIME=2'])

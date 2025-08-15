@@ -18,9 +18,9 @@ var LibraryWget = {
 
   emscripten_async_wget__deps: [
     '$PATH_FS', '$callUserCallback', '$Browser',
-    '$stackRestore', '$stringToUTF8OnStack',
+    '$withStackSave', '$stringToUTF8OnStack',
     '$FS_mkdirTree',
-    '$FS_createPreloadedFile',
+    '$FS_preloadFile',
     '$FS_unlink',
   ],
   emscripten_async_wget__proxy: 'sync',
@@ -33,20 +33,14 @@ var LibraryWget = {
     function doCallback(callback) {
       if (callback) {
         {{{ runtimeKeepalivePop() }}}
-        callUserCallback(() => {
-          var sp = stackSave();
-          {{{ makeDynCall('vp', 'callback') }}}(stringToUTF8OnStack(_file));
-          stackRestore(sp);
-        });
+        callUserCallback(() => withStackSave(() => {{{ makeDynCall('vp', 'callback') }}}(stringToUTF8OnStack(_file))));
       }
     }
     var destinationDirectory = PATH.dirname(_file);
-    FS_createPreloadedFile(
+    FS_preloadFile(
       destinationDirectory,
       PATH.basename(_file),
       _url, true, true,
-      () => doCallback(onload),
-      () => doCallback(onerror),
       false, // dontCreateFile
       false, // canOwn
       () => { // preFinish
@@ -57,7 +51,7 @@ var LibraryWget = {
         // if the destination directory does not yet exist, create it
         FS_mkdirTree(destinationDirectory);
       }
-    );
+    ).then(() => doCallback(onload)).catch(() => doCallback(onerror));
   },
 
   emscripten_async_wget_data__deps: ['$asyncLoad', 'malloc', 'free', '$callUserCallback'],
@@ -194,7 +188,7 @@ var LibraryWget = {
         var buffer = _malloc(byteArray.length);
         HEAPU8.set(byteArray, buffer);
         if (onload) {{{ makeDynCall('vippi', 'onload') }}}(handle, userdata, buffer, byteArray.length);
-        _free(buffer);
+        if (free) _free(buffer);
       } else {
         onerrorjs();
       }
