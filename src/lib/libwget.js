@@ -188,7 +188,7 @@ var LibraryWget = {
         var buffer = _malloc(byteArray.length);
         HEAPU8.set(byteArray, buffer);
         if (onload) {{{ makeDynCall('vippi', 'onload') }}}(handle, userdata, buffer, byteArray.length);
-        _free(buffer);
+        if (free) _free(buffer);
       } else {
         onerrorjs();
       }

@@ -218,8 +218,13 @@ WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProp
 
   initRuntime(wasmExports);
 
-#if PTHREADS
-  PThread.loadWasmModuleToAllWorkers(ready);
+#if PTHREADS && PTHREAD_POOL_SIZE
+  var workersReady = PThread.loadWasmModuleToAllWorkers();
+#if PTHREAD_POOL_DELAY_LOAD
+  ready();
+#else
+  workersReady.then(ready);
+#endif
 #else
   ready();
 #endif

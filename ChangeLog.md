@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.13 (in development)
+4.0.14 (in development)
 -----------------------
+
+4.0.13 - 08/14/25
+-----------------
 - The `handle` callback on the `preloadPlugins` used by `--use-preload-plugins`
   (and `FS_createPreloadedFile` API`) was converted from callbacks to async.
   Any externally managed plugins would need to be updated accordingly.  An

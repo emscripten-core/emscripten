@@ -14873,6 +14873,12 @@ int main() {
   def test_wasm_worker_trusted_types(self):
     self.do_run_in_out_file_test('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS', '-sTRUSTED_TYPES'])
 
+  def test_wasm_worker_export_es6(self):
+    self.do_run_in_out_file_test('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS',
+                                                                            '-sEXPORT_ES6',
+                                                                            '--extern-post-js',
+                                                                            test_file('modularize_post_js.js')])
+
   def test_wasm_worker_terminate(self):
     self.do_runf('wasm_worker/terminate_wasm_worker.c', cflags=['-sWASM_WORKERS'])
 

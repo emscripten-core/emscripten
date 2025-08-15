@@ -9163,11 +9163,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
   # Test is disabled on standalone because of flakes, see
   # https://github.com/emscripten-core/emscripten/issues/18405
   # @also_with_standalone_wasm(impure=True)
+  @parameterized({
+    '': ([],),
+    'sync_instantiation': (['-sWASM_ASYNC_COMPILATION=0'],),
+  })
   @node_pthreads
-  def test_pthread_create(self):
+  def test_pthread_create(self, args):
     self.set_setting('ENVIRONMENT', 'node')
     self.set_setting('STRICT')
-    self.do_core_test('pthread/create.c')
+    self.do_core_test('pthread/create.c', cflags=args)
 
   @node_pthreads
   @parameterized({
