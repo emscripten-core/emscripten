@@ -734,9 +734,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     options.post_js.append(utils.path_from_root('src/emrun_postjs.js'))
     if settings.MINIMAL_RUNTIME:
       exit_with_error('--emrun is not compatible with MINIMAL_RUNTIME')
-    # emrun mode waits on program exit
-    if user_settings.get('EXIT_RUNTIME') == '0':
-      exit_with_error('--emrun is not compatible with EXIT_RUNTIME=0')
     settings.EXIT_RUNTIME = 1
     # emrun_postjs.js needs this library function.
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$addOnExit']
