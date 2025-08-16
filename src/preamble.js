@@ -959,14 +959,13 @@ function getWasmImports() {
 
 #if PTHREADS || WASM_WORKERS
   if ({{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
-    return new Promise((resolve) => {
-      wasmModuleReceived = (module) => {
-        // Instantiate from the module posted from the main thread.
-        // We can just use sync instantiation in the worker.
-        var instance = new WebAssembly.Instance(module, getWasmImports());
-        resolve(receiveInstance(instance, module));
-      };
-    });
+    // Instantiate from the module that was recieved via postMessage from
+    // the main thread. We can just use sync instantiation in the worker.
+#if ASSERTIONS
+    assert(wasmModule, "wasmModule should have been received via postMessage");
+#endif
+    var instance = new WebAssembly.Instance(wasmModule, getWasmImports());
+    return receiveInstance(instance, wasmModule);
   }
 #endif
 

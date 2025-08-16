@@ -31,12 +31,7 @@ function growMemViews() {
 var readyPromiseResolve, readyPromiseReject;
 #endif
 
-#if PTHREADS || WASM_WORKERS
-#if !MINIMAL_RUNTIME
-var wasmModuleReceived;
-#endif
-
-#if ENVIRONMENT_MAY_BE_NODE && !WASM_ESM_INTEGRATION
+#if (PTHREADS || WASM_WORKERS) && (ENVIRONMENT_MAY_BE_NODE && !WASM_ESM_INTEGRATION)
 if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
   // Create as web-worker-like an environment as we can.
   var parentPort = worker_threads['parentPort'];
@@ -46,8 +41,7 @@ if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
     postMessage: (msg) => parentPort['postMessage'](msg),
   });
 }
-#endif // ENVIRONMENT_MAY_BE_NODE && !WASM_ESM_INTEGRATION
-#endif
+#endif // (PTHREADS || WASM_WORKERS) && (ENVIRONMENT_MAY_BE_NODE && !WASM_ESM_INTEGRATION)
 
 #if PTHREADS
 #include "runtime_pthread.js"
