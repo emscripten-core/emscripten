@@ -1120,6 +1120,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       closure_warnings['enabled'] = False
 
   if not settings.MINIMAL_RUNTIME:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$runDependencies', '$addRunDependency', '$removeRunDependency']
     if not settings.BOOTSTRAPPING_STRUCT_INFO:
       if settings.DYNCALLS:
         # Include dynCall() function by default in DYNCALLS builds in classic runtime; in MINIMAL_RUNTIME, must add this explicitly.
