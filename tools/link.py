@@ -1130,6 +1130,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
         settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$warnOnce']
 
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue', '$setValue']
+      # TODO(sbc): Remove these forced dependencies.
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$runDependencies', '$addRunDependency', '$removeRunDependency']
 
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$ExitStatus']
 
@@ -2013,7 +2015,7 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   settings.ENVIRONMENT = ['node']
   settings.MINIMAL_RUNTIME = 0
   # Required function to trigger TS generation.
-  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks']
+  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks', '$addRunDependency', '$removeRunDependency']
   settings.EXPORT_ES6 = False
   # Disable proxying and thread pooling so a worker is not automatically created.
   settings.PROXY_TO_PTHREAD = False

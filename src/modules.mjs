@@ -430,8 +430,6 @@ function exportRuntimeSymbols() {
   // All possible runtime elements that can be exported
   let runtimeElements = [
     'run',
-    'addRunDependency',
-    'removeRunDependency',
     'out',
     'err',
     'callMain',
