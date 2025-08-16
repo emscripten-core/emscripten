@@ -23,6 +23,7 @@ import {
   warn,
   srcDir,
 } from './utility.mjs';
+import { librarySymbols } from './modules.mjs';
 
 const FOUR_GB = 4 * 1024 * 1024 * 1024;
 const WASM_PAGE_SIZE = 64 * 1024;
@@ -882,6 +883,10 @@ function isSymbolNeeded(symName) {
   return false;
 }
 
+function librarySymbolIncluded(symName) {
+  return librarySymbols.includes(symName);
+}
+
 function checkReceiving(name) {
   // ALL_INCOMING_MODULE_JS_API contains all valid incoming module API symbols
   // so calling makeModuleReceive* with a symbol not in this list is an error
@@ -1170,6 +1175,7 @@ addToCompileTimeContext({
   getUnsharedTextDecoderView,
   hasExportedSymbol,
   isSymbolNeeded,
+  librarySymbolIncluded,
   makeDynCall,
   makeEval,
   makeGetValue,
