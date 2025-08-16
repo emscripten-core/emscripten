@@ -617,7 +617,7 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
     args += ['--externs', e]
   args += user_args
 
-  if settings.DEBUG_LEVEL > 1:
+  if settings.JS_DEBUG_LEVEL > 1:
     args += ['--debug']
 
   # Now that we have run closure compiler once, we have stripped all the closure compiler

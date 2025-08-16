@@ -1510,6 +1510,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if not settings.DECLARE_ASM_MODULE_EXPORTS or '-lexports.js' in linker_args:
     settings.MINIFY_WASM_EXPORT_NAMES = 0
 
+  default_setting('JS_DEBUG_LEVEL', settings.DEBUG_LEVEL)
+
   # Enable minification of wasm imports and exports when appropriate, if we
   # are emitting an optimized JS+wasm combo (then the JS knows how to load the minified names).
   # Things that process the JS after this operation would be done must disable this.
@@ -1518,7 +1520,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   # check for 'main' as an export name. TODO
   if will_metadce() and \
       settings.OPT_LEVEL >= 2 and \
-      settings.DEBUG_LEVEL <= 2 and \
+      settings.JS_DEBUG_LEVEL <= 2 and \
       options.oformat not in (OFormat.WASM, OFormat.BARE) and \
       settings.ASYNCIFY != 2 and \
       not settings.LINKABLE and \
@@ -1871,7 +1873,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   settings.PRE_JS_FILES = options.pre_js
   settings.POST_JS_FILES = options.post_js
 
-  settings.MINIFY_WHITESPACE = settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL == 0 and not options.no_minify
+  settings.MINIFY_WHITESPACE = settings.OPT_LEVEL >= 2 and settings.JS_DEBUG_LEVEL == 0 and not options.no_minify
 
   # Closure might be run if we run it ourselves, or if whitespace is not being
   # minifed. In the latter case we keep both whitespace and comments, and the
@@ -2199,7 +2201,7 @@ def phase_final_emitting(options, target, js_target, wasm_target):
   # Run a final optimization pass to clean up items that were not possible to
   # optimize by Closure, or unoptimalities that were left behind by processing
   # steps that occurred after Closure.
-  if settings.MINIMAL_RUNTIME == 2 and settings.USE_CLOSURE_COMPILER and settings.DEBUG_LEVEL == 0:
+  if settings.MINIMAL_RUNTIME == 2 and settings.USE_CLOSURE_COMPILER and settings.JS_DEBUG_LEVEL == 0:
     args = [final_js, '-o', final_js]
     if not settings.MINIFY_WHITESPACE:
       args.append('--pretty')
@@ -2268,7 +2270,7 @@ def phase_binaryen(target, options, wasm_target):
   global final_js
   logger.debug('using binaryen')
   # whether we need to emit -g (function name debug info) in the final wasm
-  debug_function_names = settings.DEBUG_LEVEL >= 2 or settings.EMIT_NAME_SECTION
+  debug_function_names = settings.JS_DEBUG_LEVEL >= 2 or settings.EMIT_NAME_SECTION
   # whether we need to emit -g in the intermediate binaryen invocations (but not
   # necessarily at the very end). this is necessary if we depend on debug info
   # during compilation, even if we do not emit it at the end.
@@ -2340,7 +2342,7 @@ def phase_binaryen(target, options, wasm_target):
       with ToolchainProfiler.profile_block('little_endian_heap'):
         final_js = building.little_endian_heap(final_js)
 
-    if settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL <= 2:
+    if settings.OPT_LEVEL >= 2 and settings.JS_DEBUG_LEVEL <= 2:
       # minify the JS. Do not minify whitespace if Closure is used, so that
       # Closure can print out readable error messages (Closure will then
       # minify whitespace afterwards)
@@ -2563,19 +2565,19 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
 
 
 def minify_html(filename):
-  if settings.DEBUG_LEVEL >= 2:
+  if settings.JS_DEBUG_LEVEL >= 2:
     return
 
   opts = []
   # -g1 and greater retain whitespace and comments in source
-  if settings.DEBUG_LEVEL == 0:
+  if settings.JS_DEBUG_LEVEL == 0:
     opts += ['--collapse-whitespace',
              '--remove-comments',
              '--remove-tag-whitespace',
              '--sort-attributes',
              '--sort-class-name']
   # -g2 and greater do not minify HTML at all
-  if settings.DEBUG_LEVEL <= 1:
+  if settings.JS_DEBUG_LEVEL <= 1:
     opts += ['--decode-entities',
              '--collapse-boolean-attributes',
              '--remove-attribute-quotes',
