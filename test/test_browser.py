@@ -179,7 +179,22 @@ def also_with_threads(f):
     f(self, *args, **kwargs)
 
   parameterize(decorated, {'': (False,),
-                           'pthreads': (True,)})
+                           'pthread': (True,)})
+
+  return decorated
+
+
+def also_with_proxy_to_pthread(f):
+  assert callable(f)
+
+  @wraps(f)
+  def decorated(self, threads, *args, **kwargs):
+    if threads:
+      self.emcc_args += ['-pthread', '-sPROXY_TO_PTHREAD']
+    f(self, *args, **kwargs)
+
+  parameterize(decorated, {'': (False,),
+                           'pthread': (True,)})
 
   return decorated
 
@@ -475,14 +490,11 @@ If manually bisecting:
     self.btest_exit('main.c', cflags=['--pre-js', 'pre.js', '--use-preload-plugins'])
 
   # Tests that user .html shell files can manually download .data files created with --preload-file cmdline.
-  @parameterized({
-    '': ([],),
-    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
-  })
-  def test_preload_file_with_manual_data_download(self, args):
+  @also_with_proxy_to_pthread
+  def test_preload_file_with_manual_data_download(self):
     create_file('file.txt', 'Hello!')
 
-    self.compile_btest('browser/test_manual_download_data.c', ['-sEXIT_RUNTIME', '-o', 'out.js', '--preload-file', 'file.txt@/file.txt'] + args)
+    self.compile_btest('browser/test_manual_download_data.c', ['-sEXIT_RUNTIME', '-o', 'out.js', '--preload-file', 'file.txt@/file.txt'])
     shutil.copy(test_file('browser/test_manual_download_data.html'), '.')
 
     # Move .data file out of server root to ensure that getPreloadedPackage is actually used
@@ -1603,12 +1615,9 @@ simulateKeyUp(100, undefined, 'Numpad4');
   def test_egl(self, args):
     self.btest_exit('test_egl.c', cflags=['-O2', '-lEGL', '-lGL', '-sGL_ENABLE_GET_PROC_ADDRESS'] + args)
 
-  @parameterized({
-    '': ([],),
-    'proxy_to_pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
-  })
-  def test_egl_width_height(self, args):
-    self.btest_exit('test_egl_width_height.c', cflags=['-O2', '-lEGL', '-lGL'] + args)
+  @also_with_proxy_to_pthread
+  def test_egl_width_height(self):
+    self.btest_exit('test_egl_width_height.c', cflags=['-O2', '-lEGL', '-lGL'])
 
   @requires_graphics_hardware
   def test_egl_createcontext_error(self):
@@ -1892,27 +1901,17 @@ simulateKeyUp(100, undefined, 'Numpad4');
   def test_emscripten_api_infloop(self):
     self.btest_exit('emscripten_api_browser_infloop.cpp')
 
-  @parameterized({
-    '': ([],),
-    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
-  })
-  def test_emscripten_main_loop(self, args):
-    self.btest_exit('test_emscripten_main_loop.c', cflags=args)
+  @also_with_proxy_to_pthread
+  def test_emscripten_main_loop(self):
+    self.btest_exit('test_emscripten_main_loop.c')
 
-  @parameterized({
-    '': ([],),
-    # test pthreads + AUTO_JS_LIBRARIES mode as well
-    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sAUTO_JS_LIBRARIES=0'],),
-  })
-  def test_emscripten_main_loop_settimeout(self, args):
-    self.btest_exit('test_emscripten_main_loop_settimeout.c', cflags=args)
+  @also_with_proxy_to_pthread
+  def test_emscripten_main_loop_settimeout(self):
+    self.btest_exit('test_emscripten_main_loop_settimeout.c', cflags=['-sAUTO_JS_LIBRARIES=0'])
 
-  @parameterized({
-    '': ([],),
-    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD'],),
-  })
-  def test_emscripten_main_loop_and_blocker(self, args):
-    self.btest_exit('test_emscripten_main_loop_and_blocker.c', cflags=args)
+  @also_with_proxy_to_pthread
+  def test_emscripten_main_loop_and_blocker(self):
+    self.btest_exit('test_emscripten_main_loop_and_blocker.c')
 
   def test_emscripten_main_loop_and_blocker_exit(self):
     # Same as above but tests that EXIT_RUNTIME works with emscripten_main_loop.  The
@@ -1968,13 +1967,10 @@ simulateKeyUp(100, undefined, 'Numpad4');
   def test_gl_glteximage(self):
     self.btest('gl_teximage.c', '1', cflags=['-lGL', '-lSDL'])
 
-  @parameterized({
-    '': ([],),
-    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sOFFSCREEN_FRAMEBUFFER'],),
-  })
   @requires_graphics_hardware
-  def test_gl_textures(self, args):
-    self.btest_exit('gl_textures.c', cflags=['-lGL', '-g', '-sSTACK_SIZE=1MB'] + args)
+  @also_with_proxy_to_pthread
+  def test_gl_textures(self):
+    self.btest_exit('gl_textures.c', cflags=['-lGL', '-g', '-sSTACK_SIZE=1MB'])
 
   @requires_graphics_hardware
   def test_gl_ps(self):
@@ -2633,10 +2629,10 @@ Module["preRun"] = () => {
       self.cflags.append('--pre-js=pre.js')
     self.btest_exit('test_html5_core.c', cflags=opts)
 
+  @also_with_proxy_to_pthread
   @parameterized({
     '': ([],),
     'closure': (['-O2', '-g1', '--closure=1'],),
-    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
   })
   def test_html5_gamepad(self, args):
     self.btest_exit('test_gamepad.c', cflags=args)
@@ -4949,11 +4945,13 @@ Module["preRun"] = () => {
   def test_request_animation_frame(self):
     self.btest_exit('test_request_animation_frame.c')
 
+  @also_with_proxy_to_pthread
   def test_emscripten_set_timeout(self):
-    self.btest_exit('emscripten_set_timeout.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD'])
+    self.btest_exit('emscripten_set_timeout.c')
 
+  @also_with_proxy_to_pthread
   def test_emscripten_set_timeout_loop(self):
-    self.btest_exit('emscripten_set_timeout_loop.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD'])
+    self.btest_exit('emscripten_set_timeout_loop.c')
 
   def test_emscripten_set_immediate(self):
     self.btest_exit('emscripten_set_immediate.c')
@@ -4961,12 +4959,14 @@ Module["preRun"] = () => {
   def test_emscripten_set_immediate_loop(self):
     self.btest_exit('emscripten_set_immediate_loop.c')
 
+  @also_with_proxy_to_pthread
   def test_emscripten_set_interval(self):
-    self.btest_exit('emscripten_set_interval.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD'])
+    self.btest_exit('emscripten_set_interval.c')
 
   # Test emscripten_performance_now() and emscripten_date_now()
+  @also_with_proxy_to_pthread
   def test_emscripten_performance_now(self):
-    self.btest('emscripten_performance_now.c', '0', cflags=['-pthread', '-sPROXY_TO_PTHREAD'])
+    self.btest_exit('emscripten_performance_now.c')
 
   def test_embind_with_pthreads(self):
     self.btest_exit('embind/test_pthreads.cpp', cflags=['-lembind', '-pthread', '-sPTHREAD_POOL_SIZE=2'])
@@ -5038,12 +5038,9 @@ Module["preRun"] = () => {
   def test_minimal_runtime_hello_world(self, args):
     self.btest_exit('small_hello_world.c', cflags=args + ['-sMINIMAL_RUNTIME'])
 
-  @parameterized({
-    '': ([],),
-    'pthread': (['-sPROXY_TO_PTHREAD', '-pthread'],),
-  })
-  def test_offset_converter(self, args):
-    self.btest_exit('test_offset_converter.c', cflags=['-sUSE_OFFSET_CONVERTER', '-gsource-map'] + args)
+  @also_with_proxy_to_pthread
+  def test_offset_converter(self):
+    self.btest_exit('test_offset_converter.c', cflags=['-sUSE_OFFSET_CONVERTER', '-gsource-map'])
 
   # Tests emscripten_unwind_to_js_event_loop() behavior
   def test_emscripten_unwind_to_js_event_loop(self):

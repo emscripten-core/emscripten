@@ -7,6 +7,7 @@
 int funcExecuted = 0;
 
 void testDone(void *userData) {
+  printf("testDone\n");
   assert((long)userData == 2);
   assert(funcExecuted == 10);
   exit(0);
@@ -15,6 +16,7 @@ void testDone(void *userData) {
 long intervalId = 0;
 
 void tick(void *userData) {
+  printf("tick: %d\n", funcExecuted);
   assert((long)userData == 1);
   ++funcExecuted;
   if (funcExecuted == 10) {
@@ -28,6 +30,5 @@ void tick(void *userData) {
 
 int main() {
   intervalId = emscripten_set_interval(tick, 100, (void*)1);
-  emscripten_exit_with_live_runtime();
   return 99;
 }
