@@ -1863,14 +1863,9 @@ MODULARIZE
 By default we emit all code in a straightforward way into the output
 .js file. That means that if you load that in a script tag in a web
 page, it will use the global scope. With ``MODULARIZE`` set, we instead emit
-the code wrapped in a function that returns a promise. The promise is
-resolved with the module instance when it is safe to run the compiled code,
-similar to the ``onRuntimeInitialized`` callback. You do not need to use the
-``onRuntimeInitialized`` callback when using ``MODULARIZE``.
-
-(If WASM_ASYNC_COMPILATION is off, that is, if compilation is
-*synchronous*, then it would not make sense to return a Promise, and instead
-the Module object itself is returned, which is ready to be used.)
+the code wrapped in an async function. This function returns a promise that
+resolves to a module instance once it is safe to run the compiled code
+(similar to the ``onRuntimeInitialized`` callback).
 
 The default name of the function is ``Module``, but can be changed using the
 ``EXPORT_NAME`` option. We recommend renaming it to a more typical name for a
@@ -2692,11 +2687,14 @@ Default value: 0
 TEXTDECODER
 ===========
 
-If enabled, use the JavaScript TextDecoder API for string marshalling.
-Enabled by default, set this to 0 to disable.
+The default value or 1 means the generated code will use TextDecoder if
+available and fall back to custom decoder code when not available.
 If set to 2, we assume TextDecoder is present and usable, and do not emit
-any JS code to fall back if it is missing. In single threaded -Oz build modes,
-TEXTDECODER defaults to value == 2 to save code size.
+any JS code to fall back if it is missing. Setting this zero to avoid even
+conditional usage of TextDecoder is no longer supported.
+Note: In -Oz builds, the default value of TEXTDECODER is set to 2, to save on
+code size (except when AUDIO_WORKLET is specified, or when `shell` is part
+of ENVIRONMENT since TextDecoder is not available in those environments).
 
 Default value: 1
 
@@ -2862,7 +2860,7 @@ are desired to work. Pass -sMIN_FIREFOX_VERSION=majorVersion to drop support
 for Firefox versions older than < majorVersion.
 Firefox 79 was released on 2020-07-28.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 50 which was released on 2016-11-15 (see
+Minimum supported value is 55 which was released on 2017-08-08 (see
 feature_matrix.py)
 
 Default value: 79
@@ -2881,8 +2879,10 @@ bundled with macOS 10.14.0 Mojave.
 NOTE: Emscripten is unable to produce code that would work in iOS 9.3.5 and
 older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
 see https://github.com/emscripten-core/emscripten/pull/7191.
+Multithreaded Emscripten code will need Safari 12.2 (iPhone 5s+) at minimum,
+with support for DedicatedWorkerGlobalScope.name parameter.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 101000 which was released in 2016-09 (see
+Minimum supported value is 120200 which was released on 2019-03-25 (see
 feature_matrix.py).
 
 Default value: 150000
@@ -2898,7 +2898,7 @@ This setting also applies to modern Chromium-based Edge, which shares version
 numbers with Chrome.
 Chrome 85 was released on 2020-08-25.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 55, which was released on 2016-12-01 (see
+Minimum supported value is 70, which was released on 2018-10-16 (see
 feature_matrix.py).
 
 Default value: 85
@@ -2956,6 +2956,7 @@ For large .wasm modules and production environments, this should be set to 1
 for faster startup speeds. However this setting is disabled by default
 since it requires server side configuration and for really small pages there
 is no observable difference (also has a ~100 byte impact to code size)
+This setting is only compatible with html output.
 
 Default value: false
 
@@ -3340,5 +3341,29 @@ To run the resulting code currently requires passing `--js_base_64` to node
 or chrome.
 
 .. note:: This is an experimental setting
+
+Default value: false
+
+.. _growable_arraybuffers:
+
+GROWABLE_ARRAYBUFFERS
+=====================
+
+Enable support for GrowableSharedArrayBuffer.
+This features is only available behind a flag in recent versions of
+node/chrome.
+
+.. note:: This is an experimental setting
+
+Default value: false
+
+.. _wasm_js_types:
+
+WASM_JS_TYPES
+=============
+
+Experimental support for WebAssembly js-types proposal.
+It's currently only available under a flag in certain browsers,
+so we disable it by default to save on code size.
 
 Default value: false

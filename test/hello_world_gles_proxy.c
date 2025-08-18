@@ -47,6 +47,9 @@
 #include <string.h>
 #include <sys/time.h>
 #include <unistd.h>
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 #ifdef __APPLE__
 #include <OpenGL/gl.h>
 #include <Glut/glut.h>
@@ -559,12 +562,17 @@ gears_draw(void)
    draw_gear(gear3, transform, -3.1, 4.2, -2 * angle - 25.0, blue);
 
    glutSwapBuffers();
+#ifdef __EMSCRIPTEN__
+   EM_ASM({if (typeof reftestUnblock !== 'undefined') reftestUnblock()}); // All done, perform the JS side image comparison reftest.
+#endif
 
 #ifdef LONGTEST
    glutPostRedisplay(); // check for issues with not throttling calls
 #endif
 
+#ifdef __EMSCRIPTEN__
   EM_ASM({ window.close() });
+#endif
 }
 
 /**
@@ -758,7 +766,7 @@ main(int argc, char *argv[])
    // Don't trigger the reftest immediately after main finishes,
    // this test uses rAF to perform rendering, so let it trigger
    // the reftest after having rendered some frames.
-   EM_ASM(Module['postRun'] = undefined);
+   EM_ASM({if (typeof reftestBlock !== 'undefined') reftestBlock()});
 #endif
 
    /* Initialize the window */

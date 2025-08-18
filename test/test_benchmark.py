@@ -858,7 +858,7 @@ class benchmark(common.RunnerCore):
                       emcc_args=['-sSTACK_SIZE=1MB'])
 
   def test_base64(self):
-    src = read_file(test_file('base64.c'))
+    src = read_file(test_file('benchmark/base64.c'))
     self.do_benchmark('base64', src, 'decode')
 
   @non_core
@@ -977,7 +977,7 @@ class benchmark(common.RunnerCore):
     self.do_benchmark('matrix_multiply', read_file(test_file('matrix_multiply.cpp')), 'Total elapsed:', output_parser=output_parser, shared_args=['-I' + test_file('benchmark')])
 
   def lua(self, benchmark, expected, output_parser=None, args_processor=None):
-    self.emcc_args.remove('-Werror')
+    self.cflags.remove('-Werror')
     shutil.copyfile(test_file(f'third_party/lua/{benchmark}.lua'), benchmark + '.lua')
 
     def lib_builder(name, native, env_init):
@@ -1002,7 +1002,7 @@ class benchmark(common.RunnerCore):
     self.lua('binarytrees', 'long lived tree of depth')
 
   def test_zzz_zlib(self):
-    self.emcc_args.remove('-Werror')
+    self.cflags.remove('-Werror')
     src = read_file(test_file('benchmark/test_zlib_benchmark.c'))
 
     def lib_builder(name, native, env_init):
@@ -1032,8 +1032,8 @@ class benchmark(common.RunnerCore):
     self.do_benchmark('box2d', src, 'frame averages', shared_args=['-I' + test_file('third_party/box2d')], lib_builder=lib_builder)
 
   def test_zzz_bullet(self):
-    self.emcc_args.remove('-Werror')
-    self.emcc_args += ['-Wno-c++11-narrowing', '-Wno-deprecated-register', '-Wno-writable-strings']
+    self.cflags.remove('-Werror')
+    self.cflags += ['-Wno-c++11-narrowing', '-Wno-deprecated-register', '-Wno-writable-strings']
     src = read_file(test_file('third_party/bullet/Demos/Benchmarks/BenchmarkDemo.cpp'))
     src += read_file(test_file('third_party/bullet/Demos/Benchmarks/main.cpp'))
 

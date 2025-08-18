@@ -8,7 +8,7 @@
 // JS program code (INNER_JS_CODE) and wrapping it in a factory function.
 
 #if SOURCE_PHASE_IMPORTS
-import source wasmModule from './{settings.WASM_BINARY_FILE}';
+import source wasmModule from './{{{ WASM_BINARY_FILE }}}';
 #endif
 
 #if ENVIRONMENT_MAY_BE_WEB && !EXPORT_ES6 && !(MINIMAL_RUNTIME && !PTHREADS)
@@ -19,10 +19,10 @@ var {{{ EXPORT_NAME }}} = (() => {
   // after document.currentScript is gone, so we save it.
   // In EXPORT_ES6 mode we can just use 'import.meta.url'.
   var _scriptName = typeof document != 'undefined' ? document.currentScript?.src : undefined;
-  return {{{ asyncIf(WASM_ASYNC_COMPILATION || (EXPORT_ES6 && ENVIRONMENT_MAY_BE_NODE)) }}}function(moduleArg = {}) {
+  return async function(moduleArg = {}) {
     var moduleRtn;
 
-<<< INNER_JS_CODE >>>
+"<<< INNER_JS_CODE >>>"
 
     return moduleRtn;
   };
@@ -30,10 +30,10 @@ var {{{ EXPORT_NAME }}} = (() => {
 #else
 // When targetting node and ES6 we use `await import ..` in the generated code
 // so the outer function needs to be marked as async.
-{{{ asyncIf(WASM_ASYNC_COMPILATION || (EXPORT_ES6 && ENVIRONMENT_MAY_BE_NODE)) }}}function {{{ EXPORT_NAME }}}(moduleArg = {}) {
+async function {{{ EXPORT_NAME }}}(moduleArg = {}) {
   var moduleRtn;
 
-<<< INNER_JS_CODE >>>
+"<<< INNER_JS_CODE >>>"
 
   return moduleRtn;
 }

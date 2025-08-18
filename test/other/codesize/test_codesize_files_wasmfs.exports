@@ -1,3 +1,0 @@
-p (memory)
-q (__wasm_call_ctors)
-r (main)

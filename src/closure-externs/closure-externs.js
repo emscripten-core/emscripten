@@ -19,12 +19,6 @@ var EMSCRIPTEN$AWAIT;
 // Don't minify createRequire
 var createRequire;
 
-// Don't minify startWorker which we use to start workers once the runtime is ready.
-/**
- * @param {Object} Module
- */
-var startWorker = function(Module) {};
-
 // Closure externs used by library_sockfs.js
 
 /**
@@ -109,6 +103,10 @@ WebAssembly.Instance.prototype.exports;
  * @type {!ArrayBuffer}
  */
 WebAssembly.Memory.prototype.buffer;
+/**
+ * @returns {ArrayBuffer}
+ */
+WebAssembly.Memory.prototype.toResizableBuffer = function() {};
 /**
  * @type {number}
  */

@@ -116,7 +116,7 @@ var err = (...args) => console.error(...args);
 // compilation is ready. In that callback, call the function run() to start
 // the program.
 function ready() {
-#if MODULARIZE && USE_READY_PROMISE
+#if MODULARIZE
   readyPromiseResolve?.(Module);
 #endif // MODULARIZE
 #if INVOKE_RUN && HAS_MAIN
@@ -127,7 +127,7 @@ function ready() {
 #if PTHREADS
   // This Worker is now ready to host pthreads, tell the main thread we can proceed.
   if (ENVIRONMENT_IS_PTHREAD) {
-    startWorker(Module);
+    startWorker();
   }
 #endif
 }

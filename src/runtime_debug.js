@@ -29,6 +29,10 @@ function dbg(...args) {
 
 #if ASSERTIONS
 
+#if STANDALONE_WASM && !WASM_BIGINT
+err('warning: running JS from STANDALONE_WASM without WASM_BIGINT will fail if a syscall with i64 is used (in standalone mode we cannot legalize syscalls)');
+#endif
+
 // Endianness check
 #if !SUPPORT_BIG_ENDIAN
 (() => {
@@ -67,6 +71,7 @@ function isExportedByForceFilesystem(name) {
   return name === 'FS_createPath' ||
          name === 'FS_createDataFile' ||
          name === 'FS_createPreloadedFile' ||
+         name === 'FS_preloadFile' ||
          name === 'FS_unlink' ||
          name === 'addRunDependency' ||
 #if !WASMFS

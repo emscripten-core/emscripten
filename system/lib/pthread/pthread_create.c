@@ -312,9 +312,28 @@ void _emscripten_thread_exit(void* result) {
   // Call into the musl function that runs destructors of all thread-specific data.
   __pthread_tsd_run_dtors();
 
-  if (!--libc.threads_minus_1) libc.need_locks = 0;
-
   __tl_lock();
+
+  /* Process robust list in userspace to handle non-pshared mutexes
+   * and the detached thread case where the robust list head will
+   * be invalid when the kernel would process it. */
+  __vm_lock();
+  volatile void *volatile *rp;
+  while ((rp=self->robust_list.head) && rp != &self->robust_list.head) {
+    pthread_mutex_t *m = (void *)((char *)rp
+      - offsetof(pthread_mutex_t, _m_next));
+    int waiters = m->_m_waiters;
+    int priv = (m->_m_type & 128) ^ 128;
+    self->robust_list.pending = rp;
+    self->robust_list.head = *rp;
+    int cont = a_swap(&m->_m_lock, 0x40000000);
+    self->robust_list.pending = 0;
+    if (cont < 0 || waiters)
+      __wake(&m->_m_lock, 1, priv);
+  }
+  __vm_unlock();
+
+  if (!--libc.threads_minus_1) libc.need_locks = 0;
 
   self->next->prev = self->prev;
   self->prev->next = self->next;

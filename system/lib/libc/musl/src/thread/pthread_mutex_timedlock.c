@@ -1,5 +1,9 @@
 #include "pthread_impl.h"
 
+#ifdef __EMSCRIPTEN__
+#include <assert.h>
+#endif
+
 #ifndef __EMSCRIPTEN__
 #define IS32BIT(x) !((x)+0x80000000ULL>>32)
 #define CLAMP(x) (int)(IS32BIT(x) ? (x) : 0x7fffffffU+((0ULL+(x))>>63))
@@ -57,9 +61,12 @@ static int pthread_mutex_timedlock_pi(pthread_mutex_t *restrict m, const struct 
 
 int __pthread_mutex_timedlock(pthread_mutex_t *restrict m, const struct timespec *restrict at)
 {
+#if !defined(__EMSCRIPTEN__) || defined(NDEBUG)
+	/* XXX EMSCRIPTEN always take the slow path in debug builds so we can trap rather than deadlock */
 	if ((m->_m_type&15) == PTHREAD_MUTEX_NORMAL
 	    && !a_cas(&m->_m_lock, 0, EBUSY))
 		return 0;
+#endif
 
 	int type = m->_m_type;
 	int r, t, priv = (type & 128) ^ 128;
@@ -82,6 +89,11 @@ int __pthread_mutex_timedlock(pthread_mutex_t *restrict m, const struct timespec
 		if ((type&3) == PTHREAD_MUTEX_ERRORCHECK
 		    && own == __pthread_self()->tid)
 			return EDEADLK;
+#if defined(__EMSCRIPTEN__) && !defined(NDEBUG)
+		// Extra check for deadlock in debug builds, but only if we would block
+		// forever (at == NULL).
+		assert(at || own != __pthread_self()->tid && "pthread mutex deadlock detected");
+#endif
 
 		a_inc(&m->_m_waiters);
 		t = r | 0x80000000;

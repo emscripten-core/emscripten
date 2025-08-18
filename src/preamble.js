@@ -144,7 +144,7 @@ function initRuntime() {
 #endif
 
 #if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return startWorker(Module);
+  if (ENVIRONMENT_IS_PTHREAD) return startWorker();
 #endif
 
 #if STACK_OVERFLOW_CHECK >= 2
@@ -251,32 +251,37 @@ function addRunDependency(id) {
 #endif
 
 #if ASSERTIONS
-  if (id) {
-    assert(!runDependencyTracking[id]);
-    runDependencyTracking[id] = 1;
-    if (runDependencyWatcher === null && typeof setInterval != 'undefined') {
-      // Check for missing dependencies every few seconds
-      runDependencyWatcher = setInterval(() => {
-        if (ABORT) {
-          clearInterval(runDependencyWatcher);
-          runDependencyWatcher = null;
-          return;
+#if RUNTIME_DEBUG
+  dbg('addRunDependency', id);
+#endif
+  assert(id, 'addRunDependency requires an ID')
+  assert(!runDependencyTracking[id]);
+  runDependencyTracking[id] = 1;
+  if (runDependencyWatcher === null && typeof setInterval != 'undefined') {
+    // Check for missing dependencies every few seconds
+    runDependencyWatcher = setInterval(() => {
+      if (ABORT) {
+        clearInterval(runDependencyWatcher);
+        runDependencyWatcher = null;
+        return;
+      }
+      var shown = false;
+      for (var dep in runDependencyTracking) {
+        if (!shown) {
+          shown = true;
+          err('still waiting on run dependencies:');
         }
-        var shown = false;
-        for (var dep in runDependencyTracking) {
-          if (!shown) {
-            shown = true;
-            err('still waiting on run dependencies:');
-          }
-          err(`dependency: ${dep}`);
-        }
-        if (shown) {
-          err('(end of list)');
-        }
-      }, 10000);
-    }
-  } else {
-    err('warning: run dependency added without ID');
+        err(`dependency: ${dep}`);
+      }
+      if (shown) {
+        err('(end of list)');
+      }
+    }, 10000);
+#if ENVIRONMENT_MAY_BE_NODE
+    // Prevent this timer from keeping the runtime alive if nothing
+    // else is.
+    runDependencyWatcher.unref?.()
+#endif
   }
 #endif
 }
@@ -289,12 +294,12 @@ function removeRunDependency(id) {
 #endif
 
 #if ASSERTIONS
-  if (id) {
-    assert(runDependencyTracking[id]);
-    delete runDependencyTracking[id];
-  } else {
-    err('warning: run dependency removed without ID');
-  }
+#if RUNTIME_DEBUG
+  dbg('removeRunDependency', id);
+#endif
+  assert(id, 'removeRunDependency requires an ID');
+  assert(runDependencyTracking[id]);
+  delete runDependencyTracking[id];
 #endif
   if (runDependencies == 0) {
 #if ASSERTIONS
@@ -692,7 +697,11 @@ async function instantiateArrayBuffer(binaryFile, imports) {
 
 async function instantiateAsync(binary, binaryFile, imports) {
 #if !SINGLE_FILE
-  if (!binary && typeof WebAssembly.instantiateStreaming == 'function'
+  if (!binary
+#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || MIN_SAFARI_VERSION < 150000
+      // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
+      && WebAssembly.instantiateStreaming
+#endif
 #if ENVIRONMENT_MAY_BE_WEBVIEW
       // Don't use streaming for file:// delivered objects in a webview, fetch them synchronously.
       && !isFileURI(binaryFile)
@@ -886,11 +895,14 @@ function getWasmImports() {
 #if DECLARE_ASM_MODULE_EXPORTS
     assignWasmExports(wasmExports);
 #endif
+#if WASM_ASYNC_COMPILATION
     removeRunDependency('wasm-instantiate');
+#endif
     return wasmExports;
   }
-  // wait for the pthread pool (if any)
+#if WASM_ASYNC_COMPILATION
   addRunDependency('wasm-instantiate');
+#endif
 
 #if LOAD_SOURCE_MAP
   {{{ runIfMainThread("addRunDependency('source-map');") }}}
@@ -950,14 +962,13 @@ function getWasmImports() {
 
 #if PTHREADS || WASM_WORKERS
   if ({{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
-    return new Promise((resolve) => {
-      wasmModuleReceived = (module) => {
-        // Instantiate from the module posted from the main thread.
-        // We can just use sync instantiation in the worker.
-        var instance = new WebAssembly.Instance(module, getWasmImports());
-        resolve(receiveInstance(instance, module));
-      };
-    });
+    // Instantiate from the module that was recieved via postMessage from
+    // the main thread. We can just use sync instantiation in the worker.
+#if ASSERTIONS
+    assert(wasmModule, "wasmModule should have been received via postMessage");
+#endif
+    var instance = new WebAssembly.Instance(wasmModule, getWasmImports());
+    return receiveInstance(instance, wasmModule);
   }
 #endif
 
@@ -990,7 +1001,7 @@ function getWasmImports() {
 #endif // WASM_ASYNC_COMPILATION
 #endif // SOURCE_PHASE_IMPORTS
 }
-#endif
+#endif // WASM_ESM_INTEGRATION
 
 #if !WASM_BIGINT
 // Globals used by JS i64 conversions (see makeSetValue)

@@ -174,27 +174,26 @@ addToLibrary({
   // Grows the wasm memory to the given byte size, and updates the JS views to
   // it. Returns 1 on success, 0 on error.
   $growMemory: (size) => {
-    var b = wasmMemory.buffer;
-    var pages = ((size - b.byteLength + {{{ WASM_PAGE_SIZE - 1 }}}) / {{{ WASM_PAGE_SIZE }}}) | 0;
+    var oldHeapSize = wasmMemory.buffer.byteLength;
+    var pages = ((size - oldHeapSize + {{{ WASM_PAGE_SIZE - 1 }}}) / {{{ WASM_PAGE_SIZE }}}) | 0;
 #if RUNTIME_DEBUG
-    dbg(`growMemory: ${size} (+${size - b.byteLength} bytes / ${pages} pages)`);
-#endif
-#if MEMORYPROFILER
-    var oldHeapSize = b.byteLength;
+    dbg(`growMemory: ${size} (+${size - oldHeapSize} bytes / ${pages} pages)`);
 #endif
     try {
       // round size grow request up to wasm page size (fixed 64KB per spec)
       wasmMemory.grow({{{ toIndexType('pages') }}}); // .grow() takes a delta compared to the previous size
+#if !GROWABLE_ARRAYBUFFERS
       updateMemoryViews();
+#endif
 #if MEMORYPROFILER
       if (typeof emscriptenMemoryProfiler != 'undefined') {
-        emscriptenMemoryProfiler.onMemoryResize(oldHeapSize, b.byteLength);
+        emscriptenMemoryProfiler.onMemoryResize(oldHeapSize, wasmMemory.buffer.byteLength);
       }
 #endif
       return 1 /*success*/;
     } catch(e) {
 #if ASSERTIONS
-      err(`growMemory: Attempted to grow heap from ${b.byteLength} bytes to ${size} bytes, but got error: ${e}`);
+      err(`growMemory: Attempted to grow heap from ${oldHeapSize} bytes to ${size} bytes, but got error: ${e}`);
 #endif
     }
     // implicit 0 return to save code size (caller will cast "undefined" into 0
@@ -323,6 +322,7 @@ addToLibrary({
 #endif // ALLOW_MEMORY_GROWTH
   },
 
+#if !GROWABLE_ARRAYBUFFERS
   // Called after wasm grows memory. At that time we need to update the views.
   // Without this notification, we'd need to check the buffer in JS every time
   // we return from any wasm, which adds overhead. See
@@ -333,6 +333,7 @@ addToLibrary({
 #endif
     updateMemoryViews();
   },
+#endif
 
   _emscripten_system: (command) => {
 #if ENVIRONMENT_MAY_BE_NODE
@@ -1734,11 +1735,14 @@ addToLibrary({
     var f = dynCalls[sig];
     return f(ptr, ...args);
   },
-#if DYNCALLS
-  $dynCall__deps: ['$dynCallLegacy'],
-#else
-  $dynCall__deps: ['$getWasmTableEntry'],
+  $dynCall__deps: [
+#if DYNCALLS || !WASM_BIGINT
+    '$dynCallLegacy',
 #endif
+#if !DYNCALLS
+    '$getWasmTableEntry',
+#endif
+  ],
 #endif
 
   // Used in library code to get JS function from wasm function pointer.
@@ -2100,6 +2104,14 @@ addToLibrary({
     }
   },
 
+  $asyncLoad: async (url) => {
+    var arrayBuffer = await readAsync(url);
+  #if ASSERTIONS
+    assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
+  #endif
+    return new Uint8Array(arrayBuffer);
+  },
+
 #else // MINIMAL_RUNTIME
   // MINIMAL_RUNTIME doesn't support the runtimeKeepalive stuff
   $callUserCallback: (func) => func(),
@@ -2110,14 +2122,6 @@ addToLibrary({
       x = 'main';
     }
     return x.startsWith('dynCall_') ? x : '_' + x;
-  },
-
-  $asyncLoad: async (url) => {
-    var arrayBuffer = await readAsync(url);
-  #if ASSERTIONS
-    assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
-  #endif
-    return new Uint8Array(arrayBuffer);
   },
 
   $alignMemory: (size, alignment) => {
@@ -2418,7 +2422,7 @@ function wrapSyscallFunction(x, library, isWasi) {
 
   library[x + '__deps'] ??= [];
 
-#if PURE_WASI
+#if PURE_WASI && !GROWABLE_ARRAYBUFFERS
   // In PURE_WASI mode we can't assume the wasm binary was built by emscripten
   // and politely notify us on memory growth.  Instead we have to check for
   // possible memory growth on each syscall.

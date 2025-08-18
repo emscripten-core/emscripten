@@ -6,37 +6,49 @@
 
 // === Auto-generated postamble setup entry stuff ===
 #if HAS_MAIN // Only if user is exporting a C main(), we will generate a run() function that can be used to launch main.
-function run() {
-#if MEMORYPROFILER
-  emscriptenMemoryProfiler.onPreloadComplete();
-#endif
-
-  <<< ATMAINS >>>
-#if PROXY_TO_PTHREAD
-  // User requested the PROXY_TO_PTHREAD option, so call a stub main which
-  // pthread_create()s a new thread that will call the user's real main() for
-  // the application.
-  var ret = __emscripten_proxy_main();
-#else
-  var ret = _main();
 
 #if EXIT_RUNTIME
+function exitRuntime(ret) {
   <<< ATEXITS >>>
 #if PTHREADS
   PThread.terminateAllThreads();
 #endif
-
-#endif
-
-#if EXIT_RUNTIME
 
 #if ASSERTIONS
   runtimeExited = true;
 #endif
 
   _proc_exit(ret);
+
+#if STACK_OVERFLOW_CHECK
+  checkStackCookie();
 #endif
-#endif // PROXY_TO_PTHREAD
+}
+#endif
+
+function run() {
+#if MEMORYPROFILER
+  emscriptenMemoryProfiler.onPreloadComplete();
+#endif
+
+  <<< ATMAINS >>>
+
+#if PROXY_TO_PTHREAD
+  // User requested the PROXY_TO_PTHREAD option, so call a stub main which
+  // pthread_create()s a new thread that will call the user's real main() for
+  // the application.
+  __emscripten_proxy_main();
+#elif ASYNCIFY == 2 && EXIT_RUNTIME
+  // In JSPI-enabled build mode, the main() function will return a Promise,
+  // which resolves to the process exit code.
+  _main().then(exitRuntime);
+#elif EXIT_RUNTIME
+  // In regular exitRuntime mode, exit with the given return code from main().
+  exitRuntime(_main());
+#else
+  // Run a persistent (never-exiting) application starting at main().
+  _main();
+#endif 
 
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
@@ -51,7 +63,8 @@ function initRuntime(wasmExports) {
 #endif
 
 #if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return
+  PThread.tlsInitFunctions.push(wasmExports['_emscripten_tls_init']);
+  if (ENVIRONMENT_IS_PTHREAD) return;
 #endif
 
 #if WASM_WORKERS
@@ -64,10 +77,6 @@ function initRuntime(wasmExports) {
   setStackLimits();
 #endif
   writeStackCookie();
-#endif
-
-#if PTHREADS
-  PThread.tlsInitFunctions.push(wasmExports['_emscripten_tls_init']);
 #endif
 
   <<< ATINITS >>>
@@ -91,13 +100,15 @@ Module['wasm'] = base64Decode('<<< WASM_BINARY_DATA >>>');
 var wasmExports;
 #endif
 
-#if PTHREADS
-var wasmModule;
-#endif
-
 #if PTHREADS || WASM_WORKERS
+var wasmModule;
+
 function loadModule() {
   assignWasmImports();
+#endif
+
+#if ASYNCIFY
+Asyncify.instrumentWasmImports(wasmImports);
 #endif
 
 var imports = {
@@ -111,13 +122,17 @@ var imports = {
 
 #if MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
 // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
-#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || MIN_NODE_VERSION < 180100 || MIN_SAFARI_VERSION < 150000
+#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || MIN_SAFARI_VERSION < 150000 || ENVIRONMENT_MAY_BE_NODE
 #if ASSERTIONS && !WASM2JS
 // Module['wasm'] should contain a typed array of the Wasm object data, or a
 // precompiled WebAssembly Module.
 assert(WebAssembly.instantiateStreaming || Module['wasm'], 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM');
 #endif
 (WebAssembly.instantiateStreaming
+#if ENVIRONMENT_MAY_BE_NODE
+  // Node's fetch API cannot be used for local files, so we cannot use instantiateStreaming
+  && !ENVIRONMENT_IS_NODE
+#endif
   ? WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
   : WebAssembly.instantiate(Module['wasm'], imports)).then((output) => {
 #else
@@ -135,10 +150,12 @@ assert(Module['wasm'], 'Must load WebAssembly Module in to variable Module.wasm 
 
 {{{ exportJSSymbols() }}}
 
-WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
+// Add missingProperties supression here because closure compiler doesn't know that
+// WebAssembly.instantiate is polymorphic in its return value.
+WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProperties} */ (output) => {
 #endif
 
-#if !LibraryManager.has('libexports.js')
+#if !LibraryManager.has('libexports.js') && ASYNCIFY != 1
   // If not using the emscripten_get_exported_function() API, keep the
   // `wasmExports` variable in local scope to this instantiate function to save
   // code size.  (otherwise access it without to export it to outer scope)
@@ -149,19 +166,24 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
   // output.module objects. But if Module['wasm'] is an already compiled
   // WebAssembly module, then output is the WebAssembly instance itself.
   // Depending on the build mode, Module['wasm'] can mean a different thing.
-#if MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION || MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION || PTHREADS
-  // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
-#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || MIN_SAFARI_VERSION < 150000 || ENVIRONMENT_MAY_BE_NODE || PTHREADS
-  // In pthreads, Module['wasm'] is an already compiled WebAssembly.Module. In
-  // that case, 'output' is a WebAssembly.Instance.
+#if PTHREADS || WASM_WORKERS
+  // In pthreads and wasm workers, Module['wasm'] is a compiled
+  // WebAssembly.Module. In that case, 'output' is a WebAssembly.Instance.
   // In main thread, Module['wasm'] is either a typed array or a fetch stream.
   // In that case, 'output.instance' is the WebAssembly.Instance.
   wasmExports = (output.instance || output).exports;
-#else
+  // Stash the Wasm module for future worker creation.
+  wasmModule = output.module || Module['wasm'];
+#elif MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION
+  // In MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION mode, Module['wasm'] is the
+  // compiled module so we just get the instance back.
   wasmExports = output.exports;
-#endif
 #else
   wasmExports = output.instance.exports;
+#endif
+
+#if ASYNCIFY
+  wasmExports = Asyncify.instrumentWasmExports(wasmExports);
 #endif
 
 #if MEMORY64 || CAN_ADDRESS_2GB
@@ -215,22 +237,25 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
   <<< ATPRERUNS >>>
 
   initRuntime(wasmExports);
-#if PTHREADS
-  // Export Wasm module for pthread creation to access.
-  wasmModule = output.module || Module['wasm'];
-  PThread.loadWasmModuleToAllWorkers(ready);
+
+#if PTHREADS && PTHREAD_POOL_SIZE
+  var workersReady = PThread.loadWasmModuleToAllWorkers();
+#if PTHREAD_POOL_DELAY_LOAD
+  ready();
+#else
+  workersReady.then(ready);
+#endif
 #else
   ready();
 #endif
 }
 
-#if ASSERTIONS || WASM == 2
+#if WASM == 2
 , (error) => {
 #if ASSERTIONS
   console.error(error);
 #endif
 
-#if WASM == 2
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
   if (typeof location != 'undefined') {
 #endif
@@ -242,9 +267,8 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
   }
 #endif
-#endif // WASM == 2
 }
-#endif // ASSERTIONS || WASM == 2
+#endif // WASM == 2
 );
 
 #if PTHREADS || WASM_WORKERS

@@ -19,6 +19,7 @@ import {
   runInMacroContext,
   pushCurrentFile,
   popCurrentFile,
+  localFile,
   warn,
   srcDir,
 } from './utility.mjs';
@@ -78,6 +79,11 @@ export function preprocess(filename) {
     text = text
       .replace(/\bimport\.meta\b/g, 'EMSCRIPTEN$IMPORT$META')
       .replace(/\bawait import\b/g, 'EMSCRIPTEN$AWAIT$IMPORT');
+  }
+  if (MODULARIZE) {
+    // Same for out use of "top-level-await" which is not actually top level
+    // in the case of MODULARIZE.
+    text = text.replace(/\bawait createWasm\(\)/g, 'EMSCRIPTEN$AWAIT(createWasm())');
   }
   // Remove windows line endings, if any
   text = text.replace(/\r\n/g, '\n');
@@ -921,7 +927,7 @@ function makeModuleReceiveWithVar(localName, moduleName, defaultValue) {
 function makeRemovedFSAssert(fsName) {
   assert(ASSERTIONS);
   const lower = fsName.toLowerCase();
-  if (JS_LIBRARIES.includes(path.resolve(path.join('lib', `lib${lower}.js`)))) return '';
+  if (JS_LIBRARIES.includes(localFile(path.join('lib', `lib${lower}.js`)))) return '';
   return `var ${fsName} = '${fsName} is no longer included by default; build with -l${lower}.js';`;
 }
 
