@@ -308,6 +308,12 @@ class other(RunnerCore):
         funcs.append(name)
     return imports, exports, funcs
 
+  def create_huge_file(self, name, length):
+    f = open(name,"wb")
+    f.seek(length - 1)
+    f.write(b"\0")
+    f.close()
+  
   # Test that running `emcc -v` always works even in the presence of `EMCC_CFLAGS`.
   # This needs to work because many tools run `emcc -v` internally and it should
   # always work even if the user has `EMCC_CFLAGS` set.
@@ -7444,7 +7450,7 @@ int main() {
 
   def test_file_packager_huge(self):
     MESSAGE = 'warning: file packager is creating an asset bundle of 257 MB. this is very large, and browsers might have trouble loading it'
-    create_file('huge.dat', 'a' * (1024 * 1024 * 257))
+    self.create_huge_file('huge.dat', 1024 * 1024 * 257)
     create_file('tiny.dat', 'a')
     err = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'tiny.dat'], stdout=PIPE, stderr=PIPE).stderr
     self.assertNotContained(MESSAGE, err)
@@ -7453,17 +7459,17 @@ int main() {
     self.clear()
 
   def test_file_packager_huge_no_split(self):
-    create_file('huge.dat', 'a' * (1024 * 1024 * 1024))
-    create_file('huge2.dat', 'b' * ((1024 * 1024 * 1024) - 1))
+    self.create_huge_file('huge.dat', 1024 * 1024 * 1024)
+    self.create_huge_file('huge2.dat', (1024 * 1024 * 1024) - 1)
     err = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'huge.dat', '--preload', 'huge2.dat'], stdout=PIPE, stderr=PIPE).stderr
     self.assertContained('warning: file packager is creating an asset bundle of 2047 MB. this is very large, and browsers might have trouble loading it', err)
     self.assertExists('test.data')
     self.assertEqual(os.path.getsize('test.data'), (1024 * 1024 * 1024 * 2) - 1)
     self.clear()
 
-  def test_file_packager_huge_split(self):
-    create_file('huge.dat', 'a' * (1024 * 1024 * 1024))
-    create_file('huge2.dat', 'b' * (1024 * 1024 * 1024))
+  def test_file_packager_huge_split(self):    
+    self.create_huge_file('huge.dat', 1024 * 1024 * 1024)
+    self.create_huge_file('huge2.dat', 1024 * 1024 * 1024)
     err = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'huge.dat', '--preload', 'huge2.dat'], stdout=PIPE, stderr=PIPE).stderr
     self.assertContained('warning: file packager is creating an asset bundle of 1024 MB. this is very large, and browsers might have trouble loading it', err)
     self.assertContained('warning: file packager is splitting bundle into 2 chunks', err)
@@ -7474,8 +7480,8 @@ int main() {
     self.clear()
 
   def test_file_packager_huge_split_metadata(self):
-    create_file('huge.dat', 'a' * (1024 * 1024 * 1024))
-    create_file('huge2.dat', 'b' * (1024 * 1024 * 1024))
+    self.create_huge_file('huge.dat', 1024 * 1024 * 1024)
+    self.create_huge_file('huge2.dat', 1024 * 1024 * 1024)
     err = self.run_process([FILE_PACKAGER, 'test.data', '--separate-metadata', '--js-output=immutable.js', '--preload', 'huge.dat', '--preload', 'huge2.dat'], stdout=PIPE, stderr=PIPE).stderr
     self.assertContained('warning: file packager is creating an asset bundle of 1024 MB. this is very large, and browsers might have trouble loading it', err)
     self.assertContained('warning: file packager is splitting bundle into 2 chunks', err)
@@ -7489,8 +7495,8 @@ int main() {
     self.assertEqual(os.path.getsize('test_1.data'), 1024 * 1024 * 1024)
     self.clear()
 
-  def test_file_packager_huge_split_too_large(self):
-    create_file('huge.dat', 'a' * (2 * 1024 * 1024 * 1024))
+  def test_file_packager_huge_split_too_large(self): 
+    self.create_huge_file('huge.dat', 2 * 1024 * 1024 * 1024)
     proc = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'huge.dat'], check=False, stdout=PIPE, stderr=PIPE)
     self.assertEqual(proc.returncode, 1)
     self.assertContained('error: cannot package file greater than 2047 MB does not exist', proc.stderr)
