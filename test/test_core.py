@@ -7600,7 +7600,7 @@ void* operator new(size_t size) {
     self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]', '--no-entry']
     self.do_runf('embind/test_val_coro.cpp', '34\n')
 
-  def test_embind_val_coro_propogate_cpp_exception(self):
+  def test_embind_val_coro_propagate_cpp_exception(self):
     self.set_setting('EXCEPTION_STACK_TRACES')
     create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
       Module.throwingCoro().then(
@@ -7611,7 +7611,7 @@ void* operator new(size_t size) {
     self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fexceptions', '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]', '--no-entry']
     self.do_runf('embind/test_val_coro.cpp', 'rejected with: std::runtime_error: bang from throwingCoro!\n')
 
-  def test_embind_val_coro_propogate_js_error(self):
+  def test_embind_val_coro_propagate_js_error(self):
     self.set_setting('EXCEPTION_STACK_TRACES')
     create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
       Module.failingPromise().then(
@@ -7619,7 +7619,7 @@ void* operator new(size_t size) {
         err => console.error(`rejected with: ${err.message}`)
       );
     }''')
-    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fexceptions']
+    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fexceptions', '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]', '--no-entry']
     self.do_runf('embind/test_val_coro.cpp', 'rejected with: bang from JS promise!\n')
 
   def test_embind_dynamic_initialization(self):
@@ -7776,7 +7776,7 @@ void* operator new(size_t size) {
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.set_setting('PTHREAD_POOL_DELAY_LOAD', 1)
     self.set_setting('PTHREAD_POOL_SIZE', 1)
-    self.cflags += ['-lembind', '--post-js=' + test_file('core/pthread/test_embind_sync_if_pthread_delayed.post.js')]
+    self.cflags += ['-lembind', '--post-js=' + test_file('core/pthread/test_embind_sync_if_pthread_delayed.post.js'), '--no-entry']
     self.do_core_test('pthread/test_embind_sync_if_pthread_delayed.cpp')
 
   ### Tests for tools
