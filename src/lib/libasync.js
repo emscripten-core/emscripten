@@ -551,10 +551,8 @@ addToLibrary({
   emscripten_lazy_load_code: () => Asyncify.handleSleep((wakeUp) => {
     // Update the expected wasm binary file to be the lazy one.
     wasmBinaryFile += '.lazy.wasm';
-    // Add a callback for when all run dependencies are fulfilled, which happens when async wasm loading is done.
-    dependenciesFulfilled = wakeUp;
-    // Load the new wasm.
-    createWasm();
+    // Load the new wasm. The resulting Promise will resolve once the async loading is done.
+    createWasm().then(() => wakeUp());
   }),
 #endif
 

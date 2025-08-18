@@ -751,24 +751,26 @@ If manually bisecting:
     self.run_browser('test.html', '/report_result?exit:0')
 
   def test_missing_data_throws_error(self):
+    create_file('data.txt', 'data')
+    create_file('main.c', r'''
+      #include <stdio.h>
+      #include <string.h>
+      #include <emscripten.h>
+      int main() {
+        // This code should never be executed in terms of missing required dependency file.
+        return 0;
+      }
+    ''')
+
     def setup(assetLocalization):
-      self.clear()
-      create_file('data.txt', 'data')
-      create_file('main.c', r'''
-        #include <stdio.h>
-        #include <string.h>
-        #include <emscripten.h>
-        int main() {
-          // This code should never be executed in terms of missing required dependency file.
-          return 0;
-        }
-      ''')
       create_file('on_window_error_shell.html', r'''
       <html>
+        <body>
           <center><canvas id='canvas' width='256' height='256'></canvas></center>
           <hr><div id='output'></div><hr>
           <script type='text/javascript'>
-            const handler = async (event) => {
+            const errorHandler = async (event) => {
+              if (window.disableErrorReporting) return;
               event.stopImmediatePropagation();
               const error = String(event instanceof ErrorEvent ? event.message : (event.reason || event));
               window.disableErrorReporting = true;
@@ -777,14 +779,20 @@ If manually bisecting:
               await fetch('http://localhost:8888/report_result?' + result);
               window.close();
             }
-            window.addEventListener('error', handler);
-            window.addEventListener('unhandledrejection', handler);
+            window.addEventListener('error', errorHandler);
+            window.addEventListener('unhandledrejection', errorHandler);
+            const outputElem = document.getElementById('output');
             var Module = {
-              locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "''' + assetLocalization + r'''" + path;}},
-              print: (function() {
-                var element = document.getElementById('output');
-                return function(text) { element.innerHTML += text.replace('\n', '<br>', 'g') + '<br>';};
-              })(),
+              locateFile: (path, prefix) => {
+                if (path.endsWith('.wasm')) {
+                  return prefix + path;
+                } else {
+                  return "''' + assetLocalization + r'''" + path;
+                }
+              },
+              print: () => {
+                outputElem.innerHTML += text.replace('\n', '<br>', 'g') + '<br>';
+              },
               canvas: document.getElementById('canvas')
             };
           </script>
@@ -792,24 +800,21 @@ If manually bisecting:
         </body>
       </html>''')
 
-    def test():
-      # test test missing file should run xhr.onload with status different than 200, 304 or 206
-      setup("")
-      self.compile_btest('main.c', ['--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html'])
-      shutil.move('test.data', 'missing.data')
-      self.run_browser('test.html', '/report_result?1')
+    # test test missing file should run xhr.onload with status different than 200, 304 or 206
+    setup("")
+    self.compile_btest('main.c', ['--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html'])
+    shutil.move('test.data', 'missing.data')
+    self.run_browser('test.html', '/report_result?1')
 
-      # test unknown protocol should go through xhr.onerror
-      setup("unknown_protocol://")
-      self.compile_btest('main.c', ['--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html'])
-      self.run_browser('test.html', '/report_result?1')
+    # test unknown protocol should go through xhr.onerror
+    setup("unknown_protocol://")
+    self.compile_btest('main.c', ['--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html'])
+    self.run_browser('test.html', '/report_result?1')
 
-      # test wrong protocol and port
-      setup("https://localhost:8800/")
-      self.compile_btest('main.c', ['--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html'])
-      self.run_browser('test.html', '/report_result?1')
-
-    test()
+    # test wrong protocol and port
+    setup("https://localhost:8800/")
+    self.compile_btest('main.c', ['--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html'])
+    self.run_browser('test.html', '/report_result?1')
 
     # TODO: CORS, test using a full url for locateFile
     # create_file('shell.html', read_file(path_from_root('src/shell.html')).replace('var Module = {', 'var Module = { locateFile: function (path) {return "http:/localhost:8888/cdn/" + path;}, '))
@@ -3232,7 +3237,6 @@ Module["preRun"] = () => {
     '': (['-sUSE_SDL=2', '-sUSE_SDL_MIXER=2'],),
     'dash_l': (['-lSDL2', '-lSDL2_mixer'],),
   })
-  @no_wasm64('https://github.com/libsdl-org/SDL/pull/12332')
   @requires_sound_hardware
   def test_sdl2_mixer_wav(self, flags):
     shutil.copy(test_file('sounds/the_entertainer.wav'), 'sound.wav')
@@ -3246,7 +3250,6 @@ Module["preRun"] = () => {
     # TODO: need to source freepats.cfg and a midi file
     # 'mod': (['mid'],    'MIX_INIT_MID', 'midi.mid'),
   })
-  @no_wasm64('https://github.com/libsdl-org/SDL/pull/12332')
   @requires_sound_hardware
   def test_sdl2_mixer_music(self, formats, flags, music_name):
     shutil.copy(test_file('sounds', music_name), '.')
@@ -3293,8 +3296,10 @@ Module["preRun"] = () => {
 
   @parameterized({
     'asyncify': (['-sASYNCIFY=1'],),
+    'asyncify_minimal_runtime': (['-sMINIMAL_RUNTIME', '-sASYNCIFY=1'],),
     'jspi': (['-sASYNCIFY=2', '-Wno-experimental'],),
     'jspi_wasm_bigint': (['-sASYNCIFY=2', '-sWASM_BIGINT', '-Wno-experimental'],),
+    'jspi_wasm_bigint_minimal_runtime': (['-sMINIMAL_RUNTIME', '-sASYNCIFY=2', '-sWASM_BIGINT', '-Wno-experimental'],),
   })
   def test_async(self, args):
     if is_jspi(args) and not is_chrome():
@@ -5091,6 +5096,9 @@ Module["preRun"] = () => {
   @also_with_minimal_runtime
   def test_wasm_worker_hello(self):
     self.btest_exit('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS', '-sENVIRONMENT=web'])
+
+  def test_wasm_worker_hello_export_es6(self):
+    self.btest_exit('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS', '-sENVIRONMENT=web', '-sEXPORT_ES6'])
 
   def test_wasm_worker_hello_minimal_runtime_2(self):
     self.btest_exit('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS', '-sMINIMAL_RUNTIME=2'])

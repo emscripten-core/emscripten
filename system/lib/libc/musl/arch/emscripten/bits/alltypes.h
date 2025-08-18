@@ -93,18 +93,6 @@ typedef struct { union { int __i[10]; volatile int __vi[10]; unsigned long __s[1
 #endif
 
 
-// TODO(kleisauke): Remove these two typedefs.
-#if defined(__NEED_pthread_mutex_t) && !defined(__DEFINED_pthread_mutex_t)
-typedef struct { union { int __i[6]; volatile int __vi[6]; volatile void * /*volatile*/__p[6]; } __u; } pthread_mutex_t;
-#define __DEFINED_pthread_mutex_t
-#endif
-
-#if defined(__NEED_mtx_t) && !defined(__DEFINED_mtx_t)
-typedef struct { union { int __i[6]; volatile int __vi[6]; volatile void * /*volatile*/__p[6]; } __u; } mtx_t;
-#define __DEFINED_mtx_t
-#endif
-
-
 // END EMSCRIPTEN-SPECIFIC DEFINITIONS
 //
 // Below here are the shared musl definitions.  The emscripten-specific definitions above will take precedence

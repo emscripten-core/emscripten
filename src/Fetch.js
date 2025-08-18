@@ -18,56 +18,55 @@ var Fetch = {
   // dbInstance: undefined,
 
 #if FETCH_SUPPORT_INDEXEDDB
-  // Be cautious that `onerror` may be run synchronously
-  openDatabase(dbname, dbversion, onsuccess, onerror) {
-    try {
+  async openDatabase(dbname, dbversion) {
+    return new Promise((resolve, reject) => {
+      try {
 #if FETCH_DEBUG
-      dbg(`fetch: indexedDB.open(dbname="${dbname}", dbversion="${dbversion}");`);
+        dbg(`fetch: indexedDB.open(dbname="${dbname}", dbversion="${dbversion}");`);
 #endif
-      var openRequest = indexedDB.open(dbname, dbversion);
-    } catch (e) {
-      return onerror(e);
-    }
-
-    openRequest.onupgradeneeded = (event) => {
-#if FETCH_DEBUG
-      dbg('fetch: IndexedDB upgrade needed. Clearing database.');
-#endif
-      var db = /** @type {IDBDatabase} */ (event.target.result);
-      if (db.objectStoreNames.contains('FILES')) {
-        db.deleteObjectStore('FILES');
+        var openRequest = indexedDB.open(dbname, dbversion);
+      } catch (e) {
+        return reject(e);
       }
-      db.createObjectStore('FILES');
-    };
-    openRequest.onsuccess = (event) => onsuccess(event.target.result);
-    openRequest.onerror = onerror;
+
+      openRequest.onupgradeneeded = (event) => {
+#if FETCH_DEBUG
+        dbg('fetch: IndexedDB upgrade needed. Clearing database.');
+#endif
+        var db = /** @type {IDBDatabase} */ (event.target.result);
+        if (db.objectStoreNames.contains('FILES')) {
+          db.deleteObjectStore('FILES');
+        }
+        db.createObjectStore('FILES');
+      };
+      openRequest.onsuccess = (event) => resolve(event.target.result);
+      openRequest.onerror = reject;
+    });
   },
 #endif
 
-  init() {
+  async init() {
     Fetch.xhrs = new HandleAllocator();
 #if FETCH_SUPPORT_INDEXEDDB
 #if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) return;
 #endif
-    var onsuccess = (db) => {
+
+    addRunDependency('library_fetch_init');
+    try {
+      var db = await Fetch.openDatabase('emscripten_filesystem', 1);
 #if FETCH_DEBUG
       dbg('fetch: IndexedDB successfully opened.');
 #endif
       Fetch.dbInstance = db;
-      removeRunDependency('library_fetch_init');
-    };
-
-    var onerror = () => {
+    } catch (e) {
 #if FETCH_DEBUG
       dbg('fetch: IndexedDB open failed.');
 #endif
       Fetch.dbInstance = false;
+    } finally {
       removeRunDependency('library_fetch_init');
-    };
-
-    addRunDependency('library_fetch_init');
-    Fetch.openDatabase('emscripten_filesystem', 1, onsuccess, onerror);
+    }
 #endif // ~FETCH_SUPPORT_INDEXEDDB
   }
 }

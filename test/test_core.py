@@ -7771,7 +7771,7 @@ void* operator new(size_t size) {
   # PTHREAD_POOL_DELAY_LOAD=1 adds a pthreadPoolReady promise that users
   # can wait on for pthread initialization.
   @node_pthreads
-  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_ASYNC_COMPILATION')
+  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_ASYNC_COMPILATION=0')
   def test_embind_sync_if_pthread_delayed(self):
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.set_setting('PTHREAD_POOL_DELAY_LOAD', 1)
@@ -9163,11 +9163,17 @@ NODEFS is no longer included by default; build with -lnodefs.js
   # Test is disabled on standalone because of flakes, see
   # https://github.com/emscripten-core/emscripten/issues/18405
   # @also_with_standalone_wasm(impure=True)
+  @parameterized({
+    '': ([],),
+    'sync_instantiation': (['-sWASM_ASYNC_COMPILATION=0'],),
+  })
   @node_pthreads
-  def test_pthread_create(self):
+  def test_pthread_create(self, args):
+    if self.get_setting('WASM_ESM_INTEGRATION') and '-sWASM_ASYNC_COMPILATION=0' in args:
+      self.skipTest('WASM_ESM_INTEGRATION is not compatible with WASM_ASYNC_COMPILATION=0')
     self.set_setting('ENVIRONMENT', 'node')
     self.set_setting('STRICT')
-    self.do_core_test('pthread/create.c')
+    self.do_core_test('pthread/create.c', cflags=args)
 
   @node_pthreads
   @parameterized({

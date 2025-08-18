@@ -18,8 +18,18 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.13 (in development)
+4.0.14 (in development)
 -----------------------
+
+4.0.13 - 08/14/25
+-----------------
+- The `handle` callback on the `preloadPlugins` used by `--use-preload-plugins`
+  (and `FS_createPreloadedFile` API`) was converted from callbacks to async.
+  Any externally managed plugins would need to be updated accordingly.  An
+  assertion will detect any such non-async plugins in the wild. (#24914)
+- SDL2 updated from 2.32.0 to 2.32.8. (#24912/)
+- `sdl-config` and `sdl2-config` scripts were simplified to avoid using python
+  and the `.bat` file versions were removed, matching upstream SDL. (#24907)
 - The `addRunDependency`/`removeRunDependency` now assert in debug builds if
   they are not passed an `id` parameter.  We have been issuing warnings in
   this case since 2012 (f67ad60), so it seems highly unlikely anyone is not
@@ -38,6 +48,8 @@ See docs/process.md for more on how version tagging works.
 - emcc will now error if `MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION` or
   `MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION` are used with `SINGLE_FILE`.
   These are fundamentally incompatible but were previously ignored. (#24849)
+- `--export-es6` flag was added to `file_packager.py` available when run 
+  standalone, to enable ES6 imports of generated JavaScript code (#24737)
 
 4.0.12 - 08/01/25
 -----------------

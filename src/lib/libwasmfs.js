@@ -33,6 +33,7 @@ addToLibrary({
     '$readI53FromU64',
     '$FS_createDataFile',
     '$FS_createPreloadedFile',
+    '$FS_preloadFile',
     '$FS_getMode',
     // For FS.readFile
     '$UTF8ArrayToString',
@@ -115,6 +116,10 @@ addToLibrary({
 
     createPreloadedFile(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) {
       return FS_createPreloadedFile(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish);
+    },
+
+    async preloadFile(parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish) {
+      return FS_preloadFile(parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish);
     },
 
 #if hasExportedSymbol('_wasmfs_read_file') // Support the JS function exactly

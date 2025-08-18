@@ -13,7 +13,14 @@
 #endif
 
 #if SHARED_MEMORY && ALLOW_MEMORY_GROWTH && !GROWABLE_ARRAYBUFFERS
-#include "growableHeap.js"
+// Support for growable heap + pthreads, where the buffer may change, so JS views
+// must be updated.
+function growMemViews() {
+  // `updateMemoryViews` updates all the views simultaneously, so it's enough to check any of them.
+  if (wasmMemory.buffer != HEAP8.buffer) {
+    updateMemoryViews();
+  }
+}
 #endif
 
 #if USE_ASAN
@@ -24,12 +31,7 @@
 var readyPromiseResolve, readyPromiseReject;
 #endif
 
-#if PTHREADS || WASM_WORKERS
-#if !MINIMAL_RUNTIME
-var wasmModuleReceived;
-#endif
-
-#if ENVIRONMENT_MAY_BE_NODE && !WASM_ESM_INTEGRATION
+#if (PTHREADS || WASM_WORKERS) && (ENVIRONMENT_MAY_BE_NODE && !WASM_ESM_INTEGRATION)
 if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
   // Create as web-worker-like an environment as we can.
   var parentPort = worker_threads['parentPort'];
@@ -39,8 +41,7 @@ if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
     postMessage: (msg) => parentPort['postMessage'](msg),
   });
 }
-#endif // ENVIRONMENT_MAY_BE_NODE && !WASM_ESM_INTEGRATION
-#endif
+#endif // (PTHREADS || WASM_WORKERS) && (ENVIRONMENT_MAY_BE_NODE && !WASM_ESM_INTEGRATION)
 
 #if PTHREADS
 #include "runtime_pthread.js"

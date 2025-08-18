@@ -6,7 +6,6 @@
 
 var LibraryFS = {
   $FS__deps: ['$randomFill', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
-    '$FS_createPreloadedFile',
     '$FS_modeStringToFlags',
     '$FS_getMode',
     '$intArrayFromString',
@@ -28,6 +27,9 @@ var LibraryFS = {
 #if ASSERTIONS
     '$strError', '$ERRNO_CODES',
 #endif
+#if !MINIMAL_RUNTIME
+    '$FS_createPreloadedFile',
+#endif
   ],
   $FS__postset: () => {
     // TODO: do we need noFSInit?
@@ -35,7 +37,10 @@ var LibraryFS = {
     addAtPostCtor('FS.ignorePermissions = false;');
     addAtExit('FS.quit();');
     return `
+#if !MINIMAL_RUNTIME
 FS.createPreloadedFile = FS_createPreloadedFile;
+FS.preloadFile = FS_preloadFile;
+#endif
 FS.staticInit();`;
   },
   $FS: {

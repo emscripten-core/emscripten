@@ -122,7 +122,13 @@ if (ENVIRONMENT_IS_PTHREAD) {
         Module['wasm'] = msgData.wasmModule;
         loadModule();
 #else
-        wasmModuleReceived(msgData.wasmModule);
+        wasmModule = msgData.wasmModule;
+#if MODULARIZE == 'instance'
+        init();
+#else
+        createWasm();
+        run();
+#endif
 #endif // MINIMAL_RUNTIME
 #endif
       } else if (cmd === 'run') {

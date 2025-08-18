@@ -341,6 +341,7 @@ function isExportedByForceFilesystem(name) {
   return name === 'FS_createPath' ||
          name === 'FS_createDataFile' ||
          name === 'FS_createPreloadedFile' ||
+         name === 'FS_preloadFile' ||
          name === 'FS_unlink' ||
          name === 'addRunDependency' ||
          // The old FS has some functionality that WasmFS lacks.
@@ -718,7 +719,6 @@ async function createWasm() {
     removeRunDependency('wasm-instantiate');
     return wasmExports;
   }
-  // wait for the pthread pool (if any)
   addRunDependency('wasm-instantiate');
 
   // Prefer streaming instantiation if available.
@@ -903,8 +903,8 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'runtimeKeepalivePop',
   'callUserCallback',
   'maybeExit',
-  'asmjsMangle',
   'asyncLoad',
+  'asmjsMangle',
   'alignMemory',
   'mmapAlloc',
   'HandleAllocator',
@@ -1014,6 +1014,7 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'getSocketFromFD',
   'getSocketAddress',
   'FS_createPreloadedFile',
+  'FS_preloadFile',
   'FS_modeStringToFlags',
   'FS_getMode',
   'FS_stdin_getChar',
@@ -1302,12 +1303,16 @@ function assignWasmExports(wasmExports) {
 var _global_val = Module['_global_val'] = 65536;var wasmImports = {
   
 };
-var wasmExports;
-createWasm();
 
 
 // include: postamble.js
 // === Auto-generated postamble setup entry stuff ===
+
+var wasmExports;
+
+// With async instantation wasmExports is assigned asynchronously when the
+// instance is received.
+createWasm();
 
 var calledRun;
 

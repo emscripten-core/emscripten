@@ -6,6 +6,38 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
+var wasmExports;
+
+#if MODULARIZE != 'instance'
+
+#if WASM_WORKERS || PTHREADS
+if ({{{ ENVIRONMENT_IS_MAIN_THREAD() }}}) {
+// Call createWasm on startup if we are the main thread.
+// Worker threads call this once they receive the module via postMessage
+#endif
+
+#if WASM_ASYNC_COMPILATION
+
+#if MODULARIZE
+// In modularize mode the generated code is within a factory function so we
+// can use await here (since it's not top-level-await).
+wasmExports = await createWasm();
+#else
+// With async instantation wasmExports is assigned asynchronously when the
+// instance is received.
+createWasm();
+#endif
+
+#else
+wasmExports = createWasm();
+#endif
+
+#if WASM_WORKERS || PTHREADS
+}
+#endif
+
+#endif // MODULARIZE != 'instance'
+
 #if PROXY_TO_WORKER
 if (ENVIRONMENT_IS_WORKER) {
 #include "webGLWorker.js'
@@ -321,11 +353,6 @@ export default async function init(moduleArg = {}) {
   run();
 }
 
-#if (WASM_WORKERS || PTHREADS) && !WASM_ESM_INTEGRATION
-// When run as a worker thread run `init` immediately.
-if ({{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) await init()
-#endif
-
 #if ENVIRONMENT_MAY_BE_NODE
 // When run as the main script under node we run `init` immediately.
 if (ENVIRONMENT_IS_NODE
@@ -347,10 +374,12 @@ if (ENVIRONMENT_IS_SHELL) {
 }
 #endif
 
-#else
+#else // MODULARIZE=instance
+
 preInit();
-run();
-#endif
+{{{ runIfMainThread('run();') }}}
+
+#endif // MODULARIZE=instance
 
 #if BUILD_AS_WORKER
 
@@ -406,8 +435,4 @@ var workerResponded = false, workerCallbackId = -1;
   }
 })();
 
-#endif
-
-#if STANDALONE_WASM && ASSERTIONS && !WASM_BIGINT
-err('warning: running JS from STANDALONE_WASM without WASM_BIGINT will fail if a syscall with i64 is used (in standalone mode we cannot legalize syscalls)');
 #endif
