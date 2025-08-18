@@ -6332,7 +6332,7 @@ PORT: 3979
   @with_env_modify({'LC_ALL': 'latin-1', 'PYTHONUTF8': '0', 'PYTHONCOERCECLOCALE': '0'})
   @crossplatform
   @no_modularize_instance('uses MODULARIZE')
-  @no_strict_js('This test verifies behavior in MODULARIZE mode, and STRICT_JS is not compatible with MODULARIZE')
+  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   def test_unicode_js_library(self):
     # First verify that we have correct overridden the default python file encoding.
     # The follow program should fail, assuming the above LC_CTYPE + PYTHONUTF8
@@ -8027,7 +8027,7 @@ void* operator new(size_t size) {
       self.assertLessEqual(dwarf_addr, end_wat_addr)
 
   @no_modularize_instance('uses -sMODULARIZE')
-  @no_strict_js('This test verifies behavior in MODULARIZE mode, and STRICT_JS is not compatible with MODULARIZE')
+  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   def test_modularize_closure_pre(self):
     # test that the combination of modularize + closure + pre-js works. in that mode,
     # closure should not minify the Module object in a way that the pre-js cannot use it.
@@ -9078,7 +9078,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('test_asan_api.c')
 
   @asan
-  @no_strict_js('This test verifies behavior in MODULARIZE mode, and STRICT_JS is not compatible with MODULARIZE')
+  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   def test_asan_modularized_with_closure(self):
     # the bug is that createModule() returns undefined, instead of the
     # proper Promise object.
@@ -9739,7 +9739,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertContained('hello, world! (3)', self.run_js('runner.mjs'))
     self.assertFileContents(test_file('core/test_esm_integration.expected.mjs'), read_file('hello_world.mjs'))
 
-  @no_strict_js('This test verifies behavior in MODULARIZE mode, and STRICT_JS is not compatible with MODULARIZE')
+  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   def test_modularize_instance_hello(self):
     self.do_core_test('test_hello_world.c', cflags=['-sMODULARIZE=instance', '-Wno-experimental'])
 
@@ -9747,7 +9747,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     '': ([],),
     'pthreads': (['-pthread'],),
   })
-  @no_strict_js('This test verifies behavior in MODULARIZE mode, and STRICT_JS is not compatible with MODULARIZE')
+  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   def test_modularize_instance(self, args):
     if args:
       self.setup_node_pthreads()
@@ -9782,7 +9782,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
 
   @no_4gb('EMBIND_AOT can\'t lower 4gb')
-  @no_strict_js('This test verifies behavior in MODULARIZE mode, and STRICT_JS is not compatible with MODULARIZE')
+  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   def test_modularize_instance_embind(self):
     self.run_process([EMXX, test_file('modularize_instance_embind.cpp'),
                       '-sMODULARIZE=instance',
