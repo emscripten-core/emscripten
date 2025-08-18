@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+EM_JS_DEPS(deps, "$UTF8ToString");
+
 EM_JS(void, noarg, (void), { out("no args works"); });
 EM_JS(int, noarg_int, (void), {
   out("no args returning int");

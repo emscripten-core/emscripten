@@ -6,6 +6,8 @@
 #include <emscripten.h>
 #include <stdio.h>
 
+EM_JS_DEPS(deps, "$UTF8ToString");
+
 int main() {
   printf("EM_ASM: Simple expression without trailing semicolon\n");
   EM_ASM(out('1. expression without trailing semicolon'));
