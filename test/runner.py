@@ -276,8 +276,16 @@ def create_test_run_sorter(failfast):
 
   def read_approx_fail_freq(test_name):
     if test_name in previous_test_run_results and 'fail_frequency' in previous_test_run_results[test_name]:
-      # Quantize the float value to relatively fine-grained buckets for sorting
-      return round(previous_test_run_results[test_name]['fail_frequency'] * 20) / 20
+      # Quantize the float value to relatively fine-grained buckets for sorting.
+      # This bucketization is needed to merge two competing sorting goals: we may
+      # want to fail early (so tests with previous history of failures should sort first)
+      # but we also want to run the slowest tests first.
+      # We cannot sort for both goals at the same time, so have failure frequency
+      # take priority over test runtime, and quantize the failures to distinct
+      # frequencies, to be able to then sort by test runtime inside the same failure
+      # frequency bucket.
+      NUM_BUCKETS = 20
+      return round(previous_test_run_results[test_name]['fail_frequency'] * NUM_BUCKETS) / NUM_BUCKETS
     return 0
 
   def sort_tests_failing_and_slowest_first_comparator(x, y):
