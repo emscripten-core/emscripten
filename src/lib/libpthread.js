@@ -355,9 +355,6 @@ var LibraryPThread = {
 #if LOAD_SOURCE_MAP
         wasmSourceMap,
 #endif
-#if USE_OFFSET_CONVERTER
-        wasmOffsetConverter,
-#endif
 #if MAIN_MODULE
         dynamicLibraries,
         // Share all modules that have been loaded so far.  New workers

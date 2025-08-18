@@ -43,7 +43,6 @@ export default [{
     'src/webGLClient.js',
     'src/webGLWorker.js',
     'src/*_shell_read.js',
-    'src/wasm_offset_converter.js',
     'src/threadprofiler.js',
     'src/cpuprofiler.js',
     'src/memoryprofiler.js',

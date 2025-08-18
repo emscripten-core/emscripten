@@ -8832,10 +8832,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf('test_global_initializer.cpp', 't1 > t0: 1')
 
   @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
-  @no_esm_integration('USE_OFFSET_CONVERTER')
   def test_return_address(self):
-    self.set_setting('USE_OFFSET_CONVERTER')
-    self.do_runf('core/test_return_address.c', 'passed')
+    self.do_runf('core/test_return_address.c', 'passed', cflags=['-g'])
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
   @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
@@ -9278,16 +9276,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
   @also_with_modularize
-  @no_esm_integration('USE_OFFSET_CONVERTER')
-  def test_pthread_offset_converter(self):
+  def test_pthread_return_address(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('USE_OFFSET_CONVERTER')
     if '-sMODULARIZE' in self.cflags:
       self.set_setting('EXPORT_NAME', 'foo')
-    if '-g' in self.cflags:
-      self.cflags += ['-DDEBUG']
-    self.do_runf('core/test_return_address.c', 'passed')
+    self.do_runf('core/test_return_address.c', 'passed', cflags=['-g'])
 
   def test_emscripten_atomics_stub(self):
     self.do_core_test('pthread/emscripten_atomics.c')
