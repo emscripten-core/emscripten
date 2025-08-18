@@ -313,7 +313,7 @@ class other(RunnerCore):
     f.seek(length - 1)
     f.write(b"\0")
     f.close()
-  
+
   # Test that running `emcc -v` always works even in the presence of `EMCC_CFLAGS`.
   # This needs to work because many tools run `emcc -v` internally and it should
   # always work even if the user has `EMCC_CFLAGS` set.
@@ -7467,7 +7467,7 @@ int main() {
     self.assertEqual(os.path.getsize('test.data'), (1024 * 1024 * 1024 * 2) - 1)
     self.clear()
 
-  def test_file_packager_huge_split(self):    
+  def test_file_packager_huge_split(self):
     self.create_huge_file('huge.dat', 1024 * 1024 * 1024)
     self.create_huge_file('huge2.dat', 1024 * 1024 * 1024)
     err = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'huge.dat', '--preload', 'huge2.dat'], stdout=PIPE, stderr=PIPE).stderr
@@ -7495,7 +7495,7 @@ int main() {
     self.assertEqual(os.path.getsize('test_1.data'), 1024 * 1024 * 1024)
     self.clear()
 
-  def test_file_packager_huge_split_too_large(self): 
+  def test_file_packager_huge_split_too_large(self):
     self.create_huge_file('huge.dat', 2 * 1024 * 1024 * 1024)
     proc = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'huge.dat'], check=False, stdout=PIPE, stderr=PIPE)
     self.assertEqual(proc.returncode, 1)
