@@ -6899,7 +6899,7 @@ int main(int argc, char **argv) {
     self.run_process([EMCC,
                       test_file('test_browser_language_detection.c')])
 
-    expected_lang = os.environ.get('LANG', None)
+    expected_lang = os.environ.get('LANG')
     if expected_lang is None:
       # If the LANG env. var doesn't exist (Windows), ask Node for the language.
       try:
