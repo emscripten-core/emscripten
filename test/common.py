@@ -2346,7 +2346,7 @@ class BrowserCore(RunnerCore):
       # and spaces are not escaped. But make sure to also support args, e.g.
       # set EMTEST_BROWSER="C:\Users\clb\AppData\Local\Google\Chrome SxS\Application\chrome.exe" --enable-unsafe-webgpu
       if '"' not in EMTEST_BROWSER and "'" not in EMTEST_BROWSER:
-        EMTEST_BROWSER = f'"{EMTEST_BROWSER.replace("\\", "/")}"'
+        EMTEST_BROWSER = '"' + EMTEST_BROWSER.replace("\\", "/") + '"'
     browser_args = shlex.split(EMTEST_BROWSER)
     logger.info('Launching browser: %s', str(browser_args))
     cls.browser_proc = subprocess.Popen(browser_args + [url])
