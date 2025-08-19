@@ -754,12 +754,12 @@ function getWasmImports() {
 #if DECLARE_ASM_MODULE_EXPORTS
     assignWasmExports(wasmExports);
 #endif
-#if WASM_ASYNC_COMPILATION
+#if WASM_ASYNC_COMPILATION && !MODULARIZE
     removeRunDependency('wasm-instantiate');
 #endif
     return wasmExports;
   }
-#if WASM_ASYNC_COMPILATION
+#if WASM_ASYNC_COMPILATION && !MODULARIZE
   addRunDependency('wasm-instantiate');
 #endif
 

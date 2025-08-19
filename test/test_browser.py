@@ -1355,7 +1355,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
 
   def test_fs_idbfs_fsync(self):
     # sync from persisted state into memory before main()
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall,$addRunDependency')
     create_file('pre.js', '''
       Module.preRun = () => {
         addRunDependency('syncfs');
@@ -2382,6 +2382,7 @@ void *getBindBuffer() {
   @also_with_wasm2js
   def test_pre_run_deps(self):
     # Adding a dependency in preRun will delay run
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency')
     create_file('pre.js', '''
       Module.preRun = () => {
         addRunDependency('foo');
@@ -2600,6 +2601,7 @@ void *getBindBuffer() {
     self.btest('glew.c', cflags=['-lGL', '-lSDL', '-lGLEW', '-sLEGACY_GL_EMULATION', '-DGLEW_MX'], expected='1')
 
   def test_doublestart_bug(self):
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency,$removeRunDependency')
     create_file('pre.js', r'''
 Module["preRun"] = () => {
   addRunDependency('test_run_dependency');
