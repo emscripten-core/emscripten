@@ -683,7 +683,7 @@ def also_with_modularize(f):
   @wraps(f)
   def metafunc(self, modularize, *args, **kwargs):
     if modularize:
-      if '-sWASM_ESM_INTEGRATION':
+      if self.get_setting('WASM_ESM_INTEGRATION'):
         self.skipTest('also_with_modularize is not compatible with WASM_ESM_INTEGRATION')
       self.cflags += ['--extern-post-js', test_file('modularize_post_js.js'), '-sMODULARIZE']
     f(self, *args, **kwargs)
