@@ -9824,7 +9824,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 '''
     self.set_setting('NODERAWFS')
     self.set_setting('EXIT_RUNTIME')
-    self.do_core_test('test_hello_world.c', cflags=['-fprofile-instr-generate', '-fcoverage-mapping', '-g', '-lstubs'])
+    self.do_core_test('test_hello_world.c', cflags=['-fprofile-instr-generate', '-fcoverage-mapping', '-g'])
     self.assertExists('default.profraw')
     self.run_process([LLVM_PROFDATA, 'merge', '-sparse', 'default.profraw', '-o', 'out.profdata'])
     self.assertExists('out.profdata')
