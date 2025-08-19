@@ -1307,12 +1307,6 @@ var _global_val = Module['_global_val'] = 65536;var wasmImports = {
 // include: postamble.js
 // === Auto-generated postamble setup entry stuff ===
 
-var wasmExports;
-
-// With async instantation wasmExports is assigned asynchronously when the
-// instance is received.
-createWasm();
-
 var calledRun;
 
 function stackCheckInit() {
@@ -1394,6 +1388,12 @@ function checkUnflushedContent() {
 
 function preInit() {
 }
+
+var wasmExports;
+
+// With async instantation wasmExports is assigned asynchronously when the
+// instance is received.
+createWasm();
 
 preInit();
 run();

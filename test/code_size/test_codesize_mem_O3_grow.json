@@ -1,9 +1,9 @@
 {
-  "a.out.js": 4681,
+  "a.out.js": 4684,
   "a.out.js.gz": 2267,
   "a.out.nodebug.wasm": 5263,
   "a.out.nodebug.wasm.gz": 2402,
-  "total": 9944,
+  "total": 9947,
   "total_gz": 4669,
   "sent": [
     "a (emscripten_resize_heap)"
