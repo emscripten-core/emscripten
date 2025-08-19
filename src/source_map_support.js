@@ -90,8 +90,12 @@ class WasmSourceMap {
   }
 }
 
-var wasmSourceMapFile = '{{{ WASM_BINARY_FILE }}}.map';
-wasmSourceMapFile = locateFile(wasmSourceMapFile);
+var wasmSourceMap;
+var wasmSourceMapFile = locateFile('{{{ WASM_BINARY_FILE }}}.map');
+
+function receiveSourceMapJSON(sourceMap) {
+  wasmSourceMap = new WasmSourceMap(sourceMap);
+}
 
 function getSourceMap() {
   var buf = readBinary(wasmSourceMapFile);
@@ -109,3 +113,23 @@ async function getSourceMapAsync() {
   }
   return getSourceMap();
 }
+
+
+#if PTHREADS || WASM_WORKERS
+// Source map is received via postMessage on worker threads.
+if ({{{ ENVIRONMENT_IS_MAIN_THREAD() }}}) {
+#endif
+
+#if WASM_ASYNC_COMPILATION
+addRunDependency('source-map');
+getSourceMapAsync().then((json) => {
+  receiveSourceMapJSON(json);
+  removeRunDependency('source-map');
+});
+#else
+receiveSourceMapJSON(getSourceMap());
+#endif
+
+#if PTHREADS || WASM_WORKERS
+}
+#endif

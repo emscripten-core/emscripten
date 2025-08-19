@@ -410,25 +410,6 @@ function instrumentWasmTableWithAbort() {
 }
 #endif
 
-#if LOAD_SOURCE_MAP
-function receiveSourceMapJSON(sourceMap) {
-  wasmSourceMap = new WasmSourceMap(sourceMap);
-  {{{ runIfMainThread("removeRunDependency('source-map');") }}}
-}
-#endif
-
-#if (PTHREADS || WASM_WORKERS) && LOAD_SOURCE_MAP
-// When using postMessage to send an object, it is processed by the structured
-// clone algorithm.  The prototype, and hence methods, on that object is then
-// lost. This function adds back the lost prototype.  This does not work with
-// nested objects that has prototypes, but it suffices for WasmSourceMap and
-// WasmOffsetConverter.
-function resetPrototype(constructor, attrs) {
-  var object = Object.create(constructor.prototype);
-  return Object.assign(object, attrs);
-}
-#endif
-
 #if !SOURCE_PHASE_IMPORTS && !WASM_ESM_INTEGRATION
 var wasmBinaryFile;
 
@@ -557,9 +538,6 @@ function instantiateSync(file, info) {
   module = new WebAssembly.Module(binary);
 #endif // NODE_CODE_CACHING
   var instance = new WebAssembly.Instance(module, info);
-#if LOAD_SOURCE_MAP
-  receiveSourceMapJSON(getSourceMap());
-#endif
   return [instance, module];
 }
 #endif
@@ -785,10 +763,6 @@ function getWasmImports() {
   addRunDependency('wasm-instantiate');
 #endif
 
-#if LOAD_SOURCE_MAP
-  {{{ runIfMainThread("addRunDependency('source-map');") }}}
-#endif
-
   // Prefer streaming instantiation if available.
 #if WASM_ASYNC_COMPILATION
 #if ASSERTIONS
@@ -865,9 +839,6 @@ function getWasmImports() {
 #endif
   var result = await instantiateAsync(wasmBinary, wasmBinaryFile, info);
   var exports = receiveInstantiationResult(result);
-#if LOAD_SOURCE_MAP
-  receiveSourceMapJSON(await getSourceMapAsync());
-#endif
   return exports;
 #else // WASM_ASYNC_COMPILATION
   var result = instantiateSync(wasmBinaryFile, info);
