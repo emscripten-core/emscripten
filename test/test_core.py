@@ -399,6 +399,7 @@ def with_both_text_decoder(f):
 no_minimal_runtime = make_no_decorator_for_setting('MINIMAL_RUNTIME')
 no_safe_heap = make_no_decorator_for_setting('SAFE_HEAP')
 no_strict = make_no_decorator_for_setting('STRICT')
+no_strict_js = make_no_decorator_for_setting('STRICT_JS')
 
 
 def is_sanitizing(args):
@@ -6331,6 +6332,7 @@ PORT: 3979
   @with_env_modify({'LC_ALL': 'latin-1', 'PYTHONUTF8': '0', 'PYTHONCOERCECLOCALE': '0'})
   @crossplatform
   @no_modularize_instance('uses MODULARIZE')
+  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   def test_unicode_js_library(self):
     # First verify that we have correct overridden the default python file encoding.
     # The follow program should fail, assuming the above LC_CTYPE + PYTHONUTF8
@@ -7600,7 +7602,7 @@ void* operator new(size_t size) {
     self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]', '--no-entry']
     self.do_runf('embind/test_val_coro.cpp', '34\n')
 
-  def test_embind_val_coro_propogate_cpp_exception(self):
+  def test_embind_val_coro_propagate_cpp_exception(self):
     self.set_setting('EXCEPTION_STACK_TRACES')
     create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
       Module.throwingCoro().then(
@@ -7611,7 +7613,7 @@ void* operator new(size_t size) {
     self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fexceptions', '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]', '--no-entry']
     self.do_runf('embind/test_val_coro.cpp', 'rejected with: std::runtime_error: bang from throwingCoro!\n')
 
-  def test_embind_val_coro_propogate_js_error(self):
+  def test_embind_val_coro_propagate_js_error(self):
     self.set_setting('EXCEPTION_STACK_TRACES')
     create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
       Module.failingPromise().then(
@@ -7619,7 +7621,7 @@ void* operator new(size_t size) {
         err => console.error(`rejected with: ${err.message}`)
       );
     }''')
-    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fexceptions']
+    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fexceptions', '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]', '--no-entry']
     self.do_runf('embind/test_val_coro.cpp', 'rejected with: bang from JS promise!\n')
 
   def test_embind_dynamic_initialization(self):
@@ -7776,7 +7778,7 @@ void* operator new(size_t size) {
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.set_setting('PTHREAD_POOL_DELAY_LOAD', 1)
     self.set_setting('PTHREAD_POOL_SIZE', 1)
-    self.cflags += ['-lembind', '--post-js=' + test_file('core/pthread/test_embind_sync_if_pthread_delayed.post.js')]
+    self.cflags += ['-lembind', '--post-js=' + test_file('core/pthread/test_embind_sync_if_pthread_delayed.post.js'), '--no-entry']
     self.do_core_test('pthread/test_embind_sync_if_pthread_delayed.cpp')
 
   ### Tests for tools
@@ -8025,6 +8027,7 @@ void* operator new(size_t size) {
       self.assertLessEqual(dwarf_addr, end_wat_addr)
 
   @no_modularize_instance('uses -sMODULARIZE')
+  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   def test_modularize_closure_pre(self):
     # test that the combination of modularize + closure + pre-js works. in that mode,
     # closure should not minify the Module object in a way that the pre-js cannot use it.
@@ -8829,10 +8832,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf('test_global_initializer.cpp', 't1 > t0: 1')
 
   @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
-  @no_esm_integration('USE_OFFSET_CONVERTER')
   def test_return_address(self):
-    self.set_setting('USE_OFFSET_CONVERTER')
-    self.do_runf('core/test_return_address.c', 'passed')
+    self.do_runf('core/test_return_address.c', 'passed', cflags=['-g'])
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
   @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
@@ -9075,6 +9076,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('test_asan_api.c')
 
   @asan
+  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   def test_asan_modularized_with_closure(self):
     # the bug is that createModule() returns undefined, instead of the
     # proper Promise object.
@@ -9274,16 +9276,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
   @also_with_modularize
-  @no_esm_integration('USE_OFFSET_CONVERTER')
-  def test_pthread_offset_converter(self):
+  def test_pthread_return_address(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('USE_OFFSET_CONVERTER')
     if '-sMODULARIZE' in self.cflags:
       self.set_setting('EXPORT_NAME', 'foo')
-    if '-g' in self.cflags:
-      self.cflags += ['-DDEBUG']
-    self.do_runf('core/test_return_address.c', 'passed')
+    self.do_runf('core/test_return_address.c', 'passed', cflags=['-g'])
 
   def test_emscripten_atomics_stub(self):
     self.do_core_test('pthread/emscripten_atomics.c')
@@ -9400,6 +9398,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @needs_dylink
   @node_pthreads
   def test_pthread_dylink_tls(self):
+    if '-O2' in self.cflags and self.get_setting('STACK_OVERFLOW_CHECK') == 2:
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/24964: fails with Aborted(stack overflow (Attempt to set SP to 0x000114d0, with stack limits [0x00000000 - 0x00000000])')
+
     self.cflags += ['-Wno-experimental', '-pthread']
     main = test_file('core/pthread/test_pthread_dylink_tls.c')
     self.dylink_testf(main, main_cflags=['-sPTHREAD_POOL_SIZE=1'])
@@ -9735,6 +9736,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertContained('hello, world! (3)', self.run_js('runner.mjs'))
     self.assertFileContents(test_file('core/test_esm_integration.expected.mjs'), read_file('hello_world.mjs'))
 
+  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   def test_modularize_instance_hello(self):
     self.do_core_test('test_hello_world.c', cflags=['-sMODULARIZE=instance', '-Wno-experimental'])
 
@@ -9742,6 +9744,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     '': ([],),
     'pthreads': (['-pthread'],),
   })
+  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   def test_modularize_instance(self, args):
     if args:
       self.setup_node_pthreads()
@@ -9776,6 +9779,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
 
   @no_4gb('EMBIND_AOT can\'t lower 4gb')
+  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   def test_modularize_instance_embind(self):
     self.run_process([EMXX, test_file('modularize_instance_embind.cpp'),
                       '-sMODULARIZE=instance',

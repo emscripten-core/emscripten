@@ -190,13 +190,6 @@ WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProp
   wasmExports = applySignatureConversions(wasmExports);
 #endif
 
-#if USE_OFFSET_CONVERTER
-#if PTHREADS
-  if (!ENVIRONMENT_IS_PTHREAD)
-#endif
-    wasmOffsetConverter = new WasmOffsetConverter(Module['wasm'], output.module);
-#endif
-
 #if !DECLARE_ASM_MODULE_EXPORTS
   exportWasmSymbols(wasmExports);
 #else

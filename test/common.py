@@ -683,7 +683,7 @@ def also_with_modularize(f):
   @wraps(f)
   def metafunc(self, modularize, *args, **kwargs):
     if modularize:
-      if '-sWASM_ESM_INTEGRATION':
+      if self.get_setting('WASM_ESM_INTEGRATION'):
         self.skipTest('also_with_modularize is not compatible with WASM_ESM_INTEGRATION')
       self.cflags += ['--extern-post-js', test_file('modularize_post_js.js'), '-sMODULARIZE']
     f(self, *args, **kwargs)
@@ -2340,6 +2340,13 @@ class BrowserCore(RunnerCore):
     if not EMTEST_BROWSER:
       logger.info('No EMTEST_BROWSER set. Defaulting to `google-chrome`')
       EMTEST_BROWSER = 'google-chrome'
+    if WINDOWS:
+      # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
+      # set EMTEST_BROWSER=C:\Program Files\Mozilla Firefox\firefox.exe
+      # and spaces are not escaped. But make sure to also support args, e.g.
+      # set EMTEST_BROWSER="C:\Users\clb\AppData\Local\Google\Chrome SxS\Application\chrome.exe" --enable-unsafe-webgpu
+      if '"' not in EMTEST_BROWSER and "'" not in EMTEST_BROWSER:
+        EMTEST_BROWSER = '"' + EMTEST_BROWSER.replace("\\", "/") + '"'
     browser_args = shlex.split(EMTEST_BROWSER)
     logger.info('Launching browser: %s', str(browser_args))
     cls.browser_proc = subprocess.Popen(browser_args + [url])
