@@ -3053,16 +3053,6 @@ future release.
 
 Default value: -1
 
-.. _load_source_map:
-
-LOAD_SOURCE_MAP
-===============
-
-Whether we should load the WASM source map at runtime.
-This is enabled automatically when using -gsource-map with sanitizers.
-
-Default value: false
-
 .. _source_map_prefixes:
 
 SOURCE_MAP_PREFIXES

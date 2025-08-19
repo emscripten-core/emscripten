@@ -2006,10 +2006,6 @@ var MINIFY_HTML = true;
 // [link]
 var ASAN_SHADOW_SIZE = -1;
 
-// Whether we should load the WASM source map at runtime.
-// This is enabled automatically when using -gsource-map with sanitizers.
-var LOAD_SOURCE_MAP = false;
-
 // List of path substitutions to apply in the "sources" field of the source map.
 // Corresponds to the ``--prefix`` option used in ``tools/wasm-sourcemap.py``.
 // Must be used with ``-gsource-map``.
