@@ -938,7 +938,7 @@ base align: 0, 0, 0, 0'''])
   def test_emmalloc_memory_statistics(self):
     self.set_setting('MALLOC', 'emmalloc')
     self.set_setting('INITIAL_MEMORY', '128MB')
-    output = self.do_run(open(test_file('test_emmalloc_memory_statistics.c')).read())
+    output = self.do_runf('test_emmalloc_memory_statistics.c')
     self.assertContained('valid allocs: 1', output)
     self.assertContained('emmalloc_validate_memory_regions: 0', output)
     self.assertContained(r'emmalloc_dynamic_heap_size\s*: [1-9]\d+', output, regex=True)
