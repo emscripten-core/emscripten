@@ -1781,6 +1781,7 @@ Module['postRun'] = () => {
     self.emcc('main.c', ['--embed-file', 'my_test.input'], output_filename='a.out.js')
     self.assertContained('zyx', self.run_process(config.JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).stdout)
 
+  @crossplatform
   def test_abspaths(self):
     # Includes with absolute paths are generally dangerous, things like -I/usr/.. will get to system
     # local headers, not our portable ones.
