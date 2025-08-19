@@ -60,11 +60,6 @@ var wasmSourceMap;
 #include "source_map_support.js"
 #endif
 
-#if USE_OFFSET_CONVERTER
-var wasmOffsetConverter;
-#include "wasm_offset_converter.js"
-#endif
-
 // Memory management
 
 #if !WASM_ESM_INTEGRATION || IMPORTED_MEMORY

@@ -61,11 +61,6 @@ class WasmSourceMap {
 
   lookup(offset) {
     var normalized = this.normalizeOffset(offset);
-#if USE_OFFSET_CONVERTER
-    if (!wasmOffsetConverter.isSameFunc(offset, normalized)) {
-      return null;
-    }
-#endif
     var info = this.mapping[normalized];
     if (!info) {
       return null;

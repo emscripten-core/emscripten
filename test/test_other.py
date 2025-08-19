@@ -12463,23 +12463,6 @@ int main(void) {
                             '-sSTACK_SIZE=128kb', '-sEXIT_RUNTIME',
                             '--profiling-funcs'])
 
-  @parameterized({
-    '': ([],),
-    'sync': (['-sWASM_ASYNC_COMPILATION=0'],),
-  })
-  def test_offset_converter(self, args):
-    self.set_setting('USE_OFFSET_CONVERTER')
-    self.do_runf('other/test_offset_converter.c', 'ok', cflags=['--profiling-funcs'] + args)
-
-  @parameterized({
-    '': ([],),
-    'sync': (['-sWASM_ASYNC_COMPILATION=0'],),
-  })
-  def test_offset_converter_source_map(self, args):
-    self.set_setting('USE_OFFSET_CONVERTER')
-    self.set_setting('LOAD_SOURCE_MAP')
-    self.do_runf('other/test_offset_converter.c', 'ok', cflags=['-gsource-map', '-DUSE_SOURCE_MAP'] + args)
-
   @crossplatform
   @no_windows('ptys and select are not available on windows')
   def test_color_diagnostics(self):
@@ -14151,10 +14134,6 @@ kill -9 $$
   def test_bad_export_name(self):
     err = self.expect_fail([EMCC, '-sEXPORT_NAME=foo bar', test_file('hello_world.c')])
     self.assertContained('error: EXPORT_NAME is not a valid JS identifier: `foo bar`', err)
-
-  def test_offset_convertor_plus_wasm2js(self):
-    err = self.expect_fail([EMCC, '-sUSE_OFFSET_CONVERTER', '-sWASM=0', test_file('hello_world.c')])
-    self.assertContained('emcc: error: WASM2JS is not compatible with USE_OFFSET_CONVERTER (see #14630)', err)
 
   def test_standard_library_mapping(self):
     # Test the `-l` flags on the command line get mapped the correct libraries variant

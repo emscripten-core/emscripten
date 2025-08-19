@@ -3053,18 +3053,6 @@ future release.
 
 Default value: -1
 
-.. _use_offset_converter:
-
-USE_OFFSET_CONVERTER
-====================
-
-Whether we should use the offset converter.  This is needed for older
-versions of v8 (<7.7) that does not give the hex module offset into wasm
-binary in stack traces, as well as for avoiding using source map entries
-across function boundaries.
-
-Default value: false
-
 .. _load_source_map:
 
 LOAD_SOURCE_MAP

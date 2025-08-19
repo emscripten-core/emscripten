@@ -161,6 +161,7 @@ function run(args = arguments_) {
 function run() {
 #endif
 
+#if !BOOTSTRAPPING_STRUCT_INFO
   if (runDependencies > 0) {
 #if RUNTIME_DEBUG
     dbg('run() called, but dependencies remain, so not running');
@@ -168,6 +169,7 @@ function run() {
     dependenciesFulfilled = run;
     return;
   }
+#endif
 
 #if PTHREADS || WASM_WORKERS
   if ({{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
@@ -185,6 +187,7 @@ function run() {
 
   preRun();
 
+#if !BOOTSTRAPPING_STRUCT_INFO
   // a preRun added a dependency, run will be called later
   if (runDependencies > 0) {
 #if RUNTIME_DEBUG
@@ -193,6 +196,7 @@ function run() {
     dependenciesFulfilled = run;
     return;
   }
+#endif
 
   {{{ asyncIf(ASYNCIFY == 2) }}}function doRun() {
     // run may have just been called through dependencies being fulfilled just in this very frame,
