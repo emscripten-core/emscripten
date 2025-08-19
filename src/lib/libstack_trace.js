@@ -243,7 +243,6 @@ var LibraryStackTrace = {
   emscripten_pc_get_function: (pc) => {
     var frame = UNWIND_CACHE[pc];
     if (!frame) return 0;
-    dbg(getCallstack())
 
     var name;
     var match;
