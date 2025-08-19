@@ -96,7 +96,8 @@ AUDIO_SUFFIXES = ('.ogg', '.wav', '.mp3')
 AUDIO_MIMETYPES = {'ogg': 'audio/ogg', 'wav': 'audio/wav', 'mp3': 'audio/mpeg'}
 
 DDS_HEADER_SIZE = 128
-PRELOAD_DATA_FILE_LIMIT = 2**31 - 1
+# chrome limit is 2MB under 2Gi
+PRELOAD_DATA_FILE_LIMIT = 2046 * 1024 * 1024
 
 # Set to 1 to randomize file order and add some padding,
 # to work around silly av false positives
