@@ -18,8 +18,14 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.13 (in development)
+4.0.14 (in development)
 -----------------------
+- The wasm offset converter was removed along with the `WASM_OFFSET_CONVERTER`
+  setting. This feature only existed to work around an old v8 bug that was fixed
+  back in 2019. (#24963)
+
+4.0.13 - 08/14/25
+-----------------
 - The `handle` callback on the `preloadPlugins` used by `--use-preload-plugins`
   (and `FS_createPreloadedFile` API`) was converted from callbacks to async.
   Any externally managed plugins would need to be updated accordingly.  An

@@ -1020,21 +1020,6 @@ def create_module(metadata, function_exports, global_exports, tag_exports, libra
     else:
       module.append('var wasmImports = %s;\n' % sending)
 
-    if not settings.MINIMAL_RUNTIME:
-      if settings.MODULARIZE == 'instance':
-        module.append("var wasmExports;\n")
-      elif settings.WASM_ASYNC_COMPILATION:
-        if settings.MODULARIZE:
-          # In modularize mode the generated code is within a factory function.
-          # This magic string gets replaced by `await createWasm`.  It needed to allow
-          # closure and acorn to process the module without seeing this as a top-level
-          # await.
-          module.append("var wasmExports = EMSCRIPTEN$AWAIT(createWasm());\n")
-        else:
-          module.append("var wasmExports;\ncreateWasm();\n")
-      else:
-        module.append("var wasmExports = createWasm();\n")
-
   if settings.SUPPORT_LONGJMP == 'emscripten' or not settings.DISABLE_EXCEPTION_CATCHING:
     module.append(create_invoke_wrappers(metadata))
   else:

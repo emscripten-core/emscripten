@@ -6,37 +6,49 @@
 
 // === Auto-generated postamble setup entry stuff ===
 #if HAS_MAIN // Only if user is exporting a C main(), we will generate a run() function that can be used to launch main.
-function run() {
-#if MEMORYPROFILER
-  emscriptenMemoryProfiler.onPreloadComplete();
-#endif
-
-  <<< ATMAINS >>>
-#if PROXY_TO_PTHREAD
-  // User requested the PROXY_TO_PTHREAD option, so call a stub main which
-  // pthread_create()s a new thread that will call the user's real main() for
-  // the application.
-  var ret = __emscripten_proxy_main();
-#else
-  var ret = _main();
 
 #if EXIT_RUNTIME
+function exitRuntime(ret) {
   <<< ATEXITS >>>
 #if PTHREADS
   PThread.terminateAllThreads();
 #endif
-
-#endif
-
-#if EXIT_RUNTIME
 
 #if ASSERTIONS
   runtimeExited = true;
 #endif
 
   _proc_exit(ret);
+
+#if STACK_OVERFLOW_CHECK
+  checkStackCookie();
 #endif
-#endif // PROXY_TO_PTHREAD
+}
+#endif
+
+function run() {
+#if MEMORYPROFILER
+  emscriptenMemoryProfiler.onPreloadComplete();
+#endif
+
+  <<< ATMAINS >>>
+
+#if PROXY_TO_PTHREAD
+  // User requested the PROXY_TO_PTHREAD option, so call a stub main which
+  // pthread_create()s a new thread that will call the user's real main() for
+  // the application.
+  __emscripten_proxy_main();
+#elif ASYNCIFY == 2 && EXIT_RUNTIME
+  // In JSPI-enabled build mode, the main() function will return a Promise,
+  // which resolves to the process exit code.
+  _main().then(exitRuntime);
+#elif EXIT_RUNTIME
+  // In regular exitRuntime mode, exit with the given return code from main().
+  exitRuntime(_main());
+#else
+  // Run a persistent (never-exiting) application starting at main().
+  _main();
+#endif 
 
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
@@ -95,6 +107,10 @@ function loadModule() {
   assignWasmImports();
 #endif
 
+#if ASYNCIFY
+Asyncify.instrumentWasmImports(wasmImports);
+#endif
+
 var imports = {
 #if MINIFY_WASM_IMPORTED_MODULES
   'a': wasmImports,
@@ -139,7 +155,7 @@ assert(Module['wasm'], 'Must load WebAssembly Module in to variable Module.wasm 
 WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProperties} */ (output) => {
 #endif
 
-#if !LibraryManager.has('libexports.js')
+#if !LibraryManager.has('libexports.js') && ASYNCIFY != 1
   // If not using the emscripten_get_exported_function() API, keep the
   // `wasmExports` variable in local scope to this instantiate function to save
   // code size.  (otherwise access it without to export it to outer scope)
@@ -166,15 +182,12 @@ WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProp
   wasmExports = output.instance.exports;
 #endif
 
-#if MEMORY64 || CAN_ADDRESS_2GB
-  wasmExports = applySignatureConversions(wasmExports);
+#if ASYNCIFY
+  wasmExports = Asyncify.instrumentWasmExports(wasmExports);
 #endif
 
-#if USE_OFFSET_CONVERTER
-#if PTHREADS
-  if (!ENVIRONMENT_IS_PTHREAD)
-#endif
-    wasmOffsetConverter = new WasmOffsetConverter(Module['wasm'], output.module);
+#if MEMORY64 || CAN_ADDRESS_2GB
+  wasmExports = applySignatureConversions(wasmExports);
 #endif
 
 #if !DECLARE_ASM_MODULE_EXPORTS
@@ -218,8 +231,13 @@ WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProp
 
   initRuntime(wasmExports);
 
-#if PTHREADS
-  PThread.loadWasmModuleToAllWorkers(ready);
+#if PTHREADS && PTHREAD_POOL_SIZE
+  var workersReady = PThread.loadWasmModuleToAllWorkers();
+#if PTHREAD_POOL_DELAY_LOAD
+  ready();
+#else
+  workersReady.then(ready);
+#endif
 #else
   ready();
 #endif

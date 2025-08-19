@@ -1870,7 +1870,7 @@ var AUTO_NATIVE_LIBRARIES = true;
 // for Firefox versions older than < majorVersion.
 // Firefox 79 was released on 2020-07-28.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// Minimum supported value is 50 which was released on 2016-11-15 (see
+// Minimum supported value is 55 which was released on 2017-08-08 (see
 // feature_matrix.py)
 // [link]
 var MIN_FIREFOX_VERSION = 79;
@@ -1884,8 +1884,10 @@ var MIN_FIREFOX_VERSION = 79;
 // NOTE: Emscripten is unable to produce code that would work in iOS 9.3.5 and
 // older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
 // see https://github.com/emscripten-core/emscripten/pull/7191.
+// Multithreaded Emscripten code will need Safari 12.2 (iPhone 5s+) at minimum,
+// with support for DedicatedWorkerGlobalScope.name parameter.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// Minimum supported value is 101000 which was released in 2016-09 (see
+// Minimum supported value is 120200 which was released on 2019-03-25 (see
 // feature_matrix.py).
 // [link]
 var MIN_SAFARI_VERSION = 150000;
@@ -1896,7 +1898,7 @@ var MIN_SAFARI_VERSION = 150000;
 // numbers with Chrome.
 // Chrome 85 was released on 2020-08-25.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// Minimum supported value is 55, which was released on 2016-12-01 (see
+// Minimum supported value is 70, which was released on 2018-10-16 (see
 // feature_matrix.py).
 // [link]
 var MIN_CHROME_VERSION = 85;
@@ -2003,13 +2005,6 @@ var MINIFY_HTML = true;
 // future release.
 // [link]
 var ASAN_SHADOW_SIZE = -1;
-
-// Whether we should use the offset converter.  This is needed for older
-// versions of v8 (<7.7) that does not give the hex module offset into wasm
-// binary in stack traces, as well as for avoiding using source map entries
-// across function boundaries.
-// [link]
-var USE_OFFSET_CONVERTER = false;
 
 // Whether we should load the WASM source map at runtime.
 // This is enabled automatically when using -gsource-map with sanitizers.
@@ -2282,4 +2277,5 @@ var LEGACY_SETTINGS = [
   ['DEMANGLE_SUPPORT', [0], 'No longer supported'],
   ['MAYBE_WASM2JS', [0], 'No longer supported (use -sWASM=2)'],
   ['HEADLESS', [0], 'No longer supported, use headless browsers or Node.js with JSDOM'],
+  ['USE_OFFSET_COVERTER', [0], 'No longer supported, not needed with modern v8 versions'],
 ];

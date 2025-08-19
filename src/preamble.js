@@ -229,93 +229,6 @@ function postRun() {
   <<< ATPOSTRUNS >>>
 }
 
-// A counter of dependencies for calling run(). If we need to
-// do asynchronous work before running, increment this and
-// decrement it. Incrementing must happen in a place like
-// Module.preRun (used by emcc to add file preloading).
-// Note that you can add dependencies in preRun, even though
-// it happens right before run - run will be postponed until
-// the dependencies are met.
-var runDependencies = 0;
-var dependenciesFulfilled = null; // overridden to take different actions when all run dependencies are fulfilled
-#if ASSERTIONS
-var runDependencyTracking = {};
-var runDependencyWatcher = null;
-#endif
-
-function addRunDependency(id) {
-  runDependencies++;
-
-#if expectToReceiveOnModule('monitorRunDependencies')
-  Module['monitorRunDependencies']?.(runDependencies);
-#endif
-
-#if ASSERTIONS
-#if RUNTIME_DEBUG
-  dbg('addRunDependency', id);
-#endif
-  assert(id, 'addRunDependency requires an ID')
-  assert(!runDependencyTracking[id]);
-  runDependencyTracking[id] = 1;
-  if (runDependencyWatcher === null && typeof setInterval != 'undefined') {
-    // Check for missing dependencies every few seconds
-    runDependencyWatcher = setInterval(() => {
-      if (ABORT) {
-        clearInterval(runDependencyWatcher);
-        runDependencyWatcher = null;
-        return;
-      }
-      var shown = false;
-      for (var dep in runDependencyTracking) {
-        if (!shown) {
-          shown = true;
-          err('still waiting on run dependencies:');
-        }
-        err(`dependency: ${dep}`);
-      }
-      if (shown) {
-        err('(end of list)');
-      }
-    }, 10000);
-#if ENVIRONMENT_MAY_BE_NODE
-    // Prevent this timer from keeping the runtime alive if nothing
-    // else is.
-    runDependencyWatcher.unref?.()
-#endif
-  }
-#endif
-}
-
-function removeRunDependency(id) {
-  runDependencies--;
-
-#if expectToReceiveOnModule('monitorRunDependencies')
-  Module['monitorRunDependencies']?.(runDependencies);
-#endif
-
-#if ASSERTIONS
-#if RUNTIME_DEBUG
-  dbg('removeRunDependency', id);
-#endif
-  assert(id, 'removeRunDependency requires an ID');
-  assert(runDependencyTracking[id]);
-  delete runDependencyTracking[id];
-#endif
-  if (runDependencies == 0) {
-#if ASSERTIONS
-    if (runDependencyWatcher !== null) {
-      clearInterval(runDependencyWatcher);
-      runDependencyWatcher = null;
-    }
-#endif
-    if (dependenciesFulfilled) {
-      var callback = dependenciesFulfilled;
-      dependenciesFulfilled = null;
-      callback(); // can add another dependenciesFulfilled
-    }
-  }
-}
-
 /** @param {string|number=} what */
 function abort(what) {
 #if expectToReceiveOnModule('onAbort')
@@ -504,7 +417,7 @@ function receiveSourceMapJSON(sourceMap) {
 }
 #endif
 
-#if (PTHREADS || WASM_WORKERS) && (LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER)
+#if (PTHREADS || WASM_WORKERS) && LOAD_SOURCE_MAP
 // When using postMessage to send an object, it is processed by the structured
 // clone algorithm.  The prototype, and hence methods, on that object is then
 // lost. This function adds back the lost prototype.  This does not work with
@@ -644,9 +557,6 @@ function instantiateSync(file, info) {
   module = new WebAssembly.Module(binary);
 #endif // NODE_CODE_CACHING
   var instance = new WebAssembly.Instance(module, info);
-#if USE_OFFSET_CONVERTER
-  wasmOffsetConverter = new WasmOffsetConverter(binary, module);
-#endif
 #if LOAD_SOURCE_MAP
   receiveSourceMapJSON(getSourceMap());
 #endif
@@ -659,11 +569,6 @@ async function instantiateArrayBuffer(binaryFile, imports) {
   try {
     var binary = await getWasmBinary(binaryFile);
     var instance = await WebAssembly.instantiate(binary, imports);
-#if USE_OFFSET_CONVERTER
-    // wasmOffsetConverter needs to be assigned before calling resolve.
-    // See comments below in instantiateAsync.
-    wasmOffsetConverter = new WasmOffsetConverter(binary, instance.module);
-#endif
     return instance;
   } catch (reason) {
     err(`failed to asynchronously prepare wasm: ${reason}`);
@@ -722,31 +627,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
      ) {
     try {
       var response = fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}});
-#if USE_OFFSET_CONVERTER
-      // We need the wasm binary for the offset converter. Clone the response
-      // in order to get its arrayBuffer (cloning should be more efficient
-      // than doing another entire request).
-      // (We must clone the response now in order to use it later, as if we
-      // try to clone it asynchronously lower down then we will get a
-      // "response was already consumed" error.)
-      var clonedResponse = (await response).clone();
-#endif
       var instantiationResult = await WebAssembly.instantiateStreaming(response, imports);
-#if USE_OFFSET_CONVERTER
-      // When using the offset converter, we must interpose here. First,
-      // the instantiation result must arrive (if it fails, the error
-      // handling later down will handle it). Once it arrives, we can
-      // initialize the offset converter. And only then is it valid to
-      // call receiveInstantiationResult, as that function will use the
-      // offset converter (in the case of pthreads, it will create the
-      // pthreads and send them the offsets along with the wasm instance).
-      var arrayBufferResult = await clonedResponse.arrayBuffer();
-      try {
-        wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(arrayBufferResult), instantiationResult.module);
-      } catch (reason) {
-        err(`failed to initialize offset-converter: ${reason}`);
-      }
-#endif
       return instantiationResult;
     } catch (reason) {
       // We expect the most common failure cause to be a bad MIME type for the binary,
@@ -895,11 +776,14 @@ function getWasmImports() {
 #if DECLARE_ASM_MODULE_EXPORTS
     assignWasmExports(wasmExports);
 #endif
+#if WASM_ASYNC_COMPILATION
     removeRunDependency('wasm-instantiate');
+#endif
     return wasmExports;
   }
-  // wait for the pthread pool (if any)
+#if WASM_ASYNC_COMPILATION
   addRunDependency('wasm-instantiate');
+#endif
 
 #if LOAD_SOURCE_MAP
   {{{ runIfMainThread("addRunDependency('source-map');") }}}
@@ -959,14 +843,13 @@ function getWasmImports() {
 
 #if PTHREADS || WASM_WORKERS
   if ({{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
-    return new Promise((resolve) => {
-      wasmModuleReceived = (module) => {
-        // Instantiate from the module posted from the main thread.
-        // We can just use sync instantiation in the worker.
-        var instance = new WebAssembly.Instance(module, getWasmImports());
-        resolve(receiveInstance(instance, module));
-      };
-    });
+    // Instantiate from the module that was recieved via postMessage from
+    // the main thread. We can just use sync instantiation in the worker.
+#if ASSERTIONS
+    assert(wasmModule, "wasmModule should have been received via postMessage");
+#endif
+    var instance = new WebAssembly.Instance(wasmModule, getWasmImports());
+    return receiveInstance(instance, wasmModule);
   }
 #endif
 

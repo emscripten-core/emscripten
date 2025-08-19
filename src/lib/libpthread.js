@@ -107,14 +107,18 @@ var LibraryPThread = {
         PThread.allocateUnusedWorker();
       }
 #endif
-#if !MINIMAL_RUNTIME
+#if !MINIMAL_RUNTIME && PTHREAD_POOL_SIZE
       // MINIMAL_RUNTIME takes care of calling loadWasmModuleToAllWorkers
       // in postamble_minimal.js
-      addOnPreRun(() => {
-        addRunDependency('loading-workers')
-        PThread.loadWasmModuleToAllWorkers(() => removeRunDependency('loading-workers'));
+      addOnPreRun(async () => {
+        var pthreadPoolReady = PThread.loadWasmModuleToAllWorkers();
+#if !PTHREAD_POOL_DELAY_LOAD
+        addRunDependency('loading-workers');
+        await pthreadPoolReady;
+        removeRunDependency('loading-workers');
+#endif // PTHREAD_POOL_DELAY_LOAD
       });
-#endif
+#endif // !MINIMAL_RUNTIME && PTHREAD_POOL_SIZE
 #if MAIN_MODULE
       PThread.outstandingPromises = {};
       // Finished threads are threads that have finished running but we not yet
@@ -351,9 +355,6 @@ var LibraryPThread = {
 #if LOAD_SOURCE_MAP
         wasmSourceMap,
 #endif
-#if USE_OFFSET_CONVERTER
-        wasmOffsetConverter,
-#endif
 #if MAIN_MODULE
         dynamicLibraries,
         // Share all modules that have been loaded so far.  New workers
@@ -366,10 +367,8 @@ var LibraryPThread = {
       });
     }),
 
-    loadWasmModuleToAllWorkers(onMaybeReady) {
-#if !PTHREAD_POOL_SIZE
-      onMaybeReady();
-#else
+#if PTHREAD_POOL_SIZE
+    async loadWasmModuleToAllWorkers() {
       // Instantiation is synchronous in pthreads.
       if (
         ENVIRONMENT_IS_PTHREAD
@@ -377,7 +376,7 @@ var LibraryPThread = {
         || ENVIRONMENT_IS_WASM_WORKER
 #endif
       ) {
-        return onMaybeReady();
+        return;
       }
 
       let pthreadPoolReady = Promise.all(PThread.unusedWorkers.map(PThread.loadWasmModuleToWorker));
@@ -387,12 +386,11 @@ var LibraryPThread = {
       // If the user wants to wait on it elsewhere, they can do so via the
       // Module['pthreadPoolReady'] promise.
       Module['pthreadPoolReady'] = pthreadPoolReady;
-      onMaybeReady();
-#else
-      pthreadPoolReady.then(onMaybeReady);
-#endif // PTHREAD_POOL_DELAY_LOAD
-#endif // PTHREAD_POOL_SIZE
+      return;
+#endif
+      return pthreadPoolReady;
     },
+#endif // PTHREAD_POOL_SIZE
 
     // Creates a new web Worker and places it in the unused worker pool to wait for its use.
     allocateUnusedWorker() {

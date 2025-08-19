@@ -11,8 +11,15 @@ function assert(condition, text) {
 }
 #endif
 
+#if ASYNCIFY == 1 // ASYNCIFY-mode requires checking ABORT variable to avoid operating if code has aborted during an unwind
+var ABORT = 0;
+#endif
+
 /** @param {string|number=} what */
 function abort(what) {
+#if ASYNCIFY == 1
+  ABORT = 1;
+#endif
   throw {{{ ASSERTIONS ? 'new Error(what)' : 'what' }}};
 }
 

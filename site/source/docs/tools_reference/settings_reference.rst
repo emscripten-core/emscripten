@@ -2860,7 +2860,7 @@ are desired to work. Pass -sMIN_FIREFOX_VERSION=majorVersion to drop support
 for Firefox versions older than < majorVersion.
 Firefox 79 was released on 2020-07-28.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 50 which was released on 2016-11-15 (see
+Minimum supported value is 55 which was released on 2017-08-08 (see
 feature_matrix.py)
 
 Default value: 79
@@ -2879,8 +2879,10 @@ bundled with macOS 10.14.0 Mojave.
 NOTE: Emscripten is unable to produce code that would work in iOS 9.3.5 and
 older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
 see https://github.com/emscripten-core/emscripten/pull/7191.
+Multithreaded Emscripten code will need Safari 12.2 (iPhone 5s+) at minimum,
+with support for DedicatedWorkerGlobalScope.name parameter.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 101000 which was released in 2016-09 (see
+Minimum supported value is 120200 which was released on 2019-03-25 (see
 feature_matrix.py).
 
 Default value: 150000
@@ -2896,7 +2898,7 @@ This setting also applies to modern Chromium-based Edge, which shares version
 numbers with Chrome.
 Chrome 85 was released on 2020-08-25.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 55, which was released on 2016-12-01 (see
+Minimum supported value is 70, which was released on 2018-10-16 (see
 feature_matrix.py).
 
 Default value: 85
@@ -3050,18 +3052,6 @@ calculated from INITIAL_MEMORY and MAXIMUM_MEMORY. Will be removed in a
 future release.
 
 Default value: -1
-
-.. _use_offset_converter:
-
-USE_OFFSET_CONVERTER
-====================
-
-Whether we should use the offset converter.  This is needed for older
-versions of v8 (<7.7) that does not give the hex module offset into wasm
-binary in stack traces, as well as for avoiding using source map entries
-across function boundaries.
-
-Default value: false
 
 .. _load_source_map:
 
