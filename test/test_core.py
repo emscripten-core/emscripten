@@ -931,22 +931,21 @@ base align: 0, 0, 0, 0'''])
     self.set_setting('MALLOC', 'emmalloc')
     self.do_core_test('test_malloc_usable_size.c', regex=True)
 
-  @no_optimize('output is sensitive to optimization flags, so only test unoptimized builds')
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
-  @no_ubsan('UBSan changes memory consumption')
   @no_4gb('uses INITIAL_MEMORY')
   @no_2gb('uses INITIAL_MEMORY')
   def test_emmalloc_memory_statistics(self):
-    if self.is_wasm64():
-      out_suffix = '64'
-    else:
-      out_suffix = ''
-
-    self.set_setting('INITIAL_MEMORY', '128mb')
     self.set_setting('MALLOC', 'emmalloc')
-    self.cflags += ['-g']
-    self.do_core_test('test_emmalloc_memory_statistics.c', out_suffix=out_suffix)
+    self.set_setting('INITIAL_MEMORY', '128MB')
+    output = self.do_run(open(test_file('test_emmalloc_memory_statistics.c'), 'r').read())
+    self.assertContained('valid allocs: 1', output)
+    self.assertContained('emmalloc_validate_memory_regions: 0', output)
+    self.assertContained(r'emmalloc_dynamic_heap_size\s*: [1-9]\d+', output, regex=True)
+    self.assertContained(r'emmalloc_free_dynamic_memory\s*: [1-9]\d+', output, regex=True)
+    self.assertContained(r'numFreeMemoryRegions\s*: [1-9]+', output, regex=True)
+    self.assertContained(r'Free memory regions of size \[\d+,\d+\[ bytes: 1 regions', output, regex=True)
+    self.assertContained(r'emmalloc_unclaimed_heap_memory\s*: [1-9]\d+', output, regex=True)
 
   @no_optimize('output is sensitive to optimization flags, so only test unoptimized builds')
   @no_2gb('output is sensitive to absolute data layout')
