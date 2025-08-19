@@ -128,6 +128,9 @@ var imports = {
 // precompiled WebAssembly Module.
 assert(WebAssembly.instantiateStreaming || Module['wasm'], 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM');
 #endif
+#if AUDIO_WORKLET
+instantiatePromise =
+#endif
 (WebAssembly.instantiateStreaming
 #if ENVIRONMENT_MAY_BE_NODE
   // Node's fetch API cannot be used for local files, so we cannot use instantiateStreaming
@@ -136,6 +139,9 @@ assert(WebAssembly.instantiateStreaming || Module['wasm'], 'Must load WebAssembl
   ? WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
   : WebAssembly.instantiate(Module['wasm'], imports)).then((output) => {
 #else
+#if AUDIO_WORKLET
+instantiatePromise =
+#endif
 WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports).then((output) => {
 #endif
 
@@ -152,6 +158,9 @@ assert(Module['wasm'], 'Must load WebAssembly Module in to variable Module.wasm 
 
 // Add missingProperties supression here because closure compiler doesn't know that
 // WebAssembly.instantiate is polymorphic in its return value.
+#if AUDIO_WORKLET
+instantiatePromise =
+#endif
 WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProperties} */ (output) => {
 #endif
 
