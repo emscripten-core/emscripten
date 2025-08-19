@@ -12,7 +12,10 @@
 // the node constructor's "processorOptions" field, we can share the necessary
 // bootstrap information from the main thread to the AudioWorkletGlobalScope.
 
+#if MINIMAL_RUNTIME
 var instantiatePromise;
+#endif
+
 if (ENVIRONMENT_IS_AUDIO_WORKLET) {
 
 function createWasmAudioWorkletProcessor(audioParams) {
