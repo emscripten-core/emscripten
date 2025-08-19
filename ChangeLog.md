@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 4.0.14 (in development)
 -----------------------
+- The `addRunDependency` and `removeRunDependency` API are now optional and need
+  to be included and/or exported using, for example,
+  `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE` or `EXPORTED_RUNTIME_METHODS`. (#24974)
 - The `LOAD_SOURCE_MAP` setting was made an internal setting.  This was always
   an internal detail of the sanitizers, which is enabled automatically when
   needed, so setting it explicitly should never be needed. (#24967)

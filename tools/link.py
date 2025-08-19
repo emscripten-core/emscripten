@@ -1127,10 +1127,12 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
         settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$warnOnce']
 
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue', '$setValue']
-      # TODO(sbc): Remove these forced dependencies.
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$runDependencies', '$addRunDependency', '$removeRunDependency']
 
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$ExitStatus']
+
+  # Certain configurations require the removeRunDependency/addRunDependency system.
+  if settings.LOAD_SOURCE_MAP or (settings.WASM_ASYNC_COMPILATION and not settings.MODULARIZE) or options.preload_files:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$addRunDependency', '$removeRunDependency']
 
   if settings.ABORT_ON_WASM_EXCEPTIONS or settings.SPLIT_MODULE:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$wasmTable']

@@ -55,6 +55,8 @@ addToLibrary({
     '$PATH_FS',
     '$FS_createDataFile',
     '$getUniqueRunDependency',
+    '$addRunDependency',
+    '$removeRunDependency',
     '$FS_handledByPreloadPlugin',
   ],
   $FS_preloadFile: async (parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish) => {

@@ -1174,7 +1174,7 @@ var LibraryDylink = {
   },
 
   $loadDylibs__internal: true,
-  $loadDylibs__deps: ['$loadDynamicLibrary', '$reportUndefinedSymbols'],
+  $loadDylibs__deps: ['$loadDynamicLibrary', '$reportUndefinedSymbols', '$addRunDependency', '$removeRunDependency'],
   $loadDylibs: () => {
     if (!dynamicLibraries.length) {
 #if DYLINK_DEBUG

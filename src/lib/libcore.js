@@ -2293,7 +2293,7 @@ addToLibrary({
   $runDependencyWatcher: null,
 #endif
 
-  $addRunDependency__deps: ['$runDependencies',
+  $addRunDependency__deps: ['$runDependencies', '$removeRunDependency',
 #if ASSERTIONS
     '$runDependencyTracking',
     '$runDependencyWatcher',
