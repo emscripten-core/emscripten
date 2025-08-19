@@ -15864,7 +15864,7 @@ addToLibrary({
     self.assertNotContained('new Worker(', read_file('hello_world.js'))
 
   def test_sysroot_includes_first(self):
-    self.do_other_test('test_stdint_limits.c', cflags=['-std=c11', '-iwithsysroot/include'])
+    self.do_other_test('test_stdint_limits.c', cflags=['-iwithsysroot/include'])
 
   def test_force_filesystem_error(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sFILESYSTEM=0', '-sFORCE_FILESYSTEM'])
