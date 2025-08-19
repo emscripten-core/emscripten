@@ -6898,11 +6898,18 @@ int main(int argc, char **argv) {
     # Test HTTP Accept-Language parsing by simulating navigator.languages #8751
     self.run_process([EMCC,
                       test_file('test_browser_language_detection.c')])
-    # We support both "C" and "en_US" here since older versions of node do
-    # not expose navigator.languages.
-    lang = os.environ.get('LANG', 'C.UTF-8')
-    # User may have their own language set, so match regex ".._.." to catch any language, e.g. en_US, en_FI, etc.
-    self.assertContained(f'LANG=({lang}|.._..\\.UTF-8|C.UTF-8)', self.run_js('a.out.js'), regex=True)
+
+    lang = os.environ.get('LANG', None)
+    if lang == None:
+      # If the LANG env. var doesn't exist (Windows), ask Node for the language.
+      try:
+        cmd = config.NODE_JS + ['-e', 'console.log(navigator.languages[0])']
+        lang = subprocess.check_output(cmd, stderr=subprocess.NULL)
+        lang = lang.decode('utf-8').strip().replace('-', '_')
+      except Exception:
+        lang = 'en_US'
+
+    self.assertContained(f'LANG=({lang}|C).UTF-8', self.run_js('a.out.js'), regex=True)
 
     # Accept-Language: fr,fr-FR;q=0.8,en-US;q=0.5,en;q=0.3
     create_file('pre.js', 'var navigator = { language: "fr" };')
