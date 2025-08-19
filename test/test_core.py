@@ -2673,7 +2673,7 @@ The current type of b is: 9
     # handler will only be present in the main thread (much like it would if it
     # was passed in by pre-populating the module object on prior to loading).
     self.add_pre_run("Module.onAbort = () => console.log('onAbort called');")
-    self.cflags += ['-sINCOMING_MODULE_JS_API=[preRun,onAbort]']
+    self.cflags += ['-sINCOMING_MODULE_JS_API=preRun,onAbort']
     self.do_run_in_out_file_test('pthread/test_pthread_abort.c', assert_returncode=NON_ZERO)
 
   @node_pthreads
@@ -4187,7 +4187,7 @@ ok
       }
     };
     ''' % (so_name, so_dir))
-    self.do_basic_dylink_test(so_dir=so_dir, so_name=so_name, main_cflags=['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=[locateFile]'])
+    self.do_basic_dylink_test(so_dir=so_dir, so_name=so_name, main_cflags=['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=locateFile'])
 
   @with_dylink_reversed
   def test_dylink_function_pointer_equality(self):
@@ -5237,7 +5237,7 @@ main main sees -524, -534, 72.
   @needs_dylink
   def test_dylink_argv_argc(self):
     # Verify that argc and argv can be sent to main when main is in a side module
-    self.cflags += ['--pre-js', 'pre.js', '--no-entry', '-sINCOMING_MODULE_JS_API=[arguments]']
+    self.cflags += ['--pre-js', 'pre.js', '--no-entry', '-sINCOMING_MODULE_JS_API=arguments']
     create_file('pre.js', "Module['arguments'] = ['hello', 'world!']")
     self.dylink_test(
       '', # main module is empty.
@@ -5464,7 +5464,7 @@ Pass: 0.000012 0.000012''')
     else:
       self.maybe_closure()
 
-    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=[preRun]']
+    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=preRun']
     self.set_setting('FORCE_FILESYSTEM')
 
     create_file('pre.js', '''
@@ -5496,7 +5496,7 @@ Module = {
       stdout: (x) => out('got: ' + x)
     };
     ''')
-    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=[stdin,stdout]']
+    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=stdin,stdout']
 
     src = r'''
       #include <stdio.h>
@@ -5945,7 +5945,7 @@ Module.onRuntimeInitialized = () => {
 ''')
     self.set_setting('EXPORTED_FUNCTIONS', '_foo')
     self.set_setting('FORCE_FILESYSTEM')
-    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=[preRun, onRuntimeInitialized]']
+    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=preRun,onRuntimeInitialized']
     self.do_run('int foo() { return 42; }', '', force_c=True)
 
   @also_with_noderawfs
@@ -6875,7 +6875,7 @@ void* operator new(size_t size) {
       out("Data: " + JSON.stringify(FileData));
     };
     ''')
-    self.cflags += ['--pre-js', 'pre.js', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$unSign', '-sINCOMING_MODULE_JS_API=[preRun, postRun]']
+    self.cflags += ['--pre-js', 'pre.js', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$unSign', '-sINCOMING_MODULE_JS_API=preRun,postRun']
 
     ppm_data = str(list(read_binary(test_file('poppler/ref.ppm'))))
     self.do_run('', 'Data: ' + ppm_data.replace(' ', ''),
@@ -6960,7 +6960,7 @@ void* operator new(size_t size) {
       assert diff_mean < 0.01, diff_mean
 
     self.cflags += ['--minify=0'] # to compare the versions
-    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=[preRun,postRun]']
+    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=preRun,postRun']
 
     output = self.do_runf('third_party/openjpeg/codec/j2k_to_image.c',
                           'Successfully generated', # The real test for valid output is in image_compare
@@ -7599,7 +7599,7 @@ void* operator new(size_t size) {
     create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
       Module.asyncCoro().then(console.log);
     }''')
-    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]', '--no-entry']
+    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
     self.do_runf('embind/test_val_coro.cpp', '34\n')
 
   def test_embind_val_coro_propagate_cpp_exception(self):
@@ -7610,7 +7610,7 @@ void* operator new(size_t size) {
         err => console.error(`rejected with: ${err.stack}`)
       );
     }''')
-    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fexceptions', '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]', '--no-entry']
+    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fexceptions', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
     self.do_runf('embind/test_val_coro.cpp', 'rejected with: std::runtime_error: bang from throwingCoro!\n')
 
   def test_embind_val_coro_propagate_js_error(self):
@@ -7621,7 +7621,7 @@ void* operator new(size_t size) {
         err => console.error(`rejected with: ${err.message}`)
       );
     }''')
-    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fexceptions', '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]', '--no-entry']
+    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fexceptions', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
     self.do_runf('embind/test_val_coro.cpp', 'rejected with: bang from JS promise!\n')
 
   def test_embind_dynamic_initialization(self):
@@ -8092,7 +8092,7 @@ void* operator new(size_t size) {
         assert(status == EXITSTATUS);
       };
     ''')
-    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=[onExit]']
+    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=onExit']
     print('.. exit')
     self.do_runf('exit.c', 'hello, world!\ncleanup\nI see exit status: 117', assert_returncode=117, cflags=['-DNORMAL_EXIT'])
     print('.. _exit')
@@ -8209,7 +8209,7 @@ Module.onRuntimeInitialized = () => {
   }
 };
 ''')
-    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]']
+    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized']
     self.do_runf('main.c', 'The call to main is running asynchronously.')
 
   @with_asyncify_and_jspi
@@ -8234,7 +8234,7 @@ Module.onRuntimeInitialized = () => {
   ccall('main', null, ['number', 'string'], [2, 'waka'], { async: true });
 };
 ''')
-    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]']
+    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized']
     self.do_runf('main.c', 'HelloWorld')
 
   @parameterized({
@@ -8279,7 +8279,7 @@ Module.onRuntimeInitialized = () => {
     });
 };
 ''')
-    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]']
+    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized']
     self.do_runf('main.c', 'stringf: first\nsecond\n6.4')
 
   @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY=1')
@@ -8620,7 +8620,7 @@ Module.onRuntimeInitialized = () => {
         out(typeof NODEFS);
       };
     ''')
-    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=[preRun]']
+    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=preRun']
     self.do_run('int main() { return 0; }', 'object\nobject\nobject\nobject\nobject\nobject')
 
   def test_fs_dict_none(self):
@@ -8644,7 +8644,7 @@ Module.onRuntimeInitialized = () => {
         }
       };
     ''')
-    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=[preRun]']
+    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=preRun']
     expected = '''\
 object
 undefined
@@ -8753,7 +8753,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_postrun_exit_runtime(self):
     create_file('pre.js', "Module['postRun'] = () => err('post run\\n');")
     self.set_setting('EXIT_RUNTIME')
-    self.cflags += ['--pre-js=pre.js', '-sINCOMING_MODULE_JS_API=[postRun]']
+    self.cflags += ['--pre-js=pre.js', '-sINCOMING_MODULE_JS_API=postRun']
     self.do_runf('hello_world.c', 'post run')
 
   # Tests that building with -sDECLARE_ASM_MODULE_EXPORTS=0 works
@@ -9247,7 +9247,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_pthread_exit_process(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.cflags += ['-DEXIT_RUNTIME', '--pre-js', test_file('core/pthread/test_pthread_exit_runtime.pre.js'), '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized, onExit]']
+    self.cflags += ['-DEXIT_RUNTIME', '--pre-js', test_file('core/pthread/test_pthread_exit_runtime.pre.js'), '-sINCOMING_MODULE_JS_API=onRuntimeInitialized,onExit']
     self.do_core_test('pthread/test_pthread_exit_runtime.c', assert_returncode=42)
 
   @node_pthreads
@@ -9431,7 +9431,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_Module_dynamicLibraries(self, args):
     # test that Module.dynamicLibraries works with pthreads
     self.cflags += args
-    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=[dynamicLibraries]']
+    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=dynamicLibraries']
     self.cflags += ['--js-library', 'lib.js']
     # This test is for setting dynamicLibraries at runtime, so we don't
     # want emscripten loading `liblib.so` automatically (which it would
@@ -9612,7 +9612,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$ASSERTIONS',
       '--post-js', test_file('core/embind_lib_with_asyncify.test.js'),
       '--no-entry',
-      '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]',
+      '-sINCOMING_MODULE_JS_API=onRuntimeInitialized',
     ]
     self.cflags += args
     self.do_core_test('embind_lib_with_asyncify.cpp')
