@@ -417,7 +417,7 @@ function receiveSourceMapJSON(sourceMap) {
 }
 #endif
 
-#if (PTHREADS || WASM_WORKERS) && (LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER)
+#if (PTHREADS || WASM_WORKERS) && LOAD_SOURCE_MAP
 // When using postMessage to send an object, it is processed by the structured
 // clone algorithm.  The prototype, and hence methods, on that object is then
 // lost. This function adds back the lost prototype.  This does not work with
@@ -557,9 +557,6 @@ function instantiateSync(file, info) {
   module = new WebAssembly.Module(binary);
 #endif // NODE_CODE_CACHING
   var instance = new WebAssembly.Instance(module, info);
-#if USE_OFFSET_CONVERTER
-  wasmOffsetConverter = new WasmOffsetConverter(binary, module);
-#endif
 #if LOAD_SOURCE_MAP
   receiveSourceMapJSON(getSourceMap());
 #endif
@@ -572,11 +569,6 @@ async function instantiateArrayBuffer(binaryFile, imports) {
   try {
     var binary = await getWasmBinary(binaryFile);
     var instance = await WebAssembly.instantiate(binary, imports);
-#if USE_OFFSET_CONVERTER
-    // wasmOffsetConverter needs to be assigned before calling resolve.
-    // See comments below in instantiateAsync.
-    wasmOffsetConverter = new WasmOffsetConverter(binary, instance.module);
-#endif
     return instance;
   } catch (reason) {
     err(`failed to asynchronously prepare wasm: ${reason}`);
@@ -635,31 +627,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
      ) {
     try {
       var response = fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}});
-#if USE_OFFSET_CONVERTER
-      // We need the wasm binary for the offset converter. Clone the response
-      // in order to get its arrayBuffer (cloning should be more efficient
-      // than doing another entire request).
-      // (We must clone the response now in order to use it later, as if we
-      // try to clone it asynchronously lower down then we will get a
-      // "response was already consumed" error.)
-      var clonedResponse = (await response).clone();
-#endif
       var instantiationResult = await WebAssembly.instantiateStreaming(response, imports);
-#if USE_OFFSET_CONVERTER
-      // When using the offset converter, we must interpose here. First,
-      // the instantiation result must arrive (if it fails, the error
-      // handling later down will handle it). Once it arrives, we can
-      // initialize the offset converter. And only then is it valid to
-      // call receiveInstantiationResult, as that function will use the
-      // offset converter (in the case of pthreads, it will create the
-      // pthreads and send them the offsets along with the wasm instance).
-      var arrayBufferResult = await clonedResponse.arrayBuffer();
-      try {
-        wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(arrayBufferResult), instantiationResult.module);
-      } catch (reason) {
-        err(`failed to initialize offset-converter: ${reason}`);
-      }
-#endif
       return instantiationResult;
     } catch (reason) {
       // We expect the most common failure cause to be a bad MIME type for the binary,

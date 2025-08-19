@@ -5038,13 +5038,6 @@ Module["preRun"] = () => {
   def test_minimal_runtime_hello_world(self, args):
     self.btest_exit('small_hello_world.c', cflags=args + ['-sMINIMAL_RUNTIME'])
 
-  @parameterized({
-    '': ([],),
-    'pthread': (['-sPROXY_TO_PTHREAD', '-pthread'],),
-  })
-  def test_offset_converter(self, args):
-    self.btest_exit('test_offset_converter.c', cflags=['-sUSE_OFFSET_CONVERTER', '-gsource-map'] + args)
-
   # Tests emscripten_unwind_to_js_event_loop() behavior
   def test_emscripten_unwind_to_js_event_loop(self):
     self.btest_exit('test_emscripten_unwind_to_js_event_loop.c')
