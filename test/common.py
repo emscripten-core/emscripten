@@ -686,7 +686,7 @@ def also_with_modularize(f):
       if self.get_setting('STRICT_JS'):
         self.skipTest('MODULARIZE is not compatible with STRICT_JS')
       if self.get_setting('WASM_ESM_INTEGRATION'):
-        self.skipTest('also_with_modularize is not compatible with WASM_ESM_INTEGRATION')
+        self.skipTest('MODULARIZE is not compatible with WASM_ESM_INTEGRATION')
       self.cflags += ['--extern-post-js', test_file('modularize_post_js.js'), '-sMODULARIZE']
     f(self, *args, **kwargs)
 
