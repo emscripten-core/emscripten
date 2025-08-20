@@ -271,6 +271,10 @@ def error_on_legacy_suite_names(args):
       utils.exit_with_error('`%s` test suite has been replaced with `%s`', a, new)
 
 
+# Creates a sorter object that sorts the test run order to find the best possible
+# order to run the tests in. Generally this is slowest-first to maximize
+# parallelization, but if running with fail-fast, then the tests with recent
+# known failure frequency are run first, followed by slowest first.
 def create_test_run_sorter(failfast):
   previous_test_run_results = common.load_previous_test_run_results()
 
