@@ -40,6 +40,11 @@ def run_test(test):
   return result
 
 
+def tear_down():
+  for cls in seen_class:
+    cls.tearDownClass()
+
+
 class ParallelTestSuite(unittest.BaseTestSuite):
   """Runs a suite of tests in parallel.
 
@@ -62,11 +67,18 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # issues.
     # multiprocessing.set_start_method('spawn')
     tests = list(self.reversed_tests())
+    contains_browser_test = any(test.is_browser_test() for test in tests)
     use_cores = cap_max_workers_in_pool(min(self.max_cores, len(tests), num_cores()))
+    if contains_browser_test:
+      # TODO experiment with this number. In browser tests we'll be creating
+      # a chrome instance per worker which is expensive.
+      use_cores = int(use_cores / 2)
+
     print('Using %s parallel test processes' % use_cores)
     pool = multiprocessing.Pool(use_cores)
     results = [pool.apply_async(run_test, (t,)) for t in tests]
     results = [r.get() for r in results]
+    [pool.apply(tear_down, ()) for i in range(use_cores)]
     pool.close()
     pool.join()
     return self.combine_results(result, results)
