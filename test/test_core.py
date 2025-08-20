@@ -2580,6 +2580,8 @@ The current type of b is: 9
   @also_with_modularize
   def test_pthread_proxying(self):
     if '-sMODULARIZE' in self.cflags:
+      if self.get_setting('STRICT_JS'):
+        self.skipTest('MODULARIZE is not compatible with STRICT_JS')
       if self.get_setting('WASM') == 0:
         self.skipTest('MODULARIZE + WASM=0 + pthreads does not work (#16794)')
       self.set_setting('EXPORT_NAME=ModuleFactory')
