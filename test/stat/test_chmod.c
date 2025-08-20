@@ -129,7 +129,7 @@ void test() {
 
 #ifndef WASMFS // TODO https://github.com/emscripten-core/emscripten/issues/15948
   lstat("file-link", &s);
-  int link_mode = s.st_mode;
+  mode_t link_mode = s.st_mode;
   assert((link_mode & 0777) != S_IRUSR);
 
   //
