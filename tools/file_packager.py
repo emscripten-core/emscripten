@@ -1044,31 +1044,21 @@ def generate_js(data_target, data_files, metadata):
       # Only tricky bit is the fetch is async, but also when runWithFS is called
       # is async, so we handle both orderings.
       ret += '''
-      var fetchedCallback;
+      var fetchPromise;
       var fetched = Module['getPreloadedPackage']?.(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE);
 
       if (!fetched) {
         // Note that we don't use await here because we want to execute the
         // the rest of this function immediately.
-        fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE)
-          .then((data) => {
-            if (fetchedCallback) {
-              fetchedCallback(data);
-              fetchedCallback = null;
-            } else {
-              fetched = data;
-            }
-          })%s;
+        fetchPromise = fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE)%s;
       }\n''' % catch_handler
 
       code += '''
       Module['preloadResults'][PACKAGE_NAME] = {fromCache: false};
-      if (fetched) {
-        processPackageData(fetched);
-        fetched = null;
-      } else {
-        fetchedCallback = processPackageData;
-      }\n'''
+      if (!fetched) {
+        fetched = await fetchPromise;
+      }
+      processPackageData(fetched);\n'''
 
   ret += '''
     async function runWithFS(Module) {\n'''

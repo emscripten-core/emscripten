@@ -100,19 +100,12 @@ Module["expectedDataFileDownloads"]++;
       }
       return packageData.buffer;
     }
-    var fetchedCallback;
+    var fetchPromise;
     var fetched = Module["getPreloadedPackage"]?.(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE);
     if (!fetched) {
       // Note that we don't use await here because we want to execute the
       // the rest of this function immediately.
-      fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE).then(data => {
-        if (fetchedCallback) {
-          fetchedCallback(data);
-          fetchedCallback = null;
-        } else {
-          fetched = data;
-        }
-      });
+      fetchPromise = fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE);
     }
     async function runWithFS(Module) {
       function assert(check, msg) {
@@ -141,12 +134,10 @@ Module["expectedDataFileDownloads"]++;
       Module["preloadResults"][PACKAGE_NAME] = {
         fromCache: false
       };
-      if (fetched) {
-        processPackageData(fetched);
-        fetched = null;
-      } else {
-        fetchedCallback = processPackageData;
+      if (!fetched) {
+        fetched = await fetchPromise;
       }
+      processPackageData(fetched);
     }
     if (Module["calledRun"]) {
       runWithFS(Module);
