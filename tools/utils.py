@@ -11,7 +11,7 @@ from pathlib import Path
 
 from . import diagnostics
 
-__rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+__rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 WINDOWS = sys.platform.startswith('win')
 MACOS = sys.platform == 'darwin'
 LINUX = sys.platform.startswith('linux')
