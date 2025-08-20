@@ -23,7 +23,7 @@ seen_class = set()
 def run_test(test, failfast_event):
   # If failfast mode is in effect and any of the tests have failed,
   # and then we should abort executing further tests immediately.
-  if failfast_event is not None and failfast_event.is_set():
+  if failfast_event and failfast_event.is_set():
     return None
 
   olddir = os.getcwd()
