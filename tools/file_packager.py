@@ -699,33 +699,30 @@ def generate_js(data_target, data_files, metadata):
       # Data requests - for getting a block of data out of the big archive - have
       # a similar API to XHRs
       code += '''
-      /** @constructor */
-      function DataRequest(start, end) {
-        this.start = start;
-        this.end = end;
-      }
-      DataRequest.prototype = {
-        requests: {},
-        open: function(mode, name) {
+      var requests = {};
+      class DataRequest {
+        constructor(start, end) {
+          this.start = start;
+          this.end = end;
+        }
+        open(name) {
           this.name = name;
-          this.requests[name] = this;
+          requests[name] = this;
           Module['addRunDependency'](`fp ${this.name}`);
-        },
-        send: function() {},
-        onload: function() {
-          var byteArray = this.byteArray.subarray(this.start, this.end);
+        }
+        onload(byteArray) {
+          byteArray = byteArray.subarray(this.start, this.end);
           this.finish(byteArray);
-        },
-        finish: async function(byteArray) {
+        }
+        async finish(byteArray) {
           var that = this;
           %s
-          this.requests[this.name] = null;
+          delete requests[this.name];
         }
-      };
+      }
 
-      var files = metadata['files'];
-      for (var i = 0; i < files.length; ++i) {
-        new DataRequest(files[i]['start'], files[i]['end']).open('GET', files[i]['filename']);
+      for (var file of metadata['files']) {
+        new DataRequest(file['start'], file['end']).open(file['filename']);
       }\n''' % finish_handler
 
   if options.has_embedded and not options.obj_output:
@@ -764,13 +761,10 @@ def generate_js(data_target, data_files, metadata):
     if not options.lz4:
       # Get the big archive and split it up
       use_data = '''// Reuse the bytearray from the XHR as the source for file reads.
-          DataRequest.prototype.byteArray = byteArray;
-          var files = metadata['files'];
-          for (var i = 0; i < files.length; ++i) {
-            DataRequest.prototype.requests[files[i].filename].onload();
-          }'''
-      use_data += ("          Module['removeRunDependency']('datafile_%s');\n"
-                   % js_manipulation.escape_for_js_string(data_target))
+          for (var file of metadata['files']) {
+            requests[file['filename']].onload(byteArray);
+          }
+          Module['removeRunDependency']('datafile_%s');''' % js_manipulation.escape_for_js_string(data_target)
 
     else:
       # LZ4FS usage
