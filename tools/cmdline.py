@@ -394,10 +394,16 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
           else:
             settings.SEPARATE_DWARF = True
           settings.GENERATE_DWARF = 1
-        elif requested_level in ['source-map', 'source-map=inline']:
-          settings.GENERATE_SOURCE_MAP = 1 if requested_level == 'source-map' else 2
+        elif requested_level.startswith('source-map'):
+          settings.GENERATE_SOURCE_MAP = 1
           settings.EMIT_NAME_SECTION = 1
           newargs[i] = '-g'
+          if '=' in requested_level:
+            source_map_options = requested_level.split('=')[1].split(',')
+            if 'inline' in source_map_options:
+              settings.EMBED_SOURCE_MAP_SOURCE = 1
+            if 'names' in source_map_options:
+              settings.GENERATE_SOURCE_MAP_NAMES = 1
         elif requested_level == 'z':
           # Ignore `-gz`.  We don't support debug info compression.
           continue

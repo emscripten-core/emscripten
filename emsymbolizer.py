@@ -110,6 +110,7 @@ class WasmSourceMap:
   def __init__(self):
     self.version = None
     self.sources = []
+    self.funcs = []
     self.mappings = {}
     self.offsets = []
 
@@ -121,6 +122,7 @@ class WasmSourceMap:
 
     self.version = source_map_json['version']
     self.sources = source_map_json['sources']
+    self.funcs = source_map_json['names']
 
     chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
     vlq_map = {c: i for i, c in enumerate(chars)}
@@ -148,6 +150,7 @@ class WasmSourceMap:
     src = 0
     line = 1
     col = 1
+    func = 0
     for segment in source_map_json['mappings'].split(','):
       data = decodeVLQ(segment)
       info = []
@@ -162,7 +165,9 @@ class WasmSourceMap:
       if len(data) >= 4:
         col += data[3]
         info.append(col)
-      # TODO: see if we need the name, which is the next field (data[4])
+      if len(data) == 5:
+        func += data[4]
+        info.append(func)
 
       self.mappings[offset] = WasmSourceMap.Location(*info)
       self.offsets.append(offset)
@@ -189,6 +194,7 @@ class WasmSourceMap:
         self.sources[info.source] if info.source is not None else None,
         info.line,
         info.column,
+        self.funcs[info.func] if info.func is not None else None,
       )
 
 

@@ -11,6 +11,7 @@ sections from a wasm file.
 """
 
 import argparse
+import bisect
 import json
 import logging
 from math import floor, log
@@ -46,6 +47,7 @@ def parse_args():
   parser.add_argument('--dwarfdump', help="path to llvm-dwarfdump executable")
   parser.add_argument('--dwarfdump-output', nargs='?', help=argparse.SUPPRESS)
   parser.add_argument('--basepath', help='base path for source files, which will be relative to this')
+  parser.add_argument('--names', action='store_true', help='Support function names in names field')
   return parser.parse_args()
 
 
@@ -232,7 +234,48 @@ def extract_comp_dir_map(text):
   return map_stmt_list_to_comp_dir
 
 
-def read_dwarf_entries(wasm, options):
+# This function parses DW_TAG_subprogram entries and gets low_pc and high_pc for
+# each function in a list of
+# [((low_pc0, high_pc0), func0), ((low_pc1, high_pc1), func1), ... ]
+# The result list will be sorted in the increasing order of low_pcs.
+def extract_func_ranges(text):
+  # The example of a DW_TAG_subprogram is
+  #
+  # 0x000000ba:   DW_TAG_subprogram
+  #                 DW_AT_low_pc  (0x0000005f)
+  #                 DW_AT_high_pc  (0x00000071)
+  #                 DW_AT_frame_base  (DW_OP_WASM_location 0x3 0x0, DW_OP_stack_value)
+  #                 DW_AT_name  ("foo")
+  #                 DW_AT_decl_file  ("../foo.c")
+  #                 DW_AT_decl_line  (3)
+  #                 DW_AT_external  (true)
+  #
+  # This parses the value of DW_AT_low_pc, DW_AT_high_pc, and DW_AT_name
+  # attributes.
+  func_ranges = []
+  dw_tags = re.split(r'\r?\n(?=0x[0-9a-f]+:)', text)
+  for tag in dw_tags:
+    if re.search(r"0x[0-9a-f]+:\s+DW_TAG_subprogram", tag):
+      name = None
+      low_pc = None
+      high_pc = None
+      m = re.search(r'DW_AT_low_pc\s+\(0x([0-9a-f]+)\)', tag)
+      if m:
+        low_pc = int(m.group(1), 16)
+      m = re.search(r'DW_AT_high_pc\s+\(0x([0-9a-f]+)\)', tag)
+      if m:
+        high_pc = int(m.group(1), 16)
+      m = re.search(r'DW_AT_name\s+\("([^"]+)"\)', tag)
+      if m:
+        name = m.group(1)
+      if name and low_pc and high_pc:
+        func_ranges.append(((low_pc, high_pc), name))
+  # Sort the list based on low_pcs
+  func_ranges = sorted(func_ranges, key=lambda item: item[0][0])
+  return func_ranges
+
+
+def read_dwarf_info(wasm, options):
   if options.dwarfdump_output:
     output = Path(options.dwarfdump_output).read_bytes()
   elif options.dwarfdump:
@@ -240,7 +283,13 @@ def read_dwarf_entries(wasm, options):
     if not os.path.exists(options.dwarfdump):
       logger.error('llvm-dwarfdump not found: ' + options.dwarfdump)
       sys.exit(1)
-    process = Popen([options.dwarfdump, '-debug-info', '-debug-line', '--recurse-depth=0', wasm], stdout=PIPE)
+    # --recurse-depth=0 only prints 'DW_TAG_compile_unit's, reducing the size of
+    # text output. But to support function names info, we need
+    # 'DW_TAG_subprogram's, which can be at any depth.
+    dwarfdump_cmd = [options.dwarfdump, '-debug-info', '-debug-line', wasm]
+    if not options.names:
+      dwarfdump_cmd.append('--recurse-depth=0')
+    process = Popen(dwarfdump_cmd, stdout=PIPE)
     output, err = process.communicate()
     exit_code = process.wait()
     if exit_code != 0:
@@ -297,22 +346,52 @@ def read_dwarf_entries(wasm, options):
   remove_dead_entries(entries)
 
   # return entries sorted by the address field
-  return sorted(entries, key=lambda entry: entry['address'])
+  prev_entries = entries.copy()
+  entries = sorted(entries, key=lambda entry: entry['address'])
+
+  func_ranges = []
+  if options.names:
+    func_ranges = extract_func_ranges(debug_line_chunks[0])
+  return entries, func_ranges
 
 
-def build_sourcemap(entries, code_section_offset, options):
+def build_sourcemap(entries, func_ranges, code_section_offset, options):
   base_path = options.basepath
   collect_sources = options.sources
   prefixes = SourceMapPrefixes(options.prefix, options.load_prefix, base_path)
 
+  # Add code section offset to the low/high pc in the function PC ranges
+  if options.names:
+    for i in range(len(func_ranges)):
+      (low_pc, high_pc), name = func_ranges[i]
+      func_ranges[i] = ((low_pc + code_section_offset), (high_pc + code_section_offset)), name
+    func_low_pcs = [item[0][0] for item in func_ranges]
+
   sources = []
   sources_content = []
+  names = [item[1] for item in func_ranges]
   mappings = []
   sources_map = {}
   last_address = 0
   last_source_id = 0
   last_line = 1
   last_column = 1
+  last_func_id = 0
+
+  # Get the function ID that the given address falls into
+  def get_function_id(func_ranges, addr):
+    if not options.names:
+      return None
+    index = bisect.bisect_right(func_low_pcs, address)
+    if index == 0: # The address is lower than the first function's start
+      return None
+    candidate_index = index - 1
+    (low_pc, high_pc), name = func_ranges[candidate_index]
+    # Check the address within the candidate's [low_pc, high_pc) range. If not,
+    # it is in a gap between functions.
+    if low_pc <= address < high_pc:
+      return candidate_index
+    return None
 
   for entry in entries:
     line = entry['line']
@@ -343,21 +422,27 @@ def build_sourcemap(entries, code_section_offset, options):
           sources_content.append(None)
     else:
       source_id = sources_map[source_name]
+    func_id = get_function_id(func_ranges, address)
 
     address_delta = address - last_address
     source_id_delta = source_id - last_source_id
     line_delta = line - last_line
     column_delta = column - last_column
-    mappings.append(encode_vlq(address_delta) + encode_vlq(source_id_delta) + encode_vlq(line_delta) + encode_vlq(column_delta))
     last_address = address
     last_source_id = source_id
     last_line = line
     last_column = column
+    mapping = encode_vlq(address_delta) + encode_vlq(source_id_delta) + encode_vlq(line_delta) + encode_vlq(column_delta)
+    if func_id is not None:
+      func_id_delta = func_id - last_func_id
+      last_func_id = func_id
+      mapping += encode_vlq(func_id_delta)
+    mappings.append(mapping)
 
   return {'version': 3,
           'sources': sources,
           'sourcesContent': sources_content,
-          'names': [],
+          'names': names,
           'mappings': ','.join(mappings)}
 
 
@@ -368,12 +453,12 @@ def main():
   with open(wasm_input, 'rb') as infile:
     wasm = infile.read()
 
-  entries = read_dwarf_entries(wasm_input, options)
+  entries, func_ranges = read_dwarf_info(wasm_input, options)
 
   code_section_offset = get_code_section_offset(wasm)
 
   logger.debug('Saving to %s' % options.output)
-  map = build_sourcemap(entries, code_section_offset, options)
+  map = build_sourcemap(entries, func_ranges, code_section_offset, options)
   with open(options.output, 'w', encoding='utf-8') as outfile:
     json.dump(map, outfile, separators=(',', ':'), ensure_ascii=False)
 
