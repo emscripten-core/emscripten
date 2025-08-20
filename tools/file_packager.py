@@ -370,7 +370,6 @@ def main():  # noqa: C901, PLR0912, PLR0915
 
   data_target = args[0]
   data_files = []
-  plugins = []
   leading = ''
 
   for arg in args[1:]:
@@ -427,10 +426,6 @@ def main():  # noqa: C901, PLR0912, PLR0915
       leading = ''
     elif arg == '--quiet':
       options.quiet = True
-    elif arg.startswith('--plugin'):
-      plugin = utils.read_file(arg.split('=', 1)[1])
-      eval(plugin) # should append itself to plugins
-      leading = ''
     elif leading in {'preload', 'embed'}:
       mode = leading
       # position of @ if we're doing 'src@dst'. '__' is used to keep the index
@@ -556,11 +551,6 @@ def main():  # noqa: C901, PLR0912, PLR0915
   # file order on different file systems / operating systems)
   data_files = sorted(data_files, key=lambda file_: file_.dstpath)
   data_files = [file_ for file_ in data_files if not was_seen(file_.dstpath)]
-
-  # Apply plugins
-  for file_ in data_files:
-    for plugin in plugins:
-      plugin(file_)
 
   metadata = {'files': []}
 
