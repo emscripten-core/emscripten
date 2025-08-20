@@ -2274,6 +2274,112 @@ addToLibrary({
   $noExitRuntime__postset: () => addAtModule(makeModuleReceive('noExitRuntime')),
   $noExitRuntime: {{{ !EXIT_RUNTIME }}},
 
+#if !MINIMAL_RUNTIME
+  // A counter of dependencies for calling run(). If we need to
+  // do asynchronous work before running, increment this and
+  // decrement it. Incrementing must happen in a place like
+  // Module.preRun (used by emcc to add file preloading).
+  // Note that you can add dependencies in preRun, even though
+  // it happens right before run - run will be postponed until
+  // the dependencies are met.
+  $runDependencies__internal: true,
+  $runDependencies: 0,
+  // overridden to take different actions when all run dependencies are fulfilled
+  $dependenciesFulfilled__internal: true,
+  $dependenciesFulfilled: null,
+#if ASSERTIONS
+  $runDependencyTracking__internal: true,
+  $runDependencyTracking: {},
+  $runDependencyWatcher__internal: true,
+  $runDependencyWatcher: null,
+#endif
+
+  $addRunDependency__deps: ['$runDependencies', '$removeRunDependency',
+#if ASSERTIONS
+    '$runDependencyTracking',
+    '$runDependencyWatcher',
+#endif
+  ],
+  $addRunDependency: (id) => {
+    runDependencies++;
+
+#if expectToReceiveOnModule('monitorRunDependencies')
+    Module['monitorRunDependencies']?.(runDependencies);
+#endif
+
+#if ASSERTIONS
+#if RUNTIME_DEBUG
+    dbg('addRunDependency', id);
+#endif
+    assert(id, 'addRunDependency requires an ID')
+    assert(!runDependencyTracking[id]);
+    runDependencyTracking[id] = 1;
+    if (runDependencyWatcher === null && typeof setInterval != 'undefined') {
+      // Check for missing dependencies every few seconds
+      runDependencyWatcher = setInterval(() => {
+        if (ABORT) {
+          clearInterval(runDependencyWatcher);
+          runDependencyWatcher = null;
+          return;
+        }
+        var shown = false;
+        for (var dep in runDependencyTracking) {
+          if (!shown) {
+            shown = true;
+            err('still waiting on run dependencies:');
+          }
+          err(`dependency: ${dep}`);
+        }
+        if (shown) {
+          err('(end of list)');
+        }
+      }, 10000);
+#if ENVIRONMENT_MAY_BE_NODE
+      // Prevent this timer from keeping the runtime alive if nothing
+      // else is.
+      runDependencyWatcher.unref?.()
+#endif
+    }
+#endif
+  },
+
+  $removeRunDependency__deps: ['$runDependencies', '$dependenciesFulfilled',
+#if ASSERTIONS
+    '$runDependencyTracking',
+    '$runDependencyWatcher',
+#endif
+  ],
+  $removeRunDependency: (id) => {
+    runDependencies--;
+
+#if expectToReceiveOnModule('monitorRunDependencies')
+    Module['monitorRunDependencies']?.(runDependencies);
+#endif
+
+#if ASSERTIONS
+#if RUNTIME_DEBUG
+    dbg('removeRunDependency', id);
+#endif
+    assert(id, 'removeRunDependency requires an ID');
+    assert(runDependencyTracking[id]);
+    delete runDependencyTracking[id];
+#endif
+    if (runDependencies == 0) {
+#if ASSERTIONS
+      if (runDependencyWatcher !== null) {
+        clearInterval(runDependencyWatcher);
+        runDependencyWatcher = null;
+      }
+#endif
+      if (dependenciesFulfilled) {
+        var callback = dependenciesFulfilled;
+        dependenciesFulfilled = null;
+        callback(); // can add another dependenciesFulfilled
+      }
+    }
+  },
+#endif
+
   // The following addOn<X> functions are for adding runtime callbacks at
   // various executions points. Each addOn<X> function has a corresponding
   // compiled time version named addAt<X> that will instead inline during

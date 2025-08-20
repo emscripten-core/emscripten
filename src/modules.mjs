@@ -430,8 +430,6 @@ function exportRuntimeSymbols() {
   // All possible runtime elements that can be exported
   let runtimeElements = [
     'run',
-    'addRunDependency',
-    'removeRunDependency',
     'out',
     'err',
     'callMain',
@@ -452,10 +450,6 @@ function exportRuntimeSymbols() {
 
   if (SUPPORT_BIG_ENDIAN) {
     runtimeElements.push('HEAP_DATA_VIEW');
-  }
-
-  if (USE_OFFSET_CONVERTER) {
-    runtimeElements.push('WasmOffsetConverter');
   }
 
   if (LOAD_SOURCE_MAP) {

@@ -2865,6 +2865,7 @@ More info: https://emscripten.org
     # running.
     with open('pre.js', 'a') as f:
       f.write('Module["preRun"] = () => { out("add-dep"); addRunDependency("dep"); }\n')
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency')
     output = self.do_runf('hello_world.c', cflags=['--pre-js', 'pre.js', '-sRUNTIME_DEBUG', '-sWASM_ASYNC_COMPILATION=0', '-O2', '--closure=1'])
     self.assertContained('add-dep\n', output)
     self.assertNotContained('hello, world!\n', output)
@@ -5249,9 +5250,8 @@ Module["preRun"] = () => {
 };
 ''')
 
-    self.run_process([EMCC, 'code.c', '--pre-js', 'pre.js'])
-    output = self.run_js('a.out.js')
-
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency,$removeRunDependency')
+    output = self.do_runf('code.c', cflags=['--pre-js=pre.js'])
     self.assertEqual(output.count('This should only appear once.'), 1)
 
   def test_module_print(self):
@@ -6898,10 +6898,21 @@ int main(int argc, char **argv) {
     # Test HTTP Accept-Language parsing by simulating navigator.languages #8751
     self.run_process([EMCC,
                       test_file('test_browser_language_detection.c')])
-    # We support both "C" and "en_US" here since older versions of node do
+
+    expected_lang = os.environ.get('LANG')
+    if expected_lang is None:
+      # If the LANG env. var doesn't exist (Windows), ask Node for the language.
+      try:
+        cmd = config.NODE_JS + ['-e', 'console.log(navigator.languages[0])']
+        expected_lang = subprocess.check_output(cmd, stderr=subprocess.NULL)
+        expected_lang = expected_lang.decode('utf-8').strip().replace('-', '_')
+        expected_lang = f'{expected_lang}.UTF-8'
+      except Exception:
+        expected_lang = 'en_US.UTF-8'
+
+    # We support both "C" and system LANG here since older versions of node do
     # not expose navigator.languages.
-    lang = os.environ.get('LANG', 'C.UTF-8')
-    self.assertContained(f'LANG=({lang}|en_US.UTF-8|C.UTF-8)', self.run_js('a.out.js'), regex=True)
+    self.assertContained(f'LANG=({expected_lang}|en_US.UTF-8|C.UTF-8)', self.run_js('a.out.js'), regex=True)
 
     # Accept-Language: fr,fr-FR;q=0.8,en-US;q=0.5,en;q=0.3
     create_file('pre.js', 'var navigator = { language: "fr" };')
@@ -7203,6 +7214,7 @@ int main(void) {
     await Module();
     console.log('got module');
     ''')
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency,$removeRunDependency')
     self.cflags += ['-sEXPORT_ES6', '-sMODULARIZE', '-sWASM_ASYNC_COMPILATION=0', '--pre-js=pre.js']
     self.emcc(test_file('hello_world.c'), output_filename='hello_world.mjs')
     self.assertContained('add-dep\nremove-dep\nhello, world!\ngot module\n', self.run_js('run.mjs'))
@@ -12413,23 +12425,6 @@ int main(void) {
                             '-sSTACK_SIZE=128kb', '-sEXIT_RUNTIME',
                             '--profiling-funcs'])
 
-  @parameterized({
-    '': ([],),
-    'sync': (['-sWASM_ASYNC_COMPILATION=0'],),
-  })
-  def test_offset_converter(self, args):
-    self.set_setting('USE_OFFSET_CONVERTER')
-    self.do_runf('other/test_offset_converter.c', 'ok', cflags=['--profiling-funcs'] + args)
-
-  @parameterized({
-    '': ([],),
-    'sync': (['-sWASM_ASYNC_COMPILATION=0'],),
-  })
-  def test_offset_converter_source_map(self, args):
-    self.set_setting('USE_OFFSET_CONVERTER')
-    self.set_setting('LOAD_SOURCE_MAP')
-    self.do_runf('other/test_offset_converter.c', 'ok', cflags=['-gsource-map', '-DUSE_SOURCE_MAP'] + args)
-
   @crossplatform
   @no_windows('ptys and select are not available on windows')
   def test_color_diagnostics(self):
@@ -14101,10 +14096,6 @@ kill -9 $$
   def test_bad_export_name(self):
     err = self.expect_fail([EMCC, '-sEXPORT_NAME=foo bar', test_file('hello_world.c')])
     self.assertContained('error: EXPORT_NAME is not a valid JS identifier: `foo bar`', err)
-
-  def test_offset_convertor_plus_wasm2js(self):
-    err = self.expect_fail([EMCC, '-sUSE_OFFSET_CONVERTER', '-sWASM=0', test_file('hello_world.c')])
-    self.assertContained('emcc: error: WASM2JS is not compatible with USE_OFFSET_CONVERTER (see #14630)', err)
 
   def test_standard_library_mapping(self):
     # Test the `-l` flags on the command line get mapped the correct libraries variant
@@ -15885,7 +15876,7 @@ addToLibrary({
     self.assertNotContained('new Worker(', read_file('hello_world.js'))
 
   def test_sysroot_includes_first(self):
-    self.do_other_test('test_stdint_limits.c', cflags=['-std=c11', '-iwithsysroot/include'])
+    self.do_other_test('test_stdint_limits.c', cflags=['-iwithsysroot/include'])
 
   def test_force_filesystem_error(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sFILESYSTEM=0', '-sFORCE_FILESYSTEM'])

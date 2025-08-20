@@ -1174,8 +1174,8 @@ var LibraryDylink = {
   },
 
   $loadDylibs__internal: true,
-  $loadDylibs__deps: ['$loadDynamicLibrary', '$reportUndefinedSymbols'],
-  $loadDylibs: () => {
+  $loadDylibs__deps: ['$loadDynamicLibrary', '$reportUndefinedSymbols', '$addRunDependency', '$removeRunDependency'],
+  $loadDylibs: async () => {
     if (!dynamicLibraries.length) {
 #if DYLINK_DEBUG
       dbg('loadDylibs: no libraries to preload');
@@ -1187,21 +1187,19 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
     dbg('loadDylibs:', dynamicLibraries);
 #endif
+    addRunDependency('loadDylibs');
 
     // Load binaries asynchronously
-    addRunDependency('loadDylibs');
-    dynamicLibraries
-      .reduce((chain, lib) => chain.then(() =>
-        loadDynamicLibrary(lib, {loadAsync: true, global: true, nodelete: true, allowUndefined: true})
-      ), Promise.resolve())
-      .then(() => {
-        // we got them all, wonderful
-        reportUndefinedSymbols();
-        removeRunDependency('loadDylibs');
-  #if DYLINK_DEBUG
-        dbg('loadDylibs done!');
-  #endif
-      });
+    for (var lib of dynamicLibraries) {
+      await loadDynamicLibrary(lib, {loadAsync: true, global: true, nodelete: true, allowUndefined: true})
+    }
+    // we got them all, wonderful
+    reportUndefinedSymbols();
+
+#if DYLINK_DEBUG
+    dbg('loadDylibs done!');
+#endif
+    removeRunDependency('loadDylibs');
   },
 
   // void* dlopen(const char* filename, int flags);

@@ -1355,7 +1355,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
 
   def test_fs_idbfs_fsync(self):
     # sync from persisted state into memory before main()
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall,$addRunDependency')
     create_file('pre.js', '''
       Module.preRun = () => {
         addRunDependency('syncfs');
@@ -2382,6 +2382,7 @@ void *getBindBuffer() {
   @also_with_wasm2js
   def test_pre_run_deps(self):
     # Adding a dependency in preRun will delay run
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency')
     create_file('pre.js', '''
       Module.preRun = () => {
         addRunDependency('foo');
@@ -2600,6 +2601,7 @@ void *getBindBuffer() {
     self.btest('glew.c', cflags=['-lGL', '-lSDL', '-lGLEW', '-sLEGACY_GL_EMULATION', '-DGLEW_MX'], expected='1')
 
   def test_doublestart_bug(self):
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency,$removeRunDependency')
     create_file('pre.js', r'''
 Module["preRun"] = () => {
   addRunDependency('test_run_dependency');
@@ -3724,17 +3726,15 @@ Module["preRun"] = () => {
     '''))
 
   def test_pthread_c11_threads(self):
-    self.btest_exit('pthread/test_pthread_c11_threads.c',
-                    cflags=['-gsource-map', '-std=gnu11', '-pthread', '-sPROXY_TO_PTHREAD'])
+    self.btest_exit('pthread/test_pthread_c11_threads.c', cflags=['-gsource-map', '-pthread', '-sPROXY_TO_PTHREAD'])
 
   def test_pthread_pool_size_strict(self):
     # Check that it doesn't fail with sufficient number of threads in the pool.
-    self.btest_exit('pthread/test_pthread_c11_threads.c',
-                    cflags=['-g2', '-std=gnu11', '-pthread', '-sPTHREAD_POOL_SIZE=4', '-sPTHREAD_POOL_SIZE_STRICT=2'])
+    self.btest_exit('pthread/test_pthread_c11_threads.c', cflags=['-g2', '-pthread', '-sPTHREAD_POOL_SIZE=4', '-sPTHREAD_POOL_SIZE_STRICT=2'])
     # Check that it fails instead of deadlocking on insufficient number of threads in the pool.
     self.btest('pthread/test_pthread_c11_threads.c',
                expected='abort:Assertion failed: thrd_create(&t4, thread_main, NULL) == thrd_success',
-               cflags=['-g2', '-std=gnu11', '-pthread', '-sPTHREAD_POOL_SIZE=3', '-sPTHREAD_POOL_SIZE_STRICT=2'])
+               cflags=['-g2', '-pthread', '-sPTHREAD_POOL_SIZE=3', '-sPTHREAD_POOL_SIZE_STRICT=2'])
 
   def test_pthread_in_pthread_pool_size_strict(self):
     # Check that it fails when there's a pthread creating another pthread.
@@ -5038,13 +5038,6 @@ Module["preRun"] = () => {
   def test_minimal_runtime_hello_world(self, args):
     self.btest_exit('small_hello_world.c', cflags=args + ['-sMINIMAL_RUNTIME'])
 
-  @parameterized({
-    '': ([],),
-    'pthread': (['-sPROXY_TO_PTHREAD', '-pthread'],),
-  })
-  def test_offset_converter(self, args):
-    self.btest_exit('test_offset_converter.c', cflags=['-sUSE_OFFSET_CONVERTER', '-gsource-map'] + args)
-
   # Tests emscripten_unwind_to_js_event_loop() behavior
   def test_emscripten_unwind_to_js_event_loop(self):
     self.btest_exit('test_emscripten_unwind_to_js_event_loop.c')
@@ -5161,12 +5154,12 @@ Module["preRun"] = () => {
   # Tests C11 keyword _Thread_local for TLS in Wasm Workers
   @also_with_minimal_runtime
   def test_wasm_worker_c11__Thread_local(self):
-    self.btest('wasm_worker/c11__Thread_local.c', expected='42', cflags=['-sWASM_WORKERS', '-std=gnu11']) # Cannot test C11 - because of EM_ASM must test Gnu11.
+    self.btest('wasm_worker/c11__Thread_local.c', expected='42', cflags=['-sWASM_WORKERS'])
 
   # Tests GCC specific extension keyword __thread for TLS in Wasm Workers
   @also_with_minimal_runtime
   def test_wasm_worker_gcc___thread(self):
-    self.btest('wasm_worker/gcc___Thread.c', expected='42', cflags=['-sWASM_WORKERS', '-std=gnu11'])
+    self.btest('wasm_worker/gcc___Thread.c', expected='42', cflags=['-sWASM_WORKERS'])
 
   # Tests emscripten_wasm_worker_sleep()
   @also_with_minimal_runtime
