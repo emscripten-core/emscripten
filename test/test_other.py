@@ -14729,6 +14729,7 @@ myMethod: 43
   def test_build_fetch_tests(self):
     # We can't run these outside of the browser, but at least we can
     # make sure they build.
+    self.cflags.append('-DSERVER="localhost"')
     self.set_setting('FETCH')
     self.build('fetch/test_fetch_to_memory_sync.c')
     self.build('fetch/test_fetch_to_memory_async.c')
