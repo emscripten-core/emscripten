@@ -17,7 +17,7 @@ int main() {
         Module.reported = true;
         console.log("reporting success");
         // manually REPORT_RESULT; we shouldn't call back into native code at this point
-        await fetch("http://localhost:8888/report_result?0");
+        await fetch("/report_result?0");
         window.close();
       }
     };

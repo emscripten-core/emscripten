@@ -81,7 +81,7 @@
         postRun: [],
 
         reportSuccess: function() {
-          fetch('http://localhost:8888/report_result?0').then(() => window.close());
+          fetch('/report_result?0').then(() => window.close());
         },
 
         print: (function() {
