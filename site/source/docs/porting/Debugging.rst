@@ -29,10 +29,10 @@ Emscripten offers a variety of flags to control the generation of debug informat
      - :ref:`emcc-gsource-map`
    * - ``-fsanitize=address``
      - Detecting memory errors (buffer overflows, use-after-free, memory leaks).
-     - `Clang docs <https://clang.llvm.org/docs/AddressSanitizer.html>`_
+     - `Clang ASan docs <https://clang.llvm.org/docs/AddressSanitizer.html>`_
    * - ``-fsanitize=undefined``
      - Detecting undefined behavior (e.g., null pointer dereferences, integer overflow).
-     - `Clang docs <https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html>`_
+     - `Clang UBSan docs <https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html>`_
    * - ``-sSAFE_HEAP=1``
      - Checking for memory access errors like null pointer dereferences and unaligned access.
      - :ref:`SAFE_HEAP`
@@ -44,7 +44,8 @@ Emscripten offers a variety of flags to control the generation of debug informat
      - :ref:`emcc-profiling`
    * - ``--memoryprofiler``
      - Embedding a visual memory allocation tracker in the generated HTML.
-     - :ref:`emcc-memoryprofiler`
+     - :ref:`emcc-profiling`
+
 
 
 Emitting and controlling debug information
@@ -52,25 +53,16 @@ Emitting and controlling debug information
 Debugging-related information comes in several forms: in Wasm object and binary files (DWARF 
 sections, Wasm name section), side output files (source maps, symbol maps, DWARF sidecar and package files),
 and even in the code itself (assertions and instrumentation, whitespace).
-In a traditional Unix-style C toolchain, flags such as ``-g`` are passed to the compiler, placing 
-DWARF sections in the object files. This DWARF info is combined by the linker and appears in the
-output, independently of any optimization settings.
-In contrast, although :ref:`Emcc <emccdoc>` supports many common
-`clang flags <https://clang.llvm.org/docs/ClangCommandLineReference.html>` to generate DWARF into
-the object files, final debug output is largely controlled by link-time flags, and is more affected
-by optimization.
-For example ``emcc`` strips out most of the debug information after linking if a debugging-related
-flag is not provided at link time, even if the input object files contain DWARF.
-
-In addition to DWARF, wasm files may contain a name section (link) which includes names for each
+For information on DWARF, see :ref:`below <debugging-dwarf>`.
+In addition to DWARF, wasm files may contain a name section (TODO link) which includes names for each
 function; these function names are displayed by browsers when they generate stack traces and in
-developer tools. (more info). Source maps are also supported (see below).
+developer tools. (TODO more info?). Source maps are also supported (see :ref:`below <debugging-symbolization>`).
 
 This document contains an overview of the flags used to emit and control debugging behavior, and
 use-case-based examples.
 
 DWARF:
-Amount of debug information generated: ``-gN``, ``-gline-tables-only``
+Amount of debug information generated: ``-g``, ``-g<level>``, ``-gline-tables-only``
 Type of debug information in the binary: ``-gdwarf-5`` (others?)
 Where DWARF is written: ``-gsplit-dwarf``, ``-gseparate-dwarf``
 
@@ -88,39 +80,58 @@ composable.
 
 
 
-
 Interactive, Source-Level Debugging
 =============================================
 
 For stepping through C/C++ source code in a browser's debugger, you can use debug information in either DWARF or source map format.
 
-DWARF offers the most precise and detailed debugging experience and is supported in Chrome with an
-`extension <https://goo.gle/wasm-debugging-extension>`.
+DWARF offers the best debugging experience and is supported in Chrome with an
+`extension <https://goo.gle/wasm-debugging-extension>`_.
 See `here <https://developer.chrome.com/blog/wasm-debugging-2020/>`_ for a detailed usage guide.
-Source maps are more widely supported in Firefox and Safari, but they provide only location mapping
-and cannot be used to inspect variables.
+Source maps are more widely supported, but they provide only location mapping
+and cannot be used easily to inspect variables.
 
- 
-DWARF can be produced at compile time with the *emcc* :ref:`-g flag <emcc-g>`. Be aware that optimixation levels above
-:ref:`-O1 <emcc-O1>` aincreasingly remove LLVM debug information, and optimization flags at link time also disable
-runtime :ref:`ASSERTIONS <debugging-ASSERTIONS>` checks.
-Passing a ``-g`` flag at link time also affects the generated JavaScript code and preserves white-space, function names, and variable names.
+
+.. _debugging-dwarf:
+
+DWARF
+-----
+
+In a traditional Unix-style C toolchain, flags such as ``-g`` are passed to the compiler, placing
+DWARF sections in the object files. This DWARF info is combined by the linker and appears in the
+output, independently of any optimization settings.
+In contrast, although :ref:`Emcc <emccdoc>` supports many of the common
+`clang flags <https://clang.llvm.org/docs/ClangCommandLineReference.html#debug-information-generation>`_ to generate DWARF into
+the object files, final debug output is also controlled by link-time flags, and is more affected
+by optimization.
+For example ``emcc`` strips out most of the debug information after linking if a debugging-related
+flag is not provided at link time, even if the input object files contain DWARF.
+
+DWARF can be produced at compile time with the *emcc* :ref:`-g flag <emcc-g>`. Optimization levels above
+:ref:`-O1 <emcc-O1>` or :ref:`-Og <emcc-Og>` increasingly remove LLVM debug information (as with other architectures),
+and optimization flags at link time also disable Emscripten's runtime :ref:`ASSERTIONS <debugging-ASSERTIONS>` checks.
+Passing a ``-g`` flag at link time also affects the generated JavaScript code (preserving white-space, function names, and variable names).
 
 The ``-g`` flag can also be specified with integer levels: :ref:`-g0 <emcc-g0>`, :ref:`-g1 <emcc-g1>`, :ref:`-g2 <emcc-g2>`,
-and :ref:`-g3 <emcc-g3>` (default with ``-g``). Each level builds on the last to provide progressively more debug information.
-(TODO compile vs link)
+and :ref:`-g3 <emcc-g3>` (default with ``-g``).  At compile time these flags control the amount of DWARF in the object files.
+At link time, each adds sucessively more kinds of information in the wasm and JS files (DWARF is only retained after linking
+when using ``-g`` or ``-g3``).
 
-.. tip:: Even for medium-sized projects, DWARF debug information can be of substantial size. Debug information can be emitted in a
+.. tip:: Even for medium-sized projects, DWARF debug information can be large. Debug information can be emitted in a
   separate file with the :ref:`-gseparate-dwarf <emcc-gseparate-dwarf>` option. To speed up linking,
-  the :ref:`-gsplit-dwarf <emcc-gsplit-dwarf>` option can be used. See the next section for more ways to reduce debug info size (TODO update).
+  the :ref:`-gsplit-dwarf <emcc-gsplit-dwarf>` option can be used at compile time.
+  See `this article <https://developer.chrome.com/blog/faster-wasm-debugging/#scalable_debugging>`_
+  for more details on debugging large files, and see
+  :ref:`the next section <debugging-symbolization>` for more ways to reduce debug info size.
 
 .. note:: Because Binaryen optimization degrades the quality of DWARF info further, higher link-time optimization settings are
   not recommended. The ``-O1`` setting will skip running the Binaryen
   optimizer (``wasm-opt``) entirely unless required by other options. You can also add the 
   ``-sERROR_ON_WASM_CHANGES_AFTER_LINK`` option if you want to ensure the debug info is preserved.
   See `Skipping Binaryen <https://developer.chrome.com/blog/faster-wasm-debugging/#skipping-binaryen>`_ for more details.
-(TODO update)
 
+
+.. _debugging-symbolization:
 
 Symbolizing Production Crash Logs
 =============================================
@@ -129,17 +140,18 @@ Even when not using an interactive debugger, it's valuable to have source inform
 code locations, particularly for stack traces or crash logs. This is also true for fully-optimized
 production builds.
 
-`Source maps <https://web.dev/articles/source-maps>` are commonly used for langauges that compile
+`Source maps <https://web.dev/articles/source-maps>`_ are commonly used for langauges that compile
 to JavaScript (mapping locations in the compiled JS output to locations in the original source
-code), but WebAssembly is also supported. Emscripten can emit ource maps can be emitted with
-the :ref:`-gsource-map <emcc-gsource-map>` link-time option. Source maps are preserved even with
+code), but WebAssembly is also supported. Emscripten can emit source maps with
+the :ref:`-gsource-map <emcc-gsource-map>` link-time flag. Source maps are preserved even with
 full post-link optimizations, so they work well for this use case.
 
 DWARF can also be used for this purpose. Typically a binary containing DWARF would be generated
 at build time, and then stripped. The stripped copy would be served to users, and the original
 would be saved for symbolication purposes. For this use case, full information about about types
-and variables from the sources isn't needed; the `-gline-tables-only` compile-time flag causes
-clang to generate only the line table information, saving DWARF size and compile/linking time.
+and variables from the sources isn't needed; the 
+`-gline-tables-only <https://clang.llvm.org/docs/ClangCommandLineReference.html#cmdoption-clang-gline-tables-only>`_
+compile-time flag causes clang to generate only the line table information, saving DWARF size and compile/linking time.
 
 Source maps are easier to parse and more widely supported by ecosystem tooling. And as noted
 above, preserving DWARF inhibits some Binaryen optimizations. However DWARF has the advantage
@@ -147,7 +159,7 @@ that it includes information about inlining, which can result in more accurate s
 
 (TODO: -g1 at compile time on native generates DWARF but not for emscripten)
 
-Emscripten includes a tool called `emsymbolizer` that can map wasm code addresses to sources
+Emscripten includes a tool called ``emsymbolizer`` that can map wasm code addresses to sources
 using several different kinds of debug info, including DWARF (in wasm object or linked files)
 and source maps for line/column info, and symbol maps (see :ref:`emcc-emit-symbol-map`),
 name sections and object file symbol tables for function names.
@@ -159,21 +171,25 @@ Fast Edit+Compile with minimal debug information
 When you want the fastest builds, you generally want to avoid generating large debug information
 during compile, because it takes time to link into the final binary. It is still worthwhile to use
 the ``--profiling`` (TODO gnames?)
-flag because browsers understand the name section even when devtools are not in use, resulting in 
-more useful stack traces at minimal cost.
-
+flag (at link time only) because browsers understand the name section even when devtools are not 
+in use, resulting in more useful stack traces at minimal cost.
 
 
 
 Detecting Memory Errors and Undefined Behavior
 ==============================================
 
-Emscripten has a number of compiler settings that can be useful for catching errors at runtime.
-These are set using the :ref:`emcc -s<emcc-s-option-value>` option, and will override any optimization flags. For example:
+The best tools for detecting memory safety and undefined behavior issues. are Clang's sanitizers,
+such as the Undefined Behaviour Sanitizer (UBSan) and the Address Sanitizer (ASan).
+For more information, see :ref:`Sanitizers`.
+
+
+Emscripten has several other compiler settings that can be useful for catching errors at runtime.
+These are set using the :ref:`emcc -s<emcc-s-option-value>` option, and will override any optimization flags (TODO is this true?). For example:
 
 .. code-block:: bash
 
-  emcc -O1 -sASSERTIONS test/hello_world
+  emcc -O1 -sASSERTIONS test/hello_world.c
 
 Some important settings are:
 
@@ -181,14 +197,16 @@ Some important settings are:
     .. _debugging-ASSERTIONS:
 
     ``ASSERTIONS=1`` is used to enable runtime checks for many types of common errors. It also
-     defines how Emscripten should handle errors in program flow. The value can be set to ``ASSERTIONS=2`` in order to run additional tests. ``ASSERTIONS=1`` is enabled by default at ``-O0``.
+    defines how Emscripten should handle errors in program flow. The value can be set to 
+    ``ASSERTIONS=2`` in order to run additional tests. ``ASSERTIONS=1`` is enabled by default at
+    ``-O0``.
 
   -
     .. _debugging-SAFE-HEAP:
 
     ``SAFE_HEAP=1`` adds additional memory access checks with a Binaryen pass, and will give clear
-     errors for problems like dereferencing 0 and memory alignment issues.
-     You can also set ``SAFE_HEAP_LOG`` to log ``SAFE_HEAP`` operations.
+    errors for problems like dereferencing 0 and memory alignment issues.
+    You can also set ``SAFE_HEAP_LOG`` to log ``SAFE_HEAP`` operations. (TODO: any advantages over ASan?)
 
   -
     .. _debugging-STACK_OVERFLOW_CHECK:
@@ -206,11 +224,9 @@ Some important settings are:
     otherwise.
 
 
-TODO: do these actually change optimization flags?
 
 A number of other useful debug settings are defined in `src/settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_. For more information, search that file for the keywords "check" and "debug".
 
-In addition to these settings, Emscripten also supports some of Clang's sanitizers, such as the Undefined Behaviour Sanitizer (UBSan) and the Address Sanitizer (ASan). For more information, see :ref:`Sanitizers`.
 
 .. _debugging-profiling:
 
@@ -234,15 +250,15 @@ memory that the emscripten-compiled application uses is a single big allocation
 To get information about usage inside that object, you need other tools:
 
 * Emscripten supports the `mallinfo() <https://man7.org/linux/man-pages/man3/mallinfo.3.html>`_,
-API, which gives you information from ``dlmalloc`` about current allocations.
+  API, which gives you information from ``dlmalloc`` about current allocations.
 * Emscripten also has a ``--memoryprofiler`` option that displays memory usage in a visual manner.
-Note that you need to emit HTML (e.g. with a command like
-``emcc test/hello_world.c --memoryprofiler -o page.html``) as the memory profiler
-output is rendered onto the page. To view it, load ``page.html`` in your
-browser (remember to use a :ref:`local webserver <faq-local-webserver>`). The display
-auto-updates, so you can open the devtools console and run a command like
-``_malloc(1024 * 1024)``. That will allocate 1MB of memory, which will then show
-up on the memory profiler display.
+  Note that you need to emit HTML (e.g. with a command like
+  ``emcc test/hello_world.c --memoryprofiler -o page.html``) as the memory profiler
+  output is rendered onto the page. To view it, load ``page.html`` in your
+  browser (remember to use a :ref:`local webserver <faq-local-webserver>`). The display
+  auto-updates, so you can open the devtools console and run a command like
+  ``_malloc(1024 * 1024)``. That will allocate 1MB of memory, which will then show
+  up on the memory profiler display.
 
 .. _other-debugging-tools:
 
@@ -252,7 +268,7 @@ Other Debugging Tools and Techniques
 .. _debugging-EMCC_DEBUG:
 
 Debugging the compiler driver
------------------------
+-----------------------------
 
 Compiling with the :ref:`emcc -v <emcc-verbose>` will cause emcc to output
 the sub-commands that it runs as well as passes ``-v`` to Clang.
@@ -316,7 +332,8 @@ Function Pointer Issues
 -----------------------
 
 If you get an ``abort()`` from a function pointer call to ``nullFunc`` or ``b0`` or ``b1`` (possibly with an error message saying "incorrect function pointer"), the problem is that the function pointer was not found in the expected function pointer table when called.
--.. note:: ``nullFunc`` is the function used to populate empty index entries in the function pointer tables (``b0`` and ``b1`` are shorter names used for ``nullFunc`` in more optimized builds).  A function pointer to an invalid index will call this function, which simply calls ``abort()``
+
+.. note:: ``nullFunc`` is the function used to populate empty index entries in the function pointer tables (``b0`` and ``b1`` are shorter names used for ``nullFunc`` in more optimized builds).  A function pointer to an invalid index will call this function, which simply calls ``abort()``.
 
 There are several possible causes:
 

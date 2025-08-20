@@ -54,7 +54,7 @@ Options that are modified or new in *emcc* are listed below:
 
 ``-O1``
   [compile+link]
-  Simple optimizations. During the compile step these include LLVM ``-O1`` optimizations. During the link step this does not include various runtime assertions in JS that `-O0` would do.
+  Simple optimizations. During the compile step these include LLVM ``-O1`` optimizations. During the link step this omits various runtime assertions in JS that `-O0` would include.
 
 .. _emcc-O2:
 
@@ -68,7 +68,7 @@ Options that are modified or new in *emcc* are listed below:
 
 ``-O3``
   [compile+link]
-  Like ``-O2``, but with additional optimizations that may take longer to run.
+  Like ``-O2``, but with additional optimizations that may take longer to run and may increase code size.
 
   .. note:: This is a good setting for a release build.
 
@@ -244,7 +244,8 @@ Options that are modified or new in *emcc* are listed below:
   Save a map file between function indexes in the Wasm and function names. By
   storing the names on a file on the side, you can avoid shipping the names, and
   can still reconstruct meaningful stack traces by translating the indexes back
-  to the names.
+  to the names. This is a simpler format than source maps, but less detailed
+  because it only describes function names and not source locations.
 
   .. note:: When used with ``-sWASM=2``, two symbol files are created. ``[name].js.symbols`` (with WASM symbols) and ``[name].wasm.js.symbols`` (with ASM.js symbols)
 

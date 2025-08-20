@@ -3161,6 +3161,7 @@ More info: https://emscripten.org
       (['-g2', '-gsource-map'], False, True, True),
       (['-gsplit-dwarf', '-gsource-map'], True, True, True),
       (['-gsource-map', '-sERROR_ON_WASM_CHANGES_AFTER_LINK'], False, True, True),
+      (['-gsource-map', '-Og', '-sERROR_ON_WASM_CHANGES_AFTER_LINK'], False, True, True),
       (['-Oz', '-gsource-map'], False, True, True),
     ]:
       print(flags, expect_dwarf, expect_sourcemap, expect_names)
