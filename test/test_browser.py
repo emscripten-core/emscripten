@@ -225,7 +225,7 @@ class browser(BrowserCore):
 
   def post_manual_reftest(self):
     assert os.path.exists('reftest.js')
-    shutil.copy(test_file('browser_reporting.js'), '.')
+    self.add_browser_reporting()
     html = read_file('test.html')
     html = html.replace('</body>', '''
 <script src="browser_reporting.js"></script>
@@ -534,7 +534,7 @@ If manually bisecting:
   # Clear all IndexedDB databases. This gives us a fresh state for tests that
   # chech caching.
   def clear_indexed_db(self):
-    shutil.copy(test_file('browser_reporting.js'), '.')
+    self.add_browser_reporting()
     create_file('clear_indexed_db.html', '''
       <script src="browser_reporting.js"></script>
       <script>
@@ -776,7 +776,7 @@ If manually bisecting:
               window.disableErrorReporting = true;
               window.onerror = null;
               var result = error.includes("test.data") ? 1 : 0;
-              await fetch('http://localhost:8888/report_result?' + result);
+              await fetch('/report_result?' + result);
               window.close();
             }
             window.addEventListener('error', errorHandler);
@@ -2459,7 +2459,7 @@ void *getBindBuffer() {
         setTimeout(async () => {
           out('done timeout noted = ' + Module.noted);
           assert(Module.noted);
-          await fetch('http://localhost:8888/report_result?' + HEAP32[Module.noted/4]);
+          await fetch('/report_result?' + HEAP32[Module.noted/4]);
           window.close();
         }, 0);
         // called from main, this is an ok time
@@ -3440,7 +3440,7 @@ Module["preRun"] = () => {
 
   def test_modularize_network_error(self):
     self.compile_btest('browser_test_hello_world.c', ['-sMODULARIZE', '-sEXPORT_NAME=createModule'], reporting=Reporting.NONE)
-    shutil.copy(test_file('browser_reporting.js'), '.')
+    self.add_browser_reporting()
     create_file('a.html', '''
       <script src="browser_reporting.js"></script>
       <script src="a.out.js"></script>
@@ -3460,7 +3460,7 @@ Module["preRun"] = () => {
 
   def test_modularize_init_error(self):
     self.compile_btest('browser/test_modularize_init_error.cpp', ['-sMODULARIZE', '-sEXPORT_NAME=createModule'], reporting=Reporting.NONE)
-    shutil.copy(test_file('browser_reporting.js'), '.')
+    self.add_browser_reporting()
     create_file('a.html', '''
       <script src="browser_reporting.js"></script>
       <script src="a.out.js"></script>
@@ -4621,7 +4621,7 @@ Module["preRun"] = () => {
 
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   def test_fetch_redirect(self):
-    self.btest_exit('fetch/test_fetch_redirect.c', cflags=['-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
+    self.btest_exit('fetch/test_fetch_redirect.c', cflags=['-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD', f'-DSERVER="{self.SERVER_URL}"'])
 
   @parameterized({
     '': ([],),
