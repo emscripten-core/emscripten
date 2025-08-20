@@ -17,7 +17,7 @@ import io
 import itertools
 import json
 import logging
-import multiprocessing
+import threading
 import os
 import re
 import shlex
@@ -2313,10 +2313,6 @@ def harness_server_func(in_queue, out_queue, port):
         else:
           self.send_error(400, f'Not implemented for {code}')
       elif 'report_' in self.path:
-        # the test is reporting its result. first change dir away from the
-        # test dir, as it will be deleted now that the test is finishing, and
-        # if we got a ping at that time, we'd return an error
-        os.chdir(path_from_root())
         # for debugging, tests may encode the result and their own url (window.location) as result|url
         if '|' in self.path:
           path, url = self.path.split('|', 1)
@@ -2358,8 +2354,6 @@ def harness_server_func(in_queue, out_queue, port):
           assert out_queue.empty(), 'the single response from the last test was read'
           # tell the browser to load the test
           self.wfile.write(b'COMMAND:' + url.encode('utf-8'))
-          # move us to the right place to serve the files for the new test
-          os.chdir(dir)
         else:
           # the browser must keep polling
           self.wfile.write(b'(wait)')
@@ -2395,8 +2389,27 @@ def harness_server_func(in_queue, out_queue, port):
   # do not have the correct MIME type
   SimpleHTTPRequestHandler.extensions_map['.mjs'] = 'text/javascript'
 
-  httpd = ThreadingHTTPServer(('localhost', port), TestServerHandler)
-  httpd.serve_forever() # test runner will kill us
+  return ThreadingHTTPServer(('localhost', port), TestServerHandler)
+
+
+class HttpServerThread(threading.Thread):
+  """A generic thread class to create and run an http server."""
+  def __init__(self, server_creator, *server_args):
+    super().__init__()
+    self.server = None
+    self.server_creator = server_creator
+    self.server_args = server_args
+
+  def stop(self):
+    """Shuts down the server if it is running."""
+    if self.server:
+      self.server.shutdown()
+
+  def run(self):
+    """Creates the server instance and serves forever until stop() is called."""
+    self.server = self.server_creator(*self.server_args)
+    # Start the server's main loop (this blocks until shutdown() is called)
+    self.server.serve_forever()
 
 
 class Reporting(Enum):
@@ -2488,11 +2501,13 @@ class BrowserCore(RunnerCore):
     super().setUpClass()
     if not has_browser() or EMTEST_BROWSER == 'node':
       return
-    cls.harness_in_queue = multiprocessing.Queue()
-    cls.harness_out_queue = multiprocessing.Queue()
-    cls.harness_server = multiprocessing.Process(target=harness_server_func, args=(cls.harness_in_queue, cls.harness_out_queue, cls.PORT))
+
+    cls.harness_in_queue = queue.Queue()
+    cls.harness_out_queue = queue.Queue()
+    cls.harness_server = HttpServerThread(harness_server_func, cls.harness_in_queue, cls.harness_out_queue, cls.PORT)
     cls.harness_server.start()
-    print('[Browser harness server on process %d]' % cls.harness_server.pid)
+
+    print(f'[Browser harness server on thread {cls.harness_server.name}]')
     cls.browser_open(cls.HARNESS_URL)
 
   @classmethod
@@ -2500,9 +2515,10 @@ class BrowserCore(RunnerCore):
     super().tearDownClass()
     if not has_browser() or EMTEST_BROWSER == 'node':
       return
-    cls.harness_server.terminate()
-    print('[Browser harness server terminated]')
+    cls.harness_server.stop()
+    cls.harness_server.join()
     cls.browser_terminate()
+
     if WINDOWS:
       # On Windows, shutil.rmtree() in tearDown() raises this exception if we do not wait a bit:
       # WindowsError: [Error 32] The process cannot access the file because it is being used by another process.
