@@ -36,7 +36,9 @@ var mainArgs = undefined;
 {{{ asyncIf(ASYNCIFY == 2) }}}function callMain() {
 #endif
 #if ASSERTIONS
+#if '$runDependencies' in addedLibraryItems
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on Module["onRuntimeInitialized"])');
+#endif
   assert(typeof onPreRuns === 'undefined' || onPreRuns.length == 0, 'cannot call main when preRun functions remain to be called');
 #endif
 
@@ -133,7 +135,7 @@ function run(args = arguments_) {
 function run() {
 #endif
 
-#if !BOOTSTRAPPING_STRUCT_INFO
+#if '$runDependencies' in addedLibraryItems
   if (runDependencies > 0) {
 #if RUNTIME_DEBUG
     dbg('run() called, but dependencies remain, so not running');
@@ -159,7 +161,7 @@ function run() {
 
   preRun();
 
-#if !BOOTSTRAPPING_STRUCT_INFO
+#if '$runDependencies' in addedLibraryItems
   // a preRun added a dependency, run will be called later
   if (runDependencies > 0) {
 #if RUNTIME_DEBUG

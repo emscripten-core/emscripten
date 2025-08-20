@@ -2865,6 +2865,7 @@ More info: https://emscripten.org
     # running.
     with open('pre.js', 'a') as f:
       f.write('Module["preRun"] = () => { out("add-dep"); addRunDependency("dep"); }\n')
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency')
     output = self.do_runf('hello_world.c', cflags=['--pre-js', 'pre.js', '-sRUNTIME_DEBUG', '-sWASM_ASYNC_COMPILATION=0', '-O2', '--closure=1'])
     self.assertContained('add-dep\n', output)
     self.assertNotContained('hello, world!\n', output)
@@ -5249,9 +5250,8 @@ Module["preRun"] = () => {
 };
 ''')
 
-    self.run_process([EMCC, 'code.c', '--pre-js', 'pre.js'])
-    output = self.run_js('a.out.js')
-
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency,$removeRunDependency')
+    output = self.do_runf('code.c', cflags=['--pre-js=pre.js'])
     self.assertEqual(output.count('This should only appear once.'), 1)
 
   def test_module_print(self):
@@ -7214,6 +7214,7 @@ int main(void) {
     await Module();
     console.log('got module');
     ''')
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency,$removeRunDependency')
     self.cflags += ['-sEXPORT_ES6', '-sMODULARIZE', '-sWASM_ASYNC_COMPILATION=0', '--pre-js=pre.js']
     self.emcc(test_file('hello_world.c'), output_filename='hello_world.mjs')
     self.assertContained('add-dep\nremove-dep\nhello, world!\ngot module\n', self.run_js('run.mjs'))
