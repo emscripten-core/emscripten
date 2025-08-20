@@ -683,7 +683,7 @@ def also_with_modularize(f):
   @wraps(f)
   def metafunc(self, modularize, *args, **kwargs):
     if modularize:
-      if '-sWASM_ESM_INTEGRATION':
+      if self.get_setting('WASM_ESM_INTEGRATION'):
         self.skipTest('also_with_modularize is not compatible with WASM_ESM_INTEGRATION')
       self.cflags += ['--extern-post-js', test_file('modularize_post_js.js'), '-sMODULARIZE']
     f(self, *args, **kwargs)
@@ -1163,7 +1163,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.get_setting('WASMFS'):
       # without this the JS setup code in setup_nodefs.js doesn't work
       self.set_setting('FORCE_FILESYSTEM')
-    self.cflags += ['-DNODEFS', '-lnodefs.js', '--pre-js', test_file('setup_nodefs.js'), '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]']
+    self.cflags += ['-DNODEFS', '-lnodefs.js', '--pre-js', test_file('setup_nodefs.js'), '-sINCOMING_MODULE_JS_API=onRuntimeInitialized']
 
   def setup_noderawfs_test(self):
     self.require_node()
@@ -1354,17 +1354,17 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def add_pre_run(self, code):
     assert not self.get_setting('MINIMAL_RUNTIME')
     create_file('prerun.js', 'Module.preRun = function() { %s }\n' % code)
-    self.cflags += ['--pre-js', 'prerun.js', '-sINCOMING_MODULE_JS_API=[preRun]']
+    self.cflags += ['--pre-js', 'prerun.js', '-sINCOMING_MODULE_JS_API=preRun']
 
   def add_post_run(self, code):
     assert not self.get_setting('MINIMAL_RUNTIME')
     create_file('postrun.js', 'Module.postRun = function() { %s }\n' % code)
-    self.cflags += ['--pre-js', 'postrun.js', '-sINCOMING_MODULE_JS_API=[postRun]']
+    self.cflags += ['--pre-js', 'postrun.js', '-sINCOMING_MODULE_JS_API=postRun']
 
   def add_on_exit(self, code):
     assert not self.get_setting('MINIMAL_RUNTIME')
     create_file('onexit.js', 'Module.onExit = function() { %s }\n' % code)
-    self.cflags += ['--pre-js', 'onexit.js', '-sINCOMING_MODULE_JS_API=[onExit]']
+    self.cflags += ['--pre-js', 'onexit.js', '-sINCOMING_MODULE_JS_API=onExit']
 
   # returns the full list of arguments to pass to emcc
   # param @main_file whether this is the main file of the test. some arguments
@@ -2340,6 +2340,13 @@ class BrowserCore(RunnerCore):
     if not EMTEST_BROWSER:
       logger.info('No EMTEST_BROWSER set. Defaulting to `google-chrome`')
       EMTEST_BROWSER = 'google-chrome'
+    if WINDOWS:
+      # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
+      # set EMTEST_BROWSER=C:\Program Files\Mozilla Firefox\firefox.exe
+      # and spaces are not escaped. But make sure to also support args, e.g.
+      # set EMTEST_BROWSER="C:\Users\clb\AppData\Local\Google\Chrome SxS\Application\chrome.exe" --enable-unsafe-webgpu
+      if '"' not in EMTEST_BROWSER and "'" not in EMTEST_BROWSER:
+        EMTEST_BROWSER = '"' + EMTEST_BROWSER.replace("\\", "/") + '"'
     browser_args = shlex.split(EMTEST_BROWSER)
     logger.info('Launching browser: %s', str(browser_args))
     cls.browser_proc = subprocess.Popen(browser_args + [url])

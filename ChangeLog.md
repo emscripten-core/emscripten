@@ -18,8 +18,20 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.13 (in development)
+4.0.14 (in development)
 -----------------------
+- The `addRunDependency` and `removeRunDependency` API are now optional and need
+  to be included and/or exported using, for example,
+  `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE` or `EXPORTED_RUNTIME_METHODS`. (#24974)
+- The `LOAD_SOURCE_MAP` setting was made an internal setting.  This was always
+  an internal detail of the sanitizers, which is enabled automatically when
+  needed, so setting it explicitly should never be needed. (#24967)
+- The wasm offset converter was removed along with the `WASM_OFFSET_CONVERTER`
+  setting. This feature only existed to work around an old v8 bug that was fixed
+  back in 2019. (#24963)
+
+4.0.13 - 08/14/25
+-----------------
 - The `handle` callback on the `preloadPlugins` used by `--use-preload-plugins`
   (and `FS_createPreloadedFile` API`) was converted from callbacks to async.
   Any externally managed plugins would need to be updated accordingly.  An

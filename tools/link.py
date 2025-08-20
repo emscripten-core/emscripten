@@ -674,7 +674,6 @@ def report_incompatible_settings():
     ('GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS', 'NO_GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS', None),
     ('MODULARIZE', 'NODEJS_CATCH_REJECTION', None),
     ('MODULARIZE', 'NODEJS_CATCH_EXIT', None),
-    ('WASM2JS', 'USE_OFFSET_CONVERTER', 'see #14630'),
   ]
 
   for a, b, reason in incompatible_settings:
@@ -854,10 +853,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with -sASYNCIFY')
     if settings.WASM_WORKERS:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
-    if settings.USE_OFFSET_CONVERTER:
-      exit_with_error('WASM_ESM_INTEGRATION is not compatible with USE_OFFSET_CONVERTER')
     if not settings.WASM_ASYNC_COMPILATION:
-      exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM_ASYNC_COMPILATION')
+      exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM_ASYNC_COMPILATION=0')
     if not settings.WASM:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM2JS')
     if settings.ABORT_ON_WASM_EXCEPTIONS:
@@ -1132,6 +1129,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue', '$setValue']
 
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$ExitStatus']
+
+    # Certain configurations require the removeRunDependency/addRunDependency system.
+    if settings.LOAD_SOURCE_MAP or settings.PROXY_TO_WORKER or (settings.WASM_ASYNC_COMPILATION and not settings.MODULARIZE):
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$addRunDependency', '$removeRunDependency']
 
   if settings.ABORT_ON_WASM_EXCEPTIONS or settings.SPLIT_MODULE:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$wasmTable']
@@ -1562,7 +1563,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if options.sanitize:
     if settings.WASM_WORKERS:
       exit_with_error('WASM_WORKERS is not currently compatible with `-fsanitize` tools')
-    settings.USE_OFFSET_CONVERTER = 1
     # These symbols are needed by `withBuiltinMalloc` which used to implement
     # the `__noleakcheck` attribute.  However this dependency is not yet represented in the JS
     # symbol graph generated when we run the compiler with `--symbols-only`.
@@ -1587,9 +1587,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     inc_initial_memory(50 * 1024 * 1024)
     if settings.PTHREADS:
       inc_initial_memory(50 * 1024 * 1024)
-
-  if settings.USE_OFFSET_CONVERTER:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$UTF8ArrayToString')
 
   if options.sanitize & UBSAN_SANITIZERS:
     if options.sanitize_minimal_runtime:
@@ -2013,7 +2010,7 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   settings.ENVIRONMENT = ['node']
   settings.MINIMAL_RUNTIME = 0
   # Required function to trigger TS generation.
-  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks']
+  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks', '$addRunDependency', '$removeRunDependency']
   settings.EXPORT_ES6 = False
   # Disable proxying and thread pooling so a worker is not automatically created.
   settings.PROXY_TO_PTHREAD = False
@@ -2125,7 +2122,8 @@ def phase_source_transforms(options):
 # Unmangle previously mangled `import.meta` and `await import` references in
 # both main code and libraries.
 # See also: `preprocess` in parseTools.js.
-def fix_es6_import_statements(js_file):
+def fix_js_mangling(js_file):
+  # We don't apply these mangliings except in MODULARIZE/EXPORT_ES6 modes.
   if not settings.MODULARIZE:
     return
 
@@ -2133,9 +2131,8 @@ def fix_es6_import_statements(js_file):
   write_file(js_file, src
              .replace('EMSCRIPTEN$IMPORT$META', 'import.meta')
              .replace('EMSCRIPTEN$AWAIT$IMPORT', 'await import')
-             .replace('EMSCRIPTEN$AWAIT(createWasm())', 'await createWasm()')
              .replace('EMSCRIPTEN$AWAIT(', 'await ('))
-  save_intermediate('es6-module')
+  save_intermediate('js-mangling')
 
 
 def node_detection_code():
@@ -2214,7 +2211,7 @@ def phase_final_emitting(options, target, js_target, wasm_target):
     shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.mjs'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
     save_intermediate('unsafe-optimizations2')
 
-  fix_es6_import_statements(final_js)
+  fix_js_mangling(final_js)
 
   # Apply pre and postjs files
   if options.extern_pre_js or options.extern_post_js:
@@ -2240,7 +2237,7 @@ def phase_final_emitting(options, target, js_target, wasm_target):
       support_target = unsuffixed(js_target) + '.pthread.mjs'
       pthread_code = building.read_and_preprocess(utils.path_from_root('src/pthread_esm_startup.mjs'), expand_macros=True)
       write_file(support_target, pthread_code)
-      fix_es6_import_statements(support_target)
+      fix_js_mangling(support_target)
   else:
     move_file(final_js, js_target)
 

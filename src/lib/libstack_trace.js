@@ -104,19 +104,14 @@ var LibraryStackTrace = {
     var match;
 
     if (match = /\bwasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame)) {
-      // some engines give the binary offset directly, so we use that as return address
+      // Wasm engines give the binary offset directly, so we use that as return address
       return +match[1];
-    } else if (match = /\bwasm-function\[(\d+)\]:(\d+)/.exec(frame)) {
-      // Older versions of v8 give function index and offset in the function,
-      // so we try using the offset converter. If that doesn't work,
-      // we pack index and offset into a "return address"
-#if !USE_OFFSET_CONVERTER
-      abort('Legacy backtrace format detected but -sUSE_OFFSET_CONVERTER not present.')
-#else
 #if ASSERTIONS
-      assert(wasmOffsetConverter, 'wasmOffsetConverter global not found');
-#endif
-      return wasmOffsetConverter.convert(+match[1], +match[2]);
+    } else if (match = /\bwasm-function\[(\d+)\]:(\d+)/.exec(frame)) {
+      // Older versions of v8 (e.g node v10) give function index and offset in
+      // the function.  That format is not supported since it does not provide
+      // the information we need to map the frame to a global program counter.
+      warnOnce('legacy backtrace format detected, this version of v8 is no longer supported by the emscripten backtrace mechanism')
 #endif
     } else if (match = /:(\d+):\d+(?:\)|$)/.exec(frame)) {
       // If we are in js, we can use the js line number as the "return address".
@@ -205,12 +200,12 @@ var LibraryStackTrace = {
   $saveInUnwindCache__deps: ['$UNWIND_CACHE', '$convertFrameToPC'],
   $saveInUnwindCache__internal: true,
   $saveInUnwindCache: (callstack) => {
-    callstack.forEach((frame) => {
-      var pc = convertFrameToPC(frame);
+    for (var line of callstack) {
+      var pc = convertFrameToPC(line);
       if (pc) {
-        UNWIND_CACHE[pc] = frame;
+        UNWIND_CACHE[pc] = line;
       }
-    });
+    }
   },
 
   // Unwinds the stack from a cached PC value. See emscripten_stack_snapshot for
@@ -242,32 +237,36 @@ var LibraryStackTrace = {
   },
 
   // Look up the function name from our stack frame cache with our PC representation.
-  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'free', '$stringToNewUTF8'],
+  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'free', '$stringToNewUTF8', 'emscripten_stack_snapshot'],
   // Don't treat allocation of _emscripten_pc_get_function.ret as a leak
   emscripten_pc_get_function__noleakcheck: true,
   emscripten_pc_get_function: (pc) => {
-    var name;
-    if (pc & 0x80000000) {
-      // If this is a JavaScript function, try looking it up in the unwind cache.
-      var frame = UNWIND_CACHE[pc];
-      if (!frame) return 0;
+    var frame = UNWIND_CACHE[pc];
+    if (!frame) return 0;
 
-      var match;
-      if (match = /^\s+at (.*) \(.*\)$/.exec(frame)) {
-        name = match[1];
-      } else if (match = /^(.+?)@/.exec(frame)) {
-        name = match[1];
-      } else {
-        return 0;
-      }
+    var name;
+    var match;
+    // First try to match foo.wasm.sym files explcitly. e.g.
+    //
+    //   at test_return_address.wasm.main (wasm://wasm/test_return_address.wasm-0012cc2a:wasm-function[26]:0x9f3
+    //
+    // Then match JS symbols which don't include that module name:
+    //
+    //   at invokeEntryPoint (.../test_return_address.js:1500:42)
+    //
+    // Finally match firefox format:
+    //
+    //   Object._main@http://server.com:4324:12'
+    if (match = /^\s+at .*\.wasm\.(.*) \(.*\)$/.exec(frame)) {
+      name = match[1];
+    } else if (match = /^\s+at (.*) \(.*\)$/.exec(frame)) {
+      name = match[1];
+    } else if (match = /^(.+?)@/.exec(frame)) {
+      name = match[1];
     } else {
-#if !USE_OFFSET_CONVERTER
-      abort('Cannot use emscripten_pc_get_function on native functions without -sUSE_OFFSET_CONVERTER');
       return 0;
-#else
-      name = wasmOffsetConverter.getName(pc);
-#endif
     }
+
     _free(_emscripten_pc_get_function.ret ?? 0);
     _emscripten_pc_get_function.ret = stringToNewUTF8(name);
     return _emscripten_pc_get_function.ret;
