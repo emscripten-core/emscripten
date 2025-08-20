@@ -22,7 +22,7 @@ void create_file(const char *path, const char *buffer, int mode) {
   int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
   assert(fd >= 0);
 
-  int err = write(fd, buffer, sizeof(char) * strlen(buffer));
+  int err = (int)write(fd, buffer, sizeof(char) * strlen(buffer));
   assert(err ==  (sizeof(char) * strlen(buffer)));
 
   close(fd);
