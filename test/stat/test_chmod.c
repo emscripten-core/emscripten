@@ -44,8 +44,8 @@ void cleanup() {
 
 void test() {
   int err;
-  int lastctime;
-  int lastmtime;
+  time_t lastctime;
+  time_t lastmtime;
   struct stat s;
 
   //
