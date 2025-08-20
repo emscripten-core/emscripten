@@ -74,7 +74,6 @@ import hashlib
 import json
 import os
 import posixpath
-import random
 import shutil
 import sys
 from subprocess import PIPE
@@ -90,10 +89,6 @@ from tools.response_file import substitute_response_files
 
 
 DEBUG = os.environ.get('EMCC_DEBUG')
-
-# Set to 1 to randomize file order and add some padding,
-# to work around silly av false positives
-AV_WORKAROUND = 0
 
 excluded_patterns: List[str] = []
 new_data_files = []
@@ -562,9 +557,6 @@ def main():  # noqa: C901, PLR0912, PLR0915
   data_files = sorted(data_files, key=lambda file_: file_.dstpath)
   data_files = [file_ for file_ in data_files if not was_seen(file_.dstpath)]
 
-  if AV_WORKAROUND:
-    random.shuffle(data_files)
-
   # Apply plugins
   for file_ in data_files:
     for plugin in plugins:
@@ -688,8 +680,6 @@ def generate_js(data_target, data_files, metadata):
         file_.data_start = start
         curr = utils.read_binary(file_.srcpath)
         file_.data_end = start + len(curr)
-        if AV_WORKAROUND:
-            curr += '\x00'
         start += len(curr)
         data.write(curr)
 
