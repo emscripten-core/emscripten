@@ -91,12 +91,6 @@ from tools.response_file import substitute_response_files
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 
-IMAGE_SUFFIXES = ('.jpg', '.png', '.bmp')
-AUDIO_SUFFIXES = ('.ogg', '.wav', '.mp3')
-AUDIO_MIMETYPES = {'ogg': 'audio/ogg', 'wav': 'audio/wav', 'mp3': 'audio/mpeg'}
-
-DDS_HEADER_SIZE = 128
-
 # Set to 1 to randomize file order and add some padding,
 # to work around silly av false positives
 AV_WORKAROUND = 0
@@ -726,10 +720,9 @@ def generate_js(data_target, data_files, metadata):
       # a similar API to XHRs
       code += '''
       /** @constructor */
-      function DataRequest(start, end, audio) {
+      function DataRequest(start, end) {
         this.start = start;
         this.end = end;
-        this.audio = audio;
       }
       DataRequest.prototype = {
         requests: {},
@@ -752,7 +745,7 @@ def generate_js(data_target, data_files, metadata):
 
       var files = metadata['files'];
       for (var i = 0; i < files.length; ++i) {
-        new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio'] || 0).open('GET', files[i]['filename']);
+        new DataRequest(files[i]['start'], files[i]['end']).open('GET', files[i]['filename']);
       }\n''' % finish_handler
 
   if options.has_embedded and not options.obj_output:
@@ -779,15 +772,11 @@ def generate_js(data_target, data_files, metadata):
                  % (dirname, basename, counter))
     elif file_.mode == 'preload':
       # Preload
-      metadata_el = {
+      metadata['files'].append({
         'filename': file_.dstpath,
         'start': file_.data_start,
         'end': file_.data_end,
-      }
-      if filename[-4:] in AUDIO_SUFFIXES:
-        metadata_el['audio'] = 1
-
-      metadata['files'].append(metadata_el)
+      })
     else:
       assert 0
 
