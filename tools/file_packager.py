@@ -682,51 +682,25 @@ def generate_js(data_target, data_files, metadata):
     create_preloaded = '''
           try {
             // canOwn this data in the filesystem, it is a slice into the heap that will never change
-            await Module['FS_preloadFile'](this.name, null, byteArray, true, true, false, true);
-            Module['removeRunDependency'](`fp ${that.name}`);
+            await Module['FS_preloadFile'](name, null, data, true, true, false, true);
+            Module['removeRunDependency'](`fp ${name}`);
           } catch (e) {
-            err(`Preloading file ${that.name} failed`);
+            err(`Preloading file ${name} failed`);
           }\n'''
     create_data = '''// canOwn this data in the filesystem, it is a slice into the heap that will never change
-          Module['FS_createDataFile'](this.name, null, byteArray, true, true, true);
-          Module['removeRunDependency'](`fp ${that.name}`);'''
+          Module['FS_createDataFile'](name, null, data, true, true, true);
+          Module['removeRunDependency'](`fp ${name}`);'''
 
     finish_handler = create_preloaded if options.use_preload_plugins else create_data
-    if options.export_es6:
-      finish_handler += '\nloadDataResolve();'
 
     if not options.lz4:
       # Data requests - for getting a block of data out of the big archive - have
       # a similar API to XHRs
       code += '''
-      /** @constructor */
-      function DataRequest(start, end) {
-        this.start = start;
-        this.end = end;
-      }
-      DataRequest.prototype = {
-        requests: {},
-        open: function(mode, name) {
-          this.name = name;
-          this.requests[name] = this;
-          Module['addRunDependency'](`fp ${this.name}`);
-        },
-        send: function() {},
-        onload: function() {
-          var byteArray = this.byteArray.subarray(this.start, this.end);
-          this.finish(byteArray);
-        },
-        finish: async function(byteArray) {
-          var that = this;
-          %s
-          this.requests[this.name] = null;
-        }
-      };
-
-      var files = metadata['files'];
-      for (var i = 0; i < files.length; ++i) {
-        new DataRequest(files[i]['start'], files[i]['end']).open('GET', files[i]['filename']);
-      }\n''' % finish_handler
+      for (var file of metadata['files']) {
+        var name = file['filename']
+        Module['addRunDependency'](`fp ${name}`);
+      }\n'''
 
   if options.has_embedded and not options.obj_output:
     diagnostics.warn('--obj-output is recommended when using --embed.  This outputs an object file for linking directly into your application is more efficient than JS encoding')
@@ -764,14 +738,13 @@ def generate_js(data_target, data_files, metadata):
     if not options.lz4:
       # Get the big archive and split it up
       use_data = '''// Reuse the bytearray from the XHR as the source for file reads.
-          DataRequest.prototype.byteArray = byteArray;
-          var files = metadata['files'];
-          for (var i = 0; i < files.length; ++i) {
-            DataRequest.prototype.requests[files[i].filename].onload();
-          }'''
-      use_data += ("          Module['removeRunDependency']('datafile_%s');\n"
-                   % js_manipulation.escape_for_js_string(data_target))
-
+          for (var file of metadata['files']) {
+            var name = file['filename'];
+            var data = byteArray.subarray(file['start'], file['end']);
+            %s
+          }
+          Module['removeRunDependency']('datafile_%s');''' % (finish_handler,
+                                                              js_manipulation.escape_for_js_string(data_target))
     else:
       # LZ4FS usage
       temp = data_target + '.orig'
@@ -784,6 +757,9 @@ def generate_js(data_target, data_files, metadata):
             assert(typeof Module['LZ4'] === 'object', 'LZ4 not present - was your app build with -sLZ4?');
             Module['LZ4'].loadPackage({ 'metadata': metadata, 'compressedData': compressedData }, %s);
             Module['removeRunDependency']('datafile_%s');''' % (meta, "true" if options.use_preload_plugins else "false", js_manipulation.escape_for_js_string(data_target))
+
+    if options.export_es6:
+      use_data += '\nloadDataResolve();'
 
     package_name = data_target
     remote_package_size = os.path.getsize(package_name)
@@ -1019,7 +995,7 @@ def generate_js(data_target, data_files, metadata):
       }\n''' % {'node_support_code': node_support_code}
 
     code += '''
-      function processPackageData(arrayBuffer) {
+      async function processPackageData(arrayBuffer) {
         assert(arrayBuffer, 'Loading data file failed.');
         assert(arrayBuffer.constructor.name === ArrayBuffer.name, 'bad input to processPackageData');
         var byteArray = new Uint8Array(arrayBuffer);
