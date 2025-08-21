@@ -32,7 +32,8 @@ def get_native_triple():
 def get_clang_native_args():
   triple = ['--target=' + get_native_triple()]
   if MACOS:
-    return triple + ['-isystem', path_from_root('system/include/libcxx')]
+    sysroot = run_process(['xcrun', '--show-sdk-path'], stdout=PIPE).stdout.strip()
+    return triple + ['-isystem', path_from_root('system/include/libcxx'), f'--sysroot={sysroot}']
   elif os.name == 'nt':
     # TODO: If Windows.h et al. are needed, will need to add something like '-isystemC:/Program
     # Files (x86)/Microsoft SDKs/Windows/v7.1A/Include'.
