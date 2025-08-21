@@ -8323,7 +8323,7 @@ Module.onRuntimeInitialized = () => {
     if self.is_wasm():
       filename = 'test_asyncify_lists.wasm'
       # there should be no name section. sanitizers, however, always enable that
-      if not is_sanitizing(self.cflags) and '--profiling-funcs' not in self.cflags:
+      if not is_sanitizing(self.cflags) and '--profiling-funcs' not in self.cflags and '-g' not in self.cflags:
         with webassembly.Module(filename) as m:
           self.assertFalse(m.has_name_section())
       # in a fully-optimized build, imports and exports are minified too and we
