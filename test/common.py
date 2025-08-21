@@ -96,22 +96,19 @@ BROWSER_CONFIG = {
       # Cache options.
       '--disk-cache-size=1 --media-cache-size=1 --disable-application-cache',
     ),
-    'headless': (
+    'headless':
       # Increase the window size to avoid flaky sdl tests see #24236.
       '--headless=new --window-size=1024,768 --remote-debugging-port=1234',
-    ),
   },
   'firefox': {
     'data_dir_flag': '-profile',
     'default': {},
-    'headless': (
-      '-headless'
-    ),
+    'headless': '-headless',
   },
   'other': {
     'data_dir_flag': '',
     'default': {},
-    'headless': {},
+    'headless': '',
   },
 }
 DEFAULT_BROWSER_DATA_DIR = '/tmp/emscripten-profile'
@@ -2408,7 +2405,7 @@ class BrowserCore(RunnerCore):
         config = BROWSER_CONFIG['other']
       EMTEST_BROWSER += f" {config['data_dir_flag']}={cls.browser_data_dir} {' '.join(config['default'])}"
       if EMTEST_HEADLESS == '1':
-        EMTEST_BROWSER += f" {' '.join(config['headless'])}"
+        EMTEST_BROWSER += f" {config['headless']}"
 
     if WINDOWS:
       # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
