@@ -47,8 +47,8 @@ logger = logging.getLogger('common')
 # test suite to run using another browser command line than the default system
 # browser. If only the path to the browser executable is given, the tests
 # will run in headless mode with a temporary profile with the same options
-# used in CircleCI. To use a custom start command specify the executable and
-# command line flags.
+# used in CI. To use a custom start command specify the executable and command
+# line flags.
 #
 # There are two special values that can be used here if running in an actual
 # browser is not desired:
@@ -84,7 +84,7 @@ if 'EM_BUILD_VERBOSE' in os.environ:
 # Default flags used to run browsers in CI testing:
 BROWSER_CONFIG = {
   'chrome': {
-    'data_dir_flag': '--user-data-dir',
+    'data_dir_flag': '--user-data-dir=',
     'default': (
       # --no-sandbox because we are running as root and chrome requires
       # this flag for now: https://crbug.com/638180
@@ -101,7 +101,7 @@ BROWSER_CONFIG = {
       '--headless=new --window-size=1024,768 --remote-debugging-port=1234',
   },
   'firefox': {
-    'data_dir_flag': '-profile',
+    'data_dir_flag': '-profile ',
     'default': {},
     'headless': '-headless',
   },
@@ -2403,7 +2403,7 @@ class BrowserCore(RunnerCore):
       else:
         logger.warning("Unknown browser type, not using default flags.")
         config = BROWSER_CONFIG['other']
-      EMTEST_BROWSER += f" {config['data_dir_flag']}={cls.browser_data_dir} {' '.join(config['default'])}"
+      EMTEST_BROWSER += f" {config['data_dir_flag']}{cls.browser_data_dir} {' '.join(config['default'])}"
       if EMTEST_HEADLESS == '1':
         EMTEST_BROWSER += f" {config['headless']}"
 
