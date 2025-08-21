@@ -5495,23 +5495,24 @@ Module["preRun"] = () => {
     self.btest('hello_world.c', cflags=['--post-js=post.js'], expected='exception:foo')
 
   @also_with_threads
+  @also_with_wasm2js
   @parameterized({
-    '': (False,),
-    'es6': (True,),
+    '': ([],),
+    'es6': (['-sEXPORT_ES6', '-pthread', '-sPTHREAD_POOL_SIZE=1'],),
   })
-  def test_webpack(self, es6):
-    if es6:
+  def test_webpack(self, args):
+    if '-sEXPORT_ES6' in args:
       copytree(test_file('webpack_es6'), '.')
-      self.cflags += ['-sEXPORT_ES6', '-pthread', '-sPTHREAD_POOL_SIZE=1']
       outfile = 'src/hello.mjs'
     else:
       copytree(test_file('webpack'), '.')
       outfile = 'src/hello.js'
-    self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web', '-o', outfile])
+    self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web', '-o', outfile] + args)
     self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool'])
-    # Webpack doesn't bundle the wasm file by default so we need to copy it
-    # TODO(sbc): Look into plugins that do bundling.
-    shutil.copy('src/hello.wasm', 'dist/')
+    if not self.is_wasm2js():
+      # Webpack doesn't bundle the wasm file by default so we need to copy it
+      # TODO(sbc): Look into plugins that do bundling.
+      shutil.copy('src/hello.wasm', 'dist/')
     self.run_browser('dist/index.html', '/report_result?exit:0')
 
   @also_with_threads
