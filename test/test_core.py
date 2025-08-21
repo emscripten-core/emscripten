@@ -4148,7 +4148,9 @@ ok
   @with_dylink_reversed
   def test_dylink_basics_no_modify(self):
     if self.is_optimizing():
-      self.skipTest('no modify mode only works with non-optimizing builds')
+      self.skipTest('ERROR_ON_WASM_CHANGES_AFTER_LINK is not applicable when optimizing')
+    if self.get_setting('SAFE_HEAP'):
+      self.skipTest('ERROR_ON_WASM_CHANGES_AFTER_LINK is not applicable when using SAFE_HEAP')
     if self.get_setting('MEMORY64') == 2:
       self.skipTest('MEMORY64=2 always requires module re-writing')
     self.set_setting('WASM_BIGINT')
