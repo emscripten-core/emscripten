@@ -1907,6 +1907,9 @@ int main() {
     self.do_runf('test_emscripten_get_now.c', 'Timer resolution is good')
 
   def test_emscripten_get_compiler_setting(self):
+    if '-O0' in self.cflags and ('-flto' in self.cflags or '-flto=thin' in self.cflags):
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/25015')
+
     src = test_file('core/emscripten_get_compiler_setting.c')
     output = shared.replace_suffix(src, '.out')
     # with assertions, a nice message is shown
@@ -2721,6 +2724,9 @@ The current type of b is: 9
 
   @no_modularize_instance('uses global Module objecgt')
   def test_pthread_run_script(self):
+    if '-O0' in self.cflags and ('-flto' in self.cflags or '-flto=thin' in self.cflags):
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/25015')
+
     shutil.copy(test_file('pthread/foo.js'), '.')
     self.do_runf('pthread/test_pthread_run_script.c')
 
@@ -8832,6 +8838,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
   def test_return_address(self):
+    if '-O0' in self.cflags and ('-flto' in self.cflags or '-flto=thin' in self.cflags):
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/25015')
+
     self.do_runf('core/test_return_address.c', 'passed', cflags=['-g'])
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
