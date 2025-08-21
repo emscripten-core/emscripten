@@ -1710,7 +1710,6 @@ FS.staticInit();`;
       } else { // Command-line.
         try {
           obj.contents = readBinary(obj.url);
-          obj.usedBytes = obj.contents.length;
         } catch (e) {
  #if FS_DEBUG
           dbg(`forceLoadFile exception: ${e}`);
@@ -1846,15 +1845,7 @@ FS.staticInit();`;
       // Add a function that defers querying the file size until it is asked the first time.
       Object.defineProperties(node, {
         usedBytes: {
-          get: function() { return this.contents.length; },
-          set: function(newLength) {
-            // Resize the buffer by allocating new.
-            if (newLength != this.contents.length) {
-              var newBuffer = new Uint8Array(newLength);
-              newBuffer.set(this.contents);
-              this.contents = newBuffer;
-            }
-          }
+          get: function() { return this.contents.length; }
         }
       });
       // override each stream op with one that tries to force load the lazy file first
