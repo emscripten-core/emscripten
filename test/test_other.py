@@ -1707,6 +1707,9 @@ int f() {
     self.emcc(test_file('module/test_stdin.c'), args=args, output_filename='out.js')
 
     for engine in config.JS_ENGINES:
+      if engine == config.V8_ENGINE:
+        print('skipping v8 due to https://github.com/emscripten-core/emscripten/issues/25010')
+        continue
       output = self.run_js('out.js', engine, input='abcdef\nghijkl\n')
       self.assertContained('abcdef\nghijkl\neof', output)
 
