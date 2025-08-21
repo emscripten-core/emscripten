@@ -58,6 +58,7 @@ logger = logging.getLogger('common')
 #                        For most browser tests this does not work, but it can
 #                        be useful for running pthread tests under node.
 EMTEST_BROWSER = None
+EMTEST_BROWSER_AUTO_CONFIG = None
 EMTEST_HEADLESS = None
 EMTEST_DETECT_TEMPFILE_LEAKS = None
 EMTEST_SAVE_DIR = None
@@ -149,6 +150,17 @@ def copytree(src, dest):
 # checks if browser testing is enabled
 def has_browser():
   return EMTEST_BROWSER != '0'
+
+
+CHROMIUM_BASED_BROWSERS = ['chrom', 'edge', 'opera']
+
+
+def is_chrome():
+  return EMTEST_BROWSER and any(pattern in EMTEST_BROWSER.lower() for pattern in CHROMIUM_BASED_BROWSERS)
+
+
+def is_firefox():
+  return EMTEST_BROWSER and 'firefox' in EMTEST_BROWSER.lower()
 
 
 def compiler_for(filename, force_c=False):
@@ -2388,17 +2400,14 @@ class BrowserCore(RunnerCore):
       logger.info('No EMTEST_BROWSER set. Defaulting to `google-chrome`')
       EMTEST_BROWSER = 'google-chrome'
 
-    # If only the the browser is specified, use the default arguments used in circleci.
-    browser_args = shlex.split(EMTEST_BROWSER)
-    if len(browser_args) == 1:
-      logger.info('No EMTEST_BROWSER flags set. Defaulting to CI configuration.')
-      browser = browser_args[0]
+    if EMTEST_BROWSER_AUTO_CONFIG:
+      logger.info('Using default to CI configuration.')
       cls.browser_data_dir = DEFAULT_BROWSER_DATA_DIR
       if os.path.exists(cls.browser_data_dir):
         utils.delete_dir(cls.browser_data_dir)
-      if 'chrome' in browser:
+      if is_chrome():
         config = BROWSER_CONFIG['chrome']
-      elif 'firefox' in browser:
+      elif is_firefox():
         config = BROWSER_CONFIG['firefox']
       else:
         logger.warning("Unknown browser type, not using default flags.")
