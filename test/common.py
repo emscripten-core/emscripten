@@ -45,8 +45,12 @@ logger = logging.getLogger('common')
 
 # User can specify an environment variable EMTEST_BROWSER to force the browser
 # test suite to run using another browser command line than the default system
-# browser.
-# There are two special value that can be used here if running in an actual
+# browser. If only the path to the browser executable is given, the tests
+# will run in headless mode with a temporary profile with the same options
+# used in CircleCI. To use a custom start command specify the executable and
+# command line flags.
+#
+# There are two special values that can be used here if running in an actual
 # browser is not desired:
 #  EMTEST_BROWSER=0 : This will disable the actual running of the test and simply
 #                     verify that it compiles and links.
@@ -54,6 +58,7 @@ logger = logging.getLogger('common')
 #                        For most browser tests this does not work, but it can
 #                        be useful for running pthread tests under node.
 EMTEST_BROWSER = None
+EMTEST_HEADLESS = None
 EMTEST_DETECT_TEMPFILE_LEAKS = None
 EMTEST_SAVE_DIR = None
 # generally js engines are equivalent, testing 1 is enough. set this
@@ -75,6 +80,41 @@ EMTEST_BUILD_VERBOSE = int(os.getenv('EMTEST_BUILD_VERBOSE', '0'))
 EMTEST_CAPTURE_STDIO = int(os.getenv('EMTEST_CAPTURE_STDIO', '0'))
 if 'EM_BUILD_VERBOSE' in os.environ:
   exit_with_error('EM_BUILD_VERBOSE has been renamed to EMTEST_BUILD_VERBOSE')
+
+# Default flags used to run browsers in CI testing:
+BROWSER_CONFIG = {
+  'chrome': {
+    'data_dir_flag': '--user-data-dir',
+    'default': (
+      # --no-sandbox because we are running as root and chrome requires
+      # this flag for now: https://crbug.com/638180
+      '--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader --enable-experimental-web-platform-features --enable-features=JavaScriptSourcePhaseImports',
+      '--enable-experimental-webassembly-features --js-flags="--experimental-wasm-stack-switching --experimental-wasm-type-reflection --experimental-wasm-rab-integration"',
+      # The runners lack sound hardware so fallback to a dummy device (and
+      # bypass the user gesture so audio tests work without interaction)
+      '--use-fake-device-for-media-stream --autoplay-policy=no-user-gesture-required',
+      # Cache options.
+      '--disk-cache-size=1 --media-cache-size=1 --disable-application-cache',
+    ),
+    'headless': (
+      # Increase the window size to avoid flaky sdl tests see #24236.
+      '--headless=new --window-size=1024,768 --remote-debugging-port=1234',
+    ),
+  },
+  'firefox': {
+    'data_dir_flag': '-profile',
+    'default': {},
+    'headless': (
+      '-headless'
+    ),
+  },
+  'other': {
+    'data_dir_flag': '',
+    'default': {},
+    'headless': {},
+  },
+}
+DEFAULT_BROWSER_DATA_DIR = '/tmp/emscripten-profile'
 
 # Special value for passing to assert_returncode which means we expect that program
 # to fail with non-zero return code, but we don't care about specifically which one.
@@ -2323,9 +2363,7 @@ class BrowserCore(RunnerCore):
     super().__init__(*args, **kwargs)
 
   @classmethod
-  def browser_restart(cls):
-    # Kill existing browser
-    logger.info('Restarting browser process')
+  def browser_terminate(cls):
     cls.browser_proc.terminate()
     # If the browser doesn't shut down gracefully (in response to SIGTERM)
     # after 2 seconds kill it with force (SIGKILL).
@@ -2335,6 +2373,15 @@ class BrowserCore(RunnerCore):
       logger.info('Browser did not respond to `terminate`.  Using `kill`')
       cls.browser_proc.kill()
       cls.browser_proc.wait()
+    if cls.browser_data_dir:
+      utils.delete_dir(cls.browser_data_dir)
+      cls.browser_data_dir = None
+
+  @classmethod
+  def browser_restart(cls):
+    # Kill existing browser
+    logger.info('Restarting browser process')
+    cls.browser_terminate()
     cls.browser_open(cls.HARNESS_URL)
 
   @classmethod
@@ -2343,6 +2390,26 @@ class BrowserCore(RunnerCore):
     if not EMTEST_BROWSER:
       logger.info('No EMTEST_BROWSER set. Defaulting to `google-chrome`')
       EMTEST_BROWSER = 'google-chrome'
+
+    # If only the the browser is specified, use the default arguments used in circleci.
+    browser_args = shlex.split(EMTEST_BROWSER)
+    if len(browser_args) == 1:
+      logger.info('No EMTEST_BROWSER flags set. Defaulting to CI configuration.')
+      browser = browser_args[0]
+      cls.browser_data_dir = DEFAULT_BROWSER_DATA_DIR
+      if os.path.exists(cls.browser_data_dir):
+        utils.delete_dir(cls.browser_data_dir)
+      if 'chrome' in browser:
+        config = BROWSER_CONFIG['chrome']
+      elif 'firefox' in browser:
+        config = BROWSER_CONFIG['firefox']
+      else:
+        logger.warning("Unknown browser type, not using default flags.")
+        config = BROWSER_CONFIG['other']
+      EMTEST_BROWSER += f" {config['data_dir_flag']}={cls.browser_data_dir} {' '.join(config['default'])}"
+      if EMTEST_HEADLESS == '1':
+        EMTEST_BROWSER += f" {' '.join(config['headless'])}"
+
     if WINDOWS:
       # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
       # set EMTEST_BROWSER=C:\Program Files\Mozilla Firefox\firefox.exe
@@ -2373,6 +2440,7 @@ class BrowserCore(RunnerCore):
       return
     cls.harness_server.terminate()
     print('[Browser harness server terminated]')
+    cls.browser_terminate()
     if WINDOWS:
       # On Windows, shutil.rmtree() in tearDown() raises this exception if we do not wait a bit:
       # WindowsError: [Error 32] The process cannot access the file because it is being used by another process.

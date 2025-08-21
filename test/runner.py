@@ -392,6 +392,8 @@ def parse_args():
                       help='Automatically update test expectations for tests that support it.')
   parser.add_argument('--browser',
                       help='Command to launch web browser in which to run browser tests.')
+  parser.add_argument('--headed', action='store_true',
+                      help='Run browser tests in regular (non-headless) mode.')
   parser.add_argument('tests', nargs='*')
   parser.add_argument('--failfast', action='store_true')
   parser.add_argument('--start-at', metavar='NAME', help='Skip all tests up until <NAME>')
@@ -407,6 +409,7 @@ def parse_args():
 
 def configure():
   common.EMTEST_BROWSER = os.getenv('EMTEST_BROWSER')
+  common.EMTEST_HEADLESS = os.getenv('EMTEST_HEADLESS')
   common.EMTEST_DETECT_TEMPFILE_LEAKS = int(os.getenv('EMTEST_DETECT_TEMPFILE_LEAKS', '0'))
   common.EMTEST_ALL_ENGINES = int(os.getenv('EMTEST_ALL_ENGINES', '0'))
   common.EMTEST_SKIP_SLOW = int(os.getenv('EMTEST_SKIP_SLOW', '0'))
@@ -451,6 +454,7 @@ def main():
     os.environ[name] = value
 
   set_env('EMTEST_BROWSER', options.browser)
+  set_env('EMTEST_HEADLESS', not options.headed)
   set_env('EMTEST_DETECT_TEMPFILE_LEAKS', options.detect_leaks)
   if options.save_dir:
     common.EMTEST_SAVE_DIR = 1
