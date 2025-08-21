@@ -3932,8 +3932,8 @@ More info: https://emscripten.org
     create_file('data.txt', 'hello data')
 
     # Without --obj-output we issue a warning
-    err = self.run_process([FILE_PACKAGER, 'test.data', '--embed', 'data.txt', '--js-output=data.js'], stderr=PIPE).stderr
-    self.assertContained('--obj-output is recommended when using --embed', err)
+    err = self.expect_fail([FILE_PACKAGER, 'test.data', '--embed', 'data.txt', '--js-output=data.js'])
+    self.assertContained('error: --obj-output is now required when using --embed', err)
 
     self.run_process([FILE_PACKAGER, 'test.data', '--embed', 'data.txt', '--obj-output=data.o'])
 
