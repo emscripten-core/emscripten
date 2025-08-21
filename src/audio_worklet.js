@@ -106,8 +106,9 @@ function createWasmAudioWorkletProcessor(audioParams) {
       var stackMemoryStruct = (numInputs + numOutputs) * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
       var stackMemoryData = 0;
       for (entry of inputList) {
-        stackMemoryData += entry.length * this.bytesPerChannel;
+        stackMemoryData += entry.length;
       }
+      stackMemoryData *= this.bytesPerChannel;
       // Collect the total number of output channels (mapped to array views)
       var outputViewsNeeded = 0;
       for (entry of outputList) {
