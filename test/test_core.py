@@ -8305,7 +8305,6 @@ Module.onRuntimeInitialized = () => {
     'onlylist_b_response': ([], True,  'main\n__original_main\nfoo(int, double)\nbaz()\nc_baz\nStructy::funcy()\n'),
     'onlylist_c_response': ([], False, 'main\n__original_main\nfoo(int, double)\nbaz()\nc_baz\n'),
   })
-  @no_windows("TODO: Fails on Windows due to an unknown reason.")
   def test_asyncify_lists(self, args, should_pass, response=None):
     if response is not None:
       create_file('response.file', response)
@@ -8329,8 +8328,10 @@ Module.onRuntimeInitialized = () => {
       # in a fully-optimized build, imports and exports are minified too and we
       # can verify that our function names appear nowhere
       if '-O3' in self.cflags:
-        binary = read_binary(filename)
-        self.assertFalse(b'main' in binary)
+        self.assertFalse(b'__wasm_call_ctors' in read_binary(filename))
+      elif '-O0' in self.cflags:
+        # However, sanity check that in core0 test, we do see this symbol.
+        self.assertTrue(b'__wasm_call_ctors' in read_binary(filename))
 
   @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
   @parameterized({
