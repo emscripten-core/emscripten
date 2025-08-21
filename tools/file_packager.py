@@ -446,12 +446,10 @@ def main():  # noqa: C901, PLR0912, PLR0915
                                    explicit_dst_path=uses_at_notation))
       else:
         diagnostics.error(f'${arg} does not exist')
-        return 1
     elif leading == 'exclude':
       excluded_patterns.append(arg)
     else:
       diagnostics.error('Unknown parameter:', arg)
-      return 1
 
   options.has_preloaded = any(f.mode == 'preload' for f in data_files)
   options.has_embedded = any(f.mode == 'embed' for f in data_files)
@@ -461,11 +459,8 @@ def main():  # noqa: C901, PLR0912, PLR0915
         'for deprecation.  If you need this feature please comment at '
         'https://github.com/emscripten-core/emscripten/issues/24803')
 
-  if options.separate_metadata:
-    if not options.has_preloaded or not options.jsoutput:
-      err('cannot separate-metadata without both --preloaded files '
-          'and a specified --js-output')
-      return 1
+  if options.separate_metadata and (not options.has_preloaded or not options.jsoutput):
+    diagnostics.error('cannot separate-metadata without both --preloaded files and a specified --js-output')
 
   if not options.from_emcc and not options.quiet:
     diagnostics.warn('Remember to build the main file with `-sFORCE_FILESYSTEM` '
@@ -473,12 +468,9 @@ def main():  # noqa: C901, PLR0912, PLR0915
 
   if options.jsoutput and os.path.abspath(options.jsoutput) == os.path.abspath(data_target):
     diagnostics.error('TARGET should not be the same value of --js-output')
-    return 1
 
   if options.from_emcc and options.export_es6:
-    diagnostics.error('Can\'t use --export-es6 option together with --from-emcc since the code should be embedded '
-        'within emcc\'s code')
-    return 1
+    diagnostics.error("Can't use --export-es6 option together with --from-emcc since the code should be embedded within emcc's code")
 
   walked.append(__file__)
   for file_ in data_files:
@@ -492,7 +484,6 @@ def main():  # noqa: C901, PLR0912, PLR0915
                 if not os.path.isdir(file_.srcpath)]
   if len(data_files) == 0:
     diagnostics.error('Nothing to do!')
-    sys.exit(1)
 
   # Absolutize paths, and check that they make sense
   # os.getcwd() always returns the hard path with any symbolic links resolved,
@@ -557,7 +548,6 @@ def main():  # noqa: C901, PLR0912, PLR0915
   if options.obj_output:
     if not options.has_embedded:
       diagnostics.error('--obj-output is only applicable when embedding files')
-      return 1
     generate_object_file(data_files)
     if not options.has_preloaded:
       return 0
