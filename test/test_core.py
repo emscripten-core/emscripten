@@ -2095,7 +2095,11 @@ int main(int argc, char **argv) {
     self.do_runf(src, 'OOM', assert_returncode=NON_ZERO)
     # Win with it
     self.set_setting('ALLOW_MEMORY_GROWTH')
-    self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+    if self.is_wasm2js() and '-O0' in self.cflags:
+      expect = '*pre: hello,4.955*\nWarning: Enlarging memory arrays, this is not fast! 16908288,20316160\n*hello,4.955*\n*hello,4.955*'
+    else:
+      expect = '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*'
+    self.do_runf(src, expect)
 
   @no_2gb('memory growth issues')
   @no_4gb('memory growth issues')
@@ -2116,7 +2120,11 @@ int main(int argc, char **argv) {
 
     # Win with it
     self.set_setting('ALLOW_MEMORY_GROWTH')
-    self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+    if self.is_wasm2js() and '-O0' in self.cflags:
+      expect = '*pre: hello,4.955*\nWarning: Enlarging memory arrays, this is not fast! 16908288,20316160\n*hello,4.955*\n*hello,4.955*'
+    else:
+      expect = '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*'
+    self.do_runf(src, expect)
     win = read_file(self.output_name('test_memorygrowth'))
 
     if '-O2' in self.cflags and self.is_wasm2js():
@@ -2131,7 +2139,7 @@ int main(int argc, char **argv) {
     # (SAFE_HEAP would instrument the tracing code itself, leading to recursion)
     if not self.get_setting('SAFE_HEAP'):
       self.cflags += ['--tracing']
-      self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+      self.do_runf(src, expect)
 
   @no_4gb('memory growth issues')
   @no_2gb('memory growth issues')
@@ -2149,7 +2157,11 @@ int main(int argc, char **argv) {
 
     # Win with it
     self.set_setting('ALLOW_MEMORY_GROWTH')
-    self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+    if self.is_wasm2js() and '-O0' in self.cflags:
+      expect = '*pre: hello,4.955*\nWarning: Enlarging memory arrays, this is not fast! 16908288,20316160\n*hello,4.955*\n*hello,4.955*'
+    else:
+      expect = '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*'
+    self.do_runf(src, expect)
     win = read_file(self.output_name('test_memorygrowth_2'))
 
     if '-O2' in self.cflags and self.is_wasm2js():
