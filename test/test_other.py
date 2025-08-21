@@ -9342,6 +9342,9 @@ int main() {
     # the generated code.
     js = read_file('a.out.js')
     if check_full_js:
+      # Ignore absolute filenames in the generated code (they are likely /tmp files)
+      js = re.sub(r'^// include: .*[/\\].*$', '// include: <FILENAME REPLACED>', js, flags=re.MULTILINE)
+      js = re.sub(r'^// end include: .*[/\\].*$', '// end include: <FILENAME REPLACED>', js, flags=re.MULTILINE)
       self.assertFileContents(expected_basename + '.expected.js', js)
     start = js.find('wasmImports = ')
     self.assertNotEqual(start, -1)
@@ -9509,6 +9512,10 @@ int main() {
   })
   def test_codesize_files(self, args):
     self.run_codesize_test('files.cpp', args)
+
+  def test_codesize_file_preload(self):
+    create_file('somefile.txt', 'hello')
+    self.run_codesize_test('hello_world.c', cflags=['-sSTRICT', '-O3', '--preload-file=somefile.txt'], check_full_js=True)
 
   def test_exported_runtime_methods_metadce(self):
     exports = ['stackSave', 'stackRestore', 'stackAlloc', 'FS']
@@ -14729,6 +14736,7 @@ myMethod: 43
   def test_build_fetch_tests(self):
     # We can't run these outside of the browser, but at least we can
     # make sure they build.
+    self.cflags.append('-DSERVER="localhost"')
     self.set_setting('FETCH')
     self.build('fetch/test_fetch_to_memory_sync.c')
     self.build('fetch/test_fetch_to_memory_async.c')

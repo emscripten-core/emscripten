@@ -74,7 +74,6 @@ import hashlib
 import json
 import os
 import posixpath
-import random
 import shutil
 import sys
 from subprocess import PIPE
@@ -90,16 +89,6 @@ from tools.response_file import substitute_response_files
 
 
 DEBUG = os.environ.get('EMCC_DEBUG')
-
-IMAGE_SUFFIXES = ('.jpg', '.png', '.bmp')
-AUDIO_SUFFIXES = ('.ogg', '.wav', '.mp3')
-AUDIO_MIMETYPES = {'ogg': 'audio/ogg', 'wav': 'audio/wav', 'mp3': 'audio/mpeg'}
-
-DDS_HEADER_SIZE = 128
-
-# Set to 1 to randomize file order and add some padding,
-# to work around silly av false positives
-AV_WORKAROUND = 0
 
 excluded_patterns: List[str] = []
 new_data_files = []
@@ -381,7 +370,6 @@ def main():  # noqa: C901, PLR0912, PLR0915
 
   data_target = args[0]
   data_files = []
-  plugins = []
   leading = ''
 
   for arg in args[1:]:
@@ -438,10 +426,6 @@ def main():  # noqa: C901, PLR0912, PLR0915
       leading = ''
     elif arg == '--quiet':
       options.quiet = True
-    elif arg.startswith('--plugin'):
-      plugin = utils.read_file(arg.split('=', 1)[1])
-      eval(plugin) # should append itself to plugins
-      leading = ''
     elif leading in {'preload', 'embed'}:
       mode = leading
       # position of @ if we're doing 'src@dst'. '__' is used to keep the index
@@ -462,12 +446,10 @@ def main():  # noqa: C901, PLR0912, PLR0915
                                    explicit_dst_path=uses_at_notation))
       else:
         diagnostics.error(f'${arg} does not exist')
-        return 1
     elif leading == 'exclude':
       excluded_patterns.append(arg)
     else:
       diagnostics.error('Unknown parameter:', arg)
-      return 1
 
   options.has_preloaded = any(f.mode == 'preload' for f in data_files)
   options.has_embedded = any(f.mode == 'embed' for f in data_files)
@@ -477,11 +459,8 @@ def main():  # noqa: C901, PLR0912, PLR0915
         'for deprecation.  If you need this feature please comment at '
         'https://github.com/emscripten-core/emscripten/issues/24803')
 
-  if options.separate_metadata:
-    if not options.has_preloaded or not options.jsoutput:
-      err('cannot separate-metadata without both --preloaded files '
-          'and a specified --js-output')
-      return 1
+  if options.separate_metadata and (not options.has_preloaded or not options.jsoutput):
+    diagnostics.error('cannot separate-metadata without both --preloaded files and a specified --js-output')
 
   if not options.from_emcc and not options.quiet:
     diagnostics.warn('Remember to build the main file with `-sFORCE_FILESYSTEM` '
@@ -489,12 +468,9 @@ def main():  # noqa: C901, PLR0912, PLR0915
 
   if options.jsoutput and os.path.abspath(options.jsoutput) == os.path.abspath(data_target):
     diagnostics.error('TARGET should not be the same value of --js-output')
-    return 1
 
   if options.from_emcc and options.export_es6:
-    diagnostics.error('Can\'t use --export-es6 option together with --from-emcc since the code should be embedded '
-        'within emcc\'s code')
-    return 1
+    diagnostics.error("Can't use --export-es6 option together with --from-emcc since the code should be embedded within emcc's code")
 
   walked.append(__file__)
   for file_ in data_files:
@@ -508,7 +484,6 @@ def main():  # noqa: C901, PLR0912, PLR0915
                 if not os.path.isdir(file_.srcpath)]
   if len(data_files) == 0:
     diagnostics.error('Nothing to do!')
-    sys.exit(1)
 
   # Absolutize paths, and check that they make sense
   # os.getcwd() always returns the hard path with any symbolic links resolved,
@@ -568,20 +543,11 @@ def main():  # noqa: C901, PLR0912, PLR0915
   data_files = sorted(data_files, key=lambda file_: file_.dstpath)
   data_files = [file_ for file_ in data_files if not was_seen(file_.dstpath)]
 
-  if AV_WORKAROUND:
-    random.shuffle(data_files)
-
-  # Apply plugins
-  for file_ in data_files:
-    for plugin in plugins:
-      plugin(file_)
-
   metadata = {'files': []}
 
   if options.obj_output:
     if not options.has_embedded:
       diagnostics.error('--obj-output is only applicable when embedding files')
-      return 1
     generate_object_file(data_files)
     if not options.has_preloaded:
       return 0
@@ -694,8 +660,6 @@ def generate_js(data_target, data_files, metadata):
         file_.data_start = start
         curr = utils.read_binary(file_.srcpath)
         file_.data_end = start + len(curr)
-        if AV_WORKAROUND:
-            curr += '\x00'
         start += len(curr)
         data.write(curr)
 
@@ -708,52 +672,25 @@ def generate_js(data_target, data_files, metadata):
     create_preloaded = '''
           try {
             // canOwn this data in the filesystem, it is a slice into the heap that will never change
-            await Module['FS_preloadFile'](this.name, null, byteArray, true, true, false, true);
-            Module['removeRunDependency'](`fp ${that.name}`);
+            await Module['FS_preloadFile'](name, null, data, true, true, false, true);
+            Module['removeRunDependency'](`fp ${name}`);
           } catch (e) {
-            err(`Preloading file ${that.name} failed`);
+            err(`Preloading file ${name} failed`);
           }\n'''
     create_data = '''// canOwn this data in the filesystem, it is a slice into the heap that will never change
-          Module['FS_createDataFile'](this.name, null, byteArray, true, true, true);
-          Module['removeRunDependency'](`fp ${that.name}`);'''
+          Module['FS_createDataFile'](name, null, data, true, true, true);
+          Module['removeRunDependency'](`fp ${name}`);'''
 
     finish_handler = create_preloaded if options.use_preload_plugins else create_data
-    if options.export_es6:
-      finish_handler += '\nloadDataResolve();'
 
     if not options.lz4:
       # Data requests - for getting a block of data out of the big archive - have
       # a similar API to XHRs
       code += '''
-      /** @constructor */
-      function DataRequest(start, end, audio) {
-        this.start = start;
-        this.end = end;
-        this.audio = audio;
-      }
-      DataRequest.prototype = {
-        requests: {},
-        open: function(mode, name) {
-          this.name = name;
-          this.requests[name] = this;
-          Module['addRunDependency'](`fp ${this.name}`);
-        },
-        send: function() {},
-        onload: function() {
-          var byteArray = this.byteArray.subarray(this.start, this.end);
-          this.finish(byteArray);
-        },
-        finish: async function(byteArray) {
-          var that = this;
-          %s
-          this.requests[this.name] = null;
-        }
-      };
-
-      var files = metadata['files'];
-      for (var i = 0; i < files.length; ++i) {
-        new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio'] || 0).open('GET', files[i]['filename']);
-      }\n''' % finish_handler
+      for (var file of metadata['files']) {
+        var name = file['filename']
+        Module['addRunDependency'](`fp ${name}`);
+      }\n'''
 
   if options.has_embedded and not options.obj_output:
     diagnostics.warn('--obj-output is recommended when using --embed.  This outputs an object file for linking directly into your application is more efficient than JS encoding')
@@ -779,15 +716,11 @@ def generate_js(data_target, data_files, metadata):
                  % (dirname, basename, counter))
     elif file_.mode == 'preload':
       # Preload
-      metadata_el = {
+      metadata['files'].append({
         'filename': file_.dstpath,
         'start': file_.data_start,
         'end': file_.data_end,
-      }
-      if filename[-4:] in AUDIO_SUFFIXES:
-        metadata_el['audio'] = 1
-
-      metadata['files'].append(metadata_el)
+      })
     else:
       assert 0
 
@@ -795,14 +728,13 @@ def generate_js(data_target, data_files, metadata):
     if not options.lz4:
       # Get the big archive and split it up
       use_data = '''// Reuse the bytearray from the XHR as the source for file reads.
-          DataRequest.prototype.byteArray = byteArray;
-          var files = metadata['files'];
-          for (var i = 0; i < files.length; ++i) {
-            DataRequest.prototype.requests[files[i].filename].onload();
-          }'''
-      use_data += ("          Module['removeRunDependency']('datafile_%s');\n"
-                   % js_manipulation.escape_for_js_string(data_target))
-
+          for (var file of metadata['files']) {
+            var name = file['filename'];
+            var data = byteArray.subarray(file['start'], file['end']);
+            %s
+          }
+          Module['removeRunDependency']('datafile_%s');''' % (finish_handler,
+                                                              js_manipulation.escape_for_js_string(data_target))
     else:
       # LZ4FS usage
       temp = data_target + '.orig'
@@ -815,6 +747,9 @@ def generate_js(data_target, data_files, metadata):
             assert(typeof Module['LZ4'] === 'object', 'LZ4 not present - was your app build with -sLZ4?');
             Module['LZ4'].loadPackage({ 'metadata': metadata, 'compressedData': compressedData }, %s);
             Module['removeRunDependency']('datafile_%s');''' % (meta, "true" if options.use_preload_plugins else "false", js_manipulation.escape_for_js_string(data_target))
+
+    if options.export_es6:
+      use_data += '\nloadDataResolve();'
 
     package_name = data_target
     remote_package_size = os.path.getsize(package_name)
@@ -1050,7 +985,7 @@ def generate_js(data_target, data_files, metadata):
       }\n''' % {'node_support_code': node_support_code}
 
     code += '''
-      function processPackageData(arrayBuffer) {
+      async function processPackageData(arrayBuffer) {
         assert(arrayBuffer, 'Loading data file failed.');
         assert(arrayBuffer.constructor.name === ArrayBuffer.name, 'bad input to processPackageData');
         var byteArray = new Uint8Array(arrayBuffer);
@@ -1099,31 +1034,21 @@ def generate_js(data_target, data_files, metadata):
       # Only tricky bit is the fetch is async, but also when runWithFS is called
       # is async, so we handle both orderings.
       ret += '''
-      var fetchedCallback;
+      var fetchPromise;
       var fetched = Module['getPreloadedPackage']?.(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE);
 
       if (!fetched) {
         // Note that we don't use await here because we want to execute the
         // the rest of this function immediately.
-        fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE)
-          .then((data) => {
-            if (fetchedCallback) {
-              fetchedCallback(data);
-              fetchedCallback = null;
-            } else {
-              fetched = data;
-            }
-          })%s;
+        fetchPromise = fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE)%s;
       }\n''' % catch_handler
 
       code += '''
       Module['preloadResults'][PACKAGE_NAME] = {fromCache: false};
-      if (fetched) {
-        processPackageData(fetched);
-        fetched = null;
-      } else {
-        fetchedCallback = processPackageData;
-      }\n'''
+      if (!fetched) {
+        fetched = await fetchPromise;
+      }
+      processPackageData(fetched);\n'''
 
   ret += '''
     async function runWithFS(Module) {\n'''
