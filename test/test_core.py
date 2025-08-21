@@ -474,8 +474,9 @@ class TestCoreBase(RunnerCore):
       # that we are doing cross-compilation
       # and skip attempting to run the generated executable with './a.out',
       # which would fail since we are building a .js file.
-      configure_args = ['--disable-shared', '--host=i686-pc-linux-gnu',
-                        '--disable-demos', '--disable-dependency-tracking']
+      configure_args = ['--disable-shared', '--build=i686-pc-linux-gnu',
+                        '--host=i686-pc-linux-gnu', '--disable-demos',
+                        '--disable-dependency-tracking']
       generated_libs = ['src/.libs/libBulletDynamics.a',
                         'src/.libs/libBulletCollision.a',
                         'src/.libs/libLinearMath.a']
