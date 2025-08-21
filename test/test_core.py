@@ -7891,9 +7891,9 @@ void* operator new(size_t size) {
   def test_dwarf(self):
     self.cflags.append('-g')
 
-    shutil.copy(test_file('core/test_dwarf.cpp'), '.')
+    shutil.copy(test_file('core/test_dwarf.c'), '.')
 
-    self.emcc('test_dwarf.cpp')
+    self.emcc('test_dwarf.c')
 
     out = self.run_process([shared.LLVM_DWARFDUMP, 'a.out.wasm', '-all'], stdout=PIPE).stdout
 
@@ -7926,7 +7926,7 @@ void* operator new(size_t size) {
     self.assertIn('.debug_ranges', sections)
 
     # verify some content in the sections
-    self.assertIn('"test_dwarf.cpp"', sections['.debug_info'])
+    self.assertIn('"test_dwarf.c"', sections['.debug_info'])
     # the line section looks like this:
     # Address            Line   Column File   ISA Discriminator Flags
     # ------------------ ------ ------ ------ --- ------------- -------------
@@ -7934,7 +7934,7 @@ void* operator new(size_t size) {
     src_to_addr = {}
     found_dwarf_c = False
     for line in sections['.debug_line'].splitlines():
-      if 'name: "test_dwarf.cpp"' in line:
+      if 'name: "test_dwarf.c"' in line:
         found_dwarf_c = True
       if not found_dwarf_c:
         continue

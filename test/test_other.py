@@ -10924,10 +10924,10 @@ int main() {
           stdout=PIPE).stdout
       self.assertIn(loc, out)
 
-    # We test two locations within test_dwarf.cpp:
-    # out_to_js(0);     // line 7
-    # __builtin_trap(); // line 14
-    self.run_process([EMCC, test_file('core/test_dwarf.cpp'),
+    # We test two locations within test_dwarf.c:
+    # out_to_js(0);     // line 6
+    # __builtin_trap(); // line 13
+    self.run_process([EMCC, test_file('core/test_dwarf.c'),
                       '-g', '-gsource-map', '-O1', '-o', 'test_dwarf.js'])
     # Address of out_to_js(0) within foo(), uninlined
     out_to_js_call_addr = self.get_instr_addr('call\t0', 'test_dwarf.wasm')
@@ -10941,10 +10941,10 @@ int main() {
     unreachable_func = ['bar', 'main']
 
     # Source location of out_to_js(0) within foo(), uninlined
-    out_to_js_call_loc = ['test_dwarf.cpp:7:3']
+    out_to_js_call_loc = ['test_dwarf.c:6:3']
     # Source locations of __builtin_trap() within bar(), inlined into main().
     # The first one corresponds to the innermost inlined location.
-    unreachable_loc = ['test_dwarf.cpp:14:3', 'test_dwarf.cpp:20:3']
+    unreachable_loc = ['test_dwarf.c:13:3', 'test_dwarf.c:18:3']
 
     # 1. Test DWARF + source map together
     # For DWARF, we check for the full inlined info for both function names and
@@ -10960,13 +10960,13 @@ int main() {
     # The addresses, function names, and source locations are the same across
     # the builds because they are relative offsets from the code section, so we
     # don't need to recompute them
-    self.run_process([EMCC, test_file('core/test_dwarf.cpp'),
+    self.run_process([EMCC, test_file('core/test_dwarf.c'),
                       '-gsource-map', '-O1', '-o', 'test_dwarf.js'])
     check_source_map_loc_info(out_to_js_call_addr, out_to_js_call_loc[0])
     check_source_map_loc_info(unreachable_addr, unreachable_loc[0])
 
     # 3. Test DWARF only
-    self.run_process([EMCC, test_file('core/test_dwarf.cpp'),
+    self.run_process([EMCC, test_file('core/test_dwarf.c'),
                       '-g', '-O1', '-o', 'test_dwarf.js'])
     check_dwarf_loc_info(out_to_js_call_addr, out_to_js_call_func,
                          out_to_js_call_loc)
@@ -10980,7 +10980,7 @@ int main() {
       self.assertIn(func, out)
 
     # 1. Test name section only
-    self.run_process([EMCC, test_file('core/test_dwarf.cpp'),
+    self.run_process([EMCC, test_file('core/test_dwarf.c'),
                       '--profiling-funcs', '-O1', '-o', 'test_dwarf.js'])
     with webassembly.Module('test_dwarf.wasm') as wasm:
       self.assertTrue(wasm.has_name_section())
@@ -10989,12 +10989,12 @@ int main() {
     out_to_js_call_addr = self.get_instr_addr('call\t0', 'test_dwarf.wasm')
     # Address of __builtin_trap() within bar(), inlined into main()
     unreachable_addr = self.get_instr_addr('unreachable', 'test_dwarf.wasm')
-    check_func_info('test_dwarf.wasm', out_to_js_call_addr, 'foo()')
+    check_func_info('test_dwarf.wasm', out_to_js_call_addr, 'foo')
     # The name section will not show bar, as it's inlined into main
     check_func_info('test_dwarf.wasm', unreachable_addr, '__original_main')
 
     # 2. Test symbol map
-    self.run_process([EMCC, test_file('core/test_dwarf.cpp'),
+    self.run_process([EMCC, test_file('core/test_dwarf.c'),
                       '-O1', '--emit-symbol-map', '-o', 'test_dwarf.js'])
     self.assertExists('test_dwarf.js.symbols')
 
@@ -11007,7 +11007,7 @@ int main() {
     out_to_js_call_addr = self.get_instr_addr('call\t0', 'test_dwarf.wasm')
     # Address of __builtin_trap() within bar(), inlined into main()
     unreachable_addr = self.get_instr_addr('unreachable', 'test_dwarf.wasm')
-    check_symbolmap_info(out_to_js_call_addr, 'foo()')
+    check_symbolmap_info(out_to_js_call_addr, 'foo')
     # The name section will not show bar, as it's inlined into main
     check_symbolmap_info(unreachable_addr, '__original_main')
 
