@@ -2410,9 +2410,10 @@ def get_libs_to_link(options):
   if settings.ALLOW_UNIMPLEMENTED_SYSCALLS:
     add_library('libstubs')
   if not options.nolibc:
+    add_library('libc')
+    # N.b. libnoexit must be added after libc, or lto0.test_emscripten_get_compiler_setting fails.
     if not settings.EXIT_RUNTIME:
       add_library('libnoexit')
-    add_library('libc')
     if settings.MALLOC == 'mimalloc':
       add_library('libmimalloc')
       if settings.USE_ASAN:
