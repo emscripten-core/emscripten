@@ -24,7 +24,7 @@ from tools.utils import WINDOWS, MACOS, LINUX, write_file, delete_file
 from tools import shared, building, config, utils, webassembly
 import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
-from common import skip_if, no_windows, is_slow_test, parameterized, parameterize
+from common import skip_if, no_windows, is_slow_test, parameterized, parameterize, all_engines
 from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_without_bigint
 from common import read_file, read_binary, requires_v8, requires_node, requires_dev_dependency, requires_wasm2js, requires_node_canary
 from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime, also_with_modularize
@@ -179,25 +179,6 @@ def with_dylink_reversed(func):
 
   parameterize(decorated, {'': (False,),
                            'reversed': (True,)})
-
-  return decorated
-
-
-# without EMTEST_ALL_ENGINES set we only run tests in a single VM by
-# default. in some tests we know that cross-VM differences may happen and
-# so are worth testing, and they should be marked with this decorator
-def all_engines(f):
-  assert callable(f)
-
-  @wraps(f)
-  def decorated(self, *args, **kwargs):
-    old = self.use_all_engines
-    self.use_all_engines = True
-    self.set_setting('ENVIRONMENT', 'web,node,shell')
-    try:
-      f(self, *args, **kwargs)
-    finally:
-      self.use_all_engines = old
 
   return decorated
 
