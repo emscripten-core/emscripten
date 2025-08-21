@@ -40,15 +40,15 @@ function createWasmAudioWorkletProcessor(audioParams) {
       this.bytesPerChannel = this.samplesPerChannel * {{{ getNativeTypeSize('float') }}};
 
       // Creates the output views (see createOutputViews() docs)
-      this.maxBuffers = Math.min(((wwParams.stackSize - /*minimum alloc*/ 16) / this.bytesPerChannel) | 0, /*sensible limit*/ 64);
-      this.outputViews = [];
+      this.outputViews = new Array(Math.min(((wwParams.stackSize - /*minimum alloc*/ 16) / this.bytesPerChannel) | 0, /*sensible limit*/ 64));
 #if ASSERTIONS
-      console.assert(this.maxBuffers > 0, `AudioWorklet needs more stack allocating (at least ${this.bytesPerChannel})`);
+      console.assert(this.outputViews.length > 0, `AudioWorklet needs more stack allocating (at least ${this.bytesPerChannel})`);
 #endif
       this.createOutputViews();
 
 #if ASSERTIONS
-      // Explicitly verify this later in process()
+      // Explicitly verify this later in process(). Note to self, stackSave is a
+      // bit of a misnomer as it simply gets the stack address.
       this.ctorOldStackPtr = stackSave();
 #endif
     }
@@ -65,16 +65,13 @@ function createWasmAudioWorkletProcessor(audioParams) {
     createOutputViews() {
       // These are still alloc'd to take advantage of the overflow checks, etc.
       var oldStackPtr = stackSave();
-      var viewDataIdx = {{{ getHeapOffset('stackAlloc(this.maxBuffers * this.bytesPerChannel)', 'float') }}};
+      var viewDataIdx = {{{ getHeapOffset('stackAlloc(this.outputViews.length * this.bytesPerChannel)', 'float') }}};
 #if WEBAUDIO_DEBUG
-      console.log(`AudioWorklet creating ${this.maxBuffers} buffer one-time views (for a stack size of ${wwParams.stackSize} at address ${ptrToString(viewDataIdx * 4)})`);
+      console.log(`AudioWorklet creating ${this.outputViews.length} buffer one-time views (for a stack size of ${wwParams.stackSize} at address ${ptrToString(viewDataIdx * 4)})`);
 #endif
-      this.outputViews.length = 0;
-      for (var n = this.maxBuffers; n > 0; n--) {
-        // Added in reverse so the lowest indices are closest to the stack top
-        this.outputViews.unshift(
-          HEAPF32.subarray(viewDataIdx, viewDataIdx += this.samplesPerChannel)
-        );
+      // Inserted in reverse so the lowest indices are closest to the stack top
+      for (var n = this.outputViews.length - 1; n >= 0; n--) {
+        this.outputViews[n] = HEAPF32.subarray(viewDataIdx, viewDataIdx += this.samplesPerChannel);
       }
       stackRestore(oldStackPtr);
     }
