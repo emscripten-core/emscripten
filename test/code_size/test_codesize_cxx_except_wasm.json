@@ -3,7 +3,7 @@
   "a.out.js.gz": 8109,
   "a.out.nodebug.wasm": 144643,
   "a.out.nodebug.wasm.gz": 54892,
-  "total": 164285,
+  "total": 164280,
   "total_gz": 63001,
   "sent": [
     "_abort_js",
