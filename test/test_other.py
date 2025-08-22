@@ -11012,7 +11012,7 @@ int main() {
     check_symbolmap_info(unreachable_addr, '__original_main')
 
     # 3. Test symbol map on C++ name mangling
-    self.run_process([EMCC, test_file('test_symbolmap.cpp'),
+    self.run_process([EMCC, test_file('other/test_symbolmap.cpp'),
                       '-O1', '--emit-symbol-map', '-o', 'test_symbolmap.js'])
     self.assertExists('test_symbolmap.js.symbols')
 
