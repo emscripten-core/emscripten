@@ -1084,9 +1084,7 @@ function growableHeap(ast) {
         // Transform `HEAPxx` into `(growMemViews(), HEAPxx)`.
         // Important: don't just do `growMemViews(HEAPxx)` because `growMemViews` reassigns `HEAPxx`
         // and we want to get an updated value after that reassignment.
-        Object.assign(node, {
-          type: 'SequenceExpression',
-          expressions: [
+        makeSequence(node,
             {
               type: 'CallExpression',
               callee: {
@@ -1096,10 +1094,16 @@ function growableHeap(ast) {
               arguments: [],
             },
             {...node},
-          ],
-        });
+        );
       }
     },
+  });
+}
+
+function makeSequence(node, ...expressions) {
+  Object.assign(node, {
+    type: 'SequenceExpression',
+    expressions: expressions,
   });
 }
 
