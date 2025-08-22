@@ -4154,7 +4154,6 @@ ok
       self.skipTest('ERROR_ON_WASM_CHANGES_AFTER_LINK is not applicable when using SAFE_HEAP')
     if self.get_setting('MEMORY64') == 2:
       self.skipTest('MEMORY64=2 always requires module re-writing')
-    self.set_setting('WASM_BIGINT')
     self.set_setting('ERROR_ON_WASM_CHANGES_AFTER_LINK')
     self.do_basic_dylink_test()
 
@@ -7105,16 +7104,18 @@ void* operator new(size_t size) {
         out_suffix = ''
         if self.is_wasm64():
           out_suffix += '64'
-        if self.get_setting('WASM_BIGINT'):
-          out_suffix += '_bigint'
+        if self.get_setting('WASM_BIGINT') == 0:
+          out_suffix += '_nobigint'
       assert_returncode = 0 if not asserts else NON_ZERO
       self.do_core_test('test_getValue_setValue.cpp',
                         out_suffix=out_suffix,
                         assert_returncode=assert_returncode,
                         cflags=args)
 
-    if self.get_setting('WASM_BIGINT'):
+    if self.get_setting('WASM_BIGINT') != 0:
       self.cflags += ['-DWASM_BIGINT']
+      if self.is_wasm2js():
+        self.skipTest('WASM_BIGINT is not compatible with WASM2JS')
 
     # see that direct usage (not on module) works. we don't export, but the use
     # keeps it alive through JSDCE

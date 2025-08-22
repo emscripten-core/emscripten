@@ -8731,11 +8731,10 @@ int main() {
     self.do_other_test('test_em_asm_i64.cpp')
     self.do_other_test('test_em_asm_i64.cpp', force_c=True)
 
+  def test_EM_ASM_i64_nobigint(self):
     self.set_setting('WASM_BIGINT', 0)
     expected = 'Invalid character 106("j") in readEmAsmArgs!'
-    self.do_runf('other/test_em_asm_i64.cpp',
-                 expected_output=expected,
-                 assert_returncode=NON_ZERO)
+    self.do_runf('other/test_em_asm_i64.cpp', expected_output=expected, assert_returncode=NON_ZERO)
 
   def test_eval_ctor_ordering(self):
     # ensure order of execution remains correct, even with a bad ctor
@@ -13446,7 +13445,6 @@ int main () {
   @requires_wasm_eh
   def test_standalone_wasm_exceptions(self):
     self.set_setting('STANDALONE_WASM')
-    self.set_setting('WASM_BIGINT')
     self.wasm_engines = []
     self.cflags += ['-fwasm-exceptions']
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
@@ -15605,8 +15603,6 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   })
   @requires_v8
   def test_add_js_function_bigint(self, memory64, wasm_function):
-    self.set_setting('WASM_BIGINT')
-
     if memory64:
       self.require_wasm64()
 
