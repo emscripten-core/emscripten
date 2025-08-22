@@ -82,37 +82,52 @@ EMTEST_CAPTURE_STDIO = int(os.getenv('EMTEST_CAPTURE_STDIO', '0'))
 if 'EM_BUILD_VERBOSE' in os.environ:
   exit_with_error('EM_BUILD_VERBOSE has been renamed to EMTEST_BUILD_VERBOSE')
 
+
 # Default flags used to run browsers in CI testing:
-BROWSER_CONFIG = {
-  'chrome': {
-    'data_dir_flag': '--user-data-dir=',
-    'default': (
-      # --no-sandbox because we are running as root and chrome requires
-      # this flag for now: https://crbug.com/638180
-      '--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader --enable-experimental-web-platform-features --enable-features=JavaScriptSourcePhaseImports',
-      '--enable-experimental-webassembly-features --js-flags="--experimental-wasm-stack-switching --experimental-wasm-type-reflection --experimental-wasm-rab-integration"',
-      # The runners lack sound hardware so fallback to a dummy device (and
-      # bypass the user gesture so audio tests work without interaction)
-      '--use-fake-device-for-media-stream --autoplay-policy=no-user-gesture-required',
-      # Cache options.
-      '--disk-cache-size=1 --media-cache-size=1 --disable-application-cache',
-    ),
-    'headless':
-      # Increase the window size to avoid flaky sdl tests see #24236.
-      '--headless=new --window-size=1024,768 --remote-debugging-port=1234',
-  },
-  'firefox': {
-    'data_dir_flag': '-profile ',
-    'default': {},
-    'headless': '-headless',
-  },
-  'other': {
-    'data_dir_flag': '',
-    'default': {},
-    'headless': '',
-  },
-}
-DEFAULT_BROWSER_DATA_DIR = '/tmp/emscripten-profile'
+class BrowserConfig:
+  def __init__(self, data_dir_flag, default_flags, headless_flags):
+      self.data_dir_flag = data_dir_flag
+      self.default_flags = default_flags
+      self.headless_flags = headless_flags
+
+  def configure(self, data_dir):
+    pass
+
+
+class ChromeConfig(BrowserConfig):
+  def __init__(self):
+    super().__init__(
+      data_dir_flag = '--user-data-dir=',
+      default_flags = (
+        # --no-sandbox because we are running as root and chrome requires
+        # this flag for now: https://crbug.com/638180
+        '--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader --enable-experimental-web-platform-features --enable-features=JavaScriptSourcePhaseImports',
+        '--enable-experimental-webassembly-features --js-flags="--experimental-wasm-stack-switching --experimental-wasm-type-reflection --experimental-wasm-rab-integration"',
+        # The runners lack sound hardware so fallback to a dummy device (and
+        # bypass the user gesture so audio tests work without interaction)
+        '--use-fake-device-for-media-stream --autoplay-policy=no-user-gesture-required',
+        # Cache options.
+        '--disk-cache-size=1 --media-cache-size=1 --disable-application-cache',
+      ),
+      headless_flags =
+        # Increase the window size to avoid flaky sdl tests see #24236.
+        '--headless=new --window-size=1024,768 --remote-debugging-port=1234',
+    )
+
+
+class FirefoxConfig(BrowserConfig):
+  def __init__(self):
+    super().__init__(
+      data_dir_flag = '-profile ',
+      default_flags = {},
+      headless_flags = '-headless',
+    )
+
+  def configure(self, data_dir):
+    shutil.copy(test_file('firefox_user.js'), os.path.join(data_dir, 'user.js'))
+
+
+DEFAULT_BROWSER_DATA_DIR = path_from_root('out/browser-profile')
 
 # Special value for passing to assert_returncode which means we expect that program
 # to fail with non-zero return code, but we don't care about specifically which one.
@@ -2405,16 +2420,18 @@ class BrowserCore(RunnerCore):
       cls.browser_data_dir = DEFAULT_BROWSER_DATA_DIR
       if os.path.exists(cls.browser_data_dir):
         utils.delete_dir(cls.browser_data_dir)
+      os.mkdir(cls.browser_data_dir)
       if is_chrome():
-        config = BROWSER_CONFIG['chrome']
+        config = ChromeConfig()
       elif is_firefox():
-        config = BROWSER_CONFIG['firefox']
+        config = FirefoxConfig()
       else:
         logger.warning("Unknown browser type, not using default flags.")
-        config = BROWSER_CONFIG['other']
-      EMTEST_BROWSER += f" {config['data_dir_flag']}{cls.browser_data_dir} {' '.join(config['default'])}"
+        config = BrowserConfig()
+      EMTEST_BROWSER += f" {config.data_dir_flag}{cls.browser_data_dir} {' '.join(config.default_flags)}"
       if EMTEST_HEADLESS == '1':
-        EMTEST_BROWSER += f" {config['headless']}"
+        EMTEST_BROWSER += f" {config.headless_flags}"
+      config.configure(cls.browser_data_dir)
 
     if WINDOWS:
       # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
