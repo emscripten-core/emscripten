@@ -392,8 +392,8 @@ def parse_args():
                       help='Automatically update test expectations for tests that support it.')
   parser.add_argument('--browser',
                       help='Command to launch web browser in which to run browser tests.')
-  parser.add_argument('--headless', default='1',
-                      help='Run browser in headless (default) or non-headless (--headless=0) mode.')
+  parser.add_argument('--headless', action='store_true',
+                      help='Run browser tests in headless mode.')
   parser.add_argument('--browser-auto-config', type=bool, default=True,
                       help='Use the default CI browser configuration.')
   parser.add_argument('tests', nargs='*')
