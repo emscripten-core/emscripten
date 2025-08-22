@@ -6189,6 +6189,8 @@ Module.onRuntimeInitialized = () => {
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @also_with_nodefs
   def test_unistd_misc(self):
+    if self.get_setting('STRICT'):
+      self.set_setting('ALLOW_UNIMPLEMENTED_SYSCALLS')
     self.do_run_in_out_file_test('unistd/misc.c', interleaved_output=False)
 
   @also_with_standalone_wasm()
