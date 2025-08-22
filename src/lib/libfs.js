@@ -1710,8 +1710,10 @@ FS.staticInit();`;
       } else { // Command-line.
         try {
           obj.contents = readBinary(obj.url);
-          obj.usedBytes = obj.contents.length;
         } catch (e) {
+ #if FS_DEBUG
+          dbg(`forceLoadFile exception: ${e}`);
+ #endif
           throw new FS.ErrnoError({{{ cDefs.EIO }}});
         }
       }

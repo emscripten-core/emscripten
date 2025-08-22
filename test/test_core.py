@@ -474,8 +474,9 @@ class TestCoreBase(RunnerCore):
       # that we are doing cross-compilation
       # and skip attempting to run the generated executable with './a.out',
       # which would fail since we are building a .js file.
-      configure_args = ['--disable-shared', '--host=i686-pc-linux-gnu',
-                        '--disable-demos', '--disable-dependency-tracking']
+      configure_args = ['--disable-shared', '--build=i686-pc-linux-gnu',
+                        '--host=i686-pc-linux-gnu', '--disable-demos',
+                        '--disable-dependency-tracking']
       generated_libs = ['src/.libs/libBulletDynamics.a',
                         'src/.libs/libBulletCollision.a',
                         'src/.libs/libLinearMath.a']
@@ -4153,7 +4154,6 @@ ok
       self.skipTest('ERROR_ON_WASM_CHANGES_AFTER_LINK is not applicable when using SAFE_HEAP')
     if self.get_setting('MEMORY64') == 2:
       self.skipTest('MEMORY64=2 always requires module re-writing')
-    self.set_setting('WASM_BIGINT')
     self.set_setting('ERROR_ON_WASM_CHANGES_AFTER_LINK')
     self.do_basic_dylink_test()
 
@@ -7104,16 +7104,18 @@ void* operator new(size_t size) {
         out_suffix = ''
         if self.is_wasm64():
           out_suffix += '64'
-        if self.get_setting('WASM_BIGINT'):
-          out_suffix += '_bigint'
+        if self.get_setting('WASM_BIGINT') == 0:
+          out_suffix += '_nobigint'
       assert_returncode = 0 if not asserts else NON_ZERO
       self.do_core_test('test_getValue_setValue.cpp',
                         out_suffix=out_suffix,
                         assert_returncode=assert_returncode,
                         cflags=args)
 
-    if self.get_setting('WASM_BIGINT'):
+    if self.get_setting('WASM_BIGINT') != 0:
       self.cflags += ['-DWASM_BIGINT']
+      if self.is_wasm2js():
+        self.skipTest('WASM_BIGINT is not compatible with WASM2JS')
 
     # see that direct usage (not on module) works. we don't export, but the use
     # keeps it alive through JSDCE
@@ -8307,7 +8309,6 @@ Module.onRuntimeInitialized = () => {
     'onlylist_b_response': ([], True,  'main\n__original_main\nfoo(int, double)\nbaz()\nc_baz\nStructy::funcy()\n'),
     'onlylist_c_response': ([], False, 'main\n__original_main\nfoo(int, double)\nbaz()\nc_baz\n'),
   })
-  @no_windows("TODO: Fails on Windows due to an unknown reason.")
   def test_asyncify_lists(self, args, should_pass, response=None):
     if response is not None:
       create_file('response.file', response)
@@ -8325,14 +8326,16 @@ Module.onRuntimeInitialized = () => {
     if self.is_wasm():
       filename = 'test_asyncify_lists.wasm'
       # there should be no name section. sanitizers, however, always enable that
-      if not is_sanitizing(self.cflags) and '--profiling-funcs' not in self.cflags:
+      if not is_sanitizing(self.cflags) and '--profiling-funcs' not in self.cflags and '-g' not in self.cflags:
         with webassembly.Module(filename) as m:
           self.assertFalse(m.has_name_section())
       # in a fully-optimized build, imports and exports are minified too and we
       # can verify that our function names appear nowhere
       if '-O3' in self.cflags:
-        binary = read_binary(filename)
-        self.assertFalse(b'main' in binary)
+        self.assertFalse(b'__wasm_call_ctors' in read_binary(filename))
+      elif '-O0' in self.cflags:
+        # However, sanity check that in core0 test, we do see this symbol.
+        self.assertTrue(b'__wasm_call_ctors' in read_binary(filename))
 
   @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
   @parameterized({
