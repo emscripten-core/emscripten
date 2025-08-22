@@ -2274,6 +2274,7 @@ addToLibrary({
   $noExitRuntime__postset: () => addAtModule(makeModuleReceive('noExitRuntime')),
   $noExitRuntime: {{{ !EXIT_RUNTIME }}},
 
+#if !MINIMAL_RUNTIME
   // A counter of dependencies for calling run(). If we need to
   // do asynchronous work before running, increment this and
   // decrement it. Incrementing must happen in a place like
@@ -2293,7 +2294,7 @@ addToLibrary({
   $runDependencyWatcher: null,
 #endif
 
-  $addRunDependency__deps: ['$runDependencies',
+  $addRunDependency__deps: ['$runDependencies', '$removeRunDependency',
 #if ASSERTIONS
     '$runDependencyTracking',
     '$runDependencyWatcher',
@@ -2377,6 +2378,7 @@ addToLibrary({
       }
     }
   },
+#endif
 
   // The following addOn<X> functions are for adding runtime callbacks at
   // various executions points. Each addOn<X> function has a corresponding

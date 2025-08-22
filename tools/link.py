@@ -674,7 +674,6 @@ def report_incompatible_settings():
     ('GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS', 'NO_GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS', None),
     ('MODULARIZE', 'NODEJS_CATCH_REJECTION', None),
     ('MODULARIZE', 'NODEJS_CATCH_EXIT', None),
-    ('WASM2JS', 'USE_OFFSET_CONVERTER', 'see #14630'),
   ]
 
   for a, b, reason in incompatible_settings:
@@ -854,8 +853,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with -sASYNCIFY')
     if settings.WASM_WORKERS:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
-    if settings.USE_OFFSET_CONVERTER:
-      exit_with_error('WASM_ESM_INTEGRATION is not compatible with USE_OFFSET_CONVERTER')
     if not settings.WASM_ASYNC_COMPILATION:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM_ASYNC_COMPILATION=0')
     if not settings.WASM:
@@ -1130,10 +1127,12 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
         settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$warnOnce']
 
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue', '$setValue']
-      # TODO(sbc): Remove these forced dependencies.
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$runDependencies', '$addRunDependency', '$removeRunDependency']
 
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$ExitStatus']
+
+    # Certain configurations require the removeRunDependency/addRunDependency system.
+    if settings.LOAD_SOURCE_MAP or settings.PROXY_TO_WORKER or (settings.WASM_ASYNC_COMPILATION and not settings.MODULARIZE):
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$addRunDependency', '$removeRunDependency']
 
   if settings.ABORT_ON_WASM_EXCEPTIONS or settings.SPLIT_MODULE:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$wasmTable']
@@ -1564,7 +1563,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if options.sanitize:
     if settings.WASM_WORKERS:
       exit_with_error('WASM_WORKERS is not currently compatible with `-fsanitize` tools')
-    settings.USE_OFFSET_CONVERTER = 1
     # These symbols are needed by `withBuiltinMalloc` which used to implement
     # the `__noleakcheck` attribute.  However this dependency is not yet represented in the JS
     # symbol graph generated when we run the compiler with `--symbols-only`.
@@ -1589,9 +1587,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     inc_initial_memory(50 * 1024 * 1024)
     if settings.PTHREADS:
       inc_initial_memory(50 * 1024 * 1024)
-
-  if settings.USE_OFFSET_CONVERTER:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$UTF8ArrayToString')
 
   if options.sanitize & UBSAN_SANITIZERS:
     if options.sanitize_minimal_runtime:

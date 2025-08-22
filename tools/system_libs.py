@@ -942,7 +942,7 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
   # restriction soon: https://reviews.llvm.org/D71738
   force_object_files = True
 
-  cflags = ['-fno-builtin', '-DNDEBUG', '-DCOMPILER_RT_HAS_UNAME=1', '-DCOMPILER_RT_HAS_ATOMICS=1']
+  cflags = ['-fno-builtin', '-DNDEBUG', '-DCOMPILER_RT_HAS_ATOMICS=1']
   src_dir = 'system/lib/compiler-rt/lib/builtins'
   profile_src_dir = 'system/lib/compiler-rt/lib/profile'
   includes = ['system/lib/libc', 'system/lib/compiler-rt/include']
@@ -1006,7 +1006,7 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
   def get_files(self):
     files = glob_in_path('system/lib/llvm-libc/src/assert', '*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/complex', '**/*.cpp')
-    files += glob_in_path('system/lib/llvm-libc/src/string', '**/*.cpp')
+    files += glob_in_path('system/lib/llvm-libc/src/string', '**/*.cpp', excludes=['memset.cpp', 'memcpy.cpp'] if self.is_asan else [])
     files += glob_in_path('system/lib/llvm-libc/src/intypes', '*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/strings', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/errno', '**/*.cpp')

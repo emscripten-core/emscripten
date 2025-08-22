@@ -6,43 +6,15 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
-var wasmExports;
-
-#if MODULARIZE != 'instance'
-
-#if WASM_WORKERS || PTHREADS
-if ({{{ ENVIRONMENT_IS_MAIN_THREAD() }}}) {
-// Call createWasm on startup if we are the main thread.
-// Worker threads call this once they receive the module via postMessage
-#endif
-
-#if WASM_ASYNC_COMPILATION
-
-#if MODULARIZE
-// In modularize mode the generated code is within a factory function so we
-// can use await here (since it's not top-level-await).
-wasmExports = await createWasm();
-#else
-// With async instantation wasmExports is assigned asynchronously when the
-// instance is received.
-createWasm();
-#endif
-
-#else
-wasmExports = createWasm();
-#endif
-
-#if WASM_WORKERS || PTHREADS
-}
-#endif
-
-#endif // MODULARIZE != 'instance'
-
 #if PROXY_TO_WORKER
 if (ENVIRONMENT_IS_WORKER) {
 #include "webGLWorker.js'
 #include "proxyWorker.js"
 }
+#endif
+
+#if LOAD_SOURCE_MAP
+#include "source_map_support.js"
 #endif
 
 #if DETERMINISTIC
@@ -64,7 +36,9 @@ var mainArgs = undefined;
 {{{ asyncIf(ASYNCIFY == 2) }}}function callMain() {
 #endif
 #if ASSERTIONS
+#if '$runDependencies' in addedLibraryItems
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on Module["onRuntimeInitialized"])');
+#endif
   assert(typeof onPreRuns === 'undefined' || onPreRuns.length == 0, 'cannot call main when preRun functions remain to be called');
 #endif
 
@@ -161,7 +135,7 @@ function run(args = arguments_) {
 function run() {
 #endif
 
-#if !BOOTSTRAPPING_STRUCT_INFO
+#if '$runDependencies' in addedLibraryItems
   if (runDependencies > 0) {
 #if RUNTIME_DEBUG
     dbg('run() called, but dependencies remain, so not running');
@@ -187,7 +161,7 @@ function run() {
 
   preRun();
 
-#if !BOOTSTRAPPING_STRUCT_INFO
+#if '$runDependencies' in addedLibraryItems
   // a preRun added a dependency, run will be called later
   if (runDependencies > 0) {
 #if RUNTIME_DEBUG
@@ -328,6 +302,8 @@ function preInit() {
 #endif
 }
 
+var wasmExports;
+
 #if MODULARIZE == 'instance'
 // In MODULARIZE=instance mode we delay most of the initialization work until
 // the `init` function is called.
@@ -378,12 +354,38 @@ if (ENVIRONMENT_IS_SHELL) {
 }
 #endif
 
-#else // MODULARIZE=instance
+#else // MODULARIZE == instance
+
+#if WASM_WORKERS || PTHREADS
+if ({{{ ENVIRONMENT_IS_MAIN_THREAD() }}}) {
+// Call createWasm on startup if we are the main thread.
+// Worker threads call this once they receive the module via postMessage
+#endif
+
+#if WASM_ASYNC_COMPILATION
+
+#if MODULARIZE
+// In modularize mode the generated code is within a factory function so we
+// can use await here (since it's not top-level-await).
+wasmExports = await createWasm();
+#else
+// With async instantation wasmExports is assigned asynchronously when the
+// instance is received.
+createWasm();
+#endif
+
+#else
+wasmExports = createWasm();
+#endif
+
+#if WASM_WORKERS || PTHREADS
+}
+#endif
 
 preInit();
 {{{ runIfMainThread('run();') }}}
 
-#endif // MODULARIZE=instance
+#endif // MODULARIZE != instance
 
 #if BUILD_AS_WORKER
 

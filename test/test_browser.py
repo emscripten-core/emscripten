@@ -225,7 +225,7 @@ class browser(BrowserCore):
 
   def post_manual_reftest(self):
     assert os.path.exists('reftest.js')
-    shutil.copy(test_file('browser_reporting.js'), '.')
+    self.add_browser_reporting()
     html = read_file('test.html')
     html = html.replace('</body>', '''
 <script src="browser_reporting.js"></script>
@@ -534,7 +534,7 @@ If manually bisecting:
   # Clear all IndexedDB databases. This gives us a fresh state for tests that
   # chech caching.
   def clear_indexed_db(self):
-    shutil.copy(test_file('browser_reporting.js'), '.')
+    self.add_browser_reporting()
     create_file('clear_indexed_db.html', '''
       <script src="browser_reporting.js"></script>
       <script>
@@ -776,7 +776,7 @@ If manually bisecting:
               window.disableErrorReporting = true;
               window.onerror = null;
               var result = error.includes("test.data") ? 1 : 0;
-              await fetch('http://localhost:8888/report_result?' + result);
+              await fetch('/report_result?' + result);
               window.close();
             }
             window.addEventListener('error', errorHandler);
@@ -1355,7 +1355,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
 
   def test_fs_idbfs_fsync(self):
     # sync from persisted state into memory before main()
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall,$addRunDependency')
     create_file('pre.js', '''
       Module.preRun = () => {
         addRunDependency('syncfs');
@@ -2382,6 +2382,7 @@ void *getBindBuffer() {
   @also_with_wasm2js
   def test_pre_run_deps(self):
     # Adding a dependency in preRun will delay run
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency')
     create_file('pre.js', '''
       Module.preRun = () => {
         addRunDependency('foo');
@@ -2458,7 +2459,7 @@ void *getBindBuffer() {
         setTimeout(async () => {
           out('done timeout noted = ' + Module.noted);
           assert(Module.noted);
-          await fetch('http://localhost:8888/report_result?' + HEAP32[Module.noted/4]);
+          await fetch('/report_result?' + HEAP32[Module.noted/4]);
           window.close();
         }, 0);
         // called from main, this is an ok time
@@ -2600,6 +2601,7 @@ void *getBindBuffer() {
     self.btest('glew.c', cflags=['-lGL', '-lSDL', '-lGLEW', '-sLEGACY_GL_EMULATION', '-DGLEW_MX'], expected='1')
 
   def test_doublestart_bug(self):
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency,$removeRunDependency')
     create_file('pre.js', r'''
 Module["preRun"] = () => {
   addRunDependency('test_run_dependency');
@@ -3438,7 +3440,7 @@ Module["preRun"] = () => {
 
   def test_modularize_network_error(self):
     self.compile_btest('browser_test_hello_world.c', ['-sMODULARIZE', '-sEXPORT_NAME=createModule'], reporting=Reporting.NONE)
-    shutil.copy(test_file('browser_reporting.js'), '.')
+    self.add_browser_reporting()
     create_file('a.html', '''
       <script src="browser_reporting.js"></script>
       <script src="a.out.js"></script>
@@ -3458,7 +3460,7 @@ Module["preRun"] = () => {
 
   def test_modularize_init_error(self):
     self.compile_btest('browser/test_modularize_init_error.cpp', ['-sMODULARIZE', '-sEXPORT_NAME=createModule'], reporting=Reporting.NONE)
-    shutil.copy(test_file('browser_reporting.js'), '.')
+    self.add_browser_reporting()
     create_file('a.html', '''
       <script src="browser_reporting.js"></script>
       <script src="a.out.js"></script>
@@ -3724,17 +3726,15 @@ Module["preRun"] = () => {
     '''))
 
   def test_pthread_c11_threads(self):
-    self.btest_exit('pthread/test_pthread_c11_threads.c',
-                    cflags=['-gsource-map', '-std=gnu11', '-pthread', '-sPROXY_TO_PTHREAD'])
+    self.btest_exit('pthread/test_pthread_c11_threads.c', cflags=['-gsource-map', '-pthread', '-sPROXY_TO_PTHREAD'])
 
   def test_pthread_pool_size_strict(self):
     # Check that it doesn't fail with sufficient number of threads in the pool.
-    self.btest_exit('pthread/test_pthread_c11_threads.c',
-                    cflags=['-g2', '-std=gnu11', '-pthread', '-sPTHREAD_POOL_SIZE=4', '-sPTHREAD_POOL_SIZE_STRICT=2'])
+    self.btest_exit('pthread/test_pthread_c11_threads.c', cflags=['-g2', '-pthread', '-sPTHREAD_POOL_SIZE=4', '-sPTHREAD_POOL_SIZE_STRICT=2'])
     # Check that it fails instead of deadlocking on insufficient number of threads in the pool.
     self.btest('pthread/test_pthread_c11_threads.c',
                expected='abort:Assertion failed: thrd_create(&t4, thread_main, NULL) == thrd_success',
-               cflags=['-g2', '-std=gnu11', '-pthread', '-sPTHREAD_POOL_SIZE=3', '-sPTHREAD_POOL_SIZE_STRICT=2'])
+               cflags=['-g2', '-pthread', '-sPTHREAD_POOL_SIZE=3', '-sPTHREAD_POOL_SIZE_STRICT=2'])
 
   def test_pthread_in_pthread_pool_size_strict(self):
     # Check that it fails when there's a pthread creating another pthread.
@@ -4621,7 +4621,7 @@ Module["preRun"] = () => {
 
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   def test_fetch_redirect(self):
-    self.btest_exit('fetch/test_fetch_redirect.c', cflags=['-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
+    self.btest_exit('fetch/test_fetch_redirect.c', cflags=['-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD', f'-DSERVER="{self.SERVER_URL}"'])
 
   @parameterized({
     '': ([],),
@@ -5038,13 +5038,6 @@ Module["preRun"] = () => {
   def test_minimal_runtime_hello_world(self, args):
     self.btest_exit('small_hello_world.c', cflags=args + ['-sMINIMAL_RUNTIME'])
 
-  @parameterized({
-    '': ([],),
-    'pthread': (['-sPROXY_TO_PTHREAD', '-pthread'],),
-  })
-  def test_offset_converter(self, args):
-    self.btest_exit('test_offset_converter.c', cflags=['-sUSE_OFFSET_CONVERTER', '-gsource-map'] + args)
-
   # Tests emscripten_unwind_to_js_event_loop() behavior
   def test_emscripten_unwind_to_js_event_loop(self):
     self.btest_exit('test_emscripten_unwind_to_js_event_loop.c')
@@ -5161,12 +5154,12 @@ Module["preRun"] = () => {
   # Tests C11 keyword _Thread_local for TLS in Wasm Workers
   @also_with_minimal_runtime
   def test_wasm_worker_c11__Thread_local(self):
-    self.btest('wasm_worker/c11__Thread_local.c', expected='42', cflags=['-sWASM_WORKERS', '-std=gnu11']) # Cannot test C11 - because of EM_ASM must test Gnu11.
+    self.btest('wasm_worker/c11__Thread_local.c', expected='42', cflags=['-sWASM_WORKERS'])
 
   # Tests GCC specific extension keyword __thread for TLS in Wasm Workers
   @also_with_minimal_runtime
   def test_wasm_worker_gcc___thread(self):
-    self.btest('wasm_worker/gcc___Thread.c', expected='42', cflags=['-sWASM_WORKERS', '-std=gnu11'])
+    self.btest('wasm_worker/gcc___Thread.c', expected='42', cflags=['-sWASM_WORKERS'])
 
   # Tests emscripten_wasm_worker_sleep()
   @also_with_minimal_runtime

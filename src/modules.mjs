@@ -452,10 +452,6 @@ function exportRuntimeSymbols() {
     runtimeElements.push('HEAP_DATA_VIEW');
   }
 
-  if (USE_OFFSET_CONVERTER) {
-    runtimeElements.push('WasmOffsetConverter');
-  }
-
   if (LOAD_SOURCE_MAP) {
     runtimeElements.push('WasmSourceMap');
   }
