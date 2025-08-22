@@ -2429,7 +2429,7 @@ class BrowserCore(RunnerCore):
         logger.warning("Unknown browser type, not using default flags.")
         config = BrowserConfig()
       EMTEST_BROWSER += f" {config.data_dir_flag}{cls.browser_data_dir} {' '.join(config.default_flags)}"
-      if EMTEST_HEADLESS == '1':
+      if EMTEST_HEADLESS == 1:
         EMTEST_BROWSER += f" {config.headless_flags}"
       config.configure(cls.browser_data_dir)
 
