@@ -22,6 +22,9 @@ developer tools. (TODO more info?). Source maps are also supported (see :ref:`be
 This document contains an overview of the flags used to emit and control debugging behavior, and
 use-case-based examples.
 
+Unlike traditional Unix-style C toolchains, flags must be passed at link time to preserve or generate
+debug information. The most common of these are the :ref:`-g flags <emcc-gN>`; see the flag
+documentation or the use cases below for more detail.
 
 Flags that cause DWARF generation (e.g. ``-g3``, ``-gline-tables-only``) also generate a name section
 in the binary and suppress minification of the JS glue file (since most DWARF use cases are for
