@@ -545,7 +545,6 @@ def main():  # noqa: C901, PLR0912, PLR0915
   # file order on different file systems / operating systems)
   data_files = sorted(data_files, key=lambda file_: file_.dstpath)
   data_files = [file_ for file_ in data_files if not was_seen(file_.dstpath)]
-  metadata = {'files': []}
 
   if options.obj_output:
     if not options.has_embedded:
