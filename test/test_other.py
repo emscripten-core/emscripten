@@ -6907,7 +6907,7 @@ int main(int argc, char **argv) {
       # If the LANG env. var doesn't exist (Windows), ask Node for the language.
       try:
         cmd = config.NODE_JS + ['-e', 'console.log(navigator.languages[0])']
-        expected_lang = subprocess.check_output(cmd, stderr=subprocess.NULL)
+        expected_lang = subprocess.check_output(cmd, stderr=subprocess.DEVNULL)
         expected_lang = expected_lang.decode('utf-8').strip().replace('-', '_')
         expected_lang = f'{expected_lang}.UTF-8'
       except Exception:
