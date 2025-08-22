@@ -956,6 +956,17 @@ function isEmscriptenHEAP(name) {
   }
 }
 
+const littleEndianHelper = {
+    'HEAP16': { width: 2, load: "LE_HEAP_LOAD_16", store: "LE_HEAP_STORE_16" },
+    'HEAPU16': { width: 2, load: "LE_HEAP_LOAD_U16", store: "LE_HEAP_STORE_U16" },
+    'HEAP32': { width: 4, load: "LE_HEAP_LOAD_32", store: "LE_HEAP_STORE_32" },
+    'HEAPU32': { width: 4, load: "LE_HEAP_LOAD_U32", store: "LE_HEAP_STORE_U32" },
+    'HEAP64': { width: 8, load: "LE_HEAP_LOAD_64", store: "LE_HEAP_STORE_64" },
+    'HEAPU64': { width: 8, load: "LE_HEAP_LOAD_U64", store: "LE_HEAP_STORE_U64" },
+    'HEAPF32': { width: 4, load: "LE_HEAP_LOAD_F32", store: "LE_HEAP_STORE_F32" },
+    'HEAPF64': { width: 8, load: "LE_HEAP_LOAD_F64", store: "LE_HEAP_STORE_F64" },
+};
+
 // Replaces each HEAP access with function call that uses DataView to enforce
 // LE byte order for HEAP buffer
 function littleEndianHeap(ast) {
@@ -988,52 +999,10 @@ function littleEndianHeap(ast) {
         // replace the heap access with LE_HEAP_STORE
         const name = target.object.name;
         const idx = target.property;
-        switch (name) {
-          case 'HEAP8':
-          case 'HEAPU8': {
-            // no action required - storing only 1 byte
-            break;
-          }
-          case 'HEAP16': {
-            // change "name[idx] = value" to "LE_HEAP_STORE_I16(idx*2, value)"
-            makeCallExpression(node, 'LE_HEAP_STORE_I16', [multiply(idx, 2), value]);
-            break;
-          }
-          case 'HEAPU16': {
-            // change "name[idx] = value" to "LE_HEAP_STORE_U16(idx*2, value)"
-            makeCallExpression(node, 'LE_HEAP_STORE_U16', [multiply(idx, 2), value]);
-            break;
-          }
-          case 'HEAP32': {
-            // change "name[idx] = value" to "LE_HEAP_STORE_I32(idx*4, value)"
-            makeCallExpression(node, 'LE_HEAP_STORE_I32', [multiply(idx, 4), value]);
-            break;
-          }
-          case 'HEAPU32': {
-            // change "name[idx] = value" to "LE_HEAP_STORE_U32(idx*4, value)"
-            makeCallExpression(node, 'LE_HEAP_STORE_U32', [multiply(idx, 4), value]);
-            break;
-          }
-          case 'HEAP64': {
-            // change "name[idx] = value" to "LE_HEAP_STORE_I64(idx*8, value)"
-            makeCallExpression(node, 'LE_HEAP_STORE_I64', [multiply(idx, 8), value]);
-            break;
-          }
-          case 'HEAPU64': {
-            // change "name[idx] = value" to "LE_HEAP_STORE_U64(idx*8, value)"
-            makeCallExpression(node, 'LE_HEAP_STORE_U64', [multiply(idx, 8), value]);
-            break;
-          }
-          case 'HEAPF32': {
-            // change "name[idx] = value" to "LE_HEAP_STORE_F32(idx*4, value)"
-            makeCallExpression(node, 'LE_HEAP_STORE_F32', [multiply(idx, 4), value]);
-            break;
-          }
-          case 'HEAPF64': {
-            // change "name[idx] = value" to "LE_HEAP_STORE_F64(idx*8, value)"
-            makeCallExpression(node, 'LE_HEAP_STORE_F64', [multiply(idx, 8), value]);
-            break;
-          }
+        const helper = littleEndianHelper[name];
+        if (helper) {
+          // "nameXX[idx] = value" -> "LE_HEAP_STORE_XX(idx*XX, value)"
+          makeCallExpression(node, helper.store, [multiply(idx, helper.width), value]);
         }
       }
     },
@@ -1064,53 +1033,12 @@ function littleEndianHeap(ast) {
         c(node.object);
       } else {
         // replace the heap access with LE_HEAP_LOAD
+        const name = node.object.name;
         const idx = node.property;
-        switch (node.object.name) {
-          case 'HEAP8':
-          case 'HEAPU8': {
-            // no action required - loading only 1 byte
-            break;
-          }
-          case 'HEAP16': {
-            // change "name[idx]" to "LE_HEAP_LOAD_I16(idx*2)"
-            makeCallExpression(node, 'LE_HEAP_LOAD_I16', [multiply(idx, 2)]);
-            break;
-          }
-          case 'HEAPU16': {
-            // change "name[idx]" to "LE_HEAP_LOAD_U16(idx*2)"
-            makeCallExpression(node, 'LE_HEAP_LOAD_U16', [multiply(idx, 2)]);
-            break;
-          }
-          case 'HEAP32': {
-            // change "name[idx]" to "LE_HEAP_LOAD_I32(idx*4)"
-            makeCallExpression(node, 'LE_HEAP_LOAD_I32', [multiply(idx, 4)]);
-            break;
-          }
-          case 'HEAPU32': {
-            // change "name[idx]" to "LE_HEAP_LOAD_U32(idx*4)"
-            makeCallExpression(node, 'LE_HEAP_LOAD_U32', [multiply(idx, 4)]);
-            break;
-          }
-          case 'HEAP64': {
-            // change "name[idx]" to "LE_HEAP_LOAD_I64(idx*8)"
-            makeCallExpression(node, 'LE_HEAP_LOAD_I64', [multiply(idx, 8)]);
-            break;
-          }
-          case 'HEAPU64': {
-            // change "name[idx]" to "LE_HEAP_LOAD_U64(idx*8)"
-            makeCallExpression(node, 'LE_HEAP_LOAD_U64', [multiply(idx, 8)]);
-            break;
-          }
-          case 'HEAPF32': {
-            // change "name[idx]" to "LE_HEAP_LOAD_F32(idx*4)"
-            makeCallExpression(node, 'LE_HEAP_LOAD_F32', [multiply(idx, 4)]);
-            break;
-          }
-          case 'HEAPF64': {
-            // change "name[idx]" to "LE_HEAP_LOAD_F64(idx*8)"
-            makeCallExpression(node, 'LE_HEAP_LOAD_F64', [multiply(idx, 8)]);
-            break;
-          }
+        const helper = littleEndianHelper[name];
+        if (helper) {
+          // "nameXX[idx]" -> "LE_HEAP_LOAD_XX(idx*XX)"
+          makeCallExpression(node, helper.load, [multiply(idx, helper.width)]);
         }
       }
     },
