@@ -992,18 +992,18 @@ function littleEndianHeap(ast) {
       const target = node.left;
       const value = node.right;
       c(value);
-      if (!isHEAPAccess(target)) {
-        // not accessing the HEAP
-        c(target);
-      } else {
+      const heap = isHEAPAccess(target);
+      if (heap) {
         // replace the heap access with LE_HEAP_STORE
-        const name = target.object.name;
         const idx = target.property;
-        const helper = littleEndianHelper[name];
+        const helper = littleEndianHelper[heap];
         if (helper) {
           // "nameXX[idx] = value" -> "LE_HEAP_STORE_XX(idx*XX, value)"
           makeCallExpression(node, helper.store, [multiply(idx, helper.width), value]);
         }
+      } else {
+        // not accessing the HEAP
+        c(target);
       }
     },
     CallExpression(node, c) {
@@ -1028,18 +1028,18 @@ function littleEndianHeap(ast) {
     },
     MemberExpression(node, c) {
       c(node.property);
-      if (!isHEAPAccess(node)) {
-        // not accessing the HEAP
-        c(node.object);
-      } else {
+      const heap = isHEAPAccess(node);
+      if (heap) {
         // replace the heap access with LE_HEAP_LOAD
-        const name = node.object.name;
         const idx = node.property;
-        const helper = littleEndianHelper[name];
+        const helper = littleEndianHelper[heap];
         if (helper) {
           // "nameXX[idx]" -> "LE_HEAP_LOAD_XX(idx*XX)"
           makeCallExpression(node, helper.load, [multiply(idx, helper.width)]);
         }
+      } else {
+        // not accessing the HEAP
+        c(node.object);
       }
     },
   });
@@ -1177,7 +1177,8 @@ function isHEAPAccess(node) {
     node.type === 'MemberExpression' &&
     node.object.type === 'Identifier' &&
     node.computed && // notice a[X] but not a.X
-    isEmscriptenHEAP(node.object.name)
+    isEmscriptenHEAP(node.object.name) &&
+    node.object.name
   );
 }
 
