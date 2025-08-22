@@ -8,47 +8,8 @@ One of the main advantages of debugging cross-platform Emscripten code is that t
 
 This article describes the main tools and settings provided by Emscripten for debugging, organized by common developer use cases.
 
-Overview of Debugging Flags
-===========================
 
-Emscripten offers a variety of flags to control the generation of debug information. Here is a summary of the most common ones:
-
-.. list-table::
-   :header-rows: 1
-   :widths: 20 60 20
-   :class: wrap-table-content
-
-   * - Flag
-     - Primary Use Case
-     - More Info
-   * - ``-g``
-     - Interactive, source-level debugging with full DWARF information. May disable some optimizations.
-     - :ref:`emcc-g`
-   * - ``-gsource-map``
-     - Symbolicating production crash logs with source maps. Designed to work with optimizations.
-     - :ref:`emcc-gsource-map`
-   * - ``-fsanitize=address``
-     - Detecting memory errors (buffer overflows, use-after-free, memory leaks).
-     - `Clang ASan docs <https://clang.llvm.org/docs/AddressSanitizer.html>`_
-   * - ``-fsanitize=undefined``
-     - Detecting undefined behavior (e.g., null pointer dereferences, integer overflow).
-     - `Clang UBSan docs <https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html>`_
-   * - ``-sSAFE_HEAP=1``
-     - Checking for memory access errors like null pointer dereferences and unaligned access.
-     - :ref:`SAFE_HEAP`
-   * - ``-sASSERTIONS=1``
-     - Enabling runtime checks for common errors and incorrect program flow.
-     - :ref:`ASSERTIONS`
-   * - ``--profiling``
-     - Building with information for speed profiling in the browser's devtools.
-     - :ref:`emcc-profiling`
-   * - ``--memoryprofiler``
-     - Embedding a visual memory allocation tracker in the generated HTML.
-     - :ref:`emcc-profiling`
-
-
-
-Emitting and controlling debug information
+Overview: Emitting and Controlling Debug Information
 ==========================================
 Debugging-related information comes in several forms: in Wasm object and binary files (DWARF 
 sections, Wasm name section), side output files (source maps, symbol maps, DWARF sidecar and package files),
@@ -61,22 +22,11 @@ developer tools. (TODO more info?). Source maps are also supported (see :ref:`be
 This document contains an overview of the flags used to emit and control debugging behavior, and
 use-case-based examples.
 
-DWARF:
-Amount of debug information generated: ``-g``, ``-g<level>``, ``-gline-tables-only``
-Type of debug information in the binary: ``-gdwarf-5`` (others?)
-Where DWARF is written: ``-gsplit-dwarf``, ``-gseparate-dwarf``
-
-Type of debug information generated: (dwarf flags), ``-gname``, ``--profiling-funcs``, ``--profiling``
-Type of debug information generated alongside: ``-gsource-maps``, ``--emit-symbol-map``
-
-JS Minification: ``--profiling``, ``--minify=0``
-
-Runtime safety and bug detection: ``-fsanitize=address|undefined|leak``, ``-sASSERTIONS``
-
-Flags that cause DWARF generation also generate a name section in the binary and suppress
-minification of the JS glue file (since most DWARF use cases are for interactive debugging).
-Other flags should affect only a specific behavior or type of debug info, and are generally
-composable.
+Flags that cause DWARF generation (e.g. `-g3`, `-gline-tables-only`) also generate a name section
+in the binary and suppress minification of the JS glue file (since most DWARF use cases are for
+interactive debugging or where the binary will be stripped).
+Other flags (e.g. `-g2`, `-gsource-map`) should affect only a specific behavior or type of debug info,
+and are generally composable.
 
 
 
@@ -113,9 +63,16 @@ and optimization flags at link time also disable Emscripten's runtime :ref:`ASSE
 Passing a ``-g`` flag at link time also affects the generated JavaScript code (preserving white-space, function names, and variable names).
 
 The ``-g`` flag can also be specified with integer levels: :ref:`-g0 <emcc-g0>`, :ref:`-g1 <emcc-g1>`, :ref:`-g2 <emcc-g2>`,
-and :ref:`-g3 <emcc-g3>` (default with ``-g``).  At compile time these flags control the amount of DWARF in the object files.
+and :ref:`-g3 <emcc-g3>` (equivalent to ``-g``).  At compile time these flags control the amount of DWARF in the object files.
 At link time, each adds sucessively more kinds of information in the wasm and JS files (DWARF is only retained after linking
 when using ``-g`` or ``-g3``).
+
+Example:
+
+.. code-block:: bash
+
+  emcc source.c -c -o source.o -g # source.o has DWARF sections
+  emcc source.o -o program.js -g # program.wasm has DWARF and a name section
 
 .. tip:: Even for medium-sized projects, DWARF debug information can be large. Debug information can be emitted in a
   separate file with the :ref:`-gseparate-dwarf <emcc-gseparate-dwarf>` option. To speed up linking,
@@ -145,6 +102,8 @@ to JavaScript (mapping locations in the compiled JS output to locations in the o
 code), but WebAssembly is also supported. Emscripten can emit source maps with
 the :ref:`-gsource-map <emcc-gsource-map>` link-time flag. Source maps are preserved even with
 full post-link optimizations, so they work well for this use case.
+Source maps are generated by Emscripten from DWARF information. Therefore the linked object
+files must have DWARF. The final linked output will not have DWARF unless `-g` is also passed.
 
 DWARF can also be used for this purpose. Typically a binary containing DWARF would be generated
 at build time, and then stripped. The stripped copy would be served to users, and the original
@@ -164,16 +123,32 @@ using several different kinds of debug info, including DWARF (in wasm object or 
 and source maps for line/column info, and symbol maps (see :ref:`emcc-emit-symbol-map`),
 name sections and object file symbol tables for function names.
 
+Examples:
+
+.. code-block:: bash
+
+  emcc source.c -c -o source.o -g # source.o has DWARF sections (-gsource-map also works here)
+  emcc source.o -o program.js -gsource-map # program.wasm.map contains a source map
+
+  emcc source.o -o program2.js -g # program2.wasm has DWARF
+  llvm-strip program2.wasm -o program2_stripped.wasm # program2_stripped.wasm has no debug info
+
 
 Fast Edit+Compile with minimal debug information
 ================================================
 
 When you want the fastest builds, you generally want to avoid generating large debug information
 during compile, because it takes time to link into the final binary. It is still worthwhile to use
-the ``--profiling`` (TODO gnames?)
+the ``--profiling`` (TODO gnames/g2?)
 flag (at link time only) because browsers understand the name section even when devtools are not 
 in use, resulting in more useful stack traces at minimal cost.
 
+Example:
+
+.. code-block:: bash
+
+  emcc source.c -c -o source.o # source.o has no debug info
+  emcc source.o -o program.js -g2 # program.wasm has a name section, program.js is unminified
 
 
 Detecting Memory Errors and Undefined Behavior
@@ -239,6 +214,12 @@ Speed
 To profile your code for speed, build with :ref:`profiling info <emcc-profiling>`,
 then run the code in the browser's devtools profiler. You should then be able to
 see in which functions is most of the time spent.
+
+TODO: IIUC --profiling is the same as g2 (names+whitespace), but --profiling-funcs is names
+only, while g1 is whitespace only. Is it really necessary to have both of these (i.e is
+there any use for wasm names without JS whitespace?)
+Can we just deprecate the profiling flags and recommend -g2 for profiling
+(and maybe have --profiling be a legacy alias for -g2 --minify=0?)
 
 Memory
 ------

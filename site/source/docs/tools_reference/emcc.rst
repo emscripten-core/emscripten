@@ -173,9 +173,11 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-gsource-map:
 
 ``-gsource-map[=inline]``
-  [link]
+  [compile+link]
+  [same as -g3 if passed at compile time, otherwise applies at link]
   Generate a source map using LLVM debug information (which must
-  be present in object files, i.e., they should have been compiled with ``-g``).
+  be present in object files, i.e., they should have been compiled with ``-g``
+  or ``-gsource-map``).
 
   When this option is provided, the **.wasm** file is updated to have a
   ``sourceMappingURL`` section. The resulting URL will have format:
@@ -219,7 +221,8 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--profiling``
   [same as -g2 if passed at compile time, otherwise applies at link]
-  Use reasonable defaults when emitting JavaScript to make the build readable but still useful for profiling. This sets ``-g2`` (preserve whitespace and function names) and may also enable optimizations that affect performance and otherwise might not be performed in ``-g2``.
+  Use reasonable defaults when emitting JavaScript to make the build readable but still useful for profiling. This sets ``-g2`` (preserve whitespace and function names) and may also enable optimizations that affect performance and otherwise might not be performed in ``-g2``. TODO: does g2 actually suppress any optimizations?
+
 
 .. _emcc-profiling-funcs:
 
