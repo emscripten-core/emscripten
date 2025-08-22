@@ -1085,19 +1085,23 @@ function growableHeap(ast) {
         // Important: don't just do `growMemViews(HEAPxx)` because `growMemViews` reassigns `HEAPxx`
         // and we want to get an updated value after that reassignment.
         makeSequence(node,
-            {
-              type: 'CallExpression',
-              callee: {
-                type: 'Identifier',
-                name: 'growMemViews',
-              },
-              arguments: [],
-            },
+            makeCallGrowMemViews(),
             {...node},
         );
       }
     },
   });
+}
+
+function makeCallGrowMemViews() {
+  return {
+    type: 'CallExpression',
+    callee: {
+      type: 'Identifier',
+      name: 'growMemViews',
+    },
+    arguments: [],
+  };
 }
 
 function makeSequence(node, ...expressions) {
