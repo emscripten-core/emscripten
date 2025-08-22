@@ -195,7 +195,9 @@ Options that are modified or new in *emcc* are listed below:
 
 ``-g<level>``
   [compile+link]
-  Controls the level of debuggability. Each level builds on the previous one:
+  If used at compile time, adds progressively more DWARF information to the object file,
+  according to the underlying behavior of clang.
+  If used at link time, controls the level of debuggability overall. Each level builds on the previous one:
 
     -
       .. _emcc-g0:
@@ -205,17 +207,17 @@ Options that are modified or new in *emcc* are listed below:
     -
       .. _emcc-g1:
 
-      ``-g1``: When linking, preserve whitespace in JavaScript.
+      ``-g1``: Preserve whitespace in JavaScript.
 
     -
       .. _emcc-g2:
 
-      ``-g2``: When linking, preserve function names in compiled code.
+      ``-g2``: Also preserve function names in compiled code (via the wasm name section).
 
     -
       .. _emcc-g3:
 
-      ``-g3``: When compiling to object files, keep debug info, including JS whitespace, function names, and LLVM debug info (DWARF) if any (this is the same as :ref:`-g <emcc-g>`).
+      ``-g3``: Also keep LLVM debug info (DWARF) if there is any in the object files (this is the same as :ref:`-g <emcc-g>`).
 
 .. _emcc-profiling:
 

@@ -10,7 +10,7 @@ This article describes the main tools and settings provided by Emscripten for de
 
 
 Overview: Emitting and Controlling Debug Information
-==========================================
+====================================================
 Debugging-related information comes in several forms: in Wasm object and binary files (DWARF 
 sections, Wasm name section), side output files (source maps, symbol maps, DWARF sidecar and package files),
 and even in the code itself (assertions and instrumentation, whitespace).
@@ -22,10 +22,11 @@ developer tools. (TODO more info?). Source maps are also supported (see :ref:`be
 This document contains an overview of the flags used to emit and control debugging behavior, and
 use-case-based examples.
 
-Flags that cause DWARF generation (e.g. `-g3`, `-gline-tables-only`) also generate a name section
+
+Flags that cause DWARF generation (e.g. ``-g3``, ``-gline-tables-only``) also generate a name section
 in the binary and suppress minification of the JS glue file (since most DWARF use cases are for
 interactive debugging or where the binary will be stripped).
-Other flags (e.g. `-g2`, `-gsource-map`) should affect only a specific behavior or type of debug info,
+Other flags (e.g. ``-g2``, ``-gsource-map``) should affect only a specific behavior or type of debug info,
 and are generally composable.
 
 
@@ -58,7 +59,7 @@ For example ``emcc`` strips out most of the debug information after linking if a
 flag is not provided at link time, even if the input object files contain DWARF.
 
 DWARF can be produced at compile time with the *emcc* :ref:`-g flag <emcc-g>`. Optimization levels above
-:ref:`-O1 <emcc-O1>` or :ref:`-Og <emcc-Og>` increasingly remove LLVM debug information (as with other architectures),
+:ref:`-O1 <emcc-O1>` or :ref:`-Og <emcc-Og>` increasingly degrade LLVM debug information (as with other architectures),
 and optimization flags at link time also disable Emscripten's runtime :ref:`ASSERTIONS <debugging-ASSERTIONS>` checks.
 Passing a ``-g`` flag at link time also affects the generated JavaScript code (preserving white-space, function names, and variable names).
 
