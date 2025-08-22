@@ -66,6 +66,7 @@ void test() {
   stat("file", &s);
   assert(s.st_mode == (S_IWUSR | S_IFREG));
   assert(s.st_ctime != lastctime);
+  printf("(1) s.st_mtime=%lld, lastmtime=%lld\n", (long long)s.st_mtime, (long long)lastmtime);
   assert(s.st_mtime == lastmtime);
 
   //
@@ -82,6 +83,7 @@ void test() {
   stat("file", &s);
   assert(s.st_mode == (S_IXUSR | S_IFREG));
   assert(s.st_ctime != lastctime);
+  printf("(2) s.st_mtime=%lld, lastmtime=%lld\n", (long long)s.st_mtime, (long long)lastmtime);
   assert(s.st_mtime == lastmtime);
 
   //
@@ -106,6 +108,7 @@ void test() {
   stat("otherfile", &s);
   assert(s.st_mode == (S_IXUSR | S_IFREG));
   assert(s.st_ctime != lastctime);
+  printf("(3) s.st_mtime=%lld, lastmtime=%lld\n", (long long)s.st_mtime, (long long)lastmtime);
   assert(s.st_mtime == lastmtime);
 
   //
@@ -125,6 +128,7 @@ void test() {
   stat("folder", &s);
   assert(s.st_mode == (S_IWUSR | S_IXUSR | S_IFDIR));
   assert(s.st_ctime != lastctime);
+  printf("(4) s.st_mtime=%lld, lastmtime=%lld\n", (long long)s.st_mtime, (long long)lastmtime);
   assert(s.st_mtime == lastmtime);
 
 #ifndef WASMFS // TODO https://github.com/emscripten-core/emscripten/issues/15948

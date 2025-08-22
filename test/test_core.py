@@ -5694,7 +5694,8 @@ got: 10
       self.skipTest('mode bits work differently on windows')
     if nodefs and self.get_setting('WASMFS'):
       self.skipTest('test requires symlink creation which currently missing from wasmfs+noderawfs')
-    self.do_runf('stat/test_chmod.c', 'success', cflags=['-Werror=conversion'])
+    output = self.do_runf('stat/test_chmod.c', 'success', cflags=['-Werror=conversion'])
+    print(str(output))
 
   @also_with_wasmfs
   def test_stat_mknod(self):
