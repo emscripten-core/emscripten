@@ -5294,7 +5294,11 @@ int main()
     self.do_run(src, '956867869')
 
   def test_rand(self):
-    self.do_core_test('test_rand.c')
+    # llvmlibc has a different implementation for rand(), so verify
+    # against a separate test output
+    out_suffix = '_llvmlibc' if '-lllvmlibc' in self.cflags else ''
+
+    self.do_core_test('test_rand.c', out_suffix=out_suffix)
 
   def test_strtod(self):
     self.do_core_test('test_strtod.c')
