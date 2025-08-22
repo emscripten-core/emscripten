@@ -31,7 +31,7 @@ See docs/process.md for more on how version tagging works.
   back in 2019. (#24963)
 - emsymbolizer will now escape char in symbolmap, for example:
   `std::out_of_range::~out_of_range\28\29` will be
-  `std::out_of_range::~out_of_range()` in the output.
+  `std::out_of_range::~out_of_range()` in the output. (#24994)
 
 4.0.13 - 08/14/25
 -----------------
