@@ -70,6 +70,10 @@ var LibraryPThread = {
 #if MAIN_MODULE
                    '$markAsFinished',
 #endif
+#if !MINIMAL_RUNTIME && PTHREAD_POOL_SIZE && !PTHREAD_POOL_DELAY_LOAD
+                   '$addRunDependency',
+                   '$removeRunDependency',
+#endif
                    '$spawnThread',
                    '_emscripten_thread_free_data',
                    'exit',
@@ -354,9 +358,6 @@ var LibraryPThread = {
 #endif
 #if LOAD_SOURCE_MAP
         wasmSourceMap,
-#endif
-#if USE_OFFSET_CONVERTER
-        wasmOffsetConverter,
 #endif
 #if MAIN_MODULE
         dynamicLibraries,

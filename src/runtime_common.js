@@ -55,16 +55,6 @@ if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
 #include "audio_worklet.js"
 #endif
 
-#if LOAD_SOURCE_MAP
-var wasmSourceMap;
-#include "source_map_support.js"
-#endif
-
-#if USE_OFFSET_CONVERTER
-var wasmOffsetConverter;
-#include "wasm_offset_converter.js"
-#endif
-
 // Memory management
 
 #if !WASM_ESM_INTEGRATION || IMPORTED_MEMORY

@@ -9,8 +9,6 @@
 #include <stdlib.h>
 #include <emscripten/fetch.h>
 
-#define SERVER "http://localhost:8888"
-
 // 301: Moved Permanently                      - https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/301
 // 302: Found (Previously "Moved Temporarily") - https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/302
 // 303: See Other                              - https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/303

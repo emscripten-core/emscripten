@@ -272,3 +272,7 @@ var INCLUDE_WEBGL1_FALLBACK = true;
 var MINIFICATION_MAP = '';
 
 var OUTPUT_FORMAT = '';
+
+// Whether we should load the WASM source map at runtime.
+// This is enabled automatically when using -gsource-map with sanitizers.
+var LOAD_SOURCE_MAP = false;

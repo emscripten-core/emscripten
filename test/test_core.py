@@ -399,6 +399,7 @@ def with_both_text_decoder(f):
 no_minimal_runtime = make_no_decorator_for_setting('MINIMAL_RUNTIME')
 no_safe_heap = make_no_decorator_for_setting('SAFE_HEAP')
 no_strict = make_no_decorator_for_setting('STRICT')
+no_strict_js = make_no_decorator_for_setting('STRICT_JS')
 
 
 def is_sanitizing(args):
@@ -473,8 +474,9 @@ class TestCoreBase(RunnerCore):
       # that we are doing cross-compilation
       # and skip attempting to run the generated executable with './a.out',
       # which would fail since we are building a .js file.
-      configure_args = ['--disable-shared', '--host=i686-pc-linux-gnu',
-                        '--disable-demos', '--disable-dependency-tracking']
+      configure_args = ['--disable-shared', '--build=i686-pc-linux-gnu',
+                        '--host=i686-pc-linux-gnu', '--disable-demos',
+                        '--disable-dependency-tracking']
       generated_libs = ['src/.libs/libBulletDynamics.a',
                         'src/.libs/libBulletCollision.a',
                         'src/.libs/libLinearMath.a']
@@ -930,22 +932,21 @@ base align: 0, 0, 0, 0'''])
     self.set_setting('MALLOC', 'emmalloc')
     self.do_core_test('test_malloc_usable_size.c', regex=True)
 
-  @no_optimize('output is sensitive to optimization flags, so only test unoptimized builds')
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
-  @no_ubsan('UBSan changes memory consumption')
   @no_4gb('uses INITIAL_MEMORY')
   @no_2gb('uses INITIAL_MEMORY')
   def test_emmalloc_memory_statistics(self):
-    if self.is_wasm64():
-      out_suffix = '64'
-    else:
-      out_suffix = ''
-
-    self.set_setting('INITIAL_MEMORY', '128mb')
     self.set_setting('MALLOC', 'emmalloc')
-    self.cflags += ['-g']
-    self.do_core_test('test_emmalloc_memory_statistics.c', out_suffix=out_suffix)
+    self.set_setting('INITIAL_MEMORY', '128MB')
+    output = self.do_runf('test_emmalloc_memory_statistics.c')
+    self.assertContained('valid allocs: 1', output)
+    self.assertContained('emmalloc_validate_memory_regions: 0', output)
+    self.assertContained(r'emmalloc_dynamic_heap_size\s*: [1-9]\d+', output, regex=True)
+    self.assertContained(r'emmalloc_free_dynamic_memory\s*: [1-9]\d+', output, regex=True)
+    self.assertContained(r'numFreeMemoryRegions\s*: [1-9]+', output, regex=True)
+    self.assertContained(r'Free memory regions of size \[\d+,\d+\[ bytes: 1 regions', output, regex=True)
+    self.assertContained(r'emmalloc_unclaimed_heap_memory\s*: [1-9]\d+', output, regex=True)
 
   @no_optimize('output is sensitive to optimization flags, so only test unoptimized builds')
   @no_2gb('output is sensitive to absolute data layout')
@@ -1907,6 +1908,9 @@ int main() {
     self.do_runf('test_emscripten_get_now.c', 'Timer resolution is good')
 
   def test_emscripten_get_compiler_setting(self):
+    if not self.is_optimizing() and ('-flto' in self.cflags or '-flto=thin' in self.cflags):
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/25015')
+
     src = test_file('core/emscripten_get_compiler_setting.c')
     output = shared.replace_suffix(src, '.out')
     # with assertions, a nice message is shown
@@ -2672,7 +2676,7 @@ The current type of b is: 9
     # handler will only be present in the main thread (much like it would if it
     # was passed in by pre-populating the module object on prior to loading).
     self.add_pre_run("Module.onAbort = () => console.log('onAbort called');")
-    self.cflags += ['-sINCOMING_MODULE_JS_API=[preRun,onAbort]']
+    self.cflags += ['-sINCOMING_MODULE_JS_API=preRun,onAbort']
     self.do_run_in_out_file_test('pthread/test_pthread_abort.c', assert_returncode=NON_ZERO)
 
   @node_pthreads
@@ -2721,6 +2725,9 @@ The current type of b is: 9
 
   @no_modularize_instance('uses global Module objecgt')
   def test_pthread_run_script(self):
+    if not self.is_optimizing() and ('-flto' in self.cflags or '-flto=thin' in self.cflags):
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/25015')
+
     shutil.copy(test_file('pthread/foo.js'), '.')
     self.do_runf('pthread/test_pthread_run_script.c')
 
@@ -4148,10 +4155,11 @@ ok
   @with_dylink_reversed
   def test_dylink_basics_no_modify(self):
     if self.is_optimizing():
-      self.skipTest('no modify mode only works with non-optimizing builds')
+      self.skipTest('ERROR_ON_WASM_CHANGES_AFTER_LINK is not applicable when optimizing')
+    if self.get_setting('SAFE_HEAP'):
+      self.skipTest('ERROR_ON_WASM_CHANGES_AFTER_LINK is not applicable when using SAFE_HEAP')
     if self.get_setting('MEMORY64') == 2:
       self.skipTest('MEMORY64=2 always requires module re-writing')
-    self.set_setting('WASM_BIGINT')
     self.set_setting('ERROR_ON_WASM_CHANGES_AFTER_LINK')
     self.do_basic_dylink_test()
 
@@ -4186,7 +4194,7 @@ ok
       }
     };
     ''' % (so_name, so_dir))
-    self.do_basic_dylink_test(so_dir=so_dir, so_name=so_name, main_cflags=['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=[locateFile]'])
+    self.do_basic_dylink_test(so_dir=so_dir, so_name=so_name, main_cflags=['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=locateFile'])
 
   @with_dylink_reversed
   def test_dylink_function_pointer_equality(self):
@@ -5236,7 +5244,7 @@ main main sees -524, -534, 72.
   @needs_dylink
   def test_dylink_argv_argc(self):
     # Verify that argc and argv can be sent to main when main is in a side module
-    self.cflags += ['--pre-js', 'pre.js', '--no-entry', '-sINCOMING_MODULE_JS_API=[arguments]']
+    self.cflags += ['--pre-js', 'pre.js', '--no-entry', '-sINCOMING_MODULE_JS_API=arguments']
     create_file('pre.js', "Module['arguments'] = ['hello', 'world!']")
     self.dylink_test(
       '', # main module is empty.
@@ -5463,7 +5471,7 @@ Pass: 0.000012 0.000012''')
     else:
       self.maybe_closure()
 
-    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=[preRun]']
+    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=preRun']
     self.set_setting('FORCE_FILESYSTEM')
 
     create_file('pre.js', '''
@@ -5495,7 +5503,7 @@ Module = {
       stdout: (x) => out('got: ' + x)
     };
     ''')
-    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=[stdin,stdout]']
+    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=stdin,stdout']
 
     src = r'''
       #include <stdio.h>
@@ -5686,7 +5694,7 @@ got: 10
       self.skipTest('mode bits work differently on windows')
     if nodefs and self.get_setting('WASMFS'):
       self.skipTest('test requires symlink creation which currently missing from wasmfs+noderawfs')
-    self.do_runf('stat/test_chmod.c', 'success')
+    self.do_runf('stat/test_chmod.c', 'success', cflags=['-Werror=conversion'])
 
   @also_with_wasmfs
   def test_stat_mknod(self):
@@ -5944,7 +5952,7 @@ Module.onRuntimeInitialized = () => {
 ''')
     self.set_setting('EXPORTED_FUNCTIONS', '_foo')
     self.set_setting('FORCE_FILESYSTEM')
-    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=[preRun, onRuntimeInitialized]']
+    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=preRun,onRuntimeInitialized']
     self.do_run('int foo() { return 42; }', '', force_c=True)
 
   @also_with_noderawfs
@@ -6181,6 +6189,8 @@ Module.onRuntimeInitialized = () => {
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @also_with_nodefs
   def test_unistd_misc(self):
+    if self.get_setting('STRICT'):
+      self.set_setting('ALLOW_UNIMPLEMENTED_SYSCALLS')
     self.do_run_in_out_file_test('unistd/misc.c', interleaved_output=False)
 
   @also_with_standalone_wasm()
@@ -6331,6 +6341,7 @@ PORT: 3979
   @with_env_modify({'LC_ALL': 'latin-1', 'PYTHONUTF8': '0', 'PYTHONCOERCECLOCALE': '0'})
   @crossplatform
   @no_modularize_instance('uses MODULARIZE')
+  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   def test_unicode_js_library(self):
     # First verify that we have correct overridden the default python file encoding.
     # The follow program should fail, assuming the above LC_CTYPE + PYTHONUTF8
@@ -6873,7 +6884,7 @@ void* operator new(size_t size) {
       out("Data: " + JSON.stringify(FileData));
     };
     ''')
-    self.cflags += ['--pre-js', 'pre.js', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$unSign', '-sINCOMING_MODULE_JS_API=[preRun, postRun]']
+    self.cflags += ['--pre-js', 'pre.js', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$unSign', '-sINCOMING_MODULE_JS_API=preRun,postRun']
 
     ppm_data = str(list(read_binary(test_file('poppler/ref.ppm'))))
     self.do_run('', 'Data: ' + ppm_data.replace(' ', ''),
@@ -6958,7 +6969,7 @@ void* operator new(size_t size) {
       assert diff_mean < 0.01, diff_mean
 
     self.cflags += ['--minify=0'] # to compare the versions
-    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=[preRun,postRun]']
+    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=preRun,postRun']
 
     output = self.do_runf('third_party/openjpeg/codec/j2k_to_image.c',
                           'Successfully generated', # The real test for valid output is in image_compare
@@ -7101,16 +7112,18 @@ void* operator new(size_t size) {
         out_suffix = ''
         if self.is_wasm64():
           out_suffix += '64'
-        if self.get_setting('WASM_BIGINT'):
-          out_suffix += '_bigint'
+        if self.get_setting('WASM_BIGINT') == 0:
+          out_suffix += '_nobigint'
       assert_returncode = 0 if not asserts else NON_ZERO
       self.do_core_test('test_getValue_setValue.cpp',
                         out_suffix=out_suffix,
                         assert_returncode=assert_returncode,
                         cflags=args)
 
-    if self.get_setting('WASM_BIGINT'):
+    if self.get_setting('WASM_BIGINT') != 0:
       self.cflags += ['-DWASM_BIGINT']
+      if self.is_wasm2js():
+        self.skipTest('WASM_BIGINT is not compatible with WASM2JS')
 
     # see that direct usage (not on module) works. we don't export, but the use
     # keeps it alive through JSDCE
@@ -7597,10 +7610,10 @@ void* operator new(size_t size) {
     create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
       Module.asyncCoro().then(console.log);
     }''')
-    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]', '--no-entry']
+    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
     self.do_runf('embind/test_val_coro.cpp', '34\n')
 
-  def test_embind_val_coro_propogate_cpp_exception(self):
+  def test_embind_val_coro_propagate_cpp_exception(self):
     self.set_setting('EXCEPTION_STACK_TRACES')
     create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
       Module.throwingCoro().then(
@@ -7608,10 +7621,10 @@ void* operator new(size_t size) {
         err => console.error(`rejected with: ${err.stack}`)
       );
     }''')
-    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fexceptions', '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]', '--no-entry']
+    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fexceptions', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
     self.do_runf('embind/test_val_coro.cpp', 'rejected with: std::runtime_error: bang from throwingCoro!\n')
 
-  def test_embind_val_coro_propogate_js_error(self):
+  def test_embind_val_coro_propagate_js_error(self):
     self.set_setting('EXCEPTION_STACK_TRACES')
     create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
       Module.failingPromise().then(
@@ -7619,7 +7632,7 @@ void* operator new(size_t size) {
         err => console.error(`rejected with: ${err.message}`)
       );
     }''')
-    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fexceptions']
+    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fexceptions', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
     self.do_runf('embind/test_val_coro.cpp', 'rejected with: bang from JS promise!\n')
 
   def test_embind_dynamic_initialization(self):
@@ -7776,7 +7789,7 @@ void* operator new(size_t size) {
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.set_setting('PTHREAD_POOL_DELAY_LOAD', 1)
     self.set_setting('PTHREAD_POOL_SIZE', 1)
-    self.cflags += ['-lembind', '--post-js=' + test_file('core/pthread/test_embind_sync_if_pthread_delayed.post.js')]
+    self.cflags += ['-lembind', '--post-js=' + test_file('core/pthread/test_embind_sync_if_pthread_delayed.post.js'), '--no-entry']
     self.do_core_test('pthread/test_embind_sync_if_pthread_delayed.cpp')
 
   ### Tests for tools
@@ -8025,6 +8038,7 @@ void* operator new(size_t size) {
       self.assertLessEqual(dwarf_addr, end_wat_addr)
 
   @no_modularize_instance('uses -sMODULARIZE')
+  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   def test_modularize_closure_pre(self):
     # test that the combination of modularize + closure + pre-js works. in that mode,
     # closure should not minify the Module object in a way that the pre-js cannot use it.
@@ -8089,7 +8103,7 @@ void* operator new(size_t size) {
         assert(status == EXITSTATUS);
       };
     ''')
-    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=[onExit]']
+    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=onExit']
     print('.. exit')
     self.do_runf('exit.c', 'hello, world!\ncleanup\nI see exit status: 117', assert_returncode=117, cflags=['-DNORMAL_EXIT'])
     print('.. _exit')
@@ -8206,7 +8220,7 @@ Module.onRuntimeInitialized = () => {
   }
 };
 ''')
-    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]']
+    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized']
     self.do_runf('main.c', 'The call to main is running asynchronously.')
 
   @with_asyncify_and_jspi
@@ -8231,7 +8245,7 @@ Module.onRuntimeInitialized = () => {
   ccall('main', null, ['number', 'string'], [2, 'waka'], { async: true });
 };
 ''')
-    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]']
+    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized']
     self.do_runf('main.c', 'HelloWorld')
 
   @parameterized({
@@ -8276,7 +8290,7 @@ Module.onRuntimeInitialized = () => {
     });
 };
 ''')
-    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]']
+    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized']
     self.do_runf('main.c', 'stringf: first\nsecond\n6.4')
 
   @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY=1')
@@ -8303,7 +8317,6 @@ Module.onRuntimeInitialized = () => {
     'onlylist_b_response': ([], True,  'main\n__original_main\nfoo(int, double)\nbaz()\nc_baz\nStructy::funcy()\n'),
     'onlylist_c_response': ([], False, 'main\n__original_main\nfoo(int, double)\nbaz()\nc_baz\n'),
   })
-  @no_windows("TODO: Fails on Windows due to an unknown reason.")
   def test_asyncify_lists(self, args, should_pass, response=None):
     if response is not None:
       create_file('response.file', response)
@@ -8321,14 +8334,16 @@ Module.onRuntimeInitialized = () => {
     if self.is_wasm():
       filename = 'test_asyncify_lists.wasm'
       # there should be no name section. sanitizers, however, always enable that
-      if not is_sanitizing(self.cflags) and '--profiling-funcs' not in self.cflags:
+      if not is_sanitizing(self.cflags) and '--profiling-funcs' not in self.cflags and '-g' not in self.cflags:
         with webassembly.Module(filename) as m:
           self.assertFalse(m.has_name_section())
       # in a fully-optimized build, imports and exports are minified too and we
       # can verify that our function names appear nowhere
       if '-O3' in self.cflags:
-        binary = read_binary(filename)
-        self.assertFalse(b'main' in binary)
+        self.assertFalse(b'__wasm_call_ctors' in read_binary(filename))
+      elif '-O0' in self.cflags:
+        # However, sanity check that in core0 test, we do see this symbol.
+        self.assertTrue(b'__wasm_call_ctors' in read_binary(filename))
 
   @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
   @parameterized({
@@ -8617,7 +8632,7 @@ Module.onRuntimeInitialized = () => {
         out(typeof NODEFS);
       };
     ''')
-    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=[preRun]']
+    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=preRun']
     self.do_run('int main() { return 0; }', 'object\nobject\nobject\nobject\nobject\nobject')
 
   def test_fs_dict_none(self):
@@ -8641,7 +8656,7 @@ Module.onRuntimeInitialized = () => {
         }
       };
     ''')
-    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=[preRun]']
+    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=preRun']
     expected = '''\
 object
 undefined
@@ -8750,7 +8765,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_postrun_exit_runtime(self):
     create_file('pre.js', "Module['postRun'] = () => err('post run\\n');")
     self.set_setting('EXIT_RUNTIME')
-    self.cflags += ['--pre-js=pre.js', '-sINCOMING_MODULE_JS_API=[postRun]']
+    self.cflags += ['--pre-js=pre.js', '-sINCOMING_MODULE_JS_API=postRun']
     self.do_runf('hello_world.c', 'post run')
 
   # Tests that building with -sDECLARE_ASM_MODULE_EXPORTS=0 works
@@ -8829,10 +8844,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf('test_global_initializer.cpp', 't1 > t0: 1')
 
   @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
-  @no_esm_integration('USE_OFFSET_CONVERTER')
   def test_return_address(self):
-    self.set_setting('USE_OFFSET_CONVERTER')
-    self.do_runf('core/test_return_address.c', 'passed')
+    if not self.is_optimizing() and ('-flto' in self.cflags or '-flto=thin' in self.cflags):
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/25015')
+
+    self.do_runf('core/test_return_address.c', 'passed', cflags=['-g'])
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
   @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
@@ -9075,6 +9091,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('test_asan_api.c')
 
   @asan
+  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   def test_asan_modularized_with_closure(self):
     # the bug is that createModule() returns undefined, instead of the
     # proper Promise object.
@@ -9245,7 +9262,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_pthread_exit_process(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.cflags += ['-DEXIT_RUNTIME', '--pre-js', test_file('core/pthread/test_pthread_exit_runtime.pre.js'), '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized, onExit]']
+    self.cflags += ['-DEXIT_RUNTIME', '--pre-js', test_file('core/pthread/test_pthread_exit_runtime.pre.js'), '-sINCOMING_MODULE_JS_API=onRuntimeInitialized,onExit']
     self.do_core_test('pthread/test_pthread_exit_runtime.c', assert_returncode=42)
 
   @node_pthreads
@@ -9274,16 +9291,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
   @also_with_modularize
-  @no_esm_integration('USE_OFFSET_CONVERTER')
-  def test_pthread_offset_converter(self):
+  def test_pthread_return_address(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('USE_OFFSET_CONVERTER')
     if '-sMODULARIZE' in self.cflags:
       self.set_setting('EXPORT_NAME', 'foo')
-    if '-g' in self.cflags:
-      self.cflags += ['-DDEBUG']
-    self.do_runf('core/test_return_address.c', 'passed')
+    self.do_runf('core/test_return_address.c', 'passed', cflags=['-g'])
 
   def test_emscripten_atomics_stub(self):
     self.do_core_test('pthread/emscripten_atomics.c')
@@ -9400,6 +9413,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @needs_dylink
   @node_pthreads
   def test_pthread_dylink_tls(self):
+    if '-O2' in self.cflags and self.get_setting('STACK_OVERFLOW_CHECK') == 2:
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/24964: fails with Aborted(stack overflow (Attempt to set SP to 0x000114d0, with stack limits [0x00000000 - 0x00000000])')
+
     self.cflags += ['-Wno-experimental', '-pthread']
     main = test_file('core/pthread/test_pthread_dylink_tls.c')
     self.dylink_testf(main, main_cflags=['-sPTHREAD_POOL_SIZE=1'])
@@ -9430,7 +9446,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_Module_dynamicLibraries(self, args):
     # test that Module.dynamicLibraries works with pthreads
     self.cflags += args
-    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=[dynamicLibraries]']
+    self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=dynamicLibraries']
     self.cflags += ['--js-library', 'lib.js']
     # This test is for setting dynamicLibraries at runtime, so we don't
     # want emscripten loading `liblib.so` automatically (which it would
@@ -9611,7 +9627,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$ASSERTIONS',
       '--post-js', test_file('core/embind_lib_with_asyncify.test.js'),
       '--no-entry',
-      '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]',
+      '-sINCOMING_MODULE_JS_API=onRuntimeInitialized',
     ]
     self.cflags += args
     self.do_core_test('embind_lib_with_asyncify.cpp')
@@ -9735,6 +9751,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertContained('hello, world! (3)', self.run_js('runner.mjs'))
     self.assertFileContents(test_file('core/test_esm_integration.expected.mjs'), read_file('hello_world.mjs'))
 
+  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   def test_modularize_instance_hello(self):
     self.do_core_test('test_hello_world.c', cflags=['-sMODULARIZE=instance', '-Wno-experimental'])
 
@@ -9742,6 +9759,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     '': ([],),
     'pthreads': (['-pthread'],),
   })
+  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   def test_modularize_instance(self, args):
     if args:
       self.setup_node_pthreads()
@@ -9776,6 +9794,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
 
   @no_4gb('EMBIND_AOT can\'t lower 4gb')
+  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   def test_modularize_instance_embind(self):
     self.run_process([EMXX, test_file('modularize_instance_embind.cpp'),
                       '-sMODULARIZE=instance',

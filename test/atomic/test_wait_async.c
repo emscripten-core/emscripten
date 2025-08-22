@@ -8,7 +8,6 @@
 volatile int32_t addr = 0;
 
 void run_test() {
-  emscripten_out("worker_main");
 #if __EMSCRIPTEN_WASM_WORKERS__
   emscripten_wasm_worker_sleep(1000 * 1000000ull); // Sleep one second.
 #else

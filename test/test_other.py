@@ -1713,6 +1713,9 @@ int f() {
     self.emcc(test_file('module/test_stdin.c'), args=args, output_filename='out.js')
 
     for engine in config.JS_ENGINES:
+      if engine == config.V8_ENGINE:
+        print('skipping v8 due to https://github.com/emscripten-core/emscripten/issues/25010')
+        continue
       output = self.run_js('out.js', engine, input='abcdef\nghijkl\n')
       self.assertContained('abcdef\nghijkl\neof', output)
 
@@ -2871,6 +2874,7 @@ More info: https://emscripten.org
     # running.
     with open('pre.js', 'a') as f:
       f.write('Module["preRun"] = () => { out("add-dep"); addRunDependency("dep"); }\n')
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency')
     output = self.do_runf('hello_world.c', cflags=['--pre-js', 'pre.js', '-sRUNTIME_DEBUG', '-sWASM_ASYNC_COMPILATION=0', '-O2', '--closure=1'])
     self.assertContained('add-dep\n', output)
     self.assertNotContained('hello, world!\n', output)
@@ -5255,9 +5259,8 @@ Module["preRun"] = () => {
 };
 ''')
 
-    self.run_process([EMCC, 'code.c', '--pre-js', 'pre.js'])
-    output = self.run_js('a.out.js')
-
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency,$removeRunDependency')
+    output = self.do_runf('code.c', cflags=['--pre-js=pre.js'])
     self.assertEqual(output.count('This should only appear once.'), 1)
 
   def test_module_print(self):
@@ -6904,10 +6907,21 @@ int main(int argc, char **argv) {
     # Test HTTP Accept-Language parsing by simulating navigator.languages #8751
     self.run_process([EMCC,
                       test_file('test_browser_language_detection.c')])
-    # We support both "C" and "en_US" here since older versions of node do
+
+    expected_lang = os.environ.get('LANG')
+    if expected_lang is None:
+      # If the LANG env. var doesn't exist (Windows), ask Node for the language.
+      try:
+        cmd = config.NODE_JS + ['-e', 'console.log(navigator.languages[0])']
+        expected_lang = subprocess.check_output(cmd, stderr=subprocess.NULL)
+        expected_lang = expected_lang.decode('utf-8').strip().replace('-', '_')
+        expected_lang = f'{expected_lang}.UTF-8'
+      except Exception:
+        expected_lang = 'en_US.UTF-8'
+
+    # We support both "C" and system LANG here since older versions of node do
     # not expose navigator.languages.
-    lang = os.environ.get('LANG', 'C.UTF-8')
-    self.assertContained(f'LANG=({lang}|en_US.UTF-8|C.UTF-8)', self.run_js('a.out.js'), regex=True)
+    self.assertContained(f'LANG=({expected_lang}|en_US.UTF-8|C.UTF-8)', self.run_js('a.out.js'), regex=True)
 
     # Accept-Language: fr,fr-FR;q=0.8,en-US;q=0.5,en;q=0.3
     create_file('pre.js', 'var navigator = { language: "fr" };')
@@ -7209,6 +7223,7 @@ int main(void) {
     await Module();
     console.log('got module');
     ''')
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency,$removeRunDependency')
     self.cflags += ['-sEXPORT_ES6', '-sMODULARIZE', '-sWASM_ASYNC_COMPILATION=0', '--pre-js=pre.js']
     self.emcc(test_file('hello_world.c'), output_filename='hello_world.mjs')
     self.assertContained('add-dep\nremove-dep\nhello, world!\ngot module\n', self.run_js('run.mjs'))
@@ -8766,11 +8781,10 @@ int main() {
     self.do_other_test('test_em_asm_i64.cpp')
     self.do_other_test('test_em_asm_i64.cpp', force_c=True)
 
+  def test_EM_ASM_i64_nobigint(self):
     self.set_setting('WASM_BIGINT', 0)
     expected = 'Invalid character 106("j") in readEmAsmArgs!'
-    self.do_runf('other/test_em_asm_i64.cpp',
-                 expected_output=expected,
-                 assert_returncode=NON_ZERO)
+    self.do_runf('other/test_em_asm_i64.cpp', expected_output=expected, assert_returncode=NON_ZERO)
 
   def test_eval_ctor_ordering(self):
     # ensure order of execution remains correct, even with a bad ctor
@@ -9380,6 +9394,9 @@ int main() {
     # the generated code.
     js = read_file('a.out.js')
     if check_full_js:
+      # Ignore absolute filenames in the generated code (they are likely /tmp files)
+      js = re.sub(r'^// include: .*[/\\].*$', '// include: <FILENAME REPLACED>', js, flags=re.MULTILINE)
+      js = re.sub(r'^// end include: .*[/\\].*$', '// end include: <FILENAME REPLACED>', js, flags=re.MULTILINE)
       self.assertFileContents(expected_basename + '.expected.js', js)
     start = js.find('wasmImports = ')
     self.assertNotEqual(start, -1)
@@ -9547,6 +9564,10 @@ int main() {
   })
   def test_codesize_files(self, args):
     self.run_codesize_test('files.cpp', args)
+
+  def test_codesize_file_preload(self):
+    create_file('somefile.txt', 'hello')
+    self.run_codesize_test('hello_world.c', cflags=['-sSTRICT', '-O3', '--preload-file=somefile.txt'], check_full_js=True)
 
   def test_exported_runtime_methods_metadce(self):
     exports = ['stackSave', 'stackRestore', 'stackAlloc', 'FS']
@@ -12463,23 +12484,6 @@ int main(void) {
                             '-sSTACK_SIZE=128kb', '-sEXIT_RUNTIME',
                             '--profiling-funcs'])
 
-  @parameterized({
-    '': ([],),
-    'sync': (['-sWASM_ASYNC_COMPILATION=0'],),
-  })
-  def test_offset_converter(self, args):
-    self.set_setting('USE_OFFSET_CONVERTER')
-    self.do_runf('other/test_offset_converter.c', 'ok', cflags=['--profiling-funcs'] + args)
-
-  @parameterized({
-    '': ([],),
-    'sync': (['-sWASM_ASYNC_COMPILATION=0'],),
-  })
-  def test_offset_converter_source_map(self, args):
-    self.set_setting('USE_OFFSET_CONVERTER')
-    self.set_setting('LOAD_SOURCE_MAP')
-    self.do_runf('other/test_offset_converter.c', 'ok', cflags=['-gsource-map', '-DUSE_SOURCE_MAP'] + args)
-
   @crossplatform
   @no_windows('ptys and select are not available on windows')
   def test_color_diagnostics(self):
@@ -13491,7 +13495,6 @@ int main () {
   @requires_wasm_eh
   def test_standalone_wasm_exceptions(self):
     self.set_setting('STANDALONE_WASM')
-    self.set_setting('WASM_BIGINT')
     self.wasm_engines = []
     self.cflags += ['-fwasm-exceptions']
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
@@ -14152,10 +14155,6 @@ kill -9 $$
     err = self.expect_fail([EMCC, '-sEXPORT_NAME=foo bar', test_file('hello_world.c')])
     self.assertContained('error: EXPORT_NAME is not a valid JS identifier: `foo bar`', err)
 
-  def test_offset_convertor_plus_wasm2js(self):
-    err = self.expect_fail([EMCC, '-sUSE_OFFSET_CONVERTER', '-sWASM=0', test_file('hello_world.c')])
-    self.assertContained('emcc: error: WASM2JS is not compatible with USE_OFFSET_CONVERTER (see #14630)', err)
-
   def test_standard_library_mapping(self):
     # Test the `-l` flags on the command line get mapped the correct libraries variant
     libs = ['-lc', '-lcompiler_rt', '-lmalloc']
@@ -14788,6 +14787,7 @@ myMethod: 43
   def test_build_fetch_tests(self):
     # We can't run these outside of the browser, but at least we can
     # make sure they build.
+    self.cflags.append('-DSERVER="localhost"')
     self.set_setting('FETCH')
     self.build('fetch/test_fetch_to_memory_sync.c')
     self.build('fetch/test_fetch_to_memory_async.c')
@@ -15653,8 +15653,6 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   })
   @requires_v8
   def test_add_js_function_bigint(self, memory64, wasm_function):
-    self.set_setting('WASM_BIGINT')
-
     if memory64:
       self.require_wasm64()
 
@@ -15935,7 +15933,7 @@ addToLibrary({
     self.assertNotContained('new Worker(', read_file('hello_world.js'))
 
   def test_sysroot_includes_first(self):
-    self.do_other_test('test_stdint_limits.c', cflags=['-std=c11', '-iwithsysroot/include'])
+    self.do_other_test('test_stdint_limits.c', cflags=['-iwithsysroot/include'])
 
   def test_force_filesystem_error(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sFILESYSTEM=0', '-sFORCE_FILESYSTEM'])

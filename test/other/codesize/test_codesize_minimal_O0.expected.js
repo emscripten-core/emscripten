@@ -494,69 +494,6 @@ function postRun() {
   // No ATPOSTRUNS hooks
 }
 
-// A counter of dependencies for calling run(). If we need to
-// do asynchronous work before running, increment this and
-// decrement it. Incrementing must happen in a place like
-// Module.preRun (used by emcc to add file preloading).
-// Note that you can add dependencies in preRun, even though
-// it happens right before run - run will be postponed until
-// the dependencies are met.
-var runDependencies = 0;
-var dependenciesFulfilled = null; // overridden to take different actions when all run dependencies are fulfilled
-var runDependencyTracking = {};
-var runDependencyWatcher = null;
-
-function addRunDependency(id) {
-  runDependencies++;
-
-  assert(id, 'addRunDependency requires an ID')
-  assert(!runDependencyTracking[id]);
-  runDependencyTracking[id] = 1;
-  if (runDependencyWatcher === null && typeof setInterval != 'undefined') {
-    // Check for missing dependencies every few seconds
-    runDependencyWatcher = setInterval(() => {
-      if (ABORT) {
-        clearInterval(runDependencyWatcher);
-        runDependencyWatcher = null;
-        return;
-      }
-      var shown = false;
-      for (var dep in runDependencyTracking) {
-        if (!shown) {
-          shown = true;
-          err('still waiting on run dependencies:');
-        }
-        err(`dependency: ${dep}`);
-      }
-      if (shown) {
-        err('(end of list)');
-      }
-    }, 10000);
-    // Prevent this timer from keeping the runtime alive if nothing
-    // else is.
-    runDependencyWatcher.unref?.()
-  }
-}
-
-function removeRunDependency(id) {
-  runDependencies--;
-
-  assert(id, 'removeRunDependency requires an ID');
-  assert(runDependencyTracking[id]);
-  delete runDependencyTracking[id];
-  if (runDependencies == 0) {
-    if (runDependencyWatcher !== null) {
-      clearInterval(runDependencyWatcher);
-      runDependencyWatcher = null;
-    }
-    if (dependenciesFulfilled) {
-      var callback = dependenciesFulfilled;
-      dependenciesFulfilled = null;
-      callback(); // can add another dependenciesFulfilled
-    }
-  }
-}
-
 /** @param {string|number=} what */
 function abort(what) {
 
@@ -757,6 +694,67 @@ async function createWasm() {
       }
     }
 
+  var runDependencies = 0;
+  
+  
+  var dependenciesFulfilled = null;
+  
+  var runDependencyTracking = {
+  };
+  
+  var runDependencyWatcher = null;
+  var removeRunDependency = (id) => {
+      runDependencies--;
+  
+      assert(id, 'removeRunDependency requires an ID');
+      assert(runDependencyTracking[id]);
+      delete runDependencyTracking[id];
+      if (runDependencies == 0) {
+        if (runDependencyWatcher !== null) {
+          clearInterval(runDependencyWatcher);
+          runDependencyWatcher = null;
+        }
+        if (dependenciesFulfilled) {
+          var callback = dependenciesFulfilled;
+          dependenciesFulfilled = null;
+          callback(); // can add another dependenciesFulfilled
+        }
+      }
+    };
+  
+  
+  var addRunDependency = (id) => {
+      runDependencies++;
+  
+      assert(id, 'addRunDependency requires an ID')
+      assert(!runDependencyTracking[id]);
+      runDependencyTracking[id] = 1;
+      if (runDependencyWatcher === null && typeof setInterval != 'undefined') {
+        // Check for missing dependencies every few seconds
+        runDependencyWatcher = setInterval(() => {
+          if (ABORT) {
+            clearInterval(runDependencyWatcher);
+            runDependencyWatcher = null;
+            return;
+          }
+          var shown = false;
+          for (var dep in runDependencyTracking) {
+            if (!shown) {
+              shown = true;
+              err('still waiting on run dependencies:');
+            }
+            err(`dependency: ${dep}`);
+          }
+          if (shown) {
+            err('(end of list)');
+          }
+        }, 10000);
+        // Prevent this timer from keeping the runtime alive if nothing
+        // else is.
+        runDependencyWatcher.unref?.()
+      }
+    };
+
   var callRuntimeCallbacks = (callbacks) => {
       while (callbacks.length > 0) {
         // Pass the module as the first argument.
@@ -790,6 +788,7 @@ async function createWasm() {
       ptr >>>= 0;
       return '0x' + ptr.toString(16).padStart(8, '0');
     };
+
 
   
     /**
@@ -1025,8 +1024,6 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
 
   var unexportedSymbols = [
   'run',
-  'addRunDependency',
-  'removeRunDependency',
   'out',
   'err',
   'callMain',
@@ -1060,6 +1057,8 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'readEmAsmArgsArray',
   'wasmTable',
   'noExitRuntime',
+  'addRunDependency',
+  'removeRunDependency',
   'freeTableIndexes',
   'functionsInTableMap',
   'setValue',
@@ -1308,12 +1307,6 @@ var _global_val = Module['_global_val'] = 65536;var wasmImports = {
 // include: postamble.js
 // === Auto-generated postamble setup entry stuff ===
 
-var wasmExports;
-
-// With async instantation wasmExports is assigned asynchronously when the
-// instance is received.
-createWasm();
-
 var calledRun;
 
 function stackCheckInit() {
@@ -1395,6 +1388,12 @@ function checkUnflushedContent() {
 
 function preInit() {
 }
+
+var wasmExports;
+
+// With async instantation wasmExports is assigned asynchronously when the
+// instance is received.
+createWasm();
 
 preInit();
 run();
