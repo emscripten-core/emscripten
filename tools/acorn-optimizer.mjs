@@ -993,6 +993,7 @@ function littleEndianHeap(ast) {
       const value = node.right;
       c(value);
       const heap = isHEAPAccess(target);
+      const growHeap = isGrowHEAPAccess(target);
       if (heap) {
         // replace the heap access with LE_HEAP_STORE
         const idx = target.property;
@@ -1000,6 +1001,16 @@ function littleEndianHeap(ast) {
         if (helper) {
           // "nameXX[idx] = value" -> "LE_HEAP_STORE_XX(idx*XX, value)"
           makeCallExpression(node, helper.store, [multiply(idx, helper.width), value]);
+        }
+      } else if (growHeap) {
+        const idx = node.property;
+        const helper = littleEndianHelper[heap];
+        if (helper) {
+          // "(growMemViews(),nameXX)[idx] = value" -> "LE_HEAP_STORE_XX((growMemViews(),idx*XX), value)"
+          makeCallExpression(node, helper.store, [
+            makeSequence(makeCallGrowMemViews(), multiply(idx, helper.width)),
+            value
+          ]);
         }
       } else {
         // not accessing the HEAP
@@ -1029,6 +1040,7 @@ function littleEndianHeap(ast) {
     MemberExpression(node, c) {
       c(node.property);
       const heap = isHEAPAccess(node);
+      const growHeap = isGrowHEAPAccess(node);
       if (heap) {
         // replace the heap access with LE_HEAP_LOAD
         const idx = node.property;
@@ -1036,6 +1048,15 @@ function littleEndianHeap(ast) {
         if (helper) {
           // "nameXX[idx]" -> "LE_HEAP_LOAD_XX(idx*XX)"
           makeCallExpression(node, helper.load, [multiply(idx, helper.width)]);
+        }
+      } else if (growHeap) {
+        const idx = node.property;
+        const helper = littleEndianHelper[heap];
+        if (helper) {
+          // "(growMemViews(),nameXX)[idx]" -> "LE_HEAP_LOAD_XX((growMemViews(),idx*XX))"
+          makeCallExpression(node, helper.load, [
+            makeSequence(makeCallGrowMemViews(), multiply(idx, helper.width))
+          ]);
         }
       } else {
         // not accessing the HEAP
@@ -1187,6 +1208,21 @@ function isHEAPAccess(node) {
     node.computed && // notice a[X] but not a.X
     isEmscriptenHEAP(node.object.name) &&
     node.object.name
+  );
+}
+
+function isGrowHEAPAccess(node) {
+  return (
+    node.type === 'MemberExpression' &&
+    node.computed && // notice a[X] but not a.X
+    node.object.type === 'SequenceExpression' &&
+    node.object.expressions.length === 2 &&
+    node.object.expressions[0].type === 'CallExpression' &&
+    node.object.expressions[0].callee.type === 'Identifier' &&
+    node.object.expressions[0].callee.name === 'growMemViews' &&
+    node.object.expressions[1].type === 'Identifier' &&
+    isEmscriptenHEAP(node.object.expressions[1].name) &&
+    node.object.expressions[1].name
   );
 }
 
