@@ -2804,7 +2804,6 @@ var FS = {
       // Command-line.
       try {
         obj.contents = readBinary(obj.url);
-        obj.usedBytes = obj.contents.length;
       } catch (e) {
         throw new FS.ErrnoError(29);
       }
