@@ -14,6 +14,11 @@ logger = logging.getLogger('clang_native')
 
 
 def get_native_triple():
+  # On Raspberry Pi 5, the target triple for native compilation must exactly
+  # match this. E.g. "arm64-linux" will not work.
+  if os.path.isdir('/usr/lib/aarch64-linux-gnu'):
+    return 'aarch64-linux-gnu'
+
   arch = {
       'aarch64': 'arm64',
       'arm64': 'arm64',
