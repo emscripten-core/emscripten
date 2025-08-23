@@ -885,7 +885,7 @@ f.close()
 
       if not shutil.which(conf['build'][0]):
         # Use simple test if applicable
-        print('Skipping %s test for CMake support; build tool found found: %s.' % (generator, conf['build'][0]))
+        print('Skipping %s test for CMake support; build tool not found: %s.' % (generator, conf['build'][0]))
         continue
 
       cmakelistsdir = test_file('cmake', test_dir)
