@@ -13208,7 +13208,7 @@ int main(void) {
     'wno_deprecated': (['-Wno-deprecated'], None),
     'wno_deprecated_quiet': (['-sCLOSURE_WARNINGS=quiet', '-Wno-deprecated'], None),
     'wno_deprecated_warn': (['-sCLOSURE_WARNINGS=warn', '-Wno-deprecated'], 'WARNING - [JSC_REFERENCE_BEFORE_DECLARE] Variable referenced before declaration'),
-    'wno_deprecated_error': (['-sCLOSURE_WARNINGS=error', '-Wno-deprecated'], 'FAIL')
+    'wno_deprecated_error': (['-sCLOSURE_WARNINGS=error', '-Wno-deprecated'], 'FAIL'),
   })
   def test_closure_warnings(self, flags, outcome):
     cmd = [EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1'] + flags
