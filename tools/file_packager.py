@@ -90,6 +90,9 @@ from tools.response_file import substitute_response_files
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 
+# chrome limit is 2MB under 2Gi
+PRELOAD_DATA_FILE_LIMIT = 2046 * 1024 * 1024
+
 excluded_patterns: List[str] = []
 new_data_files = []
 walked = []
@@ -543,8 +546,6 @@ def main():  # noqa: C901, PLR0912, PLR0915
   data_files = sorted(data_files, key=lambda file_: file_.dstpath)
   data_files = [file_ for file_ in data_files if not was_seen(file_.dstpath)]
 
-  metadata = {'files': []}
-
   if options.obj_output:
     if not options.has_embedded:
       diagnostics.error('--obj-output is only applicable when embedding files')
@@ -552,27 +553,52 @@ def main():  # noqa: C901, PLR0912, PLR0915
     if not options.has_preloaded:
       return 0
 
-  ret = generate_js(data_target, data_files, metadata)
-
-  if options.force or len(data_files):
-    if options.jsoutput is None:
-      print(ret)
-    else:
-      # Overwrite the old jsoutput file (if exists) only when its content
-      # differs from the current generated one, otherwise leave the file
-      # untouched preserving its old timestamp
-      if os.path.isfile(options.jsoutput):
-        old = utils.read_file(options.jsoutput)
-        if old != ret:
-          utils.write_file(options.jsoutput, ret)
+  file_chunks = [data_files]
+  if options.has_preloaded and not options.has_embedded:
+    file_chunks = [[]]
+    current_size = 0
+    for file_ in data_files:
+      fsize = os.path.getsize(file_.srcpath)
+      if current_size + fsize <= PRELOAD_DATA_FILE_LIMIT:
+        file_chunks[-1].append(file_)
+        current_size += fsize
+      elif fsize > PRELOAD_DATA_FILE_LIMIT:
+        diagnostics.error('error: cannot package file greater than %d MB does not exist' % (PRELOAD_DATA_FILE_LIMIT / (1024 * 1024)))
+        return 1
       else:
-        utils.write_file(options.jsoutput, ret)
-      if options.separate_metadata:
-        utils.write_file(options.jsoutput + '.metadata', json.dumps(metadata, separators=(',', ':')))
+        current_size = fsize
+        file_chunks.append([file_])
+
+  if len(file_chunks) > 1:
+    diagnostics.warn('warning: file packager is splitting bundle into %d chunks' % len(file_chunks))
+
+  targets = []
+  for counter, data_files in enumerate(file_chunks):
+    metadata = {'files': []}
+    base, ext = data_target.rsplit('.', 1)
+    targets.append(f"{base}{f'_{counter}' if counter else ''}.{ext}")
+    ret = generate_js(targets[-1], data_files, metadata)
+    if options.force or len(data_files):
+      if options.jsoutput is None:
+        print(ret)
+      else:
+        # Overwrite the old jsoutput file (if exists) only when its content
+        # differs from the current generated one, otherwise leave the file
+        # untouched preserving its old timestamp
+        base, ext = options.jsoutput.rsplit('.', 1)
+        targets.append(f"{base}{f'_{counter}' if counter else ''}.{ext}")
+        if os.path.isfile(targets[-1]):
+          old = utils.read_file(targets[-1])
+          if old != ret:
+            utils.write_file(targets[-1], ret)
+        else:
+          utils.write_file(targets[-1], ret)
+        if options.separate_metadata:
+          utils.write_file(targets[-1] + '.metadata', json.dumps(metadata, separators=(',', ':')))
 
   if options.depfile:
     with open(options.depfile, 'w') as f:
-      for target in (data_target, options.jsoutput):
+      for target in targets:
         if target:
           f.write(escape_for_makefile(target))
           f.write(' \\\n')
@@ -656,12 +682,13 @@ def generate_js(data_target, data_files, metadata):
     # XHRs which has overhead.
     start = 0
     with open(data_target, 'wb') as data:
-      for file_ in data_files:
-        file_.data_start = start
-        curr = utils.read_binary(file_.srcpath)
-        file_.data_end = start + len(curr)
-        start += len(curr)
-        data.write(curr)
+      if file_.mode == 'preload':
+        for file_ in data_files:
+          file_.data_start = start
+          curr = utils.read_binary(file_.srcpath)
+          file_.data_end = start + len(curr)
+          start += len(curr)
+          data.write(curr)
 
     if start > 256 * 1024 * 1024:
       diagnostics.warn('file packager is creating an asset bundle of %d MB. '
