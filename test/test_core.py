@@ -5464,6 +5464,7 @@ Pass: 0.000012 0.000012''')
 
   @no_modularize_instance('uses Module object directly')
   @no_strict('TODO: Fails in -sSTRICT mode due to an unknown reason.')
+  @no_wasmfs('depends on FS.createLazyFile which WASMFS does not have')
   def test_files(self):
     # Use closure here, to test we don't break FS stuff
     if '-O3' in self.cflags and self.is_wasm2js():
@@ -5806,6 +5807,7 @@ got: 10
       self.set_setting('LINKABLE', linkable)
       self.do_core_test('test_istream.cpp')
 
+  @no_wasmfs('depends on FS.makedev which WASMFS does not have')
   def test_fs_base(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
     self.add_pre_run(read_file(test_file('fs/test_fs_base.js')))
@@ -5892,6 +5894,7 @@ got: 10
     self.cflags += ['-lnodefs.js']
     self.do_runf('fs/test_noderawfs_nofollow.c', 'success')
 
+  @no_wasmfs('depends on FS.trackingDelegate which WASMFS does not have')
   def test_fs_trackingdelegate(self):
     self.set_setting('FS_DEBUG')
     self.do_run_in_out_file_test('fs/test_trackingdelegate.c')
@@ -6873,6 +6876,7 @@ void* operator new(size_t size) {
   @no_4gb('runs out of memory')
   @is_slow_test
   @crossplatform
+  @no_wasmfs('depends on MEMFS which WASMFS does not have')
   def test_poppler(self):
     # See https://github.com/emscripten-core/emscripten/issues/20757
     self.cflags.extend(['-Wno-deprecated-declarations', '-Wno-nontrivial-memaccess'])
@@ -7156,6 +7160,7 @@ void* operator new(size_t size) {
     'files': (['-DUSE_FILES'],),
   })
   @no_modularize_instance('uses Module object directly')
+  @no_wasmfs('depends on MEMFS which WASMFS does not have')
   def test_FS_exports(self, extra_args):
     # these used to be exported, but no longer are by default
     def test(output_prefix='', args=None, assert_returncode=0):
@@ -8625,6 +8630,7 @@ Module.onRuntimeInitialized = () => {
     self.cflags += ['--memoryprofiler', '--js-library', 'lib.js']
     self.do_runf('main.c', 'able to run memprof')
 
+  @no_wasmfs('depends on MEMFS which WASMFS does not have')
   def test_fs_dict(self):
     self.set_setting('FORCE_FILESYSTEM')
     self.cflags += ['-lidbfs.js']
@@ -8643,6 +8649,7 @@ Module.onRuntimeInitialized = () => {
     self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=preRun']
     self.do_run('int main() { return 0; }', 'object\nobject\nobject\nobject\nobject\nobject')
 
+  @no_wasmfs('depends on MEMFS which WASMFS does not have')
   def test_fs_dict_none(self):
     # if IDBFS and NODEFS are not enabled, they are not present.
     self.set_setting('FORCE_FILESYSTEM')
