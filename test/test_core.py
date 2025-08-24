@@ -5868,7 +5868,7 @@ got: 10
     self.cflags += ['-lnodefs.js']
     suffix = ''
     if self.get_setting('WASMFS'):
-      suffix = '.wasmfs'
+      suffix = '.wasmfs_win' if WINDOWS else '.wasmfs'
     elif self.is_wasm2js():
       suffix = ".wasm2js"
     self.do_run_in_out_file_test('fs/test_nodefs_readdir.c', out_suffix=suffix)
