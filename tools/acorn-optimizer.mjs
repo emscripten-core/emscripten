@@ -957,11 +957,11 @@ function isEmscriptenHEAP(name) {
 }
 
 const littleEndianHelper = {
-    'HEAP16': { width: 2, load: "LE_HEAP_LOAD_16", store: "LE_HEAP_STORE_16" },
+    'HEAP16': { width: 2, load: "LE_HEAP_LOAD_I16", store: "LE_HEAP_STORE_I16" },
     'HEAPU16': { width: 2, load: "LE_HEAP_LOAD_U16", store: "LE_HEAP_STORE_U16" },
-    'HEAP32': { width: 4, load: "LE_HEAP_LOAD_32", store: "LE_HEAP_STORE_32" },
+    'HEAP32': { width: 4, load: "LE_HEAP_LOAD_I32", store: "LE_HEAP_STORE_I32" },
     'HEAPU32': { width: 4, load: "LE_HEAP_LOAD_U32", store: "LE_HEAP_STORE_U32" },
-    'HEAP64': { width: 8, load: "LE_HEAP_LOAD_64", store: "LE_HEAP_STORE_64" },
+    'HEAP64': { width: 8, load: "LE_HEAP_LOAD_I64", store: "LE_HEAP_STORE_I64" },
     'HEAPU64': { width: 8, load: "LE_HEAP_LOAD_U64", store: "LE_HEAP_STORE_U64" },
     'HEAPF32': { width: 4, load: "LE_HEAP_LOAD_F32", store: "LE_HEAP_STORE_F32" },
     'HEAPF64': { width: 8, load: "LE_HEAP_LOAD_F64", store: "LE_HEAP_STORE_F64" },
@@ -1003,12 +1003,12 @@ function littleEndianHeap(ast) {
           makeCallExpression(node, helper.store, [multiply(idx, helper.width), value]);
         }
       } else if (growHeap) {
-        const idx = node.property;
-        const helper = littleEndianHelper[heap];
+        const idx = target.property;
+        const helper = littleEndianHelper[growHeap];
         if (helper) {
           // "(growMemViews(),nameXX)[idx] = value" -> "LE_HEAP_STORE_XX((growMemViews(),idx*XX), value)"
           makeCallExpression(node, helper.store, [
-            makeSequence(makeCallGrowMemViews(), multiply(idx, helper.width)),
+            makeSequence({}, makeCallGrowMemViews(), multiply(idx, helper.width)),
             value
           ]);
         }
@@ -1051,11 +1051,11 @@ function littleEndianHeap(ast) {
         }
       } else if (growHeap) {
         const idx = node.property;
-        const helper = littleEndianHelper[heap];
+        const helper = littleEndianHelper[growHeap];
         if (helper) {
           // "(growMemViews(),nameXX)[idx]" -> "LE_HEAP_LOAD_XX((growMemViews(),idx*XX))"
           makeCallExpression(node, helper.load, [
-            makeSequence(makeCallGrowMemViews(), multiply(idx, helper.width))
+            makeSequence({}, makeCallGrowMemViews(), multiply(idx, helper.width))
           ]);
         }
       } else {
@@ -1126,7 +1126,7 @@ function makeCallGrowMemViews() {
 }
 
 function makeSequence(node, ...expressions) {
-  Object.assign(node, {
+  return Object.assign(node, {
     type: 'SequenceExpression',
     expressions: expressions,
   });
