@@ -957,14 +957,14 @@ function isEmscriptenHEAP(name) {
 }
 
 const littleEndianHelper = {
-    'HEAP16': { width: 2, load: "LE_HEAP_LOAD_I16", store: "LE_HEAP_STORE_I16" },
-    'HEAPU16': { width: 2, load: "LE_HEAP_LOAD_U16", store: "LE_HEAP_STORE_U16" },
-    'HEAP32': { width: 4, load: "LE_HEAP_LOAD_I32", store: "LE_HEAP_STORE_I32" },
-    'HEAPU32': { width: 4, load: "LE_HEAP_LOAD_U32", store: "LE_HEAP_STORE_U32" },
-    'HEAP64': { width: 8, load: "LE_HEAP_LOAD_I64", store: "LE_HEAP_STORE_I64" },
-    'HEAPU64': { width: 8, load: "LE_HEAP_LOAD_U64", store: "LE_HEAP_STORE_U64" },
-    'HEAPF32': { width: 4, load: "LE_HEAP_LOAD_F32", store: "LE_HEAP_STORE_F32" },
-    'HEAPF64': { width: 8, load: "LE_HEAP_LOAD_F64", store: "LE_HEAP_STORE_F64" },
+  HEAP16: {width: 2, load: 'LE_HEAP_LOAD_I16', store: 'LE_HEAP_STORE_I16'},
+  HEAPU16: {width: 2, load: 'LE_HEAP_LOAD_U16', store: 'LE_HEAP_STORE_U16'},
+  HEAP32: {width: 4, load: 'LE_HEAP_LOAD_I32', store: 'LE_HEAP_STORE_I32'},
+  HEAPU32: {width: 4, load: 'LE_HEAP_LOAD_U32', store: 'LE_HEAP_STORE_U32'},
+  HEAP64: {width: 8, load: 'LE_HEAP_LOAD_I64', store: 'LE_HEAP_STORE_I64'},
+  HEAPU64: {width: 8, load: 'LE_HEAP_LOAD_U64', store: 'LE_HEAP_STORE_U64'},
+  HEAPF32: {width: 4, load: 'LE_HEAP_LOAD_F32', store: 'LE_HEAP_STORE_F32'},
+  HEAPF64: {width: 8, load: 'LE_HEAP_LOAD_F64', store: 'LE_HEAP_STORE_F64'},
 };
 
 // Replaces each HEAP access with function call that uses DataView to enforce
@@ -1009,7 +1009,7 @@ function littleEndianHeap(ast) {
           // "(growMemViews(),nameXX)[idx] = value" -> "LE_HEAP_STORE_XX((growMemViews(),idx*XX), value)"
           makeCallExpression(node, helper.store, [
             makeSequence(makeCallGrowMemViews(), multiply(idx, helper.width)),
-            value
+            value,
           ]);
         }
       } else {
@@ -1055,7 +1055,7 @@ function littleEndianHeap(ast) {
         if (helper) {
           // "(growMemViews(),nameXX)[idx]" -> "LE_HEAP_LOAD_XX((growMemViews(),idx*XX))"
           makeCallExpression(node, helper.load, [
-            makeSequence(makeCallGrowMemViews(), multiply(idx, helper.width))
+            makeSequence(makeCallGrowMemViews(), multiply(idx, helper.width)),
           ]);
         }
       } else {
@@ -1105,10 +1105,7 @@ function growableHeap(ast) {
         // Transform `HEAPxx` into `(growMemViews(), HEAPxx)`.
         // Important: don't just do `growMemViews(HEAPxx)` because `growMemViews` reassigns `HEAPxx`
         // and we want to get an updated value after that reassignment.
-        Object.assign(node, makeSequence(
-            makeCallGrowMemViews(),
-            {...node},
-        ));
+        Object.assign(node, makeSequence(makeCallGrowMemViews(), {...node}));
       }
     },
   });
