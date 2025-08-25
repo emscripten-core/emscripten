@@ -1910,15 +1910,13 @@ int main() {
   def test_emscripten_get_compiler_setting(self):
     if not self.is_optimizing() and ('-flto' in self.cflags or '-flto=thin' in self.cflags):
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/25015')
+    expected = read_file(test_file('core/emscripten_get_compiler_setting.out'))
+    expected = expected.replace('waka', utils.EMSCRIPTEN_VERSION)
+    self.do_runf('core/emscripten_get_compiler_setting.c', expected, cflags=['-sRETAIN_COMPILER_SETTINGS'])
 
-    src = test_file('core/emscripten_get_compiler_setting.c')
-    output = shared.replace_suffix(src, '.out')
-    # with assertions, a nice message is shown
-    self.set_setting('ASSERTIONS')
-    self.do_runf(src, 'You must build with -sRETAIN_COMPILER_SETTINGS', assert_returncode=NON_ZERO)
-    self.clear_setting('ASSERTIONS')
-    self.set_setting('RETAIN_COMPILER_SETTINGS')
-    self.do_runf(src, read_file(output).replace('waka', utils.EMSCRIPTEN_VERSION))
+  def test_emscripten_get_compiler_setting_error(self):
+    # with assertions, a runtime error is shown if you try to use the API without RETAIN_COMPILER_SETTINGS
+    self.do_runf('core/emscripten_get_compiler_setting.c', 'You must build with -sRETAIN_COMPILER_SETTINGS', cflags=['-sASSERTIONS'], assert_returncode=NON_ZERO)
 
   @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY=1')
   def test_emscripten_has_asyncify(self):
