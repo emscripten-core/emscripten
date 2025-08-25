@@ -274,7 +274,7 @@ def extract_func_ranges(text):
   return func_ranges
 
 
-def read_dwarf_info(wasm, options):
+def read_dwarf_entries(wasm, options):
   if options.dwarfdump_output:
     output = Path(options.dwarfdump_output).read_bytes()
   elif options.dwarfdump:
@@ -282,13 +282,7 @@ def read_dwarf_info(wasm, options):
     if not os.path.exists(options.dwarfdump):
       logger.error('llvm-dwarfdump not found: ' + options.dwarfdump)
       sys.exit(1)
-    # --recurse-depth=0 only prints 'DW_TAG_compile_unit's, reducing the size of
-    # text output. But to support function names info, we need
-    # 'DW_TAG_subprogram's, which can be at any depth.
-    dwarfdump_cmd = [options.dwarfdump, '-debug-info', '-debug-line', wasm]
-    if not options.names:
-      dwarfdump_cmd.append('--recurse-depth=0')
-    process = Popen(dwarfdump_cmd, stdout=PIPE)
+    process = Popen([options.dwarfdump, '-debug-info', '-debug-line', '--recurse-depth=0', wasm], stdout=PIPE)
     output, err = process.communicate()
     exit_code = process.wait()
     if exit_code != 0:
@@ -345,12 +339,7 @@ def read_dwarf_info(wasm, options):
   remove_dead_entries(entries)
 
   # return entries sorted by the address field
-  entries = sorted(entries, key=lambda entry: entry['address'])
-
-  func_ranges = []
-  if options.names:
-    func_ranges = extract_func_ranges(debug_line_chunks[0])
-  return entries, func_ranges
+  return sorted(entries, key=lambda entry: entry['address'])
 
 
 def build_sourcemap(entries, func_ranges, code_section_offset, options):
@@ -447,7 +436,7 @@ def main():
   with open(wasm_input, 'rb') as infile:
     wasm = infile.read()
 
-  entries, func_ranges = read_dwarf_info(wasm_input, options)
+  entries = read_dwarf_entries(wasm_input, options)
 
   code_section_offset = get_code_section_offset(wasm)
 
