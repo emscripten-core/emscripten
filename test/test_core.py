@@ -5294,7 +5294,11 @@ int main()
     self.do_run(src, '956867869')
 
   def test_rand(self):
-    self.do_core_test('test_rand.c')
+    # llvmlibc has a different implementation for rand(), so verify
+    # against a separate test output
+    out_suffix = '_llvmlibc' if '-lllvmlibc' in self.cflags else ''
+
+    self.do_core_test('test_rand.c', out_suffix=out_suffix)
 
   def test_strtod(self):
     self.do_core_test('test_strtod.c')
@@ -6986,6 +6990,10 @@ void* operator new(size_t size) {
   @no_asan('autodebug logging interferes with asan')
   @with_env_modify({'EMCC_AUTODEBUG': '1'})
   def test_autodebug_wasm(self):
+    # failed to asynchronously prepare wasm: LinkError: WebAssembly.instantiate(): Import #13 module="env" function="get_v128": function import requires a callable
+    if '-msimd128' in self.cflags:
+      self.skipTest('Does not work with SIMD. https://github.com/emscripten-core/emscripten/issues/25001')
+
     # Even though the test itself doesn't directly use reference types,
     # Binaryen's '--instrument-locals' will add their logging functions if
     # reference-types is enabled. So make sure this test passes when
