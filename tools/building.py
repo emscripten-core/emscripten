@@ -1145,9 +1145,10 @@ def emit_wasm_source_map(wasm_file, map_file, final_wasm):
 
   if settings.SOURCE_MAP_PREFIXES:
     sourcemap_cmd += ['--prefix', *settings.SOURCE_MAP_PREFIXES]
-
-  if settings.GENERATE_SOURCE_MAP == 2:
+  if settings.EMBED_SOURCE_MAP_SOURCE:
     sourcemap_cmd += ['--sources']
+  if settings.GENERATE_SOURCE_MAP_NAMES:
+    sourcemap_cmd += ['--names']
 
   check_call(sourcemap_cmd)
 
