@@ -346,7 +346,6 @@ def read_dwarf_info(wasm, options):
   remove_dead_entries(entries)
 
   # return entries sorted by the address field
-  prev_entries = entries.copy()
   entries = sorted(entries, key=lambda entry: entry['address'])
 
   func_ranges = []
@@ -379,7 +378,7 @@ def build_sourcemap(entries, func_ranges, code_section_offset, options):
   last_func_id = 0
 
   # Get the function ID that the given address falls into
-  def get_function_id(func_ranges, addr):
+  def get_function_id(address):
     if not options.names:
       return None
     index = bisect.bisect_right(func_low_pcs, address)
@@ -422,7 +421,7 @@ def build_sourcemap(entries, func_ranges, code_section_offset, options):
           sources_content.append(None)
     else:
       source_id = sources_map[source_name]
-    func_id = get_function_id(func_ranges, address)
+    func_id = get_function_id(address)
 
     address_delta = address - last_address
     source_id_delta = source_id - last_source_id
