@@ -45,8 +45,12 @@ logger = logging.getLogger('common')
 
 # User can specify an environment variable EMTEST_BROWSER to force the browser
 # test suite to run using another browser command line than the default system
-# browser.
-# There are two special value that can be used here if running in an actual
+# browser. If only the path to the browser executable is given, the tests
+# will run in headless mode with a temporary profile with the same options
+# used in CI. To use a custom start command specify the executable and command
+# line flags.
+#
+# There are two special values that can be used here if running in an actual
 # browser is not desired:
 #  EMTEST_BROWSER=0 : This will disable the actual running of the test and simply
 #                     verify that it compiles and links.
@@ -54,6 +58,8 @@ logger = logging.getLogger('common')
 #                        For most browser tests this does not work, but it can
 #                        be useful for running pthread tests under node.
 EMTEST_BROWSER = None
+EMTEST_BROWSER_AUTO_CONFIG = None
+EMTEST_HEADLESS = None
 EMTEST_DETECT_TEMPFILE_LEAKS = None
 EMTEST_SAVE_DIR = None
 # generally js engines are equivalent, testing 1 is enough. set this
@@ -75,6 +81,53 @@ EMTEST_BUILD_VERBOSE = int(os.getenv('EMTEST_BUILD_VERBOSE', '0'))
 EMTEST_CAPTURE_STDIO = int(os.getenv('EMTEST_CAPTURE_STDIO', '0'))
 if 'EM_BUILD_VERBOSE' in os.environ:
   exit_with_error('EM_BUILD_VERBOSE has been renamed to EMTEST_BUILD_VERBOSE')
+
+
+# Default flags used to run browsers in CI testing:
+class BrowserConfig:
+  def __init__(self, data_dir_flag, default_flags, headless_flags):
+      self.data_dir_flag = data_dir_flag
+      self.default_flags = default_flags
+      self.headless_flags = headless_flags
+
+  def configure(self, data_dir):
+    pass
+
+
+class ChromeConfig(BrowserConfig):
+  def __init__(self):
+    super().__init__(
+      data_dir_flag = '--user-data-dir=',
+      default_flags = (
+        # --no-sandbox because we are running as root and chrome requires
+        # this flag for now: https://crbug.com/638180
+        '--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader --enable-experimental-web-platform-features --enable-features=JavaScriptSourcePhaseImports',
+        '--enable-experimental-webassembly-features --js-flags="--experimental-wasm-stack-switching --experimental-wasm-type-reflection --experimental-wasm-rab-integration"',
+        # The runners lack sound hardware so fallback to a dummy device (and
+        # bypass the user gesture so audio tests work without interaction)
+        '--use-fake-device-for-media-stream --autoplay-policy=no-user-gesture-required',
+        # Cache options.
+        '--disk-cache-size=1 --media-cache-size=1 --disable-application-cache',
+      ),
+      headless_flags =
+        # Increase the window size to avoid flaky sdl tests see #24236.
+        '--headless=new --window-size=1024,768 --remote-debugging-port=1234',
+    )
+
+
+class FirefoxConfig(BrowserConfig):
+  def __init__(self):
+    super().__init__(
+      data_dir_flag = '-profile ',
+      default_flags = {},
+      headless_flags = '-headless',
+    )
+
+  def configure(self, data_dir):
+    shutil.copy(test_file('firefox_user.js'), os.path.join(data_dir, 'user.js'))
+
+
+DEFAULT_BROWSER_DATA_DIR = path_from_root('out/browser-profile')
 
 # Special value for passing to assert_returncode which means we expect that program
 # to fail with non-zero return code, but we don't care about specifically which one.
@@ -112,6 +165,17 @@ def copytree(src, dest):
 # checks if browser testing is enabled
 def has_browser():
   return EMTEST_BROWSER != '0'
+
+
+CHROMIUM_BASED_BROWSERS = ['chrom', 'edge', 'opera']
+
+
+def is_chrome():
+  return EMTEST_BROWSER and any(pattern in EMTEST_BROWSER.lower() for pattern in CHROMIUM_BASED_BROWSERS)
+
+
+def is_firefox():
+  return EMTEST_BROWSER and 'firefox' in EMTEST_BROWSER.lower()
 
 
 def compiler_for(filename, force_c=False):
@@ -2323,9 +2387,7 @@ class BrowserCore(RunnerCore):
     super().__init__(*args, **kwargs)
 
   @classmethod
-  def browser_restart(cls):
-    # Kill existing browser
-    logger.info('Restarting browser process')
+  def browser_terminate(cls):
     cls.browser_proc.terminate()
     # If the browser doesn't shut down gracefully (in response to SIGTERM)
     # after 2 seconds kill it with force (SIGKILL).
@@ -2335,6 +2397,15 @@ class BrowserCore(RunnerCore):
       logger.info('Browser did not respond to `terminate`.  Using `kill`')
       cls.browser_proc.kill()
       cls.browser_proc.wait()
+    if cls.browser_data_dir:
+      utils.delete_dir(cls.browser_data_dir)
+      cls.browser_data_dir = None
+
+  @classmethod
+  def browser_restart(cls):
+    # Kill existing browser
+    logger.info('Restarting browser process')
+    cls.browser_terminate()
     cls.browser_open(cls.HARNESS_URL)
 
   @classmethod
@@ -2343,6 +2414,25 @@ class BrowserCore(RunnerCore):
     if not EMTEST_BROWSER:
       logger.info('No EMTEST_BROWSER set. Defaulting to `google-chrome`')
       EMTEST_BROWSER = 'google-chrome'
+
+    if EMTEST_BROWSER_AUTO_CONFIG:
+      logger.info('Using default to CI configuration.')
+      cls.browser_data_dir = DEFAULT_BROWSER_DATA_DIR
+      if os.path.exists(cls.browser_data_dir):
+        utils.delete_dir(cls.browser_data_dir)
+      os.mkdir(cls.browser_data_dir)
+      if is_chrome():
+        config = ChromeConfig()
+      elif is_firefox():
+        config = FirefoxConfig()
+      else:
+        logger.warning("Unknown browser type, not using default flags.")
+        config = BrowserConfig()
+      EMTEST_BROWSER += f" {config.data_dir_flag}{cls.browser_data_dir} {' '.join(config.default_flags)}"
+      if EMTEST_HEADLESS == 1:
+        EMTEST_BROWSER += f" {config.headless_flags}"
+      config.configure(cls.browser_data_dir)
+
     if WINDOWS:
       # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
       # set EMTEST_BROWSER=C:\Program Files\Mozilla Firefox\firefox.exe
@@ -2373,6 +2463,7 @@ class BrowserCore(RunnerCore):
       return
     cls.harness_server.terminate()
     print('[Browser harness server terminated]')
+    cls.browser_terminate()
     if WINDOWS:
       # On Windows, shutil.rmtree() in tearDown() raises this exception if we do not wait a bit:
       # WindowsError: [Error 32] The process cannot access the file because it is being used by another process.

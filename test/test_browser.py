@@ -20,7 +20,7 @@ from pathlib import Path
 from urllib.request import urlopen
 
 import common
-from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
+from common import BrowserCore, RunnerCore, path_from_root, has_browser, Reporting, is_chrome, is_firefox, CHROMIUM_BASED_BROWSERS
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
 from common import read_file, EMRUN, no_wasm64, no_2gb, no_4gb, copytree
 from common import requires_wasm2js, parameterize, find_browser_test_file, with_all_sjlj
@@ -130,21 +130,10 @@ def shell_with_script(shell_file, output_file, replacement):
   create_file(output_file, shell.replace('{{{ SCRIPT }}}', replacement))
 
 
-CHROMIUM_BASED_BROWSERS = ['chrom', 'edge', 'opera']
-
-
-def is_chrome():
-  return EMTEST_BROWSER and any(pattern in EMTEST_BROWSER.lower() for pattern in CHROMIUM_BASED_BROWSERS)
-
-
 def no_chrome(note='chrome is not supported'):
   if is_chrome():
     return unittest.skip(note)
   return lambda f: f
-
-
-def is_firefox():
-  return EMTEST_BROWSER and 'firefox' in EMTEST_BROWSER.lower()
 
 
 def no_firefox(note='firefox is not supported'):
@@ -162,7 +151,7 @@ def no_swiftshader(f):
 
   @wraps(f)
   def decorated(self, *args, **kwargs):
-    if is_chrome() and '--use-gl=swiftshader' in EMTEST_BROWSER:
+    if is_chrome() and '--use-gl=swiftshader' in common.EMTEST_BROWSER:
       self.skipTest('not compatible with swiftshader')
     return f(self, *args, **kwargs)
 
@@ -210,7 +199,7 @@ class browser(BrowserCore):
   def setUpClass(cls):
     super().setUpClass()
     cls.browser_timeout = 60
-    if EMTEST_BROWSER != 'node':
+    if common.EMTEST_BROWSER != 'node':
       print()
       print('Running the browser tests. Make sure the browser allows popups from localhost.')
       print()
@@ -220,7 +209,7 @@ class browser(BrowserCore):
 
   def require_jspi(self):
     if not is_chrome():
-      self.skipTest(f'Current browser ({EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
+      self.skipTest(f'Current browser ({common.EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
     super().require_jspi()
 
   def post_manual_reftest(self):
@@ -3305,7 +3294,7 @@ Module["preRun"] = () => {
   })
   def test_async(self, args):
     if is_jspi(args) and not is_chrome():
-      self.skipTest(f'Current browser ({EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
+      self.skipTest(f'Current browser ({common.EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
 
     for opts in (0, 1, 2, 3):
       print(opts)
@@ -4977,7 +4966,7 @@ Module["preRun"] = () => {
   })
   def test_embind(self, args):
     if is_jspi(args) and not is_chrome():
-      self.skipTest(f'Current browser ({EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
+      self.skipTest(f'Current browser ({common.EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
     if is_jspi(args) and self.is_wasm64():
       self.skipTest('_emval_await fails')
 
@@ -5597,9 +5586,9 @@ class emrun(RunnerCore):
     self.run_process([EMCC, test_file('test_emrun.c'), '--emrun', '-o', 'hello_world.html'])
     proc = subprocess.Popen([EMRUN, '--no-browser', '.', '--port=3333'], stdout=PIPE)
     try:
-      if EMTEST_BROWSER:
+      if common.EMTEST_BROWSER:
         print('Starting browser')
-        browser_cmd = shlex.split(EMTEST_BROWSER)
+        browser_cmd = shlex.split(common.EMTEST_BROWSER)
         browser = subprocess.Popen(browser_cmd + ['http://localhost:3333/hello_world.html'])
         try:
           while True:
@@ -5638,11 +5627,11 @@ class emrun(RunnerCore):
                  '--log-stdout', self.in_dir('stdout.txt'),
                  '--log-stderr', self.in_dir('stderr.txt')]
 
-    if EMTEST_BROWSER is not None:
+    if common.EMTEST_BROWSER is not None:
       # If EMTEST_BROWSER carried command line arguments to pass to the browser,
       # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
       # so strip them out.
-      browser_cmd = shlex.split(EMTEST_BROWSER)
+      browser_cmd = shlex.split(common.EMTEST_BROWSER)
       browser_path = browser_cmd[0]
       args_base += ['--browser', browser_path]
       if len(browser_cmd) > 1:
