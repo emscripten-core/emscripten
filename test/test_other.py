@@ -2961,6 +2961,7 @@ More info: https://emscripten.org
     'safeHeap': (['safeHeap'],),
     'object-literals': ([],),
     'LittleEndianHeap': (['littleEndianHeap'],),
+    'LittleEndianGrowableHeap': (['growableHeap','littleEndianHeap'],),
   })
   @crossplatform
   def test_js_optimizer(self, passes, filename=None):
