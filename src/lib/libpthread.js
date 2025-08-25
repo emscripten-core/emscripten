@@ -295,6 +295,10 @@ var LibraryPThread = {
 #endif
         } else if (cmd === 'callHandler') {
           Module[d.handler](...d.args);
+        } else if (cmd === 'processExit') {
+          try {
+            exitOnMainThread(d.code);
+          } catch(e) {} // Swallow the ExitStatus exception, since we need to unwind here.
         } else if (cmd) {
           // The received message looks like something that should be handled by this message
           // handler, (since there is a e.data.cmd field present), but is not one of the
@@ -886,8 +890,12 @@ var LibraryPThread = {
   // This function is always called from a pthread, but is executed on the
   // main thread due the __proxy attribute.
   $exitOnMainThread__deps: ['exit'],
-  $exitOnMainThread__proxy: 'async',
   $exitOnMainThread: (returnCode) => {
+    // Manually proxy the exit command using postMessage(), so that any other
+    // postMessage()s will flush in order before the Worker quits.
+    if (ENVIRONMENT_IS_PTHREAD) {
+        return postMessage({ cmd: 'processExit', code: returnCode });
+    }
 #if PTHREADS_DEBUG
     dbg('exitOnMainThread');
 #endif
