@@ -15,9 +15,13 @@ logger = logging.getLogger('clang_native')
 
 def get_native_triple():
   # On Raspberry Pi 5, the target triple for native compilation must exactly
-  # match this. E.g. "arm64-linux" will not work.
-  if os.path.isdir('/usr/lib/aarch64-linux-gnu'):
-    return 'aarch64-linux-gnu'
+  # match 'aarch64-linux-gnu', or clang will not find the native sysroot.
+  # Users on a Pi 5 can set environment variable
+  # EMTEST_NATIVE_COMPILATION_TRIPLE=aarch64-linux-gnu
+  # to be able to override the native triple for Pi 5 compilation.
+  native_compilation_triple = os.getenv('EMTEST_NATIVE_COMPILATION_TRIPLE')
+  if native_compilation_triple:
+    return native_compilation_triple
 
   arch = {
       'aarch64': 'arm64',
