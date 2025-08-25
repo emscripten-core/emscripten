@@ -5499,6 +5499,7 @@ Module = {
 
     self.do_run_in_out_file_test('test_files.c')
 
+  @no_wasmfs('Error: EAGAIN: resource temporarily unavailable. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_module_stdin(self):
     create_file('pre.js', '''
     var data = [10, 20, 40, 30];
@@ -5733,6 +5734,7 @@ got: 10
       self.set_setting('FORCE_FILESYSTEM')
     self.do_core_test('test_poll.c')
 
+  @no_wasmfs('st.f_ffree > st.f_files, same issue than in wasmfs.test_fs_nodefs_statvfs. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_statvfs(self):
     self.do_core_test('test_statvfs.c')
 
@@ -5875,6 +5877,7 @@ got: 10
 
   @requires_node
   @crossplatform
+  @no_wasmfs('Assertion failed: st.f_ffree <= st.f_files && "Free inodes should not exceed total inodes". https://github.com/emscripten-core/emscripten/issues/25035')
   def test_fs_nodefs_statvfs(self):
     # externally setup an existing folder structure: existing/a
     if self.get_setting('WASMFS'):
@@ -5925,6 +5928,7 @@ got: 10
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @crossplatform
   @also_with_nodefs_both
+  @no_wasmfs('Assertion failed: open("./does-not-exist/", O_CREAT, 0777) == -1 in test_fs_enotdir.c line 20. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_fs_enotdir(self):
     if MACOS and '-DNODERAWFS' in self.cflags:
       self.skipTest('BSD libc sets a different errno')
@@ -6030,6 +6034,7 @@ Module.onRuntimeInitialized = () => {
   @also_with_nodefs_both
   @no_windows('stat ino values dont match on windows')
   @crossplatform
+  @no_wasmfs('Assertion failed: "a_ino == sta.st" in test_fs_readdir_ino_matches_stat_ino.c, line 58. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_fs_readdir_ino_matches_stat_ino(self):
     self.do_runf('fs/test_fs_readdir_ino_matches_stat_ino.c', 'success')
 
@@ -6171,11 +6176,13 @@ Module.onRuntimeInitialized = () => {
 
   @also_with_noderawfs
   @no_windows('TODO: Fails on Windows due to an unknown reason.')
+  @no_wasmfs('Assertion failed: "r == 3" in test_unistd_write_broken_link.c line 22. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_unistd_write_broken_link(self):
     self.do_run_in_out_file_test('unistd/test_unistd_write_broken_link.c')
 
   @no_windows('Skipping NODEFS test, since it would require administrative privileges.')
   @requires_node
+  @no_wasmfs('Assertion failed: "fd" in symlink_on_nodefs.c line 62. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_unistd_symlink_on_nodefs(self):
     # Also, other detected discrepancies if you do end up running this test on NODEFS:
     # test expects /, but Windows gives \ as path slashes.
@@ -6192,6 +6199,7 @@ Module.onRuntimeInitialized = () => {
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @also_with_nodefs
+  @no_wasmfs('fails in testing fdatasync, tcgetpgrp and pipe. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_unistd_misc(self):
     if self.get_setting('STRICT'):
       self.set_setting('ALLOW_UNIMPLEMENTED_SYSCALLS')
