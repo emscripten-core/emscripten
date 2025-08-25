@@ -2559,6 +2559,8 @@ function wrapSyscallFunction(x, library, isWasi) {
   post += "}\n";
   post += "dbg(`syscall return: ${ret}`);\n";
   post += "return ret;\n";
+  // Emit dependency to strError() since we added use of it above.
+  library[x + '__deps'].push('$strError');
 #endif
   delete library[x + '__nothrow'];
   var handler = '';
