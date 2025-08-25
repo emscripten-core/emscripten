@@ -4763,6 +4763,10 @@ res64 - external 64\n''', header='''\
     'missing_assertions': ('libc,libmalloc,libc++abi', False, False, True),
   })
   def test_dylink_syslibs(self, syslibs, expect_pass=True, with_reversed=True, assertions=True):
+    # When testing in WASMFS mode, we also need to force the WASMFS syslib into the test.
+    if self.get_setting('WASMFS') and syslibs != '1':
+      syslibs += ',libwasmfs'
+
     # one module uses libcxx, need to force its inclusion when it isn't the main
     if not with_reversed and self.dylink_reversed:
       self.skipTest('with_reversed is false')
@@ -6187,6 +6191,9 @@ Module.onRuntimeInitialized = () => {
   @requires_node
   @no_wasmfs('Assertion failed: "fd" in symlink_on_nodefs.c line 62. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_unistd_symlink_on_nodefs(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
+
     # Also, other detected discrepancies if you do end up running this test on NODEFS:
     # test expects /, but Windows gives \ as path slashes.
     # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
@@ -6910,6 +6917,9 @@ void* operator new(size_t size) {
   @needs_make('make')
   @is_slow_test
   def test_openjpeg(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
+
     def line_splitter(data):
       out = ''
       counter = 0
