@@ -242,7 +242,7 @@ var LibraryPThread = {
         var d = e['data'];
         var cmd = d.cmd;
 #if PTHREADS_DEBUG
-        dbg(`main thread: received message '${cmd}' from worker. ${JSON.stringify(d)}`);
+        dbg(`main thread: received message '${cmd}' from worker. ${d}`);
 #endif
 
         // If this message is intended to a recipient that is not the main
