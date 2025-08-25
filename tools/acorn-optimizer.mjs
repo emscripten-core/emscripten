@@ -956,6 +956,17 @@ function isEmscriptenHEAP(name) {
   }
 }
 
+const littleEndianHelper = {
+  HEAP16: {width: 2, load: 'LE_HEAP_LOAD_I16', store: 'LE_HEAP_STORE_I16'},
+  HEAPU16: {width: 2, load: 'LE_HEAP_LOAD_U16', store: 'LE_HEAP_STORE_U16'},
+  HEAP32: {width: 4, load: 'LE_HEAP_LOAD_I32', store: 'LE_HEAP_STORE_I32'},
+  HEAPU32: {width: 4, load: 'LE_HEAP_LOAD_U32', store: 'LE_HEAP_STORE_U32'},
+  HEAP64: {width: 8, load: 'LE_HEAP_LOAD_I64', store: 'LE_HEAP_STORE_I64'},
+  HEAPU64: {width: 8, load: 'LE_HEAP_LOAD_U64', store: 'LE_HEAP_STORE_U64'},
+  HEAPF32: {width: 4, load: 'LE_HEAP_LOAD_F32', store: 'LE_HEAP_STORE_F32'},
+  HEAPF64: {width: 8, load: 'LE_HEAP_LOAD_F64', store: 'LE_HEAP_STORE_F64'},
+};
+
 // Replaces each HEAP access with function call that uses DataView to enforce
 // LE byte order for HEAP buffer
 function littleEndianHeap(ast) {
@@ -981,60 +992,29 @@ function littleEndianHeap(ast) {
       const target = node.left;
       const value = node.right;
       c(value);
-      if (!isHEAPAccess(target)) {
+      const heap = isHEAPAccess(target);
+      const growHeap = isGrowHEAPAccess(target);
+      if (heap) {
+        // replace the heap access with LE_HEAP_STORE
+        const idx = target.property;
+        const helper = littleEndianHelper[heap];
+        if (helper) {
+          // "nameXX[idx] = value" -> "LE_HEAP_STORE_XX(idx*XX, value)"
+          makeCallExpression(node, helper.store, [multiply(idx, helper.width), value]);
+        }
+      } else if (growHeap) {
+        const idx = target.property;
+        const helper = littleEndianHelper[growHeap];
+        if (helper) {
+          // "(growMemViews(),nameXX)[idx] = value" -> "LE_HEAP_STORE_XX((growMemViews(),idx*XX), value)"
+          makeCallExpression(node, helper.store, [
+            makeSequence(makeCallGrowMemViews(), multiply(idx, helper.width)),
+            value,
+          ]);
+        }
+      } else {
         // not accessing the HEAP
         c(target);
-      } else {
-        // replace the heap access with LE_HEAP_STORE
-        const name = target.object.name;
-        const idx = target.property;
-        switch (name) {
-          case 'HEAP8':
-          case 'HEAPU8': {
-            // no action required - storing only 1 byte
-            break;
-          }
-          case 'HEAP16': {
-            // change "name[idx] = value" to "LE_HEAP_STORE_I16(idx*2, value)"
-            makeCallExpression(node, 'LE_HEAP_STORE_I16', [multiply(idx, 2), value]);
-            break;
-          }
-          case 'HEAPU16': {
-            // change "name[idx] = value" to "LE_HEAP_STORE_U16(idx*2, value)"
-            makeCallExpression(node, 'LE_HEAP_STORE_U16', [multiply(idx, 2), value]);
-            break;
-          }
-          case 'HEAP32': {
-            // change "name[idx] = value" to "LE_HEAP_STORE_I32(idx*4, value)"
-            makeCallExpression(node, 'LE_HEAP_STORE_I32', [multiply(idx, 4), value]);
-            break;
-          }
-          case 'HEAPU32': {
-            // change "name[idx] = value" to "LE_HEAP_STORE_U32(idx*4, value)"
-            makeCallExpression(node, 'LE_HEAP_STORE_U32', [multiply(idx, 4), value]);
-            break;
-          }
-          case 'HEAP64': {
-            // change "name[idx] = value" to "LE_HEAP_STORE_I64(idx*8, value)"
-            makeCallExpression(node, 'LE_HEAP_STORE_I64', [multiply(idx, 8), value]);
-            break;
-          }
-          case 'HEAPU64': {
-            // change "name[idx] = value" to "LE_HEAP_STORE_U64(idx*8, value)"
-            makeCallExpression(node, 'LE_HEAP_STORE_U64', [multiply(idx, 8), value]);
-            break;
-          }
-          case 'HEAPF32': {
-            // change "name[idx] = value" to "LE_HEAP_STORE_F32(idx*4, value)"
-            makeCallExpression(node, 'LE_HEAP_STORE_F32', [multiply(idx, 4), value]);
-            break;
-          }
-          case 'HEAPF64': {
-            // change "name[idx] = value" to "LE_HEAP_STORE_F64(idx*8, value)"
-            makeCallExpression(node, 'LE_HEAP_STORE_F64', [multiply(idx, 8), value]);
-            break;
-          }
-        }
       }
     },
     CallExpression(node, c) {
@@ -1059,59 +1039,28 @@ function littleEndianHeap(ast) {
     },
     MemberExpression(node, c) {
       c(node.property);
-      if (!isHEAPAccess(node)) {
-        // not accessing the HEAP
-        c(node.object);
-      } else {
+      const heap = isHEAPAccess(node);
+      const growHeap = isGrowHEAPAccess(node);
+      if (heap) {
         // replace the heap access with LE_HEAP_LOAD
         const idx = node.property;
-        switch (node.object.name) {
-          case 'HEAP8':
-          case 'HEAPU8': {
-            // no action required - loading only 1 byte
-            break;
-          }
-          case 'HEAP16': {
-            // change "name[idx]" to "LE_HEAP_LOAD_I16(idx*2)"
-            makeCallExpression(node, 'LE_HEAP_LOAD_I16', [multiply(idx, 2)]);
-            break;
-          }
-          case 'HEAPU16': {
-            // change "name[idx]" to "LE_HEAP_LOAD_U16(idx*2)"
-            makeCallExpression(node, 'LE_HEAP_LOAD_U16', [multiply(idx, 2)]);
-            break;
-          }
-          case 'HEAP32': {
-            // change "name[idx]" to "LE_HEAP_LOAD_I32(idx*4)"
-            makeCallExpression(node, 'LE_HEAP_LOAD_I32', [multiply(idx, 4)]);
-            break;
-          }
-          case 'HEAPU32': {
-            // change "name[idx]" to "LE_HEAP_LOAD_U32(idx*4)"
-            makeCallExpression(node, 'LE_HEAP_LOAD_U32', [multiply(idx, 4)]);
-            break;
-          }
-          case 'HEAP64': {
-            // change "name[idx]" to "LE_HEAP_LOAD_I64(idx*8)"
-            makeCallExpression(node, 'LE_HEAP_LOAD_I64', [multiply(idx, 8)]);
-            break;
-          }
-          case 'HEAPU64': {
-            // change "name[idx]" to "LE_HEAP_LOAD_U64(idx*8)"
-            makeCallExpression(node, 'LE_HEAP_LOAD_U64', [multiply(idx, 8)]);
-            break;
-          }
-          case 'HEAPF32': {
-            // change "name[idx]" to "LE_HEAP_LOAD_F32(idx*4)"
-            makeCallExpression(node, 'LE_HEAP_LOAD_F32', [multiply(idx, 4)]);
-            break;
-          }
-          case 'HEAPF64': {
-            // change "name[idx]" to "LE_HEAP_LOAD_F64(idx*8)"
-            makeCallExpression(node, 'LE_HEAP_LOAD_F64', [multiply(idx, 8)]);
-            break;
-          }
+        const helper = littleEndianHelper[heap];
+        if (helper) {
+          // "nameXX[idx]" -> "LE_HEAP_LOAD_XX(idx*XX)"
+          makeCallExpression(node, helper.load, [multiply(idx, helper.width)]);
         }
+      } else if (growHeap) {
+        const idx = node.property;
+        const helper = littleEndianHelper[growHeap];
+        if (helper) {
+          // "(growMemViews(),nameXX)[idx]" -> "LE_HEAP_LOAD_XX((growMemViews(),idx*XX))"
+          makeCallExpression(node, helper.load, [
+            makeSequence(makeCallGrowMemViews(), multiply(idx, helper.width)),
+          ]);
+        }
+      } else {
+        // not accessing the HEAP
+        c(node.object);
       }
     },
   });
@@ -1156,23 +1105,28 @@ function growableHeap(ast) {
         // Transform `HEAPxx` into `(growMemViews(), HEAPxx)`.
         // Important: don't just do `growMemViews(HEAPxx)` because `growMemViews` reassigns `HEAPxx`
         // and we want to get an updated value after that reassignment.
-        Object.assign(node, {
-          type: 'SequenceExpression',
-          expressions: [
-            {
-              type: 'CallExpression',
-              callee: {
-                type: 'Identifier',
-                name: 'growMemViews',
-              },
-              arguments: [],
-            },
-            {...node},
-          ],
-        });
+        Object.assign(node, makeSequence(makeCallGrowMemViews(), {...node}));
       }
     },
   });
+}
+
+function makeCallGrowMemViews() {
+  return {
+    type: 'CallExpression',
+    callee: {
+      type: 'Identifier',
+      name: 'growMemViews',
+    },
+    arguments: [],
+  };
+}
+
+function makeSequence(...expressions) {
+  return {
+    type: 'SequenceExpression',
+    expressions,
+  };
 }
 
 // Make all JS pointers unsigned. We do this by modifying things like
@@ -1249,7 +1203,23 @@ function isHEAPAccess(node) {
     node.type === 'MemberExpression' &&
     node.object.type === 'Identifier' &&
     node.computed && // notice a[X] but not a.X
-    isEmscriptenHEAP(node.object.name)
+    isEmscriptenHEAP(node.object.name) &&
+    node.object.name
+  );
+}
+
+function isGrowHEAPAccess(node) {
+  return (
+    node.type === 'MemberExpression' &&
+    node.computed && // notice a[X] but not a.X
+    node.object.type === 'SequenceExpression' &&
+    node.object.expressions.length === 2 &&
+    node.object.expressions[0].type === 'CallExpression' &&
+    node.object.expressions[0].callee.type === 'Identifier' &&
+    node.object.expressions[0].callee.name === 'growMemViews' &&
+    node.object.expressions[1].type === 'Identifier' &&
+    isEmscriptenHEAP(node.object.expressions[1].name) &&
+    node.object.expressions[1].name
   );
 }
 
