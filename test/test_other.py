@@ -13196,29 +13196,26 @@ int main(void) {
     self.assertContained('function signature mismatch: foo', stderr)
 
   # Verifies that warning messages that Closure outputs are recorded to console
-  @is_slow_test
-  def test_closure_warnings(self):
-    # Default should be no warnings
-    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1'], stderr=PIPE)
-    self.assertNotContained('WARNING', proc.stderr)
-    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-Wno-closure'], stderr=PIPE)
-    self.assertNotContained('WARNING', proc.stderr)
-
-    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-Wclosure'], stderr=PIPE)
-    self.assertContained('WARNING - [JSC_REFERENCE_BEFORE_DECLARE] Variable referenced before declaration', proc.stderr)
-
-    self.expect_fail([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-Werror=closure'])
-
-    # Run the same tests again with deprecated `-sCLOSURE_WARNINGS` setting instead
-    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-Wno-deprecated'], stderr=PIPE)
-    self.assertNotContained('WARNING', proc.stderr)
-    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-sCLOSURE_WARNINGS=quiet', '-Wno-deprecated'], stderr=PIPE)
-    self.assertNotContained('WARNING', proc.stderr)
-
-    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-sCLOSURE_WARNINGS=warn', '-Wno-deprecated'], stderr=PIPE)
-    self.assertContained('WARNING - [JSC_REFERENCE_BEFORE_DECLARE] Variable referenced before declaration', proc.stderr)
-
-    self.expect_fail([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-sCLOSURE_WARNINGS=error', '-Wno-deprecated'])
+  @parameterized({
+    '': ([], None),
+    'wno_closure': (['-Wno-closure'], None),
+    'wclosure': (['-Wclosure'], 'WARNING - [JSC_REFERENCE_BEFORE_DECLARE] Variable referenced before declaration'),
+    'error_closure': (['-Werror=closure'], 'FAIL'),
+    'wno_deprecated': (['-Wno-deprecated'], None),
+    'wno_deprecated_quiet': (['-sCLOSURE_WARNINGS=quiet', '-Wno-deprecated'], None),
+    'wno_deprecated_warn': (['-sCLOSURE_WARNINGS=warn', '-Wno-deprecated'], 'WARNING - [JSC_REFERENCE_BEFORE_DECLARE] Variable referenced before declaration'),
+    'wno_deprecated_error': (['-sCLOSURE_WARNINGS=error', '-Wno-deprecated'], 'FAIL'),
+  })
+  def test_closure_warnings(self, flags, outcome):
+    cmd = [EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1'] + flags
+    if outcome == 'FAIL':
+      self.expect_fail(cmd)
+    else:
+      proc = self.run_process(cmd, stderr=PIPE)
+      if outcome is None:
+        self.assertNotContained('WARNING', proc.stderr)
+      else:
+        self.assertContained(outcome, proc.stderr)
 
   def test_bitcode_input(self):
     # Verify that bitcode files are accepted as input
