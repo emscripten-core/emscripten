@@ -10106,7 +10106,7 @@ int main() {
         # Process files depending on first char of the file in different test cases for parallelization, though
         # special case SDL_ prefix to parallelize better.
         first_char = (header[4] if header.startswith('SDL_') else header[0]).lower()
-        if first_char not in prefix or (prefix == '*' and ord(first_char) >= ord('a') and ord(first_char) <= ord('z')):
+        if first_char not in prefix or (prefix == '*' and first_char.isalpha()):
           continue
 
         print('header: ' + header)
