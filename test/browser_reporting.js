@@ -1,5 +1,5 @@
 // Set this to true to have stdout and stderr sent back to the server
-var captureStdio = false;
+var captureStdio = true;
 
 var hasModule = typeof Module === 'object' && Module;
 
