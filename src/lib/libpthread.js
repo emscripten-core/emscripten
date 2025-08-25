@@ -1199,6 +1199,16 @@ var LibraryPThread = {
                         '_emscripten_check_mailbox',
                         '_emscripten_thread_mailbox_await'],
   $checkMailbox: () => {
+    // The mailbox is checked using a setTimeout() handler, but the application
+    // may have quit (or crashed) after the setTimeout() was registered,
+    // so first check if that might be the case, and no-op if so.
+#if EXIT_RUNTIME
+    if (runtimeExited) return;
+#endif
+#if !MINIMAL_RUNTIME
+    if (ABORT) return;
+#endif
+
     // Only check the mailbox if we have a live pthread runtime. We implement
     // pthread_self to return 0 if there is no live runtime.
     var pthread_ptr = _pthread_self();
