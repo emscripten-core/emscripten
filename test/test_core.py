@@ -2100,10 +2100,9 @@ int main(int argc, char **argv) {
     self.do_runf(src, 'OOM', assert_returncode=NON_ZERO)
     # Win with it
     self.set_setting('ALLOW_MEMORY_GROWTH')
-    expect = '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*'
     output = self.do_runf(src)
     output = self.remove_growth_warning(output)
-    self.assertContained(expect, output)
+    self.assertContained('*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*', output)
 
   @no_2gb('memory growth issues')
   @no_4gb('memory growth issues')
@@ -2124,10 +2123,9 @@ int main(int argc, char **argv) {
 
     # Win with it
     self.set_setting('ALLOW_MEMORY_GROWTH')
-    expect = '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*'
     output = self.do_runf(src)
     output = self.remove_growth_warning(output)
-    self.assertContained(expect, output)
+    self.assertContained('*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*', output)
     win = read_file(self.output_name('test_memorygrowth'))
 
     if '-O2' in self.cflags and self.is_wasm2js():
@@ -2144,7 +2142,7 @@ int main(int argc, char **argv) {
       self.cflags += ['--tracing']
       output = self.do_runf(src)
       output = self.remove_growth_warning(output)
-      self.assertContained(expect, output)
+      self.assertContained('*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*', output)
 
   @no_4gb('memory growth issues')
   @no_2gb('memory growth issues')
@@ -2162,10 +2160,9 @@ int main(int argc, char **argv) {
 
     # Win with it
     self.set_setting('ALLOW_MEMORY_GROWTH')
-    expect = '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*'
     output = self.do_runf(src)
     output = self.remove_growth_warning(output)
-    self.assertContained(expect, output)
+    self.assertContained('*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*', output)
     win = read_file(self.output_name('test_memorygrowth_2'))
 
     if '-O2' in self.cflags and self.is_wasm2js():
