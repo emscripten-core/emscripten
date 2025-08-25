@@ -10069,7 +10069,23 @@ int main() {
   # Tests that Emscripten-provided header files can be cleanly included standalone.
   # Also check they can be included in C code (where possible).
   @is_slow_test
-  def test_standalone_system_headers(self):
+  @parameterized({
+    'ab': ('ab',),
+    'cd': ('cd',),
+    'ef': ('ef',),
+    'gh': ('gh',),
+    'ij': ('ij',),
+    'kl': ('kl',),
+    'mn': ('mn',),
+    'op': ('op',),
+    'qr': ('qr',),
+    'st': ('st',),
+    'uv': ('uv',),
+    'wx': ('wx',),
+    'yz': ('yz',),
+    'other': ('*',),
+  })
+  def test_standalone_system_headers(self, prefix):
     # Test oldest C standard, and the default C standard
     # This also tests that each header file is self contained and includes
     # everything it needs.
@@ -10084,10 +10100,15 @@ int main() {
         directories[''].append(elem)
 
     for directory, headers in directories.items():
-      print('dir: ' + directory)
       for header in headers:
         if not header.endswith('.h'):
           continue
+        # Process files depending on first char of the file in different test cases for parallelization, though
+        # special case SDL_ prefix to parallelize better.
+        first_char = (header[4] if header.startswith('SDL_') else header[0]).lower()
+        if first_char not in prefix or (prefix == '*' and first_char.isalpha()):
+          continue
+
         print('header: ' + header)
         # These headers cannot be included in isolation.
         # e.g: error: unknown type name 'EGLDisplay'
