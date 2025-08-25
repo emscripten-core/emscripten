@@ -47,7 +47,6 @@ def parse_args():
   parser.add_argument('--dwarfdump', help="path to llvm-dwarfdump executable")
   parser.add_argument('--dwarfdump-output', nargs='?', help=argparse.SUPPRESS)
   parser.add_argument('--basepath', help='base path for source files, which will be relative to this')
-  parser.add_argument('--names', action='store_true', help='Support function names in names field')
   return parser.parse_args()
 
 
@@ -359,12 +358,10 @@ def build_sourcemap(entries, func_ranges, code_section_offset, options):
   collect_sources = options.sources
   prefixes = SourceMapPrefixes(options.prefix, options.load_prefix, base_path)
 
-  # Add code section offset to the low/high pc in the function PC ranges
-  if options.names:
-    for i in range(len(func_ranges)):
-      (low_pc, high_pc), name = func_ranges[i]
-      func_ranges[i] = ((low_pc + code_section_offset), (high_pc + code_section_offset)), name
-    func_low_pcs = [item[0][0] for item in func_ranges]
+  for i in range(len(func_ranges)):
+    (low_pc, high_pc), name = func_ranges[i]
+    func_ranges[i] = ((low_pc + code_section_offset), (high_pc + code_section_offset)), name
+  func_low_pcs = [item[0][0] for item in func_ranges]
 
   sources = []
   sources_content = []
@@ -379,8 +376,6 @@ def build_sourcemap(entries, func_ranges, code_section_offset, options):
 
   # Get the function ID that the given address falls into
   def get_function_id(address):
-    if not options.names:
-      return None
     index = bisect.bisect_right(func_low_pcs, address)
     if index == 0: # The address is lower than the first function's start
       return None

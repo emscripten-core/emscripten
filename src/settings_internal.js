@@ -194,15 +194,10 @@ var EXPECT_MAIN = true;
 // If true, building against Emscripten's wasm heap memory profiler.
 var MEMORYPROFILER = false;
 
-// Source map related options. You can specify both like
-// -gsource-map=inline,names
-//
-// -gsource-map
+// Set automatically to :
+// - 1 when using `-gsource-map`
+// - 2 when using `gsource-map=inline` (embed sources content in souce map)
 var GENERATE_SOURCE_MAP = 0;
-// -gsource-map=inline
-var EMBED_SOURCE_MAP_SOURCE = 0;
-// -gsource-map=names
-var GENERATE_SOURCE_MAP_NAMES = 0;
 
 var GENERATE_DWARF = false;
 

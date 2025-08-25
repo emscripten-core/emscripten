@@ -10928,7 +10928,7 @@ int main() {
     # out_to_js(0);     // line 6
     # __builtin_trap(); // line 13
     self.run_process([EMCC, test_file('core/test_dwarf.c'),
-                      '-g', '-gsource-map=names', '-O1', '-o', 'test_dwarf.js'])
+                      '-g', '-gsource-map', '-O1', '-o', 'test_dwarf.js'])
     # Address of out_to_js(0) within foo(), uninlined
     out_to_js_call_addr = self.get_instr_addr('call\t0', 'test_dwarf.wasm')
     # Address of __builtin_trap() within bar(), inlined into main()
@@ -10965,7 +10965,7 @@ int main() {
     # the builds because they are relative offsets from the code section, so we
     # don't need to recompute them
     self.run_process([EMCC, test_file('core/test_dwarf.c'),
-                      '-gsource-map=names', '-O1', '-o', 'test_dwarf.js'])
+                      '-gsource-map', '-O1', '-o', 'test_dwarf.js'])
     check_source_map_loc_info(out_to_js_call_addr, out_to_js_call_func[0],
                               out_to_js_call_loc[0])
     check_source_map_loc_info(unreachable_addr, unreachable_func[1],
