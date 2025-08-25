@@ -885,7 +885,7 @@ f.close()
 
       if not shutil.which(conf['build'][0]):
         # Use simple test if applicable
-        print('Skipping %s test for CMake support; build tool found found: %s.' % (generator, conf['build'][0]))
+        print('Skipping %s test for CMake support; build tool not found: %s.' % (generator, conf['build'][0]))
         continue
 
       cmakelistsdir = test_file('cmake', test_dir)
@@ -6907,7 +6907,7 @@ int main(int argc, char **argv) {
       # If the LANG env. var doesn't exist (Windows), ask Node for the language.
       try:
         cmd = config.NODE_JS + ['-e', 'console.log(navigator.languages[0])']
-        expected_lang = subprocess.check_output(cmd, stderr=subprocess.NULL)
+        expected_lang = subprocess.check_output(cmd, stderr=subprocess.DEVNULL)
         expected_lang = expected_lang.decode('utf-8').strip().replace('-', '_')
         expected_lang = f'{expected_lang}.UTF-8'
       except Exception:
@@ -7037,43 +7037,40 @@ This locale is not the C locale.
     self.set_setting('FILESYSTEM', 0)
     self.do_runf('hello_libcxx.cpp', 'hello, world!')
 
-  @is_slow_test
-  def test_no_nuthin(self):
-    # check FILESYSTEM is automatically set, and effective
+  # Verifies that filesystem is automatically omitted, and can be
+  # manually disabled too, and both improve code size.
+  @parameterized({
+    'no_assertions': (['-sASSERTIONS=0'], 120000),
+    'o1': (['-O1'], 91000),
+    'o2': (['-O2'], 46000),
+    'o3_closure': (['-O3', '--closure=1'], 17000),
+    # -Wno-closure is needed due to https://github.com/google/closure-compiler/issues/4108
+    'o3_closure_js': (['-O3', '--closure=1', '-Wno-closure', '-sWASM=0'], 36000),
+    'o3_closure2_js': (['-O3', '--closure=2', '-Wno-closure', '-sWASM=0'], 33000), # might change now and then
+  })
+  def test_no_filesystem_code_size(self, opts, absolute):
+    print('opts, absolute:', opts, absolute)
+    sizes = {}
 
-    def test(opts, absolute):
-      print('opts, absolute:', opts, absolute)
-      sizes = {}
+    def do(name, source, moar_opts):
+      self.clear()
+      # pad the name to a common length so that doesn't effect the size of the
+      # output
+      padded_name = name + '_' * (20 - len(name))
+      self.run_process([EMCC, test_file(source), '-o', padded_name + '.js'] + self.get_cflags() + opts + moar_opts)
+      sizes[name] = os.path.getsize(padded_name + '.js')
+      if os.path.exists(padded_name + '.wasm'):
+        sizes[name] += os.path.getsize(padded_name + '.wasm')
+      self.assertContained('hello, world!', self.run_js(padded_name + '.js'))
 
-      def do(name, source, moar_opts):
-        self.clear()
-        # pad the name to a common length so that doesn't effect the size of the
-        # output
-        padded_name = name + '_' * (20 - len(name))
-        self.run_process([EMCC, test_file(source), '-o', padded_name + '.js'] + self.get_cflags() + opts + moar_opts)
-        sizes[name] = os.path.getsize(padded_name + '.js')
-        if os.path.exists(padded_name + '.wasm'):
-          sizes[name] += os.path.getsize(padded_name + '.wasm')
-        self.assertContained('hello, world!', self.run_js(padded_name + '.js'))
-
-      do('normal', 'hello_world_fopen.c', [])
-      do('no_fs', 'hello_world.c', []) # without fopen, we should auto-detect we do not need full fs support and can do FILESYSTEM=0
-      do('no_fs_manual', 'hello_world.c', ['-sFILESYSTEM=0'])
-      print('  ', sizes)
-      self.assertLess(sizes['no_fs'], sizes['normal'])
-      self.assertLess(sizes['no_fs'], absolute)
-      # manual can usually remove a tiny bit more
-      self.assertLess(sizes['no_fs_manual'], sizes['no_fs'] + 30)
-
-    test(['-sASSERTIONS=0'], 120000) # we don't care about code size with assertions
-    test(['-O1'], 91000)
-    test(['-O2'], 46000)
-    test(['-O3', '--closure=1'], 17000)
-    # js too
-    # -Wclosure is needed due to
-    # https://github.com/google/closure-compiler/issues/4108
-    test(['-O3', '--closure=1', '-Wno-closure', '-sWASM=0'], 36000)
-    test(['-O3', '--closure=2', '-Wno-closure', '-sWASM=0'], 33000) # might change now and then
+    do('normal', 'hello_world_fopen.c', [])
+    do('no_fs', 'hello_world.c', []) # without fopen, we should auto-detect we do not need full fs support and can do FILESYSTEM=0
+    do('no_fs_manual', 'hello_world.c', ['-sFILESYSTEM=0'])
+    print('  ', sizes)
+    self.assertLess(sizes['no_fs'], sizes['normal'])
+    self.assertLess(sizes['no_fs'], absolute)
+    # manual can usually remove a tiny bit more
+    self.assertLess(sizes['no_fs_manual'], sizes['no_fs'] + 30)
 
   def test_no_main_loop(self):
     MAINLOOP = 'var MainLoop'
@@ -8731,11 +8728,10 @@ int main() {
     self.do_other_test('test_em_asm_i64.cpp')
     self.do_other_test('test_em_asm_i64.cpp', force_c=True)
 
+  def test_EM_ASM_i64_nobigint(self):
     self.set_setting('WASM_BIGINT', 0)
     expected = 'Invalid character 106("j") in readEmAsmArgs!'
-    self.do_runf('other/test_em_asm_i64.cpp',
-                 expected_output=expected,
-                 assert_returncode=NON_ZERO)
+    self.do_runf('other/test_em_asm_i64.cpp', expected_output=expected, assert_returncode=NON_ZERO)
 
   def test_eval_ctor_ordering(self):
     # ensure order of execution remains correct, even with a bad ctor
@@ -13453,7 +13449,6 @@ int main () {
   @requires_wasm_eh
   def test_standalone_wasm_exceptions(self):
     self.set_setting('STANDALONE_WASM')
-    self.set_setting('WASM_BIGINT')
     self.wasm_engines = []
     self.cflags += ['-fwasm-exceptions']
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
@@ -15612,8 +15607,6 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   })
   @requires_v8
   def test_add_js_function_bigint(self, memory64, wasm_function):
-    self.set_setting('WASM_BIGINT')
-
     if memory64:
       self.require_wasm64()
 
