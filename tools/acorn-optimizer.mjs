@@ -1008,7 +1008,7 @@ function littleEndianHeap(ast) {
         if (helper) {
           // "(growMemViews(),nameXX)[idx] = value" -> "LE_HEAP_STORE_XX((growMemViews(),idx*XX), value)"
           makeCallExpression(node, helper.store, [
-            makeSequence({}, makeCallGrowMemViews(), multiply(idx, helper.width)),
+            makeSequence(makeCallGrowMemViews(), multiply(idx, helper.width)),
             value
           ]);
         }
@@ -1055,7 +1055,7 @@ function littleEndianHeap(ast) {
         if (helper) {
           // "(growMemViews(),nameXX)[idx]" -> "LE_HEAP_LOAD_XX((growMemViews(),idx*XX))"
           makeCallExpression(node, helper.load, [
-            makeSequence({}, makeCallGrowMemViews(), multiply(idx, helper.width))
+            makeSequence(makeCallGrowMemViews(), multiply(idx, helper.width))
           ]);
         }
       } else {
@@ -1105,10 +1105,10 @@ function growableHeap(ast) {
         // Transform `HEAPxx` into `(growMemViews(), HEAPxx)`.
         // Important: don't just do `growMemViews(HEAPxx)` because `growMemViews` reassigns `HEAPxx`
         // and we want to get an updated value after that reassignment.
-        makeSequence(node,
+        Object.assign(node, makeSequence(
             makeCallGrowMemViews(),
             {...node},
-        );
+        ));
       }
     },
   });
@@ -1125,11 +1125,11 @@ function makeCallGrowMemViews() {
   };
 }
 
-function makeSequence(node, ...expressions) {
-  return Object.assign(node, {
+function makeSequence(...expressions) {
+  return {
     type: 'SequenceExpression',
-    expressions: expressions,
-  });
+    expressions,
+  };
 }
 
 // Make all JS pointers unsigned. We do this by modifying things like
