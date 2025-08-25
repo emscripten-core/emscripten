@@ -3986,21 +3986,32 @@ More info: https://emscripten.org
     self.assertContained('hello data', self.run_js('run.js'))
 
   @crossplatform
-  def test_file_packager_depfile(self):
+  @parameterized({
+    '': (False,),
+    'embed': (True,),
+  })
+  def test_file_packager_depfile(self, embed):
     create_file('data1.txt', 'data1')
     ensure_dir('subdir')
     create_file('subdir/data2.txt', 'data2')
 
-    self.run_process([FILE_PACKAGER, 'test.data', '--js-output=test.js', '--depfile=test.data.d', '--from-emcc', '--preload', '.'])
-    output = read_file('test.data.d')
+    if embed:
+      self.run_process([FILE_PACKAGER, 'test.data', '--obj-output=out.o', '--depfile=out.o.d', '--from-emcc', '--embed', '.'])
+      output = read_file('out.o.d')
+    else:
+      self.run_process([FILE_PACKAGER, 'test.data', '--js-output=test.js', '--depfile=test.data.d', '--from-emcc', '--preload', '.'])
+      output = read_file('test.data.d')
     file_packager = utils.normalize_path(shared.replace_suffix(FILE_PACKAGER, '.py'))
     file_packager = file_packager.replace(' ', '\\ ')
     lines = output.splitlines()
     split = lines.index(': \\')
     before, after = set(lines[:split]), set(lines[split + 1:])
     # Set comparison used because depfile is not order-sensitive.
-    self.assertTrue('test.data \\' in before)
-    self.assertTrue('test.js \\' in before)
+    if embed:
+      self.assertTrue('out.o \\' in before)
+    else:
+      self.assertTrue('test.data \\' in before)
+      self.assertTrue('test.js \\' in before)
     self.assertTrue(file_packager + ' \\' in after)
     self.assertTrue('. \\' in after)
     self.assertTrue('./data1.txt \\' in after)
