@@ -75,6 +75,9 @@ var LibraryPThread = {
                    '$removeRunDependency',
 #endif
                    '$spawnThread',
+#if EXIT_RUNTIME
+                   '$exitOnMainThread',
+#endif
                    '_emscripten_thread_free_data',
                    'exit',
 #if PTHREADS_DEBUG || ASSERTIONS
@@ -295,10 +298,12 @@ var LibraryPThread = {
 #endif
         } else if (cmd === 'callHandler') {
           Module[d.handler](...d.args);
+#if EXIT_RUNTIME
         } else if (cmd === 'processExit') {
           try {
             exitOnMainThread(d.code);
           } catch(e) {} // Swallow the ExitStatus exception, since we need to unwind here.
+#endif
         } else if (cmd) {
           // The received message looks like something that should be handled by this message
           // handler, (since there is a e.data.cmd field present), but is not one of the
