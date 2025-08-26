@@ -2,8 +2,12 @@
  * This file is included multiple times to declare and define a structure
  * with these messages, and then to define a lookup table translating
  * error codes to offsets of corresponding fields in the structure. */
-
+#if defined(__EMSCRIPTEN__)
+// This is intended to match the errno in llvm-libc.
+E(0,            "Success")
+#else
 E(0,            "No error information")
+#endif
 
 E(EILSEQ,       "Illegal byte sequence")
 E(EDOM,         "Domain error")
@@ -16,7 +20,12 @@ E(ENOENT,       "No such file or directory")
 E(ESRCH,        "No such process")
 E(EEXIST,       "File exists")
 
+#if defined(__EMSCRIPTEN__)
+// This is intended to match the errno in llvm-libc.
+E(EOVERFLOW,    "Value too large for defined data type")
+#else
 E(EOVERFLOW,    "Value too large for data type")
+#endif
 E(ENOSPC,       "No space left on device")
 E(ENOMEM,       "Out of memory")
 
@@ -62,7 +71,11 @@ E(ENOLCK,       "No locks available")
 
 E(EDEADLK,      "Resource deadlock would occur")
 E(ENOTRECOVERABLE, "State not recoverable")
+#if defined(__EMSCRIPTEN__)
+E(EOWNERDEAD,   "Owner died")
+#else
 E(EOWNERDEAD,   "Previous owner died")
+#endif
 E(ECANCELED,    "Operation canceled")
 E(ENOSYS,       "Function not implemented")
 E(ENOMSG,       "No message of desired type")

@@ -292,19 +292,6 @@ class Module:
 
     return types
 
-  def parse_features_section(self):
-    features = []
-    sec = self.get_custom_section('target_features')
-    if sec:
-      self.seek(sec.offset)
-      self.read_string()  # name
-      feature_count = self.read_uleb()
-      while feature_count:
-        prefix = self.read_byte()
-        features.append((chr(prefix), self.read_string()))
-        feature_count -= 1
-    return features
-
   @memoize
   def parse_dylink_section(self):
     dylink_section = next(self.sections())
@@ -562,8 +549,11 @@ class Module:
       func_type = self.get_function_types()[idx - self.num_imported_funcs()]
     return self.get_types()[func_type]
 
+  @memoize
   def get_target_features(self):
     section = self.get_custom_section('target_features')
+    if not section:
+      return {}
     self.seek(section.offset)
     assert self.read_string() == 'target_features'
     features = {}

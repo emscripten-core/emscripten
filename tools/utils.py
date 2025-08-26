@@ -6,7 +6,7 @@
 import os
 import shutil
 import sys
-from functools import wraps
+import functools
 from pathlib import Path
 
 from . import diagnostics
@@ -112,19 +112,8 @@ def delete_contents(dirname, exclude=None):
       delete_file(entry)
 
 
-# TODO(sbc): Replace with functools.cache, once we update to python 3.7
-def memoize(func):
-  results = {}
-
-  @wraps(func)
-  def helper(*args, **kwargs):
-    assert not kwargs
-    key = (func.__name__, args)
-    if key not in results:
-      results[key] = func(*args)
-    return results[key]
-
-  return helper
+# TODO(sbc): Replace with functools.cache, once we update to python 3.9
+memoize = functools.lru_cache(maxsize=None)
 
 
 # TODO: Move this back to shared.py once importing that file becoming side effect free (i.e. it no longer requires a config).
