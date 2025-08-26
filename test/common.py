@@ -84,46 +84,33 @@ if 'EM_BUILD_VERBOSE' in os.environ:
 
 
 # Default flags used to run browsers in CI testing:
-class BrowserConfig:
-  def __init__(self, data_dir_flag, default_flags, headless_flags):
-      self.data_dir_flag = data_dir_flag
-      self.default_flags = default_flags
-      self.headless_flags = headless_flags
+class ChromeConfig:
+  data_dir_flag = '--user-data-dir='
+  default_flags = (
+    # --no-sandbox because we are running as root and chrome requires
+    # this flag for now: https://crbug.com/638180
+    '--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader --enable-experimental-web-platform-features --enable-features=JavaScriptSourcePhaseImports',
+    '--enable-experimental-webassembly-features --js-flags="--experimental-wasm-stack-switching --experimental-wasm-type-reflection --experimental-wasm-rab-integration"',
+    # The runners lack sound hardware so fallback to a dummy device (and
+    # bypass the user gesture so audio tests work without interaction)
+    '--use-fake-device-for-media-stream --autoplay-policy=no-user-gesture-required',
+    # Cache options.
+    '--disk-cache-size=1 --media-cache-size=1 --disable-application-cache',
+  )
+  headless_flags = '--headless=new --window-size=1024,768 --remote-debugging-port=1234'
 
-  def configure(self, data_dir):
-    pass
-
-
-class ChromeConfig(BrowserConfig):
-  def __init__(self):
-    super().__init__(
-      data_dir_flag = '--user-data-dir=',
-      default_flags = (
-        # --no-sandbox because we are running as root and chrome requires
-        # this flag for now: https://crbug.com/638180
-        '--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader --enable-experimental-web-platform-features --enable-features=JavaScriptSourcePhaseImports',
-        '--enable-experimental-webassembly-features --js-flags="--experimental-wasm-stack-switching --experimental-wasm-type-reflection --experimental-wasm-rab-integration"',
-        # The runners lack sound hardware so fallback to a dummy device (and
-        # bypass the user gesture so audio tests work without interaction)
-        '--use-fake-device-for-media-stream --autoplay-policy=no-user-gesture-required',
-        # Cache options.
-        '--disk-cache-size=1 --media-cache-size=1 --disable-application-cache',
-      ),
-      headless_flags =
-        # Increase the window size to avoid flaky sdl tests see #24236.
-        '--headless=new --window-size=1024,768 --remote-debugging-port=1234',
-    )
+  @staticmethod
+  def configure(data_dir):
+    """Chrome has no special configuration step."""
 
 
-class FirefoxConfig(BrowserConfig):
-  def __init__(self):
-    super().__init__(
-      data_dir_flag = '-profile ',
-      default_flags = {},
-      headless_flags = '-headless',
-    )
+class FirefoxConfig:
+  data_dir_flag = '-profile '
+  default_flags = ()
+  headless_flags = '-headless'
 
-  def configure(self, data_dir):
+  @staticmethod
+  def configure(data_dir):
     shutil.copy(test_file('firefox_user.js'), os.path.join(data_dir, 'user.js'))
 
 
@@ -2415,7 +2402,7 @@ class BrowserCore(RunnerCore):
       logger.info('No EMTEST_BROWSER set. Defaulting to `google-chrome`')
       EMTEST_BROWSER = 'google-chrome'
 
-    if EMTEST_BROWSER_AUTO_CONFIG:
+    if EMTEST_BROWSER_AUTO_CONFIG and (is_chrome() or is_firefox()):
       logger.info('Using default CI configuration.')
       cls.browser_data_dir = DEFAULT_BROWSER_DATA_DIR
       if os.path.exists(cls.browser_data_dir):
@@ -2425,9 +2412,6 @@ class BrowserCore(RunnerCore):
         config = ChromeConfig()
       elif is_firefox():
         config = FirefoxConfig()
-      else:
-        logger.warning("Unknown browser type, not using default flags.")
-        config = BrowserConfig()
       EMTEST_BROWSER += f" {config.data_dir_flag}{cls.browser_data_dir} {' '.join(config.default_flags)}"
       if EMTEST_HEADLESS == 1:
         EMTEST_BROWSER += f" {config.headless_flags}"
