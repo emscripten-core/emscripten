@@ -2384,8 +2384,6 @@ class BrowserCore(RunnerCore):
       logger.info('Browser did not respond to `terminate`.  Using `kill`')
       cls.browser_proc.kill()
       cls.browser_proc.wait()
-    if cls.browser_data_dir:
-      utils.delete_dir(cls.browser_data_dir)
       cls.browser_data_dir = None
 
   @classmethod
