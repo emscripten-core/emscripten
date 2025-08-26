@@ -552,6 +552,8 @@ class Module:
   @memoize
   def get_target_features(self):
     section = self.get_custom_section('target_features')
+    if not section:
+      return {}
     self.seek(section.offset)
     assert self.read_string() == 'target_features'
     features = {}
