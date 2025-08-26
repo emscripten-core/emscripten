@@ -24,7 +24,7 @@ from tools.utils import WINDOWS, MACOS, LINUX, write_file, delete_file
 from tools import shared, building, config, utils, webassembly
 import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
-from common import skip_if, no_windows, no_mac, is_slow_test, parameterized, parameterize
+from common import skip_if, no_windows, is_slow_test, parameterized, parameterize
 from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_without_bigint
 from common import read_file, read_binary, requires_v8, requires_node, requires_dev_dependency, requires_wasm2js, requires_node_canary
 from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime, also_with_modularize
@@ -1910,15 +1910,13 @@ int main() {
   def test_emscripten_get_compiler_setting(self):
     if not self.is_optimizing() and ('-flto' in self.cflags or '-flto=thin' in self.cflags):
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/25015')
+    expected = read_file(test_file('core/emscripten_get_compiler_setting.out'))
+    expected = expected.replace('waka', utils.EMSCRIPTEN_VERSION)
+    self.do_runf('core/emscripten_get_compiler_setting.c', expected, cflags=['-sRETAIN_COMPILER_SETTINGS'])
 
-    src = test_file('core/emscripten_get_compiler_setting.c')
-    output = shared.replace_suffix(src, '.out')
-    # with assertions, a nice message is shown
-    self.set_setting('ASSERTIONS')
-    self.do_runf(src, 'You must build with -sRETAIN_COMPILER_SETTINGS', assert_returncode=NON_ZERO)
-    self.clear_setting('ASSERTIONS')
-    self.set_setting('RETAIN_COMPILER_SETTINGS')
-    self.do_runf(src, read_file(output).replace('waka', utils.EMSCRIPTEN_VERSION))
+  def test_emscripten_get_compiler_setting_error(self):
+    # with assertions, a runtime error is shown if you try to use the API without RETAIN_COMPILER_SETTINGS
+    self.do_runf('core/emscripten_get_compiler_setting.c', 'You must build with -sRETAIN_COMPILER_SETTINGS', cflags=['-sASSERTIONS'], assert_returncode=NON_ZERO)
 
   @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY=1')
   def test_emscripten_has_asyncify(self):
@@ -2669,8 +2667,6 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_attr_getstack.c')
 
   @node_pthreads
-  @no_mac('https://github.com/emscripten-core/emscripten/issues/15014')
-  @flaky('https://github.com/emscripten-core/emscripten/issues/15014')
   def test_pthread_abort(self):
     self.set_setting('PROXY_TO_PTHREAD')
     # Add the onAbort handler at runtime during preRun.  This means that onAbort
