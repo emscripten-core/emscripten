@@ -2416,7 +2416,7 @@ class BrowserCore(RunnerCore):
       EMTEST_BROWSER = 'google-chrome'
 
     if EMTEST_BROWSER_AUTO_CONFIG:
-      logger.info('Using default to CI configuration.')
+      logger.info('Using default CI configuration.')
       cls.browser_data_dir = DEFAULT_BROWSER_DATA_DIR
       if os.path.exists(cls.browser_data_dir):
         utils.delete_dir(cls.browser_data_dir)
