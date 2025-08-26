@@ -5690,7 +5690,7 @@ Waste<3> *getMore() {
   def test_symbol_map(self, opts, wasm):
     def read_symbol_map(symbols_file):
       symbols = read_file(symbols_file)
-      lines = [line.split(':') for line in symbols.splitlines()]
+      lines = [line.split(':', 1) for line in symbols.splitlines()]
       return lines
 
     def get_minified_middle(symbols_file):
@@ -5706,27 +5706,35 @@ Waste<3> *getMore() {
           return True
       return False
 
-    create_file('src.c', r'''
+    create_file('src.cpp', r'''
 #include <emscripten.h>
 
+namespace foo {
+
+EMSCRIPTEN_KEEPALIVE void* cpp_func(int foo) {
+  return 0;
+}
+
+}
+
 EM_JS(int, run_js, (), {
-out(new Error().stack);
-return 0;
+  out(new Error().stack);
+  return 0;
 });
 
 EMSCRIPTEN_KEEPALIVE
-void middle() {
-if (run_js()) {
-  // fake recursion that is never reached, to avoid inlining in binaryen and LLVM
-  middle();
-}
+extern "C" void middle() {
+  if (run_js()) {
+    // fake recursion that is never reached, to avoid inlining in binaryen and LLVM
+    middle();
+  }
 }
 
 int main() {
-EM_ASM({ _middle() });
+  EM_ASM({ _middle() });
 }
 ''')
-    cmd = [EMCC, 'src.c', '--emit-symbol-map'] + opts
+    cmd = [EMXX, 'src.cpp', '--emit-symbol-map'] + opts
     if wasm != 1:
       cmd.append(f'-sWASM={wasm}')
     self.run_process(cmd)
@@ -5749,6 +5757,10 @@ EM_ASM({ _middle() });
       self.assertTrue(is_js_symbol_map('a.out.js.symbols'), 'Primary symbols file should store JS mappings')
     elif wasm == 1:
       self.assertFalse(is_js_symbol_map('a.out.js.symbols'), 'Primary symbols file should store Wasm mappings')
+      if '-O2' in opts:
+        self.assertFileContents(test_file('other/test_symbol_map.O2.symbols'), read_file('a.out.js.symbols'))
+      else:
+        self.assertFileContents(test_file('other/test_symbol_map.O3.symbols'), read_file('a.out.js.symbols'))
     elif wasm == 2:
       # special case when both JS and Wasm targets are created
       minified_middle_2 = get_minified_middle('a.out.wasm.js.symbols')
