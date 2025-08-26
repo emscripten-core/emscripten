@@ -39,7 +39,12 @@ function createWasmAudioWorkletProcessor(audioParams) {
       this.samplesPerChannel = opts.samplesPerChannel;
       this.bytesPerChannel = this.samplesPerChannel * {{{ getNativeTypeSize('float') }}};
 
-      // Creates the output views (see createOutputViews() docs)
+      // Prepare the output views; see createOutputViews(). The 'minimum alloc'
+      // firstly stops STACK_OVERFLOW_CHECK failing (since the stack will be
+      // full if we allocate all the available space, with 16 bytes being the
+      // minimum allo size due to alignments) leaving room for a single
+      // AudioSampleFrame as a minumum. There's an arbitrary maximum of 64, for
+      // the case where a multi-MB stack is passed.
       this.outputViews = new Array(Math.min(((wwParams.stackSize - /*minimum alloc*/ 16) / this.bytesPerChannel) | 0, /*sensible limit*/ 64));
 #if ASSERTIONS
       console.assert(this.outputViews.length > 0, `AudioWorklet needs more stack allocating (at least ${this.bytesPerChannel})`);
@@ -55,12 +60,8 @@ function createWasmAudioWorkletProcessor(audioParams) {
 
     /**
      * Create up-front as many typed views for marshalling the output data as
-     * may be required (with an arbitrary maximum of 64, for the case where a
-     * multi-MB stack is passed), allocated at the *top* of the worklet's stack
-     * (and whose addresses are fixed). The 'minimum alloc' firstly stops
-     * STACK_OVERFLOW_CHECK failing (since the stack will be full, and 16 bytes
-     * being the minimum allocation size due to alignments) and leaves room for
-     * a single AudioSampleFrame as a minumum.
+     * may be required, allocated at the *top* of the worklet's stack (and whose
+     * addresses are fixed). 
      */
     createOutputViews() {
       // These are still alloc'd to take advantage of the overflow checks, etc.
@@ -89,7 +90,8 @@ function createWasmAudioWorkletProcessor(audioParams) {
      */
     process(inputList, outputList, parameters) {
 #if ALLOW_MEMORY_GROWTH
-      // recreate the output views if the heap has changed
+      // Recreate the output views if the heap has changed
+      // TODO: add support for GROWABLE_ARRAYBUFFERS
       if (HEAPF32.buffer != this.outputViews[0].buffer) {
         this.createOutputViews();
       }
@@ -121,11 +123,12 @@ function createWasmAudioWorkletProcessor(audioParams) {
         stackMemoryStruct += {{{ C_STRUCTS.AudioParamFrame.__size__ }}};
         stackMemoryData += parameters[entry].byteLength;
       }
+      var oldStackPtr = stackSave();
 #if ASSERTIONS
+      console.assert(oldStackPtr == this.ctorOldStackPtr, 'AudioWorklet stack address has unexpectedly moved');
       console.assert(outputViewsNeeded <= this.outputViews.length, `Too many AudioWorklet outputs (need ${outputViewsNeeded} but have stack space for ${this.outputViews.length})`);
 #endif
 
-      var oldStackPtr = stackSave();
       // Allocate the necessary stack space. All pointer variables are in bytes;
       // 'structPtr' starts at the first struct entry (all run sequentially)
       // and is the working start to each record; 'dataPtr' is the same for the
