@@ -7965,7 +7965,7 @@ void* operator new(size_t size) {
           # a new section, a line like ".debug_str contents:"
           sections[curr_section_name] = '\n'.join(lines[curr_section_start:i])
         curr_section_name = line.split(' ')[0]
-        curr_section_start = i+1
+        curr_section_start = i + 1
 
     # make sure the right sections exist
     self.assertIn('.debug_abbrev', sections)
