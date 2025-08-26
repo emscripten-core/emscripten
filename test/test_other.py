@@ -10069,7 +10069,23 @@ int main() {
   # Tests that Emscripten-provided header files can be cleanly included standalone.
   # Also check they can be included in C code (where possible).
   @is_slow_test
-  def test_standalone_system_headers(self):
+  @parameterized({
+    'ab': ('ab',),
+    'cd': ('cd',),
+    'ef': ('ef',),
+    'gh': ('gh',),
+    'ij': ('ij',),
+    'kl': ('kl',),
+    'mn': ('mn',),
+    'op': ('op',),
+    'qr': ('qr',),
+    'st': ('st',),
+    'uv': ('uv',),
+    'wx': ('wx',),
+    'yz': ('yz',),
+    'other': ('*',),
+  })
+  def test_standalone_system_headers(self, prefix):
     # Test oldest C standard, and the default C standard
     # This also tests that each header file is self contained and includes
     # everything it needs.
@@ -10084,10 +10100,15 @@ int main() {
         directories[''].append(elem)
 
     for directory, headers in directories.items():
-      print('dir: ' + directory)
       for header in headers:
         if not header.endswith('.h'):
           continue
+        # Process files depending on first char of the file in different test cases for parallelization, though
+        # special case SDL_ prefix to parallelize better.
+        first_char = (header[4] if header.startswith('SDL_') else header[0]).lower()
+        if first_char not in prefix or (prefix == '*' and first_char.isalpha()):
+          continue
+
         print('header: ' + header)
         # These headers cannot be included in isolation.
         # e.g: error: unknown type name 'EGLDisplay'
@@ -13196,29 +13217,26 @@ int main(void) {
     self.assertContained('function signature mismatch: foo', stderr)
 
   # Verifies that warning messages that Closure outputs are recorded to console
-  @is_slow_test
-  def test_closure_warnings(self):
-    # Default should be no warnings
-    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1'], stderr=PIPE)
-    self.assertNotContained('WARNING', proc.stderr)
-    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-Wno-closure'], stderr=PIPE)
-    self.assertNotContained('WARNING', proc.stderr)
-
-    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-Wclosure'], stderr=PIPE)
-    self.assertContained('WARNING - [JSC_REFERENCE_BEFORE_DECLARE] Variable referenced before declaration', proc.stderr)
-
-    self.expect_fail([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-Werror=closure'])
-
-    # Run the same tests again with deprecated `-sCLOSURE_WARNINGS` setting instead
-    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-Wno-deprecated'], stderr=PIPE)
-    self.assertNotContained('WARNING', proc.stderr)
-    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-sCLOSURE_WARNINGS=quiet', '-Wno-deprecated'], stderr=PIPE)
-    self.assertNotContained('WARNING', proc.stderr)
-
-    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-sCLOSURE_WARNINGS=warn', '-Wno-deprecated'], stderr=PIPE)
-    self.assertContained('WARNING - [JSC_REFERENCE_BEFORE_DECLARE] Variable referenced before declaration', proc.stderr)
-
-    self.expect_fail([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-sCLOSURE_WARNINGS=error', '-Wno-deprecated'])
+  @parameterized({
+    '': ([], None),
+    'wno_closure': (['-Wno-closure'], None),
+    'wclosure': (['-Wclosure'], 'WARNING - [JSC_REFERENCE_BEFORE_DECLARE] Variable referenced before declaration'),
+    'error_closure': (['-Werror=closure'], 'FAIL'),
+    'wno_deprecated': (['-Wno-deprecated'], None),
+    'wno_deprecated_quiet': (['-sCLOSURE_WARNINGS=quiet', '-Wno-deprecated'], None),
+    'wno_deprecated_warn': (['-sCLOSURE_WARNINGS=warn', '-Wno-deprecated'], 'WARNING - [JSC_REFERENCE_BEFORE_DECLARE] Variable referenced before declaration'),
+    'wno_deprecated_error': (['-sCLOSURE_WARNINGS=error', '-Wno-deprecated'], 'FAIL'),
+  })
+  def test_closure_warnings(self, flags, outcome):
+    cmd = [EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1'] + flags
+    if outcome == 'FAIL':
+      self.expect_fail(cmd)
+    else:
+      proc = self.run_process(cmd, stderr=PIPE)
+      if outcome is None:
+        self.assertNotContained('WARNING', proc.stderr)
+      else:
+        self.assertContained(outcome, proc.stderr)
 
   def test_bitcode_input(self):
     # Verify that bitcode files are accepted as input
