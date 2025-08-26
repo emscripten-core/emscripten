@@ -168,7 +168,7 @@ def flaky(note=''):
           return f(*args, **kwargs)
         except AssertionError as exc:
           preserved_exc = exc
-          logging.info(f'Retrying flaky test (attempt {i}/{EMTEST_RETRY_FLAKY} failed): {exc}')
+          logging.info(f'Retrying flaky test "{f.__name__}" (attempt {i}/{EMTEST_RETRY_FLAKY} failed): {exc}')
       raise AssertionError('Flaky test has failed too many times') from preserved_exc
 
     return modified

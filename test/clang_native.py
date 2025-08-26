@@ -14,6 +14,15 @@ logger = logging.getLogger('clang_native')
 
 
 def get_native_triple():
+  # On Raspberry Pi 5, the target triple for native compilation must exactly
+  # match 'aarch64-linux-gnu', or clang will not find the native sysroot.
+  # Users on a Pi 5 can set environment variable
+  # EMTEST_NATIVE_COMPILATION_TRIPLE=aarch64-linux-gnu
+  # to be able to override the native triple for Pi 5 compilation.
+  native_compilation_triple = os.getenv('EMTEST_NATIVE_COMPILATION_TRIPLE')
+  if native_compilation_triple:
+    return native_compilation_triple
+
   arch = {
       'aarch64': 'arm64',
       'arm64': 'arm64',
@@ -32,7 +41,8 @@ def get_native_triple():
 def get_clang_native_args():
   triple = ['--target=' + get_native_triple()]
   if MACOS:
-    return triple + ['-isystem', path_from_root('system/include/libcxx')]
+    sysroot = run_process(['xcrun', '--show-sdk-path'], stdout=PIPE).stdout.strip()
+    return triple + ['-isystem', path_from_root('system/include/libcxx'), f'--sysroot={sysroot}']
   elif os.name == 'nt':
     # TODO: If Windows.h et al. are needed, will need to add something like '-isystemC:/Program
     # Files (x86)/Microsoft SDKs/Windows/v7.1A/Include'.

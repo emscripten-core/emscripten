@@ -885,7 +885,7 @@ f.close()
 
       if not shutil.which(conf['build'][0]):
         # Use simple test if applicable
-        print('Skipping %s test for CMake support; build tool found found: %s.' % (generator, conf['build'][0]))
+        print('Skipping %s test for CMake support; build tool not found: %s.' % (generator, conf['build'][0]))
         continue
 
       cmakelistsdir = test_file('cmake', test_dir)
@@ -1707,6 +1707,9 @@ int f() {
     self.emcc(test_file('module/test_stdin.c'), args=args, output_filename='out.js')
 
     for engine in config.JS_ENGINES:
+      if engine == config.V8_ENGINE:
+        print('skipping v8 due to https://github.com/emscripten-core/emscripten/issues/25010')
+        continue
       output = self.run_js('out.js', engine, input='abcdef\nghijkl\n')
       self.assertContained('abcdef\nghijkl\neof', output)
 
@@ -6904,7 +6907,7 @@ int main(int argc, char **argv) {
       # If the LANG env. var doesn't exist (Windows), ask Node for the language.
       try:
         cmd = config.NODE_JS + ['-e', 'console.log(navigator.languages[0])']
-        expected_lang = subprocess.check_output(cmd, stderr=subprocess.NULL)
+        expected_lang = subprocess.check_output(cmd, stderr=subprocess.DEVNULL)
         expected_lang = expected_lang.decode('utf-8').strip().replace('-', '_')
         expected_lang = f'{expected_lang}.UTF-8'
       except Exception:
@@ -7034,43 +7037,40 @@ This locale is not the C locale.
     self.set_setting('FILESYSTEM', 0)
     self.do_runf('hello_libcxx.cpp', 'hello, world!')
 
-  @is_slow_test
-  def test_no_nuthin(self):
-    # check FILESYSTEM is automatically set, and effective
+  # Verifies that filesystem is automatically omitted, and can be
+  # manually disabled too, and both improve code size.
+  @parameterized({
+    'no_assertions': (['-sASSERTIONS=0'], 120000),
+    'o1': (['-O1'], 91000),
+    'o2': (['-O2'], 46000),
+    'o3_closure': (['-O3', '--closure=1'], 17000),
+    # -Wno-closure is needed due to https://github.com/google/closure-compiler/issues/4108
+    'o3_closure_js': (['-O3', '--closure=1', '-Wno-closure', '-sWASM=0'], 36000),
+    'o3_closure2_js': (['-O3', '--closure=2', '-Wno-closure', '-sWASM=0'], 33000), # might change now and then
+  })
+  def test_no_filesystem_code_size(self, opts, absolute):
+    print('opts, absolute:', opts, absolute)
+    sizes = {}
 
-    def test(opts, absolute):
-      print('opts, absolute:', opts, absolute)
-      sizes = {}
+    def do(name, source, moar_opts):
+      self.clear()
+      # pad the name to a common length so that doesn't effect the size of the
+      # output
+      padded_name = name + '_' * (20 - len(name))
+      self.run_process([EMCC, test_file(source), '-o', padded_name + '.js'] + self.get_cflags() + opts + moar_opts)
+      sizes[name] = os.path.getsize(padded_name + '.js')
+      if os.path.exists(padded_name + '.wasm'):
+        sizes[name] += os.path.getsize(padded_name + '.wasm')
+      self.assertContained('hello, world!', self.run_js(padded_name + '.js'))
 
-      def do(name, source, moar_opts):
-        self.clear()
-        # pad the name to a common length so that doesn't effect the size of the
-        # output
-        padded_name = name + '_' * (20 - len(name))
-        self.run_process([EMCC, test_file(source), '-o', padded_name + '.js'] + self.get_cflags() + opts + moar_opts)
-        sizes[name] = os.path.getsize(padded_name + '.js')
-        if os.path.exists(padded_name + '.wasm'):
-          sizes[name] += os.path.getsize(padded_name + '.wasm')
-        self.assertContained('hello, world!', self.run_js(padded_name + '.js'))
-
-      do('normal', 'hello_world_fopen.c', [])
-      do('no_fs', 'hello_world.c', []) # without fopen, we should auto-detect we do not need full fs support and can do FILESYSTEM=0
-      do('no_fs_manual', 'hello_world.c', ['-sFILESYSTEM=0'])
-      print('  ', sizes)
-      self.assertLess(sizes['no_fs'], sizes['normal'])
-      self.assertLess(sizes['no_fs'], absolute)
-      # manual can usually remove a tiny bit more
-      self.assertLess(sizes['no_fs_manual'], sizes['no_fs'] + 30)
-
-    test(['-sASSERTIONS=0'], 120000) # we don't care about code size with assertions
-    test(['-O1'], 91000)
-    test(['-O2'], 46000)
-    test(['-O3', '--closure=1'], 17000)
-    # js too
-    # -Wclosure is needed due to
-    # https://github.com/google/closure-compiler/issues/4108
-    test(['-O3', '--closure=1', '-Wno-closure', '-sWASM=0'], 36000)
-    test(['-O3', '--closure=2', '-Wno-closure', '-sWASM=0'], 33000) # might change now and then
+    do('normal', 'hello_world_fopen.c', [])
+    do('no_fs', 'hello_world.c', []) # without fopen, we should auto-detect we do not need full fs support and can do FILESYSTEM=0
+    do('no_fs_manual', 'hello_world.c', ['-sFILESYSTEM=0'])
+    print('  ', sizes)
+    self.assertLess(sizes['no_fs'], sizes['normal'])
+    self.assertLess(sizes['no_fs'], absolute)
+    # manual can usually remove a tiny bit more
+    self.assertLess(sizes['no_fs_manual'], sizes['no_fs'] + 30)
 
   def test_no_main_loop(self):
     MAINLOOP = 'var MainLoop'
@@ -8728,11 +8728,10 @@ int main() {
     self.do_other_test('test_em_asm_i64.cpp')
     self.do_other_test('test_em_asm_i64.cpp', force_c=True)
 
+  def test_EM_ASM_i64_nobigint(self):
     self.set_setting('WASM_BIGINT', 0)
     expected = 'Invalid character 106("j") in readEmAsmArgs!'
-    self.do_runf('other/test_em_asm_i64.cpp',
-                 expected_output=expected,
-                 assert_returncode=NON_ZERO)
+    self.do_runf('other/test_em_asm_i64.cpp', expected_output=expected, assert_returncode=NON_ZERO)
 
   def test_eval_ctor_ordering(self):
     # ensure order of execution remains correct, even with a bad ctor
@@ -10070,7 +10069,23 @@ int main() {
   # Tests that Emscripten-provided header files can be cleanly included standalone.
   # Also check they can be included in C code (where possible).
   @is_slow_test
-  def test_standalone_system_headers(self):
+  @parameterized({
+    'ab': ('ab',),
+    'cd': ('cd',),
+    'ef': ('ef',),
+    'gh': ('gh',),
+    'ij': ('ij',),
+    'kl': ('kl',),
+    'mn': ('mn',),
+    'op': ('op',),
+    'qr': ('qr',),
+    'st': ('st',),
+    'uv': ('uv',),
+    'wx': ('wx',),
+    'yz': ('yz',),
+    'other': ('*',),
+  })
+  def test_standalone_system_headers(self, prefix):
     # Test oldest C standard, and the default C standard
     # This also tests that each header file is self contained and includes
     # everything it needs.
@@ -10085,10 +10100,15 @@ int main() {
         directories[''].append(elem)
 
     for directory, headers in directories.items():
-      print('dir: ' + directory)
       for header in headers:
         if not header.endswith('.h'):
           continue
+        # Process files depending on first char of the file in different test cases for parallelization, though
+        # special case SDL_ prefix to parallelize better.
+        first_char = (header[4] if header.startswith('SDL_') else header[0]).lower()
+        if first_char not in prefix or (prefix == '*' and first_char.isalpha()):
+          continue
+
         print('header: ' + header)
         # These headers cannot be included in isolation.
         # e.g: error: unknown type name 'EGLDisplay'
@@ -13197,29 +13217,26 @@ int main(void) {
     self.assertContained('function signature mismatch: foo', stderr)
 
   # Verifies that warning messages that Closure outputs are recorded to console
-  @is_slow_test
-  def test_closure_warnings(self):
-    # Default should be no warnings
-    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1'], stderr=PIPE)
-    self.assertNotContained('WARNING', proc.stderr)
-    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-Wno-closure'], stderr=PIPE)
-    self.assertNotContained('WARNING', proc.stderr)
-
-    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-Wclosure'], stderr=PIPE)
-    self.assertContained('WARNING - [JSC_REFERENCE_BEFORE_DECLARE] Variable referenced before declaration', proc.stderr)
-
-    self.expect_fail([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-Werror=closure'])
-
-    # Run the same tests again with deprecated `-sCLOSURE_WARNINGS` setting instead
-    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-Wno-deprecated'], stderr=PIPE)
-    self.assertNotContained('WARNING', proc.stderr)
-    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-sCLOSURE_WARNINGS=quiet', '-Wno-deprecated'], stderr=PIPE)
-    self.assertNotContained('WARNING', proc.stderr)
-
-    proc = self.run_process([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-sCLOSURE_WARNINGS=warn', '-Wno-deprecated'], stderr=PIPE)
-    self.assertContained('WARNING - [JSC_REFERENCE_BEFORE_DECLARE] Variable referenced before declaration', proc.stderr)
-
-    self.expect_fail([EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1', '-sCLOSURE_WARNINGS=error', '-Wno-deprecated'])
+  @parameterized({
+    '': ([], None),
+    'wno_closure': (['-Wno-closure'], None),
+    'wclosure': (['-Wclosure'], 'WARNING - [JSC_REFERENCE_BEFORE_DECLARE] Variable referenced before declaration'),
+    'error_closure': (['-Werror=closure'], 'FAIL'),
+    'wno_deprecated': (['-Wno-deprecated'], None),
+    'wno_deprecated_quiet': (['-sCLOSURE_WARNINGS=quiet', '-Wno-deprecated'], None),
+    'wno_deprecated_warn': (['-sCLOSURE_WARNINGS=warn', '-Wno-deprecated'], 'WARNING - [JSC_REFERENCE_BEFORE_DECLARE] Variable referenced before declaration'),
+    'wno_deprecated_error': (['-sCLOSURE_WARNINGS=error', '-Wno-deprecated'], 'FAIL'),
+  })
+  def test_closure_warnings(self, flags, outcome):
+    cmd = [EMCC, test_file('test_closure_warning.c'), '-O3', '--closure=1'] + flags
+    if outcome == 'FAIL':
+      self.expect_fail(cmd)
+    else:
+      proc = self.run_process(cmd, stderr=PIPE)
+      if outcome is None:
+        self.assertNotContained('WARNING', proc.stderr)
+      else:
+        self.assertContained(outcome, proc.stderr)
 
   def test_bitcode_input(self):
     # Verify that bitcode files are accepted as input
@@ -13443,7 +13460,6 @@ int main () {
   @requires_wasm_eh
   def test_standalone_wasm_exceptions(self):
     self.set_setting('STANDALONE_WASM')
-    self.set_setting('WASM_BIGINT')
     self.wasm_engines = []
     self.cflags += ['-fwasm-exceptions']
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
@@ -15602,8 +15618,6 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   })
   @requires_v8
   def test_add_js_function_bigint(self, memory64, wasm_function):
-    self.set_setting('WASM_BIGINT')
-
     if memory64:
       self.require_wasm64()
 
