@@ -6,7 +6,7 @@
 import os
 import shutil
 import sys
-from functools import lru_cache
+import functools
 from pathlib import Path
 
 from . import diagnostics
@@ -113,7 +113,7 @@ def delete_contents(dirname, exclude=None):
 
 
 # TODO(sbc): Replace with functools.cache, once we update to python 3.9
-memoize = lru_cache(maxsize=None)
+memoize = functools.lru_cache(maxsize=None)
 
 
 # TODO: Move this back to shared.py once importing that file becoming side effect free (i.e. it no longer requires a config).
