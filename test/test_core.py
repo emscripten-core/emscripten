@@ -24,7 +24,7 @@ from tools.utils import WINDOWS, MACOS, LINUX, write_file, delete_file
 from tools import shared, building, config, utils, webassembly
 import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
-from common import skip_if, no_windows, no_mac, is_slow_test, parameterized, parameterize
+from common import skip_if, no_windows, is_slow_test, parameterized, parameterize
 from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_without_bigint
 from common import read_file, read_binary, requires_v8, requires_node, requires_dev_dependency, requires_wasm2js, requires_node_canary
 from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime, also_with_modularize
@@ -1910,15 +1910,13 @@ int main() {
   def test_emscripten_get_compiler_setting(self):
     if not self.is_optimizing() and ('-flto' in self.cflags or '-flto=thin' in self.cflags):
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/25015')
+    expected = read_file(test_file('core/emscripten_get_compiler_setting.out'))
+    expected = expected.replace('waka', utils.EMSCRIPTEN_VERSION)
+    self.do_runf('core/emscripten_get_compiler_setting.c', expected, cflags=['-sRETAIN_COMPILER_SETTINGS'])
 
-    src = test_file('core/emscripten_get_compiler_setting.c')
-    output = shared.replace_suffix(src, '.out')
-    # with assertions, a nice message is shown
-    self.set_setting('ASSERTIONS')
-    self.do_runf(src, 'You must build with -sRETAIN_COMPILER_SETTINGS', assert_returncode=NON_ZERO)
-    self.clear_setting('ASSERTIONS')
-    self.set_setting('RETAIN_COMPILER_SETTINGS')
-    self.do_runf(src, read_file(output).replace('waka', utils.EMSCRIPTEN_VERSION))
+  def test_emscripten_get_compiler_setting_error(self):
+    # with assertions, a runtime error is shown if you try to use the API without RETAIN_COMPILER_SETTINGS
+    self.do_runf('core/emscripten_get_compiler_setting.c', 'You must build with -sRETAIN_COMPILER_SETTINGS', cflags=['-sASSERTIONS'], assert_returncode=NON_ZERO)
 
   @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY=1')
   def test_emscripten_has_asyncify(self):
@@ -2582,6 +2580,7 @@ The current type of b is: 9
 
   @node_pthreads
   @also_with_modularize
+  @flaky('https://github.com/emscripten-core/emscripten/issues/25026')
   def test_pthread_proxying(self):
     if '-sMODULARIZE' in self.cflags:
       if self.get_setting('WASM') == 0:
@@ -2668,8 +2667,6 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_attr_getstack.c')
 
   @node_pthreads
-  @no_mac('https://github.com/emscripten-core/emscripten/issues/15014')
-  @flaky('https://github.com/emscripten-core/emscripten/issues/15014')
   def test_pthread_abort(self):
     self.set_setting('PROXY_TO_PTHREAD')
     # Add the onAbort handler at runtime during preRun.  This means that onAbort
@@ -4763,6 +4760,10 @@ res64 - external 64\n''', header='''\
     'missing_assertions': ('libc,libmalloc,libc++abi', False, False, True),
   })
   def test_dylink_syslibs(self, syslibs, expect_pass=True, with_reversed=True, assertions=True):
+    # When testing in WASMFS mode, we also need to force the WASMFS syslib into the test.
+    if self.get_setting('WASMFS') and syslibs != '1':
+      syslibs += ',libwasmfs'
+
     # one module uses libcxx, need to force its inclusion when it isn't the main
     if not with_reversed and self.dylink_reversed:
       self.skipTest('with_reversed is false')
@@ -5464,6 +5465,7 @@ Pass: 0.000012 0.000012''')
 
   @no_modularize_instance('uses Module object directly')
   @no_strict('TODO: Fails in -sSTRICT mode due to an unknown reason.')
+  @no_wasmfs('depends on FS.createLazyFile which WASMFS does not have')
   def test_files(self):
     # Use closure here, to test we don't break FS stuff
     if '-O3' in self.cflags and self.is_wasm2js():
@@ -5808,6 +5810,7 @@ got: 10
       self.set_setting('LINKABLE', linkable)
       self.do_core_test('test_istream.cpp')
 
+  @no_wasmfs('depends on FS.makedev which WASMFS does not have')
   def test_fs_base(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
     self.add_pre_run(read_file(test_file('fs/test_fs_base.js')))
@@ -5895,6 +5898,7 @@ got: 10
     self.cflags += ['-lnodefs.js']
     self.do_runf('fs/test_noderawfs_nofollow.c', 'success')
 
+  @no_wasmfs('depends on FS.trackingDelegate which WASMFS does not have')
   def test_fs_trackingdelegate(self):
     self.set_setting('FS_DEBUG')
     self.do_run_in_out_file_test('fs/test_trackingdelegate.c')
@@ -6184,6 +6188,9 @@ Module.onRuntimeInitialized = () => {
   @requires_node
   @no_wasmfs('Assertion failed: "fd" in symlink_on_nodefs.c line 62. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_unistd_symlink_on_nodefs(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
+
     # Also, other detected discrepancies if you do end up running this test on NODEFS:
     # test expects /, but Windows gives \ as path slashes.
     # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
@@ -6881,6 +6888,7 @@ void* operator new(size_t size) {
   @no_4gb('runs out of memory')
   @is_slow_test
   @crossplatform
+  @no_wasmfs('depends on MEMFS which WASMFS does not have')
   def test_poppler(self):
     # See https://github.com/emscripten-core/emscripten/issues/20757
     self.cflags.extend(['-Wno-deprecated-declarations', '-Wno-nontrivial-memaccess'])
@@ -6906,6 +6914,9 @@ void* operator new(size_t size) {
   @needs_make('make')
   @is_slow_test
   def test_openjpeg(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
+
     def line_splitter(data):
       out = ''
       counter = 0
@@ -7164,6 +7175,7 @@ void* operator new(size_t size) {
     'files': (['-DUSE_FILES'],),
   })
   @no_modularize_instance('uses Module object directly')
+  @no_wasmfs('depends on MEMFS which WASMFS does not have')
   def test_FS_exports(self, extra_args):
     # these used to be exported, but no longer are by default
     def test(output_prefix='', args=None, assert_returncode=0):
@@ -8633,6 +8645,7 @@ Module.onRuntimeInitialized = () => {
     self.cflags += ['--memoryprofiler', '--js-library', 'lib.js']
     self.do_runf('main.c', 'able to run memprof')
 
+  @no_wasmfs('depends on MEMFS which WASMFS does not have')
   def test_fs_dict(self):
     self.set_setting('FORCE_FILESYSTEM')
     self.cflags += ['-lidbfs.js']
@@ -8651,6 +8664,7 @@ Module.onRuntimeInitialized = () => {
     self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=preRun']
     self.do_run('int main() { return 0; }', 'object\nobject\nobject\nobject\nobject\nobject')
 
+  @no_wasmfs('depends on MEMFS which WASMFS does not have')
   def test_fs_dict_none(self):
     # if IDBFS and NODEFS are not enabled, they are not present.
     self.set_setting('FORCE_FILESYSTEM')

@@ -241,6 +241,9 @@ var LibraryPThread = {
       worker.onmessage = (e) => {
         var d = e['data'];
         var cmd = d.cmd;
+#if PTHREADS_DEBUG
+        dbg(`main thread: received message '${cmd}' from worker. ${d}`);
+#endif
 
         // If this message is intended to a recipient that is not the main
         // thread, forward it to the target thread.
@@ -283,6 +286,13 @@ var LibraryPThread = {
           // Worker wants to postMessage() to itself to implement setImmediate()
           // emulation.
           worker.postMessage(d);
+#if ENVIRONMENT_MAY_BE_NODE
+        } else if (cmd === 'uncaughtException') {
+          // Message handler for Node.js specific out-of-order behavior:
+          // https://github.com/nodejs/node/issues/59617
+          // A pthread sent an uncaught exception event. Re-raise it on the main thread.
+          worker.onerror(d.error);
+#endif
         } else if (cmd === 'callHandler') {
           Module[d.handler](...d.args);
         } else if (cmd) {
@@ -308,6 +318,13 @@ var LibraryPThread = {
       if (ENVIRONMENT_IS_NODE) {
         worker.on('message', (data) => worker.onmessage({ data: data }));
         worker.on('error', (e) => worker.onerror(e));
+
+#if PTHREADS_DEBUG
+        worker.on('exit', (code) => {
+          if (worker.pthread_ptr) dbg(`Worker hosting pthread ${ptrToString(worker.pthread_ptr)} has terminated with code ${code}.`);
+          else dbg(`Worker has terminated with code ${code}.`);
+        });
+#endif
       }
 #endif
 
