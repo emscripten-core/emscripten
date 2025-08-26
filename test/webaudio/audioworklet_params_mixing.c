@@ -5,7 +5,9 @@
 #include <emscripten/webaudio.h>
 
 // Tests processing two stereo audio inputs being mixed to a single stereo audio
-// output in process(), then applying a fade from the parameters.
+// output in process(), then applying a fade from the parameters. Since this can
+// create variable parameter data sizes, depending on the browser, it's also the
+// ideal to test audio worklets don't corrupt TLS variables.
 
 // This needs to be big enough for the stereo output, 2x inputs, 2x params and
 // the worker stack. To note that different browsers have different stack size
@@ -15,12 +17,18 @@
 // Shared file playback and bootstrap
 #include "audioworklet_test_shared.inc"
 
+// TLS test value to verify the JS-side stays within its stack frame (this is
+// zeroed in the *main* thread on startup).
+__thread int tlsTest = 0x1337D00D;
+
 // Callback to process and mix the audio tracks
 bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, AudioSampleFrame* outputs, int numParams, const AudioParamFrame* params, void* data) {
 #ifdef TEST_AND_EXIT
   audioProcessedCount++;
 #endif
 
+  // JS-setup code shouldn't stomp on this, plus the main thread didn't clear it
+  assert(tlsTest == 0x1337D00D);
   // Single stereo output
   assert(numOutputs == 1);
   assert(outputs[0].numberOfChannels == 2);
@@ -145,6 +153,8 @@ void initialisedWithParams(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* da
   assert(success && "Audio worklet failed initialised()");
   emscripten_out("Audio worklet initialised");
 
+  // Clear the TLS variable (from the main thread)
+  tlsTest = 0;
   // Custom audio params we'll use as a fader
   WebAudioParamDescriptor faderParam[] = {
     {

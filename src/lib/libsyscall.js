@@ -10,9 +10,6 @@ var SyscallsLibrary = {
                    '$PATH',
                    '$FS',
 #endif
-#if SYSCALL_DEBUG
-                   '$strError',
-#endif
   ],
   $SYSCALLS: {
 #if SYSCALLS_REQUIRE_FILESYSTEM

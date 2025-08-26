@@ -49,7 +49,8 @@ void test() {
   struct stat s;
 
   //
-  // chmod a file
+  // chmod()ing a file should change metadata modification time (ctime),
+  // but not the file modification time (mtime)
   //
   // get the current ctime for the file
   memset(&s, 0, sizeof s);
@@ -69,7 +70,8 @@ void test() {
   assert(s.st_mtime == lastmtime);
 
   //
-  // fchmod a file
+  // fchmod()ing a file should change metadata modification time,
+  // but not the file modification time
   //
   lastctime = s.st_ctime;
   lastmtime = s.st_mtime;
@@ -85,8 +87,11 @@ void test() {
   assert(s.st_mtime == lastmtime);
 
   //
-  // fchmodat a file
+  // fchmodat()ing a file should also only change metadata modification time,
+  // but not the file modification time.
   //
+  memset(&s, 0, sizeof s);
+  stat("otherfile", &s);
   lastctime = s.st_ctime;
   lastmtime = s.st_mtime;
   sleep(1);
