@@ -114,14 +114,14 @@ class FirefoxConfig:
     shutil.copy(test_file('firefox_user.js'), os.path.join(data_dir, 'user.js'))
 
 
-DEFAULT_BROWSER_DATA_DIR = path_from_root('out/browser-profile')
-
 # Special value for passing to assert_returncode which means we expect that program
 # to fail with non-zero return code, but we don't care about specifically which one.
 NON_ZERO = -1
 
 TEST_ROOT = path_from_root('test')
 LAST_TEST = path_from_root('out/last_test.txt')
+
+DEFAULT_BROWSER_DATA_DIR = path_from_root('out/browser-profile')
 
 WEBIDL_BINDER = shared.bat_suffix(path_from_root('tools/webidl_binder'))
 
@@ -2402,7 +2402,7 @@ class BrowserCore(RunnerCore):
       logger.info('No EMTEST_BROWSER set. Defaulting to `google-chrome`')
       EMTEST_BROWSER = 'google-chrome'
 
-    if EMTEST_BROWSER_AUTO_CONFIG and (is_chrome() or is_firefox()):
+    if EMTEST_BROWSER_AUTO_CONFIG:
       logger.info('Using default CI configuration.')
       cls.browser_data_dir = DEFAULT_BROWSER_DATA_DIR
       if os.path.exists(cls.browser_data_dir):
@@ -2412,6 +2412,8 @@ class BrowserCore(RunnerCore):
         config = ChromeConfig()
       elif is_firefox():
         config = FirefoxConfig()
+      else:
+        exit_with_error("EMTEST_BROWSER_AUTO_CONFIG only currently works with firefox or chrome.")
       EMTEST_BROWSER += f" {config.data_dir_flag}{cls.browser_data_dir} {' '.join(config.default_flags)}"
       if EMTEST_HEADLESS == 1:
         EMTEST_BROWSER += f" {config.headless_flags}"
