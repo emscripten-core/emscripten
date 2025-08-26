@@ -588,11 +588,12 @@ function createSwimlaneChart(data) {
     .attr('d', function(d) { return d.path; });
 
   // draw the selection area
+  var selectionExtent = [
+         d3.min(items, function(d) { return d.start; }),
+         d3.max(items, function(d) { return d.end; })];
   var brush = d3.svg.brush()
     .x(x)
-    .extent([
-         d3.min(items, function(d) { return d.start; }),
-         d3.max(items, function(d) { return d.end; })])
+    .extent(selectionExtent)
     .on("brush", display);
 
   mini.append('g')
@@ -606,8 +607,8 @@ function createSwimlaneChart(data) {
   display();
 
   function display () {
-    var minExtent = Math.max(0, brush.extent()[0]);
-    var maxExtent = Math.min(lastEndTime, brush.extent()[1]);
+    var minExtent = Math.max(selectionExtent[0], brush.extent()[0]);
+    var maxExtent = Math.min(selectionExtent[1], brush.extent()[1]);
     var visItems = items.filter(function (d) { return d.start < maxExtent && d.end > minExtent});
 
     mini.select('.brush').call(brush.extent([minExtent, maxExtent]));
