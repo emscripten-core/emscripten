@@ -1,7 +1,7 @@
 Test
 Errno: File exists
 Errno: Not a directory
-Errno: No error information
+Errno: Success
 Read 0 bytes
 Wrote 0 bytes
 Wrote 25 bytes
