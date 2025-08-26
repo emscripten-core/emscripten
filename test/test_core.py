@@ -399,6 +399,7 @@ def with_both_text_decoder(f):
 no_minimal_runtime = make_no_decorator_for_setting('MINIMAL_RUNTIME')
 no_safe_heap = make_no_decorator_for_setting('SAFE_HEAP')
 no_strict = make_no_decorator_for_setting('STRICT')
+no_big_endian = make_no_decorator_for_setting('SUPPORT_BIG_ENDIAN')
 
 
 def is_sanitizing(args):
@@ -6575,6 +6576,7 @@ void* operator new(size_t size) {
     '': ([],),
     'nontrapping': (['-mnontrapping-fptoint'],),
   })
+  @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_sse1(self, args):
     src = test_file('sse/test_sse1.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse', '-o', 'test_sse1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6597,6 +6599,7 @@ void* operator new(size_t size) {
     '': ([],),
     'nontrapping': (['-mnontrapping-fptoint'],),
   })
+  @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_sse2(self, args):
     src = test_file('sse/test_sse2.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6610,6 +6613,7 @@ void* operator new(size_t size) {
   @wasm_simd
   @requires_native_clang
   @requires_x64_cpu
+  @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_sse3(self):
     src = test_file('sse/test_sse3.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse3', '-Wno-argument-outside-range', '-o', 'test_sse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6623,6 +6627,7 @@ void* operator new(size_t size) {
   @wasm_simd
   @requires_native_clang
   @requires_x64_cpu
+  @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_ssse3(self):
     src = test_file('sse/test_ssse3.cpp')
     self.run_process([shared.CLANG_CXX, src, '-mssse3', '-Wno-argument-outside-range', '-o', 'test_ssse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6638,6 +6643,7 @@ void* operator new(size_t size) {
   @requires_native_clang
   @requires_x64_cpu
   @is_slow_test
+  @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_sse4_1(self):
     src = test_file('sse/test_sse4_1.cpp')
     # Run with inlining disabled to avoid slow LLVM behavior with lots of macro expanded loops inside a function body.
@@ -6656,6 +6662,7 @@ void* operator new(size_t size) {
     '': (False,),
     '2': (True,),
   })
+  @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_sse4(self, use_4_2):
     msse4 = '-msse4.2' if use_4_2 else '-msse4'
     src = test_file('sse/test_sse4_2.cpp')
@@ -6677,6 +6684,7 @@ void* operator new(size_t size) {
     '': ([],),
     'nontrapping': (['-mnontrapping-fptoint'],),
   })
+  @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_avx(self, args):
     src = test_file('sse/test_avx.cpp')
     self.run_process([shared.CLANG_CXX, src, '-mavx', '-Wno-argument-outside-range', '-Wpedantic', '-o', 'test_avx', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6697,6 +6705,7 @@ void* operator new(size_t size) {
     '': ([],),
     'nontrapping': (['-mnontrapping-fptoint'],),
   })
+  @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_avx2(self, args):
     src = test_file('sse/test_avx2.cpp')
     self.run_process([shared.CLANG_CXX, src, '-mavx2', '-Wno-argument-outside-range', '-Wpedantic', '-o', 'test_avx2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
