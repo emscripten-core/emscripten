@@ -5867,6 +5867,7 @@ got: 10
     os.makedirs('existing/a')
     self.cflags += ['-lnodefs.js']
     suffix = ''
+    # Windows does not add a name_pipe to test expectations.
     if self.get_setting('WASMFS'):
       suffix = '.wasmfs_win' if WINDOWS else '.wasmfs'
     elif self.is_wasm2js():
