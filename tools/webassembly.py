@@ -522,6 +522,34 @@ class Module:
   def has_name_section(self):
     return self.get_custom_section('name') is not None
 
+  @memoize
+  def get_function_names(self):
+    num_funcs = self.num_imported_funcs() + len(self.get_functions())
+    names = [None] * num_funcs
+
+    name_section = self.get_custom_section('name')
+    if not name_section:
+      return names
+
+    self.seek(name_section.offset)
+    self.read_string()  # section name
+    section_end = name_section.offset + name_section.size
+
+    while self.tell() < section_end:
+      subsection_id = self.read_byte()
+      subsection_size = self.read_uleb()
+      if subsection_id == 1:  # function names
+        count = self.read_uleb()
+        for _ in range(count):
+          func_idx = self.read_uleb()
+          func_name = self.read_string()
+          assert func_idx < len(names)
+          names[func_idx] = func_name
+      else:
+        self.skip(subsection_size)
+
+    return names
+
   @once
   def _calc_indexes(self):
     self.imports_by_kind = {}

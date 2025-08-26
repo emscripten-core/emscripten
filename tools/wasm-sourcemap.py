@@ -28,6 +28,7 @@ sys.path.insert(0, __rootdir__)
 from tools import utils
 from tools.system_libs import DETERMINISTIC_PREFIX
 from tools.shared import path_from_root
+from tools import webassembly
 
 EMSCRIPTEN_PREFIX = utils.normalize_path(path_from_root())
 
@@ -233,47 +234,6 @@ def extract_comp_dir_map(text):
   return map_stmt_list_to_comp_dir
 
 
-# This function parses DW_TAG_subprogram entries and gets low_pc and high_pc for
-# each function in a list of
-# [((low_pc0, high_pc0), func0), ((low_pc1, high_pc1), func1), ... ]
-# The result list will be sorted in the increasing order of low_pcs.
-def extract_func_ranges(text):
-  # The example of a DW_TAG_subprogram is
-  #
-  # 0x000000ba:   DW_TAG_subprogram
-  #                 DW_AT_low_pc  (0x0000005f)
-  #                 DW_AT_high_pc  (0x00000071)
-  #                 DW_AT_frame_base  (DW_OP_WASM_location 0x3 0x0, DW_OP_stack_value)
-  #                 DW_AT_name  ("foo")
-  #                 DW_AT_decl_file  ("../foo.c")
-  #                 DW_AT_decl_line  (3)
-  #                 DW_AT_external  (true)
-  #
-  # This parses the value of DW_AT_low_pc, DW_AT_high_pc, and DW_AT_name
-  # attributes.
-  func_ranges = []
-  dw_tags = re.split(r'\r?\n(?=0x[0-9a-f]+:)', text)
-  for tag in dw_tags:
-    if re.search(r"0x[0-9a-f]+:\s+DW_TAG_subprogram", tag):
-      name = None
-      low_pc = None
-      high_pc = None
-      m = re.search(r'DW_AT_low_pc\s+\(0x([0-9a-f]+)\)', tag)
-      if m:
-        low_pc = int(m.group(1), 16)
-      m = re.search(r'DW_AT_high_pc\s+\(0x([0-9a-f]+)\)', tag)
-      if m:
-        high_pc = int(m.group(1), 16)
-      m = re.search(r'DW_AT_name\s+\("([^"]+)"\)', tag)
-      if m:
-        name = m.group(1)
-      if name and low_pc and high_pc:
-        func_ranges.append(((low_pc, high_pc), name))
-  # Sort the list based on low_pcs
-  func_ranges = sorted(func_ranges, key=lambda item: item[0][0])
-  return func_ranges
-
-
 def read_dwarf_entries(wasm, options):
   if options.dwarfdump_output:
     output = Path(options.dwarfdump_output).read_bytes()
@@ -342,19 +302,35 @@ def read_dwarf_entries(wasm, options):
   return sorted(entries, key=lambda entry: entry['address'])
 
 
+def read_func_ranges(wasm_input):
+  with webassembly.Module(wasm_input) as module:
+    if not module.has_name_section():
+      return []
+    funcs = module.get_functions()
+    func_names = module.get_function_names()[module.num_imported_funcs():]
+    assert len(funcs) == len(func_names)
+
+    # Replace '__original_main' with 'main'
+    try:
+      original_main_index = func_names.index('__original_main')
+      func_names[original_main_index] = 'main'
+    except ValueError:
+      pass
+
+    func_ranges = [(n, (f.offset, f.offset + f.size)) for n, f in zip(func_names, funcs)]
+    return func_ranges
+
+
 def build_sourcemap(entries, func_ranges, code_section_offset, options):
   base_path = options.basepath
   collect_sources = options.sources
   prefixes = SourceMapPrefixes(options.prefix, options.load_prefix, base_path)
 
-  for i in range(len(func_ranges)):
-    (low_pc, high_pc), name = func_ranges[i]
-    func_ranges[i] = ((low_pc + code_section_offset), (high_pc + code_section_offset)), name
-  func_low_pcs = [item[0][0] for item in func_ranges]
+  func_low_pcs = [item[1][0] for item in func_ranges]
 
   sources = []
   sources_content = []
-  names = [item[1] for item in func_ranges]
+  names = [item[0] for item in func_ranges]
   mappings = []
   sources_map = {}
   last_address = 0
@@ -365,11 +341,13 @@ def build_sourcemap(entries, func_ranges, code_section_offset, options):
 
   # Get the function ID that the given address falls into
   def get_function_id(address):
+    if not func_ranges:
+      return None
     index = bisect.bisect_right(func_low_pcs, address)
     if index == 0: # The address is lower than the first function's start
       return None
     candidate_index = index - 1
-    (low_pc, high_pc), name = func_ranges[candidate_index]
+    name, (low_pc, high_pc) = func_ranges[candidate_index]
     # Check the address within the candidate's [low_pc, high_pc) range. If not,
     # it is in a gap between functions.
     if low_pc <= address < high_pc:
@@ -437,6 +415,7 @@ def main():
     wasm = infile.read()
 
   entries = read_dwarf_entries(wasm_input, options)
+  func_ranges = read_func_ranges(wasm_input)
 
   code_section_offset = get_code_section_offset(wasm)
 
