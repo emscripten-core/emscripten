@@ -71,7 +71,11 @@ E(ENOLCK,       "No locks available")
 
 E(EDEADLK,      "Resource deadlock would occur")
 E(ENOTRECOVERABLE, "State not recoverable")
+#if defined(__EMSCRIPTEN__)
+E(EOWNERDEAD,   "Owner died")
+#else
 E(EOWNERDEAD,   "Previous owner died")
+#endif
 E(ECANCELED,    "Operation canceled")
 E(ENOSYS,       "Function not implemented")
 E(ENOMSG,       "No message of desired type")
