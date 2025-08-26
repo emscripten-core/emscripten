@@ -378,9 +378,9 @@ commands:
             EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
             EMTEST_HEADLESS: "1"
-            EMTEST_BROWSER: "$HOME/firefox/firefox"
             DISPLAY: ":0"
           command: |
+            export EMTEST_BROWSER="$HOME/firefox/firefox"
             # There are tests in the browser test suite that using libraries
             # that are not included by "./embuilder build ALL".  For example the
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
