@@ -24,7 +24,7 @@ from tools.utils import WINDOWS, MACOS, LINUX, write_file, delete_file
 from tools import shared, building, config, utils, webassembly
 import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
-from common import skip_if, no_windows, no_mac, is_slow_test, parameterized, parameterize
+from common import skip_if, no_windows, is_slow_test, parameterized, parameterize
 from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_without_bigint
 from common import read_file, read_binary, requires_v8, requires_node, requires_dev_dependency, requires_wasm2js, requires_node_canary
 from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime, also_with_modularize
@@ -1908,14 +1908,15 @@ int main() {
     self.do_runf('test_emscripten_get_now.c', 'Timer resolution is good')
 
   def test_emscripten_get_compiler_setting(self):
-    src = test_file('core/emscripten_get_compiler_setting.c')
-    output = shared.replace_suffix(src, '.out')
-    # with assertions, a nice message is shown
-    self.set_setting('ASSERTIONS')
-    self.do_runf(src, 'You must build with -sRETAIN_COMPILER_SETTINGS', assert_returncode=NON_ZERO)
-    self.clear_setting('ASSERTIONS')
-    self.set_setting('RETAIN_COMPILER_SETTINGS')
-    self.do_runf(src, read_file(output).replace('waka', utils.EMSCRIPTEN_VERSION))
+    if not self.is_optimizing() and ('-flto' in self.cflags or '-flto=thin' in self.cflags):
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/25015')
+    expected = read_file(test_file('core/emscripten_get_compiler_setting.out'))
+    expected = expected.replace('waka', utils.EMSCRIPTEN_VERSION)
+    self.do_runf('core/emscripten_get_compiler_setting.c', expected, cflags=['-sRETAIN_COMPILER_SETTINGS'])
+
+  def test_emscripten_get_compiler_setting_error(self):
+    # with assertions, a runtime error is shown if you try to use the API without RETAIN_COMPILER_SETTINGS
+    self.do_runf('core/emscripten_get_compiler_setting.c', 'You must build with -sRETAIN_COMPILER_SETTINGS', cflags=['-sASSERTIONS'], assert_returncode=NON_ZERO)
 
   @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY=1')
   def test_emscripten_has_asyncify(self):
@@ -2083,6 +2084,11 @@ int main(int argc, char **argv) {
   def test_runtime_stacksave(self):
     self.do_runf('core/test_runtime_stacksave.c', 'success')
 
+  # This helper function removes the special 'Warning: Enlarging memory arrays, this is not fast!'
+  # warning in WASM2JS modes that can interfere with testing.
+  def remove_growth_warning(self, text):
+    return re.sub(r"\nWarning: Enlarging memory arrays, this is not fast! \d+,\d+\n", "\n", text)
+
   # Tests that -sMINIMAL_RUNTIME builds can utilize -sALLOW_MEMORY_GROWTH option.
   @no_4gb('memory growth issues')
   @no_2gb('memory growth issues')
@@ -2096,7 +2102,9 @@ int main(int argc, char **argv) {
     self.do_runf(src, 'OOM', assert_returncode=NON_ZERO)
     # Win with it
     self.set_setting('ALLOW_MEMORY_GROWTH')
-    self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+    output = self.do_runf(src)
+    output = self.remove_growth_warning(output)
+    self.assertContained('*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*', output)
 
   @no_2gb('memory growth issues')
   @no_4gb('memory growth issues')
@@ -2117,7 +2125,9 @@ int main(int argc, char **argv) {
 
     # Win with it
     self.set_setting('ALLOW_MEMORY_GROWTH')
-    self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+    output = self.do_runf(src)
+    output = self.remove_growth_warning(output)
+    self.assertContained('*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*', output)
     win = read_file(self.output_name('test_memorygrowth'))
 
     if '-O2' in self.cflags and self.is_wasm2js():
@@ -2132,7 +2142,9 @@ int main(int argc, char **argv) {
     # (SAFE_HEAP would instrument the tracing code itself, leading to recursion)
     if not self.get_setting('SAFE_HEAP'):
       self.cflags += ['--tracing']
-      self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+      output = self.do_runf(src)
+      output = self.remove_growth_warning(output)
+      self.assertContained('*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*', output)
 
   @no_4gb('memory growth issues')
   @no_2gb('memory growth issues')
@@ -2150,7 +2162,9 @@ int main(int argc, char **argv) {
 
     # Win with it
     self.set_setting('ALLOW_MEMORY_GROWTH')
-    self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+    output = self.do_runf(src)
+    output = self.remove_growth_warning(output)
+    self.assertContained('*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*', output)
     win = read_file(self.output_name('test_memorygrowth_2'))
 
     if '-O2' in self.cflags and self.is_wasm2js():
@@ -2579,6 +2593,7 @@ The current type of b is: 9
 
   @node_pthreads
   @also_with_modularize
+  @flaky('https://github.com/emscripten-core/emscripten/issues/25026')
   def test_pthread_proxying(self):
     if '-sMODULARIZE' in self.cflags:
       if self.get_setting('WASM') == 0:
@@ -2665,8 +2680,6 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_attr_getstack.c')
 
   @node_pthreads
-  @no_mac('https://github.com/emscripten-core/emscripten/issues/15014')
-  @flaky('https://github.com/emscripten-core/emscripten/issues/15014')
   def test_pthread_abort(self):
     self.set_setting('PROXY_TO_PTHREAD')
     # Add the onAbort handler at runtime during preRun.  This means that onAbort
@@ -2722,6 +2735,9 @@ The current type of b is: 9
 
   @no_modularize_instance('uses global Module objecgt')
   def test_pthread_run_script(self):
+    if not self.is_optimizing() and ('-flto' in self.cflags or '-flto=thin' in self.cflags):
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/25015')
+
     shutil.copy(test_file('pthread/foo.js'), '.')
     self.do_runf('pthread/test_pthread_run_script.c')
 
@@ -4757,6 +4773,10 @@ res64 - external 64\n''', header='''\
     'missing_assertions': ('libc,libmalloc,libc++abi', False, False, True),
   })
   def test_dylink_syslibs(self, syslibs, expect_pass=True, with_reversed=True, assertions=True):
+    # When testing in WASMFS mode, we also need to force the WASMFS syslib into the test.
+    if self.get_setting('WASMFS') and syslibs != '1':
+      syslibs += ',libwasmfs'
+
     # one module uses libcxx, need to force its inclusion when it isn't the main
     if not with_reversed and self.dylink_reversed:
       self.skipTest('with_reversed is false')
@@ -5288,7 +5308,11 @@ int main()
     self.do_run(src, '956867869')
 
   def test_rand(self):
-    self.do_core_test('test_rand.c')
+    # llvmlibc has a different implementation for rand(), so verify
+    # against a separate test output
+    out_suffix = '_llvmlibc' if '-lllvmlibc' in self.cflags else ''
+
+    self.do_core_test('test_rand.c', out_suffix=out_suffix)
 
   def test_strtod(self):
     self.do_core_test('test_strtod.c')
@@ -5454,6 +5478,7 @@ Pass: 0.000012 0.000012''')
 
   @no_modularize_instance('uses Module object directly')
   @no_strict('TODO: Fails in -sSTRICT mode due to an unknown reason.')
+  @no_wasmfs('depends on FS.createLazyFile which WASMFS does not have')
   def test_files(self):
     # Use closure here, to test we don't break FS stuff
     if '-O3' in self.cflags and self.is_wasm2js():
@@ -5489,6 +5514,7 @@ Module = {
 
     self.do_run_in_out_file_test('test_files.c')
 
+  @no_wasmfs('Error: EAGAIN: resource temporarily unavailable. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_module_stdin(self):
     create_file('pre.js', '''
     var data = [10, 20, 40, 30];
@@ -5723,6 +5749,7 @@ got: 10
       self.set_setting('FORCE_FILESYSTEM')
     self.do_core_test('test_poll.c')
 
+  @no_wasmfs('st.f_ffree > st.f_files, same issue than in wasmfs.test_fs_nodefs_statvfs. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_statvfs(self):
     self.do_core_test('test_statvfs.c')
 
@@ -5796,6 +5823,7 @@ got: 10
       self.set_setting('LINKABLE', linkable)
       self.do_core_test('test_istream.cpp')
 
+  @no_wasmfs('depends on FS.makedev which WASMFS does not have')
   def test_fs_base(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
     self.add_pre_run(read_file(test_file('fs/test_fs_base.js')))
@@ -5865,6 +5893,7 @@ got: 10
 
   @requires_node
   @crossplatform
+  @no_wasmfs('Assertion failed: st.f_ffree <= st.f_files && "Free inodes should not exceed total inodes". https://github.com/emscripten-core/emscripten/issues/25035')
   def test_fs_nodefs_statvfs(self):
     # externally setup an existing folder structure: existing/a
     if self.get_setting('WASMFS'):
@@ -5882,6 +5911,7 @@ got: 10
     self.cflags += ['-lnodefs.js']
     self.do_runf('fs/test_noderawfs_nofollow.c', 'success')
 
+  @no_wasmfs('depends on FS.trackingDelegate which WASMFS does not have')
   def test_fs_trackingdelegate(self):
     self.set_setting('FS_DEBUG')
     self.do_run_in_out_file_test('fs/test_trackingdelegate.c')
@@ -5915,6 +5945,7 @@ got: 10
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @crossplatform
   @also_with_nodefs_both
+  @no_wasmfs('Assertion failed: open("./does-not-exist/", O_CREAT, 0777) == -1 in test_fs_enotdir.c line 20. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_fs_enotdir(self):
     if MACOS and '-DNODERAWFS' in self.cflags:
       self.skipTest('BSD libc sets a different errno')
@@ -6020,6 +6051,7 @@ Module.onRuntimeInitialized = () => {
   @also_with_nodefs_both
   @no_windows('stat ino values dont match on windows')
   @crossplatform
+  @no_wasmfs('Assertion failed: "a_ino == sta.st" in test_fs_readdir_ino_matches_stat_ino.c, line 58. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_fs_readdir_ino_matches_stat_ino(self):
     self.do_runf('fs/test_fs_readdir_ino_matches_stat_ino.c', 'success')
 
@@ -6161,12 +6193,17 @@ Module.onRuntimeInitialized = () => {
 
   @also_with_noderawfs
   @no_windows('TODO: Fails on Windows due to an unknown reason.')
+  @no_wasmfs('Assertion failed: "r == 3" in test_unistd_write_broken_link.c line 22. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_unistd_write_broken_link(self):
     self.do_run_in_out_file_test('unistd/test_unistd_write_broken_link.c')
 
   @no_windows('Skipping NODEFS test, since it would require administrative privileges.')
   @requires_node
+  @no_wasmfs('Assertion failed: "fd" in symlink_on_nodefs.c line 62. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_unistd_symlink_on_nodefs(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
+
     # Also, other detected discrepancies if you do end up running this test on NODEFS:
     # test expects /, but Windows gives \ as path slashes.
     # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
@@ -6182,7 +6219,10 @@ Module.onRuntimeInitialized = () => {
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @also_with_nodefs
+  @no_wasmfs('fails in testing fdatasync, tcgetpgrp and pipe. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_unistd_misc(self):
+    if self.get_setting('STRICT'):
+      self.set_setting('ALLOW_UNIMPLEMENTED_SYSCALLS')
     self.do_run_in_out_file_test('unistd/misc.c', interleaved_output=False)
 
   @also_with_standalone_wasm()
@@ -6861,6 +6901,7 @@ void* operator new(size_t size) {
   @no_4gb('runs out of memory')
   @is_slow_test
   @crossplatform
+  @no_wasmfs('depends on MEMFS which WASMFS does not have')
   def test_poppler(self):
     # See https://github.com/emscripten-core/emscripten/issues/20757
     self.cflags.extend(['-Wno-deprecated-declarations', '-Wno-nontrivial-memaccess'])
@@ -6886,6 +6927,9 @@ void* operator new(size_t size) {
   @needs_make('make')
   @is_slow_test
   def test_openjpeg(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
+
     def line_splitter(data):
       out = ''
       counter = 0
@@ -6978,6 +7022,10 @@ void* operator new(size_t size) {
   @no_asan('autodebug logging interferes with asan')
   @with_env_modify({'EMCC_AUTODEBUG': '1'})
   def test_autodebug_wasm(self):
+    # failed to asynchronously prepare wasm: LinkError: WebAssembly.instantiate(): Import #13 module="env" function="get_v128": function import requires a callable
+    if '-msimd128' in self.cflags:
+      self.skipTest('Does not work with SIMD. https://github.com/emscripten-core/emscripten/issues/25001')
+
     # Even though the test itself doesn't directly use reference types,
     # Binaryen's '--instrument-locals' will add their logging functions if
     # reference-types is enabled. So make sure this test passes when
@@ -7140,6 +7188,7 @@ void* operator new(size_t size) {
     'files': (['-DUSE_FILES'],),
   })
   @no_modularize_instance('uses Module object directly')
+  @no_wasmfs('depends on MEMFS which WASMFS does not have')
   def test_FS_exports(self, extra_args):
     # these used to be exported, but no longer are by default
     def test(output_prefix='', args=None, assert_returncode=0):
@@ -8609,6 +8658,7 @@ Module.onRuntimeInitialized = () => {
     self.cflags += ['--memoryprofiler', '--js-library', 'lib.js']
     self.do_runf('main.c', 'able to run memprof')
 
+  @no_wasmfs('depends on MEMFS which WASMFS does not have')
   def test_fs_dict(self):
     self.set_setting('FORCE_FILESYSTEM')
     self.cflags += ['-lidbfs.js']
@@ -8627,6 +8677,7 @@ Module.onRuntimeInitialized = () => {
     self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=preRun']
     self.do_run('int main() { return 0; }', 'object\nobject\nobject\nobject\nobject\nobject')
 
+  @no_wasmfs('depends on MEMFS which WASMFS does not have')
   def test_fs_dict_none(self):
     # if IDBFS and NODEFS are not enabled, they are not present.
     self.set_setting('FORCE_FILESYSTEM')
@@ -8837,6 +8888,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
   def test_return_address(self):
+    if not self.is_optimizing() and ('-flto' in self.cflags or '-flto=thin' in self.cflags):
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/25015')
+
     self.do_runf('core/test_return_address.c', 'passed', cflags=['-g'])
 
   @no_wasm2js('TODO: sanitizers in wasm2js')

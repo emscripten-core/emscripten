@@ -16,21 +16,21 @@ static void *thread_start(void *arg) {
   long n = (long)arg;
   long *mem[N] = {};
   for (long i = 0; i < N; ++i) {
-    mem[i] = (long*)malloc(4);
+    mem[i] = (long*)malloc(sizeof(long));
     *mem[i] = n+i;
   }
   for (long i = 0; i < N; ++i) {
     long k = *mem[i];
     if (k != n+i) {
       emscripten_errf("Memory corrupted! mem[i]: %ld, i: %ld, n: %ld", k, i, n);
-      pthread_exit((void*)1);
+      return (void*)1;
     }
 
     assert(*mem[i] == n+i);
     free(mem[i]);
   }
   emscripten_outf("Worker with task number %ld finished", n);
-  pthread_exit(0);
+  return (void*)0;
 }
 
 int main() {
@@ -40,9 +40,9 @@ int main() {
   }
   int result = 0;
   for (int i = 0; i < NUM_THREADS; ++i) {
-    int res = 0;
+    int res = 99;
     pthread_join(thr[i], (void**)&res);
-    result += res;
+    assert(res == 0);
   }
   printf("Test finished with result %d\n", result);
   assert(result == 0);
