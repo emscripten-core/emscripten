@@ -5678,33 +5678,24 @@ Waste<3> *getMore() {
     'wasm2js_2': [2],
   })
   def test_symbol_map(self, opts, wasm):
-    def get_symbols_lines(symbols_file):
-      self.assertTrue(os.path.isfile(symbols_file), "Symbols file %s isn't created" % symbols_file)
-      # check that the map is correct
+    def read_symbol_map(symbols_file):
       symbols = read_file(symbols_file)
-      lines = [line.split(':') for line in symbols.strip().split('\n')]
+      lines = [line.split(':') for line in symbols.splitlines()]
       return lines
 
     def get_minified_middle(symbols_file):
-      minified_middle = None
-      for minified, full in get_symbols_lines(symbols_file):
-        # handle both fastcomp and wasm backend notation
+      for minified, full in read_symbol_map(symbols_file):
         if full == 'middle':
-          minified_middle = minified
-          break
-      return minified_middle
+          return minified
+      return None
 
-    def guess_symbols_file_type(symbols_file):
-      for _minified, full in get_symbols_lines(symbols_file):
+    def is_js_symbol_map(symbols_file):
+      for _minified, full in read_symbol_map(symbols_file):
         # define symbolication file by JS specific entries
         if full in ['FUNCTION_TABLE', 'HEAP32']:
-          return 'js'
-      return 'wasm'
+          return True
+      return False
 
-    UNMINIFIED_HEAP8 = 'var HEAP8 = new '
-    UNMINIFIED_MIDDLE = 'function middle'
-
-    self.clear()
     create_file('src.c', r'''
 #include <emscripten.h>
 
@@ -5745,20 +5736,21 @@ EM_ASM({ _middle() });
 
     # Ensure symbols file type according to `-sWASM=` mode
     if wasm == 0:
-      self.assertEqual(guess_symbols_file_type('a.out.js.symbols'), 'js', 'Primary symbols file should store JS mappings')
+      self.assertTrue(is_js_symbol_map('a.out.js.symbols'), 'Primary symbols file should store JS mappings')
     elif wasm == 1:
-      self.assertEqual(guess_symbols_file_type('a.out.js.symbols'), 'wasm', 'Primary symbols file should store Wasm mappings')
+      self.assertFalse(is_js_symbol_map('a.out.js.symbols'), 'Primary symbols file should store Wasm mappings')
     elif wasm == 2:
       # special case when both JS and Wasm targets are created
       minified_middle_2 = get_minified_middle('a.out.wasm.js.symbols')
       self.assertNotEqual(minified_middle_2, None, "Missing minified 'middle' function")
-      self.assertEqual(guess_symbols_file_type('a.out.js.symbols'), 'wasm', 'Primary symbols file should store Wasm mappings')
-      self.assertEqual(guess_symbols_file_type('a.out.wasm.js.symbols'), 'js', 'Secondary symbols file should store JS mappings')
-    return
+      self.assertFalse(is_js_symbol_map('a.out.js.symbols'), 'Primary symbols file should store Wasm mappings')
+      self.assertTrue(is_js_symbol_map('a.out.wasm.js.symbols'), 'Secondary symbols file should store JS mappings')
 
     # check we don't keep unnecessary debug info with wasm2js when emitting
     # a symbol map
-    if wasm == 0 and '-O' in str(opts):
+    if wasm == 0:
+      UNMINIFIED_HEAP8 = 'var HEAP8 = new '
+      UNMINIFIED_MIDDLE = 'function middle'
       js = read_file('a.out.js')
       self.assertNotContained(UNMINIFIED_HEAP8, js)
       self.assertNotContained(UNMINIFIED_MIDDLE, js)
