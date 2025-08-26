@@ -610,8 +610,8 @@ fi
     jsengines = [('d8',     config.V8_ENGINE),
                  ('d8_g',   config.V8_ENGINE),
                  ('js',     config.SPIDERMONKEY_ENGINE),
-                 ('node',   config.NODE_JS),
-                 ('nodejs', config.NODE_JS)]
+                 ('node',   config.NODE_JS_TEST),
+                 ('nodejs', config.NODE_JS_TEST)]
     for filename, engine in jsengines:
       delete_file(SANITY_FILE)
       if type(engine) is list:
