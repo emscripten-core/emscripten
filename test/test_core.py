@@ -2084,6 +2084,11 @@ int main(int argc, char **argv) {
   def test_runtime_stacksave(self):
     self.do_runf('core/test_runtime_stacksave.c', 'success')
 
+  # This helper function removes the special 'Warning: Enlarging memory arrays, this is not fast!'
+  # warning in WASM2JS modes that can interfere with testing.
+  def remove_growth_warning(self, text):
+    return re.sub(r"\nWarning: Enlarging memory arrays, this is not fast! \d+,\d+\n", "\n", text)
+
   # Tests that -sMINIMAL_RUNTIME builds can utilize -sALLOW_MEMORY_GROWTH option.
   @no_4gb('memory growth issues')
   @no_2gb('memory growth issues')
@@ -2097,7 +2102,9 @@ int main(int argc, char **argv) {
     self.do_runf(src, 'OOM', assert_returncode=NON_ZERO)
     # Win with it
     self.set_setting('ALLOW_MEMORY_GROWTH')
-    self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+    output = self.do_runf(src)
+    output = self.remove_growth_warning(output)
+    self.assertContained('*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*', output)
 
   @no_2gb('memory growth issues')
   @no_4gb('memory growth issues')
@@ -2118,7 +2125,9 @@ int main(int argc, char **argv) {
 
     # Win with it
     self.set_setting('ALLOW_MEMORY_GROWTH')
-    self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+    output = self.do_runf(src)
+    output = self.remove_growth_warning(output)
+    self.assertContained('*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*', output)
     win = read_file(self.output_name('test_memorygrowth'))
 
     if '-O2' in self.cflags and self.is_wasm2js():
@@ -2133,7 +2142,9 @@ int main(int argc, char **argv) {
     # (SAFE_HEAP would instrument the tracing code itself, leading to recursion)
     if not self.get_setting('SAFE_HEAP'):
       self.cflags += ['--tracing']
-      self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+      output = self.do_runf(src)
+      output = self.remove_growth_warning(output)
+      self.assertContained('*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*', output)
 
   @no_4gb('memory growth issues')
   @no_2gb('memory growth issues')
@@ -2151,7 +2162,9 @@ int main(int argc, char **argv) {
 
     # Win with it
     self.set_setting('ALLOW_MEMORY_GROWTH')
-    self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+    output = self.do_runf(src)
+    output = self.remove_growth_warning(output)
+    self.assertContained('*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*', output)
     win = read_file(self.output_name('test_memorygrowth_2'))
 
     if '-O2' in self.cflags and self.is_wasm2js():
