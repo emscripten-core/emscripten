@@ -7957,13 +7957,14 @@ void* operator new(size_t size) {
     # Add a sentinel to ensure the last section gets flushed properly
     lines += [' dummy contents:']
 
+    curr_section_name = ''
     curr_section_start = -1
-    for i in range(len(lines)):
-      if ' contents:' in lines[i]:
+    for i, line in enumerate(lines):
+      if ' contents:' in line:
         if curr_section_start >= 0:
           # a new section, a line like ".debug_str contents:"
           sections[curr_section_name] = '\n'.join(lines[curr_section_start:i])
-        curr_section_name = lines[i].split(' ')[0]
+        curr_section_name = line.split(' ')[0]
         curr_section_start = i+1
 
     # make sure the right sections exist
