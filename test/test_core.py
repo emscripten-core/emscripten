@@ -6192,7 +6192,6 @@ Module.onRuntimeInitialized = () => {
     self.do_run_in_out_file_test('unistd/links.c')
 
   @also_with_noderawfs
-  @no_windows('TODO: Fails on Windows due to an unknown reason.')
   @no_wasmfs('Assertion failed: "r == 3" in test_unistd_write_broken_link.c line 22. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_unistd_write_broken_link(self):
     self.do_run_in_out_file_test('unistd/test_unistd_write_broken_link.c')
