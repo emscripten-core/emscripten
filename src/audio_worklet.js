@@ -174,7 +174,8 @@ function createWasmAudioWorkletProcessor(audioParams) {
 
       // Copy output audio descriptor structs to Wasm. 'outputsPtr' is the start
       // of the C callback's output AudioSampleFrame. 'dataPtr' will now be
-      // aligned with the output views, ending at stacktop.
+      // aligned with the output views, ending at stacktop (which is why this
+      // needs to be last).
       var /*const*/ outputsPtr = structPtr;
       for (entry of outputList) {
         // Write the AudioSampleFrame struct instance
