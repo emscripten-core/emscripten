@@ -1,5 +1,5 @@
 readlink: 'link'
-errno: No error information
+errno: Success
 
 readlink: 'file'
 errno: Invalid argument
