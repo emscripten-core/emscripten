@@ -921,7 +921,6 @@ f.close()
   # toolchain match with the actual language features that Clang supports.
   # If we update LLVM version and this test fails, copy over the new advertised features from Clang
   # and place them to cmake/Modules/Platform/Emscripten.cmake.
-  @no_windows('Skipped on Windows because CMake does not configure native Clang builds well on Windows.')
   @parameterized({
     '': ([],),
     'noforce': (['-DEMSCRIPTEN_FORCE_COMPILERS=OFF'],),
