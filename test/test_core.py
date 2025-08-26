@@ -7952,24 +7952,20 @@ void* operator new(size_t size) {
 
     # parse the sections
     sections = {}
+
+    lines = out.splitlines()
+    # Add a sentinel to ensure the last section gets flushed properly
+    lines += [' dummy contents:']
+
     curr_section_name = ''
-    curr_section_body = ''
-
-    def add_section():
-      if curr_section_name:
-        sections[curr_section_name] = curr_section_body
-
-    for line in out.splitlines():
+    curr_section_start = -1
+    for i, line in enumerate(lines):
       if ' contents:' in line:
-        # a new section, a line like ".debug_str contents:"
-        add_section()
+        if curr_section_start >= 0:
+          # a new section, a line like ".debug_str contents:"
+          sections[curr_section_name] = '\n'.join(lines[curr_section_start:i])
         curr_section_name = line.split(' ')[0]
-        curr_section_body = ''
-      else:
-        # possibly a line in a section
-        if curr_section_name:
-          curr_section_body += line + '\n'
-    add_section()
+        curr_section_start = i + 1
 
     # make sure the right sections exist
     self.assertIn('.debug_abbrev', sections)
