@@ -2685,9 +2685,25 @@ The current type of b is: 9
     # Add the onAbort handler at runtime during preRun.  This means that onAbort
     # handler will only be present in the main thread (much like it would if it
     # was passed in by pre-populating the module object on prior to loading).
-    self.add_pre_run("Module.onAbort = () => console.log('onAbort called');")
+    self.add_pre_run("Module.onAbort = () => console.log('My custom onAbort called');")
     self.cflags += ['-sINCOMING_MODULE_JS_API=preRun,onAbort']
     self.do_run_in_out_file_test('pthread/test_pthread_abort.c', assert_returncode=NON_ZERO)
+
+  # This is a stress test to verify that the Node.js postMessage() vs uncaughtException
+  # race does not affect Emscripten execution.
+  @node_pthreads
+  @is_slow_test
+  def test_stress_pthread_abort(self):
+    self.set_setting('PROXY_TO_PTHREAD')
+    # Add the onAbort handler at runtime during preRun.  This means that onAbort
+    # handler will only be present in the main thread (much like it would if it
+    # was passed in by pre-populating the module object on prior to loading).
+    self.add_pre_run("Module.onAbort = () => console.log('My custom onAbort called');")
+    self.cflags += ['-sINCOMING_MODULE_JS_API=preRun,onAbort']
+    js_file = self.build('pthread/test_pthread_abort.c')
+    self.parallel_stress_test_js_file(js_file, expected='My custom onAbort called')
+    # TODO: investigate why adding assert_returncode=NON_ZERO to above doesn't work.
+    # Is the test test_pthread_abort still flaky?
 
   @node_pthreads
   def test_pthread_abort_interrupt(self):
@@ -9642,7 +9658,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     js_file = self.build('core/test_hello_world.c')
-    self.parallel_stress_test_js_file(js_file, expected_returncode=0, expected='hello, world!', not_expected='error')
+    self.parallel_stress_test_js_file(js_file, assert_returncode=0, expected='hello, world!', not_expected='error')
 
   @needs_dylink
   def test_gl_main_module(self):
