@@ -2609,6 +2609,7 @@ The current type of b is: 9
   @also_with_modularize
   @is_slow_test
   def test_stress_pthread_proxying(self):
+    self.skipTest('https://github.com/emscripten-core/emscripten/issues/25026')
     if '-sMODULARIZE' in self.cflags:
       if self.get_setting('WASM') == 0:
         self.skipTest('MODULARIZE + WASM=0 + pthreads does not work (#16794)')
