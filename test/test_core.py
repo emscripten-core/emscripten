@@ -10002,7 +10002,7 @@ llvmlibc = make_run('llvmlibc', cflags=['-lllvmlibc'])
 # The above test scheme has a small quirk that it will also use the Big Endian version of node.js for internal
 # Emscripten compilation. At a quick test, this actually worked, so maybe this would be fine for this test harness.
 # Alternatively, we would want to find a way to separate compiler node from runtime node somehow in the harness.
-bigendian = make_run('bigendian', cflags=['-O0'], settings={'SUPPORT_BIG_ENDIAN': 1})
+bigendian0 = make_run('bigendian0', cflags=['-O0'], settings={'SUPPORT_BIG_ENDIAN': 1})
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
 del TestCoreBase # noqa
