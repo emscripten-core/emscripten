@@ -10041,26 +10041,18 @@ asani = make_run('asani', cflags=['-fsanitize=address', '--profiling', '--pre-js
 minimal0 = make_run('minimal0', cflags=['-g'], settings={'MINIMAL_RUNTIME': 1})
 llvmlibc = make_run('llvmlibc', cflags=['-lllvmlibc'])
 
-# To run the big endian test suite on a little endian Linux host:
+# To run the big endian test suite (supported by emsdk on a little endian Linux host only):
 # 1. sudo apt install -y qemu-user libc6-s390x-cross libstdc++6-s390x-cross
-# 2. wget https://nodejs.org/dist/v22.16.0/node-v22.16.0-linux-s390x.tar.xz
-# 3. tar xJf node-v22.14.0-linux-s390x.tar.xz
-# 4. run a little endian emsdk install, e.g. `emsdk install sdk-main-64bit`
-# 5. activate little endian emsdk install, e.g. `emsdk activate sdk-main-64bit`
-# 6. modify the generated emsdk install: edit file .emscripten under emsdk/ root directory, and change the line
-#       NODE_JS = emsdk_path + '/node/22.16.0_64bit/bin/node'
-#    to point to big endian node:
-#       NODE_JS = ['qemu-s390x', '-L', '/usr/s390x-linux-gnu/', '/home/user/node-v22.16.0-linux-s390x/bin/node']
-# 7. enter emsdk environment in current terminal with `source ./emsdk_env.sh`
-# 8. modify EMSDK_NODE environment variable to also point to the big endian node:
-#       export EMSDK_NODE="qemu-s390x -L /usr/s390x-linux-gnu/ /home/user/node-v22.16.0-linux-s390x/bin/node"
-# 9. run some tests in big endian mode: in Emscripten root directory, run
-#       `test/runner bigendian` to run all tests, or a single test with
-#       `test/runner bigendian.test_jslib_i64_params`
+# 2. install emsdk with big-endian node: `git clone https://github.com/emscripten-core/emsdk.git`
+#    and `./emsdk install sdk-main-64bit node-big-endian-crosscompile-22.16.0-64bit`
+# 3. activate emsdk tools: `./emsdk activate sdk-main-64bit node-big-endian-crosscompile-22.16.0-64bit`
+# 4. enter emsdk environment in current terminal with `source ./emsdk_env.sh`
+# 5. run some tests in big endian mode: `cd emscripten/main` to enter Emscripten root directory, and run
+#       `test/runner bigendian0` to run all tests, or a single test with
+#       `test/runner bigendian0.test_jslib_i64_params`
 
-# The above test scheme has a small quirk that it will also use the Big Endian version of node.js for internal
-# Emscripten compilation. At a quick test, this actually worked, so maybe this would be fine for this test harness.
-# Alternatively, we would want to find a way to separate compiler node from runtime node somehow in the harness.
+# This setup will still use the native x64 Node.js in Emscripten internal use to compile code, but
+# runs all unit tests via qemu on the s390x big endian version of Node.js.
 bigendian0 = make_run('bigendian0', cflags=['-O0'], settings={'SUPPORT_BIG_ENDIAN': 1})
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself

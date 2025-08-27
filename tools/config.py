@@ -64,7 +64,7 @@ def normalize_config_settings():
 
   # EM_CONFIG stuff
   if not JS_ENGINES:
-    JS_ENGINES = [NODE_JS]
+    JS_ENGINES = [NODE_JS_TEST if NODE_JS_TEST else NODE_JS]
 
   SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, listify(SPIDERMONKEY_ENGINE))
   NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
