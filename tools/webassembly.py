@@ -157,6 +157,21 @@ class TargetFeaturePrefix(IntEnum):
   DISALLOWED = 0x2d
 
 
+class NameType(IntEnum):
+  MODULE = 0
+  FUNCTION = 1
+  LOCAL = 2
+  LABEL = 3
+  TYPE = 4
+  TABLE = 5
+  MEMORY = 6
+  GLOBAL = 7
+  ELEMSEGMENT = 8
+  DATASEGMENT = 9
+  FIELD = 10
+  TAG = 11
+
+
 class InvalidWasmError(BaseException):
   pass
 

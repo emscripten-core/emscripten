@@ -2413,8 +2413,9 @@ def phase_binaryen(target, options, wasm_target):
   if options.emit_symbol_map:
     intermediate_debug_info -= 1
     if generating_wasm:
-      building.handle_final_wasm_symbols(wasm_file=wasm_target, symbols_file=symbols_file, debug_info=intermediate_debug_info)
-      save_intermediate_with_wasm('symbolmap', wasm_target)
+      building.write_symbol_map(wasm_target, symbols_file)
+      if not intermediate_debug_info:
+        building.strip(wasm_target, wasm_target, sections=['name'])
 
   if settings.GENERATE_DWARF and settings.SEPARATE_DWARF and generating_wasm:
     # if the dwarf filename wasn't provided, use the default target + a suffix
