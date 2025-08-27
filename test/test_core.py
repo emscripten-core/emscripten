@@ -10046,7 +10046,7 @@ llvmlibc = make_run('llvmlibc', cflags=['-lllvmlibc'])
 # 2. install emsdk with big-endian node: `./emsdk install sdk-main-64bit node-big-endian-crosscompile-22.16.0-64bit`
 # 3. activate emsdk tools: `./emsdk activate sdk-main-64bit node-big-endian-crosscompile-22.16.0-64bit`
 # 4. enter emsdk environment in current terminal with `source ./emsdk_env.sh`
-# 5. run some tests in big endian mode: in Emscripten root directory, run
+# 5. run some tests in big endian mode: `cd emscripten/main` to enter Emscripten root directory, and run
 #       `test/runner bigendian0` to run all tests, or a single test with
 #       `test/runner bigendian0.test_jslib_i64_params`
 
