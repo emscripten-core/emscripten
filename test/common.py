@@ -1579,6 +1579,17 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     assert len(long_lines) == 1
     return '\n'.join(lines)
 
+  def get_engine_with_args(self, engine=None):
+    if not engine:
+      engine = self.js_engines[0]
+    if engine == config.NODE_JS_TEST:
+      return engine + self.node_args
+    elif engine == config.V8_ENGINE:
+      return engine + self.v8_args
+    elif engine == config.SPIDERMONKEY_ENGINE:
+      return engine + self.spidermonkey_args
+    return engine
+
   def run_js(self, filename, engine=None, args=None,
              assert_returncode=0,
              interleaved_output=True,
@@ -1594,14 +1605,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     stdout = open(stdout_file, 'w')
     error = None
     timeout_error = None
-    if not engine:
-      engine = self.js_engines[0]
-    if engine == config.NODE_JS_TEST:
-      engine = engine + self.node_args
-    elif engine == config.V8_ENGINE:
-      engine = engine + self.v8_args
-    elif engine == config.SPIDERMONKEY_ENGINE:
-      engine = engine + self.spidermonkey_args
+    engine = self.get_engine_with_args(engine)
     try:
       jsrun.run_js(filename, engine, args,
                    stdout=stdout,
@@ -2086,14 +2090,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     # We will use Python multithreading, so prepare the command to run in advance, and keep the threading kernel
     # compact to avoid accessing unexpected data/functions across threads.
-    engine = self.js_engines[0]
-    if engine == config.NODE_JS_TEST:
-      engine = engine + self.node_args
-    elif engine == config.V8_ENGINE:
-      engine = engine + self.v8_args
-    elif engine == config.SPIDERMONKEY_ENGINE:
-      engine = engine + self.spidermonkey_args
-    cmd = engine + [js_file]
+    cmd = self.get_engine_with_args() + [js_file]
 
     exception_thrown = threading.Event()
     error_lock = threading.Lock()
