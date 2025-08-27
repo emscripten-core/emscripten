@@ -139,7 +139,7 @@ if not config.NODE_JS_TEST:
   config.NODE_JS_TEST = config.NODE_JS
 
 if not config.JS_ENGINES:
-  config.JS_ENGINES = [config.NODE_JS]
+  config.JS_ENGINES = [config.NODE_JS_TEST if config.NODE_JS_TEST else config.NODE_JS]
 
 
 requires_network = unittest.skipIf(os.getenv('EMTEST_SKIP_NETWORK_TESTS'), 'This test requires network access')
