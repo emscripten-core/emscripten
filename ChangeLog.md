@@ -29,9 +29,6 @@ See docs/process.md for more on how version tagging works.
 - The wasm offset converter was removed along with the `WASM_OFFSET_CONVERTER`
   setting. This feature only existed to work around an old v8 bug that was fixed
   back in 2019. (#24963)
-- emsymbolizer will now escape names in symbol maps, for example:
-  `std::out_of_range::~out_of_range\28\29` will be
-  `std::out_of_range::~out_of_range()` in the output. (#24994)
 
 4.0.13 - 08/14/25
 -----------------

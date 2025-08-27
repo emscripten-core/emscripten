@@ -11043,8 +11043,11 @@ int main() {
       out = self.run_process([emsymbolizer, '--source=symbolmap', '-f', 'test_symbolmap.js.symbols', 'test_symbolmap.wasm', address], stdout=PIPE).stdout
       self.assertIn(func, out)
 
-    check_cpp_symbolmap_info(out_to_js_call_addr, 'Namespace::foo(Namespace::SomeClass)')
-    check_cpp_symbolmap_info(unreachable_addr, 'void Namespace::bar<Namespace::SomeClass>(Namespace::SomeClass)')
+    check_cpp_symbolmap_info(out_to_js_call_addr, 'Namespace::foo')         # the function name
+    check_cpp_symbolmap_info(out_to_js_call_addr, 'Namespace::ClassA')      # the parameter
+    check_cpp_symbolmap_info(unreachable_addr, 'Namespace::bar')            # the function name
+    check_cpp_symbolmap_info(unreachable_addr, 'Namespace::ClassA')         # the type parameter
+    check_cpp_symbolmap_info(unreachable_addr, 'Namespace::ClassB')         # the parameter
 
   def test_separate_dwarf(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-g'])

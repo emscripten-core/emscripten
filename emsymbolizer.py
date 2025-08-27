@@ -223,21 +223,7 @@ def symbolize_address_symbolmap(module, address, symbol_map_file):
       index = line.find(':')
       if index == -1:
           raise ValueError(f'invalid symbolmap line: {line}')
-      return line[:index], unescape_ascii_codes(line[index + 1:])
-
-  def unescape_ascii_codes(input_str):
-      """
-      input:  std::out_of_range::~out_of_range\28\29
-      output: std::out_of_range::~out_of_range()
-      """
-      def replace_match(match):
-          code = match.group(1)
-          try:
-              return chr(int(code, 16))
-          except ValueError:
-              return match.group(0)
-      pattern = r'\\([\da-zA-Z]{1,2})'
-      return re.sub(pattern, replace_match, input_str)
+      return line[:index], line[index + 1:]
 
   func_names = {}
 
