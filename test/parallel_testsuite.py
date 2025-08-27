@@ -81,7 +81,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # reverse alphabetical order.
     tests = list(self if self.failing_and_slow_first else self.reversed_tests())
     use_cores = cap_max_workers_in_pool(min(self.max_cores, len(tests), num_cores()))
-    print('Using %s parallel test processes' % use_cores)
+    print('Using %s parallel test processes' % use_cores, file=sys.stderr)
     with multiprocessing.Manager() as manager:
       pool = multiprocessing.Pool(use_cores)
       failfast_event = manager.Event() if self.failfast else None
@@ -128,9 +128,9 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     return sorted(self, key=str, reverse=True)
 
   def combine_results(self, result, buffered_results):
-    print()
-    print('DONE: combining results on main thread')
-    print()
+    print('', file=sys.stderr)
+    print('DONE: combining results on main thread', file=sys.stderr)
+    print('', file=sys.stderr)
     # Sort the results back into alphabetical order. Running the tests in
     # parallel causes mis-orderings, this makes the results more readable.
     results = sorted(buffered_results, key=lambda res: str(res.test))
