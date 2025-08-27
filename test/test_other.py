@@ -925,6 +925,7 @@ f.close()
     '': ([],),
     'noforce': (['-DEMSCRIPTEN_FORCE_COMPILERS=OFF'],),
   })
+  @requires_native_clang
   def test_cmake_compile_features(self, args):
     os.mkdir('build_native')
     cmd = ['cmake',
