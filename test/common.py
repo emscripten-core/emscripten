@@ -2121,7 +2121,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         return
 
     threads = []
-    # Oversubscribe hardware threads to make sure execution becomes erratic
+    # Oversubscribe hardware threads to make sure scheduling becomes erratic
     while len(threads) < 2*multiprocessing.cpu_count() and not exception_thrown.is_set():
       threads += [threading.Thread(target=test_run)]
       threads[-1].start()
