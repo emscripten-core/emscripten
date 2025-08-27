@@ -10043,7 +10043,8 @@ llvmlibc = make_run('llvmlibc', cflags=['-lllvmlibc'])
 
 # To run the big endian test suite (supported by emsdk on a little endian Linux host only):
 # 1. sudo apt install -y qemu-user libc6-s390x-cross libstdc++6-s390x-cross
-# 2. install emsdk with big-endian node: `./emsdk install sdk-main-64bit node-big-endian-crosscompile-22.16.0-64bit`
+# 2. install emsdk with big-endian node: `git clone https://github.com/emscripten-core/emsdk.git`
+#    and `./emsdk install sdk-main-64bit node-big-endian-crosscompile-22.16.0-64bit`
 # 3. activate emsdk tools: `./emsdk activate sdk-main-64bit node-big-endian-crosscompile-22.16.0-64bit`
 # 4. enter emsdk environment in current terminal with `source ./emsdk_env.sh`
 # 5. run some tests in big endian mode: `cd emscripten/main` to enter Emscripten root directory, and run
