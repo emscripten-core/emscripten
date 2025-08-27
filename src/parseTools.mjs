@@ -995,11 +995,15 @@ function from64Expr(x) {
   return `Number(${x})`;
 }
 
+// Converts a value to BigInt if building for wasm64, with both 64-bit pointers
+// and 64-bit memory. Used for indices into the memory tables, for example.
 function toIndexType(x) {
   if (MEMORY64 == 1) return `BigInt(${x})`;
   return x;
 }
 
+// Converts a value to BigInt if building for wasm64, regardless of whether the
+// memory is 32- or 64-bit. Used for passing 64-bit values to the JS API.
 function to64(x) {
   if (!MEMORY64) return x;
   return `BigInt(${x})`;
