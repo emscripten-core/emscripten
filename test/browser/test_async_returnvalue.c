@@ -29,7 +29,7 @@ int sync_tunnel_bool(bool);
 int main() {
 #ifdef BAD
   EM_ASM({
-    window.disableErrorReporting = true;
+    globalThis.disableErrorReporting = true;
     window.onerror = async (e) => {
       var success = e.toString().indexOf("import sync_tunnel was not in ASYNCIFY_IMPORTS, but changed the state") > 0;
       if (success) {

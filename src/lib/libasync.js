@@ -84,7 +84,7 @@ addToLibrary({
                   !isAsyncifyImport &&
                   !changedToDisabled &&
                   !ignoredInvoke) {
-                throw new Error(`import ${x} was not in ASYNCIFY_IMPORTS, but changed the state`);
+                abort(`import ${x} was not in ASYNCIFY_IMPORTS, but changed the state`);
               }
             }
           };
@@ -664,19 +664,19 @@ addToLibrary({
   },
 #else // ASYNCIFY
   emscripten_sleep: () => {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_sleep';
+    abort('Please compile your program with async support in order to use asynchronous operations like emscripten_sleep');
   },
   emscripten_wget: (url, file) => {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget';
+    abort('Please compile your program with async support in order to use asynchronous operations like emscripten_wget');
   },
   emscripten_wget_data: (url, pbuffer, pnum, perror) => {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget_data';
+    abort('Please compile your program with async support in order to use asynchronous operations like emscripten_wget_data');
   },
   emscripten_scan_registers: (func) => {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_scan_registers';
+    abort('Please compile your program with async support in order to use asynchronous operations like emscripten_scan_registers');
   },
   emscripten_fiber_swap: (oldFiber, newFiber) => {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_swap';
+    abort('Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_swap');
   },
 #endif // ASYNCIFY
 });

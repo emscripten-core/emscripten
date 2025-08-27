@@ -60,8 +60,11 @@ function reportTopLevelError(e) {
   // MINIMAL_RUNTIME doesn't handle exit or call the below onExit handler
   // so we detect the exit by parsing the uncaught exception message.
   var message = e.message || e;
+  if (globalThis.disableErrorReporting) {
+    console.error(`ignoring top level error: ${message}`);
+    return;
+  }
   console.error(`got top level error: ${message}`);
-  if (window.disableErrorReporting) return;
   if (message.includes('unwind')) return;
   var offset = message.indexOf('exit(');
   if (offset != -1) {
@@ -109,9 +112,10 @@ if (hasModule) {
   }
 
   if (!Module['onAbort']) {
-    Module['onAbort'] = function(reason) {
+    Module['onAbort'] = (reason) => {
+      if (globalThis.disableErrorReporting) return;
       maybeReportResultToServer(`abort:${reason}`);
-    }
+    };
     Module['onAbort'].proxy = true;
   }
 

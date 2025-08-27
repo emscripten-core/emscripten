@@ -762,10 +762,10 @@ If manually bisecting:
           <hr><div id='output'></div><hr>
           <script type='text/javascript'>
             const errorHandler = async (event) => {
-              if (window.disableErrorReporting) return;
+              if (globalThis.disableErrorReporting) return;
               event.stopImmediatePropagation();
               const error = String(event instanceof ErrorEvent ? event.message : (event.reason || event));
-              window.disableErrorReporting = true;
+              globalThis.disableErrorReporting = true;
               window.onerror = null;
               var result = error.includes("test.data") ? 1 : 0;
               await fetch('/report_result?' + result);
@@ -2618,7 +2618,7 @@ Module["preRun"] = () => {
       # In this mode an exception can be thrown by the browser, and we don't
       # want the test to fail in that case so we override the error handling.
       create_file('pre.js', '''
-      window.disableErrorReporting = true;
+      globalThis.disableErrorReporting = true;
       window.addEventListener('error', (event) => {
         if (!event.message.includes('exception:fullscreen error')) {
           reportTopLevelError(event);

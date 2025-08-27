@@ -374,11 +374,11 @@ var LibraryBrowser = {
               delta *= 80;
               break;
             default:
-              throw 'unrecognized mouse wheel delta mode: ' + event.deltaMode;
+              abort('unrecognized mouse wheel delta mode: ' + event.deltaMode);
           }
           break;
         default:
-          throw 'unrecognized mouse wheel event: ' + event.type;
+          abort('unrecognized mouse wheel event: ' + event.type);
       }
       return delta;
     },
@@ -804,7 +804,7 @@ var LibraryBrowser = {
 #if BUILD_AS_WORKER
   emscripten_worker_respond_provisionally__proxy: 'sync',
   emscripten_worker_respond_provisionally: (data, size) => {
-    if (workerResponded) throw 'already responded with final response!';
+    if (workerResponded) abort('already responded with final response!');
     var transferObject = {
       'callbackId': workerCallbackId,
       'finalResponse': false,
@@ -819,7 +819,7 @@ var LibraryBrowser = {
 
   emscripten_worker_respond__proxy: 'sync',
   emscripten_worker_respond: (data, size) => {
-    if (workerResponded) throw 'already responded with final response!';
+    if (workerResponded) abort('already responded with final response!');
     workerResponded = true;
     var transferObject = {
       'callbackId': workerCallbackId,
