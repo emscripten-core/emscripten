@@ -512,16 +512,14 @@ class TestCoreBase(RunnerCore):
 
   def test_int53(self):
     if common.EMTEST_REBASELINE:
-      self.run_process([EMCC, test_file('core/test_int53.c'), '-o', 'a.js', '-DGENERATE_ANSWERS'] + self.cflags)
-      ret = self.run_process(config.NODE_JS + ['a.js'], stdout=PIPE).stdout
+      ret = self.do_runf('core/test_int53.c', interleaved_output=False, cflags=['-DGENERATE_ANSWERS'])
       write_file(test_file('core/test_int53.out'), ret)
     else:
       self.do_core_test('test_int53.c', interleaved_output=False)
 
   def test_int53_convertI32PairToI53Checked(self):
     if common.EMTEST_REBASELINE:
-      self.run_process([EMCC, test_file('core/test_convertI32PairToI53Checked.cpp'), '-o', 'a.js', '-DGENERATE_ANSWERS'] + self.cflags)
-      ret = self.run_process(config.NODE_JS + ['a.js'], stdout=PIPE).stdout
+      ret = self.do_runf('core/test_convertI32PairToI53Checked.cpp', interleaved_output=False, cflags=['-DGENERATE_ANSWERS'])
       write_file(test_file('core/test_convertI32PairToI53Checked.out'), ret)
     else:
       self.do_core_test('test_convertI32PairToI53Checked.cpp', interleaved_output=False)

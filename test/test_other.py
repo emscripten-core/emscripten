@@ -6913,28 +6913,23 @@ int main(int argc, char **argv) {
   @crossplatform
   def test_browser_language_detection(self):
     # Test HTTP Accept-Language parsing by simulating navigator.languages #8751
-    self.run_process([EMCC,
-                      test_file('test_browser_language_detection.c')])
-
     expected_lang = os.environ.get('LANG')
     if expected_lang is None:
       # If the LANG env. var doesn't exist (Windows), ask Node for the language.
-      try:
-        cmd = config.NODE_JS + ['-e', 'console.log(navigator.languages[0])']
-        expected_lang = subprocess.check_output(cmd, stderr=subprocess.DEVNULL)
-        expected_lang = expected_lang.decode('utf-8').strip().replace('-', '_')
-        expected_lang = f'{expected_lang}.UTF-8'
-      except Exception:
-        expected_lang = 'en_US.UTF-8'
+      cmd = config.NODE_JS_TEST + ['-e', 'console.log(navigator.languages[0] || "en_US")']
+      expected_lang = self.run_process(cmd, stdout=PIPE).stdout
+      expected_lang = expected_lang.strip().replace('-', '_')
+      expected_lang = f'{expected_lang}.UTF-8'
 
     # We support both "C" and system LANG here since older versions of node do
     # not expose navigator.languages.
-    self.assertContained(f'LANG=({expected_lang}|en_US.UTF-8|C.UTF-8)', self.run_js('a.out.js'), regex=True)
+    output = self.do_runf('test_browser_language_detection.c')
+    self.assertContained(f'LANG=({expected_lang}|en_US.UTF-8|C.UTF-8)', output, regex=True)
 
     # Accept-Language: fr,fr-FR;q=0.8,en-US;q=0.5,en;q=0.3
     create_file('pre.js', 'var navigator = { language: "fr" };')
-    self.run_process([EMCC, '--pre-js', 'pre.js', test_file('test_browser_language_detection.c')])
-    self.assertContained('LANG=fr.UTF-8', self.run_js('a.out.js'))
+    output = self.do_runf('test_browser_language_detection.c', cflags=['--pre-js', 'pre.js'])
+    self.assertContained('LANG=fr.UTF-8', output)
 
     # Accept-Language: fr-FR,fr;q=0.8,en-US;q=0.5,en;q=0.3
     create_file('pre.js', r'var navigator = { language: "fr-FR" };')
@@ -10002,12 +9997,12 @@ int main() {
 
   @requires_node
   def test_jsrun(self):
-    print(config.NODE_JS)
+    print(config.NODE_JS_TEST)
     jsrun.WORKING_ENGINES = {}
     # Test that engine check passes
-    self.assertTrue(jsrun.check_engine(config.NODE_JS))
+    self.assertTrue(jsrun.check_engine(config.NODE_JS_TEST))
     # Run it a second time (cache hit)
-    self.assertTrue(jsrun.check_engine(config.NODE_JS))
+    self.assertTrue(jsrun.check_engine(config.NODE_JS_TEST))
 
     # Test that engine check fails
     bogus_engine = ['/fake/inline4']
@@ -10015,14 +10010,14 @@ int main() {
     self.assertFalse(jsrun.check_engine(bogus_engine))
 
     # Test the other possible way (list vs string) to express an engine
-    if type(config.NODE_JS) is list:
-      engine2 = config.NODE_JS[0]
+    if type(config.NODE_JS_TEST) is list:
+      engine2 = config.NODE_JS_TEST[0]
     else:
-      engine2 = [config.NODE_JS]
+      engine2 = [config.NODE_JS_TEST]
     self.assertTrue(jsrun.check_engine(engine2))
 
     # Test that self.run_js requires the engine
-    self.run_js(test_file('hello_world.js'), config.NODE_JS)
+    self.run_js(test_file('hello_world.js'), config.NODE_JS_TEST)
     caught_exit = 0
     try:
       self.run_js(test_file('hello_world.js'), bogus_engine)
