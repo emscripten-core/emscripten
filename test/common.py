@@ -2112,7 +2112,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           stdio = result.stdout + result.stderr
           if not_expected is not None and not_expected in stdio:
             raise Exception(f'\n\nWhen running command "{cmd}",\nexpected string "{not_expected}" to NOT be present in output:\n----------------------------\n{stdio}\n----------------------------')
-          if expected is not None and not expected in stdio:
+          if expected is not None and expected not in stdio:
             raise Exception(f'\n\nWhen running command "{cmd}",\nexpected string "{expected}" was not found in output:\n----------------------------\n{stdio}\n----------------------------')
           if expected_returncode is not None and result.returncode != expected_returncode:
             raise Exception(f'\n\nWhen running command "{cmd}",\nreturn code {result.returncode} does not match expected return code {expected_returncode}')
