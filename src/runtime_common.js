@@ -12,24 +12,26 @@
 #include "runtime_safe_heap.js"
 #endif
 
-#if SHARED_MEMORY && ALLOW_MEMORY_GROWTH
-#include "growableHeap.js"
+#if SHARED_MEMORY && ALLOW_MEMORY_GROWTH && !GROWABLE_ARRAYBUFFERS
+// Support for growable heap + pthreads, where the buffer may change, so JS views
+// must be updated.
+function growMemViews() {
+  // `updateMemoryViews` updates all the views simultaneously, so it's enough to check any of them.
+  if (wasmMemory.buffer != HEAP8.buffer) {
+    updateMemoryViews();
+  }
+}
 #endif
 
 #if USE_ASAN
 #include "runtime_asan.js"
 #endif
 
-#if MODULARIZE && USE_READY_PROMISE
+#if MODULARIZE
 var readyPromiseResolve, readyPromiseReject;
 #endif
 
-#if PTHREADS || WASM_WORKERS
-#if !MINIMAL_RUNTIME
-var wasmModuleReceived;
-#endif
-
-#if ENVIRONMENT_MAY_BE_NODE && !WASM_ESM_INTEGRATION
+#if (PTHREADS || WASM_WORKERS) && (ENVIRONMENT_MAY_BE_NODE && !WASM_ESM_INTEGRATION)
 if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
   // Create as web-worker-like an environment as we can.
   var parentPort = worker_threads['parentPort'];
@@ -38,9 +40,23 @@ if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
     self: global,
     postMessage: (msg) => parentPort['postMessage'](msg),
   });
-}
-#endif // ENVIRONMENT_MAY_BE_NODE && !WASM_ESM_INTEGRATION
+  // Node.js Workers do not pass postMessage()s and uncaught exception events to the parent
+  // thread necessarily in the same order where they were generated in sequential program order.
+  // See https://github.com/nodejs/node/issues/59617
+  // To remedy this, capture all uncaughtExceptions in the Worker, and sequentialize those over
+  // to the same postMessage pipe that other messages use.
+  process.on("uncaughtException", (err) => {
+#if PTHREADS_DEBUG
+    dbg(`uncaughtException on worker thread: ${err.message}`);
 #endif
+    postMessage({ cmd: 'uncaughtException', error: err });
+    // Also shut down the Worker to match the same semantics as if this uncaughtException
+    // handler was not registered.
+    // (n.b. this will not shut down the whole Node.js app process, but just the Worker)
+    process.exit(1);
+  });
+}
+#endif // (PTHREADS || WASM_WORKERS) && (ENVIRONMENT_MAY_BE_NODE && !WASM_ESM_INTEGRATION)
 
 #if PTHREADS
 #include "runtime_pthread.js"
@@ -52,16 +68,6 @@ if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
 
 #if AUDIO_WORKLET
 #include "audio_worklet.js"
-#endif
-
-#if LOAD_SOURCE_MAP
-var wasmSourceMap;
-#include "source_map_support.js"
-#endif
-
-#if USE_OFFSET_CONVERTER
-var wasmOffsetConverter;
-#include "wasm_offset_converter.js"
 #endif
 
 // Memory management
@@ -132,7 +138,11 @@ var runtimeExited = false;
 }}}
 
 function updateMemoryViews() {
+#if GROWABLE_ARRAYBUFFERS
+  var b = wasmMemory.toResizableBuffer();
+#else
   var b = wasmMemory.buffer;
+#endif
   {{{ maybeExportHeap('HEAP8')   }}}HEAP8 = new Int8Array(b);
   {{{ maybeExportHeap('HEAP16')  }}}HEAP16 = new Int16Array(b);
   {{{ maybeExportHeap('HEAPU8')  }}}HEAPU8 = new Uint8Array(b);

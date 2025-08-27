@@ -297,52 +297,41 @@ var LibraryEmVal = {
       return emval_returnValue(toReturnWire, destructorsRef, rv);
     };
 #else
-    var functionBody =
-      `return function (handle, methodName, destructorsRef, args) {\n`;
-
-    var offset = 0;
-    var argsList = []; // 'arg0, arg1, arg2, ... , argN'
-    var params = ['toValue'];
-    var args = [Emval.toValue];
-    for (var i = 0; i < argCount; ++i) {
-      argsList.push(`arg${i}`);
-      params.push(`argFromPtr${i}`);
-      args.push(argFromPtr[i]);
-      functionBody +=
-        `  var arg${i} = argFromPtr${i}(args${offset ? '+' + offset : ''});\n`;
-      offset += GenericWireTypeSize;
-    }
-    var invoker;
+    var captures = {'toValue': Emval.toValue};
+    var args = argFromPtr.map((argFromPtr, i) => {
+      var captureName = `argFromPtr${i}`;
+      captures[captureName] = argFromPtr;
+      return `${captureName}(args${i ? '+' + i * GenericWireTypeSize : ''})`;
+    });
+    var functionBody;
     switch (kind){
       case {{{ cDefs['internal::EM_INVOKER_KIND::FUNCTION'] }}}:
-        invoker = 'toValue(handle)';
+        functionBody = 'toValue(handle)';
         break;
       case {{{ cDefs['internal::EM_INVOKER_KIND::CONSTRUCTOR'] }}}:
-        invoker = 'new (toValue(handle))';
+        functionBody = 'new (toValue(handle))';
         break;
       case {{{ cDefs['internal::EM_INVOKER_KIND::CAST'] }}}:
-        invoker = '';
+        functionBody = '';
         break;
       case {{{ cDefs['internal::EM_INVOKER_KIND::METHOD'] }}}:
-        params.push('getStringOrSymbol');
-        args.push(getStringOrSymbol);
-        invoker = 'toValue(handle)[getStringOrSymbol(methodName)]';
+        captures['getStringOrSymbol'] = getStringOrSymbol;
+        functionBody = 'toValue(handle)[getStringOrSymbol(methodName)]';
         break;
     }
-    functionBody +=
-      `  var rv = ${invoker}(${argsList.join(', ')});\n`;
+    functionBody += `(${args})`;
     if (!retType.isVoid) {
-      params.push('toReturnWire', 'emval_returnValue');
-      args.push(toReturnWire, emval_returnValue);
-      functionBody +=
-        '  return emval_returnValue(toReturnWire, destructorsRef, rv);\n';
+      captures['toReturnWire'] = toReturnWire;
+      captures['emval_returnValue'] = emval_returnValue;
+      functionBody = `return emval_returnValue(toReturnWire, destructorsRef, ${functionBody})`;
     }
-    functionBody +=
-      "};\n";
+    functionBody = `return function (handle, methodName, destructorsRef, args) {
+${functionBody}
+}`;
 
-    var invokerFunction = new Function(...params, functionBody)(...args);
+    var invokerFunction = new Function(Object.keys(captures), functionBody)(...Object.values(captures));
 #endif
-    var functionName = `methodCaller<(${argTypes.map(t => t.name).join(', ')}) => ${retType.name}>`;
+    var functionName = `methodCaller<(${argTypes.map(t => t.name)}) => ${retType.name}>`;
     return emval_addMethodCaller(createNamedFunction(functionName, invokerFunction));
   },
 

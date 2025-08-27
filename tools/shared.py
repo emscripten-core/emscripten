@@ -59,7 +59,7 @@ SKIP_SUBPROCS = False
 # in debian/stable (bookworm).  We need at least v18.3.0 because we make
 # use of util.parseArg which was added in v18.3.0.
 MINIMUM_NODE_VERSION = (18, 3, 0)
-EXPECTED_LLVM_VERSION = 21
+EXPECTED_LLVM_VERSION = 22
 
 # These get set by setup_temp_dirs
 TEMP_DIR = None
@@ -344,15 +344,6 @@ def check_node_version():
   return version
 
 
-def node_bigint_flags(nodejs):
-  node_version = get_node_version(nodejs)
-  # wasm bigint was enabled by default in node v16.
-  if node_version and node_version < (16, 0, 0):
-    return ['--experimental-wasm-bigint']
-  else:
-    return []
-
-
 def node_reference_types_flags(nodejs):
   node_version = get_node_version(nodejs)
   # reference types were enabled by default in node v18.
@@ -496,22 +487,23 @@ def check_sanity(force=False, quiet=False):
     utils.write_file(sanity_file, expected)
 
 
+def llvm_tool_path_with_suffix(tool, suffix):
+  if suffix:
+    tool += '-' + suffix
+  llvm_root = os.path.expanduser(config.LLVM_ROOT)
+  return os.path.join(llvm_root, exe_suffix(tool))
+
+
 # Some distributions ship with multiple llvm versions so they add
 # the version to the binaries, cope with that
-def build_llvm_tool_path(tool):
-  if config.LLVM_ADD_VERSION:
-    return os.path.join(config.LLVM_ROOT, tool + "-" + config.LLVM_ADD_VERSION)
-  else:
-    return os.path.join(config.LLVM_ROOT, tool)
+def llvm_tool_path(tool):
+  return llvm_tool_path_with_suffix(tool, config.LLVM_ADD_VERSION)
 
 
 # Some distributions ship with multiple clang versions so they add
 # the version to the binaries, cope with that
-def build_clang_tool_path(tool):
-  if config.CLANG_ADD_VERSION:
-    return os.path.join(config.LLVM_ROOT, tool + "-" + config.CLANG_ADD_VERSION)
-  else:
-    return os.path.join(config.LLVM_ROOT, tool)
+def clang_tool_path(tool):
+  return llvm_tool_path_with_suffix(tool, config.CLANG_ADD_VERSION)
 
 
 def exe_suffix(cmd):
@@ -741,19 +733,19 @@ def init():
 # file.  TODO(sbc): We should try to reduce that amount we do here and instead
 # have consumers explicitly call initialization functions.
 
-CLANG_CC = os.path.expanduser(build_clang_tool_path(exe_suffix('clang')))
-CLANG_CXX = os.path.expanduser(build_clang_tool_path(exe_suffix('clang++')))
-CLANG_SCAN_DEPS = build_llvm_tool_path(exe_suffix('clang-scan-deps'))
-LLVM_AR = build_llvm_tool_path(exe_suffix('llvm-ar'))
-LLVM_DWP = build_llvm_tool_path(exe_suffix('llvm-dwp'))
-LLVM_RANLIB = build_llvm_tool_path(exe_suffix('llvm-ranlib'))
-LLVM_NM = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-nm')))
-LLVM_DWARFDUMP = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dwarfdump')))
-LLVM_OBJCOPY = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-objcopy')))
-LLVM_STRIP = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-strip')))
-WASM_LD = os.path.expanduser(build_llvm_tool_path(exe_suffix('wasm-ld')))
-LLVM_PROFDATA = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-profdata')))
-LLVM_COV = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-cov')))
+CLANG_CC = clang_tool_path('clang')
+CLANG_CXX = clang_tool_path('clang++')
+CLANG_SCAN_DEPS = llvm_tool_path('clang-scan-deps')
+LLVM_AR = llvm_tool_path('llvm-ar')
+LLVM_DWP = llvm_tool_path('llvm-dwp')
+LLVM_RANLIB = llvm_tool_path('llvm-ranlib')
+LLVM_NM = llvm_tool_path('llvm-nm')
+LLVM_DWARFDUMP = llvm_tool_path('llvm-dwarfdump')
+LLVM_OBJCOPY = llvm_tool_path('llvm-objcopy')
+LLVM_STRIP = llvm_tool_path('llvm-strip')
+WASM_LD = llvm_tool_path('wasm-ld')
+LLVM_PROFDATA = llvm_tool_path('llvm-profdata')
+LLVM_COV = llvm_tool_path('llvm-cov')
 
 EMCC = bat_suffix(path_from_root('emcc'))
 EMXX = bat_suffix(path_from_root('em++'))

@@ -1,0 +1,20 @@
+{
+  "a.out.js": 3602,
+  "a.out.js.gz": 1703,
+  "a.out.nodebug.wasm": 5241,
+  "a.out.nodebug.wasm.gz": 2332,
+  "total": 8843,
+  "total_gz": 4035,
+  "sent": [],
+  "imports": [],
+  "exports": [
+    "_initialize",
+    "foo",
+    "memory"
+  ],
+  "funcs": [
+    "$__wasm_call_ctors",
+    "$foo",
+    "$sbrk"
+  ]
+}

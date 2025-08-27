@@ -14,31 +14,29 @@ var LibraryDylink = {
 #if FILESYSTEM
   $registerWasmPlugin__deps: ['$preloadPlugins'],
   $registerWasmPlugin: () => {
-    // Use string keys here to avoid minification since the plugin consumer
-    // also uses string keys.
+    // Use string keys here for public methods to avoid minification since the
+    // plugin consumer also uses string keys.
     var wasmPlugin = {
-      'promiseChainEnd': Promise.resolve(),
+      promiseChainEnd: Promise.resolve(),
       'canHandle': (name) => {
         return !Module['noWasmDecoding'] && name.endsWith('.so')
       },
-      'handle': (byteArray, name, onload, onerror) => {
+      'handle': async (byteArray, name) =>
         // loadWebAssemblyModule can not load modules out-of-order, so rather
         // than just running the promises in parallel, this makes a chain of
         // promises to run in series.
-        wasmPlugin['promiseChainEnd'] = wasmPlugin['promiseChainEnd'].then(
-          () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true}, name, {})).then(
-            (exports) => {
+        wasmPlugin.promiseChainEnd = wasmPlugin.promiseChainEnd.then(async () => {
+          try {
+            var exports = await loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true}, name, {});
+          } catch (error) {
+            throw new Error(`failed to instantiate wasm: ${name}: ${error}`);
+          }
 #if DYLINK_DEBUG
-              dbg('registering preloadedWasm:', name);
+          dbg('registering preloadedWasm:', name);
 #endif
-              preloadedWasm[name] = exports;
-              onload(byteArray);
-            },
-            (error) => {
-              err(`failed to instantiate wasm: ${name}: ${error}`);
-              onerror();
-            });
-      }
+          preloadedWasm[name] = exports;
+          return byteArray;
+        })
     };
     preloadPlugins.push(wasmPlugin);
   },
@@ -526,8 +524,11 @@ var LibraryDylink = {
 #if DYNCALLS || !WASM_BIGINT
   $registerDynCallSymbols: (exports) => {
     for (var [sym, exp] of Object.entries(exports)) {
-      if (sym.startsWith('dynCall_') && !Module.hasOwnProperty(sym)) {
-        Module[sym] = exp;
+      if (sym.startsWith('dynCall_')) {
+        var sig = sym.substring(8);
+        if (!dynCalls.hasOwnProperty(sig)) {
+          dynCalls[sig] = exp;
+        }
       }
     }
   },
@@ -1173,8 +1174,8 @@ var LibraryDylink = {
   },
 
   $loadDylibs__internal: true,
-  $loadDylibs__deps: ['$loadDynamicLibrary', '$reportUndefinedSymbols'],
-  $loadDylibs: () => {
+  $loadDylibs__deps: ['$loadDynamicLibrary', '$reportUndefinedSymbols', '$addRunDependency', '$removeRunDependency'],
+  $loadDylibs: async () => {
     if (!dynamicLibraries.length) {
 #if DYLINK_DEBUG
       dbg('loadDylibs: no libraries to preload');
@@ -1186,21 +1187,19 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
     dbg('loadDylibs:', dynamicLibraries);
 #endif
+    addRunDependency('loadDylibs');
 
     // Load binaries asynchronously
-    addRunDependency('loadDylibs');
-    dynamicLibraries
-      .reduce((chain, lib) => chain.then(() =>
-        loadDynamicLibrary(lib, {loadAsync: true, global: true, nodelete: true, allowUndefined: true})
-      ), Promise.resolve())
-      .then(() => {
-        // we got them all, wonderful
-        reportUndefinedSymbols();
-        removeRunDependency('loadDylibs');
-  #if DYLINK_DEBUG
-        dbg('loadDylibs done!');
-  #endif
-      });
+    for (var lib of dynamicLibraries) {
+      await loadDynamicLibrary(lib, {loadAsync: true, global: true, nodelete: true, allowUndefined: true})
+    }
+    // we got them all, wonderful
+    reportUndefinedSymbols();
+
+#if DYLINK_DEBUG
+    dbg('loadDylibs done!');
+#endif
+    removeRunDependency('loadDylibs');
   },
 
   // void* dlopen(const char* filename, int flags);

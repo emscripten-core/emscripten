@@ -336,6 +336,20 @@ class interactive(BrowserCore):
     shutil.copy(test_file('webaudio/audio_files/emscripten-bass.mp3'), 'audio_files/')
     self.btest_exit('webaudio/audioworklet_params_mixing.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
 
+  # Mixing test above with hard-pans to verify left and right ordering
+  def test_audio_worklet_hard_pans(self):
+    os.mkdir('audio_files')
+    shutil.copy(test_file('webaudio/audio_files/emscripten-beat-right.mp3'), 'audio_files/emscripten-beat.mp3')
+    shutil.copy(test_file('webaudio/audio_files/emscripten-bass-left.mp3'), 'audio_files/emscripten-bass.mp3')
+    self.btest_exit('webaudio/audioworklet_params_mixing.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
+
+  # Tests an AudioWorklet with a growable heap
+  def test_audio_worklet_memory_growth(self):
+    os.mkdir('audio_files')
+    shutil.copy(test_file('webaudio/audio_files/emscripten-beat.mp3'), 'audio_files/')
+    shutil.copy(test_file('webaudio/audio_files/emscripten-bass.mp3'), 'audio_files/')
+    self.btest_exit('webaudio/audioworklet_memory_growth.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sALLOW_MEMORY_GROWTH'])
+
 
 class interactive64(interactive):
   def setUp(self):

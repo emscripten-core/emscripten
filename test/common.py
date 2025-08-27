@@ -9,10 +9,11 @@ from pathlib import Path
 from subprocess import PIPE, STDOUT
 from typing import Dict, Tuple
 from urllib.parse import unquote, unquote_plus, urlparse, parse_qs
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 import contextlib
 import difflib
 import hashlib
+import io
 import itertools
 import logging
 import multiprocessing
@@ -44,8 +45,12 @@ logger = logging.getLogger('common')
 
 # User can specify an environment variable EMTEST_BROWSER to force the browser
 # test suite to run using another browser command line than the default system
-# browser.
-# There are two special value that can be used here if running in an actual
+# browser. If only the path to the browser executable is given, the tests
+# will run in headless mode with a temporary profile with the same options
+# used in CI. To use a custom start command specify the executable and command
+# line flags.
+#
+# There are two special values that can be used here if running in an actual
 # browser is not desired:
 #  EMTEST_BROWSER=0 : This will disable the actual running of the test and simply
 #                     verify that it compiles and links.
@@ -53,6 +58,8 @@ logger = logging.getLogger('common')
 #                        For most browser tests this does not work, but it can
 #                        be useful for running pthread tests under node.
 EMTEST_BROWSER = None
+EMTEST_BROWSER_AUTO_CONFIG = None
+EMTEST_HEADLESS = None
 EMTEST_DETECT_TEMPFILE_LEAKS = None
 EMTEST_SAVE_DIR = None
 # generally js engines are equivalent, testing 1 is enough. set this
@@ -75,12 +82,46 @@ EMTEST_CAPTURE_STDIO = int(os.getenv('EMTEST_CAPTURE_STDIO', '0'))
 if 'EM_BUILD_VERBOSE' in os.environ:
   exit_with_error('EM_BUILD_VERBOSE has been renamed to EMTEST_BUILD_VERBOSE')
 
+
+# Default flags used to run browsers in CI testing:
+class ChromeConfig:
+  data_dir_flag = '--user-data-dir='
+  default_flags = (
+    # --no-sandbox because we are running as root and chrome requires
+    # this flag for now: https://crbug.com/638180
+    '--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader --enable-experimental-web-platform-features --enable-features=JavaScriptSourcePhaseImports',
+    '--enable-experimental-webassembly-features --js-flags="--experimental-wasm-stack-switching --experimental-wasm-type-reflection --experimental-wasm-rab-integration"',
+    # The runners lack sound hardware so fallback to a dummy device (and
+    # bypass the user gesture so audio tests work without interaction)
+    '--use-fake-device-for-media-stream --autoplay-policy=no-user-gesture-required',
+    # Cache options.
+    '--disk-cache-size=1 --media-cache-size=1 --disable-application-cache',
+  )
+  headless_flags = '--headless=new --window-size=1024,768 --remote-debugging-port=1234'
+
+  @staticmethod
+  def configure(data_dir):
+    """Chrome has no special configuration step."""
+
+
+class FirefoxConfig:
+  data_dir_flag = '-profile '
+  default_flags = ()
+  headless_flags = '-headless'
+
+  @staticmethod
+  def configure(data_dir):
+    shutil.copy(test_file('firefox_user.js'), os.path.join(data_dir, 'user.js'))
+
+
 # Special value for passing to assert_returncode which means we expect that program
 # to fail with non-zero return code, but we don't care about specifically which one.
 NON_ZERO = -1
 
 TEST_ROOT = path_from_root('test')
 LAST_TEST = path_from_root('out/last_test.txt')
+
+DEFAULT_BROWSER_DATA_DIR = path_from_root('out/browser-profile')
 
 WEBIDL_BINDER = shared.bat_suffix(path_from_root('tools/webidl_binder'))
 
@@ -90,7 +131,7 @@ EMCMAKE = shared.bat_suffix(path_from_root('emcmake'))
 EMCONFIGURE = shared.bat_suffix(path_from_root('emconfigure'))
 EMRUN = shared.bat_suffix(shared.path_from_root('emrun'))
 WASM_DIS = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
-LLVM_OBJDUMP = os.path.expanduser(shared.build_llvm_tool_path(shared.exe_suffix('llvm-objdump')))
+LLVM_OBJDUMP = shared.llvm_tool_path('llvm-objdump')
 PYTHON = sys.executable
 if not config.NODE_JS_TEST:
   config.NODE_JS_TEST = config.NODE_JS
@@ -111,6 +152,17 @@ def copytree(src, dest):
 # checks if browser testing is enabled
 def has_browser():
   return EMTEST_BROWSER != '0'
+
+
+CHROMIUM_BASED_BROWSERS = ['chrom', 'edge', 'opera']
+
+
+def is_chrome():
+  return EMTEST_BROWSER and any(pattern in EMTEST_BROWSER.lower() for pattern in CHROMIUM_BASED_BROWSERS)
+
+
+def is_firefox():
+  return EMTEST_BROWSER and 'firefox' in EMTEST_BROWSER.lower()
 
 
 def compiler_for(filename, force_c=False):
@@ -167,7 +219,7 @@ def flaky(note=''):
           return f(*args, **kwargs)
         except AssertionError as exc:
           preserved_exc = exc
-          logging.info(f'Retrying flaky test (attempt {i}/{EMTEST_RETRY_FLAKY} failed): {exc}')
+          logging.info(f'Retrying flaky test "{f.__name__}" (attempt {i}/{EMTEST_RETRY_FLAKY} failed): {exc}')
       raise AssertionError('Flaky test has failed too many times') from preserved_exc
 
     return modified
@@ -272,6 +324,15 @@ def requires_node_canary(func):
     return func(self, *args, **kwargs)
 
   return decorated
+
+
+def node_bigint_flags(node_version):
+  # The --experimental-wasm-bigint flag was added in v12, and then removed (enabled by default)
+  # in v16.
+  if node_version and node_version < (16, 0, 0) and node_version >= (12, 0, 0):
+    return ['--experimental-wasm-bigint']
+  else:
+    return []
 
 
 # Used to mark dependencies in various tests to npm developer dependency
@@ -552,25 +613,21 @@ def also_with_minimal_runtime(f):
   return metafunc
 
 
-def also_with_wasm_bigint(f):
+def also_without_bigint(f):
   assert callable(f)
 
   @wraps(f)
-  def metafunc(self, with_bigint, *args, **kwargs):
+  def metafunc(self, no_bigint, *args, **kwargs):
     if DEBUG:
-      print('parameterize:bigint=%s' % with_bigint)
-    if with_bigint:
-      if self.is_wasm2js():
-        self.skipTest('wasm2js does not support WASM_BIGINT')
+      print('parameterize:no_bigint=%s' % no_bigint)
+    if no_bigint:
       if self.get_setting('WASM_BIGINT') is not None:
         self.skipTest('redundant in bigint test config')
-      self.set_setting('WASM_BIGINT')
-      nodejs = self.require_node()
-      self.node_args += shared.node_bigint_flags(nodejs)
+      self.set_setting('WASM_BIGINT', 0)
     f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
-                          'bigint': (True,)})
+                          'no_bigint': (True,)})
   return metafunc
 
 
@@ -640,16 +697,10 @@ def also_with_standalone_wasm(impure=False):
         self.set_setting('STANDALONE_WASM')
         if not impure:
           self.set_setting('PURE_WASI')
-        # we will not legalize the JS ffi interface, so we must use BigInt
-        # support in order for JS to have a chance to run this without trapping
-        # when it sees an i64 on the ffi.
-        self.set_setting('WASM_BIGINT')
         self.cflags.append('-Wno-unused-command-line-argument')
         # if we are impure, disallow all wasm engines
         if impure:
           self.wasm_engines = []
-        nodejs = self.require_node()
-        self.node_args += shared.node_bigint_flags(nodejs)
       func(self, *args, **kwargs)
 
     parameterize(metafunc, {'': (False,),
@@ -683,8 +734,10 @@ def also_with_modularize(f):
   @wraps(f)
   def metafunc(self, modularize, *args, **kwargs):
     if modularize:
-      if '-sWASM_ESM_INTEGRATION':
-        self.skipTest('also_with_modularize is not compatible with WASM_ESM_INTEGRATION')
+      if self.get_setting('STRICT_JS'):
+        self.skipTest('MODULARIZE is not compatible with STRICT_JS')
+      if self.get_setting('WASM_ESM_INTEGRATION'):
+        self.skipTest('MODULARIZE is not compatible with WASM_ESM_INTEGRATION')
       self.cflags += ['--extern-post-js', test_file('modularize_post_js.js'), '-sMODULARIZE']
     f(self, *args, **kwargs)
 
@@ -1163,7 +1216,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.get_setting('WASMFS'):
       # without this the JS setup code in setup_nodefs.js doesn't work
       self.set_setting('FORCE_FILESYSTEM')
-    self.cflags += ['-DNODEFS', '-lnodefs.js', '--pre-js', test_file('setup_nodefs.js'), '-sINCOMING_MODULE_JS_API=[onRuntimeInitialized]']
+    self.cflags += ['-DNODEFS', '-lnodefs.js', '--pre-js', test_file('setup_nodefs.js'), '-sINCOMING_MODULE_JS_API=onRuntimeInitialized']
 
   def setup_noderawfs_test(self):
     self.require_node()
@@ -1223,6 +1276,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           # Opt in to node v15 default behaviour:
           # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
           self.node_args.append('--unhandled-rejections=throw')
+      self.node_args += node_bigint_flags(node_version)
 
       # If the version we are running tests in is lower than the version that
       # emcc targets then we need to tell emcc to target that older version.
@@ -1235,6 +1289,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       if node_version < emcc_min_node_version:
         self.cflags += building.get_emcc_node_flags(node_version)
         self.cflags.append('-Wno-transpile')
+
+      # This allows much of the test suite to be run on older versions of node that don't
+      # support wasm bigint integration
       if node_version[0] < feature_matrix.min_browser_versions[feature_matrix.Feature.JS_BIGINT_INTEGRATION]['node'] / 10000:
         self.cflags.append('-sWASM_BIGINT=0')
 
@@ -1350,17 +1407,17 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def add_pre_run(self, code):
     assert not self.get_setting('MINIMAL_RUNTIME')
     create_file('prerun.js', 'Module.preRun = function() { %s }\n' % code)
-    self.cflags += ['--pre-js', 'prerun.js', '-sINCOMING_MODULE_JS_API=[preRun]']
+    self.cflags += ['--pre-js', 'prerun.js', '-sINCOMING_MODULE_JS_API=preRun']
 
   def add_post_run(self, code):
     assert not self.get_setting('MINIMAL_RUNTIME')
     create_file('postrun.js', 'Module.postRun = function() { %s }\n' % code)
-    self.cflags += ['--pre-js', 'postrun.js', '-sINCOMING_MODULE_JS_API=[postRun]']
+    self.cflags += ['--pre-js', 'postrun.js', '-sINCOMING_MODULE_JS_API=postRun']
 
   def add_on_exit(self, code):
     assert not self.get_setting('MINIMAL_RUNTIME')
     create_file('onexit.js', 'Module.onExit = function() { %s }\n' % code)
-    self.cflags += ['--pre-js', 'onexit.js', '-sINCOMING_MODULE_JS_API=[onExit]']
+    self.cflags += ['--pre-js', 'onexit.js', '-sINCOMING_MODULE_JS_API=onExit']
 
   # returns the full list of arguments to pass to emcc
   # param @main_file whether this is the main file of the test. some arguments
@@ -1694,15 +1751,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.assertEqual(read_binary(file1),
                      read_binary(file2))
 
-  def check_expected_size_in_file(self, desc, filename, size):
-    if EMTEST_REBASELINE:
-      create_file(filename, f'{size}\n', absolute=True)
-    expected_size = int(read_file(filename).strip())
-    delta = size - expected_size
-    ratio = abs(delta) / float(expected_size)
-    print('  seen %s size: %d (expected: %d) (delta: %d), ratio to expected: %f' % (desc, size, expected_size, delta, ratio))
-    self.assertEqual(size, expected_size)
-
   library_cache: Dict[str, Tuple[str, object]] = {}
 
   def get_build_dir(self):
@@ -1763,18 +1811,35 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if shared.EMSCRIPTEN_TEMP_DIR:
       utils.delete_contents(shared.EMSCRIPTEN_TEMP_DIR)
 
-  def run_process(self, cmd, check=True, **args):
+  def run_process(self, cmd, check=True, **kwargs):
     # Wrapper around shared.run_process.  This is desirable so that the tests
     # can fail (in the unittest sense) rather than error'ing.
     # In the long run it would nice to completely remove the dependency on
     # core emscripten code (shared.py) here.
+
+    # Handle buffering for subprocesses.  The python unittest buffering mechanism
+    # will only buffer output from the current process (by overwriding sys.stdout
+    # and sys.stderr), not from sub-processes.
+    stdout_buffering = 'stdout' not in kwargs and isinstance(sys.stdout, io.StringIO)
+    stderr_buffering = 'stderr' not in kwargs and isinstance(sys.stderr, io.StringIO)
+    if stdout_buffering:
+      kwargs['stdout'] = PIPE
+    if stderr_buffering:
+      kwargs['stderr'] = PIPE
+
     try:
-      return shared.run_process(cmd, check=check, **args)
+      rtn = shared.run_process(cmd, check=check, **kwargs)
     except subprocess.CalledProcessError as e:
       if check and e.returncode != 0:
         print(e.stdout)
         print(e.stderr)
         self.fail(f'subprocess exited with non-zero return code({e.returncode}): `{shlex.join(cmd)}`')
+
+    if stdout_buffering:
+      sys.stdout.write(rtn.stdout)
+    if stderr_buffering:
+      sys.stderr.write(rtn.stderr)
+    return rtn
 
   def emcc(self, filename, args=[], output_filename=None, **kwargs):  # noqa
     compile_only = '-c' in args or '-sSIDE_MODULE' in args
@@ -1983,7 +2048,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       # TODO once standalone wasm support is more stable, apply use_all_engines
       # like with js engines, but for now as we bring it up, test in all of them
       if not self.wasm_engines:
-        logger.warning('no wasm engine was found to run the standalone part of this test')
+        if 'EMTEST_SKIP_WASM_ENGINE' in os.environ:
+          self.skipTest('no wasm engine was found to run the standalone part of this test')
+        else:
+          logger.warning('no wasm engine was found to run the standalone part of this test (Use EMTEST_SKIP_WASM_ENGINE to skip)')
       engines += self.wasm_engines
     if len(engines) == 0:
       self.fail('No JS engine present to run this test with. Check %s and the paths therein.' % config.EM_CONFIG)
@@ -2030,6 +2098,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.cflags += [
       '-I' + test_file('third_party/freetype/include'),
       '-I' + test_file('third_party/poppler/include'),
+      # Poppler's configure script emits -O2 for gcc, and nothing for other
+      # compilers, including emcc, so set opts manually.
+      "-O2",
     ]
 
     # Poppler has some pretty glaring warning.  Suppress them to keep the
@@ -2145,6 +2216,20 @@ def harness_server_func(in_queue, out_queue, port):
         create_file(filename, post_data, binary=True)
         self.send_response(200)
         self.end_headers()
+      elif urlinfo.path.startswith('/status/'):
+        code_str = urlinfo.path[len('/status/'):]
+        code = int(code_str)
+        if code in (301, 302, 303, 307, 308):
+          self.send_response(code)
+          self.send_header('Location', '/status/200')
+          self.end_headers()
+        elif code == 200:
+          self.send_response(200)
+          self.send_header('Content-type', 'text/plain')
+          self.end_headers()
+          self.wfile.write(b'OK')
+        else:
+          self.send_error(400, f'Not implemented for {code}')
       else:
         print(f'do_POST: unexpected POST: {urlinfo}')
 
@@ -2157,6 +2242,21 @@ def harness_server_func(in_queue, out_queue, port):
         self.send_header('Content-type', 'text/html')
         self.end_headers()
         self.wfile.write(read_binary(test_file('browser_harness.html')))
+      elif info.path.startswith('/status/'):
+        code_str = info.path[len('/status/'):]
+        code = int(code_str)
+        if code in (301, 302, 303, 307, 308):
+          # Redirect to /status/200
+          self.send_response(code)
+          self.send_header('Location', '/status/200')
+          self.end_headers()
+        elif code == 200:
+          self.send_response(200)
+          self.send_header('Content-type', 'text/plain')
+          self.end_headers()
+          self.wfile.write(b'OK')
+        else:
+          self.send_error(400, f'Not implemented for {code}')
       elif 'report_' in self.path:
         # the test is reporting its result. first change dir away from the
         # test dir, as it will be deleted now that the test is finishing, and
@@ -2240,7 +2340,7 @@ def harness_server_func(in_queue, out_queue, port):
   # do not have the correct MIME type
   SimpleHTTPRequestHandler.extensions_map['.mjs'] = 'text/javascript'
 
-  httpd = HTTPServer(('localhost', port), TestServerHandler)
+  httpd = ThreadingHTTPServer(('localhost', port), TestServerHandler)
   httpd.serve_forever() # test runner will kill us
 
 
@@ -2263,7 +2363,8 @@ class BrowserCore(RunnerCore):
   # single test (hundreds of minutes)
   MAX_UNRESPONSIVE_TESTS = 10
   PORT = 8888
-  HARNESS_URL = 'http://localhost:%s/run_harness' % PORT
+  SERVER_URL = f'http://localhost:{PORT}'
+  HARNESS_URL = f'{SERVER_URL}/run_harness'
   BROWSER_TIMEOUT = 60
 
   unresponsive_tests = 0
@@ -2273,9 +2374,7 @@ class BrowserCore(RunnerCore):
     super().__init__(*args, **kwargs)
 
   @classmethod
-  def browser_restart(cls):
-    # Kill existing browser
-    logger.info('Restarting browser process')
+  def browser_terminate(cls):
     cls.browser_proc.terminate()
     # If the browser doesn't shut down gracefully (in response to SIGTERM)
     # after 2 seconds kill it with force (SIGKILL).
@@ -2285,6 +2384,13 @@ class BrowserCore(RunnerCore):
       logger.info('Browser did not respond to `terminate`.  Using `kill`')
       cls.browser_proc.kill()
       cls.browser_proc.wait()
+      cls.browser_data_dir = None
+
+  @classmethod
+  def browser_restart(cls):
+    # Kill existing browser
+    logger.info('Restarting browser process')
+    cls.browser_terminate()
     cls.browser_open(cls.HARNESS_URL)
 
   @classmethod
@@ -2293,6 +2399,31 @@ class BrowserCore(RunnerCore):
     if not EMTEST_BROWSER:
       logger.info('No EMTEST_BROWSER set. Defaulting to `google-chrome`')
       EMTEST_BROWSER = 'google-chrome'
+
+    if EMTEST_BROWSER_AUTO_CONFIG:
+      logger.info('Using default CI configuration.')
+      cls.browser_data_dir = DEFAULT_BROWSER_DATA_DIR
+      if os.path.exists(cls.browser_data_dir):
+        utils.delete_dir(cls.browser_data_dir)
+      os.mkdir(cls.browser_data_dir)
+      if is_chrome():
+        config = ChromeConfig()
+      elif is_firefox():
+        config = FirefoxConfig()
+      else:
+        exit_with_error("EMTEST_BROWSER_AUTO_CONFIG only currently works with firefox or chrome.")
+      EMTEST_BROWSER += f" {config.data_dir_flag}{cls.browser_data_dir} {' '.join(config.default_flags)}"
+      if EMTEST_HEADLESS == 1:
+        EMTEST_BROWSER += f" {config.headless_flags}"
+      config.configure(cls.browser_data_dir)
+
+    if WINDOWS:
+      # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
+      # set EMTEST_BROWSER=C:\Program Files\Mozilla Firefox\firefox.exe
+      # and spaces are not escaped. But make sure to also support args, e.g.
+      # set EMTEST_BROWSER="C:\Users\clb\AppData\Local\Google\Chrome SxS\Application\chrome.exe" --enable-unsafe-webgpu
+      if '"' not in EMTEST_BROWSER and "'" not in EMTEST_BROWSER:
+        EMTEST_BROWSER = '"' + EMTEST_BROWSER.replace("\\", "/") + '"'
     browser_args = shlex.split(EMTEST_BROWSER)
     logger.info('Launching browser: %s', str(browser_args))
     cls.browser_proc = subprocess.Popen(browser_args + [url])
@@ -2316,6 +2447,7 @@ class BrowserCore(RunnerCore):
       return
     cls.harness_server.terminate()
     print('[Browser harness server terminated]')
+    cls.browser_terminate()
     if WINDOWS:
       # On Windows, shutil.rmtree() in tearDown() raises this exception if we do not wait a bit:
       # WindowsError: [Error 32] The process cannot access the file because it is being used by another process.
@@ -2323,6 +2455,11 @@ class BrowserCore(RunnerCore):
 
   def is_browser_test(self):
     return True
+
+  def add_browser_reporting(self):
+    contents = read_file(test_file('browser_reporting.js'))
+    contents = contents.replace('{{{REPORTING_URL}}}', BrowserCore.SERVER_URL)
+    create_file('browser_reporting.js', contents)
 
   def assert_out_queue_empty(self, who):
     if not self.harness_out_queue.empty():
@@ -2372,11 +2509,11 @@ class BrowserCore(RunnerCore):
           # the browser harness reported an error already, and sent a None to tell
           # us to also fail the test
           self.fail('browser harness error')
+        output = unquote(output)
         if output.startswith('/report_result?skipped:'):
           self.skipTest(unquote(output[len('/report_result?skipped:'):]).strip())
         else:
           # verify the result, and try again if we should do so
-          output = unquote(output)
           try:
             self.assertContained(expected, output)
           except self.failureException as e:
@@ -2407,7 +2544,8 @@ class BrowserCore(RunnerCore):
     # the header as there may be multiple files being compiled here).
     if reporting != Reporting.NONE:
       # For basic reporting we inject JS helper funtions to report result back to server.
-      cflags += ['--pre-js', test_file('browser_reporting.js')]
+      self.add_browser_reporting()
+      cflags += ['--pre-js', 'browser_reporting.js']
       if reporting == Reporting.FULL:
         # If C reporting (i.e. the REPORT_RESULT macro) is required we
         # also include report_result.c and force-include report_result.h
@@ -2419,6 +2557,9 @@ class BrowserCore(RunnerCore):
     if not os.path.exists(filename):
       filename = test_file(filename)
     self.run_process([compiler_for(filename), filename] + self.get_cflags() + cflags)
+    # Remove the file since some tests have assertions for how many files are in
+    # the output directory.
+    utils.delete_file('browser_reporting.js')
 
   def btest_exit(self, filename, assert_returncode=0, *args, **kwargs):
     """Special case of `btest` that reports its result solely via exiting

@@ -102,8 +102,8 @@ function stringifyWithFunctions(obj) {
   for (const [key, value] of Object.entries(obj)) {
     var str = stringifyWithFunctions(value);
     // Handle JS method syntax where the function property starts with its own
-    // name. e.g.  foo(a) {},
-    if (typeof value === 'function' && str.startsWith(key)) {
+    // name. e.g.  `foo(a) {}` (or `async foo(a) {}`)
+    if (typeof value === 'function' && (str.startsWith(key) || str.startsWith('async ' + key))) {
       rtn += str + ',\n';
     } else {
       rtn += escapeJSONKey(key) + ':' + str + ',\n';

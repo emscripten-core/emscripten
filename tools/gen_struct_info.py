@@ -69,7 +69,6 @@ __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
 from tools import building
-from tools import config
 from tools import shared
 from tools import system_libs
 from tools import utils
@@ -220,6 +219,7 @@ def generate_cmd(js_file_path, src_file_path, cflags):
                                '-Werror',
                                '-Wno-format',
                                '-sBOOTSTRAPPING_STRUCT_INFO',
+                               '-sWASM_ASYNC_COMPILATION=0',
                                '-sINCOMING_MODULE_JS_API=',
                                '-sSTRICT',
                                '-sSUPPORT_LONGJMP=0',
@@ -258,8 +258,7 @@ def inspect_headers(headers, cflags):
 
   # Run the compiled program.
   show('Calling generated program... ' + js_file_path)
-  node_args = shared.node_bigint_flags(config.NODE_JS)
-  info = shared.run_js_tool(js_file_path, node_args=node_args, stdout=shared.PIPE)
+  info = shared.run_js_tool(js_file_path, stdout=shared.PIPE)
 
   if not DEBUG:
     # Remove all temporary files.

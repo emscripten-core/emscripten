@@ -35,6 +35,8 @@ static em_proxying_queue system_proxying_queue = {
   .capacity = 0,
 };
 
+static _Thread_local bool system_queue_in_use = false;
+
 em_proxying_queue* emscripten_proxy_get_system_queue(void) {
   return &system_proxying_queue;
 }
@@ -106,22 +108,28 @@ static em_task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
   return tasks;
 }
 
-static _Thread_local bool executing_system_queue = false;
-
 void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   assert(q != NULL);
   assert(pthread_self());
 
-  // Recursion guard to avoid infinite recursion when we arrive here from the
-  // pthread_lock call below that executes the system queue. The per-task_queue
-  // recursion lock can't catch these recursions because it can only be checked
-  // after the lock has been acquired.
+  // Below is a recursion and deadlock guard: The recursion guard is to avoid
+  // infinite recursion when we arrive here from the pthread_lock call below
+  // that executes the system queue. The per-task_queue recursion lock can't
+  // catch these recursions because it can only be checked after the lock has
+  // been acquired.
+  //
+  // This also guards against deadlocks when adding to the system queue. When
+  // the current thread is adding tasks, it locks the queue, but we can
+  // potentially try to execute the queue during the add (from emscripten_yield
+  // when malloc takes a lock). This will deadlock the thread, so only try to
+  // take the lock if the current thread is not using the queue. We then hope
+  // the queue is executed later when it is unlocked.
   bool is_system_queue = q == &system_proxying_queue;
   if (is_system_queue) {
-    if (executing_system_queue) {
+    if (system_queue_in_use) {
       return;
     }
-    executing_system_queue = true;
+    system_queue_in_use = true;
   }
 
   pthread_mutex_lock(&q->mutex);
@@ -134,14 +142,21 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   }
 
   if (is_system_queue) {
-    executing_system_queue = false;
+    system_queue_in_use = false;
   }
 }
 
 static int do_proxy(em_proxying_queue* q, pthread_t target_thread, task t) {
   assert(q != NULL);
   pthread_mutex_lock(&q->mutex);
+  bool is_system_queue = q == &system_proxying_queue;
+  if (is_system_queue) {
+    system_queue_in_use = true;
+  }
   em_task_queue* tasks = get_or_add_tasks_for_thread(q, target_thread);
+  if (is_system_queue) {
+    system_queue_in_use = false;
+  }
   pthread_mutex_unlock(&q->mutex);
   if (tasks == NULL) {
     return 0;

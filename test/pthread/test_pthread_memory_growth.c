@@ -26,20 +26,19 @@
 // atomics.
 
 EM_JS(void, assert_initial_heap_state, (bool isWorker), {
-  dbg(`Checking initial heap state on the ${isWorker ? 'worker' : 'main'} thread`);
+  err(`Checking initial heap state on the ${isWorker ? 'worker' : 'main'} thread`);
   assert(HEAP8.length === 32 * 1024 * 1024, "start at 32MB");
 });
 
 EM_JS(void, js_assert_final_heap_state, (bool isWorker, const char* buffer, int finalHeapSize), {
-  dbg(`Checking final heap state on the ${isWorker ? 'worker' : 'main'} thread`);
+  err(`Checking final heap state on the ${isWorker ? 'worker' : 'main'} thread`);
   assert(HEAP8.length > finalHeapSize, "end with >64MB");
   assert(HEAP8[buffer] === 42, "readable from JS");
 });
 
 #define FINAL_HEAP_SIZE (64 * 1024 * 1024)
 
-static char *alloc_beyond_initial_heap()
-{
+char *alloc_beyond_initial_heap() {
   char *buffer = malloc(FINAL_HEAP_SIZE);
   assert(buffer);
   // Write value at the end of the buffer to check that any thread can access addresses beyond the initial heap size.
@@ -50,15 +49,13 @@ static char *alloc_beyond_initial_heap()
 
 const char *_Atomic buffer = NULL;
 
-static void assert_final_heap_state(bool is_worker)
-{
+void assert_final_heap_state(bool is_worker) {
   assert(buffer != NULL);
   assert(*buffer == 42);
   js_assert_final_heap_state(is_worker, buffer, FINAL_HEAP_SIZE);
 }
 
-static void *thread_start(void *arg)
-{
+void *thread_start(void *arg) {
   assert_initial_heap_state(true);
   // allocate more memory than we currently have, forcing a growth
   buffer = alloc_beyond_initial_heap();
@@ -66,8 +63,7 @@ static void *thread_start(void *arg)
   return NULL;
 }
 
-int main()
-{
+int main() {
   assert_initial_heap_state(false);
 
   pthread_t thr;

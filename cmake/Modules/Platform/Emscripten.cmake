@@ -60,7 +60,7 @@ endif()
 # Locate where the Emscripten compiler resides in relative to this toolchain file.
 if (NOT DEFINED EMSCRIPTEN_ROOT_PATH)
   get_filename_component(GUESS_EMSCRIPTEN_ROOT_PATH "${CMAKE_CURRENT_LIST_DIR}/../../../" ABSOLUTE)
-  if (EXISTS "${GUESS_EMSCRIPTEN_ROOT_PATH}/emranlib")
+  if (EXISTS "${GUESS_EMSCRIPTEN_ROOT_PATH}/emranlib.py")
     set(EMSCRIPTEN_ROOT_PATH "${GUESS_EMSCRIPTEN_ROOT_PATH}")
   else()
     # If not found by above search, locate using the EMSCRIPTEN environment variable.
@@ -209,6 +209,7 @@ if (EMSCRIPTEN_FORCE_COMPILERS)
         set(CMAKE_CXX23_COMPILE_FEATURES "cxx_std_23")
         set(CMAKE_CXX_COMPILE_FEATURES "${CMAKE_CXX_COMPILE_FEATURES};cxx_std_23")
         if ("${CMAKE_VERSION}" VERSION_GREATER_EQUAL "3.25") # 3.25+
+          set(CMAKE_CXX26_COMPILE_FEATURES "cxx_std_26")
           set(CMAKE_CXX_COMPILE_FEATURES "${CMAKE_CXX_COMPILE_FEATURES};cxx_std_26")
         endif()
         if ("${CMAKE_VERSION}" VERSION_GREATER_EQUAL "3.21")

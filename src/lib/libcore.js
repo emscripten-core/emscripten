@@ -182,7 +182,9 @@ addToLibrary({
     try {
       // round size grow request up to wasm page size (fixed 64KB per spec)
       wasmMemory.grow({{{ toIndexType('pages') }}}); // .grow() takes a delta compared to the previous size
+#if !GROWABLE_ARRAYBUFFERS
       updateMemoryViews();
+#endif
 #if MEMORYPROFILER
       if (typeof emscriptenMemoryProfiler != 'undefined') {
         emscriptenMemoryProfiler.onMemoryResize(oldHeapSize, wasmMemory.buffer.byteLength);
@@ -320,6 +322,7 @@ addToLibrary({
 #endif // ALLOW_MEMORY_GROWTH
   },
 
+#if !GROWABLE_ARRAYBUFFERS
   // Called after wasm grows memory. At that time we need to update the views.
   // Without this notification, we'd need to check the buffer in JS every time
   // we return from any wasm, which adds overhead. See
@@ -330,6 +333,7 @@ addToLibrary({
 #endif
     updateMemoryViews();
   },
+#endif
 
   _emscripten_system: (command) => {
 #if ENVIRONMENT_MAY_BE_NODE
@@ -1731,11 +1735,14 @@ addToLibrary({
     var f = dynCalls[sig];
     return f(ptr, ...args);
   },
-#if DYNCALLS
-  $dynCall__deps: ['$dynCallLegacy'],
-#else
-  $dynCall__deps: ['$getWasmTableEntry'],
+  $dynCall__deps: [
+#if DYNCALLS || !WASM_BIGINT
+    '$dynCallLegacy',
 #endif
+#if !DYNCALLS
+    '$getWasmTableEntry',
+#endif
+  ],
 #endif
 
   // Used in library code to get JS function from wasm function pointer.
@@ -2097,6 +2104,14 @@ addToLibrary({
     }
   },
 
+  $asyncLoad: async (url) => {
+    var arrayBuffer = await readAsync(url);
+  #if ASSERTIONS
+    assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
+  #endif
+    return new Uint8Array(arrayBuffer);
+  },
+
 #else // MINIMAL_RUNTIME
   // MINIMAL_RUNTIME doesn't support the runtimeKeepalive stuff
   $callUserCallback: (func) => func(),
@@ -2107,14 +2122,6 @@ addToLibrary({
       x = 'main';
     }
     return x.startsWith('dynCall_') ? x : '_' + x;
-  },
-
-  $asyncLoad: async (url) => {
-    var arrayBuffer = await readAsync(url);
-  #if ASSERTIONS
-    assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
-  #endif
-    return new Uint8Array(arrayBuffer);
   },
 
   $alignMemory: (size, alignment) => {
@@ -2267,6 +2274,112 @@ addToLibrary({
   $noExitRuntime__postset: () => addAtModule(makeModuleReceive('noExitRuntime')),
   $noExitRuntime: {{{ !EXIT_RUNTIME }}},
 
+#if !MINIMAL_RUNTIME
+  // A counter of dependencies for calling run(). If we need to
+  // do asynchronous work before running, increment this and
+  // decrement it. Incrementing must happen in a place like
+  // Module.preRun (used by emcc to add file preloading).
+  // Note that you can add dependencies in preRun, even though
+  // it happens right before run - run will be postponed until
+  // the dependencies are met.
+  $runDependencies__internal: true,
+  $runDependencies: 0,
+  // overridden to take different actions when all run dependencies are fulfilled
+  $dependenciesFulfilled__internal: true,
+  $dependenciesFulfilled: null,
+#if ASSERTIONS
+  $runDependencyTracking__internal: true,
+  $runDependencyTracking: {},
+  $runDependencyWatcher__internal: true,
+  $runDependencyWatcher: null,
+#endif
+
+  $addRunDependency__deps: ['$runDependencies', '$removeRunDependency',
+#if ASSERTIONS
+    '$runDependencyTracking',
+    '$runDependencyWatcher',
+#endif
+  ],
+  $addRunDependency: (id) => {
+    runDependencies++;
+
+#if expectToReceiveOnModule('monitorRunDependencies')
+    Module['monitorRunDependencies']?.(runDependencies);
+#endif
+
+#if ASSERTIONS
+#if RUNTIME_DEBUG
+    dbg('addRunDependency', id);
+#endif
+    assert(id, 'addRunDependency requires an ID')
+    assert(!runDependencyTracking[id]);
+    runDependencyTracking[id] = 1;
+    if (runDependencyWatcher === null && typeof setInterval != 'undefined') {
+      // Check for missing dependencies every few seconds
+      runDependencyWatcher = setInterval(() => {
+        if (ABORT) {
+          clearInterval(runDependencyWatcher);
+          runDependencyWatcher = null;
+          return;
+        }
+        var shown = false;
+        for (var dep in runDependencyTracking) {
+          if (!shown) {
+            shown = true;
+            err('still waiting on run dependencies:');
+          }
+          err(`dependency: ${dep}`);
+        }
+        if (shown) {
+          err('(end of list)');
+        }
+      }, 10000);
+#if ENVIRONMENT_MAY_BE_NODE
+      // Prevent this timer from keeping the runtime alive if nothing
+      // else is.
+      runDependencyWatcher.unref?.()
+#endif
+    }
+#endif
+  },
+
+  $removeRunDependency__deps: ['$runDependencies', '$dependenciesFulfilled',
+#if ASSERTIONS
+    '$runDependencyTracking',
+    '$runDependencyWatcher',
+#endif
+  ],
+  $removeRunDependency: (id) => {
+    runDependencies--;
+
+#if expectToReceiveOnModule('monitorRunDependencies')
+    Module['monitorRunDependencies']?.(runDependencies);
+#endif
+
+#if ASSERTIONS
+#if RUNTIME_DEBUG
+    dbg('removeRunDependency', id);
+#endif
+    assert(id, 'removeRunDependency requires an ID');
+    assert(runDependencyTracking[id]);
+    delete runDependencyTracking[id];
+#endif
+    if (runDependencies == 0) {
+#if ASSERTIONS
+      if (runDependencyWatcher !== null) {
+        clearInterval(runDependencyWatcher);
+        runDependencyWatcher = null;
+      }
+#endif
+      if (dependenciesFulfilled) {
+        var callback = dependenciesFulfilled;
+        dependenciesFulfilled = null;
+        callback(); // can add another dependenciesFulfilled
+      }
+    }
+  },
+#endif
+
   // The following addOn<X> functions are for adding runtime callbacks at
   // various executions points. Each addOn<X> function has a corresponding
   // compiled time version named addAt<X> that will instead inline during
@@ -2415,7 +2528,7 @@ function wrapSyscallFunction(x, library, isWasi) {
 
   library[x + '__deps'] ??= [];
 
-#if PURE_WASI
+#if PURE_WASI && !GROWABLE_ARRAYBUFFERS
   // In PURE_WASI mode we can't assume the wasm binary was built by emscripten
   // and politely notify us on memory growth.  Instead we have to check for
   // possible memory growth on each syscall.
@@ -2446,6 +2559,8 @@ function wrapSyscallFunction(x, library, isWasi) {
   post += "}\n";
   post += "dbg(`syscall return: ${ret}`);\n";
   post += "return ret;\n";
+  // Emit dependency to strError() since we added use of it above.
+  library[x + '__deps'].push('$strError');
 #endif
   delete library[x + '__nothrow'];
   var handler = '';

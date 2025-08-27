@@ -368,6 +368,11 @@ public:
     }
   }
 
+  // Add an explicit overload for `val&` as well.
+  // Without it, C++ will try to use the `T&&` constructor instead of the more
+  // efficient `val(const val&)` when trying to copy a `val` instance.
+  val(val& v) : val(static_cast<const val&>(v)) {}
+
   ~val() {
     if (uses_ref_count()) {
       internal::_emval_decref(as_handle());
@@ -473,9 +478,9 @@ public:
     return val(internal::_emval_get_property(as_handle(), val_ref(key).as_handle()));
   }
 
-  template<typename K, typename V>
-  void set(const K& key, const V& value) {
-    internal::_emval_set_property(as_handle(), val_ref(key).as_handle(), val_ref(value).as_handle());
+  template<typename K, typename V, typename... Policies>
+  void set(const K& key, const V& value, Policies... policies) {
+    internal::_emval_set_property(as_handle(), val_ref(key).as_handle(), val_ref(value, policies...).as_handle());
   }
 
   template<typename T>
@@ -604,9 +609,9 @@ private:
     return BindingType<Ret>::fromWireType(result);
   }
 
-  template<typename T>
-  val val_ref(const T& v) const {
-    return val(v);
+  template<typename T, typename... Policies>
+  val val_ref(const T& v, Policies... policies) const {
+    return val(v, policies...);
   }
 
   const val& val_ref(const val& v) const {
@@ -723,6 +728,9 @@ public:
   auto initial_suspend() noexcept { return std::suspend_never{}; }
   auto final_suspend() noexcept { return std::suspend_never{}; }
 
+// When exceptions are disabled we don't define unhandled_exception and rely
+// on the default terminate behavior.
+#ifdef __cpp_exceptions
   // On an unhandled exception, reject the stored promise instead of throwing
   // it asynchronously where it can't be handled.
   void unhandled_exception() {
@@ -735,6 +743,7 @@ public:
       reject(error);
     }
   }
+#endif
 
   // Reject the stored promise due to rejection deeper in the call chain
   void reject_with(val&& error) {

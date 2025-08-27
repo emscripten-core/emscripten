@@ -14,17 +14,23 @@
 //===----------------------------------------------------------------------===//
 
 #include "sanitizer_platform.h"
+#include "sanitizer_platform_limits_posix.h"
 #include "sanitizer_common.h"
 #include "sanitizer_stoptheworld.h"
 
+#include <fcntl.h>
 #include <signal.h>
 #include <time.h>
+#include <unistd.h>
+#include <math.h>
 
 #if SANITIZER_EMSCRIPTEN
 
+#include <sys/stat.h>
+#include <sys/types.h>
+
 #include <emscripten.h>
 #include <emscripten/stack.h>
-#include <sys/types.h>
 
 #include "emscripten_internal.h"
 
@@ -127,6 +133,82 @@ u64 MonotonicNanoTime() {
 }
 
 void GetMemoryProfile(fill_profile_f cb, uptr *stats) {}
+
+int internal_madvise(uptr addr, uptr length, int advice) {
+  return 0; // madvise is currently ignored
+}
+
+uptr internal_close(fd_t fd) {
+  return close(fd);
+}
+
+uptr internal_open(const char *filename, int flags) {
+  return open(filename, flags);
+}
+
+uptr internal_open(const char *filename, int flags, u32 mode) {
+  return open(filename, flags, mode);
+}
+
+uptr internal_read(fd_t fd, void *buf, uptr count) {
+  return read(fd, buf, count);
+}
+
+uptr internal_write(fd_t fd, const void *buf, uptr count) {
+  return write(fd, buf, count);
+}
+
+uptr internal_stat(const char *path, void *buf) {
+  return stat(path, (struct stat *)buf);
+}
+
+uptr internal_fstat(fd_t fd, void *buf) {
+  return fstat(fd, (struct stat *)buf);
+}
+
+uptr internal_filesize(fd_t fd) {
+  struct stat st;
+  if (internal_fstat(fd, &st))
+    return -1;
+  return (uptr)st.st_size;
+}
+
+uptr internal_dup(int oldfd) {
+  return dup(oldfd);
+}
+
+uptr internal_getpid() {
+  return 42;
+}
+
+uptr internal_sched_yield() {
+  return sched_yield();
+}
+
+void internal_sigfillset(__sanitizer_sigset_t *set) {
+  sigfillset(set);
+}
+
+uptr internal_sigprocmask(int how, __sanitizer_sigset_t *set,
+                          __sanitizer_sigset_t *oldset) {
+  return sigprocmask(how, set, oldset);
+}
+
+void internal_usleep(u64 useconds) {
+  usleep(useconds);
+}
+
+void internal__exit(int exitcode) {
+  _exit(exitcode);
+}
+
+tid_t GetTid() {
+  return gettid();
+}
+
+uptr internal_clock_gettime(__sanitizer_clockid_t clk_id, void *tp) {
+  return clock_gettime(clk_id, (struct timespec *)tp);
+}
 
 } // namespace __sanitizer
 

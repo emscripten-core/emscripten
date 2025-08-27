@@ -300,20 +300,9 @@ LibraryJSEventLoop = {
     requestAnimationFrame(func) {
       if (typeof requestAnimationFrame == 'function') {
         requestAnimationFrame(func);
-        return;
+      } else {
+        MainLoop.fakeRequestAnimationFrame(func);
       }
-      var RAF = MainLoop.fakeRequestAnimationFrame;
-#if LEGACY_VM_SUPPORT
-      if (typeof window != 'undefined') {
-        RAF = window['requestAnimationFrame'] ||
-              window['mozRequestAnimationFrame'] ||
-              window['webkitRequestAnimationFrame'] ||
-              window['msRequestAnimationFrame'] ||
-              window['oRequestAnimationFrame'] ||
-              RAF;
-      }
-#endif
-      RAF(func);
     },
   },
 

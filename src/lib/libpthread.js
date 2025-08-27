@@ -70,6 +70,10 @@ var LibraryPThread = {
 #if MAIN_MODULE
                    '$markAsFinished',
 #endif
+#if !MINIMAL_RUNTIME && PTHREAD_POOL_SIZE && !PTHREAD_POOL_DELAY_LOAD
+                   '$addRunDependency',
+                   '$removeRunDependency',
+#endif
                    '$spawnThread',
                    '_emscripten_thread_free_data',
                    'exit',
@@ -107,14 +111,18 @@ var LibraryPThread = {
         PThread.allocateUnusedWorker();
       }
 #endif
-#if !MINIMAL_RUNTIME
+#if !MINIMAL_RUNTIME && PTHREAD_POOL_SIZE
       // MINIMAL_RUNTIME takes care of calling loadWasmModuleToAllWorkers
       // in postamble_minimal.js
-      addOnPreRun(() => {
-        addRunDependency('loading-workers')
-        PThread.loadWasmModuleToAllWorkers(() => removeRunDependency('loading-workers'));
+      addOnPreRun(async () => {
+        var pthreadPoolReady = PThread.loadWasmModuleToAllWorkers();
+#if !PTHREAD_POOL_DELAY_LOAD
+        addRunDependency('loading-workers');
+        await pthreadPoolReady;
+        removeRunDependency('loading-workers');
+#endif // PTHREAD_POOL_DELAY_LOAD
       });
-#endif
+#endif // !MINIMAL_RUNTIME && PTHREAD_POOL_SIZE
 #if MAIN_MODULE
       PThread.outstandingPromises = {};
       // Finished threads are threads that have finished running but we not yet
@@ -233,6 +241,9 @@ var LibraryPThread = {
       worker.onmessage = (e) => {
         var d = e['data'];
         var cmd = d.cmd;
+#if PTHREADS_DEBUG
+        dbg(`main thread: received message '${cmd}' from worker. ${d}`);
+#endif
 
         // If this message is intended to a recipient that is not the main
         // thread, forward it to the target thread.
@@ -251,7 +262,10 @@ var LibraryPThread = {
         } else if (cmd === 'spawnThread') {
           spawnThread(d);
         } else if (cmd === 'cleanupThread') {
-          cleanupThread(d.thread);
+          // cleanupThread needs to be run via callUserCallback since it calls
+          // back into user code to free thread data. Without this it's possible
+          // the unwind or ExitStatus exception could escape here.
+          callUserCallback(() => cleanupThread(d.thread));
 #if MAIN_MODULE
         } else if (cmd === 'markAsFinished') {
           markAsFinished(d.thread);
@@ -272,6 +286,13 @@ var LibraryPThread = {
           // Worker wants to postMessage() to itself to implement setImmediate()
           // emulation.
           worker.postMessage(d);
+#if ENVIRONMENT_MAY_BE_NODE
+        } else if (cmd === 'uncaughtException') {
+          // Message handler for Node.js specific out-of-order behavior:
+          // https://github.com/nodejs/node/issues/59617
+          // A pthread sent an uncaught exception event. Re-raise it on the main thread.
+          worker.onerror(d.error);
+#endif
         } else if (cmd === 'callHandler') {
           Module[d.handler](...d.args);
         } else if (cmd) {
@@ -297,6 +318,13 @@ var LibraryPThread = {
       if (ENVIRONMENT_IS_NODE) {
         worker.on('message', (data) => worker.onmessage({ data: data }));
         worker.on('error', (e) => worker.onerror(e));
+
+#if PTHREADS_DEBUG
+        worker.on('exit', (code) => {
+          if (worker.pthread_ptr) dbg(`Worker hosting pthread ${ptrToString(worker.pthread_ptr)} has terminated with code ${code}.`);
+          else dbg(`Worker has terminated with code ${code}.`);
+        });
+#endif
       }
 #endif
 
@@ -348,9 +376,6 @@ var LibraryPThread = {
 #if LOAD_SOURCE_MAP
         wasmSourceMap,
 #endif
-#if USE_OFFSET_CONVERTER
-        wasmOffsetConverter,
-#endif
 #if MAIN_MODULE
         dynamicLibraries,
         // Share all modules that have been loaded so far.  New workers
@@ -363,10 +388,8 @@ var LibraryPThread = {
       });
     }),
 
-    loadWasmModuleToAllWorkers(onMaybeReady) {
-#if !PTHREAD_POOL_SIZE
-      onMaybeReady();
-#else
+#if PTHREAD_POOL_SIZE
+    async loadWasmModuleToAllWorkers() {
       // Instantiation is synchronous in pthreads.
       if (
         ENVIRONMENT_IS_PTHREAD
@@ -374,7 +397,7 @@ var LibraryPThread = {
         || ENVIRONMENT_IS_WASM_WORKER
 #endif
       ) {
-        return onMaybeReady();
+        return;
       }
 
       let pthreadPoolReady = Promise.all(PThread.unusedWorkers.map(PThread.loadWasmModuleToWorker));
@@ -384,12 +407,11 @@ var LibraryPThread = {
       // If the user wants to wait on it elsewhere, they can do so via the
       // Module['pthreadPoolReady'] promise.
       Module['pthreadPoolReady'] = pthreadPoolReady;
-      onMaybeReady();
-#else
-      pthreadPoolReady.then(onMaybeReady);
-#endif // PTHREAD_POOL_DELAY_LOAD
-#endif // PTHREAD_POOL_SIZE
+      return;
+#endif
+      return pthreadPoolReady;
     },
+#endif // PTHREAD_POOL_SIZE
 
     // Creates a new web Worker and places it in the unused worker pool to wait for its use.
     allocateUnusedWorker() {

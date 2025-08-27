@@ -3,7 +3,7 @@ var captureStdio = false;
 
 var hasModule = typeof Module === 'object' && Module;
 
-var reportingURL = 'http://localhost:8888';
+var reportingURL = '{{{REPORTING_URL}}}';
 
 async function reportResultToServer(result) {
   if (reportResultToServer.reported) {
@@ -50,6 +50,10 @@ function reportStdoutToServer(message) {
   } else {
     logMessageToServer('stdout', message);
   }
+}
+
+async function skipTest(message) {
+  await reportResultToServer(`skipped:${message}`);
 }
 
 function reportTopLevelError(e) {

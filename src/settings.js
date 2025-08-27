@@ -1257,14 +1257,9 @@ var DETERMINISTIC = false;
 // By default we emit all code in a straightforward way into the output
 // .js file. That means that if you load that in a script tag in a web
 // page, it will use the global scope. With ``MODULARIZE`` set, we instead emit
-// the code wrapped in a function that returns a promise. The promise is
-// resolved with the module instance when it is safe to run the compiled code,
-// similar to the ``onRuntimeInitialized`` callback. You do not need to use the
-// ``onRuntimeInitialized`` callback when using ``MODULARIZE``.
-//
-// (If WASM_ASYNC_COMPILATION is off, that is, if compilation is
-// *synchronous*, then it would not make sense to return a Promise, and instead
-// the Module object itself is returned, which is ready to be used.)
+// the code wrapped in an async function. This function returns a promise that
+// resolves to a module instance once it is safe to run the compiled code
+// (similar to the ``onRuntimeInitialized`` callback).
 //
 // The default name of the function is ``Module``, but can be changed using the
 // ``EXPORT_NAME`` option. We recommend renaming it to a more typical name for a
@@ -1769,11 +1764,14 @@ var PTHREADS_DEBUG = false;
 // [link]
 var EVAL_CTORS = 0;
 
-// If enabled, use the JavaScript TextDecoder API for string marshalling.
-// Enabled by default, set this to 0 to disable.
+// The default value or 1 means the generated code will use TextDecoder if
+// available and fall back to custom decoder code when not available.
 // If set to 2, we assume TextDecoder is present and usable, and do not emit
-// any JS code to fall back if it is missing. In single threaded -Oz build modes,
-// TEXTDECODER defaults to value == 2 to save code size.
+// any JS code to fall back if it is missing. Setting this zero to avoid even
+// conditional usage of TextDecoder is no longer supported.
+// Note: In -Oz builds, the default value of TEXTDECODER is set to 2, to save on
+// code size (except when AUDIO_WORKLET is specified, or when `shell` is part
+// of ENVIRONMENT since TextDecoder is not available in those environments).
 // [link]
 var TEXTDECODER = 1;
 
@@ -1872,7 +1870,7 @@ var AUTO_NATIVE_LIBRARIES = true;
 // for Firefox versions older than < majorVersion.
 // Firefox 79 was released on 2020-07-28.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// Minimum supported value is 50 which was released on 2016-11-15 (see
+// Minimum supported value is 55 which was released on 2017-08-08 (see
 // feature_matrix.py)
 // [link]
 var MIN_FIREFOX_VERSION = 79;
@@ -1886,8 +1884,10 @@ var MIN_FIREFOX_VERSION = 79;
 // NOTE: Emscripten is unable to produce code that would work in iOS 9.3.5 and
 // older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
 // see https://github.com/emscripten-core/emscripten/pull/7191.
+// Multithreaded Emscripten code will need Safari 12.2 (iPhone 5s+) at minimum,
+// with support for DedicatedWorkerGlobalScope.name parameter.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// Minimum supported value is 101000 which was released in 2016-09 (see
+// Minimum supported value is 120200 which was released on 2019-03-25 (see
 // feature_matrix.py).
 // [link]
 var MIN_SAFARI_VERSION = 150000;
@@ -1898,7 +1898,7 @@ var MIN_SAFARI_VERSION = 150000;
 // numbers with Chrome.
 // Chrome 85 was released on 2020-08-25.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// Minimum supported value is 55, which was released on 2016-12-01 (see
+// Minimum supported value is 70, which was released on 2018-10-16 (see
 // feature_matrix.py).
 // [link]
 var MIN_CHROME_VERSION = 85;
@@ -1940,6 +1940,7 @@ var MINIMAL_RUNTIME = 0;
 // for faster startup speeds. However this setting is disabled by default
 // since it requires server side configuration and for really small pages there
 // is no observable difference (also has a ~100 byte impact to code size)
+// This setting is only compatible with html output.
 // [link]
 var MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION = false;
 
@@ -2004,17 +2005,6 @@ var MINIFY_HTML = true;
 // future release.
 // [link]
 var ASAN_SHADOW_SIZE = -1;
-
-// Whether we should use the offset converter.  This is needed for older
-// versions of v8 (<7.7) that does not give the hex module offset into wasm
-// binary in stack traces, as well as for avoiding using source map entries
-// across function boundaries.
-// [link]
-var USE_OFFSET_CONVERTER = false;
-
-// Whether we should load the WASM source map at runtime.
-// This is enabled automatically when using -gsource-map with sanitizers.
-var LOAD_SOURCE_MAP = false;
 
 // List of path substitutions to apply in the "sources" field of the source map.
 // Corresponds to the ``--prefix`` option used in ``tools/wasm-sourcemap.py``.
@@ -2184,6 +2174,13 @@ var WASM_ESM_INTEGRATION = false;
 // [link]
 var JS_BASE64_API = false;
 
+// Enable support for GrowableSharedArrayBuffer.
+// This features is only available behind a flag in recent versions of
+// node/chrome.
+// [experimental]
+// [link]
+var GROWABLE_ARRAYBUFFERS = false;
+
 // Experimental support for WebAssembly js-types proposal.
 // It's currently only available under a flag in certain browsers,
 // so we disable it by default to save on code size.
@@ -2276,4 +2273,5 @@ var LEGACY_SETTINGS = [
   ['DEMANGLE_SUPPORT', [0], 'No longer supported'],
   ['MAYBE_WASM2JS', [0], 'No longer supported (use -sWASM=2)'],
   ['HEADLESS', [0], 'No longer supported, use headless browsers or Node.js with JSDOM'],
+  ['USE_OFFSET_COVERTER', [0], 'No longer supported, not needed with modern v8 versions'],
 ];

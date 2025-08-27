@@ -1,0 +1,22 @@
+{
+  "a.out.js": 3605,
+  "a.out.js.gz": 1713,
+  "a.out.nodebug.wasm": 4080,
+  "a.out.nodebug.wasm.gz": 2001,
+  "total": 7685,
+  "total_gz": 3714,
+  "sent": [
+    "proc_exit"
+  ],
+  "imports": [
+    "wasi_snapshot_preview1.proc_exit"
+  ],
+  "exports": [
+    "_start",
+    "memory"
+  ],
+  "funcs": [
+    "$_start",
+    "$sbrk"
+  ]
+}

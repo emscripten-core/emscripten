@@ -2,12 +2,12 @@
 declare namespace RuntimeExports {
     function FS_createPath(...args: any[]): any;
     function FS_createDataFile(...args: any[]): any;
-    function FS_createPreloadedFile(parent: any, name: any, url: any, canRead: any, canWrite: any, onload: any, onerror: any, dontCreateFile: any, canOwn: any, preFinish: any): void;
+    function FS_preloadFile(parent: any, name: any, url: any, canRead: any, canWrite: any, dontCreateFile: any, canOwn: any, preFinish: any): Promise<void>;
     function FS_unlink(...args: any[]): any;
     function FS_createLazyFile(...args: any[]): any;
     function FS_createDevice(...args: any[]): any;
-    let addRunDependency: any;
-    let removeRunDependency: any;
+    function addRunDependency(id: any): void;
+    function removeRunDependency(id: any): void;
 }
 interface WasmModule {
   _main(_0: number, _1: number): number;
