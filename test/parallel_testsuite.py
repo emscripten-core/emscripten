@@ -76,6 +76,12 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # issues.
     # multiprocessing.set_start_method('spawn')
 
+    # Remove old list of flaky tests before starting the run
+    if os.getenv('EMTEST_VISUALIZE'):
+      try:
+        os.remove(os.path.join(tempfile.gettempdir(), 'emscripten_flaky_tests'))
+      except:
+        pass
     # If we are running with --failing-and-slow-first, then the test list has been
     # pre-sorted based on previous test run results. Otherwise run the tests in
     # reverse alphabetical order.
@@ -135,10 +141,23 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # parallel causes mis-orderings, this makes the results more readable.
     results = sorted(buffered_results, key=lambda res: str(res.test))
     result.core_time = 0
+
+    flaky_tests = []
+    if os.getenv('EMTEST_VISUALIZE'):
+      profiler_logs_path = os.path.join(tempfile.gettempdir(), 'emscripten_toolchain_profiler_logs')
+      os.makedirs(profiler_logs_path, exist_ok=True)
+
+      try:
+        flaky_tests = open(os.path.join(tempfile.gettempdir(), 'emscripten_flaky_tests')).read().split()
+      except:
+        pass
+
     for r in results:
-      r.updateResult(result)
+      r.updateResult(result, flaky_tests)
     return result
 
+
+test_task_counter = 0
 
 class BufferedParallelTestResult:
   """A picklable struct used to communicate test results across processes
@@ -161,11 +180,34 @@ class BufferedParallelTestResult:
   def calculateElapsed(self):
     return time.perf_counter() - self.start_time
 
-  def updateResult(self, result):
+  def updateResult(self, result, flaky_tests):
     result.startTest(self.test)
     self.buffered_result.updateResult(result)
     result.stopTest(self.test)
     result.core_time += self.test_duration
+
+    if os.getenv('EMTEST_VISUALIZE') and (self.test_result != 'skipped' or self.test_duration > 0.2):
+      profiler_logs_path = os.path.join(tempfile.gettempdir(), 'emscripten_toolchain_profiler_logs')
+      prof = open(os.path.join(profiler_logs_path, 'toolchain_profiler.pid_0.json'), 'a')
+      global test_task_counter
+      test_name = str(self.test).split('.')[-1][:-1]
+      colors = {
+        'success': '#80ff80',
+        'warnings': '#ffb040',
+        'skipped': '#a0a0a0',
+        'expected failure': '#ff8080',
+        'unexpected success': '#ff8080',
+        'failed': '#ff8080',
+        'errored': '#ff8080',
+      }
+      result = self.test_result
+      print(str(flaky_tests))
+      print(test_name)
+      if result == 'success' and test_name in flaky_tests:
+        result = 'warnings'
+      prof.write(f',\n{{"pid":{test_task_counter},"op":"start","time":{self.start_time},"cmdLine":["{test_name}"],"color":"{colors[result]}"}}')
+      prof.write(f',\n{{"pid":{test_task_counter},"op":"exit","time":{self.start_time+self.test_duration},"returncode":0}}')
+      test_task_counter += 1
 
   def startTest(self, test):
     self.test_name = str(test)
