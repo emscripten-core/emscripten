@@ -2112,7 +2112,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           if expected is not None and expected not in output:
             raise Exception(f'\n\nWhen running command "{cmd}",\nexpected string "{expected}" was not found in output:{output}')
           if assert_returncode is not None:
-            failed = False
             if assert_returncode == NON_ZERO:
               if result.returncode != 0:
                 raise Exception(f'\n\nCommand "{cmd}" was expected to fail, but did not (returncode=0). Output:{output}')
