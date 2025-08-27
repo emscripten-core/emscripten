@@ -9632,6 +9632,17 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_hello_world.c')
 
+  # This is a stress test version that focuses on https://github.com/emscripten-core/emscripten/issues/20067
+  @node_pthreads
+  @no_esm_integration('ABORT_ON_WASM_EXCEPTIONS is not compatible with WASM_ESM_INTEGRATION')
+  @is_slow_test
+  def test_stress_proxy_to_pthread_hello_world(self):
+    self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    js_file = self.build('core/test_hello_world.c')
+    self.parallel_stress_test_js_file(js_file, expected_returncode=0, expected='hello, world!', not_expected='error')
+
   @needs_dylink
   def test_gl_main_module(self):
     # TODO: For some reason, -lGL must be passed in -sSTRICT mode, but can NOT
