@@ -96,6 +96,8 @@ class ChromeConfig:
     '--use-fake-device-for-media-stream --autoplay-policy=no-user-gesture-required',
     # Cache options.
     '--disk-cache-size=1 --media-cache-size=1 --disable-application-cache',
+    # Disable various background tasks downloads (e.g. updates).
+    '--disable-background-networking',
   )
   headless_flags = '--headless=new --window-size=1024,768 --remote-debugging-port=1234'
 
