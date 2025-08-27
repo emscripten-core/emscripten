@@ -674,7 +674,7 @@ Please update to new syntax.`);
     if (DYNCALLS) {
       if (!hasExportedSymbol(`dynCall_${sig}`)) {
         if (ASSERTIONS) {
-          return `((${args}) => { throw 'Internal Error! Attempted to invoke wasm function pointer with signature "${sig}", but no such functions have gotten exported!' })`;
+          return `((${args}) => abort('Internal Error! Attempted to invoke wasm function pointer with signature "${sig}", but no such functions have gotten exported!'))`;
         } else {
           return `((${args}) => {} /* a dynamic function call to signature ${sig}, but there are no exported function pointers with that signature, so this path should never be taken. Build with ASSERTIONS enabled to validate. */)`;
         }
@@ -688,7 +688,7 @@ Please update to new syntax.`);
   if (DYNCALLS) {
     if (!hasExportedSymbol(`dynCall_${sig}`)) {
       if (ASSERTIONS) {
-        return `((${args}) => { throw 'Internal Error! Attempted to invoke wasm function pointer with signature "${sig}", but no such functions have gotten exported!' })`;
+        return `((${args}) => abort('Internal Error! Attempted to invoke wasm function pointer with signature "${sig}", but no such functions have gotten exported!'))`;
       } else {
         return `((${args}) => {} /* a dynamic function call to signature ${sig}, but there are no exported function pointers with that signature, so this path should never be taken. Build with ASSERTIONS enabled to validate. */)`;
       }

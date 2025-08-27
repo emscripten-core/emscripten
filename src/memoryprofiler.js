@@ -174,7 +174,7 @@ var emscriptenMemoryProfiler = {
 //      console.error('Allocation error in onMalloc! Pointer ' + ptr + ' had already been tracked as allocated!');
 //      console.error('Previous site of allocation: ' + emscriptenMemoryProfiler.allocationSitePtrs[ptr]);
 //      console.error('This doubly attempted site of allocation: ' + new Error().stack.toString());
-//      throw 'malloc internal inconsistency!';
+//      abort('malloc internal inconsistency!');
       return;
     }
     var self = emscriptenMemoryProfiler;
@@ -208,7 +208,7 @@ var emscriptenMemoryProfiler = {
     {
 // Uncomment to debug internal workings of tracing:
 //      console.error('Detected double free of pointer ' + ptr + ' at location:\n'+ new Error().stack.toString());
-//      throw 'double free!';
+//      abort('double free!');
       return;
     }
 

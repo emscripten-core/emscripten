@@ -14,7 +14,7 @@ addOnPostRun(function() {
     out("never");
   }
   catch(e) {
-    out(e);
+    out(e.message || e);
   }
   out("ccall");
   try {
@@ -23,7 +23,7 @@ addOnPostRun(function() {
     out("never");
   }
   catch(e) {
-    out(e);
+    out(e.message || e);
   }
   out("cwrap");
   try {
@@ -32,7 +32,7 @@ addOnPostRun(function() {
     out("never");
   }
   catch(e) {
-    out(e);
+    out(e.message || e);
   }
   out("embind");
   try {
@@ -41,7 +41,7 @@ addOnPostRun(function() {
     out("never");
   }
   catch(e) {
-    out(e);
+    out(e.message || e);
   }
   out("wasmTableMirror");
   if (typeof wasmTableMirror !== "undefined") {
@@ -53,7 +53,7 @@ addOnPostRun(function() {
       assert(wasmTableMirror[funcId] == wasmTable.get(funcId), "wasmTableMirror is out of sync with wasmTable!");
     }
     catch(e) {
-      out(e);
+      out(e.message || e);
     }
   }
   out("wasmTableMirror done");

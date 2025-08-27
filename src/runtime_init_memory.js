@@ -6,7 +6,7 @@
 
 // Create the wasm memory. (Note: this only applies if IMPORTED_MEMORY is defined)
 #if !IMPORTED_MEMORY
-{{{ throw "this file should not be be included when IMPORTED_MEMORY is set"; }}}
+#error "this file should not be be included when IMPORTED_MEMORY is set"
 #endif
 
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)

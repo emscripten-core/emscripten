@@ -316,6 +316,12 @@ function handleI64Signatures(symbol, snippet, sig, i53abi) {
       // For functions that where we need to mutate the return value, we
       // also need to wrap the body in an inner function.
       if (oneliner) {
+        // Special case for abort(), this a noreturn function and but closure
+        // compiler doesn't have a way to express that, so it complains if we
+        // do `BigInt(abort(..))`.
+        if (body.startsWith('abort(')) {
+          return snippet;
+        }
         if (argConversions) {
           return `${async_}(${args}) => {
 ${argConversions}

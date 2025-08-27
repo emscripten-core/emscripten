@@ -422,7 +422,7 @@ var LibraryGLUT = {
         return GLctx.getContextAttributes().antialias ? 1 : 0;
 
       default:
-        throw "glutGet(" + type + ") not implemented yet";
+        abort("glutGet(" + type + ") not implemented yet");
     }
   },
 
@@ -562,7 +562,7 @@ var LibraryGLUT = {
         cursorStyle = 'none';
         break;
       default:
-        throw "glutSetCursor: Unknown cursor type: " + cursor;
+        abort("glutSetCursor: Unknown cursor type: " + cursor);
     }
     Browser.getCanvas().style.cursor = cursorStyle;
   },
