@@ -2106,19 +2106,18 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
             return
           result = subprocess.run(cmd, capture_output=True, text=True)
 
-          stdio = result.stdout + result.stderr
-          stdio = f'\n----------------------------\n{stdio}\n----------------------------'
-          if not_expected is not None and not_expected in stdio:
-            raise Exception(f'\n\nWhen running command "{cmd}",\nexpected string "{not_expected}" to NOT be present in output:{stdio}')
-          if expected is not None and expected not in stdio:
-            raise Exception(f'\n\nWhen running command "{cmd}",\nexpected string "{expected}" was not found in output:{stdio}')
+          output = f'\n----------------------------\n{result.stdout}{result.stderr}\n----------------------------'
+          if not_expected is not None and not_expected in output:
+            raise Exception(f'\n\nWhen running command "{cmd}",\nexpected string "{not_expected}" to NOT be present in output:{output}')
+          if expected is not None and expected not in output:
+            raise Exception(f'\n\nWhen running command "{cmd}",\nexpected string "{expected}" was not found in output:{output}')
           if assert_returncode is not None:
             failed = False
             if assert_returncode == NON_ZERO:
               if result.returncode != 0:
-                raise Exception(f'\n\nCommand "{cmd}" was expected to fail, but did not (returncode=0). Output:{stdio}')
+                raise Exception(f'\n\nCommand "{cmd}" was expected to fail, but did not (returncode=0). Output:{output}')
             elif assert_returncode != result.returncode:
-              raise Exception(f'\n\nWhen running command "{cmd}",\nreturn code {result.returncode} does not match expected return code {assert_returncode}. Output:{stdio}')
+              raise Exception(f'\n\nWhen running command "{cmd}",\nreturn code {result.returncode} does not match expected return code {assert_returncode}. Output:{output}')
       except Exception as e:
         if not exception_thrown.is_set():
           exception_thrown.set()

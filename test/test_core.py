@@ -2606,6 +2606,22 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_proxying.c', interleaved_output=False)
 
   @node_pthreads
+  @also_with_modularize
+  @is_slow_test
+  def test_stress_pthread_proxying(self):
+    if '-sMODULARIZE' in self.cflags:
+      if self.get_setting('WASM') == 0:
+        self.skipTest('MODULARIZE + WASM=0 + pthreads does not work (#16794)')
+      self.set_setting('EXPORT_NAME=ModuleFactory')
+    self.maybe_closure()
+    self.set_setting('PROXY_TO_PTHREAD')
+    if not self.has_changed_setting('INITIAL_MEMORY'):
+      self.set_setting('INITIAL_MEMORY=32mb')
+
+    js_file = self.build('pthread/test_pthread_proxying.c')
+    self.parallel_stress_test_js_file(js_file, not_expected='running widget 17 on unknown', expected='running widget 17 on worker', assert_returncode=0)
+
+  @node_pthreads
   def test_pthread_proxying_cpp(self):
     self.set_setting('PROXY_TO_PTHREAD')
     if not self.has_changed_setting('INITIAL_MEMORY'):
