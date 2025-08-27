@@ -925,7 +925,7 @@ f.close()
     '': ([],),
     'noforce': (['-DEMSCRIPTEN_FORCE_COMPILERS=OFF'],),
   })
-  @no_windows('Skipped on Windows because CMake on Chromium CI does not find VS2022 as CMake Generator. https://ci.chromium.org/ui/p/emscripten-releases/builders/try/win/b8705378677095098753/overview')
+  @requires_native_clang('Uses clang_native.get_native_triple() to perform a native CMake compilation')
   def test_cmake_compile_features(self, args):
     os.mkdir('build_native')
     cmd = ['cmake',
