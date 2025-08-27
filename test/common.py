@@ -2472,17 +2472,17 @@ class BrowserCore(RunnerCore):
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
-    if not has_browser() or EMTEST_BROWSER == 'node':
-      return
-
-    cls.harness_in_queue = queue.Queue()
-    cls.harness_out_queue = queue.Queue()
     # In parallel mode this ID contains which pool worker this process is.
     cls.WORKER_ID = get_worker_id()
     cls.PORT = 8888 + cls.WORKER_ID
     cls.SERVER_URL = f'http://localhost:{cls.PORT}'
     cls.HARNESS_URL = f'{cls.SERVER_URL}/run_harness'
 
+    if not has_browser() or EMTEST_BROWSER == 'node':
+      return
+
+    cls.harness_in_queue = queue.Queue()
+    cls.harness_out_queue = queue.Queue()
     cls.harness_server = ServerThread(harness_server_func, cls.harness_in_queue, cls.harness_out_queue, cls.PORT, os.getcwd())
     cls.harness_server.start()
 
