@@ -45,11 +45,15 @@ addToLibrary({
 #if ASSERTIONS
     assert(typeof ptr === 'number');
 #endif
-#if !CAN_ADDRESS_2GB && !MEMORY64
-    // With CAN_ADDRESS_2GB or MEMORY64, pointers are already unsigned.
+#if MEMORY64
+    // Convert to 64-bit unsigned value.  We need to use BigInt here since
+    // Number cannot represent the full 64-bit range.
+    if (ptr < 0) ptr = 2n**64n + BigInt(ptr);
+#else
+    // Convert to 32-bit unsigned value
     ptr >>>= 0;
 #endif
-    return '0x' + ptr.toString(16).padStart(8, '0');
+    return '0x' + ptr.toString(16).padStart({{{ POINTER_SIZE * 2 }}}, '0');
   },
 
   $zeroMemory: (ptr, size) => HEAPU8.fill(0, ptr, ptr + size),

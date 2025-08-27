@@ -659,27 +659,6 @@ jobs:
     steps:
       - run-tests-linux:
           test_targets: "wasm2js1"
-  test-wasm64:
-    # We don't use `bionic` here since its too old to run recent node versions:
-    # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
-    executor: linux-python
-    steps:
-      - prepare-for-tests
-      # The linux-python image uses /home/circleci rather than /root and jsvu
-      # hardcodes /root into its launcher scripts so we need to reinstall v8.
-      - run: rm -rf $HOME/.jsvu
-      - install-v8
-      - install-node-canary
-      # When running wasm64 tests we need to make sure we use the testing
-      # version of node (node canary) when running the compiler output (e.g.
-      # in configure tests.
-      - run:
-          name: configure compiler to use node-canary
-          command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
-      - run-tests:
-          title: "wasm64"
-          test_targets: "wasm64"
-      - upload-test-results
   test-wasm64-4gb:
     environment:
       LANG: "C.UTF-8"
@@ -707,6 +686,7 @@ jobs:
             core_2gb.test_*em_asm*
             core_2gb.test_*embind*
             core_2gb.test_fs_js_api_wasmfs
+            wasm64.test_safe_stack
             wasm64l.test_hello_world
             wasm64l.test_bigswitch
             wasm64l.test_module_wasm_memory

@@ -784,7 +784,7 @@ async function createWasm() {
 
   var ptrToString = (ptr) => {
       assert(typeof ptr === 'number');
-      // With CAN_ADDRESS_2GB or MEMORY64, pointers are already unsigned.
+      // Convert to 32-bit unsigned value
       ptr >>>= 0;
       return '0x' + ptr.toString(16).padStart(8, '0');
     };
