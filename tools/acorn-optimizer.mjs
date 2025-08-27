@@ -925,13 +925,17 @@ function createLiteral(value) {
   };
 }
 
+function makeIdentifier(name) {
+  return {
+    type: 'Identifier',
+    name: name,
+  };
+}
+
 function makeCallExpression(node, name, args) {
   Object.assign(node, {
     type: 'CallExpression',
-    callee: {
-      type: 'Identifier',
-      name: name,
-    },
+    callee: makeIdentifier(name),
     arguments: args,
   });
 }
@@ -1085,19 +1089,19 @@ function growableHeap(ast) {
         c(node.body);
       }
     },
-    AssignmentExpression(node) {
+    AssignmentExpression(node, c) {
       if (node.left.type !== 'Identifier') {
         // Don't transform `HEAPxx =` assignments.
-        growableHeap(node.left);
+        c(node.left);
       }
-      growableHeap(node.right);
+      c(node.right);
     },
-    VariableDeclarator(node) {
+    VariableDeclarator(node, c) {
       // Don't transform the var declarations for HEAP8 etc
       // but do transform anything that sets a var to
       // something from HEAP8 etc
       if (node.init) {
-        growableHeap(node.init);
+        c(node.init);
       }
     },
     Identifier(node) {
@@ -1124,8 +1128,11 @@ function makeCallGrowMemViews() {
 
 function makeSequence(...expressions) {
   return {
-    type: 'SequenceExpression',
-    expressions,
+    type: 'ParenthesizedExpression',
+    expression: {
+      type: 'SequenceExpression',
+      expressions,
+    }
   };
 }
 
@@ -1209,42 +1216,38 @@ function isHEAPAccess(node) {
 }
 
 function isGrowHEAPAccess(node) {
+  if (
+    node.type !== 'MemberExpression' ||
+    !node.computed || // notice a[X] but not a.X
+    node.object.type !== 'ParenthesizedExpression')
+    return false;
+  const obj = node.object.expression;
   return (
-    node.type === 'MemberExpression' &&
-    node.computed && // notice a[X] but not a.X
-    node.object.type === 'SequenceExpression' &&
-    node.object.expressions.length === 2 &&
-    node.object.expressions[0].type === 'CallExpression' &&
-    node.object.expressions[0].callee.type === 'Identifier' &&
-    node.object.expressions[0].callee.name === 'growMemViews' &&
-    node.object.expressions[1].type === 'Identifier' &&
-    isEmscriptenHEAP(node.object.expressions[1].name) &&
-    node.object.expressions[1].name
+    obj.type === 'SequenceExpression' &&
+    obj.expressions.length === 2 &&
+    obj.expressions[0].type === 'CallExpression' &&
+    obj.expressions[0].callee.type === 'Identifier' &&
+    obj.expressions[0].callee.name === 'growMemViews' &&
+    obj.expressions[1].type === 'Identifier' &&
+    isEmscriptenHEAP(obj.expressions[1].name) &&
+    obj.expressions[1].name
   );
 }
 
-// Replace direct HEAP* loads/stores with calls into C, in which ASan checks
-// are applied. That lets ASan cover JS too.
+function asanifyTransform(node, action) {
+  makeCallExpression(node.property, '_asan_js_check_index', [{ ...node.object }, { ...node.property }, makeIdentifier(action)]);
+}
+// Add ASan check to direct HEAP* loads/stores.
+// That lets ASan cover JS too.
 function asanify(ast) {
   recursiveWalk(ast, {
-    FunctionDeclaration(node, c) {
-      if (
-        node.id.type === 'Identifier' &&
-        (node.id.name.startsWith('_asan_js_') || node.id.name === 'establishStackSpace')
-      ) {
-        // do not recurse into this js impl function, which we use during
-        // startup before the wasm is ready
-      } else {
-        c(node.body);
-      }
-    },
     AssignmentExpression(node, c) {
       const target = node.left;
       const value = node.right;
       c(value);
       if (isHEAPAccess(target)) {
         // Instrument a store.
-        makeCallExpression(node, '_asan_js_store', [target.object, target.property, value]);
+        asanifyTransform(target, '___asan_storeN');
       } else {
         c(target);
       }
@@ -1255,7 +1258,7 @@ function asanify(ast) {
         c(node.object);
       } else {
         // Instrument a load.
-        makeCallExpression(node, '_asan_js_load', [node.object, node.property]);
+        asanifyTransform(node, '___asan_loadN');
       }
     },
   });
@@ -1270,24 +1273,19 @@ function multiply(value, by) {
   };
 }
 
-// Replace direct heap access with SAFE_HEAP* calls.
+function safeHeapTransform(node, action) {
+  makeCallExpression(node.property, 'SAFE_HEAP_INDEX', [{ ...node.object }, { ...node.property }, createLiteral(action)]);
+}
+// Add SAFE_HEAP_INDEX check to heap access
 function safeHeap(ast) {
   recursiveWalk(ast, {
-    FunctionDeclaration(node, c) {
-      if (node.id.type === 'Identifier' && node.id.name.startsWith('SAFE_HEAP')) {
-        // do not recurse into this js impl function, which we use during
-        // startup before the wasm is ready
-      } else {
-        c(node.body);
-      }
-    },
     AssignmentExpression(node, c) {
       const target = node.left;
       const value = node.right;
       c(value);
       if (isHEAPAccess(target)) {
         // Instrument a store.
-        makeCallExpression(node, 'SAFE_HEAP_STORE', [target.object, target.property, value]);
+        safeHeapTransform(target, 'storing');
       } else {
         c(target);
       }
@@ -1298,7 +1296,7 @@ function safeHeap(ast) {
         c(node.object);
       } else {
         // Instrument a load.
-        makeCallExpression(node, 'SAFE_HEAP_LOAD', [node.object, node.property]);
+        safeHeapTransform(node, 'loading');
       }
     },
   });
