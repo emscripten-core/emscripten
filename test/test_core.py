@@ -400,6 +400,7 @@ no_minimal_runtime = make_no_decorator_for_setting('MINIMAL_RUNTIME')
 no_safe_heap = make_no_decorator_for_setting('SAFE_HEAP')
 no_strict = make_no_decorator_for_setting('STRICT')
 no_strict_js = make_no_decorator_for_setting('STRICT_JS')
+no_big_endian = make_no_decorator_for_setting('SUPPORT_BIG_ENDIAN')
 
 
 def is_sanitizing(args):
@@ -6629,6 +6630,7 @@ void* operator new(size_t size) {
     '': ([],),
     'nontrapping': (['-mnontrapping-fptoint'],),
   })
+  @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_sse1(self, args):
     src = test_file('sse/test_sse1.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse', '-o', 'test_sse1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6649,6 +6651,7 @@ void* operator new(size_t size) {
     '': ([],),
     'nontrapping': (['-mnontrapping-fptoint'],),
   })
+  @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_sse2(self, args):
     src = test_file('sse/test_sse2.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6662,6 +6665,7 @@ void* operator new(size_t size) {
   @wasm_simd
   @requires_native_clang
   @requires_x64_cpu
+  @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_sse3(self):
     src = test_file('sse/test_sse3.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse3', '-Wno-argument-outside-range', '-o', 'test_sse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6675,6 +6679,7 @@ void* operator new(size_t size) {
   @wasm_simd
   @requires_native_clang
   @requires_x64_cpu
+  @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_ssse3(self):
     src = test_file('sse/test_ssse3.cpp')
     self.run_process([shared.CLANG_CXX, src, '-mssse3', '-Wno-argument-outside-range', '-o', 'test_ssse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6690,6 +6695,7 @@ void* operator new(size_t size) {
   @requires_native_clang
   @requires_x64_cpu
   @is_slow_test
+  @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_sse4_1(self):
     src = test_file('sse/test_sse4_1.cpp')
     # Run with inlining disabled to avoid slow LLVM behavior with lots of macro expanded loops inside a function body.
@@ -6708,6 +6714,7 @@ void* operator new(size_t size) {
     '': (False,),
     '2': (True,),
   })
+  @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_sse4(self, use_4_2):
     msse4 = '-msse4.2' if use_4_2 else '-msse4'
     src = test_file('sse/test_sse4_2.cpp')
@@ -6729,6 +6736,7 @@ void* operator new(size_t size) {
     '': ([],),
     'nontrapping': (['-mnontrapping-fptoint'],),
   })
+  @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_avx(self, args):
     src = test_file('sse/test_avx.cpp')
     self.run_process([shared.CLANG_CXX, src, '-mavx', '-Wno-argument-outside-range', '-Wpedantic', '-o', 'test_avx', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6749,6 +6757,7 @@ void* operator new(size_t size) {
     '': ([],),
     'nontrapping': (['-mnontrapping-fptoint'],),
   })
+  @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_avx2(self, args):
     src = test_file('sse/test_avx2.cpp')
     self.run_process([shared.CLANG_CXX, src, '-mavx2', '-Wno-argument-outside-range', '-Wpedantic', '-o', 'test_avx2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -10031,6 +10040,28 @@ asani = make_run('asani', cflags=['-fsanitize=address', '--profiling', '--pre-js
 # Experimental modes (not tested by CI)
 minimal0 = make_run('minimal0', cflags=['-g'], settings={'MINIMAL_RUNTIME': 1})
 llvmlibc = make_run('llvmlibc', cflags=['-lllvmlibc'])
+
+# To run the big endian test suite on a little endian Linux host:
+# 1. sudo apt install -y qemu-user libc6-s390x-cross libstdc++6-s390x-cross
+# 2. wget https://nodejs.org/dist/v22.16.0/node-v22.16.0-linux-s390x.tar.xz
+# 3. tar xJf node-v22.14.0-linux-s390x.tar.xz
+# 4. run a little endian emsdk install, e.g. `emsdk install sdk-main-64bit`
+# 5. activate little endian emsdk install, e.g. `emsdk activate sdk-main-64bit`
+# 6. modify the generated emsdk install: edit file .emscripten under emsdk/ root directory, and change the line
+#       NODE_JS = emsdk_path + '/node/22.16.0_64bit/bin/node'
+#    to point to big endian node:
+#       NODE_JS = ['qemu-s390x', '-L', '/usr/s390x-linux-gnu/', '/home/user/node-v22.16.0-linux-s390x/bin/node']
+# 7. enter emsdk environment in current terminal with `source ./emsdk_env.sh`
+# 8. modify EMSDK_NODE environment variable to also point to the big endian node:
+#       export EMSDK_NODE="qemu-s390x -L /usr/s390x-linux-gnu/ /home/user/node-v22.16.0-linux-s390x/bin/node"
+# 9. run some tests in big endian mode: in Emscripten root directory, run
+#       `test/runner bigendian` to run all tests, or a single test with
+#       `test/runner bigendian.test_jslib_i64_params`
+
+# The above test scheme has a small quirk that it will also use the Big Endian version of node.js for internal
+# Emscripten compilation. At a quick test, this actually worked, so maybe this would be fine for this test harness.
+# Alternatively, we would want to find a way to separate compiler node from runtime node somehow in the harness.
+bigendian0 = make_run('bigendian0', cflags=['-O0'], settings={'SUPPORT_BIG_ENDIAN': 1})
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
 del TestCoreBase # noqa
