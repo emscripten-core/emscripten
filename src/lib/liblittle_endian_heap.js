@@ -115,6 +115,7 @@ function LE_HEAP_UPDATE() {
   },
   $LE_ATOMICS_WAITASYNC: (heap, offset, value, timeout) => {
     const order = LE_ATOMICS_NATIVE_BYTE_ORDER[heap.BYTES_PER_ELEMENT - 1];
+    /** @suppress {checkTypes} */
     return Atomics.waitAsync(heap, offset, order(value), timeout);
   },
   $LE_ATOMICS_XOR: (heap, offset, value) => {
