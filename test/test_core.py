@@ -8499,6 +8499,7 @@ Module.onRuntimeInitialized = () => {
   # Test basic wasm2js functionality in all core compilation modes.
   @no_sanitize('no wasm2js support yet in sanitizers')
   @requires_wasm2js
+  @no_big_endian('wasm2js is currently not compatible with big endian')
   def test_wasm2js(self):
     if self.is_wasm2js():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
@@ -8509,6 +8510,7 @@ Module.onRuntimeInitialized = () => {
   @no_asan('no wasm2js support yet in asan')
   @requires_wasm2js
   @also_with_minimal_runtime
+  @no_big_endian('wasm2js is currently not compatible with big endian')
   def test_wasm2js_fallback(self):
     if self.is_wasm2js():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
