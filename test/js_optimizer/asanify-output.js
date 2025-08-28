@@ -44,6 +44,10 @@ HEAP16[_asan_js_check_index(HEAP16, bar(HEAPF64[_asan_js_check_index(HEAPF64, 5,
 
 HEAPF32[_asan_js_check_index(HEAPF32, x, ___asan_storeN)] = HEAP32[_asan_js_check_index(HEAP32, y, ___asan_loadN)];
 
+function establishStackSpace() {
+  HEAP32[0];
+}
+
 function somethingElse() {
   return HEAP8[_asan_js_check_index(HEAP8, ptr, ___asan_loadN)];
 }

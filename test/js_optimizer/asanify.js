@@ -29,6 +29,11 @@ foo = HEAPU8[1337] = 42;
 HEAP16[bar(HEAPF64[5])];
 HEAPF32[x] = HEAP32[y];
 
+// skip establishStackSpace, because it sets up variables used by ASan itself
+function establishStackSpace() {
+  HEAP32[0];
+}
+
 // but do handle everything else
 function somethingElse() {
   return HEAP8[ptr];
