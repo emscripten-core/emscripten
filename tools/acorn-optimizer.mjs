@@ -1241,6 +1241,13 @@ function asanifyTransform(node, action) {
 // That lets ASan cover JS too.
 function asanify(ast) {
   recursiveWalk(ast, {
+    FunctionDeclaration(node, c) {
+      if (node.id.type === 'Identifier' && node.id.name === 'establishStackSpace') {
+        // skip establishStackSpace, because it sets up variables used by ASan itself
+      } else {
+        c(node.body);
+      }
+    },
     AssignmentExpression(node, c) {
       const target = node.left;
       const value = node.right;
