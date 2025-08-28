@@ -9977,17 +9977,17 @@ core_2gb = make_run('core_2gb', cflags=['--profiling-funcs'],
                     settings={'INITIAL_MEMORY': '2200mb', 'GLOBAL_BASE': '2gb'})
 
 # MEMORY64=1
-wasm64 = make_run('wasm64', cflags=['-Wno-experimental', '--profiling-funcs'],
+wasm64 = make_run('wasm64', cflags=['--profiling-funcs'],
                   settings={'MEMORY64': 1}, require_wasm64=True, require_node=True)
-wasm64_v8 = make_run('wasm64_v8', cflags=['-Wno-experimental', '--profiling-funcs'],
+wasm64_v8 = make_run('wasm64_v8', cflags=['--profiling-funcs'],
                      settings={'MEMORY64': 1}, require_wasm64=True, require_v8=True)
 # Run the wasm64 tests with all memory offsets > 4gb.  Be careful running this test
 # suite with any kind of parallelism.
-wasm64_4gb = make_run('wasm64_4gb', cflags=['-Wno-experimental', '--profiling-funcs'],
+wasm64_4gb = make_run('wasm64_4gb', cflags=['--profiling-funcs'],
                       settings={'MEMORY64': 1, 'INITIAL_MEMORY': '4200mb', 'GLOBAL_BASE': '4gb'},
                       require_wasm64=True)
 # MEMORY64=2, or "lowered"
-wasm64l = make_run('wasm64l', cflags=['-O1', '-Wno-experimental', '--profiling-funcs'],
+wasm64l = make_run('wasm64l', cflags=['-O1', '--profiling-funcs'],
                    settings={'MEMORY64': 2})
 
 lto0 = make_run('lto0', cflags=['-flto', '-O0'])
