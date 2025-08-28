@@ -59,7 +59,6 @@ addToLibrary({
             throw wholeFileReq;
           }
           var wholeFileData = new Uint8Array(await wholeFileReq.arrayBuffer());
-          var text = new TextDecoder().decode(wholeFileData);
           wasmFS$JSMemoryRanges[file] = {
             size: wholeFileData.byteLength,
             chunks: [wholeFileData],
