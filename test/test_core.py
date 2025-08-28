@@ -10053,7 +10053,7 @@ llvmlibc = make_run('llvmlibc', cflags=['-lllvmlibc'])
 
 # This setup will still use the native x64 Node.js in Emscripten internal use to compile code, but
 # runs all unit tests via qemu on the s390x big endian version of Node.js.
-bigendian0 = make_run('bigendian0', cflags=['-O0'], settings={'SUPPORT_BIG_ENDIAN': 1})
+bigendian0 = make_run('bigendian0', cflags=['-O0', '-Wno-experimental'], settings={'SUPPORT_BIG_ENDIAN': 1})
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
 del TestCoreBase # noqa
