@@ -40,6 +40,17 @@ function processModuleArgs()
 #endif
 #endif // ASSERTIONS
 
+#if expectToReceiveOnModule('preInit')
+  if (Module['preInit']) {
+    if (typeof Module['preInit'] == 'function') Module['preInit'] = [Module['preInit']];
+    while (Module['preInit'].length > 0) {
+      Module['preInit'].shift()();
+    }
+  }
+#if ASSERTIONS
+  consumedModuleProp('preInit');
+#endif
+#endif
 }
 
 {{{ exportJSSymbols() }}}

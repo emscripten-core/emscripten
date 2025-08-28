@@ -3206,14 +3206,10 @@ function run() {
   }
 }
 
-function preInit() {}
-
 var wasmExports;
 
 // With async instantation wasmExports is assigned asynchronously when the
 // instance is received.
 createWasm();
-
-preInit();
 
 run();
