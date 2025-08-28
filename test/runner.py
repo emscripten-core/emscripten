@@ -431,7 +431,7 @@ def run_tests(options, suites):
   total_core_time = 0
   run_start_time = time.perf_counter()
   for mod_name, suite in suites:
-    print('Running %s: (%s tests)' % (mod_name, suite.countTestCases()))
+    print('Running %s: (%s tests)' % (mod_name, suite.countTestCases()), file=sys.stderr)
     res = testRunner.run(suite)
     msg = ('%s: %s run, %s errors, %s failures, %s skipped' %
            (mod_name, res.testsRun, len(res.errors), len(res.failures), len(res.skipped)))
@@ -441,7 +441,7 @@ def run_tests(options, suites):
       total_core_time += res.core_time
   total_run_time = time.perf_counter() - run_start_time
   if total_core_time > 0:
-    print('Total core time: %.3fs. Wallclock time: %.3fs. Parallelization: %.2fx.' % (total_core_time, total_run_time, total_core_time / total_run_time))
+    print('Total core time: %.3fs. Wallclock time: %.3fs. Parallelization: %.2fx.' % (total_core_time, total_run_time, total_core_time / total_run_time), file=sys.stderr)
 
   if len(resultMessages) > 1:
     print('====================')
