@@ -218,12 +218,19 @@ def symbolize_address_sourcemap(module, address, force_file):
 
 def symbolize_address_symbolmap(module, address, symbol_map_file):
   """Symbolize using a symbol map file."""
+
+  def split_symbolmap_line(line):
+      index = line.find(':')
+      if index == -1:
+          raise ValueError(f'invalid symbolmap line: {line}')
+      return line[:index], line[index + 1:]
+
   func_names = {}
 
   with open(symbol_map_file) as f:
     lines = f.read().splitlines()
     for line in lines:
-      index, name = line.split(':')
+      index, name = split_symbolmap_line(line)
       func_names[int(index)] = name
 
   func_index = -1

@@ -11041,6 +11041,24 @@ int main() {
     # The name section will not show bar, as it's inlined into main
     check_symbolmap_info(unreachable_addr, '__original_main')
 
+    # 3. Test symbol map on C++ name mangling
+    self.run_process([EMCC, test_file('other/test_symbolmap.cpp'),
+                      '-O1', '--emit-symbol-map', '-o', 'test_symbolmap.js'])
+    self.assertExists('test_symbolmap.js.symbols')
+
+    out_to_js_call_addr = self.get_instr_addr('call\t0', 'test_symbolmap.wasm')
+    unreachable_addr = self.get_instr_addr('unreachable', 'test_symbolmap.wasm')
+
+    def check_cpp_symbolmap_info(address, func):
+      out = self.run_process([emsymbolizer, '--source=symbolmap', '-f', 'test_symbolmap.js.symbols', 'test_symbolmap.wasm', address], stdout=PIPE).stdout
+      self.assertIn(func, out)
+
+    check_cpp_symbolmap_info(out_to_js_call_addr, 'Namespace::foo')         # the function name
+    check_cpp_symbolmap_info(out_to_js_call_addr, 'Namespace::ClassA')      # the parameter
+    check_cpp_symbolmap_info(unreachable_addr, 'Namespace::bar')            # the function name
+    check_cpp_symbolmap_info(unreachable_addr, 'Namespace::ClassA')         # the type parameter
+    check_cpp_symbolmap_info(unreachable_addr, 'Namespace::ClassB')         # the parameter
+
   def test_separate_dwarf(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-g'])
     self.assertExists('a.out.wasm')
