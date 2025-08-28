@@ -288,20 +288,6 @@ function checkUnflushedContent() {
 #endif // EXIT_RUNTIME
 #endif // ASSERTIONS
 
-function preInit() {
-#if expectToReceiveOnModule('preInit')
-  if (Module['preInit']) {
-    if (typeof Module['preInit'] == 'function') Module['preInit'] = [Module['preInit']];
-    while (Module['preInit'].length > 0) {
-      Module['preInit'].shift()();
-    }
-  }
-#if ASSERTIONS
-  consumedModuleProp('preInit');
-#endif
-#endif
-}
-
 var wasmExports;
 
 #if MODULARIZE == 'instance'
@@ -329,7 +315,6 @@ export default async function init(moduleArg = {}) {
 #else
   wasmExports = await createWasm();
 #endif
-  preInit();
   run();
 }
 
@@ -378,12 +363,11 @@ createWasm();
 wasmExports = createWasm();
 #endif
 
+run();
+
 #if WASM_WORKERS || PTHREADS
 }
 #endif
-
-preInit();
-{{{ runIfMainThread('run();') }}}
 
 #endif // MODULARIZE != instance
 
