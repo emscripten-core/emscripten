@@ -857,7 +857,7 @@ var LibrarySDL = {
           var code = SDL.lookupKeyCodeForEvent(event);
           // Ignore key events that we don't (yet) map to SDL keys
           if (!code) return;
-#if !SAFE_HEAP
+#if SAFE_HEAP
           // Assigning a boolean to HEAP8, that's alright but Closure would like to warn about it.
           // TODO(https://github.com/emscripten-core/emscripten/issues/16311):
           // This is kind of ugly hack.  Perhaps we can find a better way?

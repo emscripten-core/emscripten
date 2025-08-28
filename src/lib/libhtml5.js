@@ -1001,7 +1001,7 @@ var LibraryHTML5 = {
   $fillFullscreenChangeEventData: (eventStruct) => {
     var fullscreenElement = getFullscreenElement();
     var isFullscreen = !!fullscreenElement;
-#if !SAFE_HEAP
+#if SAFE_HEAP
     // Assigning a boolean to HEAP32 with expected type coercion.
     /** @suppress{checkTypes} */
 #endif
@@ -1544,7 +1544,7 @@ var LibraryHTML5 = {
   $fillPointerlockChangeEventData: (eventStruct) => {
     var pointerLockElement = document.pointerLockElement;
     var isPointerlocked = !!pointerLockElement;
-#if !SAFE_HEAP
+#if SAFE_HEAP
     // Assigning a boolean to HEAP32 with expected type coercion.
     /** @suppress{checkTypes} */
 #endif
@@ -1746,7 +1746,7 @@ var LibraryHTML5 = {
     var visibilityStates = [ "hidden", "visible", "prerender", "unloaded" ];
     var visibilityState = visibilityStates.indexOf(document.visibilityState);
 
-#if !SAFE_HEAP
+#if SAFE_HEAP
     // Assigning a boolean to HEAP32 with expected type coercion.
     /** @suppress{checkTypes} */
 #endif
@@ -1943,7 +1943,7 @@ var LibraryHTML5 = {
       if (typeof e.buttons[i] == 'object') {
         {{{ makeSetValue('eventStruct+i', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i].pressed', 'i8') }}};
       } else {
-#if !SAFE_HEAP
+#if SAFE_HEAP
         // Assigning a boolean to HEAP32, that's ok, but Closure would like to warn about it:
         /** @suppress {checkTypes} */
 #endif
