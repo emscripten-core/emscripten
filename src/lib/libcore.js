@@ -2098,8 +2098,13 @@ addToLibrary({
 #endif
       try {
 #if PTHREADS
-        if (ENVIRONMENT_IS_PTHREAD) __emscripten_thread_exit(EXITSTATUS);
-        else
+        if (ENVIRONMENT_IS_PTHREAD) {
+          // exit the current thread, but only if there is one active.
+          // TODO(https://github.com/emscripten-core/emscripten/issues/25076):
+          // Unify this check with the runtimeExited check above
+          if (_pthread_self()) __emscripten_thread_exit(EXITSTATUS);
+          return;
+        }
 #endif
         _exit(EXITSTATUS);
       } catch (e) {
@@ -2117,8 +2122,19 @@ addToLibrary({
   },
 
 #else // MINIMAL_RUNTIME
-  // MINIMAL_RUNTIME doesn't support the runtimeKeepalive stuff
-  $callUserCallback: (func) => func(),
+  $callUserCallback: (func) => {
+    // MINIMAL_RUNTIME doesn't support the runtimeKeepalive stuff, but under
+    // some circumstances it supportes `runtimeExited`
+#if EXIT_RUNTIME
+    if (runtimeExited) {
+#if ASSERTIONS
+      err('user callback triggered after runtime exited or application aborted.  Ignoring.');
+#endif
+      return;
+    }
+#endif
+    func();
+  },
 #endif // MINIMAL_RUNTIME
 
   $asmjsMangle: (x) => {
