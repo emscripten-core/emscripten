@@ -461,10 +461,8 @@ async function createWasm() {
     wasmMemory = wasmExports["b"];
     updateMemoryViews();
     assignWasmExports(wasmExports);
-    removeRunDependency("wasm-instantiate");
     return wasmExports;
   }
-  addRunDependency("wasm-instantiate");
   // Prefer streaming instantiation if available.
   function receiveInstantiationResult(result) {
     // 'result' is a ResultObject object which has both the module and instance.
@@ -500,25 +498,6 @@ var callRuntimeCallbacks = callbacks => {
 var onPreRuns = [];
 
 var addOnPreRun = cb => onPreRuns.push(cb);
-
-var runDependencies = 0;
-
-var dependenciesFulfilled = null;
-
-var removeRunDependency = id => {
-  runDependencies--;
-  if (runDependencies == 0) {
-    if (dependenciesFulfilled) {
-      var callback = dependenciesFulfilled;
-      dependenciesFulfilled = null;
-      callback();
-    }
-  }
-};
-
-var addRunDependency = id => {
-  runDependencies++;
-};
 
 /** @param {number=} offset */ var doWritev = (stream, iov, iovcnt, offset) => {
   var ret = 0;
@@ -1324,6 +1303,25 @@ var asyncLoad = async url => {
 var FS_createDataFile = (...args) => FS.createDataFile(...args);
 
 var getUniqueRunDependency = id => id;
+
+var runDependencies = 0;
+
+var dependenciesFulfilled = null;
+
+var removeRunDependency = id => {
+  runDependencies--;
+  if (runDependencies == 0) {
+    if (dependenciesFulfilled) {
+      var callback = dependenciesFulfilled;
+      dependenciesFulfilled = null;
+      callback();
+    }
+  }
+};
+
+var addRunDependency = id => {
+  runDependencies++;
+};
 
 var preloadPlugins = [];
 
@@ -3210,6 +3208,4 @@ var wasmExports;
 
 // With async instantation wasmExports is assigned asynchronously when the
 // instance is received.
-createWasm();
-
-run();
+createWasm().then(() => run());
