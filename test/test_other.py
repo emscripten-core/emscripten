@@ -5705,27 +5705,7 @@ Waste<3> *getMore() {
     UNMINIFIED_MIDDLE = 'function middle'
 
     self.clear()
-    create_file('src.c', r'''
-#include <emscripten.h>
-
-EM_JS(int, run_js, (), {
-out(new Error().stack);
-return 0;
-});
-
-EMSCRIPTEN_KEEPALIVE
-void middle() {
-if (run_js()) {
-  // fake recursion that is never reached, to avoid inlining in binaryen and LLVM
-  middle();
-}
-}
-
-int main() {
-EM_ASM({ _middle() });
-}
-''')
-    cmd = [EMCC, 'src.c', '--emit-symbol-map'] + opts
+    cmd = [EMXX, test_file('other/test_symbol_map.cpp'), '--emit-symbol-map'] + opts
     if wasm != 1:
       cmd.append(f'-sWASM={wasm}')
     self.run_process(cmd)
@@ -11032,15 +11012,15 @@ int main() {
     check_symbolmap_info(unreachable_addr, '__original_main')
 
     # 3. Test symbol map on C++ name mangling
-    self.run_process([EMCC, test_file('other/test_symbolmap.cpp'),
-                      '-O1', '--emit-symbol-map', '-o', 'test_symbolmap.js'])
-    self.assertExists('test_symbolmap.js.symbols')
+    self.run_process([EMXX, test_file('other/test_symbol_map.cpp'),
+                      '-O1', '--emit-symbol-map', '-o', 'test_symbol_map.js'])
+    self.assertExists('test_symbol_map.js.symbols')
 
-    out_to_js_call_addr = self.get_instr_addr('call\t0', 'test_symbolmap.wasm')
-    unreachable_addr = self.get_instr_addr('unreachable', 'test_symbolmap.wasm')
+    out_to_js_call_addr = self.get_instr_addr('call\t0', 'test_symbol_map.wasm')
+    unreachable_addr = self.get_instr_addr('unreachable', 'test_symbol_map.wasm')
 
     def check_cpp_symbolmap_info(address, func):
-      out = self.run_process([emsymbolizer, '--source=symbolmap', '-f', 'test_symbolmap.js.symbols', 'test_symbolmap.wasm', address], stdout=PIPE).stdout
+      out = self.run_process([emsymbolizer, '--source=symbolmap', '-f', 'test_symbol_map.js.symbols', 'test_symbol_map.wasm', address], stdout=PIPE).stdout
       self.assertIn(func, out)
 
     check_cpp_symbolmap_info(out_to_js_call_addr, 'Namespace::foo')         # the function name
