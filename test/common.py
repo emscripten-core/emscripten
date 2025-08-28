@@ -137,9 +137,14 @@ EMRUN = shared.bat_suffix(shared.path_from_root('emrun'))
 WASM_DIS = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
 LLVM_OBJDUMP = shared.llvm_tool_path('llvm-objdump')
 PYTHON = sys.executable
+
+assert config.NODE_JS # assert for mypy's benefit
+# By default we run the tests in the same version of node as emscripten itself used.
 if not config.NODE_JS_TEST:
   config.NODE_JS_TEST = config.NODE_JS
-
+# The default set of JS_ENGINES contains the just node.
+if not config.JS_ENGINES:
+  config.JS_ENGINES = [config.NODE_JS_TEST]
 
 requires_network = unittest.skipIf(os.getenv('EMTEST_SKIP_NETWORK_TESTS'), 'This test requires network access')
 
