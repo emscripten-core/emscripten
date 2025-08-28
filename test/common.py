@@ -1086,7 +1086,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return nodejs
 
   def node_is_canary(self, nodejs):
-    return nodejs and nodejs[0] and 'canary' in nodejs[0]
+    return nodejs and nodejs[0] and ('canary' in nodejs[0] or 'nightly' in nodejs[0])
 
   def require_node_canary(self):
     nodejs = self.get_nodejs()
