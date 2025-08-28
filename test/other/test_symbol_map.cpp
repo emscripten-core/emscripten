@@ -27,6 +27,8 @@ extern "C" void middle() {
     // fake recursion that is never reached, to avoid inlining in binaryen and LLVM
     middle();
 
+    // call function to avoid Dead-code elimination
+    // instantiate template functions
     Namespace::foo({});
     Namespace::bar<Namespace::ClassA>(Namespace::ClassB{});
   }
