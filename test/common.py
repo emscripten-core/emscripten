@@ -142,7 +142,7 @@ assert config.NODE_JS # assert for mypy's benefit
 # By default we run the tests in the same version of node as emscripten itself used.
 if not config.NODE_JS_TEST:
   config.NODE_JS_TEST = config.NODE_JS
-# The default set of JS_ENGINES contains the just node.
+# The default set of JS_ENGINES contains just node.
 if not config.JS_ENGINES:
   config.JS_ENGINES = [config.NODE_JS_TEST]
 
