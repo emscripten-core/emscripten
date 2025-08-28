@@ -1003,7 +1003,9 @@ function toIndexType(x) {
 }
 
 // Converts a value to BigInt if building for wasm64, regardless of whether the
-// memory is 32- or 64-bit. Used for passing 64-bit values to the JS API.
+// memory is 32- or 64-bit. Used for passing pointer-width values to native
+// code (since pointers are presented as Number in JS and BigInt in wasm we need
+// this conversion before passing them).
 function to64(x) {
   if (!MEMORY64) return x;
   return `BigInt(${x})`;
