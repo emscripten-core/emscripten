@@ -68,6 +68,7 @@ void _emval_run_destructors(EM_DESTRUCTORS handle);
 
 EM_VAL _emval_new_array(void);
 EM_VAL _emval_new_array_from_memory_view(EM_VAL mv);
+void _emval_array_to_memory_view(EM_VAL dst, EM_VAL src);
 EM_VAL _emval_new_object(void);
 EM_VAL _emval_new_cstring(const char*);
 EM_VAL _emval_new_u8string(const char*);
@@ -828,7 +829,7 @@ std::vector<T> convertJSArrayToNumberVector(const val& v) {
   // See https://www.ecma-international.org/ecma-262/6.0/#sec-%typedarray%.prototype.set-array-offset
   // and https://www.ecma-international.org/ecma-262/6.0/#sec-tonumber
   val memoryView{ typed_memory_view(l, rv.data()) };
-  memoryView.call<void>("set", v);
+  internal::_emval_array_to_memory_view(memoryView.as_handle(), v.as_handle());
 
   return rv;
 }
