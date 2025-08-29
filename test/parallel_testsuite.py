@@ -22,6 +22,7 @@ seen_class = set()
 
 # Older Python versions have a bug with multiprocessing shared data
 # structures. https://github.com/emscripten-core/emscripten/issues/25103
+# and https://github.com/python/cpython/issues/71936
 def python_multiprocessing_structures_are_buggy():
   v = sys.version_info
   return (v.major, v.minor, v.micro) <= (3, 12, 7) or (v.major, v.minor, v.micro) == (3, 13, 0)
