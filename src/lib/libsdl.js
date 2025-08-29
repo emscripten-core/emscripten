@@ -1512,7 +1512,9 @@ var LibrarySDL = {
     // Free the old surface first if there is one
     if (SDL.screen) {
       SDL.freeSurface(SDL.screen);
+#if ASSERTIONS
       assert(!SDL.screen);
+#endif
     }
 
     if (SDL.GL) flags = flags | {{{ cDefs.SDL_OPENGL }}}; // if we are using GL, then later calls to SetVideoMode may not mention GL, but we do need it. Once in GL mode, we never leave it.
@@ -1621,7 +1623,9 @@ var LibrarySDL = {
   // Copy data from the C++-accessible storage to the canvas backing
   SDL_UnlockSurface__proxy: 'sync',
   SDL_UnlockSurface: (surf) => {
+#if ASSERTIONS
     assert(!SDL.GL); // in GL mode we do not keep around 2D canvases and contexts
+#endif
 
     var surfData = SDL.surfaces[surf];
 
@@ -1635,7 +1639,9 @@ var LibrarySDL = {
     } else if (!surfData.colors) {
       var data = surfData.image.data;
       var buffer = surfData.buffer;
+#if ASSERTIONS
       assert(buffer % 4 == 0, 'Invalid buffer offset: ' + buffer);
+#endif
       var src = {{{ getHeapOffset('buffer', 'i32') }}};
       var dst = 0;
       var isScreen = surf == SDL.screen;
@@ -1916,7 +1922,9 @@ var LibrarySDL = {
 
   SDL_GetClipRect__proxy: 'sync',
   SDL_GetClipRect: (surf, rect) => {
+#if ASSERTIONS
     assert(rect);
+#endif
 
     var surfData = SDL.surfaces[surf];
     var r = surfData.clipRect || { x: 0, y: 0, w: surfData.width, h: surfData.height };
@@ -1937,7 +1945,9 @@ var LibrarySDL = {
   SDL_FillRect__proxy: 'sync',
   SDL_FillRect: (surf, rect, color) => {
     var surfData = SDL.surfaces[surf];
+#if ASSERTIONS
     assert(!surfData.locked); // but we could unlock and re-lock if we must..
+#endif
 
     if (surfData.isFlagSet({{{ cDefs.SDL_HWPALETTE }}})) {
       //in SDL_HWPALETTE color is index (0..255)
@@ -2036,7 +2046,9 @@ var LibrarySDL = {
     switch (action) {
       case 2: { // SDL_GETEVENT
         // We only handle 1 event right now
+#if ASSERTIONS
         assert(requestedEventCount == 1);
+#endif
 
         var index = 0;
         var retrievedEventCount = 0;
@@ -2858,7 +2870,9 @@ var LibrarySDL = {
   Mix_PlayChannelTimed__proxy: 'sync',
   Mix_PlayChannelTimed: (channel, id, loops, ticks) => {
     // TODO: handle fixed amount of N loops. Currently loops either 0 or infinite times.
+#if ASSERTIONS
     assert(ticks == -1);
+#endif
 
     // Get the audio element associated with the ID
     var info = SDL.audios[id];
@@ -3233,7 +3247,9 @@ var LibrarySDL = {
       x2 = x2 << 16 >> 16;
       y2 = y2 << 16 >> 16;
       var surfData = SDL.surfaces[surf];
+#if ASSERTIONS
       assert(!surfData.locked); // but we could unlock and re-lock if we must..
+#endif
       // TODO: if ctx does not change, leave as is, and also do not re-set xStyle etc.
       var x = x1 < x2 ? x1 : x2;
       var y = y1 < y2 ? y1 : y2;
@@ -3250,7 +3266,9 @@ var LibrarySDL = {
       x2 = x2 << 16 >> 16;
       y2 = y2 << 16 >> 16;
       var surfData = SDL.surfaces[surf];
+#if ASSERTIONS
       assert(!surfData.locked); // but we could unlock and re-lock if we must..
+#endif
       surfData.ctx.save();
       surfData.ctx.strokeStyle = cssColor;
       surfData.ctx.beginPath();
@@ -3266,7 +3284,9 @@ var LibrarySDL = {
       rx = rx << 16 >> 16;
       ry = ry << 16 >> 16;
       var surfData = SDL.surfaces[surf];
+#if ASSERTIONS
       assert(!surfData.locked); // but we could unlock and re-lock if we must..
+#endif
 
       surfData.ctx.save();
       surfData.ctx.beginPath();

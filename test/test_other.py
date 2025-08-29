@@ -10363,6 +10363,9 @@ end
       '--minify=0',
       '-lbase64.js',
       '-Werror=closure',
+      '-sSTRICT', '-sASSERTIONS=0',
+      '-sAUTO_NATIVE_LIBRARIES',
+      '-sAUTO_JS_LIBRARIES',
       '-sINCLUDE_FULL_LIBRARY',
       '-sOFFSCREEN_FRAMEBUFFER',
       # Enable as many features as possible in order to maximise
