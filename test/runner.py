@@ -107,8 +107,7 @@ misc_test_modes = [
 
 
 def check_js_engines():
-  working_engines = [e for e in config.JS_ENGINES if jsrun.check_engine(e)]
-  if len(working_engines) < len(config.JS_ENGINES):
+  if not all(jsrun.check_engine(e) for e in config.JS_ENGINES):
     print('Not all the JS engines in JS_ENGINES appears to work.')
     sys.exit(1)
 
