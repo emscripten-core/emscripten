@@ -154,7 +154,9 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # Generate the parallel test run visualization
     if os.getenv('EMTEST_VISUALIZE'):
       emprofile.create_profiling_graph(utils.path_from_root('out/graph'))
+      # Cleanup temp files that were used for the visualization
       emprofile.delete_profiler_logs()
+      utils.delete_file(common.EMTEST_FLAKY_TEST_LOG_FILE)
 
     return result
 
