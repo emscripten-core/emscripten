@@ -11,13 +11,17 @@ This article describes the main tools and settings provided by Emscripten for de
 
 Overview: Emitting and Controlling Debug Information
 ====================================================
-Debugging-related information comes in several forms: in Wasm object and binary files (DWARF 
-sections, Wasm name section), side output files (source maps, symbol maps, DWARF sidecar and package files),
-and even in the code itself (assertions and instrumentation, whitespace).
+Debugging-related information comes in several forms: in Wasm object and binary files (as DWARF
+sections or Wasm name section), side output files (as source maps, symbol maps, or DWARF sidecar or package files),
+and even in the code itself (as assertions or instrumentation, or JS whitespace and comments).
 For information on DWARF, see :ref:`below <debugging-dwarf>`.
-In addition to DWARF, wasm files may contain a name section (TODO link) which includes names for each
-function; these function names are displayed by browsers when they generate stack traces and in
-developer tools. (TODO more info?). Source maps are also supported (see :ref:`below <debugging-symbolization>`).
+In addition to DWARF, wasm files may contain a
+`name section <https://webassembly.github.io/spec/core/appendix/custom.html#name-section>`_
+which includes names for each
+function; these function names are displayed by browsers when they generate
+`stack traces <https://webassembly.github.io/spec/web-api/index.html#conventions>`_ and in
+developer tools. Source maps are also supported by Emscripten and by browser
+DevTools (see :ref:`below <debugging-symbolization>`).
 
 This document contains an overview of the flags used to emit and control debugging behavior, and
 use-case-based examples.
@@ -30,7 +34,7 @@ Flags that cause DWARF generation (e.g. ``-g3``, ``-gline-tables-only``) also ge
 in the binary and suppress minification of the JS glue file (since most DWARF use cases are for
 interactive debugging or where the binary will be stripped).
 Other flags (e.g. ``-g2``, ``-gsource-map``) should affect only a specific behavior or type of debug info,
-and are generally composable.
+and are generally composable. TODO: make this real, or change the text.
 
 
 
@@ -120,7 +124,8 @@ Source maps are easier to parse and more widely supported by ecosystem tooling. 
 above, preserving DWARF inhibits some Binaryen optimizations. However DWARF has the advantage
 that it includes information about inlining, which can result in more accurate stack traces.
 
-(TODO: -g1 at compile time on native generates DWARF but not for emscripten)
+(TODO: passing -g1 at compile time on native platforms generates (a reduced amount of) DWARF
+but this doesn't work for emscripten).
 
 Emscripten includes a tool called ``emsymbolizer`` that can map wasm code addresses to sources
 using several different kinds of debug info, including DWARF (in wasm object or linked files)
@@ -143,7 +148,7 @@ Fast Edit+Compile with minimal debug information
 
 When you want the fastest builds, you generally want to avoid generating large debug information
 during compile, because it takes time to link into the final binary. It is still worthwhile to use
-the ``--profiling`` (TODO gnames/g2?)
+the ``-g2``
 flag (at link time only) because browsers understand the name section even when devtools are not 
 in use, resulting in more useful stack traces at minimal cost.
 
@@ -153,6 +158,11 @@ Example:
 
   emcc source.c -c -o source.o # source.o has no debug info
   emcc source.o -o program.js -g2 # program.wasm has a name section, program.js is unminified
+
+Sometimes the use of the ``-O1`` or ``-Og`` flag at compile time can also result in faster
+builds, because optimizations early in the pipeline can reduce the amount of IR that is
+processed by later phases such as instruction selection and linking. It also of course
+reduces test runtime.
 
 
 Detecting Memory Errors and Undefined Behavior
@@ -216,14 +226,13 @@ Speed
 -----
 
 To profile your code for speed, build with :ref:`profiling info <emcc-profiling>`,
-then run the code in the browser's devtools profiler. You should then be able to
-see in which functions is most of the time spent.
+(which is currently the same as `:ref`-g2 <emcc-g2>`), and then run the code in the browser's
+devtools profiler. You should then be able to see in which functions most of the time is spent.
 
 TODO: IIUC --profiling is the same as g2 (names+whitespace), but --profiling-funcs is names
 only, while g1 is whitespace only. Is it really necessary to have both of these (i.e is
 there any use for wasm names without JS whitespace?)
-Can we just deprecate the profiling flags and recommend -g2 for profiling
-(and maybe have --profiling be a legacy alias for -g2 --minify=0?)
+Is -g1 the same as --minify=0?
 
 Memory
 ------
@@ -293,18 +302,15 @@ Memory Alignment Issues
 -----------------------
 
 The :ref:`Emscripten memory representation <emscripten-memory-model>` is compatible with C and C++.
-However, when undefined behavior is involved you may see differences with native architectures:
-
-- In asm.js, unaligned loads and stores can fail silently (i.e. access the wrong address).
-- In WebAssembly, unaligned loads and stores will work; each may be annotated with its expected
-  alignment. If the actual alignment does not match, it may be very slow on some systems.
+In WebAssembly, unaligned loads and stores will work; each may be annotated with its expected
+alignment. However if the actual alignment does not match, it may be very slow on some systems.
 
 .. tip:: :ref:`SAFE_HEAP <debugging-SAFE-HEAP>` can be used to reveal memory alignment issues.
 
-Generally it is best to avoid unaligned reads and writesoften they occur as the result of
-undefined behavior, as mentioned above. In some cases, however, they are unavoidable — for example
+Generally it is best to avoid unaligned reads and writes. Often they occur as the result of
+undefined behavior. In some cases, however, they are unavoidable — for example
 if the code to be ported reads an ``int`` from a packed structure in some pre-existing data format.
-In that case, to make things work properly in asm.js, and be fast in WebAssembly, you must be sure
+In that case, to as fast as possible in WebAssembly, you can make sure
 that the compiler knows the load or store is unaligned. To do so you can:
 
 - Manually read individual bytes and reconstruct the full value
