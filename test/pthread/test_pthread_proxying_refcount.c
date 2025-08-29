@@ -34,8 +34,8 @@ void __attribute__((noinline)) free(void* ptr) {
 
 #endif // SANITIZER
 
-_Atomic int worker_started = 0;
-_Atomic int should_execute = 0;
+_Atomic bool worker_started = 0;
+_Atomic bool should_execute = 0;
 _Atomic int executed[2] = {};
 
 #define EVENT_LOOP_TURNS 2
