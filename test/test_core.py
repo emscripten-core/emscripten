@@ -6912,7 +6912,7 @@ void* operator new(size_t size) {
   @no_wasmfs('depends on MEMFS which WASMFS does not have')
   def test_poppler(self):
     # See https://github.com/emscripten-core/emscripten/issues/20757
-    self.cflags.extend(['-Wno-deprecated-declarations', '-Wno-nontrivial-memaccess', '-Wno-error=cpp'])
+    self.cflags.extend(['-Wno-deprecated-declarations', '-Wno-nontrivial-memaccess'])
     poppler = self.get_poppler_library()
     shutil.copy(test_file('poppler/paper.pdf'), '.')
 
