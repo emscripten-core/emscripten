@@ -1707,9 +1707,6 @@ int f() {
     self.emcc(test_file('module/test_stdin.c'), args=args, output_filename='out.js')
 
     for engine in config.JS_ENGINES:
-      if engine == config.V8_ENGINE:
-        print('skipping v8 due to https://github.com/emscripten-core/emscripten/issues/25010')
-        continue
       output = self.run_js('out.js', engine, input='abcdef\nghijkl\n')
       self.assertContained('abcdef\nghijkl\neof', output)
 
@@ -5983,9 +5980,6 @@ int main(int argc, char **argv) {
         for async_compile in (0, 1):
           self.run_process([EMCC, 'src.c', '-sENVIRONMENT=node,shell', '-DCODE=%d' % code, '-sEXIT_RUNTIME=%d' % (1 - no_exit), '-DCALL_EXIT=%d' % call_exit, '-sWASM_ASYNC_COMPILATION=%d' % async_compile])
           for engine in config.JS_ENGINES:
-            # async compilation can't return a code in d8
-            if async_compile and engine == config.V8_ENGINE:
-              continue
             print(code, call_exit, async_compile, engine)
             proc = self.run_process(engine + ['a.out.js'], stderr=PIPE, check=False)
             msg = 'but keepRuntimeAlive() is set (counter=0) due to an async operation, so halting execution but not exiting the runtime'
