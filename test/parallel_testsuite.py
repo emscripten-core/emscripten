@@ -161,8 +161,6 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     return result
 
 
-test_task_counter = 0
-
 class BufferedParallelTestResult:
   """A picklable struct used to communicate test results across processes
 
