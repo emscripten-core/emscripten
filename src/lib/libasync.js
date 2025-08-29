@@ -685,7 +685,7 @@ addToLibrary({
     const promise = new Promise(resolve => { Fibers.continuations[continuationId] = resolve; });
 
     if (!Fibers.trampolineRunning) {
-      queueMicrotask(Fibers.trampoline);
+      Promise.resolve().then(Fibers.trampoline);
     }
 
     return promise;
