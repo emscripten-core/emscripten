@@ -10,6 +10,8 @@ import sys
 import tempfile
 import time
 import unittest
+from tools import emprofile
+from tools import utils
 
 import common
 
@@ -76,12 +78,10 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # issues.
     # multiprocessing.set_start_method('spawn')
 
-    # Remove old list of flaky tests before starting the run
-    if os.getenv('EMTEST_VISUALIZE'):
-      try:
-        os.remove(os.path.join(tempfile.gettempdir(), 'emscripten_flaky_tests'))
-      except:
-        pass
+    # Remove any old stale list of flaky tests before starting the run
+    if common.EMTEST_FLAKY_TEST_LOG_FILE:
+      utils.delete_file(common.EMTEST_FLAKY_TEST_LOG_FILE)
+
     # If we are running with --failing-and-slow-first, then the test list has been
     # pre-sorted based on previous test run results. Otherwise run the tests in
     # reverse alphabetical order.
@@ -142,18 +142,20 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     results = sorted(buffered_results, key=lambda res: str(res.test))
     result.core_time = 0
 
-    flaky_tests = []
-    if os.getenv('EMTEST_VISUALIZE'):
-      profiler_logs_path = os.path.join(tempfile.gettempdir(), 'emscripten_toolchain_profiler_logs')
-      os.makedirs(profiler_logs_path, exist_ok=True)
-
-      try:
-        flaky_tests = open(os.path.join(tempfile.gettempdir(), 'emscripten_flaky_tests')).read().split()
-      except:
-        pass
+    flaky_tests = open(common.EMTEST_FLAKY_TEST_LOG_FILE).read().split() if os.path.isfile(common.EMTEST_FLAKY_TEST_LOG_FILE) else []
 
     for r in results:
-      r.updateResult(result, flaky_tests)
+      # Merge information of flaky tests into the test result
+      if r.test_result == 'success' and r.test_base_name() in flaky_tests:
+        r.test_result = 'warnings'
+      # And integrate the test result to the global test object
+      r.updateResult(result)
+
+    # Generate the parallel test run visualization
+    if os.getenv('EMTEST_VISUALIZE'):
+      emprofile.create_profiling_graph(utils.path_from_root('out/graph'))
+      emprofile.delete_profiler_logs()
+
     return result
 
 
@@ -174,23 +176,28 @@ class BufferedParallelTestResult:
   def test(self):
     return self.buffered_result.test
 
+  def test_base_name(self):
+    return str(self.test).split('.')[-1][:-1]
+
   def addDuration(self, test, elapsed):
     self.test_duration = elapsed
 
   def calculateElapsed(self):
     return time.perf_counter() - self.start_time
 
-  def updateResult(self, result, flaky_tests):
+  def updateResult(self, result):
     result.startTest(self.test)
     self.buffered_result.updateResult(result)
     result.stopTest(self.test)
     result.core_time += self.test_duration
+    self.log_test_run_for_visualization()
 
+  def log_test_run_for_visualization(self):
     if os.getenv('EMTEST_VISUALIZE') and (self.test_result != 'skipped' or self.test_duration > 0.2):
       profiler_logs_path = os.path.join(tempfile.gettempdir(), 'emscripten_toolchain_profiler_logs')
-      prof = open(os.path.join(profiler_logs_path, 'toolchain_profiler.pid_0.json'), 'a')
-      global test_task_counter
-      test_name = str(self.test).split('.')[-1][:-1]
+      os.makedirs(profiler_logs_path, exist_ok=True)
+      profiler_log_file = os.path.join(profiler_logs_path, 'toolchain_profiler.pid_0.json')
+      prof = open(profiler_log_file, 'a')
       colors = {
         'success': '#80ff80',
         'warnings': '#ffb040',
@@ -200,14 +207,11 @@ class BufferedParallelTestResult:
         'failed': '#ff8080',
         'errored': '#ff8080',
       }
-      result = self.test_result
-      print(str(flaky_tests))
-      print(test_name)
-      if result == 'success' and test_name in flaky_tests:
-        result = 'warnings'
-      prof.write(f',\n{{"pid":{test_task_counter},"op":"start","time":{self.start_time},"cmdLine":["{test_name}"],"color":"{colors[result]}"}}')
-      prof.write(f',\n{{"pid":{test_task_counter},"op":"exit","time":{self.start_time+self.test_duration},"returncode":0}}')
-      test_task_counter += 1
+      # Write profiling entries for emprofile.py tool to visualize. This needs a unique identifier for each
+      # block, so generate one on the fly.
+      dummy_test_task_counter = os.path.getsize(profiler_log_file) if os.path.isfile(profiler_log_file) else 0
+      prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"start","time":{self.start_time},"cmdLine":["{self.test_base_name()}"],"color":"{colors[self.test_result]}"}}')
+      prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"exit","time":{self.start_time+self.test_duration},"returncode":0}}')
 
   def startTest(self, test):
     self.test_name = str(test)
