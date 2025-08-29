@@ -335,6 +335,7 @@ sigs = {
   _emscripten_thread_mailbox_await__sig: 'vp',
   _emscripten_thread_set_strongref__sig: 'vp',
   _emscripten_throw_longjmp__sig: 'v',
+  _emval_array_to_memory_view__sig: 'vpp',
   _emval_await__sig: 'pp',
   _emval_coro_make_promise__sig: 'ppp',
   _emval_coro_suspend__sig: 'vpp',
