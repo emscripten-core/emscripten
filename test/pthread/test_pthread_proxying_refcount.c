@@ -34,8 +34,8 @@ void __attribute__((noinline)) free(void* ptr) {
 
 #endif // SANITIZER
 
-_Atomic bool worker_started = 0;
-_Atomic bool should_execute = 0;
+_Atomic bool worker_started = false;
+_Atomic bool should_execute = false;
 _Atomic int executed[2] = {};
 
 #define EVENT_LOOP_TURNS 2
@@ -54,7 +54,7 @@ void task(void* arg) { emscripten_async_call(increment_flag, arg, 0); }
 
 void* execute_and_free_queue(void* arg) {
   // Signal the main thread to proxy work to us.
-  worker_started = 1;
+  worker_started = true;
 
   // Wait until we are signaled to execute the queue.
   while (!should_execute) {
@@ -95,7 +95,7 @@ int main() {
   for (int i = 0; i < 2; i++) {
     emscripten_proxy_async(queues[i], worker, task, &executed[i]);
   }
-  should_execute = 1;
+  should_execute = true;
 
   // Wait for the queues to be destroyed and for the worker event loop to turn
   // enough to clear the notifications
