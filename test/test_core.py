@@ -8404,11 +8404,22 @@ Module.onRuntimeInitialized = () => {
     self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized']
     self.do_runf('main.c', 'stringf: first\nsecond\n6.4')
 
-  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY=1')
-  def test_fibers_asyncify(self):
-    self.set_setting('ASYNCIFY')
+  @with_asyncify_and_jspi
+  def test_fibers(self):
     self.maybe_closure()
     self.do_runf('test_fibers.cpp', '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
+
+  @parameterized({
+    '': (0,),
+    'legacy': (1,),
+  })
+  def test_fibers_setjmp(self, legacy):
+    self.maybe_closure()
+    self.set_setting('ASYNCIFY', 2)
+    self.require_jspi()
+    self.set_setting('SUPPORT_LONGJMP', 'wasm')
+    self.set_setting('WASM_LEGACY_EXCEPTIONS', legacy)
+    self.do_runf('test_fibers_setjmp.cpp', 'main: prejump\nf1: start arg:50\nmain: continuing1\nf1: cont1\nf2: start arg:60\nf1: cont2\nf2: cont1\nf2: exc 11\nmain: continuing2\nf2: cont2\nf1: cont3\nmain: continuing3\nmain: got exc 1\n')
 
   @with_asyncify_and_jspi
   def test_asyncify_unused(self):
