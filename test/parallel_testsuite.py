@@ -79,8 +79,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # multiprocessing.set_start_method('spawn')
 
     # Remove any old stale list of flaky tests before starting the run
-    if common.EMTEST_FLAKY_TEST_LOG_FILE:
-      utils.delete_file(common.EMTEST_FLAKY_TEST_LOG_FILE)
+    utils.delete_file(common.flaky_tests_log_filename)
 
     # If we are running with --failing-and-slow-first, then the test list has been
     # pre-sorted based on previous test run results. Otherwise run the tests in
@@ -142,7 +141,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     results = sorted(buffered_results, key=lambda res: str(res.test))
     result.core_time = 0
 
-    flaky_tests = open(common.EMTEST_FLAKY_TEST_LOG_FILE).read().split() if os.path.isfile(common.EMTEST_FLAKY_TEST_LOG_FILE) else []
+    flaky_tests = open(common.flaky_tests_log_filename).read().split() if os.path.isfile(common.flaky_tests_log_filename) else []
 
     for r in results:
       # Merge information of flaky tests into the test result
@@ -156,7 +155,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
       emprofile.create_profiling_graph(utils.path_from_root('out/graph'))
       # Cleanup temp files that were used for the visualization
       emprofile.delete_profiler_logs()
-      utils.delete_file(common.EMTEST_FLAKY_TEST_LOG_FILE)
+      utils.delete_file(common.flaky_tests_log_filename)
 
     return result
 
@@ -212,7 +211,7 @@ class BufferedParallelTestResult:
       # Write profiling entries for emprofile.py tool to visualize. This needs a unique identifier for each
       # block, so generate one on the fly.
       dummy_test_task_counter = os.path.getsize(profiler_log_file) if os.path.isfile(profiler_log_file) else 0
-      # Remove the redundant 'test_' suffix from each test, since character space is at a premium in the visualized graph.
+      # Remove the redundant 'test_' prefix from each test, since character space is at a premium in the visualized graph.
       test_name = self.test_short_name().removeprefix('test_')
       prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"start","time":{self.start_time},"cmdLine":["{test_name}"],"color":"{colors[self.test_result]}"}}')
       prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"exit","time":{self.start_time + self.test_duration},"returncode":0}}')

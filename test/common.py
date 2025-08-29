@@ -86,7 +86,7 @@ if 'EM_BUILD_VERBOSE' in os.environ:
 # If we are drawing a parallel swimlane graph of test output, we need to use a temp
 # file to track which tests were flaky so they can be graphed in orange color to
 # visually stand out.
-EMTEST_FLAKY_TEST_LOG_FILE = os.path.join(tempfile.gettempdir(), 'emscripten_flaky_tests') if os.getenv('EMTEST_VISUALIZE') else None
+flaky_tests_log_filename = os.path.join(path_from_root('out/flaky_tests.txt'))
 
 
 # Default flags used to run browsers in CI testing:
@@ -237,8 +237,7 @@ def flaky(note=''):
           preserved_exc = exc
           logging.info(f'Retrying flaky test "{f.__name__}" (attempt {i}/{EMTEST_RETRY_FLAKY} failed): {exc}')
           # Mark down that this was a flaky test.
-          if EMTEST_FLAKY_TEST_LOG_FILE:
-            open(EMTEST_FLAKY_TEST_LOG_FILE, 'a').write(f'{f.__name__}\n')
+          open(flaky_tests_log_filename, 'a').write(f'{f.__name__}\n')
 
       raise AssertionError('Flaky test has failed too many times') from preserved_exc
 
