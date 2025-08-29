@@ -20,6 +20,13 @@ NUM_CORES = None
 seen_class = set()
 
 
+# Older Python versions have a bug with multiprocessing shared data
+# structures. https://github.com/emscripten-core/emscripten/issues/25103
+def python_multiprocessing_structures_are_buggy():
+  v = sys.version_info
+  return (v.major, v.minor, v.micro) <= (3, 12, 7) or (v.major, v.minor, v.micro) == (3, 13, 0)
+
+
 def run_test(test, failfast_event, lock, progress_counter, num_tests):
   # If failfast mode is in effect and any of the tests have failed,
   # and then we should abort executing further tests immediately.
@@ -84,9 +91,12 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     print('Using %s parallel test processes' % use_cores, file=sys.stderr)
     with multiprocessing.Manager() as manager:
       pool = multiprocessing.Pool(use_cores)
-      failfast_event = manager.Event() if self.failfast else None
-      progress_counter = manager.Value('i', 0)
-      lock = manager.Lock()
+      if python_multiprocessing_structures_are_buggy():
+        failfast_event = progress_counter = lock = None
+      else:
+        failfast_event = manager.Event() if self.failfast else None
+        progress_counter = manager.Value('i', 0)
+        lock = manager.Lock()
       results = [pool.apply_async(run_test, (t, failfast_event, lock, progress_counter, len(tests))) for t in tests]
       results = [r.get() for r in results]
       results = [r for r in results if r is not None]
@@ -182,38 +192,40 @@ class BufferedParallelTestResult:
     self.buffered_result.duration = self.test_duration
 
   def compute_progress(self):
+    if not self.lock:
+      return ''
     with self.lock:
-      val = f'[{int(self.progress_counter.value * 100 / self.num_tests)}%]'
+      val = f'[{int(self.progress_counter.value * 100 / self.num_tests)}%] '
       self.progress_counter.value += 1
     return val
 
   def addSuccess(self, test):
-    print(self.compute_progress(), test, '... ok (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
+    print(f'{self.compute_progress()}{test}', '... ok (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
     self.buffered_result = BufferedTestSuccess(test)
     self.test_result = 'success'
 
   def addExpectedFailure(self, test, err):
-    print(self.compute_progress(), test, '... expected failure (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
+    print(f'{self.compute_progress()}{test}', '... expected failure (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
     self.buffered_result = BufferedTestExpectedFailure(test, err)
     self.test_result = 'expected failure'
 
   def addUnexpectedSuccess(self, test):
-    print(self.compute_progress(), test, '... unexpected success (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
+    print(f'{self.compute_progress()}{test}', '... unexpected success (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
     self.buffered_result = BufferedTestUnexpectedSuccess(test)
     self.test_result = 'unexpected success'
 
   def addSkip(self, test, reason):
-    print(self.compute_progress(), test, "... skipped '%s'" % reason, file=sys.stderr)
+    print(f'{self.compute_progress()}{test}', "... skipped '%s'" % reason, file=sys.stderr)
     self.buffered_result = BufferedTestSkip(test, reason)
     self.test_result = 'skipped'
 
   def addFailure(self, test, err):
-    print(self.compute_progress(), test, '... FAIL', file=sys.stderr)
+    print(f'{self.compute_progress()}{test}', '... FAIL', file=sys.stderr)
     self.buffered_result = BufferedTestFailure(test, err)
     self.test_result = 'failed'
 
   def addError(self, test, err):
-    print(self.compute_progress(), test, '... ERROR', file=sys.stderr)
+    print(f'{self.compute_progress()}{test}', '... ERROR', file=sys.stderr)
     self.buffered_result = BufferedTestError(test, err)
     self.test_result = 'errored'
 
