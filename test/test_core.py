@@ -6910,6 +6910,7 @@ void* operator new(size_t size) {
   @is_slow_test
   @crossplatform
   @no_wasmfs('depends on MEMFS which WASMFS does not have')
+  @no_big_endian('SUPPORT_BIG_ENDIAN is not propagated')
   def test_poppler(self):
     # See https://github.com/emscripten-core/emscripten/issues/20757
     self.cflags.extend(['-Wno-deprecated-declarations', '-Wno-nontrivial-memaccess'])
@@ -7540,11 +7541,45 @@ void* operator new(size_t size) {
     ''')
     self.do_runf('test.cpp', 'UnboundTypeError: Cannot call compute due to unbound types: Pi')
 
+  @no_big_endian("Accessing the array directly is not available on big endian system")
   def test_embind_memory_view(self):
     self.cflags += ['-lembind', '--post-js', 'post.js']
     create_file('post.js', '''
       function printFirstElement() {
         out(Module['getBufferView']()[0]);
+      }
+    ''')
+    create_file('test.cpp', r'''
+      #include <emscripten.h>
+      #include <emscripten/bind.h>
+      #include <emscripten/val.h>
+      #include <stdio.h>
+      using namespace emscripten;
+
+      const size_t kBufferSize = 1024;
+      double buffer[kBufferSize];
+      val getBufferView(void) {
+          val v = val(typed_memory_view(kBufferSize, buffer));
+          return v;
+      }
+      EMSCRIPTEN_BINDINGS(my_module) {
+          function("getBufferView", &getBufferView);
+      }
+
+      int main(int argc, char **argv) {
+        buffer[0] = 107;
+        EM_ASM(printFirstElement());
+        return 0;
+      }
+    ''')
+    self.do_runf('test.cpp', '107')
+
+  def test_embind_memory_view_be(self):
+    self.cflags += ['-lembind', '--post-js', 'post.js']
+    create_file('post.js', '''
+      function printFirstElement() {
+        const b = Module['getBufferView']();
+        out(new DataView(b.buffer, b.byteOffset).getFloat64(0, true));
       }
     ''')
     create_file('test.cpp', r'''
@@ -7693,6 +7728,7 @@ void* operator new(size_t size) {
     '': (False,),
     'safe_heap': (True,),
   })
+  @no_big_endian("Calling TypedArray.set directly is not available on big endian system")
   def test_embind_i64_val(self, safe_heap):
     if safe_heap and '-fsanitize=address' in self.cflags:
       self.skipTest('asan does not work with SAFE_HEAP')
@@ -8588,6 +8624,7 @@ Module.onRuntimeInitialized = () => {
   # Test basic wasm2js functionality in all core compilation modes.
   @no_sanitize('no wasm2js support yet in sanitizers')
   @requires_wasm2js
+  @no_big_endian('wasm2js is currently not compatible with big endian')
   def test_wasm2js(self):
     if self.is_wasm2js():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
@@ -8598,6 +8635,7 @@ Module.onRuntimeInitialized = () => {
   @no_asan('no wasm2js support yet in asan')
   @requires_wasm2js
   @also_with_minimal_runtime
+  @no_big_endian('wasm2js is currently not compatible with big endian')
   def test_wasm2js_fallback(self):
     if self.is_wasm2js():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')

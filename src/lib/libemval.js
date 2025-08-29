@@ -101,6 +101,7 @@ var LibraryEmVal = {
   _emval_new_array__deps: ['$Emval'],
   _emval_new_array: () => Emval.toHandle([]),
 
+#if !SUPPORT_BIG_ENDIAN
   _emval_new_array_from_memory_view__deps: ['$Emval'],
   _emval_new_array_from_memory_view: (view) => {
     view = Emval.toValue(view);
@@ -109,6 +110,87 @@ var LibraryEmVal = {
     for (var i = 0; i < view.length; i++) a[i] = view[i];
     return Emval.toHandle(a);
   },
+  _emval_array_to_memory_view__deps: ['$Emval'],
+  _emval_array_to_memory_view: (dst, src) => {
+    dst = Emval.toValue(dst);
+    src = Emval.toValue(src);
+    dst.set(src);
+  },
+#else
+  _emval_new_array_from_memory_view__deps: ['$Emval'],
+  _emval_new_array_from_memory_view: (view) => {
+    view = Emval.toValue(view);
+    var reader = (() => {
+      if (view.BYTES_PER_ELEMENT===1)
+        return i => view[i];
+      const dv = new DataView(view.buffer, view.byteOffset);
+      switch(view.BYTES_PER_ELEMENT) {
+        case 2:
+          if (view instanceof Int16Array)
+            return i => dv.getInt16(i * 2, true)
+          if (view instanceof Uint16Array)
+            return i => dv.getUint16(i * 2, true)
+          break;
+        case 4:
+          if (view instanceof Int32Array)
+            return i => dv.getInt32(i * 4, true)
+          if (view instanceof Uint32Array)
+            return i => dv.getUint32(i * 4, true)
+          if (view instanceof Float32Array)
+            return i => dv.getFloat32(i * 4, true)
+          break;
+        case 8:
+          if (view instanceof BigInt32Array)
+            return i => dv.getBigInt32(i * 8, true)
+          if (view instanceof BigUint32Array)
+            return i => dv.getBigUint32(i * 8, true)
+          if (view instanceof Float64Array)
+            return i => dv.getFloat64(i * 8, true)
+          break;
+      }
+    })();
+    // using for..loop is faster than Array.from
+    var a = new Array(view.length);
+    for (var i = 0; i < view.length; i++) a[i] = reader(i);
+    return Emval.toHandle(a);
+  },
+  _emval_array_to_memory_view__deps: ['$Emval'],
+  _emval_array_to_memory_view: (dst, src) => {
+    dst = Emval.toValue(dst);
+    src = Emval.toValue(src);
+    var writer = (() => {
+      if (dst.BYTES_PER_ELEMENT===1)
+        return (i, v) =>  { dst[i] = v; };
+      const dv = new Datadst(dst.buffer, dst.byteOffset);
+      switch(dst.BYTES_PER_ELEMENT) {
+        case 2:
+          if (dst instanceof Int16Array)
+            return (i, v) => dv.setInt16(i * 2, v, true)
+          if (dst instanceof Uint16Array)
+            return (i, v) => dv.setUint16(i * 2, v, true)
+          break;
+        case 4:
+          if (dst instanceof Int32Array)
+            return (i, v) => dv.setInt32(i * 4, v, true)
+          if (dst instanceof Uint32Array)
+            return (i, v) => dv.setUint32(i * 4, v, true)
+          if (dst instanceof Float32Array)
+            return (i, v) => dv.setFloat32(i * 4, v, true)
+          break;
+        case 8:
+          if (dst instanceof BigInt32Array)
+            return (i, v) => dv.setBigInt32(i * 8, v, true)
+          if (dst instanceof BigUint32Array)
+            return (i, v) => dv.setBigUint32(i * 8, v, true)
+          if (dst instanceof Float64Array)
+            return (i, v) => dv.setFloat64(i * 8, v, true)
+          break;
+      }
+  })();
+    // using for..loop is faster than Array.from
+    for (var i = 0; i < src.length; i++) writer(i, src[i]);
+  },
+#endif
 
   _emval_new_object__deps: ['$Emval'],
   _emval_new_object: () => Emval.toHandle({}),
