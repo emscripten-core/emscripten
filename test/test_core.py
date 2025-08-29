@@ -2995,7 +2995,7 @@ The current type of b is: 9
       }
       '''
 
-    if self.js_engines == [config.V8_ENGINE]:
+    if self.get_current_js_engine() == config.V8_ENGINE:
       expected = "error: Could not load dynamic lib: libfoo.so\nError: Error reading file"
     else:
       expected = "error: Could not load dynamic lib: libfoo.so\nError: ENOENT: no such file or directory"

@@ -24,8 +24,6 @@ def make_command(filename, engine, args=None):
   if engine[0] is None:
     executable = shared.replace_suffix(os.path.abspath(filename), '.exe')
     return [executable] + args
-  if type(engine) is not list:
-    engine = [engine]
   # Emscripten supports multiple javascript runtimes.  The default is nodejs but
   # it can also use d8 (the v8 engine shell) or jsc (JavaScript Core aka
   # Safari).  Both d8 and jsc require a '--' to delimit arguments to be passed
