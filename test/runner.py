@@ -450,6 +450,10 @@ def run_tests(options, suites):
     for msg in resultMessages:
       print('    ' + msg)
 
+  if options.bell:
+    sys.stdout.write('\a')
+    sys.stdout.flush()
+
   return num_failures
 
 
@@ -486,6 +490,7 @@ def parse_args():
   parser.add_argument('--crossplatform-only', action='store_true')
   parser.add_argument('--repeat', type=int, default=1,
                       help='Repeat each test N times (default: 1).')
+  parser.add_argument('--bell', action='store_true', help='Play a sound after the test suite finishes.')
   return parser.parse_args()
 
 

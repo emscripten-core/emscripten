@@ -6910,6 +6910,7 @@ void* operator new(size_t size) {
   @is_slow_test
   @crossplatform
   @no_wasmfs('depends on MEMFS which WASMFS does not have')
+  @no_strict('autoconfiguring is not compatible with STRICT')
   def test_poppler(self):
     # See https://github.com/emscripten-core/emscripten/issues/20757
     self.cflags.extend(['-Wno-deprecated-declarations', '-Wno-nontrivial-memaccess'])
