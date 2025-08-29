@@ -146,7 +146,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
 
     for r in results:
       # Merge information of flaky tests into the test result
-      if r.test_result == 'success' and r.test_base_name() in flaky_tests:
+      if r.test_result == 'success' and r.test_short_name() in flaky_tests:
         r.test_result = 'warnings'
       # And integrate the test result to the global test object
       r.updateResult(result)
@@ -176,8 +176,10 @@ class BufferedParallelTestResult:
   def test(self):
     return self.buffered_result.test
 
-  def test_base_name(self):
-    return str(self.test).split('.')[-1][:-1]
+  def test_short_name(self):
+    # Given a test name e.g. "test_atomic_cxx (test_core.core0.test_atomic_cxx)"
+    # returns a short form "test_atomic_cxx" of the test.
+    return self.test_name[:self.test_name.find(' ')]
 
   def addDuration(self, test, elapsed):
     self.test_duration = elapsed
@@ -210,7 +212,7 @@ class BufferedParallelTestResult:
       # Write profiling entries for emprofile.py tool to visualize. This needs a unique identifier for each
       # block, so generate one on the fly.
       dummy_test_task_counter = os.path.getsize(profiler_log_file) if os.path.isfile(profiler_log_file) else 0
-      prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"start","time":{self.start_time},"cmdLine":["{self.test_base_name()}"],"color":"{colors[self.test_result]}"}}')
+      prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"start","time":{self.start_time},"cmdLine":["{self.test_short_name()}"],"color":"{colors[self.test_result]}"}}')
       prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"exit","time":{self.start_time+self.test_duration},"returncode":0}}')
 
   def startTest(self, test):
