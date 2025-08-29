@@ -141,6 +141,8 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     results = sorted(buffered_results, key=lambda res: str(res.test))
     result.core_time = 0
 
+    # shared data structures are hard in the python multi-processing world, so
+    # use a file to share the flaky test information across test processes.
     flaky_tests = open(common.flaky_tests_log_filename).read().split() if os.path.isfile(common.flaky_tests_log_filename) else []
 
     for r in results:
