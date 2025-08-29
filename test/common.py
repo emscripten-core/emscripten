@@ -88,6 +88,7 @@ if 'EM_BUILD_VERBOSE' in os.environ:
 # visually stand out.
 EMTEST_FLAKY_TEST_LOG_FILE = os.path.join(tempfile.gettempdir(), 'emscripten_flaky_tests') if os.getenv('EMTEST_VISUALIZE') else None
 
+
 # Default flags used to run browsers in CI testing:
 class ChromeConfig:
   data_dir_flag = '--user-data-dir='
