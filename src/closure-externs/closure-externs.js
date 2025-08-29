@@ -64,6 +64,7 @@ var Atomics = {};
 Atomics.compareExchange = function() {};
 Atomics.exchange = function() {};
 Atomics.wait = function() {};
+Atomics.waitAsync = function(a,b,c,d) {};
 Atomics.notify = function() {};
 Atomics.load = function() {};
 Atomics.store = function() {};

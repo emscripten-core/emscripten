@@ -115,8 +115,7 @@ function LE_HEAP_UPDATE() {
   },
   $LE_ATOMICS_WAITASYNC: (heap, offset, value, timeout) => {
     const order = LE_ATOMICS_NATIVE_BYTE_ORDER[heap.BYTES_PER_ELEMENT - 1];
-    // this is suppressing incorrect closure JSC_INEXISTENT_PROPERTY warning that cannot be suppress via annotation
-    return Atomics.waitAsync && Atomics.waitAsync(heap, offset, order(value), timeout);
+    return Atomics.waitAsync(heap, offset, order(value), timeout);
   },
   $LE_ATOMICS_XOR: (heap, offset, value) => {
     const order = LE_ATOMICS_NATIVE_BYTE_ORDER[heap.BYTES_PER_ELEMENT - 1];
