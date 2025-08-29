@@ -183,7 +183,7 @@ class BufferedParallelTestResult:
 
   def compute_progress(self):
     with self.lock:
-      val = f'\033[96m[{int(self.progress_counter.value * 100 / self.num_tests)}%]\033[0m'
+      val = f'[{int(self.progress_counter.value * 100 / self.num_tests)}%]'
       self.progress_counter.value += 1
     return val
 
