@@ -236,8 +236,8 @@ def flaky(note=''):
           preserved_exc = exc
           logging.info(f'Retrying flaky test "{f.__name__}" (attempt {i}/{EMTEST_RETRY_FLAKY} failed): {exc}')
           # Mark down that this was a flaky test.
-          if os.getenv('EMTEST_VISUALIZE'):
-            open(os.path.join(tempfile.gettempdir(), 'emscripten_flaky_tests'), 'a').write(f'{f.__name__}\n')
+          if EMTEST_FLAKY_TEST_LOG_FILE:
+            open(EMTEST_FLAKY_TEST_LOG_FILE, 'a').write(f'{f.__name__}\n')
 
       raise AssertionError('Flaky test has failed too many times') from preserved_exc
 
