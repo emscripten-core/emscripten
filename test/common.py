@@ -2047,6 +2047,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                      check_for_error=True,
                      interleaved_output=True,
                      regex=False,
+                     input=None,
                      **kwargs):
     logger.debug(f'_build_and_run: {filename}')
 
@@ -2073,6 +2074,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.fail('No JS engine present to run this test with. Check %s and the paths therein.' % config.EM_CONFIG)
     for engine in engines:
       js_output = self.run_js(js_file, engine, args,
+                              input=input,
                               assert_returncode=assert_returncode,
                               interleaved_output=interleaved_output)
       js_output = js_output.replace('\r\n', '\n')
