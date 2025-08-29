@@ -1144,10 +1144,10 @@ var LibraryPThread = {
 #endif
 #if ASSERTIONS
     assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! _emscripten_dlsync_threads_async() can only ever be called from main thread');
+    assert(Object.keys(PThread.outstandingPromises).length === 0);
 #endif
 
     const promises = [];
-    assert(Object.keys(PThread.outstandingPromises).length === 0);
 
     // This first promise resolves once the main thread has loaded all modules.
     var info = makePromise();

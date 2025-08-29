@@ -891,7 +891,9 @@ addToLibrary({
         addr = DNS.address_map.addrs[name];
       } else {
         var id = DNS.address_map.id++;
+#if ASSERTIONS
         assert(id < 65535, 'exceeded max address mappings of 65535');
+#endif
 
         addr = '172.29.' + (id & 0xff) + '.' + (id & 0xff00);
 
@@ -946,7 +948,9 @@ addToLibrary({
         inetNtop4(addr);
       sa = _malloc(salen);
       errno = writeSockaddr(sa, family, addr, port);
+#if ASSERTIONS
       assert(!errno);
+#endif
 
       ai = _malloc({{{ C_STRUCTS.addrinfo.__size__ }}});
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_family, 'family', 'i32') }}};

@@ -196,7 +196,9 @@ addToLibrary({
           currBucket = pipe.buckets[pipe.buckets.length - 1];
         }
 
+#if ASSERTIONS
         assert(currBucket.offset <= PIPEFS.BUCKET_BUFFER_SIZE);
+#endif
 
         var freeBytesInCurrBuffer = PIPEFS.BUCKET_BUFFER_SIZE - currBucket.offset;
         if (freeBytesInCurrBuffer >= dataLen) {
