@@ -7547,11 +7547,45 @@ void* operator new(size_t size) {
     ''')
     self.do_runf('test.cpp', 'UnboundTypeError: Cannot call compute due to unbound types: Pi')
 
+  @no_big_endian("Accessing the array directly is not available on big endian system")
   def test_embind_memory_view(self):
     self.cflags += ['-lembind', '--post-js', 'post.js']
     create_file('post.js', '''
       function printFirstElement() {
         out(Module['getBufferView']()[0]);
+      }
+    ''')
+    create_file('test.cpp', r'''
+      #include <emscripten.h>
+      #include <emscripten/bind.h>
+      #include <emscripten/val.h>
+      #include <stdio.h>
+      using namespace emscripten;
+
+      const size_t kBufferSize = 1024;
+      double buffer[kBufferSize];
+      val getBufferView(void) {
+          val v = val(typed_memory_view(kBufferSize, buffer));
+          return v;
+      }
+      EMSCRIPTEN_BINDINGS(my_module) {
+          function("getBufferView", &getBufferView);
+      }
+
+      int main(int argc, char **argv) {
+        buffer[0] = 107;
+        EM_ASM(printFirstElement());
+        return 0;
+      }
+    ''')
+    self.do_runf('test.cpp', '107')
+
+  def test_embind_memory_view_be(self):
+    self.cflags += ['-lembind', '--post-js', 'post.js']
+    create_file('post.js', '''
+      function printFirstElement() {
+        const b = Module['getBufferView']();
+        out(new DataView(b.buffer, b.byteOffset).getFloat64(0, true));
       }
     ''')
     create_file('test.cpp', r'''
@@ -7700,6 +7734,7 @@ void* operator new(size_t size) {
     '': (False,),
     'safe_heap': (True,),
   })
+  @no_big_endian("Calling TypedArray.set directly is not available on big endian system")
   def test_embind_i64_val(self, safe_heap):
     if safe_heap and '-fsanitize=address' in self.cflags:
       self.skipTest('asan does not work with SAFE_HEAP')
