@@ -6779,8 +6779,9 @@ void* operator new(size_t size) {
 
   @wasm_relaxed_simd
   def test_relaxed_simd_implies_simd128(self):
-    src = test_file('sse/test_sse1.cpp')
-    self.build(src, cflags=['-msse'])
+    # When using -msse, one has to also add -msimd128.
+    # This test verifies passing -mrelaxed-simd also implies -msimd128.
+    self.do_run_in_out_file_test('sse/hello_sse.cpp', cflags=['-msse'])
 
   @no_asan('call stack exceeded on some versions of node')
   def test_gcc_unmangler(self):
