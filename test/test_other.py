@@ -8949,15 +8949,10 @@ addToLibrary({
         });
       }
 ''')
-    # use SINGLE_FILE since we don't want to depend on loading a side .wasm file on the environment in this test;
-    # with the wrong env we have very odd failures
-    self.run_process([EMCC, 'main.c', '-sSINGLE_FILE'])
+    self.run_process([EMCC, 'main.c', '-sENVIRONMENT=node,shell'])
     src = read_file('a.out.js')
-    envs = ['web', 'worker', 'node', 'shell']
-    for env in envs:
+    for env in ['web', 'worker', 'node', 'shell']:
       for engine in config.JS_ENGINES:
-        if engine == config.V8_ENGINE:
-          continue # ban v8, weird failures
         actual = 'NODE' if engine == config.NODE_JS_TEST else 'SHELL'
         print(env, actual, engine)
         module = {'ENVIRONMENT': env}
