@@ -201,32 +201,32 @@ class BufferedParallelTestResult:
     return val
 
   def addSuccess(self, test):
-    print(f'{self.compute_progress()}{test}', '... ok (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
+    print(f'{self.compute_progress()}{test} ... ok ({self.calculateElapsed():.2f}s)', file=sys.stderr)
     self.buffered_result = BufferedTestSuccess(test)
     self.test_result = 'success'
 
   def addExpectedFailure(self, test, err):
-    print(f'{self.compute_progress()}{test}', '... expected failure (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
+    print(f'{self.compute_progress()}{test} ... expected failure ({self.calculateElapsed():.2f}s)', file=sys.stderr)
     self.buffered_result = BufferedTestExpectedFailure(test, err)
     self.test_result = 'expected failure'
 
   def addUnexpectedSuccess(self, test):
-    print(f'{self.compute_progress()}{test}', '... unexpected success (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
+    print(f'{self.compute_progress()}{test} ... unexpected success ({self.calculateElapsed():.2f}s)', file=sys.stderr)
     self.buffered_result = BufferedTestUnexpectedSuccess(test)
     self.test_result = 'unexpected success'
 
   def addSkip(self, test, reason):
-    print(f'{self.compute_progress()}{test}', "... skipped '%s'" % reason, file=sys.stderr)
+    print(f"{self.compute_progress()}{test} ... skipped '{reason}'", file=sys.stderr)
     self.buffered_result = BufferedTestSkip(test, reason)
     self.test_result = 'skipped'
 
   def addFailure(self, test, err):
-    print(f'{self.compute_progress()}{test}', '... FAIL', file=sys.stderr)
+    print(f'{self.compute_progress()}{test} ... FAIL', file=sys.stderr)
     self.buffered_result = BufferedTestFailure(test, err)
     self.test_result = 'failed'
 
   def addError(self, test, err):
-    print(f'{self.compute_progress()}{test}', '... ERROR', file=sys.stderr)
+    print(f'{self.compute_progress()}{test} ... ERROR', file=sys.stderr)
     self.buffered_result = BufferedTestError(test, err)
     self.test_result = 'errored'
 
