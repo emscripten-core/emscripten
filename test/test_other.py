@@ -42,7 +42,7 @@ from common import also_with_standalone_wasm, also_with_wasm2js, also_with_noder
 from common import also_with_modularize, also_with_wasmfs, with_all_fs
 from common import also_with_minimal_runtime, also_without_bigint, also_with_wasm64, also_with_asan, flaky
 from common import EMTEST_BUILD_VERBOSE, PYTHON, WEBIDL_BINDER, EMCMAKE, EMCONFIGURE
-from common import requires_network, parameterize, copytree
+from common import requires_network, parameterize, copytree, all_engines
 from tools import shared, building, utils, response_file, cache
 from tools.utils import read_file, write_file, delete_file, read_binary, MACOS, WINDOWS
 import common
@@ -1696,6 +1696,7 @@ int f() {
     self.emcc('lib.c', ['-sEXPORTED_FUNCTIONS=_libfunc2', '-sEXPORT_ALL', '--pre-js', 'pre.js'], output_filename='a.out.js')
     self.assertContained('libfunc\n', self.run_js('a.out.js'))
 
+  @all_engines
   @also_with_wasmfs
   @crossplatform
   @parameterized({
@@ -1703,12 +1704,7 @@ int f() {
     'closure': (['-O2', '--closure=1'],),
   })
   def test_stdin(self, args):
-    self.set_setting('ENVIRONMENT', 'node,shell')
-    self.emcc(test_file('module/test_stdin.c'), args=args, output_filename='out.js')
-
-    for engine in config.JS_ENGINES:
-      output = self.run_js('out.js', engine, input='abcdef\nghijkl\n')
-      self.assertContained('abcdef\nghijkl\neof', output)
+    self.do_runf('module/test_stdin.c', 'abcdef\nghijkl\neof', input='abcdef\nghijkl\n', cflags=args)
 
   @crossplatform
   def test_module_stdin(self):
@@ -4284,6 +4280,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     self.assertContained("Aborted('ptrToString' was not exported. add it to EXPORTED_RUNTIME_METHODS", err)
 
   @crossplatform
+  @all_engines
   def test_fs_stream_proto(self):
     create_file('src.c', br'''
 #include <stdio.h>
@@ -4316,10 +4313,7 @@ int main()
     return 0;
 }
 ''', binary=True)
-    self.run_process([EMCC, 'src.c', '--embed-file', 'src.c', '-sENVIRONMENT=node,shell'])
-    for engine in config.JS_ENGINES:
-      out = self.run_js('a.out.js', engine=engine)
-      self.assertContained('File size: 682', out)
+    self.do_runf('src.c', 'File size: 682', cflags=['--embed-file', 'src.c'])
 
   @node_pthreads
   def test_node_emscripten_num_logical_cores(self):
@@ -6832,6 +6826,7 @@ Creating file: /tmp/file with content of size=79
 Failed to open file for writing: /tmp/file; errno=2; Permission denied
 ''')
 
+  @all_engines
   def test_embed_file_large(self):
     # If such long files are encoded on one line,
     # they overflow the interpreter's limit
@@ -6852,12 +6847,7 @@ Failed to open file for writing: /tmp/file; errno=2; Permission denied
           return 0;
       }
     ''')
-    self.run_process([EMCC, 'src.c', '--embed-file', 'large.txt'])
-    for engine in config.JS_ENGINES:
-      if engine == config.V8_ENGINE:
-        continue # ooms
-      print(engine)
-      self.assertContained('ok\n' + str(large_size) + '\n', self.run_js('a.out.js', engine=engine))
+    self.do_runf('src.c', 'ok\n' + str(large_size) + '\n', cflags=['--embed-file', 'large.txt'])
 
   def test_force_exit(self):
     create_file('src.c', r'''
@@ -12535,12 +12525,11 @@ int main(void) {
     self.emcc(test_file('browser_test_hello_world.c'), ['-O3', '--closure=1', '-sINCOMING_MODULE_JS_API=[]', '-sENVIRONMENT=web', '--output-eol=linux'])
     self.check_output_sizes('a.out.js')
 
+  @all_engines
   def test_INCOMING_MODULE_JS_API(self):
     def test(args):
-      self.run_process([EMCC, test_file('hello_world.c'), '-O3', '--closure=1', '-sENVIRONMENT=node,shell', '--output-eol=linux'] + args)
-      for engine in config.JS_ENGINES:
-        self.assertContained('hello, world!', self.run_js('a.out.js', engine=engine))
-      return os.path.getsize('a.out.js')
+      self.do_runf('hello_world.c', 'hello, world!', cflags=['-O3', '--closure=1', '-sENVIRONMENT=node,shell', '--output-eol=linux'] + args)
+      return os.path.getsize('hello_world.js')
     normal = test([])
     changed = test(['-sINCOMING_MODULE_JS_API=[]'])
     print('sizes', normal, changed)
@@ -12941,13 +12930,11 @@ int main(void) {
     # In this case the compiler does not produce any output file.
     self.assertNotExists('out.o')
 
+  @all_engines
   def test_non_wasm_without_wasm_in_vm(self):
+    create_file('pre.js', 'var WebAssembly = null;\n')
     # Test that our non-wasm output does not depend on wasm support in the vm.
-    self.run_process([EMCC, test_file('hello_world.c'), '-sWASM=0', '-sENVIRONMENT=node,shell'])
-    js = read_file('a.out.js')
-    create_file('a.out.js', 'var WebAssembly = null;\n' + js)
-    for engine in config.JS_ENGINES:
-      self.assertContained('hello, world!', self.run_js('a.out.js', engine=engine))
+    self.do_runf('hello_world.c', cflags=['-sWASM=0', '-sENVIRONMENT=node,shell', '--extern-pre-js=pre.js'])
 
   def test_empty_output_extension(self):
     # Default to JS output when no extension is present
