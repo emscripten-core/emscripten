@@ -49,8 +49,8 @@ Options that are modified or new in *emcc* are listed below:
 
 "-O1"
    [compile+link] Simple optimizations. During the compile step these
-   include LLVM "-O1" optimizations. During the link step this does
-   not include various runtime assertions in JS that *-O0* would do.
+   include LLVM "-O1" optimizations. During the link step this omits
+   various runtime assertions in JS that *-O0* would include.
 
 "-O2"
    [compile+link] Like "-O1", but enables more optimizations. During
@@ -61,14 +61,14 @@ Options that are modified or new in *emcc* are listed below:
      These JavaScript optimizations can reduce code size by removing
      things that the compiler does not see being used, in particular,
      parts of the runtime may be stripped if they are not exported on
-     the "Module" object. The compiler is aware of code in --pre-js
-     and --post-js, so you can safely use the runtime from there.
+     the "Module" object. The compiler is aware of code in –pre-js and
+     –post-js, so you can safely use the runtime from there.
      Alternatively, you can use "EXPORTED_RUNTIME_METHODS", see
      src/settings.js.
 
 "-O3"
    [compile+link] Like "-O2", but with additional optimizations that
-   may take longer to run.
+   may take longer to run and may increase code size.
 
    Note:
 
@@ -127,7 +127,7 @@ Options that are modified or new in *emcc* are listed below:
    Note:
 
      For lists that include brackets or quote, you need quotation
-     marks (") around the list in most shells (to avoid errors being
+     marks (”) around the list in most shells (to avoid errors being
      raised). Two examples are shown below:
 
         -sEXPORTED_FUNCTIONS="['liblib.so']"
@@ -154,7 +154,7 @@ Options that are modified or new in *emcc* are listed below:
 
      Options can be specified as a single argument with or without a
      space between the "-s" and option name.  e.g. "-sFOO" or "-s
-     FOO". It's highly recommended you use the notation without space.
+     FOO". It’s highly recommended you use the notation without space.
 
 "-g"
    [compile+link] Preserve debug information.
@@ -182,36 +182,39 @@ Options that are modified or new in *emcc* are listed below:
    with "-c".
 
 "-gsource-map[=inline]"
-   [link] Generate a source map using LLVM debug information (which
-   must be present in object files, i.e., they should have been
-   compiled with "-g").
+   [compile+link] [same as -g3 if passed at compile time, otherwise
+   applies at link] Generate a source map using LLVM debug information
+   (which must be present in object files, i.e., they should have been
+   compiled with "-g" or "-gsource-map").
 
    When this option is provided, the **.wasm** file is updated to have
    a "sourceMappingURL" section. The resulting URL will have format:
    "<base-url>" + "<wasm-file-name>" + ".map". "<base-url>" defaults
    to being empty (which means the source map is served from the same
-   directory as the Wasm file). It can be changed using --source-map-
+   directory as the Wasm file). It can be changed using –source-map-
    base.
 
    Path substitution can be applied to the referenced sources using
    the "-sSOURCE_MAP_PREFIXES" (link). If "inline" is specified, the
    sources content is embedded in the source map (in this case you
-   don't need path substitution, but it comes with the cost of having
+   don’t need path substitution, but it comes with the cost of having
    a large source map file).
 
 "-g<level>"
-   [compile+link] Controls the level of debuggability. Each level
-   builds on the previous one:
+   [compile+link] If used at compile time, adds progressively more
+   DWARF information to the object file, according to the underlying
+   behavior of clang. If used at link time, controls the level of
+   debuggability overall. Each level builds on the previous one:
 
       * "-g0": Make no effort to keep code debuggable.
 
-      * "-g1": When linking, preserve whitespace in JavaScript.
+      * "-g1": Preserve whitespace in JavaScript.
 
-      * "-g2": When linking, preserve function names in compiled code.
+      * "-g2": Also preserve function names in compiled code (via the
+        wasm name section).
 
-      * "-g3": When compiling to object files, keep debug info,
-        including JS whitespace, function names, and LLVM debug info
-        (DWARF) if any (this is the same as -g).
+      * "-g3": Also keep LLVM debug info (DWARF) if there is any in
+        the object files (this is the same as -g).
 
 "--profiling"
    [same as -g2 if passed at compile time, otherwise applies at link]
@@ -219,7 +222,7 @@ Options that are modified or new in *emcc* are listed below:
    readable but still useful for profiling. This sets "-g2" (preserve
    whitespace and function names) and may also enable optimizations
    that affect performance and otherwise might not be performed in
-   "-g2".
+   "-g2". TODO: does g2 actually suppress any optimizations?
 
 "--profiling-funcs"
    [link] Preserve function names in profiling, but otherwise minify
@@ -240,7 +243,9 @@ Options that are modified or new in *emcc* are listed below:
    [link] Save a map file between function indexes in the Wasm and
    function names. By storing the names on a file on the side, you can
    avoid shipping the names, and can still reconstruct meaningful
-   stack traces by translating the indexes back to the names.
+   stack traces by translating the indexes back to the names. This is
+   a simpler format than source maps, but less detailed because it
+   only describes function names and not source locations.
 
    Note:
 
@@ -309,8 +314,8 @@ Options that are modified or new in *emcc* are listed below:
    "--pre-js" + "--post-js" to put all the output in an inner function
    scope (see "MODULARIZE" for that).
 
-   *--pre-js* (but not *--post-js*) is also useful for specifying
-   things on the "Module" object, as it appears before the JS looks at
+   *–pre-js* (but not *–post-js*) is also useful for specifying things
+   on the "Module" object, as it appears before the JS looks at
    "Module" (for example, you can define "Module['print']" there).
 
 "--post-js <file>"
@@ -360,7 +365,7 @@ Options that are modified or new in *emcc* are listed below:
 
    Note:
 
-     This option is similar to --embed-file, except that it is only
+     This option is similar to –embed-file, except that it is only
      relevant when generating HTML (it uses asynchronous binary
      *XHRs*), or JavaScript that will be used in a web page.
 
@@ -374,13 +379,13 @@ Options that are modified or new in *emcc* are listed below:
    Packaging Files.
 
 "--exclude-file <name>"
-   [link] Files and directories to be excluded from --embed-file and
-   --preload-file. Wildcards (*) are supported.
+   [link] Files and directories to be excluded from –embed-file and
+   –preload-file. Wildcards (*) are supported.
 
 "--use-preload-plugins"
    [link] Tells the file packager to run preload plugins on the files
    as they are loaded. This performs tasks like decoding images and
-   audio using the browser's codecs.
+   audio using the browser’s codecs.
 
 "--shell-file <path>"
    [link] The path name to a skeleton HTML file used when generating
@@ -443,7 +448,7 @@ Options that are modified or new in *emcc* are listed below:
 
 "--js-library <lib>"
    [link] A JavaScript library to use in addition to those in
-   Emscripten's core libraries (src/library_*).
+   Emscripten’s core libraries (src/library_*).
 
 "-v"
    [general] Turns on verbose output.
@@ -457,7 +462,7 @@ Options that are modified or new in *emcc* are listed below:
      or without other arguments.
 
 "--check"
-   [general] Runs Emscripten's internal sanity checks and reports any
+   [general] Runs Emscripten’s internal sanity checks and reports any
    issues with the current configuration.
 
 "--cache <directory>"
@@ -522,7 +527,7 @@ Options that are modified or new in *emcc* are listed below:
    file, and a separate **.js** file containing the JavaScript to be
    run in a worker. If emitting JavaScript, the target file name
    contains the part to be run on the main thread, while a second
-   **.js** file with suffix ".worker.js" will contain the worker
+   **.js** file with suffix “.worker.js” will contain the worker
    portion.
 
 "--emrun"
@@ -549,7 +554,7 @@ Options that are modified or new in *emcc* are listed below:
    [general] Specifies the location of the **.emscripten**
    configuration file.  If not specified emscripten will search for
    ".emscripten" first in the emscripten directory itself, and then in
-   the user's home directory ("~/.emscripten"). This can be overridden
+   the user’s home directory ("~/.emscripten"). This can be overridden
    using the "EM_CONFIG" environment variable.
 
 "--valid-abspath <path>"
@@ -573,7 +578,7 @@ Options that are modified or new in *emcc* are listed below:
         WebAssembly).
 
       * <name> **.wasm** : WebAssembly without JavaScript support code
-        ("standalone Wasm"; this enables "STANDALONE_WASM").
+        (“standalone Wasm”; this enables "STANDALONE_WASM").
 
    These rules only apply when linking.  When compiling to object code
    (See *-c* below) the name of the output file is irrelevant.
@@ -584,9 +589,9 @@ Options that are modified or new in *emcc* are listed below:
 
 "--output-eol windows|linux"
    [link] Specifies the line ending to generate for the text files
-   that are outputted. If "--output-eol windows" is passed, the final
-   output files will have Windows "\r\n" line endings in them. With "
-   --output-eol linux", the final generated files will be written with
+   that are outputted. If “–output-eol windows” is passed, the final
+   output files will have Windows "\r\n" line endings in them. With
+   “–output-eol linux”, the final generated files will be written with
    Unix "\n" line endings.
 
 "--cflags"
@@ -637,7 +642,7 @@ Environment variables
    * "_EMCC_CCACHE" [general] Internal setting that is set to 1 by
      emsdk when integrating with ccache compiler frontend
 
-Search for 'os.environ' in emcc.py to see how these are used. The most
+Search for ‘os.environ’ in emcc.py to see how these are used. The most
 interesting is possibly "EMCC_DEBUG", which forces the compiler to
 dump its build and temporary files to a temporary directory where they
 can be reviewed.
