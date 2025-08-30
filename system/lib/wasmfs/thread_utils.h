@@ -34,32 +34,36 @@ class ProxyWorker {
 public:
   // Spawn the worker thread.
   ProxyWorker()
-    : queue(), thread([&]() {
-        // Notify the caller that we have started.
-        {
-          std::unique_lock<std::mutex> lock(mutex);
-          started = true;
-        }
-        cond.notify_all();
+    : queue() {
+    // Initialize the thread in the constructor to ensure the object has been
+    // fully constructed before thread starts using the object to avoid a data
+    // race. See #24370.
+    thread = std::thread([&]() {
+      // Notify the caller that we have started.
+      {
+        std::unique_lock<std::mutex> lock(mutex);
+        started = true;
+      }
+      cond.notify_all();
 
-        // Sometimes the main thread is spinning, waiting on a WasmFS lock held
-        // by a thread trying to proxy work to this dedicated worker. In that
-        // case, the proxying message won't be relayed by the main thread and
-        // the system will deadlock. This heartbeat ensures that proxying work
-        // eventually gets done so the thread holding the lock can make forward
-        // progress even if the main thread is blocked.
-        //
-        // TODO: Remove this once we can postMessage directly between workers
-        // without involving the main thread or once all browsers ship
-        // Atomics.waitAsync.
-        //
-        // Note that this requires adding _emscripten_proxy_execute_queue to
-        // EXPORTED_FUNCTIONS.
-        _wasmfs_thread_utils_heartbeat(queue.queue);
+      // Sometimes the main thread is spinning, waiting on a WasmFS lock held
+      // by a thread trying to proxy work to this dedicated worker. In that
+      // case, the proxying message won't be relayed by the main thread and
+      // the system will deadlock. This heartbeat ensures that proxying work
+      // eventually gets done so the thread holding the lock can make forward
+      // progress even if the main thread is blocked.
+      //
+      // TODO: Remove this once we can postMessage directly between workers
+      // without involving the main thread or once all browsers ship
+      // Atomics.waitAsync.
+      //
+      // Note that this requires adding _emscripten_proxy_execute_queue to
+      // EXPORTED_FUNCTIONS.
+      _wasmfs_thread_utils_heartbeat(queue.queue);
 
-        // Sit in the event loop performing work as it comes in.
-        emscripten_exit_with_live_runtime();
-      }) {
+      // Sit in the event loop performing work as it comes in.
+      emscripten_exit_with_live_runtime();
+    });
 
     // Make sure the thread has actually started before returning. This allows
     // subsequent code to assume the thread has already been spawned and not
