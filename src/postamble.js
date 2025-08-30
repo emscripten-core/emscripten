@@ -353,17 +353,18 @@ if ({{{ ENVIRONMENT_IS_MAIN_THREAD() }}}) {
 // In modularize mode the generated code is within a factory function so we
 // can use await here (since it's not top-level-await).
 wasmExports = await createWasm();
+run();
 #else
 // With async instantation wasmExports is assigned asynchronously when the
 // instance is received.
-createWasm();
+createWasm().then(() => run());
 #endif
 
 #else
 wasmExports = createWasm();
+run();
 #endif
 
-run();
 
 #if WASM_WORKERS || PTHREADS
 }

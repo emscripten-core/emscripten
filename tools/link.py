@@ -1137,7 +1137,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$ExitStatus']
 
     # Certain configurations require the removeRunDependency/addRunDependency system.
-    if settings.LOAD_SOURCE_MAP or settings.PROXY_TO_WORKER or (settings.WASM_ASYNC_COMPILATION and not settings.MODULARIZE):
+    if settings.LOAD_SOURCE_MAP or settings.PROXY_TO_WORKER:
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$addRunDependency', '$removeRunDependency']
 
   if settings.ABORT_ON_WASM_EXCEPTIONS or settings.SPLIT_MODULE:
