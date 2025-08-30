@@ -24,7 +24,7 @@ from tools.utils import WINDOWS, MACOS, LINUX, write_file, delete_file
 from tools import shared, building, config, utils, webassembly
 import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
-from common import skip_if, no_windows, is_slow_test, parameterized, parameterize
+from common import skip_if, no_windows, is_slow_test, parameterized, parameterize, all_engines
 from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_without_bigint
 from common import read_file, read_binary, requires_v8, requires_node, requires_dev_dependency, requires_wasm2js, requires_node_canary
 from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime, also_with_modularize
@@ -179,25 +179,6 @@ def with_dylink_reversed(func):
 
   parameterize(decorated, {'': (False,),
                            'reversed': (True,)})
-
-  return decorated
-
-
-# without EMTEST_ALL_ENGINES set we only run tests in a single VM by
-# default. in some tests we know that cross-VM differences may happen and
-# so are worth testing, and they should be marked with this decorator
-def all_engines(f):
-  assert callable(f)
-
-  @wraps(f)
-  def decorated(self, *args, **kwargs):
-    old = self.use_all_engines
-    self.use_all_engines = True
-    self.set_setting('ENVIRONMENT', 'web,node,shell')
-    try:
-      f(self, *args, **kwargs)
-    finally:
-      self.use_all_engines = old
 
   return decorated
 
@@ -8762,6 +8743,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_wrap_malloc(self, args):
     self.do_runf('core/test_wrap_malloc.c', 'OK.', cflags=args)
 
+  @all_engines
   def test_environment(self):
     self.set_setting('ASSERTIONS')
 
@@ -8773,33 +8755,31 @@ NODEFS is no longer included by default; build with -lnodefs.js
         js = read_file(self.output_name('test_hello_world'))
       assert ('require(' in js) == ('node' in self.get_setting('ENVIRONMENT')), 'we should have require() calls only if node js specified'
 
-    for engine in config.JS_ENGINES:
-      print(f'engine: {engine}')
-      # set us to test in just this engine
-      self.require_engine(engine)
-      # tell the compiler to build with just that engine
-      if engine == config.NODE_JS_TEST:
-        right = 'node'
-        wrong = 'shell'
-      else:
-        right = 'shell'
-        wrong = 'node'
-      # test with the right env
-      self.set_setting('ENVIRONMENT', right)
-      print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
-      test()
-      # test with the wrong env
-      self.set_setting('ENVIRONMENT', wrong)
-      print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
-      try:
-        test(assert_returncode=NON_ZERO)
-        raise Exception('unexpected success')
-      except Exception as e:
-        self.assertContained('not compiled for this environment', str(e))
-      # test with a combined env
-      self.set_setting('ENVIRONMENT', right + ',' + wrong)
-      print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
-      test()
+    engine = self.get_current_js_engine()
+    print(f'engine: {engine}')
+    # tell the compiler to build with just that engine
+    if engine == config.NODE_JS_TEST:
+      right = 'node'
+      wrong = 'shell'
+    else:
+      right = 'shell'
+      wrong = 'node'
+    # test with the right env
+    self.set_setting('ENVIRONMENT', right)
+    print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
+    test()
+    # test with the wrong env
+    self.set_setting('ENVIRONMENT', wrong)
+    print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
+    try:
+      test(assert_returncode=NON_ZERO)
+      raise Exception('unexpected success')
+    except Exception as e:
+      self.assertContained('not compiled for this environment', str(e))
+    # test with a combined env
+    self.set_setting('ENVIRONMENT', right + ',' + wrong)
+    print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
+    test()
 
   @requires_node
   def test_postrun_exception(self):
