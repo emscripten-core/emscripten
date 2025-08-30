@@ -10,6 +10,8 @@ import sys
 import tempfile
 import time
 import unittest
+from tools import emprofile
+from tools import utils
 
 import common
 
@@ -84,6 +86,9 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # issues.
     # multiprocessing.set_start_method('spawn')
 
+    # Remove any old stale list of flaky tests before starting the run
+    utils.delete_file(common.flaky_tests_log_filename)
+
     # If we are running with --failing-and-slow-first, then the test list has been
     # pre-sorted based on previous test run results. Otherwise run the tests in
     # reverse alphabetical order.
@@ -148,8 +153,25 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # parallel causes mis-orderings, this makes the results more readable.
     results = sorted(buffered_results, key=lambda res: str(res.test))
     result.core_time = 0
+
+    # shared data structures are hard in the python multi-processing world, so
+    # use a file to share the flaky test information across test processes.
+    flaky_tests = open(common.flaky_tests_log_filename).read().split() if os.path.isfile(common.flaky_tests_log_filename) else []
+
     for r in results:
+      # Merge information of flaky tests into the test result
+      if r.test_result == 'success' and r.test_short_name() in flaky_tests:
+        r.test_result = 'warnings'
+      # And integrate the test result to the global test object
       r.updateResult(result)
+
+    # Generate the parallel test run visualization
+    if os.getenv('EMTEST_VISUALIZE'):
+      emprofile.create_profiling_graph(utils.path_from_root('out/graph'))
+      # Cleanup temp files that were used for the visualization
+      emprofile.delete_profiler_logs()
+      utils.delete_file(common.flaky_tests_log_filename)
+
     return result
 
 
@@ -171,6 +193,11 @@ class BufferedParallelTestResult:
   def test(self):
     return self.buffered_result.test
 
+  def test_short_name(self):
+    # Given a test name e.g. "test_atomic_cxx (test_core.core0.test_atomic_cxx)"
+    # returns a short form "test_atomic_cxx" of the test.
+    return self.test_name[:self.test_name.find(' ')]
+
   def addDuration(self, test, elapsed):
     self.test_duration = elapsed
 
@@ -182,6 +209,30 @@ class BufferedParallelTestResult:
     self.buffered_result.updateResult(result)
     result.stopTest(self.test)
     result.core_time += self.test_duration
+    self.log_test_run_for_visualization()
+
+  def log_test_run_for_visualization(self):
+    if os.getenv('EMTEST_VISUALIZE') and (self.test_result != 'skipped' or self.test_duration > 0.2):
+      profiler_logs_path = os.path.join(tempfile.gettempdir(), 'emscripten_toolchain_profiler_logs')
+      os.makedirs(profiler_logs_path, exist_ok=True)
+      profiler_log_file = os.path.join(profiler_logs_path, 'toolchain_profiler.pid_0.json')
+      prof = open(profiler_log_file, 'a')
+      colors = {
+        'success': '#80ff80',
+        'warnings': '#ffb040',
+        'skipped': '#a0a0a0',
+        'expected failure': '#ff8080',
+        'unexpected success': '#ff8080',
+        'failed': '#ff8080',
+        'errored': '#ff8080',
+      }
+      # Write profiling entries for emprofile.py tool to visualize. This needs a unique identifier for each
+      # block, so generate one on the fly.
+      dummy_test_task_counter = os.path.getsize(profiler_log_file) if os.path.isfile(profiler_log_file) else 0
+      # Remove the redundant 'test_' prefix from each test, since character space is at a premium in the visualized graph.
+      test_name = self.test_short_name().removeprefix('test_')
+      prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"start","time":{self.start_time},"cmdLine":["{test_name}"],"color":"{colors[self.test_result]}"}}')
+      prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"exit","time":{self.start_time + self.test_duration},"returncode":0}}')
 
   def startTest(self, test):
     self.test_name = str(test)
