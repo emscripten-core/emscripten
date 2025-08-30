@@ -3162,6 +3162,9 @@ More info: https://emscripten.org
       (['-gsplit-dwarf', '-gsource-map'], True, True, True),
       (['-gsource-map', '-sERROR_ON_WASM_CHANGES_AFTER_LINK'], False, True, True),
       (['-Oz', '-gsource-map'], False, True, True),
+      # Disabling JS debuggability is possible, and we still emit a source map
+      # if requested. (But see above about the name section.)
+      (['-Oz', '-gsource-map', '-sJS_DEBUG_LEVEL=0'], False, True, True),
     ]:
       print(flags, expect_dwarf, expect_sourcemap, expect_names)
       self.emcc(test_file(source_file), flags, js_file)
@@ -9265,13 +9268,19 @@ int main() {
         (['-O0', '-gline-tables-only'], False, True, False),
         (['-O1'], False, True, False),
         (['-O3'], True, False, False),
-        (['-Oz', '-gsource-map'], False, True, False), # TODO: fix this (#20462)
+        # source maps by themselves set -g, so the JS is debuggable too
+        (['-Oz', '-gsource-map'], False, True, False),
+        # overriding the JS debug level allows an optimized source map build
+        # (i.e., same as -O2 aside from having a source map)
+        (['-Oz', '-gsource-map', '-sJS_DEBUG_LEVEL=0'], True, False, False),
+        # incrementing the JS debug level to 1 adds whitespace
+        (['-Oz', '-gsource-map', '-sJS_DEBUG_LEVEL=1'], True, True, False),
         (['-O2'], True,  False, False),
         (['-O2', '-gz'], True,  False, False), # -gz means debug compression, it should not enable debugging
         (['-O2', '-g1'], False, True, False),
         (['-O2', '-g'],  False, True, False),
         (['-O2', '--closure=1'], True, False, True),
-        (['-O2', '--closure=1', '-g1'], True, True,  True),
+        (['-O2', '--closure=1', '-g1'], True, True, True),
       ]:
       print(args, expect_clean_js, expect_whitespace_js, expect_closured)
       delete_file('a.out.wat')
@@ -9460,6 +9469,11 @@ int main() {
     'O3': (['-O3'],), # in -O3, -Os and -Oz we metadce
     'Os': (['-Os'],),
     'Oz': (['-Oz'],),
+    # Enabling source maps + setting JS_DEBUG_LEVEl to 1 still produces a fully
+    # optimized wasm, including metadce (we set 1 and not 0 here, as this test
+    # wants to scan the JS, and 0 breaks it; but if 1 still preserves the wasm's
+    # optimizations, 0 surely does).
+    'O3_sm_opt': (['-O3', '-gsource-map', '-sJS_DEBUG_LEVEL=1'],),
     # finally, check what happens when we export nothing. wasm should be almost empty
     'export_nothing': (['-Os', '-sEXPORTED_FUNCTIONS=[]'],),
     # we don't metadce with linkable code! other modules may want stuff
