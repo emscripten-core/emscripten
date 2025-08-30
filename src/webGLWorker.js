@@ -506,7 +506,7 @@ function WebGLWorker() {
         removeRunDependency('gl-prefetch');
         break;
       }
-      default: throw 'weird gl onmessage ' + JSON.stringify(msg);
+      default: abort('weird gl onmessage ' + JSON.stringify(msg));
     }
   };
 
@@ -562,7 +562,7 @@ function WebGLWorker() {
       }
       default: {
         if (bindings.enabledState[name] !== undefined) return bindings.enabledState[name];
-        throw 'TODO: get parameter ' + name + ' : ' + revname(name);
+        abort('TODO: get parameter ' + name + ' : ' + revname(name));
       }
     }
   };
@@ -715,7 +715,7 @@ function WebGLWorker() {
         case 'sampler2D': return that.SAMPLER_2D;
         case 'sampler3D': return that.SAMPLER_3D;
         case 'samplerCube': return that.SAMPLER_CUBE;
-        default: throw 'not yet recognized type text: ' + text;
+        default: abort('not yet recognized type text: ' + text);
       }
     }
     function parseElementType(shader, type, obj, vec) {
@@ -782,7 +782,7 @@ function WebGLWorker() {
         commandBuffer.push(15, program.id, name);
         return true;
       }
-      default: throw 'bad getProgramParameter ' + revname(name);
+      default: abort('bad getProgramParameter ' + revname(name));
     }
   };
   this.getActiveAttrib = function(program, index) {
@@ -957,7 +957,7 @@ function WebGLWorker() {
         commandBuffer.push(43, shader.id, pname);
         return true;
       }
-      default: throw 'unsupported getShaderParameter ' + pname;
+      default: abort('unsupported getShaderParameter ' + pname);
     }
   };
   this.clearDepth = function(depth) {
