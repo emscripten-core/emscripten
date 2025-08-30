@@ -7,7 +7,7 @@
 // wasm2js.js - enough of a polyfill for the WebAssembly object so that we can load
 // wasm2js code that way.
 
-/** @suppress{duplicate, const} */
+/** @suppress{duplicate, const, checkTypes} */
 var WebAssembly = {
   // Note that we do not use closure quoting (this['buffer'], etc.) on these
   // functions, as they are just meant for internal use. In other words, this is
