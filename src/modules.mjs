@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: MIT
  */
 
+import * as os from 'node:os';
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import assert from 'node:assert';
@@ -213,6 +215,17 @@ function calculateLibraries() {
   return libraries;
 }
 
+let tempDir;
+
+function getTempDir() {
+  if (!tempDir) {
+    const tempRoot = os.tmpdir();
+    tempDir = fs.mkdtempSync(path.join(tempRoot, 'emcc-jscompiler-'));
+  }
+  return tempDir;
+}
+
+
 export const LibraryManager = {
   library: {},
   // The JS and JS docs of each library definition indexed my mangled name.
@@ -269,22 +282,22 @@ export const LibraryManager = {
         this.library = userLibraryProxy;
       }
       pushCurrentFile(filename);
+      let preprocessedName = filename.replace(/\.\w+$/, '.preprocessed$&')
+      if (VERBOSE) {
+        preprocessedName = path.join(getTempDir(), path.basename(filename));
+      }
       try {
         processed = processMacros(preprocess(filename), filename);
-        runInMacroContext(processed, {filename: filename.replace(/\.\w+$/, '.preprocessed$&')});
+        runInMacroContext(processed, {filename: preprocessedName})
       } catch (e) {
-        error(`failure to execute js library "${filename}":`);
-        if (VERBOSE) {
-          const orig = readFile(filename);
-          if (processed) {
-            error(
-              `preprocessed source (you can run a js engine on this to get a clearer error message sometimes):\n=============\n${processed}\n=============`,
-            );
+        error(`failure to execute JS library "${filename}":`);
+        if (processed) {
+          if (VERBOSE) {
+            fs.writeFileSync(preprocessedName, processed);
+            error(`preprocessed JS saved to ${preprocessedName}`)
           } else {
-            error(`original source:\n=============\n${orig}\n=============`);
+            error('use -sVERBOSE to save preprocessed JS');
           }
-        } else {
-          error('use -sVERBOSE to see more details');
         }
         throw e;
       } finally {
@@ -292,6 +305,9 @@ export const LibraryManager = {
         if (origLibrary) {
           this.library = origLibrary;
         }
+      }
+      if (VERBOSE) {
+        fs.rmSync(getTempDir(), { recursive: true, force: true });
       }
     }
   },
