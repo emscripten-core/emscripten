@@ -5953,11 +5953,12 @@ int main(int argc, char **argv) {
     output = self.do_runf('code.c')
     self.assertContained('I am ' + utils.normalize_path(os.path.realpath(self.get_dir())) + '/code.js', utils.normalize_path(output))
 
+  @all_engines
   @parameterized({
-    'no_exit_runtime': [True],
-    '': [False],
+    'exit_runtime': (['-sEXIT_RUNTIME=1'],),
+    '': ([],),
   })
-  def test_returncode(self, no_exit):
+  def test_returncode(self, args):
     create_file('src.c', r'''
       #include <stdio.h>
       #include <stdlib.h>
@@ -5969,20 +5970,17 @@ int main(int argc, char **argv) {
       #endif
       }
     ''')
+    msg = 'but keepRuntimeAlive() is set (counter=0) due to an async operation, so halting execution but not exiting the runtime'
     for code in (0, 123):
       for call_exit in (0, 1):
         for async_compile in (0, 1):
-          self.run_process([EMCC, 'src.c', '-sENVIRONMENT=node,shell', '-DCODE=%d' % code, '-sEXIT_RUNTIME=%d' % (1 - no_exit), '-DCALL_EXIT=%d' % call_exit, '-sWASM_ASYNC_COMPILATION=%d' % async_compile])
-          for engine in config.JS_ENGINES:
-            print(code, call_exit, async_compile, engine)
-            proc = self.run_process(engine + ['a.out.js'], stderr=PIPE, check=False)
-            msg = 'but keepRuntimeAlive() is set (counter=0) due to an async operation, so halting execution but not exiting the runtime'
-            if no_exit and call_exit:
-              self.assertContained(msg, proc.stderr)
-            else:
-              self.assertNotContained(msg, proc.stderr)
-            # we always emit the right exit code, whether we exit the runtime or not
-            self.assertEqual(proc.returncode, code)
+          print('code', code, 'call_exit', call_exit, 'async_compile', async_compile)
+          cflags = args + [f'-DCODE={code}', f'-DCALL_EXIT={call_exit}', f'-sWASM_ASYNC_COMPILATION={async_compile}']
+          output = self.do_runf('src.c', cflags=cflags, assert_returncode=code)
+          if '-sEXIT_RUNTIME=1' not in args and call_exit:
+            self.assertContained(msg, output)
+          else:
+            self.assertNotContained(msg, output)
 
   def test_emscripten_force_exit_NO_EXIT_RUNTIME(self):
     create_file('src.c', r'''
@@ -8920,6 +8918,7 @@ addToLibrary({
     ]
     self.do_runf('src.c', '\n'.join(expected_order))
 
+  @all_engines
   def test_override_js_execution_environment(self):
     create_file('main.c', r'''
       #include <emscripten.h>
@@ -8934,19 +8933,19 @@ addToLibrary({
 ''')
     self.run_process([EMCC, 'main.c', '-sENVIRONMENT=node,shell'])
     src = read_file('a.out.js')
+    engine = self.get_current_js_engine()
     for env in ['web', 'worker', 'node', 'shell']:
-      for engine in config.JS_ENGINES:
-        actual = 'NODE' if engine == config.NODE_JS_TEST else 'SHELL'
-        print(env, actual, engine)
-        module = {'ENVIRONMENT': env}
-        if env != actual:
-          # avoid problems with arguments detection, which may cause very odd failures with the wrong environment code
-          module['arguments'] = []
-        curr = 'var Module = %s;\n' % str(module)
-        print('    ' + curr)
-        create_file('test.js', curr + src)
-        seen = self.run_js('test.js', engine=engine, assert_returncode=NON_ZERO)
-        self.assertContained('Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -sENVIRONMENT=web or -sENVIRONMENT=node', seen)
+      actual = 'NODE' if engine == config.NODE_JS_TEST else 'SHELL'
+      print('env', env, 'actual', actual, 'engine', engine)
+      module = {'ENVIRONMENT': env}
+      if env != actual:
+        # avoid problems with arguments detection, which may cause very odd failures with the wrong environment code
+        module['arguments'] = []
+      curr = 'var Module = %s;\n' % str(module)
+      print('    ' + curr)
+      create_file('test.js', curr + src)
+      seen = self.run_js('test.js', assert_returncode=NON_ZERO)
+      self.assertContained('Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -sENVIRONMENT=web or -sENVIRONMENT=node', seen)
 
   def test_override_c_environ(self):
     create_file('pre.js', r'''

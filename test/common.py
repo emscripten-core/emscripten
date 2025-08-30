@@ -450,19 +450,42 @@ def crossplatform(f):
   return f
 
 
-# without EMTEST_ALL_ENGINES set we only run tests in a single VM by
-# default. in some tests we know that cross-VM differences may happen and
-# so are worth testing, and they should be marked with this decorator
+# Without EMTEST_ALL_ENGINES set we only run tests in a single VM by default.
+# However, for some tests we know that cross-VM differences may happen and
+# so are worth testing, and they should be marked with this decorator which creates
+# N different variants of the test, one for each engine.
 def all_engines(f):
   assert callable(f)
 
+  if len(config.JS_ENGINES) == 1 or EMTEST_ALL_ENGINES:
+    return f
+
   @wraps(f)
-  def decorated(self, *args, **kwargs):
-    self.use_all_engines = True
+  def metafunc(self, engine, *args, **kwargs):
     self.set_setting('ENVIRONMENT', 'web,node,shell')
+    self.js_engines = [engine]
     f(self, *args, **kwargs)
 
-  return decorated
+  engine_mapping = {}
+  for engine in config.JS_ENGINES:
+    if not engine_mapping:
+      # For the first engine we use no suffix at all.
+      # This uffnsures that one of the tests matches the original name, meaning that
+      # you can still run just `test_foo` and always get the first engine without
+      # needing to write, for example, `test_foo_node`.
+      name = ''
+    else:
+      basename = os.path.basename(engine[0])
+      name = basename
+      suffix = 1
+      while name in engine_mapping:
+        name = f'{basename}_{suffix}'
+        suffix += 1
+    engine_mapping[name] = (engine,)
+
+  parameterize(metafunc, engine_mapping)
+
+  return metafunc
 
 
 @contextlib.contextmanager
@@ -1348,7 +1371,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.temp_files_before_run = []
     self.required_engine = None
     self.wasm_engines = config.WASM_ENGINES.copy()
-    self.use_all_engines = EMTEST_ALL_ENGINES
     if self.get_current_js_engine() != config.NODE_JS_TEST:
       # If our primary JS engine is something other than node then enable
       # shell support.
@@ -2103,11 +2125,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.assertExists(js_file)
 
     engines = self.js_engines.copy()
-    if len(engines) > 1 and not self.use_all_engines:
+    if len(engines) > 1 and not EMTEST_ALL_ENGINES:
       engines = engines[:1]
     # In standalone mode, also add wasm vms as we should be able to run there too.
     if self.get_setting('STANDALONE_WASM'):
-      # TODO once standalone wasm support is more stable, apply use_all_engines
+      # TODO once standalone wasm support is more stable, apply EMTEST_ALL_ENGINES
       # like with js engines, but for now as we bring it up, test in all of them
       if not self.wasm_engines:
         if 'EMTEST_SKIP_WASM_ENGINE' in os.environ:
