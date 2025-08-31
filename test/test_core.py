@@ -409,6 +409,7 @@ no_strict_js = make_no_decorator_for_setting('STRICT_JS')
 no_big_endian = make_no_decorator_for_setting('SUPPORT_BIG_ENDIAN')
 no_omit_asm_module_exports = make_no_decorator_for_setting('DECLARE_ASM_MODULE_EXPORTS=0')
 
+
 def is_sanitizing(args):
   return '-fsanitize=' in str(args)
 
