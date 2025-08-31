@@ -614,7 +614,8 @@ def also_with_minimal_runtime(f):
   def metafunc(self, with_minimal_runtime, *args, **kwargs):
     if DEBUG:
       print('parameterize:minimal_runtime=%s' % with_minimal_runtime)
-    assert self.get_setting('MINIMAL_RUNTIME') is None
+    if self.get_setting('MINIMAL_RUNTIME'):
+      self.skipTest('This test is verified for minimal runtime in the regular build modes, so running it in minimal0 suite does not apply.')
     if with_minimal_runtime:
       if self.get_setting('MODULARIZE') == 'instance' or self.get_setting('WASM_ESM_INTEGRATION'):
         self.skipTest('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
