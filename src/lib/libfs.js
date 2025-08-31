@@ -983,7 +983,7 @@ FS.staticInit();`;
       var node = stream.node;
       var getattr = stream.stream_ops.getattr;
       var arg = getattr ? stream : node;
-      getattr ??= node.node_ops.getattr;
+      getattr ??= node.node_ops.getattr.bind(node.node_ops);
       FS.checkOpExists(getattr, {{{ cDefs.EPERM }}})
       return getattr(arg);
     },
