@@ -56,20 +56,25 @@ uintptr_t* emscripten_get_sbrk_ptr() {
 #define READ_SBRK_PTR(sbrk_ptr) (*(sbrk_ptr))
 #endif
 
-void *sbrk(intptr_t increment_) {
-  uintptr_t increment = (uintptr_t)increment_;
-  increment = (increment + (SBRK_ALIGNMENT-1)) & ~(SBRK_ALIGNMENT-1);
+void *sbrk64(int64_t increment) {
+  if (increment >= 0) {
+    increment = (increment + (SBRK_ALIGNMENT-1)) & ~((int64_t)SBRK_ALIGNMENT-1);
+  } else {
+    increment = -(-increment & ~((int64_t)SBRK_ALIGNMENT-1));
+  }
+
   uintptr_t *sbrk_ptr = (uintptr_t*)emscripten_get_sbrk_ptr();
 
   // To make sbrk thread-safe, implement a CAS loop to update the
   // value of sbrk_ptr.
   while (1) {
     uintptr_t old_brk = READ_SBRK_PTR(sbrk_ptr);
-    uintptr_t new_brk = old_brk + increment;
-    // Check for a) an overflow, which would indicate that we are trying to
-    // allocate over maximum addressable memory. and b) if necessary,
+    int64_t new_brk64 = (int64_t)old_brk + increment;
+    uintptr_t new_brk = (uintptr_t)new_brk64;
+    // Check for a) an over/underflow, which would indicate that we are
+    // allocating over maximum addressable memory. and b) if necessary,
     // increase the WebAssembly Memory size, and abort if that fails.
-    if ((increment > 0 && new_brk <= old_brk)
+    if (new_brk < 0 || new_brk64 != (int64_t)new_brk
      || (new_brk > emscripten_get_heap_size() && !emscripten_resize_heap(new_brk))) {
       errno = ENOMEM;
       return (void*)-1;
@@ -91,6 +96,10 @@ void *sbrk(intptr_t increment_) {
     emscripten_memprof_sbrk_grow(old_brk, new_brk);
     return (void*)old_brk;
   }
+}
+
+void *sbrk(intptr_t increment_) {
+  return sbrk64((int64_t)increment_);
 }
 
 int brk(void* ptr) {
