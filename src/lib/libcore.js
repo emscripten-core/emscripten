@@ -1724,8 +1724,15 @@ addToLibrary({
   $dynCallLegacy__deps: ['$dynCalls'],
   $dynCallLegacy: (sig, ptr, args) => {
     sig = sig.replace(/p/g, {{{ MEMORY64 ? "'j'" : "'i'" }}})
+
+#if !DECLARE_ASM_MODULE_EXPORTS
+    var dynCallFn = globalThis[`dynCall_${sig}`];
+#else
+    var dynCallFn = dynCalls[sig];
+#endif
+
 #if ASSERTIONS
-    assert(sig in dynCalls, `bad function pointer type - sig is not in dynCalls: '${sig}'`);
+    assert(dynCallFn, `bad function pointer type - sig is not in dynCalls: '${sig}'`);
     if (args?.length) {
 #if WASM_BIGINT
       // j (64-bit integer) is fine, and is implemented as a BigInt. Without
@@ -1740,8 +1747,7 @@ addToLibrary({
       assert(sig.length == 1);
     }
 #endif
-    var f = dynCalls[sig];
-    return f(ptr, ...args);
+    return dynCallFn(ptr, ...args);
   },
   $dynCall__deps: [
 #if DYNCALLS || !WASM_BIGINT

@@ -1417,6 +1417,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if not settings.DECLARE_ASM_MODULE_EXPORTS:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$exportWasmSymbols']
+    if not settings.WASM_BIGINT and (settings.MAIN_MODULE or settings.SIDE_MODULE):
+      exit_with_error('DECLARE_ASM_MODULE_EXPORTS=0 cannot be used with WASM_BIGINT=0 when dynamic linking is also enabled')
 
   if settings.ALLOW_MEMORY_GROWTH:
     # Setting ALLOW_MEMORY_GROWTH turns off ABORTING_MALLOC, as in that mode we default to

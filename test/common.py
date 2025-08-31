@@ -750,6 +750,8 @@ def also_with_modularize(f):
   @wraps(f)
   def metafunc(self, modularize, *args, **kwargs):
     if modularize:
+      if self.get_setting('DECLARE_ASM_MODULE_EXPORTS') == 0:
+        self.skipTest('DECLARE_ASM_MODULE_EXPORTS is not compatible with MODULARIZE')
       if self.get_setting('STRICT_JS'):
         self.skipTest('MODULARIZE is not compatible with STRICT_JS')
       if self.get_setting('WASM_ESM_INTEGRATION'):
