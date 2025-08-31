@@ -2145,7 +2145,11 @@ addToLibrary({
     if (x == '__main_argc_argv') {
       x = 'main';
     }
+#if DYNCALLS
     return x.startsWith('dynCall_') ? x : '_' + x;
+#else
+    return '_' + x;
+#endif
   },
 
   $alignMemory: (size, alignment) => {
