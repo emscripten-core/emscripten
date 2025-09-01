@@ -160,7 +160,7 @@ var LibraryEmVal = {
     var writer = (() => {
       if (dst.BYTES_PER_ELEMENT===1)
         return (i, v) =>  { dst[i] = v; };
-      const dv = new Datadst(dst.buffer, dst.byteOffset);
+      const dv = new DataView(dst.buffer, dst.byteOffset);
       switch(dst.BYTES_PER_ELEMENT) {
         case 2:
           if (dst instanceof Int16Array)
