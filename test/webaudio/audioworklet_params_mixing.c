@@ -41,7 +41,7 @@ bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, Audi
   }
   // Interestingly, params varies per browser. Chrome won't have a length > 1
   // unless the value changes, and FF has all 128 entries even for a k-rate
-  // parameter. The only given is that two params are incoming:
+  // parameter. The only given for this test is that two params are incoming:
   assert(numParams == 2);
   assert(params[0].length == 1 || params[0].length == outSamplesPerChannel);
   assert(params[1].length == 1 || params[1].length == outSamplesPerChannel);
