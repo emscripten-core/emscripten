@@ -7760,7 +7760,6 @@ void* operator new(size_t size) {
     '': ('DEFAULT', False),
     'all': ('ALL', False),
     'fast': ('FAST', False),
-    'default': ('DEFAULT', False),
     'all_growth': ('ALL', True),
   })
   @no_modularize_instance('uses Module global')
