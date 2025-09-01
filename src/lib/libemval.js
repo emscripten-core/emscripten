@@ -149,7 +149,6 @@ var LibraryEmVal = {
           break;
       }
     })();
-    // using for..loop is faster than Array.from
     var a = new Array(view.length);
     for (var i = 0; i < view.length; i++) a[i] = reader(i);
     return Emval.toHandle(a);
@@ -186,8 +185,7 @@ var LibraryEmVal = {
             return (i, v) => dv.setFloat64(i * 8, v, true)
           break;
       }
-  })();
-    // using for..loop is faster than Array.from
+    })();
     for (var i = 0; i < src.length; i++) writer(i, src[i]);
   },
 #endif
