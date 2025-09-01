@@ -63,10 +63,10 @@ float interesting_floats_[] = {
   0.5f,
   0.8f,
   1.0f,
-  1.5f,
+  1.5f, // Test different half-way values to see if banker's rounding happens.
   2.5f,
   3.5f,
-  3.6f,
+  1022.99998194495f, // https://github.com/emscripten-core/emscripten/issues/25129
   FLT_MAX,
   INFINITY,
   NAN,
@@ -98,10 +98,10 @@ double interesting_doubles_[] = {
   0.5,
   0.8,
   1.0,
-  1.5,
+  1.5, // Test different half-way values to see if banker's rounding happens.
   2.5,
   3.5,
-  3.6,
+  1022.99998194495, // https://github.com/emscripten-core/emscripten/issues/25129
   FLT_MAX,
   INFINITY,
   NAN,
