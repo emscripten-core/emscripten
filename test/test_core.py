@@ -7634,6 +7634,7 @@ void* operator new(size_t size) {
   def test_embind_val(self):
     self.do_run_in_out_file_test('embind/test_val.cpp', cflags=['-lembind'])
 
+  @no_big_endian("Incompatible with SUPPORT_BIG_ENDIAN")
   def test_embind_val_read_pointer(self):
     self.do_runf('embind/test_val_read_pointer.cpp', cflags=['-lembind'])
 
