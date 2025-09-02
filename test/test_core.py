@@ -8658,17 +8658,16 @@ Module.onRuntimeInitialized = () => {
     create_file('lib.js', '''
       addToLibrary({
         check_memprof_requirements: () => {
-          try {
-            if (typeof _emscripten_stack_get_base() === 'number' &&
-                typeof _emscripten_stack_get_end() === 'number' &&
-                typeof _emscripten_stack_get_current() === 'number' &&
-                 Module['___heap_base'] > 0) {
-              out('able to run memprof');
-              return 0;
-            }
-          } catch(e) { console.error(e); }
-          out('missing the required variables to run memprof');
-          return 1;
+          if (typeof _emscripten_stack_get_base === 'function' &&
+              typeof _emscripten_stack_get_end === 'function' &&
+              typeof _emscripten_stack_get_current === 'function' &&
+              Module['___heap_base'] > 0) {
+             out('able to run memprof');
+             return 0;
+           } else {
+             out('missing the required variables to run memprof');
+             return 1;
+           }
         }
       });
     ''')
