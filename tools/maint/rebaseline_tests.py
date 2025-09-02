@@ -82,11 +82,11 @@ def main():
     run(['./emcc', '--clear-cache'])
 
   if not args.skip_tests:
-#    if not args.check_only and run(['git', 'status', '-uno', '--porcelain']).strip():
-#      print('tree is not clean')
-#      return 1
+    if not args.check_only and run(['git', 'status', '-uno', '--porcelain']).strip():
+      print('tree is not clean')
+      return 1
 
-    subprocess.check_call([os.path.join('test', 'runner'), '--rebaseline', '--browser=0'] + TESTS, cwd=root_dir, shell=True)
+    subprocess.check_call(['test/runner', '--rebaseline', '--browser=0'] + TESTS, cwd=root_dir)
 
   output = run(['git', 'status', '-uno', '--porcelain'])
   filenames = []
