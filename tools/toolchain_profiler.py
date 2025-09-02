@@ -188,7 +188,12 @@ if EMPROFILE == 1:
 
     @staticmethod
     def record_subprocess_spawn(process_pid, process_cmdline):
-      expanded_cmdline = response_file.substitute_response_files(process_cmdline)
+      try:
+        expanded_cmdline = response_file.substitute_response_files(process_cmdline)
+      except OSError:
+        # If user is passing a malformed input command line, then the toolchain profiler should not
+        # throw an exception, but profile the bad input command line as-is
+        expanded_cmdline = process_cmdline
 
       with ToolchainProfiler.log_access() as f:
         f.write(',\n{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"spawn","targetPid":' + str(process_pid) + ',"time":' + ToolchainProfiler.timestamp() + ',"cmdLine":["' + '","'.join(ToolchainProfiler.escape_args(expanded_cmdline)) + '"]}')
