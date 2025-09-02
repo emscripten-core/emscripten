@@ -225,7 +225,6 @@ class BufferedParallelTestResult:
       profiler_logs_path = os.path.join(tempfile.gettempdir(), 'emscripten_toolchain_profiler_logs')
       os.makedirs(profiler_logs_path, exist_ok=True)
       profiler_log_file = os.path.join(profiler_logs_path, 'toolchain_profiler.pid_0.json')
-      prof = open(profiler_log_file, 'a')
       colors = {
         'success': '#80ff80',
         'warnings': '#ffb040',
@@ -240,8 +239,9 @@ class BufferedParallelTestResult:
       dummy_test_task_counter = os.path.getsize(profiler_log_file) if os.path.isfile(profiler_log_file) else 0
       # Remove the redundant 'test_' prefix from each test, since character space is at a premium in the visualized graph.
       test_name = self.test_short_name().removeprefix('test_')
-      prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"start","time":{self.start_time},"cmdLine":["{test_name}"],"color":"{colors[self.test_result]}"}}')
-      prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"exit","time":{self.start_time + self.test_duration},"returncode":0}}')
+      with prof as open(profiler_log_file, 'a'):
+        prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"start","time":{self.start_time},"cmdLine":["{test_name}"],"color":"{colors[self.test_result]}"}}')
+        prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"exit","time":{self.start_time + self.test_duration},"returncode":0}}')
 
   def startTest(self, test):
     self.test_name = str(test)
