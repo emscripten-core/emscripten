@@ -1068,8 +1068,7 @@ _mm_cvttps_epi32(__m128 __a)
   for(int i = 0; i < 4; ++i)
   {
     float e = __a[i];
-    int x = lrint(e);
-    if ((x != 0 || fabs(e) < 2.0) && !isnanf(e) && e <= INT_MAX && e >= INT_MIN)
+    if (e < 2147483648.0f && e >= -2147483648.0f && (lrint(e) != 0 || fabs(e) < 2.0))
       // Use the trapping instruction here since we have explicit bounds checks
       // above.
       u.x[i] = __builtin_wasm_trunc_s_i32_f32(e);

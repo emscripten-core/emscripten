@@ -67,6 +67,10 @@ float interesting_floats_[] = {
   2.5f,
   3.5f,
   1022.99998194495f, // https://github.com/emscripten-core/emscripten/issues/25129
+  2147483647.9f, // https://github.com/emscripten-core/emscripten/pull/25130
+  2147483648.0f,
+  2147483648.1f,
+  4294967296.0f,
   FLT_MAX,
   INFINITY,
   NAN,
@@ -102,6 +106,10 @@ double interesting_doubles_[] = {
   2.5,
   3.5,
   1022.99998194495, // https://github.com/emscripten-core/emscripten/issues/25129
+  2147483647.9,
+  2147483648.0, // https://github.com/emscripten-core/emscripten/pull/25130
+  2147483648.1,
+  4294967296.0,
   FLT_MAX,
   INFINITY,
   NAN,
