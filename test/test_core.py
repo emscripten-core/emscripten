@@ -382,7 +382,7 @@ def make_no_decorator_for_setting(name):
           val = 1
         if int(val) == 1 and f'-s{key}' in self.cflags:
           self.skipTest(note)
-        if (f'-s{key}={val}') in self.cflags or self.get_setting(key) == int(val):
+        if f'-s{key}={val}' in self.cflags or self.get_setting(key) == int(val):
           self.skipTest(note)
         f(self, *args, **kwargs)
       return decorated
