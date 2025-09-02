@@ -614,12 +614,10 @@ fi
                  ('nodejs', config.NODE_JS_TEST)]
     for filename, engine in jsengines:
       delete_file(SANITY_FILE)
-      if type(engine) is list:
-        engine = engine[0]
       if not engine:
         print('WARNING: Not testing engine %s, not configured.' % (filename))
         continue
-
+      engine = engine[0]
       print(filename, engine)
 
       test_engine_path = os.path.join(test_path, filename)
@@ -628,7 +626,7 @@ fi
         f.write('exec %s $@\n' % (engine))
       make_executable(test_engine_path)
 
-      out = self.run_js(sample_script, engine=test_engine_path, args=['--foo'])
+      out = self.run_js(sample_script, engine=[test_engine_path], args=['--foo'])
 
       self.assertEqual('0: --foo', out.strip())
 

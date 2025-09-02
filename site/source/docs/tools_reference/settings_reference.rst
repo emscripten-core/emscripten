@@ -427,6 +427,8 @@ function call that uses DataView to enforce LE byte order for HEAP buffer;
 This makes generated JavaScript run on BE as well as LE machines. (If 0, only
 LE systems are supported). Does not affect generated wasm.
 
+.. note:: This is an experimental setting
+
 Default value: false
 
 .. _safe_heap:

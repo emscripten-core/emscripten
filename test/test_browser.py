@@ -3298,19 +3298,19 @@ Module["preRun"] = () => {
 
     for opts in (0, 1, 2, 3):
       print(opts)
-      self.btest_exit('async.cpp', cflags=['-O' + str(opts), '-g2'] + args)
+      self.btest_exit('test_async.c', cflags=['-O' + str(opts), '-g2'] + args)
 
   def test_asyncify_tricky_function_sig(self):
     self.btest('test_asyncify_tricky_function_sig.cpp', '85', cflags=['-sASYNCIFY_ONLY=[foo(char.const*?.int#),foo2(),main,__original_main]', '-sASYNCIFY'])
 
   def test_async_in_pthread(self):
-    self.btest_exit('async.cpp', cflags=['-sASYNCIFY', '-pthread', '-sPROXY_TO_PTHREAD', '-g'])
+    self.btest_exit('test_async.c', cflags=['-sASYNCIFY', '-pthread', '-sPROXY_TO_PTHREAD', '-g'])
 
   def test_async_2(self):
     # Error.stackTraceLimit default to 10 in chrome but this test relies on more
     # than 40 stack frames being reported.
     create_file('pre.js', 'Error.stackTraceLimit = 80;\n')
-    self.btest_exit('async_2.cpp', cflags=['-O3', '--pre-js', 'pre.js', '-sASYNCIFY', '-sSTACK_SIZE=1MB'])
+    self.btest_exit('test_async_2.c', cflags=['-O3', '--pre-js', 'pre.js', '-sASYNCIFY', '-sSTACK_SIZE=1MB'])
 
   @parameterized({
     '': ([],),
@@ -3355,7 +3355,7 @@ Module["preRun"] = () => {
   # ASYNCIFY_IMPORTS.
   # To make the test more precise we also use ASYNCIFY_IGNORE_INDIRECT here.
   @parameterized({
-    'normal': (['-sASYNCIFY_IMPORTS=sync_tunnel,sync_tunnel_bool'],), # noqa
+    '': (['-sASYNCIFY_IMPORTS=sync_tunnel,sync_tunnel_bool'],), # noqa
     'pattern_imports': (['-sASYNCIFY_IMPORTS=[sync_tun*]'],), # noqa
     'response': (['-sASYNCIFY_IMPORTS=@filey.txt'],), # noqa
     'nothing': (['-DBAD'],), # noqa
@@ -3365,10 +3365,10 @@ Module["preRun"] = () => {
   def test_async_returnvalue(self, args):
     if '@' in str(args):
       create_file('filey.txt', 'sync_tunnel\nsync_tunnel_bool\n')
-    self.btest('async_returnvalue.cpp', '0', cflags=['-sASYNCIFY', '-sASYNCIFY_IGNORE_INDIRECT', '--js-library', test_file('browser/async_returnvalue.js')] + args + ['-sASSERTIONS'])
+    self.btest('test_async_returnvalue.c', '0', cflags=['-sASSERTIONS', '-sASYNCIFY', '-sASYNCIFY_IGNORE_INDIRECT', '--js-library', test_file('browser/test_async_returnvalue.js')] + args)
 
   def test_async_bad_list(self):
-    self.btest('async_bad_list.cpp', '0', cflags=['-sASYNCIFY', '-sASYNCIFY_ONLY=waka', '--profiling'])
+    self.btest('test_async_bad_list.c', '0', cflags=['-sASYNCIFY', '-sASYNCIFY_ONLY=waka', '--profiling'])
 
   # Tests that when building with -sMINIMAL_RUNTIME, the build can use -sMODULARIZE as well.
   def test_minimal_runtime_modularize(self):
@@ -3409,10 +3409,12 @@ Module["preRun"] = () => {
     # this test is synchronous, so avoid async startup due to wasm features
     self.compile_btest('browser_test_hello_world.c', ['-sMODULARIZE', '-sSINGLE_FILE'] + args + opts)
     create_file('a.html', '''
+      <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"></head><body>
       <script src="a.out.js"></script>
       <script>
         %s
       </script>
+      </body></html>
     ''' % code)
     self.run_browser('a.html', '/report_result?0')
 
@@ -4827,7 +4829,7 @@ Module["preRun"] = () => {
   # Tests that SINGLE_FILE works as intended in a Worker in JS output
   def test_single_file_worker_js(self):
     self.compile_btest('browser_test_hello_world.c', ['-o', 'test.js', '--proxy-to-worker', '-sSINGLE_FILE'])
-    create_file('test.html', '<script src="test.js"></script>')
+    create_file('test.html', '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"></head><body><script src="test.js"></script></body></html>')
     self.run_browser('test.html', '/report_result?0')
     self.assertExists('test.js')
     self.assertNotExists('test.worker.js')

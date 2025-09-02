@@ -24,7 +24,7 @@ from tools.utils import WINDOWS, MACOS, LINUX, write_file, delete_file
 from tools import shared, building, config, utils, webassembly
 import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
-from common import skip_if, no_windows, is_slow_test, parameterized, parameterize
+from common import skip_if, no_windows, is_slow_test, parameterized, parameterize, all_engines
 from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_without_bigint
 from common import read_file, read_binary, requires_v8, requires_node, requires_dev_dependency, requires_wasm2js, requires_node_canary
 from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime, also_with_modularize
@@ -179,25 +179,6 @@ def with_dylink_reversed(func):
 
   parameterize(decorated, {'': (False,),
                            'reversed': (True,)})
-
-  return decorated
-
-
-# without EMTEST_ALL_ENGINES set we only run tests in a single VM by
-# default. in some tests we know that cross-VM differences may happen and
-# so are worth testing, and they should be marked with this decorator
-def all_engines(f):
-  assert callable(f)
-
-  @wraps(f)
-  def decorated(self, *args, **kwargs):
-    old = self.use_all_engines
-    self.use_all_engines = True
-    self.set_setting('ENVIRONMENT', 'web,node,shell')
-    try:
-      f(self, *args, **kwargs)
-    finally:
-      self.use_all_engines = old
 
   return decorated
 
@@ -2995,7 +2976,7 @@ The current type of b is: 9
       }
       '''
 
-    if self.js_engines == [config.V8_ENGINE]:
+    if self.get_current_js_engine() == config.V8_ENGINE:
       expected = "error: Could not load dynamic lib: libfoo.so\nError: Error reading file"
     else:
       expected = "error: Could not load dynamic lib: libfoo.so\nError: ENOENT: no such file or directory"
@@ -6779,8 +6760,9 @@ void* operator new(size_t size) {
 
   @wasm_relaxed_simd
   def test_relaxed_simd_implies_simd128(self):
-    src = test_file('sse/test_sse1.cpp')
-    self.build(src, cflags=['-msse'])
+    # When using -msse, one has to also add -msimd128.
+    # This test verifies passing -mrelaxed-simd also implies -msimd128.
+    self.do_run_in_out_file_test('sse/hello_sse.cpp', cflags=['-msse'])
 
   @no_asan('call stack exceeded on some versions of node')
   def test_gcc_unmangler(self):
@@ -6910,6 +6892,7 @@ void* operator new(size_t size) {
   @is_slow_test
   @crossplatform
   @no_wasmfs('depends on MEMFS which WASMFS does not have')
+  @no_strict('autoconfiguring is not compatible with STRICT')
   def test_poppler(self):
     # See https://github.com/emscripten-core/emscripten/issues/20757
     self.cflags.extend(['-Wno-deprecated-declarations', '-Wno-nontrivial-memaccess'])
@@ -7777,7 +7760,6 @@ void* operator new(size_t size) {
     '': ('DEFAULT', False),
     'all': ('ALL', False),
     'fast': ('FAST', False),
-    'default': ('DEFAULT', False),
     'all_growth': ('ALL', True),
   })
   @no_modularize_instance('uses Module global')
@@ -9977,17 +9959,17 @@ core_2gb = make_run('core_2gb', cflags=['--profiling-funcs'],
                     settings={'INITIAL_MEMORY': '2200mb', 'GLOBAL_BASE': '2gb'})
 
 # MEMORY64=1
-wasm64 = make_run('wasm64', cflags=['-Wno-experimental', '--profiling-funcs'],
+wasm64 = make_run('wasm64', cflags=['--profiling-funcs'],
                   settings={'MEMORY64': 1}, require_wasm64=True, require_node=True)
-wasm64_v8 = make_run('wasm64_v8', cflags=['-Wno-experimental', '--profiling-funcs'],
+wasm64_v8 = make_run('wasm64_v8', cflags=['--profiling-funcs'],
                      settings={'MEMORY64': 1}, require_wasm64=True, require_v8=True)
 # Run the wasm64 tests with all memory offsets > 4gb.  Be careful running this test
 # suite with any kind of parallelism.
-wasm64_4gb = make_run('wasm64_4gb', cflags=['-Wno-experimental', '--profiling-funcs'],
+wasm64_4gb = make_run('wasm64_4gb', cflags=['--profiling-funcs'],
                       settings={'MEMORY64': 1, 'INITIAL_MEMORY': '4200mb', 'GLOBAL_BASE': '4gb'},
                       require_wasm64=True)
 # MEMORY64=2, or "lowered"
-wasm64l = make_run('wasm64l', cflags=['-O1', '-Wno-experimental', '--profiling-funcs'],
+wasm64l = make_run('wasm64l', cflags=['-O1', '--profiling-funcs'],
                    settings={'MEMORY64': 2})
 
 lto0 = make_run('lto0', cflags=['-flto', '-O0'])
@@ -10053,7 +10035,7 @@ llvmlibc = make_run('llvmlibc', cflags=['-lllvmlibc'])
 
 # This setup will still use the native x64 Node.js in Emscripten internal use to compile code, but
 # runs all unit tests via qemu on the s390x big endian version of Node.js.
-bigendian0 = make_run('bigendian0', cflags=['-O0'], settings={'SUPPORT_BIG_ENDIAN': 1})
+bigendian0 = make_run('bigendian0', cflags=['-O0', '-Wno-experimental'], settings={'SUPPORT_BIG_ENDIAN': 1})
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
 del TestCoreBase # noqa

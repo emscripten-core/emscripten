@@ -338,7 +338,9 @@ function getNativeTypeSize(type) {
       }
       if (type[0] === 'i') {
         const bits = Number(type.slice(1));
-        assert(bits % 8 === 0, `getNativeTypeSize invalid bits ${bits}, ${type} type`);
+        // [FIXME] Cannot use assert here since this function is included directly
+        // in the runtime JS library, where assert is not always available.
+        // assert(bits % 8 === 0, `getNativeTypeSize invalid bits ${bits}, ${type} type`);
         return bits / 8;
       }
       return 0;
@@ -1100,6 +1102,12 @@ function ENVIRONMENT_IS_WORKER_THREAD() {
 }
 
 function nodeDetectionCode() {
+  if (ENVIRONMENT == 'node') {
+    // The only environment where this code is intended to run is Node.js.
+    // Return unconditional true so that later Closure optimizer will be able to
+    // optimize code size.
+    return 'true';
+  }
   return "typeof process == 'object' && process.versions?.node && process.type != 'renderer'";
 }
 

@@ -107,8 +107,7 @@ misc_test_modes = [
 
 
 def check_js_engines():
-  working_engines = [e for e in config.JS_ENGINES if jsrun.check_engine(e)]
-  if len(working_engines) < len(config.JS_ENGINES):
+  if not all(jsrun.check_engine(e) for e in config.JS_ENGINES):
     print('Not all the JS engines in JS_ENGINES appears to work.')
     sys.exit(1)
 
@@ -431,7 +430,7 @@ def run_tests(options, suites):
   total_core_time = 0
   run_start_time = time.perf_counter()
   for mod_name, suite in suites:
-    print('Running %s: (%s tests)' % (mod_name, suite.countTestCases()))
+    print('Running %s: (%s tests)' % (mod_name, suite.countTestCases()), file=sys.stderr)
     res = testRunner.run(suite)
     msg = ('%s: %s run, %s errors, %s failures, %s skipped' %
            (mod_name, res.testsRun, len(res.errors), len(res.failures), len(res.skipped)))
@@ -441,7 +440,7 @@ def run_tests(options, suites):
       total_core_time += res.core_time
   total_run_time = time.perf_counter() - run_start_time
   if total_core_time > 0:
-    print('Total core time: %.3fs. Wallclock time: %.3fs. Parallelization: %.2fx.' % (total_core_time, total_run_time, total_core_time / total_run_time))
+    print('Total core time: %.3fs. Wallclock time: %.3fs. Parallelization: %.2fx.' % (total_core_time, total_run_time, total_core_time / total_run_time), file=sys.stderr)
 
   if len(resultMessages) > 1:
     print('====================')
@@ -449,6 +448,10 @@ def run_tests(options, suites):
     print('TEST SUMMARY')
     for msg in resultMessages:
       print('    ' + msg)
+
+  if options.bell:
+    sys.stdout.write('\a')
+    sys.stdout.flush()
 
   return num_failures
 
@@ -486,6 +489,7 @@ def parse_args():
   parser.add_argument('--crossplatform-only', action='store_true')
   parser.add_argument('--repeat', type=int, default=1,
                       help='Repeat each test N times (default: 1).')
+  parser.add_argument('--bell', action='store_true', help='Play a sound after the test suite finishes.')
   return parser.parse_args()
 
 

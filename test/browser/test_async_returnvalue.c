@@ -5,6 +5,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #include <emscripten.h>
 
@@ -12,21 +13,17 @@
 #if USE_EM_JS
 EM_JS(int, sync_tunnel, (int value), {
   return Asyncify.handleSleep((wakeUp) => {
-    setTimeout(function() {
-      wakeUp(value + 1);
-    }, 1);
+    setTimeout(() => wakeUp(value + 1), 1);
   });
 })
 EM_JS(int, sync_tunnel_bool, (bool value), {
   return Asyncify.handleSleep((wakeUp) => {
-    setTimeout(function() {
-      wakeUp(!value);
-    }, 1);
+    setTimeout(() => wakeUp(!value), 1);
   });
 })
 #else
-extern "C" int sync_tunnel(int);
-extern "C" int sync_tunnel_bool(bool);
+int sync_tunnel(int);
+int sync_tunnel_bool(bool);
 #endif
 
 int main() {
@@ -35,12 +32,9 @@ int main() {
     window.disableErrorReporting = true;
     window.onerror = async (e) => {
       var success = e.toString().indexOf("import sync_tunnel was not in ASYNCIFY_IMPORTS, but changed the state") > 0;
-      if (success && !Module.reported) {
-        Module.reported = true;
+      if (success) {
         console.log("reporting success");
-        // manually REPORT_RESULT; we shouldn't call back into native code at this point
-        await fetch("/report_result?0");
-        window.close();
+        maybeReportResultToServer(0);
       }
     };
   });
@@ -65,11 +59,10 @@ int main() {
   y = sync_tunnel_bool(true);
   assert(y == false);
 
-
-
 #ifdef BAD
   // We should not get here.
   printf("We should not get here\n");
+  assert(false);
 #else
   // Success!
   REPORT_RESULT(0);
