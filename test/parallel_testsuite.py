@@ -239,7 +239,7 @@ class BufferedParallelTestResult:
       dummy_test_task_counter = os.path.getsize(profiler_log_file) if os.path.isfile(profiler_log_file) else 0
       # Remove the redundant 'test_' prefix from each test, since character space is at a premium in the visualized graph.
       test_name = self.test_short_name().removeprefix('test_')
-      with prof as open(profiler_log_file, 'a'):
+      with open(profiler_log_file, 'a') as prof:
         prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"start","time":{self.start_time},"cmdLine":["{test_name}"],"color":"{colors[self.test_result]}"}}')
         prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"exit","time":{self.start_time + self.test_duration},"returncode":0}}')
 
