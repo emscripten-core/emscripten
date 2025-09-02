@@ -1641,6 +1641,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       engine += self.v8_args
     elif engine == config.SPIDERMONKEY_ENGINE:
       engine += self.spidermonkey_args
+    return engine
 
   def run_js(self, filename, engine=None, args=None,
              assert_returncode=0,
