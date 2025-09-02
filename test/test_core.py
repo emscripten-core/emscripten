@@ -375,7 +375,6 @@ def make_no_decorator_for_setting(name):
 
       @wraps(f)
       def decorated(self, *args, **kwargs):
-        nonlocal name
         if '=' in name:
           key, val = name.split('=', 1)
         else:
