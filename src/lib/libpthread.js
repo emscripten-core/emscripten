@@ -1094,18 +1094,16 @@ var LibraryPThread = {
     checkStackCookie();
 #endif
     function finish(result) {
-#if MINIMAL_RUNTIME
+#if !MINIMAL_RUNTIME
       // In MINIMAL_RUNTIME the noExitRuntime concept does not apply to
       // pthreads. To exit a pthread with live runtime, use the function
       // emscripten_unwind_to_js_event_loop() in the pthread body.
-      __emscripten_thread_exit(result);
-#else
       if (keepRuntimeAlive()) {
         EXITSTATUS = result;
-      } else {
-        __emscripten_thread_exit(result);
+        return;
       }
 #endif
+      __emscripten_thread_exit(result);
     }
 #if ASYNCIFY == 2
     result = await result;
@@ -1146,10 +1144,10 @@ var LibraryPThread = {
 #endif
 #if ASSERTIONS
     assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! _emscripten_dlsync_threads_async() can only ever be called from main thread');
+    assert(Object.keys(PThread.outstandingPromises).length === 0);
 #endif
 
     const promises = [];
-    assert(Object.keys(PThread.outstandingPromises).length === 0);
 
     // This first promise resolves once the main thread has loaded all modules.
     var info = makePromise();
@@ -1215,9 +1213,14 @@ var LibraryPThread = {
                         'pthread_self',
                         '_emscripten_check_mailbox',
                         '_emscripten_thread_mailbox_await'],
-  $checkMailbox: () => {
+  $checkMailbox: () => callUserCallback(() => {
     // Only check the mailbox if we have a live pthread runtime. We implement
     // pthread_self to return 0 if there is no live runtime.
+    //
+    // TODO(https://github.com/emscripten-core/emscripten/issues/25076):
+    // Is this check still needed?  `callUserCallback` is supposed to
+    // ensure the runtime is alive, and if `_pthread_self` is NULL then the
+    // runtime certainly is *not* alive, so this should be a redundant check.
     var pthread_ptr = _pthread_self();
     if (pthread_ptr) {
       // If we are using Atomics.waitAsync as our notification mechanism, wait
@@ -1225,9 +1228,9 @@ var LibraryPThread = {
       // work that could otherwise arrive after we've finished processing the
       // mailbox and before we're ready for the next notification.
       __emscripten_thread_mailbox_await(pthread_ptr);
-      callUserCallback(__emscripten_check_mailbox);
+      __emscripten_check_mailbox();
     }
-  },
+  }),
 
   _emscripten_thread_mailbox_await__deps: ['$checkMailbox'],
   _emscripten_thread_mailbox_await: (pthread_ptr) => {

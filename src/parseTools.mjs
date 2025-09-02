@@ -338,7 +338,9 @@ function getNativeTypeSize(type) {
       }
       if (type[0] === 'i') {
         const bits = Number(type.slice(1));
-        assert(bits % 8 === 0, `getNativeTypeSize invalid bits ${bits}, ${type} type`);
+        // [FIXME] Cannot use assert here since this function is included directly
+        // in the runtime JS library, where assert is not always available.
+        // assert(bits % 8 === 0, `getNativeTypeSize invalid bits ${bits}, ${type} type`);
         return bits / 8;
       }
       return 0;

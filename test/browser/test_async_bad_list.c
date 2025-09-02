@@ -17,8 +17,7 @@ int main() {
         Module.reported = true;
         console.log("reporting success");
         // manually REPORT_RESULT; we shouldn't call back into native code at this point
-        await fetch("/report_result?0");
-        window.close();
+        reportResultToServer(0);
       }
     };
     return 0;
@@ -30,6 +29,5 @@ int main() {
   // functions - this function should be instrumented, but will not be.
   puts("We should not get here!");
   REPORT_RESULT(1);
-
-  return 0;
+  return 1;
 }

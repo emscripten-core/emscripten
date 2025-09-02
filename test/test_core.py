@@ -24,7 +24,7 @@ from tools.utils import WINDOWS, MACOS, LINUX, write_file, delete_file
 from tools import shared, building, config, utils, webassembly
 import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
-from common import skip_if, no_windows, is_slow_test, parameterized, parameterize
+from common import skip_if, no_windows, is_slow_test, parameterized, parameterize, all_engines
 from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_without_bigint
 from common import read_file, read_binary, requires_v8, requires_node, requires_dev_dependency, requires_wasm2js, requires_node_canary
 from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime, also_with_modularize
@@ -179,25 +179,6 @@ def with_dylink_reversed(func):
 
   parameterize(decorated, {'': (False,),
                            'reversed': (True,)})
-
-  return decorated
-
-
-# without EMTEST_ALL_ENGINES set we only run tests in a single VM by
-# default. in some tests we know that cross-VM differences may happen and
-# so are worth testing, and they should be marked with this decorator
-def all_engines(f):
-  assert callable(f)
-
-  @wraps(f)
-  def decorated(self, *args, **kwargs):
-    old = self.use_all_engines
-    self.use_all_engines = True
-    self.set_setting('ENVIRONMENT', 'web,node,shell')
-    try:
-      f(self, *args, **kwargs)
-    finally:
-      self.use_all_engines = old
 
   return decorated
 
@@ -400,6 +381,7 @@ no_minimal_runtime = make_no_decorator_for_setting('MINIMAL_RUNTIME')
 no_safe_heap = make_no_decorator_for_setting('SAFE_HEAP')
 no_strict = make_no_decorator_for_setting('STRICT')
 no_strict_js = make_no_decorator_for_setting('STRICT_JS')
+no_big_endian = make_no_decorator_for_setting('SUPPORT_BIG_ENDIAN')
 
 
 def is_sanitizing(args):
@@ -512,16 +494,14 @@ class TestCoreBase(RunnerCore):
 
   def test_int53(self):
     if common.EMTEST_REBASELINE:
-      self.run_process([EMCC, test_file('core/test_int53.c'), '-o', 'a.js', '-DGENERATE_ANSWERS'] + self.cflags)
-      ret = self.run_process(config.NODE_JS + ['a.js'], stdout=PIPE).stdout
+      ret = self.do_runf('core/test_int53.c', interleaved_output=False, cflags=['-DGENERATE_ANSWERS'])
       write_file(test_file('core/test_int53.out'), ret)
     else:
       self.do_core_test('test_int53.c', interleaved_output=False)
 
   def test_int53_convertI32PairToI53Checked(self):
     if common.EMTEST_REBASELINE:
-      self.run_process([EMCC, test_file('core/test_convertI32PairToI53Checked.cpp'), '-o', 'a.js', '-DGENERATE_ANSWERS'] + self.cflags)
-      ret = self.run_process(config.NODE_JS + ['a.js'], stdout=PIPE).stdout
+      ret = self.do_runf('core/test_convertI32PairToI53Checked.cpp', interleaved_output=False, cflags=['-DGENERATE_ANSWERS'])
       write_file(test_file('core/test_convertI32PairToI53Checked.out'), ret)
     else:
       self.do_core_test('test_convertI32PairToI53Checked.cpp', interleaved_output=False)
@@ -3029,7 +3009,7 @@ The current type of b is: 9
       }
       '''
 
-    if self.js_engines == [config.V8_ENGINE]:
+    if self.get_current_js_engine() == config.V8_ENGINE:
       expected = "error: Could not load dynamic lib: libfoo.so\nError: Error reading file"
     else:
       expected = "error: Could not load dynamic lib: libfoo.so\nError: ENOENT: no such file or directory"
@@ -6664,6 +6644,7 @@ void* operator new(size_t size) {
     '': ([],),
     'nontrapping': (['-mnontrapping-fptoint'],),
   })
+  @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_sse1(self, args):
     src = test_file('sse/test_sse1.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse', '-o', 'test_sse1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6684,6 +6665,7 @@ void* operator new(size_t size) {
     '': ([],),
     'nontrapping': (['-mnontrapping-fptoint'],),
   })
+  @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_sse2(self, args):
     src = test_file('sse/test_sse2.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6697,6 +6679,7 @@ void* operator new(size_t size) {
   @wasm_simd
   @requires_native_clang
   @requires_x64_cpu
+  @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_sse3(self):
     src = test_file('sse/test_sse3.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse3', '-Wno-argument-outside-range', '-o', 'test_sse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6710,6 +6693,7 @@ void* operator new(size_t size) {
   @wasm_simd
   @requires_native_clang
   @requires_x64_cpu
+  @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_ssse3(self):
     src = test_file('sse/test_ssse3.cpp')
     self.run_process([shared.CLANG_CXX, src, '-mssse3', '-Wno-argument-outside-range', '-o', 'test_ssse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6725,6 +6709,7 @@ void* operator new(size_t size) {
   @requires_native_clang
   @requires_x64_cpu
   @is_slow_test
+  @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_sse4_1(self):
     src = test_file('sse/test_sse4_1.cpp')
     # Run with inlining disabled to avoid slow LLVM behavior with lots of macro expanded loops inside a function body.
@@ -6743,6 +6728,7 @@ void* operator new(size_t size) {
     '': (False,),
     '2': (True,),
   })
+  @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_sse4(self, use_4_2):
     msse4 = '-msse4.2' if use_4_2 else '-msse4'
     src = test_file('sse/test_sse4_2.cpp')
@@ -6764,6 +6750,7 @@ void* operator new(size_t size) {
     '': ([],),
     'nontrapping': (['-mnontrapping-fptoint'],),
   })
+  @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_avx(self, args):
     src = test_file('sse/test_avx.cpp')
     self.run_process([shared.CLANG_CXX, src, '-mavx', '-Wno-argument-outside-range', '-Wpedantic', '-o', 'test_avx', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6784,6 +6771,7 @@ void* operator new(size_t size) {
     '': ([],),
     'nontrapping': (['-mnontrapping-fptoint'],),
   })
+  @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_avx2(self, args):
     src = test_file('sse/test_avx2.cpp')
     self.run_process([shared.CLANG_CXX, src, '-mavx2', '-Wno-argument-outside-range', '-Wpedantic', '-o', 'test_avx2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
@@ -6805,8 +6793,9 @@ void* operator new(size_t size) {
 
   @wasm_relaxed_simd
   def test_relaxed_simd_implies_simd128(self):
-    src = test_file('sse/test_sse1.cpp')
-    self.build(src, cflags=['-msse'])
+    # When using -msse, one has to also add -msimd128.
+    # This test verifies passing -mrelaxed-simd also implies -msimd128.
+    self.do_run_in_out_file_test('sse/hello_sse.cpp', cflags=['-msse'])
 
   @no_asan('call stack exceeded on some versions of node')
   def test_gcc_unmangler(self):
@@ -6936,6 +6925,7 @@ void* operator new(size_t size) {
   @is_slow_test
   @crossplatform
   @no_wasmfs('depends on MEMFS which WASMFS does not have')
+  @no_strict('autoconfiguring is not compatible with STRICT')
   def test_poppler(self):
     # See https://github.com/emscripten-core/emscripten/issues/20757
     self.cflags.extend(['-Wno-deprecated-declarations', '-Wno-nontrivial-memaccess'])
@@ -10015,17 +10005,17 @@ core_2gb = make_run('core_2gb', cflags=['--profiling-funcs'],
                     settings={'INITIAL_MEMORY': '2200mb', 'GLOBAL_BASE': '2gb'})
 
 # MEMORY64=1
-wasm64 = make_run('wasm64', cflags=['-Wno-experimental', '--profiling-funcs'],
+wasm64 = make_run('wasm64', cflags=['--profiling-funcs'],
                   settings={'MEMORY64': 1}, require_wasm64=True, require_node=True)
-wasm64_v8 = make_run('wasm64_v8', cflags=['-Wno-experimental', '--profiling-funcs'],
+wasm64_v8 = make_run('wasm64_v8', cflags=['--profiling-funcs'],
                      settings={'MEMORY64': 1}, require_wasm64=True, require_v8=True)
 # Run the wasm64 tests with all memory offsets > 4gb.  Be careful running this test
 # suite with any kind of parallelism.
-wasm64_4gb = make_run('wasm64_4gb', cflags=['-Wno-experimental', '--profiling-funcs'],
+wasm64_4gb = make_run('wasm64_4gb', cflags=['--profiling-funcs'],
                       settings={'MEMORY64': 1, 'INITIAL_MEMORY': '4200mb', 'GLOBAL_BASE': '4gb'},
                       require_wasm64=True)
 # MEMORY64=2, or "lowered"
-wasm64l = make_run('wasm64l', cflags=['-O1', '-Wno-experimental', '--profiling-funcs'],
+wasm64l = make_run('wasm64l', cflags=['-O1', '--profiling-funcs'],
                    settings={'MEMORY64': 2})
 
 lto0 = make_run('lto0', cflags=['-flto', '-O0'])
@@ -10078,6 +10068,20 @@ asani = make_run('asani', cflags=['-fsanitize=address', '--profiling', '--pre-js
 # Experimental modes (not tested by CI)
 minimal0 = make_run('minimal0', cflags=['-g'], settings={'MINIMAL_RUNTIME': 1})
 llvmlibc = make_run('llvmlibc', cflags=['-lllvmlibc'])
+
+# To run the big endian test suite (supported by emsdk on a little endian Linux host only):
+# 1. sudo apt install -y qemu-user libc6-s390x-cross libstdc++6-s390x-cross
+# 2. install emsdk with big-endian node: `git clone https://github.com/emscripten-core/emsdk.git`
+#    and `./emsdk install sdk-main-64bit node-big-endian-crosscompile-22.16.0-64bit`
+# 3. activate emsdk tools: `./emsdk activate sdk-main-64bit node-big-endian-crosscompile-22.16.0-64bit`
+# 4. enter emsdk environment in current terminal with `source ./emsdk_env.sh`
+# 5. run some tests in big endian mode: `cd emscripten/main` to enter Emscripten root directory, and run
+#       `test/runner bigendian0` to run all tests, or a single test with
+#       `test/runner bigendian0.test_jslib_i64_params`
+
+# This setup will still use the native x64 Node.js in Emscripten internal use to compile code, but
+# runs all unit tests via qemu on the s390x big endian version of Node.js.
+bigendian0 = make_run('bigendian0', cflags=['-O0', '-Wno-experimental'], settings={'SUPPORT_BIG_ENDIAN': 1})
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
 del TestCoreBase # noqa

@@ -15,6 +15,7 @@ import difflib
 import hashlib
 import io
 import itertools
+import json
 import logging
 import multiprocessing
 import os
@@ -97,6 +98,8 @@ class ChromeConfig:
     '--use-fake-device-for-media-stream --autoplay-policy=no-user-gesture-required',
     # Cache options.
     '--disk-cache-size=1 --media-cache-size=1 --disable-application-cache',
+    # Disable various background tasks downloads (e.g. updates).
+    '--disable-background-networking',
   )
   headless_flags = '--headless=new --window-size=1024,768 --remote-debugging-port=1234'
 
@@ -121,6 +124,7 @@ NON_ZERO = -1
 
 TEST_ROOT = path_from_root('test')
 LAST_TEST = path_from_root('out/last_test.txt')
+PREVIOUS_TEST_RUN_RESULTS_FILE = path_from_root('out/previous_test_run_results.json')
 
 DEFAULT_BROWSER_DATA_DIR = path_from_root('out/browser-profile')
 
@@ -134,11 +138,23 @@ EMRUN = shared.bat_suffix(shared.path_from_root('emrun'))
 WASM_DIS = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
 LLVM_OBJDUMP = shared.llvm_tool_path('llvm-objdump')
 PYTHON = sys.executable
+
+assert config.NODE_JS # assert for mypy's benefit
+# By default we run the tests in the same version of node as emscripten itself used.
 if not config.NODE_JS_TEST:
   config.NODE_JS_TEST = config.NODE_JS
-
+# The default set of JS_ENGINES contains just node.
+if not config.JS_ENGINES:
+  config.JS_ENGINES = [config.NODE_JS_TEST]
 
 requires_network = unittest.skipIf(os.getenv('EMTEST_SKIP_NETWORK_TESTS'), 'This test requires network access')
+
+
+def load_previous_test_run_results():
+  try:
+    return json.load(open(PREVIOUS_TEST_RUN_RESULTS_FILE))
+  except FileNotFoundError:
+    return {}
 
 
 def test_file(*path_components):
@@ -432,6 +448,21 @@ def node_pthreads(f):
 def crossplatform(f):
   f.is_crossplatform_test = True
   return f
+
+
+# without EMTEST_ALL_ENGINES set we only run tests in a single VM by
+# default. in some tests we know that cross-VM differences may happen and
+# so are worth testing, and they should be marked with this decorator
+def all_engines(f):
+  assert callable(f)
+
+  @wraps(f)
+  def decorated(self, *args, **kwargs):
+    self.use_all_engines = True
+    self.set_setting('ENVIRONMENT', 'web,node,shell')
+    f(self, *args, **kwargs)
+
+  return decorated
 
 
 @contextlib.contextmanager
@@ -1046,17 +1077,25 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.get_setting('MEMORY64') == 2:
       self.skipTest('dynamic linking not supported with MEMORY64=2')
 
-  def require_v8(self):
+  def get_v8(self):
+    """Return v8 engine, if one is configured, otherwise None"""
     if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
+      return None
+    return config.V8_ENGINE
+
+  def require_v8(self):
+    v8 = self.get_v8()
+    if not v8:
       if 'EMTEST_SKIP_V8' in os.environ:
         self.skipTest('test requires v8 and EMTEST_SKIP_V8 is set')
       else:
         self.fail('d8 required to run this test.  Use EMTEST_SKIP_V8 to skip')
-    self.require_engine(config.V8_ENGINE)
+    self.require_engine(v8)
     self.cflags.append('-sENVIRONMENT=shell')
 
   def get_nodejs(self):
-    if config.NODE_JS_TEST not in self.js_engines:
+    """Return nodejs engine, if one is configured, otherwise None"""
+    if config.NODE_JS_TEST not in config.JS_ENGINES:
       return None
     return config.NODE_JS_TEST
 
@@ -1071,7 +1110,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return nodejs
 
   def node_is_canary(self, nodejs):
-    return nodejs and nodejs[0] and 'canary' in nodejs[0]
+    return nodejs and nodejs[0] and ('canary' in nodejs[0] or 'nightly' in nodejs[0])
 
   def require_node_canary(self):
     nodejs = self.get_nodejs()
@@ -1099,9 +1138,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.try_require_node_version(24):
       return
 
-    if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
+    v8 = self.get_v8()
+    if v8:
       self.cflags.append('-sENVIRONMENT=shell')
-      self.js_engines = [config.V8_ENGINE]
+      self.js_engines = [v8]
       return
 
     if 'EMTEST_SKIP_WASM64' in os.environ:
@@ -1127,9 +1167,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.try_require_node_version(16):
       return
 
-    if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
+    v8 = self.get_v8()
+    if v8:
       self.cflags.append('-sENVIRONMENT=shell')
-      self.js_engines = [config.V8_ENGINE]
+      self.js_engines = [v8]
       return
 
     if 'EMTEST_SKIP_SIMD' in os.environ:
@@ -1142,9 +1183,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.try_require_node_version(17):
       return
 
-    if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
+    v8 = self.get_v8()
+    if v8:
       self.cflags.append('-sENVIRONMENT=shell')
-      self.js_engines = [config.V8_ENGINE]
+      self.js_engines = [v8]
       return
 
     if 'EMTEST_SKIP_EH' in os.environ:
@@ -1161,9 +1203,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.is_browser_test():
       return
 
-    if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
+    v8 = self.get_v8()
+    if v8:
       self.cflags.append('-sENVIRONMENT=shell')
-      self.js_engines = [config.V8_ENGINE]
+      self.js_engines = [v8]
       self.v8_args.append('--experimental-wasm-exnref')
       return
 
@@ -1193,9 +1236,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.node_args += exp_args
       return
 
-    if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
+    v8 = self.get_v8()
+    if v8:
       self.cflags.append('-sENVIRONMENT=shell')
-      self.js_engines = [config.V8_ENGINE]
+      self.js_engines = [v8]
       self.v8_args += exp_args
       return
 
@@ -1302,7 +1346,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.required_engine = None
     self.wasm_engines = config.WASM_ENGINES.copy()
     self.use_all_engines = EMTEST_ALL_ENGINES
-    if self.js_engines[0] != config.NODE_JS_TEST:
+    if self.get_current_js_engine() != config.NODE_JS_TEST:
       # If our primary JS engine is something other than node then enable
       # shell support.
       default_envs = 'web,webview,worker,node'
@@ -1448,7 +1492,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     # use --quiet once its available
     # See: https://github.com/dollarshaveclub/es-check/pull/126/
     es_check_env = os.environ.copy()
-    es_check_env['PATH'] = os.path.dirname(config.NODE_JS_TEST[0]) + os.pathsep + es_check_env['PATH']
+    # Use NODE_JS here (the version of node that the compiler uses) rather then NODE_JS_TEST (the
+    # version of node being used to run the tests) since we only care about having something that
+    # can run the es-check tool.
+    es_check_env['PATH'] = os.path.dirname(config.NODE_JS[0]) + os.pathsep + es_check_env['PATH']
     inputfile = os.path.abspath(filename)
     # For some reason es-check requires unix paths, even on windows
     if WINDOWS:
@@ -1579,16 +1626,21 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     assert len(long_lines) == 1
     return '\n'.join(lines)
 
+  def get_current_js_engine(self):
+    """Return the default JS engine to run tests under"""
+    return self.js_engines[0]
+
   def get_engine_with_args(self, engine=None):
     if not engine:
-      engine = self.js_engines[0]
+      engine = self.get_current_js_engine()
+    # Make a copy of the engine command before we modify/extend it.
+    engine = list(engine)
     if engine == config.NODE_JS_TEST:
-      return engine + self.node_args
+      engine += self.node_args
     elif engine == config.V8_ENGINE:
-      return engine + self.v8_args
+      engine += self.v8_args
     elif engine == config.SPIDERMONKEY_ENGINE:
-      return engine + self.spidermonkey_args
-    return engine
+      engine += self.spidermonkey_args
 
   def run_js(self, filename, engine=None, args=None,
              assert_returncode=0,
@@ -2036,6 +2088,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                      check_for_error=True,
                      interleaved_output=True,
                      regex=False,
+                     input=None,
                      **kwargs):
     logger.debug(f'_build_and_run: {filename}')
 
@@ -2062,6 +2115,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.fail('No JS engine present to run this test with. Check %s and the paths therein.' % config.EM_CONFIG)
     for engine in engines:
       js_output = self.run_js(js_file, engine, args,
+                              input=input,
                               assert_returncode=assert_returncode,
                               interleaved_output=interleaved_output)
       js_output = js_output.replace('\r\n', '\n')

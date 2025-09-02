@@ -724,6 +724,9 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.NODERAWFS = 1
     # Add `#!` line to output JS and make it executable.
     options.executable = True
+    # autoconf declares functions without their proper signatures, and STRICT causes that to trip up by passing --fatal-warnings to the linker.
+    if settings.STRICT:
+      exit_with_error('autoconfiguring is not compatible with STRICT')
 
   if settings.OPT_LEVEL >= 1:
     default_setting('ASSERTIONS', 0)
@@ -839,6 +842,9 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.GROWABLE_ARRAYBUFFERS:
     diagnostics.warning('experimental', '-sGROWABLE_ARRAYBUFFERS is still experimental and not yet supported in browsers')
+
+  if settings.SUPPORT_BIG_ENDIAN:
+    diagnostics.warning('experimental', '-sSUPPORT_BIG_ENDIAN is experimental, not all features are fully supported.')
 
   if settings.WASM_ESM_INTEGRATION:
     diagnostics.warning('experimental', '-sWASM_ESM_INTEGRATION is still experimental and not yet supported in browsers')
@@ -2413,8 +2419,9 @@ def phase_binaryen(target, options, wasm_target):
   if options.emit_symbol_map:
     intermediate_debug_info -= 1
     if generating_wasm:
-      building.handle_final_wasm_symbols(wasm_file=wasm_target, symbols_file=symbols_file, debug_info=intermediate_debug_info)
-      save_intermediate_with_wasm('symbolmap', wasm_target)
+      building.write_symbol_map(wasm_target, symbols_file)
+      if not intermediate_debug_info:
+        building.strip(wasm_target, wasm_target, sections=['name'])
 
   if settings.GENERATE_DWARF and settings.SEPARATE_DWARF and generating_wasm:
     # if the dwarf filename wasn't provided, use the default target + a suffix
