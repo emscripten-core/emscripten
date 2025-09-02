@@ -597,9 +597,8 @@ _mm_cvtsi32_ss(__m128 __a, int __b)
 static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW)) _mm_cvtss_si32(__m128 __a)
 {
   float e = ((__f32x4)__a)[0];
-  int x = lrint(e);
-  if ((x != 0 || fabsf(e)) < 2.f && !isnan(e) && e <= INT_MAX && e >= INT_MIN)
-    return x;
+  if (e < 2147483648.0f && e >= -2147483648.0f && (lrint(e) != 0 || fabsf(e) < 2.f))
+    return lrint(e);
   else
     return (int)0x80000000;
 }
@@ -608,8 +607,7 @@ static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SL
 static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW)) _mm_cvttss_si32(__m128 __a)
 {
   float e = ((__f32x4)__a)[0];
-  int x = lrint(e);
-  if ((x != 0 || fabsf(e) < 2.f) && !isnanf(e) && e <= INT_MAX && e >= INT_MIN)
+  if (e < 2147483648.0f && e >= -2147483648.0f && (lrint(e) != 0 || fabsf(e) < 2.f))
     return (int)e;
   else
     return (int)0x80000000;
