@@ -159,7 +159,6 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # use a file to share the flaky test information across test processes.
     flaky_tests = open(common.flaky_tests_log_filename).read().split() if os.path.isfile(common.flaky_tests_log_filename) else []
 
-
     # The next updateResult loop will print a *lot* of lines really fast. This
     # will cause a Python exception being thrown when attempting to print to
     # stderr, if stderr is in nonblocking mode, like it is on Buildbot CI:
