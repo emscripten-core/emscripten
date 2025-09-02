@@ -1010,7 +1010,7 @@ _mm_cvtsd_si64(__m128d __a)
   double e = __a[0];
   if (isnan(e) || isinf(e)) return 0x8000000000000000LL;
   long long x = llrint(e);
-  if ((x != 0 || fabs(e) < 2.f) && e <= LLONG_MAX && e >= LLONG_MIN)
+  if (e <= LLONG_MAX && e >= LLONG_MIN && (x != 0 || fabs(e) < 2.f))
     return x;
   else
     return 0x8000000000000000LL;
