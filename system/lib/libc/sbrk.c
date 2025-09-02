@@ -99,7 +99,22 @@ void *sbrk64(int64_t increment) {
 }
 
 void *sbrk(intptr_t increment_) {
+#if defined(__wasm64__) // TODO || !defined(wasm2gb)
+  // In the correct https://linux.die.net/man/2/sbrk spec, sbrk() parameter is
+  // intended to be treated as signed, meaning that it is not possible in a
+  // 32-bit program to sbrk alloc (or dealloc) more than 2GB of memory at once.
+
+  // Treat sbrk() parameter as signed.
   return sbrk64((int64_t)increment_);
+#else
+  // BUG: Currently the Emscripten test suite codifies expectations that sbrk()
+  // values passed to this function are to be treated as unsigned, which means
+  // that in 2GB and 4GB build modes, it is not possible to shrink memory.
+  // To satisfy that mode, treat sbrk() parameters in 32-bit builds as unsigned.
+
+  // Treat sbrk() parameter as unsigned.
+  return sbrk64((int64_t)(uintptr_t)increment_);
+#endif
 }
 
 int brk(void* ptr) {
