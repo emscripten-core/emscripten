@@ -48,6 +48,10 @@ __attribute__((aligned(32)))
 float interesting_floats_[] = {
   -INFINITY,
   -FLT_MAX,
+  -4294967296.0f, // https://github.com/emscripten-core/emscripten/pull/25130
+  -2147483648.1f,
+  -2147483648.0f,
+  -2147483647.9f,
   -2.5f,
   -1.5f,
   -1.4f,
@@ -87,6 +91,10 @@ __attribute__((aligned(32)))
 double interesting_doubles_[] = {
   -INFINITY,
   -FLT_MAX,
+  -4294967296.0, // https://github.com/emscripten-core/emscripten/pull/25130
+  -2147483648.1,
+  -2147483648.0,
+  -2147483647.9,
   -2.5,
   -1.5,
   -1.4,

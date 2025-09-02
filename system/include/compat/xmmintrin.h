@@ -627,7 +627,7 @@ _mm_cvtss_si64(__m128 __a)
 {
   float e = ((__f32x4)__a)[0];
   long long x = llrintf(e);
-  if ((x != 0xFFFFFFFF00000000ULL && (x != 0 || fabsf(e) < 2.f)) && !isnanf(e) && e <= LLONG_MAX && e >= LLONG_MIN)
+  if (e <= LLONG_MAX && e >= LLONG_MIN && (x != 0 || fabsf(e) < 2.f))
     return x;
   else
     return 0x8000000000000000LL;
@@ -638,7 +638,7 @@ _mm_cvttss_si64(__m128 __a)
 {
   float e = ((__f32x4)__a)[0];
   long long x = llrintf(e);
-  if (x != 0xFFFFFFFF00000000ULL && (x != 0 || fabsf(e) < 2.f) && !isnanf(e) && e <= LLONG_MAX && e >= LLONG_MIN)
+  if (e <= LLONG_MAX && e >= LLONG_MIN && (x != 0 || fabsf(e) < 2.f))
     return (long long)e;
   else
     return 0x8000000000000000LL;
