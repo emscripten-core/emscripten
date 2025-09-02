@@ -1,7 +1,7 @@
 {
   "a.out.js": 246331,
-  "a.out.nodebug.wasm": 597590,
-  "total": 843921,
+  "a.out.nodebug.wasm": 597762,
+  "total": 844093,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -2997,6 +2997,7 @@
     "roundf",
     "roundl",
     "sbrk",
+    "sbrk64",
     "scalb",
     "scalbf",
     "scalbln",
@@ -4689,6 +4690,7 @@
     "$rsh",
     "$savestate",
     "$sbrk",
+    "$sbrk64",
     "$scalb",
     "$scalbf",
     "$scalbn",
