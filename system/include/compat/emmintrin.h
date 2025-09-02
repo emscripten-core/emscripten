@@ -385,7 +385,7 @@ _mm_cvtpd_epi32(__m128d __a)
   {
     double e = __a[i];
     int x = lrint(e);
-    if ((x != 0 || fabs(e) < 2.0) && !isnan(e) && e <= INT_MAX && e >= INT_MIN)
+    if (e <= INT_MAX && e >= INT_MIN && (x != 0 || fabs(e) < 2.0))
       m[i] = x;
     else
       m[i] = (int)0x80000000;
@@ -399,7 +399,7 @@ _mm_cvtsd_si32(__m128d __a)
   // TODO: OPTIMIZE!
   double e = __a[0];
   int x = lrint(e);
-  if ((x != 0 || fabs(e) < 2.0) && !isnan(e) && e <= INT_MAX && e >= INT_MIN)
+  if (e <= INT_MAX && e >= INT_MIN && (x != 0 || fabs(e) < 2.0))
     return x;
   else
     return (int)0x80000000;
@@ -434,7 +434,7 @@ _mm_cvttpd_epi32(__m128d __a)
   for(int i = 0; i < 2; ++i)
   {
     double elem = __a[i];
-    if ((lrint(elem) != 0 || fabs(elem) < 2.0) && !isnanf(elem) && elem < 2147483648.0 && elem >= -2147483648.0)
+    if (elem < 2147483648.0 && elem >= -2147483648.0 && (lrint(elem) != 0 || fabs(elem) < 2.0))
       // Use the trapping instruction here since we have explicit bounds checks
       // above.
       m[i] = __builtin_wasm_trunc_s_i32_f64(elem);
@@ -449,7 +449,7 @@ _mm_cvttsd_si32(__m128d __a)
 {
   // TODO: OPTIMIZE!
   double elem = __a[0];
-  if ((lrint(elem) != 0 || fabs(elem) < 2.0) && !isnanf(elem) && elem < 2147483648.0 && elem >= -2147483648.0)
+  if (elem < 2147483648.0 && elem >= -2147483648.0 && (lrint(elem) != 0 || fabs(elem) < 2.0))
     // Use the trapping instruction here since we have explicit bounds checks
     // above.
     return __builtin_wasm_trunc_s_i32_f64(elem);
@@ -1049,7 +1049,7 @@ _mm_cvtps_epi32(__m128 __a)
   {
     double e = __a[i];
     int x = lrint(e);
-    if ((x != 0 || fabs(e) < 2.0) && !isnan(e) && e <= INT_MAX && e >= INT_MIN)
+    if (e <= INT_MAX && e >= INT_MIN && (x != 0 || fabs(e) < 2.0))
       u.x[i] = x;
     else
       u.x[i] = (int)0x80000000;
