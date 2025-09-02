@@ -1102,6 +1102,12 @@ function ENVIRONMENT_IS_WORKER_THREAD() {
 }
 
 function nodeDetectionCode() {
+  if (ENVIRONMENT == 'node') {
+    // The only environment where this code is intended to run is Node.js.
+    // Return unconditional true so that later Closure optimizer will be able to
+    // optimize code size.
+    return 'true';
+  }
   return "typeof process == 'object' && process.versions?.node && process.type != 'renderer'";
 }
 
