@@ -1615,7 +1615,11 @@ addToLibrary({
 #if !DECLARE_ASM_MODULE_EXPORTS
   // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
   // at runtime rather than statically in JS code.
-  $exportWasmSymbols__deps: ['$asmjsMangle'],
+  $exportWasmSymbols__deps: ['$asmjsMangle'
+#if DYNCALLS || !WASM_BIGINT
+    , '$dynCalls'
+#endif
+  ],
   $exportWasmSymbols: (wasmExports) => {
 #if ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_WEB
     var global_object = (typeof process != "undefined" ? global : this);
@@ -1627,6 +1631,11 @@ addToLibrary({
 
     for (var __exportedFunc in wasmExports) {
       var jsname = asmjsMangle(__exportedFunc);
+#if DYNCALLS || !WASM_BIGINT
+      if (jsname.startsWith('dynCall_')) {
+        dynCalls[jsname.substr(8)] = wasmExports[__exportedFunc];
+      }
+#endif
 #if MINIMAL_RUNTIME
       global_object[jsname] = wasmExports[__exportedFunc];
 #else
@@ -1724,15 +1733,8 @@ addToLibrary({
   $dynCallLegacy__deps: ['$dynCalls'],
   $dynCallLegacy: (sig, ptr, args) => {
     sig = sig.replace(/p/g, {{{ MEMORY64 ? "'j'" : "'i'" }}})
-
-#if !DECLARE_ASM_MODULE_EXPORTS
-    var dynCallFn = globalThis[`dynCall_${sig}`];
-#else
-    var dynCallFn = dynCalls[sig];
-#endif
-
 #if ASSERTIONS
-    assert(dynCallFn, `bad function pointer type - sig is not in dynCalls: '${sig}'`);
+    assert(sig in dynCalls, `bad function pointer type - sig is not in dynCalls: '${sig}'`);
     if (args?.length) {
 #if WASM_BIGINT
       // j (64-bit integer) is fine, and is implemented as a BigInt. Without
@@ -1747,7 +1749,8 @@ addToLibrary({
       assert(sig.length == 1);
     }
 #endif
-    return dynCallFn(ptr, ...args);
+    var f = dynCalls[sig];
+    return f(ptr, ...args);
   },
   $dynCall__deps: [
 #if DYNCALLS || !WASM_BIGINT

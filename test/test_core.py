@@ -4463,9 +4463,6 @@ ok
   @with_dylink_reversed
   @also_without_bigint
   def test_dylink_i64_c(self):
-    if self.get_setting('WASM_BIGINT') == 0 and self.get_setting('DECLARE_ASM_MODULE_EXPORTS') == 0:
-      self.skipTest('DECLARE_ASM_MODULE_EXPORTS=0 + WASM2JS=0 + dynamic linking combination is not supported')
-
     self.dylink_test(r'''
       #include <stdio.h>
       #include <inttypes.h>
@@ -4523,9 +4520,6 @@ res64 - external 64\n''', header='''\
   })
   @needs_dylink
   def test_dylink_i64_invoke(self, rtld_local):
-    if self.get_setting('WASM_BIGINT') == 0 and self.get_setting('DECLARE_ASM_MODULE_EXPORTS') == 0:
-      self.skipTest('DECLARE_ASM_MODULE_EXPORTS=0 + WASM2JS=0 + dynamic linking combination is not supported')
-
     if rtld_local:
       self.set_setting('NO_AUTOLOAD_DYLIBS')
       self.cflags.append('-DUSE_DLOPEN')
