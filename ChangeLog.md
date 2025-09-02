@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.14 (in development)
+4.0.15 (in development)
 -----------------------
+
+4.0.14 - 09/02/25
+-----------------
 - The `addRunDependency` and `removeRunDependency` API are now optional and need
   to be included and/or exported using, for example,
   `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE` or `EXPORTED_RUNTIME_METHODS`. (#24974)
