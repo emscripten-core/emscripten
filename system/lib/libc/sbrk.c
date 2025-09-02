@@ -111,6 +111,7 @@ void *sbrk(intptr_t increment_) {
   // values passed to this function are to be treated as unsigned, which means
   // that in 2GB and 4GB build modes, it is not possible to shrink memory.
   // To satisfy that mode, treat sbrk() parameters in 32-bit builds as unsigned.
+  // https://github.com/emscripten-core/emscripten/issues/25138
 
   // Treat sbrk() parameter as unsigned.
   return sbrk64((int64_t)(uintptr_t)increment_);
