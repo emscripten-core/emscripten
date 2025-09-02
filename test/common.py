@@ -449,6 +449,21 @@ def crossplatform(f):
   return f
 
 
+# without EMTEST_ALL_ENGINES set we only run tests in a single VM by
+# default. in some tests we know that cross-VM differences may happen and
+# so are worth testing, and they should be marked with this decorator
+def all_engines(f):
+  assert callable(f)
+
+  @wraps(f)
+  def decorated(self, *args, **kwargs):
+    self.use_all_engines = True
+    self.set_setting('ENVIRONMENT', 'web,node,shell')
+    f(self, *args, **kwargs)
+
+  return decorated
+
+
 @contextlib.contextmanager
 def env_modify(updates):
   """A context manager that updates os.environ."""
@@ -2069,6 +2084,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                      check_for_error=True,
                      interleaved_output=True,
                      regex=False,
+                     input=None,
                      **kwargs):
     logger.debug(f'_build_and_run: {filename}')
 
@@ -2095,6 +2111,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.fail('No JS engine present to run this test with. Check %s and the paths therein.' % config.EM_CONFIG)
     for engine in engines:
       js_output = self.run_js(js_file, engine, args,
+                              input=input,
                               assert_returncode=assert_returncode,
                               interleaved_output=interleaved_output)
       js_output = js_output.replace('\r\n', '\n')
