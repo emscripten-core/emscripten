@@ -576,6 +576,10 @@ def main():
     tests = skip_requested_tests(tests, modules)
     tests = args_for_random_tests(tests, modules)
 
+  if not tests:
+    print('ERROR: no tests to run')
+    return 1
+
   if not options.start_at and options._continue:
     if os.path.exists(common.LAST_TEST):
       options.start_at = utils.read_file(common.LAST_TEST).strip()
