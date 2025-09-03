@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import argparse
-import multiprocessing
 import os
 import random
 import shlex
@@ -25,14 +24,17 @@ from common import create_file, parameterized, ensure_dir, disabled, test_file, 
 from common import read_file, EMRUN, no_wasm64, no_2gb, no_4gb, copytree
 from common import requires_wasm2js, parameterize, find_browser_test_file, with_all_sjlj
 from common import also_with_minimal_runtime, also_with_wasm2js, also_with_asan, also_with_wasmfs
+from common import HttpServerThread
 from tools import shared
 from tools import ports
 from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE, DEBUG
 from tools.utils import delete_dir
 
 
-def test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
+def make_test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
   class ChunkedServerHandler(BaseHTTPRequestHandler):
+    num_get_connections = 0
+
     def sendheaders(s, extra=None, length=None):
       length = length or len(data)
       s.send_response(200)
@@ -56,6 +58,11 @@ def test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
       s.sendheaders([("Access-Control-Allow-Headers", "Range")], 0)
 
     def do_GET(s):
+      # CORS preflight makes OPTIONS requests which we need to account for.
+      expectedConns = 22
+      s.num_get_connections += 1
+      assert(s.num_get_connections < expectedConns)
+
       if s.path == '/':
         s.sendheaders()
       elif not support_byte_ranges:
@@ -70,11 +77,7 @@ def test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
         s.sendheaders([], length)
         s.wfile.write(data[start:end + 1])
 
-  # CORS preflight makes OPTIONS requests which we need to account for.
-  expectedConns = 22
-  httpd = HTTPServer(('localhost', 11111), ChunkedServerHandler)
-  for _ in range(expectedConns + 1):
-    httpd.handle_request()
+  return HTTPServer(('localhost', 11111), ChunkedServerHandler)
 
 
 def also_with_proxying(f):
@@ -1703,7 +1706,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
     data = os.urandom(10 * chunkSize + 1) # 10 full chunks and one 1 byte chunk
     checksum = zlib.adler32(data) & 0xffffffff # Python 2 compatibility: force bigint
 
-    server = multiprocessing.Process(target=test_chunked_synchronous_xhr_server, args=(True, data, self.PORT))
+    server = HttpServerThread(make_test_chunked_synchronous_xhr_server(True, data, self.PORT))
     server.start()
 
     # block until the server is actually ready
@@ -1720,7 +1723,8 @@ simulateKeyUp(100, undefined, 'Numpad4');
     try:
       self.run_browser(main, '/report_result?' + str(checksum))
     finally:
-      server.terminate()
+      server.stop()
+      server.join()
     # Avoid race condition on cleanup, wait a bit so that processes have released file locks so that test tearDown won't
     # attempt to rmdir() files in use.
     if WINDOWS:
