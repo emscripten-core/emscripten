@@ -7037,9 +7037,8 @@ This locale is not the C locale.
     'o1': (['-O1'], 91000),
     'o2': (['-O2'], 46000),
     'o3_closure': (['-O3', '--closure=1'], 17000),
-    # -Wno-closure is needed due to https://github.com/google/closure-compiler/issues/4108
-    'o3_closure_js': (['-O3', '--closure=1', '-Wno-closure', '-sWASM=0'], 36000),
-    'o3_closure2_js': (['-O3', '--closure=2', '-Wno-closure', '-sWASM=0'], 33000), # might change now and then
+    'o3_closure_js': (['-O3', '--closure=1', '-sWASM=0'], 36000),
+    'o3_closure2_js': (['-O3', '--closure=2', '-sWASM=0'], 33000), # might change now and then
   })
   def test_no_filesystem_code_size(self, opts, absolute):
     print('opts, absolute:', opts, absolute)
@@ -11889,7 +11888,7 @@ int main () {
   })
   @parameterized({
     'sync': (['-sWASM_ASYNC_COMPILATION=0'],),
-    'wasm2js': (['-sWASM=0', '-Wno-closure'],),
+    'wasm2js': (['-sWASM=0'],),
   })
   def test_function_exports_are_small(self, args, opt, closure):
     extra_args = args + opt + closure
