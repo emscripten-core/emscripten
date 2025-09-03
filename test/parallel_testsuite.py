@@ -99,14 +99,21 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     with multiprocessing.Manager() as manager:
       with multiprocessing.Pool(use_cores) as pool:
         if python_multiprocessing_structures_are_buggy():
+          # When multuprocessing shared structures are buggy we don't support failfast
+          # or the progress bar.
           failfast_event = progress_counter = lock = None
+          if self.failfast:
+            print('The version of python being used is not compatible with --failfast')
+            sys.exit(1)
         else:
           failfast_event = manager.Event() if self.failfast else None
           progress_counter = manager.Value('i', 0)
           lock = manager.Lock()
-        results = [pool.apply_async(run_test, (t, failfast_event, lock, progress_counter, len(tests))) for t in tests]
-        results = [r.get() for r in results]
-        results = [r for r in results if r is not None]
+        results = pool.starmap(run_test, ((t, failfast_event, lock, progress_counter, len(tests)) for t in tests), chunksize=1)
+
+    # Filter out the None results which can occur in failfast mode.
+    if self.failfast:
+      results = [r for r in results if r is not None]
 
     if self.failing_and_slow_first:
       previous_test_run_results = common.load_previous_test_run_results()
