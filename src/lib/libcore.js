@@ -1639,7 +1639,7 @@ addToLibrary({
       // Globals are currently statically enumerated into the output JS.
       // TODO: If the number of Globals grows large, consider giving them a
       // similar DECLARE_ASM_MODULE_EXPORTS = 0 treatment.
-      if (!(exportedSymbol instanceof WebAssembly.Global)) {
+      if (typeof exportedSymbol.value === 'undefined') {
 #if MINIMAL_RUNTIME
         global_object[name] = exportedSymbol;
 #else
