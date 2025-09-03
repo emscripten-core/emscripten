@@ -218,31 +218,14 @@ addToLibrary({
   },
 
   /**
-   * Returns the number of bytes the given Javascript string takes if encoded as a
+   * Returns the number of bytes the given JavaScript string takes if encoded as a
    * UTF8 byte array, EXCLUDING the null terminator byte.
    *
-   * @param {string} str - JavaScript string to operator on
-   * @return {number} Length, in bytes, of the UTF8 encoded string.
+   * @param {string} str - The JavaScript string to operate on.
+   * @return {number} The length, in bytes, of the UTF-8 encoded string.
    */
   $lengthBytesUTF8: (str) => {
-    var len = 0;
-    for (var i = 0; i < str.length; ++i) {
-      // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code
-      // unit, not a Unicode code point of the character! So decode
-      // UTF16->UTF32->UTF8.
-      // See http://unicode.org/faq/utf_bom.html#utf16-3
-      var c = str.charCodeAt(i); // possibly a lead surrogate
-      if (c <= 0x7F) {
-        len++;
-      } else if (c <= 0x7FF) {
-        len += 2;
-      } else if (c >= 0xD800 && c <= 0xDFFF) {
-        len += 4; ++i;
-      } else {
-        len += 3;
-      }
-    }
-    return len;
+    return UTF8Decoder.encode(str).length;
   },
 
   $intArrayFromString__docs: '/** @type {function(string, boolean=, number=)} */',
