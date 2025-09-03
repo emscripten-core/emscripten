@@ -2210,10 +2210,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return rtn
 
 
-# Run a server and a web page. When a test runs, we tell the server about it,
+# Create a server and a web page. When a test runs, we tell the server about it,
 # which tells the web page, which then opens a window with the test. Doing
 # it this way then allows the page to close() itself when done.
-def harness_server_func(in_queue, out_queue, port):
+def make_test_server(in_queue, out_queue, port):
   class TestServerHandler(SimpleHTTPRequestHandler):
     # Request header handler for default do_GET() path in
     # SimpleHTTPRequestHandler.do_GET(self) below.
@@ -2394,20 +2394,16 @@ def harness_server_func(in_queue, out_queue, port):
 
 class HttpServerThread(threading.Thread):
   """A generic thread class to create and run an http server."""
-  def __init__(self, server_creator, *server_args):
+  def __init__(self, server):
     super().__init__()
-    self.server = None
-    self.server_creator = server_creator
-    self.server_args = server_args
+    self.server = server
 
   def stop(self):
     """Shuts down the server if it is running."""
-    if self.server:
-      self.server.shutdown()
+    self.server.shutdown()
 
   def run(self):
     """Creates the server instance and serves forever until stop() is called."""
-    self.server = self.server_creator(*self.server_args)
     # Start the server's main loop (this blocks until shutdown() is called)
     self.server.serve_forever()
 
@@ -2504,7 +2500,7 @@ class BrowserCore(RunnerCore):
 
     cls.harness_in_queue = queue.Queue()
     cls.harness_out_queue = queue.Queue()
-    cls.harness_server = HttpServerThread(harness_server_func, cls.harness_in_queue, cls.harness_out_queue, cls.PORT)
+    cls.harness_server = HttpServerThread(make_test_server(cls.harness_in_queue, cls.harness_out_queue, cls.PORT))
     cls.harness_server.start()
 
     print(f'[Browser harness server on thread {cls.harness_server.name}]')

@@ -31,7 +31,7 @@ from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE, DEBUG
 from tools.utils import delete_dir
 
 
-def test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
+def make_test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
   class ChunkedServerHandler(BaseHTTPRequestHandler):
     num_get_connections = 0
 
@@ -1706,7 +1706,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
     data = os.urandom(10 * chunkSize + 1) # 10 full chunks and one 1 byte chunk
     checksum = zlib.adler32(data) & 0xffffffff # Python 2 compatibility: force bigint
 
-    server = HttpServerThread(test_chunked_synchronous_xhr_server, True, data, self.PORT)
+    server = HttpServerThread(make_test_chunked_synchronous_xhr_server(True, data, self.PORT))
     server.start()
 
     # block until the server is actually ready
