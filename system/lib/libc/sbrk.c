@@ -56,7 +56,7 @@ uintptr_t* emscripten_get_sbrk_ptr() {
 #define READ_SBRK_PTR(sbrk_ptr) (*(sbrk_ptr))
 #endif
 
-void *sbrk64(int64_t increment) {
+void *_sbrk64(int64_t increment) {
   if (increment >= 0) {
     increment = (increment + (SBRK_ALIGNMENT-1)) & ~((int64_t)SBRK_ALIGNMENT-1);
   } else {
@@ -105,7 +105,7 @@ void *sbrk(intptr_t increment_) {
   // 32-bit program to sbrk alloc (or dealloc) more than 2GB of memory at once.
 
   // Treat sbrk() parameter as signed.
-  return sbrk64((int64_t)increment_);
+  return _sbrk64((int64_t)increment_);
 #else
   // BUG: Currently the Emscripten test suite codifies expectations that sbrk()
   // values passed to this function are to be treated as unsigned, which means
@@ -114,7 +114,7 @@ void *sbrk(intptr_t increment_) {
   // https://github.com/emscripten-core/emscripten/issues/25138
 
   // Treat sbrk() parameter as unsigned.
-  return sbrk64((int64_t)(uintptr_t)increment_);
+  return _sbrk64((int64_t)(uintptr_t)increment_);
 #endif
 }
 

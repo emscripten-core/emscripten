@@ -61,7 +61,7 @@
 #include <emscripten/heap.h>
 #include <emscripten/threading.h>
 
-void *sbrk64(int64_t numBytes);
+void *_sbrk64(int64_t numBytes);
 
 #ifdef __EMSCRIPTEN_TRACING__
 #include <emscripten/trace.h>
@@ -471,7 +471,7 @@ static bool claim_more_memory(size_t numBytes) {
 
   // Claim memory via sbrk
   assert((int64_t)numBytes >= 0);
-  uint8_t *startPtr = (uint8_t*)sbrk64((int64_t)numBytes);
+  uint8_t *startPtr = (uint8_t*)_sbrk64((int64_t)numBytes);
   if ((intptr_t)startPtr == -1) {
 #ifdef EMMALLOC_VERBOSE
     MAIN_THREAD_ASYNC_EM_ASM(err('claim_more_memory: sbrk failed!'));
@@ -1172,7 +1172,7 @@ struct mallinfo emmalloc_mallinfo() {
   struct mallinfo info;
   // Non-mmapped space allocated (bytes): For emmalloc,
   // let's define this as the difference between heap size and dynamic top end.
-  info.arena = emscripten_get_heap_size() - (size_t)sbrk64(0);
+  info.arena = emscripten_get_heap_size() - (size_t)_sbrk64(0);
   // Number of "ordinary" blocks. Let's define this as the number of highest
   // size blocks. (subtract one from each, since there is a sentinel node in each list)
   info.ordblks = count_linked_list_size(&freeRegionBuckets[NUM_FREE_BUCKETS-1])-1;
@@ -1246,9 +1246,9 @@ static int trim_dynamic_heap_reservation(size_t pad) {
     return 0; // emmalloc is not controlling any dynamic memory at all - cannot release memory.
   }
   uint8_t *previousSbrkEndAddress = listOfAllRegions->endPtr;
-  void *sbrkAddr = sbrk64(0);
+  void *sbrkAddr = _sbrk64(0);
 #ifdef EMMALLOC_VERBOSE
-    MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): sbrk64(0) = ' + ptrToString($0) + ', previousSbrkEndAddress = ' + ptrToString($1)), sbrkAddr, previousSbrkEndAddress);
+    MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): _sbrk64(0) = ' + ptrToString($0) + ', previousSbrkEndAddress = ' + ptrToString($1)), sbrkAddr, previousSbrkEndAddress);
 #endif
   assert(sbrkAddr == previousSbrkEndAddress);
   size_t lastMemoryRegionSize = ((size_t*)previousSbrkEndAddress)[-1];
@@ -1318,11 +1318,11 @@ static int trim_dynamic_heap_reservation(size_t pad) {
   }
 
   // Call sbrk() to shrink the memory area.
-  void *oldSbrk = sbrk64(-(int64_t)shrinkAmount);
+  void *oldSbrk = _sbrk64(-(int64_t)shrinkAmount);
   assert((intptr_t)oldSbrk != -1); // Shrinking with sbrk() should never fail.
 
   // Ask where sbrk got us at.
-  void *sbrkNow = sbrk64(0);
+  void *sbrkNow = _sbrk64(0);
 
   // Recreate the sentinel region at the end of the last free region.
   Region *newEndSentinelRegion = (Region*)((uint8_t*)lastActualRegion + newRegionSize);
@@ -1428,5 +1428,5 @@ void emmalloc_dump_free_dynamic_memory_fragmentation_map() {
 }
 
 size_t emmalloc_unclaimed_heap_memory(void) {
-  return emscripten_get_heap_max() - (size_t)sbrk64(0);
+  return emscripten_get_heap_max() - (size_t)_sbrk64(0);
 }
