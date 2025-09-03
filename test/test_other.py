@@ -11823,7 +11823,7 @@ int main () {
     self.run_process([PYTHON, test_file('gen_many_js_functions.py'), 'library_long.js', 'main_long.c'])
     # Currently we rely on Closure for full minification of every appearance of JS function names.
     # TODO: Add minification also for non-Closure users and add [] to this list to test minification without Closure.
-    for closure in [['--closure=1', '-Wno-closure']]:
+    for closure in [['--closure=1']]:
       args = [EMCC, '-O3', '--js-library', 'library_long.js', 'main_long.c'] + self.get_cflags() + closure
       self.run_process(args)
 
