@@ -1636,17 +1636,16 @@ addToLibrary({
         dynCalls[name.substr(8)] = exportedSymbol;
       }
 #endif
-      if (exportedSymbol instanceof WebAssembly.Global) {
-        // Globals are currently statically enumerated into the output JS.
-        // TODO: If the number of Globals grows large, consider giving them a
-        // similar DECLARE_ASM_MODULE_EXPORTS = 0 treatment.
-        continue;
-      }
+      // Globals are currently statically enumerated into the output JS.
+      // TODO: If the number of Globals grows large, consider giving them a
+      // similar DECLARE_ASM_MODULE_EXPORTS = 0 treatment.
+      if (!(exportedSymbol instanceof WebAssembly.Global)) {
 #if MINIMAL_RUNTIME
-      global_object[name] = exportedSymbol;
+        global_object[name] = exportedSymbol;
 #else
-      global_object[name] = Module[name] = exportedSymbol;
+        global_object[name] = Module[name] = exportedSymbol;
 #endif
+      }
     }
 
   },
