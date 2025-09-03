@@ -34,8 +34,7 @@ addToLibrary({
     // null terminator by itself.
     // As a tiny code save trick, compare idx against maxIdx using a negation,
     // so that maxBytesToRead=undefined/NaN means Infinity.
-    while (heapOrArray[idx] && !(idx >= maxIdx)) ++idx;
-    return idx;
+    heapOrArray.indexOf(0)
   },
   $findStringEnd__internal: true,
 
@@ -159,9 +158,7 @@ addToLibrary({
    * @return {number} The number of bytes written, EXCLUDING the null terminator.
    */
   $stringToUTF8Array__deps: [
-#if TEXTENCODER == 2
     '$UTF8Encoder',
-#endif
 #if ASSERTIONS
     '$warnOnce',
 #endif
@@ -278,7 +275,7 @@ addToLibrary({
     return UTF8Encoder.encode(str).length;
 #else
     // When using conditional TextEncoder, use it for longer strings if available
-    if (str.length > 16 && UTF8Encoder) {
+    if (UTF8Encoder) {
       return UTF8Encoder.encode(str).length;
     }
     
