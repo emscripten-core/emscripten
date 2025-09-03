@@ -1246,11 +1246,11 @@ static int trim_dynamic_heap_reservation(size_t pad) {
     return 0; // emmalloc is not controlling any dynamic memory at all - cannot release memory.
   }
   uint8_t *previousSbrkEndAddress = listOfAllRegions->endPtr;
-  void *sbrk_addr = sbrk64(0);
+  void *sbrkAddr = sbrk64(0);
 #ifdef EMMALLOC_VERBOSE
-    MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): sbrk64(0) = ' + ptrToString($0) + ', previousSbrkEndAddress = ' + ptrToString($1)), sbrk_addr, previousSbrkEndAddress);
+    MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): sbrk64(0) = ' + ptrToString($0) + ', previousSbrkEndAddress = ' + ptrToString($1)), sbrkAddr, previousSbrkEndAddress);
 #endif
-  assert(sbrk_addr == previousSbrkEndAddress);
+  assert(sbrkAddr == previousSbrkEndAddress);
   size_t lastMemoryRegionSize = ((size_t*)previousSbrkEndAddress)[-1];
   Region *endSentinelRegion = (Region*)(previousSbrkEndAddress - lastMemoryRegionSize);
   Region *lastActualRegion = prev_region(endSentinelRegion);
@@ -1321,7 +1321,7 @@ static int trim_dynamic_heap_reservation(size_t pad) {
   void *oldSbrk = sbrk64(-(int64_t)shrinkAmount);
   assert((intptr_t)oldSbrk != -1); // Shrinking with sbrk() should never fail.
 
-  // Ask where sbrk() got us at.
+  // Ask where sbrk got us at.
   void *sbrkNow = sbrk64(0);
 
   // Recreate the sentinel region at the end of the last free region.
