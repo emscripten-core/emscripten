@@ -1776,6 +1776,13 @@ var EVAL_CTORS = 0;
 // [link]
 var TEXTDECODER = 1;
 
+// The default value of 1 means the generated code will use TextEncoder if
+// available and fall back to custom encoding code when it is not available.  
+// If set to 2, we assume TextEncoder is always present and usable, and no
+// fallback JS code will be emitted.
+// [link]
+var TEXTENCODER = 1;
+
 // Embind specific: If enabled, assume UTF-8 encoded data in std::string binding.
 // Disable this to support binary data transfer.
 // [link]
