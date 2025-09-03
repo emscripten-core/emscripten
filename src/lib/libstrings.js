@@ -225,7 +225,8 @@ addToLibrary({
    * @return {number} The length, in bytes, of the UTF-8 encoded string.
    */
   $lengthBytesUTF8: (str) => {
-    return UTF8Decoder.encode(str).length;
+    var UTF8Encoder = new TextEncoder();
+    return UTF8Encoder.encode(str).length;
   },
 
   $intArrayFromString__docs: '/** @type {function(string, boolean=, number=)} */',
