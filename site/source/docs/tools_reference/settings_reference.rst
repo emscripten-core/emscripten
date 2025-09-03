@@ -2707,7 +2707,7 @@ TEXTENCODER
 
 The default value of `1` means the generated code will use `TextEncoder` if
 available and fall back to custom encoding code when it is not available.  
-If set to `2`, we assume `TextEncoder`` is always present and usable, and no
+If set to `2`, we assume `TextEncoder` is always present and usable, and no
 fallback JS code will be emitted.  
 
 Default value: 1
