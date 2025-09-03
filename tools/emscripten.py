@@ -280,6 +280,13 @@ def create_global_exports(global_exports):
       continue
 
     v = int(v)
+
+    # Cast the global to an unsigned value from the signed Wasm int32, if it is one of the fields
+    # that have a semantic unsigned meaning.
+    unsigned_globals = ['__stack_base', '__memory_base', '__table_base', '__global_base', '__heap_base']
+    if k in unsigned_globals:
+      v = v & 0xFFFFFFFF
+
     if settings.RELOCATABLE:
       v += settings.GLOBAL_BASE
     mangled = asmjs_mangle(k)

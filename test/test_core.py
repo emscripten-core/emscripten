@@ -8640,6 +8640,7 @@ Module.onRuntimeInitialized = () => {
           if (typeof _emscripten_stack_get_base === 'function' &&
               typeof _emscripten_stack_get_end === 'function' &&
               typeof _emscripten_stack_get_current === 'function' &&
+              typeof Module['___heap_base'] === 'number' &&
               Module['___heap_base'] > 0) {
              out('able to run memprof');
              return 0;
