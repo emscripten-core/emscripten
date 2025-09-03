@@ -10150,7 +10150,7 @@ int main() {
     if debug_enabled:
       cmd += ['-g']
     if closure_enabled:
-      cmd += ['--closure=1', '-Wno-closure']
+      cmd += ['--closure=1']
 
     self.clear()
 
