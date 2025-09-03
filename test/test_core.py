@@ -2690,6 +2690,7 @@ The current type of b is: 9
   # race does not affect Emscripten execution.
   @node_pthreads
   @is_slow_test
+  @no_esm_integration('TODO: WASM_ESM_INTEGRATION mode has some asynchronous behavior that causes a failure in this test. https://github.com/emscripten-core/emscripten/issues/25151')
   def test_stress_pthread_abort(self):
     self.set_setting('PROXY_TO_PTHREAD')
     # Add the onAbort handler at runtime during preRun.  This means that onAbort
