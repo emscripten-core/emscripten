@@ -2058,7 +2058,7 @@ var LibraryHTML5 = {
   $registerBeforeUnloadEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) => {
     var beforeUnloadEventHandlerFunc = (e = event) => {
       // Note: This is always called on the main browser thread, since it needs synchronously return a value!
-      var confirmationMessage = {{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, 0, userData);
+      var confirmationMessage = {{{ makeDynCall('pipp', 'callbackfunc') }}}(eventTypeId, 0, userData);
 
       if (confirmationMessage) {
         confirmationMessage = UTF8ToString(confirmationMessage);

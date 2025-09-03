@@ -1074,16 +1074,12 @@ var LibraryGLEmulation = {
       var s_requiredTexUnitsForPass = [];
 
       // Static funcs:
-      function abort(info) {
-        assert(false, "[TexEnvJIT] ABORT: " + info);
-      }
-
       function abort_noSupport(info) {
-        abort("No support: " + info);
+        abort("[TexEnvJIT] ABORT: No support: " + info);
       }
 
       function abort_sanity(info) {
-        abort("Sanity failure: " + info);
+        abort("[TexEnvJIT] ABORT: Sanity failure: " + info);
       }
 
       function genTexUnitSampleExpr(texUnitID) {

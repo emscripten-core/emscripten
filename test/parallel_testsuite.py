@@ -3,6 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+import json
 import multiprocessing
 import os
 import sys
@@ -13,15 +14,29 @@ import unittest
 import common
 
 from tools.shared import cap_max_workers_in_pool
+from tools.utils import WINDOWS
 
 
 NUM_CORES = None
 seen_class = set()
 
 
-def run_test(test):
+# Older Python versions have a bug with multiprocessing shared data
+# structures. https://github.com/emscripten-core/emscripten/issues/25103
+# and https://github.com/python/cpython/issues/71936
+def python_multiprocessing_structures_are_buggy():
+  v = sys.version_info
+  return (v.major, v.minor, v.micro) <= (3, 12, 7) or (v.major, v.minor, v.micro) == (3, 13, 0)
+
+
+def run_test(test, failfast_event, lock, progress_counter, num_tests):
+  # If failfast mode is in effect and any of the tests have failed,
+  # and then we should abort executing further tests immediately.
+  if failfast_event and failfast_event.is_set():
+    return None
+
   olddir = os.getcwd()
-  result = BufferedParallelTestResult()
+  result = BufferedParallelTestResult(lock, progress_counter, num_tests)
   temp_dir = tempfile.mkdtemp(prefix='emtest_')
   test.set_temp_dir(temp_dir)
   try:
@@ -29,10 +44,16 @@ def run_test(test):
       seen_class.add(test.__class__)
       test.__class__.setUpClass()
     test(result)
+
+    # Alert all other multiprocess pool runners that they need to stop executing further tests.
+    if failfast_event is not None and result.test_result not in ['success', 'skipped']:
+      failfast_event.set()
   except unittest.SkipTest as e:
     result.addSkip(test, e)
   except Exception as e:
     result.addError(test, e)
+    if failfast_event is not None:
+      failfast_event.set()
   # Before attempting to delete the tmp dir make sure the current
   # working directory is not within it.
   os.chdir(olddir)
@@ -51,9 +72,11 @@ class ParallelTestSuite(unittest.BaseTestSuite):
   Creates worker threads, manages the task queue, and combines the results.
   """
 
-  def __init__(self, max_cores):
+  def __init__(self, max_cores, options):
     super().__init__()
     self.max_cores = max_cores
+    self.failfast = options.failfast
+    self.failing_and_slow_first = options.failing_and_slow_first
 
   def addTest(self, test):
     super().addTest(test)
@@ -66,19 +89,48 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # inherited by the child process, but can lead to hard-to-debug windows-only
     # issues.
     # multiprocessing.set_start_method('spawn')
-    tests = list(self.reversed_tests())
-    contains_browser_test = any(test.is_browser_test() for test in tests)
-    use_cores = cap_max_workers_in_pool(min(self.max_cores, len(tests), num_cores()))
-    if contains_browser_test:
-      # TODO experiment with this number. In browser tests we'll be creating
-      # a chrome instance per worker which is expensive.
-      use_cores = int(use_cores / 2)
 
-    print('Using %s parallel test processes' % use_cores)
-    pool = multiprocessing.Pool(use_cores)
-    results = [pool.apply_async(run_test, (t,)) for t in tests]
-    results = [r.get() for r in results]
-    [pool.apply(tear_down, ()) for i in range(use_cores)]
+    # If we are running with --failing-and-slow-first, then the test list has been
+    # pre-sorted based on previous test run results. Otherwise run the tests in
+    # reverse alphabetical order.
+    tests = list(self if self.failing_and_slow_first else self.reversed_tests())
+    use_cores = cap_max_workers_in_pool(min(self.max_cores, len(tests), num_cores()))
+    print('Using %s parallel test processes' % use_cores, file=sys.stderr)
+    with multiprocessing.Manager() as manager:
+      pool = multiprocessing.Pool(use_cores)
+      if python_multiprocessing_structures_are_buggy():
+        failfast_event = progress_counter = lock = None
+      else:
+        failfast_event = manager.Event() if self.failfast else None
+        progress_counter = manager.Value('i', 0)
+        lock = manager.Lock()
+      results = [pool.apply_async(run_test, (t, failfast_event, lock, progress_counter, len(tests))) for t in tests]
+      results = [r.get() for r in results]
+      results = [r for r in results if r is not None]
+      [pool.apply(tear_down, ()) for i in range(use_cores)]
+
+    if self.failing_and_slow_first:
+      previous_test_run_results = common.load_previous_test_run_results()
+      for r in results:
+        # Save a test result record with the specific suite name (e.g. "core0.test_foo")
+        test_failed = r.test_result not in ['success', 'skipped']
+
+        def update_test_results_to(test_name):
+          fail_frequency = previous_test_run_results[test_name]['fail_frequency'] if test_name in previous_test_run_results else int(test_failed)
+          # Apply exponential moving average with 50% weighting to merge previous fail frequency with new fail frequency
+          fail_frequency = (fail_frequency + int(test_failed)) / 2
+          previous_test_run_results[test_name] = {
+            'result': r.test_result,
+            'duration': r.test_duration,
+            'fail_frequency': fail_frequency,
+          }
+
+        update_test_results_to(r.test_name)
+        # Also save a test result record without suite name (e.g. just "test_foo"). This enables different suite runs to order tests
+        # for quick --failfast termination, in case a test fails in multiple suites
+        update_test_results_to(r.test_name.split(' ')[0])
+
+      json.dump(previous_test_run_results, open(common.PREVIOUS_TEST_RUN_RESULTS_FILE, 'w'), indent=2)
     pool.close()
     pool.join()
     return self.combine_results(result, results)
@@ -96,13 +148,22 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     return sorted(self, key=str, reverse=True)
 
   def combine_results(self, result, buffered_results):
-    print()
-    print('DONE: combining results on main thread')
-    print()
+    print('', file=sys.stderr)
+    print('DONE: combining results on main thread', file=sys.stderr)
+    print('', file=sys.stderr)
     # Sort the results back into alphabetical order. Running the tests in
     # parallel causes mis-orderings, this makes the results more readable.
     results = sorted(buffered_results, key=lambda res: str(res.test))
     result.core_time = 0
+
+    # The next updateResult loop will print a *lot* of lines really fast. This
+    # will cause a Python exception being thrown when attempting to print to
+    # stderr, if stderr is in nonblocking mode, like it is on Buildbot CI:
+    # See https://github.com/buildbot/buildbot/issues/8659
+    # To work around that problem, set stderr to blocking mode before printing.
+    if not WINDOWS:
+      os.set_blocking(sys.stderr.fileno(), True)
+
     for r in results:
       r.updateResult(result)
     return result
@@ -113,9 +174,14 @@ class BufferedParallelTestResult:
 
   Fulfills the interface for unittest.TestResult
   """
-  def __init__(self):
+  def __init__(self, lock, progress_counter, num_tests):
     self.buffered_result = None
     self.test_duration = 0
+    self.test_result = 'errored'
+    self.test_name = ''
+    self.lock = lock
+    self.progress_counter = progress_counter
+    self.num_tests = num_tests
 
   @property
   def test(self):
@@ -134,6 +200,7 @@ class BufferedParallelTestResult:
     result.core_time += self.test_duration
 
   def startTest(self, test):
+    self.test_name = str(test)
     self.start_time = time.perf_counter()
 
   def stopTest(self, test):
@@ -141,29 +208,43 @@ class BufferedParallelTestResult:
     # these results get passed back to the TextTestRunner/TextTestResult.
     self.buffered_result.duration = self.test_duration
 
+  def compute_progress(self):
+    if not self.lock:
+      return ''
+    with self.lock:
+      val = f'[{int(self.progress_counter.value * 100 / self.num_tests)}%] '
+      self.progress_counter.value += 1
+    return val
+
   def addSuccess(self, test):
-    print(test, '... ok (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
+    print(f'{self.compute_progress()}{test} ... ok ({self.calculateElapsed():.2f}s)', file=sys.stderr)
     self.buffered_result = BufferedTestSuccess(test)
+    self.test_result = 'success'
 
   def addExpectedFailure(self, test, err):
-    print(test, '... expected failure (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
+    print(f'{self.compute_progress()}{test} ... expected failure ({self.calculateElapsed():.2f}s)', file=sys.stderr)
     self.buffered_result = BufferedTestExpectedFailure(test, err)
+    self.test_result = 'expected failure'
 
   def addUnexpectedSuccess(self, test):
-    print(test, '... unexpected success (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
+    print(f'{self.compute_progress()}{test} ... unexpected success ({self.calculateElapsed():.2f}s)', file=sys.stderr)
     self.buffered_result = BufferedTestUnexpectedSuccess(test)
+    self.test_result = 'unexpected success'
 
   def addSkip(self, test, reason):
-    print(test, "... skipped '%s'" % reason, file=sys.stderr)
+    print(f"{self.compute_progress()}{test} ... skipped '{reason}'", file=sys.stderr)
     self.buffered_result = BufferedTestSkip(test, reason)
+    self.test_result = 'skipped'
 
   def addFailure(self, test, err):
-    print(test, '... FAIL', file=sys.stderr)
+    print(f'{self.compute_progress()}{test} ... FAIL', file=sys.stderr)
     self.buffered_result = BufferedTestFailure(test, err)
+    self.test_result = 'failed'
 
   def addError(self, test, err):
-    print(test, '... ERROR', file=sys.stderr)
+    print(f'{self.compute_progress()}{test} ... ERROR', file=sys.stderr)
     self.buffered_result = BufferedTestError(test, err)
+    self.test_result = 'errored'
 
 
 class BufferedTestBase:

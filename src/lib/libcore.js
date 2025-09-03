@@ -45,11 +45,15 @@ addToLibrary({
 #if ASSERTIONS
     assert(typeof ptr === 'number');
 #endif
-#if !CAN_ADDRESS_2GB && !MEMORY64
-    // With CAN_ADDRESS_2GB or MEMORY64, pointers are already unsigned.
+#if MEMORY64
+    // Convert to 64-bit unsigned value.  We need to use BigInt here since
+    // Number cannot represent the full 64-bit range.
+    if (ptr < 0) ptr = 2n**64n + BigInt(ptr);
+#else
+    // Convert to 32-bit unsigned value
     ptr >>>= 0;
 #endif
-    return '0x' + ptr.toString(16).padStart(8, '0');
+    return '0x' + ptr.toString(16).padStart({{{ POINTER_SIZE * 2 }}}, '0');
   },
 
   $zeroMemory: (ptr, size) => HEAPU8.fill(0, ptr, ptr + size),
@@ -887,7 +891,9 @@ addToLibrary({
         addr = DNS.address_map.addrs[name];
       } else {
         var id = DNS.address_map.id++;
+#if ASSERTIONS
         assert(id < 65535, 'exceeded max address mappings of 65535');
+#endif
 
         addr = '172.29.' + (id & 0xff) + '.' + (id & 0xff00);
 
@@ -942,7 +948,9 @@ addToLibrary({
         inetNtop4(addr);
       sa = _malloc(salen);
       errno = writeSockaddr(sa, family, addr, port);
+#if ASSERTIONS
       assert(!errno);
+#endif
 
       ai = _malloc({{{ C_STRUCTS.addrinfo.__size__ }}});
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_family, 'family', 'i32') }}};
@@ -1607,7 +1615,11 @@ addToLibrary({
 #if !DECLARE_ASM_MODULE_EXPORTS
   // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
   // at runtime rather than statically in JS code.
-  $exportWasmSymbols__deps: ['$asmjsMangle'],
+  $exportWasmSymbols__deps: ['$asmjsMangle'
+#if DYNCALLS || !WASM_BIGINT
+    , '$dynCalls'
+#endif
+  ],
   $exportWasmSymbols: (wasmExports) => {
 #if ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_WEB
     var global_object = (typeof process != "undefined" ? global : this);
@@ -1617,13 +1629,23 @@ addToLibrary({
     var global_object = this;
 #endif
 
-    for (var __exportedFunc in wasmExports) {
-      var jsname = asmjsMangle(__exportedFunc);
-#if MINIMAL_RUNTIME
-      global_object[jsname] = wasmExports[__exportedFunc];
-#else
-      global_object[jsname] = Module[jsname] = wasmExports[__exportedFunc];
+    for (var [name, exportedSymbol] of Object.entries(wasmExports)) {
+      name = asmjsMangle(name);
+#if DYNCALLS || !WASM_BIGINT
+      if (name.startsWith('dynCall_')) {
+        dynCalls[name.substr(8)] = exportedSymbol;
+      }
 #endif
+      // Globals are currently statically enumerated into the output JS.
+      // TODO: If the number of Globals grows large, consider giving them a
+      // similar DECLARE_ASM_MODULE_EXPORTS = 0 treatment.
+      if (typeof exportedSymbol.value === 'undefined') {
+#if MINIMAL_RUNTIME
+        global_object[name] = exportedSymbol;
+#else
+        global_object[name] = Module[name] = exportedSymbol;
+#endif
+      }
     }
 
   },
@@ -2094,8 +2116,13 @@ addToLibrary({
 #endif
       try {
 #if PTHREADS
-        if (ENVIRONMENT_IS_PTHREAD) __emscripten_thread_exit(EXITSTATUS);
-        else
+        if (ENVIRONMENT_IS_PTHREAD) {
+          // exit the current thread, but only if there is one active.
+          // TODO(https://github.com/emscripten-core/emscripten/issues/25076):
+          // Unify this check with the runtimeExited check above
+          if (_pthread_self()) __emscripten_thread_exit(EXITSTATUS);
+          return;
+        }
 #endif
         _exit(EXITSTATUS);
       } catch (e) {
@@ -2113,15 +2140,30 @@ addToLibrary({
   },
 
 #else // MINIMAL_RUNTIME
-  // MINIMAL_RUNTIME doesn't support the runtimeKeepalive stuff
-  $callUserCallback: (func) => func(),
+  $callUserCallback: (func) => {
+    // MINIMAL_RUNTIME doesn't support the runtimeKeepalive stuff, but under
+    // some circumstances it supportes `runtimeExited`
+#if EXIT_RUNTIME
+    if (runtimeExited) {
+#if ASSERTIONS
+      err('user callback triggered after runtime exited or application aborted.  Ignoring.');
+#endif
+      return;
+    }
+#endif
+    func();
+  },
 #endif // MINIMAL_RUNTIME
 
   $asmjsMangle: (x) => {
     if (x == '__main_argc_argv') {
       x = 'main';
     }
+#if DYNCALLS
     return x.startsWith('dynCall_') ? x : '_' + x;
+#else
+    return '_' + x;
+#endif
   },
 
   $alignMemory: (size, alignment) => {

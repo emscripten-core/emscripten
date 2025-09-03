@@ -120,7 +120,7 @@ COMPILE_TIME_SETTINGS = {
 # All settings here should be tagged as `[deprecated]` in settings.js
 DEPRECATED_SETTINGS = {
     'RUNTIME_LINKED_LIBS': 'you can simply list the libraries directly on the commandline now',
-    'CLOSURE_WARNINGS': 'use -Wclosure instead',
+    'CLOSURE_WARNINGS': 'use -Wclosure/-Wno-closure instead',
     'LEGALIZE_JS_FFI': 'to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`',
     'ASYNCIFY_EXPORTS': 'please use JSPI_EXPORTS instead',
     'ASYNCIFY_LAZY_LOAD_CODE': 'lack of usage',
