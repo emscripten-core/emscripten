@@ -2700,6 +2700,18 @@ of ENVIRONMENT since TextDecoder is not available in those environments).
 
 Default value: 1
 
+.. _textencoder:
+
+TEXTENCODER
+===========
+
+The default value of **1** means the generated code will use **TextEncoder** if
+available and fall back to custom encoding code when it is not available.  
+If set to **2**, we assume **TextEncoder** is always present and usable, and no
+fallback JS code will be emitted.  
+
+**Default value:** 1
+
 .. _embind_std_string_is_utf8:
 
 EMBIND_STD_STRING_IS_UTF8
