@@ -8,7 +8,18 @@
 #error "TEXTDECODER must be either 1 or 2"
 #endif
 
+#if TEXTENCODER != 1 && TEXTENCODER != 2
+#error "TEXTENCODER must be either 1 or 2"
+#endif
+
 addToLibrary({
+  // TextEncoder constructor defaults to UTF-8
+#if TEXTENCODER == 2
+  $UTF8Encoder: "new TextEncoder()",
+#else
+  $UTF8Decoder: "typeof TextEncoder != 'undefined' ? new TextEncoder() : undefined",
+#endif
+
   // TextDecoder constructor defaults to UTF-8
 #if TEXTDECODER == 2
   $UTF8Decoder: "new TextDecoder()",
@@ -225,7 +236,6 @@ addToLibrary({
    * @return {number} The length, in bytes, of the UTF-8 encoded string.
    */
   $lengthBytesUTF8: (str) => {
-    var UTF8Encoder = new TextEncoder();
     return UTF8Encoder.encode(str).length;
   },
 
