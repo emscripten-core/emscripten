@@ -1068,16 +1068,21 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if 'noExitRuntime' in settings.INCOMING_MODULE_JS_API:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$noExitRuntime')
 
-  # Default to TEXTDECODER=2 (always use TextDecoder to decode UTF-8 strings)
-  # in -Oz builds, since custom decoder for UTF-8 takes up space.
-  # When supporting shell environments, do not do this as TextDecoder is not
-  # widely supported there.
-  # In Audio Worklets TextDecoder API is intentionally not exposed
-  # (https://github.com/WebAudio/web-audio-api/issues/2499) so we also need to
-  # keep the JavaScript-based fallback.
+  # Default to TEXTDECODER=2 (always use TextDecoder for decoding UTF-8 strings)
+  # and TEXTENCODER=2 (always use TextEncoder for encoding UTF-8 strings)
+  # in -Oz builds to minimize code size, as custom UTF-8 encoder/decoder logic
+  # adds extra code footprint.
+  #
+  # Exceptions:
+  # - Shell environments: TextDecoder and TextEncoder are not consistently
+  #   available, so we must retain the JavaScript-based fallback.
+  # - Audio Worklets: The TextDecoder API is intentionally not exposed
+  #   (see: https://github.com/WebAudio/web-audio-api/issues/2499), requiring
+  #   the fallback decoder to remain in place.
   if settings.SHRINK_LEVEL >= 2 and not settings.AUDIO_WORKLET and \
      not settings.ENVIRONMENT_MAY_BE_SHELL:
     default_setting('TEXTDECODER', 2)
+    default_setting('TEXTENCODER', 2)
 
   # If set to 1, we will run the autodebugger (the automatic debugging tool, see
   # tools/autodebugger).  Note that this will disable inclusion of libraries. This
