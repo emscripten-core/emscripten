@@ -17,7 +17,7 @@ import io
 import itertools
 import json
 import logging
-import threading
+import multiprocessing
 import os
 import re
 import shlex
