@@ -97,16 +97,16 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     use_cores = cap_max_workers_in_pool(min(self.max_cores, len(tests), num_cores()))
     print('Using %s parallel test processes' % use_cores, file=sys.stderr)
     with multiprocessing.Manager() as manager:
-      pool = multiprocessing.Pool(use_cores)
-      if python_multiprocessing_structures_are_buggy():
-        failfast_event = progress_counter = lock = None
-      else:
-        failfast_event = manager.Event() if self.failfast else None
-        progress_counter = manager.Value('i', 0)
-        lock = manager.Lock()
-      results = [pool.apply_async(run_test, (t, failfast_event, lock, progress_counter, len(tests))) for t in tests]
-      results = [r.get() for r in results]
-      results = [r for r in results if r is not None]
+      with multiprocessing.Pool(use_cores) as pool:
+        if python_multiprocessing_structures_are_buggy():
+          failfast_event = progress_counter = lock = None
+        else:
+          failfast_event = manager.Event() if self.failfast else None
+          progress_counter = manager.Value('i', 0)
+          lock = manager.Lock()
+        results = [pool.apply_async(run_test, (t, failfast_event, lock, progress_counter, len(tests))) for t in tests]
+        results = [r.get() for r in results]
+        results = [r for r in results if r is not None]
 
     if self.failing_and_slow_first:
       previous_test_run_results = common.load_previous_test_run_results()
@@ -130,8 +130,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
         update_test_results_to(r.test_name.split(' ')[0])
 
       json.dump(previous_test_run_results, open(common.PREVIOUS_TEST_RUN_RESULTS_FILE, 'w'), indent=2)
-    pool.close()
-    pool.join()
+
     return self.combine_results(result, results)
 
   def reversed_tests(self):
