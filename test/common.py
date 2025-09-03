@@ -28,6 +28,7 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import threading
 import time
 import webbrowser
 import unittest
@@ -82,6 +83,11 @@ EMTEST_BUILD_VERBOSE = int(os.getenv('EMTEST_BUILD_VERBOSE', '0'))
 EMTEST_CAPTURE_STDIO = int(os.getenv('EMTEST_CAPTURE_STDIO', '0'))
 if 'EM_BUILD_VERBOSE' in os.environ:
   exit_with_error('EM_BUILD_VERBOSE has been renamed to EMTEST_BUILD_VERBOSE')
+
+# If we are drawing a parallel swimlane graph of test output, we need to use a temp
+# file to track which tests were flaky so they can be graphed in orange color to
+# visually stand out.
+flaky_tests_log_filename = os.path.join(path_from_root('out/flaky_tests.txt'))
 
 
 # Default flags used to run browsers in CI testing:
@@ -236,6 +242,9 @@ def flaky(note=''):
         except AssertionError as exc:
           preserved_exc = exc
           logging.info(f'Retrying flaky test "{f.__name__}" (attempt {i}/{EMTEST_RETRY_FLAKY} failed): {exc}')
+          # Mark down that this was a flaky test.
+          open(flaky_tests_log_filename, 'a').write(f'{f.__name__}\n')
+
       raise AssertionError('Flaky test has failed too many times') from preserved_exc
 
     return modified
@@ -629,7 +638,8 @@ def also_with_minimal_runtime(f):
   def metafunc(self, with_minimal_runtime, *args, **kwargs):
     if DEBUG:
       print('parameterize:minimal_runtime=%s' % with_minimal_runtime)
-    assert self.get_setting('MINIMAL_RUNTIME') is None
+    if self.get_setting('MINIMAL_RUNTIME'):
+      self.skipTest('MINIMAL_RUNTIME already enabled in test config')
     if with_minimal_runtime:
       if self.get_setting('MODULARIZE') == 'instance' or self.get_setting('WASM_ESM_INTEGRATION'):
         self.skipTest('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
@@ -765,6 +775,8 @@ def also_with_modularize(f):
   @wraps(f)
   def metafunc(self, modularize, *args, **kwargs):
     if modularize:
+      if self.get_setting('DECLARE_ASM_MODULE_EXPORTS') == 0:
+        self.skipTest('DECLARE_ASM_MODULE_EXPORTS=0 is not compatible with MODULARIZE')
       if self.get_setting('STRICT_JS'):
         self.skipTest('MODULARIZE is not compatible with STRICT_JS')
       if self.get_setting('WASM_ESM_INTEGRATION'):
@@ -1629,6 +1641,19 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     """Return the default JS engine to run tests under"""
     return self.js_engines[0]
 
+  def get_engine_with_args(self, engine=None):
+    if not engine:
+      engine = self.get_current_js_engine()
+    # Make a copy of the engine command before we modify/extend it.
+    engine = list(engine)
+    if engine == config.NODE_JS_TEST:
+      engine += self.node_args
+    elif engine == config.V8_ENGINE:
+      engine += self.v8_args
+    elif engine == config.SPIDERMONKEY_ENGINE:
+      engine += self.spidermonkey_args
+    return engine
+
   def run_js(self, filename, engine=None, args=None,
              assert_returncode=0,
              interleaved_output=True,
@@ -1644,16 +1669,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     stdout = open(stdout_file, 'w')
     error = None
     timeout_error = None
-    if not engine:
-      engine = self.get_current_js_engine()
-    # Make a copy of the engine command before we modify/extend it.
-    engine = list(engine)
-    if engine == config.NODE_JS_TEST:
-      engine += self.node_args
-    elif engine == config.V8_ENGINE:
-      engine += self.v8_args
-    elif engine == config.SPIDERMONKEY_ENGINE:
-      engine += self.spidermonkey_args
+    engine = self.get_engine_with_args(engine)
     try:
       jsrun.run_js(filename, engine, args,
                    stdout=stdout,
@@ -2133,6 +2149,57 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           raise
     return js_output
 
+  def parallel_stress_test_js_file(self, js_file, assert_returncode=None, expected=None, not_expected=None):
+    # If no expectations were passed, expect a successful run exit code
+    if assert_returncode is None and expected is None and not_expected is None:
+      assert_returncode = 0
+
+    # We will use Python multithreading, so prepare the command to run in advance, and keep the threading kernel
+    # compact to avoid accessing unexpected data/functions across threads.
+    cmd = self.get_engine_with_args() + [js_file]
+
+    exception_thrown = threading.Event()
+    error_lock = threading.Lock()
+    error_exception = None
+
+    def test_run():
+      nonlocal error_exception
+      try:
+        # Each thread repeatedly runs the test case in a tight loop, which is critical to coax out timing related issues
+        for _ in range(16):
+          # Early out from the test, if error was found
+          if exception_thrown.is_set():
+            return
+          result = subprocess.run(cmd, capture_output=True, text=True)
+
+          output = f'\n----------------------------\n{result.stdout}{result.stderr}\n----------------------------'
+          if not_expected is not None and not_expected in output:
+            raise Exception(f'\n\nWhen running command "{cmd}",\nexpected string "{not_expected}" to NOT be present in output:{output}')
+          if expected is not None and expected not in output:
+            raise Exception(f'\n\nWhen running command "{cmd}",\nexpected string "{expected}" was not found in output:{output}')
+          if assert_returncode is not None:
+            if assert_returncode == NON_ZERO:
+              if result.returncode != 0:
+                raise Exception(f'\n\nCommand "{cmd}" was expected to fail, but did not (returncode=0). Output:{output}')
+            elif assert_returncode != result.returncode:
+              raise Exception(f'\n\nWhen running command "{cmd}",\nreturn code {result.returncode} does not match expected return code {assert_returncode}. Output:{output}')
+      except Exception as e:
+        if not exception_thrown.is_set():
+          exception_thrown.set()
+          with error_lock:
+            error_exception = e
+        return
+
+    threads = []
+    # Oversubscribe hardware threads to make sure scheduling becomes erratic
+    while len(threads) < 2 * multiprocessing.cpu_count() and not exception_thrown.is_set():
+      threads += [threading.Thread(target=test_run)]
+      threads[-1].start()
+    for t in threads:
+      t.join()
+    if error_exception:
+      raise error_exception
+
   def get_freetype_library(self):
     self.cflags += [
       '-Wno-misleading-indentation',
@@ -2210,10 +2277,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return rtn
 
 
-# Run a server and a web page. When a test runs, we tell the server about it,
+# Create a server and a web page. When a test runs, we tell the server about it,
 # which tells the web page, which then opens a window with the test. Doing
 # it this way then allows the page to close() itself when done.
-def harness_server_func(in_queue, out_queue, port):
+def make_test_server(in_queue, out_queue, port):
   class TestServerHandler(SimpleHTTPRequestHandler):
     # Request header handler for default do_GET() path in
     # SimpleHTTPRequestHandler.do_GET(self) below.
@@ -2313,10 +2380,6 @@ def harness_server_func(in_queue, out_queue, port):
         else:
           self.send_error(400, f'Not implemented for {code}')
       elif 'report_' in self.path:
-        # the test is reporting its result. first change dir away from the
-        # test dir, as it will be deleted now that the test is finishing, and
-        # if we got a ping at that time, we'd return an error
-        os.chdir(path_from_root())
         # for debugging, tests may encode the result and their own url (window.location) as result|url
         if '|' in self.path:
           path, url = self.path.split('|', 1)
@@ -2358,8 +2421,6 @@ def harness_server_func(in_queue, out_queue, port):
           assert out_queue.empty(), 'the single response from the last test was read'
           # tell the browser to load the test
           self.wfile.write(b'COMMAND:' + url.encode('utf-8'))
-          # move us to the right place to serve the files for the new test
-          os.chdir(dir)
         else:
           # the browser must keep polling
           self.wfile.write(b'(wait)')
@@ -2395,8 +2456,23 @@ def harness_server_func(in_queue, out_queue, port):
   # do not have the correct MIME type
   SimpleHTTPRequestHandler.extensions_map['.mjs'] = 'text/javascript'
 
-  httpd = ThreadingHTTPServer(('localhost', port), TestServerHandler)
-  httpd.serve_forever() # test runner will kill us
+  return ThreadingHTTPServer(('localhost', port), TestServerHandler)
+
+
+class HttpServerThread(threading.Thread):
+  """A generic thread class to create and run an http server."""
+  def __init__(self, server):
+    super().__init__()
+    self.server = server
+
+  def stop(self):
+    """Shuts down the server if it is running."""
+    self.server.shutdown()
+
+  def run(self):
+    """Creates the server instance and serves forever until stop() is called."""
+    # Start the server's main loop (this blocks until shutdown() is called)
+    self.server.serve_forever()
 
 
 class Reporting(Enum):
@@ -2488,11 +2564,13 @@ class BrowserCore(RunnerCore):
     super().setUpClass()
     if not has_browser() or EMTEST_BROWSER == 'node':
       return
-    cls.harness_in_queue = multiprocessing.Queue()
-    cls.harness_out_queue = multiprocessing.Queue()
-    cls.harness_server = multiprocessing.Process(target=harness_server_func, args=(cls.harness_in_queue, cls.harness_out_queue, cls.PORT))
+
+    cls.harness_in_queue = queue.Queue()
+    cls.harness_out_queue = queue.Queue()
+    cls.harness_server = HttpServerThread(make_test_server(cls.harness_in_queue, cls.harness_out_queue, cls.PORT))
     cls.harness_server.start()
-    print('[Browser harness server on process %d]' % cls.harness_server.pid)
+
+    print(f'[Browser harness server on thread {cls.harness_server.name}]')
     cls.browser_open(cls.HARNESS_URL)
 
   @classmethod
@@ -2500,9 +2578,10 @@ class BrowserCore(RunnerCore):
     super().tearDownClass()
     if not has_browser() or EMTEST_BROWSER == 'node':
       return
-    cls.harness_server.terminate()
-    print('[Browser harness server terminated]')
+    cls.harness_server.stop()
+    cls.harness_server.join()
     cls.browser_terminate()
+
     if WINDOWS:
       # On Windows, shutil.rmtree() in tearDown() raises this exception if we do not wait a bit:
       # WindowsError: [Error 32] The process cannot access the file because it is being used by another process.

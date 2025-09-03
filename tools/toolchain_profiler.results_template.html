@@ -288,7 +288,7 @@ function createSwimlaneChart(data) {
         startOrder: startOrder++,
         cmdLine: d.cmdLine,
         cmd: findInterestingBits(d.cmdLine).join(' '),
-        color: d3.rgb('#80ff80'),
+        color: d.color || d3.rgb('#80ff80'),
         parent: null,
         children: []
       };
@@ -312,7 +312,7 @@ function createSwimlaneChart(data) {
         startOrder: startOrder++,
         cmdLine: d.cmdLine,
         cmd: findInterestingBits(d.cmdLine).join(' '),
-        color: d3.rgb('#80ff80'),
+        color: d.color || d3.rgb('#80ff80'),
         parent: topOnStack(d.pid),
         children: []
       };
@@ -336,7 +336,7 @@ function createSwimlaneChart(data) {
         end: null,
         startOrder: startOrder++,
         cmd: d.name,
-        color: d3.rgb('#8080ff'),
+        color: d.color || d3.rgb('#8080ff'),
         parent: topOnStack(d.pid),
         children: []
       };

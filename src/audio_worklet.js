@@ -39,14 +39,12 @@ function createWasmAudioWorkletProcessor(audioParams) {
       this.samplesPerChannel = opts.samplesPerChannel;
       this.bytesPerChannel = this.samplesPerChannel * {{{ getNativeTypeSize('float') }}};
 
-      // Prepare the output views; see createOutputViews(). The 'minimum alloc'
-      // firstly stops STACK_OVERFLOW_CHECK failing (since the stack will be
-      // full if we allocate all the available space, with 16 bytes being the
-      // minimum alloc size due to alignments) leaving room for a single
-      // AudioSampleFrame as a minumum. There's an arbitrary maximum of 64, for
-      // the case where a multi-MB stack is passed.
-      // TODO: if max_align_t changes the minimum alloc will need readdressing
-      this.outputViews = new Array(Math.min(((wwParams.stackSize - /*minimum alloc*/ 16) / this.bytesPerChannel) | 0, /*sensible limit*/ 64));
+      // Prepare the output views; see createOutputViews(). The 'STACK_ALIGN'
+      // deduction stops the STACK_OVERFLOW_CHECK failing (since the stack will
+      // be full if we allocate all the available space) leaving room for a
+      // single AudioSampleFrame as a minumum. There's an arbitrary maximum of
+      // 64 frames, for the case where a multi-MB stack is passed.
+      this.outputViews = new Array(Math.min(((wwParams.stackSize - {{{ STACK_ALIGN }}}) / this.bytesPerChannel) | 0, /*sensible limit*/ 64));
 #if ASSERTIONS
       console.assert(this.outputViews.length > 0, `AudioWorklet needs more stack allocating (at least ${this.bytesPerChannel})`);
 #endif

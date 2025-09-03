@@ -10,10 +10,13 @@ import sys
 import tempfile
 import time
 import unittest
+from tools import emprofile
+from tools import utils
 
 import common
 
 from tools.shared import cap_max_workers_in_pool
+from tools.utils import WINDOWS
 
 
 NUM_CORES = None
@@ -84,6 +87,9 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # issues.
     # multiprocessing.set_start_method('spawn')
 
+    # Remove any old stale list of flaky tests before starting the run
+    utils.delete_file(common.flaky_tests_log_filename)
+
     # If we are running with --failing-and-slow-first, then the test list has been
     # pre-sorted based on previous test run results. Otherwise run the tests in
     # reverse alphabetical order.
@@ -91,16 +97,16 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     use_cores = cap_max_workers_in_pool(min(self.max_cores, len(tests), num_cores()))
     print('Using %s parallel test processes' % use_cores, file=sys.stderr)
     with multiprocessing.Manager() as manager:
-      pool = multiprocessing.Pool(use_cores)
-      if python_multiprocessing_structures_are_buggy():
-        failfast_event = progress_counter = lock = None
-      else:
-        failfast_event = manager.Event() if self.failfast else None
-        progress_counter = manager.Value('i', 0)
-        lock = manager.Lock()
-      results = [pool.apply_async(run_test, (t, failfast_event, lock, progress_counter, len(tests))) for t in tests]
-      results = [r.get() for r in results]
-      results = [r for r in results if r is not None]
+      with multiprocessing.Pool(use_cores) as pool:
+        if python_multiprocessing_structures_are_buggy():
+          failfast_event = progress_counter = lock = None
+        else:
+          failfast_event = manager.Event() if self.failfast else None
+          progress_counter = manager.Value('i', 0)
+          lock = manager.Lock()
+        results = [pool.apply_async(run_test, (t, failfast_event, lock, progress_counter, len(tests))) for t in tests]
+        results = [r.get() for r in results]
+        results = [r for r in results if r is not None]
 
     if self.failing_and_slow_first:
       previous_test_run_results = common.load_previous_test_run_results()
@@ -124,8 +130,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
         update_test_results_to(r.test_name.split(' ')[0])
 
       json.dump(previous_test_run_results, open(common.PREVIOUS_TEST_RUN_RESULTS_FILE, 'w'), indent=2)
-    pool.close()
-    pool.join()
+
     return self.combine_results(result, results)
 
   def reversed_tests(self):
@@ -149,15 +154,32 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     results = sorted(buffered_results, key=lambda res: str(res.test))
     result.core_time = 0
 
+    # shared data structures are hard in the python multi-processing world, so
+    # use a file to share the flaky test information across test processes.
+    flaky_tests = open(common.flaky_tests_log_filename).read().split() if os.path.isfile(common.flaky_tests_log_filename) else []
+
     # The next updateResult loop will print a *lot* of lines really fast. This
     # will cause a Python exception being thrown when attempting to print to
     # stderr, if stderr is in nonblocking mode, like it is on Buildbot CI:
     # See https://github.com/buildbot/buildbot/issues/8659
     # To work around that problem, set stderr to blocking mode before printing.
-    os.set_blocking(sys.stderr.fileno(), True)
+    if not WINDOWS:
+      os.set_blocking(sys.stderr.fileno(), True)
 
     for r in results:
+      # Merge information of flaky tests into the test result
+      if r.test_result == 'success' and r.test_short_name() in flaky_tests:
+        r.test_result = 'warnings'
+      # And integrate the test result to the global test object
       r.updateResult(result)
+
+    # Generate the parallel test run visualization
+    if os.getenv('EMTEST_VISUALIZE'):
+      emprofile.create_profiling_graph(utils.path_from_root('out/graph'))
+      # Cleanup temp files that were used for the visualization
+      emprofile.delete_profiler_logs()
+      utils.delete_file(common.flaky_tests_log_filename)
+
     return result
 
 
@@ -179,6 +201,11 @@ class BufferedParallelTestResult:
   def test(self):
     return self.buffered_result.test
 
+  def test_short_name(self):
+    # Given a test name e.g. "test_atomic_cxx (test_core.core0.test_atomic_cxx)"
+    # returns a short form "test_atomic_cxx" of the test.
+    return self.test_name.split(' ', 1)[0]
+
   def addDuration(self, test, elapsed):
     self.test_duration = elapsed
 
@@ -190,6 +217,30 @@ class BufferedParallelTestResult:
     self.buffered_result.updateResult(result)
     result.stopTest(self.test)
     result.core_time += self.test_duration
+    self.log_test_run_for_visualization()
+
+  def log_test_run_for_visualization(self):
+    if os.getenv('EMTEST_VISUALIZE') and (self.test_result != 'skipped' or self.test_duration > 0.2):
+      profiler_logs_path = os.path.join(tempfile.gettempdir(), 'emscripten_toolchain_profiler_logs')
+      os.makedirs(profiler_logs_path, exist_ok=True)
+      profiler_log_file = os.path.join(profiler_logs_path, 'toolchain_profiler.pid_0.json')
+      colors = {
+        'success': '#80ff80',
+        'warnings': '#ffb040',
+        'skipped': '#a0a0a0',
+        'expected failure': '#ff8080',
+        'unexpected success': '#ff8080',
+        'failed': '#ff8080',
+        'errored': '#ff8080',
+      }
+      # Write profiling entries for emprofile.py tool to visualize. This needs a unique identifier for each
+      # block, so generate one on the fly.
+      dummy_test_task_counter = os.path.getsize(profiler_log_file) if os.path.isfile(profiler_log_file) else 0
+      # Remove the redundant 'test_' prefix from each test, since character space is at a premium in the visualized graph.
+      test_name = self.test_short_name().removeprefix('test_')
+      with open(profiler_log_file, 'a') as prof:
+        prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"start","time":{self.start_time},"cmdLine":["{test_name}"],"color":"{colors[self.test_result]}"}}')
+        prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"exit","time":{self.start_time + self.test_duration},"returncode":0}}')
 
   def startTest(self, test):
     self.test_name = str(test)

@@ -7037,9 +7037,8 @@ This locale is not the C locale.
     'o1': (['-O1'], 91000),
     'o2': (['-O2'], 46000),
     'o3_closure': (['-O3', '--closure=1'], 17000),
-    # -Wno-closure is needed due to https://github.com/google/closure-compiler/issues/4108
-    'o3_closure_js': (['-O3', '--closure=1', '-Wno-closure', '-sWASM=0'], 36000),
-    'o3_closure2_js': (['-O3', '--closure=2', '-Wno-closure', '-sWASM=0'], 33000), # might change now and then
+    'o3_closure_js': (['-O3', '--closure=1', '-sWASM=0'], 36000),
+    'o3_closure2_js': (['-O3', '--closure=2', '-sWASM=0'], 33000), # might change now and then
   })
   def test_no_filesystem_code_size(self, opts, absolute):
     print('opts, absolute:', opts, absolute)
@@ -10151,7 +10150,7 @@ int main() {
     if debug_enabled:
       cmd += ['-g']
     if closure_enabled:
-      cmd += ['--closure=1', '-Wno-closure']
+      cmd += ['--closure=1']
 
     self.clear()
 
@@ -11810,6 +11809,8 @@ int main () {
 
   # This test verifies that function names embedded into the build with --js-library (JS functions exported to wasm)
   # are minified when -O3 is used
+  # Currently we rely on Closure for full minification of every appearance of JS function names.
+  # TODO: Add minification also for non-Closure users and add a non-closure config to this test.
   @is_slow_test
   @also_with_wasm2js
   def test_js_function_names_are_minified(self):
@@ -11822,17 +11823,11 @@ int main () {
       self.assertLess(obtained_size, expected_size)
 
     self.run_process([PYTHON, test_file('gen_many_js_functions.py'), 'library_long.js', 'main_long.c'])
-    # Currently we rely on Closure for full minification of every appearance of JS function names.
-    # TODO: Add minification also for non-Closure users and add [] to this list to test minification without Closure.
-    for closure in [['--closure=1', '-Wno-closure']]:
-      args = [EMCC, '-O3', '--js-library', 'library_long.js', 'main_long.c'] + self.get_cflags() + closure
-      self.run_process(args)
+    ret = self.do_runf('main_long.c', cflags=['-O3', '--js-library', 'library_long.js', '--closure=1'])
+    self.assertTextDataIdentical('Sum of numbers from 1 to 1000: 500500 (expected 500500)', ret.strip())
 
-      ret = self.run_js('a.out.js')
-      self.assertTextDataIdentical('Sum of numbers from 1 to 1000: 500500 (expected 500500)', ret.strip())
-
-      check_size('a.out.js', 150000)
-      check_size('a.out.wasm', 80000)
+    check_size('a.out.js', 150000)
+    check_size('a.out.wasm', 80000)
 
   # Checks that C++ exceptions managing invoke_*() wrappers will not be generated if exceptions are disabled
   def test_no_invoke_functions_are_generated_if_exception_catching_is_disabled(self):
@@ -11889,7 +11884,7 @@ int main () {
   })
   @parameterized({
     'sync': (['-sWASM_ASYNC_COMPILATION=0'],),
-    'wasm2js': (['-sWASM=0', '-Wno-closure'],),
+    'wasm2js': (['-sWASM=0'],),
   })
   def test_function_exports_are_small(self, args, opt, closure):
     extra_args = args + opt + closure

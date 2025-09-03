@@ -1615,7 +1615,11 @@ addToLibrary({
 #if !DECLARE_ASM_MODULE_EXPORTS
   // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
   // at runtime rather than statically in JS code.
-  $exportWasmSymbols__deps: ['$asmjsMangle'],
+  $exportWasmSymbols__deps: ['$asmjsMangle'
+#if DYNCALLS || !WASM_BIGINT
+    , '$dynCalls'
+#endif
+  ],
   $exportWasmSymbols: (wasmExports) => {
 #if ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_WEB
     var global_object = (typeof process != "undefined" ? global : this);
@@ -1625,13 +1629,23 @@ addToLibrary({
     var global_object = this;
 #endif
 
-    for (var __exportedFunc in wasmExports) {
-      var jsname = asmjsMangle(__exportedFunc);
-#if MINIMAL_RUNTIME
-      global_object[jsname] = wasmExports[__exportedFunc];
-#else
-      global_object[jsname] = Module[jsname] = wasmExports[__exportedFunc];
+    for (var [name, exportedSymbol] of Object.entries(wasmExports)) {
+      name = asmjsMangle(name);
+#if DYNCALLS || !WASM_BIGINT
+      if (name.startsWith('dynCall_')) {
+        dynCalls[name.substr(8)] = exportedSymbol;
+      }
 #endif
+      // Globals are currently statically enumerated into the output JS.
+      // TODO: If the number of Globals grows large, consider giving them a
+      // similar DECLARE_ASM_MODULE_EXPORTS = 0 treatment.
+      if (typeof exportedSymbol.value === 'undefined') {
+#if MINIMAL_RUNTIME
+        global_object[name] = exportedSymbol;
+#else
+        global_object[name] = Module[name] = exportedSymbol;
+#endif
+      }
     }
 
   },
