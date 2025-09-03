@@ -1108,12 +1108,10 @@ function ENVIRONMENT_IS_WORKER_THREAD() {
 }
 
 function nodeDetectionCode() {
-  if (ENVIRONMENT == 'node' && ASSERTIONS == 0) {
+  if (ENVIRONMENT == 'node') {
     // The only environment where this code is intended to run is Node.js.
     // Return unconditional true so that later Closure optimizer will be able to
     // optimize code size.
-    // Note that when ASSERTIONS are enabled we still want to runtime detect
-    // node so that errors can be reported when run elsewhere.
     return 'true';
   }
   return "typeof process == 'object' && process.versions?.node && process.type != 'renderer'";

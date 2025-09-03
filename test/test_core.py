@@ -8782,7 +8782,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_wrap_malloc(self, args):
     self.do_runf('core/test_wrap_malloc.c', 'OK.', cflags=args)
 
-  @all_engines
   def test_environment(self):
     self.set_setting('ASSERTIONS')
 
@@ -8794,31 +8793,33 @@ NODEFS is no longer included by default; build with -lnodefs.js
         js = read_file(self.output_name('test_hello_world'))
       assert ('require(' in js) == ('node' in self.get_setting('ENVIRONMENT')), 'we should have require() calls only if node js specified'
 
-    engine = self.get_current_js_engine()
-    print(f'engine: {engine}')
-    # tell the compiler to build with just that engine
-    if engine == config.NODE_JS_TEST:
-      right = 'node'
-      wrong = 'shell'
-    else:
-      right = 'shell'
-      wrong = 'node'
-    # test with the right env
-    self.set_setting('ENVIRONMENT', right)
-    print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
-    test()
-    # test with the wrong env
-    self.set_setting('ENVIRONMENT', wrong)
-    print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
-    try:
-      test(assert_returncode=NON_ZERO)
-      raise Exception('unexpected success')
-    except Exception as e:
-      self.assertContained('not compiled for this environment', str(e))
-    # test with a combined env
-    self.set_setting('ENVIRONMENT', right + ',' + wrong)
-    print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
-    test()
+    for engine in config.JS_ENGINES:
+      print(f'engine: {engine}')
+      # set us to test in just this engine
+      self.require_engine(engine)
+      # tell the compiler to build with just that engine
+      if engine == config.NODE_JS_TEST:
+        right = 'node'
+        wrong = 'shell'
+      else:
+        right = 'shell'
+        wrong = 'node'
+      # test with the right env
+      self.set_setting('ENVIRONMENT', right)
+      print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
+      test()
+      # test with the wrong env
+      self.set_setting('ENVIRONMENT', wrong)
+      print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
+      try:
+        test(assert_returncode=NON_ZERO)
+        raise Exception('unexpected success')
+      except Exception as e:
+        self.assertContained('not compiled for this environment', str(e))
+      # test with a combined env
+      self.set_setting('ENVIRONMENT', right + ',' + wrong)
+      print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
+      test()
 
   @requires_node
   def test_postrun_exception(self):
