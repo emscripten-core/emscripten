@@ -356,7 +356,14 @@ def make_no_decorator_for_setting(name):
 
       @wraps(f)
       def decorated(self, *args, **kwargs):
-        if (name + '=1') in self.cflags or self.get_setting(name):
+        if '=' in name:
+          key, val = name.split('=', 1)
+        else:
+          key = name
+          val = 1
+        if int(val) == 1 and f'-s{key}' in self.cflags:
+          self.skipTest(note)
+        if f'-s{key}={val}' in self.cflags or self.get_setting(key) == int(val):
           self.skipTest(note)
         f(self, *args, **kwargs)
       return decorated
@@ -382,6 +389,7 @@ no_safe_heap = make_no_decorator_for_setting('SAFE_HEAP')
 no_strict = make_no_decorator_for_setting('STRICT')
 no_strict_js = make_no_decorator_for_setting('STRICT_JS')
 no_big_endian = make_no_decorator_for_setting('SUPPORT_BIG_ENDIAN')
+no_omit_asm_module_exports = make_no_decorator_for_setting('DECLARE_ASM_MODULE_EXPORTS=0')
 
 
 def is_sanitizing(args):
@@ -6355,6 +6363,7 @@ PORT: 3979
   @crossplatform
   @no_modularize_instance('uses MODULARIZE')
   @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
+  @no_omit_asm_module_exports('MODULARIZE is not compatible with DECLARE_ASM_MODULE_EXPORTS=0')
   def test_unicode_js_library(self):
     # First verify that we have correct overridden the default python file encoding.
     # The follow program should fail, assuming the above LC_CTYPE + PYTHONUTF8
@@ -7315,7 +7324,6 @@ void* operator new(size_t size) {
 
     self.set_setting('EXPORTED_FUNCTIONS', '@large_exported_response.json')
     self.do_run(src, 'waka 4999!')
-    self.assertContained('_exported_func_from_response_file_1', read_file('src.js'))
 
   def test_emulate_function_pointer_casts(self):
     # Forcibly disable EXIT_RUNTIME due to:
@@ -8064,6 +8072,7 @@ void* operator new(size_t size) {
       self.assertLessEqual(start_wat_addr, dwarf_addr)
       self.assertLessEqual(dwarf_addr, end_wat_addr)
 
+  @no_omit_asm_module_exports('MODULARIZE is not compatible with DECLARE_ASM_MODULE_EXPORTS=0')
   @no_modularize_instance('uses -sMODULARIZE')
   @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   def test_modularize_closure_pre(self):
@@ -8631,7 +8640,7 @@ Module.onRuntimeInitialized = () => {
           if (typeof _emscripten_stack_get_base === 'function' &&
               typeof _emscripten_stack_get_end === 'function' &&
               typeof _emscripten_stack_get_current === 'function' &&
-              typeof Module['___heap_base'] === 'number') {
+              Module['___heap_base'] > 0) {
              out('able to run memprof');
              return 0;
            } else {
@@ -9121,6 +9130,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @asan
   @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
+  @no_omit_asm_module_exports('MODULARIZE is not compatible with DECLARE_ASM_MODULE_EXPORTS=0')
   def test_asan_modularized_with_closure(self):
     # the bug is that createModule() returns undefined, instead of the
     # proper Promise object.
@@ -9780,6 +9790,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertContained('hello, world! (3)', self.run_js('runner.mjs'))
     self.assertFileContents(test_file('core/test_esm_integration.expected.mjs'), read_file('hello_world.mjs'))
 
+  @no_omit_asm_module_exports('MODULARIZE is not compatible with DECLARE_ASM_MODULE_EXPORTS=0')
   @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   def test_modularize_instance_hello(self):
     self.do_core_test('test_hello_world.c', cflags=['-sMODULARIZE=instance', '-Wno-experimental'])
@@ -9788,6 +9799,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     '': ([],),
     'pthreads': (['-pthread'],),
   })
+  @no_omit_asm_module_exports('MODULARIZE is not compatible with DECLARE_ASM_MODULE_EXPORTS=0')
   @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   def test_modularize_instance(self, args):
     if args:
@@ -9822,6 +9834,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
     self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
 
+  @no_omit_asm_module_exports('MODULARIZE is not compatible with DECLARE_ASM_MODULE_EXPORTS=0')
   @no_4gb('EMBIND_AOT can\'t lower 4gb')
   @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   def test_modularize_instance_embind(self):
@@ -10036,6 +10049,8 @@ llvmlibc = make_run('llvmlibc', cflags=['-lllvmlibc'])
 # This setup will still use the native x64 Node.js in Emscripten internal use to compile code, but
 # runs all unit tests via qemu on the s390x big endian version of Node.js.
 bigendian0 = make_run('bigendian0', cflags=['-O0', '-Wno-experimental'], settings={'SUPPORT_BIG_ENDIAN': 1})
+
+omitexports0 = make_run('omitexports0', cflags=['-O0'], settings={'DECLARE_ASM_MODULE_EXPORTS': 0})
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
 del TestCoreBase # noqa

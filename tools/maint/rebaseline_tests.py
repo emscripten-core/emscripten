@@ -86,7 +86,7 @@ def main():
       print('tree is not clean')
       return 1
 
-    subprocess.check_call(['test/runner', '--rebaseline', '--browser=0'] + TESTS, cwd=root_dir)
+    subprocess.check_call([os.path.join('test', 'runner'), '--rebaseline', '--browser=0'] + TESTS, cwd=root_dir, shell=True)
 
   output = run(['git', 'status', '-uno', '--porcelain'])
   filenames = []

@@ -14,6 +14,7 @@ import unittest
 import common
 
 from tools.shared import cap_max_workers_in_pool
+from tools.utils import WINDOWS
 
 
 NUM_CORES = None
@@ -154,7 +155,8 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # stderr, if stderr is in nonblocking mode, like it is on Buildbot CI:
     # See https://github.com/buildbot/buildbot/issues/8659
     # To work around that problem, set stderr to blocking mode before printing.
-    os.set_blocking(sys.stderr.fileno(), True)
+    if not WINDOWS:
+      os.set_blocking(sys.stderr.fileno(), True)
 
     for r in results:
       r.updateResult(result)

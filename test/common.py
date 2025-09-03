@@ -629,7 +629,8 @@ def also_with_minimal_runtime(f):
   def metafunc(self, with_minimal_runtime, *args, **kwargs):
     if DEBUG:
       print('parameterize:minimal_runtime=%s' % with_minimal_runtime)
-    assert self.get_setting('MINIMAL_RUNTIME') is None
+    if self.get_setting('MINIMAL_RUNTIME'):
+      self.skipTest('MINIMAL_RUNTIME already enabled in test config')
     if with_minimal_runtime:
       if self.get_setting('MODULARIZE') == 'instance' or self.get_setting('WASM_ESM_INTEGRATION'):
         self.skipTest('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
@@ -765,6 +766,8 @@ def also_with_modularize(f):
   @wraps(f)
   def metafunc(self, modularize, *args, **kwargs):
     if modularize:
+      if self.get_setting('DECLARE_ASM_MODULE_EXPORTS') == 0:
+        self.skipTest('DECLARE_ASM_MODULE_EXPORTS=0 is not compatible with MODULARIZE')
       if self.get_setting('STRICT_JS'):
         self.skipTest('MODULARIZE is not compatible with STRICT_JS')
       if self.get_setting('WASM_ESM_INTEGRATION'):
