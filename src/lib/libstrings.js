@@ -34,7 +34,8 @@ addToLibrary({
     // null terminator by itself.
     // As a tiny code save trick, compare idx against maxIdx using a negation,
     // so that maxBytesToRead=undefined/NaN means Infinity.
-    heapOrArray.indexOf(0)
+    while (heapOrArray[idx] && !(idx >= maxIdx)) ++idx;
+    return idx;
   },
   $findStringEnd__internal: true,
 
@@ -179,11 +180,8 @@ addToLibrary({
     // Always use TextEncoder when TEXTENCODER == 2
     var encoded = UTF8Encoder.encode(str);
     var bytesToWrite = Math.min(encoded.length, maxBytesToWrite - 1); // -1 for null terminator
-    
-    for (var i = 0; i < bytesToWrite; ++i) {
-      heap[outIdx + i] = encoded[i];
-    }
-    // Null-terminate the string
+    encoded = encoded.subarray(0, bytesToWrite)
+    heap.set(encoded, outIdx)
     heap[outIdx + bytesToWrite] = 0;
     return bytesToWrite;
 #else
@@ -191,11 +189,8 @@ addToLibrary({
     if (str.length > 16 && UTF8Encoder) {
       var encoded = UTF8Encoder.encode(str);
       var bytesToWrite = Math.min(encoded.length, maxBytesToWrite - 1); // -1 for null terminator
-      
-      for (var i = 0; i < bytesToWrite; ++i) {
-        heap[outIdx + i] = encoded[i];
-      }
-      // Null-terminate the string
+      encoded = encoded.subarray(0, bytesToWrite)
+      heap.set(encoded, outIdx)
       heap[outIdx + bytesToWrite] = 0;
       return bytesToWrite;
     }
