@@ -24,17 +24,19 @@ namespace emscripten {
 class ProxyWorker {
   // The queue we use to proxy work and the dedicated worker.
   ProxyingQueue queue;
-  std::thread thread;
 
   // Used to notify the calling thread once the worker has been started.
   bool started = false;
   std::mutex mutex;
   std::condition_variable cond;
+  // Declare the thread last since it's dependent on the above member variables.
+  // Declaring it last isn't strictly needed since the thread is initialized in
+  // the body of the constructor, but is done out of caution.
+  std::thread thread;
 
 public:
   // Spawn the worker thread.
-  ProxyWorker()
-    : queue() {
+  ProxyWorker() : queue() {
     // Initialize the thread in the constructor to ensure the object has been
     // fully constructed before thread starts using the object to avoid a data
     // race. See #24370.
