@@ -674,6 +674,7 @@ def report_incompatible_settings():
     ('GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS', 'NO_GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS', None),
     ('MODULARIZE', 'NODEJS_CATCH_REJECTION', None),
     ('MODULARIZE', 'NODEJS_CATCH_EXIT', None),
+    ('LEGACY_VM_SUPPORT', 'MEMORY64', None),
   ]
 
   for a, b, reason in incompatible_settings:
