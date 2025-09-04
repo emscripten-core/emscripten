@@ -12,7 +12,7 @@
 import os
 import sys
 
-__scriptdir__ = os.path.dirname(os.path.abspath(__file__))
+__scriptdir__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
@@ -43,7 +43,7 @@ def newest_mtime(paths):
 
 
 def heuristic_clear_cache():
-  mtime_file = os.path.join(cache.cachedir, 'system_libs_mtime.txt')
+  mtime_file = cache.get_path('system_libs_mtime.txt')
   try:
     system_libs_mtime = open(mtime_file).read()
   except Exception:
