@@ -155,9 +155,7 @@ var LibraryEmVal = {
     if (typeof globalThis == 'object') {
       return globalThis;
     }
-    return (function(){
-      return Function;
-    })()('return this')();
+    return new Function('return this')();
   },
 #endif
   _emval_get_global__deps: ['$Emval', '$getStringOrSymbol', '$emval_get_global'],
