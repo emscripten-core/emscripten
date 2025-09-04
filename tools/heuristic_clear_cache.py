@@ -43,10 +43,6 @@ def newest_mtime(paths):
   return max((recursive_mtime(path) for path in paths), default=0)
 
 
-def generate_sanity():
-  sanity = f'{utils.EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}'
-
-
 def heuristic_clear_cache():
   try:
     system_libs_mtime = open(utils.path_from_root('cache', 'system_libs_mtime.txt')).read()
@@ -60,7 +56,7 @@ def heuristic_clear_cache():
     cache.erase()
     open(utils.path_from_root('cache', 'system_libs_mtime.txt'), 'w').write(str(newest_system_libs_mtime))
   else:
-    print(f'Cache timestamp is up to date, no clear needed.')
+    print('Cache timestamp is up to date, no clear needed.')
 
 if __name__ == '__main__':
     sys.exit(heuristic_clear_cache())
