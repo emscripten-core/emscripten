@@ -881,7 +881,7 @@ base align: 0, 0, 0, 0'''])
   @no_sanitize('sanitizers do not yet support dynamic linking')
   @no_wasm2js('MAIN_MODULE support')
   @needs_dylink
-  @no_js_math('TODO: https://github.com/emscripten-core/emscripten/issues/25162')
+  @no_js_math('JS_MATH is not compatible with MAIN_MODULE')
   def test_stack_placement_pic(self):
     self.set_setting('STACK_SIZE', 1024)
     self.set_setting('MAIN_MODULE')
@@ -1004,7 +1004,7 @@ base align: 0, 0, 0, 0'''])
 
   @needs_dylink
   @with_all_sjlj
-  @no_js_math('TODO: https://github.com/emscripten-core/emscripten/issues/25162')
+  @no_js_math('JS_MATH is not compatible with MAIN_MODULE')
   def test_longjmp2_main_module(self):
     # Test for binaryen regression:
     # https://github.com/WebAssembly/binaryen/issues/2180
@@ -1833,7 +1833,7 @@ int main() {
     self.do_core_test('test_set_align.c')
 
   @no_modularize_instance('uses Module object directly')
-  @no_js_math('TODO: https://github.com/emscripten-core/emscripten/issues/25162')
+  @no_js_math('JS_MATH is not compatible with LINKABLE')
   def test_emscripten_api(self):
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_save_me_aimee'])
     self.do_core_test('test_emscripten_api.c')
@@ -3002,7 +3002,7 @@ The current type of b is: 9
     self.run_process(cmd)
 
   @needs_dylink
-  @no_js_math('TODO: https://github.com/emscripten-core/emscripten/issues/25162')
+  @no_js_math('JS_MATH is not compatible with MAIN_MODULE')
   def test_dlfcn_missing(self):
     self.set_setting('MAIN_MODULE')
     self.set_setting('ASSERTIONS')
@@ -3427,7 +3427,7 @@ Var: 42
     self.do_runf('src.c', 'success.\n')
 
   @needs_dylink
-  @no_js_math('TODO: https://github.com/emscripten-core/emscripten/issues/25162')
+  @no_js_math('JS_MATH is not compatible with MAIN_MODULE')
   def test_dlfcn_self(self):
     self.set_setting('MAIN_MODULE')
     self.set_setting('EXPORT_ALL')
@@ -3813,7 +3813,7 @@ ok
 ''')
 
   @needs_dylink
-  @no_js_math('TODO: https://github.com/emscripten-core/emscripten/issues/25162')
+  @no_js_math('JS_MATH is not compatible with MAIN_MODULE')
   def test_dlfcn_handle_alloc(self):
     # verify that dlopen does not allocate already used handles
     dirname = self.get_dir()
@@ -4621,7 +4621,7 @@ res64 - external 64\n''', header='''\
     ''', expected=['extern is 123.\n'], force_c=True)
 
   @needs_dylink
-  @no_js_math('TODO: https://github.com/emscripten-core/emscripten/issues/25162')
+  @no_js_math('JS_MATH is not compatible with MAIN_MODULE')
   def test_dylink_global_var_export(self):
     self.do_run(r'''
       #include <assert.h>
@@ -4798,7 +4798,7 @@ res64 - external 64\n''', header='''\
     'missing': ('libc,libmalloc,libc++abi', False, False, False),
     'missing_assertions': ('libc,libmalloc,libc++abi', False, False, True),
   })
-  @no_js_math('TODO: https://github.com/emscripten-core/emscripten/issues/25162')
+  @no_js_math('JS_MATH is not compatible with SIDE_MODULE')
   def test_dylink_syslibs(self, syslibs, expect_pass=True, with_reversed=True, assertions=True):
     # When testing in WASMFS mode, we also need to force the WASMFS syslib into the test.
     if self.get_setting('WASMFS') and syslibs != '1':
@@ -4989,7 +4989,7 @@ res64 - external 64\n''', header='''\
 
   @with_all_eh_sjlj
   @needs_dylink
-  @no_js_math('TODO: https://github.com/emscripten-core/emscripten/issues/25162')
+  @no_js_math('JS_MATH is not compatible with MAIN_MODULE')
   def test_dylink_exceptions_try_catch_6(self):
     create_file('main.cpp', r'''
       #include <dlfcn.h>
@@ -5141,7 +5141,7 @@ res64 - external 64\n''', header='''\
     ''', expected=['sidef: 10'])
 
   @needs_dylink
-  @no_js_math('TODO: https://github.com/emscripten-core/emscripten/issues/25162')
+  @no_js_math('JS_MATH is not compatible with SIDE_MODULE')
   def test_dylink_dso_needed(self):
     def do_run(src, expected_output, cflags=None):
       create_file('main.c', src + 'int main() { return test_main(); }')
@@ -6325,7 +6325,7 @@ PORT: 3979
     self.do_run_in_out_file_test('netinet/in.cpp')
 
   @needs_dylink
-  @no_js_math('TODO: https://github.com/emscripten-core/emscripten/issues/25162')
+  @no_js_math('JS_MATH is not compatible with MAIN_MODULE')
   def test_main_module_static_align(self):
     if self.get_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('no shared modules with memory growth')
@@ -9511,7 +9511,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @needs_dylink
   @node_pthreads
-  @no_js_math('TODO: https://github.com/emscripten-core/emscripten/issues/25162')
+  @no_js_math('JS_MATH is not compatible with MAIN_MODULE')
   def test_pthread_dylink_main_module_1(self):
     # TODO: For some reason, -lhtml5 must be passed in -sSTRICT mode, but can NOT
     # be passed when not compiling in -sSTRICT mode. That does not seem intentional?
@@ -9688,7 +9688,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.parallel_stress_test_js_file(js_file, assert_returncode=0, expected='hello, world!', not_expected='error')
 
   @needs_dylink
-  @no_js_math('TODO: https://github.com/emscripten-core/emscripten/issues/25162')
+  @no_js_math('JS_MATH is not compatible with MAIN_MODULE')
   def test_gl_main_module(self):
     # TODO: For some reason, -lGL must be passed in -sSTRICT mode, but can NOT
     # be passed when not compiling in -sSTRICT mode. That does not seem intentional?
