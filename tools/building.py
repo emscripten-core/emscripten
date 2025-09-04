@@ -672,7 +672,7 @@ def run_closure_cmd(cmd, filename, env):
     # externs.zip//webassembly.js:29:18: WARNING - [JSC_TYPE_MISMATCH] initializing variable
     # We cannot fix this warning externally, since adding /** @suppress{checkTypes} */
     # to the polyfill is "in the wrong end". So mute this warning globally to
-    # allow clean Closure output.
+    # allow clean Closure output. https://github.com/google/closure-compiler/issues/4108
     cmd += ['--jscomp_off=checkTypes']
 
     # WASM2JS codegen routinely generates expressions that are unused, e.g.

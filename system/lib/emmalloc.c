@@ -61,6 +61,8 @@
 #include <emscripten/heap.h>
 #include <emscripten/threading.h>
 
+void *_sbrk64(int64_t numBytes);
+
 #ifdef __EMSCRIPTEN_TRACING__
 #include <emscripten/trace.h>
 #endif
@@ -137,6 +139,7 @@ static volatile uint8_t multithreadingLock = 0;
 
 #define IS_POWER_OF_2(val) (((val) & ((val)-1)) == 0)
 #define ALIGN_UP(ptr, alignment) ((uint8_t*)((((uintptr_t)(ptr)) + ((alignment)-1)) & ~((alignment)-1)))
+#define ALIGN_DOWN(ptr, alignment) ((uint8_t*)(((uintptr_t)(ptr)) & ~((alignment)-1)))
 #define HAS_ALIGNMENT(ptr, alignment) ((((uintptr_t)(ptr)) & ((alignment)-1)) == 0)
 
 static_assert(IS_POWER_OF_2(MALLOC_ALIGNMENT), "MALLOC_ALIGNMENT must be a power of two value!");
@@ -467,7 +470,8 @@ static bool claim_more_memory(size_t numBytes) {
   numBytes = (size_t)ALIGN_UP(numBytes, MALLOC_ALIGNMENT);
 
   // Claim memory via sbrk
-  uint8_t *startPtr = (uint8_t*)sbrk(numBytes);
+  assert((int64_t)numBytes >= 0);
+  uint8_t *startPtr = (uint8_t*)_sbrk64((int64_t)numBytes);
   if ((intptr_t)startPtr == -1) {
 #ifdef EMMALLOC_VERBOSE
     MAIN_THREAD_ASYNC_EM_ASM(err('claim_more_memory: sbrk failed!'));
@@ -483,6 +487,9 @@ static bool claim_more_memory(size_t numBytes) {
   // Create a sentinel region at the end of the new heap block
   Region *endSentinelRegion = (Region*)(endPtr - sizeof(Region));
   create_used_region(endSentinelRegion, sizeof(Region));
+#ifdef EMMALLOC_VERBOSE
+  MAIN_THREAD_ASYNC_EM_ASM(out('claim_more_memory: created a sentinel memory region at address ' + ptrToString($0)), endSentinelRegion);
+#endif
 
   // If we are the sole user of sbrk(), it will feed us continuous/consecutive memory addresses - take advantage
   // of that if so: instead of creating two disjoint memory regions blocks, expand the previous one to a larger size.
@@ -1165,7 +1172,7 @@ struct mallinfo emmalloc_mallinfo() {
   struct mallinfo info;
   // Non-mmapped space allocated (bytes): For emmalloc,
   // let's define this as the difference between heap size and dynamic top end.
-  info.arena = emscripten_get_heap_size() - (size_t)sbrk(0);
+  info.arena = emscripten_get_heap_size() - (size_t)_sbrk64(0);
   // Number of "ordinary" blocks. Let's define this as the number of highest
   // size blocks. (subtract one from each, since there is a sentinel node in each list)
   info.ordblks = count_linked_list_size(&freeRegionBuckets[NUM_FREE_BUCKETS-1])-1;
@@ -1227,73 +1234,118 @@ struct mallinfo emmalloc_mallinfo() {
 }
 EMMALLOC_ALIAS(mallinfo, emmalloc_mallinfo);
 
-#if 0
 // Note! This function is not fully multithreading safe: while this function is running, other threads should not be
 // allowed to call sbrk()!
 static int trim_dynamic_heap_reservation(size_t pad) {
   ASSERT_MALLOC_IS_ACQUIRED();
 
   if (!listOfAllRegions) {
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): cannot trim memory, emmalloc is currently not initialized to manage any dynamic memory at all.'));
+#endif
     return 0; // emmalloc is not controlling any dynamic memory at all - cannot release memory.
   }
   uint8_t *previousSbrkEndAddress = listOfAllRegions->endPtr;
-  assert(sbrk(0) == previousSbrkEndAddress);
+  void *sbrkAddr = _sbrk64(0);
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): _sbrk64(0) = ' + ptrToString($0) + ', previousSbrkEndAddress = ' + ptrToString($1)), sbrkAddr, previousSbrkEndAddress);
+#endif
+  assert(sbrkAddr == previousSbrkEndAddress);
   size_t lastMemoryRegionSize = ((size_t*)previousSbrkEndAddress)[-1];
-  assert(lastMemoryRegionSize == 16); // // The last memory region should be a sentinel node of exactly 16 bytes in size.
-  Region *endSentinelRegion = (Region*)(previousSbrkEndAddress - sizeof(Region));
+  Region *endSentinelRegion = (Region*)(previousSbrkEndAddress - lastMemoryRegionSize);
   Region *lastActualRegion = prev_region(endSentinelRegion);
 
-  // Round padding up to multiple of 4 bytes to keep sbrk() and memory region alignment intact.
-  // Also have at least 8 bytes of payload so that we can form a full free region.
-  size_t newRegionSize = (size_t)ALIGN_UP(pad, 4);
-  if (pad > 0) {
-    newRegionSize += sizeof(Region) - (newRegionSize - pad);
+  if (!region_is_free(lastActualRegion)) {
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): Last actual region ' + ptrToString($0) + ' is in use, there is nothing to trim from.'), lastActualRegion);
+#endif
+    return 0;
   }
 
-  if (!region_is_free(lastActualRegion) || lastActualRegion->size <= newRegionSize) {
-    return 0; // Last actual region is in use, or caller desired to leave more free memory intact than there is.
+  // Sanitize odd alignments for padding values - this is the minimum alignment
+  // that emmalloc could handle. Align up to be conservative towards caller.
+  pad = (size_t)ALIGN_UP(pad, 4);
+
+  // Calculate how many bytes we can shrink the sbrk() reservation by.
+  // Is the last free region smaller than what was requested to be left behind?
+  // If so, then there is nothing we can trim.
+  if (pad >= lastActualRegion->size) {
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): Last actual region does not have enough space to leave ' + Number($0) + ' bytes of free memory in it.'), pad);
+#endif
+    return 0;
   }
 
-  // This many bytes will be shrunk away.
-  size_t shrinkAmount = lastActualRegion->size - newRegionSize;
-  assert(HAS_ALIGNMENT(shrinkAmount, 4));
+  // Subtract region size members off to calculate the excess bytes in payload.
+  size_t shrinkAmount = lastActualRegion->size - pad - 2*sizeof(size_t);
+  // sbrk() alignment is multiple of __alignof__(max_align_t), so round the
+  // trimming down to ensure that alignment is preserved.
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): shrinkAmount ' + Number($0) + '.'), shrinkAmount);
+#endif
+  shrinkAmount = (size_t)ALIGN_DOWN(shrinkAmount, __alignof__(max_align_t));
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): shrinkAmount2 ' + Number($0) + '.'), shrinkAmount);
+#endif
+  // Nothing left to trim?
+  if (!shrinkAmount) {
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): Aligning for sbrk() requirements removed opportunity to trim.'));
+#endif
+    return 0;
+  }
 
   unlink_from_free_list(lastActualRegion);
-  // If pad == 0, we should delete the last free region altogether. If pad > 0,
-  // shrink the last free region to the desired size.
-  if (newRegionSize > 0) {
+
+  size_t newRegionSize = lastActualRegion->size - shrinkAmount;
+
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): Shrinking ' + Number($0) + ' bytes off the free heap end region. New free heap end region size: ' + Number($1) + ' bytes.'), shrinkAmount, newRegionSize);
+#endif
+  // If we can't fit a free Region in the shrunk space, we should delete the 
+  // the last free region altogether.
+  if (newRegionSize >= sizeof(Region)) {
     create_free_region(lastActualRegion, newRegionSize);
     link_to_free_list(lastActualRegion);
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): Created new free heap end region at ' + ptrToString($0) + '. Size: ' + Number($1) + ' bytes.'), lastActualRegion, newRegionSize);
+#endif
+  } else {
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): Not enough room to fit a free heap end region. Discarding it altogether.'));
+#endif
+    newRegionSize = 0;
   }
 
-  // Recreate the sentinel region at the end of the last free region
-  endSentinelRegion = (Region*)((uint8_t*)lastActualRegion + newRegionSize);
-  create_used_region(endSentinelRegion, sizeof(Region));
+  // Call sbrk() to shrink the memory area.
+  void *oldSbrk = _sbrk64(-(int64_t)shrinkAmount);
+  assert((intptr_t)oldSbrk != -1); // Shrinking with sbrk() should never fail.
+
+  // Ask where sbrk got us at.
+  void *sbrkNow = _sbrk64(0);
+
+  // Recreate the sentinel region at the end of the last free region.
+  Region *newEndSentinelRegion = (Region*)((uint8_t*)lastActualRegion + newRegionSize);
+  size_t newEndSentinelRegionSize = (uintptr_t)sbrkNow - (uintptr_t)newEndSentinelRegion;
+
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): Created new sentinel end region at ' + ptrToString($0) + '. Size: ' + Number($1) + ' bytes.'), newEndSentinelRegion, newEndSentinelRegionSize);
+#endif
+
+  create_used_region(newEndSentinelRegion, newEndSentinelRegionSize);
 
   // And update the size field of the whole region block.
-  listOfAllRegions->endPtr = (uint8_t*)endSentinelRegion + sizeof(Region);
-
-  // Finally call sbrk() to shrink the memory area.
-  void *oldSbrk = sbrk(-(intptr_t)shrinkAmount);
-  assert((intptr_t)oldSbrk != -1); // Shrinking with sbrk() should never fail.
-  assert(oldSbrk == previousSbrkEndAddress); // Another thread should not have raced to increase sbrk() on us!
+  listOfAllRegions->endPtr = (uint8_t*)newEndSentinelRegion + newEndSentinelRegionSize;
 
   // All successful, and we actually trimmed memory!
   return 1;
 }
-#endif
 
 int emmalloc_trim(size_t pad) {
-  // Reducing the size of the sbrk region is currently broken.
-  // See https://github.com/emscripten-core/emscripten/issues/23343
-  // And https://github.com/emscripten-core/emscripten/pull/13442
-  return 0;
-  /*
   MALLOC_ACQUIRE();
   int success = trim_dynamic_heap_reservation(pad);
   MALLOC_RELEASE();
   return success;
-  */
 }
 EMMALLOC_ALIAS(malloc_trim, emmalloc_trim)
 
@@ -1376,5 +1428,5 @@ void emmalloc_dump_free_dynamic_memory_fragmentation_map() {
 }
 
 size_t emmalloc_unclaimed_heap_memory(void) {
-  return emscripten_get_heap_max() - (size_t)sbrk(0);
+  return emscripten_get_heap_max() - (size_t)_sbrk64(0);
 }

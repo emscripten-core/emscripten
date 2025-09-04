@@ -103,6 +103,15 @@ min_browser_versions = {
   },
 }
 
+# Static assertion to check that we actually need each of the above feature flags
+# Once the OLDEST_SUPPORTED_XX versions are high enough they can/should be removed.
+for feature, reqs in min_browser_versions.items():
+  always_present = (reqs['chrome'] <= OLDEST_SUPPORTED_CHROME and
+                    reqs['firefox'] <= OLDEST_SUPPORTED_FIREFOX and
+                    reqs['safari'] <= OLDEST_SUPPORTED_SAFARI and
+                    reqs['node'] <= OLDEST_SUPPORTED_NODE)
+  assert not always_present, f'{feature.name} is no longer needed'
+
 
 def caniuse(feature):
   if feature in disable_override_features:

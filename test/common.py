@@ -84,6 +84,11 @@ EMTEST_CAPTURE_STDIO = int(os.getenv('EMTEST_CAPTURE_STDIO', '0'))
 if 'EM_BUILD_VERBOSE' in os.environ:
   exit_with_error('EM_BUILD_VERBOSE has been renamed to EMTEST_BUILD_VERBOSE')
 
+# If we are drawing a parallel swimlane graph of test output, we need to use a temp
+# file to track which tests were flaky so they can be graphed in orange color to
+# visually stand out.
+flaky_tests_log_filename = os.path.join(path_from_root('out/flaky_tests.txt'))
+
 
 # Default flags used to run browsers in CI testing:
 class ChromeConfig:
@@ -237,6 +242,9 @@ def flaky(note=''):
         except AssertionError as exc:
           preserved_exc = exc
           logging.info(f'Retrying flaky test "{f.__name__}" (attempt {i}/{EMTEST_RETRY_FLAKY} failed): {exc}')
+          # Mark down that this was a flaky test.
+          open(flaky_tests_log_filename, 'a').write(f'{f.__name__}\n')
+
       raise AssertionError('Flaky test has failed too many times') from preserved_exc
 
     return modified
