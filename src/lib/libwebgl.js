@@ -723,20 +723,6 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       webGLContextAttributes['preserveDrawingBuffer'] = true;
 #endif
 
-#if MAX_WEBGL_VERSION >= 2 && MIN_CHROME_VERSION <= 57
-      // BUG: Workaround Chrome WebGL 2 issue: the first shipped versions of
-      // WebGL 2 in Chrome 57 did not actually implement the new garbage free
-      // WebGL 2 entry points that take an offset and a length to an existing
-      // heap (instead of having to create a completely new heap view). In
-      // Chrome the entry points only were added in to Chrome 58 and newer. For
-      // Chrome 57 (and older), disable WebGL 2 support altogether.
-      function getChromeVersion() {
-        var chromeVersion = navigator.userAgent.match(/Chrom(e|ium)\/([0-9]+)\./);
-        if (chromeVersion) return chromeVersion[2]|0;
-        // If not chrome, fall through to return undefined. (undefined <= integer will yield false)
-      }
-#endif
-
 #if GL_DEBUG
       var errorInfo = '?';
       function onContextCreationError(event) {
@@ -790,13 +776,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       var ctx =
 #if MAX_WEBGL_VERSION >= 2
         (webGLContextAttributes.majorVersion > 1)
-        ?
-#if MIN_CHROME_VERSION <= 57
-          !(getChromeVersion() <= 57) && canvas.getContext("webgl2", webGLContextAttributes)
-#else
-          canvas.getContext("webgl2", webGLContextAttributes)
-#endif
-        :
+        ? canvas.getContext("webgl2", webGLContextAttributes) :
 #endif
         canvas.getContext("webgl", webGLContextAttributes);
 #endif // MAX_WEBGL_VERSION >= 2
