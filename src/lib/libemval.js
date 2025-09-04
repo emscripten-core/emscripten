@@ -122,50 +122,48 @@ var LibraryEmVal = {
   _emval_new_u16string__deps: ['$Emval'],
   _emval_new_u16string: (v) => Emval.toHandle(UTF16ToString(v)),
 
+  $emGlobalThis__internal: true,
 #if SUPPORTS_GLOBALTHIS
-  $emval_get_global: () => globalThis,
-#elif !DYNAMIC_EXECUTION
-  $emval_get_global: () => {
-    if (typeof globalThis == 'object') {
+  $emGlobalThis: 'globalThis',
+#else
+  $getGlobalThis__internal: true,
+  $getGlobalThis: () => {
+    if (typeof globalThis != 'undefined') {
       return globalThis;
     }
+#if DYNAMIC_EXECUTION
+    return new Function('return this')();
+#else
     function testGlobal(obj) {
-      obj['$$$embind_global$$$'] = obj;
-      var success = typeof $$$embind_global$$$ == 'object' && obj['$$$embind_global$$$'] == obj;
-      if (!success) {
-        delete obj['$$$embind_global$$$'];
-      }
+      // Use __emGlobalThis as a test symbol to see if `obj` is indeed the
+      // global object.
+      obj['__emGlobalThis'] = obj;
+      var success = typeof __emGlobalThis == 'object' && obj['__emGlobalThis'] === obj;
+      delete obj['__emGlobalThis'];
       return success;
     }
-    if (typeof $$$embind_global$$$ == 'object') {
-      return $$$embind_global$$$;
+    if (typeof self != 'undefined' && testGlobal(self)) {
+      return self; // This works for both "window" and "self" (Web Workers) global objects
     }
-    if (typeof global == 'object' && testGlobal(global)) {
-      $$$embind_global$$$ = global;
-    } else if (typeof self == 'object' && testGlobal(self)) {
-      $$$embind_global$$$ = self; // This works for both "window" and "self" (Web Workers) global objects
+#if ENVIRONMENT_MAY_BE_NODE
+    if (typeof global != 'undefined' && testGlobal(global)) {
+      return global;
     }
-    if (typeof $$$embind_global$$$ == 'object') {
-      return $$$embind_global$$$;
-    }
-    throw Error('unable to get global object.');
-  },
-#else
-  $emval_get_global: () => {
-    if (typeof globalThis == 'object') {
-      return globalThis;
-    }
-    return new Function('return this')();
-  },
 #endif
-  _emval_get_global__deps: ['$Emval', '$getStringOrSymbol', '$emval_get_global'],
+    abort('unable to get global object.');
+#endif // DYNAMIC_EXECUTION
+  },
+  $emGlobalThis__deps: ['$getGlobalThis'],
+  $emGlobalThis: 'getGlobalThis()',
+#endif // SUPPORTS_GLOBALTHIS
+
+  _emval_get_global__deps: ['$Emval', '$getStringOrSymbol', '$emGlobalThis'],
   _emval_get_global: (name) => {
-    if (name===0) {
-      return Emval.toHandle(emval_get_global());
-    } else {
-      name = getStringOrSymbol(name);
-      return Emval.toHandle(emval_get_global()[name]);
+    if (!name) {
+      return Emval.toHandle(emGlobalThis);
     }
+    name = getStringOrSymbol(name);
+    return Emval.toHandle(emGlobalThis[name]);
   },
 
   _emval_get_module_property__deps: ['$getStringOrSymbol', '$Emval'],
