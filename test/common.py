@@ -2481,7 +2481,7 @@ class Reporting(Enum):
 
 def get_worker_id():
   current = multiprocessing.current_process()
-  if current.name != "MainProcess":
+  if current.name != 'MainProcess':
     # This relies on the fact that workers in the pool haven incremental names
     # in the format of Thread-X.
     worker_id_str = current.name.split('-')[-1]

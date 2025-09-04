@@ -19,6 +19,7 @@ from tools.utils import WINDOWS
 
 NUM_CORES = None
 seen_class = set()
+torn_down = False
 
 
 # Older Python versions have a bug with multiprocessing shared data
@@ -61,9 +62,16 @@ def run_test(test, failfast_event, lock, progress_counter, num_tests):
   return result
 
 
+# Executes the teardown process once. Returns True if the teardown was
+# performed, False if it was already torn down.
 def tear_down():
+  global torn_down
+  if torn_down:
+    return False
+  torn_down = True
   for cls in seen_class:
     cls.tearDownClass()
+  return True
 
 
 class ParallelTestSuite(unittest.BaseTestSuite):
@@ -94,7 +102,8 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # pre-sorted based on previous test run results. Otherwise run the tests in
     # reverse alphabetical order.
     tests = list(self if self.failing_and_slow_first else self.reversed_tests())
-    use_cores = cap_max_workers_in_pool(min(self.max_cores, len(tests), num_cores()))
+    contains_browser_test = any(test.is_browser_test() for test in tests)
+    use_cores = cap_max_workers_in_pool(min(self.max_cores, len(tests), num_cores()), contains_browser_test)
     print('Using %s parallel test processes' % use_cores, file=sys.stderr)
     with multiprocessing.Manager() as manager:
       pool = multiprocessing.Pool(use_cores)
@@ -107,7 +116,12 @@ class ParallelTestSuite(unittest.BaseTestSuite):
       results = [pool.apply_async(run_test, (t, failfast_event, lock, progress_counter, len(tests))) for t in tests]
       results = [r.get() for r in results]
       results = [r for r in results if r is not None]
-      [pool.apply(tear_down, ()) for i in range(use_cores)]
+      # Send a task to each worker to tear down the browser and server. This
+      # relies on the implementation detail in the worker pool that all workers
+      # are cycled through once.
+      num_tear_downs = sum([pool.apply(tear_down, ()) for i in range(use_cores)])
+      # Assert the assumed behavior above hasn't changed.
+      assert(num_tear_downs == use_cores)
 
     if self.failing_and_slow_first:
       previous_test_run_results = common.load_previous_test_run_results()
