@@ -28,7 +28,7 @@ def generate_minimal_runtime_load_statement(target_basename):
   # Expand {{{ DOWNLOAD_WASM }}} block from here (if we added #define support, this could be done in
   # the template directly)
   if settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION:
-    if settings.MIN_SAFARI_VERSION < 150000 or settings.MIN_NODE_VERSION < 180100 or settings.MIN_FIREFOX_VERSION < 58 or settings.MIN_CHROME_VERSION < 61:
+    if settings.MIN_SAFARI_VERSION < 150000 or settings.MIN_NODE_VERSION < 180100 or settings.MIN_FIREFOX_VERSION < 58:
       # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/compileStreaming
       download_wasm = f"WebAssembly.compileStreaming ? WebAssembly.compileStreaming(fetch('{target_basename}.wasm')) : binary('{target_basename}.wasm')"
     else:
@@ -37,7 +37,7 @@ def generate_minimal_runtime_load_statement(target_basename):
   elif settings.MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION:
     # Same compatibility story as above for
     # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
-    if settings.MIN_SAFARI_VERSION < 150000 or settings.MIN_NODE_VERSION < 180100 or settings.MIN_FIREFOX_VERSION < 58 or settings.MIN_CHROME_VERSION < 61:
+    if settings.MIN_SAFARI_VERSION < 150000 or settings.MIN_NODE_VERSION < 180100 or settings.MIN_FIREFOX_VERSION < 58:
       download_wasm = f"!WebAssembly.instantiateStreaming && binary('{target_basename}.wasm')"
     else:
       # WebAssembly.instantiateStreaming() is unconditionally supported, so we do not download wasm
