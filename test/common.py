@@ -2541,7 +2541,7 @@ class BrowserCore(RunnerCore):
 
   @classmethod
   def browser_open(cls, url):
-    global EMTEST_BROWSER
+    global EMTEST_BROWSER, worker_id
     if not EMTEST_BROWSER:
       logger.info('No EMTEST_BROWSER set. Defaulting to `google-chrome`')
       EMTEST_BROWSER = 'google-chrome'
@@ -2549,9 +2549,9 @@ class BrowserCore(RunnerCore):
     if EMTEST_BROWSER_AUTO_CONFIG:
       logger.info('Using default CI configuration.')
       cls.browser_data_dir = DEFAULT_BROWSER_DATA_DIR
-      if cls.WORKER_ID:
+      if worker_id is not None:
         # Running in parallel mode, give each browser its own profile dir.
-        cls.browser_data_dir += '-' + str(cls.WORKER_ID)
+        cls.browser_data_dir += '-' + str(worker_id)
       if os.path.exists(cls.browser_data_dir):
         utils.delete_dir(cls.browser_data_dir)
       os.mkdir(cls.browser_data_dir)
@@ -2581,11 +2581,9 @@ class BrowserCore(RunnerCore):
   def setUpClass(cls):
     super().setUpClass()
     global worker_id
-    # In parallel mode this ID contains which pool worker this process is.
-    cls.WORKER_ID = worker_id
-    cls.PORT = 8888 + (0 if worker_id is None else BrowserCore.WORKER_ID)
-    cls.SERVER_URL = f'http://localhost:{BrowserCore.PORT}'
-    cls.HARNESS_URL = f'{BrowserCore.SERVER_URL}/run_harness'
+    cls.PORT = 8888 + (0 if worker_id is None else worker_id)
+    cls.SERVER_URL = f'http://localhost:{cls.PORT}'
+    cls.HARNESS_URL = f'{cls.SERVER_URL}/run_harness'
 
     if not has_browser() or EMTEST_BROWSER == 'node':
       return
