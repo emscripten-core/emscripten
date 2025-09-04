@@ -7505,10 +7505,14 @@ void* operator new(size_t size) {
     do_test(test2, level=2, prefix='hello_libcxx')
 
   @parameterized({
-    '': (['-lembind', '-sDYNAMIC_EXECUTION=0'],),
+    '': (['-lembind'],),
     'flag': (['--bind'],),
+    'legacy': (['--bind', '-sLEGACY_VM_SUPPORT'],),
+    'no_dynamic': (['--bind', '-sDYNAMIC_EXECUTION=0', '-sLEGACY_VM_SUPPORT'],),
   })
   def test_embind_val_basics(self, args):
+    if '-sLEGACY_VM_SUPPORT' in args and (self.get_setting('MODULARIZE') == 'instance' or self.get_setting('WASM_ESM_INTEGRATION')):
+      self.skipTest('LEGACY_VM_SUPPORT is not compatible with EXPORT_ES6')
     self.maybe_closure()
     self.do_run_in_out_file_test('embind/test_embind_val_basics.cpp', cflags=args)
 
