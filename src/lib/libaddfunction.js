@@ -95,6 +95,30 @@ addToLibrary({
 #if ASSERTIONS && !WASM_BIGINT
     assert(!sig.includes('j'), 'i64 not permitted in function signatures when WASM_BIGINT is disabled');
 #endif
+
+#if MEMORY64
+    // Find all 'p' in the signature, which indicates a pointer we need to convert to/from bigint.
+    var pReturn = sig[0] == 'p';
+    var pArgs = [];
+    for (var i = 1; i < sig.length; ++i) {
+      if (sig[i] == 'p') {
+        pArgs.push(i - 1);
+      }
+    }
+    if (pReturn || pArgs.length) {
+      var origFunc = func;
+      func = (...args) => {
+        for (var i of pArgs) {
+          // Convert the pointer arguments from bigint to number.
+          args[i] = Number(args[i]);
+        }
+        var ret = origFunc(...args);
+        // Convert the return value from number to bigint if needed.
+        return pReturn ? BigInt(ret) : ret;
+      };
+    }
+#endif
+
 #if WASM_JS_TYPES
     // If the type reflection proposal is available, use the new
     // "WebAssembly.Function" constructor.
