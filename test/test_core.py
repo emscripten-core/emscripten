@@ -1976,6 +1976,7 @@ int main(int argc, char **argv) {
     '': ([],),
     'pthread': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
+  @flaky('https://github.com/emscripten-core/emscripten/issues/25175')
   def test_main_thread_em_asm(self, args):
     if args:
       self.setup_node_pthreads()
