@@ -1089,8 +1089,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   # Use settings
 
   if settings.JS_MATH:
-    if settings.MAIN_MODULE:
-      exit_with_error('JS_MATH is not compatible with dynamic linking (MAIN_MODULE)')
+    if settings.MAIN_MODULE == 1:
+      exit_with_error('JS_MATH is not compatible with dynamic linking (MAIN_MODULE=1)')
     if settings.SIDE_MODULE:
       exit_with_error('JS_MATH is not compatible with dynamic linking (SIDE_MODULE)')
     if settings.LINKABLE:
