@@ -58,5 +58,6 @@ def heuristic_clear_cache():
   else:
     print('Cache timestamp is up to date, no clear needed.')
 
+
 if __name__ == '__main__':
     sys.exit(heuristic_clear_cache())
