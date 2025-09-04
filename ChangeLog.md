@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 4.0.15 (in development)
 -----------------------
+- The Embind `val` functions `call`, `operator()`, and `new_` now support
+  passing pointers by using the `allow_raw_pointers()` argument. This feature
+  is enabled C++17 and newer. Older versions will allow pointers by default.
 
 4.0.14 - 09/02/25
 -----------------
