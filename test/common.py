@@ -2479,14 +2479,22 @@ class Reporting(Enum):
   FULL = 2
 
 
-def get_worker_id():
-  current = multiprocessing.current_process()
-  if current.name != 'MainProcess':
-    # This relies on the fact that workers in the pool haven incremental names
-    # in the format of Thread-X.
-    worker_id_str = current.name.split('-')[-1]
-    return int(worker_id_str)
-  return 0
+# This will hold the ID for each worker process if running in parallel mode,
+# otherwise None if running in non-parallel mode.
+worker_id = None
+
+
+def init_worker(counter, lock):
+  """ Initializer function for each worker.
+  It acquires a lock, gets a unique ID from the shared counter,
+  and stores it in a global variable specific to this worker process.
+  """
+  global worker_id
+  with lock:
+    # Get the next available ID
+    worker_id = counter.value
+    # Increment the counter for the next worker
+    counter.value += 1
 
 
 class BrowserCore(RunnerCore):
@@ -2564,11 +2572,12 @@ class BrowserCore(RunnerCore):
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
+    global worker_id
     # In parallel mode this ID contains which pool worker this process is.
-    cls.WORKER_ID = get_worker_id()
-    cls.PORT = 8888 + cls.WORKER_ID
-    cls.SERVER_URL = f'http://localhost:{cls.PORT}'
-    cls.HARNESS_URL = f'{cls.SERVER_URL}/run_harness'
+    cls.WORKER_ID = worker_id
+    cls.PORT = 8888 + (0 if worker_id is None else BrowserCore.WORKER_ID)
+    cls.SERVER_URL = f'http://localhost:{BrowserCore.PORT}'
+    cls.HARNESS_URL = f'{BrowserCore.SERVER_URL}/run_harness'
 
     if not has_browser() or EMTEST_BROWSER == 'node':
       return

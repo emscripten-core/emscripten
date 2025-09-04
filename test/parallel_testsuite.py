@@ -106,7 +106,14 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     use_cores = cap_max_workers_in_pool(min(self.max_cores, len(tests), num_cores()), contains_browser_test)
     print('Using %s parallel test processes' % use_cores, file=sys.stderr)
     with multiprocessing.Manager() as manager:
-      pool = multiprocessing.Pool(use_cores)
+      # Give each worker a unique ID.
+      worker_id_counter = manager.Value('i', 0) # 'i' for integer, starting at 0
+      worker_id_lock = manager.Lock()
+      pool = multiprocessing.Pool(
+        processes=use_cores,
+        initializer=common.init_worker,
+        initargs=(worker_id_counter, worker_id_lock),
+      )
       if python_multiprocessing_structures_are_buggy():
         failfast_event = progress_counter = lock = None
       else:
