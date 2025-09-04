@@ -5008,11 +5008,13 @@ Module["preRun"] = () => {
     self.btest_exit('declare_asm_module_exports.c', cflags=['-sDECLARE_ASM_MODULE_EXPORTS=0', '-sENVIRONMENT=web', '-O3', '--closure=1', '-sWASM=0'] + args)
 
   @parameterized({
-    '': (1,),
-    '2': (2,),
+    '': ([],),
+    'strict_js': (['-sSTRICT_JS'],),
+    'minimal_runtime': (['-sMINIMAL_RUNTIME=1'],),
+    'minimal_runtime_2': (['-sMINIMAL_RUNTIME=2'],),
   })
-  def test_no_declare_asm_module_exports_wasm_minimal_runtime(self, mode):
-    self.btest_exit('declare_asm_module_exports.c', cflags=['-sDECLARE_ASM_MODULE_EXPORTS=0', '-sENVIRONMENT=web', '-O3', '--closure=1', f'-sMINIMAL_RUNTIME={mode}'])
+  def test_no_declare_asm_module_exports(self, args):
+    self.btest_exit('declare_asm_module_exports.c', cflags=['-sDECLARE_ASM_MODULE_EXPORTS=0', '-sENVIRONMENT=web', '-O3', '--closure=1'] + args)
 
   # Tests that the different code paths in src/shell_minimal_runtime.html all work ok.
   @parameterized({
