@@ -16,7 +16,6 @@ __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
-from tools import shared
 from tools import utils
 from tools import cache
 
@@ -24,7 +23,7 @@ from tools import cache
 # If any of those are modified, then the Emscripten cache should be cleared.
 FILES_THAT_CAN_DISTURB_CACHE = [
   utils.path_from_root('system'),
-  utils.path_from_root('tools', 'system_libs.py')
+  utils.path_from_root('tools', 'system_libs.py'),
 ]
 
 
@@ -44,8 +43,9 @@ def newest_mtime(paths):
 
 
 def heuristic_clear_cache():
+  mtime_file = os.path.join(cache.cachedir, 'system_libs_mtime.txt')
   try:
-    system_libs_mtime = open(utils.path_from_root('cache', 'system_libs_mtime.txt')).read()
+    system_libs_mtime = open(mtime_file).read()
   except Exception:
     system_libs_mtime = 0
 
@@ -54,7 +54,7 @@ def heuristic_clear_cache():
   if newest_system_libs_mtime != system_libs_mtime:
     print(f'Cache timestamp {system_libs_mtime} does not match with current timestamp {newest_system_libs_mtime}. Clearing cache...')
     cache.erase()
-    open(utils.path_from_root('cache', 'system_libs_mtime.txt'), 'w').write(str(newest_system_libs_mtime))
+    open(mtime_file, 'w').write(str(newest_system_libs_mtime))
   else:
     print('Cache timestamp is up to date, no clear needed.')
 
