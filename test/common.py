@@ -155,6 +155,14 @@ if not config.JS_ENGINES:
 requires_network = unittest.skipIf(os.getenv('EMTEST_SKIP_NETWORK_TESTS'), 'This test requires network access')
 
 
+def errlog(*args):
+  """Shorthand for print with file=sys.stderr
+
+  Use this for all internal test framework logging..
+  """
+  print(*args, file=sys.stderr)
+
+
 def load_previous_test_run_results():
   try:
     return json.load(open(PREVIOUS_TEST_RUN_RESULTS_FILE))
@@ -1420,9 +1428,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         left_over_files = set(temp_files_after_run) - set(self.temp_files_before_run)
         left_over_files = [f for f in left_over_files if not any(f.startswith(p) for p in ignorable_file_prefixes)]
         if len(left_over_files):
-          print('ERROR: After running test, there are ' + str(len(left_over_files)) + ' new temporary files/directories left behind:', file=sys.stderr)
+          errlog('ERROR: After running test, there are ' + str(len(left_over_files)) + ' new temporary files/directories left behind:')
           for f in left_over_files:
-            print('leaked file: ' + f, file=sys.stderr)
+            errlog('leaked file: ', f)
           self.fail('Test leaked ' + str(len(left_over_files)) + ' temporary files!')
 
   def get_setting(self, key, default=None):
@@ -1854,7 +1862,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     cache_name = ''.join([(c if c in valid_chars else '_') for c in cache_name])
 
     if not force_rebuild and self.library_cache.get(cache_name):
-      print('<load %s from cache> ' % cache_name, file=sys.stderr)
+      errlog('<load %s from cache> ' % cache_name)
       generated_libs = []
       for basename, contents in self.library_cache[cache_name]:
         bc_file = os.path.join(build_dir, cache_name + '_' + basename)
@@ -1862,7 +1870,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         generated_libs.append(bc_file)
       return generated_libs
 
-    print(f'<building and saving {cache_name} into cache>', file=sys.stderr)
+    errlog(f'<building and saving {cache_name} into cache>')
     if configure and configure_args:
       # Make to copy to avoid mutating default param
       configure = list(configure)
