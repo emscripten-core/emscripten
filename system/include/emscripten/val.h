@@ -581,8 +581,8 @@ private:
     using Policy = WithPolicies<FilterTypes<isPolicy, Args...>>;
     auto filteredArgs = Filter<isNotPolicy>(args...);
     return std::apply(
-        [&](auto&&... filteredArgs) -> decltype(auto) {
-          return internalCallWithPolicy<Kind, Policy, Ret>(handle, methodName, std::forward<decltype(filteredArgs)>(filteredArgs)...);
+        [&](auto&&... actualArgs) -> decltype(auto) {
+          return internalCallWithPolicy<Kind, Policy, Ret>(handle, methodName, std::forward<decltype(actualArgs)>(actualArgs)...);
         },
         filteredArgs
     );
