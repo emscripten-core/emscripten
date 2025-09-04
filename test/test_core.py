@@ -9455,8 +9455,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @needs_dylink
   @node_pthreads
-  @flaky('https://github.com/emscripten-core/emscripten/issues/25171')
+  @flaky('https://github.com/emscripten-core/emscripten/issues/18887')
   def test_pthread_dlopen_many(self):
+    # In other suites, this test is flaky.. but in Wasm64 suite, it is failing
+    # so much to overcome even the flaky retry count.
     if self.is_wasm64():
      self.skipTest('https://github.com/emscripten-core/emscripten/issues/18887')
 
