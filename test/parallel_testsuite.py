@@ -131,16 +131,16 @@ class ParallelTestSuite(unittest.BaseTestSuite):
           progress_counter = manager.Value('i', 0)
           lock = manager.Lock()
         results = pool.starmap(run_test, ((t, failfast_event, lock, progress_counter, len(tests)) for t in tests), chunksize=1)
+        # Send a task to each worker to tear down the browser and server. This
+        # relies on the implementation detail in the worker pool that all workers
+        # are cycled through once.
+        num_tear_downs = sum([pool.apply(tear_down, ()) for i in range(use_cores)])
+        # Assert the assumed behavior above hasn't changed.
+        assert(num_tear_downs == use_cores)
 
     # Filter out the None results which can occur in failfast mode.
     if self.failfast:
       results = [r for r in results if r is not None]
-      # Send a task to each worker to tear down the browser and server. This
-      # relies on the implementation detail in the worker pool that all workers
-      # are cycled through once.
-      num_tear_downs = sum([pool.apply(tear_down, ()) for i in range(use_cores)])
-      # Assert the assumed behavior above hasn't changed.
-      assert(num_tear_downs == use_cores)
 
     if self.failing_and_slow_first:
       previous_test_run_results = common.load_previous_test_run_results()
