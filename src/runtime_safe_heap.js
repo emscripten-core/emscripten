@@ -35,14 +35,6 @@ function SAFE_HEAP_INDEX(arr, idx, action) {
   return idx;
 }
 
-function SAFE_HEAP_LOAD(arr, idx) {
-  return arr[SAFE_HEAP_INDEX(arr, idx, 'loading')];
-}
-
-function SAFE_HEAP_STORE(arr, idx, value) {
-  return arr[SAFE_HEAP_INDEX(arr, idx, 'storing')] = value;
-}
-
 function segfault() {
   abort('segmentation fault');
 }
