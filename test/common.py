@@ -106,7 +106,7 @@ class ChromeConfig:
     # Disable various background tasks downloads (e.g. updates).
     '--disable-background-networking',
   )
-  headless_flags = '--headless=new --window-size=1024,768 --remote-debugging-port=1234'
+  headless_flags = '--headless=new --window-size=1024,768'
 
   @staticmethod
   def configure(data_dir):
@@ -2487,15 +2487,30 @@ class Reporting(Enum):
   FULL = 2
 
 
+# This will hold the ID for each worker process if running in parallel mode,
+# otherwise None if running in non-parallel mode.
+worker_id = None
+
+
+def init_worker(counter, lock):
+  """ Initializer function for each worker.
+  It acquires a lock, gets a unique ID from the shared counter,
+  and stores it in a global variable specific to this worker process.
+  """
+  global worker_id
+  with lock:
+    # Get the next available ID
+    worker_id = counter.value
+    # Increment the counter for the next worker
+    counter.value += 1
+
+
 class BrowserCore(RunnerCore):
   # note how many tests hang / do not send an output. if many of these
   # happen, likely something is broken and it is best to abort the test
   # suite early, as otherwise we will wait for the timeout on every
   # single test (hundreds of minutes)
   MAX_UNRESPONSIVE_TESTS = 10
-  PORT = 8888
-  SERVER_URL = f'http://localhost:{PORT}'
-  HARNESS_URL = f'{SERVER_URL}/run_harness'
   BROWSER_TIMEOUT = 60
 
   unresponsive_tests = 0
@@ -2526,7 +2541,7 @@ class BrowserCore(RunnerCore):
 
   @classmethod
   def browser_open(cls, url):
-    global EMTEST_BROWSER
+    global EMTEST_BROWSER, worker_id
     if not EMTEST_BROWSER:
       logger.info('No EMTEST_BROWSER set. Defaulting to `google-chrome`')
       EMTEST_BROWSER = 'google-chrome'
@@ -2534,6 +2549,9 @@ class BrowserCore(RunnerCore):
     if EMTEST_BROWSER_AUTO_CONFIG:
       logger.info('Using default CI configuration.')
       cls.browser_data_dir = DEFAULT_BROWSER_DATA_DIR
+      if worker_id is not None:
+        # Running in parallel mode, give each browser its own profile dir.
+        cls.browser_data_dir += '-' + str(worker_id)
       if os.path.exists(cls.browser_data_dir):
         utils.delete_dir(cls.browser_data_dir)
       os.mkdir(cls.browser_data_dir)
@@ -2562,6 +2580,11 @@ class BrowserCore(RunnerCore):
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
+    global worker_id
+    cls.PORT = 8888 + (0 if worker_id is None else worker_id)
+    cls.SERVER_URL = f'http://localhost:{cls.PORT}'
+    cls.HARNESS_URL = f'{cls.SERVER_URL}/run_harness'
+
     if not has_browser() or EMTEST_BROWSER == 'node':
       return
 
@@ -2592,7 +2615,7 @@ class BrowserCore(RunnerCore):
 
   def add_browser_reporting(self):
     contents = read_file(test_file('browser_reporting.js'))
-    contents = contents.replace('{{{REPORTING_URL}}}', BrowserCore.SERVER_URL)
+    contents = contents.replace('{{{REPORTING_URL}}}', self.SERVER_URL)
     create_file('browser_reporting.js', contents)
 
   def assert_out_queue_empty(self, who):
@@ -2634,7 +2657,7 @@ class BrowserCore(RunnerCore):
           output = self.harness_out_queue.get(block=True, timeout=timeout)
         except queue.Empty:
           BrowserCore.unresponsive_tests += 1
-          print('[unresponsive tests: %d]' % BrowserCore.unresponsive_tests)
+          print(f'[unresponsive test: {self._testMethodName} total unresponsive={str(BrowserCore.unresponsive_tests)}]')
           self.browser_restart()
           # Rather than fail the test here, let fail on the `assertContained` so
           # that the test can be retried via `extra_tries`
