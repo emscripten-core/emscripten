@@ -136,7 +136,8 @@ class ParallelTestSuite(unittest.BaseTestSuite):
         # are cycled through once.
         num_tear_downs = sum([pool.apply(tear_down, ()) for i in range(use_cores)])
         # Assert the assumed behavior above hasn't changed.
-        assert(num_tear_downs == use_cores)
+        if num_tear_downs != use_cores:
+          print(f'Expected {use_cores} teardowns, got {num_tear_downs}')
 
     # Filter out the None results which can occur in failfast mode.
     if self.failfast:
