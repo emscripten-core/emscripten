@@ -41,6 +41,9 @@ See docs/process.md for more on how version tagging works.
 - Ogg port updated to 1.3.5. (#25274)
 - Vorbis port updated to 1.3.7. (#25274)
 - SDL3 port updated to 3.2.22. (#25273)
+- The Embind `val` functions `call`, `operator()`, and `new_` now support
+  passing pointers by using the `allow_raw_pointers()` argument. This feature
+  is enabled C++17 and newer. Older versions will allow pointers by default.
 
 4.0.14 - 09/02/25
 -----------------
