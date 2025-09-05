@@ -34,7 +34,7 @@ Flags that cause DWARF generation (e.g. ``-g3``, ``-gline-tables-only``) also ge
 in the binary and suppress minification of the JS glue file (since most DWARF use cases are for
 interactive debugging or where the binary will be stripped).
 Other flags (e.g. ``-g2``, ``-gsource-map``) should affect only a specific behavior or type of debug info,
-and are generally composable. TODO: make this real, or change the text.
+and are generally composable.
 
 
 
@@ -123,9 +123,6 @@ compile-time flag causes clang to generate only the line table information, savi
 Source maps are easier to parse and more widely supported by ecosystem tooling. And as noted
 above, preserving DWARF inhibits some Binaryen optimizations. However DWARF has the advantage
 that it includes information about inlining, which can result in more accurate stack traces.
-
-(TODO: passing -g1 at compile time on native platforms generates (a reduced amount of) DWARF
-but this doesn't work for emscripten).
 
 Emscripten includes a tool called ``emsymbolizer`` that can map wasm code addresses to sources
 using several different kinds of debug info, including DWARF (in wasm object or linked files)
@@ -229,10 +226,7 @@ To profile your code for speed, build with :ref:`profiling info <emcc-profiling>
 (which is currently the same as `:ref`-g2 <emcc-g2>`), and then run the code in the browser's
 devtools profiler. You should then be able to see in which functions most of the time is spent.
 
-TODO: IIUC --profiling is the same as g2 (names+whitespace), but --profiling-funcs is names
-only, while g1 is whitespace only. Is it really necessary to have both of these (i.e is
-there any use for wasm names without JS whitespace?)
-Is -g1 the same as --minify=0?
+TODO:  -g1 is not the same as --minify=0. it's closer to g2 but not exactly.
 
 Memory
 ------
