@@ -7,7 +7,7 @@
 // WebGLWorker client code
 
 function assert(x) {
-  if (!x) throw 'failed assert';
+  if (!x) throw new Error('failed assert');
 }
 
 function WebGLClient() {
@@ -313,7 +313,7 @@ function WebGLClient() {
         commandBuffers.push(msg.commandBuffer);
         break;
       }
-      default: throw 'weird gl onmessage ' + JSON.stringify(msg);
+      default: abort('weird gl onmessage ' + JSON.stringify(msg));
     }
   };
 }

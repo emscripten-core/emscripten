@@ -407,7 +407,7 @@ var workerResponded = false, workerCallbackId = -1;
     flushMessages();
 
     var func = Module['_' + msg.data['funcName']];
-    if (!func) throw 'invalid worker function to call: ' + msg.data['funcName'];
+    if (!func) abort('invalid worker function to call: ' + msg.data['funcName']);
     var data = msg.data['data'];
     if (data) {
       if (!data.byteLength) data = new Uint8Array(data);

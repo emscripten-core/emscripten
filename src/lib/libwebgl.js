@@ -1491,7 +1491,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
                 case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('p', 'i*4', 'result[i]', 'float') }}}; break;
                 case {{{ cDefs.EM_FUNC_SIG_PARAM_B }}}: {{{ makeSetValue('p', 'i',   'result[i] ? 1 : 0', 'i8') }}}; break;
 #if GL_ASSERTIONS
-                default: throw `internal glGet error, bad type: ${type}`;
+                default: abort(`internal glGet error, bad type: ${type}`);
 #endif
               }
             }
@@ -1525,7 +1525,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}:   {{{ makeSetValue('p', '0', 'ret', 'float') }}}; break;
       case {{{ cDefs.EM_FUNC_SIG_PARAM_B }}}: {{{ makeSetValue('p', '0', 'ret ? 1 : 0', 'i8') }}}; break;
 #if GL_ASSERTIONS
-      default: throw `internal glGet error, bad type: ${type}`;
+      default: abort(`internal glGet error, bad type: ${type}`);
 #endif
     }
   },
@@ -2147,7 +2147,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
         case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
         case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
 #if GL_ASSERTIONS
-        default: throw 'internal emscriptenWebGLGetUniform() error, bad type: ' + type;
+        default: abort('internal emscriptenWebGLGetUniform() error, bad type: ' + type);
 #endif
       }
     } else {
@@ -2156,7 +2156,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
           case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'i32') }}}; break;
           case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
 #if GL_ASSERTIONS
-          default: throw 'internal emscriptenWebGLGetUniform() error, bad type: ' + type;
+          default: abort('internal emscriptenWebGLGetUniform() error, bad type: ' + type);
 #endif
         }
       }
@@ -2351,7 +2351,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
         case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
         case {{{ cDefs.EM_FUNC_SIG_PARAM_F2I }}}: {{{ makeSetValue('params', '0', 'Math.fround(data)', 'i32') }}}; break;
 #if GL_ASSERTIONS
-        default: throw 'internal emscriptenWebGLGetVertexAttrib() error, bad type: ' + type;
+        default: abort('internal emscriptenWebGLGetVertexAttrib() error, bad type: ' + type);
 #endif
       }
     } else {
@@ -2361,7 +2361,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
           case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
           case {{{ cDefs.EM_FUNC_SIG_PARAM_F2I }}}: {{{ makeSetValue('params', 'i*4', 'Math.fround(data[i])', 'i32') }}}; break;
 #if GL_ASSERTIONS
-          default: throw 'internal emscriptenWebGLGetVertexAttrib() error, bad type: ' + type;
+          default: abort('internal emscriptenWebGLGetVertexAttrib() error, bad type: ' + type);
 #endif
         }
       }
@@ -3779,18 +3779,14 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
 #if !LEGACY_GL_EMULATION
 
-  glVertexPointer: (size, type, stride, ptr) => {
-    throw 'Legacy GL function (glVertexPointer) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.';
-  },
-  glMatrixMode: () => {
-    throw 'Legacy GL function (glMatrixMode) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.';
-  },
-  glBegin: () => {
-    throw 'Legacy GL function (glBegin) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.';
-  },
-  glLoadIdentity: () => {
-    throw 'Legacy GL function (glLoadIdentity) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.';
-  },
+  glVertexPointer: (size, type, stride, ptr) =>
+    abort('Legacy GL function (glVertexPointer) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.'),
+  glMatrixMode: () =>
+    abort('Legacy GL function (glMatrixMode) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.'),
+  glBegin: () =>
+    abort('Legacy GL function (glBegin) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.'),
+  glLoadIdentity: () =>
+    abort('Legacy GL function (glLoadIdentity) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.'),
 
 #endif // LEGACY_GL_EMULATION
 
