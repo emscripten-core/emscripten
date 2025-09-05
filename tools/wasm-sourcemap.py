@@ -11,6 +11,7 @@ sections from a wasm file.
 """
 
 import argparse
+import bisect
 import json
 import logging
 from math import floor, log
@@ -27,6 +28,7 @@ sys.path.insert(0, __rootdir__)
 from tools import utils
 from tools.system_libs import DETERMINISTIC_PREFIX
 from tools.shared import path_from_root
+from tools import webassembly
 
 EMSCRIPTEN_PREFIX = utils.normalize_path(path_from_root())
 
@@ -300,19 +302,57 @@ def read_dwarf_entries(wasm, options):
   return sorted(entries, key=lambda entry: entry['address'])
 
 
-def build_sourcemap(entries, code_section_offset, options):
+def read_func_ranges(wasm_input):
+  with webassembly.Module(wasm_input) as module:
+    if not module.has_name_section():
+      return []
+    funcs = module.get_functions()
+    func_names = module.get_function_names()[module.num_imported_funcs():]
+    assert len(funcs) == len(func_names)
+
+    # Replace '__original_main' with 'main'
+    try:
+      original_main_index = func_names.index('__original_main')
+      func_names[original_main_index] = 'main'
+    except ValueError:
+      pass
+
+    func_ranges = [(n, (f.offset, f.offset + f.size)) for n, f in zip(func_names, funcs)]
+    return func_ranges
+
+
+def build_sourcemap(entries, func_ranges, code_section_offset, options):
   base_path = options.basepath
   collect_sources = options.sources
   prefixes = SourceMapPrefixes(options.prefix, options.load_prefix, base_path)
 
+  func_low_pcs = [item[1][0] for item in func_ranges]
+
   sources = []
   sources_content = []
+  names = [item[0] for item in func_ranges]
   mappings = []
   sources_map = {}
   last_address = 0
   last_source_id = 0
   last_line = 1
   last_column = 1
+  last_func_id = 0
+
+  # Get the function ID that the given address falls into
+  def get_function_id(address):
+    if not func_ranges:
+      return None
+    index = bisect.bisect_right(func_low_pcs, address)
+    if index == 0: # The address is lower than the first function's start
+      return None
+    candidate_index = index - 1
+    name, (low_pc, high_pc) = func_ranges[candidate_index]
+    # Check the address within the candidate's [low_pc, high_pc) range. If not,
+    # it is in a gap between functions.
+    if low_pc <= address < high_pc:
+      return candidate_index
+    return None
 
   for entry in entries:
     line = entry['line']
@@ -343,21 +383,27 @@ def build_sourcemap(entries, code_section_offset, options):
           sources_content.append(None)
     else:
       source_id = sources_map[source_name]
+    func_id = get_function_id(address)
 
     address_delta = address - last_address
     source_id_delta = source_id - last_source_id
     line_delta = line - last_line
     column_delta = column - last_column
-    mappings.append(encode_vlq(address_delta) + encode_vlq(source_id_delta) + encode_vlq(line_delta) + encode_vlq(column_delta))
     last_address = address
     last_source_id = source_id
     last_line = line
     last_column = column
+    mapping = encode_vlq(address_delta) + encode_vlq(source_id_delta) + encode_vlq(line_delta) + encode_vlq(column_delta)
+    if func_id is not None:
+      func_id_delta = func_id - last_func_id
+      last_func_id = func_id
+      mapping += encode_vlq(func_id_delta)
+    mappings.append(mapping)
 
   return {'version': 3,
           'sources': sources,
           'sourcesContent': sources_content,
-          'names': [],
+          'names': names,
           'mappings': ','.join(mappings)}
 
 
@@ -369,11 +415,12 @@ def main():
     wasm = infile.read()
 
   entries = read_dwarf_entries(wasm_input, options)
+  func_ranges = read_func_ranges(wasm_input)
 
   code_section_offset = get_code_section_offset(wasm)
 
   logger.debug('Saving to %s' % options.output)
-  map = build_sourcemap(entries, code_section_offset, options)
+  map = build_sourcemap(entries, func_ranges, code_section_offset, options)
   with open(options.output, 'w', encoding='utf-8') as outfile:
     json.dump(map, outfile, separators=(',', ':'), ensure_ascii=False)
 
