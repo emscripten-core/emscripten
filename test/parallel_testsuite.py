@@ -441,4 +441,4 @@ class FakeCode:
 def num_cores():
   if NUM_CORES:
     return int(NUM_CORES)
-  return multiprocessing.cpu_count()
+  return utils.get_num_cores()

@@ -1844,7 +1844,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if env_init is None:
       env_init = {}
     if make_args is None:
-      make_args = ['-j', str(shared.get_num_cores())]
+      make_args = ['-j', str(utils.get_num_cores())]
 
     build_dir = self.get_build_dir()
 
