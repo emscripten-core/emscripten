@@ -40,6 +40,7 @@ sys.path.insert(0, __rootpath__)
 import jsrun
 import parallel_testsuite
 import common
+from common import errlog
 from tools import shared, config, utils
 
 
@@ -108,11 +109,11 @@ misc_test_modes = [
 
 def check_js_engines():
   if not all(jsrun.check_engine(e) for e in config.JS_ENGINES):
-    print('Not all the JS engines in JS_ENGINES appears to work.')
+    errlog('Not all the JS engines in JS_ENGINES appears to work.')
     sys.exit(1)
 
   if common.EMTEST_ALL_ENGINES:
-    print('(using ALL js engines)')
+    errlog('(using ALL js engines)')
 
 
 def get_and_import_modules():
@@ -166,7 +167,7 @@ def tests_with_expanded_wildcards(args, all_tests):
     else:
       new_args += [arg]
   if not new_args and args:
-    print('No tests found to run in set: ' + str(args))
+    errlog('No tests found to run in set: ' + str(args))
     sys.exit(1)
   return new_args
 
@@ -189,7 +190,7 @@ def skip_requested_tests(args, modules):
     if arg.startswith('skip:'):
       which = arg.split('skip:')[1]
       os.environ['EMTEST_SKIP'] = os.environ['EMTEST_SKIP'] + ' ' + which
-      print('will skip "%s"' % which, file=sys.stderr)
+      errlog(f'will skip "{which}"')
       skip_test(which, modules)
       args[i] = None
   return [a for a in args if a is not None]
@@ -430,7 +431,7 @@ def run_tests(options, suites):
   total_core_time = 0
   run_start_time = time.perf_counter()
   for mod_name, suite in suites:
-    print('Running %s: (%s tests)' % (mod_name, suite.countTestCases()), file=sys.stderr)
+    errlog('Running %s: (%s tests)' % (mod_name, suite.countTestCases()))
     res = testRunner.run(suite)
     msg = ('%s: %s run, %s errors, %s failures, %s skipped' %
            (mod_name, res.testsRun, len(res.errors), len(res.failures), len(res.skipped)))
@@ -440,14 +441,14 @@ def run_tests(options, suites):
       total_core_time += res.core_time
   total_run_time = time.perf_counter() - run_start_time
   if total_core_time > 0:
-    print('Total core time: %.3fs. Wallclock time: %.3fs. Parallelization: %.2fx.' % (total_core_time, total_run_time, total_core_time / total_run_time), file=sys.stderr)
+    errlog('Total core time: %.3fs. Wallclock time: %.3fs. Parallelization: %.2fx.' % (total_core_time, total_run_time, total_core_time / total_run_time))
 
   if len(resultMessages) > 1:
-    print('====================')
-    print()
-    print('TEST SUMMARY')
+    errlog('====================')
+    errlog()
+    errlog('TEST SUMMARY')
     for msg in resultMessages:
-      print('    ' + msg)
+      errlog('    ' + msg)
 
   if options.bell:
     sys.stdout.write('\a')
@@ -518,12 +519,12 @@ def main():
   # Some options make sense being set in the environment, others not-so-much.
   # TODO(sbc): eventually just make these command-line only.
   if os.getenv('EMTEST_SAVE_DIR'):
-    print('ERROR: use --save-dir instead of EMTEST_SAVE_DIR=1, and --no-clean instead of EMTEST_SAVE_DIR=2')
+    errlog('ERROR: use --save-dir instead of EMTEST_SAVE_DIR=1, and --no-clean instead of EMTEST_SAVE_DIR=2')
     return 1
   if os.getenv('EMTEST_REBASELINE'):
-    print('Prefer --rebaseline over setting $EMTEST_REBASELINE')
+    errlog('Prefer --rebaseline over setting $EMTEST_REBASELINE')
   if os.getenv('EMTEST_VERBOSE'):
-    print('Prefer --verbose over setting $EMTEST_VERBOSE')
+    errlog('Prefer --verbose over setting $EMTEST_VERBOSE')
 
   # We set the environments variables here and then call configure,
   # to apply them.  This means the python's multiprocessing child
@@ -577,7 +578,7 @@ def main():
     tests = args_for_random_tests(tests, modules)
 
   if not tests:
-    print('ERROR: no tests to run')
+    errlog('ERROR: no tests to run')
     return 1
 
   if not options.start_at and options._continue:
@@ -586,7 +587,7 @@ def main():
 
   suites, unmatched_tests = load_test_suites(tests, modules, options)
   if unmatched_tests:
-    print('ERROR: could not find the following tests: ' + ' '.join(unmatched_tests))
+    errlog('ERROR: could not find the following tests: ' + ' '.join(unmatched_tests))
     return 1
 
   num_failures = run_tests(options, suites)
