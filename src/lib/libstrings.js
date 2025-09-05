@@ -8,12 +8,23 @@
 #error "TEXTDECODER must be either 1 or 2"
 #endif
 
+#if TEXTENCODER != 1 && TEXTENCODER != 2
+#error "TEXTENCODER must be either 1 or 2"
+#endif
+
 addToLibrary({
   // TextDecoder constructor defaults to UTF-8
 #if TEXTDECODER == 2
   $UTF8Decoder: "new TextDecoder()",
 #else
   $UTF8Decoder: "typeof TextDecoder != 'undefined' ? new TextDecoder() : undefined",
+#endif
+
+  // TextEncoder constructor defaults to UTF-8
+#if TEXTENCODER == 2
+  $UTF8Encoder: "new TextEncoder()",
+#else
+  $UTF8Encoder: "typeof TextEncoder != 'undefined' ? new TextEncoder() : undefined",
 #endif
 
   $findStringEnd: (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
@@ -147,9 +158,12 @@ addToLibrary({
    *                                   terminator.
    * @return {number} The number of bytes written, EXCLUDING the null terminator.
    */
+  $stringToUTF8Array__deps: [
+    '$UTF8Encoder',
 #if ASSERTIONS
-  $stringToUTF8Array__deps: ['$warnOnce'],
+    '$warnOnce',
 #endif
+  ],
   $stringToUTF8Array: (str, heap, outIdx, maxBytesToWrite) => {
 #if CAN_ADDRESS_2GB
     outIdx >>>= 0;
@@ -162,6 +176,28 @@ addToLibrary({
     if (!(maxBytesToWrite > 0))
       return 0;
 
+#if TEXTENCODER == 2
+    // Always use TextEncoder when TEXTENCODER == 2
+    var encoded = UTF8Encoder.encode(str);
+    var bytesToWrite = Math.min(encoded.length, maxBytesToWrite - 1); // -1 for null terminator
+    for (var i = 0; i < bytesToWrite; ++i) {
+      heap[outIdx + i] = encoded[i];
+    }
+    heap[outIdx + bytesToWrite] = 0;
+    return bytesToWrite;
+#else
+    // When using conditional TextEncoder
+    if (UTF8Encoder) {
+      var encoded = UTF8Encoder.encode(str);
+      var bytesToWrite = Math.min(encoded.length, maxBytesToWrite - 1); // -1 for null terminator
+      for (var i = 0; i < bytesToWrite; ++i) {
+        heap[outIdx + i] = encoded[i];
+      }
+      heap[outIdx + bytesToWrite] = 0;
+      return bytesToWrite;
+    }
+
+    // Fallback: manual UTF-8 encoding
     var startIdx = outIdx;
     var endIdx = outIdx + maxBytesToWrite - 1; // -1 for string null terminator.
     for (var i = 0; i < str.length; ++i) {
@@ -198,6 +234,7 @@ addToLibrary({
     // Null-terminate the pointer to the buffer.
     heap[outIdx] = 0;
     return outIdx - startIdx;
+#endif // TEXTENCODER == 2
   },
 
   /**
@@ -224,7 +261,18 @@ addToLibrary({
    * @param {string} str - JavaScript string to operator on
    * @return {number} Length, in bytes, of the UTF8 encoded string.
    */
+  $lengthBytesUTF8__deps: ['$UTF8Encoder'],
   $lengthBytesUTF8: (str) => {
+#if TEXTENCODER == 2
+    // Always use TextEncoder when TEXTENCODER == 2
+    return UTF8Encoder.encode(str).length;
+#else
+    // When using conditional TextEncoder
+    if (UTF8Encoder) {
+      return UTF8Encoder.encode(str).length;
+    }
+
+    // Fallback: manual calculation
     var len = 0;
     for (var i = 0; i < str.length; ++i) {
       // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code
@@ -243,6 +291,7 @@ addToLibrary({
       }
     }
     return len;
+#endif // TEXTENCODER == 2
   },
 
   $intArrayFromString__docs: '/** @type {function(string, boolean=, number=)} */',
