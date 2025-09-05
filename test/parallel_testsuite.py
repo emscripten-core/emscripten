@@ -16,7 +16,6 @@ from tools import utils
 import common
 from common import errlog
 
-from tools.shared import cap_max_workers_in_pool
 from tools.utils import WINDOWS
 
 
@@ -31,6 +30,17 @@ torn_down = False
 def python_multiprocessing_structures_are_buggy():
   v = sys.version_info
   return (v.major, v.minor, v.micro) <= (3, 12, 7) or (v.major, v.minor, v.micro) == (3, 13, 0)
+
+
+def cap_max_workers_in_pool(max_workers, is_browser):
+  if is_browser:
+    # TODO experiment with this number. In browser tests we'll be creating
+    # a chrome instance per worker which is expensive.
+    max_workers = int(max_workers / 2)
+  # Python has an issue that it can only use max 61 cores on Windows: https://github.com/python/cpython/issues/89240
+  if WINDOWS:
+    return min(max_workers, 61)
+  return max_workers
 
 
 def run_test(test, failfast_event, lock, progress_counter, num_tests):
