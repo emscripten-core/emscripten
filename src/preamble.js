@@ -343,7 +343,7 @@ function makeAbortWrapper(original) {
   return (...args) => {
     // Don't allow this function to be called if we're aborted!
     if (ABORT) {
-      throw 'program has already aborted!';
+      throw new Error('program has already aborted!');
     }
 
     abortWrapperDepth++;
@@ -448,6 +448,8 @@ function getBinarySync(file) {
   if (readBinary) {
     return readBinary(file);
   }
+  // Throwing a plain string here, even though it not normally adviables since
+  // this gets turning into an `abort` in instantiateArrayBuffer.
 #if WASM_ASYNC_COMPILATION
   throw 'both async and sync fetching of the wasm failed';
 #else

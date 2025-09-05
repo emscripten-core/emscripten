@@ -38,9 +38,9 @@ function FPSTracker(text) {
   }
 }
 
-function Element() { throw 'TODO: Element' }
-function HTMLCanvasElement() { throw 'TODO: HTMLCanvasElement' }
-function HTMLVideoElement() { throw 'TODO: HTMLVideoElement' }
+function Element() { abort('TODO: Element'); }
+function HTMLCanvasElement() { abort('TODO: HTMLCanvasElement'); }
+function HTMLVideoElement() { abort('TODO: HTMLVideoElement'); }
 
 var KeyboardEvent = {
   'DOM_KEY_LOCATION_RIGHT': 2,
@@ -253,7 +253,7 @@ document.createElement = (what) => {
       return canvas;
     }
     default: {
-      throw 'document.createElement ' + what;
+      abort('document.createElement ' + what);
     }
   }
 };
@@ -262,14 +262,14 @@ document.getElementById = (id) => {
   if (id === 'canvas' || id === 'application-canvas') {
     return Module['canvas'];
   }
-  throw 'document.getElementById failed on ' + id;
+  abort('document.getElementById failed on ' + id);
 };
 
 document.querySelector = (id) => {
   if (id === '#canvas' || id === '#application-canvas' || id === 'canvas' || id === 'application-canvas') {
     return Module['canvas'];
   }
-  throw 'document.querySelector failed on ' + id;
+  abort('document.querySelector failed on ' + id);
 };
 
 document.documentElement = {};
@@ -416,7 +416,7 @@ function onMessageFromMainEmscriptenThread(message) {
         Module['canvas'].fireEvent(message.data.event);
       } else if (message.data.boundingClientRect) {
         Module['canvas'].boundingClientRect = message.data.boundingClientRect;
-      } else throw 'ey?';
+      } else abort('ey?');
       break;
     }
     case 'gl': {
@@ -471,7 +471,7 @@ function onMessageFromMainEmscriptenThread(message) {
       if (Module['onCustomMessage']) {
         Module['onCustomMessage'](message);
       } else {
-        throw 'Custom message received but worker Module.onCustomMessage not implemented.';
+        abort('Custom message received but worker Module.onCustomMessage not implemented.');
       }
       break;
     }
@@ -479,7 +479,7 @@ function onMessageFromMainEmscriptenThread(message) {
       Module['setImmediates']?.shift()();
       break;
     }
-    default: throw 'wha? ' + message.data.target;
+    default: abort('wha? ' + message.data.target);
   }
 };
 

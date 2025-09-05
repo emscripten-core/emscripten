@@ -1430,12 +1430,10 @@ addToLibrary({
 
   // We never free the return values of this function so we need to allocate
   // using builtin_malloc to avoid LSan reporting these as leaks.
+#if RETAIN_COMPILER_SETTINGS
   emscripten_get_compiler_setting__noleakcheck: true,
-#if RETAIN_COMPILER_SETTINGS
   emscripten_get_compiler_setting__deps: ['$stringToNewUTF8'],
-#endif
   emscripten_get_compiler_setting: (name) => {
-#if RETAIN_COMPILER_SETTINGS
     name = UTF8ToString(name);
 
     var ret = getCompilerSetting(name);
@@ -1445,10 +1443,10 @@ addToLibrary({
     var fullret = cache[name];
     if (fullret) return fullret;
     return cache[name] = stringToNewUTF8(ret);
-#else
-    throw 'You must build with -sRETAIN_COMPILER_SETTINGS for getCompilerSetting or emscripten_get_compiler_setting to work';
-#endif
   },
+#else
+  emscripten_get_compiler_setting: (name) => abort('You must build with -sRETAIN_COMPILER_SETTINGS for getCompilerSetting or emscripten_get_compiler_setting to work'),
+#endif
 
   emscripten_has_asyncify: () => {{{ ASYNCIFY }}},
 

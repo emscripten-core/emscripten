@@ -213,7 +213,7 @@ worker.onmessage = (event) => {
           Module['canvas'][data.object][data.property] = data.value;
           break;
         }
-        default: throw 'eh?';
+        default: abort('eh?');
       }
       break;
     }
@@ -274,7 +274,7 @@ worker.onmessage = (event) => {
       if (Module['onCustomMessage']) {
         Module['onCustomMessage'](event);
       } else {
-        throw 'Custom message received but client Module.onCustomMessage not implemented.';
+        abort('Custom message received but client Module.onCustomMessage not implemented.');
       }
       break;
     }
@@ -282,7 +282,7 @@ worker.onmessage = (event) => {
       worker.postMessage({target: 'setimmediate'});
       break;
     }
-    default: throw 'what? ' + data.target;
+    default: abort('what? ' + data.target);
   }
 };
 
