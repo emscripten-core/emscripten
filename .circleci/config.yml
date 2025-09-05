@@ -637,6 +637,13 @@ jobs:
     steps:
       - run-tests-linux:
           test_targets: "instance"
+  test-stress:
+    executor: focal
+    environment:
+      EMTEST_SKIP_NODE_CANARY: "1"
+    steps:
+      - run-tests-linux:
+          test_targets: "stress"
   test-esm-integration:
     # We don't use `bionic` here since its too old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
@@ -662,8 +669,6 @@ jobs:
   test-wasm64-4gb:
     environment:
       LANG: "C.UTF-8"
-      # Only run 2 tests at a time to avoid OOM (since each test used >4gb)
-      EMCC_CORES: "2"
     # We don't use `bionic` here since its too old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
     executor: linux-python
@@ -691,6 +696,7 @@ jobs:
             wasm64l.test_bigswitch
             wasm64l.test_module_wasm_memory
             wasm64l.test_longjmp2_emscripten
+            wasm64l.test_embind_val_basics_legacy
             other.test_failing_growth_wasm64"
       - upload-test-results
   test-jsc:
@@ -1116,6 +1122,9 @@ workflows:
           requires:
             - build-linux
       - test-esm-integration:
+          requires:
+            - build-linux
+      - test-stress:
           requires:
             - build-linux
       - test-browser-chrome

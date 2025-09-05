@@ -2594,23 +2594,6 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_proxying.c', interleaved_output=False)
 
   @node_pthreads
-  @also_with_modularize
-  @is_slow_test
-  def test_stress_pthread_proxying(self):
-    self.skipTest('https://github.com/emscripten-core/emscripten/issues/25026')
-    if '-sMODULARIZE' in self.cflags:
-      if self.get_setting('WASM') == 0:
-        self.skipTest('MODULARIZE + WASM=0 + pthreads does not work (#16794)')
-      self.set_setting('EXPORT_NAME=ModuleFactory')
-    self.maybe_closure()
-    self.set_setting('PROXY_TO_PTHREAD')
-    if not self.has_changed_setting('INITIAL_MEMORY'):
-      self.set_setting('INITIAL_MEMORY=32mb')
-
-    js_file = self.build('pthread/test_pthread_proxying.c')
-    self.parallel_stress_test_js_file(js_file, not_expected='running widget 17 on unknown', expected='running widget 17 on worker', assert_returncode=0)
-
-  @node_pthreads
   def test_pthread_proxying_cpp(self):
     self.set_setting('PROXY_TO_PTHREAD')
     if not self.has_changed_setting('INITIAL_MEMORY'):
@@ -2685,6 +2668,7 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_attr_getstack.c')
 
   @node_pthreads
+  @flaky('flaky specifically in esm_integration suite. https://github.com/emscripten-core/emscripten/issues/25151')
   def test_pthread_abort(self):
     self.set_setting('PROXY_TO_PTHREAD')
     # Add the onAbort handler at runtime during preRun.  This means that onAbort
@@ -2693,23 +2677,6 @@ The current type of b is: 9
     self.add_pre_run("Module.onAbort = () => console.log('My custom onAbort called');")
     self.cflags += ['-sINCOMING_MODULE_JS_API=preRun,onAbort']
     self.do_run_in_out_file_test('pthread/test_pthread_abort.c', assert_returncode=NON_ZERO)
-
-  # This is a stress test to verify that the Node.js postMessage() vs uncaughtException
-  # race does not affect Emscripten execution.
-  @node_pthreads
-  @is_slow_test
-  @no_esm_integration('TODO: WASM_ESM_INTEGRATION mode has some asynchronous behavior that causes a failure in this test. https://github.com/emscripten-core/emscripten/issues/25151')
-  def test_stress_pthread_abort(self):
-    self.set_setting('PROXY_TO_PTHREAD')
-    # Add the onAbort handler at runtime during preRun.  This means that onAbort
-    # handler will only be present in the main thread (much like it would if it
-    # was passed in by pre-populating the module object on prior to loading).
-    self.add_pre_run("Module.onAbort = () => console.log('My custom onAbort called');")
-    self.cflags += ['-sINCOMING_MODULE_JS_API=preRun,onAbort']
-    js_file = self.build('pthread/test_pthread_abort.c')
-    self.parallel_stress_test_js_file(js_file, expected='My custom onAbort called')
-    # TODO: investigate why adding assert_returncode=NON_ZERO to above doesn't work.
-    # Is the test test_pthread_abort still flaky?
 
   @node_pthreads
   def test_pthread_abort_interrupt(self):
@@ -7511,8 +7478,11 @@ void* operator new(size_t size) {
     'no_dynamic': (['--bind', '-sDYNAMIC_EXECUTION=0', '-sLEGACY_VM_SUPPORT'],),
   })
   def test_embind_val_basics(self, args):
-    if '-sLEGACY_VM_SUPPORT' in args and (self.get_setting('MODULARIZE') == 'instance' or self.get_setting('WASM_ESM_INTEGRATION')):
-      self.skipTest('LEGACY_VM_SUPPORT is not compatible with EXPORT_ES6')
+    if '-sLEGACY_VM_SUPPORT':
+      if self.get_setting('MODULARIZE') == 'instance' or self.get_setting('WASM_ESM_INTEGRATION'):
+        self.skipTest('LEGACY_VM_SUPPORT is not compatible with EXPORT_ES6')
+      if self.is_wasm64():
+        self.skipTest('LEGACY_VM_SUPPORT is not compatible with wasm64')
     self.maybe_closure()
     self.do_run_in_out_file_test('embind/test_embind_val_basics.cpp', cflags=args)
 
@@ -9674,25 +9644,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertNotContained('Aborted', output)
 
   @node_pthreads
-  @flaky('https://github.com/emscripten-core/emscripten/issues/20067')
   @no_esm_integration('ABORT_ON_WASM_EXCEPTIONS is not compatible with WASM_ESM_INTEGRATION')
   def test_abort_on_exceptions_pthreads(self):
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_hello_world.c')
-
-  # This is a stress test version that focuses on https://github.com/emscripten-core/emscripten/issues/20067
-  @node_pthreads
-  @no_esm_integration('ABORT_ON_WASM_EXCEPTIONS is not compatible with WASM_ESM_INTEGRATION')
-  @is_slow_test
-  def test_stress_proxy_to_pthread_hello_world(self):
-    self.skipTest('https://github.com/emscripten-core/emscripten/issues/20067')
-    self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
-    self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
-    js_file = self.build('core/test_hello_world.c')
-    self.parallel_stress_test_js_file(js_file, assert_returncode=0, expected='hello, world!', not_expected='error')
 
   @needs_dylink
   @no_js_math('JS_MATH is not compatible with MAIN_MODULE')

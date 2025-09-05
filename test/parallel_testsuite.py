@@ -14,8 +14,8 @@ from tools import emprofile
 from tools import utils
 
 import common
+from common import errlog
 
-from tools.shared import cap_max_workers_in_pool
 from tools.utils import WINDOWS
 
 
@@ -30,6 +30,17 @@ torn_down = False
 def python_multiprocessing_structures_are_buggy():
   v = sys.version_info
   return (v.major, v.minor, v.micro) <= (3, 12, 7) or (v.major, v.minor, v.micro) == (3, 13, 0)
+
+
+def cap_max_workers_in_pool(max_workers, is_browser):
+  if is_browser:
+    # TODO experiment with this number. In browser tests we'll be creating
+    # a chrome instance per worker which is expensive.
+    max_workers = int(max_workers / 2)
+  # Python has an issue that it can only use max 61 cores on Windows: https://github.com/python/cpython/issues/89240
+  if WINDOWS:
+    return min(max_workers, 61)
+  return max_workers
 
 
 def run_test(test, failfast_event, lock, progress_counter, num_tests):
@@ -109,7 +120,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     tests = list(self if self.failing_and_slow_first else self.reversed_tests())
     contains_browser_test = any(test.is_browser_test() for test in tests)
     use_cores = cap_max_workers_in_pool(min(self.max_cores, len(tests), num_cores()), contains_browser_test)
-    print('Using %s parallel test processes' % use_cores, file=sys.stderr)
+    errlog(f'Using {use_cores} parallel test processes')
     with multiprocessing.Manager() as manager:
       # Give each worker a unique ID.
       worker_id_counter = manager.Value('i', 0) # 'i' for integer, starting at 0
@@ -124,7 +135,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
           # or the progress bar.
           failfast_event = progress_counter = lock = None
           if self.failfast:
-            print('The version of python being used is not compatible with --failfast')
+            errlog('The version of python being used is not compatible with --failfast')
             sys.exit(1)
         else:
           failfast_event = manager.Event() if self.failfast else None
@@ -137,7 +148,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
         num_tear_downs = sum([pool.apply(tear_down, ()) for i in range(use_cores)])
         # Assert the assumed behavior above hasn't changed.
         if num_tear_downs != use_cores:
-          print(f'Expected {use_cores} teardowns, got {num_tear_downs}')
+          errlog(f'Expected {use_cores} teardowns, got {num_tear_downs}')
 
     # Filter out the None results which can occur in failfast mode.
     if self.failfast:
@@ -181,9 +192,9 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     return sorted(self, key=str, reverse=True)
 
   def combine_results(self, result, buffered_results):
-    print('', file=sys.stderr)
-    print('DONE: combining results on main thread', file=sys.stderr)
-    print('', file=sys.stderr)
+    errlog('')
+    errlog('DONE: combining results on main thread')
+    errlog('')
     # Sort the results back into alphabetical order. Running the tests in
     # parallel causes mis-orderings, this makes the results more readable.
     results = sorted(buffered_results, key=lambda res: str(res.test))
@@ -295,32 +306,32 @@ class BufferedParallelTestResult:
     return val
 
   def addSuccess(self, test):
-    print(f'{self.compute_progress()}{test} ... ok ({self.calculateElapsed():.2f}s)', file=sys.stderr)
+    errlog(f'{self.compute_progress()}{test} ... ok ({self.calculateElapsed():.2f}s)')
     self.buffered_result = BufferedTestSuccess(test)
     self.test_result = 'success'
 
   def addExpectedFailure(self, test, err):
-    print(f'{self.compute_progress()}{test} ... expected failure ({self.calculateElapsed():.2f}s)', file=sys.stderr)
+    errlog(f'{self.compute_progress()}{test} ... expected failure ({self.calculateElapsed():.2f}s)')
     self.buffered_result = BufferedTestExpectedFailure(test, err)
     self.test_result = 'expected failure'
 
   def addUnexpectedSuccess(self, test):
-    print(f'{self.compute_progress()}{test} ... unexpected success ({self.calculateElapsed():.2f}s)', file=sys.stderr)
+    errlog(f'{self.compute_progress()}{test} ... unexpected success ({self.calculateElapsed():.2f}s)')
     self.buffered_result = BufferedTestUnexpectedSuccess(test)
     self.test_result = 'unexpected success'
 
   def addSkip(self, test, reason):
-    print(f"{self.compute_progress()}{test} ... skipped '{reason}'", file=sys.stderr)
+    errlog(f"{self.compute_progress()}{test} ... skipped '{reason}'")
     self.buffered_result = BufferedTestSkip(test, reason)
     self.test_result = 'skipped'
 
   def addFailure(self, test, err):
-    print(f'{self.compute_progress()}{test} ... FAIL', file=sys.stderr)
+    errlog(f'{self.compute_progress()}{test} ... FAIL')
     self.buffered_result = BufferedTestFailure(test, err)
     self.test_result = 'failed'
 
   def addError(self, test, err):
-    print(f'{self.compute_progress()}{test} ... ERROR', file=sys.stderr)
+    errlog(f'{self.compute_progress()}{test} ... ERROR')
     self.buffered_result = BufferedTestError(test, err)
     self.test_result = 'errored'
 
