@@ -16,10 +16,15 @@
 import argparse
 from dataclasses import dataclass
 import json
+import os
 import re
 import subprocess
 import sys
 from typing import Optional
+
+__scriptdir__ = os.path.dirname(os.path.abspath(__file__))
+__rootdir__ = os.path.dirname(__scriptdir__)
+sys.path.insert(0, __rootdir__)
 
 from tools import shared
 from tools import webassembly
