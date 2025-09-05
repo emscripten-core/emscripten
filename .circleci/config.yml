@@ -637,6 +637,13 @@ jobs:
     steps:
       - run-tests-linux:
           test_targets: "instance"
+  test-stress:
+    executor: focal
+    environment:
+      EMTEST_SKIP_NODE_CANARY: "1"
+    steps:
+      - run-tests-linux:
+          test_targets: "stress"
   test-esm-integration:
     # We don't use `bionic` here since its too old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
@@ -1115,6 +1122,9 @@ workflows:
           requires:
             - build-linux
       - test-esm-integration:
+          requires:
+            - build-linux
+      - test-stress:
           requires:
             - build-linux
       - test-browser-chrome
