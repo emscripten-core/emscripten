@@ -29,6 +29,7 @@ import shutil
 import sys
 import time
 import tarfile
+from dataclasses import dataclass
 from enum import Enum, auto, unique
 from subprocess import PIPE
 
@@ -89,6 +90,7 @@ class Mode(Enum):
   COMPILE_AND_LINK = auto()
 
 
+@dataclass
 class LinkFlag:
   """Used to represent a linker flag.
 
@@ -97,9 +99,8 @@ class LinkFlag:
 
   A list of these is return by separate_linker_flags.
   """
-  def __init__(self, value, is_file):
-    self.value = value
-    self.is_file = is_file
+  value: str
+  is_file: int
 
 
 class EmccState:

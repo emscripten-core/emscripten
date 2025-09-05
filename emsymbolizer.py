@@ -14,10 +14,13 @@
 # Separate DWARF is not supported yet.
 
 import argparse
+from dataclasses import dataclass
 import json
 import re
 import subprocess
 import sys
+from typing import Optional
+
 from tools import shared
 from tools import webassembly
 
@@ -30,12 +33,12 @@ class Error(BaseException):
 
 
 # Class to treat location info in a uniform way across information sources.
+@dataclass
 class LocationInfo:
-  def __init__(self, source=None, line=0, column=0, func=None):
-    self.source = source
-    self.line = line
-    self.column = column
-    self.func = func
+  source: Optional[str] = None
+  line: int = 0
+  column: int = 0
+  func: Optional[str] = None
 
   def print(self):
     source = self.source if self.source else '??'
@@ -100,12 +103,12 @@ def get_sourceMappingURL_section(module):
 
 
 class WasmSourceMap:
+  @dataclass
   class Location:
-    def __init__(self, source=None, line=0, column=0, func=None):
-      self.source = source
-      self.line = line
-      self.column = column
-      self.func = func
+    source: Optional[str] = None
+    line: int = 0
+    column: int = 0
+    func: Optional[str] = None
 
   def __init__(self):
     self.version = None

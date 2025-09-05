@@ -5,6 +5,7 @@
 
 import logging
 from typing import List, Dict
+from dataclasses import dataclass
 
 from . import webassembly, utils
 from .webassembly import OpCode, AtomicOpCode, MemoryOpCode
@@ -299,6 +300,7 @@ def get_string_at(module, address):
   return data_to_string(data[offset:str_end])
 
 
+@dataclass(init=False)
 class Metadata:
   imports: List[str]
   export: List[str]
@@ -313,9 +315,6 @@ class Metadata:
   function_exports: Dict[str, webassembly.FuncType]
   tag_exports: List[str]
   all_exports: List[str]
-
-  def __init__(self):
-    pass
 
 
 def extract_metadata(filename):
