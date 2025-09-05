@@ -522,8 +522,6 @@ def transpile(filename):
     config['targets']['chrome'] = str(settings.MIN_CHROME_VERSION)
   if settings.MIN_FIREFOX_VERSION != UNSUPPORTED:
     config['targets']['firefox'] = str(settings.MIN_FIREFOX_VERSION)
-  if settings.MIN_IE_VERSION != UNSUPPORTED:
-    config['targets']['ie'] = str(settings.MIN_IE_VERSION)
   if settings.MIN_SAFARI_VERSION != UNSUPPORTED:
     config['targets']['safari'] = version_split(settings.MIN_SAFARI_VERSION)
   if settings.MIN_NODE_VERSION != UNSUPPORTED:
