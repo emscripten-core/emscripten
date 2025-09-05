@@ -17,7 +17,6 @@ import io
 import itertools
 import json
 import logging
-import multiprocessing
 import os
 import re
 import shlex
@@ -2156,57 +2155,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           print('(test did not pass in JS engine: %s)' % engine)
           raise
     return js_output
-
-  def parallel_stress_test_js_file(self, js_file, assert_returncode=None, expected=None, not_expected=None):
-    # If no expectations were passed, expect a successful run exit code
-    if assert_returncode is None and expected is None and not_expected is None:
-      assert_returncode = 0
-
-    # We will use Python multithreading, so prepare the command to run in advance, and keep the threading kernel
-    # compact to avoid accessing unexpected data/functions across threads.
-    cmd = self.get_engine_with_args() + [js_file]
-
-    exception_thrown = threading.Event()
-    error_lock = threading.Lock()
-    error_exception = None
-
-    def test_run():
-      nonlocal error_exception
-      try:
-        # Each thread repeatedly runs the test case in a tight loop, which is critical to coax out timing related issues
-        for _ in range(16):
-          # Early out from the test, if error was found
-          if exception_thrown.is_set():
-            return
-          result = subprocess.run(cmd, capture_output=True, text=True)
-
-          output = f'\n----------------------------\n{result.stdout}{result.stderr}\n----------------------------'
-          if not_expected is not None and not_expected in output:
-            raise Exception(f'\n\nWhen running command "{cmd}",\nexpected string "{not_expected}" to NOT be present in output:{output}')
-          if expected is not None and expected not in output:
-            raise Exception(f'\n\nWhen running command "{cmd}",\nexpected string "{expected}" was not found in output:{output}')
-          if assert_returncode is not None:
-            if assert_returncode == NON_ZERO:
-              if result.returncode != 0:
-                raise Exception(f'\n\nCommand "{cmd}" was expected to fail, but did not (returncode=0). Output:{output}')
-            elif assert_returncode != result.returncode:
-              raise Exception(f'\n\nWhen running command "{cmd}",\nreturn code {result.returncode} does not match expected return code {assert_returncode}. Output:{output}')
-      except Exception as e:
-        if not exception_thrown.is_set():
-          exception_thrown.set()
-          with error_lock:
-            error_exception = e
-        return
-
-    threads = []
-    # Oversubscribe hardware threads to make sure scheduling becomes erratic
-    while len(threads) < 2 * multiprocessing.cpu_count() and not exception_thrown.is_set():
-      threads += [threading.Thread(target=test_run)]
-      threads[-1].start()
-    for t in threads:
-      t.join()
-    if error_exception:
-      raise error_exception
 
   def get_freetype_library(self):
     self.cflags += [
