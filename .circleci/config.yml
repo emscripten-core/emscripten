@@ -945,7 +945,9 @@ jobs:
             browser64.test_pthread_growth*"
   test-browser-chrome-2gb:
     executor: focal
+    resource_class: xlarge
     environment:
+      EMCC_CORES: 16
       EMTEST_LACKS_WEBGPU: "1"
     steps:
       - run-tests-chrome:
@@ -953,7 +955,9 @@ jobs:
           test_targets: "browser_2gb"
   test-browser-chrome-wasm64-4gb:
     executor: focal
+    resource_class: xlarge
     environment:
+      EMCC_CORES: 16
       EMTEST_LACKS_WEBGPU: "1"
       EMTEST_SKIP_NODE_CANARY: "1"
     steps:
@@ -962,6 +966,9 @@ jobs:
           test_targets: "browser64_4gb"
   test-browser-firefox:
     executor: focal
+    resource_class: xlarge
+    environment:
+      EMCC_CORES: 16
     steps:
       - prepare-for-tests
       - run-tests-firefox:
