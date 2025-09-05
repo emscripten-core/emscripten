@@ -1069,6 +1069,7 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'PATH',
   'PATH_FS',
   'UTF8Decoder',
+  'UTF8Encoder',
   'UTF16Decoder',
   'JSEvents',
   'specialHTMLTargets',

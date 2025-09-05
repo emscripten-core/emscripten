@@ -727,7 +727,14 @@ var findStringEnd = (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
 
 var FS_stdin_getChar_buffer = [];
 
+var UTF8Encoder = typeof TextEncoder != "undefined" ? new TextEncoder : undefined;
+
 var lengthBytesUTF8 = str => {
+  // When using conditional TextEncoder
+  if (UTF8Encoder) {
+    return UTF8Encoder.encode(str).length;
+  }
+  // Fallback: manual calculation
   var len = 0;
   for (var i = 0; i < str.length; ++i) {
     // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code
@@ -754,6 +761,18 @@ var stringToUTF8Array = (str, heap, outIdx, maxBytesToWrite) => {
   // Parameter maxBytesToWrite is not optional. Negative values, 0, null,
   // undefined and false each don't write out any bytes.
   if (!(maxBytesToWrite > 0)) return 0;
+  // When using conditional TextEncoder
+  if (UTF8Encoder) {
+    var encoded = UTF8Encoder.encode(str);
+    var bytesToWrite = Math.min(encoded.length, maxBytesToWrite - 1);
+    // -1 for null terminator
+    for (var i = 0; i < bytesToWrite; ++i) {
+      heap[outIdx + i] = encoded[i];
+    }
+    heap[outIdx + bytesToWrite] = 0;
+    return bytesToWrite;
+  }
+  // Fallback: manual UTF-8 encoding
   var startIdx = outIdx;
   var endIdx = outIdx + maxBytesToWrite - 1;
   // -1 for string null terminator.
