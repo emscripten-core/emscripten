@@ -9689,6 +9689,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_esm_integration('ABORT_ON_WASM_EXCEPTIONS is not compatible with WASM_ESM_INTEGRATION')
   @is_slow_test
   def test_stress_proxy_to_pthread_hello_world(self):
+    self.skipTest('Occassionally hangs. https://github.com/emscripten-core/emscripten/issues/20067')
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
