@@ -2685,6 +2685,7 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_attr_getstack.c')
 
   @node_pthreads
+  @no_esm_integration('TODO: WASM_ESM_INTEGRATION mode has some asynchronous behavior that causes a failure in this test. https://github.com/emscripten-core/emscripten/issues/25151')
   def test_pthread_abort(self):
     self.set_setting('PROXY_TO_PTHREAD')
     # Add the onAbort handler at runtime during preRun.  This means that onAbort
