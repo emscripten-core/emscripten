@@ -55,6 +55,7 @@ entry_remap = {
   'emprofile': 'tools/emprofile',
   'emdwp': 'tools/emdwp',
   'emnm': 'tools/emnm',
+  'emsymbolizer': 'tools/emsymbolizer',
 }
 
 

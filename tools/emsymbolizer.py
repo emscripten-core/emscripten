@@ -1,13 +1,28 @@
-# Copyright 2025 The Emscripten Authors.  All rights reserved.
-# Emscripten is available under two separate licenses, the MIT license and the
-# University of Illinois/NCSA Open Source License.  Both these licenses can be
-# found in the LICENSE file.
+#!/usr/bin/env python3
 
+# This is a utility for looking up the symbol names and/or file+line numbers
+# of code addresses. There are several possible sources of this information,
+# with varying granularity (listed here in approximate preference order).
+
+# If the wasm has DWARF info, llvm-symbolizer can show the symbol, file, and
+# line/column number, potentially including inlining.
+# If the wasm has separate DWARF info, do the above with the side file
+# If there is a source map, we can parse it to get file and line number.
+# If there is an emscripten symbol map, we can use that to get the symbol name
+# If there is a name section or symbol table, llvm-symbolizer can show the
+#  symbol name.
+# Separate DWARF is not supported yet.
+
+import argparse
+from dataclasses import dataclass
 import json
 import re
 import subprocess
-from . import shared
-from . import webassembly
+import sys
+from typing import Optional
+
+from tools import shared
+from tools import webassembly
 
 
 LLVM_SYMBOLIZER = shared.llvm_tool_path('llvm-symbolizer')
@@ -18,12 +33,12 @@ class Error(BaseException):
 
 
 # Class to treat location info in a uniform way across information sources.
+@dataclass
 class LocationInfo:
-  def __init__(self, source=None, line=0, column=0, func=None):
-    self.source = source
-    self.line = line
-    self.column = column
-    self.func = func
+  source: Optional[str] = None
+  line: int = 0
+  column: int = 0
+  func: Optional[str] = None
 
   def print(self):
     source = self.source if self.source else '??'
@@ -69,7 +84,6 @@ def symbolize_address_symbolizer(module, address, is_dwarf):
   # '/abc/def.c:3:5'. If the function or source info is not available, it will
   # be printed as '??', in which case we store None. If the line and column info
   # is not available, they will be printed as 0, which we store as is.
-  infos = []
   for i in range(0, len(out_lines), 2):
     func, loc_str = out_lines[i], out_lines[i + 1]
     m = SOURCE_LOC_RE.match(loc_str)
@@ -78,8 +92,7 @@ def symbolize_address_symbolizer(module, address, is_dwarf):
       func = None
     if source == '??':
       source = None
-    infos.append(LocationInfo(source, line, column, func))
-  return infos
+    LocationInfo(source, line, column, func).print()
 
 
 def get_sourceMappingURL_section(module):
@@ -90,12 +103,12 @@ def get_sourceMappingURL_section(module):
 
 
 class WasmSourceMap:
+  @dataclass
   class Location:
-    def __init__(self, source=None, line=0, column=0, func=None):
-      self.source = source
-      self.line = line
-      self.column = column
-      self.func = func
+    source: Optional[str] = None
+    line: int = 0
+    column: int = 0
+    func: Optional[str] = None
 
   def __init__(self):
     self.version = None
@@ -203,7 +216,7 @@ def symbolize_address_sourcemap(module, address, force_file):
     # Print with section offsets to easily compare against dwarf
     for k, v in sm.mappings.items():
       print(f'{k - csoff:x}: {v}')
-  return sm.lookup(address)
+  sm.lookup(address).print()
 
 
 def symbolize_address_symbolmap(module, address, symbol_map_file):
@@ -228,4 +241,62 @@ def symbolize_address_symbolmap(module, address, symbol_map_file):
         print("Address is before the first function")
         return
 
-  return LocationInfo(func=func_names[func_index])
+  LocationInfo(func=func_names[func_index]).print()
+
+
+def main(args):
+  with webassembly.Module(args.wasm_file) as module:
+    base = 16 if args.address.lower().startswith('0x') else 10
+    address = int(args.address, base)
+
+    if args.addrtype == 'code':
+      address += get_codesec_offset(module)
+
+    if ((has_debug_line_section(module) and not args.source) or
+       'dwarf' in args.source):
+      symbolize_address_symbolizer(module, address, is_dwarf=True)
+    elif ((get_sourceMappingURL_section(module) and not args.source) or
+          'sourcemap' in args.source):
+      symbolize_address_sourcemap(module, address, args.file)
+    elif ((has_name_section(module) and not args.source) or
+          'names' in args.source):
+      symbolize_address_symbolizer(module, address, is_dwarf=False)
+    elif ((has_linking_section(module) and not args.source) or
+          'symtab' in args.source):
+      symbolize_address_symbolizer(module, address, is_dwarf=False)
+    elif (args.source == 'symbolmap'):
+      symbolize_address_symbolmap(module, address, args.file)
+    else:
+      raise Error('No .debug_line or sourceMappingURL section found in '
+                  f'{module.filename}.'
+                  " I don't know how to symbolize this file yet")
+
+
+def get_args():
+  parser = argparse.ArgumentParser()
+  parser.add_argument('-s', '--source', choices=['dwarf', 'sourcemap',
+                                                 'names', 'symtab', 'symbolmap'],
+                      help='Force debug info source type', default=())
+  parser.add_argument('-f', '--file', action='store',
+                      help='Force debug info source file')
+  parser.add_argument('-t', '--addrtype', choices=['code', 'file'],
+                      default='file',
+                      help='Address type (code section or file offset)')
+  parser.add_argument('-v', '--verbose', action='store_true',
+                      help='Print verbose info for debugging this script')
+  parser.add_argument('wasm_file', help='Wasm file')
+  parser.add_argument('address', help='Address to lookup')
+  args = parser.parse_args()
+  if args.verbose:
+    shared.PRINT_SUBPROCS = 1
+    shared.DEBUG = True
+  return args
+
+
+if __name__ == '__main__':
+  try:
+    rv = main(get_args())
+  except (Error, webassembly.InvalidWasmError, OSError) as e:
+    print(f'{sys.argv[0]}: {str(e)}', file=sys.stderr)
+    rv = 1
+  sys.exit(rv)
