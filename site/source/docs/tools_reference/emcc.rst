@@ -223,7 +223,7 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--profiling``
   [same as -g2 if passed at compile time, otherwise applies at link]
-  Use reasonable defaults when emitting JavaScript to make the build readable but still useful for profiling. This sets ``-g2`` (preserve whitespace and function names) and may also enable optimizations that affect performance and otherwise might not be performed in ``-g2``. TODO: does g2 actually suppress any optimizations?
+  Use reasonable defaults when emitting JavaScript to make the build readable but still useful for profiling. This sets ``-g2`` (preserve whitespace and function names) and may also enable optimizations that affect performance and otherwise might not be performed in ``-g2``.
 
 
 .. _emcc-profiling-funcs:
