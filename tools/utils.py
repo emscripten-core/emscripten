@@ -112,6 +112,16 @@ def delete_contents(dirname, exclude=None):
       delete_file(entry)
 
 
+def get_num_cores():
+  # Prefer `process_cpu_count` when available (3.13 and above). since
+  # it takes into account thread affinity.
+  if hasattr(os, 'process_cpu_count'):
+    cpu_count = os.process_cpu_count()
+  else:
+    cpu_count = os.cpu_count()
+  return int(os.environ.get('EMCC_CORES', cpu_count))
+
+
 # TODO(sbc): Replace with functools.cache, once we update to python 3.9
 memoize = functools.lru_cache(maxsize=None)
 
