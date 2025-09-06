@@ -11021,6 +11021,57 @@ int main() {
     # The name section will not show bar, as it's inlined into main
     check_symbolmap_info(unreachable_addr, '__original_main')
 
+  def test_emsymbolizer_symbol_map_names(self):
+    "Test emsymbolizer with symbol map which contains demangled C++ names"
+    create_file('test_symbol_map.cpp', r'''
+      #include <emscripten.h>
+      EM_JS(int, out_to_js, (), { return 0; });
+
+      namespace Namespace {
+        class ClassA{};
+        class ClassB{};
+
+        void __attribute__((noinline)) foo(ClassA v) { out_to_js(); }
+
+        template <typename T>
+        void __attribute__((noinline)) bar(ClassB t) { __builtin_trap(); }
+      };
+
+      int main() {
+        // call function to avoid Dead-code elimination
+        Namespace::foo({});
+        // instantiate template function
+        Namespace::bar<Namespace::ClassA>(Namespace::ClassB{});
+        return 0;
+      }
+    ''')
+    self.run_process([EMXX, 'test_symbol_map.cpp',
+                      '-O1', '--emit-symbol-map', '-o', 'test_symbol_map.js'])
+    self.assertExists('test_symbol_map.js.symbols')
+
+    out_to_js_call_addr = self.get_instr_addr('call\t0', 'test_symbol_map.wasm')
+    unreachable_addr = self.get_instr_addr('unreachable', 'test_symbol_map.wasm')
+
+    def check_cpp_symbolmap_info(address, func):
+      out = self.run_process([emsymbolizer, '--source=symbolmap', '-f', 'test_symbol_map.js.symbols', 'test_symbol_map.wasm', address], stdout=PIPE).stdout
+      self.assertIn(func, out)
+
+    def check_symbol_map_contains(func):
+      out = read_file('test_symbol_map.js.symbols')
+      self.assertIn(func, out)
+
+    # function name: "Namespace::foo(Namespace::ClassA)"
+    check_cpp_symbolmap_info(out_to_js_call_addr, 'Namespace::foo')
+    check_cpp_symbolmap_info(out_to_js_call_addr, 'Namespace::ClassA')
+
+    # function name: "void Namespace::bar<Namespace::ClassA>(Namespace::ClassB)"
+    check_cpp_symbolmap_info(unreachable_addr, 'Namespace::bar')
+    check_cpp_symbolmap_info(unreachable_addr, 'Namespace::ClassA')
+    check_cpp_symbolmap_info(unreachable_addr, 'Namespace::ClassB')
+
+    # JS imports
+    check_symbol_map_contains('out_to_js')
+
   def test_separate_dwarf(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-g'])
     self.assertExists('a.out.wasm')
