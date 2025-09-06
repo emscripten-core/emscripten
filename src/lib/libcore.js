@@ -1648,20 +1648,12 @@ addToLibrary({
 #if !DECLARE_ASM_MODULE_EXPORTS
   // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
   // at runtime rather than statically in JS code.
-  $exportWasmSymbols__deps: ['$asmjsMangle'
+  $exportWasmSymbols__deps: ['$asmjsMangle', '$emGlobalThis',
 #if DYNCALLS || !WASM_BIGINT
     , '$dynCalls'
 #endif
   ],
   $exportWasmSymbols: (wasmExports) => {
-#if ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_WEB
-    var global_object = (typeof process != "undefined" ? global : this);
-#elif ENVIRONMENT_MAY_BE_NODE
-    var global_object = global;
-#else
-    var global_object = this;
-#endif
-
     for (var [name, exportedSymbol] of Object.entries(wasmExports)) {
       name = asmjsMangle(name);
 #if DYNCALLS || !WASM_BIGINT
@@ -1674,9 +1666,9 @@ addToLibrary({
       // similar DECLARE_ASM_MODULE_EXPORTS = 0 treatment.
       if (typeof exportedSymbol.value === 'undefined') {
 #if MINIMAL_RUNTIME
-        global_object[name] = exportedSymbol;
+        emGlobalThis[name] = exportedSymbol;
 #else
-        global_object[name] = Module[name] = exportedSymbol;
+        emGlobalThis[name] = Module[name] = exportedSymbol;
 #endif
       }
     }
