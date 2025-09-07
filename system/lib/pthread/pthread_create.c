@@ -171,6 +171,11 @@ int __pthread_create(pthread_t* restrict res,
   struct pthread *new = (struct pthread*)offset;
   offset += sizeof(struct pthread);
 
+  // Assign the pthread_t object over immediately, so that by the time pthread_create_js()
+  // is dispatched to a pthread and the pthread main runs, the value will be visible to
+  // the thread to examine.
+  __atomic_store_n(res, new, __ATOMIC_SEQ_CST);
+
   new->map_base = block;
   new->map_size = size;
 
@@ -250,6 +255,10 @@ int __pthread_create(pthread_t* restrict res,
 
   int rtn = __pthread_create_js(new, &attr, entry, arg);
   if (rtn != 0) {
+    // Reset the pthread_t return value to zero (we assigned to it above,
+    // so by clearing it here we won't litter bits to caller)
+    __atomic_store_n(res, 0, __ATOMIC_SEQ_CST);
+
     if (!--libc.threads_minus_1) libc.need_locks = 0;
 
     // undo previous addition to the thread list
@@ -269,7 +278,6 @@ int __pthread_create(pthread_t* restrict res,
       self->prev,
       new);
 
-  *res = new;
   return 0;
 }
 
