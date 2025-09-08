@@ -307,8 +307,15 @@ user_pref("extensions.update.enabled", false);
 user_pref("extensions.getAddons.cache.enabled", false);
 // Enable wasm
 user_pref("javascript.options.wasm", true);
-// Enable SharedArrayBuffer (this profile is for a testing environment, so Spectre/Meltdown don't apply)
+// Enable SharedArrayBuffer, and ignore COOP/COEP (this profile is for a testing environment, so Spectre/Meltdown don't apply)
 user_pref("javascript.options.shared_memory", true);
+user_pref("dom.postMessage.sharedArrayBuffer.bypassCOOP_COEP.insecure.enabled", true);
+// Enable OffscreenCanvas support
+user_pref("gfx.offscreencanvas.enabled", true);
+// Enable Wasm64
+user_pref("javascript.options.wasm_memory64", true);
+// Do not ask user consent to enable audio playback (0: Allow autoplay for all media)
+user_pref("media.autoplay.default", 0);
 ''')
     if emrun_options.private_browsing:
       f.write('''

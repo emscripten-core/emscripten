@@ -246,7 +246,7 @@ def flaky(note=''):
       for i in range(EMTEST_RETRY_FLAKY):
         try:
           return f(*args, **kwargs)
-        except AssertionError as exc:
+        except (AssertionError, subprocess.TimeoutExpired) as exc:
           preserved_exc = exc
           logging.info(f'Retrying flaky test "{f.__name__}" (attempt {i}/{EMTEST_RETRY_FLAKY} failed): {exc}')
           # Mark down that this was a flaky test.
