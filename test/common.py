@@ -2535,7 +2535,7 @@ class BrowserCore(RunnerCore):
           exit_with_error("EMTEST_BROWSER_AUTO_CONFIG only currently works with firefox or chrome.")
         browser_args += config.data_dir_cmdline(cls.browser_data_dir) + list(config.default_flags)
         if EMTEST_HEADLESS == 1:
-          browser_args += [config.headless_flags]
+          browser_args += config.headless_flags
         config.configure(cls.browser_data_dir)
     except Exception as e:
       print(str(e))
