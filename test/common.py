@@ -2517,29 +2517,25 @@ class BrowserCore(RunnerCore):
         EMTEST_BROWSER = '"' + EMTEST_BROWSER.replace("\\", "/") + '"'
     browser_args = shlex.split(EMTEST_BROWSER)
 
-    try:
-      if EMTEST_BROWSER_AUTO_CONFIG:
-        logger.info('Using default CI configuration.')
-        cls.browser_data_dir = DEFAULT_BROWSER_DATA_DIR
-        if worker_id is not None:
-          # Running in parallel mode, give each browser its own profile dir.
-          cls.browser_data_dir += '-' + str(worker_id)
-        if os.path.exists(cls.browser_data_dir):
-          utils.delete_dir(cls.browser_data_dir)
-        os.mkdir(cls.browser_data_dir)
-        if is_chrome():
-          config = ChromeConfig()
-        elif is_firefox():
-          config = FirefoxConfig()
-        else:
-          exit_with_error("EMTEST_BROWSER_AUTO_CONFIG only currently works with firefox or chrome.")
-        browser_args += config.data_dir_cmdline(cls.browser_data_dir) + list(config.default_flags)
-        if EMTEST_HEADLESS == 1:
-          browser_args += config.headless_flags
-        config.configure(cls.browser_data_dir)
-    except Exception as e:
-      print(str(e))
-      sys.exit(1)
+    if EMTEST_BROWSER_AUTO_CONFIG:
+      logger.info('Using default CI configuration.')
+      cls.browser_data_dir = DEFAULT_BROWSER_DATA_DIR
+      if worker_id is not None:
+        # Running in parallel mode, give each browser its own profile dir.
+        cls.browser_data_dir += '-' + str(worker_id)
+      if os.path.exists(cls.browser_data_dir):
+        utils.delete_dir(cls.browser_data_dir)
+      os.mkdir(cls.browser_data_dir)
+      if is_chrome():
+        config = ChromeConfig()
+      elif is_firefox():
+        config = FirefoxConfig()
+      else:
+        exit_with_error("EMTEST_BROWSER_AUTO_CONFIG only currently works with firefox or chrome.")
+      browser_args += config.data_dir_cmdline(cls.browser_data_dir) + list(config.default_flags)
+      if EMTEST_HEADLESS == 1:
+        browser_args += config.headless_flags
+      config.configure(cls.browser_data_dir)
 
     logger.info('Launching browser: %s', str(browser_args))
     cls.browser_proc = subprocess.Popen(browser_args + [url])
