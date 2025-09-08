@@ -89,6 +89,7 @@ def symbolize_address_symbolizer(module, address, is_dwarf):
   # '/abc/def.c:3:5'. If the function or source info is not available, it will
   # be printed as '??', in which case we store None. If the line and column info
   # is not available, they will be printed as 0, which we store as is.
+  infos = []
   for i in range(0, len(out_lines), 2):
     func, loc_str = out_lines[i], out_lines[i + 1]
     m = SOURCE_LOC_RE.match(loc_str)
@@ -97,7 +98,8 @@ def symbolize_address_symbolizer(module, address, is_dwarf):
       func = None
     if source == '??':
       source = None
-    LocationInfo(source, line, column, func).print()
+    infos.append(LocationInfo(source, line, column, func))
+  return infos
 
 
 def get_sourceMappingURL_section(module):
@@ -221,7 +223,7 @@ def symbolize_address_sourcemap(module, address, force_file):
     # Print with section offsets to easily compare against dwarf
     for k, v in sm.mappings.items():
       print(f'{k - csoff:x}: {v}')
-  sm.lookup(address).print()
+  return sm.lookup(address)
 
 
 def symbolize_address_symbolmap(module, address, symbol_map_file):
@@ -246,7 +248,7 @@ def symbolize_address_symbolmap(module, address, symbol_map_file):
         print("Address is before the first function")
         return
 
-  LocationInfo(func=func_names[func_index]).print()
+  return LocationInfo(func=func_names[func_index])
 
 
 def main(args):
@@ -257,20 +259,27 @@ def main(args):
     if args.addrtype == 'code':
       address += get_codesec_offset(module)
 
+    def print_loc(loc):
+      if isinstance(loc, list):
+        for l in loc:
+          l.print()
+      else:
+        loc.print()
+
     if ((has_debug_line_section(module) and not args.source) or
        'dwarf' in args.source):
-      symbolize_address_symbolizer(module, address, is_dwarf=True)
+      print_loc(symbolize_address_symbolizer(module, address, is_dwarf=True))
     elif ((get_sourceMappingURL_section(module) and not args.source) or
           'sourcemap' in args.source):
-      symbolize_address_sourcemap(module, address, args.file)
+      print_loc(symbolize_address_sourcemap(module, address, args.file))
     elif ((has_name_section(module) and not args.source) or
           'names' in args.source):
-      symbolize_address_symbolizer(module, address, is_dwarf=False)
+      print_loc(symbolize_address_symbolizer(module, address, is_dwarf=False))
     elif ((has_linking_section(module) and not args.source) or
           'symtab' in args.source):
-      symbolize_address_symbolizer(module, address, is_dwarf=False)
+      print_loc(symbolize_address_symbolizer(module, address, is_dwarf=False))
     elif (args.source == 'symbolmap'):
-      symbolize_address_symbolmap(module, address, args.file)
+      print_loc(symbolize_address_symbolmap(module, address, args.file))
     else:
       raise Error('No .debug_line or sourceMappingURL section found in '
                   f'{module.filename}.'
