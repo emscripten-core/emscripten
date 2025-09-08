@@ -37,6 +37,7 @@ Other flags (e.g. ``-g2``, ``-gsource-map``) should affect only a specific behav
 and are generally composable.
 
 
+.. _debugging-interactive:
 
 Interactive, Source-Level Debugging
 =============================================
@@ -161,17 +162,18 @@ builds, because optimizations early in the pipeline can reduce the amount of IR 
 processed by later phases such as instruction selection and linking. It also of course
 reduces test runtime.
 
+.. _debugging-memory-safety:
 
 Detecting Memory Errors and Undefined Behavior
 ==============================================
 
 The best tools for detecting memory safety and undefined behavior issues. are Clang's sanitizers,
-such as the Undefined Behaviour Sanitizer (UBSan) and the Address Sanitizer (ASan).
+such as the Undefined Behavior Sanitizer (UBSan) and the Address Sanitizer (ASan).
 For more information, see :ref:`Sanitizers`.
 
 
 Emscripten has several other compiler settings that can be useful for catching errors at runtime.
-These are set using the :ref:`emcc -s<emcc-s-option-value>` option, and will override any optimization flags (TODO is this true?). For example:
+These are set using the :ref:`emcc -s<emcc-s-option-value>` option. For example:
 
 .. code-block:: bash
 
@@ -192,7 +194,10 @@ Some important settings are:
 
     ``SAFE_HEAP=1`` adds additional memory access checks with a Binaryen pass, and will give clear
     errors for problems like dereferencing 0 and memory alignment issues.
-    You can also set ``SAFE_HEAP_LOG`` to log ``SAFE_HEAP`` operations. (TODO: any advantages over ASan?)
+    You can also set ``SAFE_HEAP_LOG`` to log ``SAFE_HEAP`` operations. :ref:`ASan<sanitizer_asan>`
+    provides most of the functionality of this pass (plus some extras) and is generally preferred to
+    try first unless :ref:`alginment issues<debugging-emscripten-specific-issues>`
+    are important for your platform.
 
   -
     .. _debugging-STACK_OVERFLOW_CHECK:
@@ -223,7 +228,7 @@ Speed
 -----
 
 To profile your code for speed, build with :ref:`profiling info <emcc-profiling>`,
-(which is currently the same as `:ref`-g2 <emcc-g2>`), and then run the code in the browser's
+(which is currently the same as :ref:`-g2 <emcc-g2>`), and then run the code in the browser's
 devtools profiler. You should then be able to see in which functions most of the time is spent.
 
 TODO:  -g1 is not the same as --minify=0. it's closer to g2 but not exactly.
