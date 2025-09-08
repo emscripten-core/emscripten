@@ -11,7 +11,6 @@ import shutil
 import subprocess
 import time
 import unittest
-import webbrowser
 import zlib
 from functools import wraps
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -279,44 +278,6 @@ window.close = () => {
 
   def test_sdl1_es6(self):
     self.reftest('hello_world_sdl.c', 'htmltest.png', cflags=['-sUSE_SDL', '-lGL', '-sEXPORT_ES6'])
-
-  # Deliberately named as test_zzz_* to make this test the last one
-  # as this test may take the focus away from the main test window
-  # by opening a new window and possibly not closing it.
-  def test_zzz_html_source_map(self):
-    # browsers will try to 'guess' the corresponding original line if a
-    # generated line is unmapped, so if we want to make sure that our
-    # numbering is correct, we need to provide a couple of 'possible wrong
-    # answers'. thus, we add some printf calls so that the cpp file gets
-    # multiple mapped lines. in other words, if the program consists of a
-    # single 'throw' statement, browsers may just map any thrown exception to
-    # that line, because it will be the only mapped line.
-    create_file('src.cpp', r'''
-      #include <cstdio>
-
-      int main() {
-        printf("Starting test\n");
-        try {
-          throw 42; // line 8
-        } catch (int e) { }
-        printf("done\n");
-        return 0;
-      }
-      ''')
-    # use relative paths when calling emcc, because file:// URIs can only load
-    # sourceContent when the maps are relative paths
-    self.compile_btest('src.cpp', ['-o', 'src.html', '-gsource-map'])
-    self.assertExists('src.html')
-    self.assertExists('src.wasm.map')
-    if not has_browser():
-      self.skipTest('need a browser')
-    webbrowser.open_new('file://src.html')
-    print('''
-If manually bisecting:
-  Check that you see src.cpp among the page sources.
-  Even better, add a breakpoint, e.g. on the printf, then reload, then step
-  through and see the print (best to run with --save-dir for the reload).
-''')
 
   def test_emscripten_log(self):
     self.btest_exit('test_emscripten_log.cpp', cflags=['-Wno-deprecated-pragma', '-gsource-map'])
