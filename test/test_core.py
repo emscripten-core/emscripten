@@ -9375,6 +9375,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @with_dylink_reversed
   @node_pthreads
+  @flaky('Test asani.test_pthread_dylink_basics is flaky due to some kind of racy interaction with asan + -sPROXY_TO_PTHREAD. https://github.com/emscripten-core/emscripten/issues/25211')
   def test_pthread_dylink_basics(self):
     self.cflags.append('-Wno-experimental')
     self.set_setting('PROXY_TO_PTHREAD')
