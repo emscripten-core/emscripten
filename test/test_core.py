@@ -2761,6 +2761,16 @@ The current type of b is: 9
       self.skipTest('MINIMAL_RUNTIME + threads + asan does not work')
     self.do_run_in_out_file_test('pthread/test_pthread_run_on_main_thread.c')
 
+  # This test verifies that printing from a pthread has sequential consistency.
+  @node_pthreads
+  @parameterized({
+    '': ([],),
+    'print_override': (['--pre-js', test_file('pthread/test_pthread_print_seq_consistent.js')],),
+  })
+  def test_pthread_print_seq_consistent(self, cflags):
+    self.do_run_in_out_file_test('pthread/test_pthread_print_seq_consistent.c',
+      cflags=cflags)
+
   def test_tcgetattr(self):
     self.do_runf('termios/test_tcgetattr.c', 'success')
 
