@@ -108,7 +108,7 @@ class ChromeConfig:
 
   @staticmethod
   def data_dir_cmdline(data_dir):
-    return f'--user-data-dir={data_dir}'
+    return [f'--user-data-dir={data_dir}']
 
   @staticmethod
   def configure(data_dir):
