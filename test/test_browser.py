@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import argparse
-import multiprocessing
 import os
 import random
 import shlex
@@ -12,7 +11,6 @@ import shutil
 import subprocess
 import time
 import unittest
-import webbrowser
 import zlib
 from functools import wraps
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -20,19 +18,22 @@ from pathlib import Path
 from urllib.request import urlopen
 
 import common
-from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
+from common import BrowserCore, RunnerCore, path_from_root, has_browser, Reporting, is_chrome, is_firefox, CHROMIUM_BASED_BROWSERS
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
 from common import read_file, EMRUN, no_wasm64, no_2gb, no_4gb, copytree
 from common import requires_wasm2js, parameterize, find_browser_test_file, with_all_sjlj
 from common import also_with_minimal_runtime, also_with_wasm2js, also_with_asan, also_with_wasmfs
+from common import HttpServerThread
 from tools import shared
 from tools import ports
 from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE, DEBUG
 from tools.utils import delete_dir
 
 
-def test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
+def make_test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
   class ChunkedServerHandler(BaseHTTPRequestHandler):
+    num_get_connections = 0
+
     def sendheaders(s, extra=None, length=None):
       length = length or len(data)
       s.send_response(200)
@@ -56,6 +57,11 @@ def test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
       s.sendheaders([("Access-Control-Allow-Headers", "Range")], 0)
 
     def do_GET(s):
+      # CORS preflight makes OPTIONS requests which we need to account for.
+      expectedConns = 22
+      s.num_get_connections += 1
+      assert(s.num_get_connections < expectedConns)
+
       if s.path == '/':
         s.sendheaders()
       elif not support_byte_ranges:
@@ -70,11 +76,7 @@ def test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
         s.sendheaders([], length)
         s.wfile.write(data[start:end + 1])
 
-  # CORS preflight makes OPTIONS requests which we need to account for.
-  expectedConns = 22
-  httpd = HTTPServer(('localhost', 11111), ChunkedServerHandler)
-  for _ in range(expectedConns + 1):
-    httpd.handle_request()
+  return HTTPServer(('localhost', 11111), ChunkedServerHandler)
 
 
 def also_with_proxying(f):
@@ -130,21 +132,10 @@ def shell_with_script(shell_file, output_file, replacement):
   create_file(output_file, shell.replace('{{{ SCRIPT }}}', replacement))
 
 
-CHROMIUM_BASED_BROWSERS = ['chrom', 'edge', 'opera']
-
-
-def is_chrome():
-  return EMTEST_BROWSER and any(pattern in EMTEST_BROWSER.lower() for pattern in CHROMIUM_BASED_BROWSERS)
-
-
 def no_chrome(note='chrome is not supported'):
   if is_chrome():
     return unittest.skip(note)
   return lambda f: f
-
-
-def is_firefox():
-  return EMTEST_BROWSER and 'firefox' in EMTEST_BROWSER.lower()
 
 
 def no_firefox(note='firefox is not supported'):
@@ -162,7 +153,7 @@ def no_swiftshader(f):
 
   @wraps(f)
   def decorated(self, *args, **kwargs):
-    if is_chrome() and '--use-gl=swiftshader' in EMTEST_BROWSER:
+    if is_chrome() and '--use-gl=swiftshader' in common.EMTEST_BROWSER:
       self.skipTest('not compatible with swiftshader')
     return f(self, *args, **kwargs)
 
@@ -210,7 +201,7 @@ class browser(BrowserCore):
   def setUpClass(cls):
     super().setUpClass()
     cls.browser_timeout = 60
-    if EMTEST_BROWSER != 'node':
+    if common.EMTEST_BROWSER != 'node':
       print()
       print('Running the browser tests. Make sure the browser allows popups from localhost.')
       print()
@@ -220,7 +211,7 @@ class browser(BrowserCore):
 
   def require_jspi(self):
     if not is_chrome():
-      self.skipTest(f'Current browser ({EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
+      self.skipTest(f'Current browser ({common.EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
     super().require_jspi()
 
   def post_manual_reftest(self):
@@ -287,44 +278,6 @@ window.close = () => {
 
   def test_sdl1_es6(self):
     self.reftest('hello_world_sdl.c', 'htmltest.png', cflags=['-sUSE_SDL', '-lGL', '-sEXPORT_ES6'])
-
-  # Deliberately named as test_zzz_* to make this test the last one
-  # as this test may take the focus away from the main test window
-  # by opening a new window and possibly not closing it.
-  def test_zzz_html_source_map(self):
-    # browsers will try to 'guess' the corresponding original line if a
-    # generated line is unmapped, so if we want to make sure that our
-    # numbering is correct, we need to provide a couple of 'possible wrong
-    # answers'. thus, we add some printf calls so that the cpp file gets
-    # multiple mapped lines. in other words, if the program consists of a
-    # single 'throw' statement, browsers may just map any thrown exception to
-    # that line, because it will be the only mapped line.
-    create_file('src.cpp', r'''
-      #include <cstdio>
-
-      int main() {
-        printf("Starting test\n");
-        try {
-          throw 42; // line 8
-        } catch (int e) { }
-        printf("done\n");
-        return 0;
-      }
-      ''')
-    # use relative paths when calling emcc, because file:// URIs can only load
-    # sourceContent when the maps are relative paths
-    self.compile_btest('src.cpp', ['-o', 'src.html', '-gsource-map'])
-    self.assertExists('src.html')
-    self.assertExists('src.wasm.map')
-    if not has_browser():
-      self.skipTest('need a browser')
-    webbrowser.open_new('file://src.html')
-    print('''
-If manually bisecting:
-  Check that you see src.cpp among the page sources.
-  Even better, add a breakpoint, e.g. on the printf, then reload, then step
-  through and see the print (best to run with --save-dir for the reload).
-''')
 
   def test_emscripten_log(self):
     self.btest_exit('test_emscripten_log.cpp', cflags=['-Wno-deprecated-pragma', '-gsource-map'])
@@ -770,10 +723,10 @@ If manually bisecting:
           <hr><div id='output'></div><hr>
           <script type='text/javascript'>
             const errorHandler = async (event) => {
-              if (window.disableErrorReporting) return;
+              if (globalThis.disableErrorReporting) return;
               event.stopImmediatePropagation();
               const error = String(event instanceof ErrorEvent ? event.message : (event.reason || event));
-              window.disableErrorReporting = true;
+              globalThis.disableErrorReporting = true;
               window.onerror = null;
               var result = error.includes("test.data") ? 1 : 0;
               await fetch('/report_result?' + result);
@@ -1714,7 +1667,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
     data = os.urandom(10 * chunkSize + 1) # 10 full chunks and one 1 byte chunk
     checksum = zlib.adler32(data) & 0xffffffff # Python 2 compatibility: force bigint
 
-    server = multiprocessing.Process(target=test_chunked_synchronous_xhr_server, args=(True, data, self.PORT))
+    server = HttpServerThread(make_test_chunked_synchronous_xhr_server(True, data, self.PORT))
     server.start()
 
     # block until the server is actually ready
@@ -1731,7 +1684,8 @@ simulateKeyUp(100, undefined, 'Numpad4');
     try:
       self.run_browser(main, '/report_result?' + str(checksum))
     finally:
-      server.terminate()
+      server.stop()
+      server.join()
     # Avoid race condition on cleanup, wait a bit so that processes have released file locks so that test tearDown won't
     # attempt to rmdir() files in use.
     if WINDOWS:
@@ -2625,7 +2579,7 @@ Module["preRun"] = () => {
       # In this mode an exception can be thrown by the browser, and we don't
       # want the test to fail in that case so we override the error handling.
       create_file('pre.js', '''
-      window.disableErrorReporting = true;
+      globalThis.disableErrorReporting = true;
       window.addEventListener('error', (event) => {
         if (!event.message.includes('exception:fullscreen error')) {
           reportTopLevelError(event);
@@ -3305,23 +3259,23 @@ Module["preRun"] = () => {
   })
   def test_async(self, args):
     if is_jspi(args) and not is_chrome():
-      self.skipTest(f'Current browser ({EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
+      self.skipTest(f'Current browser ({common.EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
 
     for opts in (0, 1, 2, 3):
       print(opts)
-      self.btest_exit('async.cpp', cflags=['-O' + str(opts), '-g2'] + args)
+      self.btest_exit('test_async.c', cflags=['-O' + str(opts), '-g2'] + args)
 
   def test_asyncify_tricky_function_sig(self):
     self.btest('test_asyncify_tricky_function_sig.cpp', '85', cflags=['-sASYNCIFY_ONLY=[foo(char.const*?.int#),foo2(),main,__original_main]', '-sASYNCIFY'])
 
   def test_async_in_pthread(self):
-    self.btest_exit('async.cpp', cflags=['-sASYNCIFY', '-pthread', '-sPROXY_TO_PTHREAD', '-g'])
+    self.btest_exit('test_async.c', cflags=['-sASYNCIFY', '-pthread', '-sPROXY_TO_PTHREAD', '-g'])
 
   def test_async_2(self):
     # Error.stackTraceLimit default to 10 in chrome but this test relies on more
     # than 40 stack frames being reported.
     create_file('pre.js', 'Error.stackTraceLimit = 80;\n')
-    self.btest_exit('async_2.cpp', cflags=['-O3', '--pre-js', 'pre.js', '-sASYNCIFY', '-sSTACK_SIZE=1MB'])
+    self.btest_exit('test_async_2.c', cflags=['-O3', '--pre-js', 'pre.js', '-sASYNCIFY', '-sSTACK_SIZE=1MB'])
 
   @parameterized({
     '': ([],),
@@ -3366,7 +3320,7 @@ Module["preRun"] = () => {
   # ASYNCIFY_IMPORTS.
   # To make the test more precise we also use ASYNCIFY_IGNORE_INDIRECT here.
   @parameterized({
-    'normal': (['-sASYNCIFY_IMPORTS=sync_tunnel,sync_tunnel_bool'],), # noqa
+    '': (['-sASYNCIFY_IMPORTS=sync_tunnel,sync_tunnel_bool'],), # noqa
     'pattern_imports': (['-sASYNCIFY_IMPORTS=[sync_tun*]'],), # noqa
     'response': (['-sASYNCIFY_IMPORTS=@filey.txt'],), # noqa
     'nothing': (['-DBAD'],), # noqa
@@ -3376,10 +3330,10 @@ Module["preRun"] = () => {
   def test_async_returnvalue(self, args):
     if '@' in str(args):
       create_file('filey.txt', 'sync_tunnel\nsync_tunnel_bool\n')
-    self.btest('async_returnvalue.cpp', '0', cflags=['-sASYNCIFY', '-sASYNCIFY_IGNORE_INDIRECT', '--js-library', test_file('browser/async_returnvalue.js')] + args + ['-sASSERTIONS'])
+    self.btest('test_async_returnvalue.c', '0', cflags=['-sASSERTIONS', '-sASYNCIFY', '-sASYNCIFY_IGNORE_INDIRECT', '--js-library', test_file('browser/test_async_returnvalue.js')] + args)
 
   def test_async_bad_list(self):
-    self.btest('async_bad_list.cpp', '0', cflags=['-sASYNCIFY', '-sASYNCIFY_ONLY=waka', '--profiling'])
+    self.btest('test_async_bad_list.c', '0', cflags=['-sASYNCIFY', '-sASYNCIFY_ONLY=waka', '--profiling'])
 
   # Tests that when building with -sMINIMAL_RUNTIME, the build can use -sMODULARIZE as well.
   def test_minimal_runtime_modularize(self):
@@ -3420,10 +3374,12 @@ Module["preRun"] = () => {
     # this test is synchronous, so avoid async startup due to wasm features
     self.compile_btest('browser_test_hello_world.c', ['-sMODULARIZE', '-sSINGLE_FILE'] + args + opts)
     create_file('a.html', '''
+      <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"></head><body>
       <script src="a.out.js"></script>
       <script>
         %s
       </script>
+      </body></html>
     ''' % code)
     self.run_browser('a.html', '/report_result?0')
 
@@ -4838,7 +4794,7 @@ Module["preRun"] = () => {
   # Tests that SINGLE_FILE works as intended in a Worker in JS output
   def test_single_file_worker_js(self):
     self.compile_btest('browser_test_hello_world.c', ['-o', 'test.js', '--proxy-to-worker', '-sSINGLE_FILE'])
-    create_file('test.html', '<script src="test.js"></script>')
+    create_file('test.html', '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"></head><body><script src="test.js"></script></body></html>')
     self.run_browser('test.html', '/report_result?0')
     self.assertExists('test.js')
     self.assertNotExists('test.worker.js')
@@ -4977,7 +4933,7 @@ Module["preRun"] = () => {
   })
   def test_embind(self, args):
     if is_jspi(args) and not is_chrome():
-      self.skipTest(f'Current browser ({EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
+      self.skipTest(f'Current browser ({common.EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
     if is_jspi(args) and self.is_wasm64():
       self.skipTest('_emval_await fails')
 
@@ -5597,9 +5553,9 @@ class emrun(RunnerCore):
     self.run_process([EMCC, test_file('test_emrun.c'), '--emrun', '-o', 'hello_world.html'])
     proc = subprocess.Popen([EMRUN, '--no-browser', '.', '--port=3333'], stdout=PIPE)
     try:
-      if EMTEST_BROWSER:
+      if common.EMTEST_BROWSER:
         print('Starting browser')
-        browser_cmd = shlex.split(EMTEST_BROWSER)
+        browser_cmd = shlex.split(common.EMTEST_BROWSER)
         browser = subprocess.Popen(browser_cmd + ['http://localhost:3333/hello_world.html'])
         try:
           while True:
@@ -5638,11 +5594,11 @@ class emrun(RunnerCore):
                  '--log-stdout', self.in_dir('stdout.txt'),
                  '--log-stderr', self.in_dir('stderr.txt')]
 
-    if EMTEST_BROWSER is not None:
+    if common.EMTEST_BROWSER is not None:
       # If EMTEST_BROWSER carried command line arguments to pass to the browser,
       # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
       # so strip them out.
-      browser_cmd = shlex.split(EMTEST_BROWSER)
+      browser_cmd = shlex.split(common.EMTEST_BROWSER)
       browser_path = browser_cmd[0]
       args_base += ['--browser', browser_path]
       if len(browser_cmd) > 1:

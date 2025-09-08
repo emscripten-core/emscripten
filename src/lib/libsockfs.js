@@ -300,7 +300,9 @@ addToLibrary({
             var encoder = new TextEncoder(); // should be utf-8
             data = encoder.encode(data); // make a typed array from the string
           } else {
+#if ASSERTIONS
             assert(data.byteLength !== undefined); // must receive an ArrayBuffer
+#endif
             if (data.byteLength == 0) {
               // An empty ArrayBuffer will emit a pseudo disconnect event
               // as recv/recvmsg will return zero which indicates that a socket

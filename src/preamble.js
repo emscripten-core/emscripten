@@ -343,7 +343,7 @@ function makeAbortWrapper(original) {
   return (...args) => {
     // Don't allow this function to be called if we're aborted!
     if (ABORT) {
-      throw 'program has already aborted!';
+      throw new Error('program has already aborted!');
     }
 
     abortWrapperDepth++;
@@ -448,6 +448,8 @@ function getBinarySync(file) {
   if (readBinary) {
     return readBinary(file);
   }
+  // Throwing a plain string here, even though it not normally adviables since
+  // this gets turning into an `abort` in instantiateArrayBuffer.
 #if WASM_ASYNC_COMPILATION
   throw 'both async and sync fetching of the wasm failed';
 #else
@@ -581,7 +583,7 @@ async function instantiateArrayBuffer(binaryFile, imports) {
 async function instantiateAsync(binary, binaryFile, imports) {
 #if !SINGLE_FILE
   if (!binary
-#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || MIN_SAFARI_VERSION < 150000
+#if MIN_FIREFOX_VERSION < 58 || MIN_SAFARI_VERSION < 150000
       // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
       && WebAssembly.instantiateStreaming
 #endif

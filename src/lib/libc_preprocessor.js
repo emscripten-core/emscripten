@@ -204,7 +204,7 @@ addToLibrary({
           }
           // else a number:
 #if ASSERTIONS
-          if (tokens[i] == ')') throw 'Parsing failure, mismatched parentheses in parsing!' + tokens.toString();
+          assert(tokens[i] !== ')', 'Parsing failure, mismatched parentheses in parsing!' + tokens.toString());
           assert(operatorAndPriority == -1);
 #endif
           var num = Number(tokens[i]);

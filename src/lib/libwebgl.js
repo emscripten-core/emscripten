@@ -723,20 +723,6 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       webGLContextAttributes['preserveDrawingBuffer'] = true;
 #endif
 
-#if MAX_WEBGL_VERSION >= 2 && MIN_CHROME_VERSION <= 57
-      // BUG: Workaround Chrome WebGL 2 issue: the first shipped versions of
-      // WebGL 2 in Chrome 57 did not actually implement the new garbage free
-      // WebGL 2 entry points that take an offset and a length to an existing
-      // heap (instead of having to create a completely new heap view). In
-      // Chrome the entry points only were added in to Chrome 58 and newer. For
-      // Chrome 57 (and older), disable WebGL 2 support altogether.
-      function getChromeVersion() {
-        var chromeVersion = navigator.userAgent.match(/Chrom(e|ium)\/([0-9]+)\./);
-        if (chromeVersion) return chromeVersion[2]|0;
-        // If not chrome, fall through to return undefined. (undefined <= integer will yield false)
-      }
-#endif
-
 #if GL_DEBUG
       var errorInfo = '?';
       function onContextCreationError(event) {
@@ -790,13 +776,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       var ctx =
 #if MAX_WEBGL_VERSION >= 2
         (webGLContextAttributes.majorVersion > 1)
-        ?
-#if MIN_CHROME_VERSION <= 57
-          !(getChromeVersion() <= 57) && canvas.getContext("webgl2", webGLContextAttributes)
-#else
-          canvas.getContext("webgl2", webGLContextAttributes)
-#endif
-        :
+        ? canvas.getContext("webgl2", webGLContextAttributes) :
 #endif
         canvas.getContext("webgl", webGLContextAttributes);
 #endif // MAX_WEBGL_VERSION >= 2
@@ -1511,7 +1491,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
                 case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('p', 'i*4', 'result[i]', 'float') }}}; break;
                 case {{{ cDefs.EM_FUNC_SIG_PARAM_B }}}: {{{ makeSetValue('p', 'i',   'result[i] ? 1 : 0', 'i8') }}}; break;
 #if GL_ASSERTIONS
-                default: throw `internal glGet error, bad type: ${type}`;
+                default: abort(`internal glGet error, bad type: ${type}`);
 #endif
               }
             }
@@ -1545,7 +1525,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}:   {{{ makeSetValue('p', '0', 'ret', 'float') }}}; break;
       case {{{ cDefs.EM_FUNC_SIG_PARAM_B }}}: {{{ makeSetValue('p', '0', 'ret ? 1 : 0', 'i8') }}}; break;
 #if GL_ASSERTIONS
-      default: throw `internal glGet error, bad type: ${type}`;
+      default: abort(`internal glGet error, bad type: ${type}`);
 #endif
     }
   },
@@ -2167,7 +2147,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
         case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
         case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
 #if GL_ASSERTIONS
-        default: throw 'internal emscriptenWebGLGetUniform() error, bad type: ' + type;
+        default: abort('internal emscriptenWebGLGetUniform() error, bad type: ' + type);
 #endif
       }
     } else {
@@ -2176,7 +2156,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
           case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'i32') }}}; break;
           case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
 #if GL_ASSERTIONS
-          default: throw 'internal emscriptenWebGLGetUniform() error, bad type: ' + type;
+          default: abort('internal emscriptenWebGLGetUniform() error, bad type: ' + type);
 #endif
         }
       }
@@ -2371,7 +2351,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
         case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
         case {{{ cDefs.EM_FUNC_SIG_PARAM_F2I }}}: {{{ makeSetValue('params', '0', 'Math.fround(data)', 'i32') }}}; break;
 #if GL_ASSERTIONS
-        default: throw 'internal emscriptenWebGLGetVertexAttrib() error, bad type: ' + type;
+        default: abort('internal emscriptenWebGLGetVertexAttrib() error, bad type: ' + type);
 #endif
       }
     } else {
@@ -2381,7 +2361,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
           case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
           case {{{ cDefs.EM_FUNC_SIG_PARAM_F2I }}}: {{{ makeSetValue('params', 'i*4', 'Math.fround(data[i])', 'i32') }}}; break;
 #if GL_ASSERTIONS
-          default: throw 'internal emscriptenWebGLGetVertexAttrib() error, bad type: ' + type;
+          default: abort('internal emscriptenWebGLGetVertexAttrib() error, bad type: ' + type);
 #endif
         }
       }
@@ -3799,18 +3779,14 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
 #if !LEGACY_GL_EMULATION
 
-  glVertexPointer: (size, type, stride, ptr) => {
-    throw 'Legacy GL function (glVertexPointer) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.';
-  },
-  glMatrixMode: () => {
-    throw 'Legacy GL function (glMatrixMode) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.';
-  },
-  glBegin: () => {
-    throw 'Legacy GL function (glBegin) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.';
-  },
-  glLoadIdentity: () => {
-    throw 'Legacy GL function (glLoadIdentity) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.';
-  },
+  glVertexPointer: (size, type, stride, ptr) =>
+    abort('Legacy GL function (glVertexPointer) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.'),
+  glMatrixMode: () =>
+    abort('Legacy GL function (glMatrixMode) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.'),
+  glBegin: () =>
+    abort('Legacy GL function (glBegin) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.'),
+  glLoadIdentity: () =>
+    abort('Legacy GL function (glLoadIdentity) called. If you want legacy GL emulation, you need to compile with -sLEGACY_GL_EMULATION to enable legacy GL emulation.'),
 
 #endif // LEGACY_GL_EMULATION
 

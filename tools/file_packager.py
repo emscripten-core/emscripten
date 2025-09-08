@@ -76,6 +76,7 @@ import os
 import posixpath
 import shutil
 import sys
+from dataclasses import dataclass
 from subprocess import PIPE
 from textwrap import dedent
 from typing import List
@@ -123,12 +124,12 @@ class Options:
     self.export_es6 = False
 
 
+@dataclass
 class DataFile:
-  def __init__(self, srcpath, dstpath, mode, explicit_dst_path):
-    self.srcpath = srcpath
-    self.dstpath = dstpath
-    self.mode = mode
-    self.explicit_dst_path = explicit_dst_path
+  srcpath: str
+  dstpath: str
+  mode: str
+  explicit_dst_path: bool
 
 
 options = Options()
@@ -545,6 +546,23 @@ def main():  # noqa: C901, PLR0912, PLR0915
 
   metadata = {'files': []}
 
+  if options.depfile:
+    targets = []
+    if options.obj_output:
+      targets.append(options.obj_output)
+    if options.jsoutput:
+      targets.append(data_target)
+      targets.append(options.jsoutput)
+    with open(options.depfile, 'w') as f:
+      for target in targets:
+        if target:
+          f.write(escape_for_makefile(target))
+          f.write(' \\\n')
+      f.write(': \\\n')
+      for dependency in walked:
+        f.write(escape_for_makefile(dependency))
+        f.write(' \\\n')
+
   if options.obj_output:
     if not options.has_embedded:
       diagnostics.error('--obj-output is only applicable when embedding files')
@@ -569,17 +587,6 @@ def main():  # noqa: C901, PLR0912, PLR0915
         utils.write_file(options.jsoutput, ret)
       if options.separate_metadata:
         utils.write_file(options.jsoutput + '.metadata', json.dumps(metadata, separators=(',', ':')))
-
-  if options.depfile:
-    with open(options.depfile, 'w') as f:
-      for target in (data_target, options.jsoutput):
-        if target:
-          f.write(escape_for_makefile(target))
-          f.write(' \\\n')
-      f.write(': \\\n')
-      for dependency in walked:
-        f.write(escape_for_makefile(dependency))
-        f.write(' \\\n')
 
   return 0
 

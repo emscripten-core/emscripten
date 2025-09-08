@@ -39,7 +39,7 @@ logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
-EXPECTED_BINARYEN_VERSION = 123
+EXPECTED_BINARYEN_VERSION = 124
 
 _is_ar_cache: Dict[str, bool] = {}
 # the exports the user requested
@@ -522,8 +522,6 @@ def transpile(filename):
     config['targets']['chrome'] = str(settings.MIN_CHROME_VERSION)
   if settings.MIN_FIREFOX_VERSION != UNSUPPORTED:
     config['targets']['firefox'] = str(settings.MIN_FIREFOX_VERSION)
-  if settings.MIN_IE_VERSION != UNSUPPORTED:
-    config['targets']['ie'] = str(settings.MIN_IE_VERSION)
   if settings.MIN_SAFARI_VERSION != UNSUPPORTED:
     config['targets']['safari'] = version_split(settings.MIN_SAFARI_VERSION)
   if settings.MIN_NODE_VERSION != UNSUPPORTED:
@@ -609,6 +607,9 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
   # Tell closure never to inject the 'use strict' directive.
   args += ['--emit_use_strict=false']
   args += ['--assume_static_inheritance_is_not_used=false']
+  # Always output UTF-8 files, this helps generate UTF-8 code points instead of escaping code points with \uxxxx inside strings.
+  # Closure outputs ASCII by default, and must be adjusted to output UTF8 (https://github.com/google/closure-compiler/issues/4158)
+  args += ['--charset=UTF8']
 
   if settings.IGNORE_CLOSURE_COMPILER_ERRORS:
     args.append('--jscomp_off=*')
@@ -663,13 +664,30 @@ def run_closure_cmd(cmd, filename, env):
   if not settings.MINIFY_WHITESPACE:
     cmd += ['--formatting', 'PRETTY_PRINT']
 
+  if settings.WASM2JS:
+    # In WASM2JS mode, the WebAssembly object is polyfilled, which triggers
+    # Closure's built-in type check:
+    # externs.zip//webassembly.js:29:18: WARNING - [JSC_TYPE_MISMATCH] initializing variable
+    # We cannot fix this warning externally, since adding /** @suppress{checkTypes} */
+    # to the polyfill is "in the wrong end". So mute this warning globally to
+    # allow clean Closure output. https://github.com/google/closure-compiler/issues/4108
+    cmd += ['--jscomp_off=checkTypes']
+
+    # WASM2JS codegen routinely generates expressions that are unused, e.g.
+    # WARNING - [JSC_USELESS_CODE] Suspicious code. The result of the 'bitor' operator is not being used.
+    #        s(0) | 0;
+    #        ^^^^^^^^
+    # Turn off this check in Closure to allow clean Closure output.
+    cmd += ['--jscomp_off=uselessCode']
+
   shared.print_compiler_stage(cmd)
 
   # Closure compiler does not work if any of the input files contain characters outside the
   # 7-bit ASCII range. Therefore make sure the command line we pass does not contain any such
   # input files by passing all input filenames relative to the cwd. (user temp directory might
   # be in user's home directory, and user's profile name might contain unicode characters)
-  proc = run_process(cmd, stderr=PIPE, check=False, env=env, cwd=tempfiles.tmpdir)
+  # https://github.com/google/closure-compiler/issues/4159: Closure outputs stdout/stderr in iso-8859-1 on Windows.
+  proc = run_process(cmd, stderr=PIPE, check=False, env=env, cwd=tempfiles.tmpdir, encoding='iso-8859-1' if WINDOWS else 'utf-8')
 
   # XXX Closure bug: if Closure is invoked with --create_source_map, Closure should create a
   # outfile.map source map file (https://github.com/google/closure-compiler/wiki/Source-Maps)
@@ -1081,24 +1099,40 @@ def instrument_js_for_safe_heap(js_file):
   return acorn_optimizer(js_file, ['safeHeap'])
 
 
+def read_name_section(wasm_file):
+  with webassembly.Module(wasm_file) as module:
+    for section in module.sections():
+      if section.type == webassembly.SecType.CUSTOM:
+        module.seek(section.offset)
+        if module.read_string() == 'name':
+          name_map = {}
+          # The name section is made up sub-section.
+          # We are looking for the function names sub-section
+          while module.tell() < section.offset + section.size:
+            name_type = module.read_uleb()
+            subsection_size = module.read_uleb()
+            subsection_end = module.tell() + subsection_size
+            if name_type == webassembly.NameType.FUNCTION:
+              # We found the function names sub-section
+              num_names = module.read_uleb()
+              for _ in range(num_names):
+                id = module.read_uleb()
+                name = module.read_string()
+                name_map[id] = name
+              return name_map
+            module.seek(subsection_end)
+
+          return name_map
+
+
 @ToolchainProfiler.profile()
-def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
+def write_symbol_map(wasm_file, symbols_file):
   logger.debug('handle_final_wasm_symbols')
-  args = []
-  if symbols_file:
-    args += ['--print-function-map']
-  else:
-    # suppress the wasm-opt warning regarding "no output file specified"
-    args += ['--quiet']
-  output = run_wasm_opt(wasm_file, args=args, stdout=PIPE)
-  if symbols_file:
-    utils.write_file(symbols_file, output)
-  if not debug_info:
-    # strip the names section using llvm-objcopy. this is slightly slower than
-    # using wasm-opt (we could run wasm-opt without -g here and just tell it to
-    # write the file back out), but running wasm-opt would undo StackIR
-    # optimizations, if we did those.
-    strip(wasm_file, wasm_file, sections=['name'])
+  names = read_name_section(wasm_file)
+  assert(names)
+  strings = [f'{id}:{name}' for id, name in names.items()]
+  contents = '\n'.join(strings) + '\n'
+  utils.write_file(symbols_file, contents)
 
 
 def is_ar(filename):

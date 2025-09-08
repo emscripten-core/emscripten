@@ -48,6 +48,10 @@ __attribute__((aligned(32)))
 float interesting_floats_[] = {
   -INFINITY,
   -FLT_MAX,
+  -4294967296.0f, // https://github.com/emscripten-core/emscripten/pull/25130
+  -2147483648.1f,
+  -2147483648.0f,
+  -2147483647.9f,
   -2.5f,
   -1.5f,
   -1.4f,
@@ -63,10 +67,14 @@ float interesting_floats_[] = {
   0.5f,
   0.8f,
   1.0f,
-  1.5f,
+  1.5f, // Test different half-way values to see if banker's rounding happens.
   2.5f,
   3.5f,
-  3.6f,
+  1022.99998194495f, // https://github.com/emscripten-core/emscripten/issues/25129
+  2147483647.9f, // https://github.com/emscripten-core/emscripten/pull/25130
+  2147483648.0f,
+  2147483648.1f,
+  4294967296.0f,
   FLT_MAX,
   INFINITY,
   NAN,
@@ -83,6 +91,10 @@ __attribute__((aligned(32)))
 double interesting_doubles_[] = {
   -INFINITY,
   -FLT_MAX,
+  -4294967296.0, // https://github.com/emscripten-core/emscripten/pull/25130
+  -2147483648.1,
+  -2147483648.0,
+  -2147483647.9,
   -2.5,
   -1.5,
   -1.4,
@@ -98,10 +110,14 @@ double interesting_doubles_[] = {
   0.5,
   0.8,
   1.0,
-  1.5,
+  1.5, // Test different half-way values to see if banker's rounding happens.
   2.5,
   3.5,
-  3.6,
+  1022.99998194495, // https://github.com/emscripten-core/emscripten/issues/25129
+  2147483647.9,
+  2147483648.0, // https://github.com/emscripten-core/emscripten/pull/25130
+  2147483648.1,
+  4294967296.0,
   FLT_MAX,
   INFINITY,
   NAN,

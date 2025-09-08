@@ -15,8 +15,8 @@ import difflib
 import hashlib
 import io
 import itertools
+import json
 import logging
-import multiprocessing
 import os
 import re
 import shlex
@@ -27,6 +27,7 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import threading
 import time
 import webbrowser
 import unittest
@@ -45,8 +46,12 @@ logger = logging.getLogger('common')
 
 # User can specify an environment variable EMTEST_BROWSER to force the browser
 # test suite to run using another browser command line than the default system
-# browser.
-# There are two special value that can be used here if running in an actual
+# browser. If only the path to the browser executable is given, the tests
+# will run in headless mode with a temporary profile with the same options
+# used in CI. To use a custom start command specify the executable and command
+# line flags.
+#
+# There are two special values that can be used here if running in an actual
 # browser is not desired:
 #  EMTEST_BROWSER=0 : This will disable the actual running of the test and simply
 #                     verify that it compiles and links.
@@ -54,6 +59,8 @@ logger = logging.getLogger('common')
 #                        For most browser tests this does not work, but it can
 #                        be useful for running pthread tests under node.
 EMTEST_BROWSER = None
+EMTEST_BROWSER_AUTO_CONFIG = None
+EMTEST_HEADLESS = None
 EMTEST_DETECT_TEMPFILE_LEAKS = None
 EMTEST_SAVE_DIR = None
 # generally js engines are equivalent, testing 1 is enough. set this
@@ -76,12 +83,54 @@ EMTEST_CAPTURE_STDIO = int(os.getenv('EMTEST_CAPTURE_STDIO', '0'))
 if 'EM_BUILD_VERBOSE' in os.environ:
   exit_with_error('EM_BUILD_VERBOSE has been renamed to EMTEST_BUILD_VERBOSE')
 
+# If we are drawing a parallel swimlane graph of test output, we need to use a temp
+# file to track which tests were flaky so they can be graphed in orange color to
+# visually stand out.
+flaky_tests_log_filename = os.path.join(path_from_root('out/flaky_tests.txt'))
+
+
+# Default flags used to run browsers in CI testing:
+class ChromeConfig:
+  data_dir_flag = '--user-data-dir='
+  default_flags = (
+    # --no-sandbox because we are running as root and chrome requires
+    # this flag for now: https://crbug.com/638180
+    '--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader --enable-experimental-web-platform-features --enable-features=JavaScriptSourcePhaseImports',
+    '--enable-experimental-webassembly-features --js-flags="--experimental-wasm-stack-switching --experimental-wasm-type-reflection --experimental-wasm-rab-integration"',
+    # The runners lack sound hardware so fallback to a dummy device (and
+    # bypass the user gesture so audio tests work without interaction)
+    '--use-fake-device-for-media-stream --autoplay-policy=no-user-gesture-required',
+    # Cache options.
+    '--disk-cache-size=1 --media-cache-size=1 --disable-application-cache',
+    # Disable various background tasks downloads (e.g. updates).
+    '--disable-background-networking',
+  )
+  headless_flags = '--headless=new --window-size=1024,768'
+
+  @staticmethod
+  def configure(data_dir):
+    """Chrome has no special configuration step."""
+
+
+class FirefoxConfig:
+  data_dir_flag = '-profile '
+  default_flags = ()
+  headless_flags = '-headless'
+
+  @staticmethod
+  def configure(data_dir):
+    shutil.copy(test_file('firefox_user.js'), os.path.join(data_dir, 'user.js'))
+
+
 # Special value for passing to assert_returncode which means we expect that program
 # to fail with non-zero return code, but we don't care about specifically which one.
 NON_ZERO = -1
 
 TEST_ROOT = path_from_root('test')
 LAST_TEST = path_from_root('out/last_test.txt')
+PREVIOUS_TEST_RUN_RESULTS_FILE = path_from_root('out/previous_test_run_results.json')
+
+DEFAULT_BROWSER_DATA_DIR = path_from_root('out/browser-profile')
 
 WEBIDL_BINDER = shared.bat_suffix(path_from_root('tools/webidl_binder'))
 
@@ -93,11 +142,31 @@ EMRUN = shared.bat_suffix(shared.path_from_root('emrun'))
 WASM_DIS = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
 LLVM_OBJDUMP = shared.llvm_tool_path('llvm-objdump')
 PYTHON = sys.executable
+
+assert config.NODE_JS # assert for mypy's benefit
+# By default we run the tests in the same version of node as emscripten itself used.
 if not config.NODE_JS_TEST:
   config.NODE_JS_TEST = config.NODE_JS
-
+# The default set of JS_ENGINES contains just node.
+if not config.JS_ENGINES:
+  config.JS_ENGINES = [config.NODE_JS_TEST]
 
 requires_network = unittest.skipIf(os.getenv('EMTEST_SKIP_NETWORK_TESTS'), 'This test requires network access')
+
+
+def errlog(*args):
+  """Shorthand for print with file=sys.stderr
+
+  Use this for all internal test framework logging..
+  """
+  print(*args, file=sys.stderr)
+
+
+def load_previous_test_run_results():
+  try:
+    return json.load(open(PREVIOUS_TEST_RUN_RESULTS_FILE))
+  except FileNotFoundError:
+    return {}
 
 
 def test_file(*path_components):
@@ -112,6 +181,17 @@ def copytree(src, dest):
 # checks if browser testing is enabled
 def has_browser():
   return EMTEST_BROWSER != '0'
+
+
+CHROMIUM_BASED_BROWSERS = ['chrom', 'edge', 'opera']
+
+
+def is_chrome():
+  return EMTEST_BROWSER and any(pattern in EMTEST_BROWSER.lower() for pattern in CHROMIUM_BASED_BROWSERS)
+
+
+def is_firefox():
+  return EMTEST_BROWSER and 'firefox' in EMTEST_BROWSER.lower()
 
 
 def compiler_for(filename, force_c=False):
@@ -166,9 +246,12 @@ def flaky(note=''):
       for i in range(EMTEST_RETRY_FLAKY):
         try:
           return f(*args, **kwargs)
-        except AssertionError as exc:
+        except (AssertionError, subprocess.TimeoutExpired) as exc:
           preserved_exc = exc
-          logging.info(f'Retrying flaky test (attempt {i}/{EMTEST_RETRY_FLAKY} failed): {exc}')
+          logging.info(f'Retrying flaky test "{f.__name__}" (attempt {i}/{EMTEST_RETRY_FLAKY} failed): {exc}')
+          # Mark down that this was a flaky test.
+          open(flaky_tests_log_filename, 'a').write(f'{f.__name__}\n')
+
       raise AssertionError('Flaky test has failed too many times') from preserved_exc
 
     return modified
@@ -382,6 +465,21 @@ def crossplatform(f):
   return f
 
 
+# without EMTEST_ALL_ENGINES set we only run tests in a single VM by
+# default. in some tests we know that cross-VM differences may happen and
+# so are worth testing, and they should be marked with this decorator
+def all_engines(f):
+  assert callable(f)
+
+  @wraps(f)
+  def decorated(self, *args, **kwargs):
+    self.use_all_engines = True
+    self.set_setting('ENVIRONMENT', 'web,node,shell')
+    f(self, *args, **kwargs)
+
+  return decorated
+
+
 @contextlib.contextmanager
 def env_modify(updates):
   """A context manager that updates os.environ."""
@@ -547,7 +645,8 @@ def also_with_minimal_runtime(f):
   def metafunc(self, with_minimal_runtime, *args, **kwargs):
     if DEBUG:
       print('parameterize:minimal_runtime=%s' % with_minimal_runtime)
-    assert self.get_setting('MINIMAL_RUNTIME') is None
+    if self.get_setting('MINIMAL_RUNTIME'):
+      self.skipTest('MINIMAL_RUNTIME already enabled in test config')
     if with_minimal_runtime:
       if self.get_setting('MODULARIZE') == 'instance' or self.get_setting('WASM_ESM_INTEGRATION'):
         self.skipTest('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
@@ -683,6 +782,8 @@ def also_with_modularize(f):
   @wraps(f)
   def metafunc(self, modularize, *args, **kwargs):
     if modularize:
+      if self.get_setting('DECLARE_ASM_MODULE_EXPORTS') == 0:
+        self.skipTest('DECLARE_ASM_MODULE_EXPORTS=0 is not compatible with MODULARIZE')
       if self.get_setting('STRICT_JS'):
         self.skipTest('MODULARIZE is not compatible with STRICT_JS')
       if self.get_setting('WASM_ESM_INTEGRATION'):
@@ -994,17 +1095,25 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.get_setting('MEMORY64') == 2:
       self.skipTest('dynamic linking not supported with MEMORY64=2')
 
-  def require_v8(self):
+  def get_v8(self):
+    """Return v8 engine, if one is configured, otherwise None"""
     if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
+      return None
+    return config.V8_ENGINE
+
+  def require_v8(self):
+    v8 = self.get_v8()
+    if not v8:
       if 'EMTEST_SKIP_V8' in os.environ:
         self.skipTest('test requires v8 and EMTEST_SKIP_V8 is set')
       else:
         self.fail('d8 required to run this test.  Use EMTEST_SKIP_V8 to skip')
-    self.require_engine(config.V8_ENGINE)
+    self.require_engine(v8)
     self.cflags.append('-sENVIRONMENT=shell')
 
   def get_nodejs(self):
-    if config.NODE_JS_TEST not in self.js_engines:
+    """Return nodejs engine, if one is configured, otherwise None"""
+    if config.NODE_JS_TEST not in config.JS_ENGINES:
       return None
     return config.NODE_JS_TEST
 
@@ -1019,7 +1128,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return nodejs
 
   def node_is_canary(self, nodejs):
-    return nodejs and nodejs[0] and 'canary' in nodejs[0]
+    return nodejs and nodejs[0] and ('canary' in nodejs[0] or 'nightly' in nodejs[0])
 
   def require_node_canary(self):
     nodejs = self.get_nodejs()
@@ -1047,9 +1156,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.try_require_node_version(24):
       return
 
-    if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
+    v8 = self.get_v8()
+    if v8:
       self.cflags.append('-sENVIRONMENT=shell')
-      self.js_engines = [config.V8_ENGINE]
+      self.js_engines = [v8]
       return
 
     if 'EMTEST_SKIP_WASM64' in os.environ:
@@ -1075,9 +1185,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.try_require_node_version(16):
       return
 
-    if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
+    v8 = self.get_v8()
+    if v8:
       self.cflags.append('-sENVIRONMENT=shell')
-      self.js_engines = [config.V8_ENGINE]
+      self.js_engines = [v8]
       return
 
     if 'EMTEST_SKIP_SIMD' in os.environ:
@@ -1090,9 +1201,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.try_require_node_version(17):
       return
 
-    if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
+    v8 = self.get_v8()
+    if v8:
       self.cflags.append('-sENVIRONMENT=shell')
-      self.js_engines = [config.V8_ENGINE]
+      self.js_engines = [v8]
       return
 
     if 'EMTEST_SKIP_EH' in os.environ:
@@ -1109,9 +1221,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.is_browser_test():
       return
 
-    if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
+    v8 = self.get_v8()
+    if v8:
       self.cflags.append('-sENVIRONMENT=shell')
-      self.js_engines = [config.V8_ENGINE]
+      self.js_engines = [v8]
       self.v8_args.append('--experimental-wasm-exnref')
       return
 
@@ -1141,9 +1254,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.node_args += exp_args
       return
 
-    if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
+    v8 = self.get_v8()
+    if v8:
       self.cflags.append('-sENVIRONMENT=shell')
-      self.js_engines = [config.V8_ENGINE]
+      self.js_engines = [v8]
       self.v8_args += exp_args
       return
 
@@ -1250,7 +1364,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.required_engine = None
     self.wasm_engines = config.WASM_ENGINES.copy()
     self.use_all_engines = EMTEST_ALL_ENGINES
-    if self.js_engines[0] != config.NODE_JS_TEST:
+    if self.get_current_js_engine() != config.NODE_JS_TEST:
       # If our primary JS engine is something other than node then enable
       # shell support.
       default_envs = 'web,webview,worker,node'
@@ -1313,9 +1427,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         left_over_files = set(temp_files_after_run) - set(self.temp_files_before_run)
         left_over_files = [f for f in left_over_files if not any(f.startswith(p) for p in ignorable_file_prefixes)]
         if len(left_over_files):
-          print('ERROR: After running test, there are ' + str(len(left_over_files)) + ' new temporary files/directories left behind:', file=sys.stderr)
+          errlog('ERROR: After running test, there are ' + str(len(left_over_files)) + ' new temporary files/directories left behind:')
           for f in left_over_files:
-            print('leaked file: ' + f, file=sys.stderr)
+            errlog('leaked file: ', f)
           self.fail('Test leaked ' + str(len(left_over_files)) + ' temporary files!')
 
   def get_setting(self, key, default=None):
@@ -1396,7 +1510,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     # use --quiet once its available
     # See: https://github.com/dollarshaveclub/es-check/pull/126/
     es_check_env = os.environ.copy()
-    es_check_env['PATH'] = os.path.dirname(config.NODE_JS_TEST[0]) + os.pathsep + es_check_env['PATH']
+    # Use NODE_JS here (the version of node that the compiler uses) rather then NODE_JS_TEST (the
+    # version of node being used to run the tests) since we only care about having something that
+    # can run the es-check tool.
+    es_check_env['PATH'] = os.path.dirname(config.NODE_JS[0]) + os.pathsep + es_check_env['PATH']
     inputfile = os.path.abspath(filename)
     # For some reason es-check requires unix paths, even on windows
     if WINDOWS:
@@ -1527,6 +1644,23 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     assert len(long_lines) == 1
     return '\n'.join(lines)
 
+  def get_current_js_engine(self):
+    """Return the default JS engine to run tests under"""
+    return self.js_engines[0]
+
+  def get_engine_with_args(self, engine=None):
+    if not engine:
+      engine = self.get_current_js_engine()
+    # Make a copy of the engine command before we modify/extend it.
+    engine = list(engine)
+    if engine == config.NODE_JS_TEST:
+      engine += self.node_args
+    elif engine == config.V8_ENGINE:
+      engine += self.v8_args
+    elif engine == config.SPIDERMONKEY_ENGINE:
+      engine += self.spidermonkey_args
+    return engine
+
   def run_js(self, filename, engine=None, args=None,
              assert_returncode=0,
              interleaved_output=True,
@@ -1542,14 +1676,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     stdout = open(stdout_file, 'w')
     error = None
     timeout_error = None
-    if not engine:
-      engine = self.js_engines[0]
-    if engine == config.NODE_JS_TEST:
-      engine = engine + self.node_args
-    elif engine == config.V8_ENGINE:
-      engine = engine + self.v8_args
-    elif engine == config.SPIDERMONKEY_ENGINE:
-      engine = engine + self.spidermonkey_args
+    engine = self.get_engine_with_args(engine)
     try:
       jsrun.run_js(filename, engine, args,
                    stdout=stdout,
@@ -1716,7 +1843,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if env_init is None:
       env_init = {}
     if make_args is None:
-      make_args = ['-j', str(shared.get_num_cores())]
+      make_args = ['-j', str(utils.get_num_cores())]
 
     build_dir = self.get_build_dir()
 
@@ -1734,7 +1861,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     cache_name = ''.join([(c if c in valid_chars else '_') for c in cache_name])
 
     if not force_rebuild and self.library_cache.get(cache_name):
-      print('<load %s from cache> ' % cache_name, file=sys.stderr)
+      errlog('<load %s from cache> ' % cache_name)
       generated_libs = []
       for basename, contents in self.library_cache[cache_name]:
         bc_file = os.path.join(build_dir, cache_name + '_' + basename)
@@ -1742,7 +1869,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         generated_libs.append(bc_file)
       return generated_libs
 
-    print(f'<building and saving {cache_name} into cache>', file=sys.stderr)
+    errlog(f'<building and saving {cache_name} into cache>')
     if configure and configure_args:
       # Make to copy to avoid mutating default param
       configure = list(configure)
@@ -1980,6 +2107,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                      check_for_error=True,
                      interleaved_output=True,
                      regex=False,
+                     input=None,
                      **kwargs):
     logger.debug(f'_build_and_run: {filename}')
 
@@ -2006,6 +2134,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.fail('No JS engine present to run this test with. Check %s and the paths therein.' % config.EM_CONFIG)
     for engine in engines:
       js_output = self.run_js(js_file, engine, args,
+                              input=input,
                               assert_returncode=assert_returncode,
                               interleaved_output=interleaved_output)
       js_output = js_output.replace('\r\n', '\n')
@@ -2104,10 +2233,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return rtn
 
 
-# Run a server and a web page. When a test runs, we tell the server about it,
+# Create a server and a web page. When a test runs, we tell the server about it,
 # which tells the web page, which then opens a window with the test. Doing
 # it this way then allows the page to close() itself when done.
-def harness_server_func(in_queue, out_queue, port):
+def make_test_server(in_queue, out_queue, port):
   class TestServerHandler(SimpleHTTPRequestHandler):
     # Request header handler for default do_GET() path in
     # SimpleHTTPRequestHandler.do_GET(self) below.
@@ -2207,10 +2336,6 @@ def harness_server_func(in_queue, out_queue, port):
         else:
           self.send_error(400, f'Not implemented for {code}')
       elif 'report_' in self.path:
-        # the test is reporting its result. first change dir away from the
-        # test dir, as it will be deleted now that the test is finishing, and
-        # if we got a ping at that time, we'd return an error
-        os.chdir(path_from_root())
         # for debugging, tests may encode the result and their own url (window.location) as result|url
         if '|' in self.path:
           path, url = self.path.split('|', 1)
@@ -2252,8 +2377,6 @@ def harness_server_func(in_queue, out_queue, port):
           assert out_queue.empty(), 'the single response from the last test was read'
           # tell the browser to load the test
           self.wfile.write(b'COMMAND:' + url.encode('utf-8'))
-          # move us to the right place to serve the files for the new test
-          os.chdir(dir)
         else:
           # the browser must keep polling
           self.wfile.write(b'(wait)')
@@ -2289,8 +2412,23 @@ def harness_server_func(in_queue, out_queue, port):
   # do not have the correct MIME type
   SimpleHTTPRequestHandler.extensions_map['.mjs'] = 'text/javascript'
 
-  httpd = ThreadingHTTPServer(('localhost', port), TestServerHandler)
-  httpd.serve_forever() # test runner will kill us
+  return ThreadingHTTPServer(('localhost', port), TestServerHandler)
+
+
+class HttpServerThread(threading.Thread):
+  """A generic thread class to create and run an http server."""
+  def __init__(self, server):
+    super().__init__()
+    self.server = server
+
+  def stop(self):
+    """Shuts down the server if it is running."""
+    self.server.shutdown()
+
+  def run(self):
+    """Creates the server instance and serves forever until stop() is called."""
+    # Start the server's main loop (this blocks until shutdown() is called)
+    self.server.serve_forever()
 
 
 class Reporting(Enum):
@@ -2305,15 +2443,30 @@ class Reporting(Enum):
   FULL = 2
 
 
+# This will hold the ID for each worker process if running in parallel mode,
+# otherwise None if running in non-parallel mode.
+worker_id = None
+
+
+def init_worker(counter, lock):
+  """ Initializer function for each worker.
+  It acquires a lock, gets a unique ID from the shared counter,
+  and stores it in a global variable specific to this worker process.
+  """
+  global worker_id
+  with lock:
+    # Get the next available ID
+    worker_id = counter.value
+    # Increment the counter for the next worker
+    counter.value += 1
+
+
 class BrowserCore(RunnerCore):
   # note how many tests hang / do not send an output. if many of these
   # happen, likely something is broken and it is best to abort the test
   # suite early, as otherwise we will wait for the timeout on every
   # single test (hundreds of minutes)
   MAX_UNRESPONSIVE_TESTS = 10
-  PORT = 8888
-  SERVER_URL = f'http://localhost:{PORT}'
-  HARNESS_URL = f'{SERVER_URL}/run_harness'
   BROWSER_TIMEOUT = 60
 
   unresponsive_tests = 0
@@ -2323,9 +2476,7 @@ class BrowserCore(RunnerCore):
     super().__init__(*args, **kwargs)
 
   @classmethod
-  def browser_restart(cls):
-    # Kill existing browser
-    logger.info('Restarting browser process')
+  def browser_terminate(cls):
     cls.browser_proc.terminate()
     # If the browser doesn't shut down gracefully (in response to SIGTERM)
     # after 2 seconds kill it with force (SIGKILL).
@@ -2335,14 +2486,42 @@ class BrowserCore(RunnerCore):
       logger.info('Browser did not respond to `terminate`.  Using `kill`')
       cls.browser_proc.kill()
       cls.browser_proc.wait()
+      cls.browser_data_dir = None
+
+  @classmethod
+  def browser_restart(cls):
+    # Kill existing browser
+    logger.info('Restarting browser process')
+    cls.browser_terminate()
     cls.browser_open(cls.HARNESS_URL)
 
   @classmethod
   def browser_open(cls, url):
-    global EMTEST_BROWSER
+    global EMTEST_BROWSER, worker_id
     if not EMTEST_BROWSER:
       logger.info('No EMTEST_BROWSER set. Defaulting to `google-chrome`')
       EMTEST_BROWSER = 'google-chrome'
+
+    if EMTEST_BROWSER_AUTO_CONFIG:
+      logger.info('Using default CI configuration.')
+      cls.browser_data_dir = DEFAULT_BROWSER_DATA_DIR
+      if worker_id is not None:
+        # Running in parallel mode, give each browser its own profile dir.
+        cls.browser_data_dir += '-' + str(worker_id)
+      if os.path.exists(cls.browser_data_dir):
+        utils.delete_dir(cls.browser_data_dir)
+      os.mkdir(cls.browser_data_dir)
+      if is_chrome():
+        config = ChromeConfig()
+      elif is_firefox():
+        config = FirefoxConfig()
+      else:
+        exit_with_error("EMTEST_BROWSER_AUTO_CONFIG only currently works with firefox or chrome.")
+      EMTEST_BROWSER += f" {config.data_dir_flag}{cls.browser_data_dir} {' '.join(config.default_flags)}"
+      if EMTEST_HEADLESS == 1:
+        EMTEST_BROWSER += f" {config.headless_flags}"
+      config.configure(cls.browser_data_dir)
+
     if WINDOWS:
       # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
       # set EMTEST_BROWSER=C:\Program Files\Mozilla Firefox\firefox.exe
@@ -2357,13 +2536,20 @@ class BrowserCore(RunnerCore):
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
+    global worker_id
+    cls.PORT = 8888 + (0 if worker_id is None else worker_id)
+    cls.SERVER_URL = f'http://localhost:{cls.PORT}'
+    cls.HARNESS_URL = f'{cls.SERVER_URL}/run_harness'
+
     if not has_browser() or EMTEST_BROWSER == 'node':
       return
-    cls.harness_in_queue = multiprocessing.Queue()
-    cls.harness_out_queue = multiprocessing.Queue()
-    cls.harness_server = multiprocessing.Process(target=harness_server_func, args=(cls.harness_in_queue, cls.harness_out_queue, cls.PORT))
+
+    cls.harness_in_queue = queue.Queue()
+    cls.harness_out_queue = queue.Queue()
+    cls.harness_server = HttpServerThread(make_test_server(cls.harness_in_queue, cls.harness_out_queue, cls.PORT))
     cls.harness_server.start()
-    print('[Browser harness server on process %d]' % cls.harness_server.pid)
+
+    print(f'[Browser harness server on thread {cls.harness_server.name}]')
     cls.browser_open(cls.HARNESS_URL)
 
   @classmethod
@@ -2371,8 +2557,10 @@ class BrowserCore(RunnerCore):
     super().tearDownClass()
     if not has_browser() or EMTEST_BROWSER == 'node':
       return
-    cls.harness_server.terminate()
-    print('[Browser harness server terminated]')
+    cls.harness_server.stop()
+    cls.harness_server.join()
+    cls.browser_terminate()
+
     if WINDOWS:
       # On Windows, shutil.rmtree() in tearDown() raises this exception if we do not wait a bit:
       # WindowsError: [Error 32] The process cannot access the file because it is being used by another process.
@@ -2383,7 +2571,7 @@ class BrowserCore(RunnerCore):
 
   def add_browser_reporting(self):
     contents = read_file(test_file('browser_reporting.js'))
-    contents = contents.replace('{{{REPORTING_URL}}}', BrowserCore.SERVER_URL)
+    contents = contents.replace('{{{REPORTING_URL}}}', self.SERVER_URL)
     create_file('browser_reporting.js', contents)
 
   def assert_out_queue_empty(self, who):
@@ -2425,7 +2613,7 @@ class BrowserCore(RunnerCore):
           output = self.harness_out_queue.get(block=True, timeout=timeout)
         except queue.Empty:
           BrowserCore.unresponsive_tests += 1
-          print('[unresponsive tests: %d]' % BrowserCore.unresponsive_tests)
+          print(f'[unresponsive test: {self._testMethodName} total unresponsive={str(BrowserCore.unresponsive_tests)}]')
           self.browser_restart()
           # Rather than fail the test here, let fail on the `assertContained` so
           # that the test can be retried via `extra_tries`

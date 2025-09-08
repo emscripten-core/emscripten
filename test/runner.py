@@ -30,6 +30,7 @@ import random
 import sys
 import unittest
 import time
+from functools import cmp_to_key
 
 # Setup
 
@@ -39,6 +40,7 @@ sys.path.insert(0, __rootpath__)
 import jsrun
 import parallel_testsuite
 import common
+from common import errlog
 from tools import shared, config, utils
 
 
@@ -106,13 +108,12 @@ misc_test_modes = [
 
 
 def check_js_engines():
-  working_engines = [e for e in config.JS_ENGINES if jsrun.check_engine(e)]
-  if len(working_engines) < len(config.JS_ENGINES):
-    print('Not all the JS engines in JS_ENGINES appears to work.')
+  if not all(jsrun.check_engine(e) for e in config.JS_ENGINES):
+    errlog('Not all the JS engines in JS_ENGINES appears to work.')
     sys.exit(1)
 
   if common.EMTEST_ALL_ENGINES:
-    print('(using ALL js engines)')
+    errlog('(using ALL js engines)')
 
 
 def get_and_import_modules():
@@ -166,7 +167,7 @@ def tests_with_expanded_wildcards(args, all_tests):
     else:
       new_args += [arg]
   if not new_args and args:
-    print('No tests found to run in set: ' + str(args))
+    errlog('No tests found to run in set: ' + str(args))
     sys.exit(1)
   return new_args
 
@@ -189,7 +190,7 @@ def skip_requested_tests(args, modules):
     if arg.startswith('skip:'):
       which = arg.split('skip:')[1]
       os.environ['EMTEST_SKIP'] = os.environ['EMTEST_SKIP'] + ' ' + which
-      print('will skip "%s"' % which, file=sys.stderr)
+      errlog(f'will skip "{which}"')
       skip_test(which, modules)
       args[i] = None
   return [a for a in args if a is not None]
@@ -270,8 +271,84 @@ def error_on_legacy_suite_names(args):
       utils.exit_with_error('`%s` test suite has been replaced with `%s`', a, new)
 
 
-def load_test_suites(args, modules, start_at, repeat):
-  found_start = not start_at
+# Creates a sorter object that sorts the test run order to find the best possible
+# order to run the tests in. Generally this is slowest-first to maximize
+# parallelization, but if running with fail-fast, then the tests with recent
+# known failure frequency are run first, followed by slowest first.
+def create_test_run_sorter(failfast):
+  previous_test_run_results = common.load_previous_test_run_results()
+
+  def read_approx_fail_freq(test_name):
+    if test_name in previous_test_run_results and 'fail_frequency' in previous_test_run_results[test_name]:
+      # Quantize the float value to relatively fine-grained buckets for sorting.
+      # This bucketization is needed to merge two competing sorting goals: we may
+      # want to fail early (so tests with previous history of failures should sort first)
+      # but we also want to run the slowest tests first.
+      # We cannot sort for both goals at the same time, so have failure frequency
+      # take priority over test runtime, and quantize the failures to distinct
+      # frequencies, to be able to then sort by test runtime inside the same failure
+      # frequency bucket.
+      NUM_BUCKETS = 20
+      return round(previous_test_run_results[test_name]['fail_frequency'] * NUM_BUCKETS) / NUM_BUCKETS
+    return 0
+
+  def sort_tests_failing_and_slowest_first_comparator(x, y):
+    x = str(x)
+    y = str(y)
+
+    # Look at the number of times this test has failed, and order by failures count first
+    # Only do this in --failfast, if we are looking to fail early. (otherwise sorting by last test run duration is more productive)
+    if failfast:
+      x_fail_freq = read_approx_fail_freq(x)
+      y_fail_freq = read_approx_fail_freq(y)
+      if x_fail_freq != y_fail_freq:
+        return y_fail_freq - x_fail_freq
+
+      # Look at the number of times this test has failed overall in any other suite, and order by failures count first
+      x_fail_freq = read_approx_fail_freq(x.split(' ')[0])
+      y_fail_freq = read_approx_fail_freq(y.split(' ')[0])
+      if x_fail_freq != y_fail_freq:
+        return y_fail_freq - x_fail_freq
+
+    if x in previous_test_run_results:
+      X = previous_test_run_results[x]
+
+      # if test Y has not been run even once, run Y before X
+      if y not in previous_test_run_results:
+        return 1
+      Y = previous_test_run_results[y]
+
+      # If both X and Y have been run before, order the tests based on what the previous result was (failures first, skips very last)
+      # N.b. it is important to sandwich all skipped tests between fails and successes. This is to maximize the chances that when
+      # a failing test is detected, then the other cores will fail-fast as well. (successful tests are run slowest-first to help
+      # scheduling)
+      order_by_result = {'errored': 0, 'failed': 1, 'expected failure': 2, 'unexpected success': 3, 'skipped': 4, 'success': 5}
+      x_result = order_by_result[X['result']]
+      y_result = order_by_result[Y['result']]
+      if x_result != y_result:
+        return x_result - y_result
+
+      # Finally, order by test duration from last run
+      if X['duration'] != Y['duration']:
+        if X['result'] == 'success':
+          # If both tests were successful tests, run the slower test first to improve parallelism
+          return Y['duration'] - X['duration']
+        else:
+          # If both tests were failing tests, run the quicker test first to improve --failfast detection time
+          return X['duration'] - Y['duration']
+
+    # if test X has not been run even once, but Y has, run X before Y
+    if y in previous_test_run_results:
+      return -1
+
+    # Neither test have been run before, so run them in alphabetical order
+    return (x > y) - (x < y)
+
+  return sort_tests_failing_and_slowest_first_comparator
+
+
+def load_test_suites(args, modules, options):
+  found_start = not options.start_at
 
   loader = unittest.TestLoader()
   error_on_legacy_suite_names(args)
@@ -291,20 +368,22 @@ def load_test_suites(args, modules, start_at, repeat):
     if names_in_module:
       loaded_tests = loader.loadTestsFromNames(sorted(names_in_module), m)
       tests = flattened_tests(loaded_tests)
-      suite = suite_for_module(m, tests)
+      suite = suite_for_module(m, tests, options)
+      if options.failing_and_slow_first:
+        tests = sorted(tests, key=cmp_to_key(create_test_run_sorter(options.failfast)))
       for test in tests:
         if not found_start:
           # Skip over tests until we find the start
-          if test.id().endswith(start_at):
+          if test.id().endswith(options.start_at):
             found_start = True
           else:
             continue
-        for _x in range(repeat):
+        for _x in range(options.repeat):
           total_tests += 1
           suite.addTest(test)
       suites.append((m.__name__, suite))
   if not found_start:
-    utils.exit_with_error(f'unable to find --start-at test: {start_at}')
+    utils.exit_with_error(f'unable to find --start-at test: {options.start_at}')
   if total_tests == 1 or parallel_testsuite.num_cores() == 1:
     # TODO: perhaps leave it at 2 if it was 2 before?
     common.EMTEST_SAVE_DIR = 1
@@ -318,13 +397,13 @@ def flattened_tests(loaded_tests):
   return tests
 
 
-def suite_for_module(module, tests):
-  suite_supported = module.__name__ in ('test_core', 'test_other', 'test_posixtest')
+def suite_for_module(module, tests, options):
+  suite_supported = module.__name__ in ('test_core', 'test_other', 'test_posixtest', 'test_browser')
   if not common.EMTEST_SAVE_DIR and not shared.DEBUG:
     has_multiple_tests = len(tests) > 1
     has_multiple_cores = parallel_testsuite.num_cores() > 1
     if suite_supported and has_multiple_tests and has_multiple_cores:
-      return parallel_testsuite.ParallelTestSuite(len(tests))
+      return parallel_testsuite.ParallelTestSuite(len(tests), options)
   return unittest.TestSuite()
 
 
@@ -352,7 +431,7 @@ def run_tests(options, suites):
   total_core_time = 0
   run_start_time = time.perf_counter()
   for mod_name, suite in suites:
-    print('Running %s: (%s tests)' % (mod_name, suite.countTestCases()))
+    errlog('Running %s: (%s tests)' % (mod_name, suite.countTestCases()))
     res = testRunner.run(suite)
     msg = ('%s: %s run, %s errors, %s failures, %s skipped' %
            (mod_name, res.testsRun, len(res.errors), len(res.failures), len(res.skipped)))
@@ -362,14 +441,18 @@ def run_tests(options, suites):
       total_core_time += res.core_time
   total_run_time = time.perf_counter() - run_start_time
   if total_core_time > 0:
-    print('Total core time: %.3fs. Wallclock time: %.3fs. Parallelization: %.2fx.' % (total_core_time, total_run_time, total_core_time / total_run_time))
+    errlog('Total core time: %.3fs. Wallclock time: %.3fs. Parallelization: %.2fx.' % (total_core_time, total_run_time, total_core_time / total_run_time))
 
   if len(resultMessages) > 1:
-    print('====================')
-    print()
-    print('TEST SUMMARY')
+    errlog('====================')
+    errlog()
+    errlog('TEST SUMMARY')
     for msg in resultMessages:
-      print('    ' + msg)
+      errlog('    ' + msg)
+
+  if options.bell:
+    sys.stdout.write('\a')
+    sys.stdout.flush()
 
   return num_failures
 
@@ -392,8 +475,13 @@ def parse_args():
                       help='Automatically update test expectations for tests that support it.')
   parser.add_argument('--browser',
                       help='Command to launch web browser in which to run browser tests.')
+  parser.add_argument('--headless', action='store_true',
+                      help='Run browser tests in headless mode.', default=None)
+  parser.add_argument('--browser-auto-config', type=bool, default=True,
+                      help='Use the default CI browser configuration.')
   parser.add_argument('tests', nargs='*')
   parser.add_argument('--failfast', action='store_true')
+  parser.add_argument('--failing-and-slow-first', action='store_true', help='Run failing tests first, then sorted by slowest first. Combine with --failfast for fast fail-early CI runs.')
   parser.add_argument('--start-at', metavar='NAME', help='Skip all tests up until <NAME>')
   parser.add_argument('--continue', dest='_continue', action='store_true',
                       help='Resume from the last run test.'
@@ -402,11 +490,14 @@ def parse_args():
   parser.add_argument('--crossplatform-only', action='store_true')
   parser.add_argument('--repeat', type=int, default=1,
                       help='Repeat each test N times (default: 1).')
+  parser.add_argument('--bell', action='store_true', help='Play a sound after the test suite finishes.')
   return parser.parse_args()
 
 
 def configure():
   common.EMTEST_BROWSER = os.getenv('EMTEST_BROWSER')
+  common.EMTEST_BROWSER_AUTO_CONFIG = os.getenv('EMTEST_BROWSER_AUTO_CONFIG')
+  common.EMTEST_HEADLESS = int(os.getenv('EMTEST_HEADLESS', '0'))
   common.EMTEST_DETECT_TEMPFILE_LEAKS = int(os.getenv('EMTEST_DETECT_TEMPFILE_LEAKS', '0'))
   common.EMTEST_ALL_ENGINES = int(os.getenv('EMTEST_ALL_ENGINES', '0'))
   common.EMTEST_SKIP_SLOW = int(os.getenv('EMTEST_SKIP_SLOW', '0'))
@@ -428,12 +519,12 @@ def main():
   # Some options make sense being set in the environment, others not-so-much.
   # TODO(sbc): eventually just make these command-line only.
   if os.getenv('EMTEST_SAVE_DIR'):
-    print('ERROR: use --save-dir instead of EMTEST_SAVE_DIR=1, and --no-clean instead of EMTEST_SAVE_DIR=2')
+    errlog('ERROR: use --save-dir instead of EMTEST_SAVE_DIR=1, and --no-clean instead of EMTEST_SAVE_DIR=2')
     return 1
   if os.getenv('EMTEST_REBASELINE'):
-    print('Prefer --rebaseline over setting $EMTEST_REBASELINE')
+    errlog('Prefer --rebaseline over setting $EMTEST_REBASELINE')
   if os.getenv('EMTEST_VERBOSE'):
-    print('Prefer --verbose over setting $EMTEST_VERBOSE')
+    errlog('Prefer --verbose over setting $EMTEST_VERBOSE')
 
   # We set the environments variables here and then call configure,
   # to apply them.  This means the python's multiprocessing child
@@ -451,6 +542,8 @@ def main():
     os.environ[name] = value
 
   set_env('EMTEST_BROWSER', options.browser)
+  set_env('EMTEST_BROWSER_AUTO_CONFIG', options.browser_auto_config)
+  set_env('EMTEST_HEADLESS', options.headless)
   set_env('EMTEST_DETECT_TEMPFILE_LEAKS', options.detect_leaks)
   if options.save_dir:
     common.EMTEST_SAVE_DIR = 1
@@ -484,13 +577,17 @@ def main():
     tests = skip_requested_tests(tests, modules)
     tests = args_for_random_tests(tests, modules)
 
+  if not tests:
+    errlog('ERROR: no tests to run')
+    return 1
+
   if not options.start_at and options._continue:
     if os.path.exists(common.LAST_TEST):
       options.start_at = utils.read_file(common.LAST_TEST).strip()
 
-  suites, unmatched_tests = load_test_suites(tests, modules, options.start_at, options.repeat)
+  suites, unmatched_tests = load_test_suites(tests, modules, options)
   if unmatched_tests:
-    print('ERROR: could not find the following tests: ' + ' '.join(unmatched_tests))
+    errlog('ERROR: could not find the following tests: ' + ' '.join(unmatched_tests))
     return 1
 
   num_failures = run_tests(options, suites)
