@@ -91,7 +91,7 @@ flaky_tests_log_filename = os.path.join(path_from_root('out/flaky_tests.txt'))
 
 # Default flags used to run browsers in CI testing:
 class ChromeConfig:
-  default_flags = [
+  default_flags = (
     # --no-sandbox because we are running as root and chrome requires
     # this flag for now: https://crbug.com/638180
     '--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader --enable-experimental-web-platform-features --enable-features=JavaScriptSourcePhaseImports',
@@ -103,7 +103,7 @@ class ChromeConfig:
     '--disk-cache-size=1 --media-cache-size=1 --disable-application-cache',
     # Disable various background tasks downloads (e.g. updates).
     '--disable-background-networking',
-  ]
+  )
   headless_flags = ['--headless=new', '--window-size=1024,768']
 
   @staticmethod
@@ -116,7 +116,7 @@ class ChromeConfig:
 
 
 class FirefoxConfig:
-  default_flags = []
+  default_flags = ()
   headless_flags = ['-headless']
 
   @staticmethod
@@ -2533,7 +2533,7 @@ class BrowserCore(RunnerCore):
           config = FirefoxConfig()
         else:
           exit_with_error("EMTEST_BROWSER_AUTO_CONFIG only currently works with firefox or chrome.")
-        browser_args += config.data_dir_cmdline(cls.browser_data_dir) + config.default_flags
+        browser_args += config.data_dir_cmdline(cls.browser_data_dir) + list(config.default_flags)
         if EMTEST_HEADLESS == 1:
           browser_args += [config.headless_flags]
         config.configure(cls.browser_data_dir)
