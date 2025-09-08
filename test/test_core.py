@@ -2768,6 +2768,7 @@ The current type of b is: 9
     'print_override': (['--pre-js', test_file('pthread/test_pthread_print_seq_consistent.js')],),
   })
   def test_pthread_print_seq_consistent(self, cflags):
+    self.skipTest('Currently broken due to https://github.com/emscripten-core/emscripten/issues/19683')
     self.do_run_in_out_file_test('pthread/test_pthread_print_seq_consistent.c',
       cflags=cflags)
 

@@ -15,5 +15,5 @@ int main() {
   pthread_t t;
   pthread_create(&t, 0, pthread_main, 0);
   pthread_join(t, 0);
-  emscripten_out("thread has quit.");
+  emscripten_out("thread joined");
 }
