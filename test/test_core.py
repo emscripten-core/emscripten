@@ -5278,6 +5278,37 @@ main main sees -524, -534, 72.
   def test_dylink_weak_undef(self):
     self.dylink_testf(test_file('core/test_dylink_weak_undef.c'))
 
+  @needs_dylink
+  def test_dylink_weak_multilib(self):
+    create_file('liba.c', '''
+      #include <stdio.h>
+
+      extern int globalA __attribute__((weak));
+
+      void LibBFunc();
+
+      void LibAFunc() {
+        LibBFunc();
+        printf("globalA %p\\n", &globalA);
+      }
+    ''')
+    create_file('libb.c', '''
+     #include <stdio.h>
+
+     void LibBFunc() {
+       printf("Hello from b\\n");
+     }
+    ''')
+    create_file('main.c', '''
+      void LibAFunc();
+      int main() {
+        LibAFunc();
+      }
+    ''')
+    self.run_process([EMCC, 'libb.c', '-o', 'libb.so', '-sSIDE_MODULE'] + self.get_cflags())
+    self.run_process([EMCC, 'liba.c', '-o', 'liba.so', '-sSIDE_MODULE', 'libb.so'] + self.get_cflags())
+    self.do_runf('main.c', 'Hello from b\n', cflags=['-sMAIN_MODULE=2', '-L.', 'liba.so'])
+
   @node_pthreads
   @needs_dylink
   def test_dylink_tls(self):
