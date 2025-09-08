@@ -3143,9 +3143,8 @@ More info: https://emscripten.org
       (['-O1', '-g'], True, False, True),
       (['-O3', '-g'], True, False, True),
       (['-gsplit-dwarf'], True, False, True),
-      # TODO: It seems odd that -gsource-map leaves behind a name section. Should it?
-      (['-gsource-map'], False, True, True),
-      (['-g1', '-Oz', '-gsource-map'], False, True, True),
+      (['-gsource-map'], False, True, False),
+      (['-g1', '-Oz', '-gsource-map'], False, True, False),
       (['-gsource-map', '-g0'], False, False, False),
       # --emit-symbol-map should not affect the results
       (['--emit-symbol-map', '-gsource-map'], False, True, True),
@@ -3157,7 +3156,6 @@ More info: https://emscripten.org
       (['-g2', '-gsource-map'], False, True, True),
       (['-gsplit-dwarf', '-gsource-map'], True, True, True),
       (['-gsource-map', '-sERROR_ON_WASM_CHANGES_AFTER_LINK'], False, True, True),
-      (['-Oz', '-gsource-map'], False, True, True),
     ]:
       print(flags, expect_dwarf, expect_sourcemap, expect_names)
       self.emcc(test_file(source_file), flags, js_file)
@@ -9254,7 +9252,7 @@ int main() {
         (['-O0', '-gline-tables-only'], False, True, False),
         (['-O1'], False, True, False),
         (['-O3'], True, False, False),
-        (['-Oz', '-gsource-map'], False, True, False), # TODO: fix this (#20462)
+        (['-Oz', '-gsource-map'], False, False, False),
         (['-O2'], True,  False, False),
         (['-O2', '-gz'], True,  False, False), # -gz means debug compression, it should not enable debugging
         (['-O2', '-g1'], False, True, False),
