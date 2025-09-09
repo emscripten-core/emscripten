@@ -2581,7 +2581,6 @@ The current type of b is: 9
 
   @node_pthreads
   @also_with_modularize
-  @flaky('https://github.com/emscripten-core/emscripten/issues/25026')
   def test_pthread_proxying(self):
     if '-sMODULARIZE' in self.cflags:
       if self.get_setting('WASM') == 0:
