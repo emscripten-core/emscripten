@@ -9254,7 +9254,7 @@ int main() {
         (['-O0', '-gline-tables-only'], False, True, False),
         (['-O1'], False, True, False),
         (['-O3'], True, False, False),
-        (['-Oz', '-gsource-map'], False, False, False),
+        (['-Oz', '-gsource-map'], True, False, False),
         (['-O2'], True,  False, False),
         (['-O2', '-gz'], True,  False, False), # -gz means debug compression, it should not enable debugging
         (['-O2', '-g1'], False, True, False),
