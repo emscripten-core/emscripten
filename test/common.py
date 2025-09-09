@@ -21,6 +21,7 @@ import os
 import re
 import shlex
 import shutil
+import signal
 import stat
 import string
 import subprocess
@@ -36,7 +37,7 @@ import queue
 import clang_native
 import jsrun
 import line_endings
-from tools.shared import EMCC, EMXX, DEBUG
+from tools.shared import EMCC, EMXX, DEBUG, exe_suffix
 from tools.shared import get_canonical_temp_dir, path_from_root
 from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_binary, exit_with_error
 from tools.settings import COMPILE_TIME_SETTINGS
@@ -106,6 +107,8 @@ class ChromeConfig:
     '--disable-background-networking',
   )
   headless_flags = '--headless=new --window-size=1024,768'
+  # Currently Chrome is not using process name -based matching of multiprocessing, only Firefox needs that.
+  executable_name = None
 
   @staticmethod
   def configure(data_dir):
@@ -116,6 +119,7 @@ class FirefoxConfig:
   data_dir_flag = '-profile '
   default_flags = ()
   headless_flags = '-headless'
+  executable_name = exe_suffix('firefox')
 
   @staticmethod
   def configure(data_dir):
@@ -2461,6 +2465,76 @@ def init_worker(counter, lock):
     counter.value += 1
 
 
+def list_processes_by_name(exe_name):
+  try:
+    import psutil
+  except:
+    # If user does not have pip psutil module installed (e.g. PyWin32 on Windows),
+    # then skip this process detection mechanism.
+    logger.debug('Python psutil module is not available. Please install it with "python -m pip install psutil" if you have issues with parallel browser suite, or set EMTEST_CORES=1.')
+    return []
+
+  pids = []
+  if exe_name:
+    for proc in psutil.process_iter():
+      try:
+        pinfo = proc.as_dict(attrs=['pid', 'name', 'exe'])
+        if pinfo['exe'] and exe_name in pinfo['exe'].replace('\\', '/').split('/'):
+          pids.append(psutil.Process(pinfo['pid']))
+      except psutil.NoSuchProcess: # E.g. "process no longer exists (pid=13132)" (code raced to acquire the iterator and process it)
+        pass
+
+  return pids
+
+
+class FileLock:
+  def __init__(self, path):
+    self.path = path
+
+  def __enter__(self):
+    while True:
+      try:
+        self.fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        self.counter = 0
+        try:
+          self.counter = int(open(f'{self.path}_counter').read())
+        except Exception as e:
+          print(str(e))
+          pass
+        return self.counter
+      except FileExistsError:
+        time.sleep(0.1)
+
+  def __exit__(self, *a):
+    try:
+      with open(f'{self.path}_counter', 'w') as f:
+        f.write(str(self.counter+1))
+    except Exception as e:
+      print(str(e))
+    os.close(self.fd)
+    try:
+      os.remove(self.path)
+    except:
+      pass # Another process has acquired the lock, and it will delete it.
+
+
+def move_browser_window(pid, x, y):
+  try:
+    import win32gui
+    import win32process
+  except:
+    return
+
+  def enum_windows_callback(hwnd, data):
+    _, win_pid = win32process.GetWindowThreadProcessId(hwnd)
+    if win_pid == pid and win32gui.IsWindowVisible(hwnd):
+      rect = win32gui.GetWindowRect(hwnd)
+      win32gui.MoveWindow(hwnd, x, y, rect[2] - rect[0], rect[3] - rect[1], True)
+    return True
+
+  win32gui.EnumWindows(enum_windows_callback, None)
+
+
 class BrowserCore(RunnerCore):
   # note how many tests hang / do not send an output. if many of these
   # happen, likely something is broken and it is best to abort the test
@@ -2477,15 +2551,21 @@ class BrowserCore(RunnerCore):
 
   @classmethod
   def browser_terminate(cls):
-    cls.browser_proc.terminate()
-    # If the browser doesn't shut down gracefully (in response to SIGTERM)
-    # after 2 seconds kill it with force (SIGKILL).
-    try:
-      cls.browser_proc.wait(2)
-    except subprocess.TimeoutExpired:
-      logger.info('Browser did not respond to `terminate`.  Using `kill`')
-      cls.browser_proc.kill()
-      cls.browser_proc.wait()
+    for proc in cls.browser_procs:
+      try:
+        proc.terminate()
+        # If the browser doesn't shut down gracefully (in response to SIGTERM)
+        # after 2 seconds kill it with force (SIGKILL).
+        try:
+          proc.wait(2)
+        except subprocess.TimeoutExpired:
+          logger.info('Browser did not respond to `terminate`.  Using `kill`')
+          proc.kill()
+          proc.wait()
+      except: # Move on if any exception, e.g. psutil.NoSuchProcess
+        pass
+
+    cls.browser_data_dir = None
 
   @classmethod
   def browser_restart(cls):
@@ -2533,7 +2613,24 @@ class BrowserCore(RunnerCore):
 
     browser_args = shlex.split(EMTEST_BROWSER)
     logger.info('Launching browser: %s', str(browser_args))
-    cls.browser_proc = subprocess.Popen(browser_args + [url])
+    with FileLock(path_from_root('out/browser_spawn_lock')) as count:
+      # Firefox is a multiprocess browser. Killing the spawned process will not bring down the
+      # whole browser, but only one browser tab. So take a delta snapshot before->after spawning
+      # the browser to find which subprocesses we launched.
+      procs_before = list_processes_by_name(config.executable_name)
+      browser_proc = subprocess.Popen(browser_args + [url])
+      # Give Firefox time to spawn it subprocesses.
+      if WINDOWS and is_firefox():
+        time.sleep(2)
+      procs_after = list_processes_by_name(config.executable_name) + [browser_proc]
+      cls.browser_procs = list(set(procs_after).difference(set(procs_before)))
+      # Make sure that each browser window is visible on the desktop. Otherwise browser might
+      # decide that the tab is backgrounded, and not load a test, or it might not tick rAF()s
+      # forward, causing tests to hang.
+      if WINDOWS and is_firefox():
+        for proc in cls.browser_procs:
+          # Wrap window positions on a Full HD desktop area modulo primes.
+          move_browser_window(proc.pid, (300 + count * 47) % 1901, (10 + count * 37) % 997)
 
   @classmethod
   def setUpClass(cls):

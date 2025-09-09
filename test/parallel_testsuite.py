@@ -113,6 +113,8 @@ class ParallelTestSuite(unittest.BaseTestSuite):
 
     # Remove any old stale list of flaky tests before starting the run
     utils.delete_file(common.flaky_tests_log_filename)
+    utils.delete_file(utils.path_from_root('out/browser_spawn_lock'))
+    utils.delete_file(utils.path_from_root('out/browser_spawn_lock_counter'))
 
     # If we are running with --failing-and-slow-first, then the test list has been
     # pre-sorted based on previous test run results. Otherwise run the tests in
