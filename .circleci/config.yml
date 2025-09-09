@@ -316,6 +316,7 @@ commands:
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
             EMTEST_HEADLESS: "1"
             EMTEST_BROWSER: "/usr/bin/google-chrome"
+            EMTEST_CORES: "2"
           command: |
             # There are tests in the browser test suite that using libraries
             # that are not included by "./embuilder build ALL".  For example the
@@ -378,6 +379,7 @@ commands:
             EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
             EMTEST_HEADLESS: "1"
+            EMTEST_CORES: "2"
             DISPLAY: ":0"
           command: |
             export EMTEST_BROWSER="$HOME/firefox/firefox"
@@ -405,6 +407,7 @@ commands:
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
             EMTEST_HEADLESS: "1"
             EMTEST_BROWSER: "/usr/bin/google-chrome"
+            EMTEST_CORES: "2"
           command: |
             test/runner sockets
       - upload-test-results
@@ -784,6 +787,7 @@ jobs:
             other.test_native_call_before_init
             other.test_node_unhandled_rejection
             other.test_*growable_arraybuffers
+            other.test_add_js_function_bigint_memory64
             core2.test_hello_world
             core2.test_esm_integration*
             core0.test_esm_integration*

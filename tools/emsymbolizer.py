@@ -230,10 +230,14 @@ def symbolize_address_symbolmap(module, address, symbol_map_file):
   """Symbolize using a symbol map file."""
   func_names = {}
 
+  def split_symbolmap_line(line):
+    assert ':' in line, f'invalid symbolmap line: {line}'
+    return line.split(':', 1)
+
   with open(symbol_map_file) as f:
     lines = f.read().splitlines()
     for line in lines:
-      index, name = line.split(':')
+      index, name = split_symbolmap_line(line)
       func_names[int(index)] = name
 
   func_index = -1
