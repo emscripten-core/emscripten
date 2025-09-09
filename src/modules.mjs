@@ -93,7 +93,7 @@ function calculateLibraries() {
     libraries.push('libsyscall.js');
   }
 
-  if (RELOCATABLE) {
+  if (MAIN_MODULE || RELOCATABLE) {
     libraries.push('libdylink.js');
   }
 
