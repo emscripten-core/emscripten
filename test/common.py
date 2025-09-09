@@ -2537,6 +2537,7 @@ class BrowserCore(RunnerCore):
   # single test (hundreds of minutes)
   MAX_UNRESPONSIVE_TESTS = 10
   BROWSER_TIMEOUT = 60
+  original_EMTEST_BROWSER = None
 
   unresponsive_tests = 0
 
@@ -2572,6 +2573,13 @@ class BrowserCore(RunnerCore):
   @classmethod
   def browser_open(cls, url):
     global EMTEST_BROWSER, worker_id
+
+    # Capture the original value of EMTEST_BROWSER, so that we can modify it
+    # safely.
+    if not BrowserCore.original_EMTEST_BROWSER:
+      BrowserCore.original_EMTEST_BROWSER = EMTEST_BROWSER
+    EMTEST_BROWSER = BrowserCore.original_EMTEST_BROWSER
+
     if WINDOWS and '"' not in EMTEST_BROWSER and "'" not in EMTEST_BROWSER:
       # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
       # set EMTEST_BROWSER=C:\Program Files\Mozilla Firefox\firefox.exe
