@@ -141,7 +141,7 @@ addToLibrary({
 #if ASYNCIFY == 1
       Asyncify.funcWrappers.set(original, wrapper);
 #endif
-#if MAIN_MODULE || ASYNCIFY_LAZY_LOAD_CODE
+#if MAIN_MODULE
       wrapper.orig = original;
 #endif
       return wrapper;
@@ -171,18 +171,12 @@ addToLibrary({
           }
 #endif
           var wrapper = Asyncify.instrumentFunction(original);
-#if ASYNCIFY_LAZY_LOAD_CODE
-          original.exportName = x;
-#endif
           ret[x] = wrapper;
 
        } else {
           ret[x] = original;
         }
       }
-#if ASYNCIFY_LAZY_LOAD_CODE
-      Asyncify.updateFunctionMapping(ret);
-#endif
       return ret;
     },
 
@@ -216,34 +210,6 @@ addToLibrary({
     callStackId: 0,
     asyncPromiseHandlers: null, // { resolve, reject } pair for when *all* asynchronicity is done
     sleepCallbacks: [], // functions to call every time we sleep
-
-#if ASYNCIFY_LAZY_LOAD_CODE
-    updateFunctionMapping(newExports) {
-#if ASYNCIFY_DEBUG
-      dbg('updateFunctionMapping', Asyncify.callStackIdToFunc);
-#endif
-#if ASSERTIONS
-      assert(!Asyncify.exportCallStack.length);
-#endif
-      Asyncify.callStackIdToFunc.forEach((func, id) => {
-#if ASSERTIONS
-        assert(func.exportName);
-        assert(newExports[func.exportName]);
-        assert(newExports[func.exportName].orig);
-#endif
-        var newFunc = newExports[func.exportName].orig;
-        Asyncify.callStackIdToFunc.set(id, newFunc)
-        Asyncify.callstackFuncToId.set(newFunc, id);
-#if MEMORY64
-        var args = Asyncify.rewindArguments.get(func);
-        if (args) {
-          Asyncify.rewindArguments.set(newFunc, args);
-          Asyncify.rewindArguments.delete(func);
-        }
-#endif
-      });
-    },
-#endif
 
     getCallStackId(func) {
 #if ASSERTIONS
@@ -545,16 +511,6 @@ addToLibrary({
       }, 0);
     });
   },
-
-#if ASYNCIFY_LAZY_LOAD_CODE
-  emscripten_lazy_load_code__async: true,
-  emscripten_lazy_load_code: () => Asyncify.handleSleep((wakeUp) => {
-    // Update the expected wasm binary file to be the lazy one.
-    wasmBinaryFile += '.lazy.wasm';
-    // Load the new wasm. The resulting Promise will resolve once the async loading is done.
-    createWasm().then(() => wakeUp());
-  }),
-#endif
 
   _load_secondary_module__sig: 'v',
   _load_secondary_module__async: true,

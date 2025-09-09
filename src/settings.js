@@ -915,12 +915,6 @@ var ASYNCIFY_ONLY = [];
 // [link]
 var ASYNCIFY_ADVISE = false;
 
-// Allows lazy code loading: where emscripten_lazy_load_code() is written, we
-// will pause execution, load the rest of the code, and then resume.
-// [link]
-// [deprecated]
-var ASYNCIFY_LAZY_LOAD_CODE = false;
-
 // Runtime debug logging from asyncify internals.
 //
 // - 1: Minimal logging.
@@ -2275,4 +2269,5 @@ var LEGACY_SETTINGS = [
   ['MAYBE_WASM2JS', [0], 'No longer supported (use -sWASM=2)'],
   ['HEADLESS', [0], 'No longer supported, use headless browsers or Node.js with JSDOM'],
   ['USE_OFFSET_COVERTER', [0], 'No longer supported, not needed with modern v8 versions'],
+  ['ASYNCIFY_LAZY_LOAD_CODE', [0], 'No longer supported'],
 ];

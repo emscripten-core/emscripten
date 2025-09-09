@@ -678,7 +678,6 @@ sigs = {
   emscripten_idb_store__sig: 'vpppip',
   emscripten_idb_store_blob__sig: 'vpppip',
   emscripten_is_webgl_context_lost__sig: 'ip',
-  emscripten_lazy_load_code__sig: 'v',
   emscripten_lock_async_acquire__sig: 'vpppd',
   emscripten_lock_orientation__sig: 'ii',
   emscripten_math_acos__sig: 'dd',
