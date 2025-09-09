@@ -91,21 +91,27 @@ flaky_tests_log_filename = os.path.join(path_from_root('out/flaky_tests.txt'))
 
 # Default flags used to run browsers in CI testing:
 class ChromeConfig:
-  data_dir_flag = '--user-data-dir='
   default_flags = (
     # --no-sandbox because we are running as root and chrome requires
     # this flag for now: https://crbug.com/638180
-    '--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader --enable-experimental-web-platform-features --enable-features=JavaScriptSourcePhaseImports',
-    '--enable-experimental-webassembly-features --js-flags="--experimental-wasm-stack-switching --experimental-wasm-type-reflection --experimental-wasm-rab-integration"',
+    '--no-first-run', '-start-maximized', '--no-sandbox', '--enable-unsafe-swiftshader', '--use-gl=swiftshader',
+    '--enable-experimental-web-platform-features', '--enable-features=JavaScriptSourcePhaseImports',
+    '--enable-experimental-webassembly-features',
+    # N.b. the following JS engine flags are passed to --js-flags=, and must appear as one element in this list.
+    '--js-flags=--experimental-wasm-stack-switching --experimental-wasm-type-reflection --experimental-wasm-rab-integration',
     # The runners lack sound hardware so fallback to a dummy device (and
     # bypass the user gesture so audio tests work without interaction)
-    '--use-fake-device-for-media-stream --autoplay-policy=no-user-gesture-required',
+    '--use-fake-device-for-media-stream', '--autoplay-policy=no-user-gesture-required',
     # Cache options.
-    '--disk-cache-size=1 --media-cache-size=1 --disable-application-cache',
+    '--disk-cache-size=1', '--media-cache-size=1', '--disable-application-cache',
     # Disable various background tasks downloads (e.g. updates).
     '--disable-background-networking',
   )
-  headless_flags = '--headless=new --window-size=1024,768'
+  headless_flags = ['--headless=new', '--window-size=1024,768']
+
+  @staticmethod
+  def data_dir_cmdline(data_dir):
+    return [f'--user-data-dir={data_dir}']
 
   @staticmethod
   def configure(data_dir):
@@ -113,9 +119,12 @@ class ChromeConfig:
 
 
 class FirefoxConfig:
-  data_dir_flag = '-profile '
   default_flags = ()
-  headless_flags = '-headless'
+  headless_flags = ['-headless']
+
+  @staticmethod
+  def data_dir_cmdline(data_dir):
+    return ['-profile', data_dir]
 
   @staticmethod
   def configure(data_dir):
@@ -2502,6 +2511,15 @@ class BrowserCore(RunnerCore):
       logger.info('No EMTEST_BROWSER set. Defaulting to `google-chrome`')
       EMTEST_BROWSER = 'google-chrome'
 
+    if WINDOWS:
+      # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
+      # set EMTEST_BROWSER=C:\Program Files\Mozilla Firefox\firefox.exe
+      # and spaces are not escaped. But make sure to also support args, e.g.
+      # set EMTEST_BROWSER="C:\Users\clb\AppData\Local\Google\Chrome SxS\Application\chrome.exe" --enable-unsafe-webgpu
+      if '"' not in EMTEST_BROWSER and "'" not in EMTEST_BROWSER:
+        EMTEST_BROWSER = '"' + EMTEST_BROWSER.replace("\\", "/") + '"'
+    browser_args = shlex.split(EMTEST_BROWSER)
+
     if EMTEST_BROWSER_AUTO_CONFIG:
       logger.info('Using default CI configuration.')
       cls.browser_data_dir = DEFAULT_BROWSER_DATA_DIR
@@ -2517,19 +2535,11 @@ class BrowserCore(RunnerCore):
         config = FirefoxConfig()
       else:
         exit_with_error("EMTEST_BROWSER_AUTO_CONFIG only currently works with firefox or chrome.")
-      EMTEST_BROWSER += f" {config.data_dir_flag}{cls.browser_data_dir} {' '.join(config.default_flags)}"
+      browser_args += config.data_dir_cmdline(cls.browser_data_dir) + list(config.default_flags)
       if EMTEST_HEADLESS == 1:
-        EMTEST_BROWSER += f" {config.headless_flags}"
+        browser_args += config.headless_flags
       config.configure(cls.browser_data_dir)
 
-    if WINDOWS:
-      # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
-      # set EMTEST_BROWSER=C:\Program Files\Mozilla Firefox\firefox.exe
-      # and spaces are not escaped. But make sure to also support args, e.g.
-      # set EMTEST_BROWSER="C:\Users\clb\AppData\Local\Google\Chrome SxS\Application\chrome.exe" --enable-unsafe-webgpu
-      if '"' not in EMTEST_BROWSER and "'" not in EMTEST_BROWSER:
-        EMTEST_BROWSER = '"' + EMTEST_BROWSER.replace("\\", "/") + '"'
-    browser_args = shlex.split(EMTEST_BROWSER)
     logger.info('Launching browser: %s', str(browser_args))
     cls.browser_proc = subprocess.Popen(browser_args + [url])
 
