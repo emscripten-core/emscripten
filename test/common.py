@@ -248,7 +248,7 @@ def flaky(note=''):
           return f(*args, **kwargs)
         except (AssertionError, subprocess.TimeoutExpired) as exc:
           preserved_exc = exc
-          logging.info(f'Retrying flaky test "{f.__name__}" (attempt {i}/{EMTEST_RETRY_FLAKY} failed): {exc}')
+          logging.info(f'Retrying flaky test "{f.id()}" (attempt {i}/{EMTEST_RETRY_FLAKY} failed): {exc}')
           # Mark down that this was a flaky test.
           open(flaky_tests_log_filename, 'a').write(f'{f.__name__}\n')
 
@@ -2615,7 +2615,7 @@ class BrowserCore(RunnerCore):
           output = self.harness_out_queue.get(block=True, timeout=timeout)
         except queue.Empty:
           BrowserCore.unresponsive_tests += 1
-          print(f'[unresponsive test: {self._testMethodName} total unresponsive={str(BrowserCore.unresponsive_tests)}]')
+          print(f'[unresponsive test: {self.id()} total unresponsive={str(BrowserCore.unresponsive_tests)}]')
           self.browser_restart()
           # Rather than fail the test here, let fail on the `assertContained` so
           # that the test can be retried via `extra_tries`
@@ -2633,7 +2633,7 @@ class BrowserCore(RunnerCore):
             self.assertContained(expected, output)
           except self.failureException as e:
             if extra_tries > 0:
-              print('[test error (see below), automatically retrying]')
+              print(f'[test error in: {self.id()} (see below), automatically retrying]')
               print(e)
               if not self.capture_stdio:
                 print('[enabling stdio/stderr reporting]')
