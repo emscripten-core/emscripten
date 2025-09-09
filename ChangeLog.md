@@ -26,7 +26,7 @@ See docs/process.md for more on how version tagging works.
   To get the previous behavior, add `-g2` along with `-gsource-map`.
   See also the newly updated
   [documentation](https://emscripten.org/docs/porting/Debugging.html) which
-  covers debugging flags and use cases.
+  covers debugging flags and use cases (#25238).
 
 4.0.14 - 09/02/25
 -----------------
