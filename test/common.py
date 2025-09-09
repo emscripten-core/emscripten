@@ -2497,6 +2497,13 @@ class BrowserCore(RunnerCore):
   @classmethod
   def browser_open(cls, url):
     global EMTEST_BROWSER, worker_id
+    if WINDOWS and '"' not in EMTEST_BROWSER and "'" not in EMTEST_BROWSER:
+      # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
+      # set EMTEST_BROWSER=C:\Program Files\Mozilla Firefox\firefox.exe
+      # and spaces are not escaped. But make sure to also support args, e.g.
+      # set EMTEST_BROWSER="C:\Users\clb\AppData\Local\Google\Chrome SxS\Application\chrome.exe" --enable-unsafe-webgpu
+      EMTEST_BROWSER = '"' + EMTEST_BROWSER.replace("\\", "/") + '"'
+
     if not EMTEST_BROWSER:
       logger.info('No EMTEST_BROWSER set. Defaulting to `google-chrome`')
       EMTEST_BROWSER = 'google-chrome'
@@ -2516,18 +2523,14 @@ class BrowserCore(RunnerCore):
         config = FirefoxConfig()
       else:
         exit_with_error("EMTEST_BROWSER_AUTO_CONFIG only currently works with firefox or chrome.")
-      EMTEST_BROWSER += f" {config.data_dir_flag}{browser_data_dir} {' '.join(config.default_flags)}"
+      if WINDOWS:
+        # Remove directory delimiter backslashes to avoid shlex.split getting confused.
+        cls.browser_data_dir = cls.browser_data_dir.replace('\\', '/')
+      EMTEST_BROWSER += f" {config.data_dir_flag}\"{browser_data_dir}\" {' '.join(config.default_flags)}"
       if EMTEST_HEADLESS == 1:
         EMTEST_BROWSER += f" {config.headless_flags}"
       config.configure(browser_data_dir)
 
-    if WINDOWS:
-      # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
-      # set EMTEST_BROWSER=C:\Program Files\Mozilla Firefox\firefox.exe
-      # and spaces are not escaped. But make sure to also support args, e.g.
-      # set EMTEST_BROWSER="C:\Users\clb\AppData\Local\Google\Chrome SxS\Application\chrome.exe" --enable-unsafe-webgpu
-      if '"' not in EMTEST_BROWSER and "'" not in EMTEST_BROWSER:
-        EMTEST_BROWSER = '"' + EMTEST_BROWSER.replace("\\", "/") + '"'
     browser_args = shlex.split(EMTEST_BROWSER)
     logger.info('Launching browser: %s', str(browser_args))
     cls.browser_proc = subprocess.Popen(browser_args + [url])
