@@ -17,7 +17,13 @@ function dbg(...args) {
     // TODO(sbc): Unify with err/out implementation in shell.sh.
     var fs = require('fs');
     var utils = require('util');
-    var stringify = (a) => typeof a == 'object' ? utils.inspect(a) : a;
+    function stringify(a) {
+      switch (typeof a) {
+        case 'object': return utils.inspect(a);
+        case 'undefined': return 'undefined';
+      }
+      return a;
+    }
     fs.writeSync(2, args.map(stringify).join(' ') + '\n');
   } else
 #endif

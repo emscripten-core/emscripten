@@ -1773,6 +1773,9 @@ addToLibrary({
   },
 
   $dynCall: (sig, ptr, args = [], promising = false) => {
+#if ASSERTIONS
+    assert(ptr, `null function pointer in dynCall`);
+#endif
 #if ASSERTIONS && (DYNCALLS || !WASM_BIGINT || !JSPI)
     assert(!promising, 'async dynCall is not supported in this mode')
 #endif
@@ -2185,6 +2188,17 @@ addToLibrary({
 #endif
   },
 
+#if MAIN_MODULE || RELOCATABLE
+#if WASM_EXCEPTIONS
+  // In dynamic linking we define tags here and feed them to each module
+  __cpp_exception: "new WebAssembly.Tag({'parameters': ['{{{ POINTER_WASM_TYPE }}}']})",
+#endif
+
+#if SUPPORT_LONGJMP == 'wasm'
+  __c_longjmp: "new WebAssembly.Tag({'parameters': ['{{{ POINTER_WASM_TYPE }}}']})",
+#endif
+#endif
+
 #if RELOCATABLE
   // Globals that are normally exported from the wasm module but in relocatable
   // mode are created here and imported by the module.
@@ -2208,11 +2222,12 @@ addToLibrary({
   __stack_high: '{{{ STACK_HIGH }}}',
   __stack_low: '{{{ STACK_LOW }}}',
   __global_base: '{{{ GLOBAL_BASE }}}',
-#if ASYNCIFY == 1
+#endif // RELOCATABLE
+
+#if (MAIN_MODULE || RELOCATABLE) && ASYNCIFY == 1
   __asyncify_state: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, 0)",
   __asyncify_data: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true}, {{{ to64(0) }}})",
 #endif
-#endif // RELOCATABLE
 
   _emscripten_fs_load_embedded_files__deps: ['$FS', '$PATH'],
   _emscripten_fs_load_embedded_files: (ptr) => {

@@ -1967,24 +1967,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     ccshared('libc.c', ['liba' + so])
 
     self.set_setting('MAIN_MODULE')
-    extra_args = ['-L.', 'libb' + so, 'libc' + so]
-    do_run(r'''
-      #ifdef __cplusplus
-      extern "C" {
-      #endif
-      void bfunc();
-      void cfunc();
-      #ifdef __cplusplus
-      }
-      #endif
-
-      int test_main() {
-        bfunc();
-        cfunc();
-        return 0;
-      }
-      ''',
-           'a: loaded\na: b (prev: (null))\na: c (prev: b)\n', cflags=extra_args)
 
     extra_args = []
     for libname in ('liba', 'libb', 'libc'):

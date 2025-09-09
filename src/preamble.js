@@ -14,7 +14,7 @@
 // An online HTML version (which may be of a different version of Emscripten)
 //    is up at http://kripken.github.io/emscripten-site/docs/api_reference/preamble.js.html
 
-#if RELOCATABLE
+#if MAIN_MODULE
 {{{ makeModuleReceiveWithVar('dynamicLibraries', undefined, '[]') }}}
 #endif
 
@@ -108,7 +108,7 @@ assert(globalThis.Int32Array && globalThis.Float64Array && Int32Array.prototype.
        'JS engine does not provide full typed array support');
 #endif
 
-#if RELOCATABLE
+#if RELOCATABLE || MAIN_MODULE
 var __RELOC_FUNCS__ = [];
 #endif
 
@@ -155,7 +155,7 @@ function initRuntime() {
   checkStackCookie();
 #endif
 
-#if RELOCATABLE
+#if MAIN_MODULE
   callRuntimeCallbacks(__RELOC_FUNCS__);
 #endif
 
@@ -167,9 +167,15 @@ function initRuntime() {
 #else
   wasmExports['__wasm_call_ctors']();
 #endif
+#if RUNTIME_DEBUG
+  dbg('done __wasm_call_ctors');
+#endif
 #endif
 
   <<< ATPOSTCTORS >>>
+#if RUNTIME_DEBUG
+  dbg('done ATPOSTCTORS');
+#endif
 }
 
 #if HAS_MAIN
@@ -664,7 +670,7 @@ function getWasmImports() {
 #if SPLIT_MODULE
     'placeholder': new Proxy({}, splitModuleProxyHandler),
 #endif
-#if RELOCATABLE
+#if MAIN_MODULE || RELOCATABLE
     'GOT.mem': new Proxy(wasmImports, GOTHandler),
     'GOT.func': new Proxy(wasmImports, GOTHandler),
 #endif
@@ -681,8 +687,18 @@ function getWasmImports() {
   function receiveInstance(instance, module) {
     wasmExports = instance.exports;
 
-#if RELOCATABLE
-    wasmExports = relocateExports(wasmExports, {{{ GLOBAL_BASE }}});
+#if '$wasmTable' in addedLibraryItems && !RELOCATABLE
+    wasmTable = wasmExports['__indirect_function_table'];
+    {{{ receivedSymbol('wasmTable') }}}
+#if ASSERTIONS && !PURE_WASI
+    assert(wasmTable, 'table not found in wasm exports');
+#endif
+#endif
+
+#if MAIN_MODULE
+    // No relocation needed here.. but calling this just so that updateGOT is
+    // called.
+    wasmExports = relocateExports(wasmExports, 0);
 #endif
 
 #if ASYNCIFY
@@ -771,7 +787,7 @@ function getWasmImports() {
     assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
     trueModule = null;
 #endif
-#if SHARED_MEMORY || RELOCATABLE
+#if SHARED_MEMORY || MAIN_MODULE
     return receiveInstance(result['instance'], result['module']);
 #else
     // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.

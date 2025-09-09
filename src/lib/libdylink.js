@@ -6,8 +6,8 @@
  * Dynamic library loading
  */
 
-#if !RELOCATABLE
-#error "library_dylink.js requires RELOCATABLE"
+#if !MAIN_MODULE && !RELOCATABLE
+#error "library_dylink.js requires MAIN_MODULE or RELOCATABLE"
 #endif
 
 var LibraryDylink = {
@@ -170,10 +170,10 @@ var LibraryDylink = {
     get(obj, symName) {
       var rtn = GOT[symName];
       if (!rtn) {
-        rtn = GOT[symName] = new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true});
 #if DYLINK_DEBUG == 2
-        dbg("new GOT entry: " + symName);
+        dbg(`new GOT entry: ${symName}`);
 #endif
+        rtn = GOT[symName] = new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true}, {{{ to64(-1) }}});
       }
       if (!currentModuleWeakSymbols.has(symName)) {
         // Any non-weak reference to a symbol marks it as `required`, which
@@ -189,6 +189,11 @@ var LibraryDylink = {
   $isInternalSym: (symName) => {
     // TODO: find a way to mark these in the binary or avoid exporting them.
     return [
+      'memory',
+      '__memory_base',
+      '__table_base',
+      '__stack_pointer',
+      '__indirect_function_table',
       '__cpp_exception',
       '__c_longjmp',
       '__wasm_apply_data_relocs',
@@ -230,8 +235,8 @@ var LibraryDylink = {
       }
 #endif
 
-      GOT[symName] ||= new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true});
-      if (replace || GOT[symName].value == 0) {
+      if (replace || !GOT[symName] || GOT[symName].value == {{{ to64(-1) }}}) {
+        GOT[symName] ||= new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true}, {{{ to64(-1) }}});
 #if DYLINK_DEBUG == 2
         dbg(`updateGOT: before: ${symName} : ${GOT[symName].value}`);
 #endif
@@ -265,26 +270,30 @@ var LibraryDylink = {
   $relocateExports__deps: ['$updateGOT'],
   $relocateExports__docs: '/** @param {boolean=} replace */',
   $relocateExports: (exports, memoryBase, replace) => {
+#if DYLINK_DEBUG
+    dbg('relocateExports', memoryBase);
+#endif
     var relocated = {};
+    var absSymbols = ['__stack_pointer'];
 
     for (var e in exports) {
       var value = exports[e];
+      if (!absSymbols.includes(e)
 #if SPLIT_MODULE
-      // Do not modify exports synthesized by wasm-split
-      if (e.startsWith('%')) {
-        relocated[e] = value
-        continue;
-      }
+          // Do not modify exports synthesized by wasm-split
+          && !e.startsWith('%')
 #endif
-      if (typeof value?.value != 'undefined') {
-        // a breaking change in the wasm spec, globals are now objects
-        // https://github.com/WebAssembly/mutable-global/issues/1
-        value = value.value;
+      ) {
+        if (typeof value?.value != 'undefined') {
+          // a breaking change in the wasm spec, globals are now objects
+          // https://github.com/WebAssembly/mutable-global/issues/1
+          value = value.value;
+        }
+        if (memoryBase && typeof value == {{{ POINTER_JS_TYPE }}}) {
+          value += {{{ to64('memoryBase') }}};
+        }
       }
-      if (typeof value == {{{ POINTER_JS_TYPE }}}) {
-        value += {{{ to64('memoryBase') }}};
-      }
-      relocated[e] = value;
+      relocated[e] = value
     }
     updateGOT(relocated, replace);
     return relocated;
@@ -297,13 +306,17 @@ var LibraryDylink = {
     dbg('reportUndefinedSymbols');
 #endif
     for (var [symName, entry] of Object.entries(GOT)) {
-      if (entry.value == 0) {
+      if (entry.value == {{{ to64(-1) }}}) {
+#if DYLINK_DEBUG
+        dbg(`undef GOT entry: ${symName}`);
+#endif
         var value = resolveGlobalSymbol(symName, true).sym;
         if (!value && !entry.required) {
           // Ignore undefined symbols that are imported as weak.
 #if DYLINK_DEBUG
           dbg('ignoring undefined weak symbol:', symName);
 #endif
+          entry.value = 0;
           continue;
         }
 #if ASSERTIONS
@@ -325,7 +338,7 @@ var LibraryDylink = {
           entry.value = value;
 #endif
         } else {
-          throw new Error(`bad export type for '${symName}': ${typeof value}`);
+          throw new Error(`bad export type for '${symName}': ${typeof value} (${value})`);
         }
       }
     }
@@ -372,7 +385,7 @@ var LibraryDylink = {
   // Allocate memory even if malloc isn't ready yet.  The allocated memory here
   // must be zero initialized since its used for all static data, including bss.
   $getMemory__noleakcheck: true,
-  $getMemory__deps: ['$GOT', '__heap_base', '$alignMemory', 'calloc'],
+  $getMemory__deps: ['$GOT', 'emscripten_get_sbrk_ptr', '__heap_base', '$alignMemory', 'calloc'],
   $getMemory: (size) => {
     // After the runtime is initialized, we must only use sbrk() normally.
 #if DYLINK_DEBUG
@@ -384,14 +397,21 @@ var LibraryDylink = {
       // avoid having this reported as leak.
       return _calloc(size, 1);
     }
-    var ret = ___heap_base;
+    var ret = GOT['__heap_base'].value;
     // Keep __heap_base stack aligned.
     var end = ret + alignMemory(size, {{{ STACK_ALIGN }}});
 #if ASSERTIONS
     assert(end <= HEAP8.length, 'failure to getMemory - memory growth etc. is not supported there, call malloc/sbrk directly or increase INITIAL_MEMORY');
 #endif
-    ___heap_base = end;
     GOT['__heap_base'].value = {{{ to64('end') }}};
+#if PTHREADS
+    if (!ENVIRONMENT_IS_PTHREAD) {
+#endif
+      var sbrk_ptr = _emscripten_get_sbrk_ptr();
+      {{{ makeSetValue('sbrk_ptr', 0, 'end', '*') }}}
+#if PTHREADS
+    }
+#endif
     return ret;
   },
 
@@ -614,7 +634,7 @@ var LibraryDylink = {
   ],
   $loadWebAssemblyModule: (binary, flags, libName, localScope, handle) => {
 #if DYLINK_DEBUG
-    dbg('loadWebAssemblyModule:', libName);
+    dbg('loadWebAssemblyModule:', libName, handle);
 #endif
     var metadata = getDylinkMetadata(binary);
 
@@ -633,6 +653,9 @@ var LibraryDylink = {
       // exclusive access to it for the duration of this function.  See the
       // locking in `dynlink.c`.
       var firstLoad = !handle || !{{{ makeGetValue('handle', C_STRUCTS.dso.mem_allocated, 'i8') }}};
+#if DYLINK_DEBUG
+      dbg('firstLoad:', firstLoad);
+#endif
       if (firstLoad) {
 #endif
         // alignments are powers of 2
@@ -860,18 +883,27 @@ var LibraryDylink = {
           if (applyRelocs) {
             if (runtimeInitialized) {
 #if DYLINK_DEBUG
-              dbg('applyRelocs');
+              dbg('running __wasm_apply_data_relocs');
 #endif
               applyRelocs();
             } else {
+#if DYLINK_DEBUG
+              dbg('delaying __wasm_apply_data_relocs');
+#endif
               __RELOC_FUNCS__.push(applyRelocs);
             }
           }
           var init = moduleExports['__wasm_call_ctors'];
           if (init) {
             if (runtimeInitialized) {
+#if DYLINK_DEBUG
+              dbg('running __wasm_call_ctors');
+#endif
               init();
             } else {
+#if DYLINK_DEBUG
+              dbg('delaying __wasm_call_ctors');
+#endif
               // we aren't ready to run compiled code yet
               addOnPostCtor(init);
             }
