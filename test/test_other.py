@@ -11022,7 +11022,7 @@ int main() {
     check_symbolmap_info(unreachable_addr, '__original_main')
 
   def test_emsymbolizer_symbol_map_names(self):
-    "Test emsymbolizer with symbol map which contains demangled C++ names"
+    """Test emsymbolizer with symbol map which contains demangled C++ names"""
     create_file('test_symbol_map.cpp', r'''
       #include <emscripten.h>
       EM_JS(int, out_to_js, (), { return 0; });
