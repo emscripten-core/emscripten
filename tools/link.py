@@ -1395,9 +1395,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$stackSave', '$stackRestore']
 
   if settings.RELOCATABLE:
-    # TODO(https://reviews.llvm.org/D128515): Make this mandatory once
-    # llvm change lands
-    settings.EXPORT_IF_DEFINED.append('__wasm_apply_data_relocs')
+    settings.REQUIRED_EXPORTS += ['__wasm_apply_data_relocs']
 
   if settings.SIDE_MODULE and 'GLOBAL_BASE' in user_settings:
     diagnostics.warning('unused-command-line-argument', 'GLOBAL_BASE is not compatible with SIDE_MODULE')
