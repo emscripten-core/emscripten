@@ -171,11 +171,6 @@ int __pthread_create(pthread_t* restrict res,
   struct pthread *new = (struct pthread*)offset;
   offset += sizeof(struct pthread);
 
-  // Assign the pthread_t object over immediately, so that by the time pthread_create_js()
-  // is dispatched to a pthread and the pthread main runs, the value will be visible to
-  // the thread to examine.
-  __atomic_store_n(res, new, __ATOMIC_SEQ_CST);
-
   new->map_base = block;
   new->map_size = size;
 
@@ -252,6 +247,12 @@ int __pthread_create(pthread_t* restrict res,
   // by the time it returns the thread could be running and we
   // want libc.need_locks to be set from the moment it starts.
   if (!libc.threads_minus_1++) libc.need_locks = 1;
+
+  // Assign the pthread_t object over immediately, so that by the time pthread_create_js()
+  // is dispatched to a pthread and the pthread main runs, the value will be visible to
+  // the thread to examine.
+  // Use __atomic_store_n() instead of a_store() to avoid splicing the pointer.
+  __atomic_store_n(res, new, __ATOMIC_SEQ_CST);
 
   int rtn = __pthread_create_js(new, &attr, entry, arg);
   if (rtn != 0) {
