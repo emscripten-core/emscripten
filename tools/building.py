@@ -902,32 +902,6 @@ def metadce(js_file, wasm_file, debug_info, last):
   return acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
 
-def asyncify_lazy_load_code(wasm_target, debug):
-  # Create the lazy-loaded wasm. Remove any active memory segments and the
-  # start function from it (as these will segments have already been applied
-  # by the initial wasm) and apply the knowledge that it will only rewind,
-  # after which optimizations can remove some code
-  args = ['--remove-memory-init', '--mod-asyncify-never-unwind']
-  if settings.OPT_LEVEL > 0:
-    args.append(opt_level_to_str(settings.OPT_LEVEL, settings.SHRINK_LEVEL))
-  run_wasm_opt(wasm_target,
-               wasm_target + '.lazy.wasm',
-               args=args,
-               debug=debug)
-  # re-optimize the original, by applying the knowledge that imports will
-  # definitely unwind, and we never rewind, after which optimizations can remove
-  # a lot of code
-  # TODO: support other asyncify stuff, imports that don't always unwind?
-  # TODO: source maps etc.
-  args = ['--mod-asyncify-always-and-only-unwind']
-  if settings.OPT_LEVEL > 0:
-    args.append(opt_level_to_str(settings.OPT_LEVEL, settings.SHRINK_LEVEL))
-  run_wasm_opt(infile=wasm_target,
-               outfile=wasm_target,
-               args=args,
-               debug=debug)
-
-
 def minify_wasm_imports_and_exports(js_file, wasm_file, minify_exports, debug_info):
   logger.debug('minifying wasm imports and exports')
   # run the pass

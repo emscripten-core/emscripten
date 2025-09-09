@@ -23,6 +23,8 @@ See docs/process.md for more on how version tagging works.
 
 4.0.14 - 09/02/25
 -----------------
+- The `-sASYNCIFY_LAZY_LOAD_CODE` setting and the corresponding C function
+  `emscripten_lazy_load_code` were removed. (#25236)
 - The `addRunDependency` and `removeRunDependency` API are now optional and need
   to be included and/or exported using, for example,
   `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE` or `EXPORTED_RUNTIME_METHODS`. (#24974)

@@ -1348,18 +1348,6 @@ If enabled will output which functions have been instrumented and why.
 
 Default value: false
 
-.. _asyncify_lazy_load_code:
-
-ASYNCIFY_LAZY_LOAD_CODE
-=======================
-
-Allows lazy code loading: where emscripten_lazy_load_code() is written, we
-will pause execution, load the rest of the code, and then resume.
-
-.. note:: This setting is deprecated
-
-Default value: false
-
 .. _asyncify_debug:
 
 ASYNCIFY_DEBUG
