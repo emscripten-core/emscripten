@@ -2486,7 +2486,6 @@ class BrowserCore(RunnerCore):
       logger.info('Browser did not respond to `terminate`.  Using `kill`')
       cls.browser_proc.kill()
       cls.browser_proc.wait()
-      cls.browser_data_dir = None
 
   @classmethod
   def browser_restart(cls):
@@ -2504,23 +2503,23 @@ class BrowserCore(RunnerCore):
 
     if EMTEST_BROWSER_AUTO_CONFIG:
       logger.info('Using default CI configuration.')
-      cls.browser_data_dir = DEFAULT_BROWSER_DATA_DIR
+      browser_data_dir = DEFAULT_BROWSER_DATA_DIR
       if worker_id is not None:
         # Running in parallel mode, give each browser its own profile dir.
-        cls.browser_data_dir += '-' + str(worker_id)
-      if os.path.exists(cls.browser_data_dir):
-        utils.delete_dir(cls.browser_data_dir)
-      os.mkdir(cls.browser_data_dir)
+        browser_data_dir += '-' + str(worker_id)
+      if os.path.exists(browser_data_dir):
+        utils.delete_dir(browser_data_dir)
+      os.mkdir(browser_data_dir)
       if is_chrome():
         config = ChromeConfig()
       elif is_firefox():
         config = FirefoxConfig()
       else:
         exit_with_error("EMTEST_BROWSER_AUTO_CONFIG only currently works with firefox or chrome.")
-      EMTEST_BROWSER += f" {config.data_dir_flag}{cls.browser_data_dir} {' '.join(config.default_flags)}"
+      EMTEST_BROWSER += f" {config.data_dir_flag}{browser_data_dir} {' '.join(config.default_flags)}"
       if EMTEST_HEADLESS == 1:
         EMTEST_BROWSER += f" {config.headless_flags}"
-      config.configure(cls.browser_data_dir)
+      config.configure(browser_data_dir)
 
     if WINDOWS:
       # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
