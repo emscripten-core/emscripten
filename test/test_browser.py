@@ -3803,8 +3803,7 @@ Module["preRun"] = () => {
   })
   def test_pthread_create(self, args):
     self.btest_exit('pthread/test_pthread_create.c',
-                    cflags=['-pthread', '-sPTHREAD_POOL_SIZE=8'] + args,
-                    extra_tries=0) # this should be 100% deterministic
+                    cflags=['-pthread', '-sPTHREAD_POOL_SIZE=8'] + args)
     files = os.listdir('.')
     if '-sSINGLE_FILE' in args:
       self.assertEqual(len(files), 1, files)
@@ -5404,10 +5403,7 @@ Module["preRun"] = () => {
     self.btest_exit('pthread/test_pthread_proxy_hammer.cpp',
                     cflags=['-pthread', '-O2', '-sPROXY_TO_PTHREAD',
                                '-DITERATIONS=1024', '-g1'] + args,
-                    timeout=10000,
-                    # don't run this with the default extra_tries value, as this is
-                    # *meant* to notice something random, a race condition.
-                    extra_tries=0)
+                    timeout=10000)
 
   def test_assert_failure(self):
     self.btest('test_assert_failure.c', 'abort:Assertion failed: false && "this is a test"')
