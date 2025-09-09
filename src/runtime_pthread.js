@@ -82,7 +82,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
         // Use `const` here to ensure that the variable is scoped only to
         // that iteration, allowing safe reference from a closure.
         for (const handler of msgData.handlers) {
-          // The the main module has a handler for a certain even, but no
+          // The main module has a handler for a certain event, but no
           // handler exists on the pthread worker, then proxy that handler
           // back to the main thread.
           if (!Module[handler] || Module[handler].proxy) {
@@ -95,9 +95,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
               postMessage({ cmd: 'callHandler', handler, args: args });
             }
-            // Rebind the out / err handlers if needed
-            if (handler == 'print') out = Module[handler];
-            if (handler == 'printErr') err = Module[handler];
           }
 #if RUNTIME_DEBUG
           else dbg(`worker: using thread-local handler: ${handler}`);

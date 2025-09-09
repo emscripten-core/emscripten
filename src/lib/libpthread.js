@@ -345,12 +345,6 @@ var LibraryPThread = {
 #if expectToReceiveOnModule('onAbort')
         'onAbort',
 #endif
-#if expectToReceiveOnModule('print')
-        'print',
-#endif
-#if expectToReceiveOnModule('printErr')
-        'printErr',
-#endif
       ];
       for (var handler of knownHandlers) {
         if (Module.propertyIsEnumerable(handler)) {
