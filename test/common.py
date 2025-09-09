@@ -2694,7 +2694,7 @@ class BrowserCore(RunnerCore):
             post_build=None,
             cflags=None,
             timeout=None,
-            extra_tries=1,
+            extra_tries=0,
             reporting=Reporting.FULL,
             output_basename='test'):
     assert expected, 'a btest must have an expected output'
