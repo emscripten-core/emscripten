@@ -2505,7 +2505,7 @@ class FileLock:
 
   def __exit__(self, *a):
     with open(f'{self.path}_counter', 'w') as f:
-      f.write(str(self.counter+1))
+      f.write(str(self.counter + 1))
     os.close(self.fd)
     try:
       os.remove(self.path)
