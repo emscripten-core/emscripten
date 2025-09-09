@@ -1049,6 +1049,9 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     else:
       options.shell_path = DEFAULT_SHELL_HTML
 
+  if options.oformat == OFormat.HTML and options.shell_path == DEFAULT_SHELL_HTML:
+    settings.EXPORTED_RUNTIME_METHODS.append('requestFullscreen')
+
   if settings.STRICT:
     if not settings.MODULARIZE:
       default_setting('STRICT_JS', 1)
