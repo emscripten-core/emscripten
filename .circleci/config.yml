@@ -787,6 +787,7 @@ jobs:
             other.test_native_call_before_init
             other.test_node_unhandled_rejection
             other.test_*growable_arraybuffers
+            other.test_add_js_function_bigint_memory64
             core2.test_hello_world
             core2.test_esm_integration*
             core0.test_esm_integration*

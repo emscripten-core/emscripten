@@ -15600,7 +15600,6 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     'memory64': (True, False),
     '': (False, False),
   })
-  @requires_v8
   def test_add_js_function_bigint(self, memory64, wasm_function):
     if memory64:
       self.require_wasm64()
