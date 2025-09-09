@@ -2518,7 +2518,7 @@ def move_browser_window(pid, x, y):
     import win32gui
     import win32process
 
-    def enum_windows_callback(hwnd, data):
+    def enum_windows_callback(hwnd, _unused):
       _, win_pid = win32process.GetWindowThreadProcessId(hwnd)
       if win_pid == pid and win32gui.IsWindowVisible(hwnd):
         rect = win32gui.GetWindowRect(hwnd)
