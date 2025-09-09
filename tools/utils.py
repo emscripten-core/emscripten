@@ -97,6 +97,26 @@ def delete_dir(dirname):
   shutil.rmtree(dirname)
 
 
+def persistent_delete_dir(dirname):
+  """Delete a directory that has just been released from use.
+  This variant keeps re-attempting the delete until access
+  to the directory is released. E.g. on Windows when attempting
+  to delete a Firefox profile directory right after Firefox
+  has shut down can result in an error.
+  "PermissionError: [Errno 13] The process cannot access the file
+  because it is being used by another process: 'xxx.sqlite'"
+  """
+  tries = 10
+  while os.path.isdir(dirname):
+    try:
+      shutil.rmtree(dirname)
+    except PermissionError as e:
+      if tries == 0:
+        raise e
+      time.sleep(1)
+      tries -= 1
+
+
 def delete_contents(dirname, exclude=None):
   """Delete the contents of a directory without removing
   the directory itself."""
