@@ -21,7 +21,6 @@ import os
 import re
 import shlex
 import shutil
-import signal
 import stat
 import string
 import subprocess
@@ -2468,7 +2467,7 @@ def init_worker(counter, lock):
 def list_processes_by_name(exe_name):
   try:
     import psutil
-  except:
+  except Exception:
     # If user does not have pip psutil module installed (e.g. PyWin32 on Windows),
     # then skip this process detection mechanism.
     logger.debug('Python psutil module is not available. Please install it with "python -m pip install psutil" if you have issues with parallel browser suite, or set EMTEST_CORES=1.')
@@ -2498,23 +2497,19 @@ class FileLock:
         self.counter = 0
         try:
           self.counter = int(open(f'{self.path}_counter').read())
-        except Exception as e:
-          print(str(e))
+        except Exception:
           pass
         return self.counter
       except FileExistsError:
         time.sleep(0.1)
 
   def __exit__(self, *a):
-    try:
-      with open(f'{self.path}_counter', 'w') as f:
-        f.write(str(self.counter+1))
-    except Exception as e:
-      print(str(e))
+    with open(f'{self.path}_counter', 'w') as f:
+      f.write(str(self.counter+1))
     os.close(self.fd)
     try:
       os.remove(self.path)
-    except:
+    except Exception:
       pass # Another process has acquired the lock, and it will delete it.
 
 
@@ -2522,17 +2517,17 @@ def move_browser_window(pid, x, y):
   try:
     import win32gui
     import win32process
-  except:
-    return
 
-  def enum_windows_callback(hwnd, data):
-    _, win_pid = win32process.GetWindowThreadProcessId(hwnd)
-    if win_pid == pid and win32gui.IsWindowVisible(hwnd):
-      rect = win32gui.GetWindowRect(hwnd)
-      win32gui.MoveWindow(hwnd, x, y, rect[2] - rect[0], rect[3] - rect[1], True)
-    return True
+    def enum_windows_callback(hwnd, data):
+      _, win_pid = win32process.GetWindowThreadProcessId(hwnd)
+      if win_pid == pid and win32gui.IsWindowVisible(hwnd):
+        rect = win32gui.GetWindowRect(hwnd)
+        win32gui.MoveWindow(hwnd, x, y, rect[2] - rect[0], rect[3] - rect[1], True)
+      return True
 
-  win32gui.EnumWindows(enum_windows_callback, None)
+    win32gui.EnumWindows(enum_windows_callback, None)
+  except Exception:
+    pass
 
 
 class BrowserCore(RunnerCore):
@@ -2562,7 +2557,7 @@ class BrowserCore(RunnerCore):
           logger.info('Browser did not respond to `terminate`.  Using `kill`')
           proc.kill()
           proc.wait()
-      except: # Move on if any exception, e.g. psutil.NoSuchProcess
+      except Exception:  # Move on if any exception, e.g. psutil.NoSuchProcess
         pass
 
     cls.browser_data_dir = None
