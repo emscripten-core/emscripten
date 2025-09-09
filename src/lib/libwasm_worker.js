@@ -15,7 +15,7 @@
 #if LINKABLE
 #error "-sLINKABLE is not supported with -sWASM_WORKERS"
 #endif
-#if RELOCATABLE
+#if RELOCATABLE || MAIN_MODULE
 #error "dynamic linking is not supported with -sWASM_WORKERS"
 #endif
 #if PROXY_TO_WORKER

@@ -62,8 +62,8 @@ def get_base_cflags(build_dir, force_object_files=False, preprocess=True):
   flags = ['-g', '-sSTRICT', '-Werror']
   if settings.LTO and not force_object_files:
     flags += ['-flto=' + settings.LTO]
-  if settings.RELOCATABLE:
-    flags += ['-sRELOCATABLE']
+  if settings.RELOCATABLE or settings.MAIN_MODULE:
+    flags += ['-fPIC']
     if preprocess:
       flags += ['-DEMSCRIPTEN_DYNAMIC_LINKING']
   if settings.MEMORY64:
@@ -1361,7 +1361,7 @@ class libc(MuslInternalLibrary,
           'system.c',
         ])
 
-    if settings.RELOCATABLE:
+    if settings.RELOCATABLE or settings.MAIN_MODULE:
       libc_files += files_in_path(path='system/lib/libc', filenames=['dynlink.c'])
 
     libc_files += files_in_path(
