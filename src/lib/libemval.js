@@ -120,6 +120,7 @@ var LibraryEmVal = {
   _emval_new_array_from_memory_view__deps: ['$Emval'],
   _emval_new_array_from_memory_view: (view) => {
     view = Emval.toValue(view);
+    const dv = new DataView(view.buffer, view.byteOffset);
     const reader = {
       Int8Array: dv.getInt8,
       Uint8Array: dv.getUint8,
@@ -140,6 +141,7 @@ var LibraryEmVal = {
   _emval_array_to_memory_view: (dst, src) => {
     dst = Emval.toValue(dst);
     src = Emval.toValue(src);
+    const dv = new DataView(dst.buffer, dst.byteOffset);
     const writer = {
       Int8Array: dv.setInt8,
       Uint8Array: dv.setUint8,
