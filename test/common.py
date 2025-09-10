@@ -2470,6 +2470,35 @@ def init_worker(counter, lock):
     counter.value += 1
 
 
+def configure_test_browser():
+  global EMTEST_BROWSER
+
+  if not has_browser():
+    return
+
+  if WINDOWS and '"' not in EMTEST_BROWSER and "'" not in EMTEST_BROWSER:
+    # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
+    # set EMTEST_BROWSER=C:\Program Files\Mozilla Firefox\firefox.exe
+    # and spaces are not escaped. But make sure to also support args, e.g.
+    # set EMTEST_BROWSER="C:\Users\clb\AppData\Local\Google\Chrome SxS\Application\chrome.exe" --enable-unsafe-webgpu
+    EMTEST_BROWSER = '"' + EMTEST_BROWSER.replace("\\", "\\\\") + '"'
+
+  if not EMTEST_BROWSER:
+    logger.info('No EMTEST_BROWSER set. Defaulting to `google-chrome`')
+    EMTEST_BROWSER = 'google-chrome'
+
+  if EMTEST_BROWSER_AUTO_CONFIG:
+    config = None
+    if is_chrome():
+      config = ChromeConfig()
+    elif is_firefox():
+      config = FirefoxConfig()
+    if config:
+      EMTEST_BROWSER += ' ' + ' '.join(config.default_flags)
+      if EMTEST_HEADLESS == 1:
+        EMTEST_BROWSER += f" {config.headless_flags}"
+
+
 class BrowserCore(RunnerCore):
   # note how many tests hang / do not send an output. if many of these
   # happen, likely something is broken and it is best to abort the test
@@ -2505,17 +2534,7 @@ class BrowserCore(RunnerCore):
 
   @classmethod
   def browser_open(cls, url):
-    global EMTEST_BROWSER, worker_id
-    if WINDOWS and '"' not in EMTEST_BROWSER and "'" not in EMTEST_BROWSER:
-      # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
-      # set EMTEST_BROWSER=C:\Program Files\Mozilla Firefox\firefox.exe
-      # and spaces are not escaped. But make sure to also support args, e.g.
-      # set EMTEST_BROWSER="C:\Users\clb\AppData\Local\Google\Chrome SxS\Application\chrome.exe" --enable-unsafe-webgpu
-      EMTEST_BROWSER = '"' + EMTEST_BROWSER.replace("\\", "\\\\") + '"'
-
-    if not EMTEST_BROWSER:
-      logger.info('No EMTEST_BROWSER set. Defaulting to `google-chrome`')
-      EMTEST_BROWSER = 'google-chrome'
+    browser_args = EMTEST_BROWSER
 
     if EMTEST_BROWSER_AUTO_CONFIG:
       logger.info('Using default CI configuration.')
@@ -2535,19 +2554,16 @@ class BrowserCore(RunnerCore):
       if WINDOWS:
         # Escape directory delimiter backslashes for shlex.split.
         browser_data_dir = browser_data_dir.replace('\\', '\\\\')
-      EMTEST_BROWSER += f" {config.data_dir_flag}\"{browser_data_dir}\" {' '.join(config.default_flags)}"
-      if EMTEST_HEADLESS == 1:
-        EMTEST_BROWSER += f" {config.headless_flags}"
       config.configure(browser_data_dir)
+      browser_args += f' {config.data_dir_flag}"{browser_data_dir}"'
 
-    browser_args = shlex.split(EMTEST_BROWSER)
+    browser_args = shlex.split(browser_args)
     logger.info('Launching browser: %s', str(browser_args))
     cls.browser_proc = subprocess.Popen(browser_args + [url])
 
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
-    global worker_id
     cls.PORT = 8888 + (0 if worker_id is None else worker_id)
     cls.SERVER_URL = f'http://localhost:{cls.PORT}'
     cls.HARNESS_URL = f'{cls.SERVER_URL}/run_harness'
