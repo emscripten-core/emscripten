@@ -2526,7 +2526,6 @@ class BrowserCore(RunnerCore):
 
   @classmethod
   def browser_open(cls, url):
-    global worker_id
     browser_args = EMTEST_BROWSER
 
     if EMTEST_BROWSER_AUTO_CONFIG:
@@ -2556,7 +2555,6 @@ class BrowserCore(RunnerCore):
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
-    global worker_id
     cls.PORT = 8888 + (0 if worker_id is None else worker_id)
     cls.SERVER_URL = f'http://localhost:{cls.PORT}'
     cls.HARNESS_URL = f'{cls.SERVER_URL}/run_harness'
