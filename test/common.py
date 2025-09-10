@@ -2514,20 +2514,17 @@ class FileLock:
 
 
 def move_browser_window(pid, x, y):
-  try:
-    import win32gui
-    import win32process
+  import win32gui
+  import win32process
 
-    def enum_windows_callback(hwnd, _unused):
-      _, win_pid = win32process.GetWindowThreadProcessId(hwnd)
-      if win_pid == pid and win32gui.IsWindowVisible(hwnd):
-        rect = win32gui.GetWindowRect(hwnd)
-        win32gui.MoveWindow(hwnd, x, y, rect[2] - rect[0], rect[3] - rect[1], True)
-      return True
+  def enum_windows_callback(hwnd, _unused):
+    _, win_pid = win32process.GetWindowThreadProcessId(hwnd)
+    if win_pid == pid and win32gui.IsWindowVisible(hwnd):
+      rect = win32gui.GetWindowRect(hwnd)
+      win32gui.MoveWindow(hwnd, x, y, rect[2] - rect[0], rect[3] - rect[1], True)
+    return True
 
-    win32gui.EnumWindows(enum_windows_callback, None)
-  except Exception:
-    pass
+  win32gui.EnumWindows(enum_windows_callback, None)
 
 
 class BrowserCore(RunnerCore):
