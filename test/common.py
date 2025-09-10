@@ -2588,7 +2588,7 @@ class BrowserCore(RunnerCore):
   #                     synchronously, so we have a timeout, which can be hit if the VM
   #                     we run on stalls temporarily), so we let each test try more than
   #                     once by default
-  def run_browser(self, html_file, expected=None, message=None, timeout=None, extra_tries=1):
+  def run_browser(self, html_file, expected=None, message=None, timeout=None, extra_tries=0):
     if not has_browser():
       return
     assert '?' not in html_file, 'URL params not supported'
@@ -2694,7 +2694,7 @@ class BrowserCore(RunnerCore):
             post_build=None,
             cflags=None,
             timeout=None,
-            extra_tries=1,
+            extra_tries=0,
             reporting=Reporting.FULL,
             output_basename='test'):
     assert expected, 'a btest must have an expected output'
