@@ -2524,7 +2524,7 @@ class BrowserCore(RunnerCore):
       else:
         exit_with_error("EMTEST_BROWSER_AUTO_CONFIG only currently works with firefox or chrome.")
       if WINDOWS:
-        # Remove directory delimiter backslashes to avoid shlex.split getting confused.
+        # Escape directory delimiter backslashes for shlex.split.
         browser_data_dir = browser_data_dir.replace('\\', '\\\\')
       EMTEST_BROWSER += f" {config.data_dir_flag}\"{browser_data_dir}\" {' '.join(config.default_flags)}"
       if EMTEST_HEADLESS == 1:
