@@ -231,6 +231,11 @@ def is_slow_test(func):
   return decorated
 
 
+def record_flaky_test(test_name, attempt_count, exception_msg):
+  logging.info(f'Retrying flaky test "{test_name}" (attempt {attempt_count}/{EMTEST_RETRY_FLAKY} failed):\n{exception_msg}')
+  open(flaky_tests_log_filename, 'a').write(f'{test_name}\n')
+
+
 def flaky(note=''):
   assert not callable(note)
 
@@ -253,9 +258,7 @@ def flaky(note=''):
           return f(self, *args, **kwargs)
         except (AssertionError, subprocess.TimeoutExpired) as exc:
           preserved_exc = exc
-          logging.info(f'Retrying flaky test "{f.id()}" (attempt {i}/{EMTEST_RETRY_FLAKY} failed): {exc}')
-          # Mark down that this was a flaky test.
-          open(flaky_tests_log_filename, 'a').write(f'{f.__name__}\n')
+          record_flaky_test(self.id(), i, exc)
 
       raise AssertionError('Flaky test has failed too many times') from preserved_exc
 
@@ -2640,8 +2643,7 @@ class BrowserCore(RunnerCore):
             self.assertContained(expected, output)
           except self.failureException as e:
             if extra_tries > 0:
-              print(f'[test error in: {self.id()} (see below), automatically retrying]')
-              print(e)
+              record_flaky_test(self.id(), EMTEST_RETRY_FLAKY - extra_tries, e)
               if not self.capture_stdio:
                 print('[enabling stdio/stderr reporting]')
                 self.capture_stdio = True
