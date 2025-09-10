@@ -242,10 +242,15 @@ def flaky(note=''):
 
   def decorated(f):
     @wraps(f)
-    def modified(*args, **kwargs):
+    def modified(self, *args, **kwargs):
+      # Browser tests have there own method of retrying tests.
+      if self.is_browser_test():
+        self.flaky = True
+        return f(self, *args, **kwargs)
+
       for i in range(EMTEST_RETRY_FLAKY):
         try:
-          return f(*args, **kwargs)
+          return f(self, *args, **kwargs)
         except (AssertionError, subprocess.TimeoutExpired) as exc:
           preserved_exc = exc
           logging.info(f'Retrying flaky test "{f.id()}" (attempt {i}/{EMTEST_RETRY_FLAKY} failed): {exc}')
@@ -1315,6 +1320,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.js_engines = config.JS_ENGINES.copy()
     self.settings_mods = {}
     self.skip_exec = None
+    self.flaky = False
     self.cflags = ['-Wclosure', '-Werror', '-Wno-limited-postlink-optimizations']
     # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
     # For historical reasons emcc compiles and links as C++ by default.
@@ -2586,12 +2592,13 @@ class BrowserCore(RunnerCore):
   # @param extra_tries: how many more times to try this test, if it fails. browser tests have
   #                     many more causes of flakiness (in particular, they do not run
   #                     synchronously, so we have a timeout, which can be hit if the VM
-  #                     we run on stalls temporarily), so we let each test try more than
-  #                     once by default
-  def run_browser(self, html_file, expected=None, message=None, timeout=None, extra_tries=0):
+  #                     we run on stalls temporarily).
+  def run_browser(self, html_file, expected=None, message=None, timeout=None, extra_tries=None):
     if not has_browser():
       return
     assert '?' not in html_file, 'URL params not supported'
+    if extra_tries is None:
+      extra_tries = EMTEST_RETRY_FLAKY if self.flaky else 0
     url = html_file
     if self.capture_stdio:
       url += '?capture_stdio'
@@ -2694,7 +2701,6 @@ class BrowserCore(RunnerCore):
             post_build=None,
             cflags=None,
             timeout=None,
-            extra_tries=0,
             reporting=Reporting.FULL,
             output_basename='test'):
     assert expected, 'a btest must have an expected output'
@@ -2718,7 +2724,7 @@ class BrowserCore(RunnerCore):
       output = self.run_js('test.js')
       self.assertContained('RESULT: ' + expected[0], output)
     else:
-      self.run_browser(outfile, expected=['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
+      self.run_browser(outfile, expected=['/report_result?' + e for e in expected], timeout=timeout)
 
 
 ###################################################################################################
