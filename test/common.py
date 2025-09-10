@@ -1407,7 +1407,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.runningInParallel() and not EMTEST_SAVE_DIR:
       # rmtree() fails on Windows if the current working directory is inside the tree.
       os.chdir(os.path.dirname(self.get_dir()))
-      force_delete_dir(self.get_dir())
+      try:
+        force_delete_dir(self.get_dir())
+      except PermissionError as e:
+        print(f'WARNING: Failed to delete directory {self.get_dir()}:\n{e}')
 
       if EMTEST_DETECT_TEMPFILE_LEAKS and not DEBUG:
         temp_files_after_run = []
