@@ -12381,7 +12381,7 @@ int main(void) {
   def test_lsan_stack_trace(self, ext, regexes):
     self.do_runf(
       'other/test_lsan_leaks.' + ext,
-      cflags=['-fsanitize=leak', '-gsource-map'],
+      cflags=['-fsanitize=leak', '-gsource-map', '-g2'],
       regex=True,
       assert_all=True,
       assert_returncode=NON_ZERO,
