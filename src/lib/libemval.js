@@ -120,73 +120,39 @@ var LibraryEmVal = {
   _emval_new_array_from_memory_view__deps: ['$Emval'],
   _emval_new_array_from_memory_view: (view) => {
     view = Emval.toValue(view);
-    var reader = (() => {
-      if (view.BYTES_PER_ELEMENT===1)
-        return i => view[i];
-      const dv = new DataView(view.buffer, view.byteOffset);
-      switch(view.BYTES_PER_ELEMENT) {
-        case 2:
-          if (view instanceof Int16Array)
-            return i => dv.getInt16(i * 2, true)
-          if (view instanceof Uint16Array)
-            return i => dv.getUint16(i * 2, true)
-          break;
-        case 4:
-          if (view instanceof Int32Array)
-            return i => dv.getInt32(i * 4, true)
-          if (view instanceof Uint32Array)
-            return i => dv.getUint32(i * 4, true)
-          if (view instanceof Float32Array)
-            return i => dv.getFloat32(i * 4, true)
-          break;
-        case 8:
-          if (view instanceof BigInt64Array)
-            return i => dv.getBigInt64(i * 8, true)
-          if (view instanceof BigUint64Array)
-            return i => dv.getBigUint64(i * 8, true)
-          if (view instanceof Float64Array)
-            return i => dv.getFloat64(i * 8, true)
-          break;
-      }
-    })();
+    const reader = {
+      Int8Array: dv.getInt8,
+      Uint8Array: dv.getUint8,
+      Int16Array: dv.getInt16,
+      Uint16Array: dv.getUint16,
+      Int32Array: dv.getInt32,
+      Uint32Array: dv.getUint32,
+      BigInt64Array: dv.getBigInt64,
+      BigUint64Array: dv.getBigUint64,
+      Float32Array: dv.getFloat32,
+      Float64Array: dv.getFloat64,
+    }[view[Symbol.toStringTag]];
     var a = new Array(view.length);
-    for (var i = 0; i < view.length; i++) a[i] = reader(i);
+    for (var i = 0; i < view.length; i++) a[i] = reader.call(dv, i * view.BYTES_PER_ELEMENT, true);
     return Emval.toHandle(a);
   },
   _emval_array_to_memory_view__deps: ['$Emval'],
   _emval_array_to_memory_view: (dst, src) => {
     dst = Emval.toValue(dst);
     src = Emval.toValue(src);
-    var writer = (() => {
-      if (dst.BYTES_PER_ELEMENT===1)
-        return (i, v) =>  { dst[i] = v; };
-      const dv = new DataView(dst.buffer, dst.byteOffset);
-      switch(dst.BYTES_PER_ELEMENT) {
-        case 2:
-          if (dst instanceof Int16Array)
-            return (i, v) => dv.setInt16(i * 2, v, true)
-          if (dst instanceof Uint16Array)
-            return (i, v) => dv.setUint16(i * 2, v, true)
-          break;
-        case 4:
-          if (dst instanceof Int32Array)
-            return (i, v) => dv.setInt32(i * 4, v, true)
-          if (dst instanceof Uint32Array)
-            return (i, v) => dv.setUint32(i * 4, v, true)
-          if (dst instanceof Float32Array)
-            return (i, v) => dv.setFloat32(i * 4, v, true)
-          break;
-        case 8:
-          if (dst instanceof BigInt64Array)
-            return (i, v) => dv.setBigInt64(i * 8, v, true)
-          if (dst instanceof BigUint64Array)
-            return (i, v) => dv.setBigUint64(i * 8, v, true)
-          if (dst instanceof Float64Array)
-            return (i, v) => dv.setFloat64(i * 8, v, true)
-          break;
-      }
-    })();
-    for (var i = 0; i < src.length; i++) writer(i, src[i]);
+    const writer = {
+      Int8Array: dv.setInt8,
+      Uint8Array: dv.setUint8,
+      Int16Array: dv.setInt16,
+      Uint16Array: dv.setUint16,
+      Int32Array: dv.setInt32,
+      Uint32Array: dv.setUint32,
+      BigInt64Array: dv.setBigInt64,
+      BigUint64Array: dv.setBigUint64,
+      Float32Array: dv.setFloat32,
+      Float64Array: dv.setFloat64,
+    }[view[Symbol.toStringTag]];
+    for (var i = 0; i < src.length; i++) writer.call(dv, i * view.BYTES_PER_ELEMENT, src[i], true);
   },
 #endif
 
