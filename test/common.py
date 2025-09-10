@@ -2464,6 +2464,9 @@ def init_worker(counter, lock):
 def configure_test_browser():
   global EMTEST_BROWSER
 
+  if not has_browser():
+    return
+
   if WINDOWS and '"' not in EMTEST_BROWSER and "'" not in EMTEST_BROWSER:
     # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
     # set EMTEST_BROWSER=C:\Program Files\Mozilla Firefox\firefox.exe
