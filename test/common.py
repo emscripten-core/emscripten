@@ -2626,9 +2626,10 @@ class BrowserCore(RunnerCore):
       # the browser to find which subprocesses we launched.
       procs_before = list_processes_by_name(config.executable_name)
       browser_proc = subprocess.Popen(browser_args + [url])
-      # Give Firefox time to spawn it subprocesses.
+      # Give Firefox time to spawn its subprocesses. Use an increasing timeout as
+      # a crude way to account for system load.
       if WINDOWS and is_firefox():
-        time.sleep(2)
+        time.sleep(2 + count * 0.3)
       procs_after = list_processes_by_name(config.executable_name) + [browser_proc]
       cls.browser_procs = list(set(procs_after).difference(set(procs_before)))
       # Make sure that each browser window is visible on the desktop. Otherwise browser might
