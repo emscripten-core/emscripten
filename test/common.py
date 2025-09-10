@@ -2597,8 +2597,12 @@ class BrowserCore(RunnerCore):
       if worker_id is not None:
         # Running in parallel mode, give each browser its own profile dir.
         browser_data_dir += '-' + str(worker_id)
-      if os.path.exists(browser_data_dir):
-        utils.delete_dir(browser_data_dir)
+      while os.path.exists(browser_data_dir):
+        try:
+          utils.delete_dir(browser_data_dir)
+        except PermissionError:
+          browser_data_dir += '-another'
+
       os.mkdir(browser_data_dir)
       if is_chrome():
         config = ChromeConfig()
