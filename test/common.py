@@ -18,6 +18,7 @@ import itertools
 import json
 import logging
 import os
+import psutil
 import re
 import shlex
 import shutil
@@ -2468,14 +2469,6 @@ def init_worker(counter, lock):
 
 
 def list_processes_by_name(exe_name):
-  try:
-    import psutil
-  except Exception:
-    # If user does not have pip psutil module installed (e.g. PyWin32 on Windows),
-    # then skip this process detection mechanism.
-    logger.debug('Python psutil module is not available. Please install it with "python -m pip install psutil" if you have issues with parallel browser suite, or set EMTEST_CORES=1.')
-    return []
-
   pids = []
   if exe_name:
     for proc in psutil.process_iter():
@@ -2558,7 +2551,7 @@ class BrowserCore(RunnerCore):
           logger.info('Browser did not respond to `terminate`.  Using `kill`')
           proc.kill()
           proc.wait()
-      except Exception:  # Move on if any exception, e.g. psutil.NoSuchProcess
+      except psutil.NoSuchProcess:
         pass
 
     cls.browser_data_dir = None
