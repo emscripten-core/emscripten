@@ -846,6 +846,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.SUPPORT_BIG_ENDIAN:
     diagnostics.warning('experimental', '-sSUPPORT_BIG_ENDIAN is experimental, not all features are fully supported.')
+    if settings.WASM2JS:
+      exit_with_error('WASMJ2S is currently not compatible with SUPPORT_BIG_ENDIAN')
 
   if settings.WASM_ESM_INTEGRATION:
     diagnostics.warning('experimental', '-sWASM_ESM_INTEGRATION is still experimental and not yet supported in browsers')
@@ -1221,12 +1223,16 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       '$LE_HEAP_STORE_I16',
       '$LE_HEAP_STORE_U32',
       '$LE_HEAP_STORE_I32',
+      '$LE_HEAP_STORE_U64',
+      '$LE_HEAP_STORE_I64',
       '$LE_HEAP_STORE_F32',
       '$LE_HEAP_STORE_F64',
       '$LE_HEAP_LOAD_U16',
       '$LE_HEAP_LOAD_I16',
       '$LE_HEAP_LOAD_U32',
       '$LE_HEAP_LOAD_I32',
+      '$LE_HEAP_LOAD_U64',
+      '$LE_HEAP_LOAD_I64',
       '$LE_HEAP_LOAD_F32',
       '$LE_HEAP_LOAD_F64',
       '$LE_ATOMICS_NATIVE_BYTE_ORDER',
