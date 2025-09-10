@@ -43,8 +43,15 @@ import common
 from common import errlog
 from tools import shared, config, utils
 
+# Add `out/python_deps` to pythoon path and make sure we can import out dev dependencies.
+sys.path.insert(0, utils.path_from_root('out/python_deps'))
 
-sys.path.append(utils.path_from_root('third_party/websockify'))
+try:
+  import psutil  # noqa: F401
+  import websockify  # noqa: F401
+except ModuleNotFoundError as e:
+  raise Exception('Unable to import python dev dependencies (psutil/websockify). Run "./bootstrap" (or "python3 -m pip -r requirements-dev.txt --target out/python_deps") to install') from e
+
 
 logger = logging.getLogger("runner")
 

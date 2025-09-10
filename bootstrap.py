@@ -39,6 +39,9 @@ actions = [
      'test/third_party/googletest',
      'test/third_party/wasi-test-suite',
    ], ['git', 'submodule', 'update', '--init']),
+  ('pip3 install', [
+     'requirements-dev.txt',
+   ], [sys.executable, '-m', 'pip', 'install', '--target', 'out/python_deps', '-r', 'requirements-dev.txt']),
 ]
 
 
