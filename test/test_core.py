@@ -5278,6 +5278,37 @@ main main sees -524, -534, 72.
   def test_dylink_weak_undef(self):
     self.dylink_testf(test_file('core/test_dylink_weak_undef.c'))
 
+  @needs_dylink
+  def test_dylink_weak_multilib(self):
+    create_file('liba.c', '''
+      #include <stdio.h>
+
+      extern int globalA __attribute__((weak));
+
+      void LibBFunc();
+
+      void LibAFunc() {
+        LibBFunc();
+        printf("globalA %p\\n", &globalA);
+      }
+    ''')
+    create_file('libb.c', '''
+     #include <stdio.h>
+
+     void LibBFunc() {
+       printf("Hello from b\\n");
+     }
+    ''')
+    create_file('main.c', '''
+      void LibAFunc();
+      int main() {
+        LibAFunc();
+      }
+    ''')
+    self.run_process([EMCC, 'libb.c', '-o', 'libb.so', '-sSIDE_MODULE'] + self.get_cflags())
+    self.run_process([EMCC, 'liba.c', '-o', 'liba.so', '-sSIDE_MODULE', 'libb.so'] + self.get_cflags())
+    self.do_runf('main.c', 'Hello from b\n', cflags=['-sMAIN_MODULE=2', '-L.', 'liba.so'])
+
   @node_pthreads
   @needs_dylink
   def test_dylink_tls(self):
@@ -6910,6 +6941,7 @@ void* operator new(size_t size) {
   @crossplatform
   @no_wasmfs('depends on MEMFS which WASMFS does not have')
   @no_strict('autoconfiguring is not compatible with STRICT')
+  @no_big_endian('SUPPORT_BIG_ENDIAN is not propagated')
   def test_poppler(self):
     # See https://github.com/emscripten-core/emscripten/issues/20757
     self.cflags.extend(['-Wno-deprecated-declarations', '-Wno-nontrivial-memaccess'])
@@ -7546,11 +7578,45 @@ void* operator new(size_t size) {
     ''')
     self.do_runf('test.cpp', 'UnboundTypeError: Cannot call compute due to unbound types: Pi')
 
+  @no_big_endian("Accessing the array directly is not available on big endian system")
   def test_embind_memory_view(self):
     self.cflags += ['-lembind', '--post-js', 'post.js']
     create_file('post.js', '''
       function printFirstElement() {
         out(Module['getBufferView']()[0]);
+      }
+    ''')
+    create_file('test.cpp', r'''
+      #include <emscripten.h>
+      #include <emscripten/bind.h>
+      #include <emscripten/val.h>
+      #include <stdio.h>
+      using namespace emscripten;
+
+      const size_t kBufferSize = 1024;
+      double buffer[kBufferSize];
+      val getBufferView(void) {
+          val v = val(typed_memory_view(kBufferSize, buffer));
+          return v;
+      }
+      EMSCRIPTEN_BINDINGS(my_module) {
+          function("getBufferView", &getBufferView);
+      }
+
+      int main(int argc, char **argv) {
+        buffer[0] = 107;
+        EM_ASM(printFirstElement());
+        return 0;
+      }
+    ''')
+    self.do_runf('test.cpp', '107')
+
+  def test_embind_memory_view_be(self):
+    self.cflags += ['-lembind', '--post-js', 'post.js']
+    create_file('post.js', '''
+      function printFirstElement() {
+        const b = Module['getBufferView']();
+        out(new DataView(b.buffer, b.byteOffset).getFloat64(0, true));
       }
     ''')
     create_file('test.cpp', r'''
@@ -7599,6 +7665,7 @@ void* operator new(size_t size) {
   def test_embind_val(self):
     self.do_run_in_out_file_test('embind/test_val.cpp', cflags=['-lembind'])
 
+  @no_big_endian("Incompatible with SUPPORT_BIG_ENDIAN")
   def test_embind_val_read_pointer(self):
     self.do_runf('embind/test_val_read_pointer.cpp', cflags=['-lembind'])
 
@@ -7699,6 +7766,7 @@ void* operator new(size_t size) {
     '': (False,),
     'safe_heap': (True,),
   })
+  @no_big_endian("Calling TypedArray.set directly is not available on big endian system")
   def test_embind_i64_val(self, safe_heap):
     if safe_heap and '-fsanitize=address' in self.cflags:
       self.skipTest('asan does not work with SAFE_HEAP')
@@ -8496,104 +8564,10 @@ Module.onRuntimeInitialized = () => {
                             '-sEXIT_RUNTIME=1',
                             '-pthread', '-sPROXY_TO_PTHREAD'])
 
-  @no_asan('asyncify stack operations confuse asan')
-  @no_modularize_instance('ASYNCIFY_LAZY_LOAD_CODE is not compatible with MODULARIZE=instance')
-  @no_wasm2js('TODO: lazy loading in wasm2js')
-  @parameterized({
-    '': (False,),
-    'conditional': (True,),
-  })
-  def test_emscripten_lazy_load_code(self, conditional):
-    if self.get_setting('STACK_OVERFLOW_CHECK'):
-      self.skipTest('https://github.com/emscripten-core/emscripten/issues/16828')
-    self.set_setting('ASYNCIFY_LAZY_LOAD_CODE')
-    self.set_setting('ASYNCIFY_IGNORE_INDIRECT')
-    self.set_setting('MALLOC', 'emmalloc')
-    self.cflags += ['-Wno-deprecated', '--profiling-funcs'] # so that we can find the functions for the changes below
-    if conditional:
-      self.cflags += ['-DCONDITIONAL']
-    self.do_core_test('emscripten_lazy_load_code.c', args=['0'])
-
-    first_size = os.path.getsize('emscripten_lazy_load_code.wasm')
-    second_size = os.path.getsize('emscripten_lazy_load_code.wasm.lazy.wasm')
-    print('first wasm size', first_size)
-    print('second wasm size', second_size)
-
-    # For the purposes of this test we don't consider O1 to be optimizing
-    is_optimizing = self.is_optimizing() and '-O1' not in self.cflags
-
-    if not conditional and is_optimizing and \
-       '-g' not in self.cflags and \
-       '-fsanitize=leak' not in self.cflags and \
-       not self.get_setting('WASMFS'):
-      # TODO: WasmFS has not yet been optimized for code size, and the general
-      #       increase it causes mixes up code size measurements like this.
-      #       See https://github.com/emscripten-core/emscripten/issues/16005
-      # If the call to lazy-load is unconditional, then the optimizer can dce
-      # out more than half
-      self.assertLess(first_size, 0.6 * second_size)
-
-    wasm1 = read_binary('emscripten_lazy_load_code.wasm')
-    wasm2 = read_binary('emscripten_lazy_load_code.wasm.lazy.wasm')
-    self.assertNotEqual(wasm1, wasm2)
-
-    # attempts to "break" the wasm by adding an unreachable in $foo_end. returns whether we found it.
-    def break_wasm(name):
-      wat = self.get_wasm_text(name)
-      lines = wat.splitlines()
-      wat = None
-      for i in range(len(lines)):
-        if '(func $foo_end ' in lines[i]:
-          j = i + 1
-          while '(local ' in lines[j]:
-            j += 1
-          # we found the first line after the local defs
-          lines[j] = '(unreachable)' + lines[j]
-          wat = '\n'.join(lines)
-          break
-      if wat is None:
-        # $foo_end is not present in the wasm, nothing to break
-        shutil.copy(name, name + '.orig')
-        return False
-      create_file('wat.wat', wat)
-      shutil.move(name, name + '.orig')
-      self.run_process([os.path.join(building.get_binaryen_bin(), 'wasm-as'), 'wat.wat', '-o', name, '-g', '--all-features'])
-      return True
-
-    def verify_working(args):
-      self.assertContained('foo_end\n', self.run_js('emscripten_lazy_load_code.js', args=args))
-
-    def verify_broken(args):
-      self.assertNotContained('foo_end\n', self.run_js('emscripten_lazy_load_code.js', args=args, assert_returncode=NON_ZERO))
-
-    # the first-loaded wasm will not reach the second call, since we call it after lazy-loading.
-    # verify that by changing the first wasm to throw in that function
-    found_foo_end = break_wasm('emscripten_lazy_load_code.wasm')
-    if not conditional and is_optimizing:
-      self.assertFalse(found_foo_end, 'should have optimized out $foo_end')
-    verify_working(['0'])
-    # but breaking the second wasm actually breaks us
-    if not break_wasm('emscripten_lazy_load_code.wasm.lazy.wasm'):
-      raise Exception('could not break lazy wasm - missing expected code')
-    verify_broken(['0'])
-
-    # restore
-    shutil.copy('emscripten_lazy_load_code.wasm.orig', 'emscripten_lazy_load_code.wasm')
-    shutil.copy('emscripten_lazy_load_code.wasm.lazy.wasm.orig', 'emscripten_lazy_load_code.wasm.lazy.wasm')
-    verify_working(['0'])
-
-    if conditional:
-      # if we do not call the lazy load function, then we do not need the lazy wasm,
-      # and we do the second call in the first wasm
-      os.remove('emscripten_lazy_load_code.wasm.lazy.wasm')
-      verify_broken(['0'])
-      verify_working(['42'])
-      break_wasm('emscripten_lazy_load_code.wasm')
-      verify_broken(['0'])
-
   # Test basic wasm2js functionality in all core compilation modes.
   @no_sanitize('no wasm2js support yet in sanitizers')
   @requires_wasm2js
+  @no_big_endian('wasm2js is currently not compatible with big endian')
   def test_wasm2js(self):
     if self.is_wasm2js():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
@@ -8604,6 +8578,7 @@ Module.onRuntimeInitialized = () => {
   @no_asan('no wasm2js support yet in asan')
   @requires_wasm2js
   @also_with_minimal_runtime
+  @no_big_endian('wasm2js is currently not compatible with big endian')
   def test_wasm2js_fallback(self):
     if self.is_wasm2js():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')

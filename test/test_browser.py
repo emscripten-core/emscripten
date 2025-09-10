@@ -19,7 +19,7 @@ from urllib.request import urlopen
 
 import common
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, Reporting, is_chrome, is_firefox, CHROMIUM_BASED_BROWSERS
-from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
+from common import create_file, parameterized, ensure_dir, disabled, flaky, test_file, WEBIDL_BINDER
 from common import read_file, EMRUN, no_wasm64, no_2gb, no_4gb, copytree
 from common import requires_wasm2js, parameterize, find_browser_test_file, with_all_sjlj
 from common import also_with_minimal_runtime, also_with_wasm2js, also_with_asan, also_with_wasmfs
@@ -3803,8 +3803,7 @@ Module["preRun"] = () => {
   })
   def test_pthread_create(self, args):
     self.btest_exit('pthread/test_pthread_create.c',
-                    cflags=['-pthread', '-sPTHREAD_POOL_SIZE=8'] + args,
-                    extra_tries=0) # this should be 100% deterministic
+                    cflags=['-pthread', '-sPTHREAD_POOL_SIZE=8'] + args)
     files = os.listdir('.')
     if '-sSINGLE_FILE' in args:
       self.assertEqual(len(files), 1, files)
@@ -5404,10 +5403,7 @@ Module["preRun"] = () => {
     self.btest_exit('pthread/test_pthread_proxy_hammer.cpp',
                     cflags=['-pthread', '-O2', '-sPROXY_TO_PTHREAD',
                                '-DITERATIONS=1024', '-g1'] + args,
-                    timeout=10000,
-                    # don't run this with the default extra_tries value, as this is
-                    # *meant* to notice something random, a race condition.
-                    extra_tries=0)
+                    timeout=10000)
 
   def test_assert_failure(self):
     self.btest('test_assert_failure.c', 'abort:Assertion failed: false && "this is a test"')
@@ -5484,6 +5480,7 @@ Module["preRun"] = () => {
   # Tests AudioWorklet with emscripten_lock_busyspin_wait_acquire() and friends
   @requires_sound_hardware
   @also_with_minimal_runtime
+  @flaky('https://github.com/emscripten-core/emscripten/issues/25245')
   def test_audio_worklet_emscripten_locks(self):
     self.btest_exit('webaudio/audioworklet_emscripten_locks.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread'])
 
