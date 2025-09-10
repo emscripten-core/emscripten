@@ -140,10 +140,10 @@ var LibraryEmVal = {
             return i => dv.getFloat32(i * 4, true)
           break;
         case 8:
-          if (view instanceof BigInt32Array)
-            return i => dv.getBigInt32(i * 8, true)
-          if (view instanceof BigUint32Array)
-            return i => dv.getBigUint32(i * 8, true)
+          if (view instanceof BigInt64Array)
+            return i => dv.getBigInt64(i * 8, true)
+          if (view instanceof BigUint64Array)
+            return i => dv.getBigUint64(i * 8, true)
           if (view instanceof Float64Array)
             return i => dv.getFloat64(i * 8, true)
           break;
@@ -177,10 +177,10 @@ var LibraryEmVal = {
             return (i, v) => dv.setFloat32(i * 4, v, true)
           break;
         case 8:
-          if (dst instanceof BigInt32Array)
-            return (i, v) => dv.setBigInt32(i * 8, v, true)
-          if (dst instanceof BigUint32Array)
-            return (i, v) => dv.setBigUint32(i * 8, v, true)
+          if (dst instanceof BigInt64Array)
+            return (i, v) => dv.setBigInt64(i * 8, v, true)
+          if (dst instanceof BigUint64Array)
+            return (i, v) => dv.setBigUint64(i * 8, v, true)
           if (dst instanceof Float64Array)
             return (i, v) => dv.setFloat64(i * 8, v, true)
           break;
