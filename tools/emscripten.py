@@ -281,10 +281,9 @@ def create_global_exports(global_exports):
 
     v = int(v)
 
-    # Cast the global to an unsigned value from the signed Wasm int32, if it is one of the fields
-    # that have a semantic unsigned meaning.
-    unsigned_globals = ['__stack_base', '__memory_base', '__table_base', '__global_base', '__heap_base']
-    if k in unsigned_globals:
+    if not settings.MEMORY64:
+      # We assume that global exports are addresses, which need to be interpreted as unsigned.
+      # This is not necessary (and does not work) under wasm64 when the globals are i64.
       v = v & 0xFFFFFFFF
 
     if settings.RELOCATABLE:
