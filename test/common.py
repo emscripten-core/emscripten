@@ -2551,7 +2551,7 @@ class BrowserCore(RunnerCore):
           logger.info('Browser did not respond to `terminate`.  Using `kill`')
           proc.kill()
           proc.wait()
-      except psutil.NoSuchProcess:
+      except (psutil.NoSuchProcess, ProcessLookupError):
         pass
 
     cls.browser_data_dir = None
