@@ -9004,11 +9004,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
       ])
 
   @parameterized({
-    'g': ('-g', [
+    'g': (['-g'], [
       ".cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
       'in main',
     ]),
-    'g4': ('-gsource-map', [
+    'g2': (['-g2'], [
+      ".cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
+      'in main',
+    ]),
+    'g4': (['-gsource-map', '-g2'], [
       ".cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
       'in main ',
       '.cpp:3:8',
@@ -9016,15 +9020,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
   @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
-  def test_ubsan_full_stack_trace(self, g_flag, expected_output):
-    if g_flag == '-gsource-map':
+  def test_ubsan_full_stack_trace(self, g_flags, expected_output):
+    if '-gsource-map' in g_flags:
       if self.is_wasm2js():
         self.skipTest('wasm2js has no source map support')
       elif self.get_setting('EVAL_CTORS'):
         self.skipTest('EVAL_CTORS does not support source maps')
 
     create_file('pre.js', 'Module.UBSAN_OPTIONS = "print_stacktrace=1";')
-    self.cflags += ['-fsanitize=null', g_flag, '--pre-js=pre.js']
+    self.cflags += ['-fsanitize=null', '--pre-js=pre.js'] + g_flags
     self.set_setting('ALLOW_MEMORY_GROWTH')
     self.do_runf('core/test_ubsan_full_null_ref.cpp',
                  assert_all=True, expected_output=expected_output)

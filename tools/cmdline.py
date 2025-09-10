@@ -368,7 +368,8 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
           settings.EMIT_NAME_SECTION = 1
         # if we don't need to preserve LLVM debug info, do not keep this flag
         # for clang
-        if settings.DEBUG_LEVEL < 3:
+        if (settings.DEBUG_LEVEL < 3 and not
+            (settings.GENERATE_SOURCE_MAP or settings.SEPARATE_DWARF)):
           newargs[i] = '-g0'
         else:
           # for 3+, report -g3 to clang as -g4 etc. are not accepted
