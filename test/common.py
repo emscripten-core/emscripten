@@ -2547,7 +2547,7 @@ class BrowserCore(RunnerCore):
         # after 2 seconds kill it with force (SIGKILL).
         try:
           proc.wait(2)
-        except subprocess.TimeoutExpired:
+        except (subprocess.TimeoutExpired, psutil.TimeoutExpired):
           logger.info('Browser did not respond to `terminate`.  Using `kill`')
           proc.kill()
           proc.wait()
@@ -2624,14 +2624,16 @@ class BrowserCore(RunnerCore):
       if WINDOWS and is_firefox():
         time.sleep(2 + count * 0.3)
       procs_after = list_processes_by_name(config.executable_name) + [browser_proc]
-      cls.browser_procs = list(set(procs_after).difference(set(procs_before)))
       # Make sure that each browser window is visible on the desktop. Otherwise browser might
       # decide that the tab is backgrounded, and not load a test, or it might not tick rAF()s
       # forward, causing tests to hang.
       if WINDOWS and is_firefox():
+        cls.browser_procs = list(set(procs_after).difference(set(procs_before)))
         for proc in cls.browser_procs:
           # Wrap window positions on a Full HD desktop area modulo primes.
           move_browser_window(proc.pid, (300 + count * 47) % 1901, (10 + count * 37) % 997)
+      else:
+        cls.browser_procs = [browser_proc]
 
   @classmethod
   def setUpClass(cls):
