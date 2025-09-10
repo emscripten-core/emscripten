@@ -2465,13 +2465,14 @@ def init_worker(counter, lock):
 
 
 def list_processes_by_name(exe_name):
-  try:
-    import psutil
-  except Exception:
-    # If user does not have pip psutil module installed (e.g. PyWin32 on Windows),
-    # then skip this process detection mechanism.
-    logger.debug('Python psutil module is not available. Please install it with "python -m pip install psutil" if you have issues with parallel browser suite, or set EMTEST_CORES=1.')
-    return []
+  # XX require for testing
+  import psutil
+#  try:
+#  except Exception:
+#    # If user does not have pip psutil module installed (e.g. PyWin32 on Windows),
+#    # then skip this process detection mechanism.
+#    logger.debug('Python psutil module is not available. Please install it with "python -m pip install psutil" if you have issues with parallel browser suite, or set EMTEST_CORES=1.')
+#    return []
 
   pids = []
   if exe_name:
