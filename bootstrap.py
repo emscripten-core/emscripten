@@ -39,6 +39,9 @@ actions = [
      'test/third_party/googletest',
      'test/third_party/wasi-test-suite',
    ], ['git', 'submodule', 'update', '--init']),
+  ('pip install', [
+     'requirements-dev.txt',
+   ], [sys.executable, '-m', 'pip', 'install', '--root', 'out/python_deps', '-r', 'requirements-dev.txt']),
 ]
 
 
@@ -84,6 +87,10 @@ def main(args):
       shutil.copy(utils.path_from_root(src), dst)
     return 0
 
+  env = os.environ.copy()
+  env['PATH'] += os.pathsep + utils.path_from_root('out/python_deps')
+  env['PYTHONPATH'] = utils.path_from_root('out/python_deps')
+
   for name, deps, cmd in actions:
     if check_deps(name, deps):
       print('Up-to-date: %s' % name)
@@ -99,7 +106,7 @@ def main(args):
       if not cmd[0]:
         utils.exit_with_error(f'command not found: {orig_exe}')
     print(' -> %s' % ' '.join(cmd))
-    subprocess.run(cmd, check=True, text=True, encoding='utf-8', cwd=utils.path_from_root())
+    subprocess.run(cmd, check=True, text=True, encoding='utf-8', cwd=utils.path_from_root(), env=env)
     utils.safe_ensure_dirs(STAMP_DIR)
     utils.write_file(stamp_file, 'Timestamp file created by bootstrap.py')
   return 0
