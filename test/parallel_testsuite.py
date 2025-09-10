@@ -71,7 +71,10 @@ def run_test(test, failfast_event, lock, progress_counter, num_tests):
   # Before attempting to delete the tmp dir make sure the current
   # working directory is not within it.
   os.chdir(olddir)
-  common.force_delete_dir(temp_dir)
+  try:
+    common.force_delete_dir(temp_dir)
+  except PermissionError as e:
+    print(f'WARNING: Failed to delete directory {temp_dir}:\n{e}')
   return result
 
 
