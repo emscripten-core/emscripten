@@ -2485,7 +2485,6 @@ def configure_test_browser():
     EMTEST_BROWSER = 'google-chrome'
 
   if EMTEST_BROWSER_AUTO_CONFIG:
-    logger.info('Using default CI configuration.')
     config = None
     if is_chrome():
       config = ChromeConfig()
@@ -2535,6 +2534,7 @@ class BrowserCore(RunnerCore):
     browser_args = EMTEST_BROWSER
 
     if EMTEST_BROWSER_AUTO_CONFIG:
+      logger.info('Using default CI configuration.')
       browser_data_dir = DEFAULT_BROWSER_DATA_DIR
       if worker_id is not None:
         # Running in parallel mode, give each browser its own profile dir.
