@@ -125,11 +125,6 @@ Source maps are easier to parse and more widely supported by ecosystem tooling. 
 above, preserving DWARF inhibits some Binaryen optimizations. However DWARF has the advantage
 that it includes information about inlining, which can result in more accurate stack traces.
 
-Emscripten includes a tool called ``emsymbolizer`` that can map wasm code addresses to sources
-using several different kinds of debug info, including DWARF (in wasm object or linked files)
-and source maps for line/column info, and symbol maps (see :ref:`emcc-emit-symbol-map`),
-name sections and object file symbol tables for function names.
-
 Examples:
 
 .. code-block:: bash
@@ -139,6 +134,11 @@ Examples:
 
   emcc source.o -o program2.js -g # program2.wasm has DWARF
   llvm-strip program2.wasm -o program2_stripped.wasm # program2_stripped.wasm has no debug info
+
+Emscripten includes a tool called ``emsymbolizer`` that can map wasm code addresses to sources
+using several different kinds of debug info, including DWARF (in wasm object or linked files)
+and source maps for line/column info, and symbol maps (see :ref:`emcc-emit-symbol-map`),
+name sections and object file symbol tables for function names.
 
 
 Fast Edit+Compile with minimal debug information
@@ -230,8 +230,6 @@ Speed
 To profile your code for speed, build with :ref:`profiling info <emcc-profiling>` using ``--profiling``,
 (which is currently the same as :ref:`-g2 <emcc-g2>`), and then run the code in the browser's
 devtools profiler. You should then be able to see in which functions most of the time is spent.
-
-TODO:  -g1 is not the same as --minify=0. it's closer to g2 but not exactly.
 
 Memory
 ------

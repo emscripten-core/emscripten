@@ -1878,7 +1878,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   settings.PRE_JS_FILES = options.pre_js
   settings.POST_JS_FILES = options.post_js
 
-  settings.MINIFY_WHITESPACE = settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL == 0 and not options.no_minify #shouldn't no_minify be equivalent to g1?
+  settings.MINIFY_WHITESPACE = settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL == 0 and not options.no_minify
 
   # Closure might be run if we run it ourselves, or if whitespace is not being
   # minifed. In the latter case we keep both whitespace and comments, and the
