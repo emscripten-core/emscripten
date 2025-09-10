@@ -2486,15 +2486,15 @@ def configure_test_browser():
 
   if EMTEST_BROWSER_AUTO_CONFIG:
     logger.info('Using default CI configuration.')
+    config = None
     if is_chrome():
       config = ChromeConfig()
     elif is_firefox():
       config = FirefoxConfig()
-    else:
-      exit_with_error(f'EMTEST_BROWSER_AUTO_CONFIG only currently works with firefox or chrome. Browser was "{EMTEST_BROWSER}"')
-    EMTEST_BROWSER += ' ' + ' '.join(config.default_flags)
-    if EMTEST_HEADLESS == 1:
-      EMTEST_BROWSER += f" {config.headless_flags}"
+    if config:
+      EMTEST_BROWSER += ' ' + ' '.join(config.default_flags)
+      if EMTEST_HEADLESS == 1:
+        EMTEST_BROWSER += f" {config.headless_flags}"
 
 
 class BrowserCore(RunnerCore):
