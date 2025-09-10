@@ -617,14 +617,13 @@ var LibraryDylink = {
     dbg('loadWebAssemblyModule:', libName);
 #endif
     var metadata = getDylinkMetadata(binary);
-    currentModuleWeakSymbols = metadata.weakImports;
-#if ASSERTIONS
-    var originalTable = wasmTable;
-#endif
 
     // loadModule loads the wasm module after all its dependencies have been loaded.
     // can be called both sync/async.
     function loadModule() {
+#if ASSERTIONS
+      var originalTable = wasmTable;
+#endif
 #if PTHREADS
       // The first thread to load a given module needs to allocate the static
       // table and memory regions.  Later threads re-use the same table region
@@ -744,6 +743,7 @@ var LibraryDylink = {
         }
       };
       var proxy = new Proxy({}, proxyHandler);
+      currentModuleWeakSymbols = metadata.weakImports;
       var info = {
         'GOT.mem': new Proxy({}, GOTHandler),
         'GOT.func': new Proxy({}, GOTHandler),

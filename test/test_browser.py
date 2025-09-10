@@ -19,7 +19,7 @@ from urllib.request import urlopen
 
 import common
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, Reporting, is_chrome, is_firefox, CHROMIUM_BASED_BROWSERS
-from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
+from common import create_file, parameterized, ensure_dir, disabled, flaky, test_file, WEBIDL_BINDER
 from common import read_file, EMRUN, no_wasm64, no_2gb, no_4gb, copytree
 from common import requires_wasm2js, parameterize, find_browser_test_file, with_all_sjlj
 from common import also_with_minimal_runtime, also_with_wasm2js, also_with_asan, also_with_wasmfs
@@ -5480,6 +5480,7 @@ Module["preRun"] = () => {
   # Tests AudioWorklet with emscripten_lock_busyspin_wait_acquire() and friends
   @requires_sound_hardware
   @also_with_minimal_runtime
+  @flaky('https://github.com/emscripten-core/emscripten/issues/25245')
   def test_audio_worklet_emscripten_locks(self):
     self.btest_exit('webaudio/audioworklet_emscripten_locks.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread'])
 
