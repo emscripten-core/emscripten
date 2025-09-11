@@ -8409,6 +8409,8 @@ Module.onRuntimeInitialized = () => {
     self.maybe_closure()
     self.do_runf('test_fibers.cpp', '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
+  # Test that fibers do not break setjmp/longjmp, ensuring longjmp works after
+  # switching back from another fiber
   @parameterized({
     '': (0,),
     'legacy': (1,),
