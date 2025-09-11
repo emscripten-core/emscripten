@@ -3251,19 +3251,23 @@ Module["preRun"] = () => {
                             '-Wno-deprecated-declarations'])
 
   @parameterized({
+    'O0': ('-O0',),
+    'O1': ('-O1',),
+    'O2': ('-O2',),
+    'O3': ('-O3',),
+  })
+  @parameterized({
     'asyncify': (['-sASYNCIFY=1'],),
     'asyncify_minimal_runtime': (['-sMINIMAL_RUNTIME', '-sASYNCIFY=1'],),
     'jspi': (['-sASYNCIFY=2', '-Wno-experimental'],),
     'jspi_wasm_bigint': (['-sASYNCIFY=2', '-sWASM_BIGINT', '-Wno-experimental'],),
     'jspi_wasm_bigint_minimal_runtime': (['-sMINIMAL_RUNTIME', '-sASYNCIFY=2', '-sWASM_BIGINT', '-Wno-experimental'],),
   })
-  def test_async(self, args):
+  def test_async(self, opt, args):
     if is_jspi(args) and not is_chrome():
       self.skipTest(f'Current browser ({common.EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
 
-    for opts in (0, 1, 2, 3):
-      print(opts)
-      self.btest_exit('test_async.c', cflags=['-O' + str(opts), '-g2'] + args)
+    self.btest_exit('test_async.c', cflags=[opt, '-g2'] + args)
 
   def test_asyncify_tricky_function_sig(self):
     self.btest('test_asyncify_tricky_function_sig.cpp', '85', cflags=['-sASYNCIFY_ONLY=[foo(char.const*?.int#),foo2(),main,__original_main]', '-sASYNCIFY'])
