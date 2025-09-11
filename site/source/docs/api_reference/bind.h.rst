@@ -804,11 +804,12 @@ Enums
       A typedef of ``EnumType`` (a typename for the class).
 
 
-   .. cpp:function::  enum_(const char* name)
+   .. cpp:function::  enum_(const char* name, bool asString = false)
 
       Constructor.
 
       :param const char* name:
+      :param bool asString: *Experimental.* If true, the enum values are represented by plain strings in JavaScript, which is handy for basic operations like comparison and serialization.
 
 
    .. cpp:function::  enum_& value(const char* name, EnumType value)
