@@ -566,7 +566,9 @@ addToLibrary({
 #if ASYNCIFY_DEBUG
         dbg('ASYNCIFY/FIBER: resuming fiber', newFiber);
 #endif
-        Fibers.continuations[continuationId]();
+        const continuation = Fibers.continuations[continuationId];
+        Fibers.continuations[continuationId] = null;
+        continuation();
       } else {
         var entryPoint = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, '*') }}};
 
