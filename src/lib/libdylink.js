@@ -1314,7 +1314,7 @@ var LibraryDylink = {
     assert(lib, `Tried to dlsym() from an unopened handle: ${handle}`);
 #endif
     newSymIndex = Object.keys(lib.exports).indexOf(symbol);
-    if (newSymIndex == -1 || lib.exports[symbol]?.stub) {
+    if (newSymIndex == -1 || lib.exports[symbol].stub) {
       dlSetError(`Tried to lookup unknown symbol "${symbol}" in dynamic lib: ${lib.name}`)
       return 0;
     }
