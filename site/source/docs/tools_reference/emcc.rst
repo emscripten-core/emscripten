@@ -76,8 +76,8 @@ Options that are modified or new in *emcc* are listed below:
 
 ``-Og``
   [compile+link]
-  Like ``-O1``. In future versions, this option might disable different
-  optimizations in order to improve debuggability.
+  Like ``-O1``, with an additional flag to extend the liveness of variables for improved debugging.
+  In future versions, additional optimizations might also be disabled.
 
 .. _emcc-Os:
 

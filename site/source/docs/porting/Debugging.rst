@@ -167,7 +167,7 @@ reduces test runtime.
 Detecting Memory Errors and Undefined Behavior
 ==============================================
 
-The best tools for detecting memory safety and undefined behavior issues. are Clang's sanitizers,
+The best tools for detecting memory safety and undefined behavior issues are Clang's sanitizers,
 such as the Undefined Behavior Sanitizer (UBSan) and the Address Sanitizer (ASan).
 For more information, see :ref:`Sanitizers`.
 
@@ -187,7 +187,7 @@ Some important settings are:
     ``ASSERTIONS=1`` is used to enable runtime checks for many types of common errors. It also
     defines how Emscripten should handle errors in program flow. The value can be set to 
     ``ASSERTIONS=2`` in order to run additional tests. ``ASSERTIONS=1`` is enabled by default at
-    ``-O0``.
+    ``-O0`` and disabled at higher optimization levels, but can be overridden.
 
   -
     .. _debugging-SAFE-HEAP:
@@ -307,7 +307,7 @@ alignment. However if the actual alignment does not match, it may be very slow o
 Generally it is best to avoid unaligned reads and writes. Often they occur as the result of
 undefined behavior. In some cases, however, they are unavoidable — for example
 if the code to be ported reads an ``int`` from a packed structure in some pre-existing data format.
-In that case, to as fast as possible in WebAssembly, you can make sure
+In that case, to make it as fast as possible in WebAssembly, you can make sure
 that the compiler knows the load or store is unaligned. To do so you can:
 
 - Manually read individual bytes and reconstruct the full value
