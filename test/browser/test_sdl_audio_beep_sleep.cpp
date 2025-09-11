@@ -27,8 +27,10 @@
 // #define INTERACTIVE true
 
 #ifdef INTERACTIVE
-const int tone_duration = 10000;
+const int tone_duration = 1000;
+#define DELAY 1500
 #else
+#define DELAY 1
 const int tone_duration = 10;
 #endif
 
@@ -223,13 +225,9 @@ void update() {
     delete beep;
     beep = 0;
 #ifdef __EMSCRIPTEN__
-#ifdef INTERACTIVE
-    emscripten_async_call(nextTest, 0, 1500);
+    emscripten_async_call(nextTest, 0, DELAY);
 #else
-    emscripten_async_call(nextTest, 0, 1);
-#endif
-#else
-    SDL_Delay(1500);
+    SDL_Delay(DELAY);
     nextTest();
 #endif
   }
