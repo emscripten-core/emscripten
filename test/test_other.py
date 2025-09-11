@@ -1569,7 +1569,7 @@ int f() {
 
     # Explicitly test with -Oz to ensure libc_optz is included alongside
     # libc when `--whole-archive` is used.
-    self.emcc('lib.c', ['-Oz', '-sEXPORT_ALL', '-sLINKABLE', '--pre-js', 'pre.js'], output_filename='a.out.js')
+    self.emcc('lib.c', ['-Oz', '-sEXPORT_ALL', '-sLINKABLE', '-Wno-deprecated', '--pre-js', 'pre.js'], output_filename='a.out.js')
     self.assertContained('libf1\nlibf2\n', self.run_js('a.out.js'))
 
   def test_export_keepalive(self):
@@ -2501,24 +2501,24 @@ F1 -> ''
     self.emcc(test_file('browser/test_sdl2_mixer_wav.c'), ['--use-port=sdl2_mixer'], output_filename='a.out.js')
     self.emcc(test_file('browser/test_sdl2_mixer_wav.c'), ['--use-port=sdl2_mixer:formats=ogg'], output_filename='a.out.js')
 
-  def test_sdl2_linkable(self):
-    # Ensure that SDL2 can be built with LINKABLE.  This implies there are no undefined
-    # symbols in the library (because LINKABLE includes the entire library).
-    self.emcc(test_file('browser/test_sdl2_misc.c'), ['-sLINKABLE', '-sUSE_SDL=2'], output_filename='a.out.js')
-    self.emcc(test_file('browser/test_sdl2_misc.c'), ['-sLINKABLE', '--use-port=sdl2'], output_filename='a.out.js')
+  def test_sdl2_linkall(self):
+    # Ensure that SDL2 can be built with MAIN_MODULE.  This implies there are no undefined
+    # symbols in the library (because MAIN_MODULE includes the entire library).
+    self.emcc(test_file('browser/test_sdl2_misc.c'), ['-sMAIN_MODULE', '-sUSE_SDL=2'], output_filename='a.out.js')
+    self.emcc(test_file('browser/test_sdl2_misc.c'), ['-sMAIN_MODULE', '--use-port=sdl2'], output_filename='a.out.js')
 
-  def test_sdl3_linkable(self):
-    # Ensure that SDL3 can be built with LINKABLE.  This implies there are no undefined
-    # symbols in the library (because LINKABLE includes the entire library).
+  def test_sdl3_linkall(self):
+    # Ensure that SDL3 can be built with MAIN_MODULE.  This implies there are no undefined
+    # symbols in the library (because MAIN_MODULE includes the entire library).
     self.cflags.append('-Wno-experimental')
-    self.emcc(test_file('browser/test_sdl3_misc.c'), ['-sLINKABLE', '-sUSE_SDL=3'], output_filename='a.out.js')
-    self.emcc(test_file('browser/test_sdl3_misc.c'), ['-sLINKABLE', '--use-port=sdl3'], output_filename='a.out.js')
+    self.emcc(test_file('browser/test_sdl3_misc.c'), ['-sMAIN_MODULE', '-sUSE_SDL=3'], output_filename='a.out.js')
+    self.emcc(test_file('browser/test_sdl3_misc.c'), ['-sMAIN_MODULE', '--use-port=sdl3'], output_filename='a.out.js')
 
   @requires_network
-  def test_sdl2_gfx_linkable(self):
+  def test_sdl2_gfx_linkall(self):
     # Same as above but for sdl2_gfx library
-    self.emcc(test_file('browser/test_sdl2_misc.c'), ['-Wl,-fatal-warnings', '-sLINKABLE', '-sUSE_SDL_GFX=2'], output_filename='a.out.js')
-    self.emcc(test_file('browser/test_sdl2_misc.c'), ['-Wl,-fatal-warnings', '-sLINKABLE', '--use-port=sdl2_gfx'], output_filename='a.out.js')
+    self.emcc(test_file('browser/test_sdl2_misc.c'), ['-Wl,-fatal-warnings', '-sMAIN_MODULE', '-sUSE_SDL_GFX=2'], output_filename='a.out.js')
+    self.emcc(test_file('browser/test_sdl2_misc.c'), ['-Wl,-fatal-warnings', '-sMAIN_MODULE', '--use-port=sdl2_gfx'], output_filename='a.out.js')
 
   @requires_network
   def test_libpng(self):
@@ -5892,8 +5892,8 @@ int main() {
     self.assertNotContained('new Function', src)
     delete_file('a.out.js')
 
-    # Test that -sDYNAMIC_EXECUTION=0 and -sRELOCATABLE are allowed together.
-    self.do_runf('hello_world.c', cflags=['-O1', '-sDYNAMIC_EXECUTION=0', '-sRELOCATABLE'])
+    # Test that -sDYNAMIC_EXECUTION=0 and -sMAIN_MODULE are allowed together.
+    self.do_runf('hello_world.c', cflags=['-O1', '-sDYNAMIC_EXECUTION=0', '-sMAIN_MODULE'])
 
     create_file('test.c', r'''
       #include <emscripten/emscripten.h>
@@ -9226,7 +9226,7 @@ int main() {
 
   @parameterized({
     '': ([],),
-    'relocatable': (['-sRELOCATABLE'],),
+    'main_module': (['-sMAIN_MODULE'],),
   })
   def test_ctor_ordering(self, args):
     # ctor order must be identical to js builds, deterministically
@@ -13089,10 +13089,6 @@ int main(void) {
   def test_pthread_mutex_deadlock(self):
     self.do_runf('other/test_pthread_mutex_deadlock.c', 'pthread mutex deadlock detected',
                  cflags=['-g'], assert_returncode=NON_ZERO)
-
-  @node_pthreads
-  def test_pthread_relocatable(self):
-    self.do_run_in_out_file_test('hello_world.c', cflags=['-sRELOCATABLE'])
 
   @node_pthreads
   def test_pthread_unavailable(self):
