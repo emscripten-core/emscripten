@@ -1016,6 +1016,12 @@ EnumClass emval_test_take_and_return_EnumClass(EnumClass e) {
   return e;
 }
 
+enum class EnumStr { ONE, TWO };
+
+EnumStr emval_test_take_and_return_EnumStr(EnumStr e) {
+  return e;
+}
+
 void emval_test_call_function(val v, int i, float f, TupleVector tv, StructVector sv) {
   v(i, f, tv, sv);
 }
@@ -2349,6 +2355,12 @@ EMSCRIPTEN_BINDINGS(tests) {
     .value("TWO", EnumClass::TWO)
     ;
   function("emval_test_take_and_return_EnumClass", &emval_test_take_and_return_EnumClass);
+
+  enum_<EnumStr>("EnumStr", true)
+    .value("ONE", EnumStr::ONE)
+    .value("TWO", EnumStr::TWO)
+    ;
+  function("emval_test_take_and_return_EnumStr", &emval_test_take_and_return_EnumStr);
 
   function("emval_test_call_function", &emval_test_call_function);
 
