@@ -617,14 +617,13 @@ var LibraryDylink = {
     dbg('loadWebAssemblyModule:', libName);
 #endif
     var metadata = getDylinkMetadata(binary);
-    currentModuleWeakSymbols = metadata.weakImports;
-#if ASSERTIONS
-    var originalTable = wasmTable;
-#endif
 
     // loadModule loads the wasm module after all its dependencies have been loaded.
     // can be called both sync/async.
     function loadModule() {
+#if ASSERTIONS
+      var originalTable = wasmTable;
+#endif
 #if PTHREADS
       // The first thread to load a given module needs to allocate the static
       // table and memory regions.  Later threads re-use the same table region
@@ -744,6 +743,7 @@ var LibraryDylink = {
         }
       };
       var proxy = new Proxy({}, proxyHandler);
+      currentModuleWeakSymbols = metadata.weakImports;
       var info = {
         'GOT.mem': new Proxy({}, GOTHandler),
         'GOT.func': new Proxy({}, GOTHandler),
@@ -1313,11 +1313,11 @@ var LibraryDylink = {
 #if ASSERTIONS
     assert(lib, `Tried to dlsym() from an unopened handle: ${handle}`);
 #endif
-    if (!lib.exports.hasOwnProperty(symbol) || lib.exports[symbol].stub) {
+    newSymIndex = Object.keys(lib.exports).indexOf(symbol);
+    if (newSymIndex == -1 || lib.exports[symbol].stub) {
       dlSetError(`Tried to lookup unknown symbol "${symbol}" in dynamic lib: ${lib.name}`)
       return 0;
     }
-    newSymIndex = Object.keys(lib.exports).indexOf(symbol);
 #if !WASM_BIGINT
     var origSym = 'orig$' + symbol;
     result = lib.exports[origSym];

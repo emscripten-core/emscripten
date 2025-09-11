@@ -2961,6 +2961,8 @@ More info: https://emscripten.org
     'safeHeap': (['safeHeap'],),
     'object-literals': ([],),
     'LittleEndianHeap': (['littleEndianHeap'],),
+    'LittleEndianGrowableHeap': (['growableHeap','littleEndianHeap'],),
+    'LittleEndianGrowableSafeHeap': (['safeHeap','growableHeap','littleEndianHeap'],),
   })
   @crossplatform
   def test_js_optimizer(self, passes, filename=None):
@@ -13333,10 +13335,12 @@ int main(void) {
     self.run_process([EMCC, '-c', test_file('other/test_asm_cpp.S'), '-o', 'foo.o'])
     self.do_other_test('test_asm.c', libraries=['foo.o'])
 
+  @also_with_wasm64
   @parameterized({
     '': (['-DUSE_KEEPALIVE'],),
     'minimal': (['-DUSE_KEEPALIVE', '-sMINIMAL_RUNTIME'],),
     'command_line': (['-sEXPORTED_FUNCTIONS=_g_foo,_main'],),
+    'himem': (['-sEXPORTED_FUNCTIONS=_g_foo,_main', '-sGLOBAL_BASE=2gb', '-sINITIAL_MEMORY=3gb'],),
   })
   def test_export_global_address(self, args):
     self.do_other_test('test_export_global_address.c', cflags=args)

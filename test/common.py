@@ -228,7 +228,13 @@ def is_slow_test(func):
       return self.skipTest('skipping slow tests')
     return func(self, *args, **kwargs)
 
+  decorated.is_slow = True
   return decorated
+
+
+def record_flaky_test(test_name, attempt_count, exception_msg):
+  logging.info(f'Retrying flaky test "{test_name}" (attempt {attempt_count}/{EMTEST_RETRY_FLAKY} failed):\n{exception_msg}')
+  open(flaky_tests_log_filename, 'a').write(f'{test_name}\n')
 
 
 def flaky(note=''):
@@ -242,15 +248,18 @@ def flaky(note=''):
 
   def decorated(f):
     @wraps(f)
-    def modified(*args, **kwargs):
+    def modified(self, *args, **kwargs):
+      # Browser tests have there own method of retrying tests.
+      if self.is_browser_test():
+        self.flaky = True
+        return f(self, *args, **kwargs)
+
       for i in range(EMTEST_RETRY_FLAKY):
         try:
-          return f(*args, **kwargs)
+          return f(self, *args, **kwargs)
         except (AssertionError, subprocess.TimeoutExpired) as exc:
           preserved_exc = exc
-          logging.info(f'Retrying flaky test "{f.id()}" (attempt {i}/{EMTEST_RETRY_FLAKY} failed): {exc}')
-          # Mark down that this was a flaky test.
-          open(flaky_tests_log_filename, 'a').write(f'{f.__name__}\n')
+          record_flaky_test(self.id(), i, exc)
 
       raise AssertionError('Flaky test has failed too many times') from preserved_exc
 
@@ -1315,6 +1324,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.js_engines = config.JS_ENGINES.copy()
     self.settings_mods = {}
     self.skip_exec = None
+    self.flaky = False
     self.cflags = ['-Wclosure', '-Werror', '-Wno-limited-postlink-optimizations']
     # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
     # For historical reasons emcc compiles and links as C++ by default.
@@ -2461,6 +2471,34 @@ def init_worker(counter, lock):
     counter.value += 1
 
 
+def configure_test_browser():
+  global EMTEST_BROWSER
+
+  if not has_browser():
+    return
+
+  if not EMTEST_BROWSER:
+    EMTEST_BROWSER = 'google-chrome'
+
+  if WINDOWS and '"' not in EMTEST_BROWSER and "'" not in EMTEST_BROWSER:
+    # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
+    # set EMTEST_BROWSER=C:\Program Files\Mozilla Firefox\firefox.exe
+    # and spaces are not escaped. But make sure to also support args, e.g.
+    # set EMTEST_BROWSER="C:\Users\clb\AppData\Local\Google\Chrome SxS\Application\chrome.exe" --enable-unsafe-webgpu
+    EMTEST_BROWSER = '"' + EMTEST_BROWSER.replace("\\", "\\\\") + '"'
+
+  if EMTEST_BROWSER_AUTO_CONFIG:
+    config = None
+    if is_chrome():
+      config = ChromeConfig()
+    elif is_firefox():
+      config = FirefoxConfig()
+    if config:
+      EMTEST_BROWSER += ' ' + ' '.join(config.default_flags)
+      if EMTEST_HEADLESS == 1:
+        EMTEST_BROWSER += f" {config.headless_flags}"
+
+
 class BrowserCore(RunnerCore):
   # note how many tests hang / do not send an output. if many of these
   # happen, likely something is broken and it is best to abort the test
@@ -2496,17 +2534,7 @@ class BrowserCore(RunnerCore):
 
   @classmethod
   def browser_open(cls, url):
-    global EMTEST_BROWSER, worker_id
-    if WINDOWS and '"' not in EMTEST_BROWSER and "'" not in EMTEST_BROWSER:
-      # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
-      # set EMTEST_BROWSER=C:\Program Files\Mozilla Firefox\firefox.exe
-      # and spaces are not escaped. But make sure to also support args, e.g.
-      # set EMTEST_BROWSER="C:\Users\clb\AppData\Local\Google\Chrome SxS\Application\chrome.exe" --enable-unsafe-webgpu
-      EMTEST_BROWSER = '"' + EMTEST_BROWSER.replace("\\", "/") + '"'
-
-    if not EMTEST_BROWSER:
-      logger.info('No EMTEST_BROWSER set. Defaulting to `google-chrome`')
-      EMTEST_BROWSER = 'google-chrome'
+    browser_args = EMTEST_BROWSER
 
     if EMTEST_BROWSER_AUTO_CONFIG:
       logger.info('Using default CI configuration.')
@@ -2524,21 +2552,18 @@ class BrowserCore(RunnerCore):
       else:
         exit_with_error("EMTEST_BROWSER_AUTO_CONFIG only currently works with firefox or chrome.")
       if WINDOWS:
-        # Remove directory delimiter backslashes to avoid shlex.split getting confused.
-        browser_data_dir = browser_data_dir.replace('\\', '/')
-      EMTEST_BROWSER += f" {config.data_dir_flag}\"{browser_data_dir}\" {' '.join(config.default_flags)}"
-      if EMTEST_HEADLESS == 1:
-        EMTEST_BROWSER += f" {config.headless_flags}"
+        # Escape directory delimiter backslashes for shlex.split.
+        browser_data_dir = browser_data_dir.replace('\\', '\\\\')
       config.configure(browser_data_dir)
+      browser_args += f' {config.data_dir_flag}"{browser_data_dir}"'
 
-    browser_args = shlex.split(EMTEST_BROWSER)
+    browser_args = shlex.split(browser_args)
     logger.info('Launching browser: %s', str(browser_args))
     cls.browser_proc = subprocess.Popen(browser_args + [url])
 
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
-    global worker_id
     cls.PORT = 8888 + (0 if worker_id is None else worker_id)
     cls.SERVER_URL = f'http://localhost:{cls.PORT}'
     cls.HARNESS_URL = f'{cls.SERVER_URL}/run_harness'
@@ -2586,12 +2611,13 @@ class BrowserCore(RunnerCore):
   # @param extra_tries: how many more times to try this test, if it fails. browser tests have
   #                     many more causes of flakiness (in particular, they do not run
   #                     synchronously, so we have a timeout, which can be hit if the VM
-  #                     we run on stalls temporarily), so we let each test try more than
-  #                     once by default
-  def run_browser(self, html_file, expected=None, message=None, timeout=None, extra_tries=1):
+  #                     we run on stalls temporarily).
+  def run_browser(self, html_file, expected=None, message=None, timeout=None, extra_tries=None):
     if not has_browser():
       return
     assert '?' not in html_file, 'URL params not supported'
+    if extra_tries is None:
+      extra_tries = EMTEST_RETRY_FLAKY if self.flaky else 0
     url = html_file
     if self.capture_stdio:
       url += '?capture_stdio'
@@ -2633,8 +2659,7 @@ class BrowserCore(RunnerCore):
             self.assertContained(expected, output)
           except self.failureException as e:
             if extra_tries > 0:
-              print(f'[test error in: {self.id()} (see below), automatically retrying]')
-              print(e)
+              record_flaky_test(self.id(), EMTEST_RETRY_FLAKY - extra_tries, e)
               if not self.capture_stdio:
                 print('[enabling stdio/stderr reporting]')
                 self.capture_stdio = True
@@ -2694,7 +2719,6 @@ class BrowserCore(RunnerCore):
             post_build=None,
             cflags=None,
             timeout=None,
-            extra_tries=1,
             reporting=Reporting.FULL,
             output_basename='test'):
     assert expected, 'a btest must have an expected output'
@@ -2718,7 +2742,7 @@ class BrowserCore(RunnerCore):
       output = self.run_js('test.js')
       self.assertContained('RESULT: ' + expected[0], output)
     else:
-      self.run_browser(outfile, expected=['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
+      self.run_browser(outfile, expected=['/report_result?' + e for e in expected], timeout=timeout)
 
 
 ###################################################################################################
