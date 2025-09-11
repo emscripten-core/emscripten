@@ -23,7 +23,7 @@ from common import create_file, parameterized, ensure_dir, disabled, flaky, test
 from common import read_file, EMRUN, no_wasm64, no_2gb, no_4gb, copytree
 from common import requires_wasm2js, parameterize, find_browser_test_file, with_all_sjlj
 from common import also_with_minimal_runtime, also_with_wasm2js, also_with_asan, also_with_wasmfs
-from common import HttpServerThread
+from common import HttpServerThread, requires_dev_dependency
 from tools import shared
 from tools import ports
 from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE, DEBUG
@@ -5503,6 +5503,7 @@ Module["preRun"] = () => {
     '': ([],),
     'es6': (['-sEXPORT_ES6', '-pthread', '-sPTHREAD_POOL_SIZE=1'],),
   })
+  @requires_dev_dependency('webpack')
   def test_webpack(self, args):
     if '-sEXPORT_ES6' in args:
       copytree(test_file('webpack_es6'), '.')
@@ -5519,6 +5520,7 @@ Module["preRun"] = () => {
     self.run_browser('dist/index.html', '/report_result?exit:0')
 
   @also_with_threads
+  @requires_dev_dependency('vite')
   def test_vite(self):
     copytree(test_file('vite'), '.')
     self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sENVIRONMENT=web', '-o', 'hello.mjs'])
@@ -5526,6 +5528,7 @@ Module["preRun"] = () => {
     self.run_browser('dist/index.html', '/report_result?exit:0')
 
   @also_with_threads
+  @requires_dev_dependency('rollup')
   def test_rollup(self):
     copytree(test_file('rollup'), '.')
     self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sENVIRONMENT=web', '-o', 'hello.mjs'])
