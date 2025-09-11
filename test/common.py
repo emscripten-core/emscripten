@@ -2476,16 +2476,15 @@ def configure_test_browser():
   if not has_browser():
     return
 
+  if not EMTEST_BROWSER:
+    EMTEST_BROWSER = 'google-chrome'
+
   if WINDOWS and '"' not in EMTEST_BROWSER and "'" not in EMTEST_BROWSER:
     # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
     # set EMTEST_BROWSER=C:\Program Files\Mozilla Firefox\firefox.exe
     # and spaces are not escaped. But make sure to also support args, e.g.
     # set EMTEST_BROWSER="C:\Users\clb\AppData\Local\Google\Chrome SxS\Application\chrome.exe" --enable-unsafe-webgpu
     EMTEST_BROWSER = '"' + EMTEST_BROWSER.replace("\\", "\\\\") + '"'
-
-  if not EMTEST_BROWSER:
-    logger.info('No EMTEST_BROWSER set. Defaulting to `google-chrome`')
-    EMTEST_BROWSER = 'google-chrome'
 
   if EMTEST_BROWSER_AUTO_CONFIG:
     config = None
