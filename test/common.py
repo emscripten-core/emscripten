@@ -228,6 +228,7 @@ def is_slow_test(func):
       return self.skipTest('skipping slow tests')
     return func(self, *args, **kwargs)
 
+  decorated.is_slow = True
   return decorated
 
 
