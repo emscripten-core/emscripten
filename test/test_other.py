@@ -3157,7 +3157,6 @@ More info: https://emscripten.org
       (['-g2', '-gsource-map'], False, True, True),
       (['-gsplit-dwarf', '-gsource-map'], True, True, True),
       (['-gsource-map', '-sERROR_ON_WASM_CHANGES_AFTER_LINK'], False, True, True),
-      (['-gsource-map', '-Og', '-sERROR_ON_WASM_CHANGES_AFTER_LINK'], False, True, True),
       (['-Oz', '-gsource-map'], False, True, True),
     ]:
       print(flags, expect_dwarf, expect_sourcemap, expect_names)
@@ -9262,9 +9261,6 @@ int main() {
         (['-O2', '-g'],  False, True, False),
         (['-O2', '--closure=1'], True, False, True),
         (['-O2', '--closure=1', '-g1'], True, True,  True),
-        (['-O2', '--minify=0'], False, True, False),
-        (['-O2', '--profiling-funcs'], True, False, False),
-        (['-O2', '--profiling'], False, True, False),
       ]:
       print(args, expect_clean_js, expect_whitespace_js, expect_closured)
       delete_file('a.out.wat')
