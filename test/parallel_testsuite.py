@@ -111,9 +111,6 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # issues.
     # multiprocessing.set_start_method('spawn')
 
-    # Remove any old stale list of flaky tests before starting the run
-    utils.delete_file(common.flaky_tests_log_filename)
-
     # If we are running with --failing-and-slow-first, then the test list has been
     # pre-sorted based on previous test run results. Otherwise run the tests in
     # reverse alphabetical order.

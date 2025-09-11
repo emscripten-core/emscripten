@@ -562,6 +562,9 @@ def main():
 
   check_js_engines()
 
+  # Remove any old test files before starting the run
+  utils.delete_file(common.flaky_tests_log_filename)
+
   def prepend_default(arg):
     if arg.startswith('test_'):
       return default_core_test_mode + '.' + arg
