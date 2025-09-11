@@ -153,8 +153,8 @@ var LibraryEmVal = {
       BigUint64Array: dv.setBigUint64,
       Float32Array: dv.setFloat32,
       Float64Array: dv.setFloat64,
-    }[view[Symbol.toStringTag]];
-    for (var i = 0; i < src.length; i++) writer.call(dv, i * view.BYTES_PER_ELEMENT, src[i], true);
+    }[dst[Symbol.toStringTag]];
+    for (var i = 0; i < src.length; i++) writer.call(dv, i * dst.BYTES_PER_ELEMENT, src[i], true);
   },
 #endif
 
