@@ -8978,6 +8978,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
         "which does not point to an object of type 'R'",
       ])
 
+  # The sanitizer runtime can symbolize based on dwarf, a name section, a sourcemap,
+  # or a combination.
   @parameterized({
     'g': (['-g'], [
       ".cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
@@ -8986,6 +8988,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'g2': (['-g2'], [
       ".cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
       'in main',
+    ]),
+    'gsource_map': (['-gsource-map'], [
+      ".cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
+      '.cpp:3:8',
     ]),
     'g4': (['-gsource-map', '-g2'], [
       ".cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
