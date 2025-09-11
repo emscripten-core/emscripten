@@ -251,25 +251,11 @@ To get information about usage inside that object, you need other tools:
   ``_malloc(1024 * 1024)``. That will allocate 1MB of memory, which will then show
   up on the memory profiler display.
 
-.. _other-debugging-tools:
-
-Other Debugging Tools and Techniques
-====================================
-
-.. _debugging-EMCC_DEBUG:
-
-Debugging the compiler driver
------------------------------
-
-Compiling with the :ref:`emcc -v <emcc-verbose>` will cause emcc to output
-the sub-commands that it runs as well as passes ``-v`` to Clang.
-The ``EMCC_DEBUG`` environment variable can be set to emit even more debug
-output and generate intermediate files for the compiler's various stages.
-
 .. _debugging-manual-debugging:
 
+
 Manual print debugging
-----------------------
+======================
 
 You can also manually instrument the source code with ``printf()`` statements,
 then compile and run the code to investigate issues. The output from the `stdout` and `stderr`
@@ -277,18 +263,6 @@ streams is copied to the browser console by default. Note that ``printf()`` is
 line-buffered, so make sure to add ``\n`` to see output in the console. The functions
 in the :ref:`console.h <console-h>` header can also be used to access the console
 more directly.
-
-.. _debugging-autodebugger:
-
-AutoDebugger
-------------
-
-The *AutoDebugger* is the 'nuclear option' for debugging Emscripten code. It will rewrite the
-output so it prints out each store to memory. This is useful for comparing the output for
-different compiler settings in order to detect regressions. To run the *AutoDebugger*, compile
-with the environment variable ``EMCC_AUTODEBUG=1`` set.
-
-.. warning:: This option is primarily intended for Emscripten core developers.
 
 .. _debugging-emscripten-specific-issues:
 
@@ -345,6 +319,73 @@ Infinite loops
 Infinite loops cause your page to hang. After a period the browser will notify the user that the page is stuck and offer to halt or close it.
 If your code hits an infinite loop, one easy way to find the problem code is to use a *JavaScript profiler*. In the Firefox profiler, if the code enters an infinite loop you will see a block of code doing the same thing repeatedly near the end of the profile.
 .. note:: The :ref:`emscripten-runtime-environment-main-loop` may need to be re-coded if your application uses an infinite main loop.
+
+.. _other-debugging-tools:
+
+Debugging Emscripten
+====================
+
+.. _debugging-EMCC_DEBUG:
+
+Debugging the compiler driver
+-----------------------------
+
+Compiling with the :ref:`emcc -v <emcc-verbose>` will cause emcc to output
+the sub-commands that it runs as well as passes ``-v`` to Clang.
+The ``EMCC_DEBUG`` environment variable can be set to emit even more debug
+output and generate intermediate files for the compiler's various stages.
+
+
+.. _debugging-autodebugger:
+
+AutoDebugger
+------------
+
+The *AutoDebugger* is the 'nuclear option' for debugging Emscripten code. It will rewrite the
+output so it prints out each store to memory. This is useful for comparing the output for
+different compiler settings in order to detect regressions. To run the *AutoDebugger*, compile
+with the environment variable ``EMCC_AUTODEBUG=1`` set.
+
+.. warning:: This option is primarily intended for Emscripten core developers.
+
+The *AutoDebugger* will rewrite the output so it prints out each store to memory. This is useful because you can compare the output for different compiler settings in order to detect regressions.
+
+The *AutoDebugger* can potentially find **any** problem in the generated code, so it is strictly more powerful than the ``CHECK_*`` settings and ``SAFE_HEAP``. One use of the *AutoDebugger* is to quickly emit lots of logging output, which can then be reviewed for odd behavior. The *AutoDebugger* is also particularly useful for :ref:`debugging regressions <debugging-autodebugger-regressions>`.
+
+The *AutoDebugger* has some limitations:
+
+-  It generates a lot of output. Using *diff* can be very helpful for identifying changes.
+-  It prints out simple numerical values rather than pointer addresses (because pointer addresses change between runs, and hence can't be compared). This is a limitation because sometimes inspection of addresses can show errors where the pointer address is 0 or impossibly large. It is possible to modify the tool to print out addresses as integers in ``tools/autodebugger.py``.
+
+To run the *AutoDebugger*, compile with the environment variable ``EMCC_AUTODEBUG=1`` set. For example:
+
+.. code-block:: bash
+
+  # Linux or macOS
+  EMCC_AUTODEBUG=1 emcc test/hello_world.cpp -o hello.html
+  # Windows
+  set EMCC_AUTODEBUG=1
+  emcc test/hello_world.cpp -o hello.html
+  set EMCC_AUTODEBUG=0
+.. _debugging-autodebugger-regressions:
+
+AutoDebugger Regression Workflow
+---------------------------------
+
+Use the following workflow to find regressions with the *AutoDebugger*:
+
+- Compile the working code with ``EMCC_AUTODEBUG=1`` set in the environment.
+- Compile the code using ``EMCC_AUTODEBUG=1`` in the environment again, but this time with the settings that cause the regression. Following this step we have one build before the regression and one after.
+- Run both versions of the compiled code and save their output.
+- Compare the output using a *diff* tool.
+
+Any difference between the outputs is likely to be caused by the bug.
+
+.. note::
+    You may want to use ``-sDETERMINISTIC`` which will ensure that timing
+    and other issues don't cause false positives.
+
+
 
 Useful Links
 ============
