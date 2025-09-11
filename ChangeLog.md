@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 4.0.15 (in development)
 -----------------------
+- The `RELOCATABLE` and `LINKABLE` settings were deprecated in favor the higher
+  level and better supported `MAIN_MODULE` / `SIDE_MODULE` settings. (#25265)
 - The `-gsource-map` flag has been updated to be independent of other types of
   debugging effects (in particular it no longer causes the wasm binary to have
   a name section, and it no longer suppresses minification of the JS output).
