@@ -114,7 +114,7 @@ class ChromeConfig:
 
 class FirefoxConfig:
   data_dir_flag = '-profile '
-  default_flags = ()
+  default_flags = ('-new-instance',)
   headless_flags = '-headless'
 
   @staticmethod
