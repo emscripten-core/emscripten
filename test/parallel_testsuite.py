@@ -114,10 +114,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # Remove any old stale list of flaky tests before starting the run
     utils.delete_file(common.flaky_tests_log_filename)
 
-    # If we are running with --failing-and-slow-first, then the test list has been
-    # pre-sorted based on previous test run results. Otherwise run the tests in
-    # reverse alphabetical order.
-    tests = list(self if self.failing_and_slow_first else self.reversed_tests())
+    tests = self.get_sorted_tests()
     contains_browser_test = any(test.is_browser_test() for test in tests)
     use_cores = cap_max_workers_in_pool(min(self.max_cores, len(tests), num_cores()), contains_browser_test)
     errlog(f'Using {use_cores} parallel test processes')
@@ -179,17 +176,22 @@ class ParallelTestSuite(unittest.BaseTestSuite):
 
     return self.combine_results(result, results)
 
-  def reversed_tests(self):
-    """A list of this suite's tests, sorted reverse alphabetical order.
+  def get_sorted_tests(self):
+    """A list of this suite's tests, sorted with the @is_slow_test tests first.
 
-    Many of the tests in test_core are intentionally named so that long tests
-    fall toward the end of the alphabet (e.g. test_the_bullet). Tests are
-    loaded in alphabetical order, so here we reverse that in order to start
-    running longer tasks earlier, which should lead to better core utilization.
-
-    Future work: measure slowness of tests and sort accordingly.
+    Future work: measure and store the speed of tests each test sort more accurately.
     """
-    return sorted(self, key=str, reverse=True)
+    if self.failing_and_slow_first:
+      # If we are running with --failing-and-slow-first, then the test list has been
+      # pre-sorted based on previous test run results (see `runner.py`)
+      return list(self)
+
+    def test_key(test):
+      testMethod = getattr(test, test._testMethodName)
+      is_slow = getattr(testMethod, 'is_slow', False)
+      return (is_slow, str(test))
+
+    return sorted(self, key=test_key, reverse=True)
 
   def combine_results(self, result, buffered_results):
     errlog('')

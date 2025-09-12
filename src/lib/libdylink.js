@@ -1313,11 +1313,11 @@ var LibraryDylink = {
 #if ASSERTIONS
     assert(lib, `Tried to dlsym() from an unopened handle: ${handle}`);
 #endif
-    if (!lib.exports.hasOwnProperty(symbol) || lib.exports[symbol].stub) {
+    newSymIndex = Object.keys(lib.exports).indexOf(symbol);
+    if (newSymIndex == -1 || lib.exports[symbol].stub) {
       dlSetError(`Tried to lookup unknown symbol "${symbol}" in dynamic lib: ${lib.name}`)
       return 0;
     }
-    newSymIndex = Object.keys(lib.exports).indexOf(symbol);
 #if !WASM_BIGINT
     var origSym = 'orig$' + symbol;
     result = lib.exports[origSym];
