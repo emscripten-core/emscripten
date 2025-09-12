@@ -15,12 +15,14 @@ import moduleFactory from './embind_tsgen.js';
   // Test a few variations of passing value_objects with strings.
   module.setValObj({
     bar: module.Bar.valueOne,
+    baz: module.Baz.valueA,
     string: "ABCD",
     callback: () => {}
   });
 
   module.setValObj({
     bar: module.Bar.valueOne,
+    baz: "valueA",
     string: new Int8Array([65, 66, 67, 68]),
     callback: () => {}
   });

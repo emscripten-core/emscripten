@@ -16013,6 +16013,7 @@ addToLibrary({
   def test_embind_negative_enum_values(self):
     # Test if negative enum values are printed correctly and not overflown to
     # large values when CAN_ADDRESS_2GB is true.
+    # Test both default enums and enums as string
     src = r'''
       #include <stdio.h>
       #include <emscripten.h>
@@ -16025,10 +16026,20 @@ addToLibrary({
         console.log(Module.value.neg.value);
         console.log(Module.value.zero.value);
         console.log(Module.value.pos.value);
+
+        console.log(Module.valueStr.neg);
+        console.log(Module.valueStr.zero);
+        console.log(Module.valueStr.pos);
         );
       }
 
       enum class value {
+        neg = -1,
+        zero = 0,
+        pos = 1,
+      };
+
+      enum class otherValue {
         neg = -1,
         zero = 0,
         pos = 1,
@@ -16039,9 +16050,13 @@ addToLibrary({
           .value("neg", value::neg)
           .value("zero", value::zero)
           .value("pos", value::pos);
+        enum_<otherValue>("valueStr", true)
+          .value("neg", otherValue::neg)
+          .value("zero", otherValue::zero)
+          .value("pos", otherValue::pos);
       }
     '''
-    expected = '-1\n0\n1\n'
+    expected = '-1\n0\n1\nneg\nzero\npos\n'
     self.do_run(src, expected_output=expected,
                 cflags=['-lembind', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB'])
 

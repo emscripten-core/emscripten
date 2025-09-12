@@ -2031,6 +2031,26 @@ module({
         });
     });
 
+    BaseFixture.extend("enums with string values", function() {
+        test("can compare enumeration values", function() {
+            assert.equal(cm.EnumStr.ONE, cm.EnumStr.ONE);
+            assert.equal(cm.EnumStr.ONE, 'ONE');
+            assert.notEqual(cm.EnumStr.ONE, cm.EnumStr.TWO);
+        });
+
+        if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
+            test("repr includes enum value", function() {
+                assert.equal('ONE', IMVU.repr(cm.EnumStr.ONE));
+                assert.equal('TWO', IMVU.repr(cm.EnumStr.TWO));
+            });
+        }
+
+        test("can pass and return enumeration values to functions", function() {
+            assert.equal(cm.EnumStr.TWO, cm.emval_test_take_and_return_EnumStr(cm.EnumStr.TWO));
+            assert.equal('TWO', cm.emval_test_take_and_return_EnumStr('TWO'));
+        });
+    });
+
     BaseFixture.extend("emval call tests", function() {
         test("can call functions from C++", function() {
             var called = false;

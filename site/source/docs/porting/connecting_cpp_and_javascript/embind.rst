@@ -825,6 +825,21 @@ type.
     Module.OldStyle.ONE;
     Module.NewStyle.TWO;
 
+If you set the `asString` parameter to `true` when registering the enum, the enum values will be represented as plain strings in JavaScript.
+
+.. code:: cpp
+
+    EMSCRIPTEN_BINDINGS(my_enum_example) {
+        enum_<MyEnum>("MyEnum", true)
+            .value("ONE", MyEnum::ONE)
+            .value("TWO", MyEnum::TWO)
+            ;
+    }
+
+.. code:: javascript
+
+    Module.MyEnum.ONE === "ONE"; // true
+
 .. _embind-constants:
 
 Constants
