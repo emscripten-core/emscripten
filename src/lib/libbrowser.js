@@ -712,9 +712,7 @@ var LibraryBrowser = {
     styleSheet.insertRule('canvas.emscripten { border: 1px solid black; cursor: none; }', 0);
   },
 
-#if !OFFSCREENCANVAS_SUPPORT
   emscripten_set_canvas_size__proxy: 'sync',
-#endif
   emscripten_set_canvas_size: (width, height) => Browser.setCanvasSize(width, height),
 
   emscripten_get_canvas_size__proxy: 'sync',

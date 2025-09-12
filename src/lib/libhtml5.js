@@ -360,12 +360,13 @@ var LibraryHTML5 = {
     // it will move in the GL.offscreenCanvases array between threads. Hence GL.offscreenCanvases
     // represents the set of OffscreenCanvases owned by the current calling thread.
 
-    return specialHTMLTargets[target]
     // First check out the list of OffscreenCanvases by CSS selector ID ('#myCanvasID')
-     || GL.offscreenCanvases[target.slice(1)] // Remove '#' prefix
+    return GL.offscreenCanvases[target.slice(1)] // Remove '#' prefix
     // If not found, if one is querying by using DOM tag name selector 'canvas', grab the first
     // OffscreenCanvas that we can find.
      || (target == 'canvas' && Object.keys(GL.offscreenCanvases)[0])
+    // If not found, check specialHTMLTargets
+     || specialHTMLTargets[target]
     // If that is not found either, query via the regular DOM selector.
 #if PTHREADS
      || (typeof document != 'undefined' && document.querySelector(target));
