@@ -315,6 +315,7 @@ commands:
           environment:
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
             EMTEST_HEADLESS: "1"
+            EMTEST_RETRY_FLAKY: "3"
             EMTEST_BROWSER: "/usr/bin/google-chrome"
             EMTEST_CORES: "2"
           command: |
@@ -902,6 +903,7 @@ jobs:
     executor: focal
     environment:
       EMTEST_LACKS_WEBGPU: "1"
+      EMTEST_RETRY_FLAKY: "3"
     steps:
       - checkout
       - run:
@@ -930,6 +932,7 @@ jobs:
     executor: focal
     environment:
       EMTEST_LACKS_WEBGPU: "1"
+      EMTEST_RETRY_FLAKY: "3"
     steps:
       - run-tests-chrome:
           title: "browser64"
@@ -956,6 +959,7 @@ jobs:
     executor: focal
     environment:
       EMTEST_LACKS_WEBGPU: "1"
+      EMTEST_RETRY_FLAKY: "3"
     steps:
       - run-tests-chrome:
           title: "browser_2gb"
@@ -964,6 +968,7 @@ jobs:
     executor: focal
     environment:
       EMTEST_LACKS_WEBGPU: "1"
+      EMTEST_RETRY_FLAKY: "3"
       EMTEST_SKIP_NODE_CANARY: "1"
     steps:
       - run-tests-chrome:
@@ -971,6 +976,8 @@ jobs:
           test_targets: "browser64_4gb"
   test-browser-firefox:
     executor: focal
+    environment:
+      EMTEST_RETRY_FLAKY: "3"
     steps:
       - prepare-for-tests
       - run-tests-firefox:
@@ -995,6 +1002,8 @@ jobs:
             "
   test-browser-firefox-wasm64:
     executor: focal
+    environment:
+      EMTEST_RETRY_FLAKY: "3"
     steps:
       - checkout
       - run:
