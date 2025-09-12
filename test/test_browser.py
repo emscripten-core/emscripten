@@ -2285,6 +2285,8 @@ void *getBindBuffer() {
     self.btest_exit('openal/test_openal_buffers.c', cflags=['--preload-file', test_file('sounds/the_entertainer.wav') + '@/'])
 
   def test_runtimelink(self):
+    if self.get_setting('GLOBAL_BASE'):
+      self.skipTest('GLOBAL_BASE is not compatible with SIDE_MODULE')
     create_file('header.h', r'''
       struct point {
         int x, y;
@@ -3537,6 +3539,8 @@ Module["preRun"] = () => {
     'inworker': ([1],),
   })
   def test_dylink_dso_needed(self, inworker):
+    if self.get_setting('GLOBAL_BASE'):
+      self.skipTest('GLOBAL_BASE is not compatible with SIDE_MODULE')
     self.cflags += ['-O2']
 
     def do_run(src, expected_output, cflags):
