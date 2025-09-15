@@ -83,6 +83,8 @@ def ensure():
 
 def erase():
   ensure_setup()
+  assert not config.FROZEN_CACHE, 'Cache cannot be erased when FROZEN_CACHE is set'
+
   with lock('erase'):
     # Delete everything except the lockfile itself
     utils.delete_contents(cachedir, exclude=[os.path.basename(cachelock_name)])
