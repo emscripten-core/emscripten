@@ -92,6 +92,9 @@ def get_path_to_functions_map(wasm, sourcemap, paths, verbose):
       return True
     return func.startswith(tuple(synthesized_prefixes))
 
+  # Compute {func_name: src file} map, and revert it to get
+  # {src file: list of functions} map, and construct {path: list of functions}
+  # map from it
   with webassembly.Module(wasm) as module:
     if not module.has_name_section():
       exit_with_error('Name section does not eixst')
@@ -192,8 +195,10 @@ def main():
     # Remove duplicates
     paths = list(dict.fromkeys(paths))
 
+  # Compute {path: list of functions} map
   path_to_funcs = get_path_to_functions_map(wasm, sourcemap, paths, args.verbose)
 
+  # Write .manifest file
   f = tempfile.NamedTemporaryFile(suffix=".manifest", mode='w+', delete=False)
   try:
     manifest = f.name
