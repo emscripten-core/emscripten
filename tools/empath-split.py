@@ -92,7 +92,7 @@ def get_path_to_functions_map(wasm, sourcemap, paths, verbose):
       return True
     return func.startswith(tuple(synthesized_prefixes))
 
-  # Compute {func_name: src file} map, and revert it to get
+  # Compute {func_name: src file} map, and invert it to get
   # {src file: list of functions} map, and construct {path: list of functions}
   # map from it
   with webassembly.Module(wasm) as module:
