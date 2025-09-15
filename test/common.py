@@ -228,6 +228,7 @@ def is_slow_test(func):
       return self.skipTest('skipping slow tests')
     return func(self, *args, **kwargs)
 
+  decorated.is_slow = True
   return decorated
 
 
@@ -2476,16 +2477,15 @@ def configure_test_browser():
   if not has_browser():
     return
 
+  if not EMTEST_BROWSER:
+    EMTEST_BROWSER = 'google-chrome'
+
   if WINDOWS and '"' not in EMTEST_BROWSER and "'" not in EMTEST_BROWSER:
     # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
     # set EMTEST_BROWSER=C:\Program Files\Mozilla Firefox\firefox.exe
     # and spaces are not escaped. But make sure to also support args, e.g.
     # set EMTEST_BROWSER="C:\Users\clb\AppData\Local\Google\Chrome SxS\Application\chrome.exe" --enable-unsafe-webgpu
     EMTEST_BROWSER = '"' + EMTEST_BROWSER.replace("\\", "\\\\") + '"'
-
-  if not EMTEST_BROWSER:
-    logger.info('No EMTEST_BROWSER set. Defaulting to `google-chrome`')
-    EMTEST_BROWSER = 'google-chrome'
 
   if EMTEST_BROWSER_AUTO_CONFIG:
     config = None
@@ -2550,7 +2550,7 @@ class BrowserCore(RunnerCore):
       elif is_firefox():
         config = FirefoxConfig()
       else:
-        exit_with_error("EMTEST_BROWSER_AUTO_CONFIG only currently works with firefox or chrome.")
+        exit_with_error(f'EMTEST_BROWSER_AUTO_CONFIG only currently works with firefox or chrome. EMTEST_BROWSER was "{EMTEST_BROWSER}"')
       if WINDOWS:
         # Escape directory delimiter backslashes for shlex.split.
         browser_data_dir = browser_data_dir.replace('\\', '\\\\')

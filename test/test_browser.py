@@ -23,7 +23,7 @@ from common import create_file, parameterized, ensure_dir, disabled, flaky, test
 from common import read_file, EMRUN, no_wasm64, no_2gb, no_4gb, copytree
 from common import requires_wasm2js, parameterize, find_browser_test_file, with_all_sjlj
 from common import also_with_minimal_runtime, also_with_wasm2js, also_with_asan, also_with_wasmfs
-from common import HttpServerThread
+from common import HttpServerThread, requires_dev_dependency
 from tools import shared
 from tools import ports
 from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE, DEBUG
@@ -190,8 +190,17 @@ def skipExecIf(cond, message):
   return decorator
 
 
+def webgl2_disabled():
+  return os.getenv('EMTEST_LACKS_WEBGL2') or os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE')
+
+
+def webgpu_disabled():
+  return os.getenv('EMTEST_LACKS_WEBGPU') or os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE')
+
+
 requires_graphics_hardware = skipExecIf(os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE'), 'This test requires graphics hardware')
-requires_webgpu = unittest.skipIf(os.getenv('EMTEST_LACKS_WEBGPU'), "This test requires WebGPU to be available")
+requires_webgl2 = unittest.skipIf(webgl2_disabled(), "This test requires WebGL2 to be available")
+requires_webgpu = unittest.skipIf(webgpu_disabled(), "This test requires WebGPU to be available")
 requires_sound_hardware = skipExecIf(os.getenv('EMTEST_LACKS_SOUND_HARDWARE'), 'This test requires sound hardware')
 requires_offscreen_canvas = skipExecIf(os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'), 'This test requires a browser with OffscreenCanvas')
 
@@ -280,7 +289,7 @@ window.close = () => {
     self.reftest('hello_world_sdl.c', 'htmltest.png', cflags=['-sUSE_SDL', '-lGL', '-sEXPORT_ES6'])
 
   def test_emscripten_log(self):
-    self.btest_exit('test_emscripten_log.cpp', cflags=['-Wno-deprecated-pragma', '-gsource-map'])
+    self.btest_exit('test_emscripten_log.cpp', cflags=['-Wno-deprecated-pragma', '-gsource-map', '-g2'])
 
   @also_with_wasmfs
   def test_preload_file(self):
@@ -1251,7 +1260,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
   def test_webgl_parallel_shader_compile(self):
     self.btest_exit('webgl_parallel_shader_compile.cpp')
 
-  @requires_graphics_hardware
+  @requires_webgl2
   def test_webgl_explicit_uniform_location(self):
     self.btest_exit('webgl_explicit_uniform_location.c', cflags=['-sGL_EXPLICIT_UNIFORM_LOCATION', '-sMIN_WEBGL_VERSION=2'])
 
@@ -1259,7 +1268,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
   def test_webgl_sampler_layout_binding(self):
     self.btest_exit('webgl_sampler_layout_binding.c', cflags=['-sGL_EXPLICIT_UNIFORM_BINDING'])
 
-  @requires_graphics_hardware
+  @requires_webgl2
   def test_webgl2_ubo_layout_binding(self):
     self.btest_exit('webgl2_ubo_layout_binding.c', cflags=['-sGL_EXPLICIT_UNIFORM_BINDING', '-sMIN_WEBGL_VERSION=2'])
 
@@ -1799,7 +1808,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
                               '-lGL', '-lEGL', '-lX11', '-Wno-int-conversion', '-Wno-pointer-sign',
                               '--preload-file', 'basemap.tga', '--preload-file', 'lightmap.tga', '--preload-file', 'smoke.tga'] + args)
 
-  @requires_graphics_hardware
+  @requires_webgl2
   def test_clientside_vertex_arrays_es3(self):
     self.reftest('clientside_vertex_arrays_es3.c', 'gl_triangle.png', cflags=['-sFULL_ES3', '-sUSE_GLFW=3', '-lglfw', '-lGLESv2'])
 
@@ -2133,7 +2142,7 @@ void *getBindBuffer() {
   def test_cubegeom_pre_vao_es(self):
     self.reftest('third_party/cubegeom/cubegeom_pre_vao_es.c', 'third_party/cubegeom/cubegeom_pre_vao.png', cflags=['-sFULL_ES2', '-lGL', '-lSDL'])
 
-  @requires_graphics_hardware
+  @requires_webgl2
   @no_swiftshader
   def test_cubegeom_row_length(self):
     self.reftest('third_party/cubegeom/cubegeom_pre_vao_es.c', 'third_party/cubegeom/cubegeom_pre_vao.png', cflags=['-sFULL_ES2', '-lGL', '-lSDL', '-DUSE_UNPACK_ROW_LENGTH', '-sMIN_WEBGL_VERSION=2'])
@@ -2251,6 +2260,8 @@ void *getBindBuffer() {
     'es2_tracing': (['-sMIN_WEBGL_VERSION=2', '-sFULL_ES2', '-sWEBGL2_BACKWARDS_COMPATIBILITY_EMULATION', '-sTRACE_WEBGL_CALLS'],),
   })
   def test_subdata(self, args):
+    if '-sMIN_WEBGL_VERSION=2' in args and webgl2_disabled():
+      self.skipTest('This test requires WebGL2 to be available')
     if self.is_4gb() and '-sMIN_WEBGL_VERSION=2' in args:
       self.skipTest('texSubImage2D fails: https://crbug.com/325090165')
     self.reftest('gl_subdata.c', 'float_tex.png', cflags=['-lGL', '-lglut'] + args)
@@ -2285,6 +2296,8 @@ void *getBindBuffer() {
     self.btest_exit('openal/test_openal_buffers.c', cflags=['--preload-file', test_file('sounds/the_entertainer.wav') + '@/'])
 
   def test_runtimelink(self):
+    if self.get_setting('GLOBAL_BASE'):
+      self.skipTest('GLOBAL_BASE is not compatible with SIDE_MODULE')
     create_file('header.h', r'''
       struct point {
         int x, y;
@@ -2679,7 +2692,7 @@ Module["preRun"] = () => {
     self.btest_exit('webgl2.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'] + args)
 
   # Tests the WebGL 2 glGetBufferSubData() functionality.
-  @requires_graphics_hardware
+  @requires_webgl2
   @no_4gb('getBufferSubData fails: https://crbug.com/325090165')
   def test_webgl2_get_buffer_sub_data(self):
     self.btest_exit('webgl2_get_buffer_sub_data.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'])
@@ -2694,11 +2707,11 @@ Module["preRun"] = () => {
   def test_webgl2_objects(self):
     self.btest_exit('webgl2_objects.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'])
 
-  @requires_graphics_hardware
+  @requires_webgl2
   @parameterized({
     '': ([],),
     'offscreencanvas': (['-sOFFSCREENCANVAS_SUPPORT', '-pthread', '-sPROXY_TO_PTHREAD'],),
-    'offscreenframbuffer': (['-sOFFSCREEN_FRAMEBUFFER', '-pthread', '-sPROXY_TO_PTHREAD'],),
+    'offscreenframebuffer': (['-sOFFSCREEN_FRAMEBUFFER', '-pthread', '-sPROXY_TO_PTHREAD'],),
   })
   def test_html5_webgl_api(self, args):
     if '-sOFFSCREENCANVAS_SUPPORT' in args and os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'):
@@ -2713,6 +2726,8 @@ Module["preRun"] = () => {
   })
   @requires_graphics_hardware
   def test_webgl_preprocessor_variables(self, opts):
+    if '-DWEBGL_VERSION=2' in opts and webgl2_disabled():
+      self.skipTest('This test requires WebGL2 to be available')
     self.btest_exit('webgl_preprocessor_variables.c', cflags=['-lGL'] + opts)
 
   @requires_graphics_hardware
@@ -2725,11 +2740,13 @@ Module["preRun"] = () => {
     'webgl2': (['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1'],),
   })
   def test_webgl2_garbage_free_entrypoints(self, args):
+    if '-DTEST_WEBGL2=1' in args and webgl2_disabled():
+      self.skipTest('This test requires WebGL2 to be available')
     if args and self.is_4gb():
       self.skipTest('readPixels fails: https://crbug.com/324992397')
     self.btest_exit('webgl2_garbage_free_entrypoints.c', cflags=args)
 
-  @requires_graphics_hardware
+  @requires_webgl2
   def test_webgl2_backwards_compatibility_emulation(self):
     self.btest_exit('webgl2_backwards_compatibility_emulation.c', cflags=['-sMAX_WEBGL_VERSION=2', '-sWEBGL2_BACKWARDS_COMPATIBILITY_EMULATION'])
 
@@ -2752,13 +2769,16 @@ Module["preRun"] = () => {
 
     # -sMIN_WEBGL_VERSION=2 => only 2 allowed
     self.btest('test_webgl_context_major_version.c', expected='abort:Expected Error: WebGL 1 requested but only WebGL 2 is supported (MIN_WEBGL_VERSION is 2)', cflags=['-lGL', '-sMIN_WEBGL_VERSION=2', '-DWEBGL_CONTEXT_MAJOR_VERSION=1'])
+
+  @requires_webgl2
+  def test_webgl_context_major_version_webgl2(self):
     self.btest_exit('test_webgl_context_major_version.c', cflags=['-lGL', '-sMIN_WEBGL_VERSION=2', '-DWEBGL_CONTEXT_MAJOR_VERSION=2'])
 
     # -sMAX_WEBGL_VERSION=2 => 1 and 2 are ok
     self.btest_exit('test_webgl_context_major_version.c', cflags=['-lGL', '-sMAX_WEBGL_VERSION=2', '-DWEBGL_CONTEXT_MAJOR_VERSION=1'])
     self.btest_exit('test_webgl_context_major_version.c', cflags=['-lGL', '-sMAX_WEBGL_VERSION=2', '-DWEBGL_CONTEXT_MAJOR_VERSION=2'])
 
-  @requires_graphics_hardware
+  @requires_webgl2
   def test_webgl2_invalid_teximage2d_type(self):
     self.btest_exit('webgl2_invalid_teximage2d_type.c', cflags=['-sMAX_WEBGL_VERSION=2'])
 
@@ -2767,7 +2787,7 @@ Module["preRun"] = () => {
     self.btest_exit('webgl_with_closure.c', cflags=['-O2', '-sMAX_WEBGL_VERSION=2', '--closure=1', '-lGL'])
 
   # Tests that -sGL_ASSERTIONS and glVertexAttribPointer with packed types works
-  @requires_graphics_hardware
+  @requires_webgl2
   def test_webgl2_packed_types(self):
     self.btest_exit('webgl2_draw_packed_triangle.c', cflags=['-lGL', '-sMAX_WEBGL_VERSION=2', '-sGL_ASSERTIONS'])
 
@@ -2789,7 +2809,7 @@ Module["preRun"] = () => {
     self.reftest('third_party/sokol/mrt-emcc.c', 'third_party/sokol/mrt-emcc.png',
                  cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'])
 
-  @requires_graphics_hardware
+  @requires_webgl2
   @no_4gb('fails to render')
   def test_webgl2_sokol_arraytex(self):
     self.reftest('third_party/sokol/arraytex-emsc.c', 'third_party/sokol/arraytex-emsc.png',
@@ -3251,19 +3271,23 @@ Module["preRun"] = () => {
                             '-Wno-deprecated-declarations'])
 
   @parameterized({
+    'O0': ('-O0',),
+    'O1': ('-O1',),
+    'O2': ('-O2',),
+    'O3': ('-O3',),
+  })
+  @parameterized({
     'asyncify': (['-sASYNCIFY=1'],),
     'asyncify_minimal_runtime': (['-sMINIMAL_RUNTIME', '-sASYNCIFY=1'],),
     'jspi': (['-sASYNCIFY=2', '-Wno-experimental'],),
     'jspi_wasm_bigint': (['-sASYNCIFY=2', '-sWASM_BIGINT', '-Wno-experimental'],),
     'jspi_wasm_bigint_minimal_runtime': (['-sMINIMAL_RUNTIME', '-sASYNCIFY=2', '-sWASM_BIGINT', '-Wno-experimental'],),
   })
-  def test_async(self, args):
+  def test_async(self, opt, args):
     if is_jspi(args) and not is_chrome():
       self.skipTest(f'Current browser ({common.EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
 
-    for opts in (0, 1, 2, 3):
-      print(opts)
-      self.btest_exit('test_async.c', cflags=['-O' + str(opts), '-g2'] + args)
+    self.btest_exit('test_async.c', cflags=[opt, '-g2'] + args)
 
   def test_asyncify_tricky_function_sig(self):
     self.btest('test_asyncify_tricky_function_sig.cpp', '85', cflags=['-sASYNCIFY_ONLY=[foo(char.const*?.int#),foo2(),main,__original_main]', '-sASYNCIFY'])
@@ -3533,6 +3557,8 @@ Module["preRun"] = () => {
     'inworker': ([1],),
   })
   def test_dylink_dso_needed(self, inworker):
+    if self.get_setting('GLOBAL_BASE'):
+      self.skipTest('GLOBAL_BASE is not compatible with SIDE_MODULE')
     self.cflags += ['-O2']
 
     def do_run(src, expected_output, cflags):
@@ -4274,7 +4300,7 @@ Module["preRun"] = () => {
   # We might want to append the --enable-webgl-draft-extensions to the EMTEST_BROWSER env arg.
   # If testing on Mac, you also need --use-cmd-decoder=passthrough to get this extension.
   # Also there is a known bug with Mac Intel baseInstance which can fail producing the expected image result.
-  @requires_graphics_hardware
+  @requires_webgl2
   @parameterized({
     '': (0,),
     'multidraw': (1,),
@@ -4346,6 +4372,8 @@ Module["preRun"] = () => {
     'gl2_no_aa': (['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=0'],),
   })
   def test_webgl_offscreen_framebuffer_state_restoration(self, args):
+    if '-DTEST_WEBGL2=1' in args and webgl2_disabled():
+      self.skipTest('This test requires WebGL2 to be available')
     base_args = ['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1']
     self.btest_exit('webgl_offscreen_framebuffer_swap_with_bad_state.c', cflags=base_args + args)
 
@@ -4359,7 +4387,7 @@ Module["preRun"] = () => {
     self.btest_exit('webgl_draw_triangle_with_uniform_color.c', cflags=args)
 
   # Tests that using an array of structs in GL uniforms works.
-  @requires_graphics_hardware
+  @requires_webgl2
   def test_webgl_array_of_structs_uniform(self):
     self.reftest('webgl_array_of_structs_uniform.c', 'webgl_array_of_structs_uniform.png', cflags=['-lGL', '-sMAX_WEBGL_VERSION=2'])
 
@@ -4416,6 +4444,9 @@ Module["preRun"] = () => {
     'disable': (0,),
   })
   def test_webgl_simple_extensions(self, webgl_version, simple_enable_extensions):
+    if webgl_version == 2 and webgl2_disabled():
+      self.skipTest('This test requires WebGL2 to be available')
+
     cmd = ['-DWEBGL_CONTEXT_VERSION=' + str(webgl_version),
            '-DWEBGL_SIMPLE_ENABLE_EXTENSION=' + str(simple_enable_extensions),
            '-sMAX_WEBGL_VERSION=2',
@@ -5499,6 +5530,7 @@ Module["preRun"] = () => {
     '': ([],),
     'es6': (['-sEXPORT_ES6', '-pthread', '-sPTHREAD_POOL_SIZE=1'],),
   })
+  @requires_dev_dependency('webpack')
   def test_webpack(self, args):
     if '-sEXPORT_ES6' in args:
       copytree(test_file('webpack_es6'), '.')
@@ -5515,6 +5547,7 @@ Module["preRun"] = () => {
     self.run_browser('dist/index.html', '/report_result?exit:0')
 
   @also_with_threads
+  @requires_dev_dependency('vite')
   def test_vite(self):
     copytree(test_file('vite'), '.')
     self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sENVIRONMENT=web', '-o', 'hello.mjs'])
@@ -5522,6 +5555,7 @@ Module["preRun"] = () => {
     self.run_browser('dist/index.html', '/report_result?exit:0')
 
   @also_with_threads
+  @requires_dev_dependency('rollup')
   def test_rollup(self):
     copytree(test_file('rollup'), '.')
     self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sENVIRONMENT=web', '-o', 'hello.mjs'])
