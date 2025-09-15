@@ -19,7 +19,7 @@ int _emscripten_thread_supports_atomics_wait(void);
 typedef enum {
   // The test hasn't yet started
   TEST_NOT_STARTED,
-  // No wait support in audio worklets
+  // No atomics wait support in audio worklets
   TEST_HAS_WAIT,
   // Acquired in main, fail in process
   TEST_TRY_ACQUIRE,
