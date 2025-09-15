@@ -522,7 +522,7 @@ class Module:
     return [self.read_uleb() for _ in range(num_types)]
 
   @memoize
-  def get_function_names(self):
+  def get_function_names(self, remove_imports=True):
     num_funcs = self.num_imported_funcs() + len(self.get_functions())
     names = [None] * num_funcs
 
@@ -547,7 +547,7 @@ class Module:
       else:
         self.skip(subsection_size)
 
-    return names
+    return names[self.num_imported_funcs():] if remove_imports else names
 
   def has_name_section(self):
     return self.get_custom_section('name') is not None

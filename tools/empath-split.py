@@ -102,10 +102,8 @@ def get_path_to_functions_map(wasm, sourcemap, paths, verbose):
       if not emsymbolizer.get_sourceMappingURL_section(module):
         exit_with_error('sourceMappingURL section does not exist')
 
-    code_section = module.get_section(webassembly.SecType.CODE)
-
     funcs = module.get_functions()
-    func_names = module.get_function_names()[module.num_imported_funcs():]
+    func_names = module.get_function_names()
     assert len(funcs) == len(func_names)
 
     func_to_src = {}

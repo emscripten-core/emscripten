@@ -16613,7 +16613,7 @@ addToLibrary({
       /emsdk/emscripten/system/lib/libcxx
     ''')
 
-    self.run_process([EMCC, 'main.cpp', 'foo.cpp', '-gsource-map', '-g2', '-gsource-map', '-o', 'test.js'])
+    self.run_process([EMCC, 'main.cpp', 'foo.cpp', '-gsource-map', '-g2', '-o', 'test.js'])
     self.run_process([empath_split, 'test.wasm', 'path_list', '-g', '-o', 'test_primary.wasm', '--out-prefix=test_'])
 
     # Check if functions are correctly assigned and split with the specified
