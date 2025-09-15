@@ -7,7 +7,7 @@
 """This is the Emscripten test runner. To run some tests, specify which tests
 you want, for example
 
-  test/runner asm1.test_hello_world
+  test/runner core0.test_hello_world
 
 There are many options for which tests to run and how to run them. For details,
 see
@@ -561,6 +561,9 @@ def main():
   configure()
 
   check_js_engines()
+
+  # Remove any old test files before starting the run
+  utils.delete_file(common.flaky_tests_log_filename)
 
   def prepend_default(arg):
     if arg.startswith('test_'):

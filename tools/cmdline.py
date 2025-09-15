@@ -368,7 +368,8 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
           settings.EMIT_NAME_SECTION = 1
         # if we don't need to preserve LLVM debug info, do not keep this flag
         # for clang
-        if settings.DEBUG_LEVEL < 3:
+        if (settings.DEBUG_LEVEL < 3 and not
+            (settings.GENERATE_SOURCE_MAP or settings.SEPARATE_DWARF)):
           newargs[i] = '-g0'
         else:
           # for 3+, report -g3 to clang as -g4 etc. are not accepted
@@ -394,9 +395,9 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
           else:
             settings.SEPARATE_DWARF = True
           settings.GENERATE_DWARF = 1
+          settings.DEBUG_LEVEL = 3
         elif requested_level in ['source-map', 'source-map=inline']:
           settings.GENERATE_SOURCE_MAP = 1 if requested_level == 'source-map' else 2
-          settings.EMIT_NAME_SECTION = 1
           newargs[i] = '-g'
         elif requested_level == 'z':
           # Ignore `-gz`.  We don't support debug info compression.
@@ -407,10 +408,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
           # clang and make the emscripten code treat it like any other DWARF.
           settings.GENERATE_DWARF = 1
           settings.EMIT_NAME_SECTION = 1
-        # In all cases set the emscripten debug level to 3 so that we do not
-        # strip during link (during compile, this does not make a difference).
-        # TODO: possibly decouple some of these flags from the final debug level (#20462)
-        settings.DEBUG_LEVEL = 3
+          settings.DEBUG_LEVEL = 3
     elif check_flag('-profiling') or check_flag('--profiling'):
       settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 2)
       settings.EMIT_NAME_SECTION = 1
