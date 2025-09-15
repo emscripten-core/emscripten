@@ -2296,8 +2296,6 @@ void *getBindBuffer() {
     self.btest_exit('openal/test_openal_buffers.c', cflags=['--preload-file', test_file('sounds/the_entertainer.wav') + '@/'])
 
   def test_runtimelink(self):
-    if self.get_setting('GLOBAL_BASE'):
-      self.skipTest('GLOBAL_BASE is not compatible with SIDE_MODULE')
     create_file('header.h', r'''
       struct point {
         int x, y;
@@ -3557,8 +3555,6 @@ Module["preRun"] = () => {
     'inworker': ([1],),
   })
   def test_dylink_dso_needed(self, inworker):
-    if self.get_setting('GLOBAL_BASE'):
-      self.skipTest('GLOBAL_BASE is not compatible with SIDE_MODULE')
     self.cflags += ['-O2']
 
     def do_run(src, expected_output, cflags):
@@ -5701,6 +5697,8 @@ class browser64_2gb(browser):
     self.set_setting('MEMORY64')
     self.set_setting('INITIAL_MEMORY', '2200mb')
     self.set_setting('GLOBAL_BASE', '2gb')
+    # Without this we get a warning about GLOBAL_BASE being ignored when used with SIDE_MODULE
+    self.cflags.append('-Wno-unused-command-line-argument')
     self.require_wasm64()
 
 
