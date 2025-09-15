@@ -41,7 +41,7 @@ typedef enum {
 
 // Lock used in all the tests
 emscripten_lock_t testLock = EMSCRIPTEN_LOCK_T_STATIC_INITIALIZER;
-// Which test is running (sometimes in the worklet, sometimes in the main thread)
+// Which test is running (sometimes in the worklet, sometimes in the worker)
 _Atomic Test whichTest = TEST_NOT_STARTED;
 // Time at which the test starts taken in main()
 double startTime = 0;
@@ -81,7 +81,7 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
     whichTest = TEST_WAIT_ACQUIRE;
     break;
   case TEST_WAIT_ACQUIRE:
-    // Will get unlocked in main thread, so should quickly acquire
+    // Will get unlocked in worker, so should quickly acquire
     result = emscripten_lock_busyspin_wait_acquire(&testLock, 10000);
     emscripten_outf("TEST_WAIT_ACQUIRE: %d  (expect: 1)", result);
     assert(result);
@@ -96,7 +96,7 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
     whichTest = TEST_WAIT_INFINTE_1;
     break;
   case TEST_WAIT_INFINTE_1:
-    // Still locked when we enter here but move on in the main thread
+    // Still locked when we enter here but move on in the worker
     break;
   case TEST_WAIT_INFINTE_2:
     emscripten_lock_release(&testLock);
@@ -137,7 +137,7 @@ void WorkerLoop() {
 		break;
 	  case TEST_WAIT_ACQUIRE:
 		if (!didUnlock) {
-		  emscripten_out("main thread releasing lock");
+		  emscripten_out("Worker releasing lock");
 		  // Release here to acquire in process
 		  emscripten_lock_release(&testLock);
 		  didUnlock = true;
@@ -147,7 +147,7 @@ void WorkerLoop() {
 		// Spin here until released in process (but don't change test until we know this case ran)
 		whichTest = TEST_WAIT_INFINTE_2;
 		emscripten_lock_busyspin_waitinf_acquire(&testLock);
-		emscripten_out("TEST_WAIT_INFINTE (from main)");
+		emscripten_out("TEST_WAIT_INFINTE (from worker)");
 		break;
 	  case TEST_DONE:
 		// Finished, exit from the main thread (and return out of this loop)
