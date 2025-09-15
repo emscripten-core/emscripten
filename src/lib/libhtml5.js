@@ -346,7 +346,7 @@ var LibraryHTML5 = {
   },
 
 #if OFFSCREENCANVAS_SUPPORT
-  $findCanvasEventTarget__deps: ['$GL', '$maybeCStringToJsString'],
+  $findCanvasEventTarget__deps: ['$GL', '$maybeCStringToJsString', '$specialHTMLTargets'],
   $findCanvasEventTarget: (target) => {
     target = maybeCStringToJsString(target);
 
