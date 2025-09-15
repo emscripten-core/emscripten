@@ -111,9 +111,6 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # issues.
     # multiprocessing.set_start_method('spawn')
 
-    # Remove any old stale list of flaky tests before starting the run
-    utils.delete_file(common.flaky_tests_log_filename)
-
     tests = self.get_sorted_tests()
     contains_browser_test = any(test.is_browser_test() for test in tests)
     use_cores = cap_max_workers_in_pool(min(self.max_cores, len(tests), num_cores()), contains_browser_test)
