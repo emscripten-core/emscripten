@@ -220,6 +220,13 @@ commands:
       - emsdk-env
       - bootstrap
       - pip-install
+      - when:
+          # We only set EMTEST_RETRY_FLAKY on pull requests.  When we run
+          # normal CI jobs on branches like main we still want to be able to
+          # detect flakyness.
+          condition: ${CIRCLE_PULL_REQUEST}
+          steps:
+            - set-retry-flaky-tests
   remove-linux-binaries:
     description: "Remove linux binaries from workspace"
     steps:
@@ -246,13 +253,6 @@ commands:
         type: string
         default: ""
     steps:
-      - when:
-          # We only set EMTEST_RETRY_FLAKY on pull requests.  When we run
-          # normal CI jobs on branches like main we still want to be able to
-          # detect flakyness.
-          condition: ${CIRCLE_PULL_REQUEST}
-          steps:
-            - set-retry-flaky-tests
       - run:
           name: run tests (<< parameters.title >>)
           environment:
