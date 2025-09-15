@@ -16621,7 +16621,7 @@ addToLibrary({
     # functions first, and the rest is split with the outer path.
     def has_defined_function(file, func):
       self.run_process([common.WASM_DIS, file, '-o', 'test.wast'])
-      pattern = re.compile(r'\(\s*func\s+\$' + func + r'[\s\(\)]')
+      pattern = re.compile(r'^\s*\(\s*func\s+\$' + func + r'[\s\(\)]', flags=re.MULTILINE)
       with open('test.wast', 'r') as f:
         return pattern.search(f.read()) is not None
 
