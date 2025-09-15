@@ -2005,14 +2005,6 @@ simulateKeyUp(100, undefined, 'Numpad4');
 
   @requires_graphics_hardware
   @no_swiftshader
-  def test_cubegeom_pre_relocatable(self):
-    # RELOCATABLE needs to be set via `set_setting` so that it will also apply when
-    # building `browser_reporting.c`
-    self.set_setting('RELOCATABLE')
-    self.reftest('third_party/cubegeom/cubegeom_pre.c', 'third_party/cubegeom/cubegeom_pre.png', cflags=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
-
-  @requires_graphics_hardware
-  @no_swiftshader
   def test_cubegeom_pre2(self):
     self.reftest('third_party/cubegeom/cubegeom_pre2.c', 'third_party/cubegeom/cubegeom_pre2.png', cflags=['-sGL_DEBUG', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL']) # some coverage for GL_DEBUG not breaking the build
 

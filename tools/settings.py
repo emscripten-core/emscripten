@@ -124,6 +124,8 @@ DEPRECATED_SETTINGS = {
     'LEGALIZE_JS_FFI': 'to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`',
     'ASYNCIFY_EXPORTS': 'please use JSPI_EXPORTS instead',
     'USE_WEBGPU': 'please try migrating to --use-port=emdawnwebgpu, which implements a newer, incompatible version of webgpu.h (see tools/ports/emdawnwebgpu.py for more info)',
+    'LINKABLE': 'scheduled for removal in favor of SIDE_MODULE/MAIN_MODULE (https://github.com/emscripten-core/emscripten/issues/25262)',
+    'RELOCATABLE': 'scheduled for removal in favor of SIDE_MODULE/MAIN_MODULE (https://github.com/emscripten-core/emscripten/issues/25262)',
 }
 
 # Settings that don't need to be externalized when serializing to json because they
