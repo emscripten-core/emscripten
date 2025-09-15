@@ -148,7 +148,7 @@ def get_path_to_functions_map(wasm, sourcemap, paths, verbose):
         src_to_funcs[src] = []
       src_to_funcs[src].append(func_name)
 
-  # Visit paths in the reverse sorting order, so that we can proces inner paths
+  # Visit paths in the reverse sorting order, so that we can process inner paths
   # first.
   # e.g. If we have /a/b and /a/b/c, /a/b/c will come first, so we can assign
   # functions contained in /a/b/c to it first and assign the maining functions
