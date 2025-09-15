@@ -73,7 +73,7 @@ should NOT add --manifest, because this will be generated from this script.
   return args, forwarded_args
 
 
-def get_path_to_functions_map(wasm, sourcemap, paths, verbose):
+def get_path_to_functions_map(wasm, sourcemap, paths):
   def is_synthesized_func(func):
     # TODO There can be more
     synthesized_names = [
@@ -186,7 +186,7 @@ def main():
   if not os.path.isfile(wasm_split):
     exit_with_error(f"'{wasm_split}' was not found or not a file")
 
-  with open(paths_file, 'r', encoding='utf-8') as f:
+  with open(paths_file, encoding='utf-8') as f:
     paths = [normalize_path(path.strip()) for path in f if path.strip()]
     # To make /a/b/c and /a/b/c/ equivalent
     paths = [path.rstrip(os.sep) for path in paths]
