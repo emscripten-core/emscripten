@@ -46,6 +46,12 @@ _Atomic Test whichTest = TEST_NOT_STARTED;
 // Time at which the test starts taken in main()
 double startTime = 0;
 
+void do_exit() {
+  emscripten_out("Test success");
+  emscripten_terminate_all_wasm_workers();
+  emscripten_force_exit(0);
+}
+
 bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs, AudioSampleFrame *outputs, int numParams, const AudioParamFrame *params, void *userData) {
   assert(emscripten_current_thread_is_audio_worklet());
 
@@ -120,37 +126,39 @@ EM_JS(void, InitHtmlUi, (EMSCRIPTEN_WEBAUDIO_T audioContext), {
   };
 });
 
-bool MainLoop(double time, void* data) {
+void WorkerLoop() {
   assert(!emscripten_current_thread_is_audio_worklet());
-  static int didUnlock = false;
-  switch (whichTest) {
-  case TEST_NOT_STARTED:
-    emscripten_out("Staring test (may need a button click)");
-    whichTest = TEST_HAS_WAIT;
-    break;
-  case TEST_WAIT_ACQUIRE:
-    if (!didUnlock) {
-      emscripten_out("main thread releasing lock");
-      // Release here to acquire in process
-      emscripten_lock_release(&testLock);
-      didUnlock = true;
-    }
-    break;
-  case TEST_WAIT_INFINTE_1:
-    // Spin here until released in process (but don't change test until we know this case ran)
-    whichTest = TEST_WAIT_INFINTE_2;
-    emscripten_lock_busyspin_waitinf_acquire(&testLock);
-    emscripten_out("TEST_WAIT_INFINTE (from main)");
-    break;
-  case TEST_DONE:
-    // Finished, exit from the main thread
-    emscripten_out("Test success");
-    emscripten_force_exit(0);
-    return false;
-  default:
-    break;
+  int didUnlock = false;
+  while (true) {
+	  switch (whichTest) {
+	  case TEST_NOT_STARTED:
+		emscripten_out("Staring test (may need a button click)");
+		whichTest = TEST_HAS_WAIT;
+		break;
+	  case TEST_WAIT_ACQUIRE:
+		if (!didUnlock) {
+		  emscripten_out("main thread releasing lock");
+		  // Release here to acquire in process
+		  emscripten_lock_release(&testLock);
+		  didUnlock = true;
+		}
+		break;
+	  case TEST_WAIT_INFINTE_1:
+		// Spin here until released in process (but don't change test until we know this case ran)
+		whichTest = TEST_WAIT_INFINTE_2;
+		emscripten_lock_busyspin_waitinf_acquire(&testLock);
+		emscripten_out("TEST_WAIT_INFINTE (from main)");
+		break;
+	  case TEST_DONE:
+		// Finished, exit from the main thread (and return out of this loop)
+		emscripten_wasm_worker_post_function_v(EMSCRIPTEN_WASM_WORKER_ID_PARENT, &do_exit);
+		return;
+	  default:
+		break;
+	  }
+	  // Repeat every 16ms (except when TEST_DONE)
+	  emscripten_wasm_worker_sleep(16 * 1000000ULL);
   }
-  return true;
 }
 
 void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData) {
@@ -169,16 +177,20 @@ void WebAudioWorkletThreadInitialized(EMSCRIPTEN_WEBAUDIO_T audioContext, bool s
 uint8_t wasmAudioWorkletStack[2048];
 
 int main() {
-  // Main thread init and acquire (work passes to the processor)
+  // Main thread init and acquire (work passes to the audio processor)
   emscripten_lock_init(&testLock);
   int hasLock = emscripten_lock_busyspin_wait_acquire(&testLock, 0);
   assert(hasLock);
 
   startTime = emscripten_get_now();
 
+  // Audio processor callback setup
   EMSCRIPTEN_WEBAUDIO_T context = emscripten_create_audio_context(NULL);
   emscripten_start_wasm_audio_worklet_thread_async(context, wasmAudioWorkletStack, sizeof(wasmAudioWorkletStack), WebAudioWorkletThreadInitialized, NULL);
-  emscripten_set_timeout_loop(MainLoop, 10, NULL);
+  
+  // Worker thread setup
+  emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(1024);
+  emscripten_wasm_worker_post_function_v(worker, WorkerLoop);
 
   emscripten_exit_with_live_runtime();
 }
