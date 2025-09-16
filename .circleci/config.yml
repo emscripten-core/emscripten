@@ -410,16 +410,32 @@ commands:
           name: download firefox
           shell: powershell.exe -ExecutionPolicy Bypass
           command: |
-            $nightlyUrl = "https://archive.mozilla.org/pub/firefox/nightly/latest-mozilla-central/firefox_latest-win64.zip"
+            # To download Firefox, we must first figure out what the latest Firefox version name is.
+            # This is because there does not exist a stable/static URL to download latest Firefox from.
+            $html = Invoke-WebRequest "https://archive.mozilla.org/pub/firefox/nightly/latest-mozilla-central/"
+            $zipLink = $html.Links |
+              Where-Object { $_.href -match "firefox-.*\.en-US\.win64\.zip$" } |
+              Select-Object -Last 1 -ExpandProperty href
+            if (-not $zipLink) {
+                throw "Could not find Firefox Nightly ZIP!"
+            }
+
+            # Download Win64 Firefox.
+            $nightlyUrl = "https://archive.mozilla.org$zipLink"
             $outZip = "$env:TEMP\firefox_nightly.zip"
-            Write-Host "Downloading Firefox Nightly from $nightlyUrl"
+
+            Write-Host "Downloading latest Firefox Nightly: $nightlyUrl"
             Invoke-WebRequest -Uri $nightlyUrl -OutFile $outZip
 
+            # Extract to user home directory
             $installDir = Join-Path $env:USERPROFILE "firefox"
+            if (Test-Path $installDir) { Remove-Item -Recurse -Force $installDir }
             Expand-Archive -LiteralPath $outZip -DestinationPath $installDir
 
+            # Set environment variable for tests
             $ffExe = Join-Path $installDir "firefox.exe"
-            [System.Environment]::SetEnvironmentVariable("EMTEST_BROWSER", $ffExe, "Machine")
+            [System.Environment]::SetEnvironmentVariable("EMTEST_BROWSER", $ffExe, "User")
+            $env:EMTEST_BROWSER = $ffExe
             Write-Host "EMTEST_BROWSER set to $env:EMTEST_BROWSER"
       - run:
           name: run tests (<< parameters.title >>)
