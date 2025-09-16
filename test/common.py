@@ -944,8 +944,7 @@ def force_delete_dir(dirname):
   """Deletes a directory. Returns whether deletion succeeded."""
   if not os.path.exists(dirname):
     return True
-  if os.path.isfile(dirname):
-    return False
+  assert not os.path.isfile(dirname)
 
   try:
     make_dir_writeable(dirname)
