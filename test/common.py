@@ -2584,6 +2584,16 @@ def move_browser_window(pid, x, y):
   win32gui.EnumWindows(enum_windows_callback, None)
 
 
+def increment_suffix_number(str_with_maybe_suffix):
+  match = re.match(r"^(.*?)(?:_(\d+))?$", str_with_maybe_suffix)
+  if match:
+    base, number = match.groups()
+    if number:
+      return f'{base}_{int(number) + 1}'
+
+  return f'{str_with_maybe_suffix}_1'
+
+
 class BrowserCore(RunnerCore):
   # note how many tests hang / do not send an output. if many of these
   # happen, likely something is broken and it is best to abort the test
@@ -2632,10 +2642,13 @@ class BrowserCore(RunnerCore):
         # Running in parallel mode, give each browser its own profile dir.
         browser_data_dir += '-' + str(worker_id)
 
-      # Delete old browser data directory. If we cannot (the data dir is in use on Windows),
-      # switch to another dir.
-      while not force_delete_dir(browser_data_dir):
-        browser_data_dir += '-another'
+      # Delete old browser data directory.
+      if WINDOWS:
+        # If we cannot (the data dir is in use on Windows), switch to another dir.
+        while not force_delete_dir(browser_data_dir):
+          browser_data_dir = increment_suffix_number(browser_data_dir)
+      else:
+        force_delete_dir(browser_data_dir)
 
       # Recreate the new data directory.
       os.mkdir(browser_data_dir)
