@@ -43,7 +43,7 @@ addToLibrary({
 
   $ptrToString: (ptr) => {
 #if ASSERTIONS
-    assert(typeof ptr === 'number');
+    assert(typeof ptr === 'number', `ptrToString expects a number, got ${typeof ptr}`);
 #endif
 #if MEMORY64
     // Convert to 64-bit unsigned value.  We need to use BigInt here since
@@ -2181,6 +2181,8 @@ addToLibrary({
 #endif // MINIMAL_RUNTIME
 
   $asmjsMangle: (x) => {
+    if (x == 'memory') return 'wasmMemory';
+    if (x == '__indirect_function_table') return 'wasmTable';
     if (x == '__main_argc_argv') {
       x = 'main';
     }

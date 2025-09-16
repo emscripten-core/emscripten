@@ -1,4 +1,4 @@
-var m = globalThis.Module || "undefined" != typeof Module ? Module : {}, n = "em-ww" == globalThis.name, q = "undefined" !== typeof AudioWorkletGlobalScope, t, z, v, J, K, H, E, A, X, F, C, B, Y, Z;
+var m = globalThis.Module || "undefined" != typeof Module ? Module : {}, n = "em-ww" == globalThis.name, q = "undefined" !== typeof AudioWorkletGlobalScope, t, z, J, K, H, E, v, X, F, C, B, Y, A, Z;
 
 q && (n = !0);
 
@@ -235,7 +235,7 @@ function y() {
         C = a.m;
         B = a.n;
         Y = a.o;
-        A = a.k;
+        A = A = a.k;
         m.stackSave = Q;
         m.stackAlloc = ha;
         m.stackRestore = P;
