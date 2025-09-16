@@ -740,11 +740,6 @@ function getWasmImports() {
 #endif
 #endif
 
-#if hasExportedSymbol('__cpp_exception') && !RELOCATABLE
-    ___cpp_exception = wasmExports['__cpp_exception'];
-    {{{ receivedSymbol('___cpp_exception') }}};
-#endif
-
 #if hasExportedSymbol('__wasm_apply_data_relocs')
     __RELOC_FUNCS__.push(wasmExports['__wasm_apply_data_relocs']);
 #endif
