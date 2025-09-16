@@ -79,7 +79,7 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
     emscripten_outf("TEST_WAIT_ACQUIRE_FAIL: %d (expect: 0)", result);
     assert(!result);
     whichTest = TEST_WAIT_ACQUIRE;
-    break;
+    // Fall through here so the worker has a chance to unlock whilst spinning
   case TEST_WAIT_ACQUIRE:
     // Will get unlocked in worker, so should quickly acquire
     result = emscripten_lock_busyspin_wait_acquire(&testLock, 10000);
@@ -107,6 +107,7 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
     emscripten_outf("TEST_GET_NOW: %d  (expect: > 0)", result);
     assert(result > 0);
     whichTest = TEST_DONE;
+    // Fall through here and stop playback (shutting down in the worker)
   case TEST_DONE:
     return false;
   default:
