@@ -21,7 +21,7 @@
 #include "stdio.h"
 #include "assert.h"
 
-#ifdef __WASM_EXCEPTIONS__
+#ifdef __wasm_exception_handling__
 #error "This file should only be included when building with emscripten exceptions"
 #endif
 

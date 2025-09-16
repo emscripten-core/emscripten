@@ -1547,7 +1547,7 @@ __base_class_type_info::search_below_dst(__dynamic_cast_info* info,
 
 
 // XXX EMSCRIPTEN
-#if defined(__wasm__) && !defined(__WASM_EXCEPTIONS__)
+#if defined(__wasm__) && !defined(__wasm_exception_handling__)
 
 #include "cxa_exception.h"
 
@@ -1602,5 +1602,4 @@ void *__cxa_get_exception_ptr(void *thrown_object) throw() {
 
 }  // __cxxabiv1
 
-#endif // __wasm__ && !__WASM_EXCEPTIONS__
-
+#endif // __wasm__ && !__wasm_exception_handling__

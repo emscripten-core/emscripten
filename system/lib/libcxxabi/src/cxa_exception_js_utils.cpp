@@ -39,7 +39,7 @@ static inline __cxa_exception* cxa_exception_from_unwind_exception(
   return cxa_exception_from_thrown_object(unwind_exception + 1);
 }
 
-#ifdef __WASM_EXCEPTIONS__
+#ifdef __wasm_exception_handling__
 struct __cxa_dependent_exception;
 uint64_t __getExceptionClass(const _Unwind_Exception* unwind_exception);
 static bool isDependentException(_Unwind_Exception* unwind_exception) {
@@ -87,7 +87,7 @@ void __get_exception_message(void* thrown_object, char** type, char** message) {
     static_cast<const __shim_type_info*>(&typeid(std::exception));
   int can_catch = catch_type->can_catch(thrown_type, thrown_object);
   if (can_catch) {
-#if __WASM_EXCEPTIONS__
+#if __wasm_exception_handling__
     if (isDependentException(&exception_header->unwindHeader)) {
       thrown_object =
         reinterpret_cast<__cxa_dependent_exception*>(exception_header)

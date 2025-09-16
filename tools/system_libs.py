@@ -1640,8 +1640,6 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
       # The code used to interpret exceptions during terminate
       # is not compatible with emscripten exceptions.
       cflags.append('-DLIBCXXABI_SILENT_TERMINATE')
-    elif self.eh_mode == Exceptions.WASM_LEGACY:
-      cflags.append('-D__WASM_EXCEPTIONS__')
     return cflags
 
   def get_files(self):
@@ -1721,8 +1719,6 @@ class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
 
   def get_cflags(self):
     cflags = super().get_cflags()
-    if self.eh_mode in (Exceptions.WASM_LEGACY, Exceptions.WASM):
-      cflags.append('-D__WASM_EXCEPTIONS__')
     return cflags
 
 
@@ -1755,8 +1751,6 @@ class libunwind(ExceptionLibrary, MTLibrary):
       cflags.append('-D_LIBUNWIND_HAS_NO_EXCEPTIONS')
     elif self.eh_mode == Exceptions.EMSCRIPTEN:
       cflags.append('-D__EMSCRIPTEN_EXCEPTIONS__')
-    elif self.eh_mode in (Exceptions.WASM_LEGACY, Exceptions.WASM):
-      cflags.append('-D__WASM_EXCEPTIONS__')
     return cflags
 
 
