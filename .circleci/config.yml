@@ -395,6 +395,61 @@ commands:
             #  "Firefox is already running, but is not responding."
             # TODO: find out a way to shut down and restart firefox
       - upload-test-results
+  run-tests-firefox-windows:
+    description: "Runs emscripten tests under firefox on Windows"
+    parameters:
+      test_targets:
+        description: "Test suites to run"
+        type: string
+      title:
+        description: "Name of given test suite"
+        type: string
+        default: ""
+    steps:
+      - run:
+          name: download firefox
+          shell: powershell.exe -ExecutionPolicy Bypass
+          command: |
+            $nightlyUrl = "https://archive.mozilla.org/pub/firefox/nightly/latest-mozilla-central/firefox_latest-win64.zip"
+            $outZip = "$env:TEMP\firefox_nightly.zip"
+            Write-Host "Downloading Firefox Nightly from $nightlyUrl"
+            Invoke-WebRequest -Uri $nightlyUrl -OutFile $outZip
+
+            $installDir = "C:\Program Files\FirefoxNightly"
+            if (Test-Path $installDir) {
+              Remove-Item -Recurse -Force $installDir
+            }
+            Expand-Archive -LiteralPath $outZip -DestinationPath $installDir
+
+            $ffExe = Join-Path $installDir "firefox.exe"
+            [System.Environment]::SetEnvironmentVariable("EMTEST_BROWSER", $ffExe, "Machine")
+            Write-Host "EMTEST_BROWSER set to $env:EMTEST_BROWSER"
+      - run:
+          name: run tests (<< parameters.title >>)
+          environment:
+            EMTEST_LACKS_GRAPHICS_HARDWARE: "1"
+            # TODO(https://github.com/emscripten-core/emscripten/issues/24205)
+            EMTEST_LACKS_SOUND_HARDWARE: "1"
+            EMTEST_LACKS_WEBGPU: "1"
+            # OffscreenCanvas support is not yet done in Firefox.
+            EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
+            EMTEST_DETECT_TEMPFILE_LEAKS: "0"
+            EMTEST_HEADLESS: "1"
+            EMTEST_CORES: "2"
+            DISPLAY: ":0"
+          command: |
+            # There are tests in the browser test suite that using libraries
+            # that are not included by "./embuilder build ALL".  For example the
+            # PIC version of libSDL which is used by test_sdl2_misc_main_module
+            set EM_FROZEN_CACHE=
+            echo "-----"
+            echo "Running browser tests"
+            echo "-----"
+            test\runner << parameters.test_targets >>
+            # posix and emrun suites are disabled because firefox errors on
+            #  "Firefox is already running, but is not responding."
+            # TODO: find out a way to shut down and restart firefox
+      - upload-test-results
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
     steps:
@@ -1064,6 +1119,11 @@ jobs:
       - run-tests:
           title: "sockets.test_nodejs_sockets_echo*"
           test_targets: "sockets.test_nodejs_sockets_echo*"
+      - run-tests-firefox-windows:
+          title: "browser"
+          test_targets: "
+            browser.test_hello*
+            "
       - upload-test-results
 
   test-mac-arm64:
