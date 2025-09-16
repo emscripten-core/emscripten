@@ -195,7 +195,7 @@ def main():
     paths = list(dict.fromkeys(paths))
 
   # Compute {path: list of functions} map
-  path_to_funcs = get_path_to_functions_map(wasm, sourcemap, paths, args.verbose)
+  path_to_funcs = get_path_to_functions_map(wasm, sourcemap, paths)
 
   # Write .manifest file
   f = tempfile.NamedTemporaryFile(suffix=".manifest", mode='w+', delete=False)
