@@ -47,6 +47,7 @@ from tools import shared
 from tools import webassembly
 from tools.utils import exit_with_error, normalize_path
 
+
 def parse_args():
   parser = argparse.ArgumentParser(
       description='Split a wasm file based on user paths',
