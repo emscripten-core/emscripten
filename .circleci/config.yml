@@ -415,10 +415,7 @@ commands:
             Write-Host "Downloading Firefox Nightly from $nightlyUrl"
             Invoke-WebRequest -Uri $nightlyUrl -OutFile $outZip
 
-            $installDir = "C:\Program Files\FirefoxNightly"
-            if (Test-Path $installDir) {
-              Remove-Item -Recurse -Force $installDir
-            }
+            $installDir = Join-Path $env:USERPROFILE "firefox"
             Expand-Archive -LiteralPath $outZip -DestinationPath $installDir
 
             $ffExe = Join-Path $installDir "firefox.exe"
