@@ -95,12 +95,15 @@ exception, but will not shut down the runtime.
 Set this to 1 if you do want to retain the ability to shut down the program.
 If 1, then completing main() will by default call exit(), unless a refcount
 keeps the runtime alive. Call emscripten_exit_with_live_runtime() to finish
-main() while keeping the runtime alive. Calling exit() will shut down the
-runtime, invoking atexit()s, and flushing stdio streams.
+main() while keeping the runtime alive. Calling emscripten_force_exit() will
+shut down the runtime, invoking atexit()s, and flushing stdio streams.
 This setting is controlled automatically in STANDALONE_WASM mode:
 
 - For a command (has a main function) this is always 1
 - For a reactor (no main function) this is always 0
+
+For more details, see documentation for emscripten_force_exit() and
+emscripten_exit_with_live_runtime().
 
 Default value: false
 
