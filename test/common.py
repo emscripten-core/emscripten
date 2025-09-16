@@ -2221,10 +2221,12 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     return poppler + freetype
 
-  def get_zlib_library(self, cmake):
+  def get_zlib_library(self, cmake, cflags=None):
     assert cmake or not WINDOWS, 'on windows, get_zlib_library only supports cmake'
 
     old_args = self.cflags.copy()
+    if cflags:
+      self.cflags += cflags
     # inflate.c does -1L << 16
     self.cflags.append('-Wno-shift-negative-value')
     # adler32.c uses K&R sytyle function declarations
@@ -2550,7 +2552,7 @@ class BrowserCore(RunnerCore):
       elif is_firefox():
         config = FirefoxConfig()
       else:
-        exit_with_error("EMTEST_BROWSER_AUTO_CONFIG only currently works with firefox or chrome.")
+        exit_with_error(f'EMTEST_BROWSER_AUTO_CONFIG only currently works with firefox or chrome. EMTEST_BROWSER was "{EMTEST_BROWSER}"')
       if WINDOWS:
         # Escape directory delimiter backslashes for shlex.split.
         browser_data_dir = browser_data_dir.replace('\\', '\\\\')

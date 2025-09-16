@@ -1844,7 +1844,7 @@ int main() {
       self.clear_setting('EXPORTED_FUNCTIONS')
       self.set_setting('EXPORT_ALL')
       self.set_setting('LINKABLE')
-      self.do_core_test('test_emscripten_api.c')
+      self.do_core_test('test_emscripten_api.c', cflags=['-Wno-deprecated'])
 
   def test_emscripten_run_script_string_int(self):
     src = r'''
@@ -5180,8 +5180,7 @@ main main sees -524, -534, 72.
   @needs_make('mingw32-make')
   @with_dylink_reversed
   def test_dylink_zlib(self):
-    self.set_setting('RELOCATABLE')
-    zlib_archive = self.get_zlib_library(cmake=WINDOWS)
+    zlib_archive = self.get_zlib_library(cmake=WINDOWS, cflags=['-fPIC'])
     # example.c uses K&R style function declarations
     self.cflags.append('-Wno-deprecated-non-prototype')
     self.cflags.append('-I' + test_file('third_party/zlib'))
@@ -5786,6 +5785,7 @@ got: 10
     self.do_runf('utime/test_utime.c', 'success')
 
   @also_with_nodefs_both
+  @flaky('https://github.com/emscripten-core/emscripten/issues/25280')
   def test_futimens(self):
     self.do_runf('utime/test_futimens.c', 'success')
 
@@ -5843,11 +5843,7 @@ got: 10
     self.do_core_test('test_std_function_incomplete_return.cpp')
 
   def test_istream(self):
-    for linkable in [0]: # , 1]:
-      print(linkable)
-      # regression check for issue #273
-      self.set_setting('LINKABLE', linkable)
-      self.do_core_test('test_istream.cpp')
+    self.do_core_test('test_istream.cpp')
 
   @no_wasmfs('depends on FS.makedev which WASMFS does not have')
   def test_fs_base(self):
@@ -6630,7 +6626,7 @@ void* operator new(size_t size) {
   @needs_dylink
   def test_relocatable_void_function(self):
     self.set_setting('RELOCATABLE')
-    self.do_core_test('test_relocatable_void_function.c')
+    self.do_core_test('test_relocatable_void_function.c', cflags=['-Wno-deprecated'])
 
   @wasm_simd
   @parameterized({

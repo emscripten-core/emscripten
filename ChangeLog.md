@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 4.0.15 (in development)
 -----------------------
+- The `RELOCATABLE` and `LINKABLE` settings were deprecated in favor the higher
+  level and better supported `MAIN_MODULE` / `SIDE_MODULE` settings. (#25265)
 - The `-gsource-map` flag has been updated to be independent of other types of
   debugging effects (in particular it no longer causes the wasm binary to have
   a name section, and it no longer suppresses minification of the JS output).
@@ -27,6 +29,8 @@ See docs/process.md for more on how version tagging works.
   See also the newly updated
   [documentation](https://emscripten.org/docs/porting/Debugging.html) which
   covers debugging flags and use cases (#25238).
+- Ogg port updated to 1.3.5. (#25274)
+- Vorbis port updated to 1.3.7. (#25274)
 
 4.0.14 - 09/02/25
 -----------------
