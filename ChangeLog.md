@@ -31,6 +31,7 @@ See docs/process.md for more on how version tagging works.
   covers debugging flags and use cases (#25238).
 - Ogg port updated to 1.3.5. (#25274)
 - Vorbis port updated to 1.3.7. (#25274)
+- SDL3 port updated to 3.2.22. (#25273)
 
 4.0.14 - 09/02/25
 -----------------
