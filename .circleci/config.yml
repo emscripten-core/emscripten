@@ -1119,6 +1119,7 @@ jobs:
       - run-tests:
           title: "sockets.test_nodejs_sockets_echo*"
           test_targets: "sockets.test_nodejs_sockets_echo*"
+      # Run a few browser tests as well.
       - run-tests-firefox-windows:
           title: "browser"
           test_targets: "
