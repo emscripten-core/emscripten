@@ -5504,6 +5504,7 @@ Module["preRun"] = () => {
   # Tests AudioWorklet with emscripten_lock_busyspin_wait_acquire() and friends
   @requires_sound_hardware
   @also_with_minimal_runtime
+  @flaky('https://github.com/emscripten-core/emscripten/issues/25245')
   def test_audio_worklet_emscripten_locks(self):
     self.btest_exit('webaudio/audioworklet_emscripten_locks.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread'])
 
