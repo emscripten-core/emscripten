@@ -2656,10 +2656,10 @@ class BrowserCore(RunnerCore):
     logger.info('Launching browser: %s', str(browser_args))
 
     with FileLock(browser_spawn_lock_filename) as count:
-      # Firefox is a multiprocess browser. Killing the spawned process will not
-      # bring down the whole browser, but only one browser tab. So take a delta
-      # snapshot before->after spawning the browser to find which subprocesses
-      # we launched.
+      # Firefox is a multiprocess browser. On Windows, killing the spawned
+      # process will not bring down the whole browser, but only one browser tab.
+      # So take a delta snapshot before->after spawning the browser to find
+      # which subprocesses we launched.
       if worker_id is not None and WINDOWS and is_firefox():
         procs_before = list_processes_by_name(config.executable_name)
       cls.browser_procs = [subprocess.Popen(browser_args + [url])]
