@@ -40,12 +40,14 @@ __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
+from tools import building
 from tools import config
 from tools import diagnostics
 from tools import emsymbolizer
 from tools import shared
+from tools import utils
 from tools import webassembly
-from tools.utils import exit_with_error, normalize_path
+from tools.utils import exit_with_error
 
 
 def parse_args():
@@ -137,7 +139,7 @@ def get_path_to_functions_map(wasm, sourcemap, paths):
         addr -= 1
 
       if loc and loc.source:
-        func_to_src[func_name] = normalize_path(loc.source)
+        func_to_src[func_name] = utils.normalize_path(loc.source)
       else:
         if not is_synthesized_func(func_name):
           diagnostics.warn(f"No source file information found in the source map for function '{func_name}'")
@@ -169,33 +171,30 @@ def get_path_to_functions_map(wasm, sourcemap, paths):
 
 def main():
   args, forwarded_args = parse_args()
-  wasm = os.path.expanduser(args.wasm)
-  paths_file = os.path.expanduser(args.paths_file)
-  sourcemap = os.path.expanduser(args.sourcemap) if args.sourcemap else None
   if args.wasm_split:
-    wasm_split = os.path.expanduser(args.wasm_split)
+    wasm_split = args.wasm_split
   else:
-    wasm_split = os.path.join(config.BINARYEN_ROOT, 'bin', 'wasm-split')
+    wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
 
-  if not os.path.isfile(wasm):
-    exit_with_error(f"'{wasm}' was not found or not a file")
-  if not os.path.isfile(paths_file):
-    exit_with_error(f"'{paths_file}' was not found or not a file")
-  if sourcemap:
-    if not os.path.isfile(sourcemap):
-      exit_with_error(f"'{sourcemap}' was not found or not a file")
+  if not os.path.isfile(args.wasm):
+    exit_with_error(f"'{args.wasm}' was not found or not a file")
+  if not os.path.isfile(args.paths_file):
+    exit_with_error(f"'{args.paths_file}' was not found or not a file")
+  if args.sourcemap:
+    if not os.path.isfile(args.sourcemap):
+      exit_with_error(f"'{args.sourcemap}' was not found or not a file")
   if not os.path.isfile(wasm_split):
     exit_with_error(f"'{wasm_split}' was not found or not a file")
 
-  with open(paths_file, encoding='utf-8') as f:
-    paths = [normalize_path(path.strip()) for path in f if path.strip()]
-    # To make /a/b/c and /a/b/c/ equivalent
-    paths = [path.rstrip(os.sep) for path in paths]
-    # Remove duplicates
-    paths = list(dict.fromkeys(paths))
+  paths = utils.read_file(args.paths_file).splitlines()
+  paths = [utils.normalize_path(path.strip()) for path in paths if path.strip()]
+  # To make /a/b/c and /a/b/c/ equivalent
+  paths = [path.rstrip(os.sep) for path in paths]
+  # Remove duplicates
+  paths = list(dict.fromkeys(paths))
 
   # Compute {path: list of functions} map
-  path_to_funcs = get_path_to_functions_map(wasm, sourcemap, paths)
+  path_to_funcs = get_path_to_functions_map(args.wasm, args.sourcemap, paths)
 
   # Write .manifest file
   f = tempfile.NamedTemporaryFile(suffix=".manifest", mode='w+', delete=False)
@@ -216,7 +215,7 @@ def main():
         f.write('\n')
     f.close()
 
-    cmd = [wasm_split, '--multi-split', wasm, '--manifest', manifest]
+    cmd = [wasm_split, '--multi-split', args.wasm, '--manifest', manifest]
     if args.verbose:
       # This option is used both in this script and wasm-split
       cmd.append('-v')
