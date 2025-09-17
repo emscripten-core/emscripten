@@ -562,7 +562,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
         file_chunks[-1].append(file_)
         current_size += fsize
       elif fsize > PRELOAD_DATA_FILE_LIMIT:
-        diagnostics.error('error: cannot package file greater than %d MB does not exist' % (PRELOAD_DATA_FILE_LIMIT / (1024 * 1024)))
+        diagnostics.error('cannot package file %s, which is larger than maximum individual file size limit %d MB.' % (file_.srcpath, (PRELOAD_DATA_FILE_LIMIT / (1024 * 1024))))
         return 1
       else:
         current_size = fsize
@@ -576,10 +576,13 @@ def main():  # noqa: C901, PLR0912, PLR0915
     targets.append(options.obj_output)
   if options.jsoutput:
     targets.append(options.jsoutput)
+
   for counter, data_files in enumerate(file_chunks):
     metadata = {'files': []}
+    def construct_data_file_name(base,ext):
+      return f"{base}{f'_{counter}' if counter else ''}.{ext}"
     base, ext = data_target.rsplit('.', 1)
-    data_file = f"{base}{f'_{counter}' if counter else ''}.{ext}"
+    data_file = construct_data_file_name(base, ext)
     targets.append(data_file)
     ret = generate_js(data_file, data_files, metadata)
     if options.force or len(data_files):
@@ -590,13 +593,9 @@ def main():  # noqa: C901, PLR0912, PLR0915
         # differs from the current generated one, otherwise leave the file
         # untouched preserving its old timestamp
         base, ext = options.jsoutput.rsplit('.', 1)
-        js_file = f"{base}{f'_{counter}' if counter else ''}.{ext}"
+        js_file = construct_data_file_name(base, ext)
         targets.append(js_file)
-        if os.path.isfile(js_file):
-          old = utils.read_file(js_file)
-          if old != ret:
-            utils.write_file(js_file, ret)
-        else:
+        if ret != (utils.read_file(js_file) if os.path.isfile(js_file) else ''):
           utils.write_file(js_file, ret)
         if options.separate_metadata:
           utils.write_file(js_file + '.metadata', json.dumps(metadata, separators=(',', ':')))

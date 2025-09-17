@@ -7467,16 +7467,19 @@ int main() {
     self.clear()
 
   def test_file_packager_huge_no_split(self):
+    # Verify that when packaging up to 2046MB of data, file packager should not split up the generated data file.
     for i in range(7):
       self.create_huge_file(f'huge{i}.dat', 1024 * 1024 * 256)
     self.create_huge_file('huge8.dat', 1024 * 1024 * 254)
     err = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'huge8.dat'] + [f'huge{i}.dat' for i in range(7)], stdout=PIPE, stderr=PIPE).stderr
     self.assertContained('warning: file packager is creating an asset bundle of 2046 MB. this is very large, and browsers might have trouble loading it', err)
     self.assertExists('test.data')
+    self.assertNotExists('test_1.data')
     self.assertEqual(os.path.getsize('test.data'), (1024 * 1024 * 1024) + (1022 * 1024 * 1024))
     self.clear()
 
   def test_file_packager_huge_split(self):
+    # Verify that when size exceeds 2046MB, file packager should split up the generated data file into two.
     for i in range(7):
       self.create_huge_file(f'huge{i}.dat', 1024 * 1024 * 256)
     self.create_huge_file('huge8.dat', (1024 * 1024 * 254) + 1)
@@ -7490,6 +7493,7 @@ int main() {
     self.clear()
 
   def test_file_packager_huge_split_metadata(self):
+    # Verify that when size exceeds 2046MB, file packager should split up the generated data and metadata file into two.
     for i in range(7):
       self.create_huge_file(f'huge{i}.dat', 1024 * 1024 * 256)
     self.create_huge_file('huge8.dat', (1024 * 1024 * 254) + 1)
@@ -7510,7 +7514,7 @@ int main() {
     self.create_huge_file('huge.dat', (1024 * 1024 * 1024) + ((1022 * 1024 * 1024) + 1))
     proc = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'huge.dat'], check=False, stdout=PIPE, stderr=PIPE)
     self.assertEqual(proc.returncode, 1)
-    self.assertContained('error: cannot package file greater than 2046 MB does not exist', proc.stderr)
+    self.assertContained('error: cannot package file huge.dat, which is larger than maximum individual file size limit 2046 MB', proc.stderr)
     self.clear()
 
   @parameterized({
