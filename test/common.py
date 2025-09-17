@@ -2670,23 +2670,34 @@ class BrowserCore(RunnerCore):
     browser_args = shlex.split(browser_args)
     logger.info('Launching browser: %s', str(browser_args))
 
+    if WINDOWS and is_firefox():
+      cls.launch_browser_harness_windows_firefox(worker_id, config, browser_args, url)
+    else:
+      cls.browser_procs = [subprocess.Popen(browser_args + [url])]
+
+
+  @classmethod
+  def launch_browser_harness_windows_firefox(cls, worker_id, config, browser_args, url):
+    ''' Dedicated function for launching browser harness on Firefox on Windows,
+    which requires extra care for window positioning and process tracking.'''
+
     with FileLock(browser_spawn_lock_filename) as count:
       # Firefox is a multiprocess browser. On Windows, killing the spawned
       # process will not bring down the whole browser, but only one browser tab.
       # So take a delta snapshot before->after spawning the browser to find
       # which subprocesses we launched.
-      if worker_id is not None and WINDOWS and is_firefox():
+      if worker_id is not None:
         procs_before = list_processes_by_name(config.executable_name)
       cls.browser_procs = [subprocess.Popen(browser_args + [url])]
       # Give Firefox time to spawn its subprocesses. Use an increasing timeout
       # as a crude way to account for system load.
-      if worker_id is not None and WINDOWS and is_firefox():
+      if worker_id is not None:
         time.sleep(2 + count * 0.3)
         procs_after = list_processes_by_name(config.executable_name)
       # Make sure that each browser window is visible on the desktop. Otherwise
       # browser might decide that the tab is backgrounded, and not load a test,
       # or it might not tick rAF()s forward, causing tests to hang.
-      if worker_id is not None and WINDOWS and is_firefox():
+      if worker_id is not None and not EMTEST_HEADLESS:
         # On Firefox on Windows we needs to track subprocesses that got created
         # by Firefox. Other setups can use 'browser_proc' directly to terminate
         # the browser.
@@ -2694,6 +2705,7 @@ class BrowserCore(RunnerCore):
         # Wrap window positions on a Full HD desktop area modulo primes.
         for proc in cls.browser_procs:
           move_browser_window(proc.pid, (300 + count * 47) % 1901, (10 + count * 37) % 997)
+
 
   @classmethod
   def setUpClass(cls):
