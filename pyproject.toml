@@ -104,3 +104,7 @@ module = [
   "ply.*",
 ]
 ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["psutil", "win32gui", "win32process"]
+ignore_missing_imports = true
