@@ -1006,7 +1006,7 @@ class benchmark(common.RunnerCore):
     src = read_file(test_file('benchmark/test_zlib_benchmark.c'))
 
     def lib_builder(name, native, env_init):
-      return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'), configure=['cmake', '.'], make=['cmake', '--build', '.', '--'], make_args=[], native=native, cache_name_extra=name, env_init=env_init)
+      return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'), configure=['cmake', '-DCMAKE_POLICY_VERSION_MINIMUM=3.5', '.'], make=['cmake', '--build', '.', '--'], make_args=[], native=native, cache_name_extra=name, env_init=env_init)
 
     self.do_benchmark('zlib', src, 'ok.',
                       force_c=True, shared_args=['-I' + test_file('third_party/zlib')], lib_builder=lib_builder)
@@ -1042,7 +1042,7 @@ class benchmark(common.RunnerCore):
                               ['src/BulletDynamics/libBulletDynamics.a',
                                'src/BulletCollision/libBulletCollision.a',
                                'src/LinearMath/libLinearMath.a'],
-                              configure=['cmake', '.'], configure_args=['-DBUILD_DEMOS=OFF', '-DBUILD_EXTRAS=OFF', '-DUSE_GLUT=OFF', '-DCMAKE_CXX_STANDARD=14'],
+                              configure=['cmake', '.'], configure_args=['-DCMAKE_POLICY_VERSION_MINIMUM=3.5','-DBUILD_DEMOS=OFF', '-DBUILD_EXTRAS=OFF', '-DUSE_GLUT=OFF', '-DCMAKE_CXX_STANDARD=14'],
                               make=['cmake', '--build', '.', '--'], make_args=[], native=native, cache_name_extra=name, env_init=env_init)
 
     self.do_benchmark('bullet', src, '\nok.\n',
