@@ -27,7 +27,7 @@ npm_checked = False
 EMTEST_SKIP_PYTHON_DEV_PACKAGES = int(os.getenv('EMTEST_SKIP_PYTHON_DEV_PACKAGES', '0'))
 
 
-def requires_python_websockify(func):
+def requires_python_dev_packages(func):
   assert callable(func)
 
   @common.wraps(func)
@@ -262,7 +262,7 @@ class sockets(BrowserCore):
       self.btest_exit('test_sockets_echo_bigdata.c', cflags=[sockets_include, '-DSOCKK=%d' % harness.listen_port] + args)
 
   @no_windows('This test is Unix-specific.')
-  @requires_python_websockify
+  @requires_python_dev_packages
   def test_sockets_partial(self):
     for harness in [
       WebsockifyServerHarness(test_file('sockets/test_sockets_partial_server.c'), [], 49180),
@@ -272,7 +272,7 @@ class sockets(BrowserCore):
         self.btest_exit('sockets/test_sockets_partial_client.c', assert_returncode=165, cflags=['-DSOCKK=%d' % harness.listen_port])
 
   @no_windows('This test is Unix-specific.')
-  @requires_python_websockify
+  @requires_python_dev_packages
   def test_sockets_select_server_down(self):
     for harness in [
       WebsockifyServerHarness(test_file('sockets/test_sockets_select_server_down_server.c'), [], 49190, do_server_check=False),
@@ -282,7 +282,7 @@ class sockets(BrowserCore):
         self.btest_exit('sockets/test_sockets_select_server_down_client.c', cflags=['-DSOCKK=%d' % harness.listen_port])
 
   @no_windows('This test is Unix-specific.')
-  @requires_python_websockify
+  @requires_python_dev_packages
   def test_sockets_select_server_closes_connection_rw(self):
     for harness in [
       WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DCLOSE_CLIENT_AFTER_ECHO'], 49200),
@@ -325,7 +325,7 @@ class sockets(BrowserCore):
     self.do_runf('sockets/test_sockets_echo_client.c', 'connect failed: Connection refused', cflags=['-DSOCKK=666'], assert_returncode=NON_ZERO)
 
   @requires_native_clang
-  @requires_python_websockify
+  @requires_python_dev_packages
   def test_nodejs_sockets_echo_subprotocol(self):
     # Test against a Websockified server with compile time configured WebSocket subprotocol. We use a Websockified
     # server because as long as the subprotocol list contains binary it will configure itself to accept binary
@@ -338,7 +338,7 @@ class sockets(BrowserCore):
       self.assertContained(['connect: ws://127.0.0.1:59168, base64,binary', 'connect: ws://127.0.0.1:59168/, base64,binary'], out)
 
   @requires_native_clang
-  @requires_python_websockify
+  @requires_python_dev_packages
   def test_nodejs_sockets_echo_subprotocol_runtime(self):
     # Test against a Websockified server with runtime WebSocket configuration. We specify both url and subprotocol.
     # In this test we have *deliberately* used the wrong port '-DSOCKK=12345' to configure the echo_client.c, so
