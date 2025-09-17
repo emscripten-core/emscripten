@@ -33,7 +33,7 @@ def requires_python_websockify(func):
   @common.wraps(func)
   def decorated(self, *args, **kwargs):
     if EMTEST_LACKS_PYTHON_WEBSOCKIFY:
-      return self.skipTest('python websockify based tests are disabled')
+      return self.skipTest('python websockify based tests are disabled by EMTEST_LACKS_PYTHON_WEBSOCKIFY=1')
     return func(self, *args, **kwargs)
 
   return decorated
@@ -202,7 +202,7 @@ class sockets(BrowserCore):
       self.skipTest('requires native clang')
 
     if harness_class == WebsockifyServerHarness and EMTEST_LACKS_PYTHON_WEBSOCKIFY:
-      self.skipTest('requires python websockify')
+      self.skipTest('requires python websockify and EMTEST_LACKS_PYTHON_WEBSOCKIFY=1')
 
     with harness_class(test_file('sockets/test_sockets_echo_server.c'), args, port) as harness:
       self.btest_exit('sockets/test_sockets_echo_client.c', cflags=['-DSOCKK=%d' % harness.listen_port] + args)
@@ -226,7 +226,7 @@ class sockets(BrowserCore):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
       self.skipTest('requires native clang')
     if harness_class == WebsockifyServerHarness and EMTEST_LACKS_PYTHON_WEBSOCKIFY:
-      self.skipTest('requires python websockify')
+      self.skipTest('requires python websockify and EMTEST_LACKS_PYTHON_WEBSOCKIFY=1')
 
     args.append('-DTEST_ASYNC=1')
     with harness_class(test_file('sockets/test_sockets_echo_server.c'), args, port) as harness:
@@ -246,7 +246,7 @@ class sockets(BrowserCore):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
       self.skipTest('requires native clang')
     if harness_class == WebsockifyServerHarness and EMTEST_LACKS_PYTHON_WEBSOCKIFY:
-      self.skipTest('requires python websockify')
+      self.skipTest('requires python websockify and EMTEST_LACKS_PYTHON_WEBSOCKIFY=1')
     sockets_include = '-I' + test_file('sockets')
 
     # generate a large string literal to use as our message
@@ -314,7 +314,7 @@ class sockets(BrowserCore):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
       self.skipTest('requires native clang')
     if harness_class == WebsockifyServerHarness and EMTEST_LACKS_PYTHON_WEBSOCKIFY:
-      self.skipTest('requires python websockify')
+      self.skipTest('requires python websockify and EMTEST_LACKS_PYTHON_WEBSOCKIFY=1')
 
     # Basic test of node client against both a Websockified and compiled echo server.
     with harness_class(test_file('sockets/test_sockets_echo_server.c'), args, port) as harness:
