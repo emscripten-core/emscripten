@@ -1133,8 +1133,12 @@ jobs:
       # Run browser tests as well.
       - run-tests-firefox-windows:
           title: "browser on firefox on windows"
+          # skip browser.test_glbook, as it requires UNIX tool 'make'
+          # skip browser.test_sdl2_mixer_wav_dash_l, fails to build on Windows
           test_targets: "
             browser
+            skip:browser.test_glbook
+            skip:browser.test_sdl2_mixer_wav_dash_l
             "
       - upload-test-results
 
