@@ -48,7 +48,7 @@ variables so that emcc etc. are used. Typical usage:
   # compilation with emcc, but instead do builds natively with Clang. This
   # is a heuristic emulation that may or may not work.
   env['EMMAKEN_JUST_CONFIGURE'] = '1'
-  print(f'configure: {shlex.join(args)}', file=sys.stderr)
+  print(f'configure: {shlex.join(args)} in directory {os.getcwd()}', file=sys.stderr)
   try:
     shared.check_call(args, env=env)
     return 0
