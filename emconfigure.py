@@ -16,6 +16,7 @@ this command are to native code, not JS, so that configure
 tests will work properly.
 """
 
+import os
 import shlex
 import sys
 from tools import building
