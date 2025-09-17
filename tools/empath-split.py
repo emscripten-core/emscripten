@@ -41,7 +41,6 @@ __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
 from tools import building
-from tools import config
 from tools import diagnostics
 from tools import emsymbolizer
 from tools import shared
