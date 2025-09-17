@@ -5,6 +5,7 @@
 
 import logging
 from typing import List, Dict
+from dataclasses import dataclass
 
 from . import webassembly, utils
 from .webassembly import OpCode, AtomicOpCode, MemoryOpCode
@@ -299,6 +300,7 @@ def get_string_at(module, address):
   return data_to_string(data[offset:str_end])
 
 
+@dataclass(init=False)
 class Metadata:
   imports: List[str]
   export: List[str]
@@ -313,9 +315,6 @@ class Metadata:
   function_exports: Dict[str, webassembly.FuncType]
   tag_exports: List[str]
   all_exports: List[str]
-
-  def __init__(self):
-    pass
 
 
 def extract_metadata(filename):
@@ -332,8 +331,8 @@ def extract_metadata(filename):
         string_address = to_unsigned(get_global_value(globl))
         em_js_funcs[name] = get_string_at(module, string_address)
 
-    features = module.parse_features_section()
-    features = ['--enable-' + f[1] for f in features if f[0] == '+']
+    features = module.get_target_features()
+    features = [f'--enable-{feature}' for feature, used in features.items() if used == webassembly.TargetFeaturePrefix.USED]
     features = [f.replace('--enable-atomics', '--enable-threads') for f in features]
     features = [f.replace('--enable-simd128', '--enable-simd') for f in features]
     features = [f.replace('--enable-nontrapping-fptoint', '--enable-nontrapping-float-to-int') for f in features]

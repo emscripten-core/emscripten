@@ -157,6 +157,21 @@ class TargetFeaturePrefix(IntEnum):
   DISALLOWED = 0x2d
 
 
+class NameType(IntEnum):
+  MODULE = 0
+  FUNCTION = 1
+  LOCAL = 2
+  LABEL = 3
+  TYPE = 4
+  TABLE = 5
+  MEMORY = 6
+  GLOBAL = 7
+  ELEMSEGMENT = 8
+  DATASEGMENT = 9
+  FIELD = 10
+  TAG = 11
+
+
 class InvalidWasmError(BaseException):
   pass
 
@@ -291,19 +306,6 @@ class Module:
       types.append(FuncType(params, returns))
 
     return types
-
-  def parse_features_section(self):
-    features = []
-    sec = self.get_custom_section('target_features')
-    if sec:
-      self.seek(sec.offset)
-      self.read_string()  # name
-      feature_count = self.read_uleb()
-      while feature_count:
-        prefix = self.read_byte()
-        features.append((chr(prefix), self.read_string()))
-        feature_count -= 1
-    return features
 
   @memoize
   def parse_dylink_section(self):
@@ -562,8 +564,11 @@ class Module:
       func_type = self.get_function_types()[idx - self.num_imported_funcs()]
     return self.get_types()[func_type]
 
+  @memoize
   def get_target_features(self):
     section = self.get_custom_section('target_features')
+    if not section:
+      return {}
     self.seek(section.offset)
     assert self.read_string() == 'target_features'
     features = {}

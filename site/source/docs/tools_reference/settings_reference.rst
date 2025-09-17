@@ -427,6 +427,8 @@ function call that uses DataView to enforce LE byte order for HEAP buffer;
 This makes generated JavaScript run on BE as well as LE machines. (If 0, only
 LE systems are supported). Does not affect generated wasm.
 
+.. note:: This is an experimental setting
+
 Default value: false
 
 .. _safe_heap:
@@ -1343,18 +1345,6 @@ ASYNCIFY_ADVISE
 ===============
 
 If enabled will output which functions have been instrumented and why.
-
-Default value: false
-
-.. _asyncify_lazy_load_code:
-
-ASYNCIFY_LAZY_LOAD_CODE
-=======================
-
-Allows lazy code loading: where emscripten_lazy_load_code() is written, we
-will pause execution, load the rest of the code, and then resume.
-
-.. note:: This setting is deprecated
 
 Default value: false
 

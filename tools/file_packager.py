@@ -76,6 +76,7 @@ import os
 import posixpath
 import shutil
 import sys
+from dataclasses import dataclass
 from subprocess import PIPE
 from textwrap import dedent
 from typing import List
@@ -126,12 +127,12 @@ class Options:
     self.export_es6 = False
 
 
+@dataclass
 class DataFile:
-  def __init__(self, srcpath, dstpath, mode, explicit_dst_path):
-    self.srcpath = srcpath
-    self.dstpath = dstpath
-    self.mode = mode
-    self.explicit_dst_path = explicit_dst_path
+  srcpath: str
+  dstpath: str
+  mode: str
+  explicit_dst_path: bool
 
 
 options = Options()
@@ -573,6 +574,11 @@ def main():  # noqa: C901, PLR0912, PLR0915
     diagnostics.warn('warning: file packager is splitting bundle into %d chunks' % len(file_chunks))
 
   targets = []
+  if options.obj_output:
+    targets.append(options.obj_output)
+  if options.jsoutput:
+    targets.append(data_target)
+    targets.append(options.jsoutput)
   for counter, data_files in enumerate(file_chunks):
     metadata = {'files': []}
     base, ext = data_target.rsplit('.', 1)

@@ -470,7 +470,7 @@ var LibraryWebGL2 = {
       case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('data', '0', 'ret', 'i32') }}}; break;
       case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('data', '0', 'ret', 'float') }}}; break;
       case {{{ cDefs.EM_FUNC_SIG_PARAM_B }}}: {{{ makeSetValue('data', '0', 'ret ? 1 : 0', 'i8') }}}; break;
-      default: throw 'internal emscriptenWebGLGetIndexed() error, bad type: ' + type;
+      default: abort('internal emscriptenWebGLGetIndexed() error, bad type: ' + type);
     }
   },
 
@@ -1039,7 +1039,7 @@ var webgl2PassthroughFuncs = [
 // If user passes -sMAX_WEBGL_VERSION >= 2 -sSTRICT but not -lGL (to link in
 // WebGL 1), then WebGL2 library should not be linked in as well.
 if (typeof createGLPassthroughFunctions == 'undefined') {
-  throw 'In order to use WebGL 2 in strict mode with -sMAX_WEBGL_VERSION=2, you need to link in WebGL support with -lGL!';
+  error('In order to use WebGL 2 in strict mode with -sMAX_WEBGL_VERSION=2, you need to link in WebGL support with -lGL!');
 }
 
 createGLPassthroughFunctions(LibraryWebGL2, webgl2PassthroughFuncs);

@@ -350,6 +350,39 @@ class interactive(BrowserCore):
     shutil.copy(test_file('webaudio/audio_files/emscripten-bass.mp3'), 'audio_files/')
     self.btest_exit('webaudio/audioworklet_memory_growth.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sALLOW_MEMORY_GROWTH'])
 
+  def test_html_source_map(self):
+    # browsers will try to 'guess' the corresponding original line if a
+    # generated line is unmapped, so if we want to make sure that our
+    # numbering is correct, we need to provide a couple of 'possible wrong
+    # answers'. thus, we add some printf calls so that the cpp file gets
+    # multiple mapped lines. in other words, if the program consists of a
+    # single 'throw' statement, browsers may just map any thrown exception to
+    # that line, because it will be the only mapped line.
+    create_file('src.cpp', r'''
+      #include <cstdio>
+
+      int main() {
+        printf("Starting test\n");
+        try {
+          throw 42; // line 8
+        } catch (int e) { }
+        printf("done\n");
+        return 0;
+      }
+      ''')
+    # use relative paths when calling emcc, because file:// URIs can only load
+    # sourceContent when the maps are relative paths
+    self.compile_btest('src.cpp', ['-o', 'src.html', '-gsource-map'])
+    self.assertExists('src.html')
+    self.assertExists('src.wasm.map')
+    print('''
+If manually bisecting:
+  Open the file with ./emrun out/test/src.html
+  Check that you see src.cpp among the page sources.
+  Even better, add a breakpoint, e.g. on the printf, then reload, then step
+  through and see the print (best to run with --save-dir for the reload).
+''')
+
 
 class interactive64(interactive):
   def setUp(self):

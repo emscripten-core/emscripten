@@ -159,7 +159,7 @@ addToLibrary({
       if (!(err instanceof RangeError)) {
         throw err;
       }
-      throw 'Unable to grow wasm table. Set ALLOW_TABLE_GROWTH.';
+      abort('Unable to grow wasm table. Set ALLOW_TABLE_GROWTH.');
     }
 #endif
   },

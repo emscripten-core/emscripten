@@ -6,7 +6,7 @@
 import os
 import shutil
 import sys
-from functools import wraps
+import functools
 from pathlib import Path
 
 from . import diagnostics
@@ -112,19 +112,22 @@ def delete_contents(dirname, exclude=None):
       delete_file(entry)
 
 
-# TODO(sbc): Replace with functools.cache, once we update to python 3.7
-def memoize(func):
-  results = {}
+def get_num_cores():
+  # Prefer `os.process_cpu_count` when available (3.13 and above) since
+  # it takes into account thread affinity.
+  # Fall back to `os.sched_getaffinity` where available and finally
+  # `os.cpu_count`, which should work everywhere.
+  if hasattr(os, 'process_cpu_count'):
+    cpu_count = os.process_cpu_count()
+  elif hasattr(os, 'sched_getaffinity'):
+    cpu_count = len(os.sched_getaffinity(0))
+  else:
+    cpu_count = os.cpu_count()
+  return int(os.environ.get('EMCC_CORES', cpu_count))
 
-  @wraps(func)
-  def helper(*args, **kwargs):
-    assert not kwargs
-    key = (func.__name__, args)
-    if key not in results:
-      results[key] = func(*args)
-    return results[key]
 
-  return helper
+# TODO(sbc): Replace with functools.cache, once we update to python 3.9
+memoize = functools.lru_cache(maxsize=None)
 
 
 # TODO: Move this back to shared.py once importing that file becoming side effect free (i.e. it no longer requires a config).

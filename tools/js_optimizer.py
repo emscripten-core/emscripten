@@ -244,7 +244,7 @@ EMSCRIPTEN_FUNCS();
     # if we are making source maps, we want our debug numbering to start from the
     # top of the file, so avoid breaking the JS into chunks
 
-    intended_num_chunks = round(shared.get_num_cores() * NUM_CHUNKS_PER_CORE)
+    intended_num_chunks = round(utils.get_num_cores() * NUM_CHUNKS_PER_CORE)
     chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
     chunks = chunkify(funcs, chunk_size)
 

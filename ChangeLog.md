@@ -18,15 +18,32 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.14 (in development)
+4.0.15 (in development)
 -----------------------
+- The `RELOCATABLE` and `LINKABLE` settings were deprecated in favor the higher
+  level and better supported `MAIN_MODULE` / `SIDE_MODULE` settings. (#25265)
+- The `-gsource-map` flag has been updated to be independent of other types of
+  debugging effects (in particular it no longer causes the wasm binary to have
+  a name section, and it no longer suppresses minification of the JS output).
+  To get the previous behavior, add `-g2` along with `-gsource-map`.
+  See also the newly updated
+  [documentation](https://emscripten.org/docs/porting/Debugging.html) which
+  covers debugging flags and use cases (#25238).
+- Ogg port updated to 1.3.5. (#25274)
+- Vorbis port updated to 1.3.7. (#25274)
+- SDL3 port updated to 3.2.22. (#25273)
+
+4.0.14 - 09/02/25
+-----------------
+- The `-sASYNCIFY_LAZY_LOAD_CODE` setting and the corresponding C function
+  `emscripten_lazy_load_code` were removed. (#25236)
 - The `addRunDependency` and `removeRunDependency` API are now optional and need
   to be included and/or exported using, for example,
   `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE` or `EXPORTED_RUNTIME_METHODS`. (#24974)
 - The `LOAD_SOURCE_MAP` setting was made an internal setting.  This was always
   an internal detail of the sanitizers, which is enabled automatically when
   needed, so setting it explicitly should never be needed. (#24967)
-- The wasm offset converter was removed along with the `WASM_OFFSET_CONVERTER`
+- The wasm offset converter was removed along with the `USE_OFFSET_CONVERTER`
   setting. This feature only existed to work around an old v8 bug that was fixed
   back in 2019. (#24963)
 

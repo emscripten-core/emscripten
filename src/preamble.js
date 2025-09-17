@@ -343,7 +343,7 @@ function makeAbortWrapper(original) {
   return (...args) => {
     // Don't allow this function to be called if we're aborted!
     if (ABORT) {
-      throw 'program has already aborted!';
+      throw new Error('program has already aborted!');
     }
 
     abortWrapperDepth++;
@@ -413,8 +413,17 @@ function instrumentWasmTableWithAbort() {
 #if !SOURCE_PHASE_IMPORTS && !WASM_ESM_INTEGRATION
 var wasmBinaryFile;
 
+#if WASM2JS && WASM != 2
+
+// When building with wasm2js these 3 functions all no-ops.
+function findWasmBinary(file) {}
+function getBinarySync(file) {}
+function getWasmBinary(file) {}
+
+#else
+
 function findWasmBinary() {
-#if SINGLE_FILE && WASM == 1 && !WASM2JS
+#if SINGLE_FILE
   return base64Decode('<<< WASM_BINARY_DATA >>>');
 #else
 #if EXPORT_ES6 && !AUDIO_WORKLET
@@ -435,7 +444,7 @@ function findWasmBinary() {
 }
 
 function getBinarySync(file) {
-#if SINGLE_FILE && WASM == 1 && !WASM2JS
+#if SINGLE_FILE
   if (ArrayBuffer.isView(file)) {
     return file;
   }
@@ -448,6 +457,8 @@ function getBinarySync(file) {
   if (readBinary) {
     return readBinary(file);
   }
+  // Throwing a plain string here, even though it not normally adviables since
+  // this gets turning into an `abort` in instantiateArrayBuffer.
 #if WASM_ASYNC_COMPILATION
   throw 'both async and sync fetching of the wasm failed';
 #else
@@ -472,6 +483,7 @@ async function getWasmBinary(binaryFile) {
   // Otherwise, getBinarySync should be able to get it synchronously
   return getBinarySync(binaryFile);
 }
+#endif
 
 #if SPLIT_MODULE
 {{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync') }}}
@@ -570,8 +582,8 @@ async function instantiateArrayBuffer(binaryFile, imports) {
 
 #if ASSERTIONS
     // Warn on some common problems.
-    if (isFileURI(wasmBinaryFile)) {
-      err(`warning: Loading from a file URI (${wasmBinaryFile}) is not supported in most browsers. See https://emscripten.org/docs/getting_started/FAQ.html#how-do-i-run-a-local-webserver-for-testing-why-does-my-program-stall-in-downloading-or-preparing`);
+    if (isFileURI(binaryFile)) {
+      err(`warning: Loading from a file URI (${binaryFile}) is not supported in most browsers. See https://emscripten.org/docs/getting_started/FAQ.html#how-do-i-run-a-local-webserver-for-testing-why-does-my-program-stall-in-downloading-or-preparing`);
     }
 #endif
     abort(reason);
@@ -581,7 +593,7 @@ async function instantiateArrayBuffer(binaryFile, imports) {
 async function instantiateAsync(binary, binaryFile, imports) {
 #if !SINGLE_FILE
   if (!binary
-#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || MIN_SAFARI_VERSION < 150000
+#if MIN_FIREFOX_VERSION < 58 || MIN_SAFARI_VERSION < 150000
       // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
       && WebAssembly.instantiateStreaming
 #endif
@@ -630,7 +642,7 @@ function getWasmImports() {
   // instrumenting imports is used in asyncify in two ways: to add assertions
   // that check for proper import use, and for ASYNCIFY=2 we use them to set up
   // the Promise API on the import side.
-#if PTHREADS || ASYNCIFY_LAZY_LOAD_CODE
+#if PTHREADS
   // In pthreads builds getWasmImports is called more than once but we only
   // and the instrument the imports once.
   if (!wasmImports.__instrumented) {
@@ -726,11 +738,6 @@ function getWasmImports() {
 #if ASSERTIONS && !PURE_WASI
     assert(wasmTable, 'table not found in wasm exports');
 #endif
-#endif
-
-#if hasExportedSymbol('__cpp_exception') && !RELOCATABLE
-    ___cpp_exception = wasmExports['__cpp_exception'];
-    {{{ receivedSymbol('___cpp_exception') }}};
 #endif
 
 #if hasExportedSymbol('__wasm_apply_data_relocs')

@@ -269,10 +269,6 @@ def trim_asm_const_body(body):
   return body
 
 
-def create_other_export_declarations(tag_exports):
-  return '\n'.join(f'var {asmjs_mangle(name)};' for name in tag_exports)
-
-
 def create_global_exports(global_exports):
   lines = []
   for k, v in global_exports.items():
@@ -280,6 +276,12 @@ def create_global_exports(global_exports):
       continue
 
     v = int(v)
+
+    if not settings.MEMORY64:
+      # We assume that global exports are addresses, which need to be interpreted as unsigned.
+      # This is not necessary (and does not work) under wasm64 when the globals are i64.
+      v = v & 0xFFFFFFFF
+
     if settings.RELOCATABLE:
       v += settings.GLOBAL_BASE
     mangled = asmjs_mangle(k)
@@ -893,14 +895,11 @@ def install_debug_wrapper(sym):
   # The emscripten stack functions are called very early (by writeStackCookie) before
   # the runtime is initialized so we can't create these wrappers that check for
   # runtimeInitialized.
-  if sym.startswith(('_asan_', 'emscripten_stack_', '_emscripten_stack_')):
+  if sym.startswith(('__asan_', 'emscripten_stack_', '_emscripten_stack_')):
     return False
   # Likewise `__trap` can occur before the runtime is initialized since it is used in
   # abort.
-  # pthread_self and _emscripten_proxy_execute_task_queue are currently called in some
-  # cases after the runtime has exited.
-  # TODO: Look into removing these, and improving our robustness around thread termination.
-  return sym not in {'__trap', 'pthread_self', '_emscripten_proxy_execute_task_queue'}
+  return sym != '__trap'
 
 
 def should_export(sym):
@@ -950,6 +949,8 @@ def create_receiving(function_exports, tag_exports, library_symbols):
   # function assignWasmExports(wasmExport) {
   #   _main = wasmExports["_main"];
   exports = {name: sig for name, sig in function_exports.items() if name != building.WASM_CALL_CTORS}
+  for t in tag_exports:
+    exports[t] = None
 
   if settings.ASSERTIONS:
     # In debug builds we generate trapping functions in case
@@ -976,8 +977,9 @@ def create_receiving(function_exports, tag_exports, library_symbols):
 
   receiving.append('\nfunction assignWasmExports(wasmExports) {')
   for sym, sig in exports.items():
+    is_function = sig is not None
     mangled = asmjs_mangle(sym)
-    if generate_dyncall_assignment and sym.startswith('dynCall_'):
+    if generate_dyncall_assignment and is_function and sym.startswith('dynCall_'):
       sig_str = sym.replace('dynCall_', '')
       dynCallAssignment = f"dynCalls['{sig_str}'] = "
     else:
@@ -985,7 +987,7 @@ def create_receiving(function_exports, tag_exports, library_symbols):
     export_assignment = ''
     if (settings.MODULARIZE or not settings.MINIMAL_RUNTIME) and should_export(mangled) and settings.MODULARIZE != 'instance':
       export_assignment = f"Module['{mangled}'] = "
-    if install_debug_wrapper(sym):
+    if is_function and install_debug_wrapper(sym):
       nargs = len(sig.params)
       receiving.append(f"  {export_assignment}{dynCallAssignment}{mangled} = createExportWrapper('{sym}', {nargs});")
     else:
@@ -1007,8 +1009,6 @@ def create_module(metadata, function_exports, global_exports, tag_exports, libra
   if settings.WASM_ESM_INTEGRATION:
     module.append(sending)
   else:
-    module.append(create_other_export_declarations(tag_exports))
-
     if settings.PTHREADS or settings.WASM_WORKERS or (settings.IMPORTED_MEMORY and settings.MODULARIZE == 'instance'):
       sending = textwrap.indent(sending, '  ').strip()
       module.append('''\
@@ -1099,7 +1099,6 @@ def create_pointer_conversion_wrappers(metadata):
     '_wasmfs_node_record_dirent': '_pp_',
     '__dl_seterr': '_pp',
     '_emscripten_run_js_on_main_thread': '__p_p_',
-    '_emscripten_proxy_execute_task_queue': '_p',
     '_emscripten_thread_exit': '_p',
     '_emscripten_thread_init': '_p_____',
     '_emscripten_thread_free_data': '_p',

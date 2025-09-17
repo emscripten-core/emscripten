@@ -115,10 +115,6 @@ def run_process(cmd, check=True, input=None, *args, **kw):
   return ret
 
 
-def get_num_cores():
-  return int(os.environ.get('EMCC_CORES', os.cpu_count()))
-
-
 def returncode_to_str(code):
   assert code != 0
   if code < 0:
@@ -126,13 +122,6 @@ def returncode_to_str(code):
     return f'received {signal_name} ({code})'
 
   return f'returned {code}'
-
-
-def cap_max_workers_in_pool(max_workers):
-  # Python has an issue that it can only use max 61 cores on Windows: https://github.com/python/cpython/issues/89240
-  if WINDOWS:
-    return min(max_workers, 61)
-  return max_workers
 
 
 def run_multiple_processes(commands,
@@ -176,7 +165,7 @@ def run_multiple_processes(commands,
       except subprocess.TimeoutExpired:
         pass
 
-  num_parallel_processes = get_num_cores()
+  num_parallel_processes = utils.get_num_cores()
   temp_files = get_temp_files()
   i = 0
   num_completed = 0

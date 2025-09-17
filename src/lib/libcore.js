@@ -45,11 +45,15 @@ addToLibrary({
 #if ASSERTIONS
     assert(typeof ptr === 'number');
 #endif
-#if !CAN_ADDRESS_2GB && !MEMORY64
-    // With CAN_ADDRESS_2GB or MEMORY64, pointers are already unsigned.
+#if MEMORY64
+    // Convert to 64-bit unsigned value.  We need to use BigInt here since
+    // Number cannot represent the full 64-bit range.
+    if (ptr < 0) ptr = 2n**64n + BigInt(ptr);
+#else
+    // Convert to 32-bit unsigned value
     ptr >>>= 0;
 #endif
-    return '0x' + ptr.toString(16).padStart(8, '0');
+    return '0x' + ptr.toString(16).padStart({{{ POINTER_SIZE * 2 }}}, '0');
   },
 
   $zeroMemory: (ptr, size) => HEAPU8.fill(0, ptr, ptr + size),
@@ -887,7 +891,9 @@ addToLibrary({
         addr = DNS.address_map.addrs[name];
       } else {
         var id = DNS.address_map.id++;
+#if ASSERTIONS
         assert(id < 65535, 'exceeded max address mappings of 65535');
+#endif
 
         addr = '172.29.' + (id & 0xff) + '.' + (id & 0xff00);
 
@@ -942,7 +948,9 @@ addToLibrary({
         inetNtop4(addr);
       sa = _malloc(salen);
       errno = writeSockaddr(sa, family, addr, port);
+#if ASSERTIONS
       assert(!errno);
+#endif
 
       ai = _malloc({{{ C_STRUCTS.addrinfo.__size__ }}});
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_family, 'family', 'i32') }}};
@@ -1422,12 +1430,10 @@ addToLibrary({
 
   // We never free the return values of this function so we need to allocate
   // using builtin_malloc to avoid LSan reporting these as leaks.
+#if RETAIN_COMPILER_SETTINGS
   emscripten_get_compiler_setting__noleakcheck: true,
-#if RETAIN_COMPILER_SETTINGS
   emscripten_get_compiler_setting__deps: ['$stringToNewUTF8'],
-#endif
   emscripten_get_compiler_setting: (name) => {
-#if RETAIN_COMPILER_SETTINGS
     name = UTF8ToString(name);
 
     var ret = getCompilerSetting(name);
@@ -1437,10 +1443,10 @@ addToLibrary({
     var fullret = cache[name];
     if (fullret) return fullret;
     return cache[name] = stringToNewUTF8(ret);
-#else
-    throw 'You must build with -sRETAIN_COMPILER_SETTINGS for getCompilerSetting or emscripten_get_compiler_setting to work';
-#endif
   },
+#else
+  emscripten_get_compiler_setting: (name) => abort('You must build with -sRETAIN_COMPILER_SETTINGS for getCompilerSetting or emscripten_get_compiler_setting to work'),
+#endif
 
   emscripten_has_asyncify: () => {{{ ASYNCIFY }}},
 
@@ -1604,26 +1610,67 @@ addToLibrary({
   emscripten_asm_const_async_on_main_thread: (emAsmAddr, sigPtr, argbuf) => runMainThreadEmAsm(emAsmAddr, sigPtr, argbuf, 0),
 #endif
 
+  $emGlobalThis__internal: true,
+#if SUPPORTS_GLOBALTHIS
+  $emGlobalThis: 'globalThis',
+#else
+  $getGlobalThis__internal: true,
+  $getGlobalThis: () => {
+    if (typeof globalThis != 'undefined') {
+      return globalThis;
+    }
+#if DYNAMIC_EXECUTION
+    return new Function('return this')();
+#else
+    function testGlobal(obj) {
+      // Use __emGlobalThis as a test symbol to see if `obj` is indeed the
+      // global object.
+      obj['__emGlobalThis'] = obj;
+      var success = typeof __emGlobalThis == 'object' && obj['__emGlobalThis'] === obj;
+      delete obj['__emGlobalThis'];
+      return success;
+    }
+    if (typeof self != 'undefined' && testGlobal(self)) {
+      return self; // This works for both "window" and "self" (Web Workers) global objects
+    }
+#if ENVIRONMENT_MAY_BE_NODE
+    if (typeof global != 'undefined' && testGlobal(global)) {
+      return global;
+    }
+#endif
+    abort('unable to get global object.');
+#endif // DYNAMIC_EXECUTION
+  },
+  $emGlobalThis__deps: ['$getGlobalThis'],
+  $emGlobalThis: 'getGlobalThis()',
+#endif // SUPPORTS_GLOBALTHIS
+
 #if !DECLARE_ASM_MODULE_EXPORTS
   // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
   // at runtime rather than statically in JS code.
-  $exportWasmSymbols__deps: ['$asmjsMangle'],
+  $exportWasmSymbols__deps: ['$asmjsMangle', '$emGlobalThis',
+#if DYNCALLS || !WASM_BIGINT
+    , '$dynCalls'
+#endif
+  ],
   $exportWasmSymbols: (wasmExports) => {
-#if ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_WEB
-    var global_object = (typeof process != "undefined" ? global : this);
-#elif ENVIRONMENT_MAY_BE_NODE
-    var global_object = global;
-#else
-    var global_object = this;
+    for (var [name, exportedSymbol] of Object.entries(wasmExports)) {
+      name = asmjsMangle(name);
+#if DYNCALLS || !WASM_BIGINT
+      if (name.startsWith('dynCall_')) {
+        dynCalls[name.substr(8)] = exportedSymbol;
+      }
 #endif
-
-    for (var __exportedFunc in wasmExports) {
-      var jsname = asmjsMangle(__exportedFunc);
+      // Globals are currently statically enumerated into the output JS.
+      // TODO: If the number of Globals grows large, consider giving them a
+      // similar DECLARE_ASM_MODULE_EXPORTS = 0 treatment.
+      if (typeof exportedSymbol.value === 'undefined') {
 #if MINIMAL_RUNTIME
-      global_object[jsname] = wasmExports[__exportedFunc];
+        emGlobalThis[name] = exportedSymbol;
 #else
-      global_object[jsname] = Module[jsname] = wasmExports[__exportedFunc];
+        emGlobalThis[name] = Module[name] = exportedSymbol;
 #endif
+      }
     }
 
   },
@@ -2094,8 +2141,13 @@ addToLibrary({
 #endif
       try {
 #if PTHREADS
-        if (ENVIRONMENT_IS_PTHREAD) __emscripten_thread_exit(EXITSTATUS);
-        else
+        if (ENVIRONMENT_IS_PTHREAD) {
+          // exit the current thread, but only if there is one active.
+          // TODO(https://github.com/emscripten-core/emscripten/issues/25076):
+          // Unify this check with the runtimeExited check above
+          if (_pthread_self()) __emscripten_thread_exit(EXITSTATUS);
+          return;
+        }
 #endif
         _exit(EXITSTATUS);
       } catch (e) {
@@ -2113,15 +2165,30 @@ addToLibrary({
   },
 
 #else // MINIMAL_RUNTIME
-  // MINIMAL_RUNTIME doesn't support the runtimeKeepalive stuff
-  $callUserCallback: (func) => func(),
+  $callUserCallback: (func) => {
+    // MINIMAL_RUNTIME doesn't support the runtimeKeepalive stuff, but under
+    // some circumstances it supportes `runtimeExited`
+#if EXIT_RUNTIME
+    if (runtimeExited) {
+#if ASSERTIONS
+      err('user callback triggered after runtime exited or application aborted.  Ignoring.');
+#endif
+      return;
+    }
+#endif
+    func();
+  },
 #endif // MINIMAL_RUNTIME
 
   $asmjsMangle: (x) => {
     if (x == '__main_argc_argv') {
       x = 'main';
     }
+#if DYNCALLS
     return x.startsWith('dynCall_') ? x : '_' + x;
+#else
+    return '_' + x;
+#endif
   },
 
   $alignMemory: (size, alignment) => {
@@ -2559,6 +2626,8 @@ function wrapSyscallFunction(x, library, isWasi) {
   post += "}\n";
   post += "dbg(`syscall return: ${ret}`);\n";
   post += "return ret;\n";
+  // Emit dependency to strError() since we added use of it above.
+  library[x + '__deps'].push('$strError');
 #endif
   delete library[x + '__nothrow'];
   var handler = '';

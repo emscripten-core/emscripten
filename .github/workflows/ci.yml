@@ -57,6 +57,9 @@ jobs:
           echo "final config:"
           cat $EM_CONFIG
       - name: Check test expectations on target branch
+        # Skip this step for rebaseline PRs, since the target branch is expected
+        # to be out of date in this case.
+        if: "!contains(github.event.pull_request.title, 'Automatic rebaseline of codesize expectations')"
         run: |
           echo "Checking out ${{ github.base_ref }}"
           git checkout ${{ github.base_ref }}
@@ -66,10 +69,13 @@ jobs:
           # git checkout - ./tools/maint/rebaseline_tests.py
           ./bootstrap
           if ! ./tools/maint/rebaseline_tests.py --check-only; then
+            echo ""
             echo "Test expectations are out-of-date on the target branch."
-            echo "You can run './tools/maint/rebaseline_tests.py --new-branch'"
+            echo "Please run the 'Rebaseline Tests' github action on the target"
+            echo "branch (normally 'main') before proceeding."
+            ecoh ""
+            echo "You can also run './tools/maint/rebaseline_tests.py --new-branch'"
             echo "and use it to create a seperate PR."
-            echo "-- This failure is only a warning and can be ignored"
             exit 1
           fi
       - name: Check test expectations on PR branch

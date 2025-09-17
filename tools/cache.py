@@ -41,7 +41,7 @@ def acquire_cache_lock(reason):
     logger.debug(f'PID {os.getpid()} acquiring multiprocess file lock to Emscripten cache at {cachedir}')
     assert 'EM_CACHE_IS_LOCKED' not in os.environ, f'attempt to lock the cache while a parent process is holding the lock ({reason})'
     try:
-      cachelock.acquire(60)
+      cachelock.acquire(10 * 60)
     except filelock.Timeout:
       logger.warning(f'Accessing the Emscripten cache at "{cachedir}" (for "{reason}") is taking a long time, another process should be writing to it. If there are none and you suspect this process has deadlocked, try deleting the lock file "{cachelock_name}" and try again. If this occurs deterministically, consider filing a bug.')
       cachelock.acquire()
@@ -83,6 +83,8 @@ def ensure():
 
 def erase():
   ensure_setup()
+  assert not config.FROZEN_CACHE, 'Cache cannot be erased when FROZEN_CACHE is set'
+
   with lock('erase'):
     # Delete everything except the lockfile itself
     utils.delete_contents(cachedir, exclude=[os.path.basename(cachelock_name)])
