@@ -269,10 +269,6 @@ def trim_asm_const_body(body):
   return body
 
 
-def create_other_export_declarations(tag_exports):
-  return '\n'.join(f'var {asmjs_mangle(name)};' for name in tag_exports)
-
-
 def create_global_exports(global_exports):
   lines = []
   for k, v in global_exports.items():
@@ -953,6 +949,8 @@ def create_receiving(function_exports, tag_exports, library_symbols):
   # function assignWasmExports(wasmExport) {
   #   _main = wasmExports["_main"];
   exports = {name: sig for name, sig in function_exports.items() if name != building.WASM_CALL_CTORS}
+  for t in tag_exports:
+    exports[t] = None
 
   if settings.ASSERTIONS:
     # In debug builds we generate trapping functions in case
@@ -979,8 +977,9 @@ def create_receiving(function_exports, tag_exports, library_symbols):
 
   receiving.append('\nfunction assignWasmExports(wasmExports) {')
   for sym, sig in exports.items():
+    is_function = sig is not None
     mangled = asmjs_mangle(sym)
-    if generate_dyncall_assignment and sym.startswith('dynCall_'):
+    if generate_dyncall_assignment and is_function and sym.startswith('dynCall_'):
       sig_str = sym.replace('dynCall_', '')
       dynCallAssignment = f"dynCalls['{sig_str}'] = "
     else:
@@ -988,7 +987,7 @@ def create_receiving(function_exports, tag_exports, library_symbols):
     export_assignment = ''
     if (settings.MODULARIZE or not settings.MINIMAL_RUNTIME) and should_export(mangled) and settings.MODULARIZE != 'instance':
       export_assignment = f"Module['{mangled}'] = "
-    if install_debug_wrapper(sym):
+    if is_function and install_debug_wrapper(sym):
       nargs = len(sig.params)
       receiving.append(f"  {export_assignment}{dynCallAssignment}{mangled} = createExportWrapper('{sym}', {nargs});")
     else:
@@ -1010,8 +1009,6 @@ def create_module(metadata, function_exports, global_exports, tag_exports, libra
   if settings.WASM_ESM_INTEGRATION:
     module.append(sending)
   else:
-    module.append(create_other_export_declarations(tag_exports))
-
     if settings.PTHREADS or settings.WASM_WORKERS or (settings.IMPORTED_MEMORY and settings.MODULARIZE == 'instance'):
       sending = textwrap.indent(sending, '  ').strip()
       module.append('''\

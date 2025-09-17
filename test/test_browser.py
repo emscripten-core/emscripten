@@ -5218,6 +5218,7 @@ Module["preRun"] = () => {
 
   # Tests emscripten_lock_async_acquire() function.
   @also_with_minimal_runtime
+  @flaky('https://github.com/emscripten-core/emscripten/issues/25270')
   def test_wasm_worker_lock_async_acquire(self):
     self.btest_exit('wasm_worker/lock_async_acquire.c', cflags=['--closure=1', '-sWASM_WORKERS'])
 
