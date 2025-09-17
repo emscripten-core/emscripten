@@ -24,7 +24,7 @@ from tools.shared import EMCC, path_from_root, run_process, CLANG_CC
 
 npm_checked = False
 
-EMTEST_LACKS_PYTHON_WEBSOCKIFY = int(os.getenv('EMTEST_LACKS_PYTHON_WEBSOCKIFY', '0'))
+EMTEST_SKIP_PYTHON_DEV_PACKAGES = int(os.getenv('EMTEST_SKIP_PYTHON_DEV_PACKAGES', '0'))
 
 
 def requires_python_websockify(func):
@@ -32,8 +32,8 @@ def requires_python_websockify(func):
 
   @common.wraps(func)
   def decorated(self, *args, **kwargs):
-    if EMTEST_LACKS_PYTHON_WEBSOCKIFY:
-      return self.skipTest('python websockify based tests are disabled by EMTEST_LACKS_PYTHON_WEBSOCKIFY=1')
+    if EMTEST_SKIP_PYTHON_DEV_PACKAGES:
+      return self.skipTest('python websockify based tests are disabled by EMTEST_SKIP_PYTHON_DEV_PACKAGES=1')
     return func(self, *args, **kwargs)
 
   return decorated
@@ -78,7 +78,7 @@ class WebsockifyServerHarness:
     try:
       import websockify  # type: ignore
     except ModuleNotFoundError:
-      raise Exception('Unable to import module websockify. Run "python3 -m pip install websockify" or set environment variable EMTEST_LACKS_PYTHON_WEBSOCKIFY=1 to skip this test.') from None
+      raise Exception('Unable to import module websockify. Run "python3 -m pip install websockify" or set environment variable EMTEST_SKIP_PYTHON_DEV_PACKAGES=1 to skip this test.') from None
 
     # start the websocket proxy
     print('running websockify on %d, forward to tcp %d' % (self.listen_port, self.target_port), file=sys.stderr)
@@ -201,8 +201,8 @@ class sockets(BrowserCore):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
       self.skipTest('requires native clang')
 
-    if harness_class == WebsockifyServerHarness and EMTEST_LACKS_PYTHON_WEBSOCKIFY:
-      self.skipTest('requires python websockify and EMTEST_LACKS_PYTHON_WEBSOCKIFY=1')
+    if harness_class == WebsockifyServerHarness and EMTEST_SKIP_PYTHON_DEV_PACKAGES:
+      self.skipTest('requires python websockify and EMTEST_SKIP_PYTHON_DEV_PACKAGES=1')
 
     with harness_class(test_file('sockets/test_sockets_echo_server.c'), args, port) as harness:
       self.btest_exit('sockets/test_sockets_echo_client.c', cflags=['-DSOCKK=%d' % harness.listen_port] + args)
@@ -225,8 +225,8 @@ class sockets(BrowserCore):
   def test_sockets_async_echo(self, harness_class, port, args):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
       self.skipTest('requires native clang')
-    if harness_class == WebsockifyServerHarness and EMTEST_LACKS_PYTHON_WEBSOCKIFY:
-      self.skipTest('requires python websockify and EMTEST_LACKS_PYTHON_WEBSOCKIFY=1')
+    if harness_class == WebsockifyServerHarness and EMTEST_SKIP_PYTHON_DEV_PACKAGES:
+      self.skipTest('requires python websockify and EMTEST_SKIP_PYTHON_DEV_PACKAGES=1')
 
     args.append('-DTEST_ASYNC=1')
     with harness_class(test_file('sockets/test_sockets_echo_server.c'), args, port) as harness:
@@ -245,8 +245,8 @@ class sockets(BrowserCore):
   def test_sockets_echo_bigdata(self, harness_class, port, args):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
       self.skipTest('requires native clang')
-    if harness_class == WebsockifyServerHarness and EMTEST_LACKS_PYTHON_WEBSOCKIFY:
-      self.skipTest('requires python websockify and EMTEST_LACKS_PYTHON_WEBSOCKIFY=1')
+    if harness_class == WebsockifyServerHarness and EMTEST_SKIP_PYTHON_DEV_PACKAGES:
+      self.skipTest('requires python websockify and EMTEST_SKIP_PYTHON_DEV_PACKAGES=1')
     sockets_include = '-I' + test_file('sockets')
 
     # generate a large string literal to use as our message
@@ -313,8 +313,8 @@ class sockets(BrowserCore):
   def test_nodejs_sockets_echo(self, harness_class, port, args):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
       self.skipTest('requires native clang')
-    if harness_class == WebsockifyServerHarness and EMTEST_LACKS_PYTHON_WEBSOCKIFY:
-      self.skipTest('requires python websockify and EMTEST_LACKS_PYTHON_WEBSOCKIFY=1')
+    if harness_class == WebsockifyServerHarness and EMTEST_SKIP_PYTHON_DEV_PACKAGES:
+      self.skipTest('requires python websockify and EMTEST_SKIP_PYTHON_DEV_PACKAGES=1')
 
     # Basic test of node client against both a Websockified and compiled echo server.
     with harness_class(test_file('sockets/test_sockets_echo_server.c'), args, port) as harness:
