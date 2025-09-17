@@ -1130,8 +1130,10 @@ jobs:
       # Run browser tests as well.
       - run-tests-firefox-windows:
           title: "browser on firefox on windows"
-          # skip browser.test_glbook, as it requires UNIX tool 'make'
+          # skip browser.test_glbook, as it requires mingw32-make, which is not
+          # installed on CircleCI.
           # skip browser.test_sdl2_mixer_wav_dash_l, fails to build on Windows
+          # on CircleCI (works locally)
           test_targets: "
             browser
             skip:browser.test_glbook
