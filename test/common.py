@@ -232,6 +232,13 @@ def is_slow_test(func):
   return decorated
 
 
+def needs_make(note=''):
+  assert not callable(note)
+  if WINDOWS:
+    return unittest.skip('Tool not available on Windows bots (%s)' % note)
+  return lambda f: f
+
+
 def record_flaky_test(test_name, attempt_count, exception_msg):
   logging.info(f'Retrying flaky test "{test_name}" (attempt {attempt_count}/{EMTEST_RETRY_FLAKY} failed):\n{exception_msg}')
   open(flaky_tests_log_filename, 'a').write(f'{test_name}\n')
