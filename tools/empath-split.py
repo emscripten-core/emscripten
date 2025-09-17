@@ -197,8 +197,7 @@ def main():
   path_to_funcs = get_path_to_functions_map(args.wasm, args.sourcemap, paths)
 
   # Write .manifest file
-  f = tempfile.NamedTemporaryFile(suffix=".manifest", mode='w+', delete=False)
-  try:
+  with tempfile.NamedTemporaryFile(suffix=".manifest", mode='w+', delete=args.preserve_manifest) as f:
     manifest = f.name
     for i, path in enumerate(paths):
       f.write(f'{i}\n')
@@ -213,7 +212,7 @@ def main():
         f.write(func + '\n')
       if i < len(paths) - 1:
         f.write('\n')
-    f.close()
+    f.flush()
 
     cmd = [wasm_split, '--multi-split', args.wasm, '--manifest', manifest]
     if args.verbose:
@@ -223,9 +222,6 @@ def main():
     if args.verbose:
       print('\n' + ' '.join(cmd))
     shared.run_process(cmd)
-  finally:
-    if not args.preserve_manifest:
-      os.remove(manifest)
 
 
 if __name__ == '__main__':
