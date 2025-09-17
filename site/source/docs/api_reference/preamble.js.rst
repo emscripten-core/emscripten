@@ -114,8 +114,8 @@ Calling compiled C functions from JavaScript
         my_func(12)
 
   :param ident: The name of the C function to be called.
-  :param returnType: The return type of the function. This can be ``"number"``, ``"string"`` or ``"array"``, which correspond to the appropriate JavaScript types (use ``"number"`` for any C pointer, and ``"array"`` for JavaScript arrays and typed arrays; note that arrays are 8-bit), or for a void function it can be ``null`` (note: the JavaScript ``null`` value, not a string containing the word "null").
-  :param argTypes: An array of the types of arguments for the function (if there are no arguments, this can be omitted). Types are as in ``returnType``, except that ``array`` is not supported as there is no way for us to know the length of the array).
+  :param returnType: The return type of the function. This can be ``"number"`` or ``"string"``, which correspond to the appropriate JavaScript types (use ``"number"`` for any C pointer), or for a void function it can be ``null`` (note: the JavaScript ``null`` value, not a string containing the word "null"). ``array`` is not supported as there is no way for us to know the length of the array.
+  :param argTypes: An array of the types of arguments for the function (if there are no arguments, this can be omitted). Types can be ``"number"``, ``"string"`` or ``"array"``, which correspond to the appropriate JavaScript types (use ``"number"`` for any C pointer, and ``"array"`` for JavaScript arrays and typed arrays; note that arrays are 8-bit)
   :param opts: An optional options object, see :js:func:`ccall`.
   :returns: A JavaScript function that can be used for running the C function.
 
