@@ -78,7 +78,7 @@ class WebsockifyServerHarness:
     try:
       import websockify  # type: ignore
     except ModuleNotFoundError:
-      raise Exception('Unable to import module websockify. Run "python3 -m pip install websockify" or set environment variable EMTEST_LACKS_PYTHON_WEBSOCKIFY=1 to skip this test.')
+      raise Exception('Unable to import module websockify. Run "python3 -m pip install websockify" or set environment variable EMTEST_LACKS_PYTHON_WEBSOCKIFY=1 to skip this test.') from None
 
     # start the websocket proxy
     print('running websockify on %d, forward to tcp %d' % (self.listen_port, self.target_port), file=sys.stderr)
