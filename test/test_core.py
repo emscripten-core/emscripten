@@ -4951,9 +4951,11 @@ res64 - external 64\n''', header='''\
   @no_js_math('JS_MATH is not compatible with MAIN_MODULE')
   def test_dylink_exceptions_try_catch_6(self):
     create_file('main.cpp', r'''
+      #include <assert.h>
       #include <dlfcn.h>
       int main() {
         void* handle = dlopen("liblib.so", RTLD_LAZY);
+        assert(handle);
         void (*side)(void) = (void (*)(void))dlsym(handle, "side");
         (side)();
         return 0;

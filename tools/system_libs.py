@@ -987,6 +987,7 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
         'emscripten_setjmp.c',
         'emscripten_exception_builtins.c',
         'emscripten_tempret.s',
+        '__c_longjmp.S',
         '__trap.c',
       ])
 
@@ -1661,6 +1662,7 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
       'stdlib_typeinfo.cpp',
       'private_typeinfo.cpp',
       'cxa_exception_js_utils.cpp',
+      '__cpp_exception.S',
     ]
     if self.eh_mode == Exceptions.NONE:
       filenames += ['cxa_noexception.cpp']
