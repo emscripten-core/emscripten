@@ -2241,10 +2241,12 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     return poppler + freetype
 
-  def get_zlib_library(self, cmake):
+  def get_zlib_library(self, cmake, cflags=None):
     assert cmake or not WINDOWS, 'on windows, get_zlib_library only supports cmake'
 
     old_args = self.cflags.copy()
+    if cflags:
+      self.cflags += cflags
     # inflate.c does -1L << 16
     self.cflags.append('-Wno-shift-negative-value')
     # adler32.c uses K&R sytyle function declarations

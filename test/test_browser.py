@@ -2005,14 +2005,6 @@ simulateKeyUp(100, undefined, 'Numpad4');
 
   @requires_graphics_hardware
   @no_swiftshader
-  def test_cubegeom_pre_relocatable(self):
-    # RELOCATABLE needs to be set via `set_setting` so that it will also apply when
-    # building `browser_reporting.c`
-    self.set_setting('RELOCATABLE')
-    self.reftest('third_party/cubegeom/cubegeom_pre.c', 'third_party/cubegeom/cubegeom_pre.png', cflags=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
-
-  @requires_graphics_hardware
-  @no_swiftshader
   def test_cubegeom_pre2(self):
     self.reftest('third_party/cubegeom/cubegeom_pre2.c', 'third_party/cubegeom/cubegeom_pre2.png', cflags=['-sGL_DEBUG', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL']) # some coverage for GL_DEBUG not breaking the build
 
@@ -2296,8 +2288,6 @@ void *getBindBuffer() {
     self.btest_exit('openal/test_openal_buffers.c', cflags=['--preload-file', test_file('sounds/the_entertainer.wav') + '@/'])
 
   def test_runtimelink(self):
-    if self.get_setting('GLOBAL_BASE'):
-      self.skipTest('GLOBAL_BASE is not compatible with SIDE_MODULE')
     create_file('header.h', r'''
       struct point {
         int x, y;
@@ -3557,8 +3547,6 @@ Module["preRun"] = () => {
     'inworker': ([1],),
   })
   def test_dylink_dso_needed(self, inworker):
-    if self.get_setting('GLOBAL_BASE'):
-      self.skipTest('GLOBAL_BASE is not compatible with SIDE_MODULE')
     self.cflags += ['-O2']
 
     def do_run(src, expected_output, cflags):
@@ -5230,6 +5218,7 @@ Module["preRun"] = () => {
 
   # Tests emscripten_lock_async_acquire() function.
   @also_with_minimal_runtime
+  @flaky('https://github.com/emscripten-core/emscripten/issues/25270')
   def test_wasm_worker_lock_async_acquire(self):
     self.btest_exit('wasm_worker/lock_async_acquire.c', cflags=['--closure=1', '-sWASM_WORKERS'])
 
@@ -5701,6 +5690,8 @@ class browser64_2gb(browser):
     self.set_setting('MEMORY64')
     self.set_setting('INITIAL_MEMORY', '2200mb')
     self.set_setting('GLOBAL_BASE', '2gb')
+    # Without this we get a warning about GLOBAL_BASE being ignored when used with SIDE_MODULE
+    self.cflags.append('-Wno-unused-command-line-argument')
     self.require_wasm64()
 
 
