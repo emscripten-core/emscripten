@@ -2675,7 +2675,6 @@ class BrowserCore(RunnerCore):
     else:
       cls.browser_procs = [subprocess.Popen(browser_args + [url])]
 
-
   @classmethod
   def launch_browser_harness_windows_firefox(cls, worker_id, config, browser_args, url):
     ''' Dedicated function for launching browser harness on Firefox on Windows,
@@ -2705,7 +2704,6 @@ class BrowserCore(RunnerCore):
         # Wrap window positions on a Full HD desktop area modulo primes.
         for proc in cls.browser_procs:
           move_browser_window(proc.pid, (300 + count * 47) % 1901, (10 + count * 37) % 997)
-
 
   @classmethod
   def setUpClass(cls):
