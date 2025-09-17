@@ -456,9 +456,6 @@ commands:
             echo "Running browser tests"
             echo "-----"
             test/runner << parameters.test_targets >>
-            # posix and emrun suites are disabled because firefox errors on
-            #  "Firefox is already running, but is not responding."
-            # TODO: find out a way to shut down and restart firefox
       - upload-test-results
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
