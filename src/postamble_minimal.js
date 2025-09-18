@@ -28,7 +28,7 @@ function exitRuntime(ret) {
 
 {{{ globalThis.argc_argv = function(condition) {
     if (!MAIN_READS_PARAMS) return '';
-    return `argc, ${MEMORY64 ? 'BigInt(argv)' : 'argv'}`;
+    return `argc, ${to64('argv')}`;
   }
   globalThis.HEAPptr = MEMORY64 ? 'HEAPU64' : 'HEAPU32';
   null;
