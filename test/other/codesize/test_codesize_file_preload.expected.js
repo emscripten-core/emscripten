@@ -309,8 +309,6 @@ var EXITSTATUS;
 // include: runtime_debug.js
 // end include: runtime_debug.js
 // Memory management
-var wasmMemory;
-
 var /** @type {!Int8Array} */ HEAP8, /** @type {!Uint8Array} */ HEAPU8, /** @type {!Int16Array} */ HEAP16, /** @type {!Uint16Array} */ HEAPU16, /** @type {!Int32Array} */ HEAP32, /** @type {!Uint32Array} */ HEAPU32, /** @type {!Float32Array} */ HEAPF32, /** @type {!Float64Array} */ HEAPF64;
 
 // BigInt64Array type is not correctly defined in closure
@@ -460,9 +458,8 @@ async function createWasm() {
   // performing other necessary setup
   /** @param {WebAssembly.Module=} module*/ function receiveInstance(instance, module) {
     wasmExports = instance.exports;
-    wasmMemory = wasmExports["b"];
-    updateMemoryViews();
     assignWasmExports(wasmExports);
+    updateMemoryViews();
     removeRunDependency("wasm-instantiate");
     return wasmExports;
   }
@@ -3155,10 +3152,12 @@ Module["FS_createLazyFile"] = FS_createLazyFile;
 // End JS library exports
 // end include: postlibrary.js
 // Imports from the Wasm binary.
-var _main;
+var _main, wasmMemory, wasmTable;
 
 function assignWasmExports(wasmExports) {
   Module["_main"] = _main = wasmExports["d"];
+  wasmMemory = wasmExports["b"];
+  wasmTable = wasmExports["__indirect_function_table"];
 }
 
 var wasmImports = {

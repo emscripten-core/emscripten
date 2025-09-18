@@ -257,10 +257,10 @@ def get_function_exports(module):
   return rtn
 
 
-def get_tag_exports(module):
+def get_other_exports(module):
   rtn = []
   for e in module.get_exports():
-    if e.kind == webassembly.ExternType.TAG:
+    if e.kind not in (webassembly.ExternType.FUNC, webassembly.ExternType.GLOBAL):
       rtn.append(e.name)
   return rtn
 
@@ -288,7 +288,7 @@ def read_module_imports(module, metadata):
 def update_metadata(filename, metadata):
   with webassembly.Module(filename) as module:
     metadata.function_exports = get_function_exports(module)
-    metadata.tag_exports = get_tag_exports(module)
+    metadata.other_exports = get_other_exports(module)
     metadata.all_exports = [utils.removeprefix(e.name, '__em_js__') for e in module.get_exports()]
     read_module_imports(module, metadata)
 
@@ -313,7 +313,7 @@ class Metadata:
   main_reads_params: bool
   global_exports: Dict[str, str]
   function_exports: Dict[str, webassembly.FuncType]
-  tag_exports: List[str]
+  other_exports: List[str]
   all_exports: List[str]
 
 
@@ -341,7 +341,7 @@ def extract_metadata(filename):
     # calls __original_main (which has no parameters).
     metadata = Metadata()
     metadata.function_exports = get_function_exports(module)
-    metadata.tag_exports = get_tag_exports(module)
+    metadata.other_exports = get_other_exports(module)
     metadata.all_exports = [utils.removeprefix(e.name, '__em_js__') for e in exports]
     metadata.em_asm_consts = get_section_strings(module, export_map, 'em_asm')
     metadata.js_deps = [d for d in get_section_strings(module, export_map, 'em_lib_deps').values() if d]

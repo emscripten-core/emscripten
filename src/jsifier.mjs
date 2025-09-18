@@ -731,10 +731,12 @@ function(${args}) {
       } else if (typeof snippet == 'undefined') {
         // wasmTable is kind of special.  In the normal configuration we export
         // it from the wasm module under the name `__indirect_function_table`
-        // but we declare it as an 'undefined'.  It then gets assigned manually
-        // once the wasm module is available.
+        // but we declare it as an 'undefined' in `libcore.js`.
+        // Since the normal export mechanism will declare this variable we don't
+        // want the JS library version of this symbol be declared (otherwise
+        // it would be a duplicate decl).
         // TODO(sbc): This is kind of hacky, we should come up with a better solution.
-        var isDirectWasmExport = WASM_ESM_INTEGRATION && mangled == 'wasmTable';
+        var isDirectWasmExport = mangled == 'wasmTable';
         if (isDirectWasmExport) {
           contentText = '';
         } else {
@@ -780,7 +782,9 @@ function(${args}) {
       }
 
       let docs = LibraryManager.library[symbol + '__docs'];
-      if (docs) {
+      // Add the docs if they exist and if we are actually emitting a declaration.
+      // See the TODO about wasmTable above.
+      if (docs && contentText != '') {
         commentText += docs + '\n';
       }
 
