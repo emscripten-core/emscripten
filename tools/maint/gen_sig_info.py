@@ -358,7 +358,7 @@ def extract_sig_info(sig_info, extra_settings=None, extra_cflags=None, cxx=False
     sig_info32 = extract_sigs(symbols, obj_file)
 
     # Run the same command again with memory64.
-    shared.check_call(cmd + ['-sMEMORY64', '-Wno-experimental'])
+    shared.check_call(cmd + ['-sMEMORY64'])
     sig_info64 = extract_sigs(symbols, obj_file)
 
     for sym, sig32 in sig_info32.items():

@@ -1,0 +1,16 @@
+{
+  "hello_world.js": 54151,
+  "hello_world.js.gz": 17086,
+  "hello_world.wasm": 15127,
+  "hello_world.wasm.gz": 7450,
+  "no_asserts.js": 26557,
+  "no_asserts.js.gz": 8869,
+  "no_asserts.wasm": 12227,
+  "no_asserts.wasm.gz": 6010,
+  "strict.js": 52189,
+  "strict.js.gz": 16421,
+  "strict.wasm": 15127,
+  "strict.wasm.gz": 7447,
+  "total": 175378,
+  "total_gz": 63283
+}

@@ -62,7 +62,7 @@ variables so that emcc etc. are used. Typical usage:
       print('emcmake: no compatible cmake generator found; Please install ninja or mingw32-make, or specify a generator explicitly using -G', file=sys.stderr)
       return 1
 
-  print(f'configure: {shlex.join(args)} in directory {os.getcwd()}', file=sys.stderr)
+  print(f'emcmake: {shlex.join(args)} in directory {os.getcwd()}', file=sys.stderr)
   try:
     shared.check_call(args)
     return 0

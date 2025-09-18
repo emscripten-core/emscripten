@@ -26,6 +26,14 @@ function exitRuntime(ret) {
 }
 #endif
 
+{{{ globalThis.argc_argv = function(condition) {
+    if (!MAIN_READS_PARAMS) return '';
+    return `argc, ${to64('argv')}`;
+  }
+  globalThis.HEAPptr = MEMORY64 ? 'HEAPU64' : 'HEAPU32';
+  null;
+}}}
+
 function run() {
 #if MEMORYPROFILER
   emscriptenMemoryProfiler.onPreloadComplete();
@@ -33,21 +41,49 @@ function run() {
 
   <<< ATMAINS >>>
 
+#if MAIN_READS_PARAMS
+  var args =
+#if ENVIRONMENT_MAY_BE_NODE
+    // Remove Node.js executable name from argc/argv to emulate C/C++ standards.
+    ENVIRONMENT_IS_NODE ? process.argv.slice(1) :
+#endif
+    [location.href.split('?')[0], ...location.search.slice(1).split('&').map(decodeURIComponent)];
+
+  // C standard (C17 §5.1.2.2.1/5): "The parameters argc and argv and the
+  // strings pointed to by the argv array shall be modifiable by the program,
+  // and retain their last-stored values between program startup and program
+  // termination."
+  // -> in particular this means that the stackAlloc() that we do below shall
+  // never be undone, and ideally should no longer be considered to be part of
+  // the stack. Though currently it will be. (TODO: figure if this will ever be
+  // a problem)
+  var arg,
+    argc = args.length,
+    argv = stackAlloc(argc * {{{ POINTER_SIZE }}} + {{{ POINTER_SIZE }}}),
+    argvIndex = argv / {{{ POINTER_SIZE }}};
+
+  for (arg of args) {{{ HEAPptr }}}[argvIndex++] = {{{ to64('stringToUTF8OnStack(arg)') }}};
+
+  // C standard (C17 §5.1.2.2.1/2): "argv[argc] shall be a null pointer."
+  {{{ HEAPptr }}}[argvIndex] = {{{ to64(0) }}};
+
+#endif
+
 #if PROXY_TO_PTHREAD
   // User requested the PROXY_TO_PTHREAD option, so call a stub main which
   // pthread_create()s a new thread that will call the user's real main() for
   // the application.
-  __emscripten_proxy_main();
+  __emscripten_proxy_main({{{ argc_argv() }}});
 #elif ASYNCIFY == 2 && EXIT_RUNTIME
   // In JSPI-enabled build mode, the main() function will return a Promise,
   // which resolves to the process exit code.
-  _main().then(exitRuntime);
+  _main({{{ argc_argv() }}}).then(exitRuntime);
 #elif EXIT_RUNTIME
   // In regular exitRuntime mode, exit with the given return code from main().
-  exitRuntime(_main());
+  exitRuntime(_main({{{ argc_argv() }}}));
 #else
   // Run a persistent (never-exiting) application starting at main().
-  _main();
+  _main({{{ argc_argv() }}});
 #endif 
 
 #if STACK_OVERFLOW_CHECK

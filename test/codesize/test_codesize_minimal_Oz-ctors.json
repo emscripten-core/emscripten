@@ -1,0 +1,17 @@
+{
+  "a.out.js": 2308,
+  "a.out.js.gz": 1132,
+  "a.out.nodebug.wasm": 51,
+  "a.out.nodebug.wasm.gz": 68,
+  "total": 2359,
+  "total_gz": 1200,
+  "sent": [],
+  "imports": [],
+  "exports": [
+    "a (memory)",
+    "b (add)"
+  ],
+  "funcs": [
+    "$add"
+  ]
+}

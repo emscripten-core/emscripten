@@ -405,13 +405,13 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
 
   if base_metadata:
     function_exports = base_metadata.function_exports
-    tag_exports = base_metadata.tag_exports
+    other_exports = base_metadata.other_exports
     # We want the real values from the final metadata but we only want to
     # include names from the base_metadata.  See phase_link() in link.py.
     global_exports = {k: v for k, v in metadata.global_exports.items() if k in base_metadata.global_exports}
   else:
     function_exports = metadata.function_exports
-    tag_exports = metadata.tag_exports
+    other_exports = metadata.other_exports
     global_exports = metadata.global_exports
 
   if settings.ASYNCIFY == 1:
@@ -421,7 +421,7 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     function_exports['asyncify_stop_rewind'] = webassembly.FuncType([], [])
 
   parts = [pre]
-  parts += create_module(metadata, function_exports, global_exports, tag_exports, forwarded_json['librarySymbols'])
+  parts += create_module(metadata, function_exports, global_exports, other_exports, forwarded_json['librarySymbols'])
   parts.append(post)
 
   full_js_module = ''.join(parts)
@@ -906,12 +906,12 @@ def should_export(sym):
   return settings.EXPORT_ALL or (settings.EXPORT_KEEPALIVE and sym in settings.EXPORTED_FUNCTIONS)
 
 
-def create_receiving(function_exports, tag_exports, library_symbols):
+def create_receiving(function_exports, other_exports, library_symbols):
   generate_dyncall_assignment = 'dynCalls' in library_symbols
   receiving = ['\n// Imports from the Wasm binary.']
 
   if settings.WASM_ESM_INTEGRATION:
-    exported_symbols = tag_exports + list(function_exports.keys())
+    exported_symbols = other_exports + list(function_exports.keys())
     exports = []
     for sym in exported_symbols:
       mangled = asmjs_mangle(sym)
@@ -919,10 +919,6 @@ def create_receiving(function_exports, tag_exports, library_symbols):
         exports.append(f'{sym} as {mangled}')
       else:
         exports.append(sym)
-    if not settings.IMPORTED_MEMORY:
-      exports.append('memory as wasmMemory')
-    if not settings.RELOCATABLE:
-      exports.append('__indirect_function_table as wasmTable')
     receiving.append('import {')
     receiving.append('  ' + ',\n  '.join(exports))
     receiving.append(f"}} from './{settings.WASM_BINARY_FILE}';")
@@ -949,8 +945,8 @@ def create_receiving(function_exports, tag_exports, library_symbols):
   # function assignWasmExports(wasmExport) {
   #   _main = wasmExports["_main"];
   exports = {name: sig for name, sig in function_exports.items() if name != building.WASM_CALL_CTORS}
-  for t in tag_exports:
-    exports[t] = None
+  for name in other_exports:
+    exports[name] = None
 
   if settings.ASSERTIONS:
     # In debug builds we generate trapping functions in case
@@ -997,9 +993,9 @@ def create_receiving(function_exports, tag_exports, library_symbols):
   return '\n'.join(receiving)
 
 
-def create_module(metadata, function_exports, global_exports, tag_exports, library_symbols):
+def create_module(metadata, function_exports, global_exports, other_exports, library_symbols):
   module = []
-  module.append(create_receiving(function_exports, tag_exports, library_symbols))
+  module.append(create_receiving(function_exports, other_exports, library_symbols))
   module.append(create_global_exports(global_exports))
 
   sending = create_sending(metadata, library_symbols)

@@ -1,0 +1,41 @@
+{
+  "a.out.js": 19756,
+  "a.out.js.gz": 8158,
+  "a.out.nodebug.wasm": 131926,
+  "a.out.nodebug.wasm.gz": 50238,
+  "total": 151682,
+  "total_gz": 58396,
+  "sent": [
+    "__cxa_throw",
+    "_abort_js",
+    "_tzset_js",
+    "emscripten_resize_heap",
+    "environ_get",
+    "environ_sizes_get",
+    "fd_close",
+    "fd_read",
+    "fd_seek",
+    "fd_write"
+  ],
+  "imports": [
+    "env.__cxa_throw",
+    "env._abort_js",
+    "env._tzset_js",
+    "env.emscripten_resize_heap",
+    "wasi_snapshot_preview1.environ_get",
+    "wasi_snapshot_preview1.environ_sizes_get",
+    "wasi_snapshot_preview1.fd_close",
+    "wasi_snapshot_preview1.fd_read",
+    "wasi_snapshot_preview1.fd_seek",
+    "wasi_snapshot_preview1.fd_write"
+  ],
+  "exports": [
+    "__indirect_function_table",
+    "__wasm_call_ctors",
+    "_emscripten_stack_alloc",
+    "_emscripten_stack_restore",
+    "emscripten_stack_get_current",
+    "main",
+    "memory"
+  ]
+}

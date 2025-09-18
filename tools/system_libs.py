@@ -70,7 +70,7 @@ def get_base_cflags(build_dir, force_object_files=False, preprocess=True):
     if preprocess:
       flags += ['-DEMSCRIPTEN_DYNAMIC_LINKING']
   if settings.MEMORY64:
-    flags += ['-Wno-experimental', '-sMEMORY64=' + str(settings.MEMORY64)]
+    flags += ['-sMEMORY64=' + str(settings.MEMORY64)]
 
   source_dir = utils.path_from_root()
   relative_source_dir = os.path.relpath(source_dir, build_dir)

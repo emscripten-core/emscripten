@@ -366,7 +366,7 @@ def main(args):
   if args.wasm64:
     # Always use =2 here so that we don't generate a binary that actually requires
     # memory64 to run.  All we care about is that the output is correct.
-    extra_cflags += ['-sMEMORY64=2', '-Wno-experimental']
+    extra_cflags += ['-sMEMORY64=2']
 
   # Add the user options to the list as well.
   for path in args.includes:

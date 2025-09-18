@@ -637,6 +637,11 @@ def asmjs_mangle(name):
   Prepends '_' and replaces non-alphanumerics with '_'.
   Used by wasm backend for JS library consistency with asm.js.
   """
+  # We rename certain well-known exports to match what we call them in JS
+  if name == 'memory':
+    return 'wasmMemory'
+  if name == '__indirect_function_table':
+    return 'wasmTable'
   # We also use this function to convert the clang-mangled `__main_argc_argv`
   # to simply `main` which is expected by the emscripten JS glue code.
   if name == '__main_argc_argv':

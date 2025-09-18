@@ -1341,6 +1341,29 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     # Explicitly set dedicated temporary directory for parallel tests
     os.environ['EMCC_TEMP_DIR'] = self.temp_dir
 
+  def parse_wasm(self, filename):
+    wat = self.get_wasm_text(filename)
+    imports = []
+    exports = []
+    funcs = []
+    for line in wat.splitlines():
+      line = line.strip()
+      if line.startswith('(import '):
+        line = line.strip('()')
+        parts = line.split()
+        module = parts[1].strip('"')
+        name = parts[2].strip('"')
+        imports.append('%s.%s' % (module, name))
+      if line.startswith('(export '):
+        line = line.strip('()')
+        name = line.split()[1].strip('"')
+        exports.append(name)
+      if line.startswith('(func '):
+        line = line.strip('()')
+        name = line.split()[1].strip('"')
+        funcs.append(name)
+    return imports, exports, funcs
+
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
@@ -2636,12 +2659,14 @@ class BrowserCore(RunnerCore):
   @classmethod
   def browser_restart(cls):
     # Kill existing browser
+    assert has_browser()
     logger.info('Restarting browser process')
     cls.browser_terminate()
     cls.browser_open(cls.HARNESS_URL)
 
   @classmethod
   def browser_open(cls, url):
+    assert has_browser()
     browser_args = EMTEST_BROWSER
 
     if EMTEST_BROWSER_AUTO_CONFIG:
@@ -2720,6 +2745,7 @@ class BrowserCore(RunnerCore):
     cls.HARNESS_URL = f'{cls.SERVER_URL}/run_harness'
 
     if not has_browser() or EMTEST_BROWSER == 'node':
+      errlog(f'[Skipping browser launch (EMTEST_BROWSER={EMTEST_BROWSER})]')
       return
 
     cls.harness_in_queue = queue.Queue()
@@ -2727,7 +2753,7 @@ class BrowserCore(RunnerCore):
     cls.harness_server = HttpServerThread(make_test_server(cls.harness_in_queue, cls.harness_out_queue, cls.PORT))
     cls.harness_server.start()
 
-    print(f'[Browser harness server on thread {cls.harness_server.name}]')
+    errlog(f'[Browser harness server on thread {cls.harness_server.name}]')
     cls.browser_open(cls.HARNESS_URL)
 
   @classmethod

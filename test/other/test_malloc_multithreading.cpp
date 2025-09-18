@@ -60,8 +60,7 @@ void *ThreadMain(void *arg) {
   }
   free(allocations);
   printf("thread exiting with total %d\n", total);
-  running--;
-  if (running == 0) {
+  if (running.fetch_sub(1) == 1) {
 #if VERBOSE
     double end = emscripten_date_now();
     printf("total time %.2f\n", end - start);
