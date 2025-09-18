@@ -57,8 +57,10 @@ function run() {
   // never be undone, and ideally should no longer be considered to be part of
   // the stack. Though currently it will be. (TODO: figure if this will ever be
   // a problem)
-  var arg, argc = args.length, argv = stackAlloc(argc * {{{ POINTER_SIZE }}} + {{{ POINTER_SIZE }}}),
-    argvIndex = argv >> {{{ 31-Math.clz32(POINTER_SIZE) }}};
+  var arg,
+    argc = args.length,
+    argv = stackAlloc(argc * {{{ POINTER_SIZE }}} + {{{ POINTER_SIZE }}}),
+    argvIndex = argv / {{{ POINTER_SIZE }}};
 
   for (arg of args) {{{ HEAPptr }}}[argvIndex++] = {{{ to64('stringToUTF8OnStack(arg)') }}};
 
