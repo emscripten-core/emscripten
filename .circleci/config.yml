@@ -395,6 +395,68 @@ commands:
             #  "Firefox is already running, but is not responding."
             # TODO: find out a way to shut down and restart firefox
       - upload-test-results
+  run-tests-firefox-windows:
+    description: "Runs emscripten tests under firefox on Windows"
+    parameters:
+      test_targets:
+        description: "Test suites to run"
+        type: string
+      title:
+        description: "Name of given test suite"
+        type: string
+        default: ""
+    steps:
+      - run:
+          name: download firefox
+          shell: powershell.exe -ExecutionPolicy Bypass
+          command: |
+            # To download Firefox, we must first figure out what the latest Firefox version name is.
+            # This is because there does not exist a stable/static URL to download latest Firefox from.
+            $html = Invoke-WebRequest "https://archive.mozilla.org/pub/firefox/nightly/latest-mozilla-central/"
+            $zipLink = $html.Links |
+              Where-Object { $_.href -match "firefox-.*\.en-US\.win64\.zip$" } |
+              Select-Object -Last 1 -ExpandProperty href
+
+            # Download Win64 Firefox.
+            $nightlyUrl = "https://archive.mozilla.org$zipLink"
+            $outZip = "$env:TEMP\firefox_nightly.zip"
+
+            Write-Host "Downloading latest Firefox Nightly: $nightlyUrl"
+            Invoke-WebRequest -Uri $nightlyUrl -OutFile $outZip
+
+            # Extract to user home directory
+            $installDir = Join-Path $env:USERPROFILE "firefox"
+            if (Test-Path $installDir) { Remove-Item -Recurse -Force $installDir }
+            Expand-Archive -LiteralPath $outZip -DestinationPath $installDir
+
+            # Set environment variable for tests
+            $ffExe = Join-Path $installDir "firefox.exe"
+            [System.Environment]::SetEnvironmentVariable("EMTEST_BROWSER", $ffExe, "User")
+            $env:EMTEST_BROWSER = $ffExe
+            Write-Host "EMTEST_BROWSER set to $env:EMTEST_BROWSER"
+      - run:
+          name: run tests (<< parameters.title >>)
+          environment:
+            EMTEST_LACKS_GRAPHICS_HARDWARE: "1"
+            # TODO(https://github.com/emscripten-core/emscripten/issues/24205)
+            EMTEST_LACKS_SOUND_HARDWARE: "1"
+            EMTEST_LACKS_WEBGPU: "1"
+            # OffscreenCanvas support is not yet done in Firefox.
+            EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
+            EMTEST_DETECT_TEMPFILE_LEAKS: "0"
+            EMTEST_HEADLESS: "1"
+            EMTEST_CORES: "2"
+            DISPLAY: ":0"
+          command: |
+            # There are tests in the browser test suite that using libraries
+            # that are not included by "./embuilder build ALL".  For example the
+            # PIC version of libSDL which is used by test_sdl2_misc_main_module
+            set EM_FROZEN_CACHE=
+            echo "-----"
+            echo "Running browser tests"
+            echo "-----"
+            test/runner << parameters.test_targets >>
+      - upload-test-results
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
     steps:
@@ -1064,6 +1126,19 @@ jobs:
       - run-tests:
           title: "sockets.test_nodejs_sockets_echo*"
           test_targets: "sockets.test_nodejs_sockets_echo*"
+      - upload-test-results
+      # Run browser tests as well.
+      - run-tests-firefox-windows:
+          title: "browser on firefox on windows"
+          # skip browser.test_glbook, as it requires mingw32-make, which is not
+          # installed on CircleCI.
+          # skip browser.test_sdl2_mixer_wav_dash_l, fails to build on Windows
+          # on CircleCI (works locally)
+          test_targets: "
+            browser
+            skip:browser.test_glbook
+            skip:browser.test_sdl2_mixer_wav_dash_l
+            "
       - upload-test-results
 
   test-mac-arm64:

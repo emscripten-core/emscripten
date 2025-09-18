@@ -276,7 +276,7 @@ var LibraryDylink = {
         continue;
       }
 #endif
-      if (typeof value == 'object') {
+      if (typeof value?.value != 'undefined') {
         // a breaking change in the wasm spec, globals are now objects
         // https://github.com/WebAssembly/mutable-global/issues/1
         value = value.value;

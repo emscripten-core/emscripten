@@ -22,7 +22,7 @@ import clang_native
 import jsrun
 import common
 from tools.shared import CLANG_CC, CLANG_CXX
-from common import test_file, read_file, read_binary
+from common import test_file, read_file, read_binary, needs_make
 from tools.shared import run_process, PIPE, EMCC, config
 from tools import building, utils, shared
 
@@ -1006,7 +1006,7 @@ class benchmark(common.RunnerCore):
     src = read_file(test_file('benchmark/test_zlib_benchmark.c'))
 
     def lib_builder(name, native, env_init):
-      return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'), make_args=['libz.a'], native=native, cache_name_extra=name, env_init=env_init)
+      return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'), configure=['cmake', '-DCMAKE_POLICY_VERSION_MINIMUM=3.5', '.'], make=['cmake', '--build', '.', '--'], make_args=[], native=native, cache_name_extra=name, env_init=env_init)
 
     self.do_benchmark('zlib', src, 'ok.',
                       force_c=True, shared_args=['-I' + test_file('third_party/zlib')], lib_builder=lib_builder)
@@ -1039,15 +1039,11 @@ class benchmark(common.RunnerCore):
 
     def lib_builder(name, native, env_init):
       return self.get_library(str(Path('third_party/bullet')),
-                              [Path('src/.libs/libBulletDynamics.a'),
-                               Path('src/.libs/libBulletCollision.a'),
-                               Path('src/.libs/libLinearMath.a')],
-                              # The --host parameter is needed for 2 reasons:
-                              # 1) bullet in it's configure.ac tries to do platform detection and will fail on unknown platforms
-                              # 2) configure will try to compile and run a test file to check if the C compiler is sane. As Cheerp
-                              #    will generate a wasm file (which cannot be run), configure will fail. Passing `--host` enables
-                              #    cross compile mode, which lets configure complete happily.
-                              configure_args=['--disable-demos', '--disable-dependency-tracking', '--host=i686-unknown-linux'], native=native, cache_name_extra=name, env_init=env_init)
+                              ['src/BulletDynamics/libBulletDynamics.a',
+                               'src/BulletCollision/libBulletCollision.a',
+                               'src/LinearMath/libLinearMath.a'],
+                              configure=['cmake', '.'], configure_args=['-DCMAKE_POLICY_VERSION_MINIMUM=3.5','-DBUILD_DEMOS=OFF', '-DBUILD_EXTRAS=OFF', '-DUSE_GLUT=OFF', '-DCMAKE_CXX_STANDARD=14'],
+                              make=['cmake', '--build', '.', '--'], make_args=[], native=native, cache_name_extra=name, env_init=env_init)
 
     self.do_benchmark('bullet', src, '\nok.\n',
                       shared_args=['-I' + test_file('third_party/bullet/src'), '-I' + test_file('third_party/bullet/Demos/Benchmarks')],
@@ -1070,6 +1066,7 @@ class benchmark(common.RunnerCore):
                       emcc_args=['-sFILESYSTEM', '-sMINIMAL_RUNTIME=0'],
                       force_c=True)
 
+  @needs_make('depends on freetype')
   def test_zzz_poppler(self):
     utils.write_file('pre.js', '''
       var benchmarkArgument = %s;

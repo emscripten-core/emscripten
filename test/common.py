@@ -18,6 +18,7 @@ import itertools
 import json
 import logging
 import os
+import psutil
 import re
 import shlex
 import shutil
@@ -36,7 +37,7 @@ import queue
 import clang_native
 import jsrun
 import line_endings
-from tools.shared import EMCC, EMXX, DEBUG
+from tools.shared import EMCC, EMXX, DEBUG, exe_suffix
 from tools.shared import get_canonical_temp_dir, path_from_root
 from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_binary, exit_with_error
 from tools.settings import COMPILE_TIME_SETTINGS
@@ -87,6 +88,7 @@ if 'EM_BUILD_VERBOSE' in os.environ:
 # file to track which tests were flaky so they can be graphed in orange color to
 # visually stand out.
 flaky_tests_log_filename = os.path.join(path_from_root('out/flaky_tests.txt'))
+browser_spawn_lock_filename = os.path.join(path_from_root('out/browser_spawn_lock'))
 
 
 # Default flags used to run browsers in CI testing:
@@ -114,8 +116,9 @@ class ChromeConfig:
 
 class FirefoxConfig:
   data_dir_flag = '-profile '
-  default_flags = ()
+  default_flags = ('-new-instance',)
   headless_flags = '-headless'
+  executable_name = exe_suffix('firefox')
 
   @staticmethod
   def configure(data_dir):
@@ -230,6 +233,13 @@ def is_slow_test(func):
 
   decorated.is_slow = True
   return decorated
+
+
+def needs_make(note=''):
+  assert not callable(note)
+  if WINDOWS:
+    return unittest.skip('Tool not available on Windows bots (%s)' % note)
+  return lambda f: f
 
 
 def record_flaky_test(test_name, attempt_count, exception_msg):
@@ -938,8 +948,25 @@ def make_dir_writeable(dirname):
 
 
 def force_delete_dir(dirname):
-  make_dir_writeable(dirname)
-  utils.delete_dir(dirname)
+  """Deletes a directory. Returns whether deletion succeeded."""
+  if not os.path.exists(dirname):
+    return True
+  assert not os.path.isfile(dirname)
+
+  try:
+    make_dir_writeable(dirname)
+    utils.delete_dir(dirname)
+  except PermissionError as e:
+    # This issue currently occurs on Windows when running browser tests e.g.
+    # on Firefox browser. Killing Firefox browser is not 100% watertight, and
+    # occassionally a Firefox browser process can be left behind, holding on
+    # to a file handle, preventing the deletion from succeeding.
+    # We expect this issue to only occur on Windows.
+    if not WINDOWS:
+      raise e
+    print(f'Warning: Failed to delete directory "{dirname}"\n{e}')
+    return False
+  return True
 
 
 def force_delete_contents(dirname):
@@ -2501,6 +2528,81 @@ def configure_test_browser():
         EMTEST_BROWSER += f" {config.headless_flags}"
 
 
+def list_processes_by_name(exe_name):
+  pids = []
+  if exe_name:
+    for proc in psutil.process_iter():
+      try:
+        pinfo = proc.as_dict(attrs=['pid', 'name', 'exe'])
+        if pinfo['exe'] and exe_name in pinfo['exe'].replace('\\', '/').split('/'):
+          pids.append(psutil.Process(pinfo['pid']))
+      except psutil.NoSuchProcess: # E.g. "process no longer exists (pid=13132)" (code raced to acquire the iterator and process it)
+        pass
+
+  return pids
+
+
+class FileLock:
+  """Implements a filesystem-based mutex, with an additional feature that it
+  returns an integer counter denoting how many times the lock has been locked
+  before (during the current python test run instance)"""
+  def __init__(self, path):
+    self.path = path
+    self.counter = 0
+
+  def __enter__(self):
+    # Acquire the lock
+    while True:
+      try:
+        self.fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        break
+      except FileExistsError:
+        time.sleep(0.1)
+    # Return the locking count number
+    try:
+      self.counter = int(open(f'{self.path}_counter').read())
+    except Exception:
+      pass
+    return self.counter
+
+  def __exit__(self, *a):
+    # Increment locking count number before releasing the lock
+    with open(f'{self.path}_counter', 'w') as f:
+      f.write(str(self.counter + 1))
+    # And release the lock
+    os.close(self.fd)
+    try:
+      os.remove(self.path)
+    except Exception:
+      pass # Another process has raced to acquire the lock, and will delete it.
+
+
+def move_browser_window(pid, x, y):
+  """Utility function to move the top-level window owned by given process to
+  (x,y) coordinate. Used to ensure each browser window has some visible area."""
+  import win32gui
+  import win32process
+
+  def enum_windows_callback(hwnd, _unused):
+    _, win_pid = win32process.GetWindowThreadProcessId(hwnd)
+    if win_pid == pid and win32gui.IsWindowVisible(hwnd):
+      rect = win32gui.GetWindowRect(hwnd)
+      win32gui.MoveWindow(hwnd, x, y, rect[2] - rect[0], rect[3] - rect[1], True)
+    return True
+
+  win32gui.EnumWindows(enum_windows_callback, None)
+
+
+def increment_suffix_number(str_with_maybe_suffix):
+  match = re.match(r"^(.*?)(?:_(\d+))?$", str_with_maybe_suffix)
+  if match:
+    base, number = match.groups()
+    if number:
+      return f'{base}_{int(number) + 1}'
+
+  return f'{str_with_maybe_suffix}_1'
+
+
 class BrowserCore(RunnerCore):
   # note how many tests hang / do not send an output. if many of these
   # happen, likely something is broken and it is best to abort the test
@@ -2517,15 +2619,19 @@ class BrowserCore(RunnerCore):
 
   @classmethod
   def browser_terminate(cls):
-    cls.browser_proc.terminate()
-    # If the browser doesn't shut down gracefully (in response to SIGTERM)
-    # after 2 seconds kill it with force (SIGKILL).
-    try:
-      cls.browser_proc.wait(2)
-    except subprocess.TimeoutExpired:
-      logger.info('Browser did not respond to `terminate`.  Using `kill`')
-      cls.browser_proc.kill()
-      cls.browser_proc.wait()
+    for proc in cls.browser_procs:
+      try:
+        proc.terminate()
+        # If the browser doesn't shut down gracefully (in response to SIGTERM)
+        # after 2 seconds kill it with force (SIGKILL).
+        try:
+          proc.wait(2)
+        except (subprocess.TimeoutExpired, psutil.TimeoutExpired):
+          logger.info('Browser did not respond to `terminate`.  Using `kill`')
+          proc.kill()
+          proc.wait()
+      except (psutil.NoSuchProcess, ProcessLookupError):
+        pass
 
   @classmethod
   def browser_restart(cls):
@@ -2544,9 +2650,18 @@ class BrowserCore(RunnerCore):
       if worker_id is not None:
         # Running in parallel mode, give each browser its own profile dir.
         browser_data_dir += '-' + str(worker_id)
-      if os.path.exists(browser_data_dir):
-        utils.delete_dir(browser_data_dir)
+
+      # Delete old browser data directory.
+      if WINDOWS:
+        # If we cannot (the data dir is in use on Windows), switch to another dir.
+        while not force_delete_dir(browser_data_dir):
+          browser_data_dir = increment_suffix_number(browser_data_dir)
+      else:
+        force_delete_dir(browser_data_dir)
+
+      # Recreate the new data directory.
       os.mkdir(browser_data_dir)
+
       if is_chrome():
         config = ChromeConfig()
       elif is_firefox():
@@ -2561,7 +2676,41 @@ class BrowserCore(RunnerCore):
 
     browser_args = shlex.split(browser_args)
     logger.info('Launching browser: %s', str(browser_args))
-    cls.browser_proc = subprocess.Popen(browser_args + [url])
+
+    if WINDOWS and is_firefox():
+      cls.launch_browser_harness_windows_firefox(worker_id, config, browser_args, url)
+    else:
+      cls.browser_procs = [subprocess.Popen(browser_args + [url])]
+
+  @classmethod
+  def launch_browser_harness_windows_firefox(cls, worker_id, config, browser_args, url):
+    ''' Dedicated function for launching browser harness on Firefox on Windows,
+    which requires extra care for window positioning and process tracking.'''
+
+    with FileLock(browser_spawn_lock_filename) as count:
+      # Firefox is a multiprocess browser. On Windows, killing the spawned
+      # process will not bring down the whole browser, but only one browser tab.
+      # So take a delta snapshot before->after spawning the browser to find
+      # which subprocesses we launched.
+      if worker_id is not None:
+        procs_before = list_processes_by_name(config.executable_name)
+      cls.browser_procs = [subprocess.Popen(browser_args + [url])]
+      # Give Firefox time to spawn its subprocesses. Use an increasing timeout
+      # as a crude way to account for system load.
+      if worker_id is not None:
+        time.sleep(2 + count * 0.3)
+        procs_after = list_processes_by_name(config.executable_name)
+      # Make sure that each browser window is visible on the desktop. Otherwise
+      # browser might decide that the tab is backgrounded, and not load a test,
+      # or it might not tick rAF()s forward, causing tests to hang.
+      if worker_id is not None and not EMTEST_HEADLESS:
+        # On Firefox on Windows we needs to track subprocesses that got created
+        # by Firefox. Other setups can use 'browser_proc' directly to terminate
+        # the browser.
+        cls.browser_procs = list(set(procs_after).difference(set(procs_before)))
+        # Wrap window positions on a Full HD desktop area modulo primes.
+        for proc in cls.browser_procs:
+          move_browser_window(proc.pid, (300 + count * 47) % 1901, (10 + count * 37) % 997)
 
   @classmethod
   def setUpClass(cls):

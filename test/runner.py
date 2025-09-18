@@ -564,6 +564,8 @@ def main():
 
   # Remove any old test files before starting the run
   utils.delete_file(common.flaky_tests_log_filename)
+  utils.delete_file(common.browser_spawn_lock_filename)
+  utils.delete_file(f'{common.browser_spawn_lock_filename}_counter')
 
   def prepend_default(arg):
     if arg.startswith('test_'):

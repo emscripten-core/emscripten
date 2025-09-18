@@ -30,7 +30,7 @@ from common import read_file, read_binary, requires_v8, requires_node, requires_
 from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime, also_with_modularize
 from common import with_all_fs, also_with_nodefs, also_with_nodefs_both, also_with_noderawfs, also_with_wasmfs
 from common import with_all_eh_sjlj, with_all_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64, requires_wasm_eh, requires_jspi
-from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
+from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON, needs_make
 import clang_native
 
 # decorators for limiting which modes a test can run in
@@ -263,13 +263,6 @@ def no_optimize(note=''):
       func(self)
     return decorated
   return decorator
-
-
-def needs_make(note=''):
-  assert not callable(note)
-  if WINDOWS:
-    return unittest.skip('Tool not available on Windows bots (%s)' % note)
-  return lambda f: f
 
 
 def no_asan(note):
@@ -4958,9 +4951,11 @@ res64 - external 64\n''', header='''\
   @no_js_math('JS_MATH is not compatible with MAIN_MODULE')
   def test_dylink_exceptions_try_catch_6(self):
     create_file('main.cpp', r'''
+      #include <assert.h>
       #include <dlfcn.h>
       int main() {
         void* handle = dlopen("liblib.so", RTLD_LAZY);
+        assert(handle);
         void (*side)(void) = (void (*)(void))dlsym(handle, "side");
         (side)();
         return 0;

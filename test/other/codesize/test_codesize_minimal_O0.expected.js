@@ -1304,7 +1304,10 @@ function assignWasmExports(wasmExports) {
   __emscripten_stack_alloc = wasmExports['_emscripten_stack_alloc'];
   _emscripten_stack_get_current = wasmExports['emscripten_stack_get_current'];
 }
-var _global_val = Module['_global_val'] = 65536;var wasmImports = {
+
+var _global_val = Module['_global_val'] = 65536;
+
+var wasmImports = {
   
 };
 

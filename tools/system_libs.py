@@ -987,6 +987,7 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
         'emscripten_setjmp.c',
         'emscripten_exception_builtins.c',
         'emscripten_tempret.s',
+        '__c_longjmp.S',
         '__trap.c',
       ])
 
@@ -1640,8 +1641,6 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
       # The code used to interpret exceptions during terminate
       # is not compatible with emscripten exceptions.
       cflags.append('-DLIBCXXABI_SILENT_TERMINATE')
-    elif self.eh_mode == Exceptions.WASM_LEGACY:
-      cflags.append('-D__WASM_EXCEPTIONS__')
     return cflags
 
   def get_files(self):
@@ -1661,6 +1660,7 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
       'stdlib_typeinfo.cpp',
       'private_typeinfo.cpp',
       'cxa_exception_js_utils.cpp',
+      '__cpp_exception.S',
     ]
     if self.eh_mode == Exceptions.NONE:
       filenames += ['cxa_noexception.cpp']
@@ -1719,12 +1719,6 @@ class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
     'tzdb_list.cpp',
   ]
 
-  def get_cflags(self):
-    cflags = super().get_cflags()
-    if self.eh_mode in (Exceptions.WASM_LEGACY, Exceptions.WASM):
-      cflags.append('-D__WASM_EXCEPTIONS__')
-    return cflags
-
 
 class libunwind(ExceptionLibrary, MTLibrary):
   name = 'libunwind'
@@ -1755,8 +1749,6 @@ class libunwind(ExceptionLibrary, MTLibrary):
       cflags.append('-D_LIBUNWIND_HAS_NO_EXCEPTIONS')
     elif self.eh_mode == Exceptions.EMSCRIPTEN:
       cflags.append('-D__EMSCRIPTEN_EXCEPTIONS__')
-    elif self.eh_mode in (Exceptions.WASM_LEGACY, Exceptions.WASM):
-      cflags.append('-D__WASM_EXCEPTIONS__')
     return cflags
 
 

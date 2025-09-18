@@ -853,7 +853,7 @@ def create_sending(metadata, library_symbols):
       elems.append(f'{v} as {k}')
     elems = ',\n  '.join(elems)
     exports = '// Export JS functions to the wasm module with demangled names.\n'
-    exports += f"export {{\n  {elems}\n}};\n\n"
+    exports += f"export {{\n  {elems}\n}};"
     return exports
 
   prefix = ''
@@ -885,7 +885,7 @@ def create_reexports(metadata):
         wasm_exports.append(exp)
       elif demangled == 'main' and '__main_argc_argv' in settings.WASM_EXPORTS:
         wasm_exports.append('_main')
-  exports += f"export {{ {', '.join(wasm_exports)} }};\n\n"
+  exports += f"export {{ {', '.join(wasm_exports)} }};"
   return exports
 
 
@@ -936,7 +936,7 @@ def create_receiving(function_exports, tag_exports, library_symbols):
           receiving.append(f"  dynCalls['{sig_str}'] = {sym};")
       receiving.append('}')
 
-    return '\n'.join(receiving) + '\n\n'
+    return '\n'.join(receiving)
 
   # When not declaring asm exports this section is empty and we instead programmatically export
   # symbols on the global object by calling exportWasmSymbols after initialization
@@ -994,18 +994,15 @@ def create_receiving(function_exports, tag_exports, library_symbols):
       receiving.append(f"  {export_assignment}{dynCallAssignment}{mangled} = wasmExports['{sym}'];")
   receiving.append('}')
 
-  return '\n'.join(receiving) + '\n'
+  return '\n'.join(receiving)
 
 
 def create_module(metadata, function_exports, global_exports, tag_exports, library_symbols):
   module = []
+  module.append(create_receiving(function_exports, tag_exports, library_symbols))
+  module.append(create_global_exports(global_exports))
 
-  receiving = create_receiving(function_exports, tag_exports, library_symbols)
-  receiving += create_global_exports(global_exports)
   sending = create_sending(metadata, library_symbols)
-
-  module.append(receiving)
-
   if settings.WASM_ESM_INTEGRATION:
     module.append(sending)
   else:
@@ -1015,13 +1012,12 @@ def create_module(metadata, function_exports, global_exports, tag_exports, libra
   var wasmImports;
   function assignWasmImports() {
     wasmImports = %s;
-  }
-  ''' % sending)
+  }''' % sending)
     else:
-      module.append('var wasmImports = %s;\n' % sending)
+      module.append('var wasmImports = %s;' % sending)
 
   if settings.SUPPORT_LONGJMP == 'emscripten' or not settings.DISABLE_EXCEPTION_CATCHING:
-    module.append(create_invoke_wrappers(metadata))
+    module += create_invoke_wrappers(metadata)
   else:
     assert not metadata.invoke_funcs, "invoke_ functions exported but exceptions and longjmp are both disabled"
 
@@ -1031,15 +1027,16 @@ def create_module(metadata, function_exports, global_exports, tag_exports, libra
   if settings.WASM_ESM_INTEGRATION:
     module.append(create_reexports(metadata))
 
-  return module
+  module = [chunk for chunk in module if chunk]
+  return '\n\n'.join(module) + '\n'
 
 
 def create_invoke_wrappers(metadata):
   """Asm.js-style exception handling: invoke wrapper generation."""
-  invoke_wrappers = ''
+  invoke_wrappers = []
   for invoke in metadata.invoke_funcs:
     sig = removeprefix(invoke, 'invoke_')
-    invoke_wrappers += '\n' + js_manipulation.make_invoke(sig) + '\n'
+    invoke_wrappers.append(js_manipulation.make_invoke(sig))
   return invoke_wrappers
 
 

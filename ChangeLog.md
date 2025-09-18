@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.15 (in development)
+4.0.16 (in development)
 -----------------------
+
+4.0.15 - 09/17/25
+-----------------
 - The `RELOCATABLE` and `LINKABLE` settings were deprecated in favor the higher
   level and better supported `MAIN_MODULE` / `SIDE_MODULE` settings. (#25265)
 - The `-gsource-map` flag has been updated to be independent of other types of
