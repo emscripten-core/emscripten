@@ -27,8 +27,8 @@ jobs:
         name: emscripten-${{ env.VERSION }}
         path: emscripten-${{ env.VERSION }}.tar.bz2
 
-  check-expectations:
-    name: Check Expectations
+  codesize-checks:
+    name: Codesize Checks
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
@@ -45,7 +45,7 @@ jobs:
       - name: Install emsdk
         run: |
           EM_CONFIG=$HOME/emsdk/.emscripten
-          echo $EM_CONFIG
+          echo "emscripten config file: $EM_CONFIG"
           echo "EM_CONFIG=$EM_CONFIG" >> $GITHUB_ENV
           curl -# -L -o ~/emsdk-main.tar.gz https://github.com/emscripten-core/emsdk/archive/main.tar.gz
           tar -C ~ -xf ~/emsdk-main.tar.gz
@@ -53,8 +53,7 @@ jobs:
           cd ~/emsdk
           ./emsdk install tot
           ./emsdk activate tot
-          echo "JS_ENGINES = [NODE_JS]" >> $EM_CONFIG
-          echo "final config:"
+          echo "emscripten config file ($EM_CONFIG) contents:"
           cat $EM_CONFIG
       - name: Check test expectations on target branch
         # Skip this step for rebaseline PRs, since the target branch is expected
