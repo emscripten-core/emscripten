@@ -579,13 +579,13 @@ def main():  # noqa: C901, PLR0912, PLR0915
 
   for counter, data_files in enumerate(file_chunks):
     metadata = {'files': []}
-    
+
     def construct_data_file_name(base,ext):
       return f"{base}{f'_{counter}' if counter else ''}.{ext}"
-    base, ext = data_target.rsplit('.', 1)
-    data_file = construct_data_file_name(base, ext)
+    data_file = construct_data_file_name(*data_target.rsplit('.', 1))
+    js_file = None if options.jsoutput is None else construct_data_file_name(*options.jsoutput.rsplit('.', 1))
     targets.append(data_file)
-    ret = generate_js(data_file, data_files, metadata)
+    ret = generate_js(data_file, data_files, metadata, js_file)
     if options.force or len(data_files):
       if options.jsoutput is None:
         print(ret)
@@ -593,8 +593,6 @@ def main():  # noqa: C901, PLR0912, PLR0915
         # Overwrite the old jsoutput file (if exists) only when its content
         # differs from the current generated one, otherwise leave the file
         # untouched preserving its old timestamp
-        base, ext = options.jsoutput.rsplit('.', 1)
-        js_file = construct_data_file_name(base, ext)
         targets.append(js_file)
         if ret != (utils.read_file(js_file) if os.path.isfile(js_file) else ''):
           utils.write_file(js_file, ret)
@@ -622,7 +620,7 @@ def escape_for_makefile(fpath):
   return fpath.replace('$', '$$').replace('#', '\\#').replace(' ', '\\ ')
 
 
-def generate_js(data_target, data_files, metadata):
+def generate_js(data_target, data_files, metadata, js_file):
   # emcc will add this to the output itself, so it is only needed for
   # standalone calls
   if options.from_emcc:
@@ -1122,7 +1120,7 @@ def generate_js(data_target, data_files, metadata):
     runMetaWithFS();
   } else {
     (Module['preRun'] ??= []).push(runMetaWithFS);
-  }\n''' % {'node_support_code': node_support_code, 'metadata_file': os.path.basename(options.jsoutput + '.metadata')}
+  }\n''' % {'node_support_code': node_support_code, 'metadata_file': os.path.basename(js_file + '.metadata')}
   else:
     ret += '''
     }
