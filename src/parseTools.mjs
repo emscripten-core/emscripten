@@ -263,15 +263,6 @@ function makeInlineCalculation(expression, value, tempVar) {
 // XXX Make all i64 parts signed
 
 function castToBigInt(x) {
-  // If given string is already a "BigInt(something)", then no-op.
-  if (typeof x === 'string' && x.startsWith('BigInt(')) return x;
-  // Or if it is already a BigInt literal string, e.g. "42n".
-  if (typeof x === 'string' && x.endsWith('n')) {
-    var maybeBigIntLiteral = Number(x.slice(0, -1));
-    if (Number.isInteger(maybeBigIntLiteral) && isFinite(maybeBigIntLiteral)) return x;
-  }
-  // Or if already a BigInt, then output as BigInt literal.
-  if (typeof x === 'bigint') return `${x}n`;
   // Micro-size-optimization: if x is an integer literal, then we can append
   // the suffix 'n' instead of casting to BigInt(), to get smaller code size.
   var n = Number(x);
