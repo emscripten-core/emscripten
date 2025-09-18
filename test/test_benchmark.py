@@ -969,7 +969,7 @@ class benchmark(common.RunnerCore):
     # Multithreaded malloc test. For emcc we use mimalloc here.
     src = read_file(test_file('other/test_malloc_multithreading.cpp'))
     # TODO measure with different numbers of cores and not fixed 4
-    self.do_benchmark('malloc_multithreading', src, 'Done.', shared_args=['-DWORKERS=4', '-pthread'], emcc_args=['-sEXIT_RUNTIME', '-sMALLOC=mimalloc'])
+    self.do_benchmark('malloc_multithreading', src, 'Done.', shared_args=['-DWORKERS=4', '-pthread'], emcc_args=['-sEXIT_RUNTIME', '-sMALLOC=mimalloc', '-sMINIMAL_RUNTIME=0', '-sINITIAL_MEMORY=512MB'])
 
   def test_matrix_multiply(self):
     def output_parser(output):
