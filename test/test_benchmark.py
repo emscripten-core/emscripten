@@ -981,6 +981,11 @@ class benchmark(common.RunnerCore):
     shutil.copyfile(test_file(f'third_party/lua/{benchmark}.lua'), benchmark + '.lua')
 
     def lib_builder(name, native, env_init):
+      # Inject -sMEMORY64 into node-64 benchmarking runs.
+      env_init['MYCFLAGS'] = env_init['CFLAGS']
+      if '-sMEMORY64' in env_init['MYCFLAGS']:
+        env_init['MYLDFLAGS'] = '-sMEMORY64'
+
       # We force recomputation for the native benchmarker because this benchmark
       # uses native_exec=True, so we need to copy the native executable
       return self.get_library(os.path.join('third_party', 'lua_native' if native else 'lua'), [os.path.join('src', 'lua.o'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=native, cache_name_extra=name, env_init=env_init, force_rebuild=native)
@@ -1038,11 +1043,12 @@ class benchmark(common.RunnerCore):
     src += read_file(test_file('third_party/bullet/Demos/Benchmarks/main.cpp'))
 
     def lib_builder(name, native, env_init):
+      cflags = ' '.join(self.cflags) + ' ' + env_init['CFLAGS']
       return self.get_library(str(Path('third_party/bullet')),
                               ['src/BulletDynamics/libBulletDynamics.a',
                                'src/BulletCollision/libBulletCollision.a',
                                'src/LinearMath/libLinearMath.a'],
-                              configure=['cmake', '.'], configure_args=['-DCMAKE_POLICY_VERSION_MINIMUM=3.5','-DBUILD_DEMOS=OFF', '-DBUILD_EXTRAS=OFF', '-DUSE_GLUT=OFF', '-DCMAKE_CXX_STANDARD=14'],
+                              configure=['cmake', '.'], configure_args=['-DCMAKE_POLICY_VERSION_MINIMUM=3.5','-DBUILD_DEMOS=OFF', '-DBUILD_EXTRAS=OFF', '-DUSE_GLUT=OFF', '-DCMAKE_CXX_STANDARD=14', f'-DCMAKE_CXX_FLAGS={cflags}'],
                               make=['cmake', '--build', '.', '--'], make_args=[], native=native, cache_name_extra=name, env_init=env_init)
 
     self.do_benchmark('bullet', src, '\nok.\n',
