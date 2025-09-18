@@ -68,7 +68,7 @@ class codesize(RunnerCore):
                                '-DNDEBUG',
                                '-ffast-math']
 
-    math_sources = [test_file('code_size/math.c')]
+    math_sources = [test_file('codesize/math.c')]
     hello_world_sources = [test_file('small_hello_world.c'),
                            '-sMALLOC=none']
     random_printf_sources = [test_file('hello_random_printf.c'),
@@ -82,8 +82,8 @@ class codesize(RunnerCore):
     hello_webgl2_sources = hello_webgl_sources + ['-sMAX_WEBGL_VERSION=2']
     hello_wasm_worker_sources = [test_file('wasm_worker/wasm_worker_code_size.c'), '-sWASM_WORKERS', '-sENVIRONMENT=web']
     audio_worklet_sources = [test_file('webaudio/audioworklet.c'), '-sWASM_WORKERS', '-sAUDIO_WORKLET', '-sENVIRONMENT=web', '-sTEXTDECODER=1']
-    embind_hello_sources = [test_file('code_size/embind_hello_world.cpp'), '-lembind']
-    embind_val_sources = [test_file('code_size/embind_val_hello_world.cpp'), '-lembind']
+    embind_hello_sources = [test_file('codesize/embind_hello_world.cpp'), '-lembind']
+    embind_val_sources = [test_file('codesize/embind_val_hello_world.cpp'), '-lembind']
 
     sources = {
       'hello_world': hello_world_sources,
@@ -124,7 +124,7 @@ class codesize(RunnerCore):
     # Note that we do not compare the full wasm output since that is
     # even more fragile and can change with LLVM updates.
     if compare_js_output:
-      js_out = test_file('code_size', test_name + '.js')
+      js_out = test_file('codesize', test_name + '.js')
       terser = shared.get_npm_cmd('terser')
       # N.b. this requires node in PATH, it does not run against NODE from
       # Emscripten config file. If you have this line fail, make sure 'node' is
@@ -136,7 +136,7 @@ class codesize(RunnerCore):
 
   def check_output_sizes(self, *outputs: str, metadata=None, skip_gz=False):
     test_name = self.id().split('.')[-1]
-    results_file = test_file('code_size', test_name + '.json')
+    results_file = test_file('codesize', test_name + '.json')
 
     expected_results: dict = {}
     try:
@@ -216,8 +216,8 @@ class codesize(RunnerCore):
   def run_codesize_test(self, filename, cflags, check_funcs=True, check_full_js=False, skip_gz=False):
     # in -Os, -Oz, we remove imports wasm doesn't need
     print('Running codesize test: %s:' % filename, cflags, check_funcs, check_full_js)
-    filename = test_file('other/codesize', filename)
-    expected_basename = test_file('other/codesize', self.id().split('.')[-1])
+    filename = test_file('codesize', filename)
+    expected_basename = test_file('codesize', self.id().split('.')[-1])
 
     # Run once without closure and parse output to find wasmImports
     build_cmd = [compiler_for(filename), filename, '--output-eol=linux', '--emit-minification-map=minify.map'] + cflags + self.get_cflags()
