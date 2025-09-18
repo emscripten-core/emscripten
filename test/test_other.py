@@ -7566,14 +7566,14 @@ int main() {
     self.assertExists('test_1.data')
     self.assertEqual(os.path.getsize('test.data'), (1024 * 1024 * 256) * 7)
     self.assertEqual(os.path.getsize('test_1.data'), (1024 * 1024 * 254) + 1)
-    
+
     self.assertExists('immutable.js.metadata')
     metadata = json.loads(read_file('immutable.js.metadata'))
     self.assertEqual(len(metadata['files']), 7)
     for i in range(7):
       assert metadata['files'][i]['start'] == i * large_size and metadata['files'][i]['end'] == (i * large_size) + large_size and metadata['files'][i]['filename'] == f'/huge{i}.dat'
     assert metadata['remote_package_size'] == 7 * large_size
-    
+
     self.assertExists('immutable_1.js.metadata')
     metadata = json.loads(read_file('immutable_1.js.metadata'))
     self.assertEqual(len(metadata['files']), 1)
