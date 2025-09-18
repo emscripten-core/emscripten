@@ -723,43 +723,29 @@ function getWasmImports() {
 #endif
 #endif
 
-#if !IMPORTED_MEMORY
-    wasmMemory = wasmExports['memory'];
-    {{{ receivedSymbol('wasmMemory') }}}
-#if ASSERTIONS
-    assert(wasmMemory, 'memory not found in wasm exports');
-#endif
-    updateMemoryViews();
-#endif
-
-#if '$wasmTable' in addedLibraryItems && !RELOCATABLE
-    wasmTable = wasmExports['__indirect_function_table'];
-    {{{ receivedSymbol('wasmTable') }}}
-#if ASSERTIONS && !PURE_WASI
-    assert(wasmTable, 'table not found in wasm exports');
-#endif
-#endif
-
 #if hasExportedSymbol('__wasm_apply_data_relocs')
     __RELOC_FUNCS__.push(wasmExports['__wasm_apply_data_relocs']);
+#endif
+
+#if DECLARE_ASM_MODULE_EXPORTS
+    assignWasmExports(wasmExports);
+#else
+    // If we didn't declare the asm exports as top level enties this function
+    // is in charge of programmatically exporting them on the global object.
+    exportWasmSymbols(wasmExports);
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS
     instrumentWasmTableWithAbort();
 #endif
 
-#if !DECLARE_ASM_MODULE_EXPORTS
-    // If we didn't declare the asm exports as top level enties this function
-    // is in charge of programmatically exporting them on the global object.
-    exportWasmSymbols(wasmExports);
+#if !IMPORTED_MEMORY
+    updateMemoryViews();
 #endif
 
 #if PTHREADS || WASM_WORKERS
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
-#endif
-#if DECLARE_ASM_MODULE_EXPORTS
-    assignWasmExports(wasmExports);
 #endif
 #if WASM_ASYNC_COMPILATION && !MODULARIZE
     removeRunDependency('wasm-instantiate');

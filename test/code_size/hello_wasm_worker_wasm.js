@@ -1,4 +1,4 @@
-var c = Module, d = "em-ww" == globalThis.name, e, f, l, y, z, A, t;
+var c = Module, d = "em-ww" == globalThis.name, e, f, y, z, l, A, t;
 
 d && (onmessage = a => {
     onmessage = null;
@@ -19,24 +19,24 @@ d || (f = c.mem || new WebAssembly.Memory({
     shared: !0
 }), g());
 
-var k = [], n = a => {
+var k = [], m = a => {
     a = a.data;
     let b = a._wsc;
     b && l.get(b)(...a.x);
 }, p = a => {
     k.push(a);
 }, q = {}, r = 1, u = (a, b) => {
-    let m = q[r] = new Worker(c.js, {
+    let n = q[r] = new Worker(c.js, {
         name: "em-ww"
     });
-    m.postMessage({
+    n.postMessage({
         u: r,
         j: t,
         o: f,
         l: a,
         m: b
     });
-    m.onmessage = n;
+    n.onmessage = m;
     return r++;
 }, v = () => !1, w = (a, b) => {
     q[a].postMessage({
@@ -66,8 +66,8 @@ function h() {
         t = a.module || c.wasm;
         y = b.g;
         z = b.i;
-        l = b.h;
-        d ? (z(e.l, e.m), removeEventListener("message", p), k = k.forEach(n), addEventListener("message", n)) : b.f();
+        l = l = b.h;
+        d ? (z(e.l, e.m), removeEventListener("message", p), k = k.forEach(m), addEventListener("message", m)) : b.f();
         d || y();
     }));
 }
