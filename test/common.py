@@ -2659,12 +2659,14 @@ class BrowserCore(RunnerCore):
   @classmethod
   def browser_restart(cls):
     # Kill existing browser
+    assert has_browser()
     logger.info('Restarting browser process')
     cls.browser_terminate()
     cls.browser_open(cls.HARNESS_URL)
 
   @classmethod
   def browser_open(cls, url):
+    assert has_browser()
     browser_args = EMTEST_BROWSER
 
     if EMTEST_BROWSER_AUTO_CONFIG:
@@ -2743,6 +2745,7 @@ class BrowserCore(RunnerCore):
     cls.HARNESS_URL = f'{cls.SERVER_URL}/run_harness'
 
     if not has_browser() or EMTEST_BROWSER == 'node':
+      errlog(f'[Skipping browser launch (EMTEST_BROWSER={EMTEST_BROWSER})]')
       return
 
     cls.harness_in_queue = queue.Queue()
@@ -2750,7 +2753,7 @@ class BrowserCore(RunnerCore):
     cls.harness_server = HttpServerThread(make_test_server(cls.harness_in_queue, cls.harness_out_queue, cls.PORT))
     cls.harness_server.start()
 
-    print(f'[Browser harness server on thread {cls.harness_server.name}]')
+    errlog(f'[Browser harness server on thread {cls.harness_server.name}]')
     cls.browser_open(cls.HARNESS_URL)
 
   @classmethod
