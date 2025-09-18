@@ -27,8 +27,8 @@ jobs:
         name: emscripten-${{ env.VERSION }}
         path: emscripten-${{ env.VERSION }}.tar.bz2
 
-  check-expectations:
-    name: Check Expectations
+  codesize-checks:
+    name: Codesize Checks
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
