@@ -22,13 +22,6 @@ root_dir = os.path.dirname(os.path.dirname(script_dir))
 sys.path.insert(0, root_dir)
 from tools import utils, shared
 
-TESTS = [
-  'other.test_small_js_flags',
-  'other.*code_size*',
-  'other.*codesize*',
-  'skip:other.test_jspi_code_size',
-]
-
 
 def run(cmd, **args):
   return subprocess.check_output(cmd, text=True, cwd=root_dir, **args)
@@ -86,7 +79,7 @@ def main():
       print('tree is not clean')
       return 1
 
-    subprocess.check_call([shared.bat_suffix(os.path.join('test', 'runner')), '--rebaseline', '--browser=0'] + TESTS, cwd=root_dir)
+    subprocess.check_call([shared.bat_suffix(os.path.join('test', 'runner')), '--rebaseline', 'codesize'], cwd=root_dir)
 
   output = run(['git', 'status', '-uno', '--porcelain'])
   filenames = []
