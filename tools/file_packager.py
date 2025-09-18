@@ -91,6 +91,9 @@ from tools.response_file import substitute_response_files
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 
+# chrome limit is 2MB under 2Gi
+PRELOAD_DATA_FILE_LIMIT = 2046 * 1024 * 1024
+
 excluded_patterns: List[str] = []
 new_data_files = []
 walked = []
@@ -544,15 +547,58 @@ def main():  # noqa: C901, PLR0912, PLR0915
   data_files = sorted(data_files, key=lambda file_: file_.dstpath)
   data_files = [file_ for file_ in data_files if not was_seen(file_.dstpath)]
 
-  metadata = {'files': []}
+  if options.obj_output:
+    if not options.has_embedded:
+      diagnostics.error('--obj-output is only applicable when embedding files')
+    generate_object_file(data_files)
 
+  file_chunks = [data_files]
+  if options.has_preloaded and not options.has_embedded:
+    file_chunks = [[]]
+    current_size = 0
+    for file_ in data_files:
+      fsize = os.path.getsize(file_.srcpath)
+      if current_size + fsize <= PRELOAD_DATA_FILE_LIMIT:
+        file_chunks[-1].append(file_)
+        current_size += fsize
+      elif fsize > PRELOAD_DATA_FILE_LIMIT:
+        diagnostics.error('cannot package file %s, which is larger than maximum individual file size limit %d MB.' % (file_.srcpath, (PRELOAD_DATA_FILE_LIMIT / (1024 * 1024))))
+        return 1
+      else:
+        current_size = fsize
+        file_chunks.append([file_])
+
+  if len(file_chunks) > 1:
+    diagnostics.warn('warning: file packager is splitting bundle into %d chunks' % len(file_chunks))
+
+  targets = []
+  if options.obj_output:
+    targets.append(options.obj_output)
+  if options.jsoutput:
+    targets.append(options.jsoutput)
+
+  for counter, data_files in enumerate(file_chunks):
+    metadata = {'files': []}
+
+    def construct_data_file_name(base,ext):
+      return f"{base}{f'_{counter}' if counter else ''}.{ext}"
+    data_file = construct_data_file_name(*data_target.rsplit('.', 1))
+    js_file = None if options.jsoutput is None else construct_data_file_name(*options.jsoutput.rsplit('.', 1))
+    targets.append(data_file)
+    ret = generate_js(data_file, data_files, metadata, js_file)
+    if options.force or len(data_files):
+      if options.jsoutput is None:
+        print(ret)
+      else:
+        # Overwrite the old jsoutput file (if exists) only when its content
+        # differs from the current generated one, otherwise leave the file
+        # untouched preserving its old timestamp
+        targets.append(js_file)
+        if ret != (utils.read_file(js_file) if os.path.isfile(js_file) else ''):
+          utils.write_file(js_file, ret)
+        if options.separate_metadata:
+          utils.write_file(js_file + '.metadata', json.dumps(metadata, separators=(',', ':')))
   if options.depfile:
-    targets = []
-    if options.obj_output:
-      targets.append(options.obj_output)
-    if options.jsoutput:
-      targets.append(data_target)
-      targets.append(options.jsoutput)
     with open(options.depfile, 'w') as f:
       for target in targets:
         if target:
@@ -562,31 +608,6 @@ def main():  # noqa: C901, PLR0912, PLR0915
       for dependency in walked:
         f.write(escape_for_makefile(dependency))
         f.write(' \\\n')
-
-  if options.obj_output:
-    if not options.has_embedded:
-      diagnostics.error('--obj-output is only applicable when embedding files')
-    generate_object_file(data_files)
-    if not options.has_preloaded:
-      return 0
-
-  ret = generate_js(data_target, data_files, metadata)
-
-  if options.force or len(data_files):
-    if options.jsoutput is None:
-      print(ret)
-    else:
-      # Overwrite the old jsoutput file (if exists) only when its content
-      # differs from the current generated one, otherwise leave the file
-      # untouched preserving its old timestamp
-      if os.path.isfile(options.jsoutput):
-        old = utils.read_file(options.jsoutput)
-        if old != ret:
-          utils.write_file(options.jsoutput, ret)
-      else:
-        utils.write_file(options.jsoutput, ret)
-      if options.separate_metadata:
-        utils.write_file(options.jsoutput + '.metadata', json.dumps(metadata, separators=(',', ':')))
 
   return 0
 
@@ -599,7 +620,7 @@ def escape_for_makefile(fpath):
   return fpath.replace('$', '$$').replace('#', '\\#').replace(' ', '\\ ')
 
 
-def generate_js(data_target, data_files, metadata):
+def generate_js(data_target, data_files, metadata, js_file):
   # emcc will add this to the output itself, so it is only needed for
   # standalone calls
   if options.from_emcc:
@@ -663,12 +684,13 @@ def generate_js(data_target, data_files, metadata):
     # XHRs which has overhead.
     start = 0
     with open(data_target, 'wb') as data:
-      for file_ in data_files:
-        file_.data_start = start
-        curr = utils.read_binary(file_.srcpath)
-        file_.data_end = start + len(curr)
-        start += len(curr)
-        data.write(curr)
+      if file_.mode == 'preload':
+        for file_ in data_files:
+          file_.data_start = start
+          curr = utils.read_binary(file_.srcpath)
+          file_.data_end = start + len(curr)
+          start += len(curr)
+          data.write(curr)
 
     if start > 256 * 1024 * 1024:
       diagnostics.warn('file packager is creating an asset bundle of %d MB. '
@@ -1098,7 +1120,7 @@ def generate_js(data_target, data_files, metadata):
     runMetaWithFS();
   } else {
     (Module['preRun'] ??= []).push(runMetaWithFS);
-  }\n''' % {'node_support_code': node_support_code, 'metadata_file': os.path.basename(options.jsoutput + '.metadata')}
+  }\n''' % {'node_support_code': node_support_code, 'metadata_file': os.path.basename(js_file + '.metadata')}
   else:
     ret += '''
     }
