@@ -4342,260 +4342,30 @@ int main() {
     # If we just load same js-file multiple times like following code,
     # these programs (m0,m1,m2) share the same JS object.
     #
-    #   var m0 = require('./proxyfs_test.js');
-    #   var m1 = require('./proxyfs_test.js');
-    #   var m2 = require('./proxyfs_test.js');
+    #   var m0 = require('./test_proxyfs.js');
+    #   var m1 = require('./test_proxyfs.js');
+    #   var m2 = require('./test_proxyfs.js');
     #
     # To separate js-objects for each of them, following 'require' use different js-files.
     #
-    #   var m0 = require('./proxyfs_test.js');
-    #   var m1 = require('./proxyfs_test1.js');
-    #   var m2 = require('./proxyfs_test2.js');
-    #
-    create_file('proxyfs_test_main.js', r'''
-var m0 = require('./proxyfs_test.js');
-var m1 = require('./proxyfs_test1.js');
-var m2 = require('./proxyfs_test2.js');
+    #   var m0 = require('./test_proxyfs.js');
+    #   var m1 = require('./test_proxyfs1.js');
+    #   var m2 = require('./test_proxyfs2.js');
 
-var section;
-function print(str){
-  process.stdout.write(section+":"+str+":");
-}
-
-m0.FS.mkdir('/working');
-m0.FS.mount(m0.PROXYFS,{root:'/',fs:m1.FS},'/working');
-m0.FS.mkdir('/working2');
-m0.FS.mount(m0.PROXYFS,{root:'/',fs:m2.FS},'/working2');
-
-section = "child m1 reads and writes local file.";
-print("m1 read embed");
-m1.ccall('myreade','number',[],[]);
-print("m1 write");console.log("");
-m1.ccall('mywrite0','number',['number'],[1]);
-print("m1 read");
-m1.ccall('myread0','number',[],[]);
-
-section = "child m2 reads and writes local file.";
-print("m2 read embed");
-m2.ccall('myreade','number',[],[]);
-print("m2 write");console.log("");
-m2.ccall('mywrite0','number',['number'],[2]);
-print("m2 read");
-m2.ccall('myread0','number',[],[]);
-
-section = "child m1 reads local file.";
-print("m1 read");
-m1.ccall('myread0','number',[],[]);
-
-section = "parent m0 accesses children's file.";
-print("m0 access existing");
-m0.ccall('myaccess0existing','number',[],[]);
-print("m0 access absent");
-m0.ccall('myaccess0absent','number',[],[]);
-
-section = "child m1 accesses local file.";
-print("m1 access existing");
-m1.ccall('myaccess1existing','number',[],[]);
-print("m1 access absent");
-m1.ccall('myaccess1absent','number',[],[]);
-
-section = "parent m0 reads and writes local and children's file.";
-print("m0 read embed");
-m0.ccall('myreade','number',[],[]);
-print("m0 read m1");
-m0.ccall('myread1','number',[],[]);
-print("m0 read m2");
-m0.ccall('myread2','number',[],[]);
-
-section = "m0,m1 and m2 verify local files.";
-print("m0 write");console.log("");
-m0.ccall('mywrite0','number',['number'],[0]);
-print("m0 read");
-m0.ccall('myread0','number',[],[]);
-print("m1 read");
-m1.ccall('myread0','number',[],[]);
-print("m2 read");
-m2.ccall('myread0','number',[],[]);
-
-print("m0 read embed");
-m0.ccall('myreade','number',[],[]);
-print("m1 read embed");
-m1.ccall('myreade','number',[],[]);
-print("m2 read embed");
-m2.ccall('myreade','number',[],[]);
-
-section = "parent m0 writes and reads children's files.";
-print("m0 write m1");console.log("");
-m0.ccall('mywrite1','number',[],[]);
-print("m0 read m1");
-m0.ccall('myread1','number',[],[]);
-print("m0 write m2");console.log("");
-m0.ccall('mywrite2','number',[],[]);
-print("m0 read m2");
-m0.ccall('myread2','number',[],[]);
-print("m1 read");
-m1.ccall('myread0','number',[],[]);
-print("m2 read");
-m2.ccall('myread0','number',[],[]);
-print("m0 read m0");
-m0.ccall('myread0','number',[],[]);
-
-section = "parent m0 renames a file in child fs.";
-m0.FS.writeFile('/working/test', 'testme');
-m0.FS.rename('/working/test', '/working/test.bak');
-console.log(section + ":renamed file accessible by the new name:" + m0.FS.analyzePath('/working/test.bak').exists);
-console.log(section + ":renamed file accessible by the old name:" + m0.FS.analyzePath('/working/test').exists);
-
-section = "test seek.";
-print("file size");
-m0.ccall('myreadSeekEnd', 'number', [], []);
-''')
-
-    create_file('proxyfs_pre.js', r'''
-Module["noInitialRun"]=true;
-''')
-
+    create_file('proxyfs_pre.js', r'Module["noInitialRun"]=true;')
     create_file('proxyfs_embed.txt', 'test\n')
 
-    create_file('proxyfs_test.c', r'''
-#include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <emscripten/emscripten.h>
-
-EMSCRIPTEN_KEEPALIVE int mywrite1() {
-  FILE* out = fopen("/working/hoge.txt","w");
-  fprintf(out,"test1\n");
-  fclose(out);
-  return 0;
-}
-
-EMSCRIPTEN_KEEPALIVE int myread1() {
-  FILE* in = fopen("/working/hoge.txt","r");
-  char buf[1024];
-  int len;
-  if(in==NULL)
-    printf("open failed\n");
-
-  while(! feof(in)){
-    if(fgets(buf,sizeof(buf),in)==buf){
-      printf("%s",buf);
-    }
-  }
-  fclose(in);
-  return 0;
-}
-
-EMSCRIPTEN_KEEPALIVE int mywrite2() {
-  FILE* out = fopen("/working2/hoge.txt","w");
-  fprintf(out,"test2\n");
-  fclose(out);
-  return 0;
-}
-
-EMSCRIPTEN_KEEPALIVE int myread2() {
-  FILE* in = fopen("/working2/hoge.txt","r");
-  char buf[1024];
-  int len;
-  if(in==NULL)
-    printf("open failed\n");
-
-  while(! feof(in)){
-    if(fgets(buf,sizeof(buf),in)==buf){
-      printf("%s",buf);
-    }
-  }
-  fclose(in);
-  return 0;
-}
-
-EMSCRIPTEN_KEEPALIVE int mywrite0(int i) {
-  FILE* out = fopen("hoge.txt","w");
-  fprintf(out,"test0_%d\n",i);
-  fclose(out);
-  return 0;
-}
-
-EMSCRIPTEN_KEEPALIVE int myread0() {
-  FILE* in = fopen("hoge.txt","r");
-  char buf[1024];
-  int len;
-  if(in==NULL)
-    printf("open failed\n");
-
-  while(! feof(in)){
-    if(fgets(buf,sizeof(buf),in)==buf){
-      printf("%s",buf);
-    }
-  }
-  fclose(in);
-  return 0;
-}
-
-EMSCRIPTEN_KEEPALIVE int myaccess0existing() {
-  int canAccess = access("/working/hoge.txt",O_RDONLY);
-  printf("access=%d\n", canAccess);
-  return 0;
-}
-
-EMSCRIPTEN_KEEPALIVE int myaccess0absent() {
-  int canAccess = access("/working/nosuchfile",O_RDONLY);
-  printf("access=%d\n", canAccess);
-  return 0;
-}
-
-EMSCRIPTEN_KEEPALIVE int myaccess1existing() {
-  int canAccess = access("/hoge.txt",O_RDONLY);
-  printf("access=%d\n", canAccess);
-  return 0;
-}
-
-EMSCRIPTEN_KEEPALIVE int myaccess1absent() {
-  int canAccess = access("/nosuchfile",O_RDONLY);
-  printf("access=%d\n", canAccess);
-  return 0;
-}
-
-EMSCRIPTEN_KEEPALIVE int myreade() {
-  FILE* in = fopen("proxyfs_embed.txt","r");
-  char buf[1024];
-  int len;
-  if(in==NULL)
-    printf("open failed\n");
-
-  while(! feof(in)){
-    if(fgets(buf,sizeof(buf),in)==buf){
-      printf("%s",buf);
-    }
-  }
-  fclose(in);
-  return 0;
-}
-
-EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
-  FILE* in = fopen("/working2/hoge.txt","r");
-
-  fseek(in, 0L, SEEK_END);
-  int fileSize = ftell(in);
-  fseek(in, 0L, SEEK_SET);
-  printf("%d\n", fileSize);
-
-  fclose(in);
-  return 0;
-}
-''')
-
-    self.run_process([EMCC,
-                      '-o', 'proxyfs_test.js', 'proxyfs_test.c',
+    self.run_process([EMCC, '-o', 'test_proxyfs.js', test_file('other/test_proxyfs.c'),
                       '--embed-file', 'proxyfs_embed.txt', '--pre-js', 'proxyfs_pre.js',
                       '-sEXPORTED_RUNTIME_METHODS=ccall,cwrap,FS,PROXYFS',
                       '-lproxyfs.js',
                       '-sWASM_ASYNC_COMPILATION=0'])
     # Following shutil.copy just prevent 'require' of node.js from caching js-object.
     # See https://nodejs.org/api/modules.html
-    shutil.copy('proxyfs_test.js', 'proxyfs_test1.js')
-    shutil.copy('proxyfs_test.js', 'proxyfs_test2.js')
-    out = self.run_js('proxyfs_test_main.js')
+    shutil.copy('test_proxyfs.js', 'test_proxyfs1.js')
+    shutil.copy('test_proxyfs.js', 'test_proxyfs2.js')
+    shutil.copy(test_file('other/test_proxyfs_main.js'), '.')
+    out = self.run_js('test_proxyfs_main.js')
     section = "child m1 reads and writes local file."
     self.assertContained(section + ":m1 read embed:test", out)
     self.assertContained(section + ":m1 write:", out)
