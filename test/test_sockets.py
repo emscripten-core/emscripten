@@ -412,5 +412,4 @@ class sockets64(sockets):
   def setUp(self):
     super().setUp()
     self.set_setting('MEMORY64')
-    self.cflags.append('-Wno-experimental')
     self.require_wasm64()
