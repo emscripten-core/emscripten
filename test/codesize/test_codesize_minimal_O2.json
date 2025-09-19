@@ -1,0 +1,27 @@
+{
+  "a.out.js": 2379,
+  "a.out.js.gz": 1181,
+  "a.out.nodebug.wasm": 280,
+  "a.out.nodebug.wasm.gz": 226,
+  "total": 2659,
+  "total_gz": 1407,
+  "sent": [],
+  "imports": [],
+  "exports": [
+    "__indirect_function_table",
+    "__wasm_call_ctors",
+    "_emscripten_stack_alloc",
+    "_emscripten_stack_restore",
+    "add",
+    "emscripten_stack_get_current",
+    "global_val",
+    "memory"
+  ],
+  "funcs": [
+    "$__wasm_call_ctors",
+    "$_emscripten_stack_alloc",
+    "$_emscripten_stack_restore",
+    "$add",
+    "$emscripten_stack_get_current"
+  ]
+}
