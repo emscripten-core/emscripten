@@ -80,7 +80,18 @@ function run() {
   _main({{{ argc_argv() }}}).then(exitRuntime);
 #elif EXIT_RUNTIME
   // In regular exitRuntime mode, exit with the given return code from main().
-  exitRuntime(_main({{{ argc_argv() }}}));
+  try {
+    exitRuntime(_main({{{ argc_argv() }}}));
+  } catch(e) {
+    if (!e.match(/^exit\(\d+\)$/)) {
+      throw e;
+    }
+#if RUNTIME_DEBUG
+    else {
+      out(`main() called ${e}.`); // e.g. "main() called exit(0)."
+    }
+#endif
+  }
 #else
   // Run a persistent (never-exiting) application starting at main().
   _main({{{ argc_argv() }}});
