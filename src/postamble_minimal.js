@@ -312,14 +312,17 @@ WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProp
 #if PTHREADS || WASM_WORKERS
 }
 
-// When running in a background thread we delay module loading until we have
-{{{ runIfMainThread('loadModule();') }}}
-#endif
-
-#if MODULARIZE
 // The semantics of MODULARIZE and --post-js foo.js scripts require that main()
 // should run before any of the --post-js scripts. Therefore await instantiation
 // here before reaching execution to the --post-js scripts to produce the
 // expected order.
+#if MODULARIZE
+{{{ runIfMainThread('loadModule(); await instantiatePromise;') }}}
+#else
+{{{ runIfMainThread('loadModule();') }}}
+#endif
+
+#elif MODULARIZE
 await instantiatePromise;
+
 #endif
