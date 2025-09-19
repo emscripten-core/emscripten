@@ -167,7 +167,7 @@ def make_test(name, testfile, browser):
             '-Wno-format',
             '-pthread',
             '-sEXIT_RUNTIME',
-            '-sTOTAL_MEMORY=256mb',
+            '-sTOTAL_MEMORY=512mb',
             '-sPTHREAD_POOL_SIZE=40']
     if browser:
       self.btest_exit(testfile, cflags=args)
