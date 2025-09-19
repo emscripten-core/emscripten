@@ -4,10 +4,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-#if LOAD_SOURCE_MAP
-#include "source_map_support.js"
-#endif
-
 // === Auto-generated postamble setup entry stuff ===
 #if HAS_MAIN // Only if user is exporting a C main(), we will generate a run() function that can be used to launch main.
 

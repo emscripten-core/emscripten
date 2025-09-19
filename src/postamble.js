@@ -13,10 +13,6 @@ if (ENVIRONMENT_IS_WORKER) {
 }
 #endif
 
-#if LOAD_SOURCE_MAP
-#include "source_map_support.js"
-#endif
-
 #if DETERMINISTIC
 #include "deterministic.js"
 #endif
