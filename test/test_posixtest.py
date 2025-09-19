@@ -168,7 +168,7 @@ def make_test(name, testfile, browser):
             '-pthread',
             '--profiling-funcs',
             '-sEXIT_RUNTIME',
-            '-sTOTAL_MEMORY=512mb',
+            '-sTOTAL_MEMORY=256mb',
             '-sPTHREAD_POOL_SIZE=40']
     if browser:
       self.btest_exit(testfile, cflags=args)
