@@ -8276,7 +8276,7 @@ addToLibrary({
       '-sTOTAL_STACK=1mb',
       f'-sMALLOC={allocator}',
     ]
-    self.do_other_test('test_malloc_multithreading.cpp', cflags=args)
+    self.do_other_test('test_malloc_multithreading.c', cflags=args)
 
   @parameterized({
     '': ([], 'testbind.js'),
