@@ -164,7 +164,7 @@ var imports = {
 // precompiled WebAssembly Module.
 assert(WebAssembly.instantiateStreaming || Module['wasm'], 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM');
 #endif
-#if AUDIO_WORKLET
+#if AUDIO_WORKLET || MODULARIZE
 instantiatePromise =
 #endif
 (WebAssembly.instantiateStreaming
@@ -175,7 +175,7 @@ instantiatePromise =
   ? WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
   : WebAssembly.instantiate(Module['wasm'], imports)).then((output) => {
 #else
-#if AUDIO_WORKLET
+#if AUDIO_WORKLET || MODULARIZE
 instantiatePromise =
 #endif
 WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports).then((output) => {
@@ -194,7 +194,7 @@ assert(Module['wasm'], 'Must load WebAssembly Module in to variable Module.wasm 
 
 // Add missingProperties supression here because closure compiler doesn't know that
 // WebAssembly.instantiate is polymorphic in its return value.
-#if AUDIO_WORKLET
+#if AUDIO_WORKLET || MODULARIZE
 instantiatePromise =
 #endif
 WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProperties} */ (output) => {
@@ -314,4 +314,11 @@ WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProp
 
 // When running in a background thread we delay module loading until we have
 {{{ runIfMainThread('loadModule();') }}}
+#endif
+
+#if MODULARIZE
+// The semantics of MODULARIZE and --post-js foo.js scripts require that main()
+// should run before any of the --post-js scripts. Therefore await instantiation
+// here before reaching execution to the --post-js scripts.
+await instantiatePromise;
 #endif
