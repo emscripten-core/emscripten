@@ -13,6 +13,9 @@
 // - emscripten_lock_release()
 // - emscripten_get_now()
 
+// Global audio context
+EMSCRIPTEN_WEBAUDIO_T context;
+
 // Internal, found in 'system/lib/pthread/threading_internal.h' (and requires building with -pthread)
 int _emscripten_thread_supports_atomics_wait(void);
 
@@ -48,6 +51,7 @@ double startTime = 0;
 
 void do_exit() {
   emscripten_out("Test success");
+  emscripten_destroy_audio_context(context);
   emscripten_terminate_all_wasm_workers();
   emscripten_force_exit(0);
 }
@@ -186,7 +190,8 @@ int main() {
   startTime = emscripten_get_now();
 
   // Audio processor callback setup
-  EMSCRIPTEN_WEBAUDIO_T context = emscripten_create_audio_context(NULL);
+  context = emscripten_create_audio_context(NULL);
+  assert(context);
   emscripten_start_wasm_audio_worklet_thread_async(context, wasmAudioWorkletStack, sizeof(wasmAudioWorkletStack), WebAudioWorkletThreadInitialized, NULL);
   
   // Worker thread setup
