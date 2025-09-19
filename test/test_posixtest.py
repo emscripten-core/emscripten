@@ -166,6 +166,7 @@ def make_test(name, testfile, browser):
             '-Wno-int-conversion',
             '-Wno-format',
             '-pthread',
+            '--profiling-funcs',
             '-sEXIT_RUNTIME',
             '-sTOTAL_MEMORY=512mb',
             '-sPTHREAD_POOL_SIZE=40']
