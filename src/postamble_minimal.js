@@ -319,6 +319,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProp
 #if MODULARIZE
 // The semantics of MODULARIZE and --post-js foo.js scripts require that main()
 // should run before any of the --post-js scripts. Therefore await instantiation
-// here before reaching execution to the --post-js scripts.
+// here before reaching execution to the --post-js scripts to produce the
+// expected order.
 await instantiatePromise;
 #endif
