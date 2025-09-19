@@ -694,6 +694,8 @@ jobs:
             wasmfs.test_fs_llseek_rawfs
             wasmfs.test_freetype
             minimal0.test_utf
+            omitexports0.test_asyncify_longjmp
+            strict.test_no_declare_asm_module_exports
             "
   test-modularize-instance:
     executor: focal
