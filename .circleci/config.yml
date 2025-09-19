@@ -707,6 +707,7 @@ jobs:
             wasmfs.test_freetype
             minimal0.test_utf
             omitexports0.test_asyncify_longjmp
+            omitexports0.test_emscripten_api
             strict.test_no_declare_asm_module_exports
             "
   test-modularize-instance:
