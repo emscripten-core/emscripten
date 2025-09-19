@@ -166,6 +166,8 @@ def make_test(name, testfile, browser):
             '-Wno-int-conversion',
             '-Wno-format',
             '-pthread',
+            # Make sure all tests have callstacks to improve debuggability
+            # of log messages on CI runs.
             '--profiling-funcs',
             '-sEXIT_RUNTIME',
             '-sTOTAL_MEMORY=256mb',
