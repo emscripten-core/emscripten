@@ -87,9 +87,7 @@ function run() {
       throw e;
     }
 #if RUNTIME_DEBUG
-    else {
-      out(`main() called ${e}.`); // e.g. "main() called exit(0)."
-    }
+    out(`main() called ${e}.`); // e.g. "main() called exit(0)."
 #endif
   }
 #else
