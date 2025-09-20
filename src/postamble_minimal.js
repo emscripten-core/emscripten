@@ -276,16 +276,33 @@ WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProp
 
   initRuntime(wasmExports);
 
-#if PTHREADS && PTHREAD_POOL_SIZE
-  var workersReady = PThread.loadWasmModuleToAllWorkers();
-#if PTHREAD_POOL_DELAY_LOAD
-  ready();
-#else
-  workersReady.then(ready);
+{{{ function waitOnStartupPromisesAndEmitReady() {
+  var promises = [];
+  if (PTHREADS && PTHREAD_POOL_SIZE) {
+    promises.push('PThread.loadWasmModuleToAllWorkers()');
+  }
+  if (LOAD_SOURCE_MAP) {
+    promises.push('getSourceMapAsync().then(json=>{receiveSourceMapJSON(json)})');
+  }
+  if (promises.length == 0) {
+    return 'ready();'
+  } else if (promises.length == 1) {
+    return `${promises[0]}.then(ready);`;
+  } else {
+    return `Promise.all(${', '.join(promises)}).then(ready);`
+  }
+}
+null;
+}}}
+
+#if PTHREADS && PTHREAD_POOL_SIZE && PTHREAD_POOL_DELAY_LOAD
+  // In PTHREAD_POOL_DELAY_LOAD mode, we kick off loading Wasm Module to all
+  // PThread Workers, but do not wait on it.
+  PThread.loadWasmModuleToAllWorkers();
 #endif
-#else
-  ready();
-#endif
+
+{{{ waitOnStartupPromisesAndEmitReady(); }}}
+
 }
 
 #if WASM == 2

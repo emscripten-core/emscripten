@@ -8,13 +8,9 @@
 
 #if PROXY_TO_WORKER
 if (ENVIRONMENT_IS_WORKER) {
-#include "webGLWorker.js'
+#include "webGLWorker.js"
 #include "proxyWorker.js"
 }
-#endif
-
-#if LOAD_SOURCE_MAP
-#include "source_map_support.js"
 #endif
 
 #if DETERMINISTIC
