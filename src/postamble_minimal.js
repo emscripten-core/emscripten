@@ -136,10 +136,19 @@ Module['wasm'] = base64Decode('<<< WASM_BINARY_DATA >>>');
 var wasmExports;
 #endif
 
+#if AUDIO_WORKLET || MODULARIZE
+var instantiatePromise;
+#endif
+
 #if PTHREADS || WASM_WORKERS
 var wasmModule;
 
+#if MODULARIZE
+async function loadModule() {
+#else
 function loadModule() {
+#endif
+
   assignWasmImports();
 #endif
 
@@ -310,19 +319,19 @@ WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProp
 );
 
 #if PTHREADS || WASM_WORKERS
+
+#if MODULARIZE
+  await instantiatePromise;
+#endif
+
 }
 
 // The semantics of MODULARIZE and --post-js foo.js scripts require that main()
 // should run before any of the --post-js scripts. Therefore await instantiation
 // here before reaching execution to the --post-js scripts to produce the
 // expected order.
-#if MODULARIZE
-{{{ runIfMainThread('loadModule(); await instantiatePromise;') }}}
-#else
 {{{ runIfMainThread('loadModule();') }}}
-#endif
 
-#elif MODULARIZE
+#elif MODULARIZE && !PTHREADS && !WASM_WORKERS
 await instantiatePromise;
-
 #endif
