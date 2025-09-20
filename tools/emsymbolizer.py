@@ -178,7 +178,7 @@ class WasmSourceMap:
       self.offsets.append(offset)
     self.offsets.sort()
 
-  def find_offset(self, offset):
+  def find_offset(self, offset, lower_bound=None):
     # Find the largest mapped offset <= the search offset
     lo = 0
     hi = len(self.offsets)
@@ -189,11 +189,22 @@ class WasmSourceMap:
         hi = mid
       else:
         lo = mid + 1
-    return self.offsets[lo - 1]
+    if lo == 0:
+      return None
+    # If lower bound is given, return the offset only if the offset is equal to
+    # or greather than the lower bound
+    if lower_bound:
+      if self.offsets[lo - 1] >= lower_bound:
+        return self.offsets[lo - 1]
+      else:
+        return None
+    else:
+      return self.offsets[lo - 1]
 
-  def lookup(self, offset):
-    nearest = self.find_offset(offset)
-    assert nearest in self.mappings, 'Sourcemap has an offset with no mapping'
+  def lookup(self, offset, lower_bound=None):
+    nearest = self.find_offset(offset, lower_bound)
+    if not nearest:
+      return None
     info = self.mappings[nearest]
     return LocationInfo(
         self.sources[info.source] if info.source is not None else None,
@@ -206,12 +217,8 @@ def symbolize_address_sourcemap(module, address, force_file):
   URL = force_file
   if not URL:
     # If a sourcemap file is not forced, read it from the wasm module
-    section = get_sourceMappingURL_section(module)
-    assert section
-    module.seek(section.offset)
-    assert module.read_string() == 'sourceMappingURL'
     # TODO: support stripping/replacing a prefix from the URL
-    URL = module.read_string()
+    URL = module.get_sourceMappingURL()
 
   if shared.DEBUG:
     print(f'Source Mapping URL: {URL}')

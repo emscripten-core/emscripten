@@ -43,6 +43,7 @@ emnm
 emstrip
 emsymbolizer
 emscan-deps
+empath-split
 tools/file_packager
 tools/webidl_binder
 test/runner
@@ -56,6 +57,7 @@ entry_remap = {
   'emdwp': 'tools/emdwp',
   'emnm': 'tools/emnm',
   'emsymbolizer': 'tools/emsymbolizer',
+  'empath-split': 'tools/empath-split',
 }
 
 
