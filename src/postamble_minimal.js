@@ -83,12 +83,19 @@ function run() {
   try {
     exitRuntime(_main({{{ argc_argv() }}}));
   } catch(e) {
-    if (!e.match(/^exit\(\d+\)$/)) {
+    var exitCode = e.match(/^exit\(\d+\)$/);
+    if (exitCode) {
       throw e;
     }
 #if RUNTIME_DEBUG
     dbg(`main() called ${e}.`); // e.g. "main() called exit(0)."
 #endif
+    // Report to Module that the program exited. TODO: Find a way to not emit
+    // this code unconditionally, as it may not be needed by the user. In
+    // MINIMAL_RUNTIME, the use of Module object is discouraged, since it leads
+    // to non-DCEable patterns of code. This call is present here mainly for
+    // Emscripten test harness purposes.
+    Module['onExit']?.(exitCode[1]);
   }
 #else
   // Run a persistent (never-exiting) application starting at main().
