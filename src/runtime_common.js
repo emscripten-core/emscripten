@@ -12,10 +12,6 @@
 #include "runtime_safe_heap.js"
 #endif
 
-#if LOAD_SOURCE_MAP
-#include "source_map_support.js"
-#endif
-
 #if SHARED_MEMORY && ALLOW_MEMORY_GROWTH && !GROWABLE_ARRAYBUFFERS
 // Support for growable heap + pthreads, where the buffer may change, so JS views
 // must be updated.
