@@ -894,6 +894,7 @@ window.close = () => {
     self.reftest('test_sdl_canvas_proxy.c', 'test_sdl_canvas_proxy.png', cflags=['--proxy-to-worker', '--preload-file', 'data.txt', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
+  @flaky('https://github.com/emscripten-core/emscripten/issues/25329')
   def test_glgears_proxy_jstarget(self):
     # test .js target with --proxy-worker; emits 2 js files, client and worker
     self.compile_btest('hello_world_gles_proxy.c', ['-o', 'test.js', '--proxy-to-worker', '-sGL_TESTING', '-lGL', '-lglut'])
@@ -1727,6 +1728,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
     'full': ('hello_world_gles_full.c',),
     'full_944': ('hello_world_gles_full_944.c',),
   })
+  @flaky('https://github.com/emscripten-core/emscripten/issues/25329')
   def test_glgears_animation(self, filename):
     shutil.copy(test_file('browser/fake_events.js'), '.')
     args = ['-o', 'something.html',
@@ -1742,6 +1744,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
     self.btest_exit('full_es2_sdlproc.c', cflags=['-sGL_TESTING', '-DHAVE_BUILTIN_SINCOS', '-sFULL_ES2', '-lGL', '-lSDL', '-lglut', '-sGL_ENABLE_GET_PROC_ADDRESS', '-Wno-int-conversion'])
 
   @requires_graphics_hardware
+  @flaky('https://github.com/emscripten-core/emscripten/issues/25329')
   def test_glgears_deriv(self):
     self.reftest('hello_world_gles_deriv.c', 'gears.png', reference_slack=2,
                  cflags=['-DHAVE_BUILTIN_SINCOS', '-lGL', '-lglut'])
