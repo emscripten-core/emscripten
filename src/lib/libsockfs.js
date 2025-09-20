@@ -748,10 +748,10 @@ addToLibrary({
         if (event === 'error') {
           withStackSave(() => {
             var msg = stringToUTF8OnStack(data[2]);
-            {{{ makeDynCall('viiii', 'callback') }}}(data[0], data[1], msg, userData);
+            {{{ makeDynCall('viipp', 'callback') }}}(data[0], data[1], msg, userData);
           });
         } else {
-          {{{ makeDynCall('vii', 'callback') }}}(data, userData);
+          {{{ makeDynCall('vip', 'callback') }}}(data, userData);
         }
       });
     };
