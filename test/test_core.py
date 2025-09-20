@@ -6409,6 +6409,9 @@ PORT: 3979
       self.assertContained('UnicodeDecodeError', err)
 
     self.cflags += ['-sMODULARIZE', '--js-library', test_file('unicode_library.js'), '--extern-post-js', test_file('modularize_post_js.js'), '--post-js', test_file('unicode_postjs.js')]
+    # In addition to verifying that --post-js files can contain UTF8 characters,
+    # this test verifies a specific semantic that in -sMODULARIZE mode, the
+    # content in --post-js files should be executed only after main() runs.
     self.do_run_in_out_file_test('test_unicode_js_library.c')
 
   def test_funcptr_import_type(self):
