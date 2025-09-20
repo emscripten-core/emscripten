@@ -436,7 +436,7 @@ class benchmark(common.RunnerCore):
                    emcc_args=None, native_args=None, shared_args=None,
                    force_c=False, reps=TEST_REPS, native_exec=None,
                    output_parser=None, args_processor=None, lib_builder=None,
-                   skip_benchmarkers=[]):
+                   skip_benchmarkers=None):
     if not benchmarkers:
       raise Exception('error, no benchmarkers')
 
@@ -452,7 +452,7 @@ class benchmark(common.RunnerCore):
     print()
     baseline = None
     for b in benchmarkers:
-      if b.name in skip_benchmarkers:
+      if skip_benchmarkers and b.name in skip_benchmarkers:
         continue
       if not b.run:
         # If we won't run the benchmark, we don't need repetitions.
