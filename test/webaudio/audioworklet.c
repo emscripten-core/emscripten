@@ -20,6 +20,8 @@
      begin to fire.
 */
 
+EMSCRIPTEN_WEBAUDIO_T context;
+
 // TEST_AND_EXIT is defined when running in the Emscripten test harness. You can
 // strip these out in your own project (otherwise playback will end quickly).
 #ifdef TEST_AND_EXIT
@@ -70,6 +72,7 @@ bool main_thread_tls_access(double time, void *userData) {
   testTlsVariable = (int)time;
   // Exit to the test harness after enough calls to ProcessAudio()
   if (lastTlsVariableValueInAudioThread >= 100) {
+    emscripten_destroy_audio_context(context);
     emscripten_force_exit(0);
   }
   return true;
@@ -128,7 +131,7 @@ int main() {
   assert(!emscripten_current_thread_is_audio_worklet());
 
   // Create an audio context
-  EMSCRIPTEN_WEBAUDIO_T context = emscripten_create_audio_context(0 /* use default constructor options */);
+  context = emscripten_create_audio_context(0 /* use default constructor options */);
 
   // and kick off Audio Worklet scope initialization, which shares the Wasm
   // Module and Memory to the AudioWorklet scope and initializes its stack.
