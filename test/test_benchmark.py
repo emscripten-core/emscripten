@@ -436,7 +436,7 @@ class benchmark(common.RunnerCore):
                    emcc_args=None, native_args=None, shared_args=None,
                    force_c=False, reps=TEST_REPS, native_exec=None,
                    output_parser=None, args_processor=None, lib_builder=None,
-                   skip_native=False):
+                   skip_benchmarkers=None):
     if not benchmarkers:
       raise Exception('error, no benchmarkers')
 
@@ -452,7 +452,7 @@ class benchmark(common.RunnerCore):
     print()
     baseline = None
     for b in benchmarkers:
-      if skip_native and isinstance(b, NativeBenchmarker):
+      if skip_benchmarkers and b.name in skip_benchmarkers:
         continue
       if not b.run:
         # If we won't run the benchmark, we don't need repetitions.
@@ -1113,9 +1113,11 @@ class benchmark(common.RunnerCore):
     ''' % DEFAULT_ARG)
 
     def lib_builder(name, native, env_init):  # noqa
+      if '-sMEMORY64' in env_init['CFLAGS']:
+        env_init['CPPFLAGS'] = '-sMEMORY64'
+        env_init['LDFLAGS'] = '-sMEMORY64'
       return self.get_poppler_library(env_init=env_init)
 
-    # TODO: Fix poppler native build and remove skip_native=True
     self.do_benchmark('poppler', '', 'hashed printout',
                       shared_args=['-I' + test_file('poppler/include'),
                                    '-I' + test_file('freetype/include')],
@@ -1123,4 +1125,7 @@ class benchmark(common.RunnerCore):
                                  test_file('poppler/emscripten_html5.pdf') + '@input.pdf',
                                  '-sERROR_ON_UNDEFINED_SYMBOLS=0',
                                  '-sMINIMAL_RUNTIME=0'], # not minimal because of files
-                      lib_builder=lib_builder, skip_native=True)
+                      lib_builder=lib_builder,
+                      # TODO: Fix poppler native and freetype MEMORY64 builds to be able
+                      # to remove these skips
+                      skip_benchmarkers=['clang', 'gcc', 'v8-64', 'node-64'])
