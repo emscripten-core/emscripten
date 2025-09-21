@@ -2603,14 +2603,21 @@ class FileLock:
 def move_browser_window(pid, x, y):
   """Utility function to move the top-level window owned by given process to
   (x,y) coordinate. Used to ensure each browser window has some visible area."""
+  import win32con
   import win32gui
   import win32process
 
   def enum_windows_callback(hwnd, _unused):
     _, win_pid = win32process.GetWindowThreadProcessId(hwnd)
     if win_pid == pid and win32gui.IsWindowVisible(hwnd):
-      rect = win32gui.GetWindowRect(hwnd)
-      win32gui.MoveWindow(hwnd, x, y, rect[2] - rect[0], rect[3] - rect[1], True)
+      # If the browser window is maximized, it won't react to MoveWindow, so
+      # un-maximize the window first to show it in windowed mode.
+      if win32gui.GetWindowPlacement(hwnd)[1] == win32con.SW_SHOWMAXIMIZED:
+        win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+
+      # Then cascade the window, but also resize the window size to cover a
+      # smaller area of the desktop, in case the original size was full screen.
+      win32gui.MoveWindow(hwnd, x, y, 800, 600, True)
     return True
 
   win32gui.EnumWindows(enum_windows_callback, None)
