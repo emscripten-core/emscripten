@@ -263,7 +263,7 @@ port.onmessage = async (msg) => {
     // Note: we convert the pointer arg manually here since the call site
     // ($_EmAudioDispatchProcessorCallback) is used with various signatures
     // and we do not know the types in advance.
-    messagePort.postMessage({'_wsc': d.callback, args: [d.contextHandle, 1/*EM_TRUE*/, {{{ to64('d.userData') }}}] });
+    port.postMessage({'_wsc': d.callback, args: [d.contextHandle, 1/*EM_TRUE*/, {{{ to64('d.userData') }}}] });
   } else if (d['_wsc']) {
     getWasmTableEntry(d['_wsc'])(...d.args);
   };
