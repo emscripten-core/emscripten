@@ -233,67 +233,40 @@ function createWasmAudioWorkletProcessor(audioParams) {
   return WasmAudioWorkletProcessor;
 }
 
-var messagePort;
-
-// Specify a worklet processor that will be used to receive messages to this
-// AudioWorkletGlobalScope.  We never connect this initial AudioWorkletProcessor
-// to the audio graph to do any audio processing.
-class BootstrapMessages extends AudioWorkletProcessor {
-  constructor(arg) {
-    super();
-    startWasmWorker(arg.processorOptions)
+port.onmessage = async (msg) => {
+#if MINIMAL_RUNTIME
+  // Wait for the module instantiation before processing messages.
+  await instantiatePromise;
+#endif
+  let d = msg.data;
+  if (d['_boot']) {
+    startWasmWorker(d);
 #if WEBAUDIO_DEBUG
     console.log('AudioWorklet global scope looks like this:');
     console.dir(globalThis);
 #endif
-    // Listen to messages from the main thread. These messages will ask this
-    // scope to create the real AudioWorkletProcessors that call out to Wasm to
-    // do audio processing.
-    messagePort = this.port;
-    /** @suppress {checkTypes} */
-    messagePort.onmessage = async (msg) => {
-#if MINIMAL_RUNTIME
-      // Wait for the module instantiation before processing messages.
-      await instantiatePromise;
-#endif
-      let d = msg.data;
-      if (d['_wpn']) {
-        // '_wpn' is short for 'Worklet Processor Node', using an identifier
-        // that will never conflict with user messages
-        // Register a real AudioWorkletProcessor that will actually do audio processing.
-        registerProcessor(d['_wpn'], createWasmAudioWorkletProcessor(d.audioParams));
+  } else if (d['_wpn']) {
+    // '_wpn' is short for 'Worklet Processor Node', using an identifier
+    // that will never conflict with user messages
+    // Register a real AudioWorkletProcessor that will actually do audio processing.
+    registerProcessor(d['_wpn'], createWasmAudioWorkletProcessor(d.audioParams));
 #if WEBAUDIO_DEBUG
-        console.log(`Registered a new WasmAudioWorkletProcessor "${d['_wpn']}" with AudioParams: ${d.audioParams}`);
+    console.log(`Registered a new WasmAudioWorkletProcessor "${d['_wpn']}" with AudioParams: ${d.audioParams}`);
 #endif
-        // Post a Wasm Call message back telling that we have now registered the
-        // AudioWorkletProcessor, and should trigger the user onSuccess callback
-        // of the emscripten_create_wasm_audio_worklet_processor_async() call.
-        //
-        // '_wsc' is short for 'wasm call', using an identifier that will never
-        // conflict with user messages.
-        //
-        // Note: we convert the pointer arg manually here since the call site
-        // ($_EmAudioDispatchProcessorCallback) is used with various signatures
-        // and we do not know the types in advance.
-        messagePort.postMessage({'_wsc': d.callback, args: [d.contextHandle, 1/*EM_TRUE*/, {{{ to64('d.userData') }}}] });
-      } else if (d['_wsc']) {
-        getWasmTableEntry(d['_wsc'])(...d.args);
-      };
-    }
-  }
-
-  // No-op, not doing audio processing in this processor. It is just for
-  // receiving bootstrap messages.  However browsers require it to still be
-  // present. It should never be called because we never add a node to the graph
-  // with this processor, although it does look like Chrome does still call this
-  // function.
-  process() {
-    // keep this function a no-op. Chrome redundantly wants to call this even
-    // though this processor is never added to the graph.
-  }
-};
-
-// Register the dummy processor that will just receive messages.
-registerProcessor('em-bootstrap', BootstrapMessages);
+    // Post a Wasm Call message back telling that we have now registered the
+    // AudioWorkletProcessor, and should trigger the user onSuccess callback
+    // of the emscripten_create_wasm_audio_worklet_processor_async() call.
+    //
+    // '_wsc' is short for 'wasm call', using an identifier that will never
+    // conflict with user messages.
+    //
+    // Note: we convert the pointer arg manually here since the call site
+    // ($_EmAudioDispatchProcessorCallback) is used with various signatures
+    // and we do not know the types in advance.
+    messagePort.postMessage({'_wsc': d.callback, args: [d.contextHandle, 1/*EM_TRUE*/, {{{ to64('d.userData') }}}] });
+  } else if (d['_wsc']) {
+    getWasmTableEntry(d['_wsc'])(...d.args);
+  };
+}
 
 } // ENVIRONMENT_IS_AUDIO_WORKLET
