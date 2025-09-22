@@ -12242,6 +12242,7 @@ int main(void) {
   def test_webgpu_compiletest(self, args):
     self.run_process([EMXX, test_file('webgpu_jsvalstore.cpp'), '-Wno-error=deprecated', '-sUSE_WEBGPU', '-sASYNCIFY'] + args)
 
+  @flaky('https://github.com/emscripten-core/emscripten/issues/25343')
   @also_with_wasm64
   @parameterized({
     '': ([],),
