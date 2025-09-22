@@ -165,13 +165,6 @@ def create_reproduce_file(name, args):
       reproduce_file.add(rsp_name, os.path.join(root, 'response.txt'))
 
 
-def cxx_to_c_compiler(cxx):
-  # Convert C++ compiler name into C compiler name
-  dirname, basename = os.path.split(cxx)
-  basename = basename.replace('clang++', 'clang').replace('g++', 'gcc').replace('em++', 'emcc')
-  return os.path.join(dirname, basename)
-
-
 def get_library_basename(filename):
   """Similar to get_file_suffix this strips off all numeric suffixes and then
   then final non-numeric one.  For example for 'libz.so.1.2.8' returns 'libz'"""
