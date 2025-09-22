@@ -165,17 +165,6 @@ def create_reproduce_file(name, args):
       reproduce_file.add(rsp_name, os.path.join(root, 'response.txt'))
 
 
-def get_library_basename(filename):
-  """Similar to get_file_suffix this strips off all numeric suffixes and then
-  then final non-numeric one.  For example for 'libz.so.1.2.8' returns 'libz'"""
-  filename = os.path.basename(filename)
-  while filename:
-    filename, suffix = os.path.splitext(filename)
-    # Keep stipping suffixes until we strip a non-numeric one.
-    if not suffix[1:].isdigit():
-      return filename
-
-
 #
 # Main run() function
 #

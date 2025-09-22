@@ -3775,11 +3775,6 @@ ok
   @no_js_math('JS_MATH is not compatible with MAIN_MODULE')
   def test_dlfcn_handle_alloc(self):
     # verify that dlopen does not allocate already used handles
-    dirname = self.get_dir()
-
-    def indir(name):
-      return os.path.join(dirname, name)
-
     create_file('a.cpp', r'''
       #include <stdio.h>
 

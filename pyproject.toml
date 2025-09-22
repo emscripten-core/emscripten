@@ -110,4 +110,4 @@ module = ["psutil", "win32con", "win32gui", "win32process"]
 ignore_missing_imports = true
 
 [tool.deadcode]
-exclude = ["out", "third_party", "test/third_party"]
+exclude = ["out", "third_party", "test/third_party", "node_modules", "site/source/_themes", "site/source/conf.py"]

@@ -414,17 +414,6 @@ def requires_wasm64(func):
   return decorated
 
 
-def requires_wasm_legacy_eh(func):
-  assert callable(func)
-
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-    self.require_wasm_legacy_eh()
-    return func(self, *args, **kwargs)
-
-  return decorated
-
-
 def requires_wasm_eh(func):
   assert callable(func)
 
@@ -630,31 +619,6 @@ def also_with_noderawfs(func):
   parameterize(metafunc, {'': (False,),
                           'rawfs': (True,)})
   return metafunc
-
-
-# Decorator version of env_modify
-def also_with_env_modify(name_updates_mapping):
-
-  def decorated(f):
-    @wraps(f)
-    def metafunc(self, updates, *args, **kwargs):
-      if DEBUG:
-        print('parameterize:env_modify=%s' % (updates))
-      if updates:
-        with env_modify(updates):
-          return f(self, *args, **kwargs)
-      else:
-        return f(self, *args, **kwargs)
-
-    params = {'': (None,)}
-    for name, updates in name_updates_mapping.items():
-      params[name] = (updates,)
-
-    parameterize(metafunc, params)
-
-    return metafunc
-
-  return decorated
 
 
 def also_with_minimal_runtime(f):
@@ -1637,32 +1601,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           return src[start:t + 1]
       t += 1
       assert t < len(src)
-
-  def count_funcs(self, javascript_file):
-    num_funcs = 0
-    start_tok = "// EMSCRIPTEN_START_FUNCS"
-    end_tok = "// EMSCRIPTEN_END_FUNCS"
-    start_off = 0
-    end_off = 0
-
-    js = read_file(javascript_file)
-    blob = "".join(js.splitlines())
-
-    start_off = blob.find(start_tok) + len(start_tok)
-    end_off = blob.find(end_tok)
-    asm_chunk = blob[start_off:end_off]
-    num_funcs = asm_chunk.count('function ')
-    return num_funcs
-
-  def count_wasm_contents(self, wasm_binary, what):
-    out = self.run_process([os.path.join(building.get_binaryen_bin(), 'wasm-opt'), wasm_binary, '--metrics'], stdout=PIPE).stdout
-    # output is something like
-    # [?]        : 125
-    for line in out.splitlines():
-      if '[' + what + ']' in line:
-        ret = line.split(':')[1].strip()
-        return int(ret)
-    self.fail('Failed to find [%s] in wasm-opt output' % what)
 
   def get_wasm_text(self, wasm_binary):
     return self.run_process([WASM_DIS, wasm_binary], stdout=PIPE).stdout

@@ -51,7 +51,6 @@ from tools import webassembly
 from tools.settings import settings
 from tools.system_libs import DETERMINISTIC_PREFIX
 
-scons_path = shutil.which('scons')
 emmake = shared.bat_suffix(path_from_root('emmake'))
 emconfig = shared.bat_suffix(path_from_root('em-config'))
 emsize = shared.bat_suffix(path_from_root('emsize'))
@@ -59,7 +58,6 @@ empath_split = shared.bat_suffix(path_from_root('empath-split'))
 emprofile = shared.bat_suffix(path_from_root('emprofile'))
 emstrip = shared.bat_suffix(path_from_root('emstrip'))
 emsymbolizer = shared.bat_suffix(path_from_root('emsymbolizer'))
-wasm_opt = Path(building.get_binaryen_bin(), 'wasm-opt')
 
 
 def is_bitcode(filename):
@@ -3055,9 +3053,6 @@ More info: https://emscripten.org
 
   def verify_dwarf_exists(self, wasm_file):
     self.verify_dwarf(wasm_file, self.assertIn)
-
-  def verify_dwarf_does_not_exist(self, wasm_file):
-    self.verify_dwarf(wasm_file, self.assertNotIn)
 
   # Verify if the given file name contains a source map
   def verify_source_map_exists(self, map_file):
