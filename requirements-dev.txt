@@ -10,6 +10,7 @@ psutil==7.0.0
 ruff==0.11.7
 types-requests==2.32.0.20241016
 unittest-xml-reporting==3.2.0
+deadcode==2.3.1
 
 # This version is mentioned in `site/source/docs/site/about.rst`.
 # Please keep them in sync.
