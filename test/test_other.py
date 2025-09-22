@@ -9961,7 +9961,7 @@ int main() {
     # on --sources and --load-prefix options).
     shutil.copy(test_file('other/wasm_sourcemap/no_main.c'), '.')
     DW_AT_decl_file = '/emscripten/test/other/wasm_sourcemap/no_main.c'
-    wasm_map_cmd = [PYTHON, path_from_root('tools/wasm-sourcemap.py'),
+    wasm_map_cmd = [shared.WASM_SOURCEMAP,
                     *sources, *prefix, *load_prefix,
                     '--dwarfdump-output',
                     test_file('other/wasm_sourcemap/foo.wasm.dump'),
@@ -10027,7 +10027,7 @@ int main() {
     self.assertRegex(output, r'"mappings":\s*"(?:[A-Za-z0-9+\/]+[,;]?)+"')
 
   def test_wasm_sourcemap_dead(self):
-    wasm_map_cmd = [PYTHON, path_from_root('tools/wasm-sourcemap.py'),
+    wasm_map_cmd = [shared.WASM_SOURCEMAP,
                     '--dwarfdump-output',
                     test_file('other/wasm_sourcemap_dead/t.wasm.dump'),
                     '-o', 'a.out.wasm.map',
