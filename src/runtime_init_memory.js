@@ -30,7 +30,11 @@ function initMemory() {
   } else
 #endif
   {
+#if MINIMAL_RUNTIME
+    var INITIAL_MEMORY = {{{ INITIAL_MEMORY }}};
+#else
     var INITIAL_MEMORY = {{{ makeModuleReceiveExpr('INITIAL_MEMORY', INITIAL_MEMORY) }}};
+#endif
 
 #if ASSERTIONS
     assert(INITIAL_MEMORY >= {{{STACK_SIZE}}}, 'INITIAL_MEMORY should be larger than STACK_SIZE, was ' + INITIAL_MEMORY + '! (STACK_SIZE=' + {{{STACK_SIZE}}} + ')');
