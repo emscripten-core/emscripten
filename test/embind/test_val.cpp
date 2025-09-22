@@ -709,6 +709,15 @@ int main() {
   val::global().set("a", val::null());
   delete dummy;
 
+  test("val as<> with reference");
+  EM_ASM(
+    globalThis.staticDummy =  Module.makeDummy();
+    globalThis.c = function(obj) {
+      return globalThis.staticDummy;
+    };
+  );
+  Dummy& staticDummy = val::global("c")().as<Dummy&>();
+
   printf("end\n");
   return 0;
 }

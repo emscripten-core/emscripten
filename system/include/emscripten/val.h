@@ -592,9 +592,6 @@ private:
 
   template<internal::EM_INVOKER_KIND Kind, typename Policy, typename Ret, typename... Args>
   static Ret internalCallWithPolicy(EM_VAL handle, const char *methodName, Args&&... args) {
-    static_assert(!std::is_lvalue_reference<Ret>::value,
-                  "Cannot create a lvalue reference out of a JS value.");
-
     using namespace internal;
 
     using RetWire = BindingType<Ret>::WireType;
