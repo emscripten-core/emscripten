@@ -229,6 +229,7 @@ var registerProcessor = function(name, obj) {};
 var currentFrame;
 var currentTime;
 var sampleRate;
+var port;
 
 /*
  * Avoid closure minifying anything to "id". See #13965
