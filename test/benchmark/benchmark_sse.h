@@ -33,7 +33,7 @@ float hmax(__m128 m) {
   return fmax(fmax(f[0], f[1]), fmax(f[2], f[3]));
 }
 
-#include "../tick.h"
+#include "tick.h"
 
 const int N = 8*1024*1024;
 
