@@ -119,8 +119,8 @@ def check_js_engines():
 def get_and_import_modules():
   modules = []
   for filename in glob.glob(os.path.join(common.TEST_ROOT, 'test*.py')):
-    module_dir, module_file = os.path.split(filename)
-    module_name, module_ext = os.path.splitext(module_file)
+    module_file = os.path.basename(filename)
+    module_name = os.path.splitext(module_file)[0]
     __import__(module_name)
     modules.append(sys.modules[module_name])
   return modules

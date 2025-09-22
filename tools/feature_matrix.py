@@ -42,7 +42,6 @@ class Feature(IntEnum):
   MEMORY64 = auto()
 
 
-default_features = {Feature.SIGN_EXT, Feature.MUTABLE_GLOBALS}
 disable_override_features = set()
 enable_override_features = set()
 

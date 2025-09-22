@@ -577,8 +577,9 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
 
 # Processes HTTP request back to the browser.
 class HTTPHandler(SimpleHTTPRequestHandler):
+  protocol_version = 'HTTP/1.1'
+
   def send_head(self):
-    self.protocol_version = 'HTTP/1.1'
     global page_last_served_time
     path = self.translate_path(self.path)
     f = None
@@ -669,7 +670,6 @@ class HTTPHandler(SimpleHTTPRequestHandler):
       sys.stderr.write(msg)
 
   def do_POST(self):
-    self.protocol_version = 'HTTP/1.1'
     global page_exit_code, have_received_messages
 
     (_, _, path, query, _) = urlsplit(self.path)
