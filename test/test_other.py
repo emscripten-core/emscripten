@@ -4308,260 +4308,30 @@ int main() {
     # If we just load same js-file multiple times like following code,
     # these programs (m0,m1,m2) share the same JS object.
     #
-    #   var m0 = require('./proxyfs_test.js');
-    #   var m1 = require('./proxyfs_test.js');
-    #   var m2 = require('./proxyfs_test.js');
+    #   var m0 = require('./test_proxyfs.js');
+    #   var m1 = require('./test_proxyfs.js');
+    #   var m2 = require('./test_proxyfs.js');
     #
     # To separate js-objects for each of them, following 'require' use different js-files.
     #
-    #   var m0 = require('./proxyfs_test.js');
-    #   var m1 = require('./proxyfs_test1.js');
-    #   var m2 = require('./proxyfs_test2.js');
-    #
-    create_file('proxyfs_test_main.js', r'''
-var m0 = require('./proxyfs_test.js');
-var m1 = require('./proxyfs_test1.js');
-var m2 = require('./proxyfs_test2.js');
+    #   var m0 = require('./test_proxyfs.js');
+    #   var m1 = require('./test_proxyfs1.js');
+    #   var m2 = require('./test_proxyfs2.js');
 
-var section;
-function print(str){
-  process.stdout.write(section+":"+str+":");
-}
-
-m0.FS.mkdir('/working');
-m0.FS.mount(m0.PROXYFS,{root:'/',fs:m1.FS},'/working');
-m0.FS.mkdir('/working2');
-m0.FS.mount(m0.PROXYFS,{root:'/',fs:m2.FS},'/working2');
-
-section = "child m1 reads and writes local file.";
-print("m1 read embed");
-m1.ccall('myreade','number',[],[]);
-print("m1 write");console.log("");
-m1.ccall('mywrite0','number',['number'],[1]);
-print("m1 read");
-m1.ccall('myread0','number',[],[]);
-
-section = "child m2 reads and writes local file.";
-print("m2 read embed");
-m2.ccall('myreade','number',[],[]);
-print("m2 write");console.log("");
-m2.ccall('mywrite0','number',['number'],[2]);
-print("m2 read");
-m2.ccall('myread0','number',[],[]);
-
-section = "child m1 reads local file.";
-print("m1 read");
-m1.ccall('myread0','number',[],[]);
-
-section = "parent m0 accesses children's file.";
-print("m0 access existing");
-m0.ccall('myaccess0existing','number',[],[]);
-print("m0 access absent");
-m0.ccall('myaccess0absent','number',[],[]);
-
-section = "child m1 accesses local file.";
-print("m1 access existing");
-m1.ccall('myaccess1existing','number',[],[]);
-print("m1 access absent");
-m1.ccall('myaccess1absent','number',[],[]);
-
-section = "parent m0 reads and writes local and children's file.";
-print("m0 read embed");
-m0.ccall('myreade','number',[],[]);
-print("m0 read m1");
-m0.ccall('myread1','number',[],[]);
-print("m0 read m2");
-m0.ccall('myread2','number',[],[]);
-
-section = "m0,m1 and m2 verify local files.";
-print("m0 write");console.log("");
-m0.ccall('mywrite0','number',['number'],[0]);
-print("m0 read");
-m0.ccall('myread0','number',[],[]);
-print("m1 read");
-m1.ccall('myread0','number',[],[]);
-print("m2 read");
-m2.ccall('myread0','number',[],[]);
-
-print("m0 read embed");
-m0.ccall('myreade','number',[],[]);
-print("m1 read embed");
-m1.ccall('myreade','number',[],[]);
-print("m2 read embed");
-m2.ccall('myreade','number',[],[]);
-
-section = "parent m0 writes and reads children's files.";
-print("m0 write m1");console.log("");
-m0.ccall('mywrite1','number',[],[]);
-print("m0 read m1");
-m0.ccall('myread1','number',[],[]);
-print("m0 write m2");console.log("");
-m0.ccall('mywrite2','number',[],[]);
-print("m0 read m2");
-m0.ccall('myread2','number',[],[]);
-print("m1 read");
-m1.ccall('myread0','number',[],[]);
-print("m2 read");
-m2.ccall('myread0','number',[],[]);
-print("m0 read m0");
-m0.ccall('myread0','number',[],[]);
-
-section = "parent m0 renames a file in child fs.";
-m0.FS.writeFile('/working/test', 'testme');
-m0.FS.rename('/working/test', '/working/test.bak');
-console.log(section + ":renamed file accessible by the new name:" + m0.FS.analyzePath('/working/test.bak').exists);
-console.log(section + ":renamed file accessible by the old name:" + m0.FS.analyzePath('/working/test').exists);
-
-section = "test seek.";
-print("file size");
-m0.ccall('myreadSeekEnd', 'number', [], []);
-''')
-
-    create_file('proxyfs_pre.js', r'''
-Module["noInitialRun"]=true;
-''')
-
+    create_file('proxyfs_pre.js', r'Module["noInitialRun"]=true;')
     create_file('proxyfs_embed.txt', 'test\n')
 
-    create_file('proxyfs_test.c', r'''
-#include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <emscripten/emscripten.h>
-
-EMSCRIPTEN_KEEPALIVE int mywrite1() {
-  FILE* out = fopen("/working/hoge.txt","w");
-  fprintf(out,"test1\n");
-  fclose(out);
-  return 0;
-}
-
-EMSCRIPTEN_KEEPALIVE int myread1() {
-  FILE* in = fopen("/working/hoge.txt","r");
-  char buf[1024];
-  int len;
-  if(in==NULL)
-    printf("open failed\n");
-
-  while(! feof(in)){
-    if(fgets(buf,sizeof(buf),in)==buf){
-      printf("%s",buf);
-    }
-  }
-  fclose(in);
-  return 0;
-}
-
-EMSCRIPTEN_KEEPALIVE int mywrite2() {
-  FILE* out = fopen("/working2/hoge.txt","w");
-  fprintf(out,"test2\n");
-  fclose(out);
-  return 0;
-}
-
-EMSCRIPTEN_KEEPALIVE int myread2() {
-  FILE* in = fopen("/working2/hoge.txt","r");
-  char buf[1024];
-  int len;
-  if(in==NULL)
-    printf("open failed\n");
-
-  while(! feof(in)){
-    if(fgets(buf,sizeof(buf),in)==buf){
-      printf("%s",buf);
-    }
-  }
-  fclose(in);
-  return 0;
-}
-
-EMSCRIPTEN_KEEPALIVE int mywrite0(int i) {
-  FILE* out = fopen("hoge.txt","w");
-  fprintf(out,"test0_%d\n",i);
-  fclose(out);
-  return 0;
-}
-
-EMSCRIPTEN_KEEPALIVE int myread0() {
-  FILE* in = fopen("hoge.txt","r");
-  char buf[1024];
-  int len;
-  if(in==NULL)
-    printf("open failed\n");
-
-  while(! feof(in)){
-    if(fgets(buf,sizeof(buf),in)==buf){
-      printf("%s",buf);
-    }
-  }
-  fclose(in);
-  return 0;
-}
-
-EMSCRIPTEN_KEEPALIVE int myaccess0existing() {
-  int canAccess = access("/working/hoge.txt",O_RDONLY);
-  printf("access=%d\n", canAccess);
-  return 0;
-}
-
-EMSCRIPTEN_KEEPALIVE int myaccess0absent() {
-  int canAccess = access("/working/nosuchfile",O_RDONLY);
-  printf("access=%d\n", canAccess);
-  return 0;
-}
-
-EMSCRIPTEN_KEEPALIVE int myaccess1existing() {
-  int canAccess = access("/hoge.txt",O_RDONLY);
-  printf("access=%d\n", canAccess);
-  return 0;
-}
-
-EMSCRIPTEN_KEEPALIVE int myaccess1absent() {
-  int canAccess = access("/nosuchfile",O_RDONLY);
-  printf("access=%d\n", canAccess);
-  return 0;
-}
-
-EMSCRIPTEN_KEEPALIVE int myreade() {
-  FILE* in = fopen("proxyfs_embed.txt","r");
-  char buf[1024];
-  int len;
-  if(in==NULL)
-    printf("open failed\n");
-
-  while(! feof(in)){
-    if(fgets(buf,sizeof(buf),in)==buf){
-      printf("%s",buf);
-    }
-  }
-  fclose(in);
-  return 0;
-}
-
-EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
-  FILE* in = fopen("/working2/hoge.txt","r");
-
-  fseek(in, 0L, SEEK_END);
-  int fileSize = ftell(in);
-  fseek(in, 0L, SEEK_SET);
-  printf("%d\n", fileSize);
-
-  fclose(in);
-  return 0;
-}
-''')
-
-    self.run_process([EMCC,
-                      '-o', 'proxyfs_test.js', 'proxyfs_test.c',
+    self.run_process([EMCC, '-o', 'test_proxyfs.js', test_file('other/test_proxyfs.c'),
                       '--embed-file', 'proxyfs_embed.txt', '--pre-js', 'proxyfs_pre.js',
                       '-sEXPORTED_RUNTIME_METHODS=ccall,cwrap,FS,PROXYFS',
                       '-lproxyfs.js',
                       '-sWASM_ASYNC_COMPILATION=0'])
     # Following shutil.copy just prevent 'require' of node.js from caching js-object.
     # See https://nodejs.org/api/modules.html
-    shutil.copy('proxyfs_test.js', 'proxyfs_test1.js')
-    shutil.copy('proxyfs_test.js', 'proxyfs_test2.js')
-    out = self.run_js('proxyfs_test_main.js')
+    shutil.copy('test_proxyfs.js', 'test_proxyfs1.js')
+    shutil.copy('test_proxyfs.js', 'test_proxyfs2.js')
+    shutil.copy(test_file('other/test_proxyfs_main.js'), '.')
+    out = self.run_js('test_proxyfs_main.js')
     section = "child m1 reads and writes local file."
     self.assertContained(section + ":m1 read embed:test", out)
     self.assertContained(section + ":m1 write:", out)
@@ -6122,130 +5892,8 @@ int main(int argc, char **argv) {
     self.assertContained(r'Failed to rename paths: abc, ; errno=44', self.run_js('a.out.js', args=['abc', '']))
 
   def test_readdir_r_silly(self):
-    create_file('src.cpp', r'''
-#include <cassert>
-#include <iostream>
-#include <cstring>
-#include <cerrno>
-#include <unistd.h>
-#include <fcntl.h>
-#include <cstdlib>
-#include <dirent.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-
-using std::endl;
-
-namespace
-{
-  // Do a recursive directory listing of the directory whose path is specified
-  // by \a name.
-  void ls(const std::string& name, size_t indent = 0) {
-    DIR *dir;
-    struct dirent *entry;
-    if (indent == 0) {
-      std::cout << name << endl;
-      ++indent;
-    }
-    // Make sure we can open the directory.  This should also catch cases where
-    // the empty string is passed in.
-    if (not (dir = opendir(name.c_str()))) {
-      const int error = errno;
-      std::cout
-        << "Failed to open directory: " << name << "; " << error << endl;
-      return;
-    }
-    // Just checking the sanity.
-    if (name.empty()) {
-      std::cout
-        << "Managed to open a directory whose name was the empty string.."
-        << endl;
-      assert(closedir(dir) != -1);
-      return;
-    }
-    // Iterate over the entries in the directory.
-    while ((entry = readdir(dir))) {
-      std::string entryName(entry->d_name);
-      if (entryName == "." || entryName == "..") {
-        // Skip the dot entries.
-        continue;
-      }
-      std::string indentStr(indent * 2, ' ');
-      if (entryName.empty()) {
-        std::cout
-          << indentStr << "\"\": Found empty string as a "
-          << (entry->d_type == DT_DIR ? "directory" : "file")
-          << " entry!" << endl;
-        continue;
-      } else {
-        std::cout << indentStr << entryName
-                  << (entry->d_type == DT_DIR ? "/" : "") << endl;
-      }
-      if (entry->d_type == DT_DIR) {
-        // We found a subdirectory; recurse.
-        ls(std::string(name + (name == "/" ? "" : "/" ) + entryName),
-           indent + 1);
-      }
-    }
-    // Close our handle.
-    assert(closedir(dir) != -1);
-  }
-
-  void touch(const char* path) {
-    int fd = open(path, O_CREAT | O_TRUNC, 0644);
-    assert(fd != -1);
-    assert(close(fd) != -1);
-  }
-}
-
-int main() {
-  assert(mkdir("dir", 0755) == 0);
-  touch("dir/a");
-  touch("dir/b");
-  touch("dir/c");
-  touch("dir/d");
-  touch("dir/e");
-  std::cout << "Before:" << endl;
-  ls("dir");
-  std::cout << endl;
-  // Attempt to delete entries as we walk the (single) directory.
-  DIR* dir = opendir("dir");
-  assert(dir != NULL);
-  struct dirent *entry;
-  while ((entry = readdir(dir)) != NULL) {
-    std::string name(entry->d_name);
-    // Skip "." and "..".
-    if (name == "." || name == "..") {
-      continue;
-    }
-    // Unlink it.
-    std::cout << "Unlinking " << name << endl;
-    assert(unlink(("dir/" + name).c_str()) != -1);
-  }
-  assert(closedir(dir) != -1);
-  std::cout << "After:" << endl;
-  ls("dir");
-  std::cout << "done" << endl;
-  return 0;
-}''')
     # cannot symlink nonexistents
-    self.do_runf('src.cpp', r'''Before:
-dir
-  a
-  b
-  c
-  d
-  e
-
-Unlinking a
-Unlinking b
-Unlinking c
-Unlinking d
-Unlinking e
-After:
-dir
-done
-''', args=['', 'abc'])
+    self.do_other_test('test_readdir_r_silly.cpp', args=['', 'abc'])
 
   def test_emversion(self):
     create_file('src.c', r'''
@@ -6363,117 +6011,6 @@ __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALI
     without_dash_o = self.run_process([EMCC, test_file('hello_world.c'), '-M'], stdout=PIPE).stdout
     self.assertEqual(len(with_dash_o), 0)
     self.assertNotEqual(len(without_dash_o), 0)
-
-  def test_switch64phi(self):
-    # issue 2539, fastcomp segfault on phi-i64 interaction
-    create_file('src.cpp', r'''
-#include <cstdint>
-#include <limits>
-#include <cstdio>
-
-//============================================================================
-
-namespace
-{
-  class int_adapter {
-  public:
-    typedef ::int64_t int_type;
-
-    int_adapter(int_type v = 0)
-      : value_(v) {}
-    static const int_adapter pos_infinity() {
-      return (::std::numeric_limits<int_type>::max)();
-    }
-    static const int_adapter neg_infinity() {
-      return (::std::numeric_limits<int_type>::min)();
-    }
-    static const int_adapter not_a_number() {
-      return (::std::numeric_limits<int_type>::max)()-1;
-    }
-    static bool is_neg_inf(int_type v) {
-      return (v == neg_infinity().as_number());
-    }
-    static bool is_pos_inf(int_type v) {
-      return (v == pos_infinity().as_number());
-    }
-    static bool is_not_a_number(int_type v) {
-      return (v == not_a_number().as_number());
-    }
-
-    bool is_infinity() const {
-      return (value_ == neg_infinity().as_number() ||
-              value_ == pos_infinity().as_number());
-    }
-    bool is_special() const {
-      return(is_infinity() || value_ == not_a_number().as_number());
-    }
-    bool operator<(const int_adapter& rhs) const {
-      if(value_ == not_a_number().as_number()
-         || rhs.value_ == not_a_number().as_number()) {
-        return false;
-      }
-      if(value_ < rhs.value_) return true;
-      return false;
-    }
-    int_type as_number() const {
-      return value_;
-    }
-
-    int_adapter operator-(const int_adapter& rhs) const {
-      if(is_special() || rhs.is_special()) {
-        if (rhs.is_pos_inf(rhs.as_number())) {
-          return int_adapter(1);
-        }
-        if (rhs.is_neg_inf(rhs.as_number())) {
-          return int_adapter();
-        }
-      }
-      return int_adapter();
-    }
-
-
-  private:
-    int_type value_;
-  };
-
-  class time_iterator {
-  public:
-    time_iterator(int_adapter t, int_adapter d)
-      : current_(t),
-        offset_(d)
-    {}
-
-    time_iterator& operator--() {
-      current_ = int_adapter(current_ - offset_);
-      return *this;
-    }
-
-    bool operator>=(const int_adapter& t) {
-      return not (current_ < t);
-    }
-
-  private:
-    int_adapter current_;
-    int_adapter offset_;
-  };
-
-  void iterate_backward(const int_adapter *answers, const int_adapter& td) {
-    int_adapter end = answers[0];
-    time_iterator titr(end, td);
-
-    std::puts("");
-    for (; titr >= answers[0]; --titr) {
-    }
-  }
-}
-
-int main() {
-  const int_adapter answer1[] = {};
-  iterate_backward(NULL, int_adapter());
-  iterate_backward(answer1, int_adapter());
-}
-    ''')
-    self.run_process([EMXX, 'src.cpp', '-O2', '-sSAFE_HEAP'])
 
   @with_all_fs
   @crossplatform
@@ -6607,119 +6144,7 @@ int main()
 
   @also_with_wasmfs
   def test_truncate_from_0(self):
-    create_file('src.cpp', r'''
-#include <cerrno>
-#include <cstring>
-#include <iostream>
-
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
-
-using std::endl;
-
-//============================================================================
-// :: Helpers
-
-namespace
-{
-  // Returns the size of the regular file specified as 'path'.
-  ::off_t getSize(const char* const path)
-  {
-    // Stat the file and make sure that it's the expected size.
-    struct ::stat path_stat;
-    if (::stat(path, &path_stat) != 0) {
-      const int error = errno;
-      std::cout
-        << "Failed to lstat path: " << path << "; errno=" << error << "; "
-        << std::strerror(error) << endl;
-      return -1;
-    }
-
-    std::cout
-      << "Size of file is: " << path_stat.st_size << endl;
-    return path_stat.st_size;
-  }
-
-  // Causes the regular file specified in 'path' to have a size of 'length'
-  // bytes.
-  void resize(const char* const path,
-              const ::off_t length)
-  {
-    std::cout
-      << "Truncating file=" << path << " to length=" << length << endl;
-    if (::truncate(path, length) == -1)
-    {
-      const int error = errno;
-      std::cout
-        << "Failed to truncate file=" << path << "; errno=" << error
-        << "; " << std::strerror(error) << endl;
-    }
-
-    const ::off_t size = getSize(path);
-    if (size != length) {
-      std::cout
-        << "Failed to truncate file=" << path << " to length=" << length
-        << "; got size=" << size << endl;
-    }
-  }
-
-  // Helper to create a file with the given content.
-  void createFile(const std::string& path, const std::string& content)
-  {
-    std::cout
-      << "Creating file: " << path << " with content=" << content << endl;
-
-    const int fd = ::open(path.c_str(), O_CREAT | O_WRONLY, 0644);
-    if (fd == -1) {
-      const int error = errno;
-      std::cout
-        << "Failed to open file for writing: " << path << "; errno=" << error
-        << "; " << std::strerror(error) << endl;
-      return;
-    }
-
-    if (::write(fd, content.c_str(), content.size()) != content.size()) {
-      const int error = errno;
-      std::cout
-        << "Failed to write content=" << content << " to file=" << path
-        << "; errno=" << error << "; " << std::strerror(error) << endl;
-
-      // Fall through to close FD.
-    }
-
-    ::close(fd);
-  }
-}
-
-//============================================================================
-// :: Entry Point
-int main()
-{
-  const char* const file = "/tmp/file";
-  createFile(file, "This is some content");
-  getSize(file);
-  resize(file, 32);
-  resize(file, 17);
-  resize(file, 0);
-
-  // This throws a JS exception.
-  resize(file, 32);
-  return 0;
-}
-''')
-    self.do_runf('src.cpp', r'''Creating file: /tmp/file with content=This is some content
-Size of file is: 20
-Truncating file=/tmp/file to length=32
-Size of file is: 32
-Truncating file=/tmp/file to length=17
-Size of file is: 17
-Truncating file=/tmp/file to length=0
-Size of file is: 0
-Truncating file=/tmp/file to length=32
-Size of file is: 32
-''')
+    self.do_other_test('test_truncate_from_0.cpp')
 
   def test_create_readonly(self):
     create_file('src.cpp', r'''
@@ -8507,7 +7932,7 @@ addToLibrary({
       '-sTOTAL_STACK=1mb',
       f'-sMALLOC={allocator}',
     ]
-    self.do_other_test('test_malloc_multithreading.cpp', cflags=args)
+    self.do_other_test('test_malloc_multithreading.c', cflags=args)
 
   @parameterized({
     '': ([], 'testbind.js'),
@@ -12818,6 +12243,7 @@ int main(void) {
   def test_webgpu_compiletest(self, args):
     self.run_process([EMXX, test_file('webgpu_jsvalstore.cpp'), '-Wno-error=deprecated', '-sUSE_WEBGPU', '-sASYNCIFY'] + args)
 
+  @flaky('https://github.com/emscripten-core/emscripten/issues/25343')
   @also_with_wasm64
   @parameterized({
     '': ([],),

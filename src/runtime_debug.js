@@ -154,7 +154,13 @@ function unexportedRuntimeSymbol(sym) {
           msg += '. Alternatively, forcing filesystem support (-sFORCE_FILESYSTEM) can export this for you';
         }
         abort(msg);
-      }
+      },
+#if !DECLARE_ASM_MODULE_EXPORTS
+      // !DECLARE_ASM_MODULE_EXPORTS programmatically exports all wasm symbols
+      // on the Module object.  Ignore these attempts to set the properties
+      // here.
+      set(value) {}
+#endif
     });
   }
 }

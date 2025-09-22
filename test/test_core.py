@@ -2630,6 +2630,7 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_nested_work_queue.c')
 
   @node_pthreads
+  @flaky('Times out in bigendian0 suite only. https://github.com/emscripten-core/emscripten/issues/25316')
   def test_pthread_thread_local_storage(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')

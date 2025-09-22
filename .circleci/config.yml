@@ -388,7 +388,7 @@ commands:
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
             export EM_FROZEN_CACHE=""
             echo "-----"
-            echo "Running browser tests"
+            echo "Running browser tests (EMTEST_BROWSER=$EMTEST_BROWSER)"
             echo "-----"
             test/runner << parameters.test_targets >>
             # posix and emrun suites are disabled because firefox errors on
@@ -425,15 +425,19 @@ commands:
             Invoke-WebRequest -Uri $nightlyUrl -OutFile $outZip
 
             # Extract to user home directory
+            Write-Host "Extracing $outZip"
             $installDir = Join-Path $env:USERPROFILE "firefox"
             if (Test-Path $installDir) { Remove-Item -Recurse -Force $installDir }
-            Expand-Archive -LiteralPath $outZip -DestinationPath $installDir
+            # All files in the archive are in the firefox/ directory so extract
+            # directly to $USERPROFILE.
+            Expand-Archive -LiteralPath $outZip -DestinationPath $env:USERPROFILE
 
-            # Set environment variable for tests
-            $ffExe = Join-Path $installDir "firefox.exe"
-            [System.Environment]::SetEnvironmentVariable("EMTEST_BROWSER", $ffExe, "User")
-            $env:EMTEST_BROWSER = $ffExe
-            Write-Host "EMTEST_BROWSER set to $env:EMTEST_BROWSER"
+            # FIXME(sbc): This does not seem to work, and EMTEST_BROWSER is
+            # not set in the bash job below.
+            # Set environment variable that will be visibvle in future steps
+            #$ffExe = Join-Path $installDir "firefox.exe"
+            #Write-Host "Setting EMTEST_BROWSER to '$ffExe' in $env:BASH_ENV"
+            #Add-Content -Path $env:BASH_ENV -Value "export EMTEST_BROWSER='$ffExe'"
       - run:
           name: run tests (<< parameters.title >>)
           environment:
@@ -448,12 +452,20 @@ commands:
             EMTEST_CORES: "2"
             DISPLAY: ":0"
           command: |
+            # For some reason its not possible for the powershell job above to
+            # add to BASH_ENV, so we need set this here
+            export EMTEST_BROWSER="$USERPROFILE\\firefox\\firefox.exe"
+
             # There are tests in the browser test suite that using libraries
             # that are not included by "./embuilder build ALL".  For example the
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
-            set EM_FROZEN_CACHE=
+            export EM_FROZEN_CACHE=
+
+            echo "BASH_ENV($BASH_ENV):"
             echo "-----"
-            echo "Running browser tests"
+            cat $BASH_ENV
+            echo "-----"
+            echo "Running browser tests (EMTEST_BROWSER=$EMTEST_BROWSER)"
             echo "-----"
             test/runner << parameters.test_targets >>
       - upload-test-results
@@ -694,6 +706,9 @@ jobs:
             wasmfs.test_fs_llseek_rawfs
             wasmfs.test_freetype
             minimal0.test_utf
+            omitexports0.test_asyncify_longjmp
+            omitexports0.test_emscripten_api
+            strict.test_no_declare_asm_module_exports
             "
   test-modularize-instance:
     executor: focal
@@ -1070,6 +1085,44 @@ jobs:
             browser64.test_sdl_image
             browser64.test_dylink_many
             "
+  test-windows-browser-firefox:
+    # Use spaces and other special chars in the path to emsdk to flush out
+    # issues with windows.  In particular, the .bat file launchers can have
+    # trouble with these.
+    working_directory: "~/path with spaces ()/"
+    executor:
+      name: win/server-2019
+      shell: bash.exe -eo pipefail
+    environment:
+      PYTHONUNBUFFERED: "1"
+      EMSDK_NOTTY: "1"
+    steps:
+      - checkout
+      - run:
+          name: Install packages
+          command: |
+            choco install -y cmake.portable ninja pkgconfiglite
+      - run:
+          name: Add python to bash path
+          command: echo "export PATH=\"$PATH:/c/Python27amd64/\"" >> $BASH_ENV
+      - install-emsdk
+      - pip-install:
+          python: "$EMSDK_PYTHON"
+      - run-tests-firefox-windows:
+          title: "browser on firefox on windows"
+          # skip browser.test_glbook, as it requires mingw32-make, which is not
+          # installed on CircleCI.
+          # skip browser.test_sdl2_mixer_wav_dash_l, fails to build on Windows
+          # on CircleCI (works locally)
+          #
+          # For now, just run a small subset of tests that are know to work.
+          # TODO: Include more tests here.
+          test_targets: "
+            browser.test_sdl_image
+            browser.test_dylink_many
+            skip:browser.test_glbook
+            skip:browser.test_sdl2_mixer_wav_dash_l
+            "
   # TODO(sbc): Re-enable once we figure out why the emrun tests are
   # locking up.
   #test-browser-chrome-emrun:
@@ -1081,6 +1134,7 @@ jobs:
     executor: focal
     steps:
       - test-sockets-chrome
+
   # windows and mac do not have separate build and test jobs, as they only run
   # a limited set of tests; it is simpler and faster to do it all in one job.
   test-windows:
@@ -1126,19 +1180,6 @@ jobs:
       - run-tests:
           title: "sockets.test_nodejs_sockets_echo*"
           test_targets: "sockets.test_nodejs_sockets_echo*"
-      - upload-test-results
-      # Run browser tests as well.
-      - run-tests-firefox-windows:
-          title: "browser on firefox on windows"
-          # skip browser.test_glbook, as it requires mingw32-make, which is not
-          # installed on CircleCI.
-          # skip browser.test_sdl2_mixer_wav_dash_l, fails to build on Windows
-          # on CircleCI (works locally)
-          test_targets: "
-            browser
-            skip:browser.test_glbook
-            skip:browser.test_sdl2_mixer_wav_dash_l
-            "
       - upload-test-results
 
   test-mac-arm64:
@@ -1227,6 +1268,7 @@ workflows:
       - test-spidermonkey
       - test-node-compat
       - test-windows
+      - test-windows-browser-firefox
       - test-mac-arm64:
           requires:
             - build-linux

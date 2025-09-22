@@ -262,6 +262,24 @@ function makeInlineCalculation(expression, value, tempVar) {
 
 // XXX Make all i64 parts signed
 
+function castToBigInt(x) {
+  // Micro-size-optimization: if x is an integer literal, then we can append
+  // the suffix 'n' instead of casting to BigInt(), to get smaller code size.
+  var n = Number(x);
+  if (Number.isInteger(n) && isFinite(n)) {
+    // NOTE: BigInt(316059037807746200000) != 316059037807746200000n
+    // i.e. constructing numbers with BigInt()s is subject to rounding, if
+    // the input value cannot be exactly represented as a 64-bit double.
+    // Currently the test suite depends on this rounding behavior, so only
+    // apply this literal optimization to safe integers for now.
+    if (Math.abs(n) < Number.MAX_SAFE_INTEGER) {
+      return `${x}n`;
+    }
+  }
+  return `BigInt(${x})`;
+}
+
+
 // Splits a number (an integer in a double, possibly > 32 bits) into an i64
 // value, represented by a low and high i32 pair.
 // Will suffer from rounding and truncation.
@@ -269,7 +287,7 @@ function splitI64(value) {
   if (WASM_BIGINT) {
     // Nothing to do: just make sure it is a BigInt (as it must be of that
     // type, to be sent into wasm).
-    return `BigInt(${value})`;
+    return castToBigInt(value);
   }
 
   // general idea:
@@ -474,7 +492,7 @@ function makeSetValueImpl(ptr, pos, value, type) {
 
   const slab = getHeapForType(type);
   if (slab == 'HEAPU64' || slab == 'HEAP64') {
-    value = `BigInt(${value})`;
+    value = castToBigInt(value);
   }
   return `${slab}[${getHeapOffset(offset, type)}] = ${value}`;
 }
@@ -595,7 +613,7 @@ function getHeapForType(type) {
 
 export function makeReturn64(value) {
   if (WASM_BIGINT) {
-    return `BigInt(${value})`;
+    return castToBigInt(value);
   }
   const pair = splitI64(value);
   // `return (a, b, c)` in JavaScript will execute `a`, and `b` and return the final
@@ -1000,7 +1018,7 @@ function from64Expr(x) {
 // Converts a value to BigInt if building for wasm64, with both 64-bit pointers
 // and 64-bit memory. Used for indices into the memory tables, for example.
 function toIndexType(x) {
-  if (MEMORY64 == 1) return `BigInt(${x})`;
+  if (MEMORY64 == 1) return castToBigInt(x);
   return x;
 }
 
@@ -1010,7 +1028,7 @@ function toIndexType(x) {
 // this conversion before passing them).
 function to64(x) {
   if (!MEMORY64) return x;
-  return `BigInt(${x})`;
+  return castToBigInt(x);
 }
 
 function asyncIf(condition) {
