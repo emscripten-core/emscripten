@@ -228,8 +228,13 @@ void _embind_register_enum(
     TYPEID enumType,
     const char* name,
     size_t size,
-    bool isSigned,
-    bool asString);
+    bool isSigned);
+
+void _embind_register_string_enum(
+    TYPEID enumType,
+    const char* name,
+    size_t size,
+    bool isSigned);
 
 void _embind_register_smart_ptr(
     TYPEID pointerType,
@@ -246,6 +251,11 @@ void _embind_register_smart_ptr(
     GenericFunction destructor);
 
 void _embind_register_enum_value(
+    TYPEID enumType,
+    const char* valueName,
+    GenericEnumValue value);
+
+void _embind_register_string_enum_value(
     TYPEID enumType,
     const char* valueName,
     GenericEnumValue value);
@@ -2175,8 +2185,7 @@ public:
             internal::TypeID<EnumType>::get(),
             name,
             sizeof(EnumType),
-            std::is_signed<typename std::underlying_type<EnumType>::type>::value,
-            asString);
+            std::is_signed<typename std::underlying_type<EnumType>::type>::value);
     }
 
     enum_& value(const char* name, EnumType value) {
@@ -2192,6 +2201,39 @@ public:
         return *this;
     }
 };
+
+////////////////////////////////////////////////////////////////////////////////
+// STRING ENUMS
+////////////////////////////////////////////////////////////////////////////////
+
+template<typename EnumType>
+class string_enum_ {
+public:
+    typedef EnumType enum_type;
+
+    string_enum_(const char* name) {
+        using namespace internal;
+        _embind_register_string_enum(
+            internal::TypeID<EnumType>::get(),
+            name,
+            sizeof(EnumType),
+            std::is_signed<typename std::underlying_type<EnumType>::type>::value);
+    }
+
+    string_enum_& value(const char* name, EnumType value) {
+        using namespace internal;
+        // TODO: there's still an issue here.
+        // if EnumType is an unsigned long, then JS may receive it as a signed long
+        static_assert(sizeof(value) <= sizeof(internal::GenericEnumValue), "enum type must fit in a GenericEnumValue");
+
+        _embind_register_string_enum_value(
+            internal::TypeID<EnumType>::get(),
+            name,
+            static_cast<internal::GenericEnumValue>(value));
+        return *this;
+    }
+};
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // CONSTANTS

@@ -15053,7 +15053,7 @@ addToLibrary({
           .value("neg", value::neg)
           .value("zero", value::zero)
           .value("pos", value::pos);
-        enum_<otherValue>("valueStr", true)
+        string_enum_<otherValue>("valueStr")
           .value("neg", otherValue::neg)
           .value("zero", otherValue::zero)
           .value("pos", otherValue::pos);

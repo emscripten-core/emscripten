@@ -723,14 +723,28 @@ var LibraryEmbind = {
   // Stub function. This is called a when extending an object and not needed for TS generation.
   _embind_create_inheriting_constructor: (constructorName, wrapperType, properties) => {},
   _embind_register_enum__deps: ['$AsciiToString', '$EnumDefinition', '$moduleDefinitions'],
-  _embind_register_enum: function(rawType, name, size, isSigned, asString) {
+  _embind_register_enum: function(rawType, name, size, isSigned) {
     name = AsciiToString(name);
-    const enumDef = new EnumDefinition(rawType, name, asString);
+    const enumDef = new EnumDefinition(rawType, name, false);
     registerType(rawType, enumDef);
     moduleDefinitions.push(enumDef);
   },
   _embind_register_enum_value__deps: ['$AsciiToString', '$requireRegisteredType'],
   _embind_register_enum_value: function(rawEnumType, name, enumValue) {
+    name = AsciiToString(name);
+    const enumDef = requireRegisteredType(rawEnumType, name);
+    enumDef.items.push([name, enumValue]);
+  },
+  // String enums share almost the same structure as regular enums
+  _embind_register_string_enum__deps: ['$AsciiToString', '$EnumDefinition', '$moduleDefinitions'],
+  _embind_register_string_enum: function(rawType, name, size, isSigned) {
+    name = AsciiToString(name);
+    const enumDef = new EnumDefinition(rawType, name, true);
+    registerType(rawType, enumDef);
+    moduleDefinitions.push(enumDef);
+  },
+  _embind_register_string_enum_value__deps: ['$AsciiToString', '$requireRegisteredType'],
+  _embind_register_string_enum_value: function(rawEnumType, name, enumValue) {
     name = AsciiToString(name);
     const enumDef = requireRegisteredType(rawEnumType, name);
     enumDef.items.push([name, enumValue]);

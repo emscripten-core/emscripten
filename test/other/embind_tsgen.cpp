@@ -186,7 +186,7 @@ EMSCRIPTEN_BINDINGS(Test) {
       .value("valueOne", Bar::kValueOne)
       .value("valueTwo", Bar::kValueTwo)
       .value("valueThree", Bar::kValueThree);
-  enum_<Baz>("Baz", true)
+  string_enum_<Baz>("Baz")
       .value("valueA", Baz::kValueA)
       .value("valueB", Baz::kValueB)
       .value("valueC", Baz::kValueC);

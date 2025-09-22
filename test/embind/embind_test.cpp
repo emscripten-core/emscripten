@@ -2356,7 +2356,7 @@ EMSCRIPTEN_BINDINGS(tests) {
     ;
   function("emval_test_take_and_return_EnumClass", &emval_test_take_and_return_EnumClass);
 
-  enum_<EnumStr>("EnumStr", true)
+  string_enum_<EnumStr>("EnumStr")
     .value("ONE", EnumStr::ONE)
     .value("TWO", EnumStr::TWO)
     ;
@@ -2416,7 +2416,7 @@ EMSCRIPTEN_BINDINGS(tests) {
 
   register_map<std::string, int>("StringIntMap");
   function("embind_test_get_string_int_map", embind_test_get_string_int_map);
-    
+
   register_map<int, std::string, std::greater<int>>("IntStringMapGreater");
   function("embind_test_get_int_string_greater_map", embind_test_get_int_string_greater_map);
 
