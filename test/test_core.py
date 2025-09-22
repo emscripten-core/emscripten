@@ -377,7 +377,6 @@ def with_both_text_decoder(f):
   return decorated
 
 
-no_minimal_runtime = make_no_decorator_for_setting('MINIMAL_RUNTIME')
 no_safe_heap = make_no_decorator_for_setting('SAFE_HEAP')
 no_strict = make_no_decorator_for_setting('STRICT')
 no_strict_js = make_no_decorator_for_setting('STRICT_JS')
