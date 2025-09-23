@@ -1,10 +1,10 @@
 {
-  "a.out.js": 23462,
-  "a.out.js.gz": 9165,
-  "a.out.nodebug.wasm": 235312,
-  "a.out.nodebug.wasm.gz": 78933,
-  "total": 258774,
-  "total_gz": 88098,
+  "a.out.js": 23466,
+  "a.out.js.gz": 9166,
+  "a.out.nodebug.wasm": 235316,
+  "a.out.nodebug.wasm.gz": 78934,
+  "total": 258782,
+  "total_gz": 88100,
   "sent": [
     "__cxa_begin_catch",
     "__cxa_end_catch",
@@ -100,7 +100,7 @@
     "emscripten_stack_get_current",
     "free",
     "main",
-    "memory",
-    "setThrew"
+    "setThrew",
+    "wasmMemory"
   ]
 }

@@ -12,7 +12,7 @@
     "a (fd_write)"
   ],
   "exports": [
-    "b (memory)",
+    "b (wasmMemory)",
     "c (__wasm_call_ctors)",
     "d (main)"
   ],

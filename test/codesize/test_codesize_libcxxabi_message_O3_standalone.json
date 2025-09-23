@@ -1,10 +1,10 @@
 {
-  "a.out.js": 3607,
-  "a.out.js.gz": 1709,
-  "a.out.nodebug.wasm": 132,
-  "a.out.nodebug.wasm.gz": 140,
-  "total": 3739,
-  "total_gz": 1849,
+  "a.out.js": 3611,
+  "a.out.js.gz": 1710,
+  "a.out.nodebug.wasm": 136,
+  "a.out.nodebug.wasm.gz": 144,
+  "total": 3747,
+  "total_gz": 1854,
   "sent": [
     "proc_exit"
   ],
@@ -13,7 +13,7 @@
   ],
   "exports": [
     "_start",
-    "memory"
+    "wasmMemory"
   ],
   "funcs": [
     "$_start"

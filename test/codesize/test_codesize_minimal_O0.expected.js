@@ -1300,7 +1300,7 @@ function assignWasmExports(wasmExports) {
   __emscripten_stack_restore = wasmExports['_emscripten_stack_restore'];
   __emscripten_stack_alloc = wasmExports['_emscripten_stack_alloc'];
   _emscripten_stack_get_current = wasmExports['emscripten_stack_get_current'];
-  wasmMemory = wasmExports['memory'];
+  wasmMemory = wasmExports['wasmMemory'];
   wasmTable = wasmExports['__indirect_function_table'];
 }
 

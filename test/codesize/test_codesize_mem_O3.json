@@ -12,7 +12,7 @@
     "a (emscripten_resize_heap)"
   ],
   "exports": [
-    "b (memory)",
+    "b (wasmMemory)",
     "c (__wasm_call_ctors)",
     "d (__main_argc_argv)",
     "e (_emscripten_stack_alloc)"

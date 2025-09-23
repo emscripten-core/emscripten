@@ -32,7 +32,7 @@
     "k (environ_get)"
   ],
   "exports": [
-    "l (memory)",
+    "l (wasmMemory)",
     "m (__wasm_call_ctors)",
     "n (main)",
     "o (_emscripten_timeout)"

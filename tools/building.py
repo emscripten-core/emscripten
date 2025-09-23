@@ -155,7 +155,9 @@ def lld_flags_for_executable(external_symbols):
     cmd.append('--import-undefined')
 
   if settings.IMPORTED_MEMORY:
-    cmd.append('--import-memory')
+    cmd.append('--import-memory=env,wasmMemory')
+  else:
+    cmd.append('--export-memory=wasmMemory')
 
   if settings.SHARED_MEMORY:
     cmd.append('--shared-memory')

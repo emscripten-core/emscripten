@@ -8,7 +8,7 @@
   "sent": [],
   "imports": [],
   "exports": [
-    "a (memory)",
+    "a (wasmMemory)",
     "b (__wasm_call_ctors)",
     "c (main)"
   ],

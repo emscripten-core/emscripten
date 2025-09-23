@@ -1,10 +1,10 @@
 {
-  "a.out.js": 4371,
-  "a.out.js.gz": 2139,
-  "a.out.nodebug.wasm": 1927,
-  "a.out.nodebug.wasm.gz": 1138,
-  "total": 6298,
-  "total_gz": 3277,
+  "a.out.js": 4375,
+  "a.out.js.gz": 2141,
+  "a.out.nodebug.wasm": 1931,
+  "a.out.nodebug.wasm.gz": 1140,
+  "total": 6306,
+  "total_gz": 3281,
   "sent": [
     "fd_write"
   ],
@@ -18,7 +18,7 @@
     "_emscripten_stack_restore",
     "emscripten_stack_get_current",
     "main",
-    "memory"
+    "wasmMemory"
   ],
   "funcs": [
     "$__emscripten_stdout_close",

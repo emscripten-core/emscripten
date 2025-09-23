@@ -6,7 +6,7 @@
   "total": 27706,
   "total_gz": 13045,
   "sent": [
-    "a (memory)",
+    "a (wasmMemory)",
     "b (emscripten_get_now)",
     "c (exit)",
     "d (_emscripten_thread_set_strongref)",
@@ -23,7 +23,7 @@
     "o (__pthread_create_js)"
   ],
   "imports": [
-    "a (memory)",
+    "a (wasmMemory)",
     "b (emscripten_get_now)",
     "c (exit)",
     "d (_emscripten_thread_set_strongref)",

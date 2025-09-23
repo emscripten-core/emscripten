@@ -1,10 +1,10 @@
 {
-  "a.out.js": 19733,
-  "a.out.js.gz": 8148,
-  "a.out.nodebug.wasm": 128936,
-  "a.out.nodebug.wasm.gz": 48884,
-  "total": 148669,
-  "total_gz": 57032,
+  "a.out.js": 19737,
+  "a.out.js.gz": 8149,
+  "a.out.nodebug.wasm": 128940,
+  "a.out.nodebug.wasm.gz": 48888,
+  "total": 148677,
+  "total_gz": 57037,
   "sent": [
     "__cxa_throw",
     "_abort_js",
@@ -32,6 +32,6 @@
     "_emscripten_stack_restore",
     "emscripten_stack_get_current",
     "main",
-    "memory"
+    "wasmMemory"
   ]
 }

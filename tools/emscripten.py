@@ -759,7 +759,7 @@ def add_standard_wasm_imports(send_items_map):
   # Special case for importing memory and table
   # TODO(sbc): can we make these into normal library symbols?
   if settings.IMPORTED_MEMORY:
-    send_items_map['memory'] = 'wasmMemory'
+    send_items_map['wasmMemory'] = 'wasmMemory'
 
   if settings.RELOCATABLE:
     send_items_map['__indirect_function_table'] = 'wasmTable'

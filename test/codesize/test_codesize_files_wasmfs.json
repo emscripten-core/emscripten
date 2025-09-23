@@ -40,7 +40,7 @@
     "o (random_get)"
   ],
   "exports": [
-    "p (memory)",
+    "p (wasmMemory)",
     "q (__wasm_call_ctors)",
     "r (main)"
   ],

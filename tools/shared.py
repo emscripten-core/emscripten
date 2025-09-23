@@ -628,7 +628,7 @@ def is_internal_global(name):
 def is_user_export(name):
   if is_internal_global(name):
     return False
-  return name not in ['__indirect_function_table', 'memory'] and not name.startswith(('dynCall_', 'orig$'))
+  return name not in ['__indirect_function_table', 'wasmMemory'] and not name.startswith(('dynCall_', 'orig$'))
 
 
 def asmjs_mangle(name):
@@ -638,8 +638,6 @@ def asmjs_mangle(name):
   Used by wasm backend for JS library consistency with asm.js.
   """
   # We rename certain well-known exports to match what we call them in JS
-  if name == 'memory':
-    return 'wasmMemory'
   if name == '__indirect_function_table':
     return 'wasmTable'
   # We also use this function to convert the clang-mangled `__main_argc_argv`

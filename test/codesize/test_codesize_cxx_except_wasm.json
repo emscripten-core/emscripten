@@ -1,10 +1,10 @@
 {
-  "a.out.js": 19641,
-  "a.out.js.gz": 8111,
-  "a.out.nodebug.wasm": 144630,
-  "a.out.nodebug.wasm.gz": 54894,
-  "total": 164271,
-  "total_gz": 63005,
+  "a.out.js": 19645,
+  "a.out.js.gz": 8113,
+  "a.out.nodebug.wasm": 144634,
+  "a.out.nodebug.wasm.gz": 54893,
+  "total": 164279,
+  "total_gz": 63006,
   "sent": [
     "_abort_js",
     "_tzset_js",
@@ -33,6 +33,6 @@
     "__wasm_call_ctors",
     "_emscripten_stack_alloc",
     "main",
-    "memory"
+    "wasmMemory"
   ]
 }

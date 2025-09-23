@@ -1,7 +1,7 @@
 {
-  "a.out.js": 246031,
-  "a.out.nodebug.wasm": 597755,
-  "total": 843786,
+  "a.out.js": 246035,
+  "a.out.nodebug.wasm": 597759,
+  "total": 843794,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -1118,7 +1118,6 @@
     "glutTimerFunc",
     "lineColor",
     "lineRGBA",
-    "memory",
     "pixelRGBA",
     "proc_exit",
     "random_get",
@@ -1143,6 +1142,7 @@
     "uuid_unparse_lower",
     "uuid_unparse_upper",
     "uuid_variant",
+    "wasmMemory",
     "zoomSurface"
   ],
   "imports": [
@@ -1500,7 +1500,7 @@
     "env.emscripten_wget_data",
     "env.exit",
     "env.getnameinfo",
-    "env.memory",
+    "env.wasmMemory",
     "wasi_snapshot_preview1.clock_res_get",
     "wasi_snapshot_preview1.clock_time_get",
     "wasi_snapshot_preview1.environ_get",

@@ -2181,7 +2181,6 @@ addToLibrary({
 #endif // MINIMAL_RUNTIME
 
   $asmjsMangle: (x) => {
-    if (x == 'memory') return 'wasmMemory';
     if (x == '__indirect_function_table') return 'wasmTable';
     if (x == '__main_argc_argv') {
       x = 'main';
