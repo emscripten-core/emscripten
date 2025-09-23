@@ -1823,6 +1823,17 @@ var FETCH_DEBUG = false;
 // [link]
 var FETCH = false;
 
+// Change which DOM API is used for the emscripten fetch API. Valid options are:
+//   - 'xhr' (default) uses XMLHttpRequest
+//   - 'fetch' uses Fetch
+// Both options generally support the same API, but there are some key
+// differences:
+//  - XHR supports synchronous requests
+//  - XHR supports overriding mime types
+//  - Fetch supports streaming data using the 'onprogress' callback
+// [link]
+var FETCH_BACKEND = 'xhr';
+
 // ATTENTION [WIP]: Experimental feature. Please use at your own risk.
 // This will eventually replace the current JS file system implementation.
 // If set to 1, uses new filesystem implementation.

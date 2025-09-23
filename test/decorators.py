@@ -404,6 +404,20 @@ def also_with_wasm64(func):
   return metafunc
 
 
+def also_with_fetch_backend(f):
+  assert callable(f)
+
+  @wraps(f)
+  def metafunc(self, with_fetch, *args, **kwargs):
+    if with_fetch:
+      self.set_setting('FETCH_BACKEND', 'fetch')
+    f(self, *args, **kwargs)
+
+  parameterize(metafunc, {'': (False,),
+                          'fetch_backend': (True,)})
+  return metafunc
+
+
 def also_with_wasm2js(func):
   assert callable(func)
 
