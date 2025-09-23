@@ -40,7 +40,7 @@ import {
   warningOccured,
   localFile,
 } from './utility.mjs';
-import {LibraryManager, librarySymbols} from './modules.mjs';
+import {LibraryManager, librarySymbols, nativeAliases} from './modules.mjs';
 
 const addedLibraryItems = {};
 
@@ -128,9 +128,13 @@ function isDefined(symName) {
 }
 
 function resolveAlias(symbol) {
-  var value = LibraryManager.library[symbol];
-  if (typeof value == 'string' && value[0] != '=' && LibraryManager.library.hasOwnProperty(value)) {
-    return value;
+  while (true) {
+    var value = LibraryManager.library[symbol];
+    if (typeof value == 'string' && value[0] != '=' && (LibraryManager.library.hasOwnProperty(value) || WASM_EXPORTS.has(value))) {
+      symbol = value;
+    } else {
+      break;
+    }
   }
   return symbol;
 }
@@ -639,6 +643,7 @@ function(${args}) {
       });
 
       let isFunction = false;
+      let isNativeAlias = false;
 
       const postsetId = symbol + '__postset';
       const postset = LibraryManager.library[postsetId];
@@ -654,13 +659,22 @@ function(${args}) {
 
       if (typeof snippet == 'string') {
         if (snippet[0] != '=') {
-          if (LibraryManager.library[snippet]) {
+          if (LibraryManager.library[snippet] || WASM_EXPORTS.has(snippet)) {
             // Redirection for aliases. We include the parent, and at runtime
             // make ourselves equal to it.  This avoid having duplicate
             // functions with identical content.
-            const aliasTarget = snippet;
-            snippet = mangleCSymbolName(aliasTarget);
-            deps.push(aliasTarget);
+            const aliasTarget = resolveAlias(snippet);
+            if (WASM_EXPORTS.has(aliasTarget)) {
+              //printErr(`native alias: ${mangled} -> ${snippet}`);
+              //console.error(WASM_EXPORTS);
+              nativeAliases[mangled] = aliasTarget;
+              snippet = undefined;
+              isNativeAlias = true;
+            } else {
+              //printErr(`js alias: ${mangled} -> ${snippet}`);
+              deps.push(aliasTarget);
+              snippet = mangleCSymbolName(aliasTarget);
+            }
           }
         }
       } else if (typeof snippet == 'object') {
@@ -728,15 +742,11 @@ function(${args}) {
           contentText += ';';
         }
       } else if (typeof snippet == 'undefined') {
-        // wasmTable is kind of special.  In the normal configuration we export
-        // it from the wasm module under the name `__indirect_function_table`
-        // but we declare it as an 'undefined' in `libcore.js`.
-        // Since the normal export mechanism will declare this variable we don't
-        // want the JS library version of this symbol be declared (otherwise
-        // it would be a duplicate decl).
-        // TODO(sbc): This is kind of hacky, we should come up with a better solution.
-        var isDirectWasmExport = mangled == 'wasmTable';
-        if (isDirectWasmExport) {
+        // For JS library functions that are simply aliases of native symbols,
+        // we don't need to generate anything here.  Instead these get included
+        // and exported alongside native symbols.
+        // See `create_receiving` in `tools/emscripten.py`.
+        if (isNativeAlias) {
           contentText = '';
         } else {
           contentText = `var ${mangled};`;
@@ -752,7 +762,7 @@ function(${args}) {
         contentText = `var ${mangled} = ${snippet};`;
       }
 
-      if (MODULARIZE == 'instance' && (EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
+      if (contentText && MODULARIZE == 'instance' && (EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
         // In MODULARIZE=instance mode mark JS library symbols are exported at
         // the point of declaration.
         contentText = 'export ' + contentText;
@@ -775,11 +785,11 @@ function(${args}) {
         }
       }
 
-      let commentText = '';
-      let docs = LibraryManager.library[symbol + '__docs'];
       // Add the docs if they exist and if we are actually emitting a declaration.
       // See the TODO about wasmTable above.
-      if (docs && contentText != '') {
+      let docs = LibraryManager.library[symbol + '__docs'];
+      let commentText = '';
+      if (contentText != '' && docs) {
         commentText += docs + '\n';
       }
 
@@ -886,6 +896,7 @@ var proxiedFunctionTable = [
       '//FORWARDED_DATA:' +
         JSON.stringify({
           librarySymbols,
+          nativeAliases,
           warnings: warningOccured(),
           asyncFuncs,
           libraryDefinitions: LibraryManager.libraryDefinitions,
