@@ -2274,7 +2274,7 @@ def make_test_server(in_queue, out_queue, port):
       self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
       return SimpleHTTPRequestHandler.end_headers(self)
 
-    def do_POST(self):
+    def do_POST(self):  # noqa: DC04
       urlinfo = urlparse(self.path)
       query = parse_qs(urlinfo.query)
       content_length = int(self.headers['Content-Length'])
