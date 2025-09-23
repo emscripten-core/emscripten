@@ -240,12 +240,6 @@ WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProp
 #else
   assignWasmExports(wasmExports);
 #endif
-#if '$wasmTable' in addedLibraryItems
-  wasmTable = wasmExports['__indirect_function_table'];
-#if ASSERTIONS
-  assert(wasmTable);
-#endif
-#endif
 
 #if AUDIO_WORKLET
   // If we are in the audio worklet environment, we can only access the Module object
@@ -266,10 +260,6 @@ WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProp
 #endif
 
 #if !IMPORTED_MEMORY
-  wasmMemory = wasmExports['memory'];
-#if ASSERTIONS
-  assert(wasmMemory);
-#endif
   updateMemoryViews();
 #endif
   <<< ATPRERUNS >>>
