@@ -691,6 +691,9 @@ int main() {
     };
   );
   Dummy& staticDummy = val::global("c")().as<Dummy&>();
+  EM_ASM(
+    globalThis.staticDummy.delete();
+  );
 
   printf("end\n");
   return 0;
