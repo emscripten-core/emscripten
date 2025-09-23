@@ -507,6 +507,12 @@ jobs:
       - run: ruff check
       # TODO (cclauss): When ruff supports rules these errors without --preview, remove following line
       - run: ruff check --preview --select=E20,E30,E221,E225,E226
+  vulture:
+    executor: focal
+    steps:
+      - checkout
+      - pip-install
+      - run: vulture . --min-confidence 100
   mypy:
     executor: focal
     steps:
@@ -1213,6 +1219,7 @@ workflows:
     jobs:
       - ruff
       - mypy
+      - vulture
       - eslint
       - build-docs
       - build-linux

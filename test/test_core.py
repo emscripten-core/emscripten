@@ -7486,7 +7486,7 @@ void* operator new(size_t size) {
     'no_dynamic': (['--bind', '-sDYNAMIC_EXECUTION=0', '-sLEGACY_VM_SUPPORT'],),
   })
   def test_embind_val_basics(self, args):
-    if '-sLEGACY_VM_SUPPORT':
+    if '-sLEGACY_VM_SUPPORT' in args:
       if self.get_setting('MODULARIZE') == 'instance' or self.get_setting('WASM_ESM_INTEGRATION'):
         self.skipTest('LEGACY_VM_SUPPORT is not compatible with EXPORT_ES6')
       if self.is_wasm64():
