@@ -876,10 +876,10 @@ jobs:
       # support in the generated code.
       # Keep this in sync with `OLDEST_SUPPORTED_NODE` in `feature_matrix.py`
       - install-node-version:
-          node_version: "10.19.0"
+          node_version: "12.22.9"
       - run-tests:
-          title: "node (oldest / 10.19.0)"
-          extra-cflags: "-sMIN_NODE_VERSION=101900"
+          title: "node (oldest / 12.22.9)"
+          extra-cflags: "-sMIN_NODE_VERSION=122209"
           # We include most but not all of the nodefs and node rawfs tests here.
           # test_fs_nodefs_rw, test_fs_nodefs_statvfs, and test_unistd_io_nodefs_bigint fail.
           test_targets: "

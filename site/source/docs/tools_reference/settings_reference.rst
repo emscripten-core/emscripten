@@ -2859,7 +2859,7 @@ are desired to work. Pass -sMIN_FIREFOX_VERSION=majorVersion to drop support
 for Firefox versions older than < majorVersion.
 Firefox 79 was released on 2020-07-28.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 55 which was released on 2017-08-08 (see
+Minimum supported value is 65 which was released on 2019-01-29 (see
 feature_matrix.py)
 
 Default value: 79
@@ -2891,13 +2891,13 @@ Default value: 150000
 MIN_CHROME_VERSION
 ==================
 
-Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=58 to
-drop support for Chrome 57 and older.
+Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=78 to
+drop support for Chrome 77 and older.
 This setting also applies to modern Chromium-based Edge, which shares version
 numbers with Chrome.
 Chrome 85 was released on 2020-08-25.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 70, which was released on 2018-10-16 (see
+Minimum supported value is 71, which was released on 2018-12-04 (see
 feature_matrix.py).
 
 Default value: 85
@@ -2909,10 +2909,9 @@ MIN_NODE_VERSION
 
 Specifies minimum node version to target for the generated code.  This is
 distinct from the minimum version required run the emscripten compiler.
-This version aligns with the current Ubuuntu TLS 20.04 (Focal).
 Version is encoded in MMmmVV, e.g. 181401 denotes Node 18.14.01.
-Minimum supported value is 101900, which was released 2020-02-05 (see
-feature_matrix.py).
+Minimum supported value is 122209, which was released 2022-01-11 (see
+feature_matrix.py). This version aligns with the Ubuntu TLS 22.04 (Jammy).
 
 Default value: 160000
 

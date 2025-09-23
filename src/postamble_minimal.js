@@ -158,7 +158,7 @@ var imports = {
 
 #if MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
 // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
-#if MIN_FIREFOX_VERSION < 58 || MIN_SAFARI_VERSION < 150000 || ENVIRONMENT_MAY_BE_NODE
+#if MIN_SAFARI_VERSION < 150000 || ENVIRONMENT_MAY_BE_NODE
 #if ASSERTIONS && !WASM2JS
 // Module['wasm'] should contain a typed array of the Wasm object data, or a
 // precompiled WebAssembly Module.
