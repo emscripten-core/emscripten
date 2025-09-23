@@ -2285,6 +2285,7 @@ addToLibrary({
 });
 `,
 #else
+  // `wasmTable` is a JS alias for the Wasm `__indirect_function_table` export
   $wasmTable: '__indirect_function_table',
 #endif
 
@@ -2292,6 +2293,7 @@ addToLibrary({
   // This gets defined in src/runtime_init_memory.js
   $wasmMemory: undefined,
 #else
+  // `wasmMemory` is a JS alias for the Wasm `memory` export
   $wasmMemory: 'memory',
 #endif
 
