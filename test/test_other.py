@@ -15593,6 +15593,7 @@ addToLibrary({
       }''')
     self.do_runf('main.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '--post-js=post.js'])
 
+  @crossplatform
   def test_empath_split(self):
     create_file('main.cpp', r'''
       #include <iostream>

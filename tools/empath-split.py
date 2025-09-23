@@ -173,7 +173,7 @@ def main():
   if args.wasm_split:
     wasm_split = args.wasm_split
   else:
-    wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
+    wasm_split = os.path.join(building.get_binaryen_bin(), shared.exe_suffix('wasm-split'))
 
   if not os.path.isfile(args.wasm):
     exit_with_error(f"'{args.wasm}' was not found or not a file")
