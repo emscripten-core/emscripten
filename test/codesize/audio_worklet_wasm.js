@@ -113,7 +113,7 @@ var L = [], M = a => {
 }, Q = (a, b, c, e) => {
     b = P[b];
     P[a].connect(b.destination || b, c, e);
-}, P = {}, R = 0, S = "undefined" != typeof TextDecoder ? new TextDecoder : void 0, T = (a = 0) => {
+}, P = {}, R = 0, S = globalThis.TextDecoder ? new TextDecoder : void 0, T = (a = 0) => {
     for (var b = J, c = a, e = c + void 0; b[c] && !(c >= e); ) ++c;
     if (16 < c - a && b.buffer && S) return S.decode(b.slice(a, c));
     for (e = ""; a < c; ) {
