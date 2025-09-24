@@ -10448,8 +10448,9 @@ int main() {
     # Disable a feature
     compile(['-mno-sign-ext', '-c'])
     verify_features_sec('sign-ext', False)
+
     # Disable via browser selection
-    compile(['-sMIN_FIREFOX_VERSION=61'])
+    compile(['-sMIN_SAFARI_VERSION=120200'])
     verify_features_sec_linked('sign-ext', False)
     compile(['-sMIN_SAFARI_VERSION=140100'])
     verify_features_sec_linked('bulk-memory-opt', False)
@@ -10461,7 +10462,7 @@ int main() {
     compile(['-sMIN_SAFARI_VERSION=160000', '-mno-sign-ext'])
     verify_features_sec_linked('sign-ext', False)
     # Flag enabling overrides explicit browser version
-    compile(['-sMIN_FIREFOX_VERSION=61', '-msign-ext'])
+    compile(['-sMIN_FIREFOX_VERSION=65', '-msign-ext'])
     verify_features_sec_linked('sign-ext', True)
     # Flag disabling overrides explicit version for bulk memory
     compile(['-sMIN_SAFARI_VERSION=150000', '-mno-bulk-memory'])
@@ -14311,8 +14312,6 @@ out.js
     # Specifying an older browser version should trigger the lowering pass
     err = self.run_process(cmd + ['-sMIN_SAFARI_VERSION=120200'], stderr=subprocess.PIPE).stderr
     self.assertContained('--signext-lowering', err)
-    err = self.run_process(cmd + ['-sMIN_FIREFOX_VERSION=61'], stderr=subprocess.PIPE).stderr
-    self.assertContained('--signext-lowering', err)
     err = self.run_process(cmd + ['-sMIN_CHROME_VERSION=73'], stderr=subprocess.PIPE).stderr
     self.assertContained('--signext-lowering', err)
 
@@ -15056,7 +15055,7 @@ addToLibrary({
 
   def test_browser_too_old(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMIN_CHROME_VERSION=10'])
-    self.assertContained('emcc: error: MIN_CHROME_VERSION older than 70 is not supported', err)
+    self.assertContained('emcc: error: MIN_CHROME_VERSION older than 71 is not supported', err)
 
   def test_js_only_settings(self):
     err = self.run_process([EMCC, test_file('hello_world.c'), '-o', 'foo.wasm', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=emscripten_get_heap_max'], stderr=PIPE).stderr
