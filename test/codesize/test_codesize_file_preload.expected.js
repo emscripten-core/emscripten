@@ -3155,7 +3155,7 @@ Module["FS_createLazyFile"] = FS_createLazyFile;
 var _main, wasmMemory, wasmTable;
 
 function assignWasmExports(wasmExports) {
-  Module["_main"] = _main = wasmExports["d"];
+  _main = Module["_main"] = wasmExports["d"];
   wasmMemory = wasmExports["b"];
   wasmTable = wasmExports["__indirect_function_table"];
 }
