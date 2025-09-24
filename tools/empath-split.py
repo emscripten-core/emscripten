@@ -81,7 +81,7 @@ should NOT add --manifest, because this will be generated from this script.
   return args, forwarded_args
 
 
-def check_errors(args, forwarded_args):
+def check_errors(args):
   if args.wasm and not os.path.isfile(args.wasm):
     exit_with_error(f"'{args.wasm}' was not found or not a file")
   if args.paths_file and not os.path.isfile(args.paths_file):
@@ -199,7 +199,7 @@ def get_path_to_functions_map(wasm, sourcemap, paths):
 
 def main():
   args, forwarded_args = parse_args()
-  check_errors(args, forwarded_args)
+  check_errors(args)
 
   sourcemap = get_sourceMappingURL(args.wasm, args.sourcemap)
 
