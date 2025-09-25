@@ -140,6 +140,10 @@ commands:
             cd ~/emsdk
             ./emsdk install tot
             ./emsdk activate tot
+            # Write the version of clang into a file for use in the ccache key
+            ./upstream/bin/clang --version > clang_version.txt
+            echo "clang version:"
+            cat ~/emsdk/clang_version.txt
             # Remove the emsdk version of emscripten to save space in the
             # persistent workspace and to avoid any confusion with the version
             # we are trying to test.
@@ -216,7 +220,7 @@ commands:
           name: "Save Ccache cache"
           paths:
             - ~/.ccache
-          key: "ccache7"
+          key: clang-{{ checksum "~/emsdk/clang_version.txt" }}
 
   prepare-for-tests:
     description: "Setup emscripten tests"
@@ -576,7 +580,7 @@ jobs:
       - install-emsdk
       - restore_cache:
           name: "Restore Ccache cache"
-          key: "ccache7"
+          key: clang-{{ checksum "~/emsdk/clang_version.txt" }}
       - build-libs
       - run:
           name: Clean build directory
