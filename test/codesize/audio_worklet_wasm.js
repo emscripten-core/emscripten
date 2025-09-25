@@ -1,6 +1,4 @@
-var m = globalThis.Module || "undefined" != typeof Module ? Module : {}, q = "em-ww" == globalThis.name, r = !!globalThis.AudioWorkletGlobalScope, t, z, J, K, H, E, v, X, F, D, C, Y, A, Z;
-
-r && (q = !0);
+var m = globalThis.Module || "undefined" != typeof Module ? Module : {}, q = !!globalThis.AudioWorkletGlobalScope, r = "em-ww" == globalThis.name || q, t, z, J, K, H, E, v, X, F, D, C, Y, A, Z;
 
 function u(a) {
     t = a;
@@ -12,12 +10,12 @@ function u(a) {
     a.G = a.M = 0;
 }
 
-q && !r && (onmessage = a => {
+r && !q && (onmessage = a => {
     onmessage = null;
     u(a.data);
 });
 
-if (r) {
+if (q) {
     function a(c) {
         class e extends AudioWorkletProcessor {
             constructor(d) {
@@ -98,7 +96,7 @@ function w() {
     E = new Float32Array(a);
 }
 
-q || (v = m.mem || new WebAssembly.Memory({
+r || (v = m.mem || new WebAssembly.Memory({
     initial: 256,
     maximum: 256,
     shared: !0
@@ -236,9 +234,9 @@ function y() {
         C = a.n;
         Y = a.o;
         A = a.k;
-        q ? (Y(t.J, t.F), r || (removeEventListener("message", N), L = L.forEach(M), addEventListener("message", M))) : a.i();
-        q || X();
+        r ? (Y(t.J, t.F), q || (removeEventListener("message", N), L = L.forEach(M), addEventListener("message", M))) : a.i();
+        r || X();
     }));
 }
 
-q || y();
+r || y();

@@ -58,21 +58,22 @@ if (ENVIRONMENT_IS_NODE) {
 }
 #endif
 
-#if WASM_WORKERS
-var ENVIRONMENT_IS_WASM_WORKER = globalThis.name == 'em-ww';
+#if AUDIO_WORKLET
+var ENVIRONMENT_IS_AUDIO_WORKLET = !!globalThis.AudioWorkletGlobalScope;
+#endif
 
-#if ENVIRONMENT_MAY_BE_NODE
+#if AUDIO_WORKLET && WASM_WORKERS
+var ENVIRONMENT_IS_WASM_WORKER = globalThis.name == 'em-ww' || ENVIRONMENT_IS_AUDIO_WORKLET;
+#elif WASM_WORKERS
+var ENVIRONMENT_IS_WASM_WORKER = globalThis.name == 'em-ww';
+#endif
+
+#if WASM_WORKERS && ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
   // The way we signal to a worker that it is hosting a pthread is to construct
   // it with a specific name.
   ENVIRONMENT_IS_WASM_WORKER = worker_threads['workerData'] == 'em-ww'
 }
-#endif
-#endif
-
-#if AUDIO_WORKLET
-var ENVIRONMENT_IS_AUDIO_WORKLET = !!globalThis.AudioWorkletGlobalScope;
-if (ENVIRONMENT_IS_AUDIO_WORKLET) ENVIRONMENT_IS_WASM_WORKER = true;
 #endif
 
 #if ASSERTIONS && ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_SHELL
