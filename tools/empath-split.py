@@ -124,7 +124,7 @@ def check_errors(args):
           exit_with_error('sourceMappingURL section does not exist')
         sourcemap = module.get_sourceMappingURL()
       if not module.has_name_section():
-        exit_with_error('Name section does not eixst')
+        exit_with_error('Name section does not exist')
 
   if not os.path.isfile(sourcemap):
     exit_with_error(f"'{sourcemap}' was not found or not a file")
