@@ -1328,6 +1328,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         funcs.append(name)
     return imports, exports, funcs
 
+  def output_name(self, basename):
+    suffix = get_output_suffix(self.get_cflags())
+    return basename + suffix
+
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
