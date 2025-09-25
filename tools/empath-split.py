@@ -115,8 +115,6 @@ def check_errors(args):
     exit_with_error(f"'{args.paths_file}' was not found or not a file")
 
   if args.sourcemap:
-    if not os.path.isfile(args.sourcemap):
-      exit_with_error(f"'{args.sourcemap}' was not found or not a file")
     sourcemap = args.sourcemap
 
   if args.wasm:
