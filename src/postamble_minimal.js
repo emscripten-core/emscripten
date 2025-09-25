@@ -241,24 +241,6 @@ WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProp
   assignWasmExports(wasmExports);
 #endif
 
-#if AUDIO_WORKLET
-  // If we are in the audio worklet environment, we can only access the Module object
-  // and not the global scope of the main JS script. Therefore we need to export
-  // all symbols that the audio worklet scope needs onto the Module object.
-#if ASSERTIONS
-  // In ASSERTIONS-enabled builds, the needed symbols have gotten read-only getters
-  // saved to the Module. Remove the getters so we can manually export them here.
-  delete Module['stackSave'];
-  delete Module['stackAlloc'];
-  delete Module['stackRestore'];
-  delete Module['wasmTable'];
-#endif
-  Module['stackSave'] = stackSave;
-  Module['stackAlloc'] = stackAlloc;
-  Module['stackRestore'] = stackRestore;
-  Module['wasmTable'] = wasmTable;
-#endif
-
 #if !IMPORTED_MEMORY
   updateMemoryViews();
 #endif
