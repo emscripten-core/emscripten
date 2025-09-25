@@ -211,8 +211,8 @@ commands:
       - save_cache:
           name: "Save CCache cache"
           paths:
-            - ~/ccache_dir/
-          key: "ccache4"
+            - ~/.ccache
+          key: "ccache5"
 
   prepare-for-tests:
     description: "Setup emscripten tests"
@@ -542,7 +542,7 @@ jobs:
     environment:
       EMCC_CORES: 16
       EMCC_USE_NINJA: 1
-      CCACHE_DIR: "~/ccache_dir"
+      #CCACHE_DIR: "~/ccache_dir"
       EM_COMPILER_WRAPPER: "ccache"
       EMCC_DEBUG: 1
     steps:
@@ -573,7 +573,7 @@ jobs:
       - install-v8
       - install-emsdk
       - restore_cache:
-          key: "ccache4"
+          key: "ccache5"
       - build-libs
       - run:
           name: Clean build directory
