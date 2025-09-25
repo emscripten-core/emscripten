@@ -13,14 +13,9 @@ from .utils import WINDOWS
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 
 
-def create_response_file(args, directory):
-  """Routes the given cmdline param list in args into a new response file and
-  returns the filename to it.
+def create_response_file_contents(args):
+  """Create response file contents based on list of arguments.
   """
-
-  response_fd, response_filename = tempfile.mkstemp(prefix='emscripten_', suffix='.rsp.utf-8', dir=directory, text=True)
-
-  # Backslashes and other special chars need to be escaped in the response file.
   escape_chars = ['\\', '\"']
   # When calling llvm-ar on Linux and macOS, single quote characters ' should be escaped.
   if not WINDOWS:
@@ -40,6 +35,18 @@ def create_response_file(args, directory):
       arg = '"%s"' % arg
     contents += arg + '\n'
 
+  return contents
+
+
+def create_response_file(args, directory):
+  """Routes the given cmdline param list in args into a new response file and
+  returns the filename to it.
+  """
+  # Backslashes and other special chars need to be escaped in the response file.
+  contents = create_response_file_contents(args)
+
+  response_fd, response_filename = tempfile.mkstemp(prefix='emscripten_', suffix='.rsp.utf-8', dir=directory, text=True)
+
   with os.fdopen(response_fd, 'w', encoding='utf-8') as f:
     f.write(contents)
 
@@ -54,7 +61,7 @@ def create_response_file(args, directory):
   return response_filename
 
 
-def read_response_file(response_filename):
+def expand_response_file(arg):
   """Reads a response file, and returns the list of cmdline params found in the
   file.
 
@@ -63,12 +70,19 @@ def read_response_file(response_filename):
   specified, first UTF-8 and then Python locale.getpreferredencoding() are
   attempted.
 
-  The parameter response_filename may start with '@'."""
-  if response_filename.startswith('@'):
-    response_filename = response_filename[1:]
+  The parameter `arg` is the command line argument to be expanded."""
 
-  if not os.path.exists(response_filename):
-    raise OSError("response file not found: %s" % response_filename)
+  if arg.startswith('@'):
+    response_filename = arg[1:]
+  elif arg.startswith('-Wl,@'):
+    response_filename = arg[5:]
+  else:
+    response_filename = None
+
+  # Is the argument is not a response file, or if the file does not exist
+  # just return orginal argument.
+  if not response_filename or not os.path.exists(response_filename):
+    return [arg]
 
   # Guess encoding based on the file suffix
   components = os.path.basename(response_filename).split('.')
@@ -97,20 +111,13 @@ def read_response_file(response_filename):
   if DEBUG:
     logging.warning(f'read response file {response_filename}: {args}')
 
-  return args
+  # Response file can be recursive so call substitute_response_files on the arguments
+  return substitute_response_files(args)
 
 
 def substitute_response_files(args):
   """Substitute any response files found in args with their contents."""
   new_args = []
   for arg in args:
-    if arg.startswith('@'):
-      new_args += read_response_file(arg)
-    elif arg.startswith('-Wl,@'):
-      for a in read_response_file(arg[5:]):
-        if a.startswith('-'):
-          a = '-Wl,' + a
-        new_args.append(a)
-    else:
-      new_args.append(arg)
+    new_args += expand_response_file(arg)
   return new_args
