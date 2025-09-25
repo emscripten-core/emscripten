@@ -64,7 +64,7 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
 
 #if AUDIO_WORKLET
-var ENVIRONMENT_IS_AUDIO_WORKLET = typeof AudioWorkletGlobalScope !== 'undefined';
+var ENVIRONMENT_IS_AUDIO_WORKLET = !!globalThis.AudioWorkletGlobalScope;
 #endif
 
 #if AUDIO_WORKLET && WASM_WORKERS
