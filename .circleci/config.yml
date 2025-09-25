@@ -169,7 +169,7 @@ commands:
           command: |
             ./emcc --clear-cache
       - pip-install
-      - run: apt-get install -q -y ninja-build
+      - run: apt-get install -q -y ninja-build ccache
       - run:
           name: embuilder build ALL
           command: |
@@ -207,6 +207,11 @@ commands:
             - vms/
             - wasi-sdk/
             - .jsvu/
+      - save_cache:
+          paths:
+            - ccache_dir/
+          key: "ccache"
+
   prepare-for-tests:
     description: "Setup emscripten tests"
     steps:
@@ -535,6 +540,8 @@ jobs:
     environment:
       EMCC_CORES: 16
       EMCC_USE_NINJA: 1
+      CCACHE_BASE_DIR: "ccache_dir"
+      EM_COMPILER_WRAPPER: "ccache"
     steps:
       - checkout
       - run:
