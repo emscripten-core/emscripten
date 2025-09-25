@@ -211,7 +211,7 @@ commands:
       - save_cache:
           paths:
             - ~/ccache_dir/
-          key: "ccache"
+          key: "ccache2"
 
   prepare-for-tests:
     description: "Setup emscripten tests"
@@ -571,7 +571,7 @@ jobs:
       - install-v8
       - install-emsdk
       - restore_cache:
-          key: "ccache"
+          key: "ccache2"
       - build-libs
       - run:
           name: Clean build directory
