@@ -270,7 +270,7 @@ def main():
       if not path_to_funcs[path]:
         diagnostics.warn(f'{path} does not match any functions')
       if args.verbose:
-        print(path)
+        print(f'{path}: {len(path_to_funcs[path])} functions')
         for func in path_to_funcs[path]:
           print('  ' + func)
         print()
