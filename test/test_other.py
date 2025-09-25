@@ -12973,7 +12973,7 @@ exec "$@"
     self.do_runf('main.c', 'Top level code\nhello from pre-run\njs_func called\n')
 
   # On Windows maximum command line length is 32767 characters. Create such a long build line by linking together
-  # several .o files to test that emcc internally uses response files properly when calling llvm-nm and wasm-ld.
+  # several .o files to test that emcc internally uses response files properly when calling wasm-ld.
   @is_slow_test
   def test_windows_long_link_response_file(self):
     decls = ''
@@ -12988,16 +12988,17 @@ exec "$@"
       decls += 'int %s();' % name
       calls += 'value += %s();' % name
 
-    count = 1000
+    count = 300
     for i in range(count):
       name = 'a' + str(i)
-      for _ in range(5):
-        name += name
+      name = name * 32
       create_o(name, i)
 
     create_file('main.c', '#include<stdio.h>\n%s int main() { int value = 0; %s printf("%%d\\n", value); }' % (decls, calls))
 
-    assert sum(len(f) for f in files) > 32767
+    total_len = sum(len(f) for f in files)
+    print('Command line lower bound:', total_len)
+    assert total_len > 32767
 
     self.run_process(building.get_command_with_possible_response_file([EMCC, 'main.c'] + files))
     self.assertContained(str(count * (count - 1) // 2), self.run_js('a.out.js'))
