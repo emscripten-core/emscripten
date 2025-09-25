@@ -316,7 +316,7 @@ var LibraryWebAudio = {
     srcNode.connect(dstNode.destination || dstNode, outputIndex, inputIndex);
   },
 
-  emscripten_current_thread_is_audio_worklet: () => typeof AudioWorkletGlobalScope !== 'undefined',
+  emscripten_current_thread_is_audio_worklet: () => ENVIRONMENT_IS_AUDIO_WORKLET,
 
   emscripten_audio_worklet_post_function_v: (audioContext, funcPtr) => {
     (audioContext ? EmAudio[audioContext].audioWorklet.bootstrapMessage.port : messagePort).postMessage({'_wsc': funcPtr, args: [] }); // "WaSm Call"
