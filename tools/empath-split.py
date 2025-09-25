@@ -121,17 +121,15 @@ def check_errors(args):
 
   if args.wasm:
     with webassembly.Module(args.wasm) as module:
-      if args.sourcemap:
-        sourcemap = args.sourcemap
-      else:
+      if not args.sourcemap:
         if not emsymbolizer.get_sourceMappingURL_section(module):
           exit_with_error('sourceMappingURL section does not exist')
         sourcemap = module.get_sourceMappingURL()
-      if not os.path.isfile(sourcemap):
-        exit_with_error(f"'{sourcemap}' was not found or not a file")
       if not module.has_name_section():
         exit_with_error('Name section does not eixst')
 
+  if not os.path.isfile(sourcemap):
+    exit_with_error(f"'{sourcemap}' was not found or not a file")
   if not os.path.isfile(args.wasm_split):
     exit_with_error(f"'{args.wasm_split}' was not found or not a file")
 
