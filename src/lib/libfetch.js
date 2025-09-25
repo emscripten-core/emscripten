@@ -164,7 +164,7 @@ var LibraryFetch = {
 
     /**
      * Sends the request.
-     * @param {any} body The body of the request.
+     * @param body The body of the request.
      */
     async send(body = null) {
       if (this.readyState !== 1) {
