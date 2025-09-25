@@ -175,6 +175,7 @@ commands:
           command: |
             ./embuilder build MINIMAL
             ./test/runner test_hello_world
+            ccache --print-stats
       # - run:
       #     name: embuilder (LTO)
       #     command: |
@@ -209,7 +210,7 @@ commands:
             - .jsvu/
       - save_cache:
           paths:
-            - ccache_dir/
+            - ~/ccache_dir/
           key: "ccache"
 
   prepare-for-tests:
@@ -540,7 +541,7 @@ jobs:
     environment:
       EMCC_CORES: 16
       EMCC_USE_NINJA: 1
-      CCACHE_BASE_DIR: "ccache_dir"
+      CCACHE_BASE_DIR: "~/ccache_dir"
       EM_COMPILER_WRAPPER: "ccache"
     steps:
       - checkout
@@ -569,6 +570,8 @@ jobs:
             tar xvf wasi-sysroot-11.0.tar.gz -C ~/wasi-sdk/
       - install-v8
       - install-emsdk
+      - restore_cache:
+          key: "ccache"
       - build-libs
       - run:
           name: Clean build directory
