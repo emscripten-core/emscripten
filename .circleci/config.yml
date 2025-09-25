@@ -171,30 +171,29 @@ commands:
       - pip-install
       - run: apt-get install -q -y ninja-build ccache
       - run:
-          name: embuilder build MINIMAL
+          name: embuilder build ALL
           command: |
-            ./embuilder build MINIMAL
+            ./embuilder build ALL
             ./test/runner test_hello_world
-            ccache --print-stats
-      # - run:
-      #     name: embuilder (LTO)
-      #     command: |
-      #       ./embuilder build MINIMAL --lto
-      #       ./test/runner test_hello_world
-      # - run:
-      #     name: embuilder (WASM64)
-      #     command: |
-      #       ./embuilder build MINIMAL --wasm64
-      # - run:
-      #     name: embuilder (PIC)
-      #     command: |
-      #       ./embuilder build MINIMAL_PIC --pic
-      #       ./test/runner test_hello_world
-      # - run:
-      #     name: embuilder (PIC+LTO)
-      #     command: |
-      #       ./embuilder build MINIMAL --pic --lto
-      #       ./test/runner test_hello_world
+      - run:
+          name: embuilder (LTO)
+          command: |
+            ./embuilder build MINIMAL --lto
+            ./test/runner test_hello_world
+      - run:
+          name: embuilder (WASM64)
+          command: |
+            ./embuilder build MINIMAL --wasm64
+      - run:
+          name: embuilder (PIC)
+          command: |
+            ./embuilder build MINIMAL_PIC --pic
+            ./test/runner test_hello_world
+      - run:
+          name: embuilder (PIC+LTO)
+          command: |
+            ./embuilder build MINIMAL --pic --lto
+            ./test/runner test_hello_world
       - run:
           name: "Ccache stats"
           command: |
@@ -217,7 +216,7 @@ commands:
           name: "Save Ccache cache"
           paths:
             - ~/.ccache
-          key: "ccache6"
+          key: "ccache7"
 
   prepare-for-tests:
     description: "Setup emscripten tests"
@@ -577,7 +576,7 @@ jobs:
       - install-emsdk
       - restore_cache:
           name: "Restore Ccache cache"
-          key: "ccache6"
+          key: "ccache7"
       - build-libs
       - run:
           name: Clean build directory
