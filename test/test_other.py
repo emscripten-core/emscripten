@@ -14298,8 +14298,8 @@ out.js
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-sWASM_BIGINT', '-sMIN_SAFARI_VERSION=130000'])
     self.assertContained('emcc: error: MIN_SAFARI_VERSION=130000 is not compatible with WASM_BIGINT (150000 or above required)', err)
 
-    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-pthread', '-sMIN_CHROME_VERSION=73'])
-    self.assertContained('emcc: error: MIN_CHROME_VERSION=73 is not compatible with pthreads (74 or above required)', err)
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-pthread', '-sMIN_FIREFOX_VERSION=65'])
+    self.assertContained('emcc: error: MIN_FIREFOX_VERSION=65 is not compatible with pthreads (79 or above required)', err)
 
   def test_signext_lowering(self):
     # Use `-v` to show the sub-commands being run by emcc.
@@ -14311,8 +14311,6 @@ out.js
 
     # Specifying an older browser version should trigger the lowering pass
     err = self.run_process(cmd + ['-sMIN_SAFARI_VERSION=120200'], stderr=subprocess.PIPE).stderr
-    self.assertContained('--signext-lowering', err)
-    err = self.run_process(cmd + ['-sMIN_CHROME_VERSION=73'], stderr=subprocess.PIPE).stderr
     self.assertContained('--signext-lowering', err)
 
   @flaky('https://github.com/emscripten-core/emscripten/issues/20125')
@@ -15055,7 +15053,7 @@ addToLibrary({
 
   def test_browser_too_old(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMIN_CHROME_VERSION=10'])
-    self.assertContained('emcc: error: MIN_CHROME_VERSION older than 71 is not supported', err)
+    self.assertContained('emcc: error: MIN_CHROME_VERSION older than 74 is not supported', err)
 
   def test_js_only_settings(self):
     err = self.run_process([EMCC, test_file('hello_world.c'), '-o', 'foo.wasm', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=emscripten_get_heap_max'], stderr=PIPE).stderr
