@@ -166,7 +166,7 @@ var quit_ = (status, toThrow) => {
 
 // In MODULARIZE mode _scriptName needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
-var _scriptName = typeof document != "undefined" ? document.currentScript?.src : undefined;
+var _scriptName = globalThis.document?.currentScript?.src;
 
 if (typeof __filename != "undefined") {
   // Node
@@ -664,7 +664,7 @@ var PATH_FS = {
   }
 };
 
-var UTF8Decoder = typeof TextDecoder != "undefined" ? new TextDecoder : undefined;
+var UTF8Decoder = globalThis.TextDecoder ? new TextDecoder : undefined;
 
 var findStringEnd = (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
   var maxIdx = idx + maxBytesToRead;
