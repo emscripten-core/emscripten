@@ -171,9 +171,9 @@ commands:
       - pip-install
       - run: apt-get install -q -y ninja-build ccache
       - run:
-          name: embuilder build ALL
+          name: embuilder build crtbegin
           command: |
-            ./embuilder build MINIMAL
+            ./embuilder build crtbegin
             ./test/runner test_hello_world
             ccache --print-stats
       # - run:
@@ -212,7 +212,7 @@ commands:
           name: "Save CCache cache"
           paths:
             - ~/ccache_dir/
-          key: "ccache3"
+          key: "ccache4"
 
   prepare-for-tests:
     description: "Setup emscripten tests"
@@ -544,6 +544,7 @@ jobs:
       EMCC_USE_NINJA: 1
       CCACHE_DIR: "~/ccache_dir"
       EM_COMPILER_WRAPPER: "ccache"
+      EMCC_DEBUG: 1
     steps:
       - checkout
       - run:
@@ -572,7 +573,7 @@ jobs:
       - install-v8
       - install-emsdk
       - restore_cache:
-          key: "ccache3"
+          key: "ccache4"
       - build-libs
       - run:
           name: Clean build directory
