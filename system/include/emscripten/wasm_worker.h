@@ -101,22 +101,6 @@ void emscripten_wasm_worker_post_function_sig(emscripten_wasm_worker_t id, void 
 // https://github.com/WebAssembly/threads/issues/174
 void emscripten_wasm_worker_sleep(int64_t nanoseconds);
 
-// Returns the value of navigator.hardwareConcurrency, i.e. the number of
-// logical threads available for the user agent. NOTE: If the execution
-// environment does not support navigator.hardwareConcurrency, this function
-// will return zero to signal no support. (If the value 1 is returned, then it
-// means that navigator.hardwareConcurrency is supported, but there is only one
-// logical thread of concurrency available)
-int emscripten_navigator_hardware_concurrency(void);
-
-// Returns the value of the expression "Atomics.isLockFree(byteWidth)": true if
-// the given memory access width can be accessed atomically, and false
-// otherwise. Generally will return true on 1, 2 and 4 byte accesses. On 8 byte
-// accesses, behavior differs across browsers, see
-//  - https://bugzilla.mozilla.org/show_bug.cgi?id=1246139
-//  - https://bugs.chromium.org/p/chromium/issues/detail?id=1167449
-int emscripten_atomics_is_lock_free(int byteWidth);
-
 #define emscripten_lock_t volatile uint32_t
 
 // Use with syntax "emscripten_lock_t l = EMSCRIPTEN_LOCK_T_STATIC_INITIALIZER;"
