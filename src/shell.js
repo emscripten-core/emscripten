@@ -51,7 +51,7 @@ var ENVIRONMENT_IS_WASM_WORKER = globalThis.name == 'em-ww';
 #endif
 
 #if AUDIO_WORKLET
-var ENVIRONMENT_IS_AUDIO_WORKLET = typeof AudioWorkletGlobalScope !== 'undefined';
+var ENVIRONMENT_IS_AUDIO_WORKLET = !!globalThis.AudioWorkletGlobalScope;
 // Audio worklets behave as wasm workers.
 if (ENVIRONMENT_IS_AUDIO_WORKLET) ENVIRONMENT_IS_WASM_WORKER = true;
 #endif
