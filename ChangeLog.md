@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 4.0.16 (in development)
 -----------------------
+- The minimum supported versions of node, chrome and firefox were bumped in
+  order remove the globalThis polyfill: (#25375)
+  - node: v10.19.0 -> v12.22.9
+  - chrome: v70 -> v71
+  - firefox: v55 -> v65
 
 4.0.15 - 09/17/25
 -----------------

@@ -170,13 +170,13 @@ var LibraryEmVal = {
   _emval_new_u16string__deps: ['$Emval'],
   _emval_new_u16string: (v) => Emval.toHandle(UTF16ToString(v)),
 
-  _emval_get_global__deps: ['$Emval', '$getStringOrSymbol', '$emGlobalThis'],
+  _emval_get_global__deps: ['$Emval', '$getStringOrSymbol'],
   _emval_get_global: (name) => {
     if (!name) {
-      return Emval.toHandle(emGlobalThis);
+      return Emval.toHandle(globalThis);
     }
     name = getStringOrSymbol(name);
-    return Emval.toHandle(emGlobalThis[name]);
+    return Emval.toHandle(globalThis[name]);
   },
 
   _emval_get_module_property__deps: ['$getStringOrSymbol', '$Emval'],

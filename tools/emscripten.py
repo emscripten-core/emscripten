@@ -954,10 +954,10 @@ def create_receiving(function_exports, other_exports, library_symbols):
     # wasm module is available.
     for sym in exports:
       mangled = asmjs_mangle(sym)
-      export_assignment = ''
+      assignment = mangled
       if (settings.MODULARIZE or not settings.MINIMAL_RUNTIME) and should_export(mangled) and settings.MODULARIZE != 'instance':
-        export_assignment = f" = Module['{mangled}']"
-      receiving.append(f"var {mangled}{export_assignment} = makeInvalidEarlyAccess('{mangled}');")
+        assignment += f" = Module['{mangled}']"
+      receiving.append(f"var {assignment} = makeInvalidEarlyAccess('{mangled}');")
   else:
     # Declare all exports in a single var statement
     sep = ',\n  '
@@ -975,19 +975,17 @@ def create_receiving(function_exports, other_exports, library_symbols):
   for sym, sig in exports.items():
     is_function = sig is not None
     mangled = asmjs_mangle(sym)
+    assignment = mangled
     if generate_dyncall_assignment and is_function and sym.startswith('dynCall_'):
       sig_str = sym.replace('dynCall_', '')
-      dynCallAssignment = f"dynCalls['{sig_str}'] = "
-    else:
-      dynCallAssignment = ''
-    export_assignment = ''
+      assignment += f" = dynCalls['{sig_str}']"
     if (settings.MODULARIZE or not settings.MINIMAL_RUNTIME) and should_export(mangled) and settings.MODULARIZE != 'instance':
-      export_assignment = f"Module['{mangled}'] = "
+       assignment += f" = Module['{mangled}']"
     if is_function and install_debug_wrapper(sym):
       nargs = len(sig.params)
-      receiving.append(f"  {export_assignment}{dynCallAssignment}{mangled} = createExportWrapper('{sym}', {nargs});")
+      receiving.append(f"  {assignment} = createExportWrapper('{sym}', {nargs});")
     else:
-      receiving.append(f"  {export_assignment}{dynCallAssignment}{mangled} = wasmExports['{sym}'];")
+      receiving.append(f"  {assignment} = wasmExports['{sym}'];")
   receiving.append('}')
 
   return '\n'.join(receiving)

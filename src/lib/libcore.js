@@ -1610,45 +1610,10 @@ addToLibrary({
   emscripten_asm_const_async_on_main_thread: (emAsmAddr, sigPtr, argbuf) => runMainThreadEmAsm(emAsmAddr, sigPtr, argbuf, 0),
 #endif
 
-  $emGlobalThis__internal: true,
-#if SUPPORTS_GLOBALTHIS
-  $emGlobalThis: 'globalThis',
-#else
-  $getGlobalThis__internal: true,
-  $getGlobalThis: () => {
-    if (typeof globalThis != 'undefined') {
-      return globalThis;
-    }
-#if DYNAMIC_EXECUTION
-    return new Function('return this')();
-#else
-    function testGlobal(obj) {
-      // Use __emGlobalThis as a test symbol to see if `obj` is indeed the
-      // global object.
-      obj['__emGlobalThis'] = obj;
-      var success = typeof __emGlobalThis == 'object' && obj['__emGlobalThis'] === obj;
-      delete obj['__emGlobalThis'];
-      return success;
-    }
-    if (typeof self != 'undefined' && testGlobal(self)) {
-      return self; // This works for both "window" and "self" (Web Workers) global objects
-    }
-#if ENVIRONMENT_MAY_BE_NODE
-    if (typeof global != 'undefined' && testGlobal(global)) {
-      return global;
-    }
-#endif
-    abort('unable to get global object.');
-#endif // DYNAMIC_EXECUTION
-  },
-  $emGlobalThis__deps: ['$getGlobalThis'],
-  $emGlobalThis: 'getGlobalThis()',
-#endif // SUPPORTS_GLOBALTHIS
-
 #if !DECLARE_ASM_MODULE_EXPORTS
   // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
   // at runtime rather than statically in JS code.
-  $exportWasmSymbols__deps: ['$asmjsMangle', '$emGlobalThis',
+  $exportWasmSymbols__deps: ['$asmjsMangle',
 #if DYNCALLS || !WASM_BIGINT
     , '$dynCalls'
 #endif
@@ -1666,9 +1631,9 @@ addToLibrary({
       // similar DECLARE_ASM_MODULE_EXPORTS = 0 treatment.
       if (typeof exportedSymbol.value === 'undefined') {
 #if MINIMAL_RUNTIME
-        emGlobalThis[name] = exportedSymbol;
+        globalThis[name] = exportedSymbol;
 #else
-        emGlobalThis[name] = Module[name] = exportedSymbol;
+        globalThis[name] = Module[name] = exportedSymbol;
 #endif
       }
     }

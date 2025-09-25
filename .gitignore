@@ -46,6 +46,7 @@ emdump
 emdwp
 emmake
 emnm
+empath-split
 emprofile
 emranlib
 emrun
@@ -67,6 +68,7 @@ emdump.bat
 emdwp.bat
 emmake.bat
 emnm.bat
+empath-split.bat
 emprofile.bat
 emranlib.bat
 emrun.bat

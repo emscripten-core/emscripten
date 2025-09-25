@@ -380,7 +380,7 @@ def requires_node_canary(func):
 def node_bigint_flags(node_version):
   # The --experimental-wasm-bigint flag was added in v12, and then removed (enabled by default)
   # in v16.
-  if node_version and node_version < (16, 0, 0) and node_version >= (12, 0, 0):
+  if node_version and node_version < (16, 0, 0):
     return ['--experimental-wasm-bigint']
   else:
     return []
@@ -409,17 +409,6 @@ def requires_wasm64(func):
   @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_wasm64()
-    return func(self, *args, **kwargs)
-
-  return decorated
-
-
-def requires_wasm_legacy_eh(func):
-  assert callable(func)
-
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-    self.require_wasm_legacy_eh()
     return func(self, *args, **kwargs)
 
   return decorated
@@ -630,31 +619,6 @@ def also_with_noderawfs(func):
   parameterize(metafunc, {'': (False,),
                           'rawfs': (True,)})
   return metafunc
-
-
-# Decorator version of env_modify
-def also_with_env_modify(name_updates_mapping):
-
-  def decorated(f):
-    @wraps(f)
-    def metafunc(self, updates, *args, **kwargs):
-      if DEBUG:
-        print('parameterize:env_modify=%s' % (updates))
-      if updates:
-        with env_modify(updates):
-          return f(self, *args, **kwargs)
-      else:
-        return f(self, *args, **kwargs)
-
-    params = {'': (None,)}
-    for name, updates in name_updates_mapping.items():
-      params[name] = (updates,)
-
-    parameterize(metafunc, params)
-
-    return metafunc
-
-  return decorated
 
 
 def also_with_minimal_runtime(f):
@@ -1382,23 +1346,20 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     # remove this if the issue above is ever fixed.
     self.set_setting('NO_DEFAULT_TO_CXX')
     self.ldflags = []
-    # Increate stack trace limit to maximise usefulness of test failure reports
-    self.node_args = ['--stack-trace-limit=50']
+    # Increase the stack trace limit to maximise usefulness of test failure reports.
+    # Also, include backtrace for all uncuaght exceptions (not just Error).
+    self.node_args = ['--stack-trace-limit=50', '--trace-uncaught']
     self.spidermonkey_args = ['-w']
 
     nodejs = self.get_nodejs()
     if nodejs:
       node_version = shared.get_node_version(nodejs)
-      if node_version < (11, 0, 0):
+      if node_version < (13, 0, 0):
         self.node_args.append('--unhandled-rejections=strict')
-        self.node_args.append('--experimental-wasm-se')
-      else:
-        # Include backtrace for all uncuaght exceptions (not just Error).
-        self.node_args.append('--trace-uncaught')
-        if node_version < (15, 0, 0):
-          # Opt in to node v15 default behaviour:
-          # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
-          self.node_args.append('--unhandled-rejections=throw')
+      elif node_version < (15, 0, 0):
+        # Opt in to node v15 default behaviour:
+        # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
+        self.node_args.append('--unhandled-rejections=throw')
       self.node_args += node_bigint_flags(node_version)
 
       # If the version we are running tests in is lower than the version that
@@ -1637,32 +1598,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           return src[start:t + 1]
       t += 1
       assert t < len(src)
-
-  def count_funcs(self, javascript_file):
-    num_funcs = 0
-    start_tok = "// EMSCRIPTEN_START_FUNCS"
-    end_tok = "// EMSCRIPTEN_END_FUNCS"
-    start_off = 0
-    end_off = 0
-
-    js = read_file(javascript_file)
-    blob = "".join(js.splitlines())
-
-    start_off = blob.find(start_tok) + len(start_tok)
-    end_off = blob.find(end_tok)
-    asm_chunk = blob[start_off:end_off]
-    num_funcs = asm_chunk.count('function ')
-    return num_funcs
-
-  def count_wasm_contents(self, wasm_binary, what):
-    out = self.run_process([os.path.join(building.get_binaryen_bin(), 'wasm-opt'), wasm_binary, '--metrics'], stdout=PIPE).stdout
-    # output is something like
-    # [?]        : 125
-    for line in out.splitlines():
-      if '[' + what + ']' in line:
-        ret = line.split(':')[1].strip()
-        return int(ret)
-    self.fail('Failed to find [%s] in wasm-opt output' % what)
 
   def get_wasm_text(self, wasm_binary):
     return self.run_process([WASM_DIS, wasm_binary], stdout=PIPE).stdout
@@ -2336,7 +2271,7 @@ def make_test_server(in_queue, out_queue, port):
       self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
       return SimpleHTTPRequestHandler.end_headers(self)
 
-    def do_POST(self):
+    def do_POST(self):  # noqa: DC04
       urlinfo = urlparse(self.path)
       query = parse_qs(urlinfo.query)
       content_length = int(self.headers['Content-Length'])

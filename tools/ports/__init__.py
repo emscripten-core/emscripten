@@ -640,7 +640,7 @@ def get_libs(settings):
   return ret
 
 
-def add_cflags(args, settings): # noqa: U100
+def add_cflags(args, settings):
   """Called during compile phase add any compiler flags (e.g -Ifoo) needed
   by the selected ports.  Can also add/change settings.
 

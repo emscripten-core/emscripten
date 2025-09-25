@@ -577,8 +577,9 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
 
 # Processes HTTP request back to the browser.
 class HTTPHandler(SimpleHTTPRequestHandler):
+  protocol_version = 'HTTP/1.1'  # noqa: DC01
+
   def send_head(self):
-    self.protocol_version = 'HTTP/1.1'
     global page_last_served_time
     path = self.translate_path(self.path)
     f = None
@@ -662,14 +663,13 @@ class HTTPHandler(SimpleHTTPRequestHandler):
     if code != 200:
       SimpleHTTPRequestHandler.log_request(self, code)
 
-  def log_message(self, format, *args):
+  def log_message(self, format, *args):  # noqa: DC04
     msg = '%s - - [%s] %s\n' % (self.address_string(), self.log_date_time_string(), format % args)
     # Filter out 404 messages on favicon.ico not being found to remove noise.
     if 'favicon.ico' not in msg:
       sys.stderr.write(msg)
 
-  def do_POST(self):
-    self.protocol_version = 'HTTP/1.1'
+  def do_POST(self):  # # noqa: DC04
     global page_exit_code, have_received_messages
 
     (_, _, path, query, _) = urlsplit(self.path)

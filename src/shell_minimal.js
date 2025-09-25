@@ -21,14 +21,9 @@ if (!Module) /** @suppress{checkTypes}*/Module =
 
 // When running on the web we expect Module to be defined externally, in the
 // HTML.  Otherwise we must define it here before its first use
-var Module =
-#if SUPPORTS_GLOBALTHIS
-  // As a small code size optimization, we can use 'globalThis' to refer to the global scope Module variable.
-  globalThis.{{{ EXPORT_NAME }}} || {};
-#else
-  // Otherwise do a good old typeof check.
-  typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {};
-#endif
+// As a small code size optimization, we can use 'globalThis' to refer to the
+// global scope Module variable.
+var Module = globalThis.{{{ EXPORT_NAME }}} || {};
 
 #else
 var Module = {{{ EXPORT_NAME }}};

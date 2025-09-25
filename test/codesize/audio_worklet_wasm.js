@@ -235,7 +235,7 @@ function y() {
         C = a.m;
         B = a.n;
         Y = a.o;
-        A = A = a.k;
+        A = a.k;
         m.stackSave = Q;
         m.stackAlloc = ha;
         m.stackRestore = P;

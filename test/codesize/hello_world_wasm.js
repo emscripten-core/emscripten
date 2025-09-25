@@ -14,7 +14,7 @@ WebAssembly.instantiate(d.wasm, {
 }).then((a => {
     a = a.instance.exports;
     g = a.d;
-    h = h = a.b;
+    h = a.b;
     e = new Uint8Array(h.buffer);
     a.c();
     g();

@@ -158,7 +158,7 @@ var imports = {
 
 #if MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
 // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
-#if MIN_FIREFOX_VERSION < 58 || MIN_SAFARI_VERSION < 150000 || ENVIRONMENT_MAY_BE_NODE
+#if MIN_SAFARI_VERSION < 150000 || ENVIRONMENT_MAY_BE_NODE
 #if ASSERTIONS && !WASM2JS
 // Module['wasm'] should contain a typed array of the Wasm object data, or a
 // precompiled WebAssembly Module.
@@ -240,12 +240,6 @@ WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProp
 #else
   assignWasmExports(wasmExports);
 #endif
-#if '$wasmTable' in addedLibraryItems
-  wasmTable = wasmExports['__indirect_function_table'];
-#if ASSERTIONS
-  assert(wasmTable);
-#endif
-#endif
 
 #if AUDIO_WORKLET
   // If we are in the audio worklet environment, we can only access the Module object
@@ -266,10 +260,6 @@ WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProp
 #endif
 
 #if !IMPORTED_MEMORY
-  wasmMemory = wasmExports['memory'];
-#if ASSERTIONS
-  assert(wasmMemory);
-#endif
   updateMemoryViews();
 #endif
   <<< ATPRERUNS >>>
