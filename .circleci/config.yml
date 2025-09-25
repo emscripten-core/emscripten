@@ -209,6 +209,7 @@ commands:
             - wasi-sdk/
             - .jsvu/
       - save_cache:
+          name: "Save CCache cache"
           paths:
             - ~/ccache_dir/
           key: "ccache2"
