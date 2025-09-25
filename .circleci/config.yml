@@ -573,6 +573,7 @@ jobs:
       - install-v8
       - install-emsdk
       - restore_cache:
+          name: "Restore CCache cache"
           key: "ccache5"
       - build-libs
       - run:
