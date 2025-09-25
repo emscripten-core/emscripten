@@ -42,6 +42,8 @@ commands:
             # If that download link breaks, temporarily use this URL instead:
             # wget -O ~/chrome.deb https://storage.googleapis.com/webassembly/chrome/google-chrome-stable_current_amd64.deb
             dpkg -i ~/chrome.deb
+            echo "Chrome version:"
+            /usr/bin/google-chrome --version
   emsdk-env:
     description: "emsdk_env.sh"
     steps:
