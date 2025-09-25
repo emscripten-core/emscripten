@@ -140,7 +140,7 @@ def get_cflags(user_args):
 
   if '-nostdinc' not in user_args:
     if not settings.USE_SDL:
-      cflags += ['-Xclang','-iwithsysroot' + os.path.join('/include', 'fakesdl')]
-    cflags += ['-Xclang','-iwithsysroot' + os.path.join('/include', 'compat')]
+      cflags += ['-Xclang', '-iwithsysroot' + os.path.join('/include', 'fakesdl')]
+    cflags += ['-Xclang', '-iwithsysroot' + os.path.join('/include', 'compat')]
 
   return cflags
