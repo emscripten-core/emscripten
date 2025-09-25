@@ -158,9 +158,6 @@ var MINIFY_WASM_IMPORTED_MODULES = false;
 // Whether to minify exports from the Wasm module.
 var MINIFY_WASM_EXPORT_NAMES = true;
 
-// Used to track whether target environment supports the 'globalThis' attribute.
-var SUPPORTS_GLOBALTHIS = false;
-
 // Used to track whether target environment supports the 'Promise.any'.
 var SUPPORTS_PROMISE_ANY = false;
 

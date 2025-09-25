@@ -1472,7 +1472,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   # TODO(sbc): Find make a generic way to expose the feature matrix to JS
   # compiler rather then adding them all ad-hoc as internal settings
-  settings.SUPPORTS_GLOBALTHIS = feature_matrix.caniuse(feature_matrix.Feature.GLOBALTHIS)
   settings.SUPPORTS_PROMISE_ANY = feature_matrix.caniuse(feature_matrix.Feature.PROMISE_ANY)
   if not settings.BULK_MEMORY:
     settings.BULK_MEMORY = feature_matrix.caniuse(feature_matrix.Feature.BULK_MEMORY)

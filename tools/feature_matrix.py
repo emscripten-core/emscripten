@@ -22,12 +22,12 @@ UNSUPPORTED = 0x7FFFFFFF
 
 # N.b. when modifying these values, update comments in src/settings.js on
 # MIN_x_VERSION fields to match accordingly.
-OLDEST_SUPPORTED_CHROME = 70  # Released on 2018-10-16
-OLDEST_SUPPORTED_FIREFOX = 55  # Released on 2017-08-08
+OLDEST_SUPPORTED_CHROME = 71  # Released on 2018-12-04
+OLDEST_SUPPORTED_FIREFOX = 65  # Released on 2019-01-29
 OLDEST_SUPPORTED_SAFARI = 120200  # Released on 2019-03-25
-# 10.19.0 is the oldest version of node that we do any testing with.
+# 12.22.09 is the oldest version of node that we do any testing with.
 # Keep this in sync with the test-node-compat in .circleci/config.yml.
-OLDEST_SUPPORTED_NODE = 101900
+OLDEST_SUPPORTED_NODE = 122209
 
 
 class Feature(IntEnum):
@@ -37,7 +37,6 @@ class Feature(IntEnum):
   MUTABLE_GLOBALS = auto()
   JS_BIGINT_INTEGRATION = auto()
   THREADS = auto()
-  GLOBALTHIS = auto()
   PROMISE_ANY = auto()
   MEMORY64 = auto()
 
@@ -81,12 +80,6 @@ min_browser_versions = {
     'firefox': 79,
     'safari': 140100,
     'node': 160400,
-  },
-  Feature.GLOBALTHIS: {
-    'chrome': 71,
-    'firefox': 65,
-    'safari': 120100,
-    'node': 120000,
   },
   Feature.PROMISE_ANY: {
     'chrome': 85,
@@ -185,7 +178,5 @@ def apply_min_browser_versions():
     enable_feature(Feature.BULK_MEMORY, 'pthreads')
   elif settings.WASM_WORKERS or settings.SHARED_MEMORY:
     enable_feature(Feature.BULK_MEMORY, 'shared-mem')
-  if settings.AUDIO_WORKLET:
-    enable_feature(Feature.GLOBALTHIS, 'AUDIO_WORKLET')
   if settings.MEMORY64 == 1:
     enable_feature(Feature.MEMORY64, 'MEMORY64')

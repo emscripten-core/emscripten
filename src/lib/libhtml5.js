@@ -236,10 +236,6 @@ var LibraryHTML5 = {
 
     fullscreenEnabled() {
       return document.fullscreenEnabled
-#if MIN_FIREFOX_VERSION <= 63
-      // Firefox 64 shipped unprefixed form of fullscreenEnabled (https://caniuse.com/#feat=mdn-api_document_fullscreenenabled)
-      || document.mozFullScreenEnabled
-#endif
 #if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
       // Safari 13.0.3 on macOS Catalina 10.15.1 still ships with prefixed webkitFullscreenEnabled.
       // TODO: If Safari at some point ships with unprefixed version, update the version check above.
@@ -1072,12 +1068,7 @@ var LibraryHTML5 = {
 #endif
     if (!target) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
 
-#if MIN_FIREFOX_VERSION <= 63 // https://caniuse.com/#feat=mdn-api_element_fullscreenchange_event
-    registerFullscreenChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_FULLSCREENCHANGE }}}, "mozfullscreenchange", targetThread);
-#endif
-
-#if MIN_CHROME_VERSION < 71 || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
-    // Unprefixed Fullscreen API shipped in Chromium 71 (https://bugs.chromium.org/p/chromium/issues/detail?id=383813)
+#if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
     // As of Safari 13.0.3 on macOS Catalina 10.15.1 still ships with prefixed webkitfullscreenchange. TODO: revisit this check once Safari ships unprefixed version.
     registerFullscreenChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_FULLSCREENCHANGE }}}, "webkitfullscreenchange", targetThread);
 #endif
@@ -1102,13 +1093,7 @@ var LibraryHTML5 = {
 
     if (target.requestFullscreen) {
       target.requestFullscreen();
-#if MIN_FIREFOX_VERSION <= 63 // https://caniuse.com/#feat=fullscreen
-    } else if (target.mozRequestFullScreen) {
-      target.mozRequestFullScreen();
-    } else if (target.mozRequestFullscreen) {
-      target.mozRequestFullscreen();
-#endif
-#if MIN_CHROME_VERSION <= 70 || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
+#if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
     } else if (target.webkitRequestFullscreen) {
       target.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
 #endif
@@ -1214,12 +1199,7 @@ var LibraryHTML5 = {
       if (!getFullscreenElement()) {
         document.removeEventListener('fullscreenchange', restoreOldStyle);
 
-#if MIN_FIREFOX_VERSION <= 63 // https://caniuse.com/#feat=mdn-api_element_fullscreenchange_event
-        document.removeEventListener('mozfullscreenchange', restoreOldStyle);
-#endif
-
-#if MIN_CHROME_VERSION < 71 || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
-        // Unprefixed Fullscreen API shipped in Chromium 71 (https://bugs.chromium.org/p/chromium/issues/detail?id=383813)
+#if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
         // As of Safari 13.0.3 on macOS Catalina 10.15.1 still ships with prefixed webkitfullscreenchange. TODO: revisit this check once Safari ships unprefixed version.
         document.removeEventListener('webkitfullscreenchange', restoreOldStyle);
 #endif
@@ -1258,11 +1238,7 @@ var LibraryHTML5 = {
       }
     }
     document.addEventListener('fullscreenchange', restoreOldStyle);
-#if MIN_FIREFOX_VERSION <= 63 // https://caniuse.com/#feat=mdn-api_element_fullscreenchange_event
-    document.addEventListener('mozfullscreenchange', restoreOldStyle);
-#endif
-#if MIN_CHROME_VERSION < 71 || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
-    // Unprefixed Fullscreen API shipped in Chromium 71 (https://bugs.chromium.org/p/chromium/issues/detail?id=383813)
+#if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
     // As of Safari 13.0.3 on macOS Catalina 10.15.1 still ships with prefixed webkitfullscreenchange. TODO: revisit this check once Safari ships unprefixed version.
     document.addEventListener('webkitfullscreenchange', restoreOldStyle);
 #endif
@@ -1377,11 +1353,7 @@ var LibraryHTML5 = {
     if (!target) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
 
     if (!target.requestFullscreen
-#if MIN_FIREFOX_VERSION <= 63 // https://caniuse.com/#feat=fullscreen
-      && !target.mozRequestFullScreen
-      && !target.mozRequestFullscreen
-#endif
-#if MIN_CHROME_VERSION <= 70 || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
+#if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
       && !target.webkitRequestFullscreen
 #endif
       ) {
@@ -1525,10 +1497,6 @@ var LibraryHTML5 = {
     var d = specialHTMLTargets[{{{ cDefs.EMSCRIPTEN_EVENT_TARGET_DOCUMENT }}}];
     if (d.exitFullscreen) {
       d.fullscreenElement && d.exitFullscreen();
-#if MIN_FIREFOX_VERSION < 64 // https://caniuse.com/#feat=mdn-api_document_exitfullscreen
-    } else if (d.mozCancelFullScreen) {
-      d.mozFullScreenElement && d.mozCancelFullScreen();
-#endif
 #if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED // https://caniuse.com/#feat=mdn-api_document_exitfullscreen
     } else if (d.webkitExitFullscreen) {
       d.webkitFullscreenElement && d.webkitExitFullscreen();
