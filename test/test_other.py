@@ -2586,6 +2586,7 @@ F1 -> ''
 
   @requires_network
   def test_remote_ports(self):
+    self.set_setting('NO_DEFAULT_TO_CXX', 0)  # emdawnwebgpu uses C++ internally
     self.emcc(test_file('hello_world.c'), ['--use-port=emdawnwebgpu'])
 
   @crossplatform
@@ -9585,13 +9586,12 @@ end
 
   @also_with_wasm64
   def test_closure_webgpu(self):
-    # This test can be removed if USE_WEBGPU is later included in INCLUDE_FULL_LIBRARY.
+    self.set_setting('NO_DEFAULT_TO_CXX', 0)  # emdawnwebgpu uses C++ internally
     self.build('hello_world.c', cflags=[
       '--closure=1',
       '-Werror=closure',
-      '-Wno-error=deprecated',
       '-sINCLUDE_FULL_LIBRARY',
-      '-sUSE_WEBGPU',
+      '--use-port=emdawnwebgpu',
     ])
 
   # Tests --closure-args command line flag
@@ -12230,15 +12230,6 @@ int main(void) {
     for engine in config.WASM_ENGINES:
       self.assertContained(expected, self.run_js('test.wasm', engine))
 
-  @parameterized({
-    '': ([],),
-    'assertions': (['-sASSERTIONS'],),
-    'closure': (['-sASSERTIONS', '--closure=1'],),
-    'dylink': (['-sMAIN_MODULE'],),
-  })
-  def test_webgpu_compiletest(self, args):
-    self.run_process([EMXX, test_file('webgpu_jsvalstore.cpp'), '-Wno-error=deprecated', '-sUSE_WEBGPU', '-sASYNCIFY'] + args)
-
   @flaky('https://github.com/emscripten-core/emscripten/issues/25343')
   @also_with_wasm64
   @parameterized({
@@ -12247,7 +12238,7 @@ int main(void) {
     'closure_assertions': (['--closure=1', '-Werror=closure', '-sASSERTIONS'],),
   })
   def test_emdawnwebgpu_link_test(self, args):
-    self.run_process([EMXX, test_file('test_emdawnwebgpu_link_test.cpp'), '--use-port=emdawnwebgpu', '-sASYNCIFY'] + args)
+    self.emcc(test_file('test_emdawnwebgpu_link_test.cpp'), ['--use-port=emdawnwebgpu', '-sASYNCIFY'] + args)
 
   def test_signature_mismatch(self):
     create_file('a.c', 'void foo(); int main() { foo(); return 0; }')
