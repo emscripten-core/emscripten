@@ -456,7 +456,6 @@ def run_tests(options, suites):
 
   return num_failures
 
-
 def parse_args():
   parser = argparse.ArgumentParser(prog='runner.py', description=__doc__)
   parser.add_argument('--save-dir', action='store_true',
