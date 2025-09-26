@@ -217,11 +217,15 @@ commands:
             - vms/
             - wasi-sdk/
             - .jsvu/
-      - save_cache:
-          name: "Save Ccache cache"
-          paths:
-            - ~/.ccache
-          key: clang-{{ checksum "~/emsdk/clang_version.txt" }}
+      - when:
+          condition:
+            equal: [ "main", << pipeline.git.branch >> ]
+          steps:
+            - save_cache:
+                name: "Save Ccache cache"
+                paths:
+                  - ~/.ccache
+                key: clang-{{ checksum "~/emsdk/clang_version.txt" }}
 
   prepare-for-tests:
     description: "Setup emscripten tests"
@@ -579,9 +583,12 @@ jobs:
             tar xvf wasi-sysroot-11.0.tar.gz -C ~/wasi-sdk/
       - install-v8
       - install-emsdk
-      - restore_cache:
-          name: "Restore Ccache cache"
-          key: clang-{{ checksum "~/emsdk/clang_version.txt" }}
+      - when:
+          condition: ${CIRCLE_PULL_REQUEST}
+          steps:
+            - restore_cache:
+                name: "Restore Ccache cache"
+                key: clang-{{ checksum "~/emsdk/clang_version.txt" }}
       - build-libs
       - run:
           name: Clean build directory
