@@ -587,7 +587,7 @@ jobs:
       - install-emsdk
       - when:
           condition:
-            equal: [ "pull_request", << pipeline.event.action >> ]
+            equal: [ "pull_request", << pipeline.event.name >> ]
           steps:
             - restore_cache:
                 name: "Restore Ccache cache"
