@@ -316,6 +316,14 @@ var LibraryWebAudio = {
     return emscriptenGetContextQuantumSize(contextHandle);
   },
 
+  emscripten_audio_context_sample_rate: (contextHandle) => {
+#if ASSERTIONS
+    assert(EmAudio[contextHandle], `Called emscripten_audio_context_sample_rate() with an invalid Web Audio Context handle ${contextHandle}`);
+    assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_audio_context_sample_rate() on handle ${contextHandle} that is not an AudioContext, but of type ${EmAudio[contextHandle]}`);
+#endif
+    return EmAudio[contextHandle]['sampleRate'];
+  },
+
   emscripten_audio_node_connect: (source, destination, outputIndex, inputIndex) => {
     var srcNode = EmAudio[source];
     var dstNode = EmAudio[destination];
