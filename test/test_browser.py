@@ -5459,6 +5459,7 @@ Module["preRun"] = () => {
     'pthreads_es6': (['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sEXPORT_ES6'],),
     'es6': (['-sEXPORT_ES6'],),
     'strict': (['-sSTRICT'],),
+    'audio_params_disabled': (['-sAUDIO_WORKLET_SUPPORT_AUDIO_PARAMS=0'],),
   })
   @requires_sound_hardware
   def test_audio_worklet(self, args):
