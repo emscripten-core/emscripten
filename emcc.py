@@ -20,6 +20,7 @@ emcc can be influenced by a few environment variables:
                slows down compilation).
 """
 
+
 from tools.toolchain_profiler import ToolchainProfiler
 
 import logging
