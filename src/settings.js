@@ -1901,7 +1901,7 @@ var MIN_SAFARI_VERSION = 150000;
 // numbers with Chrome.
 // Chrome 85 was released on 2020-08-25.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// Minimum supported value is 71, which was released on 2018-12-04 (see
+// Minimum supported value is 74, which was released on 2019-04-23 (see
 // feature_matrix.py).
 // [link]
 var MIN_CHROME_VERSION = 85;

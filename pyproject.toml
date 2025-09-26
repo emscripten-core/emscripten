@@ -111,3 +111,6 @@ ignore_missing_imports = true
 
 [tool.deadcode]
 exclude = ["out", "cache", "third_party", "test/third_party", "node_modules", "site/source/_themes", "site/source/conf.py"]
+
+[tool.vulture]
+exclude = ["out", "cache", "third_party", "test/third_party", "node_modules", "site/source/_themes", "site/source/conf.py"]

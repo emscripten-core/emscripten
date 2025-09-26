@@ -9424,8 +9424,8 @@ end
     create_file("file'2", ' ')
     create_file("hyvää päivää", ' ')
     create_file("snowman freezes covid ☃ 🦠", ' ')
-    rsp = response_file.create_response_file(("file'1", "file'2", "hyvää päivää", "snowman freezes covid ☃ 🦠"), shared.TEMP_DIR)
-    building.emar('cr', 'libfoo.a', ['@' + rsp])
+    create_file("tmp.rsp", response_file.create_response_file_contents(("file'1", "file'2", "hyvää päivää", "snowman freezes covid ☃ 🦠")))
+    building.emar('cr', 'libfoo.a', ['@tmp.rsp'])
 
   def test_response_file_bom(self):
     # Modern CMake version create response fils in UTF-8 but with BOM
@@ -12973,7 +12973,7 @@ exec "$@"
     self.do_runf('main.c', 'Top level code\nhello from pre-run\njs_func called\n')
 
   # On Windows maximum command line length is 32767 characters. Create such a long build line by linking together
-  # several .o files to test that emcc internally uses response files properly when calling llvm-nm and wasm-ld.
+  # several .o files to test that emcc internally uses response files properly when calling wasm-ld.
   @is_slow_test
   def test_windows_long_link_response_file(self):
     decls = ''
@@ -12988,19 +12988,30 @@ exec "$@"
       decls += 'int %s();' % name
       calls += 'value += %s();' % name
 
-    count = 1000
+    count = 300
     for i in range(count):
       name = 'a' + str(i)
-      for _ in range(5):
-        name += name
+      name = name * 32
       create_o(name, i)
 
     create_file('main.c', '#include<stdio.h>\n%s int main() { int value = 0; %s printf("%%d\\n", value); }' % (decls, calls))
 
-    assert sum(len(f) for f in files) > 32767
+    total_len = sum(len(f) for f in files)
+    print('Command line lower bound:', total_len)
+    assert total_len > 32767
 
     self.run_process(building.get_command_with_possible_response_file([EMCC, 'main.c'] + files))
     self.assertContained(str(count * (count - 1) // 2), self.run_js('a.out.js'))
+
+  @crossplatform
+  def test_response_file(self):
+    out_js = self.output_name('response_file')
+    response_data = '-o "%s" "%s"' % (out_js, test_file('hello_world.cpp'))
+    create_file('rsp_file', response_data.replace('\\', '\\\\'))
+    self.run_process([EMCC, "@rsp_file"] + self.get_cflags())
+    self.do_run(out_js, 'hello, world', no_build=True)
+
+    self.assertContained('emcc: error: @foo.txt: No such file or directory', self.expect_fail([EMCC, '@foo.txt']))
 
   # Tests that the filename suffix of the response files can be used to detect which encoding the file is.
   @crossplatform
@@ -13018,6 +13029,13 @@ exec "$@"
     print('Python locale preferredencoding: ' + preferred_encoding)
     open('a.rsp', 'w', encoding=preferred_encoding).write('äö.c') # Write a response file using Python preferred encoding
     self.run_process([EMCC, '@a.rsp']) # ... and test that it is properly autodetected.
+
+  @crossplatform
+  def test_response_file_recursive(self):
+    create_file('rsp2.txt', response_file.create_response_file_contents([test_file('hello_world.c'), '-o', 'hello.js']))
+    create_file('rsp1.txt', '@rsp2.txt\n')
+    self.run_process([EMCC, '@rsp1.txt'])
+    self.assertContained('hello, world!', self.run_js('hello.js'))
 
   def test_output_name_collision(self):
     # Ensure that the secondary filenames never collide with the primary output filename
@@ -14298,8 +14316,8 @@ out.js
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-sWASM_BIGINT', '-sMIN_SAFARI_VERSION=130000'])
     self.assertContained('emcc: error: MIN_SAFARI_VERSION=130000 is not compatible with WASM_BIGINT (150000 or above required)', err)
 
-    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-pthread', '-sMIN_CHROME_VERSION=73'])
-    self.assertContained('emcc: error: MIN_CHROME_VERSION=73 is not compatible with pthreads (74 or above required)', err)
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-pthread', '-sMIN_FIREFOX_VERSION=65'])
+    self.assertContained('emcc: error: MIN_FIREFOX_VERSION=65 is not compatible with pthreads (79 or above required)', err)
 
   def test_signext_lowering(self):
     # Use `-v` to show the sub-commands being run by emcc.
@@ -14311,8 +14329,6 @@ out.js
 
     # Specifying an older browser version should trigger the lowering pass
     err = self.run_process(cmd + ['-sMIN_SAFARI_VERSION=120200'], stderr=subprocess.PIPE).stderr
-    self.assertContained('--signext-lowering', err)
-    err = self.run_process(cmd + ['-sMIN_CHROME_VERSION=73'], stderr=subprocess.PIPE).stderr
     self.assertContained('--signext-lowering', err)
 
   @flaky('https://github.com/emscripten-core/emscripten/issues/20125')
@@ -15055,7 +15071,7 @@ addToLibrary({
 
   def test_browser_too_old(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMIN_CHROME_VERSION=10'])
-    self.assertContained('emcc: error: MIN_CHROME_VERSION older than 71 is not supported', err)
+    self.assertContained('emcc: error: MIN_CHROME_VERSION older than 74 is not supported', err)
 
   def test_js_only_settings(self):
     err = self.run_process([EMCC, test_file('hello_world.c'), '-o', 'foo.wasm', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=emscripten_get_heap_max'], stderr=PIPE).stderr
@@ -15639,3 +15655,9 @@ addToLibrary({
     # /emsdk/emscripten/system/lib/libcxx
     self.assertTrue(has_defined_function('test_4.wasm', r'std::__2::ios_base::getloc\\28\\29\\20const'))
     self.assertTrue(has_defined_function('test_4.wasm', r'std::uncaught_exceptions\\28\\29'))
+
+    # Check --print-sources option
+    out = self.run_process([empath_split, 'test.wasm', '--print-sources'], stdout=PIPE).stdout
+    self.assertIn('main.cpp', out)
+    self.assertIn('foo.cpp', out)
+    self.assertIn('/emsdk/emscripten/system/lib/libc/musl/src/string/strcmp.c', out)
