@@ -219,7 +219,9 @@ commands:
             - .jsvu/
       - when:
           condition:
-            equal: [ "ccache-libs", << pipeline.git.branch >> ]
+            and:
+              - equal: [ "ccache-libs", << pipeline.git.branch >> ]
+              - equal: [ "https://github.com/emscripten-core/emscripten", << pipeline.project.git_url >> ]
           steps:
             - save_cache:
                 name: "Save Ccache cache"
