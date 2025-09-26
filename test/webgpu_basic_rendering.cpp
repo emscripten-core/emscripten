@@ -18,6 +18,42 @@
 
 #include <emscripten.h>
 #include <emscripten/html5.h>
+#include <emscripten/em_js.h>
+
+EM_JS_DEPS(deps, "$keepRuntimeAlive");
+
+// Keeps track of whether async tests are still alive to make sure they finish
+// before exit. This tests that keepalives exist where they should.
+static int sScopeCount = 0;
+class ScopedCounter {
+    public:
+        ScopedCounter(const ScopedCounter&&) { Increment(); }
+        ScopedCounter(const ScopedCounter&) { Increment(); }
+        ScopedCounter() { Increment(); }
+        ~ScopedCounter() { Decrement(); }
+    private:
+        void Increment() { sScopeCount++; }
+        void Decrement() {
+            assert(sScopeCount > 0);
+            sScopeCount--;
+            if (sScopeCount == 0) {
+                // Check we don't reach 0 before the runtime is ready to exit.
+                // (Make sure this test has scopes for everything that does keepalive.)
+                bool runtime_is_kept_alive = EM_ASM_INT({ return keepRuntimeAlive(); });
+                assert(!runtime_is_kept_alive);
+            }
+        }
+};
+
+void RegisterCheckScopesAtExit() {
+    atexit([](){
+        // Check we don't exit before the tests are done.
+        // (Make sure there's a keepalive for everything the test has scopes for.)
+        assert(sScopeCount == 0);
+        // Overwrite the old return code and exit now that everything is done.
+        exit(0);
+    });
+}
 
 static const wgpu::Instance instance = wgpuCreateInstance(nullptr);
 
@@ -126,7 +162,7 @@ void init() {
 // The depth stencil attachment isn't really needed to draw the triangle
 // and doesn't really affect the render result.
 // But having one should give us a slightly better test coverage for the compile of the depth stencil descriptor.
-void render(wgpu::Device device, wgpu::TextureView view, wgpu::TextureView depthStencilView) {
+void render(wgpu::TextureView view, wgpu::TextureView depthStencilView) {
     wgpu::RenderPassColorAttachment attachment{};
     attachment.view = view;
     attachment.loadOp = wgpu::LoadOp::Clear;
@@ -160,11 +196,10 @@ void render(wgpu::Device device, wgpu::TextureView view, wgpu::TextureView depth
     queue.Submit(1, &commands);
 }
 
-void issueContentsCheck(std::string functionName, wgpu::Device device,
-        wgpu::Buffer readbackBuffer, uint32_t expectData) {
+void issueContentsCheck(ScopedCounter scope, std::string functionName, wgpu::Buffer readbackBuffer, uint32_t expectData) {
     readbackBuffer.MapAsync(
         wgpu::MapMode::Read, 0, 4, wgpu::CallbackMode::AllowSpontaneous,
-        [=](wgpu::MapAsyncStatus status, wgpu::StringView message) {
+        [=, scope=scope](wgpu::MapAsyncStatus status, wgpu::StringView message) {
             if (message.length) {
                 printf("readbackBuffer.MapAsync: %.*s\n", int(message.length), message.data);
             }
@@ -183,7 +218,7 @@ void issueContentsCheck(std::string functionName, wgpu::Device device,
         });
 }
 
-void doCopyTestMappedAtCreation(bool useRange) {
+void doCopyTestMappedAtCreation(ScopedCounter scope, bool useRange) {
     static constexpr uint32_t kValue = 0x05060708;
     size_t size = useRange ? 12 : 4;
     wgpu::Buffer src;
@@ -225,10 +260,10 @@ void doCopyTestMappedAtCreation(bool useRange) {
     }
     queue.Submit(1, &commands);
 
-    issueContentsCheck(__FUNCTION__, device, dst, kValue);
+    issueContentsCheck(scope, __FUNCTION__, dst, kValue);
 }
 
-void doCopyTestMapAsync(bool useRange) {
+void doCopyTestMapAsync(ScopedCounter scope, bool useRange) {
     static constexpr uint32_t kValue = 0x01020304;
     size_t size = useRange ? 12 : 4;
     wgpu::Buffer src;
@@ -274,11 +309,11 @@ void doCopyTestMapAsync(bool useRange) {
             }
             queue.Submit(1, &commands);
 
-            issueContentsCheck(functionName, device, dst, kValue);
+            issueContentsCheck(scope, functionName, dst, kValue);
         });
 }
 
-void doRenderTest() {
+void doRenderTest(ScopedCounter scope) {
     wgpu::Texture readbackTexture;
     {
         wgpu::TextureDescriptor descriptor{};
@@ -302,7 +337,7 @@ void doRenderTest() {
         descriptor.format = wgpu::TextureFormat::Depth32Float;
         depthTexture = device.CreateTexture(&descriptor);
     }
-    render(device, readbackTexture.CreateView(), depthTexture.CreateView());
+    render(readbackTexture.CreateView(), depthTexture.CreateView());
 
     {
         // A little texture.GetFormat test
@@ -335,7 +370,7 @@ void doRenderTest() {
 
     // Check the color value encoded in the shader makes it out correctly.
     static const uint32_t expectData = 0xff0080ff;
-    issueContentsCheck(__FUNCTION__, device, readbackBuffer, expectData);
+    issueContentsCheck(scope, __FUNCTION__, readbackBuffer, expectData);
 }
 
 wgpu::Surface surface;
@@ -343,12 +378,14 @@ wgpu::TextureView canvasDepthStencilView;
 const uint32_t kWidth = 300;
 const uint32_t kHeight = 150;
 
-void frame() {
+void frame(void* vp_scope) {
+    auto scope = std::unique_ptr<ScopedCounter>(reinterpret_cast<ScopedCounter*>(vp_scope));
+
     wgpu::SurfaceTexture surfaceTexture;
     surface.GetCurrentTexture(&surfaceTexture);
 
     wgpu::TextureView backbuffer = surfaceTexture.texture.CreateView();
-    render(device, backbuffer, canvasDepthStencilView);
+    render(backbuffer, canvasDepthStencilView);
 
     // Test should complete when runtime exists after all async work is done.
     emscripten_cancel_main_loop();
@@ -357,11 +394,12 @@ void frame() {
 void run() {
     init();
 
-    doCopyTestMappedAtCreation(false);
-    doCopyTestMappedAtCreation(true);
-    doCopyTestMapAsync(false);
-    doCopyTestMapAsync(true);
-    doRenderTest();
+    ScopedCounter scope;
+    doCopyTestMappedAtCreation(scope, false);
+    doCopyTestMappedAtCreation(scope, true);
+    doCopyTestMapAsync(scope, false);
+    doCopyTestMapAsync(scope, true);
+    doRenderTest(scope);
 
     {
         wgpu::EmscriptenSurfaceSourceCanvasHTMLSelector canvasDesc{};
@@ -393,14 +431,14 @@ void run() {
         }
     }
 
-    emscripten_set_main_loop(frame, 0, false);
+    emscripten_set_main_loop_arg(frame, new ScopedCounter(), 0, false);
 }
 
 int main() {
     GetDevice(run);
 
-    // This exit code will be reported when all of the async operations
-    // complete and the main loop is cancelled. Until then, keepalive keeps
-    // the runtime from exiting.
-    return 0;
+    RegisterCheckScopesAtExit();
+    // The test result will be reported when all scopes exit.
+    // If that doesn't happen, this is the fallback return code.
+    return 99;
 }
