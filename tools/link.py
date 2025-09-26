@@ -39,7 +39,7 @@ from .utils import removeprefix, exit_with_error
 from .shared import in_temp, safe_copy, do_replace
 from .shared import DEBUG, WINDOWS, DYLIB_EXTENSIONS
 from .shared import unsuffixed, unsuffixed_basename, get_file_suffix
-from .settings import settings, default_setting, user_settings, JS_ONLY_SETTINGS, DEPRECATED_SETTINGS
+from .settings import settings, default_setting, user_settings, JS_ONLY_SETTINGS, DEPRECATED_SETTINGS, REMOVED_SETTINGS
 from .minimal_runtime_shell import generate_minimal_runtime_html
 
 logger = logging.getLogger('link')
@@ -800,6 +800,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   for s, reason in DEPRECATED_SETTINGS.items():
     if s in user_settings:
       diagnostics.warning('deprecated', f'{s} is deprecated ({reason}). Please open a bug if you have a continuing need for this setting')
+
+  for s, reason in REMOVED_SETTINGS.items():
+    if s in user_settings:
+      raise Exception(f'{s} has been removed ({reason}).')
 
   # Set the EXPORT_ES6 default early since it affects the setting of the
   # default oformat below.

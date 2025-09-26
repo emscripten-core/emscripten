@@ -48,6 +48,8 @@ See docs/process.md for more on how version tagging works.
   passing `pointer`s by using the `allow_raw_pointers()` argument. This feature
   is only enabled with C++17 and newer. Older versions will allow pointers by
   default.
+- `-sUSE_WEBGPU` was removed in favor of the external port Emdawnwebgpu which
+  are used via `--use-port=emdawnwebgpu`. See 4.0.10 release notes for details.
 
 4.0.15 - 09/17/25
 -----------------

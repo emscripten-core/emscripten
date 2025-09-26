@@ -560,9 +560,6 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
   if settings.MODULARIZE and settings.ENVIRONMENT_MAY_BE_WEB and not settings.EXPORT_ES6:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/modularize-externs.js')]
 
-  if settings.USE_WEBGPU:
-    CLOSURE_EXTERNS += [path_from_root('src/closure-externs/webgpu-externs.js')]
-
   if settings.AUDIO_WORKLET:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/audio-worklet-externs.js')]
 
