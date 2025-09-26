@@ -15655,3 +15655,9 @@ addToLibrary({
     # /emsdk/emscripten/system/lib/libcxx
     self.assertTrue(has_defined_function('test_4.wasm', r'std::__2::ios_base::getloc\\28\\29\\20const'))
     self.assertTrue(has_defined_function('test_4.wasm', r'std::uncaught_exceptions\\28\\29'))
+
+    # Check --print-sources option
+    out = self.run_process([empath_split, 'test.wasm', '--print-sources'], stdout=PIPE).stdout
+    self.assertIn('main.cpp', out)
+    self.assertIn('foo.cpp', out)
+    self.assertIn('/emsdk/emscripten/system/lib/libc/musl/src/string/strcmp.c', out)
