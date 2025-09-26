@@ -586,7 +586,8 @@ jobs:
       - install-v8
       - install-emsdk
       - when:
-          condition: ${CIRCLE_PULL_REQUEST}
+          condition:
+            equal: [ "pull_request", << pipeline.event.name >> ]
           steps:
             - restore_cache:
                 name: "Restore Ccache cache"
