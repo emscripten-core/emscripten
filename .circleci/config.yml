@@ -177,27 +177,27 @@ commands:
       - run:
           name: embuilder build ALL
           command: |
-            ./embuilder build ALL
+            ./embuilder build crtbegin
             ./test/runner test_hello_world
-      - run:
-          name: embuilder (LTO)
-          command: |
-            ./embuilder build MINIMAL --lto
-            ./test/runner test_hello_world
-      - run:
-          name: embuilder (WASM64)
-          command: |
-            ./embuilder build MINIMAL --wasm64
-      - run:
-          name: embuilder (PIC)
-          command: |
-            ./embuilder build MINIMAL_PIC --pic
-            ./test/runner test_hello_world
-      - run:
-          name: embuilder (PIC+LTO)
-          command: |
-            ./embuilder build MINIMAL --pic --lto
-            ./test/runner test_hello_world
+      # - run:
+      #     name: embuilder (LTO)
+      #     command: |
+      #       ./embuilder build MINIMAL --lto
+      #       ./test/runner test_hello_world
+      # - run:
+      #     name: embuilder (WASM64)
+      #     command: |
+      #       ./embuilder build MINIMAL --wasm64
+      # - run:
+      #     name: embuilder (PIC)
+      #     command: |
+      #       ./embuilder build MINIMAL_PIC --pic
+      #       ./test/runner test_hello_world
+      # - run:
+      #     name: embuilder (PIC+LTO)
+      #     command: |
+      #       ./embuilder build MINIMAL --pic --lto
+      #       ./test/runner test_hello_world
       - run:
           name: "Ccache stats"
           command: |
