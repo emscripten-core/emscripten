@@ -594,9 +594,9 @@ jobs:
       - install-v8
       - install-emsdk
       - when:
-          condition:
-            equal: [ "pull_request", << pipeline.event.name >> ]
+          condition: ${CIRCLE_PR_NUMBER}
           steps:
+            - run: echo "${CIRCLE_PR_NUMBER} ${CIRCLE_PULL_REQUEST} ${CIRCLE_REPOSITORY_URL} ${CIRCLE_BRANCH}"
             - restore_cache:
                 name: "Restore Ccache cache"
                 key: clang-{{ checksum "~/emsdk/clang_version.txt" }}
