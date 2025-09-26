@@ -14638,17 +14638,16 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.do_run(src)
 
   @parameterized({
-    'wasm2js': (True,),
-    '': (False,),
+    '': ([],),
+    'wasm2js': (['-sWASM=0'],),
+    'wasm2js_fallback': (['-sWASM=2'],),
   })
-  def test_add_js_function(self, wasm2js):
+  def test_add_js_function(self, args):
     self.set_setting('INVOKE_RUN', 0)
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.set_setting('ALLOW_TABLE_GROWTH')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['callMain'])
-    if wasm2js:
-      self.set_setting('WASM', 0)
-    self.cflags += ['--post-js', test_file('interop/test_add_function_post.js')]
+    self.cflags += args + ['--post-js', test_file('interop/test_add_function_post.js')]
 
     print('basics')
     self.do_run_in_out_file_test('interop/test_add_function.cpp')
@@ -14656,7 +14655,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     print('with ALLOW_TABLE_GROWTH=0')
     self.set_setting('ALLOW_TABLE_GROWTH', 0)
     expected = 'Unable to grow wasm table'
-    if wasm2js:
+    if '-sWASM=0' in args:
       # in wasm2js the error message doesn't come from the VM, but from our
       # emulation code. when ASSERTIONS are enabled we show a clear message, but
       # in optimized builds we don't waste code size on that, and the JS engine
