@@ -98,7 +98,7 @@ class ChromeConfig:
     # --no-sandbox because we are running as root and chrome requires
     # this flag for now: https://crbug.com/638180
     '--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader --enable-experimental-web-platform-features --enable-features=JavaScriptSourcePhaseImports',
-    '--enable-experimental-webassembly-features --js-flags="--experimental-wasm-stack-switching --experimental-wasm-type-reflection --experimental-wasm-rab-integration"',
+    '--enable-experimental-webassembly-features --js-flags="--experimental-wasm-type-reflection --experimental-wasm-rab-integration"',
     # The runners lack sound hardware so fallback to a dummy device (and
     # bypass the user gesture so audio tests work without interaction)
     '--use-fake-device-for-media-stream --autoplay-policy=no-user-gesture-required',
@@ -380,7 +380,7 @@ def requires_node_canary(func):
 def node_bigint_flags(node_version):
   # The --experimental-wasm-bigint flag was added in v12, and then removed (enabled by default)
   # in v16.
-  if node_version and node_version < (16, 0, 0) and node_version >= (12, 0, 0):
+  if node_version and node_version < (16, 0, 0):
     return ['--experimental-wasm-bigint']
   else:
     return []
@@ -1328,6 +1328,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         funcs.append(name)
     return imports, exports, funcs
 
+  def output_name(self, basename):
+    suffix = get_output_suffix(self.get_cflags())
+    return basename + suffix
+
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
@@ -1346,23 +1350,20 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     # remove this if the issue above is ever fixed.
     self.set_setting('NO_DEFAULT_TO_CXX')
     self.ldflags = []
-    # Increate stack trace limit to maximise usefulness of test failure reports
-    self.node_args = ['--stack-trace-limit=50']
+    # Increase the stack trace limit to maximise usefulness of test failure reports.
+    # Also, include backtrace for all uncuaght exceptions (not just Error).
+    self.node_args = ['--stack-trace-limit=50', '--trace-uncaught']
     self.spidermonkey_args = ['-w']
 
     nodejs = self.get_nodejs()
     if nodejs:
       node_version = shared.get_node_version(nodejs)
-      if node_version < (11, 0, 0):
+      if node_version < (13, 0, 0):
         self.node_args.append('--unhandled-rejections=strict')
-        self.node_args.append('--experimental-wasm-se')
-      else:
-        # Include backtrace for all uncuaght exceptions (not just Error).
-        self.node_args.append('--trace-uncaught')
-        if node_version < (15, 0, 0):
-          # Opt in to node v15 default behaviour:
-          # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
-          self.node_args.append('--unhandled-rejections=throw')
+      elif node_version < (15, 0, 0):
+        # Opt in to node v15 default behaviour:
+        # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
+        self.node_args.append('--unhandled-rejections=throw')
       self.node_args += node_bigint_flags(node_version)
 
       # If the version we are running tests in is lower than the version that
@@ -2274,7 +2275,7 @@ def make_test_server(in_queue, out_queue, port):
       self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
       return SimpleHTTPRequestHandler.end_headers(self)
 
-    def do_POST(self):
+    def do_POST(self):  # noqa: DC04
       urlinfo = urlparse(self.path)
       query = parse_qs(urlinfo.query)
       content_length = int(self.headers['Content-Length'])

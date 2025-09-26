@@ -54,9 +54,12 @@ var LibraryWebAudio = {
   // this avoids the user needing to manually add the dependency on the command line.
   emscripten_create_audio_context__deps: ['$emscriptenRegisterAudioObject', '$emscriptenGetAudioObject'],
   emscripten_create_audio_context: (options) => {
+    // Safari added unprefixed AudioContext support in Safari 14.5 on iOS: https://caniuse.com/audio-api
+#if MIN_SAFARI_VERSION < 140500 || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
     var ctx = window.AudioContext || window.webkitAudioContext;
 #if ASSERTIONS
     if (!ctx) console.error('emscripten_create_audio_context failed! Web Audio is not supported.');
+#endif
 #endif
 
     var opts = options ? {
@@ -69,7 +72,12 @@ var LibraryWebAudio = {
     console.dir(opts);
 #endif
 
+#if MIN_SAFARI_VERSION < 140500 || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
     return ctx && emscriptenRegisterAudioObject(new ctx(opts));
+#else
+    // We are targeting an environment where we assume that AudioContext() API unconditionally exists.
+    return emscriptenRegisterAudioObject(new AudioContext(opts));
+#endif
   },
 
   emscripten_resume_audio_context_async: (contextHandle, callback, userData) => {
@@ -323,7 +331,7 @@ var LibraryWebAudio = {
     srcNode.connect(dstNode.destination || dstNode, outputIndex, inputIndex);
   },
 
-  emscripten_current_thread_is_audio_worklet: () => typeof AudioWorkletGlobalScope !== 'undefined',
+  emscripten_current_thread_is_audio_worklet: () => ENVIRONMENT_IS_AUDIO_WORKLET,
 
   emscripten_audio_worklet_post_function_v: (audioContext, funcPtr) => {
     (audioContext ? EmAudio[audioContext].audioWorklet.bootstrapMessage.port : messagePort).postMessage({'_wsc': funcPtr, args: [] }); // "WaSm Call"

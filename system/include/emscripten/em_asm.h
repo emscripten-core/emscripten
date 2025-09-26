@@ -193,11 +193,8 @@ struct __em_asm_sig_builder {};
 
 template<typename... Args>
 struct __em_asm_sig_builder<__em_asm_type_tuple<Args...> > {
-  static const char buffer[sizeof...(Args) + 1];
+  inline static const char buffer[sizeof...(Args) + 1] = { __em_asm_sig<Args>::value..., 0 };
 };
-
-template<typename... Args>
-const char __em_asm_sig_builder<__em_asm_type_tuple<Args...> >::buffer[] = { __em_asm_sig<Args>::value..., 0 };
 
 // We move to type level with decltype(make_tuple(...)) to avoid double
 // evaluation of arguments. Use __typeof__ instead of decltype, though,

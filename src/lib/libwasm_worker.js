@@ -26,7 +26,7 @@
 #endif
 
 {{{
-  const workerSupportsFutexWait = () => AUDIO_WORKLET ? "typeof AudioWorkletGlobalScope === 'undefined'" : '1';
+  const workerSupportsFutexWait = () => AUDIO_WORKLET ? "!ENVIRONMENT_IS_AUDIO_WORKLET" : '1';
   const wasmWorkerJs = `
 #if MINIMAL_RUNTIME
 #if ENVIRONMENT_MAY_BE_NODE
@@ -146,7 +146,7 @@ addToLibrary({
 
 #if AUDIO_WORKLET
     // Audio Worklets do not have postMessage()ing capabilities.
-    if (typeof AudioWorkletGlobalScope === 'undefined') {
+    if (!ENVIRONMENT_IS_AUDIO_WORKLET) {
 #endif
       // The Wasm Worker runtime is now up, so we can start processing
       // any postMessage function calls that have been received. Drop the temp

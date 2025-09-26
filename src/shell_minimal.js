@@ -21,14 +21,9 @@ if (!Module) /** @suppress{checkTypes}*/Module =
 
 // When running on the web we expect Module to be defined externally, in the
 // HTML.  Otherwise we must define it here before its first use
-var Module =
-#if SUPPORTS_GLOBALTHIS
-  // As a small code size optimization, we can use 'globalThis' to refer to the global scope Module variable.
-  globalThis.{{{ EXPORT_NAME }}} || {};
-#else
-  // Otherwise do a good old typeof check.
-  typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {};
-#endif
+// As a small code size optimization, we can use 'globalThis' to refer to the
+// global scope Module variable.
+var Module = globalThis.{{{ EXPORT_NAME }}} || {};
 
 #else
 var Module = {{{ EXPORT_NAME }}};
@@ -76,7 +71,7 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
 
 #if AUDIO_WORKLET
-var ENVIRONMENT_IS_AUDIO_WORKLET = typeof AudioWorkletGlobalScope !== 'undefined';
+var ENVIRONMENT_IS_AUDIO_WORKLET = !!globalThis.AudioWorkletGlobalScope;
 if (ENVIRONMENT_IS_AUDIO_WORKLET) ENVIRONMENT_IS_WASM_WORKER = true;
 #endif
 
@@ -141,7 +136,7 @@ var ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && self.name?.startsWith('em-
 #if !MODULARIZE
 // In MODULARIZE mode _scriptName needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
-var _scriptName = typeof document != 'undefined' ? document.currentScript?.src : undefined;
+var _scriptName = globalThis.document?.currentScript?.src;
 #endif
 
 #if ENVIRONMENT_MAY_BE_NODE
