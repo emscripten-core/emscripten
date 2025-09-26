@@ -820,6 +820,37 @@ Enums
       :returns: A reference to the current object. This allows chaining of multiple enum values in the :cpp:func:`EMSCRIPTEN_BINDINGS` block.
 
 
+.. cpp:class:: string_enum_
+
+   .. code-block:: cpp
+
+      //prototype
+      template<typename EnumType>
+      class string_enum_
+
+   Registers an enum, just like :cpp:class:`enum_`, but here the values are represented as plain strings in JavaScript. This is closer to how typescript implements enums, and is handier for basic operations like comparison and serialization. See :ref:`embind-enums` for more information.
+
+
+   .. cpp:type:: enum_type
+
+      A typedef of ``EnumType`` (a typename for the class).
+
+
+   .. cpp:function::  string_enum_(const char* name)
+
+      Constructor.
+
+      :param const char* name:
+
+
+   .. cpp:function::  string_enum_& value(const char* name, EnumType value)
+
+      Registers an enum value.
+
+      :param const char* name: The name of the enumerated value.
+      :param EnumType value: The type of the enumerated value.
+      :returns: A reference to the current object. This allows chaining of multiple enum values in the :cpp:func:`EMSCRIPTEN_BINDINGS` block.
+
 
 Constants
 =========

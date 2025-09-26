@@ -279,23 +279,30 @@ var LibraryEmbind = {
   },
   $EnumDefinition: class {
     hasPublicSymbol = true;
-    constructor(typeId, name) {
+    constructor(typeId, name, asString) {
       this.typeId = typeId;
       this.name = name;
       this.items = [];
       this.destructorType = 'none';
+      this.asString = asString;
     }
 
     print(nameMap, out) {
-      out.push(`export interface ${this.name}Value<T extends number> {\n`);
-      out.push('  value: T;\n}\n');
+      if (!this.asString) {
+        out.push(`export interface ${this.name}Value<T extends number> {\n`);
+        out.push('  value: T;\n}\n');
+      }
       out.push(`export type ${this.name} = `);
       if (this.items.length === 0) {
         out.push('never/* Empty Enumerator */');
       } else {
         const outItems = [];
         for (const [name, value] of this.items) {
-          outItems.push(`${this.name}Value<${value}>`);
+          if (this.asString) {
+            outItems.push(`'${name}'`);
+          } else {
+            outItems.push(`${this.name}Value<${value}>`);
+          }
         }
         out.push(outItems.join('|'));
       }
@@ -306,7 +313,11 @@ var LibraryEmbind = {
       out.push(`  ${this.name}: {`);
       const outItems = [];
       for (const [name, value] of this.items) {
-        outItems.push(`${name}: ${this.name}Value<${value}>`);
+        if (this.asString) {
+          outItems.push(`${name}: '${name}'`);
+        } else {
+          outItems.push(`${name}: ${this.name}Value<${value}>`);
+        }
       }
       out.push(outItems.join(', '));
       out.push('};\n');
@@ -714,12 +725,26 @@ var LibraryEmbind = {
   _embind_register_enum__deps: ['$AsciiToString', '$EnumDefinition', '$moduleDefinitions'],
   _embind_register_enum: function(rawType, name, size, isSigned) {
     name = AsciiToString(name);
-    const enumDef = new EnumDefinition(rawType, name);
+    const enumDef = new EnumDefinition(rawType, name, false);
     registerType(rawType, enumDef);
     moduleDefinitions.push(enumDef);
   },
   _embind_register_enum_value__deps: ['$AsciiToString', '$requireRegisteredType'],
   _embind_register_enum_value: function(rawEnumType, name, enumValue) {
+    name = AsciiToString(name);
+    const enumDef = requireRegisteredType(rawEnumType, name);
+    enumDef.items.push([name, enumValue]);
+  },
+  // String enums share almost the same structure as regular enums
+  _embind_register_string_enum__deps: ['$AsciiToString', '$EnumDefinition', '$moduleDefinitions'],
+  _embind_register_string_enum: function(rawType, name, size, isSigned) {
+    name = AsciiToString(name);
+    const enumDef = new EnumDefinition(rawType, name, true);
+    registerType(rawType, enumDef);
+    moduleDefinitions.push(enumDef);
+  },
+  _embind_register_string_enum_value__deps: ['$AsciiToString', '$requireRegisteredType'],
+  _embind_register_string_enum_value: function(rawEnumType, name, enumValue) {
     name = AsciiToString(name);
     const enumDef = requireRegisteredType(rawEnumType, name);
     enumDef.items.push([name, enumValue]);

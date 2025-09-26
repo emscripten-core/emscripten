@@ -825,6 +825,27 @@ type.
     Module.OldStyle.ONE;
     Module.NewStyle.TWO;
 
+You can alternatively use the :cpp:class:`string_enum_` class to register your enum values. In this case, they will be represented as plain strings in JavaScript. This is closer to how typescript implements enums, and is handier for basic operations like comparison and serialization.
+
+.. code:: cpp
+
+    EMSCRIPTEN_BINDINGS(my_string_enum_example) {
+        string_enum_<MyEnum>("MyEnum")
+            .value("ONE", MyEnum::ONE)
+            .value("TWO", MyEnum::TWO)
+            ;
+    }
+
+You can still access enumeration values through a map registered in the Module, but you can also just use the value strings.
+
+.. code:: javascript
+
+    Module.MyEnum.ONE === "ONE"; // true
+
+    const foo = function(enumValue) { /* ... */ };
+    foo(Module.MyEnum.TWO);
+    foo("TWO"); // also works
+
 .. _embind-constants:
 
 Constants
