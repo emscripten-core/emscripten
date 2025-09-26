@@ -594,8 +594,9 @@ jobs:
       - install-v8
       - install-emsdk
       - when:
-          condition: ${CIRCLE_PULL_REQUEST}
-            #matches: { pattern: "^pull/", value: << pipeline.git.branch >> }
+          condition:
+            not:
+              equal: [ "main", << pipeline.git.branch >> ]
           steps:
             - run: echo "${CIRCLE_PR_NUMBER} ${CIRCLE_PULL_REQUEST} ${CIRCLE_REPOSITORY_URL} ${CIRCLE_BRANCH}"
             - restore_cache:
