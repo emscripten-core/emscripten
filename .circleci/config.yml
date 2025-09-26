@@ -219,7 +219,7 @@ commands:
             - .jsvu/
       - when:
           condition:
-            equal: [ "main", << pipeline.git.branch >> ]
+            equal: [ "ccache-libs", << pipeline.git.branch >> ]
           steps:
             - save_cache:
                 name: "Save Ccache cache"
