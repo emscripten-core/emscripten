@@ -560,9 +560,6 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
   if settings.MODULARIZE and settings.ENVIRONMENT_MAY_BE_WEB and not settings.EXPORT_ES6:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/modularize-externs.js')]
 
-  if settings.USE_WEBGPU:
-    CLOSURE_EXTERNS += [path_from_root('src/closure-externs/webgpu-externs.js')]
-
   # Closure compiler needs to know about all exports that come from the wasm module, because to optimize for small code size,
   # the exported symbols are added to global scope via a foreach loop in a way that evades Closure's static analysis. With an explicit
   # externs file for the exports, Closure is able to reason about the exports.
