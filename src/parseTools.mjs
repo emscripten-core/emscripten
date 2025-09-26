@@ -24,6 +24,8 @@ import {
   srcDir,
 } from './utility.mjs';
 
+import { nativeAliases } from './modules.mjs';
+
 const FOUR_GB = 4 * 1024 * 1024 * 1024;
 const WASM_PAGE_SIZE = 64 * 1024;
 const FLOAT_TYPES = new Set(['float', 'double']);
@@ -1155,6 +1157,17 @@ function nodeWWDetection() {
   }
 }
 
+function makeExportAliases() {
+  var res = ''
+  for (var [alias, ex] of Object.entries(nativeAliases)) {
+    if (ASSERTIONS) {
+      res += `  assert(wasmExports['${ex}'], 'alias target "${ex}" not found in wasmExports');\n`;
+    }
+    res += `  globalThis['${alias}'] = wasmExports['${ex}'];\n`;
+  }
+  return res;
+}
+
 addToCompileTimeContext({
   ATEXITS,
   ATPRERUNS,
@@ -1204,6 +1217,7 @@ addToCompileTimeContext({
   isSymbolNeeded,
   makeDynCall,
   makeEval,
+  makeExportAliases,
   makeGetValue,
   makeHEAPView,
   makeModuleReceive,

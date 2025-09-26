@@ -174,3 +174,9 @@ if (ENVIRONMENT_IS_NODE) {
 #endif // !IMPORTED_MEMORY && ASSERTIONS
 
 #include "memoryprofiler.js"
+
+#if !DECLARE_ASM_MODULE_EXPORTS
+function exportAliases(wasmExports) {
+{{{ makeExportAliases() }}}
+}
+#endif

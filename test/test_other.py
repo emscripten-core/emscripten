@@ -4877,6 +4877,53 @@ extraLibraryFuncs.push('jsfunc');
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', 'foo.js'])
     self.assertContained('foo.js:5: file not found: inc.js', err)
 
+  def test_jslib_aliases(self):
+    create_file('foo.js', '''
+      addToLibrary({
+        foo: () => 42,
+        foo_alias: 'foo',
+
+        // Normal JS function that calls a native function
+        call_native__deps: ['native_func'],
+        call_native: () => _native_func(),
+
+        // JS function that calls nativeAlias
+        call_native_alias__deps: ['$nativeAlias'],
+        call_native_alias: () => nativeAlias(),
+
+        // This is a JS-only symbol (i.e. no leading underscore) that
+        // aliases a native symbol.
+        $nativeAlias: 'native_func',
+      });
+    ''')
+    create_file('main.c', r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+      int foo();
+      int foo_alias();
+      int call_native();
+      int call_native_alias();
+
+      EMSCRIPTEN_KEEPALIVE int native_func() {
+        return 43;
+      }
+
+      int main() {
+        printf("foo: %d\n", foo());
+        printf("foo_alias: %d\n", foo_alias());
+        printf("call_native: %d\n", call_native());
+        printf("call_native_alias: %d\n", call_native_alias());
+        return 0;
+      }
+    ''')
+    expected = '''\
+foo: 42
+foo_alias: 42
+call_native: 43
+call_native_alias: 43
+'''
+    self.do_runf('main.c', expected, cflags=['--js-library', 'foo.js'])
+
   def test_postjs_errors(self):
     create_file('post.js', '#preprocess\n#error This is an error')
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--post-js', 'post.js'])
