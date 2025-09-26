@@ -1647,7 +1647,7 @@ var AUDIO_WORKLET = 0;
 // for a tiny improvement to code size and AudioWorklet CPU performance when
 // audio synthesis is synchronized using custom WebAssembly Memory-based means.
 // [link]
-var AUDIO_WORKLET_SUPPORT_AUDIO_PARAMS = 1;
+var AUDIO_WORKLET_SUPPORT_AUDIO_PARAMS = true;
 
 // If true, enables deep debugging of Web Audio backend.
 // [link]
