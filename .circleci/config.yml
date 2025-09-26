@@ -573,7 +573,7 @@ jobs:
       EMCC_USE_NINJA: 1
       EM_COMPILER_WRAPPER: "ccache"
     steps:
-      - run: echo "${CIRCLE_PR_NUMBER} ${CIRCLE_PULL_REQUEST} ${CIRCLE_REPOSITORY_URL} ${CIRCLE_BRANCH}"
+      - run: echo "${CIRCLE_PR_NUMBER} ${CIRCLE_PULL_REQUEST} ${CIRCLE_REPOSITORY_URL} ${CIRCLE_BRANCH} << pipeline.project.git_url >> << pipeline.git.branch >>"
       - checkout
       - run:
           name: get wasmer
