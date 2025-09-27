@@ -479,6 +479,8 @@ def parse_args():
                       help='Run browser tests in headless mode.', default=None)
   parser.add_argument('--browser-auto-config', type=bool, default=True,
                       help='Use the default CI browser configuration.')
+  parser.add_argument('--keep-open', action='store_true',
+                      help='Keep the browser open after tests have run.', default=None)
   parser.add_argument('tests', nargs='*')
   parser.add_argument('--failfast', action='store_true')
   parser.add_argument('--failing-and-slow-first', action='store_true', help='Run failing tests first, then sorted by slowest first. Combine with --failfast for fast fail-early CI runs.')
@@ -506,6 +508,7 @@ def configure():
   common.EMTEST_LACKS_NATIVE_CLANG = int(os.getenv('EMTEST_LACKS_NATIVE_CLANG', '0'))
   common.EMTEST_REBASELINE = int(os.getenv('EMTEST_REBASELINE', '0'))
   common.EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0')) or shared.DEBUG
+  common.EMTEST_KEEP_OPEN = int(os.getenv('EMTEST_KEEP_OPEN', '0'))
   if common.EMTEST_VERBOSE:
     logging.root.setLevel(logging.DEBUG)
 
@@ -546,6 +549,7 @@ def main():
   set_env('EMTEST_BROWSER', options.browser)
   set_env('EMTEST_BROWSER_AUTO_CONFIG', options.browser_auto_config)
   set_env('EMTEST_HEADLESS', options.headless)
+  set_env('EMTEST_KEEP_OPEN', options.keep_open)
   set_env('EMTEST_DETECT_TEMPFILE_LEAKS', options.detect_leaks)
   if options.save_dir:
     common.EMTEST_SAVE_DIR = 1
