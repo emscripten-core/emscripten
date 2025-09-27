@@ -1,8 +1,8 @@
 #if AUDIO_WORKLET && !WASM_WORKERS
-#error "Building with -sAUDIO_WORKLET also requires enabling -sWASM_WORKERS!"
+#error "Building with -sAUDIO_WORKLET also requires enabling -sWASM_WORKERS"
 #endif
 #if AUDIO_WORKLET && TEXTDECODER == 2
-#error "-sAUDIO_WORKLET does not support -sTEXTDECODER=2 since TextDecoder is not available in AudioWorkletGlobalScope! Use e.g. -sTEXTDECODER=1 when building with -sAUDIO_WORKLET"
+#warning "-sAUDIO_WORKLET does not support -sTEXTDECODER=2 since TextDecoder is not available in AudioWorkletGlobalScope. Text decoding will be unavailable in Audio Worklets. If you need string marshalling in Audio Worklets, build with -sTEXTDECODER=1."
 #endif
 #if AUDIO_WORKLET && SINGLE_FILE
 #error "-sAUDIO_WORKLET does not support -sSINGLE_FILE"
