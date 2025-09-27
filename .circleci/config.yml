@@ -220,10 +220,11 @@ commands:
             - wasi-sdk/
             - .jsvu/
       - when:
+          # Only the main branch will store its cache results, and only the non-main branches
+          # will use cached results. This prevents untrusted PRs from polluting caches used
+          # by other branches.
           condition:
-            and:
-              - equal: [ "main", << pipeline.git.branch >> ]
-              - equal: [ "https://github.com/emscripten-core/emscripten", << pipeline.project.git_url >> ]
+            equal: [ "main", << pipeline.git.branch >> ]
           steps:
             - save_cache:
                 name: "Save Ccache cache"
