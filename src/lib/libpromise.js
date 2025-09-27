@@ -51,7 +51,7 @@ addToLibrary({
                                      'emscripten_promise_destroy'],
   emscripten_promise_resolve: (id, result, value) => {
 #if RUNTIME_DEBUG
-    dbg(`emscripten_promise_resolve: ${id}`);
+    dbg(`emscripten_promise_resolve: ${id} -> ${value}`);
 #endif
     var info = promiseMap.get(id);
     switch (result) {
@@ -59,9 +59,15 @@ addToLibrary({
         info.resolve(value);
         return;
       case {{{ cDefs.EM_PROMISE_MATCH }}}:
+#if ASSERTIONS
+        assert(id != value, 'cannot resolve promise to itself')
+#endif
         info.resolve(getPromise(value));
         return;
       case {{{ cDefs.EM_PROMISE_MATCH_RELEASE }}}:
+#if ASSERTIONS
+        assert(id != value, 'cannot resolve promise to itself')
+#endif
         info.resolve(getPromise(value));
         _emscripten_promise_destroy(value);
         return;
