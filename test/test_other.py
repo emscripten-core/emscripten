@@ -9586,6 +9586,9 @@ end
 
   @also_with_wasm64
   def test_closure_webgpu(self):
+    if config.FROZEN_CACHE:
+      # TODO(crbug.com/446944885): Make Emdawnwebgpu work with FROZEN_CACHE if possible.
+      self.skipTest("test doesn't work with frozen cache")
     self.set_setting('NO_DEFAULT_TO_CXX', 0)  # emdawnwebgpu uses C++ internally
     self.build('hello_world.c', cflags=[
       '--closure=1',
@@ -12238,6 +12241,9 @@ int main(void) {
     'closure_assertions': (['--closure=1', '-Werror=closure', '-sASSERTIONS'],),
   })
   def test_emdawnwebgpu_link_test(self, args):
+    if config.FROZEN_CACHE:
+      # TODO(crbug.com/446944885): Make Emdawnwebgpu work with FROZEN_CACHE if possible.
+      self.skipTest("test doesn't work with frozen cache")
     self.emcc(test_file('test_emdawnwebgpu_link_test.cpp'), ['--use-port=emdawnwebgpu', '-sASYNCIFY'] + args)
 
   def test_signature_mismatch(self):
