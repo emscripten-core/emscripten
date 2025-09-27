@@ -3,9 +3,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-# https://dawn.googlesource.com/dawn/+/80062b708e44aa4d8c48e555ed0cc801396069f6/src/emdawnwebgpu/pkg/README.md
+# https://dawn.googlesource.com/dawn/+/faa7054b5b65c3ce3774151952a68aa7668aa20b/src/emdawnwebgpu/pkg/README.md
 r"""
-The full README of Emdawnwebgpu follows.
+This "remote port" instructs Emscripten (4.0.10+) how to automatically download
+the actual port for Emdawnwebgpu. See README below for instructions.
 
 # Emdawnwebgpu
 
@@ -84,6 +85,17 @@ If (and only if) using Emscripten before 4.0.7, pass this flag during linking:
 
     --closure-args=--externs=path/to/emdawnwebgpu_pkg/webgpu/src/webgpu-externs.js
 
+#### Without using a port file (**Unsupported!**)
+
+It is possible to integrate the Emdawnwebgpu sources directly into your build
+process, which may be necessary for certain build systems, but this is not
+officially supported. Using a port file instead is strongly recommended.
+
+If you do this, the port files or Dawn's GN or CMake files can serve as a
+reference for the steps needed. Note that in all cases, the sources include both
+C++ and JS code. While it is possible to precompile the C++ code to `.a`, the JS
+code cannot be precompiled and must be provided at the final link step.
+
 ### Cross-targeting Web/Native
 
 #### Using CMake
@@ -132,17 +144,37 @@ set manually. For details, see `OPTIONS` in `emdawnwebgpu.port.py` (in the
 package zip).
 """
 
-TAG = 'v20250807.221415'
+import sys
 
-EXTERNAL_PORT = f'https://github.com/google/dawn/releases/download/{TAG}/emdawnwebgpu_pkg-{TAG}.zip'
-SHA512 = 'ab9f3af2536ef3a29c20bb9c69f45b5ee512b8e33fb559f8d0bf4529cd2c11e2fbfb919c3d936e3b32af0e92bd710af71a1700776b5e56c99297cfbc3b73ceec'
+if __name__ == '__main__':
+    print('Please see documentation inside this file for details on how to use this port.')
+    sys.exit(1)
+
+_VERSION = 'v20250926.144300'
+
+# Remote-specific port information
+
+# - Where to download the port
+EXTERNAL_PORT = f'https://github.com/google/dawn/releases/download/{_VERSION}/emdawnwebgpu_pkg-{_VERSION}.zip'
+# - Hash to verify the download integrity
+SHA512 = 'a186cf7f33266c9dfeca7d99ffac769a91b2129e34054f1e857cd82e8b033896da34cf758088bbdeeb128aa713df9953851f83ba6d677c438a929d245a789948'
+# - Path of the port inside the zip file
 PORT_FILE = 'emdawnwebgpu_pkg/emdawnwebgpu.port.py'
 
-# Port information (required)
+# General port information
 
 # - Visible in emcc --show-ports and emcc --use-port=emdawnwebgpu:help
 LICENSE = "Some files: BSD 3-Clause License. Other files: Emscripten's license (available under both MIT License and University of Illinois/NCSA Open Source License)"
 
 # - Visible in emcc --use-port=emdawnwebgpu:help
 DESCRIPTION = "Emdawnwebgpu implements webgpu.h on WebGPU, replacing -sUSE_WEBGPU. **For info on usage and filing feedback, see link below.**"
-URL = 'https://dawn.googlesource.com/dawn/+/80062b708e44aa4d8c48e555ed0cc801396069f6/src/emdawnwebgpu/pkg/README.md'
+URL = 'https://dawn.googlesource.com/dawn/+/faa7054b5b65c3ce3774151952a68aa7668aa20b/src/emdawnwebgpu/pkg/README.md'
+
+
+# Emscripten <4.0.10 won't notice EXTERNAL_PORT and will try to use this.
+def get(ports, settings, shared):
+    raise Exception('Remote ports require Emscripten 4.0.10+.')
+
+
+def clear(ports, settings, shared):
+    pass
