@@ -3122,7 +3122,11 @@ var LibrarySDL = {
       // valid. Check that explicitly and fall back to a plain Canvas if we need
       // to. See https://github.com/emscripten-core/emscripten/issues/16242
       if (typeof SDL.ttfContext.measureText != 'function') {
-        abort('bad context');
+        // According to https://developer.mozilla.org/en-US/docs/Web/API/OffscreenCanvasRenderingContext2D
+        // OffscreenCanvasRenderingContext2D.measureText() appeared in
+        // Chrome 69, Firefox 105 and Safari 16.4. Fall back to using regular
+        // Canvas2D if OffscreenCanvas2D exists, but does not look workable.
+        throw 'no OffscreenCanvasRenderingContext2D.measureText';
       }
     } catch (ex) {
       var canvas = /** @type {HTMLCanvasElement} */(document.createElement('canvas'));
