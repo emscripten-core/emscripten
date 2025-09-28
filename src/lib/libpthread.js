@@ -42,6 +42,9 @@ const pthreadWorkerScript = TARGET_JS_NAME;
 // See https://github.com/emscripten-core/emscripten/issues/22394
 const pthreadWorkerOptions = `{
 #if EXPORT_ES6
+#if MIN_FIREFOX_VERSION < 114 || MIN_CHROME_VERSION < 80 || MIN_SAFARI_VERSION < 150000
+#error new Worker() supports ECMAScript module only starting from Firefox 114, Chrome 80 and Safari 15. Pass newer target -sMIN_*_VERSION fields to target -sEXPORT_ES6 with -pthread. See https://caniuse.com/mdn-api_worker_worker_ecmascript_modules
+#endif
         'type': 'module',
 #endif
 #if ENVIRONMENT_MAY_BE_NODE
