@@ -54,9 +54,12 @@ var LibraryWebAudio = {
   // this avoids the user needing to manually add the dependency on the command line.
   emscripten_create_audio_context__deps: ['$emscriptenRegisterAudioObject', '$emscriptenGetAudioObject'],
   emscripten_create_audio_context: (options) => {
+    // Safari added unprefixed AudioContext support in Safari 14.5 on iOS: https://caniuse.com/audio-api
+#if MIN_SAFARI_VERSION < 140500 || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
     var ctx = window.AudioContext || window.webkitAudioContext;
 #if ASSERTIONS
     if (!ctx) console.error('emscripten_create_audio_context failed! Web Audio is not supported.');
+#endif
 #endif
 
     var opts = options ? {
@@ -69,7 +72,12 @@ var LibraryWebAudio = {
     console.dir(opts);
 #endif
 
+#if MIN_SAFARI_VERSION < 140500 || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
     return ctx && emscriptenRegisterAudioObject(new ctx(opts));
+#else
+    // We are targeting an environment where we assume that AudioContext() API unconditionally exists.
+    return emscriptenRegisterAudioObject(new AudioContext(opts));
+#endif
   },
 
   emscripten_resume_audio_context_async: (contextHandle, callback, userData) => {
@@ -222,12 +230,13 @@ var LibraryWebAudio = {
     assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_create_wasm_audio_worklet_processor_async() on a context handle ${contextHandle} that is not an AudioContext, but of type ${typeof EmAudio[contextHandle]}`);
 #endif
 
-    var audioParams = [];
     var processorName = UTF8ToString({{{ makeGetValue('options', C_STRUCTS.WebAudioWorkletProcessorCreateOptions.name, '*') }}});
+
+#if AUDIO_WORKLET_SUPPORT_AUDIO_PARAMS
     var numAudioParams = {{{ makeGetValue('options', C_STRUCTS.WebAudioWorkletProcessorCreateOptions.numAudioParams, 'i32') }}};
     var audioParamDescriptors = {{{ makeGetValue('options', C_STRUCTS.WebAudioWorkletProcessorCreateOptions.audioParamDescriptors, '*') }}};
+    var audioParams = [];
     var paramIndex = 0;
-
     while (numAudioParams--) {
       audioParams.push({
         name: paramIndex++,
@@ -238,6 +247,10 @@ var LibraryWebAudio = {
       });
       audioParamDescriptors += {{{ C_STRUCTS.WebAudioParamDescriptor.__size__ }}};
     }
+#elif ASSERTIONS
+    var numAudioParams = {{{ makeGetValue('options', C_STRUCTS.WebAudioWorkletProcessorCreateOptions.numAudioParams, 'i32') }}};
+    assert(numAudioParams == 0 && "Rebuild with -sAUDIO_WORKLET_SUPPORT_AUDIO_PARAMS to utilize AudioParams");
+#endif
 
 #if WEBAUDIO_DEBUG
     console.log(`emscripten_create_wasm_audio_worklet_processor_async() creating a new AudioWorklet processor with name ${processorName}`);
@@ -249,7 +262,9 @@ var LibraryWebAudio = {
       // not get accidentally mixed with user submitted messages, the remainder
       // for space saving reasons, abbreviated from their variable names).
       '_wpn': processorName,
+#if AUDIO_WORKLET_SUPPORT_AUDIO_PARAMS
       audioParams,
+#endif
       contextHandle,
       callback,
       userData,

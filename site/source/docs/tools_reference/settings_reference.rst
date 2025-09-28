@@ -2511,6 +2511,18 @@ full documentation in site/source/docs/api_reference/wasm_audio_worklets.rst
 
 Default value: 0
 
+.. _audio_worklet_support_audio_params:
+
+AUDIO_WORKLET_SUPPORT_AUDIO_PARAMS
+==================================
+
+If true, enables utilizing k- and a-rate AudioParams based properties in
+Wasm Audio Worklet code. If false, AudioParams are not used. Set to false
+for a tiny improvement to code size and AudioWorklet CPU performance when
+audio synthesis is synchronized using custom WebAssembly Memory-based means.
+
+Default value: true
+
 .. _webaudio_debug:
 
 WEBAUDIO_DEBUG
@@ -2897,7 +2909,7 @@ This setting also applies to modern Chromium-based Edge, which shares version
 numbers with Chrome.
 Chrome 85 was released on 2020-08-25.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 71, which was released on 2018-12-04 (see
+Minimum supported value is 74, which was released on 2019-04-23 (see
 feature_matrix.py).
 
 Default value: 85

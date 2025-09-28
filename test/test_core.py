@@ -4135,10 +4135,6 @@ caught outer int: 123
       }
     ''', 'other says 11.', 'int sidey();', force_c=True, **kwargs)
 
-  def output_name(self, basename):
-    suffix = common.get_output_suffix(self.get_cflags())
-    return basename + suffix
-
   @needs_dylink
   @crossplatform
   def test_dylink_basics(self):
@@ -7275,15 +7271,6 @@ void* operator new(size_t size) {
     test('|1|')
     test('|1|', args=['-DDIRECT'])
 
-  def test_response_file(self):
-    out_js = self.output_name('response_file')
-    response_data = '-o "%s" "%s"' % (out_js, test_file('hello_world.cpp'))
-    create_file('rsp_file', response_data.replace('\\', '\\\\'))
-    self.run_process([EMCC, "@rsp_file"] + self.get_cflags())
-    self.do_run(out_js, 'hello, world', no_build=True)
-
-    self.assertContained('response file not found: foo.txt', self.expect_fail([EMCC, '@foo.txt']))
-
   def test_linker_response_file(self):
     objfile = 'response_file.o'
     out_js = self.output_name('response_file')
@@ -7499,7 +7486,7 @@ void* operator new(size_t size) {
     'no_dynamic': (['--bind', '-sDYNAMIC_EXECUTION=0', '-sLEGACY_VM_SUPPORT'],),
   })
   def test_embind_val_basics(self, args):
-    if '-sLEGACY_VM_SUPPORT':
+    if '-sLEGACY_VM_SUPPORT' in args:
       if self.get_setting('MODULARIZE') == 'instance' or self.get_setting('WASM_ESM_INTEGRATION'):
         self.skipTest('LEGACY_VM_SUPPORT is not compatible with EXPORT_ES6')
       if self.is_wasm64():

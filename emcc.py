@@ -36,7 +36,7 @@ from subprocess import PIPE
 
 from tools import shared, system_libs, utils, cmdline
 from tools import diagnostics, building, compile
-from tools.shared import unsuffixed, unsuffixed_basename, get_file_suffix
+from tools.shared import unsuffixed_basename, get_file_suffix
 from tools.shared import run_process, exit_with_error, DEBUG
 from tools.shared import in_temp
 from tools.shared import DYLIB_EXTENSIONS
@@ -538,15 +538,26 @@ def phase_compile_inputs(options, state, newargs):
   assert state.mode == Mode.COMPILE_AND_LINK
   assert not options.dash_c
   compile_args, linker_args = separate_linker_flags(newargs)
+
+  # Map of file basenames to how many times we've seen them.  We use this to generate
+  # unique `_NN` suffix for object files in cases when we are compiling multiple soures that
+  # have the same basename.  e.g. `foo/utils.c` and `bar/utils.c` on the same command line.
   seen_names = {}
 
   def uniquename(name):
     if name not in seen_names:
-      seen_names[name] = str(len(seen_names))
-    return unsuffixed(name) + '_' + seen_names[name] + shared.suffix(name)
+      # No suffix needed the firt time we see given name.
+      seen_names[name] = 1
+      return name
+
+    unique_suffix = '_%d' % seen_names[name]
+    seen_names[name] += 1
+    base, ext = os.path.splitext(name)
+    return base + unique_suffix + ext
 
   def get_object_filename(input_file):
-    return in_temp(shared.replace_suffix(uniquename(input_file), '.o'))
+    objfile = unsuffixed_basename(input_file) + '.o'
+    return in_temp(uniquename(objfile))
 
   def compile_source_file(input_file):
     logger.debug(f'compiling source file: {input_file}')

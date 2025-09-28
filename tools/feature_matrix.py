@@ -22,7 +22,7 @@ UNSUPPORTED = 0x7FFFFFFF
 
 # N.b. when modifying these values, update comments in src/settings.js on
 # MIN_x_VERSION fields to match accordingly.
-OLDEST_SUPPORTED_CHROME = 71  # Released on 2018-12-04
+OLDEST_SUPPORTED_CHROME = 74  # Released on 2019-04-23
 OLDEST_SUPPORTED_FIREFOX = 65  # Released on 2019-01-29
 OLDEST_SUPPORTED_SAFARI = 120200  # Released on 2019-03-25
 # 12.22.09 is the oldest version of node that we do any testing with.
@@ -34,7 +34,6 @@ class Feature(IntEnum):
   NON_TRAPPING_FPTOINT = auto()
   SIGN_EXT = auto()
   BULK_MEMORY = auto()
-  MUTABLE_GLOBALS = auto()
   JS_BIGINT_INTEGRATION = auto()
   THREADS = auto()
   PROMISE_ANY = auto()
@@ -62,12 +61,6 @@ min_browser_versions = {
     'firefox': 79,
     'safari': 150000,
     'node': 130000,
-  },
-  Feature.MUTABLE_GLOBALS: {
-    'chrome': 74,
-    'firefox': 61,
-    'safari': 120000,
-    'node': 120000,
   },
   Feature.JS_BIGINT_INTEGRATION: {
     'chrome': 67,

@@ -124,7 +124,7 @@ class codesize(RunnerCore):
     # Note that we do not compare the full wasm output since that is
     # even more fragile and can change with LLVM updates.
     if compare_js_output:
-      js_out = test_file('codesize', test_name + '.js')
+      js_out = test_file('codesize', test_name + '.expected.js')
       terser = shared.get_npm_cmd('terser')
       # N.b. this requires node in PATH, it does not run against NODE from
       # Emscripten config file. If you have this line fail, make sure 'node' is
