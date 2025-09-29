@@ -11,7 +11,7 @@ function humanReadableVersionToPacked(str) {
 // 300000 -> "30.0.0"
 var packedVersionToHumanReadable = n => [n / 10000 | 0, (n / 100 | 0) % 100, n % 100].join('.');
 
-var currentNodeVersion = process?.versions?.node ? humanReadableVersionToPacked(process.versions.node) : Infinity;
+var currentNodeVersion = typeof process !== 'undefined' && process?.versions?.node ? humanReadableVersionToPacked(process.versions.node) : Infinity;
 if (currentNodeVersion < {{{ MIN_NODE_VERSION }}}) throw new Error(`This emscripten-generated code requires node v${ packedVersionToHumanReadable({{{ MIN_NODE_VERSION }}}) } (detected v${packedVersionToHumanReadable(currentNodeVersion)})`);
 
 var currentSafariVersion = navigator?.userAgent?.includes("Safari/") && navigator.userAgent.match(/Version\/(\d+\.?\d*\.?\d*)/) ? humanReadableVersionToPacked(navigator.userAgent.match(/Version\/(\d+\.?\d*\.?\d*)/)[1]) : Infinity;
