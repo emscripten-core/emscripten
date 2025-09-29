@@ -1,3 +1,9 @@
+/**
+ * @license
+ * Copyright 2024 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+
 #if ASSERTIONS
 
 // "30.0.0" -> 300000
@@ -14,13 +20,13 @@ var packedVersionToHumanReadable = n => [n / 10000 | 0, (n / 100 | 0) % 100, n %
 var currentNodeVersion = typeof process !== 'undefined' && process?.versions?.node ? humanReadableVersionToPacked(process.versions.node) : Infinity;
 if (currentNodeVersion < {{{ MIN_NODE_VERSION }}}) throw new Error(`This emscripten-generated code requires node v${ packedVersionToHumanReadable({{{ MIN_NODE_VERSION }}}) } (detected v${packedVersionToHumanReadable(currentNodeVersion)})`);
 
-var currentSafariVersion = navigator?.userAgent?.includes("Safari/") && navigator.userAgent.match(/Version\/(\d+\.?\d*\.?\d*)/) ? humanReadableVersionToPacked(navigator.userAgent.match(/Version\/(\d+\.?\d*\.?\d*)/)[1]) : Infinity;
+var currentSafariVersion = typeof navigator !== 'undefined' && navigator?.userAgent?.includes("Safari/") && navigator.userAgent.match(/Version\/(\d+\.?\d*\.?\d*)/) ? humanReadableVersionToPacked(navigator.userAgent.match(/Version\/(\d+\.?\d*\.?\d*)/)[1]) : Infinity;
 if (currentSafariVersion < {{{ MIN_SAFARI_VERSION }}}) throw new Error(`This emscripten-generated code requires Safari v${ packedVersionToHumanReadable({{{ MIN_SAFARI_VERSION }}}) } (detected v${currentSafariVersion})`);
 
-var currentFirefoxVersion = navigator?.userAgent?.match(/Firefox\/(\d+(?:\.\d+)?)/) ? parseFloat(navigator.userAgent.match(/Firefox\/(\d+(?:\.\d+)?)/)[1]) : Infinity;
+var currentFirefoxVersion = typeof navigator !== 'undefined' && navigator?.userAgent?.match(/Firefox\/(\d+(?:\.\d+)?)/) ? parseFloat(navigator.userAgent.match(/Firefox\/(\d+(?:\.\d+)?)/)[1]) : Infinity;
 if (currentFirefoxVersion < {{{ MIN_FIREFOX_VERSION }}}) throw new Error(`This emscripten-generated code requires Firefox v{{{ MIN_FIREFOX_VERSION }}} (detected v${currentFirefoxVersion})`);
 
-var currentChromeVersion = navigator?.userAgent?.match(/Chrome\/(\d+(?:\.\d+)?)/) ? parseFloat(navigator.userAgent.match(/Chrome\/(\d+(?:\.\d+)?)/)[1]) : Infinity;
+var currentChromeVersion = typeof navigator !== 'undefined' && navigator?.userAgent?.match(/Chrome\/(\d+(?:\.\d+)?)/) ? parseFloat(navigator.userAgent.match(/Chrome\/(\d+(?:\.\d+)?)/)[1]) : Infinity;
 if (currentChromeVersion < {{{ MIN_CHROME_VERSION }}}) throw new Error(`This emscripten-generated code requires Chrome v{{{ MIN_CHROME_VERSION }}} (detected v${currentChromeVersion})`);
 
 #endif
