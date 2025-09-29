@@ -93,7 +93,7 @@ min_browser_versions = {
     'chrome': 80,
     'firefox': 114,
     'safari': 150000,
-    'node': UNSUPPORTED,
+    'node': 0, # This is a browser only feature, no requirements on Node.js
   },
 }
 
