@@ -263,11 +263,6 @@ if (ENVIRONMENT_IS_NODE) {
 #if ENVIRONMENT_MAY_BE_SHELL || ASSERTIONS
 if (ENVIRONMENT_IS_SHELL) {
 
-#if ENVIRONMENT.length && ASSERTIONS
-  const isNode = {{{ nodeDetectionCode() }}};
-  if (isNode || typeof window == 'object' || typeof WorkerGlobalScope != 'undefined') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
-#endif
-
 #if ENVIRONMENT_MAY_BE_SHELL
   readBinary = (f) => {
     if (typeof readbuffer == 'function') {
