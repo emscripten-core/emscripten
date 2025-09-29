@@ -43,13 +43,13 @@ const pthreadWorkerScript = TARGET_JS_NAME;
 const pthreadWorkerOptions = `{
 #if EXPORT_ES6
 #if MIN_FIREFOX_VERSION < 114
-#warning new Worker() supports ECMAScript module only starting from Firefox 114. Pass -sMIN_FIREFOX_VERSION=114 to target -sEXPORT_ES6 with -pthread. See https://caniuse.com/mdn-api_worker_worker_ecmascript_modules
+#error new Worker() supports ECMAScript module only starting from Firefox 114. Pass -sMIN_FIREFOX_VERSION=114 to target -sEXPORT_ES6 with -pthread. See https://caniuse.com/mdn-api_worker_worker_ecmascript_modules
 #endif
 #if MIN_CHROME_VERSION < 80
-#warning new Worker() supports ECMAScript module only starting from Chrome 80. Pass -sMIN_CHROME_VERSION=80 to target -sEXPORT_ES6 with -pthread. See https://caniuse.com/mdn-api_worker_worker_ecmascript_modules
+#error new Worker() supports ECMAScript module only starting from Chrome 80. Pass -sMIN_CHROME_VERSION=80 to target -sEXPORT_ES6 with -pthread. See https://caniuse.com/mdn-api_worker_worker_ecmascript_modules
 #endif
 #if MIN_SAFARI_VERSION < 150000
-#warning new Worker() supports ECMAScript module only starting from Safari 15. Pass -sMIN_SAFARI_VERSION=150000 to target -sEXPORT_ES6 with -pthread. See https://caniuse.com/mdn-api_worker_worker_ecmascript_modules
+#error new Worker() supports ECMAScript module only starting from Safari 15. Pass -sMIN_SAFARI_VERSION=150000 to target -sEXPORT_ES6 with -pthread. See https://caniuse.com/mdn-api_worker_worker_ecmascript_modules
 #endif
         'type': 'module',
 #endif

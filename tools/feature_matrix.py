@@ -38,6 +38,7 @@ class Feature(IntEnum):
   THREADS = auto()
   PROMISE_ANY = auto()
   MEMORY64 = auto()
+  WORKER_ES6_MODULES = auto()
 
 
 disable_override_features = set()
@@ -86,6 +87,14 @@ min_browser_versions = {
     'safari': UNSUPPORTED,
     'node': 230000,
   },
+  # https://caniuse.com/mdn-api_worker_worker_ecmascript_modules: The ability to
+  # call new Worker(url, { type: 'module' });
+  Feature.WORKER_ES6_MODULES: {
+    'chrome': 80,
+    'firefox': 114,
+    'safari': 150000,
+    'node': UNSUPPORTED
+  }
 }
 
 # Static assertion to check that we actually need each of the above feature flags
@@ -173,3 +182,7 @@ def apply_min_browser_versions():
     enable_feature(Feature.BULK_MEMORY, 'shared-mem')
   if settings.MEMORY64 == 1:
     enable_feature(Feature.MEMORY64, 'MEMORY64')
+  if settings.EXPORT_ES6 and settings.PTHREADS:
+    enable_feature(Feature.WORKER_ES6_MODULES, 'EXPORT_ES6 with -pthread')
+  if settings.EXPORT_ES6 and settings.WASM_WORKERS:
+    enable_feature(Feature.WORKER_ES6_MODULES, 'EXPORT_ES6 with -sWASM_WORKERS')
