@@ -8,7 +8,11 @@
 #pragma once
 
 #if __cplusplus < 201103L
-#error Including <emscripten/wire.h> requires building with -std=c++11 or newer!
+#error "embind requires -std=c++11 or newer"
+#endif
+
+#if __cplusplus < 201703L
+#warning "embind is likely moving to c++17 (https://github.com/emscripten-core/emscripten/issues/24850)"
 #endif
 
 // A value moving between JavaScript and C++ has three representations:

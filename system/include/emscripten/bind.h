@@ -7,10 +7,6 @@
 
 #pragma once
 
-#if __cplusplus < 201103L
-#error Including <emscripten/bind.h> requires building with -std=c++11 or newer!
-#endif
-
 #include <cassert>
 #include <cstddef>
 #include <functional>
