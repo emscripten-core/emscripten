@@ -93,8 +93,8 @@ min_browser_versions = {
     'chrome': 80,
     'firefox': 114,
     'safari': 150000,
-    'node': UNSUPPORTED
-  }
+    'node': UNSUPPORTED,
+  },
 }
 
 # Static assertion to check that we actually need each of the above feature flags
