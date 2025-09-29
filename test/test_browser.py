@@ -2643,6 +2643,7 @@ Module["preRun"] = () => {
     self.btest_exit('webgl_create_context2.c')
 
   @requires_graphics_hardware
+  @requires_offscreen_canvas
   # Verify bug https://github.com/emscripten-core/emscripten/issues/22943: creating a WebGL context with explicit swap control and offscreenCanvas
   @parameterized({
     'offscreencanvas': (['-sOFFSCREENCANVAS_SUPPORT'],),
