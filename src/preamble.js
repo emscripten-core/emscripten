@@ -593,7 +593,7 @@ async function instantiateArrayBuffer(binaryFile, imports) {
 async function instantiateAsync(binary, binaryFile, imports) {
 #if !SINGLE_FILE
   if (!binary
-#if MIN_FIREFOX_VERSION < 58 || MIN_SAFARI_VERSION < 150000
+#if MIN_SAFARI_VERSION < 150000
       // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
       && WebAssembly.instantiateStreaming
 #endif
@@ -795,8 +795,8 @@ function getWasmImports() {
 #if ASSERTIONS
       try {
 #endif
-        Module['instantiateWasm'](info, (mod, inst) => {
-          resolve(receiveInstance(mod, inst));
+        Module['instantiateWasm'](info, (inst, mod) => {
+          resolve(receiveInstance(inst, mod));
         });
 #if ASSERTIONS
       } catch(e) {

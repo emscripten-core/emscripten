@@ -565,6 +565,12 @@ function exportLibrarySymbols() {
   const results = ['// Begin JS library exports'];
   for (const ident of librarySymbols) {
     if (EXPORT_ALL || EXPORTED_FUNCTIONS.has(ident)) {
+      // Special case for wasmTable which can be both a JS library symbol but
+      // also a wasm export. See isDirectWasmExport in jsifier.mjs.
+      // FIXME: Remove this hack 
+      if (ident == 'wasmTable' && WASM_EXPORTS.has('__indirect_function_table')) {
+        continue;
+      }
       results.push(exportSymbol(ident));
     }
   }

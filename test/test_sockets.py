@@ -337,7 +337,7 @@ class sockets(BrowserCore):
       self.do_runf('sockets/test_sockets_echo_client.c', expected, cflags=['-DSOCKK=%d' % harness.listen_port] + args)
 
   def test_nodejs_sockets_connect_failure(self):
-    self.do_runf('sockets/test_sockets_echo_client.c', 'connect failed: Connection refused', cflags=['-DSOCKK=666'], assert_returncode=NON_ZERO)
+    self.do_runf('sockets/test_sockets_echo_client.c', r'connect failed: (Connection refused|Host is unreachable)', regex=True, cflags=['-DSOCKK=666'], assert_returncode=NON_ZERO)
 
   @requires_native_clang
   @requires_python_dev_packages

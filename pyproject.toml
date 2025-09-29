@@ -31,7 +31,7 @@ lint.select = [
   "W",
   "YTT",
 ]
-
+lint.external = [ "D" ]
 lint.ignore = [
   "B011", # See https://github.com/PyCQA/flake8-bugbear/issues/66
   "B023",
@@ -106,5 +106,11 @@ module = [
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = ["psutil", "win32gui", "win32process"]
+module = ["psutil", "win32con", "win32gui", "win32process"]
 ignore_missing_imports = true
+
+[tool.deadcode]
+exclude = ["out", "cache", "third_party", "test/third_party", "node_modules", "site/source/_themes", "site/source/conf.py"]
+
+[tool.vulture]
+exclude = ["out", "cache", "third_party", "test/third_party", "node_modules", "site/source/_themes", "site/source/conf.py"]

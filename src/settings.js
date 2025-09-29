@@ -1642,6 +1642,13 @@ var WASM_WORKERS = 0;
 // [link]
 var AUDIO_WORKLET = 0;
 
+// If true, enables utilizing k- and a-rate AudioParams based properties in
+// Wasm Audio Worklet code. If false, AudioParams are not used. Set to false
+// for a tiny improvement to code size and AudioWorklet CPU performance when
+// audio synthesis is synchronized using custom WebAssembly Memory-based means.
+// [link]
+var AUDIO_WORKLET_SUPPORT_AUDIO_PARAMS = true;
+
 // If true, enables deep debugging of Web Audio backend.
 // [link]
 var WEBAUDIO_DEBUG = 0;
@@ -1873,7 +1880,7 @@ var AUTO_NATIVE_LIBRARIES = true;
 // for Firefox versions older than < majorVersion.
 // Firefox 79 was released on 2020-07-28.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// Minimum supported value is 55 which was released on 2017-08-08 (see
+// Minimum supported value is 65 which was released on 2019-01-29 (see
 // feature_matrix.py)
 // [link]
 var MIN_FIREFOX_VERSION = 79;
@@ -1895,23 +1902,22 @@ var MIN_FIREFOX_VERSION = 79;
 // [link]
 var MIN_SAFARI_VERSION = 150000;
 
-// Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=58 to
-// drop support for Chrome 57 and older.
+// Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=78 to
+// drop support for Chrome 77 and older.
 // This setting also applies to modern Chromium-based Edge, which shares version
 // numbers with Chrome.
 // Chrome 85 was released on 2020-08-25.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// Minimum supported value is 70, which was released on 2018-10-16 (see
+// Minimum supported value is 74, which was released on 2019-04-23 (see
 // feature_matrix.py).
 // [link]
 var MIN_CHROME_VERSION = 85;
 
 // Specifies minimum node version to target for the generated code.  This is
 // distinct from the minimum version required run the emscripten compiler.
-// This version aligns with the current Ubuuntu TLS 20.04 (Focal).
 // Version is encoded in MMmmVV, e.g. 181401 denotes Node 18.14.01.
-// Minimum supported value is 101900, which was released 2020-02-05 (see
-// feature_matrix.py).
+// Minimum supported value is 122209, which was released 2022-01-11 (see
+// feature_matrix.py). This version aligns with the Ubuntu TLS 22.04 (Jammy).
 var MIN_NODE_VERSION = 160000;
 
 // If true, uses minimal sized runtime without POSIX features, Module,

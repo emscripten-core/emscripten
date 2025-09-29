@@ -13,7 +13,7 @@ addToLibrary({
 #if TEXTDECODER == 2
   $UTF8Decoder: "new TextDecoder()",
 #else
-  $UTF8Decoder: "typeof TextDecoder != 'undefined' ? new TextDecoder() : undefined",
+  $UTF8Decoder: "globalThis.TextDecoder ? new TextDecoder() : undefined",
 #endif
 
   $findStringEnd: (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
@@ -302,7 +302,7 @@ addToLibrary({
 #if TEXTDECODER == 2
   $UTF16Decoder: "new TextDecoder('utf-16le');",
 #else
-  $UTF16Decoder: "typeof TextDecoder != 'undefined' ? new TextDecoder('utf-16le') : undefined;",
+  $UTF16Decoder: "globalThis.TextDecoder ? new TextDecoder('utf-16le') : undefined;",
 #endif
 
   // Given a pointer 'ptr' to a null-terminated UTF16LE-encoded string in the

@@ -377,7 +377,6 @@ def with_both_text_decoder(f):
   return decorated
 
 
-no_minimal_runtime = make_no_decorator_for_setting('MINIMAL_RUNTIME')
 no_safe_heap = make_no_decorator_for_setting('SAFE_HEAP')
 no_strict = make_no_decorator_for_setting('STRICT')
 no_strict_js = make_no_decorator_for_setting('STRICT_JS')
@@ -3708,12 +3707,9 @@ pre 9
 out!
 ''')
 
-  # TODO: make this work. need to forward tempRet0 across modules
-  # TODO Enable @with_all_eh_sjlj (the test is not working now)
   @needs_dylink
-  def zzztest_dlfcn_exceptions(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-
+  @with_all_eh_sjlj
+  def test_dlfcn_exceptions(self):
     create_file('liblib.cpp', r'''
       extern "C" {
       int ok() {
@@ -3727,7 +3723,7 @@ out!
     self.build_dlfcn_lib('liblib.cpp')
 
     self.prep_dlfcn_main()
-    src = r'''
+    create_file('main.cpp', r'''
       #include <assert.h>
       #include <stdio.h>
       #include <dlfcn.h>
@@ -3749,38 +3745,40 @@ out!
           printf("ok: %d\n", okk());
         } catch(...) {
           printf("wha\n");
+          assert(false);
         }
 
         try {
           printf("fail: %d\n", faill());
         } catch(int x) {
-          printf("int %d\n", x);
+          printf("caught int: %d\n", x);
         }
 
         try {
-          printf("fail: %d\n", faill());
-        } catch(double x) {
-          printf("caught %f\n", x);
+          try {
+            printf("fail: %d\n", faill());
+          } catch(double x) {
+            printf("caught double: %f\n", x);
+            assert(false);
+          }
+        } catch(int x) {
+          printf("caught outer int: %d\n", x);
         }
 
         return 0;
       }
-      '''
-    self.do_run(src, '''go!
+      ''')
+    self.do_runf('main.cpp', '''\
+go!
 ok: 65
-int 123
-ok
+caught int: 123
+caught outer int: 123
 ''')
 
   @needs_dylink
   @no_js_math('JS_MATH is not compatible with MAIN_MODULE')
   def test_dlfcn_handle_alloc(self):
     # verify that dlopen does not allocate already used handles
-    dirname = self.get_dir()
-
-    def indir(name):
-      return os.path.join(dirname, name)
-
     create_file('a.cpp', r'''
       #include <stdio.h>
 
@@ -4136,10 +4134,6 @@ ok
         return 11;
       }
     ''', 'other says 11.', 'int sidey();', force_c=True, **kwargs)
-
-  def output_name(self, basename):
-    suffix = common.get_output_suffix(self.get_cflags())
-    return basename + suffix
 
   @needs_dylink
   @crossplatform
@@ -7277,15 +7271,6 @@ void* operator new(size_t size) {
     test('|1|')
     test('|1|', args=['-DDIRECT'])
 
-  def test_response_file(self):
-    out_js = self.output_name('response_file')
-    response_data = '-o "%s" "%s"' % (out_js, test_file('hello_world.cpp'))
-    create_file('rsp_file', response_data.replace('\\', '\\\\'))
-    self.run_process([EMCC, "@rsp_file"] + self.get_cflags())
-    self.do_run(out_js, 'hello, world', no_build=True)
-
-    self.assertContained('response file not found: foo.txt', self.expect_fail([EMCC, '@foo.txt']))
-
   def test_linker_response_file(self):
     objfile = 'response_file.o'
     out_js = self.output_name('response_file')
@@ -7501,7 +7486,7 @@ void* operator new(size_t size) {
     'no_dynamic': (['--bind', '-sDYNAMIC_EXECUTION=0', '-sLEGACY_VM_SUPPORT'],),
   })
   def test_embind_val_basics(self, args):
-    if '-sLEGACY_VM_SUPPORT':
+    if '-sLEGACY_VM_SUPPORT' in args:
       if self.get_setting('MODULARIZE') == 'instance' or self.get_setting('WASM_ESM_INTEGRATION'):
         self.skipTest('LEGACY_VM_SUPPORT is not compatible with EXPORT_ES6')
       if self.is_wasm64():

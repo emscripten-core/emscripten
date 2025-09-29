@@ -10,9 +10,11 @@
 
 int workletToWorkerFutexLocation = 0;
 int workletToWorkerFlag = 0;
+EMSCRIPTEN_WEBAUDIO_T context;
 
 void do_exit() {
   emscripten_terminate_all_wasm_workers();
+  emscripten_destroy_audio_context(context);
   emscripten_force_exit(0);
 }
 
@@ -43,7 +45,7 @@ int main() {
   emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(/*stackSize: */1024);
   emscripten_wasm_worker_post_function_v(worker, run_in_worker);
 
-  EMSCRIPTEN_WEBAUDIO_T context = emscripten_create_audio_context(0);
+  context = emscripten_create_audio_context(0);
   emscripten_start_wasm_audio_worklet_thread_async(context, wasmAudioWorkletStack, sizeof(wasmAudioWorkletStack), WebAudioWorkletThreadInitialized, 0);
 
   emscripten_exit_with_live_runtime();

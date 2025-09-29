@@ -1,9 +1,9 @@
 {
-  "a.out.js": 19641,
+  "a.out.js": 19608,
   "a.out.js.gz": 8109,
   "a.out.nodebug.wasm": 142219,
   "a.out.nodebug.wasm.gz": 54358,
-  "total": 161860,
+  "total": 161827,
   "total_gz": 62467,
   "sent": [
     "_abort_js",

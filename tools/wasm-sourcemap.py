@@ -33,7 +33,7 @@ EMSCRIPTEN_PREFIX = utils.normalize_path(path_from_root())
 logger = logging.getLogger('wasm-sourcemap')
 
 
-def parse_args():
+def parse_args(args):
   parser = argparse.ArgumentParser(prog='wasm-sourcemap.py', description=__doc__)
   parser.add_argument('wasm', help='wasm file')
   parser.add_argument('-o', '--output', help='output source map')
@@ -46,7 +46,7 @@ def parse_args():
   parser.add_argument('--dwarfdump', help="path to llvm-dwarfdump executable")
   parser.add_argument('--dwarfdump-output', nargs='?', help=argparse.SUPPRESS)
   parser.add_argument('--basepath', help='base path for source files, which will be relative to this')
-  return parser.parse_args()
+  return parser.parse_args(args)
 
 
 class Prefixes:
@@ -361,8 +361,8 @@ def build_sourcemap(entries, code_section_offset, options):
           'mappings': ','.join(mappings)}
 
 
-def main():
-  options = parse_args()
+def main(args):
+  options = parse_args(args)
 
   wasm_input = options.wasm
   with open(wasm_input, 'rb') as infile:
@@ -394,4 +394,4 @@ def main():
 
 if __name__ == '__main__':
   logging.basicConfig(level=logging.DEBUG if os.environ.get('EMCC_DEBUG') else logging.INFO)
-  sys.exit(main())
+  sys.exit(main(sys.argv[1:]))
