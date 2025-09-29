@@ -400,8 +400,6 @@ commands:
             # TODO(https://github.com/emscripten-core/emscripten/issues/24205)
             EMTEST_LACKS_SOUND_HARDWARE: "1"
             EMTEST_LACKS_WEBGPU: "1"
-            # OffscreenCanvas support is not yet done in Firefox.
-            EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
             EMTEST_HEADLESS: "1"
             EMTEST_CORES: "2"
@@ -470,8 +468,6 @@ commands:
             # TODO(https://github.com/emscripten-core/emscripten/issues/24205)
             EMTEST_LACKS_SOUND_HARDWARE: "1"
             EMTEST_LACKS_WEBGPU: "1"
-            # OffscreenCanvas support is not yet done in Firefox.
-            EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
             EMTEST_HEADLESS: "1"
             EMTEST_CORES: "2"
