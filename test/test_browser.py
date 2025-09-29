@@ -501,13 +501,24 @@ window.close = () => {
       <script src="browser_reporting.js"></script>
       <script>
         // Clear the cache, so that the next test starts from a clean slate.
-        indexedDB.databases().then(dbs => {
-          Promise.all(dbs.map(db => {
-            return indexedDB.deleteDatabase(db.name);
-          })).then(() => {
-            reportResultToServer("clear");
+        if (indexedDB.databases) {
+          // If the tested browser supports IndexedDB 3.0 API, then enumerate all
+          // available databases and delete them.
+          indexedDB.databases().then(dbs => {
+            Promise.all(dbs.map(db => {
+              return indexedDB.deleteDatabase(db.name);
+            })).then(() => {
+              reportResultToServer("clear");
+            });
           });
-        });
+        } else {
+          // Testing an old browser that does not support indexedDB.databases():
+          // Delete the fixed database EM_PRELOAD_CACHE (this is hardcoded in
+          // file packager)
+          indexedDB.deleteDatabase('EM_PRELOAD_CACHE').onsuccess = () => {
+            reportResultToServer("clear");
+          };
+        }
       </script>
     ''')
     self.run_browser('clear_indexed_db.html', '/report_result?clear')
