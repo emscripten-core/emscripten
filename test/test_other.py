@@ -2586,7 +2586,6 @@ F1 -> ''
 
   @requires_network
   def test_remote_ports(self):
-    self.set_setting('NO_DEFAULT_TO_CXX', 0)  # emdawnwebgpu uses C++ internally
     self.emcc(test_file('hello_world.c'), ['--use-port=emdawnwebgpu'])
 
   @crossplatform
