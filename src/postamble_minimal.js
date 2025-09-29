@@ -85,15 +85,17 @@ function run() {
   } catch(e) {
     var exitCode = e.match(/^exit\(\d+\)$/);
     if (exitCode) {
-      throw e;
-    }
 #if RUNTIME_DEBUG
-    dbg(`main() called ${e}.`); // e.g. "main() called exit(0)."
+      dbg(`main() called ${e}.`); // e.g. "main() called exit(0)."
 #endif
 #if expectToReceiveOnModule('onExit')
-    // Report to Module that the program exited.
-    Module['onExit']?.(exitCode[1]);
+      // Report to Module that the program exited.
+      Module['onExit']?.(exitCode[1]);
 #endif
+    } else {
+      // Some other exception occurred - re-throw it.
+      throw e;
+    }
   }
 #else
   // Run a persistent (never-exiting) application starting at main().
