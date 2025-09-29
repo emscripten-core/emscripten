@@ -106,6 +106,7 @@ min_browser_versions = {
     'firefox': 105,
     'safari': 170000,
     'node': 0, # This is a browser only feature, no requirements on Node.js
+  },
   # Legacy Wasm exceptions was the first (now legacy) format for native exception
   # handling in WebAssembly.
   Feature.WASM_LEGACY_EXCEPTIONS: {
