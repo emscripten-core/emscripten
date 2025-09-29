@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "minimum_runtime_check.js"
+
 #if MODULARIZE
 var Module = moduleArg;
 #elif USE_CLOSURE_COMPILER

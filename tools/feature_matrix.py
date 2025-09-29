@@ -158,6 +158,7 @@ def enable_feature(feature, reason, override=False):
             f'({min_version} or above required)')
       else:
         # If no conflict, bump the minimum version to accommodate the feature.
+        logger.debug(f'Enabling {name}={min_version} to accommodate {reason}')
         setattr(settings, name, min_version)
 
 
