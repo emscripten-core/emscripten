@@ -589,6 +589,7 @@ private:
 #else
     // When std::apply is not available allow pointers by default. std::apply
     // could be polyfilled, but it requires a lot of code.
+    static_assert(internal::conjunction<internal::isNotPolicy<Args>...>::value, "Using pointer policies with val requires C++17 or newer.");
     return internalCallWithPolicy<Kind, WithPolicies<allow_raw_pointers>, Ret>(handle, methodName, std::forward<decltype(args)>(args)...);
 #endif
   }
