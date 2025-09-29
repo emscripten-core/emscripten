@@ -83,14 +83,14 @@ function run() {
   try {
     exitRuntime(_main({{{ argc_argv() }}}));
   } catch(e) {
-    var exitCode = e.match(/^exit\(\d+\)$/);
+    var exitCode = e.match(/^exit\((\d+)\)$/);
     if (exitCode) {
 #if RUNTIME_DEBUG
       dbg(`main() called ${e}.`); // e.g. "main() called exit(0)."
 #endif
 #if expectToReceiveOnModule('onExit')
       // Report to Module that the program exited.
-      Module['onExit']?.(exitCode[1]);
+      Module['onExit']?.(exitCode[1]|0);
 #endif
     } else {
 #if RUNTIME_DEBUG
