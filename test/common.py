@@ -167,7 +167,7 @@ def errlog(*args):
 
 def parse_emtest_s_settings():
   s_settings = {}
-  for setting in shlex.split(os.getenv('EMTEST_S_SETTINGS')):
+  for setting in shlex.split(os.getenv('EMTEST_S_SETTINGS', '')):
     if '=' in setting:
       key, value = setting.split('=')
     else:
