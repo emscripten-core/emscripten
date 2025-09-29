@@ -1705,7 +1705,7 @@ FS.staticInit();`;
  #if FS_DEBUG
       dbg(`forceLoadFile: ${obj.url}`)
  #endif
-      if (typeof XMLHttpRequest != 'undefined') {
+      if (globalThis.XMLHttpRequest) {
         abort("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
       } else { // Command-line.
         try {
@@ -1824,7 +1824,7 @@ FS.staticInit();`;
         }
       }
 
-      if (typeof XMLHttpRequest != 'undefined') {
+      if (globalThis.XMLHttpRequest) {
         if (!ENVIRONMENT_IS_WORKER) abort('Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc');
         var lazyArray = new LazyUint8Array();
         var properties = { isDevice: false, contents: lazyArray };

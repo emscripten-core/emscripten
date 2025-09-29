@@ -1369,7 +1369,7 @@ var LibraryEmbind = {
 #endif
   ],
   $attachFinalizer: (handle) => {
-    if ('undefined' === typeof FinalizationRegistry) {
+    if (!globalThis.FinalizationRegistry) {
       attachFinalizer = (handle) => handle;
       return handle;
     }

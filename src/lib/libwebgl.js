@@ -695,8 +695,8 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     hookWebGL: function(glCtx) {
       glCtx ??= this.detectWebGLContext();
       if (!glCtx) return;
-      if (!((typeof WebGLRenderingContext != 'undefined' && glCtx instanceof WebGLRenderingContext)
-            || (typeof WebGL2RenderingContext != 'undefined' && glCtx instanceof WebGL2RenderingContext))) {
+      if (!((globalThis.WebGLRenderingContext && glCtx instanceof WebGLRenderingContext)
+            || (globalThis.WebGL2RenderingContext && glCtx instanceof WebGL2RenderingContext))) {
         return;
       }
 

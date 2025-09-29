@@ -286,7 +286,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProp
 #endif
 
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
-  if (typeof location != 'undefined') {
+  if (globalThis.location) {
 #endif
     // WebAssembly compilation failed, try running the JS fallback instead.
     var search = location.search;
