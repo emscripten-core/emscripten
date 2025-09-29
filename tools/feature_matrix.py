@@ -39,6 +39,8 @@ class Feature(IntEnum):
   PROMISE_ANY = auto()
   MEMORY64 = auto()
   WORKER_ES6_MODULES = auto()
+  WASM_LEGACY_EXCEPTIONS = auto()
+  WASM_EXNREF_EXCEPTIONS = auto()
 
 
 disable_override_features = set()
@@ -94,6 +96,22 @@ min_browser_versions = {
     'firefox': 114,
     'safari': 150000,
     'node': 0, # This is a browser only feature, no requirements on Node.js
+  },
+  # Legacy Wasm exceptions was the first (now legacy) format for native exception
+  # handling in WebAssembly.
+  Feature.WASM_LEGACY_EXCEPTIONS: {
+    'chrome': 95,
+    'firefox': 100,
+    'safari': 150200,
+    'node': 170000,
+  },
+  # Exnref Wasm exceptions is a newer format for native exception handling in
+  # WebAssembly.
+  Feature.WASM_EXNREF_EXCEPTIONS: {
+    'chrome': 137,
+    'firefox': 131,
+    'safari': 180400,
+    'node': 240000, # Supported with flag --experimental-wasm-exnref (TODO: Change this to unflagged version once it ships)
   },
 }
 
@@ -155,7 +173,7 @@ def enable_feature(feature, reason, override=False):
         diagnostics.warning(
             'compatibility',
             f'{name}={user_settings[name]} is not compatible with {reason} '
-            f'({min_version} or above required)')
+            f'({name}={min_version} or above required)')
       else:
         # If no conflict, bump the minimum version to accommodate the feature.
         setattr(settings, name, min_version)
@@ -186,3 +204,7 @@ def apply_min_browser_versions():
     enable_feature(Feature.WORKER_ES6_MODULES, 'EXPORT_ES6 with -pthread')
   if settings.EXPORT_ES6 and settings.WASM_WORKERS:
     enable_feature(Feature.WORKER_ES6_MODULES, 'EXPORT_ES6 with -sWASM_WORKERS')
+  if settings.WASM_EXCEPTIONS and settings.WASM_LEGACY_EXCEPTIONS:
+    enable_feature(Feature.WASM_LEGACY_EXCEPTIONS, '-fwasm-exceptions')
+  if not settings.WASM_LEGACY_EXCEPTIONS:
+    enable_feature(Feature.WASM_EXNREF_EXCEPTIONS, '-sWASM_LEGACY_EXCEPTIONS=0')

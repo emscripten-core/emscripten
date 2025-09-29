@@ -180,7 +180,11 @@ var CAN_ADDRESS_2GB = false;
 // This has no effect if DWARF is not being emitted.
 var SEPARATE_DWARF = false;
 
-// New WebAssembly exception handling
+// Target WebAssembly exception handling instead of JavaScript-side exception
+// handling. Furthermore, if WASM_LEGACY_EXCEPTIONS=1, then old legacy Wasm
+// exception handling is used, and if WASM_LEGACY_EXCEPTIONS=0, then new Wasm
+// Exnref exception handling is targeted.
+// Enabled by passing -fwasm-exceptions on the command line.
 var WASM_EXCEPTIONS = false;
 
 // Set to true if the program has a main function.  By default this is
