@@ -165,6 +165,20 @@ def errlog(*args):
   print(*args, file=sys.stderr)
 
 
+def parse_emtest_s_settings():
+  s_settings = {}
+  for setting in shlex.split(os.getenv('EMTEST_S_SETTINGS')):
+    if '=' in setting:
+      key, value = setting.split('=')
+    else:
+      key = setting
+      value = '1'
+
+    logger.debug(f'Applying testing override -s{key}={value}')
+    s_settings[key] = value
+  return s_settings
+
+
 def load_previous_test_run_results():
   try:
     return json.load(open(PREVIOUS_TEST_RUN_RESULTS_FILE))
@@ -1421,6 +1435,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         ensure_dir(self.working_dir)
       utils.write_file(LAST_TEST, self.id() + '\n')
     os.chdir(self.working_dir)
+
+    # Apply overrides to -s settings from EMTEST_S_SETTINGS env. variable:
+    for k, v in parse_emtest_s_settings().items():
+      self.set_setting(k, v)
 
   def runningInParallel(self):
     return getattr(self, 'is_parallel', False)
