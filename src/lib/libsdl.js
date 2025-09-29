@@ -3117,6 +3117,7 @@ var LibrarySDL = {
     try {
       var offscreenCanvas = new OffscreenCanvas(0, 0);
       SDL.ttfContext = offscreenCanvas.getContext('2d');
+#if MIN_FIREFOX_VERSION < 128
       // According to https://developer.mozilla.org/en-US/docs/Web/API/OffscreenCanvasRenderingContext2D
       // OffscreenCanvasRenderingContext2D.measureText() appeared in
       // Chrome 69, Firefox 105 and Safari 16.4. Fall back to using regular
@@ -3125,6 +3126,7 @@ var LibrarySDL = {
       if (!SDL.ttfContext.measureText) {
         throw 1; // no OffscreenCanvasRenderingContext2D.measureText
       }
+#endif
     } catch (ex) {
       var canvas = /** @type {HTMLCanvasElement} */(document.createElement('canvas'));
       SDL.ttfContext = canvas.getContext('2d');
