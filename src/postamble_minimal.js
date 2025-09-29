@@ -93,6 +93,9 @@ function run() {
       Module['onExit']?.(exitCode[1]);
 #endif
     } else {
+#if RUNTIME_DEBUG
+      dbg(`main() threw an exception: ${e}.`);
+#endif
       // Some other exception occurred - re-throw it.
       throw e;
     }
