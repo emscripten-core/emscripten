@@ -7,6 +7,9 @@
 "use strict";
 
 #endif
+
+#include "minimum_runtime_check.js"
+
 // The Module object: Our interface to the outside world. We import
 // and export values on it. There are various ways Module can be used:
 // 1. Not defined. We create it here
@@ -192,15 +195,6 @@ if (ENVIRONMENT_IS_NODE) {
   if (!isNode) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 #endif
 
-#if ASSERTIONS
-  var nodeVersion = process.versions.node;
-  var numericVersion = nodeVersion.split('.').slice(0, 3);
-  numericVersion = (numericVersion[0] * 10000) + (numericVersion[1] * 100) + (numericVersion[2].split('-')[0] * 1);
-  if (numericVersion < {{{ MIN_NODE_VERSION }}}) {
-    throw new Error('This emscripten-generated code requires node {{{ formattedMinNodeVersion() }}} (detected v' + nodeVersion + ')');
-  }
-#endif
-
   // These modules will usually be used on Node.js. Load them eagerly to avoid
   // the complexity of lazy-loading.
   var fs = require('fs');
@@ -268,11 +262,6 @@ if (ENVIRONMENT_IS_NODE) {
 #endif // ENVIRONMENT_MAY_BE_NODE
 #if ENVIRONMENT_MAY_BE_SHELL || ASSERTIONS
 if (ENVIRONMENT_IS_SHELL) {
-
-#if ENVIRONMENT.length && ASSERTIONS
-  const isNode = {{{ nodeDetectionCode() }}};
-  if (isNode || typeof window == 'object' || typeof WorkerGlobalScope != 'undefined') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
-#endif
 
 #if ENVIRONMENT_MAY_BE_SHELL
   readBinary = (f) => {

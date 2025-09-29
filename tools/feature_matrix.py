@@ -39,6 +39,7 @@ class Feature(IntEnum):
   PROMISE_ANY = auto()
   MEMORY64 = auto()
   WORKER_ES6_MODULES = auto()
+  OFFSCREENCANVAS_SUPPORT = auto()
   WASM_LEGACY_EXCEPTIONS = auto()
   WASM_EXNREF_EXCEPTIONS = auto()
 
@@ -97,6 +98,14 @@ min_browser_versions = {
     'safari': 150000,
     'node': 0, # This is a browser only feature, no requirements on Node.js
   },
+  # OffscreenCanvas feature allows creating canvases that are not connected to
+  # a visible DOM element, e.g. in a Worker.
+  # https://caniuse.com/offscreencanvas
+  Feature.OFFSCREENCANVAS_SUPPORT: {
+    'chrome': 69,
+    'firefox': 105,
+    'safari': 170000,
+    'node': 0, # This is a browser only feature, no requirements on Node.js
   # Legacy Wasm exceptions was the first (now legacy) format for native exception
   # handling in WebAssembly.
   Feature.WASM_LEGACY_EXCEPTIONS: {
@@ -176,6 +185,7 @@ def enable_feature(feature, reason, override=False):
             f'({name}={min_version} or above required)')
       else:
         # If no conflict, bump the minimum version to accommodate the feature.
+        logger.debug(f'Enabling {name}={min_version} to accommodate {reason}')
         setattr(settings, name, min_version)
 
 
@@ -204,6 +214,8 @@ def apply_min_browser_versions():
     enable_feature(Feature.WORKER_ES6_MODULES, 'EXPORT_ES6 with -pthread')
   if settings.EXPORT_ES6 and settings.WASM_WORKERS:
     enable_feature(Feature.WORKER_ES6_MODULES, 'EXPORT_ES6 with -sWASM_WORKERS')
+  if settings.OFFSCREENCANVAS_SUPPORT:
+    enable_feature(Feature.OFFSCREENCANVAS_SUPPORT, 'OFFSCREENCANVAS_SUPPORT')
   if settings.WASM_EXCEPTIONS and settings.WASM_LEGACY_EXCEPTIONS:
     enable_feature(Feature.WASM_LEGACY_EXCEPTIONS, '-fwasm-exceptions')
   if not settings.WASM_LEGACY_EXCEPTIONS:
