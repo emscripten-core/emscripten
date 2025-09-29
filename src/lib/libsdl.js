@@ -3124,7 +3124,7 @@ var LibrarySDL = {
       if (!SDL.ttfContext.measureText) {
         throw 1; // no OffscreenCanvasRenderingContext2D.measureText
       }
-    } catch () {
+    } catch (ex) {
       var canvas = /** @type {HTMLCanvasElement} */(document.createElement('canvas'));
       SDL.ttfContext = canvas.getContext('2d');
     }
