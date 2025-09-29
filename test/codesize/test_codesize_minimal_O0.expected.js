@@ -877,6 +877,7 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'stackAlloc',
   'getTempRet0',
   'setTempRet0',
+  'createNamedFunction',
   'zeroMemory',
   'exitJS',
   'getHeapMax',

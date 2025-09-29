@@ -122,8 +122,6 @@ var LibraryEmbind = {
     }
   },
 
-  $createNamedFunction: (name, func) => Object.defineProperty(func, 'name', { value: name }),
-
   $embindRepr: (v) => {
     if (v === null) {
         return 'null';
