@@ -746,6 +746,7 @@ jobs:
             wasmfs.test_fs_llseek_rawfs
             wasmfs.test_freetype
             minimal0.test_utf
+            minimal0.test_static_variable
             minimal0.test_stack_overflow
             omitexports0.test_asyncify_longjmp
             omitexports0.test_emscripten_api
