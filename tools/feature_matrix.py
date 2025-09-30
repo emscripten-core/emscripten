@@ -221,7 +221,8 @@ def apply_min_browser_versions():
     enable_feature(Feature.WORKER_ES6_MODULES, 'EXPORT_ES6 with -sWASM_WORKERS')
   if settings.OFFSCREENCANVAS_SUPPORT:
     enable_feature(Feature.OFFSCREENCANVAS_SUPPORT, 'OFFSCREENCANVAS_SUPPORT')
-  if settings.WASM_EXCEPTIONS and settings.WASM_LEGACY_EXCEPTIONS:
-    enable_feature(Feature.WASM_LEGACY_EXCEPTIONS, 'Wasm Legacy exceptions (-fwasm-exceptions with -sWASM_LEGACY_EXCEPTIONS=1)')
-  if settings.WASM_EXCEPTIONS and not settings.WASM_LEGACY_EXCEPTIONS:
-    enable_feature(Feature.WASM_EXCEPTIONS, 'Wasm exceptions (-fwasm-exceptions with -sWASM_LEGACY_EXCEPTIONS=0)')
+  if settings.WASM_EXCEPTIONS or settings.SUPPORT_LONGJMP == 'wasm': # Wasm longjmp support will lean on Wasm (Legacy) EH
+    if settings.WASM_LEGACY_EXCEPTIONS:
+      enable_feature(Feature.WASM_LEGACY_EXCEPTIONS, 'Wasm Legacy exceptions (-fwasm-exceptions with -sWASM_LEGACY_EXCEPTIONS=1)')
+    else:
+      enable_feature(Feature.WASM_EXCEPTIONS, 'Wasm exceptions (-fwasm-exceptions with -sWASM_LEGACY_EXCEPTIONS=0)')
