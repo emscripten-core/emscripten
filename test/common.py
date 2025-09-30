@@ -1216,8 +1216,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
 
     if self.is_browser_test():
-      if 'EMTEST_SKIP_WASM_EXNREF_EH' in os.environ:
-        self.skipTest('test requires a browser with new Exnref Wasm exceptions support (and EMTEST_SKIP_WASM_EXNREF_EH is set)')
+      if 'EMTEST_SKIP_EH' in os.environ:
+        self.skipTest('test requires a browser with Wasm exceptions support (and EMTEST_SKIP_EH is set)')
       return
 
     if self.try_require_node_version(24):
@@ -1231,10 +1231,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.v8_args.append('--experimental-wasm-exnref')
       return
 
-    if 'EMTEST_SKIP_WASM_EXNREF_EH' in os.environ:
-      self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_WASM_EXNREF_EH is set)')
+    if 'EMTEST_SKIP_EH' in os.environ:
+      self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_EH is set)')
     else:
-      self.fail('either d8 or node v24 required to run Exnref wasm-eh tests.  Use EMTEST_SKIP_WASM_EXNREF_EH to skip')
+      self.fail('either d8 or node v24 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
 
   def require_jspi(self):
     # emcc warns about stack switching being experimental, and we build with

@@ -182,8 +182,8 @@ var SEPARATE_DWARF = false;
 
 // Target WebAssembly exception handling instead of JavaScript-side exception
 // handling. Furthermore, if WASM_LEGACY_EXCEPTIONS=1, then old legacy Wasm
-// exception handling is used, and if WASM_LEGACY_EXCEPTIONS=0, then new Wasm
-// Exnref exception handling is targeted.
+// exception handling is used, and if WASM_LEGACY_EXCEPTIONS=0, then Wasm
+// exception handling is targeted.
 // Enabled by passing -fwasm-exceptions on the command line.
 var WASM_EXCEPTIONS = false;
 

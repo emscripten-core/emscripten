@@ -41,7 +41,7 @@ class Feature(IntEnum):
   WORKER_ES6_MODULES = auto()
   OFFSCREENCANVAS_SUPPORT = auto()
   WASM_LEGACY_EXCEPTIONS = auto()
-  WASM_EXNREF_EXCEPTIONS = auto()
+  WASM_EXCEPTIONS = auto()
 
 
 disable_override_features = set()
@@ -115,14 +115,16 @@ min_browser_versions = {
     'safari': 150200,
     'node': 170000,
   },
-  # Exnref Wasm exceptions is a newer format for native exception handling in
+  # Wasm exceptions is a newer format for native exception handling in
   # WebAssembly.
-  Feature.WASM_EXNREF_EXCEPTIONS: {
+  Feature.WASM_EXCEPTIONS: {
     'chrome': 137,
     'firefox': 131,
     'safari': 180400,
     # Supported with flag --experimental-wasm-exnref (TODO: Change this to
-    # unflagged version of Node.js that ships exnref default-on)
+    # unflagged version of Node.js 260000 that ships Wasm EH enabled, after
+    # Emscripten unit testing has migrated to Node.js 26, and Emsdk ships
+    # Node.js 26)
     'node': 240000,
   },
 }
@@ -222,4 +224,4 @@ def apply_min_browser_versions():
   if settings.WASM_EXCEPTIONS and settings.WASM_LEGACY_EXCEPTIONS:
     enable_feature(Feature.WASM_LEGACY_EXCEPTIONS, 'Wasm Legacy exceptions (-fwasm-exceptions with -sWASM_LEGACY_EXCEPTIONS=1)')
   if settings.WASM_EXCEPTIONS and not settings.WASM_LEGACY_EXCEPTIONS:
-    enable_feature(Feature.WASM_EXNREF_EXCEPTIONS, 'Wasm Exnref exceptions (-fwasm-exceptions with -sWASM_LEGACY_EXCEPTIONS=0)')
+    enable_feature(Feature.WASM_EXCEPTIONS, 'Wasm exceptions (-fwasm-exceptions with -sWASM_LEGACY_EXCEPTIONS=0)')
