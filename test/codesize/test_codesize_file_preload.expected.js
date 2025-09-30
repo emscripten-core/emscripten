@@ -27,7 +27,7 @@ var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
 
 // N.b. Electron.js environment is simultaneously a NODE-environment, but
 // also a web environment.
-var ENVIRONMENT_IS_NODE = typeof process == "object" && process.versions?.node && process.type != "renderer";
+var ENVIRONMENT_IS_NODE = globalThis.process?.versions?.node && globalThis.process?.type != "renderer";
 
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
@@ -41,7 +41,7 @@ Module["expectedDataFileDownloads"]++;
   var isPthread = typeof ENVIRONMENT_IS_PTHREAD != "undefined" && ENVIRONMENT_IS_PTHREAD;
   var isWasmWorker = typeof ENVIRONMENT_IS_WASM_WORKER != "undefined" && ENVIRONMENT_IS_WASM_WORKER;
   if (isPthread || isWasmWorker) return;
-  var isNode = typeof process === "object" && typeof process.versions === "object" && typeof process.versions.node === "string";
+  var isNode = globalThis.process?.versions?.node && globalThis.process?.type != "renderer";
   async function loadPackage(metadata) {
     var PACKAGE_PATH = "";
     if (typeof window === "object") {
