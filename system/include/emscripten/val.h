@@ -7,10 +7,6 @@
 
 #pragma once
 
-#if __cplusplus < 201103L
-#error Including <emscripten/val.h> requires building with -std=c++11 or newer!
-#endif
-
 #include <cassert>
 #include <array>
 #include <climits>

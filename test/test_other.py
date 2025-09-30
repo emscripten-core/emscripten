@@ -3328,7 +3328,7 @@ More info: https://emscripten.org
     # With no arguments we are effectively testing c++17 since it is the default.
     '': [],
     # Ensure embind compiles under C++11 which is the miniumum supported version.
-    'cxx11': ['-std=c++11'],
+    'cxx11': ['-std=c++11', '-Wno-#warnings'],
     'o1': ['-O1'],
     'o2': ['-O2'],
     'o2_mem_growth': ['-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')],
@@ -3376,6 +3376,14 @@ More info: https://emscripten.org
 
     output = self.run_js(js_file)
     self.assertNotContained('FAIL', output)
+
+  def test_embind_cxx11_warning(self):
+    err = self.run_process([EMXX, '-c', '-std=c++11', test_file('embind/test_unsigned.cpp')], stderr=PIPE).stderr
+    self.assertContained('#warning "embind is likely moving to c++17', err)
+
+  def test_embind_cxx03(self):
+    err = self.expect_fail([EMXX, '-c', '-std=c++03', test_file('embind/test_unsigned.cpp')])
+    self.assertContained('#error "embind requires -std=c++11 or newer"', err)
 
   @requires_node
   def test_embind_finalization(self):
