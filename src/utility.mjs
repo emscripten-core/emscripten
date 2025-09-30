@@ -242,8 +242,12 @@ function read(filename) {
   return readFile(filename);
 }
 
-export function printErr(x) {
-  process.stderr.write(x + '\n');
+export function printErr(...args) {
+  console.error(...args);
+}
+
+export function debugLog(...args) {
+  if (VERBOSE) printErr(...args);
 }
 
 export class Benchmarker {
