@@ -47,7 +47,7 @@ def esm_integration(func):
   @wraps(func)
   def decorated(self, *args, **kwargs):
     self.setup_esm_integration()
-    func(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   return decorated
 
@@ -55,14 +55,14 @@ def esm_integration(func):
 def no_modularize_instance(note):
   assert not callable(note)
 
-  def decorator(f):
-    assert callable(f)
+  def decorator(func):
+    assert callable(func)
 
-    @wraps(f)
+    @wraps(func)
     def decorated(self, *args, **kwargs):
       if self.get_setting('MODULARIZE') == 'instance' or self.get_setting('WASM_ESM_INTEGRATION'):
         self.skipTest(note)
-      f(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     return decorated
 
   return decorator
@@ -71,23 +71,23 @@ def no_modularize_instance(note):
 def no_esm_integration(note):
   assert not callable(note)
 
-  def decorator(f):
-    assert callable(f)
+  def decorator(func):
+    assert callable(func)
 
-    @wraps(f)
+    @wraps(func)
     def decorated(self, *args, **kwargs):
       if self.get_setting('WASM_ESM_INTEGRATION'):
         self.skipTest(note)
-      f(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     return decorated
 
   return decorator
 
 
-def wasm_simd(f):
-  assert callable(f)
+def wasm_simd(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_simd()
     if self.get_setting('MEMORY64') == 2:
@@ -99,48 +99,48 @@ def wasm_simd(f):
     self.cflags.append('-msimd128')
     self.cflags.append('-fno-lax-vector-conversions')
     self.v8_args.append('--experimental-wasm-simd')
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
   return decorated
 
 
-def asan(f):
-  assert callable(f)
+def asan(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm2js('TODO: ASAN in wasm2js')
   @no_wasm64('TODO: ASAN in memory64')
   @no_2gb('asan doesnt support GLOBAL_BASE')
   @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   def decorated(self, *args, **kwargs):
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   return decorated
 
 
-def wasm_relaxed_simd(f):
-  assert callable(f)
+def wasm_relaxed_simd(func):
+  assert callable(func)
 
-  @wraps(f)
-  def decorated(self):
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
     if self.get_setting('MEMORY64') == 2:
       self.skipTest('https://github.com/WebAssembly/binaryen/issues/4638')
     # We don't actually run any tests yet, so don't require any engines.
     if self.is_wasm2js():
       self.skipTest('wasm2js only supports MVP for now')
     self.cflags.append('-mrelaxed-simd')
-    f(self)
+    return func(self, *args, **kwargs)
   return decorated
 
 
-def needs_non_trapping_float_to_int(f):
-  assert callable(f)
+def needs_non_trapping_float_to_int(func):
+  assert callable(func)
 
-  @wraps(f)
-  def decorated(self):
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
     if self.is_wasm2js():
       self.skipTest('wasm2js only supports MVP for now')
-    f(self)
+    return func(self, *args, **kwargs)
   return decorated
 
 
@@ -186,8 +186,8 @@ def with_dylink_reversed(func):
 def no_wasm2js(note=''):
   assert not callable(note)
 
-  def decorated(f):
-    return skip_if(f, 'is_wasm2js', note)
+  def decorated(func):
+    return skip_if(func, 'is_wasm2js', note)
   return decorated
 
 
@@ -204,15 +204,15 @@ def no_wasm2js(note=''):
 def only_wasm2js(note=''):
   assert not callable(note)
 
-  def decorated(f):
-    return skip_if(f, 'is_wasm2js', note, negate=True)
+  def decorated(func):
+    return skip_if(func, 'is_wasm2js', note, negate=True)
   return decorated
 
 
-def with_asyncify_and_jspi(f):
-  assert callable(f)
+def with_asyncify_and_jspi(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, jspi, *args, **kwargs):
     if self.get_setting('WASM_ESM_INTEGRATION'):
       self.skipTest('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
@@ -221,17 +221,17 @@ def with_asyncify_and_jspi(f):
       self.require_jspi()
     else:
       self.set_setting('ASYNCIFY')
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'jspi': (True,)})
   return metafunc
 
 
-def also_with_asyncify_and_jspi(f):
-  assert callable(f)
+def also_with_asyncify_and_jspi(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, asyncify, *args, **kwargs):
     if asyncify and self.get_setting('WASM_ESM_INTEGRATION'):
       self.skipTest('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
@@ -242,7 +242,7 @@ def also_with_asyncify_and_jspi(f):
       self.set_setting('ASYNCIFY')
     else:
       assert asyncify == 0
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (0,),
                           'asyncify': (1,),
@@ -257,10 +257,10 @@ def no_optimize(note=''):
     assert callable(func)
 
     @wraps(func)
-    def decorated(self):
+    def decorated(self, *args, **kwargs):
       if self.is_optimizing():
         self.skipTest(note)
-      func(self)
+      return func(self, *args, **kwargs)
     return decorated
   return decorator
 
@@ -268,14 +268,14 @@ def no_optimize(note=''):
 def no_asan(note):
   assert not callable(note)
 
-  def decorator(f):
-    assert callable(f)
+  def decorator(func):
+    assert callable(func)
 
-    @wraps(f)
+    @wraps(func)
     def decorated(self, *args, **kwargs):
       if '-fsanitize=address' in self.cflags:
         self.skipTest(note)
-      f(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     return decorated
   return decorator
 
@@ -283,14 +283,14 @@ def no_asan(note):
 def no_lsan(note):
   assert not callable(note)
 
-  def decorator(f):
-    assert callable(f)
+  def decorator(func):
+    assert callable(func)
 
-    @wraps(f)
+    @wraps(func)
     def decorated(self, *args, **kwargs):
       if '-fsanitize=leak' in self.cflags:
         self.skipTest(note)
-      f(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     return decorated
   return decorator
 
@@ -298,14 +298,14 @@ def no_lsan(note):
 def no_ubsan(note):
   assert not callable(note)
 
-  def decorator(f):
-    assert callable(f)
+  def decorator(func):
+    assert callable(func)
 
-    @wraps(f)
+    @wraps(func)
     def decorated(self, *args, **kwargs):
       if '-fsanitize=undefined' in self.cflags:
         self.skipTest(note)
-      f(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     return decorated
   return decorator
 
@@ -313,14 +313,14 @@ def no_ubsan(note):
 def no_sanitize(note):
   assert not callable(note)
 
-  def decorator(f):
-    assert callable(f)
+  def decorator(func):
+    assert callable(func)
 
-    @wraps(f)
+    @wraps(func)
     def decorated(self, *args, **kwargs):
       if any(a.startswith('-fsanitize=') for a in self.cflags):
         self.skipTest(note)
-      f(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     return decorated
   return decorator
 
@@ -328,14 +328,14 @@ def no_sanitize(note):
 def no_wasmfs(note):
   assert not callable(note)
 
-  def decorator(f):
-    assert callable(f)
+  def decorator(func):
+    assert callable(func)
 
-    @wraps(f)
+    @wraps(func)
     def decorated(self, *args, **kwargs):
       if self.get_setting('WASMFS'):
         self.skipTest(note)
-      f(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     return decorated
   return decorator
 
@@ -344,10 +344,10 @@ def make_no_decorator_for_setting(name):
   def outer_decorator(note):
     assert not callable(note)
 
-    def decorator(f):
-      assert callable(f)
+    def decorator(func):
+      assert callable(func)
 
-      @wraps(f)
+      @wraps(func)
       def decorated(self, *args, **kwargs):
         if '=' in name:
           key, val = name.split('=', 1)
@@ -358,19 +358,19 @@ def make_no_decorator_for_setting(name):
           self.skipTest(note)
         if f'-s{key}={val}' in self.cflags or self.get_setting(key) == int(val):
           self.skipTest(note)
-        f(self, *args, **kwargs)
+        return func(self, *args, **kwargs)
       return decorated
     return decorator
   return outer_decorator
 
 
-def with_both_text_decoder(f):
-  assert callable(f)
+def with_both_text_decoder(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def decorated(self, textdecoder, *args, **kwargs):
     self.set_setting('TEXTDECODER', textdecoder)
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(decorated, {'': (1,), 'force_textdecoder': (2,)})
 
