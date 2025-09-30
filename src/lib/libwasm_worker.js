@@ -193,7 +193,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
     let worker;
 #if TRUSTED_TYPES
     // Use Trusted Types compatible wrappers.
-    if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
+    if (globalThis.trustedTypes?.createPolicy) {
       var p = trustedTypes.createPolicy(
           'emscripten#workerPolicy1', { createScriptURL: (ignored) => {{{ wasmWorkerJs }}}}
       );

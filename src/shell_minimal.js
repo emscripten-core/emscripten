@@ -36,7 +36,7 @@ var ENVIRONMENT_IS_NODE = {{{ nodeDetectionCode() }}};
 #endif
 
 #if ENVIRONMENT_MAY_BE_SHELL
-var ENVIRONMENT_IS_SHELL = typeof read == 'function';
+var ENVIRONMENT_IS_SHELL = !!globalThis.read;
 #endif
 
 #if ASSERTIONS || PTHREADS
@@ -133,7 +133,7 @@ function ready() {
 #if PTHREADS
 // MINIMAL_RUNTIME does not support --proxy-to-worker option, so Worker and Pthread environments
 // coincide.
-var ENVIRONMENT_IS_WORKER = typeof WorkerGlobalScope != 'undefined';
+var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
 var ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && self.name?.startsWith('em-pthread');
 
 #if !MODULARIZE
@@ -174,7 +174,7 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 if (ENVIRONMENT_IS_NODE) {
   var fs = require('fs');
 #if WASM == 2
-  if (typeof WebAssembly != 'undefined') Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
+  if (globalThis.WebAssembly) Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
   else eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm.js')+'');
 #else
 #if !WASM2JS
@@ -187,7 +187,7 @@ if (ENVIRONMENT_IS_NODE) {
 #if ENVIRONMENT_MAY_BE_SHELL && ((WASM == 1 && !WASM2JS) || WASM == 2)
 if (ENVIRONMENT_IS_SHELL) {
 #if WASM == 2
-  if (typeof WebAssembly != 'undefined') Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
+  if (globalThis.WebAssembly) Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
   else eval(read('{{{ TARGET_BASENAME }}}.wasm.js')+'');
 #else
 #if !WASM2JS

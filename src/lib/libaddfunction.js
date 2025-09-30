@@ -95,7 +95,7 @@ addToLibrary({
     // "WebAssembly.Function" constructor.
     // Otherwise, construct a minimal wasm module importing the JS function and
     // re-exporting it.
-    if (typeof WebAssembly.Function == "function") {
+    if (WebAssembly.Function) {
       return new WebAssembly.Function(sigToWasmTypes(sig), func);
     }
 #endif

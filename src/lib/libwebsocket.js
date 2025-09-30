@@ -277,7 +277,7 @@ var LibraryWebSocket = {
 
   emscripten_websocket_new__proxy: 'sync',
   emscripten_websocket_new: (createAttributes) => {
-    if (typeof WebSocket == 'undefined') {
+    if (!globalThis.WebSocket) {
 #if WEBSOCKET_DEBUG
       dbg('emscripten_websocket_new(): WebSocket API is not supported by current browser)');
 #endif
