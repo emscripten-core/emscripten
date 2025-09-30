@@ -1132,7 +1132,7 @@ function nodeDetectionCode() {
     // optimize code size.
     return 'true';
   }
-  return "typeof process == 'object' && process.versions?.node && process.type != 'renderer'";
+  return "globalThis.process?.versions?.node && globalThis.process?.type != 'renderer'";
 }
 
 function nodePthreadDetection() {
