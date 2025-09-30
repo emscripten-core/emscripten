@@ -1197,6 +1197,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_SIMD to skip')
 
   def require_wasm_legacy_eh(self):
+    if 'EMTEST_SKIP_WASM_LEGACY_EH' in os.environ:
+      self.skipTest('test requires node >= 17 or d8 (and EMTEST_SKIP_WASM_LEGACY_EH is set)')
+
     self.set_setting('WASM_LEGACY_EXCEPTIONS')
     if self.try_require_node_version(17):
       return
@@ -1207,17 +1210,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.js_engines = [v8]
       return
 
-    if 'EMTEST_SKIP_WASM_LEGACY_EH' in os.environ:
-      self.skipTest('test requires node >= 17 or d8 (and EMTEST_SKIP_WASM_LEGACY_EH is set)')
-    else:
-      self.fail('either d8 or node >= 17 required to run legacy wasm-eh tests.  Use EMTEST_SKIP_WASM_LEGACY_EH to skip')
+    self.fail('either d8 or node >= 17 required to run legacy wasm-eh tests.  Use EMTEST_SKIP_WASM_LEGACY_EH to skip')
 
   def require_wasm_eh(self):
+    if 'EMTEST_SKIP_EH' in os.environ:
+      self.skipTest('test requires a browser with Wasm exceptions support (and EMTEST_SKIP_EH is set)')
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
 
     if self.is_browser_test():
-      if 'EMTEST_SKIP_EH' in os.environ:
-        self.skipTest('test requires a browser with Wasm exceptions support (and EMTEST_SKIP_EH is set)')
       return
 
     if self.try_require_node_version(24):
@@ -1231,10 +1231,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.v8_args.append('--experimental-wasm-exnref')
       return
 
-    if 'EMTEST_SKIP_EH' in os.environ:
-      self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_EH is set)')
-    else:
-      self.fail('either d8 or node v24 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
+    self.fail('either d8 or node v24 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
 
   def require_jspi(self):
     # emcc warns about stack switching being experimental, and we build with
