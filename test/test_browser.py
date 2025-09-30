@@ -204,7 +204,7 @@ class browser(BrowserCore):
       print()
 
   def proxy_to_worker(self):
-    self.cflags += ['--proxy-to-worker', '-sGL_TESTING']
+    self.cflags += ['--proxy-to-worker', '-Wno-deprecated', '-sGL_TESTING']
 
   def require_jspi(self):
     if not is_chrome():
@@ -890,13 +890,13 @@ window.close = () => {
   @proxied
   def test_sdl_canvas_proxy(self):
     create_file('data.txt', 'datum')
-    self.reftest('test_sdl_canvas_proxy.c', 'test_sdl_canvas_proxy.png', cflags=['--proxy-to-worker', '--preload-file', 'data.txt', '-lSDL', '-lGL'])
+    self.reftest('test_sdl_canvas_proxy.c', 'test_sdl_canvas_proxy.png', cflags=['--proxy-to-worker', '-Wno-deprecated', '--preload-file', 'data.txt', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   @flaky('https://github.com/emscripten-core/emscripten/issues/25329')
   def test_glgears_proxy_jstarget(self):
     # test .js target with --proxy-worker; emits 2 js files, client and worker
-    self.compile_btest('hello_world_gles_proxy.c', ['-o', 'test.js', '--proxy-to-worker', '-sGL_TESTING', '-lGL', '-lglut'])
+    self.compile_btest('hello_world_gles_proxy.c', ['-o', 'test.js', '--proxy-to-worker', '-Wno-deprecated', '-sGL_TESTING', '-lGL', '-lglut'])
     shell_with_script('shell_minimal.html', 'test.html', '<script src="test.js"></script>')
     self.make_reftest(test_file('gears.png'))
     self.post_manual_reftest()
@@ -972,7 +972,7 @@ simulateKeyDown(100);simulateKeyUp(100); // trigger the end
 </body>''')
       create_file('test.html', html)
 
-    self.btest_exit('test_sdl_key_proxy.c', 223092870, cflags=['--proxy-to-worker', '--pre-js', 'pre.js', '-lSDL', '-lGL', '-sRUNTIME_DEBUG'], post_build=post)
+    self.btest_exit('test_sdl_key_proxy.c', 223092870, cflags=['--proxy-to-worker', '-Wno-deprecated', '--pre-js', 'pre.js', '-lSDL', '-lGL', '-sRUNTIME_DEBUG'], post_build=post)
 
   def test_canvas_focus(self):
     self.btest_exit('test_canvas_focus.c', cflags=['--pre-js', test_file('browser/fake_events.js')])
@@ -999,7 +999,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
       create_file('test.html', html)
 
     shutil.copy(test_file('browser/fake_events.js'), '.')
-    self.btest_exit('browser/test_keydown_preventdefault_proxy.c', 300, cflags=['--proxy-to-worker'], post_build=post)
+    self.btest_exit('browser/test_keydown_preventdefault_proxy.c', 300, cflags=['--proxy-to-worker', '-Wno-deprecated'], post_build=post)
 
   def test_sdl_text(self):
     create_file('pre.js', '''
@@ -1355,14 +1355,14 @@ simulateKeyUp(100, undefined, 'Numpad4');
         }, '/work');
       };
     ''' % (secret, secret2))
-    self.btest_exit('fs/test_workerfs_read.c', cflags=['-lworkerfs.js', '--pre-js', 'pre.js', f'-DSECRET="{secret}"', f'-DSECRET2="{secret2}"', '--proxy-to-worker', '-lworkerfs.js'])
+    self.btest_exit('fs/test_workerfs_read.c', cflags=['-lworkerfs.js', '--pre-js', 'pre.js', f'-DSECRET="{secret}"', f'-DSECRET2="{secret2}"', '--proxy-to-worker', '-Wno-deprecated', '-lworkerfs.js'])
 
   def test_fs_workerfs_package(self):
     create_file('file1.txt', 'first')
     ensure_dir('sub')
     create_file('sub/file2.txt', 'second')
     self.run_process([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'sub/file2.txt', '--separate-metadata', '--js-output=files.js'])
-    self.btest('fs/test_workerfs_package.c', '1', cflags=['-lworkerfs.js', '--proxy-to-worker', '-lworkerfs.js'])
+    self.btest('fs/test_workerfs_package.c', '1', cflags=['-lworkerfs.js', '--proxy-to-worker', '-Wno-deprecated', '-lworkerfs.js'])
 
   def test_fs_lz4fs_package(self):
     # generate data
@@ -1450,7 +1450,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
 
   def test_idbstore_sync_worker(self):
     secret = str(time.time())
-    self.btest('test_idbstore_sync_worker.c', expected='0', cflags=['-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '-g2', '--proxy-to-worker', '-sASYNCIFY'])
+    self.btest('test_idbstore_sync_worker.c', expected='0', cflags=['-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '-g2', '--proxy-to-worker', '-Wno-deprecated', '-sASYNCIFY'])
 
   def test_force_exit(self):
     self.btest_exit('test_force_exit.c')
@@ -1619,7 +1619,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
         FS.createLazyFile('/', "lazy.txt", "lazydata.dat", true, false);
       }
     ''')
-    self.cflags += ['--pre-js=pre.js', '--proxy-to-worker']
+    self.cflags += ['--pre-js=pre.js', '--proxy-to-worker', '-Wno-deprecated']
     self.btest_exit('test_mmap_lazyfile.c')
 
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/19608')
@@ -1715,7 +1715,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
   @parameterized({
     '': ([],),
     # Enabling FULL_ES3 also enables ES2 automatically
-    'proxy': (['--proxy-to-worker'],),
+    'proxy': (['--proxy-to-worker', '-Wno-deprecated'],),
   })
   def test_glgears_long(self, args):
     args += ['-DHAVE_BUILTIN_SINCOS', '-DLONGTEST', '-lGL', '-lglut', '-DANIMATE']
@@ -1886,7 +1886,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
 
   @parameterized({
     '': ([],),
-    'worker': (['--proxy-to-worker'],),
+    'worker': (['--proxy-to-worker', '-Wno-deprecated'],),
     'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD'],),
     'strict': (['-sSTRICT'],),
   })
@@ -3097,7 +3097,7 @@ Module["preRun"] = () => {
   @proxied
   def test_sdl2_canvas_proxy(self):
     create_file('data.txt', 'datum')
-    self.reftest('test_sdl2_canvas_proxy.c', 'test_sdl2_canvas.png', cflags=['-sUSE_SDL=2', '--proxy-to-worker', '--preload-file', 'data.txt'])
+    self.reftest('test_sdl2_canvas_proxy.c', 'test_sdl2_canvas.png', cflags=['-sUSE_SDL=2', '--proxy-to-worker', '-Wno-deprecated', '--preload-file', 'data.txt'])
 
   def test_sdl2_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
@@ -3173,7 +3173,7 @@ Module["preRun"] = () => {
   @requires_graphics_hardware
   @proxied
   def test_sdl2_gl_frames_swap(self):
-    self.reftest('test_sdl2_gl_frames_swap.c', 'test_sdl2_gl_frames_swap.png', cflags=['--proxy-to-worker', '-sUSE_SDL=2'])
+    self.reftest('test_sdl2_gl_frames_swap.c', 'test_sdl2_gl_frames_swap.png', cflags=['--proxy-to-worker', '-Wno-deprecated', '-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_ttf(self):
@@ -3582,7 +3582,7 @@ Module["preRun"] = () => {
       ''' % expected_output)
       # --proxy-to-worker only on main
       if inworker:
-        cflags += ['--proxy-to-worker']
+        cflags += ['--proxy-to-worker', '-Wno-deprecated']
       self.btest_exit('test_dylink_dso_needed.c', cflags=['--post-js', 'post.js'] + cflags)
 
     self._test_dylink_dso_needed(do_run)
@@ -4097,7 +4097,7 @@ Module["preRun"] = () => {
   @also_with_wasmfs
   def test_pthread_asan_use_after_free_2(self):
     # similiar to test_pthread_asan_use_after_free, but using a pool instead
-    # of proxy-to-pthread, and also the allocation happens on the pthread
+    # of proxy-to-pthread, and al, '-Wno-experimental'so the allocation happens on the pthread
     # (which tests that it can use the offset converter to get the stack
     # trace there)
     self.btest('pthread/test_pthread_asan_use_after_free_2.cpp', expected='1', cflags=['-fsanitize=address', '-pthread', '-sPTHREAD_POOL_SIZE=1', '--pre-js', test_file('pthread/test_pthread_asan_use_after_free_2.js')])
@@ -4150,13 +4150,13 @@ Module["preRun"] = () => {
     self.btest_exit('test_sigalrm.c', cflags=['-O3'])
 
   def test_canvas_style_proxy(self):
-    self.btest('canvas_style_proxy.c', expected='1', cflags=['--proxy-to-worker', '--shell-file', test_file('canvas_style_proxy_shell.html'), '--pre-js', test_file('canvas_style_proxy_pre.js')])
+    self.btest('canvas_style_proxy.c', expected='1', cflags=['--proxy-to-worker', '-Wno-deprecated', '--shell-file', test_file('canvas_style_proxy_shell.html'), '--pre-js', test_file('canvas_style_proxy_pre.js')])
 
   def test_canvas_size_proxy(self):
-    self.btest('canvas_size_proxy.c', expected='0', cflags=['--proxy-to-worker'])
+    self.btest('canvas_size_proxy.c', expected='0', cflags=['--proxy-to-worker', '-Wno-deprecated'])
 
   def test_custom_messages_proxy(self):
-    self.btest('custom_messages_proxy.c', expected='1', cflags=['--proxy-to-worker', '--shell-file', test_file('custom_messages_proxy_shell.html'), '--post-js', test_file('custom_messages_proxy_postjs.js')])
+    self.btest('custom_messages_proxy.c', expected='1', cflags=['--proxy-to-worker', '-Wno-deprecated', '--shell-file', test_file('custom_messages_proxy_shell.html'), '--post-js', test_file('custom_messages_proxy_postjs.js')])
 
   @parameterized({
     '': ([],),
@@ -4164,7 +4164,7 @@ Module["preRun"] = () => {
     'O2': (['-O2'],),
   })
   def test_vanilla_html_when_proxying(self, args):
-    self.compile_btest('browser_test_hello_world.c', ['-o', 'test.js', '--proxy-to-worker'] + args)
+    self.compile_btest('browser_test_hello_world.c', ['-o', 'test.js', '--proxy-to-worker', '-Wno-deprecated'] + args)
     create_file('test.html', '<script src="test.js"></script>')
     self.run_browser('test.html', '/report_result?0')
 
@@ -4560,8 +4560,7 @@ Module["preRun"] = () => {
   @also_with_wasm2js
   def test_fetch_sync_xhr_in_proxy_to_worker(self):
     shutil.copy(test_file('gears.png'), '.')
-    self.btest_exit('fetch/test_fetch_sync_xhr.cpp',
-                    cflags=['-sFETCH_DEBUG', '-sFETCH', '--proxy-to-worker'])
+    self.btest_exit('fetch/test_fetch_sync_xhr.cpp', cflags=['-sFETCH_DEBUG', '-sFETCH', '--proxy-to-worker', '-Wno-deprecated'])
 
   @disabled('https://github.com/emscripten-core/emscripten/issues/16746')
   def test_fetch_idb_store(self):
@@ -4816,7 +4815,7 @@ Module["preRun"] = () => {
 
   # Tests that SINGLE_FILE works as intended in a Worker in JS output
   def test_single_file_worker_js(self):
-    self.compile_btest('browser_test_hello_world.c', ['-o', 'test.js', '--proxy-to-worker', '-sSINGLE_FILE'])
+    self.compile_btest('browser_test_hello_world.c', ['-o', 'test.js', '--proxy-to-worker', '-Wno-deprecated', '-sSINGLE_FILE'])
     create_file('test.html', '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"></head><body><script src="test.js"></script></body></html>')
     self.run_browser('test.html', '/report_result?0')
     self.assertExists('test.js')
