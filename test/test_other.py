@@ -90,7 +90,7 @@ def uses_canonical_tmp(func):
     if os.path.exists(self.canonical_temp_dir):
       shutil.rmtree(self.canonical_temp_dir)
     try:
-      func(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     finally:
       # Make sure the test isn't lying about the fact that it uses
       # canonical_tmp
@@ -108,39 +108,39 @@ def requires_git_checkout(func):
   def decorated(self, *args, **kwargs):
     if not os.path.exists(utils.path_from_root('.git')):
       self.skipTest('test requires git checkout of emscripten')
-    func(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   return decorated
 
 
-def also_with_llvm_libc(f):
-  assert callable(f)
+def also_with_llvm_libc(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, llvm_libc, *args, **kwargs):
     if shared.DEBUG:
       print('parameterize:llvm_libc=%d' % llvm_libc)
     if llvm_libc:
       self.cflags += ['-lllvmlibc']
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'llvm_libc': (True,)})
   return metafunc
 
 
-def with_both_compilers(f):
-  assert callable(f)
+def with_both_compilers(func):
+  assert callable(func)
 
-  parameterize(f, {'': (EMCC,),
-                   'emxx': (EMXX,)})
-  return f
+  parameterize(func, {'': (EMCC,),
+                      'emxx': (EMXX,)})
+  return func
 
 
-def wasmfs_all_backends(f):
-  assert callable(f)
+def wasmfs_all_backends(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, backend, *args, **kwargs):
     self.setup_wasmfs_test()
     if backend == 'node':
@@ -148,7 +148,7 @@ def wasmfs_all_backends(f):
     elif backend == 'raw':
       self.setup_noderawfs_test()
     self.cflags.append(f'-D{backend}')
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': ('memory',),
                           'node': ('node',),

@@ -217,7 +217,7 @@ def skip_if(func, condition, explanation='', negate=False):
       choice = not choice
     if choice:
       self.skipTest(condition + explanation_str)
-    func(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   return decorated
 
@@ -239,7 +239,7 @@ def needs_make(note=''):
   assert not callable(note)
   if WINDOWS:
     return unittest.skip('Tool not available on Windows bots (%s)' % note)
-  return lambda f: f
+  return lambda func: func
 
 
 def record_flaky_test(test_name, attempt_count, exception_msg):
@@ -256,17 +256,17 @@ def flaky(note=''):
   if not EMTEST_RETRY_FLAKY:
     return lambda f: f
 
-  def decorated(f):
-    @wraps(f)
+  def decorated(func):
+    @wraps(func)
     def modified(self, *args, **kwargs):
       # Browser tests have there own method of retrying tests.
       if self.is_browser_test():
         self.flaky = True
-        return f(self, *args, **kwargs)
+        return func(self, *args, **kwargs)
 
       for i in range(EMTEST_RETRY_FLAKY):
         try:
-          return f(self, *args, **kwargs)
+          return func(self, *args, **kwargs)
         except (AssertionError, subprocess.TimeoutExpired) as exc:
           preserved_exc = exc
           record_flaky_test(self.id(), i, exc)
@@ -287,51 +287,52 @@ def no_mac(note=''):
   assert not callable(note)
   if MACOS:
     return unittest.skip(note)
-  return lambda f: f
+  return lambda func: func
 
 
 def no_windows(note=''):
   assert not callable(note)
   if WINDOWS:
     return unittest.skip(note)
-  return lambda f: f
+  return lambda func: func
 
 
 def no_wasm64(note=''):
   assert not callable(note)
 
-  def decorated(f):
-    return skip_if(f, 'is_wasm64', note)
+  def decorated(func):
+    return skip_if(func, 'is_wasm64', note)
   return decorated
 
 
 def no_2gb(note):
   assert not callable(note)
 
-  def decorator(f):
-    assert callable(f)
+  def decorator(func):
+    assert callable(func)
 
-    @wraps(f)
+    @wraps(func)
     def decorated(self, *args, **kwargs):
       # 2200mb is the value used by the core_2gb test mode
       if self.get_setting('INITIAL_MEMORY') == '2200mb':
         self.skipTest(note)
-      f(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     return decorated
+
   return decorator
 
 
 def no_4gb(note):
   assert not callable(note)
 
-  def decorator(f):
-    assert callable(f)
+  def decorator(func):
+    assert callable(func)
 
-    @wraps(f)
+    @wraps(func)
     def decorated(self, *args, **kwargs):
       if self.is_4gb():
         self.skipTest(note)
-      f(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     return decorated
   return decorator
 
@@ -340,7 +341,7 @@ def only_windows(note=''):
   assert not callable(note)
   if not WINDOWS:
     return unittest.skip(note)
-  return lambda f: f
+  return lambda func: func
 
 
 def requires_native_clang(func):
@@ -391,14 +392,14 @@ def node_bigint_flags(node_version):
 def requires_dev_dependency(package):
   assert not callable(package)
 
-  def decorator(f):
-    assert callable(f)
+  def decorator(func):
+    assert callable(func)
 
-    @wraps(f)
+    @wraps(func)
     def decorated(self, *args, **kwargs):
       if 'EMTEST_SKIP_NODE_DEV_PACKAGES' in os.environ:
         self.skipTest(f'test requires npm development package "{package}" and EMTEST_SKIP_NODE_DEV_PACKAGES is set')
-      f(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     return decorated
   return decorator
 
@@ -436,13 +437,13 @@ def requires_v8(func):
   return decorated
 
 
-def requires_wasm2js(f):
-  assert callable(f)
+def requires_wasm2js(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_wasm2js()
-    return f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   return decorated
 
@@ -458,32 +459,33 @@ def requires_jspi(func):
   return decorated
 
 
-def node_pthreads(f):
-  assert callable(f)
+def node_pthreads(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.setup_node_pthreads()
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
   return decorated
 
 
-def crossplatform(f):
-  f.is_crossplatform_test = True
-  return f
+def crossplatform(func):
+  assert callable(func)
+  func.is_crossplatform_test = True
+  return func
 
 
 # without EMTEST_ALL_ENGINES set we only run tests in a single VM by
 # default. in some tests we know that cross-VM differences may happen and
 # so are worth testing, and they should be marked with this decorator
-def all_engines(f):
-  assert callable(f)
+def all_engines(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.use_all_engines = True
     self.set_setting('ENVIRONMENT', 'web,node,shell')
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   return decorated
 
@@ -513,20 +515,20 @@ def env_modify(updates):
 def with_env_modify(updates):
   assert not callable(updates)
 
-  def decorated(f):
-    @wraps(f)
+  def decorated(func):
+    @wraps(func)
     def modified(self, *args, **kwargs):
       with env_modify(updates):
-        return f(self, *args, **kwargs)
+        return func(self, *args, **kwargs)
     return modified
 
   return decorated
 
 
-def also_with_wasmfs(f):
-  assert callable(f)
+def also_with_wasmfs(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, wasmfs, *args, **kwargs):
     if DEBUG:
       print('parameterize:wasmfs=%d' % wasmfs)
@@ -534,7 +536,7 @@ def also_with_wasmfs(f):
       self.setup_wasmfs_test()
     else:
       self.cflags += ['-DMEMFS']
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'wasmfs': (True,)})
@@ -551,7 +553,7 @@ def also_with_nodefs(func):
     else:
       self.cflags += ['-DMEMFS']
       assert fs is None
-    func(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (None,),
                           'nodefs': ('nodefs',)})
@@ -570,7 +572,7 @@ def also_with_nodefs_both(func):
     else:
       self.cflags += ['-DMEMFS']
       assert fs is None
-    func(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (None,),
                           'nodefs': ('nodefs',),
@@ -592,7 +594,7 @@ def with_all_fs(func):
     else:
       self.cflags += ['-DMEMFS']
       assert fs is None
-    func(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False, None),
                           'nodefs': (False, 'nodefs'),
@@ -614,17 +616,17 @@ def also_with_noderawfs(func):
       self.setup_noderawfs_test()
     else:
       self.cflags += ['-DMEMFS']
-    func(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'rawfs': (True,)})
   return metafunc
 
 
-def also_with_minimal_runtime(f):
-  assert callable(f)
+def also_with_minimal_runtime(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, with_minimal_runtime, *args, **kwargs):
     if DEBUG:
       print('parameterize:minimal_runtime=%s' % with_minimal_runtime)
@@ -637,17 +639,17 @@ def also_with_minimal_runtime(f):
       # This extra helper code is needed to cleanly handle calls to exit() which throw
       # an ExitCode exception.
       self.cflags += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'minimal_runtime': (True,)})
   return metafunc
 
 
-def also_without_bigint(f):
-  assert callable(f)
+def also_without_bigint(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, no_bigint, *args, **kwargs):
     if DEBUG:
       print('parameterize:no_bigint=%s' % no_bigint)
@@ -655,34 +657,34 @@ def also_without_bigint(f):
       if self.get_setting('WASM_BIGINT') is not None:
         self.skipTest('redundant in bigint test config')
       self.set_setting('WASM_BIGINT', 0)
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'no_bigint': (True,)})
   return metafunc
 
 
-def also_with_wasm64(f):
-  assert callable(f)
+def also_with_wasm64(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, with_wasm64, *args, **kwargs):
     if DEBUG:
       print('parameterize:wasm64=%s' % with_wasm64)
     if with_wasm64:
       self.require_wasm64()
       self.set_setting('MEMORY64')
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'wasm64': (True,)})
   return metafunc
 
 
-def also_with_wasm2js(f):
-  assert callable(f)
+def also_with_wasm2js(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, with_wasm2js, *args, **kwargs):
     assert self.get_setting('WASM') is None
     if DEBUG:
@@ -690,7 +692,7 @@ def also_with_wasm2js(f):
     if with_wasm2js:
       self.require_wasm2js()
       self.set_setting('WASM', 0)
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'wasm2js': (True,)})
@@ -732,7 +734,7 @@ def also_with_standalone_wasm(impure=False):
         # if we are impure, disallow all wasm engines
         if impure:
           self.wasm_engines = []
-      func(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
 
     parameterize(metafunc, {'': (False,),
                             'standalone': (True,)})
@@ -741,10 +743,10 @@ def also_with_standalone_wasm(impure=False):
   return decorated
 
 
-def also_with_asan(f):
-  assert callable(f)
+def also_with_asan(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, asan, *args, **kwargs):
     if asan:
       if self.is_wasm64():
@@ -752,17 +754,17 @@ def also_with_asan(f):
       if self.is_2gb() or self.is_4gb():
         self.skipTest('asan doesnt support GLOBAL_BASE')
       self.cflags.append('-fsanitize=address')
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'asan': (True,)})
   return metafunc
 
 
-def also_with_modularize(f):
-  assert callable(f)
+def also_with_modularize(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, modularize, *args, **kwargs):
     if modularize:
       if self.get_setting('DECLARE_ASM_MODULE_EXPORTS') == 0:
@@ -772,7 +774,7 @@ def also_with_modularize(f):
       if self.get_setting('WASM_ESM_INTEGRATION'):
         self.skipTest('MODULARIZE is not compatible with WASM_ESM_INTEGRATION')
       self.cflags += ['--extern-post-js', test_file('modularize_post_js.js'), '-sMODULARIZE']
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'modularize': (True,)})
@@ -784,10 +786,10 @@ def also_with_modularize(f):
 # - Emscripten EH + Emscripten SjLj
 # - Wasm EH + Wasm SjLj
 # - Wasm EH + Wasm SjLj (Legacy)
-def with_all_eh_sjlj(f):
-  assert callable(f)
+def with_all_eh_sjlj(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, mode, *args, **kwargs):
     if DEBUG:
       print('parameterize:eh_mode=%s' % mode)
@@ -801,7 +803,6 @@ def with_all_eh_sjlj(f):
         self.require_wasm_eh()
       if mode == 'wasm_legacy':
         self.require_wasm_legacy_eh()
-      f(self, *args, **kwargs)
     else:
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
       self.set_setting('SUPPORT_LONGJMP', 'emscripten')
@@ -810,7 +811,7 @@ def with_all_eh_sjlj(f):
       # error out because libc++abi is not included. See
       # https://github.com/emscripten-core/emscripten/pull/14192 for details.
       self.set_setting('DEFAULT_TO_CXX')
-      f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'emscripten': ('emscripten',),
                           'wasm': ('wasm',),
@@ -820,10 +821,10 @@ def with_all_eh_sjlj(f):
 
 # This works just like `with_all_eh_sjlj` above but doesn't enable exceptions.
 # Use this for tests that use setjmp/longjmp but not exceptions handling.
-def with_all_sjlj(f):
-  assert callable(f)
+def with_all_sjlj(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, mode, *args, **kwargs):
     if mode in {'wasm', 'wasm_legacy'}:
       if self.is_wasm2js():
@@ -833,10 +834,9 @@ def with_all_sjlj(f):
         self.require_wasm_eh()
       if mode == 'wasm_legacy':
         self.require_wasm_legacy_eh()
-      f(self, *args, **kwargs)
     else:
       self.set_setting('SUPPORT_LONGJMP', 'emscripten')
-      f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'emscripten': ('emscripten',),
                           'wasm': ('wasm',),
