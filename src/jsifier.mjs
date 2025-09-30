@@ -505,7 +505,7 @@ function(${args}) {
       // what we just added to the library.
     }
 
-    function addFromLibrary(symbol, dependent, force = false) {
+    function addFromLibrary(symbol, dependent) {
       // don't process any special identifiers. These are looked up when
       // processing the base name of the identifier.
       if (isDecorator(symbol)) {
@@ -514,7 +514,7 @@ function(${args}) {
 
       // if the function was implemented in compiled code, there is no need to
       // include the js version
-      if (WASM_EXPORTS.has(symbol) && !force) {
+      if (WASM_EXPORTS.has(symbol)) {
         return;
       }
 
@@ -639,7 +639,6 @@ function(${args}) {
       });
 
       let isFunction = false;
-      let aliasTarget;
 
       const postsetId = symbol + '__postset';
       const postset = LibraryManager.library[postsetId];
@@ -659,7 +658,7 @@ function(${args}) {
             // Redirection for aliases. We include the parent, and at runtime
             // make ourselves equal to it.  This avoid having duplicate
             // functions with identical content.
-            aliasTarget = snippet;
+            const aliasTarget = snippet;
             snippet = mangleCSymbolName(aliasTarget);
             deps.push(aliasTarget);
           }
@@ -690,7 +689,7 @@ function(${args}) {
             'noExitRuntime cannot be referenced via __deps mechanism.  Use DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS',
           );
         }
-        return addFromLibrary(dep, `${symbol}, referenced by ${dependent}`, dep === aliasTarget);
+        return addFromLibrary(dep, `${symbol}, referenced by ${dependent}`);
       }
       let contentText;
       if (isFunction) {
@@ -777,10 +776,6 @@ function(${args}) {
       }
 
       let commentText = '';
-      if (force) {
-        commentText += '/** @suppress {duplicate } */\n';
-      }
-
       let docs = LibraryManager.library[symbol + '__docs'];
       // Add the docs if they exist and if we are actually emitting a declaration.
       // See the TODO about wasmTable above.
