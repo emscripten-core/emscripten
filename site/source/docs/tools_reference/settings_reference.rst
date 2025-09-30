@@ -2511,6 +2511,18 @@ full documentation in site/source/docs/api_reference/wasm_audio_worklets.rst
 
 Default value: 0
 
+.. _audio_worklet_support_audio_params:
+
+AUDIO_WORKLET_SUPPORT_AUDIO_PARAMS
+==================================
+
+If true, enables utilizing k- and a-rate AudioParams based properties in
+Wasm Audio Worklet code. If false, AudioParams are not used. Set to false
+for a tiny improvement to code size and AudioWorklet CPU performance when
+audio synthesis is synchronized using custom WebAssembly Memory-based means.
+
+Default value: true
+
 .. _webaudio_debug:
 
 WEBAUDIO_DEBUG

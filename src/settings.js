@@ -1642,6 +1642,13 @@ var WASM_WORKERS = 0;
 // [link]
 var AUDIO_WORKLET = 0;
 
+// If true, enables utilizing k- and a-rate AudioParams based properties in
+// Wasm Audio Worklet code. If false, AudioParams are not used. Set to false
+// for a tiny improvement to code size and AudioWorklet CPU performance when
+// audio synthesis is synchronized using custom WebAssembly Memory-based means.
+// [link]
+var AUDIO_WORKLET_SUPPORT_AUDIO_PARAMS = true;
+
 // If true, enables deep debugging of Web Audio backend.
 // [link]
 var WEBAUDIO_DEBUG = 0;

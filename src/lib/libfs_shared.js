@@ -151,8 +151,7 @@ addToLibrary({
       } else
 #endif
 #if ENVIRONMENT_MAY_BE_WEB
-      if (typeof window != 'undefined' &&
-        typeof window.prompt == 'function') {
+      if (globalThis.window?.prompt) {
         // Browser.
         result = window.prompt('Input: ');  // returns null on cancel
         if (result !== null) {
@@ -161,8 +160,8 @@ addToLibrary({
       } else
 #endif
 #if ENVIRONMENT_MAY_BE_SHELL
-      if (typeof readline == 'function') {
-        // Command line.
+      if (globalThis.readline) {
+        /** @suppress{checkTypes, undefinedVars} */
         result = readline();
         if (result) {
           result += '\n';

@@ -77,8 +77,8 @@ addToLibrary({
     return code;
   })),
 
+#if !WASM2JS || WASM == 2
   // Wraps a JS function as a wasm function with a given signature.
-#if !WASM2JS
   $convertJsFunctionToWasm__deps: [
     '$uleb128EncodeWithLen',
 #if WASM_JS_TYPES
@@ -86,12 +86,7 @@ addToLibrary({
 #endif
     '$generateTypePack'
   ],
-#endif
   $convertJsFunctionToWasm: (func, sig) => {
-#if WASM2JS
-    // return func;
-#else // WASM2JS
-
 #if ASSERTIONS && !WASM_BIGINT
     assert(!sig.includes('j'), 'i64 not permitted in function signatures when WASM_BIGINT is disabled');
 #endif
@@ -100,7 +95,7 @@ addToLibrary({
     // "WebAssembly.Function" constructor.
     // Otherwise, construct a minimal wasm module importing the JS function and
     // re-exporting it.
-    if (typeof WebAssembly.Function == "function") {
+    if (WebAssembly.Function) {
       return new WebAssembly.Function(sigToWasmTypes(sig), func);
     }
 #endif
@@ -135,8 +130,8 @@ addToLibrary({
     var instance = new WebAssembly.Instance(module, { 'e': { 'f': func } });
     var wrappedFunc = instance.exports['f'];
     return wrappedFunc;
-#endif // WASM2JS
   },
+#endif // !WASM2JS && WASM != 2
 
   $freeTableIndexes: [],
 
@@ -192,18 +187,21 @@ addToLibrary({
    * 'sig' parameter is required if the function being added is a JS function.
    */
   $addFunction__docs: '/** @param {string=} sig */',
-  $addFunction__deps: ['$convertJsFunctionToWasm', '$getFunctionAddress',
+  $addFunction__deps: ['$getFunctionAddress',
                        '$functionsInTableMap', '$getEmptyTableSlot',
                        '$setWasmTableEntry',
+#if !WASM2JS || WASM == 2
+                       '$convertJsFunctionToWasm',
+#endif
 #if ASSERTIONS >= 2
                        '$getWasmTableEntry', '$wasmTable',
 #endif
   ],
 
   $addFunction: (func, sig) => {
-  #if ASSERTIONS
+#if ASSERTIONS
     assert(typeof func != 'undefined');
-  #endif // ASSERTIONS
+#endif // ASSERTIONS
     // Check if the function is already in the table, to ensure each function
     // gets a unique index.
     var rtn = getFunctionAddress(func);
@@ -213,17 +211,20 @@ addToLibrary({
 
     // It's not in the table, add it now.
 
-  #if ASSERTIONS >= 2
+#if ASSERTIONS >= 2
     // Make sure functionsInTableMap is actually up to date, that is, that this
     // function is not actually in the wasm Table despite not being tracked in
     // functionsInTableMap.
     for (var i = 0; i < wasmTable.length; i++) {
       assert(getWasmTableEntry(i) != func, 'function in Table but not functionsInTableMap');
     }
-  #endif
+#endif
 
     var ret = getEmptyTableSlot();
 
+#if WASM2JS && WASM != 2
+    setWasmTableEntry(ret, func);
+#else
     // Set the new value.
     try {
       // Attempting to call this with JS function will cause of table.set() to fail
@@ -232,12 +233,13 @@ addToLibrary({
       if (!(err instanceof TypeError)) {
         throw err;
       }
-  #if ASSERTIONS
+#if ASSERTIONS
       assert(typeof sig != 'undefined', 'Missing signature argument to addFunction: ' + func);
-  #endif
+#endif
       var wrapped = convertJsFunctionToWasm(func, sig);
       setWasmTableEntry(ret, wrapped);
     }
+#endif
 
     functionsInTableMap.set(func, ret);
 

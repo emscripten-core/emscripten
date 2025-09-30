@@ -2814,7 +2814,7 @@ The current type of b is: 9
 
   def test_stack_overflow(self):
     self.set_setting('ASSERTIONS', 2)
-    self.do_runf('core/stack_overflow.c', 'Aborted(stack overflow', assert_returncode=NON_ZERO)
+    self.do_runf('core/stack_overflow.c', 'stack overflow', assert_returncode=NON_ZERO)
 
   def test_stackAlloc(self):
     self.do_core_test('test_stackAlloc.c')
@@ -7253,7 +7253,7 @@ void* operator new(size_t size) {
     test('ALLOC_STACK is not defined', args=['-DDIRECT'], assert_returncode=NON_ZERO)
 
     # When assertions are enabled direct and indirect usage both abort with a useful error message.
-    not_exported = "Aborted('ALLOC_STACK' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the Emscripten FAQ))"
+    not_exported = "'ALLOC_STACK' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the Emscripten FAQ)"
     not_included = "`ALLOC_STACK` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line (e.g. -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE='$ALLOC_STACK')"
     self.set_setting('ASSERTIONS')
     test(not_exported, assert_returncode=NON_ZERO)
@@ -8676,15 +8676,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_stack_overflow_check(self):
     self.set_setting('STACK_SIZE', 1048576)
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
-    self.do_runf('stack_overflow.cpp', 'Aborted(stack overflow', assert_returncode=NON_ZERO)
+    self.do_runf('stack_overflow.cpp', 'stack overflow', assert_returncode=NON_ZERO)
 
     self.cflags += ['-DONE_BIG_STRING']
-    self.do_runf('stack_overflow.cpp', 'Aborted(stack overflow', assert_returncode=NON_ZERO)
+    self.do_runf('stack_overflow.cpp', 'stack overflow', assert_returncode=NON_ZERO)
 
     # ASSERTIONS=2 implies STACK_OVERFLOW_CHECK=2
     self.clear_setting('STACK_OVERFLOW_CHECK')
     self.set_setting('ASSERTIONS', 2)
-    self.do_runf('stack_overflow.cpp', 'Aborted(stack overflow', assert_returncode=NON_ZERO)
+    self.do_runf('stack_overflow.cpp', 'stack overflow', assert_returncode=NON_ZERO)
 
   @node_pthreads
   def test_binaryen_2170_emscripten_atomic_cas_u8(self):
@@ -9125,9 +9125,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('STACK_SIZE', 1024)
     if self.is_optimizing():
-      expected = [r'Aborted\(stack overflow \(Attempt to set SP to 0x[0-9a-fA-F]+, with stack limits \[0x[0-9a-fA-F]+ - 0x[0-9a-fA-F]+\]\)']
+      expected = [r'stack overflow \(Attempt to set SP to 0x[0-9a-fA-F]+, with stack limits \[0x[0-9a-fA-F]+ - 0x[0-9a-fA-F]+\]\)']
     else:
-      expected = [r'Aborted\(stack overflow \(Attempt to set SP to 0x[0-9a-fA-F]+, with stack limits \[0x[0-9a-fA-F]+ - 0x[0-9a-fA-F]+\]\)',
+      expected = [r'stack overflow \(Attempt to set SP to 0x[0-9a-fA-F]+, with stack limits \[0x[0-9a-fA-F]+ - 0x[0-9a-fA-F]+\]\)',
                   '__handle_stack_overflow']
     self.do_runf('core/test_safe_stack.c',
                  expected_output=expected,
@@ -9142,9 +9142,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PROXY_TO_PTHREAD')
     self.cflags.append('-pthread')
     if self.is_optimizing():
-      expected = ['Aborted(stack overflow']
+      expected = ['stack overflow']
     else:
-      expected = ['Aborted(stack overflow', '__handle_stack_overflow']
+      expected = ['stack overflow', '__handle_stack_overflow']
     self.do_runf('core/test_safe_stack.c',
                  expected_output=expected,
                  assert_returncode=NON_ZERO, assert_all=True)
@@ -9153,9 +9153,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('STACK_SIZE', 65536)
     if self.is_optimizing():
-      expected = ['Aborted(stack overflow']
+      expected = ['stack overflow']
     else:
-      expected = ['Aborted(stack overflow', '__handle_stack_overflow']
+      expected = ['stack overflow', '__handle_stack_overflow']
     self.do_runf('core/test_safe_stack_alloca.c',
                  expected_output=expected,
                  assert_returncode=NON_ZERO, assert_all=True)
@@ -9186,7 +9186,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       void sidey() {
         f(NULL);
       }
-    ''', ['Aborted(stack overflow', '__handle_stack_overflow'], assert_returncode=NON_ZERO, force_c=True)
+    ''', ['stack overflow', '__handle_stack_overflow'], assert_returncode=NON_ZERO, force_c=True)
 
   def test_fpic_static(self):
     self.cflags.append('-fPIC')
@@ -9435,7 +9435,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   def test_pthread_dylink_tls(self):
     if '-O2' in self.cflags and self.get_setting('STACK_OVERFLOW_CHECK') == 2:
-      self.skipTest('https://github.com/emscripten-core/emscripten/issues/24964: fails with Aborted(stack overflow (Attempt to set SP to 0x000114d0, with stack limits [0x00000000 - 0x00000000])')
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/24964: fails with stack overflow (Attempt to set SP to 0x000114d0, with stack limits [0x00000000 - 0x00000000])')
 
     self.cflags += ['-Wno-experimental', '-pthread']
     main = test_file('core/pthread/test_pthread_dylink_tls.c')
@@ -9716,7 +9716,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   def test_promise_await_error(self):
     # Check that the API is not available when ASYNCIFY is not set
-    self.do_runf('core/test_promise_await.c', 'Aborted(emscripten_promise_await is only available with ASYNCIFY)',
+    self.do_runf('core/test_promise_await.c', 'emscripten_promise_await is only available with ASYNCIFY',
                  assert_returncode=NON_ZERO)
 
   @no_modularize_instance('uses Module object directly')
