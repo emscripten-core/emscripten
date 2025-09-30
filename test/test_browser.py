@@ -4647,6 +4647,7 @@ Module["preRun"] = () => {
 
   # Tests emscripten_set_canvas_element_size() and OffscreenCanvas functionality in different build configurations.
   @requires_graphics_hardware
+  @requires_offscreen_canvas
   @parameterized({
     '': ([], True),
     'offscreen': (['-sOFFSCREENCANVAS_SUPPORT'], True),
