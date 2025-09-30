@@ -2311,6 +2311,8 @@ def make_test_server(in_queue, out_queue, port):
           self.send_error(400, f'Not implemented for {code}')
       else:
         print(f'do_POST: unexpected POST: {urlinfo}')
+        self.send_response(404)
+        self.end_headers()
 
     def do_GET(self):
       info = urlparse(self.path)
