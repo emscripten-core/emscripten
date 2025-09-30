@@ -21,9 +21,9 @@ var Module = typeof Module != "undefined" ? Module : {};
 // Determine the runtime environment we are in. You can customize this by
 // setting the ENVIRONMENT setting at compile time (see settings.js).
 // Attempt to auto-detect the environment
-var ENVIRONMENT_IS_WEB = typeof window == "object";
+var ENVIRONMENT_IS_WEB = !!globalThis.window;
 
-var ENVIRONMENT_IS_WORKER = typeof WorkerGlobalScope != "undefined";
+var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
 
 // N.b. Electron.js environment is simultaneously a NODE-environment, but
 // also a web environment.
@@ -825,7 +825,7 @@ var FS_stdin_getChar = () => {
       if (bytesRead > 0) {
         result = buf.slice(0, bytesRead).toString("utf-8");
       }
-    } else if (typeof window != "undefined" && typeof window.prompt == "function") {
+    } else if (globalThis.window?.prompt) {
       // Browser.
       result = window.prompt("Input: ");
       // returns null on cancel
@@ -2799,7 +2799,7 @@ var FS = {
   },
   forceLoadFile(obj) {
     if (obj.isDevice || obj.isFolder || obj.link || obj.contents) return true;
-    if (typeof XMLHttpRequest != "undefined") {
+    if (globalThis.XMLHttpRequest) {
       abort("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
     } else {
       // Command-line.
@@ -2899,7 +2899,7 @@ var FS = {
         return this._chunkSize;
       }
     }
-    if (typeof XMLHttpRequest != "undefined") {
+    if (globalThis.XMLHttpRequest) {
       if (!ENVIRONMENT_IS_WORKER) abort("Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc");
       var lazyArray = new LazyUint8Array;
       var properties = {

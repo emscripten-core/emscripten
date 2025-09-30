@@ -22,6 +22,9 @@
 #if EVAL_CTORS
 #error "EVAL_CTORS is not compatible with pthreads yet (passive segments)"
 #endif
+#if EXPORT_ES6 && (MIN_FIREFOX_VERSION < 114 || MIN_CHROME_VERSION < 80 || MIN_SAFARI_VERSION < 150000)
+#error "internal error, feature_matrix should not allow this"
+#endif
 
 {{{
 #if MEMORY64
@@ -42,15 +45,6 @@ const pthreadWorkerScript = TARGET_JS_NAME;
 // See https://github.com/emscripten-core/emscripten/issues/22394
 const pthreadWorkerOptions = `{
 #if EXPORT_ES6
-#if MIN_FIREFOX_VERSION < 114
-#error new Worker() supports ECMAScript module only starting from Firefox 114. Pass -sMIN_FIREFOX_VERSION=114 to target -sEXPORT_ES6 with -pthread. See https://caniuse.com/mdn-api_worker_worker_ecmascript_modules
-#endif
-#if MIN_CHROME_VERSION < 80
-#error new Worker() supports ECMAScript module only starting from Chrome 80. Pass -sMIN_CHROME_VERSION=80 to target -sEXPORT_ES6 with -pthread. See https://caniuse.com/mdn-api_worker_worker_ecmascript_modules
-#endif
-#if MIN_SAFARI_VERSION < 150000
-#error new Worker() supports ECMAScript module only starting from Safari 15. Pass -sMIN_SAFARI_VERSION=150000 to target -sEXPORT_ES6 with -pthread. See https://caniuse.com/mdn-api_worker_worker_ecmascript_modules
-#endif
         'type': 'module',
 #endif
 #if ENVIRONMENT_MAY_BE_NODE
@@ -432,7 +426,7 @@ var LibraryPThread = {
 #endif
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
-      if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
+      if (globalThis.trustedTypes?.createPolicy) {
         var p = trustedTypes.createPolicy('emscripten#workerPolicy1', { createScriptURL: (ignored) => new URL('{{{ pthreadWorkerScript }}}', import.meta.url) });
         worker = new Worker(p.createScriptURL('ignored'), {{{ pthreadWorkerOptions }}});
       } else
@@ -469,7 +463,7 @@ var LibraryPThread = {
 #endif
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
-      if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
+      if (globalThis.trustedTypes?.createPolicy) {
         var p = trustedTypes.createPolicy('emscripten#workerPolicy2', { createScriptURL: (ignored) => pthreadMainJs });
         worker = new Worker(p.createScriptURL('ignored'), {{{ pthreadWorkerOptions }}});
       } else
@@ -1243,7 +1237,7 @@ var LibraryPThread = {
 
   _emscripten_thread_mailbox_await__deps: ['$checkMailbox'],
   _emscripten_thread_mailbox_await: (pthread_ptr) => {
-    if (typeof Atomics.waitAsync === 'function') {
+    if (Atomics.waitAsync) {
       // Wait on the pthread's initial self-pointer field because it is easy and
       // safe to access from sending threads that need to notify the waiting
       // thread.

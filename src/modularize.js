@@ -98,7 +98,7 @@ var isWW = {{{ nodeWWDetection() }}};
 #endif
 
 #if AUDIO_WORKLET
-isWW ||= typeof AudioWorkletGlobalScope !== 'undefined';
+isWW ||= !!globalThis.AudioWorkletGlobalScope;
 // When running as a wasm worker, construct a new instance on startup
 #endif
 
