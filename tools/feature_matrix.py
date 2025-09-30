@@ -220,6 +220,6 @@ def apply_min_browser_versions():
   if settings.OFFSCREENCANVAS_SUPPORT:
     enable_feature(Feature.OFFSCREENCANVAS_SUPPORT, 'OFFSCREENCANVAS_SUPPORT')
   if settings.WASM_EXCEPTIONS and settings.WASM_LEGACY_EXCEPTIONS:
-    enable_feature(Feature.WASM_LEGACY_EXCEPTIONS, '-fwasm-exceptions')
-  if not settings.WASM_LEGACY_EXCEPTIONS:
-    enable_feature(Feature.WASM_EXNREF_EXCEPTIONS, '-sWASM_LEGACY_EXCEPTIONS=0')
+    enable_feature(Feature.WASM_LEGACY_EXCEPTIONS, 'Wasm Legacy exceptions (-fwasm-exceptions with -sWASM_LEGACY_EXCEPTIONS=1)')
+  if settings.WASM_EXCEPTIONS and not settings.WASM_LEGACY_EXCEPTIONS:
+    enable_feature(Feature.WASM_EXNREF_EXCEPTIONS, 'Wasm Exnref exceptions (-fwasm-exceptions with -sWASM_LEGACY_EXCEPTIONS=0)')
