@@ -503,9 +503,9 @@ var splitModuleProxyHandler = {
       // When the table is dynamically laid out, the placeholder functions names
       // are offsets from the table base. In the main module, the table base is
       // always 1.
-      return wasmTable.get(1 + parseInt(prop))(...args);
+      return wasmTable.get(toIndexType(1 + parseInt(prop)))(...args);
 #else
-      return wasmTable.get(prop)(...args);
+      return wasmTable.get(toIndexType(prop))(...args);
 #endif
 #endif
     }
