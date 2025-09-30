@@ -51,6 +51,12 @@ const pthreadWorkerOptions = `{
         // This is the way that we signal to the node worker that it is hosting
         // a pthread.
         'workerData': 'em-pthread',
+#if WASMFS
+        // In WasmFS, close() is not proxied to the main thread. Suppress
+        // warnings when a thread closes a file descriptor it didn't open.
+        // See: https://github.com/emscripten-core/emscripten/issues/24731
+        'trackUnmanagedFds': false,
+#endif
 #endif
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
         // This is the way that we signal to the Web Worker that it is hosting

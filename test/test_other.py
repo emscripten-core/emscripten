@@ -13556,6 +13556,13 @@ void foo() {}
   def test_pthread_set_main_loop(self, args):
     self.do_other_test('test_pthread_set_main_loop.c', cflags=args)
 
+  @node_pthreads
+  def test_pthread_fd_close_wasmfs(self):
+    create_file('node_warnings', '')
+    self.node_args += ['--trace-warnings', '--redirect-warnings=node_warnings']
+    self.do_other_test('test_pthread_fd_close.c', cflags=['-sWASMFS', '-sNODERAWFS'])
+    self.assertNotContained('closed but not opened in unmanaged mode', read_file('node_warnings'))
+
   # unistd tests
 
   def test_unistd_confstr(self):
