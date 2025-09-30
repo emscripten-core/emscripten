@@ -891,10 +891,9 @@ Default value: false
 USE_WEBGPU
 ==========
 
-Enables the built-in implementation of ``<webgpu/webgpu.h>``.
-Deprecated: Please try migrating to ``--use-port=emdawnwebgpu``,
+This option has been removed in favor of ``--use-port=emdawnwebgpu``,
 which implements a newer, incompatible version of webgpu.h (see
-tools/ports/emdawnwebgpu.py for more info).
+``tools/ports/emdawnwebgpu.py`` for more info).
 
 .. note:: This setting is deprecated
 

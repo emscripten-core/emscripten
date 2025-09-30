@@ -26,6 +26,8 @@ See docs/process.md for more on how version tagging works.
   - Node: v10.19.0 -> v12.22.9
   - Chrome: v70 -> v74
   - Firefox: v55 -> v65
+- `-sUSE_WEBGPU` was removed in favor of the external port Emdawnwebgpu which
+  are used via `--use-port=emdawnwebgpu`. See 4.0.10 release notes for details.
 
 4.0.15 - 09/17/25
 -----------------
