@@ -193,10 +193,14 @@ var LibraryWebAudio = {
       console.log(`emscripten_start_wasm_audio_worklet_thread_async() addModule() completed`);
 #endif
 
-///////////#if !CAN_TARGET_SMALL_AUDIOWORKLET
+
+#if MIN_FIREFOX_VERSION < 138 || MIN_CHROME_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
       // If this browser does not support the up-to-date AudioWorklet standard
       // that has a MessagePort over to the AudioWorklet, then polyfill that by
       // instantiating a dummy AudioWorkletNode to get a MessagePort over.
+      // Firefox added support in https://hg-edge.mozilla.org/integration/autoland/rev/ab38a1796126f2b3fc06475ffc5a625059af59c1
+      // Chrome ticket: https://issues.chromium.org/issues/446920095
+      // Safari ticket: https://bugs.webkit.org/show_bug.cgi?id=299386
       if (!audioWorklet.port) {
         audioWorklet.port = {
           postMessage: (msg) => {
@@ -213,7 +217,7 @@ var LibraryWebAudio = {
           }
         }
       }
-///////////#endif
+#endif
 
       audioWorklet.port.postMessage({
         // This is the bootstrap message to the Audio Worklet.
