@@ -1149,12 +1149,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if 'EMTEST_SKIP_EH' in os.environ:
       self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_EH is set)')
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
-
-    if self.is_browser_test():
-      return
-
     if self.try_require_node_version(24):
       self.node_args.append('--experimental-wasm-exnref')
+      return
+
+    if self.is_browser_test():
       return
 
     v8 = self.get_v8()
@@ -1194,7 +1193,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.v8_args += exp_args
       return
 
-      self.fail('either d8 or node v24 required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
+    self.fail('either d8 or node v24 required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
 
   def require_wasm2js(self):
     if self.is_wasm64():
