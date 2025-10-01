@@ -215,11 +215,11 @@ def skip_if_simple(name, condition, note=''):
 
     @wraps(func)
     def decorated(self, *args, **kwargs):
-        if condition(self):
-          explanation_str = name
-          if note:
-            explanation_str += ': %s' % note
-          self.skipTest(explanation_str)
+      if condition(self):
+        explanation_str = name
+        if note:
+          explanation_str += ': %s' % note
+        self.skipTest(explanation_str)
       return func(self, *args, **kwargs)
 
     return decorated
