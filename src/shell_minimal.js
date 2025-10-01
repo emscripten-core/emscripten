@@ -132,6 +132,7 @@ function ready() {
 
 #if ENVIRONMENT_MAY_BE_NODE
 var isFileURI = (filename) => filename.startsWith('file://');
+var readAsync, readBinary;
 #include "node_shell_read.js"
 #endif
 
