@@ -200,25 +200,25 @@ var LibraryWebAudio = {
       // Firefox added support in https://hg-edge.mozilla.org/integration/autoland/rev/ab38a1796126f2b3fc06475ffc5a625059af59c1
       // Chrome ticket: https://issues.chromium.org/issues/446920095
       // Safari ticket: https://bugs.webkit.org/show_bug.cgi?id=299386
-      if (!audioWorklet.port) {
-        audioWorklet.port = {
+      if (!audioWorklet['port']) {
+        audioWorklet['port'] = {
           postMessage: (msg) => {
-            if (msg._boot) {
+            if (msg['_boot']) {
               audioWorklet.bootstrapMessage = new AudioWorkletNode(audioContext, 'em-bootstrap', {
                 processorOptions: msg
               });
-              audioWorklet.bootstrapMessage.port.onmessage = (msg) => {
-                audioWorklet.port.onmessage(msg);
+              audioWorklet.bootstrapMessage['port'].onmessage = (msg) => {
+                audioWorklet['port'].onmessage(msg);
               }
             } else {
-              audioWorklet.bootstrapMessage.port.postMessage(msg);
+              audioWorklet.bootstrapMessage['port'].postMessage(msg);
             }
           }
         }
       }
 #endif
 
-      audioWorklet.port.postMessage({
+      audioWorklet['port'].postMessage({
         // This is the bootstrap message to the Audio Worklet.
         '_boot': 1,
         // Assign the loaded AudioWorkletGlobalScope a Wasm Worker ID so that
@@ -234,7 +234,7 @@ var LibraryWebAudio = {
         stackLowestAddress, // sb = stack base
         stackSize,          // sz = stack size
       });
-      audioWorklet.port.onmessage = _EmAudioDispatchProcessorCallback;
+      audioWorklet['port'].onmessage = _EmAudioDispatchProcessorCallback;
       {{{ makeDynCall('viip', 'callback') }}}(contextHandle, 1/*EM_TRUE*/, userData);
     }).catch(audioWorkletCreationFailed);
   },
@@ -282,7 +282,7 @@ var LibraryWebAudio = {
     console.log(`emscripten_create_wasm_audio_worklet_processor_async() creating a new AudioWorklet processor with name ${processorName}`);
 #endif
 
-    EmAudio[contextHandle].audioWorklet.port.postMessage({
+    EmAudio[contextHandle].audioWorklet['port'].postMessage({
       // Deliberately mangled and short names used here ('_wpn', the 'Worklet
       // Processor Name' used as a 'key' to verify the message type so as to
       // not get accidentally mixed with user submitted messages, the remainder
@@ -360,11 +360,11 @@ var LibraryWebAudio = {
   emscripten_current_thread_is_audio_worklet: () => ENVIRONMENT_IS_AUDIO_WORKLET,
 
   emscripten_audio_worklet_post_function_v: (audioContext, funcPtr) => {
-    (audioContext ? EmAudio[audioContext].audioWorklet.port : port).postMessage({'_wsc': funcPtr, args: [] }); // "WaSm Call"
+    (audioContext ? EmAudio[audioContext].audioWorklet['port'] : port).postMessage({'_wsc': funcPtr, args: [] }); // "WaSm Call"
   },
 
   $emscripten_audio_worklet_post_function_1: (audioContext, funcPtr, arg0) => {
-    (audioContext ? EmAudio[audioContext].audioWorklet.port : port).postMessage({'_wsc': funcPtr, args: [arg0] }); // "WaSm Call"
+    (audioContext ? EmAudio[audioContext].audioWorklet['port'] : port).postMessage({'_wsc': funcPtr, args: [arg0] }); // "WaSm Call"
   },
 
   emscripten_audio_worklet_post_function_vi__deps: ['$emscripten_audio_worklet_post_function_1'],
@@ -378,7 +378,7 @@ var LibraryWebAudio = {
   },
 
   $emscripten_audio_worklet_post_function_2: (audioContext, funcPtr, arg0, arg1) => {
-    (audioContext ? EmAudio[audioContext].audioWorklet.port : port).postMessage({'_wsc': funcPtr, args: [arg0, arg1] }); // "WaSm Call"
+    (audioContext ? EmAudio[audioContext].audioWorklet['port'] : port).postMessage({'_wsc': funcPtr, args: [arg0, arg1] }); // "WaSm Call"
   },
 
   emscripten_audio_worklet_post_function_vii__deps: ['$emscripten_audio_worklet_post_function_2'],
@@ -392,7 +392,7 @@ var LibraryWebAudio = {
   },
 
   $emscripten_audio_worklet_post_function_3: (audioContext, funcPtr, arg0, arg1, arg2) => {
-    (audioContext ? EmAudio[audioContext].audioWorklet.port : port).postMessage({'_wsc': funcPtr, args: [arg0, arg1, arg2] }); // "WaSm Call"
+    (audioContext ? EmAudio[audioContext].audioWorklet['port'] : port).postMessage({'_wsc': funcPtr, args: [arg0, arg1, arg2] }); // "WaSm Call"
   },
   emscripten_audio_worklet_post_function_viii__deps: ['$emscripten_audio_worklet_post_function_3'],
   emscripten_audio_worklet_post_function_viii: (audioContext, funcPtr, arg0, arg1, arg2) => {
@@ -412,7 +412,7 @@ var LibraryWebAudio = {
     assert(UTF8ToString(sigPtr)[0] != 'v', 'Do NOT specify the return argument in the signature string for a call to emscripten_audio_worklet_post_function_sig(), just pass the function arguments.');
     assert(varargs);
 #endif
-    (audioContext ? EmAudio[audioContext].audioWorklet.port : port).postMessage({'_wsc': funcPtr, args: readEmAsmArgs(sigPtr, varargs) });
+    (audioContext ? EmAudio[audioContext].audioWorklet['port'] : port).postMessage({'_wsc': funcPtr, args: readEmAsmArgs(sigPtr, varargs) });
   }
 };
 
