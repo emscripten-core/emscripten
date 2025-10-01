@@ -135,14 +135,13 @@ var isFileURI = (filename) => filename.startsWith('file://');
 #include "node_shell_read.js"
 #endif
 
-#if ENVIRONMENT_MAY_BE_WORKER
-var ENVIRONMENT_IS_WORKER = typeof WorkerGlobalScope != 'undefined';
+#if ENVIRONMENT_MAY_BE_WORKER || PTHREADS
+var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
 #endif
 
 #if PTHREADS
 // MINIMAL_RUNTIME does not support --proxy-to-worker option, so Worker and Pthread environments
 // coincide.
-var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
 var ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && self.name?.startsWith('em-pthread');
 
 #if !MODULARIZE
