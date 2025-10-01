@@ -1040,12 +1040,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return config.V8_ENGINE
 
   def require_v8(self):
+    if 'EMTEST_SKIP_V8' in os.environ:
+      self.skipTest('test requires v8 and EMTEST_SKIP_V8 is set')
     v8 = self.get_v8()
     if not v8:
-      if 'EMTEST_SKIP_V8' in os.environ:
-        self.skipTest('test requires v8 and EMTEST_SKIP_V8 is set')
-      else:
-        self.fail('d8 required to run this test.  Use EMTEST_SKIP_V8 to skip')
+      self.fail('d8 required to run this test.  Use EMTEST_SKIP_V8 to skip')
     self.require_engine(v8)
     self.cflags.append('-sENVIRONMENT=shell')
 
@@ -1056,12 +1055,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return config.NODE_JS_TEST
 
   def require_node(self):
+    if 'EMTEST_SKIP_NODE' in os.environ:
+      self.skipTest('test requires node and EMTEST_SKIP_NODE is set')
     nodejs = self.get_nodejs()
     if not nodejs:
-      if 'EMTEST_SKIP_NODE' in os.environ:
-        self.skipTest('test requires node and EMTEST_SKIP_NODE is set')
-      else:
-        self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
+      self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
     self.require_engine(nodejs)
     return nodejs
 
@@ -1069,15 +1067,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return nodejs and nodejs[0] and ('canary' in nodejs[0] or 'nightly' in nodejs[0])
 
   def require_node_canary(self):
+    if 'EMTEST_SKIP_NODE_CANARY' in os.environ:
+      self.skipTest('test requires node canary and EMTEST_SKIP_NODE_CANARY is set')
     nodejs = self.get_nodejs()
     if self.node_is_canary(nodejs):
       self.require_engine(nodejs)
       return
 
-    if 'EMTEST_SKIP_NODE_CANARY' in os.environ:
-      self.skipTest('test requires node canary and EMTEST_SKIP_NODE_CANARY is set')
-    else:
-      self.fail('node canary required to run this test.  Use EMTEST_SKIP_NODE_CANARY to skip')
+    self.fail('node canary required to run this test.  Use EMTEST_SKIP_NODE_CANARY to skip')
 
   def require_engine(self, engine):
     logger.debug(f'require_engine: {engine}')
@@ -1088,6 +1085,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.wasm_engines = []
 
   def require_wasm64(self):
+    if 'EMTEST_SKIP_WASM64' in os.environ:
+      self.skipTest('test requires node >= 24 or d8 (and EMTEST_SKIP_WASM64 is set)')
     if self.is_browser_test():
       return
 
@@ -1100,10 +1099,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.js_engines = [v8]
       return
 
-    if 'EMTEST_SKIP_WASM64' in os.environ:
-      self.skipTest('test requires node >= 24 or d8 (and EMTEST_SKIP_WASM64 is set)')
-    else:
-      self.fail('either d8 or node >= 24 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
+    self.fail('either d8 or node >= 24 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
 
   def try_require_node_version(self, major, minor = 0, revision = 0):
     nodejs = self.get_nodejs()
@@ -1117,6 +1113,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return True
 
   def require_simd(self):
+    if 'EMTEST_SKIP_SIMD' in os.environ:
+      self.skipTest('test requires node >= 16 or d8 (and EMTEST_SKIP_SIMD is set)')
     if self.is_browser_test():
       return
 
@@ -1129,12 +1127,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.js_engines = [v8]
       return
 
-    if 'EMTEST_SKIP_SIMD' in os.environ:
-      self.skipTest('test requires node >= 16 or d8 (and EMTEST_SKIP_SIMD is set)')
-    else:
-      self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_SIMD to skip')
+    self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_SIMD to skip')
 
   def require_wasm_legacy_eh(self):
+    if 'EMTEST_SKIP_EH' in os.environ:
+      self.skipTest('test requires node >= 17 or d8 (and EMTEST_SKIP_EH is set)')
     self.set_setting('WASM_LEGACY_EXCEPTIONS')
     if self.try_require_node_version(17):
       return
@@ -1145,12 +1142,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.js_engines = [v8]
       return
 
-    if 'EMTEST_SKIP_EH' in os.environ:
-      self.skipTest('test requires node >= 17 or d8 (and EMTEST_SKIP_EH is set)')
-    else:
-      self.fail('either d8 or node >= 17 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
+    self.fail('either d8 or node >= 17 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
 
   def require_wasm_eh(self):
+    if 'EMTEST_SKIP_EH' in os.environ:
+      self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_EH is set)')
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
     if self.try_require_node_version(24):
       self.node_args.append('--experimental-wasm-exnref')
@@ -1166,12 +1162,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.v8_args.append('--experimental-wasm-exnref')
       return
 
-    if 'EMTEST_SKIP_EH' in os.environ:
-      self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_EH is set)')
-    else:
-      self.fail('either d8 or node v24 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
+    self.fail('either d8 or node v24 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
 
   def require_jspi(self):
+    if 'EMTEST_SKIP_JSPI' in os.environ:
+      self.skipTest('skipping JSPI (EMTEST_SKIP_JSPI is set)')
     # emcc warns about stack switching being experimental, and we build with
     # warnings-as-errors, so disable that warning
     self.cflags += ['-Wno-experimental']
@@ -1182,8 +1177,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest('WASM_ESM_INTEGRATION is not compatible with JSPI')
 
     if self.is_browser_test():
-      if 'EMTEST_SKIP_JSPI' in os.environ:
-        self.skipTest('skipping JSPI (EMTEST_SKIP_JSPI is set)')
       return
 
     exp_args = ['--experimental-wasm-stack-switching', '--experimental-wasm-type-reflection']
@@ -1199,10 +1192,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.v8_args += exp_args
       return
 
-    if 'EMTEST_SKIP_JSPI' in os.environ:
-      self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_JSPI is set)')
-    else:
-      self.fail('either d8 or node v24 required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
+    self.fail('either d8 or node v24 required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
 
   def require_wasm2js(self):
     if self.is_wasm64():
