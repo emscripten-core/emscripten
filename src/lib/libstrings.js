@@ -14,10 +14,8 @@ addToLibrary({
 #if TEXTDECODER == 2 && !AUDIO_WORKLET
   // TextDecoder constructor defaults to UTF-8
   $UTF8Decoder: "new TextDecoder()",
-#elif SUPPORTS_GLOBALTHIS
-  $UTF8Decoder: "globalThis.TextDecoder && new TextDecoder()",
 #else
-  $UTF8Decoder: "globalThis.TextDecoder ? new TextDecoder() : undefined",
+  $UTF8Decoder: "globalThis.TextDecoder && new TextDecoder()",
 #endif
 
   $findStringEnd: (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
