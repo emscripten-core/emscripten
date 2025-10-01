@@ -193,7 +193,6 @@ var LibraryWebAudio = {
       console.log(`emscripten_start_wasm_audio_worklet_thread_async() addModule() completed`);
 #endif
 
-
 #if MIN_FIREFOX_VERSION < 138 || MIN_CHROME_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
       // If this browser does not support the up-to-date AudioWorklet standard
       // that has a MessagePort over to the AudioWorklet, then polyfill that by
