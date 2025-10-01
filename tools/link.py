@@ -3090,7 +3090,14 @@ def run(options, linker_args):
     logger.debug('stopping after linking to object file')
     return 0
 
-  linker_args += phase_calculate_system_libraries(options)
+  system_libs = phase_calculate_system_libraries(options)
+  # Only add system libraries that have not already been specified.
+  # This avoids issues where the user explictly includes, for example, `-lGL`.
+  # This is not normally a problem except in the case of -sMAIN_MODULE=1 where
+  # the duplicate library would result in duplicate symbols.
+  for s in system_libs:
+    if s not in linker_args:
+      linker_args.append(s)
 
   js_syms = {}
   if (not settings.SIDE_MODULE or settings.ASYNCIFY) and not shared.SKIP_SUBPROCS:

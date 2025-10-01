@@ -1936,6 +1936,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
   @parameterized({
     '': ([],),
     'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sOFFSCREEN_FRAMEBUFFER'],),
+    'pthreads_main_module': (['-pthread', '-sPROXY_TO_PTHREAD', '-sOFFSCREEN_FRAMEBUFFER', '-sMAIN_MODULE', '-Wno-experimental'],),
   })
   @requires_graphics_hardware
   def test_gl_textures(self, args):
