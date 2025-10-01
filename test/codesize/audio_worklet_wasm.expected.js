@@ -111,7 +111,7 @@ var L = [], M = a => {
 }, Q = (a, b, e, d) => {
     b = P[b];
     P[a].connect(b.destination || b, e, d);
-}, P = {}, R = 0, S = globalThis.TextDecoder ? new TextDecoder : void 0, T = (a = 0) => {
+}, P = {}, R = 0, S = globalThis.TextDecoder && new TextDecoder, T = (a = 0) => {
     for (var b = J, e = a, d = e + void 0; b[e] && !(e >= d); ) ++e;
     if (16 < e - a && b.buffer && S) return S.decode(b.slice(a, e));
     for (d = ""; a < e; ) {

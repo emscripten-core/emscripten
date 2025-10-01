@@ -666,7 +666,7 @@ var PATH_FS = {
   }
 };
 
-var UTF8Decoder = globalThis.TextDecoder ? new TextDecoder : undefined;
+var UTF8Decoder = globalThis.TextDecoder && new TextDecoder;
 
 var findStringEnd = (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
   var maxIdx = idx + maxBytesToRead;
