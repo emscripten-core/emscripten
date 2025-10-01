@@ -15102,11 +15102,7 @@ addToLibrary({
     print('running cmd:', cmd)
     with env_modify({'PATH': new_path}):
       proc = subprocess.run(cmd, capture_output=True, text=True, shell=True, check=True)
-      # There is currently a bug in the windows .bat files that leads to stdout
-      # not being empty in this case.
-      # See https://github.com/emscripten-core/emscripten/pull/25416
-      if not WINDOWS:
-        self.assertEqual(proc.stdout, '')
+      self.assertEqual(proc.stdout, '')
       self.assertEqual(proc.stderr, '')
 
   def test_browser_too_old(self):
