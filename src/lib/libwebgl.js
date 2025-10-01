@@ -4317,9 +4317,7 @@ var glPassthroughFuncs = [
 ];
 
 function createGLPassthroughFunctions(lib, funcs) {
-  funcs.forEach((data) => {
-    const num = data[0];
-    const names = data[1];
+  for (const [num, names] of funcs) {
     const args = range(num).map((i) => 'x' + i ).join(', ');
     const stub = `(${args}) => GLctx.NAME(${args})`;
     const sigEnd = range(num).map(() => 'i').join('');
@@ -4341,7 +4339,7 @@ function createGLPassthroughFunctions(lib, funcs) {
       lib[cName] = eval(stub.replace('NAME', name));
       assert(lib[cName + '__sig'] || LibraryManager.library[cName + '__sig'], 'missing sig for ' + cName);
     });
-  });
+  }
 }
 
 createGLPassthroughFunctions(LibraryGL, glPassthroughFuncs);
@@ -4352,15 +4350,16 @@ function recordGLProcAddressGet(lib) {
   // GL proc address retrieval - allow access through glX and emscripten_glX, to
   // allow name collisions with user-implemented things having the same name
   // (see gl.c)
-  Object.keys(lib).forEach((x) => {
-    if (x.startsWith('gl') && !isDecorator(x)) {
-      lib['emscripten_' + x] = x;
-      var sig = LibraryManager.library[x + '__sig'];
+  for (const sym of Object.keys(lib)) {
+    if (sym.startsWith('gl') && !isDecorator(sym)) {
+      const alias = 'emscripten_' + sym;
+      lib[alias] = sym;
+      var sig = LibraryManager.library[sym + '__sig'];
       if (sig) {
-        lib['emscripten_' + x + '__sig'] = sig;
+        lib[alias + '__sig'] = sig;
       }
     }
-  });
+  }
 }
 
 recordGLProcAddressGet(LibraryGL);
