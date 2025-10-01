@@ -5525,6 +5525,12 @@ Module["preRun"] = () => {
   def test_audio_worklet_emscripten_locks(self):
     self.btest_exit('webaudio/audioworklet_emscripten_locks.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread'])
 
+  # Verifies setting audio context sample rate, and that emscripten_audio_context_sample_rate() works.
+  @requires_sound_hardware
+  @also_with_minimal_runtime
+  def test_web_audio_context_sample_rate(self):
+    self.btest_exit('webaudio/audio_context_sample_rate.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
+
   def test_error_reporting(self):
     # Test catching/reporting Error objects
     create_file('post.js', 'throw new Error("oops");')
