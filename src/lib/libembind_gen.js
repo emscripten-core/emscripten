@@ -398,10 +398,10 @@ var LibraryEmbind = {
         return tsName;
       }
       if (type instanceof PointerDefinition) {
-        return `${this.typeToJsName(type.classType)} | null`;
+        return `${this.typeToJsName(type.classType, isFromWireType)} | null`;
       }
       if (type instanceof OptionalType) {
-        return `${this.typeToJsName(type.type)} | undefined`;
+        return `${this.typeToJsName(type.type, isFromWireType)} | undefined`;
       }
       return type.name;
     }
