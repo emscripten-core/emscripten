@@ -264,16 +264,14 @@ class BootstrapMessages extends AudioWorkletProcessor {
   constructor(arg) {
     super();
     startWasmWorker(arg.processorOptions)
-#if WEBAUDIO_DEBUG
-    console.log('AudioWorklet global scope looks like this:');
-    console.dir(globalThis);
-#endif
     // Listen to messages from the main thread. These messages will ask this
     // scope to create the real AudioWorkletProcessors that call out to Wasm to
     // do audio processing.
-    if (!port) port = this.port;
-    /** @suppress {checkTypes} */
-    port.onmessage = audioWorkletMessageHandler;
+    if (!(port instanceof MessagePort)) {
+      this.port.onmessage = port.onmessage;
+      /** @suppress {checkTypes} */
+      port = this.port;
+    }
   }
 
   // No-op, not doing audio processing in this processor. It is just for
@@ -310,7 +308,7 @@ port.onmessage = async (msg) => {
 #if AUDIO_WORKLET_SUPPORT_AUDIO_PARAMS
     registerProcessor(d['_wpn'], createWasmAudioWorkletProcessor(d.audioParams));
 #else
-        registerProcessor(d['_wpn'], createWasmAudioWorkletProcessor());
+    registerProcessor(d['_wpn'], createWasmAudioWorkletProcessor());
 #endif
 #if WEBAUDIO_DEBUG
     console.log(`Registered a new WasmAudioWorkletProcessor "${d['_wpn']}" with AudioParams: ${d.audioParams}`);

@@ -200,11 +200,15 @@ var LibraryWebAudio = {
       if (!audioWorklet.port) {
         audioWorklet.port = {
           postMessage: (msg) => {
-            audioWorklet.bootstrapMessage = new AudioWorkletNode(audioContext, 'em-bootstrap', {
-              processorOptions: msg
-            });
-            audioWorklet.bootstrapMessage.port.onmessage = (msg) => {
-              audioWorklet.port.onmessage(_EmAudioDispatchProcessorCallback);
+            if (msg._boot) {
+              audioWorklet.bootstrapMessage = new AudioWorkletNode(audioContext, 'em-bootstrap', {
+                processorOptions: msg
+              });
+              audioWorklet.bootstrapMessage.port.onmessage = (msg) => {
+                audioWorklet.port.onmessage(msg);
+              }
+            } else {
+              audioWorklet.bootstrapMessage.port.postMessage(msg);
             }
           }
         }
