@@ -29,7 +29,7 @@ if (ENVIRONMENT_IS_NODE) {
 #else
       // For class modules we decode the data URL and use `eval: true`.
       url = Buffer.from(url.split(",")[1], 'base64').toString();
-      options ||= {}
+      if (!options) options = {};
       options.eval = true;
 #endif
     }
@@ -132,8 +132,7 @@ var frameId = 0;
 
 // Worker
 
-var filename;
-filename ||= '<<< filename >>>';
+var filename = '<<< filename >>>';
 
 var worker = new Worker(filename);
 
