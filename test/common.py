@@ -206,40 +206,42 @@ def compiler_for(filename, force_c=False):
 
 # Generic decorator that calls a function named 'condition' on the test class and
 # skips the test if that function returns true
-def skip_if(func, condition, explanation='', negate=False):
-  assert callable(func)
-  explanation_str = ' : %s' % explanation if explanation else ''
+def skip_if_simple(name, condition, note=''):
+  assert callable(condition)
+  assert not callable(note)
 
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-    choice = self.__getattribute__(condition)()
-    if negate:
-      choice = not choice
-    if choice:
-      self.skipTest(condition + explanation_str)
-    return func(self, *args, **kwargs)
+  def decorator(func):
+    assert callable(func)
 
-  return decorated
+    @wraps(func)
+    def decorated(self, *args, **kwargs):
+      if condition(self):
+        explanation_str = name
+        if note:
+          explanation_str += ': %s' % note
+        self.skipTest(explanation_str)
+      return func(self, *args, **kwargs)
+
+    return decorated
+
+  return decorator
+
+
+# Same as skip_if_simple but creates a decorator that takes a note as an argument.
+def skip_if(name, condition, default_note=''):
+  assert callable(condition)
+
+  def decorator(note=default_note):
+    return skip_if_simple(name, condition, note)
+
+  return decorator
 
 
 def is_slow_test(func):
   assert callable(func)
-
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-    if EMTEST_SKIP_SLOW:
-      return self.skipTest('skipping slow tests')
-    return func(self, *args, **kwargs)
-
+  decorated = skip_if_simple('skipping slow tests', lambda _: EMTEST_SKIP_SLOW)(func)
   decorated.is_slow = True
   return decorated
-
-
-def needs_make(note=''):
-  assert not callable(note)
-  if WINDOWS:
-    return unittest.skip('Tool not available on Windows bots (%s)' % note)
-  return lambda func: func
 
 
 def record_flaky_test(test_name, attempt_count, exception_msg):
@@ -283,77 +285,22 @@ def disabled(note=''):
   return unittest.skip(note)
 
 
-def no_mac(note=''):
-  assert not callable(note)
-  if MACOS:
-    return unittest.skip(note)
-  return lambda func: func
+no_mac = skip_if('no_mac', lambda _: MACOS)
 
+no_windows = skip_if('no_windows', lambda _: WINDOWS)
 
-def no_windows(note=''):
-  assert not callable(note)
-  if WINDOWS:
-    return unittest.skip(note)
-  return lambda func: func
+no_wasm64 = skip_if('no_wasm64', lambda t: t.is_wasm64())
 
+# 2200mb is the value used by the core_2gb test mode
+no_2gb = skip_if('no_2gb', lambda t: t.get_setting('INITIAL_MEMORY') == '2200mb')
 
-def no_wasm64(note=''):
-  assert not callable(note)
+no_4gb = skip_if('no_4gb', lambda t: t.is_4gb())
 
-  def decorated(func):
-    return skip_if(func, 'is_wasm64', note)
-  return decorated
+only_windows = skip_if('only_windows', lambda _: not WINDOWS)
 
+requires_native_clang = skip_if_simple('native clang tests are disabled', lambda _: EMTEST_LACKS_NATIVE_CLANG)
 
-def no_2gb(note):
-  assert not callable(note)
-
-  def decorator(func):
-    assert callable(func)
-
-    @wraps(func)
-    def decorated(self, *args, **kwargs):
-      # 2200mb is the value used by the core_2gb test mode
-      if self.get_setting('INITIAL_MEMORY') == '2200mb':
-        self.skipTest(note)
-      return func(self, *args, **kwargs)
-    return decorated
-
-  return decorator
-
-
-def no_4gb(note):
-  assert not callable(note)
-
-  def decorator(func):
-    assert callable(func)
-
-    @wraps(func)
-    def decorated(self, *args, **kwargs):
-      if self.is_4gb():
-        self.skipTest(note)
-      return func(self, *args, **kwargs)
-    return decorated
-  return decorator
-
-
-def only_windows(note=''):
-  assert not callable(note)
-  if not WINDOWS:
-    return unittest.skip(note)
-  return lambda func: func
-
-
-def requires_native_clang(func):
-  assert callable(func)
-
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-    if EMTEST_LACKS_NATIVE_CLANG:
-      return self.skipTest('native clang tests are disabled')
-    return func(self, *args, **kwargs)
-
-  return decorated
+needs_make = skip_if('tool not available on windows bots', lambda _: WINDOWS)
 
 
 def requires_node(func):
@@ -391,17 +338,8 @@ def node_bigint_flags(node_version):
 # packages, which might not be installed on Emscripten end users' systems.
 def requires_dev_dependency(package):
   assert not callable(package)
-
-  def decorator(func):
-    assert callable(func)
-
-    @wraps(func)
-    def decorated(self, *args, **kwargs):
-      if 'EMTEST_SKIP_NODE_DEV_PACKAGES' in os.environ:
-        self.skipTest(f'test requires npm development package "{package}" and EMTEST_SKIP_NODE_DEV_PACKAGES is set')
-      return func(self, *args, **kwargs)
-    return decorated
-  return decorator
+  note = f'requires npm development package "{package}" and EMTEST_SKIP_NODE_DEV_PACKAGES is set'
+  return skip_if_simple('requires_dev_dependency', lambda _: 'EMTEST_SKIP_NODE_DEV_PACKAGES' in os.environ, note)
 
 
 def requires_wasm64(func):
