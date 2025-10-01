@@ -1191,7 +1191,7 @@ jobs:
       EMTEST_LACKS_NATIVE_CLANG: "1"
       EMTEST_SKIP_V8: "1"
       EMTEST_SKIP_WASM_LEGACY_EH: "1"
-      EMTEST_SKIP_EH: "1"
+      EMTEST_SKIP_WASM_EH: "1"
       EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SCONS: "1"
       EMTEST_SKIP_RUST: "1"
@@ -1228,7 +1228,7 @@ jobs:
       # tests that depend on those.
       EMTEST_SKIP_V8: "1"
       EMTEST_SKIP_WASM_LEGACY_EH: "1"
-      EMTEST_SKIP_EH: "1"
+      EMTEST_SKIP_WASM_EH: "1"
       EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SCONS: "1"
       EMTEST_SKIP_RUST: "1"
