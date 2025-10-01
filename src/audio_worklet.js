@@ -233,6 +233,46 @@ function createWasmAudioWorkletProcessor(audioParams) {
   return WasmAudioWorkletProcessor;
 }
 
+///////////#if !CAN_TARGET_SMALL_AUDIOWORKLET
+/**
+ * @suppress {duplicate, checkTypes}
+ */
+var port = globalThis.port || {};
+
+// Specify a worklet processor that will be used to receive messages to this
+// AudioWorkletGlobalScope.  We never connect this initial AudioWorkletProcessor
+// to the audio graph to do any audio processing.
+class BootstrapMessages extends AudioWorkletProcessor {
+  constructor(arg) {
+    super();
+    startWasmWorker(arg.processorOptions)
+#if WEBAUDIO_DEBUG
+    console.log('AudioWorklet global scope looks like this:');
+    console.dir(globalThis);
+#endif
+    // Listen to messages from the main thread. These messages will ask this
+    // scope to create the real AudioWorkletProcessors that call out to Wasm to
+    // do audio processing.
+    if (!port) port = this.port;
+    /** @suppress {checkTypes} */
+    port.onmessage = audioWorkletMessageHandler;
+  }
+
+  // No-op, not doing audio processing in this processor. It is just for
+  // receiving bootstrap messages.  However browsers require it to still be
+  // present. It should never be called because we never add a node to the graph
+  // with this processor, although it does look like Chrome does still call this
+  // function.
+  process() {
+    // keep this function a no-op. Chrome redundantly wants to call this even
+    // though this processor is never added to the graph.
+  }
+};
+
+// Register the dummy processor that will just receive messages.
+registerProcessor('em-bootstrap', BootstrapMessages);
+///////////#endif
+
 port.onmessage = async (msg) => {
 #if MINIMAL_RUNTIME
   // Wait for the module instantiation before processing messages.
