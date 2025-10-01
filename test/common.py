@@ -211,18 +211,18 @@ def skip_if_simple(name, condition, note=''):
   assert not callable(note)
 
   def decorator(func):
-  assert callable(func)
+    assert callable(func)
 
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-      if condition(self):
-        explanation_str = name
-        if note:
-          explanation_str += ': %s' % note
-        self.skipTest(explanation_str)
-    return func(self, *args, **kwargs)
+    @wraps(func)
+    def decorated(self, *args, **kwargs):
+        if condition(self):
+          explanation_str = name
+          if note:
+            explanation_str += ': %s' % note
+          self.skipTest(explanation_str)
+      return func(self, *args, **kwargs)
 
-  return decorated
+    return decorated
 
   return decorator
 
@@ -1044,7 +1044,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest('test requires v8 and EMTEST_SKIP_V8 is set')
     v8 = self.get_v8()
     if not v8:
-        self.fail('d8 required to run this test.  Use EMTEST_SKIP_V8 to skip')
+      self.fail('d8 required to run this test.  Use EMTEST_SKIP_V8 to skip')
     self.require_engine(v8)
     self.cflags.append('-sENVIRONMENT=shell')
 
@@ -1059,7 +1059,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest('test requires node and EMTEST_SKIP_NODE is set')
     nodejs = self.get_nodejs()
     if not nodejs:
-        self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
+      self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
     self.require_engine(nodejs)
     return nodejs
 
@@ -1074,7 +1074,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.require_engine(nodejs)
       return
 
-      self.fail('node canary required to run this test.  Use EMTEST_SKIP_NODE_CANARY to skip')
+    self.fail('node canary required to run this test.  Use EMTEST_SKIP_NODE_CANARY to skip')
 
   def require_engine(self, engine):
     logger.debug(f'require_engine: {engine}')
@@ -1099,7 +1099,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.js_engines = [v8]
       return
 
-      self.fail('either d8 or node >= 24 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
+    self.fail('either d8 or node >= 24 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
 
   def try_require_node_version(self, major, minor = 0, revision = 0):
     nodejs = self.get_nodejs()
@@ -1127,7 +1127,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.js_engines = [v8]
       return
 
-      self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_SIMD to skip')
+    self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_SIMD to skip')
 
   def require_wasm_legacy_eh(self):
     if 'EMTEST_SKIP_WASM_LEGACY_EH' in os.environ:
