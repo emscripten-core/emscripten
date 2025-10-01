@@ -114,6 +114,10 @@ std::wstring wstring_test(std::wstring arg) {
   return L"hi";
 }
 
+std::optional<std::string> optional_string_test(std::string arg) {
+  return "hi";
+}
+
 std::optional<int> optional_test(std::optional<Foo> arg) {
   return {};
 }
@@ -212,12 +216,14 @@ EMSCRIPTEN_BINDINGS(Test) {
   function("global_fn", &global_fn);
 
   register_optional<int>();
+  register_optional<std::string>();
   register_optional<Foo>();
   function("optional_test", &optional_test);
   function("optional_and_nonoptional_test", &optional_and_nonoptional_test);
 
   function("string_test", &string_test);
   function("wstring_test", &wstring_test);
+  function("optional_string_test", &optional_string_test);
 
   class_<ClassWithConstructor>("ClassWithConstructor")
       .constructor<int, const ValArr&>()

@@ -149,6 +149,7 @@ interface EmbindModule {
   getValObj(): ValObj;
   setValObj(_0: ValObj): void;
   string_test(_0: EmbindString): string;
+  optional_string_test(_0: EmbindString): string | undefined;
   wstring_test(_0: string): string;
 }
 
