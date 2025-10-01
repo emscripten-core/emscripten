@@ -3,8 +3,8 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-#include <atomic>
-#include <cassert>
+#include <assert.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -17,7 +17,7 @@ double start;
 
 pthread_t thread[MAX_WORKERS] = {};
 
-std::atomic<int> running = 0;
+_Atomic int running = 0;
 
 #ifndef TOTAL
 #define TOTAL  100000000
@@ -35,16 +35,16 @@ void *ThreadMain(void *arg) {
   }
   for (int i = 0; i < (TOTAL / WORKERS); i++) {
     int rem = i & (AT_ONCE - 1);
-    void*& allocation = allocations[rem];
-    if (allocation) {
-      free(allocation);
+    void** allocation = &allocations[rem];
+    if (*allocation) {
+      free(*allocation);
     }
-    allocation = malloc(BASE_SIZE + rem);
-    if (!allocation) {
+    *allocation = malloc(BASE_SIZE + rem);
+    if (!*allocation) {
       puts("failed to allocate");
       abort();
     }
-    char* data = (char*)allocation;
+    char* data = (char*)*allocation;
     *data = i;
   }
   int total = 0;
@@ -60,7 +60,7 @@ void *ThreadMain(void *arg) {
   }
   free(allocations);
   printf("thread exiting with total %d\n", total);
-  if (running.fetch_sub(1) == 1) {
+  if (atomic_fetch_sub(&running, 1) == 1) {
 #if VERBOSE
     double end = emscripten_date_now();
     printf("total time %.2f\n", end - start);

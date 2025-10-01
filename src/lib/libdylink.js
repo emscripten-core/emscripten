@@ -116,7 +116,7 @@ var LibraryDylink = {
   // the canonical name of the symbol (in some cases is modify the symbol as
   // part of the loop process, so that actual symbol looked up has a different
   // name).
-  $resolveGlobalSymbol__deps: ['$isSymbolDefined',
+  $resolveGlobalSymbol__deps: ['$isSymbolDefined', '$createNamedFunction',
 #if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
     '$createInvokeFunction',
 #endif
@@ -138,7 +138,7 @@ var LibraryDylink = {
     // Asm.js-style exception handling: invoke wrapper generation
     else if (symName.startsWith('invoke_')) {
       // Create (and cache) new invoke_ functions on demand.
-      sym = wasmImports[symName] = createInvokeFunction(symName.split('_')[1]);
+      sym = wasmImports[symName] = createNamedFunction(symName, createInvokeFunction(symName.split('_')[1]));
     }
 #endif
 #if !DISABLE_EXCEPTION_CATCHING
@@ -147,13 +147,13 @@ var LibraryDylink = {
       // `__cxa_find_matching_catch_` (see jsifier.js) that we know are needed,
       // but a side module loaded at runtime might need different/additional
       // variants so we create those dynamically.
-      sym = wasmImports[symName] = (...args) => {
+      sym = wasmImports[symName] = createNamedFunction(symName, (...args) => {
 #if MEMORY64
         args = args.map(Number);
 #endif
         var rtn = findMatchingCatch(args);
         return {{{ to64('rtn') }}};
-      }
+      });
     }
 #endif
     return {sym, name: symName};

@@ -61,7 +61,6 @@ class EmccOptions:
     self.post_link = False
     self.save_temps = False
     self.executable = False
-    self.compiler_wrapper = None
     self.oformat = None
     self.requested_debug = None
     self.emit_symbol_map = False
@@ -78,7 +77,6 @@ class EmccOptions:
     self.shell_path = None
     self.source_map_base = ''
     self.emit_tsd = ''
-    self.embind_emit_tsd = ''
     self.emrun = False
     self.cpu_profiler = False
     self.memory_profiler = False

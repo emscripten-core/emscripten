@@ -34,7 +34,6 @@ DEBUG = os.environ.get('EMCC_DEBUG')
 
 func_sig = re.compile(r'function ([_\w$]+)\(')
 func_sig_json = re.compile(r'\["defun", ?"([_\w$]+)",')
-import_sig = re.compile(r'(var|const) ([_\w$]+ *=[^;]+);')
 
 
 def get_acorn_cmd():

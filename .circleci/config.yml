@@ -42,6 +42,8 @@ commands:
             # If that download link breaks, temporarily use this URL instead:
             # wget -O ~/chrome.deb https://storage.googleapis.com/webassembly/chrome/google-chrome-stable_current_amd64.deb
             dpkg -i ~/chrome.deb
+            echo "Chrome version:"
+            /usr/bin/google-chrome --version
   emsdk-env:
     description: "emsdk_env.sh"
     steps:
@@ -140,6 +142,10 @@ commands:
             cd ~/emsdk
             ./emsdk install tot
             ./emsdk activate tot
+            # Write the version of clang into a file for use in the ccache key
+            ./upstream/bin/clang --version > clang_version.txt
+            echo "clang version:"
+            cat ~/emsdk/clang_version.txt
             # Remove the emsdk version of emscripten to save space in the
             # persistent workspace and to avoid any confusion with the version
             # we are trying to test.
@@ -169,7 +175,7 @@ commands:
           command: |
             ./emcc --clear-cache
       - pip-install
-      - run: apt-get install -q -y ninja-build
+      - run: apt-get install -q -y ninja-build ccache
       - run:
           name: embuilder build ALL
           command: |
@@ -194,6 +200,12 @@ commands:
           command: |
             ./embuilder build MINIMAL --pic --lto
             ./test/runner test_hello_world
+      - run:
+          name: "Ccache stats"
+          command: |
+            ccache --print-stats
+            ccache --zero-stats
+
   persist:
     description: "Persist the emsdk, libraries, and engines"
     steps:
@@ -207,6 +219,19 @@ commands:
             - vms/
             - wasi-sdk/
             - .jsvu/
+      - when:
+          # Only the main branch will store its cache results, and only the non-main branches
+          # will use cached results. This prevents untrusted PRs from polluting caches used
+          # by other branches.
+          condition:
+            equal: [ "main", << pipeline.git.branch >> ]
+          steps:
+            - save_cache:
+                name: "Save Ccache cache"
+                paths:
+                  - ~/.ccache
+                key: clang-{{ checksum "~/emsdk/clang_version.txt" }}
+
   prepare-for-tests:
     description: "Setup emscripten tests"
     steps:
@@ -375,8 +400,6 @@ commands:
             # TODO(https://github.com/emscripten-core/emscripten/issues/24205)
             EMTEST_LACKS_SOUND_HARDWARE: "1"
             EMTEST_LACKS_WEBGPU: "1"
-            # OffscreenCanvas support is not yet done in Firefox.
-            EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
             EMTEST_HEADLESS: "1"
             EMTEST_CORES: "2"
@@ -445,8 +468,6 @@ commands:
             # TODO(https://github.com/emscripten-core/emscripten/issues/24205)
             EMTEST_LACKS_SOUND_HARDWARE: "1"
             EMTEST_LACKS_WEBGPU: "1"
-            # OffscreenCanvas support is not yet done in Firefox.
-            EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
             EMTEST_HEADLESS: "1"
             EMTEST_CORES: "2"
@@ -505,6 +526,12 @@ jobs:
       - run: ruff check
       # TODO (cclauss): When ruff supports rules these errors without --preview, remove following line
       - run: ruff check --preview --select=E20,E30,E221,E225,E226
+  vulture:
+    executor: focal
+    steps:
+      - checkout
+      - pip-install
+      - run: vulture . --min-confidence 100
   mypy:
     executor: focal
     steps:
@@ -535,6 +562,7 @@ jobs:
     environment:
       EMCC_CORES: 16
       EMCC_USE_NINJA: 1
+      EM_COMPILER_WRAPPER: "ccache"
     steps:
       - checkout
       - run:
@@ -562,6 +590,14 @@ jobs:
             tar xvf wasi-sysroot-11.0.tar.gz -C ~/wasi-sdk/
       - install-v8
       - install-emsdk
+      - when:
+          condition:
+            not:
+              equal: [ "main", << pipeline.git.branch >> ]
+          steps:
+            - restore_cache:
+                name: "Restore Ccache cache"
+                key: clang-{{ checksum "~/emsdk/clang_version.txt" }}
       - build-libs
       - run:
           name: Clean build directory
@@ -707,7 +743,10 @@ jobs:
             wasmfs.test_freetype
             minimal0.test_utf
             minimal0.test_ubsan_full_stack_trace_gsource_map
+            minimal0.test_static_variable
+            minimal0.test_stack_overflow
             omitexports0.test_asyncify_longjmp
+            omitexports0.test_emscripten_api
             strict.test_no_declare_asm_module_exports
             "
   test-modularize-instance:
@@ -876,10 +915,10 @@ jobs:
       # support in the generated code.
       # Keep this in sync with `OLDEST_SUPPORTED_NODE` in `feature_matrix.py`
       - install-node-version:
-          node_version: "10.19.0"
+          node_version: "12.22.9"
       - run-tests:
-          title: "node (oldest / 10.19.0)"
-          extra-cflags: "-sMIN_NODE_VERSION=101900"
+          title: "node (oldest / 12.22.9)"
+          extra-cflags: "-sMIN_NODE_VERSION=122209"
           # We include most but not all of the nodefs and node rawfs tests here.
           # test_fs_nodefs_rw, test_fs_nodefs_statvfs, and test_unistd_io_nodefs_bigint fail.
           test_targets: "
@@ -1211,6 +1250,7 @@ workflows:
     jobs:
       - ruff
       - mypy
+      - vulture
       - eslint
       - build-docs
       - build-linux

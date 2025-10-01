@@ -19,24 +19,24 @@ d || (f = c.mem || new WebAssembly.Memory({
     shared: !0
 }), g());
 
-var k = [], m = a => {
+var k = [], n = a => {
     a = a.data;
     let b = a._wsc;
     b && l.get(b)(...a.x);
 }, p = a => {
     k.push(a);
 }, q = {}, r = 1, u = (a, b) => {
-    let n = q[r] = new Worker(c.js, {
+    let m = q[r] = new Worker(c.js, {
         name: "em-ww"
     });
-    n.postMessage({
+    m.postMessage({
         u: r,
         j: t,
         o: f,
         l: a,
         m: b
     });
-    n.onmessage = m;
+    m.onmessage = n;
     return r++;
 }, v = () => !1, w = (a, b) => {
     q[a].postMessage({
@@ -66,8 +66,8 @@ function h() {
         t = a.module || c.wasm;
         y = b.g;
         z = b.i;
-        l = l = b.h;
-        d ? (z(e.l, e.m), removeEventListener("message", p), k = k.forEach(m), addEventListener("message", m)) : b.f();
+        l = b.h;
+        d ? (z(e.l, e.m), removeEventListener("message", p), k = k.forEach(n), addEventListener("message", n)) : b.f();
         d || y();
     }));
 }

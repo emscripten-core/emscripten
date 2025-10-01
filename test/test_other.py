@@ -51,14 +51,13 @@ from tools import webassembly
 from tools.settings import settings
 from tools.system_libs import DETERMINISTIC_PREFIX
 
-scons_path = shutil.which('scons')
 emmake = shared.bat_suffix(path_from_root('emmake'))
 emconfig = shared.bat_suffix(path_from_root('em-config'))
 emsize = shared.bat_suffix(path_from_root('emsize'))
+empath_split = shared.bat_suffix(path_from_root('empath-split'))
 emprofile = shared.bat_suffix(path_from_root('emprofile'))
 emstrip = shared.bat_suffix(path_from_root('emstrip'))
 emsymbolizer = shared.bat_suffix(path_from_root('emsymbolizer'))
-wasm_opt = Path(building.get_binaryen_bin(), 'wasm-opt')
 
 
 def is_bitcode(filename):
@@ -91,7 +90,7 @@ def uses_canonical_tmp(func):
     if os.path.exists(self.canonical_temp_dir):
       shutil.rmtree(self.canonical_temp_dir)
     try:
-      func(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     finally:
       # Make sure the test isn't lying about the fact that it uses
       # canonical_tmp
@@ -109,39 +108,39 @@ def requires_git_checkout(func):
   def decorated(self, *args, **kwargs):
     if not os.path.exists(utils.path_from_root('.git')):
       self.skipTest('test requires git checkout of emscripten')
-    func(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   return decorated
 
 
-def also_with_llvm_libc(f):
-  assert callable(f)
+def also_with_llvm_libc(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, llvm_libc, *args, **kwargs):
     if shared.DEBUG:
       print('parameterize:llvm_libc=%d' % llvm_libc)
     if llvm_libc:
       self.cflags += ['-lllvmlibc']
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'llvm_libc': (True,)})
   return metafunc
 
 
-def with_both_compilers(f):
-  assert callable(f)
+def with_both_compilers(func):
+  assert callable(func)
 
-  parameterize(f, {'': (EMCC,),
-                   'emxx': (EMXX,)})
-  return f
+  parameterize(func, {'': (EMCC,),
+                      'emxx': (EMXX,)})
+  return func
 
 
-def wasmfs_all_backends(f):
-  assert callable(f)
+def wasmfs_all_backends(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, backend, *args, **kwargs):
     self.setup_wasmfs_test()
     if backend == 'node':
@@ -149,7 +148,7 @@ def wasmfs_all_backends(f):
     elif backend == 'raw':
       self.setup_noderawfs_test()
     self.cflags.append(f'-D{backend}')
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': ('memory',),
                           'node': ('node',),
@@ -3055,9 +3054,6 @@ More info: https://emscripten.org
   def verify_dwarf_exists(self, wasm_file):
     self.verify_dwarf(wasm_file, self.assertIn)
 
-  def verify_dwarf_does_not_exist(self, wasm_file):
-    self.verify_dwarf(wasm_file, self.assertNotIn)
-
   # Verify if the given file name contains a source map
   def verify_source_map_exists(self, map_file):
     self.assertExists(map_file)
@@ -3314,6 +3310,9 @@ More info: https://emscripten.org
     'val_1': ['embind/test_embind_no_raw_pointers_val_1.cpp'],
     'val_2': ['embind/test_embind_no_raw_pointers_val_2.cpp'],
     'val_3': ['embind/test_embind_no_raw_pointers_val_3.cpp'],
+    'val_invoke': ['embind/test_embind_no_raw_pointers_val_invoke.cpp'],
+    'val_call': ['embind/test_embind_no_raw_pointers_val_call.cpp'],
+    'val_new': ['embind/test_embind_no_raw_pointers_val_new.cpp'],
   })
   def test_embind_no_raw_pointers(self, filename):
     stderr = self.expect_fail([EMCC, '-lembind', test_file(filename)])
@@ -3332,7 +3331,7 @@ More info: https://emscripten.org
     # With no arguments we are effectively testing c++17 since it is the default.
     '': [],
     # Ensure embind compiles under C++11 which is the miniumum supported version.
-    'cxx11': ['-std=c++11'],
+    'cxx11': ['-std=c++11', '-Wno-#warnings'],
     'o1': ['-O1'],
     'o2': ['-O2'],
     'o2_mem_growth': ['-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')],
@@ -3380,6 +3379,14 @@ More info: https://emscripten.org
 
     output = self.run_js(js_file)
     self.assertNotContained('FAIL', output)
+
+  def test_embind_cxx11_warning(self):
+    err = self.run_process([EMXX, '-c', '-std=c++11', test_file('embind/test_unsigned.cpp')], stderr=PIPE).stderr
+    self.assertContained('#warning "embind is likely moving to c++17', err)
+
+  def test_embind_cxx03(self):
+    err = self.expect_fail([EMXX, '-c', '-std=c++03', test_file('embind/test_unsigned.cpp')])
+    self.assertContained('#error "embind requires -std=c++11 or newer"', err)
 
   @requires_node
   def test_embind_finalization(self):
@@ -5891,130 +5898,8 @@ int main(int argc, char **argv) {
     self.assertContained(r'Failed to rename paths: abc, ; errno=44', self.run_js('a.out.js', args=['abc', '']))
 
   def test_readdir_r_silly(self):
-    create_file('src.cpp', r'''
-#include <cassert>
-#include <iostream>
-#include <cstring>
-#include <cerrno>
-#include <unistd.h>
-#include <fcntl.h>
-#include <cstdlib>
-#include <dirent.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-
-using std::endl;
-
-namespace
-{
-  // Do a recursive directory listing of the directory whose path is specified
-  // by \a name.
-  void ls(const std::string& name, size_t indent = 0) {
-    DIR *dir;
-    struct dirent *entry;
-    if (indent == 0) {
-      std::cout << name << endl;
-      ++indent;
-    }
-    // Make sure we can open the directory.  This should also catch cases where
-    // the empty string is passed in.
-    if (not (dir = opendir(name.c_str()))) {
-      const int error = errno;
-      std::cout
-        << "Failed to open directory: " << name << "; " << error << endl;
-      return;
-    }
-    // Just checking the sanity.
-    if (name.empty()) {
-      std::cout
-        << "Managed to open a directory whose name was the empty string.."
-        << endl;
-      assert(closedir(dir) != -1);
-      return;
-    }
-    // Iterate over the entries in the directory.
-    while ((entry = readdir(dir))) {
-      std::string entryName(entry->d_name);
-      if (entryName == "." || entryName == "..") {
-        // Skip the dot entries.
-        continue;
-      }
-      std::string indentStr(indent * 2, ' ');
-      if (entryName.empty()) {
-        std::cout
-          << indentStr << "\"\": Found empty string as a "
-          << (entry->d_type == DT_DIR ? "directory" : "file")
-          << " entry!" << endl;
-        continue;
-      } else {
-        std::cout << indentStr << entryName
-                  << (entry->d_type == DT_DIR ? "/" : "") << endl;
-      }
-      if (entry->d_type == DT_DIR) {
-        // We found a subdirectory; recurse.
-        ls(std::string(name + (name == "/" ? "" : "/" ) + entryName),
-           indent + 1);
-      }
-    }
-    // Close our handle.
-    assert(closedir(dir) != -1);
-  }
-
-  void touch(const char* path) {
-    int fd = open(path, O_CREAT | O_TRUNC, 0644);
-    assert(fd != -1);
-    assert(close(fd) != -1);
-  }
-}
-
-int main() {
-  assert(mkdir("dir", 0755) == 0);
-  touch("dir/a");
-  touch("dir/b");
-  touch("dir/c");
-  touch("dir/d");
-  touch("dir/e");
-  std::cout << "Before:" << endl;
-  ls("dir");
-  std::cout << endl;
-  // Attempt to delete entries as we walk the (single) directory.
-  DIR* dir = opendir("dir");
-  assert(dir != NULL);
-  struct dirent *entry;
-  while ((entry = readdir(dir)) != NULL) {
-    std::string name(entry->d_name);
-    // Skip "." and "..".
-    if (name == "." || name == "..") {
-      continue;
-    }
-    // Unlink it.
-    std::cout << "Unlinking " << name << endl;
-    assert(unlink(("dir/" + name).c_str()) != -1);
-  }
-  assert(closedir(dir) != -1);
-  std::cout << "After:" << endl;
-  ls("dir");
-  std::cout << "done" << endl;
-  return 0;
-}''')
     # cannot symlink nonexistents
-    self.do_runf('src.cpp', r'''Before:
-dir
-  a
-  b
-  c
-  d
-  e
-
-Unlinking a
-Unlinking b
-Unlinking c
-Unlinking d
-Unlinking e
-After:
-dir
-done
-''', args=['', 'abc'])
+    self.do_other_test('test_readdir_r_silly.cpp', args=['', 'abc'])
 
   def test_emversion(self):
     create_file('src.c', r'''
@@ -6132,117 +6017,6 @@ __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALI
     without_dash_o = self.run_process([EMCC, test_file('hello_world.c'), '-M'], stdout=PIPE).stdout
     self.assertEqual(len(with_dash_o), 0)
     self.assertNotEqual(len(without_dash_o), 0)
-
-  def test_switch64phi(self):
-    # issue 2539, fastcomp segfault on phi-i64 interaction
-    create_file('src.cpp', r'''
-#include <cstdint>
-#include <limits>
-#include <cstdio>
-
-//============================================================================
-
-namespace
-{
-  class int_adapter {
-  public:
-    typedef ::int64_t int_type;
-
-    int_adapter(int_type v = 0)
-      : value_(v) {}
-    static const int_adapter pos_infinity() {
-      return (::std::numeric_limits<int_type>::max)();
-    }
-    static const int_adapter neg_infinity() {
-      return (::std::numeric_limits<int_type>::min)();
-    }
-    static const int_adapter not_a_number() {
-      return (::std::numeric_limits<int_type>::max)()-1;
-    }
-    static bool is_neg_inf(int_type v) {
-      return (v == neg_infinity().as_number());
-    }
-    static bool is_pos_inf(int_type v) {
-      return (v == pos_infinity().as_number());
-    }
-    static bool is_not_a_number(int_type v) {
-      return (v == not_a_number().as_number());
-    }
-
-    bool is_infinity() const {
-      return (value_ == neg_infinity().as_number() ||
-              value_ == pos_infinity().as_number());
-    }
-    bool is_special() const {
-      return(is_infinity() || value_ == not_a_number().as_number());
-    }
-    bool operator<(const int_adapter& rhs) const {
-      if(value_ == not_a_number().as_number()
-         || rhs.value_ == not_a_number().as_number()) {
-        return false;
-      }
-      if(value_ < rhs.value_) return true;
-      return false;
-    }
-    int_type as_number() const {
-      return value_;
-    }
-
-    int_adapter operator-(const int_adapter& rhs) const {
-      if(is_special() || rhs.is_special()) {
-        if (rhs.is_pos_inf(rhs.as_number())) {
-          return int_adapter(1);
-        }
-        if (rhs.is_neg_inf(rhs.as_number())) {
-          return int_adapter();
-        }
-      }
-      return int_adapter();
-    }
-
-
-  private:
-    int_type value_;
-  };
-
-  class time_iterator {
-  public:
-    time_iterator(int_adapter t, int_adapter d)
-      : current_(t),
-        offset_(d)
-    {}
-
-    time_iterator& operator--() {
-      current_ = int_adapter(current_ - offset_);
-      return *this;
-    }
-
-    bool operator>=(const int_adapter& t) {
-      return not (current_ < t);
-    }
-
-  private:
-    int_adapter current_;
-    int_adapter offset_;
-  };
-
-  void iterate_backward(const int_adapter *answers, const int_adapter& td) {
-    int_adapter end = answers[0];
-    time_iterator titr(end, td);
-
-    std::puts("");
-    for (; titr >= answers[0]; --titr) {
-    }
-  }
-}
-
-int main() {
-  const int_adapter answer1[] = {};
-  iterate_backward(NULL, int_adapter());
-  iterate_backward(answer1, int_adapter());
-}
-    ''')
-    self.run_process([EMXX, 'src.cpp', '-O2', '-sSAFE_HEAP'])
 
   @with_all_fs
   @crossplatform
@@ -6376,119 +6150,7 @@ int main()
 
   @also_with_wasmfs
   def test_truncate_from_0(self):
-    create_file('src.cpp', r'''
-#include <cerrno>
-#include <cstring>
-#include <iostream>
-
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
-
-using std::endl;
-
-//============================================================================
-// :: Helpers
-
-namespace
-{
-  // Returns the size of the regular file specified as 'path'.
-  ::off_t getSize(const char* const path)
-  {
-    // Stat the file and make sure that it's the expected size.
-    struct ::stat path_stat;
-    if (::stat(path, &path_stat) != 0) {
-      const int error = errno;
-      std::cout
-        << "Failed to lstat path: " << path << "; errno=" << error << "; "
-        << std::strerror(error) << endl;
-      return -1;
-    }
-
-    std::cout
-      << "Size of file is: " << path_stat.st_size << endl;
-    return path_stat.st_size;
-  }
-
-  // Causes the regular file specified in 'path' to have a size of 'length'
-  // bytes.
-  void resize(const char* const path,
-              const ::off_t length)
-  {
-    std::cout
-      << "Truncating file=" << path << " to length=" << length << endl;
-    if (::truncate(path, length) == -1)
-    {
-      const int error = errno;
-      std::cout
-        << "Failed to truncate file=" << path << "; errno=" << error
-        << "; " << std::strerror(error) << endl;
-    }
-
-    const ::off_t size = getSize(path);
-    if (size != length) {
-      std::cout
-        << "Failed to truncate file=" << path << " to length=" << length
-        << "; got size=" << size << endl;
-    }
-  }
-
-  // Helper to create a file with the given content.
-  void createFile(const std::string& path, const std::string& content)
-  {
-    std::cout
-      << "Creating file: " << path << " with content=" << content << endl;
-
-    const int fd = ::open(path.c_str(), O_CREAT | O_WRONLY, 0644);
-    if (fd == -1) {
-      const int error = errno;
-      std::cout
-        << "Failed to open file for writing: " << path << "; errno=" << error
-        << "; " << std::strerror(error) << endl;
-      return;
-    }
-
-    if (::write(fd, content.c_str(), content.size()) != content.size()) {
-      const int error = errno;
-      std::cout
-        << "Failed to write content=" << content << " to file=" << path
-        << "; errno=" << error << "; " << std::strerror(error) << endl;
-
-      // Fall through to close FD.
-    }
-
-    ::close(fd);
-  }
-}
-
-//============================================================================
-// :: Entry Point
-int main()
-{
-  const char* const file = "/tmp/file";
-  createFile(file, "This is some content");
-  getSize(file);
-  resize(file, 32);
-  resize(file, 17);
-  resize(file, 0);
-
-  // This throws a JS exception.
-  resize(file, 32);
-  return 0;
-}
-''')
-    self.do_runf('src.cpp', r'''Creating file: /tmp/file with content=This is some content
-Size of file is: 20
-Truncating file=/tmp/file to length=32
-Size of file is: 32
-Truncating file=/tmp/file to length=17
-Size of file is: 17
-Truncating file=/tmp/file to length=0
-Size of file is: 0
-Truncating file=/tmp/file to length=32
-Size of file is: 32
-''')
+    self.do_other_test('test_truncate_from_0.cpp')
 
   def test_create_readonly(self):
     create_file('src.cpp', r'''
@@ -8276,7 +7938,7 @@ addToLibrary({
       '-sTOTAL_STACK=1mb',
       f'-sMALLOC={allocator}',
     ]
-    self.do_other_test('test_malloc_multithreading.cpp', cflags=args)
+    self.do_other_test('test_malloc_multithreading.c', cflags=args)
 
   @parameterized({
     '': ([], 'testbind.js'),
@@ -9773,8 +9435,8 @@ end
     create_file("file'2", ' ')
     create_file("hyvää päivää", ' ')
     create_file("snowman freezes covid ☃ 🦠", ' ')
-    rsp = response_file.create_response_file(("file'1", "file'2", "hyvää päivää", "snowman freezes covid ☃ 🦠"), shared.TEMP_DIR)
-    building.emar('cr', 'libfoo.a', ['@' + rsp])
+    create_file("tmp.rsp", response_file.create_response_file_contents(("file'1", "file'2", "hyvää päivää", "snowman freezes covid ☃ 🦠")))
+    building.emar('cr', 'libfoo.a', ['@tmp.rsp'])
 
   def test_response_file_bom(self):
     # Modern CMake version create response fils in UTF-8 but with BOM
@@ -10797,8 +10459,9 @@ int main() {
     # Disable a feature
     compile(['-mno-sign-ext', '-c'])
     verify_features_sec('sign-ext', False)
+
     # Disable via browser selection
-    compile(['-sMIN_FIREFOX_VERSION=61'])
+    compile(['-sMIN_SAFARI_VERSION=120200'])
     verify_features_sec_linked('sign-ext', False)
     compile(['-sMIN_SAFARI_VERSION=140100'])
     verify_features_sec_linked('bulk-memory-opt', False)
@@ -10810,7 +10473,7 @@ int main() {
     compile(['-sMIN_SAFARI_VERSION=160000', '-mno-sign-ext'])
     verify_features_sec_linked('sign-ext', False)
     # Flag enabling overrides explicit browser version
-    compile(['-sMIN_FIREFOX_VERSION=61', '-msign-ext'])
+    compile(['-sMIN_FIREFOX_VERSION=65', '-msign-ext'])
     verify_features_sec_linked('sign-ext', True)
     # Flag disabling overrides explicit version for bulk memory
     compile(['-sMIN_SAFARI_VERSION=150000', '-mno-bulk-memory'])
@@ -12587,6 +12250,7 @@ int main(void) {
   def test_webgpu_compiletest(self, args):
     self.run_process([EMXX, test_file('webgpu_jsvalstore.cpp'), '-Wno-error=deprecated', '-sUSE_WEBGPU', '-sASYNCIFY'] + args)
 
+  @flaky('https://github.com/emscripten-core/emscripten/issues/25343')
   @also_with_wasm64
   @parameterized({
     '': ([],),
@@ -13320,7 +12984,7 @@ exec "$@"
     self.do_runf('main.c', 'Top level code\nhello from pre-run\njs_func called\n')
 
   # On Windows maximum command line length is 32767 characters. Create such a long build line by linking together
-  # several .o files to test that emcc internally uses response files properly when calling llvm-nm and wasm-ld.
+  # several .o files to test that emcc internally uses response files properly when calling wasm-ld.
   @is_slow_test
   def test_windows_long_link_response_file(self):
     decls = ''
@@ -13335,19 +12999,30 @@ exec "$@"
       decls += 'int %s();' % name
       calls += 'value += %s();' % name
 
-    count = 1000
+    count = 300
     for i in range(count):
       name = 'a' + str(i)
-      for _ in range(5):
-        name += name
+      name = name * 32
       create_o(name, i)
 
     create_file('main.c', '#include<stdio.h>\n%s int main() { int value = 0; %s printf("%%d\\n", value); }' % (decls, calls))
 
-    assert sum(len(f) for f in files) > 32767
+    total_len = sum(len(f) for f in files)
+    print('Command line lower bound:', total_len)
+    assert total_len > 32767
 
     self.run_process(building.get_command_with_possible_response_file([EMCC, 'main.c'] + files))
     self.assertContained(str(count * (count - 1) // 2), self.run_js('a.out.js'))
+
+  @crossplatform
+  def test_response_file(self):
+    out_js = self.output_name('response_file')
+    response_data = '-o "%s" "%s"' % (out_js, test_file('hello_world.cpp'))
+    create_file('rsp_file', response_data.replace('\\', '\\\\'))
+    self.run_process([EMCC, "@rsp_file"] + self.get_cflags())
+    self.do_run(out_js, 'hello, world', no_build=True)
+
+    self.assertContained('emcc: error: @foo.txt: No such file or directory', self.expect_fail([EMCC, '@foo.txt']))
 
   # Tests that the filename suffix of the response files can be used to detect which encoding the file is.
   @crossplatform
@@ -13365,6 +13040,13 @@ exec "$@"
     print('Python locale preferredencoding: ' + preferred_encoding)
     open('a.rsp', 'w', encoding=preferred_encoding).write('äö.c') # Write a response file using Python preferred encoding
     self.run_process([EMCC, '@a.rsp']) # ... and test that it is properly autodetected.
+
+  @crossplatform
+  def test_response_file_recursive(self):
+    create_file('rsp2.txt', response_file.create_response_file_contents([test_file('hello_world.c'), '-o', 'hello.js']))
+    create_file('rsp1.txt', '@rsp2.txt\n')
+    self.run_process([EMCC, '@rsp1.txt'])
+    self.assertContained('hello, world!', self.run_js('hello.js'))
 
   def test_output_name_collision(self):
     # Ensure that the secondary filenames never collide with the primary output filename
@@ -13884,6 +13566,13 @@ void foo() {}
   })
   def test_pthread_set_main_loop(self, args):
     self.do_other_test('test_pthread_set_main_loop.c', cflags=args)
+
+  @node_pthreads
+  def test_pthread_fd_close_wasmfs(self):
+    create_file('node_warnings', '')
+    self.node_args += ['--trace-warnings', '--redirect-warnings=node_warnings']
+    self.do_other_test('test_pthread_fd_close.c', cflags=['-sWASMFS', '-sNODERAWFS'])
+    self.assertNotContained('closed but not opened in unmanaged mode', read_file('node_warnings'))
 
   # unistd tests
 
@@ -14645,8 +14334,8 @@ out.js
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-sWASM_BIGINT', '-sMIN_SAFARI_VERSION=130000'])
     self.assertContained('emcc: error: MIN_SAFARI_VERSION=130000 is not compatible with WASM_BIGINT (150000 or above required)', err)
 
-    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-pthread', '-sMIN_CHROME_VERSION=73'])
-    self.assertContained('emcc: error: MIN_CHROME_VERSION=73 is not compatible with pthreads (74 or above required)', err)
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-pthread', '-sMIN_FIREFOX_VERSION=65'])
+    self.assertContained('emcc: error: MIN_FIREFOX_VERSION=65 is not compatible with pthreads (79 or above required)', err)
 
   def test_signext_lowering(self):
     # Use `-v` to show the sub-commands being run by emcc.
@@ -14658,10 +14347,6 @@ out.js
 
     # Specifying an older browser version should trigger the lowering pass
     err = self.run_process(cmd + ['-sMIN_SAFARI_VERSION=120200'], stderr=subprocess.PIPE).stderr
-    self.assertContained('--signext-lowering', err)
-    err = self.run_process(cmd + ['-sMIN_FIREFOX_VERSION=61'], stderr=subprocess.PIPE).stderr
-    self.assertContained('--signext-lowering', err)
-    err = self.run_process(cmd + ['-sMIN_CHROME_VERSION=73'], stderr=subprocess.PIPE).stderr
     self.assertContained('--signext-lowering', err)
 
   @flaky('https://github.com/emscripten-core/emscripten/issues/20125')
@@ -14971,17 +14656,16 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.do_run(src)
 
   @parameterized({
-    'wasm2js': (True,),
-    '': (False,),
+    '': ([],),
+    'wasm2js': (['-sWASM=0'],),
+    'wasm2js_fallback': (['-sWASM=2'],),
   })
-  def test_add_js_function(self, wasm2js):
+  def test_add_js_function(self, args):
     self.set_setting('INVOKE_RUN', 0)
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.set_setting('ALLOW_TABLE_GROWTH')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['callMain'])
-    if wasm2js:
-      self.set_setting('WASM', 0)
-    self.cflags += ['--post-js', test_file('interop/test_add_function_post.js')]
+    self.cflags += args + ['--post-js', test_file('interop/test_add_function_post.js')]
 
     print('basics')
     self.do_run_in_out_file_test('interop/test_add_function.cpp')
@@ -14989,7 +14673,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     print('with ALLOW_TABLE_GROWTH=0')
     self.set_setting('ALLOW_TABLE_GROWTH', 0)
     expected = 'Unable to grow wasm table'
-    if wasm2js:
+    if '-sWASM=0' in args:
       # in wasm2js the error message doesn't come from the VM, but from our
       # emulation code. when ASSERTIONS are enabled we show a clear message, but
       # in optimized builds we don't waste code size on that, and the JS engine
@@ -15398,13 +15082,36 @@ addToLibrary({
 
   @crossplatform
   def test_no_extra_output(self):
+    # Run this build command first to warm the cache (since caching can produce stdout).
     self.run_process([EMCC, '-c', test_file('hello_world.c')])
     output = self.run_process([EMCC, '-c', test_file('hello_world.c')], stdout=PIPE, stderr=STDOUT).stdout
     self.assertEqual(output, '')
 
+  @crossplatform
+  def test_shell_cmd_with_quotes(self):
+    file = test_file('hello_world.c')
+    # Run this build command first to warm the cache (since caching can produce stdout).
+    self.run_process([EMCC, '-c', file])
+
+    # Verify that "emcc" is found in the PATH correctly in shell scripts (shell=True).
+    # (Specifically when quotes are around the "emcc" command itself).
+    # See https://github.com/microsoft/terminal/issues/15212
+    old_path = os.environ['PATH']
+    new_path = old_path + os.pathsep + os.path.dirname(EMCC)
+    cmd = f'"emcc" -c "{file}"'
+    print('running cmd:', cmd)
+    with env_modify({'PATH': new_path}):
+      proc = subprocess.run(cmd, capture_output=True, text=True, shell=True, check=True)
+      # There is currently a bug in the windows .bat files that leads to stdout
+      # not being empty in this case.
+      # See https://github.com/emscripten-core/emscripten/pull/25416
+      if not WINDOWS:
+        self.assertEqual(proc.stdout, '')
+      self.assertEqual(proc.stderr, '')
+
   def test_browser_too_old(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMIN_CHROME_VERSION=10'])
-    self.assertContained('emcc: error: MIN_CHROME_VERSION older than 70 is not supported', err)
+    self.assertContained('emcc: error: MIN_CHROME_VERSION older than 74 is not supported', err)
 
   def test_js_only_settings(self):
     err = self.run_process([EMCC, test_file('hello_world.c'), '-o', 'foo.wasm', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=emscripten_get_heap_max'], stderr=PIPE).stderr
@@ -15940,3 +15647,57 @@ addToLibrary({
         return 0;
       }''')
     self.do_runf('main.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '--post-js=post.js'])
+
+  @crossplatform
+  def test_empath_split(self):
+    create_file('main.cpp', r'''
+      #include <iostream>
+      void foo();
+      int main() {
+        std::cout << "main" << std::endl;
+        foo();
+        return 0;
+      }
+    ''')
+    create_file('foo.cpp', r'''
+      #include <iostream>
+      void foo() { std::cout << "foo" << std::endl; }
+    ''')
+    create_file('path_list', r'''
+      main.cpp
+      foo.cpp
+      /emsdk/emscripten/system
+      /emsdk/emscripten/system/lib/libc/musl
+      /emsdk/emscripten/system/lib/libcxx
+    ''')
+
+    self.run_process([EMCC, 'main.cpp', 'foo.cpp', '-gsource-map', '-g2', '-o', 'test.js'])
+    self.run_process([empath_split, 'test.wasm', 'path_list', '-g', '-o', 'test_primary.wasm', '--out-prefix=test_'])
+
+    # Check if functions are correctly assigned and split with the specified
+    # paths. When one path contains another, the inner path should take its
+    # functions first, and the rest is split with the outer path.
+    def has_defined_function(file, func):
+      self.run_process([common.WASM_DIS, file, '-o', 'test.wast'])
+      pattern = re.compile(r'^\s*\(\s*func\s+\$' + func + r'[\s\(\)]', flags=re.MULTILINE)
+      with open('test.wast') as f:
+        return pattern.search(f.read()) is not None
+
+    # main.cpp
+    self.assertTrue(has_defined_function('test_0.wasm', '__original_main'))
+    # foo.cpp
+    self.assertTrue(has_defined_function('test_1.wasm', r'foo\\28\\29'))
+    # /emsdk/emscripten/system
+    self.assertTrue(has_defined_function('test_2.wasm', '__abort_message'))
+    self.assertTrue(has_defined_function('test_2.wasm', 'pthread_cond_wait'))
+    # /emsdk/emscripten/system/lib/libc/musl
+    self.assertTrue(has_defined_function('test_3.wasm', 'strcmp'))
+    # /emsdk/emscripten/system/lib/libcxx
+    self.assertTrue(has_defined_function('test_4.wasm', r'std::__2::ios_base::getloc\\28\\29\\20const'))
+    self.assertTrue(has_defined_function('test_4.wasm', r'std::uncaught_exceptions\\28\\29'))
+
+    # Check --print-sources option
+    out = self.run_process([empath_split, 'test.wasm', '--print-sources'], stdout=PIPE).stdout
+    self.assertIn('main.cpp', out)
+    self.assertIn('foo.cpp', out)
+    self.assertIn('/emsdk/emscripten/system/lib/libc/musl/src/string/strcmp.c', out)
