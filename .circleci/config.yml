@@ -178,7 +178,7 @@ commands:
       - run: apt-get install -q -y ninja-build ccache
       - run:
           name: Ccache stats and configuration
-          command: ccache -s -p
+          command: ccache -s --print-stats -p
       - run:
           name: embuilder build ALL
           command: |
@@ -207,7 +207,7 @@ commands:
           name: "Ccache stats and configuration"
           command: |
             date
-            ccache --print-stats -p
+            ccache -s --print-stats -p
             ccache --zero-stats
 
   persist:
