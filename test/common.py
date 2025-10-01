@@ -106,6 +106,8 @@ class ChromeConfig:
     '--disk-cache-size=1 --media-cache-size=1 --disable-application-cache',
     # Disable various background tasks downloads (e.g. updates).
     '--disable-background-networking',
+    # Disable native password pop-ups
+    '--password-store=basic',
   )
   headless_flags = '--headless=new --window-size=1024,768'
 
