@@ -7,7 +7,7 @@ function v(a) {
     m ||= {};
     m.wasm = a.G;
     y();
-    a.G = a.N = 0;
+    a.G = a.M = 0;
 }
 
 t && !r && (onmessage = a => {
@@ -191,7 +191,7 @@ var K = [], L = a => {
     e.addModule(m.js).then((() => {
         e.port || (e.port = {
             postMessage: p => {
-                p.M ? (e.D = new AudioWorkletNode(g, "em-bootstrap", {
+                p._boot ? (e.D = new AudioWorkletNode(g, "em-bootstrap", {
                     processorOptions: p
                 }), e.D.port.onmessage = h => {
                     e.port.onmessage(h);
@@ -200,7 +200,7 @@ var K = [], L = a => {
         });
         e.port.postMessage({
             _boot: 1,
-            O: ba++,
+            N: ba++,
             G: m.wasm,
             L: w,
             J: c,
