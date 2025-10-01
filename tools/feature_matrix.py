@@ -40,6 +40,8 @@ class Feature(IntEnum):
   MEMORY64 = auto()
   WORKER_ES6_MODULES = auto()
   OFFSCREENCANVAS_SUPPORT = auto()
+  WASM_LEGACY_EXCEPTIONS = auto()
+  WASM_EXCEPTIONS = auto()
 
 
 disable_override_features = set()
@@ -105,6 +107,26 @@ min_browser_versions = {
     'safari': 170000,
     'node': 0, # This is a browser only feature, no requirements on Node.js
   },
+  # Legacy Wasm exceptions was the first (now legacy) format for native
+  # exception handling in WebAssembly.
+  Feature.WASM_LEGACY_EXCEPTIONS: {
+    'chrome': 95,
+    'firefox': 100,
+    'safari': 150200,
+    'node': 170000,
+  },
+  # Wasm exceptions is a newer format for native exception handling in
+  # WebAssembly.
+  Feature.WASM_EXCEPTIONS: {
+    'chrome': 137,
+    'firefox': 131,
+    'safari': 180400,
+    # Supported with flag --experimental-wasm-exnref (TODO: Change this to
+    # unflagged version of Node.js 260000 that ships Wasm EH enabled, after
+    # Emscripten unit testing has migrated to Node.js 26, and Emsdk ships
+    # Node.js 26)
+    'node': 240000,
+  },
 }
 
 # Static assertion to check that we actually need each of the above feature flags
@@ -165,7 +187,7 @@ def enable_feature(feature, reason, override=False):
         diagnostics.warning(
             'compatibility',
             f'{name}={user_settings[name]} is not compatible with {reason} '
-            f'({min_version} or above required)')
+            f'({name}={min_version} or above required)')
       else:
         # If no conflict, bump the minimum version to accommodate the feature.
         logger.debug(f'Enabling {name}={min_version} to accommodate {reason}')
@@ -199,3 +221,8 @@ def apply_min_browser_versions():
     enable_feature(Feature.WORKER_ES6_MODULES, 'EXPORT_ES6 with -sWASM_WORKERS')
   if settings.OFFSCREENCANVAS_SUPPORT:
     enable_feature(Feature.OFFSCREENCANVAS_SUPPORT, 'OFFSCREENCANVAS_SUPPORT')
+  if settings.WASM_EXCEPTIONS or settings.SUPPORT_LONGJMP == 'wasm': # Wasm longjmp support will lean on Wasm (Legacy) EH
+    if settings.WASM_LEGACY_EXCEPTIONS:
+      enable_feature(Feature.WASM_LEGACY_EXCEPTIONS, 'Wasm Legacy exceptions (-fwasm-exceptions with -sWASM_LEGACY_EXCEPTIONS=1)')
+    else:
+      enable_feature(Feature.WASM_EXCEPTIONS, 'Wasm exceptions (-fwasm-exceptions with -sWASM_LEGACY_EXCEPTIONS=0)')

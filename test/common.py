@@ -1132,8 +1132,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_SIMD to skip')
 
   def require_wasm_legacy_eh(self):
-    if 'EMTEST_SKIP_EH' in os.environ:
-      self.skipTest('test requires node >= 17 or d8 (and EMTEST_SKIP_EH is set)')
+    if 'EMTEST_SKIP_WASM_LEGACY_EH' in os.environ:
+      self.skipTest('test requires node >= 17 or d8 (and EMTEST_SKIP_WASM_LEGACY_EH is set)')
+
     self.set_setting('WASM_LEGACY_EXCEPTIONS')
     if self.try_require_node_version(17):
       return
@@ -1144,11 +1145,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.js_engines = [v8]
       return
 
-    self.fail('either d8 or node >= 17 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
+    self.fail('either d8 or node >= 17 required to run legacy wasm-eh tests.  Use EMTEST_SKIP_WASM_LEGACY_EH to skip')
 
   def require_wasm_eh(self):
-    if 'EMTEST_SKIP_EH' in os.environ:
-      self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_EH is set)')
+    if 'EMTEST_SKIP_WASM_EH' in os.environ:
+      self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_WASM_EH is set)')
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
     if self.try_require_node_version(24):
       self.node_args.append('--experimental-wasm-exnref')
@@ -1164,7 +1165,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.v8_args.append('--experimental-wasm-exnref')
       return
 
-    self.fail('either d8 or node v24 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
+    self.fail('either d8 or node v24 required to run wasm-eh tests.  Use EMTEST_SKIP_WASM_EH to skip')
 
   def require_jspi(self):
     if 'EMTEST_SKIP_JSPI' in os.environ:
