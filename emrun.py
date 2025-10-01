@@ -229,8 +229,9 @@ def create_emrun_safe_firefox_profile():
   temp_firefox_profile_dir = tempfile.mkdtemp(prefix='temp_emrun_firefox_profile_')
   with open(os.path.join(temp_firefox_profile_dir, 'prefs.js'), 'w') as f:
     f.write('''
-// Lift the default max 20 workers limit to something higher to avoid hangs when page needs to spawn a lot of threads.
-user_pref("dom.workers.maxPerDomain", 100);
+// Old Firefox browsers have a maxPerDomain limit of 20. Newer Firefox browsers default to 512. Match the new
+// default here to help test spawning a lot of threads also on older Firefox versions.
+user_pref("dom.workers.maxPerDomain", 512);
 // Always allow opening popups
 user_pref("browser.popups.showPopupBlocker", false);
 user_pref("dom.disable_open_during_load", false);
@@ -577,8 +578,9 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
 
 # Processes HTTP request back to the browser.
 class HTTPHandler(SimpleHTTPRequestHandler):
+  protocol_version = 'HTTP/1.1'  # noqa: DC01
+
   def send_head(self):
-    self.protocol_version = 'HTTP/1.1'
     global page_last_served_time
     path = self.translate_path(self.path)
     f = None
@@ -662,14 +664,13 @@ class HTTPHandler(SimpleHTTPRequestHandler):
     if code != 200:
       SimpleHTTPRequestHandler.log_request(self, code)
 
-  def log_message(self, format, *args):
+  def log_message(self, format, *args):  # noqa: DC04
     msg = '%s - - [%s] %s\n' % (self.address_string(), self.log_date_time_string(), format % args)
     # Filter out 404 messages on favicon.ico not being found to remove noise.
     if 'favicon.ico' not in msg:
       sys.stderr.write(msg)
 
-  def do_POST(self):
-    self.protocol_version = 'HTTP/1.1'
+  def do_POST(self):  # # noqa: DC04
     global page_exit_code, have_received_messages
 
     (_, _, path, query, _) = urlsplit(self.path)

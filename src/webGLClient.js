@@ -229,7 +229,12 @@ function WebGLClient() {
     40: { name: 'texImage2D', func: func9 },
     41: { name: 'compressedTexImage2D', func: func7 },
     42: { name: 'activeTexture', func: activeTexture },
-    43: { name: 'getShaderParameter', func: () => assert(ctx.getShaderParameter(objects[buffer[i++]], buffer[i++]), 'we cannot handle errors, we are async proxied WebGL') },
+    43: { name: 'getShaderParameter', func: () => {
+      // Log shader compilation errors as warnings in the console log, since we cannot get the compilation logs back to the proxied Worker in any other way.
+      var object = objects[buffer[i++]];
+      var param = buffer[i++];
+      if (!ctx.getShaderParameter(object, param) && param == ctx.COMPILE_STATUS) console.warn(`Shader compilation failed: ${ctx.getShaderInfoLog(object)}`);
+    } },
     44: { name: 'clearDepth', func: func1 },
     45: { name: 'depthFunc', func: func1 },
     46: { name: 'frontFace', func: func1 },

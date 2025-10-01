@@ -756,7 +756,7 @@ function cpuprofiler_add_hooks() {
   emscriptenCpuProfiler.initialize();
 }
 
-if (typeof document != 'undefined') {
+if (globalThis.document) {
   emscriptenCpuProfiler.initialize();
 }
 

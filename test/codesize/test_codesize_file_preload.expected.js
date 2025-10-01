@@ -1,6 +1,8 @@
 // include: shell.js
 "use strict";
 
+// include: minimum_runtime_check.js
+// end include: minimum_runtime_check.js
 // The Module object: Our interface to the outside world. We import
 // and export values on it. There are various ways Module can be used:
 // 1. Not defined. We create it here
@@ -19,13 +21,13 @@ var Module = typeof Module != "undefined" ? Module : {};
 // Determine the runtime environment we are in. You can customize this by
 // setting the ENVIRONMENT setting at compile time (see settings.js).
 // Attempt to auto-detect the environment
-var ENVIRONMENT_IS_WEB = typeof window == "object";
+var ENVIRONMENT_IS_WEB = !!globalThis.window;
 
-var ENVIRONMENT_IS_WORKER = typeof WorkerGlobalScope != "undefined";
+var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
 
 // N.b. Electron.js environment is simultaneously a NODE-environment, but
 // also a web environment.
-var ENVIRONMENT_IS_NODE = typeof process == "object" && process.versions?.node && process.type != "renderer";
+var ENVIRONMENT_IS_NODE = globalThis.process?.versions?.node && globalThis.process?.type != "renderer";
 
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
@@ -39,7 +41,7 @@ Module["expectedDataFileDownloads"]++;
   var isPthread = typeof ENVIRONMENT_IS_PTHREAD != "undefined" && ENVIRONMENT_IS_PTHREAD;
   var isWasmWorker = typeof ENVIRONMENT_IS_WASM_WORKER != "undefined" && ENVIRONMENT_IS_WASM_WORKER;
   if (isPthread || isWasmWorker) return;
-  var isNode = typeof process === "object" && typeof process.versions === "object" && typeof process.versions.node === "string";
+  var isNode = globalThis.process?.versions?.node && globalThis.process?.type != "renderer";
   async function loadPackage(metadata) {
     var PACKAGE_PATH = "";
     if (typeof window === "object") {
@@ -166,7 +168,7 @@ var quit_ = (status, toThrow) => {
 
 // In MODULARIZE mode _scriptName needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
-var _scriptName = typeof document != "undefined" ? document.currentScript?.src : undefined;
+var _scriptName = globalThis.document?.currentScript?.src;
 
 if (typeof __filename != "undefined") {
   // Node
@@ -664,7 +666,7 @@ var PATH_FS = {
   }
 };
 
-var UTF8Decoder = typeof TextDecoder != "undefined" ? new TextDecoder : undefined;
+var UTF8Decoder = globalThis.TextDecoder ? new TextDecoder : undefined;
 
 var findStringEnd = (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
   var maxIdx = idx + maxBytesToRead;
@@ -823,7 +825,7 @@ var FS_stdin_getChar = () => {
       if (bytesRead > 0) {
         result = buf.slice(0, bytesRead).toString("utf-8");
       }
-    } else if (typeof window != "undefined" && typeof window.prompt == "function") {
+    } else if (globalThis.window?.prompt) {
       // Browser.
       result = window.prompt("Input: ");
       // returns null on cancel
@@ -2797,7 +2799,7 @@ var FS = {
   },
   forceLoadFile(obj) {
     if (obj.isDevice || obj.isFolder || obj.link || obj.contents) return true;
-    if (typeof XMLHttpRequest != "undefined") {
+    if (globalThis.XMLHttpRequest) {
       abort("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
     } else {
       // Command-line.
@@ -2897,7 +2899,7 @@ var FS = {
         return this._chunkSize;
       }
     }
-    if (typeof XMLHttpRequest != "undefined") {
+    if (globalThis.XMLHttpRequest) {
       if (!ENVIRONMENT_IS_WORKER) abort("Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc");
       var lazyArray = new LazyUint8Array;
       var properties = {
@@ -3155,7 +3157,7 @@ Module["FS_createLazyFile"] = FS_createLazyFile;
 var _main, wasmMemory, wasmTable;
 
 function assignWasmExports(wasmExports) {
-  Module["_main"] = _main = wasmExports["d"];
+  _main = Module["_main"] = wasmExports["d"];
   wasmMemory = wasmExports["b"];
   wasmTable = wasmExports["__indirect_function_table"];
 }

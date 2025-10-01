@@ -24,9 +24,12 @@
 #if WASM2JS && MODULARIZE
 #error "-sWASM=0 + -sMODULARIZE + -sWASM_WORKERS is not supported"
 #endif
+#if EXPORT_ES6 && (MIN_FIREFOX_VERSION < 114 || MIN_CHROME_VERSION < 80 || MIN_SAFARI_VERSION < 150000)
+#error "internal error, feature_matrix should not allow this"
+#endif
 
 {{{
-  const workerSupportsFutexWait = () => AUDIO_WORKLET ? "typeof AudioWorkletGlobalScope === 'undefined'" : '1';
+  const workerSupportsFutexWait = () => AUDIO_WORKLET ? "!ENVIRONMENT_IS_AUDIO_WORKLET" : '1';
   const wasmWorkerJs = `
 #if MINIMAL_RUNTIME
 #if ENVIRONMENT_MAY_BE_NODE
@@ -146,7 +149,7 @@ addToLibrary({
 
 #if AUDIO_WORKLET
     // Audio Worklets do not have postMessage()ing capabilities.
-    if (typeof AudioWorkletGlobalScope === 'undefined') {
+    if (!ENVIRONMENT_IS_AUDIO_WORKLET) {
 #endif
       // The Wasm Worker runtime is now up, so we can start processing
       // any postMessage function calls that have been received. Drop the temp
@@ -190,7 +193,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
     let worker;
 #if TRUSTED_TYPES
     // Use Trusted Types compatible wrappers.
-    if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
+    if (globalThis.trustedTypes?.createPolicy) {
       var p = trustedTypes.createPolicy(
           'emscripten#workerPolicy1', { createScriptURL: (ignored) => {{{ wasmWorkerJs }}}}
       );

@@ -160,7 +160,7 @@ class NativeBenchmarker(Benchmarker):
     self.cxx = cxx
     self.args = args or [OPTIMIZATIONS]
 
-  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
+  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder):
     native_args = native_args or []
     shared_args = shared_args or []
     self.parent = parent
@@ -213,7 +213,7 @@ class EmscriptenBenchmarker(Benchmarker):
       self.env.update(env)
     self.binaryen_opts = binaryen_opts or []
 
-  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
+  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder):
     emcc_args = emcc_args or []
     self.filename = filename
     llvm_root = self.env.get('LLVM') or config.LLVM_ROOT
@@ -294,7 +294,7 @@ class CheerpBenchmarker(Benchmarker):
     self.args = args or [OPTIMIZATIONS]
     self.binaryen_opts = binaryen_opts or []
 
-  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
+  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder):
     cheerp_args = [
       '-fno-math-errno',
     ]
@@ -459,7 +459,7 @@ class benchmark(common.RunnerCore):
         reps = 0
       baseline = b
       print('Running benchmarker: %s: %s' % (b.__class__.__name__, b.name))
-      b.build(self, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser=output_parser is not None)
+      b.build(self, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder)
       b.bench(args, output_parser, reps, expected_output)
       recorded_stats = b.display(baseline)
       if recorded_stats:
