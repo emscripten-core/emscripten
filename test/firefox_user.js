@@ -1,5 +1,6 @@
-// Lift the default max 20 workers limit to something higher to avoid hangs when page needs to spawn a lot of threads.
-user_pref("dom.workers.maxPerDomain", 100);
+// Old Firefox browsers have a maxPerDomain limit of 20. Newer Firefox browsers default to 512. Match the new
+// default here to help test spawning a lot of threads also on older Firefox versions.
+user_pref("dom.workers.maxPerDomain", 512);
 // Always allow opening popups
 user_pref("browser.popups.showPopupBlocker", false);
 user_pref("dom.disable_open_during_load", false);

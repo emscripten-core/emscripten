@@ -38,6 +38,8 @@ class Feature(IntEnum):
   THREADS = auto()
   PROMISE_ANY = auto()
   MEMORY64 = auto()
+  WORKER_ES6_MODULES = auto()
+  OFFSCREENCANVAS_SUPPORT = auto()
 
 
 disable_override_features = set()
@@ -85,6 +87,23 @@ min_browser_versions = {
     'firefox': 129,
     'safari': UNSUPPORTED,
     'node': 230000,
+  },
+  # https://caniuse.com/mdn-api_worker_worker_ecmascript_modules: The ability to
+  # call new Worker(url, { type: 'module' });
+  Feature.WORKER_ES6_MODULES: {
+    'chrome': 80,
+    'firefox': 114,
+    'safari': 150000,
+    'node': 0, # This is a browser only feature, no requirements on Node.js
+  },
+  # OffscreenCanvas feature allows creating canvases that are not connected to
+  # a visible DOM element, e.g. in a Worker.
+  # https://caniuse.com/offscreencanvas
+  Feature.OFFSCREENCANVAS_SUPPORT: {
+    'chrome': 69,
+    'firefox': 105,
+    'safari': 170000,
+    'node': 0, # This is a browser only feature, no requirements on Node.js
   },
 }
 
@@ -149,6 +168,7 @@ def enable_feature(feature, reason, override=False):
             f'({min_version} or above required)')
       else:
         # If no conflict, bump the minimum version to accommodate the feature.
+        logger.debug(f'Enabling {name}={min_version} to accommodate {reason}')
         setattr(settings, name, min_version)
 
 
@@ -173,3 +193,9 @@ def apply_min_browser_versions():
     enable_feature(Feature.BULK_MEMORY, 'shared-mem')
   if settings.MEMORY64 == 1:
     enable_feature(Feature.MEMORY64, 'MEMORY64')
+  if settings.EXPORT_ES6 and settings.PTHREADS:
+    enable_feature(Feature.WORKER_ES6_MODULES, 'EXPORT_ES6 with -pthread')
+  if settings.EXPORT_ES6 and settings.WASM_WORKERS:
+    enable_feature(Feature.WORKER_ES6_MODULES, 'EXPORT_ES6 with -sWASM_WORKERS')
+  if settings.OFFSCREENCANVAS_SUPPORT:
+    enable_feature(Feature.OFFSCREENCANVAS_SUPPORT, 'OFFSCREENCANVAS_SUPPORT')

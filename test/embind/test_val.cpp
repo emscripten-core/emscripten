@@ -41,6 +41,7 @@ EMSCRIPTEN_BINDINGS(test_bindings) {
 
 int main() {
   printf("start\n");
+  Dummy *dummy;
 
   test("val array()");
   val::global().set("a", val::array());
@@ -408,6 +409,14 @@ int main() {
   ensure_js("a instanceof A");
   ensure_js("a.arg1 == 2");
   ensure_js("a.arg2 == 'b'");
+#if __cplusplus >= 201703L
+  dummy = new Dummy();
+  val::global().set("a", val::global("A").new_(dummy, val("b"), allow_raw_pointers()));
+  ensure_js("a instanceof A");
+  ensure_js("a.arg1 instanceof Module.Dummy");
+  ensure_js("a.arg2 == 'b'");
+  delete dummy;
+#endif
 
   test("template<typename T> val operator[](const T& key)");
   EM_ASM(
@@ -457,6 +466,11 @@ int main() {
   );
   ensure(val::global("f1")(val(2),val("3")).as<int>() == 2);
   ensure(val::global("f2")(val(2),val("3")).as<string>() == "3");
+#if __cplusplus >= 201703L
+  dummy = new Dummy();
+  ensure(val::global("f1")(dummy, 42, allow_raw_pointers()).as<Dummy*>(allow_raw_pointers()) == dummy);
+  delete dummy;
+#endif
 
   test("template<typename ReturnValue, typename... Args> ReturnValue call(const char* name, Args&&... args)");
   EM_ASM(
@@ -473,6 +487,18 @@ int main() {
     c = new C;
   );
   ensure(val::global("c").call<int>("method", val(2)) == 2);
+#if __cplusplus >= 201703L
+  dummy = new Dummy();
+  EM_ASM(
+    globalThis.C = function() {
+      this.method = function(arg) { this.obj = arg; };
+    };
+    c = new C;
+  );
+  val::global("c").call<void>("method", dummy, allow_raw_pointers());
+  ensure_js("c.obj instanceof Module.Dummy");
+  delete dummy;
+#endif
 
   test("template<typename T, typename ...Policies> T as(Policies...)");
   EM_ASM(
@@ -677,11 +703,23 @@ int main() {
   ensure_js("a == '😃 = \U0001F603 is :-D'");
 
   test("val set() with policy");
-  Dummy *dummy = new Dummy();
+  dummy = new Dummy();
   val::global().set("a", dummy, allow_raw_pointers());
   ensure_js("a instanceof Module.Dummy");
   val::global().set("a", val::null());
   delete dummy;
+
+  test("val as<> with reference");
+  EM_ASM(
+    globalThis.staticDummy =  Module.makeDummy();
+    globalThis.c = function(obj) {
+      return globalThis.staticDummy;
+    };
+  );
+  Dummy& staticDummy = val::global("c")().as<Dummy&>();
+  EM_ASM(
+    globalThis.staticDummy.delete();
+  );
 
   printf("end\n");
   return 0;

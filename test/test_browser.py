@@ -202,7 +202,8 @@ requires_graphics_hardware = skipExecIf(os.getenv('EMTEST_LACKS_GRAPHICS_HARDWAR
 requires_webgl2 = unittest.skipIf(webgl2_disabled(), "This test requires WebGL2 to be available")
 requires_webgpu = unittest.skipIf(webgpu_disabled(), "This test requires WebGPU to be available")
 requires_sound_hardware = skipExecIf(os.getenv('EMTEST_LACKS_SOUND_HARDWARE'), 'This test requires sound hardware')
-requires_offscreen_canvas = skipExecIf(os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'), 'This test requires a browser with OffscreenCanvas')
+requires_offscreen_canvas = unittest.skipIf(os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'), 'This test requires a browser with OffscreenCanvas')
+requires_es6_workers = unittest.skipIf(os.getenv('EMTEST_LACKS_ES6_WORKERS'), 'This test requires a browser with ES6 Module Workers support')
 
 
 class browser(BrowserCore):
@@ -501,13 +502,24 @@ window.close = () => {
       <script src="browser_reporting.js"></script>
       <script>
         // Clear the cache, so that the next test starts from a clean slate.
-        indexedDB.databases().then(dbs => {
-          Promise.all(dbs.map(db => {
-            return indexedDB.deleteDatabase(db.name);
-          })).then(() => {
-            reportResultToServer("clear");
+        if (indexedDB.databases) {
+          // If the tested browser supports IndexedDB 3.0 API, then enumerate all
+          // available databases and delete them.
+          indexedDB.databases().then(dbs => {
+            Promise.all(dbs.map(db => {
+              return indexedDB.deleteDatabase(db.name);
+            })).then(() => {
+              reportResultToServer("clear");
+            });
           });
-        });
+        } else {
+          // Testing an old browser that does not support indexedDB.databases():
+          // Delete the fixed database EM_PRELOAD_CACHE (this is hardcoded in
+          // file packager)
+          indexedDB.deleteDatabase('EM_PRELOAD_CACHE').onsuccess = () => {
+            reportResultToServer("clear");
+          };
+        }
       </script>
     ''')
     self.run_browser('clear_indexed_db.html', '/report_result?clear')
@@ -2632,6 +2644,7 @@ Module["preRun"] = () => {
     self.btest_exit('webgl_create_context2.c')
 
   @requires_graphics_hardware
+  @requires_offscreen_canvas
   # Verify bug https://github.com/emscripten-core/emscripten/issues/22943: creating a WebGL context with explicit swap control and offscreenCanvas
   @parameterized({
     'offscreencanvas': (['-sOFFSCREENCANVAS_SUPPORT'],),
@@ -4634,6 +4647,7 @@ Module["preRun"] = () => {
 
   # Tests emscripten_set_canvas_element_size() and OffscreenCanvas functionality in different build configurations.
   @requires_graphics_hardware
+  @requires_offscreen_canvas
   @parameterized({
     '': ([], True),
     'offscreen': (['-sOFFSCREENCANVAS_SUPPORT'], True),
@@ -4720,6 +4734,7 @@ Module["preRun"] = () => {
     'blob_es6': (True, True),
     'url_es6': (True, False),
   })
+  @requires_es6_workers
   def test_mainScriptUrlOrBlob(self, es6, use_blob):
     # TODO: enable this with wasm, currently pthreads/atomics have limitations
     self.set_setting('EXIT_RUNTIME')
@@ -5069,6 +5084,7 @@ Module["preRun"] = () => {
   def test_wasm_worker_hello(self):
     self.btest_exit('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS', '-sENVIRONMENT=web'])
 
+  @requires_es6_workers
   def test_wasm_worker_hello_export_es6(self):
     self.btest_exit('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS', '-sENVIRONMENT=web', '-sEXPORT_ES6'])
 
@@ -5462,6 +5478,7 @@ Module["preRun"] = () => {
     'audio_params_disabled': (['-sAUDIO_WORKLET_SUPPORT_AUDIO_PARAMS=0'],),
   })
   @requires_sound_hardware
+  @requires_es6_workers
   def test_audio_worklet(self, args):
     self.btest_exit('webaudio/audioworklet.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DTEST_AND_EXIT'] + args)
 

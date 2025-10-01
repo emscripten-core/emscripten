@@ -47,7 +47,7 @@ def esm_integration(func):
   @wraps(func)
   def decorated(self, *args, **kwargs):
     self.setup_esm_integration()
-    func(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   return decorated
 
@@ -55,14 +55,14 @@ def esm_integration(func):
 def no_modularize_instance(note):
   assert not callable(note)
 
-  def decorator(f):
-    assert callable(f)
+  def decorator(func):
+    assert callable(func)
 
-    @wraps(f)
+    @wraps(func)
     def decorated(self, *args, **kwargs):
       if self.get_setting('MODULARIZE') == 'instance' or self.get_setting('WASM_ESM_INTEGRATION'):
         self.skipTest(note)
-      f(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     return decorated
 
   return decorator
@@ -71,23 +71,23 @@ def no_modularize_instance(note):
 def no_esm_integration(note):
   assert not callable(note)
 
-  def decorator(f):
-    assert callable(f)
+  def decorator(func):
+    assert callable(func)
 
-    @wraps(f)
+    @wraps(func)
     def decorated(self, *args, **kwargs):
       if self.get_setting('WASM_ESM_INTEGRATION'):
         self.skipTest(note)
-      f(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     return decorated
 
   return decorator
 
 
-def wasm_simd(f):
-  assert callable(f)
+def wasm_simd(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_simd()
     if self.get_setting('MEMORY64') == 2:
@@ -99,48 +99,48 @@ def wasm_simd(f):
     self.cflags.append('-msimd128')
     self.cflags.append('-fno-lax-vector-conversions')
     self.v8_args.append('--experimental-wasm-simd')
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
   return decorated
 
 
-def asan(f):
-  assert callable(f)
+def asan(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm2js('TODO: ASAN in wasm2js')
   @no_wasm64('TODO: ASAN in memory64')
   @no_2gb('asan doesnt support GLOBAL_BASE')
   @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   def decorated(self, *args, **kwargs):
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   return decorated
 
 
-def wasm_relaxed_simd(f):
-  assert callable(f)
+def wasm_relaxed_simd(func):
+  assert callable(func)
 
-  @wraps(f)
-  def decorated(self):
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
     if self.get_setting('MEMORY64') == 2:
       self.skipTest('https://github.com/WebAssembly/binaryen/issues/4638')
     # We don't actually run any tests yet, so don't require any engines.
     if self.is_wasm2js():
       self.skipTest('wasm2js only supports MVP for now')
     self.cflags.append('-mrelaxed-simd')
-    f(self)
+    return func(self, *args, **kwargs)
   return decorated
 
 
-def needs_non_trapping_float_to_int(f):
-  assert callable(f)
+def needs_non_trapping_float_to_int(func):
+  assert callable(func)
 
-  @wraps(f)
-  def decorated(self):
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
     if self.is_wasm2js():
       self.skipTest('wasm2js only supports MVP for now')
-    f(self)
+    return func(self, *args, **kwargs)
   return decorated
 
 
@@ -186,8 +186,8 @@ def with_dylink_reversed(func):
 def no_wasm2js(note=''):
   assert not callable(note)
 
-  def decorated(f):
-    return skip_if(f, 'is_wasm2js', note)
+  def decorated(func):
+    return skip_if(func, 'is_wasm2js', note)
   return decorated
 
 
@@ -204,15 +204,15 @@ def no_wasm2js(note=''):
 def only_wasm2js(note=''):
   assert not callable(note)
 
-  def decorated(f):
-    return skip_if(f, 'is_wasm2js', note, negate=True)
+  def decorated(func):
+    return skip_if(func, 'is_wasm2js', note, negate=True)
   return decorated
 
 
-def with_asyncify_and_jspi(f):
-  assert callable(f)
+def with_asyncify_and_jspi(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, jspi, *args, **kwargs):
     if self.get_setting('WASM_ESM_INTEGRATION'):
       self.skipTest('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
@@ -221,17 +221,17 @@ def with_asyncify_and_jspi(f):
       self.require_jspi()
     else:
       self.set_setting('ASYNCIFY')
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'jspi': (True,)})
   return metafunc
 
 
-def also_with_asyncify_and_jspi(f):
-  assert callable(f)
+def also_with_asyncify_and_jspi(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, asyncify, *args, **kwargs):
     if asyncify and self.get_setting('WASM_ESM_INTEGRATION'):
       self.skipTest('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
@@ -242,7 +242,7 @@ def also_with_asyncify_and_jspi(f):
       self.set_setting('ASYNCIFY')
     else:
       assert asyncify == 0
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (0,),
                           'asyncify': (1,),
@@ -257,10 +257,10 @@ def no_optimize(note=''):
     assert callable(func)
 
     @wraps(func)
-    def decorated(self):
+    def decorated(self, *args, **kwargs):
       if self.is_optimizing():
         self.skipTest(note)
-      func(self)
+      return func(self, *args, **kwargs)
     return decorated
   return decorator
 
@@ -268,14 +268,14 @@ def no_optimize(note=''):
 def no_asan(note):
   assert not callable(note)
 
-  def decorator(f):
-    assert callable(f)
+  def decorator(func):
+    assert callable(func)
 
-    @wraps(f)
+    @wraps(func)
     def decorated(self, *args, **kwargs):
       if '-fsanitize=address' in self.cflags:
         self.skipTest(note)
-      f(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     return decorated
   return decorator
 
@@ -283,14 +283,14 @@ def no_asan(note):
 def no_lsan(note):
   assert not callable(note)
 
-  def decorator(f):
-    assert callable(f)
+  def decorator(func):
+    assert callable(func)
 
-    @wraps(f)
+    @wraps(func)
     def decorated(self, *args, **kwargs):
       if '-fsanitize=leak' in self.cflags:
         self.skipTest(note)
-      f(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     return decorated
   return decorator
 
@@ -298,14 +298,14 @@ def no_lsan(note):
 def no_ubsan(note):
   assert not callable(note)
 
-  def decorator(f):
-    assert callable(f)
+  def decorator(func):
+    assert callable(func)
 
-    @wraps(f)
+    @wraps(func)
     def decorated(self, *args, **kwargs):
       if '-fsanitize=undefined' in self.cflags:
         self.skipTest(note)
-      f(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     return decorated
   return decorator
 
@@ -313,14 +313,14 @@ def no_ubsan(note):
 def no_sanitize(note):
   assert not callable(note)
 
-  def decorator(f):
-    assert callable(f)
+  def decorator(func):
+    assert callable(func)
 
-    @wraps(f)
+    @wraps(func)
     def decorated(self, *args, **kwargs):
       if any(a.startswith('-fsanitize=') for a in self.cflags):
         self.skipTest(note)
-      f(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     return decorated
   return decorator
 
@@ -328,14 +328,14 @@ def no_sanitize(note):
 def no_wasmfs(note):
   assert not callable(note)
 
-  def decorator(f):
-    assert callable(f)
+  def decorator(func):
+    assert callable(func)
 
-    @wraps(f)
+    @wraps(func)
     def decorated(self, *args, **kwargs):
       if self.get_setting('WASMFS'):
         self.skipTest(note)
-      f(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     return decorated
   return decorator
 
@@ -344,10 +344,10 @@ def make_no_decorator_for_setting(name):
   def outer_decorator(note):
     assert not callable(note)
 
-    def decorator(f):
-      assert callable(f)
+    def decorator(func):
+      assert callable(func)
 
-      @wraps(f)
+      @wraps(func)
       def decorated(self, *args, **kwargs):
         if '=' in name:
           key, val = name.split('=', 1)
@@ -358,19 +358,19 @@ def make_no_decorator_for_setting(name):
           self.skipTest(note)
         if f'-s{key}={val}' in self.cflags or self.get_setting(key) == int(val):
           self.skipTest(note)
-        f(self, *args, **kwargs)
+        return func(self, *args, **kwargs)
       return decorated
     return decorator
   return outer_decorator
 
 
-def with_both_text_decoder(f):
-  assert callable(f)
+def with_both_text_decoder(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def decorated(self, textdecoder, *args, **kwargs):
     self.set_setting('TEXTDECODER', textdecoder)
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(decorated, {'': (1,), 'force_textdecoder': (2,)})
 
@@ -2814,7 +2814,7 @@ The current type of b is: 9
 
   def test_stack_overflow(self):
     self.set_setting('ASSERTIONS', 2)
-    self.do_runf('core/stack_overflow.c', 'Aborted(stack overflow', assert_returncode=NON_ZERO)
+    self.do_runf('core/stack_overflow.c', 'stack overflow', assert_returncode=NON_ZERO)
 
   def test_stackAlloc(self):
     self.do_core_test('test_stackAlloc.c')
@@ -7253,7 +7253,7 @@ void* operator new(size_t size) {
     test('ALLOC_STACK is not defined', args=['-DDIRECT'], assert_returncode=NON_ZERO)
 
     # When assertions are enabled direct and indirect usage both abort with a useful error message.
-    not_exported = "Aborted('ALLOC_STACK' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the Emscripten FAQ))"
+    not_exported = "'ALLOC_STACK' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the Emscripten FAQ)"
     not_included = "`ALLOC_STACK` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line (e.g. -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE='$ALLOC_STACK')"
     self.set_setting('ASSERTIONS')
     test(not_exported, assert_returncode=NON_ZERO)
@@ -8676,15 +8676,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_stack_overflow_check(self):
     self.set_setting('STACK_SIZE', 1048576)
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
-    self.do_runf('stack_overflow.cpp', 'Aborted(stack overflow', assert_returncode=NON_ZERO)
+    self.do_runf('stack_overflow.cpp', 'stack overflow', assert_returncode=NON_ZERO)
 
     self.cflags += ['-DONE_BIG_STRING']
-    self.do_runf('stack_overflow.cpp', 'Aborted(stack overflow', assert_returncode=NON_ZERO)
+    self.do_runf('stack_overflow.cpp', 'stack overflow', assert_returncode=NON_ZERO)
 
     # ASSERTIONS=2 implies STACK_OVERFLOW_CHECK=2
     self.clear_setting('STACK_OVERFLOW_CHECK')
     self.set_setting('ASSERTIONS', 2)
-    self.do_runf('stack_overflow.cpp', 'Aborted(stack overflow', assert_returncode=NON_ZERO)
+    self.do_runf('stack_overflow.cpp', 'stack overflow', assert_returncode=NON_ZERO)
 
   @node_pthreads
   def test_binaryen_2170_emscripten_atomic_cas_u8(self):
@@ -9125,9 +9125,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('STACK_SIZE', 1024)
     if self.is_optimizing():
-      expected = [r'Aborted\(stack overflow \(Attempt to set SP to 0x[0-9a-fA-F]+, with stack limits \[0x[0-9a-fA-F]+ - 0x[0-9a-fA-F]+\]\)']
+      expected = [r'stack overflow \(Attempt to set SP to 0x[0-9a-fA-F]+, with stack limits \[0x[0-9a-fA-F]+ - 0x[0-9a-fA-F]+\]\)']
     else:
-      expected = [r'Aborted\(stack overflow \(Attempt to set SP to 0x[0-9a-fA-F]+, with stack limits \[0x[0-9a-fA-F]+ - 0x[0-9a-fA-F]+\]\)',
+      expected = [r'stack overflow \(Attempt to set SP to 0x[0-9a-fA-F]+, with stack limits \[0x[0-9a-fA-F]+ - 0x[0-9a-fA-F]+\]\)',
                   '__handle_stack_overflow']
     self.do_runf('core/test_safe_stack.c',
                  expected_output=expected,
@@ -9142,9 +9142,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PROXY_TO_PTHREAD')
     self.cflags.append('-pthread')
     if self.is_optimizing():
-      expected = ['Aborted(stack overflow']
+      expected = ['stack overflow']
     else:
-      expected = ['Aborted(stack overflow', '__handle_stack_overflow']
+      expected = ['stack overflow', '__handle_stack_overflow']
     self.do_runf('core/test_safe_stack.c',
                  expected_output=expected,
                  assert_returncode=NON_ZERO, assert_all=True)
@@ -9153,9 +9153,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('STACK_SIZE', 65536)
     if self.is_optimizing():
-      expected = ['Aborted(stack overflow']
+      expected = ['stack overflow']
     else:
-      expected = ['Aborted(stack overflow', '__handle_stack_overflow']
+      expected = ['stack overflow', '__handle_stack_overflow']
     self.do_runf('core/test_safe_stack_alloca.c',
                  expected_output=expected,
                  assert_returncode=NON_ZERO, assert_all=True)
@@ -9186,7 +9186,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       void sidey() {
         f(NULL);
       }
-    ''', ['Aborted(stack overflow', '__handle_stack_overflow'], assert_returncode=NON_ZERO, force_c=True)
+    ''', ['stack overflow', '__handle_stack_overflow'], assert_returncode=NON_ZERO, force_c=True)
 
   def test_fpic_static(self):
     self.cflags.append('-fPIC')
@@ -9435,7 +9435,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   def test_pthread_dylink_tls(self):
     if '-O2' in self.cflags and self.get_setting('STACK_OVERFLOW_CHECK') == 2:
-      self.skipTest('https://github.com/emscripten-core/emscripten/issues/24964: fails with Aborted(stack overflow (Attempt to set SP to 0x000114d0, with stack limits [0x00000000 - 0x00000000])')
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/24964: fails with stack overflow (Attempt to set SP to 0x000114d0, with stack limits [0x00000000 - 0x00000000])')
 
     self.cflags += ['-Wno-experimental', '-pthread']
     main = test_file('core/pthread/test_pthread_dylink_tls.c')
@@ -9716,7 +9716,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   def test_promise_await_error(self):
     # Check that the API is not available when ASYNCIFY is not set
-    self.do_runf('core/test_promise_await.c', 'Aborted(emscripten_promise_await is only available with ASYNCIFY)',
+    self.do_runf('core/test_promise_await.c', 'emscripten_promise_await is only available with ASYNCIFY',
                  assert_returncode=NON_ZERO)
 
   @no_modularize_instance('uses Module object directly')

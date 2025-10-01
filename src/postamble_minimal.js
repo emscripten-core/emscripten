@@ -80,7 +80,26 @@ function run() {
   _main({{{ argc_argv() }}}).then(exitRuntime);
 #elif EXIT_RUNTIME
   // In regular exitRuntime mode, exit with the given return code from main().
-  exitRuntime(_main({{{ argc_argv() }}}));
+  try {
+    exitRuntime(_main({{{ argc_argv() }}}));
+  } catch(e) {
+    var exitCode = e.match(/^exit\((\d+)\)$/);
+    if (exitCode) {
+#if RUNTIME_DEBUG
+      dbg(`main() called ${e}.`); // e.g. "main() called exit(0)."
+#endif
+#if expectToReceiveOnModule('onExit')
+      // Report to Module that the program exited.
+      Module['onExit']?.(exitCode[1]|0);
+#endif
+    } else {
+#if RUNTIME_DEBUG
+      dbg(`main() threw an exception: ${e}.`);
+#endif
+      // Some other exception occurred - re-throw it.
+      throw e;
+    }
+  }
 #else
   // Run a persistent (never-exiting) application starting at main().
   _main({{{ argc_argv() }}});
@@ -267,7 +286,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProp
 #endif
 
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
-  if (typeof location != 'undefined') {
+  if (globalThis.location) {
 #endif
     // WebAssembly compilation failed, try running the JS fallback instead.
     var search = location.search;

@@ -626,7 +626,7 @@ def generate_js(data_target, data_files, metadata):
     if (isPthread || isWasmWorker) return;\n'''
 
   if options.support_node:
-    ret += "    var isNode = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string';\n"
+    ret += "    var isNode = globalThis.process?.versions?.node && globalThis.process?.type != 'renderer';\n"
 
   if options.support_node and options.export_es6:
         ret += '''if (isNode) {

@@ -3117,13 +3117,16 @@ var LibrarySDL = {
     try {
       var offscreenCanvas = new OffscreenCanvas(0, 0);
       SDL.ttfContext = offscreenCanvas.getContext('2d');
-      // Firefox support for OffscreenCanvas is still experimental, and it seems
-      // like CI might be creating a context here but one that is not entirely
-      // valid. Check that explicitly and fall back to a plain Canvas if we need
-      // to. See https://github.com/emscripten-core/emscripten/issues/16242
-      if (typeof SDL.ttfContext.measureText != 'function') {
-        abort('bad context');
+#if MIN_FIREFOX_VERSION < 128 // Conservative, not exact
+      // According to https://developer.mozilla.org/en-US/docs/Web/API/OffscreenCanvasRenderingContext2D
+      // OffscreenCanvasRenderingContext2D.measureText() appeared in
+      // Chrome 69, Firefox 105 and Safari 16.4. Fall back to using regular
+      // Canvas2D if OffscreenCanvas2D exists, but does not look workable.
+      // https://github.com/emscripten-core/emscripten/issues/16242
+      if (!SDL.ttfContext.measureText) {
+        throw 1; // no OffscreenCanvasRenderingContext2D.measureText
       }
+#endif
     } catch (ex) {
       var canvas = /** @type {HTMLCanvasElement} */(document.createElement('canvas'));
       SDL.ttfContext = canvas.getContext('2d');

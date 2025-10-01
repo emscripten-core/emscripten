@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "minimum_runtime_check.js"
+
 #if MODULARIZE
 var Module = moduleArg;
 #elif USE_CLOSURE_COMPILER
@@ -34,7 +36,7 @@ var ENVIRONMENT_IS_NODE = {{{ nodeDetectionCode() }}};
 #endif
 
 #if ENVIRONMENT_MAY_BE_SHELL
-var ENVIRONMENT_IS_SHELL = typeof read == 'function';
+var ENVIRONMENT_IS_SHELL = !!globalThis.read;
 #endif
 
 #if ASSERTIONS || PTHREADS
@@ -58,21 +60,22 @@ if (ENVIRONMENT_IS_NODE) {
 }
 #endif
 
-#if WASM_WORKERS
-var ENVIRONMENT_IS_WASM_WORKER = globalThis.name == 'em-ww';
+#if AUDIO_WORKLET
+var ENVIRONMENT_IS_AUDIO_WORKLET = !!globalThis.AudioWorkletGlobalScope;
+#endif
 
-#if ENVIRONMENT_MAY_BE_NODE
+#if AUDIO_WORKLET && WASM_WORKERS
+var ENVIRONMENT_IS_WASM_WORKER = globalThis.name == 'em-ww' || ENVIRONMENT_IS_AUDIO_WORKLET;
+#elif WASM_WORKERS
+var ENVIRONMENT_IS_WASM_WORKER = globalThis.name == 'em-ww';
+#endif
+
+#if WASM_WORKERS && ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
   // The way we signal to a worker that it is hosting a pthread is to construct
   // it with a specific name.
   ENVIRONMENT_IS_WASM_WORKER = worker_threads['workerData'] == 'em-ww'
 }
-#endif
-#endif
-
-#if AUDIO_WORKLET
-var ENVIRONMENT_IS_AUDIO_WORKLET = !!globalThis.AudioWorkletGlobalScope;
-if (ENVIRONMENT_IS_AUDIO_WORKLET) ENVIRONMENT_IS_WASM_WORKER = true;
 #endif
 
 #if ASSERTIONS && ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_SHELL
@@ -130,7 +133,7 @@ function ready() {
 #if PTHREADS
 // MINIMAL_RUNTIME does not support --proxy-to-worker option, so Worker and Pthread environments
 // coincide.
-var ENVIRONMENT_IS_WORKER = typeof WorkerGlobalScope != 'undefined';
+var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
 var ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && self.name?.startsWith('em-pthread');
 
 #if !MODULARIZE
@@ -171,7 +174,7 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 if (ENVIRONMENT_IS_NODE) {
   var fs = require('fs');
 #if WASM == 2
-  if (typeof WebAssembly != 'undefined') Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
+  if (globalThis.WebAssembly) Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
   else eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm.js')+'');
 #else
 #if !WASM2JS
@@ -184,7 +187,7 @@ if (ENVIRONMENT_IS_NODE) {
 #if ENVIRONMENT_MAY_BE_SHELL && ((WASM == 1 && !WASM2JS) || WASM == 2)
 if (ENVIRONMENT_IS_SHELL) {
 #if WASM == 2
-  if (typeof WebAssembly != 'undefined') Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
+  if (globalThis.WebAssembly) Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
   else eval(read('{{{ TARGET_BASENAME }}}.wasm.js')+'');
 #else
 #if !WASM2JS
