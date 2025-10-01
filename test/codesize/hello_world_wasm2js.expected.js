@@ -1,4 +1,4 @@
-var d = Module, f, h = new TextDecoder, k, l;
+var d = Module, g, h = new TextDecoder, k, l;
 
 function e(a) {
     this.exports = function(q) {
@@ -8,8 +8,8 @@ function e(a) {
             t < x && (r[t++] = v << 6 | c[m.charCodeAt(p + 3)]);
             return r;
         }
-        for (var n, c = new Uint8Array(123), g = 25; 0 <= g; --g) c[48 + g] = 52 + g, c[65 + g] = g, 
-        c[97 + g] = 26 + g;
+        for (var n, c = new Uint8Array(123), f = 25; 0 <= f; --f) c[48 + f] = 52 + f, c[65 + f] = f, 
+        c[97 + f] = 26 + f;
         c[43] = 62;
         c[47] = 63;
         return function(r) {
@@ -48,8 +48,8 @@ function e(a) {
         a: a => {
             var q = console, u = q.log;
             if (a) {
-                for (var n = a, c = f, g = n + void 0; c[n] && !(n >= g); ) ++n;
-                a = h.decode(f.subarray(a, n));
+                for (var n = a, c = g, f = n + void 0; c[n] && !(n >= f); ) ++n;
+                a = h.decode(g.subarray(a, n));
             } else a = "";
             u.call(q, a);
         }
@@ -57,8 +57,8 @@ function e(a) {
 }).then((a => {
     a = a.instance.exports;
     k = a.d;
-    l = l = a.b;
-    f = new Uint8Array(l.buffer);
+    l = a.b;
+    g = new Uint8Array(l.buffer);
     a.c();
     k();
 }));

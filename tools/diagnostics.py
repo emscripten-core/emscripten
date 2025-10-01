@@ -22,7 +22,6 @@ force_ansi = False
 # diagnostic levels
 WARN = 1
 ERROR = 2
-FATAL = 3
 
 # available colors
 RED = 1
@@ -247,16 +246,6 @@ class WarningManager:
 
 def add_warning(name, enabled=True, part_of_all=True, shared=False, error=False):
   manager.add_warning(name, enabled, part_of_all, shared, error)
-
-
-def enable_warning(name, as_error=False):
-  manager.warnings[name]['enabled'] = True
-  if as_error:
-    manager.warnings[name]['error'] = True
-
-
-def disable_warning(name):
-  manager.warnings[name]['enabled'] = False
 
 
 def is_enabled(name):

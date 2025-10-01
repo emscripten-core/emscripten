@@ -11,13 +11,13 @@ import {fileURLToPath} from 'node:url';
 import assert from 'node:assert';
 
 import {
+  debugLog,
   isDecorator,
   isJsOnlySymbol,
   error,
   readFile,
   pushCurrentFile,
   popCurrentFile,
-  printErr,
   addToCompileTimeContext,
   runInMacroContext,
   mergeInto,
@@ -266,12 +266,10 @@ export const LibraryManager = {
     for (let filename of this.libraries) {
       const isUserLibrary = !isBeneath(filename, systemLibdir);
 
-      if (VERBOSE) {
-        if (isUserLibrary) {
-          printErr('processing user library: ' + filename);
-        } else {
-          printErr('processing system library: ' + filename);
-        }
+      if (isUserLibrary) {
+        debugLog('processing user library: ' + filename);
+      } else {
+        debugLog('processing system library: ' + filename);
       }
       let origLibrary = undefined;
       let processed = undefined;

@@ -18,7 +18,11 @@ var instantiatePromise;
 
 if (ENVIRONMENT_IS_AUDIO_WORKLET) {
 
+#if AUDIO_WORKLET_SUPPORT_AUDIO_PARAMS
 function createWasmAudioWorkletProcessor(audioParams) {
+#else
+function createWasmAudioWorkletProcessor() {
+#endif
   class WasmAudioWorkletProcessor extends AudioWorkletProcessor {
     constructor(args) {
       super();
@@ -76,9 +80,11 @@ function createWasmAudioWorkletProcessor(audioParams) {
       stackRestore(oldStackPtr);
     }
 
+#if AUDIO_WORKLET_SUPPORT_AUDIO_PARAMS
     static get parameterDescriptors() {
       return audioParams;
     }
+#endif
 
     /**
      * Marshals all inputs and parameters to the Wasm memory on the thread's
@@ -87,7 +93,13 @@ function createWasmAudioWorkletProcessor(audioParams) {
      *
      * @param {Object} parameters
      */
+#if AUDIO_WORKLET_SUPPORT_AUDIO_PARAMS
     process(inputList, outputList, parameters) {
+#else
+    /** @suppress {checkTypes} */
+    process(inputList, outputList) {
+#endif
+
 #if ALLOW_MEMORY_GROWTH
       // Recreate the output views if the heap has changed
       // TODO: add support for GROWABLE_ARRAYBUFFERS
@@ -117,11 +129,13 @@ function createWasmAudioWorkletProcessor(audioParams) {
       }
       stackMemoryData += outputViewsNeeded * this.bytesPerChannel;
       var numParams = 0;
+#if AUDIO_WORKLET_SUPPORT_AUDIO_PARAMS
       for (entry in parameters) {
         ++numParams;
         stackMemoryStruct += {{{ C_STRUCTS.AudioParamFrame.__size__ }}};
         stackMemoryData += parameters[entry].byteLength;
       }
+#endif
       var oldStackPtr = stackSave();
 #if ASSERTIONS
       console.assert(oldStackPtr == this.ctorOldStackPtr, 'AudioWorklet stack address has unexpectedly moved');
@@ -158,6 +172,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
         }
       }
 
+#if AUDIO_WORKLET_SUPPORT_AUDIO_PARAMS
       // Copy parameters descriptor structs and data to Wasm. 'paramsPtr' is the
       // start of the C callback's input AudioParamFrame.
       var /*const*/ paramsPtr = structPtr;
@@ -170,6 +185,9 @@ function createWasmAudioWorkletProcessor(audioParams) {
         HEAPF32.set(subentry, {{{ getHeapOffset('dataPtr', 'float') }}});
         dataPtr += subentry.length * {{{ getNativeTypeSize('float') }}};
       }
+#else
+      var paramsPtr = 0;
+#endif
 
       // Copy output audio descriptor structs to Wasm. 'outputsPtr' is the start
       // of the C callback's output AudioSampleFrame. 'dataPtr' will now be
@@ -261,7 +279,11 @@ class BootstrapMessages extends AudioWorkletProcessor {
         // '_wpn' is short for 'Worklet Processor Node', using an identifier
         // that will never conflict with user messages
         // Register a real AudioWorkletProcessor that will actually do audio processing.
+#if AUDIO_WORKLET_SUPPORT_AUDIO_PARAMS
         registerProcessor(d['_wpn'], createWasmAudioWorkletProcessor(d.audioParams));
+#else
+        registerProcessor(d['_wpn'], createWasmAudioWorkletProcessor());
+#endif
 #if WEBAUDIO_DEBUG
         console.log(`Registered a new WasmAudioWorkletProcessor "${d['_wpn']}" with AudioParams: ${d.audioParams}`);
 #endif

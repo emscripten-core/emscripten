@@ -22,27 +22,26 @@ UNSUPPORTED = 0x7FFFFFFF
 
 # N.b. when modifying these values, update comments in src/settings.js on
 # MIN_x_VERSION fields to match accordingly.
-OLDEST_SUPPORTED_CHROME = 70  # Released on 2018-10-16
-OLDEST_SUPPORTED_FIREFOX = 55  # Released on 2017-08-08
+OLDEST_SUPPORTED_CHROME = 74  # Released on 2019-04-23
+OLDEST_SUPPORTED_FIREFOX = 65  # Released on 2019-01-29
 OLDEST_SUPPORTED_SAFARI = 120200  # Released on 2019-03-25
-# 10.19.0 is the oldest version of node that we do any testing with.
+# 12.22.09 is the oldest version of node that we do any testing with.
 # Keep this in sync with the test-node-compat in .circleci/config.yml.
-OLDEST_SUPPORTED_NODE = 101900
+OLDEST_SUPPORTED_NODE = 122209
 
 
 class Feature(IntEnum):
   NON_TRAPPING_FPTOINT = auto()
   SIGN_EXT = auto()
   BULK_MEMORY = auto()
-  MUTABLE_GLOBALS = auto()
   JS_BIGINT_INTEGRATION = auto()
   THREADS = auto()
-  GLOBALTHIS = auto()
   PROMISE_ANY = auto()
   MEMORY64 = auto()
+  WORKER_ES6_MODULES = auto()
+  OFFSCREENCANVAS_SUPPORT = auto()
 
 
-default_features = {Feature.SIGN_EXT, Feature.MUTABLE_GLOBALS}
 disable_override_features = set()
 enable_override_features = set()
 
@@ -65,12 +64,6 @@ min_browser_versions = {
     'safari': 150000,
     'node': 130000,
   },
-  Feature.MUTABLE_GLOBALS: {
-    'chrome': 74,
-    'firefox': 61,
-    'safari': 120000,
-    'node': 120000,
-  },
   Feature.JS_BIGINT_INTEGRATION: {
     'chrome': 67,
     'firefox': 68,
@@ -83,12 +76,6 @@ min_browser_versions = {
     'safari': 140100,
     'node': 160400,
   },
-  Feature.GLOBALTHIS: {
-    'chrome': 71,
-    'firefox': 65,
-    'safari': 120100,
-    'node': 120000,
-  },
   Feature.PROMISE_ANY: {
     'chrome': 85,
     'firefox': 79,
@@ -100,6 +87,23 @@ min_browser_versions = {
     'firefox': 129,
     'safari': UNSUPPORTED,
     'node': 230000,
+  },
+  # https://caniuse.com/mdn-api_worker_worker_ecmascript_modules: The ability to
+  # call new Worker(url, { type: 'module' });
+  Feature.WORKER_ES6_MODULES: {
+    'chrome': 80,
+    'firefox': 114,
+    'safari': 150000,
+    'node': 0, # This is a browser only feature, no requirements on Node.js
+  },
+  # OffscreenCanvas feature allows creating canvases that are not connected to
+  # a visible DOM element, e.g. in a Worker.
+  # https://caniuse.com/offscreencanvas
+  Feature.OFFSCREENCANVAS_SUPPORT: {
+    'chrome': 69,
+    'firefox': 105,
+    'safari': 170000,
+    'node': 0, # This is a browser only feature, no requirements on Node.js
   },
 }
 
@@ -164,6 +168,7 @@ def enable_feature(feature, reason, override=False):
             f'({min_version} or above required)')
       else:
         # If no conflict, bump the minimum version to accommodate the feature.
+        logger.debug(f'Enabling {name}={min_version} to accommodate {reason}')
         setattr(settings, name, min_version)
 
 
@@ -186,7 +191,11 @@ def apply_min_browser_versions():
     enable_feature(Feature.BULK_MEMORY, 'pthreads')
   elif settings.WASM_WORKERS or settings.SHARED_MEMORY:
     enable_feature(Feature.BULK_MEMORY, 'shared-mem')
-  if settings.AUDIO_WORKLET:
-    enable_feature(Feature.GLOBALTHIS, 'AUDIO_WORKLET')
   if settings.MEMORY64 == 1:
     enable_feature(Feature.MEMORY64, 'MEMORY64')
+  if settings.EXPORT_ES6 and settings.PTHREADS:
+    enable_feature(Feature.WORKER_ES6_MODULES, 'EXPORT_ES6 with -pthread')
+  if settings.EXPORT_ES6 and settings.WASM_WORKERS:
+    enable_feature(Feature.WORKER_ES6_MODULES, 'EXPORT_ES6 with -sWASM_WORKERS')
+  if settings.OFFSCREENCANVAS_SUPPORT:
+    enable_feature(Feature.OFFSCREENCANVAS_SUPPORT, 'OFFSCREENCANVAS_SUPPORT')
