@@ -20,7 +20,7 @@ from urllib.request import urlopen
 import common
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, Reporting, is_chrome, is_firefox, CHROMIUM_BASED_BROWSERS
 from common import create_file, parameterized, ensure_dir, disabled, flaky, test_file, WEBIDL_BINDER
-from common import read_file, EMRUN, no_wasm64, no_2gb, no_4gb, copytree
+from common import read_file, EMRUN, no_wasm64, no_2gb, no_4gb, copytree, skip_if, skip_if_simple
 from common import requires_wasm2js, parameterize, find_browser_test_file, with_all_sjlj
 from common import also_with_minimal_runtime, also_with_wasm2js, also_with_asan, also_with_wasmfs
 from common import HttpServerThread, requires_dev_dependency
@@ -132,32 +132,19 @@ def shell_with_script(shell_file, output_file, replacement):
   create_file(output_file, shell.replace('{{{ SCRIPT }}}', replacement))
 
 
-def no_chrome(note='chrome is not supported'):
-  if is_chrome():
-    return unittest.skip(note)
-  return lambda f: f
+def is_swiftshader(_):
+  return is_chrome() and '--use-gl=swiftshader' in common.EMTEST_BROWSER
 
 
-def no_firefox(note='firefox is not supported'):
-  if is_firefox():
-    return unittest.skip(note)
-  return lambda f: f
+no_swiftshader = skip_if_simple('not compatible with swiftshader', is_swiftshader)
+
+no_chrome = skip_if('no_chrome', lambda _: is_chrome(), 'chrome is not supported')
+
+no_firefox = skip_if('no_firefox', lambda _: is_firefox(), 'firefox is not supported')
 
 
 def is_jspi(args):
   return '-sASYNCIFY=2' in args
-
-
-def no_swiftshader(f):
-  assert callable(f)
-
-  @wraps(f)
-  def decorated(self, *args, **kwargs):
-    if is_chrome() and '--use-gl=swiftshader' in common.EMTEST_BROWSER:
-      self.skipTest('not compatible with swiftshader')
-    return f(self, *args, **kwargs)
-
-  return decorated
 
 
 def also_with_threads(f):
@@ -5524,6 +5511,12 @@ Module["preRun"] = () => {
   @flaky('https://github.com/emscripten-core/emscripten/issues/25245')
   def test_audio_worklet_emscripten_locks(self):
     self.btest_exit('webaudio/audioworklet_emscripten_locks.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread'])
+
+  # Verifies setting audio context sample rate, and that emscripten_audio_context_sample_rate() works.
+  @requires_sound_hardware
+  @also_with_minimal_runtime
+  def test_web_audio_context_sample_rate(self):
+    self.btest_exit('webaudio/audio_context_sample_rate.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
 
   def test_error_reporting(self):
     # Test catching/reporting Error objects

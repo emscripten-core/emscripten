@@ -206,40 +206,42 @@ def compiler_for(filename, force_c=False):
 
 # Generic decorator that calls a function named 'condition' on the test class and
 # skips the test if that function returns true
-def skip_if(func, condition, explanation='', negate=False):
+def skip_if_simple(name, condition, note=''):
+  assert callable(condition)
+  assert not callable(note)
+
+  def decorator(func):
   assert callable(func)
-  explanation_str = ' : %s' % explanation if explanation else ''
 
   @wraps(func)
   def decorated(self, *args, **kwargs):
-    choice = self.__getattribute__(condition)()
-    if negate:
-      choice = not choice
-    if choice:
-      self.skipTest(condition + explanation_str)
+      if condition(self):
+        explanation_str = name
+        if note:
+          explanation_str += ': %s' % note
+        self.skipTest(explanation_str)
     return func(self, *args, **kwargs)
 
   return decorated
+
+  return decorator
+
+
+# Same as skip_if_simple but creates a decorator that takes a note as an argument.
+def skip_if(name, condition, default_note=''):
+  assert callable(condition)
+
+  def decorator(note=default_note):
+    return skip_if_simple(name, condition, note)
+
+  return decorator
 
 
 def is_slow_test(func):
   assert callable(func)
-
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-    if EMTEST_SKIP_SLOW:
-      return self.skipTest('skipping slow tests')
-    return func(self, *args, **kwargs)
-
+  decorated = skip_if_simple('skipping slow tests', lambda _: EMTEST_SKIP_SLOW)(func)
   decorated.is_slow = True
   return decorated
-
-
-def needs_make(note=''):
-  assert not callable(note)
-  if WINDOWS:
-    return unittest.skip('Tool not available on Windows bots (%s)' % note)
-  return lambda func: func
 
 
 def record_flaky_test(test_name, attempt_count, exception_msg):
@@ -283,77 +285,22 @@ def disabled(note=''):
   return unittest.skip(note)
 
 
-def no_mac(note=''):
-  assert not callable(note)
-  if MACOS:
-    return unittest.skip(note)
-  return lambda func: func
+no_mac = skip_if('no_mac', lambda _: MACOS)
 
+no_windows = skip_if('no_windows', lambda _: WINDOWS)
 
-def no_windows(note=''):
-  assert not callable(note)
-  if WINDOWS:
-    return unittest.skip(note)
-  return lambda func: func
+no_wasm64 = skip_if('no_wasm64', lambda t: t.is_wasm64())
 
+# 2200mb is the value used by the core_2gb test mode
+no_2gb = skip_if('no_2gb', lambda t: t.get_setting('INITIAL_MEMORY') == '2200mb')
 
-def no_wasm64(note=''):
-  assert not callable(note)
+no_4gb = skip_if('no_4gb', lambda t: t.is_4gb())
 
-  def decorated(func):
-    return skip_if(func, 'is_wasm64', note)
-  return decorated
+only_windows = skip_if('only_windows', lambda _: not WINDOWS)
 
+requires_native_clang = skip_if_simple('native clang tests are disabled', lambda _: EMTEST_LACKS_NATIVE_CLANG)
 
-def no_2gb(note):
-  assert not callable(note)
-
-  def decorator(func):
-    assert callable(func)
-
-    @wraps(func)
-    def decorated(self, *args, **kwargs):
-      # 2200mb is the value used by the core_2gb test mode
-      if self.get_setting('INITIAL_MEMORY') == '2200mb':
-        self.skipTest(note)
-      return func(self, *args, **kwargs)
-    return decorated
-
-  return decorator
-
-
-def no_4gb(note):
-  assert not callable(note)
-
-  def decorator(func):
-    assert callable(func)
-
-    @wraps(func)
-    def decorated(self, *args, **kwargs):
-      if self.is_4gb():
-        self.skipTest(note)
-      return func(self, *args, **kwargs)
-    return decorated
-  return decorator
-
-
-def only_windows(note=''):
-  assert not callable(note)
-  if not WINDOWS:
-    return unittest.skip(note)
-  return lambda func: func
-
-
-def requires_native_clang(func):
-  assert callable(func)
-
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-    if EMTEST_LACKS_NATIVE_CLANG:
-      return self.skipTest('native clang tests are disabled')
-    return func(self, *args, **kwargs)
-
-  return decorated
+needs_make = skip_if('tool not available on windows bots', lambda _: WINDOWS)
 
 
 def requires_node(func):
@@ -391,17 +338,8 @@ def node_bigint_flags(node_version):
 # packages, which might not be installed on Emscripten end users' systems.
 def requires_dev_dependency(package):
   assert not callable(package)
-
-  def decorator(func):
-    assert callable(func)
-
-    @wraps(func)
-    def decorated(self, *args, **kwargs):
-      if 'EMTEST_SKIP_NODE_DEV_PACKAGES' in os.environ:
-        self.skipTest(f'test requires npm development package "{package}" and EMTEST_SKIP_NODE_DEV_PACKAGES is set')
-      return func(self, *args, **kwargs)
-    return decorated
-  return decorator
+  note = f'requires npm development package "{package}" and EMTEST_SKIP_NODE_DEV_PACKAGES is set'
+  return skip_if_simple('requires_dev_dependency', lambda _: 'EMTEST_SKIP_NODE_DEV_PACKAGES' in os.environ, note)
 
 
 def requires_wasm64(func):
@@ -1102,11 +1040,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return config.V8_ENGINE
 
   def require_v8(self):
+    if 'EMTEST_SKIP_V8' in os.environ:
+      self.skipTest('test requires v8 and EMTEST_SKIP_V8 is set')
     v8 = self.get_v8()
     if not v8:
-      if 'EMTEST_SKIP_V8' in os.environ:
-        self.skipTest('test requires v8 and EMTEST_SKIP_V8 is set')
-      else:
         self.fail('d8 required to run this test.  Use EMTEST_SKIP_V8 to skip')
     self.require_engine(v8)
     self.cflags.append('-sENVIRONMENT=shell')
@@ -1118,11 +1055,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return config.NODE_JS_TEST
 
   def require_node(self):
+    if 'EMTEST_SKIP_NODE' in os.environ:
+      self.skipTest('test requires node and EMTEST_SKIP_NODE is set')
     nodejs = self.get_nodejs()
     if not nodejs:
-      if 'EMTEST_SKIP_NODE' in os.environ:
-        self.skipTest('test requires node and EMTEST_SKIP_NODE is set')
-      else:
         self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
     self.require_engine(nodejs)
     return nodejs
@@ -1131,14 +1067,13 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return nodejs and nodejs[0] and ('canary' in nodejs[0] or 'nightly' in nodejs[0])
 
   def require_node_canary(self):
+    if 'EMTEST_SKIP_NODE_CANARY' in os.environ:
+      self.skipTest('test requires node canary and EMTEST_SKIP_NODE_CANARY is set')
     nodejs = self.get_nodejs()
     if self.node_is_canary(nodejs):
       self.require_engine(nodejs)
       return
 
-    if 'EMTEST_SKIP_NODE_CANARY' in os.environ:
-      self.skipTest('test requires node canary and EMTEST_SKIP_NODE_CANARY is set')
-    else:
       self.fail('node canary required to run this test.  Use EMTEST_SKIP_NODE_CANARY to skip')
 
   def require_engine(self, engine):
@@ -1150,6 +1085,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.wasm_engines = []
 
   def require_wasm64(self):
+    if 'EMTEST_SKIP_WASM64' in os.environ:
+      self.skipTest('test requires node >= 24 or d8 (and EMTEST_SKIP_WASM64 is set)')
     if self.is_browser_test():
       return
 
@@ -1162,9 +1099,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.js_engines = [v8]
       return
 
-    if 'EMTEST_SKIP_WASM64' in os.environ:
-      self.skipTest('test requires node >= 24 or d8 (and EMTEST_SKIP_WASM64 is set)')
-    else:
       self.fail('either d8 or node >= 24 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
 
   def try_require_node_version(self, major, minor = 0, revision = 0):
@@ -1179,6 +1113,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return True
 
   def require_simd(self):
+    if 'EMTEST_SKIP_SIMD' in os.environ:
+      self.skipTest('test requires node >= 16 or d8 (and EMTEST_SKIP_SIMD is set)')
     if self.is_browser_test():
       return
 
@@ -1191,9 +1127,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.js_engines = [v8]
       return
 
-    if 'EMTEST_SKIP_SIMD' in os.environ:
-      self.skipTest('test requires node >= 16 or d8 (and EMTEST_SKIP_SIMD is set)')
-    else:
       self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_SIMD to skip')
 
   def require_wasm_legacy_eh(self):
@@ -1214,7 +1147,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def require_wasm_eh(self):
     if 'EMTEST_SKIP_EH' in os.environ:
-      self.skipTest('test requires a browser with Wasm exceptions support (and EMTEST_SKIP_EH is set)')
+      self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_EH is set)')
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
 
     if self.is_browser_test():
@@ -1234,6 +1167,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.fail('either d8 or node v24 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
 
   def require_jspi(self):
+    if 'EMTEST_SKIP_JSPI' in os.environ:
+      self.skipTest('skipping JSPI (EMTEST_SKIP_JSPI is set)')
     # emcc warns about stack switching being experimental, and we build with
     # warnings-as-errors, so disable that warning
     self.cflags += ['-Wno-experimental']
@@ -1244,8 +1179,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest('WASM_ESM_INTEGRATION is not compatible with JSPI')
 
     if self.is_browser_test():
-      if 'EMTEST_SKIP_JSPI' in os.environ:
-        self.skipTest('skipping JSPI (EMTEST_SKIP_JSPI is set)')
       return
 
     exp_args = ['--experimental-wasm-stack-switching', '--experimental-wasm-type-reflection']
@@ -1261,9 +1194,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.v8_args += exp_args
       return
 
-    if 'EMTEST_SKIP_JSPI' in os.environ:
-      self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_JSPI is set)')
-    else:
       self.fail('either d8 or node v24 required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
 
   def require_wasm2js(self):

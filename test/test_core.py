@@ -183,13 +183,7 @@ def with_dylink_reversed(func):
   return decorated
 
 
-def no_wasm2js(note=''):
-  assert not callable(note)
-
-  def decorated(func):
-    return skip_if(func, 'is_wasm2js', note)
-  return decorated
-
+no_wasm2js = skip_if('no_wasm2js', lambda t: t.is_wasm2js())
 
 # Some tests are marked as only-wasm2js because they test basic codegen in a way
 # that is mainly useful for the wasm2js compiler and not LLVM. LLVM tests its
@@ -201,12 +195,7 @@ def no_wasm2js(note=''):
 # However, it is still useful to test wasm2js there as LLVM emits patterns of
 # shifts and such around those values to ensure they operate as 16-bit, and we
 # want coverage of that.
-def only_wasm2js(note=''):
-  assert not callable(note)
-
-  def decorated(func):
-    return skip_if(func, 'is_wasm2js', note, negate=True)
-  return decorated
+only_wasm2js = skip_if('only_wasm2js', lambda t: not t.is_wasm2js())
 
 
 def with_asyncify_and_jspi(func):
