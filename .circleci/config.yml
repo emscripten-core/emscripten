@@ -201,9 +201,9 @@ commands:
             ./embuilder build MINIMAL --pic --lto
             ./test/runner test_hello_world
       - run:
-          name: "Ccache stats"
+          name: "Ccache stats and configuration"
           command: |
-            ccache --print-stats
+            ccache --print-stats -v -p
             ccache --zero-stats
 
   persist:
@@ -598,6 +598,9 @@ jobs:
             - restore_cache:
                 name: "Restore Ccache cache"
                 key: clang-{{ checksum "~/emsdk/clang_version.txt" }}
+      - run:
+          name: Ccache stats and configuration
+          command: ccache -s -v -p
       - build-libs
       - run:
           name: Clean build directory
