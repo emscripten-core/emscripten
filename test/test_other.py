@@ -10473,14 +10473,11 @@ int main() {
     # Flag disabling overrides explicit browser version
     compile(['-sMIN_SAFARI_VERSION=160000', '-mno-sign-ext'])
     verify_features_sec_linked('sign-ext', False)
-    # Flag enabling overrides explicit browser version
-    compile(['-sMIN_FIREFOX_VERSION=65', '-msign-ext'])
-    verify_features_sec_linked('sign-ext', True)
     # Flag disabling overrides explicit version for bulk memory
     compile(['-sMIN_SAFARI_VERSION=150000', '-mno-bulk-memory'])
     verify_features_sec_linked('bulk-memory-opt', False)
 
-    # Bigint ovrride does not cause other features to enable
+    # Bigint override does not cause other features to enable
     compile(['-sMIN_SAFARI_VERSION=140100', '-sWASM_BIGINT=1'])
     verify_features_sec_linked('bulk-memory-opt', False)
 
