@@ -2761,6 +2761,8 @@ The current type of b is: 9
   # resulting .wasm module should not have the bulk-memory Data Count section.
   @no_wasm2js('This test verifies .wasm module behavior')
   def test_no_bulk_memory(self):
+    if self.get_setting('MEMORY64') == 1:
+      self.skipTest('Wasm64 always has bulk-memory')
     if self.get_setting('MEMORY64') == 2:
       self.skipTest('TODO: Currently fails')
 
