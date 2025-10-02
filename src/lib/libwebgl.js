@@ -4346,17 +4346,37 @@ createGLPassthroughFunctions(LibraryGL, glPassthroughFuncs);
 
 autoAddDeps(LibraryGL, '$GL');
 
+function renameSymbol(lib, oldName, newName) {
+  lib[newName] = lib[oldName];
+  delete lib[oldName];
+  for (const suffix of decoratorSuffixes) {
+    const oldDecorator = oldName + suffix;
+    if (lib.hasOwnProperty(oldDecorator)) {
+      const newDecorator = newName + suffix;
+      lib[newDecorator] = lib[oldDecorator];
+      delete lib[oldDecorator];
+    }
+  }
+}
+
 function recordGLProcAddressGet(lib) {
   // GL proc address retrieval - allow access through glX and emscripten_glX, to
   // allow name collisions with user-implemented things having the same name
   // (see gl.c)
+  //
+  // We do this by renaming `glX` symbols to `emscripten_glX` and then setting
+  // `glX` as an alias of `emscripten_glX`.  The reason for this renaming is to
+  // ensure that `emscripten_glX` is always available, even in cases where native
+  // code defines `glX`.
+  const glSyms = [];
   for (const sym of Object.keys(lib)) {
     if (sym.startsWith('gl') && !isDecorator(sym)) {
-      const alias = 'emscripten_' + sym;
-      lib[alias] = sym;
+      const newSym = 'emscripten_' + sym;
+      renameSymbol(lib, sym, newSym);
+      lib[sym] = newSym;
       var sig = LibraryManager.library[sym + '__sig'];
       if (sig) {
-        lib[alias + '__sig'] = sig;
+        lib[newSym + '__sig'] = sig;
       }
     }
   }
