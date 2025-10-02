@@ -662,6 +662,7 @@ jobs:
             lsan.test_dlfcn_basic
             lsan.test_pthread_create
             lsan.test_pthread_exit_main_stub
+            lsan.test_dylink_iostream
             ubsan.test_externref_emjs_dynlink"
       - freeze-cache
       - run-tests:
@@ -936,6 +937,7 @@ jobs:
             other.test_native_call_before_init
             other.test_js_optimizer_verbose
             other.test_node_unhandled_rejection
+            other.test_file_packager_separate_metadata
             other.test_full_js_library*
             core2.test_hello_world
             core2.test_fcntl_open_nodefs
@@ -1097,6 +1099,8 @@ jobs:
           test_targets: "browser64_4gb"
   test-browser-firefox:
     executor: focal
+    environment:
+      EMTEST_LACKS_GROWABLE_ARRAYBUFFERS: "1"
     steps:
       - prepare-for-tests
       - run-tests-firefox:
@@ -1117,7 +1121,6 @@ jobs:
             skip:browser.test_webgl_offscreen_canvas_in_pthread
             skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
             skip:browser.test_glut_glutget
-            skip:browser.test_*_growable_arraybuffers
             "
   test-browser-firefox-wasm64:
     executor: focal

@@ -179,14 +179,14 @@ def setup_environment_settings():
   settings.ENVIRONMENT_MAY_BE_WORKER = not settings.ENVIRONMENT or 'worker' in settings.ENVIRONMENT
 
   if not settings.ENVIRONMENT_MAY_BE_NODE:
-    if 'MIN_NODE_VERSION' in user_settings:
+    if 'MIN_NODE_VERSION' in user_settings and settings.MIN_NODE_VERSION != feature_matrix.UNSUPPORTED:
       diagnostics.warning('unused-command-line-argument', 'ignoring MIN_NODE_VERSION because `node` environment is not enabled')
     settings.MIN_NODE_VERSION = feature_matrix.UNSUPPORTED
 
   if not (settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WEBVIEW):
     for browser in ('FIREFOX', 'SAFARI', 'CHROME'):
       key = f'MIN_{browser}_VERSION'
-      if key in user_settings:
+      if key in user_settings and settings[key] != feature_matrix.UNSUPPORTED:
         diagnostics.warning('unused-command-line-argument', 'ignoring %s because `web` and `webview` environments are not enabled', key)
       settings[key] = feature_matrix.UNSUPPORTED
 
@@ -1473,8 +1473,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   # TODO(sbc): Find make a generic way to expose the feature matrix to JS
   # compiler rather then adding them all ad-hoc as internal settings
   settings.SUPPORTS_PROMISE_ANY = feature_matrix.caniuse(feature_matrix.Feature.PROMISE_ANY)
-  if not settings.BULK_MEMORY:
-    settings.BULK_MEMORY = feature_matrix.caniuse(feature_matrix.Feature.BULK_MEMORY)
   default_setting('WASM_BIGINT', feature_matrix.caniuse(feature_matrix.Feature.JS_BIGINT_INTEGRATION))
 
   if settings.AUDIO_WORKLET:
@@ -3096,8 +3094,9 @@ def run(options, linker_args):
   # This is not normally a problem except in the case of -sMAIN_MODULE=1 where
   # the duplicate library would result in duplicate symbols.
   for s in system_libs:
-    if s not in linker_args:
-      linker_args.append(s)
+    if s.startswith('-l') and s in linker_args:
+      continue
+    linker_args.append(s)
 
   js_syms = {}
   if (not settings.SIDE_MODULE or settings.ASYNCIFY) and not shared.SKIP_SUBPROCS:

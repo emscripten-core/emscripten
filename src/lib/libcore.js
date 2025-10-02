@@ -2482,13 +2482,11 @@ addToLibrary({
   $ASSERTIONS: {{{ ASSERTIONS }}},
 });
 
-function autoAddDeps(object, name) {
-  for (var item in object) {
-    if (!item.endsWith('__deps')) {
-      if (!object[item + '__deps']) {
-        object[item + '__deps'] = [];
-      }
-      object[item + '__deps'].push(name);
+function autoAddDeps(lib, name) {
+  for (const item of Object.keys(lib)) {
+    if (!isDecorator(item)) {
+      lib[item + '__deps'] ??= [];
+      lib[item + '__deps'].push(name);
     }
   }
 }

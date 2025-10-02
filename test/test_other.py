@@ -3559,8 +3559,8 @@ More info: https://emscripten.org
     self.cflags += ['-lembind', '--emit-tsd', 'embind_tsgen.d.ts']
     # Passing -sWASM_WORKERS or -sPROXY_TO_WORKER requires the 'worker' environment
     # at link time. Verify that TS binding generation still works in this case.
-    for flag in ('-sWASM_WORKERS', '-sPROXY_TO_WORKER'):
-      self.emcc(test_file('other/embind_tsgen.cpp'), [flag])
+    for flags in (['-sWASM_WORKERS'], ['-sPROXY_TO_WORKER', '-Wno-deprecated']):
+      self.emcc(test_file('other/embind_tsgen.cpp'), flags)
       self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
 
   def test_embind_tsgen_dylink(self):
@@ -3849,7 +3849,7 @@ More info: https://emscripten.org
       return 0;
     }
     ''')
-    self.do_runf('src.c', cflags=['--pre-js=immutable.js', '-sFORCE_FILESYSTEM'])
+    self.do_runf('src.c', 'done\n', cflags=['--extern-pre-js=immutable.js', '-sFORCE_FILESYSTEM'])
 
   def test_file_packager_unicode(self):
     unicode_name = 'unicode…☃'
@@ -8502,9 +8502,9 @@ int main() {
   @crossplatform
   @parameterized({
     '': ([],),
-    'proxy_to_worker': (['--proxy-to-worker'],),
+    'proxy_to_worker': (['--proxy-to-worker', '-Wno-deprecated'],),
     'single_file': (['-sSINGLE_FILE'],),
-    'proxy_to_worker_wasm2js': (['--proxy-to-worker', '-sWASM=0'],),
+    'proxy_to_worker_wasm2js': (['--proxy-to-worker', '-Wno-deprecated', '-sWASM=0'],),
   })
   def test_output_eol(self, params):
     for eol in ('windows', 'linux'):
@@ -13424,7 +13424,7 @@ void foo() {}
     self.do_other_test('test_default_pthread_stack_size.c')
 
     # Same again but with a --proxy-to-worker
-    self.cflags += ['--proxy-to-worker']
+    self.cflags += ['--proxy-to-worker', '-Wno-deprecated']
     self.do_other_test('test_default_pthread_stack_size.c')
 
   def test_emscripten_set_immediate(self):
@@ -14338,6 +14338,13 @@ out.js
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-pthread', '-sMIN_FIREFOX_VERSION=65'])
     self.assertContained('emcc: error: MIN_FIREFOX_VERSION=65 is not compatible with pthreads (MIN_FIREFOX_VERSION=79 or above required)', err)
 
+  # Test that using two different ways to disable a target environment at the same time will not produce a warning.
+  def test_double_disable_environment(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-Werror', '-sENVIRONMENT=web', '-sMIN_NODE_VERSION=-1'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-Werror', '-sENVIRONMENT=node', '-sMIN_FIREFOX_VERSION=-1'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-Werror', '-sENVIRONMENT=node', '-sMIN_CHROME_VERSION=-1'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-Werror', '-sENVIRONMENT=node', '-sMIN_SAFARI_VERSION=-1'])
+
   def test_signext_lowering(self):
     # Use `-v` to show the sub-commands being run by emcc.
     cmd = [EMCC, test_file('other/test_signext_lowering.c'), '-v']
@@ -14796,7 +14803,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     'single_file': (['-sSINGLE_FILE'],),
   })
   def test_proxy_to_worker(self, args):
-    self.do_runf('hello_world.c', cflags=['--proxy-to-worker'] + args)
+    self.do_runf('hello_world.c', cflags=['--proxy-to-worker', '-Wno-deprecated'] + args)
 
   @also_with_standalone_wasm(impure=True)
   def test_console_out(self):

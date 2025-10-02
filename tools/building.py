@@ -378,8 +378,8 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False, work
   if settings.VERBOSE:
     cmd += ['--verbose']
   if return_output:
-    shared.print_compiler_stage(cmd)
     if shared.SKIP_SUBPROCS:
+      shared.print_compiler_stage(cmd)
       return ''
     return check_call(cmd, stdout=PIPE).stdout
 
@@ -390,8 +390,8 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False, work
   output_file = basename + '.jso%d.js' % acorn_optimizer.counter
   shared.get_temp_files().note(output_file)
   cmd += ['-o', output_file]
-  shared.print_compiler_stage(cmd)
   if shared.SKIP_SUBPROCS:
+    shared.print_compiler_stage(cmd)
     return output_file
   check_call(cmd)
   save_intermediate(output_file, '%s.js' % passes[0])
@@ -1245,8 +1245,8 @@ def run_binaryen_command(tool, infile, outfile=None, args=None, debug=False, std
   if settings.GENERATE_SOURCE_MAP and outfile and tool in ['wasm-opt', 'wasm-emscripten-finalize', 'wasm-metadce']:
     cmd += [f'--input-source-map={infile}.map']
     cmd += [f'--output-source-map={outfile}.map']
-  shared.print_compiler_stage(cmd)
   if shared.SKIP_SUBPROCS:
+    shared.print_compiler_stage(cmd)
     return ''
   ret = check_call(cmd, stdout=stdout).stdout
   if outfile:

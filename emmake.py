@@ -28,7 +28,6 @@ import sys
 from tools import building
 from tools import shared
 from tools import utils
-from subprocess import CalledProcessError
 
 
 #
@@ -59,11 +58,11 @@ variables so that emcc etc. are used. Typical usage:
   # executable extension lookup, e.g. 'sdl2-config' will match with
   # 'sdl2-config.bat' in PATH.
   print(f'emmake: "{shlex.join(args)}" in "{os.getcwd()}"', file=sys.stderr)
-  try:
-    shared.check_call(args, shell=utils.WINDOWS, env=env)
-    return 0
-  except CalledProcessError as e:
-    return e.returncode
+  if utils.WINDOWS:
+    return shared.run_process(args, check=False, shell=True, env=env).returncode
+  else:
+    os.environ.update(env)
+    shared.exec_process(args)
 
 
 if __name__ == '__main__':
