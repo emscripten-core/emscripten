@@ -8,7 +8,7 @@
 
 #if PROXY_TO_WORKER
 if (ENVIRONMENT_IS_WORKER) {
-#include "webGLWorker.js'
+#include "webGLWorker.js"
 #include "proxyWorker.js"
 }
 #endif
