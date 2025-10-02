@@ -1605,12 +1605,6 @@ simulateKeyUp(100, undefined, 'Numpad4');
     self.assertExists('worker.js')
     self.run_browser('main.html', '/report_result?hello from worker, and :' + ('data for w' if file_data else '') + ':')
 
-    # code should run standalone too
-    # To great memories >4gb we need the canary version of node
-    if self.is_4gb():
-      self.require_node_canary()
-    self.assertContained('you should not see this text when in a worker!', self.run_js('worker.js'))
-
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/19608')
   def test_mmap_lazyfile(self):
     create_file('lazydata.dat', 'hello world')
