@@ -191,6 +191,7 @@ requires_webgpu = unittest.skipIf(webgpu_disabled(), "This test requires WebGPU 
 requires_sound_hardware = skipExecIf(os.getenv('EMTEST_LACKS_SOUND_HARDWARE'), 'This test requires sound hardware')
 requires_offscreen_canvas = unittest.skipIf(os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'), 'This test requires a browser with OffscreenCanvas')
 requires_es6_workers = unittest.skipIf(os.getenv('EMTEST_LACKS_ES6_WORKERS'), 'This test requires a browser with ES6 Module Workers support')
+requires_growable_arraybuffers = unittest.skipIf(os.getenv('EMTEST_LACKS_GROWABLE_ARRAYBUFFERS'), 'This test requires a browser that supports growable ArrayBuffers')
 # N.b. not all SharedArrayBuffer requiring tests are annotated with this decorator, since at this point there are so many of such tests.
 # As a middle ground, if a test has a name 'thread' or 'wasm_worker' in it, then it does not need decorating. To run all single-threaded tests in
 # the suite, one can run "EMTEST_LACKS_SHARED_ARRAY_BUFFER=1 test/runner browser skip:browser.test_*thread* skip:browser.test_*wasm_worker* skip:browser.test_*audio_worklet*"
@@ -4694,6 +4695,7 @@ Module["preRun"] = () => {
   })
   @no_2gb('uses INITIAL_MEMORY')
   @no_4gb('uses INITIAL_MEMORY')
+  @requires_growable_arraybuffers
   def test_pthread_growth_mainthread(self, cflags, pthread_pool_size):
     self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
     if '-sGROWABLE_ARRAYBUFFERS' not in cflags:
@@ -4710,6 +4712,7 @@ Module["preRun"] = () => {
   })
   @no_2gb('uses INITIAL_MEMORY')
   @no_4gb('uses INITIAL_MEMORY')
+  @requires_growable_arraybuffers
   def test_pthread_growth(self, cflags, pthread_pool_size = 1):
     self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
     if '-sGROWABLE_ARRAYBUFFERS' not in cflags:

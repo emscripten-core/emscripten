@@ -1096,6 +1096,8 @@ jobs:
           test_targets: "browser64_4gb"
   test-browser-firefox:
     executor: focal
+    environment:
+      EMTEST_LACKS_GROWABLE_ARRAYBUFFERS: "1"
     steps:
       - prepare-for-tests
       - run-tests-firefox:
@@ -1116,7 +1118,6 @@ jobs:
             skip:browser.test_webgl_offscreen_canvas_in_pthread
             skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
             skip:browser.test_glut_glutget
-            skip:browser.test_*_growable_arraybuffers
             "
   test-browser-firefox-wasm64:
     executor: focal

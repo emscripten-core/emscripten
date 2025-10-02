@@ -14338,6 +14338,13 @@ out.js
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-pthread', '-sMIN_FIREFOX_VERSION=65'])
     self.assertContained('emcc: error: MIN_FIREFOX_VERSION=65 is not compatible with pthreads (MIN_FIREFOX_VERSION=79 or above required)', err)
 
+  # Test that using two different ways to disable a target environment at the same time will not produce a warning.
+  def test_double_disable_environment(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-Werror', '-sENVIRONMENT=web', '-sMIN_NODE_VERSION=-1'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-Werror', '-sENVIRONMENT=node', '-sMIN_FIREFOX_VERSION=-1'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-Werror', '-sENVIRONMENT=node', '-sMIN_CHROME_VERSION=-1'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-Werror', '-sENVIRONMENT=node', '-sMIN_SAFARI_VERSION=-1'])
+
   def test_signext_lowering(self):
     # Use `-v` to show the sub-commands being run by emcc.
     cmd = [EMCC, test_file('other/test_signext_lowering.c'), '-v']
