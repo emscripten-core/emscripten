@@ -935,6 +935,7 @@ jobs:
             other.test_native_call_before_init
             other.test_js_optimizer_verbose
             other.test_node_unhandled_rejection
+            other.test_file_packager_separate_metadata
             other.test_full_js_library*
             core2.test_hello_world
             core2.test_fcntl_open_nodefs
