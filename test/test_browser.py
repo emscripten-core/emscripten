@@ -2702,6 +2702,7 @@ Module["preRun"] = () => {
     self.btest_exit('webgl2_objects.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'])
 
   @requires_webgl2
+  @requires_offscreen_canvas
   @parameterized({
     '': ([],),
     'offscreencanvas': (['-sOFFSCREENCANVAS_SUPPORT', '-pthread', '-sPROXY_TO_PTHREAD'],),
@@ -4464,9 +4465,11 @@ Module["preRun"] = () => {
   def test_webgpu_basic_rendering_pthreads(self):
     self.btest_exit('webgpu_basic_rendering.cpp', cflags=['-Wno-error=deprecated', '-sUSE_WEBGPU', '-pthread', '-sOFFSCREENCANVAS_SUPPORT'])
 
+  @requires_webgpu
   def test_webgpu_get_device(self):
     self.btest_exit('webgpu_get_device.cpp', cflags=['-Wno-error=deprecated', '-sUSE_WEBGPU', '-sASSERTIONS', '--closure=1'])
 
+  @requires_webgpu
   def test_webgpu_get_device_pthreads(self):
     self.btest_exit('webgpu_get_device.cpp', cflags=['-Wno-error=deprecated', '-sUSE_WEBGPU', '-pthread'])
 
@@ -5516,7 +5519,7 @@ Module["preRun"] = () => {
   @requires_sound_hardware
   @also_with_minimal_runtime
   def test_web_audio_context_sample_rate(self):
-    self.btest_exit('webaudio/audio_context_sample_rate.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
+    self.btest_exit('webaudio/audio_context_sample_rate.c', cflags=['-lwebaudio.js'])
 
   def test_error_reporting(self):
     # Test catching/reporting Error objects
