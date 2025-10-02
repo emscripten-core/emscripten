@@ -191,6 +191,10 @@ requires_webgpu = unittest.skipIf(webgpu_disabled(), "This test requires WebGPU 
 requires_sound_hardware = skipExecIf(os.getenv('EMTEST_LACKS_SOUND_HARDWARE'), 'This test requires sound hardware')
 requires_offscreen_canvas = unittest.skipIf(os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'), 'This test requires a browser with OffscreenCanvas')
 requires_es6_workers = unittest.skipIf(os.getenv('EMTEST_LACKS_ES6_WORKERS'), 'This test requires a browser with ES6 Module Workers support')
+# N.b. not all SharedArrayBuffer requiring tests are annotated with this decorator, since at this point there are so many of such tests.
+# As a middle ground, if a test has a name 'thread' or 'wasm_worker' in it, then it does not need decorating. To run all single-threaded tests in
+# the suite, one can run "EMTEST_LACKS_SHARED_ARRAY_BUFFER=1 test/runner browser skip:browser.test_*thread* skip:browser.test_*wasm_worker* skip:browser.test_*audio_worklet*"
+requires_shared_array_buffer = unittest.skipIf(os.getenv('EMTEST_LACKS_SHARED_ARRAY_BUFFER'), 'This test requires a browser with SharedArrayBuffer support')
 
 
 class browser(BrowserCore):
@@ -2035,7 +2039,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
 
   @requires_graphics_hardware
   @also_with_proxying
-  def test_cubegeom_regal_mt(self):
+  def test_cubegeom_regal_pthread(self):
     self.reftest('third_party/cubegeom/cubegeom.c', 'third_party/cubegeom/cubegeom.png', cflags=['-O2', '-g', '-pthread', '-DUSE_REGAL', '-pthread', '-sUSE_REGAL', '-lGL', '-lSDL', '-lc++', '-lc++abi'])
 
   @requires_graphics_hardware
@@ -2705,8 +2709,8 @@ Module["preRun"] = () => {
   @requires_offscreen_canvas
   @parameterized({
     '': ([],),
-    'offscreencanvas': (['-sOFFSCREENCANVAS_SUPPORT', '-pthread', '-sPROXY_TO_PTHREAD'],),
-    'offscreenframebuffer': (['-sOFFSCREEN_FRAMEBUFFER', '-pthread', '-sPROXY_TO_PTHREAD'],),
+    'offscreencanvas_pthread': (['-sOFFSCREENCANVAS_SUPPORT', '-pthread', '-sPROXY_TO_PTHREAD'],),
+    'offscreenframebuffer_pthread': (['-sOFFSCREEN_FRAMEBUFFER', '-pthread', '-sPROXY_TO_PTHREAD'],),
   })
   def test_html5_webgl_api(self, args):
     if '-sOFFSCREENCANVAS_SUPPORT' in args and os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'):
@@ -3537,6 +3541,7 @@ Module["preRun"] = () => {
     self.emcc('side.c', ['-o', 'libside.so', '-sSIDE_MODULE'])
     self.btest_exit('other/test_dlopen_async.c', cflags=['-sMAIN_MODULE=2'])
 
+  @requires_shared_array_buffer
   def test_dlopen_blocking(self):
     self.emcc(test_file('other/test_dlopen_blocking_side.c'), ['-o', 'libside.so', '-sSIDE_MODULE', '-pthread', '-Wno-experimental'])
     # Attempt to use dlopen the side module (without preloading) should fail on the main thread
@@ -4586,6 +4591,7 @@ Module["preRun"] = () => {
     create_file('myfile.dat', 'hello world\n' * 1000)
     self.btest_exit('fetch/test_fetch_to_memory_async.c', cflags=['-sFETCH'])
 
+  @requires_shared_array_buffer
   def test_fetch_to_memory_sync(self):
     create_file('myfile.dat', 'hello world\n' * 1000)
     self.btest_exit('fetch/test_fetch_to_memory_sync.c', cflags=['-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
@@ -4621,7 +4627,7 @@ Module["preRun"] = () => {
   # thread to obtain the proper window.devicePixelRatio value).
   @parameterized({
     '': ([],),
-    'mt': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
   })
   def test_emscripten_get_device_pixel_ratio(self, args):
     self.btest_exit('emscripten_get_device_pixel_ratio.c', cflags=args)
@@ -4629,7 +4635,7 @@ Module["preRun"] = () => {
   # Tests that emscripten_run_script() variants of functions work in pthreads.
   @parameterized({
     '': ([],),
-    'mt': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
   })
   def test_pthread_run_script(self, args):
     shutil.copy(test_file('pthread/foo.js'), '.')
@@ -4931,9 +4937,11 @@ Module["preRun"] = () => {
   def test_request_animation_frame(self):
     self.btest_exit('test_request_animation_frame.c')
 
+  @requires_shared_array_buffer
   def test_emscripten_set_timeout(self):
     self.btest_exit('emscripten_set_timeout.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD'])
 
+  @requires_shared_array_buffer
   def test_emscripten_set_timeout_loop(self):
     self.btest_exit('emscripten_set_timeout_loop.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD'])
 
@@ -4943,10 +4951,12 @@ Module["preRun"] = () => {
   def test_emscripten_set_immediate_loop(self):
     self.btest_exit('emscripten_set_immediate_loop.c')
 
+  @requires_shared_array_buffer
   def test_emscripten_set_interval(self):
     self.btest_exit('emscripten_set_interval.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD'])
 
   # Test emscripten_performance_now() and emscripten_date_now()
+  @requires_shared_array_buffer
   def test_emscripten_performance_now(self):
     self.btest('emscripten_performance_now.c', '0', cflags=['-pthread', '-sPROXY_TO_PTHREAD'])
 
@@ -5334,7 +5344,7 @@ Module["preRun"] = () => {
     # could be tested on either thread; do the main thread for simplicity)
     'bigint': (['-sPTHREAD_POOL_SIZE=5', '-sWASM_BIGINT'],),
   })
-  def test_wasmfs_fetch_backend(self, args):
+  def test_wasmfs_fetch_backend_threaded(self, args):
     create_file('data.dat', 'hello, fetch')
     create_file('small.dat', 'hello')
     create_file('test.txt', 'fetch 2')
