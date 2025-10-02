@@ -2757,6 +2757,19 @@ The current type of b is: 9
     # (llvm-gcc copies items one by one).
     self.do_core_test('test_copyop.cpp')
 
+  # Verify that when passing -mno-bulk-memory -mno-bulk-memory-opt, that the
+  # resulting .wasm module should not have the bulk-memory Data Count section.
+  @no_wasm2js('This test verifies .wasm module behavior')
+  def test_no_bulk_memory(self):
+    if self.get_setting('MEMORY64') == 2:
+      self.skipTest('TODO: Currently fails')
+
+    self.emcc(test_file('hello_world.c'), ['-mno-bulk-memory', '-mno-bulk-memory-opt'])
+
+    with webassembly.Module('a.out.wasm') as module:
+      for s in module.sections():
+        self.assertNotEqual(s.type, webassembly.SecType.DATACOUNT)
+
   @parameterized({
     '': ([],),
     'bulkmem': (['-mbulk-memory'],),
