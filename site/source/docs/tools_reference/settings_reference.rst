@@ -2871,7 +2871,7 @@ are desired to work. Pass -sMIN_FIREFOX_VERSION=majorVersion to drop support
 for Firefox versions older than < majorVersion.
 Firefox 79 was released on 2020-07-28.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 65 which was released on 2019-01-29 (see
+Minimum supported value is 79 which was released on 2020-07-28 (see
 feature_matrix.py)
 
 Default value: 79
