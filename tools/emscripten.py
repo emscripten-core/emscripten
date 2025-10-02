@@ -116,6 +116,12 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
 
   # start with the MVP features, and add any detected features.
   settings.BINARYEN_FEATURES = ['--mvp-features'] + metadata.features
+  if not settings.BULK_MEMORY:
+    if '--enable-bulk-memory' in settings.BINARYEN_FEATURES:
+      settings.BINARYEN_FEATURES.remove('--enable-bulk-memory')
+    if '--enable-bulk-memory-opt' in settings.BINARYEN_FEATURES:
+      settings.BINARYEN_FEATURES.remove('--enable-bulk-memory-opt')
+
   if settings.ASYNCIFY == 2:
     settings.BINARYEN_FEATURES += ['--enable-reference-types']
 
