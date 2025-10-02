@@ -23,7 +23,7 @@ UNSUPPORTED = 0x7FFFFFFF
 # N.b. when modifying these values, update comments in src/settings.js on
 # MIN_x_VERSION fields to match accordingly.
 OLDEST_SUPPORTED_CHROME = 74  # Released on 2019-04-23
-OLDEST_SUPPORTED_FIREFOX = 65  # Released on 2019-01-29
+OLDEST_SUPPORTED_FIREFOX = 78  # Released on 2020-06-30
 OLDEST_SUPPORTED_SAFARI = 120200  # Released on 2019-03-25
 # 12.22.09 is the oldest version of node that we do any testing with.
 # Keep this in sync with the test-node-compat in .circleci/config.yml.
