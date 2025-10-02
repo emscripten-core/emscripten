@@ -179,6 +179,7 @@ commands:
       - run:
           name: Ccache stats and configuration
           command: |
+            ccache --version
             ccache -s
             ccache --print-stats
             ccache -p
@@ -209,7 +210,8 @@ commands:
       - run:
           name: "Ccache stats and configuration"
           command: |
-            ls ~/ccache-debug
+            ls ~/ccache-debug || echo "no ccache-debug"
+            ls ~/cache/sysroot/lib/wasm32-emscripten || echo "no build"
             date
             ccache -s
             ccache --print-stats
