@@ -179,7 +179,7 @@ def setup_environment_settings():
   settings.ENVIRONMENT_MAY_BE_WORKER = not settings.ENVIRONMENT or 'worker' in settings.ENVIRONMENT
 
   if not settings.ENVIRONMENT_MAY_BE_NODE:
-    if 'MIN_NODE_VERSION' in user_settings:
+    if 'MIN_NODE_VERSION' in user_settings and user_settings['MIN_NODE_VERSION'] != '0x7FFFFFFF':
       diagnostics.warning('unused-command-line-argument', 'ignoring MIN_NODE_VERSION because `node` environment is not enabled')
     settings.MIN_NODE_VERSION = feature_matrix.UNSUPPORTED
 
