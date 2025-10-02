@@ -3849,7 +3849,7 @@ More info: https://emscripten.org
       return 0;
     }
     ''')
-    self.do_runf('src.c', cflags=['--pre-js=immutable.js', '-sFORCE_FILESYSTEM'])
+    self.do_runf('src.c', 'done\n', cflags=['--extern-pre-js=immutable.js', '-sFORCE_FILESYSTEM'])
 
   def test_file_packager_unicode(self):
     unicode_name = 'unicode…☃'
