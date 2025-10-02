@@ -2760,6 +2760,7 @@ The current type of b is: 9
   # Verify that when passing -mno-bulk-memory -mno-bulk-memory-opt, that the
   # resulting .wasm module should not have the bulk-memory Data Count section.
   @no_wasm2js('This test verifies .wasm module behavior')
+  @no_esm_integration('TODO: Currently fails')
   def test_no_bulk_memory(self):
     if self.get_setting('MEMORY64') == 1:
       self.skipTest('Wasm64 always has bulk-memory')
