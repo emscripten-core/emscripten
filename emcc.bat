@@ -8,6 +8,8 @@
 :: N.b. In Windows .bat scripts, the ':' character cannot appear inside any if () blocks,
 :: or there will be a parsing error.
 
+@echo off
+
 :: All env. vars specified in this file are to be local only to this script.
 @setlocal
 :: -E will not ignore _PYTHON_SYSCONFIGDATA_NAME an internal
