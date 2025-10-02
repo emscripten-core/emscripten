@@ -14336,7 +14336,7 @@ out.js
     self.assertContained('emcc: error: MIN_SAFARI_VERSION=130000 is not compatible with WASM_BIGINT (MIN_SAFARI_VERSION=150000 or above required)', err)
 
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-pthread', '-sMIN_FIREFOX_VERSION=65'])
-    self.assertContained('emcc: error: MIN_FIREFOX_VERSION=65 is not compatible with pthreads (MIN_FIREFOX_VERSION=79 or above required)', err)
+    self.assertContained('emcc: error: MIN_FIREFOX_VERSION older than 79 is not supported', err)
 
   def test_signext_lowering(self):
     # Use `-v` to show the sub-commands being run by emcc.
