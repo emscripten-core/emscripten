@@ -3096,8 +3096,9 @@ def run(options, linker_args):
   # This is not normally a problem except in the case of -sMAIN_MODULE=1 where
   # the duplicate library would result in duplicate symbols.
   for s in system_libs:
-    if s not in linker_args:
-      linker_args.append(s)
+    if s.startswith('-l') and s in linker_args:
+      continue
+    linker_args.append(s)
 
   js_syms = {}
   if (not settings.SIDE_MODULE or settings.ASYNCIFY) and not shared.SKIP_SUBPROCS:
