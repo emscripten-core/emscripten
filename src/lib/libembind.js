@@ -566,6 +566,11 @@ var LibraryEmbind = {
     __embind_register_emval(rawType);
   },
 
+  _embind_register_user_type_definition__deps: ['_embind_register_emval'],
+  _embind_register_user_type_definition: (rawType, name, definition) => {
+    __embind_register_emval(rawType);
+  },
+
   _embind_register_optional__deps: ['$registerType', '$EmValOptionalType'],
   _embind_register_optional: (rawOptionalType, rawType) => {
     registerType(rawOptionalType, EmValOptionalType);
