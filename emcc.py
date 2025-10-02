@@ -431,9 +431,6 @@ def phase_setup(options, state):
   if settings.PTHREADS or settings.WASM_WORKERS:
     settings.SHARED_MEMORY = 1
 
-  if settings.SHARED_MEMORY:
-    settings.BULK_MEMORY = 1
-
   if 'DISABLE_EXCEPTION_CATCHING' in user_settings and 'EXCEPTION_CATCHING_ALLOWED' in user_settings:
     # If we get here then the user specified both DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED
     # on the command line.  This is no longer valid so report either an error or a warning (for
