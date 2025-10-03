@@ -209,6 +209,8 @@ commands:
       - run:
           name: "Ccache stats and configuration"
           command: |
+            ls ~/cache/sysroot/lib/wasm32-emscripten || echo "no build"
+            cat ~/cache/sysroot/lib/wasm32-emscripten/crtbegin.o.ccache-log
             date
             ccache -s
             ccache --print-stats
@@ -572,6 +574,8 @@ jobs:
       EMCC_CORES: 16
       EMCC_USE_NINJA: 1
       EM_COMPILER_WRAPPER: "ccache"
+      CCACHE_DEBUG: 1
+      CCACHE_DEBUGLEVEL: 1
     steps:
       - checkout
       - run:
