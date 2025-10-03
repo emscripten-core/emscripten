@@ -40,7 +40,7 @@ void RegisterCheckScopesAtExit() {
     atexit([](){
         // Check we don't exit before the tests are done.
         // (Make sure there's a keepalive for everything the test has scopes for.)
-        // Build with -sEXIT_RUNTIME to trace keepalives.
+        // Build with -sRUNTIME_DEBUG to trace keepalives.
         assert(sScopeCount == 0);
     });
 }
