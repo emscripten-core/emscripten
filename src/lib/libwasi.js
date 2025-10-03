@@ -532,7 +532,7 @@ var WasiLibrary = {
     return 0;
   },
 
-  fd_sync: (fd) => {
+  fd_sync: {{{ asyncIf(ASYNCIFY) }}} (fd) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
 #if ASYNCIFY
