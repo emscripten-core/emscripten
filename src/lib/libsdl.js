@@ -1753,7 +1753,7 @@ var LibrarySDL = {
 #else
   SDL_Delay__deps: ['emscripten_sleep'],
   SDL_Delay__async: true,
-  SDL_Delay: (delay) => _emscripten_sleep(delay),
+  SDL_Delay: async (delay) => _emscripten_sleep(delay),
 #endif
 
   SDL_WM_SetCaption__proxy: 'sync',

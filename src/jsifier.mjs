@@ -9,6 +9,7 @@
 
 import assert from 'node:assert';
 import * as fs from 'node:fs/promises';
+import { isAsyncFunction } from 'node:util/types';
 import {
   ATMODULES,
   ATEXITS,
@@ -536,13 +537,13 @@ function(${args}) {
         deps.push('setTempRet0');
       }
 
-      let isAsyncFunction = false;
+      let hasAsyncDecorator = false;
       if (ASYNCIFY) {
         const original = LibraryManager.library[symbol];
         if (typeof original == 'function') {
-          isAsyncFunction = LibraryManager.library[symbol + '__async'];
+          hasAsyncDecorator = LibraryManager.library[symbol + '__async'];
         }
-        if (isAsyncFunction) {
+        if (hasAsyncDecorator) {
           asyncFuncs.push(symbol);
         }
       }
@@ -669,6 +670,10 @@ function(${args}) {
         addImplicitDeps(snippet, deps);
       } else if (typeof snippet == 'function') {
         isFunction = true;
+        if (ASYNCIFY == 2 && hasAsyncDecorator && !isAsyncFunction(snippet)) {
+          error(`'${symbol}' is marked with the __async decorator but is not an async JS function.`);
+        }
+
         snippet = processLibraryFunction(snippet, symbol, mangled, deps, isStub);
         addImplicitDeps(snippet, deps);
         if (CHECK_DEPS && !isUserSymbol) {
@@ -766,7 +771,7 @@ function(${args}) {
         }
         contentText += `\n${mangled}.sig = '${sig}';`;
       }
-      if (ASYNCIFY && isAsyncFunction) {
+      if (ASYNCIFY && hasAsyncDecorator) {
         contentText += `\n${mangled}.isAsync = true;`;
       }
       if (isStub) {

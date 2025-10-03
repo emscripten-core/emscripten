@@ -4960,8 +4960,6 @@ Module["preRun"] = () => {
   def test_embind(self, args):
     if is_jspi(args) and not is_chrome():
       self.skipTest(f'Current browser ({common.EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
-    if is_jspi(args) and self.is_wasm64():
-      self.skipTest('_emval_await fails')
 
     self.btest('embind_with_asyncify.cpp', '1', cflags=['-lembind'] + args)
 
