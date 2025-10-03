@@ -194,7 +194,7 @@ def get(shortname, creator, what=None, force=False, quiet=False):
 def setup():
   global cachedir, cachelock, cachelock_name
   # figure out the root directory for all caching
-  cachedir = Path(config.CACHE).resolve()
+  cachedir = Path(config.CACHE)
 
   # since the lock itself lives inside the cache directory we need to ensure it
   # exists.
