@@ -116,6 +116,9 @@ class ChromeConfig:
     """Chrome has no special configuration step."""
 
 
+# N.b. The earliest Firefox version that can run multithreaded browser harness
+# is Firefox 67. If you need to test earlier Firefox versions, use EMTEST_CORES=1
+# environment variable to revert to the single-threaded browser harness.
 class FirefoxConfig:
   data_dir_flag = '-profile '
   default_flags = ('-new-instance',)
