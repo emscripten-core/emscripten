@@ -143,7 +143,7 @@ commands:
             ./emsdk install tot
             ./emsdk activate tot
             # Write the version of clang into a file for use in the ccache key
-            ./upstream/bin/clang --version > clang_version.txt
+            echo "test21" > clang_version.txt
             echo "clang version:"
             cat ~/emsdk/clang_version.txt
             # Remove the emsdk version of emscripten to save space in the
@@ -231,18 +231,12 @@ commands:
             - vms/
             - wasi-sdk/
             - .jsvu/
-      - when:
-          # Only the main branch will store its cache results, and only the non-main branches
-          # will use cached results. This prevents untrusted PRs from polluting caches used
-          # by other branches.
-          condition:
-            equal: [ "main", << pipeline.git.branch >> ]
-          steps:
-            - save_cache:
-                name: "Save Ccache cache"
-                paths:
-                  - ~/.ccache
-                key: clang-{{ checksum "~/emsdk/clang_version.txt" }}
+
+      - save_cache:
+          name: "Save Ccache cache"
+          paths:
+            - ~/.ccache
+          key: clang-{{ checksum "~/emsdk/clang_version.txt" }}
 
   prepare-for-tests:
     description: "Setup emscripten tests"
