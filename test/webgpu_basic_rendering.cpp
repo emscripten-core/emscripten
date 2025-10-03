@@ -42,8 +42,6 @@ void RegisterCheckScopesAtExit() {
         // (Make sure there's a keepalive for everything the test has scopes for.)
         // Build with -sEXIT_RUNTIME to trace keepalives.
         assert(sScopeCount == 0);
-        // Overwrite the old return code and exit now that everything is done.
-        exit(0);
     });
 }
 
@@ -430,7 +428,7 @@ int main() {
     GetDevice(run);
 
     RegisterCheckScopesAtExit();
-    // The test result will be reported when all scopes exit.
-    // If that doesn't happen, this is the fallback return code.
-    return 99;
+    // This is the return code once all runtime-keepalives have completed
+    // (unless something crashes before then).
+    return 0;
 }
