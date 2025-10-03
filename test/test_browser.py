@@ -4471,7 +4471,7 @@ Module["preRun"] = () => {
 
   @requires_webgpu
   def test_webgpu_required_limits(self):
-    self.set_setting('NO_DEFAULT_TO_CXX', 0)  # emdawnwebgpu uses C++ internally
+    self.set_setting('DEFAULT_TO_CXX')  # emdawnwebgpu uses C++ internally
     self.btest_exit('webgpu_required_limits.c', cflags=['--use-port=emdawnwebgpu', '-sEXIT_RUNTIME'])
 
   # Tests the feature that shell html page can preallocate the typed array and place it

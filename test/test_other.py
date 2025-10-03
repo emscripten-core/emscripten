@@ -9588,7 +9588,7 @@ end
     if config.FROZEN_CACHE:
       # TODO(crbug.com/446944885): Make Emdawnwebgpu work with FROZEN_CACHE if possible.
       self.skipTest("test doesn't work with frozen cache")
-    self.set_setting('NO_DEFAULT_TO_CXX', 0)  # emdawnwebgpu uses C++ internally
+    self.set_setting('DEFAULT_TO_CXX')  # emdawnwebgpu uses C++ internally
     self.build('hello_world.c', cflags=[
       '--closure=1',
       '-Werror=closure',
