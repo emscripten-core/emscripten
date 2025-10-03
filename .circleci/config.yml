@@ -572,7 +572,6 @@ jobs:
       EM_COMPILER_WRAPPER: "ccache"
       CCACHE_DEBUG: 1
       CCACHE_DEBUGLEVEL: 1
-      CCACHE_DEBUGDIR: ~/ccache-debug
     steps:
       - run: echo "${CIRCLE_PR_NUMBER} ${CIRCLE_PULL_REQUEST} ${CIRCLE_REPOSITORY_URL} ${CIRCLE_BRANCH} << pipeline.project.git_url >> << pipeline.git.branch >>"
       - checkout

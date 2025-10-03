@@ -114,8 +114,8 @@ legacyFuncs = {
   },
 
   // Legacy names for runtime `out`/`err` symbols.
-  $print: 'out',
-  $printErr: 'err',
+  $print: '=out',
+  $printErr: '=err',
 
   // Converts a JS string to an integer base-10. Despite _s, which
   // suggests signaling error handling, this returns NaN on error.
