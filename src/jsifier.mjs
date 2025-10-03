@@ -388,7 +388,7 @@ export async function runJSify(outputFile, symbolsOnly) {
     }
   }
 
-  function processLibraryFunction(snippet, symbol, mangled, deps, isStub) {
+  function processLibraryFunction(snippet, symbol, mangled, deps) {
     // It is possible that when printing the function as a string on Windows,
     // the js interpreter we are in returns the string with Windows line endings
     // \r\n. This is undesirable, since line endings are managed in the form \n
@@ -400,10 +400,6 @@ export async function runJSify(outputFile, symbolsOnly) {
     // If so, prepend a function keyword so that it's valid syntax when extracted.
     if (snippet.startsWith(symbol)) {
       snippet = 'function ' + snippet;
-    }
-
-    if (isStub) {
-      return snippet;
     }
 
     // apply LIBRARY_DEBUG if relevant
@@ -601,6 +597,8 @@ function(${args}) {
             warn('To build in STANDALONE_WASM mode without a main(), use emcc --no-entry');
           }
         }
+        // Create a stub that we can include in lieu of the missing function.
+        isStub = true;
         if (RELOCATABLE) {
           // Create a stub for this symbol which can later be replaced by the
           // dynamic linker.  If this stub is called before the symbol is
@@ -617,7 +615,6 @@ function(${args}) {
           }
           const functionBody = assertion + `return ${target}(...args);`;
           LibraryManager.library[symbol] = new Function('...args', functionBody);
-          isStub = true;
         } else {
           // emit a stub that will fail at runtime
           LibraryManager.library[symbol] = new Function(`abort('missing function: ${symbol}');`);
@@ -625,7 +622,6 @@ function(${args}) {
           // regarding this function, marking ot a variadic function that can take in anything and return anything.
           // (not useful to warn/error multiple times)
           LibraryManager.library[symbol + '__docs'] = '/** @type {function(...*):?} */';
-          isStub = true;
         }
       }
 
@@ -642,7 +638,7 @@ function(${args}) {
         }
       });
 
-      let isFunction = false;
+      let isFunction = typeof snippet == 'function';
       let isNativeAlias = false;
 
       const postsetId = symbol + '__postset';
@@ -680,9 +676,8 @@ function(${args}) {
       } else if (typeof snippet == 'object') {
         snippet = stringifyWithFunctions(snippet);
         addImplicitDeps(snippet, deps);
-      } else if (typeof snippet == 'function') {
-        isFunction = true;
-        snippet = processLibraryFunction(snippet, symbol, mangled, deps, isStub);
+      } else if (isFunction && !isStub) {
+        snippet = processLibraryFunction(snippet, symbol, mangled, deps);
         addImplicitDeps(snippet, deps);
         if (CHECK_DEPS && !isUserSymbol) {
           checkDependencies(symbol, snippet, deps, postset?.toString());
