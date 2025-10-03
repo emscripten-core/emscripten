@@ -3154,12 +3154,12 @@ Module["FS_createLazyFile"] = FS_createLazyFile;
 // End JS library exports
 // end include: postlibrary.js
 // Imports from the Wasm binary.
-var _main, wasmMemory, wasmTable;
+var _main, memory, __indirect_function_table, wasmMemory;
 
 function assignWasmExports(wasmExports) {
   _main = Module["_main"] = wasmExports["d"];
-  wasmMemory = wasmExports["b"];
-  wasmTable = wasmExports["__indirect_function_table"];
+  memory = wasmMemory = wasmExports["b"];
+  __indirect_function_table = wasmExports["__indirect_function_table"];
 }
 
 var wasmImports = {
