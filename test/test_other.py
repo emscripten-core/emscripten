@@ -2588,7 +2588,7 @@ F1 -> ''
   def test_remote_ports(self):
     self.emcc(test_file('hello_world.c'), ['--use-port=emdawnwebgpu'])
 
-  @crossplatform
+  @crossplatform  # Note this only tests on platforms where FROZEN_CACHE isn't set.
   def test_external_ports_simple(self):
     if config.FROZEN_CACHE:
       self.skipTest("test doesn't work with frozen cache")
@@ -9650,6 +9650,7 @@ end
     for sym in glsyms:
       self.assertContained('.' + sym, js)
 
+  @crossplatform  # So tests will run on non-Linux platforms, where FROZEN_CACHE isn't set.
   @also_with_wasm64
   def test_closure_webgpu(self):
     if config.FROZEN_CACHE:
@@ -12301,6 +12302,7 @@ int main(void) {
       self.assertContained(expected, self.run_js('test.wasm', engine))
 
   @flaky('https://github.com/emscripten-core/emscripten/issues/25343')
+  @crossplatform  # So tests will run on non-Linux platforms, where FROZEN_CACHE isn't set.
   @also_with_wasm64
   @parameterized({
     '': ([],),
