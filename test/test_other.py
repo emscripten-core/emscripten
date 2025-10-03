@@ -2588,7 +2588,7 @@ F1 -> ''
   def test_remote_ports(self):
     self.emcc(test_file('hello_world.c'), ['--use-port=emdawnwebgpu'])
 
-  @crossplatform  # Note this only tests on platforms where FROZEN_CACHE isn't set.
+  @crossplatform
   def test_external_ports_simple(self):
     if config.FROZEN_CACHE:
       self.skipTest("test doesn't work with frozen cache")

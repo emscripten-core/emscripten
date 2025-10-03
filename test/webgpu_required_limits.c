@@ -80,7 +80,7 @@ static void on_adapter_request_ended(WGPURequestAdapterStatus status,
   wgpuAdapterRelease(adapter);
 }
 
-int main(void) {
+int main() {
   const WGPUInstance instance = wgpuCreateInstance(NULL);
 
   wgpuInstanceRequestAdapter(instance, NULL, (WGPURequestAdapterCallbackInfo){
