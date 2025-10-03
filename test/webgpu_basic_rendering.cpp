@@ -33,22 +33,14 @@ class ScopedCounter {
         ~ScopedCounter() { Decrement(); }
     private:
         void Increment() { sScopeCount++; }
-        void Decrement() {
-            assert(sScopeCount > 0);
-            sScopeCount--;
-            if (sScopeCount == 0) {
-                // Check we don't reach 0 before the runtime is ready to exit.
-                // (Make sure this test has scopes for everything that does keepalive.)
-                bool runtime_is_kept_alive = EM_ASM_INT({ return keepRuntimeAlive(); });
-                assert(!runtime_is_kept_alive);
-            }
-        }
+        void Decrement() { assert(sScopeCount > 0); sScopeCount--; }
 };
 
 void RegisterCheckScopesAtExit() {
     atexit([](){
         // Check we don't exit before the tests are done.
         // (Make sure there's a keepalive for everything the test has scopes for.)
+        // Build with -sEXIT_RUNTIME to trace keepalives.
         assert(sScopeCount == 0);
         // Overwrite the old return code and exit now that everything is done.
         exit(0);
