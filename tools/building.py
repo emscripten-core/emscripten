@@ -378,8 +378,8 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False, work
   if settings.VERBOSE:
     cmd += ['--verbose']
   if return_output:
-    shared.print_compiler_stage(cmd)
     if shared.SKIP_SUBPROCS:
+      shared.print_compiler_stage(cmd)
       return ''
     return check_call(cmd, stdout=PIPE).stdout
 
@@ -390,8 +390,8 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False, work
   output_file = basename + '.jso%d.js' % acorn_optimizer.counter
   shared.get_temp_files().note(output_file)
   cmd += ['-o', output_file]
-  shared.print_compiler_stage(cmd)
   if shared.SKIP_SUBPROCS:
+    shared.print_compiler_stage(cmd)
     return output_file
   check_call(cmd)
   save_intermediate(output_file, '%s.js' % passes[0])
@@ -563,12 +563,16 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
   if settings.USE_WEBGPU:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/webgpu-externs.js')]
 
+  if settings.AUDIO_WORKLET:
+    CLOSURE_EXTERNS += [path_from_root('src/closure-externs/audio-worklet-externs.js')]
+
   # Closure compiler needs to know about all exports that come from the wasm module, because to optimize for small code size,
   # the exported symbols are added to global scope via a foreach loop in a way that evades Closure's static analysis. With an explicit
   # externs file for the exports, Closure is able to reason about the exports.
   if settings.WASM_EXPORTS and not settings.DECLARE_ASM_MODULE_EXPORTS:
     # Generate an exports file that records all the exported symbols from the wasm module.
-    module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % asmjs_mangle(i) for i in settings.WASM_EXPORTS])
+    exports = [asmjs_mangle(i) for i in settings.WASM_EXPORTS] + settings.ALIASES
+    module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % e for e in exports])
     exports_file = shared.get_temp_files().get('.js', prefix='emcc_module_exports_')
     exports_file.write(module_exports_suppressions.encode())
     exports_file.close()
@@ -1242,8 +1246,8 @@ def run_binaryen_command(tool, infile, outfile=None, args=None, debug=False, std
   if settings.GENERATE_SOURCE_MAP and outfile and tool in ['wasm-opt', 'wasm-emscripten-finalize', 'wasm-metadce']:
     cmd += [f'--input-source-map={infile}.map']
     cmd += [f'--output-source-map={outfile}.map']
-  shared.print_compiler_stage(cmd)
   if shared.SKIP_SUBPROCS:
+    shared.print_compiler_stage(cmd)
     return ''
   ret = check_call(cmd, stdout=stdout).stdout
   if outfile:

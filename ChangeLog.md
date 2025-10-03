@@ -20,12 +20,17 @@ See docs/process.md for more on how version tagging works.
 
 4.0.16 (in development)
 -----------------------
+- A warning was added about usage of embind without C++17 or above. (#25424)
 - The minimum supported versions of Node, Chrome and Firefox were bumped
   enabling the removal of the `globalThis` polyfill and universally enabling
   mutable globals: (#25375, #25385)
   - Node: v10.19.0 -> v12.22.9
   - Chrome: v70 -> v74
   - Firefox: v55 -> v65
+- The Embind `val` functions `call`, `operator()`, and `new_` now support
+  passing `pointer`s by using the `allow_raw_pointers()` argument. This feature
+  is only enabled with C++17 and newer. Older versions will allow pointers by
+  default.
 
 4.0.15 - 09/17/25
 -----------------
@@ -317,7 +322,7 @@ See docs/process.md for more on how version tagging works.
 - Emscripten version was bumped to 4.0.0. Happy new year, happy new major
   version!  While version has a few interesting changes, there is nothing huge
   that makes it different from any other release. (#19053)
-- `-sWASM_LEAGCY_EXCEPTIONS` option is added. (#23365) If true, it will emit
+- `-sWASM_LEGACY_EXCEPTIONS` option is added. (#23365) If true, it will emit
   instructions for the legacy Wasm exception handling proposal
   (https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/legacy/Exceptions.md),
   and if false, the new standardized exception handling proposal

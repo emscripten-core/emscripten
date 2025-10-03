@@ -4317,9 +4317,7 @@ var glPassthroughFuncs = [
 ];
 
 function createGLPassthroughFunctions(lib, funcs) {
-  funcs.forEach((data) => {
-    const num = data[0];
-    const names = data[1];
+  for (const [num, names] of funcs) {
     const args = range(num).map((i) => 'x' + i ).join(', ');
     const stub = `(${args}) => GLctx.NAME(${args})`;
     const sigEnd = range(num).map(() => 'i').join('');
@@ -4341,26 +4339,47 @@ function createGLPassthroughFunctions(lib, funcs) {
       lib[cName] = eval(stub.replace('NAME', name));
       assert(lib[cName + '__sig'] || LibraryManager.library[cName + '__sig'], 'missing sig for ' + cName);
     });
-  });
+  }
 }
 
 createGLPassthroughFunctions(LibraryGL, glPassthroughFuncs);
 
 autoAddDeps(LibraryGL, '$GL');
 
+function renameSymbol(lib, oldName, newName) {
+  lib[newName] = lib[oldName];
+  delete lib[oldName];
+  for (const suffix of decoratorSuffixes) {
+    const oldDecorator = oldName + suffix;
+    if (lib.hasOwnProperty(oldDecorator)) {
+      const newDecorator = newName + suffix;
+      lib[newDecorator] = lib[oldDecorator];
+      delete lib[oldDecorator];
+    }
+  }
+}
+
 function recordGLProcAddressGet(lib) {
   // GL proc address retrieval - allow access through glX and emscripten_glX, to
   // allow name collisions with user-implemented things having the same name
   // (see gl.c)
-  Object.keys(lib).forEach((x) => {
-    if (x.startsWith('gl') && !isDecorator(x)) {
-      lib['emscripten_' + x] = x;
-      var sig = LibraryManager.library[x + '__sig'];
+  //
+  // We do this by renaming `glX` symbols to `emscripten_glX` and then setting
+  // `glX` as an alias of `emscripten_glX`.  The reason for this renaming is to
+  // ensure that `emscripten_glX` is always available, even in cases where native
+  // code defines `glX`.
+  const glSyms = [];
+  for (const sym of Object.keys(lib)) {
+    if (sym.startsWith('gl') && !isDecorator(sym)) {
+      const newSym = 'emscripten_' + sym;
+      renameSymbol(lib, sym, newSym);
+      lib[sym] = newSym;
+      var sig = LibraryManager.library[sym + '__sig'];
       if (sig) {
-        lib['emscripten_' + x + '__sig'] = sig;
+        lib[newSym + '__sig'] = sig;
       }
     }
-  });
+  }
 }
 
 recordGLProcAddressGet(LibraryGL);

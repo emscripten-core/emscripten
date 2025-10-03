@@ -15,6 +15,8 @@ assert(Object.keys(LibraryManager.library).length === 0);
 addToLibrary({
   $callRuntimeCallbacks: () => {},
 
+  $wasmMemory: 'memory',
+
   $ExitStatus: class {
     name = 'ExitStatus';
     constructor(status) {
