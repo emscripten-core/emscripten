@@ -3292,10 +3292,11 @@ More info: https://emscripten.org
     ''')
     self.do_runf('main.cpp', 'done', cflags=['-lembind', '-sASYNCIFY', '--post-js', 'post.js'])
 
+  @also_with_wasm64
   @parameterized({
-    '': [['-sDYNAMIC_EXECUTION=1']],
-    'no_dynamic': [['-sDYNAMIC_EXECUTION=0']],
-    'dyncall': [['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB']],
+    '': (['-sDYNAMIC_EXECUTION=1'],),
+    'no_dynamic': (['-sDYNAMIC_EXECUTION=0'],),
+    'dyncall': (['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB'],),
   })
   @requires_jspi
   def test_embind_jspi(self, args):

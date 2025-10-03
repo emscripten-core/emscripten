@@ -2617,7 +2617,7 @@ function wrapSyscallFunction(x, library, isWasi) {
   post = handler + post;
 
   if (pre || post) {
-    t = modifyJSFunction(t, (args, body) => `function (${args}) {\n${pre}${body}${post}}\n`);
+    t = modifyJSFunction(t, (args, body, async_) => `${async_} function (${args}) {\n${pre}${body}${post}}\n`);
   }
 
   library[x] = eval('(' + t + ')');

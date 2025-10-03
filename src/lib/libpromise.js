@@ -261,7 +261,7 @@ addToLibrary({
 #if ASYNCIFY
   emscripten_promise_await__deps: ['$getPromise', '$setPromiseResult'],
 #endif
-  emscripten_promise_await: (returnValuePtr, id) => {
+  emscripten_promise_await: async (returnValuePtr, id) => {
 #if ASYNCIFY
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_await: ${id}`);

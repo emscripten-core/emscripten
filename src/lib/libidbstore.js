@@ -94,7 +94,7 @@ var LibraryIDBStore = {
 #if ASYNCIFY
   emscripten_idb_load__async: true,
   emscripten_idb_load__deps: ['malloc'],
-  emscripten_idb_load: (db, id, pbuffer, pnum, perror) => Asyncify.handleSleep((wakeUp) => {
+  emscripten_idb_load: async (db, id, pbuffer, pnum, perror) => Asyncify.handleSleep((wakeUp) => {
     IDBStore.getFile(UTF8ToString(db), UTF8ToString(id), (error, byteArray) => {
       if (error) {
         {{{ makeSetValue('perror', 0, '1', 'i32') }}};
@@ -110,7 +110,7 @@ var LibraryIDBStore = {
     });
   }),
   emscripten_idb_store__async: true,
-  emscripten_idb_store: (db, id, ptr, num, perror) => Asyncify.handleSleep((wakeUp) => {
+  emscripten_idb_store: async (db, id, ptr, num, perror) => Asyncify.handleSleep((wakeUp) => {
     IDBStore.setFile(UTF8ToString(db), UTF8ToString(id), new Uint8Array(HEAPU8.subarray(ptr, ptr+num)), (error) => {
       // Closure warns about storing booleans in TypedArrays.
       /** @suppress{checkTypes} */
@@ -119,7 +119,7 @@ var LibraryIDBStore = {
     });
   }),
   emscripten_idb_delete__async: true,
-  emscripten_idb_delete: (db, id, perror) => Asyncify.handleSleep((wakeUp) => {
+  emscripten_idb_delete: async (db, id, perror) => Asyncify.handleSleep((wakeUp) => {
     IDBStore.deleteFile(UTF8ToString(db), UTF8ToString(id), (error) => {
       /** @suppress{checkTypes} */
       {{{ makeSetValue('perror', 0, '!!error', 'i32') }}};
@@ -127,7 +127,7 @@ var LibraryIDBStore = {
     });
   }),
   emscripten_idb_exists__async: true,
-  emscripten_idb_exists: (db, id, pexists, perror) => Asyncify.handleSleep((wakeUp) => {
+  emscripten_idb_exists: async (db, id, pexists, perror) => Asyncify.handleSleep((wakeUp) => {
     IDBStore.existsFile(UTF8ToString(db), UTF8ToString(id), (error, exists) => {
       /** @suppress{checkTypes} */
       {{{ makeSetValue('pexists', 0, '!!exists', 'i32') }}};
@@ -137,7 +137,7 @@ var LibraryIDBStore = {
     });
   }),
   emscripten_idb_clear__async: true,
-  emscripten_idb_clear: (db, perror) => Asyncify.handleSleep((wakeUp) => {
+  emscripten_idb_clear: async (db, perror) => Asyncify.handleSleep((wakeUp) => {
     IDBStore.clearStore(UTF8ToString(db), (error) => {
       /** @suppress{checkTypes} */
       {{{ makeSetValue('perror', 0, '!!error', 'i32') }}};

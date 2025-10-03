@@ -401,12 +401,19 @@ ${functionBody}
 #if ASYNCIFY
   _emval_await__deps: ['$Emval', '$Asyncify'],
   _emval_await__async: true,
+#if ASYNCIFY == 1
   _emval_await: (promise) => {
     return Asyncify.handleAsync(async () => {
       var value = await Emval.toValue(promise);
       return Emval.toHandle(value);
     });
   },
+#else
+  _emval_await: async (promise) => {
+    var value = await Emval.toValue(promise);
+    return Emval.toHandle(value);
+  },
+#endif
 #endif
 
   _emval_iter_begin__deps: ['$Emval'],
