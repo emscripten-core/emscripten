@@ -212,6 +212,7 @@ commands:
           command: |
             ls ~/ccache-debug || echo "no ccache-debug"
             ls ~/cache/sysroot/lib/wasm32-emscripten || echo "no build"
+            cat ~/cache/sysroot/lib/wasm32-emscripten/crtbegin.o.ccache-log
             date
             ccache -s
             ccache --print-stats
