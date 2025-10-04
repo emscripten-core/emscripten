@@ -159,7 +159,7 @@ def get_top_level_ninja_file():
 
 
 def run_ninja(build_dir):
-  cmd = ['ninja', '-C', build_dir, f'-j{utils.get_num_cores()}']
+  cmd = ['ninja', '-v', '-C', build_dir, f'-j{utils.get_num_cores()}']
   if shared.PRINT_SUBPROCS:
     cmd.append('-v')
   shared.check_call(cmd, env=clean_env())
