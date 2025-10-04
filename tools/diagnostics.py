@@ -57,6 +57,10 @@ def reset_color():
   return '\033[0m'
 
 
+def with_color(color, text):
+  return f'\033[9{color}m{text}\033[0m'
+
+
 def diag(level, msg, *args):
   # Format output message as:
   # <tool>: <level>: msg
