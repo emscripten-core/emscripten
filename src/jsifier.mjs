@@ -642,7 +642,7 @@ function(${args}) {
         }
       });
 
-      let isFunction = false;
+      const isFunction = typeof snippet == 'function';
       let isNativeAlias = false;
 
       const postsetId = symbol + '__postset';
@@ -680,8 +680,7 @@ function(${args}) {
       } else if (typeof snippet == 'object') {
         snippet = stringifyWithFunctions(snippet);
         addImplicitDeps(snippet, deps);
-      } else if (typeof snippet == 'function') {
-        isFunction = true;
+      } else if (isFunction) {
         snippet = processLibraryFunction(snippet, symbol, mangled, deps, isStub);
         addImplicitDeps(snippet, deps);
         if (CHECK_DEPS && !isUserSymbol) {
@@ -727,6 +726,7 @@ function(${args}) {
           // Handle arrow functions
           contentText = `var ${mangled} = ` + contentText + ';';
         } else if (contentText.startsWith('class ')) {
+          // Handle class declarations (which also have typeof == 'function'.)
           contentText = contentText.replace(/^class /, `class ${mangled} `);
         } else {
           // Handle regular (non-arrow) functions
