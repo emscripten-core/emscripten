@@ -27,6 +27,7 @@ See docs/process.md for more on how version tagging works.
   - Node: v10.19.0 -> v12.22.9
   - Chrome: v70 -> v74
   - Firefox: v55 -> v65
+  - Minimum Firefox version was further bumped up to Firefox 68 ESR
 - The Embind `val` functions `call`, `operator()`, and `new_` now support
   passing `pointer`s by using the `allow_raw_pointers()` argument. This feature
   is only enabled with C++17 and newer. Older versions will allow pointers by
