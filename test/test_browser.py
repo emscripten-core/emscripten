@@ -26,6 +26,7 @@ from common import also_with_minimal_runtime, also_with_wasm2js, also_with_asan,
 from common import HttpServerThread, requires_dev_dependency
 from tools import shared
 from tools import ports
+from tools.shared import config
 from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE, DEBUG
 from tools.utils import delete_dir
 
@@ -4454,14 +4455,18 @@ Module["preRun"] = () => {
     self.btest_exit('webgl2_simple_enable_extensions.c', cflags=cmd)
 
   @parameterized({
-    '': ([],),
-    'closure': (['-sASSERTIONS', '--closure=1'],),
-    'closure_advanced': (['-sASSERTIONS', '--closure=1', '-O3'],),
-    'main_module': (['-sMAIN_MODULE=1'],),
-    'pthreads': (['-pthread', '-sOFFSCREENCANVAS_SUPPORT'],),
+    '': (True, [],),
+    'closure': (True, ['-sASSERTIONS', '--closure=1'],),
+    'closure_advanced': (True, ['-sASSERTIONS', '--closure=1', '-O3'],),
+    # Not precached with PIC
+    'main_module': (False, ['-sMAIN_MODULE=1'],),
+    # Not precached with SHARED_MEMORY
+    'pthreads': (False, ['-pthread', '-sOFFSCREENCANVAS_SUPPORT'],),
   })
   @requires_webgpu
-  def test_webgpu_basic_rendering(self, args):
+  def test_webgpu_basic_rendering(self, assume_precached, args):
+    if config.FROZEN_CACHE and not assume_precached:
+      self.skipTest("test doesn't work with frozen cache")
     self.btest_exit('webgpu_basic_rendering.cpp', cflags=['--use-port=emdawnwebgpu', '-sEXIT_RUNTIME'] + args)
 
   @requires_webgpu

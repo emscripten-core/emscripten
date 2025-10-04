@@ -2586,6 +2586,7 @@ F1 -> ''
 
   @requires_network
   def test_remote_ports(self):
+    self.set_setting('DEFAULT_TO_CXX')  # emdawnwebgpu uses C++ internally
     self.emcc(test_file('hello_world.c'), ['--use-port=emdawnwebgpu'])
 
   @crossplatform
@@ -9650,11 +9651,10 @@ end
     for sym in glsyms:
       self.assertContained('.' + sym, js)
 
-  @crossplatform  # So tests will run on non-Linux platforms, where FROZEN_CACHE isn't set.
   @also_with_wasm64
   def test_closure_webgpu(self):
-    if config.FROZEN_CACHE:
-      # TODO(crbug.com/446944885): Make Emdawnwebgpu work with FROZEN_CACHE if possible.
+    if config.FROZEN_CACHE and self.get_setting('MEMORY64'):
+      # CI configuration doesn't run `embuilder` with wasm64 on ports
       self.skipTest("test doesn't work with frozen cache")
     self.set_setting('DEFAULT_TO_CXX')  # emdawnwebgpu uses C++ internally
     self.build('hello_world.c', cflags=[
@@ -12302,7 +12302,7 @@ int main(void) {
       self.assertContained(expected, self.run_js('test.wasm', engine))
 
   @flaky('https://github.com/emscripten-core/emscripten/issues/25343')
-  @crossplatform  # So tests will run on non-Linux platforms, where FROZEN_CACHE isn't set.
+  @crossplatform
   @also_with_wasm64
   @parameterized({
     '': ([],),
@@ -12310,8 +12310,8 @@ int main(void) {
     'closure_assertions': (['--closure=1', '-Werror=closure', '-sASSERTIONS'],),
   })
   def test_emdawnwebgpu_link_test(self, args):
-    if config.FROZEN_CACHE:
-      # TODO(crbug.com/446944885): Make Emdawnwebgpu work with FROZEN_CACHE if possible.
+    if config.FROZEN_CACHE and self.get_setting('MEMORY64'):
+      # CI configuration doesn't run `embuilder` with wasm64 on ports
       self.skipTest("test doesn't work with frozen cache")
     self.emcc(test_file('test_emdawnwebgpu_link_test.cpp'), ['--use-port=emdawnwebgpu', '-sASYNCIFY'] + args)
 
