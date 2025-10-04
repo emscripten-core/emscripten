@@ -4241,8 +4241,9 @@ Module["preRun"] = () => {
   # Tests that it is possible to initialize and render WebGL content in a
   # pthread by using OffscreenCanvas.
   @no_chrome('https://crbug.com/961765')
-  # Suffers from browser priority inversion deadlock problem: offscreenCanvas.getContext("webgl2") does not make progress in a pthread until main thread yields to event loop.
-  @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1972240')
+  # The non-chained version suffers from browser priority inversion deadlock problem: offscreenCanvas.getContext("webgl2") does not make progress in a pthread until main thread yields to event loop.
+  # The chained version of this test suffers from bug https://bugzilla.mozilla.org/show_bug.cgi?id=1992576
+  @no_firefox('https://bugzilla.mozilla.org/show_bug.cgi?id=1972240 (priority inversion deadlock) + https://bugzilla.mozilla.org/show_bug.cgi?id=1992576 (chained OffscreenCanvas transfer)')
   @parameterized({
     '': ([],),
     # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING:
