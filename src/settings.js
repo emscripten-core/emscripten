@@ -1880,7 +1880,7 @@ var AUTO_NATIVE_LIBRARIES = true;
 // for Firefox versions older than < majorVersion.
 // Firefox 79 was released on 2020-07-28.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// Minimum supported value is 65 which was released on 2019-01-29 (see
+// Minimum supported value is 68 which was released on 2019-07-09 (see
 // feature_matrix.py)
 // [link]
 var MIN_FIREFOX_VERSION = 79;
