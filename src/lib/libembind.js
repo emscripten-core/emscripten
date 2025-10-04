@@ -2222,13 +2222,52 @@ var LibraryEmbind = {
     name = AsciiToString(name);
 
     var Enum = enumType.constructor;
-
     var Value = Object.create(enumType.constructor.prototype, {
       value: {value: enumValue},
       constructor: {value: createNamedFunction(`${enumType.name}_${name}`, function() {})},
     });
     Enum.values[enumValue] = Value;
     Enum[name] = Value;
+  },
+
+  _embind_register_string_enum__docs: '/** @suppress {globalThis} */',
+  _embind_register_string_enum__deps: ['$exposePublicSymbol', '$enumReadValueFromPointer',
+    '$AsciiToString', '$registerType'],
+  _embind_register_string_enum: (rawType, name, size, isSigned) => {
+    name = AsciiToString(name);
+
+    // Use a two way map to enhance speed of conversions.
+    var valuesMap = {}; // "Name" -> 1
+    var reverseMap = {}; // 1 -> "Name"
+    // Only expose the names to Js.
+    var keysMap = {}; // "Name" -> "Name"
+
+    registerType(rawType, {
+      name: name,
+      valuesMap,
+      reverseMap,
+      keysMap,
+      fromWireType: function(c) {
+        return this.reverseMap[c];
+      },
+      toWireType: function(destructors, c) {
+        return this.valuesMap[c];
+      },
+      readValueFromPointer: enumReadValueFromPointer(name, size, isSigned),
+      destructorFunction: null,
+    });
+    exposePublicSymbol(name, keysMap);
+    // Just exposes a simple dict. argCount is meaningless here,
+    delete Module[name].argCount;
+  },
+
+  _embind_register_string_enum_value__deps: ['$AsciiToString', '$requireRegisteredType'],
+  _embind_register_string_enum_value: (rawEnumType, name, enumValue) => {
+    var enumType = requireRegisteredType(rawEnumType, 'string_enum');
+    name = AsciiToString(name);
+    enumType.valuesMap[name] = enumValue;
+    enumType.reverseMap[enumValue] = name;
+    enumType.keysMap[name] = name;
   },
 
   _embind_register_constant__deps: ['$AsciiToString', '$whenDependentTypesAreResolved'],

@@ -47,9 +47,13 @@ std::unique_ptr<Test> class_unique_ptr_returning_fn() {
 
 enum Bar { kValueOne, kValueTwo, kValueThree };
 
+enum Baz { kValueA, kValueB, kValueC };
+
 enum EmptyEnum {};
 
 Bar enum_returning_fn() { return kValueOne; }
+
+Baz str_enum_returning_fn() { return kValueA; }
 
 struct ValArr {
   int x, y, z;
@@ -59,6 +63,7 @@ EMSCRIPTEN_DECLARE_VAL_TYPE(CallbackType);
 
 struct ValObj {
   Bar bar;
+  Baz baz;
   std::string string;
   CallbackType callback;
   ValObj() : callback(val::undefined()) {}
@@ -185,9 +190,14 @@ EMSCRIPTEN_BINDINGS(Test) {
       .value("valueOne", Bar::kValueOne)
       .value("valueTwo", Bar::kValueTwo)
       .value("valueThree", Bar::kValueThree);
+  string_enum_<Baz>("Baz")
+      .value("valueA", Baz::kValueA)
+      .value("valueB", Baz::kValueB)
+      .value("valueC", Baz::kValueC);
   enum_<EmptyEnum>("EmptyEnum");
 
   function("enum_returning_fn", &enum_returning_fn);
+  function("str_enum_returning_fn", &str_enum_returning_fn);
 
   value_array<ValArr>("ValArr")
       .element(&ValArr::x)
@@ -203,6 +213,7 @@ EMSCRIPTEN_BINDINGS(Test) {
   value_object<ValObj>("ValObj")
       .field("string", &ValObj::string)
       .field("bar", &ValObj::bar)
+      .field("baz", &ValObj::baz)
       .field("callback", &ValObj::callback);
   function("getValObj", &getValObj);
   function("setValObj", &setValObj);

@@ -1016,6 +1016,12 @@ EnumClass emval_test_take_and_return_EnumClass(EnumClass e) {
   return e;
 }
 
+enum class EnumStr { ONE, TWO };
+
+EnumStr emval_test_take_and_return_EnumStr(EnumStr e) {
+  return e;
+}
+
 void emval_test_call_function(val v, int i, float f, TupleVector tv, StructVector sv) {
   v(i, f, tv, sv);
 }
@@ -2350,6 +2356,12 @@ EMSCRIPTEN_BINDINGS(tests) {
     ;
   function("emval_test_take_and_return_EnumClass", &emval_test_take_and_return_EnumClass);
 
+  string_enum_<EnumStr>("EnumStr")
+    .value("ONE", EnumStr::ONE)
+    .value("TWO", EnumStr::TWO)
+    ;
+  function("emval_test_take_and_return_EnumStr", &emval_test_take_and_return_EnumStr);
+
   function("emval_test_call_function", &emval_test_call_function);
 
   function("emval_test_return_unique_ptr", &emval_test_return_unique_ptr);
@@ -2404,7 +2416,7 @@ EMSCRIPTEN_BINDINGS(tests) {
 
   register_map<std::string, int>("StringIntMap");
   function("embind_test_get_string_int_map", embind_test_get_string_int_map);
-    
+
   register_map<int, std::string, std::greater<int>>("IntStringMapGreater");
   function("embind_test_get_int_string_greater_map", embind_test_get_int_string_greater_map);
 
