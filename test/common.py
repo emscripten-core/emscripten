@@ -62,6 +62,7 @@ logger = logging.getLogger('common')
 EMTEST_BROWSER = None
 EMTEST_BROWSER_AUTO_CONFIG = None
 EMTEST_HEADLESS = None
+EMTEST_KEEP_OPEN = None
 EMTEST_DETECT_TEMPFILE_LEAKS = None
 EMTEST_SAVE_DIR = None
 # generally js engines are equivalent, testing 1 is enough. set this
@@ -2522,6 +2523,10 @@ class BrowserCore(RunnerCore):
 
   @classmethod
   def browser_terminate(cls):
+    if EMTEST_KEEP_OPEN:
+      assert len(cls.browser_procs) == 1, '--keep-open only supports one browser process'
+      cls.browser_procs[0].wait()
+      return
     for proc in cls.browser_procs:
       try:
         proc.terminate()
