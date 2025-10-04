@@ -7,68 +7,6 @@
 assert(SHARED_MEMORY);
 
 addToLibrary({
-// Chrome 87 shipped Atomics.waitAsync:
-//   https://www.chromestatus.com/feature/6243382101803008
-// However its implementation is faulty:
-//   https://bugs.chromium.org/p/chromium/issues/detail?id=1167541
-// Firefox Nightly 86.0a1 (2021-01-15) does not yet have it:
-//   https://bugzilla.mozilla.org/show_bug.cgi?id=1467846
-// And at the time of writing, no other browser has it either.
-#if MIN_CHROME_VERSION < 91 || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED || MIN_FIREFOX_VERSION != TARGET_NOT_SUPPORTED || ENVIRONMENT_MAY_BE_NODE
-  // Partially polyfill Atomics.waitAsync() if not available in the browser.
-  // Also polyfill for old Chrome-based browsers, where Atomics.waitAsync is
-  // broken until Chrome 91, see:
-  //   https://bugs.chromium.org/p/chromium/issues/detail?id=1167541
-  //   https://github.com/tc39/proposal-atomics-wait-async/blob/master/PROPOSAL.md
-  // This polyfill performs polling with setTimeout() to observe a change in the
-  // target memory location.
-  $polyfillWaitAsync__postset: `if (!Atomics.waitAsync || (globalThis.navigator?.userAgent && Number((navigator.userAgent.match(/Chrom(e|ium)\\/([0-9]+)\\./)||[])[2]) < 91)) {
-  let __Atomics_waitAsyncAddresses = [/*[i32a, index, value, maxWaitMilliseconds, promiseResolve]*/];
-  function __Atomics_pollWaitAsyncAddresses() {
-    let now = performance.now();
-    let l = __Atomics_waitAsyncAddresses.length;
-    for (let i = 0; i < l; ++i) {
-      let a = __Atomics_waitAsyncAddresses[i];
-      let expired = (now > a[3]);
-      let awoken = (Atomics.load(a[0], a[1]) != a[2]);
-      if (expired || awoken) {
-        __Atomics_waitAsyncAddresses[i--] = __Atomics_waitAsyncAddresses[--l];
-        __Atomics_waitAsyncAddresses.length = l;
-        a[4](awoken ? 'ok': 'timed-out');
-      }
-    }
-    if (l) {
-      // If we still have addresses to wait, loop the timeout handler to continue polling.
-      setTimeout(__Atomics_pollWaitAsyncAddresses, 10);
-    }
-  }
-  #if ASSERTIONS && WASM_WORKERS
-    if (!ENVIRONMENT_IS_WASM_WORKER) err('Current environment does not support Atomics.waitAsync(): polyfilling it, but this is going to be suboptimal.');
-  #endif
-  /**
-   * @param {number=} maxWaitMilliseconds
-   */
-  Atomics.waitAsync = (i32a, index, value, maxWaitMilliseconds) => {
-    let val = Atomics.load(i32a, index);
-    if (val != value) return { async: false, value: 'not-equal' };
-    if (maxWaitMilliseconds <= 0) return { async: false, value: 'timed-out' };
-    maxWaitMilliseconds = performance.now() + (maxWaitMilliseconds || Infinity);
-    let promiseResolve;
-    let promise = new Promise((resolve) => { promiseResolve = resolve; });
-    if (!__Atomics_waitAsyncAddresses[0]) setTimeout(__Atomics_pollWaitAsyncAddresses, 10);
-    __Atomics_waitAsyncAddresses.push([i32a, index, value, maxWaitMilliseconds, promiseResolve]);
-    return { async: true, value: promise };
-  };
-}`,
-#endif
-
-  $polyfillWaitAsync__internal: true,
-  $polyfillWaitAsync: () => {
-    // nop, used for its postset to ensure `Atomics.waitAsync()` polyfill is
-    // included exactly once and only included when needed.
-    // Any function using Atomics.waitAsync should depend on this.
-  },
-
   $atomicWaitStates__internal: true,
   $atomicWaitStates: ['ok', 'not-equal', 'timed-out'],
   $liveAtomicWaitAsyncs: {},
@@ -76,7 +14,7 @@ addToLibrary({
   $liveAtomicWaitAsyncCounter: 0,
   $liveAtomicWaitAsyncCounter__internal: true,
 
-  emscripten_atomic_wait_async__deps: ['$atomicWaitStates', '$liveAtomicWaitAsyncs', '$liveAtomicWaitAsyncCounter', '$polyfillWaitAsync', '$callUserCallback'],
+  emscripten_atomic_wait_async__deps: ['$atomicWaitStates', '$liveAtomicWaitAsyncs', '$liveAtomicWaitAsyncCounter', '$callUserCallback'],
   emscripten_atomic_wait_async: (addr, val, asyncWaitFinished, userData, maxWaitMilliseconds) => {
     let wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('addr', 'i32') }}}, val, maxWaitMilliseconds);
     if (!wait.async) return atomicWaitStates.indexOf(wait.value);
