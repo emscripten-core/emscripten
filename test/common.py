@@ -130,6 +130,15 @@ class FirefoxConfig:
     shutil.copy(test_file('firefox_user.js'), os.path.join(data_dir, 'user.js'))
 
 
+class SafariConfig:
+  default_flags = ('', )
+  executable_name = 'Safari'
+
+  @staticmethod
+  def configure(data_dir):
+    """ Safari has no special configuration step."""
+
+
 # Special value for passing to assert_returncode which means we expect that program
 # to fail with non-zero return code, but we don't care about specifically which one.
 NON_ZERO = -1
@@ -200,6 +209,10 @@ def is_chrome():
 
 def is_firefox():
   return EMTEST_BROWSER and 'firefox' in EMTEST_BROWSER.lower()
+
+
+def is_safari():
+  return EMTEST_BROWSER and 'safari' in EMTEST_BROWSER.lower()
 
 
 def compiler_for(filename, force_c=False):
@@ -2418,6 +2431,8 @@ def configure_test_browser():
       config = ChromeConfig()
     elif is_firefox():
       config = FirefoxConfig()
+    elif is_safari():
+      config = SafariConfig()
     if config:
       EMTEST_BROWSER += ' ' + ' '.join(config.default_flags)
       if EMTEST_HEADLESS == 1:
@@ -2548,11 +2563,21 @@ class BrowserCore(RunnerCore):
   def browser_open(cls, url):
     assert has_browser()
     browser_args = EMTEST_BROWSER
+    parallel_harness = worker_id is not None
 
-    if EMTEST_BROWSER_AUTO_CONFIG:
+    config = None
+    if is_chrome():
+      config = ChromeConfig()
+    elif is_firefox():
+      config = FirefoxConfig()
+    elif is_safari():
+      config = SafariConfig()
+
+    # Prepare the browser data directory, if it uses one.
+    if EMTEST_BROWSER_AUTO_CONFIG and config and hasattr(config, 'data_dir_flag'):
       logger.info('Using default CI configuration.')
       browser_data_dir = DEFAULT_BROWSER_DATA_DIR
-      if worker_id is not None:
+      if parallel_harness:
         # Running in parallel mode, give each browser its own profile dir.
         browser_data_dir += '-' + str(worker_id)
 
@@ -2567,12 +2592,8 @@ class BrowserCore(RunnerCore):
       # Recreate the new data directory.
       os.mkdir(browser_data_dir)
 
-      if is_chrome():
-        config = ChromeConfig()
-      elif is_firefox():
-        config = FirefoxConfig()
-      else:
-        exit_with_error(f'EMTEST_BROWSER_AUTO_CONFIG only currently works with firefox or chrome. EMTEST_BROWSER was "{EMTEST_BROWSER}"')
+      if not config:
+        exit_with_error(f'EMTEST_BROWSER_AUTO_CONFIG only currently works with firefox, chrome and safari. EMTEST_BROWSER was "{EMTEST_BROWSER}"')
       if WINDOWS:
         # Escape directory delimiter backslashes for shlex.split.
         browser_data_dir = browser_data_dir.replace('\\', '\\\\')
@@ -2580,39 +2601,56 @@ class BrowserCore(RunnerCore):
       browser_args += f' {config.data_dir_flag}"{browser_data_dir}"'
 
     browser_args = shlex.split(browser_args)
+    if is_safari():
+      # For the macOS 'open' command, pass
+      #   --new: to make a new Safari app be launched, rather than add a tab to an existing Safari process/window
+      #   --fresh: do not restore old tabs (e.g. if user had old navigated windows open)
+      #   --background: Open the new Safari window behind the current Terminal window, to make following the test run more pleasing (this is for convenience only)
+      #   -a <exe_name>: The path to the executable to open, in this case Safari
+      browser_args = ['open', '--new', '--fresh', '--background', '-a'] + browser_args
+
     logger.info('Launching browser: %s', str(browser_args))
 
-    if WINDOWS and is_firefox():
-      cls.launch_browser_harness_windows_firefox(worker_id, config, browser_args, url)
+    if (WINDOWS and is_firefox()) or is_safari():
+      cls.launch_browser_harness_with_proc_snapshot_workaround(parallel_harness, config, browser_args, url)
     else:
       cls.browser_procs = [subprocess.Popen(browser_args + [url])]
 
   @classmethod
-  def launch_browser_harness_windows_firefox(cls, worker_id, config, browser_args, url):
-    ''' Dedicated function for launching browser harness on Firefox on Windows,
-    which requires extra care for window positioning and process tracking.'''
+  def launch_browser_harness_with_proc_snapshot_workaround(cls, parallel_harness, config, browser_args, url):
+    ''' Dedicated function for launching browser harness in scenarios where
+    we need to identify the launched browser processes via a before-after
+    subprocess snapshotting delta workaround.'''
 
+    # In order for this to work, each browser needs to be launched one at a time
+    # so that we know which process belongs to which browser.
     with FileLock(browser_spawn_lock_filename) as count:
-      # Firefox is a multiprocess browser. On Windows, killing the spawned
-      # process will not bring down the whole browser, but only one browser tab.
-      # So take a delta snapshot before->after spawning the browser to find
-      # which subprocesses we launched.
-      if worker_id is not None:
+      # Take a snapshot before spawning the browser to find which processes
+      # existed before launching the browser.
+      if parallel_harness or is_safari():
         procs_before = list_processes_by_name(config.executable_name)
+
+      # Browser launch
       cls.browser_procs = [subprocess.Popen(browser_args + [url])]
-      # Give Firefox time to spawn its subprocesses. Use an increasing timeout
-      # as a crude way to account for system load.
-      if worker_id is not None:
+
+      # Give the browser time to spawn its subprocesses. Use an increasing
+      # timeout as a crude way to account for system load.
+      if parallel_harness or is_safari():
         time.sleep(2 + count * 0.3)
         procs_after = list_processes_by_name(config.executable_name)
+
+        # Take a snapshot again to find which processes exist after launching
+        # the browser. Then the newly launched browser processes are determined
+        # by the delta before->after.
+        cls.browser_procs = list(set(procs_after).difference(set(procs_before)))
+        if len(cls.browser_procs) == 0:
+          logger.warning('Could not detect the launched browser subprocesses. The test harness may not be able to close browser windows if a test hangs, and at harness exit.')
+
+      # Firefox on Windows quirk:
       # Make sure that each browser window is visible on the desktop. Otherwise
       # browser might decide that the tab is backgrounded, and not load a test,
       # or it might not tick rAF()s forward, causing tests to hang.
-      if worker_id is not None and not EMTEST_HEADLESS:
-        # On Firefox on Windows we needs to track subprocesses that got created
-        # by Firefox. Other setups can use 'browser_proc' directly to terminate
-        # the browser.
-        cls.browser_procs = list(set(procs_after).difference(set(procs_before)))
+      if WINDOWS and parallel_harness and not EMTEST_HEADLESS:
         # Wrap window positions on a Full HD desktop area modulo primes.
         for proc in cls.browser_procs:
           move_browser_window(proc.pid, (300 + count * 47) % 1901, (10 + count * 37) % 997)
