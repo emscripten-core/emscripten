@@ -134,6 +134,11 @@ typedef struct EmscriptenAudioWorkletNodeCreateOptions
 	int numberOfOutputs;
 	// For each output, specifies the number of audio channels (1=mono/2=stereo/etc.) for that output. Default=an array of ones for each output channel.
 	int *outputChannelCounts;
+    // Extended options from AudioWorkletNode
+	int channelCount;
+	int channelCountMode;
+	int channelInterpretation;
+
 } EmscriptenAudioWorkletNodeCreateOptions;
 
 // Instantiates the given AudioWorkletProcessor as an AudioWorkletNode, which continuously calls the specified processCallback() function on the browser's audio thread to perform audio processing.
