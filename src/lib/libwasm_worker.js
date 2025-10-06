@@ -298,6 +298,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
     return Atomics.isLockFree(width);
   },
 
+  emscripten_lock_async_acquire__deps: ['$polyfillWaitAsync'],
   emscripten_lock_async_acquire: (lock, asyncWaitFinished, userData, maxWaitMilliseconds) => {
     let dispatch = (val, ret) => {
       setTimeout(() => {
