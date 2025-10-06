@@ -2242,7 +2242,12 @@ def make_test_server(in_queue, out_queue, port):
       self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
       self.send_header('Cross-Origin-Embedder-Policy', 'require-corp')
       self.send_header('Cross-Origin-Resource-Policy', 'cross-origin')
-      self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+
+      self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate, private, max-age=0')
+      self.send_header('Expires', '0')
+      self.send_header('Pragma', 'no-cache')
+      self.send_header('Vary', '*') # Safari insists on caching if this header is not present in addition to the above
+
       return SimpleHTTPRequestHandler.end_headers(self)
 
     def do_POST(self):  # noqa: DC04
@@ -2329,9 +2334,13 @@ def make_test_server(in_queue, out_queue, port):
           raise Exception('browser harness error, excessive response to server - test must be fixed! "%s"' % self.path)
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
-        self.send_header('Cache-Control', 'no-cache, must-revalidate')
+
+        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate, private, max-age=0')
+        self.send_header('Expires', '0')
+        self.send_header('Pragma', 'no-cache')
+        self.send_header('Vary', '*') # Safari insists on caching if this header is not present in addition to the above
+
         self.send_header('Connection', 'close')
-        self.send_header('Expires', '-1')
         self.end_headers()
         self.wfile.write(b'OK')
 
@@ -2742,14 +2751,6 @@ class BrowserCore(RunnerCore):
     if DEBUG:
       print('[browser launch:', html_file, ']')
     assert not (message and expected), 'run_browser expects `expected` or `message`, but not both'
-
-    # Accurate version cutoff is not known.
-    # Needed at least for version Safari Version 17.6 (17618.3.11.11.7, 17618)
-    # Also needed for Safari Version 18.5 (20621.2.5.11.8)
-    if is_safari() and get_safari_version() < 190000:
-      # Old Safari cannot handle running multiple browser pages in the same browser instance
-      # So restart the browser between each browser test.
-      self.browser_restart()
 
     if expected is not None:
       try:
