@@ -601,6 +601,9 @@ function(${args}) {
             warn('To build in STANDALONE_WASM mode without a main(), use emcc --no-entry');
           }
         }
+
+        // emit a stub that will fail at runtime
+        var stubFunctionBody = `abort('missing function: ${symbol}');`
         if (RELOCATABLE) {
           // Create a stub for this symbol which can later be replaced by the
           // dynamic linker.  If this stub is called before the symbol is
@@ -615,18 +618,10 @@ function(${args}) {
           if (ASSERTIONS) {
             assertion += `if (!${target} || ${target}.stub) abort("external symbol '${symbol}' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n`;
           }
-          const functionBody = assertion + `return ${target}(...args);`;
-          LibraryManager.library[symbol] = new Function('...args', functionBody);
-          isStub = true;
-        } else {
-          // emit a stub that will fail at runtime
-          LibraryManager.library[symbol] = new Function(`abort('missing function: ${symbol}');`);
-          // We have already warned/errored about this function, so for the purposes of Closure use, mute all type checks
-          // regarding this function, marking ot a variadic function that can take in anything and return anything.
-          // (not useful to warn/error multiple times)
-          LibraryManager.library[symbol + '__docs'] = '/** @type {function(...*):?} */';
-          isStub = true;
+          stubFunctionBody = assertion + `return ${target}(...args);`;
         }
+        isStub = true;
+        LibraryManager.library[symbol] = new Function('...args', stubFunctionBody);
       }
 
       librarySymbols.push(mangled);
@@ -636,11 +631,11 @@ function(${args}) {
 
       // Check for dependencies on `__internal` symbols from user libraries.
       const isUserSymbol = LibraryManager.library[symbol + '__user'];
-      deps.forEach((dep) => {
+      for (const dep of deps) {
         if (isUserSymbol && LibraryManager.library[dep + '__internal']) {
           warn(`user library symbol '${symbol}' depends on internal symbol '${dep}'`);
         }
-      });
+      }
 
       const isFunction = typeof snippet == 'function';
       let isNativeAlias = false;
