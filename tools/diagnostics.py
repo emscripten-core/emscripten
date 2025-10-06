@@ -58,7 +58,7 @@ def reset_color():
 
 
 def with_color(color, text):
-  return f'\033[9{color}m{text}\033[0m'
+  return output_color(color) + text + reset_color()
 
 
 def diag(level, msg, *args):
