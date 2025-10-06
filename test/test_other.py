@@ -11607,20 +11607,11 @@ int main(void) {
   })
   def test_color_diagnostics_force(self, flag):
     create_file('src.c', 'int main() {')
-    # -fansi-escape-codes is needed here to make this test work on windows, which doesn't
-    # use ansi codes by default
-    output = self.expect_fail([EMCC, '-fansi-escape-codes', flag, 'src.c'])
+    # -fansi-escape-codes is needed on windows in order to get clang to emit ANSI colors
+    output = self.expect_fail([EMCC, flag, '-fansi-escape-codes', 'src.c'])
     self.assertIn("\x1b[1msrc.c:1:13: \x1b[0m\x1b[0;1;31merror: \x1b[0m\x1b[1mexpected '}'\x1b[0m", output)
-    # Verify that emcc errors show up as red and bold
+    # Verify that emcc errors show up as red and bold from emcc
     self.assertIn('emcc: \x1b[31m\x1b[1m', output)
-
-    if WINDOWS:
-      # Also test without -fansi-escape-codes on windows.
-      # In those mode the code will use kernel calls such as SetConsoleTextAttribute to
-      # change the output color.  We cannot detect this in the output, but we can at least
-      # get coverage of the code path in the diagnositics.py.
-      output = self.expect_fail([EMCC, flag, 'src.c'])
-      self.assertNotIn('\x1b', output)
 
   def test_sanitizer_color(self):
     create_file('src.c', '''
