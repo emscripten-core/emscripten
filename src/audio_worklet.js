@@ -256,8 +256,8 @@ function createWasmAudioWorkletProcessor() {
 // that has a MessagePort over to the AudioWorklet, then polyfill that by
 // a hacky AudioWorkletProcessor that provides the MessagePort.
 // Firefox added support in https://hg-edge.mozilla.org/integration/autoland/rev/ab38a1796126f2b3fc06475ffc5a625059af59c1
-// Chrome ticket: https://crbug.com/446920095
-// Safari ticket: https://webkit.org/b/299386
+// Chrome ticket: https://issues.chromium.org/issues/446920095
+// Safari ticket: https://bugs.webkit.org/show_bug.cgi?id=299386
 /**
  * @suppress {duplicate, checkTypes}
  */

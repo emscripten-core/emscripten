@@ -1345,10 +1345,10 @@ def browser_display_name(browser):
 
 def subprocess_env():
   e = os.environ.copy()
-  # https://bugzil.la/745154
+  # https://bugzilla.mozilla.org/show_bug.cgi?id=745154
   e['MOZ_DISABLE_AUTO_SAFE_MODE'] = '1'
-  e['MOZ_DISABLE_SAFE_MODE_KEY'] = '1' # https://bugzil.la/653410#c9
-  e['JIT_OPTION_asmJSAtomicsEnable'] = 'true' # https://bugzil.la/1299359#c0
+  e['MOZ_DISABLE_SAFE_MODE_KEY'] = '1' # https://bugzilla.mozilla.org/show_bug.cgi?id=653410#c9
+  e['JIT_OPTION_asmJSAtomicsEnable'] = 'true' # https://bugzilla.mozilla.org/show_bug.cgi?id=1299359#c0
   return e
 
 

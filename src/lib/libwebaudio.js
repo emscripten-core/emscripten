@@ -133,7 +133,7 @@ var LibraryWebAudio = {
     console.log(`Destroyed Web Audio Node with ID ${objectHandle}`);
 #endif
     // Explicitly disconnect the node from Web Audio graph before letting it GC,
-    // to work around browser bugs such as https://webkit.org/b/222098#c23
+    // to work around browser bugs such as https://bugs.webkit.org/show_bug.cgi?id=222098#c23
     EmAudio[objectHandle].disconnect();
     delete EmAudio[objectHandle];
   },
@@ -198,8 +198,8 @@ var LibraryWebAudio = {
       // that has a MessagePort over to the AudioWorklet, then polyfill that by
       // instantiating a dummy AudioWorkletNode to get a MessagePort over.
       // Firefox added support in https://hg-edge.mozilla.org/integration/autoland/rev/ab38a1796126f2b3fc06475ffc5a625059af59c1
-      // Chrome ticket: https://crbug.com/446920095
-      // Safari ticket: https://webkit.org/b/299386
+      // Chrome ticket: https://issues.chromium.org/issues/446920095
+      // Safari ticket: https://bugs.webkit.org/show_bug.cgi?id=299386
       if (!audioWorklet['port']) {
         audioWorklet['port'] = {
           postMessage: (msg) => {

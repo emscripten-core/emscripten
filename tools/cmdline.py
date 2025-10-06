@@ -294,9 +294,8 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
         settings.SHRINK_LEVEL = 0
         settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 1)
       elif requested_level == 'fast':
-        # TODO(https://github.com/emscripten-core/emscripten/issues/21497):
-        # If we ever map `-ffast-math` to `wasm-opt --fast-math` then
-        # then we should enable that too here.
+        # -Ofast typically includes -ffast-math semantics, so enable fast math optimizations
+        settings.FAST_MATH = 1
         requested_level = 3
         settings.SHRINK_LEVEL = 0
       else:
@@ -513,6 +512,8 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       diagnostics.color_enabled = True
     elif arg in ('-fno-color-diagnostics', '-fdiagnostics-color=never'):
       diagnostics.color_enabled = False
+    elif arg == '-fansi-escape-codes':
+      diagnostics.force_ansi = True
     elif arg == '-fno-exceptions':
       settings.DISABLE_EXCEPTION_CATCHING = 1
       settings.DISABLE_EXCEPTION_THROWING = 1
@@ -545,6 +546,8 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       settings.WASM_EXCEPTIONS = 1
     elif arg == '-fignore-exceptions':
       settings.DISABLE_EXCEPTION_CATCHING = 1
+    elif arg == '-ffast-math':
+      settings.FAST_MATH = 1
     elif check_arg('--default-obj-ext'):
       exit_with_error('--default-obj-ext is no longer supported by emcc')
     elif arg.startswith('-fsanitize=cfi'):

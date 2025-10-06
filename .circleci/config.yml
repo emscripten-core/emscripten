@@ -1113,10 +1113,16 @@ jobs:
           # initial position of the mouse pointer relative to the canvas.
           # browser.test_html5_webgl_create_context is skipped because
           # anti-aliasing is not well supported.
+          # browser.test_webgl_offscreen_canvas_in_pthread and
+          # browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
+          # are crashing Firefox (bugzil.la/1281796). The former case is
+          # further blocked by issue #6897.
           test_targets: "
             browser
             skip:browser.test_sdl2_mouse
             skip:browser.test_html5_webgl_create_context
+            skip:browser.test_webgl_offscreen_canvas_in_pthread
+            skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
             skip:browser.test_glut_glutget
             "
   test-browser-firefox-wasm64:
