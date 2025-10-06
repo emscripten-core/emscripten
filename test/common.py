@@ -139,6 +139,12 @@ class FirefoxConfig:
 class SafariConfig:
   default_flags = ('', )
   executable_name = 'Safari'
+  # For the macOS 'open' command, pass
+  #   --new: to make a new Safari app be launched, rather than add a tab to an existing Safari process/window
+  #   --fresh: do not restore old tabs (e.g. if user had old navigated windows open)
+  #   --background: Open the new Safari window behind the current Terminal window, to make following the test run more pleasing (this is for convenience only)
+  #   -a <exe_name>: The path to the executable to open, in this case Safari
+  launch_prefix = ('open', '--new', '--fresh', '--background', '-a')
 
   @staticmethod
   def configure(data_dir):
@@ -2589,6 +2595,8 @@ class BrowserCore(RunnerCore):
       config = FirefoxConfig()
     elif is_safari():
       config = SafariConfig()
+    elif EMTEST_BROWSER_AUTO_CONFIG:
+      exit_with_error(f'EMTEST_BROWSER_AUTO_CONFIG only currently works with firefox, chrome and safari. EMTEST_BROWSER was "{EMTEST_BROWSER}"')
 
     # Prepare the browser data directory, if it uses one.
     if EMTEST_BROWSER_AUTO_CONFIG and config and hasattr(config, 'data_dir_flag'):
@@ -2609,8 +2617,6 @@ class BrowserCore(RunnerCore):
       # Recreate the new data directory.
       os.mkdir(browser_data_dir)
 
-      if not config:
-        exit_with_error(f'EMTEST_BROWSER_AUTO_CONFIG only currently works with firefox, chrome and safari. EMTEST_BROWSER was "{EMTEST_BROWSER}"')
       if WINDOWS:
         # Escape directory delimiter backslashes for shlex.split.
         browser_data_dir = browser_data_dir.replace('\\', '\\\\')
@@ -2618,13 +2624,8 @@ class BrowserCore(RunnerCore):
       browser_args += f' {config.data_dir_flag}"{browser_data_dir}"'
 
     browser_args = shlex.split(browser_args)
-    if is_safari():
-      # For the macOS 'open' command, pass
-      #   --new: to make a new Safari app be launched, rather than add a tab to an existing Safari process/window
-      #   --fresh: do not restore old tabs (e.g. if user had old navigated windows open)
-      #   --background: Open the new Safari window behind the current Terminal window, to make following the test run more pleasing (this is for convenience only)
-      #   -a <exe_name>: The path to the executable to open, in this case Safari
-      browser_args = ['open', '--new', '--fresh', '--background', '-a'] + browser_args
+    if hasattr(config, 'launch_prefix'):
+      browser_args = list(config.launch_prefix) + browser_args
 
     logger.info('Launching browser: %s', str(browser_args))
 
@@ -2661,7 +2662,7 @@ class BrowserCore(RunnerCore):
         # by the delta before->after.
         cls.browser_procs = list(set(procs_after).difference(set(procs_before)))
         if len(cls.browser_procs) == 0:
-          logger.warning('Could not detect the launched browser subprocesses. The test harness may not be able to close browser windows if a test hangs, and at harness exit.')
+          exit_with_error('Could not detect the launched browser subprocesses. The test harness will not be able to close the browser after testing is done, so aborting the test run here.')
 
       # Firefox on Windows quirk:
       # Make sure that each browser window is visible on the desktop. Otherwise
