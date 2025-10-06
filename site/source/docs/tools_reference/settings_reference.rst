@@ -46,17 +46,6 @@ defaults 1, absent any other settings:
 
 Default value: 0
 
-.. _fast_math:
-
-FAST_MATH
-=========
-
-Enable fast math optimizations in wasm-opt when -ffast-math is passed.
-This enables aggressive floating-point optimizations that may violate
-IEEE 754 semantics but can improve performance.
-
-Default value: 0
-
 .. _check_null_writes:
 
 CHECK_NULL_WRITES

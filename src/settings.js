@@ -66,12 +66,6 @@ var ASSERTIONS = 1;
 // [link]
 var STACK_OVERFLOW_CHECK = 0;
 
-// Enable fast math optimizations in wasm-opt when -ffast-math is passed.
-// This enables aggressive floating-point optimizations that may violate
-// IEEE 754 semantics but can improve performance.
-// [link]
-var FAST_MATH = 0;
-
 // When STACK_OVERFLOW_CHECK is enabled we also check writes to address zero.
 // This can help detect NULL pointer usage.  If you want to skip this extra
 // check (for example, if you want reads from the address zero to always return
