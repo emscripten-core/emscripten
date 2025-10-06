@@ -2744,8 +2744,8 @@ class BrowserCore(RunnerCore):
 
     # Accurate version cutoff is not known.
     # Needed at least for version Safari Version 17.6 (17618.3.11.11.7, 17618)
-    # Not needed for Safari Version 18.5 (20621.2.5.11.8)
-    if is_safari() and get_safari_version() < 180500:
+    # Also needed for Safari Version 18.5 (20621.2.5.11.8)
+    if is_safari() and get_safari_version() < 190000:
       # Old Safari cannot handle running multiple browser pages in the same browser instance
       # So restart the browser between each browser test.
       self.browser_restart()
