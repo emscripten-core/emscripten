@@ -142,6 +142,8 @@ no_chrome = skip_if('no_chrome', lambda _: is_chrome(), 'chrome is not supported
 
 no_firefox = skip_if('no_firefox', lambda _: is_firefox(), 'firefox is not supported')
 
+no_safari = skip_if('no_safari', lambda _: is_safari(), 'safari is not supported')
+
 
 def is_jspi(args):
   return '-sASYNCIFY=2' in args
@@ -3356,6 +3358,7 @@ Module["preRun"] = () => {
       create_file('filey.txt', 'sync_tunnel\nsync_tunnel_bool\n')
     self.btest('test_async_returnvalue.c', '0', cflags=['-sASSERTIONS', '-sASYNCIFY', '-sASYNCIFY_IGNORE_INDIRECT', '--js-library', test_file('browser/test_async_returnvalue.js')] + args)
 
+  @no_safari('TODO: Fails in Safari Version 17.6 (17618.3.11.11.7, 17618)')
   def test_async_bad_list(self):
     self.btest('test_async_bad_list.c', '0', cflags=['-sASYNCIFY', '-sASYNCIFY_ONLY=waka', '--profiling'])
 
