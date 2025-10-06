@@ -409,8 +409,7 @@ ${functionBody}
       return Emval.toHandle(value);
     });
   },
-#endif
-#if ASYNCIFY == 2
+#else
   _emval_await: async (promise) => {
     var value = await Emval.toValue(promise);
     return Emval.toHandle(value);
