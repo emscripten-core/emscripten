@@ -13,7 +13,6 @@ from typing import Dict
 
 from . import colored_logger
 
-color_enabled = colored_logger.ansi_color_available()
 logger = logging.getLogger('diagnostics')
 tool_name = os.path.splitext(os.path.basename(sys.argv[0]))[0]
 
@@ -21,19 +20,10 @@ tool_name = os.path.splitext(os.path.basename(sys.argv[0]))[0]
 WARN = 1
 ERROR = 2
 
-# available (ANSI) colors
-RED = 1
-GREEN = 2
-YELLOW = 3
-BLUE = 4
-MAGENTA = 5
-CYAN = 6
-WHITE = 7
-
 # color for use for each diagnostic level
 level_colors = {
-    WARN: MAGENTA,
-    ERROR: RED,
+    WARN: colored_logger.MAGENTA,
+    ERROR: colored_logger.RED,
 }
 
 level_prefixes = {
@@ -42,55 +32,19 @@ level_prefixes = {
 }
 
 
-def output_color(color):
-  if color_enabled:
-    return '\033[3%sm' % color
-  return ''
-
-
-def bold():
-  if color_enabled:
-    return '\033[1m'
-  return ''
-
-
-def reset_color():
-  if color_enabled:
-    return '\033[0m'
-  return ''
-
-
-def with_color(color, text):
-  return output_color(color) + text + reset_color()
-
-
 def diag(level, msg, *args):
   # Format output message as:
   # <tool>: <level>: msg
-  # With the `<level>:` part being colored accordingly.
-  sys.stderr.write(tool_name + ': ')
-
-  if color_enabled:
-    output = output_color(level_colors[level]) + bold()
-    if output:
-      sys.stderr.write(output)
-
-  sys.stderr.write(level_prefixes[level])
-
-  if color_enabled:
-    output = reset_color() + bold()
-    if output:
-      sys.stderr.write(output)
-
+  # With the `<level>:` part being colored accordingly, and the message itself in bold.
+  prefix = level_prefixes[level]
+  color = level_colors[level]
   if args:
     msg = msg % args
-  sys.stderr.write(str(msg))
-  sys.stderr.write('\n')
 
-  if color_enabled:
-    output = reset_color()
-    if output:
-      sys.stderr.write(output)
+  # Add colors
+  prefix = colored_logger.with_bold_color(color, prefix)
+  msg = colored_logger.with_bold(msg)
+  sys.stderr.write(f'{tool_name}: {prefix}{msg}\n')
 
 
 def error(msg, *args):
