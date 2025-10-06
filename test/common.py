@@ -53,6 +53,11 @@ logger = logging.getLogger('common')
 # used in CI. To use a custom start command specify the executable and command
 # line flags.
 #
+# Note that when specifying EMTEST_BROWSER to run tests on a Safari browser:
+# the command line must point to the root of the app bundle, and not to the
+# Safari executable inside the bundle. I.e. pass EMTEST_BROWSER=/Applications/Safari.app
+# instead of EMTEST_BROWSER=/Applications/Safari.app/Contents/MacOS/Safari
+#
 # There are two special values that can be used here if running in an actual
 # browser is not desired:
 #  EMTEST_BROWSER=0 : This will disable the actual running of the test and simply
