@@ -338,7 +338,7 @@ return ${makeReturn64(await_ + body)};
       return `\
 ${async_}function(${args}) {
 ${argConversions}
-var ret = (() => { ${body} })();
+var ret = (${async_}() => { ${body} })();
 return ${makeReturn64(await_ + 'ret')};
 }`;
     }
