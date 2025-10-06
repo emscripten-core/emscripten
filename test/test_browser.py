@@ -4117,6 +4117,7 @@ Module["preRun"] = () => {
   @no_2gb('ASAN + GLOBAL_BASE')
   @no_4gb('ASAN + GLOBAL_BASE')
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/20006')
+  @no_safari('TODO: Hangs') # Safari Version 18.5 (20621.2.5.11.8)
   @also_with_wasmfs
   def test_pthread_asan_use_after_free_2(self):
     # similiar to test_pthread_asan_use_after_free, but using a pool instead
