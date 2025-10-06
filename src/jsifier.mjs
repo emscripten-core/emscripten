@@ -389,12 +389,10 @@ export async function runJSify(outputFile, symbolsOnly) {
   }
 
   function processLibraryFunction(snippet, symbol, mangled, deps, isStub) {
-    // It is possible that when printing the function as a string on Windows,
-    // the js interpreter we are in returns the string with Windows line endings
-    // \r\n. This is undesirable, since line endings are managed in the form \n
-    // in the output for binary file writes, so make sure the endings are
-    // uniform.
-    snippet = snippet.toString().replace(/\r\n/gm, '\n');
+    snippet = snippet.toString();
+
+    // Node's toString() should not return windows line endings, even on windows.
+    assert(!snippet.includes('\r\n'), `${symbol} contains windows newlines:` + snippet);
 
     // Is this a shorthand `foo() {}` method syntax?
     // If so, prepend a function keyword so that it's valid syntax when extracted.

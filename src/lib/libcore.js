@@ -2268,7 +2268,7 @@ addToLibrary({
   },
 
   $getNativeTypeSize__deps: ['$POINTER_SIZE'],
-  $getNativeTypeSize: {{{ getNativeTypeSize }}},
+  $getNativeTypeSize: {{{ getNativeTypeSize.toString() }}},
 
   $wasmTable__docs: '/** @type {WebAssembly.Table} */',
 #if RELOCATABLE
