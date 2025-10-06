@@ -45,15 +45,13 @@ level_prefixes = {
 def output_color(color):
   if color_enabled:
     return '\033[3%sm' % color
-  else:
-    return ''
+  return ''
 
 
 def bold():
   if color_enabled:
     return '\033[1m'
-  else:
-    return ''
+  return ''
 
 
 def reset_color():
