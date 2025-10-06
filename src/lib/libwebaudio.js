@@ -318,9 +318,9 @@ var LibraryWebAudio = {
       numberOfInputs: {{{ makeGetValue('options', C_STRUCTS.EmscriptenAudioWorkletNodeCreateOptions.numberOfInputs, 'i32') }}},
       numberOfOutputs: optionsOutputs,
       outputChannelCount: readChannelCountArray({{{ makeGetValue('options', C_STRUCTS.EmscriptenAudioWorkletNodeCreateOptions.outputChannelCounts, 'i32*') }}}, optionsOutputs),
-      channelCount: {{{ makeGetValue('options', C_STRUCTS.EmscriptenAudioWorkletNodeCreateOptions.channelCount, 'i32') }}},
-      channelCountMode: {{{ makeGetValue('options', C_STRUCTS.EmscriptenAudioWorkletNodeCreateOptions.channelCountMode, 'i32') }}},
-      channelInterpretation: {{{ makeGetValue('options', C_STRUCTS.EmscriptenAudioWorkletNodeCreateOptions.channelInterpretation, 'i32') }}},
+      channelCount: (function(){ var v = {{{ makeGetValue('options', C_STRUCTS.EmscriptenAudioWorkletNodeCreateOptions.channelCount, 'u32') }}}; return v > 0 ? v : undefined; })(),
+      channelCountMode: (function(){ var v = {{{ makeGetValue('options', C_STRUCTS.EmscriptenAudioWorkletNodeCreateOptions.channelCountMode, 'i32') }}}; var arr = ['max','clamped-max','explicit']; return arr[v] || undefined; })(),
+      channelInterpretation: (function(){ var v = {{{ makeGetValue('options', C_STRUCTS.EmscriptenAudioWorkletNodeCreateOptions.channelInterpretation, 'i32') }}}; var arr = ['speakers','discrete']; return arr[v] || undefined; })(),
       processorOptions: {
         callback,
         userData,
