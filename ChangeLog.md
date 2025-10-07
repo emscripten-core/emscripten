@@ -25,8 +25,8 @@ See docs/process.md for more on how version tagging works.
   - Firefox: v65 -> v68
 - For windows users, colored console output for error messages and logging now
   requires Windows 10 or above. (#25502)
-- Fixed an issue from previous release where "-sENVIRONMENT=worker" was made
-  erroneously to imply "-sENVIRONMENT=web,worker" (#25514)
+- Fixed an issue from previous release 4.0.16 where "-sENVIRONMENT=worker" was
+  erroneously made to imply "-sENVIRONMENT=web,worker" (#25514)
 - Passing '-sENVIRONMENT=worker' is now disallowed due to being ambiguous in
   its meaning. Instead, use '-sENVIRONMENT=web,worker' or
   '-sENVIRONMENT=node,worker' to refer to either Web or Node.js multithreading.
