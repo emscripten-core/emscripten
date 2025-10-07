@@ -122,6 +122,9 @@ legacyFuncs = {
   // (This was a mistake in the original implementation, and kept
   // to avoid breakage.)
   $jstoi_s: 'Number',
+
+  $getNativeTypeSize__deps: ['$POINTER_SIZE'],
+  $getNativeTypeSize: {{{ getNativeTypeSize }}},
 };
 
 if (WARN_DEPRECATED && !INCLUDE_FULL_LIBRARY) {

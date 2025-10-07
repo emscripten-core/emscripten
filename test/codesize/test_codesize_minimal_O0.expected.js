@@ -937,7 +937,6 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'alignMemory',
   'mmapAlloc',
   'HandleAllocator',
-  'getNativeTypeSize',
   'getUniqueRunDependency',
   'addOnPreRun',
   'addOnInit',
