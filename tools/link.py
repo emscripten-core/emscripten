@@ -187,7 +187,7 @@ def setup_environment_settings():
     for browser in ('FIREFOX', 'SAFARI', 'CHROME'):
       key = f'MIN_{browser}_VERSION'
       if key in user_settings and settings[key] != feature_matrix.UNSUPPORTED:
-        diagnostics.warning('unused-command-line-argument', 'ignoring %s because `web` and `webview` environments are not enabled', key)
+        diagnostics.warning('unused-command-line-argument', 'ignoring %s because `web`, `worker` and `webview` environments are not enabled', key)
       settings[key] = feature_matrix.UNSUPPORTED
 
 
