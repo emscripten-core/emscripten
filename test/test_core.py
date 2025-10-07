@@ -9725,6 +9725,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_pthread_select_timeout(self):
     self.do_runf('core/test_pthread_select_timeout.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1', '-Wno-pthreads-mem-growth'])
 
+  def test_select(self):
+    self.do_runf('core/test_select.c')
+
   @also_without_bigint
   def test_jslib_i64_params(self):
     # Tests the defineI64Param and receiveI64ParamAsI53 helpers that are
