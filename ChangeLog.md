@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 4.0.17 (in development)
 -----------------------
+- Minimum Firefox version was bumped up to Firefox 68 ESR, since older Firefox
+  versions are not able to run the parallel browser harness: (#25493)
+  - Firefox: v65 -> v68
 
 4.0.16 - 10/07/25
 -----------------
