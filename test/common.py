@@ -209,6 +209,7 @@ def get_browser_config():
     return FirefoxConfig()
   return None
 
+
 def compiler_for(filename, force_c=False):
   if shared.suffix(filename) in ('.cc', '.cxx', '.cpp') and not force_c:
     return EMXX

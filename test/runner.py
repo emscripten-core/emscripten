@@ -569,6 +569,7 @@ def main():
   utils.delete_file(f'{common.browser_spawn_lock_filename}_counter')
   if options.force_browser_process_termination:
     config = common.get_browser_config()
+
     def terminate_all_browser_processes():
       procs = common.list_processes_by_name(config.executable_name)
       if len(procs) > 0:
