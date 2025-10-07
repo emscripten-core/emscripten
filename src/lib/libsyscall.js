@@ -640,7 +640,8 @@ var SyscallsLibrary = {
     // writefds checks socket open status
     // exceptfds are supported, although on web, such exceptional conditions never arise in web sockets
     //                          and so the exceptfds list will always return empty.
-    // timeout is supported, although on SOCKFS and PIPEFS these are ignored and always treated as 0 - fully async
+    // timeout is supported, although on SOCKFS these are ignored and always treated as 0 - fully async
+    // and PIPEFS supports timeout only when PROXY_TO_PTHREAD is enabled.
 #if ASSERTIONS
     assert(nfds <= 64, 'nfds must be less than or equal to 64');  // fd sets have 64 bits // TODO: this could be 1024 based on current musl headers
 #endif
