@@ -51,7 +51,7 @@ var LibraryStackTrace = {
           file = parts[2];
           lineno = parts[3];
           // Old Firefox doesn't carry column information, but in new FF30, it
-          // is present. See https://bugzilla.mozilla.org/show_bug.cgi?id=762556
+          // is present. See https://bugzil.la/762556
           column = parts[4]|0;
         } else {
           // Was not able to extract this line for demangling/sourcemapping

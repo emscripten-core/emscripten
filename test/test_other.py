@@ -2461,28 +2461,28 @@ F1 -> ''
 
   @requires_network
   def test_sdl2_mixer_wav(self):
-    self.emcc(test_file('browser/test_sdl2_mixer_wav.c'), ['-sUSE_SDL_MIXER=2'], output_filename='a.out.js')
-    self.emcc(test_file('browser/test_sdl2_mixer_wav.c'), ['--use-port=sdl2_mixer'], output_filename='a.out.js')
-    self.emcc(test_file('browser/test_sdl2_mixer_wav.c'), ['--use-port=sdl2_mixer:formats=ogg'], output_filename='a.out.js')
+    self.emcc('browser/test_sdl2_mixer_wav.c', ['-sUSE_SDL_MIXER=2'], output_filename='a.out.js')
+    self.emcc('browser/test_sdl2_mixer_wav.c', ['--use-port=sdl2_mixer'], output_filename='a.out.js')
+    self.emcc('browser/test_sdl2_mixer_wav.c', ['--use-port=sdl2_mixer:formats=ogg'], output_filename='a.out.js')
 
   def test_sdl2_linkable(self):
     # Ensure that SDL2 can be built with LINKABLE.  This implies there are no undefined
     # symbols in the library (because LINKABLE includes the entire library).
-    self.emcc(test_file('browser/test_sdl2_misc.c'), ['-sLINKABLE', '-Wno-deprecated', '-sUSE_SDL=2'], output_filename='a.out.js')
-    self.emcc(test_file('browser/test_sdl2_misc.c'), ['-sLINKABLE', '-Wno-deprecated', '--use-port=sdl2'], output_filename='a.out.js')
+    self.emcc('browser/test_sdl2_misc.c', ['-sLINKABLE', '-Wno-deprecated', '-sUSE_SDL=2'], output_filename='a.out.js')
+    self.emcc('browser/test_sdl2_misc.c', ['-sLINKABLE', '-Wno-deprecated', '--use-port=sdl2'], output_filename='a.out.js')
 
   def test_sdl3_linkable(self):
     # Ensure that SDL3 can be built with LINKABLE.  This implies there are no undefined
     # symbols in the library (because LINKABLE includes the entire library).
     self.cflags.append('-Wno-experimental')
-    self.emcc(test_file('browser/test_sdl3_misc.c'), ['-sLINKABLE', '-Wno-deprecated', '-sUSE_SDL=3'], output_filename='a.out.js')
-    self.emcc(test_file('browser/test_sdl3_misc.c'), ['-sLINKABLE', '-Wno-deprecated', '--use-port=sdl3'], output_filename='a.out.js')
+    self.emcc('browser/test_sdl3_misc.c', ['-sLINKABLE', '-Wno-deprecated', '-sUSE_SDL=3'], output_filename='a.out.js')
+    self.emcc('browser/test_sdl3_misc.c', ['-sLINKABLE', '-Wno-deprecated', '--use-port=sdl3'], output_filename='a.out.js')
 
   @requires_network
   def test_sdl2_gfx_linkable(self):
     # Same as above but for sdl2_gfx library
-    self.emcc(test_file('browser/test_sdl2_misc.c'), ['-Wl,-fatal-warnings', '-sLINKABLE', '-Wno-deprecated', '-sUSE_SDL_GFX=2'], output_filename='a.out.js')
-    self.emcc(test_file('browser/test_sdl2_misc.c'), ['-Wl,-fatal-warnings', '-sLINKABLE', '-Wno-deprecated', '--use-port=sdl2_gfx'], output_filename='a.out.js')
+    self.emcc('browser/test_sdl2_misc.c', ['-Wl,-fatal-warnings', '-sLINKABLE', '-Wno-deprecated', '-sUSE_SDL_GFX=2'], output_filename='a.out.js')
+    self.emcc('browser/test_sdl2_misc.c', ['-Wl,-fatal-warnings', '-sLINKABLE', '-Wno-deprecated', '--use-port=sdl2_gfx'], output_filename='a.out.js')
 
   @requires_network
   def test_libpng(self):
@@ -2565,7 +2565,7 @@ F1 -> ''
   @requires_network
   def test_freetype_with_pthreads(self):
     # Verify that freetype supports compilation requiring pthreads
-    self.emcc(test_file('test_freetype.c'), ['-pthread', '-sUSE_FREETYPE'], output_filename='a.out.js')
+    self.emcc('test_freetype.c', ['-pthread', '-sUSE_FREETYPE'], output_filename='a.out.js')
 
   @requires_network
   def test_icu(self):
@@ -2575,18 +2575,18 @@ F1 -> ''
   @requires_network
   def test_sdl2_ttf(self):
     # This is a compile-only to test to verify that sdl2-ttf (and freetype and harfbuzz) are buildable.
-    self.emcc(test_file('browser/test_sdl2_ttf.c'), args=['-sUSE_SDL=2', '-sUSE_SDL_TTF=2'], output_filename='a.out.js')
-    self.emcc(test_file('browser/test_sdl2_ttf.c'), args=['--use-port=sdl2', '--use-port=sdl2_ttf'], output_filename='a.out.js')
+    self.emcc('browser/test_sdl2_ttf.c', args=['-sUSE_SDL=2', '-sUSE_SDL_TTF=2'], output_filename='a.out.js')
+    self.emcc('browser/test_sdl2_ttf.c', args=['--use-port=sdl2', '--use-port=sdl2_ttf'], output_filename='a.out.js')
 
   @requires_network
   def test_contrib_ports(self):
     # Verify that contrib ports can be used (using the only contrib port available ATM, but can be replaced
     # with a different contrib port when there is another one
-    self.emcc(test_file('other/test_contrib_ports.cpp'), ['--use-port=contrib.glfw3'])
+    self.emcc('other/test_contrib_ports.cpp', ['--use-port=contrib.glfw3'])
 
   @requires_network
   def test_remote_ports(self):
-    self.emcc(test_file('hello_world.c'), ['--use-port=emdawnwebgpu'])
+    self.emcc('hello_world.c', ['--use-port=emdawnwebgpu'])
 
   @crossplatform
   def test_external_ports_simple(self):
@@ -3534,7 +3534,7 @@ More info: https://emscripten.org
                   '-sSINGLE_FILE',
                   '-lembind', # Test duplicated link option.
                   ]
-    self.emcc(test_file('other/embind_tsgen.cpp'), extra_args)
+    self.emcc('other/embind_tsgen.cpp', extra_args)
     self.assertFileContents(test_file('other/embind_tsgen_ignore_1.d.ts'), read_file('embind_tsgen.d.ts'))
     # Test these args separately since they conflict with arguments in the first test.
     extra_args = ['-sMODULARIZE',
@@ -3543,16 +3543,16 @@ More info: https://emscripten.org
                   '-sEXPORT_ES6=1',
                   '-sASSERTIONS=0',
                   '-sSTRICT=1']
-    self.emcc(test_file('other/embind_tsgen.cpp'), extra_args)
+    self.emcc('other/embind_tsgen.cpp', extra_args)
     self.assertFileContents(test_file('other/embind_tsgen_ignore_2.d.ts'), read_file('embind_tsgen.d.ts'))
     # Also test this separately since it conflicts with other settings.
     extra_args = ['-sWASM=0']
-    self.emcc(test_file('other/embind_tsgen.cpp'), extra_args)
+    self.emcc('other/embind_tsgen.cpp', extra_args)
     self.assertFileContents(test_file('other/embind_tsgen_ignore_3.d.ts'), read_file('embind_tsgen.d.ts'))
 
     extra_args = ['-fsanitize=undefined',
                   '-gsource-map']
-    self.emcc(test_file('other/embind_tsgen.cpp'), extra_args)
+    self.emcc('other/embind_tsgen.cpp', extra_args)
     self.assertFileContents(test_file('other/embind_tsgen_ignore_3.d.ts'), read_file('embind_tsgen.d.ts'))
 
   def test_embind_tsgen_worker_env(self):
@@ -3560,7 +3560,7 @@ More info: https://emscripten.org
     # Passing -sWASM_WORKERS or -sPROXY_TO_WORKER requires the 'worker' environment
     # at link time. Verify that TS binding generation still works in this case.
     for flags in (['-sWASM_WORKERS'], ['-sPROXY_TO_WORKER', '-Wno-deprecated']):
-      self.emcc(test_file('other/embind_tsgen.cpp'), flags)
+      self.emcc('other/embind_tsgen.cpp', flags)
       self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
 
   def test_embind_tsgen_dylink(self):
@@ -6665,7 +6665,7 @@ int main(void) {
     ''')
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency,$removeRunDependency')
     self.cflags += ['-sEXPORT_ES6', '-sMODULARIZE', '-sWASM_ASYNC_COMPILATION=0', '--pre-js=pre.js']
-    self.emcc(test_file('hello_world.c'), output_filename='hello_world.mjs')
+    self.emcc('hello_world.c', output_filename='hello_world.mjs')
     self.assertContained('add-dep\nremove-dep\nhello, world!\ngot module\n', self.run_js('run.mjs'))
 
   def test_modularize_instantiation_error(self):
@@ -7929,7 +7929,7 @@ addToLibrary({
         if malloc:
           args += ['-sMALLOC=%s' % malloc]
         print(args)
-        self.emcc(test_file('hello_libcxx.cpp'), args=args)
+        self.emcc('hello_libcxx.cpp', args=args)
         sizes[name] = os.path.getsize('a.out.wasm')
       print(sizes)
       # dlmalloc is the default
@@ -10530,7 +10530,7 @@ int main() {
     compile(['-sMIN_SAFARI_VERSION=160000', '-mno-sign-ext'])
     verify_features_sec_linked('sign-ext', False)
     # Flag enabling overrides explicit browser version
-    compile(['-sMIN_FIREFOX_VERSION=65', '-msign-ext'])
+    compile(['-sMIN_FIREFOX_VERSION=68', '-msign-ext'])
     verify_features_sec_linked('sign-ext', True)
     # Flag disabling overrides explicit version for bulk memory
     compile(['-sMIN_SAFARI_VERSION=150000', '-mno-bulk-memory'])
@@ -11607,20 +11607,11 @@ int main(void) {
   })
   def test_color_diagnostics_force(self, flag):
     create_file('src.c', 'int main() {')
-    # -fansi-escape-codes is needed here to make this test work on windows, which doesn't
-    # use ansi codes by default
-    output = self.expect_fail([EMCC, '-fansi-escape-codes', flag, 'src.c'])
+    # -fansi-escape-codes is needed on windows in order to get clang to emit ANSI colors
+    output = self.expect_fail([EMCC, flag, '-fansi-escape-codes', 'src.c'])
     self.assertIn("\x1b[1msrc.c:1:13: \x1b[0m\x1b[0;1;31merror: \x1b[0m\x1b[1mexpected '}'\x1b[0m", output)
-    # Verify that emcc errors show up as red and bold
+    # Verify that emcc errors show up as red and bold from emcc
     self.assertIn('emcc: \x1b[31m\x1b[1m', output)
-
-    if WINDOWS:
-      # Also test without -fansi-escape-codes on windows.
-      # In those mode the code will use kernel calls such as SetConsoleTextAttribute to
-      # change the output color.  We cannot detect this in the output, but we can at least
-      # get coverage of the code path in the diagnositics.py.
-      output = self.expect_fail([EMCC, flag, 'src.c'])
-      self.assertNotIn('\x1b', output)
 
   def test_sanitizer_color(self):
     create_file('src.c', '''
@@ -13953,30 +13944,33 @@ int main() {
 
   def test_legacy_runtime(self):
     self.set_setting('EXPORTED_FUNCTIONS', ['_malloc', '_main'])
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$intArrayFromString', '$ALLOC_NORMAL'])
 
-    # By default `LEGACY_RUNTIME` is disabled and `allocate` is not available.
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['ALLOC_NORMAL'])
+    # By default `LEGACY_RUNTIME` is disabled and `stringToNewUTF8` is not available.
     self.cflags += ['-Wno-deprecated']
     self.do_runf('other/test_legacy_runtime.c',
-                 '`allocate` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line',
+                 '`stringToNewUTF8` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line',
                  assert_returncode=NON_ZERO)
 
     # When we enable `LEGACY_RUNTIME`, `allocate` should be available.
-    self.set_setting('LEGACY_RUNTIME', 1)
-    self.do_runf('other/test_legacy_runtime.c')
+    self.do_runf('other/test_legacy_runtime.c', 'hello from js', cflags=['-sLEGACY_RUNTIME'])
 
     # Adding it to EXPORTED_RUNTIME_METHODS should also make it available.
-    self.clear_setting('LEGACY_RUNTIME')
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['allocate'])
-    self.do_runf('other/test_legacy_runtime.c', 'hello from js')
+    self.do_runf('other/test_legacy_runtime.c', 'hello from js', cflags=['-sEXPORTED_RUNTIME_METHODS=stringToNewUTF8'])
 
-    # In strict mode the library function is not even available, so we get a build time error
-    self.set_setting('STRICT')
-    self.clear_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE')
-    for opt in ('-O0', '-O3'):
-      err = self.expect_fail([EMCC, test_file('other/test_legacy_runtime.c'), opt] + self.get_cflags())
-      self.assertContained('undefined exported symbol: "allocate" in EXPORTED_RUNTIME_METHODS', err)
+  @parameterized({
+    '': (['-O0'],),
+    'O3': (['-O3'],),
+  })
+  def test_legacy_jslib(self, args):
+    # Warn about usage of legacy library function
+    err = self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORTED_RUNTIME_METHODS=allocateUTF8'] + args, stderr=PIPE).stderr
+    self.assertContained("warning: JS library symbol '$allocateUTF8' is deprecated. Please open a bug if you have a continuing need for this symbol", err)
+
+    self.assertContained('emcc: warning: warnings in JS library compilation [-Wjs-compiler]', err)
+
+    # In strict mode legacy library functions are not available, so we get a build time error
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sEXPORTED_RUNTIME_METHODS=allocateUTF8', '-sSTRICT'] + args)
+    self.assertContained('undefined exported symbol: "allocateUTF8" in EXPORTED_RUNTIME_METHODS', err)
 
   def test_fetch_settings(self):
     create_file('pre.js', '''
@@ -14391,8 +14385,8 @@ out.js
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-sWASM_BIGINT', '-sMIN_SAFARI_VERSION=130000'])
     self.assertContained('emcc: error: MIN_SAFARI_VERSION=130000 is not compatible with WASM_BIGINT (MIN_SAFARI_VERSION=150000 or above required)', err)
 
-    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-pthread', '-sMIN_FIREFOX_VERSION=65'])
-    self.assertContained('emcc: error: MIN_FIREFOX_VERSION=65 is not compatible with pthreads (MIN_FIREFOX_VERSION=79 or above required)', err)
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-pthread', '-sMIN_FIREFOX_VERSION=68'])
+    self.assertContained('emcc: error: MIN_FIREFOX_VERSION=68 is not compatible with pthreads (MIN_FIREFOX_VERSION=79 or above required)', err)
 
   # Test that using two different ways to disable a target environment at the same time will not produce a warning.
   def test_double_disable_environment(self):
@@ -14965,15 +14959,15 @@ addToLibrary({
     self.do_runf('hello_world_argv.c', 'hello, world! (1)')
 
   def test_strict_closure(self):
-    self.emcc(test_file('hello_world.c'), ['-sSTRICT', '--closure=1'])
+    self.emcc('hello_world.c', ['-sSTRICT', '--closure=1'])
 
   def test_closure_debug(self):
-    self.emcc(test_file('hello_world.c'), ['-sSTRICT', '--closure=1', '-g'])
+    self.emcc('hello_world.c', ['-sSTRICT', '--closure=1', '-g'])
     src = read_file('a.out.js')
     self.assertContained('$Module$$', src)
 
   def test_arguments_global(self):
-    self.emcc(test_file('hello_world_argv.c'), ['-sENVIRONMENT=web', '-sSTRICT', '--closure=1', '-O2'])
+    self.emcc('hello_world_argv.c', ['-sENVIRONMENT=web', '-sSTRICT', '--closure=1', '-O2'])
 
   @parameterized({
     'no_std_exp':   (['-DEMMALLOC_NO_STD_EXPORTS'],),
@@ -15601,7 +15595,7 @@ addToLibrary({
       var MIN_SAFARI_VERSION = {{{ MIN_SAFARI_VERSION }}};
       var MIN_FIREFOX_VERSION = {{{ MIN_FIREFOX_VERSION }}};
     ''')
-    self.emcc(test_file('hello_world.c'), [f'-sENVIRONMENT={env}', '--pre-js=pre.js'])
+    self.emcc('hello_world.c', [f'-sENVIRONMENT={env}', '--pre-js=pre.js'])
     src = read_file('a.out.js')
     unsupported = 0x7FFFFFFF
     self.assertContainedIf(f'var MIN_NODE_VERSION = {unsupported};', src, env == 'web')
@@ -15618,7 +15612,7 @@ addToLibrary({
     'wasm_workers': (['-sWASM_WORKERS'],),
   })
   def test_automatic_env_worker(self, env, args):
-    self.emcc(test_file('hello_world.c'), [f'-sENVIRONMENT={env}'] + args)
+    self.emcc('hello_world.c', [f'-sENVIRONMENT={env}'] + args)
 
   def test_libcxx_errors(self):
     create_file('main.cpp', '''
@@ -15646,10 +15640,10 @@ addToLibrary({
 
     removed_fs_assert_content = "IDBFS is no longer included by default"
 
-    self.emcc(test_file('hello_world.c'), output_filename='hello_world.js')
+    self.emcc('hello_world.c', output_filename='hello_world.js')
     self.assertContained(removed_fs_assert_content, read_file('hello_world.js'))
 
-    self.emcc(test_file('hello_world.c'), ['-lidbfs.js'], output_filename='hello_world.js')
+    self.emcc('hello_world.c', ['-lidbfs.js'], output_filename='hello_world.js')
     self.assertNotContained(removed_fs_assert_content, read_file('hello_world.js'))
 
   @crossplatform

@@ -2514,7 +2514,7 @@ void *getBindBuffer() {
     self.btest('test_emscripten_async_wget2_data.cpp', expected='0')
 
   def test_emscripten_async_wget_side_module(self):
-    self.emcc(test_file('test_emscripten_async_wget_side_module.c'), ['-o', 'lib.wasm', '-O2', '-sSIDE_MODULE'])
+    self.emcc('test_emscripten_async_wget_side_module.c', ['-o', 'lib.wasm', '-O2', '-sSIDE_MODULE'])
     self.btest_exit('test_emscripten_async_wget_main_module.c', cflags=['-O2', '-sMAIN_MODULE=2'])
 
   @parameterized({
@@ -3214,7 +3214,7 @@ Module["preRun"] = () => {
     self.btest_exit('test_sdl2_misc.c', cflags=['-sUSE_SDL=2', '-sMAIN_MODULE'])
 
   def test_sdl2_misc_via_object(self):
-    self.emcc(test_file('browser/test_sdl2_misc.c'), ['-c', '-sUSE_SDL=2', '-o', 'test.o'])
+    self.emcc('browser/test_sdl2_misc.c', ['-c', '-sUSE_SDL=2', '-o', 'test.o'])
     self.compile_btest('test.o', ['-sEXIT_RUNTIME', '-sUSE_SDL=2', '-o', 'test.html'])
     self.run_browser('test.html', '/report_result?exit:0')
 
@@ -3555,7 +3555,7 @@ Module["preRun"] = () => {
 
   @requires_shared_array_buffer
   def test_dlopen_blocking(self):
-    self.emcc(test_file('other/test_dlopen_blocking_side.c'), ['-o', 'libside.so', '-sSIDE_MODULE', '-pthread', '-Wno-experimental'])
+    self.emcc('other/test_dlopen_blocking_side.c', ['-o', 'libside.so', '-sSIDE_MODULE', '-pthread', '-Wno-experimental'])
     # Attempt to use dlopen the side module (without preloading) should fail on the main thread
     # since the syncronous `readBinary` function does not exist.
     self.btest_exit('other/test_dlopen_blocking.c', assert_returncode=1, cflags=['-sMAIN_MODULE=2', '-sAUTOLOAD_DYLIBS=0', 'libside.so'])
@@ -3956,7 +3956,7 @@ Module["preRun"] = () => {
   def test_pthread_printf(self, args):
      self.btest_exit('pthread/test_pthread_printf.c', cflags=['-pthread', '-sPTHREAD_POOL_SIZE'] + args)
 
-  # Test that pthreads are able to do cout. Failed due to https://bugzilla.mozilla.org/show_bug.cgi?id=1154858.
+  # Test that pthreads are able to do cout. Failed due to https://bugzil.la/1154858.
   def test_pthread_iostream(self):
     self.btest_exit('pthread/test_pthread_iostream.cpp', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
 
@@ -4258,6 +4258,9 @@ Module["preRun"] = () => {
   # Tests that it is possible to initialize and render WebGL content in a
   # pthread by using OffscreenCanvas.
   @no_chrome('https://crbug.com/961765')
+  # The non-chained version suffers from browser priority inversion deadlock problem: offscreenCanvas.getContext("webgl2") does not make progress in a pthread until main thread yields to event loop.
+  # The chained version of this test suffers from bug https://bugzil.la/1992576
+  @no_firefox('https://bugzil.la/1972240 (priority inversion deadlock) + https://bugzil.la/1992576 (chained OffscreenCanvas transfer)')
   @parameterized({
     '': ([],),
     # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING:
@@ -4447,6 +4450,12 @@ Module["preRun"] = () => {
   @requires_offscreen_canvas
   def test_webgl_resize_offscreencanvas_from_main_thread(self, args1, args2, args3):
     cmd = args1 + args2 + args3 + ['-pthread', '-lGL', '-sGL_DEBUG']
+
+    if is_firefox() and '-sOFFSCREENCANVAS_SUPPORT' in cmd and '-sPROXY_TO_PTHREAD' in cmd:
+      # Firefox is unable to transfer the same OffscreenCanvas multiple times across Workers
+      # (in a chained fashion, e.g. main thread -> proxy-to-pthread main thread -> back to main thread -> user pthread)
+      self.skipTest('https://bugzil.la/1992576')
+
     print(str(cmd))
     self.btest_exit('test_webgl_resize_offscreencanvas_from_main_thread.c', cflags=cmd)
 
@@ -5652,7 +5661,7 @@ class emrun(RunnerCore):
     self.assertContained('remember to add `--` between arguments', err)
 
   def test_emrun(self):
-    self.emcc(test_file('test_emrun.c'), ['--emrun', '-o', 'test_emrun.html'])
+    self.emcc('test_emrun.c', ['--emrun', '-o', 'test_emrun.html'])
     if not has_browser():
       self.skipTest('need a browser')
 

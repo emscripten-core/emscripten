@@ -402,5 +402,5 @@ class codesize(RunnerCore):
     self.run_codesize_test('hello_world.c', cflags=['-sSTRICT', '-O3', '--preload-file=somefile.txt'], check_full_js=True)
 
   def test_small_js_flags(self):
-    self.emcc(test_file('browser_test_hello_world.c'), ['-O3', '--closure=1', '-sINCOMING_MODULE_JS_API=[]', '-sENVIRONMENT=web', '--output-eol=linux'])
+    self.emcc('browser_test_hello_world.c', ['-O3', '--closure=1', '-sINCOMING_MODULE_JS_API=[]', '-sENVIRONMENT=web', '--output-eol=linux'])
     self.check_output_sizes('a.out.js')

@@ -113,7 +113,7 @@ int emscripten_navigator_hardware_concurrency(void);
 // the given memory access width can be accessed atomically, and false
 // otherwise. Generally will return true on 1, 2 and 4 byte accesses. On 8 byte
 // accesses, behavior differs across browsers, see
-//  - https://bugzilla.mozilla.org/show_bug.cgi?id=1246139
+//  - https://bugzil.la/1246139
 //  - https://bugs.chromium.org/p/chromium/issues/detail?id=1167449
 int emscripten_atomics_is_lock_free(int byteWidth);
 
