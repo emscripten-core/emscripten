@@ -859,17 +859,6 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       if (gl.getContextAttributes().antialias) {
         context.defaultFboForbidBlitFramebuffer = true;
       }
-#if MIN_FIREFOX_VERSION < 67
-      else {
-        // The WebGL 2 blit path doesn't work in Firefox < 67 (except in fullscreen).
-        // https://bugzil.la/1523030
-        var firefoxMatch = navigator.userAgent.toLowerCase().match(/firefox\/(\d\d)/);
-        if (firefoxMatch != null) {
-          var firefoxVersion = firefoxMatch[1];
-          context.defaultFboForbidBlitFramebuffer = firefoxVersion < 67;
-        }
-      }
-#endif
 #endif
 
       // Create render targets to the FBO
