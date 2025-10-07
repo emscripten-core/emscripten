@@ -16,7 +16,7 @@ from tools import utils
 import common
 from common import errlog
 
-from tools.diagnostics import with_color, CYAN, GREEN, RED
+from tools.colored_logger import with_color, CYAN, GREEN, RED
 from tools.utils import WINDOWS
 
 
