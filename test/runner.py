@@ -576,8 +576,9 @@ def main():
         print(f'Terminating {len(procs)} stray browser processes.')
         common.terminate_list_of_processes(procs)
 
-    atexit.register(terminate_all_browser_processes)
-    terminate_all_browser_processes()
+    if config and hasattr(config, 'executable_name'):
+      atexit.register(terminate_all_browser_processes)
+      terminate_all_browser_processes()
 
   def prepend_default(arg):
     if arg.startswith('test_'):
