@@ -202,6 +202,13 @@ def is_firefox():
   return EMTEST_BROWSER and 'firefox' in EMTEST_BROWSER.lower()
 
 
+def get_browser_config():
+  if is_chrome():
+    return ChromeConfig()
+  elif is_firefox():
+    return FirefoxConfig()
+  return None
+
 def compiler_for(filename, force_c=False):
   if shared.suffix(filename) in ('.cc', '.cxx', '.cpp') and not force_c:
     return EMXX
@@ -2413,11 +2420,7 @@ def configure_test_browser():
     EMTEST_BROWSER = '"' + EMTEST_BROWSER.replace("\\", "\\\\") + '"'
 
   if EMTEST_BROWSER_AUTO_CONFIG:
-    config = None
-    if is_chrome():
-      config = ChromeConfig()
-    elif is_firefox():
-      config = FirefoxConfig()
+    config = get_browser_config()
     if config:
       EMTEST_BROWSER += ' ' + ' '.join(config.default_flags)
       if EMTEST_HEADLESS == 1:
@@ -2436,6 +2439,22 @@ def list_processes_by_name(exe_name):
         pass
 
   return pids
+
+
+def terminate_list_of_processes(proc_list):
+  for proc in proc_list:
+    try:
+      proc.terminate()
+      # If the browser doesn't shut down gracefully (in response to SIGTERM)
+      # after 2 seconds kill it with force (SIGKILL).
+      try:
+        proc.wait(2)
+      except (subprocess.TimeoutExpired, psutil.TimeoutExpired):
+        logger.info('Browser did not respond to `terminate`.  Using `kill`')
+        proc.kill()
+        proc.wait()
+    except (psutil.NoSuchProcess, ProcessLookupError):
+      pass
 
 
 class FileLock:
@@ -2522,19 +2541,7 @@ class BrowserCore(RunnerCore):
 
   @classmethod
   def browser_terminate(cls):
-    for proc in cls.browser_procs:
-      try:
-        proc.terminate()
-        # If the browser doesn't shut down gracefully (in response to SIGTERM)
-        # after 2 seconds kill it with force (SIGKILL).
-        try:
-          proc.wait(2)
-        except (subprocess.TimeoutExpired, psutil.TimeoutExpired):
-          logger.info('Browser did not respond to `terminate`.  Using `kill`')
-          proc.kill()
-          proc.wait()
-      except (psutil.NoSuchProcess, ProcessLookupError):
-        pass
+    terminate_list_of_processes(cls.browser_procs)
 
   @classmethod
   def browser_restart(cls):
@@ -2567,11 +2574,8 @@ class BrowserCore(RunnerCore):
       # Recreate the new data directory.
       os.mkdir(browser_data_dir)
 
-      if is_chrome():
-        config = ChromeConfig()
-      elif is_firefox():
-        config = FirefoxConfig()
-      else:
+      config = get_browser_config()
+      if not config:
         exit_with_error(f'EMTEST_BROWSER_AUTO_CONFIG only currently works with firefox or chrome. EMTEST_BROWSER was "{EMTEST_BROWSER}"')
       if WINDOWS:
         # Escape directory delimiter backslashes for shlex.split.
