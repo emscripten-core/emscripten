@@ -104,6 +104,63 @@ var SyscallsLibrary = {
     },
   },
 
+  $parseSelectFDSet__internal: true,
+  $parseSelectFDSet: (readfds, writefds, exceptfds) => {
+    var total = 0;
+
+    var srcReadLow = (readfds ? {{{ makeGetValue('readfds', 0, 'i32') }}} : 0),
+        srcReadHigh = (readfds ? {{{ makeGetValue('readfds', 4, 'i32') }}} : 0);
+    var srcWriteLow = (writefds ? {{{ makeGetValue('writefds', 0, 'i32') }}} : 0),
+        srcWriteHigh = (writefds ? {{{ makeGetValue('writefds', 4, 'i32') }}} : 0);
+    var srcExceptLow = (exceptfds ? {{{ makeGetValue('exceptfds', 0, 'i32') }}} : 0),
+        srcExceptHigh = (exceptfds ? {{{ makeGetValue('exceptfds', 4, 'i32') }}} : 0);
+
+    var dstReadLow = 0,
+        dstReadHigh = 0;
+    var dstWriteLow = 0,
+        dstWriteHigh = 0;
+    var dstExceptLow = 0,
+        dstExceptHigh = 0;
+
+    var check = (fd, low, high, val) => fd < 32 ? (low & val) : (high & val);
+
+    return {
+      allLow: srcReadLow | srcWriteLow | srcExceptLow,
+      allHigh: srcReadHigh | srcWriteHigh | srcExceptHigh,
+      getTotal: () => total,
+      setFlags: (fd, flags) => {
+        var mask = 1 << (fd % 32);
+
+        if ((flags & {{{ cDefs.POLLIN }}}) && check(fd, srcReadLow, srcReadHigh, mask)) {
+          fd < 32 ? (dstReadLow = dstReadLow | mask) : (dstReadHigh = dstReadHigh | mask);
+          total++;
+        }
+        if ((flags & {{{ cDefs.POLLOUT }}}) && check(fd, srcWriteLow, srcWriteHigh, mask)) {
+          fd < 32 ? (dstWriteLow = dstWriteLow | mask) : (dstWriteHigh = dstWriteHigh | mask);
+          total++;
+        }
+        if ((flags & {{{ cDefs.POLLPRI }}}) && check(fd, srcExceptLow, srcExceptHigh, mask)) {
+          fd < 32 ? (dstExceptLow = dstExceptLow | mask) : (dstExceptHigh = dstExceptHigh | mask);
+          total++;
+        }
+      },
+      commit: () => {
+        if (readfds) {
+          {{{ makeSetValue('readfds', '0', 'dstReadLow', 'i32') }}};
+          {{{ makeSetValue('readfds', '4', 'dstReadHigh', 'i32') }}};
+        }
+        if (writefds) {
+          {{{ makeSetValue('writefds', '0', 'dstWriteLow', 'i32') }}};
+          {{{ makeSetValue('writefds', '4', 'dstWriteHigh', 'i32') }}};
+        }
+        if (exceptfds) {
+          {{{ makeSetValue('exceptfds', '0', 'dstExceptLow', 'i32') }}};
+          {{{ makeSetValue('exceptfds', '4', 'dstExceptHigh', 'i32') }}};
+        }
+      }
+    };
+  },
+
   $syscallGetVarargI__internal: true,
   $syscallGetVarargI: () => {
 #if ASSERTIONS
@@ -543,6 +600,7 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall__newselect__i53abi: true,
+  __syscall__newselect__deps: ['$parseSelectFDSet'],
   __syscall__newselect: (nfds, readfds, writefds, exceptfds, timeoutInMillis) => {
     // readfds are supported,
     // writefds checks socket open status
@@ -553,24 +611,10 @@ var SyscallsLibrary = {
     assert(nfds <= 64, 'nfds must be less than or equal to 64');  // fd sets have 64 bits // TODO: this could be 1024 based on current musl headers
 #endif
 
-    var total = 0;
+    var fdSet = parseSelectFDSet(readfds, writefds, exceptfds);
 
-    var srcReadLow = (readfds ? {{{ makeGetValue('readfds', 0, 'i32') }}} : 0),
-        srcReadHigh = (readfds ? {{{ makeGetValue('readfds', 4, 'i32') }}} : 0);
-    var srcWriteLow = (writefds ? {{{ makeGetValue('writefds', 0, 'i32') }}} : 0),
-        srcWriteHigh = (writefds ? {{{ makeGetValue('writefds', 4, 'i32') }}} : 0);
-    var srcExceptLow = (exceptfds ? {{{ makeGetValue('exceptfds', 0, 'i32') }}} : 0),
-        srcExceptHigh = (exceptfds ? {{{ makeGetValue('exceptfds', 4, 'i32') }}} : 0);
-
-    var dstReadLow = 0,
-        dstReadHigh = 0;
-    var dstWriteLow = 0,
-        dstWriteHigh = 0;
-    var dstExceptLow = 0,
-        dstExceptHigh = 0;
-
-    var allLow = srcReadLow | srcWriteLow | srcExceptLow;
-    var allHigh = srcReadHigh | srcWriteHigh | srcExceptHigh;
+    var allLow = fdSet.allLow;
+    var allHigh = fdSet.allHigh;
 
     var check = (fd, low, high, val) => fd < 32 ? (low & val) : (high & val);
 
@@ -592,34 +636,13 @@ var SyscallsLibrary = {
 #endif
       }
 
-      if ((flags & {{{ cDefs.POLLIN }}}) && check(fd, srcReadLow, srcReadHigh, mask)) {
-        fd < 32 ? (dstReadLow = dstReadLow | mask) : (dstReadHigh = dstReadHigh | mask);
-        total++;
-      }
-      if ((flags & {{{ cDefs.POLLOUT }}}) && check(fd, srcWriteLow, srcWriteHigh, mask)) {
-        fd < 32 ? (dstWriteLow = dstWriteLow | mask) : (dstWriteHigh = dstWriteHigh | mask);
-        total++;
-      }
-      if ((flags & {{{ cDefs.POLLPRI }}}) && check(fd, srcExceptLow, srcExceptHigh, mask)) {
-        fd < 32 ? (dstExceptLow = dstExceptLow | mask) : (dstExceptHigh = dstExceptHigh | mask);
-        total++;
-      }
+      fdSet.setFlags(fd, flags);
     }
 
-    if (readfds) {
-      {{{ makeSetValue('readfds', '0', 'dstReadLow', 'i32') }}};
-      {{{ makeSetValue('readfds', '4', 'dstReadHigh', 'i32') }}};
-    }
-    if (writefds) {
-      {{{ makeSetValue('writefds', '0', 'dstWriteLow', 'i32') }}};
-      {{{ makeSetValue('writefds', '4', 'dstWriteHigh', 'i32') }}};
-    }
-    if (exceptfds) {
-      {{{ makeSetValue('exceptfds', '0', 'dstExceptLow', 'i32') }}};
-      {{{ makeSetValue('exceptfds', '4', 'dstExceptHigh', 'i32') }}};
-    }
 
-    return total;
+    fdSet.commit();
+
+    return fdSet.getTotal();
   },
   _msync_js__i53abi: true,
   _msync_js: (addr, len, prot, flags, fd, offset) => {
