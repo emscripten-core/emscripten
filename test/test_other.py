@@ -14392,6 +14392,15 @@ out.js
     self.run_process([EMCC, test_file('hello_world.c'), '-Werror', '-sENVIRONMENT=node', '-sMIN_CHROME_VERSION=-1'])
     self.run_process([EMCC, test_file('hello_world.c'), '-Werror', '-sENVIRONMENT=node', '-sMIN_SAFARI_VERSION=-1'])
 
+  # Test that passing "-sENVIRONMENT=node -pthread" will generate code that only targets Node.js multithreading, and
+  # does not pull in code that supports browser multithreading.
+  def test_only_target_node_pthreads(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-Werror', '-sENVIRONMENT=node', '-pthread'])
+    content = read_file('a.out.js')
+    self.assertContained('This page was compiled without support for Safari browser', content)
+    self.assertContained('This page was compiled without support for Firefox browser', content)
+    self.assertContained('This page was compiled without support for Chrome browser', content)
+
   def test_signext_lowering(self):
     # Use `-v` to show the sub-commands being run by emcc.
     cmd = [EMCC, test_file('other/test_signext_lowering.c'), '-v']

@@ -165,6 +165,8 @@ def setup_environment_settings():
   # The worker environment is automatically added if any of the pthread or Worker features are used.
   # Note: we need to actually modify ENVIRONMENTS variable here before the parsing,
   # because some JS code reads it back so modifying parsed info alone is not sufficient.
+  maybe_web_worker = not settings.ENVIRONMENT or 'worker' in settings.ENVIRONMENT
+
   if settings.SHARED_MEMORY and settings.ENVIRONMENT:
     settings.ENVIRONMENT.append('worker')
 
@@ -183,7 +185,7 @@ def setup_environment_settings():
       diagnostics.warning('unused-command-line-argument', 'ignoring MIN_NODE_VERSION because `node` environment is not enabled')
     settings.MIN_NODE_VERSION = feature_matrix.UNSUPPORTED
 
-  if not (settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WORKER or settings.ENVIRONMENT_MAY_BE_WEBVIEW):
+  if not (settings.ENVIRONMENT_MAY_BE_WEB or maybe_web_worker or settings.ENVIRONMENT_MAY_BE_WEBVIEW):
     for browser in ('FIREFOX', 'SAFARI', 'CHROME'):
       key = f'MIN_{browser}_VERSION'
       if key in user_settings and settings[key] != feature_matrix.UNSUPPORTED:
