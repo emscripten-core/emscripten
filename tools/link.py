@@ -172,7 +172,7 @@ def setup_environment_settings():
   if any(x for x in settings.ENVIRONMENT if x not in VALID_ENVIRONMENTS):
     exit_with_error(f'Invalid environment specified in "ENVIRONMENT": {settings.ENVIRONMENT}. Should be one of: {",".join(VALID_ENVIRONMENTS)}')
 
-  settings.ENVIRONMENT_MAY_BE_WEB = not settings.ENVIRONMENT or 'web' in settings.ENVIRONMENT or 'worker' in settings.ENVIRONMENT
+  settings.ENVIRONMENT_MAY_BE_WEB = not settings.ENVIRONMENT or 'web' in settings.ENVIRONMENT
   settings.ENVIRONMENT_MAY_BE_WEBVIEW = not settings.ENVIRONMENT or 'webview' in settings.ENVIRONMENT
   settings.ENVIRONMENT_MAY_BE_NODE = not settings.ENVIRONMENT or 'node' in settings.ENVIRONMENT
   settings.ENVIRONMENT_MAY_BE_SHELL = not settings.ENVIRONMENT or 'shell' in settings.ENVIRONMENT
@@ -183,7 +183,7 @@ def setup_environment_settings():
       diagnostics.warning('unused-command-line-argument', 'ignoring MIN_NODE_VERSION because `node` environment is not enabled')
     settings.MIN_NODE_VERSION = feature_matrix.UNSUPPORTED
 
-  if not (settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WEBVIEW):
+  if not (settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WORKER or settings.ENVIRONMENT_MAY_BE_WEBVIEW):
     for browser in ('FIREFOX', 'SAFARI', 'CHROME'):
       key = f'MIN_{browser}_VERSION'
       if key in user_settings and settings[key] != feature_matrix.UNSUPPORTED:
