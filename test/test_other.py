@@ -3497,24 +3497,6 @@ More info: https://emscripten.org
                                            '-Wno-experimental',
                                            '--post-js=post.js'])
 
-  @requires_jspi
-  def test_jspi_bad_library_function(self):
-    create_file('lib.js', r'''
-      addToLibrary({
-        foo__async: true,
-        foo: function(f) {},
-      });
-    ''')
-    create_file('main.c', r'''
-      #include <emscripten.h>
-      extern void foo();
-      EMSCRIPTEN_KEEPALIVE void test() {
-        foo();
-      }
-    ''')
-    err = self.expect_fail([EMCC, 'main.c', '-o', 'out.js', '-sJSPI', '--js-library=lib.js', '-Wno-experimental'])
-    self.assertContained('error: \'foo\' is marked with the __async decorator but is not an async JS function.', err)
-
   @requires_dev_dependency('typescript')
   @parameterized({
     'commonjs': [['-sMODULARIZE'], ['--module', 'commonjs', '--moduleResolution', 'node']],
@@ -5071,6 +5053,24 @@ int main() {
 }
 ''')
     self.do_runf('src.c', 'jslibfunc: 12', cflags=['--js-library', 'libcore.js'])
+
+  @requires_jspi
+  def test_jslib_jspi_missing_async(self):
+    create_file('lib.js', r'''
+      addToLibrary({
+        foo__async: true,
+        foo: function(f) {},
+      });
+    ''')
+    create_file('main.c', r'''
+      #include <emscripten.h>
+      extern void foo();
+      EMSCRIPTEN_KEEPALIVE void test() {
+        foo();
+      }
+    ''')
+    err = self.expect_fail([EMCC, 'main.c', '-o', 'out.js', '-sJSPI', '--js-library=lib.js', '-Wno-experimental'])
+    self.assertContained('error: \'foo\' is marked with the __async decorator but is not an async JS function.', err)
 
   def test_EMCC_BUILD_DIR(self):
     # EMCC_BUILD_DIR was necessary in the past since we used to force the cwd to be src/ for
