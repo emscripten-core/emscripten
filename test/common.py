@@ -1720,10 +1720,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     if regex:
       if type(values) is str:
-        self.assertTrue(re.search(values, string, re.DOTALL), 'Expected regex "%s" to match on:\n%s' % (values, string))
+        self.assertTrue(re.search(values, string, re.DOTALL), 'Expected regex "%s" to match on:\n%s' % (values, limit_size(string)))
       else:
         match_any = any(re.search(o, string, re.DOTALL) for o in values)
-        self.assertTrue(match_any, 'Expected at least one of "%s" to match on:\n%s' % (values, string))
+        self.assertTrue(match_any, 'Expected at least one of "%s" to match on:\n%s' % (values, limit_size(string)))
       return
 
     if type(values) not in [list, tuple]:
