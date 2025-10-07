@@ -179,6 +179,12 @@ def test_file(*path_components):
   return str(Path(TEST_ROOT, *path_components))
 
 
+def maybe_test_file(filename):
+  if not os.path.exists(filename) and os.path.exists(test_file(filename)):
+    filename = test_file(filename)
+  return filename
+
+
 def copytree(src, dest):
   shutil.copytree(src, dest, dirs_exist_ok=True)
 
@@ -1487,8 +1493,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   # Build JavaScript code from source code
   def build(self, filename, libraries=None, includes=None, force_c=False, cflags=None, output_basename=None, output_suffix=None):
-    if not os.path.exists(filename):
-      filename = test_file(filename)
+    filename = maybe_test_file(filename)
     compiler = [compiler_for(filename, force_c)]
 
     if force_c:
@@ -1848,6 +1853,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return rtn
 
   def emcc(self, filename, args=[], output_filename=None, **kwargs):  # noqa
+    filename = maybe_test_file(filename)
     compile_only = '-c' in args or '-sSIDE_MODULE' in args
     cmd = [compiler_for(filename), filename] + self.get_cflags(compile_only=compile_only) + args
     if output_filename:
@@ -2017,8 +2023,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return self._build_and_run(filename, expected_output, **kwargs)
 
   def do_run_in_out_file_test(self, srcfile, **kwargs):
-    if not os.path.exists(srcfile):
-      srcfile = test_file(srcfile)
+    srcfile = maybe_test_file(srcfile)
     out_suffix = kwargs.pop('out_suffix', '')
     outfile = shared.unsuffixed(srcfile) + out_suffix + '.out'
     if EMTEST_REBASELINE:
@@ -2748,8 +2753,7 @@ class BrowserCore(RunnerCore):
         cflags += ['report_result.o', '-include', test_file('report_result.h')]
     if EMTEST_BROWSER == 'node':
       cflags.append('-DEMTEST_NODE')
-    if not os.path.exists(filename):
-      filename = test_file(filename)
+    filename = maybe_test_file(filename)
     self.run_process([compiler_for(filename), filename] + self.get_cflags() + cflags)
     # Remove the file since some tests have assertions for how many files are in
     # the output directory.
