@@ -567,7 +567,7 @@ def main():
   utils.delete_file(common.flaky_tests_log_filename)
   utils.delete_file(common.browser_spawn_lock_filename)
   utils.delete_file(f'{common.browser_spawn_lock_filename}_counter')
-  if options.force_browser_process_termination:
+  if options.force_browser_process_termination or os.getenv('EMTEST_FORCE_BROWSER_PROCESS_TERMINATION'):
     config = common.get_browser_config()
 
     def terminate_all_browser_processes():
