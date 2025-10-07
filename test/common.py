@@ -18,7 +18,6 @@ import itertools
 import json
 import logging
 import os
-import plistlib
 import psutil
 import re
 import shlex
@@ -228,17 +227,6 @@ def is_firefox():
 
 def is_safari():
   return EMTEST_BROWSER and 'safari' in EMTEST_BROWSER.lower()
-
-
-def get_safari_version():
-  plist_path = os.path.join(EMTEST_BROWSER.strip(), 'Contents', 'version.plist')
-  version_str = plistlib.load(open(plist_path, 'rb')).get('CFBundleShortVersionString')
-  # Split into parts (major.minor.patch)
-  parts = (version_str.split('.') + ['0', '0', '0'])[:3]
-  # Convert each part into integers, discarding any trailing string, e.g. '13a' -> 13.
-  parts = [int(re.match(r"\d+", s).group()) if re.match(r"\d+", s) else 0 for s in parts]
-  # Return version as XXYYZZ
-  return parts[0] * 10000 + parts[1] * 100 + parts[2]
 
 
 def get_browser_config():
