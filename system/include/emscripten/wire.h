@@ -8,7 +8,11 @@
 #pragma once
 
 #if __cplusplus < 201103L
-#error Including <emscripten/wire.h> requires building with -std=c++11 or newer!
+#error "embind requires -std=c++11 or newer"
+#endif
+
+#if __cplusplus < 201703L
+#warning "embind is likely moving to c++17 (https://github.com/emscripten-core/emscripten/issues/24850)"
 #endif
 
 // A value moving between JavaScript and C++ has three representations:
@@ -265,6 +269,9 @@ struct WithPolicies {
     };
 };
 
+template<typename... Policies>
+struct WithPolicies<std::tuple<Policies...>> : WithPolicies<Policies...> {};
+
 // BindingType<T>
 
 // The second typename is an unused stub so it's possible to
@@ -491,6 +498,214 @@ struct BindingType<memory_view<ElementType>> {
         return mv;
     }
 };
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// POLICIES
+////////////////////////////////////////////////////////////////////////////////
+
+template<int Index>
+struct arg {
+    static constexpr int index = Index + 1;
+};
+
+struct ret_val {
+    static constexpr int index = 0;
+};
+
+/*
+template<typename Slot>
+struct allow_raw_pointer {
+    template<typename InputType, int Index>
+    struct Transform {
+        typedef typename std::conditional<
+            Index == Slot::index,
+            internal::AllowedRawPointer<typename std::remove_pointer<InputType>::type>,
+            InputType
+        >::type type;
+    };
+};
+*/
+
+// allow all raw pointers
+struct allow_raw_pointers {
+    template<typename InputType, int Index>
+    struct Transform {
+        // Use decay to handle references to pointers e.g.(T*&)->(T*).
+        typedef typename std::decay<InputType>::type DecayedType;
+        typedef typename std::conditional<
+            std::is_pointer<DecayedType>::value,
+            internal::AllowedRawPointer<typename std::remove_pointer<DecayedType>::type>,
+            InputType
+        >::type type;
+    };
+};
+
+// this is temporary until arg policies are reworked
+template<typename Slot>
+struct allow_raw_pointer : public allow_raw_pointers {
+};
+
+struct async {
+    template<typename InputType, int Index>
+    struct Transform {
+        typedef InputType type;
+    };
+};
+
+struct pure_virtual {
+    template<typename InputType, int Index>
+    struct Transform {
+        typedef InputType type;
+    };
+};
+
+template<typename Slot>
+struct nonnull {
+    static_assert(std::is_same<Slot, ret_val>::value, "Only nonnull return values are currently supported.");
+    template<typename InputType, int Index>
+    struct Transform {
+        typedef InputType type;
+    };
+};
+
+namespace return_value_policy {
+
+struct take_ownership : public allow_raw_pointers {};
+struct reference : public allow_raw_pointers {};
+
+} // end namespace return_value_policy
+
+namespace internal {
+
+#if __cplusplus >= 201703L
+template <typename... Args> using conjunction = std::conjunction<Args...>;
+template <typename... Args> using disjunction = std::disjunction<Args...>;
+#else
+// Helper available in C++14.
+template <bool _Test, class _T1, class _T2>
+using conditional_t = typename std::conditional<_Test, _T1, _T2>::type;
+
+template<class...> struct conjunction : std::true_type {};
+template<class B1> struct conjunction<B1> : B1 {};
+template<class B1, class... Bn>
+struct conjunction<B1, Bn...>
+    : conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
+
+template<class...> struct disjunction : std::false_type {};
+template<class B1> struct disjunction<B1> : B1 {};
+template<class B1, class... Bn>
+struct disjunction<B1, Bn...>
+    : conditional_t<bool(B1::value), disjunction<Bn...>, B1> {};
+#endif
+
+template<typename... Policies>
+struct isPolicy;
+
+template<typename... Rest>
+struct isPolicy<return_value_policy::take_ownership, Rest...> {
+    static constexpr bool value = true;
+};
+
+template<typename... Rest>
+struct isPolicy<return_value_policy::reference, Rest...> {
+    static constexpr bool value = true;
+};
+
+template<typename... Rest>
+struct isPolicy<emscripten::async, Rest...> {
+    static constexpr bool value = true;
+};
+
+template <typename T, typename... Rest>
+struct isPolicy<emscripten::allow_raw_pointer<T>, Rest...> {
+    static constexpr bool value = true;
+};
+
+template<typename... Rest>
+struct isPolicy<allow_raw_pointers, Rest...> {
+    static constexpr bool value = true;
+};
+
+template<typename... Rest>
+struct isPolicy<emscripten::pure_virtual, Rest...> {
+    static constexpr bool value = true;
+};
+
+template<typename T, typename... Rest>
+struct isPolicy<emscripten::nonnull<T>, Rest...> {
+    static constexpr bool value = true;
+};
+
+template<typename T, typename... Rest>
+struct isPolicy<T, Rest...> {
+    static constexpr bool value = isPolicy<Rest...>::value;
+};
+
+template<>
+struct isPolicy<> {
+    static constexpr bool value = false;
+};
+
+template<typename T>
+struct isNotPolicy {
+    static constexpr bool value = !isPolicy<T>::value;
+};
+
+template<typename ReturnType, typename... Rest>
+struct GetReturnValuePolicy {
+    using tag = rvp::default_tag;
+};
+
+template<typename ReturnType, typename... Rest>
+struct GetReturnValuePolicy<ReturnType, return_value_policy::take_ownership, Rest...> {
+    using tag = rvp::take_ownership;
+};
+
+template<typename ReturnType, typename... Rest>
+struct GetReturnValuePolicy<ReturnType, return_value_policy::reference, Rest...> {
+    using tag = rvp::reference;
+};
+
+template<typename ReturnType, typename T, typename... Rest>
+struct GetReturnValuePolicy<ReturnType, T, Rest...> {
+    using tag = GetReturnValuePolicy<ReturnType, Rest...>::tag;
+};
+
+template<typename... Policies>
+using isAsync = disjunction<std::is_same<async, Policies>...>;
+
+template<typename... Policies>
+using isNonnullReturn = disjunction<std::is_same<nonnull<ret_val>, Policies>...>;
+
+// Build a tuple type that contains all the types where the predicate is true.
+// e.g. FilterTypes<std::is_integral, int, char, float> would return std::tuple<int, char>.
+template <template <class> class Predicate, class... T>
+using FilterTypes = decltype(std::tuple_cat(
+        std::declval<
+            typename std::conditional<
+                Predicate<T>::value,
+                std::tuple<T>,
+                std::tuple<>
+            >::type
+        >()...
+    ));
+
+#if __cplusplus >= 201402L
+// Build a tuple that contains all the args where the predicate is true.
+template<template <class> class Predicate, typename... Args>
+auto Filter(Args&&... args) {
+    return std::tuple_cat(
+        std::get<Predicate<typename std::decay_t<Args>>::value ? 0 : 1>(
+            std::make_tuple(
+                [](auto&& arg) { return std::forward_as_tuple(std::forward<decltype(arg)>(arg)); },
+                [](auto&&) { return std::tuple<>(); }
+            )
+        )(std::forward<Args>(args))...
+    );
+}
+#endif
 
 } // namespace internal
 

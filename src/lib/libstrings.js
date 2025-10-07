@@ -9,11 +9,13 @@
 #endif
 
 addToLibrary({
+  // In -sAUDIO_WORKLET builds, TextDecoder will not exist in AudioWorkletGlobalScope,
+  // so we cannot try to unconditionally initialize it in that build mode.
+#if TEXTDECODER == 2 && !AUDIO_WORKLET
   // TextDecoder constructor defaults to UTF-8
-#if TEXTDECODER == 2
   $UTF8Decoder: "new TextDecoder()",
 #else
-  $UTF8Decoder: "globalThis.TextDecoder ? new TextDecoder() : undefined",
+  $UTF8Decoder: "globalThis.TextDecoder && new TextDecoder()",
 #endif
 
   $findStringEnd: (heapOrArray, idx, maxBytesToRead, ignoreNul) => {

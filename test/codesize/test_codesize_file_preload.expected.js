@@ -27,12 +27,12 @@ var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
 
 // N.b. Electron.js environment is simultaneously a NODE-environment, but
 // also a web environment.
-var ENVIRONMENT_IS_NODE = typeof process == "object" && process.versions?.node && process.type != "renderer";
+var ENVIRONMENT_IS_NODE = globalThis.process?.versions?.node && globalThis.process?.type != "renderer";
 
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
 // include: <FILENAME REPLACED>
-Module["expectedDataFileDownloads"] ??= 0;
+if (!Module["expectedDataFileDownloads"]) Module["expectedDataFileDownloads"] = 0;
 
 Module["expectedDataFileDownloads"]++;
 
@@ -41,7 +41,7 @@ Module["expectedDataFileDownloads"]++;
   var isPthread = typeof ENVIRONMENT_IS_PTHREAD != "undefined" && ENVIRONMENT_IS_PTHREAD;
   var isWasmWorker = typeof ENVIRONMENT_IS_WASM_WORKER != "undefined" && ENVIRONMENT_IS_WASM_WORKER;
   if (isPthread || isWasmWorker) return;
-  var isNode = typeof process === "object" && typeof process.versions === "object" && typeof process.versions.node === "string";
+  var isNode = globalThis.process && globalThis.process.versions && globalThis.process.versions.node && globalThis.process.type != "renderer";
   async function loadPackage(metadata) {
     var PACKAGE_PATH = "";
     if (typeof window === "object") {
@@ -52,15 +52,14 @@ Module["expectedDataFileDownloads"]++;
     }
     var PACKAGE_NAME = "a.out.data";
     var REMOTE_PACKAGE_BASE = "a.out.data";
-    var REMOTE_PACKAGE_NAME = Module["locateFile"]?.(REMOTE_PACKAGE_BASE, "") ?? REMOTE_PACKAGE_BASE;
+    var REMOTE_PACKAGE_NAME = Module["locateFile"] ? Module["locateFile"](REMOTE_PACKAGE_BASE, "") : REMOTE_PACKAGE_BASE;
     var REMOTE_PACKAGE_SIZE = metadata["remote_package_size"];
     async function fetchRemotePackage(packageName, packageSize) {
       if (isNode) {
-        var fsPromises = require("fs/promises");
-        var contents = await fsPromises.readFile(packageName);
-        return contents.buffer;
+        var contents = require("fs").readFileSync(packageName);
+        return new Uint8Array(contents).buffer;
       }
-      Module["dataFileDownloads"] ??= {};
+      if (!Module["dataFileDownloads"]) Module["dataFileDownloads"] = {};
       try {
         var response = await fetch(packageName);
       } catch (e) {
@@ -73,9 +72,9 @@ Module["expectedDataFileDownloads"]++;
       }
       const chunks = [];
       const headers = response.headers;
-      const total = Number(headers.get("Content-Length") ?? packageSize);
+      const total = Number(headers.get("Content-Length") || packageSize);
       let loaded = 0;
-      Module["setStatus"]?.("Downloading data...");
+      Module["setStatus"] && Module["setStatus"]("Downloading data...");
       const reader = response.body.getReader();
       while (1) {
         var {done, value} = await reader.read();
@@ -92,7 +91,7 @@ Module["expectedDataFileDownloads"]++;
           totalLoaded += download.loaded;
           totalSize += download.total;
         }
-        Module["setStatus"]?.(`Downloading data... (${totalLoaded}/${totalSize})`);
+        Module["setStatus"] && Module["setStatus"](`Downloading data... (${totalLoaded}/${totalSize})`);
       }
       const packageData = new Uint8Array(chunks.map(c => c.length).reduce((a, b) => a + b, 0));
       let offset = 0;
@@ -119,7 +118,7 @@ Module["expectedDataFileDownloads"]++;
       }
       async function processPackageData(arrayBuffer) {
         assert(arrayBuffer, "Loading data file failed.");
-        assert(arrayBuffer.constructor.name === ArrayBuffer.name, "bad input to processPackageData");
+        assert(arrayBuffer.constructor.name === ArrayBuffer.name, "bad input to processPackageData " + arrayBuffer.constructor.name);
         var byteArray = new Uint8Array(arrayBuffer);
         // Reuse the bytearray from the XHR as the source for file reads.
         for (var file of metadata["files"]) {
@@ -132,7 +131,7 @@ Module["expectedDataFileDownloads"]++;
         Module["removeRunDependency"]("datafile_a.out.data");
       }
       Module["addRunDependency"]("datafile_a.out.data");
-      Module["preloadResults"] ??= {};
+      if (!Module["preloadResults"]) Module["preloadResults"] = {};
       Module["preloadResults"][PACKAGE_NAME] = {
         fromCache: false
       };
@@ -144,7 +143,8 @@ Module["expectedDataFileDownloads"]++;
     if (Module["calledRun"]) {
       runWithFS(Module);
     } else {
-      (Module["preRun"] ??= []).push(runWithFS);
+      if (!Module["preRun"]) Module["preRun"] = [];
+      Module["preRun"].push(runWithFS);
     }
   }
   loadPackage({
@@ -666,7 +666,7 @@ var PATH_FS = {
   }
 };
 
-var UTF8Decoder = globalThis.TextDecoder ? new TextDecoder : undefined;
+var UTF8Decoder = globalThis.TextDecoder && new TextDecoder;
 
 var findStringEnd = (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
   var maxIdx = idx + maxBytesToRead;
@@ -3154,12 +3154,12 @@ Module["FS_createLazyFile"] = FS_createLazyFile;
 // End JS library exports
 // end include: postlibrary.js
 // Imports from the Wasm binary.
-var _main, wasmMemory, wasmTable;
+var _main, memory, __indirect_function_table, wasmMemory;
 
 function assignWasmExports(wasmExports) {
   _main = Module["_main"] = wasmExports["d"];
-  wasmMemory = wasmExports["b"];
-  wasmTable = wasmExports["__indirect_function_table"];
+  memory = wasmMemory = wasmExports["b"];
+  __indirect_function_table = wasmExports["__indirect_function_table"];
 }
 
 var wasmImports = {

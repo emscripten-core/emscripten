@@ -1,10 +1,10 @@
 {
-  "a.out.js": 8042,
-  "a.out.js.gz": 3966,
+  "a.out.js": 8036,
+  "a.out.js.gz": 3962,
   "a.out.nodebug.wasm": 19600,
-  "a.out.nodebug.wasm.gz": 9064,
-  "total": 27642,
-  "total_gz": 13030,
+  "a.out.nodebug.wasm.gz": 9066,
+  "total": 27636,
+  "total_gz": 13028,
   "sent": [
     "a (memory)",
     "b (emscripten_get_now)",

@@ -114,14 +114,17 @@ legacyFuncs = {
   },
 
   // Legacy names for runtime `out`/`err` symbols.
-  $print: 'out',
-  $printErr: 'err',
+  $print: '=out',
+  $printErr: '=err',
 
   // Converts a JS string to an integer base-10. Despite _s, which
   // suggests signaling error handling, this returns NaN on error.
   // (This was a mistake in the original implementation, and kept
   // to avoid breakage.)
   $jstoi_s: 'Number',
+
+  $getNativeTypeSize__deps: ['$POINTER_SIZE'],
+  $getNativeTypeSize: {{{ getNativeTypeSize }}},
 };
 
 if (WARN_DEPRECATED && !INCLUDE_FULL_LIBRARY) {

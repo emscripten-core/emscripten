@@ -4,6 +4,10 @@
  * SPDX-License-Identifier: MIT
  */
 
+#if LOAD_SOURCE_MAP
+#include "source_map_support.js"
+#endif
+
 // === Auto-generated postamble setup entry stuff ===
 #if HAS_MAIN // Only if user is exporting a C main(), we will generate a run() function that can be used to launch main.
 
@@ -254,10 +258,10 @@ WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProp
   wasmExports = applySignatureConversions(wasmExports);
 #endif
 
-#if !DECLARE_ASM_MODULE_EXPORTS
-  exportWasmSymbols(wasmExports);
-#else
+#if DECLARE_ASM_MODULE_EXPORTS
   assignWasmExports(wasmExports);
+#else
+  exportWasmSymbols(wasmExports);
 #endif
 
 #if !IMPORTED_MEMORY
@@ -267,16 +271,33 @@ WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProp
 
   initRuntime(wasmExports);
 
-#if PTHREADS && PTHREAD_POOL_SIZE
-  var workersReady = PThread.loadWasmModuleToAllWorkers();
-#if PTHREAD_POOL_DELAY_LOAD
-  ready();
-#else
-  workersReady.then(ready);
+{{{ function waitOnStartupPromisesAndEmitReady() {
+  var promises = [];
+  if (PTHREADS && PTHREAD_POOL_SIZE) {
+    promises.push('PThread.loadWasmModuleToAllWorkers()');
+  }
+  if (LOAD_SOURCE_MAP) {
+    promises.push('getSourceMapAsync().then(json=>{receiveSourceMapJSON(json)})');
+  }
+  if (promises.length == 0) {
+    return 'ready();'
+  } else if (promises.length == 1) {
+    return `${promises[0]}.then(ready);`;
+  } else {
+    return `Promise.all(${', '.join(promises)}).then(ready);`
+  }
+}
+null;
+}}}
+
+#if PTHREADS && PTHREAD_POOL_SIZE && PTHREAD_POOL_DELAY_LOAD
+  // In PTHREAD_POOL_DELAY_LOAD mode, we kick off loading Wasm Module to all
+  // PThread Workers, but do not wait on it.
+  PThread.loadWasmModuleToAllWorkers();
 #endif
-#else
-  ready();
-#endif
+
+{{{ waitOnStartupPromisesAndEmitReady(); }}}
+
 }
 
 #if WASM == 2

@@ -16,6 +16,7 @@ from tools import utils
 import common
 from common import errlog
 
+from tools.colored_logger import with_color, CYAN, GREEN, RED
 from tools.utils import WINDOWS
 
 
@@ -304,35 +305,41 @@ class BufferedParallelTestResult:
     with self.lock:
       val = f'[{int(self.progress_counter.value * 100 / self.num_tests)}%] '
       self.progress_counter.value += 1
-    return val
+    return with_color(CYAN, val)
 
   def addSuccess(self, test):
-    errlog(f'{self.compute_progress()}{test} ... ok ({self.calculateElapsed():.2f}s)')
+    msg = f'ok ({self.calculateElapsed():.2f}s)'
+    errlog(f'{self.compute_progress()}{test} ... {with_color(GREEN, msg)}')
     self.buffered_result = BufferedTestSuccess(test)
     self.test_result = 'success'
 
   def addExpectedFailure(self, test, err):
-    errlog(f'{self.compute_progress()}{test} ... expected failure ({self.calculateElapsed():.2f}s)')
+    msg = f'expected failure ({self.calculateElapsed():.2f}s)'
+    errlog(f'{self.compute_progress()}{test} ... {with_color(RED, msg)}')
     self.buffered_result = BufferedTestExpectedFailure(test, err)
     self.test_result = 'expected failure'
 
   def addUnexpectedSuccess(self, test):
-    errlog(f'{self.compute_progress()}{test} ... unexpected success ({self.calculateElapsed():.2f}s)')
+    msg = f'unexpected success ({self.calculateElapsed():.2f}s)'
+    errlog(f'{self.compute_progress()}{test} ... {with_color(RED, msg)}')
     self.buffered_result = BufferedTestUnexpectedSuccess(test)
     self.test_result = 'unexpected success'
 
   def addSkip(self, test, reason):
-    errlog(f"{self.compute_progress()}{test} ... skipped '{reason}'")
+    msg = f"skipped '{reason}'"
+    errlog(f"{self.compute_progress()}{test} ... {with_color(CYAN, msg)}")
     self.buffered_result = BufferedTestSkip(test, reason)
     self.test_result = 'skipped'
 
   def addFailure(self, test, err):
-    errlog(f'{self.compute_progress()}{test} ... FAIL')
+    msg = f'{test} ... FAIL'
+    errlog(f'{self.compute_progress()}{with_color(RED, msg)}')
     self.buffered_result = BufferedTestFailure(test, err)
     self.test_result = 'failed'
 
   def addError(self, test, err):
-    errlog(f'{self.compute_progress()}{test} ... ERROR')
+    msg = f'{test} ... ERROR'
+    errlog(f'{self.compute_progress()}{with_color(RED, msg)}')
     self.buffered_result = BufferedTestError(test, err)
     self.test_result = 'errored'
 

@@ -90,7 +90,7 @@ def uses_canonical_tmp(func):
     if os.path.exists(self.canonical_temp_dir):
       shutil.rmtree(self.canonical_temp_dir)
     try:
-      func(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     finally:
       # Make sure the test isn't lying about the fact that it uses
       # canonical_tmp
@@ -108,39 +108,39 @@ def requires_git_checkout(func):
   def decorated(self, *args, **kwargs):
     if not os.path.exists(utils.path_from_root('.git')):
       self.skipTest('test requires git checkout of emscripten')
-    func(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   return decorated
 
 
-def also_with_llvm_libc(f):
-  assert callable(f)
+def also_with_llvm_libc(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, llvm_libc, *args, **kwargs):
     if shared.DEBUG:
       print('parameterize:llvm_libc=%d' % llvm_libc)
     if llvm_libc:
       self.cflags += ['-lllvmlibc']
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'llvm_libc': (True,)})
   return metafunc
 
 
-def with_both_compilers(f):
-  assert callable(f)
+def with_both_compilers(func):
+  assert callable(func)
 
-  parameterize(f, {'': (EMCC,),
-                   'emxx': (EMXX,)})
-  return f
+  parameterize(func, {'': (EMCC,),
+                      'emxx': (EMXX,)})
+  return func
 
 
-def wasmfs_all_backends(f):
-  assert callable(f)
+def wasmfs_all_backends(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, backend, *args, **kwargs):
     self.setup_wasmfs_test()
     if backend == 'node':
@@ -148,7 +148,7 @@ def wasmfs_all_backends(f):
     elif backend == 'raw':
       self.setup_noderawfs_test()
     self.cflags.append(f'-D{backend}')
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': ('memory',),
                           'node': ('node',),
@@ -3310,6 +3310,9 @@ More info: https://emscripten.org
     'val_1': ['embind/test_embind_no_raw_pointers_val_1.cpp'],
     'val_2': ['embind/test_embind_no_raw_pointers_val_2.cpp'],
     'val_3': ['embind/test_embind_no_raw_pointers_val_3.cpp'],
+    'val_invoke': ['embind/test_embind_no_raw_pointers_val_invoke.cpp'],
+    'val_call': ['embind/test_embind_no_raw_pointers_val_call.cpp'],
+    'val_new': ['embind/test_embind_no_raw_pointers_val_new.cpp'],
   })
   def test_embind_no_raw_pointers(self, filename):
     stderr = self.expect_fail([EMCC, '-lembind', test_file(filename)])
@@ -3328,7 +3331,7 @@ More info: https://emscripten.org
     # With no arguments we are effectively testing c++17 since it is the default.
     '': [],
     # Ensure embind compiles under C++11 which is the miniumum supported version.
-    'cxx11': ['-std=c++11'],
+    'cxx11': ['-std=c++11', '-Wno-#warnings'],
     'o1': ['-O1'],
     'o2': ['-O2'],
     'o2_mem_growth': ['-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')],
@@ -3376,6 +3379,14 @@ More info: https://emscripten.org
 
     output = self.run_js(js_file)
     self.assertNotContained('FAIL', output)
+
+  def test_embind_cxx11_warning(self):
+    err = self.run_process([EMXX, '-c', '-std=c++11', test_file('embind/test_unsigned.cpp')], stderr=PIPE).stderr
+    self.assertContained('#warning "embind is likely moving to c++17', err)
+
+  def test_embind_cxx03(self):
+    err = self.expect_fail([EMXX, '-c', '-std=c++03', test_file('embind/test_unsigned.cpp')])
+    self.assertContained('#error "embind requires -std=c++11 or newer"', err)
 
   @requires_node
   def test_embind_finalization(self):
@@ -3548,8 +3559,8 @@ More info: https://emscripten.org
     self.cflags += ['-lembind', '--emit-tsd', 'embind_tsgen.d.ts']
     # Passing -sWASM_WORKERS or -sPROXY_TO_WORKER requires the 'worker' environment
     # at link time. Verify that TS binding generation still works in this case.
-    for flag in ('-sWASM_WORKERS', '-sPROXY_TO_WORKER'):
-      self.emcc(test_file('other/embind_tsgen.cpp'), [flag])
+    for flags in (['-sWASM_WORKERS'], ['-sPROXY_TO_WORKER', '-Wno-deprecated']):
+      self.emcc(test_file('other/embind_tsgen.cpp'), flags)
       self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
 
   def test_embind_tsgen_dylink(self):
@@ -3633,7 +3644,7 @@ More info: https://emscripten.org
   })
   def test_embind_tsgen_exceptions(self, legacy):
     if not legacy and shared.get_node_version(config.NODE_JS)[0] < 22:
-      self.skipTest('Node version needs to be 22 or greater to run tsgen with exnref')
+      self.skipTest('Node version needs to be 22 or greater to run tsgen with Wasm EH')
     self.set_setting('WASM_LEGACY_EXCEPTIONS', legacy)
 
     # Check that when Wasm exceptions and assertions are enabled bindings still generate.
@@ -3838,7 +3849,7 @@ More info: https://emscripten.org
       return 0;
     }
     ''')
-    self.do_runf('src.c', cflags=['--pre-js=immutable.js', '-sFORCE_FILESYSTEM'])
+    self.do_runf('src.c', 'done\n', cflags=['--extern-pre-js=immutable.js', '-sFORCE_FILESYSTEM'])
 
   def test_file_packager_unicode(self):
     unicode_name = 'unicode…☃'
@@ -4876,6 +4887,62 @@ extraLibraryFuncs.push('jsfunc');
     delete_file('inc.js')
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', 'foo.js'])
     self.assertContained('foo.js:5: file not found: inc.js', err)
+
+  @parameterized({
+    '': ([],),
+    'closure': (['--closure=1'],),
+  })
+  def test_jslib_aliases(self, args):
+    create_file('foo.js', '''
+      addToLibrary({
+        foo: () => 42,
+        foo_alias: 'foo',
+
+        // Normal JS function that calls a native function
+        call_native__deps: ['native_func'],
+        call_native: () => _native_func(),
+
+        // JS function that calls nativeAlias
+        call_native_alias__deps: ['$nativeAlias'],
+        call_native_alias: () => nativeAlias(),
+
+        // This is a JS-only symbol (i.e. no leading underscore) that
+        // aliases a native symbol.
+        $nativeAlias__deps: ['native_func2'],
+        $nativeAlias: 'native_func2',
+      });
+    ''')
+    create_file('main.c', r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+      int foo();
+      int foo_alias();
+      int call_native();
+      int call_native_alias();
+
+      int native_func() {
+        return 43;
+      }
+
+      int native_func2() {
+        return 44;
+      }
+
+      int main() {
+        printf("foo: %d\n", foo());
+        printf("foo_alias: %d\n", foo_alias());
+        printf("call_native: %d\n", call_native());
+        printf("call_native_alias: %d\n", call_native_alias());
+        return 0;
+      }
+    ''')
+    expected = '''\
+foo: 42
+foo_alias: 42
+call_native: 43
+call_native_alias: 44
+'''
+    self.do_runf('main.c', expected, cflags=['--js-library', 'foo.js'] + args)
 
   def test_postjs_errors(self):
     create_file('post.js', '#preprocess\n#error This is an error')
@@ -8491,9 +8558,9 @@ int main() {
   @crossplatform
   @parameterized({
     '': ([],),
-    'proxy_to_worker': (['--proxy-to-worker'],),
+    'proxy_to_worker': (['--proxy-to-worker', '-Wno-deprecated'],),
     'single_file': (['-sSINGLE_FILE'],),
-    'proxy_to_worker_wasm2js': (['--proxy-to-worker', '-sWASM=0'],),
+    'proxy_to_worker_wasm2js': (['--proxy-to-worker', '-Wno-deprecated', '-sWASM=0'],),
   })
   def test_output_eol(self, params):
     for eol in ('windows', 'linux'):
@@ -9942,6 +10009,7 @@ int main() {
     source_mapping_url_content = webassembly.to_leb(len('sourceMappingURL')) + b'sourceMappingURL' + webassembly.to_leb(len('a.wasm.map')) + b'a.wasm.map'
     self.assertIn(source_mapping_url_content, output)
 
+  @also_with_minimal_runtime
   @parameterized({
     '': ([], [], []),
     'prefix_wildcard': ([], ['--prefix', '=wasm-src://'], []),
@@ -10462,7 +10530,7 @@ int main() {
     compile(['-sMIN_SAFARI_VERSION=160000', '-mno-sign-ext'])
     verify_features_sec_linked('sign-ext', False)
     # Flag enabling overrides explicit browser version
-    compile(['-sMIN_FIREFOX_VERSION=65', '-msign-ext'])
+    compile(['-sMIN_FIREFOX_VERSION=68', '-msign-ext'])
     verify_features_sec_linked('sign-ext', True)
     # Flag disabling overrides explicit version for bulk memory
     compile(['-sMIN_SAFARI_VERSION=150000', '-mno-bulk-memory'])
@@ -11539,20 +11607,11 @@ int main(void) {
   })
   def test_color_diagnostics_force(self, flag):
     create_file('src.c', 'int main() {')
-    # -fansi-escape-codes is needed here to make this test work on windows, which doesn't
-    # use ansi codes by default
-    output = self.expect_fail([EMCC, '-fansi-escape-codes', flag, 'src.c'])
+    # -fansi-escape-codes is needed on windows in order to get clang to emit ANSI colors
+    output = self.expect_fail([EMCC, flag, '-fansi-escape-codes', 'src.c'])
     self.assertIn("\x1b[1msrc.c:1:13: \x1b[0m\x1b[0;1;31merror: \x1b[0m\x1b[1mexpected '}'\x1b[0m", output)
-    # Verify that emcc errors show up as red and bold
+    # Verify that emcc errors show up as red and bold from emcc
     self.assertIn('emcc: \x1b[31m\x1b[1m', output)
-
-    if WINDOWS:
-      # Also test without -fansi-escape-codes on windows.
-      # In those mode the code will use kernel calls such as SetConsoleTextAttribute to
-      # change the output color.  We cannot detect this in the output, but we can at least
-      # get coverage of the code path in the diagnositics.py.
-      output = self.expect_fail([EMCC, flag, 'src.c'])
-      self.assertNotIn('\x1b', output)
 
   def test_sanitizer_color(self):
     create_file('src.c', '''
@@ -13412,7 +13471,7 @@ void foo() {}
     self.do_other_test('test_default_pthread_stack_size.c')
 
     # Same again but with a --proxy-to-worker
-    self.cflags += ['--proxy-to-worker']
+    self.cflags += ['--proxy-to-worker', '-Wno-deprecated']
     self.do_other_test('test_default_pthread_stack_size.c')
 
   def test_emscripten_set_immediate(self):
@@ -14321,10 +14380,17 @@ out.js
 
   def test_min_browser_version(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-sWASM_BIGINT', '-sMIN_SAFARI_VERSION=130000'])
-    self.assertContained('emcc: error: MIN_SAFARI_VERSION=130000 is not compatible with WASM_BIGINT (150000 or above required)', err)
+    self.assertContained('emcc: error: MIN_SAFARI_VERSION=130000 is not compatible with WASM_BIGINT (MIN_SAFARI_VERSION=150000 or above required)', err)
 
-    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-pthread', '-sMIN_FIREFOX_VERSION=65'])
-    self.assertContained('emcc: error: MIN_FIREFOX_VERSION=65 is not compatible with pthreads (79 or above required)', err)
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-pthread', '-sMIN_FIREFOX_VERSION=68'])
+    self.assertContained('emcc: error: MIN_FIREFOX_VERSION=68 is not compatible with pthreads (MIN_FIREFOX_VERSION=79 or above required)', err)
+
+  # Test that using two different ways to disable a target environment at the same time will not produce a warning.
+  def test_double_disable_environment(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-Werror', '-sENVIRONMENT=web', '-sMIN_NODE_VERSION=-1'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-Werror', '-sENVIRONMENT=node', '-sMIN_FIREFOX_VERSION=-1'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-Werror', '-sENVIRONMENT=node', '-sMIN_CHROME_VERSION=-1'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-Werror', '-sENVIRONMENT=node', '-sMIN_SAFARI_VERSION=-1'])
 
   def test_signext_lowering(self):
     # Use `-v` to show the sub-commands being run by emcc.
@@ -14784,7 +14850,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     'single_file': (['-sSINGLE_FILE'],),
   })
   def test_proxy_to_worker(self, args):
-    self.do_runf('hello_world.c', cflags=['--proxy-to-worker'] + args)
+    self.do_runf('hello_world.c', cflags=['--proxy-to-worker', '-Wno-deprecated'] + args)
 
   @also_with_standalone_wasm(impure=True)
   def test_console_out(self):
@@ -15071,9 +15137,32 @@ addToLibrary({
 
   @crossplatform
   def test_no_extra_output(self):
+    # Run this build command first to warm the cache (since caching can produce stdout).
     self.run_process([EMCC, '-c', test_file('hello_world.c')])
     output = self.run_process([EMCC, '-c', test_file('hello_world.c')], stdout=PIPE, stderr=STDOUT).stdout
     self.assertEqual(output, '')
+
+  @crossplatform
+  def test_shell_cmd_with_quotes(self):
+    file = test_file('hello_world.c')
+    # Run this build command first to warm the cache (since caching can produce stdout).
+    self.run_process([EMCC, '-c', file])
+
+    # Verify that "emcc" is found in the PATH correctly in shell scripts (shell=True).
+    # (Specifically when quotes are around the "emcc" command itself).
+    # See https://github.com/microsoft/terminal/issues/15212
+    old_path = os.environ['PATH']
+    new_path = old_path + os.pathsep + os.path.dirname(EMCC)
+    cmd = f'"emcc" -c "{file}"'
+    print('running cmd:', cmd)
+    with env_modify({'PATH': new_path}):
+      proc = subprocess.run(cmd, capture_output=True, text=True, shell=True, check=True)
+      # There is currently a bug in the windows .bat files that leads to stdout
+      # not being empty in this case.
+      # See https://github.com/emscripten-core/emscripten/pull/25416
+      if not WINDOWS:
+        self.assertEqual(proc.stdout, '')
+      self.assertEqual(proc.stderr, '')
 
   def test_browser_too_old(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMIN_CHROME_VERSION=10'])

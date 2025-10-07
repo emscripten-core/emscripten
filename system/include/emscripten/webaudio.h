@@ -99,6 +99,9 @@ void emscripten_create_wasm_audio_worklet_processor_async(EMSCRIPTEN_WEBAUDIO_T 
 // For this to change from the default 128, the context would need to be created with a yet unexposed WebAudioWorkletProcessorCreateOptions renderSizeHint, part of the 1.1 Web Audio API.
 int emscripten_audio_context_quantum_size(EMSCRIPTEN_WEBAUDIO_T audioContext);
 
+// Returns the sampling rate of the given Audio Context, e.g. 48000 or 44100 or similar.
+int emscripten_audio_context_sample_rate(EMSCRIPTEN_WEBAUDIO_T audioContext);
+
 typedef int EMSCRIPTEN_AUDIO_WORKLET_NODE_T;
 
 typedef struct AudioSampleFrame

@@ -21,7 +21,6 @@ import shlex
 import sys
 from tools import building
 from tools import shared
-from subprocess import CalledProcessError
 
 
 #
@@ -50,11 +49,8 @@ variables so that emcc etc. are used. Typical usage:
   # is a heuristic emulation that may or may not work.
   env['EMMAKEN_JUST_CONFIGURE'] = '1'
   print(f'emconfigure: {shlex.join(args)} in directory {os.getcwd()}', file=sys.stderr)
-  try:
-    shared.check_call(args, env=env)
-    return 0
-  except CalledProcessError as e:
-    return e.returncode
+  os.environ.update(env)
+  shared.exec_process(args)
 
 
 if __name__ == '__main__':

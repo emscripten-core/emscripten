@@ -1,8 +1,8 @@
 #if AUDIO_WORKLET && !WASM_WORKERS
-#error "Building with -sAUDIO_WORKLET also requires enabling -sWASM_WORKERS!"
+#error "Building with -sAUDIO_WORKLET also requires enabling -sWASM_WORKERS"
 #endif
 #if AUDIO_WORKLET && TEXTDECODER == 2
-#error "-sAUDIO_WORKLET does not support -sTEXTDECODER=2 since TextDecoder is not available in AudioWorkletGlobalScope! Use e.g. -sTEXTDECODER=1 when building with -sAUDIO_WORKLET"
+#warning "-sAUDIO_WORKLET does not support -sTEXTDECODER=2 since TextDecoder is not available in AudioWorkletGlobalScope. Text decoding will be unavailable in Audio Worklets. If you need string marshalling in Audio Worklets, build with -sTEXTDECODER=1."
 #endif
 #if AUDIO_WORKLET && SINGLE_FILE
 #error "-sAUDIO_WORKLET does not support -sSINGLE_FILE"
@@ -133,7 +133,7 @@ var LibraryWebAudio = {
     console.log(`Destroyed Web Audio Node with ID ${objectHandle}`);
 #endif
     // Explicitly disconnect the node from Web Audio graph before letting it GC,
-    // to work around browser bugs such as https://bugs.webkit.org/show_bug.cgi?id=222098#c23
+    // to work around browser bugs such as https://webkit.org/b/222098#c23
     EmAudio[objectHandle].disconnect();
     delete EmAudio[objectHandle];
   },
@@ -192,23 +192,49 @@ var LibraryWebAudio = {
 #if WEBAUDIO_DEBUG
       console.log(`emscripten_start_wasm_audio_worklet_thread_async() addModule() completed`);
 #endif
-      audioWorklet.bootstrapMessage = new AudioWorkletNode(audioContext, 'em-bootstrap', {
-        processorOptions: {
-          // Assign the loaded AudioWorkletGlobalScope a Wasm Worker ID so that
-          // it can utilized its own TLS slots, and it is recognized to not be
-          // the main browser thread.
-          wwID: _wasmWorkersID++,
-#if MINIMAL_RUNTIME
-          wasm: Module['wasm'],
-#else
-          wasm: wasmModule,
-#endif
-          wasmMemory,
-          stackLowestAddress, // sb = stack base
-          stackSize,          // sz = stack size
+
+#if MIN_FIREFOX_VERSION < 138 || MIN_CHROME_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
+      // If this browser does not support the up-to-date AudioWorklet standard
+      // that has a MessagePort over to the AudioWorklet, then polyfill that by
+      // instantiating a dummy AudioWorkletNode to get a MessagePort over.
+      // Firefox added support in https://hg-edge.mozilla.org/integration/autoland/rev/ab38a1796126f2b3fc06475ffc5a625059af59c1
+      // Chrome ticket: https://crbug.com/446920095
+      // Safari ticket: https://webkit.org/b/299386
+      if (!audioWorklet['port']) {
+        audioWorklet['port'] = {
+          postMessage: (msg) => {
+            if (msg['_boot']) {
+              audioWorklet.bootstrapMessage = new AudioWorkletNode(audioContext, 'em-bootstrap', {
+                processorOptions: msg
+              });
+              audioWorklet.bootstrapMessage['port'].onmessage = (msg) => {
+                audioWorklet['port'].onmessage(msg);
+              }
+            } else {
+              audioWorklet.bootstrapMessage['port'].postMessage(msg);
+            }
+          }
         }
+      }
+#endif
+
+      audioWorklet['port'].postMessage({
+        // This is the bootstrap message to the Audio Worklet.
+        '_boot': 1,
+        // Assign the loaded AudioWorkletGlobalScope a Wasm Worker ID so that
+        // it can utilized its own TLS slots, and it is recognized to not be
+        // the main browser thread.
+        wwID: _wasmWorkersID++,
+#if MINIMAL_RUNTIME
+        wasm: Module['wasm'],
+#else
+        wasm: wasmModule,
+#endif
+        wasmMemory,
+        stackLowestAddress, // sb = stack base
+        stackSize,          // sz = stack size
       });
-      audioWorklet.bootstrapMessage.port.onmessage = _EmAudioDispatchProcessorCallback;
+      audioWorklet['port'].onmessage = _EmAudioDispatchProcessorCallback;
       {{{ makeDynCall('viip', 'callback') }}}(contextHandle, 1/*EM_TRUE*/, userData);
     }).catch(audioWorkletCreationFailed);
   },
@@ -256,7 +282,7 @@ var LibraryWebAudio = {
     console.log(`emscripten_create_wasm_audio_worklet_processor_async() creating a new AudioWorklet processor with name ${processorName}`);
 #endif
 
-    EmAudio[contextHandle].audioWorklet.bootstrapMessage.port.postMessage({
+    EmAudio[contextHandle].audioWorklet['port'].postMessage({
       // Deliberately mangled and short names used here ('_wpn', the 'Worklet
       // Processor Name' used as a 'key' to verify the message type so as to
       // not get accidentally mixed with user submitted messages, the remainder
@@ -316,6 +342,14 @@ var LibraryWebAudio = {
     return emscriptenGetContextQuantumSize(contextHandle);
   },
 
+  emscripten_audio_context_sample_rate: (contextHandle) => {
+#if ASSERTIONS
+    assert(EmAudio[contextHandle], `Called emscripten_audio_context_sample_rate() with an invalid Web Audio Context handle ${contextHandle}`);
+    assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_audio_context_sample_rate() on handle ${contextHandle} that is not an AudioContext, but of type ${EmAudio[contextHandle]}`);
+#endif
+    return EmAudio[contextHandle]['sampleRate'];
+  },
+
   emscripten_audio_node_connect: (source, destination, outputIndex, inputIndex) => {
     var srcNode = EmAudio[source];
     var dstNode = EmAudio[destination];
@@ -334,11 +368,11 @@ var LibraryWebAudio = {
   emscripten_current_thread_is_audio_worklet: () => ENVIRONMENT_IS_AUDIO_WORKLET,
 
   emscripten_audio_worklet_post_function_v: (audioContext, funcPtr) => {
-    (audioContext ? EmAudio[audioContext].audioWorklet.bootstrapMessage.port : messagePort).postMessage({'_wsc': funcPtr, args: [] }); // "WaSm Call"
+    (audioContext ? EmAudio[audioContext].audioWorklet['port'] : port).postMessage({'_wsc': funcPtr, args: [] }); // "WaSm Call"
   },
 
   $emscripten_audio_worklet_post_function_1: (audioContext, funcPtr, arg0) => {
-    (audioContext ? EmAudio[audioContext].audioWorklet.bootstrapMessage.port : messagePort).postMessage({'_wsc': funcPtr, args: [arg0] }); // "WaSm Call"
+    (audioContext ? EmAudio[audioContext].audioWorklet['port'] : port).postMessage({'_wsc': funcPtr, args: [arg0] }); // "WaSm Call"
   },
 
   emscripten_audio_worklet_post_function_vi__deps: ['$emscripten_audio_worklet_post_function_1'],
@@ -352,7 +386,7 @@ var LibraryWebAudio = {
   },
 
   $emscripten_audio_worklet_post_function_2: (audioContext, funcPtr, arg0, arg1) => {
-    (audioContext ? EmAudio[audioContext].audioWorklet.bootstrapMessage.port : messagePort).postMessage({'_wsc': funcPtr, args: [arg0, arg1] }); // "WaSm Call"
+    (audioContext ? EmAudio[audioContext].audioWorklet['port'] : port).postMessage({'_wsc': funcPtr, args: [arg0, arg1] }); // "WaSm Call"
   },
 
   emscripten_audio_worklet_post_function_vii__deps: ['$emscripten_audio_worklet_post_function_2'],
@@ -366,7 +400,7 @@ var LibraryWebAudio = {
   },
 
   $emscripten_audio_worklet_post_function_3: (audioContext, funcPtr, arg0, arg1, arg2) => {
-    (audioContext ? EmAudio[audioContext].audioWorklet.bootstrapMessage.port : messagePort).postMessage({'_wsc': funcPtr, args: [arg0, arg1, arg2] }); // "WaSm Call"
+    (audioContext ? EmAudio[audioContext].audioWorklet['port'] : port).postMessage({'_wsc': funcPtr, args: [arg0, arg1, arg2] }); // "WaSm Call"
   },
   emscripten_audio_worklet_post_function_viii__deps: ['$emscripten_audio_worklet_post_function_3'],
   emscripten_audio_worklet_post_function_viii: (audioContext, funcPtr, arg0, arg1, arg2) => {
@@ -386,7 +420,7 @@ var LibraryWebAudio = {
     assert(UTF8ToString(sigPtr)[0] != 'v', 'Do NOT specify the return argument in the signature string for a call to emscripten_audio_worklet_post_function_sig(), just pass the function arguments.');
     assert(varargs);
 #endif
-    (audioContext ? EmAudio[audioContext].audioWorklet.bootstrapMessage.port : messagePort).postMessage({'_wsc': funcPtr, args: readEmAsmArgs(sigPtr, varargs) });
+    (audioContext ? EmAudio[audioContext].audioWorklet['port'] : port).postMessage({'_wsc': funcPtr, args: readEmAsmArgs(sigPtr, varargs) });
   }
 };
 
