@@ -13944,30 +13944,33 @@ int main() {
 
   def test_legacy_runtime(self):
     self.set_setting('EXPORTED_FUNCTIONS', ['_malloc', '_main'])
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$intArrayFromString', '$ALLOC_NORMAL'])
 
-    # By default `LEGACY_RUNTIME` is disabled and `allocate` is not available.
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['ALLOC_NORMAL'])
+    # By default `LEGACY_RUNTIME` is disabled and `stringToNewUTF8` is not available.
     self.cflags += ['-Wno-deprecated']
     self.do_runf('other/test_legacy_runtime.c',
-                 '`allocate` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line',
+                 '`stringToNewUTF8` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line',
                  assert_returncode=NON_ZERO)
 
     # When we enable `LEGACY_RUNTIME`, `allocate` should be available.
-    self.set_setting('LEGACY_RUNTIME', 1)
-    self.do_runf('other/test_legacy_runtime.c')
+    self.do_runf('other/test_legacy_runtime.c', 'hello from js', cflags=['-sLEGACY_RUNTIME'])
 
     # Adding it to EXPORTED_RUNTIME_METHODS should also make it available.
-    self.clear_setting('LEGACY_RUNTIME')
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['allocate'])
-    self.do_runf('other/test_legacy_runtime.c', 'hello from js')
+    self.do_runf('other/test_legacy_runtime.c', 'hello from js', cflags=['-sEXPORTED_RUNTIME_METHODS=stringToNewUTF8'])
 
-    # In strict mode the library function is not even available, so we get a build time error
-    self.set_setting('STRICT')
-    self.clear_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE')
-    for opt in ('-O0', '-O3'):
-      err = self.expect_fail([EMCC, test_file('other/test_legacy_runtime.c'), opt] + self.get_cflags())
-      self.assertContained('undefined exported symbol: "allocate" in EXPORTED_RUNTIME_METHODS', err)
+  @parameterized({
+    '': (['-O0'],),
+    'O3': (['-O3'],),
+  })
+  def test_legacy_jslib(self, args):
+    # Warn about usage of legacy library function
+    err = self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORTED_RUNTIME_METHODS=allocateUTF8'] + args, stderr=PIPE).stderr
+    self.assertContained("warning: JS library symbol '$allocateUTF8' is deprecated. Please open a bug if you have a continuing need for this symbol", err)
+
+    self.assertContained('emcc: warning: warnings in JS library compilation [-Wjs-compiler]', err)
+
+    # In strict mode legacy library functions are not available, so we get a build time error
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sEXPORTED_RUNTIME_METHODS=allocateUTF8', '-sSTRICT'] + args)
+    self.assertContained('undefined exported symbol: "allocateUTF8" in EXPORTED_RUNTIME_METHODS', err)
 
   def test_fetch_settings(self):
     create_file('pre.js', '''
