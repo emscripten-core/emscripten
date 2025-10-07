@@ -665,6 +665,7 @@ var SyscallsLibrary = {
     const pthread_ptr = PThread.currentProxiedOperationCallerThread;
     deactivateSelectCallbacks(pthread_ptr); // deactivate all old callbacks
     var makeNotifyCallback = (fd) => null;
+    var cleanupFuncs = [];
     if (timeoutInMillis != 0) {
       var info = getActiveSelectCallbacks(pthread_ptr);
       {{{ makeSetValue('waitPtr', 0, 'info.buf', '*') }}};
@@ -675,9 +676,13 @@ var SyscallsLibrary = {
             return; // This callback is no longer active.
           }
           deactivateSelectCallbacks(pthread_ptr); // Only the first event is notified.
+          cleanupFuncs.forEach(cb => cb());
           Atomics.store(HEAP32, info.buf >> 2 + 1, flags);
           Atomics.store(HEAP32, info.buf >> 2, fd);
           Atomics.notify(HEAP32, info.buf >> 2);
+        }
+        cb.registerCleanupFunc = (f) => {
+          if (f != null) cleanupFuncs.push(f);
         }
         activateSelectCallback(pthread_ptr, cb);
         return cb;
@@ -716,6 +721,7 @@ var SyscallsLibrary = {
       fdSet.commit(fd, flags);
       // No wait will happen in the caller. Deactivate all callbacks.
       deactivateSelectCallbacks(pthread_ptr);
+      cleanupFuncs.forEach(f => f());
     }
 #else
     fdSet.commit(fd, flags);
