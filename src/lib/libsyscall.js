@@ -607,7 +607,35 @@ var SyscallsLibrary = {
     FS.chdir(stream.path);
     return 0;
   },
+  __syscall__newselect__deps: ['$newselectInner','malloc','free'],
+  __syscall__newselect__proxy: 'none',
   __syscall__newselect: (nfds, readfds, writefds, exceptfds, timeout) => {
+#if PROXY_TO_PTHREAD
+    var waitPtr = _malloc(8);
+    var result = newselectInner(nfds, readfds, writefds, exceptfds, timeout, waitPtr);
+    if ((result != 0) || ((timeout) && (SYSCALLS.getTimeoutInMillis(timeout) == 0))) {
+      _free(waitPtr);
+      return result;
+    }
+    var fdRegion = {{{ makeGetValue('waitPtr', 0, '*') }}};
+    Atomics.wait(HEAP32 , fdRegion >> 2, -1);
+    var fd = Atomics.load(HEAP32 , fdRegion >> 2);
+    var flags = Atomics.load(HEAP32 , fdRegion >> 2 + 1);
+    _free(waitPtr);
+    if (fd < 0) return 0;
+    var fdSet = SYSCALLS.parseSelectFDSet(readfds, writefds, exceptfds);
+    fdSet.setFlags(fd, flags);
+    fdSet.commit();
+    return fdSet.getTotal();
+#else
+    return newselectInner(nfds, readfds, writefds, exceptfds, timeout, -1);
+#endif
+  },
+#if PROXY_TO_PTHREAD
+  $newselectInner__deps: ['$PThread', '$deactivateSelectCallbacks', '$getActiveSelectCallbacks', '$activateSelectCallback', '$isActiveSelectCallback'],
+#endif
+  $newselectInner__proxy: 'sync',
+  $newselectInner: (nfds, readfds, writefds, exceptfds, timeout, waitPtr) => {
     // readfds are supported,
     // writefds checks socket open status
     // exceptfds are supported, although on web, such exceptional conditions never arise in web sockets
@@ -633,6 +661,34 @@ var SyscallsLibrary = {
       timeoutInMillis = SYSCALLS.getTimeoutInMillis(timeout);
     }
 
+#if PROXY_TO_PTHREAD
+    const pthread_ptr = PThread.currentProxiedOperationCallerThread;
+    deactivateSelectCallbacks(pthread_ptr); // deactivate all old callbacks
+    var makeNotifyCallback = (fd) => null;
+    if (timeoutInMillis != 0) {
+      var info = getActiveSelectCallbacks(pthread_ptr);
+      {{{ makeSetValue('waitPtr', 0, 'info.buf', '*') }}};
+      Atomics.store(HEAP32, info.buf >> 2, -1); // Initialize the shared region
+      makeNotifyCallback = (fd) => {
+        var cb = (flags) => {
+          if (!isActiveSelectCallback(pthread_ptr, cb)) {
+            return; // This callback is no longer active.
+          }
+          deactivateSelectCallbacks(pthread_ptr); // Only the first event is notified.
+          Atomics.store(HEAP32, info.buf >> 2 + 1, flags);
+          Atomics.store(HEAP32, info.buf >> 2, fd);
+          Atomics.notify(HEAP32, info.buf >> 2);
+        }
+        activateSelectCallback(pthread_ptr, cb);
+        return cb;
+      }
+      if (timeoutInMillis > 0) {
+        var cb = makeNotifyCallback(-2);
+        setTimeout(() => cb(0), timeoutInMillis);
+      }
+    }
+#endif
+
     for (var fd = 0; fd < nfds; fd++) {
       var mask = 1 << (fd % 32);
       if (!(check(fd, allLow, allHigh, mask))) {
@@ -644,14 +700,26 @@ var SyscallsLibrary = {
       var flags = SYSCALLS.DEFAULT_POLLMASK;
 
       if (stream.stream_ops.poll) {
+#if PROXY_TO_PTHREAD
+        flags = stream.stream_ops.poll(stream, timeoutInMillis, makeNotifyCallback(fd));
+#else
         flags = stream.stream_ops.poll(stream, ((timeoutInMillis < 0) || readfds) ? timeoutInMillis : 0);
+#endif
       }
 
       fdSet.setFlags(fd, flags);
     }
 
 
+#if PROXY_TO_PTHREAD
+    if ((fdSet.getTotal() > 0) || (timeoutInMillis == 0) ) {
+      fdSet.commit(fd, flags);
+      // No wait will happen in the caller. Deactivate all callbacks.
+      deactivateSelectCallbacks(pthread_ptr);
+    }
+#else
     fdSet.commit(fd, flags);
+#endif
 
     return fdSet.getTotal();
   },
