@@ -18,8 +18,13 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.16 (in development)
+4.0.17 (in development)
 -----------------------
+
+4.0.16 - 10/07/25
+-----------------
+- For windows users, colored console output for error messages and logging now
+  requires Windows 10 or above. (#25502)
 - A warning was added about usage of embind without C++17 or above. (#25424)
 - The minimum supported versions of Node, Chrome and Firefox were bumped
   enabling the removal of the `globalThis` polyfill and universally enabling

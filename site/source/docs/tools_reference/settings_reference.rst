@@ -921,7 +921,7 @@ GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN
 
 From Safari 8 (where WebGL was introduced to Safari) onwards, OES_texture_half_float and OES_texture_half_float_linear extensions
 are broken and do not function correctly, when used as source textures.
-See https://bugs.webkit.org/show_bug.cgi?id=183321, https://bugs.webkit.org/show_bug.cgi?id=169999,
+See https://webkit.org/b/183321, https://webkit.org/b/169999,
 https://stackoverflow.com/questions/54248633/cannot-create-half-float-oes-texture-from-uint16array-on-ipad
 
 Default value: false
@@ -933,7 +933,7 @@ GL_WORKAROUND_SAFARI_GETCONTEXT_BUG
 
 Workaround Safari WebGL issue: After successfully acquiring WebGL context on a canvas,
 calling .getContext() will always return that context independent of which 'webgl' or 'webgl2'
-context version was passed. See https://bugs.webkit.org/show_bug.cgi?id=222758 and
+context version was passed. See https://webkit.org/b/222758 and
 https://github.com/emscripten-core/emscripten/issues/13295.
 Set this to 0 to force-disable the workaround if you know the issue will not affect you.
 
