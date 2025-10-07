@@ -488,7 +488,7 @@ def parse_args():
                            'Useful when combined with --failfast')
   parser.add_argument('--force64', action='store_true')
   parser.add_argument('--crossplatform-only', action='store_true')
-  parser.add_argument('--force-browser-process-termination', action='store_true', help='If true, a fail-safe method is used to ensure that all browser processes are terminated before and after the test suite run.')
+  parser.add_argument('--force-browser-process-termination', action='store_true', help='If true, a fail-safe method is used to ensure that all browser processes are terminated before and after the test suite run. Note that this option will terminate all browser processes, not just those launched by the harness, so will result in loss of all open browsing sessions.')
   parser.add_argument('--repeat', type=int, default=1,
                       help='Repeat each test N times (default: 1).')
   parser.add_argument('--bell', action='store_true', help='Play a sound after the test suite finishes.')
