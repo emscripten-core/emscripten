@@ -7,6 +7,7 @@ import argparse
 import os
 import plistlib
 import random
+import re
 import shlex
 import shutil
 import subprocess
