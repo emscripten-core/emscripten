@@ -28,6 +28,7 @@ from common import also_with_minimal_runtime, also_with_wasm2js, also_with_asan,
 from common import HttpServerThread, requires_dev_dependency
 from tools import shared
 from tools import ports
+from tools.feature_matrix import UNSUPPORTED
 from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE, DEBUG
 from tools.utils import delete_dir
 
@@ -145,6 +146,8 @@ def is_swiftshader(_):
 
 def get_safari_version():
   plist_path = os.path.join(common.EMTEST_BROWSER.strip(), 'Contents', 'version.plist')
+  if not os.path.isfile(plist_path):
+    return UNSUPPORTED
   version_str = plistlib.load(open(plist_path, 'rb')).get('CFBundleShortVersionString')
   # Split into parts (major.minor.patch)
   parts = (version_str.split('.') + ['0', '0', '0'])[:3]
