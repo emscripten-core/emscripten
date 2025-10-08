@@ -14,7 +14,7 @@ import subprocess
 import time
 import unittest
 import zlib
-from functools import wraps, cache
+from functools import wraps, lru_cache
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.request import urlopen
@@ -144,7 +144,7 @@ def is_swiftshader(_):
   return is_chrome() and '--use-gl=swiftshader' in common.EMTEST_BROWSER
 
 
-@cache # Memoize this function to only be called once during runtime
+@lru_cache(maxsize=1) # Memoize this function to only be called once during runtime
 def get_safari_version():
   if not is_safari():
     return UNSUPPORTED
