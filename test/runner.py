@@ -488,6 +488,7 @@ def parse_args():
                            'Useful when combined with --failfast')
   parser.add_argument('--force64', action='store_true')
   parser.add_argument('--crossplatform-only', action='store_true')
+  parser.add_argument('--force-browser-process-termination', action='store_true', help='If true, a fail-safe method is used to ensure that all browser processes are terminated before and after the test suite run. Note that this option will terminate all browser processes, not just those launched by the harness, so will result in loss of all open browsing sessions.')
   parser.add_argument('--repeat', type=int, default=1,
                       help='Repeat each test N times (default: 1).')
   parser.add_argument('--bell', action='store_true', help='Play a sound after the test suite finishes.')
@@ -566,6 +567,18 @@ def main():
   utils.delete_file(common.flaky_tests_log_filename)
   utils.delete_file(common.browser_spawn_lock_filename)
   utils.delete_file(f'{common.browser_spawn_lock_filename}_counter')
+  if options.force_browser_process_termination or os.getenv('EMTEST_FORCE_BROWSER_PROCESS_TERMINATION'):
+    config = common.get_browser_config()
+
+    def terminate_all_browser_processes():
+      procs = common.list_processes_by_name(config.executable_name)
+      if len(procs) > 0:
+        print(f'Terminating {len(procs)} stray browser processes.')
+        common.terminate_list_of_processes(procs)
+
+    if config and hasattr(config, 'executable_name'):
+      atexit.register(terminate_all_browser_processes)
+      terminate_all_browser_processes()
 
   def prepend_default(arg):
     if arg.startswith('test_'):

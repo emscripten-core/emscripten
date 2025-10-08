@@ -179,6 +179,12 @@ def test_file(*path_components):
   return str(Path(TEST_ROOT, *path_components))
 
 
+def maybe_test_file(filename):
+  if not os.path.exists(filename) and os.path.exists(test_file(filename)):
+    filename = test_file(filename)
+  return filename
+
+
 def copytree(src, dest):
   shutil.copytree(src, dest, dirs_exist_ok=True)
 
@@ -197,6 +203,14 @@ def is_chrome():
 
 def is_firefox():
   return EMTEST_BROWSER and 'firefox' in EMTEST_BROWSER.lower()
+
+
+def get_browser_config():
+  if is_chrome():
+    return ChromeConfig()
+  elif is_firefox():
+    return FirefoxConfig()
+  return None
 
 
 def compiler_for(filename, force_c=False):
@@ -1487,8 +1501,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   # Build JavaScript code from source code
   def build(self, filename, libraries=None, includes=None, force_c=False, cflags=None, output_basename=None, output_suffix=None):
-    if not os.path.exists(filename):
-      filename = test_file(filename)
+    filename = maybe_test_file(filename)
     compiler = [compiler_for(filename, force_c)]
 
     if force_c:
@@ -1720,10 +1733,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     if regex:
       if type(values) is str:
-        self.assertTrue(re.search(values, string, re.DOTALL), 'Expected regex "%s" to match on:\n%s' % (values, string))
+        self.assertTrue(re.search(values, string, re.DOTALL), 'Expected regex "%s" to match on:\n%s' % (values, limit_size(string)))
       else:
         match_any = any(re.search(o, string, re.DOTALL) for o in values)
-        self.assertTrue(match_any, 'Expected at least one of "%s" to match on:\n%s' % (values, string))
+        self.assertTrue(match_any, 'Expected at least one of "%s" to match on:\n%s' % (values, limit_size(string)))
       return
 
     if type(values) not in [list, tuple]:
@@ -1848,6 +1861,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return rtn
 
   def emcc(self, filename, args=[], output_filename=None, **kwargs):  # noqa
+    filename = maybe_test_file(filename)
     compile_only = '-c' in args or '-sSIDE_MODULE' in args
     cmd = [compiler_for(filename), filename] + self.get_cflags(compile_only=compile_only) + args
     if output_filename:
@@ -2017,8 +2031,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return self._build_and_run(filename, expected_output, **kwargs)
 
   def do_run_in_out_file_test(self, srcfile, **kwargs):
-    if not os.path.exists(srcfile):
-      srcfile = test_file(srcfile)
+    srcfile = maybe_test_file(srcfile)
     out_suffix = kwargs.pop('out_suffix', '')
     outfile = shared.unsuffixed(srcfile) + out_suffix + '.out'
     if EMTEST_REBASELINE:
@@ -2410,11 +2423,7 @@ def configure_test_browser():
     EMTEST_BROWSER = '"' + EMTEST_BROWSER.replace("\\", "\\\\") + '"'
 
   if EMTEST_BROWSER_AUTO_CONFIG:
-    config = None
-    if is_chrome():
-      config = ChromeConfig()
-    elif is_firefox():
-      config = FirefoxConfig()
+    config = get_browser_config()
     if config:
       EMTEST_BROWSER += ' ' + ' '.join(config.default_flags)
       if EMTEST_HEADLESS == 1:
@@ -2433,6 +2442,22 @@ def list_processes_by_name(exe_name):
         pass
 
   return pids
+
+
+def terminate_list_of_processes(proc_list):
+  for proc in proc_list:
+    try:
+      proc.terminate()
+      # If the browser doesn't shut down gracefully (in response to SIGTERM)
+      # after 2 seconds kill it with force (SIGKILL).
+      try:
+        proc.wait(2)
+      except (subprocess.TimeoutExpired, psutil.TimeoutExpired):
+        logger.info('Browser did not respond to `terminate`.  Using `kill`')
+        proc.kill()
+        proc.wait()
+    except (psutil.NoSuchProcess, ProcessLookupError):
+      pass
 
 
 class FileLock:
@@ -2519,19 +2544,7 @@ class BrowserCore(RunnerCore):
 
   @classmethod
   def browser_terminate(cls):
-    for proc in cls.browser_procs:
-      try:
-        proc.terminate()
-        # If the browser doesn't shut down gracefully (in response to SIGTERM)
-        # after 2 seconds kill it with force (SIGKILL).
-        try:
-          proc.wait(2)
-        except (subprocess.TimeoutExpired, psutil.TimeoutExpired):
-          logger.info('Browser did not respond to `terminate`.  Using `kill`')
-          proc.kill()
-          proc.wait()
-      except (psutil.NoSuchProcess, ProcessLookupError):
-        pass
+    terminate_list_of_processes(cls.browser_procs)
 
   @classmethod
   def browser_restart(cls):
@@ -2564,11 +2577,8 @@ class BrowserCore(RunnerCore):
       # Recreate the new data directory.
       os.mkdir(browser_data_dir)
 
-      if is_chrome():
-        config = ChromeConfig()
-      elif is_firefox():
-        config = FirefoxConfig()
-      else:
+      config = get_browser_config()
+      if not config:
         exit_with_error(f'EMTEST_BROWSER_AUTO_CONFIG only currently works with firefox or chrome. EMTEST_BROWSER was "{EMTEST_BROWSER}"')
       if WINDOWS:
         # Escape directory delimiter backslashes for shlex.split.
@@ -2748,8 +2758,7 @@ class BrowserCore(RunnerCore):
         cflags += ['report_result.o', '-include', test_file('report_result.h')]
     if EMTEST_BROWSER == 'node':
       cflags.append('-DEMTEST_NODE')
-    if not os.path.exists(filename):
-      filename = test_file(filename)
+    filename = maybe_test_file(filename)
     self.run_process([compiler_for(filename), filename] + self.get_cflags() + cflags)
     # Remove the file since some tests have assertions for how many files are in
     # the output directory.
