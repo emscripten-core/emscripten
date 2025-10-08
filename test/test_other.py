@@ -12816,6 +12816,7 @@ exec "$@"
   def test_syscall_stubs(self):
     self.do_other_test('test_syscall_stubs.c')
 
+  @also_with_wasm64
   @parameterized({
     '': (False, False, False),
     'custom': (True, False, False),
