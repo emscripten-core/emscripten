@@ -5,6 +5,7 @@
 
 import argparse
 import os
+import plistlib
 import random
 import shlex
 import shutil
