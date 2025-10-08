@@ -77,6 +77,8 @@ void main_loop() {
   int res;
   fd_set fdr;
   fd_set fdw;
+  // Timeout of zero means don't block. Emscripten doesn't support blocking select in the general case
+  struct timeval tv = {0};
 
   // see if there are any connections to accept or read / write from
   FD_ZERO(&fdr);
@@ -87,7 +89,7 @@ void main_loop() {
   if (client.fd) FD_SET(client.fd, &fdr);
   if (client.fd) FD_SET(client.fd, &fdw);
 #endif
-  res = select(64, &fdr, &fdw, NULL, NULL);
+  res = select(64, &fdr, &fdw, NULL, &tv);
   if (res == -1) {
     perror("select failed");
     exit(EXIT_SUCCESS);
