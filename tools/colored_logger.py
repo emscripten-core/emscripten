@@ -13,6 +13,7 @@ import sys
 import logging
 from functools import wraps
 
+
 # ANSI colors
 RED = 1
 GREEN = 2
