@@ -67,14 +67,16 @@ def ansi_color_available():
   kernel32 = ctypes.windll.kernel32
   stdout_handle = kernel32.GetStdHandle(STD_OUTPUT_HANDLE)
 
-  # Get the current console mode
   console_mode = ctypes.c_uint()
-  if not kernel32.GetConsoleMode(stdout_handle, ctypes.byref(console_mode)):
-    # Handle error if GetConsoleMode fails
+  # Attempt to enable ANSI color processing (ENABLE_VIRTUAL_TERMINAL_PROCESSING).
+  # Assume that failure of either GetConsoleMode or SetConsoleMode means that stdout
+  # is not attached to a terminal or that the terminal does not support this mode.
+  if kernel32.GetConsoleMode(stdout_handle, ctypes.byref(console_mode)) == 0:
+    return False
+  if kernel32.SetConsoleMode(stdout_handle, console_mode.value | ENABLE_VIRTUAL_TERMINAL_PROCESSING) == 0:
     return False
 
-  # Check if the flag is set in the current console mode
-  return (console_mode.value & ENABLE_VIRTUAL_TERMINAL_PROCESSING) != 0
+  return True
 
 
 def add_coloring_to_emit_ansi(fn):
@@ -101,13 +103,15 @@ def add_coloring_to_emit_ansi(fn):
 
 def enable(force=False):
   global color_enabled
-  if force or ansi_color_available():
-    logging.StreamHandler.emit = add_coloring_to_emit_ansi(logging.StreamHandler.emit)
-    color_enabled = True
+  if not color_enabled:
+    if ansi_color_available() or force:
+      logging.StreamHandler.emit = add_coloring_to_emit_ansi(logging.StreamHandler.emit)
+      color_enabled = True
 
 
 def disable():
   global color_enabled
-  if hasattr(logging.StreamHandler.emit, 'orig_func'):
-    logging.StreamHandler.emit = logging.StreamHandler.emit.orig_func
-  color_enabled = False
+  if color_enabled:
+    if hasattr(logging.StreamHandler.emit, 'orig_func'):
+      logging.StreamHandler.emit = logging.StreamHandler.emit.orig_func
+    color_enabled = False
