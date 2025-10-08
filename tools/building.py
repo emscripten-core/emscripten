@@ -810,7 +810,7 @@ def metadce(js_file, wasm_file, debug_info, last):
     exports = settings.WASM_EXPORTS
   else:
     # Ignore exported wasm globals.  Those get inlined directly into the JS code.
-    exports = sorted(set(settings.WASM_EXPORTS) - set(settings.WASM_GLOBAL_EXPORTS))
+    exports = sorted(set(settings.WASM_EXPORTS) - set(settings.DATA_EXPORTS))
 
   extra_info = '{ "exports": [' + ','.join(f'["{asmjs_mangle(x)}", "{x}"]' for x in exports) + ']}'
 

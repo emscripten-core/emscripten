@@ -9677,6 +9677,19 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.set_setting('MAIN_MODULE', 2)
     self.do_core_test('test_externref_emjs.c')
 
+  @parameterized({
+    '': [False],
+    'dylink': [True],
+  })
+  @no_esm_integration('https://github.com/emscripten-core/emscripten/issues/25543')
+  def test_wasm_global(self, dynlink):
+    if dynlink:
+      self.check_dylink()
+      self.set_setting('MAIN_MODULE', 2)
+    if self.get_setting('WASM_ESM_INTEGRATION'):
+      self.cflags.append('-DESM_INTEGRATION')
+    self.do_core_test('test_wasm_global.c', cflags=['-sEXPORTED_FUNCTIONS=_main,_my_global'])
+
   def test_syscall_intercept(self):
     self.do_core_test('test_syscall_intercept.c')
 
