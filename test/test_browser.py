@@ -14,7 +14,7 @@ import subprocess
 import time
 import unittest
 import zlib
-from functools import wraps
+from functools import wraps, cache
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.request import urlopen
@@ -144,10 +144,11 @@ def is_swiftshader(_):
   return is_chrome() and '--use-gl=swiftshader' in common.EMTEST_BROWSER
 
 
+@cache # Memoize this function to only be called once during runtime
 def get_safari_version():
-  plist_path = os.path.join(common.EMTEST_BROWSER.strip(), 'Contents', 'version.plist')
-  if not os.path.isfile(plist_path):
+  if not is_safari():
     return UNSUPPORTED
+  plist_path = os.path.join(common.EMTEST_BROWSER.strip(), 'Contents', 'version.plist')
   version_str = plistlib.load(open(plist_path, 'rb')).get('CFBundleShortVersionString')
   # Split into parts (major.minor.patch)
   parts = (version_str.split('.') + ['0', '0', '0'])[:3]
@@ -173,6 +174,7 @@ def requires_version(name, version_getter):
     return skip_if_simple(name, lambda _: version_getter() < min_required_version, f'{name} v{version_getter()} is not supported (need v{min_required_version} at minimum) {note}')
 
   return decorator
+
 
 requires_safari_version = requires_version('safari', get_safari_version)
 
