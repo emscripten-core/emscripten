@@ -12816,6 +12816,7 @@ exec "$@"
   def test_syscall_stubs(self):
     self.do_other_test('test_syscall_stubs.c')
 
+  @also_with_wasm64
   @parameterized({
     '': (False, False, False),
     'custom': (True, False, False),
@@ -12848,6 +12849,8 @@ exec "$@"
                       '--export-prefix=%', 'test_split_module.wasm.orig', '-o1', 'primary.wasm', '-o2', 'secondary.wasm', '--profile=profile.data']
     if jspi:
       wasm_split_run += ['--jspi', '--enable-reference-types']
+    if self.get_setting('MEMORY64'):
+      wasm_split_run += ['--enable-memory64']
     self.run_process(wasm_split_run)
 
     os.remove('test_split_module.wasm')
