@@ -14,7 +14,7 @@ import subprocess
 import time
 import unittest
 import zlib
-from functools import wraps, lru_cache
+from functools import wraps
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.request import urlopen
@@ -30,7 +30,7 @@ from tools import shared
 from tools import ports
 from tools.feature_matrix import UNSUPPORTED
 from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE, DEBUG
-from tools.utils import delete_dir
+from tools.utils import delete_dir, memoize
 
 
 def make_test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
@@ -144,7 +144,7 @@ def is_swiftshader(_):
   return is_chrome() and '--use-gl=swiftshader' in common.EMTEST_BROWSER
 
 
-@lru_cache(maxsize=1) # Memoize this function to only be called once during runtime
+@memoize
 def get_safari_version():
   if not is_safari():
     return UNSUPPORTED
