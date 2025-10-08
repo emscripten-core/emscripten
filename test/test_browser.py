@@ -5345,6 +5345,7 @@ Module["preRun"] = () => {
 
   # Tests that emmalloc supports up to 4GB Wasm heaps.
   @no_firefox('no 4GB support yet')
+  @requires_safari_version(170601, 'Assertion failed: emscripten_get_heap_size() == MAX_HEAP') # Fails in Safari 17.6 (17618.3.11.11.7, 17618)
   @no_4gb('uses MAXIMUM_MEMORY')
   def test_emmalloc_4gb(self):
     # For now, keep this in browser as this suite runs serially, which
