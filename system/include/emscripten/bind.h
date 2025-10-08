@@ -225,7 +225,7 @@ void _embind_register_enum(
     const char* name,
     size_t size,
     bool isSigned,
-    bool asString);
+    int policyValue);
 
 void _embind_register_smart_ptr(
     TYPEID pointerType,
@@ -1990,14 +1990,14 @@ class enum_ {
 public:
     typedef EnumType enum_type;
 
-    enum_(const char* name, bool asString = false) {
+    enum_(const char* name, enum_value_type valueType = enum_value_type::object) {
         using namespace internal;
         _embind_register_enum(
             internal::TypeID<EnumType>::get(),
             name,
             sizeof(EnumType),
             std::is_signed<typename std::underlying_type<EnumType>::type>::value,
-            asString);
+            static_cast<int>(valueType));
     }
 
     enum_& value(const char* name, EnumType value) {

@@ -804,12 +804,12 @@ Enums
       A typedef of ``EnumType`` (a typename for the class).
 
 
-   .. cpp:function::  enum_(const char* name, bool asString = false)
+   .. cpp:function::  enum_(const char* name, enum_value_type valueType = enum_value_type::object)
 
       Constructor.
 
       :param const char* name:
-      :param bool asString: *Experimental.* If true, the enum values are represented by plain strings in JavaScript, which is handy for basic operations like comparison and serialization.
+      :param enum_value_type valueType: The type of the enum values. This determines how the values are represented in JavaScript. If ``valueType`` is ``enum_value_type::object`` (default), the enum values are represented as an object with a ``.value`` field. If ``valueType`` is ``enum_value_type::number``, the enum values are represented as plain numbers. The default is ``enum_value_type::string``, the enum values are represented as the string names of the enum values.
 
 
    .. cpp:function::  enum_& value(const char* name, EnumType value)

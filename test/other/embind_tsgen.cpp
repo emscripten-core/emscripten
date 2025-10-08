@@ -45,15 +45,14 @@ std::unique_ptr<Test> class_unique_ptr_returning_fn() {
   return std::make_unique<Test>();
 }
 
-enum Bar { kValueOne, kValueTwo, kValueThree };
-
-enum Baz { kValueA, kValueB, kValueC };
-
+enum FirstEnum { kValueOne, kValueTwo, kValueThree };
+enum SecondEnum { kValueA, kValueB, kValueC };
+enum ThirdEnum { kValueAlpha, kValueBeta, kValueGamma };
 enum EmptyEnum {};
 
-Bar enum_returning_fn() { return kValueOne; }
-
-Baz str_enum_returning_fn() { return kValueA; }
+FirstEnum enum_returning_fn() { return kValueOne; }
+SecondEnum num_enum_returning_fn() { return kValueA; }
+ThirdEnum str_enum_returning_fn() { return kValueAlpha; }
 
 struct ValArr {
   int x, y, z;
@@ -183,20 +182,25 @@ EMSCRIPTEN_BINDINGS(Test) {
 
   constant("an_int", 5);
   constant("a_bool", false);
-  constant("an_enum", Bar::kValueOne);
+  constant("an_enum", FirstEnum::kValueOne);
   constant("a_class_instance", Test());
 
-  enum_<Bar>("Bar")
-      .value("valueOne", Bar::kValueOne)
-      .value("valueTwo", Bar::kValueTwo)
-      .value("valueThree", Bar::kValueThree);
-  enum_<Baz>("Baz", true)
-      .value("valueA", Baz::kValueA)
-      .value("valueB", Baz::kValueB)
-      .value("valueC", Baz::kValueC);
+  enum_<FirstEnum>("FirstEnum", enum_value_type::object)
+      .value("kValueOne", FirstEnum::kValueOne)
+      .value("kValueTwo", FirstEnum::kValueTwo)
+      .value("kValueThree", FirstEnum::kValueThree);
+  enum_<SecondEnum>("SecondEnum", enum_value_type::number)
+      .value("kValueA", SecondEnum::kValueA)
+      .value("kValueB", SecondEnum::kValueB)
+      .value("kValueC", SecondEnum::kValueC);
+  enum_<ThirdEnum>("ThirdEnum", enum_value_type::string)
+      .value("kValueAlpha", ThirdEnum::kValueAlpha)
+      .value("kValueBeta", ThirdEnum::kValueBeta)
+      .value("kValueGamma", ThirdEnum::kValueGamma);
   enum_<EmptyEnum>("EmptyEnum");
 
   function("enum_returning_fn", &enum_returning_fn);
+  function("num_enum_returning_fn", &num_enum_returning_fn);
   function("str_enum_returning_fn", &str_enum_returning_fn);
 
   value_array<ValArr>("ValArr")

@@ -825,20 +825,32 @@ type.
     Module.OldStyle.ONE;
     Module.NewStyle.TWO;
 
-If you set the `asString` parameter to `true` when registering the enum, the enum values will be represented as plain strings in JavaScript.
+You can simplify how enums are represented in JavaScript by setting the `enum_value_type` parameter when registering the enum.
+The default value type is `enum_value_type::object`, which binds the enum values to objects with a `value` property.
+Other options are `enum_value_type::number`, which binds the enum values to their plain integer value, and `enum_value_type::string`, which binds the enum values to the string of their name.
 
 .. code:: cpp
 
     EMSCRIPTEN_BINDINGS(my_enum_example) {
-        enum_<MyEnum>("MyEnum", true)
-            .value("ONE", MyEnum::ONE)
-            .value("TWO", MyEnum::TWO)
+        enum_<FirstEnum>("ObjectEnum", enum_value_type::object)
+            .value("ONE", FirstEnum::ONE)
+            .value("TWO", FirstEnum::TWO)
+            ;
+        enum_<SecondEnum>("NumberEnum", enum_value_type::number)
+            .value("ONE", SecondEnum::ONE)
+            .value("TWO", SecondEnum::TWO)
+            ;
+        enum_<ThirdEnum>("StringEnum", enum_value_type::string)
+            .value("ONE", ThirdEnum::ONE)
+            .value("TWO", ThirdEnum::TWO)
             ;
     }
 
 .. code:: javascript
 
-    Module.MyEnum.ONE === "ONE"; // true
+    Module.ObjectEnum.ONE.value === 1;
+    Module.NumberEnum.ONE === 1;
+    Module.StringEnum.ONE === "ONE";
 
 .. _embind-constants:
 
