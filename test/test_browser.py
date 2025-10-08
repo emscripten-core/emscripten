@@ -142,7 +142,7 @@ def is_swiftshader(_):
 
 
 def get_safari_version():
-  plist_path = os.path.join(EMTEST_BROWSER.strip(), 'Contents', 'version.plist')
+  plist_path = os.path.join(common.EMTEST_BROWSER.strip(), 'Contents', 'version.plist')
   version_str = plistlib.load(open(plist_path, 'rb')).get('CFBundleShortVersionString')
   # Split into parts (major.minor.patch)
   parts = (version_str.split('.') + ['0', '0', '0'])[:3]
