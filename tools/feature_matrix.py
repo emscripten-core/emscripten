@@ -50,22 +50,15 @@ enable_override_features = set()
 
 min_browser_versions = {
   Feature.MUTABLE_GLOBALS: {
-    'chrome': 74,
-    'firefox': 61,
     'safari': 130100,
-    'node': 120000,
   },
   Feature.NON_TRAPPING_FPTOINT: {
     'chrome': 75,
-    'firefox': 65,
     'safari': 150000,
     'node': 130000,
   },
   Feature.SIGN_EXT: {
-    'chrome': 74,
-    'firefox': 62,
     'safari': 140100,
-    'node': 120000,
   },
   Feature.BULK_MEMORY: {
     'chrome': 75,
@@ -74,13 +67,11 @@ min_browser_versions = {
     'node': 130000,
   },
   Feature.JS_BIGINT_INTEGRATION: {
-    'chrome': 67,
     'firefox': 78,
     'safari': 150000,
     'node': 130000,
   },
   Feature.THREADS: {
-    'chrome': 74,
     'firefox': 79,
     'safari': 140100,
     'node': 160400,
@@ -103,16 +94,13 @@ min_browser_versions = {
     'chrome': 80,
     'firefox': 114,
     'safari': 150000,
-    'node': 0, # This is a browser only feature, no requirements on Node.js
   },
   # OffscreenCanvas feature allows creating canvases that are not connected to
   # a visible DOM element, e.g. in a Worker.
   # https://caniuse.com/offscreencanvas
   Feature.OFFSCREENCANVAS_SUPPORT: {
-    'chrome': 69,
     'firefox': 105,
     'safari': 170000,
-    'node': 0, # This is a browser only feature, no requirements on Node.js
   },
   # Legacy Wasm exceptions was the first (now legacy) format for native
   # exception handling in WebAssembly.
@@ -136,14 +124,19 @@ min_browser_versions = {
   },
 }
 
-# Static assertion to check that we actually need each of the above feature flags
-# Once the OLDEST_SUPPORTED_XX versions are high enough they can/should be removed.
 for feature, reqs in min_browser_versions.items():
-  always_present = (reqs['chrome'] <= OLDEST_SUPPORTED_CHROME and
-                    reqs['firefox'] <= OLDEST_SUPPORTED_FIREFOX and
-                    reqs['safari'] <= OLDEST_SUPPORTED_SAFARI and
-                    reqs['node'] <= OLDEST_SUPPORTED_NODE)
-  assert not always_present, f'{feature.name} is no longer needed'
+  reqs.setdefault('chrome', 0)
+  reqs.setdefault('firefox', 0)
+  reqs.setdefault('safari', 0)
+  reqs.setdefault('node', 0)
+
+  # Static asserts that we don't include any engine versions are that no longer supported.
+  # This should also mean that features themselves are removed from this file once we no
+  # longer suport targetting any engines where they are missing.
+  assert not reqs['chrome'] or reqs['chrome'] > OLDEST_SUPPORTED_CHROME, f'{feature.name}["chrome"] is no longer needed'
+  assert not reqs['firefox'] or reqs['firefox'] > OLDEST_SUPPORTED_FIREFOX, f'{feature.name}["firefox"] is no longer needed'
+  assert not reqs['safari'] or reqs['safari'] > OLDEST_SUPPORTED_SAFARI, f'{feature.name}["safari"] is no longer needed'
+  assert not reqs['node'] or reqs['node'] > OLDEST_SUPPORTED_NODE, f'{feature.name}["node"] is no longer needed'
 
 
 def caniuse(feature):
