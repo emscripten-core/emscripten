@@ -59,23 +59,6 @@ def with_bold(string):
   return bold() + string + reset_color()
 
 
-def ansi_color_available():
-  if not sys.platform.startswith('win'):
-    return sys.stderr.isatty()
-
-  kernel32 = ctypes.windll.kernel32
-  stdout_handle = kernel32.GetStdHandle(STD_OUTPUT_HANDLE)
-
-  # Get the current console mode
-  console_mode = ctypes.c_uint()
-  if not kernel32.GetConsoleMode(stdout_handle, ctypes.byref(console_mode)):
-    # Handle error if GetConsoleMode fails
-    return False
-
-  # Check if the flag is set in the current console mode
-  return (console_mode.value & ENABLE_VIRTUAL_TERMINAL_PROCESSING) != 0
-
-
 def add_coloring_to_emit_ansi(fn):
   # add methods we need to the class
   @wraps(fn)
@@ -98,19 +81,19 @@ def add_coloring_to_emit_ansi(fn):
   return new
 
 
-def enable(force=False):
+def enable():
   global color_enabled
 
   if sys.platform.startswith('win'):
     kernel32 = ctypes.windll.kernel32
     handle = kernel32.GetStdHandle(STD_OUTPUT_HANDLE)
     mode = ctypes.c_uint32()
-    kernel32.GetConsoleMode(handle, ctypes.byref(mode))
+    if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+      return
     kernel32.SetConsoleMode(handle, mode.value | ENABLE_VIRTUAL_TERMINAL_PROCESSING)
 
-  if force or ansi_color_available():
-    logging.StreamHandler.emit = add_coloring_to_emit_ansi(logging.StreamHandler.emit)
-    color_enabled = True
+  logging.StreamHandler.emit = add_coloring_to_emit_ansi(logging.StreamHandler.emit)
+  color_enabled = True
 
 
 def disable():
