@@ -13,10 +13,6 @@ import sys
 import logging
 from functools import wraps
 
-# Constants from the Windows API
-STD_OUTPUT_HANDLE = -11
-ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
-
 # ANSI colors
 RED = 1
 GREEN = 2
@@ -85,6 +81,10 @@ def enable(force=False):
   global color_enabled
 
   if sys.platform.startswith('win'):
+    # Constants from the Windows API
+    STD_OUTPUT_HANDLE = -11
+    ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
+
     kernel32 = ctypes.windll.kernel32
     handle = kernel32.GetStdHandle(STD_OUTPUT_HANDLE)
     mode = ctypes.c_uint32()
