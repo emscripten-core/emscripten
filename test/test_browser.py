@@ -18,7 +18,7 @@ from pathlib import Path
 from urllib.request import urlopen
 
 import common
-from common import BrowserCore, RunnerCore, path_from_root, has_browser, Reporting, is_chrome, is_firefox, CHROMIUM_BASED_BROWSERS
+from common import BrowserCore, RunnerCore, path_from_root, has_browser, Reporting, is_chrome, is_firefox, is_safari, CHROMIUM_BASED_BROWSERS
 from common import create_file, parameterized, ensure_dir, disabled, flaky, test_file, WEBIDL_BINDER
 from common import read_file, EMRUN, no_wasm64, no_2gb, no_4gb, copytree, skip_if, skip_if_simple
 from common import requires_wasm2js, parameterize, find_browser_test_file, with_all_sjlj
@@ -40,7 +40,12 @@ def make_test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
       s.send_header("Content-Length", str(length))
       s.send_header("Access-Control-Allow-Origin", "http://localhost:%s" % port)
       s.send_header('Cross-Origin-Resource-Policy', 'cross-origin')
-      s.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+
+      s.send_header('Cache-Control', 'no-cache, no-store, must-revalidate, private, max-age=0')
+      s.send_header('Expires', '0')
+      s.send_header('Pragma', 'no-cache')
+      s.send_header('Vary', '*') # Safari insists on caching if this header is not present in addition to the above
+
       s.send_header("Access-Control-Expose-Headers", "Content-Length, Accept-Ranges")
       s.send_header("Content-type", "application/octet-stream")
       if support_byte_ranges:
@@ -141,6 +146,8 @@ no_swiftshader = skip_if_simple('not compatible with swiftshader', is_swiftshade
 no_chrome = skip_if('no_chrome', lambda _: is_chrome(), 'chrome is not supported')
 
 no_firefox = skip_if('no_firefox', lambda _: is_firefox(), 'firefox is not supported')
+
+no_safari = skip_if('no_safari', lambda _: is_safari(), 'safari is not supported')
 
 
 def is_jspi(args):
@@ -2797,6 +2804,7 @@ Module["preRun"] = () => {
     self.btest_exit('webgl2_pbo.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'])
 
   @no_firefox('fails on CI likely due to GPU drivers there')
+  @no_safari('TODO: Fails with report_result?5') # Safari 17.6 (17618.3.11.11.7, 17618)
   @requires_graphics_hardware
   def test_webgl2_sokol_mipmap(self):
     self.reftest('third_party/sokol/mipmap-emsc.c', 'third_party/sokol/mipmap-emsc.png',
@@ -2955,6 +2963,7 @@ Module["preRun"] = () => {
   @also_with_wasmfs
   @requires_graphics_hardware
   @with_all_sjlj
+  @no_safari('Test enables Wasm exceptions, so will not run in Safari 17.6 (17618.3.11.11.7, 17618)') # Safari 17.6 (17618.3.11.11.7, 17618)
   def test_sdl2_image_formats(self):
     shutil.copy(test_file('screenshot.png'), '.')
     shutil.copy(test_file('screenshot.jpg'), '.')
@@ -3356,6 +3365,7 @@ Module["preRun"] = () => {
       create_file('filey.txt', 'sync_tunnel\nsync_tunnel_bool\n')
     self.btest('test_async_returnvalue.c', '0', cflags=['-sASSERTIONS', '-sASYNCIFY', '-sASYNCIFY_IGNORE_INDIRECT', '--js-library', test_file('browser/test_async_returnvalue.js')] + args)
 
+  @no_safari('TODO: Never reports a result, so times out') # Safari 17.6 (17618.3.11.11.7, 17618)
   def test_async_bad_list(self):
     self.btest('test_async_bad_list.c', '0', cflags=['-sASYNCIFY', '-sASYNCIFY_ONLY=waka', '--profiling'])
 
@@ -3408,6 +3418,7 @@ Module["preRun"] = () => {
     self.run_browser('a.html', '/report_result?0')
 
   @no_firefox('source phase imports not implemented yet in firefox')
+  @no_safari('croaks on line "import source wasmModule from \'./out.wasm\';"') # Safari 17.6 (17618.3.11.11.7, 17618)
   def test_source_phase_imports(self):
     self.compile_btest('browser_test_hello_world.c', ['-sEXPORT_ES6', '-sSOURCE_PHASE_IMPORTS', '-Wno-experimental', '-o', 'out.mjs'])
     create_file('a.html', '''
@@ -3794,6 +3805,7 @@ Module["preRun"] = () => {
 
   # Test the old GCC atomic __sync_op_and_fetch builtin operations.
   @also_with_wasm2js
+  @no_safari('TODO: browser.test_pthread_gcc_atomic_op_and_fetch_wasm2js fails with "abort:Assertion failed: nand_and_fetch_data == -1"') # Safari 17.6 (17618.3.11.11.7, 17618)
   def test_pthread_gcc_atomic_op_and_fetch(self):
     self.cflags += ['-Wno-sync-fetch-and-nand-semantics-changed']
     self.btest_exit('pthread/test_pthread_gcc_atomic_op_and_fetch.c', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
@@ -3891,6 +3903,7 @@ Module["preRun"] = () => {
     '': ([],),
     'spinlock': (['-DSPINLOCK_TEST'],),
   })
+  @no_safari('TODO: browser.test_pthread_mutex and browser.test_pthread_mutex_spinlock both hang Safari') # Safari 17.6 (17618.3.11.11.7, 17618)
   def test_pthread_mutex(self, args):
     self.btest_exit('pthread/test_pthread_mutex.c', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + args)
 
@@ -4078,6 +4091,7 @@ Module["preRun"] = () => {
     'no_leak': ['test_pthread_lsan_no_leak', []],
   })
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/15978')
+  @no_safari('TODO: browser.test_pthread_lsan_leak fails with /report_result?0') # Safari 17.6 (17618.3.11.11.7, 17618)
   def test_pthread_lsan(self, name, args):
     self.btest(Path('pthread', name + '.cpp'), expected='1', cflags=['-fsanitize=leak', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread', name + '.js')] + args)
 
@@ -4089,6 +4103,7 @@ Module["preRun"] = () => {
     'leak': ['test_pthread_lsan_leak', ['-gsource-map']],
     'no_leak': ['test_pthread_lsan_no_leak', []],
   })
+  @no_safari('TODO: browser.test_pthread_asan_leak fails with /report_result?0') # Safari 17.6 (17618.3.11.11.7, 17618)
   def test_pthread_asan(self, name, args):
     self.btest(Path('pthread', name + '.cpp'), expected='1', cflags=['-fsanitize=address', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread', name + '.js')] + args)
 
@@ -4102,6 +4117,7 @@ Module["preRun"] = () => {
   @no_2gb('ASAN + GLOBAL_BASE')
   @no_4gb('ASAN + GLOBAL_BASE')
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/20006')
+  @no_safari('TODO: Hangs') # Safari Version 18.5 (20621.2.5.11.8)
   @also_with_wasmfs
   def test_pthread_asan_use_after_free_2(self):
     # similiar to test_pthread_asan_use_after_free, but using a pool instead
@@ -4120,6 +4136,7 @@ Module["preRun"] = () => {
     args += ['--pre-js', test_file('core/pthread/test_pthread_exit_runtime.pre.js')]
     self.btest('core/pthread/test_pthread_exit_runtime.c', expected='onExit status: 42', cflags=args)
 
+  @no_safari('TODO: Fails with report_result?unexpected: [object ErrorEvent]') # Safari 17.6 (17618.3.11.11.7, 17618)
   def test_pthread_trap(self):
     create_file('pre.js', '''
     if (typeof window === 'object' && window) {
@@ -5376,6 +5393,7 @@ Module["preRun"] = () => {
     'jspi': (['-Wno-experimental', '-sASYNCIFY=2'],),
     'jspi_wasm_bigint': (['-Wno-experimental', '-sASYNCIFY=2', '-sWASM_BIGINT'],),
   })
+  @no_safari('TODO: Fails with abort:Assertion failed: err == 0') # Safari 17.6 (17618.3.11.11.7, 17618)
   def test_wasmfs_opfs(self, args):
     if '-sASYNCIFY=2' in args:
       self.require_jspi()
@@ -5385,6 +5403,7 @@ Module["preRun"] = () => {
     self.btest_exit(test, cflags=args + ['-DWASMFS_RESUME'])
 
   @no_firefox('no OPFS support yet')
+  @no_safari('TODO: Fails with exception:Did not get expected EIO when unlinking file') # Safari 17.6 (17618.3.11.11.7, 17618)
   def test_wasmfs_opfs_errors(self):
     test = test_file('wasmfs/wasmfs_opfs_errors.c')
     postjs = test_file('wasmfs/wasmfs_opfs_errors_post.js')
@@ -5459,6 +5478,7 @@ Module["preRun"] = () => {
   def test_assert_failure(self):
     self.btest('test_assert_failure.c', 'abort:Assertion failed: false && "this is a test"')
 
+  @no_safari('TODO: Fails with report_result?exception:rejected! / undefined') # Safari 17.6 (17618.3.11.11.7, 17618)
   def test_pthread_unhandledrejection(self):
     # Check that an unhandled promise rejection is propagated to the main thread
     # as an error. This test is failing if it hangs!
