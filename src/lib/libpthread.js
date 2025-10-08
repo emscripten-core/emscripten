@@ -746,7 +746,7 @@ var LibraryPThread = {
   $pthreadCreateProxied__deps: ['__pthread_create_js'],
   $pthreadCreateProxied: (pthread_ptr, attr, startRoutine, arg) => ___pthread_create_js(pthread_ptr, attr, startRoutine, arg),
 
-#if OFFSCREENCANVAS_SUPPORT
+#if OFFSCREENCANVAS_SUPPORT || PROXY_TO_PTHREAD
   // ASan wraps the emscripten_builtin_pthread_create call in
   // __lsan::ScopedInterceptorDisabler.  Unfortunately, that only disables it on
   // the thread that made the call.  __pthread_create_js gets proxied to the
