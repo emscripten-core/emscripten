@@ -196,6 +196,7 @@ requires_graphics_hardware = skipExecIf(os.getenv('EMTEST_LACKS_GRAPHICS_HARDWAR
 requires_webgl2 = unittest.skipIf(webgl2_disabled(), "This test requires WebGL2 to be available")
 requires_webgpu = unittest.skipIf(webgpu_disabled(), "This test requires WebGPU to be available")
 requires_sound_hardware = skipExecIf(os.getenv('EMTEST_LACKS_SOUND_HARDWARE'), 'This test requires sound hardware')
+requires_microphone_access = skipExecIf(os.getenv('EMTEST_LACKS_MICROPHONE_ACCESS'), 'This test accesses microphone, which may need accepting a user prompt to enable it.')
 requires_offscreen_canvas = unittest.skipIf(os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'), 'This test requires a browser with OffscreenCanvas')
 requires_es6_workers = unittest.skipIf(os.getenv('EMTEST_LACKS_ES6_WORKERS'), 'This test requires a browser with ES6 Module Workers support')
 requires_growable_arraybuffers = unittest.skipIf(os.getenv('EMTEST_LACKS_GROWABLE_ARRAYBUFFERS'), 'This test requires a browser that supports growable ArrayBuffers')
@@ -2283,6 +2284,7 @@ void *getBindBuffer() {
   def test_openal_error(self, args):
     self.btest_exit('openal/test_openal_error.c', cflags=args)
 
+  @requires_microphone_access
   def test_openal_capture_sanity(self):
     self.btest_exit('openal/test_openal_capture_sanity.c')
 
