@@ -141,6 +141,17 @@ def is_swiftshader(_):
   return is_chrome() and '--use-gl=swiftshader' in common.EMTEST_BROWSER
 
 
+def get_safari_version():
+  plist_path = os.path.join(EMTEST_BROWSER.strip(), 'Contents', 'version.plist')
+  version_str = plistlib.load(open(plist_path, 'rb')).get('CFBundleShortVersionString')
+  # Split into parts (major.minor.patch)
+  parts = (version_str.split('.') + ['0', '0', '0'])[:3]
+  # Convert each part into integers, discarding any trailing string, e.g. '13a' -> 13.
+  parts = [int(re.match(r"\d+", s).group()) if re.match(r"\d+", s) else 0 for s in parts]
+  # Return version as XXYYZZ
+  return parts[0] * 10000 + parts[1] * 100 + parts[2]
+
+
 no_swiftshader = skip_if_simple('not compatible with swiftshader', is_swiftshader)
 
 no_chrome = skip_if('no_chrome', lambda _: is_chrome(), 'chrome is not supported')
@@ -148,6 +159,7 @@ no_chrome = skip_if('no_chrome', lambda _: is_chrome(), 'chrome is not supported
 no_firefox = skip_if('no_firefox', lambda _: is_firefox(), 'firefox is not supported')
 
 no_safari = skip_if('no_safari', lambda _: is_safari(), 'safari is not supported')
+
 
 def requires_version(name, version_getter):
   assert callable(version_getter)
