@@ -674,8 +674,6 @@ async function createWasm() {
   function receiveInstance(instance, module) {
     wasmExports = instance.exports;
 
-    
-
     assignWasmExports(wasmExports);
 
     updateMemoryViews();

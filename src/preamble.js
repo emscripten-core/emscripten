@@ -712,7 +712,9 @@ function getWasmImports() {
     wasmExports = applySignatureConversions(wasmExports);
 #endif
 
-    {{{ receivedSymbol('wasmExports') }}}
+#if EXPORTED_RUNTIME_METHODS.includes('wasmExports')
+    Module['wasmExports'] = wasmExports;
+#endif
 
 #if PTHREADS
 #if MAIN_MODULE
