@@ -510,7 +510,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif check_flag('--threadprofiler'):
       settings_changes.append('PTHREADS_PROFILING=1')
     elif arg in ('-fcolor-diagnostics', '-fdiagnostics-color', '-fdiagnostics-color=always'):
-      colored_logger.enable()
+      colored_logger.enable(force=True)
     elif arg in ('-fno-color-diagnostics', '-fno-diagnostics-color', '-fdiagnostics-color=never'):
       colored_logger.disable()
     elif arg == '-fno-exceptions':

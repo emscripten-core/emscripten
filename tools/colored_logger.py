@@ -81,7 +81,7 @@ def add_coloring_to_emit_ansi(fn):
   return new
 
 
-def enable():
+def enable(force=False):
   global color_enabled
 
   if sys.platform.startswith('win'):
@@ -91,6 +91,8 @@ def enable():
     if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
       return
     kernel32.SetConsoleMode(handle, mode.value | ENABLE_VIRTUAL_TERMINAL_PROCESSING)
+  elif not force and not sys.stderr.isatty():
+    return
 
   logging.StreamHandler.emit = add_coloring_to_emit_ansi(logging.StreamHandler.emit)
   color_enabled = True
