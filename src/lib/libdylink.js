@@ -276,12 +276,10 @@ var LibraryDylink = {
         continue;
       }
 #endif
-      if (typeof value?.value != 'undefined') {
-        // a breaking change in the wasm spec, globals are now objects
-        // https://github.com/WebAssembly/mutable-global/issues/1
+      // Detect wasm global exports. These represent data addresses
+      // which are relative to `memoryBase`
+      if (value instanceof WebAssembly.Global) {
         value = value.value;
-      }
-      if (typeof value == {{{ POINTER_JS_TYPE }}}) {
         value += {{{ to64('memoryBase') }}};
       }
       relocated[e] = value;
