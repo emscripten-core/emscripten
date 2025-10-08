@@ -165,7 +165,7 @@ def requires_version(name, version_getter):
   assert callable(version_getter)
 
   def decorator(min_required_version, note=''):
-    return skip_if_simple(name, version_getter_func() < min_required_version, f'{name} v{version_getter_func()} is not supported (need v{min_required_version} at minimum) {note}')
+    return skip_if_simple(name, version_getter() < min_required_version, f'{name} v{version_getter()} is not supported (need v{min_required_version} at minimum) {note}')
 
   return decorator
 
