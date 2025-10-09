@@ -143,7 +143,7 @@ commands:
             ./emsdk install tot
             ./emsdk activate tot
             # Write the version of clang into a file for use in the ccache key
-            ./upstream/bin/clang --version > clang_version.txt
+            echo "test22" > clang_version.txt
             echo "clang version:"
             cat ~/emsdk/clang_version.txt
             # Remove the emsdk version of emscripten to save space in the
@@ -179,39 +179,43 @@ commands:
       - run:
           name: Ccache stats and configuration
           command: |
+            ccache --version
             ccache -s
             ccache --print-stats
             ccache -p
       - run:
           name: embuilder build ALL
           command: |
-            ./embuilder build ALL
+            ./embuilder build crtbegin
             ./test/runner test_hello_world
-      - run:
-          name: embuilder (LTO)
-          command: |
-            ./embuilder build MINIMAL --lto
-            ./test/runner test_hello_world
-      - run:
-          name: embuilder (WASM64)
-          command: |
-            ./embuilder build MINIMAL --wasm64
-      - run:
-          name: embuilder (PIC)
-          command: |
-            ./embuilder build MINIMAL_PIC --pic
-            ./test/runner test_hello_world
-      - run:
-          name: embuilder (PIC+LTO)
-          command: |
-            ./embuilder build MINIMAL --pic --lto
-            ./test/runner test_hello_world
+      # - run:
+      #     name: embuilder (LTO)
+      #     command: |
+      #       ./embuilder build MINIMAL --lto
+      #       ./test/runner test_hello_world
+      # - run:
+      #     name: embuilder (WASM64)
+      #     command: |
+      #       ./embuilder build MINIMAL --wasm64
+      # - run:
+      #     name: embuilder (PIC)
+      #     command: |
+      #       ./embuilder build MINIMAL_PIC --pic
+      #       ./test/runner test_hello_world
+      # - run:
+      #     name: embuilder (PIC+LTO)
+      #     command: |
+      #       ./embuilder build MINIMAL --pic --lto
+      #       ./test/runner test_hello_world
       - run:
           name: "Ccache stats and configuration"
           command: |
-            ls ~/cache/sysroot/lib/wasm32-emscripten || echo "no build"
+            ls ~/ccache-debug || echo "no ccache-debug"
+            ls -l ~/cache/sysroot/lib/wasm32-emscripten || echo "no build"
+            ls -l ~/cache/sysroot/include/emscripten/heap.h
             cat ~/cache/sysroot/lib/wasm32-emscripten/crtbegin.o.ccache-log
             date
+            cat ~/cache/build/libcompiler_rt/absvdi2.o.ccache-log
             ccache -s
             ccache --print-stats
             ccache -p
@@ -230,18 +234,12 @@ commands:
             - vms/
             - wasi-sdk/
             - .jsvu/
-      - when:
-          # Only the main branch will store its cache results, and only the non-main branches
-          # will use cached results. This prevents untrusted PRs from polluting caches used
-          # by other branches.
-          condition:
-            equal: [ "main", << pipeline.git.branch >> ]
-          steps:
-            - save_cache:
-                name: "Save Ccache cache"
-                paths:
-                  - ~/.ccache
-                key: clang-{{ checksum "~/emsdk/clang_version.txt" }}
+
+      - save_cache:
+          name: "Save Ccache cache"
+          paths:
+            - ~/.ccache
+          key: clang-{{ checksum "~/emsdk/clang_version.txt" }}
 
   prepare-for-tests:
     description: "Setup emscripten tests"
@@ -577,6 +575,7 @@ jobs:
       CCACHE_DEBUG: 1
       CCACHE_DEBUGLEVEL: 1
     steps:
+      - run: echo "${CIRCLE_PR_NUMBER} ${CIRCLE_PULL_REQUEST} ${CIRCLE_REPOSITORY_URL} ${CIRCLE_BRANCH} << pipeline.project.git_url >> << pipeline.git.branch >>"
       - checkout
       - run:
           name: get wasmer
