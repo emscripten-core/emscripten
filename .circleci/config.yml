@@ -143,7 +143,7 @@ commands:
             ./emsdk install tot
             ./emsdk activate tot
             # Write the version of clang into a file for use in the ccache key
-            echo "test21" > clang_version.txt
+            echo "test22" > clang_version.txt
             echo "clang version:"
             cat ~/emsdk/clang_version.txt
             # Remove the emsdk version of emscripten to save space in the
