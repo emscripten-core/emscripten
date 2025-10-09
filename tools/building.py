@@ -199,7 +199,7 @@ def lld_flags_for_executable(external_symbols):
 
   cmd.extend(f'--export-if-defined={e}' for e in settings.EXPORT_IF_DEFINED)
 
-  if settings.RELOCATABLE:
+  if settings.MAIN_MODULE or settings.RELOCATABLE:
     cmd.append('--experimental-pic')
     cmd.append('--unresolved-symbols=import-dynamic')
     if not settings.WASM_BIGINT:
@@ -208,6 +208,8 @@ def lld_flags_for_executable(external_symbols):
       # shared libraries.  Because of this we need to disabled signature
       # checking of shared library functions in this case.
       cmd.append('--no-shlib-sigcheck')
+
+  if settings.RELOCATABLE:
     if settings.SIDE_MODULE:
       cmd.append('-shared')
     else:
@@ -218,6 +220,8 @@ def lld_flags_for_executable(external_symbols):
     cmd.append('--export-table')
     if settings.ALLOW_TABLE_GROWTH:
       cmd.append('--growable-table')
+    if settings.MAIN_MODULE == 1:
+      cmd.append('--export-dynamic')
 
   if not settings.SIDE_MODULE:
     cmd += ['-z', 'stack-size=%s' % settings.STACK_SIZE]
@@ -271,6 +275,9 @@ def link_lld(args, target, external_symbols=None):
   if settings.LINKABLE:
     args.insert(0, '--whole-archive')
     args.append('--no-whole-archive')
+
+  if settings.MAIN_MODULE:
+    args.insert(0, '-Bdynamic')
 
   if settings.STRICT and '--no-fatal-warnings' not in args:
     args.append('--fatal-warnings')
@@ -1304,7 +1311,7 @@ def read_and_preprocess(filename, expand_macros=False):
 
 def js_legalization_pass_flags():
   flags = []
-  if settings.RELOCATABLE:
+  if settings.RELOCATABLE or settings.MAIN_MODULE:
     # When building in relocatable mode, we also want access the original
     # non-legalized wasm functions (since wasm modules can and do link to
     # the original, non-legalized, functions).

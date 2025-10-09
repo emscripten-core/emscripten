@@ -584,7 +584,7 @@ var LibraryPThread = {
 #if MAIN_MODULE
   $registerTLSInit: (tlsInitFunc, moduleExports, metadata) => {
 #if DYLINK_DEBUG
-    dbg("registerTLSInit: " + tlsInitFunc);
+    dbg('registerTLSInit:', tlsInitFunc, metadata.tlsExports);
 #endif
     // In relocatable builds, we use the result of calling tlsInitFunc
     // (`_emscripten_tls_init`) to relocate the TLS exports of the module

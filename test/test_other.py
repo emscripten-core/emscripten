@@ -2127,9 +2127,12 @@ Module['postRun'] = () => {
     # * The global object must have a constructor to make sure that it is
     #   constructed only once (and not once per thread).
     create_file('side.c', r'''
+      #include <emscripten/console.h>
+
       int value = 0;
 
       __attribute__((constructor)) void ctor(void) {
+        emscripten_dbgf("side module ctor: %p", &value);
         value = 42;
       }
 
@@ -2147,14 +2150,17 @@ Module['postRun'] = () => {
       int* get_address();
 
       void* thread_main(void* arg) {
-        assert(*get_address() == 123);
-        printf("%d\n", *get_address());
+        int* addr = get_address();
+        printf("thread_main: %p, %d\n", addr, *addr);
+        assert(*addr == 123);
         return NULL;
       }
 
       int main() {
-        assert(*get_address() == 42);
-        *get_address() = 123;
+        int* addr = get_address();
+        printf("in main: %p, %d\n", addr, *addr);
+        assert(*addr == 42);
+        *addr = 123;
         pthread_t t;
         pthread_create(&t, NULL, thread_main, NULL);
         pthread_join(t, NULL);
@@ -2163,10 +2169,10 @@ Module['postRun'] = () => {
       ''')
 
     self.do_runf('main.c', '123', cflags=['-pthread', '-Wno-experimental',
-                                             '-sPROXY_TO_PTHREAD',
-                                             '-sEXIT_RUNTIME',
-                                             '-sMAIN_MODULE=2',
-                                             'side.wasm'])
+                                          '-sPROXY_TO_PTHREAD',
+                                          '-sEXIT_RUNTIME',
+                                          '-sMAIN_MODULE=2',
+                                          'side.wasm'])
 
   def test_dylink_pthread_warning(self):
     err = self.expect_fail([EMCC, '-Werror', '-sMAIN_MODULE', '-pthread', test_file('hello_world.c')])
@@ -5618,7 +5624,15 @@ int main() {
     'wasm2js': (False, False),
     'wasm2js_safe_heap': (False, True),
   })
-  def test_bad_function_pointer_cast(self, opts, wasm, safe):
+  @parameterized({
+    '': (False,),
+    'emulate_cases': (True,),
+  })
+  @parameterized({
+    '': (False,),
+    'dylink': (True,),
+  })
+  def test_bad_function_pointer_cast(self, opts, wasm, safe, emulate_casts, dylink):
     create_file('src.cpp', r'''
 #include <stdio.h>
 
@@ -5636,31 +5650,28 @@ int main() {
 }
 ''')
 
-    for emulate_casts in (0, 1):
-      for relocatable in (0, 1):
-        # wasm2js is not compatible with relocatable mode
-        if not wasm and relocatable:
-          continue
-        cmd = [EMXX, 'src.cpp'] + opts
-        if not wasm:
-          cmd += ['-sWASM=0']
-        if safe:
-          cmd += ['-sSAFE_HEAP']
-        if emulate_casts:
-          cmd += ['-sEMULATE_FUNCTION_POINTER_CASTS']
-        if relocatable:
-          cmd += ['-sRELOCATABLE'] # disables asm-optimized safe heap
-        print(cmd)
-        self.run_process(cmd)
-        returncode = 0 if emulate_casts or not wasm else NON_ZERO
-        output = self.run_js('a.out.js', assert_returncode=returncode)
-        if emulate_casts or wasm == 0:
-          # success!
-          self.assertContained('Hello, world.', output)
-        else:
-          # otherwise, the error depends on the mode we are in
-          # wasm trap raised by the vm
-          self.assertContained('function signature mismatch', output)
+    # wasm2js is not compatible with dylink mode
+    if not wasm and dylink:
+      self.skipTest("wasm2js + dylink")
+    cmd = [EMXX, 'src.cpp'] + opts
+    if not wasm:
+      cmd += ['-sWASM=0']
+    if safe:
+      cmd += ['-sSAFE_HEAP']
+    if emulate_casts:
+      cmd += ['-sEMULATE_FUNCTION_POINTER_CASTS']
+    if dylink:
+      cmd += ['-sMAIN_MODULE=2'] # disables asm-optimized safe heap
+    self.run_process(cmd)
+    returncode = 0 if emulate_casts or not wasm else NON_ZERO
+    output = self.run_js('a.out.js', assert_returncode=returncode)
+    if emulate_casts or wasm == 0:
+      # success!
+      self.assertContained('Hello, world.', output)
+    else:
+      # otherwise, the error depends on the mode we are in
+      # wasm trap raised by the vm
+      self.assertContained('function signature mismatch', output)
 
   def test_bad_export(self):
     for exports in ('_main', '_main,foo'):
@@ -5693,7 +5704,7 @@ int main() {
     delete_file('a.out.js')
 
     # Test that -sDYNAMIC_EXECUTION=0 and -sMAIN_MODULE are allowed together.
-    self.do_runf('hello_world.c', cflags=['-O1', '-sDYNAMIC_EXECUTION=0', '-sMAIN_MODULE'])
+    self.do_runf('hello_world.c', cflags=['-O1', '-sDYNAMIC_EXECUTION=0', '-sMAIN_MODULE=2'])
 
     create_file('test.c', r'''
       #include <emscripten/emscripten.h>
@@ -12293,7 +12304,7 @@ int main(void) {
     '': ([],),
     'assertions': (['-sASSERTIONS'],),
     'closure': (['-sASSERTIONS', '--closure=1'],),
-    'dylink': (['-sMAIN_MODULE'],),
+    'dylink': (['-sMAIN_MODULE=2'],),
   })
   def test_webgpu_compiletest(self, args):
     self.run_process([EMXX, test_file('webgpu_jsvalstore.cpp'), '-Wno-error=deprecated', '-sUSE_WEBGPU', '-sASYNCIFY'] + args)
@@ -12697,7 +12708,7 @@ exec "$@"
     self.assertContained('hello, world!', output)
 
   def test_wasm2js_no_dylink(self):
-    for arg in ('-sMAIN_MODULE', '-sSIDE_MODULE', '-sRELOCATABLE'):
+    for arg in ('-sSIDE_MODULE',):
       print(arg)
       err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sWASM=0', arg])
       self.assertContained('emcc: error: WASM2JS is not compatible with RELOCATABLE', err)
@@ -12936,21 +12947,6 @@ exec "$@"
     with env_modify({'EMCC_CFLAGS': '-O2 BAD_ARG', 'EMCC_FORCE_STDLIBS': '1', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '-o', 'out.json'])
 
-  def test_relocatable_limited_exports(self):
-    # Building with RELOCATABLE should *not* automatically export all sybmols.
-    self.run_process([EMCC, test_file('hello_world.c'), '-sRELOCATABLE', '-o', 'out.wasm'])
-
-    # Building with RELOCATABLE + LINKABLE should include and export all of the standard library
-    self.run_process([EMCC, test_file('hello_world.c'), '-sRELOCATABLE', '-sLINKABLE', '-o', 'out_linkable.wasm'])
-
-    exports = self.parse_wasm('out.wasm')[1]
-    exports_linkable = self.parse_wasm('out_linkable.wasm')[1]
-
-    self.assertLess(len(exports), 20)
-    self.assertGreater(len(exports_linkable), 1000)
-    self.assertIn('sendmsg', exports_linkable)
-    self.assertNotIn('sendmsg', exports)
-
   @requires_v8
   def test_shell_Oz(self):
     # regression test for -Oz working on non-web, non-node environments that
@@ -12979,14 +12975,14 @@ exec "$@"
     self.set_setting('EXPORTED_FUNCTIONS', '_main,_malloc')
     self.do_runf('core/test_em_js.cpp')
 
-  def test_em_js_main_module_address(self):
+  def test_em_js_dylink_address(self):
     # This works under static linking but is known to fail with dynamic linking
     # See https://github.com/emscripten-core/emscripten/issues/18494
     self.do_runf('other/test_em_js_main_module_address.c')
 
-    self.set_setting('MAIN_MODULE', 2)
-    expected = 'Aborted(Assertion failed: Missing signature argument to addFunction: function foo() { err("hello"); })'
-    self.do_runf('other/test_em_js_main_module_address.c', expected, assert_returncode=NON_ZERO)
+    self.emcc('other/test_em_js_main_module_address.c', ['-sSIDE_MODULE'], output_filename='libside.so')
+    expected = 'Aborted(Assertion failed: Missing signature argument to addFunction: () => { err("hello"); })'
+    self.do_run('', expected, cflags=['-sMAIN_MODULE=2', 'libside.so'], assert_returncode=NON_ZERO)
 
   def test_em_js_external_usage(self):
     # Verify that EM_JS functions can be called from other source files, even in the case
@@ -13133,18 +13129,13 @@ exec "$@"
     ''')
     self.do_runf('test.c', cflags=['-sERROR_ON_UNDEFINED_SYMBOLS=0'])
 
-  @parameterized({
-    'relocatable': ('-sRELOCATABLE',),
-    'linkable': ('-sLINKABLE',),
-    'main_module': ('-sMAIN_MODULE',),
-  })
-  def test_check_undefined(self, flag):
+  def test_main_module_undefined(self):
     # positive case: no undefined symbols
-    self.run_process([EMCC, flag, '-sERROR_ON_UNDEFINED_SYMBOLS', test_file('hello_world.c')])
+    self.run_process([EMCC, '-sERROR_ON_UNDEFINED_SYMBOLS', '-sMAIN_MODULE', test_file('hello_world.c')])
     self.run_js('a.out.js')
 
     # negative case: foo is undefined in test_check_undefined.c
-    err = self.expect_fail([EMCC, flag, '-sERROR_ON_UNDEFINED_SYMBOLS', test_file('other/test_check_undefined.c')])
+    err = self.expect_fail([EMCC, '-sERROR_ON_UNDEFINED_SYMBOLS', '-sMAIN_MODULE', test_file('other/test_check_undefined.c')])
     self.assertContained('undefined symbol: foo', err)
 
   @also_with_wasm64
@@ -14061,12 +14052,17 @@ int main() {
   def test_extended_const(self):
     self.v8_args += ['--experimental-wasm-extended-const']
     # Export at least one global so that we exercise the parsing of the global section.
-    self.do_runf('hello_world.c', cflags=['-sEXPORTED_FUNCTIONS=_main,___stdout_used', '-mextended-const', '-sMAIN_MODULE=2'])
-    wat = self.get_wasm_text('hello_world.wasm')
+    create_file('test.c', r'''
+      #include <stdio.h>
+      int g_data[10] = {1};
+      void test() {
+        printf("some rodata %d\n", g_data[0]);
+      }
+    ''')
+    self.emcc('test.c', ['-mextended-const', '-sSIDE_MODULE'])
+    wat = self.get_wasm_text('a.out.wasm')
     # Test that extended-const expressions are used in the data segments.
     self.assertContained(r'\(data (\$\S+ )?\(offset \(i32.add\s+\(global.get \$\S+\)\s+\(i32.const \d+\)', wat, regex=True)
-    # Test that extended-const expressions are used in at least one global initializer.
-    self.assertContained(r'\(global \$\S+ i32 \(i32.add\s+\(global.get \$\S+\)\s+\(i32.const \d+\)', wat, regex=True)
 
   # Smoketest for MEMORY64 setting.  Most of the testing of MEMORY64 is by way of the wasm64
   # variant of the core test suite.

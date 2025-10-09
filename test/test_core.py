@@ -6602,11 +6602,6 @@ void* operator new(size_t size) {
 
     self.do_runf('third_party/cubescript/command.cpp', '*\nTemp is 33\n9\n5\nhello, everyone\n*')
 
-  @needs_dylink
-  def test_relocatable_void_function(self):
-    self.set_setting('RELOCATABLE')
-    self.do_core_test('test_relocatable_void_function.c', cflags=['-Wno-deprecated'])
-
   @wasm_simd
   @parameterized({
     '': ([],),
