@@ -4508,16 +4508,14 @@ Module["preRun"] = () => {
     self.btest_exit('webgl2_simple_enable_extensions.c', cflags=cmd)
 
   @parameterized({
-    '': (True, []),
-    'closure': (True, ['-sASSERTIONS', '--closure=1']),
-    'closure_advanced': (True, ['-sASSERTIONS', '--closure=1', '-O3']),
-    # Not precached with PIC
-    'main_module': (False, ['-sMAIN_MODULE=1']),
-    # Not precached with SHARED_MEMORY
-    'pthreads': (False, ['-pthread', '-sOFFSCREENCANVAS_SUPPORT']),
+    '': ([],),
+    'closure': (['-sASSERTIONS', '--closure=1'],),
+    'closure_advanced': (['-sASSERTIONS', '--closure=1', '-O3'],),
+    'main_module': (['-sMAIN_MODULE=1'],),
+    'pthreads': (['-pthread', '-sOFFSCREENCANVAS_SUPPORT'],),
   })
   @requires_webgpu
-  def test_webgpu_basic_rendering(self, assume_precached, args):
+  def test_webgpu_basic_rendering(self, args):
     self.btest_exit('webgpu_basic_rendering.cpp', cflags=['--use-port=emdawnwebgpu', '-sEXIT_RUNTIME'] + args)
 
   @requires_webgpu
