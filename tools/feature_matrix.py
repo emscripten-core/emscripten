@@ -156,7 +156,7 @@ min_browser_versions = {
     'firefox': 128,
     'safari': 160400,
     'node': 200000,
-  }
+  },
 }
 
 # Static assertion to check that we actually need each of the above feature flags
