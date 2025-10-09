@@ -2637,6 +2637,18 @@ Module["preRun"] = () => {
   @parameterized({
     '': ([],),
     'closure': (['-O2', '-g1', '--closure=1'],),
+    'pthread': (['-pthread'],),
+    'proxy_to_pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+    'legacy': (['-sMIN_FIREFOX_VERSION=0', '-sMIN_SAFARI_VERSION=0', '-sMIN_CHROME_VERSION=0', '-Wno-transpile'],),
+  })
+  def test_html5_remove_callback(self, opts):
+    if self.is_wasm64() and '-sMIN_CHROME_VERSION=0' in opts:
+      self.skipTest('wasm64 does not support older browsers')
+    self.btest_exit('test_html5_remove_callback.c', cflags=opts)
+
+  @parameterized({
+    '': ([],),
+    'closure': (['-O2', '-g1', '--closure=1'],),
     'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
   })
   def test_html5_gamepad(self, args):
