@@ -31,6 +31,7 @@ OLDEST_SUPPORTED_NODE = 122209
 
 
 class Feature(IntEnum):
+  MUTABLE_GLOBALS = auto()
   NON_TRAPPING_FPTOINT = auto()
   SIGN_EXT = auto()
   BULK_MEMORY = auto()
@@ -48,6 +49,12 @@ disable_override_features = set()
 enable_override_features = set()
 
 min_browser_versions = {
+  Feature.MUTABLE_GLOBALS: {
+    'chrome': 74,
+    'firefox': 61,
+    'safari': 130100,
+    'node': 120000,
+  },
   Feature.NON_TRAPPING_FPTOINT: {
     'chrome': 75,
     'firefox': 65,
@@ -213,6 +220,8 @@ def apply_min_browser_versions():
     enable_feature(Feature.BULK_MEMORY, 'pthreads')
   elif settings.WASM_WORKERS or settings.SHARED_MEMORY:
     enable_feature(Feature.BULK_MEMORY, 'shared-mem')
+  if settings.RELOCATABLE:
+    enable_feature(Feature.MUTABLE_GLOBALS, 'dynamic linking')
   if settings.MEMORY64 == 1:
     enable_feature(Feature.MEMORY64, 'MEMORY64')
   if settings.EXPORT_ES6 and settings.PTHREADS:
