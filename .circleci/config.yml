@@ -830,7 +830,7 @@ jobs:
             wasm64l.test_module_wasm_memory
             wasm64l.test_longjmp2_emscripten
             wasm64l.test_embind_val_basics_legacy
-            other.test_failing_growth_wasm64"
+            other.*_wasm64"
       - upload-test-results
   test-jsc:
     executor: linux-python
@@ -1095,7 +1095,6 @@ jobs:
     executor: focal
     environment:
       EMTEST_LACKS_WEBGPU: "1"
-      EMTEST_SKIP_NODE_CANARY: "1"
     steps:
       - run-tests-chrome:
           title: "browser64_4gb"
@@ -1113,16 +1112,10 @@ jobs:
           # initial position of the mouse pointer relative to the canvas.
           # browser.test_html5_webgl_create_context is skipped because
           # anti-aliasing is not well supported.
-          # browser.test_webgl_offscreen_canvas_in_pthread and
-          # browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
-          # are crashing Firefox (bugzil.la/1281796). The former case is
-          # further blocked by issue #6897.
           test_targets: "
             browser
             skip:browser.test_sdl2_mouse
             skip:browser.test_html5_webgl_create_context
-            skip:browser.test_webgl_offscreen_canvas_in_pthread
-            skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
             skip:browser.test_glut_glutget
             "
   test-browser-firefox-wasm64:

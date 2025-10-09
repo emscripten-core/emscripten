@@ -244,6 +244,11 @@ user_pref("services.sync.prefs.sync.browser.sessionstore.restore_on_demand", fal
 user_pref("browser.sessionstore.restore_on_demand", false);
 user_pref("browser.sessionstore.max_resumed_crashes", -1);
 user_pref("toolkit.startup.max_resumed_crashes", -1);
+// Ease shutting down browser instances in the parallel browser harness
+user_pref("browser.warnOnQuit", false);
+user_pref("browser.warnOnQuitShortcut", false);
+// Hide about:config confirmation prompt - devs are advanced users
+user_pref("browser.aboutConfig.showWarning", false);
 // Don't show the slow script dialog popup
 user_pref("dom.max_script_run_time", 0);
 user_pref("dom.max_chrome_script_run_time", 0);
@@ -1345,10 +1350,10 @@ def browser_display_name(browser):
 
 def subprocess_env():
   e = os.environ.copy()
-  # https://bugzilla.mozilla.org/show_bug.cgi?id=745154
+  # https://bugzil.la/745154
   e['MOZ_DISABLE_AUTO_SAFE_MODE'] = '1'
-  e['MOZ_DISABLE_SAFE_MODE_KEY'] = '1' # https://bugzilla.mozilla.org/show_bug.cgi?id=653410#c9
-  e['JIT_OPTION_asmJSAtomicsEnable'] = 'true' # https://bugzilla.mozilla.org/show_bug.cgi?id=1299359#c0
+  e['MOZ_DISABLE_SAFE_MODE_KEY'] = '1' # https://bugzil.la/653410#c9
+  e['JIT_OPTION_asmJSAtomicsEnable'] = 'true' # https://bugzil.la/1299359#c0
   return e
 
 

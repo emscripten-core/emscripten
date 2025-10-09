@@ -510,11 +510,9 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif check_flag('--threadprofiler'):
       settings_changes.append('PTHREADS_PROFILING=1')
     elif arg in ('-fcolor-diagnostics', '-fdiagnostics-color', '-fdiagnostics-color=always'):
-      diagnostics.color_enabled = True
-    elif arg in ('-fno-color-diagnostics', '-fdiagnostics-color=never'):
-      diagnostics.color_enabled = False
-    elif arg == '-fansi-escape-codes':
-      diagnostics.force_ansi = True
+      colored_logger.enable(force=True)
+    elif arg in ('-fno-color-diagnostics', '-fno-diagnostics-color', '-fdiagnostics-color=never'):
+      colored_logger.disable()
     elif arg == '-fno-exceptions':
       settings.DISABLE_EXCEPTION_CATCHING = 1
       settings.DISABLE_EXCEPTION_THROWING = 1
@@ -570,9 +568,6 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       settings.USE_PTHREADS = 0
     elif arg == '-pthreads':
       exit_with_error('unrecognized command-line option `-pthreads`; did you mean `-pthread`?')
-    elif arg in ('-fno-diagnostics-color', '-fdiagnostics-color=never'):
-      colored_logger.disable()
-      diagnostics.color_enabled = False
     elif arg == '-fno-rtti':
       settings.USE_RTTI = 0
     elif arg == '-frtti':

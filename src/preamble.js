@@ -503,10 +503,9 @@ var splitModuleProxyHandler = {
       // When the table is dynamically laid out, the placeholder functions names
       // are offsets from the table base. In the main module, the table base is
       // always 1.
-      return wasmTable.get(1 + parseInt(prop))(...args);
-#else
-      return wasmTable.get(prop)(...args);
+      prop = 1 + parseInt(prop);
 #endif
+      return wasmTable.get({{{ toIndexType('prop') }}})(...args);
 #endif
     }
   }
@@ -713,7 +712,9 @@ function getWasmImports() {
     wasmExports = applySignatureConversions(wasmExports);
 #endif
 
-    {{{ receivedSymbol('wasmExports') }}}
+#if EXPORTED_RUNTIME_METHODS.includes('wasmExports')
+    Module['wasmExports'] = wasmExports;
+#endif
 
 #if PTHREADS
 #if MAIN_MODULE

@@ -165,6 +165,8 @@ def setup_environment_settings():
   # The worker environment is automatically added if any of the pthread or Worker features are used.
   # Note: we need to actually modify ENVIRONMENTS variable here before the parsing,
   # because some JS code reads it back so modifying parsed info alone is not sufficient.
+  maybe_web_worker = not settings.ENVIRONMENT or 'worker' in settings.ENVIRONMENT
+
   if settings.SHARED_MEMORY and settings.ENVIRONMENT:
     settings.ENVIRONMENT.append('worker')
 
@@ -172,7 +174,7 @@ def setup_environment_settings():
   if any(x for x in settings.ENVIRONMENT if x not in VALID_ENVIRONMENTS):
     exit_with_error(f'Invalid environment specified in "ENVIRONMENT": {settings.ENVIRONMENT}. Should be one of: {",".join(VALID_ENVIRONMENTS)}')
 
-  settings.ENVIRONMENT_MAY_BE_WEB = not settings.ENVIRONMENT or 'web' in settings.ENVIRONMENT or 'worker' in settings.ENVIRONMENT
+  settings.ENVIRONMENT_MAY_BE_WEB = not settings.ENVIRONMENT or 'web' in settings.ENVIRONMENT
   settings.ENVIRONMENT_MAY_BE_WEBVIEW = not settings.ENVIRONMENT or 'webview' in settings.ENVIRONMENT
   settings.ENVIRONMENT_MAY_BE_NODE = not settings.ENVIRONMENT or 'node' in settings.ENVIRONMENT
   settings.ENVIRONMENT_MAY_BE_SHELL = not settings.ENVIRONMENT or 'shell' in settings.ENVIRONMENT
@@ -183,11 +185,11 @@ def setup_environment_settings():
       diagnostics.warning('unused-command-line-argument', 'ignoring MIN_NODE_VERSION because `node` environment is not enabled')
     settings.MIN_NODE_VERSION = feature_matrix.UNSUPPORTED
 
-  if not (settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WEBVIEW):
+  if not (settings.ENVIRONMENT_MAY_BE_WEB or maybe_web_worker or settings.ENVIRONMENT_MAY_BE_WEBVIEW):
     for browser in ('FIREFOX', 'SAFARI', 'CHROME'):
       key = f'MIN_{browser}_VERSION'
       if key in user_settings and settings[key] != feature_matrix.UNSUPPORTED:
-        diagnostics.warning('unused-command-line-argument', 'ignoring %s because `web` and `webview` environments are not enabled', key)
+        diagnostics.warning('unused-command-line-argument', 'ignoring %s because `web`, `worker` and `webview` environments are not enabled', key)
       settings[key] = feature_matrix.UNSUPPORTED
 
 
@@ -1709,7 +1711,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.WEBGL_USE_GARBAGE_FREE_APIS = 1
     # Some browsers have issues using the WebGL2 garbage-free APIs when the
     # memory offsets are over 2^31 or 2^32
-    # For firefox see: https://bugzilla.mozilla.org/show_bug.cgi?id=1838218
+    # For firefox see: https://bugzil.la/1838218
     if settings.MIN_FIREFOX_VERSION != feature_matrix.UNSUPPORTED and settings.MAXIMUM_MEMORY > 2 ** 31:
       settings.WEBGL_USE_GARBAGE_FREE_APIS = 0
     # For chrome see: https://crbug.com/324992397
