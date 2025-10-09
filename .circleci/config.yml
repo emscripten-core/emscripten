@@ -614,6 +614,7 @@ jobs:
       - run:
           name: Configure ccache
           command: |
+            mkdir -p ~/.ccache
             cp .circleci/ccache.conf ~/.ccache
       - build-libs
       - run:
