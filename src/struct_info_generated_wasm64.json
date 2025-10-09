@@ -535,13 +535,13 @@
             "samplesPerChannel": 4
         },
         "EmscriptenAudioWorkletNodeCreateOptions": {
-            "__size__": 24,
+            "__size__": 32,
             "numberOfInputs": 0,
             "numberOfOutputs": 4,
             "outputChannelCounts": 8,
-            "channelCount": 12,
-            "channelCountMode": 16,
-            "channelInterpretation": 20
+            "channelCount": 16,
+            "channelCountMode": 24,
+            "channelInterpretation": 28
         },
         "EmscriptenBatteryEvent": {
             "__size__": 32,
