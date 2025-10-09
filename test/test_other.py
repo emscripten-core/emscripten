@@ -2586,8 +2586,8 @@ F1 -> ''
 
   @requires_network
   def test_remote_ports(self):
-    self.set_setting('DEFAULT_TO_CXX')  # emdawnwebgpu uses C++ internally
-    self.emcc(test_file('hello_world.c'), ['--use-port=emdawnwebgpu'])
+    # Emdawnwebgpu uses C++ internally, so we use a cpp file here so emcc defaults to linking C++.
+    self.emcc(test_file('hello_world.cpp'), ['--use-port=emdawnwebgpu'])
 
   @crossplatform
   def test_external_ports_simple(self):
@@ -9656,8 +9656,8 @@ end
     if config.FROZEN_CACHE and self.get_setting('MEMORY64'):
       # CI configuration doesn't run `embuilder` with wasm64 on ports
       self.skipTest("test doesn't work with frozen cache")
-    self.set_setting('DEFAULT_TO_CXX')  # emdawnwebgpu uses C++ internally
-    self.build('hello_world.c', cflags=[
+    # Emdawnwebgpu uses C++ internally, so we use a cpp file here so emcc defaults to linking C++.
+    self.build('hello_world.cpp', cflags=[
       '--closure=1',
       '-Werror=closure',
       '-sINCLUDE_FULL_LIBRARY',

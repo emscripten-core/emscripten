@@ -4465,8 +4465,6 @@ Module["preRun"] = () => {
   })
   @requires_webgpu
   def test_webgpu_basic_rendering(self, assume_precached, args):
-    if config.FROZEN_CACHE and not assume_precached:
-      self.skipTest("test doesn't work with frozen cache")
     self.btest_exit('webgpu_basic_rendering.cpp', cflags=['--use-port=emdawnwebgpu', '-sEXIT_RUNTIME'] + args)
 
   @requires_webgpu
