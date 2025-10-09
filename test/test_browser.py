@@ -30,7 +30,6 @@ from tools import shared
 from tools import ports
 from tools.feature_matrix import UNSUPPORTED
 from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE, DEBUG
-from tools.shared import config
 from tools.utils import delete_dir, memoize
 
 
