@@ -3242,10 +3242,11 @@ More info: https://emscripten.org
     ''')
     self.do_runf('main.cpp', 'done', cflags=['-lembind', '-sASYNCIFY', '--post-js', 'post.js'])
 
+  @also_with_wasm64
   @parameterized({
-    '': [['-sDYNAMIC_EXECUTION=1']],
-    'no_dynamic': [['-sDYNAMIC_EXECUTION=0']],
-    'dyncall': [['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB']],
+    '': (['-sDYNAMIC_EXECUTION=1'],),
+    'no_dynamic': (['-sDYNAMIC_EXECUTION=0'],),
+    'dyncall': (['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB'],),
   })
   @requires_jspi
   def test_embind_jspi(self, args):
@@ -5011,6 +5012,24 @@ int main() {
 }
 ''')
     self.do_runf('src.c', 'jslibfunc: 12', cflags=['--js-library', 'libcore.js'])
+
+  @requires_jspi
+  def test_jslib_jspi_missing_async(self):
+    create_file('lib.js', r'''
+      addToLibrary({
+        foo__async: true,
+        foo: function(f) {},
+      });
+    ''')
+    create_file('main.c', r'''
+      #include <emscripten.h>
+      extern void foo();
+      EMSCRIPTEN_KEEPALIVE void test() {
+        foo();
+      }
+    ''')
+    err = self.expect_fail([EMCC, 'main.c', '-o', 'out.js', '-sJSPI', '--js-library=lib.js', '-Wno-experimental'])
+    self.assertContained('error: \'foo\' is marked with the __async decorator but is not an async JS function.', err)
 
   def test_EMCC_BUILD_DIR(self):
     # EMCC_BUILD_DIR was necessary in the past since we used to force the cwd to be src/ for
