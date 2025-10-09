@@ -28,7 +28,7 @@ from common import also_with_minimal_runtime, also_with_wasm2js, also_with_asan,
 from common import HttpServerThread, requires_dev_dependency
 from tools import shared
 from tools import ports
-from tools.feature_matrix import UNSUPPORTED
+from tools.feature_matrix import UNSUPPORTED, min_browser_versions, Feature
 from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE, DEBUG
 from tools.utils import delete_dir, memoize
 
@@ -158,6 +158,23 @@ def get_safari_version():
   return parts[0] * 10000 + parts[1] * 100 + parts[2]
 
 
+@memoize
+def get_firefox_version():
+  if not is_firefox():
+    return UNSUPPORTED
+  exe_path = shlex.split(common.EMTEST_BROWSER)[0]
+  ini_path = os.path.join(os.path.dirname(exe_path), "platform.ini")
+  # Extract the first numeric part before any dot (e.g. "Milestone=102.15.1" → 102)
+  m = re.search(r"^Milestone=([^\n\r]+)", open(ini_path).read(), re.MULTILINE)
+  milestone = m.group(1).strip()
+  version = int(re.match(r"(\d+)", milestone).group(1))
+  # On Nightly and BEta, e.g. 145.0a1, pretend it to still mean version 144,
+  # since it is a pre-release version
+  if any(c in milestone for c in ("a", "b")):
+    version -= 1
+  return version
+
+
 no_swiftshader = skip_if_simple('not compatible with swiftshader', is_swiftshader)
 
 no_chrome = skip_if('no_chrome', lambda _: is_chrome(), 'chrome is not supported')
@@ -214,11 +231,16 @@ def skipExecIf(cond, message):
 
 
 def webgl2_disabled():
-  return os.getenv('EMTEST_LACKS_WEBGL2') or os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE')
+  return os.getenv('EMTEST_LACKS_WEBGL2') or os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE') or current_browser_lacks_feature(Feature.WEBGL2)
 
 
 def webgpu_disabled():
-  return os.getenv('EMTEST_LACKS_WEBGPU') or os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE')
+  return os.getenv('EMTEST_LACKS_WEBGPU') or os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE') or current_browser_lacks_feature(Feature.WEBGPU)
+
+
+def current_browser_lacks_feature(feature):
+  min_required = min_browser_versions[feature]
+  return get_firefox_version() < min_required['firefox'] or get_safari_version() < min_required['safari']
 
 
 requires_graphics_hardware = skipExecIf(os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE'), 'This test requires graphics hardware')
@@ -226,13 +248,13 @@ requires_webgl2 = unittest.skipIf(webgl2_disabled(), "This test requires WebGL2 
 requires_webgpu = unittest.skipIf(webgpu_disabled(), "This test requires WebGPU to be available")
 requires_sound_hardware = skipExecIf(os.getenv('EMTEST_LACKS_SOUND_HARDWARE'), 'This test requires sound hardware')
 requires_microphone_access = skipExecIf(os.getenv('EMTEST_LACKS_MICROPHONE_ACCESS'), 'This test accesses microphone, which may need accepting a user prompt to enable it.')
-requires_offscreen_canvas = unittest.skipIf(os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'), 'This test requires a browser with OffscreenCanvas')
-requires_es6_workers = unittest.skipIf(os.getenv('EMTEST_LACKS_ES6_WORKERS'), 'This test requires a browser with ES6 Module Workers support')
-requires_growable_arraybuffers = unittest.skipIf(os.getenv('EMTEST_LACKS_GROWABLE_ARRAYBUFFERS'), 'This test requires a browser that supports growable ArrayBuffers')
+requires_offscreen_canvas = unittest.skipIf(os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS') or current_browser_lacks_feature(Feature.OFFSCREENCANVAS_SUPPORT), 'This test requires a browser with OffscreenCanvas')
+requires_es6_workers = unittest.skipIf(os.getenv('EMTEST_LACKS_ES6_WORKERS') or current_browser_lacks_feature(Feature.WORKER_ES6_MODULES), 'This test requires a browser with ES6 Module Workers support')
+requires_growable_arraybuffers = unittest.skipIf(os.getenv('EMTEST_LACKS_GROWABLE_ARRAYBUFFERS') or current_browser_lacks_feature(Feature.GROWABLE_ARRAYBUFFERS), 'This test requires a browser that supports growable ArrayBuffers')
 # N.b. not all SharedArrayBuffer requiring tests are annotated with this decorator, since at this point there are so many of such tests.
 # As a middle ground, if a test has a name 'thread' or 'wasm_worker' in it, then it does not need decorating. To run all single-threaded tests in
 # the suite, one can run "EMTEST_LACKS_SHARED_ARRAY_BUFFER=1 test/runner browser skip:browser.test_*thread* skip:browser.test_*wasm_worker* skip:browser.test_*audio_worklet*"
-requires_shared_array_buffer = unittest.skipIf(os.getenv('EMTEST_LACKS_SHARED_ARRAY_BUFFER'), 'This test requires a browser with SharedArrayBuffer support')
+requires_shared_array_buffer = unittest.skipIf(os.getenv('EMTEST_LACKS_SHARED_ARRAY_BUFFER') or current_browser_lacks_feature(Feature.THREADS), 'This test requires a browser with SharedArrayBuffer support')
 
 
 class browser(BrowserCore):
