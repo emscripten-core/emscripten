@@ -43,6 +43,9 @@ class Feature(IntEnum):
   OFFSCREENCANVAS_SUPPORT = auto()
   WASM_LEGACY_EXCEPTIONS = auto()
   WASM_EXCEPTIONS = auto()
+  WEBGL2 = auto()
+  WEBGPU = auto()
+  GROWABLE_ARRAYBUFFERS = auto()
 
 
 disable_override_features = set()
@@ -97,6 +100,18 @@ min_browser_versions = {
     'safari': UNSUPPORTED,
     'node': 230000,
   },
+  Feature.WEBGL2: {
+    'chrome': 56,
+    'firefox': 51,
+    'safari': 150000,
+    'node': UNSUPPORTED,
+  },
+  Feature.WEBGPU: {
+    'chrome': 113,
+    'firefox': 141,
+    'safari': 260000,
+    'node': UNSUPPORTED,
+  },
   # https://caniuse.com/mdn-api_worker_worker_ecmascript_modules: The ability to
   # call new Worker(url, { type: 'module' });
   Feature.WORKER_ES6_MODULES: {
@@ -134,6 +149,14 @@ min_browser_versions = {
     # Node.js 26)
     'node': 240000,
   },
+  # Growable SharedArrayBuffers improves memory growth feature in multithreaded
+  # builds by avoiding need to poll resizes to ArrayBuffer views in Workers.
+  Feature.GROWABLE_ARRAYBUFFERS: {
+    'chrome': 111,
+    'firefox': 128,
+    'safari': 160400,
+    'node': 200000,
+  }
 }
 
 # Static assertion to check that we actually need each of the above feature flags
